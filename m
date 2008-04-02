@@ -1,107 +1,107 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 22 Apr 2008 11:07:06 +0000
-Subject: Re: [Lksctp-developers] Is this a possible race condition.
-Message-Id: <20080422110706.GA20823@hmsreliant.think-freely.org>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Wed, 02 Apr 2008 08:07:10 +0000
+Subject: [PATCH] SCTP: remove useless function sctp_auth_asoc_get_hmac()
+Message-Id: <47F33EAE.3000408@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <480CB247.1090902@hp.com>
-In-Reply-To: <480CB247.1090902@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On Mon, Apr 21, 2008 at 03:41:33PM -0400, Vlad Yasevich wrote:
-> Neil Horman wrote:
->>>
->> I believe you.  I completely agree with your observation that there is a small
->> window during which our two accounting values are mismatches, and as a result we
->> might call schedule_timeout without actually having to.  My assertion (which may
->> well be wrong) is that the way the waitqueue api is constructed makes that
->> irrelevant (or at least it should).
->>
->>> The only difference between the 2 is that second accounting done by
->>> sctp_packet_transmit().  It changes sk_wmem_alloc, but not assoc.sndbuf_used.
->>> Thus in one case, there is an extra change against the send buffer that
->>> causes us to exceed it temporarily and thus get scheduled out.  Since we
->>> never wake up, I am now starting to think that the wake-up code is
->>> called while the application is still running.  So the race is between
->>> a wake-up and a call to schedule_timeout.
->>>
->> Yes, I think this is exactly what you described above, that we enter
->> sctp_wait_for_sndbuf because we detect that we are out of sendbuffer space, and
->> that this happens in parallel with a call to sctp_write_space, and its use of
->> wake_up[_interruptible].  My assertion is that that should be, generally
->> speaking, ok.  The pthread library has a very simmilar problem in userspace,
->> in which they do in fact use a mutex to protect against this exact race (see
->> pthread_cond_wait and pthread_cond_signal).  The kernel however, has no
->> mechanism to atomically manipulate a spinlock or mutex, and remove oneself from
->> the scheduling queue).  So in the kernel we use queues.  My assertion (or
->> perhaps assumption), is that prepare_to_wait_exclusive (which is called from
->> sctp_wait_for_sndbuf) adds the task in question to the wait queue, and sets its
->> state to TASK_UNITERRUPTIBLE, or some other 'sleeping' state.  At this point the
->> wait mechanism is 'armed' for lack of a better term.  Even if the call to
->> wake_up happens between this point and the call to schedule[_timeout], all that
->> will (or should) happen is that you will be removed from the wait_queue that it
->> was added to, its task state will be reset to TASK_RUNNING, and it will be
->> rescheduled, without needing to wait for the timeout.  Thats why the call to
->> prepare_to_wait_exclusive is made in sctp_wait_for_sndbuf prior to us checking
->> association state, write space, etc.  Its safe to do there because, even if any
->> of those data values are changed right after we read them, the schedule_timeout
->> will effectively just fall through, and we'll break out of the loop on the next
->> iteration.  Thats why I suggested that you experiment with setting the sndtimeo
->> to a low value, that would break you out of the loop, and confirm thats where
->> you're deadlocking, and why.
->
-> Will try it.
->
->>
->> So In summary, I'm saying that I completely agree with you that the way we
->> charge our skbs in the transmit path can lead to us calling wake_up on a given
->> associations wait_queue.  I just don't think that doing so is a problem, because
->> of the way the kernels wait_queues guard against the possiblility of a given
->> task scheduling itself away forever.  Please take a look and correct me if I'm
->> wrong, but thats how I read the wake up code.
->
-> Ok,  here is a possible race:
->
-> CPU1                                                CPU2
-> prepare_to_wait_exclusive()
->    wait->flags |= WQ_FLAG_EXCLUSIVE;
->    spin_lock_irqsave(&q->lock, flags);
->    if (list_empty(&wait->task_list))
->        __add_wait_queue_tail(q, wait);
-> 	 					   __sctp_write_space()
->                                                        waitqueue_active()
->                                                        wake_up_interruptible();
->
->    set_current_state().
->                                                   
-> This one should be possible.  The waitqueue_active() checks the 'q' list without
-> a lock.  So, it's possible for it to succeed and attempt wake-up before the process
-> state has changed.
->
+Since we have do a strict check of HMAC-ALGO parameter while establish 
+the association, the function sctp_auth_asoc_get_hmac() become useless.
 
-Definately, that looks bad.  I think that should definately be protected with
-the q->lock.
+This patch remove function sctp_auth_asoc_get_hmac().
+
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+
+--- a/include/net/sctp/auth.h	2008-02-11 17:14:15.000000000 -0500
++++ b/include/net/sctp/auth.h	2008-03-27 21:24:17.000000000 -0400
+@@ -99,7 +99,6 @@ int sctp_auth_asoc_copy_shkeys(const str
+ int sctp_auth_init_hmacs(struct sctp_endpoint *ep, gfp_t gfp);
+ void sctp_auth_destroy_hmacs(struct crypto_hash *auth_hmacs[]);
+ struct sctp_hmac *sctp_auth_get_hmac(__u16 hmac_id);
+-struct sctp_hmac *sctp_auth_asoc_get_hmac(const struct sctp_association *asoc);
+ void sctp_auth_asoc_set_default_hmac(struct sctp_association *asoc,
+ 				     struct sctp_hmac_algo_param *hmacs);
+ int sctp_auth_asoc_verify_hmac_id(const struct sctp_association *asoc,
+--- a/net/sctp/auth.c	2008-02-11 17:14:05.000000000 -0500
++++ b/net/sctp/auth.c	2008-03-27 21:24:17.000000000 -0400
+@@ -512,52 +512,6 @@ struct sctp_hmac *sctp_auth_get_hmac(__u
+ 	return &sctp_hmac_list[hmac_id];
+ }
+ 
+-/* Get an hmac description information that we can use to build
+- * the AUTH chunk
+- */
+-struct sctp_hmac *sctp_auth_asoc_get_hmac(const struct sctp_association *asoc)
+-{
+-	struct sctp_hmac_algo_param *hmacs;
+-	__u16 n_elt;
+-	__u16 id = 0;
+-	int i;
+-
+-	/* If we have a default entry, use it */
+-	if (asoc->default_hmac_id)
+-		return &sctp_hmac_list[asoc->default_hmac_id];
+-
+-	/* Since we do not have a default entry, find the first entry
+-	 * we support and return that.  Do not cache that id.
+-	 */
+-	hmacs = asoc->peer.peer_hmacs;
+-	if (!hmacs)
+-		return NULL;
+-
+-	n_elt = (ntohs(hmacs->param_hdr.length) - sizeof(sctp_paramhdr_t)) >> 1;
+-	for (i = 0; i < n_elt; i++) {
+-		id = ntohs(hmacs->hmac_ids[i]);
+-
+-		/* Check the id is in the supported range */
+-		if (id > SCTP_AUTH_HMAC_ID_MAX)
+-			continue;
+-
+-		/* See is we support the id.  Supported IDs have name and
+-		 * length fields set, so that we can allocated and use
+-		 * them.  We can safely just check for name, for without the
+-		 * name, we can't allocate the TFM.
+-		 */
+-		if (!sctp_hmac_list[id].hmac_name)
+-			continue;
+-
+-		break;
+-	}
+-
+-	if (id = 0)
+-		return NULL;
+-
+-	return &sctp_hmac_list[id];
+-}
+-
+ static int __sctp_auth_find_hmacid(__be16 *hmacs, int n_elts, __be16 hmac_id)
+ {
+ 	int  found = 0;
+--- a/net/sctp/chunk.c	2008-02-11 17:14:05.000000000 -0500
++++ b/net/sctp/chunk.c	2008-03-27 21:25:32.000000000 -0400
+@@ -199,7 +199,7 @@ struct sctp_datamsg *sctp_datamsg_from_u
+ 	 * DATA.
+ 	 */
+ 	if (sctp_auth_send_cid(SCTP_CID_DATA, asoc)) {
+-		struct sctp_hmac *hmac_desc = sctp_auth_asoc_get_hmac(asoc);
++		struct sctp_hmac *hmac_desc = sctp_auth_get_hmac(asoc->default_hmac_id);
+ 
+ 		if (hmac_desc)
+ 			max -= WORD_ROUND(sizeof(sctp_auth_chunk_t) +
+--- a/net/sctp/sm_make_chunk.c	2008-02-11 17:14:05.000000000 -0500
++++ b/net/sctp/sm_make_chunk.c	2008-03-27 21:25:08.000000000 -0400
+@@ -1118,7 +1118,7 @@ struct sctp_chunk *sctp_make_auth(const 
+ 	__u8 *hmac;
+ 
+ 	/* Get the first hmac that the peer told us to use */
+-	hmac_desc = sctp_auth_asoc_get_hmac(asoc);
++	hmac_desc = sctp_auth_get_hmac(asoc->default_hmac_id);
+ 	if (unlikely(!hmac_desc))
+ 		return NULL;
+ 
 
 
->>
->> That all being said, I wonder if we're not seeing a race in which the return
->> value of sctp_wspace toggles to a value that might cause a wake_up, and then
->> back to a value that causes a subsequent sleep.  You mentioned that your test
->> application runs on each interface of the system.  Is it multithreaded, or does
->> it form multiple processes and share a socket by any chance?  What if the
->> following were to happen:
->
-> There is no socket sharing.  It's a stand alone app that just gets run multiple times.
->
-Ok, that scraps my scenario then :)
-Neil
 
-> -vlad
-
--- 
-/****************************************************
- * Neil Horman <nhorman@tuxdriver.com>
- * Software Engineer, Red Hat
- ****************************************************/
