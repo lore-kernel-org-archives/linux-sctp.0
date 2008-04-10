@@ -1,104 +1,66 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Thu, 10 Apr 2008 18:18:31 +0000
-Subject: [PATCH 2/5] [SCTP]: Fix protocol violation when receiving an error lenght INIT-ACK
-Message-Id: <1207851513-17021-3-git-send-email-vladislav.yasevich@hp.com>
+Date: Thu, 10 Apr 2008 19:39:51 +0000
+Subject: [PATCH 1/5] [SCTP] Correct /proc/net/assocs formatting error
+Message-Id: <1207856394-19321-2-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1207851513-17021-1-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <1207851513-17021-1-git-send-email-vladislav.yasevich@hp.com>
+References: <1207856394-19321-1-git-send-email-vladislav.yasevich@hp.com>
+In-Reply-To: <1207856394-19321-1-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: davem@davemloft.net
-Cc: lksctp-developers@lists.sourceforge.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Gui Jianfeng <guijianfeng@cn.fujitsu.com>, Vlad Yasevich <vladislav.yasevich@hp.com>
+Cc: linux-sctp@vger.kernel.org, lksctp-developers@lists.sourceforge.net, netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-From: Gui Jianfeng <guijianfeng@cn.fujitsu.com>
+From: Neil Horman <nhorman@tuxdriver.com>
 
-When receiving an error length INIT-ACK during COOKIE-WAIT,
-a 0-vtag ABORT will be responsed. This action violates the
-protocol apparently. This patch achieves the following things.
-1 If the INIT-ACK contains all the fixed parameters, use init-tag
-  recorded from INIT-ACK as vtag.
-2 If the INIT-ACK doesn't contain all the fixed parameters,
-  just reflect its vtag.
+Recently I posted a patch to add some informational items to
+/proc/net/sctp/assocs.  All the information is correct, but because
+of how the seqfile show operation is laid out, some of the formatting
+is backwards.  This patch corrects that formatting, so that the new
+information appears at the end of each line, rather than in the middle.
 
-Signed-off-by: Gui Jianfeng <guijianfeng@cn.fujitsu.com>
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
 Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 ---
- include/net/sctp/command.h |    1 +
- net/sctp/outqueue.c        |    3 +++
- net/sctp/sm_sideeffect.c   |    3 +++
- net/sctp/sm_statefuns.c    |   18 ++++++++++++++++++
- 4 files changed, 25 insertions(+), 0 deletions(-)
+ net/sctp/proc.c |   14 +++++++-------
+ 1 files changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
-index 10ae2da..35b1e83 100644
---- a/include/net/sctp/command.h
-+++ b/include/net/sctp/command.h
-@@ -104,6 +104,7 @@ typedef enum {
- 	SCTP_CMD_ADAPTATION_IND, /* generate and send adaptation event */
- 	SCTP_CMD_ASSOC_SHKEY,    /* generate the association shared keys */
- 	SCTP_CMD_T1_RETRAN,	 /* Mark for retransmission after T1 timeout  */
-+	SCTP_CMD_UPDATE_INITTAG, /* Update peer inittag */
- 	SCTP_CMD_LAST
- } sctp_verb_t;
- 
-diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index 1bb3c5c..c071446 100644
---- a/net/sctp/outqueue.c
-+++ b/net/sctp/outqueue.c
-@@ -793,6 +793,9 @@ int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
- 			break;
- 
- 		case SCTP_CID_ABORT:
-+			if (sctp_test_T_bit(chunk)) {
-+				packet->vtag = asoc->c.my_vtag;
-+			}
- 		case SCTP_CID_SACK:
- 		case SCTP_CID_HEARTBEAT:
- 		case SCTP_CID_HEARTBEAT_ACK:
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index 28eb38e..a4763fd 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -1536,6 +1536,9 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
- 			error = sctp_auth_asoc_init_active_key(asoc,
- 						GFP_ATOMIC);
- 			break;
-+		case SCTP_CMD_UPDATE_INITTAG:
-+			asoc->peer.i.init_tag = cmd->obj.u32;
-+			break;
- 
- 		default:
- 			printk(KERN_WARNING "Impossible command: %u, %p\n",
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index f2ed647..3ef9749 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -4144,6 +4144,24 @@ static sctp_disposition_t sctp_sf_abort_violation(
- 		goto nomem;
- 
- 	if (asoc) {
-+		/* Treat INIT-ACK as a special case during COOKIE-WAIT. */
-+		if (chunk->chunk_hdr->type = SCTP_CID_INIT_ACK &&
-+		    !asoc->peer.i.init_tag) {
-+			sctp_initack_chunk_t *initack;
-+
-+			initack = (sctp_initack_chunk_t *)chunk->chunk_hdr;
-+			if (!sctp_chunk_length_valid(chunk,
-+						     sizeof(sctp_initack_chunk_t)))
-+				abort->chunk_hdr->flags |= SCTP_CHUNK_FLAG_T;
-+			else {
-+				unsigned int inittag;
-+
-+				inittag = ntohl(initack->init_hdr.init_tag);
-+				sctp_add_cmd_sf(commands, SCTP_CMD_UPDATE_INITTAG,
-+						SCTP_U32(inittag));
-+			}
-+		}
-+
- 		sctp_add_cmd_sf(commands, SCTP_CMD_REPLY, SCTP_CHUNK(abort));
- 		SCTP_INC_STATS(SCTP_MIB_OUTCTRLCHUNKS);
- 
+diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+index ddca90e..99062f5 100644
+--- a/net/sctp/proc.c
++++ b/net/sctp/proc.c
+@@ -322,8 +322,7 @@ static int sctp_assocs_seq_show(struct seq_file *seq, void *v)
+ 		sk = epb->sk;
+ 		seq_printf(seq,
+ 			   "%8p %8p %-3d %-3d %-2d %-4d "
+-			   "%4d %8d %8d %7d %5lu %-5d %5d "
+-			   "%8lu %5d %5d %4d %4d %4d %8d ",
++			   "%4d %8d %8d %7d %5lu %-5d %5d ",
+ 			   assoc, sk, sctp_sk(sk)->type, sk->sk_state,
+ 			   assoc->state, hash,
+ 			   assoc->assoc_id,
+@@ -331,15 +330,16 @@ static int sctp_assocs_seq_show(struct seq_file *seq, void *v)
+ 			   atomic_read(&assoc->rmem_alloc),
+ 			   sock_i_uid(sk), sock_i_ino(sk),
+ 			   epb->bind_addr.port,
+-			   assoc->peer.port,
+-			   assoc->hbinterval, assoc->c.sinit_max_instreams,
+-			   assoc->c.sinit_num_ostreams, assoc->max_retrans,
+-			   assoc->init_retries, assoc->shutdown_retries,
+-			   assoc->rtx_data_chunks);
++			   assoc->peer.port);
+ 		seq_printf(seq, " ");
+ 		sctp_seq_dump_local_addrs(seq, epb);
+ 		seq_printf(seq, "<-> ");
+ 		sctp_seq_dump_remote_addrs(seq, assoc);
++		seq_printf(seq, "\t%8lu %5d %5d %4d %4d %4d %8d ",
++			assoc->hbinterval, assoc->c.sinit_max_instreams,
++			assoc->c.sinit_num_ostreams, assoc->max_retrans,
++			assoc->init_retries, assoc->shutdown_retries,
++			assoc->rtx_data_chunks);
+ 		seq_printf(seq, "\n");
+ 	}
+ 	read_unlock(&head->lock);
 -- 
 1.5.3.5
 
