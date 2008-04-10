@@ -1,66 +1,25 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Thu, 10 Apr 2008 19:39:51 +0000
-Subject: [PATCH 1/5] [SCTP] Correct /proc/net/assocs formatting error
-Message-Id: <1207856394-19321-2-git-send-email-vladislav.yasevich@hp.com>
+From: David Miller <davem@davemloft.net>
+Date: Thu, 10 Apr 2008 22:36:18 +0000
+Subject: Re: [PATCH 2/5] [SCTP]: "list_for_each()" ->
+Message-Id: <20080410.153618.40472986.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1207856394-19321-1-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <1207856394-19321-1-git-send-email-vladislav.yasevich@hp.com>
+References: <1207856394-19321-3-git-send-email-vladislav.yasevich@hp.com>
+	<alpine.LFD.1.00.0804101545570.24254@localhost.localdomain>
+	<47FE70C9.3070009@hp.com>
+In-Reply-To: <47FE70C9.3070009@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net
-Cc: linux-sctp@vger.kernel.org, lksctp-developers@lists.sourceforge.net, netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vladislav.yasevich@hp.com>
+To: vladislav.yasevich@hp.com
+Cc: rpjday@crashcourse.ca, linux-sctp@vger.kernel.org, lksctp-developers@lists.sourceforge.net, netdev@vger.kernel.org
 
-From: Neil Horman <nhorman@tuxdriver.com>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Thu, 10 Apr 2008 15:55:53 -0400
 
-Recently I posted a patch to add some informational items to
-/proc/net/sctp/assocs.  All the information is correct, but because
-of how the seqfile show operation is laid out, some of the formatting
-is backwards.  This patch corrects that formatting, so that the new
-information appears at the end of each line, rather than in the middle.
+> Robert P. J. Day wrote:
+> >   actually, if i remember correctly, davem rejected that change as
+> > being too disruptive at the moment, no?
+>
+> this is for 2.6.26, which should be fine.  it was too disruptive for net.26.
 
-Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
----
- net/sctp/proc.c |   14 +++++++-------
- 1 files changed, 7 insertions(+), 7 deletions(-)
-
-diff --git a/net/sctp/proc.c b/net/sctp/proc.c
-index ddca90e..99062f5 100644
---- a/net/sctp/proc.c
-+++ b/net/sctp/proc.c
-@@ -322,8 +322,7 @@ static int sctp_assocs_seq_show(struct seq_file *seq, void *v)
- 		sk = epb->sk;
- 		seq_printf(seq,
- 			   "%8p %8p %-3d %-3d %-2d %-4d "
--			   "%4d %8d %8d %7d %5lu %-5d %5d "
--			   "%8lu %5d %5d %4d %4d %4d %8d ",
-+			   "%4d %8d %8d %7d %5lu %-5d %5d ",
- 			   assoc, sk, sctp_sk(sk)->type, sk->sk_state,
- 			   assoc->state, hash,
- 			   assoc->assoc_id,
-@@ -331,15 +330,16 @@ static int sctp_assocs_seq_show(struct seq_file *seq, void *v)
- 			   atomic_read(&assoc->rmem_alloc),
- 			   sock_i_uid(sk), sock_i_ino(sk),
- 			   epb->bind_addr.port,
--			   assoc->peer.port,
--			   assoc->hbinterval, assoc->c.sinit_max_instreams,
--			   assoc->c.sinit_num_ostreams, assoc->max_retrans,
--			   assoc->init_retries, assoc->shutdown_retries,
--			   assoc->rtx_data_chunks);
-+			   assoc->peer.port);
- 		seq_printf(seq, " ");
- 		sctp_seq_dump_local_addrs(seq, epb);
- 		seq_printf(seq, "<-> ");
- 		sctp_seq_dump_remote_addrs(seq, assoc);
-+		seq_printf(seq, "\t%8lu %5d %5d %4d %4d %4d %8d ",
-+			assoc->hbinterval, assoc->c.sinit_max_instreams,
-+			assoc->c.sinit_num_ostreams, assoc->max_retrans,
-+			assoc->init_retries, assoc->shutdown_retries,
-+			assoc->rtx_data_chunks);
- 		seq_printf(seq, "\n");
- 	}
- 	read_unlock(&head->lock);
--- 
-1.5.3.5
-
+Right.
