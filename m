@@ -1,31 +1,48 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Tue, 22 Apr 2008 05:43:16 +0000
-Subject: [PATCH 1/2] SCTP: Do not enable peer IPv6 address support on PF_INET
-Message-Id: <480D7AF4.9060304@cn.fujitsu.com>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Thu, 10 Apr 2008 19:39:53 +0000
+Subject: [PATCH 3/5] [SCTP]: Remove an unused parameter from sctp_cmd_hb_timer_update
+Message-Id: <1207856394-19321-4-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1207856394-19321-1-git-send-email-vladislav.yasevich@hp.com>
+In-Reply-To: <1207856394-19321-1-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, lksctp-developers@lists.sourceforge.net, netdev@vger.kernel.org, Gui Jianfeng <guijianfeng@cn.fujitsu.com>, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-If socket is create by PF_INET type, it can not used IPv6 address to 
-send/recv DATA, So we can not used IPv6 address even if peer tell us it 
-support IPv6 address.
-This patch fix to only enabled peer IPv6 address support on PF_INET6 socket.
+From: Gui Jianfeng <guijianfeng@cn.fujitsu.com>
 
-Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+The 'asoc' parameter to sctp_cmd_hb_timer_update() is unused, and
+we can remove it.
 
---- a/net/sctp/sm_make_chunk.c	2008-04-18 09:00:59.000000000 -0400
-+++ b/net/sctp/sm_make_chunk.c	2008-04-19 06:42:46.000000000 -0400
-@@ -2418,7 +2418,8 @@ static int sctp_process_param(struct sct
- 				break;
+Signed-off-by: Gui Jianfeng <guijianfeng@cn.fujitsu.com>
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ net/sctp/sm_sideeffect.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 5fdb623..13beed2 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -589,7 +589,6 @@ static void sctp_cmd_t3_rtx_timers_stop(sctp_cmd_seq_t *cmds,
  
- 			case SCTP_PARAM_IPV6_ADDRESS:
--				asoc->peer.ipv6_address = 1;
-+				if (PF_INET6 = asoc->base.sk->sk_family)
-+					asoc->peer.ipv6_address = 1;
- 				break;
+ /* Helper function to update the heartbeat timer. */
+ static void sctp_cmd_hb_timer_update(sctp_cmd_seq_t *cmds,
+-				     struct sctp_association *asoc,
+ 				     struct sctp_transport *t)
+ {
+ 	/* Update the heartbeat timer.  */
+@@ -1451,7 +1450,7 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
  
- 			case SCTP_PARAM_HOST_NAME_ADDRESS:
-
+ 		case SCTP_CMD_HB_TIMER_UPDATE:
+ 			t = cmd->obj.transport;
+-			sctp_cmd_hb_timer_update(commands, asoc, t);
++			sctp_cmd_hb_timer_update(commands, t);
+ 			break;
+ 
+ 		case SCTP_CMD_HB_TIMERS_STOP:
+-- 
+1.5.3.5
 
