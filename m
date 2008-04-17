@@ -1,89 +1,60 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Fri, 25 Apr 2008 17:56:18 +0000
-Subject: Re: [PATCH] SCTP: Fix DATA retransmit after fast retransmit
-Message-Id: <48121B42.8070205@hp.com>
+Date: Thu, 17 Apr 2008 16:45:47 +0000
+Subject: Is this a possible race condition.
+Message-Id: <48077EBB.20006@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <48085441.2030904@cn.fujitsu.com>
-In-Reply-To: <48085441.2030904@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Wei Yongjun wrote:
-> Hi Vlad:
-> 
-> Vlad Yasevich wrote:
->> Hi Wei
->>
->> I was able to reproduce the problem as well as understand when the rfc 
->> really
->> wants us to do.
->>
->> On further analysis we have a lot of problems with fast retransmit.
->>
->> 1.  We really should be restarting the T3 timer any time we fast 
->> retransmit the
->> lowest outstanding TSN.  In your scenario, we would restart the T3-rtx 
->> time when
->> we fast retransmit TSN 2.
-> 
-> Does this means that when we do fast retransmit, we would restart the 
-> T3-rtx time?
+Hi All
 
-Yes, but only when fast retransmitting the lowest outstanding TSN.
-So, let's take the scenario we've been working with.
+Background:
 
-Endpoint A                       Endpoint B
-DATA (TSN = 1)  ------------->
-DATA (TSN = 2)  -- (lost)---->
-DATA (TSN = 3)  ------------->
-DATA (TSN = 4)  ------------->
-              <-------------   SACK (CTSN = 1)
-                                   At this point, lowest outstanding is 2.
+During the course of some stress testing we found an interesting scenario when
+setting the socket send buffer fairly low.
 
-DATA (TSN = 5)  ------------->
-              <-------------   SACK (CTSN = 1, GAP-START = 2, GAP-ENT = 2)
-              <------------    SACK (CTSN = 1, GAP-START = 2, GAP-ENT = 3)
-              <------------    SACK (CTSN = 1, GAP-START = 2, GAP-ENT = 4)
+The applications we use sets the send buffer low, and them performs a bunch of
+short sends followed by a single receive.  The test runs for about 10-12 hours
+with the application run a tight loop on each interface of the system.
 
-DATA (TSN = 2)  -(fast rtx)-->
-    Since we are doing fast rtx for lowest outstanding, restart the T3 timer
-    giving this chunk a chance to be acked.
+Once in while this application ends up sitting in sendmsg().  Looking at the kernel
+stack dumps (SysRq-T), the task in scheduled out sleeping in sctp_wait_for_sndbuf().
+Looking at the memory consumption, everything is 0, i.e. all the skbs have been freed
+and there is nothing on any queues.
 
-              <---(lost)----   SACK (CTSN = 5) 
+This got me thinking that maybe wake-ups aren't getting to the socket.  I am working on
+instrumenting a module to verify this, but looking through the wake-up logic, I think
+we have a interesting race.
 
+Race:
 
-We can also extend this scenario a little bit more:
+We charge every DATA chunk twice against the socket memory accounting, once in sctp_sendmsg()
+and once in sctp_packet_transmit() when we allocated the skb that will hold all the bundled
+chunks.  Now, a very important note is that we only perform the second charge against the
+sk_wmem_alloc, so for short span of time socket wmem accounting does not match association
+wmem accounting.  This is a separate bug, but it shows that the behavior described in the
+Background section does not occur when sendbuf_policy is changed.
 
-DATA (TSN = 1)  ------------->
-DATA (TSN = 2)  -- (lost)---->
-DATA (TSN = 3)  ------------->
-DATA (TSN = 4)  -- (lost)---->
-              <-------------   SACK (CTSN = 1)
-                                   At this point, lowest outstanding is 2.
+What I believe is happening is this.  The interface queue becomes full and thus a packet
+that was charged during sctp_packet_transmit() is still sitting on this queue, while the
+sendmsg() call completes successfully.  The actually draining of the queue happens later
+and freeing up of the buffer happen when the interface is cleaning its tx rings.  This
+can happen asynchronously from subsequent sendmsg() calls and also without any locking.
 
-DATA (TSN = 5)  ------------->
-              <-------------   SACK (CTSN = 1, GAP-START = 2, GAP-ENT = 2)
-              <------------    SACK (CTSN = 1, GAP-START = 2, GAP-ENT = 2, GAP-START = 4, END = 4)
-DATA (TSN = 6) -------------->
-              <------------    SACK (CTSN = 1, GAP-START = 2, GAP-ENT = 2, GAP-START = 4, END = 5)
+So, my supposition is that sock_rfree() and thus sctp_write_space() call
+happens without a lock and in parallel with another sendmsg() call.  It appears that
+the race is between checking to see if the asoc->wait queue is active and the activation
+of this wait queue by the sctp_wait_for_sndbuf().  Thus, if by some very odd coincidence,
+this happens to the last message that the application sent, the application we be scheduled
+away and never wake up because the wake up logic already ran.
 
-DATA (TSN = 2)  -(fast rtx, lost)-->
-    Since we are doing fast rtx for lowest outstanding, restart the T3 timer
-    giving this chunk a chance to be acked.
+As you can see, the timing of this is very very narrow, and for us it takes about 10-12 hours
+to reproduce.  The problem also happens on one or two interfaces out of 13 that are on the
+systems and it's never the same interfaces every time.
 
-DATA (TSN = 7) ------------>
-              <-------------   SACK (CTSN = 1, GAP-START = 2, GAP-ENT = 2, GAP-START = 4, END = 6)
-
-DATA (TSN = 4) -(fast rtx) ---->
-    At this point since TSN 2 is still the lowest outstanding, we do NOTrestart
-    the T3 timer.
-
-
-> If not, fast retransmit TSN1 or TSN5 or the other does not need restart 
-> the T3-rtx?
-
-Does the above example clarify?
+Did I miss anything?  I was using e1000 as an example of how and when the transmitted skb is
+freed and thus above is based on that.
 
 -vlad
