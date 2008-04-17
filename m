@@ -1,8 +1,10 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Thu, 17 Apr 2008 13:08:35 +0000
+Date: Thu, 17 Apr 2008 13:09:10 +0000
 Subject: Re: [Lksctp-developers] Dose lksctp suport ECMP route?
-Message-Id: <48074BD3.4060803@hp.com>
+Message-Id: <48074BF6.3030707@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <48074BD3.4060803@hp.com>
+In-Reply-To: <48074BD3.4060803@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
