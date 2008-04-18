@@ -1,38 +1,51 @@
-From: "Robert P. J. Day" <rpjday@crashcourse.ca>
-Date: Thu, 10 Apr 2008 23:07:16 +0000
-Subject: Re: [PATCH 2/5] [SCTP]: "list_for_each()" -> "list_for_each_entry()"
-Message-Id: <alpine.LFD.1.00.0804101906560.25839@localhost.localdomain>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Fri, 18 Apr 2008 07:56:49 +0000
+Subject: [PATCH] SCTP: Fix DATA retransmit after fast retransmit
+Message-Id: <48085441.2030904@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1207856394-19321-3-git-send-email-vladislav.yasevich@hp.com> <alpine.LFD.1.00.0804101545570.24254@localhost.localdomain> <47FE70C9.3070009@hp.com> <20080410.153618.40472986.davem@davemloft.net>
-In-Reply-To: <20080410.153618.40472986.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: vladislav.yasevich@hp.com, linux-sctp@vger.kernel.org, lksctp-developers@lists.sourceforge.net, netdev@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-On Thu, 10 Apr 2008, David Miller wrote:
+If DATA chunk is resend by fast retransmit, and no SACK is received, 
+this DATA chunk can not be send again after T3 timeout.
 
-> From: Vlad Yasevich <vladislav.yasevich@hp.com>
-> Date: Thu, 10 Apr 2008 15:55:53 -0400
->
-> > Robert P. J. Day wrote:
-> > >   actually, if i remember correctly, davem rejected that change as
-> > > being too disruptive at the moment, no?
-> >
-> > this is for 2.6.26, which should be fine.  it was too disruptive for net.26.
->
-> Right.
+This is because chunk->sent_at will be update after chunk is 
+transmitted, but after fast retransmit, T3 timer will not be reset, so 
+sctp_retransmit_mark() can not mark this chunk for retransmit, and will 
+never sent again because not T3 timer is running.
 
-ok, i stand corrected.  carry on.
+You can test this by following data transmit:
 
-rday
---
+Endpoint A                    Endpoint B
 
-====================================
-Robert P. J. Day
-Linux Consulting, Training and Annoying Kernel Pedantry:
-    Have classroom, will lecture.
+              <--------------  DATA1
+              <--------------  DATA2
+              <--------------  DATA3
+              <--------------  DATA4
+              <--------------  DATA5
+ SACK(1,2)    --------------->
+ SACK(1,3)    --------------->
+ SACK(1,3,4)  --------------->
+ SACK(1,3,4,5)--------------->
+              <--------------  DATA2 (Fast retransmit)
+ NO SACK is sent, DATA2 will never be send again.
 
-http://crashcourse.ca                          Waterloo, Ontario, CANADA
-====================================
+
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+
+--- a/net/sctp/outqueue.c	2008-04-18 09:00:58.000000000 -0400
++++ b/net/sctp/outqueue.c	2008-04-18 09:06:07.000000000 -0400
+@@ -425,7 +425,8 @@ void sctp_retransmit_mark(struct sctp_ou
+ 			 * retransmitting due to T3 timeout.
+ 			 */
+ 			if (reason = SCTP_RTXR_T3_RTX &&
+-			    (jiffies - chunk->sent_at) < transport->last_rto)
++			    (jiffies - chunk->sent_at) < transport->last_rto &&
++			    !chunk->fast_retransmit)
+ 				continue;
+ 
+ 			/* RFC 2960 6.2.1 Processing a Received SACK
+
+
