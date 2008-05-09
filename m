@@ -1,222 +1,41 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 07 May 2008 20:25:46 +0000
-Subject: Re: [PATCH] add /proc/net/sctp/remaddr table to complete RFC
-Message-Id: <20080507202545.GA5237@hmsreliant.think-freely.org>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Fri, 09 May 2008 19:09:54 +0000
+Subject: [PATCH] [SCTP]: Do not enable peer IPv6 address support on PF_INET socket
+Message-Id: <1210360195-16524-1-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20080430144606.GB572@hmsendeavour.rdu.redhat.com>
-In-Reply-To: <20080430144606.GB572@hmsendeavour.rdu.redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, lksctp-developers@lists.sourceforge.net, Wei Yongjun <yjwei@cn.fujitsu.com>, Vlad Yasevich <vladislav.yasevich@hp.com>
 
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
 
-Updated patch, taking your comments into account Vlad.
+If socket is create by PF_INET type, it can not used IPv6 address to
+send/recv DATA, So we can not used IPv6 address even if peer tell us it
+support IPv6 address.
+This patch fix to only enabled peer IPv6 address support on PF_INET6 socket.
 
-Thanks!
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ net/sctp/sm_make_chunk.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-
-
-    Add support for RFC3873 remote address table OID.  Currently the OID's required
-    by RFC 3873 cannot be implemented as part of the association table, where
-    they would otherwise naturally belong.  This patch places all the requsite data
-    in a separate proc file, /proc/net/sctp/remaddr
-   
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 81b6064..69a464f 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2418,7 +2418,8 @@ static int sctp_process_param(struct sctp_association *asoc,
+ 				break;
  
- include/net/sctp/sctp.h |    2 
- net/sctp/proc.c         |  142 ++++++++++++++++++++++++++++++++++++++++++++++++
- net/sctp/protocol.c     |    3 +
- 3 files changed, 147 insertions(+)
-
-
-    Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index 34318a3..c1b087d 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -186,6 +186,8 @@ int sctp_eps_proc_init(void);
- void sctp_eps_proc_exit(void);
- int sctp_assocs_proc_init(void);
- void sctp_assocs_proc_exit(void);
-+int sctp_remaddr_proc_init(void);
-+void sctp_remaddr_proc_exit(void);
+ 			case SCTP_PARAM_IPV6_ADDRESS:
+-				asoc->peer.ipv6_address = 1;
++				if (PF_INET6 = asoc->base.sk->sk_family)
++					asoc->peer.ipv6_address = 1;
+ 				break;
  
- 
- /*
-diff --git a/net/sctp/proc.c b/net/sctp/proc.c
-index 2499732..57a9bfc 100644
---- a/net/sctp/proc.c
-+++ b/net/sctp/proc.c
-@@ -402,3 +402,145 @@ void sctp_assocs_proc_exit(void)
- {
- 	remove_proc_entry("assocs", proc_net_sctp);
- }
-+
-+static void *sctp_remaddr_seq_start(struct seq_file *seq, loff_t *pos)
-+{
-+	if (*pos >= sctp_assoc_hashsize)
-+		return NULL;
-+
-+	if (*pos < 0)
-+		*pos = 0;
-+
-+	if (*pos = 0)
-+		seq_printf(seq, "ADDR ASSOC_ID HB_ACT RTO MAX_PATH_RTX "
-+				"REM_ADDR_RTX  START\n");
-+
-+	return (void *)pos;
-+}
-+
-+static void *sctp_remaddr_seq_next(struct seq_file *seq, void *v, loff_t *pos)
-+{
-+	if (++*pos >= sctp_assoc_hashsize)
-+		return NULL;
-+
-+	return pos;
-+}
-+
-+static void sctp_remaddr_seq_stop(struct seq_file *seq, void *v)
-+{
-+	return;
-+}
-+
-+static int sctp_remaddr_seq_show(struct seq_file *seq, void *v)
-+{
-+	struct sctp_hashbucket *head;
-+	struct sctp_ep_common *epb;
-+	struct sctp_association *assoc;
-+	struct hlist_node *node;
-+	struct sctp_transport *tsp;
-+	int    hash = *(loff_t *)v;
-+
-+	if (hash >= sctp_assoc_hashsize)
-+		return -ENOMEM;
-+
-+	head = &sctp_assoc_hashtable[hash];
-+	sctp_local_bh_disable();
-+	read_lock(&head->lock);
-+	sctp_for_each_hentry(epb, node, &head->chain) {
-+		assoc = sctp_assoc(epb);
-+		list_for_each_entry(tsp, &assoc->peer.transport_addr_list,
-+					transports) {
-+			/*
-+			 * The remote address (ADDR)
-+			 */
-+			tsp->af_specific->seq_dump_addr(seq, &tsp->ipaddr);
-+			seq_printf(seq, " ");
-+
-+			/*
-+			 * The association ID (ASSOC_ID)
-+			 */
-+			seq_printf(seq, "%d ", tsp->asoc->assoc_id);
-+
-+			/*
-+			 * If the Heartbeat is active (HB_ACT)
-+			 * Note: 1 = Active, 0 = Inactive
-+			 */
-+			seq_printf(seq, "%d ", timer_pending(&tsp->hb_timer));
-+
-+			/*
-+			 * Retransmit time out (RTO)
-+			 */
-+			seq_printf(seq, "%lu ", tsp->rto);
-+
-+			/*
-+			 * Maximum path retransmit count (PATH_MAX_RTX)
-+			 */
-+			seq_printf(seq, "%d ", tsp->pathmaxrxt);
-+
-+			/*
-+			 * remote address retransmit count (REM_ADDR_RTX)
-+			 * Note: We don't have a way to tally this at the moment
-+			 * so lets just leave it as zero for the moment
-+			 */
-+			seq_printf(seq, "0 ");
-+
-+			/*
-+			 * remote address start time (START).  This is also not
-+			 * currently implemented, but we can record it with a
-+			 * jiffies marker in a subsequent patch
-+			 */
-+			seq_printf(seq, "0");
-+
-+			seq_printf(seq, "\n");
-+		}
-+	}
-+
-+	read_unlock(&head->lock);
-+	sctp_local_bh_enable();
-+
-+	return 0;
-+
-+}
-+
-+static const struct seq_operations sctp_remaddr_ops = {
-+	.start = sctp_remaddr_seq_start,
-+	.next  = sctp_remaddr_seq_next,
-+	.stop  = sctp_remaddr_seq_stop,
-+	.show  = sctp_remaddr_seq_show,
-+};
-+
-+/* Cleanup the proc fs entry for 'remaddr' object. */
-+void sctp_remaddr_proc_exit(void)
-+{
-+	remove_proc_entry("remaddr", proc_net_sctp);
-+}
-+
-+static int sctp_remaddr_seq_open(struct inode *inode, struct file *file)
-+{
-+	return seq_open(file, &sctp_remaddr_ops);
-+}
-+
-+static const struct file_operations sctp_remaddr_seq_fops = {
-+	.open = sctp_remaddr_seq_open,
-+	.read = seq_read,
-+	.llseek = seq_lseek,
-+	.release = seq_release,
-+};
-+
-+int __init sctp_remaddr_proc_init(void)
-+{
-+	struct proc_dir_entry *p;
-+
-+	p = create_proc_entry("remaddr", S_IRUGO, proc_net_sctp);
-+	if (!p)
-+		return -ENOMEM;
-+	p->proc_fops = &sctp_remaddr_seq_fops;
-+
-+	return 0;
-+}
-+
-+void sctp_assoc_proc_exit(void)
-+{
-+	remove_proc_entry("remaddr", proc_net_sctp);
-+}
-+
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index d50f610..15be5cb 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -113,6 +113,8 @@ static __init int sctp_proc_init(void)
- 		goto out_nomem;
- 	if (sctp_assocs_proc_init())
- 		goto out_nomem;
-+	if (sctp_remaddr_proc_init())
-+		goto out_nomem;
- 
- 	return 0;
- 
-@@ -129,6 +131,7 @@ static void sctp_proc_exit(void)
- 	sctp_snmp_proc_exit();
- 	sctp_eps_proc_exit();
- 	sctp_assocs_proc_exit();
-+	sctp_remaddr_proc_exit();
- 
- 	if (proc_net_sctp) {
- 		proc_net_sctp = NULL;
+ 			case SCTP_PARAM_HOST_NAME_ADDRESS:
 -- 
-/****************************************************
- * Neil Horman <nhorman@tuxdriver.com>
- * Software Engineer, Red Hat
- ****************************************************/
+1.5.3.5
+
