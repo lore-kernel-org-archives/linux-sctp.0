@@ -1,7 +1,7 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Wed, 14 May 2008 14:52:00 +0000
-Subject: [RFC PATCH v3 1/3] [SCTP]: Correctly implement Fast Recovery cwnd manipulations.
-Message-Id: <1210776722-28244-2-git-send-email-vladislav.yasevich@hp.com>
+Date: Fri, 09 May 2008 19:06:58 +0000
+Subject: [RFC PATCH 1/3] [SCTP]: Correctly implement Fast Recovery cwnd manipulations.
+Message-Id: <1210360020-15853-2-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
