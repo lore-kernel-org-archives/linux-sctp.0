@@ -1,135 +1,205 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Fri, 09 May 2008 19:06:58 +0000
-Subject: [RFC PATCH 1/3] [SCTP]: Correctly implement Fast Recovery cwnd manipulations.
-Message-Id: <1210360020-15853-2-git-send-email-vladislav.yasevich@hp.com>
+Date: Mon, 12 May 2008 15:11:11 +0000
+Subject: [RFC PATCH v2 2/3] [SCTP]: Start T3-RTX timer when fast retransmitting lowest TSN
+Message-Id: <1210605072-12377-3-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Correctly keep track of Fast Recovery state and do not reduce
-congestion window multiple times during sucht state.
+When we are trying to fast retransmit the lowest outstanding TSN, we
+need to restart the T3-RTX timer, so that subsequent timeouts will
+correctly tag all the packets necessary for retransmissions.
 
 Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 ---
- include/net/sctp/structs.h |    8 +++++++-
- net/sctp/transport.c       |   44 ++++++++++++++++++++++++++++++++------------
- 2 files changed, 39 insertions(+), 13 deletions(-)
+ include/net/sctp/structs.h |    5 ++++-
+ net/sctp/outqueue.c        |   42 +++++++++++++++++++++++++++++++-----------
+ net/sctp/transport.c       |    4 ++--
+ 3 files changed, 37 insertions(+), 14 deletions(-)
 
 diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 0ce0443..4f7b587 100644
+index 4f7b587..1014c77 100644
 --- a/include/net/sctp/structs.h
 +++ b/include/net/sctp/structs.h
-@@ -901,7 +901,10 @@ struct sctp_transport {
- 	 *		calculation completes (i.e. the DATA chunk
- 	 *		is SACK'd) clear this flag.
- 	 */
--	int rto_pending;
-+	__u8 rto_pending;
-+
-+	/* Flag to track the current fast recovery state */
-+	__u8 fast_recovery;
+@@ -1050,7 +1050,7 @@ void sctp_transport_route(struct sctp_transport *, union sctp_addr *,
+ 			  struct sctp_sock *);
+ void sctp_transport_pmtu(struct sctp_transport *);
+ void sctp_transport_free(struct sctp_transport *);
+-void sctp_transport_reset_timers(struct sctp_transport *);
++void sctp_transport_reset_timers(struct sctp_transport *, int);
+ void sctp_transport_hold(struct sctp_transport *);
+ void sctp_transport_put(struct sctp_transport *);
+ void sctp_transport_update_rto(struct sctp_transport *, __u32);
+@@ -1140,6 +1140,9 @@ struct sctp_outq {
+ 	/* How many unackd bytes do we have in-flight?	*/
+ 	__u32 outstanding_bytes;
  
- 	/*
- 	 * These are the congestion stats.
-@@ -920,6 +923,9 @@ struct sctp_transport {
- 	/* Data that has been sent, but not acknowledged. */
- 	__u32 flight_size;
- 
-+	/* TSN marking the fast recovery exit point */
-+	__u32 fast_recovery_exit;
++	/* Are we doing fast-rtx on this queue */
++	char fast_rtx;
 +
- 	/* Destination */
- 	struct dst_entry *dst;
- 	/* Source address. */
+ 	/* Corked? */
+ 	char cork;
+ 
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 59edfd2..5d3c441 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -208,6 +208,7 @@ void sctp_outq_init(struct sctp_association *asoc, struct sctp_outq *q)
+ 	INIT_LIST_HEAD(&q->sacked);
+ 	INIT_LIST_HEAD(&q->abandoned);
+ 
++	q->fast_rtx = 0;
+ 	q->outstanding_bytes = 0;
+ 	q->empty = 1;
+ 	q->cork  = 0;
+@@ -500,6 +501,7 @@ void sctp_retransmit(struct sctp_outq *q, struct sctp_transport *transport,
+ 	case SCTP_RTXR_FAST_RTX:
+ 		SCTP_INC_STATS(SCTP_MIB_FAST_RETRANSMITS);
+ 		sctp_transport_lower_cwnd(transport, SCTP_LOWER_CWND_FAST_RTX);
++		q->fast_rtx = 1;
+ 		break;
+ 	case SCTP_RTXR_PMTUD:
+ 		SCTP_INC_STATS(SCTP_MIB_PMTUD_RETRANSMITS);
+@@ -543,10 +545,13 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+ 	sctp_xmit_t status;
+ 	struct sctp_chunk *chunk, *chunk1;
+ 	struct sctp_association *asoc;
++	int fast_rtx;
+ 	int error = 0;
++	int timer = 0;
+ 
+ 	asoc = q->asoc;
+ 	lqueue = &q->retransmit;
++	fast_rtx = q->fast_rtx;
+ 
+ 	/* RFC 2960 6.3.3 Handle T3-rtx Expiration
+ 	 *
+@@ -587,13 +592,12 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+ 		switch (status) {
+ 		case SCTP_XMIT_PMTU_FULL:
+ 			/* Send this packet.  */
+-			if ((error = sctp_packet_transmit(pkt)) = 0)
+-				*start_timer = 1;
++			error = sctp_packet_transmit(pkt);
+ 
+ 			/* If we are retransmitting, we should only
+ 			 * send a single packet.
+ 			 */
+-			if (rtx_timeout) {
++			if (rtx_timeout || fast_rtx) {
+ 				list_add(lchunk, lqueue);
+ 				lchunk = NULL;
+ 			}
+@@ -603,8 +607,7 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+ 
+ 		case SCTP_XMIT_RWND_FULL:
+ 			/* Send this packet. */
+-			if ((error = sctp_packet_transmit(pkt)) = 0)
+-				*start_timer = 1;
++			error = sctp_packet_transmit(pkt);
+ 
+ 			/* Stop sending DATA as there is no more room
+ 			 * at the receiver.
+@@ -615,8 +618,7 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+ 
+ 		case SCTP_XMIT_NAGLE_DELAY:
+ 			/* Send this packet. */
+-			if ((error = sctp_packet_transmit(pkt)) = 0)
+-				*start_timer = 1;
++			error = sctp_packet_transmit(pkt);
+ 
+ 			/* Stop sending DATA because of nagle delay. */
+ 			list_add(lchunk, lqueue);
+@@ -635,7 +637,14 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+ 			if (chunk->fast_retransmit > 0)
+ 				chunk->fast_retransmit = -1;
+ 
+-			*start_timer = 1;
++			/* Force start T3-rtx timer when fast retransmitting
++			 * the earliest outstanding TSN
++			 */
++			if (!timer && fast_rtx &&
++			    ntohl(chunk->subh.data_hdr->tsn) =
++					     asoc->ctsn_ack_point + 1)
++				timer = 2;
++
+ 			q->empty = 0;
+ 
+ 			/* Retrieve a new chunk to bundle. */
+@@ -643,12 +652,16 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+ 			break;
+ 		}
+ 
++		/* Set the timer if there were no errors */
++		if (!error && !timer)
++			timer = 1;
++
+ 		/* If we are here due to a retransmit timeout or a fast
+ 		 * retransmit and if there are any chunks left in the retransmit
+ 		 * queue that could not fit in the PMTU sized packet, they need
+ 		 * to be marked as ineligible for a subsequent fast retransmit.
+ 		 */
+-		if (rtx_timeout && !lchunk) {
++		if (rtx_timeout && fast_rtx) {
+ 			list_for_each_entry(chunk1, lqueue, transmitted_list) {
+ 				if (chunk1->fast_retransmit > 0)
+ 					chunk1->fast_retransmit = -1;
+@@ -656,6 +669,12 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+ 		}
+ 	}
+ 
++	*start_timer = timer;
++
++	/* Clear fast retransmit hint */
++	if (fast_rtx)
++		q->fast_rtx = 0;
++
+ 	return error;
+ }
+ 
+@@ -862,7 +881,8 @@ int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
+ 						    rtx_timeout, &start_timer);
+ 
+ 			if (start_timer)
+-				sctp_transport_reset_timers(transport);
++				sctp_transport_reset_timers(transport,
++							    start_timer-1);
+ 
+ 			/* This can happen on COOKIE-ECHO resend.  Only
+ 			 * one chunk can get bundled with a COOKIE-ECHO.
+@@ -977,7 +997,7 @@ int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
+ 			list_add_tail(&chunk->transmitted_list,
+ 				      &transport->transmitted);
+ 
+-			sctp_transport_reset_timers(transport);
++			sctp_transport_reset_timers(transport, start_timer-1);
+ 
+ 			q->empty = 0;
+ 
 diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-index f4938f6..3759027 100644
+index 3759027..33d9201 100644
 --- a/net/sctp/transport.c
 +++ b/net/sctp/transport.c
-@@ -79,6 +79,7 @@ static struct sctp_transport *sctp_transport_init(struct sctp_transport *peer,
- 	peer->rttvar = 0;
- 	peer->srtt = 0;
- 	peer->rto_pending = 0;
-+	peer->fast_recovery = 0;
- 
- 	peer->last_time_heard = jiffies;
- 	peer->last_time_used = jiffies;
-@@ -403,11 +404,16 @@ void sctp_transport_raise_cwnd(struct sctp_transport *transport,
- 	cwnd = transport->cwnd;
- 	flight_size = transport->flight_size;
- 
-+	/* See if we need to exit Fast Recovery first */
-+	if (transport->fast_recovery &&
-+	    TSN_lte(transport->fast_recovery_exit, sack_ctsn))
-+		transport->fast_recovery = 0;
-+
- 	/* The appropriate cwnd increase algorithm is performed if, and only
--	 * if the cumulative TSN has advanced and the congestion window is
-+	 * if the cumulative TSN whould advanced and the congestion window is
- 	 * being fully utilized.
+@@ -191,7 +191,7 @@ static void sctp_transport_destroy(struct sctp_transport *transport)
+ /* Start T3_rtx timer if it is not already running and update the heartbeat
+  * timer.  This routine is called every time a DATA chunk is sent.
+  */
+-void sctp_transport_reset_timers(struct sctp_transport *transport)
++void sctp_transport_reset_timers(struct sctp_transport *transport, int force)
+ {
+ 	/* RFC 2960 6.3.2 Retransmission Timer Rules
+ 	 *
+@@ -201,7 +201,7 @@ void sctp_transport_reset_timers(struct sctp_transport *transport)
+ 	 * address.
  	 */
--	if ((transport->asoc->ctsn_ack_point >= sack_ctsn) ||
-+	if (TSN_lte(sack_ctsn, transport->asoc->ctsn_ack_point) ||
- 	    (flight_size < cwnd))
- 		return;
  
-@@ -416,17 +422,23 @@ void sctp_transport_raise_cwnd(struct sctp_transport *transport,
- 	pmtu = transport->asoc->pathmtu;
- 
- 	if (cwnd <= ssthresh) {
--		/* RFC 2960 7.2.1, sctpimpguide-05 2.14.2 When cwnd is less
--		 * than or equal to ssthresh an SCTP endpoint MUST use the
--		 * slow start algorithm to increase cwnd only if the current
--		 * congestion window is being fully utilized and an incoming
--		 * SACK advances the Cumulative TSN Ack Point. Only when these
--		 * two conditions are met can the cwnd be increased otherwise
--		 * the cwnd MUST not be increased. If these conditions are met
--		 * then cwnd MUST be increased by at most the lesser of
--		 * 1) the total size of the previously outstanding DATA
--		 * chunk(s) acknowledged, and 2) the destination's path MTU.
-+		/* RFC 4960 7.2.1
-+		 * o  When cwnd is less than or equal to ssthresh, an SCTP
-+		 *    endpoint MUST use the slow-start algorithm to increase
-+		 *    cwnd only if the current congestion window is being fully
-+		 *    utilized, an incoming SACK advances the Cumulative TSN
-+		 *    Ack Point, and the data sender is not in Fast Recovery.
-+		 *    Only when these three conditions are met can the cwnd be
-+		 *    increased; otherwise, the cwnd MUST not be increased.
-+		 *    If these conditions are met, then cwnd MUST be increased
-+		 *    by, at most, the lesser of 1) the total size of the
-+		 *    previously outstanding DATA chunk(s) acknowledged, and
-+		 *    2) the destination's path MTU.  This upper bound protects
-+		 *    against the ACK-Splitting attack outlined in [SAVAGE99].
- 		 */
-+		if (transport->fast_recovery)
-+			return;
-+
- 		if (bytes_acked > pmtu)
- 			cwnd += pmtu;
- 		else
-@@ -502,6 +514,13 @@ void sctp_transport_lower_cwnd(struct sctp_transport *transport,
- 		 *      cwnd = ssthresh
- 		 *      partial_bytes_acked = 0
- 		 */
-+		if (transport->fast_recovery)
-+			return;
-+
-+		/* Mark Fast recovery */
-+		transport->fast_recovery = 1;
-+		transport->fast_recovery_exit = transport->asoc->next_tsn - 1;
-+
- 		transport->ssthresh = max(transport->cwnd/2,
- 					  4*transport->asoc->pathmtu);
- 		transport->cwnd = transport->ssthresh;
-@@ -586,6 +605,7 @@ void sctp_transport_reset(struct sctp_transport *t)
- 	t->flight_size = 0;
- 	t->error_count = 0;
- 	t->rto_pending = 0;
-+	t->fast_recovery = 0;
- 
- 	/* Initialize the state information for SFR-CACC */
- 	t->cacc.changeover_active = 0;
+-	if (!timer_pending(&transport->T3_rtx_timer))
++	if (force || !timer_pending(&transport->T3_rtx_timer))
+ 		if (!mod_timer(&transport->T3_rtx_timer,
+ 			       jiffies + transport->rto))
+ 			sctp_transport_hold(transport);
 -- 
 1.5.3.5
 
