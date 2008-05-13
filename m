@@ -1,28 +1,97 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 09 May 2008 22:12:03 +0000
-Subject: Re: [PATCH] [SCTP]: Add address type check while process
-Message-Id: <20080509.151203.84367922.davem@davemloft.net>
+From: Patrick McHardy <kaber@trash.net>
+Date: Tue, 13 May 2008 11:30:49 +0000
+Subject: Re: [PATCH] [SCTP]: Add address type check while process paramaters
+Message-Id: <48297BE9.9020204@trash.net>
+MIME-Version: 1
+Content-Type: multipart/mixed; boundary="------------070509050401090605050106"
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1210360195-16524-1-git-send-email-vladislav.yasevich@hp.com>
-	<1210360195-16524-2-git-send-email-vladislav.yasevich@hp.com>
+References: <1210360195-16524-1-git-send-email-vladislav.yasevich@hp.com> <1210360195-16524-2-git-send-email-vladislav.yasevich@hp.com>
 In-Reply-To: <1210360195-16524-2-git-send-email-vladislav.yasevich@hp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+To: Vlad Yasevich <vladislav.yasevich@hp.com>
+Cc: netdev@vger.kernel.org, davem@davemloft.net, linux-sctp@vger.kernel.org, lksctp-developers@lists.sourceforge.net, Wei Yongjun <yjwei@cn.fujitsu.com>
+
+This is a multi-part message in MIME format.
+--------------070509050401090605050106
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, lksctp-developers@lists.sourceforge.net, yjwei@cn.fujitsu.com
 
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Fri,  9 May 2008 15:09:55 -0400
+Vlad Yasevich wrote:
+> @@ -2827,6 +2827,19 @@ static __be16 sctp_process_asconf_param(struct sctp_association *asoc,
+>  	union sctp_addr	addr;
+>  	union sctp_addr_param *addr_param;
+>  
+> +	switch (addr_param->v4.param_hdr.type) {
 
-> If socket is create by AF_INET type, add IPv6 address to asoc will cause
-> kernel panic while packet is transmitted on that transport.
-> 
-> This patch add address type check before process paramaters of ASCONF
-> chunk. If peer is not support this address type, return with error
-> invald parameter.
-> 
-> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-> Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+^^^ use of addr_param
 
-Applied, thanks.
+> +	case SCTP_PARAM_IPV6_ADDRESS:
+> +		if (!asoc->peer.ipv6_address)
+> +			return SCTP_ERROR_INV_PARAM;
+> +		break;
+> +	case SCTP_PARAM_IPV4_ADDRESS:
+> +		if (!asoc->peer.ipv4_address)
+> +			return SCTP_ERROR_INV_PARAM;
+> +		break;
+> +	default:
+> +		return SCTP_ERROR_INV_PARAM;
+> +	}
+> +
+>  	addr_param = (union sctp_addr_param *)
+>  			((void *)asconf_param + sizeof(sctp_addip_param_t));
+
+^^^ initialization of addr_param
+
+The patch is wrong and needs this fix on top.
+
+
+
+
+
+--------------070509050401090605050106
+Content-Type: text/plain;
+ name="x"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="x"
+
+commit 1beb4530b5bf180d8989993d3050fabdf21522cc
+Author: Patrick McHardy <kaber@trash.net>
+Date:   Tue May 13 13:27:22 2008 +0200
+
+    [SCTP]: Fix use of uninitialized pointer
+    
+    Introduced by c4492586 (sctp: Add address type check while process
+    paramaters of ASCONF chunk):
+    
+    net/sctp/sm_make_chunk.c: In function 'sctp_process_asconf':
+    net/sctp/sm_make_chunk.c:2828: warning: 'addr_param' may be used uninitialized in this function
+    net/sctp/sm_make_chunk.c:2828: note: 'addr_param' was declared here
+    
+    Signed-off-by: Patrick McHardy <kaber@trash.net>
+
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 6eeee53..bbc7107 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2827,6 +2827,9 @@ static __be16 sctp_process_asconf_param(struct sctp_association *asoc,
+ 	union sctp_addr	addr;
+ 	union sctp_addr_param *addr_param;
+ 
++	addr_param = (union sctp_addr_param *)
++			((void *)asconf_param + sizeof(sctp_addip_param_t));
++
+ 	switch (addr_param->v4.param_hdr.type) {
+ 	case SCTP_PARAM_IPV6_ADDRESS:
+ 		if (!asoc->peer.ipv6_address)
+@@ -2840,9 +2843,6 @@ static __be16 sctp_process_asconf_param(struct sctp_association *asoc,
+ 		return SCTP_ERROR_INV_PARAM;
+ 	}
+ 
+-	addr_param = (union sctp_addr_param *)
+-			((void *)asconf_param + sizeof(sctp_addip_param_t));
+-
+ 	af = sctp_get_af_specific(param_type2af(addr_param->v4.param_hdr.type));
+ 	if (unlikely(!af))
+ 		return SCTP_ERROR_INV_PARAM;
+
+--------------070509050401090605050106--
