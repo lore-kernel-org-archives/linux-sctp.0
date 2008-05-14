@@ -1,176 +1,135 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Fri, 09 May 2008 19:07:00 +0000
-Subject: [RFC PATCH 3/3] [SCTP]: Flush the queue only once during fast retransmit.
-Message-Id: <1210360020-15853-4-git-send-email-vladislav.yasevich@hp.com>
+Date: Wed, 14 May 2008 14:52:00 +0000
+Subject: [RFC PATCH v3 1/3] [SCTP]: Correctly implement Fast Recovery cwnd manipulations.
+Message-Id: <1210776722-28244-2-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-When fast retransmit is triggered by a sack, we should flush
-the queue only once so that only 1 retransmit happens.  Also,
-since we could potentially have non-fast-rtx chunks on
-the retransmit queue, we need make sure any chunks eligable
-for fast retransmit are sent first during fast retransmission.
+Correctly keep track of Fast Recovery state and do not reduce
+congestion window multiple times during sucht state.
 
 Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 ---
- net/sctp/outqueue.c |   76 +++++++++++++++++++++++++++++++-------------------
- 1 files changed, 47 insertions(+), 29 deletions(-)
+ include/net/sctp/structs.h |    8 +++++++-
+ net/sctp/transport.c       |   44 ++++++++++++++++++++++++++++++++------------
+ 2 files changed, 39 insertions(+), 13 deletions(-)
 
-diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index d3a087c..0386afc 100644
---- a/net/sctp/outqueue.c
-+++ b/net/sctp/outqueue.c
-@@ -520,9 +520,15 @@ void sctp_retransmit(struct sctp_outq *q, struct sctp_transport *transport,
- 	 * the sender SHOULD try to advance the "Advanced.Peer.Ack.Point" by
- 	 * following the procedures outlined in C1 - C5.
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 0ce0443..4f7b587 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -901,7 +901,10 @@ struct sctp_transport {
+ 	 *		calculation completes (i.e. the DATA chunk
+ 	 *		is SACK'd) clear this flag.
  	 */
--	sctp_generate_fwdtsn(q, q->asoc->ctsn_ack_point);
-+	if (reason = SCTP_RTXR_T3_RTX)
-+		sctp_generate_fwdtsn(q, q->asoc->ctsn_ack_point);
+-	int rto_pending;
++	__u8 rto_pending;
++
++	/* Flag to track the current fast recovery state */
++	__u8 fast_recovery;
  
--	error = sctp_outq_flush(q, /* rtx_timeout */ 1);
-+	/* Flush the queues only on timeout, since fast_rtx is only
-+	 * triggered during sack processing and the queue
-+	 * will be flushed at the end.
-+	 */
-+	if (reason != SCTP_RTXR_FAST_RTX)
-+		error = sctp_outq_flush(q, /* rtx_timeout */ 1);
+ 	/*
+ 	 * These are the congestion stats.
+@@ -920,6 +923,9 @@ struct sctp_transport {
+ 	/* Data that has been sent, but not acknowledged. */
+ 	__u32 flight_size;
  
- 	if (error)
- 		q->asoc->base.sk->sk_err = -error;
-@@ -548,12 +554,16 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
- 	int fast_rtx;
- 	int error = 0;
- 	int timer = 0;
-+	int done = 0;
++	/* TSN marking the fast recovery exit point */
++	__u32 fast_recovery_exit;
++
+ 	/* Destination */
+ 	struct dst_entry *dst;
+ 	/* Source address. */
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index f4938f6..3759027 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -79,6 +79,7 @@ static struct sctp_transport *sctp_transport_init(struct sctp_transport *peer,
+ 	peer->rttvar = 0;
+ 	peer->srtt = 0;
+ 	peer->rto_pending = 0;
++	peer->fast_recovery = 0;
  
- 	asoc = q->asoc;
- 	lqueue = &q->retransmit;
- 	fast_rtx = q->fast_rtx;
+ 	peer->last_time_heard = jiffies;
+ 	peer->last_time_used = jiffies;
+@@ -403,11 +404,16 @@ void sctp_transport_raise_cwnd(struct sctp_transport *transport,
+ 	cwnd = transport->cwnd;
+ 	flight_size = transport->flight_size;
  
--	/* RFC 2960 6.3.3 Handle T3-rtx Expiration
-+	/* This loop handles time-out retransmissions, fast retransmissions,
-+	 * and retransmissions due to opening of whindow.
-+	 *
-+	 * RFC 2960 6.3.3 Handle T3-rtx Expiration
- 	 *
- 	 * E3) Determine how many of the earliest (i.e., lowest TSN)
- 	 * outstanding DATA chunks for the address for which the
-@@ -568,12 +578,12 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
- 	 * [Just to be painfully clear, if we are retransmitting
- 	 * because a timeout just happened, we should send only ONE
- 	 * packet of retransmitted data.]
-+	 *
-+	 * For fast retransmissions we also send only ONE packet.  However,
-+	 * if we are just flushing the queue due to open window, we'll
-+	 * try to send as much as possible.
++	/* See if we need to exit Fast Recovery first */
++	if (transport->fast_recovery &&
++	    TSN_lte(transport->fast_recovery_exit, sack_ctsn))
++		transport->fast_recovery = 0;
++
+ 	/* The appropriate cwnd increase algorithm is performed if, and only
+-	 * if the cumulative TSN has advanced and the congestion window is
++	 * if the cumulative TSN whould advanced and the congestion window is
+ 	 * being fully utilized.
  	 */
--	lchunk = sctp_list_dequeue(lqueue);
--
--	while (lchunk) {
--		chunk = list_entry(lchunk, struct sctp_chunk,
--				   transmitted_list);
-+	list_for_each_entry_safe(chunk, chunk1, lqueue, transmitted_list) {
+-	if ((transport->asoc->ctsn_ack_point >= sack_ctsn) ||
++	if (TSN_lte(sack_ctsn, transport->asoc->ctsn_ack_point) ||
+ 	    (flight_size < cwnd))
+ 		return;
  
- 		/* Make sure that Gap Acked TSNs are not retransmitted.  A
- 		 * simple approach is just to move such TSNs out of the
-@@ -581,11 +591,18 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
- 		 * next chunk.
+@@ -416,17 +422,23 @@ void sctp_transport_raise_cwnd(struct sctp_transport *transport,
+ 	pmtu = transport->asoc->pathmtu;
+ 
+ 	if (cwnd <= ssthresh) {
+-		/* RFC 2960 7.2.1, sctpimpguide-05 2.14.2 When cwnd is less
+-		 * than or equal to ssthresh an SCTP endpoint MUST use the
+-		 * slow start algorithm to increase cwnd only if the current
+-		 * congestion window is being fully utilized and an incoming
+-		 * SACK advances the Cumulative TSN Ack Point. Only when these
+-		 * two conditions are met can the cwnd be increased otherwise
+-		 * the cwnd MUST not be increased. If these conditions are met
+-		 * then cwnd MUST be increased by at most the lesser of
+-		 * 1) the total size of the previously outstanding DATA
+-		 * chunk(s) acknowledged, and 2) the destination's path MTU.
++		/* RFC 4960 7.2.1
++		 * o  When cwnd is less than or equal to ssthresh, an SCTP
++		 *    endpoint MUST use the slow-start algorithm to increase
++		 *    cwnd only if the current congestion window is being fully
++		 *    utilized, an incoming SACK advances the Cumulative TSN
++		 *    Ack Point, and the data sender is not in Fast Recovery.
++		 *    Only when these three conditions are met can the cwnd be
++		 *    increased; otherwise, the cwnd MUST not be increased.
++		 *    If these conditions are met, then cwnd MUST be increased
++		 *    by, at most, the lesser of 1) the total size of the
++		 *    previously outstanding DATA chunk(s) acknowledged, and
++		 *    2) the destination's path MTU.  This upper bound protects
++		 *    against the ACK-Splitting attack outlined in [SAVAGE99].
  		 */
- 		if (chunk->tsn_gap_acked) {
--			list_add_tail(lchunk, &transport->transmitted);
--			lchunk = sctp_list_dequeue(lqueue);
-+			list_del(&chunk->transmitted_list);
-+			list_add_tail(&chunk->transmitted_list,
-+					&transport->transmitted);
- 			continue;
- 		}
- 
-+		/* If we are doing fast retransmit, ignore non-fast_rtransmit
-+		 * chunks
-+		 */
-+		if (fast_rtx && !chunk->fast_retransmit)
-+			continue;
++		if (transport->fast_recovery)
++			return;
 +
- 		/* Attempt to append this chunk to the packet. */
- 		status = sctp_packet_append_chunk(pkt, chunk);
- 
-@@ -597,10 +614,8 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
- 			/* If we are retransmitting, we should only
- 			 * send a single packet.
- 			 */
--			if (rtx_timeout || fast_rtx) {
--				list_add(lchunk, lqueue);
--				lchunk = NULL;
--			}
-+			if (rtx_timeout || fast_rtx)
-+				done = 1;
- 
- 			/* Bundle lchunk in the next round.  */
- 			break;
-@@ -612,8 +627,7 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
- 			/* Stop sending DATA as there is no more room
- 			 * at the receiver.
- 			 */
--			list_add(lchunk, lqueue);
--			lchunk = NULL;
-+			done = 1;
- 			break;
- 
- 		case SCTP_XMIT_NAGLE_DELAY:
-@@ -621,15 +635,16 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
- 			error = sctp_packet_transmit(pkt);
- 
- 			/* Stop sending DATA because of nagle delay. */
--			list_add(lchunk, lqueue);
--			lchunk = NULL;
-+			done = 1;
- 			break;
- 
- 		default:
- 			/* The append was successful, so add this chunk to
- 			 * the transmitted list.
- 			 */
--			list_add_tail(lchunk, &transport->transmitted);
-+			list_del(&chunk->transmitted_list);
-+			list_add_tail(&chunk->transmitted_list,
-+					&transport->transmitted);
- 
- 			/* Mark the chunk as ineligible for fast retransmit
- 			 * after it is retransmitted.
-@@ -656,16 +671,19 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
- 		if (!error && !timer)
- 			timer = 1;
- 
--		/* If we are here due to a retransmit timeout or a fast
--		 * retransmit and if there are any chunks left in the retransmit
--		 * queue that could not fit in the PMTU sized packet, they need
--		 * to be marked as ineligible for a subsequent fast retransmit.
--		 */
--		if (rtx_timeout && !lchunk) {
--			list_for_each_entry(chunk1, lqueue, transmitted_list) {
--				if (chunk1->fast_retransmit > 0)
--					chunk1->fast_retransmit = -1;
--			}
-+		if (done)
-+			break;
-+	}
+ 		if (bytes_acked > pmtu)
+ 			cwnd += pmtu;
+ 		else
+@@ -502,6 +514,13 @@ void sctp_transport_lower_cwnd(struct sctp_transport *transport,
+ 		 *      cwnd = ssthresh
+ 		 *      partial_bytes_acked = 0
+ 		 */
++		if (transport->fast_recovery)
++			return;
 +
-+	/* If we are here due to a retransmit timeout or a fast
-+	 * retransmit and if there are any chunks left in the retransmit
-+	 * queue that could not fit in the PMTU sized packet, they need
-+	 * to be marked as ineligible for a subsequent fast retransmit.
-+	 */
-+	if (rtx_timeout && !lchunk) {
-+		list_for_each_entry(chunk1, lqueue, transmitted_list) {
-+			if (chunk1->fast_retransmit > 0)
-+				chunk1->fast_retransmit = -1;
- 		}
- 	}
++		/* Mark Fast recovery */
++		transport->fast_recovery = 1;
++		transport->fast_recovery_exit = transport->asoc->next_tsn - 1;
++
+ 		transport->ssthresh = max(transport->cwnd/2,
+ 					  4*transport->asoc->pathmtu);
+ 		transport->cwnd = transport->ssthresh;
+@@ -586,6 +605,7 @@ void sctp_transport_reset(struct sctp_transport *t)
+ 	t->flight_size = 0;
+ 	t->error_count = 0;
+ 	t->rto_pending = 0;
++	t->fast_recovery = 0;
  
+ 	/* Initialize the state information for SFR-CACC */
+ 	t->cacc.changeover_active = 0;
 -- 
 1.5.3.5
 
