@@ -1,52 +1,43 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Fri, 16 May 2008 05:09:02 +0000
-Subject: Re: [Lksctp-developers] [RFC PATCH v3] [SCTP] Fast retransmit fixes
-Message-Id: <482D16EE.10304@cn.fujitsu.com>
+From: Gui Jianfeng <guijianfeng@cn.fujitsu.com>
+Date: Fri, 16 May 2008 08:49:18 +0000
+Subject: [PATCH] [SCTP] Fix a type cast bug
+Message-Id: <482D4A8E.4090903@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <482C0926.9030600@cn.fujitsu.com>
-In-Reply-To: <482C0926.9030600@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: vladislav <vladislav.yasevich@hp.com>, linux-sctp@vger.kernel.org
+Cc: David Miller <davem@davemloft.net>, netdev <netdev@vger.kernel.org>
 
-Vlad Yasevich wrote:
-> Wei Yongjun wrote:
->
->>
->>
->> 2. Shutdown can not be send after all of the data has been ack, 
->> unknow reason, kill the sctp process can cause shutdown be sent .
->
-> Hm.. At what point does the app does a close?  In my test that's similar
-> to the second scenario from the dump where second and third packets are
-> lost, I have a graceful shutdown after all the data is acknowledged.
->
->
->> And while do the second fast retransmit DATA(TSN = 3), new data is 
->> sent, is this correct? See dump file in attachment 2.html.Lik0.dump. 
->> I send 20 data packet to Endpoint B, and the data size is 1024.
->
-> That's fine.  It's not really a fast retransmit any more.  In this 
-> scenario,
-> both chunks strike out at the same time and we only fast-rtx the first 
-> one,
-> leaving the next one to be retransmitted when the sack arrives.  Once 
-> the SACK
-> arrives, we do standard retransmit of as much as we can subject to 
-> congestion
-> window and if we can send new data, we do.
->
-> The part the confuses me is the part about shutdown since this change 
-> shouldn't
-> effect anything wrt to shutdown procedure.
->
+Vlad,
 
-I found out that this is the bug of my program, not SCTP's. The close() 
-function not call the shutdown because I created a child process by fork().
-This patchset seems good to me. Thanks.
+event_arg can never be the type of "struct sctp_chunk *" 
+if the event_type is SCTP_EVENT_T_OTHER. This fix
+prevents from potential kernel crash by some misuse.
 
-Acked-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+Signed-off-by: Gui Jianfeng <guijianfeng@cn.fujitsu.com>
+---
+ net/sctp/sm_sideeffect.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index a4763fd..1b4bae9 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -1072,7 +1072,8 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
+ 	struct sctp_sackhdr sackh;
+ 	int local_cork = 0;
+ 
+-	if (SCTP_EVENT_T_TIMEOUT != event_type)
++	if (SCTP_EVENT_T_TIMEOUT != event_type &&
++	    SCTP_EVENT_T_OTHER != event_type)
+ 		chunk = (struct sctp_chunk *) event_arg;
+ 
+ 	/* Note:  This whole file is a huge candidate for rework.
+-- 
+1.5.3
 
+-- 
+Regards
+Gui Jianfeng
 
