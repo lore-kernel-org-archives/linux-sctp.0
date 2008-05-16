@@ -1,24 +1,69 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 09 May 2008 22:15:02 +0000
-Subject: Re: [PATCH next-2.6 1/3] [SCTP]: Bring SCTP_DELAYED_ACK socket
-Message-Id: <20080509.151502.215470212.davem@davemloft.net>
+From: Gui Jianfeng <guijianfeng@cn.fujitsu.com>
+Date: Fri, 16 May 2008 00:38:39 +0000
+Subject: [PATCH] [SCTP] retran_path update bug fix
+Message-Id: <482CD78F.2070308@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1210360481-16599-1-git-send-email-vladislav.yasevich@hp.com>
-	<1210360566-16661-1-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <1210360566-16661-1-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, lksctp-developers@lists.sourceforge.net, yjwei@cn.fujitsu.com
+To: linux-sctp@vger.kernel.org, vladislav <vladislav.yasevich@hp.com>
+Cc: David Miller <davem@davemloft.net>, netdev <netdev@vger.kernel.org>
 
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Fri,  9 May 2008 15:16:04 -0400
+If the current retran_path is the only active one, it should
+update it to the the next inactive one.
 
-> Brings delayed_ack socket option set/get into line with the latest ietf
-> socket extensions API draft, while maintaining backwards compatibility.
-> 
-> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-> Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+Signed-off-by: Gui Jianfeng <guijianfeng@cn.fujitsu.com>
+---
+ net/sctp/associola.c |   21 ++++++++++++---------
+ 1 files changed, 12 insertions(+), 9 deletions(-)
 
-Applied.
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index d29f792..4ae1f8b 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1208,6 +1208,9 @@ void sctp_assoc_update_retran_path(struct sctp_association *asoc)
+ 	struct list_head *head = &asoc->peer.transport_addr_list;
+ 	struct list_head *pos;
+ 
++	if (asoc->peer.transport_count = 1)
++		return;
++
+ 	/* Find the next transport in a round-robin fashion. */
+ 	t = asoc->peer.retran_path;
+ 	pos = &t->transports;
+@@ -1222,6 +1225,15 @@ void sctp_assoc_update_retran_path(struct sctp_association *asoc)
+ 
+ 		t = list_entry(pos, struct sctp_transport, transports);
+ 
++		/* We have exhausted the list, but didn't find any
++		 * other active transports.  If so, use the next
++		 * transport.
++		 */
++		if (t = asoc->peer.retran_path) {
++			t = next;
++			break;
++		}
++
+ 		/* Try to find an active transport. */
+ 
+ 		if ((t->state = SCTP_ACTIVE) ||
+@@ -1234,15 +1246,6 @@ void sctp_assoc_update_retran_path(struct sctp_association *asoc)
+ 			if (!next)
+ 				next = t;
+ 		}
+-
+-		/* We have exhausted the list, but didn't find any
+-		 * other active transports.  If so, use the next
+-		 * transport.
+-		 */
+-		if (t = asoc->peer.retran_path) {
+-			t = next;
+-			break;
+-		}
+ 	}
+ 
+ 	asoc->peer.retran_path = t;
+-- 
+1.5.3
+
+
