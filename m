@@ -1,7 +1,7 @@
-From: Michael Tuexen <tuexen@fh-muenster.de>
-Date: Thu, 29 May 2008 15:34:49 +0000
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Thu, 29 May 2008 15:50:56 +0000
 Subject: Re: receiver window questions
-Message-Id: <5D90B4E8-071A-4615-B967-D7CD956B3666@fh-muenster.de>
+Message-Id: <483ED0E0.5040307@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <483EC663.1070805@hp.com>
 In-Reply-To: <483EC663.1070805@hp.com>
@@ -10,8 +10,7 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On May 29, 2008, at 5:25 PM, Neil Horman wrote:
-
+Neil Horman wrote:
 > On Thu, May 29, 2008 at 11:06:11AM -0400, Vlad Yasevich wrote:
 >> Hi Michael
 >>
@@ -29,53 +28,40 @@ On May 29, 2008, at 5:25 PM, Neil Horman wrote:
 >>> The sender (on a different machine), sends a lot of messages of the
 >>> same size, all on stream 0, ordered.
 >>>
->>> When setting the receive buffer space (using the SO_RCVBUF socket  
->>> option)
+>>> When setting the receive buffer space (using the SO_RCVBUF socket option)
 >>> to 10000 we oberserve the following:
 >>>
->>> - When sending messages of size 1000 bytes, the receiver SACK the  
->>> first,
->>> announces 9000 bytes windows, SACKs the second announces 8000 bytes
->>> and so on. Look fine. The a_rwnd goes down to 0 and discards  
->>> messages.
->>> Everything is fine.
+>>> - When sending messages of size 1000 bytes, the receiver SACK the first,
+>>>  announces 9000 bytes windows, SACKs the second announces 8000 bytes
+>>>  and so on. Look fine. The a_rwnd goes down to 0 and discards messages.
+>>>  Everything is fine.
 >>>
->>> - When sending messages of size 100 bytes, the receiver SACKs the  
->>> first
->>> messages and reduces the a_rwnd accordingly. Then it looks like the
->>> receive buffer grows, because messages are accepted and the a_rwnd  
->>> does
->>> not shrink. Is this intended?
->>
+>>> - When sending messages of size 100 bytes, the receiver SACKs the first
+>>>  messages and reduces the a_rwnd accordingly. Then it looks like the
+>>>  receive buffer grows, because messages are accepted and the a_rwnd does
+>>>  not shrink. Is this intended?
 >> No.  The a_rwnd should go down to 0 as before.
 >>
->>> We also figured out that after about 670947 messages of size 100  
->>> bytes
->>> the association is aborted. Is this intended?
->>
+>>>  We also figured out that after about 670947 messages of size 100 bytes
+>>>  the association is aborted. Is this intended?
 >> This is also not intended.  We'll take a look.
 >>
-> That does sound odd, yes, a_rwnd should be reduced in response to  
-> each received
+> That does sound odd, yes, a_rwnd should be reduced in response to each received
 > frame.  do you have tcpdumps of this test available?
 > Thanks
 > Neil
-It looks like that you do not reduce the a_rwnd, because you discard  
-the message.
-The problem seems to be that you ack it by incrementing the  
-cumtsn_ack...
 
-Irene did the tests in the lab. We'll provide traces and a testprogram  
-tomorrow.
->
->
->
-> -- 
-> /***************************************************
-> *Neil Horman
-> *nhorman@tuxdriver.com
-> *gpg keyid: 1024D / 0x92A74FA1
-> *http://pgp.mit.edu
-> ***************************************************/
->
+I think this is hitting a condition where the receiver buffer is exhausted prior
+to rwnd.  We generally mark the TSN as received prior to attempting an internal 
+allocation to carry the data.  Thus, if this allocation fails, we'll continue
+reporting the tsn as received and move the cum-tsn if appropriate.
 
+We've been trying to figure out what the correct way to solve this condition is
+and so far haven't come up with a workable solution.
+
+One approach is to reduce the a_rwnd to 1 when the receive buffer reaches some
+consumption threshold.  This would allow 1 packet in flight to allow receive 
+buffer to drain.  Another piece of this puzzle is also SWS avoidance.  We 
+currently have somewhat poor algorithm that allows a max of 1 MTU in transit.
+
+-vlad
