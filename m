@@ -1,250 +1,47 @@
-From: Michael Tuexen <tuexen@fh-muenster.de>
-Date: Fri, 30 May 2008 07:50:03 +0000
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Fri, 30 May 2008 13:02:56 +0000
 Subject: Re: receiver window questions
-Message-Id: <5E5E845D-CBB7-45FF-AA58-5969B333F0A8@fh-muenster.de>
-MIME-Version: 1
-Content-Type: multipart/mixed; boundary="Apple-Mail-3--249114459"
+Message-Id: <483FFB00.6050507@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <483EC663.1070805@hp.com>
 In-Reply-To: <483EC663.1070805@hp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-
---Apple-Mail-3--249114459
-Content-Type: text/plain;
-	charset=US-ASCII;
-	format=flowed;
-	delsp=yes
-Content-Transfer-Encoding: 7bit
-
-Dear all,
-
-for message size larger or equal to 176 byte, the behaviour seems
-to be OK, for smaller ones there is a problem.
-
-Please find attached two traces. arwnd175.pcap shows the buggy  
-behaviour,
-arwnd176.pcap shows the acceptable behaviour.
-
-One the receiver side we just opened a listening 1-to-many style socket,
-waited until the sender (a testtool) sent all its data and then started
-to receive all messages. This is how we figured out that messages were  
-lost.
-
-Please let us know if you need more information.
-
-Best regards
-Michael
-
-
---Apple-Mail-3--249114459
-Content-Disposition: attachment;
-	filename=arwnd175.pcap.gz
-Content-Type: application/x-gzip;
-	x-unix-mode=0644;
-	name="arwnd175.pcap.gz"
-Content-Transfer-Encoding: base64
-
-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
-
---Apple-Mail-3--249114459
-Content-Disposition: attachment;
-	filename=arwnd176.pcap.gz
-Content-Type: application/x-gzip;
-	x-unix-mode=0644;
-	name="arwnd176.pcap.gz"
-Content-Transfer-Encoding: base64
-
-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
-gwT8hgAA
-
---Apple-Mail-3--249114459
-Content-Type: text/plain;
-	charset=US-ASCII;
-	format=flowed;
-	delsp=yes
-Content-Transfer-Encoding: 7bit
-
-
-
-On May 30, 2008, at 1:51 AM, Neil Horman wrote:
-
+Neil Horman wrote:
 > On Thu, May 29, 2008 at 11:50:56AM -0400, Vlad Yasevich wrote:
 >> Neil Horman wrote:
 >>> On Thu, May 29, 2008 at 11:06:11AM -0400, Vlad Yasevich wrote:
->>
->> I think this is hitting a condition where the receiver buffer is  
->> exhausted
+>> I think this is hitting a condition where the receiver buffer is exhausted 
 >> prior
->> to rwnd.  We generally mark the TSN as received prior to attempting  
->> an
->> internal allocation to carry the data.  Thus, if this allocation  
->> fails,
+>> to rwnd.  We generally mark the TSN as received prior to attempting an 
+>> internal allocation to carry the data.  Thus, if this allocation fails, 
 >> we'll continue
 >> reporting the tsn as received and move the cum-tsn if appropriate.
 >>
->> We've been trying to figure out what the correct way to solve this
+>> We've been trying to figure out what the correct way to solve this 
 >> condition is
 >> and so far haven't come up with a workable solution.
 >>
-> You're right it does sound like that.  You know, I haven't visited  
-> that code
-> since we rewrote the receive buffer management code to expand  
-> according to
-> available memory with the sk_mem_schedule api.  Do you think this  
-> could be as
+> You're right it does sound like that.  You know, I haven't visited that code
+> since we rewrote the receive buffer management code to expand according to
+> available memory with the sk_mem_schedule api.  Do you think this could be as
 > simple as removing this drop point?
->
-> Neil
->
->
+> 
 
+The problem is that if the user sets the buffer size, we don't auto-tune it.
+This is what happened in this case.  However, even with auto-tunning, this
+still shows up with 1 byte data chunks.
 
---Apple-Mail-3--249114459--
+So, 2 things need to happen:
+	1)  when we drop the chunk due to allocation failure, we have to remove
+	    the tsn from the map.  This one is easy
+
+	2)  We need to properly detect SWS.  I haven't looked fully at this, but
+             it feels a bit more involved.  Implementing something like what BSD
+	    has would also work, i.e. reducing a_rwnd 1 when receive buffer is
+	    about to be exhausted.
+
+-vlad
