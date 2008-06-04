@@ -1,23 +1,73 @@
-From: David Miller <davem@davemloft.net>
-Date: Sun, 15 Jun 2008 00:13:59 +0000
-Subject: Re: [PATCH]: change proto destroy method to return void
-Message-Id: <20080614.171359.212671828.davem@davemloft.net>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Wed, 04 Jun 2008 18:25:46 +0000
+Subject: [PATCH 1/6] SCTP: retran_path update bug fix
+Message-Id: <1212603951-24932-2-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <48532517.3070205@hp.com>
-In-Reply-To: <48532517.3070205@hp.com>
+References: <1212603951-24932-1-git-send-email-vladislav.yasevich@hp.com>
+In-Reply-To: <1212603951-24932-1-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: brian.haley@hp.com
-Cc: netdev@vger.kernel.org, dccp@vger.kernel.org, linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, davem@davemloft.net, Gui Jianfeng <guijianfeng@cn.fujitsu.com>, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-From: Brian Haley <brian.haley@hp.com>
-Date: Fri, 13 Jun 2008 21:55:35 -0400
+From: Gui Jianfeng <guijianfeng@cn.fujitsu.com>
 
-> Change struct proto destroy function pointer to return void.  Noticed by 
-> Al Viro.
-> 
-> Signed-off-by: Brian Haley <brian.haley@hp.com>
+If the current retran_path is the only active one, it should
+update it to the the next inactive one.
 
-Looks good, applied and pushed out to net-next-2.6, thanks Brian!
+Signed-off-by: Gui Jianfeng <guijianfeng@cn.fujitsu.com>
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ net/sctp/associola.c |   21 ++++++++++++---------
+ 1 files changed, 12 insertions(+), 9 deletions(-)
+
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index b4cd2b7..5326348 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1203,6 +1203,9 @@ void sctp_assoc_update_retran_path(struct sctp_association *asoc)
+ 	struct list_head *head = &asoc->peer.transport_addr_list;
+ 	struct list_head *pos;
+ 
++	if (asoc->peer.transport_count = 1)
++		return;
++
+ 	/* Find the next transport in a round-robin fashion. */
+ 	t = asoc->peer.retran_path;
+ 	pos = &t->transports;
+@@ -1217,6 +1220,15 @@ void sctp_assoc_update_retran_path(struct sctp_association *asoc)
+ 
+ 		t = list_entry(pos, struct sctp_transport, transports);
+ 
++		/* We have exhausted the list, but didn't find any
++		 * other active transports.  If so, use the next
++		 * transport.
++		 */
++		if (t = asoc->peer.retran_path) {
++			t = next;
++			break;
++		}
++
+ 		/* Try to find an active transport. */
+ 
+ 		if ((t->state = SCTP_ACTIVE) ||
+@@ -1229,15 +1241,6 @@ void sctp_assoc_update_retran_path(struct sctp_association *asoc)
+ 			if (!next)
+ 				next = t;
+ 		}
+-
+-		/* We have exhausted the list, but didn't find any
+-		 * other active transports.  If so, use the next
+-		 * transport.
+-		 */
+-		if (t = asoc->peer.retran_path) {
+-			t = next;
+-			break;
+-		}
+ 	}
+ 
+ 	asoc->peer.retran_path = t;
+-- 
+1.5.3.5
 
