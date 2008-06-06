@@ -1,22 +1,47 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 09 Jun 2008 22:45:51 +0000
-Subject: Re: [PATCH net-next] sctp: Fix problems with the new
-Message-Id: <20080609.154551.202822490.davem@davemloft.net>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Fri, 06 Jun 2008 07:39:27 +0000
+Subject: [PATCH] SCTP: Remove the proc fs entry if fail to set up proc fs
+Message-Id: <4848E9AF.4010204@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1212807007-24379-1-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <1212807007-24379-1-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Fri,  6 Jun 2008 22:50:07 -0400
+This patch remove the proc fs entry which has been created if fail to
+set up proc fs entry for the SCTP protocol.
 
-> The default sack frequency should be 2.  Also fix copy/paste
-> error when updating all transports.
-> 
-> Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 
-Applied to net-next-2.6, thanks Vlad.
+--- a/net/sctp/protocol.c	2008-05-31 23:49:24.000000000 -0400
++++ b/net/sctp/protocol.c	2008-06-01 04:35:40.000000000 -0400
+@@ -108,14 +108,23 @@ static __init int sctp_proc_init(void)
+	}
+
+	if (sctp_snmp_proc_init())
+-		goto out_nomem;
++		goto err_snmp_proc_init;
+	if (sctp_eps_proc_init())
+-		goto out_nomem;
++		goto err_eps_proc_init;
+	if (sctp_assocs_proc_init())
+-		goto out_nomem;
++		goto err_assocs_proc_init;
+
+	return 0;
+
++err_assocs_proc_init:
++	sctp_eps_proc_exit();
++err_eps_proc_init:
++	sctp_snmp_proc_exit();
++err_snmp_proc_init:
++	if (proc_net_sctp) {
++		proc_net_sctp = NULL;
++		remove_proc_entry("sctp", init_net.proc_net);
++	}
+out_nomem:
+	return -ENOMEM;
+}
+
+
+
