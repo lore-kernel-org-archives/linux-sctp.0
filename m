@@ -1,18 +1,59 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 20 Jun 2008 17:35:06 +0000
-Subject: Re: [PATCH net-next] sctp: Kill unused variable in
-Message-Id: <20080620.103506.31495519.davem@davemloft.net>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Fri, 13 Jun 2008 13:49:08 +0000
+Subject: [PATCH 1/2] sctp: Correctly cleanup procfs entries upon failure.
+Message-Id: <1213364949-9997-2-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <12139691681334-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <12139691681334-git-send-email-vladislav.yasevich@hp.com>
+References: <1213364949-9997-1-git-send-email-vladislav.yasevich@hp.com>
+In-Reply-To: <1213364949-9997-1-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, lksctp-developers@lists.sourceforge.net, Wei Yongjun <yjwei@cn.fujitsu.com>, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Fri, 20 Jun 2008 09:39:28 -0400
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
 
-> Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+This patch remove the proc fs entry which has been created if fail to
+set up proc fs entry for the SCTP protocol.
 
-Applied, thanks a lot Vlad.
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ net/sctp/protocol.c |   15 ++++++++++++---
+ 1 files changed, 12 insertions(+), 3 deletions(-)
+
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index b435a19..9258dfe 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -108,14 +108,23 @@ static __init int sctp_proc_init(void)
+ 	}
+ 
+ 	if (sctp_snmp_proc_init())
+-		goto out_nomem;
++		goto out_snmp_proc_init;
+ 	if (sctp_eps_proc_init())
+-		goto out_nomem;
++		goto out_eps_proc_init;
+ 	if (sctp_assocs_proc_init())
+-		goto out_nomem;
++		goto out_assocs_proc_init;
+ 
+ 	return 0;
+ 
++out_assocs_proc_init:
++	sctp_eps_proc_exit();
++out_eps_proc_init:
++	sctp_snmp_proc_exit();
++out_snmp_proc_init:
++	if (proc_net_sctp) {
++		proc_net_sctp = NULL;
++		remove_proc_entry("sctp", init_net.proc_net);
++	}
+ out_nomem:
+ 	return -ENOMEM;
+ }
+-- 
+1.5.3.5
+
