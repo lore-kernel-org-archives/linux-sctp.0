@@ -1,39 +1,69 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 23 Jun 2008 21:42:07 +0000
-Subject: Re: [PATCH]: SCTP length validation.
-Message-Id: <20080623.144207.89110071.davem@davemloft.net>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Fri, 13 Jun 2008 13:58:51 +0000
+Subject: [PATCH 2/2 v2] sctp: Correclty set changeover_active for SFR-CACC
+Message-Id: <1213365531-10049-1-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <485D2467.7020300@hp.com>
-	<20080622.123232.71141502.davem@davemloft.net>
-	<485FC86F.4090808@hp.com>
-In-Reply-To: <485FC86F.4090808@hp.com>
+References: 1213364949-9997-3-git-send-email-vladislav.yasevich@hp.com>
+In-Reply-To: 1213364949-9997-3-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: lksctp-developers@lists.sourceforge.net, linux-sctp@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Mon, 23 Jun 2008 11:59:43 -0400
+Not sure why the spacing got garbled in this patch, but here it
+again and looking much better.
 
-> David Miller wrote:
-> > From: Vlad Yasevich <vladislav.yasevich@hp.com>
-> > Date: Sat, 21 Jun 2008 11:55:19 -0400
-> > 
-> >> The same vulnerability also exists in sctp_getsockopt_peer_addrs_old().
-> >> It's a bit more difficult to trigger since there is a dependency on
-> >> the peer being multihomed as well, but it's still possible to cause the
-> >> overwrite.
-> > 
-> > I can't see how that's possible.  This case looks harmless to
-> > me.
-> > 
-> > The kernel side accesses are perfectly protected.  The kernel
-> > will only access the actual address list stored via:
- ...
-> 
-> You are right.  I didn't look far enough.  Since there is no kmalloc(),
-> the overflow of kernel memory is not possible, and copy_to_user should
-> take care of any overflows of the user memory.
+--
 
-Thanks for double-checking my analysis Vlad.
+Right now, any time we set a primary transport we set
+the changeover_active flag.  As a result, we invoke SFR-CACC
+even when there has been no changeover events.
+
+Only set changeover_active, when there is a true changeover
+event, i.e. we had a primary path and we are changing to
+another transport.
+
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ net/sctp/associola.c |   13 +++++++++++--
+ 1 files changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 5326348..39f92c0 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -474,6 +474,15 @@ static void sctp_association_destroy(struct sctp_association *asoc)
+ void sctp_assoc_set_primary(struct sctp_association *asoc,
+ 			    struct sctp_transport *transport)
+ {
++	int changeover = 0;
++
++	/* it's a changeover only if we already have a primary path
++	 * that we are changing
++	 */
++	if (asoc->peer.primary_path != NULL &&
++	    asoc->peer.primary_path != transport)
++		changeover = 1 ;
++
+ 	asoc->peer.primary_path = transport;
+ 
+ 	/* Set a default msg_name for events. */
+@@ -499,12 +508,12 @@ void sctp_assoc_set_primary(struct sctp_association *asoc,
+ 	 * double switch to the same destination address.
+ 	 */
+ 	if (transport->cacc.changeover_active)
+-		transport->cacc.cycling_changeover = 1;
++		transport->cacc.cycling_changeover = changeover;
+ 
+ 	/* 2) The sender MUST set CHANGEOVER_ACTIVE to indicate that
+ 	 * a changeover has occurred.
+ 	 */
+-	transport->cacc.changeover_active = 1;
++	transport->cacc.changeover_active = changeover;
+ 
+ 	/* 3) The sender MUST store the next TSN to be sent in
+ 	 * next_tsn_at_change.
+-- 
+1.5.3.5
+
