@@ -1,66 +1,35 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Mon, 23 Jun 2008 20:00:18 +0000
-Subject: Re: [RFC PATCH 2/2] sctp: Correct how sk_rmem_schedule is used.
-Message-Id: <486000D2.8030701@hp.com>
+From: David Miller <davem@davemloft.net>
+Date: Tue, 17 Jun 2008 07:43:24 +0000
+Subject: [PATCH] Kill unused macros...
+Message-Id: <20080617.004324.162289618.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <12139080693483-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <12139080693483-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: vladislav.yasevich@hp.com
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Vlad Yasevich wrote:
-> We used to only use sk_rmem_schedule when we potentially overflow
-> the sk_rcvbuf.  That allowed us to use sk_rmem[1] space on top of
-> existing sk_recvbuf space which is way more that needed and thus
-> incorrectly detecting memory pressure conditions.
-> 
-> We need to call sk_rmem_schedule at all times (whenever sk_rcvbuf is
-> not locked), letting it correctly catch memory pressure conditions.
-> 
-> Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
-> ---
->  net/sctp/ulpevent.c |   12 +++++++-----
->  1 files changed, 7 insertions(+), 5 deletions(-)
-> 
-> diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
-> index a1f654a..71a97c7 100644
-> --- a/net/sctp/ulpevent.c
-> +++ b/net/sctp/ulpevent.c
-> @@ -687,6 +687,7 @@ struct sctp_ulpevent *sctp_ulpevent_make_rcvmsg(struct sctp_association *asoc,
->  	struct sk_buff *skb;
->  	size_t padding, len;
->  	int rx_count;
-> +	int pressure = 0;
->  
->  	/*
->  	 * check to see if we need to make space for this
-> @@ -698,12 +699,13 @@ struct sctp_ulpevent *sctp_ulpevent_make_rcvmsg(struct sctp_association *asoc,
->  	else
->  		rx_count = atomic_read(&asoc->base.sk->sk_rmem_alloc);
->  
-> -	if (rx_count >= asoc->base.sk->sk_rcvbuf) {
-> +	if (asoc->base.sk->sk_userlocks & SOCK_RCVBUF_LOCK)
-> +		pressure = sk_rmem_schedule(asoc->base.sk,
-> +					    chunk->skb->truesize);
-> +
-> +	if (rx_count >= asoc->base.sk->sk_rcvbuf || pressure)
-> +		goto fail;
->  
-> -		if ((asoc->base.sk->sk_userlocks & SOCK_RCVBUF_LOCK) ||
-> -		    (!sk_rmem_schedule(asoc->base.sk, chunk->skb->truesize)))
-> -			goto fail;
-> -	}
->  
->  	/* Clone the original skb, sharing the data.  */
->  	skb = skb_clone(chunk->skb, gfp);
 
-OK, this one is bogus.  What we currently do is definitely wrong, but this patch
-is wrong as well.
+I noticed this while working on something unrelated in the
+net-next-2.6 tree, applied and pushed to kernel.org
 
-We need to always call rmem_schedule, otherwise we allow too much of an overflow.
-We need to also adjust our sk_rcvbuf if we get into the condition of buffer exhaustion
-prior to rwnd.
+sctp: Kill SCTP_SOCK_SLEEP_{PRE,POST}, unused.
 
--vlad 
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ include/net/sctp/sctp.h |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
+
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 5672d48..17b932b 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -220,8 +220,6 @@ extern struct kmem_cache *sctp_bucket_cachep __read_mostly;
+ #define sctp_release_sock(sk)    release_sock(sk)
+ #define sctp_bh_lock_sock(sk)    bh_lock_sock(sk)
+ #define sctp_bh_unlock_sock(sk)  bh_unlock_sock(sk)
+-#define SCTP_SOCK_SLEEP_PRE(sk)  SOCK_SLEEP_PRE(sk)
+-#define SCTP_SOCK_SLEEP_POST(sk) SOCK_SLEEP_POST(sk)
+ 
+ /* SCTP SNMP MIB stats handlers */
+ DECLARE_SNMP_STAT(struct sctp_mib, sctp_statistics);
