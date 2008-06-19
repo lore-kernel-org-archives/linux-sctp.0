@@ -1,32 +1,80 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 17 Jun 2008 00:01:19 +0000
-Subject: Re: [PATCH 2/2 v2] sctp: Correclty set changeover_active for
-Message-Id: <20080616.170119.12283602.davem@davemloft.net>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Thu, 19 Jun 2008 22:24:40 +0000
+Subject: [PATCH net-next 1/2] sctp: Validate Initiate Tag when handling ICMP message
+Message-Id: <1213914282357-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1213365531-10049-1-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <1213365531-10049-1-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: netdev@vger.kernel.org, lksctp-developers@lists.sourceforge.net, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Fri, 13 Jun 2008 09:58:51 -0400
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
 
-> Not sure why the spacing got garbled in this patch, but here it
-> again and looking much better.
-> 
-> --
-> 
-> Right now, any time we set a primary transport we set
-> the changeover_active flag.  As a result, we invoke SFR-CACC
-> even when there has been no changeover events.
-> 
-> Only set changeover_active, when there is a true changeover
-> event, i.e. we had a primary path and we are changing to
-> another transport.
-> 
-> Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+This patch add to validate initiate tag and chunk type if verification
+tag is 0 when handling ICMP message.
 
-Applied to net-2.6, thanks!
+RFC 4960, Appendix C. ICMP Handling
+
+ICMP6) An implementation MUST validate that the Verification Tag
+contained in the ICMP message matches the Verification Tag of the peer.
+If the Verification Tag is not 0 and does NOT match, discard the ICMP
+message.  If it is 0 and the ICMP message contains enough bytes to
+verify that the chunk type is an INIT chunk and that the Initiate Tag
+matches the tag of the peer, continue with ICMP7.  If the ICMP message
+is too short or the chunk type or the Initiate Tag does not match,
+silently discard the packet.
+
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ net/sctp/input.c |   27 +++++++++++++++++++++++++--
+ 1 files changed, 25 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index ca6b022..d354a23 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -430,6 +430,9 @@ struct sock *sctp_err_lookup(int family, struct sk_buff *skb,
+ 	struct sock *sk = NULL;
+ 	struct sctp_association *asoc;
+ 	struct sctp_transport *transport = NULL;
++	struct sctp_init_chunk *chunkhdr;
++	__u32 vtag = ntohl(sctphdr->vtag);
++	int len = skb->len - ((void *)sctphdr - (void *)skb->data);
+ 
+ 	*app = NULL; *tpp = NULL;
+ 
+@@ -451,8 +454,28 @@ struct sock *sctp_err_lookup(int family, struct sk_buff *skb,
+ 
+ 	sk = asoc->base.sk;
+ 
+-	if (ntohl(sctphdr->vtag) != asoc->c.peer_vtag) {
+-		ICMP_INC_STATS_BH(ICMP_MIB_INERRORS);
++	/* RFC 4960, Appendix C. ICMP Handling
++	 *
++	 * ICMP6) An implementation MUST validate that the Verification Tag
++	 * contained in the ICMP message matches the Verification Tag of
++	 * the peer.  If the Verification Tag is not 0 and does NOT
++	 * match, discard the ICMP message.  If it is 0 and the ICMP
++	 * message contains enough bytes to verify that the chunk type is
++	 * an INIT chunk and that the Initiate Tag matches the tag of the
++	 * peer, continue with ICMP7.  If the ICMP message is too short
++	 * or the chunk type or the Initiate Tag does not match, silently
++	 * discard the packet.
++	 */
++	if (vtag = 0) {
++		chunkhdr = (struct sctp_init_chunk *)((void *)sctphdr
++				+ sizeof(struct sctphdr));
++		if (len < sizeof(struct sctphdr) + sizeof(sctp_chunkhdr_t)
++			  + sizeof(__be32) ||
++		    chunkhdr->chunk_hdr.type != SCTP_CID_INIT ||
++		    ntohl(chunkhdr->init_hdr.init_tag) != asoc->c.my_vtag) {
++			goto out;
++		}
++	} else if (vtag != asoc->c.peer_vtag) {
+ 		goto out;
+ 	}
+ 
+-- 
+1.5.2.5
+
