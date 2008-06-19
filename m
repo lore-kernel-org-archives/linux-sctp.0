@@ -1,26 +1,57 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 04 Jun 2008 19:40:25 +0000
-Subject: Re: [PATCH 6/6] [SCTP]: Fix ECN markings for IPv6
-Message-Id: <20080604.124025.29833100.davem@davemloft.net>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Thu, 19 Jun 2008 20:41:08 +0000
+Subject: [RFC PATCH 2/2] sctp: Correct how sk_rmem_schedule is used.
+Message-Id: <12139080693483-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1212603951-24932-1-git-send-email-vladislav.yasevich@hp.com>
-	<1212603951-24932-7-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <1212603951-24932-7-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Wed,  4 Jun 2008 14:25:51 -0400
+We used to only use sk_rmem_schedule when we potentially overflow
+the sk_rcvbuf.  That allowed us to use sk_rmem[1] space on top of
+existing sk_recvbuf space which is way more that needed and thus
+incorrectly detecting memory pressure conditions.
 
-> Commit e9df2e8fd8fbc95c57dbd1d33dada66c4627b44c
-> ([IPV6]: Use appropriate sock tclass setting for routing lookup.) also
-> changed the way that ECN capable transports mark this capability in IPv6.
-> As a result, SCTP was not marking ECN capablity because the traffic class
-> was never set.  This patch brings back the markings for IPv6 traffic.
-> 
-> Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+We need to call sk_rmem_schedule at all times (whenever sk_rcvbuf is
+not locked), letting it correctly catch memory pressure conditions.
 
-Also applied, thanks a lot Vlad!
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ net/sctp/ulpevent.c |   12 +++++++-----
+ 1 files changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
+index a1f654a..71a97c7 100644
+--- a/net/sctp/ulpevent.c
++++ b/net/sctp/ulpevent.c
+@@ -687,6 +687,7 @@ struct sctp_ulpevent *sctp_ulpevent_make_rcvmsg(struct sctp_association *asoc,
+ 	struct sk_buff *skb;
+ 	size_t padding, len;
+ 	int rx_count;
++	int pressure = 0;
+ 
+ 	/*
+ 	 * check to see if we need to make space for this
+@@ -698,12 +699,13 @@ struct sctp_ulpevent *sctp_ulpevent_make_rcvmsg(struct sctp_association *asoc,
+ 	else
+ 		rx_count = atomic_read(&asoc->base.sk->sk_rmem_alloc);
+ 
+-	if (rx_count >= asoc->base.sk->sk_rcvbuf) {
++	if (asoc->base.sk->sk_userlocks & SOCK_RCVBUF_LOCK)
++		pressure = sk_rmem_schedule(asoc->base.sk,
++					    chunk->skb->truesize);
++
++	if (rx_count >= asoc->base.sk->sk_rcvbuf || pressure)
++		goto fail;
+ 
+-		if ((asoc->base.sk->sk_userlocks & SOCK_RCVBUF_LOCK) ||
+-		    (!sk_rmem_schedule(asoc->base.sk, chunk->skb->truesize)))
+-			goto fail;
+-	}
+ 
+ 	/* Clone the original skb, sharing the data.  */
+ 	skb = skb_clone(chunk->skb, gfp);
+-- 
+1.5.2.5
+
