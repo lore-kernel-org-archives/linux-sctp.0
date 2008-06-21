@@ -1,25 +1,46 @@
 From: David Miller <davem@davemloft.net>
-Date: Wed, 04 Jun 2008 19:38:17 +0000
-Subject: Re: [PATCH 2/6] SCTP: Move sctp_v4_dst_saddr out of loop
-Message-Id: <20080604.123817.78089516.davem@davemloft.net>
+Date: Sat, 21 Jun 2008 05:12:05 +0000
+Subject: [PATCH]: SCTP length validation.
+Message-Id: <20080620.221205.183623344.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1212603951-24932-1-git-send-email-vladislav.yasevich@hp.com>
-	<1212603951-24932-3-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <1212603951-24932-3-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, guijianfeng@cn.fujitsu.com
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, vladislav.yasevich@hp.com
 
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Wed,  4 Jun 2008 14:25:47 -0400
 
-> There's no need to execute sctp_v4_dst_saddr() for each
-> iteration, just move it out of loop.
-> 
-> Signed-off-by: Gui Jianfeng <guijianfeng@cn.fujitsu.com>
-> Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+I just checked in the following SCTP bug fix to net-2.6 and will make
+sure it gets into -stable as well.
 
-Applied.
+sctp: Make sure N * sizeof(union sctp_addr) does not overflow.
+
+As noticed by Gabriel Campana, the kmalloc() length arg
+passed in by sctp_getsockopt_local_addrs_old() can overflow
+if ->addr_num is large enough.
+
+Therefore, enforce an appropriate limit.
+
+Signed-off-by: David S. Miller <davem@davemloft.net>
+---
+ net/sctp/socket.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index e7e3baf..0dbcde6 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4401,7 +4401,9 @@ static int sctp_getsockopt_local_addrs_old(struct sock *sk, int len,
+ 	if (copy_from_user(&getaddrs, optval, len))
+ 		return -EFAULT;
+ 
+-	if (getaddrs.addr_num <= 0) return -EINVAL;
++	if (getaddrs.addr_num <= 0 ||
++	    getaddrs.addr_num >= (INT_MAX / sizeof(union sctp_addr)))
++		return -EINVAL;
+ 	/*
+ 	 *  For UDP-style sockets, id specifies the association to query.
+ 	 *  If the id field is set to the value '0' then the locally bound
+-- 
+1.5.6
 
