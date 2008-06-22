@@ -1,56 +1,46 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Sat, 21 Jun 2008 15:55:19 +0000
+From: David Miller <davem@davemloft.net>
+Date: Sun, 22 Jun 2008 19:32:32 +0000
 Subject: Re: [PATCH]: SCTP length validation.
-Message-Id: <485D2467.7020300@hp.com>
+Message-Id: <20080622.123232.71141502.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20080620.221205.183623344.davem@davemloft.net>
-In-Reply-To: <20080620.221205.183623344.davem@davemloft.net>
+	<485D2467.7020300@hp.com>
+In-Reply-To: <485D2467.7020300@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
+To: vladislav.yasevich@hp.com
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-David Miller wrote:
-> I just checked in the following SCTP bug fix to net-2.6 and will make
-> sure it gets into -stable as well.
-> 
-> sctp: Make sure N * sizeof(union sctp_addr) does not overflow.
-> 
-> As noticed by Gabriel Campana, the kmalloc() length arg
-> passed in by sctp_getsockopt_local_addrs_old() can overflow
-> if ->addr_num is large enough.
-> 
-> Therefore, enforce an appropriate limit.
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Sat, 21 Jun 2008 11:55:19 -0400
 
-Hi David
+> The same vulnerability also exists in sctp_getsockopt_peer_addrs_old().
+> It's a bit more difficult to trigger since there is a dependency on
+> the peer being multihomed as well, but it's still possible to cause the
+> overwrite.
 
-The same vulnerability also exists in sctp_getsockopt_peer_addrs_old().
-It's a bit more difficult to trigger since there is a dependency on
-the peer being multihomed as well, but it's still possible to cause the
-overwrite.
+I can't see how that's possible.  This case looks harmless to
+me.
 
--vlad
+The kernel side accesses are perfectly protected.  The kernel
+will only access the actual address list stored via:
 
-> 
-> Signed-off-by: David S. Miller <davem@davemloft.net>
-> ---
->  net/sctp/socket.c |    4 +++-
->  1 files changed, 3 insertions(+), 1 deletions(-)
-> 
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index e7e3baf..0dbcde6 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -4401,7 +4401,9 @@ static int sctp_getsockopt_local_addrs_old(struct sock *sk, int len,
->  	if (copy_from_user(&getaddrs, optval, len))
->  		return -EFAULT;
->  
-> -	if (getaddrs.addr_num <= 0) return -EINVAL;
-> +	if (getaddrs.addr_num <= 0 ||
-> +	    getaddrs.addr_num >= (INT_MAX / sizeof(union sctp_addr)))
-> +		return -EINVAL;
->  	/*
->  	 *  For UDP-style sockets, id specifies the association to query.
->  	 *  If the id field is set to the value '0' then the locally bound
+	list_for_each_entry(from, &asoc->peer.transport_addr_list,
+				transports) {
+ ...
+		cnt ++;
+		if (cnt >= getaddrs.addr_num) break;
+	}
+	getaddrs.addr_num = cnt;
 
+Copies are only made to userspace, and the given ->addr_num only
+serves as an early break-out from that loop.  I mean, take a look,
+those lines in the above are the only aaccesses made to the user's
+provided addr_num value.
+
+There is no possibility to use strange ->addr_num values
+in order to read or write kernel memory outside of the
+intended bounds.
+
+I don't even see any value to adding new checks here.
