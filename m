@@ -1,46 +1,71 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Mon, 21 Jul 2008 15:19:34 +0000
-Subject: Re: [PATC] sctp: various fixes
-Message-Id: <4884A906.1000602@hp.com>
+Date: Mon, 07 Jul 2008 21:10:41 +0000
+Subject: [PATCH] sctp: Mark the tsn as received after all allocations finish
+Message-Id: <1215465041-13276-1-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20080718.230833.22196996.davem@davemloft.net>	<20080719.224047.228019059.davem@davemloft.net>	<48848B35.6050702@hp.com> <20080721.080535.194149976.davem@davemloft.net>
-In-Reply-To: <20080721.080535.194149976.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-David Miller wrote:
-> From: Vlad Yasevich <vladislav.yasevich@hp.com>
-> Date: Mon, 21 Jul 2008 09:12:21 -0400
-> 
->> David Miller wrote:
->>> From: David Miller <davem@davemloft.net>
->>> Date: Fri, 18 Jul 2008 23:08:33 -0700 (PDT)
->>>
->>>> From: Vlad Yasevich <vladislav.yasevich@hp.com>
->>>> Date: Sat, 19 Jul 2008 00:26:45 -0400
->>>>
->>>>> This is a bunch of SCTP fixes that have accumlated over the past week or
->>>>> so. 
->>>> All applied, thanks Vlad.
->>> Vlad, I had to add the following fix to the tree in order
->>> to unbreak the build when CONFIG_HIGHMEM is enabled.
->>>
->> ahh...  since tcp isn't a module, it didn't trigger that.
->>
->> Thanks Dave.  I didn't think about turning highmem off..
-> 
-> No problem, but the problematic case was turning highmem on :-)
-> 
+If we don't have the buffer space or memory allocations fail,
+the data chunk is dropped, but TSN is still reported as received.
+This introduced a data loss that can't be recovered.  We should
+only mark TSNs are received after memory allocations finish.
+The one exception is the invalid stream identifier, but that's
+due to user error and is reported back to the user.
 
-argh.....
+This was noticed by Michael Tuexen.
 
-CONFIG_HIGHMEM=y
-...
-CONFIG_SCTP=y
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ net/sctp/sm_statefuns.c |    9 +++------
+ net/sctp/ulpevent.c     |    5 +++++
+ 2 files changed, 8 insertions(+), 6 deletions(-)
 
-Ran my tests in kvm and it's easier to build stuff in.
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 0c9d5a6..fcdb45d 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -5899,12 +5899,6 @@ static int sctp_eat_data(const struct sctp_association *asoc,
+ 		return SCTP_IERROR_NO_DATA;
+ 	}
+ 
+-	/* If definately accepting the DATA chunk, record its TSN, otherwise
+-	 * wait for renege processing.
+-	 */
+-	if (SCTP_CMD_CHUNK_ULP = deliver)
+-		sctp_add_cmd_sf(commands, SCTP_CMD_REPORT_TSN, SCTP_U32(tsn));
+-
+ 	chunk->data_accepted = 1;
+ 
+ 	/* Note: Some chunks may get overcounted (if we drop) or overcounted
+@@ -5924,6 +5918,9 @@ static int sctp_eat_data(const struct sctp_association *asoc,
+ 	 * and discard the DATA chunk.
+ 	 */
+ 	if (ntohs(data_hdr->stream) >= asoc->c.sinit_max_instreams) {
++		/* Mark tsn as received even though we drop it */
++		sctp_add_cmd_sf(commands, SCTP_CMD_REPORT_TSN, SCTP_U32(tsn));
++
+ 		err = sctp_make_op_error(asoc, chunk, SCTP_ERROR_INV_STRM,
+ 					 &data_hdr->stream,
+ 					 sizeof(data_hdr->stream));
+diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
+index ce6cda6..a1f654a 100644
+--- a/net/sctp/ulpevent.c
++++ b/net/sctp/ulpevent.c
+@@ -710,6 +710,11 @@ struct sctp_ulpevent *sctp_ulpevent_make_rcvmsg(struct sctp_association *asoc,
+ 	if (!skb)
+ 		goto fail;
+ 
++	/* Now that all memory allocations for this chunk succeeded, we
++	 * can mark it as received so the tsn_map is updated correctly.
++	 */
++	sctp_tsnmap_mark(&asoc->peer.tsn_map, ntohl(chunk->subh.data_hdr->tsn));
++
+ 	/* First calculate the padding, so we don't inadvertently
+ 	 * pass up the wrong length to the user.
+ 	 *
+-- 
+1.5.3.5
 
--vlad
