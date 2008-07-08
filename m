@@ -1,85 +1,200 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 08 Jul 2008 09:30:08 +0000
-Subject: Re: [PATCH] sctp: Mark the tsn as received after all allocations
-Message-Id: <20080708.023008.77788464.davem@davemloft.net>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Tue, 08 Jul 2008 20:56:28 +0000
+Subject: [PATCH v2] sctp: Add documentation for sctp sysctl variable
+Message-Id: <1215550588-10223-1-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1215465041-13276-1-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <1215465041-13276-1-git-send-email-vladislav.yasevich@hp.com>
+References: <20080708133158.0c39d355.randy.dunlap@oracle.com>
+In-Reply-To: <20080708133158.0c39d355.randy.dunlap@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, randy.dunlap@oracle.com, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Mon,  7 Jul 2008 17:10:41 -0400
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ Documentation/networking/ip-sysctl.txt |  168 ++++++++++++++++++++++++++++++++
+ 1 files changed, 168 insertions(+), 0 deletions(-)
 
-> If we don't have the buffer space or memory allocations fail,
-> the data chunk is dropped, but TSN is still reported as received.
-> This introduced a data loss that can't be recovered.  We should
-> only mark TSNs are received after memory allocations finish.
-> The one exception is the invalid stream identifier, but that's
-> due to user error and is reported back to the user.
-> 
-> This was noticed by Michael Tuexen.
-> 
-> Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+diff --git a/Documentation/networking/ip-sysctl.txt b/Documentation/networking/ip-sysctl.txt
+index 17a6e46..c56f70e 100644
+--- a/Documentation/networking/ip-sysctl.txt
++++ b/Documentation/networking/ip-sysctl.txt
+@@ -1064,6 +1064,174 @@ bridge-nf-filter-pppoe-tagged - BOOLEAN
+ 	Default: 1
+ 
+ 
++proc/sys/net/sctp/* Variables:
++
++addip_enable - BOOLEAN
++	Enable or disable extension of  Dynamic Address Reconfiguration
++	(ADD-IP) functionality specified in RFC5061.  This extension provides
++	the ability to dynamically add and remove new addresses for the SCTP
++	associations.
++
++	1: Enable extension.
++
++        0: Disable extension.
++
++	Default: 0
++
++addip_noauth_enable - BOOLEAN
++	Dynamic Address Reconfiguration (ADD-IP) requires the use of
++	authentication to protect the operations of adding or removing new
++	addresses.  This requirement is mandated so that unauthorized hosts
++	would not be able to hijack associations.  However, older
++	implementations may not have implemented this requirement while
++	allowing the ADD-IP extension.  For reasons of interoperability,
++	we provide this variable to control the enforcement of the
++	authentication requirement.
++
++	1: Allow ADD-IP extension to be used without authentication.  This
++	   should only be set in a closed environment for interoperability
++	   with older implementations.
++
++	0: Enforce the authentication requirement
++
++	Default: 0
++	
++auth_enable - BOOLEAN
++	Enable or disable Authenticated Chunks extension.  This extension
++	provides the ability to send and receive authenticated chunks and is
++	required for secure operation of Dynamic Address Reconfiguration
++	(ADD-IP) extension.
++
++	1: Enable this extension.
++	0: Disable this extension.
++
++	Default: 0
++
++prsctp_enable - BOOLEAN
++	Enable or disable the Partial Reliability extension (RFC3758) which
++	is used to notify peers that a given DATA should no longer be expected.
++
++	1: Enable extension
++	0: Disable
++
++	Default: 1
++
++max_burst - INTEGER
++	The limit of the number of new packets that can be initially sent.  It
++	controls how bursty the generated traffic can be.
++
++	Default: 4
++
++association_max_retrans - INTEGER
++	Set the maximum number for retransmissions that an association can
++	attempt deciding that the remote end is unreachable.  If this value
++	is exceeded, the association is terminated.
++
++	Default: 10
++
++max_init_retransmits - INTEGER
++	The maximum number of retransmissions of INIT and COOKIE-ECHO chunks
++	that an association will attempt before declaring the destination
++	unreachable and terminating.
++
++	Default: 8
++
++path_max_retrans - INTEGER
++	The maximum number of retransmissions that will be attempted on a given
++	path.  Once this threshold is exceeded, the path is considered
++	unreachable, and new traffic will use a different path when the
++	association is multihomed.
++
++	Default: 5
++
++rto_initial - INTEGER
++	The initial round trip timeout value in milliseconds that will be used
++	in calculating round trip times.  This is the initial time interval
++	for retransmissions.
++
++	Default: 3000
++
++rto_max - INTEGER
++	The maximum value (in milliseconds) of the round trip timeout.  This
++	is the largest time interval that can elapse between retransmissions.
++
++	Default: 60000
++
++rto_min - INTEGER
++	The minimum value (in milliseconds) of the round trip timeout.  This
++	is the smallest time interval the can elapse between retransmissions.
++
++	Default: 1000
++
++hb_interval - INTEGER
++	The interval (in milliseconds) between HEARTBEAT chunks.  These chunks
++	are sent at the specified interval on idle paths to probe the state of
++	a given path between 2 associations.
++
++	Default: 30000
++    
++sack_timeout - INTEGER
++	The amount of time (in milliseconds) that the implementation will wait
++	to send a SACK.
++
++	Default: 200
++
++valid_cookie_life - INTEGER
++	The default lifetime of the SCTP cookie (in milliseconds).  The cookie
++	is used during association establishment.
++
++cookie_preserve_enable - BOOLEAN
++	Enable or disable the ability to extend the lifetime of the SCTP cookie
++	that is used during the establishment phase of SCTP association
++
++	1: Enable cookie lifetime extension.
++	0: Disable
++
++	Default: 1
++
++rcvbuf_policy - INTEGER
++	Determines if the receive buffer is attributed to the socket or to
++	association.   SCTP supports the capability to create multiple
++	associations on a single socket.  When using this capability, it is
++	possible that a single stalled association that's buffering a lot
++	of data may block other associations from delivering their data by
++	consuming all of the receive buffer space.  To work around this,
++	the rcvbuf_policy could be set to attribute the receiver buffer space
++	to each association instead of the socket.  This prevents the described
++	blocking.
++
++	1: rcvbuf space is per association
++	0: recbuf space is per socket
++	
++	Default: 0
++	
++sndbuf_policy - INTEGER
++	Similar to rcvbuf_policy above, this applies to send buffer space.
++
++	1: Send buffer is tracked per association
++	0: Send buffer is tracked per socket.
++
++	Default: 0
++
++sctp_mem - vector of 3 INTEGERs: min, pressure, max
++	Number of pages allowed for queueing by all SCTP sockets.
++
++	min: Below this number of pages SCTP is not bothered about its
++	memory appetite. When amount of memory allocated by SCTP exceeds
++	this number, SCTP starts to moderate memory usage.
++
++	pressure: This value was introduced to follow format of tcp_mem.
++
++	max: Number of pages allowed for queueing by all SCTP sockets.
++
++	Default is calculated at boot time from amount of available memory.
++	
++sctp_rmem - vector of 3 INTEGERs: min, default, max
++	See tcp_rmem for a description.
++
++sctp_wmem  - vector of 3 INTEGERs: min, default, max
++	See tcp_wmem for a description.
++
+ UNDOCUMENTED:
+ 
+ dev_weight FIXME
+-- 
+1.5.3.5
 
-Applied and pushed out to net-2.6, thanks Vlad.
-
-In the future please CC: netdev on changes you actually want me to
-commit so other networking developers can look it over.
-
-Thanks!
-
-> ---
->  net/sctp/sm_statefuns.c |    9 +++------
->  net/sctp/ulpevent.c     |    5 +++++
->  2 files changed, 8 insertions(+), 6 deletions(-)
-> 
-> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-> index 0c9d5a6..fcdb45d 100644
-> --- a/net/sctp/sm_statefuns.c
-> +++ b/net/sctp/sm_statefuns.c
-> @@ -5899,12 +5899,6 @@ static int sctp_eat_data(const struct sctp_association *asoc,
->  		return SCTP_IERROR_NO_DATA;
->  	}
->  
-> -	/* If definately accepting the DATA chunk, record its TSN, otherwise
-> -	 * wait for renege processing.
-> -	 */
-> -	if (SCTP_CMD_CHUNK_ULP = deliver)
-> -		sctp_add_cmd_sf(commands, SCTP_CMD_REPORT_TSN, SCTP_U32(tsn));
-> -
->  	chunk->data_accepted = 1;
->  
->  	/* Note: Some chunks may get overcounted (if we drop) or overcounted
-> @@ -5924,6 +5918,9 @@ static int sctp_eat_data(const struct sctp_association *asoc,
->  	 * and discard the DATA chunk.
->  	 */
->  	if (ntohs(data_hdr->stream) >= asoc->c.sinit_max_instreams) {
-> +		/* Mark tsn as received even though we drop it */
-> +		sctp_add_cmd_sf(commands, SCTP_CMD_REPORT_TSN, SCTP_U32(tsn));
-> +
->  		err = sctp_make_op_error(asoc, chunk, SCTP_ERROR_INV_STRM,
->  					 &data_hdr->stream,
->  					 sizeof(data_hdr->stream));
-> diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
-> index ce6cda6..a1f654a 100644
-> --- a/net/sctp/ulpevent.c
-> +++ b/net/sctp/ulpevent.c
-> @@ -710,6 +710,11 @@ struct sctp_ulpevent *sctp_ulpevent_make_rcvmsg(struct sctp_association *asoc,
->  	if (!skb)
->  		goto fail;
->  
-> +	/* Now that all memory allocations for this chunk succeeded, we
-> +	 * can mark it as received so the tsn_map is updated correctly.
-> +	 */
-> +	sctp_tsnmap_mark(&asoc->peer.tsn_map, ntohl(chunk->subh.data_hdr->tsn));
-> +
->  	/* First calculate the padding, so we don't inadvertently
->  	 * pass up the wrong length to the user.
->  	 *
-> -- 
-> 1.5.3.5
-> 
