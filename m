@@ -1,52 +1,131 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 17 Jul 2008 17:46:12 +0000
-Subject: Re: [PATCH] add /proc/net/sctp/remaddr table to complete RFC remote address table OID
-Message-Id: <20080717174612.GE17892@hmsendeavour.rdu.redhat.com>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Thu, 10 Jul 2008 13:05:00 +0000
+Subject: Re: SCTP memory pressure
+Message-Id: <487608FC.8020601@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20080430144606.GB572@hmsendeavour.rdu.redhat.com>
-In-Reply-To: <20080430144606.GB572@hmsendeavour.rdu.redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On Thu, Jul 17, 2008 at 10:24:19AM -0400, Vlad Yasevich wrote:
-> Neil Horman wrote:
-> > On Wed, Apr 30, 2008 at 10:46:06AM -0400, Neil Horman wrote:
-> >> Hey all-
-> >>
-> >> Add support for RFC3873 remote address table OID.  Currently the OID's required
-> >> by RFC 3873 cannot be implemented as part of the association table, where they
-> >> would otherwise naturally belong.  This patch places all the requsite data in a
-> >> separate proc file, /proc/net/sctp/remaddr
-> >>     
-> >> Regards
-> >> Neil 
-> >>
-> >> Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-> >>
-> >>
-> > Vlad, Sorry to bother you, but whatever happened to this patch?  I posted the
-> > correction you asked for, but I don't see this in your tree anywhere.  Is there
-> > something else you're waiting on?
-> > 
-> > Thanks!
-> > Neil
-> > 
+Neil Horman wrote:
+> On Wed, Jul 09, 2008 at 04:24:47PM -0400, Vlad Yasevich wrote:
+>> Frank.Uretschlaeger@t-online.de wrote:
+>>> Sorry,
+>>> forgot to mention, the last test was done with Neils latest private SCTP
+>>> branch, which was merged with Vlads latest re-transmission fixes.
+>>> Best regards,
+>>> Frank
+>>>
+>>>
+>> Hi Frank
+>>
+>> I've been taking a very hard look at the current accounting code and we
+>> definitely don't do thinks correctly...  In fact we allow for so much memory
+>> to be consumed that it's not surprising that we run into this problem.
+>>
+>> Currently, if you do not set the SO_RCVBUF, we will allow you to consume
+>> sk_rcvbuf + sctp_mem[1] memory which is just a total overkill.  If you
+>> have a lot of sockets, which I think you do based on what I remember,
+>> each socket can consume it's full receive buffer without triggering
+>> any memory pressure.  Only once the all of the receive buffer is consumed,
+>> will we start counting memory allocations towards the memory pressure 
+>> condition.
+>>
 > 
-> Nope.  It went into net-next.
-> 
-> http://git.kernel.org/?p=linux/kernel/git/davem/net-next-2.6.git;a=commit;h c2c1fd6c842caf70dcb1d94b9d58861949fd3d
-> 
-> -vlad
-> 
-Cool, thanks!
-Neil
+> This isn't quite correct, we use the sk_wmem_schedule api to do our memory
+> accounting, which accounts memory on a semi global basis.  The sctp_mem array is
+> compared to the total amount of allocated memory for all sctp sockets (see
+> __sk_mem_schedule, where all this math happens).  So we enter memory pressure as
+> soon as all the sctp sockets in aggregate allocate more than sysctl_sctp_mem[1]
+> bytes.
 
--- 
-/***************************************************
- *Neil Horman
- *nhorman@tuxdriver.com
- *gpg keyid: 1024D / 0x92A74FA1
- *http://pgp.mit.edu
- ***************************************************/
+Well,  yes what I said isn't quite correct for the case of a ton of sockets, but
+it is still correct for as single socket case.
+
+Looking at what's currently in the mainline, we do not call sk_rmem_schedule()
+until after we've exceeded our receive buffer.
+
+         if (rx_count >= asoc->base.sk->sk_rcvbuf) {
+
+                 if ((asoc->base.sk->sk_userlocks & SOCK_RCVBUF_LOCK) ||
+                     (!sk_rmem_schedule(asoc->base.sk, chunk->skb->truesize)))
+                         goto fail;
+         }
+
+This means, that while we are below sk_recbuf, we do not account our memory
+allocations against prot->memory_allocated (which is the total allocations 
+against SCTP memory pool).  We only start counting once we exceed the default
+receive buffer.
+
+So, for a single socket case, we can allocate sk_recvbuf + sctp_mem[1] and
+only then do we enter memory pressure.
+
+For the case of multiple socket, every socket is allowed to fully consume
+there specified sk_rcvbuf and none of those allocations count against
+prot->memory_allocated.
+
+So, in Frank's case, he could conceivably create 10000 sockets and would 
+allocate 10000 * rmem_default without triggering memory pressure conditions
+because we would never call sk_rmem_schedule.
+
+> 
+> That being said, I agree that we're clearly using too much memory in Franks
+> environment.  The fixes in my branch that Frank has been using addresses several
+> points at which we fail to use the sk_*_schedule api.  I'm sure there are more
+> that I'm missing, and additionally there are other things that we can likely do
+> to conserve memory when we enter pressure.
+> 
+>> I am trying to see what we can do.  Still need to find time to look at 
+>> Neil's changes.
+>>
+> Looking forward to your thoughts.  Not sure if its ready for inclusion yet, but
+> I think at least some bits are correct.  Let me know what you think!
+> 
+
+Right now, I've changed the above quoted code to do this:
+
+--- a/net/sctp/ulpevent.c
++++ b/net/sctp/ulpevent.c
+@@ -687,6 +687,7 @@ struct sctp_ulpevent *sctp_ulpevent_make_rcvmsg(struct 
+sctp_association *asoc,
+         struct sk_buff *skb;
+         size_t padding, len;
+         int rx_count;
++       int have_mem;
+
+         /*
+          * check to see if we need to make space for this
+@@ -698,10 +699,15 @@ struct sctp_ulpevent *sctp_ulpevent_make_rcvmsg(struct 
+sctp_association *asoc,
+         else
+                 rx_count = atomic_read(&asoc->base.sk->sk_rmem_alloc);
+
+-       if (rx_count >= asoc->base.sk->sk_rcvbuf) {
+-
+-               if ((asoc->base.sk->sk_userlocks & SOCK_RCVBUF_LOCK) ||
+-                   (!sk_rmem_schedule(asoc->base.sk, chunk->skb->truesize)))
++       have_mem = sk_rmem_schedule(asoc->base.sk, chunk->skb->truesize);
++       if (rx_count >= asoc->base.sk->sk_rcvbuf || !have_mem) {
++               /* if we are still allowed to make allocations
++                * see if we can adjust the receive buffer.
++                */
++               if (have_mem) {
++                       if (!sctp_recvbuf_adjust())
++                               goto fail;
++               } else
+                         goto fail;
+         }
+
+It's still a work in progress...
+
+The idea is that if sk_rmem_schedule tells us that we still have memory to 
+allocated, go ahead and allow allocations.  However, if sk_rmem_shedule tells
+us no, even if we have not consumed all of our receive buffer, we still can't
+allocate requested memory.
+
+Other pieces of code that would have to go in are receive buffer adjustments
+(similar to tcp_rcv_space_adjust) as well as a_rwnd manipulations to make
+sure we close the window appropriately.
+
+-vlad
