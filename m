@@ -1,57 +1,112 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Wed, 16 Jul 2008 13:35:24 +0000
-Subject: Re: [PATCH net-next] sctp: Prevent uninitialized memory access
-Message-Id: <487DF91C.9060906@hp.com>
+From: Florian Westphal <fw@strlen.de>
+Date: Sun, 13 Jul 2008 13:09:20 +0000
+Subject: [PATCH net-next] sctp: Don't abort initialization when CONFIG_PROC_FS=n
+Message-Id: <1215954560-31702-1-git-send-email-fw@strlen.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1215954556-31685-1-git-send-email-fw@strlen.de>
-In-Reply-To: <1215954556-31685-1-git-send-email-fw@strlen.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Florian Westphal <fw@strlen.de>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: vladislav.yasevich@hp.com
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Florian Westphal <fw@strlen.de>
 
-Florian Westphal wrote:
-> valgrind reports uninizialized memory accesses when running
-> sctp inside the network simulation cradle simulator:
-> 
->  Conditional jump or move depends on uninitialised value(s)
->     at 0x570E34A: sctp_assoc_sync_pmtu (associola.c:1324)
->     by 0x57427DA: sctp_packet_transmit (output.c:403)
->     by 0x5710EFF: sctp_outq_flush (outqueue.c:824)
->     by 0x5710B88: sctp_outq_uncork (outqueue.c:701)
->     by 0x5745262: sctp_cmd_interpreter (sm_sideeffect.c:1548)
->     by 0x57444B7: sctp_side_effects (sm_sideeffect.c:976)
->     by 0x5744460: sctp_do_sm (sm_sideeffect.c:945)
->     by 0x572157D: sctp_primitive_ASSOCIATE (primitive.c:94)
->     by 0x5725C04: __sctp_connect (socket.c:1094)
->     by 0x57297DC: sctp_connect (socket.c:3297)
-> 
->  Conditional jump or move depends on uninitialised value(s)
->     at 0x575D3A5: mod_timer (timer.c:630)
->     by 0x5752B78: sctp_cmd_hb_timers_start (sm_sideeffect.c:555)
->     by 0x5754133: sctp_cmd_interpreter (sm_sideeffect.c:1448)
->     by 0x5753607: sctp_side_effects (sm_sideeffect.c:976)
->     by 0x57535B0: sctp_do_sm (sm_sideeffect.c:945)
->     by 0x571E9AE: sctp_endpoint_bh_rcv (endpointola.c:474)
->     by 0x573347F: sctp_inq_push (inqueue.c:104)
->     by 0x572EF93: sctp_rcv (input.c:256)
->     by 0x5689623: ip_local_deliver_finish (ip_input.c:230)
->     by 0x5689759: ip_local_deliver (ip_input.c:268)
->     by 0x5689CAC: ip_rcv_finish (dst.h:246)
-> 
-> #1 is due to "if (t->pmtu_pending)".
-> 8a4794914f9cf2681235ec2311e189fe307c28c7 "[SCTP] Flag a pmtu change request"
-> suggests it should be initialized to 0.
-> 
-> #2 is the heartbeat timer 'expires' value, which is uninizialised, but
-> test by mod_timer().
-> T3_rtx_timer seems to be affected by the same problem, so initialize it, too.
-> 
-> Signed-off-by: Florian Westphal <fw@strlen.de>
+This puts CONFIG_PROC_FS defines around the proc init/exit functions
+and also avoids compiling proc.c if procfs is not supported.
+Also make SCTP_DBG_OBJCNT depend on procfs.
 
-Thanks
+Signed-off-by: Florian Westphal <fw@strlen.de>
+---
+ net/sctp/Kconfig    |    4 ++--
+ net/sctp/Makefile   |    4 ++--
+ net/sctp/protocol.c |   11 ++++++++++-
+ 3 files changed, 14 insertions(+), 5 deletions(-)
 
-Applied.
+diff --git a/net/sctp/Kconfig b/net/sctp/Kconfig
+index 0b79f86..7882d36 100644
+--- a/net/sctp/Kconfig
++++ b/net/sctp/Kconfig
+@@ -47,11 +47,11 @@ config SCTP_DBG_MSG
+ 
+ config SCTP_DBG_OBJCNT
+ 	bool "SCTP: Debug object counts"
++	depends on PROC_FS
+ 	help
+ 	  If you say Y, this will enable debugging support for counting the 
+ 	  type of objects that are currently allocated.  This is useful for 
+-	  identifying memory leaks.   If the /proc filesystem is enabled this 
+-	  debug information can be viewed by 
++	  identifying memory leaks. This debug information can be viewed by
+ 	  'cat /proc/net/sctp/sctp_dbg_objcnt'
+ 
+ 	  If unsure, say N
+diff --git a/net/sctp/Makefile b/net/sctp/Makefile
+index f5356b9..6b79473 100644
+--- a/net/sctp/Makefile
++++ b/net/sctp/Makefile
+@@ -9,10 +9,10 @@ sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
+ 	  transport.o chunk.o sm_make_chunk.o ulpevent.o \
+ 	  inqueue.o outqueue.o ulpqueue.o command.o \
+ 	  tsnmap.o bind_addr.o socket.o primitive.o \
+-	  output.o input.o debug.o ssnmap.o proc.o \
+-	  auth.o
++	  output.o input.o debug.o ssnmap.o auth.o
+ 
+ sctp-$(CONFIG_SCTP_DBG_OBJCNT) += objcnt.o
++sctp-$(CONFIG_PROC_FS) += proc.o
+ sctp-$(CONFIG_SYSCTL) += sysctl.o
+ 
+ sctp-$(subst m,y,$(CONFIG_IPV6))	+= ipv6.o
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 9258dfe..db13b58 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -64,9 +64,12 @@
+ 
+ /* Global data structures. */
+ struct sctp_globals sctp_globals __read_mostly;
+-struct proc_dir_entry	*proc_net_sctp;
+ DEFINE_SNMP_STAT(struct sctp_mib, sctp_statistics) __read_mostly;
+ 
++#ifdef CONFIG_PROC_FS
++struct proc_dir_entry	*proc_net_sctp;
++#endif
++
+ struct idr sctp_assocs_id;
+ DEFINE_SPINLOCK(sctp_assocs_id_lock);
+ 
+@@ -97,6 +100,7 @@ struct sock *sctp_get_ctl_sock(void)
+ /* Set up the proc fs entry for the SCTP protocol. */
+ static __init int sctp_proc_init(void)
+ {
++#ifdef CONFIG_PROC_FS
+ 	if (!proc_net_sctp) {
+ 		struct proc_dir_entry *ent;
+ 		ent = proc_mkdir("sctp", init_net.proc_net);
+@@ -127,6 +131,9 @@ out_snmp_proc_init:
+ 	}
+ out_nomem:
+ 	return -ENOMEM;
++#else
++	return 0;
++#endif /* CONFIG_PROC_FS */
+ }
+ 
+ /* Clean up the proc fs entry for the SCTP protocol.
+@@ -135,6 +142,7 @@ out_nomem:
+  */
+ static void sctp_proc_exit(void)
+ {
++#ifdef CONFIG_PROC_FS
+ 	sctp_snmp_proc_exit();
+ 	sctp_eps_proc_exit();
+ 	sctp_assocs_proc_exit();
+@@ -143,6 +151,7 @@ static void sctp_proc_exit(void)
+ 		proc_net_sctp = NULL;
+ 		remove_proc_entry("sctp", init_net.proc_net);
+ 	}
++#endif
+ }
+ 
+ /* Private helper to extract ipv4 address and stash them in
+-- 
+1.5.3.7
 
--vlad
