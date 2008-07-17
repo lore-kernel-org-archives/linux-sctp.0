@@ -1,7 +1,7 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Thu, 17 Jul 2008 14:49:47 +0000
+From: "Robert P. J. Day" <rpjday@crashcourse.ca>
+Date: Thu, 17 Jul 2008 15:04:40 +0000
 Subject: Re: SCTP_HMAC_NONE config variable is unused
-Message-Id: <487F5C0B.80704@hp.com>
+Message-Id: <alpine.LFD.1.10.0807171104070.6567@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <alpine.LFD.1.10.0807171031190.6160@localhost.localdomain>
 In-Reply-To: <alpine.LFD.1.10.0807171031190.6160@localhost.localdomain>
@@ -10,33 +10,46 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Robert P. J. Day wrote:
->   that config variable is defined but unreferenced anywhere in the
-> tree.
-> 
-> rday
+On Thu, 17 Jul 2008, Vlad Yasevich wrote:
 
-Yep.  It could probably be use used here:
+> Robert P. J. Day wrote:
+> >   that config variable is defined but unreferenced anywhere in the
+> > tree.
+> >
+> > rday
+>
+> Yep.  It could probably be use used here:
+>
+> include/net/sctp/constants.h:
+>
+> #if defined (CONFIG_SCTP_HMAC_MD5)
+> #define SCTP_COOKIE_HMAC_ALG "hmac(md5)"
+> #elif defined (CONFIG_SCTP_HMAC_SHA1)
+> #define SCTP_COOKIE_HMAC_ALG "hmac(sha1)"
+> #else
+> #define SCTP_COOKIE_HMAC_ALG NULL
+> #endif
+>
+>
+> the final '#else' can be:
+>
+> #elif defined (CONFIG_SCTP_HMAC_NONE)
+>
+>
+> An alternative would be to change the 'choice' in Kconfig
+> to something else that allows us to have a 'none' selection.
+>
+> Is this really a problem?
 
-include/net/sctp/constants.h:
+no, sorry, i just didn't look closely enough to note that it was a
+default selection.  just ignore that last noise.
 
-#if defined (CONFIG_SCTP_HMAC_MD5)
-#define SCTP_COOKIE_HMAC_ALG "hmac(md5)"
-#elif defined (CONFIG_SCTP_HMAC_SHA1)
-#define SCTP_COOKIE_HMAC_ALG "hmac(sha1)"
-#else
-#define SCTP_COOKIE_HMAC_ALG NULL
-#endif
+rday
+--
+====================================
+Robert P. J. Day
+Linux Consulting, Training and Annoying Kernel Pedantry:
+    Have classroom, will lecture.
 
-
-the final '#else' can be:
-
-#elif defined (CONFIG_SCTP_HMAC_NONE)
-
-
-An alternative would be to change the 'choice' in Kconfig
-to something else that allows us to have a 'none' selection.
-
-Is this really a problem?
-
--vlad
+http://crashcourse.ca                          Waterloo, Ontario, CANADA
+====================================
