@@ -1,7 +1,7 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Sat, 19 Jul 2008 04:26:50 +0000
-Subject: [PATCH 5/7] sctp: Allow only 1 listening socket with SO_REUSEADDR
-Message-Id: <12164416183890-git-send-email-vladislav.yasevich@hp.com>
+Date: Sat, 19 Jul 2008 04:26:52 +0000
+Subject: [PATCH 7/7] sctp: Update sctp global memory limit allocations.
+Message-Id: <12164416202182-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <12164416121552-git-send-email-vladislav.yasevich@hp.com>
 In-Reply-To: <12164416121552-git-send-email-vladislav.yasevich@hp.com>
@@ -11,71 +11,56 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
 Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-When multiple socket bind to the same port with SO_REUSEADDR,
-only 1 can be listining.
+Update sctp global memory limit allocations to be the same as
+TCP.
 
 Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 ---
- net/sctp/socket.c |   25 ++++++++++++++++---------
- 1 files changed, 16 insertions(+), 9 deletions(-)
+ net/sctp/protocol.c |   10 +++++++---
+ 1 files changed, 7 insertions(+), 3 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index fd7ed9d..79bece1 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -377,18 +377,19 @@ SCTP_STATIC int sctp_do_bind(struct sock *sk, union sctp_addr *addr, int len)
- 	if (snum && snum < PROT_SOCK && !capable(CAP_NET_BIND_SERVICE))
- 		return -EACCES;
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index cdd8811..ed9acff 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -52,6 +52,8 @@
+ #include <linux/inetdevice.h>
+ #include <linux/seq_file.h>
+ #include <linux/bootmem.h>
++#include <linux/highmem.h>
++#include <linux/swap.h>
+ #include <net/net_namespace.h>
+ #include <net/protocol.h>
+ #include <net/ip.h>
+@@ -1080,6 +1082,7 @@ SCTP_STATIC __init int sctp_init(void)
+ 	int status = -EINVAL;
+ 	unsigned long goal;
+ 	unsigned long limit;
++	unsigned long nr_pages;
+ 	int max_share;
+ 	int order;
  
-+	/* See if the address matches any of the addresses we may have
-+	 * already bound before checking against other endpoints.
-+	 */
-+	if (sctp_bind_addr_match(bp, addr, sp))
-+		return -EINVAL;
-+
- 	/* Make sure we are allowed to bind here.
- 	 * The function sctp_get_port_local() does duplicate address
- 	 * detection.
+@@ -1175,8 +1178,9 @@ SCTP_STATIC __init int sctp_init(void)
+ 	 * Note this initalizes the data in sctpv6_prot too
+ 	 * Unabashedly stolen from tcp_init
  	 */
- 	addr->v4.sin_port = htons(snum);
- 	if ((ret = sctp_get_port_local(sk, addr))) {
--		if (ret = (long) sk) {
--			/* This endpoint has a conflicting address. */
--			return -EINVAL;
--		} else {
--			return -EADDRINUSE;
--		}
-+		return -EADDRINUSE;
- 	}
+-	limit = min(num_physpages, 1UL<<(28-PAGE_SHIFT)) >> (20-PAGE_SHIFT);
+-	limit = (limit * (num_physpages >> (20-PAGE_SHIFT))) >> (PAGE_SHIFT-11);
++	nr_pages = totalram_pages - totalhigh_pages;
++	limit = min(nr_pages, 1UL<<(28-PAGE_SHIFT)) >> (20-PAGE_SHIFT);
++	limit = (limit * (nr_pages >> (20-PAGE_SHIFT))) >> (PAGE_SHIFT-11);
+ 	limit = max(limit, 128UL);
+ 	sysctl_sctp_mem[0] = limit / 4 * 3;
+ 	sysctl_sctp_mem[1] = limit;
+@@ -1186,7 +1190,7 @@ SCTP_STATIC __init int sctp_init(void)
+ 	limit = (sysctl_sctp_mem[1]) << (PAGE_SHIFT - 7);
+ 	max_share = min(4UL*1024*1024, limit);
  
- 	/* Refresh ephemeral port.  */
-@@ -5584,8 +5585,9 @@ pp_found:
- 			struct sctp_endpoint *ep2;
- 			ep2 = sctp_sk(sk2)->ep;
+-	sysctl_sctp_rmem[0] = PAGE_SIZE; /* give each asoc 1 page min */
++	sysctl_sctp_rmem[0] = SK_MEM_QUANTUM; /* give each asoc 1 page min */
+ 	sysctl_sctp_rmem[1] = (1500 *(sizeof(struct sk_buff) + 1));
+ 	sysctl_sctp_rmem[2] = max(sysctl_sctp_rmem[1], max_share);
  
--			if (reuse && sk2->sk_reuse &&
--			    sk2->sk_state != SCTP_SS_LISTENING)
-+			if (sk = sk2 ||
-+			    (reuse && sk2->sk_reuse &&
-+			     sk2->sk_state != SCTP_SS_LISTENING))
- 				continue;
- 
- 			if (sctp_bind_addr_conflict(&ep2->base.bind_addr, addr,
-@@ -5702,8 +5704,13 @@ SCTP_STATIC int sctp_seqpacket_listen(struct sock *sk, int backlog)
- 	if (!ep->base.bind_addr.port) {
- 		if (sctp_autobind(sk))
- 			return -EAGAIN;
--	} else
-+	} else {
-+		if (sctp_get_port(sk, inet_sk(sk)->num)) {
-+			sk->sk_state = SCTP_SS_CLOSED;
-+			return -EADDRINUSE;
-+		}
- 		sctp_sk(sk)->bind_hash->fastreuse = 0;
-+	}
- 
- 	sctp_hash_endpoint(ep);
- 	return 0;
 -- 
 1.5.2.5
 
