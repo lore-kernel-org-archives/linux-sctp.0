@@ -1,7 +1,7 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Sat, 19 Jul 2008 04:26:52 +0000
-Subject: [PATCH 7/7] sctp: Update sctp global memory limit allocations.
-Message-Id: <12164416202182-git-send-email-vladislav.yasevich@hp.com>
+Date: Sat, 19 Jul 2008 04:26:46 +0000
+Subject: [PATCH 1/7] sctp: Don't abort initialization when CONFIG_PROC_FS=n
+Message-Id: <12164416141753-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <12164416121552-git-send-email-vladislav.yasevich@hp.com>
 In-Reply-To: <12164416121552-git-send-email-vladislav.yasevich@hp.com>
@@ -9,58 +9,109 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
-Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>
+Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, Florian Westphal <fw@strlen.de>, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-Update sctp global memory limit allocations to be the same as
-TCP.
+From: Florian Westphal <fw@strlen.de>
 
+This puts CONFIG_PROC_FS defines around the proc init/exit functions
+and also avoids compiling proc.c if procfs is not supported.
+Also make SCTP_DBG_OBJCNT depend on procfs.
+
+Signed-off-by: Florian Westphal <fw@strlen.de>
 Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 ---
- net/sctp/protocol.c |   10 +++++++---
- 1 files changed, 7 insertions(+), 3 deletions(-)
+ net/sctp/Kconfig    |    4 ++--
+ net/sctp/Makefile   |    4 ++--
+ net/sctp/protocol.c |   11 ++++++++++-
+ 3 files changed, 14 insertions(+), 5 deletions(-)
 
+diff --git a/net/sctp/Kconfig b/net/sctp/Kconfig
+index 0b79f86..58b3e88 100644
+--- a/net/sctp/Kconfig
++++ b/net/sctp/Kconfig
+@@ -47,11 +47,11 @@ config SCTP_DBG_MSG
+ 
+ config SCTP_DBG_OBJCNT
+ 	bool "SCTP: Debug object counts"
++	depends on PROC_FS
+ 	help
+ 	  If you say Y, this will enable debugging support for counting the 
+ 	  type of objects that are currently allocated.  This is useful for 
+-	  identifying memory leaks.   If the /proc filesystem is enabled this 
+-	  debug information can be viewed by 
++	  identifying memory leaks. This debug information can be viewed by
+ 	  'cat /proc/net/sctp/sctp_dbg_objcnt'
+ 
+ 	  If unsure, say N
+diff --git a/net/sctp/Makefile b/net/sctp/Makefile
+index f5356b9..6b79473 100644
+--- a/net/sctp/Makefile
++++ b/net/sctp/Makefile
+@@ -9,10 +9,10 @@ sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
+ 	  transport.o chunk.o sm_make_chunk.o ulpevent.o \
+ 	  inqueue.o outqueue.o ulpqueue.o command.o \
+ 	  tsnmap.o bind_addr.o socket.o primitive.o \
+-	  output.o input.o debug.o ssnmap.o proc.o \
+-	  auth.o
++	  output.o input.o debug.o ssnmap.o auth.o
+ 
+ sctp-$(CONFIG_SCTP_DBG_OBJCNT) += objcnt.o
++sctp-$(CONFIG_PROC_FS) += proc.o
+ sctp-$(CONFIG_SYSCTL) += sysctl.o
+ 
+ sctp-$(subst m,y,$(CONFIG_IPV6))	+= ipv6.o
 diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index cdd8811..ed9acff 100644
+index 98c6a88..dd811a8 100644
 --- a/net/sctp/protocol.c
 +++ b/net/sctp/protocol.c
-@@ -52,6 +52,8 @@
- #include <linux/inetdevice.h>
- #include <linux/seq_file.h>
- #include <linux/bootmem.h>
-+#include <linux/highmem.h>
-+#include <linux/swap.h>
- #include <net/net_namespace.h>
- #include <net/protocol.h>
- #include <net/ip.h>
-@@ -1080,6 +1082,7 @@ SCTP_STATIC __init int sctp_init(void)
- 	int status = -EINVAL;
- 	unsigned long goal;
- 	unsigned long limit;
-+	unsigned long nr_pages;
- 	int max_share;
- 	int order;
+@@ -64,9 +64,12 @@
  
-@@ -1175,8 +1178,9 @@ SCTP_STATIC __init int sctp_init(void)
- 	 * Note this initalizes the data in sctpv6_prot too
- 	 * Unabashedly stolen from tcp_init
- 	 */
--	limit = min(num_physpages, 1UL<<(28-PAGE_SHIFT)) >> (20-PAGE_SHIFT);
--	limit = (limit * (num_physpages >> (20-PAGE_SHIFT))) >> (PAGE_SHIFT-11);
-+	nr_pages = totalram_pages - totalhigh_pages;
-+	limit = min(nr_pages, 1UL<<(28-PAGE_SHIFT)) >> (20-PAGE_SHIFT);
-+	limit = (limit * (nr_pages >> (20-PAGE_SHIFT))) >> (PAGE_SHIFT-11);
- 	limit = max(limit, 128UL);
- 	sysctl_sctp_mem[0] = limit / 4 * 3;
- 	sysctl_sctp_mem[1] = limit;
-@@ -1186,7 +1190,7 @@ SCTP_STATIC __init int sctp_init(void)
- 	limit = (sysctl_sctp_mem[1]) << (PAGE_SHIFT - 7);
- 	max_share = min(4UL*1024*1024, limit);
+ /* Global data structures. */
+ struct sctp_globals sctp_globals __read_mostly;
+-struct proc_dir_entry	*proc_net_sctp;
+ DEFINE_SNMP_STAT(struct sctp_mib, sctp_statistics) __read_mostly;
  
--	sysctl_sctp_rmem[0] = PAGE_SIZE; /* give each asoc 1 page min */
-+	sysctl_sctp_rmem[0] = SK_MEM_QUANTUM; /* give each asoc 1 page min */
- 	sysctl_sctp_rmem[1] = (1500 *(sizeof(struct sk_buff) + 1));
- 	sysctl_sctp_rmem[2] = max(sysctl_sctp_rmem[1], max_share);
++#ifdef CONFIG_PROC_FS
++struct proc_dir_entry	*proc_net_sctp;
++#endif
++
+ struct idr sctp_assocs_id;
+ DEFINE_SPINLOCK(sctp_assocs_id_lock);
  
+@@ -97,6 +100,7 @@ struct sock *sctp_get_ctl_sock(void)
+ /* Set up the proc fs entry for the SCTP protocol. */
+ static __init int sctp_proc_init(void)
+ {
++#ifdef CONFIG_PROC_FS
+ 	if (!proc_net_sctp) {
+ 		struct proc_dir_entry *ent;
+ 		ent = proc_mkdir("sctp", init_net.proc_net);
+@@ -131,6 +135,9 @@ out_snmp_proc_init:
+ 	}
+ out_nomem:
+ 	return -ENOMEM;
++#else
++	return 0;
++#endif /* CONFIG_PROC_FS */
+ }
+ 
+ /* Clean up the proc fs entry for the SCTP protocol.
+@@ -139,6 +146,7 @@ out_nomem:
+  */
+ static void sctp_proc_exit(void)
+ {
++#ifdef CONFIG_PROC_FS
+ 	sctp_snmp_proc_exit();
+ 	sctp_eps_proc_exit();
+ 	sctp_assocs_proc_exit();
+@@ -148,6 +156,7 @@ static void sctp_proc_exit(void)
+ 		proc_net_sctp = NULL;
+ 		remove_proc_entry("sctp", init_net.proc_net);
+ 	}
++#endif
+ }
+ 
+ /* Private helper to extract ipv4 address and stash them in
 -- 
 1.5.2.5
 
