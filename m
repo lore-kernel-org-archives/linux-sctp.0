@@ -1,7 +1,7 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Sat, 19 Jul 2008 04:26:51 +0000
-Subject: [PATCH 6/7] sctp: remove unnecessary byteshifting, calculate directly in big-endian
-Message-Id: <12164416191723-git-send-email-vladislav.yasevich@hp.com>
+Date: Sat, 19 Jul 2008 04:26:50 +0000
+Subject: [PATCH 5/7] sctp: Allow only 1 listening socket with SO_REUSEADDR
+Message-Id: <12164416183890-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <12164416121552-git-send-email-vladislav.yasevich@hp.com>
 In-Reply-To: <12164416121552-git-send-email-vladislav.yasevich@hp.com>
@@ -9,130 +9,73 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
-Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, Harvey Harrison <harvey.harrison@gmail.com>, Vlad Yasevich <vladislav.yasevich@hp.com>
+Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-From: Harvey Harrison <harvey.harrison@gmail.com>
+When multiple socket bind to the same port with SO_REUSEADDR,
+only 1 can be listining.
 
-Signed-off-by: Harvey Harrison <harvey.harrison@gmail.com>
 Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 ---
- include/net/sctp/checksum.h            |   23 ++++++++++++++---------
- net/ipv4/netfilter/nf_nat_proto_sctp.c |    4 ++--
- net/sctp/input.c                       |    4 ++--
- net/sctp/output.c                      |    4 ++--
- 4 files changed, 20 insertions(+), 15 deletions(-)
+ net/sctp/socket.c |   25 ++++++++++++++++---------
+ 1 files changed, 16 insertions(+), 9 deletions(-)
 
-diff --git a/include/net/sctp/checksum.h b/include/net/sctp/checksum.h
-index ba75c67..b799fb2 100644
---- a/include/net/sctp/checksum.h
-+++ b/include/net/sctp/checksum.h
-@@ -46,9 +46,14 @@
- #include <net/sctp/sctp.h>
- #include <linux/crc32c.h>
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index fd7ed9d..79bece1 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -377,18 +377,19 @@ SCTP_STATIC int sctp_do_bind(struct sock *sk, union sctp_addr *addr, int len)
+ 	if (snum && snum < PROT_SOCK && !capable(CAP_NET_BIND_SERVICE))
+ 		return -EACCES;
  
--static inline __u32 sctp_start_cksum(__u8 *buffer, __u16 length)
-+static inline __be32 sctp_crc32c(__be32 crc, u8 *buffer, u16 length)
- {
--	__u32 crc = ~(__u32) 0;
-+	return (__force __be32)crc32c((__force u32)crc, buffer, length);
-+}
++	/* See if the address matches any of the addresses we may have
++	 * already bound before checking against other endpoints.
++	 */
++	if (sctp_bind_addr_match(bp, addr, sp))
++		return -EINVAL;
 +
-+static inline __be32 sctp_start_cksum(__u8 *buffer, __u16 length)
-+{
-+	__be32 crc = ~cpu_to_be32(0);
- 	__u8  zero[sizeof(__u32)] = {0};
- 
- 	/* Optimize this routine to be SCTP specific, knowing how
-@@ -56,23 +61,23 @@ static inline __u32 sctp_start_cksum(__u8 *buffer, __u16 length)
+ 	/* Make sure we are allowed to bind here.
+ 	 * The function sctp_get_port_local() does duplicate address
+ 	 * detection.
  	 */
+ 	addr->v4.sin_port = htons(snum);
+ 	if ((ret = sctp_get_port_local(sk, addr))) {
+-		if (ret = (long) sk) {
+-			/* This endpoint has a conflicting address. */
+-			return -EINVAL;
+-		} else {
+-			return -EADDRINUSE;
+-		}
++		return -EADDRINUSE;
+ 	}
  
- 	/* Calculate CRC up to the checksum. */
--	crc = crc32c(crc, buffer, sizeof(struct sctphdr) - sizeof(__u32));
-+	crc = sctp_crc32c(crc, buffer, sizeof(struct sctphdr) - sizeof(__u32));
+ 	/* Refresh ephemeral port.  */
+@@ -5584,8 +5585,9 @@ pp_found:
+ 			struct sctp_endpoint *ep2;
+ 			ep2 = sctp_sk(sk2)->ep;
  
- 	/* Skip checksum field of the header. */
--	crc = crc32c(crc, zero, sizeof(__u32));
-+	crc = sctp_crc32c(crc, zero, sizeof(__u32));
+-			if (reuse && sk2->sk_reuse &&
+-			    sk2->sk_state != SCTP_SS_LISTENING)
++			if (sk = sk2 ||
++			    (reuse && sk2->sk_reuse &&
++			     sk2->sk_state != SCTP_SS_LISTENING))
+ 				continue;
  
- 	/* Calculate the rest of the CRC. */
--	crc = crc32c(crc, &buffer[sizeof(struct sctphdr)],
-+	crc = sctp_crc32c(crc, &buffer[sizeof(struct sctphdr)],
- 			    length - sizeof(struct sctphdr));
- 	return crc;
- }
+ 			if (sctp_bind_addr_conflict(&ep2->base.bind_addr, addr,
+@@ -5702,8 +5704,13 @@ SCTP_STATIC int sctp_seqpacket_listen(struct sock *sk, int backlog)
+ 	if (!ep->base.bind_addr.port) {
+ 		if (sctp_autobind(sk))
+ 			return -EAGAIN;
+-	} else
++	} else {
++		if (sctp_get_port(sk, inet_sk(sk)->num)) {
++			sk->sk_state = SCTP_SS_CLOSED;
++			return -EADDRINUSE;
++		}
+ 		sctp_sk(sk)->bind_hash->fastreuse = 0;
++	}
  
--static inline __u32 sctp_update_cksum(__u8 *buffer, __u16 length, __u32 crc32)
-+static inline __be32 sctp_update_cksum(__u8 *buffer, __u16 length, __be32 crc32)
- {
--	return crc32c(crc32, buffer, length);
-+	return sctp_crc32c(crc32, buffer, length);
- }
- 
--static inline __u32 sctp_end_cksum(__u32 crc32)
-+static inline __be32 sctp_end_cksum(__be32 crc32)
- {
--	return ntohl(~crc32);
-+	return ~crc32;
- }
-diff --git a/net/ipv4/netfilter/nf_nat_proto_sctp.c b/net/ipv4/netfilter/nf_nat_proto_sctp.c
-index 82e4c0e..65e470b 100644
---- a/net/ipv4/netfilter/nf_nat_proto_sctp.c
-+++ b/net/ipv4/netfilter/nf_nat_proto_sctp.c
-@@ -36,7 +36,7 @@ sctp_manip_pkt(struct sk_buff *skb,
- 	sctp_sctphdr_t *hdr;
- 	unsigned int hdroff = iphdroff + iph->ihl*4;
- 	__be32 oldip, newip;
--	u32 crc32;
-+	__be32 crc32;
- 
- 	if (!skb_make_writable(skb, hdroff + sizeof(*hdr)))
- 		return false;
-@@ -61,7 +61,7 @@ sctp_manip_pkt(struct sk_buff *skb,
- 		crc32 = sctp_update_cksum((u8 *)skb->data, skb_headlen(skb),
- 					  crc32);
- 	crc32 = sctp_end_cksum(crc32);
--	hdr->checksum = htonl(crc32);
-+	hdr->checksum = crc32;
- 
- 	return true;
- }
-diff --git a/net/sctp/input.c b/net/sctp/input.c
-index 5ed93c0..a49fa80 100644
---- a/net/sctp/input.c
-+++ b/net/sctp/input.c
-@@ -83,8 +83,8 @@ static inline int sctp_rcv_checksum(struct sk_buff *skb)
- {
- 	struct sk_buff *list = skb_shinfo(skb)->frag_list;
- 	struct sctphdr *sh = sctp_hdr(skb);
--	__u32 cmp = ntohl(sh->checksum);
--	__u32 val = sctp_start_cksum((__u8 *)sh, skb_headlen(skb));
-+	__be32 cmp = sh->checksum;
-+	__be32 val = sctp_start_cksum((__u8 *)sh, skb_headlen(skb));
- 
- 	for (; list; list = list->next)
- 		val = sctp_update_cksum((__u8 *)list->data, skb_headlen(list),
-diff --git a/net/sctp/output.c b/net/sctp/output.c
-index 9a63a3f..4568464 100644
---- a/net/sctp/output.c
-+++ b/net/sctp/output.c
-@@ -365,7 +365,7 @@ int sctp_packet_transmit(struct sctp_packet *packet)
- 	struct sctp_transport *tp = packet->transport;
- 	struct sctp_association *asoc = tp->asoc;
- 	struct sctphdr *sh;
--	__u32 crc32 = 0;
-+	__be32 crc32 = __constant_cpu_to_be32(0);
- 	struct sk_buff *nskb;
- 	struct sctp_chunk *chunk, *tmp;
- 	struct sock *sk;
-@@ -538,7 +538,7 @@ int sctp_packet_transmit(struct sctp_packet *packet)
- 	/* 3) Put the resultant value into the checksum field in the
- 	 *    common header, and leave the rest of the bits unchanged.
- 	 */
--	sh->checksum = htonl(crc32);
-+	sh->checksum = crc32;
- 
- 	/* IP layer ECN support
- 	 * From RFC 2481
+ 	sctp_hash_endpoint(ep);
+ 	return 0;
 -- 
 1.5.2.5
 
