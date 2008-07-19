@@ -1,7 +1,7 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Sat, 19 Jul 2008 04:26:46 +0000
-Subject: [PATCH 1/7] sctp: Don't abort initialization when CONFIG_PROC_FS=n
-Message-Id: <12164416141753-git-send-email-vladislav.yasevich@hp.com>
+Date: Sat, 19 Jul 2008 04:26:48 +0000
+Subject: [PATCH 3/7] sctp: Support ipv6only AF_INET6 sockets.
+Message-Id: <1216441616651-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <12164416121552-git-send-email-vladislav.yasevich@hp.com>
 In-Reply-To: <12164416121552-git-send-email-vladislav.yasevich@hp.com>
@@ -9,109 +9,245 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
-Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, Florian Westphal <fw@strlen.de>, Vlad Yasevich <vladislav.yasevich@hp.com>
+Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-From: Florian Westphal <fw@strlen.de>
-
-This puts CONFIG_PROC_FS defines around the proc init/exit functions
-and also avoids compiling proc.c if procfs is not supported.
-Also make SCTP_DBG_OBJCNT depend on procfs.
-
-Signed-off-by: Florian Westphal <fw@strlen.de>
 Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 ---
- net/sctp/Kconfig    |    4 ++--
- net/sctp/Makefile   |    4 ++--
- net/sctp/protocol.c |   11 ++++++++++-
- 3 files changed, 14 insertions(+), 5 deletions(-)
+ include/net/sctp/structs.h |    2 ++
+ net/sctp/bind_addr.c       |   37 +++++++++++++++++++++++++++++++++++++
+ net/sctp/ipv6.c            |   20 ++++++++++++++++----
+ net/sctp/protocol.c        |    7 +++++++
+ net/sctp/sm_make_chunk.c   |    7 ++++++-
+ net/sctp/socket.c          |   30 +++++++++++++++++++++++++-----
+ 6 files changed, 93 insertions(+), 10 deletions(-)
 
-diff --git a/net/sctp/Kconfig b/net/sctp/Kconfig
-index 0b79f86..58b3e88 100644
---- a/net/sctp/Kconfig
-+++ b/net/sctp/Kconfig
-@@ -47,11 +47,11 @@ config SCTP_DBG_MSG
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 82116e8..70eb64a 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1211,6 +1211,8 @@ int sctp_add_bind_addr(struct sctp_bind_addr *, union sctp_addr *,
+ int sctp_del_bind_addr(struct sctp_bind_addr *, union sctp_addr *);
+ int sctp_bind_addr_match(struct sctp_bind_addr *, const union sctp_addr *,
+ 			 struct sctp_sock *);
++int sctp_bind_addr_conflict(struct sctp_bind_addr *, const union sctp_addr *,
++			 struct sctp_sock *, struct sctp_sock *);
+ int sctp_bind_addr_state(const struct sctp_bind_addr *bp,
+ 			 const union sctp_addr *addr);
+ union sctp_addr *sctp_find_unmatch_addr(struct sctp_bind_addr	*bp,
+diff --git a/net/sctp/bind_addr.c b/net/sctp/bind_addr.c
+index 80e6df0..f62bc24 100644
+--- a/net/sctp/bind_addr.c
++++ b/net/sctp/bind_addr.c
+@@ -348,6 +348,43 @@ int sctp_bind_addr_match(struct sctp_bind_addr *bp,
+ 	return match;
+ }
  
- config SCTP_DBG_OBJCNT
- 	bool "SCTP: Debug object counts"
-+	depends on PROC_FS
- 	help
- 	  If you say Y, this will enable debugging support for counting the 
- 	  type of objects that are currently allocated.  This is useful for 
--	  identifying memory leaks.   If the /proc filesystem is enabled this 
--	  debug information can be viewed by 
-+	  identifying memory leaks. This debug information can be viewed by
- 	  'cat /proc/net/sctp/sctp_dbg_objcnt'
++/* Does the address 'addr' conflict with any addresses in
++ * the bp.
++ */
++int sctp_bind_addr_conflict(struct sctp_bind_addr *bp,
++			    const union sctp_addr *addr,
++			    struct sctp_sock *bp_sp,
++			    struct sctp_sock *addr_sp)
++{
++	struct sctp_sockaddr_entry *laddr;
++	int conflict = 0;
++	struct sctp_sock *sp;
++
++	/* Pick the IPv6 socket as the basis of comparison
++	 * since it's usually a superset of the IPv4.
++	 * If there is no IPv6 socket, then default to bind_addr.
++	 */
++	if (sctp_opt2sk(bp_sp)->sk_family = AF_INET6)
++		sp = bp_sp;
++	else if (sctp_opt2sk(addr_sp)->sk_family = AF_INET6)
++		sp = addr_sp;
++	else
++		sp = bp_sp;
++
++	rcu_read_lock();
++	list_for_each_entry_rcu(laddr, &bp->address_list, list) {
++		if (!laddr->valid)
++			continue;
++
++		conflict = sp->pf->cmp_addr(&laddr->a, addr, sp);
++		if (conflict)
++			break;
++	}
++	rcu_read_unlock();
++
++	return conflict;
++}
++
+ /* Get the state of the entry in the bind_addr_list */
+ int sctp_bind_addr_state(const struct sctp_bind_addr *bp,
+ 			 const union sctp_addr *addr)
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index a2f4d4d..a238d68 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -818,7 +818,7 @@ static int sctp_inet6_af_supported(sa_family_t family, struct sctp_sock *sp)
+ 		return 1;
+ 	/* v4-mapped-v6 addresses */
+ 	case AF_INET:
+-		if (!__ipv6_only_sock(sctp_opt2sk(sp)) && sp->v4mapped)
++		if (!__ipv6_only_sock(sctp_opt2sk(sp)))
+ 			return 1;
+ 	default:
+ 		return 0;
+@@ -840,6 +840,11 @@ static int sctp_inet6_cmp_addr(const union sctp_addr *addr1,
  
- 	  If unsure, say N
-diff --git a/net/sctp/Makefile b/net/sctp/Makefile
-index f5356b9..6b79473 100644
---- a/net/sctp/Makefile
-+++ b/net/sctp/Makefile
-@@ -9,10 +9,10 @@ sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
- 	  transport.o chunk.o sm_make_chunk.o ulpevent.o \
- 	  inqueue.o outqueue.o ulpqueue.o command.o \
- 	  tsnmap.o bind_addr.o socket.o primitive.o \
--	  output.o input.o debug.o ssnmap.o proc.o \
--	  auth.o
-+	  output.o input.o debug.o ssnmap.o auth.o
+ 	if (!af1 || !af2)
+ 		return 0;
++
++	/* If the socket is IPv6 only, v4 addrs will not match */
++	if (__ipv6_only_sock(sctp_opt2sk(opt)) && af1 != af2)
++		return 0;
++
+ 	/* Today, wildcard AF_INET/AF_INET6. */
+ 	if (sctp_is_any(addr1) || sctp_is_any(addr2))
+ 		return 1;
+@@ -876,7 +881,11 @@ static int sctp_inet6_bind_verify(struct sctp_sock *opt, union sctp_addr *addr)
+ 				return 0;
+ 			}
+ 			dev_put(dev);
++		} else if (type = IPV6_ADDR_MAPPED) {
++			if (!opt->v4mapped)
++				return 0;
+ 		}
++
+ 		af = opt->pf->af;
+ 	}
+ 	return af->available(addr, opt);
+@@ -919,9 +928,12 @@ static int sctp_inet6_send_verify(struct sctp_sock *opt, union sctp_addr *addr)
+ static int sctp_inet6_supported_addrs(const struct sctp_sock *opt,
+ 				      __be16 *types)
+ {
+-	types[0] = SCTP_PARAM_IPV4_ADDRESS;
+-	types[1] = SCTP_PARAM_IPV6_ADDRESS;
+-	return 2;
++	types[0] = SCTP_PARAM_IPV6_ADDRESS;
++	if (!opt || !ipv6_only_sock(sctp_opt2sk(opt))) {
++		types[1] = SCTP_PARAM_IPV4_ADDRESS;
++		return 2;
++	}
++	return 1;
+ }
  
- sctp-$(CONFIG_SCTP_DBG_OBJCNT) += objcnt.o
-+sctp-$(CONFIG_PROC_FS) += proc.o
- sctp-$(CONFIG_SYSCTL) += sysctl.o
- 
- sctp-$(subst m,y,$(CONFIG_IPV6))	+= ipv6.o
+ static const struct proto_ops inet6_seqpacket_ops = {
 diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index 98c6a88..dd811a8 100644
+index dd811a8..cdd8811 100644
 --- a/net/sctp/protocol.c
 +++ b/net/sctp/protocol.c
-@@ -64,9 +64,12 @@
- 
- /* Global data structures. */
- struct sctp_globals sctp_globals __read_mostly;
--struct proc_dir_entry	*proc_net_sctp;
- DEFINE_SNMP_STAT(struct sctp_mib, sctp_statistics) __read_mostly;
- 
-+#ifdef CONFIG_PROC_FS
-+struct proc_dir_entry	*proc_net_sctp;
-+#endif
+@@ -381,6 +381,10 @@ static int sctp_v4_addr_valid(union sctp_addr *addr,
+ 			      struct sctp_sock *sp,
+ 			      const struct sk_buff *skb)
+ {
++	/* IPv4 addresses not allowed */
++	if (sp && ipv6_only_sock(sctp_opt2sk(sp)))
++		return 0;
 +
- struct idr sctp_assocs_id;
- DEFINE_SPINLOCK(sctp_assocs_id_lock);
+ 	/* Is this a non-unicast address or a unusable SCTP address? */
+ 	if (IS_IPV4_UNUSABLE_ADDRESS(addr->v4.sin_addr.s_addr))
+ 		return 0;
+@@ -404,6 +408,9 @@ static int sctp_v4_available(union sctp_addr *addr, struct sctp_sock *sp)
+ 	   !sysctl_ip_nonlocal_bind)
+ 		return 0;
  
-@@ -97,6 +100,7 @@ struct sock *sctp_get_ctl_sock(void)
- /* Set up the proc fs entry for the SCTP protocol. */
- static __init int sctp_proc_init(void)
- {
-+#ifdef CONFIG_PROC_FS
- 	if (!proc_net_sctp) {
- 		struct proc_dir_entry *ent;
- 		ent = proc_mkdir("sctp", init_net.proc_net);
-@@ -131,6 +135,9 @@ out_snmp_proc_init:
- 	}
- out_nomem:
- 	return -ENOMEM;
-+#else
-+	return 0;
-+#endif /* CONFIG_PROC_FS */
++	if (ipv6_only_sock(sctp_opt2sk(sp)))
++		return 0;
++
+ 	return 1;
  }
  
- /* Clean up the proc fs entry for the SCTP protocol.
-@@ -139,6 +146,7 @@ out_nomem:
-  */
- static void sctp_proc_exit(void)
- {
-+#ifdef CONFIG_PROC_FS
- 	sctp_snmp_proc_exit();
- 	sctp_eps_proc_exit();
- 	sctp_assocs_proc_exit();
-@@ -148,6 +156,7 @@ static void sctp_proc_exit(void)
- 		proc_net_sctp = NULL;
- 		remove_proc_entry("sctp", init_net.proc_net);
- 	}
-+#endif
- }
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index bbc7107..e8ca4e5 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2364,8 +2364,13 @@ static int sctp_process_param(struct sctp_association *asoc,
+ 	case SCTP_PARAM_IPV6_ADDRESS:
+ 		if (PF_INET6 != asoc->base.sk->sk_family)
+ 			break;
+-		/* Fall through. */
++		goto do_addr_param;
++
+ 	case SCTP_PARAM_IPV4_ADDRESS:
++		/* v4 addresses are not allowed on v6-only socket */
++		if (ipv6_only_sock(asoc->base.sk))
++			break;
++do_addr_param:
+ 		af = sctp_get_af_specific(param_type2af(param.p->type));
+ 		af->from_addr_param(&addr, param.addr, htons(asoc->peer.port), 0);
+ 		scope = sctp_scope(peer_addr);
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 6aba01b..a0e879b 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -308,9 +308,16 @@ static struct sctp_af *sctp_sockaddr_af(struct sctp_sock *opt,
+ 	if (len < sizeof (struct sockaddr))
+ 		return NULL;
  
- /* Private helper to extract ipv4 address and stash them in
+-	/* Does this PF support this AF? */
+-	if (!opt->pf->af_supported(addr->sa.sa_family, opt))
+-		return NULL;
++	/* V4 mapped address are really of AF_INET family */
++	if (addr->sa.sa_family = AF_INET6 &&
++	    ipv6_addr_v4mapped(&addr->v6.sin6_addr)) {
++		if (!opt->pf->af_supported(AF_INET, opt))
++			return NULL;
++	} else {
++		/* Does this PF support this AF? */
++		if (!opt->pf->af_supported(addr->sa.sa_family, opt))
++			return NULL;
++	}
+ 
+ 	/* If we get this far, af is valid. */
+ 	af = sctp_get_af_specific(addr->sa.sa_family);
+@@ -4395,6 +4402,11 @@ static int sctp_getsockopt_local_addrs_num_old(struct sock *sk, int len,
+ 				    (AF_INET6 = addr->a.sa.sa_family))
+ 					continue;
+ 
++				if ((PF_INET6 = sk->sk_family) &&
++				    inet_v6_ipv6only(sk) &&
++				    (AF_INET = addr->a.sa.sa_family))
++					continue;
++
+ 				cnt++;
+ 			}
+ 			rcu_read_unlock();
+@@ -4435,6 +4447,10 @@ static int sctp_copy_laddrs_old(struct sock *sk, __u16 port,
+ 		if ((PF_INET = sk->sk_family) &&
+ 		    (AF_INET6 = addr->a.sa.sa_family))
+ 			continue;
++		if ((PF_INET6 = sk->sk_family) &&
++		    inet_v6_ipv6only(sk) &&
++		    (AF_INET = addr->a.sa.sa_family))
++			continue;
+ 		memcpy(&temp, &addr->a, sizeof(temp));
+ 		if (!temp.v4.sin_port)
+ 			temp.v4.sin_port = htons(port);
+@@ -4470,6 +4486,10 @@ static int sctp_copy_laddrs(struct sock *sk, __u16 port, void *to,
+ 		if ((PF_INET = sk->sk_family) &&
+ 		    (AF_INET6 = addr->a.sa.sa_family))
+ 			continue;
++		if ((PF_INET6 = sk->sk_family) &&
++		    inet_v6_ipv6only(sk) &&
++		    (AF_INET = addr->a.sa.sa_family))
++			continue;
+ 		memcpy(&temp, &addr->a, sizeof(temp));
+ 		if (!temp.v4.sin_port)
+ 			temp.v4.sin_port = htons(port);
+@@ -5568,8 +5588,8 @@ pp_found:
+ 			    sk2->sk_state != SCTP_SS_LISTENING)
+ 				continue;
+ 
+-			if (sctp_bind_addr_match(&ep2->base.bind_addr, addr,
+-						 sctp_sk(sk))) {
++			if (sctp_bind_addr_conflict(&ep2->base.bind_addr, addr,
++						 sctp_sk(sk2), sctp_sk(sk))) {
+ 				ret = (long)sk2;
+ 				goto fail_unlock;
+ 			}
 -- 
 1.5.2.5
 
