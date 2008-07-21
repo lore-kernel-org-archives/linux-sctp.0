@@ -1,15 +1,19 @@
 From: "leon zadorin" <leonleon77@gmail.com>
-Date: Mon, 21 Jul 2008 01:02:53 +0000
+Date: Mon, 21 Jul 2008 01:10:00 +0000
 Subject: where is (if at all) ioctl support for sctp...?
-Message-Id: <26d2cb010807201802h2a638962j3323627a54a7d646@mail.gmail.com>
+Message-Id: <26d2cb010807201810s413e0027y9c0e717fe860696d@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <26d2cb010807201802h2a638962j3323627a54a7d646@mail.gmail.com>
+In-Reply-To: <26d2cb010807201802h2a638962j3323627a54a7d646@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Hi all,
-my system is
+Hi all - sorry if this is being re-posted (have sent a message earlier
+w/o first subscribing... so would expect the earlier message not to
+make through),
+... anyhow... my system is
 2.6.23.1-42.fc8 #1 SMP x86_64 x86_64 x86_64 GNU/Linux
 as I understand it - it comes with the kernel that is already
 sctp-enabled... (in fact I am able to create sctp sockets and
