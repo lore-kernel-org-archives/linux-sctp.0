@@ -1,55 +1,34 @@
-From: "Robert P. J. Day" <rpjday@crashcourse.ca>
-Date: Thu, 17 Jul 2008 15:04:40 +0000
-Subject: Re: SCTP_HMAC_NONE config variable is unused
-Message-Id: <alpine.LFD.1.10.0807171104070.6567@localhost.localdomain>
+From: Adrian Bunk <bunk@kernel.org>
+Date: Tue, 22 Jul 2008 17:20:57 +0000
+Subject: [2.6 patch] remove sctp_assoc_proc_exit()
+Message-Id: <20080722172057.GU14846@cs181140183.pp.htv.fi>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <alpine.LFD.1.10.0807171031190.6160@localhost.localdomain>
-In-Reply-To: <alpine.LFD.1.10.0807171031190.6160@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vladislav.yasevich@hp.com>, "David S. Miller" <davem@davemloft.net>, sri@us.ibm.com
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On Thu, 17 Jul 2008, Vlad Yasevich wrote:
+Commit 20c2c1fd6c842caf70dcb1d94b9d58861949fd3d
+(sctp: add sctp/remaddr table to complete RFC remote address table OID)
+added an unused sctp_assoc_proc_exit() function that seems to have been 
+unintentionally created when copying the assocs code.
 
-> Robert P. J. Day wrote:
-> >   that config variable is defined but unreferenced anywhere in the
-> > tree.
-> >
-> > rday
->
-> Yep.  It could probably be use used here:
->
-> include/net/sctp/constants.h:
->
-> #if defined (CONFIG_SCTP_HMAC_MD5)
-> #define SCTP_COOKIE_HMAC_ALG "hmac(md5)"
-> #elif defined (CONFIG_SCTP_HMAC_SHA1)
-> #define SCTP_COOKIE_HMAC_ALG "hmac(sha1)"
-> #else
-> #define SCTP_COOKIE_HMAC_ALG NULL
-> #endif
->
->
-> the final '#else' can be:
->
-> #elif defined (CONFIG_SCTP_HMAC_NONE)
->
->
-> An alternative would be to change the 'choice' in Kconfig
-> to something else that allows us to have a 'none' selection.
->
-> Is this really a problem?
+Signed-off-by: Adrian Bunk <bunk@kernel.org>
 
-no, sorry, i just didn't look closely enough to note that it was a
-default selection.  just ignore that last noise.
+---
+3020dff4c136f6e7f98e0c02f8b5e1cedfa75d2f 
+diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+index 5dd8983..f268910 100644
+--- a/net/sctp/proc.c
++++ b/net/sctp/proc.c
+@@ -519,8 +519,3 @@ int __init sctp_remaddr_proc_init(void)
+ 
+ 	return 0;
+ }
+-
+-void sctp_assoc_proc_exit(void)
+-{
+-	remove_proc_entry("remaddr", proc_net_sctp);
+-}
 
-rday
---
-====================================
-Robert P. J. Day
-Linux Consulting, Training and Annoying Kernel Pedantry:
-    Have classroom, will lecture.
-
-http://crashcourse.ca                          Waterloo, Ontario, CANADA
-====================================
