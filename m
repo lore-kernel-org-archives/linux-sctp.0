@@ -1,20 +1,24 @@
 From: Brian Haley <brian.haley@hp.com>
-Date: Thu, 14 Aug 2008 21:23:59 +0000
+Date: Thu, 14 Aug 2008 21:38:12 +0000
 Subject: [PATCH v2] netns: Add network namespace argument to rt6_fill_node()
-Message-Id: <48A4A26F.1010302@hp.com>
+Message-Id: <48A4A5C4.4080109@hp.com>
 MIME-Version: 1
-Content-Type: multipart/mixed; boundary="------------070606000600070101070202"
+Content-Type: multipart/mixed; boundary="------------050908000604000606070108"
 List-Id: <linux-sctp.vger.kernel.org>
-To: David Miller <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>
-Cc: YOSHIFUJI Hideaki <yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org>, containers <containers-qjLDD68F18O7TbgM5vRIOg@public.gmane.org>, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+References: <48A4A26F.1010302@hp.com>
+In-Reply-To: <48A4A26F.1010302@hp.com>
+To: David Miller <davem@davemloft.net>, YOSHIFUJI Hideaki <yoshfuji@linux-ipv6.org>
+Cc: containers <containers@lists.osdl.org>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
 This is a multi-part message in MIME format.
---------------070606000600070101070202
+--------------050908000604000606070108
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 
-ipv6_dev_get_saddr() blindly de-references dst_dev to get the network 
-namespace, but some callers might pass NULL.  Change callers to pass a 
+Sorry for the resend, forgot netdev the first time.
+
+ipv6_dev_get_saddr() blindly de-references dst_dev to get the network
+namespace, but some callers might pass NULL.  Change callers to pass a
 namespace pointer instead.
 
 -Brian
@@ -22,7 +26,8 @@ namespace pointer instead.
 Signed-off-by: Brian Haley <brian.haley@hp.com>
 ---
 
---------------070606000600070101070202
+
+--------------050908000604000606070108
 Content-Type: text/x-patch;
  name="netns.patch"
 Content-Transfer-Encoding: 7bit
@@ -212,4 +217,5 @@ index 483a01d..47f91af 100644
  				   inet6_sk(&sk->inet.sk)->srcprefs,
  				   &saddr->v6.sin6_addr);
 
---------------070606000600070101070202--
+
+--------------050908000604000606070108--
