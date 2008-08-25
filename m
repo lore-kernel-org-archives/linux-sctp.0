@@ -1,30 +1,57 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 07 Aug 2008 19:53:15 +0000
-Subject: Re: [PATCH] sctp: reduce memory footprint of sctp_chunk structure
-Message-Id: <20080807195315.GA12886@hmsendeavour.rdu.redhat.com>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Mon, 25 Aug 2008 20:25:32 +0000
+Subject: [PATCH] sctp: add verification checks to SCTP_AUTH_KEY option
+Message-Id: <12196959323990-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20080725121130.GB12725@hmsreliant.think-freely.org> <4889CF25.30405@hp.com> <20080725164409.GD12725@hmsreliant.think-freely.org> <489B49B5.7090708@hp.com>
-In-Reply-To: <489B49B5.7090708@hp.com>
+References: <20080825164440.GA504@kernel.sg>
+In-Reply-To: <20080825164440.GA504@kernel.sg>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vladislav.yasevich@hp.com>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, security@kernel.org, eteo@redhat.com, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-On Thu, Aug 07, 2008 at 03:15:01PM -0400, Vlad Yasevich wrote:
-> Hi Neil
-> 
-> A few problem I found once I started testing with the new fast
-> retransmit regression test I just wrote.
-> > 
+The structure used for SCTP_AUTH_KEY option contains a
+length that needs to be verfied to prevent buffer overflow
+conditions.  Spoted by Eugene Teo <eteo@redhat.com>.
 
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ net/sctp/auth.c   |    4 ++++
+ net/sctp/socket.c |    5 +++++
+ 2 files changed, 9 insertions(+), 0 deletions(-)
 
-Cool, thanks for the heads up!
-
+diff --git a/net/sctp/auth.c b/net/sctp/auth.c
+index 675a5c3..1fcb4cf 100644
+--- a/net/sctp/auth.c
++++ b/net/sctp/auth.c
+@@ -80,6 +80,10 @@ static struct sctp_auth_bytes *sctp_auth_create_key(__u32 key_len, gfp_t gfp)
+ {
+ 	struct sctp_auth_bytes *key;
+ 
++	/* Verify that we are not going to overflow INT_MAX */
++	if ((INT_MAX - key_len) < sizeof(struct sctp_auth_bytes))
++		return NULL;
++
+ 	/* Allocate the shared key */
+ 	key = kmalloc(sizeof(struct sctp_auth_bytes) + key_len, gfp);
+ 	if (!key)
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index bb5c9ef..afa952e 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3144,6 +3144,11 @@ static int sctp_setsockopt_auth_key(struct sock *sk,
+ 		goto out;
+ 	}
+ 
++	if (authkey->sca_keylength > optlen) {
++		ret = -EINVAL;
++		goto out;
++	}
++
+ 	asoc = sctp_id2assoc(sk, authkey->sca_assoc_id);
+ 	if (!asoc && authkey->sca_assoc_id && sctp_style(sk, UDP)) {
+ 		ret = -EINVAL;
 -- 
-/***************************************************
- *Neil Horman
- *nhorman@tuxdriver.com
- *gpg keyid: 1024D / 0x92A74FA1
- *http://pgp.mit.edu
- ***************************************************/
+1.5.2.5
+
