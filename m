@@ -1,24 +1,66 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 25 Aug 2008 22:17:05 +0000
+From: Eugene Teo <eteo@redhat.com>
+Date: Tue, 26 Aug 2008 00:59:13 +0000
 Subject: Re: [PATCH] sctp: add verification checks to SCTP_AUTH_KEY option
-Message-Id: <20080825.151705.193699685.davem@davemloft.net>
+Message-Id: <48B35561.2010001@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20080825164440.GA504@kernel.sg>
-	<12196959323990-git-send-email-vladislav.yasevich@hp.com>
+References: <20080825164440.GA504@kernel.sg> <12196959323990-git-send-email-vladislav.yasevich@hp.com>
 In-Reply-To: <12196959323990-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, security@kernel.org, eteo@redhat.com
+To: Vlad Yasevich <vladislav.yasevich@hp.com>
+Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, security@kernel.org
 
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Mon, 25 Aug 2008 16:25:32 -0400
-
+Vlad Yasevich wrote:
 > The structure used for SCTP_AUTH_KEY option contains a
 > length that needs to be verfied to prevent buffer overflow
 > conditions.  Spoted by Eugene Teo <eteo@redhat.com>.
 > 
 > Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+> ---
+>  net/sctp/auth.c   |    4 ++++
+>  net/sctp/socket.c |    5 +++++
+>  2 files changed, 9 insertions(+), 0 deletions(-)
+> 
+> diff --git a/net/sctp/auth.c b/net/sctp/auth.c
+> index 675a5c3..1fcb4cf 100644
+> --- a/net/sctp/auth.c
+> +++ b/net/sctp/auth.c
+> @@ -80,6 +80,10 @@ static struct sctp_auth_bytes *sctp_auth_create_key(__u32 key_len, gfp_t gfp)
 
-Applied and queued up for -stable, thanks!
+This should be __u16 key_len.
+
+>  {
+>  	struct sctp_auth_bytes *key;
+>  
+> +	/* Verify that we are not going to overflow INT_MAX */
+> +	if ((INT_MAX - key_len) < sizeof(struct sctp_auth_bytes))
+> +		return NULL;
+
+Shouldn't this be UINT_MAX? But then if you are going to change
+sctp_auth_create_key() to accept __u16 key_len, then it should be
+USHORT_MAX.
+
+>  	/* Allocate the shared key */
+>  	key = kmalloc(sizeof(struct sctp_auth_bytes) + key_len, gfp);
+>  	if (!key)
+> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+> index bb5c9ef..afa952e 100644
+> --- a/net/sctp/socket.c
+> +++ b/net/sctp/socket.c
+> @@ -3144,6 +3144,11 @@ static int sctp_setsockopt_auth_key(struct sock *sk,
+>  		goto out;
+>  	}
+>  
+> +	if (authkey->sca_keylength > optlen) {
+> +		ret = -EINVAL;
+> +		goto out;
+
+Is there a better upper bound check?
+
+>  	asoc = sctp_id2assoc(sk, authkey->sca_assoc_id);
+>  	if (!asoc && authkey->sca_assoc_id && sctp_style(sk, UDP)) {
+>  		ret = -EINVAL;
+
+Thanks,
+Eugene
