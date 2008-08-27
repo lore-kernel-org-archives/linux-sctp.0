@@ -1,30 +1,83 @@
-From: Daniel Lezcano <dlezcano@fr.ibm.com>
-Date: Mon, 18 Aug 2008 07:21:08 +0000
-Subject: Re: [PATCH 2/2] netns: Add network namespace argument in rt6_fill_node()
-Message-Id: <48A922E4.1050304@fr.ibm.com>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Wed, 27 Aug 2008 02:43:12 +0000
+Subject: [PATCH] sctp: Fix the SNMP counter of SCTP_MIB_OUTOFBLUES
+Message-Id: <48B4BF40.90302@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <48A48722.3050509@hp.com> <48A758F0.60009@fr.ibm.com>
-	<20080817.153526.109132408.davem@davemloft.net>
-In-Reply-To: <20080817.153526.109132408.davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, brian.haley-VXdhtT5mjnY@public.gmane.org
-Cc: containers-qjLDD68F18O7TbgM5vRIOg@public.gmane.org, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: linux-sctp@vger.kernel.org
 
-David Miller wrote:
-> From: Daniel Lezcano <dlezcano@fr.ibm.com>
-> Date: Sun, 17 Aug 2008 00:47:12 +0200
-> 
->> The approach looks correct except with the network namespace passed as 
->> parameter, it must never be NULL.
-> 
-> You're reviewing the patches that Brian retracted, we added a different
-> version of these fixes in the end.
+RFC3873 defined SCTP_MIB_OUTOFBLUES:
 
-Yes thanks, I received the emails delayed, so I saw the first version 
-and no reply to them, neither the V2.
-The second version is much better.
-Thanks Brian for fixing this :)
+  sctpOutOfBlues OBJECT-TYPE
+    SYNTAX         Counter32
+    MAX-ACCESS     read-only
+    STATUS         current
+    DESCRIPTION
+         "The number of out of the blue packets received by the host.
+         An out of the blue packet is an SCTP packet correctly formed,
+         including the proper checksum, but for which the receiver was
+         unable to identify an appropriate association."
+    REFERENCE
+         "Section 8.4 in RFC2960 deals with the Out-Of-The-Blue
+          (OOTB) packet definition and procedures."
 
-   -- Daniel
+But OOTB packet INIT and INIT-ACK are not counted by SCTP_MIB_OUTOFBLUES.
+
+Case 1(INIT):
+
+Endpoint A               Endpoint B
+(CLOSED)                 (CLOSED)
+
+  INIT     ---------->
+           <----------    ABORT
+
+Case 2(INIT-ACK):
+
+Endpoint A               Endpoint B
+(CLOSED)                 (CLOSED)
+
+  INIT-ACK  ---------->
+            <----------   ABORT
+
+This patch fixed the problem.
+
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ net/sctp/sm_statefuns.c |    8 ++++++--
+ 1 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 0b49a56..24a3bce 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -315,8 +315,10 @@ sctp_disposition_t sctp_sf_do_5_1B_init(const struct sctp_endpoint *ep,
+ 	/* If the packet is an OOTB packet which is temporarily on the
+ 	 * control endpoint, respond with an ABORT.
+ 	 */
+-	if (ep = sctp_sk((sctp_get_ctl_sock()))->ep)
++	if (ep = sctp_sk((sctp_get_ctl_sock()))->ep) {
++		SCTP_INC_STATS(SCTP_MIB_OUTOFBLUES);
+ 		return sctp_sf_tabort_8_4_8(ep, asoc, type, arg, commands);
++	}
+ 
+ 	/* 3.1 A packet containing an INIT chunk MUST have a zero Verification
+ 	 * Tag.
+@@ -635,8 +637,10 @@ sctp_disposition_t sctp_sf_do_5_1D_ce(const struct sctp_endpoint *ep,
+ 	/* If the packet is an OOTB packet which is temporarily on the
+ 	 * control endpoint, respond with an ABORT.
+ 	 */
+-	if (ep = sctp_sk((sctp_get_ctl_sock()))->ep)
++	if (ep = sctp_sk((sctp_get_ctl_sock()))->ep) {
++		SCTP_INC_STATS(SCTP_MIB_OUTOFBLUES);
+ 		return sctp_sf_tabort_8_4_8(ep, asoc, type, arg, commands);
++	}
+ 
+ 	/* Make sure that the COOKIE_ECHO chunk has a valid length.
+ 	 * In this case, we check that we have enough for at least a
+-- 
+1.5.3.8
+
+
+
