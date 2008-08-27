@@ -1,60 +1,64 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Tue, 26 Aug 2008 13:37:08 +0000
-Subject: Re: [PATCH] sctp: add verification checks to SCTP_AUTH_KEY option
-Message-Id: <48B40704.5040702@hp.com>
+Date: Wed, 27 Aug 2008 20:03:35 +0000
+Subject: [PATCH 2/2] sctp: fix random memory dereference with SCTP_HMAC_IDENT option.
+Message-Id: <12198674171396-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20080825164440.GA504@kernel.sg> <12196959323990-git-send-email-vladislav.yasevich@hp.com> <48B35561.2010001@redhat.com> <48B35B59.2020208@hp.com> <48B371F1.5080605@redhat.com>
-In-Reply-To: <48B371F1.5080605@redhat.com>
+References: <48B42ECA.7010800@redhat.com>
+In-Reply-To: <48B42ECA.7010800@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Eugene Teo <eteo@redhat.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, security@kernel.org
+To: davem@davemloft.net
+Cc: eteo@redhat.com, netdev@vger.kernel.org, security@kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-Eugene Teo wrote:
-> Vlad Yasevich wrote:
->> Eugene Teo wrote:
->>> Vlad Yasevich wrote:
-> [...]
->>>> +	if (authkey->sca_keylength > optlen) {
->>>> +		ret = -EINVAL;
->>>> +		goto out;
->>> Is there a better upper bound check?
->> Hm...  optlen - sizeof(struct sctp_authkey)  is more accurate.
->>
->> There is really no other bound.
-> 
-> Linus suggested that it is better to declare an upper bound for key_len.
-> I think it makes a lot of sense as a key shouldn't be as long as the
-> boundary limit of its declared data type.
-> 
->
+The number of identifiers needs to be checked against the option
+length.  Also, the identifier index provided needs to be verified
+to make sure that it doesn't exceed the bounds of the array.
 
-I am starting to think that this might be completely unnecessary.
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ net/sctp/auth.c   |    3 +++
+ net/sctp/socket.c |    6 ++++--
+ 2 files changed, 7 insertions(+), 2 deletions(-)
 
-The sctp_auth_set_key() function is be called from two places:
-
-  1) setsockopt() code path
-
-  2) sctp_auth_asoc_set_secret() code path
-
-
-In case (1), sca_keylength is never going to exceed 65536 since it's
-bounded by a u16 from the user api.  As such, the malloc() will never
-overflow.  This is the case we were really concerned about since the user
-can supply bogus values.
-
-In case (2), it is possible for the length to exceed 65536 since it's
-trying to create a generated key and the algorithm takes raw pieces of the
-SCTP handshake packets to do that.  However, there is no way that they can
-exceed another 132K bytes because max IP datagram size is 65K and both ends
-have to exchange security data.  Using IPv6 Jumbo extension I guess they can
-go higher but we are probably going to fail memory allocations at that point.
-
-That makes the theoretical maximum for the key to be 192K, but that discounts
-the Jumbo usage.  So, I think using the current INT_MAX is sufficient to catch
-possible overflows caused by case (2).   I think restricting the size further is
-pointless and could end up being too restrictive.
-
--vlad
+diff --git a/net/sctp/auth.c b/net/sctp/auth.c
+index 1fcb4cf..52db5f6 100644
+--- a/net/sctp/auth.c
++++ b/net/sctp/auth.c
+@@ -786,6 +786,9 @@ int sctp_auth_ep_set_hmacs(struct sctp_endpoint *ep,
+ 	for (i = 0; i < hmacs->shmac_num_idents; i++) {
+ 		id = hmacs->shmac_idents[i];
+ 
++		if (id > SCTP_AUTH_HMAC_ID_MAX)
++			return -EOPNOTSUPP;
++
+ 		if (SCTP_AUTH_HMAC_ID_SHA1 = id)
+ 			has_sha1 = 1;
+ 
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 9b9b2c3..5ffb9de 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3086,6 +3086,7 @@ static int sctp_setsockopt_hmac_ident(struct sock *sk,
+ 				    int optlen)
+ {
+ 	struct sctp_hmacalgo *hmacs;
++	u32 idents;
+ 	int err;
+ 
+ 	if (!sctp_auth_enable)
+@@ -3103,8 +3104,9 @@ static int sctp_setsockopt_hmac_ident(struct sock *sk,
+ 		goto out;
+ 	}
+ 
+-	if (hmacs->shmac_num_idents = 0 ||
+-	    hmacs->shmac_num_idents > SCTP_AUTH_NUM_HMACS) {
++	idents = hmacs->shmac_num_idents;
++	if (idents = 0 || idents > SCTP_AUTH_NUM_HMACS ||
++	    (idents * sizeof(u16)) > (optlen - sizeof(struct sctp_hmacalgo))) {
+ 		err = -EINVAL;
+ 		goto out;
+ 	}
+-- 
+1.5.2.5
 
