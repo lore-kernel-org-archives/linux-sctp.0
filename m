@@ -1,42 +1,114 @@
-From: Harvey Harrison <harvey.harrison@gmail.com>
-Date: Tue, 23 Sep 2008 05:45:18 +0000
-Subject: Re: SCTP checksum patch for 2.6.26.5
-Message-Id: <1222148718.16003.1.camel@brick>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Mon, 08 Sep 2008 04:10:40 +0000
+Subject: [PATCHv2] sctp: Fix the SNMP counter of SCTP_MIB_OUTOFBLUES
+Message-Id: <48C4A5C0.9020303@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <48D7C0A2.9090406@protei.ru>
-	 <20080922.131245.193705447.davem@davemloft.net>
-	 <20080923051920.GD24654@1wt.eu>
-In-Reply-To: <20080923051920.GD24654@1wt.eu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Willy Tarreau <w@1wt.eu>
-Cc: David Miller <davem@davemloft.net>, nickolay@protei.ru, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-On Tue, 2008-09-23 at 07:19 +0200, Willy Tarreau wrote:
-> On Mon, Sep 22, 2008 at 01:12:45PM -0700, David Miller wrote:
-> > From: Nickolay Vinogradov <nickolay@protei.ru>
-> > Date: Mon, 22 Sep 2008 19:58:26 +0400
-> > 
-> > CC:'ing correct mailing lists...
-> > 
-> Nickolay,
-> 
-> you should use swab32(~crc32) instead. It will make use of arch-specific
-> optimisations when available (eg: bswap on x86).
-> 
-> Willy
+Change from v1:
+- Add counter for OOTB SHUTDOWN-ACK in COOKIE-WAIT and COOKIE-ECHOED state.
 
-Or look at:
-commit 336d3262df71fcd2661180bb35d5ea41b4cbca58
-Author: Harvey Harrison <harvey.harrison@gmail.com>
-Date:   Fri Jul 18 23:07:09 2008 -0700
+sctp: Fix the SNMP counter of SCTP_MIB_OUTOFBLUES
 
-    sctp: remove unnecessary byteshifting, calculate directly in big-endian
+RFC3873 defined SCTP_MIB_OUTOFBLUES:
 
-In Linus' tree.
+ sctpOutOfBlues OBJECT-TYPE
+   SYNTAX         Counter32
+   MAX-ACCESS     read-only
+   STATUS         current
+   DESCRIPTION
+        "The number of out of the blue packets received by the host.
+        An out of the blue packet is an SCTP packet correctly formed,
+        including the proper checksum, but for which the receiver was
+        unable to identify an appropriate association."
+   REFERENCE
+        "Section 8.4 in RFC2960 deals with the Out-Of-The-Blue
+         (OOTB) packet definition and procedures."
 
-Cheers,
+But OOTB packet INIT, INIT-ACK and SHUTDOWN-ACK(COOKIE-WAIT or
+COOKIE-ECHOED state) are not counted by SCTP_MIB_OUTOFBLUES.
 
-Harvey
+Case 1(INIT):
+
+Endpoint A               Endpoint B
+(CLOSED)                 (CLOSED)
+
+ INIT     ---------->
+          <----------    ABORT
+
+Case 2(INIT-ACK):
+
+Endpoint A               Endpoint B
+(CLOSED)                 (CLOSED)
+
+ INIT-ACK  ---------->
+           <----------   ABORT
+
+Case 3(SHUTDOWN-ACK):
+
+Endpoint A               Endpoint B
+(CLOSED)                 (CLOSED)
+
+          <----------    INIT
+ SHUTDOWN-ACK  ---------->
+           <----------   ABORT
+
+Case 4(SHUTDOWN-ACK):
+
+Endpoint A               Endpoint B
+(CLOSED)                 (COOKIE-ECHOED)
+
+ SHUTDOWN-ACK  ---------->
+           <----------   ABORT
+
+This patch fixed the problem.
+
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ net/sctp/sm_statefuns.c |   10 ++++++++--
+ 1 files changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 0b49a56..16b9ce1 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -315,8 +315,10 @@ sctp_disposition_t sctp_sf_do_5_1B_init(const struct sctp_endpoint *ep,
+ 	/* If the packet is an OOTB packet which is temporarily on the
+ 	 * control endpoint, respond with an ABORT.
+ 	 */
+-	if (ep = sctp_sk((sctp_get_ctl_sock()))->ep)
++	if (ep = sctp_sk((sctp_get_ctl_sock()))->ep) {
++		SCTP_INC_STATS(SCTP_MIB_OUTOFBLUES);
+ 		return sctp_sf_tabort_8_4_8(ep, asoc, type, arg, commands);
++	}
+ 
+ 	/* 3.1 A packet containing an INIT chunk MUST have a zero Verification
+ 	 * Tag.
+@@ -635,8 +637,10 @@ sctp_disposition_t sctp_sf_do_5_1D_ce(const struct sctp_endpoint *ep,
+ 	/* If the packet is an OOTB packet which is temporarily on the
+ 	 * control endpoint, respond with an ABORT.
+ 	 */
+-	if (ep = sctp_sk((sctp_get_ctl_sock()))->ep)
++	if (ep = sctp_sk((sctp_get_ctl_sock()))->ep) {
++		SCTP_INC_STATS(SCTP_MIB_OUTOFBLUES);
+ 		return sctp_sf_tabort_8_4_8(ep, asoc, type, arg, commands);
++	}
+ 
+ 	/* Make sure that the COOKIE_ECHO chunk has a valid length.
+ 	 * In this case, we check that we have enough for at least a
+@@ -3382,6 +3386,8 @@ sctp_disposition_t sctp_sf_do_8_5_1_E_sa(const struct sctp_endpoint *ep,
+ 	 * packet and the state function that handles OOTB SHUTDOWN_ACK is
+ 	 * called with a NULL association.
+ 	 */
++	SCTP_INC_STATS(SCTP_MIB_OUTOFBLUES);
++
+ 	return sctp_sf_shut_8_4_5(ep, NULL, type, arg, commands);
+ }
+ 
+-- 
+1.5.3.8
+
 
