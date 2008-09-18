@@ -1,45 +1,56 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Wed, 27 Aug 2008 08:29:17 +0000
-Subject: [PATCH] sctp: Drop ICMP packet too big message with MTU larger than
-Message-Id: <48B5105D.7050708@cn.fujitsu.com>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Thu, 18 Sep 2008 21:31:03 +0000
+Subject: [PATCH 1/2] sctp: do not enable peer features if we can't do them.
+Message-Id: <1221773464-28845-1-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, lksctp-developers@lists.sourceforge.net, netdev@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-If ICMP packet too big message is received with MTU larger than current
-PMTU, SCTP will still accept this ICMPv6 message and sync the PMTU of
-assoc with the wrong MTU.
+Do not enable peer features like addip and auth, if they
+are administratively disabled localy.  If the peer resports
+that he supports something that we don't, neither end can
+use it so enabling it is pointless.  This solves a problem
+when talking to a peer that has auth and addip enabled while
+we do not.  Found by Andrei Pelinescu-Onciul <andrei@iptel.org>.
 
-Endpoing A                 Endpoint B
-(ESTABLISHED)              (ESTABLISHED)
-ICMP         --------->
-(packet too big)
-                            sync PMTU
-
-This patch fixed the problem by drop that ICMP message.
-
-Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 ---
- net/sctp/input.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ net/sctp/sm_make_chunk.c |    9 +++++++--
+ 1 files changed, 7 insertions(+), 2 deletions(-)
 
-diff --git a/net/sctp/input.c b/net/sctp/input.c
-index a49fa80..bf612d9 100644
---- a/net/sctp/input.c
-+++ b/net/sctp/input.c
-@@ -369,7 +369,7 @@ static void sctp_add_backlog(struct sock *sk, struct sk_buff *skb)
- void sctp_icmp_frag_needed(struct sock *sk, struct sctp_association *asoc,
- 			   struct sctp_transport *t, __u32 pmtu)
- {
--	if (!t || (t->pathmtu = pmtu))
-+	if (!t || (t->pathmtu <= pmtu))
- 		return;
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index e8ca4e5..fe94f42 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -1886,11 +1886,13 @@ static void sctp_process_ext_param(struct sctp_association *asoc,
+ 			    /* if the peer reports AUTH, assume that he
+ 			     * supports AUTH.
+ 			     */
+-			    asoc->peer.auth_capable = 1;
++			    if (sctp_auth_enable)
++				    asoc->peer.auth_capable = 1;
+ 			    break;
+ 		    case SCTP_CID_ASCONF:
+ 		    case SCTP_CID_ASCONF_ACK:
+-			    asoc->peer.asconf_capable = 1;
++			    if (sctp_addip_enable)
++				    asoc->peer.asconf_capable = 1;
+ 			    break;
+ 		    default:
+ 			    break;
+@@ -2460,6 +2462,9 @@ do_addr_param:
+ 		break;
  
- 	if (sock_owned_by_user(sk)) {
+ 	case SCTP_PARAM_SET_PRIMARY:
++		if (!sctp_addip_enable)
++			goto fall_through;
++
+ 		addr_param = param.v + sizeof(sctp_addip_param_t);
+ 
+ 		af = sctp_get_af_specific(param_type2af(param.p->type));
 -- 
-1.5.3.8
-
-
+1.5.3.5
 
