@@ -1,56 +1,32 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Thu, 18 Sep 2008 21:31:03 +0000
-Subject: [PATCH 1/2] sctp: do not enable peer features if we can't do them.
-Message-Id: <1221773464-28845-1-git-send-email-vladislav.yasevich@hp.com>
+From: David Miller <davem@davemloft.net>
+Date: Thu, 18 Sep 2008 23:29:41 +0000
+Subject: Re: [PATCH 1/2] sctp: do not enable peer features if we can't do
+Message-Id: <20080918.162941.157950819.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1221773464-28845-1-git-send-email-vladislav.yasevich@hp.com>
+In-Reply-To: <1221773464-28845-1-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net
-Cc: linux-sctp@vger.kernel.org, lksctp-developers@lists.sourceforge.net, netdev@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>
+To: vladislav.yasevich@hp.com
+Cc: linux-sctp@vger.kernel.org, lksctp-developers@lists.sourceforge.net, netdev@vger.kernel.org
 
-Do not enable peer features like addip and auth, if they
-are administratively disabled localy.  If the peer resports
-that he supports something that we don't, neither end can
-use it so enabling it is pointless.  This solves a problem
-when talking to a peer that has auth and addip enabled while
-we do not.  Found by Andrei Pelinescu-Onciul <andrei@iptel.org>.
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Thu, 18 Sep 2008 17:31:03 -0400
 
-Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
----
- net/sctp/sm_make_chunk.c |    9 +++++++--
- 1 files changed, 7 insertions(+), 2 deletions(-)
+> Do not enable peer features like addip and auth, if they
+> are administratively disabled localy.  If the peer resports
+> that he supports something that we don't, neither end can
+> use it so enabling it is pointless.  This solves a problem
+> when talking to a peer that has auth and addip enabled while
+> we do not.  Found by Andrei Pelinescu-Onciul <andrei@iptel.org>.
+> 
+> Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index e8ca4e5..fe94f42 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -1886,11 +1886,13 @@ static void sctp_process_ext_param(struct sctp_association *asoc,
- 			    /* if the peer reports AUTH, assume that he
- 			     * supports AUTH.
- 			     */
--			    asoc->peer.auth_capable = 1;
-+			    if (sctp_auth_enable)
-+				    asoc->peer.auth_capable = 1;
- 			    break;
- 		    case SCTP_CID_ASCONF:
- 		    case SCTP_CID_ASCONF_ACK:
--			    asoc->peer.asconf_capable = 1;
-+			    if (sctp_addip_enable)
-+				    asoc->peer.asconf_capable = 1;
- 			    break;
- 		    default:
- 			    break;
-@@ -2460,6 +2462,9 @@ do_addr_param:
- 		break;
- 
- 	case SCTP_PARAM_SET_PRIMARY:
-+		if (!sctp_addip_enable)
-+			goto fall_through;
-+
- 		addr_param = param.v + sizeof(sctp_addip_param_t);
- 
- 		af = sctp_get_af_specific(param_type2af(param.p->type));
--- 
-1.5.3.5
+I applied this, but it is at best borderline for outside the
+merge window.  It doesn't fix an OOPS nor a security issue nor
+an entry in the 2.6.x regression list, therefore strictly speaking
+this fix is not appropriate at this time.
 
+Please apply this criteria when deciding whether to submit future
+fixes for net-2.6 inclusion.
