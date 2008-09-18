@@ -1,21 +1,77 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 18 Sep 2008 23:18:18 +0000
-Subject: Re: [Lksctp-developers] [PATCH 1/2] sctp: do not enable peer
-Message-Id: <20080918.161818.29564518.davem@davemloft.net>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Thu, 18 Sep 2008 21:31:04 +0000
+Subject: [PATCH 2/2] sctp: Fix oops when INIT-ACK indicates that peer doesn't support AUTH
+Message-Id: <1221773464-28845-2-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1221773464-28845-1-git-send-email-vladislav.yasevich@hp.com>
-	<48D2DDC3.3060406@hp.com>
-In-Reply-To: <48D2DDC3.3060406@hp.com>
+In-Reply-To: <1221773464-28845-1-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, lksctp-developers@lists.sourceforge.net
+To: davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, lksctp-developers@lists.sourceforge.net, netdev@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Thu, 18 Sep 2008 19:01:23 -0400
+If INIT-ACK is received with SupportedExtensions parameter which
+indicates that the peer does not support AUTH, the packet will be
+silently ignore, and sctp_process_init() do cleanup all of the
+transports in the association.
+When T1-Init timer is expires, OOPS happen while we try to choose
+a different init transport.
 
-> Can you also queue this one and Patch 2/2 to stable.  The problems
-> are there as well.
+The solution is to only clean up the non-active transports, i.e
+the ones that the peer added.  However, that introduces a problem
+with sctp_connectx(), because we don't mark the proper state for
+the transports provided by the user.  So, we'll simply mark
+user-provided transports as ACTIVE.  That will allow INIT
+retransmissions to work properly in the sctp_connectx() context
+and prevent the crash.
 
-Sure thing.
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ net/sctp/associola.c     |    9 +++++----
+ net/sctp/sm_make_chunk.c |    6 ++----
+ 2 files changed, 7 insertions(+), 8 deletions(-)
+
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 8472b8b..abd51ce 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -599,11 +599,12 @@ struct sctp_transport *sctp_assoc_add_peer(struct sctp_association *asoc,
+ 	/* Check to see if this is a duplicate. */
+ 	peer = sctp_assoc_lookup_paddr(asoc, addr);
+ 	if (peer) {
++		/* An UNKNOWN state is only set on transports added by
++		 * user in sctp_connectx() call.  Such transports should be
++		 * considered CONFIRMED per RFC 4960, Section 5.4.
++		 */
+ 		if (peer->state = SCTP_UNKNOWN) {
+-			if (peer_state = SCTP_ACTIVE)
+-				peer->state = SCTP_ACTIVE;
+-			if (peer_state = SCTP_UNCONFIRMED)
+-				peer->state = SCTP_UNCONFIRMED;
++			peer->state = SCTP_ACTIVE;
+ 		}
+ 		return peer;
+ 	}
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index fe94f42..b599cbb 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2321,12 +2321,10 @@ clean_up:
+ 	/* Release the transport structures. */
+ 	list_for_each_safe(pos, temp, &asoc->peer.transport_addr_list) {
+ 		transport = list_entry(pos, struct sctp_transport, transports);
+-		list_del_init(pos);
+-		sctp_transport_free(transport);
++		if (transport->state != SCTP_ACTIVE)
++			sctp_assoc_rm_peer(asoc, transport);
+ 	}
+ 
+-	asoc->peer.transport_count = 0;
+-
+ nomem:
+ 	return 0;
+ }
+-- 
+1.5.3.5
+
