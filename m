@@ -1,63 +1,59 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Tue, 16 Sep 2008 09:48:54 +0000
-Subject: Re: [PATCH] sctp: Fix to start T5-shutdown-guard timer while enter
-Message-Id: <48CF8106.4050008@cn.fujitsu.com>
+From: David Miller <davem@davemloft.net>
+Date: Mon, 22 Sep 2008 20:12:45 +0000
+Subject: Re: SCTP checksum patch for 2.6.26.5
+Message-Id: <20080922.131245.193705447.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <48C0837E.3060304@cn.fujitsu.com>
-In-Reply-To: <48C0837E.3060304@cn.fujitsu.com>
+References: <48D7C0A2.9090406@protei.ru>
+In-Reply-To: <48D7C0A2.9090406@protei.ru>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: nickolay@protei.ru
+Cc: linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Hi Vlad:
+From: Nickolay Vinogradov <nickolay@protei.ru>
+Date: Mon, 22 Sep 2008 19:58:26 +0400
 
-Vlad Yasevich wrote:
-> Wei Yongjun wrote:
->   
->> RFC 4960: Section 9.2
->> The sender of the SHUTDOWN MAY also start an overall guard timer
->> 'T5-shutdown-guard' to bound the overall time for the shutdown
->> sequence.  At the expiration of this timer, the sender SHOULD abort
->> the association by sending an ABORT chunk.  If the 'T5-shutdown-
->> guard' timer is used, it SHOULD be set to the recommended value of 5
->> times 'RTO.Max'.
->>
->> The timer 'T5-shutdown-guard' is used to counter the overall time
->> for shutdown sequence, and it's start by the sender of the SHUTDOWN.
->> So timer 'T5-shutdown-guard' should be start when we send the first
->> SHUTDOWN chunk and enter the SHUTDOWN-SENT state, not start when we
->> receipt of the SHUTDOWN primitive and enter SHUTDOWN-PENDING state.
->>
->> If 'T5-shutdown-guard' timer is start at SHUTDOWN-PENDING state, the
->> association may be ABORT while data is still transmitting.
->>     
->
-> Hi Wei
->
-> You missed the autoclose case which would have been very easy to test
-> had you run the regressions test from the lksctp-tools package.
->
-> In the future please run those tests and feel free to add tests there
-> to enhance our test matrix.
->
-> I'll fix it up this time.  Thanks
->   
-  Sorry for my stupid mistake. I'll do the regressions test next time 
-when I make patchs.
+CC:'ing correct mailing lists...
 
-  I had a look at all the place used 
-SCTP_EVENT_TIMEOUT_T5_SHUTDOWN_GUARD, may be following lines in 
-sctp_sf_shutdown_pending_abort() and 
-sctp_sf_shutdown_pending_prm_abort() become useless after this patch:(T5 
-time is invalid and not start in SHUTDOWN_PENDING state)
-------------------------------------------------------
-2080         sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_STOP,
-2081                         SCTP_TO(SCTP_EVENT_TIMEOUT_T5_SHUTDOWN_GUARD));
-------------------------------------------------------
- So, If you want to fix this patch, you may also need to delete those 
-useless codes.
-
- Thanks.
-
-
+> SCTP checksum calculation fix for BigEndian.
+> ntohl() doesn't do anything on BigEndian.
+> 
+> diff --git a/Makefile b/Makefile
+> diff --git a/include/net/sctp/checksum.h b/include/net/sctp/checksum.h
+> index ba75c67..2f0ed64 100644
+> --- a/include/net/sctp/checksum.h
+> +++ b/include/net/sctp/checksum.h
+> @@ -74,5 +74,19 @@ static inline __u32 sctp_update_cksum(__u8 *buffer, __u16 length, __u32 crc32)
+> 
+>   static inline __u32 sctp_end_cksum(__u32 crc32)
+>   {
+> -       return ntohl(~crc32);
+> +       __u32 result;
+> +       __u8 byte0, byte1, byte2, byte3;
+> +
+> +       result = ~crc32;
+> +
+> +       byte0 = result & 0xff;
+> +       byte1 = (result>>8) & 0xff;
+> +       byte2 = (result>>16) & 0xff;
+> +       byte3 = (result>>24) & 0xff;
+> +
+> +       crc32 = ((byte0 << 24) |
+> +                (byte1 << 16) |
+> +                (byte2 << 8)  |
+> +                byte3);
+> +       return crc32;
+>   }
+> diff --git a/net/sctp/output.c b/net/sctp/output.c
+> 
+> 
+> -- Nickolay Vinogradov
+> Protei Research and Development Center
+> St.Petersburg, 194044, Russia
+> Tel.: +7 812 449 47 27
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
