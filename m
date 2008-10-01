@@ -1,28 +1,52 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 08 Oct 2008 21:19:14 +0000
-Subject: Re: [PATCH net-next 2/2] sctp: shrink sctp_tsnmap some more by
-Message-Id: <20081008.141914.109425275.davem@davemloft.net>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Wed, 01 Oct 2008 18:14:52 +0000
+Subject: pull request: net-next sctp updates
+Message-Id: <1222884892-22938-1-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1223497670-519-1-git-send-email-vladislav.yasevich@hp.com>
-	<1223497670-519-3-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <1223497670-519-3-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: davem@davemloft.net, linux-sctp@vger.kernel.org
 
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Wed,  8 Oct 2008 16:27:50 -0400
+Hi David
 
-> The gabs array in the sctp_tsnmap structure is only used
-> in one place, sctp_make_sack().  As such, carrying the
-> array around in the sctp_tsnmap and thus directly in
-> the sctp_association is rather pointless since most
-> of the time it's just taking up space.  Now, let
-> sctp_make_sack create and populate it and then throw
-> it away when it's done.
-> 
-> Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+Please consider the following sctp work for net-next.
 
-Applied.
+The following changes since commit bcd41303f422015ab662c9276d108414aa75b796:
+  KOVACS Krisztian (1):
+        udp: Export UDP socket lookup function
+
+are available in the git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/vxy/lksctp-dev.git net-next
+
+Neil Horman (1):
+      sctp: reduce memory footprint of sctp_chunk structure
+
+Vlad Yasevich (6):
+      sctp: Only mark chunks as missing when there are gaps
+      sctp: Optimize SFR-CACC transport list walking during SACK processing
+      sctp: Retransmit list is ineligable for missing indications
+      sctp: try harder to figure out address family when checking wildcards
+      sctp: enable cookie-echo retransmission transport switch
+      sctp: correctly save sctp_adaptation from parameter.
+
+Wei Yongjun (2):
+      sctp: Fix to start T5-shutdown-guard timer while enter SHUTDOWN-SENT state
+      sctp: Fix the SNMP counter of SCTP_MIB_OUTOFBLUES
+
+ include/net/sctp/structs.h |   33 ++++++++++--------
+ net/sctp/bind_addr.c       |   16 +++++++--
+ net/sctp/ipv6.c            |    5 ++-
+ net/sctp/output.c          |    2 +-
+ net/sctp/outqueue.c        |   65 +++++++++++++++++++-----------------
+ net/sctp/sm_make_chunk.c   |    4 +-
+ net/sctp/sm_sideeffect.c   |   78 +++++++++++++++++++++++++-------------------
+ net/sctp/sm_statefuns.c    |   36 +++++++++-----------
+ net/sctp/sm_statetable.c   |    2 +-
+ net/sctp/socket.c          |   10 +++---
+ 10 files changed, 139 insertions(+), 112 deletions(-)
+
+Thanks
+-vlad
