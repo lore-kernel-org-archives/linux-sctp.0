@@ -1,24 +1,42 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 09 Oct 2008 21:33:08 +0000
-Subject: Re: [PATCH net-next 2/3] sctp: Fix SNMP number of SCTP_MIB_ABORTED
-Message-Id: <20081009.143308.205088695.davem@davemloft.net>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Wed, 08 Oct 2008 20:27:48 +0000
+Subject: [PATCH net-next 0/2] sctp: Improve the tsn_map
+Message-Id: <1223497670-519-1-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1223558975-1550-1-git-send-email-vladislav.yasevich@hp.com>
-	<1223558975-1550-4-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <1223558975-1550-4-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: davem@davemloft.net, linux-sctp@vger.kernel.org
 
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Thu,  9 Oct 2008 09:29:34 -0400
+The following two patches improve the TSN map implementation in sctp.
+The TSN map is used to track which TSNs (transmission sequence numbers) we
+received.  The way it's currently written, we have a 4K array of bytes
+where each byte represents the TSN.  When we receive a TSN we mark the
+corresponding byte and then run through an algorithm to update the
+ack points.
 
-> If ABORT chunks require authentication and a protocol violation
-> is triggered, we do not tear down the association.  Subsequently,
-> we should not increment SCTP_MIB_ABORTED.
-> 
-> Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+This is grossely inefficient in both memory and code.  The only time it
+makes sense to mark the TSN in the map is if it's out of order.  In-order
+tsns can simply move the ack point and be done with it.  Also, since this
+is a simple a 1 or 0 (we have the TSN or we do not), we can do all this
+with bitmaps and shrink our map by a factor of 8.  Further more,
+it is hightly unlikely that we are every going to see 2 out of order
+number with a difference/gap of 4096.  So, we can start our map at
+the optimum size of a long word (32 or 64 bits depending on architecure).
+We can then grow the map in the unlikely event that we receive a gap
+that will push us outside of the map.  On a low loss network, fast
+retransmis will prevent that before the map grows to much.
 
-Applied, thanks.
+Running netperf shows a tiny improvement, but it's very stable, ie.
+it's the same 3% across 10.  It also shows about 1% reduction is
+CPU utilization.
+
+The second patch gets rid of the rather useless member of the tsn_map
+and was done after the bulk of the work above.  It became more obvious
+that the structure member was useless after all the clean up.
+
+Please consider for 2.6.28.
+
+Thanks
+-vlad
