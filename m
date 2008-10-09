@@ -1,49 +1,25 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 23 Oct 2008 08:00:58 +0000
-Subject: Re: [PATCH 3/4] sctp: Fix to handle SHUTDOWN in SHUTDOWN-PENDING
-Message-Id: <20081023.010058.31323273.davem@davemloft.net>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Thu, 09 Oct 2008 13:29:31 +0000
+Subject: [PATCH net-next 0/3] sctp: Fixes for SNMP counters
+Message-Id: <1223558975-1550-1-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1224641327-11913-1-git-send-email-vladislav.yasevich@hp.com>
-	<1224641327-11913-4-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <1224641327-11913-4-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, yjwei@cn.fujitsu.com
+To: netdev@vger.kernel.org
+Cc: davem@davemloft.net, linux-sctp@vger.kernel.org
 
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Tue, 21 Oct 2008 22:08:46 -0400
 
-> If SHUTDOWN is received in SHUTDOWN-PENDING state, enpoint should enter
-> the SHUTDOWN-RECEIVED state and check the Cumulative TSN Ack field of
-> the SHUTDOWN chunk (RFC 4960 Section 9.2). If the SHUTDOWN chunk can
-> acknowledge all of the send DATA chunks, SHUTDOWN-ACK should be sent.
-> 
-> But now endpoint just silently discarded the SHUTDOWN chunk.
-> 
-> SHUTDOWN received in SHUTDOWN-PENDING state can happend when the last
-> SACK is lost by network, or the SHUTDOWN chunk can acknowledge all of
-> the received DATA chunks. The packet sequence(SACK lost) is like this:
-> 
-> Endpoint A                       Endpoint B       ULP
-> (ESTABLISHED)                    (ESTABLISHED)
-> 
->                <-----------      DATA
->                                              <--- shutdown
->                                  Enter SHUTDOWN-PENDING state
->   SACK         ----lost---->
-> 
->   SHUTDOWN(*1) ------------>
-> 
->                <-----------      SHUTDOWN-ACK
-> 
->  (*1) silently discarded now.
-> 
-> This patch fix to handle SHUTDOWN in SHUTDOWN-PENDING state as the same
-> as ESTABLISHED state.
-> 
-> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-> Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+The following three patches fix a few SNMP counters.
 
-Applied.
+1) When the Add-Ip timer expires and we tear down the association, the
+SCTP_MIB_CURRESTAB should be decremented.
+
+2) When processing a violation and discrding the packet instead of tearning
+down the association, do not change SCTP_MIB_ABORTEDS since we didn't really
+abort.
+
+3) When the T5-timer expires and we abort the association, count
+SCTP_MIB_ABORTEDS.
+
+-vlad
