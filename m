@@ -1,47 +1,43 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Thu, 09 Oct 2008 07:36:49 +0000
-Subject: [resend] [PATCH] sctp: Fix the SNMP number of SCTP_MIB_CURRESTAB
-Message-Id: <48EDB491.80004@cn.fujitsu.com>
+Date: Fri, 10 Oct 2008 06:29:01 +0000
+Subject: [PATCH] sctp: Drop ICMP packet too big message with MTU larger than
+Message-Id: <48EEF62D.3060504@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-RFC3873 defined SCTP_MIB_CURRESTAB:
-  sctpCurrEstab OBJECT-TYPE
-    SYNTAX         Gauge32
-    MAX-ACCESS     read-only
-    STATUS         current
-    DESCRIPTION
-         "The number of associations for which the current state is
-         either ESTABLISHED, SHUTDOWN-RECEIVED or SHUTDOWN-PENDING."
-    REFERENCE
-         "Section 4 in RFC2960 covers the SCTP   Association state
-         diagram."
+If ICMP packet too big message is received with MTU larger than current
+PMTU, SCTP will still accept this ICMP message and sync the PMTU of assoc
+with the wrong MTU.
 
-If the T4 RTO timer expires many times(timeout), the association will enter
-CLOSED state, so we should dec the number of SCTP_MIB_CURRESTAB, not inc the
-number of SCTP_MIB_CURRESTAB.
+Endpoing A                 Endpoint B
+(ESTABLISHED)              (ESTABLISHED)
+ICMP         --------->
+(packet too big, MTU too larger)
+                           sync PMTU
+
+This patch fixed the problem by drop that ICMP message.
 
 Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 ---
- net/sctp/sm_statefuns.c |    2 +-
+ net/sctp/input.c |    2 +-
  1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 7c622af..82c77b4 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -5432,7 +5432,7 @@ sctp_disposition_t sctp_sf_t4_timer_expire(
- 		sctp_add_cmd_sf(commands, SCTP_CMD_ASSOC_FAILED,
- 				SCTP_PERR(SCTP_ERROR_NO_ERROR));
- 		SCTP_INC_STATS(SCTP_MIB_ABORTEDS);
--		SCTP_INC_STATS(SCTP_MIB_CURRESTAB);
-+		SCTP_DEC_STATS(SCTP_MIB_CURRESTAB);
- 		return SCTP_DISPOSITION_ABORT;
- 	}
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index a49fa80..bf612d9 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -369,7 +369,7 @@ static void sctp_add_backlog(struct sock *sk, struct sk_buff *skb)
+ void sctp_icmp_frag_needed(struct sock *sk, struct sctp_association *asoc,
+ 			   struct sctp_transport *t, __u32 pmtu)
+ {
+-	if (!t || (t->pathmtu = pmtu))
++	if (!t || (t->pathmtu <= pmtu))
+ 		return;
  
+ 	if (sock_owned_by_user(sk)) {
 -- 
 1.5.3.8
 
