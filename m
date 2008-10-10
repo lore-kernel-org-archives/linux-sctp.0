@@ -1,108 +1,59 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Mon, 08 Sep 2008 04:13:55 +0000
-Subject: [PATCHv3] sctp: Fix the SNMP counter of SCTP_MIB_OUTOFBLUES
-Message-Id: <48C4A683.60103@cn.fujitsu.com>
+Date: Fri, 10 Oct 2008 06:31:26 +0000
+Subject: [PATCH] sctp: Fix to handle SHUTDOWN in SHUTDOWN-PENDING state
+Message-Id: <48EEF6BE.4040705@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-RFC3873 defined SCTP_MIB_OUTOFBLUES:
+If SHUTDOWN is received in SHUTDOWN-PENDING state, enpoint should enter
+the SHUTDOWN-RECEIVED state and check the Cumulative TSN Ack field of
+the SHUTDOWN chunk (RFC 4960 Section 9.2). If the SHUTDOWN chunk can
+acknowledge all of the send DATA chunks, SHUTDOWN-ACK should be sent.
 
- sctpOutOfBlues OBJECT-TYPE
-   SYNTAX         Counter32
-   MAX-ACCESS     read-only
-   STATUS         current
-   DESCRIPTION
-        "The number of out of the blue packets received by the host.
-        An out of the blue packet is an SCTP packet correctly formed,
-        including the proper checksum, but for which the receiver was
-        unable to identify an appropriate association."
-   REFERENCE
-        "Section 8.4 in RFC2960 deals with the Out-Of-The-Blue
-         (OOTB) packet definition and procedures."
+But now endpoint just silently discarded the SHUTDOWN chunk.
 
-But OOTB packet INIT, INIT-ACK and SHUTDOWN-ACK(COOKIE-WAIT or
-COOKIE-ECHOED state) are not counted by SCTP_MIB_OUTOFBLUES.
+SHUTDOWN received in SHUTDOWN-PENDING state can happend when the last
+SACK is lost by network, or the SHUTDOWN chunk can acknowledge all of
+the received DATA chunks. The packet sequence(SACK lost) is like this:
 
-Case 1(INIT):
+Endpoint A                       Endpoint B       ULP
+(ESTABLISHED)                    (ESTABLISHED)
 
-Endpoint A               Endpoint B
-(CLOSED)                 (CLOSED)
+               <-----------      DATA
+                                             <--- shutdown
+                                 Enter SHUTDOWN-PENDING state
+  SACK         ----lost---->
 
- INIT     ---------->
-          <----------    ABORT
+  SHUTDOWN(*1) ------------>
 
-Case 2(INIT-ACK):
+               <-----------      SHUTDOWN-ACK
 
-Endpoint A               Endpoint B
-(CLOSED)                 (CLOSED)
+ (*1) silently discarded now.
 
- INIT-ACK  ---------->
-           <----------   ABORT
-
-Case 3(SHUTDOWN-ACK):
-
-Endpoint A               Endpoint B
-(CLOSED)                 (CLOSED)
-
-          <----------    INIT
- SHUTDOWN-ACK  ---------->
-           <----------   SHUTDOWN-COMPLETE
-
-Case 4(SHUTDOWN-ACK):
-
-Endpoint A               Endpoint B
-(CLOSED)                 (COOKIE-ECHOED)
-
- SHUTDOWN-ACK  ---------->
-           <----------   SHUTDOWN-COMPLETE
-
-This patch fixed the problem.
+This patch fix to handle SHUTDOWN in SHUTDOWN-PENDING state as the same
+as ESTABLISHED state.
 
 Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 ---
- net/sctp/sm_statefuns.c |   10 ++++++++--
- 1 files changed, 8 insertions(+), 2 deletions(-)
+ net/sctp/sm_statetable.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 0b49a56..16b9ce1 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -315,8 +315,10 @@ sctp_disposition_t sctp_sf_do_5_1B_init(const struct sctp_endpoint *ep,
- 	/* If the packet is an OOTB packet which is temporarily on the
- 	 * control endpoint, respond with an ABORT.
- 	 */
--	if (ep = sctp_sk((sctp_get_ctl_sock()))->ep)
-+	if (ep = sctp_sk((sctp_get_ctl_sock()))->ep) {
-+		SCTP_INC_STATS(SCTP_MIB_OUTOFBLUES);
- 		return sctp_sf_tabort_8_4_8(ep, asoc, type, arg, commands);
-+	}
- 
- 	/* 3.1 A packet containing an INIT chunk MUST have a zero Verification
- 	 * Tag.
-@@ -635,8 +637,10 @@ sctp_disposition_t sctp_sf_do_5_1D_ce(const struct sctp_endpoint *ep,
- 	/* If the packet is an OOTB packet which is temporarily on the
- 	 * control endpoint, respond with an ABORT.
- 	 */
--	if (ep = sctp_sk((sctp_get_ctl_sock()))->ep)
-+	if (ep = sctp_sk((sctp_get_ctl_sock()))->ep) {
-+		SCTP_INC_STATS(SCTP_MIB_OUTOFBLUES);
- 		return sctp_sf_tabort_8_4_8(ep, asoc, type, arg, commands);
-+	}
- 
- 	/* Make sure that the COOKIE_ECHO chunk has a valid length.
- 	 * In this case, we check that we have enough for at least a
-@@ -3382,6 +3386,8 @@ sctp_disposition_t sctp_sf_do_8_5_1_E_sa(const struct sctp_endpoint *ep,
- 	 * packet and the state function that handles OOTB SHUTDOWN_ACK is
- 	 * called with a NULL association.
- 	 */
-+	SCTP_INC_STATS(SCTP_MIB_OUTOFBLUES);
-+
- 	return sctp_sf_shut_8_4_5(ep, NULL, type, arg, commands);
- }
- 
+diff --git a/net/sctp/sm_statetable.c b/net/sctp/sm_statetable.c
+index dd4ddc4..a5b5590 100644
+--- a/net/sctp/sm_statetable.c
++++ b/net/sctp/sm_statetable.c
+@@ -266,7 +266,7 @@ const sctp_sm_table_entry_t *sctp_sm_lookup_event(sctp_event_t event_type,
+ 	/* SCTP_STATE_ESTABLISHED */ \
+ 	TYPE_SCTP_FUNC(sctp_sf_do_9_2_shutdown), \
+ 	/* SCTP_STATE_SHUTDOWN_PENDING */ \
+-	TYPE_SCTP_FUNC(sctp_sf_discard_chunk), \
++	TYPE_SCTP_FUNC(sctp_sf_do_9_2_shutdown), \
+ 	/* SCTP_STATE_SHUTDOWN_SENT */ \
+ 	TYPE_SCTP_FUNC(sctp_sf_do_9_2_shutdown_ack), \
+ 	/* SCTP_STATE_SHUTDOWN_RECEIVED */ \
 -- 
 1.5.3.8
 
