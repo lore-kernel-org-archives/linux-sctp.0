@@ -1,37 +1,77 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 09 Oct 2008 21:32:37 +0000
-Subject: Re: [PATCH net-next 1/3] sctp: Fix the SNMP number of
-Message-Id: <20081009.143237.155401326.davem@davemloft.net>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Wed, 22 Oct 2008 02:08:45 +0000
+Subject: [PATCH 2/4] sctp: Add check for the TSN field of the SHUTDOWN chunk
+Message-Id: <1224641327-11913-3-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1223558975-1550-1-git-send-email-vladislav.yasevich@hp.com>
-	<1223558975-1550-3-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <1223558975-1550-3-git-send-email-vladislav.yasevich@hp.com>
+References: <1224641327-11913-1-git-send-email-vladislav.yasevich@hp.com>
+In-Reply-To: <1224641327-11913-1-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, yjwei@cn.fujitsu.com
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Wei Yongjun <yjwei@cn.fujitsu.com>, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Thu,  9 Oct 2008 09:29:33 -0400
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
 
-> RFC3873 defined SCTP_MIB_CURRESTAB:
->   sctpCurrEstab OBJECT-TYPE
->     SYNTAX         Gauge32
->     MAX-ACCESS     read-only
->     STATUS         current
->     DESCRIPTION
->          "The number of associations for which the current state is
->          either ESTABLISHED, SHUTDOWN-RECEIVED or SHUTDOWN-PENDING."
->     REFERENCE
->          "Section 4 in RFC2960 covers the SCTP   Association state
->          diagram."
-> 
-> If the T4 RTO timer expires many times(timeout), the association will enter
-> CLOSED state, so we should dec the number of SCTP_MIB_CURRESTAB, not inc the
-> number of SCTP_MIB_CURRESTAB.
-> 
-> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-> Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+If SHUTDOWN chunk is received Cumulative TSN Ack beyond the max tsn currently
+send, SHUTDOWN chunk be accepted and the association will be broken. New data
+is send, but after received SACK it will be drop because TSN in SACK is less
+than the Cumulative TSN, data will be retrans again and again even if correct
+SACK is received.
 
-Applied.
+The packet sequence is like this:
+
+Endpoint A                       Endpoint B       ULP
+(ESTABLISHED)                    (ESTABLISHED)
+
+               <-----------      DATA (TSN=x-1)
+
+               <-----------      DATA (TSN=x)
+
+  SHUTDOWN     ----------->      (Now Cumulative TSN=x+1000)
+  (TSN=x+1000)
+               <-----------      DATA (TSN=x+1)
+
+  SACK         ----------->      drop the SACK
+  (TSN=x+1)
+               <-----------      DATA (TSN=x+1)(retrans)
+
+This patch fix this problem by terminating the association and respond to
+the sender with an ABORT.
+
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ net/sctp/sm_statefuns.c |    9 +++++++++
+ 1 files changed, 9 insertions(+), 0 deletions(-)
+
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index d4c3fbc..12f6217 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -2544,6 +2544,7 @@ sctp_disposition_t sctp_sf_do_9_2_shutdown(const struct sctp_endpoint *ep,
+ 	sctp_shutdownhdr_t *sdh;
+ 	sctp_disposition_t disposition;
+ 	struct sctp_ulpevent *ev;
++	__u32 ctsn;
+ 
+ 	if (!sctp_vtag_verify(chunk, asoc))
+ 		return sctp_sf_pdiscard(ep, asoc, type, arg, commands);
+@@ -2558,6 +2559,14 @@ sctp_disposition_t sctp_sf_do_9_2_shutdown(const struct sctp_endpoint *ep,
+ 	sdh = (sctp_shutdownhdr_t *)chunk->skb->data;
+ 	skb_pull(chunk->skb, sizeof(sctp_shutdownhdr_t));
+ 	chunk->subh.shutdown_hdr = sdh;
++	ctsn = ntohl(sdh->cum_tsn_ack);
++
++	/* If Cumulative TSN Ack beyond the max tsn currently
++	 * send, terminating the association and respond to the
++	 * sender with an ABORT.
++	 */
++	if (!TSN_lt(ctsn, asoc->next_tsn))
++		return sctp_sf_violation_ctsn(ep, asoc, type, arg, commands);
+ 
+ 	/* API 5.3.1.5 SCTP_SHUTDOWN_EVENT
+ 	 * When a peer sends a SHUTDOWN, SCTP delivers this notification to
+-- 
+1.5.3.5
+
