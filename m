@@ -1,7 +1,7 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Thu, 06 Nov 2008 13:48:45 +0000
+From: Michal Hocko <mhocko@suse.cz>
+Date: Thu, 13 Nov 2008 12:19:03 +0000
 Subject: Re: BUG in sctp crashes the system
-Message-Id: <4912F5BD.5040509@hp.com>
+Message-Id: <20081113121903.GF5549@dhcp35.suse.cz>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <200811061205.57403.mhocko@suse.cz>
 In-Reply-To: <200811061205.57403.mhocko@suse.cz>
@@ -10,7 +10,7 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Michal Hocko wrote:
+On Thu 06-11-08 12:05:57, Michal Hocko wrote:
 > Hi,
 > we are experiencing BUG and hang conditions with simple echo client-server 
 > SCTP application.  It looks like a race condition which is rather hard to 
@@ -26,9 +26,17 @@ Michal Hocko wrote:
 > {25,26,27,75fa67706cce5272bcfc51ed646f2da21f3bdb6e}).
 > We were able to reproduce _only_ with 2 _directly_ connected machines with 
 > 1GiB wired ethernet connection. (no BUG condition occurred on the single HW 
-> nor with connection through at least one switch or 100MB). Original report 
-> states that it takes from minutes to hours to trigger this issue but it takes 
-> hours in my testing environment.
+> nor with connection through at least one switch or 100MB). 
+
+Our later testing shows that also switches in the path don't prevent
+from the crash. It just takes longer.
+This means that this is no more artificial configuration problem, but
+may be vulnerable also remotely when attacker has a quick connection and
+enough time&patience.
+
+> Original report states that it takes from minutes to hours to trigger
+> this issue but it takes hours in my testing environment.
+
 > 
 > At first we thought that this can be caused by SO_REUSEADDR used by server 
 > application, but I was able to reproduce also without it.
@@ -42,18 +50,10 @@ Michal Hocko wrote:
 > 
 > Thanks for any help/hints and let me know if you need some more information or 
 > test some patches.
-> 
-> Best regards
-> 
-
-In the earlier kernels there were a few bugs in the accept code paths that
-had to do with locking the newly created socket correctly as well as locking
-the port hash table during the migration of the ports.  Both of those
-contributed to crashes at odd points in time and sometimes even to stack and
-memory corruptions.
-
-I'll take a look at what's causing skb overflow in 2.6.28.
-
--vlad
-
-
+-- 
+Michal Hocko
+L3 team 
+SUSE LINUX s.r.o.
+Lihovarska 1060/12
+190 00 Praha 9    
+Czech Republic
