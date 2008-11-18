@@ -1,7 +1,7 @@
 From: Michal Hocko <mhocko@suse.cz>
-Date: Tue, 18 Nov 2008 14:10:02 +0000
+Date: Tue, 18 Nov 2008 14:22:23 +0000
 Subject: Re: BUG in sctp crashes the system
-Message-Id: <20081118141002.GC5336@dhcp35.suse.cz>
+Message-Id: <20081118142222.GD5336@dhcp35.suse.cz>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <200811061205.57403.mhocko@suse.cz>
 In-Reply-To: <200811061205.57403.mhocko@suse.cz>
@@ -15,49 +15,7 @@ On Tue 18-11-08 09:04:58, Vlad Yasevich wrote:
 > > On Thu 06-11-08 08:48:45, Vlad Yasevich wrote:
 > >> Michal Hocko wrote:
 > >>> Hi,
-> >>> we are experiencing BUG and hang conditions with simple echo client-server 
-> >>> SCTP application.  It looks like a race condition which is rather hard to 
-> >>> trigger. 
-> >>>
-> >>> BUG traces come usually with sctp code in the code paths (see traces attached) 
-> >>> but sometimes the machine simply hangs without any traces at all. It 
-> >>> obviously depends on the kernel configuration and HW (different machines 
-> >>> comes with different traces).
-> >>>
-> >>> Initial report of this issue was against SLES10SP2 (2.6.16.60) kernel but we 
-> >>> were able to reproduce with upstream Linus tree as well (2.6.
-> >>> {25,26,27,75fa67706cce5272bcfc51ed646f2da21f3bdb6e}).
-> >>> We were able to reproduce _only_ with 2 _directly_ connected machines with 
-> >>> 1GiB wired ethernet connection. (no BUG condition occurred on the single HW 
-> >>> nor with connection through at least one switch or 100MB). Original report 
-> >>> states that it takes from minutes to hours to trigger this issue but it takes 
-> >>> hours in my testing environment.
-> >>>
-> >>> At first we thought that this can be caused by SO_REUSEADDR used by server 
-> >>> application, but I was able to reproduce also without it.
-> >>> We are also not 100% sure that the sctp is culprit here, but almost all traces 
-> >>> contain some sctp paths so it smells suspicious.
-> >>>
-> >>> This may have security implications so I am not attaching the crash 
-> >>> application directly into this email (please write me and I will send it 
-> >>> directly or let me know if it is safe to publish it publicly in the mailing 
-> >>> list).
-> >>>
-> >>> Thanks for any help/hints and let me know if you need some more information or 
-> >>> test some patches.
-> >>>
-> >>> Best regards
-> >>>
-> >> In the earlier kernels there were a few bugs in the accept code paths that
-> >> had to do with locking the newly created socket correctly as well as locking
-> >> the port hash table during the migration of the ports.  Both of those
-> >> contributed to crashes at odd points in time and sometimes even to stack and
-> >> memory corruptions.
-> >>
-> >> I'll take a look at what's causing skb overflow in 2.6.28.
-> > 
-> > Is there any update (patch to test). This is starting to be critical
-> > from our POV. 
+[...]
 > > Do you have any ETA?
 > > Is there some way how to help here?
 > > 
@@ -66,15 +24,14 @@ On Tue 18-11-08 09:04:58, Vlad Yasevich wrote:
 > 
 > Just remember then 2.6.16 is very old and there have been a lot of fixes that
 > address critical issues.
-
-I think that we can focus on current upstream Linus tree, because those
-older version contain many backported sctp fixes.
-
 > 
 > For 2.6.28, can you apply the attached patch and post dmesg output.  Also, if
 > it's possible to capture a kdump, that would make things much easier.
 
-Will try. 
+Does it make sense to enable CONFIG_SCTP_DBG_MSG and CONFIG_SCTP_DBG_OBJCNT?
+We don't set them in our enterprise kernels and I as this seems to be
+race condition I would like to prevent some timing issues. But if it is
+worth trying I can try to turn them on.
 
 > 
 > Thanks
