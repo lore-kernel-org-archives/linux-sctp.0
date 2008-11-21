@@ -1,7 +1,7 @@
-From: Michal Hocko <mhocko@suse.cz>
-Date: Fri, 21 Nov 2008 15:05:23 +0000
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Fri, 21 Nov 2008 15:35:29 +0000
 Subject: Re: BUG in sctp crashes the system
-Message-Id: <20081121150523.GC5339@dhcp35.suse.cz>
+Message-Id: <4926D541.8050508@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <200811061205.57403.mhocko@suse.cz>
 In-Reply-To: <200811061205.57403.mhocko@suse.cz>
@@ -10,89 +10,99 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On Fri 21-11-08 09:28:37, Vlad Yasevich wrote:
-> Michal
+Michal Hocko wrote:
+> On Fri 21-11-08 09:28:37, Vlad Yasevich wrote:
+>> Michal
+>>
+>> This really smells like the corruption of the sctp_packet structure.
+>> The number chunks printout out is 0, but the list appears to have multiple
+>> entries on it.
 > 
-> This really smells like the corruption of the sctp_packet structure.
-> The number chunks printout out is 0, but the list appears to have multiple
-> entries on it.
-
-I am just wondering that it takes such a long time to trigger on my
-system. What can be different (code path?) that corrupts this structure?
-Any idea how to trigger it faster? I have tried to increase the number
-of servers and clients, but that doesn't seem like it made that crash
-faster... 
-
-> 
-> Can you turn on CONFIG_DEBUG_LIST and may be even turn on memory
-> debugging as well.
-> 
-> Thanks
-> -vlad
-> 
-> Michal Hocko wrote:
-> > On Tue 18-11-08 09:04:58, Vlad Yasevich wrote:
-> >> Michal Hocko wrote:
-> >>> On Thu 06-11-08 08:48:45, Vlad Yasevich wrote:
-> > [...]
-> >>>> In the earlier kernels there were a few bugs in the accept code paths that
-> >>>> had to do with locking the newly created socket correctly as well as locking
-> >>>> the port hash table during the migration of the ports.  Both of those
-> >>>> contributed to crashes at odd points in time and sometimes even to stack and
-> >>>> memory corruptions.
-> >>>>
-> >>>> I'll take a look at what's causing skb overflow in 2.6.28.
-> >>> Is there any update (patch to test). This is starting to be critical
-> >>> from our POV. 
-> >>> Do you have any ETA?
-> >>> Is there some way how to help here?
-> >>>
-> >> which version in particular is most critical?
-> >>
-> >> Just remember then 2.6.16 is very old and there have been a lot of fixes that
-> >> address critical issues.
-> >>
-> >> For 2.6.28, can you apply the attached patch and post dmesg output.  Also, if
-> >> it's possible to capture a kdump, that would make things much easier.
-> > 
-> > I have tried the attached patch and led the machine crash with the
-> > 2.6.28-rc5 kernel (4e14e833ac3b97a4aa8803eea49f899adc5bb5f4). Trace as
-> > well as config are attached. Kdump vmcore and oldmem along with vmlinux
-> > and System.map can be found at:
-> > 
-> > ftp.novell.com/outgoing/vmcore.2.6.28-rc5-sctp.gz
-> > ftp.novell.com/outgoing/oldmem.2.6.28-rc5-sctp.gz
-> > ftp.novell.com/outgoing/vmlinux-2.6.28-rc5-sctp.gz
-> > ftp.novell.com/outgoing/System.map-2.6.28-rc5-sctp.gz
-> > 
-> > md5sums:
-> > d43a09b384c6b45ffd0615fd2f3e63e7  vmcore.2.6.28-rc5-sctp
-> > f0e327c1b58c84f0ed7006fc5b881bd8  oldmem.2.6.28-rc5-sctp
-> > 70f86806415a266dccb13dae835b8d0e  vmlinux-2.6.28-rc5-sctp
-> > 41bb6d07ec960557f8243eb98b244c9b  System.map-2.6.28-rc5-sctp
-> > 
-> > Unfortunately, I don't have timing information in the captured trace
-> > (logs don't contain anything), so it is not clear how much time elapsed
-> > between debug output added by the patch and the crash itself.
-> > 
-> > "sky2 lan: rx error, status 0x1160002 length 278" was logged at Nov 18
-> > 16:59:25 (around hour after test has started) while the crash has
-> > occured around Nov 19 1:30 
-> > /var/log/messages:
-> > [...]
-> > Nov 19 00:31:05 dhcp35 -- MARK --
-> > Nov 19 00:51:05 dhcp35 -- MARK --
-> > Nov 19 01:11:05 dhcp35 -- MARK --
-> > Nov 19 01:31:05 dhcp35 -- MARK --
-> > Nov 19 09:37:15 dhcp35 syslogd 1.5.0#5: restart.
-> > 
-> > 
+> I am just wondering that it takes such a long time to trigger on my
+> system. What can be different (code path?) that corrupts this structure?
+> Any idea how to trigger it faster? I have tried to increase the number
+> of servers and clients, but that doesn't seem like it made that crash
+> faster... 
 > 
 
--- 
-Michal Hocko
-L3 team 
-SUSE LINUX s.r.o.
-Lihovarska 1060/12
-190 00 Praha 9    
-Czech Republic
+If I knew that, this this would be solved already... :)
+
+Everything funnels through a single function that adds a chunk to the
+list in the packet.  Minor issue that I saw was that when adding
+a DATA chunk, it possible for additional to fail and at the same
+time set some bits in the packet structure.  That shouldn't be fatal
+however.
+
+What's interesting is that it looks like the packet size correctly
+corresponds to the skb size, but there appears to be additional
+chunks on the list that were not accounted.  Its as if someone
+added the chunk directly, but I haven't found anyone that does that.  The only
+thing that could mean is a memory corruption.  Hopefully the additional
+debugging can show that.
+
+-vlad
+
+>> Can you turn on CONFIG_DEBUG_LIST and may be even turn on memory
+>> debugging as well.
+>>
+>> Thanks
+>> -vlad
+>>
+>> Michal Hocko wrote:
+>>> On Tue 18-11-08 09:04:58, Vlad Yasevich wrote:
+>>>> Michal Hocko wrote:
+>>>>> On Thu 06-11-08 08:48:45, Vlad Yasevich wrote:
+>>> [...]
+>>>>>> In the earlier kernels there were a few bugs in the accept code paths that
+>>>>>> had to do with locking the newly created socket correctly as well as locking
+>>>>>> the port hash table during the migration of the ports.  Both of those
+>>>>>> contributed to crashes at odd points in time and sometimes even to stack and
+>>>>>> memory corruptions.
+>>>>>>
+>>>>>> I'll take a look at what's causing skb overflow in 2.6.28.
+>>>>> Is there any update (patch to test). This is starting to be critical
+>>>>> from our POV. 
+>>>>> Do you have any ETA?
+>>>>> Is there some way how to help here?
+>>>>>
+>>>> which version in particular is most critical?
+>>>>
+>>>> Just remember then 2.6.16 is very old and there have been a lot of fixes that
+>>>> address critical issues.
+>>>>
+>>>> For 2.6.28, can you apply the attached patch and post dmesg output.  Also, if
+>>>> it's possible to capture a kdump, that would make things much easier.
+>>> I have tried the attached patch and led the machine crash with the
+>>> 2.6.28-rc5 kernel (4e14e833ac3b97a4aa8803eea49f899adc5bb5f4). Trace as
+>>> well as config are attached. Kdump vmcore and oldmem along with vmlinux
+>>> and System.map can be found at:
+>>>
+>>> ftp.novell.com/outgoing/vmcore.2.6.28-rc5-sctp.gz
+>>> ftp.novell.com/outgoing/oldmem.2.6.28-rc5-sctp.gz
+>>> ftp.novell.com/outgoing/vmlinux-2.6.28-rc5-sctp.gz
+>>> ftp.novell.com/outgoing/System.map-2.6.28-rc5-sctp.gz
+>>>
+>>> md5sums:
+>>> d43a09b384c6b45ffd0615fd2f3e63e7  vmcore.2.6.28-rc5-sctp
+>>> f0e327c1b58c84f0ed7006fc5b881bd8  oldmem.2.6.28-rc5-sctp
+>>> 70f86806415a266dccb13dae835b8d0e  vmlinux-2.6.28-rc5-sctp
+>>> 41bb6d07ec960557f8243eb98b244c9b  System.map-2.6.28-rc5-sctp
+>>>
+>>> Unfortunately, I don't have timing information in the captured trace
+>>> (logs don't contain anything), so it is not clear how much time elapsed
+>>> between debug output added by the patch and the crash itself.
+>>>
+>>> "sky2 lan: rx error, status 0x1160002 length 278" was logged at Nov 18
+>>> 16:59:25 (around hour after test has started) while the crash has
+>>> occured around Nov 19 1:30 
+>>> /var/log/messages:
+>>> [...]
+>>> Nov 19 00:31:05 dhcp35 -- MARK --
+>>> Nov 19 00:51:05 dhcp35 -- MARK --
+>>> Nov 19 01:11:05 dhcp35 -- MARK --
+>>> Nov 19 01:31:05 dhcp35 -- MARK --
+>>> Nov 19 09:37:15 dhcp35 syslogd 1.5.0#5: restart.
+>>>
+>>>
+> 
+
