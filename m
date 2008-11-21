@@ -1,7 +1,7 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Fri, 21 Nov 2008 15:35:29 +0000
+Date: Fri, 21 Nov 2008 15:42:23 +0000
 Subject: Re: BUG in sctp crashes the system
-Message-Id: <4926D541.8050508@hp.com>
+Message-Id: <4926D6DF.800@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <200811061205.57403.mhocko@suse.cz>
 In-Reply-To: <200811061205.57403.mhocko@suse.cz>
@@ -25,24 +25,20 @@ Michal Hocko wrote:
 > faster... 
 > 
 
-If I knew that, this this would be solved already... :)
+Michal
 
-Everything funnels through a single function that adds a chunk to the
-list in the packet.  Minor issue that I saw was that when adding
-a DATA chunk, it possible for additional to fail and at the same
-time set some bits in the packet structure.  That shouldn't be fatal
-however.
+Could you make your reproducer available?  I'd like to see if it uses any
+protocol extensions.
 
-What's interesting is that it looks like the packet size correctly
-corresponds to the skb size, but there appears to be additional
-chunks on the list that were not accounted.  Its as if someone
-added the chunk directly, but I haven't found anyone that does that.  The only
-thing that could mean is a memory corruption.  Hopefully the additional
-debugging can show that.
+Also, can you provide the output of "sysctl -a | grep sctp".  Also to check
+if any extensions are enabled.  Just trying to narrow down the what to look for.
 
+Thanks
 -vlad
 
->> Can you turn on CONFIG_DEBUG_LIST and may be even turn on memory
+
+
+Can you turn on CONFIG_DEBUG_LIST and may be even turn on memory
 >> debugging as well.
 >>
 >> Thanks
