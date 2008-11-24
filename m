@@ -1,158 +1,52 @@
-From: Michal Hocko <mhocko@suse.cz>
-Date: Thu, 20 Nov 2008 13:27:45 +0000
-Subject: [RFC] Add /proc/sys/net/sctp/sctp_ecn ECN control
-Message-Id: <20081120132744.GA7132@dhcp35.suse.cz>
-MIME-Version: 1
-Content-Type: multipart/mixed; boundary="EeQfGwPcQSOJBaQU"
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Mon, 24 Nov 2008 05:51:02 +0000
+Subject: sctp: Avoid memory overflow while FWD-TSN chunk is received with
+Message-Id: <492A40C6.5010005@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
+If FWD-TSN chunk is received with bad stream ID, the sctp will not do the
+validity check, this may cause memory overflow when overwrite the TSN of
+the stream ID.
 
---EeQfGwPcQSOJBaQU
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+The FORWARD-TSN chunk is like this:
 
-Hi,
+FORWARD-TSN chunk
+  Type                       = 192
+  Flags                      = 0
+  Length                     = 172
+  NewTSN                     = 99
+  Stream                     = 10000
+  StreamSequence             = 0xFFFF
 
-could you look at the attach patch which adds
-/proc/sys/net/sctp/sctp_ecn interface for explicit control over ECN
-usage?
+This patch fix this problem by skip the stream ID which not less than MIS.
 
-I have close to zero experiences with SCTP so I assume that there are
-many things to fix (I just mimicked tcp_ecn implementation), however I
-thought that your ideas can help me to speed up with this to be
-implemented. See the patch attached (based on top of current Linus git
-7f0f598a0069d1ab072375965a4b69137233169c).
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ net/sctp/ulpqueue.c |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
 
-Just for background. We have customers who do have problems with routes
-throwing out their packets because of ECT bits set and they need some
-control over it (like for TCP protocol).
-
-What do you think about the idea? What do you think about upstream
-merging of this feature?
-
-Thanks for any hints/comments
-
-Best regards
+diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
+index 7b23803..dacdc3b 100644
+--- a/net/sctp/ulpqueue.c
++++ b/net/sctp/ulpqueue.c
+@@ -940,7 +940,10 @@ void sctp_ulpq_skip(struct sctp_ulpq *ulpq, __u16 sid, __u16 ssn)
+ {
+ 	struct sctp_stream *in;
+ 
+-	/* Note: The stream ID must be verified before this routine.  */
++	/* Skip the stream ID which larger than MIS */
++	if (sid >= ulpq->asoc->c.sinit_max_instreams)
++		return;
++
+ 	in  = &ulpq->asoc->ssnmap->in;
+ 
+ 	/* Is this an old SSN?  If so ignore. */
 -- 
-Michal Hocko
-L3 team 
-SUSE LINUX s.r.o.
-Lihovarska 1060/12
-190 00 Praha 9    
-Czech Republic
+1.6.0.2.530.g67faa
 
---EeQfGwPcQSOJBaQU
-Content-Type: text/x-diff; charset=us-ascii
-Content-Disposition: attachment; filename="sctp_ecn.patch"
 
-commit 70525bca4ec7c86c7560405005f93ff89f642af6
-Author: Michal Hocko <mhocko@suse.cz>
-Date:   Thu Nov 20 14:03:27 2008 +0100
 
-    [RFC] add /proc/sys/net/sctp/sctp_ecn
-    
-    Current sctp ECN implementation doesn't contain any way how to
-    explicitly disable this flag for ECN capable devices. This makes sense
-    when "dumb" routers are in the path which could drop all packets with
-    this flag set.
-    
-    This implementation is motivated by sysctl_tcp_ecn and it basically
-    exports sysctl_sctp_ecn (set to 1 by default) symbol and enables sysctl
-    and /proc/sys/sctp interface for its value manipulation.
-    
-    sctp_v4_ecn_capable and sctp_v6_ecn_capable then use this value to
-    determine whether enable standard path or not.
-    
-    Signed-off-by: Michal Hocko <mhocko@suse.cz>
-
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index ed71b11..0dd762a 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -187,6 +187,8 @@ void sctp_remaddr_proc_exit(void);
-  * Module global variables
-  */
- 
-+extern int sysctl_sctp_ecn;
-+
-  /*
-   * sctp/protocol.c
-   */
-diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-index 4124bbb..d621a52 100644
---- a/net/sctp/ipv6.c
-+++ b/net/sctp/ipv6.c
-@@ -732,7 +732,8 @@ static void sctp_v6_seq_dump_addr(struct seq_file *seq, union sctp_addr *addr)
- 
- static void sctp_v6_ecn_capable(struct sock *sk)
- {
--	inet6_sk(sk)->tclass |= INET_ECN_ECT_0;
-+	if (sysctl_sctp_ecn)
-+		inet6_sk(sk)->tclass |= INET_ECN_ECT_0;
- }
- 
- /* Initialize a PF_INET6 socket msg_name. */
-diff --git a/net/sctp/output.c b/net/sctp/output.c
-index c3f417f..740d171 100644
---- a/net/sctp/output.c
-+++ b/net/sctp/output.c
-@@ -547,7 +547,8 @@ int sctp_packet_transmit(struct sctp_packet *packet)
- 	 *   data sender to indicate that the end-points of the
- 	 *   transport protocol are ECN-capable."
- 	 *
--	 * Now setting the ECT bit all the time, as it should not cause
-+	 * Now setting the ECT bit all the time (except when forbidden
-+	 * explicitly by sysctl_sctp_ecn), as it should not cause
- 	 * any problems protocol-wise even if our peer ignores it.
- 	 *
- 	 * Note: The works for IPv6 layer checks this bit too later
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index 0b65354..5a1a7ce 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -651,7 +651,8 @@ static void sctp_v4_seq_dump_addr(struct seq_file *seq, union sctp_addr *addr)
- 
- static void sctp_v4_ecn_capable(struct sock *sk)
- {
--	INET_ECN_xmit(sk);
-+	if (sysctl_sctp_ecn)
-+		INET_ECN_xmit(sk);
- }
- 
- /* Event handler for inet address addition/deletion events.
-diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
-index 5291069..e76f423 100644
---- a/net/sctp/sysctl.c
-+++ b/net/sctp/sysctl.c
-@@ -55,6 +55,7 @@ static long sack_timer_max = 500;
- extern int sysctl_sctp_mem[3];
- extern int sysctl_sctp_rmem[3];
- extern int sysctl_sctp_wmem[3];
-+int sysctl_sctp_ecn=1;
- 
- static ctl_table sctp_table[] = {
- 	{
-@@ -272,6 +273,14 @@ static ctl_table sctp_table[] = {
- 		.proc_handler	= &proc_dointvec,
- 		.strategy	= &sysctl_intvec
- 	},
-+	{
-+		.ctl_name	= CTL_UNNUMBERED,
-+		.procname	= "sctp_ecn",
-+		.data		= &sysctl_sctp_ecn,
-+		.maxlen		= sizeof(int),
-+		.mode		= 0644,
-+		.proc_handler	= &proc_dointvec
-+	},
- 	{ .ctl_name = 0 }
- };
- 
-@@ -294,3 +303,5 @@ void sctp_sysctl_unregister(void)
- {
- 	unregister_sysctl_table(sctp_sysctl_header);
- }
-+
-+EXPORT_SYMBOL(sysctl_sctp_ecn);
-
---EeQfGwPcQSOJBaQU--
