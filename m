@@ -1,93 +1,81 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Mon, 24 Nov 2008 04:54:36 +0000
-Subject: sctp: Implement socket option SCTP_GET_ASSOC_NUMBER
-Message-Id: <492A338C.6060000@cn.fujitsu.com>
+Date: Thu, 27 Nov 2008 02:31:30 +0000
+Subject: [PATCHv2] sctp: Avoid memory overflow while FWD-TSN chunk is received
+Message-Id: <492E0682.3050807@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Implement socket option SCTP_GET_ASSOC_NUMBER of the latest ietf socket
-extensions API draft.
+If FWD-TSN chunk is received with bad stream ID, the sctp will not do the
+validity check, this may cause memory overflow when overwrite the TSN of
+the stream ID.
 
-  8.2.5.  Get the Current Number of Associations (SCTP_GET_ASSOC_NUMBER)
+The FORWARD-TSN chunk is like this:
 
-   This option gets the current number of associations that are attached
-   to a one-to-many style socket.  The option value is an uint32_t.
+FORWARD-TSN chunk
+  Type                       = 192
+  Flags                      = 0
+  Length                     = 172
+  NewTSN                     = 99
+  Stream                     = 10000
+  StreamSequence             = 0xFFFF
+
+This patch fix this problem by discard the chunk if stream ID is not
+less than MIS.
 
 Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 ---
- include/net/sctp/user.h |    2 ++
- net/sctp/socket.c       |   35 +++++++++++++++++++++++++++++++++++
- 2 files changed, 37 insertions(+), 0 deletions(-)
+ net/sctp/sm_statefuns.c |   14 ++++++++++++++
+ 1 files changed, 14 insertions(+), 0 deletions(-)
 
-diff --git a/include/net/sctp/user.h b/include/net/sctp/user.h
-index f205b10..b259fc5 100644
---- a/include/net/sctp/user.h
-+++ b/include/net/sctp/user.h
-@@ -118,6 +118,8 @@ enum sctp_optname {
- #define SCTP_PEER_AUTH_CHUNKS SCTP_PEER_AUTH_CHUNKS
- 	SCTP_LOCAL_AUTH_CHUNKS,		/* Read only */
- #define SCTP_LOCAL_AUTH_CHUNKS SCTP_LOCAL_AUTH_CHUNKS
-+	SCTP_GET_ASSOC_NUMBER,		/* Read only */
-+#define SCTP_GET_ASSOC_NUMBER SCTP_GET_ASSOC_NUMBER
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index a6a0ea7..679fcde 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -3691,6 +3691,7 @@ sctp_disposition_t sctp_sf_eat_fwd_tsn(const struct sctp_endpoint *ep,
+ {
+ 	struct sctp_chunk *chunk = arg;
+ 	struct sctp_fwdtsn_hdr *fwdtsn_hdr;
++	struct sctp_fwdtsn_skip *skip;
+ 	__u16 len;
+ 	__u32 tsn;
  
+@@ -3720,6 +3721,12 @@ sctp_disposition_t sctp_sf_eat_fwd_tsn(const struct sctp_endpoint *ep,
+ 	if (sctp_tsnmap_check(&asoc->peer.tsn_map, tsn) < 0)
+ 		goto discard_noforce;
  
- 	/* Internal Socket Options. Some of the sctp library functions are 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 8d0dacc..3a71475 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -5449,6 +5449,38 @@ num:
- 	return 0;
- }
- 
-+/*
-+ * 8.2.5.  Get the Current Number of Associations (SCTP_GET_ASSOC_NUMBER)
-+ * This option gets the current number of associations that are attached
-+ * to a one-to-many style socket.  The option value is an uint32_t.
-+ */
-+static int sctp_getsockopt_assoc_number(struct sock *sk, int len,
-+				    char __user *optval, int __user *optlen)
-+{
-+	struct sctp_sock *sp = sctp_sk(sk);
-+	struct sctp_association *asoc;
-+	u32 val = 0;
-+
-+	if (sctp_style(sk, TCP))
-+		return -EOPNOTSUPP;
-+
-+	if (len < sizeof(u32))
-+		return -EINVAL;
-+
-+	len = sizeof(u32);
-+
-+	list_for_each_entry(asoc, &(sp->ep->asocs), asocs) {
-+		val++;
++	/* Silently discard the chunk if stream-id is not valid */
++	sctp_walk_fwdtsn(skip, chunk) {
++		if (ntohs(skip->stream) >= asoc->c.sinit_max_instreams)
++			goto discard_noforce;
 +	}
 +
-+	if (put_user(len, optlen))
-+		return -EFAULT;
-+	if (copy_to_user(optval, &val, len))
-+		return -EFAULT;
-+
-+	return 0;
-+}
-+
- SCTP_STATIC int sctp_getsockopt(struct sock *sk, int level, int optname,
- 				char __user *optval, int __user *optlen)
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_REPORT_FWDTSN, SCTP_U32(tsn));
+ 	if (len > sizeof(struct sctp_fwdtsn_hdr))
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_PROCESS_FWDTSN,
+@@ -3751,6 +3758,7 @@ sctp_disposition_t sctp_sf_eat_fwd_tsn_fast(
  {
-@@ -5591,6 +5623,9 @@ SCTP_STATIC int sctp_getsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_getsockopt_local_auth_chunks(sk, len, optval,
- 							optlen);
- 		break;
-+	case SCTP_GET_ASSOC_NUMBER:
-+		retval = sctp_getsockopt_assoc_number(sk, len, optval, optlen);
-+		break;
- 	default:
- 		retval = -ENOPROTOOPT;
- 		break;
+ 	struct sctp_chunk *chunk = arg;
+ 	struct sctp_fwdtsn_hdr *fwdtsn_hdr;
++	struct sctp_fwdtsn_skip *skip;
+ 	__u16 len;
+ 	__u32 tsn;
+ 
+@@ -3780,6 +3788,12 @@ sctp_disposition_t sctp_sf_eat_fwd_tsn_fast(
+ 	if (sctp_tsnmap_check(&asoc->peer.tsn_map, tsn) < 0)
+ 		goto gen_shutdown;
+ 
++	/* Silently discard the chunk if stream-id is not valid */
++	sctp_walk_fwdtsn(skip, chunk) {
++		if (ntohs(skip->stream) >= asoc->c.sinit_max_instreams)
++			goto gen_shutdown;
++	}
++
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_REPORT_FWDTSN, SCTP_U32(tsn));
+ 	if (len > sizeof(struct sctp_fwdtsn_hdr))
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_PROCESS_FWDTSN,
 -- 
 1.6.0.2.530.g67faa
 
