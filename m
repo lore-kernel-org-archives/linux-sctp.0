@@ -1,48 +1,67 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Mon, 24 Nov 2008 04:00:22 +0000
-Subject: sctp: Fix a typo in socket.c
-Message-Id: <492A26D6.8010602@cn.fujitsu.com>
+Date: Thu, 27 Nov 2008 02:33:28 +0000
+Subject: [PATCH] sctp: Add validity check for SCTP_PARTIAL_DELIVERY_POINT
+Message-Id: <492E06F8.2030108@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Just fix a typo in socket.c.
+The latest ietf socket extensions API draft said:
+
+  8.1.21.  Set or Get the SCTP Partial Delivery Point
+
+    Note also that the call will fail if the user attempts to set
+    this value larger than the socket receive buffer size.
+
+This patch add this validity check for SCTP_PARTIAL_DELIVERY_POINT
+socket option.
 
 Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 ---
- net/sctp/socket.c |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
+ net/sctp/socket.c |   16 +++++++++++++---
+ 1 files changed, 13 insertions(+), 3 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index b3d0360..8d0dacc 100644
+index 3a71475..336e9af 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -2404,9 +2404,9 @@ static int sctp_setsockopt_delayed_ack(struct sock *sk,
- 		if (params.sack_delay = 0 && params.sack_freq = 0)
- 			return 0;
- 	} else if (optlen = sizeof(struct sctp_assoc_value)) {
--		printk(KERN_WARNING "SCTP: Use of struct sctp_sack_info "
-+		printk(KERN_WARNING "SCTP: Use of struct sctp_assoc_value "
- 		       "in delayed_ack socket option deprecated\n");
--		printk(KERN_WARNING "SCTP: struct sctp_sack_info instead\n");
-+		printk(KERN_WARNING "SCTP: Use struct sctp_sack_info instead\n");
- 		if (copy_from_user(&params, optval, optlen))
- 			return -EFAULT;
+@@ -3010,14 +3010,21 @@ static int sctp_setsockopt_fragment_interleave(struct sock *sk,
+ }
  
-@@ -4213,9 +4213,9 @@ static int sctp_getsockopt_delayed_ack(struct sock *sk, int len,
- 		if (copy_from_user(&params, optval, len))
- 			return -EFAULT;
- 	} else if (len = sizeof(struct sctp_assoc_value)) {
--		printk(KERN_WARNING "SCTP: Use of struct sctp_sack_info "
-+		printk(KERN_WARNING "SCTP: Use of struct sctp_assoc_value "
- 		       "in delayed_ack socket option deprecated\n");
--		printk(KERN_WARNING "SCTP: struct sctp_sack_info instead\n");
-+		printk(KERN_WARNING "SCTP: Use struct sctp_sack_info instead\n");
- 		if (copy_from_user(&params, optval, len))
- 			return -EFAULT;
- 	} else
+ /*
+- * 7.1.25.  Set or Get the sctp partial delivery point
++ * 8.1.21.  Set or Get the SCTP Partial Delivery Point
+  *       (SCTP_PARTIAL_DELIVERY_POINT)
++ *
+  * This option will set or get the SCTP partial delivery point.  This
+  * point is the size of a message where the partial delivery API will be
+  * invoked to help free up rwnd space for the peer.  Setting this to a
+- * lower value will cause partial delivery's to happen more often.  The
++ * lower value will cause partial deliveries to happen more often.  The
+  * calls argument is an integer that sets or gets the partial delivery
+- * point.
++ * point.  Note also that the call will fail if the user attempts to set
++ * this value larger than the socket receive buffer size.
++ *
++ * Note that any single message having a length smaller than or equal to
++ * the SCTP partial delivery point will be delivered in one single read
++ * call as long as the user provided buffer is large enough to hold the
++ * message.
+  */
+ static int sctp_setsockopt_partial_delivery_point(struct sock *sk,
+ 						  char __user *optval,
+@@ -3030,6 +3037,9 @@ static int sctp_setsockopt_partial_delivery_point(struct sock *sk,
+ 	if (get_user(val, (int __user *)optval))
+ 		return -EFAULT;
+ 
++	if (val > sk->sk_rcvbuf)
++		return -EINVAL;
++
+ 	sctp_sk(sk)->pd_point = val;
+ 
+ 	return 0; /* is this the right error code? */
 -- 
 1.6.0.2.530.g67faa
 
