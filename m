@@ -1,7 +1,7 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Mon, 15 Dec 2008 01:12:00 +0000
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Mon, 15 Dec 2008 16:05:34 +0000
 Subject: Re: [RFC] Add /proc/sys/net/sctp/sctp_ecn ECN control
-Message-Id: <4945AEE0.4000104@cn.fujitsu.com>
+Message-Id: <4946804E.4000907@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20081212125828.GE10284@dhcp35.suse.cz>
 In-Reply-To: <20081212125828.GE10284@dhcp35.suse.cz>
@@ -9,41 +9,41 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Michal Hocko <mhocko@suse.cz>
-Cc: linux-sctp@vger.kernel.org, vladislav.yasevich@hp.com, sri@us.ibm.com, LKML <linux-kernel@vger.kernel.org>, netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, sri@us.ibm.com, LKML <linux-kernel@vger.kernel.org>, netdev@vger.kernel.org
 
-Hi Michal Hocko:
+Michal Hocko wrote:
 > [Resending again with lkml and netdev in CC for broader audience]
->
+> 
 > Hi,
->
+> 
 > could you have look at the patch bellow which adds
 > /proc/sys/net/sctp/sctp_ecn interface for explicit control over ECN
 > usage?
->
+> 
 > I have close to zero experiences with the SCTP so I assume that there
 > are some things to fix (I just mimicked tcp_ecn implementation), however
 > I thought that your ideas can help me to speed up with this to be
 > implemented. 
->
+> 
 > The patch is based on top of Linus git
 > 7f0f598a0069d1ab072375965a4b69137233169c).
->
+> 
 > Just for background. We have customers who do have problems with routes
 > throwing out their packets because of ECT bits set and they need some
 > control over it (like for TCP protocol).
->
+> 
 > What do you think about the idea? What do you think about upstream
 > merging of this feature?
->
+> 
 > Thanks for any hints/comments
->
+> 
 > Best regards
->
+> 
 > ---
 > commit 70525bca4ec7c86c7560405005f93ff89f642af6
 > Author: Michal Hocko <mhocko@suse.cz>
 > Date:   Thu Nov 20 14:03:27 2008 +0100
->
+> 
 >     [RFC] add /proc/sys/net/sctp/sctp_ecn
 >     
 >     Current sctp ECN implementation doesn't contain any way how to
@@ -59,14 +59,7 @@ Hi Michal Hocko:
 >     determine whether enable standard path or not.
 >     
 >     Signed-off-by: Michal Hocko <mhocko@suse.cz>
->   
-
-If you disabled the ECN capable, I think you should disable to send ECN
-capable paramater in INIT/INIT-ACK.
-
-And also we will ignore the ECN mark in recv DATA chunk. The send/recv of
-ECN-ECHO and ECN-CWR need to disabled too.
-
+> 
 > diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
 > index ed71b11..0dd762a 100644
 > --- a/include/net/sctp/sctp.h
@@ -76,11 +69,10 @@ ECN-ECHO and ECN-CWR need to disabled too.
 >   */
 >  
 > +extern int sysctl_sctp_ecn;
->   
-
-This should defined in include/net/sctp/structs.h like other var do.
-
 > +
+
+The convention for this is to add an item to sctp_globals structure.
+
 >   /*
 >    * sctp/protocol.c
 >    */
@@ -159,6 +151,14 @@ This should defined in include/net/sctp/structs.h like other var do.
 >  }
 > +
 > +EXPORT_SYMBOL(sysctl_sctp_ecn);
->
->   
+> 
+
+If you are going to make ECN support configurable, then this is not really enough.
+
+You need to make sure that ECN capability is only turned on when you enable this feature.
+You also need to take into account of what happens when one peer has it turned on while
+the other does not.
+
+-vlad
+
 
