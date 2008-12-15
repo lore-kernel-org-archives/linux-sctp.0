@@ -1,211 +1,374 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Mon, 15 Dec 2008 17:41:04 +0000
+Date: Mon, 15 Dec 2008 17:42:01 +0000
 Subject: Re: BUG in sctp crashes sles10sp2 kernel
-Message-Id: <494696B0.2020707@hp.com>
+Message-Id: <494696E9.7040200@hp.com>
+MIME-Version: 1
+Content-Type: multipart/mixed; boundary="------------030303070308040503050601"
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20081211145209.GB5236@dhcp35.suse.cz>
 In-Reply-To: <20081211145209.GB5236@dhcp35.suse.cz>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Karsten Keil wrote:
-> On Mon, Dec 15, 2008 at 10:38:56AM -0500, Vlad Yasevich wrote:
->> Karsten Keil wrote:
->>> Hi Vlad,
->>>
->>> On Thu, Dec 11, 2008 at 10:28:35AM -0500, Vlad Yasevich wrote:
->>>> Michal Hocko wrote:
->>>>> Hi Vlad,
->>>>>
->>>>> I am starting this new thread because I am starting to believe that
->>>>> sles10sp2 kernel (based on 2.6.16 upstream kernel) experiences different
->>>>> issue than we can see in the upstream kernel (see bellow).
->>>>>
->>>>> Karsten (CCing him) has found out following:
->>>>> "
->>>>> OK I think the
->>>>> KERNEL: assertion (!atomic_read(&sk->sk_wmem_alloc)) failed at
->>>>> net/ipv4/af_inet.c (149)
->>>>>
->>>>> is related to the main problem here, it says that on the time a socket
->>>>> get destroyed here is still some wmem allocated. This mean here is still
->>>>> a transmit skb on the fly. Since sctp use skb destructors to do the
->>>>> memory accounting, this also means that after destroying the socket, the
->>>>> destructor of this skb will access the already freed socket struct,
->>>>> which will let in some cases (if the memory is in use again and the
->>>>> pointers are already overwritten) cause the crash with on
->>>>> {sock_wfree+48} (which is a call to sk->sk_write_space(sk);).  Of course
->>>>> it can crash in every other place, since the accounting may overwrite
->>>>> pointers in any other struct, which reuse this memory.
->>>>>
->>>>> I instrument some routines with extra debug (eg. inet_sock_destruct) too
->>>>> see the amount of memory in sk->sk_wmem_alloc, it allmost show 
->>>>>
->>>>> Dec 11 12:31:16 gw kernel: inet_sock_destruct:
->>>>> sk(ffff810116960e00)->sk_wmem_alloc 496
->>>>> Dec 11 12:31:17 gw kernel: inet_sock_destruct:
->>>>> sk(ffff8101144f1b00)->sk_wmem_alloc 496
->>>>> Dec 11 12:31:18 gw kernel: inet_sock_destruct:
->>>>> sk(ffff8101144f1b00)->sk_wmem_alloc -496
->>>>> Dec 11 12:31:20 gw kernel: inet_sock_destruct:
->>>>> sk(ffff81011d461a00)->sk_wmem_alloc 496
->>>>> Dec 11 12:31:21 gw kernel: inet_sock_destruct:
->>>>> sk(ffff81011d460080)->sk_wmem_alloc 496
->>>>>
->>>>> Note the -496, I think this is a case in which the same memory was again
->>>>> allocated by a socket struct, so the memory still has valid pointers and
->>>>> so on the destructor call for the old socket it did decrement the memory
->>>>> on the new socket.
->>>>>
->>>>> Do you agree with this analysis ?
->>>>> "
->>>>>
->>>>> I am trying to go through git logs but maybe you remember some fix in
->>>>> this area.
->>>>>
->>>>> If I understand correctly, then 20c2df83d25c6a95affe6157a4c9cac4cf5ffaac
->>>>> removes destructors from sctp completely, so the previous should not
->>>>> happen in upstream, shouldn't it?
->>>>>
->>>> Here are a few commits that you need to check on:
->>>>
->>>> 61c9fed41638249f8b6ca5345064eb1beb50179f
->>>> [SCTP]: A better solution to fix therace between sctp_peeloff() and sctp_rcv().
->>>>
->>>> cfdeef3282705a4b872d3559c4e7d2561251363c
->>>> [SCTP]: Unhash the endpoint in sctp_endpoint_free().
->>>>
->>>> f26f7c480555812ca7c4037e0a50fa54afe2cb4a
->>>> [SCTP]: Add bind hash locking to the migrate code
->>>>
->>>>
->>>> All of the above commits address races in the SCTP code and are not in the base
->>>> 2.6.16 kernel.
->>>>
->>> Thanks for your input.
->>>
->>> 61c9fed41638249f8b6ca5345064eb1beb50179f
->>> [SCTP]: A better solution to fix therace between sctp_peeloff() and sctp_rcv().
->>>
->>> seems to fix this issue, I applied also the other patches.
->>>
->>> Now I do not get any longer the "KERNEL: assertion
->>> (!atomic_read(&sk->sk_wmem_alloc)) failed ..." messages.
->>>
->>> But now I run into the skb_overflow BUG.
->>> With some extra debug (based on your debug patch) I see:
->>>
->>> Possible SKB overflow: packet size = 76, packet overhead = 32, packet chunk = 1/4, chunk len 40 packet padding 0 nskb len 12 mtu = 1500
->>>
->>> packet chunk = 1/4 read as first chunk of total 4 chunks cause the overflow.
->> OK.  It appears that the list of chunk on the packets is not cleaned up
->> correctly.  It could also be that in my prior debug patches I didn't reset
->> the number of chunks properly.
-> 
-> No I think that the debug patch is correct.
-> I already tried some things, so log "the history" of adding chunks in the
-> packet struct, but it does not really help me, but maybe you see something:
-> 
-> Possible SKB overflow: packet size = 1072, packet overhead = 32, packet chunk = 2/4, chunk len 40 packet padding 0 nskb len 1052 mtu = 1500
-> 
-> 
-> chunk[1]: ps(36) ss(4) cs(4) ct(11)
-> chunk[2]: ps(48) ss(16) cs(16) ct(3)
-> chunk[3]: ps(1088) ss(1040) cs(1040) ct(0)
-> chunk[4]: ps(1072) ss(1040) cs(1040) ct(0)
-> skb_over_panic: text:ffffffff8824af48 len:2092 put:1040
-> head:ffff81006b8b8000 data:ffff81006b8b8074 tail:ffff81006b8b88a0
-> end:ffff81006b8b8500 dev:<NULL>
-> 
-> ps packet size after adding this chunk
-> ss chunk->skb->len
-> cs chunk_len
-> ct chunk type
-> 
-> I attach the patch at the end, so you see what I did.
-> 
-> All traces (with our 2.6.16) are similar to this one (which happend after
-> the above printout).
-> 
-> CPU 0
-> Modules linked in: sctp cpufreq_ondemand cpufreq_userspace cpufreq_powersave
-> powernow_k8 freq_table ipv6 af_packet button battery ac apparmor loop dm_mod
-> floppy r8169 parport_pc
-> Pid: 0, comm: swapper Tainted: G     U 2.6.16.60-0.33-smp #13
-> RIP: 0010:[<ffffffff8028667e>] <ffffffff8028667e>{skb_over_panic+77}
-> RSP: 0018:ffffffff8042fb68  EFLAGS: 00010296
-> RAX: 000000000000009d RBX: 0000000000000410 RCX: 00000000000046b2
-> RDX: ffff81006b8b8490 RSI: 0000000000000296 RDI: ffffffff8035a99c
-> RBP: ffff81010845e480 R08: 0000000000000000 R09: 0000000000000010
-> R10: 0000000000000000 R11: 0000000000000000 R12: ffff81006bd87bc0
-> R13: ffff81006b8b8490 R14: ffff810069b3ad50 R15: ffff810069b3ac00
-> FS:  00002aba700166e0(0000) GS:ffffffff803d4000(0000) knlGS:0000000000000000
-> CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
-> CR2: 00002ae33210c000 CR3: 0000000117424000 CR4: 00000000000006e0
-> Process swapper (pid: 0, threadinfo ffffffff803ee000, task ffffffff80354320)
-> Stack: ffff81006b8b88a0 ffff81006b8b8500 ffffffff803197b7 000000000000041c
->        00000000000005dc ffffffff8824af52 0000000000000286 ffff810069b3ad58
->        ffff810117a4f000 ffff810108042000
-> Call Trace: <IRQ> <ffffffff8824af52>{:sctp:sctp_packet_transmit+962}
->        <ffffffff882437c7>{:sctp:sctp_outq_flush+1507}
-> <ffffffff8013d450>{do_timer+61}
->        <ffffffff8010f5f6>{main_timer_handler+641}
-> <ffffffff801198b4>{smp_send_timer_broadcast_ipi+107}
->        <ffffffff88243ab3>{:sctp:sctp_retransmit+116}
-> <ffffffff8010b35e>{ret_from_intr+0}
->        <ffffffff8823baf1>{:sctp:sctp_do_sm+1503}
-> <ffffffff8014a88a>{ktime_get+14}
->        <ffffffff8823c4c7>{:sctp:sctp_generate_t3_rtx_event+0}
->        <ffffffff8823c53c>{:sctp:sctp_generate_t3_rtx_event+117}
->        <ffffffff8013db23>{run_timer_softirq+352}
-> <ffffffff80139774>{__do_softirq+85}
->        <ffffffff8010c222>{call_softirq+30} <ffffffff8010d1a4>{do_softirq+44}
->        <ffffffff80109d41>{default_idle+0}
-> <ffffffff8010bb7c>{apic_timer_interrupt+132} <EOI>
->        <ffffffff80109d41>{default_idle+0}
-> <ffffffff80109d7d>{default_idle+60}
->        <ffffffff80109e57>{cpu_idle+160} <ffffffff803f0832>{start_kernel+626}
->        <ffffffff803f02a2>{_sinittext+674}
-> 
-> 
-> 
->> Since this is the same bug that I am trying to diagnose in 2.6.27+, it now
->> boils down to the same problem.  Either the packet is not cleaned up
->> correctly, or there is a race wrt packet chunk list.
->>
-> 
-> Unfortunately I could not reproduce it with 2.6.27 here (I did run the test
-> overnight, > 12 hour), with our 2.6.16 it triggers on my machine (Dual core
-> AMD 64) in 5 -10 minutes. I also tried 2.6.25, here I could see a similar
-> Oops after 3 hour.
-> 
-> I had the idea, that maybe the corruption comes from concurent access
-> to a chunk list, so I did instrument all list operation on the
-> chunklist with special debug spinlocks (use try_lock and print a message
-> if failed), the message was never printed, but it crashed with the same
-> trace, so I think we can rule out this (I used seperate locks for
-> each list_head).
-> 
+This is a multi-part message in MIME format.
+--------------030303070308040503050601
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 
-I've tried that as well with the same results.  However, what really got to me
-was that when added
-
-BUG_ON(!list_empty(&packet->chunk_list));
-
-after the loop that took all the chunks from the list, I tripped over this
-BUG.
-
-The way the code is structured, at the end of sctp_packet_transmit() the
-packet must be empty, i.e. the chunk_list must be empty and the number
-of chunks must be 0.
-
-See if you can play around with that.
-
-FYI, I am currently running with the following patch on top of 2.6.28-rc6.
-It is a cumulative of a few bugs I found and debugging for the chunk_list
-corruption.  The BUG is currently commented out since I wanted to see how
-it runs without it.
+Oh, forgot the actuall patch. ;)
 
 -vlad
+
+--------------030303070308040503050601
+Content-Type: text/x-patch;
+ name="testing.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="testing.patch"
+
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 9661d7b..4ba2210 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -790,6 +790,7 @@ struct sctp_packet {
+ 	__u32 vtag;
+ 
+ 	/* This contains the payload chunks.  */
++	spinlock_t	lock;
+ 	struct list_head chunk_list;
+ 
+ 	/* This is the overhead of the sctp and ip headers. */
+@@ -797,6 +798,7 @@ struct sctp_packet {
+ 	/* This is the total size of all chunks INCLUDING padding.  */
+ 	size_t size;
+ 
++	size_t num_chunks;
+ 	/* The packet is destined for this transport address.
+ 	 * The function we finally use to pass down to the next lower
+ 	 * layer lives in the transport structure.
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index c3f417f..529281f 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -79,12 +79,6 @@ struct sctp_packet *sctp_packet_config(struct sctp_packet *packet,
+ 			  packet, vtag);
+ 
+ 	packet->vtag = vtag;
+-	packet->has_cookie_echo = 0;
+-	packet->has_sack = 0;
+-	packet->has_auth = 0;
+-	packet->has_data = 0;
+-	packet->ipfragok = 0;
+-	packet->auth = NULL;
+ 
+ 	if (ecn_capable && sctp_packet_empty(packet)) {
+ 		chunk = sctp_get_ecne_prepend(packet->transport->asoc);
+@@ -113,7 +107,9 @@ struct sctp_packet *sctp_packet_init(struct sctp_packet *packet,
+ 	packet->transport = transport;
+ 	packet->source_port = sport;
+ 	packet->destination_port = dport;
++	spin_lock_init(&packet->lock);
+ 	INIT_LIST_HEAD(&packet->chunk_list);
++	packet->num_chunks = 0;
+ 	if (asoc) {
+ 		struct sctp_sock *sp = sctp_sk(asoc->base.sk);
+ 		overhead = sp->pf->af->net_header_len;
+@@ -134,6 +130,43 @@ struct sctp_packet *sctp_packet_init(struct sctp_packet *packet,
+ 	return packet;
+ }
+ 
++static void sctp_packet_reset(struct sctp_packet *packet)
++{
++	struct sctp_chunk *chunk, *tmp;
++
++	SCTP_DEBUG_PRINTK("%s: packet:%p vtag:0x%x\n", __func__,
++			  packet, vtag);
++
++	packet->has_cookie_echo = 0;
++	packet->has_sack = 0;
++	packet->has_auth = 0;
++	packet->has_data = 0;
++	packet->ipfragok = 0;
++	packet->auth = NULL;
++	packet->size = packet->overhead;
++/*
++	spin_lock_bh(&packet->lock);
++*/
++	list_for_each_entry_safe(chunk, tmp, &packet->chunk_list, list) {
++		list_del_init(&chunk->list);
++		packet->num_chunks--;
++		if (!sctp_chunk_is_data(chunk))
++			sctp_chunk_free(chunk);
++	}
++/*
++	if (packet->num_chunks ||
++	    !list_empty(&packet->chunk_list) {
++		printk(KERN_CRIT "packet %p, (%p,%p), num %d\n",
++			packet, packet->chunk_list.next,
++			packet->chunk_list.prev,
++			packet->num_chunks);
++		BUG();
++	}
++	spin_unlock_bh(&packet->lock);
++*/
++}
++
++
+ /* Free a packet.  */
+ void sctp_packet_free(struct sctp_packet *packet)
+ {
+@@ -141,6 +174,8 @@ void sctp_packet_free(struct sctp_packet *packet)
+ 
+ 	SCTP_DEBUG_PRINTK("%s: packet:%p\n", __func__, packet);
+ 
++	BUG_ON(spin_is_locked(&packet->lock));
++
+ 	list_for_each_entry_safe(chunk, tmp, &packet->chunk_list, list) {
+ 		list_del_init(&chunk->list);
+ 		sctp_chunk_free(chunk);
+@@ -324,14 +359,15 @@ append:
+ 	switch (chunk->chunk_hdr->type) {
+ 	    case SCTP_CID_DATA:
+ 		retval = sctp_packet_append_data(packet, chunk);
++		if (SCTP_XMIT_OK != retval)
++			goto finish;
+ 		/* Disallow SACK bundling after DATA. */
+ 		packet->has_sack = 1;
+ 		/* Disallow AUTH bundling after DATA */
+ 		packet->has_auth = 1;
+ 		/* Let it be knows that packet has DATA in it */
+ 		packet->has_data = 1;
+-		if (SCTP_XMIT_OK != retval)
+-			goto finish;
++		chunk->sent_at = jiffies;
+ 		break;
+ 	    case SCTP_CID_COOKIE_ECHO:
+ 		packet->has_cookie_echo = 1;
+@@ -348,7 +384,10 @@ append:
+ 	}
+ 
+ 	/* It is OK to send this chunk.  */
++	//spin_lock_bh(&packet->lock);
++	packet->num_chunks++;
+ 	list_add_tail(&chunk->list, &packet->chunk_list);
++	//spin_unlock_bh(&packet->lock);
+ 	packet->size += chunk_len;
+ 	chunk->transport = packet->transport;
+ finish:
+@@ -367,7 +406,7 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+ 	struct sctphdr *sh;
+ 	__be32 crc32 = __constant_cpu_to_be32(0);
+ 	struct sk_buff *nskb;
+-	struct sctp_chunk *chunk, *tmp;
++	struct sctp_chunk *chunk;
+ 	struct sock *sk;
+ 	int err = 0;
+ 	int padding;		/* How much padding do we need?  */
+@@ -382,6 +421,8 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+ 	if (list_empty(&packet->chunk_list))
+ 		return err;
+ 
++	BUG_ON(packet->num_chunks == 0);
++
+ 	/* Set up convenience variables... */
+ 	chunk = list_entry(packet->chunk_list.next, struct sctp_chunk, list);
+ 	sk = chunk->skb->sk;
+@@ -448,8 +489,7 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+ 	 * [This whole comment explains WORD_ROUND() below.]
+ 	 */
+ 	SCTP_DEBUG_PRINTK("***sctp_transmit_packet***\n");
+-	list_for_each_entry_safe(chunk, tmp, &packet->chunk_list, list) {
+-		list_del_init(&chunk->list);
++	list_for_each_entry(chunk, &packet->chunk_list, list) {
+ 		if (sctp_chunk_is_data(chunk)) {
+ 
+ 			if (!chunk->has_tsn) {
+@@ -470,7 +510,6 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+ 			} else
+ 				chunk->resent = 1;
+ 
+-			chunk->sent_at = jiffies;
+ 			has_data = 1;
+ 		}
+ 
+@@ -485,6 +524,35 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+ 		if (chunk == packet->auth)
+ 			auth = skb_tail_pointer(nskb);
+ 
++		/* DEBUG: Check to see if this chunk will overflow the
++		 * skb.  Output needed info
++		 */
++		if ((nskb->tail + chunk->skb->len) > nskb->end) {
++			int i = 1;
++			struct sctp_chunk *tmp;
++			int num = packet->num_chunks;
++
++			printk("SKB %p overflow: p_size = %lu, n_chunks = %u, list(%p, %p)\n",
++			nskb,
++			packet->size, num,
++			packet->chunk_list.next, packet->chunk_list.prev);
++
++			list_for_each_entry(tmp, &packet->chunk_list, list) {
++			    if (i > num) {
++			    	printk(KERN_CRIT
++				"*** Overflow Chunk [%d] %p[%d], nxt %p, prv %p, skb_len %d\n",
++				i, tmp, tmp->chunk_hdr->type,
++				tmp->list.next, tmp->list.prev,
++				tmp->skb->len);
++			    } else {
++					printk("Chunk %p[%d], skb_length %d\n",
++						tmp,
++						tmp->chunk_hdr->type,
++						tmp->skb->len);
++			    }
++			    i++;
++			}
++		}
+ 		cksum_buf_len += chunk->skb->len;
+ 		memcpy(skb_put(nskb, chunk->skb->len),
+ 			       chunk->skb->data, chunk->skb->len);
+@@ -500,13 +568,6 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+ 				  "chunk->skb->len", chunk->skb->len,
+ 				  "rtt_in_progress", chunk->rtt_in_progress);
+ 
+-		/*
+-		 * If this is a control chunk, this is our last
+-		 * reference. Free data chunks after they've been
+-		 * acknowledged or have failed.
+-		 */
+-		if (!sctp_chunk_is_data(chunk))
+-			sctp_chunk_free(chunk);
+ 	}
+ 
+ 	/* SCTP-AUTH, Section 6.2
+@@ -591,8 +652,9 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+ 	(*tp->af_specific->sctp_xmit)(nskb, tp);
+ 
+ out:
+-	packet->size = packet->overhead;
++	sctp_packet_reset(packet);
+ 	return err;
++
+ no_route:
+ 	kfree_skb(nskb);
+ 	IP_INC_STATS_BH(&init_net, IPSTATS_MIB_OUTNOROUTES);
+@@ -604,21 +666,10 @@ no_route:
+ 	 * to the user via notifications. So setting this error may not be
+ 	 * required.
+ 	 */
+-	 /* err = -EHOSTUNREACH; */
+-err:
+-	/* Control chunks are unreliable so just drop them.  DATA chunks
+-	 * will get resent or dropped later.
+-	 */
+-
+-	list_for_each_entry_safe(chunk, tmp, &packet->chunk_list, list) {
+-		list_del_init(&chunk->list);
+-		if (!sctp_chunk_is_data(chunk))
+-			sctp_chunk_free(chunk);
+-	}
+ 	goto out;
+ nomem:
+ 	err = -ENOMEM;
+-	goto err;
++	goto out;
+ }
+ 
+ /********************************************************************
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 247ebc9..5d81bb6 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -560,6 +560,7 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+ 	asoc = q->asoc;
+ 	lqueue = &q->retransmit;
+ 	fast_rtx = q->fast_rtx;
++	q->fast_rtx = 0;
+ 
+ 	/* This loop handles time-out retransmissions, fast retransmissions,
+ 	 * and retransmissions due to opening of whindow.
+@@ -592,8 +593,7 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+ 		 * next chunk.
+ 		 */
+ 		if (chunk->tsn_gap_acked) {
+-			list_del(&chunk->transmitted_list);
+-			list_add_tail(&chunk->transmitted_list,
++			list_move_tail(&chunk->transmitted_list,
+ 					&transport->transmitted);
+ 			continue;
+ 		}
+@@ -604,6 +604,7 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+ 		if (fast_rtx && !chunk->fast_retransmit)
+ 			continue;
+ 
++again:
+ 		/* Attempt to append this chunk to the packet. */
+ 		status = sctp_packet_append_chunk(pkt, chunk);
+ 
+@@ -617,20 +618,13 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+ 			 */
+ 			if (rtx_timeout || fast_rtx)
+ 				done = 1;
++			else
++				goto again;
+ 
+ 			/* Bundle next chunk in the next round.  */
+ 			break;
+ 
+ 		case SCTP_XMIT_RWND_FULL:
+-			/* Send this packet. */
+-			error = sctp_packet_transmit(pkt);
+-
+-			/* Stop sending DATA as there is no more room
+-			 * at the receiver.
+-			 */
+-			done = 1;
+-			break;
+-
+ 		case SCTP_XMIT_NAGLE_DELAY:
+ 			/* Send this packet. */
+ 			error = sctp_packet_transmit(pkt);
+@@ -643,8 +637,7 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+ 			/* The append was successful, so add this chunk to
+ 			 * the transmitted list.
+ 			 */
+-			list_del(&chunk->transmitted_list);
+-			list_add_tail(&chunk->transmitted_list,
++			list_move_tail(&chunk->transmitted_list,
+ 					&transport->transmitted);
+ 
+ 			/* Mark the chunk as ineligible for fast retransmit
+@@ -687,10 +680,6 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+ 
+ 	*start_timer = timer;
+ 
+-	/* Clear fast retransmit hint */
+-	if (fast_rtx)
+-		q->fast_rtx = 0;
+-
+ 	return error;
+ }
+ 
+@@ -1028,7 +1017,7 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
+ 			list_add_tail(&chunk->transmitted_list,
+ 				      &transport->transmitted);
+ 
+-			sctp_transport_reset_timers(transport, start_timer-1);
++			sctp_transport_reset_timers(transport, 0);
+ 
+ 			q->empty = 0;
+ 
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index a6a0ea7..442752f 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -2650,7 +2650,7 @@ sctp_disposition_t sctp_sf_do_9_2_shut_ctsn(const struct sctp_endpoint *ep,
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_PROCESS_CTSN,
+ 			SCTP_BE32(sdh->cum_tsn_ack));
+ 
+-	return SCTP_DISPOSITION_CONSUME;
++	return sctp_sf_do_9_2_shutdown_ack(ep, asoc, type, arg, commands);
+ }
+ 
+ /* RFC 2960 9.2
+
+--------------030303070308040503050601--
