@@ -1,114 +1,87 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Thu, 11 Dec 2008 13:47:24 +0000
-Subject: Re: BUG in sctp crashes the system
-Message-Id: <494119EC.4070805@hp.com>
+Date: Sat, 20 Dec 2008 01:47:51 +0000
+Subject: [PATCH net-next 4/5] sctp: Avoid memory overflow while FWD-TSN chunk is received with bad stream ID
+Message-Id: <1229737672-28328-6-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <200811061205.57403.mhocko@suse.cz>
-In-Reply-To: <200811061205.57403.mhocko@suse.cz>
+References: <1229737672-28328-1-git-send-email-vladislav.yasevich@hp.com>
+In-Reply-To: <1229737672-28328-1-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, Wei Yongjun <yjwei@cn.fujitsu.com>, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-Michal Hocko wrote:
-> On Tue 09-12-08 16:38:34, Michal Hocko wrote:
->> [CCing David Sterba]
->>
->> On Mon 08-12-08 13:53:11, Vlad Yasevich wrote:
->> [...]
->>> Michal
->>>
->>> Can you try this patch.  This applies on top of a clean tree.  I've started a
->>> run with it here as well.
->> I am still testing with your previous patch (sent in private email -
->> attached) and the kernel survived overnight. I will give it another day
->> and then try it without patch. Unfortunatelly it can be HW related so I
->> don't want to make any fast statements.
-> 
-> Testing with the patch didn't crash my machine, but unfortunately
-> neither without patch did! 
-> Maybe It is important that I have changed my HW configuration because I
-> don't have access to the one of computers used in my previous tests
-> (where I was able to reproduce). Code base is very same though
-> (4e14e833ac3b97a4aa8803eea49f899adc5bb5f4 kernel with your debug patch
-> on top of it).
-> 
->> I can try the following patch afterwards.
-> 
-> I will try this one later because I have to find out whether I am able
-> to reproduce with my current HW configuration and sles10sp2 kernel.
-> 
-> Are you able to reproduce this issue? Does the patch you have sent
-> helped you?
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
 
-In helped in a sense that the I don't see that skb crash anymore, but now
-I am seeing a different crash that looks like an unnatural race.  The backtrace
-from the crash should not be possible given what the application attempts to
-do.
+If FWD-TSN chunk is received with bad stream ID, the sctp will not do the
+validity check, this may cause memory overflow when overwrite the TSN of
+the stream ID.
 
-The backtrace shows that the app has already queued the echoed data, but is
-currently processing the incoming data. :(
+The FORWARD-TSN chunk is like this:
 
-I am instrumenting a few different pieces of the kernel to see what may be
-happening.
+FORWARD-TSN chunk
+  Type                       = 192
+  Flags                      = 0
+  Length                     = 172
+  NewTSN                     = 99
+  Stream                     = 10000
+  StreamSequence             = 0xFFFF
 
--vlad
+This patch fix this problem by discard the chunk if stream ID is not
+less than MIS.
 
-> 
->>> Thanks
->>> -vlad
->>> diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
->>> index 247ebc9..0fdf544 100644
->>> --- a/net/sctp/outqueue.c
->>> +++ b/net/sctp/outqueue.c
->>> @@ -604,6 +604,7 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
->>>  		if (fast_rtx && !chunk->fast_retransmit)
->>>  			continue;
->>>  
->>> +again:
->>>  		/* Attempt to append this chunk to the packet. */
->>>  		status = sctp_packet_append_chunk(pkt, chunk);
->>>  
->>> @@ -617,20 +618,14 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
->>>  			 */
->>>  			if (rtx_timeout || fast_rtx)
->>>  				done = 1;
->>> +			else {
->>> +				/* Bundle this chunk in the next round.  */
->>> +				goto again;
->>> +			}
->>>  
->>> -			/* Bundle next chunk in the next round.  */
->>>  			break;
->>>  
->>>  		case SCTP_XMIT_RWND_FULL:
->>> -			/* Send this packet. */
->>> -			error = sctp_packet_transmit(pkt);
->>> -
->>> -			/* Stop sending DATA as there is no more room
->>> -			 * at the receiver.
->>> -			 */
->>> -			done = 1;
->>> -			break;
->>> -
->>>  		case SCTP_XMIT_NAGLE_DELAY:
->>>  			/* Send this packet. */
->>>  			error = sctp_packet_transmit(pkt);
->>> @@ -929,7 +924,6 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
->>>  		}
->>>  
->>>  		/* Finally, transmit new packets.  */
->>> -		start_timer = 0;
->>>  		while ((chunk = sctp_outq_dequeue_data(q)) != NULL) {
->>>  			/* RFC 2960 6.5 Every DATA chunk MUST carry a valid
->>>  			 * stream identifier.
->>> @@ -1028,7 +1022,7 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
->>>  			list_add_tail(&chunk->transmitted_list,
->>>  				      &transport->transmitted);
->>>  
->>> -			sctp_transport_reset_timers(transport, start_timer-1);
->>> +			sctp_transport_reset_timers(transport, 0);
->>>  
->>>  			q->empty = 0;
->>>  
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ net/sctp/sm_statefuns.c |   14 ++++++++++++++
+ 1 files changed, 14 insertions(+), 0 deletions(-)
+
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 9f2a3eb..1c4e5d6 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -3689,6 +3689,7 @@ sctp_disposition_t sctp_sf_eat_fwd_tsn(const struct sctp_endpoint *ep,
+ {
+ 	struct sctp_chunk *chunk = arg;
+ 	struct sctp_fwdtsn_hdr *fwdtsn_hdr;
++	struct sctp_fwdtsn_skip *skip;
+ 	__u16 len;
+ 	__u32 tsn;
+ 
+@@ -3718,6 +3719,12 @@ sctp_disposition_t sctp_sf_eat_fwd_tsn(const struct sctp_endpoint *ep,
+ 	if (sctp_tsnmap_check(&asoc->peer.tsn_map, tsn) < 0)
+ 		goto discard_noforce;
+ 
++	/* Silently discard the chunk if stream-id is not valid */
++	sctp_walk_fwdtsn(skip, chunk) {
++		if (ntohs(skip->stream) >= asoc->c.sinit_max_instreams)
++			goto discard_noforce;
++	}
++
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_REPORT_FWDTSN, SCTP_U32(tsn));
+ 	if (len > sizeof(struct sctp_fwdtsn_hdr))
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_PROCESS_FWDTSN,
+@@ -3749,6 +3756,7 @@ sctp_disposition_t sctp_sf_eat_fwd_tsn_fast(
+ {
+ 	struct sctp_chunk *chunk = arg;
+ 	struct sctp_fwdtsn_hdr *fwdtsn_hdr;
++	struct sctp_fwdtsn_skip *skip;
+ 	__u16 len;
+ 	__u32 tsn;
+ 
+@@ -3778,6 +3786,12 @@ sctp_disposition_t sctp_sf_eat_fwd_tsn_fast(
+ 	if (sctp_tsnmap_check(&asoc->peer.tsn_map, tsn) < 0)
+ 		goto gen_shutdown;
+ 
++	/* Silently discard the chunk if stream-id is not valid */
++	sctp_walk_fwdtsn(skip, chunk) {
++		if (ntohs(skip->stream) >= asoc->c.sinit_max_instreams)
++			goto gen_shutdown;
++	}
++
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_REPORT_FWDTSN, SCTP_U32(tsn));
+ 	if (len > sizeof(struct sctp_fwdtsn_hdr))
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_PROCESS_FWDTSN,
+-- 
+1.5.3.5
 
