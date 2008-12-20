@@ -1,52 +1,76 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 26 Dec 2008 19:15:32 +0000
-Subject: Re: [PATCH net-next 1/5] sctp: Bring SCTP_MAXSEG socket option
-Message-Id: <20081226.111532.190275285.davem@davemloft.net>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Sat, 20 Dec 2008 01:47:52 +0000
+Subject: [PATCH net-next 5/5] sctp: Add validity check for SCTP_PARTIAL_DELIVERY_POINT socket option
+Message-Id: <1229737672-28328-7-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1229737672-28328-3-git-send-email-vladislav.yasevich@hp.com>
-	<20081225.165625.248148862.davem@davemloft.net>
-	<49550E8E.6030607@hp.com>
-In-Reply-To: <49550E8E.6030607@hp.com>
+References: <1229737672-28328-1-git-send-email-vladislav.yasevich@hp.com>
+In-Reply-To: <1229737672-28328-1-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, yjwei@cn.fujitsu.com
+To: netdev@vger.kernel.org
+Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, Wei Yongjun <yjwei@cn.fujitsu.com>, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Fri, 26 Dec 2008 12:04:14 -0500
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
 
-> David Miller wrote:
-> > From: Vlad Yasevich <vladislav.yasevich@hp.com>
-> > Date: Fri, 19 Dec 2008 20:47:48 -0500
-> > 
-> >> From: Wei Yongjun <yjwei@cn.fujitsu.com>
-> >>
-> >> Brings maxseg socket option set/get into line with the latest ietf socket
-> >> extensions API draft, while maintaining backwards compatibility.
-> >>
-> >> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-> >> Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
-> > 
-> > Applied.  But I really dislike this scheme used by the compat code.
-> > Half-way initializing a structure and then depending upon the logic in
-> > the rest of the function to make sure the rest of the struct (the
-> > uninitialized part) is never accessed?
-> > 
-> > Give me a break, programming, auditing, and bug fixing is hard enough
-> > as it is without sloppy code like this.
-> 
-> Yes, it sucks but the since the draft keeps breaking the ABI between revisions,
-> it leaves us a between a rock (no support) and a hard place (crappy code).
+The latest ietf socket extensions API draft said:
 
-In this specific case we could have simply memset() the on-stack
-structure to zero and there would be no confusion about whether the
-object is initialized in some way in all code paths.
+  8.1.21.  Set or Get the SCTP Partial Delivery Point
 
-Or, in the main initial conditional we could explicitly assign both
-members of this structure in both branches.
+    Note also that the call will fail if the user attempts to set
+    this value larger than the socket receive buffer size.
 
-This is not about the compatibility issues, it's about how this code
-was written.
+This patch add this validity check for SCTP_PARTIAL_DELIVERY_POINT
+socket option.
 
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ net/sctp/socket.c |   19 ++++++++++++++++---
+ 1 files changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 9f5fe23..b14a8f3 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3010,14 +3010,21 @@ static int sctp_setsockopt_fragment_interleave(struct sock *sk,
+ }
+ 
+ /*
+- * 7.1.25.  Set or Get the sctp partial delivery point
++ * 8.1.21.  Set or Get the SCTP Partial Delivery Point
+  *       (SCTP_PARTIAL_DELIVERY_POINT)
++ *
+  * This option will set or get the SCTP partial delivery point.  This
+  * point is the size of a message where the partial delivery API will be
+  * invoked to help free up rwnd space for the peer.  Setting this to a
+- * lower value will cause partial delivery's to happen more often.  The
++ * lower value will cause partial deliveries to happen more often.  The
+  * calls argument is an integer that sets or gets the partial delivery
+- * point.
++ * point.  Note also that the call will fail if the user attempts to set
++ * this value larger than the socket receive buffer size.
++ *
++ * Note that any single message having a length smaller than or equal to
++ * the SCTP partial delivery point will be delivered in one single read
++ * call as long as the user provided buffer is large enough to hold the
++ * message.
+  */
+ static int sctp_setsockopt_partial_delivery_point(struct sock *sk,
+ 						  char __user *optval,
+@@ -3030,6 +3037,12 @@ static int sctp_setsockopt_partial_delivery_point(struct sock *sk,
+ 	if (get_user(val, (int __user *)optval))
+ 		return -EFAULT;
+ 
++	/* Note: We double the receive buffer from what the user sets
++	 * it to be, also initial rwnd is based on rcvbuf/2.
++	 */
++	if (val > (sk->sk_rcvbuf >> 1))
++		return -EINVAL;
++
+ 	sctp_sk(sk)->pd_point = val;
+ 
+ 	return 0; /* is this the right error code? */
+-- 
+1.5.3.5
 
