@@ -1,47 +1,32 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Fri, 23 Jan 2009 14:52:44 +0000
+From: Herbert Xu <herbert@gondor.apana.org.au>
+Date: Fri, 23 Jan 2009 22:17:15 +0000
 Subject: Re: [PATCH 1/4] sctp: Fix crc32c calculations on big-endian arhes.
-Message-Id: <4979D9BC.5000609@hp.com>
+Message-Id: <20090123221715.GC806@gondor.apana.org.au>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1232663768-4028-2-git-send-email-vladislav.yasevich@hp.com> <20090123051956.GA25803@gondor.apana.org.au> <20090123052849.GA25937@gondor.apana.org.au> <20090123092449.GA27399@gondor.apana.org.au>
-In-Reply-To: <20090123092449.GA27399@gondor.apana.org.au>
+References: <1232663768-4028-2-git-send-email-vladislav.yasevich@hp.com> <20090123051956.GA25803@gondor.apana.org.au> <20090123052849.GA25937@gondor.apana.org.au> <20090123092449.GA27399@gondor.apana.org.au> <4979D9BC.5000609@hp.com>
+In-Reply-To: <4979D9BC.5000609@hp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Herbert Xu <herbert@gondor.apana.org.au>
+Content-Type: text/plain; charset="hz-gb-2312"
+Content-Transfer-Encoding: base64
+To: Vlad Yasevich <vladislav.yasevich@hp.com>
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, davem@davemloft.net
 
-Herbert Xu wrote:
-> On Fri, Jan 23, 2009 at 04:28:49PM +1100, Herbert Xu wrote:
->>>> static inline __be32 sctp_end_cksum(__be32 crc32)
->>>> {
->>>> -       return ~crc32;
->>>> +       return (__force __be32)~cpu_to_le32((__force u32)crc32);
->>>> }
->>> Ouch, surely there is a better way to do this?
->> In fact this looks wrong.  Has this code actually been tested
->> on big-endian?
-
-Yes, the code was tested by me and the person who reported it
-as listed in the commit log. :)
-
-> 
-> Reading this again it does seem to do the right thing as it's
-> using the raw crc32c interface as opposed to crypto crc32c.
-> 
-> However, I suggest that we change it as follows:
-> 
-> 1) Make sh->csum __le32 since we're using crc32c_le.
-> 2) Change all intermediate values in sctp/checksum.h to u32.
-> 3) Make sctp_end_cksum return __le32 and have it do
-> 
-> 	return cpu_to_le32(~crc);
-> 
-
-I'll give it some thought.  It would clean up all the __force
-casts, but it will be a little misleading to define a packet
-checksum as little endian. :)
-
--vlad
-
-> Cheers,
+T24gRnJpLCBKYW4gMjMsIDIwMDkgYXQgMDk6NTI6NDRBTSAtMDUwMCwgVmxhZCBZYXNldmljaCB3
+cm90ZToKPgo+IEknbGwgZ2l2ZSBpdCBzb21lIHRob3VnaHQuICBJdCB3b3VsZCBjbGVhbiB1cCBh
+bGwgdGhlIF9fZm9yY2UKPiBjYXN0cywgYnV0IGl0IHdpbGwgYmUgYSBsaXR0bGUgbWlzbGVhZGlu
+ZyB0byBkZWZpbmUgYSBwYWNrZXQKPiBjaGVja3N1bSBhcyBsaXR0bGUgZW5kaWFuLiA6KQoKTm90
+IGF0IGFsbCEgSnVzdCBiZWNhdXNlIHNvbWV0aGluZyBpcyBvbiB0aGUgbmV0d29yayBkb2Vzbid0
+Cm1lYW4gdGhhdCBpdCdzIGJpZy1lbmRpYW4uICBJbiB0aGlzIGNhc2UsIHdlJ3JlIHVzaW5nIHRo
+ZSBsaXR0bGUtCmVuZGlhbiBDUkMzMkMgaW1wbGVtZW50YXRpb24gZm9yIHRoZSBjaGVja3N1bSBz
+byBpdCBtYWtlcyBwZXJmZWN0CnNlbnNlIGZvciBpdCB0byBiZSBtYXJrZWQgYXMgX19sZTMyLgoK
+TmV0d29yay1vcmRlciBqdXN0IGhhcyB0byBiZSBmaXhlZCBpbiBlbmRpYW4sIGkuZS4sIGVpdGhl
+ciBiaWcKb3Igc21hbGwsIHlvdSBqdXN0IG5lZWQgdG8gc3RpY2sgd2l0aCB0aGUgb25lIHlvdSBj
+aG9vc2UgcmVnYXJkbGVzcwpvZiB0aGUgZW5kaWFubmVzcyBvZiB0aGUgaG9zdC4KCkNoZWVycywK
+LS0gClZpc2l0IE9wZW5zd2FuIGF0IGh0dHA6Ly93d3cub3BlbnN3YW4ub3JnLwpFbWFpbDogSGVy
+YmVydCBYdSB+e1BtVj5ISX59IDxoZXJiZXJ0QGdvbmRvci5hcGFuYS5vcmcuYXU+CkhvbWUgUGFn
+ZTogaHR0cDovL2dvbmRvci5hcGFuYS5vcmcuYXUvfmhlcmJlcnQvClBHUCBLZXk6IGh0dHA6Ly9n
+b25kb3IuYXBhbmEub3JnLmF1L35oZXJiZXJ0L3B1YmtleS50eHQKLS0KVG8gdW5zdWJzY3JpYmUg
+ZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LXNjdHAiIGlu
+CnRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnCk1vcmUg
+bWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8u
+aHRtbA==
