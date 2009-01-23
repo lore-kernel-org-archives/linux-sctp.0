@@ -1,32 +1,36 @@
 From: Herbert Xu <herbert@gondor.apana.org.au>
-Date: Fri, 23 Jan 2009 05:28:49 +0000
+Date: Fri, 23 Jan 2009 09:24:49 +0000
 Subject: Re: [PATCH 1/4] sctp: Fix crc32c calculations on big-endian arhes.
-Message-Id: <20090123052849.GA25937@gondor.apana.org.au>
+Message-Id: <20090123092449.GA27399@gondor.apana.org.au>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1232663768-4028-2-git-send-email-vladislav.yasevich@hp.com> <20090123051956.GA25803@gondor.apana.org.au>
-In-Reply-To: <20090123051956.GA25803@gondor.apana.org.au>
+References: <1232663768-4028-2-git-send-email-vladislav.yasevich@hp.com> <20090123051956.GA25803@gondor.apana.org.au> <20090123052849.GA25937@gondor.apana.org.au>
+In-Reply-To: <20090123052849.GA25937@gondor.apana.org.au>
 To: Vlad Yasevich <vladislav.yasevich@hp.com>
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, davem@davemloft.net
 
-On Fri, Jan 23, 2009 at 04:19:56PM +1100, Herbert Xu wrote:
-> Vlad Yasevich <vladislav.yasevich@hp.com> wrote:
-> >
-> > diff --git a/include/net/sctp/checksum.h b/include/net/sctp/checksum.h
-> > index b799fb2..2fec3c3 100644
-> > --- a/include/net/sctp/checksum.h
-> > +++ b/include/net/sctp/checksum.h
-> > @@ -79,5 +79,5 @@ static inline __be32 sctp_update_cksum(__u8 *buffer, __u16 length, __be32 crc32)
+On Fri, Jan 23, 2009 at 04:28:49PM +1100, Herbert Xu wrote:
+>
+> > > static inline __be32 sctp_end_cksum(__be32 crc32)
+> > > {
+> > > -       return ~crc32;
+> > > +       return (__force __be32)~cpu_to_le32((__force u32)crc32);
+> > > }
 > > 
-> > static inline __be32 sctp_end_cksum(__be32 crc32)
-> > {
-> > -       return ~crc32;
-> > +       return (__force __be32)~cpu_to_le32((__force u32)crc32);
-> > }
+> > Ouch, surely there is a better way to do this?
 > 
-> Ouch, surely there is a better way to do this?
+> In fact this looks wrong.  Has this code actually been tested
+> on big-endian?
 
-In fact this looks wrong.  Has this code actually been tested
-on big-endian?
+Reading this again it does seem to do the right thing as it's
+using the raw crc32c interface as opposed to crypto crc32c.
+
+However, I suggest that we change it as follows:
+
+1) Make sh->csum __le32 since we're using crc32c_le.
+2) Change all intermediate values in sctp/checksum.h to u32.
+3) Make sctp_end_cksum return __le32 and have it do
+
+	return cpu_to_le32(~crc);
 
 Cheers,
 -- 
