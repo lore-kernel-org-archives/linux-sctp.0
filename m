@@ -1,112 +1,41 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Fri, 13 Feb 2009 18:33:43 +0000
-Subject: [PATCH net-next 3/4] sctp: Fix the RTO-doubling on idle-link heartbeats
-Message-Id: <1234550024-30915-4-git-send-email-vladislav.yasevich@hp.com>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Fri, 20 Feb 2009 01:51:40 +0000
+Subject: [PATCH] sctp: fix the length check in sctp_getsockopt_maxburst()
+Message-Id: <499E0CAC.8050402@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <>
-In-Reply-To: <>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>
+To: linux-sctp@vger.kernel.org
 
-SCTP incorrectly doubles rto ever time a Hearbeat chunk
-is generated.   However RFC 4960 states:
+The code in sctp_getsockopt_maxburst() doesn't allow len to be larger
+then struct sctp_assoc_value, which is a common case where app writers
+just pass down the sizeof(buf) or something similar.
 
-   On an idle destination address that is allowed to heartbeat, it is
-   recommended that a HEARTBEAT chunk is sent once per RTO of that
-   destination address plus the protocol parameter 'HB.interval', with
-   jittering of +/- 50% of the RTO value, and exponential backoff of the
-   RTO if the previous HEARTBEAT is unanswered.
+This patch fix the problem.
 
-Essentially, of if the heartbean is unacknowledged, do we double the RTO.
-
-Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 ---
- include/net/sctp/structs.h |    2 ++
- net/sctp/sm_sideeffect.c   |   17 +++++++++++++++--
- net/sctp/transport.c       |    2 ++
- 3 files changed, 19 insertions(+), 2 deletions(-)
+ net/sctp/socket.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 9f70d54..23f08fe 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -910,8 +910,10 @@ struct sctp_transport {
- 	 *		should be set. Every time the RTT
- 	 *		calculation completes (i.e. the DATA chunk
- 	 *		is SACK'd) clear this flag.
-+	 * hb_sent : a flag that signals that we have a pending heartbeat.
- 	 */
- 	__u8 rto_pending;
-+	__u8 hb_sent;
- 
- 	/* Flag to track the current fast recovery state */
- 	__u8 fast_recovery;
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index e1d6076..0146cfb 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -461,9 +461,15 @@ static void sctp_do_8_2_transport_strike(struct sctp_association *asoc,
- 	 * expires, set RTO <- RTO * 2 ("back off the timer").  The
- 	 * maximum value discussed in rule C7 above (RTO.max) may be
- 	 * used to provide an upper bound to this doubling operation.
-+	 *
-+	 * Special Case:  the first HB doesn't trigger exponential backoff.
-+	 * The first unacknowleged HB triggers it.  We do this with a flag
-+	 * that indicates that we have an outstanding HB.
- 	 */
--	transport->last_rto = transport->rto;
--	transport->rto = min((transport->rto * 2), transport->asoc->rto_max);
-+	if (transport->hb_sent) {
-+		transport->last_rto = transport->rto;
-+		transport->rto = min((transport->rto * 2), transport->asoc->rto_max);
-+	}
- }
- 
- /* Worker routine to handle INIT command failure.  */
-@@ -621,6 +627,11 @@ static void sctp_cmd_transport_on(sctp_cmd_seq_t *cmds,
- 	t->error_count = 0;
- 	t->asoc->overall_error_count = 0;
- 
-+	/* Clear the hb_sent flag to signal that we had a good
-+	 * acknowledgement.
-+	 */
-+	t->hb_sent = 0;
-+
- 	/* Mark the destination transport address as active if it is not so
- 	 * marked.
- 	 */
-@@ -657,6 +668,8 @@ static void sctp_cmd_transport_reset(sctp_cmd_seq_t *cmds,
- 
- 	/* Mark one strike against a transport.  */
- 	sctp_do_8_2_transport_strike(asoc, t);
-+
-+	t->hb_sent = 1;
- }
- 
- /* Helper function to process the process SACK command.  */
-diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-index e745c11..5c29b14 100644
---- a/net/sctp/transport.c
-+++ b/net/sctp/transport.c
-@@ -79,6 +79,7 @@ static struct sctp_transport *sctp_transport_init(struct sctp_transport *peer,
- 	peer->rttvar = 0;
- 	peer->srtt = 0;
- 	peer->rto_pending = 0;
-+	peer->hb_sent = 0;
- 	peer->fast_recovery = 0;
- 
- 	peer->last_time_heard = jiffies;
-@@ -608,6 +609,7 @@ void sctp_transport_reset(struct sctp_transport *t)
- 	t->flight_size = 0;
- 	t->error_count = 0;
- 	t->rto_pending = 0;
-+	t->hb_sent = 0;
- 	t->fast_recovery = 0;
- 
- 	/* Initialize the state information for SFR-CACC */
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 5ab68f9..fe0b40c 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -5287,7 +5287,8 @@ static int sctp_getsockopt_maxburst(struct sock *sk, int len,
+ 		printk(KERN_WARNING
+ 		   "SCTP: Use struct sctp_assoc_value instead\n");
+ 		params.assoc_id = 0;
+-	} else if (len = sizeof (struct sctp_assoc_value)) {
++	} else if (len >= sizeof(struct sctp_assoc_value)) {
++		len = sizeof(struct sctp_assoc_value);
+ 		if (copy_from_user(&params, optval, len))
+ 			return -EFAULT;
+ 	} else
 -- 
-1.5.4.3
+1.5.3.8
+
+
+
 
