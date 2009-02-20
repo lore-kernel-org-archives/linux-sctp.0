@@ -1,43 +1,61 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Thu, 19 Feb 2009 09:20:53 +0000
-Subject: [PATCH 1/4] sctp: Add some missing types for debug message
-Message-Id: <499D2475.5070907@cn.fujitsu.com>
+Date: Fri, 20 Feb 2009 02:32:04 +0000
+Subject: [PATCH] sctp: used time_before or time_after for comparing jiffies
+Message-Id: <499E1624.9010001@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-This patch add the type name "AUTH" and primitive type name
-"PRIMITIVE_ASCONF" for debug message.
+The functions time_before or time_after are more robust
+for comparing jiffies against other values.
 
 Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 ---
- net/sctp/debug.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+ net/sctp/outqueue.c  |    3 ++-
+ net/sctp/transport.c |    7 ++++---
+ 2 files changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/net/sctp/debug.c b/net/sctp/debug.c
-index 67715f4..7ff548a 100644
---- a/net/sctp/debug.c
-+++ b/net/sctp/debug.c
-@@ -86,6 +86,9 @@ const char *sctp_cname(const sctp_subtype_t cid)
- 	case SCTP_CID_FWD_TSN:
- 		return "FWD_TSN";
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index bc411c8..a367d15 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -428,7 +428,8 @@ void sctp_retransmit_mark(struct sctp_outq *q,
+ 			 * retransmitting due to T3 timeout.
+ 			 */
+ 			if (reason = SCTP_RTXR_T3_RTX &&
+-			    (jiffies - chunk->sent_at) < transport->last_rto)
++			    time_before(jiffies, chunk->sent_at +
++						 transport->last_rto))
+ 				continue;
  
-+	case SCTP_CID_AUTH:
-+		return "AUTH";
-+
- 	default:
+ 			/* RFC 2960 6.2.1 Processing a Received SACK
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index e745c11..e197b76 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -542,8 +542,8 @@ void sctp_transport_lower_cwnd(struct sctp_transport *transport,
+ 		 * congestion indications more than once every window of
+ 		 * data (or more loosely more than once every round-trip time).
+ 		 */
+-		if ((jiffies - transport->last_time_ecne_reduced) >
+-		    transport->rtt) {
++		if (time_after(jiffies, transport->last_time_ecne_reduced +
++					transport->rtt)) {
+ 			transport->ssthresh = max(transport->cwnd/2,
+ 						  4*transport->asoc->pathmtu);
+ 			transport->cwnd = transport->ssthresh;
+@@ -560,7 +560,8 @@ void sctp_transport_lower_cwnd(struct sctp_transport *transport,
+ 		 * to be done every RTO interval, we do it every hearbeat
+ 		 * interval.
+ 		 */
+-		if ((jiffies - transport->last_time_used) > transport->rto)
++		if (time_after(jiffies, transport->last_time_used +
++					transport->rto))
+ 			transport->cwnd = max(transport->cwnd/2,
+ 						 4*transport->asoc->pathmtu);
  		break;
- 	}
-@@ -135,6 +138,7 @@ static const char *sctp_primitive_tbl[SCTP_NUM_PRIMITIVE_TYPES] = {
- 	"PRIMITIVE_ABORT",
- 	"PRIMITIVE_SEND",
- 	"PRIMITIVE_REQUESTHEARTBEAT",
-+	"PRIMITIVE_ASCONF",
- };
- 
- /* Lookup primitive debug name. */
 -- 
 1.5.3.8
 
