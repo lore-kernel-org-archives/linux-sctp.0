@@ -1,47 +1,50 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Thu, 12 Mar 2009 19:49:18 +0000
-Subject: [PATCH net-next 2/4] sctp: fix to indicate ASCONF support in INIT-ACK only if peer has such capable
-Message-Id: <1236887360-1904-3-git-send-email-vladislav.yasevich@hp.com>
+Date: Mon, 02 Mar 2009 19:46:10 +0000
+Subject: [PATCH net-next 1/5] sctp: Add some missing types for debug message
+Message-Id: <1236023174-18314-2-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1236887360-1904-1-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <1236887360-1904-1-git-send-email-vladislav.yasevich@hp.com>
+References: <>
+ <1236023174-18314-1-git-send-email-vladislav.yasevich@hp.com>
+In-Reply-To: <1236023174-18314-1-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Wei Yongjun <yjwei@cn.fujitsu.com>, Vlad Yasevich <vladislav.yasevich@hp.com>
+To: netdev@vger.kernel.org
+Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, Wei Yongjun <yjwei@cn.fujitsu.com>, Vlad Yasevich <vladislav.yasevich@hp.com>
 
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
 
-This patch fix to indicate ASCONF support in INIT-ACK only if peer has
-such capable.
-
-This patch also fix to calc the chunk size if peer has no FWD-TSN
-capable.
+This patch add the type name "AUTH" and primitive type name
+"PRIMITIVE_ASCONF" for debug message.
 
 Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 ---
- net/sctp/sm_make_chunk.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ net/sctp/debug.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
 
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index b40e95f..9484f33 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -372,10 +372,10 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
- 	if (asoc->peer.ecn_capable)
- 		chunksize += sizeof(ecap_param);
+diff --git a/net/sctp/debug.c b/net/sctp/debug.c
+index 67715f4..7ff548a 100644
+--- a/net/sctp/debug.c
++++ b/net/sctp/debug.c
+@@ -86,6 +86,9 @@ const char *sctp_cname(const sctp_subtype_t cid)
+ 	case SCTP_CID_FWD_TSN:
+ 		return "FWD_TSN";
  
--	if (sctp_prsctp_enable)
-+	if (asoc->peer.prsctp_capable)
- 		chunksize += sizeof(prsctp_param);
++	case SCTP_CID_AUTH:
++		return "AUTH";
++
+ 	default:
+ 		break;
+ 	}
+@@ -135,6 +138,7 @@ static const char *sctp_primitive_tbl[SCTP_NUM_PRIMITIVE_TYPES] = {
+ 	"PRIMITIVE_ABORT",
+ 	"PRIMITIVE_SEND",
+ 	"PRIMITIVE_REQUESTHEARTBEAT",
++	"PRIMITIVE_ASCONF",
+ };
  
--	if (sctp_addip_enable) {
-+	if (asoc->peer.asconf_capable) {
- 		extensions[num_ext] = SCTP_CID_ASCONF;
- 		extensions[num_ext+1] = SCTP_CID_ASCONF_ACK;
- 		num_ext += 2;
+ /* Lookup primitive debug name. */
 -- 
 1.5.4.3
 
