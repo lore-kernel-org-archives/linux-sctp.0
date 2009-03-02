@@ -1,108 +1,56 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Mon, 09 Mar 2009 19:05:22 +0000
-Subject: Re: [PATCH 4/6] sctp: implement user interface definitions for STREAM-RESET
-Message-Id: <49B56872.20206@hp.com>
+Date: Mon, 02 Mar 2009 16:46:50 +0000
+Subject: [PATCH 1/2] sctp: fix crash during module unload
+Message-Id: <1236012411-17841-2-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <49B48A87.7040303@cn.fujitsu.com>
-In-Reply-To: <49B48A87.7040303@cn.fujitsu.com>
+References: <>
+In-Reply-To: <>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-Wei Yongjun wrote:
-> This patch implementation the user interface definitions for STREAM-RESET
-> extension.
-> 
-> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-> ---
->  include/net/sctp/user.h |   32 ++++++++++++++++++++++++++++++++
->  1 files changed, 32 insertions(+), 0 deletions(-)
-> 
-> diff --git a/include/net/sctp/user.h b/include/net/sctp/user.h
-> index b259fc5..f722c7f 100644
-> --- a/include/net/sctp/user.h
-> +++ b/include/net/sctp/user.h
-> @@ -147,6 +147,8 @@ enum sctp_optname {
->  #define SCTP_GET_LOCAL_ADDRS	SCTP_GET_LOCAL_ADDRS
->  	SCTP_SOCKOPT_CONNECTX, /* CONNECTX requests. */
->  #define SCTP_SOCKOPT_CONNECTX	SCTP_SOCKOPT_CONNECTX
-> +	SCTP_RESET_STREAMS,	/* Stream Reconfiguration */
-> +#define SCTP_RESET_STREAMS SCTP_RESET_STREAMS
->  };
->  
->  /*
-> @@ -402,6 +404,18 @@ struct sctp_authkey_event {
->  
->  enum { SCTP_AUTH_NEWKEY = 0, };
->  
-> +struct sctp_stream_reset_event {
-> +	__u16 strrst_type;
-> +	__u16 strrst_flags;
-> +	__u32 strrst_length;
-> +	sctp_assoc_t strrst_assoc_id;
-> +};
-> +
-> +enum {
-> +	SCTP_STREAM_RESET_INBOUND = 0,
-> +	SCTP_STREAM_RESET_OUTBOUND,
-> +	SCTP_STREAM_RESET_FAILED,
-> +};
->  
->  /*
->   * Described in Section 7.3
-> @@ -417,6 +431,7 @@ struct sctp_event_subscribe {
->  	__u8 sctp_partial_delivery_event;
->  	__u8 sctp_adaptation_layer_event;
->  	__u8 sctp_authentication_event;
-> +	__u8 sctp_stream_reset_event;
->  };
->  
->  /*
-> @@ -440,6 +455,7 @@ union sctp_notification {
->  	struct sctp_adaptation_event sn_adaptation_event;
->  	struct sctp_pdapi_event sn_pdapi_event;
->  	struct sctp_authkey_event sn_authkey_event;
-> +	struct sctp_stream_reset_event sn_strrst_event;
->  };
->  
->  /* Section 5.3.1
-> @@ -457,6 +473,7 @@ enum sctp_sn_type {
->  	SCTP_PARTIAL_DELIVERY_EVENT,
->  	SCTP_ADAPTATION_INDICATION,
->  	SCTP_AUTHENTICATION_INDICATION,
-> +	SCTP_STREAM_RESET_EVENT,
->  };
->  
->  /* Notification error codes used to fill up the error fields in some
-> @@ -758,4 +775,19 @@ typedef struct {
->  	int sd;
->  } sctp_peeloff_arg_t;
->  
-> +enum sctp_strrst_flags {
-> +	SCTP_STREAM_RESET_IN = 1<<0,	/* Outgoing SSN Reset Request */
-> +	SCTP_STREAM_RESET_OUT = 1<<1,	/* Incoming SSN Reset Request */
-> +	SCTP_STREAM_RESET_BOTH = SCTP_STREAM_RESET_IN | SCTP_STREAM_RESET_OUT,
-> +	SCTP_STREAM_RESET_TSN = 1<<2,	/* SSN/TSN Reset Request */
-> +	SCTP_STREAM_RESET_ADD = 1<<3,	/* Add Streams */
-> +};
-> +
-> +struct sctp_stream_reset {
-> +	sctp_assoc_t strrst_assoc_id;
-> +	__u16 strrst_flags;
-> +	__u16 strrst_number_of_streams;
-> +	__u16 strrst_streams[];
-> +};
-> +
->  #endif /* __net_sctp_user_h__ */
+An extra list_del() during the module load failure and unload
+resulted in a crash with a list corruption.  Now sctp can
+be unloaded again.
 
-This is completely made up and is not documented anywhere.  Once we export this,
-we are stuck living with this API and I am hesitant to do this.
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ net/sctp/protocol.c |    5 +----
+ 1 files changed, 1 insertions(+), 4 deletions(-)
 
-As an example, it is possible to have more then one stream reset parameter in the
-stream reset chunk.  It is also impossible to request different sets of streams
-to be reset between outgoing and incoming parameters.
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index b78e3be..4e66384 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -1322,9 +1322,8 @@ SCTP_STATIC __init int sctp_init(void)
+ out:
+ 	return status;
+ err_v6_add_protocol:
+-	sctp_v6_del_protocol();
+-err_add_protocol:
+ 	sctp_v4_del_protocol();
++err_add_protocol:
+ 	inet_ctl_sock_destroy(sctp_ctl_sock);
+ err_ctl_sock_init:
+ 	sctp_v6_protosw_exit();
+@@ -1335,7 +1334,6 @@ err_protosw_init:
+ 	sctp_v4_pf_exit();
+ 	sctp_v6_pf_exit();
+ 	sctp_sysctl_unregister();
+-	list_del(&sctp_af_inet.list);
+ 	free_pages((unsigned long)sctp_port_hashtable,
+ 		   get_order(sctp_port_hashsize *
+ 			     sizeof(struct sctp_bind_hashbucket)));
+@@ -1383,7 +1381,6 @@ SCTP_STATIC __exit void sctp_exit(void)
+ 	sctp_v4_pf_exit();
+ 
+ 	sctp_sysctl_unregister();
+-	list_del(&sctp_af_inet.list);
+ 
+ 	free_pages((unsigned long)sctp_assoc_hashtable,
+ 		   get_order(sctp_assoc_hashsize *
+-- 
+1.5.4.3
 
-All of these issues need to be addresses in the stream reset id.
-
--vlad
