@@ -1,71 +1,44 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Mon, 02 Mar 2009 19:46:13 +0000
-Subject: [PATCH net-next 4/5] sctp: use time_before or time_after for comparing jiffies
-Message-Id: <1236023174-18314-5-git-send-email-vladislav.yasevich@hp.com>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Mon, 09 Mar 2009 08:55:08 +0000
+Subject: [PATCH] sctp: fix to send FORWARD-TSN chunk only if peer has such
+Message-Id: <49B4D96C.302@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <>
- <1236023174-18314-1-git-send-email-vladislav.yasevich@hp.com>
- <1236023174-18314-2-git-send-email-vladislav.yasevich@hp.com>
- <1236023174-18314-3-git-send-email-vladislav.yasevich@hp.com>
- <1236023174-18314-4-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <1236023174-18314-4-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, Wei Yongjun <yjwei@cn.fujitsu.com>, Vlad Yasevich <vladislav.yasevich@hp.com>
+To: linux-sctp@vger.kernel.org
 
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
+RFC3758 Section 3.3.1.  Sending Forward-TSN-Supported param in INIT
 
-The functions time_before or time_after are more robust
-for comparing jiffies against other values.
+   Note that if the endpoint chooses NOT to include the parameter, then
+   at no time during the life of the association can it send or process
+   a FORWARD TSN.
+
+If peer does not support PR-SCTP capable, don't send FORWARD-TSN chunk
+to peer.
 
 Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 ---
- net/sctp/outqueue.c  |    3 ++-
- net/sctp/transport.c |    7 ++++---
- 2 files changed, 6 insertions(+), 4 deletions(-)
+ net/sctp/outqueue.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
 diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index bc411c8..a367d15 100644
+index a367d15..d765fc5 100644
 --- a/net/sctp/outqueue.c
 +++ b/net/sctp/outqueue.c
-@@ -428,7 +428,8 @@ void sctp_retransmit_mark(struct sctp_outq *q,
- 			 * retransmitting due to T3 timeout.
- 			 */
- 			if (reason = SCTP_RTXR_T3_RTX &&
--			    (jiffies - chunk->sent_at) < transport->last_rto)
-+			    time_before(jiffies, chunk->sent_at +
-+						 transport->last_rto))
- 				continue;
+@@ -1758,6 +1758,9 @@ static void sctp_generate_fwdtsn(struct sctp_outq *q, __u32 ctsn)
+ 	struct sctp_chunk *chunk;
+ 	struct list_head *lchunk, *temp;
  
- 			/* RFC 2960 6.2.1 Processing a Received SACK
-diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-index 5c29b14..e5dde45 100644
---- a/net/sctp/transport.c
-+++ b/net/sctp/transport.c
-@@ -543,8 +543,8 @@ void sctp_transport_lower_cwnd(struct sctp_transport *transport,
- 		 * congestion indications more than once every window of
- 		 * data (or more loosely more than once every round-trip time).
- 		 */
--		if ((jiffies - transport->last_time_ecne_reduced) >
--		    transport->rtt) {
-+		if (time_after(jiffies, transport->last_time_ecne_reduced +
-+					transport->rtt)) {
- 			transport->ssthresh = max(transport->cwnd/2,
- 						  4*transport->asoc->pathmtu);
- 			transport->cwnd = transport->ssthresh;
-@@ -561,7 +561,8 @@ void sctp_transport_lower_cwnd(struct sctp_transport *transport,
- 		 * to be done every RTO interval, we do it every hearbeat
- 		 * interval.
- 		 */
--		if ((jiffies - transport->last_time_used) > transport->rto)
-+		if (time_after(jiffies, transport->last_time_used +
-+					transport->rto))
- 			transport->cwnd = max(transport->cwnd/2,
- 						 4*transport->asoc->pathmtu);
- 		break;
++	if (!asoc->peer.prsctp_capable)
++		return;
++
+ 	/* PR-SCTP C1) Let SackCumAck be the Cumulative TSN ACK carried in the
+ 	 * received SACK.
+ 	 *
 -- 
-1.5.4.3
+1.5.3.8
+
+
+
 
