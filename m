@@ -1,147 +1,240 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Mon, 02 Mar 2009 19:46:14 +0000
-Subject: [PATCH net-next 5/5] sctp: Fix broken RTO-doubling for data retransmits
-Message-Id: <1236023174-18314-6-git-send-email-vladislav.yasevich@hp.com>
+Date: Thu, 12 Mar 2009 19:49:17 +0000
+Subject: [PATCH net-next 1/4] sctp: simplify sctp listening code
+Message-Id: <1236887360-1904-2-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <>
- <1236023174-18314-1-git-send-email-vladislav.yasevich@hp.com>
- <1236023174-18314-2-git-send-email-vladislav.yasevich@hp.com>
- <1236023174-18314-3-git-send-email-vladislav.yasevich@hp.com>
- <1236023174-18314-4-git-send-email-vladislav.yasevich@hp.com>
- <1236023174-18314-5-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <1236023174-18314-5-git-send-email-vladislav.yasevich@hp.com>
+References: <1236887360-1904-1-git-send-email-vladislav.yasevich@hp.com>
+In-Reply-To: <1236887360-1904-1-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>
+To: davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-Commit faee47cdbfe8d74a1573c2f81ea6dbb08d735be6
-(sctp: Fix the RTO-doubling on idle-link heartbeats)
-broke the RTO doubling for data retransmits.  If the
-heartbeat was sent before the data T3-rtx time, the
-the RTO will not double upon the T3-rtx expiration.
-Distingish between the operations by passing an argument
-to the function.
-
-Additionally, Wei Youngjun pointed out that our treatment
-of requested HEARTBEATS and timer HEARTBEATS is the same
-wrt resetting congestion window.  That needs to be separated,
-since user requested HEARTBEATS should not treat the link
-as idle.
+sctp_inet_listen() call is split between UDP and TCP style.  Looking
+at the code, the two functions are almost the same and can be
+merged into a single helper.  This also fixes a bug that was
+fixed in the UDP function, but missed in the TCP function.
 
 Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 ---
- include/net/sctp/command.h |    3 ++-
- net/sctp/sm_sideeffect.c   |   32 +++++++++++++-------------------
- net/sctp/sm_statefuns.c    |    6 ++++--
- 3 files changed, 19 insertions(+), 22 deletions(-)
+ net/sctp/socket.c |  152 +++++++++++++++++-----------------------------------
+ 1 files changed, 50 insertions(+), 102 deletions(-)
 
-diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
-index 88988ab..3b96680 100644
---- a/include/net/sctp/command.h
-+++ b/include/net/sctp/command.h
-@@ -77,7 +77,8 @@ typedef enum {
- 	SCTP_CMD_HB_TIMERS_START,    /* Start the heartbeat timers. */
- 	SCTP_CMD_HB_TIMER_UPDATE,    /* Update a heartbeat timers.  */
- 	SCTP_CMD_HB_TIMERS_STOP,     /* Stop the heartbeat timers.  */
--	SCTP_CMD_TRANSPORT_RESET,    /* Reset the status of a transport. */
-+	SCTP_CMD_TRANSPORT_HB_SENT,  /* Reset the status of a transport. */
-+	SCTP_CMD_TRANSPORT_IDLE,     /* Do manipulations on idle transport */
- 	SCTP_CMD_TRANSPORT_ON,       /* Mark the transport as active. */
- 	SCTP_CMD_REPORT_ERROR,   /* Pass this error back out of the sm. */
- 	SCTP_CMD_REPORT_BAD_TAG, /* Verification tags didn't match. */
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index 0146cfb..5385150 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -434,7 +434,8 @@ sctp_timer_event_t *sctp_timer_events[SCTP_NUM_TIMEOUT_TYPES] = {
-  *
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index bbd3cd2..5fb3a8c 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -5843,37 +5843,28 @@ static int sctp_get_port(struct sock *sk, unsigned short snum)
+ }
+ 
+ /*
+- * 3.1.3 listen() - UDP Style Syntax
+- *
+- *   By default, new associations are not accepted for UDP style sockets.
+- *   An application uses listen() to mark a socket as being able to
+- *   accept new associations.
++ *  Move a socket to LISTENING state.
   */
- static void sctp_do_8_2_transport_strike(struct sctp_association *asoc,
--					 struct sctp_transport *transport)
-+					 struct sctp_transport *transport,
-+					 int is_hb)
+-SCTP_STATIC int sctp_seqpacket_listen(struct sock *sk, int backlog)
++SCTP_STATIC int sctp_listen_start(struct sock *sk, int backlog)
  {
- 	/* The check for association's overall error counter exceeding the
- 	 * threshold is done in the state function.
-@@ -466,7 +467,7 @@ static void sctp_do_8_2_transport_strike(struct sctp_association *asoc,
- 	 * The first unacknowleged HB triggers it.  We do this with a flag
- 	 * that indicates that we have an outstanding HB.
- 	 */
--	if (transport->hb_sent) {
-+	if (!is_hb || transport->hb_sent) {
- 		transport->last_rto = transport->rto;
- 		transport->rto = min((transport->rto * 2), transport->asoc->rto_max);
- 	}
-@@ -657,20 +658,6 @@ static void sctp_cmd_transport_on(sctp_cmd_seq_t *cmds,
- 		sctp_transport_hold(t);
- }
+ 	struct sctp_sock *sp = sctp_sk(sk);
+ 	struct sctp_endpoint *ep = sp->ep;
++	struct crypto_hash *tfm = NULL;
  
--/* Helper function to do a transport reset at the expiry of the hearbeat
-- * timer.
-- */
--static void sctp_cmd_transport_reset(sctp_cmd_seq_t *cmds,
--				     struct sctp_association *asoc,
--				     struct sctp_transport *t)
--{
--	sctp_transport_lower_cwnd(t, SCTP_LOWER_CWND_INACTIVE);
+-	/* Only UDP style sockets that are not peeled off are allowed to
+-	 * listen().
+-	 */
+-	if (!sctp_style(sk, UDP))
+-		return -EINVAL;
 -
--	/* Mark one strike against a transport.  */
--	sctp_do_8_2_transport_strike(asoc, t);
+-	/* If backlog is zero, disable listening. */
+-	if (!backlog) {
+-		if (sctp_sstate(sk, CLOSED))
+-			return 0;
 -
--	t->hb_sent = 1;
--}
- 
- /* Helper function to process the process SACK command.  */
- static int sctp_cmd_process_sack(sctp_cmd_seq_t *cmds,
-@@ -1459,12 +1446,19 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
- 
- 		case SCTP_CMD_STRIKE:
- 			/* Mark one strike against a transport.  */
--			sctp_do_8_2_transport_strike(asoc, cmd->obj.transport);
-+			sctp_do_8_2_transport_strike(asoc, cmd->obj.transport,
-+						    0);
-+			break;
-+
-+		case SCTP_CMD_TRANSPORT_IDLE:
-+			t = cmd->obj.transport;
-+			sctp_transport_lower_cwnd(t, SCTP_LOWER_CWND_INACTIVE);
- 			break;
- 
--		case SCTP_CMD_TRANSPORT_RESET:
-+		case SCTP_CMD_TRANSPORT_HB_SENT:
- 			t = cmd->obj.transport;
--			sctp_cmd_transport_reset(commands, asoc, t);
-+			sctp_do_8_2_transport_strike(asoc, t, 1);
-+			t->hb_sent = 1;
- 			break;
- 
- 		case SCTP_CMD_TRANSPORT_ON:
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 3a0cd07..a907bab 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -988,7 +988,9 @@ sctp_disposition_t sctp_sf_sendbeat_8_3(const struct sctp_endpoint *ep,
- 		/* Set transport error counter and association error counter
- 		 * when sending heartbeat.
- 		 */
--		sctp_add_cmd_sf(commands, SCTP_CMD_TRANSPORT_RESET,
-+		sctp_add_cmd_sf(commands, SCTP_CMD_TRANSPORT_IDLE,
-+				SCTP_TRANSPORT(transport));
-+		sctp_add_cmd_sf(commands, SCTP_CMD_TRANSPORT_HB_SENT,
- 				SCTP_TRANSPORT(transport));
+-		sctp_unhash_endpoint(ep);
+-		sk->sk_state = SCTP_SS_CLOSED;
+-		return 0;
++	/* Allocate HMAC for generating cookie. */
++	if (!sctp_sk(sk)->hmac && sctp_hmac_alg) {
++		tfm = crypto_alloc_hash(sctp_hmac_alg, 0, CRYPTO_ALG_ASYNC);
++		if (IS_ERR(tfm)) {
++			if (net_ratelimit()) {
++				printk(KERN_INFO
++				       "SCTP: failed to load transform for %s: %ld\n",
++					sctp_hmac_alg, PTR_ERR(tfm));
++			}
++			return -ENOSYS;
++		}
++		sctp_sk(sk)->hmac = tfm;
  	}
- 	sctp_add_cmd_sf(commands, SCTP_CMD_HB_TIMER_UPDATE,
-@@ -4967,7 +4969,7 @@ sctp_disposition_t sctp_sf_do_prm_requestheartbeat(
- 	 *    to that address and not acknowledged within one RTO.
+ 
+-	/* Return if we are already listening. */
+-	if (sctp_sstate(sk, LISTENING))
+-		return 0;
+-
+ 	/*
+ 	 * If a bind() or sctp_bindx() is not called prior to a listen()
+ 	 * call that allows new associations to be accepted, the system
+@@ -5884,7 +5875,6 @@ SCTP_STATIC int sctp_seqpacket_listen(struct sock *sk, int backlog)
+ 	 * extensions draft, but follows the practice as seen in TCP
+ 	 * sockets.
  	 *
+-	 * Additionally, turn off fastreuse flag since we are not listening
  	 */
--	sctp_add_cmd_sf(commands, SCTP_CMD_TRANSPORT_RESET,
-+	sctp_add_cmd_sf(commands, SCTP_CMD_TRANSPORT_HB_SENT,
- 			SCTP_TRANSPORT(arg));
- 	return SCTP_DISPOSITION_CONSUME;
+ 	sk->sk_state = SCTP_SS_LISTENING;
+ 	if (!ep->base.bind_addr.port) {
+@@ -5895,113 +5885,71 @@ SCTP_STATIC int sctp_seqpacket_listen(struct sock *sk, int backlog)
+ 			sk->sk_state = SCTP_SS_CLOSED;
+ 			return -EADDRINUSE;
+ 		}
+-		sctp_sk(sk)->bind_hash->fastreuse = 0;
+ 	}
+ 
+-	sctp_hash_endpoint(ep);
+-	return 0;
+-}
+-
+-/*
+- * 4.1.3 listen() - TCP Style Syntax
+- *
+- *   Applications uses listen() to ready the SCTP endpoint for accepting
+- *   inbound associations.
+- */
+-SCTP_STATIC int sctp_stream_listen(struct sock *sk, int backlog)
+-{
+-	struct sctp_sock *sp = sctp_sk(sk);
+-	struct sctp_endpoint *ep = sp->ep;
+-
+-	/* If backlog is zero, disable listening. */
+-	if (!backlog) {
+-		if (sctp_sstate(sk, CLOSED))
+-			return 0;
+-
+-		sctp_unhash_endpoint(ep);
+-		sk->sk_state = SCTP_SS_CLOSED;
+-		return 0;
+-	}
+-
+-	if (sctp_sstate(sk, LISTENING))
+-		return 0;
+-
+-	/*
+-	 * If a bind() or sctp_bindx() is not called prior to a listen()
+-	 * call that allows new associations to be accepted, the system
+-	 * picks an ephemeral port and will choose an address set equivalent
+-	 * to binding with a wildcard address.
+-	 *
+-	 * This is not currently spelled out in the SCTP sockets
+-	 * extensions draft, but follows the practice as seen in TCP
+-	 * sockets.
+-	 */
+-	sk->sk_state = SCTP_SS_LISTENING;
+-	if (!ep->base.bind_addr.port) {
+-		if (sctp_autobind(sk))
+-			return -EAGAIN;
+-	} else
+-		sctp_sk(sk)->bind_hash->fastreuse = 0;
+-
+ 	sk->sk_max_ack_backlog = backlog;
+ 	sctp_hash_endpoint(ep);
+ 	return 0;
  }
+ 
+ /*
++ * 4.1.3 / 5.1.3 listen()
++ *
++ *   By default, new associations are not accepted for UDP style sockets.
++ *   An application uses listen() to mark a socket as being able to
++ *   accept new associations.
++ *
++ *   On TCP style sockets, applications use listen() to ready the SCTP
++ *   endpoint for accepting inbound associations.
++ *
++ *   On both types of endpoints a backlog of '0' disables listening.
++ *
+  *  Move a socket to LISTENING state.
+  */
+ int sctp_inet_listen(struct socket *sock, int backlog)
+ {
+ 	struct sock *sk = sock->sk;
+-	struct crypto_hash *tfm = NULL;
++	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
+ 	int err = -EINVAL;
+ 
+ 	if (unlikely(backlog < 0))
+-		goto out;
++		return err;
+ 
+ 	sctp_lock_sock(sk);
+ 
++	/* Peeled-off sockets are not allowed to listen().  */
++	if (sctp_style(sk, UDP_HIGH_BANDWIDTH))
++		goto out;
++
+ 	if (sock->state != SS_UNCONNECTED)
+ 		goto out;
+ 
+-	/* Allocate HMAC for generating cookie. */
+-	if (!sctp_sk(sk)->hmac && sctp_hmac_alg) {
+-		tfm = crypto_alloc_hash(sctp_hmac_alg, 0, CRYPTO_ALG_ASYNC);
+-		if (IS_ERR(tfm)) {
+-			if (net_ratelimit()) {
+-				printk(KERN_INFO
+-				       "SCTP: failed to load transform for %s: %ld\n",
+-					sctp_hmac_alg, PTR_ERR(tfm));
+-			}
+-			err = -ENOSYS;
++	/* If backlog is zero, disable listening. */
++	if (!backlog) {
++		if (sctp_sstate(sk, CLOSED))
+ 			goto out;
+-		}
+-	}
+ 
+-	switch (sock->type) {
+-	case SOCK_SEQPACKET:
+-		err = sctp_seqpacket_listen(sk, backlog);
+-		break;
+-	case SOCK_STREAM:
+-		err = sctp_stream_listen(sk, backlog);
+-		break;
+-	default:
+-		break;
++		err = 0;
++		sctp_unhash_endpoint(ep);
++		sk->sk_state = SCTP_SS_CLOSED;
++		if (sk->sk_reuse)
++			sctp_sk(sk)->bind_hash->fastreuse = 1;
++		goto out;
+ 	}
+ 
+-	if (err)
+-		goto cleanup;
++	/* If we are already listening, just update the backlog */
++	if (sctp_sstate(sk, LISTENING))
++		sk->sk_max_ack_backlog = backlog;
++	else {
++		err = sctp_listen_start(sk, backlog);
++		if (err)
++			goto out;
++	}
+ 
+-	/* Store away the transform reference. */
+-	if (!sctp_sk(sk)->hmac)
+-		sctp_sk(sk)->hmac = tfm;
++	err = 0;
+ out:
+ 	sctp_release_sock(sk);
+ 	return err;
+-cleanup:
+-	crypto_free_hash(tfm);
+-	goto out;
+ }
+ 
+ /*
 -- 
 1.5.4.3
 
