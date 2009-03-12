@@ -1,12 +1,17 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Mon, 09 Mar 2009 08:55:08 +0000
-Subject: [PATCH] sctp: fix to send FORWARD-TSN chunk only if peer has such
-Message-Id: <49B4D96C.302@cn.fujitsu.com>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Thu, 12 Mar 2009 19:49:19 +0000
+Subject: [PATCH net-next 3/4] sctp: fix to send FORWARD-TSN chunk only if peer has such capable
+Message-Id: <1236887360-1904-4-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1236887360-1904-1-git-send-email-vladislav.yasevich@hp.com>
+In-Reply-To: <1236887360-1904-1-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Wei Yongjun <yjwei@cn.fujitsu.com>, Vlad Yasevich <vladislav.yasevich@hp.com>
+
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
 
 RFC3758 Section 3.3.1.  Sending Forward-TSN-Supported param in INIT
 
@@ -18,6 +23,7 @@ If peer does not support PR-SCTP capable, don't send FORWARD-TSN chunk
 to peer.
 
 Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 ---
  net/sctp/outqueue.c |    3 +++
  1 files changed, 3 insertions(+), 0 deletions(-)
@@ -37,8 +43,5 @@ index a367d15..d765fc5 100644
  	 * received SACK.
  	 *
 -- 
-1.5.3.8
-
-
-
+1.5.4.3
 
