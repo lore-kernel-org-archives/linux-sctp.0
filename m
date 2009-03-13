@@ -1,21 +1,25 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Thu, 12 Mar 2009 19:49:16 +0000
-Subject: [PATCH net-next 0/4] sctp: clean-ups and fixes
-Message-Id: <1236887360-1904-1-git-send-email-vladislav.yasevich@hp.com>
+From: David Miller <davem@davemloft.net>
+Date: Fri, 13 Mar 2009 18:40:03 +0000
+Subject: Re: [PATCH net-next 0/4] sctp: clean-ups and fixes
+Message-Id: <20090313.114003.217505594.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1236887360-1904-1-git-send-email-vladislav.yasevich@hp.com>
+In-Reply-To: <1236887360-1904-1-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net
+To: vladislav.yasevich@hp.com
 Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Hi David
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Thu, 12 Mar 2009 15:49:16 -0400
 
-This a small set of fixes in sctp:
- 1) clean up and simplify sctp listening code.
- 2) fix ASCONF indication in INIT-ACK.
- 3) send FORWARD TSN chunks only when peer supports the extension.
- 4) include Adaptation Indication parameter only when user set it.
+> Hi David
+> 
+> This a small set of fixes in sctp:
+>  1) clean up and simplify sctp listening code.
+>  2) fix ASCONF indication in INIT-ACK.
+>  3) send FORWARD TSN chunks only when peer supports the extension.
+>  4) include Adaptation Indication parameter only when user set it.
 
-Thanks
--vlad
+All applied, thanks!
