@@ -1,60 +1,22 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Thu, 19 Mar 2009 21:43:03 +0000
-Subject: [PATCH net-next] sctp: Clean up TEST_FRAME hacks.
-Message-Id: <49C2BC67.8030709@hp.com>
+From: David Miller <davem@davemloft.net>
+Date: Sat, 21 Mar 2009 20:41:16 +0000
+Subject: Re: [PATCH net-next] sctp: Clean up TEST_FRAME hacks.
+Message-Id: <20090321.134116.52170180.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <49C2BC67.8030709@hp.com>
+In-Reply-To: <49C2BC67.8030709@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev <netdev@vger.kernel.org>
-Cc: David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org
+To: vladislav.yasevich@hp.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-Remove 2 TEST_FRAME hacks that are no longer needed.  These allowed
-sctp regression tests to compile before, but are no longer needed.
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Thu, 19 Mar 2009 17:43:03 -0400
 
-Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
----
- include/net/sctp/sctp.h |    7 -------
- net/sctp/output.c       |    5 +----
- 2 files changed, 1 insertions(+), 11 deletions(-)
+> Remove 2 TEST_FRAME hacks that are no longer needed.  These allowed
+> sctp regression tests to compile before, but are no longer needed.
+> 
+> Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index 9e226be..9f80a76 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -62,13 +62,6 @@
-  *   and will continue to evolve.
-  */
-
--
--
--#ifdef TEST_FRAME
--#undef CONFIG_SCTP_DBG_OBJCNT
--#undef CONFIG_SYSCTL
--#endif /* TEST_FRAME */
--
- #include <linux/types.h>
- #include <linux/slab.h>
- #include <linux/in.h>
-diff --git a/net/sctp/output.c b/net/sctp/output.c
-index 07d5890..7d08f52 100644
---- a/net/sctp/output.c
-+++ b/net/sctp/output.c
-@@ -49,13 +49,10 @@
- #include <linux/ipv6.h>
- #include <linux/init.h>
- #include <net/inet_ecn.h>
-+#include <net/ip.h>
- #include <net/icmp.h>
- #include <net/net_namespace.h>
-
--#ifndef TEST_FRAME
--#include <net/tcp.h>
--#endif /* TEST_FRAME (not defined) */
--
- #include <linux/socket.h> /* for sa_family_t */
- #include <net/sock.h>
-
--- 
-1.5.4.3
-
+Applied.
