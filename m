@@ -1,12 +1,12 @@
-From: "Meredith Dawson" <jdeysach@mcdowallco.com>
-Date: Tue, 14 Apr 2009 19:25:41 +0000
-Subject: Last day of sale
-Message-Id: <20090414162541.4090605@mcdowallco.com>
+From: "Lucy Mcclure" <ewinters@taviller.com.tr>
+Date: Sun, 05 Apr 2009 14:35:44 +0000
+Subject: Make your beloved woman scream all night long!
+Message-Id: <20090405113544.4060804@taviller.com.tr>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-This is extremely important for your health. http://lbsubo.bojudvonho.com/
+Great variety of health products. http://gubkas.hipraputt.com/
 
