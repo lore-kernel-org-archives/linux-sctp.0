@@ -1,70 +1,56 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Sun, 26 Apr 2009 15:14:42 +0000
-Subject: [PATCH 2/2] sctp: fix panic when T4-rto timer expire on removed transport
-Message-Id: <49F47A62.40206@cn.fujitsu.com>
+Date: Tue, 07 Apr 2009 07:44:29 +0000
+Subject: [PATCH 2/2] sctp: fix report unrecognized parameter in ACSONF-ACK
+Message-Id: <49DB045D.60303@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-If T4-rto timer is expired on a removed transport, kernel panic
-will occur when we do failure management on that transport.
-You can reproduce this use the following sequence:
+RFC5061 Section 5.2.  Upon Reception of an ASCONF Chunk
 
-Endpoint A                           Endpoint B
-(ESTABLISHED)                        (ESTABLISHED)
+V2)  In processing the chunk, the receiver should build a
+     response message with the appropriate error TLVs, as
+     specified in the Parameter type bits, for any ASCONF
+     Parameter it does not understand.  To indicate an
+     unrecognized parameter, Cause Type 8 should be used as
+     defined in the ERROR in Section 3.3.10.8, [RFC4960].  The
+     endpoint may also use the response to carry rejections for
+     other reasons, such as resource shortages, etc., using the
+     Error Cause TLV and an appropriate error condition.
 
-            <-----------------      ASCONF
-                                    (SRC=X)
-ASCONF        ----------------->
-(Delete IP Address = X)
-            <-----------------      ASCONF-ACK
-                                    (Success Indication)
-            <-----------------      ASCONF
-                                    (T4-rto timer expire)
-
-This patch fixed the problem.
+So we should indicate an unrecognized parameter with error
+SCTP_ERROR_UNKNOWN_PARAM in ACSONF-ACK chunk, not
+SCTP_ERROR_INV_PARAM.
 
 Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 ---
- net/sctp/associola.c    |    7 +++++++
- net/sctp/sm_statefuns.c |    4 +++-
- 2 files changed, 10 insertions(+), 1 deletions(-)
+ net/sctp/sm_make_chunk.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index 35c67bf..b4abf42 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -574,6 +574,13 @@ void sctp_assoc_rm_peer(struct sctp_association *asoc,
- 	if (asoc->shutdown_last_sent_to = peer)
- 		asoc->shutdown_last_sent_to = NULL;
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 6851ee9..c78e31b 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2959,7 +2959,7 @@ static __be16 sctp_process_asconf_param(struct sctp_association *asoc,
+ 		sctp_assoc_set_primary(asoc, peer);
+ 		break;
+ 	default:
+-		return SCTP_ERROR_INV_PARAM;
++		return SCTP_ERROR_UNKNOWN_PARAM;
+ 		break;
+ 	}
  
-+	/* If we remove the transport an ASCONF was last sent to, set it to
-+	 * NULL.
-+	 */
-+	if (asoc->addip_last_asconf &&
-+	    asoc->addip_last_asconf->transport = peer)
-+		asoc->addip_last_asconf->transport = NULL;
-+
- 	asoc->peer.transport_count--;
+@@ -3273,7 +3273,7 @@ int sctp_process_asconf_ack(struct sctp_association *asoc,
+ 			retval = 1;
+ 			break;
  
- 	sctp_transport_free(peer);
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 10abc07..7288192 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -5475,7 +5475,9 @@ sctp_disposition_t sctp_sf_t4_timer_expire(
- 	 * detection on the appropriate destination address as defined in
- 	 * RFC2960 [5] section 8.1 and 8.2.
- 	 */
--	sctp_add_cmd_sf(commands, SCTP_CMD_STRIKE, SCTP_TRANSPORT(transport));
-+	if (transport)
-+		sctp_add_cmd_sf(commands, SCTP_CMD_STRIKE,
-+				SCTP_TRANSPORT(transport));
- 
- 	/* Reconfig T4 timer and transport. */
- 	sctp_add_cmd_sf(commands, SCTP_CMD_SETUP_T4, SCTP_CHUNK(chunk));
+-		case SCTP_ERROR_INV_PARAM:
++		case SCTP_ERROR_UNKNOWN_PARAM:
+ 			/* Disable sending this type of asconf parameter in
+ 			 * future.
+ 			 */
 -- 
 1.5.3.8
 
