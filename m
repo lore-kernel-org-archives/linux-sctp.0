@@ -1,30 +1,39 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Wed, 13 May 2009 16:12:57 +0000
-Subject: Re: [PATCH] sctp: fix to choose alternate destination when retransmit
-Message-Id: <4A0AF189.40207@hp.com>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Tue, 12 May 2009 13:59:15 +0000
+Subject: [PATCH] sctp: check the unrecognized ASCONF parameter before access
+Message-Id: <4A0980B3.9050106@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4A097F33.5010002@cn.fujitsu.com>
-In-Reply-To: <4A097F33.5010002@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Wei Yongjun wrote:
-> RFC 5061 Section 5.1 ASCONF Chunk Procedures said:
-> 
-> B4)  Re-transmit the ASCONF Chunk last sent and if possible choose an
->      alternate destination address (please refer to [RFC4960],
->      Section 6.4.1).  An endpoint MUST NOT add new parameters to this
->      chunk; it MUST be the same (including its Sequence Number) as
->      the last ASCONF sent.  An endpoint MAY, however, bundle an
->      additional ASCONF with new ASCONF parameters with the next
->      Sequence Number.  For details, see Section 5.5.
-> 
-> This patch fix to choose an alternate destination address when
-> re-transmit the ASCONF chunk, with some dup codes cleanup.
-> 
-> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+This patch fix to check the unrecognized ASCONF parameter before
+access it.
 
-Thanks, applied.
--vlad
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ net/sctp/sm_make_chunk.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
+
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 61cc607..ab91712 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2861,6 +2861,11 @@ static __be16 sctp_process_asconf_param(struct sctp_association *asoc,
+ 	addr_param = (union sctp_addr_param *)
+ 			((void *)asconf_param + sizeof(sctp_addip_param_t));
+ 
++	if (asconf_param->param_hdr.type != SCTP_PARAM_ADD_IP &&
++	    asconf_param->param_hdr.type != SCTP_PARAM_DEL_IP &&
++	    asconf_param->param_hdr.type != SCTP_PARAM_SET_PRIMARY)
++		return SCTP_ERROR_UNKNOWN_PARAM;
++
+ 	switch (addr_param->v4.param_hdr.type) {
+ 	case SCTP_PARAM_IPV6_ADDRESS:
+ 		if (!asoc->peer.ipv6_address)
+-- 
+1.5.3.8
+
+
+
