@@ -1,72 +1,54 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Thu, 14 May 2009 00:22:28 +0000
-Subject: [PATCHv2] sctp: avoid overwrite the return value of sctp_process_asconf_ack()
-Message-Id: <4A0B6444.6090708@cn.fujitsu.com>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Wed, 03 Jun 2009 14:33:27 +0000
+Subject: pull request: sctp updates for net-next
+Message-Id: <4A2689B7.3030101@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: David Miller <davem@davemloft.net>, netdev <netdev@vger.kernel.org>
+Cc: Linux SCTP Dev Mailing list <linux-sctp@vger.kernel.org>
 
-The return value of sctp_process_asconf_ack() may be
-overwritten while process parameters with no error.
-This patch fixed the problem.
+Hi David
 
-Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
----
- net/sctp/sm_make_chunk.c |    9 +++------
- 1 files changed, 3 insertions(+), 6 deletions(-)
+The following changes since commit 047584ce94108012288554a5f84585d792cc7f8f:
+  Haiying Wang (1):
+        net/ucc_geth: Add SGMII support for UEC GETH driver
 
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 61cc607..b7acc9c 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -3104,7 +3104,7 @@ done:
- }
- 
- /* Process a asconf parameter that is successfully acked. */
--static int sctp_asconf_param_success(struct sctp_association *asoc,
-+static void sctp_asconf_param_success(struct sctp_association *asoc,
- 				     sctp_addip_param_t *asconf_param)
- {
- 	struct sctp_af *af;
-@@ -3113,7 +3113,6 @@ static int sctp_asconf_param_success(struct sctp_association *asoc,
- 	union sctp_addr_param *addr_param;
- 	struct sctp_transport *transport;
- 	struct sctp_sockaddr_entry *saddr;
--	int retval = 0;
- 
- 	addr_param = (union sctp_addr_param *)
- 			((void *)asconf_param + sizeof(sctp_addip_param_t));
-@@ -3136,7 +3135,7 @@ static int sctp_asconf_param_success(struct sctp_association *asoc,
- 		break;
- 	case SCTP_PARAM_DEL_IP:
- 		local_bh_disable();
--		retval = sctp_del_bind_addr(bp, &addr);
-+		sctp_del_bind_addr(bp, &addr);
- 		local_bh_enable();
- 		list_for_each_entry(transport, &asoc->peer.transport_addr_list,
- 				transports) {
-@@ -3148,8 +3147,6 @@ static int sctp_asconf_param_success(struct sctp_association *asoc,
- 	default:
- 		break;
- 	}
--
--	return retval;
- }
- 
- /* Get the corresponding ASCONF response error code from the ASCONF_ACK chunk
-@@ -3266,7 +3263,7 @@ int sctp_process_asconf_ack(struct sctp_association *asoc,
- 
- 		switch (err_code) {
- 		case SCTP_ERROR_NO_ERROR:
--			retval = sctp_asconf_param_success(asoc, asconf_param);
-+			sctp_asconf_param_success(asoc, asconf_param);
- 			break;
- 
- 		case SCTP_ERROR_RSRC_LOW:
--- 
-1.5.3.8
+are available in the git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/vxy/lksctp-dev.git net-next
+
+Jean-Mickael Guerin (1):
+      sctp: fix sack_timeout sysctl min and max types
+
+Vlad Yasevich (1):
+      sctp: support non-blocking version of the new sctp_connectx() API
+
+Wei Yongjun (8):
+      sctp: fix error cause codes of ADD-IP extension
+      sctp: fix report unrecognized parameter in ACSONF-ACK
+      sctp: fix the error code when ASCONF is received with invalid address
+      sctp: fix a typo in net/sctp/sm_statetable.c
+      sctp: fix to only enable IPv6 address support on PF_INET6 socket
+      sctp: fix panic when T2-shutdown timer expire on removed transport
+      sctp: fix panic when T4-rto timer expire on removed transport
+      sctp: fix to choose alternate destination when retransmit ASCONF chunk
+
+ include/linux/sctp.h       |   20 +++++++-------
+ include/net/sctp/structs.h |    6 +---
+ include/net/sctp/user.h    |    2 +
+ net/sctp/associola.c       |   64 +++++++++++++++++++------------------------
+ net/sctp/sm_make_chunk.c   |   16 +++++-----
+ net/sctp/sm_sideeffect.c   |    8 +++--
+ net/sctp/sm_statefuns.c    |   14 +++++++---
+ net/sctp/sm_statetable.c   |    2 +-
+ net/sctp/socket.c          |   42 ++++++++++++++++++++++++++++-
+ net/sctp/sysctl.c          |    6 ++--
+ 10 files changed, 110 insertions(+), 70 deletions(-)
 
 
+Please pull into net-next-2.6.
 
+Thanks
+-vlad
