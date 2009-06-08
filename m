@@ -1,43 +1,35 @@
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Date: Mon, 08 Jun 2009 15:54:46 +0000
-Subject: Re: [PATCH 1/5] 8021q: Vlan driver should use rcu_barrier() on
-Message-Id: <20090608155446.GB6961@linux.vnet.ibm.com>
+From: Jesper Dangaard Brouer <hawk@comx.dk>
+Date: Mon, 08 Jun 2009 13:11:48 +0000
+Subject: [PATCH 5/5] sunrpc/auth_gss: Call rcu_barrier() on module unload.
+Message-Id: <20090608131148.10052.39869.stgit@localhost>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20090608130959.10052.54590.stgit@localhost> <20090608131128.10052.30759.stgit@localhost>
-In-Reply-To: <20090608131128.10052.30759.stgit@localhost>
+References: <20090608130959.10052.54590.stgit@localhost>
+In-Reply-To: <20090608130959.10052.54590.stgit@localhost>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Jesper Dangaard Brouer <hawk@comx.dk>
-Cc: "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, urs.thuermann@volkswagen.de, oliver.hartkopp@volkswagen.de, wg@grandegger.com, vladislav.yasevich@hp.com, sri@us.ibm.com, linux-sctp@vger.kernel.org, Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, netfilter-devel@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>
+Cc: Jesper Dangaard Brouer <hawk@comx.dk>, "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, urs.thuermann@volkswagen.de, oliver.hartkopp@volkswagen.de, wg@grandegger.com, vladislav.yasevich@hp.com, sri@us.ibm.com, linux-sctp@vger.kernel.org, Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, netfilter-devel@vger.kernel.org
 
-On Mon, Jun 08, 2009 at 03:11:28PM +0200, Jesper Dangaard Brouer wrote:
-> The VLAN 8021q driver needs to call rcu_barrier() when unloading the module,
-> instead of syncronize_net().  This is needed to make sure that outstanding
-> call_rcu() callbacks have completed, before the callback function code is
-> removed on module unload.
+As the module uses rcu_call() we should make sure that all
+rcu callback has been completed before removing the code.
 
-Looks good!  And thank you for checking up on this!!!
+Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
+---
 
-Reviewed-by: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
+ net/sunrpc/auth_gss/auth_gss.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-> Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
-> ---
-> 
->  net/8021q/vlan.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/net/8021q/vlan.c b/net/8021q/vlan.c
-> index 714e1c3..fe64908 100644
-> --- a/net/8021q/vlan.c
-> +++ b/net/8021q/vlan.c
-> @@ -758,7 +758,7 @@ static void __exit vlan_cleanup_module(void)
->  		BUG_ON(!hlist_empty(&vlan_group_hash[i]));
-> 
->  	unregister_pernet_gen_device(vlan_net_id, &vlan_net_ops);
-> -	synchronize_net();
-> +	rcu_barrier(); /* Wait for completion of call_rcu()'s */
-> 
->  	vlan_gvrp_uninit();
->  }
-> 
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index e630b38..66d458f 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1548,6 +1548,7 @@ static void __exit exit_rpcsec_gss(void)
+ {
+ 	gss_svc_shutdown();
+ 	rpcauth_unregister(&authgss_ops);
++	rcu_barrier(); /* Wait for completion of call_rcu()'s */
+ }
+ 
+ MODULE_LICENSE("GPL");
+
