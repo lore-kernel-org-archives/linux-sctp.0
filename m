@@ -1,25 +1,37 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 10 Jun 2009 08:11:55 +0000
-Subject: Re: [PATCH 0/5] We must use rcu_barrier() on module unload
-Message-Id: <20090610.011155.231596832.davem@davemloft.net>
+From: Jesper Dangaard Brouer <hawk@comx.dk>
+Date: Mon, 08 Jun 2009 13:11:43 +0000
+Subject: [PATCH 4/5] sctp: protocol.c call rcu_barrier() on unload.
+Message-Id: <20090608131143.10052.96470.stgit@localhost>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20090608130959.10052.54590.stgit@localhost>
 In-Reply-To: <20090608130959.10052.54590.stgit@localhost>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: hawk-4UpuNZONu4c@public.gmane.org
-Cc: paulmck@linux.vnet.ibm.com, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, urs.thuermann-l29pVbxQd1IUtdQbppsyvg@public.gmane.org, oliver.hartkopp-l29pVbxQd1IUtdQbppsyvg@public.gmane.org, wg-5Yr1BZd7O62+XT7JhA+gdA@public.gmane.org, vladislav.yasevich@hp.com, sri@us.ibm.com, linux-sctp@vger.kernel.org, Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, netfilter-devel@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>
+Cc: Jesper Dangaard Brouer <hawk@comx.dk>, "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, urs.thuermann@volkswagen.de, oliver.hartkopp@volkswagen.de, wg@grandegger.com, vladislav.yasevich@hp.com, sri@us.ibm.com, linux-sctp@vger.kernel.org, Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, netfilter-devel@vger.kernel.org
 
-From: Jesper Dangaard Brouer <hawk@comx.dk>
-Date: Mon, 08 Jun 2009 15:11:23 +0200
+On module unload call rcu_barrier(), this is needed as synchronize_rcu()
+is not strong enough.  The kmem_cache_destroy() does invoke
+synchronize_rcu() but it does not provide same protection.
 
-> If an unloadable module uses RCU callbacks, it need to use
-> rcu_barrier() so that the module may be safely unloaded.
- ...
-> The patchset is made on top of DaveM's net-next-2.6 tree (starting on
-> top of commit a1c1db392090). As this is my usual development tree,
-> even though this patchset is bugfixes. (Just tested it applied cleanly
-> on Linus'es tree ...)
+Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
+---
 
-All 5 patches applied, thanks!
+ net/sctp/protocol.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index cb2c50d..79cbd47 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -1370,6 +1370,8 @@ SCTP_STATIC __exit void sctp_exit(void)
+ 	sctp_proc_exit();
+ 	cleanup_sctp_mibs();
+ 
++	rcu_barrier(); /* Wait for completion of call_rcu()'s */
++
+ 	kmem_cache_destroy(sctp_chunk_cachep);
+ 	kmem_cache_destroy(sctp_bucket_cachep);
+ }
+
