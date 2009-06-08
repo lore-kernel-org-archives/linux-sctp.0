@@ -1,60 +1,72 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Date: Wed, 10 Jun 2009 05:38:16 +0000
-Subject: Re: [PATCH 2/5] nfnetlink_queue: Use rcu_barrier() on module
-Message-Id: <20090609223816.af9b1bf9.akpm@linux-foundation.org>
+From: Jesper Dangaard Brouer <hawk@comx.dk>
+Date: Mon, 08 Jun 2009 13:11:23 +0000
+Subject: [PATCH 0/5] We must use rcu_barrier() on module unload
+Message-Id: <20090608130959.10052.54590.stgit@localhost>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20090608130959.10052.54590.stgit@localhost>
-	<20090608131133.10052.40836.stgit@localhost>
-In-Reply-To: <20090608131133.10052.40836.stgit@localhost>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Jesper Dangaard Brouer <hawk@comx.dk>
-Cc: "David S. Miller" <davem@davemloft.net>, "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, urs.thuermann@volkswagen.de, oliver.hartkopp@volkswagen.de, wg@grandegger.com, vladislav.yasevich@hp.com, sri@us.ibm.com, linux-sctp@vger.kernel.org, Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, netfilter-devel@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>
+Cc: Jesper Dangaard Brouer <hawk@comx.dk>, "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, urs.thuermann@volkswagen.de, oliver.hartkopp@volkswagen.de, wg@grandegger.com, vladislav.yasevich@hp.com, sri@us.ibm.com, linux-sctp@vger.kernel.org, Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, netfilter-devel@vger.kernel.org
 
-On Mon, 08 Jun 2009 15:11:33 +0200 Jesper Dangaard Brouer <hawk@comx.dk> wrote:
+If an unloadable module uses RCU callbacks, it need to use
+rcu_barrier() so that the module may be safely unloaded.
 
-> This module uses rcu_call() thus it should use rcu_barrier() on module unload.
-> 
-> Also fixed a trivial typo 'nfetlink' -> 'nfnetlink' in comment.
-> 
-> Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
-> ---
-> 
->  net/netfilter/nfnetlink_queue.c |    4 +++-
->  1 files changed, 3 insertions(+), 1 deletions(-)
-> 
-> diff --git a/net/netfilter/nfnetlink_queue.c b/net/netfilter/nfnetlink_queue.c
-> index 8c86011..71daa09 100644
-> --- a/net/netfilter/nfnetlink_queue.c
-> +++ b/net/netfilter/nfnetlink_queue.c
-> @@ -1,6 +1,6 @@
->  /*
->   * This is a module which is used for queueing packets and communicating with
-> - * userspace via nfetlink.
-> + * userspace via nfnetlink.
->   *
->   * (C) 2005 by Harald Welte <laforge@netfilter.org>
->   * (C) 2007 by Patrick McHardy <kaber@trash.net>
-> @@ -932,6 +932,8 @@ static void __exit nfnetlink_queue_fini(void)
->  #endif
->  	nfnetlink_subsys_unregister(&nfqnl_subsys);
->  	netlink_unregister_notifier(&nfqnl_rtnl_notifier);
-> +
-> +	rcu_barrier(); /* Wait for completion of call_rcu()'s */
->  }
->  
->  MODULE_DESCRIPTION("netfilter packet queue handler");
+While hacking on a netfilter module of my own, I learned the
+importance of calling rcu_barrier() instead of only a
+synchronize_rcu() on module unload (iif using any call_rcu()
+callbacks).  synchronize_rcu() does wait for a grace period to
+elapse, but it does not wait for the callbacks to complete.
 
-Possibly you've fixed the bug which the module_put(THIS_MODULE) in
-instance_destroy_rcu() is addressing.
+For documentation see:
+ http://lwn.net/Articles/217484/
+ Documentation/RCU/rcubarrier.txt
 
-Do we still need to take a ref against the module for each instance
-once the above fix is in place?
 
-<goes git mining>
+Looking through the net/ directory for call_rcu() users and unloadable
+modules I found 5 modules that didn't behave correctly:
 
-Nope, the THIS_MODULE games have been there since day one, and I can't
-work out why they're there.  net/netfilter/nfnetlink_log.c has them
-too.
+ net/8021q/vlan.c
+
+ net/can/af_can.c
+
+ net/netfilter/nfnetlink_queue.c
+
+ net/sctp/protocol.c
+
+ net/sunrpc/auth_gss/auth_gss.c
+
+I have made a patch for each individual module, so objections can be
+made on a per module basis.  I have Cc'ed all of the patches to the
+maintainers of each module (according to the MAINTAINERS file).
+
+The patchset is made on top of DaveM's net-next-2.6 tree (starting on
+top of commit a1c1db392090). As this is my usual development tree,
+even though this patchset is bugfixes. (Just tested it applied cleanly
+on Linus'es tree ...)
+
+---
+Jesper Dangaard Brouer (5):
+      sunrpc/auth_gss: Call rcu_barrier() on module unload.
+      sctp: protocol.c call rcu_barrier() on unload.
+      can: af_can.c use rcu_barrier() on module unload.
+      nfnetlink_queue: Use rcu_barrier() on module unload.
+      8021q: Vlan driver should use rcu_barrier() on unload instead of syncronize_net()
+
+
+ net/8021q/vlan.c                |    2 +-
+ net/can/af_can.c                |    2 ++
+ net/netfilter/nfnetlink_queue.c |    4 +++-
+ net/sctp/protocol.c             |    2 ++
+ net/sunrpc/auth_gss/auth_gss.c  |    1 +
+ 5 files changed, 9 insertions(+), 2 deletions(-)
+
+--
+Best regards,
+  Jesper Brouer
+  ComX Networks A/S
+  Linux Network developer
+  Cand. Scient Datalog / MSc.
+  Author of http://adsl-optimizer.dk
+  LinkedIn: http://www.linkedin.com/in/brouer
 
