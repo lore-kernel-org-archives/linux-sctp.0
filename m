@@ -1,26 +1,23 @@
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Date: Mon, 08 Jun 2009 16:05:22 +0000
+From: Andrew Morton <akpm@linux-foundation.org>
+Date: Wed, 10 Jun 2009 05:38:16 +0000
 Subject: Re: [PATCH 2/5] nfnetlink_queue: Use rcu_barrier() on module
-Message-Id: <20090608160522.GC6961@linux.vnet.ibm.com>
+Message-Id: <20090609223816.af9b1bf9.akpm@linux-foundation.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20090608130959.10052.54590.stgit@localhost> <20090608131133.10052.40836.stgit@localhost>
+References: <20090608130959.10052.54590.stgit@localhost>
+	<20090608131133.10052.40836.stgit@localhost>
 In-Reply-To: <20090608131133.10052.40836.stgit@localhost>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
-Cc: "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, urs.thuermann-l29pVbxQd1IUtdQbppsyvg@public.gmane.org, oliver.hartkopp-l29pVbxQd1IUtdQbppsyvg@public.gmane.org, wg-5Yr1BZd7O62+XT7JhA+gdA@public.gmane.org, vladislav.yasevich@hp.com, sri@us.ibm.com, linux-sctp@vger.kernel.org, Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, netfilter-devel@vger.kernel.org
+To: Jesper Dangaard Brouer <hawk@comx.dk>
+Cc: "David S. Miller" <davem@davemloft.net>, "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, urs.thuermann@volkswagen.de, oliver.hartkopp@volkswagen.de, wg@grandegger.com, vladislav.yasevich@hp.com, sri@us.ibm.com, linux-sctp@vger.kernel.org, Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org, netfilter-devel@vger.kernel.org
 
-On Mon, Jun 08, 2009 at 03:11:33PM +0200, Jesper Dangaard Brouer wrote:
+On Mon, 08 Jun 2009 15:11:33 +0200 Jesper Dangaard Brouer <hawk@comx.dk> wrote:
+
 > This module uses rcu_call() thus it should use rcu_barrier() on module unload.
 > 
 > Also fixed a trivial typo 'nfetlink' -> 'nfnetlink' in comment.
-
-Assuming that netlink_unregister_notifier(), nfnetlink_subsys_unregister(),
-and so on prevent any subsequent calls to call_rcu(), looks good!!!
-
-Acked-by: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
-
+> 
 > Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
 > ---
 > 
@@ -46,6 +43,18 @@ Acked-by: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
 > +
 > +	rcu_barrier(); /* Wait for completion of call_rcu()'s */
 >  }
-> 
+>  
 >  MODULE_DESCRIPTION("netfilter packet queue handler");
-> 
+
+Possibly you've fixed the bug which the module_put(THIS_MODULE) in
+instance_destroy_rcu() is addressing.
+
+Do we still need to take a ref against the module for each instance
+once the above fix is in place?
+
+<goes git mining>
+
+Nope, the THIS_MODULE games have been there since day one, and I can't
+work out why they're there.  net/netfilter/nfnetlink_log.c has them
+too.
+
