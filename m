@@ -1,38 +1,46 @@
-From: Herbert Xu <herbert@gondor.apana.org.au>
-Date: Mon, 06 Jul 2009 06:49:57 +0000
-Subject: Re: [PATCHv2] sctp: fix warning at inet_sock_destruct() while
-Message-Id: <20090706064957.GA16971@gondor.apana.org.au>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Mon, 06 Jul 2009 13:45:01 +0000
+Subject: Re: [PATCHv2] sctp: fix warning at inet_sock_destruct() while	release
+Message-Id: <4A51FFDD.30108@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4A518EDF.9030501@cn.fujitsu.com> <4A518F8C.2090807@cn.fujitsu.com>
-In-Reply-To: <4A518F8C.2090807@cn.fujitsu.com>
+References: <4A518EDF.9030501@cn.fujitsu.com> <4A518F8C.2090807@cn.fujitsu.com> <20090706064957.GA16971@gondor.apana.org.au>
+In-Reply-To: <20090706064957.GA16971@gondor.apana.org.au>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="hz-gb-2312"
-Content-Transfer-Encoding: base64
-To: Wei Yongjun <yjwei@cn.fujitsu.com>
-Cc: Vlad Yasevich <vladislav.yasevich@hp.com>, David Miller <davem@davemloft.net>, Netdev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Herbert Xu <herbert@gondor.apana.org.au>
+Cc: Wei Yongjun <yjwei@cn.fujitsu.com>, David Miller <davem@davemloft.net>, Netdev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 
-T24gTW9uLCBKdWwgMDYsIDIwMDkgYXQgMDE6NDU6NDhQTSArMDgwMCwgV2VpIFlvbmdqdW4gd3Jv
-dGU6Cj4gQ29tbWl0ICduZXQ6IE1vdmUgcnggc2tiX29ycGhhbiBjYWxsIHRvIHdoZXJlIG5lZWRl
-ZCcgYnJva2VuIHNjdHAgcHJvdG9jb2wKPiB3aXRoIHdhcm5pbmcgYXQgaW5ldF9zb2NrX2Rlc3Ry
-dWN0KCkuIEFjdHVhbGx5LCBzY3RwIGNhbiBkbyB0aGlzIHJpZ2h0IHdpdGgKPiBzY3RwX3NvY2tf
-cmZyZWVfZnJhZygpIGFuZCBzY3RwX3NrYl9zZXRfb3duZXJfcl9mcmFnKCkgcGFpci4KPiAKPiAg
-ICAgc2N0cF9zb2NrX3JmcmVlX2ZyYWcoc2tiKTsKPiAgICAgc2N0cF9za2Jfc2V0X293bmVyX3Jf
-ZnJhZyhza2IsIG5ld3NrKTsKPiAKPiBUaGlzIHBhdGNoIG5vdCByZXZlcnQgdGhlIGNvbW1pdCBk
-NTVkODdmZGZmODI1MmQwZTJmN2MyOGMyZDQ0M2FlZTE3ZTlkNzBmLAo+IGluc3RlYWQgcmVtb3Zl
-IHRoZSBzY3RwX3NvY2tfcmZyZWVfZnJhZygpIGZ1bmN0aW9uLgoKSXQgdG9vayBtZSBhIHdoaWxl
-IHRvIHVuZGVyc3RhbmQgeW91ciBwYXRjaCBidXQgeWVhaCBpdCBkb2VzIHNlZW0KdG8gYmUgdGhl
-IHJpZ2h0IGZpeC4gIFNvIGVzc2VudGlhbGx5IHdlIHdlcmUgZnJlZWluZyB0aGUgcGFja2V0CnR3
-aWNlIGFzIG15IG5ld2x5IGFkZGVkIHNrYl9vcnBoYW4gaW4gc2N0cF9za2Jfc2V0X293bmVyX3Ig
-aXMKcmVwZWF0aW5nIHdoYXQgc2N0cF9zb2NrX3JmcmVlX2ZyYWcgaGFzIGFscmVhZHkgZG9uZSBm
-b3IgdGhlCm1pZ3JhdGlvbiBjYXNlLgoKV2hpbGUgeW91ciBwYXRjaCBzaW1wbHkgZWxpbWluYXRl
-cyBzY3RwX3NvY2tfcmZyZWVfZnJhZyBzbyB0aGF0CndlIG9ubHkgZnJlZSB0aGluZ3Mgb25jZS4K
-IAo+IFNpZ25lZC1vZmYtYnk6IFdlaSBZb25nanVuIDx5andlaUBjbi5mdWppdHN1LmNvbT4KCkFj
-a2VkLWJ5OiBIZXJiZXJ0IFh1IDxoZXJiZXJ0QGdvbmRvci5hcGFuYS5vcmcuYXU+CgpUaGFua3Ms
-Ci0tIApWaXNpdCBPcGVuc3dhbiBhdCBodHRwOi8vd3d3Lm9wZW5zd2FuLm9yZy8KRW1haWw6IEhl
-cmJlcnQgWHUgfntQbVY+SEl+fSA8aGVyYmVydEBnb25kb3IuYXBhbmEub3JnLmF1PgpIb21lIFBh
-Z2U6IGh0dHA6Ly9nb25kb3IuYXBhbmEub3JnLmF1L35oZXJiZXJ0LwpQR1AgS2V5OiBodHRwOi8v
-Z29uZG9yLmFwYW5hLm9yZy5hdS9+aGVyYmVydC9wdWJrZXkudHh0Ci0tClRvIHVuc3Vic2NyaWJl
-IGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1zY3RwIiBp
-bgp0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZwpNb3Jl
-IG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZv
-Lmh0bWw=
+Herbert Xu wrote:
+> On Mon, Jul 06, 2009 at 01:45:48PM +0800, Wei Yongjun wrote:
+>> Commit 'net: Move rx skb_orphan call to where needed' broken sctp protocol
+>> with warning at inet_sock_destruct(). Actually, sctp can do this right with
+>> sctp_sock_rfree_frag() and sctp_skb_set_owner_r_frag() pair.
+>>
+>>     sctp_sock_rfree_frag(skb);
+>>     sctp_skb_set_owner_r_frag(skb, newsk);
+>>
+>> This patch not revert the commit d55d87fdff8252d0e2f7c28c2d443aee17e9d70f,
+>> instead remove the sctp_sock_rfree_frag() function.
+> 
+> It took me a while to understand your patch but yeah it does seem
+> to be the right fix.  So essentially we were freeing the packet
+> twice as my newly added skb_orphan in sctp_skb_set_owner_r is
+> repeating what sctp_sock_rfree_frag has already done for the
+> migration case.
+> 
+> While your patch simply eliminates sctp_sock_rfree_frag so that
+> we only free things once.
+>  
+
+Yep, I agree.
+
+>> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+> 
+> Acked-by: Herbert Xu <herbert@gondor.apana.org.au>
+
+Acked-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+
+> 
+> Thanks,
+
