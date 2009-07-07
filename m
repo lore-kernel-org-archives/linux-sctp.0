@@ -1,12 +1,12 @@
-From: "Luke Kemp" <prognoz@mexicana.com.mx>
-Date: Mon, 06 Jul 2009 12:58:53 +0000
-Subject: God Bless America
-Message-Id: <20090706144733.4000301@mexicana.com.mx>
+From: <knilltrailer@bellnet.ca>
+Date: Tue, 07 Jul 2009 09:49:49 +0000
+Subject: Lucky Winner
+Message-Id: <20090707095000.SMWV9329.tomts37-srv.bellnexxia.net@toip41-bus.srvr.bell.ca>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: info@won.net
 
-Celebrations have already begun http://soe.fireholiday.com/
+You have won!!! congrat, Please Verify this mail by sending your name, address, age, phone number Occuption to (irish112@w.cn)
 
