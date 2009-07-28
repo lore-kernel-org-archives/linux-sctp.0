@@ -1,211 +1,309 @@
-From: =?ISO-8859-1?Q?Michael_T=FCxen?= <Michael.Tuexen@lurchi.franken.de>
-Date: Tue, 28 Jul 2009 21:18:05 +0000
+From: "Doug Graham" <dgraham@nortel.com>
+Date: Tue, 28 Jul 2009 22:31:08 +0000
 Subject: Re: Do piggybacked ACKs work?
-Message-Id: <0F2B885E-F259-4B31-AE21-1759816C2B36@lurchi.franken.de>
+Message-Id: <20090728223108.GA10007@nortel.com>
+MIME-Version: 1
+Content-Type: multipart/mixed; boundary="opJtzjQTFsWo+cga"
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20090725020953.GA17581@nortel.com>
 In-Reply-To: <20090725020953.GA17581@nortel.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On Jul 28, 2009, at 10:45 PM, Doug Graham wrote:
 
-> Also copying Michael, since he seems interested, except he's  
-> interested on
-> the wrong mailing list :-).  Some of what I'm replying to here is  
-> from the
-> other mailing list, but since you prefer to use this one, I'll reply  
-> here.
->
-> On Tue, Jul 28, 2009 at 12:09:28PM -0400, Vlad Yasevich wrote:
->> Doug Graham wrote:
->>> On Tue, Jul 28, 2009 at 11:13:05AM -0400, Vlad Yasevich wrote:
->>>> Doug Graham wrote:
->>>>>
->>>>> I have a little test that simply has a client send 32 bytes of  
->>>>> data to
->>>>> server, which then replies back with the same data.  What  
->>>>> doesn't look
->>>>> right to me is that I never see piggybacked ACKs.  I see the  
->>>>> client
->>>>> send 32 bytes, then the server reply in a packet containing a  
->>>>> single
->>>>> DATA chunk of 32 bytes, and then 200ms later both SACKs are sent.
->>>>>
->>>> Piggybacked ACKs will not be sent every packet.  Looks like you  
->>>> are hitting
->>>> the typical single packet request-response senario.
->>>>
->>>> I'd recommend you read RFC 4960 section 6.2.
->>>>
->>>> Now, it's possible to do some piggy-backing when bulk data is  
->>>> flowing in
->>>> both directions, but that would different then you proposal below.
->>>
->>> I did a fairly quick scan of section 6.2 in RFC 4960, and I'm not  
->>> sure
->>> what I'm supposed to see in there that would clear this up.  I still
->>> think that section 6.1 applies:
->>>
->>>   Before an endpoint transmits a DATA chunk, if any received DATA
->>>   chunks have not been acknowledged (e.g., due to delayed ack), the
->>>   sender should create a SACK and bundle it with the outbound DATA
->>>   chunk, as long as the size of the final SCTP packet does not  
->>> exceed
->>>   the current MTU.  See Section 6.2.
->>>
->>
->> Section 6.2 are specific guidelines of when one should generate  
->> SACKs.
->> Specifically, SACKs are generate every other packet or within 200  
->> ms of
->> unacknowledged DATA, which-ever is faster.
-This is the way it should work...
->
-> I think this is a misinterpretation of the RFC.  Otherwise, what could
-> that paragraph from section 6.1 possibly mean?  I read section 6.2 to
-> mean that a SACK should be generated for *at least* every second  
-> packet,
-> and that a SACK should be sent within 200ms.  The RFC only prohibits
-> more than one SACK from being sent for every incoming DATA packet;
-> it doesn't say that a SACK can *only* be be sent for every second  
-> packet.
->
->> What you are proposing is that SACKs are generated for every packet  
->> and
->> well short of the 200 ms delay limit, which is definitely more  
->> aggressive.
->> This is explicitly a MUST NOT.
->
-> I don't think that's what the RFC says, but I guess only the  
-> author(s) of
-> the RFC could tell us what they really meant.  Your interpretation  
-> doesn't
-> make any sense to.
-Let us see the tracefile and I can tell you if that behaviour is the
-one the authors of the RFC intended...
->
->> But in you example of single message request-response, there is no  
->> SACK to
->> send.
->
-> I don't know what you mean by this.  A SACK needs to be sent for both
-> the request and the reply.  Or perhaps you meant that since there's  
-> only
-> one DATA packet in each direction, the conjectured "SACK only every  
-> two
-> packets" rule kicks in.  But as I mention, I very much doubt that  
-> that's
-> what the RFC actually means to say.
->
->> Not sure if BSD 7.2 implements immediate SACK draft (it might), but
->> that would allow one to do what you ask.
-I looked in the svn repository and the code made in into 7.2...
->
-> That's not what I saw BSD do.  As I read
-> http://tools.ietf.org/html/draft-tuexen-tsvwg-sctp-sack-immediately-02
-> it specifies a way for a data sender to request that the receiver  
-> send a
-> SACK immediately upon receipt of the DATA.  ie: it disables delayed- 
-> ACK
-> for a DATA chunk with the proposed I bit set.  This would result in a
-> SACK being sent by the receiver immediately after it receives the  
-> DATA,
-> and would prevent piggybacking in my scenario.  The reason it would
-> prevent piggybacking is that at the time the receiving SCTP gets the
-> DATA packet and is required to send a SACK, it has no DATA to send  
-> yet,
-> and so nothing to piggyback the SACK on.  In BSD's case, I *did* see  
-> it
-> piggyback the SACK.
-I guess you did not specify SCTP_DATA_SACK_IMMEDIATELY in the send()  
-call...
->
-> I'll send pcap traces from BSD and Linux later today.
->
->
->>> Here's one case where this lack of SACK piggybacking can have a big
->>> performance impact.  Suppose C(lient) and S(erver) are sending small
->>> requests and replies between each other as quickly as possible.  ie:
->>> S sends a reply as soon as it gets a request from C, and C sends  
->>> another
->>> request as soon as it gets the previous reply from S.  If Nagle is  
->>> not
->>> disabled, what happens is this:
->>>
->>>  C sends request DATA to S
->>>  S sends reply DATA to C
->>>  C and S send SACKs to each other after 200ms
->>>
->>>  After the 200ms delay introduced above, A finally has the SACK to
->>>  its first request, and only now, by the rules of Nagle, can it send
->>>  another request.
->>>
->>> So there's a delay of 200ms in request/reply cycle.  If S had  
->>> piggybacked
->>> a SACK on the DATA it sent to C, then C would have its SACK when  
->>> it got
->>> S's reply and could send another request immediately after  
->>> receiving the
->>> reply to the first.  And if C piggybacks a SACK onto its second  
->>> request,
->>> then S doesn't need to wait for a SACK timeout before it can send  
->>> the
->>> second reply.
->>
->> This is a well known problem with SCTP and 'immidiate sack' draft  
->> tries to solve
->> it.  However, changing the code the way you suggesting will not  
->> fully correct
->> the problem.  LKSCTP is notorious for not bundling SACKS.
->
-> It's not clear to me why my proposed fix would not solve the  
-> problem, unless you
-> mean that it would violate a clause in the RFC (which I still don't  
-> agree with).
-> The 'immediate SACK' draft would also solve my problem, except it  
-> would do so
-> at the expense of an extra SACK packet.  ie: it prevents  
-> piggybacking when the
-> receiver has no DATA to send immediately, so a separate SACK would  
-> need to be
-> sent.  With my fix, the receiver would delay the SACK as usual, but  
-> then a short
-> time after, it would be given DATA to send back, and would piggyback  
-> the SACK
-> on that.
->
-> From your other email:
->
->>> I think this logic is wrong.  I don't think the decision as to  
->>> whether
->>> or not to piggyback a SACK on a DATA packet should have anything  
->>> to do
->>> with the receive window.  If there is unacknowledged data, then the
->>> SACK should be sent, regardless of the state of the receive window.
->>
->> This test is there to catch potential window update SACK that can  
->> be bundled
->> with any outgoing data.  It is not there for immediate SACKs.
->
-> That's not what the comment above the code says.  The comment says
->
->        /* If sending DATA and haven't aleady bundled a SACK, try to
->         * bundle one in to the packet.
->         */
->
-> If this code is just there to generate window updates, where is the
-> code to implement the clause from section 6.1 that I included above,
-> and provide again here?:
->
->    Before an endpoint transmits a DATA chunk, if any received DATA
->    chunks have not been acknowledged (e.g., due to delayed ack), the
->    sender should create a SACK and bundle it with the outbound DATA
->    chunk, as long as the size of the final SCTP packet does not exceed
->    the current MTU.  See Section 6.2.
->
-> --Doug.
->
+--opJtzjQTFsWo+cga
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
+On Tue, Jul 28, 2009 at 11:18:05PM +0200, Michael T?xen wrote:
+> >I don't think that's what the RFC says, but I guess only the  
+> >author(s) of
+> >the RFC could tell us what they really meant.  Your interpretation  
+> >doesn't
+> >make any sense to.
+>
+> Let us see the tracefile and I can tell you if that behaviour is the
+> one the authors of the RFC intended...
+
+Heh.  I'm guessing that you're one of the authors then?  I see you given
+credit in RFC 4960, but the only author listed at the top is R. Stewart.
+
+I've attached linux and BSD capture files, and the client and server
+test programs.  The client just sends a request to the server, and then
+waits for a reply.  The client loops four times and sleeps 2 seconds
+between iterations.  I ran the client on a Fedora 10 laptop in all cases
+(kernel version 2.6.27.25) and did the wireshark capture on the same
+laptop.  sctp_bsd72_server.cap is the capture when running the server
+on a FreeBSD 7.2 machine.  sctp_linux_server.cap is the capture when
+running the server on a Fedora 10 desktop machine.  A single iteration
+with the BSD server looks like:
+
+  7 2.000205    10.0.0.15     10.0.0.11         SCTP     DATA
+  8 2.000501    10.0.0.11     10.0.0.15         SCTP     SACK DATA
+  9 2.200484    10.0.0.15     10.0.0.11         SCTP     SACK
+
+So one DATA packet from client to server, then the reply data packet
+from server to client with a bundled SACK, then the SACK from client
+to server to acknowledge the reply.  The last SACK does have to wait
+for the SACK timer to expire; this is to be expected, since no more
+data is sent until the next iteration in a couple seconds.
+
+A single iteration with the Linux server looks like:
+
+  7 2.000161    10.0.0.15     10.0.0.12         SCTP     DATA
+  8 2.000495    10.0.0.12     10.0.0.15         SCTP     DATA
+  9 2.199995    10.0.0.15     10.0.0.12         SCTP     SACK
+ 10 2.200170    10.0.0.12     10.0.0.15         SCTP     SACK
+
+
+> >In BSD's case, I *did* see it piggyback the SACK.
+>
+> I guess you did not specify SCTP_DATA_SACK_IMMEDIATELY in the send()  
+> call...
+
+No, I didn't.  If I had, I agree that no piggybacking would have been
+possible.  That was what I was trying to say: from the trace, it did
+not look as though BSD was using the immediate SACK feature.
+
+--Doug.
+
+--opJtzjQTFsWo+cga
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename="client.c"
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+
+#define PORT 12342
+
+int main(int argc, char **argv)
+{
+	int s, cc, i;
+	struct sockaddr_in addr;
+	in_addr_t destaddr = inet_addr("127.0.0.1");
+
+	if (argv[1])
+		destaddr = inet_addr(argv[1]);
+
+	if ((s = socket(PF_INET, SOCK_SEQPACKET, IPPROTO_SCTP)) < 0) {
+		perror("socket");
+		exit(1);
+	}
+
+	memset(&addr, '\0', sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = destaddr;
+	addr.sin_port = htons(PORT);
+
+	char buf[] = "yo momma wears army boots";
+	struct iovec iov[1] = {{.iov_base = buf, .iov_len = sizeof(buf)}};
+	struct msghdr msg = {
+		.msg_name = &addr,
+		.msg_namelen = sizeof(addr),
+		.msg_iov = iov,
+		.msg_iovlen = sizeof(iov)/sizeof(iov[0]),
+		.msg_control = NULL,
+		.msg_controllen = 0,
+		.msg_flags = 0
+	};
+
+	for (i = 0; i < 4; i++) {
+		printf("Sending message to %s\n", inet_ntoa(addr.sin_addr));
+
+		if ((cc = sendmsg(s, &msg, 0)) < 0) {
+			perror("sendmsg");
+			exit(1);
+		}
+		sleep(2);
+	}
+
+	return 0;
+}
+
+--opJtzjQTFsWo+cga
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename="server.c"
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+#define PORT 12342
+
+int main(void)
+{
+	int s, cc;
+	struct sockaddr_in addr;
+
+	if ((s = socket(PF_INET, SOCK_SEQPACKET, IPPROTO_SCTP)) < 0) {
+		perror("socket");
+		exit(1);
+	}
+
+	memset(&addr, '\0', sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	addr.sin_port = htons(PORT);
+
+	if (bind(s, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		perror("bind");
+		exit(1);
+	}
+	if (listen(s, 5) < 0) {
+		perror("listen");
+		exit(1);
+	}
+
+	for (;;) {
+		char buf[128];
+		struct iovec iov[1] = {{.iov_base = buf, .iov_len = sizeof(buf)}};
+		struct msghdr msg = {
+			.msg_name = &addr,
+			.msg_namelen = sizeof(addr),
+			.msg_iov = iov,
+			.msg_iovlen = sizeof(iov)/sizeof(iov[0]),
+			.msg_control = NULL,
+			.msg_controllen = 0,
+			.msg_flags = 0
+		};
+
+		printf("Waiting for message\n");
+
+		cc = recvmsg(s, &msg, 0);
+
+		printf("Got msg, len = %d\n", cc);
+
+		sendmsg(s, &msg, 0);
+	}
+}
+
+--opJtzjQTFsWo+cga
+Content-Type: application/octet-stream
+Content-Disposition: attachment; filename="sctp_bsd72_server.cap"
+Content-Transfer-Encoding: base64
+
+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
+
+--opJtzjQTFsWo+cga
+Content-Type: application/octet-stream
+Content-Disposition: attachment; filename="sctp_linux_server.cap"
+Content-Transfer-Encoding: base64
+
+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
+AAQ=
+
+--opJtzjQTFsWo+cga--
