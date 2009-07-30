@@ -1,32 +1,38 @@
-From: "Doug Graham" <dgraham@nortel.com>
-Date: Fri, 31 Jul 2009 17:09:39 +0000
-Subject: Re: [PATCHv2] sctp: Do not create SACK chunk if the final packet
-Message-Id: <4A732553.30403@nortel.com>
+From: Rami Rosen <rosenrami@gmail.com>
+Date: Thu, 30 Jul 2009 06:38:43 +0000
+Subject: [PATCH] sctp: remove unused union (sctp_cmsg_data_t) definition .
+Message-Id: <ae5426fb0907292338v681057cct86408a8c7478d15e@mail.gmail.com>
+MIME-Version: 1
+Content-Type: multipart/mixed; boundary="00504502ddc61a40a6046fe68e10"
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4A72C518.20200@cn.fujitsu.com>
-In-Reply-To: <4A72C518.20200@cn.fujitsu.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Vlad Yasevich wrote:
-> Wei Yongjun wrote:
->   
->>
->> Why we need to send the SACK immediate? Just to make the one send one
->> recv mode happy?
->> In this case, it is better to disable the delay ack, is this correct?
->>     
->
-> Consistent behavior.  A change in message size shouldn't cause a change in
-> on the wire behavior.
->
-> Either we always send a SACK if we have DATA to send, or we don't.  Having a
-> weird "only if it fits" behavior will have unpredictable results.
->   
-Exactly!
+--00504502ddc61a40a6046fe68e10
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 
---Doug
+Hi,
+This patch removes an unused union definition (sctp_cmsg_data_t)
+from include/net/sctp/user.h.
+
+Regards,
+Rami Rosen
 
 
+Signed-off-by: Rami Rosen <rosenrami@gmail.com>
+
+--00504502ddc61a40a6046fe68e10
+Content-Type: text/plain; charset=US-ASCII; name="patch.txt"
+Content-Disposition: attachment; filename="patch.txt"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_fxr43z790
+
+ZGlmZiAtLWdpdCBhL2luY2x1ZGUvbmV0L3NjdHAvdXNlci5oIGIvaW5jbHVkZS9uZXQvc2N0cC91
+c2VyLmgKaW5kZXggMTU4MGMwNC4uYmUyMzM0YSAxMDA2NDQKLS0tIGEvaW5jbHVkZS9uZXQvc2N0
+cC91c2VyLmgKKysrIGIvaW5jbHVkZS9uZXQvc2N0cC91c2VyLmgKQEAgLTIxMCwxMiArMjEwLDYg
+QEAgZW51bSBzY3RwX3NpbmZvX2ZsYWdzIHsKIH07CiAKIAotdHlwZWRlZiB1bmlvbiB7Ci0JX191
+OCAgIAkJCXJhdzsKLQlzdHJ1Y3Qgc2N0cF9pbml0bXNnCWluaXQ7Ci0Jc3RydWN0IHNjdHBfc25k
+cmN2aW5mbwlzbmRyY3Y7Ci19IHNjdHBfY21zZ19kYXRhX3Q7Ci0KIC8qIFRoZXNlIGFyZSBjbXNn
+X3R5cGVzLiAgKi8KIHR5cGVkZWYgZW51bSBzY3RwX2Ntc2dfdHlwZSB7CiAJU0NUUF9JTklULCAg
+ICAgICAgICAgICAgLyogNS4yLjEgU0NUUCBJbml0aWF0aW9uIFN0cnVjdHVyZSAqLwo=
+--00504502ddc61a40a6046fe68e10--
