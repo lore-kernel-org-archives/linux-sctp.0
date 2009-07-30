@@ -1,7 +1,7 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Thu, 30 Jul 2009 17:05:09 +0000
+Date: Thu, 30 Jul 2009 21:24:09 +0000
 Subject: Re: [PATCH] Fix piggybacked ACKs
-Message-Id: <4A71D2C5.4090509@hp.com>
+Message-Id: <4A720F79.6060103@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20090729160557.GC29475@nortel.com>
 In-Reply-To: <20090729160557.GC29475@nortel.com>
@@ -30,6 +30,16 @@ Doug Graham wrote:
 > with my patch.  I only changed the conditions under which a SACK chunk
 > was bundled with a DATA chunk, but the same bundling would have been
 > happening before under different conditions.
+
+Doug
+
+If you still have BSD setup, can you try increasing you message size
+to say 1442 and see what happens.
+
+I'd expect bundles SACKs at 1440 bytes, but then probably a separate SACK and DATA.
+
+-vlad
+
 > 
 > I'd really need to study the code more than I have to be able to say
 > whether or not your fix is correct (and who cares what I think anyway
@@ -43,24 +53,14 @@ Doug Graham wrote:
 > append_chunk(), I'd have guessed that append_chunk() would be a lower
 > level routine that just appends the chunk you give it, not one that
 > itself tries to bundle other chunks in.
-
-sctp_append_chunk() tries to be very smart.  It's a generic routine that you
-call that also then tries to figure out if any special bundle can also be done.
-
-The circular bundling doesn't happen because the chunk one passes to
-sctp_packet_bundle_sack() changes.   The first time in, the chunk is a data
-chunk that makes us go into the whole added the SACK in.  At this time,
-append_chunk() is called with a SACK chunk and a seemingly recursive call to
-bundle_sack() bails since the chunk is not data.
-
-I think the Wei's patch for mtu checking should probably move into bundle_sack().
-
--vlad
-
 > 
 > Anyway, you've got me curious now.  I'll have a go at better understanding
 > the code when I get some time.
 > 
 > --Doug.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
 
