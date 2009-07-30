@@ -1,7 +1,7 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Thu, 30 Jul 2009 09:51:18 +0000
+From: "Doug Graham" <dgraham@nortel.com>
+Date: Thu, 30 Jul 2009 16:49:11 +0000
 Subject: Re: [PATCH] Fix piggybacked ACKs
-Message-Id: <4A716D16.7090908@cn.fujitsu.com>
+Message-Id: <20090730164911.GA14894@nortel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20090729160557.GC29475@nortel.com>
 In-Reply-To: <20090729160557.GC29475@nortel.com>
@@ -10,92 +10,40 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Doug Graham wrote:
->> This patch corrects the conditions under which a SACK will be piggybacked
->> on a DATA packet.  The previous condition was incorrect due to a
->> misinterpretation of RFC 4960 and/or RFC 2960.  Specifically, the
->> following paragraph from section 6.2 had not been implemented correctly:
->>
->>    Before an endpoint transmits a DATA chunk, if any received DATA
->>    chunks have not been acknowledged (e.g., due to delayed ack), the
->>    sender should create a SACK and bundle it with the outbound DATA
->>    chunk, as long as the size of the final SCTP packet does not exceed
->>    the current MTU.  See Section 6.2.
->>   
->>     
->
-> The above text said that SACK is create when the size of the final SCTP
-> packet
-> does not exceed  the current MTU. With the patch, what will happend?
-> If the packet is too large for bundle with SACK, the packet sequence will
-> like this:
->
-> Endpoint A                         Endpoint B
->
-> DATA            ------------->
->                 <-------------     SACK
->                 <-------------     DATA (size52)
-> SACK            ------------->
-> DATA (size52)------------->
->                 <-------------     SACK
->                 <-------------     DATA (size52)
->
-> The behavior is the same as no delayed ack support. So I think
-> you also need to check the packet size before append the SACK.
+On Thu, Jul 30, 2009 at 05:51:18PM +0800, Wei Yongjun wrote:
+> The sender should create a SACK only if the size of the final SCTP
+> packet does not exceed the current MTU. Base on RFC 4960:
+> 
+>   6.1.  Transmission of DATA Chunks
+> 
+>     Before an endpoint transmits a DATA chunk, if any received DATA
+>     chunks have not been acknowledged (e.g., due to delayed ack), the
+>     sender should create a SACK and bundle it with the outbound DATA
+>     chunk, as long as the size of the final SCTP packet does not exceed
+>     the current MTU.
 
-The patch should be like this:
+[patch deleted]
 
-[PATCH] sctp: Do not create SACK chunk if the final packet size exceed current MTU
+I think you're right that there's a real problem here, and that a patch
+similar to yours is needed, but this is not a new problem introduced
+with my patch.  I only changed the conditions under which a SACK chunk
+was bundled with a DATA chunk, but the same bundling would have been
+happening before under different conditions.
 
-The sender should create a SACK only if the size of the final SCTP
-packet does not exceed the current MTU. Base on RFC 4960:
+I'd really need to study the code more than I have to be able to say
+whether or not your fix is correct (and who cares what I think anyway
+:-)), but I've just spent all of about 15 minutes looking at parts of the
+code that I'd never looked at before, and I see something that off the
+top of my head looks a bit scary.  That is that sctp_packet_bundle_sack()
+calls sctp_packet_append_chunk(), which calls sctp_packet_bundle_sack().
+Aside from the possibility of infinite recursion (presumably this must
+be prevented somehow, because it doesn't seem to happen), the logic of
+this seems strangely circular to me.  If bundle_sack() is going to call
+append_chunk(), I'd have guessed that append_chunk() would be a lower
+level routine that just appends the chunk you give it, not one that
+itself tries to bundle other chunks in.
 
-  6.1.  Transmission of DATA Chunks
+Anyway, you've got me curious now.  I'll have a go at better understanding
+the code when I get some time.
 
-    Before an endpoint transmits a DATA chunk, if any received DATA
-    chunks have not been acknowledged (e.g., due to delayed ack), the
-    sender should create a SACK and bundle it with the outbound DATA
-    chunk, as long as the size of the final SCTP packet does not exceed
-    the current MTU.
-
-Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
----
- net/sctp/output.c |   13 ++++++++-----
- 1 files changed, 8 insertions(+), 5 deletions(-)
-
-diff --git a/net/sctp/output.c b/net/sctp/output.c
-index 94c110d..1aa3c6e 100644
---- a/net/sctp/output.c
-+++ b/net/sctp/output.c
-@@ -274,16 +274,19 @@ sctp_xmit_t sctp_packet_append_chunk(struct sctp_packet *packet,
- 	if (retval != SCTP_XMIT_OK)
- 		goto finish;
- 
--	/* Try to bundle SACK chunk */
--	retval = sctp_packet_bundle_sack(packet, chunk);
--	if (retval != SCTP_XMIT_OK)
--		goto finish;
--
- 	psize = packet->size;
- 	pmtu  = ((packet->transport->asoc) ?
- 		 (packet->transport->asoc->pathmtu) :
- 		 (packet->transport->pathmtu));
- 
-+	/* Try to bundle SACK chunk if not exceed the current MTU */
-+	if (psize + chunk_len + sizeof(struct sctp_sack_chunk) <= pmtu) {
-+		retval = sctp_packet_bundle_sack(packet, chunk);
-+		if (retval != SCTP_XMIT_OK)
-+			goto finish;
-+		psize = packet->size;
-+	}
-+
- 	too_big = (psize + chunk_len > pmtu);
- 
- 	/* Decide if we need to fragment or resubmit later. */
--- 
-1.6.2.2
-
-
-
-
-
+--Doug.
