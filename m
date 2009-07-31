@@ -1,60 +1,97 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date: Mon, 08 Jun 2009 17:00:49 +0000
-Subject: Re: [PATCH 5/5] sunrpc/auth_gss: Call rcu_barrier() on module
-Message-Id: <1244480449.5040.4.camel@heimdal.trondhjem.org>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Fri, 31 Jul 2009 10:19:04 +0000
+Subject: [PATCHv2] sctp: Do not create SACK chunk if the final packet size
+Message-Id: <4A72C518.20200@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20090608130959.10052.54590.stgit@localhost>
-	 <20090608131148.10052.39869.stgit@localhost>
-	 <20090608162656.GF6961@linux.vnet.ibm.com>
-In-Reply-To: <20090608162656.GF6961@linux.vnet.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: paulmck@linux.vnet.ibm.com
-Cc: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, urs.thuermann-l29pVbxQd1IUtdQbppsyvg@public.gmane.org, oliver.hartkopp-l29pVbxQd1IUtdQbppsyvg@public.gmane.org, wg-5Yr1BZd7O62+XT7JhA+gdA@public.gmane.org, vladislav.yasevich@hp.com, sri@us.ibm.com, linux-sctp@vger.kernel.org, linux-nfs@vger.kernel.org, netfilter-devel@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-On Mon, 2009-06-08 at 09:26 -0700, Paul E. McKenney wrote:
-> On Mon, Jun 08, 2009 at 03:11:48PM +0200, Jesper Dangaard Brouer wrote:
-> > As the module uses rcu_call() we should make sure that all
-> > rcu callback has been completed before removing the code.
-> 
-> Good improvement!!!  Assuming that gss_svc_shutdown() and
-> rpcauth_unregister() prevent any future RCU callbacks to be registered,
-> this patch will fix things up.
-> 
-> Acked-by: Paul E. McKenney <paulmck@linux.vnet.ibm.com>
-> 
-> > Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
-> > ---
-> > 
-> >  net/sunrpc/auth_gss/auth_gss.c |    1 +
-> >  1 files changed, 1 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> > index e630b38..66d458f 100644
-> > --- a/net/sunrpc/auth_gss/auth_gss.c
-> > +++ b/net/sunrpc/auth_gss/auth_gss.c
-> > @@ -1548,6 +1548,7 @@ static void __exit exit_rpcsec_gss(void)
-> >  {
-> >  	gss_svc_shutdown();
-> >  	rpcauth_unregister(&authgss_ops);
-> > +	rcu_barrier(); /* Wait for completion of call_rcu()'s */
-> >  }
-> > 
-> >  MODULE_LICENSE("GPL");
-> > 
+The sender should create a SACK only if the size of the final SCTP
+packet does not exceed the current MTU. Base on RFC 4960:
 
-Hmm... If this is about ensuring that all the call_rcu() callbacks
-complete before we remove the module, then don't we also need similar
-barriers in net/sunrpc/sunrpc_syms.c:cleanup_sunrpc() and in
-fs/nfs/inode.c:exit_nfs_fs()?
+  6.1.  Transmission of DATA Chunks
 
-Cheers
-  Trond
+    Before an endpoint transmits a DATA chunk, if any received DATA
+    chunks have not been acknowledged (e.g., due to delayed ack), the
+    sender should create a SACK and bundle it with the outbound DATA
+    chunk, as long as the size of the final SCTP packet does not exceed
+    the current MTU.
+
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ net/sctp/output.c |   28 ++++++++++++++++------------
+ 1 files changed, 16 insertions(+), 12 deletions(-)
+
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 94c110d..21b9efd 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -222,6 +222,16 @@ static sctp_xmit_t sctp_packet_bundle_auth(struct sctp_packet *pkt,
+ 	return retval;
+ }
+ 
++static int can_append_chunk(struct sctp_packet *pkt, size_t size)
++{
++	size_t psize = pkt->size;
++	size_t pmtu = ((pkt->transport->asoc) ?
++		       (pkt->transport->asoc->pathmtu) :
++		       (pkt->transport->pathmtu));
++
++	return (psize + size <= pmtu);
++}
++
+ /* Try to bundle a SACK with the packet. */
+ static sctp_xmit_t sctp_packet_bundle_sack(struct sctp_packet *pkt,
+ 					   struct sctp_chunk *chunk)
+@@ -235,11 +245,15 @@ static sctp_xmit_t sctp_packet_bundle_sack(struct sctp_packet *pkt,
+ 	    !pkt->has_cookie_echo) {
+ 		struct sctp_association *asoc;
+ 		struct timer_list *timer;
++		__u16 chunk_len;
++
+ 		asoc = pkt->transport->asoc;
+ 		timer = &asoc->timers[SCTP_EVENT_TIMEOUT_SACK];
++		chunk_len = WORD_ROUND(ntohs(chunk->chunk_hdr->length)) +
++			    sizeof(struct sctp_sack_chunk);
+ 
+ 		/* If the SACK timer is running, we have a pending SACK */
+-		if (timer_pending(timer)) {
++		if (timer_pending(timer) && can_append_chunk(pkt, chunk_len)) {
+ 			struct sctp_chunk *sack;
+ 			asoc->a_rwnd = asoc->rwnd;
+ 			sack = sctp_make_sack(asoc);
+@@ -262,9 +276,6 @@ sctp_xmit_t sctp_packet_append_chunk(struct sctp_packet *packet,
+ {
+ 	sctp_xmit_t retval = SCTP_XMIT_OK;
+ 	__u16 chunk_len = WORD_ROUND(ntohs(chunk->chunk_hdr->length));
+-	size_t psize;
+-	size_t pmtu;
+-	int too_big;
+ 
+ 	SCTP_DEBUG_PRINTK("%s: packet:%p chunk:%p\n", __func__, packet,
+ 			  chunk);
+@@ -279,15 +290,8 @@ sctp_xmit_t sctp_packet_append_chunk(struct sctp_packet *packet,
+ 	if (retval != SCTP_XMIT_OK)
+ 		goto finish;
+ 
+-	psize = packet->size;
+-	pmtu  = ((packet->transport->asoc) ?
+-		 (packet->transport->asoc->pathmtu) :
+-		 (packet->transport->pathmtu));
+-
+-	too_big = (psize + chunk_len > pmtu);
+-
+ 	/* Decide if we need to fragment or resubmit later. */
+-	if (too_big) {
++	if (!can_append_chunk(packet, chunk_len)) {
+ 		/* It's OK to fragmet at IP level if any one of the following
+ 		 * is true:
+ 		 * 	1. The packet is empty (meaning this chunk is greater
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.6.2.2
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+
+
+
