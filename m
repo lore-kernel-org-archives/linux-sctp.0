@@ -1,7 +1,7 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Mon, 03 Aug 2009 02:00:36 +0000
+Date: Mon, 03 Aug 2009 02:15:15 +0000
 Subject: Re: [PATCH] Fix piggybacked ACKs
-Message-Id: <4A7644C4.2000908@cn.fujitsu.com>
+Message-Id: <4A764833.3050809@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20090729160557.GC29475@nortel.com>
 In-Reply-To: <20090729160557.GC29475@nortel.com>
@@ -94,28 +94,23 @@ Doug Graham wrote:
 >  	if (!sp->nodelay && sctp_packet_empty(packet) &&
 > -	    q->outstanding_bytes && sctp_state(asoc, ESTABLISHED)) {
 > +	    (q->outstanding_bytes % asoc->frag_point) != 0 &&
+>   
+I think asoc->unack_data can be used for check full-sized packet. change
+(q->outstanding_bytes % asoc->frag_point) != 0 to:
+
+  +           (q->outstanding_bytes != asoc->frag_point * (asoc->unack_data - 1) &&
+
 > +	    sctp_state(asoc, ESTABLISHED)) {
 >  		unsigned len = datasize + q->out_qlen;
 >  
 >  		/* Check whether this chunk and all the rest of pending
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+>
 >   
-
-
-Seem good! But it may be broken the small packet transmit which can be
-used Nagle algorithm.
-Such as this:
-
-Endpoint A                Endpint B
-          <-------------  DATA (size52/2) delay send
-          <-------------  DATA (size52/2) send immediately
-          <-------------  DATA (size52/2) send immediately ** broken
-          <-------------  DATA (size52/2) delay send
-          <-------------  DATA (size52/2) send immediately
-          <-------------  DATA (size52/2) send immediately ** broken
-
-
-Can you try this one?
-
-
 
 
