@@ -1,7 +1,7 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Mon, 03 Aug 2009 02:15:15 +0000
+Date: Mon, 03 Aug 2009 03:32:17 +0000
 Subject: Re: [PATCH] Fix piggybacked ACKs
-Message-Id: <4A764833.3050809@cn.fujitsu.com>
+Message-Id: <4A765A41.5080700@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20090729160557.GC29475@nortel.com>
 In-Reply-To: <20090729160557.GC29475@nortel.com>
@@ -74,6 +74,17 @@ Doug Graham wrote:
 > entirety, followed by the full-sized fragments of the next big
 > message.  When it came time to send the second small fragment,
 > Nagle would force it to wait for an ACK for the first small fragment.
+>   
+
+This case will never happend because when we fragment data, the fragment
+size
+is always be frag_point expect the last fragment. So either the last
+fragment is
+full size or not, we should not use Nagle algorithm.
+
+Nagle algorithm is not adapt to fragment datas.
+
+
 > I'm not convinced that the difference is all that important,
 > but who knows.
 >
@@ -94,12 +105,6 @@ Doug Graham wrote:
 >  	if (!sp->nodelay && sctp_packet_empty(packet) &&
 > -	    q->outstanding_bytes && sctp_state(asoc, ESTABLISHED)) {
 > +	    (q->outstanding_bytes % asoc->frag_point) != 0 &&
->   
-I think asoc->unack_data can be used for check full-sized packet. change
-(q->outstanding_bytes % asoc->frag_point) != 0 to:
-
-  +           (q->outstanding_bytes != asoc->frag_point * (asoc->unack_data - 1) &&
-
 > +	    sctp_state(asoc, ESTABLISHED)) {
 >  		unsigned len = datasize + q->out_qlen;
 >  
