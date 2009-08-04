@@ -1,7 +1,7 @@
-From: "Doug Graham" <dgraham@nortel.com>
-Date: Tue, 04 Aug 2009 02:45:27 +0000
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Tue, 04 Aug 2009 03:08:58 +0000
 Subject: Re: [PATCHv2] sctp: Do not create SACK chunk if the final packet
-Message-Id: <4A77A0C7.4080101@nortel.com>
+Message-Id: <4A77A64A.1010805@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <4A72C518.20200@cn.fujitsu.com>
 In-Reply-To: <4A72C518.20200@cn.fujitsu.com>
@@ -10,84 +10,106 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Hi Vlad,
-
-> The only thing that I find slightly odd about this behavior is that the bundling
-> occurs at the end of message and so I asked myself why aren't we accounting
-> for SACK chunk at segmentation time?
+Doug Graham wrote:
+> Hi Vlad,
 >
-> We could simply do something like this (completely not tested):
+>> The only thing that I find slightly odd about this behavior is that
+>> the bundling
+>> occurs at the end of message and so I asked myself why aren't we
+>> accounting
+>> for SACK chunk at segmentation time?
+>>
+>> We could simply do something like this (completely not tested):
+>>
+>> diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
+>> index 1748ef9..3bca0a2 100644
+>> --- a/net/sctp/chunk.c
+>> +++ b/net/sctp/chunk.c
+>> @@ -193,6 +193,15 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct
+>> sctp_association *asoc,
+>>                                             hmac_desc->hmac_len);
+>>         }
+>>
+>> +       /* Check to see if we have a pending SACK and try to let it
+>> be bundled
+>> +        * with this message.  Do this if we don't have any data to
+>> send.  To
+>> +        * check that, look at out_qlen and retransmit list.
+>> +        */
+>> +       if (timer_pending(&asoc->timers[SCTP_EVENT_TIMEOUT_SACK]) &&
+>> +           asoc->outqueue.out_qlen = 0 &&
+>> +           list_empty(&asoc->outqueue.retransmit))
+>> +               max -= WORD_ROUND(sizeof(sctp_sack_chunk_t));
+>> +
+>>         whole = 0;
+>>         first_len = max;
+>>
+>>   
+> Doesn't this reduce the  size of all chunks in a message?  You've
+> descremented "max", which I think
+> is the maximum size of all chunks in the message.  I could see maybe
+> doing this to leave space
+> in only the first chunk (ie: just decrement first_len by
+> sizeof(sctp_sack_chunk_t), but even that
+> doesn't buy much I think.  It wouldn't reduce the number of packets
+> sent, it would only mean
+> that the SACK is bundled with the first fragment, and then an extra
+> DATA fragment would need
+> to be created to send the last sizeof(sctp_sack_chunk_t) bytes of
+> DATA.   Example:
 >
-> diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
-> index 1748ef9..3bca0a2 100644
-> --- a/net/sctp/chunk.c
-> +++ b/net/sctp/chunk.c
-> @@ -193,6 +193,15 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct
-> sctp_association *asoc,
->                                             hmac_desc->hmac_len);
->         }
+> Assume that the PMTU is 1000, that the user is sending a message of
+> 1990 bytes,  and
+> that sizeof(sctp_sack_chunk_t) is 16.  With my scheme, we'd send this:
 >
-> +       /* Check to see if we have a pending SACK and try to let it be bundled
-> +        * with this message.  Do this if we don't have any data to send.  To
-> +        * check that, look at out_qlen and retransmit list.
-> +        */
-> +       if (timer_pending(&asoc->timers[SCTP_EVENT_TIMEOUT_SACK]) &&
-> +           asoc->outqueue.out_qlen = 0 &&
-> +           list_empty(&asoc->outqueue.retransmit))
-> +               max -= WORD_ROUND(sizeof(sctp_sack_chunk_t));
-> +
->         whole = 0;
->         first_len = max;
+>  DATA (1000 bytes)
+>  SACK
+>  DATA (990 bytes)
 >
->   
-Doesn't this reduce the  size of all chunks in a message?  You've 
-descremented "max", which I think
-is the maximum size of all chunks in the message.  I could see maybe 
-doing this to leave space
-in only the first chunk (ie: just decrement first_len by 
-sizeof(sctp_sack_chunk_t), but even that
-doesn't buy much I think.  It wouldn't reduce the number of packets 
-sent, it would only mean
-that the SACK is bundled with the first fragment, and then an extra DATA 
-fragment would need
-to be created to send the last sizeof(sctp_sack_chunk_t) bytes of 
-DATA.   Example:
+> with your scheme exactly as you propose it, we'd send
+>
+>  SACK + DATA (1000 - 16 = 984 bytes)
+>  DATA  (984 bytes)
+>  DATA  (22 bytes)
+>
+> If the scheme is modified to only reduce the size of the first
+> fragment, we'd send:
+>
+>  SACK + DATA (984 bytes)
+>  DATA  (1000 bytes)
+>  DATA  (6 bytes)
+>
+> The main point being that if a SACK won't fit in the last chunk of a
+> message, then your scheme
+> would just push all the data down so that a new DATA chunk has to be
+> sent to send the last
+> few bytes of data,
+>
+> I don't think there's any real advantage in sending the SACK in the
+> first packet rather than the
+> last one, but I agree that  it seems to make more sense.  It does seem
+> to complicate the
+> code a bit though.  At the moment, all the code related to
+> piggybacking SACKs is in
+> one place, whereas with this patch it'd be spread out to seemingly
+> unrelated code.
 
-Assume that the PMTU is 1000, that the user is sending a message of 1990 
-bytes,  and
-that sizeof(sctp_sack_chunk_t) is 16.  With my scheme, we'd send this:
+I think Vlad's patch should be like this:
 
-  DATA (1000 bytes)
-  SACK
-  DATA (990 bytes)
+        whole = 0;
+        first_len = max;
+        ~~~~~~~~~~~~~~~~~~~~
 
-with your scheme exactly as you propose it, we'd send
++       /* Check to see if we have a pending SACK and try to let it be bundled
++        * with this message.  Do this if we don't have any data to send.  To
++        * check that, look at out_qlen and retransmit list.
++        */
++       if (timer_pending(&asoc->timers[SCTP_EVENT_TIMEOUT_SACK]) &&
++           asoc->outqueue.out_qlen = 0 &&
++           list_empty(&asoc->outqueue.retransmit))
++               first_len -= WORD_ROUND(sizeof(sctp_sack_chunk_t));
+                ~~~~~~~~~~~~~~
+......
 
-  SACK + DATA (1000 - 16 = 984 bytes)
-  DATA  (984 bytes)
-  DATA  (22 bytes)
 
-If the scheme is modified to only reduce the size of the first fragment, 
-we'd send:
-
-  SACK + DATA (984 bytes)
-  DATA  (1000 bytes)
-  DATA  (6 bytes)
-
-The main point being that if a SACK won't fit in the last chunk of a 
-message, then your scheme
-would just push all the data down so that a new DATA chunk has to be 
-sent to send the last
-few bytes of data,
-
-I don't think there's any real advantage in sending the SACK in the 
-first packet rather than the
-last one, but I agree that  it seems to make more sense.  It does seem 
-to complicate the
-code a bit though.  At the moment, all the code related to piggybacking 
-SACKs is in
-one place, whereas with this patch it'd be spread out to seemingly 
-unrelated code.
-
---Doug
 
