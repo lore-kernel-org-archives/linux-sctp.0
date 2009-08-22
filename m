@@ -1,88 +1,70 @@
-From: Luo Chunbo <chunbo.luo@windriver.com>
-Date: Mon, 24 Aug 2009 09:35:20 +0000
-Subject: Re: [PATCH] sctp: fix the check for path failure detection
-Message-Id: <1251106520.6513.51.camel@pek-cluo-desktop>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Sat, 22 Aug 2009 03:24:00 +0000
+Subject: [PATCH] sctp: drop SHUTDOWN chunk if the TSN is less than the CTSN
+Message-Id: <4A8F64D0.8000408@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1250838275-7444-1-git-send-email-chunbo.luo@windriver.com>
-	 <4A8F15F5.3020901@hp.com> <1251080117.6513.11.camel@pek-cluo-desktop>
-	 <4A924734.6000702@cn.fujitsu.com>
-In-Reply-To: <4A924734.6000702@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: Wei Yongjun <yjwei@cn.fujitsu.com>
-Cc: Vlad Yasevich <vladislav.yasevich@hp.com>, davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: linux-sctp@vger.kernel.org
 
-On Mon, 2009-08-24 at 15:54 +0800, Wei Yongjun wrote:
-> Luo Chunbo 写道:
-> > On Fri, 2009-08-21 at 17:47 -0400, Vlad Yasevich wrote:
-> >   
-> >> Chunbo Luo wrote:
-> >>     
-> >>> The transport is marked DOWN immediately after sending the max+1 HB,
-> >>> which is equal to not sending the max+1 HB at all. We should wait
-> >>> a next period and make sure the last HB is not acknowledged.
-> >>>
-> >>>       
-> >> I don't think this code does what you want either...
-> >>
-> >> Let's say path_max_rxt = 2.  What we'll get is:
-> >> 	timeout:
-> >> 		err++ (1)
-> >> 		if (err > 2) false
-> >> 		send HB
-> >> 		reset timer
-> >> 	timeout:
-> >> 		err++ (2)
-> >> 		if (err > 2) false
-> >> 		send HB
-> >> 		reset timer
-> >> 	timeout:
-> >> 		err++ (3)
-> >> 		if (err > 2)
-> >> 			set transport DOWN
-> >> 		send HB
-> >> 		reset timer.
-> >>
-> >> We only had 2 unacknowledged HB when we should have had 3.
-> >>     
-> >
-> > The error count is increment after the HB was sent, and the error count
-> > check is before sending HB.
-> >
-> > Let's say path_max_rxt =2 . What we really get is:
-> >
-> > timeout:
-> > 	if( err > 2) false
-> > 	send HB
-> > 	err++ (1)
-> > 	reset timer
-> > timeout:
-> > 	if( err > 2) false
-> > 	send HB
-> > 	err++ (2)
-> > 	reset timer
-> > timeout:
-> > 	if( err > 2) false
-> > 	send HB
-> > 	err++ (3)
-> > 	reset timer
-> > timeout:
-> > 	if( err > 2)
-> > 		set transport DOWN
-> > 	send HB
-> > 	reset timer
-> >
-> > Here We had 3 unacknowledged HBs
-> 
-> 
-> But with Vlad's advice, you just need to do little change to the kernel
-> codes, may be two lines's patch, and it can do the same thing.
+If Cumulative TSN Ack field of SHUTDOWN chunk is less than the
+Cumulative TSN Ack Point then drop the SHUTDOWN chunk.
+
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ net/sctp/sm_statefuns.c |   16 +++++++++++++++-
+ 1 files changed, 15 insertions(+), 1 deletions(-)
+
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 7288192..071c668 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -2561,6 +2561,12 @@ sctp_disposition_t sctp_sf_do_9_2_shutdown(const struct sctp_endpoint *ep,
+ 	chunk->subh.shutdown_hdr = sdh;
+ 	ctsn = ntohl(sdh->cum_tsn_ack);
+ 
++	if (TSN_lt(ctsn, asoc->ctsn_ack_point)) {
++		SCTP_DEBUG_PRINTK("ctsn %x\n", ctsn);
++		SCTP_DEBUG_PRINTK("ctsn_ack_point %x\n", asoc->ctsn_ack_point);
++		return SCTP_DISPOSITION_DISCARD;
++	}
++
+ 	/* If Cumulative TSN Ack beyond the max tsn currently
+ 	 * send, terminating the association and respond to the
+ 	 * sender with an ABORT.
+@@ -2624,6 +2630,7 @@ sctp_disposition_t sctp_sf_do_9_2_shut_ctsn(const struct sctp_endpoint *ep,
+ {
+ 	struct sctp_chunk *chunk = arg;
+ 	sctp_shutdownhdr_t *sdh;
++	__u32 ctsn;
+ 
+ 	if (!sctp_vtag_verify(chunk, asoc))
+ 		return sctp_sf_pdiscard(ep, asoc, type, arg, commands);
+@@ -2635,12 +2642,19 @@ sctp_disposition_t sctp_sf_do_9_2_shut_ctsn(const struct sctp_endpoint *ep,
+ 						  commands);
+ 
+ 	sdh = (sctp_shutdownhdr_t *)chunk->skb->data;
++	ctsn = ntohl(sdh->cum_tsn_ack);
++
++	if (TSN_lt(ctsn, asoc->ctsn_ack_point)) {
++		SCTP_DEBUG_PRINTK("ctsn %x\n", ctsn);
++		SCTP_DEBUG_PRINTK("ctsn_ack_point %x\n", asoc->ctsn_ack_point);
++		return SCTP_DISPOSITION_DISCARD;
++	}
+ 
+ 	/* If Cumulative TSN Ack beyond the max tsn currently
+ 	 * send, terminating the association and respond to the
+ 	 * sender with an ABORT.
+ 	 */
+-	if (!TSN_lt(ntohl(sdh->cum_tsn_ack), asoc->next_tsn))
++	if (!TSN_lt(ctsn, asoc->next_tsn))
+ 		return sctp_sf_violation_ctsn(ep, asoc, type, arg, commands);
+ 
+ 	/* verify, by checking the Cumulative TSN Ack field of the
+-- 
+1.6.2.2
 
 
-OK, I'll send a new patch later.
 
 
-> 
-> 
-> 
