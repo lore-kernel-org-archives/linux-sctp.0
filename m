@@ -1,56 +1,45 @@
-From: Chunbo Luo <chunbo.luo@windriver.com>
-Date: Wed, 19 Aug 2009 07:01:07 +0000
-Subject: [PATCH 1/2] sctp: fix heartbeat count of association failure
-Message-Id: <1250665268-29770-1-git-send-email-chunbo.luo@windriver.com>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Sat, 22 Aug 2009 03:27:37 +0000
+Subject: [PATCH] sctp: fix check the chunk length of received HEARTBEAT-ACK
+Message-Id: <4A8F65A9.7080404@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, chunbo.luo@windriver.com
+To: linux-sctp@vger.kernel.org
 
-RFC4960 Section 8.1 defined that the association should enter CLOSE
-state when the value of association error counter exceeds the limit 
-indicated in the protocol parameter 'Association.Max.Retrans'. This
-means that the association should enter CLOSE state after max_retrans+1 
-heartbeats are not acknowledged.
+The receiver of the HEARTBEAT should respond with a HEARTBEAT ACK
+that contains the Heartbeat Information field copied from the
+received HEARTBEAT chunk. So the received HEARTBEAT-ACK chunk
+must have a length of:
+  sizeof(sctp_chunkhdr_t) + sizeof(sctp_sender_hb_info_t)
 
-Signed-off-by: Chunbo Luo <chunbo.luo@windriver.com>
+A badly formatted HB-ACK chunk, it is possible that we may access
+invalid memory.  We should really make sure that the chunk format
+is what we expect, before attempting to touch the data.
+
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 ---
- net/sctp/sm_statefuns.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+ net/sctp/sm_statefuns.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
 diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 7288192..90e4f06 100644
+index 071c668..a4b63e8 100644
 --- a/net/sctp/sm_statefuns.c
 +++ b/net/sctp/sm_statefuns.c
-@@ -5190,7 +5190,7 @@ sctp_disposition_t sctp_sf_do_6_3_3_rtx(const struct sctp_endpoint *ep,
+@@ -1106,7 +1106,8 @@ sctp_disposition_t sctp_sf_backbeat_8_3(const struct sctp_endpoint *ep,
+ 		return sctp_sf_pdiscard(ep, asoc, type, arg, commands);
  
- 	SCTP_INC_STATS(SCTP_MIB_T3_RTX_EXPIREDS);
+ 	/* Make sure that the HEARTBEAT-ACK chunk has a valid length.  */
+-	if (!sctp_chunk_length_valid(chunk, sizeof(sctp_heartbeat_chunk_t)))
++	if (!sctp_chunk_length_valid(chunk, sizeof(sctp_chunkhdr_t) +
++					    sizeof(sctp_sender_hb_info_t)))
+ 		return sctp_sf_violation_chunklen(ep, asoc, type, arg,
+ 						  commands);
  
--	if (asoc->overall_error_count >= asoc->max_retrans) {
-+	if (asoc->overall_error_count > asoc->max_retrans) {
- 		sctp_add_cmd_sf(commands, SCTP_CMD_SET_SK_ERR,
- 				SCTP_ERROR(ETIMEDOUT));
- 		/* CMD_ASSOC_FAILED calls CMD_DELETE_TCB. */
-@@ -5404,7 +5404,7 @@ sctp_disposition_t sctp_sf_t2_timer_expire(const struct sctp_endpoint *ep,
- 
- 	((struct sctp_association *)asoc)->shutdown_retries++;
- 
--	if (asoc->overall_error_count >= asoc->max_retrans) {
-+	if (asoc->overall_error_count > asoc->max_retrans) {
- 		sctp_add_cmd_sf(commands, SCTP_CMD_SET_SK_ERR,
- 				SCTP_ERROR(ETIMEDOUT));
- 		/* Note:  CMD_ASSOC_FAILED calls CMD_DELETE_TCB. */
-@@ -5487,7 +5487,7 @@ sctp_disposition_t sctp_sf_t4_timer_expire(
- 	 * RFC2960 [5] section 8.1 and 8.2.
- 	 * association error counter is incremented in SCTP_CMD_STRIKE.
- 	 */
--	if (asoc->overall_error_count >= asoc->max_retrans) {
-+	if (asoc->overall_error_count > asoc->max_retrans) {
- 		sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_STOP,
- 				SCTP_TO(SCTP_EVENT_TIMEOUT_T4_RTO));
- 		sctp_add_cmd_sf(commands, SCTP_CMD_SET_SK_ERR,
 -- 
-1.6.4
+1.6.2.2
+
+
+
 
