@@ -1,68 +1,43 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Tue, 04 Aug 2009 17:14:04 +0000
-Subject: Re: [PATCH] Fix piggybacked ACKs
-Message-Id: <4A786C5C.1060200@hp.com>
+Date: Mon, 24 Aug 2009 16:26:12 +0000
+Subject: [PATCH] sctp: Try to encourage SACK bundling with DATA.
+Message-Id: <1251131172-20602-3-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20090729160557.GC29475@nortel.com>
-In-Reply-To: <20090729160557.GC29475@nortel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Doug Graham wrote:
-> On Tue, Aug 04, 2009 at 10:50:18AM -0400, Vlad Yasevich wrote:
->>> I admit that I didn't study too closely exactly what
->>> q->outstanding_bytes represents.  I assumed
->>> it meant the number of bytes that had been sent on the wire, but not yet
->>> acknowledged.
->>> Any bytes that were delayed because of Nagle would not be counted in
->>> outstanding_bytes
->>> (I assume).  So the first send of 726 would get sent immediately and
->>> counted in
->>> outstanding_bytes.  The second one would get delayed by Nagle and not
->>> counted
->>> in outstanding_bytes.  All the later ones would also get delayed by
->>> Nagle because
->>> outstanding_bytes is still 726.
->>>
->>> I do think that using outstanding_bytes the way I did is probably an
->>> ugly kludge, and
->>> there's hopefully a better way.  But the right way will probably involve
->>> adding
->>> some more state to each association (the snd.sml variable mentioned in
->>> the minshall
->>> draft at the very least).  I'm not sure that using asoc->frag_point the
->>> way I did is correct
->>> either, because I think the frag_point can change during the lifetime of
->>> an association.
->> Using division in such a hot path is a non-starter to begin with, so we
->> definitely need to find a better way.
-> 
-> That thought crossed by mind too, although I didn't consider it as much
-> of a show-stopper as you do.  32 bit integer division isn't really all
-> that expensive on modern processors is it?  The C compiler is probably
-> doing it in places as a result of pointer arithmetic anyway.
-> 
->> Using frag_point is not the right way to do it either since it's effected by
->> MTU and user API.
->>
->> I think we can add something to sctp_outq structure to properly track this.
-> 
-> I've pretty much convinced myself that Wei's original Nagle patch is fine
-> anyway.  Just disable Nagle for large messages that need to be fragmented.
-> 
+If the association has a SACK timer pending and now DATA queued
+to be send, we'll try to bundle the SACK with the next application send.
+As such, try encourage bundling by accounting for SACK in the size
+of the first chunk fragment.
 
-We can't do it blindly since the user may set a fragmentation point such that
-we'll send sub-MSS (for lack of a better term) segments.  I need to look at
-this more closely.
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ net/sctp/chunk.c |    9 +++++++++
+ 1 files changed, 9 insertions(+), 0 deletions(-)
 
--vlad
-
-> --Doug.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
+index 1748ef9..05b532e 100644
+--- a/net/sctp/chunk.c
++++ b/net/sctp/chunk.c
+@@ -196,6 +196,15 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
+ 	whole = 0;
+ 	first_len = max;
+ 
++	/* Check to see if we have a pending SACK and try to let it be bundled
++	 * with this message.  Do this if we don't have any data queued already.
++	 * To check that, look at out_qlen and retransmit list.
++	 */
++	if (timer_pending(&asoc->timers[SCTP_EVENT_TIMEOUT_SACK]) &&
++	    asoc->outqueue.out_qlen = 0 &&
++	    list_empty(&asoc->outqueue.retransmit))
++		first_len -= WORD_ROUND(sizeof(sctp_sack_chunk_t));
++
+ 	/* Encourage Cookie-ECHO bundling. */
+ 	if (asoc->state < SCTP_STATE_COOKIE_ECHOED) {
+ 		whole = msg_len / (max - SCTP_ARBITRARY_COOKIE_ECHO_LEN);
+-- 
+1.5.4.3
 
