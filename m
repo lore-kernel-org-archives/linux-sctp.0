@@ -1,66 +1,32 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Thu, 13 Aug 2009 17:15:35 +0000
-Subject: Re: got some questions on support for multihoming
-Message-Id: <4A844A37.6070101@hp.com>
+Date: Mon, 24 Aug 2009 16:26:10 +0000
+Subject: [PATCH 0/2] Re: Do piggybacked ACKs work
+Message-Id: <1251131172-20602-1-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4A835B67.2040202@nortel.com>
-In-Reply-To: <4A835B67.2040202@nortel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Chris Friesen wrote:
-> Hi all,
-> 
-> I've got a few questions about the current implementation of SCTP.
-> Suppose I have two network nodes, each of which has two IP addresses.
-> Theoretically this results in four possible paths between the two nodes.
+Try to wrap up the discussion and all the patches that
+happened in this tread, I'd like to send out what I've come
+up with.  It's really a merge of all the points
+we've discussed (minus the Nagel/small fragment discussion).
 
-Theoretically, but often not in practice.
+What we try to do in the first patch is bundle the SACK
+if we are going to send the DATA, regardless of if the SACK
+will fit in the same packet or not.
 
-> 
-> If the network device corresponding to the primary IP address goes down
-> on the remote node, will the current implementation properly switch over
-> to use the "most divergent source-destination pair" as suggested in the
-> RFC?  I assume this would mean switching to the other IP address on both
-> nodes?
+The second patch in the series, will size the DATA chunks
+to account for possbile SACKs.  This will encourage bundling.
 
-It sort of depends on how the addresses are configured.  Assuming a typical
-multihomed scenario where each address is in its own subnet, then the answer
-is yes.  Ex:
+The last piece of the puzzle is what to do with the small message
+fragements.  Wei's approach doesn't work in the face of small
+messages that the user decides to fragment as well (think, 400
+byte message with a frag_size of 50).  I think we need to
+take message size into account in this situation.
 
-node A (addrs: 1.2.3.4, 2.3.4.5)  <---------> Node B (addrs: 1.2.3.5, 2.3.4.6)
-
-In this case, assuming 1.2.3.0/24 was primary, the path with switch to
-2.3.4.5 <--> 2.3.4.5.
-
-It really is a function of the routing looking by the kernel.
-
-> 
-> Same question, but with the device corresponding to the primary IP
-> address going down on the local node.
-
-Once the appropriate time-outs happen, it should switch the same as above.
-
-> 
-> If a chunk times out, will the current implementation retransmit it via
-> the "most divergent source-destination pair" as suggested in the RFC?
-
-Most of the time.  We simply try to pick a different destination address to
-send to, and let the kernel pick a source.  As long as the source picked by
-the kernel is within our bound set, we'll use it.  We don't check for
-'mostly divergent pair'.
+Anyway, please feel free to comment on this approach.
 
 -vlad
-
-> 
-> Thanks,
-> 
-> Chris
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
 
