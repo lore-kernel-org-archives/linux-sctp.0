@@ -1,112 +1,42 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Tue, 08 Sep 2009 21:05:32 +0000
-Subject: Re: [PATCH 0/2] Re: Do piggybacked ACKs work
-Message-Id: <4AA6C71C.8080200@hp.com>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Wed, 02 Sep 2009 05:05:33 +0000
+Subject: [PATCH 1/2] sctp: fix to reset packet information after packet transmit
+Message-Id: <4A9DFD1D.8050009@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1251131172-20602-1-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <1251131172-20602-1-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Doug Graham wrote:
-> On Tue, Sep 08, 2009 at 03:31:02PM -0400, Vlad Yasevich wrote:
->>> You're right about the reasons for the two SACKs.  An odd
->>> number of chunks still doesn't result in any piggybacking though
->>> (see trace below).  Every even chunk is SACKed because of the
->>> ack-every-second-packet rule, and the last chunk always results in a
->>> window update SACK being sent when the app reads the data.  So I'm
->>> not sure that all the fancy footwork to try to piggyback SACKs on
->>> fragmented messages is buying much, at least not in the case where
->>> client and server are sending each other messages of the same size.
->> Yeah, I realized shortly after sending a reply.  Well, in this case
->> there is really no opportunity to piggy-back the SACK on anything
->> since we don't have any pending DATA.
-> 
-> One thing I did notice when running tests between net-next and FreeBSD
-> is that BSD does not send a window update every time the windows opens
-> by a single MTU.  Instead, it only sends a window update if the window
-> has opened by 1/8th of the total rwin size since the last SACK was sent
-> (or something like that).  RFC1122 says to use the minimum of half
-> the total receive buffer size and the MSS, but I don't think many TCP
-> implementations stick to the letter of that law these days, nor it seems
-> does BSD's SCTP implementation.   I'm not sure why these implementations
-> are not following the letter of the RFC, but I'd guess it's an attempt
-> to send fewer window updates at the possible cost of slightly reduced
-> throughput.
+The packet information does not reset after packet transmit, this
+may cause some problems such as following DATA chunk be sent without
+AUTH chunk, even if the authentication of DATA chunk has been
+requested by the peer.
 
-Yes.  I have to dig out a patch that turns the fraction of rwnd into a
-sysctl tunable.  I remember that at about 1/8 or 1/16 I was getting the
-best performance.
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ net/sctp/output.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
 
-> 
->> The intent was to not fragment if it was not fragmented before.
->> That intent came from the Nagle kicking in on the second small fragment.
->> I was getting abysmal results when I was fragmenting and hitting Nagle.
->>
->> So, the code essentially says that if we are going to fragment anyway,
->> then allow SACKs into the first fragment.  If we are not fragmenting, then
->> SACK will be bundled on best effort basis.  That's what bundling is all about
->> it, anyway.  It's best effort.
-> 
-> Ah, ok this makes sense.  I thought that the you'd intended the same
-> behaviour when the data size is just less than one MTU as when it's
-> just less than 2, 3, 4, ...  MTUs, but I think it does make sense not
-> to fragment if the the message hasn't already been fragmented.
-> 
->> Making Nagle not applicable to fragments didn't make sense since that would
->> allow you to effectively disable Nagle by setting a SCTP_MAXSEG to 1/2 your
->> message size and then sending small messages.
->>
->> So, now Nagle doesn't apply to messages that would fill the mtu.  I think I can
->> do this a little bit better though...
->>
->> Try attached patch on top of the net-next tree.
->>
->> It give me the following pattern with 1444 byte payload:
->>
->> DATA (1444) -------->
->>             <-------   SACK + DATA(1436)
->>             <-------   DATA (8)
->> SACK        -------->
->> DATA (1444) -------->
->>             <-------   SACK + DATA(1436)
->>             <-------   DATA (8)
->>
->>
->> Not sure if this better then a pattern of:
->>
->> DATA    -------->
->>         <--------  SACK
->>         <-------   DATA
->> SACK    -------->
->> DATA    -------->
->>         <-------- SACK
->>         <-------- DATA
-> 
-> I think you're starting to lose me.  I thought the first pattern above
-> was what you were trying to avoid (fragmenting messages that didn't
-> previously need to be fragmented), but I'm not following how this all
-> ties into Nagle possibly being defeated.  Perhaps it'll become clear
-> when I study your patch.  Anyway, I don't see any real advantage to the
-> first pattern above compared to the second.  The only reason I brought
-> it up is that I thought you'd intended the first.
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index b94c211..fbbfbce 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -599,6 +599,11 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+ 
+ out:
+ 	packet->size = packet->overhead;
++	packet->has_cookie_echo = 0;
++	packet->has_sack = 0;
++	packet->has_data = 0;
++	packet->ipfragok = 0;
++	packet->auth = NULL;
+ 	return err;
+ no_route:
+ 	kfree_skb(nskb);
+-- 
+1.6.2.2
 
-Well, my original intent was to avoid fragmenting with SACK if we didn't
-need to fragment without SACK.  But to do more piggybacking, which is what
-I thought you wanted, I can do the first pattern above with my patch.
 
-As I said, don't know what it gains us.
 
-Thanks
--vlad
-
-> 
-> --Doug.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
 
