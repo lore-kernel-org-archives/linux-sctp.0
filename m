@@ -1,21 +1,62 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Wed, 02 Sep 2009 20:42:56 +0000
-Subject: Get you patches in now for net-next
-Message-Id: <4A9ED8D0.906@hp.com>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Fri, 04 Sep 2009 06:36:55 +0000
+Subject: [PATCH 1/3] sctp: implement definition for SACK-IMMEDIATELY extension
+Message-Id: <4AA0B587.6000508@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-I've got my net-next queue almost ready, so if anyone has
-anything else, now is the time.
+This patch implement the definition for SACK-IMMEDIATELY
+extension.
 
-I'll push this out to DaveM tomorrow.
+Section 3.  The I-bit in the DATA Chunk Header
 
-For the view at the current tree, see:
+   The following Figure 1 shows the extended DATA chunk.
 
-http://git.kernel.org/?p=linux/kernel/git/vxy/lksctp-dev.git;a=shortlog;h=net-next
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |   Type = 0    |  Res  |I|U|B|E|           Length              |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                              TSN                              |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |        Stream Identifier      |     Stream Sequence Number    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                  Payload Protocol Identifier                  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   \                                                               \
+   /                           User Data                           /
+   \                                                               \
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-Thanks
--vlad
+                                 Figure 1
+
+   The only difference between the DATA chunk in Figure 1 and the DATA
+   chunk defined in [RFC4960] is the addition of the I-bit in the flags
+   field of the chunk header.
+
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ include/linux/sctp.h |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index b464b9d..c20d3ce 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -242,6 +242,7 @@ enum {
+ 	SCTP_DATA_FIRST_FRAG	= 0x02,
+ 	SCTP_DATA_NOT_FRAG	= 0x03,
+ 	SCTP_DATA_UNORDERED	= 0x04,
++	SCTP_DATA_SACK_IMM	= 0x08,
+ };
+ enum { SCTP_DATA_FRAG_MASK = 0x03, };
+ 
+-- 
+1.6.2.2
+
+
+
+
