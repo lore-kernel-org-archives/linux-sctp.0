@@ -1,7 +1,7 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Thu, 10 Sep 2009 05:46:05 +0000
-Subject: [PATCH 3/3 v3] sctp: implement the sender side for SACK-IMMEDIATELY
-Message-Id: <4AA8929D.9050609@cn.fujitsu.com>
+Date: Thu, 10 Sep 2009 03:32:26 +0000
+Subject: [PATCH 3/3 v2] sctp: implement the sender side for SACK-IMMEDIATELY
+Message-Id: <4AA8734A.3040308@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -28,9 +28,9 @@ extension.
 Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 ---
  include/net/sctp/user.h |    1 +
- net/sctp/chunk.c        |   15 ++++++++++++++-
+ net/sctp/chunk.c        |   11 ++++++++++-
  net/sctp/outqueue.c     |    7 +++++++
- 3 files changed, 22 insertions(+), 1 deletions(-)
+ 3 files changed, 18 insertions(+), 1 deletions(-)
 
 diff --git a/include/net/sctp/user.h b/include/net/sctp/user.h
 index be2334a..50b2431 100644
@@ -45,7 +45,7 @@ index be2334a..50b2431 100644
  };
  
 diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
-index acf7c4d..8e43200 100644
+index acf7c4d..eaf4077 100644
 --- a/net/sctp/chunk.c
 +++ b/net/sctp/chunk.c
 @@ -263,9 +263,18 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
@@ -66,17 +66,6 @@ index acf7c4d..8e43200 100644
 +		}
 +
  		chunk = sctp_make_datafrag_empty(asoc, sinfo, len, frag, 0);
- 
- 		if (!chunk)
-@@ -297,6 +306,10 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
- 		else
- 			frag = SCTP_DATA_LAST_FRAG;
- 
-+		if ((sinfo->sinfo_flags & SCTP_EOF) ||
-+		    (sinfo->sinfo_flags & SCTP_SACK_IMMEDIATELY))
-+			frag |= SCTP_DATA_SACK_IMM;
-+
- 		chunk = sctp_make_datafrag_empty(asoc, sinfo, over, frag, 0);
  
  		if (!chunk)
 diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
