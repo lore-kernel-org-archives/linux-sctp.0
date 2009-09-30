@@ -1,12 +1,39 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Mon, 28 Sep 2009 16:45:41 +0000
-Subject: Re: linux sctp bug
-Message-Id: <4AC0E835.60808@hp.com>
+From: "Michael Krolikowski" <MIK@mach.com>
+Date: Wed, 30 Sep 2009 12:49:27 +0000
+Subject: RE: linux sctp bug
+Message-Id: <328601A8AE3DB64B9A9DF1CCA840B770028DB595@EXCHDK.machcorp.lan>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <4AC0E835.60808@hp.com>
+In-Reply-To: <4AC0E835.60808@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
+
+Hi,
+
+I'm testing it using two UML machines. Both of them running Linux
+2.6.31.
+I tried it today again and it seems that the error occurs not as I first
+said after only a few tries but many tries later it does.
+I also tried with 2.6.31.1 (UML) with the same results.
+I used Debian Lenny with a 2.6.26 Linux where I got the error for the
+first time.
+
+I hope this little information helps you a bit.
+
+
+Regards,
+
+Michael
+
+
+-----Original Message-----
+From: Vlad Yasevich [mailto:vladislav.yasevich@hp.com] 
+Sent: Montag, 28. September 2009 18:46
+To: Michael Krolikowski
+Cc: Sridhar Samudrala; Linux SCTP Dev Mailing list
+Subject: Re: linux sctp bug
 
 Michael Krolikowski wrote:
 > Hi,
@@ -21,11 +48,13 @@ The right place to ask is on linux-sctp mailing list.
 > module is not loaded), the
 > other host sends an ICMP Protocol unreachable. This makes the SCTP
 > module on the initiating host
-> crash. It maybe that it crashes not at the first try but if I repeat the
+> crash. It maybe that it crashes not at the first try but if I repeat
+the
 > SCTP INIT 3-4 times it will crash.
 
 Hm..  I've tried to reproduce and couldn't with top of tree 2.6.31.
-I've tried repeating INITs over the same path and over multiple paths, but
+I've tried repeating INITs over the same path and over multiple paths,
+but
 didn't see a crash.
 
 Would you be able to do a bisect?
