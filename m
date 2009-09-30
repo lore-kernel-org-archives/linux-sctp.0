@@ -1,7 +1,7 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Wed, 30 Sep 2009 15:58:11 +0000
-Subject: Re: linux sctp bug
-Message-Id: <4AC38013.7070401@hp.com>
+From: "Michael Krolikowski" <MIK@mach.com>
+Date: Wed, 30 Sep 2009 16:02:16 +0000
+Subject: RE: linux sctp bug
+Message-Id: <328601A8AE3DB64B9A9DF1CCA840B770028DB6F4@EXCHDK.machcorp.lan>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <4AC0E835.60808@hp.com>
 In-Reply-To: <4AC0E835.60808@hp.com>
@@ -10,8 +10,25 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
+sctp_test -H 192.168.123.2 -P 12345 -h 192.168.123.3 -p 2345 -s
+
+where 192.168.123.2 is the host which crashes and 192.168.123.3
+The host which sends ICMP messages.
+
+
+Michael
+
+
+-----Original Message-----
+From: Vlad Yasevich [mailto:vladislav.yasevich@hp.com] 
+Sent: Mittwoch, 30. September 2009 17:58
+To: Michael Krolikowski
+Cc: linux-sctp@vger.kernel.org
+Subject: Re: linux sctp bug
+
 Michael Krolikowski wrote:
-> I've first seen the bug in Debian Lenny with Debian's patched Linux 2.6.
+> I've first seen the bug in Debian Lenny with Debian's patched Linux
+2.6.
 > Now I've just installed Linux 2.6.26.8 (UML) and seen a different
 > behavior:
 > 
@@ -43,13 +60,15 @@ Michael Krolikowski wrote:
 > 601c7c88:  [<60012d42>] timer_handler+0x21/0x2f
 > 601c7ca8:  [<60020e87>] real_alarm_handler+0x3f/0x41
 > 601c7cb8:  [<62dbfeb5>] sctp_pname+0x0/0x1a [sctp]
-> 601c7d30:  [<62dad9c2>] sctp_assoc_update_retran_path+0x44/0x13e [sctp]
+> 601c7d30:  [<62dad9c2>] sctp_assoc_update_retran_path+0x44/0x13e
+[sctp]
 > 601c7db8:  [<60020ee5>] alarm_handler+0x2e/0x39
 > 601c7dd8:  [<60021179>] handle_signal+0x6b/0xa1
 > 601c7e10:  [<62dbfeb5>] sctp_pname+0x0/0x1a [sctp]
 > 601c7e28:  [<60022a90>] hard_handler+0x10/0x14
 > 601c7e98:  [<62dbfeb5>] sctp_pname+0x0/0x1a [sctp]
-> 601c7ee8:  [<62dad9c2>] sctp_assoc_update_retran_path+0x44/0x13e [sctp]
+> 601c7ee8:  [<62dad9c2>] sctp_assoc_update_retran_path+0x44/0x13e
+[sctp]
 > 
 > I did the test with the sctp_test tool from http://lksctp.sf.net/
 > I just repeated executing the tool manually, so no tight loop.
@@ -59,13 +78,16 @@ sessions.
 
 -vlad
 
-> I always had both systems running with the same Linux Version. But this
-> shouldn't be the problem should it? It's always the same ICMP message I
+> I always had both systems running with the same Linux Version. But
+this
+> shouldn't be the problem should it? It's always the same ICMP message
+I
 > get
 > from the remote host.
 > I did the test with Debian Lenny running inside VMware as well but
 > didn't
-> test inside KVM. I couldn't reproduce the bug in live systems but I did
+> test inside KVM. I couldn't reproduce the bug in live systems but I
+did
 > only one quick test there. I'll give that a try and let you know - but
 > it
 > might take me a while.
@@ -143,7 +165,8 @@ sessions.
 >> the
 >>> SCTP INIT 3-4 times it will crash.
 >> Hm..  I've tried to reproduce and couldn't with top of tree 2.6.31.
->> I've tried repeating INITs over the same path and over multiple paths,
+>> I've tried repeating INITs over the same path and over multiple
+paths,
 >> but
 >> didn't see a crash.
 >>
@@ -263,7 +286,8 @@ sessions.
 >>
 > 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp"
+in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
