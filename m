@@ -1,7 +1,7 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Wed, 30 Sep 2009 14:31:08 +0000
-Subject: Re: linux sctp bug
-Message-Id: <4AC36BAC.5020506@hp.com>
+From: "Michael Krolikowski" <MIK@mach.com>
+Date: Wed, 30 Sep 2009 15:32:22 +0000
+Subject: RE: linux sctp bug
+Message-Id: <328601A8AE3DB64B9A9DF1CCA840B770028DB6BC@EXCHDK.machcorp.lan>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <4AC0E835.60808@hp.com>
 In-Reply-To: <4AC0E835.60808@hp.com>
@@ -10,12 +10,76 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
+I've first seen the bug in Debian Lenny with Debian's patched Linux 2.6.
+Now I've just installed Linux 2.6.26.8 (UML) and seen a different
+behavior:
+
+SCTP: Hash tables configured (established 512 bind 512)
+BUG: soft lockup - CPU#0 stuck for 61s! [sctp_test:847]
+Modules linked in: sctp
+
+Modules linked in: sctp
+Pid: 847, comm: sctp_test Not tainted 2.6.26.8
+RIP: 0033:[<0000000062dad9c2>]
+RSP: 0000000061f3b870  EFLAGS: 00000202
+RAX: 7360adde2c000001 RBX: 0000000061e20000 RCX: 0000000061f3b910
+RDX: 7360adde2c000001 RSI: 0000000000000000 RDI: 000000006150ea00
+RBP: 0000000061f3b880 R08: 0000000061e20140 R09: 0000000000000000
+R10: 0000000060228240 R11: 0000000000000049 R12: 0000000061e20000
+R13: 0000000061e20000 R14: 0000000062dbfeb5 R15: 0000000062dc1a00
+Call Trace:
+601c7ae8:  [<6004e355>] softlockup_tick+0xf7/0x10a
+601c7af8:  [<600318e7>] raise_softirq+0x64/0x6d
+601c7b28:  [<60035bf0>] run_local_timers+0x18/0x1a
+601c7b38:  [<60035c69>] update_process_times+0x2e/0x59
+601c7b68:  [<600463c9>] tick_sched_timer+0x64/0x96
+601c7b98:  [<600418da>] __run_hrtimer+0x26/0x6f
+601c7bb8:  [<600421b2>] hrtimer_interrupt+0xe3/0x143
+601c7bf8:  [<60012cd4>] um_timer+0xf/0x16
+601c7c08:  [<6004e78a>] handle_IRQ_event+0x2b/0x5f
+601c7c38:  [<6004e81f>] __do_IRQ+0x61/0xa6
+601c7c68:  [<60010b8a>] do_IRQ+0x23/0x39
+601c7c88:  [<60012d42>] timer_handler+0x21/0x2f
+601c7ca8:  [<60020e87>] real_alarm_handler+0x3f/0x41
+601c7cb8:  [<62dbfeb5>] sctp_pname+0x0/0x1a [sctp]
+601c7d30:  [<62dad9c2>] sctp_assoc_update_retran_path+0x44/0x13e [sctp]
+601c7db8:  [<60020ee5>] alarm_handler+0x2e/0x39
+601c7dd8:  [<60021179>] handle_signal+0x6b/0xa1
+601c7e10:  [<62dbfeb5>] sctp_pname+0x0/0x1a [sctp]
+601c7e28:  [<60022a90>] hard_handler+0x10/0x14
+601c7e98:  [<62dbfeb5>] sctp_pname+0x0/0x1a [sctp]
+601c7ee8:  [<62dad9c2>] sctp_assoc_update_retran_path+0x44/0x13e [sctp]
+
+I did the test with the sctp_test tool from http://lksctp.sf.net/
+I just repeated executing the tool manually, so no tight loop.
+I always had both systems running with the same Linux Version. But this
+shouldn't be the problem should it? It's always the same ICMP message I
+get
+from the remote host.
+I did the test with Debian Lenny running inside VMware as well but
+didn't
+test inside KVM. I couldn't reproduce the bug in live systems but I did
+only one quick test there. I'll give that a try and let you know - but
+it
+might take me a while.
+
+Michael
+
+
+-----Original Message-----
+From: Vlad Yasevich [mailto:vladislav.yasevich@hp.com] 
+Sent: Mittwoch, 30. September 2009 16:31
+To: Michael Krolikowski
+Cc: linux-sctp@vger.kernel.org
+Subject: Re: linux sctp bug
+
 Michael Krolikowski wrote:
 > Hi,
 > 
 > I'm testing it using two UML machines. Both of them running Linux
 > 2.6.31.
-> I tried it today again and it seems that the error occurs not as I first
+> I tried it today again and it seems that the error occurs not as I
+first
 > said after only a few tries but many tries later it does.
 > I also tried with 2.6.31.1 (UML) with the same results.
 > I used Debian Lenny with a 2.6.26 Linux where I got the error for the
@@ -59,12 +123,14 @@ Can reproduce this with live systems, or KVM?  I am suspecting UML...
 > Michael Krolikowski wrote:
 >> Hi,
 >>
->> I think I found a bug in the Linux SCTP implementation. I hope you are
+>> I think I found a bug in the Linux SCTP implementation. I hope you
+are
 >> the right persons to ask for help with this.
 > 
 > The right place to ask is on linux-sctp mailing list.
 > 
->> If I send an SCTP INIT to a host which does not support SCTP (e.g. the
+>> If I send an SCTP INIT to a host which does not support SCTP (e.g.
+the
 >> module is not loaded), the
 >> other host sends an ICMP Protocol unreachable. This makes the SCTP
 >> module on the initiating host
@@ -187,7 +253,8 @@ Can reproduce this with live systems, or KVM?  I am suspecting UML...
 >>
 > 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp"
+in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
