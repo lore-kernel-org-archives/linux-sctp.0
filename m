@@ -1,232 +1,114 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Tue, 27 Oct 2009 15:07:57 +0000
-Subject: Re: [tsvwg] SCTP Socket API modification proposal - update
-Message-Id: <4AE70CCD.8090702@hp.com>
-MIME-Version: 1
-Content-Type: multipart/mixed; boundary="------------090306000107040407050305"
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Fri, 30 Oct 2009 14:10:56 +0000
+Subject: [PATCH] sctp: Fix mis-ordering of user space data when multihoming
+Message-Id: <20091030141056.GA5181@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4AE70C97.6050507@hp.com>
-In-Reply-To: <4AE70C97.6050507@hp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-This is a multi-part message in MIME format.
---------------090306000107040407050305
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+
+Fix use of sctp_packet_transmit so as to prevent packet re-ordering
+
+Recently had a bug reported to me, in which the user was sending packets with a
+payload containing a sequence number.  The packets were getting delivered in
+order according the chunk TSN values, but the sequence values in the payload
+were arriving out of order.  At first I thought it must be an application error,
+but we eventually found it to be a problem on the transmit side in the sctp
+stack.
+
+The conditions for the error are that multihoming must be in use, and it helps
+if each transport has a different pmtu.  The problem occurs in sctp_outq_flush.
+Basically we dequeue packets from the data queue, and attempt to append them to
+the orrered packet for a given transport.  After we append a data chunk we add
+the trasport to the end of a list of transports to have their packets sent at
+the end of sctp_outq_flush.  The problem occurs when a data chunks fills up a
+offered packet on a transport.  The function that does the appending
+(sctp_packet_transmit_chunk), will try to call sctp_packet_transmit on the full
+packet, and then append the chunk to a new packet.  This call to
+sctp_packet_transmit, sends that packet ahead of the others that may be queued
+in the transport_list in sctp_outq_flush.  The result is that frames that were
+sent in one order from the user space sending application get re-ordered prior
+to tsn assignment in sctp_packet_transmit, resulting in mis-sequencing of data
+payloads, even though tsn ordering is correct.
+
+The fix is to add a parameter to sctp_packet_transmit_chunk, to inform that
+function if it should send the packet immediately or not.  It makes sense to do
+so for control chunks, which are handled prior to data chunks, but for data
+chunks we want to do what sctp_outq_flush already does, which is to replace the
+overflowing data chunk on the outq, and then flush all the queued transports.
+
+This patch has been tested by myself and the reporter, and found to solve the
+reported problem
+
+Regards
+Neil
+
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+Reported-by: William Reich <reich@ulticom.com>
 
 
-
-Vlad Yasevich wrote:
-> 
-> Florian Niederbacher wrote:
->> Hi,
->> thank you very much for the patch. Now it works like a charm! I need now
->> only to change
->> the MAX_BURST value otherwise after the connection goes into idle state
->> the cwnd will be reduced to fast.
->> (Default MAX_BURST  = 4 and MTU = 1500 ->  cwnd = 6000)
->> I guess this is intended by the rule from RFC 4960 in section
->>
->>
->>      6.1. Transmission of DATA Chunks
->>
->>
->>      D) When the time comes for the sender to transmit new DATA chunks,
->>      the protocol parameter Max.Burst SHOULD be used to limit the
->>      number of packets sent.  The limit MAY be applied by adjusting
->>      cwnd as follows:
->>
->>      if((flightsize + Max.Burst*MTU) < cwnd) cwnd = flightsize +
->>      Max.Burst*MTU
->>
->>
->> I am right?
->>
-> 
-> I think this rule gets mis-applied in this situation.  The idea behind max burst
-> is to not burst out a lot of data in response to a SACK.
-> 
-> Can you try this patch and let me know what you see.
-
-And now actually with a patch... :)
-
---------------090306000107040407050305
-Content-Type: text/plain;
- name="max_burst"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="max_burst"
+ include/net/sctp/structs.h |    2 +-
+ net/sctp/output.c          |    4 ++--
+ net/sctp/outqueue.c        |    4 ++--
+ 3 files changed, 5 insertions(+), 5 deletions(-)
 
 diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 0230dcc..1367ae8 100644
+index 9661d7b..766564c 100644
 --- a/include/net/sctp/structs.h
 +++ b/include/net/sctp/structs.h
-@@ -942,6 +942,8 @@ struct sctp_transport {
- 	/* Data that has been sent, but not acknowledged. */
- 	__u32 flight_size;
- 
-+	__u32 burst_limited;	/* Holds old cwnd when max.burst is applied */
-+
- 	/* TSN marking the fast recovery exit point */
- 	__u32 fast_recovery_exit;
- 
-@@ -1070,6 +1072,8 @@ void sctp_transport_put(struct sctp_transport *);
- void sctp_transport_update_rto(struct sctp_transport *, __u32);
- void sctp_transport_raise_cwnd(struct sctp_transport *, __u32, __u32);
- void sctp_transport_lower_cwnd(struct sctp_transport *, sctp_lower_cwnd_t);
-+void sctp_transport_burst_limited(struct sctp_transport *);
-+void sctp_transport_burst_reset(struct sctp_transport *);
- unsigned long sctp_transport_timeout(struct sctp_transport *);
- void sctp_transport_reset(struct sctp_transport *);
- void sctp_transport_update_pmtu(struct sctp_transport *, u32);
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index a7e26a4..188aa15 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -738,6 +738,7 @@ struct sctp_transport *sctp_assoc_add_peer(struct sctp_association *asoc,
- 
- 	peer->partial_bytes_acked = 0;
- 	peer->flight_size = 0;
-+	peer->burst_limited = 0;
- 
- 	/* Set the transport's RTO.initial value */
- 	peer->rto = asoc->rto_initial;
+@@ -829,7 +829,7 @@ struct sctp_packet *sctp_packet_init(struct sctp_packet *,
+ 				     __u16 sport, __u16 dport);
+ struct sctp_packet *sctp_packet_config(struct sctp_packet *, __u32 vtag, int);
+ sctp_xmit_t sctp_packet_transmit_chunk(struct sctp_packet *,
+-                                       struct sctp_chunk *, int);
++                                       struct sctp_chunk *, int, int);
+ sctp_xmit_t sctp_packet_append_chunk(struct sctp_packet *,
+                                      struct sctp_chunk *);
+ int sctp_packet_transmit(struct sctp_packet *);
 diff --git a/net/sctp/output.c b/net/sctp/output.c
-index 9e8e0ea..b210d20 100644
+index 7363935..1d66ae4 100644
 --- a/net/sctp/output.c
 +++ b/net/sctp/output.c
-@@ -615,7 +615,6 @@ static sctp_xmit_t sctp_packet_can_append_data(struct sctp_packet *packet,
- 	sctp_xmit_t retval = SCTP_XMIT_OK;
- 	size_t datasize, rwnd, inflight, flight_size;
- 	struct sctp_transport *transport = packet->transport;
--	__u32 max_burst_bytes;
- 	struct sctp_association *asoc = transport->asoc;
- 	struct sctp_outq *q = &asoc->outqueue;
+@@ -159,7 +159,7 @@ void sctp_packet_free(struct sctp_packet *packet)
+  */
+ sctp_xmit_t sctp_packet_transmit_chunk(struct sctp_packet *packet,
+ 				       struct sctp_chunk *chunk,
+-				       int one_packet)
++				       int one_packet, int force_tx)
+ {
+ 	sctp_xmit_t retval;
+ 	int error = 0;
+@@ -169,7 +169,7 @@ sctp_xmit_t sctp_packet_transmit_chunk(struct sctp_packet *packet,
  
-@@ -648,28 +647,6 @@ static sctp_xmit_t sctp_packet_can_append_data(struct sctp_packet *packet,
- 		}
- 	}
- 
--	/* sctpimpguide-05 2.14.2
--	 * D) When the time comes for the sender to
--	 * transmit new DATA chunks, the protocol parameter Max.Burst MUST
--	 * first be applied to limit how many new DATA chunks may be sent.
--	 * The limit is applied by adjusting cwnd as follows:
--	 * 	if ((flightsize + Max.Burst * MTU) < cwnd)
--	 *		cwnd = flightsize + Max.Burst * MTU
--	 */
--	max_burst_bytes = asoc->max_burst * asoc->pathmtu;
--	if ((flight_size + max_burst_bytes) < transport->cwnd) {
--		transport->cwnd = flight_size + max_burst_bytes;
--		SCTP_DEBUG_PRINTK("%s: cwnd limited by max_burst: "
--				  "transport: %p, cwnd: %d, "
--				  "ssthresh: %d, flight_size: %d, "
--				  "pba: %d\n",
--				  __func__, transport,
--				  transport->cwnd,
--				  transport->ssthresh,
--				  transport->flight_size,
--				  transport->partial_bytes_acked);
--	}
--
- 	/* RFC 2960 6.1  Transmission of DATA Chunks
- 	 *
- 	 * B) At any given time, the sender MUST NOT transmit new data
+ 	switch ((retval = (sctp_packet_append_chunk(packet, chunk)))) {
+ 	case SCTP_XMIT_PMTU_FULL:
+-		if (!packet->has_cookie_echo) {
++		if ((!packet->has_cookie_echo) && force_tx) {
+ 			error = sctp_packet_transmit(packet);
+ 			if (error < 0)
+ 				chunk->skb->sk->sk_err = -error;
 diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index 5732661..2f23773 100644
+index bc411c8..81ffe71 100644
 --- a/net/sctp/outqueue.c
 +++ b/net/sctp/outqueue.c
-@@ -931,6 +931,14 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
- 				goto sctp_flush_out;
- 		}
+@@ -856,7 +856,7 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
+ 		case SCTP_CID_ASCONF:
+ 		case SCTP_CID_FWD_TSN:
+ 			status = sctp_packet_transmit_chunk(packet, chunk,
+-							    one_packet);
++							    one_packet, 1);
+ 			if (status  != SCTP_XMIT_OK) {
+ 				/* put the chunk back */
+ 				list_add(&chunk->list, &q->control_chunk_list);
+@@ -990,7 +990,7 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
+ 					atomic_read(&chunk->skb->users) : -1);
  
-+		/* Apply Max.Burst limitation to the current transport in
-+		 * case it will be used for new data.  We are going to
-+		 * rest it before we return, but we want to apply the limit
-+		 * to the currently queued data.
-+		 */
-+		if (transport)
-+			sctp_transport_burst_limited(transport);
-+
- 		/* Finally, transmit new packets.  */
- 		while ((chunk = sctp_outq_dequeue_data(q)) != NULL) {
- 			/* RFC 2960 6.5 Every DATA chunk MUST carry a valid
-@@ -976,6 +984,10 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
- 				packet = &transport->packet;
- 				sctp_packet_config(packet, vtag,
- 						   asoc->peer.ecn_capable);
-+				/* We've switched transports, so apply the
-+				 * Burst limit to the new transport.
-+				 */
-+				sctp_transport_burst_limited(transport);
- 			}
+ 			/* Add the chunk to the packet.  */
+-			status = sctp_packet_transmit_chunk(packet, chunk, 0);
++			status = sctp_packet_transmit_chunk(packet, chunk, 0, 0);
  
- 			SCTP_DEBUG_PRINTK("sctp_outq_flush(%p, %p[%s]), ",
-@@ -1070,6 +1082,9 @@ sctp_flush_out:
- 		packet = &t->packet;
- 		if (!sctp_packet_empty(packet))
- 			error = sctp_packet_transmit(packet);
-+
-+		/* Clear the burst limited state, if any */
-+		sctp_transport_burst_reset(t);
- 	}
- 
- 	return error;
-diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-index a16df87..fab36b8 100644
---- a/net/sctp/transport.c
-+++ b/net/sctp/transport.c
-@@ -575,6 +575,43 @@ void sctp_transport_lower_cwnd(struct sctp_transport *transport,
- 			  transport->cwnd, transport->ssthresh);
- }
- 
-+/* Apply Max.Burst limit to the congestion window:
-+ * sctpimpguide-05 2.14.2
-+ * D) When the time comes for the sender to
-+ * transmit new DATA chunks, the protocol parameter Max.Burst MUST
-+ * first be applied to limit how many new DATA chunks may be sent.
-+ * The limit is applied by adjusting cwnd as follows:
-+ * 	if ((flightsize+ Max.Burst * MTU) < cwnd)
-+ * 		cwnd = flightsize + Max.Burst * MTU
-+ */
-+
-+void sctp_transport_burst_limited(struct sctp_transport *t)
-+{
-+	struct sctp_association *asoc = t->asoc;
-+	u32 old_cwnd = t->cwnd;
-+	u32 max_burst_bytes;
-+
-+	if (t->burst_limited)
-+		return;
-+
-+	max_burst_bytes = t->flight_size + (asoc->max_burst * asoc->pathmtu);
-+	if (max_burst_bytes < old_cwnd) {
-+		t->cwnd = max_burst_bytes;
-+		t->burst_limited = old_cwnd;
-+	}
-+}
-+
-+/* Restore the old cwnd congestion window, after the burst had it's
-+ * desired effect.
-+ */
-+void sctp_transport_burst_reset(struct sctp_transport *t)
-+{
-+	if (t->burst_limited) {
-+		t->cwnd = t->burst_limited;
-+		t->burst_limited = 0;
-+	}
-+}
-+
- /* What is the next timeout value for this transport? */
- unsigned long sctp_transport_timeout(struct sctp_transport *t)
- {
-@@ -597,6 +634,7 @@ void sctp_transport_reset(struct sctp_transport *t)
- 	 * (see Section 6.2.1)
- 	 */
- 	t->cwnd = min(4*asoc->pathmtu, max_t(__u32, 2*asoc->pathmtu, 4380));
-+	t->burst_limited = 0;
- 	t->ssthresh = asoc->peer.i.a_rwnd;
- 	t->last_rto = t->rto = asoc->rto_initial;
- 	t->rtt = 0;
+ 			switch (status) {
+ 			case SCTP_XMIT_PMTU_FULL:
 
---------------090306000107040407050305--
