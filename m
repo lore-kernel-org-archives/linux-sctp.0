@@ -1,7 +1,7 @@
 From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 06 Nov 2009 18:42:56 +0000
+Date: Sat, 07 Nov 2009 13:38:54 +0000
 Subject: Re: [PATCH] sctp: Fix mis-ordering of user space data when
-Message-Id: <20091106184256.GA18566@hmsreliant.think-freely.org>
+Message-Id: <20091107133854.GA32028@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20091030141056.GA5181@hmsreliant.think-freely.org>
 In-Reply-To: <20091030141056.GA5181@hmsreliant.think-freely.org>
@@ -84,8 +84,101 @@ On Fri, Nov 06, 2009 at 10:35:16AM -0500, Vlad Yasevich wrote:
 > Just running some tests here.  It also looks like this was based on the pre .31
 > code.
 > 
-I applied it against the head of your lksctp-dev git tree, is there something
-newer youd like me to apply it on top of?  I can if you like.
+> In the .31 code, you can put this in sctp_packet_append_data() and save
+> us yet another branch based on chunk_is_data().
+> 
+
+copy that, here it is, applied to the latest net-next tree, with the assignment
+moved to avoid the extra branch
+
+Thanks & Regards
 Neil
 
 
+Fix use of sctp_packet_transmit so as to prevent packet re-ordering
+
+Recently had a bug reported to me, in which the user was sending packets with a
+payload containing a sequence number.  The packets were getting delivered in
+order according the chunk TSN values, but the sequence values in the payload
+were arriving out of order.  At first I thought it must be an application error,
+but we eventually found it to be a problem on the transmit side in the sctp
+stack.
+
+The conditions for the error are that multihoming must be in use, and it helps
+if each transport has a different pmtu.  The problem occurs in sctp_outq_flush.
+Basically we dequeue packets from the data queue, and attempt to append them to
+the orrered packet for a given transport.  After we append a data chunk we add
+the trasport to the end of a list of transports to have their packets sent at
+the end of sctp_outq_flush.  The problem occurs when a data chunks fills up a
+offered packet on a transport.  The function that does the appending
+(sctp_packet_transmit_chunk), will try to call sctp_packet_transmit on the full
+packet, and then append the chunk to a new packet.  This call to
+sctp_packet_transmit, sends that packet ahead of the others that may be queued
+in the transport_list in sctp_outq_flush.  The result is that frames that were
+sent in one order from the user space sending application get re-ordered prior
+to tsn assignment in sctp_packet_transmit, resulting in mis-sequencing of data
+payloads, even though tsn ordering is correct.
+
+The fix is to change where we assign a tsn.  By doing this earlier,
+we are then free to place chunks in packets, whatever way we
+see fit and the protocol will make sure to do all the appropriate re-ordering on
+receive as is needed.
+
+
+ output.c |   25 +++++++++++++------------
+ 1 file changed, 13 insertions(+), 12 deletions(-)
+
+Regards
+Neil
+
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+Reported-by: William Reich <reich@ulticom.com>
+
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 5cbda8f..17efda2 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -429,23 +429,22 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+ 		list_del_init(&chunk->list);
+ 		if (sctp_chunk_is_data(chunk)) {
+ 
+-			if (!chunk->has_tsn) {
+-				sctp_chunk_assign_ssn(chunk);
+-				sctp_chunk_assign_tsn(chunk);
+-
+-			/* 6.3.1 C4) When data is in flight and when allowed
+-			 * by rule C5, a new RTT measurement MUST be made each
+-			 * round trip.  Furthermore, new RTT measurements
+-			 * SHOULD be made no more than once per round-trip
+-			 * for a given destination transport address.
+-			 */
++			if (!chunk->resent) {
++
++				/* 6.3.1 C4) When data is in flight and when allowed
++				 * by rule C5, a new RTT measurement MUST be made each
++				 * round trip.  Furthermore, new RTT measurements
++				 * SHOULD be made no more than once per round-trip
++				 * for a given destination transport address.
++				 */
+ 
+ 				if (!tp->rto_pending) {
+ 					chunk->rtt_in_progress = 1;
+ 					tp->rto_pending = 1;
+ 				}
+-			} else
+-				chunk->resent = 1;
++			}
++
++			chunk->resent = 1;
+ 
+ 			has_data = 1;
+ 		}
+@@ -747,6 +746,8 @@ static void sctp_packet_append_data(struct sctp_packet *packet,
+ 	/* Has been accepted for transmission. */
+ 	if (!asoc->peer.prsctp_capable)
+ 		chunk->msg->can_abandon = 0;
++	sctp_chunk_assign_tsn(chunk);
++	sctp_chunk_assign_ssn(chunk);
+ }
+ 
+ static sctp_xmit_t sctp_packet_will_fit(struct sctp_packet *packet,
