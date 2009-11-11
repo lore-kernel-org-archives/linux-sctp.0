@@ -1,33 +1,46 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 09 Nov 2009 17:16:45 +0000
-Subject: Re: [PATCH] sctp: Fix mis-ordering of user space data when
-Message-Id: <20091109171645.GC19756@hmsreliant.think-freely.org>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Wed, 11 Nov 2009 21:54:37 +0000
+Subject: [PATCH] sctp: Set socket source address when additing first transport
+Message-Id: <1257976477-31326-1-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20091030141056.GA5181@hmsreliant.think-freely.org>
-In-Reply-To: <20091030141056.GA5181@hmsreliant.think-freely.org>
+References: <1257879454-31661-1-git-send-email-vladislav.yasevich@hp.com>
+In-Reply-To: <1257879454-31661-1-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>
 
-On Mon, Nov 09, 2009 at 12:08:30PM -0500, Vlad Yasevich wrote:
-> 
-> 
-> Neil Horman wrote:
-> >>
-> > 
-> > copy that, here it is, applied to the latest net-next tree, with the assignment
-> > moved to avoid the extra branch
-> > 
-> 
-> Thanks, I'll put on my queue for net-next.
-> 
-Cool, thanks vlad!
-Neil
+Recent commits
+	sctp: Get rid of an extra routing lookup when adding a transport
+and
+	sctp: Set source addresses on the association before adding transports
 
-> -vlad
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+changed when routes are added to the sctp transports.  As such,
+we didn't set the socket source address correctly when adding the first
+transport.  The first transport is always the primary/active one, so
+when adding it, set the socket source address.  This was causing
+regression failures in SCTP tests.
+
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ net/sctp/transport.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index c256e48..3b141bb 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -308,7 +308,8 @@ void sctp_transport_route(struct sctp_transport *transport,
+ 		/* Initialize sk->sk_rcv_saddr, if the transport is the
+ 		 * association's active path for getsockname().
+ 		 */
+-		if (asoc && (transport = asoc->peer.active_path))
++		if (asoc && (!asoc->peer.primary_path ||
++				(transport = asoc->peer.active_path)))
+ 			opt->pf->af->to_sk_saddr(&transport->saddr,
+ 						 asoc->base.sk);
+ 	} else
+-- 
+1.6.0.4
+
