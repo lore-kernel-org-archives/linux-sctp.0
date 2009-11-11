@@ -1,19 +1,72 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 30 Nov 2009 10:06:30 +0000
-Subject: Re: [PATCH] sctp: fix sctp_setsockopt_autoclose compile warning
-Message-Id: <20091130.020630.12972074.davem@davemloft.net>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Wed, 11 Nov 2009 18:19:24 +0000
+Subject: [PATCH] sctp: Fix regression introduced by new sctp_connectx api
+Message-Id: <1257963564-26376-1-git-send-email-vladislav.yasevich@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20091130164015.9bb8f6a3.sfr@canb.auug.org.au>
-	<20091130094929.GY10897@shell.iptel.org>
-	<20091130095250.GZ10897@shell.iptel.org>
-In-Reply-To: <20091130095250.GZ10897@shell.iptel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: andrei@iptel.org
-Cc: sfr@canb.auug.org.au, vladislav.yasevich@hp.com, linux-next@vger.kernel.org, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>
 
+A new (unrealeased to the user) sctp_connectx api
 
-Please CC: all networking patches to netdev@vger.kernel.org
+c6ba68a26645dbc5029a9faa5687ebe6fcfc53e4
+    sctp: support non-blocking version of the new sctp_connectx() API
 
-Thank you.
+introduced a regression cought by the user regression test
+suite.  In particular, the API requires the user library to
+re-allocate the buffer and could potentially trigger a SIGFAULT.
+
+This change corrects that regression by passing the original
+address buffer to the kernel unmodified, but still allows for
+a returned association id.
+
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ net/sctp/socket.c |   18 +++++++++++++-----
+ 1 files changed, 13 insertions(+), 5 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index bf705ba..3a95fcb 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1276,22 +1276,30 @@ SCTP_STATIC int sctp_setsockopt_connectx(struct sock* sk,
+ }
+ 
+ /*
+- * New (hopefully final) interface for the API.  The option buffer is used
+- * both for the returned association id and the addresses.
++ * New (hopefully final) interface for the API.
++ * We use the sctp_getaddrs_old structure so that use-space library
++ * can avoid any unnecessary allocations.   The only defferent part
++ * is that we store the actual length of the address buffer into the
++ * addrs_num structure member.  That way we can re-use the existing
++ * code.
+  */
+ SCTP_STATIC int sctp_getsockopt_connectx3(struct sock* sk, int len,
+ 					char __user *optval,
+ 					int __user *optlen)
+ {
++	struct sctp_getaddrs_old param;
+ 	sctp_assoc_t assoc_id = 0;
+ 	int err = 0;
+ 
+-	if (len < sizeof(assoc_id))
++	if (len < sizeof(param))
+ 		return -EINVAL;
+ 
++	if (copy_from_user(&param, optval, sizeof(param)))
++		return -EFAULT;
++
+ 	err = __sctp_setsockopt_connectx(sk,
+-			(struct sockaddr __user *)(optval + sizeof(assoc_id)),
+-			len - sizeof(assoc_id), &assoc_id);
++			(struct sockaddr __user *)param.addrs,
++			param.addr_num, &assoc_id);
+ 
+ 	if (err = 0 || err = -EINPROGRESS) {
+ 		if (copy_to_user(optval, &assoc_id, sizeof(assoc_id)))
+-- 
+1.6.0.4
+
