@@ -1,32 +1,39 @@
-From: David Miller <davem@davemloft.net>
-Date: Sat, 14 Nov 2009 03:57:09 +0000
-Subject: Re: [PATCH] sctp: Set source addresses on the association before
-Message-Id: <20091113.195709.164224314.davem@davemloft.net>
+From: Andrei Pelinescu-Onciul <andrei@iptel.org>
+Date: Mon, 30 Nov 2009 09:52:50 +0000
+Subject: [PATCH] sctp: fix sctp_setsockopt_autoclose compile warning
+Message-Id: <20091130095250.GZ10897@shell.iptel.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1257879454-31661-1-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <1257879454-31661-1-git-send-email-vladislav.yasevich@hp.com>
+References: <20091130164015.9bb8f6a3.sfr@canb.auug.org.au> <20091130094929.GY10897@shell.iptel.org>
+In-Reply-To: <20091130094929.GY10897@shell.iptel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: Stephen Rothwell <sfr@canb.auug.org.au>
+Cc: "David S. Miller" <davem@davemloft.net>, Vlad Yasevich <vladislav.yasevich@hp.com>, linux-next@vger.kernel.org, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org
 
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Tue, 10 Nov 2009 13:57:34 -0500
+Fix the following warning, when building on 64 bits:
 
-> Recent commit 8da645e101a8c20c6073efda3c7cc74eec01b87f
-> 	sctp: Get rid of an extra routing lookup when adding a transport
-> introduced a regression in the connection setup.  The behavior was
-> different between IPv4 and IPv6.  IPv4 case ended up working because the
-> route lookup routing returned a NULL route, which triggered another
-> route lookup later in the output patch that succeeded.  In the IPv6 case,
-> a valid route was returned for first call, but we could not find a valid
-> source address at the time since the source addresses were not set on the
-> association yet.  Thus resulted in a hung connection.
-> 
-> The solution is to set the source addresses on the association prior to
-> adding peers.
-> 
-> Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+net/sctp/socket.c:2091: warning: large integer implicitly
+                        truncated to unsigned type
 
-Applied.
+Signed-off-by: Andrei Pelinescu-Onciul <andrei@iptel.org>
+---
+ net/sctp/socket.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 71513b3..8961863 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -2088,7 +2088,7 @@ static int sctp_setsockopt_autoclose(struct sock *sk, char __user *optval,
+ 		return -EFAULT;
+ 	/* make sure it won't exceed MAX_SCHEDULE_TIMEOUT */
+ 	if (sp->autoclose > (MAX_SCHEDULE_TIMEOUT / HZ) )
+-		sp->autoclose = MAX_SCHEDULE_TIMEOUT / HZ ;
++		sp->autoclose = (__u32)(MAX_SCHEDULE_TIMEOUT / HZ) ;
+ 
+ 	return 0;
+ }
+-- 
+1.6.5.3
+
