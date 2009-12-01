@@ -1,54 +1,44 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Mon, 07 Dec 2009 15:05:34 +0000
-Subject: Re: pull request: SCTP updates for net-next
-Message-Id: <4B1D19BE.4080903@hp.com>
+Date: Tue, 01 Dec 2009 19:02:58 +0000
+Subject: Re: [PATCH] sctp: fix sctp_setsockopt_autoclose compile warning
+Message-Id: <4B156862.5020903@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4B0AF96A.3050709@hp.com>	<20091203210050.d886f229.akpm@linux-foundation.org>	<4B193772.9010109@hp.com> <20091204125233.eea7de39.akpm@linux-foundation.org>
-In-Reply-To: <20091204125233.eea7de39.akpm@linux-foundation.org>
+References: <20091130164015.9bb8f6a3.sfr@canb.auug.org.au> <20091130094929.GY10897@shell.iptel.org> <20091130095250.GZ10897@shell.iptel.org>
+In-Reply-To: <20091130095250.GZ10897@shell.iptel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: David Miller <davem@davemloft.net>, Linux SCTP Dev Mailing list <linux-sctp@vger.kernel.org>, netdev <netdev@vger.kernel.org>, Andrei Pelinescu-Onciul <andrei@iptel.org>
+To: Andrei Pelinescu-Onciul <andrei@iptel.org>
+Cc: Stephen Rothwell <sfr@canb.auug.org.au>, "David S. Miller" <davem@davemloft.net>, linux-next@vger.kernel.org, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org
 
 
 
-Andrew Morton wrote:
-> On Fri, 04 Dec 2009 11:23:14 -0500
-> Vlad Yasevich <vladislav.yasevich@hp.com> wrote:
+Andrei Pelinescu-Onciul wrote:
+> Fix the following warning, when building on 64 bits:
 > 
->>> Overall, it would be way simpler and saner to clamp this value to some
->>> explicit time period, IMO.
->>>
->>> <pulls number out of thin air>
->>>
->>> --- a/net/sctp/socket.c~a
->>> +++ a/net/sctp/socket.c
->>> @@ -2086,9 +2086,8 @@ static int sctp_setsockopt_autoclose(str
->>>  		return -EINVAL;
->>>  	if (copy_from_user(&sp->autoclose, optval, optlen))
->>>  		return -EFAULT;
->>> -	/* make sure it won't exceed MAX_SCHEDULE_TIMEOUT */
->>> -	if (sp->autoclose > (MAX_SCHEDULE_TIMEOUT / HZ) )
->>> -		sp->autoclose = MAX_SCHEDULE_TIMEOUT / HZ ;
->>> +	/* make sure it won't exceed one hour */
->>> +	sp->autoclose = min_t(u32, sp->autoclose, 60 * 60);
->>>  
->> But that may not be long enough.  The spec doesn't impose limits
->> and it's really up to the application to decide how long it wants
->> to keep idle connections open.  Thus any limits shorter the maximum
->> supported by kernel are really artificial and may not be sufficient.
+> net/sctp/socket.c:2091: warning: large integer implicitly
+>                         truncated to unsigned type
 > 
-> Could make ->autoclose a u64?  That fixes any 32bit-vs-64bit
-> inconsistencies and allows for an effectively infinite period.
-> 
+> Signed-off-by: Andrei Pelinescu-Onciul <andrei@iptel.org>
 
-That's isn't going to help much since the timer intervals are unsigned longs,
-and would overflow on 32 bit systems.  We would still need the limiting value to
-prevent that overflow, but would be able to drop the cast.  Additionally, the
-API provides only for a 32 bit integer, thus we would waste 32 bit of space.
-
-I don't think that's worth it.  The last patch from Andrei fixed the warning
-with a cast to u32.  It seems like the simplest solution.
+Ack.
 
 -vlad
+
+> ---
+>  net/sctp/socket.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+> index 71513b3..8961863 100644
+> --- a/net/sctp/socket.c
+> +++ b/net/sctp/socket.c
+> @@ -2088,7 +2088,7 @@ static int sctp_setsockopt_autoclose(struct sock *sk, char __user *optval,
+>  		return -EFAULT;
+>  	/* make sure it won't exceed MAX_SCHEDULE_TIMEOUT */
+>  	if (sp->autoclose > (MAX_SCHEDULE_TIMEOUT / HZ) )
+> -		sp->autoclose = MAX_SCHEDULE_TIMEOUT / HZ ;
+> +		sp->autoclose = (__u32)(MAX_SCHEDULE_TIMEOUT / HZ) ;
+>  
+>  	return 0;
+>  }
