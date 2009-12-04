@@ -1,122 +1,45 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Fri, 04 Dec 2009 16:23:14 +0000
+From: Andrew Morton <akpm@linux-foundation.org>
+Date: Fri, 04 Dec 2009 20:52:33 +0000
 Subject: Re: pull request: SCTP updates for net-next
-Message-Id: <4B193772.9010109@hp.com>
+Message-Id: <20091204125233.eea7de39.akpm@linux-foundation.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4B0AF96A.3050709@hp.com> <20091203210050.d886f229.akpm@linux-foundation.org>
-In-Reply-To: <20091203210050.d886f229.akpm@linux-foundation.org>
+References: <4B0AF96A.3050709@hp.com>
+	<20091203210050.d886f229.akpm@linux-foundation.org>
+	<4B193772.9010109@hp.com>
+In-Reply-To: <4B193772.9010109@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Andrew Morton <akpm@linux-foundation.org>
+To: Vlad Yasevich <vladislav.yasevich@hp.com>
 Cc: David Miller <davem@davemloft.net>, Linux SCTP Dev Mailing list <linux-sctp@vger.kernel.org>, netdev <netdev@vger.kernel.org>, Andrei Pelinescu-Onciul <andrei@iptel.org>
 
+On Fri, 04 Dec 2009 11:23:14 -0500
+Vlad Yasevich <vladislav.yasevich@hp.com> wrote:
 
-Andrew Morton wrote:
-> On Mon, 23 Nov 2009 16:06:50 -0500 Vlad Yasevich <vladislav.yasevich@hp.com> wrote:
+> > 
+> > Overall, it would be way simpler and saner to clamp this value to some
+> > explicit time period, IMO.
+> > 
+> > <pulls number out of thin air>
+> > 
+> > --- a/net/sctp/socket.c~a
+> > +++ a/net/sctp/socket.c
+> > @@ -2086,9 +2086,8 @@ static int sctp_setsockopt_autoclose(str
+> >  		return -EINVAL;
+> >  	if (copy_from_user(&sp->autoclose, optval, optlen))
+> >  		return -EFAULT;
+> > -	/* make sure it won't exceed MAX_SCHEDULE_TIMEOUT */
+> > -	if (sp->autoclose > (MAX_SCHEDULE_TIMEOUT / HZ) )
+> > -		sp->autoclose = MAX_SCHEDULE_TIMEOUT / HZ ;
+> > +	/* make sure it won't exceed one hour */
+> > +	sp->autoclose = min_t(u32, sp->autoclose, 60 * 60);
+> >  
 > 
->> Andrei Pelinescu-Onciul (3):
->>       sctp: allow setting path_maxrxt independent of SPP_PMTUD_ENABLE
->>       sctp: limit maximum autoclose setsockopt value
->>       sctp: fix integer overflow when setting the autoclose timer
-> 
-> Problems with this one:
-> 
-> : commit f6778aab6ccc4b510b4dcfa770d9949b696b4545
-> : Author:     Andrei Pelinescu-Onciul <andrei@iptel.org>
-> : AuthorDate: Mon Nov 23 15:54:01 2009 -0500
-> : Commit:     Vlad Yasevich <vladislav.yasevich@hp.com>
-> : CommitDate: Mon Nov 23 15:54:01 2009 -0500
-> : 
-> :     sctp: limit maximum autoclose setsockopt value
-> :     
-> :     To avoid overflowing the maximum timer interval when transforming
-> :     the  autoclose interval from seconds to jiffies, limit the maximum
-> :     autoclose value to MAX_SCHEDULE_TIMEOUT/HZ.
-> :     
-> :     Signed-off-by: Andrei Pelinescu-Onciul <andrei@iptel.org>
-> :     Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
-> : 
-> : diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> : index d2681a6..71513b3 100644
-> : --- a/net/sctp/socket.c
-> : +++ b/net/sctp/socket.c
-> : @@ -2086,6 +2086,9 @@ static int sctp_setsockopt_autoclose(struct sock *sk, char __user *optval,
-> :  		return -EINVAL;
-> :  	if (copy_from_user(&sp->autoclose, optval, optlen))
-> :  		return -EFAULT;
-> : +	/* make sure it won't exceed MAX_SCHEDULE_TIMEOUT */
-> : +	if (sp->autoclose > (MAX_SCHEDULE_TIMEOUT / HZ) )
-> : +		sp->autoclose = MAX_SCHEDULE_TIMEOUT / HZ ;
-> :  
-> :  	return 0;
-> :  }
-> 
-> a) it has two coding-style errors in two lines.  Please go away, add
->    scripts/checkpatch.pl to your patch development tools and then continue
->    reading.
-> 
-> b) have you done that yet?
+> But that may not be long enough.  The spec doesn't impose limits
+> and it's really up to the application to decide how long it wants
+> to keep idle connections open.  Thus any limits shorter the maximum
+> supported by kernel are really artificial and may not be sufficient.
 
-Gack, totally missed those spaces in the email client.  Will use checkpatch from
-now on.
+Could make ->autoclose a u64?  That fixes any 32bit-vs-64bit
+inconsistencies and allows for an effectively infinite period.
 
-> 
-> c) it generates this on 64-bit:
-> 
-> net/sctp/socket.c: In function 'sctp_setsockopt_autoclose':
-> net/sctp/socket.c:2090: warning: comparison is always false due to limited range of data type
-> 
->    but that's proving somewhat hard to fix in a nice way.
-
-There was a patch that fixed it.  I saw that you pulled it into -mm tree.
-
-> 
-> d) I'm not sure that we should fix it anyway.  Is it really a good
->    idea to take an incorrect, invalid setting from userspace, to
->    silently modify that setting and to not inform userspace?
-> 
-
-We do it with other options, that's not an issue.  At the values where
-we change it, it becomes somewhat moot point.
-
->    Bear in mind that MAX_SCHEDULE_TIMEOUT has different values on
->    32- and 64-bit kernels.  So the same source code will have different
->    behaviour depending on what type of kernel it is executed on.
-> 
->    I think.
-> 
->    It also means that kernel behaviour will differ as CONFIG_HZ is
->    altered, in some way which I can't be bothered working out.
-> 
-
-This is actually OK.  It allows the longest possible timeout depending
-on configuration.  I've actually tested this in a harness and it works
-very well with different HZ values (to bad the harness in not 64 bit aware. :( )
-
-> 
-> Overall, it would be way simpler and saner to clamp this value to some
-> explicit time period, IMO.
-> 
-> <pulls number out of thin air>
-> 
-> --- a/net/sctp/socket.c~a
-> +++ a/net/sctp/socket.c
-> @@ -2086,9 +2086,8 @@ static int sctp_setsockopt_autoclose(str
->  		return -EINVAL;
->  	if (copy_from_user(&sp->autoclose, optval, optlen))
->  		return -EFAULT;
-> -	/* make sure it won't exceed MAX_SCHEDULE_TIMEOUT */
-> -	if (sp->autoclose > (MAX_SCHEDULE_TIMEOUT / HZ) )
-> -		sp->autoclose = MAX_SCHEDULE_TIMEOUT / HZ ;
-> +	/* make sure it won't exceed one hour */
-> +	sp->autoclose = min_t(u32, sp->autoclose, 60 * 60);
->  
-
-But that may not be long enough.  The spec doesn't impose limits
-and it's really up to the application to decide how long it wants
-to keep idle connections open.  Thus any limits shorter the maximum
-supported by kernel are really artificial and may not be sufficient.
-
-Thanks
--vlad
