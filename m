@@ -1,78 +1,99 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Fri, 29 Jan 2010 02:03:03 +0000
-Subject: Re: [PATCH] sctp: IPsec rules are ineffective with ipv6
-Message-Id: <4B6241D7.4070605@cn.fujitsu.com>
+Date: Tue, 12 Jan 2010 08:19:08 +0000
+Subject: [PATCH] sctp: send SHUTDOWN-ACK chunk back to where the SHUTDOWN
+Message-Id: <4B4C307C.5070901@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4B6049EB.8030803@dev.6wind.com> <20100128.055148.127214200.davem@davemloft.net> <4B61AC22.2050907@hp.com> <4B61B047.10908@dev.6wind.com> <4B61BD11.5020303@hp.com> <4B61D699.9030008@dev.6wind.com>
-In-Reply-To: <4B61D699.9030008@dev.6wind.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: nicolas.dichtel@dev.6wind.com
-Cc: Vlad Yasevich <vladislav.yasevich@hp.com>, David Miller <davem@davemloft.net>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: linux-sctp@vger.kernel.org
 
-Nicolas Dichtel wrote:
-> Hmm, seems to not work.
-> Problem is that we may have a NULL saddr in sctp_v6_get_dst().
-> What about adding a new handler in struct sctp_af, like get_xfrm_dst()
-> that will be called after get_saddr()? In case of IPv4, it will not do
-> anything.
+SHUTDOWN-ACK is alaways sent to the primary path at the first time,
+but should better transmit SHUTDOWN-ACK chunk to the same destination
+transport address from which it received the SHUTDOWN chunk.
 
-This would work for transmit SCTP packet under IPSEC, the
-problem is that we can not get the correct PMTU for the
-transport.Under IPv4, both transmit and the PMTU is correct.
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ include/net/sctp/structs.h |    3 ++-
+ net/sctp/associola.c       |   12 ++++++++----
+ net/sctp/sm_sideeffect.c   |    7 ++++---
+ 3 files changed, 14 insertions(+), 8 deletions(-)
 
->
->
-> Regards,
-> Nicolas
->
-> Le 28.01.2010 17:36, Vlad Yasevich a =E9crit :
->>
->> Nicolas Dichtel wrote:
->>> What about this one?
->>>
->>> Only compilation tested.
->>>
->>> xfrm_lookup() is missing in IPv6 output path. Call it when dst is
->>> build.
->>> Initial patch was written by Junwei Zhang <junwei.zhang@6wind.com>
->>>
->>> Signed-off-by: Nicolas Dichtel <nicolas.dichtel@6wind.com>
->>
->> Looks like it might do the right thing.  Please run your tests
->> on this an let me.
->>
->> Thanks
->> -vlad
->>
->>> Le 28.01.2010 16:24, Vlad Yasevich a =E9crit :
->>>> David Miller wrote:
->>>>> From: Nicolas Dichtel <nicolas.dichtel@dev.6wind.com>
->>>>> Date: Wed, 27 Jan 2010 15:12:59 +0100
->>>>>
->>>>>> xfrm_lookup() is missing in sctp_v6_xmit(), add it.
->>>>>>
->>>>>> Signed-off-by: Junwei Zhang <junwei.zhang@6wind.com>
->>>>>> Signed-off-by: Nicolas Dichtel <nicolas.dichtel@6wind.com>
->>>>> Doing this every transmit packet is overkill.
->>>>>
->>>>> Whatever calculates the route that ends up in skb_dst(skb)
->>>>> should be making this xfrm_lookup() call, not here.
->>>>>
->>>>
->>>> Hmm.. Interesting.  Looks like ip_route_output_key() will
->>>> do xfrm_lookup for you, but there is no ipv6 route lookup call
->>>> that will do the same thing.
->>>>
->>>> I guess we'll need to add an xfrm_lookup call in sctp_v6_get_dst().
->>>>
->>>> -vlad
->>
->>
-> --=20
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index ff30177..565a291 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1948,7 +1948,8 @@ void sctp_association_put(struct sctp_association *);
+ void sctp_association_hold(struct sctp_association *);
+ 
+ struct sctp_transport *sctp_assoc_choose_alter_transport(
+-	struct sctp_association *, struct sctp_transport *);
++	struct sctp_association *, struct sctp_transport *,
++	struct sctp_chunk *);
+ void sctp_assoc_update_retran_path(struct sctp_association *);
+ struct sctp_transport *sctp_assoc_lookup_paddr(const struct sctp_association *,
+ 					  const union sctp_addr *);
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index df5abbf..45bb311 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1335,15 +1335,19 @@ void sctp_assoc_update_retran_path(struct sctp_association *asoc)
+ 
+ /* Choose the transport for sending retransmit packet.  */
+ struct sctp_transport *sctp_assoc_choose_alter_transport(
+-	struct sctp_association *asoc, struct sctp_transport *last_sent_to)
++	struct sctp_association *asoc, struct sctp_transport *last_sent_to,
++	struct sctp_chunk *chunk)
+ {
+ 	/* If this is the first time packet is sent, use the active path,
+ 	 * else use the retran path. If the last packet was sent over the
+ 	 * retran path, update the retran path and use it.
+ 	 */
+-	if (!last_sent_to)
+-		return asoc->peer.active_path;
+-	else {
++	if (!last_sent_to) {
++		if (chunk && chunk->transport)
++			return chunk->transport;
++		else
++			return asoc->peer.active_path;
++	} else {
+ 		if (last_sent_to = asoc->peer.retran_path)
+ 			sctp_assoc_update_retran_path(asoc);
+ 		return asoc->peer.retran_path;
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 4e4ca65..e61d5bf 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -697,7 +697,8 @@ static void sctp_cmd_setup_t2(sctp_cmd_seq_t *cmds,
+ 	struct sctp_transport *t;
+ 
+ 	t = sctp_assoc_choose_alter_transport(asoc,
+-					      asoc->shutdown_last_sent_to);
++					      asoc->shutdown_last_sent_to,
++					      chunk);
+ 	asoc->shutdown_last_sent_to = t;
+ 	asoc->timeouts[SCTP_EVENT_TIMEOUT_T2_SHUTDOWN] = t->rto;
+ 	chunk->transport = t;
+@@ -788,7 +789,7 @@ static void sctp_cmd_setup_t4(sctp_cmd_seq_t *cmds,
+ {
+ 	struct sctp_transport *t;
+ 
+-	t = sctp_assoc_choose_alter_transport(asoc, chunk->transport);
++	t = sctp_assoc_choose_alter_transport(asoc, chunk->transport, NULL);
+ 	asoc->timeouts[SCTP_EVENT_TIMEOUT_T4_RTO] = t->rto;
+ 	chunk->transport = t;
+ }
+@@ -1412,7 +1413,7 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
+ 		case SCTP_CMD_INIT_CHOOSE_TRANSPORT:
+ 			chunk = cmd->obj.ptr;
+ 			t = sctp_assoc_choose_alter_transport(asoc,
+-						asoc->init_last_sent_to);
++						asoc->init_last_sent_to, NULL);
+ 			asoc->init_last_sent_to = t;
+ 			chunk->transport = t;
+ 			t->init_sent_count++;
+-- 
+1.6.2.2
+
+
