@@ -1,98 +1,45 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Tue, 12 Jan 2010 08:19:08 +0000
-Subject: [PATCH] sctp: send SHUTDOWN-ACK chunk back to where the SHUTDOWN
-Message-Id: <4B4C307C.5070901@cn.fujitsu.com>
+Date: Fri, 15 Jan 2010 03:47:20 +0000
+Subject: sctp: move chunk from retransmit queue to abandoned list
+Message-Id: <4B4FE548.9070705@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-SHUTDOWN-ACK is alaways sent to the primary path at the first time,
-but should better transmit SHUTDOWN-ACK chunk to the same destination
-transport address from which it received the SHUTDOWN chunk.
+If there is still data waiting to retransmit and remain in
+retransmit queue, while doing the next retransmit, if the
+chunk is abandoned, we should move it to abandoned list.
 
 Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 ---
- include/net/sctp/structs.h |    3 ++-
- net/sctp/associola.c       |   12 ++++++++----
- net/sctp/sm_sideeffect.c   |    7 ++++---
- 3 files changed, 14 insertions(+), 8 deletions(-)
+ net/sctp/outqueue.c |   12 ++++++++++++
+ 1 files changed, 12 insertions(+), 0 deletions(-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index ff30177..565a291 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -1948,7 +1948,8 @@ void sctp_association_put(struct sctp_association *);
- void sctp_association_hold(struct sctp_association *);
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 229690f..8092032 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -390,6 +390,18 @@ void sctp_retransmit_mark(struct sctp_outq *q,
+ 	struct list_head *lchunk, *ltemp;
+ 	struct sctp_chunk *chunk;
  
- struct sctp_transport *sctp_assoc_choose_alter_transport(
--	struct sctp_association *, struct sctp_transport *);
-+	struct sctp_association *, struct sctp_transport *,
-+	struct sctp_chunk *);
- void sctp_assoc_update_retran_path(struct sctp_association *);
- struct sctp_transport *sctp_assoc_lookup_paddr(const struct sctp_association *,
- 					  const union sctp_addr *);
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index df5abbf..45bb311 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -1335,15 +1335,19 @@ void sctp_assoc_update_retran_path(struct sctp_association *asoc)
- 
- /* Choose the transport for sending retransmit packet.  */
- struct sctp_transport *sctp_assoc_choose_alter_transport(
--	struct sctp_association *asoc, struct sctp_transport *last_sent_to)
-+	struct sctp_association *asoc, struct sctp_transport *last_sent_to,
-+	struct sctp_chunk *chunk)
- {
- 	/* If this is the first time packet is sent, use the active path,
- 	 * else use the retran path. If the last packet was sent over the
- 	 * retran path, update the retran path and use it.
- 	 */
--	if (!last_sent_to)
--		return asoc->peer.active_path;
--	else {
-+	if (!last_sent_to) {
-+		if (chunk && chunk->transport)
-+			return chunk->transport;
-+		else
-+			return asoc->peer.active_path;
-+	} else {
- 		if (last_sent_to = asoc->peer.retran_path)
- 			sctp_assoc_update_retran_path(asoc);
- 		return asoc->peer.retran_path;
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index 4e4ca65..e61d5bf 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -697,7 +697,8 @@ static void sctp_cmd_setup_t2(sctp_cmd_seq_t *cmds,
- 	struct sctp_transport *t;
- 
- 	t = sctp_assoc_choose_alter_transport(asoc,
--					      asoc->shutdown_last_sent_to);
-+					      asoc->shutdown_last_sent_to,
-+					      chunk);
- 	asoc->shutdown_last_sent_to = t;
- 	asoc->timeouts[SCTP_EVENT_TIMEOUT_T2_SHUTDOWN] = t->rto;
- 	chunk->transport = t;
-@@ -788,7 +789,7 @@ static void sctp_cmd_setup_t4(sctp_cmd_seq_t *cmds,
- {
- 	struct sctp_transport *t;
- 
--	t = sctp_assoc_choose_alter_transport(asoc, chunk->transport);
-+	t = sctp_assoc_choose_alter_transport(asoc, chunk->transport, NULL);
- 	asoc->timeouts[SCTP_EVENT_TIMEOUT_T4_RTO] = t->rto;
- 	chunk->transport = t;
- }
-@@ -1412,7 +1413,7 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
- 		case SCTP_CMD_INIT_CHOOSE_TRANSPORT:
- 			chunk = cmd->obj.ptr;
- 			t = sctp_assoc_choose_alter_transport(asoc,
--						asoc->init_last_sent_to);
-+						asoc->init_last_sent_to, NULL);
- 			asoc->init_last_sent_to = t;
- 			chunk->transport = t;
- 			t->init_sent_count++;
++	/* Walk through the retransmit queue */
++	list_for_each_safe(lchunk, ltemp, &q->retransmit) {
++		chunk = list_entry(lchunk, struct sctp_chunk,
++				   transmitted_list);
++
++		/* If the chunk is abandoned, move it to abandoned list. */
++		if (sctp_chunk_abandoned(chunk)) {
++			list_del_init(lchunk);
++			sctp_insert_list(&q->abandoned, lchunk);
++		}
++	}
++
+ 	/* Walk through the specified transmitted queue.  */
+ 	list_for_each_safe(lchunk, ltemp, &transport->transmitted) {
+ 		chunk = list_entry(lchunk, struct sctp_chunk,
 -- 
 1.6.2.2
 
