@@ -1,53 +1,52 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Tue, 19 Jan 2010 15:37:40 +0000
-Subject: Re: [PATCH] sctp: assure at least one T3-rtx timer is running if
-Message-Id: <4B55D1C4.4030508@hp.com>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Fri, 15 Jan 2010 03:49:37 +0000
+Subject: sctp: fix to retranmit at least one DATA chunk
+Message-Id: <4B4FE5D1.2040103@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4B53F207.3090903@cn.fujitsu.com>
-In-Reply-To: <4B53F207.3090903@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
+While doing retranmit, if control chunk is exists, such as
+FORWARD TSN chunk, and the DATA chunk can not be bundled with
+the control chunk because the limit of PMTU, none DATA chunk
+will be retranmitted in the current implementation. This
+patch fix to retranmit at least one DATA chunk in this case.
 
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ net/sctp/outqueue.c |   11 +++++++++--
+ 1 files changed, 9 insertions(+), 2 deletions(-)
 
-Wei Yongjun wrote:
-> PR-SCTP extension section 3.5 Sender Side Implementation of PR-SCTP:
->   C5) If a FORWARD TSN is sent, the sender MUST assure that at
->       least one T3-rtx timer is running.
-> 
-> So this patch fix to assure at least one T3-rtx timer is running
-> if a FORWARD TSN is or will to sent.
-> 
-> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-> ---
->  net/sctp/outqueue.c |    7 +++++++
->  1 files changed, 7 insertions(+), 0 deletions(-)
-> 
-> diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-> index d36aea4..67ec3ba 100644
-> --- a/net/sctp/outqueue.c
-> +++ b/net/sctp/outqueue.c
-> @@ -939,6 +939,13 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
->  				goto sctp_flush_out;
->  		}
->  
-> +		/* PR-SCTP C5) If a FORWARD TSN is sent, the sender MUST assure
-> +		 * that at least one T3-rtx timer is running.
-> +		 */
-> +		if (!list_empty(&q->abandoned) &&
-> +		    list_empty(&q->out_chunk_list))
-> +			sctp_transport_reset_timers(transport, 0);
-> +
->  		/* Apply Max.Burst limitation to the current transport in
->  		 * case it will be used for new data.  We are going to
->  		 * rest it before we return, but we want to apply the limit
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 8092032..61cd7f1 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -609,13 +609,20 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+ 		if (fast_rtx && !chunk->fast_retransmit)
+ 			continue;
+ 
++redo:
+ 		/* Attempt to append this chunk to the packet. */
+ 		status = sctp_packet_append_chunk(pkt, chunk);
+ 
+ 		switch (status) {
+ 		case SCTP_XMIT_PMTU_FULL:
+-			/* Send this packet.  */
+-			error = sctp_packet_transmit(pkt);
++			if (!pkt->has_data && !pkt->has_cookie_echo) {
++				/* Send a control chunk. */
++				error = sctp_packet_transmit(pkt);
++				goto redo;
++			} else {
++				/* Send this packet.  */
++				error = sctp_packet_transmit(pkt);
++			}
+ 
+ 			/* If we are retransmitting, we should only
+ 			 * send a single packet.
+-- 
+1.6.2.2
 
-'transport' may be NULL or may point at a retransmit path, not the path
-FWD-TSN was sent on.
-
-It might be better to do this when we queue the FWD-TSN chunk.
-
--vlad
 
