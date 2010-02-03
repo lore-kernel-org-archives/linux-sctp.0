@@ -1,90 +1,85 @@
-From: "Brandon Moreno" <brandomo@nortel.com>
-Date: Mon, 22 Feb 2010 20:11:47 +0000
-Subject: RE: Fast Retransmission Settings
-Message-Id: <4620668FFAA3D5458A691287D9DDAD11071918E8@zrtphxm2.corp.nortel.com>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Wed, 03 Feb 2010 05:04:22 +0000
+Subject: [PATCH] sctp: avoid irq lock inversion while call sk->sk_data_ready()
+Message-Id: <4B6903D6.8070106@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4620668FFAA3D5458A691287D9DDAD11071917E6@zrtphxm2.corp.nortel.com>
-In-Reply-To: <4620668FFAA3D5458A691287D9DDAD11071917E6@zrtphxm2.corp.nortel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
- Hi Vlad,
+sk->sk_data_ready() of sctp socket can be called from both BH and non-BH
+contexts, but the default sk->sk_data_ready(), sock_def_readable(), can
+not be used in this case. Therefore, we have to make a new function
+sctp_data_ready() to grab sk->sk_data_ready() with BH disabling.
 
-Thanks for the quick reply. The kernel version we are using is
-2.6.23.1-42.fc8
+============================[ INFO: possible irq lock inversion dependency detected ]
+2.6.33-rc6 #129
+---------------------------------------------------------
+sctp_darn/1517 just changed the state of lock:
+ (clock-AF_INET){++.?..}, at: [<c06aab60>] sock_def_readable+0x20/0x80
+but this lock took another, SOFTIRQ-unsafe lock in the past:
+ (slock-AF_INET){+.-...}
 
-Thanks,
-Brandon Moreno
-Ericsson BCAM
-(972)684-1791 esn x444-1791
+and interrupts could create inverse lock ordering between them.
 
-The author works for Telefonaktiebolaget L M Ericsson ("Ericsson"), who
-is solely responsible for this email and its contents. All inquiries
-regarding this email should be addressed to Ericsson. Nortel has
-provided the use of the nortel.com domain to Ericsson in connection with
-this email solely for the purpose of connectivity and Nortel Networks
-has no liability for the email or its contents. The web site for
-Ericsson is www.ericsson.com."
+other info that might help us debug this:
+1 lock held by sctp_darn/1517:
+ #0:  (sk_lock-AF_INET){+.+.+.}, at: [<cdfe363d>] sctp_sendmsg+0x23d/0xc00 [sctp]
+
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ include/net/sctp/sctp.h |    1 +
+ net/sctp/endpointola.c  |    1 +
+ net/sctp/socket.c       |   10 ++++++++++
+ 3 files changed, 12 insertions(+), 0 deletions(-)
+
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 78740ec..fa6cde5 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -128,6 +128,7 @@ extern int sctp_register_pf(struct sctp_pf *, sa_family_t);
+ int sctp_backlog_rcv(struct sock *sk, struct sk_buff *skb);
+ int sctp_inet_listen(struct socket *sock, int backlog);
+ void sctp_write_space(struct sock *sk);
++void sctp_data_ready(struct sock *sk, int len);
+ unsigned int sctp_poll(struct file *file, struct socket *sock,
+ 		poll_table *wait);
+ void sctp_sock_rfree(struct sk_buff *skb);
+diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
+index 905fda5..7ec09ba 100644
+--- a/net/sctp/endpointola.c
++++ b/net/sctp/endpointola.c
+@@ -144,6 +144,7 @@ static struct sctp_endpoint *sctp_endpoint_init(struct sctp_endpoint *ep,
+ 	/* Use SCTP specific send buffer space queues.  */
+ 	ep->sndbuf_policy = sctp_sndbuf_policy;
+ 
++	sk->sk_data_ready = sctp_data_ready;
+ 	sk->sk_write_space = sctp_write_space;
+ 	sock_set_flag(sk, SOCK_USE_WRITE_QUEUE);
+ 
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 67fdac9..b437e2a 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -6185,6 +6185,16 @@ do_nonblock:
+ 	goto out;
+ }
+ 
++void sctp_data_ready(struct sock *sk, int len)
++{
++	read_lock_bh(&sk->sk_callback_lock);
++	if (sk_has_sleeper(sk))
++		wake_up_interruptible_sync_poll(sk->sk_sleep, POLLIN |
++						POLLRDNORM | POLLRDBAND);
++	sk_wake_async(sk, SOCK_WAKE_WAITD, POLL_IN);
++	read_unlock_bh(&sk->sk_callback_lock);
++}
++
+ /* If socket sndbuf has changed, wake up all per association waiters.  */
+ void sctp_write_space(struct sock *sk)
+ {
+-- 
+1.6.5.2
 
 
------Original Message-----
-From: Vlad Yasevich [mailto:vladislav.yasevich@hp.com] 
-Sent: Monday, February 22, 2010 1:42 PM
-To: Moreno, Brandon ERICSSON (RICH2:MX15)
-Cc: linux-sctp@vger.kernel.org
-Subject: Re: Fast Retransmission Settings
-
-
-
-Brandon Moreno wrote:
-> Hi,
-> 
-> I have a general question about lksctp's fast retransmit
-implementation.
-> 
-> 
-> I am currently using lksctp-tools-1.0.6-1.i386.rpm on my server side.
-> After setting up an sctp connection, I am seeing proper messaging 
-> while we run various messages over the SCTP stream. The issue that I 
-> am seeing is when a packet is lost in the network. Presently, when a 
-> TSN is lost on our client side, it starts transmitting sack messages 
-> with gap reports. The server side is receiving the gap sack messages, 
-> however it is not retransmitting the packet until the rto timer 
-> expires. Since the rto timer increases, eventually the whole sctp 
-> association is going down when too many gap reports are received
-without a retransmission.
-> 
-> I am curious why we are not seeing fast retransmit after 4 gap reports
-
-> are received. Is there some setting that will affect fast retransmit 
-> being on or off?
-
-No, but there might be a bug in the kernel you are using.  Which kernel
-version are you using on the server?
-
--vlad
-
-> 
-> Thanks,
-> Brandon Moreno
-> Ericsson BCAM
-> (972)684-1791 esn x444-1791
-> 
-> The author works for Telefonaktiebolaget L M Ericsson ("Ericsson"), 
-> who is solely responsible for this email and its contents. All 
-> inquiries regarding this email should be addressed to Ericsson. Nortel
-
-> has provided the use of the nortel.com domain to Ericsson in 
-> connection with this email solely for the purpose of connectivity and 
-> Nortel Networks has no liability for the email or its contents. The 
-> web site for Ericsson is www.ericsson.com <http://www.ericsson.com/>
-."
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" 
-> in the body of a message to majordomo@vger.kernel.org More majordomo 
-> info at  http://vger.kernel.org/majordomo-info.html
-> 
