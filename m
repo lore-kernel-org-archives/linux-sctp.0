@@ -1,44 +1,34 @@
-From: Cong Wang <amwang@redhat.com>
-Date: Thu, 04 Feb 2010 03:23:38 +0000
-Subject: Re: [RFC Patch] net: reserve ports for applications using fixed port
-Message-Id: <4B6A3DBA.1000706@redhat.com>
+From: Octavian Purdila <opurdila@ixiacom.com>
+Date: Thu, 04 Feb 2010 12:44:01 +0000
+Subject: Re: [RFC Patch] net: reserve ports for applications using fixed port numbers
+Message-Id: <201002041444.01897.opurdila@ixiacom.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20100203043332.3817.27932.sendpatchset@localhost.localdomain> <201002031312.48531.opurdila@ixiacom.com>
-In-Reply-To: <201002031312.48531.opurdila-+zzKsuq53OdBDgjK7y7TUQ@public.gmane.org>
+References: <20100203043332.3817.27932.sendpatchset@localhost.localdomain> <201002031312.48531.opurdila@ixiacom.com> <4B6A3DBA.1000706@redhat.com>
+In-Reply-To: <4B6A3DBA.1000706-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Octavian Purdila <opurdila-+zzKsuq53OdBDgjK7y7TUQ@public.gmane.org>
+To: Cong Wang <amwang-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
 Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Eric Dumazet <eric.dumazet-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Neil Horman <nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org>, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, David Miller <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>
 
-Octavian Purdila wrote:
-> On Wednesday 03 February 2010 06:30:07 you wrote:
-> 
->> This patch introduces /proc/sys/net/ipv4/ip_local_reserved_ports,
->> it can be used like ip_local_port_range, but this is used to
->> reserve ports for third-party applications which use fixed
->> port numbers within ip_local_port_range.
->>
->> This only affects the applications which call socket functions
->> like bind(2) with port number 0, to prevent the kernel getting the ports
->> within the specified range for them. For applications which use fixed
->> port number, it will have no effects.
-> 
-> It also affects the case where applications do connect, without previously 
-> doing bind, right?
+On Thursday 04 February 2010 05:23:38 you wrote:
 
-
-Yeah, I forgot to mention this, sorry.
-
+> > I think it might be useful to allow setting individual ports as reserved,
+> > not only ranges, for example by using a bitmap.
 > 
->> Any comments are welcome.
-> 
-> I think it might be useful to allow setting individual ports as reserved, not 
-> only ranges, for example by using a bitmap. 
+> This is a good idea, but I am not sure if this will be overkill? :-/
+> Also, using bitmap is not friendly to sysctl interface, I am afraid.
 > 
 
-This is a good idea, but I am not sure if this will be overkill? :-/
-Also, using bitmap is not friendly to sysctl interface, I am afraid.
+My concern is that we can have multiple applications that require a fixed port 
+and if those ports are significantly apart we will decrease the port range 
+available for connect. And that will hurt the rate of which new connections 
+can be opened.
 
+As for the sysctl interface I agree, I don't think it is even possible to  
+cleanly use a bitmap through sysctl.
 
-Thanks!
+The options I see are either enhance sysctl to support bitmaps or use a 
+dedicated /proc/net entry. 
+
+I want to give this a try, which one do you people think is better?
