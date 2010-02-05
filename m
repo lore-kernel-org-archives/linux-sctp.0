@@ -1,56 +1,47 @@
-From: Cong Wang <amwang@redhat.com>
-Date: Fri, 05 Feb 2010 05:58:36 +0000
+From: Bart Van Assche <bvanassche@acm.org>
+Date: Fri, 05 Feb 2010 07:11:29 +0000
 Subject: Re: [RFC Patch] net: reserve ports for applications using fixed port
-Message-Id: <4B6BB447.8080806@redhat.com>
+Message-Id: <e2e108261002042311w59ba1372ld9f8fb2f369ca434@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20100204.094110.64247447.davem@davemloft.net> <20100204.135639.69720709.davem@davemloft.net> <201002050041.o150fCO8081208@www262.sakura.ne.jp> <201002050305.22227.opurdila@ixiacom.com>
-In-Reply-To: <201002050305.22227.opurdila@ixiacom.com>
+References: <20100203043332.3817.27932.sendpatchset@localhost.localdomain>
+In-Reply-To: <20100203043332.3817.27932.sendpatchset@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Octavian Purdila <opurdila@ixiacom.com>
-Cc: Tetsuo Handa <penguin-kernel@i-love.sakura.ne.jp>, davem@davemloft.net, linux-kernel@vger.kernel.org, eric.dumazet@gmail.com, linux-rdma@vger.kernel.org, netdev@vger.kernel.org, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org
+To: Amerigo Wang <amwang@redhat.com>
+Cc: linux-kernel@vger.kernel.org, Eric Dumazet <eric.dumazet@gmail.com>, linux-rdma@vger.kernel.org, netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, David Miller <davem@davemloft.net>
 
-Octavian Purdila wrote:
-> On Friday 05 February 2010 02:41:12 you wrote:
->> David Miller wrote:
->>>> Octavian Purdila wrote:
->>>>> int inet_is_reserved_local_port(int port)
->>>>> {
->>>>> 	if (test_bit(port, reserved_ports))
->>>>> 		return 1;
->>>>> 	return 0;
->>>>> }
->>>> Above check is exactly what I'm doing in the LSM hook.
->>> But his version can be done inline in 2 or 3 instructions.
->>>
->>> An LSM hook will result in an indirect function call,
->>> all live registers spilled to the stack, then all of
->>> those reloaded when the function returns.
->>>
->>> It will be much more expensive.
->> If you can accept his version, I want to use his version (with an interface
->>  for updating above "reserved_ports" by not only root user's sysctl() but
->>  also MAC's policy configuration).
->>
-> 
-> I think that simply using an interface to update the reserved_ports from MAC 
-> policy configuration module wouldn't work, as root will be able to modify the 
-> policy via sysctl.
-> 
-> I think that we might need to:
-> 
-> a) have a reserved_port updater
-> 
-> b) put a LSM hook into that
-> 
-> c) use the reserved_port updater from sysctl
-> 
-> 
+On Wed, Feb 3, 2010 at 5:30 AM, Amerigo Wang <amwang@redhat.com> wrote:
+>
+> This patch introduces /proc/sys/net/ipv4/ip_local_reserved_ports,
+> it can be used like ip_local_port_range, but this is used to
+> reserve ports for third-party applications which use fixed
+> port numbers within ip_local_port_range.
+>
+> This only affects the applications which call socket functions
+> like bind(2) with port number 0, to prevent the kernel getting the ports
+> within the specified range for them. For applications which use fixed
+> port number, it will have no effects.
+>
+> Any comments are welcome.
 
-Ideally, you'd provide an interface for port allocator to use, so
-doing port reservation will be easier.
+Relying on fixed port numbers is generally considered as a shortcoming
+in the application. It would be helpful if you could explain more in
+detail why port number reservation is necessary. Maybe there exists
+another solution that does not require modifying the bind() system
+call.
 
-Thanks.
+A quote from the UNIX socket FAQ (http://www.faqs.org/faqs/unix-faq/socket/):
 
+  4.10.  How should I choose a port number for my server?
 
+  The list of registered port assignments can be found in STD 2 or RFC
+  1700.  Choose one that isn't already registered, and isn't in
+  /etc/services on your system.  It is also a good idea to let users
+  customize the port number in case of conflicts with other un-
+  registered port numbers in other servers.  The best way of doing this
+  is hardcoding a service name, and using getservbyname() to lookup the
+  actual port number.  This method allows users to change the port your
+  server binds to by simply editing the /etc/services file.
+
+Bart.
