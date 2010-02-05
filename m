@@ -1,7 +1,7 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Thu, 04 Feb 2010 15:58:44 +0000
+Date: Fri, 05 Feb 2010 19:19:14 +0000
 Subject: Re: [PATCH] sctp: avoid irq lock inversion while call sk->sk_data_ready()
-Message-Id: <4B6AEEB4.1010106@hp.com>
+Message-Id: <4B6C6F32.2080201@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <4B6903D6.8070106@cn.fujitsu.com>
 In-Reply-To: <4B6903D6.8070106@cn.fujitsu.com>
@@ -28,15 +28,29 @@ Wei Yongjun wrote:
 >>   
 > 
 > Not sure, but TCP does not call that function in user context at all.
+> 
 
-It might as part of release_sock().  It call out to sk_backlog_rcv, which
-calls tcp_v4_do_rcv() (the backlog handler).  That handler will eventually
-call tcp_data_queue() which will call sk_data_ready().  I don't see the code
-paths that disable BH there.
+Wei
+
+Can you trigger this problem with this patch applied?
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 3a95fcb..dabdc50 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3717,9 +3717,9 @@ SCTP_STATIC int sctp_init_sock(struct sock *sk)
+ 	sp->hmac = NULL;
+
+ 	SCTP_DBG_OBJCNT_INC(sock);
+-	percpu_counter_inc(&sctp_sockets_allocated);
+
+ 	local_bh_disable();
++	percpu_counter_inc(&sctp_sockets_allocated);
+ 	sock_prot_inuse_add(sock_net(sk), sk->sk_prot, 1);
+ 	local_bh_enable();
 
 -vlad
 
-> 
 >> -vlad
 >>
 >>   
@@ -109,8 +123,4 @@ paths that disable BH there.
 >>>     
 >>
 >>   
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
