@@ -1,36 +1,26 @@
-From: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
-Date: Fri, 05 Feb 2010 09:08:15 +0000
-Subject: Re: [RFC Patch] net: reserve ports for applications using fixed portnumbers
-Message-Id: <201002051808.BFJ51557.SLQFtJVMOOFFOH@I-love.SAKURA.ne.jp>
+From: Octavian Purdila <opurdila@ixiacom.com>
+Date: Fri, 05 Feb 2010 12:05:53 +0000
+Subject: Re: [RFC Patch] net: reserve ports for applications using fixed port numbers
+Message-Id: <201002051405.54029.opurdila@ixiacom.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20100203043332.3817.27932.sendpatchset@localhost.localdomain>
-	<e2e108261002042311w59ba1372ld9f8fb2f369ca434@mail.gmail.com>
-	<4B6BC7E4.5070909@redhat.com>
-In-Reply-To: <4B6BC7E4.5070909@redhat.com>
+References: <201002031312.48531.opurdila@ixiacom.com> <201002042015.51092.opurdila@ixiacom.com> <4B6BA272.4090405@redhat.com>
+In-Reply-To: <4B6BA272.4090405-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: bvanassche@acm.org
-Cc: amwang@redhat.com, linux-kernel@vger.kernel.org, eric.dumazet@gmail.com, linux-rdma@vger.kernel.org, netdev@vger.kernel.org, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, davem@davemloft.net
+To: Cong Wang <amwang-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Cc: David Miller <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, eric.dumazet-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 
-Cong Wang wrote:
-> The problem is that there are some existing applications which use
-> fixed port number, we don't have chances to change this for them,
-> thus making them working is desired, so they want to reserve these
-> port for those applications.
+On Friday 05 February 2010 06:45:38 you wrote:
+
+> Again, using bitmap algorithm is not a problem and it's better, the
+> problem is sysctl interface, how would you plan to interact with users
+> via sysctl/proc if you use bitmap to handle this? I would like to hear
+> more details about this.
 > 
-> For example, if I have an appliction which uses port 40000, but
-> before this application starts, another application gets this port
-> number by bind() with port 0 (i.e. chosen by kernel), in this case,
-> that application will fail to start. Again, we don't have any chance
-> to change the source code of that application.
-> 
-And there is a utility called "portreserved" (port reserve daemon).
-http://fedoraproject.org/wiki/Features/Portreserve
 
-But that utility cannot close the race window between "portreserved stops
-reserving local port numbers" and "applications starts using local port
-numbers which portreserved was reserving".
+We could use something like positive values for setting and negative for reset 
+(e.g. 3 would set the port in the bitmap and -3 would reset it).
 
-Thus, I think people want to have port reservation mechanism inside kernel
-(if it has little impact).
+But we would need new sysctl and proc handlers to handle the bitmap case (e.g. 
+sysctl_bitmap, proc_dobitmap_minmax).
