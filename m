@@ -1,74 +1,39 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Fri, 26 Feb 2010 03:19:32 +0000
-Subject: [PATCH 3/3] sctp_test: add -O option for specifying live time of
-Message-Id: <4B873DC4.40800@cn.fujitsu.com>
+From: Stephen Hemminger <shemminger@vyatta.com>
+Date: Fri, 19 Feb 2010 05:55:22 +0000
+Subject: [RFC 2/2] SCTP: fix sparse warning
+Message-Id: <20100219055628.517807379@vyatta.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20100219055520.223027612@vyatta.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>, "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-This patch add -O option to sctp_test for specifying live
-time of messages. Use for PRSCTP test.
+The variable node shadows earlier one in same function.
 
-Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
----
- src/apps/sctp_test.c |   13 ++++++++++++-
- 1 files changed, 12 insertions(+), 1 deletions(-)
+Signed-off-by: Stephen Hemminger <shemminger@vyatta.com>
 
-diff --git a/src/apps/sctp_test.c b/src/apps/sctp_test.c
-index 127f50e..7287d05 100644
---- a/src/apps/sctp_test.c
-+++ b/src/apps/sctp_test.c
-@@ -156,6 +156,7 @@ int order_state = 0;
- int max_stream = 0;
- int seed = 0;
- int max_msgsize = DEFAULT_MAX_WINDOW;
-+int timetolive = 0;
- int assoc_pattern = ASSOC_PATTERN_SEQUENTIAL;
- int socket_type = SOCK_SEQPACKET;
- int repeat_count = 0;
-@@ -260,6 +261,7 @@ void usage(char *argv0)
- 	fprintf(stderr, "\t   using this argument multiple times.\n");
- 	fprintf(stderr, "\t   For example, '-C 10.0.0.1 -C 20.0.0.2'.\n");
- 	fprintf(stderr, "\t   This option is incompatible with the -h option.\n");
-+	fprintf(stderr, "\t-O time to live (default value 0)\n");
- 	fprintf(stderr, "\n");
- 	fflush(stderr);
+--- a/net/sctp/socket.c	2010-02-18 10:06:57.656887238 -0800
++++ b/net/sctp/socket.c	2010-02-18 10:07:09.894132363 -0800
+@@ -5478,7 +5478,7 @@ pp_found:
+ 		 */
+ 		int reuse = sk->sk_reuse;
+ 		struct sock *sk2;
+-		struct hlist_node *node;
++		struct hlist_node *node2;
  
-@@ -1024,6 +1026,8 @@ int send_r(int sk, int stream, int order, int send_size, int assoc_i)
- 	sinfo->sinfo_flags = 0;
- 	if (!order)
- 		sinfo->sinfo_flags = SCTP_UNORDERED;
-+	if (timetolive)
-+		sinfo->sinfo_timetolive = timetolive;
+ 		SCTP_DEBUG_PRINTK("sctp_get_port() found a possible match\n");
+ 		if (pp->fastreuse && sk->sk_reuse &&
+@@ -5495,7 +5495,7 @@ pp_found:
+ 		 * that this port/socket (sk) combination are already
+ 		 * in an endpoint.
+ 		 */
+-		sk_for_each_bound(sk2, node, &pp->owner) {
++		sk_for_each_bound(sk2, node2, &pp->owner) {
+ 			struct sctp_endpoint *ep2;
+ 			ep2 = sctp_sk(sk2)->ep;
  
- 	DEBUG_PRINT(DEBUG_MIN, "\tsendmsg(sk=%d, assoc=%d) %4d bytes.\n",
- 		    sk, assoc_i, send_size);
-@@ -1418,7 +1422,7 @@ main(int argc, char *argv[])
- 	struct sockaddr *tmp_addrs = NULL;
- 	
-         /* Parse the arguments.  */
--        while ((c = getopt(argc, argv, ":H:L:P:S:a:h:p:c:d:lm:sx:X:o:t:M:r:w:Di:TB:C:")) >= 0 ) {
-+        while ((c = getopt(argc, argv, ":H:L:P:S:a:h:p:c:d:lm:sx:X:o:t:M:r:w:Di:TB:C:O:")) >= 0 ) {
- 
-                 switch (c) {
- 		case 'H':
-@@ -1518,6 +1522,13 @@ main(int argc, char *argv[])
- 				exit(1);
- 			}
- 			break;
-+		case 'O':
-+			timetolive = atoi(optarg);
-+			if (timetolive < 0) {
-+				usage(argv[0]);
-+				exit(1);
-+			}
-+			break;
- 		case 't':
- 			stream_pattern = atoi(optarg);
- 			if (stream_pattern <  STREAM_PATTERN_SEQUENTIAL
+
 -- 
-1.6.5.2
-
 
