@@ -1,230 +1,108 @@
-From: George Cheimonidis <gchimon@gmail.com>
-Date: Tue, 30 Mar 2010 15:06:25 +0000
-Subject: Re: connect() hangs after binding to three IP addresses and auth_enable
-Message-Id: <4BB21371.4070507@gmail.com>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Mon, 01 Mar 2010 09:07:43 +0000
+Subject: [BUG] sctp failed to load transform for hmac(md5)
+Message-Id: <4B8B83DF.4090705@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <001701cacc68$d6bb1390$84313ab0$@com>
-In-Reply-To: <001701cacc68$d6bb1390$84313ab0$@com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
+Content-Type: text/plain; charset="windows-1252"
 Content-Transfer-Encoding: quoted-printable
 To: linux-sctp@vger.kernel.org
 
-Hello!
+Hi:
 
-I have tried the patch on a 2.6.31 kernel (Ubuntu). I have repeated some=20
-tests with authentication enabled and did not experience any problems.
-Thanks for the quick replies!
+After I update the kernel to the 2.6.33, I got the following error,
+Is there something change to the crypto API or some modules
+is missing?
 
-Best regards,
-George
+[root@RHEL ~]# sctp_test -H 127.0.0.1 -P 8000 -l
+local:addr=127.0.0.1, port=3Dirdmi, family=3D2
+seed =3D 1267480579
+
+Starting tests...
+	socket(SOCK_SEQPACKET, IPPROTO_SCTP)  ->  sk=3D3
+	bind(sk=3D3, [a:127.0.0.1,p:irdmi])  --  attempt 1/10
+	listen(sk=3D3,backlog=100)
 
 
-On 03/30/2010 03:41 AM, Wei Yongjun wrote:
-> Vlad Yasevich wrote:
->   =20
->> Wei Yongjun wrote:
->>
->>     =20
->>> George Cheimonidis wrote:
->>>
->>>       =20
->>>> Hi Vlad!
->>>>
->>>> I have recompiled the 2.6.33 kernel with your debug patch. I have also
->>>> enabled SCTP debugging with with CONFIG_SCTP_DBG_MSG=3Dy.
->>>> You can find the log messages in the attached file. Hope it helps!
->>>>
->>>> Best regards
->>>>
->>>>         =20
->>> Hi George
->>>
->>> With your description, I can reproduct this problem now.
->>> can your check whether this PATCH can fix this BUG?
->>>
->>>       =20
->> Good catch Wei.   How did you reproduce this?
->>
->>     =20
-> I reproduced this with commands as following:
->
-> # modprobe sctp
-> # echo 1>  /proc/sys/net/sctp/addip_enable
-> # echo 1>  /proc/sys/net/sctp/auth_enable
-> # sctp_test -H 3ffe:501:ffff:100:20c:29ff:fe4d:f37e -P 800 -l
-> # sctp_darn -H 3ffe:501:ffff:100:20c:29ff:fe4d:f37e -P 900 -h 192.168.0.2=
-1 -p 800 -I -s -t
-> sctp_darn ready to send...
-> 3ffe:501:ffff:100:20c:29ff:fe4d:f37e:900-192.168.0.21:800 Interactive mod=
-e>  bindx-add=192.168.0.21
-> 3ffe:501:ffff:100:20c:29ff:fe4d:f37e:900-192.168.0.21:800 Interactive mod=
-e>  bindx-add=192.168.1.21
-> 3ffe:501:ffff:100:20c:29ff:fe4d:f37e:900-192.168.0.21:800 Interactive mod=
-e>  snd=10
->
-> then, oops is output:
->
-> skb_over_panic: text:ce2068d2 len:130 put:6 head:cac3fe00 data:cac3fe00 t=
-ail:0xcac3fe82 end:0xcac3fe80 dev:<NULL>
-> ------------[ cut here ]------------
-> kernel BUG at net/core/skbuff.c:127!
-> invalid opcode: 0000 [#2] SMP
-> last sysfs file: /sys/module/aes_generic/initstate
-> Modules linked in: authenc ......
->
-> Pid: 4102, comm: sctp_darn Tainted: G      D    2.6.34-rc2 #6
-> EIP: 0060:[<c0607630>] EFLAGS: 00010282 CPU: 0
-> EIP is at skb_over_panic+0x37/0x3e
-> EAX: 00000078 EBX: c07c024b ECX: c07c02b9 EDX: cb607b78
-> ESI: 00000000 EDI: cac3fe7a EBP: 00000002 ESP: cb607b74
->   DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
-> Process sctp_darn (pid: 4102, ti=CB607000 task=CAbdc990 task.ti=CB607000)
-> Stack:
->   c07c02b9 ce2068d2 00000082 00000006 cac3fe00 cac3fe00 cac3fe82 cac3fe80
-> <0>  c07c024b cac3fe7c cac3fe7a c0608dec ca986e80 ce2068d2 00000006 00000=
-07a
-> <0>  cb8120ca ca986e80 cb812000 00000003 cb8120c4 ce208a25 cb8120ca cadd9=
-400
-> Call Trace:
->   [<ce2068d2>] ? sctp_addto_chunk+0x45/0x85 [sctp]
->   [<c0608dec>] ? skb_put+0x2e/0x32
->   [<ce2068d2>] ? sctp_addto_chunk+0x45/0x85 [sctp]
->   [<ce208a25>] ? sctp_make_init+0x279/0x28c [sctp]
->   [<c0686a92>] ? apic_timer_interrupt+0x2a/0x30
->   [<ce1fdc0b>] ? sctp_sf_do_prm_asoc+0x2b/0x7b [sctp]
->   [<ce202823>] ? sctp_do_sm+0xa0/0x14a [sctp]
->   [<ce2133b9>] ? sctp_pname+0x0/0x14 [sctp]
->   [<ce211d72>] ? sctp_primitive_ASSOCIATE+0x2b/0x31 [sctp]
->   [<ce20f3cf>] ? sctp_sendmsg+0x7a0/0x9eb [sctp]
->   [<c064eb1e>] ? inet_sendmsg+0x3b/0x43
->   [<c04244b7>] ? task_tick_fair+0x2d/0xd9
->   [<c06031e1>] ? sock_sendmsg+0xa7/0xc1
->   [<c0416afe>] ? smp_apic_timer_interrupt+0x6b/0x75
->   [<c0425123>] ? dequeue_task_fair+0x34/0x19b
->   [<c0446abb>] ? sched_clock_local+0x17/0x11e
->   [<c052ea87>] ? _copy_from_user+0x2b/0x10c
->   [<c060ab3a>] ? verify_iovec+0x3c/0x6a
->   [<c06035ca>] ? sys_sendmsg+0x186/0x1e2
->   [<c042176b>] ? __wake_up_common+0x34/0x5b
->   [<c04240c2>] ? __wake_up+0x2c/0x3b
->   [<c057e35c>] ? tty_wakeup+0x43/0x47
->   [<c04430f2>] ? remove_wait_queue+0x16/0x24
->   [<c0580c94>] ? n_tty_read+0x5b8/0x65e
->   [<c042be02>] ? default_wake_function+0x0/0x8
->   [<c0604e0e>] ? sys_socketcall+0x17f/0x1cd
->   [<c040264c>] ? sysenter_do_call+0x12/0x22
-> Code: 0f 45 de 53 ff b0 98 00 00 00 ff b0 94 ......
-> EIP: [<c0607630>] skb_over_panic+0x37/0x3e SS:ESP 0068:cb607b74
->
-> ------------------------------------------------------------------
-> eth0 has addresses: 3ffe:501:ffff:100:20c:29ff:fe4d:f37e and 192.168.0.21
-> eth1 has addresses: 192.168.1.21
-> ------------------------------------------------------------------
->
->
->
->   =20
->> Looks like there are other parameters that need this as well.
->>
->> - supported address family parameter (if only 1 address family, the size
->>    doesn't account for padding)
->>
->> - supported extensions (depending on the extensions, we might be unalign=
-ed)
->>
->> We just happen to luck out with the other parameters.
->>
->> This also needs to be fixed in make_init_ack().
->>
->>
->>
->>     =20
-> [PATCH v2] sctp: fix to calc the INIT/INIT-ACK chunk length correctly
->
-> When calc the INIT/INIT-ACK chunk length, we should not only
-> account the length of parameters, but also the parameters
-> zero padding length, such as AUTH HMACS parameter and CHUNKS
-> parameter. Without the parameters zero padding length may
-> cause oops.
->
-> Reported-by: George Cheimonidis<gchimon@gmail.com>
-> Signed-off-by: Wei Yongjun<yjwei@cn.fujitsu.com>
-> ---
->   net/sctp/sm_make_chunk.c |   17 ++++++++++-------
->   1 files changed, 10 insertions(+), 7 deletions(-)
->
-> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> index 9e73291..f592163 100644
-> --- a/net/sctp/sm_make_chunk.c
-> +++ b/net/sctp/sm_make_chunk.c
-> @@ -207,7 +207,8 @@ struct sctp_chunk *sctp_make_init(const struct sctp_a=
-ssociation *asoc,
->   	sp =3D sctp_sk(asoc->base.sk);
->   	num_types =3D sp->pf->supported_addrs(sp, types);
->
-> -	chunksize =3D sizeof(init) + addrs_len + SCTP_SAT_LEN(num_types);
-> +	chunksize =3D sizeof(init) + addrs_len;
-> +	chunksize +=3D WORD_ROUND(SCTP_SAT_LEN(num_types));
->   	chunksize +=3D sizeof(ecap_param);
->
->   	if (sctp_prsctp_enable)
-> @@ -237,14 +238,14 @@ struct sctp_chunk *sctp_make_init(const struct sctp=
-_association *asoc,
->   		/* Add HMACS parameter length if any were defined */
->   		auth_hmacs =3D (sctp_paramhdr_t *)asoc->c.auth_hmacs;
->   		if (auth_hmacs->length)
-> -			chunksize +=3D ntohs(auth_hmacs->length);
-> +			chunksize +=3D WORD_ROUND(ntohs(auth_hmacs->length));
->   		else
->   			auth_hmacs =3D NULL;
->
->   		/* Add CHUNKS parameter length */
->   		auth_chunks =3D (sctp_paramhdr_t *)asoc->c.auth_chunks;
->   		if (auth_chunks->length)
-> -			chunksize +=3D ntohs(auth_chunks->length);
-> +			chunksize +=3D WORD_ROUND(ntohs(auth_chunks->length));
->   		else
->   			auth_chunks =3D NULL;
->
-> @@ -254,7 +255,8 @@ struct sctp_chunk *sctp_make_init(const struct sctp_a=
-ssociation *asoc,
->
->   	/* If we have any extensions to report, account for that */
->   	if (num_ext)
-> -		chunksize +=3D sizeof(sctp_supported_ext_param_t) + num_ext;
-> +		chunksize +=3D WORD_ROUND(sizeof(sctp_supported_ext_param_t) +
-> +					num_ext);
->
->   	/* RFC 2960 3.3.2 Initiation (INIT) (1)
->   	 *
-> @@ -396,13 +398,13 @@ struct sctp_chunk *sctp_make_init_ack(const struct =
-sctp_association *asoc,
->
->   		auth_hmacs =3D (sctp_paramhdr_t *)asoc->c.auth_hmacs;
->   		if (auth_hmacs->length)
-> -			chunksize +=3D ntohs(auth_hmacs->length);
-> +			chunksize +=3D WORD_ROUND(ntohs(auth_hmacs->length));
->   		else
->   			auth_hmacs =3D NULL;
->
->   		auth_chunks =3D (sctp_paramhdr_t *)asoc->c.auth_chunks;
->   		if (auth_chunks->length)
-> -			chunksize +=3D ntohs(auth_chunks->length);
-> +			chunksize +=3D WORD_ROUND(ntohs(auth_chunks->length));
->   		else
->   			auth_chunks =3D NULL;
->
-> @@ -411,7 +413,8 @@ struct sctp_chunk *sctp_make_init_ack(const struct sc=
-tp_association *asoc,
->   	}
->
->   	if (num_ext)
-> -		chunksize +=3D sizeof(sctp_supported_ext_param_t) + num_ext;
-> +		chunksize +=3D WORD_ROUND(sizeof(sctp_supported_ext_param_t) +
-> +					num_ext);
->
->   	/* Now allocate and fill out the chunk.  */
->   	retval =3D sctp_make_chunk(asoc, SCTP_CID_INIT_ACK, 0, chunksize);
->   =20
+		*** listen:  Function not implemented ***
+
+[root@RHEL ~]# dmesg | tail
+SCTP: Hash tables configured (established 2048 bind 2048)
+sctp_init_sock(sk: ce63db68)
+sctp_init_sock(sk: ceafb8a0)
+sctp_setsockopt(sk: ceafb8a0... optname: 11)
+sctp_bind(sk: ceafb8a0, addr: ceaa0ed4, addr_len: 16)
+sctp_do_bind(sk: ceafb8a0, new addr: 127.0.0.1, port: 0, new port: 8000, le=
+n: 16)
+sctp_get_port() begins, snum=8000
+SCTP: failed to load transform for hmac(md5): -2
+sctp_close(sk: 0xceafb8a0, timeout:0)
+sctp_destroy_sock(sk: ceafb8a0)
+
+
+[root@RHEL ~]# cat /proc/crypto=20
+name         : stdrng
+driver       : krng
+module       : kernel
+priority     : 200
+refcnt       : 1
+selftest     : passed
+type         : rng
+seedsize     : 0
+
+name         : crc32c
+driver       : crc32c-generic
+module       : kernel
+priority     : 100
+refcnt       : 2
+selftest     : passed
+type         : shash
+blocksize    : 1
+digestsize   : 4
+
+name         : sha1
+driver       : sha1-generic
+module       : kernel
+priority     : 0
+refcnt       : 1
+selftest     : passed
+type         : shash
+blocksize    : 64
+digestsize   : 20
+
+name         : md5
+driver       : md5-generic
+module       : kernel
+priority     : 0
+refcnt       : 1
+selftest     : passed
+type         : shash
+blocksize    : 64
+digestsize   : 16
+
+
+The source code is this:
+
+5576 SCTP_STATIC int sctp_listen_start(struct sock *sk, int backlog)
+5577 {
+5578         struct sctp_sock *sp =3D sctp_sk(sk);
+5579         struct sctp_endpoint *ep =3D sp->ep;
+5580         struct crypto_hash *tfm =3D NULL;
+5581=20
+5582         /* Allocate HMAC for generating cookie. */
+5583         if (!sctp_sk(sk)->hmac && sctp_hmac_alg) {
+5584                 tfm =3D crypto_alloc_hash(sctp_hmac_alg, 0, CRYPTO_ALG=
+_ASYNC);
+5585                 if (IS_ERR(tfm)) {
+5586                         if (net_ratelimit()) {
+5587                                 printk(KERN_INFO
+5588                                        "SCTP: failed to load transform=
+ for %s: %ld\n",
+5589                                         sctp_hmac_alg, PTR_ERR(tfm));
+5590                         }
+5591                         return -ENOSYS;
+5592                 }
+5593                 sctp_sk(sk)->hmac =3D tfm;
+5594         }
+
 
