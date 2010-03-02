@@ -1,24 +1,31 @@
-From: Herbert Xu <herbert@gondor.apana.org.au>
-Date: Mon, 01 Mar 2010 09:47:04 +0000
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Tue, 02 Mar 2010 01:50:31 +0000
 Subject: Re: [BUG] sctp failed to load transform for hmac(md5)
-Message-Id: <20100301094704.GA20030@gondor.apana.org.au>
+Message-Id: <4B8C6EE7.2090805@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <4B8B83DF.4090705@cn.fujitsu.com>
 In-Reply-To: <4B8B83DF.4090705@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="hz-gb-2312"
-Content-Transfer-Encoding: base64
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-T24gTW9uLCBNYXIgMDEsIDIwMTAgYXQgMDU6MDc6NDNQTSArMDgwMCwgV2VpIFlvbmdqdW4gd3Jv
-dGU6Cj4gSGk6Cj4gCj4gQWZ0ZXIgSSB1cGRhdGUgdGhlIGtlcm5lbCB0byB0aGUgMi42LjMzLCBJ
-IGdvdCB0aGUgZm9sbG93aW5nIGVycm9yLAo+IElzIHRoZXJlIHNvbWV0aGluZyBjaGFuZ2UgdG8g
-dGhlIGNyeXB0byBBUEkgb3Igc29tZSBtb2R1bGVzCj4gaXMgbWlzc2luZz8KCklzIHRoaXMgMi42
-LjMzLXJlbGVhc2UsIG9yIHRoZSBsYXRlc3QgZ2l0IHRyZWU/CgpDaGVlcnMsCi0tIApWaXNpdCBP
-cGVuc3dhbiBhdCBodHRwOi8vd3d3Lm9wZW5zd2FuLm9yZy8KRW1haWw6IEhlcmJlcnQgWHUgfntQ
-bVY+SEl+fSA8aGVyYmVydEBnb25kb3IuYXBhbmEub3JnLmF1PgpIb21lIFBhZ2U6IGh0dHA6Ly9n
-b25kb3IuYXBhbmEub3JnLmF1L35oZXJiZXJ0LwpQR1AgS2V5OiBodHRwOi8vZ29uZG9yLmFwYW5h
-Lm9yZy5hdS9+aGVyYmVydC9wdWJrZXkudHh0Ci0tClRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBs
-aXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1zY3RwIiBpbgp0aGUgYm9keSBv
-ZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZwpNb3JlIG1ham9yZG9tbyBp
-bmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWw=
+
+
+Herbert Xu wrote:
+> On Mon, Mar 01, 2010 at 05:07:43PM +0800, Wei Yongjun wrote:
+>   
+>> Hi:
+>>
+>> After I update the kernel to the 2.6.33, I got the following error,
+>> Is there something change to the crypto API or some modules
+>> is missing?
+>>     
+>
+> Is this 2.6.33-release, or the latest git tree?
+>   
+
+It is the latest git tree.
+
+> Cheers,
+>   
