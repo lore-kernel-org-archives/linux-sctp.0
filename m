@@ -1,31 +1,36 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Tue, 02 Mar 2010 01:50:31 +0000
+From: Herbert Xu <herbert@gondor.apana.org.au>
+Date: Tue, 02 Mar 2010 12:55:41 +0000
 Subject: Re: [BUG] sctp failed to load transform for hmac(md5)
-Message-Id: <4B8C6EE7.2090805@cn.fujitsu.com>
+Message-Id: <20100302125541.GA2548@gondor.apana.org.au>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <4B8B83DF.4090705@cn.fujitsu.com>
 In-Reply-To: <4B8B83DF.4090705@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="hz-gb-2312"
+Content-Transfer-Encoding: base64
 To: linux-sctp@vger.kernel.org
 
-
-
-Herbert Xu wrote:
-> On Mon, Mar 01, 2010 at 05:07:43PM +0800, Wei Yongjun wrote:
->   
->> Hi:
->>
->> After I update the kernel to the 2.6.33, I got the following error,
->> Is there something change to the crypto API or some modules
->> is missing?
->>     
->
-> Is this 2.6.33-release, or the latest git tree?
->   
-
-It is the latest git tree.
-
-> Cheers,
->   
+T24gVHVlLCBNYXIgMDIsIDIwMTAgYXQgMDk6NTA6MzFBTSArMDgwMCwgV2VpIFlvbmdqdW4gd3Jv
+dGU6Cj4KPiBJdCBpcyB0aGUgbGF0ZXN0IGdpdCB0cmVlLgoKT0ssIGl0IHdhcyBjYXVzZWQgYnkg
+dGhlIG5ldyBpbXBvcnQvZXhwb3J0IGZ1bmN0aW9ucy4KClRoaXMgcGF0Y2ggc2hvdWxkIGZpeCBp
+dDoKCmNvbW1pdCA3MzY5MWVlYmVmYjE5NjFiNDgxOWQ5OTVlNTMwZDYyNTRjYjUxNzY5CkF1dGhv
+cjogSGVyYmVydCBYdSA8aGVyYmVydEBnb25kb3IuYXBhbmEub3JnLmF1PgpEYXRlOiAgIFR1ZSBN
+YXIgMiAyMDo1NDozOCAyMDEwICswODAwCgogICAgbWQ1OiBTZXQgc3RhdGVzaXplCiAgICAKICAg
+IEFzIG1kNSBub3cgaGFzIGV4cG9ydC9pbXBvcnQgZnVuY3Rpb25zLCBpdCBtdXN0IHNldCB0aGUg
+YXR0cmlidXRlCiAgICBzdGF0ZXNpemUuICBPdGhlcndpc2UgYW55dGhpbmcgdGhhdCByZWxpZXMg
+b24gaW1wb3J0L2V4cG9ydCBtYXkKICAgIGZhaWwgYXMgdGhleSB3aWxsIHNlZSBhIHplcm8gc3Rh
+dGVzaXplLgogICAgCiAgICBTaWduZWQtb2ZmLWJ5OiBIZXJiZXJ0IFh1IDxoZXJiZXJ0QGdvbmRv
+ci5hcGFuYS5vcmcuYXU+CgpkaWZmIC0tZ2l0IGEvY3J5cHRvL21kNS5jIGIvY3J5cHRvL21kNS5j
+CmluZGV4IDlmZGEyMTMuLjMwZWZjN2QgMTAwNjQ0Ci0tLSBhL2NyeXB0by9tZDUuYworKysgYi9j
+cnlwdG8vbWQ1LmMKQEAgLTIzNCw2ICsyMzQsNyBAQCBzdGF0aWMgc3RydWN0IHNoYXNoX2FsZyBh
+bGcgPSB7CiAJLmV4cG9ydAkJPQltZDVfZXhwb3J0LAogCS5pbXBvcnQJCT0JbWQ1X2ltcG9ydCwK
+IAkuZGVzY3NpemUJPQlzaXplb2Yoc3RydWN0IG1kNV9zdGF0ZSksCisJLnN0YXRlc2l6ZQk9CXNp
+emVvZihzdHJ1Y3QgbWQ1X3N0YXRlKSwKIAkuYmFzZQkJPQl7CiAJCS5jcmFfbmFtZQk9CSJtZDUi
+LAogCQkuY3JhX2ZsYWdzCT0JQ1JZUFRPX0FMR19UWVBFX1NIQVNILAoKVGhhbmtzLAotLSAKVmlz
+aXQgT3BlbnN3YW4gYXQgaHR0cDovL3d3dy5vcGVuc3dhbi5vcmcvCkVtYWlsOiBIZXJiZXJ0IFh1
+IH57UG1WPkhJfn0gPGhlcmJlcnRAZ29uZG9yLmFwYW5hLm9yZy5hdT4KSG9tZSBQYWdlOiBodHRw
+Oi8vZ29uZG9yLmFwYW5hLm9yZy5hdS9+aGVyYmVydC8KUEdQIEtleTogaHR0cDovL2dvbmRvci5h
+cGFuYS5vcmcuYXUvfmhlcmJlcnQvcHVia2V5LnR4dAotLQpUbyB1bnN1YnNjcmliZSBmcm9tIHRo
+aXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtc2N0cCIgaW4KdGhlIGJv
+ZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcKTW9yZSBtYWpvcmRv
+bW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1s
