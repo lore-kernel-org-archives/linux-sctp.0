@@ -1,21 +1,19 @@
-From: "Kimble B John" <themainwindow736@gmail.com>
-Date: Tue, 16 Mar 2010 00:51:28 +0000
-Subject: I have a list of 47,000 pharmaceutical companies in the US
-Message-Id: <20100316005128.905431BDAEFB@relay18.wins-beam.net>
+From: info <web30278@singnet.com.sg>
+Date: Tue, 16 Mar 2010 12:47:45 +0000
+Subject: Irish 2010 Grant Winner
+Message-Id: <1268743665.4b9f7df17829f@arrowana.singnet.com.sg>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 To: linux-sctp@vger.kernel.org
 
-
-
-Email me at this address for a catalog of all our US lists: Valarie.Groves@superlistmarket.net
-
-Also, ask about our sale pricing for more than one list.  
-  
-
-
-
-
-email rembox@superlistmarket.net for delisting
+=A31,000,000Pounds has been awarded to you in the U.K PROMO.send to this of=
+fice the following:
+Names...........
+Tel..............
+Age............
+Address..........
+Occupation.........
+Country.............
+Reply to: claimsdesk2010@live.co.uk
