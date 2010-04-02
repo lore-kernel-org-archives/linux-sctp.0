@@ -1,36 +1,62 @@
-From: "Barnes might" <lisastevens@ftp.ckf.ru>
-Date: Thu, 29 Apr 2010 16:53:27 +0000
-Subject: American Consumer Database - 300,000 records all with emails
-Message-Id: <M1wr2UAaTzvb5YI9IJs000001f7@mx.ckf.ru>
+From: Brian Haley <brian.haley@hp.com>
+Date: Fri, 02 Apr 2010 21:38:58 +0000
+Subject: [PATCH] SCTP: Change to use ipv6_addr_copy()
+Message-Id: <1270244338-4190-1-git-send-email-brian.haley@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <>
+In-Reply-To: <>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: vladislav.yasevich@hp.com, davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-Here's a couple of our healthcare list packages on sale this week only:
+Change SCTP IPv6 code to use ipv6_addr_copy()
 
-Package 1
+Signed-off-by: Brian Haley <brian.haley@hp.com>
+---
+ net/sctp/ipv6.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
-Physicians (34 specialties) - 788k records, 17k emails, 200k fax numbers
-Hospitals - 23,747 Hospital Administrators in over 7,145 Hospitals (full contact info no emails)
-Dentists - 164k records, 45k emails, 77k fax numbers
-Chiropractors - 108,421 total records * 3,414 emails * 6,553 fax numbers
-Pharmaceutical Companies - Email only list 47,000 emails of pharma company employees
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 216d88f..db1c767 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -364,7 +364,7 @@ static void sctp_v6_copy_addrlist(struct list_head *addrlist,
+ 		if (addr) {
+ 			addr->a.v6.sin6_family = AF_INET6;
+ 			addr->a.v6.sin6_port = 0;
+-			addr->a.v6.sin6_addr = ifp->addr;
++			ipv6_addr_copy(&addr->a.v6.sin6_addr, &ifp->addr);
+ 			addr->a.v6.sin6_scope_id = dev->ifindex;
+ 			addr->valid = 1;
+ 			INIT_LIST_HEAD(&addr->list);
+@@ -405,7 +405,7 @@ static void sctp_v6_from_sk(union sctp_addr *addr, struct sock *sk)
+ {
+ 	addr->v6.sin6_family = AF_INET6;
+ 	addr->v6.sin6_port = 0;
+-	addr->v6.sin6_addr = inet6_sk(sk)->rcv_saddr;
++	ipv6_addr_copy(&addr->v6.sin6_addr, &inet6_sk(sk)->rcv_saddr);
+ }
+ 
+ /* Initialize sk->sk_rcv_saddr from sctp_addr. */
+@@ -418,7 +418,7 @@ static void sctp_v6_to_sk_saddr(union sctp_addr *addr, struct sock *sk)
+ 		inet6_sk(sk)->rcv_saddr.s6_addr32[3]  			addr->v4.sin_addr.s_addr;
+ 	} else {
+-		inet6_sk(sk)->rcv_saddr = addr->v6.sin6_addr;
++		ipv6_addr_copy(&inet6_sk(sk)->rcv_saddr, &addr->v6.sin6_addr);
+ 	}
+ }
+ 
+@@ -431,7 +431,7 @@ static void sctp_v6_to_sk_daddr(union sctp_addr *addr, struct sock *sk)
+ 		inet6_sk(sk)->daddr.s6_addr32[2] = htonl(0x0000ffff);
+ 		inet6_sk(sk)->daddr.s6_addr32[3] = addr->v4.sin_addr.s_addr;
+ 	} else {
+-		inet6_sk(sk)->daddr = addr->v6.sin6_addr;
++		ipv6_addr_copy(&inet6_sk(sk)->daddr, &addr->v6.sin6_addr);
+ 	}
+ }
+ 
+-- 
+1.5.4.3
 
-All complete lists above: $395
-
-Package 2
-
-Veterinarians - 78,986 total records with 1,438  emails and 1,050  fax numbers
-Chiropractors - 108,421 total records * 3,414 emails * 6,553 fax numbers
-Dentists - 164k records, 45k emails, 77k fax numbers
-
-All complete lists above: $295
-
-There are more packages and not just for healthcare contact me here for more info or to get samples: Ester.Wong@goodlists.co.cc
-
-  
-
-
-to stop this email in future email us at disappear@goodlists.co.cc
