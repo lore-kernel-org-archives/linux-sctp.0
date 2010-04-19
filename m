@@ -1,42 +1,51 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Wed, 28 Apr 2010 18:47:19 +0000
-Subject: [PATCH 2/5] sctp: fix potential reference of a freed pointer
-Message-Id: <1272480442-32673-3-git-send-email-vladislav.yasevich@hp.com>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Mon, 19 Apr 2010 08:33:12 +0000
+Subject: [PATCH] sctp: fix auth event name to SCTP_AUTHENTICATION_EVENT
+Message-Id: <4BCC1548.6040505@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1272480442-32673-1-git-send-email-vladislav.yasevich@hp.com>
-In-Reply-To: <1272480442-32673-1-git-send-email-vladislav.yasevich@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>
+To: linux-sctp@vger.kernel.org
 
-When sctp attempts to update an assocition, it removes any
-addresses that were not in the updated INITs.  However, the loop
-may attempt to refrence a transport with address after removing it.
+This patch change the auth event type name to
+SCTP_AUTHENTICATION_EVENT, which is based on
+API extension compliance.
 
-Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 ---
- net/sctp/associola.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+ include/net/sctp/user.h |    3 ++-
+ net/sctp/ulpevent.c     |    2 +-
+ 2 files changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index df5abbf..99c93ee 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -1194,8 +1194,10 @@ void sctp_assoc_update(struct sctp_association *asoc,
- 	/* Remove any peer addresses not present in the new association. */
- 	list_for_each_safe(pos, temp, &asoc->peer.transport_addr_list) {
- 		trans = list_entry(pos, struct sctp_transport, transports);
--		if (!sctp_assoc_lookup_paddr(new, &trans->ipaddr))
--			sctp_assoc_del_peer(asoc, &trans->ipaddr);
-+		if (!sctp_assoc_lookup_paddr(new, &trans->ipaddr)) {
-+			sctp_assoc_rm_peer(asoc, trans);
-+			continue;
-+		}
+diff --git a/include/net/sctp/user.h b/include/net/sctp/user.h
+index 2b2769c..4e0a8a6 100644
+--- a/include/net/sctp/user.h
++++ b/include/net/sctp/user.h
+@@ -406,7 +406,8 @@ enum sctp_sn_type {
+ 	SCTP_SHUTDOWN_EVENT,
+ 	SCTP_PARTIAL_DELIVERY_EVENT,
+ 	SCTP_ADAPTATION_INDICATION,
+-	SCTP_AUTHENTICATION_INDICATION,
++	SCTP_AUTHENTICATION_EVENT,
++#define SCTP_AUTHENTICATION_INDICATION	SCTP_AUTHENTICATION_EVENT
+ };
  
- 		if (asoc->state >= SCTP_STATE_ESTABLISHED)
- 			sctp_transport_reset(trans);
+ /* Notification error codes used to fill up the error fields in some
+diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
+index aa72e89..674a249 100644
+--- a/net/sctp/ulpevent.c
++++ b/net/sctp/ulpevent.c
+@@ -843,7 +843,7 @@ struct sctp_ulpevent *sctp_ulpevent_make_authkey(
+ 	ak = (struct sctp_authkey_event *)
+ 		skb_put(skb, sizeof(struct sctp_authkey_event));
+ 
+-	ak->auth_type = SCTP_AUTHENTICATION_INDICATION;
++	ak->auth_type = SCTP_AUTHENTICATION_EVENT;
+ 	ak->auth_flags = 0;
+ 	ak->auth_length = sizeof(struct sctp_authkey_event);
+ 
 -- 
-1.6.0.4
+1.6.5.2
+
 
