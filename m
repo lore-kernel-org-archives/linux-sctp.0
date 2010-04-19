@@ -1,58 +1,89 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Fri, 23 Apr 2010 14:28:45 +0000
-Subject: Re: [patch] sctp: cleanup: remove unneeded null check
-Message-Id: <4BD1AE9D.6090807@hp.com>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Mon, 19 Apr 2010 08:30:04 +0000
+Subject: [PATCH v2] sctp: fix the sendmsg() flag SCTP_EOF to comply to spec
+Message-Id: <4BCC148C.20606@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20100423115906.GE29093@bicker>
-In-Reply-To: <20100423115906.GE29093@bicker>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Dan Carpenter <error27@gmail.com>
-Cc: Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>, Wei Yongjun <yjwei@cn.fujitsu.com>, Chris Dischino <cdischino@sonusnet.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, kernel-janitors@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
+It should be possible to send a message and set the SCTP_EOF flag
+at the same time, but we don't support it yet. This patch fix the
+sendmsg() flag SCTP_EOF to comply to spec.
 
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+V1 -> V2:
+  - SCTP_EOF cannot be set in CLOSED state
+  - Forbid SCTP_EOF and send a message combination on non-blocking sockets
+---
+ net/sctp/socket.c |   36 ++++++++++++++++++++++++++++++------
+ 1 files changed, 30 insertions(+), 6 deletions(-)
 
-Dan Carpenter wrote:
-> "chunk" can never be null here.  We dereferenced it earlier in the
-> function and also at the start of the function we passed it to 
-> sctp_pack_cookie() which dereferences it.
-> 
-> This code has been around since the dawn of git history so if "chunk"
-> were ever null someone would have complained about it.
-> 
-> Signed-off-by: Dan Carpenter <error27@gmail.com>
-> 
-> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> index 17cb400..52352fc 100644
-> --- a/net/sctp/sm_make_chunk.c
-> +++ b/net/sctp/sm_make_chunk.c
-> @@ -470,8 +470,7 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
->  	 *
->  	 * [INIT ACK back to where the INIT came from.]
->  	 */
-> -	if (chunk)
-> -		retval->transport = chunk->transport;
-> +	retval->transport = chunk->transport;
->  
-
-Actually, this code can be completely removed as we already make this assignment
-earlier:
-
-        /* Per the advice in RFC 2960 6.4, send this reply to
-         * the source of the INIT packet.
-         */
-        retval->transport = chunk->transport;
-        retval->subh.init_hdr                 sctp_addto_chunk(retval, sizeof(initack), &initack);
-
--vlad
-
->  nomem_chunk:
->  	kfree(cookie);
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 007e8ba..783d865 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1551,13 +1551,11 @@ SCTP_STATIC int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
+ 		goto out_nounlock;
+ 	}
+ 
+-	/* If SCTP_EOF is set, no data can be sent. Disallow sending zero
+-	 * length messages when SCTP_EOF|SCTP_ABORT is not set.
+-	 * If SCTP_ABORT is set, the message length could be non zero with
+-	 * the msg_iov set to the user abort reason.
++	/* Disallow sending zero length messages when SCTP_EOF|SCTP_ABORT
++	 * is not set. If SCTP_ABORT is set, the message length could be non
++	 * zero with the msg_iov set to the user abort reason.
+ 	 */
+-	if (((sinfo_flags & SCTP_EOF) && (msg_len > 0)) ||
+-	    (!(sinfo_flags & (SCTP_EOF|SCTP_ABORT)) && (msg_len = 0))) {
++	if (!(sinfo_flags & (SCTP_EOF|SCTP_ABORT)) && (msg_len = 0)) {
+ 		err = -EINVAL;
+ 		goto out_nounlock;
+ 	}
+@@ -1615,6 +1613,26 @@ SCTP_STATIC int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
+ 		}
+ 
+ 		if (sinfo_flags & SCTP_EOF) {
++			/* SCTP_EOF cannot be set on an association
++			 * in CLOSED state.
++			 */
++			if (sctp_state(asoc, CLOSED)) {
++				err = -EINVAL;
++				goto out_nounlock;
++			}
++
++			/*
++			 * Forbid SCTP_EOF and send a message combination
++			 * on non-blocking sockets.
++			 */
++			if (msg_len != 0 && sk->sk_socket->file &&
++			    sk->sk_socket->file->f_flags & O_NONBLOCK) {
++				err = -EINVAL;
++				goto out_nounlock;
++			}
++		}
++
++		if (sinfo_flags & SCTP_EOF && msg_len = 0) {
+ 			SCTP_DEBUG_PRINTK("Shutting down association: %p\n",
+ 					  asoc);
+ 			sctp_primitive_SHUTDOWN(asoc, NULL);
+@@ -1846,6 +1864,12 @@ SCTP_STATIC int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
+ 	else
+ 		err = msg_len;
+ 
++	if (sinfo_flags & SCTP_EOF) {
++		SCTP_DEBUG_PRINTK("Shutting down association: %p\n",
++				  asoc);
++		sctp_primitive_SHUTDOWN(asoc, NULL);
++	}
++
+ 	/* If we are already past ASSOCIATE, the lower
+ 	 * layers are responsible for association cleanup.
+ 	 */
+-- 
+1.6.5.2
 
 
