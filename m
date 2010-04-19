@@ -1,45 +1,39 @@
-From: Herbert Xu <herbert@gondor.hengli.com.au>
-Date: Mon, 19 Apr 2010 03:55:35 +0000
-Subject: Re: [PATCH BUG-FIX] ipv6: allow to send packet after receiving
-Message-Id: <20100419035535.GA7011@gondor.apana.org.au>
+From: Shan Wei <shanwei@cn.fujitsu.com>
+Date: Mon, 19 Apr 2010 06:49:02 +0000
+Subject: Re: [PATCH BUG-FIX] ipv6: allow to send packet after receiving	ICMPv6
+Message-Id: <4BCBFCDE.7090206@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4BCBC6CE.9020302@cn.fujitsu.com>
-In-Reply-To: <4BCBC6CE.9020302@cn.fujitsu.com>
+References: <4BCBC6CE.9020302@cn.fujitsu.com> <20100419035535.GA7011@gondor.apana.org.au>
+In-Reply-To: <20100419035535.GA7011@gondor.apana.org.au>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="hz-gb-2312"
-Content-Transfer-Encoding: base64
-To: Shan Wei <shanwei@cn.fujitsu.com>
-Cc: David Miller <davem@davemloft.net>, "yoshfuji@linux-ipv6.org >> YOSHIFUJI Hideaki" <yoshfuji@linux-ipv6.org>, =?utf-8?B?6a2P5YuH5Yab?= <yjwei@cn.fujitsu.com>, vladislav.yasevich@hp.com, kuznet@ms2.inr.ac.ru, pekkas@netcore.fi, jmorris@namei.org, Patrick McHardy <kaber@trash.net>, eric.dumazet@gmail.com, sri@us.ibm.com, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Herbert Xu <herbert@gondor.hengli.com.au>
+Cc: David Miller <davem@davemloft.net>, "yoshfuji@linux-ipv6.org >> YOSHIFUJI Hideaki" <yoshfuji@linux-ipv6.org>, =?UTF-8?B?6a2P5YuH5Yab?= <yjwei@cn.fujitsu.com>, vladislav.yasevich@hp.com, kuznet@ms2.inr.ac.ru, pekkas@netcore.fi, jmorris@namei.org, Patrick McHardy <kaber@trash.net>, eric.dumazet@gmail.com, sri@us.ibm.com, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 
-T24gTW9uLCBBcHIgMTksIDIwMTAgYXQgMTA6NTg6MjJBTSArMDgwMCwgU2hhbiBXZWkgd3JvdGU6
-Cj4gCj4gQWNjb3JkaW5nIHRvIFJGQzI0NjAsIFBNVFUgaXMgc2V0IHRvIHRoZSBJUHY2IE1pbmlt
-dW0gTGluawo+IE1UVSAoMTI4MCkgYW5kIGEgZnJhZ21lbnQgaGVhZGVyIHNob3VsZCBhbHdheXMg
-YmUgaW5jbHVkZWQKPiBhZnRlciBhIG5vZGUgcmVjZWl2aW5nIFRvbyBCaWcgbWVzc2FnZSByZXBv
-cnRpbmcgUE1UVSBpcwo+IGxlc3MgdGhhbiB0aGUgSVB2NiBNaW5pbXVtIExpbmsgTVRVLgo+IAo+
-IEFmdGVyIHJlY2VpdmluZyBhIElDTVB2NiBUb28gQmlnIG1lc3NhZ2UgcmVwb3J0aW5nIFBNVFUg
-aXMKPiBsZXNzIHRoYW4gdGhlIElQdjYgTWluaW11bSBMaW5rIE1UVSwgc2N0cCAqY2FuJ3QqIHNl
-bmQgYW55Cj4gZGF0YS9jb250cm9sIGNodW5rIHRoYXQgdG90YWwgbGVuZ3RoIGluY2x1ZGluZyBJ
-UHY2IGhlYWQgCj4gYW5kIElQdjYgZXh0ZW5kIGhlYWQgaXMgbGVzcyB0aGFuIElQVjZfTUlOX01U
-VSgxMjgwIGJ5dGVzKS4KPiAKPiBUaGUgZmFpbHVyZSBvY2N1cmVkIGluIHA2X2ZyYWdtZW50KCks
-IGFib3V0IHJlYXNvbiAKPiBzZWUgZm9sbG93aW5nKHRha2UgU0hVVERPV04gY2h1bmsgZm9yIGV4
-YW1wbGUpOgo+IHNjdHBfcGFja2V0X3RyYW5zbWl0IChTSFVURE9XTiBjaHVuaywgbGVuFiBieXRl
-KQo+IHwtLS0tLS1zY3RwX3Y2X3htaXQgKGxvY2FsX2RmPTApCj4gICAgfC0tLS0tLWlwNl94bWl0
-Cj4gICAgICAgIHwtLS0tLS1pcDZfb3V0cHV0IChkc3RfYWxsZnJhZyBpcyB0dXJlKQo+ICAgICAg
-ICAgICAgfC0tLS0tLWlwNl9mcmFnbWVudAo+IAo+IEluIGlwNl9mcmFnbWVudCgpLCBmb3IgbG9j
-YWxfZGY9MCwgZHJvcHMgdGhlIHRoZSBwYWNrZXQKPiBhbmQgcmV0dXJucyBFTVNHU0laRS4KPiAK
-PiBUaGUgcGF0Y2ggZml4ZXMgaXQgd2l0aCBhZGRpbmcgY2hlY2sgbGVuZ3RoIG9mIHNrYi0+bGVu
-Lgo+IEluIHRoaXMgY2FzZSwgSXB2NiBub3QgdG8gZnJhZ21lbnQgdXBwZXIgcHJvdG9jb2wgZGF0
-YSwKPiBqdXN0IG9ubHkgYWRkIGEgZnJhZ21lbnQgaGVhZGVyIGJlZm9yZSBpdC4gCj4gCj4gU2ln
-bmVkLW9mZi1ieTogU2hhbiBXZWkgPHNoYW53ZWlAY24uZnVqaXRzdS5jb20+CgpUaGUgcGF0Y2gg
-bG9va3MgZ29vZCB0byBtZS4KCklmIHdlIHdhbnRlZCB0byBvcHRpbWlzZSB0aGUgYWxsZnJhZ3Mg
-Y2FzZSBpdCBtYXkgYmUgYmV0dGVyCnRvIHJlc2VydmUgdGhlIHNwYWNlIGJlZm9yZWhhbmQgYW5k
-IGdlbmVyYXRlIHRoZSBmcmFnbWVudCBoZWFkZXIKYXQgdGhlIHNhbWUgdGltZSBhcyB3ZSdyZSBk
-b2luZyB0aGUgSVB2NiBoZWFkZXIuCgpCdXQgaXQgY2FuJ3QgYmUgYWxsIHRoYXQgaW1wb3J0YW50
-IGFzIGl0J3MgYmVlbiBicm9rZW4gZm9yIHNvCm1hbnkgeWVhcnMuCgpUaGFua3MsCi0tIApWaXNp
-dCBPcGVuc3dhbiBhdCBodHRwOi8vd3d3Lm9wZW5zd2FuLm9yZy8KRW1haWw6IEhlcmJlcnQgWHUg
-fntQbVY+SEl+fSA8aGVyYmVydEBnb25kb3IuYXBhbmEub3JnLmF1PgpIb21lIFBhZ2U6IGh0dHA6
-Ly9nb25kb3IuYXBhbmEub3JnLmF1L35oZXJiZXJ0LwpQR1AgS2V5OiBodHRwOi8vZ29uZG9yLmFw
-YW5hLm9yZy5hdS9+aGVyYmVydC9wdWJrZXkudHh0Ci0tClRvIHVuc3Vic2NyaWJlIGZyb20gdGhp
-cyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1zY3RwIiBpbgp0aGUgYm9k
-eSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZwpNb3JlIG1ham9yZG9t
-byBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWw=
+Herbert Xu wrote, at 04/19/2010 11:55 AM:
+> 
+> The patch looks good to me.
+
+Thanks for reviewing this patch.
+
+> If we wanted to optimise the allfrags case it may be better
+> to reserve the space beforehand and generate the fragment header
+> at the same time as we're doing the IPv6 header.
+> 
+> But it can't be all that important as it's been broken for so
+> many years.
+
+If somebody needs one patch to fix the broken,
+I am pleased to do so. 
+
+-- 
+Best Regards
+-----
+Shan Wei
+
+
+> 
+> Thanks,
+
+
