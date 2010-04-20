@@ -1,7 +1,7 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Tue, 20 Apr 2010 13:45:41 +0000
+From: Nicolas Dichtel <nicolas.dichtel@6wind.com>
+Date: Tue, 20 Apr 2010 13:55:11 +0000
 Subject: Re: [PATCH] sctp: make IPSec rules effective with IPv6
-Message-Id: <4BCDB005.60001@hp.com>
+Message-Id: <4BCDB23F.5060901@6wind.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <4BCD4A77.2030502@cn.fujitsu.com>
 In-Reply-To: <4BCD4A77.2030502@cn.fujitsu.com>
@@ -10,7 +10,14 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
+Another thread began about the source address problem:
+http://marc.info/?t7119843800002&r=1&w=2
 
+Maybe we can fix both problems together. It seems that IPv6 lacks some
+routing operations.
+
+Regards,
+Nicolas
 
 Wei Yongjun wrote:
 >> What about the PMTU problem?
@@ -30,12 +37,6 @@ Wei Yongjun wrote:
 > 
 > Maybe we should do strict route select in sctp_v6_get_dst(), use the address
 > from the asoc or the dev address, do the same thing as IPv4.
-
-Yes.  This is what should be done.  Folks from windriver at looking at fixing that
-because IPv6 sourced based policy routing is currently broken.
-
--vlad
-
 > 
 > 
 >> Regards,
@@ -125,4 +126,3 @@ because IPv6 sourced based policy routing is currently broken.
 >>>  		return;
 >>>     
 >>   
-> 
