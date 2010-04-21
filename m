@@ -1,116 +1,133 @@
-From: George Cheimonidis <gchimon@gmail.com>
-Date: Tue, 13 Apr 2010 07:59:39 +0000
-Subject: Re: Adding a new IP address to an association when all addresses
-Message-Id: <4BC4246B.5080503@gmail.com>
+From: Weixing Shi <Weixing.Shi@windriver.com>
+Date: Wed, 21 Apr 2010 01:57:56 +0000
+Subject: [PATCH] fix sctp can not work with ipv6 source address routing
+Message-Id: <1271815076-31379-2-git-send-email-Weixing.Shi@windriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4BC34594.60808@gmail.com>
-In-Reply-To: <4BC34594.60808@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Thanks Vlad!
+in the below test case, using the source address routing,
+sctp can not work.
+Node-A
+1)ifconfig eth0 inet6 add 2001:1::1/64
+2)ip -6 rule add from 2001:1::1 table 100 pref 100
+3)ip -6 route add 2001:2::1 dev eth0 table 100
+4)sctp_darn -H 2001:1::1 -P 250 -l &
+Node-B
+1)ifconfig eth0 inet6 add 2001:2::1/64
+2)ip -6 rule add from 2001:2::1 table 100 pref 100
+3)ip -6 route add 2001:1::1 dev eth0 table 100
+4)sctp_darn -H 2001:2::1 -P 250 -h 2001:1::1 -p 250 -s
 
-Are there known problems or limitations when trying to implement such 
-functionality in the Linux kernel? Or is it just that it hasn't been 
-implemented yet?
+root cause:
+Node-A and Node-B use the source address routing, and
+at begining, source address will be NULL,sctp will
+search the  routing table by the destination address,
+because using the source address routing table, and
+the result dst_entry will be NULL.
 
-Best regards,
-George
+solution:
+walk through the bind address list to get the source
+address and then lookup the routing table again to get
+the correct dst_entry.
 
-On 04/12/2010 08:07 PM, Vlad Yasevich wrote:
->
-> George Cheimonidis wrote:
->    
->> Hi again!
->>
->> I am working with the dynamic address reconfiguration features of SCTP.
->> I have a single client - server application. Both client and server apps
->> are running on Ubuntu 9.10 (kernel 2.6.31).
->> Initially, the client has only one IPv4 address (on wlan interface) and
->> it initiates an association to the server which also has only one IPv4
->> address (213.xxx.yyy.vvv). After some time, I bring down the IP address
->> of the client. Then, after some seconds I bring up the ethernet
->> interface of the client and try to add the ethernet's IPv4 address
->> (213.xxx.yyy.zzz) to the association (using sctp_bindx()) and set the
->> same address as the peer's primary (using
->> setsockopt(SCTP_SET_PEER_PRIMARY_ADDR)). Even though both calls succeed
->> on the client and also when I call sctp_getladdrs() I can see both
->> addresses on the client's side (wlan's and ethernet's), I don't see any
->> ASCONF chunks being sent and consequently the communication between the
->> client and the server is not possible.
->> My question is: Is the LKSCTP implementation capable of handling this
->> scenario, I mean trying to add a new IP address to the association using
->> as source IP address of the IP packet containing the ASCONF chunk the
->> new IP address being added? According to RFC5061 - paragraph 5.3.2, this
->> can be feasible given that the IP address included in the Address
->> Parameter field of the ASCONF chunk belongs to the association (in my
->> scenario it should be the wlan's IP address). If so, then what could be
->> the reason for the packet containing the ASCONF chunk not being sent?
->>      
-> Linux doesn't support Break-before-Make add-ip functionality.  In this
-> case, you bring down your one active path to the destination, and then
-> add a new path.  The kernel attempts to find the route to the destination
-> based on it's view of current available paths and can't find one.
->
-> The ADD-IP specification allow for this to work, since it states that
-> ASOCONF chunks may be sent from an address that's in the process of
-> being added, however lksctp doesn't support that piece of it.
->
-> You could try a make-before-break scenario.  Bring up and add a new
-> address before bringing down the first interface.  That should work.
->
-> -vlad
->
->    
->> I have enabled SCTP debugging in the kernel and I am able to see the
->> following lines in /var/log/kern.log when trying to add the new IP
->> address (of ethernet interface) to the association:
->>
->> Apr 12 16:27:54 george-laptop kernel: [23765.692896]
->> sctp_setsocktopt_bindx: sk f1069a40 addrs 08ff2368 addrs_size 16 opt 1
->> Apr 12 16:27:54 george-laptop kernel: [23765.692904] sctp_bindx_add (sk:
->> f1069a40, addrs: f3349be0, addrcnt: 1)
->> Apr 12 16:27:54 george-laptop kernel: [23765.692912] sctp_do_bind(sk:
->> f1069a40, new addr: 213.xxx.yyy.zzz, port: 47053, new port: 47053, len: 16)
->> Apr 12 16:27:54 george-laptop kernel: [23765.692920] sctp_get_port()
->> begins, snumG053
->> Apr 12 16:27:54 george-laptop kernel: [23765.692924] sctp_get_port()
->> found a possible match
->> Apr 12 16:27:54 george-laptop kernel: [23765.692930]
->> sctp_send_asconf_add_ip: (sk: f1069a40, addrs: f3349be0, addrcnt: 1)
->> Apr 12 16:27:54 george-laptop kernel: [23765.692943] sctp_do_sm prefn:
->> ep f2273500, EVENT_T_PRIMITIVE, PRIMITIVE_ASCONF, asoc
->> c31f4000[STATE_ESTABLISHED], sctp_sf_do_prm_asconf
->> Apr 12 16:27:54 george-laptop kernel: [23765.692949] sctp_do_sm postfn:
->> asoc c31f4000, status: DISPOSITION_CONSUME
->> Apr 12 16:27:54 george-laptop kernel: [23765.692958]
->> sctp_outq_tail(c31f4470, f26d9e40[ASCONF])
->> Apr 12 16:27:54 george-laptop kernel: [23765.692964] sctp_packet_config:
->> packet:eff04318 vtag:0x5246ae45
->> Apr 12 16:27:54 george-laptop kernel: [23765.692969]
->> sctp_packet_transmit_chunk: packet:eff04318 chunk:f26d9e40
->> Apr 12 16:27:54 george-laptop kernel: [23765.692974]
->> sctp_packet_append_chunk: packet:eff04318 chunk:f26d9e40
->> Apr 12 16:27:54 george-laptop kernel: [23765.692980]
->> sctp_packet_append_chunk: packet:eff04318 chunk:f26d9600
->> Apr 12 16:27:54 george-laptop kernel: [23765.692985]
->> sctp_packet_transmit: packet:eff04318
->> Apr 12 16:27:54 george-laptop kernel: [23765.692992] sctp_v4_get_dst:
->> DST:213.xxx.yyy.vvv, SRC:0.0.0.0 -
->> Apr 12 16:27:54 george-laptop kernel: [23765.693015] NO ROUTE
->> Apr 12 16:27:54 george-laptop kernel: [23765.693021]
->> sctp_assoc_sync_pmtu: asoc:c31f4000, pmtu:1500, frag_point:1432
->> Apr 12 16:27:54 george-laptop kernel: [23765.693028] sctp_do_sm post
->> sfx: error 0, asoc c31f4000[STATE_ESTABLISHED]
->>
->> Thanks in advance
->> George
->> -- 
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->>      
+Signed-off-by: Weixing Shi <Weixing.Shi@windriver.com>
+---
+ net/sctp/ipv6.c |   65 ++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 files changed, 62 insertions(+), 3 deletions(-)
+
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 9fb5d37..5c55f98 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -77,6 +77,10 @@
+ #include <net/sctp/sctp.h>
+ 
+ #include <asm/uaccess.h>
++static void sctp_v6_dst_saddr(union sctp_addr *addr, struct dst_entry *dst,
++            __be16 port);
++static int sctp_v6_cmp_addr(const union sctp_addr *addr1,
++          const union sctp_addr *addr2);
+ 
+ /* Event handler for inet6 address addition/deletion events.
+  * The sctp_local_addr_list needs to be protocted by a spin lock since
+@@ -242,8 +246,12 @@ static struct dst_entry *sctp_v6_get_dst(struct sctp_association *asoc,
+ 					 union sctp_addr *daddr,
+ 					 union sctp_addr *saddr)
+ {
+-	struct dst_entry *dst;
+-	struct flowi fl;
++	struct dst_entry *dst = NULL;
++ 	struct flowi fl;
++	struct sctp_bind_addr *bp;
++	struct sctp_sockaddr_entry *laddr;
++	union sctp_addr dst_saddr;
++	sctp_scope_t scope;
+ 
+ 	memset(&fl, 0, sizeof(fl));
+ 	ipv6_addr_copy(&fl.fl6_dst, &daddr->v6.sin6_addr);
+@@ -259,7 +267,58 @@ static struct dst_entry *sctp_v6_get_dst(struct sctp_association *asoc,
+ 	}
+ 
+ 	dst = ip6_route_output(&init_net, NULL, &fl);
+-	if (!dst->error) {
++	if (!asoc || saddr)
++		goto out;
++
++	bp = &asoc->base.bind_addr;
++	scope = sctp_scope(daddr);
++
++	if (dst) {
++		/* Walk through the bind address list and look for a bind
++		 * address that matches the source address of the returned dst.
++		 */	
++		sctp_v6_dst_saddr(&dst_saddr, dst, htons(bp->port));
++		rcu_read_lock();
++		list_for_each_entry_rcu(laddr, &bp->address_list, list) {
++			if (!laddr->valid)
++				continue;
++			if ((laddr->state = SCTP_ADDR_SRC) &&
++			   (laddr->a.sa.sa_family = AF_INET6) &&
++			   (scope <= sctp_scope(&laddr->a)) &&
++			   (sctp_v6_cmp_addr(&dst_saddr, &laddr->a))){
++				goto out_unlock;
++			}
++		rcu_read_unlock();
++
++		/* None of the bound addresses match the source address of the
++		 * dst. So release it.
++		 */
++		dst_release(dst);
++		dst = NULL;
++		}
++	}	
++
++	/* Walk through the bind address list and try to get a dst that
++	 * matches a bind address as the source address.
++	 */
++	rcu_read_lock();
++	list_for_each_entry_rcu(laddr, &bp->address_list, list) {
++		if (!laddr->valid)
++			continue;
++		if ((laddr->state = SCTP_ADDR_SRC) &&
++		   (laddr->a.sa.sa_family = AF_INET6) &&
++		   (scope <= sctp_scope(&laddr->a))){
++			ipv6_addr_copy(&fl.fl6_src, &laddr->a.v6.sin6_addr);
++			dst = ip6_route_output(&init_net, NULL, &fl);				
++			goto out_unlock;
++		}
++	}
++
++out_unlock:
++	rcu_read_unlock();
++	
++out:
++	if (dst) {
+ 		struct rt6_info *rt;
+ 		rt = (struct rt6_info *)dst;
+ 		SCTP_DEBUG_PRINTK("rt6_dst:%pI6 rt6_src:%pI6\n",
+-- 
+1.5.5.1
 
