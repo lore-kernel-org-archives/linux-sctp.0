@@ -1,177 +1,126 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Fri, 30 Apr 2010 01:14:40 +0000
-Subject: Re: [PATCH 2/2] sctp: COOKIE-ACK should back to where the COOKIE-ECHO
-Message-Id: <4BDA2F00.6080805@hp.com>
+From: Shuaijun Zhang <szhang@research.ait.ie>
+Date: Wed, 21 Apr 2010 10:49:41 +0000
+Subject: [PATCH 2.6.27.28]: fix kernel dead if sending SET_PRIMARY ASCONF
+Message-Id: <g2vfe1c05ca1004210349wec6d5452u77fcc226a80f1d08@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4BD174DC.40308@cn.fujitsu.com>
-In-Reply-To: <4BD174DC.40308@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 To: linux-sctp@vger.kernel.org
 
+The linux kernel will die if an application send SET_PRIMARY ASCONF
+immediately after ADDIP ASCONF.
+The reason is that SCTP finishes processing ASCONF_ACK, it sends the next
+pending ASCONF. Therefore the state machine function sctp_do_sm() run
+recursively. The commands for ASCONF are executed before the commands
+for ASCONF_ACK.
+The command sequences are running in reversed order. Therefore, the T4
+timer for the new ASCONF starts before the old T4 timer stops. However,
+SCTP uses only one timer for all ASCONF chunks.
+
+This fixes the problem if deleting the statements for sending the next
+ASCONF during processing ASCONF_ACK, and instead, use a new command
+"SCTP_CMD_SEND_NEXT_ASCONF" for sending the next ASCONF chunk in the
+sideeffect function of ASCONF_ACK.
+
+Kernel version: 2.6.27.28
+
+diff -uprN a/include/net/sctp/command.h b/include/net/sctp/command.h
+--- a/include/net/sctp/command.h=A0=A0=A0 2010-04-20 17:24:18.000000000 +01=
+00
++++ b/include/net/sctp/command.h=A0=A0=A0 2010-04-21 09:55:37.000000000 +01=
+00
+@@ -105,6 +105,7 @@ typedef enum {
+=A0=A0=A0=A0 SCTP_CMD_ASSOC_SHKEY,=A0=A0=A0 /* generate the association sha=
+red keys */
+=A0=A0=A0=A0 SCTP_CMD_T1_RETRAN,=A0=A0=A0 =A0/* Mark for retransmission aft=
+er T1 timeout=A0 */
+=A0=A0=A0=A0 SCTP_CMD_UPDATE_INITTAG, /* Update peer inittag */
++=A0=A0=A0 SCTP_CMD_SEND_NEXT_ASCONF, /* Send the next ASCONF after
+processing ASCONF_ACK */
+=A0=A0=A0=A0 SCTP_CMD_LAST
+=A0} sctp_verb_t;
+
+diff -uprN a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+--- a/net/sctp/sm_make_chunk.c=A0=A0=A0 2010-04-20 17:15:01.000000000 +0100
++++ b/net/sctp/sm_make_chunk.c=A0=A0=A0 2010-04-21 09:39:17.000000000 +0100
+@@ -3290,21 +3290,6 @@ int sctp_process_asconf_ack(struct sctp_
+=A0=A0=A0=A0 sctp_chunk_free(asconf);
+=A0=A0=A0=A0 asoc->addip_last_asconf =3D NULL;
+
+-=A0=A0=A0 /* Send the next asconf chunk from the addip chunk queue. */
+-=A0=A0=A0 if (!list_empty(&asoc->addip_chunk_list)) {
+-=A0=A0=A0 =A0=A0=A0 struct list_head *entry =3D asoc->addip_chunk_list.nex=
+t;
+-=A0=A0=A0 =A0=A0=A0 asconf =3D list_entry(entry, struct sctp_chunk, list);
+-
+-=A0=A0=A0 =A0=A0=A0 list_del_init(entry);
+-
+-=A0=A0=A0 =A0=A0=A0 /* Hold the chunk until an ASCONF_ACK is received. */
+-=A0=A0=A0 =A0=A0=A0 sctp_chunk_hold(asconf);
+-=A0=A0=A0 =A0=A0=A0 if (sctp_primitive_ASCONF(asoc, asconf))
+-=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 sctp_chunk_free(asconf);
+-=A0=A0=A0 =A0=A0=A0 else
+-=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 asoc->addip_last_asconf =3D asconf;
+-=A0=A0=A0 }
+-
+=A0=A0=A0=A0 return retval;
+=A0}
+
+diff -uprN a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+--- a/net/sctp/sm_sideeffect.c=A0=A0=A0 2010-04-20 17:15:01.000000000 +0100
++++ b/net/sctp/sm_sideeffect.c=A0=A0=A0 2010-04-21 09:33:43.000000000 +0100
+@@ -1082,6 +1082,25 @@ static int sctp_cmd_interpreter(sctp_eve
+=A0=A0=A0=A0 =A0*/
+=A0=A0=A0=A0 while (NULL !=3D (cmd =3D sctp_next_cmd(commands))) {
+=A0=A0=A0=A0 =A0=A0=A0 switch (cmd->verb) {
++
++=A0=A0=A0 =A0=A0=A0 case SCTP_CMD_SEND_NEXT_ASCONF:
++=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 asoc =3D cmd->obj.ptr;
++=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 /* Send the next asconf chunk from the addip=
+ chunk queue. */
++=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 if (!list_empty(&asoc->addip_chunk_list)) {
++=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 =A0=A0=A0 struct list_head *entry =3D asoc->=
+addip_chunk_list.next;
++=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 =A0=A0=A0 struct sctp_chunk *asconf =3D list=
+_entry(entry, struct
+sctp_chunk, list);
++
++=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 =A0=A0=A0 list_del_init(entry);
++
++=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 =A0=A0=A0 /* Hold the chunk until an ASCONF_=
+ACK is received. */
++=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 =A0=A0=A0 sctp_chunk_hold(asconf);
++=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 =A0=A0=A0 if (sctp_primitive_ASCONF(asoc, as=
+conf))
++=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 =A0=A0=A0 =A0=A0=A0 sctp_chunk_free(asconf);
++=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 =A0=A0=A0 else
++=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 =A0=A0=A0 =A0=A0=A0 asoc->addip_last_asconf =
+=3D asconf;
++=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 }
++=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 break;
++
+=A0=A0=A0=A0 =A0=A0=A0 case SCTP_CMD_NOP:
+=A0=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 /* Do nothing. */
+=A0=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 break;
+diff -uprN a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+--- a/net/sctp/sm_statefuns.c=A0=A0=A0 2010-04-20 17:15:01.000000000 +0100
++++ b/net/sctp/sm_statefuns.c=A0=A0=A0 2010-04-21 09:54:15.000000000 +0100
+@@ -3585,6 +3585,9 @@ sctp_disposition_t sctp_sf_do_asconf_ack
+=A0=A0=A0=A0 if ((rcvd_serial =3D sent_serial) && asoc->addip_last_asconf) {
+=A0=A0=A0=A0 =A0=A0=A0 sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_STOP,
+=A0=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 =A0=A0=A0 SCTP_TO(SCTP_EVENT_TIMEOUT_T4_RT=
+O));
++
++=A0=A0=A0 =A0=A0=A0 sctp_add_cmd_sf(commands, SCTP_CMD_SEND_NEXT_ASCONF,
++=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 SCTP_ASOC(asoc));
+
+=A0=A0=A0=A0 =A0=A0=A0 if (!sctp_process_asconf_ack((struct sctp_associatio=
+n *)asoc,
+=A0=A0=A0=A0 =A0=A0=A0 =A0=A0=A0 =A0=A0=A0 =A0=A0=A0 =A0=A0=A0=A0 asconf_ac=
+k))
 
 
-Wei Yongjun wrote:
->> Hi Wei
->>
->> Wei Yongjun wrote:
->>   
->>> This patch fixed to send COOKIE-ACK back to where the COOKIE-ECHO
->>> came from, and if COOKIE ACK is sent to an UNCONFIRMED address,
->>> bundled it with a HEARTBEAT including a nonce. Based on RFC4960:
->>>
->>>   Section 6.4.  Multi-Homed SCTP Endpoints
->>>
->>>   An endpoint SHOULD transmit reply chunks (e.g., SACK, HEARTBEAT ACK,
->>>   etc.) to the same destination transport address from which it
->>>   received the DATA or control chunk to which it is replying.
->>>
->>>   Section 5.4.  Path Verification:
->>>
->>>   -  A COOKIE ACK MAY be sent to an UNCONFIRMED address, but it MUST be
->>>      bundled with a HEARTBEAT including a nonce.  An implementation
->>>      that does NOT support bundling MUST NOT send a COOKIE ACK to an
->>>      UNCONFIRMED address.
->>>
->>> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
->>> ---
->>>  net/sctp/output.c        |   22 ++++++++++++++++++++++
->>>  net/sctp/outqueue.c      |    1 +
->>>  net/sctp/sm_make_chunk.c |    3 +++
->>>  3 files changed, 26 insertions(+), 0 deletions(-)
->>>
->>> diff --git a/net/sctp/output.c b/net/sctp/output.c
->>> index fad261d..a68a57d 100644
->>> --- a/net/sctp/output.c
->>> +++ b/net/sctp/output.c
->>> @@ -260,6 +260,25 @@ static sctp_xmit_t sctp_packet_bundle_sack(struct sctp_packet *pkt,
->>>  	return retval;
->>>  }
->>>  
->>> +/* Try to bundle a HEARTBEAT with the packet. */
->>> +static sctp_xmit_t sctp_packet_bundle_hb(struct sctp_packet *pkt,
->>> +					 struct sctp_chunk *chunk)
->>> +{
->>> +	sctp_xmit_t retval = SCTP_XMIT_OK;
->>> +
->>> +	if (pkt->transport->state = SCTP_UNCONFIRMED &&
->>> +	    chunk->chunk_hdr->type = SCTP_CID_COOKIE_ACK) {
->>> +		struct sctp_transport *transport = pkt->transport;
->>> +		struct sctp_chunk *hb;
->>> +
->>> +		hb = sctp_make_heartbeat(transport->asoc, transport);
->>> +		if (hb)
->>> +			retval = sctp_packet_append_chunk(pkt, hb);
->>> +	}
->>> +
->>> +	return retval;
->>> +}
->>> +
->>>  /* Append a chunk to the offered packet reporting back any inability to do
->>>   * so.
->>>   */
->>> @@ -329,6 +348,9 @@ sctp_xmit_t sctp_packet_append_chunk(struct sctp_packet *packet,
->>>  	list_add_tail(&chunk->list, &packet->chunk_list);
->>>  	packet->size += chunk_len;
->>>  	chunk->transport = packet->transport;
->>> +
->>> +	/* Try to bundle HEARTBEAT chunk */
->>> +	retval = sctp_packet_bundle_hb(packet, chunk);
->>>     
->> Not sure if this is the right place.  Also, this will add the HB after cookie-ACK.
->> I am wondering if it should go before.   Seems a more correct thing to do is
->> to elicit HB-ACK before any further data might flow over the transport.
->>   
-> 
-> I add the HB after cookie-ACK is because that the COOKIE-ECHO on
-> UNCONFIRMED address must also be bundled with a HEARTBEAT.
-> If HB is before COOKIE-ECHO, the peer is in CLOSED state and the
-> HB will be treat as OOTB chunk. And I think COOKIE-ACK need to
-> do the same thing.
 
-Not really.  Heartbeats are allows in the COOKIE_ECHOED state.  See section
-8.3.
-
-So, it would be perfectly valid to include a HB first and attach a cookie-ack
-to it.
-
-
-> 
-> 
->> Also, what about all the HB related things like error counters, timers, etc...
->> Seems that we should also do that.
->>   
-> 
-> Not sure about that, the first HB may be sent then RTO is expired.
-> Do this may change the orig HB's action.
-> 
-
-Well, consider this scenario. If we send a HB+Cookie_ACK to the destination and
-it gets lost, we wouldn't count this as a strike against the destination, while
-in reality, it is.
-
-Looks like the timers are taken care of, but a stike should be recorded.
-
--vlad
-> 
->> May be we can just cue the HB to the control queue if we are not replying to the
->> source of INIT-ACK?
->>   
-> 
-> If the state is UNCONFIRMED, the transport should not be the source
-> of INIT-ACK, since INIT-ACK is sent to the source of INIT, and it should
-> be in ACTIVE state.
-> 
-> 
->>   
->>>  finish:
->>>  	return retval;
->>>  }
->>> diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
->>> index abfc0b8..322ecd1 100644
->>> --- a/net/sctp/outqueue.c
->>> +++ b/net/sctp/outqueue.c
->>> @@ -788,6 +788,7 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
->>>  			 */
->>>  			if (chunk->chunk_hdr->type != SCTP_CID_HEARTBEAT &&
->>>  			    chunk->chunk_hdr->type != SCTP_CID_HEARTBEAT_ACK &&
->>> +			    chunk->chunk_hdr->type != SCTP_CID_COOKIE_ACK &&
->>>  			    chunk->chunk_hdr->type != SCTP_CID_ASCONF_ACK)
->>>  				new_transport = asoc->peer.active_path;
->>>  		}
->>> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
->>> index 04c45dd..b9f08f0 100644
->>> --- a/net/sctp/sm_make_chunk.c
->>> +++ b/net/sctp/sm_make_chunk.c
->>> @@ -584,6 +584,9 @@ struct sctp_chunk *sctp_make_cookie_ack(const struct sctp_association *asoc,
->>>  	if (retval && chunk)
->>>  		retval->transport = chunk->transport;
->>>  
->>> +	if (retval && !retval->transport)
->>> +		retval->dest = chunk->source;
->>> +
->>>     
->> This one is good, but I am thinking that transport assignment may be incorrect.
->>  Like I said before, when we are restarting, the transport assigned is from the
->> existing association, but the packet is transmitted on the temporary association
->> that's about to vanish.  Not sure if this is ok.
->>   
-> 
-> It can works, but may be the transport should not be set, the only
-> thing we should do is set the retval->dest.
-> 
-> 
->>   
->>>  	return retval;
->>>  }
->>>  
->>>     
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->>
->>   
-> 
+Signed-off-by: Yuansong Qiao <ysqiao@research.ait.ie>
+                        Shuaijun Zhang <szhang@research.ait.ie>
