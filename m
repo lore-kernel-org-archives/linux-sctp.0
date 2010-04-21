@@ -1,7 +1,7 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Wed, 21 Apr 2010 02:50:25 +0000
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Wed, 21 Apr 2010 02:54:38 +0000
 Subject: Re: [PATCH] fix sctp can not work with ipv6 source address routing
-Message-Id: <4BCE67F1.4080108@hp.com>
+Message-Id: <4BCE68EE.8020500@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1271815076-31379-2-git-send-email-Weixing.Shi@windriver.com>
 In-Reply-To: <1271815076-31379-2-git-send-email-Weixing.Shi@windriver.com>
@@ -10,11 +10,7 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Hi
 
-Some comments.
-
-Weixing Shi wrote:
 > in the below test case, using the source address routing,
 > sctp can not work.
 > Node-A
@@ -27,24 +23,24 @@ Weixing Shi wrote:
 > 2)ip -6 rule add from 2001:2::1 table 100 pref 100
 > 3)ip -6 route add 2001:1::1 dev eth0 table 100
 > 4)sctp_darn -H 2001:2::1 -P 250 -h 2001:1::1 -p 250 -s
-> 
+>
 > root cause:
 > Node-A and Node-B use the source address routing, and
 > at begining, source address will be NULL,sctp will
 > search the  routing table by the destination address,
 > because using the source address routing table, and
 > the result dst_entry will be NULL.
-> 
+>
 > solution:
 > walk through the bind address list to get the source
 > address and then lookup the routing table again to get
 > the correct dst_entry.
-> 
+>
 > Signed-off-by: Weixing Shi <Weixing.Shi@windriver.com>
 > ---
 >  net/sctp/ipv6.c |   65 ++++++++++++++++++++++++++++++++++++++++++++++++++++--
 >  1 files changed, 62 insertions(+), 3 deletions(-)
-> 
+>
 > diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
 > index 9fb5d37..5c55f98 100644
 > --- a/net/sctp/ipv6.c
@@ -87,6 +83,12 @@ Weixing Shi wrote:
 > +	scope = sctp_scope(daddr);
 > +
 > +	if (dst) {
+>   
+
+IIRC, this may always be true since dst should not be NULL.
+If dst can be NULL, orig code will cause OOPS in if (!dst->error), right?
+We should use if (!dst->error) to check whether dst is exists.
+
 > +		/* Walk through the bind address list and look for a bind
 > +		 * address that matches the source address of the returned dst.
 > +		 */	
@@ -98,12 +100,6 @@ Weixing Shi wrote:
 > +			if ((laddr->state = SCTP_ADDR_SRC) &&
 > +			   (laddr->a.sa.sa_family = AF_INET6) &&
 > +			   (scope <= sctp_scope(&laddr->a)) &&
-
-You do not need to compare scope here since what you are doing is trying
-see that the source address specified in the route matches one of the addresses
-that the socket is bound to.  Scopes don't come into play here.  It's a direct
-comparison.
-
 > +			   (sctp_v6_cmp_addr(&dst_saddr, &laddr->a))){
 > +				goto out_unlock;
 > +			}
@@ -130,14 +126,6 @@ comparison.
 > +			ipv6_addr_copy(&fl.fl6_src, &laddr->a.v6.sin6_addr);
 > +			dst = ip6_route_output(&init_net, NULL, &fl);				
 > +			goto out_unlock;
-
-If you are only going to do a single route lookup based on the first entry you
-find, you might as well pick the best possible source address using code similar
-to sctp_v6_get_saddr().
-
-I'd rather you handle the probability that route lookup might fail and iterate
-over addresses.
-
 > +		}
 > +	}
 > +
@@ -149,9 +137,4 @@ over addresses.
 >  		struct rt6_info *rt;
 >  		rt = (struct rt6_info *)dst;
 >  		SCTP_DEBUG_PRINTK("rt6_dst:%pI6 rt6_src:%pI6\n",
-
-Also, now you'll need to chage sctp_v6_get_saddr() so that we don't repeat the
-process of selecting the source address all over again and just use the one from
-the route.
-
--vlad
+>   
