@@ -1,131 +1,184 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Thu, 22 Apr 2010 01:36:50 +0000
-Subject: Re: [PATCH 2.6.27.28]: fix kernel dead if sending SET_PRIMARY ASCONF
-Message-Id: <4BCFA832.8050301@cn.fujitsu.com>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Wed, 28 Apr 2010 13:47:48 +0000
+Subject: [PATCH]: sctp: Fix skb_over_panic resulting from multiple invalid
+Message-Id: <20100428134748.GA4818@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <g2vfe1c05ca1004210349wec6d5452u77fcc226a80f1d08@mail.gmail.com>
-In-Reply-To: <g2vfe1c05ca1004210349wec6d5452u77fcc226a80f1d08@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: vladislav.yasevich@hp.com, sri@us.ibm.com, linux-sctp@vger.kernel.org
+Cc: eteo@redhat.com, netdev@vger.kernel.org, davem@davemloft.net, security@kernel.org, nhorman@tuxdriver.com
+
+Hey-
+	Recently, it was reported to me that the kernel could oops in the
+following way:
+
+<5> kernel BUG at net/core/skbuff.c:91!
+<5> invalid operand: 0000 [#1]
+<5> Modules linked in: sctp netconsole nls_utf8 autofs4 sunrpc iptable_filt=
+er
+ip_tables cpufreq_powersave parport_pc lp parport vmblock(U) vsock(U) vmci(=
+U)
+vmxnet(U) vmmemctl(U) vmhgfs(U) acpiphp dm_mirror dm_mod button battery ac =
+md5
+ipv6 uhci_hcd ehci_hcd snd_ens1371 snd_rawmidi snd_seq_device snd_pcm_oss
+snd_mixer_oss snd_pcm snd_timer snd_page_alloc snd_ac97_codec snd soundcore
+pcnet32 mii floppy ext3 jbd ata_piix libata mptscsih mptsas mptspi mptscsi
+mptbase sd_mod scsi_mod
+<5> CPU:    0
+<5> EIP:    0060:[<c02bff27>]    Not tainted VLI
+<5> EFLAGS: 00010216   (2.6.9-89.0.25.EL)=20
+<5> EIP is at skb_over_panic+0x1f/0x2d
+<5> eax: 0000002c   ebx: c033f461   ecx: c0357d96   edx: c040fd44
+<5> esi: c033f461   edi: df653280   ebp: 00000000   esp: c040fd40
+<5> ds: 007b   es: 007b   ss: 0068
+<5> Process swapper (pid: 0, threadinfo=C040f000 task=C0370be0)
+<5> Stack: c0357d96 e0c29478 00000084 00000004 c033f461 df653280 d7883180
+e0c2947d=20
+<5>        00000000 00000080 df653490 00000004 de4f1ac0 de4f1ac0 00000004
+df653490=20
+<5>        00000001 e0c2877a 08000800 de4f1ac0 df653490 00000000 e0c29d2e
+00000004=20
+<5> Call Trace:
+<5>  [<e0c29478>] sctp_addto_chunk+0xb0/0x128 [sctp]
+<5>  [<e0c2947d>] sctp_addto_chunk+0xb5/0x128 [sctp]
+<5>  [<e0c2877a>] sctp_init_cause+0x3f/0x47 [sctp]
+<5>  [<e0c29d2e>] sctp_process_unk_param+0xac/0xb8 [sctp]
+<5>  [<e0c29e90>] sctp_verify_init+0xcc/0x134 [sctp]
+<5>  [<e0c20322>] sctp_sf_do_5_1B_init+0x83/0x28e [sctp]
+<5>  [<e0c25333>] sctp_do_sm+0x41/0x77 [sctp]
+<5>  [<c01555a4>] cache_grow+0x140/0x233
+<5>  [<e0c26ba1>] sctp_endpoint_bh_rcv+0xc5/0x108 [sctp]
+<5>  [<e0c2b863>] sctp_inq_push+0xe/0x10 [sctp]
+<5>  [<e0c34600>] sctp_rcv+0x454/0x509 [sctp]
+<5>  [<e084e017>] ipt_hook+0x17/0x1c [iptable_filter]
+<5>  [<c02d005e>] nf_iterate+0x40/0x81
+<5>  [<c02e0bb9>] ip_local_deliver_finish+0x0/0x151
+<5>  [<c02e0c7f>] ip_local_deliver_finish+0xc6/0x151
+<5>  [<c02d0362>] nf_hook_slow+0x83/0xb5
+<5>  [<c02e0bb2>] ip_local_deliver+0x1a2/0x1a9
+<5>  [<c02e0bb9>] ip_local_deliver_finish+0x0/0x151
+<5>  [<c02e103e>] ip_rcv+0x334/0x3b4
+<5>  [<c02c66fd>] netif_receive_skb+0x320/0x35b
+<5>  [<e0a0928b>] init_stall_timer+0x67/0x6a [uhci_hcd]
+<5>  [<c02c67a4>] process_backlog+0x6c/0xd9
+<5>  [<c02c690f>] net_rx_action+0xfe/0x1f8
+<5>  [<c012a7b1>] __do_softirq+0x35/0x79
+<5>  [<c0107efb>] handle_IRQ_event+0x0/0x4f
+<5>  [<c01094de>] do_softirq+0x46/0x4d
+
+Its an skb_over_panic BUG halt that results from processing an init chunk in
+which too many of its variable length parameters are in some way malformed.
+
+The problem is in sctp_process_unk_param:
+if (NULL =3D *errp)
+	*errp =3D sctp_make_op_error_space(asoc, chunk,
+					 ntohs(chunk->chunk_hdr->length));
+
+	if (*errp) {
+		sctp_init_cause(*errp, SCTP_ERROR_UNKNOWN_PARAM,
+				 WORD_ROUND(ntohs(param.p->length)));
+		sctp_addto_chunk(*errp,
+			WORD_ROUND(ntohs(param.p->length)),
+				  param.v);
+
+When we allocate an error chunk, we assume that the worst case scenario req=
+uires
+that we have chunk_hdr->length data allocated, which would be correct nomin=
+ally,
+given that we call sctp_addto_chunk for the violating parameter.  Unfortuna=
+tely,
+we also, in sctp_init_cause insert a sctp_errhdr_t structure into the error
+chunk, so the worst case situation in which all parameters are in violation
+requires chunk_hdr->length+(sizeof(sctp_errhdr_t)*param_count) bytes of dat=
+a.
+
+The result of this error is that a deliberately malformed packet sent to a
+listening host can cause a remote DOS, described in CVE-2010-1173:
+http://cve.mitre.org/cgi-bin/cvename.cgi?name 10-1173
+
+I've tested the below fix and confirmed that it fixes the issue.  It
+pre-allocates the error chunk in sctp_verify_init, where we are able to cou=
+nt
+the total number of variable length parameters, so we know how many error
+headers we might need.  Then we simply use that chunk, if we find an error,=
+ or
+discard/free it if all the parameters are valid.  Applies on top of the
+lksctp-dev tree
+
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
 
 
-> The linux kernel will die if an application send SET_PRIMARY ASCONF
-> immediately after ADDIP ASCONF.
-> The reason is that SCTP finishes processing ASCONF_ACK, it sends the next
-> pending ASCONF. Therefore the state machine function sctp_do_sm() run
-> recursively. The commands for ASCONF are executed before the commands
-> for ASCONF_ACK.
-> The command sequences are running in reversed order. Therefore, the T4
-> timer for the new ASCONF starts before the old T4 timer stops. However,
-> SCTP uses only one timer for all ASCONF chunks.
->
-> This fixes the problem if deleting the statements for sending the next
-> ASCONF during processing ASCONF_ACK, and instead, use a new command
-> "SCTP_CMD_SEND_NEXT_ASCONF" for sending the next ASCONF chunk in the
-> sideeffect function of ASCONF_ACK.
->
-> Kernel version: 2.6.27.28
->
-> diff -uprN a/include/net/sctp/command.h b/include/net/sctp/command.h
-> --- a/include/net/sctp/command.h    2010-04-20 17:24:18.000000000 +0100
-> +++ b/include/net/sctp/command.h    2010-04-21 09:55:37.000000000 +0100
-> @@ -105,6 +105,7 @@ typedef enum {
->      SCTP_CMD_ASSOC_SHKEY,    /* generate the association shared keys */
->      SCTP_CMD_T1_RETRAN,     /* Mark for retransmission after T1 timeout  */
->      SCTP_CMD_UPDATE_INITTAG, /* Update peer inittag */
-> +    SCTP_CMD_SEND_NEXT_ASCONF, /* Send the next ASCONF after
-> processing ASCONF_ACK */
->      SCTP_CMD_LAST
->  } sctp_verb_t;
->
-> diff -uprN a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> --- a/net/sctp/sm_make_chunk.c    2010-04-20 17:15:01.000000000 +0100
-> +++ b/net/sctp/sm_make_chunk.c    2010-04-21 09:39:17.000000000 +0100
-> @@ -3290,21 +3290,6 @@ int sctp_process_asconf_ack(struct sctp_
->      sctp_chunk_free(asconf);
->      asoc->addip_last_asconf = NULL;
->
-> -    /* Send the next asconf chunk from the addip chunk queue. */
-> -    if (!list_empty(&asoc->addip_chunk_list)) {
-> -        struct list_head *entry = asoc->addip_chunk_list.next;
-> -        asconf = list_entry(entry, struct sctp_chunk, list);
-> -
-> -        list_del_init(entry);
-> -
-> -        /* Hold the chunk until an ASCONF_ACK is received. */
-> -        sctp_chunk_hold(asconf);
-> -        if (sctp_primitive_ASCONF(asoc, asconf))
-> -            sctp_chunk_free(asconf);
-> -        else
-> -            asoc->addip_last_asconf = asconf;
-> -    }
-> -
->      return retval;
->  }
->
-> diff -uprN a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-> --- a/net/sctp/sm_sideeffect.c    2010-04-20 17:15:01.000000000 +0100
-> +++ b/net/sctp/sm_sideeffect.c    2010-04-21 09:33:43.000000000 +0100
-> @@ -1082,6 +1082,25 @@ static int sctp_cmd_interpreter(sctp_eve
->       */
->      while (NULL != (cmd = sctp_next_cmd(commands))) {
->          switch (cmd->verb) {
-> +
-> +        case SCTP_CMD_SEND_NEXT_ASCONF:
-> +            asoc = cmd->obj.ptr;
-> +            /* Send the next asconf chunk from the addip chunk queue. */
-> +            if (!list_empty(&asoc->addip_chunk_list)) {
-> +                struct list_head *entry = asoc->addip_chunk_list.next;
-> +                struct sctp_chunk *asconf = list_entry(entry, struct
-> sctp_chunk, list);
-> +
-> +                list_del_init(entry);
-> +
-> +                /* Hold the chunk until an ASCONF_ACK is received. */
-> +                sctp_chunk_hold(asconf);
-> +                if (sctp_primitive_ASCONF(asoc, asconf))
-> +                    sctp_chunk_free(asconf);
-> +                else
-> +                    asoc->addip_last_asconf = asconf;
-> +            }
-> +            break;
-> +
->   
+ sm_make_chunk.c |   24 ++++++++++++++++++++++--
+ 1 file changed, 22 insertions(+), 2 deletions(-)
 
-It is better to make a function like sctp_do_send_next_asconf() to
-do this, and just call it in here.
 
->          case SCTP_CMD_NOP:
->              /* Do nothing. */
->              break;
-> diff -uprN a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-> --- a/net/sctp/sm_statefuns.c    2010-04-20 17:15:01.000000000 +0100
-> +++ b/net/sctp/sm_statefuns.c    2010-04-21 09:54:15.000000000 +0100
-> @@ -3585,6 +3585,9 @@ sctp_disposition_t sctp_sf_do_asconf_ack
->      if ((rcvd_serial = sent_serial) && asoc->addip_last_asconf) {
->          sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_STOP,
->                  SCTP_TO(SCTP_EVENT_TIMEOUT_T4_RTO));
-> +
-> +        sctp_add_cmd_sf(commands, SCTP_CMD_SEND_NEXT_ASCONF,
-> +            SCTP_ASOC(asoc));
->
->   
-
-This should only be done when sctp_process_asconf_ack() return zero.
-If sctp_process_asconf_ack() return zero, the ASOC will be abort
->          if (!sctp_process_asconf_ack((struct sctp_association *)asoc,
->                           asconf_ack))
->
->
->
-> Signed-off-by: Yuansong Qiao <ysqiao@research.ait.ie>
->                         Shuaijun Zhang <szhang@research.ait.ie>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
->   
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index f592163..990457b 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2134,6 +2134,8 @@ int sctp_verify_init(const struct sctp_association *a=
+soc,
+ 	union sctp_params param;
+ 	int has_cookie =3D 0;
+ 	int result;
++	unsigned int param_cnt;
++	unsigned int len;
+=20
+ 	/* Verify stream values are non-zero. */
+ 	if ((0 =3D peer_init->init_hdr.num_outbound_streams) ||
+@@ -2149,6 +2151,7 @@ int sctp_verify_init(const struct sctp_association *a=
+soc,
+=20
+ 		if (SCTP_PARAM_STATE_COOKIE =3D param.p->type)
+ 			has_cookie =3D 1;
++		param_cnt++;
+=20
+ 	} /* for (loop through all parameters) */
+=20
+@@ -2169,6 +2172,20 @@ int sctp_verify_init(const struct sctp_association *=
+asoc,
+ 		return sctp_process_missing_param(asoc, SCTP_PARAM_STATE_COOKIE,
+ 						  chunk, errp);
+=20
++	if (!*errp) {
++		/*
++		 * Pre-allocate the error packet here
++		 * we do this as we need to reserve space
++		 * for the worst case scenario in which=20
++		 * every parameter is in error and needs=20
++		 * an errhdr attached to it
++		 */
++		len =3D ntohs(chunk->chunk_hdr->length);
++		len +=3D sizeof(sctp_errhdr_t)*param_cnt;
++
++		*errp =3D sctp_make_op_error_space(asoc, chunk, len);
++	}
++
+ 	/* Verify all the variable length parameters */
+ 	sctp_walk_params(param, peer_init, init_hdr.params) {
+=20
+@@ -2176,9 +2193,11 @@ int sctp_verify_init(const struct sctp_association *=
+asoc,
+ 		switch (result) {
+ 		    case SCTP_IERROR_ABORT:
+ 		    case SCTP_IERROR_NOMEM:
+-				return 0;
+ 		    case SCTP_IERROR_ERROR:
+-				return 1;
++				len =3D ntohs((*errp)->chunk_hdr->length);
++				if ((*errp) && (len =3D sizeof(sctp_chunkhdr_t)))
++					sctp_chunk_free(*errp);
++				return (result =3D SCTP_IERROR_ERROR) ? 1 : 0;
+ 		    case SCTP_IERROR_NO_ERROR:
+ 		    default:
+ 				break;
+@@ -2186,6 +2205,7 @@ int sctp_verify_init(const struct sctp_association *a=
+soc,
+=20
+ 	} /* for (loop through all parameters) */
+=20
++	sctp_chunk_free(*errp);
+ 	return 1;
+ }
+=20
