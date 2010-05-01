@@ -1,92 +1,189 @@
-From: Shan Wei <shanwei@cn.fujitsu.com>
-Date: Wed, 26 May 2010 09:51:17 +0000
-Subject: [PATCH 2/4] sctp: use common head of addr parameter to access member
-Message-Id: <4BFCEF15.2060508@cn.fujitsu.com>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Sat, 01 May 2010 01:22:50 +0000
+Subject: [RFC PATCH] sctp: Fix a race between ICMP protocol unreachable and
+Message-Id: <4BDB826A.6030503@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: Linux SCTP Dev Mailing list <linux-sctp@vger.kernel.org>, netdev <netdev@vger.kernel.org>
 
+ICMP protocol unreachable handling completely disregarded
+the fact that the user may have locked the socket.  It proceeded
+to destroy the association, even though the user may have
+held the lock and had a ref on the association.  This resulted
+in the following bug:
 
-The 'p' member of struct sctp_paramhdr is common part for
-IPv4 addr parameter and IPv6 addr parameter in union sctp_addr_param.
+Attempt to release alive inet socket f6afcc00
 
-For addr-related code, use specified addr parameter.
-Otherwise, use common header to access type/length member.
+============[ BUG: held lock freed! ]
+-------------------------
+somenu/2672 is freeing memory f6afcc00-f6afcfff, with a lock still held
+there!
+ (sk_lock-AF_INET){+.+.+.}, at: [<c122098a>] sctp_connect+0x13/0x4c
+1 lock held by somenu/2672:
+ #0:  (sk_lock-AF_INET){+.+.+.}, at: [<c122098a>] sctp_connect+0x13/0x4c
 
-Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
+stack backtrace:
+Pid: 2672, comm: somenu Not tainted 2.6.32-telco #55
+Call Trace:
+ [<c1232266>] ? printk+0xf/0x11
+ [<c1038553>] debug_check_no_locks_freed+0xce/0xff
+ [<c10620b4>] kmem_cache_free+0x21/0x66
+ [<c1185f25>] __sk_free+0x9d/0xab
+ [<c1185f9c>] sk_free+0x1c/0x1e
+ [<c1216e38>] sctp_association_put+0x32/0x89
+ [<c1220865>] __sctp_connect+0x36d/0x3f4
+ [<c122098a>] ? sctp_connect+0x13/0x4c
+ [<c102d073>] ? autoremove_wake_function+0x0/0x33
+ [<c12209a8>] sctp_connect+0x31/0x4c
+ [<c11d1e80>] inet_dgram_connect+0x4b/0x55
+ [<c11834fa>] sys_connect+0x54/0x71
+ [<c103a3a2>] ? lock_release_non_nested+0x88/0x239
+ [<c1054026>] ? might_fault+0x42/0x7c
+ [<c1054026>] ? might_fault+0x42/0x7c
+ [<c11847ab>] sys_socketcall+0x6d/0x178
+ [<c10da994>] ? trace_hardirqs_on_thunk+0xc/0x10
+ [<c1002959>] syscall_call+0x7/0xb
+
+This was because the sctp_wait_for_connect() would acquire the socket
+lock and then proceed to release the last reference count on the
+association, thus causing the fully destruction path to finish freeing
+the socket.
+
+The simplest solution is to start a very short timer in case the socket
+is owned by user.  When the timer expires, we can do some verification
+and be able to do the release properly.
+
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 ---
- net/sctp/input.c         |    2 +-
- net/sctp/sm_make_chunk.c |   10 +++++-----
- 2 files changed, 6 insertions(+), 6 deletions(-)
+ include/net/sctp/sm.h      |    1 +
+ include/net/sctp/structs.h |    3 +++
+ net/sctp/input.c           |   23 +++++++++++++++++++----
+ net/sctp/sm_sideeffect.c   |   35 +++++++++++++++++++++++++++++++++++
+ net/sctp/transport.c       |    2 ++
+ 5 files changed, 60 insertions(+), 4 deletions(-)
 
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index 851c813..61d73e3 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -279,6 +279,7 @@ int sctp_do_sm(sctp_event_t event_type, sctp_subtype_t subtype,
+ /* 2nd level prototypes */
+ void sctp_generate_t3_rtx_event(unsigned long peer);
+ void sctp_generate_heartbeat_event(unsigned long peer);
++void sctp_generate_proto_unreach_event(unsigned long peer);
+
+ void sctp_ootb_pkt_free(struct sctp_packet *);
+
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 597f8e2..219043a 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1010,6 +1010,9 @@ struct sctp_transport {
+ 	/* Heartbeat timer is per destination. */
+ 	struct timer_list hb_timer;
+
++	/* Timer to handle ICMP proto unreachable envets */
++	struct timer_list proto_unreach_timer;
++
+ 	/* Since we're using per-destination retransmission timers
+ 	 * (see above), we're also using per-destination "transmitted"
+ 	 * queues.  This probably ought to be a private struct
 diff --git a/net/sctp/input.c b/net/sctp/input.c
-index 9b1dde5..ad3466a 100644
+index 2a57018..94b2eb2 100644
 --- a/net/sctp/input.c
 +++ b/net/sctp/input.c
-@@ -1011,7 +1011,7 @@ static struct sctp_association *__sctp_rcv_asconf_lookup(
- 	/* Skip over the ADDIP header and find the Address parameter */
- 	param = (union sctp_addr_param *)(asconf + 1);
- 
--	af = sctp_get_af_specific(param_type2af(param->v4.param_hdr.type));
-+	af = sctp_get_af_specific(param_type2af(param->p.type));
- 	if (unlikely(!af))
- 		return NULL;
- 
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index d8261f3..e04a3c1 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -2921,7 +2921,7 @@ static __be16 sctp_process_asconf_param(struct sctp_association *asoc,
- 	    asconf_param->param_hdr.type != SCTP_PARAM_SET_PRIMARY)
- 		return SCTP_ERROR_UNKNOWN_PARAM;
- 
--	switch (addr_param->v4.param_hdr.type) {
-+	switch (addr_param->p.type) {
- 	case SCTP_PARAM_IPV6_ADDRESS:
- 		if (!asoc->peer.ipv6_address)
- 			return SCTP_ERROR_DNS_FAILED;
-@@ -2934,7 +2934,7 @@ static __be16 sctp_process_asconf_param(struct sctp_association *asoc,
- 		return SCTP_ERROR_DNS_FAILED;
- 	}
- 
--	af = sctp_get_af_specific(param_type2af(addr_param->v4.param_hdr.type));
-+	af = sctp_get_af_specific(param_type2af(addr_param->p.type));
- 	if (unlikely(!af))
- 		return SCTP_ERROR_DNS_FAILED;
- 
-@@ -3098,7 +3098,7 @@ struct sctp_chunk *sctp_process_asconf(struct sctp_association *asoc,
- 	/* Skip the address parameter and store a pointer to the first
- 	 * asconf parameter.
- 	 */
--	length = ntohs(addr_param->v4.param_hdr.length);
-+	length = ntohs(addr_param->p.length);
- 	asconf_param = (sctp_addip_param_t *)((void *)addr_param + length);
- 	chunk_len -= length;
- 
-@@ -3175,7 +3175,7 @@ static void sctp_asconf_param_success(struct sctp_association *asoc,
- 			((void *)asconf_param + sizeof(sctp_addip_param_t));
- 
- 	/* We have checked the packet before, so we do not check again.	*/
--	af = sctp_get_af_specific(param_type2af(addr_param->v4.param_hdr.type));
-+	af = sctp_get_af_specific(param_type2af(addr_param->p.type));
- 	af->from_addr_param(&addr, addr_param, htons(bp->port), 0);
- 
- 	switch (asconf_param->param_hdr.type) {
-@@ -3302,7 +3302,7 @@ int sctp_process_asconf_ack(struct sctp_association *asoc,
- 	/* Skip the address parameter in the last asconf sent and store a
- 	 * pointer to the first asconf parameter.
- 	 */
--	length = ntohs(addr_param->v4.param_hdr.length);
-+	length = ntohs(addr_param->p.length);
- 	asconf_param = (sctp_addip_param_t *)((void *)addr_param + length);
- 	asconf_len -= length;
- 
+@@ -440,11 +440,25 @@ void sctp_icmp_proto_unreachable(struct sock *sk,
+ {
+ 	SCTP_DEBUG_PRINTK("%s\n",  __func__);
+
+-	sctp_do_sm(SCTP_EVENT_T_OTHER,
+-		   SCTP_ST_OTHER(SCTP_EVENT_ICMP_PROTO_UNREACH),
+-		   asoc->state, asoc->ep, asoc, t,
+-		   GFP_ATOMIC);
++	if (sock_owned_by_user(sk)) {
++		if (timer_pending(&t->proto_unreach_timer))
++			return;
++		else {
++			if (!mod_timer(&t->proto_unreach_timer,
++						jiffies + (HZ/20)))
++				sctp_association_hold(asoc);
++		}
++			
++	} else {
++		if (timer_pending(&t->proto_unreach_timer) &&
++		    del_timer(&t->proto_unreach_timer))
++			sctp_association_put(asoc);
+
++		sctp_do_sm(SCTP_EVENT_T_OTHER,
++			   SCTP_ST_OTHER(SCTP_EVENT_ICMP_PROTO_UNREACH),
++			   asoc->state, asoc->ep, asoc, t,
++			   GFP_ATOMIC);
++	}
+ }
+
+ /* Common lookup code for icmp/icmpv6 error handler. */
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index d5ae450..eb1f42f 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -397,6 +397,41 @@ out_unlock:
+ 	sctp_transport_put(transport);
+ }
+
++/* Handle the timeout of the ICMP protocol unreachable timer.  Trigger
++ * the correct state machine transition that will close the association.
++ */
++void sctp_generate_proto_unreach_event(unsigned long data)
++{
++	struct sctp_transport *transport = (struct sctp_transport *) data;
++	struct sctp_association *asoc = transport->asoc;
++	
++	sctp_bh_lock_sock(asoc->base.sk);
++	if (sock_owned_by_user(asoc->base.sk)) {
++		SCTP_DEBUG_PRINTK("%s:Sock is busy.\n", __func__);
++
++		/* Try again later.  */
++		if (!mod_timer(&transport->proto_unreach_timer,
++				jiffies + (HZ/20)))
++			sctp_association_hold(asoc);
++		goto out_unlock;
++	}
++
++	/* Is this structure just waiting around for us to actually
++	 * get destroyed?
++	 */
++	if (asoc->base.dead)
++		goto out_unlock;
++
++	sctp_do_sm(SCTP_EVENT_T_OTHER,
++		   SCTP_ST_OTHER(SCTP_EVENT_ICMP_PROTO_UNREACH),
++		   asoc->state, asoc->ep, asoc, transport, GFP_ATOMIC);
++
++out_unlock:
++	sctp_bh_unlock_sock(asoc->base.sk);
++	sctp_association_put(asoc);
++}
++
++
+ /* Inject a SACK Timeout event into the state machine.  */
+ static void sctp_generate_sack_event(unsigned long data)
+ {
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index be4d63d..4a36803 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -108,6 +108,8 @@ static struct sctp_transport *sctp_transport_init(struct
+sctp_transport *peer,
+ 			(unsigned long)peer);
+ 	setup_timer(&peer->hb_timer, sctp_generate_heartbeat_event,
+ 			(unsigned long)peer);
++	setup_timer(&peer->proto_unreach_timer,
++		    sctp_generate_proto_unreach_event, (unsigned long)peer);
+
+ 	/* Initialize the 64-bit random nonce sent with heartbeat. */
+ 	get_random_bytes(&peer->hb_nonce, sizeof(peer->hb_nonce));
 -- 
-1.7.0
-
-
-
-
+1.6.0.4
 
