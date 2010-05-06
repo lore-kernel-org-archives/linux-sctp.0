@@ -1,22 +1,18 @@
-From: "alibi" <hunter@p4001-ipbf610yosida.nagano.ocn.ne.jp>
-Date: Thu, 27 May 2010 03:11:19 +0000
-Subject: targeted business mailing list
-Message-Id: <20100527031120.4DC09C7C683@mail.legend-net.jp>
+From: "Roberto N Valenzuela" <kathyjones@mail.rondonopolis.mt.gov.br>
+Date: Thu, 06 May 2010 19:28:44 +0000
+Subject: b2b email lists
+Message-Id: <SRVEXCHANGEv9nDqUV40000b842@mail.rondonopolis.mt.gov.br>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Here's some of the healthcare lists we have:
+We have lists for healthcare, business & finance, consumers and professionals. Lots of different lists from various optin sources.
 
-Mental Health Counselors - 283,184 records 7,206 emails
-Psychologists - 272,188 records and 9,874 emails
-Physicians (34 specialties) - 788k records, 17k emails, 200k fax numbers
-
-Theres many more too, just send me an email here for additional info/samples: maximumresults@gmx.com
+Just send me an email here for additional info: Rhoda.Lynch@realresults.co.cc
 
   
 
 
-to adjust your subscription status email to remfiles@gmx.com
+to expel yourself from the list go here please send an email to disappear@realresults.co.cc
