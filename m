@@ -1,7 +1,7 @@
 From: Georgios Cheimonidis <gche@kth.se>
-Date: Tue, 11 May 2010 18:45:31 +0000
+Date: Wed, 12 May 2010 15:26:48 +0000
 Subject: Re: Gap not retransmitted after switchover
-Message-Id: <4BE9A5CB.5090707@kth.se>
+Message-Id: <4BEAC8B8.8070306@kth.se>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <4BE95C1C.4050902@hp.com>
 In-Reply-To: <4BE95C1C.4050902@hp.com>
@@ -12,11 +12,46 @@ To: linux-sctp@vger.kernel.org
 
 Hi Vlad!
 
-I will compile it now and test it tomorrow morning. I will let you know 
-as soon as I have the results.
+I made quite a lot of tests today. Here are my results.
 
-Thanks!
-/George
+When I repeated my previous test (IPv4 addresses only) I did not 
+experience any problems. So, it seems that the patch worked! The server, 
+after receiving three consecutive SACKs with the reported gap (three 
+miss indications), it retransmitted the missing TSNs and the data flow 
+continued normally. I repeated it many times and the result was always 
+the same.
+
+However, I experienced the same problem (not always but some times) when 
+I had the following setup.
+- Server having both IPv4 and IPv6 addresses on ethernet interface.
+- Client having IPv6 on ethernet (X) and IPv4 on wlan (Y).
+- Association established with all the above addresses belonging to the 
+association. The client uses its IPv6 address to contact the IPv6 
+address of the server (initially), so the initial handshake is done 
+using the IPv6 addresses. The client sends an ASCONF just after 
+association establishment to tell the server to set its primary to the X.
+- Whenever the ethernet cable is removed at the client, the client calls 
+setsockopt(SET_PEER_PRIMARY_ADDR) to tell the server to set Y as its 
+primary and then calles sctp_bindx() to remove X from the association.
+In this scenario, sometimes the server does not retransmit the gap 
+(after changing primary from X to Y and deleting Y from association).
+
+Another observation that I have made, is that sometimes, after the 
+ethernet cable is removed and I call setsockopt(SET_PEER_PRIMARY_ADDR) 
+on the client to set the peer's primary to Y, the actual transmission of 
+the ASCONF chunk is observed after many seconds (sometimes I observed 
+the transmission 30 seconds after the call to setsockopt). I don't know 
+if this is normal. Even with IPv4 only test I observed a small delay 
+between calling setsockopt() and observing the ASCONF chunk, but it was 
+about 1-2 seconds. With the IPv4/IPv6 test, this delay varied more.
+
+Looking forward to your comments! Let me know if you want me to test 
+something more.
+
+Best regards,
+George
+
+
 
 On 05/11/2010 05:35 PM, Vlad Yasevich wrote:
 >
