@@ -1,44 +1,22 @@
-From: Shan Wei <shanwei@cn.fujitsu.com>
-Date: Wed, 26 May 2010 09:51:03 +0000
-Subject: [PATCH 1/4] sctp:  kill unused variable in __sctp_rcv_init_lookup()
-Message-Id: <4BFCEF07.8060101@cn.fujitsu.com>
+From: "veery Fox" <jenifferknowles@mail.blockbg.com>
+Date: Thu, 13 May 2010 10:07:58 +0000
+Subject: Mental Health Counselors - 283,184 records 7,206 emails
+Message-Id: <201005130601235.SM02692@weber>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
+Here's some of the healthcare lists we have:
 
-Remove "ch" variable as it never be used.
+Pharmaceutical Companies - Email only list 47,000 emails of pharma company employees
+Physical Therapists - 125,460 total records with 5,483 emails and 4,405 fax numbers
+Oncology Doctors - 2,200 records all with emails
 
-Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
----
- net/sctp/input.c |    3 ---
- 1 files changed, 0 insertions(+), 3 deletions(-)
+Theres many more too, just send me an email here for additional info/samples: Lakeisha.Hatch@getresults.co.cc
 
-diff --git a/net/sctp/input.c b/net/sctp/input.c
-index dc421d5..9b1dde5 100644
---- a/net/sctp/input.c
-+++ b/net/sctp/input.c
-@@ -942,14 +942,11 @@ static struct sctp_association *__sctp_rcv_init_lookup(struct sk_buff *skb,
- 	union sctp_addr addr;
- 	union sctp_addr *paddr = &addr;
- 	struct sctphdr *sh = sctp_hdr(skb);
--	sctp_chunkhdr_t *ch;
- 	union sctp_params params;
- 	sctp_init_chunk_t *init;
- 	struct sctp_transport *transport;
- 	struct sctp_af *af;
- 
--	ch = (sctp_chunkhdr_t *) skb->data;
--
- 	/*
- 	 * This code will NOT touch anything inside the chunk--it is
- 	 * strictly READ-ONLY.
--- 
-1.7.0
+  
 
 
-
-
-
+to stop this email in future email us at disappear@getresults.co.cc
