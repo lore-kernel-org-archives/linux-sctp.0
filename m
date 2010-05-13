@@ -1,49 +1,48 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Tue, 11 May 2010 15:45:56 +0000
-Subject: Re: [PATCH for net-next-2.6] sctp: fix oops when update assoc retran path
-Message-Id: <1273592756-30046-1-git-send-email-vladislav.yasevich@hp.com>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Thu, 13 May 2010 05:19:29 +0000
+Subject: [PATCH] sctp: fix append error cause to ERROR chunk correctly
+Message-Id: <4BEB8BE1.2080901@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4BE8FC76.40000@cn.fujitsu.com>
-In-Reply-To: <4BE8FC76.40000@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Here is what I am planning to commit:
+commit 5fa782c2f5ef6c2e4f04d3e228412c9b4a4c8809
+  sctp: Fix skb_over_panic resulting from multiple invalid \
+    parameter errors (CVE-2010-1173) (v4)
 
-sctp: fix oops when updating retransmit path with DEBUG on
-
-commit fbdf501c9374966a56829ecca3a7f25d2b49a305
-  sctp: Do no select unconfirmed transports for retransmissions
-
-Introduced the initial falt.
-
-commit d598b166ced20d9b9281ea3527c0e18405ddb803
-  sctp: Make sure we always return valid retransmit path
-
-Solved the problem, but forgot to change the DEBUG statement.
-Thus it was still possible to dereference a NULL pointer.
+cause 'error cause' never be add the the ERROR chunk due to
+some typo when check valid length in sctp_init_cause_fixed().
 
 Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 ---
- net/sctp/associola.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ net/sctp/sm_make_chunk.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index 65f9a7c..1b26878 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -1323,6 +1323,8 @@ void sctp_assoc_update_retran_path(struct sctp_association *asoc)
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 30c1767..70d6c10 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -141,7 +141,7 @@ int sctp_init_cause_fixed(struct sctp_chunk *chunk, __be16 cause_code,
+ 	len = sizeof(sctp_errhdr_t) + paylen;
+ 	err.length  = htons(len);
  
- 	if (t)
- 		asoc->peer.retran_path = t;
-+	else
-+		t = asoc->peer.retran_path;
- 
- 	SCTP_DEBUG_PRINTK_IPADDR("sctp_assoc_update_retran_path:association"
- 				 " %p addr: ",
+-	if (skb_tailroom(chunk->skb) >  len)
++	if (skb_tailroom(chunk->skb) < len)
+ 		return -ENOSPC;
+ 	chunk->subh.err_hdr = sctp_addto_chunk_fixed(chunk,
+ 						     sizeof(sctp_errhdr_t),
+@@ -1421,7 +1421,7 @@ void *sctp_addto_chunk(struct sctp_chunk *chunk, int len, const void *data)
+ void *sctp_addto_chunk_fixed(struct sctp_chunk *chunk,
+ 			     int len, const void *data)
+ {
+-	if (skb_tailroom(chunk->skb) > len)
++	if (skb_tailroom(chunk->skb) >= len)
+ 		return sctp_addto_chunk(chunk, len, data);
+ 	else
+ 		return NULL;
 -- 
-1.6.0.4
+1.6.5.2
+
 
