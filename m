@@ -1,58 +1,40 @@
-From: Shan Wei <shanwei@cn.fujitsu.com>
-Date: Tue, 18 May 2010 10:08:33 +0000
-Subject: Re: [PATCH CLEANUP] sctp: fix the comment of  sctp_sf_violation_paramlen()
-Message-Id: <4BF26721.8070608@cn.fujitsu.com>
+From: Dan Carpenter <error27@gmail.com>
+Date: Sat, 22 May 2010 20:20:24 +0000
+Subject: [patch] sctp: dubious bitfields in sctp_transport
+Message-Id: <20100522202024.GL22515@bicker>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4BF0DD56.70105@cn.fujitsu.com>
-In-Reply-To: <4BF0DD56.70105@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: Vlad Yasevich <vladislav.yasevich@hp.com>
+Cc: Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>, Wei Yongjun <yjwei@cn.fujitsu.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, kernel-janitors@vger.kernel.org
 
-Vlad Yasevich wrote, at 05/17/2010 10:30 PM:
->> @@sctp_verify_asconf()
->> 3045                 if (param.v > chunk_end - length ||
->> 3046                     length < sizeof(sctp_paramhdr_t))
->> 3047                         return 0;
->>
-> 
-> This doesn't check the 'true' length of the parameter.  It makes sure that
-> the length specified is at least as long as sctp_paramhdr_t (minimum length),
-> and not longer then the end of the chunk.  It makes no assumptions about
-> the actual length of the parameter.
+Sparse complains because these one-bit bitfields are signed.
+  include/net/sctp/structs.h:879:24: error: dubious one-bit signed bitfield
+  include/net/sctp/structs.h:889:31: error: dubious one-bit signed bitfield
+  include/net/sctp/structs.h:895:26: error: dubious one-bit signed bitfield
+  include/net/sctp/structs.h:898:31: error: dubious one-bit signed bitfield
+  include/net/sctp/structs.h:901:27: error: dubious one-bit signed bitfield
 
-Thanks for your exact description.
+It doesn't cause a problem in the current code, but it would be better
+to clean it up.  This was introduced by c0058a35aacc7: "sctp: Save some
+room in the sctp_transport by using bitfields".
 
-How about fixing like this?
+Signed-off-by: Dan Carpenter <error27@gmail.com>
+---
+It looks like this header is exported to user space.  I don't know if
+that makes a difference.
 
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 565a690..32e2c34 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -4329,8 +4329,9 @@ static sctp_disposition_t sctp_sf_violation_chunklen(
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 6173c61..4b86011 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -876,7 +876,7 @@ struct sctp_transport {
  
- /*
-  * Handle a protocol violation when the parameter length is invalid.
-- * "Invalid" length is identified as smaller than the minimal length a
-- * given parameter can be.
-+ * If the length is smaller than the minimum length of a given parameter,
-+ * or accumulated length in multi parameters exceeds the end of the chunk,
-+ * the length is considered as invalid.
-  */
- static sctp_disposition_t sctp_sf_violation_paramlen(
- 				     const struct sctp_endpoint *ep,
-
--- 
-Best Regards
------
-Shan Wei
-
-
-> 
-> -vlad
-> 
-> 
-> 
-
-
+ 	/* Reference counting. */
+ 	atomic_t refcnt;
+-	int	 dead:1,
++	__u32	 dead:1,
+ 		/* RTO-Pending : A flag used to track if one of the DATA
+ 		 *		chunks sent to this address is currently being
+ 		 *		used to compute a RTT. If this flag is 0,
