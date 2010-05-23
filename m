@@ -1,46 +1,94 @@
-From: Shan Wei <shanwei@cn.fujitsu.com>
-Date: Wed, 12 May 2010 09:24:25 +0000
-Subject: [PATCH CLEANUP] sctp: remove redundant check when walking through
-Message-Id: <4BEA73C9.6090909@cn.fujitsu.com>
+From: Andrea Gelmini <andrea.gelmini@gelma.net>
+Date: Sun, 23 May 2010 19:56:31 +0000
+Subject: [PATCH 076/199] Documentation/networking/sctp.txt: Checkpatch cleanup
+Message-Id: <1274644605-25181-35-git-send-email-andrea.gelmini@gelma.net>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
+Documentation/networking/sctp.txt:1: ERROR: trailing whitespace
+Documentation/networking/sctp.txt:4: ERROR: trailing whitespace
+Documentation/networking/sctp.txt:10: ERROR: trailing whitespace
+Documentation/networking/sctp.txt:11: ERROR: trailing whitespace
+Documentation/networking/sctp.txt:12: ERROR: trailing whitespace
+Documentation/networking/sctp.txt:14: ERROR: trailing whitespace
+Documentation/networking/sctp.txt:15: ERROR: trailing whitespace
+Documentation/networking/sctp.txt:18: ERROR: trailing whitespace
+Documentation/networking/sctp.txt:19: ERROR: trailing whitespace
+Documentation/networking/sctp.txt:20: ERROR: trailing whitespace
+Documentation/networking/sctp.txt:23: ERROR: trailing whitespace
+Documentation/networking/sctp.txt:25: ERROR: trailing whitespace
+Documentation/networking/sctp.txt:26: ERROR: trailing whitespace
+Documentation/networking/sctp.txt:28: ERROR: trailing whitespace
+Documentation/networking/sctp.txt:29: ERROR: trailing whitespace
+Documentation/networking/sctp.txt:36: ERROR: trailing whitespace
 
-When  pos.v <= (void *)chunk + end - ntohs(pos.p->length) and 
-ntohs(pos.p->length) >= sizeof(sctp_paramhdr_t) these two expressions are all true,
-pos.v <= (void *)chunk + end - sizeof(sctp_paramhdr_t) *must* be true.
-
-This patch removes this kind of redundant check.
-It's same to  _sctp_walk_errors macro.
-
-
-Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
+Signed-off-by: Andrea Gelmini <andrea.gelmini@gelma.net>
 ---
- include/net/sctp/sctp.h |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+ Documentation/networking/sctp.txt |   32 ++++++++++++++++----------------
+ 1 files changed, 16 insertions(+), 16 deletions(-)
 
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index 5915155..a9b4584 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -518,7 +518,6 @@ _sctp_walk_params((pos), (chunk), ntohs((chunk)->chunk_hdr.length), member)
+diff --git a/Documentation/networking/sctp.txt b/Documentation/networking/sctp.txt
+index 0c790a7..7a45f00 100644
+--- a/Documentation/networking/sctp.txt
++++ b/Documentation/networking/sctp.txt
+@@ -1,38 +1,38 @@
+-Linux Kernel SCTP 
++Linux Kernel SCTP
  
- #define _sctp_walk_params(pos, chunk, end, member)\
- for (pos.v = chunk->member;\
--     pos.v <= (void *)chunk + end - sizeof(sctp_paramhdr_t) &&\
-      pos.v <= (void *)chunk + end - ntohs(pos.p->length) &&\
-      ntohs(pos.p->length) >= sizeof(sctp_paramhdr_t);\
-      pos.v += WORD_ROUND(ntohs(pos.p->length)))
-@@ -529,7 +528,6 @@ _sctp_walk_errors((err), (chunk_hdr), ntohs((chunk_hdr)->length))
- #define _sctp_walk_errors(err, chunk_hdr, end)\
- for (err = (sctp_errhdr_t *)((void *)chunk_hdr + \
- 	    sizeof(sctp_chunkhdr_t));\
--     (void *)err <= (void *)chunk_hdr + end - sizeof(sctp_errhdr_t) &&\
-      (void *)err <= (void *)chunk_hdr + end - ntohs(err->length) &&\
-      ntohs(err->length) >= sizeof(sctp_errhdr_t); \
-      err = (sctp_errhdr_t *)((void *)err + WORD_ROUND(ntohs(err->length))))
---
-1.6.3.3 
+ This is the current BETA release of the Linux Kernel SCTP reference
+-implementation.  
++implementation.
+ 
+ SCTP (Stream Control Transmission Protocol) is a IP based, message oriented,
+ reliable transport protocol, with congestion control, support for
+ transparent multi-homing, and multiple ordered streams of messages.
+ RFC2960 defines the core protocol.  The IETF SIGTRAN working group originally
+-developed the SCTP protocol and later handed the protocol over to the 
+-Transport Area (TSVWG) working group for the continued evolvement of SCTP as a 
+-general purpose transport.  
++developed the SCTP protocol and later handed the protocol over to the
++Transport Area (TSVWG) working group for the continued evolvement of SCTP as a
++general purpose transport.
+ 
+-See the IETF website (http://www.ietf.org) for further documents on SCTP. 
+-See http://www.ietf.org/rfc/rfc2960.txt 
++See the IETF website (http://www.ietf.org) for further documents on SCTP.
++See http://www.ietf.org/rfc/rfc2960.txt
+ 
+ The initial project goal is to create an Linux kernel reference implementation
+-of SCTP that is RFC 2960 compliant and provides an programming interface 
+-referred to as the  UDP-style API of the Sockets Extensions for SCTP, as 
+-proposed in IETF Internet-Drafts.    
++of SCTP that is RFC 2960 compliant and provides an programming interface
++referred to as the  UDP-style API of the Sockets Extensions for SCTP, as
++proposed in IETF Internet-Drafts.
+ 
+ 
+-Caveats:  
++Caveats:
+ 
+--lksctp can be built as statically or as a module.  However, be aware that 
+-module removal of lksctp is not yet a safe activity.   
++-lksctp can be built as statically or as a module.  However, be aware that
++module removal of lksctp is not yet a safe activity.
+ 
+--There is tentative support for IPv6, but most work has gone towards 
+-implementation and testing lksctp on IPv4.   
++-There is tentative support for IPv6, but most work has gone towards
++implementation and testing lksctp on IPv4.
+ 
+ 
+ For more information, please visit the lksctp project website:
+    http://www.sf.net/projects/lksctp
+ 
+ Or contact the lksctp developers through the mailing list:
+-   <lksctp-developers@lists.sourceforge.net> 
++   <lksctp-developers@lists.sourceforge.net>
+ 
+ 
+-- 
+1.7.1.251.gf80a2
+
