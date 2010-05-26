@@ -1,7 +1,7 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Wed, 26 May 2010 15:50:23 +0000
-Subject: Re: Source IP not corresponding to interface
-Message-Id: <4BFD433F.5050204@hp.com>
+From: "Georgios Cheimonidis" <gche@kth.se>
+Date: Wed, 26 May 2010 20:21:16 +0000
+Subject: RE: Source IP not corresponding to interface
+Message-Id: <000301cafd10$ff5958b0$fe0c0a10$@se>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <4BFBFB26.6050209@kth.se>
 In-Reply-To: <4BFBFB26.6050209@kth.se>
@@ -9,6 +9,26 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
+
+Hi Vlad!
+
+I will do some more tests with various rto.initial values and let you know.
+About what you said regarding the transmission of a user HEARTBEAT at the
+server: do I get a notification when the address is added to the
+association? Because, from what I remember with some tests that I did with
+2.6.31 kernel, this notification (SCTP_ADDR_ADDED) as well as
+SCTP_ADDR_REMOVED and SCTP_ADDR_MADE_PRIM were not received by my
+application (probably because they were not implemented yet). 
+
+Best regards,
+George 
+
+-----Original Message-----
+From: Vlad Yasevich [mailto:vladislav.yasevich@hp.com] 
+Sent: Wednesday, May 26, 2010 5:50 PM
+To: Georgios Cheimonidis
+Cc: linux-sctp@vger.kernel.org
+Subject: Re: Source IP not corresponding to interface
 
 
 
@@ -38,13 +58,15 @@ Hi George
 
 Looking at the look (iteration #4), I see lots of traffic at 16:13:16.
 Looks like the client gets the ASCONF_ACK for the ADD_IP parameter, and
-re-looks up the route to the server.  The route is now rt_dst:213.ZZZ.ZZZ.ZZZ,
+re-looks up the route to the server.  The route is now
+rt_dst:213.ZZZ.ZZZ.ZZZ,
 rt_src:192.XXX.XXX.XXX.
 
 It sends the ASCONF for SET_PRIMARY and then doesn't get anything back from
 the server until 16:13:17 which is DATA.  Now, the kernel timesamps don't
 include milliseconds so it's not really possible to tell how much time has
-passed.   So at 16:13:17, there is DATA flow from the server and it triggers a
+passed.   So at 16:13:17, there is DATA flow from the server and it triggers
+a
 SACK.  Looks like there is also a HEARTBEAT.
 
 So it could be that the delay is the HEARTBEAT delay.  Try playing with
@@ -223,3 +245,4 @@ new path come up on the server.
 >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 >>>
 > 
+
