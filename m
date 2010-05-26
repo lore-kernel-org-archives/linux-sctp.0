@@ -1,94 +1,54 @@
-From: Andrea Gelmini <andrea.gelmini@gelma.net>
-Date: Sun, 23 May 2010 19:56:31 +0000
-Subject: [PATCH 076/199] Documentation/networking/sctp.txt: Checkpatch cleanup
-Message-Id: <1274644605-25181-35-git-send-email-andrea.gelmini@gelma.net>
+From: Shan Wei <shanwei@cn.fujitsu.com>
+Date: Wed, 26 May 2010 09:51:25 +0000
+Subject: [PATCH 3/4] sctp: kill abandoned SCTP_CMD_TRANSMIT command
+Message-Id: <4BFCEF1D.7090806@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Documentation/networking/sctp.txt:1: ERROR: trailing whitespace
-Documentation/networking/sctp.txt:4: ERROR: trailing whitespace
-Documentation/networking/sctp.txt:10: ERROR: trailing whitespace
-Documentation/networking/sctp.txt:11: ERROR: trailing whitespace
-Documentation/networking/sctp.txt:12: ERROR: trailing whitespace
-Documentation/networking/sctp.txt:14: ERROR: trailing whitespace
-Documentation/networking/sctp.txt:15: ERROR: trailing whitespace
-Documentation/networking/sctp.txt:18: ERROR: trailing whitespace
-Documentation/networking/sctp.txt:19: ERROR: trailing whitespace
-Documentation/networking/sctp.txt:20: ERROR: trailing whitespace
-Documentation/networking/sctp.txt:23: ERROR: trailing whitespace
-Documentation/networking/sctp.txt:25: ERROR: trailing whitespace
-Documentation/networking/sctp.txt:26: ERROR: trailing whitespace
-Documentation/networking/sctp.txt:28: ERROR: trailing whitespace
-Documentation/networking/sctp.txt:29: ERROR: trailing whitespace
-Documentation/networking/sctp.txt:36: ERROR: trailing whitespace
+Remove SCTP_CMD_TRANSMIT command as it never be used.
 
-Signed-off-by: Andrea Gelmini <andrea.gelmini@gelma.net>
+
+Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
 ---
- Documentation/networking/sctp.txt |   32 ++++++++++++++++----------------
- 1 files changed, 16 insertions(+), 16 deletions(-)
+ include/net/sctp/command.h |    1 -
+ net/sctp/sm_sideeffect.c   |    6 ------
+ 2 files changed, 0 insertions(+), 7 deletions(-)
 
-diff --git a/Documentation/networking/sctp.txt b/Documentation/networking/sctp.txt
-index 0c790a7..7a45f00 100644
---- a/Documentation/networking/sctp.txt
-+++ b/Documentation/networking/sctp.txt
-@@ -1,38 +1,38 @@
--Linux Kernel SCTP 
-+Linux Kernel SCTP
+diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
+index 2c55a7e..78227b3 100644
+--- a/include/net/sctp/command.h
++++ b/include/net/sctp/command.h
+@@ -73,7 +73,6 @@ typedef enum {
+ 	SCTP_CMD_INIT_FAILED,   /* High level, do init failure work. */
+ 	SCTP_CMD_REPORT_DUP,	/* Report a duplicate TSN.  */
+ 	SCTP_CMD_STRIKE,	/* Mark a strike against a transport.  */
+-	SCTP_CMD_TRANSMIT,      /* Transmit the outqueue. */
+ 	SCTP_CMD_HB_TIMERS_START,    /* Start the heartbeat timers. */
+ 	SCTP_CMD_HB_TIMER_UPDATE,    /* Update a heartbeat timers.  */
+ 	SCTP_CMD_HB_TIMERS_STOP,     /* Stop the heartbeat timers.  */
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 22e6702..8ccaf69 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -1420,12 +1420,6 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
+ 					SCTP_RTXR_T3_RTX);
+ 			break;
  
- This is the current BETA release of the Linux Kernel SCTP reference
--implementation.  
-+implementation.
- 
- SCTP (Stream Control Transmission Protocol) is a IP based, message oriented,
- reliable transport protocol, with congestion control, support for
- transparent multi-homing, and multiple ordered streams of messages.
- RFC2960 defines the core protocol.  The IETF SIGTRAN working group originally
--developed the SCTP protocol and later handed the protocol over to the 
--Transport Area (TSVWG) working group for the continued evolvement of SCTP as a 
--general purpose transport.  
-+developed the SCTP protocol and later handed the protocol over to the
-+Transport Area (TSVWG) working group for the continued evolvement of SCTP as a
-+general purpose transport.
- 
--See the IETF website (http://www.ietf.org) for further documents on SCTP. 
--See http://www.ietf.org/rfc/rfc2960.txt 
-+See the IETF website (http://www.ietf.org) for further documents on SCTP.
-+See http://www.ietf.org/rfc/rfc2960.txt
- 
- The initial project goal is to create an Linux kernel reference implementation
--of SCTP that is RFC 2960 compliant and provides an programming interface 
--referred to as the  UDP-style API of the Sockets Extensions for SCTP, as 
--proposed in IETF Internet-Drafts.    
-+of SCTP that is RFC 2960 compliant and provides an programming interface
-+referred to as the  UDP-style API of the Sockets Extensions for SCTP, as
-+proposed in IETF Internet-Drafts.
- 
- 
--Caveats:  
-+Caveats:
- 
---lksctp can be built as statically or as a module.  However, be aware that 
--module removal of lksctp is not yet a safe activity.   
-+-lksctp can be built as statically or as a module.  However, be aware that
-+module removal of lksctp is not yet a safe activity.
- 
---There is tentative support for IPv6, but most work has gone towards 
--implementation and testing lksctp on IPv4.   
-+-There is tentative support for IPv6, but most work has gone towards
-+implementation and testing lksctp on IPv4.
- 
- 
- For more information, please visit the lksctp project website:
-    http://www.sf.net/projects/lksctp
- 
- Or contact the lksctp developers through the mailing list:
--   <lksctp-developers@lists.sourceforge.net> 
-+   <lksctp-developers@lists.sourceforge.net>
- 
- 
+-		case SCTP_CMD_TRANSMIT:
+-			/* Kick start transmission. */
+-			error = sctp_outq_uncork(&asoc->outqueue);
+-			local_cork = 0;
+-			break;
+-
+ 		case SCTP_CMD_ECN_CE:
+ 			/* Do delayed CE processing.   */
+ 			sctp_do_ecn_ce_work(asoc, cmd->obj.u32);
 -- 
-1.7.1.251.gf80a2
+1.7.0
+
+
+
 
