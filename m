@@ -1,7 +1,7 @@
 From: Georgios Cheimonidis <gche@kth.se>
-Date: Tue, 25 May 2010 19:53:14 +0000
+Date: Wed, 26 May 2010 13:49:24 +0000
 Subject: Re: Source IP not corresponding to interface
-Message-Id: <4BFC2AAA.3090303@kth.se>
+Message-Id: <4BFD26E4.7020304@kth.se>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <4BFBFB26.6050209@kth.se>
 In-Reply-To: <4BFBFB26.6050209@kth.se>
@@ -12,18 +12,24 @@ To: linux-sctp@vger.kernel.org
 
 Hi Vlad!
 
-Ok, it makes sense. I will test this patch tomorrow morning and let you 
-know.
+I have applied the patch and repeated the same test. The results are 
+good. I don't see any packets with wrong source IP in the wlan interface 
+any more. Most of the times the switchover from 3G to wlan (when wlan's 
+IP is made available and added to the association) is quite fast. 
+Sometimes, I observe a small delay between the ASCONF_ACK received from 
+the server (corresponding to the ASCONF for adding the wlan's IP 
+address) and the first packet (SACK or ASCONF for setting peer's 
+primary) transmitted from the wlan interface. The maximum value of this 
+delay is about 1 second. During this small delay, no packets are 
+transmitted from wlan or 3G interface.
 
 Best regards,
 George
-
 
 On 05/25/2010 09:12 PM, Vlad Yasevich wrote:
 > Hi George
 >
 > Georgios Cheimonidis wrote:
->    
 >> Hi Vlad!
 >>
 >> Thanks for the quick reply!
@@ -42,7 +48,7 @@ On 05/25/2010 09:12 PM, Vlad Yasevich wrote:
 >> Nice to hear about the v6 patch! I will also do some testing and let you
 >> know about the results. Have you already published it in the mailing list?
 >>
->>      
+>
 > Ok, so here is a simple patch to try along with the explanation.
 >
 > When you add a address we send an ASCONF, but the new address is not usable
@@ -77,17 +83,15 @@ On 05/25/2010 09:12 PM, Vlad Yasevich wrote:
 >
 > -vlad
 >
->    
 >> Best regards
 >> George
 >>
 >>
 >>
 >> On 05/25/2010 07:11 PM, Vlad Yasevich wrote:
->>      
+>>>
 >>> Georgios Cheimonidis wrote:
 >>>
->>>        
 >>>> Hi!
 >>>>
 >>>> I have observed a problem while doing some tests with dynamic address
@@ -107,7 +111,6 @@ On 05/25/2010 09:12 PM, Vlad Yasevich wrote:
 >>>> enabled SCTP debugging messages.
 >>>>
 >>>>
->>>>          
 >>> Hi George
 >>>
 >>> Thanks for this report.  I am setting up a reproduction environment now.
@@ -127,6 +130,5 @@ On 05/25/2010 09:12 PM, Vlad Yasevich wrote:
 >>>
 >>> -vlad
 >>>
->>>        
->>      
+>>
 
