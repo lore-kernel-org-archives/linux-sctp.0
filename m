@@ -1,101 +1,106 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Wed, 02 Jun 2010 06:20:55 +0000
-Subject: [PATCH 2/3] sctp: make heartbeat information in sctp_make_heartbeat()
-Message-Id: <4C05F847.8010308@cn.fujitsu.com>
+From: Shan Wei <shanwei@cn.fujitsu.com>
+Date: Tue, 01 Jun 2010 12:03:57 +0000
+Subject: [PATCH] sctp: handle ootb packet in chunk order as defined
+Message-Id: <4C04F72D.4080800@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Make heartbeat information in sctp_make_heartbeat() instead
-of make it in sctp_sf_heartbeat() directly for common using.
+
+Changed the order of processing SHUTDOWN ACK and COOKIE ACK 
+refer to section 8.4:Handle "Out of the Blue" Packets. 
+
+SHUTDOWN ACK chunk should be processed before processing 
+"Stale Cookie" ERROR or a COOKIE ACK.
 
 Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
 ---
- include/net/sctp/sm.h    |    4 +---
- net/sctp/sm_make_chunk.c |   18 +++++++++++++-----
- net/sctp/sm_statefuns.c  |   11 +----------
- 3 files changed, 15 insertions(+), 18 deletions(-)
+ net/sctp/input.c        |   15 ---------------
+ net/sctp/sm_statefuns.c |   21 +++++++++++++++++++++
+ 2 files changed, 21 insertions(+), 15 deletions(-)
 
-diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index 4088c89..cee75fd 100644
---- a/include/net/sctp/sm.h
-+++ b/include/net/sctp/sm.h
-@@ -232,9 +232,7 @@ struct sctp_chunk *sctp_make_violation_paramlen(const struct sctp_association *,
- 				   const struct sctp_chunk *,
- 				   struct sctp_paramhdr *);
- struct sctp_chunk *sctp_make_heartbeat(const struct sctp_association *,
--				  const struct sctp_transport *,
--				  const void *payload,
--				  const size_t paylen);
-+				  const struct sctp_transport *);
- struct sctp_chunk *sctp_make_heartbeat_ack(const struct sctp_association *,
- 				      const struct sctp_chunk *,
- 				      const void *payload,
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index e04e4b9..459ebff 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -1073,20 +1073,28 @@ nodata:
- 
- /* Make a HEARTBEAT chunk.  */
- struct sctp_chunk *sctp_make_heartbeat(const struct sctp_association *asoc,
--				  const struct sctp_transport *transport,
--				  const void *payload, const size_t paylen)
-+				  const struct sctp_transport *transport)
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index ad3466a..b2fbe6f 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -655,7 +655,6 @@ static int sctp_rcv_ootb(struct sk_buff *skb)
  {
--	struct sctp_chunk *retval = sctp_make_chunk(asoc, SCTP_CID_HEARTBEAT,
--						    0, paylen);
-+	struct sctp_chunk *retval;
-+	sctp_sender_hb_info_t hbinfo;
-+
-+	retval = sctp_make_chunk(asoc, SCTP_CID_HEARTBEAT, 0, sizeof(hbinfo));
+ 	sctp_chunkhdr_t *ch;
+ 	__u8 *ch_end;
+-	sctp_errhdr_t *err;
  
- 	if (!retval)
- 		goto nodata;
+ 	ch = (sctp_chunkhdr_t *) skb->data;
  
-+	hbinfo.param_hdr.type = SCTP_PARAM_HEARTBEAT_INFO;
-+	hbinfo.param_hdr.length = htons(sizeof(sctp_sender_hb_info_t));
-+	hbinfo.daddr = transport->ipaddr;
-+	hbinfo.sent_at = jiffies;
-+	hbinfo.hb_nonce = transport->hb_nonce;
-+
- 	/* Cast away the 'const', as this is just telling the chunk
- 	 * what transport it belongs to.
- 	 */
- 	retval->transport = (struct sctp_transport *) transport;
--	retval->subh.hbs_hdr = sctp_addto_chunk(retval, paylen, payload);
-+	retval->subh.hbs_hdr = sctp_addto_chunk(retval, sizeof(hbinfo),
-+						&hbinfo);
+@@ -691,20 +690,6 @@ static int sctp_rcv_ootb(struct sk_buff *skb)
+ 		if (SCTP_CID_INIT = ch->type && (void *)ch != skb->data)
+ 			goto discard;
  
- nodata:
- 	return retval;
+-		/* RFC 8.4, 7) If the packet contains a "Stale cookie" ERROR
+-		 * or a COOKIE ACK the SCTP Packet should be silently
+-		 * discarded.
+-		 */
+-		if (SCTP_CID_COOKIE_ACK = ch->type)
+-			goto discard;
+-
+-		if (SCTP_CID_ERROR = ch->type) {
+-			sctp_walk_errors(err, ch) {
+-				if (SCTP_ERROR_STALE_COOKIE = err->cause)
+-					goto discard;
+-			}
+-		}
+-
+ 		ch = (sctp_chunkhdr_t *) ch_end;
+ 	} while (ch_end < skb_tail_pointer(skb));
+ 
 diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index d143a1a..fe79705 100644
+index dbf98a2..b440c0b 100644
 --- a/net/sctp/sm_statefuns.c
 +++ b/net/sctp/sm_statefuns.c
-@@ -939,18 +939,9 @@ static sctp_disposition_t sctp_sf_heartbeat(const struct sctp_endpoint *ep,
- {
- 	struct sctp_transport *transport = (struct sctp_transport *) arg;
- 	struct sctp_chunk *reply;
--	sctp_sender_hb_info_t hbinfo;
--	size_t paylen = 0;
--
--	hbinfo.param_hdr.type = SCTP_PARAM_HEARTBEAT_INFO;
--	hbinfo.param_hdr.length = htons(sizeof(sctp_sender_hb_info_t));
--	hbinfo.daddr = transport->ipaddr;
--	hbinfo.sent_at = jiffies;
--	hbinfo.hb_nonce = transport->hb_nonce;
+@@ -3320,8 +3320,10 @@ sctp_disposition_t sctp_sf_ootb(const struct sctp_endpoint *ep,
+ 	struct sctp_chunk *chunk = arg;
+ 	struct sk_buff *skb = chunk->skb;
+ 	sctp_chunkhdr_t *ch;
++	sctp_errhdr_t *err;
+ 	__u8 *ch_end;
+ 	int ootb_shut_ack = 0;
++	int ootb_cookie_ack = 0;
  
- 	/* Send a heartbeat to our peer.  */
--	paylen = sizeof(sctp_sender_hb_info_t);
--	reply = sctp_make_heartbeat(asoc, transport, &hbinfo, paylen);
-+	reply = sctp_make_heartbeat(asoc, transport);
- 	if (!reply)
- 		return SCTP_DISPOSITION_NOMEM;
+ 	SCTP_INC_STATS(SCTP_MIB_OUTOFBLUES);
  
--- 
-1.6.5.2
-
-
+@@ -3346,6 +3348,23 @@ sctp_disposition_t sctp_sf_ootb(const struct sctp_endpoint *ep,
+ 		if (SCTP_CID_ABORT = ch->type)
+ 			return sctp_sf_pdiscard(ep, asoc, type, arg, commands);
+ 
++		/* RFC 8.4, 7) If the packet contains a "Stale cookie" ERROR
++		 * or a COOKIE ACK the SCTP Packet should be silently
++		 * discarded.
++		 */
++
++		if (SCTP_CID_COOKIE_ACK = ch->type)
++			ootb_cookie_ack = 1;
++
++		if (SCTP_CID_ERROR = ch->type) {
++			sctp_walk_errors(err, ch) {
++				if (SCTP_ERROR_STALE_COOKIE = err->cause) {
++					ootb_cookie_ack = 1;
++					break;
++				}
++			}
++		}
++
+ 		/* Report violation if chunk len overflows */
+ 		ch_end = ((__u8 *)ch) + WORD_ROUND(ntohs(ch->length));
+ 		if (ch_end > skb_tail_pointer(skb))
+@@ -3357,6 +3376,8 @@ sctp_disposition_t sctp_sf_ootb(const struct sctp_endpoint *ep,
+ 
+ 	if (ootb_shut_ack)
+ 		return sctp_sf_shut_8_4_5(ep, asoc, type, arg, commands);
++	else if (ootb_cookie_ack)
++		return sctp_sf_pdiscard(ep, asoc, type, arg, commands);
+ 	else
+ 		return sctp_sf_tabort_8_4_8(ep, asoc, type, arg, commands);
+ }
+-- 1.7.0 
