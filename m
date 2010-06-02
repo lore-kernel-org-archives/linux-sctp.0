@@ -1,48 +1,99 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Wed, 02 Jun 2010 06:49:04 +0000
-Subject: sctp: change auth event type name to SCTP_AUTHENTICATION_EVENT
-Message-Id: <4C05FEE0.4070407@cn.fujitsu.com>
+Date: Wed, 02 Jun 2010 06:20:55 +0000
+Subject: [PATCH 2/3] sctp: make heartbeat information in sctp_make_heartbeat()
+Message-Id: <4C05F847.8010308@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-This patch change the auth event type name to SCTP_AUTHENTICATION_EVENT,
-which is based on API extension compliance.
+Make heartbeat information in sctp_make_heartbeat() instead
+of make it in sctp_sf_heartbeat() directly for common using.
 
 Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 ---
- include/net/sctp/user.h |    3 ++-
- net/sctp/ulpevent.c     |    2 +-
- 2 files changed, 3 insertions(+), 2 deletions(-)
+ include/net/sctp/sm.h    |    4 +---
+ net/sctp/sm_make_chunk.c |   18 +++++++++++++-----
+ net/sctp/sm_statefuns.c  |   11 +----------
+ 3 files changed, 15 insertions(+), 18 deletions(-)
 
-diff --git a/include/net/sctp/user.h b/include/net/sctp/user.h
-index f05f99b..fd60e29 100644
---- a/include/net/sctp/user.h
-+++ b/include/net/sctp/user.h
-@@ -407,7 +407,8 @@ enum sctp_sn_type {
- 	SCTP_SHUTDOWN_EVENT,
- 	SCTP_PARTIAL_DELIVERY_EVENT,
- 	SCTP_ADAPTATION_INDICATION,
--	SCTP_AUTHENTICATION_INDICATION,
-+	SCTP_AUTHENTICATION_EVENT,
-+#define SCTP_AUTHENTICATION_INDICATION	SCTP_AUTHENTICATION_EVENT
- };
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index 4088c89..cee75fd 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -232,9 +232,7 @@ struct sctp_chunk *sctp_make_violation_paramlen(const struct sctp_association *,
+ 				   const struct sctp_chunk *,
+ 				   struct sctp_paramhdr *);
+ struct sctp_chunk *sctp_make_heartbeat(const struct sctp_association *,
+-				  const struct sctp_transport *,
+-				  const void *payload,
+-				  const size_t paylen);
++				  const struct sctp_transport *);
+ struct sctp_chunk *sctp_make_heartbeat_ack(const struct sctp_association *,
+ 				      const struct sctp_chunk *,
+ 				      const void *payload,
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index e04e4b9..459ebff 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -1073,20 +1073,28 @@ nodata:
  
- /* Notification error codes used to fill up the error fields in some
-diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
-index aa72e89..674a249 100644
---- a/net/sctp/ulpevent.c
-+++ b/net/sctp/ulpevent.c
-@@ -843,7 +843,7 @@ struct sctp_ulpevent *sctp_ulpevent_make_authkey(
- 	ak = (struct sctp_authkey_event *)
- 		skb_put(skb, sizeof(struct sctp_authkey_event));
+ /* Make a HEARTBEAT chunk.  */
+ struct sctp_chunk *sctp_make_heartbeat(const struct sctp_association *asoc,
+-				  const struct sctp_transport *transport,
+-				  const void *payload, const size_t paylen)
++				  const struct sctp_transport *transport)
+ {
+-	struct sctp_chunk *retval = sctp_make_chunk(asoc, SCTP_CID_HEARTBEAT,
+-						    0, paylen);
++	struct sctp_chunk *retval;
++	sctp_sender_hb_info_t hbinfo;
++
++	retval = sctp_make_chunk(asoc, SCTP_CID_HEARTBEAT, 0, sizeof(hbinfo));
  
--	ak->auth_type = SCTP_AUTHENTICATION_INDICATION;
-+	ak->auth_type = SCTP_AUTHENTICATION_EVENT;
- 	ak->auth_flags = 0;
- 	ak->auth_length = sizeof(struct sctp_authkey_event);
+ 	if (!retval)
+ 		goto nodata;
+ 
++	hbinfo.param_hdr.type = SCTP_PARAM_HEARTBEAT_INFO;
++	hbinfo.param_hdr.length = htons(sizeof(sctp_sender_hb_info_t));
++	hbinfo.daddr = transport->ipaddr;
++	hbinfo.sent_at = jiffies;
++	hbinfo.hb_nonce = transport->hb_nonce;
++
+ 	/* Cast away the 'const', as this is just telling the chunk
+ 	 * what transport it belongs to.
+ 	 */
+ 	retval->transport = (struct sctp_transport *) transport;
+-	retval->subh.hbs_hdr = sctp_addto_chunk(retval, paylen, payload);
++	retval->subh.hbs_hdr = sctp_addto_chunk(retval, sizeof(hbinfo),
++						&hbinfo);
+ 
+ nodata:
+ 	return retval;
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index d143a1a..fe79705 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -939,18 +939,9 @@ static sctp_disposition_t sctp_sf_heartbeat(const struct sctp_endpoint *ep,
+ {
+ 	struct sctp_transport *transport = (struct sctp_transport *) arg;
+ 	struct sctp_chunk *reply;
+-	sctp_sender_hb_info_t hbinfo;
+-	size_t paylen = 0;
+-
+-	hbinfo.param_hdr.type = SCTP_PARAM_HEARTBEAT_INFO;
+-	hbinfo.param_hdr.length = htons(sizeof(sctp_sender_hb_info_t));
+-	hbinfo.daddr = transport->ipaddr;
+-	hbinfo.sent_at = jiffies;
+-	hbinfo.hb_nonce = transport->hb_nonce;
+ 
+ 	/* Send a heartbeat to our peer.  */
+-	paylen = sizeof(sctp_sender_hb_info_t);
+-	reply = sctp_make_heartbeat(asoc, transport, &hbinfo, paylen);
++	reply = sctp_make_heartbeat(asoc, transport);
+ 	if (!reply)
+ 		return SCTP_DISPOSITION_NOMEM;
  
 -- 
 1.6.5.2
