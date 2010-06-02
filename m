@@ -1,121 +1,130 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Mon, 14 Jun 2010 18:04:44 +0000
-Subject: Re: [PATCH v3 3/3] sctp: COOKIE-ACK should back to where the COOKIE-ECHO
-Message-Id: <4C166F3C.8040302@hp.com>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Wed, 02 Jun 2010 06:47:29 +0000
+Subject: sctp: implement socket option SCTP_GET_ASSOC_ID_LIST
+Message-Id: <4C05FE81.8070101@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4C05FC8E.8050201@cn.fujitsu.com>
-In-Reply-To: <4C05FC8E.8050201@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
+This patch Implement socket option SCTP_GET_ASSOC_ID_LIST.
+SCTP Socket API Extension:
+
+  8.2.6. Get the Current Identifiers of Associations
+         (SCTP_GET_ASSOC_ID_LIST)
+
+  This option gets the current list of SCTP association identifiers of
+  the SCTP associations handled by a one-to-many style socket.
+
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ include/net/sctp/user.h |   13 +++++++++++
+ net/sctp/socket.c       |   52 +++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 65 insertions(+), 0 deletions(-)
+
+diff --git a/include/net/sctp/user.h b/include/net/sctp/user.h
+index 2b2769c..f05f99b 100644
+--- a/include/net/sctp/user.h
++++ b/include/net/sctp/user.h
+@@ -90,6 +90,7 @@ typedef __s32 sctp_assoc_t;
+ #define SCTP_PEER_AUTH_CHUNKS	26	/* Read only */
+ #define SCTP_LOCAL_AUTH_CHUNKS	27	/* Read only */
+ #define SCTP_GET_ASSOC_NUMBER	28	/* Read only */
++#define SCTP_GET_ASSOC_ID_LIST	29	/* Read only */
+ 
+ /* Internal Socket Options. Some of the sctp library functions are
+  * implemented using these socket options.
+@@ -668,6 +669,18 @@ struct sctp_authchunks {
+ };
+ 
+ /*
++ * 8.2.6. Get the Current Identifiers of Associations
++ *        (SCTP_GET_ASSOC_ID_LIST)
++ *
++ * This option gets the current list of SCTP association identifiers of
++ * the SCTP associations handled by a one-to-many style socket.
++ */
++struct sctp_assoc_ids {
++	__u32		gaids_number_of_ids;
++	sctp_assoc_t	gaids_assoc_id[];
++};
++
++/*
+  * 8.3, 8.5 get all peer/local addresses in an association.
+  * This parameter struct is used by SCTP_GET_PEER_ADDRS and 
+  * SCTP_GET_LOCAL_ADDRS socket options used internally to implement
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index ca44917..857347b 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -5241,6 +5241,55 @@ static int sctp_getsockopt_assoc_number(struct sock *sk, int len,
+ 	return 0;
+ }
+ 
++/*
++ * 8.2.6. Get the Current Identifiers of Associations
++ *        (SCTP_GET_ASSOC_ID_LIST)
++ *
++ * This option gets the current list of SCTP association identifiers of
++ * the SCTP associations handled by a one-to-many style socket.
++ */
++static int sctp_getsockopt_assoc_ids(struct sock *sk, int len,
++				    char __user *optval, int __user *optlen)
++{
++	struct sctp_sock *sp = sctp_sk(sk);
++	struct sctp_association *asoc;
++	struct sctp_assoc_ids *ids;
++	u32 num = 0;
++
++	if (sctp_style(sk, TCP))
++		return -EOPNOTSUPP;
++
++	if (len < sizeof(struct sctp_assoc_ids))
++		return -EINVAL;
++
++	list_for_each_entry(asoc, &(sp->ep->asocs), asocs) {
++		num++;
++	}
++
++	if (len < sizeof(struct sctp_assoc_ids) + sizeof(sctp_assoc_t) * num)
++		return -EINVAL;
++
++	len = sizeof(struct sctp_assoc_ids) + sizeof(sctp_assoc_t) * num;
++
++	ids = kmalloc(len, GFP_KERNEL);
++	if (unlikely(!ids))
++		return -ENOMEM;
++
++	ids->gaids_number_of_ids = num;
++	num = 0;
++	list_for_each_entry(asoc, &(sp->ep->asocs), asocs) {
++		ids->gaids_assoc_id[num++] = asoc->assoc_id;
++	}
++
++	if (put_user(len, optlen) || copy_to_user(optval, ids, len)) {
++		kfree(ids);
++		return -EFAULT;
++	}
++
++	kfree(ids);
++	return 0;
++}
++
+ SCTP_STATIC int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 				char __user *optval, int __user *optlen)
+ {
+@@ -5373,6 +5422,9 @@ SCTP_STATIC int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 	case SCTP_GET_ASSOC_NUMBER:
+ 		retval = sctp_getsockopt_assoc_number(sk, len, optval, optlen);
+ 		break;
++	case SCTP_GET_ASSOC_ID_LIST:
++		retval = sctp_getsockopt_assoc_ids(sk, len, optval, optlen);
++		break;
+ 	default:
+ 		retval = -ENOPROTOOPT;
+ 		break;
+-- 
+1.6.5.2
 
 
-Wei Yongjun wrote:
-> This patch fixed to send COOKIE-ACK back to where the COOKIE-ECHO
-> came from, and if COOKIE ACK is sent to an UNCONFIRMED address,
-> bundled it with a HEARTBEAT including a nonce. Based on RFC4960:
-> 
->   Section 6.4.  Multi-Homed SCTP Endpoints
-> 
->   An endpoint SHOULD transmit reply chunks (e.g., SACK, HEARTBEAT ACK,
->   etc.) to the same destination transport address from which it
->   received the DATA or control chunk to which it is replying.
-> 
->   Section 5.4.  Path Verification:
-> 
->   -  A COOKIE ACK MAY be sent to an UNCONFIRMED address, but it MUST be
->      bundled with a HEARTBEAT including a nonce.  An implementation
->      that does NOT support bundling MUST NOT send a COOKIE ACK to an
->      UNCONFIRMED address.
-> 
-> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-> ---
-> v2 -> V3
->   - bundle HB at the first
->   - update error counters, and set hb_sent to update timer when expires
-> ---
->  net/sctp/output.c        |   27 +++++++++++++++++++++++++++
->  net/sctp/outqueue.c      |    1 +
->  net/sctp/sm_make_chunk.c |    4 ++--
->  3 files changed, 30 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sctp/output.c b/net/sctp/output.c
-> index a646681..40f5d76 100644
-> --- a/net/sctp/output.c
-> +++ b/net/sctp/output.c
-> @@ -260,6 +260,28 @@ static sctp_xmit_t sctp_packet_bundle_sack(struct sctp_packet *pkt,
->  	return retval;
->  }
->  
-> +/* Try to bundle a HEARTBEAT with the packet. */
-> +static sctp_xmit_t sctp_packet_bundle_hb(struct sctp_packet *pkt,
-> +					 struct sctp_chunk *chunk)
-> +{
-> +	sctp_xmit_t retval = SCTP_XMIT_OK;
-> +
-> +	if (pkt->transport->state = SCTP_UNCONFIRMED &&
-> +	    chunk->chunk_hdr->type = SCTP_CID_COOKIE_ACK) {
-> +		struct sctp_transport *transport = pkt->transport;
-> +		struct sctp_chunk *hb;
-> +
-> +		hb = sctp_make_heartbeat(transport->asoc, transport);
-> +		if (hb) {
-> +			retval = sctp_packet_append_chunk(pkt, hb);
-> +			transport->hb_sent = 1;
-> +			transport->error_count++;
-> +		}
-> +	}
-> +
-
-You need to check that HB are enabled on the transport.  If the HB are disabled,
-we can't send the cookie-ack.
-
--vlad
-
-> +	return retval;
-> +}
-> +
->  /* Append a chunk to the offered packet reporting back any inability to do
->   * so.
->   */
-> @@ -292,6 +314,11 @@ sctp_xmit_t sctp_packet_append_chunk(struct sctp_packet *packet,
->  	if (retval != SCTP_XMIT_OK)
->  		goto finish;
->  
-> +	/* Try to bundle HEARTBEAT chunk */
-> +	retval = sctp_packet_bundle_hb(packet, chunk);
-> +	if (retval != SCTP_XMIT_OK)
-> +		goto finish;
-> +
->  	/* Check to see if this chunk will fit into the packet */
->  	retval = sctp_packet_will_fit(packet, chunk, chunk_len);
->  	if (retval != SCTP_XMIT_OK)
-> diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-> index 782eeeb..2ff4c99 100644
-> --- a/net/sctp/outqueue.c
-> +++ b/net/sctp/outqueue.c
-> @@ -800,6 +800,7 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
->  			 */
->  			if (chunk->chunk_hdr->type != SCTP_CID_HEARTBEAT &&
->  			    chunk->chunk_hdr->type != SCTP_CID_HEARTBEAT_ACK &&
-> +			    chunk->chunk_hdr->type != SCTP_CID_COOKIE_ACK &&
->  			    chunk->chunk_hdr->type != SCTP_CID_ASCONF_ACK)
->  				new_transport = asoc->peer.active_path;
->  		}
-> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> index 459ebff..7d270d6 100644
-> --- a/net/sctp/sm_make_chunk.c
-> +++ b/net/sctp/sm_make_chunk.c
-> @@ -602,8 +602,8 @@ struct sctp_chunk *sctp_make_cookie_ack(const struct sctp_association *asoc,
->  	 *
->  	 * [COOKIE ACK back to where the COOKIE ECHO came from.]
->  	 */
-> -	if (retval && chunk)
-> -		retval->transport = chunk->transport;
-> +	if (retval)
-> +		retval->dest = chunk->source;
->  
->  	return retval;
->  }
