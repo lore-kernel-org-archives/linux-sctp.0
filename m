@@ -1,7 +1,7 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Thu, 03 Jun 2010 07:43:50 +0000
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
+Date: Thu, 03 Jun 2010 14:59:29 +0000
 Subject: Re: [PATCH 2/6] sctp multistream scheduling: provide pluggable SCTP
-Message-Id: <4C075D36.8030706@cn.fujitsu.com>
+Message-Id: <4C07C351.8060501@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <AANLkTimanFQ-gbcqNnygBvuQiFUk0SJrKFxjiOEAlesi@mail.gmail.com>
 In-Reply-To: <AANLkTimanFQ-gbcqNnygBvuQiFUk0SJrKFxjiOEAlesi@mail.gmail.com>
@@ -9,16 +9,29 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Yaogong Wang <ywang15@ncsu.edu>
-Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>, linux-kernel@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Sridhar Samudrala <sri@us.ibm.com>, linux-kernel@vger.kernel.org
 
 
+
+Yaogong Wang wrote:
 > Provide a general interface for implementing new SCTP multistream
 > scheduling algorithms as kernel modules.
->
->   
+> 
 
-after apply this patch, the SCTP will be broken, this will
-broken git bisect.
+Here is a suggestion.
+
+Create an intermediate patch that turns out_chunk_list into a pointer
+and update the old outqueue code to use it.  This would be patch 2.
+In the description you can say that subsequent patches may have multiple
+data queues.
+
+Then you can introduce FCFS code as patch 3.  Nothing would really use
+it.  It's just a reference.
+
+Then in patch 4, you can introduce this framework and plug the FCFS
+code in.
+
+-vlad
 
 > Signed-off-by: Yaogong Wang <ywang15@ncsu.edu>
 > ---
@@ -28,17 +41,17 @@ broken git bisect.
 > +++ p2/include/net/sctp/structs.h	2010-06-02 13:02:14.000000000 -0700
 > @@ -1158,7 +1158,7 @@ struct sctp_outq {
 >  	struct sctp_association *asoc;
->
+> 
 >  	/* Data pending that has never been transmitted.  */
 > -	struct list_head out_chunk_list;
 > +	struct list_head *out_chunk_list;
->
+> 
 >  	unsigned out_qlen;	/* Total length of queued data chunks. */
->
+> 
 > @@ -1199,7 +1199,7 @@ struct sctp_outq {
 >  	char malloced;
 >  };
->
+> 
 > -void sctp_outq_init(struct sctp_association *, struct sctp_outq *);
 > +int sctp_outq_init(struct sctp_association *, struct sctp_outq *, gfp_t gfp);
 >  void sctp_outq_teardown(struct sctp_outq *);
@@ -54,7 +67,7 @@ broken git bisect.
 >  	  tsnmap.o bind_addr.o socket.o primitive.o \
 > -	  output.o input.o debug.o ssnmap.o auth.o
 > +	  output.o input.o debug.o ssnmap.o auth.o sched.o
->
+> 
 >  sctp-$(CONFIG_SCTP_DBG_OBJCNT) += objcnt.o
 >  sctp-$(CONFIG_PROC_FS) += proc.o
 > diff -uprN -X linux-2.6.32.8/Documentation/dontdiff
@@ -63,7 +76,7 @@ broken git bisect.
 > +++ p2/net/sctp/associola.c	2010-06-02 12:56:23.000000000 -0700
 > @@ -185,6 +185,9 @@ static struct sctp_association *sctp_ass
 >  	asoc->max_init_timeo >  		 msecs_to_jiffies(sp->initmsg.sinit_max_init_timeo);
->
+> 
 > +	/* Multistream scheduling  */
 > +	asoc->sched_ops = sp->sched_ops;
 > +
@@ -72,13 +85,13 @@ broken git bisect.
 >  	 */
 > @@ -280,7 +283,9 @@ static struct sctp_association *sctp_ass
 >  	sctp_inq_set_th_handler(&asoc->base.inqueue, sctp_assoc_bh_rcv);
->
+> 
 >  	/* Create an output queue.  */
 > -	sctp_outq_init(asoc, &asoc->outqueue);
 > +	err = sctp_outq_init(asoc, &asoc->outqueue, gfp);
 > +	if (err)
 > +		goto fail_init;
->
+> 
 >  	if (!sctp_ulpq_init(&asoc->ulpq, asoc))
 >  		goto fail_init;
 > diff -uprN -X linux-2.6.32.8/Documentation/dontdiff
@@ -86,9 +99,9 @@ broken git bisect.
 > --- p1/net/sctp/outqueue.c	2010-05-28 10:05:50.000000000 -0700
 > +++ p2/net/sctp/outqueue.c	2010-06-02 12:55:13.000000000 -0700
 > @@ -73,38 +73,6 @@ static void sctp_generate_fwdtsn(struct
->
+> 
 >  static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout);
->
+> 
 > -/* Add data to the front of the queue. */
 > -static inline void sctp_outq_head_data(struct sctp_outq *q,
 > -					struct sctp_chunk *ch)
@@ -144,33 +157,28 @@ broken git bisect.
 >  	INIT_LIST_HEAD(&q->retransmit);
 >  	INIT_LIST_HEAD(&q->sacked);
 > @@ -217,6 +190,9 @@ void sctp_outq_init(struct sctp_associat
->
+> 
 >  	q->malloced = 0;
 >  	q->out_qlen = 0;
 > +
 > +fail_init:
 > +	return err;
 >  }
->
+> 
 >  /* Free the outqueue structure and any related pending chunks.
 > @@ -267,7 +243,7 @@ void sctp_outq_teardown(struct sctp_outq
 >  	}
->
+> 
 >  	/* Throw away any leftover data chunks. */
 > -	while ((chunk = sctp_outq_dequeue_data(q)) != NULL) {
 > +	while ((chunk = q->asoc->sched_ops->dequeue_data(q)) != NULL) {
->   
-
-why not use sctp_outq_dequeue_data() as help function
-instead of direct using q->asoc->sched_ops->dequeue_data()?
-and also the others.
-
+> 
 >  		/* Mark as send failure. */
 >  		sctp_chunk_fail(chunk, q->error);
 > @@ -289,6 +265,8 @@ void sctp_outq_free(struct sctp_outq *q)
 >  	/* Throw away leftover chunks. */
 >  	sctp_outq_teardown(q);
->
+> 
 > +	q->asoc->sched_ops->release(q);
 > +
 >  	/* If we were kmalloc()'d, free the memory.  */
@@ -179,7 +187,7 @@ and also the others.
 > @@ -334,7 +312,7 @@ int sctp_outq_tail(struct sctp_outq *q,
 >  			  sctp_cname(SCTP_ST_CHUNK(chunk->chunk_hdr->type))
 >  			  : "Illegal Chunk");
->
+> 
 > -			sctp_outq_tail_data(q, chunk);
 > +			q->asoc->sched_ops->enqueue_tail_data(q, chunk);
 >  			if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
@@ -187,7 +195,7 @@ and also the others.
 >  			else
 > @@ -922,7 +900,7 @@ static int sctp_outq_flush(struct sctp_o
 >  		}
->
+> 
 >  		/* Finally, transmit new packets.  */
 > -		while ((chunk = sctp_outq_dequeue_data(q)) != NULL) {
 > +		while ((chunk = q->asoc->sched_ops->dequeue_data(q)) != NULL) {
@@ -202,7 +210,7 @@ and also the others.
 > +				q->asoc->sched_ops->enqueue_head_data(q, chunk);
 >  				goto sctp_flush_out;
 >  				break;
->
+> 
 > @@ -1252,7 +1230,7 @@ int sctp_outq_sack(struct sctp_outq *q,
 >  	/* See if all chunks are acked.
 >  	 * Make sure the empty queue handler will get run later.
@@ -337,6 +345,4 @@ and also the others.
 > To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
->   
+> 
