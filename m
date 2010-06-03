@@ -1,140 +1,234 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Fri, 18 Jun 2010 18:33:39 +0000
-Subject: Re: [PATCH v4] sctp: fix the sendmsg() flag SCTP_EOF to comply to
-Message-Id: <4C1BBC03.4050502@hp.com>
+From: Yaogong Wang <ywang15@ncsu.edu>
+Date: Thu, 03 Jun 2010 05:42:37 +0000
+Subject: [PATCH 4/6] sctp multistream scheduling: extend socket API
+Message-Id: <AANLkTilW6Ym_vL02rVk4QFPIC3Dr0BC12oAxdjE9RXpf@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4C087060.8030807@cn.fujitsu.com>
-In-Reply-To: <4C087060.8030807@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>
+Cc: linux-kernel@vger.kernel.org
 
-Hi Wei
+Augment SCTP socket API with a new socket option to choose and
+configure scheduling algorithm.
 
-You got rid of the autoclose timer in the version and we went back
-to not being able to send SCTP_EOF in closed state.
+Signed-off-by: Yaogong Wang <ywang15@ncsu.edu>
+---
+diff -uprN -X linux-2.6.32.8/Documentation/dontdiff
+p3/include/net/sctp/structs.h p4/include/net/sctp/structs.h
+--- p3/include/net/sctp/structs.h	2010-06-02 12:57:24.000000000 -0700
++++ p4/include/net/sctp/structs.h	2010-06-02 12:58:11.000000000 -0700
+@@ -326,6 +326,8 @@ struct sctp_sock {
 
-Additionally, now we need to check the eof_pending bit when
-performing close(), since now it it's possible to send an EOF
-and then call close() on the socket.  The close() could trigger
-a state transition before the transmit happens.
+ 	/* Multistream scheduling  */
+ 	const struct sctp_sched_ops *sched_ops;
++	__u32 sched_priv_len;
++	__u16 *sched_priv;
 
-Really, we need to remove the SHUTDOWN_PENDING from the state table.
-I've almost got that working.  Once I do, I'll take your v1 patch
-that didn't try to work around all these issues, as they would be
-resolved.
+ 	struct sctp_initmsg initmsg;
+ 	struct sctp_rtoinfo rtoinfo;
+@@ -1691,6 +1693,8 @@ struct sctp_association {
 
--vlad
+ 	/* Multistream scheduling  */
+ 	const struct sctp_sched_ops *sched_ops;
++	__u32 sched_priv_len;
++	__u16 *sched_priv;
 
-Wei Yongjun wrote:
-> It should be possible to send a message and set the SCTP_EOF flag
-> at the same time, but we don't support it yet. This patch fix the
-> sendmsg() flag SCTP_EOF to comply to spec.
-> 
-> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-> ---
->  include/net/sctp/structs.h |    3 ++-
->  net/sctp/socket.c          |   40 ++++++++++++++++++++++++++++++++--------
->  2 files changed, 34 insertions(+), 9 deletions(-)
-> 
-> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-> index 828185c..dc894e0 100644
-> --- a/include/net/sctp/structs.h
-> +++ b/include/net/sctp/structs.h
-> @@ -1924,7 +1924,8 @@ struct sctp_association {
->  	__u16 active_key_id;
->  
->  	__u8 need_ecne:1,	/* Need to send an ECNE Chunk? */
-> -	     temp:1;		/* Is it a temporary association? */
-> +	     temp:1,		/* Is it a temporary association? */
-> +	     eof_pending:1;	/* SCTP_EOF flag is indicated in send() */
->  };
->  
->  
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 0af3a8c..44c1773 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -1555,13 +1555,11 @@ SCTP_STATIC int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
->  		goto out_nounlock;
->  	}
->  
-> -	/* If SCTP_EOF is set, no data can be sent. Disallow sending zero
-> -	 * length messages when SCTP_EOF|SCTP_ABORT is not set.
-> -	 * If SCTP_ABORT is set, the message length could be non zero with
-> -	 * the msg_iov set to the user abort reason.
-> +	/* Disallow sending zero length messages when SCTP_EOF|SCTP_ABORT
-> +	 * is not set. If SCTP_ABORT is set, the message length could be
-> +	 * non zero with the msg_iov set to the user abort reason.
->  	 */
-> -	if (((sinfo_flags & SCTP_EOF) && (msg_len > 0)) ||
-> -	    (!(sinfo_flags & (SCTP_EOF|SCTP_ABORT)) && (msg_len = 0))) {
-> +	if (!(sinfo_flags & (SCTP_EOF|SCTP_ABORT)) && (msg_len = 0)) {
->  		err = -EINVAL;
->  		goto out_nounlock;
->  	}
-> @@ -1608,6 +1606,12 @@ SCTP_STATIC int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
->  	if (asoc) {
->  		SCTP_DEBUG_PRINTK("Just looked up association: %p.\n", asoc);
->  
-> +		/* Previous send() is called with SCTP_EOF flag */
-> +		if (asoc->eof_pending) {
-> +			err = -ESHUTDOWN;
-> +			goto out_unlock;
-> +		}
-> +
->  		/* We cannot send a message on a TCP-style SCTP_SS_ESTABLISHED
->  		 * socket that has an association in CLOSED state. This can
->  		 * happen when an accepted socket has an association that is
-> @@ -1618,13 +1622,24 @@ SCTP_STATIC int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
->  			goto out_unlock;
->  		}
->  
-> -		if (sinfo_flags & SCTP_EOF) {
-> +		/* Forbid SCTP_EOF and send a message combination
-> +		 * on non-blocking sockets.
-> +		 */
-> +		if ((sinfo_flags & SCTP_EOF) && msg_len != 0 &&
-> +		    sk->sk_socket->file &&
-> +		    (sk->sk_socket->file->f_flags & O_NONBLOCK)) {
-> +			err = -EWOULDBLOCK;
-> +			goto out_nounlock;
-> +		}
-> +
-> +		if (sinfo_flags & SCTP_EOF && msg_len = 0) {
->  			SCTP_DEBUG_PRINTK("Shutting down association: %p\n",
->  					  asoc);
->  			sctp_primitive_SHUTDOWN(asoc, NULL);
->  			err = 0;
->  			goto out_unlock;
->  		}
-> +
->  		if (sinfo_flags & SCTP_ABORT) {
->  
->  			chunk = sctp_make_abort_user(asoc, msg, msg_len);
-> @@ -1644,7 +1659,7 @@ SCTP_STATIC int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
->  	if (!asoc) {
->  		SCTP_DEBUG_PRINTK("There is no association yet.\n");
->  
-> -		if (sinfo_flags & (SCTP_EOF | SCTP_ABORT)) {
-> +		if (sinfo_flags & SCTP_ABORT) {
->  			err = -EINVAL;
->  			goto out_unlock;
->  		}
-> @@ -1850,6 +1865,15 @@ SCTP_STATIC int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
->  	else
->  		err = msg_len;
->  
-> +	if (sinfo_flags & SCTP_EOF) {
-> +		SCTP_DEBUG_PRINTK("Shutting down association: %p\n",
-> +				  asoc);
-> +		if (sctp_state(asoc, ESTABLISHED))
-> +			sctp_primitive_SHUTDOWN(asoc, NULL);
-> +		else
-> +			asoc->eof_pending = 1;
-> +	}
-> +
->  	/* If we are already past ASSOCIATE, the lower
->  	 * layers are responsible for association cleanup.
->  	 */
+ 	/* Heartbeat interval: The endpoint sends out a Heartbeat chunk to
+ 	 * the destination address every heartbeat interval. This value
+diff -uprN -X linux-2.6.32.8/Documentation/dontdiff
+p3/include/net/sctp/user.h p4/include/net/sctp/user.h
+--- p3/include/net/sctp/user.h	2010-05-28 10:59:23.000000000 -0700
++++ p4/include/net/sctp/user.h	2010-05-28 11:54:47.000000000 -0700
+@@ -67,6 +67,8 @@ enum sctp_optname {
+ #define SCTP_ASSOCINFO SCTP_ASSOCINFO
+ 	SCTP_INITMSG,
+ #define SCTP_INITMSG SCTP_INITMSG
++	SCTP_SCHED,
++#define SCTP_SCHED SCTP_SCHED
+ 	SCTP_NODELAY, 	/* Get/set nodelay option. */
+ #define SCTP_NODELAY	SCTP_NODELAY
+ 	SCTP_AUTOCLOSE,
+@@ -171,8 +173,22 @@ struct sctp_initmsg {
+ 	__u16 sinit_max_init_timeo;
+ };
+
++/*
++ * SCTP Scheduling Structure (SCTP_SCHED)
++ *
++ *   cmsg_level    cmsg_type      cmsg_data[]
++ *   ------------  ------------   ----------------------
++ *   IPPROTO_SCTP  SCTP_SCHED     struct sctp_sched
++ *
++ */
+ #define SCTP_SCHED_NAME_MAX	16
+
++struct sctp_sched {
++	char  ssched_name[SCTP_SCHED_NAME_MAX];
++	__u32 ssched_priv_len;
++	__u16 ssched_priv[0];
++};
++
+ /*
+  * 5.2.2 SCTP Header Information Structure (SCTP_SNDRCV)
+  *
+diff -uprN -X linux-2.6.32.8/Documentation/dontdiff
+p3/net/sctp/associola.c p4/net/sctp/associola.c
+--- p3/net/sctp/associola.c	2010-06-02 12:57:06.000000000 -0700
++++ p4/net/sctp/associola.c	2010-06-02 12:57:57.000000000 -0700
+@@ -187,6 +187,14 @@ static struct sctp_association *sctp_ass
+
+ 	/* Multistream scheduling  */
+ 	asoc->sched_ops = sp->sched_ops;
++	asoc->sched_priv_len = sp->sched_priv_len;
++	if (asoc->sched_priv_len) {
++		asoc->sched_priv = kmalloc(asoc->sched_priv_len, gfp);
++		if (!asoc->sched_priv)
++			goto fail_init;
++		memcpy(asoc->sched_priv, sp->sched_priv, asoc->sched_priv_len);
++	} else
++		asoc->sched_priv = NULL;
+
+ 	/* Allocate storage for the ssnmap after the inbound and outbound
+ 	 * streams have been negotiated during Init.
+@@ -464,6 +472,8 @@ static void sctp_association_destroy(str
+ {
+ 	SCTP_ASSERT(asoc->base.dead, "Assoc is not dead", return);
+
++	kfree(asoc->sched_priv);
++
+ 	sctp_endpoint_put(asoc->ep);
+ 	sock_put(asoc->base.sk);
+
+diff -uprN -X linux-2.6.32.8/Documentation/dontdiff
+p3/net/sctp/socket.c p4/net/sctp/socket.c
+--- p3/net/sctp/socket.c	2010-05-28 12:38:09.000000000 -0700
++++ p4/net/sctp/socket.c	2010-05-28 12:36:37.000000000 -0700
+@@ -2580,6 +2580,50 @@ static int sctp_setsockopt_initmsg(struc
+ 	return 0;
+ }
+
++/* Set the multistream scheduling algorithm*/
++static int sctp_setsockopt_sched(struct sock *sk, char __user *optval,
++						unsigned int optlen)
++{
++	struct sctp_sched *ssched = NULL;
++	struct sctp_sock *sp = sctp_sk(sk);
++	int ret = 0;
++
++	if (optlen < sizeof(struct sctp_sched))
++		return -EINVAL;
++
++	ssched = kmalloc(optlen, GFP_KERNEL);
++	if (!ssched)
++		return -ENOMEM;
++
++	if (copy_from_user(ssched, optval, optlen)) {
++		ret = -EFAULT;
++		goto out;
++	}
++
++	if (optlen != sizeof(struct sctp_sched) + ssched->ssched_priv_len) {
++		ret = -EINVAL;
++		goto out;
++	}
++
++	ret = sctp_set_sched(sk, ssched->ssched_name);
++	if (ret)
++		goto out;
++	sp->sched_priv_len = ssched->ssched_priv_len;
++	kfree(sp->sched_priv);
++	if (sp->sched_priv_len) {
++		sp->sched_priv = kmalloc(sp->sched_priv_len, GFP_KERNEL);
++		if (!sp->sched_priv) {
++			ret = -ENOMEM;
++			goto out;
++		}
++		memcpy(sp->sched_priv, ssched->ssched_priv, sp->sched_priv_len);
++	}
++
++out:
++	kfree(ssched);
++	return ret;
++}
++
+ /*
+  * 7.1.14 Set default send parameters (SCTP_DEFAULT_SEND_PARAM)
+  *
+@@ -3417,6 +3461,9 @@ SCTP_STATIC int sctp_setsockopt(struct s
+ 		retval = sctp_setsockopt_partial_delivery_point(sk, optval, optlen);
+ 		break;
+
++	case SCTP_SCHED:
++		retval = sctp_setsockopt_sched(sk, optval, optlen);
++		break;
+ 	case SCTP_INITMSG:
+ 		retval = sctp_setsockopt_initmsg(sk, optval, optlen);
+ 		break;
+@@ -3642,7 +3689,10 @@ SCTP_STATIC int sctp_init_sock(struct so
+ 	sp->initmsg.sinit_max_attempts   = sctp_max_retrans_init;
+ 	sp->initmsg.sinit_max_init_timeo = sctp_rto_max;
+
++	/* Initialize default scheduling algorithm  */
+ 	sp->sched_ops = sctp_default_sched_ops;
++	sp->sched_priv_len = 0;
++	sp->sched_priv = NULL;
+
+ 	/* Initialize default RTO related parameters.  These parameters can
+ 	 * be modified for with the SCTP_RTOINFO socket option.
+@@ -3735,6 +3785,9 @@ SCTP_STATIC void sctp_destroy_sock(struc
+
+ 	SCTP_DEBUG_PRINTK("sctp_destroy_sock(sk: %p)\n", sk);
+
++	sctp_cleanup_sched(sk);
++	kfree(sctp_sk(sk)->sched_priv);
++
+ 	/* Release our hold on the endpoint. */
+ 	ep = sctp_sk(sk)->ep;
+ 	sctp_endpoint_free(ep);
+@@ -4351,6 +4404,35 @@ static int sctp_getsockopt_initmsg(struc
+ 	return 0;
+ }
+
++/* Get the multistream scheduling algorithm*/
++static int sctp_getsockopt_sched(struct sock *sk, int len, char __user *optval,
++							int __user *optlen)
++{
++	struct sctp_sched *ssched;
++	int sz = sizeof(struct sctp_sched) + sctp_sk(sk)->sched_priv_len;
++	int ret = 0;
++
++	if (len < sz)
++		return -EINVAL;
++	if (put_user(sz, optlen))
++		return -EFAULT;
++
++	ssched = kmalloc(sz, GFP_KERNEL);
++	if (!ssched)
++		return -EFAULT;
++	memcpy(ssched->ssched_name, sctp_sk(sk)->sched_ops->name,
++					SCTP_SCHED_NAME_MAX);
++	ssched->ssched_priv_len = sctp_sk(sk)->sched_priv_len;
++	memcpy(ssched->ssched_priv, sctp_sk(sk)->sched_priv,
++					ssched->ssched_priv_len);
++
++	if (copy_to_user(optval, ssched, sz))
++		ret = -EFAULT;
++
++	kfree(ssched);
++	return ret;
++}
++
+ static int sctp_getsockopt_peer_addrs_num_old(struct sock *sk, int len,
+ 					      char __user *optval,
+ 					      int __user *optlen)
+@@ -5605,6 +5687,9 @@ SCTP_STATIC int sctp_getsockopt(struct s
+ 	case SCTP_INITMSG:
+ 		retval = sctp_getsockopt_initmsg(sk, len, optval, optlen);
+ 		break;
++	case SCTP_SCHED:
++		retval = sctp_getsockopt_sched(sk, len, optval, optlen);
++		break;
+ 	case SCTP_GET_PEER_ADDRS_NUM_OLD:
+ 		retval = sctp_getsockopt_peer_addrs_num_old(sk, len, optval,
+ 							    optlen);
