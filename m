@@ -1,7 +1,7 @@
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Thu, 03 Jun 2010 14:45:45 +0000
+Date: Thu, 03 Jun 2010 15:01:12 +0000
 Subject: Re: [PATCH 1/6] sctp multistream scheduling: declare sctp_sched_ops
-Message-Id: <4C07C019.1050907@hp.com>
+Message-Id: <4C07C3B8.7020003@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <AANLkTilgantV3v0T1-ef6ewyinddzfOs1PZW1Re9ZAyQ@mail.gmail.com>
 In-Reply-To: <AANLkTilgantV3v0T1-ef6ewyinddzfOs1PZW1Re9ZAyQ@mail.gmail.com>
@@ -37,6 +37,12 @@ Yaogong Wang wrote:
 > @@ -534,6 +537,36 @@ static inline void sctp_ssn_skip(struct
 >  }
 > 
+
+BTW, is there a reason you decided to through the sched_ops into the association
+and not the queue?  I seems to make more sense to me to put one into the other.
+
+-vlad
+
 >  /*
 > + * Interface for adding new SCTP scheduling handlers
 > + * This is similar to the pluggable TCP congestion control
@@ -94,9 +100,8 @@ Yaogong Wang wrote:
 >  /*
 >   * 5.2.2 SCTP Header Information Structure (SCTP_SNDRCV)
 >   *
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-
-You might as well through the global definition here as well.  You can set it
-later, but let's define that in one place.
-
--vlad
