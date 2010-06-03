@@ -1,128 +1,152 @@
-From: =?UTF-8?q?Diego=20Elio=20=27Flameeyes=27=20Petten=C3=B2?=
-Date: Tue, 15 Jun 2010 16:24:53 +0000
-Subject: [PATCH 2/2] Avoid format warnings by using %zu for size_t rather than %d.
-Message-Id: <1276619093-3880-3-git-send-email-flameeyes@gmail.com>
+From: Yaogong Wang <ywang15@ncsu.edu>
+Date: Thu, 03 Jun 2010 05:42:31 +0000
+Subject: [PATCH 3/6] sctp multistream scheduling: provide the default FCFS
+Message-Id: <AANLkTimiSeJ9L8iECSn0DQZ-OWdEIfLVC22S2ILHbhr3@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>
+Cc: linux-kernel@vger.kernel.org
 
+Provide the default FCFS scheduling.
+
+Signed-off-by: Yaogong Wang <ywang15@ncsu.edu>
 ---
- src/apps/bindx_test.c  |    8 ++++----
- src/apps/peel_client.c |    2 +-
- src/apps/peel_server.c |    2 +-
- src/apps/sctp_darn.c   |    2 +-
- src/apps/sctp_test.c   |    4 ++--
- src/testlib/sctputil.c |    2 +-
- 6 files changed, 10 insertions(+), 10 deletions(-)
+diff -uprN -X linux-2.6.32.8/Documentation/dontdiff
+p2/include/net/sctp/structs.h p3/include/net/sctp/structs.h
+--- p2/include/net/sctp/structs.h	2010-06-02 13:02:14.000000000 -0700
++++ p3/include/net/sctp/structs.h	2010-06-02 12:57:24.000000000 -0700
+@@ -181,6 +181,9 @@ extern struct sctp_globals {
+ 	__u16 max_instreams;
+ 	__u16 max_outstreams;
 
-diff --git a/src/apps/bindx_test.c b/src/apps/bindx_test.c
-index ec7632e..b1c9ffa 100644
---- a/src/apps/bindx_test.c
-+++ b/src/apps/bindx_test.c
-@@ -66,13 +66,13 @@ int main (int argc, char **argv)
- 	cnt = 2;    /* argument iterator */
- 	buf_ptr = addr_buf;
- 	while (cnt < argc) {
--		printf("bindx_test: INFO: Arg %d: %s", cnt, argv[cnt]);
-+		printf("bindx_test: INFO: Arg %zu: %s", cnt, argv[cnt]);
- 		fflush(stderr);
- 		if (strchr(argv[cnt], ':')) {
- 			struct sockaddr_in6 *sa6; 
- 
- 			sa6 = (struct sockaddr_in6 *)buf_ptr;
--			printf(" IPv6 address number %d", addrs);
-+			printf(" IPv6 address number %zu", addrs);
- 			sa6->sin6_family = AF_INET6;
- 			sa6->sin6_port = port;
- 			if (inet_pton(AF_INET6, argv[cnt], &sa6->sin6_addr)) {
-@@ -85,7 +85,7 @@ int main (int argc, char **argv)
- 			struct sockaddr_in *sa; 
- 
- 			sa = (struct sockaddr_in *)buf_ptr;
--			printf (" IPv4 address number %d", addrs);
-+			printf (" IPv4 address number %zu", addrs);
- 			sa->sin_family = AF_INET;
- 			sa->sin_port = port;
- 			if (inet_pton (AF_INET, argv[cnt], &sa->sin_addr)) {
-@@ -100,7 +100,7 @@ int main (int argc, char **argv)
- 		cnt++;
- 	}
- 
--	printf ("bindx_test: INFO: Got %d addrs\n", addrs);
-+	printf ("bindx_test: INFO: Got %zu addrs\n", addrs);
-   
- 	/* Create the socket */
- 	sd = socket(PF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
-diff --git a/src/apps/peel_client.c b/src/apps/peel_client.c
-index ede3fbc..2c3f234 100644
---- a/src/apps/peel_client.c
-+++ b/src/apps/peel_client.c
-@@ -453,7 +453,7 @@ my_sctpReadInput(int fd)
- 	errno = 0;
- 	sz = recvmsg(fd,&msg,0);
- 	if(sz <= 0){
--		printf("Read returns %d errno:%d control len is %d msgflg:%x\n",
-+		printf("Read returns %d errno:%d control len is %zu msgflg:%x\n",
- 		       sz,errno,
- 		       msg.msg_controllen,msg.msg_flags);
- 	}
-diff --git a/src/apps/peel_server.c b/src/apps/peel_server.c
-index 524b471..9b9b065 100644
---- a/src/apps/peel_server.c
-+++ b/src/apps/peel_server.c
-@@ -436,7 +436,7 @@ my_sctpReadInput(int fd,int maxread)
- 	msg.msg_controllen = sizeof(controlVector);
- 	errno = 0;
- 	sz = recvmsg(fd,&msg,0);
--	printf("Read fd:%d returns %d errno:%d control len is %d msgflg:%x\n",
-+	printf("Read fd:%d returns %d errno:%d control len is %zu msgflg:%x\n",
- 	       fd,
- 	       sz,errno,
- 	       msg.msg_controllen,
-diff --git a/src/apps/sctp_darn.c b/src/apps/sctp_darn.c
-index 625e541..6aa707a 100644
---- a/src/apps/sctp_darn.c
-+++ b/src/apps/sctp_darn.c
-@@ -1375,7 +1375,7 @@ user_test_check_message(struct msghdr *msg,
- 
- 	if (msg->msg_controllen != controllen) {
- 		fprintf(stderr,
--			"Got control structure of length %d, not %d\n",
-+			"Got control structure of length %zu, not %d\n",
- 			msg->msg_controllen, controllen);
- 		exit(1);
- 	}
-diff --git a/src/apps/sctp_test.c b/src/apps/sctp_test.c
-index 7287d05..6d56660 100644
---- a/src/apps/sctp_test.c
-+++ b/src/apps/sctp_test.c
-@@ -341,9 +341,9 @@ print_message(const int sk, struct msghdr *msg, size_t msg_len) {
-         if (!(MSG_NOTIFICATION & msg->msg_flags)) {
-                 int index = 0;
- 
--		DEBUG_PRINT(DEBUG_MIN, "Data %d bytes.", msg_len);
-+		DEBUG_PRINT(DEBUG_MIN, "Data %zu bytes.", msg_len);
- 
--		DEBUG_PRINT(DEBUG_MAX, " First %d bytes: ",
-+		DEBUG_PRINT(DEBUG_MAX, " First %zu bytes: ",
- 				    (msg_len < BODYSIZE)?msg_len:BODYSIZE);
-                 /* Make sure that everything is printable and that we
-                  * are NUL terminated...
-diff --git a/src/testlib/sctputil.c b/src/testlib/sctputil.c
-index abf80fa..297deb5 100644
---- a/src/testlib/sctputil.c
-+++ b/src/testlib/sctputil.c
-@@ -114,7 +114,7 @@ test_print_message(int sk, struct msghdr *msg, size_t msg_len)
- 		/* Make sure that everything is printable and that we
- 		 * are NUL terminated...
- 		 */
--		printf("DATA(%d):  ", msg_len);
-+		printf("DATA(%zu):  ", msg_len);
- 		while ( msg_len > 0 ) {
- 			char *text;
- 			int len;
--- 
-1.7.1
++	/* Default scheduling algorithm  */
++	struct sctp_sched_ops *sched_ops;
++
+ 	/* This is a list of groups of functions for each address
+ 	 * family that we support.
+ 	 */
+@@ -250,6 +253,7 @@ extern struct sctp_globals {
+ #define sctp_hb_interval		(sctp_globals.hb_interval)
+ #define sctp_max_instreams		(sctp_globals.max_instreams)
+ #define sctp_max_outstreams		(sctp_globals.max_outstreams)
++#define sctp_default_sched_ops		(sctp_globals.sched_ops)
+ #define sctp_address_families		(sctp_globals.address_families)
+ #define sctp_ep_hashsize		(sctp_globals.ep_hashsize)
+ #define sctp_ep_hashtable		(sctp_globals.ep_hashtable)
+@@ -566,6 +570,8 @@ extern void sctp_unregister_sched(struct
+ extern void sctp_cleanup_sched(struct sock *sk);
+ extern int sctp_set_sched(struct sock *sk, const char *name);
 
++extern struct sctp_sched_ops sctp_fcfs;
++
+ /*
+  * Pointers to address related SCTP functions.
+  * (i.e. things that depend on the address family.)
+diff -uprN -X linux-2.6.32.8/Documentation/dontdiff
+p2/net/sctp/protocol.c p3/net/sctp/protocol.c
+--- p2/net/sctp/protocol.c	2010-06-02 13:03:58.000000000 -0700
++++ p3/net/sctp/protocol.c	2010-05-28 11:18:13.000000000 -0700
+@@ -1152,6 +1152,9 @@ SCTP_STATIC __init int sctp_init(void)
+ 	sctp_max_instreams    		= SCTP_DEFAULT_INSTREAMS;
+ 	sctp_max_outstreams   		= SCTP_DEFAULT_OUTSTREAMS;
+
++	/* Initialize default scheduling algorithm to FCFS */
++	sctp_default_sched_ops		= &sctp_fcfs;
++
+ 	/* Initialize handle used for association ids. */
+ 	idr_init(&sctp_assocs_id);
+
+@@ -1296,6 +1299,11 @@ SCTP_STATIC __init int sctp_init(void)
+ 	if (status)
+ 		goto err_v6_add_protocol;
+
++	/* Add FCFS to sctp_sched_list  */
++	status = sctp_register_sched(&sctp_fcfs);
++	if (status)
++		goto err_v6_add_protocol;
++
+ 	status = 0;
+ out:
+ 	return status;
+diff -uprN -X linux-2.6.32.8/Documentation/dontdiff
+p2/net/sctp/sched.c p3/net/sctp/sched.c
+--- p2/net/sctp/sched.c	2010-06-02 12:59:40.000000000 -0700
++++ p3/net/sctp/sched.c	2010-05-28 11:25:05.000000000 -0700
+@@ -114,3 +114,62 @@ out:
+ 	return err;
+ }
+
++static int fcfs_init(struct sctp_outq *q, gfp_t gfp)
++{
++	q->out_chunk_list = kmalloc(sizeof(struct list_head), gfp);
++	if (!q->out_chunk_list)
++		return -ENOMEM;
++	INIT_LIST_HEAD(q->out_chunk_list);
++
++	return 0;
++}
++
++static void fcfs_release(struct sctp_outq *q)
++{
++	kfree(q->out_chunk_list);
++}
++
++static void fcfs_enqueue_head_data(struct sctp_outq *q,
++					struct sctp_chunk *ch)
++{
++	list_add(&ch->list, q->out_chunk_list);
++	q->out_qlen += ch->skb->len;
++	return;
++}
++
++static void fcfs_enqueue_tail_data(struct sctp_outq *q, struct sctp_chunk *ch)
++{
++	list_add_tail(&ch->list, q->out_chunk_list);
++	q->out_qlen += ch->skb->len;
++	return;
++}
++
++static struct sctp_chunk *fcfs_dequeue_data(struct sctp_outq *q)
++{
++	struct sctp_chunk *ch = NULL;
++
++	if (!list_empty(q->out_chunk_list)) {
++		struct list_head *entry = q->out_chunk_list->next;
++
++		ch = list_entry(entry, struct sctp_chunk, list);
++		list_del_init(entry);
++		q->out_qlen -= ch->skb->len;
++	}
++	return ch;
++}
++
++static inline int fcfs_is_empty(struct sctp_outq *q)
++{
++	return list_empty(q->out_chunk_list);
++}
++
++struct sctp_sched_ops sctp_fcfs = {
++	.name			= "fcfs",
++	.owner			= THIS_MODULE,
++	.init			= fcfs_init,
++	.release		= fcfs_release,
++	.enqueue_head_data	= fcfs_enqueue_head_data,
++	.enqueue_tail_data	= fcfs_enqueue_tail_data,
++	.dequeue_data		= fcfs_dequeue_data,
++	.is_empty		= fcfs_is_empty,
++};
+diff -uprN -X linux-2.6.32.8/Documentation/dontdiff
+p2/net/sctp/socket.c p3/net/sctp/socket.c
+--- p2/net/sctp/socket.c	2010-06-02 13:00:21.000000000 -0700
++++ p3/net/sctp/socket.c	2010-05-28 12:38:09.000000000 -0700
+@@ -3642,6 +3642,8 @@ SCTP_STATIC int sctp_init_sock(struct so
+ 	sp->initmsg.sinit_max_attempts   = sctp_max_retrans_init;
+ 	sp->initmsg.sinit_max_init_timeo = sctp_rto_max;
+
++	sp->sched_ops = sctp_default_sched_ops;
++
+ 	/* Initialize default RTO related parameters.  These parameters can
+ 	 * be modified for with the SCTP_RTOINFO socket option.
+ 	 */
