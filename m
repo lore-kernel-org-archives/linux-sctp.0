@@ -1,106 +1,50 @@
 From: Shan Wei <shanwei@cn.fujitsu.com>
-Date: Tue, 01 Jun 2010 12:03:57 +0000
-Subject: [PATCH] sctp: handle ootb packet in chunk order as defined
-Message-Id: <4C04F72D.4080800@cn.fujitsu.com>
+Date: Sun, 06 Jun 2010 18:08:22 +0000
+Subject: [IPTABLES][PATCH 2/2] xt_sctp: support FORWARD_TSN chunk type
+Message-Id: <4C0BE416.4070503@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: Patrick McHardy <kaber@trash.net>
+Cc: linux-sctp@vger.kernel.org, netfilter-devel@vger.kernel.org
 
+The latest kernel has implemented Partial Reliability Extension
+that defined in RFC3758.
 
-Changed the order of processing SHUTDOWN ACK and COOKIE ACK 
-refer to section 8.4:Handle "Out of the Blue" Packets. 
+This patch adds FORWARD_TSN chunk for tracing.
 
-SHUTDOWN ACK chunk should be processed before processing 
-"Stale Cookie" ERROR or a COOKIE ACK.
-
-Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
+Signed-off-by: Shan Wei<shanwei@cn.fujitsu.com>
 ---
- net/sctp/input.c        |   15 ---------------
- net/sctp/sm_statefuns.c |   21 +++++++++++++++++++++
- 2 files changed, 21 insertions(+), 15 deletions(-)
+ extensions/libxt_sctp.c   |    1 +
+ extensions/libxt_sctp.man |    2 +-
+ 2 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/net/sctp/input.c b/net/sctp/input.c
-index ad3466a..b2fbe6f 100644
---- a/net/sctp/input.c
-+++ b/net/sctp/input.c
-@@ -655,7 +655,6 @@ static int sctp_rcv_ootb(struct sk_buff *skb)
- {
- 	sctp_chunkhdr_t *ch;
- 	__u8 *ch_end;
--	sctp_errhdr_t *err;
+diff --git a/extensions/libxt_sctp.c b/extensions/libxt_sctp.c
+index 92bdb07..8f352fd 100644
+--- a/extensions/libxt_sctp.c
++++ b/extensions/libxt_sctp.c
+@@ -114,6 +114,7 @@ static const struct sctp_chunk_names sctp_chunk_names[]
+     { .name = "SHUTDOWN_COMPLETE", .chunk_type = 14,  .valid_flags = "-------T"},
+     { .name = "ASCONF",		.chunk_type = 193,  .valid_flags = "--------"},
+     { .name = "ASCONF_ACK",	.chunk_type = 128,  .valid_flags = "--------"},
++    { .name = "FORWARD_TSN",	.chunk_type = 192,  .valid_flags = "--------"},
+ };
  
- 	ch = (sctp_chunkhdr_t *) skb->data;
+ static void
+diff --git a/extensions/libxt_sctp.man b/extensions/libxt_sctp.man
+index 01a2e79..eefc850 100644
+--- a/extensions/libxt_sctp.man
++++ b/extensions/libxt_sctp.man
+@@ -7,7 +7,7 @@
+ The flag letter in upper case indicates that the flag is to match if set,
+ in the lower case indicates to match if unset.
  
-@@ -691,20 +690,6 @@ static int sctp_rcv_ootb(struct sk_buff *skb)
- 		if (SCTP_CID_INIT = ch->type && (void *)ch != skb->data)
- 			goto discard;
+-Chunk types: DATA INIT INIT_ACK SACK HEARTBEAT HEARTBEAT_ACK ABORT SHUTDOWN SHUTDOWN_ACK ERROR COOKIE_ECHO COOKIE_ACK ECN_ECNE ECN_CWR SHUTDOWN_COMPLETE ASCONF ASCONF_ACK
++Chunk types: DATA INIT INIT_ACK SACK HEARTBEAT HEARTBEAT_ACK ABORT SHUTDOWN SHUTDOWN_ACK ERROR COOKIE_ECHO COOKIE_ACK ECN_ECNE ECN_CWR SHUTDOWN_COMPLETE ASCONF ASCONF_ACK FORWARD_TSN
  
--		/* RFC 8.4, 7) If the packet contains a "Stale cookie" ERROR
--		 * or a COOKIE ACK the SCTP Packet should be silently
--		 * discarded.
--		 */
--		if (SCTP_CID_COOKIE_ACK = ch->type)
--			goto discard;
--
--		if (SCTP_CID_ERROR = ch->type) {
--			sctp_walk_errors(err, ch) {
--				if (SCTP_ERROR_STALE_COOKIE = err->cause)
--					goto discard;
--			}
--		}
--
- 		ch = (sctp_chunkhdr_t *) ch_end;
- 	} while (ch_end < skb_tail_pointer(skb));
- 
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index dbf98a2..b440c0b 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -3320,8 +3320,10 @@ sctp_disposition_t sctp_sf_ootb(const struct sctp_endpoint *ep,
- 	struct sctp_chunk *chunk = arg;
- 	struct sk_buff *skb = chunk->skb;
- 	sctp_chunkhdr_t *ch;
-+	sctp_errhdr_t *err;
- 	__u8 *ch_end;
- 	int ootb_shut_ack = 0;
-+	int ootb_cookie_ack = 0;
- 
- 	SCTP_INC_STATS(SCTP_MIB_OUTOFBLUES);
- 
-@@ -3346,6 +3348,23 @@ sctp_disposition_t sctp_sf_ootb(const struct sctp_endpoint *ep,
- 		if (SCTP_CID_ABORT = ch->type)
- 			return sctp_sf_pdiscard(ep, asoc, type, arg, commands);
- 
-+		/* RFC 8.4, 7) If the packet contains a "Stale cookie" ERROR
-+		 * or a COOKIE ACK the SCTP Packet should be silently
-+		 * discarded.
-+		 */
-+
-+		if (SCTP_CID_COOKIE_ACK = ch->type)
-+			ootb_cookie_ack = 1;
-+
-+		if (SCTP_CID_ERROR = ch->type) {
-+			sctp_walk_errors(err, ch) {
-+				if (SCTP_ERROR_STALE_COOKIE = err->cause) {
-+					ootb_cookie_ack = 1;
-+					break;
-+				}
-+			}
-+		}
-+
- 		/* Report violation if chunk len overflows */
- 		ch_end = ((__u8 *)ch) + WORD_ROUND(ntohs(ch->length));
- 		if (ch_end > skb_tail_pointer(skb))
-@@ -3357,6 +3376,8 @@ sctp_disposition_t sctp_sf_ootb(const struct sctp_endpoint *ep,
- 
- 	if (ootb_shut_ack)
- 		return sctp_sf_shut_8_4_5(ep, asoc, type, arg, commands);
-+	else if (ootb_cookie_ack)
-+		return sctp_sf_pdiscard(ep, asoc, type, arg, commands);
- 	else
- 		return sctp_sf_tabort_8_4_8(ep, asoc, type, arg, commands);
- }
--- 1.7.0 
+ chunk type            available flags      
+ .br
+-- 
+1.6.3.3
+
