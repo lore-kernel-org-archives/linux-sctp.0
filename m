@@ -1,49 +1,67 @@
-From: Shan Wei <shanwei@cn.fujitsu.com>
-Date: Mon, 17 May 2010 05:55:51 +0000
-Subject: Re: [PATCH 3/3 v2] sctp: check invalid value of length parameter
-Message-Id: <4BF0DA67.9070006@cn.fujitsu.com>
+From: =?UTF-8?q?Diego=20Elio=20=27Flameeyes=27=20Petten=C3=B2?=
+Date: Thu, 24 Jun 2010 14:16:53 +0000
+Subject: [PATCH] sctp: implement SIOCINQ ioctl() (take 2)
+Message-Id: <1277389013-14765-1-git-send-email-flameeyes@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org
 
- 
-RFC4960, section 3.3.7 said:
- If an endpoint receives an ABORT with a format error or no TCB is
- found, it MUST silently discard it.
-
-When an endpoint receives ABORT that parameter value is invalid,
-drop it.
-
-Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
+This simple patch copies the current approach for SIOCINQ ioctl() from DCCP
+into SCTP so that the userland code working with SCTP can use a similar
+interface across different protocols to know how much space to allocate for
+a buffer.
 ---
-v1->v2:
-1. As Vlad's suggestion, use chunk->chunk_end to point to end of chunk.
----
- net/sctp/sm_statefuns.c |    9 ++++++++-
- 1 files changed, 8 insertions(+), 1 deletions(-)
+ net/sctp/socket.c |   35 ++++++++++++++++++++++++++++++++++-
+ 1 files changed, 34 insertions(+), 1 deletions(-)
 
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 03904a6..edb71e6 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -2412,8 +2412,15 @@ static sctp_disposition_t __sctp_sf_do_9_1_abort(const struct sctp_endpoint *ep,
- 
- 	/* See if we have an error cause code in the chunk.  */
- 	len = ntohs(chunk->chunk_hdr->length);
--	if (len >= sizeof(struct sctp_chunkhdr) + sizeof(struct sctp_errhdr))
-+	if (len >= sizeof(struct sctp_chunkhdr) + sizeof(struct sctp_errhdr)) {
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 44a1ab0..f339383 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3595,7 +3595,40 @@ out:
+ /* The SCTP ioctl handler. */
+ SCTP_STATIC int sctp_ioctl(struct sock *sk, int cmd, unsigned long arg)
+ {
+-	return -ENOIOCTLCMD;
++	int rc = -ENOTCONN;
 +
-+		sctp_errhdr_t *err;
-+		sctp_walk_errors(err, chunk->chunk_hdr);
-+		if ((void *)err != (void *)chunk->chunk_end)
-+			return sctp_sf_pdiscard(ep, asoc, type, arg, commands);
++	sctp_lock_sock(sk);
 +
- 		error = ((sctp_errhdr_t *)chunk->skb->data)->cause;
++	/*
++	 * SEQPACKET-style sockets in LISTENING state are valid, for
++	 * SCTP, so only discard TCP-style sockets in LISTENING state.
++	 */
++	if (sctp_style(sk, TCP) && sctp_sstate(sk, LISTENING))
++		goto out;
++
++	switch (cmd) {
++	case SIOCINQ: {
++		struct sk_buff *skb;
++		unsigned long amount = 0;
++
++		skb = skb_peek(&sk->sk_receive_queue);
++		if (skb != NULL) {
++			/*
++			 * We will only return the amount of this packet since
++			 * that is all that will be read.
++			 */
++			amount = skb->len;
++		}
++		rc = put_user(amount, (int __user *)arg);
 +	}
++		break;
++	default:
++		rc = -ENOIOCTLCMD;
++		break;
++	}
++out:
++	sctp_release_sock(sk);
++	return rc;
+ }
  
- 	sctp_add_cmd_sf(commands, SCTP_CMD_SET_SK_ERR, SCTP_ERROR(ECONNRESET));
- 	/* ASSOC_FAILED will DELETE_TCB. */
+ /* This is the function which gets called during socket creation to
 -- 
-1.6.3.3
+1.7.1
+
