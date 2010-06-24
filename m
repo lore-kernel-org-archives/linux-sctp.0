@@ -1,45 +1,29 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Wed, 02 Jun 2010 04:15:25 +0000
-Subject: [PATCH v3] sctp: move chunk from retransmit queue to abandoned list
-Message-Id: <4C05DADD.8050909@cn.fujitsu.com>
+From: Diego Elio =?UTF-8?Q?=E2=80=9CFlameeyes=E2=80=9D_?=
+Date: Thu, 24 Jun 2010 14:03:32 +0000
+Subject: accept(2) man page and SCTP (was Re: [PATCH] sctp: implement
+Message-Id: <1277388212.13544.77.camel@yamato.local>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 To: linux-sctp@vger.kernel.org
 
-If there is still data waiting to retransmit and remain in
-retransmit queue, while doing the next retransmit, if the
-chunk is abandoned, we should move it to abandoned list.
+Il giorno gio, 24/06/2010 alle 09.58 -0400, Vlad Yasevich ha scritto:
+> 
+> I don't think the man page needs an update.  This is just an SCTP-ism.
+> There are other protocols using SOCK_SEQPACKET that implement and
+> support
+> accept() call. 
 
-Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
----
-v2->v3:
-  - move all check to sctp_outq_flush_rtx()
-  - fix missing continue in sctp_outq_flush_rtx()'s check
----
- net/sctp/outqueue.c |    7 +++++++
- 1 files changed, 7 insertions(+), 0 deletions(-)
+Maybe a note in the page then? I actually ended up spending a whole
+night trying to debug the issue before being certain that accept()
+failed to work with SEQPACKET...
 
-diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index abf6706..782eeeb 100644
---- a/net/sctp/outqueue.c
-+++ b/net/sctp/outqueue.c
-@@ -577,6 +577,13 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
- 	 * try to send as much as possible.
- 	 */
- 	list_for_each_entry_safe(chunk, chunk1, lqueue, transmitted_list) {
-+		/* If the chunk is abandoned, move it to abandoned list. */
-+		if (sctp_chunk_abandoned(chunk)) {
-+			list_del_init(&chunk->transmitted_list);
-+			sctp_insert_list(&q->abandoned,
-+					 &chunk->transmitted_list);
-+			continue;
-+		}
- 
- 		/* Make sure that Gap Acked TSNs are not retransmitted.  A
- 		 * simple approach is just to move such TSNs out of the
 -- 
-1.6.5.2
+Diego Elio Pettenò — “Flameeyes”
+http://blog.flameeyes.eu/
+
+If you found a .asc file in this mail and know not what it is,
+it's a GnuPG digital signature: http://www.gnupg.org/
 
 
