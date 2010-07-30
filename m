@@ -1,47 +1,66 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Tue, 13 Jul 2010 15:05:41 +0000
-Subject: Re: about the sctpCurrEstab MIB item
-Message-Id: <4C3C80C5.6060809@hp.com>
+From: Shan Wei <shanwei@cn.fujitsu.com>
+Date: Fri, 30 Jul 2010 08:35:40 +0000
+Subject: [RFC PATCH]sctp: handle ASCONF-ACK which contains Request Refused
+Message-Id: <4C528EDC.9000006@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4C3C1539.5030302@cn.fujitsu.com>
-In-Reply-To: <4C3C1539.5030302@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On 07/13/2010 03:26 AM, Shan Wei wrote:
-> The sctpCurrEstab MIB item is defined in RFC3873 as 
-> the number of associations for which the current state is
-> either ESTABLISHED, SHUTDOWN-RECEIVED or SHUTDOWN-PENDING.
-> 
-> So, an association for which the current state is SHUTDOWN-SENT
-> or SHUTDOWN-ACK-SENT should not counted in SctpCurrEstab. Right?
-> 
-> But, actually, the implementation of Linux is not consistent with the spec.
-> An association is thought as "established" with the current state of
-> ESTABLISHED, SHUTDOWN-RECEIVED, SHUTDOWN-PENDING. SHUTDOWN-SENT
-> or SHUTDOWN-ACK-SENT.
-> 
-> Has any reasons for this implementation?
-> If not, I think we should fix it.
-> 
 
-I don't know of any reason other then it makes a whole lot more sense then
-what's stated in the RFC.
+If Host-A sends an ASCONF request for adding IP-A address, Host-Z may sent ASCONF-ACK
+which contains Error Cause: Request Refused(error = 0x00A4), for the local security 
+policy or other problems. See below chart:
 
-Why would SHUTDOWN_SENT be treated any different then SHUTDOWN_RECEIVED?
+Host-A                                Host-Z
+   -------ASCONF(ADDIP[IP-A])---------->
 
-Think of this situation.  You have a server streaming data to the client.
-The client crashes for some reason, and that triggers a SHUTDOWN to be sent.
-The server still has a bunch of data buffered as it's trying to write stuff
-the wire.  In this case, our association count would be inconsistent if we
-followed the spec.  On the client we would not count an association that's
-still alive and consuming resources, while on the server side we would.
+   <------ASCONF-ACK(error=0x00A4)------
 
-I really think that this is an oversight of the MIB spec and in my personal
-opinion it is not worth fixing.
 
-I am, however, open to counter-arguments.
+Host-Z would thought the operation of adding IP-A at Host-A is fail, and the IP-A address
+is not part of this association. So, If Host-Z sends HEARBEAT to check the IP-A path, 
+Host-A should treat this chunk as OOTB.
 
--vlad
+However, because there is no implementation of local security policy settings in sctp protocol,
+ASCONF-ACK chunk which contains Request Refused error never be sent, and  will be ignored 
+by the receiver.(when received ASCONF-ACK, no more further treatment.) 
+So, If Host-Z sends HEARBEAT to check the IP-A path, Host-A doesn't treat this chunk as OOTB,
+and sends HEARTBEAT-ACK from primary address.
+
+Although Freebsd and Linux still does not send ASCONF-ACK (error = 0x00A4), but we can not
+guarantee that other systems will not too. Therefore, It's necessary to do something when
+receiving ASCONF-ACK(error = 0x00A4).
+
+The current handle is to send ABORT terminates the association, but this will lead to termination
+of other paths in the association. 
+
+Is there better way to fix it?
+
+
+Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
+---
+ net/sctp/sm_make_chunk.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
+
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 246f929..147cca4 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -3344,6 +3344,10 @@ int sctp_process_asconf_ack(struct sctp_association *asoc,
+ 			break;
+ 
+ 		case SCTP_ERROR_REQ_REFUSED:
++			if (asconf_param->param_hdr.type = SCTP_PARAM_ADD_IP)
++				retval = 1;
++			break;
++
+ 		case SCTP_ERROR_DEL_LAST_IP:
+ 		case SCTP_ERROR_DEL_SRC_IP:
+ 		default:
+-- 
+1.6.3.3
+
+
+
