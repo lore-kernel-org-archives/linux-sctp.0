@@ -1,52 +1,81 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Wed, 15 Sep 2010 13:02:56 +0000
-Subject: Re: [PATCH] net: SCTP NULL-pointer dereference problem description
-Message-Id: <4C90C400.7040405@hp.com>
+From: Dan Rosenberg <dan.j.rosenberg@gmail.com>
+Date: Fri, 03 Sep 2010 13:48:18 +0000
+Subject: [PATCH] sctp: prevent reading out-of-bounds memory
+Message-Id: <AANLkTineCKfL-UvqfQBTZPDFeqm3Nrpb=pFnZpkSqbEQ@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <201009151003.17407.dreibh@iem.uni-due.de> <4C908768.4040502@cn.fujitsu.com> <201009151453.14465.dreibh@iem.uni-due.de>
-In-Reply-To: <201009151453.14465.dreibh@iem.uni-due.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: Thomas Dreibholz <dreibh@iem.uni-due.de>
-Cc: Shan Wei <shanwei@cn.fujitsu.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Martin Becke <martin.becke@uni-due.de>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: vladislav.yasevich@hp.com, sri@us.ibm.com
+Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On 09/15/2010 08:53 AM, Thomas Dreibholz wrote:
-> On Mittwoch 15 September 2010, Shan Wei wrote:
->> Thomas Dreibholz wrote, at 09/15/2010 04:03 PM:
->>> sctp_assoc_update_retran_path() in net/sctp/associola.c may dereference=
- a
->>> NULL-pointer when compiled with SCTP_DEBUG option: t will be NULL if
->>> there is no usable path for retransmission. SCTP_DEBUG_PRINTK_IPADDR()
->>> makes an access to t->ipaddr.v4.sin_port, without checking t before.
->>> t=3DNULL =3D> oops.
->>>
->>> The patch below against 2.6.36-rc4 (git repository) simply ensures that=
- t
->>> is checked for not being set to NULL before calling
->>> SCTP_DEBUG_PRINTK_IPADDR().
->>
->> This bug has been reported by WeiYongjun and fixed by vlad for several
->> months. About the details see .
->> http://marc.info/?l=3Dlinux-sctp&m=127359276009851&w=3D2
->>
->> But this patch is still in vlad's net-next tree, not in main tree.
->> See the patch:
->> http://git.kernel.org/?p=3Dlinux/kernel/git/vxy/lksctp-dev.git;a=3Dcommi=
-t;h=EB1
->> 639d206320e6a09168d6dd77306eaf5f02582
->=20
-> This patch resolves the problem. I am using the main tree. The patch shou=
-ld=20
-> also be applied there.
->=20
->=20
-> Best regards
+Two user-controlled allocations in SCTP are subsequently dereferenced
+as sockaddr structs, without checking if the dereferenced struct
+members fall beyond the end of the allocated chunk.  There doesn't
+appear to be any information leakage here based on how these members
+are used and additional checking, but it's still worth fixing.
 
-Yes.  I know.  I've been just touch busy (and not with SCTP pieces) and bac=
-klog
-is starting to accumulate.
-I'll try to push stuff out this week.
+Signed-off-by: Dan Rosenberg <dan.j.rosenberg@gmail.com>
 
--vlad
+--- linux-2.6.35.4.orig/net/sctp/socket.c	2010-09-03 08:58:48.127080114 -0400
++++ linux-2.6.35.4/net/sctp/socket.c	2010-09-03 09:22:06.337096825 -0400
+@@ -889,6 +889,7 @@ SCTP_STATIC int sctp_setsockopt_bindx(st
+ 	int err;
+ 	int addrcnt = 0;
+ 	int walk_size = 0;
++	unsigned int remaining = addrs_size;
+ 	struct sockaddr *sa_addr;
+ 	void *addr_buf;
+ 	struct sctp_af *af;
+@@ -916,6 +917,13 @@ SCTP_STATIC int sctp_setsockopt_bindx(st
+ 	/* Walk through the addrs buffer and count the number of addresses. */
+ 	addr_buf = kaddrs;
+ 	while (walk_size < addrs_size) {
++
++		/* Don't read out-of-bounds memory */
++		if (remaining < sizeof(struct sockaddr)) {
++			kfree(kaddrs);
++			return -EINVAL;
++		}
++
+ 		sa_addr = (struct sockaddr *)addr_buf;
+ 		af = sctp_get_af_specific(sa_addr->sa_family);
 
+@@ -929,6 +937,7 @@ SCTP_STATIC int sctp_setsockopt_bindx(st
+ 		addrcnt++;
+ 		addr_buf += af->sockaddr_len;
+ 		walk_size += af->sockaddr_len;
++		remaining -= af->sockaddr_len;
+ 	}
+
+ 	/* Do the work. */
+@@ -984,6 +993,7 @@ static int __sctp_connect(struct sock* s
+ 	void *addr_buf;
+ 	unsigned short port;
+ 	unsigned int f_flags = 0;
++	unsigned int remaining = addrs_size;
+
+ 	sp = sctp_sk(sk);
+ 	ep = sp->ep;
+@@ -1002,6 +1012,13 @@ static int __sctp_connect(struct sock* s
+ 	/* Walk through the addrs buffer and count the number of addresses. */
+ 	addr_buf = kaddrs;
+ 	while (walk_size < addrs_size) {
++
++		/* Don't read out-of-bounds memory */
++		if (remaining < sizeof(union sctp_addr)) {
++			err = -EINVAL;
++			goto out_free;
++		}
++
+ 		sa_addr = (union sctp_addr *)addr_buf;
+ 		af = sctp_get_af_specific(sa_addr->sa.sa_family);
+ 		port = ntohs(sa_addr->v4.sin_port);
+@@ -1101,6 +1118,7 @@ static int __sctp_connect(struct sock* s
+ 		addrcnt++;
+ 		addr_buf += af->sockaddr_len;
+ 		walk_size += af->sockaddr_len;
++		remaining -= af->sockaddr_len;
+ 	}
+
+ 	/* In case the user of sctp_connectx() wants an association
