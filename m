@@ -1,87 +1,45 @@
-From: Yaogong Wang <ywang15@ncsu.edu>
-Date: Sun, 19 Sep 2010 18:56:22 +0000
-Subject: Re: [PATCHv2 2/5] sctp: implement pluggable multistream scheduling
-Message-Id: <AANLkTi=Aj1hNxjCiWaU8=FNWSdu2+0pf3FngjT8aP9p5@mail.gmail.com>
+From: Dan Carpenter <error27@gmail.com>
+Date: Mon, 06 Sep 2010 12:26:39 +0000
+Subject: [patch] sctp: fix test for end of loop
+Message-Id: <20100906122344.GA2764@bicker>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <AANLkTinaO5Fqn+QJxxkXSCsW0XWvhBc16jK6HGB_0YG0@mail.gmail.com>
-	<4C8E2AE2.9050309@hp.com>
-In-Reply-To: <4C8E2AE2.9050309@hp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: Vlad Yasevich <vladislav.yasevich@hp.com>
-Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>, Wei Yongjun <yjwei@cn.fujitsu.com>, Thadeu Lima de Souza Cascardo <cascardo@holoscopio.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, kernel-janitors@vger.kernel.org
 
-Signed-off-by: Yaogong Wang <ywang15@ncsu.edu>
+"new_addr" is the list cursor here and it's always non-NULL.
+
+We're trying to test if we exited because the loop ended or we hit the
+break statement.  Really testing !found is enough so long as 
+"new_asoc->peer.transport_addr_list" is not empty and I believe it never
+is empty at this point.  So this is never really a bug with the current
+code.
+
+Signed-off-by: Dan Carpenter <error27@gmail.com>
 ---
- net/sctp/protocol.c |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletions(-)
+Compile tested only.
 
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index d40c5cc..0121def 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -1310,11 +1310,13 @@ SCTP_STATIC __init int sctp_init(void)
- 	/* Add FCFS to sctp_sched_list */
- 	status =3D sctp_register_sched(&sctp_fcfs);
- 	if (status)
--		goto err_v6_add_protocol;
-+		goto err_register_sched;
-
- 	status =3D 0;
- out:
- 	return status;
-+err_register_sched:
-+	sctp_v6_del_protocol();
- err_v6_add_protocol:
- 	sctp_v4_del_protocol();
- err_add_protocol:
---=20
-1.7.0.4
-
-
-
-On Mon, Sep 13, 2010 at 9:45 AM, Vlad Yasevich
-<vladislav.yasevich@hp.com> wrote:
-> One small nit.
->
-> On 09/11/2010 09:12 PM, Yaogong Wang wrote:
->> Implement the pluggable multistream scheduling framework.
->> Provide the default first-come-first-serve (FCFS) algorithm.
->>
->> Signed-off-by: Yaogong Wang <ywang15@ncsu.edu>
->> ---
->> diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
->> index 5027b83..d40c5cc 100644
->> --- a/net/sctp/protocol.c
->> +++ b/net/sctp/protocol.c
->> @@ -1157,6 +1157,9 @@ SCTP_STATIC __init int sctp_init(void)
->> =A0 =A0 =A0 sctp_max_instreams =A0 =A0 =A0 =A0 =A0 =A0 =A0=3D SCTP_DEFAU=
-LT_INSTREAMS;
->> =A0 =A0 =A0 sctp_max_outstreams =A0 =A0 =A0 =A0 =A0 =A0 =3D SCTP_DEFAULT=
-_OUTSTREAMS;
->>
->> + =A0 =A0 /* Initialize default multistream scheduling algorithm to FCFS=
- */
->> + =A0 =A0 sctp_default_sched_ops =A0 =A0 =A0 =A0 =A0=3D &sctp_fcfs;
->> +
->> =A0 =A0 =A0 /* Initialize handle used for association ids. */
->> =A0 =A0 =A0 idr_init(&sctp_assocs_id);
->>
->> @@ -1304,6 +1307,11 @@ SCTP_STATIC __init int sctp_init(void)
->> =A0 =A0 =A0 if (status)
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto err_v6_add_protocol;
->>
->> + =A0 =A0 /* Add FCFS to sctp_sched_list */
->> + =A0 =A0 status =3D sctp_register_sched(&sctp_fcfs);
->> + =A0 =A0 if (status)
->> + =A0 =A0 =A0 =A0 =A0 =A0 goto err_v6_add_protocol;
->> +
->
-> This needs its own tag that will call sctp_v6_del_protocol().
->
-> -vlad
->
->> =A0 =A0 =A0 status =3D 0;
->> =A0out:
->> =A0 =A0 =A0 return status;
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 24b2cd5..cb76d2e 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -1254,7 +1254,6 @@ static int sctp_sf_check_restart_addrs(const struct sctp_association *new_asoc,
+ 	/* Search through all current addresses and make sure
+ 	 * we aren't adding any new ones.
+ 	 */
+-	new_addr = NULL;
+ 	found = 0;
+ 
+ 	list_for_each_entry(new_addr, &new_asoc->peer.transport_addr_list,
+@@ -1273,7 +1272,8 @@ static int sctp_sf_check_restart_addrs(const struct sctp_association *new_asoc,
+ 	}
+ 
+ 	/* If a new address was added, ABORT the sender. */
+-	if (!found && new_addr) {
++	if (!found &&
++	    &new_addr->transports != &new_asoc->peer.transport_addr_list) {
+ 		sctp_sf_send_restart_abort(&new_addr->ipaddr, init, commands);
+ 	}
+ 
