@@ -1,35 +1,48 @@
-From: Yaogong Wang <ywang15@ncsu.edu>
-Date: Sun, 12 Sep 2010 01:12:27 +0000
-Subject: [PATCHv2 0/5] sctp: add multistream scheduling feature
-Message-Id: <AANLkTi=3me5AsWLVpy7Xku_Qr2ajxJzHULnhWgSz14k=@mail.gmail.com>
+From: Dan Carpenter <error27@gmail.com>
+Date: Mon, 06 Sep 2010 19:59:06 +0000
+Subject: stack trace from sctp_getsockopt_local_addrs()
+Message-Id: <20100906195905.GA7423@bicker>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>
-Cc: linux-kernel@vger.kernel.org
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-SCTP supports multistreaming. It solves the head-of-line blocking
-problem of TCP and makes SCTP a proper transport for signaling.
-However, this feature can be further exploited to provide QoS
-scheduling among multiple streams. This is what we want to add in this
-patch.
+In sctp_getsockopt_local_addrs() we can potentially try allocate too
+much memory depending on what the user passes to us as "len".
 
-In the current implementation, multiple streams in an SCTP association
-are scheduled in a first-come-first-serve (FCFS) fashion. We would
-like to augment this simple algorithm with many other scheduling
-algorithms and let the application choose which scheduling algorithm
-they want to use. We provide a multistream scheduling framework in the
-kernel so that different scheduling algorithms can be implemented as
-kernel modules. We also extend the SCTP socket API to include a new
-socket option for applications to choose and configure the scheduling
-algorithm. This approach is inspired by the pluggable TCP congestion
-control mechanism in the Linux kernel.
+net/sctp/socket.c
+  4489          to = optval + offsetof(struct sctp_getaddrs,addrs);
+  4490          space_left = len - offsetof(struct sctp_getaddrs,addrs);
+  4491  
+  4492          addrs = kmalloc(space_left, GFP_KERNEL);
+  4493          if (!addrs)
+  4494                  return -ENOMEM;
+  4495
 
-Note that this modification doesn't change the protocol on the wire.
-It only changes the internal scheduling. Therefore, it won't cause any
-interoperability problem. Further, this modification doesn't change
-the congestion control algorithm of SCTP. It only changes which data
-chunk should be transmitted first, under the constraints of the
-congestion window. Therefore, it's safe to be deployed in the
-Internet.
+It's harmless.  "space_left" is never zero and we handle memory
+allocation failures correctly but it's still a little messy and can lead
+to a stack trace.  It's a WARN_ONCE() so it's not a huge deal.
+
+Sep  6 20:57:07 bicker kernel: [84533.160286] ------------[ cut here ]------------
+Sep  6 20:57:07 bicker kernel: [84533.160304] WARNING: at mm/page_alloc.c:1971 __alloc_pages_nodemask+0x153/0x4ed()
+Sep  6 20:57:07 bicker kernel: [84533.160311] Hardware name: 900HA
+Sep  6 20:57:07 bicker kernel: [84533.160315] Modules linked in: ufs ppp_deflate zlib_deflate bsd_comp ppp_async crc_ccitt pp
+p_generic slhc sctp crc32c libcrc32c option usb_wwan usbserial ath5k atl1e ath
+Sep  6 20:57:07 bicker kernel: [84533.160359] Pid: 8949, comm: a.out Not tainted 2.6.36-rc3+ #39
+Sep  6 20:57:07 bicker kernel: [84533.160365] Call Trace:
+Sep  6 20:57:07 bicker kernel: [84533.160380]  [<c103019e>] warn_slowpath_common+0x60/0x75
+Sep  6 20:57:07 bicker kernel: [84533.160391]  [<c10301c2>] warn_slowpath_null+0xf/0x13
+Sep  6 20:57:07 bicker kernel: [84533.160402]  [<c10914ff>] __alloc_pages_nodemask+0x153/0x4ed
+Sep  6 20:57:07 bicker kernel: [84533.160414]  [<c10307de>] ? release_console_sem+0x177/0x1a4
+Sep  6 20:57:07 bicker kernel: [84533.160428]  [<c10918a8>] __get_free_pages+0xf/0x21
+Sep  6 20:57:07 bicker kernel: [84533.160440]  [<c10b1625>] __kmalloc+0x2f/0xf9
+Sep  6 20:57:07 bicker kernel: [84533.160473]  [<f83964bc>] sctp_getsockopt+0x99d/0x16b5 [sctp]
+
+This could happen if you called
+ 	getsockopt(sd, SOL_SCTP, SCTP_GET_LOCAL_ADDRS, getaddrs, &len);
+without initializing "len".
+
+regards,
+dan carpenter
+
