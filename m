@@ -1,74 +1,51 @@
-From: =?UTF-8?q?Diego=20Elio=20Petten=C3=B2?= <flameeyes@gmail.com>
-Date: Wed, 29 Sep 2010 01:51:35 +0000
-Subject: [PATCH] sctp: implement SIOCINQ ioctl() (take 3)
-Message-Id: <1285725095-9860-1-git-send-email-flameeyes@gmail.com>
+From: Thomas Dreibholz <dreibh@iem.uni-due.de>
+Date: Wed, 15 Sep 2010 08:03:11 +0000
+Subject: [PATCH] net: SCTP NULL-pointer dereference problem description and fix
+Message-Id: <201009151003.17407.dreibh@iem.uni-due.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1277389013-14765-1-git-send-email-flameeyes@gmail.com>
-In-Reply-To: <1277389013-14765-1-git-send-email-flameeyes@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
-Cc: =?UTF-8?q?Diego=20Elio=20'Flameeyes'=20Petten=C3=B2?= <flameeyes@gmail.com>
+Cc: Martin Becke <martin.becke@uni-due.de>
 
-From: Diego Elio 'Flameeyes' Pettenò <flameeyes@gmail.com>
+sctp_assoc_update_retran_path() in net/sctp/associola.c may dereference a 
+NULL-pointer when compiled with SCTP_DEBUG option: t will be NULL if there is 
+no usable path for retransmission. SCTP_DEBUG_PRINTK_IPADDR() makes an access 
+to t->ipaddr.v4.sin_port, without checking t before. t=NULL => oops.
 
-This simple patch copies the current approach for SIOCINQ ioctl() from DCCP
-into SCTP so that the userland code working with SCTP can use a similar
-interface across different protocols to know how much space to allocate for
-a buffer.
+The patch below against 2.6.36-rc4 (git repository) simply ensures that t is 
+checked for not being set to NULL before calling SCTP_DEBUG_PRINTK_IPADDR().
 
-Signed-off-by: Diego Elio Pettenò <flameeyes@gmail.com>
+
+Signed-off-by: Thomas Dreibholz <dreibh@iem.uni-due.de>
 ---
- net/sctp/socket.c |   35 ++++++++++++++++++++++++++++++++++-
- 1 files changed, 34 insertions(+), 1 deletions(-)
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index e41feff..b2688a4 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1321,15 +1321,15 @@ void sctp_assoc_update_retran_path(struct 
+sctp_association *asoc)
+ 		}
+ 	}
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index ca44917..199ec05 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3595,7 +3595,40 @@ out:
- /* The SCTP ioctl handler. */
- SCTP_STATIC int sctp_ioctl(struct sock *sk, int cmd, unsigned long arg)
- {
--	return -ENOIOCTLCMD;
-+	int rc = -ENOTCONN;
-+
-+	sctp_lock_sock(sk);
-+
-+	/*
-+	 * SEQPACKET-style sockets in LISTENING state are valid, for
-+	 * SCTP, so only discard TCP-style sockets in LISTENING state.
-+	 */
-+	if (sctp_style(sk, TCP) && sctp_sstate(sk, LISTENING))
-+		goto out;
-+
-+	switch (cmd) {
-+	case SIOCINQ: {
-+		struct sk_buff *skb;
-+		unsigned int amount = 0;
-+
-+		skb = skb_peek(&sk->sk_receive_queue);
-+		if (skb != NULL) {
-+			/*
-+			 * We will only return the amount of this packet since
-+			 * that is all that will be read.
-+			 */
-+			amount = skb->len;
-+		}
-+		rc = put_user(amount, (int __user *)arg);
+-	if (t)
++	if (t) {
+ 		asoc->peer.retran_path = t;
+-
+-	SCTP_DEBUG_PRINTK_IPADDR("sctp_assoc_update_retran_path:association"
+-				 " %p addr: ",
+-				 " port: %d\n",
+-				 asoc,
+-				 (&t->ipaddr),
+-				 ntohs(t->ipaddr.v4.sin_port));
++		SCTP_DEBUG_PRINTK_IPADDR("sctp_assoc_update_retran_path:association"
++					 " %p addr: ",
++					 " port: %d\n",
++					 asoc,
++					 (&t->ipaddr),
++					 ntohs(t->ipaddr.v4.sin_port));
 +	}
-+		break;
-+	default:
-+		rc = -ENOIOCTLCMD;
-+		break;
-+	}
-+out:
-+	sctp_release_sock(sk);
-+	return rc;
  }
- 
- /* This is the function which gets called during socket creation to
--- 
-1.7.3
 
+ /* Choose the transport for sending retransmit packet.  */
