@@ -1,28 +1,74 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 08 Sep 2010 20:09:07 +0000
-Subject: Re: [PATCH] sctp: implement SIOCINQ ioctl() (take 3)
-Message-Id: <20100908.130907.48489776.davem@davemloft.net>
+From: =?UTF-8?q?Diego=20Elio=20Petten=C3=B2?= <flameeyes@gmail.com>
+Date: Wed, 29 Sep 2010 01:51:35 +0000
+Subject: [PATCH] sctp: implement SIOCINQ ioctl() (take 3)
+Message-Id: <1285725095-9860-1-git-send-email-flameeyes@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1283521623-1609-1-git-send-email-flameeyes@gmail.com>
-In-Reply-To: <1283521623-1609-1-git-send-email-flameeyes@gmail.com>
+References: <1277389013-14765-1-git-send-email-flameeyes@gmail.com>
+In-Reply-To: <1277389013-14765-1-git-send-email-flameeyes@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: flameeyes@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+Cc: =?UTF-8?q?Diego=20Elio=20'Flameeyes'=20Petten=C3=B2?= <flameeyes@gmail.com>
 
-From: Diego Elio Petten=F2 <flameeyes@gmail.com>
-Date: Fri,  3 Sep 2010 15:47:03 +0200
+From: Diego Elio 'Flameeyes' Pettenò <flameeyes@gmail.com>
 
-> From: Diego Elio 'Flameeyes' Petten=F2 <flameeyes@gmail.com>
->=20
-> This simple patch copies the current approach for SIOCINQ ioctl() from DC=
-CP
-> into SCTP so that the userland code working with SCTP can use a similar
-> interface across different protocols to know how much space to allocate f=
-or
-> a buffer.
->=20
-> Signed-off-by: Diego Elio Petten=F2 <flameeyes@gmail.com>
+This simple patch copies the current approach for SIOCINQ ioctl() from DCCP
+into SCTP so that the userland code working with SCTP can use a similar
+interface across different protocols to know how much space to allocate for
+a buffer.
 
-Applied, thank you.
+Signed-off-by: Diego Elio Pettenò <flameeyes@gmail.com>
+---
+ net/sctp/socket.c |   35 ++++++++++++++++++++++++++++++++++-
+ 1 files changed, 34 insertions(+), 1 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index ca44917..199ec05 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3595,7 +3595,40 @@ out:
+ /* The SCTP ioctl handler. */
+ SCTP_STATIC int sctp_ioctl(struct sock *sk, int cmd, unsigned long arg)
+ {
+-	return -ENOIOCTLCMD;
++	int rc = -ENOTCONN;
++
++	sctp_lock_sock(sk);
++
++	/*
++	 * SEQPACKET-style sockets in LISTENING state are valid, for
++	 * SCTP, so only discard TCP-style sockets in LISTENING state.
++	 */
++	if (sctp_style(sk, TCP) && sctp_sstate(sk, LISTENING))
++		goto out;
++
++	switch (cmd) {
++	case SIOCINQ: {
++		struct sk_buff *skb;
++		unsigned int amount = 0;
++
++		skb = skb_peek(&sk->sk_receive_queue);
++		if (skb != NULL) {
++			/*
++			 * We will only return the amount of this packet since
++			 * that is all that will be read.
++			 */
++			amount = skb->len;
++		}
++		rc = put_user(amount, (int __user *)arg);
++	}
++		break;
++	default:
++		rc = -ENOIOCTLCMD;
++		break;
++	}
++out:
++	sctp_release_sock(sk);
++	return rc;
+ }
+ 
+ /* This is the function which gets called during socket creation to
+-- 
+1.7.3
+
