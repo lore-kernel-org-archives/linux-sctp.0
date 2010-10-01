@@ -1,73 +1,29 @@
-From: "B N Srikant-A21035" <srikantbn@motorola.com>
-Date: Thu, 07 Oct 2010 02:32:33 +0000
-Subject: RE: SACK is sent to wrong IP address
-Message-Id: <2B7783B1E18B2C4984C3979954E10AFC07E3EAF4@ZMY16EXM67.ds.mot.com>
+From: Robin Holt <holt@sgi.com>
+Date: Fri, 01 Oct 2010 19:39:58 +0000
+Subject: sysctl_{tcp,udp,sctp}_mem overflow on 16TB system.
+Message-Id: <20101001193958.GP14068@sgi.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <2B7783B1E18B2C4984C3979954E10AFC07E3EAC9@ZMY16EXM67.ds.mot.com>
-In-Reply-To: <2B7783B1E18B2C4984C3979954E10AFC07E3EAC9@ZMY16EXM67.ds.mot.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, "Pekka Savola (ipv6)" <pekkas@netcore.fi>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>
+Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-sctp@vger.kernel.org
 
-Vlad,
 
-Thanks for the reply. Do you suggest any code changes ? 
+On a 16TB system, we noticed that sysctl_tcp_mem[2] and sysctl_udp_mem[2]
+were negative.  Code review indicates that the same should occur with
+sysctl_sctp_mem[2].
 
-Rgds
-Srikant 
+There are a couple ways we could address this.  The one which appears most
+reasonable would be to change the struct proto defintion for sysctl_mem
+from an int to a long and handle all the associated fallout.
 
------Original Message-----
-From: linux-sctp-owner@vger.kernel.org
-[mailto:linux-sctp-owner@vger.kernel.org] On Behalf Of Vlad Yasevich
-Sent: Thursday, October 07, 2010 12:23 AM
-To: B N Srikant-A21035
-Cc: linux-sctp@vger.kernel.org
-Subject: Re: SACK is sent to wrong IP address
+An alternative is to limit the calculation to 1/2 INT_MAX.  The downside
+being that the administrator could not tune the system to use more than
+INT_MAX memory when much more is available.
 
-On 10/06/2010 01:48 PM, B N Srikant-A21035 wrote:
-> Hi,
->
-> We have multihomed server (IP1, IP2) and single home client (IP3).
-> Initially client has established association with multi homed server.
-> Later the server has restarted and sent INIT. The IP1 is temporarily 
-> inactive and IP2 is active.
-> So INIT is sent from IP2 and client has sent INIT ACK back to IP2. The
+Is there a compelling reason to not change the structure's definition
+over to longs instead of ints and deal with the fallout from that change?
 
-> Cookie and Cookie ack are also exchanged on new address.
->
-> But when data was sent from server (IP2) to client the client is 
-> sending SACK to IP1 instead IP2.
-> As per the RFC the SACK should be sent to the address from where data 
-> is coming.
->
-> Is there any fix for this ? Or any suggestion to fix it is helpful.
->
-> thanks
-> Srikant
->
->
-
-Hi Srikant
-
-This looks like a bug during the restart procedure.
-
-When the association is restarted, the concept of primary transport may
-have changed, but that is not accounted for during the restart
-procedure.  When the association restarts, the we need to check if we
-need to change the primary transport and perform the change if required.
-
--vlad
-
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" 
-> in the body of a message to majordomo@vger.kernel.org More majordomo 
-> info at  http://vger.kernel.org/majordomo-info.html
->
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-the body of a message to majordomo@vger.kernel.org More majordomo info
-at  http://vger.kernel.org/majordomo-info.html
+Thanks,
+Robin Holt
