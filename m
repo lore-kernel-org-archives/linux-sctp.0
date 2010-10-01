@@ -1,29 +1,50 @@
-From: Christian Schoch <e0326715@student.tuwien.ac.at>
-Date: Tue, 05 Oct 2010 13:53:51 +0000
-Subject: Re: [PATCH] Error in calculation of RTTvar
-Message-Id: <20101005155351.9e8yjm7bpk4cgwwo@webmail.tuwien.ac.at>
+From: Dan Rosenberg <drosenberg@vsecurity.com>
+Date: Fri, 01 Oct 2010 21:51:47 +0000
+Subject: [PATCH] Fix out-of-bounds reading in sctp_asoc_get_hmac()
+Message-Id: <1285969907.2814.49.camel@Dan>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20101005063636.4x0vgeefesckcs0s@webmail.tuwien.ac.at>
-In-Reply-To: <20101005063636.4x0vgeefesckcs0s@webmail.tuwien.ac.at>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: vladislav.yasevich@hp.com, sri@us.ibm.com
+Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, security@kernel.org, stable@kernel.org, netdev@vger.kernel.org
 
-Sorry, forget that in the morning.
+The sctp_asoc_get_hmac() function iterates through a peer's hmac_ids
+array and attempts to ensure that only a supported hmac entry is
+returned.  The current code fails to do this properly - if the last id
+in the array is out of range (greater than SCTP_AUTH_HMAC_ID_MAX), the
+id integer remains set after exiting the loop, and the address of an
+out-of-bounds entry will be returned and subsequently used in the parent
+function, causing potentially ugly memory corruption.  This patch resets
+the id integer to 0 on encountering an invalid id so that NULL will be
+returned after finishing the loop if no valid ids are found.
 
-Signed-off-by: Christian Schoch <e0326715@student.tuwien.ac.at>
+Signed-off-by: Dan Rosenberg <drosenberg@vsecurity.com>
 
->
-> All that missing is a sign off.  Can you add
-> Signed-off-by: name <email>
->
-> to this patch, or reply with your sign-off.
->
-> Thanks
-> -vlad
->
-
-
+--- linux-2.6.35.5.orig/net/sctp/auth.c	2010-09-20 16:59:09.000000000 -0400
++++ linux-2.6.35.5/net/sctp/auth.c	2010-10-01 16:48:58.000000000 -0400
+@@ -543,16 +543,20 @@ struct sctp_hmac *sctp_auth_asoc_get_hma
+ 		id = ntohs(hmacs->hmac_ids[i]);
+ 
+ 		/* Check the id is in the supported range */
+-		if (id > SCTP_AUTH_HMAC_ID_MAX)
++		if (id > SCTP_AUTH_HMAC_ID_MAX) {
++			id = 0;
+ 			continue;
++		}
+ 
+ 		/* See is we support the id.  Supported IDs have name and
+ 		 * length fields set, so that we can allocated and use
+ 		 * them.  We can safely just check for name, for without the
+ 		 * name, we can't allocate the TFM.
+ 		 */
+-		if (!sctp_hmac_list[id].hmac_name)
++		if (!sctp_hmac_list[id].hmac_name) {
++			id = 0;
+ 			continue;
++		}
+ 
+ 		break;
+ 	}
 
 
