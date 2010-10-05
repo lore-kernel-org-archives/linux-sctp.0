@@ -1,21 +1,46 @@
-From: Willy Tarreau <w@1wt.eu>
-Date: Sun, 03 Oct 2010 16:43:24 +0000
-Subject: Re: sysctl_{tcp,udp,sctp}_mem overflow on 16TB system.
-Message-Id: <20101003164324.GC3711@1wt.eu>
+From: Christian Schoch <e0326715@student.tuwien.ac.at>
+Date: Tue, 05 Oct 2010 04:36:36 +0000
+Subject: [PATCH] Error in calculation of RTTvar
+Message-Id: <20101005063636.4x0vgeefesckcs0s@webmail.tuwien.ac.at>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20101001193958.GP14068@sgi.com> <20101001203022.GA28486@1wt.eu> <AANLkTin5wPvFQDFrupqGs_Jbh1rgrTjMupbPUFnvrBrv@mail.gmail.com>
-In-Reply-To: <AANLkTin5wPvFQDFrupqGs_Jbh1rgrTjMupbPUFnvrBrv@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Maciej ??enczykowski <zenczykowski@gmail.com>
-Cc: Robin Holt <holt@sgi.com>, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, "Pekka Savola (ipv6)" <pekkas@netcore.fi>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-On Sun, Oct 03, 2010 at 01:20:32AM -0700, Maciej ??enczykowski wrote:
-> Isn't INT_MAX/2 just 1GB, which is only ~0.9 seconds at 10 Gbps?
+The problem is inside the calculation of RTTVAR, which could last in 
+very high values for RTO. This wrong result exists when RTT is rising 
+and is bigger than SRTT (the subtraction goes negative).
+With this patch it should be possible to set RTOmin = 1 and the RTO has 
+its minimum of 4 times the clock granularity - if the connection is 
+fast enough like a LAN connection.
 
-no, the size is in pages (and is often wrong when people change it
-from the default value).
+abs() takes two long as argument and the output is long.
+srtt, rtt and rttvar are __u32.
 
-Regards,
-Willy
+Subtraction of two unsigned values results in a value, that is not the 
+same as it would be if the arguments are two signed values and the 
+casted back.
+Without typecasting the result is the one's complement +1 for carry.
+
+This patch should eliminate the problem.
+
+Schoch Christian
+
+-----------------------------------------------------------------------
+
+--- a/net/sctp/transport.c        2010-10-05 06:04:17.000000000 +0200
++++ b/net/sctp/transport.c        2010-10-05 06:09:09.000000000 +0200
+@@ -334,7 +334,7 @@
+                 * 1/8, rto_alpha would be expressed as 3.
+                 */
+                tp->rttvar = tp->rttvar - (tp->rttvar >> sctp_rto_beta)
+-                        + ((abs(tp->srtt - rtt)) >> sctp_rto_beta);
++                        + (((__u32)abs((long)tp->srtt - (long)rtt)) >> 
+sctp_rto_beta);
+                tp->srtt = tp->srtt - (tp->srtt >> sctp_rto_alpha)
+                        + (rtt >> sctp_rto_alpha);
+        } else {
+
+---------------------------------------------
+
