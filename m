@@ -1,43 +1,32 @@
-From: Nicolas Kaiser <nikai@nikai.net>
-Date: Thu, 21 Oct 2010 13:08:47 +0000
-Subject: Re: [PATCH] sctp: remove redundant chunk length check
-Message-Id: <20101021150847.3a5f3cb7@absol.kitzblitz>
+From: "B N Srikant-A21035" <srikantbn@motorola.com>
+Date: Wed, 06 Oct 2010 17:48:05 +0000
+Subject: SACK is sent to wrong IP address
+Message-Id: <2B7783B1E18B2C4984C3979954E10AFC07E3EAC9@ZMY16EXM67.ds.mot.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20101021121409.6de7d429@absol.kitzblitz>
-	<4CC02CDF.5040700@cn.fujitsu.com>
-In-Reply-To: <4CC02CDF.5040700@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Shan Wei <shanwei@cn.fujitsu.com>
-Cc: Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-* Shan Wei <shanwei@cn.fujitsu.com>:
-> Nicolas Kaiser wrote, at 10/21/2010 06:14 PM:
-> > Checking the chunk length at this point appears redundant, as
-> > the rest of the packet gets discarded anyway.
+Hi,
  
-> Yes, indeed.
-> 
-> How did you find this? By reviewing the source code?
-
-Actually I'm tinkering with Coccinelle patches.
-
-Here's a simple semantic patch, that will give a lot of false
-positives, and a lot of "if (a) return b; return b;":
-
-// <smpl>
-@@
-expression a;
-statement S;
-@@
-
-- if (a)
-- {
-- S
-- }
- S
-// </smpl>
-
-Best regards,
-Nicolas Kaiser
+We have multihomed server (IP1, IP2) and single home client (IP3).
+Initially client has established association with multi homed server.
+Later the server has restarted and sent INIT. The IP1 is temporarily
+inactive and IP2 is active. 
+So INIT is sent from IP2 and client has sent INIT ACK back to IP2. The
+Cookie and Cookie ack are also exchanged on new address.
+ 
+But when data was sent from server (IP2) to client the client is sending
+SACK to IP1 instead IP2.
+As per the RFC the SACK should be sent to the address from where data is
+coming. 
+ 
+Is there any fix for this ? Or any suggestion to fix it is helpful.
+ 
+thanks
+Srikant
+ 
+ 
+ 
+ 
