@@ -1,48 +1,102 @@
-From: Robin Holt <holt@sgi.com>
-Date: Sat, 02 Oct 2010 11:24:07 +0000
-Subject: [Patch] Limit sysctl_sctp_mem initializer to prevent integer overflows.
-Message-Id: <20101002112419.376412820@gulag1.americas.sgi.com>
+From: Yaogong Wang <ywang15@ncsu.edu>
+Date: Thu, 14 Oct 2010 17:41:25 +0000
+Subject: Re: [PATCHv2 3/5] sctp: extend socket API for sched configuration
+Message-Id: <AANLkTim2XA1i+AbqV95u_4FWLViVuNXqJxEnaMqm-3yF@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <AANLkTimEQkDpWorCF4HUq6N-xAnFz4xE89osAtcJY_Mn@mail.gmail.com>
+	<4CB56E7F.3030908@cn.fujitsu.com>
+In-Reply-To: <4CB56E7F.3030908@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: Shan Wei <shanwei@cn.fujitsu.com>
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>, linux-kernel@vger.kernel.org
 
-Subject: [Patch] Limit sysctl_sctp_mem initializer to prevent integer overflows.
+The reason is that SCTP supports one-to-many style socket where one
+socket handles multiple associations (and hence multiple outqueues).
+In that case, if we only store scheduling configurations in the
+socket, it may cause several problems:
+1. All associations handled by this socket must share the same
+scheduling policy.
+2. If you change the scheduling algorithm of the socket when some
+associations are already established, we have to change the scheduling
+of on-going associations, which may be complicated and error-prone.
 
-On a 16TB x86_64 machine, sysctl_sctp_mem[2] can integer overflow.
-Set limit such that they are maximized without overflowing.
+If we only store scheduling configurations in the association, the
+difficulty is: when should the application set these configurations?
+In one-to-many style socket, associations are implicitly established.
+There isn't a point where association is established but data transfer
+hasn't started yet so that the user can configure the scheduling
+algorithm. We again has to deal with the problem of changing
+scheduling when data transfer is under way.
 
-Signed-off-by: Robin Holt <holt@sgi.com>
-To: Willy Tarreau <w@1wt.eu>
-To: linux-sctp@vger.kernel.org
-Cc: Vlad Yasevich <vladislav.yasevich@hp.com>
-Cc: Sridhar Samudrala <sri@us.ibm.com>
+The current design is a compromise of the two approaches. Scheduling
+configurations are set at the socket level and stored in sctp_sock.
+When a new association is established, it inherits the scheduling
+configurations from the socket. If the application changes the
+scheduling configurations of the socket on the fly, only associations
+established after the change are affected. That way, we are able to
+have different scheduling algorithms for associations handled by one
+socket and we eliminate the trouble to change scheduling policy on the
+fly.
 
----
+Thanks,
+Yaogong
 
- net/sctp/protocol.c |    4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+On Wed, Oct 13, 2010 at 4:31 AM, Shan Wei <shanwei@cn.fujitsu.com> wrote:
+> Yaogong Wang wrote, at 09/12/2010 09:13 AM:
+>> Augment SCTP socket API with a new socket option SCTP_SCHED
+>> to choose and configure multistream scheduling algorithm.
+>>
+>> Signed-off-by: Yaogong Wang <ywang15@ncsu.edu>
+>> ---
+>> =A0include/net/sctp/structs.h | =A0 =A04 ++
+>> =A0include/net/sctp/user.h =A0 =A0| =A0 19 ++++++++++
+>> =A0net/sctp/outqueue.c =A0 =A0 =A0 =A0| =A0 =A04 ++
+>> =A0net/sctp/sm_sideeffect.c =A0 | =A0 45 +++++++++++++++++++++++--
+>> =A0net/sctp/socket.c =A0 =A0 =A0 =A0 =A0| =A0 80 +++++++++++++++++++++++=
++++++++++++++++++++++
+>> =A05 files changed, 149 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+>> index 52af764..1a76417 100644
+>> --- a/include/net/sctp/structs.h
+>> +++ b/include/net/sctp/structs.h
+>> @@ -333,6 +333,8 @@ struct sctp_sock {
+>>
+>> =A0 =A0 =A0 /* Multistream scheduling */
+>> =A0 =A0 =A0 const struct sctp_sched_ops *sched_ops;
+>> + =A0 =A0 __u16 sched_config_len;
+>> + =A0 =A0 void *sched_config;
+>>
+>> =A0 =A0 =A0 struct sctp_initmsg initmsg;
+>> =A0 =A0 =A0 struct sctp_rtoinfo rtoinfo;
+>> @@ -1173,6 +1175,8 @@ struct sctp_outq {
+>>
+>> =A0 =A0 =A0 /* Multistream scheduling */
+>> =A0 =A0 =A0 const struct sctp_sched_ops *sched_ops;
+>> + =A0 =A0 __u16 sched_config_len;
+>> + =A0 =A0 void *sched_config;
+>
+> Why did you take these two fields into sctp_sock and sctp_outq?
+> These two fields between sctp_sock and sctp_outq has same role,
+> we can only defined in one place.
+> How about using sctp_sk(sctp_outq->asoc->base.sk) to access these two
+> fields?
+>
+>
+> --
+> Best Regards
+> -----
+> Shan Wei
+>
 
-Index: pv1010932/net/sctp/protocol.c
-=================================--- pv1010932.orig/net/sctp/protocol.c	2010-10-02 06:11:59.000000000 -0500
-+++ pv1010932/net/sctp/protocol.c	2010-10-02 06:13:17.727949810 -0500
-@@ -1162,7 +1162,8 @@ SCTP_STATIC __init int sctp_init(void)
- 
- 	/* Set the pressure threshold to be a fraction of global memory that
- 	 * is up to 1/2 at 256 MB, decreasing toward zero with the amount of
--	 * memory, with a floor of 128 pages.
-+	 * memory, with a floor of 128 pages, and a ceiling that prevents an
-+	 * integer overflow.
- 	 * Note this initializes the data in sctpv6_prot too
- 	 * Unabashedly stolen from tcp_init
- 	 */
-@@ -1170,6 +1171,7 @@ SCTP_STATIC __init int sctp_init(void)
- 	limit = min(nr_pages, 1UL<<(28-PAGE_SHIFT)) >> (20-PAGE_SHIFT);
- 	limit = (limit * (nr_pages >> (20-PAGE_SHIFT))) >> (PAGE_SHIFT-11);
- 	limit = max(limit, 128UL);
-+	limit = min(limit, INT_MAX * 4UL / 3 / 2);
- 	sysctl_sctp_mem[0] = limit / 4 * 3;
- 	sysctl_sctp_mem[1] = limit;
- 	sysctl_sctp_mem[2] = sysctl_sctp_mem[0] * 2;
 
+
+--=20
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+Yaogong Wang, PhD candidate
+Department of Computer Science
+North Carolina State University
+http://www4.ncsu.edu/~ywang15/
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
