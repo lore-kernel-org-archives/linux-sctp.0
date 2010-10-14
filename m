@@ -1,659 +1,143 @@
-From: Changli Gao <xiaosuo@gmail.com>
-Date: Wed, 20 Oct 2010 02:54:36 +0000
-Subject: [PATCH] net: make ctl_path local and const
-Message-Id: <1287543276-4511-1-git-send-email-xiaosuo@gmail.com>
+From: Yaogong Wang <ywang15@ncsu.edu>
+Date: Thu, 14 Oct 2010 18:07:26 +0000
+Subject: Re: [PATCHv2 4/5] sctp: a sample module of strict priority queue
+Message-Id: <AANLkTimnQboEwHV5LWvEa46LrRpwxmrWscJ2xGjO-Qjx@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <AANLkTi=8ArxUh2-8PJvD8paDGVBHdDjKk=xQDKo6i2==@mail.gmail.com>
+	<4CB56F7A.8030702@cn.fujitsu.com>
+In-Reply-To: <4CB56F7A.8030702@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>
-Cc: Arnaldo Carvalho de Melo <acme@ghostprotocols.net>, Joerg Reuter <jreuter@yaina.de>, Ralf Baechle <ralf@linux-mips.org>, Stephen Hemminger <shemminger@linux-foundation.org>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, "Pekka Savola (ipv6)" <pekkas@netcore.fi>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Samuel Ortiz <samuel@sortiz.org>, Remi Denis-Courmont <remi.denis-courmont@nokia.com>, Andy Grover <andy.grover@oracle.com>, Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>, Andrew Hendry <andrew.hendry@gmail.com>, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, linux-hams@vger.kernel.org, bridge@lists.linux-foundation.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, coreteam@netfilter.org, rds-devel@oss.oracle.com, linux-sctp@vger.kernel.org, linux-x25@vger.kernel.org, Changli Gao <xiaosuo@gmail.com>
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: Shan Wei <shanwei@cn.fujitsu.com>
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vladislav.yasevich@hp.com>, linux-kernel@vger.kernel.org
 
-Signed-off-by: Changli Gao <xiaosuo@gmail.com>
----
- net/appletalk/sysctl_net_atalk.c        |   12 ++++++------
- net/ax25/sysctl_net_ax25.c              |   11 +++++------
- net/bridge/br_netfilter.c               |   13 +++++++------
- net/dccp/sysctl.c                       |   14 +++++++-------
- net/decnet/sysctl_net_decnet.c          |   12 ++++++------
- net/ipv4/devinet.c                      |   10 +++++-----
- net/ipv4/route.c                        |   25 ++++++++++++-------------
- net/ipx/sysctl_net_ipx.c                |   11 +++++------
- net/irda/irsysctl.c                     |   12 ++++++------
- net/llc/sysctl_net_llc.c                |   12 ++++++------
- net/netfilter/nf_conntrack_standalone.c |    9 ++++-----
- net/netfilter/nf_log.c                  |   15 +++++++--------
- net/netrom/sysctl_net_netrom.c          |   12 ++++++------
- net/phonet/sysctl.c                     |   12 ++++++------
- net/rds/ib_sysctl.c                     |   17 +++++++++--------
- net/rds/iw_sysctl.c                     |   17 +++++++++--------
- net/rds/sysctl.c                        |   16 ++++++++--------
- net/rose/sysctl_net_rose.c              |   12 ++++++------
- net/sctp/sysctl.c                       |   12 ++++++------
- net/unix/sysctl_net_unix.c              |   11 +++++------
- net/x25/sysctl_net_x25.c                |   12 ++++++------
- 21 files changed, 137 insertions(+), 140 deletions(-)
-diff --git a/net/appletalk/sysctl_net_atalk.c b/net/appletalk/sysctl_net_atalk.c
-index 04e9c0d..b92f269 100644
---- a/net/appletalk/sysctl_net_atalk.c
-+++ b/net/appletalk/sysctl_net_atalk.c
-@@ -42,16 +42,16 @@ static struct ctl_table atalk_table[] = {
- 	{ },
- };
- 
--static struct ctl_path atalk_path[] = {
--	{ .procname = "net", },
--	{ .procname = "appletalk", },
--	{ }
--};
--
- static struct ctl_table_header *atalk_table_header;
- 
- void atalk_register_sysctl(void)
- {
-+	const struct ctl_path atalk_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "appletalk", },
-+		{ }
-+	};
-+
- 	atalk_table_header = register_sysctl_paths(atalk_path, atalk_table);
- }
- 
-diff --git a/net/ax25/sysctl_net_ax25.c b/net/ax25/sysctl_net_ax25.c
-index ebe0ef3..6d461ae 100644
---- a/net/ax25/sysctl_net_ax25.c
-+++ b/net/ax25/sysctl_net_ax25.c
-@@ -34,12 +34,6 @@ static struct ctl_table_header *ax25_table_header;
- static ctl_table *ax25_table;
- static int ax25_table_size;
- 
--static struct ctl_path ax25_path[] = {
--	{ .procname = "net", },
--	{ .procname = "ax25", },
--	{ }
--};
--
- static const ctl_table ax25_param_table[] = {
- 	{
- 		.procname	= "ip_default_mode",
-@@ -163,6 +157,11 @@ void ax25_register_sysctl(void)
- {
- 	ax25_dev *ax25_dev;
- 	int n, k;
-+	const struct ctl_path ax25_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "ax25", },
-+		{ }
-+	};
- 
- 	spin_lock_bh(&ax25_dev_lock);
- 	for (ax25_table_size = sizeof(ctl_table), ax25_dev = ax25_dev_list; ax25_dev != NULL; ax25_dev = ax25_dev->next)
-diff --git a/net/bridge/br_netfilter.c b/net/bridge/br_netfilter.c
-index 7f9ce96..6a89631 100644
---- a/net/bridge/br_netfilter.c
-+++ b/net/bridge/br_netfilter.c
-@@ -990,17 +990,18 @@ static ctl_table brnf_table[] = {
- 	},
- 	{ }
- };
--
--static struct ctl_path brnf_path[] = {
--	{ .procname = "net", },
--	{ .procname = "bridge", },
--	{ }
--};
- #endif
- 
- int __init br_netfilter_init(void)
- {
- 	int ret;
-+#ifdef CONFIG_SYSCTL
-+	const struct ctl_path brnf_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "bridge", },
-+		{ }
-+	};
-+#endif
- 
- 	ret = dst_entries_init(&fake_dst_ops);
- 	if (ret < 0)
-diff --git a/net/dccp/sysctl.c b/net/dccp/sysctl.c
-index 5639438..bfb80d1 100644
---- a/net/dccp/sysctl.c
-+++ b/net/dccp/sysctl.c
-@@ -96,17 +96,17 @@ static struct ctl_table dccp_default_table[] = {
- 	{ }
- };
- 
--static struct ctl_path dccp_path[] = {
--	{ .procname = "net", },
--	{ .procname = "dccp", },
--	{ .procname = "default", },
--	{ }
--};
--
- static struct ctl_table_header *dccp_table_header;
- 
- int __init dccp_sysctl_init(void)
- {
-+	const struct ctl_path dccp_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "dccp", },
-+		{ .procname = "default", },
-+		{ }
-+	};
-+
- 	dccp_table_header = register_sysctl_paths(dccp_path,
- 			dccp_default_table);
- 
-diff --git a/net/decnet/sysctl_net_decnet.c b/net/decnet/sysctl_net_decnet.c
-index be3eb8e..910927f 100644
---- a/net/decnet/sysctl_net_decnet.c
-+++ b/net/decnet/sysctl_net_decnet.c
-@@ -350,14 +350,14 @@ static ctl_table dn_table[] = {
- 	{ }
- };
- 
--static struct ctl_path dn_path[] = {
--	{ .procname = "net", },
--	{ .procname = "decnet", },
--	{ }
--};
--
- void dn_register_sysctl(void)
- {
-+	const struct ctl_path dn_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "decnet", },
-+		{ }
-+	};
-+
- 	dn_table_header = register_sysctl_paths(dn_path, dn_table);
- }
- 
-diff --git a/net/ipv4/devinet.c b/net/ipv4/devinet.c
-index c2ff48f..06c55fe 100644
---- a/net/ipv4/devinet.c
-+++ b/net/ipv4/devinet.c
-@@ -1519,11 +1519,6 @@ static struct ctl_table ctl_forward_entry[] = {
- 	{ },
- };
- 
--static __net_initdata struct ctl_path net_ipv4_path[] = {
--	{ .procname = "net", },
--	{ .procname = "ipv4", },
--	{ },
--};
- #endif
- 
- static __net_init int devinet_init_net(struct net *net)
-@@ -1533,6 +1528,11 @@ static __net_init int devinet_init_net(struct net *net)
- #ifdef CONFIG_SYSCTL
- 	struct ctl_table *tbl = ctl_forward_entry;
- 	struct ctl_table_header *forw_hdr;
-+	const struct ctl_path net_ipv4_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "ipv4", },
-+		{ },
-+	};
- #endif
- 
- 	err = -ENOMEM;
-diff --git a/net/ipv4/route.c b/net/ipv4/route.c
-index ff98983..13bbac4 100644
---- a/net/ipv4/route.c
-+++ b/net/ipv4/route.c
-@@ -3182,12 +3182,6 @@ static struct ctl_table ipv4_skeleton[]  	{ }
- };
- 
--static __net_initdata struct ctl_path ipv4_path[] = {
--	{ .procname = "net", },
--	{ .procname = "ipv4", },
--	{ },
--};
--
- static struct ctl_table ipv4_route_flush_table[] = {
- 	{
- 		.procname	= "flush",
-@@ -3198,16 +3192,15 @@ static struct ctl_table ipv4_route_flush_table[] = {
- 	{ },
- };
- 
--static __net_initdata struct ctl_path ipv4_route_path[] = {
--	{ .procname = "net", },
--	{ .procname = "ipv4", },
--	{ .procname = "route", },
--	{ },
--};
--
- static __net_init int sysctl_route_net_init(struct net *net)
- {
- 	struct ctl_table *tbl;
-+	const struct ctl_path ipv4_route_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "ipv4", },
-+		{ .procname = "route", },
-+		{ },
-+	};
- 
- 	tbl = ipv4_route_flush_table;
- 	if (!net_eq(net, &init_net)) {
-@@ -3343,6 +3336,12 @@ int __init ip_rt_init(void)
-  */
- void __init ip_static_sysctl_init(void)
- {
-+	const struct ctl_path ipv4_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "ipv4", },
-+		{ },
-+	};
-+
- 	register_sysctl_paths(ipv4_path, ipv4_skeleton);
- }
- #endif
-diff --git a/net/ipx/sysctl_net_ipx.c b/net/ipx/sysctl_net_ipx.c
-index bd6dca0..2cd92d2 100644
---- a/net/ipx/sysctl_net_ipx.c
-+++ b/net/ipx/sysctl_net_ipx.c
-@@ -27,16 +27,15 @@ static struct ctl_table ipx_table[] = {
- 	{ },
- };
- 
--static struct ctl_path ipx_path[] = {
--	{ .procname = "net", },
--	{ .procname = "ipx", },
--	{ }
--};
--
- static struct ctl_table_header *ipx_table_header;
- 
- void ipx_register_sysctl(void)
- {
-+	const struct ctl_path ipx_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "ipx", },
-+		{ }
-+	};
- 	ipx_table_header = register_sysctl_paths(ipx_path, ipx_table);
- }
- 
-diff --git a/net/irda/irsysctl.c b/net/irda/irsysctl.c
-index d0b70da..b177680 100644
---- a/net/irda/irsysctl.c
-+++ b/net/irda/irsysctl.c
-@@ -235,12 +235,6 @@ static ctl_table irda_table[] = {
- 	{ }
- };
- 
--static struct ctl_path irda_path[] = {
--	{ .procname = "net", },
--	{ .procname = "irda", },
--	{ }
--};
--
- static struct ctl_table_header *irda_table_header;
- 
- /*
-@@ -251,6 +245,12 @@ static struct ctl_table_header *irda_table_header;
-  */
- int __init irda_sysctl_register(void)
- {
-+	const struct ctl_path irda_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "irda", },
-+		{ }
-+	};
-+
- 	irda_table_header = register_sysctl_paths(irda_path, irda_table);
- 	if (!irda_table_header)
- 		return -ENOMEM;
-diff --git a/net/llc/sysctl_net_llc.c b/net/llc/sysctl_net_llc.c
-index e2ebe35..bb7c153 100644
---- a/net/llc/sysctl_net_llc.c
-+++ b/net/llc/sysctl_net_llc.c
-@@ -79,16 +79,16 @@ static struct ctl_table llc_table[] = {
- 	{ },
- };
- 
--static struct ctl_path llc_path[] = {
--	{ .procname = "net", },
--	{ .procname = "llc", },
--	{ }
--};
--
- static struct ctl_table_header *llc_table_header;
- 
- int __init llc_sysctl_init(void)
- {
-+	const struct ctl_path llc_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "llc", },
-+		{ }
-+	};
-+
- 	llc_table_header = register_sysctl_paths(llc_path, llc_table);
- 
- 	return llc_table_header ? 0 : -ENOMEM;
-diff --git a/net/netfilter/nf_conntrack_standalone.c b/net/netfilter/nf_conntrack_standalone.c
-index eb973fc..87529bb 100644
---- a/net/netfilter/nf_conntrack_standalone.c
-+++ b/net/netfilter/nf_conntrack_standalone.c
-@@ -407,14 +407,13 @@ static ctl_table nf_ct_netfilter_table[] = {
- 	{ }
- };
- 
--static struct ctl_path nf_ct_path[] = {
--	{ .procname = "net", },
--	{ }
--};
--
- static int nf_conntrack_standalone_init_sysctl(struct net *net)
- {
- 	struct ctl_table *table;
-+	const struct ctl_path nf_ct_path[] = {
-+		{ .procname = "net", },
-+		{ }
-+	};
- 
- 	if (net_eq(net, &init_net)) {
- 		nf_ct_netfilter_header diff --git a/net/netfilter/nf_log.c b/net/netfilter/nf_log.c
-index 7df37fd..ad170df 100644
---- a/net/netfilter/nf_log.c
-+++ b/net/netfilter/nf_log.c
-@@ -209,13 +209,6 @@ static const struct file_operations nflog_file_ops = {
- #endif /* PROC_FS */
- 
- #ifdef CONFIG_SYSCTL
--static struct ctl_path nf_log_sysctl_path[] = {
--	{ .procname = "net", },
--	{ .procname = "netfilter", },
--	{ .procname = "nf_log", },
--	{ }
--};
--
- static char nf_log_sysctl_fnames[NFPROTO_NUMPROTO-NFPROTO_UNSPEC][3];
- static struct ctl_table nf_log_sysctl_table[NFPROTO_NUMPROTO+1];
- static struct ctl_table_header *nf_log_dir_header;
-@@ -264,6 +257,12 @@ static int nf_log_proc_dostring(ctl_table *table, int write,
- static __init int netfilter_log_sysctl_init(void)
- {
- 	int i;
-+	const struct ctl_path nf_log_sysctl_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "netfilter", },
-+		{ .procname = "nf_log", },
-+		{ }
-+	};
- 
- 	for (i = NFPROTO_UNSPEC; i < NFPROTO_NUMPROTO; i++) {
- 		snprintf(nf_log_sysctl_fnames[i-NFPROTO_UNSPEC], 3, "%d", i);
-@@ -278,7 +277,7 @@ static __init int netfilter_log_sysctl_init(void)
- 	}
- 
- 	nf_log_dir_header = register_sysctl_paths(nf_log_sysctl_path,
--				       nf_log_sysctl_table);
-+						  nf_log_sysctl_table);
- 	if (!nf_log_dir_header)
- 		return -ENOMEM;
- 
-diff --git a/net/netrom/sysctl_net_netrom.c b/net/netrom/sysctl_net_netrom.c
-index 1e0fa9e..235840a 100644
---- a/net/netrom/sysctl_net_netrom.c
-+++ b/net/netrom/sysctl_net_netrom.c
-@@ -146,14 +146,14 @@ static ctl_table nr_table[] = {
- 	{ }
- };
- 
--static struct ctl_path nr_path[] = {
--	{ .procname = "net", },
--	{ .procname = "netrom", },
--	{ }
--};
--
- void __init nr_register_sysctl(void)
- {
-+	const struct ctl_path nr_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "netrom", },
-+		{ }
-+	};
-+
- 	nr_table_header = register_sysctl_paths(nr_path, nr_table);
- }
- 
-diff --git a/net/phonet/sysctl.c b/net/phonet/sysctl.c
-index cea1c7d..5363afe 100644
---- a/net/phonet/sysctl.c
-+++ b/net/phonet/sysctl.c
-@@ -93,14 +93,14 @@ static struct ctl_table phonet_table[] = {
- 	{ }
- };
- 
--static struct ctl_path phonet_ctl_path[] = {
--	{ .procname = "net", },
--	{ .procname = "phonet", },
--	{ },
--};
--
- int __init phonet_sysctl_init(void)
- {
-+	const struct ctl_path phonet_ctl_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "phonet", },
-+		{ },
-+	};
-+
- 	phonet_table_hrd = register_sysctl_paths(phonet_ctl_path, phonet_table);
- 	return phonet_table_hrd = NULL ? -ENOMEM : 0;
- }
-diff --git a/net/rds/ib_sysctl.c b/net/rds/ib_sysctl.c
-index fc3da37..301a504 100644
---- a/net/rds/ib_sysctl.c
-+++ b/net/rds/ib_sysctl.c
-@@ -106,13 +106,6 @@ ctl_table rds_ib_sysctl_table[] = {
- 	{ }
- };
- 
--static struct ctl_path rds_ib_sysctl_path[] = {
--	{ .procname = "net", },
--	{ .procname = "rds", },
--	{ .procname = "ib", },
--	{ }
--};
--
- void rds_ib_sysctl_exit(void)
- {
- 	if (rds_ib_sysctl_hdr)
-@@ -121,7 +114,15 @@ void rds_ib_sysctl_exit(void)
- 
- int rds_ib_sysctl_init(void)
- {
--	rds_ib_sysctl_hdr = register_sysctl_paths(rds_ib_sysctl_path, rds_ib_sysctl_table);
-+	const struct ctl_path rds_ib_sysctl_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "rds", },
-+		{ .procname = "ib", },
-+		{ }
-+	};
-+
-+	rds_ib_sysctl_hdr = register_sysctl_paths(rds_ib_sysctl_path,
-+						  rds_ib_sysctl_table);
- 	if (!rds_ib_sysctl_hdr)
- 		return -ENOMEM;
- 	return 0;
-diff --git a/net/rds/iw_sysctl.c b/net/rds/iw_sysctl.c
-index 23e3a9a..27b338f 100644
---- a/net/rds/iw_sysctl.c
-+++ b/net/rds/iw_sysctl.c
-@@ -109,13 +109,6 @@ ctl_table rds_iw_sysctl_table[] = {
- 	{ }
- };
- 
--static struct ctl_path rds_iw_sysctl_path[] = {
--	{ .procname = "net", },
--	{ .procname = "rds", },
--	{ .procname = "iw", },
--	{ }
--};
--
- void rds_iw_sysctl_exit(void)
- {
- 	if (rds_iw_sysctl_hdr)
-@@ -124,7 +117,15 @@ void rds_iw_sysctl_exit(void)
- 
- int rds_iw_sysctl_init(void)
- {
--	rds_iw_sysctl_hdr = register_sysctl_paths(rds_iw_sysctl_path, rds_iw_sysctl_table);
-+	const struct ctl_path rds_iw_sysctl_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "rds", },
-+		{ .procname = "iw", },
-+		{ }
-+	};
-+
-+	rds_iw_sysctl_hdr = register_sysctl_paths(rds_iw_sysctl_path,
-+						  rds_iw_sysctl_table);
- 	if (!rds_iw_sysctl_hdr)
- 		return -ENOMEM;
- 	return 0;
-diff --git a/net/rds/sysctl.c b/net/rds/sysctl.c
-index 25ad0c7..13fa563 100644
---- a/net/rds/sysctl.c
-+++ b/net/rds/sysctl.c
-@@ -92,13 +92,6 @@ static ctl_table rds_sysctl_rds_table[] = {
- 	{ }
- };
- 
--static struct ctl_path rds_sysctl_path[] = {
--	{ .procname = "net", },
--	{ .procname = "rds", },
--	{ }
--};
--
--
- void rds_sysctl_exit(void)
- {
- 	if (rds_sysctl_reg_table)
-@@ -107,10 +100,17 @@ void rds_sysctl_exit(void)
- 
- int rds_sysctl_init(void)
- {
-+	const struct ctl_path rds_sysctl_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "rds", },
-+		{ }
-+	};
-+
- 	rds_sysctl_reconnect_min = msecs_to_jiffies(1);
- 	rds_sysctl_reconnect_min_jiffies = rds_sysctl_reconnect_min;
- 
--	rds_sysctl_reg_table = register_sysctl_paths(rds_sysctl_path, rds_sysctl_rds_table);
-+	rds_sysctl_reg_table = register_sysctl_paths(rds_sysctl_path,
-+						     rds_sysctl_rds_table);
- 	if (!rds_sysctl_reg_table)
- 		return -ENOMEM;
- 	return 0;
-diff --git a/net/rose/sysctl_net_rose.c b/net/rose/sysctl_net_rose.c
-index df6d9da..ed3da3b 100644
---- a/net/rose/sysctl_net_rose.c
-+++ b/net/rose/sysctl_net_rose.c
-@@ -118,14 +118,14 @@ static ctl_table rose_table[] = {
- 	{ }
- };
- 
--static struct ctl_path rose_path[] = {
--	{ .procname = "net", },
--	{ .procname = "rose", },
--	{ }
--};
--
- void __init rose_register_sysctl(void)
- {
-+	const struct ctl_path rose_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "rose", },
-+		{ }
-+	};
-+
- 	rose_table_header = register_sysctl_paths(rose_path, rose_table);
- }
- 
-diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
-index 832590b..6e4855e 100644
---- a/net/sctp/sysctl.c
-+++ b/net/sctp/sysctl.c
-@@ -255,17 +255,17 @@ static ctl_table sctp_table[] = {
- 	{ /* sentinel */ }
- };
- 
--static struct ctl_path sctp_path[] = {
--	{ .procname = "net", },
--	{ .procname = "sctp", },
--	{ }
--};
--
- static struct ctl_table_header * sctp_sysctl_header;
- 
- /* Sysctl registration.  */
- void sctp_sysctl_register(void)
- {
-+	const struct ctl_path sctp_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "sctp", },
-+		{ }
-+	};
-+
- 	sctp_sysctl_header = register_sysctl_paths(sctp_path, sctp_table);
- }
- 
-diff --git a/net/unix/sysctl_net_unix.c b/net/unix/sysctl_net_unix.c
-index 397cffe..397a837 100644
---- a/net/unix/sysctl_net_unix.c
-+++ b/net/unix/sysctl_net_unix.c
-@@ -26,15 +26,14 @@ static ctl_table unix_table[] = {
- 	{ }
- };
- 
--static struct ctl_path unix_path[] = {
--	{ .procname = "net", },
--	{ .procname = "unix", },
--	{ },
--};
--
- int __net_init unix_sysctl_register(struct net *net)
- {
- 	struct ctl_table *table;
-+	const struct ctl_path unix_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "unix", },
-+		{ },
-+	};
- 
- 	table = kmemdup(unix_table, sizeof(unix_table), GFP_KERNEL);
- 	if (table = NULL)
-diff --git a/net/x25/sysctl_net_x25.c b/net/x25/sysctl_net_x25.c
-index d2efd29..fcd74db 100644
---- a/net/x25/sysctl_net_x25.c
-+++ b/net/x25/sysctl_net_x25.c
-@@ -73,14 +73,14 @@ static struct ctl_table x25_table[] = {
- 	{ 0, },
- };
- 
--static struct ctl_path x25_path[] = {
--	{ .procname = "net", },
--	{ .procname = "x25", },
--	{ }
--};
--
- void __init x25_register_sysctl(void)
- {
-+	const struct ctl_path x25_path[] = {
-+		{ .procname = "net", },
-+		{ .procname = "x25", },
-+		{ }
-+	};
-+
- 	x25_table_header = register_sysctl_paths(x25_path, x25_table);
- }
- 
+On Wed, Oct 13, 2010 at 4:36 AM, Shan Wei <shanwei@cn.fujitsu.com> wrote:
+> Yaogong Wang wrote, at 09/12/2010 09:13 AM:
+>> Provide a sample kernel module that uses the pluggable multistream
+>> scheduling framework. This module implements strict priority queue.
+>>
+>> Signed-off-by: Yaogong Wang <ywang15@ncsu.edu>
+>> ---
+>> =A0net/sctp/Kconfig =A0 =A0 | =A0 12 ++++++
+>> =A0net/sctp/Makefile =A0 =A0| =A0 =A01 +
+>> =A0net/sctp/sctp_prio.c | =A0103 +++++++++++++++++++++++++++++++++++++++=
++++++++++++
+>> =A03 files changed, 116 insertions(+), 0 deletions(-)
+>> =A0create mode 100644 net/sctp/sctp_prio.c
+>>
+>> diff --git a/net/sctp/Kconfig b/net/sctp/Kconfig
+>> index 126b014..85c8ded 100644
+>> --- a/net/sctp/Kconfig
+>> +++ b/net/sctp/Kconfig
+>> @@ -37,6 +37,18 @@ menuconfig IP_SCTP
+>>
+>> =A0if IP_SCTP
+>>
+>> +config SCTP_SCHED_PRIO
+>> + =A0 =A0 tristate "SCTP Multistream Scheduling: Priority Queue"
+>> + =A0 =A0 default m
+>> + =A0 =A0 help
+>> + =A0 =A0 =A0 This module provides the ability to use priority queue
+>> + =A0 =A0 =A0 to schedule multiple streams within an association.
+>> +
+>> + =A0 =A0 =A0 To compile this code as a module, choose M here: the
+>> + =A0 =A0 =A0 module will be called sctp_prio.
+>> +
+>> + =A0 =A0 =A0 If in doubt, say N.
+>> +
+>> =A0config NET_SCTPPROBE
+>> =A0 =A0 =A0 tristate "SCTP: Association probing"
+>> =A0 =A0 =A0 =A0 =A0depends on PROC_FS && KPROBES
+>> diff --git a/net/sctp/Makefile b/net/sctp/Makefile
+>> index 4e8b65d..89be03a 100644
+>> --- a/net/sctp/Makefile
+>> +++ b/net/sctp/Makefile
+>> @@ -4,6 +4,7 @@
+>>
+>> =A0obj-$(CONFIG_IP_SCTP) +=3D sctp.o
+>> =A0obj-$(CONFIG_NET_SCTPPROBE) +=3D sctp_probe.o
+>> +obj-$(CONFIG_SCTP_SCHED_PRIO) +=3D sctp_prio.o
+>>
+>> =A0sctp-y :=3D sm_statetable.o sm_statefuns.o sm_sideeffect.o \
+>> =A0 =A0 =A0 =A0 protocol.o endpointola.o associola.o \
+>> diff --git a/net/sctp/sctp_prio.c b/net/sctp/sctp_prio.c
+>> new file mode 100644
+>> index 0000000..11e7e11
+>> --- /dev/null
+>> +++ b/net/sctp/sctp_prio.c
+>> @@ -0,0 +1,103 @@
+>> +/*
+>> + * SCTP multistream scheduling: priority queue
+>> + */
+>> +
+>> +#include <linux/module.h>
+>> +#include <linux/types.h>
+>> +#include <linux/list.h>
+>> +#include <net/sctp/sctp.h>
+>> +
+>> +static int prio_init(struct sctp_outq *q, gfp_t gfp)
+>> +{
+>> + =A0 =A0 __u16 i;
+>> + =A0 =A0 q->out_chunk_list =3D kmalloc(q->asoc->c.sinit_num_ostreams
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* sizeof(st=
+ruct list_head), gfp);
+>> + =A0 =A0 if (!q->out_chunk_list)
+>> + =A0 =A0 =A0 =A0 =A0 =A0 return -ENOMEM;
+>> + =A0 =A0 for (i =3D 0; i < q->asoc->c.sinit_num_ostreams; i++)
+>> + =A0 =A0 =A0 =A0 =A0 =A0 INIT_LIST_HEAD(&q->out_chunk_list[i]);
+>> +
+>> + =A0 =A0 return 0;
+>> +}
+>> +
+>> +static void prio_release(struct sctp_outq *q)
+>> +{
+>> + =A0 =A0 kfree(q->out_chunk_list);
+>> + =A0 =A0 return;
+>> +}
+>> +
+>> +static void prio_enqueue_head_data(struct sctp_outq *q,
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+=A0 struct sctp_chunk *ch)
+>> +{
+>> + =A0 =A0 list_add(&ch->list, &q->out_chunk_list[ch->sinfo.sinfo_stream]=
+);
+>
+> User can using SCTP_SNDRCV option to specific stream number.
+> So, It is necessary to check stream number with q->asoc->c.sinit_num_ostr=
+eams.
+
+Isn't this check already performed in sctp_sendmsg() before it comes
+to sctp_outq?
+
+>
+>> + =A0 =A0 q->out_qlen +=3D ch->skb->len;
+>> + =A0 =A0 return;
+>> +}
+>> +
+>> +static void prio_enqueue_tail_data(struct sctp_outq *q, struct sctp_chu=
+nk *ch)
+>> +{
+>> + =A0 =A0 list_add_tail(&ch->list, &q->out_chunk_list[ch->sinfo.sinfo_st=
+ream]);
+>
+> need to check too.
+>
+>
+>
+> --
+> Best Regards
+> -----
+> Shan Wei
+>
+>
+
+
+
+--=20
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+Yaogong Wang, PhD candidate
+Department of Computer Science
+North Carolina State University
+http://www4.ncsu.edu/~ywang15/
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
