@@ -1,74 +1,58 @@
-From: =?UTF-8?q?Diego=20Elio=20Petten=C3=B2?= <flameeyes@gmail.com>
-Date: Fri, 01 Oct 2010 09:56:05 +0000
-Subject: [PATCH] sctp: implement SIOCINQ ioctl() (take 3 bis)
-Message-Id: <1285926965-5130-1-git-send-email-flameeyes@gmail.com>
+From: Diego Elio =?ISO-8859-1?Q?Petten=F2?= <flameeyes@gmail.com>
+Date: Fri, 15 Oct 2010 14:22:37 +0000
+Subject: Re: [PATCH] sctp: implement SIOCINQ ioctl() (take 3 bis)
+Message-Id: <1287152557.465.24.camel@yamato.local>
+MIME-Version: 1
+Content-Type: multipart/mixed; boundary="=-mHFZpbMbZu3nu9dPPiue"
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20100930.173557.108787840.davem@davemloft.net>
-In-Reply-To: <20100930.173557.108787840.davem@davemloft.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
-Cc: =?UTF-8?q?Diego=20Elio=20'Flameeyes'=20Petten=C3=B2?= <flameeyes@gmail.com>
+	 <1285926965-5130-1-git-send-email-flameeyes@gmail.com>
+In-Reply-To: <1285926965-5130-1-git-send-email-flameeyes@gmail.com>
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org
 
-From: Diego Elio 'Flameeyes' Pettenò <flameeyes@gmail.com>
 
-This simple patch copies the current approach for SIOCINQ ioctl() from DCCP
-into SCTP so that the userland code working with SCTP can use a similar
-interface across different protocols to know how much space to allocate for
-a buffer.
+--=-mHFZpbMbZu3nu9dPPiue
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Diego Elio Pettenò <flameeyes@gmail.com>
----
- net/sctp/socket.c |   35 ++++++++++++++++++++++++++++++++++-
- 1 files changed, 34 insertions(+), 1 deletions(-)
+Il giorno ven, 01/10/2010 alle 11.56 +0200, Diego Elio Petten=C3=B2 ha
+scritto:
+>=20
+>=20
+> This simple patch copies the current approach for SIOCINQ ioctl() from
+> DCCP
+> into SCTP so that the userland code working with SCTP can use a
+> similar
+> interface across different protocols to know how much space to
+> allocate for
+> a buffer.=20
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index ca44917..8872028 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3595,7 +3595,40 @@ out:
- /* The SCTP ioctl handler. */
- SCTP_STATIC int sctp_ioctl(struct sock *sk, int cmd, unsigned long arg)
- {
--	return -ENOIOCTLCMD;
-+	int rc = -ENOTCONN;
-+
-+	sctp_lock_sock(sk);
-+
-+	/*
-+	 * SEQPACKET-style sockets in LISTENING state are valid, for
-+	 * SCTP, so only discard TCP-style sockets in LISTENING state.
-+	 */
-+	if (sctp_style(sk, TCP) && sctp_sstate(sk, LISTENING))
-+		goto out;
-+
-+	switch (cmd) {
-+	case SIOCINQ: {
-+		struct sk_buff *skb;
-+		unsigned int amount = 0;
-+
-+		skb = skb_peek(&sk->sk_receive_queue);
-+		if (skb != NULL) {
-+			/*
-+			 * We will only return the amount of this packet since
-+			 * that is all that will be read.
-+			 */
-+			amount = skb->len;
-+		}
-+		rc = put_user(amount, (int __user *)arg);
-+		break;
-+	}
-+	default:
-+		rc = -ENOIOCTLCMD;
-+		break;
-+	}
-+out:
-+	sctp_release_sock(sk);
-+	return rc;
- }
- 
- /* This is the function which gets called during socket creation to
--- 
-1.7.3.1
+Any news on getting this one in? Pretty please? :)
+
+--=20
+Diego Elio Petten=C3=B2 =E2=80=94 =E2=80=9CFlameeyes=E2=80=9D
+http://blog.flameeyes.eu/
+
+If you found a .asc file in this mail and know not what it is,
+it's a GnuPG digital signature: http://www.gnupg.org/
+
+
+--=-mHFZpbMbZu3nu9dPPiue
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.16 (GNU/Linux)
+
+iQEcBAABCAAGBQJMuGOqAAoJEBqCrVe7WSRDit4H/0eDt0wl126654WuRIyUDUbk
+w/y8FYmHRfc/WnigmVBmeGoTD4q6+dz/rkNAeHqIoOUnKH3p548krhIg+fAZLtFu
+7Ndg1q65JD632j0QpqskReqnjB6M3V2Qp4xhql0w0WZ2NubWyqYUxiCq3FlsUlwq
+07qhiZEPjxaUDo5G3jte9+6xtSw9cH15BRYAjEzM7GZNdt03FOlENpCRSNg0sKld
+Ef7S++5uOUyYYiVErsiN5uoSTPtd17+tgxBg0OsC62+vwoJZwbxy3rQMikHQ7yBc
+JeiXNGMMqLbt5fupeniVA1THyMB44IIgSHmmshg4IZjBN6qMeHFIoX4uaG+YGI4=
+=jDST
+-----END PGP SIGNATURE-----
+
+--=-mHFZpbMbZu3nu9dPPiue--
 
