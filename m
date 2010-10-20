@@ -1,34 +1,102 @@
-From: Diego Elio =?ISO-8859-1?Q?Petten=F2?= <flameeyes@gmail.com>
-Date: Fri, 15 Oct 2010 17:08:55 +0000
-Subject: Re: [PATCH] sctp: implement SIOCINQ ioctl() (take 3 bis)
-Message-Id: <1287162535.465.33.camel@yamato.local>
+From: Robin Holt <holt@sgi.com>
+Date: Wed, 20 Oct 2010 12:03:37 +0000
+Subject: [Patch] Limit sysctl_tcp_mem and sysctl_udp_mem initializers to prevent integer overflows.
+Message-Id: <20101020120345.436404838@gulag1.americas.sgi.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20100930.173557.108787840.davem@davemloft.net>
-	 <1285926965-5130-1-git-send-email-flameeyes@gmail.com>
-	 <1287152557.465.24.camel@yamato.local>
-	 <20101015.095940.39172218.davem@davemloft.net>
-In-Reply-To: <20101015.095940.39172218.davem@davemloft.net>
+References: <20101020120336.967805943@gulag1.americas.sgi.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: David Miller <davem@davemloft.net>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: "David S. Miller" <davem@davemloft.net>
+Cc: Willy Tarreau <w@1wt.eu>, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, "Pekka Savola (ipv6)" <pekkas@netcore.fi>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>
 
-Il giorno ven, 15/10/2010 alle 09.59 -0700, David Miller ha scritto:
-> 
-> I'm pretty sure it's in the net-next-2.6, is it not? 
+Subject: [Patch] Limit sysctl_tcp_mem and sysctl_udp_mem initializers to prevent integer overflows.
 
-Ah yes it is, sorry, I was mislead by the presence in -rc8 of the other
-SCTP patches that came afterwards (and because it has been since August
-I'm dragging this patch around).
+On a 16TB x86_64 machine, sysctl_tcp_mem[2], sysctl_udp_mem[2], and
+sysctl_sctp_mem[2] can integer overflow.  Set limit such that they are
+maximized without overflowing.
 
-Thank you very much!
+Signed-off-by: Robin Holt <holt@sgi.com>
+To: "David S. Miller" <davem@davemloft.net>
+Cc: Willy Tarreau <w@1wt.eu>
+Cc: linux-kernel@vger.kernel.org
+Cc: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org
+Cc: Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>
+Cc: "Pekka Savola (ipv6)" <pekkas@netcore.fi>
+Cc: James Morris <jmorris@namei.org>
+Cc: Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>
+Cc: Patrick McHardy <kaber@trash.net>
+Cc: Vlad Yasevich <vladislav.yasevich@hp.com>
+Cc: Sridhar Samudrala <sri@us.ibm.com>
 
--- 
-Diego Elio Pettenò — “Flameeyes”
-http://blog.flameeyes.eu/
+---
 
-If you found a .asc file in this mail and know not what it is,
-it's a GnuPG digital signature: http://www.gnupg.org/
+David, I believe this is also intended for stable.  If you agree, please
+add the stable maintainers to the Cc: list.
 
+ net/ipv4/tcp.c      |    4 +++-
+ net/ipv4/udp.c      |    4 +++-
+ net/sctp/protocol.c |    4 +++-
+ 3 files changed, 9 insertions(+), 3 deletions(-)
+
+Index: pv1010932/net/ipv4/tcp.c
+=================================--- pv1010932.orig/net/ipv4/tcp.c	2010-10-02 06:11:59.737449853 -0500
++++ pv1010932/net/ipv4/tcp.c	2010-10-02 06:12:35.445454593 -0500
+@@ -3271,12 +3271,14 @@ void __init tcp_init(void)
+ 
+ 	/* Set the pressure threshold to be a fraction of global memory that
+ 	 * is up to 1/2 at 256 MB, decreasing toward zero with the amount of
+-	 * memory, with a floor of 128 pages.
++	 * memory, with a floor of 128 pages, and a ceiling that prevents an
++	 * integer overflow.
+ 	 */
+ 	nr_pages = totalram_pages - totalhigh_pages;
+ 	limit = min(nr_pages, 1UL<<(28-PAGE_SHIFT)) >> (20-PAGE_SHIFT);
+ 	limit = (limit * (nr_pages >> (20-PAGE_SHIFT))) >> (PAGE_SHIFT-11);
+ 	limit = max(limit, 128UL);
++	limit = min(limit, INT_MAX * 4UL / 3 / 2);
+ 	sysctl_tcp_mem[0] = limit / 4 * 3;
+ 	sysctl_tcp_mem[1] = limit;
+ 	sysctl_tcp_mem[2] = sysctl_tcp_mem[0] * 2;
+Index: pv1010932/net/ipv4/udp.c
+=================================--- pv1010932.orig/net/ipv4/udp.c	2010-10-02 06:11:59.737449853 -0500
++++ pv1010932/net/ipv4/udp.c	2010-10-02 06:12:35.453453784 -0500
+@@ -2167,12 +2167,14 @@ void __init udp_init(void)
+ 	udp_table_init(&udp_table, "UDP");
+ 	/* Set the pressure threshold up by the same strategy of TCP. It is a
+ 	 * fraction of global memory that is up to 1/2 at 256 MB, decreasing
+-	 * toward zero with the amount of memory, with a floor of 128 pages.
++	 * toward zero with the amount of memory, with a floor of 128 pages,
++	 * and a ceiling that prevents an integer overflow.
+ 	 */
+ 	nr_pages = totalram_pages - totalhigh_pages;
+ 	limit = min(nr_pages, 1UL<<(28-PAGE_SHIFT)) >> (20-PAGE_SHIFT);
+ 	limit = (limit * (nr_pages >> (20-PAGE_SHIFT))) >> (PAGE_SHIFT-11);
+ 	limit = max(limit, 128UL);
++	limit = min(limit, INT_MAX * 4UL / 3 / 2);
+ 	sysctl_udp_mem[0] = limit / 4 * 3;
+ 	sysctl_udp_mem[1] = limit;
+ 	sysctl_udp_mem[2] = sysctl_udp_mem[0] * 2;
+Index: pv1010932/net/sctp/protocol.c
+=================================--- pv1010932.orig/net/sctp/protocol.c	2010-10-02 06:11:59.000000000 -0500
++++ pv1010932/net/sctp/protocol.c	2010-10-02 06:13:17.727949810 -0500
+@@ -1162,7 +1162,8 @@ SCTP_STATIC __init int sctp_init(void)
+ 
+ 	/* Set the pressure threshold to be a fraction of global memory that
+ 	 * is up to 1/2 at 256 MB, decreasing toward zero with the amount of
+-	 * memory, with a floor of 128 pages.
++	 * memory, with a floor of 128 pages, and a ceiling that prevents an
++	 * integer overflow.
+ 	 * Note this initializes the data in sctpv6_prot too
+ 	 * Unabashedly stolen from tcp_init
+ 	 */
+@@ -1170,6 +1171,7 @@ SCTP_STATIC __init int sctp_init(void)
+ 	limit = min(nr_pages, 1UL<<(28-PAGE_SHIFT)) >> (20-PAGE_SHIFT);
+ 	limit = (limit * (nr_pages >> (20-PAGE_SHIFT))) >> (PAGE_SHIFT-11);
+ 	limit = max(limit, 128UL);
++	limit = min(limit, INT_MAX * 4UL / 3 / 2);
+ 	sysctl_sctp_mem[0] = limit / 4 * 3;
+ 	sysctl_sctp_mem[1] = limit;
+ 	sysctl_sctp_mem[2] = sysctl_sctp_mem[0] * 2;
 
