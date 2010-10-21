@@ -1,51 +1,43 @@
-From: Shan Wei <shanwei@cn.fujitsu.com>
-Date: Thu, 21 Oct 2010 12:06:55 +0000
+From: Nicolas Kaiser <nikai@nikai.net>
+Date: Thu, 21 Oct 2010 13:08:47 +0000
 Subject: Re: [PATCH] sctp: remove redundant chunk length check
-Message-Id: <4CC02CDF.5040700@cn.fujitsu.com>
+Message-Id: <20101021150847.3a5f3cb7@absol.kitzblitz>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20101021121409.6de7d429@absol.kitzblitz>
-In-Reply-To: <20101021121409.6de7d429@absol.kitzblitz>
+	<4CC02CDF.5040700@cn.fujitsu.com>
+In-Reply-To: <4CC02CDF.5040700@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Nicolas Kaiser <nikai@nikai.net>
+To: Shan Wei <shanwei@cn.fujitsu.com>
 Cc: Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
 
-Nicolas Kaiser wrote, at 10/21/2010 06:14 PM:
-> Checking the chunk length at this point appears redundant, as
-> the rest of the packet gets discarded anyway.
+* Shan Wei <shanwei@cn.fujitsu.com>:
+> Nicolas Kaiser wrote, at 10/21/2010 06:14 PM:
+> > Checking the chunk length at this point appears redundant, as
+> > the rest of the packet gets discarded anyway.
+ 
+> Yes, indeed.
 > 
-> Signed-off-by: Nicolas Kaiser <nikai@nikai.net>
+> How did you find this? By reviewing the source code?
 
-Yes, indeed.
+Actually I'm tinkering with Coccinelle patches.
 
-How did you find this? By reviewing the source code?
+Here's a simple semantic patch, that will give a lot of false
+positives, and a lot of "if (a) return b; return b;":
 
--- 
-Best Regards
------
-Shan Wei
+// <smpl>
+@@
+expression a;
+statement S;
+@@
 
-> ---
->  net/sctp/sm_statefuns.c |    6 ------
->  1 files changed, 0 insertions(+), 6 deletions(-)
-> 
-> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-> index 4b4eb7c..9840615 100644
-> --- a/net/sctp/sm_statefuns.c
-> +++ b/net/sctp/sm_statefuns.c
-> @@ -3418,12 +3418,6 @@ static sctp_disposition_t sctp_sf_shut_8_4_5(const struct sctp_endpoint *ep,
->  
->  		SCTP_INC_STATS(SCTP_MIB_OUTCTRLCHUNKS);
->  
-> -		/* If the chunk length is invalid, we don't want to process
-> -		 * the reset of the packet.
-> -		 */
-> -		if (!sctp_chunk_length_valid(chunk, sizeof(sctp_chunkhdr_t)))
-> -			return sctp_sf_pdiscard(ep, asoc, type, arg, commands);
-> -
->  		/* We need to discard the rest of the packet to prevent
->  		 * potential bomming attacks from additional bundled chunks.
->  		 * This is documented in SCTP Threats ID.
+- if (a)
+- {
+- S
+- }
+ S
+// </smpl>
 
-
+Best regards,
+Nicolas Kaiser
