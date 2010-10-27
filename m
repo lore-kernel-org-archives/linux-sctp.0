@@ -1,37 +1,25 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 04 Oct 2010 05:00:57 +0000
-Subject: Re: [PATCH] Fix out-of-bounds reading in sctp_asoc_get_hmac()
-Message-Id: <20101003.220057.59686624.davem@davemloft.net>
+From: "Dr. Robert William" <pascale.vial@noos.fr>
+Date: Wed, 27 Oct 2010 00:14:32 +0000
+Subject: Yours Faithfully
+Message-Id: <ea-mime-4cc76ee8-7cb7-8596c7b@webmail.numericable.fr>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1285969907.2814.49.camel@Dan>
-	<4CA65D0E.6080604@hp.com>
-In-Reply-To: <4CA65D0E.6080604@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: drosenberg@vsecurity.com, sri@us.ibm.com, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, security@kernel.org, stable@kernel.org, netdev@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Fri, 01 Oct 2010 18:13:34 -0400
+Good News My Dear Friend,
+ 
+I'm happy to inform you about my success in getting those funds transferred under the co-operation of a new partner from Paraguay. Presently i'm in Paraguay for investment projects with my own share of the total sum. meanwhile,i didn't forget your past efforts and attempts to assist me in transferring those funds despite that it failed us some how.
+Now contact my secretary in Benin Republic
 
-> On 10/01/2010 05:51 PM, Dan Rosenberg wrote:
->> The sctp_asoc_get_hmac() function iterates through a peer's hmac_ids
->> array and attempts to ensure that only a supported hmac entry is
->> returned.  The current code fails to do this properly - if the last id
->> in the array is out of range (greater than SCTP_AUTH_HMAC_ID_MAX), the
->> id integer remains set after exiting the loop, and the address of an
->> out-of-bounds entry will be returned and subsequently used in the
->> parent
->> function, causing potentially ugly memory corruption.  This patch
->> resets
->> the id integer to 0 on encountering an invalid id so that NULL will be
->> returned after finishing the loop if no valid ids are found.
->>
->> Signed-off-by: Dan Rosenberg<drosenberg@vsecurity.com>
-> 
-> Good catch.
-> 
-> Acked-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+His name is Mr. Timothy Adams
+Phone Number: +229 97373889
+Email:  timothyadams90@gmail.com
+ 
+Please do let me know immediately you receive it so that we can share the joy after all the sufferings at that time. in the moment, I'm very busy here because of the investment projects which me and the new partner are having at hand, finally, remember that I had forwarded instruction to the secretary on your behalf to receive that money, so feel free to get in touch with Mr. Timothy Adams on timothyadams90@gmail.com, he will send the amount to you without any delay.
+ 
+Yours Faithfully
+Dr Robert William
 
-Applied.
+
