@@ -1,8 +1,10 @@
 From: "Dr. Robert William" <pascale.vial@noos.fr>
-Date: Wed, 27 Oct 2010 00:14:32 +0000
+Date: Wed, 27 Oct 2010 00:17:28 +0000
 Subject: Yours Faithfully
-Message-Id: <ea-mime-4cc76ee8-7cb7-8596c7b@webmail.numericable.fr>
+Message-Id: <ea-mime-4cc76f98-7d4d-8596c7b@webmail.numericable.fr>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <ea-mime-4cc76ee8-7cb7-8596c7b@webmail.numericable.fr>
+In-Reply-To: <ea-mime-4cc76ee8-7cb7-8596c7b@webmail.numericable.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
