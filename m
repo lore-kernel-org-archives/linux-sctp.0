@@ -1,48 +1,36 @@
-From: Dan Rosenberg <drosenberg@vsecurity.com>
-Date: Fri, 12 Nov 2010 01:06:59 +0000
-Subject: [PATCH 2/10] Fix leaking of kernel heap addresses in net/
-Message-Id: <1289524019.5167.66.camel@dan>
+From: Ben Hutchings <bhutchings@solarflare.com>
+Date: Fri, 12 Nov 2010 15:09:22 +0000
+Subject: Re: [PATCH 2/10] Fix leaking of kernel heap addresses in net/
+Message-Id: <1289574562.2247.1.camel@achroite.uk.solarflarecom.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1289524019.5167.66.camel@dan>
+In-Reply-To: <1289524019.5167.66.camel@dan>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Oliver Hartkopp <socketcan@hartkopp.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Urs Thuermann <urs.thuermann@volkswagen.de>, Hideaki
+To: Dan Rosenberg <drosenberg@vsecurity.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Oliver Hartkopp <socketcan@hartkopp.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Urs Thuermann <urs.thuermann@volkswagen.de>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, James Morris <jmorris@namei.org>, Remi Denis-Courmont <remi.denis-courmont@nokia.com>, "Pekka Savola (ipv6)" <pekkas@netcore.fi>, Sridhar Samudrala <sri@us.ibm.com>, Vlad Yasevich <vladislav.yasevich@hp.com>, Tejun Heo <tj@kernel.org>, Eric Dumazet <eric.dumazet@gmail.com>, Li Zefan <lizf@cn.fujitsu.com>, Joe Perches <joe@perches.com>, Stephen Hemminger <shemminger@vyatta.com>, Jamal Hadi Salim <hadi@mojatatu.com>, "Eric W. Biederman" <ebiederm@xmission.com>, Alexey Dobriyan <adobriyan@gmail.com>, Jiri Pirko <jpirko@redhat.com>, Johannes Berg <johannes.berg@intel.com>, Daniel Lezcano <daniel.lezcano@free.fr>, Pavel
 
-diff --git a/net/can/bcm.c b/net/can/bcm.c
-index 08ffe9e..5960ad7 100644
---- a/net/can/bcm.c
-+++ b/net/can/bcm.c
-@@ -165,9 +165,16 @@ static int bcm_proc_show(struct seq_file *m, void *v)
- 	struct bcm_sock *bo = bcm_sk(sk);
- 	struct bcm_op *op;
- 
--	seq_printf(m, ">>> socket %p", sk->sk_socket);
--	seq_printf(m, " / sk %p", sk);
--	seq_printf(m, " / bo %p", bo);
-+	/* Only expose kernel addresses to privileged readers */
-+	if (capable(CAP_NET_ADMIN))
-+		seq_printf(m, ">>> socket %p", sk->sk_socket);
-+		seq_printf(m, " / sk %p", sk);
-+		seq_printf(m, " / bo %p", bo);
-+	else
-+		seq_printf(m, ">>> socket %lu", sock_i_ino(sk));
-+		seq_printf(m, " / sk %d", 0);
-+		seq_printf(m, " / bo %d", 0);
-+
- 	seq_printf(m, " / dropped %lu", bo->dropped_usr_msgs);
- 	seq_printf(m, " / bound %s", bcm_proc_getifname(ifname, bo->ifindex));
- 	seq_printf(m, " <<<\n");
-@@ -1520,8 +1527,8 @@ static int bcm_connect(struct socket *sock, struct sockaddr *uaddr, int len,
- 	bo->bound = 1;
- 
- 	if (proc_dir) {
--		/* unique socket address as filename */
--		sprintf(bo->procname, "%p", sock);
-+		/* unique socket inode as filename */
-+		sprintf(bo->procname, "%lx", sock_i_ino(sk));
- 		bo->bcm_proc_read = proc_create_data(bo->procname, 0644,
- 						     proc_dir,
- 						     &bcm_proc_fops, sk);
+On Thu, 2010-11-11 at 20:06 -0500, Dan Rosenberg wrote:
+> diff --git a/net/can/bcm.c b/net/can/bcm.c
+> index 08ffe9e..5960ad7 100644
+> --- a/net/can/bcm.c
+> +++ b/net/can/bcm.c
+[...]
+> +		seq_printf(m, ">>> socket %lu", sock_i_ino(sk));
 
+Why decimal here...
 
+[...]
+> +		/* unique socket inode as filename */
+> +		sprintf(bo->procname, "%lx", sock_i_ino(sk));
+
+...and hexadecimal here?
+
+Ben.
+
+-- 
+Ben Hutchings, Senior Software Engineer, Solarflare Communications
+Not speaking for my employer; that's the marketing department's job.
+They asked us to note that Solarflare product names are trademarked.
 
