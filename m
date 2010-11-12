@@ -1,40 +1,48 @@
-From: Stephen Hemminger <shemminger@vyatta.com>
-Date: Fri, 12 Nov 2010 18:33:10 +0000
-Subject: Re: [PATCH 4/10] Fix leaking of kernel heap addresses in net/
-Message-Id: <20101112103310.5504cf77@nehalam>
+From: Dan Rosenberg <drosenberg@vsecurity.com>
+Date: Fri, 12 Nov 2010 01:06:59 +0000
+Subject: [PATCH 2/10] Fix leaking of kernel heap addresses in net/
+Message-Id: <1289524019.5167.66.camel@dan>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <2129857903-1289528127-cardhu_decombobulator_blackberry.rim.net-1506931048-@bda083.bisx.prod.on.blackberry>
-	<20101111.182939.258124014.davem@davemloft.net>
-	<1289529269.3090.207.camel@Dan>
-	<1289546610.17691.1770.camel@edumazet-laptop>
-	<20101112083315.096dfaa3@nehalam>
-	<1289582682.3090.323.camel@Dan>
-In-Reply-To: <1289582682.3090.323.camel@Dan>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Dan Rosenberg <drosenberg@vsecurity.com>
-Cc: Eric Dumazet <eric.dumazet@gmail.com>, David Miller <davem@davemloft.net>, socketcan@hartkopp.net, kuznet@ms2.inr.ac.ru, urs.thuermann@volkswagen.de, yoshfuji@linux-ipv6.org, kaber@trash.net, jmorris@namei.org, remi.denis-courmont@nokia.com, pekkas@netcore.fi, sri@us.ibm.com, vladislav.yasevich@hp.com, tj@kernel.org, lizf@cn.fujitsu.com, joe@perches.com, hadi@mojatatu.com, ebiederm@xmission.com, adobriyan@gmail.com, jpirko@redhat.com, johannes.berg@intel.com, daniel.lezcano@free.fr, xemul@openvz.org, socketcan-core@lists.berlios.de, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, torvalds@linux-foundation.org
+To: "David S. Miller" <davem@davemloft.net>, Oliver Hartkopp <socketcan@hartkopp.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Urs Thuermann <urs.thuermann@volkswagen.de>, Hideaki
 
-On Fri, 12 Nov 2010 12:24:42 -0500
-Dan Rosenberg <drosenberg@vsecurity.com> wrote:
+diff --git a/net/can/bcm.c b/net/can/bcm.c
+index 08ffe9e..5960ad7 100644
+--- a/net/can/bcm.c
++++ b/net/can/bcm.c
+@@ -165,9 +165,16 @@ static int bcm_proc_show(struct seq_file *m, void *v)
+ 	struct bcm_sock *bo = bcm_sk(sk);
+ 	struct bcm_op *op;
+ 
+-	seq_printf(m, ">>> socket %p", sk->sk_socket);
+-	seq_printf(m, " / sk %p", sk);
+-	seq_printf(m, " / bo %p", bo);
++	/* Only expose kernel addresses to privileged readers */
++	if (capable(CAP_NET_ADMIN))
++		seq_printf(m, ">>> socket %p", sk->sk_socket);
++		seq_printf(m, " / sk %p", sk);
++		seq_printf(m, " / bo %p", bo);
++	else
++		seq_printf(m, ">>> socket %lu", sock_i_ino(sk));
++		seq_printf(m, " / sk %d", 0);
++		seq_printf(m, " / bo %d", 0);
++
+ 	seq_printf(m, " / dropped %lu", bo->dropped_usr_msgs);
+ 	seq_printf(m, " / bound %s", bcm_proc_getifname(ifname, bo->ifindex));
+ 	seq_printf(m, " <<<\n");
+@@ -1520,8 +1527,8 @@ static int bcm_connect(struct socket *sock, struct sockaddr *uaddr, int len,
+ 	bo->bound = 1;
+ 
+ 	if (proc_dir) {
+-		/* unique socket address as filename */
+-		sprintf(bo->procname, "%p", sock);
++		/* unique socket inode as filename */
++		sprintf(bo->procname, "%lx", sock_i_ino(sk));
+ 		bo->bcm_proc_read = proc_create_data(bo->procname, 0644,
+ 						     proc_dir,
+ 						     &bcm_proc_fops, sk);
 
-> 
-> > 
-> > Also, the whole idea needs to be under a config option, so only
-> > the paranoid idiots turn it on.
-> 
-> If that's what's necessary to get it accepted, I'm willing to do that.
-> But when a solution does not negatively impact usability or performance
-> and improves security, even in a small way, why should it not be enabled
-> by default?  Of course it's my responsibility to first propose a
-> solution that is acceptable from a usability/debugging standpoint, but
-> assuming that can be achieved, I don't really see what the problem is.
-> There's a difference between being a "paranoid idiot" and wanting to
-> protect users from unnecessary exposure.
 
-See earlier discussion about automatically running crypto tests on boot
-which caused Linus to flame. This is more intrusive, and is not something
-most developers would want; but it might make sense in production
-environment.
 
