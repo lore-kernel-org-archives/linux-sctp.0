@@ -1,27 +1,51 @@
-From: Ming-Yang Lee <ming.yangfundsservice@qatar.io>
-Date: Tue, 16 Nov 2010 13:59:33 +0000
-Subject: 
-Message-Id: <20101116135933.9lfnni1reokcgc0o@mail.idngh.com>
+From: Dan Rosenberg <drosenberg@vsecurity.com>
+Date: Fri, 12 Nov 2010 01:07:09 +0000
+Subject: [PATCH 5/10] Fix leaking of kernel heap addresses in net/
+Message-Id: <1289524029.5167.69.camel@dan>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
+To: "David S. Miller" <davem@davemloft.net>, Oliver Hartkopp <socketcan@hartkopp.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Urs Thuermann <urs.thuermann@volkswagen.de>, Hideaki
+
+diff --git a/net/key/af_key.c b/net/key/af_key.c
+index d87c22d..977481a 100644
+--- a/net/key/af_key.c
++++ b/net/key/af_key.c
+@@ -3643,14 +3643,25 @@ static int pfkey_seq_show(struct seq_file *f, void *v)
+ 	if (v = SEQ_START_TOKEN)
+ 		seq_printf(f ,"sk       RefCnt Rmem   Wmem   User   Inode\n");
+ 	else
+-		seq_printf(f ,"%p %-6d %-6u %-6u %-6u %-6lu\n",
+-			       s,
+-			       atomic_read(&s->sk_refcnt),
+-			       sk_rmem_alloc_get(s),
+-			       sk_wmem_alloc_get(s),
+-			       sock_i_uid(s),
+-			       sock_i_ino(s)
+-			       );
++		/* Only expose kernel addresses to privileged readers */
++		if (capable(CAP_NET_ADMIN))
++			seq_printf(f, "%p %-6d %-6u %-6u %-6u %-6lu\n",
++				s,
++				atomic_read(&s->sk_refcnt),
++				sk_rmem_alloc_get(s),
++				sk_wmem_alloc_get(s),
++				sock_i_uid(s),
++				sock_i_ino(s)
++				);
++		else
++			seq_printf(f, "%d %-6d %-6u %-6u %-6u %-6lu\n",
++				0,
++				atomic_read(&s->sk_refcnt),
++				sk_rmem_alloc_get(s),
++				sk_wmem_alloc_get(s),
++				sock_i_uid(s),
++				sock_i_ino(s)
++				);
+ 	return 0;
+ }
+ 
 
 
-
-Do you need a loan to pay your bills or to start up a business or for Xmas?.
-Kindly apply now for a low rate loan of 3%. for more information contact:
-ming.yangfundsservice@qatar.io
-We Await Your Response.
-Mr Ming-Yang Lee
-
-----------------------------------------------------------------
-This message was sent using IMP, the Internet Messaging Program.
-
-
-
--- 
-This message has been scanned for viruses and
-dangerous content by MailScanner, and is
-believed to be clean.
 
