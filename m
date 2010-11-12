@@ -1,37 +1,62 @@
-From: Thomas Graf <tgraf@infradead.org>
-Date: Fri, 12 Nov 2010 01:44:41 +0000
+From: Ben Hutchings <bhutchings@solarflare.com>
+Date: Fri, 12 Nov 2010 15:11:46 +0000
 Subject: Re: [PATCH 3/10] Fix leaking of kernel heap addresses in net/
-Message-Id: <20101112014441.GA6804@canuck.infradead.org>
+Message-Id: <1289574706.2247.4.camel@achroite.uk.solarflarecom.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1289524023.5167.67.camel@dan>
- <20101112012039.GB4683@canuck.infradead.org>
- <1289525049.5167.82.camel@dan>
-In-Reply-To: <1289525049.5167.82.camel@dan>
+In-Reply-To: <1289524023.5167.67.camel@dan>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Dan Rosenberg <drosenberg@vsecurity.com>
 Cc: "David S. Miller" <davem@davemloft.net>, Oliver Hartkopp <socketcan@hartkopp.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Urs Thuermann <urs.thuermann@volkswagen.de>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, James Morris <jmorris@namei.org>, Remi Denis-Courmont <remi.denis-courmont@nokia.com>, "Pekka Savola (ipv6)" <pekkas@netcore.fi>, Sridhar Samudrala <sri@us.ibm.com>, Vlad Yasevich <vladislav.yasevich@hp.com>, Tejun Heo <tj@kernel.org>, Eric Dumazet <eric.dumazet@gmail.com>, Li Zefan <lizf@cn.fujitsu.com>, Joe Perches <joe@perches.com>, Stephen Hemminger <shemminger@vyatta.com>, Jamal Hadi Salim <hadi@mojatatu.com>, "Eric W. Biederman" <ebiederm@xmission.com>, Alexey Dobriyan <adobriyan@gmail.com>, Jiri Pirko <jpirko@redhat.com>, Johannes Berg <johannes.berg@intel.com>, Daniel Lezcano <daniel.lezcano@free.fr>, Pavel
 
-On Thu, Nov 11, 2010 at 08:24:09PM -0500, Dan Rosenberg wrote:
-> > If we really have to do this. At least don't duplicate all this code. Do
-> > the check in the printf argument:
-> > 
-> > 	seq_printf(seq, "%4d: %08X:%04X %08X:%04X"
-> > 		...
-> > 		capable(CAP_NET_ADMIN) ? sp : 0,
-> > 
-> > I would even move the decision whether to expose kernel addresses or not
-> > to a function so we can change behavior in one place.
-> 
-> I wrote it this way because the format specifier must also be changed,
-> or the %p output will print "(null)", which cannot be parsed by
-> userspace programs expecting "(nil)" or 0.  I could include another
-> check inside the format specifier, but that seemed pretty ugly.  But
-> then again, it's ugly either way.
+On Thu, 2010-11-11 at 20:07 -0500, Dan Rosenberg wrote:
+> diff --git a/net/ipv4/raw.c b/net/ipv4/raw.c
+> index 1f85ef2..0ac8ff2 100644
+> --- a/net/ipv4/raw.c
+> +++ b/net/ipv4/raw.c
+[...]
+> +	/* Only expose kernel addresses to privileged readers */
+> +	if (capable(CAP_NET_ADMIN))
+> +		seq_printf(seq, "%4d: %08X:%04X %08X:%04X"
+> +			" %02X %08X:%08X %02X:%08lX %08X %5d %8d %lu %d %p %d\n",
+> +			i, src, srcp, dest, destp, sp->sk_state,
+> +			sk_wmem_alloc_get(sp),
+> +			sk_rmem_alloc_get(sp),
+> +			0, 0L, 0, sock_i_uid(sp), 0, sock_i_ino(sp),
+> +			atomic_read(&sp->sk_refcnt),
+> +			sp, atomic_read(&sp->sk_drops));
+> +	else
+> +		seq_printf(seq, "%4d: %08X:%04X %08X:%04X"
+> +			" %02X %08X:%08X %02X:%08lX %08X %5d %8d %lu %d %d %d\n",
+> +			i, src, srcp, dest, destp, sp->sk_state,
+> +			sk_wmem_alloc_get(sp),
+> +			sk_rmem_alloc_get(sp),
+> +			0, 0L, 0, sock_i_uid(sp), 0, sock_i_ino(sp),
+> +			atomic_read(&sp->sk_refcnt),
+> +			0, atomic_read(&sp->sk_drops));
+[...]
 
-Considering the amount of duplication you are about to do, you may
-want to think about adding a new pointer format extension then. We
-already have special '%p' modes for IPv6 addresse, MAC addresses and
-various other pointer types. It wouldn't be hard to add one which
-does not print (null).
+This could just be written as:
+
+	seq_printf(seq, "%4d: %08X:%04X %08X:%04X"
+		" %02X %08X:%08X %02X:%08lX %08X %5d %8d %lu %d %lx %d\n",
+		i, src, srcp, dest, destp, sp->sk_state,
+		sk_wmem_alloc_get(sp),
+		sk_rmem_alloc_get(sp),
+		0, 0L, 0, sock_i_uid(sp), 0, sock_i_ino(sp),
+		atomic_read(&sp->sk_refcnt),
+		capable(CAP_NET_ADMIN) ? (unsigned long)sp : 0UL,
+		atomic_read(&sp->sk_drops));
+
+Similarly for other formats that you want to make conditional on
+CAP_NET_ADMIN.
+
+Ben.
+
+-- 
+Ben Hutchings, Senior Software Engineer, Solarflare Communications
+Not speaking for my employer; that's the marketing department's job.
+They asked us to note that Solarflare product names are trademarked.
+
