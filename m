@@ -1,28 +1,84 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 12 Nov 2010 02:59:17 +0000
+From: Eric Dumazet <eric.dumazet@gmail.com>
+Date: Fri, 12 Nov 2010 07:23:30 +0000
 Subject: Re: [PATCH 4/10] Fix leaking of kernel heap addresses in net/
-Message-Id: <20101111.185917.68135794.davem@davemloft.net>
+Message-Id: <1289546610.17691.1770.camel@edumazet-laptop>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1289529269.3090.207.camel@Dan>
-	<20101111.184902.233699247.davem@davemloft.net>
-	<1289530264.3090.212.camel@Dan>
-In-Reply-To: <1289530264.3090.212.camel@Dan>
+References: <2129857903-1289528127-cardhu_decombobulator_blackberry.rim.net-1506931048-@bda083.bisx.prod.on.blackberry>
+	 <20101111.182939.258124014.davem@davemloft.net>
+	 <1289529269.3090.207.camel@Dan>
+In-Reply-To: <1289529269.3090.207.camel@Dan>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: drosenberg-PiUznwcHFHrqlBn2x/YWAg@public.gmane.org
-Cc: urs.thuermann-l29pVbxQd1IUtdQbppsyvg@public.gmane.org, socketcan-core-0fE9KPoRgkgATYTw5x5z8w@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, shemminger-ZtmgI6mnKB3QT0dZR+AlfA@public.gmane.org, xemul-GEFAQzZX7r8dnm+yROfE0A@public.gmane.org, pekkas-UjJjq++bwZ7HOG6cAo2yLw@public.gmane.org, eric.dumazet-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, jmorris-gx6/JNMH7DfYtjvyW6yDsg@public.gmane.org, kuznet-v/Mj1YrvjDBInbfyfbPRSQ@public.gmane.org, adobriyan-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, sri-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org, johannes.berg-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org, hadi-jkUAjuhPggJWk0Htik3J/w@public.gmane.org, vladislav.yasevich-VXdhtT5mjnY@public.gmane.org, lizf-BthXqXjhjHXQFUHtdCDX3A@public.gmane.org, tj-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org, remi.denis-courmont-xNZwKgViW5gAvxtiuMwx3w@public.gmane.org, daniel.lezcano-GANU6spQydw@public.gmane.org, jpirko-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org, socketcan-fJ+pQTUTwRTk1uMJSBkQmQ@public.gmane.org, ebiederm-aS9lmoZGLiVWk0Htik3J/w@public.gmane.org, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, joe-6d6DIl74uiNBDgjK7y7TUQ@public.gmane.org, torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org, kaber-dcUjhNyLwpNeoWH0uzbU5w@public.gmane.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: Dan Rosenberg <drosenberg@vsecurity.com>
+Cc: David Miller <davem@davemloft.net>, socketcan@hartkopp.net, kuznet@ms2.inr.ac.ru, urs.thuermann@volkswagen.de, yoshfuji@linux-ipv6.org, kaber@trash.net, jmorris@namei.org, remi.denis-courmont@nokia.com, pekkas@netcore.fi, sri@us.ibm.com, vladislav.yasevich@hp.com, tj@kernel.org, lizf@cn.fujitsu.com, joe@perches.com, shemminger@vyatta.com, hadi@mojatatu.com, ebiederm@xmission.com, adobriyan@gmail.com, jpirko@redhat.com, johannes.berg@intel.com, daniel.lezcano@free.fr, xemul@openvz.org, socketcan-core@lists.berlios.de, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, torvalds@linux-foundation.org
 
-From: Dan Rosenberg <drosenberg@vsecurity.com>
-Date: Thu, 11 Nov 2010 21:51:04 -0500
+Le jeudi 11 novembre 2010 à 21:34 -0500, Dan Rosenberg a écrit :
+> > I want whatever you replace it with to be equivalent for
+> > object tracking purposes.
+> 
+> In nearly all of the cases I fixed, the socket inode is already
+> provided, which serves as a perfectly good unique identifier.  Would you
+> prefer I include that information twice?
 
-> This has already been suggested, and I agree it is a much better
-> approach.  If I take this approach, and find some suitable substitute
-> for those cases where the socket inode is not available, will you
-> consider these changes?
+Oh well. Please read this answer carefuly.
 
-I will consider an approach where the keys reported allow object
-tracking equally as the actual pointers allow for right now.
+Some facts to feed your next patch. I am very pleased you changed your
+mind and that we keep useful information in kernel log.
 
-I've said that this is my criteria about 3 times now.
+1) Inode numbers are not guaranteed to be unique. Its a 32bit seq
+number, and we dont check another socket inode use the same inode number
+(after 2^32 allocations it can happens)
+
+2) /proc/net/ files can deliver same "line" of information several
+times, because of their implementation.
+
+3) Because of SLAB_DESTROY_BY_RCU, same 'kernel socket pointer' can be
+seen several times in /proc/net/tcp & /proc/net/udp, but really on
+different "sockets"
+
+4) Some good applications use both the socket pointer and inode number
+(tuple) to filter out the [2] problem. Dont break them, please ?
+Anything that might break an application must be at the very least
+tunable.
+
+In my opinion, a good thing would be :
+
+- Use a special printf() format , aka "secure pointer", as Thomas
+suggested.
+
+- Make sure you print different opaque values for two different kernel
+pointers. This is mandatory.
+
+- Make sure the NULL pointer stay as a NULL pointer to not let the
+hostile user know your secret, and to ease debugging stuff.
+
+- Have security experts advice to chose a nice crypto function, maybe
+jenkin hash. Not too slow would be nice.
+
+
+static unsigned long securize_kpointers_rnd;
+
+At boot time, stick a random value in this variable.
+(Maybe make sure the 5 low order bits are 0)
+
+unsigned long opacify_kptr(unsigned long ptr)
+{
+	if (ptr = 0)
+		return ptr;
+	if (capable(CAP_NET_ADMIN))
+		return ptr;
+
+	return some_crypto_hash(ptr, &securize_kpointers_rnd);
+}
+
+At least, use a central point, so that we can easily add/change the
+logic if needed.
+
+Please provide this patch in kernel/printk.c for initial review, then
+once everybody is OK, you can send one patch for net tree.
+
+No need to send 10 patches if we dont agree on the general principle.
+
+
 
