@@ -1,64 +1,59 @@
 From: Dan Rosenberg <drosenberg@vsecurity.com>
-Date: Fri, 12 Nov 2010 01:07:12 +0000
-Subject: [PATCH 6/10] Fix leaking of kernel heap addresses in net/
-Message-Id: <1289524032.5167.70.camel@dan>
+Date: Fri, 12 Nov 2010 01:07:16 +0000
+Subject: [PATCH 7/10] Fix leaking of kernel heap addresses in net/
+Message-Id: <1289524036.5167.71.camel@dan>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: "David S. Miller" <davem@davemloft.net>, Oliver Hartkopp <socketcan@hartkopp.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Urs Thuermann <urs.thuermann@volkswagen.de>, Hideaki
 
-diff --git a/net/netlink/af_netlink.c b/net/netlink/af_netlink.c
-index 478181d..88be3ab 100644
---- a/net/netlink/af_netlink.c
-+++ b/net/netlink/af_netlink.c
-@@ -1990,18 +1990,35 @@ static int netlink_seq_show(struct seq_file *seq, void *v)
- 		struct sock *s = v;
- 		struct netlink_sock *nlk = nlk_sk(s);
+diff --git a/net/packet/af_packet.c b/net/packet/af_packet.c
+index 3616f27..3dbf2b5 100644
+--- a/net/packet/af_packet.c
++++ b/net/packet/af_packet.c
+@@ -2635,17 +2635,31 @@ static int packet_seq_show(struct seq_file *seq, void *v)
+ 		struct sock *s = sk_entry(v);
+ 		const struct packet_sock *po = pkt_sk(s);
  
--		seq_printf(seq, "%p %-3d %-6d %08x %-8d %-8d %p %-8d %-8d %-8lu\n",
+-		seq_printf(seq,
+-			   "%p %-6d %-4d %04x   %-5d %1d %-6u %-6u %-6lu\n",
 -			   s,
--			   s->sk_protocol,
--			   nlk->pid,
--			   nlk->groups ? (u32)nlk->groups[0] : 0,
--			   sk_rmem_alloc_get(s),
--			   sk_wmem_alloc_get(s),
--			   nlk->cb,
 -			   atomic_read(&s->sk_refcnt),
--			   atomic_read(&s->sk_drops),
--			   sock_i_ino(s)
--			);
+-			   s->sk_type,
+-			   ntohs(po->num),
+-			   po->ifindex,
+-			   po->running,
+-			   atomic_read(&s->sk_rmem_alloc),
+-			   sock_i_uid(s),
+-			   sock_i_ino(s));
 +		/* Only expose kernel addresses to privileged readers */
 +		if (capable(CAP_NET_ADMIN))
-+			seq_printf(seq, "%p %-3d %-6d %08x %-8d "
-+				   "%-8d %p %-8d %-8d %-8lu\n",
++			seq_printf(seq,
++				   "%p %-6d %-4d %04x   %-5d %1d %-6u %-6u %-6lu\n",
 +				   s,
-+				   s->sk_protocol,
-+				   nlk->pid,
-+				   nlk->groups ? (u32)nlk->groups[0] : 0,
-+				   sk_rmem_alloc_get(s),
-+				   sk_wmem_alloc_get(s),
-+				   nlk->cb,
 +				   atomic_read(&s->sk_refcnt),
-+				   atomic_read(&s->sk_drops),
-+				   sock_i_ino(s)
-+				);
++				   s->sk_type,
++				   ntohs(po->num),
++				   po->ifindex,
++				   po->running,
++				   atomic_read(&s->sk_rmem_alloc),
++				   sock_i_uid(s),
++				   sock_i_ino(s));
 +		else
-+			seq_printf(seq, "%d %-3d %-6d %08x %-8d "
-+				   "%-8d %d %-8d %-8d %-8lu\n",
-+				   0,
-+				   s->sk_protocol,
-+				   nlk->pid,
-+				   nlk->groups ? (u32)nlk->groups[0] : 0,
-+				   sk_rmem_alloc_get(s),
-+				   sk_wmem_alloc_get(s),
++			seq_printf(seq,
++				   "%d %-6d %-4d %04x   %-5d %1d %-6u %-6u %-6lu\n",
 +				   0,
 +				   atomic_read(&s->sk_refcnt),
-+				   atomic_read(&s->sk_drops),
-+				   sock_i_ino(s)
-+				);
- 
++				   s->sk_type,
++				   ntohs(po->num),
++				   po->ifindex,
++				   po->running,
++				   atomic_read(&s->sk_rmem_alloc),
++				   sock_i_uid(s),
++				   sock_i_ino(s));
  	}
+ 
  	return 0;
 
 
