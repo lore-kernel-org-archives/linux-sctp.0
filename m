@@ -1,26 +1,99 @@
-From: Dan Rosenberg <drosenberg@vsecurity.com>
-Date: Fri, 12 Nov 2010 01:06:55 +0000
-Subject: [PATCH 1/10] Fix leaking of kernel heap addresses in net/
-Message-Id: <1289524015.5167.65.camel@dan>
+From: Greg KH <gregkh@suse.de>
+Date: Fri, 19 Nov 2010 21:56:31 +0000
+Subject: [70/82] Limit sysctl_tcp_mem and sysctl_udp_mem initializers to prevent integer overflows.
+Message-Id: <20101119215644.501636375@clark.site>
 List-Id: <linux-sctp.vger.kernel.org>
+In-Reply-To: <20101119215658.GA7804@kroah.com
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Oliver Hartkopp <socketcan@hartkopp.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Urs Thuermann <urs.thuermann@volkswagen.de>, Hideaki
+To: linux-kernel@vger.kernel.org, stable@kernel.org, "David S. Miller" <davem@davemloft.net>
+Cc: stable-review@kernel.org, torvalds@linux-foundation.org, akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk, Robin Holt <holt@sgi.com>, Willy Tarreau <w@1wt.eu>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, "Pekka Savola (ipv6)" <pekkas@netcore.fi>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>
 
-diff --git a/net/atm/proc.c b/net/atm/proc.c
-index f85da07..21ec2ba 100644
---- a/net/atm/proc.c
-+++ b/net/atm/proc.c
-@@ -191,7 +191,7 @@ static void vcc_info(struct seq_file *seq, struct atm_vcc *vcc)
- {
- 	struct sock *sk = sk_atm(vcc);
+2.6.35-stable review patch.  If anyone has any objections, please let us know.
+
+------------------
+
+
+On a 16TB x86_64 machine, sysctl_tcp_mem[2], sysctl_udp_mem[2], and
+sysctl_sctp_mem[2] can integer overflow.  Set limit such that they are
+maximized without overflowing.
+
+Signed-off-by: Robin Holt <holt@sgi.com>
+To: "David S. Miller" <davem@davemloft.net>
+Cc: Willy Tarreau <w@1wt.eu>
+Cc: linux-kernel@vger.kernel.org
+Cc: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org
+Cc: Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>
+Cc: "Pekka Savola (ipv6)" <pekkas@netcore.fi>
+Cc: James Morris <jmorris@namei.org>
+Cc: Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>
+Cc: Patrick McHardy <kaber@trash.net>
+Cc: Vlad Yasevich <vladislav.yasevich@hp.com>
+Cc: Sridhar Samudrala <sri@us.ibm.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+---
+ net/ipv4/tcp.c      |    4 +++-
+ net/ipv4/udp.c      |    4 +++-
+ net/sctp/protocol.c |    4 +++-
+ 3 files changed, 9 insertions(+), 3 deletions(-)
+
+--- a/net/ipv4/tcp.c
++++ b/net/ipv4/tcp.c
+@@ -3252,12 +3252,14 @@ void __init tcp_init(void)
  
--	seq_printf(seq, "%p ", vcc);
-+	seq_printf(seq, "%lu ", sock_i_ino(sk));
- 	if (!vcc->dev)
- 		seq_printf(seq, "Unassigned    ");
- 	else
-
+ 	/* Set the pressure threshold to be a fraction of global memory that
+ 	 * is up to 1/2 at 256 MB, decreasing toward zero with the amount of
+-	 * memory, with a floor of 128 pages.
++	 * memory, with a floor of 128 pages, and a ceiling that prevents an
++	 * integer overflow.
+ 	 */
+ 	nr_pages = totalram_pages - totalhigh_pages;
+ 	limit = min(nr_pages, 1UL<<(28-PAGE_SHIFT)) >> (20-PAGE_SHIFT);
+ 	limit = (limit * (nr_pages >> (20-PAGE_SHIFT))) >> (PAGE_SHIFT-11);
+ 	limit = max(limit, 128UL);
++	limit = min(limit, INT_MAX * 4UL / 3 / 2);
+ 	sysctl_tcp_mem[0] = limit / 4 * 3;
+ 	sysctl_tcp_mem[1] = limit;
+ 	sysctl_tcp_mem[2] = sysctl_tcp_mem[0] * 2;
+--- a/net/ipv4/udp.c
++++ b/net/ipv4/udp.c
+@@ -2167,12 +2167,14 @@ void __init udp_init(void)
+ 	udp_table_init(&udp_table, "UDP");
+ 	/* Set the pressure threshold up by the same strategy of TCP. It is a
+ 	 * fraction of global memory that is up to 1/2 at 256 MB, decreasing
+-	 * toward zero with the amount of memory, with a floor of 128 pages.
++	 * toward zero with the amount of memory, with a floor of 128 pages,
++	 * and a ceiling that prevents an integer overflow.
+ 	 */
+ 	nr_pages = totalram_pages - totalhigh_pages;
+ 	limit = min(nr_pages, 1UL<<(28-PAGE_SHIFT)) >> (20-PAGE_SHIFT);
+ 	limit = (limit * (nr_pages >> (20-PAGE_SHIFT))) >> (PAGE_SHIFT-11);
+ 	limit = max(limit, 128UL);
++	limit = min(limit, INT_MAX * 4UL / 3 / 2);
+ 	sysctl_udp_mem[0] = limit / 4 * 3;
+ 	sysctl_udp_mem[1] = limit;
+ 	sysctl_udp_mem[2] = sysctl_udp_mem[0] * 2;
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -1161,7 +1161,8 @@ SCTP_STATIC __init int sctp_init(void)
+ 
+ 	/* Set the pressure threshold to be a fraction of global memory that
+ 	 * is up to 1/2 at 256 MB, decreasing toward zero with the amount of
+-	 * memory, with a floor of 128 pages.
++	 * memory, with a floor of 128 pages, and a ceiling that prevents an
++	 * integer overflow.
+ 	 * Note this initalizes the data in sctpv6_prot too
+ 	 * Unabashedly stolen from tcp_init
+ 	 */
+@@ -1169,6 +1170,7 @@ SCTP_STATIC __init int sctp_init(void)
+ 	limit = min(nr_pages, 1UL<<(28-PAGE_SHIFT)) >> (20-PAGE_SHIFT);
+ 	limit = (limit * (nr_pages >> (20-PAGE_SHIFT))) >> (PAGE_SHIFT-11);
+ 	limit = max(limit, 128UL);
++	limit = min(limit, INT_MAX * 4UL / 3 / 2);
+ 	sysctl_sctp_mem[0] = limit / 4 * 3;
+ 	sysctl_sctp_mem[1] = limit;
+ 	sysctl_sctp_mem[2] = sysctl_sctp_mem[0] * 2;
 
 
