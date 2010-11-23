@@ -1,12 +1,52 @@
 From: "Kiss, Zoltan (NSN - HU/Budapest)" <zoltan.kiss@nsn.com>
-Date: Wed, 17 Nov 2010 16:22:23 +0000
-Subject: Source address selection with secondary interface address
-Message-Id: <79C4240C13B4C84B910850B96B1B431201C276DA@DEMUEXC035.nsn-intra.net>
+Date: Tue, 23 Nov 2010 15:24:30 +0000
+Subject: RE: Source address selection with secondary interface address
+Message-Id: <79C4240C13B4C84B910850B96B1B431201C5B7FC@DEMUEXC035.nsn-intra.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <79C4240C13B4C84B910850B96B1B431201C276DA@DEMUEXC035.nsn-intra.net>
+In-Reply-To: <79C4240C13B4C84B910850B96B1B431201C276DA@DEMUEXC035.nsn-intra.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
 To: linux-sctp@vger.kernel.org
+
+Hi,
+
+I still don't know am I writing to the good mailing list, because I didn't =
+received any feedback, so please someone reply to me if I'm writing to a wr=
+ong address.
+I've started to investigate my problem in the kernel code, and I found the =
+following:
+
+- before SCTP layer send the packet to IP, it fills the src IP address in t=
+he skbuff (see net/sctp/output.c:333 in 2.6.21.7 kernel code)
+- it queries the routing table in sctp_transport_route (see transport.c) to=
+ find a route to the destination (which is the secondary address of the rem=
+ote end)
+- the routing entry will return an address of that interface. Here comes th=
+e problem, because it returns only one address basically, the primary addre=
+ss of that interface (except if src IP is explicitly specified to that rout=
+e)
+- it won't match any of the associations local address, of course, because =
+they are secondary addresses on those interfaces
+- the next thing is not clear yet to me: the sctp_v4_get_dst (see protocol.=
+c) tries to find a destination in the routing table according to its local =
+addresses. Based on this it should choose a different interface than the ac=
+tually used. Or could it be that struct dst_entry doesn't change the actual=
+ outgoing interface?
+
+As I checked, 2.6.31.1 works in a similiar manner. Before I'm going forward=
+, could anyone help me in confirming or disclaiming about the above?
+
+Thanks for the help,
+
+Zolt=E1n, Kiss
+
+-----Original Message-----
+From: Kiss, Zoltan (NSN - HU/Budapest)=20
+Sent: Wednesday, November 17, 2010 5:22 PM
+To: 'linux-sctp@vger.kernel.org'
+Subject: Source address selection with secondary interface address
 
 Hi,
 
