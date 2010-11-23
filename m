@@ -1,40 +1,82 @@
-From: Dan Rosenberg <drosenberg@vsecurity.com>
-Date: Fri, 12 Nov 2010 15:11:51 +0000
-Subject: Re: [PATCH 2/10] Fix leaking of kernel heap addresses in net/
-Message-Id: <1289574711.3090.285.camel@Dan>
+From: Shan Wei <shanwei@cn.fujitsu.com>
+Date: Tue, 23 Nov 2010 09:00:42 +0000
+Subject: [PATCH net-next] sctp: kill unused macro definition
+Message-Id: <4CEB82BA.6030406@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1289524019.5167.66.camel@dan>
-	 <1289574562.2247.1.camel@achroite.uk.solarflarecom.com>
-In-Reply-To: <1289574562.2247.1.camel@achroite.uk.solarflarecom.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Ben Hutchings <bhutchings@solarflare.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Oliver Hartkopp <socketcan@hartkopp.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Urs Thuermann <urs.thuermann@volkswagen.de>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, James Morris <jmorris@namei.org>, Remi Denis-Courmont <remi.denis-courmont@nokia.com>, "Pekka Savola (ipv6)" <pekkas@netcore.fi>, Sridhar Samudrala <sri@us.ibm.com>, Vlad Yasevich <vladislav.yasevich@hp.com>, Tejun Heo <tj@kernel.org>, Eric Dumazet <eric.dumazet@gmail.com>, Li Zefan <lizf@cn.fujitsu.com>, Joe Perches <joe@perches.com>, Stephen Hemminger <shemminger@vyatta.com>, Jamal Hadi Salim <hadi@mojatatu.com>, "Eric W. Biederman" <ebiederm@xmission.com>, Alexey Dobriyan <adobriyan@gmail.com>, Jiri Pirko <jpirko@redhat.com>, Johannes Berg <johannes.berg@intel.com>, Daniel Lezcano <daniel.lezcano@free.fr>, Pavel
+To: Vlad Yasevich <vladislav.yasevich@hp.com>, David Miller <davem@davemloft.net>
+Cc: linux-sctp@vger.kernel.org, Network-Maillist <netdev@vger.kernel.org>
 
 
-> On Thu, 2010-11-11 at 20:06 -0500, Dan Rosenberg wrote:
-> > diff --git a/net/can/bcm.c b/net/can/bcm.c
-> > index 08ffe9e..5960ad7 100644
-> > --- a/net/can/bcm.c
-> > +++ b/net/can/bcm.c
-> [...]
-> > +		seq_printf(m, ">>> socket %lu", sock_i_ino(sk));
-> 
-> Why decimal here...
-> 
-> [...]
-> > +		/* unique socket inode as filename */
-> > +		sprintf(bo->procname, "%lx", sock_i_ino(sk));
-> 
-> ...and hexadecimal here?
-> 
-> Ben.
-> 
+These macros have been existed for several years since v2.6.12-rc2.
+But they never be used. So remove them now.
 
-You're right, it should be consistent.  I avoided decimal in the /proc
-filename because it may be too long - the next version will do the same
-for the seq_print output.
+Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
+---
+ include/net/sctp/constants.h |   14 --------------
+ 1 files changed, 0 insertions(+), 14 deletions(-)
 
--Dan
-
+diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
+index 6390884..c70d8cc 100644
+--- a/include/net/sctp/constants.h
++++ b/include/net/sctp/constants.h
+@@ -61,7 +61,6 @@ enum { SCTP_DEFAULT_INSTREAMS = SCTP_MAX_STREAM };
+  * symbols.  CIDs are dense through SCTP_CID_BASE_MAX.
+  */
+ #define SCTP_CID_BASE_MAX		SCTP_CID_SHUTDOWN_COMPLETE
+-#define SCTP_CID_MAX			SCTP_CID_ASCONF_ACK
+ 
+ #define SCTP_NUM_BASE_CHUNK_TYPES	(SCTP_CID_BASE_MAX + 1)
+ 
+@@ -86,9 +85,6 @@ typedef enum {
+ 
+ } sctp_event_t;
+ 
+-#define SCTP_EVENT_T_MAX SCTP_EVENT_T_PRIMITIVE
+-#define SCTP_EVENT_T_NUM (SCTP_EVENT_T_MAX + 1)
+-
+ /* As a convenience for the state machine, we append SCTP_EVENT_* and
+  * SCTP_ULP_* to the list of possible chunks.
+  */
+@@ -162,9 +158,6 @@ SCTP_SUBTYPE_CONSTRUCTOR(PRIMITIVE,	sctp_event_primitive_t,	primitive)
+ 		       		- (unsigned long)(c->chunk_hdr)\
+ 				- sizeof(sctp_data_chunk_t)))
+ 
+-#define SCTP_MAX_ERROR_CAUSE  SCTP_ERROR_NONEXIST_IP
+-#define SCTP_NUM_ERROR_CAUSE  10
+-
+ /* Internal error codes */
+ typedef enum {
+ 
+@@ -266,7 +259,6 @@ enum { SCTP_ARBITRARY_COOKIE_ECHO_LEN = 200 };
+ #define SCTP_TSN_MAP_INITIAL BITS_PER_LONG
+ #define SCTP_TSN_MAP_INCREMENT SCTP_TSN_MAP_INITIAL
+ #define SCTP_TSN_MAP_SIZE 4096
+-#define SCTP_TSN_MAX_GAP  65535
+ 
+ /* We will not record more than this many duplicate TSNs between two
+  * SACKs.  The minimum PMTU is 576.  Remove all the headers and there
+@@ -301,9 +293,6 @@ enum { SCTP_MAX_GABS = 16 };
+ 
+ #define SCTP_CLOCK_GRANULARITY	1	/* 1 jiffy */
+ 
+-#define SCTP_DEF_MAX_INIT 6
+-#define SCTP_DEF_MAX_SEND 10
+-
+ #define SCTP_DEFAULT_COOKIE_LIFE	(60 * 1000) /* 60 seconds */
+ 
+ #define SCTP_DEFAULT_MINWINDOW	1500	/* default minimum rwnd size */
+@@ -317,9 +306,6 @@ enum { SCTP_MAX_GABS = 16 };
+ 					 */
+ #define SCTP_DEFAULT_MINSEGMENT 512	/* MTU size ... if no mtu disc */
+ #define SCTP_HOW_MANY_SECRETS 2		/* How many secrets I keep */
+-#define SCTP_HOW_LONG_COOKIE_LIVE 3600	/* How many seconds the current
+-					 * secret will live?
+-					 */
+ #define SCTP_SECRET_SIZE 32		/* Number of octets in a 256 bits. */
+ 
+ #define SCTP_SIGNATURE_SIZE 20	        /* size of a SLA-1 signature */
+-- 
+1.6.3.3
