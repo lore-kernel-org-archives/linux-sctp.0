@@ -1,38 +1,64 @@
 From: Shan Wei <shanwei@cn.fujitsu.com>
-Date: Thu, 25 Nov 2010 02:11:06 +0000
-Subject: Re: Source address selection with secondary interface address
-Message-Id: <4CEDC5BA.1030202@cn.fujitsu.com>
+Date: Mon, 29 Nov 2010 10:14:58 +0000
+Subject: [PATCH] sctp: kill unused macros in head file
+Message-Id: <4CF37D22.8090307@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <79C4240C13B4C84B910850B96B1B431201C276DA@DEMUEXC035.nsn-intra.net>
-In-Reply-To: <79C4240C13B4C84B910850B96B1B431201C276DA@DEMUEXC035.nsn-intra.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: Vlad Yasevich <vladislav.yasevich@hp.com>, David Miller <davem@davemloft.net>, shemminger@linux-foundation.org
+Cc: Network-Maillist <netdev@vger.kernel.org>, SCTP-Maillist <linux-sctp@vger.kernel.org>, Shan Wei <shanwei@cn.fujitsu.com>
 
-Kiss, Zoltan (NSN - HU/Budapest) wrote, at 11/24/2010 11:18 PM:
-> Hi,
-> 
-> In this routing entry:
-> 
-> 10.0.0.36/28 via 10.0.0.153 dev vlan2
-> 
-> .153 is the nexthop, not the source IP! My theory that when it queries this route, it will give back implicitly the primary IP of that interface, which is .156, and that's why it isn't succeeded.
 
-You'd better to confirm it.
+1. SCTP_CMD_NUM_VERBS,SCTP_CMD_MAX
+These two macros have never been used for several years since v2.6.12-rc2.
 
-> 
-> About the next step, so is this a correct statement?:
-> 
-> sctp_v4_get_dst() is querying the routing table with every local address (.146 and .154, in this order) of that association as SRC address, and if it receives ANY kind of valid route with this condition (only SRC is defined), it will use that SRC for the packet (right the first query will succeed with .146), BUT it won't change the outgoing interface according to this routing entry (OR it change it in the skb, but later IP will overwrite it?)
+2.sctp_port_rover,sctp_port_alloc_lock
+The commit 063930 abandoned global variables of port_rover and port_alloc_lock,
+but still keep two macros to refer to them.
+So, remove them now.
 
-Isn't [HB ACK] send out from vlan1?
+commit 06393009000779b00a558fd2f280882cc7dc2008
+Author: Stephen Hemminger <shemminger@linux-foundation.org>
+Date:   Wed Oct 10 17:30:18 2007 -0700
 
+    [SCTP]: port randomization
+
+
+Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
+---
+ include/net/sctp/command.h |    3 ---
+ include/net/sctp/structs.h |    2 --
+ 2 files changed, 0 insertions(+), 5 deletions(-)
+
+diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
+index 2c55a7e..c01dc99 100644
+--- a/include/net/sctp/command.h
++++ b/include/net/sctp/command.h
+@@ -111,9 +111,6 @@ typedef enum {
+ 	SCTP_CMD_LAST
+ } sctp_verb_t;
+ 
+-#define SCTP_CMD_MAX		(SCTP_CMD_LAST - 1)
+-#define SCTP_CMD_NUM_VERBS	(SCTP_CMD_MAX + 1)
+-
+ /* How many commands can you put in an sctp_cmd_seq_t?
+  * This is a rather arbitrary number, ideally derived from a careful
+  * analysis of the state functions, but in reality just taken from
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 69fef4f..cc9185c 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -261,8 +261,6 @@ extern struct sctp_globals {
+ #define sctp_assoc_hashsize		(sctp_globals.assoc_hashsize)
+ #define sctp_assoc_hashtable		(sctp_globals.assoc_hashtable)
+ #define sctp_port_hashsize		(sctp_globals.port_hashsize)
+-#define sctp_port_rover			(sctp_globals.port_rover)
+-#define sctp_port_alloc_lock		(sctp_globals.port_alloc_lock)
+ #define sctp_port_hashtable		(sctp_globals.port_hashtable)
+ #define sctp_local_addr_list		(sctp_globals.local_addr_list)
+ #define sctp_local_addr_lock		(sctp_globals.addr_list_lock)
 -- 
-Best Regards
------
-Shan Wei
-
-
+1.6.3.3
 
 
