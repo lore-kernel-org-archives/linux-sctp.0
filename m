@@ -1,56 +1,88 @@
-From: Greg KH <gregkh@suse.de>
-Date: Wed, 08 Dec 2010 23:13:15 +0000
-Subject: Re: [34/44] Limit sysctl_tcp_mem and sysctl_udp_mem initializers
-Message-Id: <20101208231315.GB8196@suse.de>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Tue, 07 Dec 2010 06:35:38 +0000
+Subject: Re: [Lksctp-developers] SCTP_SET_PEER_PRIMARY_ADDR v4 mapped?
+Message-Id: <4CFDD5BA.2030301@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <AANLkTimTw3O-OM-5Cgv0ELNj8SmMjaaeMHMd2NNezxi7@mail.gmail.com>
- <20101208041656.GA2291@suse.de>
- <1291787445.5324.64.camel@edumazet-laptop>
- <20101208.082522.226789733.davem@davemloft.net>
-In-Reply-To: <20101208.082522.226789733.davem@davemloft.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: David Miller <davem@davemloft.net>
-Cc: eric.dumazet@gmail.com, torvalds@linux-foundation.org, linux-kernel@vger.kernel.org, stable@kernel.org, stable-review@kernel.org, akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk, holt@sgi.com, w@1wt.eu, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, kuznet@ms2.inr.ac.ru, pekkas@netcore.fi, jmorris@namei.org, yoshfuji@linux-ipv6.org, kaber@trash.net, vladislav.yasevich@hp.com, sri@us.ibm.com
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: linux-sctp@vger.kernel.org
 
-On Wed, Dec 08, 2010 at 08:25:22AM -0800, David Miller wrote:
-> From: Eric Dumazet <eric.dumazet@gmail.com>
-> Date: Wed, 08 Dec 2010 06:50:45 +0100
->=20
-> > Le mardi 07 d=E9cembre 2010 =E0 20:16 -0800, Greg KH a =E9crit :
-> >> On Tue, Dec 07, 2010 at 05:22:34PM -0800, Linus Torvalds wrote:
-> >> > On Tue, Dec 7, 2010 at 4:04 PM, Greg KH <gregkh@suse.de> wrote:
-> >> > >
-> >> > > From: Robin Holt <holt@sgi.com>
-> >> > >
-> >> > > [ Problem was fixed differently upstream. -DaveM ]
-> >> >=20
-> >> > Gaah. I'd really like to see more of a description for things like
-> >> > this. A commit ID for the alternate fix, or at least a few words abo=
-ut
-> >> > the different fix or reason why upstream doesn't need the stable
-> >> > commit.
-> >>=20
-> >> I'll let David confirm this, he's the one who sent it to me :)
-> >=20
-> > upstream uses commit 8d987e5c7510 (net: avoid limits overflow)
-> >=20
-> > This commit is a bit more untrusive for stable kernels :
-> >=20
-> > It depends on :
-> > a9febbb4bd13 (sysctl: min/max bounds are optional)
-> > 27b3d80a7b6a (sysctl: fix min/max handling in __do_proc_doulongvec_minm=
-ax())
->=20
-> Yep, this is the case.  Greg, you can add a reference to:
->=20
-> a9febbb4bd13
-> 27b3d80a7b6a
-> 8d987e5c7510
->=20
-> in my "[ ... ]" in the commit message to clear this up.
+Hi Chris Hegarty,
 
-Now added, thanks.
+> On 12/ 6/10 06:23 AM, Wei Yongjun wrote:
+>>
+>>> Hi,
+>>>
+>>> I've noticed a difference in the way SCTP_SET_PEER_PRIMARY_ADDR&
+>>> SCTP_PRIMARY_ADDR socket options accept socket addresses. When setting
+>>> SCTP_PRIMARY_ADDR it appears that a v4 mapped address is accepted, but
+>>> when setting SCTP_SET_PEER_PRIMARY_ADDR it gives "Cannot assign
+>>> requested address" as if the address is not a valid local address. But
+>>> when I use the IPv4 address it appears to work as expected.
+>>>
+>>
+>> With SCTP_SET_PEER_PRIMARY_ADDR, we checked whether
+>> this address is a valid peer address, not local address. The peer
+>> must have this address in its address list after estab. Also, peer
+>> must support v4 mapped address.
+>
+> Thanks for your reply. Sorry, but I'm still confused here.
+>
+> "7.3.1. Set Peer Primary Address (SCTP_SET_PEER_PRIMARY_ADDR)
+>
+>    Requests that the peer marks the enclosed address as the association
+>    primary (see [RFC5061]).  The enclosed address must be one of the
+>    association's locally bound addresses."
+>
+> So the address passed when setting SCTP_SET_PEER_PRIMARY_ADDR must be
+> one of the locally bound addresses, not the peer address, right?
+>
+> My question is related more to the user interface when using AF_INET6
+> sockets. Why would the given address have to be an IPv4 address for
+> setting SCTP_SET_PEER_PRIMARY_ADDR, but when setting SCTP_PRIMARY_ADDR
+> it must be an IPv4 mapped address? I would expect the user interface
+> to behave consistently across these two options.
 
-greg k-h
+Can you try the following patch?
+
+[PATCH] SCTP: Fix SCTP_SET_PEER_PRIMARY_ADDR to accpet v4mapped address
+
+SCTP_SET_PEER_PRIMARY_ADDR does not accpet v4mapped address, this
+patch will fix it by map v4mapped address to v4 address if allowed.
+
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ net/sctp/socket.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 6bd5543..0b9ee34 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -2932,6 +2932,7 @@ static int sctp_setsockopt_peer_primary_addr(struct sock *sk, char __user *optva
+ 	struct sctp_association	*asoc = NULL;
+ 	struct sctp_setpeerprim	prim;
+ 	struct sctp_chunk	*chunk;
++	struct sctp_af		*af;
+ 	int 			err;
+ 
+ 	sp = sctp_sk(sk);
+@@ -2959,6 +2960,13 @@ static int sctp_setsockopt_peer_primary_addr(struct sock *sk, char __user *optva
+ 	if (!sctp_state(asoc, ESTABLISHED))
+ 		return -ENOTCONN;
+ 
++	af = sctp_get_af_specific(prim.sspp_addr.ss_family);
++	if (!af)
++		return -EINVAL;
++
++	if (!af->addr_valid((union sctp_addr *)&prim.sspp_addr, sp, NULL))
++		return -EADDRNOTAVAIL;
++
+ 	if (!sctp_assoc_lookup_laddr(asoc, (union sctp_addr *)&prim.sspp_addr))
+ 		return -EADDRNOTAVAIL;
+ 
+-- 
+1.6.5.2
+
+
