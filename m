@@ -1,35 +1,49 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 16 Dec 2010 22:49:36 +0000
-Subject: Re: [PATCH] sctp: fix the return value of getting the sctp partial
-Message-Id: <20101216.144936.68120774.davem@davemloft.net>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Wed, 08 Dec 2010 03:11:09 +0000
+Subject: [PATCH] SCTP: Fix SCTP_SET_PEER_PRIMARY_ADDR to accpet v4mapped address
+Message-Id: <4CFEF74D.7020704@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4D0823A1.6080307@cn.fujitsu.com>
-	<4D08E46A.5010703@hp.com>
-In-Reply-To: <4D08E46A.5010703@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: yjwei@cn.fujitsu.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: Vlad Yasevich <vladislav.yasevich@hp.com>, David Miller <davem@davemloft.net>
+Cc: linux-sctp@vger.kernel.org, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
 
-From: Vladislav Yasevich <vladislav.yasevich@hp.com>
-Date: Wed, 15 Dec 2010 10:53:14 -0500
+SCTP_SET_PEER_PRIMARY_ADDR does not accpet v4mapped address, using
+v4mapped address in SCTP_SET_PEER_PRIMARY_ADDR socket option will
+get -EADDRNOTAVAIL error if v4map is enabled. This patch try to
+fix it by mapping v4mapped address to v4 address if allowed.
 
-> On 12/14/2010 09:10 PM, Wei Yongjun wrote:
->> Get the sctp partial delivery point using SCTP_PARTIAL_DELIVERY_POINT
->> socket option should return 0 if success, not -ENOTSUPP.
->> 
-> 
-> Ack.
-> 
-> -vlad
-> 
->> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ net/sctp/socket.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-Applied, thanks everyone.
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 6bd5543..0b9ee34 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -2932,6 +2932,7 @@ static int sctp_setsockopt_peer_primary_addr(struct sock *sk, char __user *optva
+ 	struct sctp_association	*asoc = NULL;
+ 	struct sctp_setpeerprim	prim;
+ 	struct sctp_chunk	*chunk;
++	struct sctp_af		*af;
+ 	int 			err;
+ 
+ 	sp = sctp_sk(sk);
+@@ -2959,6 +2960,13 @@ static int sctp_setsockopt_peer_primary_addr(struct sock *sk, char __user *optva
+ 	if (!sctp_state(asoc, ESTABLISHED))
+ 		return -ENOTCONN;
+ 
++	af = sctp_get_af_specific(prim.sspp_addr.ss_family);
++	if (!af)
++		return -EINVAL;
++
++	if (!af->addr_valid((union sctp_addr *)&prim.sspp_addr, sp, NULL))
++		return -EADDRNOTAVAIL;
++
+ 	if (!sctp_assoc_lookup_laddr(asoc, (union sctp_addr *)&prim.sspp_addr))
+ 		return -EADDRNOTAVAIL;
+ 
 
-Vlad, please use properly formed full "Acked-by: ..." in the
-future otherwise automated tools don't pick it up and it's
-therefore more likely your ACK gets lost.
 
-Thanks :-)
