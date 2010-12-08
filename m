@@ -1,19 +1,22 @@
 From: Greg KH <gregkh@suse.de>
-Date: Fri, 19 Nov 2010 21:56:31 +0000
-Subject: [70/82] Limit sysctl_tcp_mem and sysctl_udp_mem initializers to prevent integer overflows.
-Message-Id: <20101119215644.501636375@clark.site>
+Date: Wed, 08 Dec 2010 00:04:33 +0000
+Subject: [34/44] Limit sysctl_tcp_mem and sysctl_udp_mem initializers to prevent integer overflows.
+Message-Id: <20101208000642.975564500@clark.site>
 List-Id: <linux-sctp.vger.kernel.org>
-In-Reply-To: <20101119215658.GA7804@kroah.com
+In-Reply-To: <20101208003205.GA4286@kroah.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-kernel@vger.kernel.org, stable@kernel.org, "David S. Miller" <davem@davemloft.net>
 Cc: stable-review@kernel.org, torvalds@linux-foundation.org, akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk, Robin Holt <holt@sgi.com>, Willy Tarreau <w@1wt.eu>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, "Pekka Savola (ipv6)" <pekkas@netcore.fi>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>
 
-2.6.35-stable review patch.  If anyone has any objections, please let us know.
+2.6.27-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
 
+From: Robin Holt <holt@sgi.com>
+
+[ Problem was fixed differently upstream. -DaveM ]
 
 On a 16TB x86_64 machine, sysctl_tcp_mem[2], sysctl_udp_mem[2], and
 sysctl_sctp_mem[2] can integer overflow.  Set limit such that they are
@@ -41,7 +44,7 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 --- a/net/ipv4/tcp.c
 +++ b/net/ipv4/tcp.c
-@@ -3252,12 +3252,14 @@ void __init tcp_init(void)
+@@ -2754,12 +2754,14 @@ void __init tcp_init(void)
  
  	/* Set the pressure threshold to be a fraction of global memory that
  	 * is up to 1/2 at 256 MB, decreasing toward zero with the amount of
@@ -59,17 +62,16 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
  	sysctl_tcp_mem[2] = sysctl_tcp_mem[0] * 2;
 --- a/net/ipv4/udp.c
 +++ b/net/ipv4/udp.c
-@@ -2167,12 +2167,14 @@ void __init udp_init(void)
- 	udp_table_init(&udp_table, "UDP");
+@@ -1722,11 +1722,13 @@ void __init udp_init(void)
+ 
  	/* Set the pressure threshold up by the same strategy of TCP. It is a
  	 * fraction of global memory that is up to 1/2 at 256 MB, decreasing
 -	 * toward zero with the amount of memory, with a floor of 128 pages.
 +	 * toward zero with the amount of memory, with a floor of 128 pages,
 +	 * and a ceiling that prevents an integer overflow.
  	 */
- 	nr_pages = totalram_pages - totalhigh_pages;
- 	limit = min(nr_pages, 1UL<<(28-PAGE_SHIFT)) >> (20-PAGE_SHIFT);
- 	limit = (limit * (nr_pages >> (20-PAGE_SHIFT))) >> (PAGE_SHIFT-11);
+ 	limit = min(nr_all_pages, 1UL<<(28-PAGE_SHIFT)) >> (20-PAGE_SHIFT);
+ 	limit = (limit * (nr_all_pages >> (20-PAGE_SHIFT))) >> (PAGE_SHIFT-11);
  	limit = max(limit, 128UL);
 +	limit = min(limit, INT_MAX * 4UL / 3 / 2);
  	sysctl_udp_mem[0] = limit / 4 * 3;
@@ -77,7 +79,7 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
  	sysctl_udp_mem[2] = sysctl_udp_mem[0] * 2;
 --- a/net/sctp/protocol.c
 +++ b/net/sctp/protocol.c
-@@ -1161,7 +1161,8 @@ SCTP_STATIC __init int sctp_init(void)
+@@ -1179,7 +1179,8 @@ SCTP_STATIC __init int sctp_init(void)
  
  	/* Set the pressure threshold to be a fraction of global memory that
  	 * is up to 1/2 at 256 MB, decreasing toward zero with the amount of
@@ -87,7 +89,7 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
  	 * Note this initalizes the data in sctpv6_prot too
  	 * Unabashedly stolen from tcp_init
  	 */
-@@ -1169,6 +1170,7 @@ SCTP_STATIC __init int sctp_init(void)
+@@ -1187,6 +1188,7 @@ SCTP_STATIC __init int sctp_init(void)
  	limit = min(nr_pages, 1UL<<(28-PAGE_SHIFT)) >> (20-PAGE_SHIFT);
  	limit = (limit * (nr_pages >> (20-PAGE_SHIFT))) >> (PAGE_SHIFT-11);
  	limit = max(limit, 128UL);
