@@ -1,52 +1,98 @@
-From: Christoph Paasch <christoph.paasch@uclouvain.be>
-Date: Fri, 21 Jan 2011 13:26:12 +0000
-Subject: Re: MultiPath TCP in the Linux Kernel
-Message-Id: <201101211426.12278.christoph.paasch@uclouvain.be>
+From: "danms2011@danms.org" <danms2011@danms.org>
+Date: Sun, 02 Jan 2011 13:10:40 +0000
+Subject: Final CFP and deadline extension: IFIP/IEEE DANMS 2011 (co-located with IM 2011)
+Message-Id: <20110102081205.6233@web004.nyc1.bluetie.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <201101201509.34536.christoph.paasch@uclouvain.be> <7e28a5ddc16848dcd98c05351113304f@localhost> <1295538176.2825.311.camel@edumazet-laptop>
-In-Reply-To: <1295538176.2825.311.camel@edumazet-laptop>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: Hagen Paul Pfeifer <hagen@jauu.net>, netdev@vger.kernel.org, bonding-devel@lists.sourceforge.net, linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: linux-sctp@vger.kernel.org
 
+(We apologize if you receive multiple copies of this message)
 
-On Thursday, January 20, 2011 wrote Eric Dumazet:
-> > if you want that your work becomes part of the official network stack y=
-ou
-> > should align your effort on the official Linux way. This means you shou=
-ld
-> > split your work and publish patches on this maillinglist.
->=20
-> Hmm, they probably know that, and prefer to wait MTCP stuff is mature
-> before patch submission :)
-Exactly... :)
+(Due to multiple requests paper submission deadline has been extended to 7 Jan 2011)
 
-The protocol specification of MPTCP is not stable yet=20
-(http://datatracker.ietf.org/doc/draft-ietf-mptcp-multiaddressed/).
+CALL FOR PAPERS
 
-Also, all the features are not yet in our implementation (e.g., IPv6-suppor=
-t=20
-and dual IPv4/IPv6-support), and it is necessary to make our implementation=
-=20
-less intrusive to the regular TCP/IP-stack.
+IFIP/IEEE DANMS 2011
+Forth International Workshop on Distributed Autonomous Network Management Systems
+Co-located with IM 2011, Dublin, Ireland
+www.danms.org
 
-However, as developper-resources are limited this will still take quite som=
-e=20
-time... ;)
+Important Dates
+Paper submission deadline: 7 Jan 2011 (extended)
+Notification of acceptance: 30 Jan 2011
+Camera-ready paper: 15 Feb 2011
 
-Cheers,
-Christoph
+Paper Submission URL
+https://jems.sbc.org.br/danms2011
 
+The DANMS 2011 workshop is part of a series of workshops dedicated to advances in network management and the application of new management principles in network design.
+This year’s workshop emphasizes on “Efficient Management of Loosely Collaborative Service Networks” where network connectivity providers, content and service providers come together to provide high-level services such as Over-The-Top (OTT) services to end-users in a loosely collaborative way.
+In the recent past, end-user services such as high quality video calls, web-based video content servers, HD video streaming and VoD services etc. have driven the telecom market. The appearance of these new content/service providers, which include so called Over-The-Top (OTT) service providers, has driven network usage, but also created huge network management problems for the operators. In this context, content/service providers together with network operators provide value to the subscribers in a “loosely collaborative” fashion. Service assurance in this loose collaborative environment is challenging, particularly in the presence of a network with limited or no guarantees. This nascent eco-system is driving fundamental changes in how networks are deployed and managed as well as how they interact with content and service providers. In this context, together with wider network management contributions, we expect to have technical contributions in the areas of automated service assurance and in loosely collaborative service networks.
 
---
-Christoph Paasch
-PhD Student
+Topics of interest include (but are not limited to) the following:
 
-IP Networking Lab --- http://inl.info.ucl.ac.be
-MultiPath TCP in the Linux Kernel --- http://inl.info.ucl.ac.be/mptcp
-Universit=C3=A9 Catholique de Louvain
+ * Federated network management
+ * Impact of Over the Top (OTT) services in resource management
+ * Case studies of service assurance
+ * Efficient use of terminal reports in service assurance
+ * SLA for OTT service assurance
+ * Service and resource modelling approaches for management
+ * Business rules and organizational modelling
+ * Use of semantics in service deployment and quality assurance
+ * Extensions and refinements of NM standards
+ * Aspects of service management and assurance
+ * Automated service provisioning across multiple service providers
+ * Fault and performance management, diagnosis, and troubleshooting
+ * End-to-end QoS management for enterprise networks
+ * Measurements and insights from network operations
+ * Metrics, techniques, and experiments for evaluating network
+ * Convergence of fixed and mobile networks
 
-www.rollerbulls.be
---
+Steering Committee
+ Nazim Agoulmine, University of Evry Val d'Essonne France
+ Raouf Boutaba, University of Waterloo Canada
+ Gabriel Hogan, Network Management Lab, Ericsson, Ireland
+
+Workshop Co-Chairs
+ Sidath Handurukande, Network Management Lab, Ericsson Ireland
+ Jose Neuman de Souza, Federal University of Ceara, Brazil
+
+Publicity Chair
+ Yangcheng Huang, Ericsson Ireland
+
+Technical Program Committee
+ Arosha Bandara, Open University, UK
+ Javier Baliosian, Uni. of the Republic, Uruguay
+ Saleem Bhatti, Uni. of St Andrews, UK
+ Sami Bhiri, DERI, Ireland
+ Anne-Marie Bosneag, Ericsson, Ireland
+ Anca Chandra, IBM Research, USA
+ Dave Cleary, Ericsson, Ireland
+ Zoran Despotovic, NTT DoCoMo Euro-Labs, Germany
+ Dominique Dudkowski, NEC, Germany
+ Liam Fallon, Ericsson, Ireland
+ James Hong, POSTECH, Korea
+ Jesse Kielthy, TSSG, Ireland
+ Francine Krief, Bordeaux 1 University, France
+ Petr Kuznetsov, Deutsche Telekom Laboratories, Germany
+ Brian Lee, AIT, Ireland
+ Declan O'Sullivan, Trinity College Dublin, Ireland
+ Gerard Parr, University of Ulster, UK
+ Luis Rodrigues, INESC-ID/IST, Portugal
+ Florian Schreiner, Fraunhofer FOKUS, Germany
+ Rolf Stadler, KTH, Sweden
+ Martin van Steen, Vrje University, Netherlands
+ Filip De Turck, Ghent University-IBBT, Belgium
+ Stefan Wallin, Luleå University of Technology, Sweden
+ Martin Zach, Siemens AG Austria
+
+Paper Submission Instructions
+
+Authors are invited to submit papers of maximum six pages or extended papers of up to eight pages (including figures, tables, and references), in the standard two-column, 11 pt font, IEEE conference paper format. Standard IEEE Transactions templates for Microsoft Word or LaTeX formats can be found at
+http://www.ieee.org/portal/pages/pubs/transactions/stylesheets.html.
+All work submitted must be original, not previously published or under submission at other venues.
+At least one author of accepted papers must be present at the workshop, to present the paper. Accepted papers will be published by IEEE Xplore and indexed accordingly.
+Only PDF files will be accepted for the review process and all submissions must be done through JEMS at the URL below:
+https://jems.sbc.org.br/danms2011
