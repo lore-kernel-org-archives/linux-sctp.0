@@ -1,33 +1,37 @@
 From: Holger Hans Peter Freyther <holger@freyther.de>
-Date: Wed, 12 Jan 2011 14:35:26 +0000
-Subject: Re: Question regarding struct sctp_association
-Message-Id: <4D2DBC2E.5000107@freyther.de>
+Date: Mon, 10 Jan 2011 10:58:10 +0000
+Subject: [PATCH 2/2] sctp: Remove store to ret as it is not used
+Message-Id: <1294657090-2789-3-git-send-email-holger@freyther.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4D2AF2C3.8010306@freyther.de>
-In-Reply-To: <4D2AF2C3.8010306@freyther.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On 01/12/2011 02:00 AM, Wei Yongjun wrote:
+From: Holger Hans Peter Freyther <zecke@selfish.org>
 
->>                 /* Restart the AUTOCLOSE timer when sending data. */
->> -               if (sctp_state(asoc, ESTABLISHED) && asoc->autoclose) {
->> +               if (asoc && sctp_state(asoc, ESTABLISHED) && asoc->autoclose) {
->>                         timer = &asoc->timers[SCTP_EVENT_TIMEOUT_AUTOCLOSE];
->>                         timeout = asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE];
->>
->>
->> Can an OOTB packet contain data chunks that would make us go through this path?
-> 
-> AUTOCLOSE timer is only start when we have association, so this will
-> not happen.
+The store to ret is not needed. In case it is 0 the method
+will be exited directly, if not ret will be assigned again
+and then returned to the caller.
 
-I am not sure, that is why I am asking. It appears that if there is any DATA
-Chunk in the packet to send the code attempts to access 'asoc'. Can this code
-path be ever triggered with an OOTB packet?
+Signed-off-by: Holger Hans Peter Freyther <zecke@selfish.org>
+---
+ net/sctp/socket.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-sorry if that question is too stupid
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index e47e39e..b8dad82 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -393,7 +393,7 @@ SCTP_STATIC int sctp_do_bind(struct sock *sk, union sctp_addr *addr, int len)
+ 	 * detection.
+ 	 */
+ 	addr->v4.sin_port = htons(snum);
+-	if ((ret = sctp_get_port_local(sk, addr))) {
++	if (sctp_get_port_local(sk, addr)) {
+ 		return -EADDRINUSE;
+ 	}
+ 
+-- 
+1.7.3.4
 
-z.
