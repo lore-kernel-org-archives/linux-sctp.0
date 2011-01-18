@@ -1,48 +1,72 @@
-From: Shan Wei <shanwei@cn.fujitsu.com>
-Date: Tue, 11 Jan 2011 01:18:02 +0000
-Subject: Re: [PATCH 1/2] sctp: Remove variables that are only written to
-Message-Id: <4D2BAFCA.6030501@cn.fujitsu.com>
+From: Holger Freyther <zecke@selfish.org>
+Date: Tue, 18 Jan 2011 11:29:18 +0000
+Subject: [PATCH] sctp: Make some local functions static
+Message-Id: <4D35798E.3010800@selfish.org>
+MIME-Version: 1
+Content-Type: multipart/mixed; boundary="------------040800010008010807000608"
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1294657090-2789-2-git-send-email-holger@freyther.de>
-In-Reply-To: <1294657090-2789-2-git-send-email-holger@freyther.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Holger Hans Peter Freyther wrote, at 01/10/2011 06:58 PM:
-> From: Holger Hans Peter Freyther <zecke@selfish.org>
-> 
-> The following variables only get a simple assignment but
-> are never read from. Remove these variables.
-> 
-> Signed-off-by: Holger Hans Peter Freyther <zecke@selfish.org>
-> ---
-> diff --git a/net/sctp/input.c b/net/sctp/input.c
-> index 471e048..e052243 100644
-> --- a/net/sctp/input.c
-> +++ b/net/sctp/input.c
-> @@ -986,14 +986,11 @@ static struct sctp_association *__sctp_rcv_init_lookup(struct sk_buff *skb,
->  	union sctp_addr addr;
->  	union sctp_addr *paddr = &addr;
->  	struct sctphdr *sh = sctp_hdr(skb);
-> -	sctp_chunkhdr_t *ch;
->  	union sctp_params params;
->  	sctp_init_chunk_t *init;
->  	struct sctp_transport *transport;
->  	struct sctp_af *af;
->  
-> -	ch = (sctp_chunkhdr_t *) skb->data;
-> -
->  	/*
->  	 * This code will NOT touch anything inside the chunk--it is
->  	 * strictly READ-ONLY.
+This is a multi-part message in MIME format.
+--------------040800010008010807000608
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-This part has been submmited in a patch.
 
-See:http://git.kernel.org/?p=linux/kernel/git/vxy/lksctp-dev.git;a=commitdiff;hJ5161a90560703ca1a720aca3081e6f5a43395c;hpz86dbe071e6d9d7d3446c140275c483ec8db639
+sparse proposed to mark these functions as static as they are
+only accessed locally. This patch is doing that.
 
--- 
-Best Regards
------
-Shan Wei
+Signed-off-by: Holger Hans Peter Freyther <zecke@selfish.org>
+---
+ net/sctp/probe.c         |   10 +++++-----
+ net/sctp/sm_make_chunk.c |    4 ++--
+ 2 files changed, 7 insertions(+), 7 deletions(-)
+
+
+
+--------------040800010008010807000608
+Content-Type: text/x-patch;
+ name="0001-sctp-Make-some-local-functions-static.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="0001-sctp-Make-some-local-functions-static.patch"
+
+diff --git a/net/sctp/probe.c b/net/sctp/probe.c
+index bc6cd75..4616548 100644
+--- a/net/sctp/probe.c
++++ b/net/sctp/probe.c
+@@ -122,11 +122,11 @@ static const struct file_operations sctpprobe_fops = {
+ 	.llseek = noop_llseek,
+ };
+ 
+-sctp_disposition_t jsctp_sf_eat_sack(const struct sctp_endpoint *ep,
+-				     const struct sctp_association *asoc,
+-				     const sctp_subtype_t type,
+-				     void *arg,
+-				     sctp_cmd_seq_t *commands)
++static sctp_disposition_t jsctp_sf_eat_sack(const struct sctp_endpoint *ep,
++					    const struct sctp_association *asoc,
++					    const sctp_subtype_t type,
++					    void *arg,
++					    sctp_cmd_seq_t *commands)
+ {
+ 	struct sctp_transport *sp;
+ 	static __u32 lcwnd = 0;
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 9ea8ae7..912e534 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -132,8 +132,8 @@ void  sctp_init_cause(struct sctp_chunk *chunk, __be16 cause_code,
+  * abort chunk.  Differs from sctp_init_cause in that it won't oops
+  * if there isn't enough space in the op error chunk
+  */
+-int sctp_init_cause_fixed(struct sctp_chunk *chunk, __be16 cause_code,
+-		      size_t paylen)
++static int sctp_init_cause_fixed(struct sctp_chunk *chunk, __be16 cause_code,
++				 size_t paylen)
+ {
+ 	sctp_errhdr_t err;
+ 	__u16 len;
+
+
+--------------040800010008010807000608--
