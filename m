@@ -1,103 +1,66 @@
-From: Greg KH <gregkh@suse.de>
-Date: Wed, 08 Dec 2010 00:44:43 +0000
-Subject: [097/127] Limit sysctl_tcp_mem and sysctl_udp_mem initializers to prevent integer overflows.
-Message-Id: <20101208004434.013045349@clark.site>
+From: Shan Wei <shanwei@cn.fujitsu.com>
+Date: Wed, 19 Jan 2011 08:39:00 +0000
+Subject: [PATCH-v2] sctp: user perfect name for Delayed SACK Timer option
+Message-Id: <4D36A324.4040307@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-In-Reply-To: <20101208004456.GA23578@kroah.com>
+References: <4D3693CA.40508@cn.fujitsu.com>
+In-Reply-To: <4D3693CA.40508@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: linux-kernel@vger.kernel.org, stable@kernel.org, "David S. Miller" <davem@davemloft.net>
-Cc: stable-review@kernel.org, torvalds@linux-foundation.org, akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk, Robin Holt <holt@sgi.com>, Willy Tarreau <w@1wt.eu>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, "Pekka Savola (ipv6)" <pekkas@netcore.fi>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>
+Content-Type: text/plain; charset="windows-1252"
+Content-Transfer-Encoding: quoted-printable
+To: David Miller <davem@davemloft.net>, Vlad Yasevich <vladislav.yasevich@hp.com>, =?UTF-8?B?6a2P5YuH5Yab?= <yjwei@cn.fujitsu.com>, Network-Maillist <netdev@vger.kernel.org>, SCTP-Mailli
 
-2.6.32-stable review patch.  If anyone has any objections, please let us know.
+The option name of Delayed SACK Timer should be SCTP_DELAYED_SACK,
+not SCTP_DELAYED_ACK.
 
-------------------
+Left SCTP_DELAYED_ACK be concomitant with SCTP_DELAYED_SACK,
+for making compatibility with existing applications.
 
+Reference:
+8.1.19.  Get or Set Delayed SACK Timer (SCTP_DELAYED_SACK)
+=EF=BC=88http://tools.ietf.org/html/draft-ietf-tsvwg-sctpsocket-25)
 
-From: Robin Holt <holt@sgi.com>
-
-[ Upstream fixed this in a different way. -DaveM ]
-
-On a 16TB x86_64 machine, sysctl_tcp_mem[2], sysctl_udp_mem[2], and
-sysctl_sctp_mem[2] can integer overflow.  Set limit such that they are
-maximized without overflowing.
-
-Signed-off-by: Robin Holt <holt@sgi.com>
-To: "David S. Miller" <davem@davemloft.net>
-Cc: Willy Tarreau <w@1wt.eu>
-Cc: linux-kernel@vger.kernel.org
-Cc: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org
-Cc: Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>
-Cc: "Pekka Savola (ipv6)" <pekkas@netcore.fi>
-Cc: James Morris <jmorris@namei.org>
-Cc: Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>
-Cc: Patrick McHardy <kaber@trash.net>
-Cc: Vlad Yasevich <vladislav.yasevich@hp.com>
-Cc: Sridhar Samudrala <sri@us.ibm.com>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
 ---
- net/ipv4/tcp.c      |    4 +++-
- net/ipv4/udp.c      |    4 +++-
- net/sctp/protocol.c |    4 +++-
- 3 files changed, 9 insertions(+), 3 deletions(-)
+ include/net/sctp/user.h |    1 +
+ net/sctp/socket.c       |    4 ++--
+ 2 files changed, 3 insertions(+), 2 deletions(-)
 
---- a/net/ipv4/tcp.c
-+++ b/net/ipv4/tcp.c
-@@ -2940,12 +2940,14 @@ void __init tcp_init(void)
- 
- 	/* Set the pressure threshold to be a fraction of global memory that
- 	 * is up to 1/2 at 256 MB, decreasing toward zero with the amount of
--	 * memory, with a floor of 128 pages.
-+	 * memory, with a floor of 128 pages, and a ceiling that prevents an
-+	 * integer overflow.
- 	 */
- 	nr_pages = totalram_pages - totalhigh_pages;
- 	limit = min(nr_pages, 1UL<<(28-PAGE_SHIFT)) >> (20-PAGE_SHIFT);
- 	limit = (limit * (nr_pages >> (20-PAGE_SHIFT))) >> (PAGE_SHIFT-11);
- 	limit = max(limit, 128UL);
-+	limit = min(limit, INT_MAX * 4UL / 3 / 2);
- 	sysctl_tcp_mem[0] = limit / 4 * 3;
- 	sysctl_tcp_mem[1] = limit;
- 	sysctl_tcp_mem[2] = sysctl_tcp_mem[0] * 2;
---- a/net/ipv4/udp.c
-+++ b/net/ipv4/udp.c
-@@ -1832,12 +1832,14 @@ void __init udp_init(void)
- 	udp_table_init(&udp_table);
- 	/* Set the pressure threshold up by the same strategy of TCP. It is a
- 	 * fraction of global memory that is up to 1/2 at 256 MB, decreasing
--	 * toward zero with the amount of memory, with a floor of 128 pages.
-+	 * toward zero with the amount of memory, with a floor of 128 pages,
-+	 * and a ceiling that prevents an integer overflow.
- 	 */
- 	nr_pages = totalram_pages - totalhigh_pages;
- 	limit = min(nr_pages, 1UL<<(28-PAGE_SHIFT)) >> (20-PAGE_SHIFT);
- 	limit = (limit * (nr_pages >> (20-PAGE_SHIFT))) >> (PAGE_SHIFT-11);
- 	limit = max(limit, 128UL);
-+	limit = min(limit, INT_MAX * 4UL / 3 / 2);
- 	sysctl_udp_mem[0] = limit / 4 * 3;
- 	sysctl_udp_mem[1] = limit;
- 	sysctl_udp_mem[2] = sysctl_udp_mem[0] * 2;
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -1157,7 +1157,8 @@ SCTP_STATIC __init int sctp_init(void)
- 
- 	/* Set the pressure threshold to be a fraction of global memory that
- 	 * is up to 1/2 at 256 MB, decreasing toward zero with the amount of
--	 * memory, with a floor of 128 pages.
-+	 * memory, with a floor of 128 pages, and a ceiling that prevents an
-+	 * integer overflow.
- 	 * Note this initalizes the data in sctpv6_prot too
- 	 * Unabashedly stolen from tcp_init
- 	 */
-@@ -1165,6 +1166,7 @@ SCTP_STATIC __init int sctp_init(void)
- 	limit = min(nr_pages, 1UL<<(28-PAGE_SHIFT)) >> (20-PAGE_SHIFT);
- 	limit = (limit * (nr_pages >> (20-PAGE_SHIFT))) >> (PAGE_SHIFT-11);
- 	limit = max(limit, 128UL);
-+	limit = min(limit, INT_MAX * 4UL / 3 / 2);
- 	sysctl_sctp_mem[0] = limit / 4 * 3;
- 	sysctl_sctp_mem[1] = limit;
- 	sysctl_sctp_mem[2] = sysctl_sctp_mem[0] * 2;
-
-
+diff --git a/include/net/sctp/user.h b/include/net/sctp/user.h
+index 2b2769c..92eedc0 100644
+--- a/include/net/sctp/user.h
++++ b/include/net/sctp/user.h
+@@ -78,6 +78,7 @@ typedef __s32 sctp_assoc_t;
+ #define SCTP_GET_PEER_ADDR_INFO	15
+ #define SCTP_DELAYED_ACK_TIME	16
+ #define SCTP_DELAYED_ACK SCTP_DELAYED_ACK_TIME
++#define SCTP_DELAYED_SACK SCTP_DELAYED_ACK_TIME
+ #define SCTP_CONTEXT	17
+ #define SCTP_FRAGMENT_INTERLEAVE	18
+ #define SCTP_PARTIAL_DELIVERY_POINT	19 /* Set/Get partial delivery point */
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index a09b0dd..8e02550 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3428,7 +3428,7 @@ SCTP_STATIC int sctp_setsockopt(struct sock *sk, int =
+level, int optname,
+ 		retval =3D sctp_setsockopt_peer_addr_params(sk, optval, optlen);
+ 		break;
+=20
+-	case SCTP_DELAYED_ACK:
++	case SCTP_DELAYED_SACK:
+ 		retval =3D sctp_setsockopt_delayed_ack(sk, optval, optlen);
+ 		break;
+ 	case SCTP_PARTIAL_DELIVERY_POINT:
+@@ -5333,7 +5333,7 @@ SCTP_STATIC int sctp_getsockopt(struct sock *sk, int =
+level, int optname,
+ 		retval =3D sctp_getsockopt_peer_addr_params(sk, len, optval,
+ 							  optlen);
+ 		break;
+-	case SCTP_DELAYED_ACK:
++	case SCTP_DELAYED_SACK:
+ 		retval =3D sctp_getsockopt_delayed_ack(sk, len, optval,
+ 							  optlen);
+ 		break;
+--=20
+1.6.3.3
