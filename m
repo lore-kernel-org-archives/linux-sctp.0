@@ -1,35 +1,52 @@
-From: Holger Hans Peter Freyther <holger@freyther.de>
-Date: Fri, 14 Jan 2011 09:00:09 +0000
-Subject: Re: [PATCH][RFC] Allow to use adler32 for SCTP
-Message-Id: <4D301099.20707@freyther.de>
+From: Christoph Paasch <christoph.paasch@uclouvain.be>
+Date: Thu, 20 Jan 2011 14:09:34 +0000
+Subject: MultiPath TCP in the Linux Kernel
+Message-Id: <201101201509.34536.christoph.paasch@uclouvain.be>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4D2DC00A.8030208@freyther.de>
-In-Reply-To: <4D2DC00A.8030208@freyther.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: netdev@vger.kernel.org, bonding-devel@lists.sourceforge.net, linux-sctp@vger.kernel.org
 
-On 01/14/2011 02:25 AM, Wei Yongjun wrote:
+Hi all,
 
-> 
-> decode both checksums by default will cause performance lost.
-> Why not change this to kernel config, and disable it by default since
-> most people do not need this?
+The IETF is developing a new transport layer solution, MultiPath TCP, which=
+=20
+allows to efficiently exploit several Internet paths between a pair of host=
+s,=20
+while presenting a single TCP connection to the application layer.
 
-Well, by default I am only checking the CRC32 checksum and have a test and a
-branch for a global variable. So the question is what is the impact of the
-extra load of the global variable?
+At the UCLouvain in Belgium we are developping the support for MultiPath TC=
+P=20
+in the Linux Kernel. The implementation is a major extension to the Linux T=
+CP-
+stack.
 
-Do you have a benchmark in mind? Something as simple as one connection and
-sending messages between two machines? Or should I guard this whole config
-with a kernel config right away?
+For general information, access:
+http://inl.info.ucl.ac.be/mptcp
+https://scm.info.ucl.ac.be/trac/mptcp/
+
+To access the git-repository:
+git://scm.info.ucl.ac.be/mtcp.git
+branches:
+	mptcp_2.6.36 - based on Linux Kernel 2.6.36
+	mtcp_no_subrcvqueue - based on Linux Kernel 2.6.28
+
+For questions, feedback,... feel free to subscribe to the mptcp-dev Mailing-
+List:
+https://listes-2.sipr.ucl.ac.be/sympa/info/mptcp-dev
 
 
-> 
-> Other question: why not just update your box which only support
-> adler32 to support new crc32 checksums? Linux and Freebsd etc.
-> do not using adler32, but using crc32.
-> 
+Regards,
+Christoph
 
-I wish I could, the machine is on the edge of the network and not in my control.
+--
+Christoph Paasch
+PhD Student
+
+IP Networking Lab --- http://inl.info.ucl.ac.be
+MultiPath TCP in the Linux Kernel --- http://inl.info.ucl.ac.be/mptcp
+Universit=E9 Catholique de Louvain
+
+www.rollerbulls.be
+--
