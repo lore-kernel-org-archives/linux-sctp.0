@@ -1,127 +1,37 @@
-From: Christoph Paasch <christoph.paasch@uclouvain.be>
-Date: Thu, 20 Jan 2011 15:11:22 +0000
+From: Hagen Paul Pfeifer <hagen@jauu.net>
+Date: Thu, 20 Jan 2011 15:38:25 +0000
 Subject: Re: MultiPath TCP in the Linux Kernel
-Message-Id: <201101201611.23219.christoph.paasch@uclouvain.be>
+Message-Id: <7e28a5ddc16848dcd98c05351113304f@localhost>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <201101201509.34536.christoph.paasch@uclouvain.be> <AANLkTinkqCjQqRKDFnxTF4-uF27XyPzh0gY-vX3fnfSo@mail.gmail.com>
-In-Reply-To: <AANLkTinkqCjQqRKDFnxTF4-uF27XyPzh0gY-vX3fnfSo@mail.gmail.com>
+References: <201101201509.34536.christoph.paasch@uclouvain.be>
+In-Reply-To: <201101201509.34536.christoph.paasch@uclouvain.be>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: Peter Chacko <peterchacko35@gmail.com>
-Cc: netdev@vger.kernel.org, bonding-devel@lists.sourceforge.net, linux-sctp@vger.kernel.org, MS PRASAD <prasad_drdo@rediffmail.com>, Lal Samuel Varghese <lalsam@gmail.com>, "Gregory S. Tseytin" <tseyting@acm.org>
-
-Hi,
-
-MultiPath TCP is not a port of SCTP. It is based on regular TCP and present=
-s a=20
-regular socket-api to the application. Thus applications do not have to be =
-
-modified.
-
-MPTCP opens several TCP-subflows across it's different IP-addresses, and le=
-ts=20
-the data go over these different TCP sessions. To synchronize the data-
-transfer MPTCP uses TCP-options. Thus, on the wire it looks like regular TC=
-P,=20
-with the only difference being that there are additional TCP-options.
-
-MPTCP increases the throughput, because it uses the TCP-subflows=20
-simultaneously. With our implementation we got 2Gbps throughput for a singl=
-e=20
-iperf-session on a machine having two 1Gb-interfaces (using jumbo-frames), =
-
-whereas regular TCP could only go up to 1Gbps, as it only uses one interfac=
-e.
-
-To maintain bottleneck-fairness the Coupled Congestion Control controls the=
-=20
-congestion window of the individual subflows (included in the implementatio=
-n=20
-since the latest release).
-http://datatracker.ietf.org/doc/draft-ietf-mptcp-congestion/
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: christoph.paasch@uclouvain.be
+Cc: netdev@vger.kernel.org, bonding-devel@lists.sourceforge.net, linux-sctp@vger.kernel.org
 
 
-Cheers,
-Christoph
+On Thu, 20 Jan 2011 15:09:34 +0100, Christoph Paasch wrote:
+> Hi all,
+> 
+> The IETF is developing a new transport layer solution, MultiPath TCP,
+> which 
+> allows to efficiently exploit several Internet paths between a pair of
+> hosts, 
+> while presenting a single TCP connection to the application layer.
+> 
+> At the UCLouvain in Belgium we are developping the support for MultiPath
+> TCP 
+> in the Linux Kernel. The implementation is a major extension to the
+Linux
+> TCP-
+> stack.
 
-P.S.: We have a public webserver running MPTCP at http://mptcp.info.ucl.ac.=
-be
-So you can directly try out the power of MPTCP... ;-)
+Hello Christoph,
 
-On Thursday, January 20, 2011 wrote Peter Chacko:
-> SCTP already provides that , and is TCP Multi-Path is going to be a port =
-of
-> it or any other difference ?
->=20
-> We are looking to use SCTP for this feature, but as we found it it has not
-> kicked off , because of its firewall issues, we are trying add
-> Multi-Pathing at application layer, sharing all the congestion states(like
-> CM idea) as we are building a WAN optimized storage replication module as
-> part of our cloud storage gateway development.
->=20
-> Curious to see more info on this.
->=20
-> Thanks
->=20
-> 2011/1/20 Christoph Paasch <christoph.paasch@uclouvain.be>
->=20
-> > Hi all,
-> >=20
-> > The IETF is developing a new transport layer solution, MultiPath TCP,
-> > which allows to efficiently exploit several Internet paths between a
-> > pair of hosts,
-> > while presenting a single TCP connection to the application layer.
-> >=20
-> > At the UCLouvain in Belgium we are developping the support for MultiPath
-> > TCP
-> > in the Linux Kernel. The implementation is a major extension to the Lin=
-ux
-> > TCP-
-> > stack.
-> >=20
-> > For general information, access:
-> > http://inl.info.ucl.ac.be/mptcp
-> > https://scm.info.ucl.ac.be/trac/mptcp/
-> >=20
-> > To access the git-repository:
-> > git://scm.info.ucl.ac.be/mtcp.git
-> >=20
-> > branches:
-> >        mptcp_2.6.36 - based on Linux Kernel 2.6.36
-> >        mtcp_no_subrcvqueue - based on Linux Kernel 2.6.28
-> >=20
-> > For questions, feedback,... feel free to subscribe to the mptcp-dev
-> > Mailing-
-> > List:
-> > https://listes-2.sipr.ucl.ac.be/sympa/info/mptcp-dev
-> >=20
-> >=20
-> > Regards,
-> > Christoph
-> >=20
-> > --
-> > Christoph Paasch
-> > PhD Student
-> >=20
-> > IP Networking Lab --- http://inl.info.ucl.ac.be
-> > MultiPath TCP in the Linux Kernel --- http://inl.info.ucl.ac.be/mptcp
-> > Universit=E9 Catholique de Louvain
-> >=20
-> > www.rollerbulls.be
-> > --
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe netdev" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+if you want that your work becomes part of the official network stack you
+should align your effort on the official Linux way. This means you should
+split your work and publish patches on this maillinglist.
 
---
-Christoph Paasch
-PhD Student
-
-IP Networking Lab --- http://inl.info.ucl.ac.be
-MultiPath TCP in the Linux Kernel --- http://inl.info.ucl.ac.be/mptcp
-Universit=E9 Catholique de Louvain
-
-www.rollerbulls.be
---
+Cheers, Hagen
