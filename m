@@ -1,35 +1,22 @@
-From: Shan Wei <shanwei@cn.fujitsu.com>
-Date: Sun, 20 Feb 2011 07:57:26 +0000
-Subject: [PATCH net-next] sctp: fix compile warnings in sctp_tsnmap_num_gabs
-Message-Id: <4D60C966.2000302@cn.fujitsu.com>
+From: David Miller <davem@davemloft.net>
+Date: Sun, 20 Feb 2011 19:10:46 +0000
+Subject: Re: [PATCH net-next] sctp: fix compile warnings in
+Message-Id: <20110220.111046.183035150.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <4D60C966.2000302@cn.fujitsu.com>
+In-Reply-To: <4D60C966.2000302@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: Vlad Yasevich <vladislav.yasevich@hp.com>, David Miller <davem@davemloft.net>, Network-Maillist <netdev@vger.kernel.org>, SCTP-Maillist <linux-sctp@vger.kernel.org>
+Content-Type: text/plain; charset="windows-1254"
+Content-Transfer-Encoding: base64
+To: shanwei@cn.fujitsu.com
+Cc: vladislav.yasevich@hp.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-net/sctp/tsnmap.c: In function ‘sctp_tsnmap_num_gabs’:
-net/sctp/tsnmap.c:347: warning: ‘start’ may be used uninitialized in this function
-net/sctp/tsnmap.c:347: warning: ‘end’ may be used uninitialized in this function
-
-Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
----
- net/sctp/tsnmap.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/net/sctp/tsnmap.c b/net/sctp/tsnmap.c
-index 747d541..f1e40ce 100644
---- a/net/sctp/tsnmap.c
-+++ b/net/sctp/tsnmap.c
-@@ -344,7 +344,7 @@ __u16 sctp_tsnmap_num_gabs(struct sctp_tsnmap *map,
- 
- 	/* Refresh the gap ack information. */
- 	if (sctp_tsnmap_has_gap(map)) {
--		__u16 start, end;
-+		__u16 start = 0, end = 0;
- 		sctp_tsnmap_iter_init(map, &iter);
- 		while (sctp_tsnmap_next_gap_ack(map, &iter,
- 						&start,
--- 
-1.6.3.3
-
+RnJvbTogU2hhbiBXZWkgPHNoYW53ZWlAY24uZnVqaXRzdS5jb20+CkRhdGU6IFN1biwgMjAgRmVi
+IDIwMTEgMTU6NTc6MjYgKzA4MDAKCj4gbmV0L3NjdHAvdHNubWFwLmM6IEluIGZ1bmN0aW9uIKFz
+Y3RwX3Rzbm1hcF9udW1fZ2Fic6I6Cj4gbmV0L3NjdHAvdHNubWFwLmM6MzQ3OiB3YXJuaW5nOiCh
+c3RhcnSiIG1heSBiZSB1c2VkIHVuaW5pdGlhbGl6ZWQgaW4gdGhpcyBmdW5jdGlvbgo+IG5ldC9z
+Y3RwL3Rzbm1hcC5jOjM0Nzogd2FybmluZzogoWVuZKIgbWF5IGJlIHVzZWQgdW5pbml0aWFsaXpl
+ZCBpbiB0aGlzIGZ1bmN0aW9uCj4gCj4gU2lnbmVkLW9mZi1ieTogU2hhbiBXZWkgPHNoYW53ZWlA
+Y24uZnVqaXRzdS5jb20+CgpBcHBsaWVkLgr/9Oi6ey5uxyuJt5+uia2GKyWKy/+x6d22F6WKd/+6
+ey5uxyuJt6WKe7H+xy2n+Ke2F5uh3Kh9qZ6yxqB62iZqOit2iaj++B6v+R6ud6X+iuAyit6ZqOit
+2iaiKd+hq2G22v//++B6v+R6ud6X+iuD+ZqOit2iav+Kd+j+G2YK
