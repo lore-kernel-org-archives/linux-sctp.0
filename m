@@ -1,7 +1,7 @@
-From: Mingyuan Zhu <liyha.zhu@gmail.com>
-Date: Sat, 19 Feb 2011 08:37:03 +0000
+From: Shan Wei <shanwei@cn.fujitsu.com>
+Date: Tue, 22 Feb 2011 06:44:39 +0000
 Subject: Re: Gap is only retransmitted once
-Message-Id: <AANLkTikWBXvgUgy-f2SA+9bPNHxJ3o3GktJGxd2yErog@mail.gmail.com>
+Message-Id: <4D635B57.606@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <AANLkTi=gP1+PTa4J+CYzpA8NCmasiMXS_p4P-zXAkyXK@mail.gmail.com>
 In-Reply-To: <AANLkTi=gP1+PTa4J+CYzpA8NCmasiMXS_p4P-zXAkyXK@mail.gmail.com>
@@ -10,44 +10,60 @@ Content-Type: text/plain; charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
 To: linux-sctp@vger.kernel.org
 
-I read an email thread in lksctp archive mailing list. I think what's
-happening on my test environment is the same as described in the email
-thread. I put the link here.
-http://sourceforge.net/mailarchive/forum.php?thread_nameL489B51.6060604%40h=
-p.com&forum_name=3Dlksctp-developers
-
-In the email thread, Vlad Yasevich mentioned a patch which should have
-fixed the issue.
-Is there someone can let me know if the patch works? Or where can I
-get the patch with this fix.
-
-I do need the fix for my product testing. Thanks very much!
-
-
-2011/2/18 Mingyuan Zhu <liyha.zhu@gmail.com>:
+Mingyuan Zhu wrote, at 02/18/2011 10:04 PM:
 > Is it probably a lksctp usage issue or kinda bug of lksctp?
 > I read some source code of lksctp-test and didn't find related test
 > cases. Did someone test this scenaria before?
->
+
+I have just tested it like following:
+H2 is the tested Linux with latest kernel 2.6.37.
+and it can retransmit again and again.
+
+H1                 H2(2.6.37kernel)
+    =20
+   <--------------- D1
+   <--------------- D2
+   <--------------- D3
+   <--------------- D4
+
+  SACK(ACK=D1,gap_start=3D2,gap_end=3D2)
+  --------------->
+
+  <--------------- D5
+ =20
+  SACK(ACK=D1,gap_start=3D2,gap_end=3D3)
+  --------------->
+
+  <--------------- D2(retransmitted!!)
+
+  SACK(ACK=D1,gap_start=3D2,gap_end=3D4)
+  --------------->
+
+  <--------------- D2(retransmitted Again!)
+
+  SACK(ACK=D1,gap_start=3D2,gap_end=3D4)
+  --------------->
+
+  <--------------- D2(retransmitted Again!!)
+
+
+>=20
 > Great appreciate if you could provide some information.
->
+>=20
 > 2011/2/17 Mingyuan Zhu <liyha.zhu@gmail.com>:
 >> Please see the result below. Can you give any suggestion from below info=
 rmation?
 >>
 >> #cat /proc/net/sctp/assocs
->> =A0ASSOC =A0 =A0 SOCK =A0 STY SST ST HBKT ASSOC-ID TX_QUEUE RX_QUEUE UID=
- INODE
+>>  ASSOC     SOCK   STY SST ST HBKT ASSOC-ID TX_QUEUE RX_QUEUE UID INODE
 >> LPORT RPORT LADDRS <-> RADDRS HBINT INS OUTS MAXRT T1X T2X RTXC
->> ffff880206882000 ffff8801f36be0c0 2 =A0 1 =A0 4 =A037699 =A0 =A01 =A0 =
-=A0 2710
->> =A00 =A0 =A0 =A0 0 580897 2944 =A0 4944 =A0*169.254.64.6 <-> *192.168.4.=
-103
->> =A0 2500 =A0 =A0 4 =A0 =A0 4 =A0 10 =A0 =A00 =A0 =A00 =A0 =A0 =A0 =A00
+>> ffff880206882000 ffff8801f36be0c0 2   1   4  37699    1     2710
+>>  0       0 580897 2944   4944  *169.254.64.6 <-> *192.168.4.103
+>>   2500     4     4   10    0    0        0
 >>
 >> #cat /proc/net/sctp/remaddr
->> ADDR ASSOC_ID HB_ACT RTO MAX_PATH_RTX REM_ADDR_RTX =A0START
->> 192.168.4.103 =A01 1 750 5 0 0
+>> ADDR ASSOC_ID HB_ACT RTO MAX_PATH_RTX REM_ADDR_RTX  START
+>> 192.168.4.103  1 1 750 5 0 0
 >>
 >> #sysctl -a | grep max_retrans
 >> net.netfilter.nf_conntrack_tcp_timeout_max_retrans =3D 300
@@ -88,7 +104,7 @@ rmation?
 >>>>> it always retransmit the same #TSN only once even it receives more
 >>>>> SACKs with the reporting gap.
 >>>>>
->>>>> =A0From the ethereal captures:
+>>>>>  From the ethereal captures:
 >>>>>
 >>>>> - TSN 2254147468 is not received by the peer equipment, so it reports
 >>>>> the gap by SACK.
@@ -111,7 +127,7 @@ rmation?
 >>>>> To unsubscribe from this list: send the line "unsubscribe linux-sctp"=
  in
 >>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 >>>>>
 >>>>>
 >>>>
@@ -122,24 +138,24 @@ rmation?
 >>>> net.sctp.association_max_retrans(MAXRT) parameters are set to 1.
 >>>>
 >>>> # cat /proc/net/sctp/assocs
->>>> =A0ASSOC =A0 =A0 SOCK =A0 STY SST ST HBKT ASSOC-ID TX_QUEUE RX_QUEUE U=
-ID INODE LPORT
+>>>>  ASSOC     SOCK   STY SST ST HBKT ASSOC-ID TX_QUEUE RX_QUEUE UID INODE=
+ LPORT
 >>>> RPORT LADDRS <-> RADDRS HBINT INS OUTS MAXRT T1X T2X RTXC
->>>> f2876000 f35ee1c0 2 =A0 1 =A0 4 =A038050 =A0 =A01 =A0 =A0 =A0 =A00 =A0=
- =A0 =A0 =A00 =A0 =A0 =A0 0 6429275
->>>> 2975 =A0 2985 =A0*127.0.0.1 <-> *127.0.0.1 =A0 =A0 =A0 =A0 =A0 =A05000=
- =A0 =A032 =A0 =A032 =A0 =A05 =A0 =A00
->>>> =A0 =A00 =A0 =A0 =A0 =A00
->>>> f444c800 e8407c00 2 =A0 1 =A0 4 =A041620 =A0 =A02 =A0 =A0 =A0 =A00 =A0=
- =A0 =A0 =A00 =A0 =A0 500 6429276
->>>> 2985 =A0 2975 =A0*127.0.0.1 <-> *127.0.0.1 =A0 =A0 =A0 =A0 =A0 =A05000=
- =A0 =A032 =A0 =A032 =A0 =A05 =A0 =A00
->>>> =A0 =A00 =A0 =A0 =A0 =A00
+>>>> f2876000 f35ee1c0 2   1   4  38050    1        0        0       0 6429=
+275
+>>>> 2975   2985  *127.0.0.1 <-> *127.0.0.1            5000    32    32    =
+5    0
+>>>>    0        0
+>>>> f444c800 e8407c00 2   1   4  41620    2        0        0     500 6429=
+276
+>>>> 2985   2975  *127.0.0.1 <-> *127.0.0.1            5000    32    32    =
+5    0
+>>>>    0        0
 >>>>
 >>>> # cat /proc/net/sctp/remaddr
->>>> ADDR ASSOC_ID HB_ACT RTO MAX_PATH_RTX REM_ADDR_RTX =A0START
->>>> 127.0.0.1 =A01 1 1000 5 0 0
->>>> 127.0.0.1 =A02 1 1000 5 0 0
+>>>> ADDR ASSOC_ID HB_ACT RTO MAX_PATH_RTX REM_ADDR_RTX  START
+>>>> 127.0.0.1  1 1 1000 5 0 0
+>>>> 127.0.0.1  2 1 1000 5 0 0
 >>>>
 >>>> # sysctl -a | grep max_retrans
 >>>> net.sctp.association_max_retrans =3D 10
@@ -150,4 +166,15 @@ ID INODE LPORT
 >>>>
 >>>
 >>
->
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>=20
+
+
+--=20
+
+Best Regards
+-----
+Shan Wei
