@@ -1,29 +1,27 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 28 Mar 2011 01:16:03 +0000
-Subject: Re: [PATCH] sctp: Make some local functions static
-Message-Id: <20110327.181603.246526652.davem@davemloft.net>
+From: Shan Wei <shanwei@cn.fujitsu.com>
+Date: Tue, 01 Mar 2011 01:36:31 +0000
+Subject: Re: Gap is only retransmitted once
+Message-Id: <4D6C4D9F.6050307@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4D89CFE7.4050907@freyther.de>
-In-Reply-To: <4D89CFE7.4050907@freyther.de>
+References: <AANLkTi=gP1+PTa4J+CYzpA8NCmasiMXS_p4P-zXAkyXK@mail.gmail.com>
+In-Reply-To: <AANLkTi=gP1+PTa4J+CYzpA8NCmasiMXS_p4P-zXAkyXK@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: holger@freyther.de
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-From: Holger Hans Peter Freyther <holger@freyther.de>
-Date: Wed, 23 Mar 2011 11:48:07 +0100
+Mingyuan Zhu wrote, at 02/22/2011 09:14 PM:
+> What kind of test tool you used for the testing? 
 
-> @@ -132,8 +132,8 @@ void  sctp_init_cause(struct sctp_chunk *chunk, __be16
-> cause_code,
+No test tool can directly test your case.
+But SCTP Conformance Test Suite Project can help you.
+See: http://networktest.sourceforge.net/
 
-Your patches are corrupted by your email client, in particular it has
-chopped up long lines.
+Your case is not in the tool, so you need to write your case by yourself.
+data#22 has similar test procedure, see 
+http://networktest.sourceforge.net/log/2.6.29-rc4/IPv4/data/22.html
 
-Please fix your email setup, test it out by emailing both of your SCTP
-patches to yourself, then try to apply the patches in the emails you
-receive.
-
-Then you can freshly resubmit them here.
-
-Thank you.
+-- 
+Best Regards
+-----
+Shan Wei
