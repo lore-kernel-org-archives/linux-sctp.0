@@ -1,7 +1,7 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Tue, 01 Mar 2011 02:45:15 +0000
+Date: Tue, 01 Mar 2011 04:39:38 +0000
 Subject: Re: Gap is only retransmitted once
-Message-Id: <4D6C5DBB.9040001@cn.fujitsu.com>
+Message-Id: <4D6C788A.4020602@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <AANLkTi=gP1+PTa4J+CYzpA8NCmasiMXS_p4P-zXAkyXK@mail.gmail.com>
 In-Reply-To: <AANLkTi=gP1+PTa4J+CYzpA8NCmasiMXS_p4P-zXAkyXK@mail.gmail.com>
@@ -10,10 +10,8 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Hi, Mingyuan Zhu
-
-Can you send me the pcap file? This may help me to write test case.
-If this problem is still exists in latest kernel, we will fix it ASAP.
+Did you using sinfo_timetolive when you send sctp message?
+There is a bug when we handle sinfo_timetolive, I will fix this later.
 
 > Mingyuan Zhu wrote, at 02/22/2011 09:14 PM:
 >> What kind of test tool you used for the testing? 
