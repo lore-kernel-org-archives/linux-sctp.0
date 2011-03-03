@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 03 Mar 2011 11:41:16 +0000
+From: Vladislav Yasevich <vladislav.yasevich@hp.com>
+Date: Thu, 03 Mar 2011 14:16:51 +0000
 Subject: Re: [PATCH] sctp: fix the fast retransmit limit
-Message-Id: <20110303114116.GA5146@hmsreliant.think-freely.org>
+Message-Id: <4D6FA2D3.501@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <4D6F5F83.705@cn.fujitsu.com>
 In-Reply-To: <4D6F5F83.705@cn.fujitsu.com>
@@ -9,9 +9,9 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Wei Yongjun <yjwei@cn.fujitsu.com>
-Cc: David Miller <davem@davemloft.net>, Vlad Yasevich <vladislav.yasevich@hp.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, lksctp <linux-sctp@vger.kernel.org>, Mingyuan Zhu <liyha.zhu@gmail.com>
+Cc: David Miller <davem@davemloft.net>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, lksctp <linux-sctp@vger.kernel.org>, Mingyuan Zhu <liyha.zhu@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Thu, Mar 03, 2011 at 05:29:39PM +0800, Wei Yongjun wrote:
+On 03/03/2011 04:29 AM, Wei Yongjun wrote:
 > If chunk is still lost after fast retransmit, SCTP stack will
 > never allow the second fast retransmit of this chunk, even if
 > the peer need we do this. This chunk will be retransmit until
@@ -20,10 +20,13 @@ On Thu, Mar 03, 2011 at 05:29:39PM +0800, Wei Yongjun wrote:
 >   (c226ef9b83694311327f3ab0036c6de9c22e9daf)
 > 
 > This patch revert this limit and removed useless SCTP_DONT_FRTX.
+
+NACK.  Please read the spec and how fast recovery is specified.
+
+-vlad
+
 > 
 > Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
-
 > ---
 >  include/net/sctp/structs.h |    1 -
 >  net/sctp/outqueue.c        |    4 ++--
@@ -63,8 +66,4 @@ Acked-by: Neil Horman <nhorman@tuxdriver.com>
 >  		}
 >  	}
 >  
-> -- 
-> 1.6.5.2
-> 
-> 
-> 
+
