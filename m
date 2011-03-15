@@ -1,39 +1,25 @@
-From: Max Matveev <makc@redhat.com>
-Date: Thu, 31 Mar 2011 07:49:32 +0000
-Subject: Per-chunk overhead calculation too aggressive on send side
-Message-Id: <19860.12812.188010.838522@regina.usersys.redhat.com>
+From: David Miller <davem@davemloft.net>
+Date: Tue, 15 Mar 2011 21:03:21 +0000
+Subject: Re: [PATCH 06/17] net,rcu: convert
+Message-Id: <20110315.140321.189689408.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <4D7F3610.6000809@cn.fujitsu.com>
+	<4D7F3872.6090305@cn.fujitsu.com>
+In-Reply-To: <4D7F3872.6090305@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: laijs@cn.fujitsu.com
+Cc: mingo@elte.hu, paulmck@linux.vnet.ibm.com, axboe@kernel.dk, Trond.Myklebust@netapp.com, vladislav.yasevich@hp.com, sri@us.ibm.com, viro@zeniv.linux.org.uk, eparis@redhat.com, menage@google.com, kuznet@ms2.inr.ac.ru, pekkas@netcore.fi, jmorris@namei.org, yoshfuji@linux-ipv6.org, kaber@trash.net, johannes@sipsolutions.net, linville@tuxdriver.com, hadi@cyberus.ca, jpirko@redhat.com, eric.dumazet@gmail.com, hagen@jauu.net, randy.dunlap@oracle.com, jkosina@suse.cz, joe@perches.com, u.kleine-koenig@pengutronix.de, ebiederm@xmission.com, gregkh@suse.de, xemul@openvz.org, linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, containers@lists.linux-foundation.org, linux-decnet-user@lists.sourceforge.net, linux-wireless@vger.kernel.org, linux-security-module@vger.kernel.org
 
+From: Lai Jiangshan <laijs@cn.fujitsu.com>
+Date: Tue, 15 Mar 2011 17:59:14 +0800
 
-Folks,
+> 
+> 
+> The rcu callback in6_dev_finish_destroy_rcu() just calls a kfree(),
+> so we use kfree_rcu() instead of the call_rcu(in6_dev_finish_destroy_rcu).
+> 
+> Signed-off-by: Lai Jiangshan <laijs@cn.fujitsu.com>
 
-The following bit of code in net/sctp/output.c
-
-
-sctp_packet_append_data
-
-        /* Update our view of the receiver's rwnd. Include sk_buff overhead
-         * while updating peer.rwnd so that it reduces the chances of a
-         * receiver running out of receive buffer space even when receive
-         * window is still open. This can happen when a sender is sending
-         * sending small messages.
-         */
-        datasize += sizeof(struct sk_buff);
-        if (datasize < rwnd)
-                rwnd -= datasize;
-        else
-                rwnd = 0;
-
-adds a whole sk_buff overhead for each data chunk in a packet. On
-x86_64 sk_buff is 232 bytes, on an interface with 9K MTU sender which
-streams 12 byte packets to a receiver with "default" 64K window is
-going to run ouf of "space" before it can fill a single MTU-worth of
-bytes. It seems (to me) the overhead calculation is too
-aggressive. Does it really assume that each data chunk will get its
-own sk_buff on the receive side?
-
-max
+Acked-by: David S. Miller <davem@davemloft.net>
