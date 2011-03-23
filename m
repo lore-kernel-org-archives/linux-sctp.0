@@ -1,24 +1,41 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 15 Mar 2011 21:04:39 +0000
-Subject: Re: [PATCH 16/17] net,rcu: convert call_rcu(dn_dev_free_ifa_rcu)
-Message-Id: <20110315.140439.115938708.davem@davemloft.net>
+From: Holger Freyther <zecke@selfish.org>
+Date: Wed, 23 Mar 2011 10:56:46 +0000
+Subject: [PATCH] sctp: Remove store to ret as it is not used
+Message-Id: <1300877806-3949-1-git-send-email-zecke@selfish.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4D7F3610.6000809@cn.fujitsu.com>
-	<4D7F3B04.9080504@cn.fujitsu.com>
-In-Reply-To: <4D7F3B04.9080504@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: laijs@cn.fujitsu.com
-Cc: mingo@elte.hu, paulmck@linux.vnet.ibm.com, axboe@kernel.dk, Trond.Myklebust@netapp.com, vladislav.yasevich@hp.com, sri@us.ibm.com, viro@zeniv.linux.org.uk, eparis@redhat.com, menage@google.com, kuznet@ms2.inr.ac.ru, pekkas@netcore.fi, jmorris@namei.org, yoshfuji@linux-ipv6.org, kaber@trash.net, johannes@sipsolutions.net, linville@tuxdriver.com, hadi@cyberus.ca, jpirko@redhat.com, eric.dumazet@gmail.com, hagen@jauu.net, randy.dunlap@oracle.com, jkosina@suse.cz, joe@perches.com, u.kleine-koenig@pengutronix.de, ebiederm@xmission.com, gregkh@suse.de, xemul@openvz.org, linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, containers@lists.linux-foundation.org, linux-decnet-user@lists.sourceforge.net, linux-wireless@vger.kernel.org, linux-security-module@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Holger Hans Peter Freyther <zecke@selfish.org>
 
-From: Lai Jiangshan <laijs@cn.fujitsu.com>
-Date: Tue, 15 Mar 2011 18:10:12 +0800
+From: Holger Hans Peter Freyther <zecke@selfish.org>
 
-> 
-> The rcu callback dn_dev_free_ifa_rcu() just calls a kfree(),
-> so we use kfree_rcu() instead of the call_rcu(dn_dev_free_ifa_rcu).
-> 
-> Signed-off-by: Lai Jiangshan <laijs@cn.fujitsu.com>
+The store to ret is not needed. In case it is 0 the method
+will be exited directly, if not ret will be assigned again
+and then returned to the caller.
 
-Acked-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Holger Hans Peter Freyther <zecke@selfish.org>
+Acked-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ net/sctp/socket.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index b2bed35..5f72996 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -393,9 +393,8 @@ SCTP_STATIC int sctp_do_bind(struct sock *sk, union sctp_addr *addr, int len)
+ 	 * detection.
+ 	 */
+ 	addr->v4.sin_port = htons(snum);
+-	if ((ret = sctp_get_port_local(sk, addr))) {
++	if (sctp_get_port_local(sk, addr))
+ 		return -EADDRINUSE;
+-	}
+ 
+ 	/* Refresh ephemeral port.  */
+ 	if (!bp->port)
+-- 
+1.7.4
+
