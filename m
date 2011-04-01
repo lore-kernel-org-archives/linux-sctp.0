@@ -1,28 +1,38 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 27 Apr 2011 20:20:18 +0000
-Subject: Re: [PATCH net-next-2.6 0/5 v2] SCTP updates for net-next-2.6
-Message-Id: <20110427.132018.189724779.davem@davemloft.net>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Fri, 01 Apr 2011 09:38:54 +0000
+Subject: [PATCH 1/2] sctp: fix auth_hmacs field's length of struct sctp_cookie
+Message-Id: <4D959D2E.40605@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4DB7C73D.3000406@cn.fujitsu.com>
-In-Reply-To: <4DB7C73D.3000406@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: yjwei@cn.fujitsu.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: David Miller <davem@davemloft.net>, Vlad Yasevich <vladislav.yasevich@hp.com>
+Cc: lksctp <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
 
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Wed, 27 Apr 2011 15:35:25 +0800
+auth_hmacs field of struct sctp_cookie is used for store
+Requested HMAC Algorithm Parameter, and each HMAC Identifier
+is 2 bytes, so the length should be:
+  SCTP_AUTH_NUM_HMACS * sizeof(__u16) + 2
 
-> Hi David
-> 
-> Here is a set of SCTP patches for net-next-2.6, the last part
-> from vlad's lksctp-dev tree, update SCTP IPv6 routing and IPSec
-> issues. Please apply.
-> 
-> Changelog:
->   - redo the intermediate builds test and function test.
->   - remove useless ->dst_saddr member of sctp_pf
->   - merge some fix for original patch
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ include/net/sctp/structs.h |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Applied, thanks!
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index cc9185c..0f6e60a 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -422,7 +422,7 @@ struct sctp_cookie {
+ 	__u32 adaptation_ind;
+ 
+ 	__u8 auth_random[sizeof(sctp_paramhdr_t) + SCTP_AUTH_RANDOM_LENGTH];
+-	__u8 auth_hmacs[SCTP_AUTH_NUM_HMACS + 2];
++	__u8 auth_hmacs[SCTP_AUTH_NUM_HMACS * sizeof(__u16) + 2];
+ 	__u8 auth_chunks[sizeof(sctp_paramhdr_t) + SCTP_AUTH_MAX_CHUNKS];
+ 
+ 	/* This is a shim for my peer's INIT packet, followed by
+-- 
+1.6.5.2
+
+
