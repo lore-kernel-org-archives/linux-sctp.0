@@ -1,43 +1,27 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Wed, 06 Apr 2011 01:12:00 +0000
-Subject: Re: API SCTP,about problem multi-homing
-Message-Id: <4D9BBDE0.8090803@cn.fujitsu.com>
+From: David Miller <davem@davemloft.net>
+Date: Mon, 11 Apr 2011 01:52:36 +0000
+Subject: Re: [PATCH net-next-2.6 v3 0/3] sctp: Patch series
+Message-Id: <20110410.185236.59685173.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1301953102.5235.8.camel@thanh.pc>
-In-Reply-To: <1301953102.5235.8.camel@thanh.pc>
+References: <DF0CDFCF-8559-495A-9C9E-60997E7DE0F2@sfc.wide.ad.jp>
+In-Reply-To: <DF0CDFCF-8559-495A-9C9E-60997E7DE0F2@sfc.wide.ad.jp>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: micchie@sfc.wide.ad.jp
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
+From: Michio Honda <micchie@sfc.wide.ad.jp>
+Date: Fri, 8 Apr 2011 14:18:30 +0900
 
-> My name Thanh Nguyen. Student of University of science Ho Chi Minh City.
-> I have seen in paper of socket API SCTP.I don't know how do client
-> declare using multihoming?
-> Server can using blindx(), but client can't using.
+[ Changed lksctp to linux-sctp@vger.kernel.org as that is the mailing
+  list provided in linux/MAINTAINERS ]
 
-blindx()? sctp_bindx()?
+> Series of 5 patches to support auto_asconf and the other related
+> functionalities that auto_asconf relies on.
+...
+> [1/3] Add Auto-ASCONF support
+> [2/3] Add ASCONF operation on the single-homed host
+> [3/3] Add a valid address list in association local
 
-client can using sctp_bindx() too.
-
-http://tools.ietf.org/html/draft-ietf-tsvwg-sctpsocket-27#section-9.1
-
-> I need one example single code client and server.about multi-homing in
-> SCTP. Plesase send code to me.
-> And when I run code example SCTP on web of Oracle,chunk heartbeat send
-> all time if media freed, but in apps sctp_darn is not.Why?How using
-> event and notification. In paper have only one structure of notification
-> and enable.
-
-Using SCTP_EVENTS option to enable  notifications.
-
-http://tools.ietf.org/html/draft-ietf-tsvwg-sctpsocket-27#page-53
-
-> Thanks a lot.
->   
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+Can an SCTP expert please review these patches?
