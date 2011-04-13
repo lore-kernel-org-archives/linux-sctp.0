@@ -1,31 +1,47 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 20 Apr 2011 04:47:35 +0000
-Subject: Re: [PATCH net-next-2.6 6/8] sctp: teach CACC algorithm about
-Message-Id: <20110419.214735.52170069.davem@davemloft.net>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Wed, 13 Apr 2011 01:20:48 +0000
+Subject: [PATCH] sctp: fix oops when updating retransmit path with DEBUG on
+Message-Id: <4DA4FA70.50506@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4DAD18AB.3040401@cn.fujitsu.com>
-	<4DAD1A14.9060603@cn.fujitsu.com>
-In-Reply-To: <4DAD1A14.9060603@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: yjwei@cn.fujitsu.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: David Miller <davem@davemloft.net>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Cc: lksctp <linux-sctp@vger.kernel.org>
 
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Tue, 19 Apr 2011 13:13:56 +0800
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
 
-> From: Vlad Yasevich <vladislav.yasevich@hp.com>
-> 
-> When we have have to remove a transport due to ASCONF, we move
-> the data to a new active path.  This can trigger CACC algorithm
-> to not mark that data as missing when SACKs arrive.  This is
-> because the transport passed to the CACC algorithm is the one
-> this data is sitting on, not the one it was sent on (that one
-> may be gone).  So, by sending the original transport (even if
-> it's NULL), we may start marking data as missing.
-> 
-> Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
-> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+commit fbdf501c9374966a56829ecca3a7f25d2b49a305
+  sctp: Do no select unconfirmed transports for retransmissions
 
-Applied.
+Introduced the initial falt.
+
+commit d598b166ced20d9b9281ea3527c0e18405ddb803
+  sctp: Make sure we always return valid retransmit path
+
+Solved the problem, but forgot to change the DEBUG statement.
+Thus it was still possible to dereference a NULL pointer.
+
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+---
+ net/sctp/associola.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 0698cad..922fdd7 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1323,6 +1323,8 @@ void sctp_assoc_update_retran_path(struct sctp_association *asoc)
+ 
+ 	if (t)
+ 		asoc->peer.retran_path = t;
++	else
++		t = asoc->peer.retran_path;
+ 
+ 	SCTP_DEBUG_PRINTK_IPADDR("sctp_assoc_update_retran_path:association"
+ 				 " %p addr: ",
+-- 
+1.6.5.2
+
+
