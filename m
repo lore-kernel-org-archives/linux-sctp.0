@@ -1,40 +1,41 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Tue, 26 Apr 2011 08:06:17 +0000
-Subject: Re: [PATCH net-next-2.6 4/7] sctp: remove useless arguments from
-Message-Id: <4DB67CF9.1050508@cn.fujitsu.com>
+Date: Wed, 13 Apr 2011 01:22:22 +0000
+Subject: [PATCH] sctp: fix oops while removed transport still using as retran
+Message-Id: <4DA4FACE.5060706@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4DB63F85.2090609@cn.fujitsu.com>	<4DB6405B.2060200@cn.fujitsu.com>	<20110426.001227.112589346.davem@davemloft.net> <20110426.002020.48493363.davem@davemloft.net>
-In-Reply-To: <20110426.002020.48493363.davem@davemloft.net>
+References: <4DA4FA70.50506@cn.fujitsu.com>
+In-Reply-To: <4DA4FA70.50506@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: David Miller <davem@davemloft.net>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: David Miller <davem@davemloft.net>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Cc: lksctp <linux-sctp@vger.kernel.org>
 
+Since we can not update retran path to unconfirmed transports,
+when we remove a peer, the retran path may not be update if the
+other transports are all unconfirmed, and we will still using
+the removed transport as the retran path. This may cause panic
+if retrasnmit happen.
 
-> From: David Miller <davem@davemloft.net>
-> Date: Tue, 26 Apr 2011 00:12:27 -0700 (PDT)
->
->> I really get grumpy when I have to fix up stuff like this:
->>
->> net/sctp/ipv6.c: In function =A1sctp_v6_get_saddr=A2:
->> net/sctp/ipv6.c:382: warning: unused variable =A1daddr=A2
-> Now I'm even more grumpy, if I only apply the first 3 patches:
->
-> net/sctp/ipv6.c: In function =A1sctp_v6_dst_lookup=A2:
-> net/sctp/ipv6.c:259: warning: assignment makes integer from pointer witho=
-ut a cast
->
-> it goes away later but you're not testing the intermediate steps
-> of your SCTP patch backports and as a result you are going to
-> break bisecting.
->
-> I'm reverting this patch series, fix this up and actually test
-> the intermediate builds and functionality before resubmission.
-Hi David
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ net/sctp/associola.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
- Sorry for sending those garbage and wasted your time so much,
-I will fix those up and do all of the test before resubmit
-those patch to you.
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 922fdd7..1a21c57 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -569,6 +569,8 @@ void sctp_assoc_rm_peer(struct sctp_association *asoc,
+ 		sctp_assoc_set_primary(asoc, transport);
+ 	if (asoc->peer.active_path = peer)
+ 		asoc->peer.active_path = transport;
++	if (asoc->peer.retran_path = peer)
++		asoc->peer.retran_path = transport;
+ 	if (asoc->peer.last_data_from = peer)
+ 		asoc->peer.last_data_from = transport;
+ 
+-- 
+1.6.5.2
 
 
