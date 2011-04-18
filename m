@@ -1,28 +1,28 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 20 Apr 2011 04:47:41 +0000
-Subject: Re: [PATCH net-next-2.6 7/8] sctp: Allow bindx_del to accept 0 port
-Message-Id: <20110419.214741.13766667.davem@davemloft.net>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Mon, 18 Apr 2011 03:24:33 +0000
+Subject: [PATCH net-next-2.6 0/3] new SCTP sockets APIs
+Message-Id: <4DABAEF1.1010506@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4DAD18AB.3040401@cn.fujitsu.com>
-	<4DAD1A47.5080007@cn.fujitsu.com>
-In-Reply-To: <4DAD1A47.5080007@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: yjwei@cn.fujitsu.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: David Miller <davem@davemloft.net>
+Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, lksctp <linux-sctp@vger.kernel.org>
 
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Tue, 19 Apr 2011 13:14:47 +0800
+This patchset implement some new sockets APIs for net-next-2.6.
 
-> From: Vlad Yasevich <vladislav.yasevich@hp.com>
-> 
-> We allow 0 port when adding new addresses.  It only
-> makes sence to allow 0 port when removing addresses.
-> When removing the currently bound port will be used
-> when the port in the address is set to 0.
-> 
-> Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
-> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+Wei Yongjun (3):
+  sctp: implement socket option SCTP_GET_ASSOC_ID_LIST
+  sctp: change auth event type name to SCTP_AUTHENTICATION_EVENT
+  sctp: implement event notification SCTP_SENDER_DRY_EVENT
 
-Applied.
+ include/net/sctp/sm.h       |    1 +
+ include/net/sctp/ulpevent.h |    3 ++
+ include/net/sctp/user.h     |   33 ++++++++++++++++++++++++++-
+ net/sctp/sm_statefuns.c     |   24 +++++++++++++++++++
+ net/sctp/sm_statetable.c    |    2 +-
+ net/sctp/socket.c           |   52 +++++++++++++++++++++++++++++++++++++++++++
+ net/sctp/ulpevent.c         |   30 ++++++++++++++++++++++++-
+ 7 files changed, 142 insertions(+), 3 deletions(-)
+
+
