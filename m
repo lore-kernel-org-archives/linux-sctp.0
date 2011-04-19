@@ -1,130 +1,38 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Tue, 26 Apr 2011 03:45:26 +0000
-Subject: [PATCH net-next-2.6 1/7] sctp: fix sctp to work with ipv6 source
-Message-Id: <4DB63FD6.8010206@cn.fujitsu.com>
+Date: Tue, 19 Apr 2011 05:09:41 +0000
+Subject: [PATCH net-next-2.6 1/8] sctp: delete unused macro definition of
+Message-Id: <4DAD1915.70503@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4DB63F85.2090609@cn.fujitsu.com>
-In-Reply-To: <4DB63F85.2090609@cn.fujitsu.com>
+References: <4DAD18AB.3040401@cn.fujitsu.com>
+In-Reply-To: <4DAD18AB.3040401@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: David Miller <davem@davemloft.net>
 Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, lksctp <linux-sctp@vger.kernel.org>
 
-From: Weixing Shi <Weixing.Shi@windriver.com>
+The macro never be used.
+And if needed, can use !sctp_chunk_is_data instead of.
 
-in the below test case, using the source address routing,
-sctp can not work.
-Node-A
-1)ifconfig eth0 inet6 add 2001:1::1/64
-2)ip -6 rule add from 2001:1::1 table 100 pref 100
-3)ip -6 route add 2001:2::1 dev eth0 table 100
-4)sctp_darn -H 2001:1::1 -P 250 -l &
-Node-B
-1)ifconfig eth0 inet6 add 2001:2::1/64
-2)ip -6 rule add from 2001:2::1 table 100 pref 100
-3)ip -6 route add 2001:1::1 dev eth0 table 100
-4)sctp_darn -H 2001:2::1 -P 250 -h 2001:1::1 -p 250 -s
-
-root cause:
-Node-A and Node-B use the source address routing, and
-at begining, source address will be NULL,sctp will
-search the  routing table by the destination address,
-because using the source address routing table, and
-the result dst_entry will be NULL.
-
-solution:
-walk through the bind address list to get the source
-address and then lookup the routing table again to get
-the correct dst_entry.
-
-Signed-off-by: Weixing Shi <Weixing.Shi@windriver.com>
+Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
 Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 ---
- net/sctp/ipv6.c |   47 +++++++++++++++++++++++++++++++++++++++++++++--
- 1 files changed, 45 insertions(+), 2 deletions(-)
+ include/net/sctp/constants.h |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
 
-diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-index 321f175..5adf585 100644
---- a/net/sctp/ipv6.c
-+++ b/net/sctp/ipv6.c
-@@ -80,6 +80,9 @@
+diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
+index c70d8cc..deac13d 100644
+--- a/include/net/sctp/constants.h
++++ b/include/net/sctp/constants.h
+@@ -150,7 +150,6 @@ SCTP_SUBTYPE_CONSTRUCTOR(OTHER,		sctp_event_other_t,	other)
+ SCTP_SUBTYPE_CONSTRUCTOR(PRIMITIVE,	sctp_event_primitive_t,	primitive)
  
- #include <asm/uaccess.h>
  
-+static inline int sctp_v6_addr_match_len(union sctp_addr *s1,
-+					 union sctp_addr *s2);
-+
- /* Event handler for inet6 address addition/deletion events.
-  * The sctp_local_addr_list needs to be protocted by a spin lock since
-  * multiple notifiers (say IPv4 and IPv6) may be running at the same
-@@ -244,8 +247,14 @@ static struct dst_entry *sctp_v6_get_dst(struct sctp_association *asoc,
- 					 union sctp_addr *daddr,
- 					 union sctp_addr *saddr)
- {
--	struct dst_entry *dst;
-+	struct dst_entry *dst = NULL;
- 	struct flowi6 fl6;
-+	struct sctp_bind_addr *bp;
-+	struct sctp_sockaddr_entry *laddr;
-+	union sctp_addr *baddr = NULL;
-+	__u8 matchlen = 0;
-+	__u8 bmatchlen;
-+	sctp_scope_t scope;
+-#define sctp_chunk_is_control(a) (a->chunk_hdr->type != SCTP_CID_DATA)
+ #define sctp_chunk_is_data(a) (a->chunk_hdr->type = SCTP_CID_DATA)
  
- 	memset(&fl6, 0, sizeof(fl6));
- 	ipv6_addr_copy(&fl6.daddr, &daddr->v6.sin6_addr);
-@@ -261,6 +270,39 @@ static struct dst_entry *sctp_v6_get_dst(struct sctp_association *asoc,
- 	}
- 
- 	dst = ip6_route_output(&init_net, NULL, &fl6);
-+	if (!asoc || saddr)
-+		goto out;
-+
-+	if (dst->error) {
-+		dst_release(dst);
-+		dst = NULL;
-+		bp = &asoc->base.bind_addr;
-+		scope = sctp_scope(daddr);
-+		/* Walk through the bind address list and try to get a dst that
-+		 * matches a bind address as the source address.
-+		 */
-+		rcu_read_lock();
-+		list_for_each_entry_rcu(laddr, &bp->address_list, list) {
-+			if (!laddr->valid)
-+				continue;
-+			if ((laddr->state = SCTP_ADDR_SRC) &&
-+			    (laddr->a.sa.sa_family = AF_INET6) &&
-+			    (scope <= sctp_scope(&laddr->a))) {
-+				bmatchlen = sctp_v6_addr_match_len(daddr,
-+								   &laddr->a);
-+				if (!baddr || (matchlen < bmatchlen)) {
-+					baddr = &laddr->a;
-+					matchlen = bmatchlen;
-+				}
-+			}
-+		}
-+		rcu_read_unlock();
-+		if (baddr) {
-+			ipv6_addr_copy(&fl6.saddr, &baddr->v6.sin6_addr);
-+			dst = ip6_route_output(&init_net, NULL, &fl6);
-+		}
-+	}
-+out:
- 	if (!dst->error) {
- 		struct rt6_info *rt;
- 		rt = (struct rt6_info *)dst;
-@@ -269,7 +311,8 @@ static struct dst_entry *sctp_v6_get_dst(struct sctp_association *asoc,
- 		return dst;
- 	}
- 	SCTP_DEBUG_PRINTK("NO ROUTE\n");
--	dst_release(dst);
-+	if (dst)
-+		dst_release(dst);
- 	return NULL;
- }
- 
+ /* Calculate the actual data size in a data chunk */
 -- 
 1.6.5.2
 
