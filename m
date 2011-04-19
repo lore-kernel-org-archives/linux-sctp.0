@@ -1,25 +1,47 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 15 Mar 2011 21:04:52 +0000
-Subject: Re: [PATCH 17/17] net,act_police,rcu: remove rcu_barrier()
-Message-Id: <20110315.140452.48500353.davem@davemloft.net>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Tue, 19 Apr 2011 05:11:01 +0000
+Subject: [PATCH net-next-2.6 2/8] sctp: fix the comment of sctp_sf_violation_paramlen()
+Message-Id: <4DAD1965.7090100@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4D7F3610.6000809@cn.fujitsu.com>
-	<4D7F3B62.6000005@cn.fujitsu.com>
-In-Reply-To: <4D7F3B62.6000005@cn.fujitsu.com>
+References: <4DAD18AB.3040401@cn.fujitsu.com>
+In-Reply-To: <4DAD18AB.3040401@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: laijs@cn.fujitsu.com
-Cc: mingo@elte.hu, paulmck@linux.vnet.ibm.com, axboe@kernel.dk, Trond.Myklebust@netapp.com, vladislav.yasevich@hp.com, sri@us.ibm.com, viro@zeniv.linux.org.uk, eparis@redhat.com, menage@google.com, kuznet@ms2.inr.ac.ru, pekkas@netcore.fi, jmorris@namei.org, yoshfuji@linux-ipv6.org, kaber@trash.net, johannes@sipsolutions.net, linville@tuxdriver.com, hadi@cyberus.ca, jpirko@redhat.com, eric.dumazet@gmail.com, hagen@jauu.net, randy.dunlap@oracle.com, jkosina@suse.cz, joe@perches.com, u.kleine-koenig@pengutronix.de, ebiederm@xmission.com, gregkh@suse.de, xemul@openvz.org, linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, containers@lists.linux-foundation.org, linux-decnet-user@lists.sourceforge.net, linux-wireless@vger.kernel.org, linux-security-module@vger.kernel.org
+To: David Miller <davem@davemloft.net>
+Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, lksctp <linux-sctp@vger.kernel.org>
 
-From: Lai Jiangshan <laijs@cn.fujitsu.com>
-Date: Tue, 15 Mar 2011 18:11:46 +0800
+From: Shan Wei <shanwei@cn.fujitsu.com>
 
-> 
-> 
-> There is no callback of this module maybe queued
-> since we use kfree_rcu(), we can safely remove the rcu_barrier().
-> 
-> Signed-off-by: Lai Jiangshan <laijs@cn.fujitsu.com>
+Update the comment about sctp_sf_violation_paramlen() to be
+more precise.
 
-Acked-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ net/sctp/sm_statefuns.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 7679208..c085472 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -4343,8 +4343,9 @@ static sctp_disposition_t sctp_sf_violation_chunklen(
+ 
+ /*
+  * Handle a protocol violation when the parameter length is invalid.
+- * "Invalid" length is identified as smaller than the minimal length a
+- * given parameter can be.
++ * If the length is smaller than the minimum length of a given parameter,
++ * or accumulated length in multi parameters exceeds the end of the chunk,
++ * the length is considered as invalid.
+  */
+ static sctp_disposition_t sctp_sf_violation_paramlen(
+ 				     const struct sctp_endpoint *ep,
+-- 
+1.6.5.2
+
+
+
+
