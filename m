@@ -1,35 +1,43 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 20 Apr 2011 08:55:49 +0000
-Subject: Re: [PATCH net-next-2.6 0/9] SCTP updates for net-next-2.6
-Message-Id: <20110420.015549.229758929.davem@davemloft.net>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Tue, 19 Apr 2011 05:19:29 +0000
+Subject: [PATCH net-next-2.6 1/8 v2] sctp: delete unused macro definition
+Message-Id: <4DAD1B61.6080504@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4DAE8A27.3040007@cn.fujitsu.com>
-In-Reply-To: <4DAE8A27.3040007@cn.fujitsu.com>
+References: <4DAD18AB.3040401@cn.fujitsu.com> <4DAD1915.70503@cn.fujitsu.com>
+In-Reply-To: <4DAD1915.70503@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: yjwei@cn.fujitsu.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: David Miller <davem@davemloft.net>
+Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, lksctp <linux-sctp@vger.kernel.org>
 
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Wed, 20 Apr 2011 15:24:23 +0800
+From: Shan Wei <shanwei@cn.fujitsu.com>
 
-> Here is a set of SCTP patches for net-next-2.6, also from vlad's
-> lksctp-dev tree.  Please apply.
-> 
-> Shan Wei (4):
->       sctp: check parameter value of length in ERROR chunk
->       sctp: check invalid value of length parameter in error cause
->       sctp: remove redundant check when walking through a list of TLV parameters
->       sctp: handle ootb packet in chunk order as defined
-> 
-> Vlad Yasevich (2):
->       sctp: remove completely unsed EMPTY state
->       sctp: bail from sctp_endpoint_lookup_assoc() if not bound.
-> 
-> Wei Yongjun (3):
->       sctp: fix to check the source address of COOKIE-ECHO chunk
->       sctp: make heartbeat information in sctp_make_heartbeat()
->       sctp: move chunk from retransmit queue to abandoned list
+The macro never be used.
+And if needed, can use !sctp_chunk_is_data instead of.
 
-Applied, thanks for doing these backports from Vlad's tree.
+Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+Sorry for missing 'From ...' in the first version
+---
+ include/net/sctp/constants.h |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
+
+diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
+index c70d8cc..deac13d 100644
+--- a/include/net/sctp/constants.h
++++ b/include/net/sctp/constants.h
+@@ -150,7 +150,6 @@ SCTP_SUBTYPE_CONSTRUCTOR(OTHER,		sctp_event_other_t,	other)
+ SCTP_SUBTYPE_CONSTRUCTOR(PRIMITIVE,	sctp_event_primitive_t,	primitive)
+ 
+ 
+-#define sctp_chunk_is_control(a) (a->chunk_hdr->type != SCTP_CID_DATA)
+ #define sctp_chunk_is_data(a) (a->chunk_hdr->type = SCTP_CID_DATA)
+ 
+ /* Calculate the actual data size in a data chunk */
+-- 
+1.6.5.2
+
+
