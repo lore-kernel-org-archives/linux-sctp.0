@@ -1,30 +1,61 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 27 Apr 2011 01:47:57 +0000
-Subject: Re: [PATCH net-next-2.6 0/7] SCTP updates for net-next-2.6
-Message-Id: <20110426.184757.226780553.davem@davemloft.net>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Tue, 19 Apr 2011 05:15:22 +0000
+Subject: [PATCH net-next-2.6 8/8] sctp: Release all routes when processing
+Message-Id: <4DAD1A6A.1090805@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20110426.001238.183056292.davem@davemloft.net>
-	<20110426.145120.28826019.davem@davemloft.net>
-	<4DB76A64.3020708@cn.fujitsu.com>
-In-Reply-To: <4DB76A64.3020708@cn.fujitsu.com>
+References: <4DAD18AB.3040401@cn.fujitsu.com>
+In-Reply-To: <4DAD18AB.3040401@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: yjwei@cn.fujitsu.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: David Miller <davem@davemloft.net>
+Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, lksctp <linux-sctp@vger.kernel.org>
 
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Wed, 27 Apr 2011 08:59:16 +0800
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
 
-> And I have a stupid question about the rule of backport.  Since those
-> patchs have existed so long time, when I backport those patchs, I'd better
-> fix the bug in the original patch, or create new patch to fix it? Also how
-> about some thing need to improvement like the ->dst_saddr() method?
+When processing an ACK for ADD_IP parameter, we only release
+the routes on non-active transports.  This can cause a wrong
+source address to be used.  We can release the routes and
+cause new route lookups and source address selection so that
+new addresses can be used as source.  Additionally, we don't need
+to lookup routes for all transports at the same time.  We can let
+the transmit code path update the cached route when the transport
+actually sends something.
 
-I think, since these are going in as patches, you should make any
-corrections to those patches by fixing the patch.
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ net/sctp/sm_make_chunk.c |    8 ++------
+ 1 files changed, 2 insertions(+), 6 deletions(-)
 
-Adding new patches is just going to keep the bug in there if people
-try to bisect through these changes, and that's no good.
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 844adfd..f87ccb1 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -3193,11 +3193,8 @@ static void sctp_asconf_param_success(struct sctp_association *asoc,
+ 		local_bh_enable();
+ 		list_for_each_entry(transport, &asoc->peer.transport_addr_list,
+ 				transports) {
+-			if (transport->state = SCTP_ACTIVE)
+-				continue;
+ 			dst_release(transport->dst);
+-			sctp_transport_route(transport, NULL,
+-					     sctp_sk(asoc->base.sk));
++			transport->dst = NULL;
+ 		}
+ 		break;
+ 	case SCTP_PARAM_DEL_IP:
+@@ -3207,8 +3204,7 @@ static void sctp_asconf_param_success(struct sctp_association *asoc,
+ 		list_for_each_entry(transport, &asoc->peer.transport_addr_list,
+ 				transports) {
+ 			dst_release(transport->dst);
+-			sctp_transport_route(transport, NULL,
+-					     sctp_sk(asoc->base.sk));
++			transport->dst = NULL;
+ 		}
+ 		break;
+ 	default:
+-- 
+1.6.5.2
 
-Thanks.
+
