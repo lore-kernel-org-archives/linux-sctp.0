@@ -1,7 +1,7 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Wed, 20 Apr 2011 07:29:23 +0000
-Subject: [PATCH net-next-2.6 5/9] sctp: bail from sctp_endpoint_lookup_assoc()
-Message-Id: <4DAE8B53.2080007@cn.fujitsu.com>
+Date: Wed, 20 Apr 2011 07:25:40 +0000
+Subject: [PATCH net-next-2.6 1/9] sctp: check parameter value of length in
+Message-Id: <4DAE8A74.2060106@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <4DAE8A27.3040007@cn.fujitsu.com>
 In-Reply-To: <4DAE8A27.3040007@cn.fujitsu.com>
@@ -11,71 +11,41 @@ Content-Transfer-Encoding: 7bit
 To: David Miller <davem@davemloft.net>
 Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, lksctp <linux-sctp@vger.kernel.org>
 
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
+From: Shan Wei <shanwei@cn.fujitsu.com>
 
-The sctp_endpoint_lookup_assoc() function uses a port hash
-to lookup the association and then checks to see if any of
-them are on the current endpoint.  However, if the current
-endpoint is not bound, there can't be any associations on
-it, thus we can bail early.
+When an endpoint receives ERROR that parameter value is invalid,
+send an ABORT to peer with a Protocol Violation error code.
 
+Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
 Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 ---
- net/sctp/endpointola.c |   20 ++++++++++++++------
- 1 files changed, 14 insertions(+), 6 deletions(-)
+ net/sctp/sm_statefuns.c |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
 
-diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
-index e10acc0..c8cc24e 100644
---- a/net/sctp/endpointola.c
-+++ b/net/sctp/endpointola.c
-@@ -325,6 +325,7 @@ static struct sctp_association *__sctp_endpoint_lookup_assoc(
- 	struct sctp_transport **transport)
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index c085472..fe2036d 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -3204,6 +3204,7 @@ sctp_disposition_t sctp_sf_operr_notify(const struct sctp_endpoint *ep,
+ 					sctp_cmd_seq_t *commands)
  {
- 	struct sctp_association *asoc = NULL;
-+	struct sctp_association *tmp;
- 	struct sctp_transport *t = NULL;
- 	struct sctp_hashbucket *head;
- 	struct sctp_ep_common *epb;
-@@ -333,25 +334,32 @@ static struct sctp_association *__sctp_endpoint_lookup_assoc(
- 	int rport;
+ 	struct sctp_chunk *chunk = arg;
++	sctp_errhdr_t *err;
  
- 	*transport = NULL;
-+
-+	/* If the local port is not set, there can't be any associations
-+	 * on this endpoint.
-+	 */
-+	if (!ep->base.bind_addr.port)
-+		goto out;
-+
- 	rport = ntohs(paddr->v4.sin_port);
+ 	if (!sctp_vtag_verify(chunk, asoc))
+ 		return sctp_sf_pdiscard(ep, asoc, type, arg, commands);
+@@ -3212,6 +3213,10 @@ sctp_disposition_t sctp_sf_operr_notify(const struct sctp_endpoint *ep,
+ 	if (!sctp_chunk_length_valid(chunk, sizeof(sctp_operr_chunk_t)))
+ 		return sctp_sf_violation_chunklen(ep, asoc, type, arg,
+ 						  commands);
++	sctp_walk_errors(err, chunk->chunk_hdr);
++	if ((void *)err != (void *)chunk->chunk_end)
++		return sctp_sf_violation_paramlen(ep, asoc, type, arg,
++						  (void *)err, commands);
  
- 	hash = sctp_assoc_hashfn(ep->base.bind_addr.port, rport);
- 	head = &sctp_assoc_hashtable[hash];
- 	read_lock(&head->lock);
- 	sctp_for_each_hentry(epb, node, &head->chain) {
--		asoc = sctp_assoc(epb);
--		if (asoc->ep != ep || rport != asoc->peer.port)
--			goto next;
-+		tmp = sctp_assoc(epb);
-+		if (tmp->ep != ep || rport != tmp->peer.port)
-+			continue;
- 
--		t = sctp_assoc_lookup_paddr(asoc, paddr);
-+		t = sctp_assoc_lookup_paddr(tmp, paddr);
- 		if (t) {
-+			asoc = tmp;
- 			*transport = t;
- 			break;
- 		}
--next:
--		asoc = NULL;
- 	}
- 	read_unlock(&head->lock);
-+out:
- 	return asoc;
- }
- 
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_PROCESS_OPERR,
+ 			SCTP_CHUNK(chunk));
 -- 
 1.6.5.2
 
