@@ -1,111 +1,52 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Tue, 26 Apr 2011 03:48:55 +0000
-Subject: [PATCH net-next-2.6 6/7] sctp: clean up IPv6 route and XFRM lookups
-Message-Id: <4DB640A7.9010802@cn.fujitsu.com>
+Date: Wed, 20 Apr 2011 07:27:07 +0000
+Subject: [PATCH net-next-2.6 3/9] sctp: remove redundant check when walking
+Message-Id: <4DAE8ACB.9060006@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4DB63F85.2090609@cn.fujitsu.com>
-In-Reply-To: <4DB63F85.2090609@cn.fujitsu.com>
+References: <4DAE8A27.3040007@cn.fujitsu.com>
+In-Reply-To: <4DAE8A27.3040007@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: David Miller <davem@davemloft.net>
 Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, lksctp <linux-sctp@vger.kernel.org>
 
-Using ip6_dst_lookup_flow() instead of ip6_dst_lookup()
-and then do xfrm_lookup().
+From: Shan Wei <shanwei@cn.fujitsu.com>
 
+When  pos.v <= (void *)chunk + end - ntohs(pos.p->length) and
+ntohs(pos.p->length) >= sizeof(sctp_paramhdr_t) these two expressions are all true,
+pos.v <= (void *)chunk + end - sizeof(sctp_paramhdr_t) *must* be true.
+
+This patch removes this kind of redundant check.
+It's same to  _sctp_walk_errors macro.
+
+Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
+Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 ---
- net/sctp/ipv6.c |   40 +++++++++-------------------------------
- 1 files changed, 9 insertions(+), 31 deletions(-)
+ include/net/sctp/sctp.h |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
 
-diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-index 60601f3..cbbfe20 100644
---- a/net/sctp/ipv6.c
-+++ b/net/sctp/ipv6.c
-@@ -244,30 +244,6 @@ static int sctp_v6_xmit(struct sk_buff *skb, struct sctp_transport *transport)
- 	return ip6_xmit(sk, skb, &fl6, np->opt);
- }
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 505845d..7e8e34c 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -531,7 +531,6 @@ _sctp_walk_params((pos), (chunk), ntohs((chunk)->chunk_hdr.length), member)
  
--/* Small helper function that combines route and XFRM lookups.  This is
-- * done since we might be looping through route lookups.
-- */
--static int sctp_v6_dst_lookup(struct sock *sk, struct dst_entry **dst,
--				struct flowi6 *fl6)
--{
--	int err;
--
--	err = ip6_dst_lookup(sk, dst, fl6);
--	if (err)
--		goto done;
--
--	err = xfrm_lookup(sock_net(sk), *dst, flowi6_to_flowi(fl6), sk, 0);
--	if (err)
--		goto done;
--
--	return 0;
--
--done:
--	dst_release(*dst);
--	*dst = NULL;
--	return err;
--}
--
- /* Returns the dst cache entry for the given source and destination ip
-  * addresses.
-  */
-@@ -285,7 +261,6 @@ static void sctp_v6_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
- 	__u8 matchlen = 0;
- 	__u8 bmatchlen;
- 	sctp_scope_t scope;
--	int err = 0;
- 
- 	memset(fl6, 0, sizeof(struct flowi6));
- 	ipv6_addr_copy(&fl6->daddr, &daddr->v6.sin6_addr);
-@@ -304,7 +279,8 @@ static void sctp_v6_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
- 		SCTP_DEBUG_PRINTK("SRC=%pI6 - ", &fl6->saddr);
- 	}
- 
--	err = sctp_v6_dst_lookup(sk, &dst, fl6);
-+	dst = ip6_dst_lookup_flow(sk, fl6, NULL, false);
-+
- 	if (!asoc || saddr)
- 		goto out;
- 
-@@ -313,7 +289,7 @@ static void sctp_v6_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
- 	/* ip6_dst_lookup has filled in the fl6->saddr for us.  Check
- 	 * to see if we can use it.
- 	 */
--	if (!err) {
-+	if (!IS_ERR(dst)) {
- 		/* Walk through the bind address list and look for a bind
- 		 * address that matches the source address of the returned dst.
- 		 */
-@@ -359,18 +335,20 @@ static void sctp_v6_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
- 	if (baddr) {
- 		ipv6_addr_copy(&fl6->saddr, &baddr->v6.sin6_addr);
- 		fl6->fl6_sport = baddr->v6.sin6_port;
--		err = sctp_v6_dst_lookup(sk, &dst, fl6);
-+		dst = ip6_dst_lookup_flow(sk, fl6, NULL, false);
- 	}
- 
- out:
--	t->dst = dst;
--	if (dst) {
-+	if (!IS_ERR(dst)) {
- 		struct rt6_info *rt;
- 		rt = (struct rt6_info *)dst;
-+		t->dst = dst;
- 		SCTP_DEBUG_PRINTK("rt6_dst:%pI6 rt6_src:%pI6\n",
- 			&rt->rt6i_dst.addr, &fl6->saddr);
--	} else
-+	} else {
-+		t->dst = NULL;
- 		SCTP_DEBUG_PRINTK("NO ROUTE\n");
-+	}
- }
- 
- /* Returns the number of consecutive initial bits that match in the 2 ipv6
+ #define _sctp_walk_params(pos, chunk, end, member)\
+ for (pos.v = chunk->member;\
+-     pos.v <= (void *)chunk + end - sizeof(sctp_paramhdr_t) &&\
+      pos.v <= (void *)chunk + end - ntohs(pos.p->length) &&\
+      ntohs(pos.p->length) >= sizeof(sctp_paramhdr_t);\
+      pos.v += WORD_ROUND(ntohs(pos.p->length)))
+@@ -542,7 +541,6 @@ _sctp_walk_errors((err), (chunk_hdr), ntohs((chunk_hdr)->length))
+ #define _sctp_walk_errors(err, chunk_hdr, end)\
+ for (err = (sctp_errhdr_t *)((void *)chunk_hdr + \
+ 	    sizeof(sctp_chunkhdr_t));\
+-     (void *)err <= (void *)chunk_hdr + end - sizeof(sctp_errhdr_t) &&\
+      (void *)err <= (void *)chunk_hdr + end - ntohs(err->length) &&\
+      ntohs(err->length) >= sizeof(sctp_errhdr_t); \
+      err = (sctp_errhdr_t *)((void *)err + WORD_ROUND(ntohs(err->length))))
 -- 
 1.6.5.2
 
