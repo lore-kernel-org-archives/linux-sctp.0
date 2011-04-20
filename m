@@ -1,7 +1,7 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Wed, 20 Apr 2011 07:32:28 +0000
-Subject: [PATCH net-next-2.6 9/9] sctp: move chunk from retransmit queue to
-Message-Id: <4DAE8C0C.8090506@cn.fujitsu.com>
+Date: Wed, 20 Apr 2011 07:31:47 +0000
+Subject: [PATCH net-next-2.6 8/9] sctp: make heartbeat information in sctp_make_heartbeat()
+Message-Id: <4DAE8BE3.2050607@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <4DAE8A27.3040007@cn.fujitsu.com>
 In-Reply-To: <4DAE8A27.3040007@cn.fujitsu.com>
@@ -11,34 +11,94 @@ Content-Transfer-Encoding: 7bit
 To: David Miller <davem@davemloft.net>
 Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, lksctp <linux-sctp@vger.kernel.org>
 
-If there is still data waiting to retransmit and remain in
-retransmit queue, while doing the next retransmit, if the
-chunk is abandoned, we should move it to abandoned list.
+Make heartbeat information in sctp_make_heartbeat() instead
+of make it in sctp_sf_heartbeat() directly for common using.
 
 Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 ---
- net/sctp/outqueue.c |    7 +++++++
- 1 files changed, 7 insertions(+), 0 deletions(-)
+ include/net/sctp/sm.h    |    4 +---
+ net/sctp/sm_make_chunk.c |   18 +++++++++++++-----
+ net/sctp/sm_statefuns.c  |   11 +----------
+ 3 files changed, 15 insertions(+), 18 deletions(-)
 
-diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index 3e9d8d2..1c88c89 100644
---- a/net/sctp/outqueue.c
-+++ b/net/sctp/outqueue.c
-@@ -577,6 +577,13 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
- 	 * try to send as much as possible.
- 	 */
- 	list_for_each_entry_safe(chunk, chunk1, lqueue, transmitted_list) {
-+		/* If the chunk is abandoned, move it to abandoned list. */
-+		if (sctp_chunk_abandoned(chunk)) {
-+			list_del_init(&chunk->transmitted_list);
-+			sctp_insert_list(&q->abandoned,
-+					 &chunk->transmitted_list);
-+			continue;
-+		}
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index 9352d12..652f09b 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -232,9 +232,7 @@ struct sctp_chunk *sctp_make_violation_paramlen(const struct sctp_association *,
+ 				   const struct sctp_chunk *,
+ 				   struct sctp_paramhdr *);
+ struct sctp_chunk *sctp_make_heartbeat(const struct sctp_association *,
+-				  const struct sctp_transport *,
+-				  const void *payload,
+-				  const size_t paylen);
++				  const struct sctp_transport *);
+ struct sctp_chunk *sctp_make_heartbeat_ack(const struct sctp_association *,
+ 				      const struct sctp_chunk *,
+ 				      const void *payload,
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index a7b65e9..58eb27f 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -1075,20 +1075,28 @@ nodata:
  
- 		/* Make sure that Gap Acked TSNs are not retransmitted.  A
- 		 * simple approach is just to move such TSNs out of the
+ /* Make a HEARTBEAT chunk.  */
+ struct sctp_chunk *sctp_make_heartbeat(const struct sctp_association *asoc,
+-				  const struct sctp_transport *transport,
+-				  const void *payload, const size_t paylen)
++				  const struct sctp_transport *transport)
+ {
+-	struct sctp_chunk *retval = sctp_make_chunk(asoc, SCTP_CID_HEARTBEAT,
+-						    0, paylen);
++	struct sctp_chunk *retval;
++	sctp_sender_hb_info_t hbinfo;
++
++	retval = sctp_make_chunk(asoc, SCTP_CID_HEARTBEAT, 0, sizeof(hbinfo));
+ 
+ 	if (!retval)
+ 		goto nodata;
+ 
++	hbinfo.param_hdr.type = SCTP_PARAM_HEARTBEAT_INFO;
++	hbinfo.param_hdr.length = htons(sizeof(sctp_sender_hb_info_t));
++	hbinfo.daddr = transport->ipaddr;
++	hbinfo.sent_at = jiffies;
++	hbinfo.hb_nonce = transport->hb_nonce;
++
+ 	/* Cast away the 'const', as this is just telling the chunk
+ 	 * what transport it belongs to.
+ 	 */
+ 	retval->transport = (struct sctp_transport *) transport;
+-	retval->subh.hbs_hdr = sctp_addto_chunk(retval, paylen, payload);
++	retval->subh.hbs_hdr = sctp_addto_chunk(retval, sizeof(hbinfo),
++						&hbinfo);
+ 
+ nodata:
+ 	return retval;
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index ab94932..736847e 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -941,18 +941,9 @@ static sctp_disposition_t sctp_sf_heartbeat(const struct sctp_endpoint *ep,
+ {
+ 	struct sctp_transport *transport = (struct sctp_transport *) arg;
+ 	struct sctp_chunk *reply;
+-	sctp_sender_hb_info_t hbinfo;
+-	size_t paylen = 0;
+-
+-	hbinfo.param_hdr.type = SCTP_PARAM_HEARTBEAT_INFO;
+-	hbinfo.param_hdr.length = htons(sizeof(sctp_sender_hb_info_t));
+-	hbinfo.daddr = transport->ipaddr;
+-	hbinfo.sent_at = jiffies;
+-	hbinfo.hb_nonce = transport->hb_nonce;
+ 
+ 	/* Send a heartbeat to our peer.  */
+-	paylen = sizeof(sctp_sender_hb_info_t);
+-	reply = sctp_make_heartbeat(asoc, transport, &hbinfo, paylen);
++	reply = sctp_make_heartbeat(asoc, transport);
+ 	if (!reply)
+ 		return SCTP_DISPOSITION_NOMEM;
+ 
 -- 
 1.6.5.2
 
