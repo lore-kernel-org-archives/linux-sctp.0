@@ -1,7 +1,7 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Tue, 26 Apr 2011 03:47:05 +0000
-Subject: [PATCH net-next-2.6 3/7] sctp: make sctp over IPv6 work with IPsec
-Message-Id: <4DB64039.20008@cn.fujitsu.com>
+Date: Tue, 26 Apr 2011 03:48:17 +0000
+Subject: [PATCH net-next-2.6 5/7] sctp: clean up route lookup calls
+Message-Id: <4DB64081.3030203@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <4DB63F85.2090609@cn.fujitsu.com>
 In-Reply-To: <4DB63F85.2090609@cn.fujitsu.com>
@@ -13,88 +13,185 @@ Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, lksctp <linux-sctp@vger.k
 
 From: Vlad Yasevich <vladislav.yasevich@hp.com>
 
-SCTP never called xfrm_output after it's v6 route lookups so
-that never really worked with ipsec.  Additioanlly, we never
-passed port nubmers in the flowi, so any port based policies were
-never applied as well.  Now that we can fixed ipv6 routing lookup
-code, we can add xfrm_output calls and pass port numbers.
+Change the call to take the transport parameter and set the
+cached 'dst' appropriately inside the get_dst() function calls.
+
+This will allow us in the future  to clean up source address
+storage as well.
 
 Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 ---
- net/sctp/ipv6.c |   34 ++++++++++++++++++++++++++++++++--
- 1 files changed, 32 insertions(+), 2 deletions(-)
+ include/net/sctp/structs.h |    3 +--
+ net/sctp/ipv6.c            |   19 +++++++------------
+ net/sctp/protocol.c        |   12 +++++-------
+ net/sctp/transport.c       |   23 ++++++++++-------------
+ 4 files changed, 23 insertions(+), 34 deletions(-)
 
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index cd4aea9..c9c0021 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -564,8 +564,7 @@ struct sctp_af {
+ 					 int optname,
+ 					 char __user *optval,
+ 					 int __user *optlen);
+-	struct dst_entry *(*get_dst)	(struct sctp_association *asoc,
+-					 union sctp_addr *daddr,
++	void		(*get_dst)	(struct sctp_transport *t,
+ 					 union sctp_addr *saddr,
+ 					 struct flowi *fl,
+ 					 struct sock *sk);
 diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-index cc9ea37..74fe28c 100644
+index 31b6f35..60601f3 100644
 --- a/net/sctp/ipv6.c
 +++ b/net/sctp/ipv6.c
-@@ -244,6 +244,30 @@ static int sctp_v6_xmit(struct sk_buff *skb, struct sctp_transport *transport)
- 	return ip6_xmit(sk, skb, &fl6, np->opt);
- }
- 
-+/* Small helper function that combines route and XFRM lookups.  This is
-+ * done since we might be looping through route lookups.
-+ */
-+static int sctp_v6_dst_lookup(struct sock *sk, struct dst_entry **dst,
-+				struct flowi6 *fl6)
-+{
-+	int err;
-+
-+	err = ip6_dst_lookup(sk, dst, fl6);
-+	if (err)
-+		goto done;
-+
-+	err = xfrm_lookup(sock_net(sk), *dst, flowi6_to_flowi(fl6), sk, 0);
-+	if (err)
-+		goto done;
-+
-+	return 0;
-+
-+done:
-+	dst_release(*dst);
-+	*dst = NULL;
-+	return err;
-+}
-+
+@@ -271,17 +271,16 @@ done:
  /* Returns the dst cache entry for the given source and destination ip
   * addresses.
   */
-@@ -266,18 +290,23 @@ static struct dst_entry *sctp_v6_get_dst(struct sctp_association *asoc,
- 
- 	memset(fl6, 0, sizeof(struct flowi6));
- 	ipv6_addr_copy(&fl6->daddr, &daddr->v6.sin6_addr);
-+	fl6->fl6_dport = daddr->v6.sin6_port;
+-static struct dst_entry *sctp_v6_get_dst(struct sctp_association *asoc,
+-					 union sctp_addr *daddr,
+-					 union sctp_addr *saddr,
+-					 struct flowi *fl,
+-					 struct sock *sk)
++static void sctp_v6_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
++			    struct flowi *fl, struct sock *sk)
+ {
++	struct sctp_association *asoc = t->asoc;
+ 	struct dst_entry *dst = NULL;
+ 	struct flowi6 *fl6 = &fl->u.ip6;
+ 	struct sctp_bind_addr *bp;
+ 	struct sctp_sockaddr_entry *laddr;
+ 	union sctp_addr *baddr = NULL;
++	union sctp_addr *daddr = &t->ipaddr;
+ 	union sctp_addr dst_saddr;
+ 	__u8 matchlen = 0;
+ 	__u8 bmatchlen;
+@@ -294,7 +293,6 @@ static struct dst_entry *sctp_v6_get_dst(struct sctp_association *asoc,
  	if (ipv6_addr_type(&daddr->v6.sin6_addr) & IPV6_ADDR_LINKLOCAL)
  		fl6->flowi6_oif = daddr->v6.sin6_scope_id;
  
- 
+-
  	SCTP_DEBUG_PRINTK("%s: DST=%pI6 ", __func__, &fl6->daddr);
  
-+	if (asoc)
-+		fl6->fl6_sport = htons(asoc->base.bind_addr.port);
-+
- 	if (saddr) {
- 		ipv6_addr_copy(&fl6->saddr, &saddr->v6.sin6_addr);
-+		fl6->fl6_sport = saddr->v6.sin6_port;
- 		SCTP_DEBUG_PRINTK("SRC=%pI6 - ", &fl6->saddr);
- 	}
- 
--	err = ip6_dst_lookup(sk, &dst, fl6);
-+	err = sctp_v6_dst_lookup(sk, &dst, fl6);
- 	if (!asoc || saddr)
- 		goto out;
- 
-@@ -331,7 +360,8 @@ static struct dst_entry *sctp_v6_get_dst(struct sctp_association *asoc,
- 	rcu_read_unlock();
- 	if (baddr) {
- 		ipv6_addr_copy(&fl6->saddr, &baddr->v6.sin6_addr);
--		err = ip6_dst_lookup(sk, &dst, fl6);
-+		fl6->fl6_sport = baddr->v6.sin6_port;
-+		err = sctp_v6_dst_lookup(sk, &dst, fl6);
+ 	if (asoc)
+@@ -365,17 +363,14 @@ static struct dst_entry *sctp_v6_get_dst(struct sctp_association *asoc,
  	}
  
  out:
++	t->dst = dst;
+ 	if (dst) {
+ 		struct rt6_info *rt;
+ 		rt = (struct rt6_info *)dst;
+ 		SCTP_DEBUG_PRINTK("rt6_dst:%pI6 rt6_src:%pI6\n",
+ 			&rt->rt6i_dst.addr, &fl6->saddr);
+-		return dst;
+-	}
+-	SCTP_DEBUG_PRINTK("NO ROUTE\n");
+-	if (dst)
+-		dst_release(dst);
+-	return NULL;
++	} else
++		SCTP_DEBUG_PRINTK("NO ROUTE\n");
+ }
+ 
+ /* Returns the number of consecutive initial bits that match in the 2 ipv6
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 92b8b91..38115ce 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -463,17 +463,16 @@ static sctp_scope_t sctp_v4_scope(union sctp_addr *addr)
+  * addresses. If an association is passed, trys to get a dst entry with a
+  * source address that matches an address in the bind address list.
+  */
+-static struct dst_entry *sctp_v4_get_dst(struct sctp_association *asoc,
+-					 union sctp_addr *daddr,
+-					 union sctp_addr *saddr,
+-					 struct flowi *fl,
+-					 struct sock *sk)
++static void sctp_v4_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
++				struct flowi *fl, struct sock *sk)
+ {
++	struct sctp_association *asoc = t->asoc;
+ 	struct rtable *rt;
+ 	struct flowi4 *fl4 = &fl->u.ip4;
+ 	struct sctp_bind_addr *bp;
+ 	struct sctp_sockaddr_entry *laddr;
+ 	struct dst_entry *dst = NULL;
++	union sctp_addr *daddr = &t->ipaddr;
+ 	union sctp_addr dst_saddr;
+ 
+ 	memset(fl4, 0x0, sizeof(struct flowi4));
+@@ -548,13 +547,12 @@ static struct dst_entry *sctp_v4_get_dst(struct sctp_association *asoc,
+ out_unlock:
+ 	rcu_read_unlock();
+ out:
++	t->dst = dst;
+ 	if (dst)
+ 		SCTP_DEBUG_PRINTK("rt_dst:%pI4, rt_src:%pI4\n",
+ 				  &rt->rt_dst, &rt->rt_src);
+ 	else
+ 		SCTP_DEBUG_PRINTK("NO ROUTE\n");
+-
+-	return dst;
+ }
+ 
+ /* For v4, the source address is cached in the route entry(dst). So no need
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index 1fbb920..d8595dd 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -213,17 +213,17 @@ void sctp_transport_set_owner(struct sctp_transport *transport,
+ /* Initialize the pmtu of a transport. */
+ void sctp_transport_pmtu(struct sctp_transport *transport, struct sock *sk)
+ {
+-	struct dst_entry *dst;
+ 	struct flowi fl;
+ 
+-	dst = transport->af_specific->get_dst(transport->asoc,
+-					      &transport->ipaddr,
+-					      &transport->saddr,
++	/* If we don't have a fresh route, look one up */
++	if (!transport->dst || transport->dst->obsolete > 1) {
++		dst_release(transport->dst);
++		transport->af_specific->get_dst(transport, &transport->saddr,
+ 					      &fl, sk);
++	}
+ 
+-	if (dst) {
+-		transport->pathmtu = dst_mtu(dst);
+-		dst_release(dst);
++	if (transport->dst) {
++		transport->pathmtu = dst_mtu(transport->dst);
+ 	} else
+ 		transport->pathmtu = SCTP_DEFAULT_MAXSEGMENT;
+ }
+@@ -274,12 +274,9 @@ void sctp_transport_route(struct sctp_transport *transport,
+ {
+ 	struct sctp_association *asoc = transport->asoc;
+ 	struct sctp_af *af = transport->af_specific;
+-	union sctp_addr *daddr = &transport->ipaddr;
+-	struct dst_entry *dst;
+ 	struct flowi fl;
+ 
+-	dst = af->get_dst(asoc, daddr, saddr, &fl, sctp_opt2sk(opt));
+-	transport->dst = dst;
++	af->get_dst(transport, saddr, &fl, sctp_opt2sk(opt));
+ 
+ 	if (saddr)
+ 		memcpy(&transport->saddr, saddr, sizeof(union sctp_addr));
+@@ -289,8 +286,8 @@ void sctp_transport_route(struct sctp_transport *transport,
+ 	if ((transport->param_flags & SPP_PMTUD_DISABLE) && transport->pathmtu) {
+ 		return;
+ 	}
+-	if (dst) {
+-		transport->pathmtu = dst_mtu(dst);
++	if (transport->dst) {
++		transport->pathmtu = dst_mtu(transport->dst);
+ 
+ 		/* Initialize sk->sk_rcv_saddr, if the transport is the
+ 		 * association's active path for getsockname().
 -- 
 1.6.5.2
 
