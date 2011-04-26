@@ -1,36 +1,27 @@
 From: David Miller <davem@davemloft.net>
-Date: Tue, 26 Apr 2011 07:12:38 +0000
+Date: Tue, 26 Apr 2011 21:51:20 +0000
 Subject: Re: [PATCH net-next-2.6 0/7] SCTP updates for net-next-2.6
-Message-Id: <20110426.001238.183056292.davem@davemloft.net>
+Message-Id: <20110426.145120.28826019.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <4DB63F85.2090609@cn.fujitsu.com>
-In-Reply-To: <4DB63F85.2090609@cn.fujitsu.com>
+	<20110426.001238.183056292.davem@davemloft.net>
+In-Reply-To: <20110426.001238.183056292.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: yjwei@cn.fujitsu.com
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Tue, 26 Apr 2011 11:44:05 +0800
 
-> Hi David
-> 
-> Here is a set of SCTP patches for net-next-2.6, the last part
-> from vlad's lksctp-dev tree, update SCTP IPv6 routing and IPSec
-> issues. Please apply.
-> 
-> Vlad Yasevich (4):
->       sctp: cache the ipv6 source after route lookup
->       sctp: make sctp over IPv6 work with IPsec
->       sctp: remove useless arguments from get_saddr() call
->       sctp: clean up route lookup calls
-> 
-> Wei Yongjun (2):
->       sctp: clean up IPv6 route and XFRM lookups
->       sctp: fix IPv6 source address output routing with IPsec
-> 
-> Weixing Shi (1):
->       sctp: fix sctp to work with ipv6 source address routing
+Wei, while you are re-spinning this patch set I want to bring up
+something I just noticed in the SCTP code.
 
-All applied, with the warning fixed.
+The ->dst_saddr() method is not used by anything, it appears.
+
+The ipv4 variant, sctp_v4_dst_saddr() is called internally by the
+ipv4 specific code, but that's it.
+
+So I think the ->dst_saddr member of sctp_pf can be completely
+removed, as can sctp_v6_dst_saddr().
+
+The sctp_v4_dst_saddr() function, of course, will need to be retained.
