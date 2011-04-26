@@ -1,31 +1,40 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 26 Apr 2011 07:20:20 +0000
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Tue, 26 Apr 2011 08:06:17 +0000
 Subject: Re: [PATCH net-next-2.6 4/7] sctp: remove useless arguments from
-Message-Id: <20110426.002020.48493363.davem@davemloft.net>
+Message-Id: <4DB67CF9.1050508@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4DB63F85.2090609@cn.fujitsu.com>
-	<4DB6405B.2060200@cn.fujitsu.com>
-	<20110426.001227.112589346.davem@davemloft.net>
-In-Reply-To: <20110426.001227.112589346.davem@davemloft.net>
+References: <4DB63F85.2090609@cn.fujitsu.com>	<4DB6405B.2060200@cn.fujitsu.com>	<20110426.001227.112589346.davem@davemloft.net> <20110426.002020.48493363.davem@davemloft.net>
+In-Reply-To: <20110426.002020.48493363.davem@davemloft.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="windows-1254"
-Content-Transfer-Encoding: base64
-To: yjwei@cn.fujitsu.com
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: David Miller <davem@davemloft.net>
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-RnJvbTogRGF2aWQgTWlsbGVyIDxkYXZlbUBkYXZlbWxvZnQubmV0PgpEYXRlOiBUdWUsIDI2IEFw
-ciAyMDExIDAwOjEyOjI3IC0wNzAwIChQRFQpCgo+IEkgcmVhbGx5IGdldCBncnVtcHkgd2hlbiBJ
-IGhhdmUgdG8gZml4IHVwIHN0dWZmIGxpa2UgdGhpczoKPiAKPiBuZXQvc2N0cC9pcHY2LmM6IElu
-IGZ1bmN0aW9uIKFzY3RwX3Y2X2dldF9zYWRkcqI6Cj4gbmV0L3NjdHAvaXB2Ni5jOjM4Mjogd2Fy
-bmluZzogdW51c2VkIHZhcmlhYmxlIKFkYWRkcqIKCk5vdyBJJ20gZXZlbiBtb3JlIGdydW1weSwg
-aWYgSSBvbmx5IGFwcGx5IHRoZSBmaXJzdCAzIHBhdGNoZXM6CgpuZXQvc2N0cC9pcHY2LmM6IElu
-IGZ1bmN0aW9uIKFzY3RwX3Y2X2RzdF9sb29rdXCiOgpuZXQvc2N0cC9pcHY2LmM6MjU5OiB3YXJu
-aW5nOiBhc3NpZ25tZW50IG1ha2VzIGludGVnZXIgZnJvbSBwb2ludGVyIHdpdGhvdXQgYSBjYXN0
-CgppdCBnb2VzIGF3YXkgbGF0ZXIgYnV0IHlvdSdyZSBub3QgdGVzdGluZyB0aGUgaW50ZXJtZWRp
-YXRlIHN0ZXBzCm9mIHlvdXIgU0NUUCBwYXRjaCBiYWNrcG9ydHMgYW5kIGFzIGEgcmVzdWx0IHlv
-dSBhcmUgZ29pbmcgdG8KYnJlYWsgYmlzZWN0aW5nLgoKSSdtIHJldmVydGluZyB0aGlzIHBhdGNo
-IHNlcmllcywgZml4IHRoaXMgdXAgYW5kIGFjdHVhbGx5IHRlc3QKdGhlIGludGVybWVkaWF0ZSBi
-dWlsZHMgYW5kIGZ1bmN0aW9uYWxpdHkgYmVmb3JlIHJlc3VibWlzc2lvbi4KCv/06Lp7Lm7HK4m3
-n66JrYYrJYrL/7Hp3bYXpYp3/7p7Lm7HK4m3pYp7sf7HLaf4p7YXm6HcqH2pnrLGoHraJmo6K3aJ
-qP74Hq/5Hq53pf6K4DKK3pmo6K3aJqIp36GrYbba///74Hq/5Hq53pf6K4P5mo6K3aJq/4p36P4b
-Zgo=
+
+> From: David Miller <davem@davemloft.net>
+> Date: Tue, 26 Apr 2011 00:12:27 -0700 (PDT)
+>
+>> I really get grumpy when I have to fix up stuff like this:
+>>
+>> net/sctp/ipv6.c: In function =A1sctp_v6_get_saddr=A2:
+>> net/sctp/ipv6.c:382: warning: unused variable =A1daddr=A2
+> Now I'm even more grumpy, if I only apply the first 3 patches:
+>
+> net/sctp/ipv6.c: In function =A1sctp_v6_dst_lookup=A2:
+> net/sctp/ipv6.c:259: warning: assignment makes integer from pointer witho=
+ut a cast
+>
+> it goes away later but you're not testing the intermediate steps
+> of your SCTP patch backports and as a result you are going to
+> break bisecting.
+>
+> I'm reverting this patch series, fix this up and actually test
+> the intermediate builds and functionality before resubmission.
+Hi David
+
+ Sorry for sending those garbage and wasted your time so much,
+I will fix those up and do all of the test before resubmit
+those patch to you.
+
+
