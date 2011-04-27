@@ -1,199 +1,471 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Mon, 18 Apr 2011 03:29:03 +0000
-Subject: [PATCH net-next-2.6 3/3] sctp: implement event notification SCTP_SENDER_DRY_EVENT
-Message-Id: <4DABAFFF.6010204@cn.fujitsu.com>
+Date: Wed, 27 Apr 2011 07:51:31 +0000
+Subject: [PATCH net-next-2.6 2/5 v2] sctp: cache the ipv6 source after route
+Message-Id: <4DB7CB03.1090602@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4DABAEF1.1010506@cn.fujitsu.com>
-In-Reply-To: <4DABAEF1.1010506@cn.fujitsu.com>
+References: <4DB7C73D.3000406@cn.fujitsu.com>
+In-Reply-To: <4DB7C73D.3000406@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: David Miller <davem@davemloft.net>
 Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, lksctp <linux-sctp@vger.kernel.org>
 
-This patch implement event notification SCTP_SENDER_DRY_EVENT.
-SCTP Socket API Extensions:
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
 
-  6.1.9. SCTP_SENDER_DRY_EVENT
+The ipv6 routing lookup does give us a source address,
+but instead of filling it into the dst, it's stored in
+the flowi.  We can use that instead of going through the
+entire source address selection again.
+Also the useless ->dst_saddr member of sctp_pf is removed.
+And sctp_v6_dst_saddr() is removed, instead by introduce
+sctp_v6_to_addr(), which can be reused to cleanup some dup
+code.
 
-  When the SCTP stack has no more user data to send or retransmit, this
-  notification is given to the user. Also, at the time when a user app
-  subscribes to this event, if there is no data to be sent or
-  retransmit, the stack will immediately send up this notification.
-
-Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 ---
- include/net/sctp/sm.h       |    1 +
- include/net/sctp/ulpevent.h |    3 +++
- include/net/sctp/user.h     |   17 +++++++++++++++++
- net/sctp/sm_statefuns.c     |   24 ++++++++++++++++++++++++
- net/sctp/sm_statetable.c    |    2 +-
- net/sctp/ulpevent.c         |   28 ++++++++++++++++++++++++++++
- 6 files changed, 74 insertions(+), 1 deletions(-)
+ include/net/sctp/structs.h |   14 ++--
+ net/sctp/ipv6.c            |  161 ++++++++++++++++++++------------------------
+ net/sctp/protocol.c        |   47 ++++++-------
+ net/sctp/socket.c          |    2 +-
+ net/sctp/transport.c       |   15 +++--
+ 5 files changed, 112 insertions(+), 127 deletions(-)
 
-diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index 9352d12..49db0c7 100644
---- a/include/net/sctp/sm.h
-+++ b/include/net/sctp/sm.h
-@@ -165,6 +165,7 @@ sctp_state_fn_t sctp_sf_do_prm_requestheartbeat;
- sctp_state_fn_t sctp_sf_do_prm_asconf;
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 5c9bada..1d465d6 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -566,17 +566,15 @@ struct sctp_af {
+ 					 int __user *optlen);
+ 	struct dst_entry *(*get_dst)	(struct sctp_association *asoc,
+ 					 union sctp_addr *daddr,
+-					 union sctp_addr *saddr);
++					 union sctp_addr *saddr,
++					 struct flowi *fl,
++					 struct sock *sk);
+ 	void		(*get_saddr)	(struct sctp_sock *sk,
+-					 struct sctp_association *asoc,
+-					 struct dst_entry *dst,
++					 struct sctp_transport *t,
+ 					 union sctp_addr *daddr,
+-					 union sctp_addr *saddr);
++					 struct flowi *fl);
+ 	void		(*copy_addrlist) (struct list_head *,
+ 					  struct net_device *);
+-	void		(*dst_saddr)	(union sctp_addr *saddr,
+-					 struct dst_entry *dst,
+-					 __be16 port);
+ 	int		(*cmp_addr)	(const union sctp_addr *addr1,
+ 					 const union sctp_addr *addr2);
+ 	void		(*addr_copy)	(union sctp_addr *dst,
+@@ -1061,7 +1059,7 @@ void sctp_transport_set_owner(struct sctp_transport *,
+ 			      struct sctp_association *);
+ void sctp_transport_route(struct sctp_transport *, union sctp_addr *,
+ 			  struct sctp_sock *);
+-void sctp_transport_pmtu(struct sctp_transport *);
++void sctp_transport_pmtu(struct sctp_transport *, struct sock *sk);
+ void sctp_transport_free(struct sctp_transport *);
+ void sctp_transport_reset_timers(struct sctp_transport *);
+ void sctp_transport_hold(struct sctp_transport *);
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 3a571d6..51c048d 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -82,6 +82,10 @@
  
- /* Prototypes for other event state functions.  */
-+sctp_state_fn_t sctp_sf_do_no_pending_tsn;
- sctp_state_fn_t sctp_sf_do_9_2_start_shutdown;
- sctp_state_fn_t sctp_sf_do_9_2_shutdown_ack;
- sctp_state_fn_t sctp_sf_ignore_other;
-diff --git a/include/net/sctp/ulpevent.h b/include/net/sctp/ulpevent.h
-index 7ea12e8..99b027b 100644
---- a/include/net/sctp/ulpevent.h
-+++ b/include/net/sctp/ulpevent.h
-@@ -132,6 +132,9 @@ struct sctp_ulpevent *sctp_ulpevent_make_authkey(
- 	const struct sctp_association *asoc, __u16 key_id,
- 	__u32 indication, gfp_t gfp);
+ static inline int sctp_v6_addr_match_len(union sctp_addr *s1,
+ 					 union sctp_addr *s2);
++static void sctp_v6_to_addr(union sctp_addr *addr, struct in6_addr *saddr,
++			      __be16 port);
++static int sctp_v6_cmp_addr(const union sctp_addr *addr1,
++			    const union sctp_addr *addr2);
  
-+struct sctp_ulpevent *sctp_ulpevent_make_sender_dry_event(
-+	const struct sctp_association *asoc, gfp_t gfp);
+ /* Event handler for inet6 address addition/deletion events.
+  * The sctp_local_addr_list needs to be protocted by a spin lock since
+@@ -245,73 +249,99 @@ static int sctp_v6_xmit(struct sk_buff *skb, struct sctp_transport *transport)
+  */
+ static struct dst_entry *sctp_v6_get_dst(struct sctp_association *asoc,
+ 					 union sctp_addr *daddr,
+-					 union sctp_addr *saddr)
++					 union sctp_addr *saddr,
++					 struct flowi *fl,
++					 struct sock *sk)
+ {
+ 	struct dst_entry *dst = NULL;
+-	struct flowi6 fl6;
++	struct flowi6 *fl6 = &fl->u.ip6;
+ 	struct sctp_bind_addr *bp;
+ 	struct sctp_sockaddr_entry *laddr;
+ 	union sctp_addr *baddr = NULL;
++	union sctp_addr dst_saddr;
+ 	__u8 matchlen = 0;
+ 	__u8 bmatchlen;
+ 	sctp_scope_t scope;
++	int err = 0;
+ 
+-	memset(&fl6, 0, sizeof(fl6));
+-	ipv6_addr_copy(&fl6.daddr, &daddr->v6.sin6_addr);
++	memset(fl6, 0, sizeof(struct flowi6));
++	ipv6_addr_copy(&fl6->daddr, &daddr->v6.sin6_addr);
+ 	if (ipv6_addr_type(&daddr->v6.sin6_addr) & IPV6_ADDR_LINKLOCAL)
+-		fl6.flowi6_oif = daddr->v6.sin6_scope_id;
++		fl6->flowi6_oif = daddr->v6.sin6_scope_id;
+ 
+ 
+-	SCTP_DEBUG_PRINTK("%s: DST=%pI6 ", __func__, &fl6.daddr);
++	SCTP_DEBUG_PRINTK("%s: DST=%pI6 ", __func__, &fl6->daddr);
+ 
+ 	if (saddr) {
+-		ipv6_addr_copy(&fl6.saddr, &saddr->v6.sin6_addr);
+-		SCTP_DEBUG_PRINTK("SRC=%pI6 - ", &fl6.saddr);
++		ipv6_addr_copy(&fl6->saddr, &saddr->v6.sin6_addr);
++		SCTP_DEBUG_PRINTK("SRC=%pI6 - ", &fl6->saddr);
+ 	}
+ 
+-	dst = ip6_route_output(&init_net, NULL, &fl6);
++	err = ip6_dst_lookup(sk, &dst, fl6);
+ 	if (!asoc || saddr)
+ 		goto out;
+ 
+-	if (dst->error) {
+-		dst_release(dst);
+-		dst = NULL;
+-		bp = &asoc->base.bind_addr;
+-		scope = sctp_scope(daddr);
+-		/* Walk through the bind address list and try to get a dst that
+-		 * matches a bind address as the source address.
++	bp = &asoc->base.bind_addr;
++	scope = sctp_scope(daddr);
++	/* ip6_dst_lookup has filled in the fl6->saddr for us.  Check
++	 * to see if we can use it.
++	 */
++	if (!err) {
++		/* Walk through the bind address list and look for a bind
++		 * address that matches the source address of the returned dst.
+ 		 */
++		sctp_v6_to_addr(&dst_saddr, &fl6->saddr, htons(bp->port));
+ 		rcu_read_lock();
+ 		list_for_each_entry_rcu(laddr, &bp->address_list, list) {
+-			if (!laddr->valid)
++			if (!laddr->valid || (laddr->state != SCTP_ADDR_SRC))
+ 				continue;
+-			if ((laddr->state = SCTP_ADDR_SRC) &&
+-			    (laddr->a.sa.sa_family = AF_INET6) &&
+-			    (scope <= sctp_scope(&laddr->a))) {
+-				bmatchlen = sctp_v6_addr_match_len(daddr,
+-								   &laddr->a);
+-				if (!baddr || (matchlen < bmatchlen)) {
+-					baddr = &laddr->a;
+-					matchlen = bmatchlen;
+-				}
 +
- void sctp_ulpevent_read_sndrcvinfo(const struct sctp_ulpevent *event,
- 	struct msghdr *);
- __u16 sctp_ulpevent_get_notification_type(const struct sctp_ulpevent *event);
-diff --git a/include/net/sctp/user.h b/include/net/sctp/user.h
-index 4525d8c..32fd512 100644
---- a/include/net/sctp/user.h
-+++ b/include/net/sctp/user.h
-@@ -354,6 +354,20 @@ struct sctp_authkey_event {
- 
- enum { SCTP_AUTH_NEWKEY = 0, };
- 
-+/*
-+ * 6.1.9. SCTP_SENDER_DRY_EVENT
-+ *
-+ * When the SCTP stack has no more user data to send or retransmit, this
-+ * notification is given to the user. Also, at the time when a user app
-+ * subscribes to this event, if there is no data to be sent or
-+ * retransmit, the stack will immediately send up this notification.
-+ */
-+struct sctp_sender_dry_event {
-+	__u16 sender_dry_type;
-+	__u16 sender_dry_flags;
-+	__u32 sender_dry_length;
-+	sctp_assoc_t sender_dry_assoc_id;
-+};
- 
- /*
-  * Described in Section 7.3
-@@ -369,6 +383,7 @@ struct sctp_event_subscribe {
- 	__u8 sctp_partial_delivery_event;
- 	__u8 sctp_adaptation_layer_event;
- 	__u8 sctp_authentication_event;
-+	__u8 sctp_sender_dry_event;
- };
- 
- /*
-@@ -392,6 +407,7 @@ union sctp_notification {
- 	struct sctp_adaptation_event sn_adaptation_event;
- 	struct sctp_pdapi_event sn_pdapi_event;
- 	struct sctp_authkey_event sn_authkey_event;
-+	struct sctp_sender_dry_event sn_sender_dry_event;
- };
- 
- /* Section 5.3.1
-@@ -410,6 +426,7 @@ enum sctp_sn_type {
- 	SCTP_ADAPTATION_INDICATION,
- 	SCTP_AUTHENTICATION_EVENT,
- #define SCTP_AUTHENTICATION_INDICATION	SCTP_AUTHENTICATION_EVENT
-+	SCTP_SENDER_DRY_EVENT,
- };
- 
- /* Notification error codes used to fill up the error fields in some
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 7679208..95257b2 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -5056,6 +5056,30 @@ sctp_disposition_t sctp_sf_ignore_primitive(
-  ***************************************************************************/
- 
- /*
-+ * When the SCTP stack has no more user data to send or retransmit, this
-+ * notification is given to the user. Also, at the time when a user app
-+ * subscribes to this event, if there is no data to be sent or
-+ * retransmit, the stack will immediately send up this notification.
-+ */
-+sctp_disposition_t sctp_sf_do_no_pending_tsn(
-+	const struct sctp_endpoint *ep,
-+	const struct sctp_association *asoc,
-+	const sctp_subtype_t type,
-+	void *arg,
-+	sctp_cmd_seq_t *commands)
-+{
-+	struct sctp_ulpevent *event;
++			/* Do not compare against v4 addrs */
++			if ((laddr->a.sa.sa_family = AF_INET6) &&
++			    (sctp_v6_cmp_addr(&dst_saddr, &laddr->a))) {
++				rcu_read_unlock();
++				goto out;
+ 			}
+ 		}
+ 		rcu_read_unlock();
+-		if (baddr) {
+-			ipv6_addr_copy(&fl6.saddr, &baddr->v6.sin6_addr);
+-			dst = ip6_route_output(&init_net, NULL, &fl6);
++		/* None of the bound addresses match the source address of the
++		 * dst. So release it.
++		 */
++		dst_release(dst);
++		dst = NULL;
++	}
 +
-+	event = sctp_ulpevent_make_sender_dry_event(asoc, GFP_ATOMIC);
-+	if (!event)
-+		return SCTP_DISPOSITION_NOMEM;
++	/* Walk through the bind address list and try to get the
++	 * best source address for a given destination.
++	 */
++	rcu_read_lock();
++	list_for_each_entry_rcu(laddr, &bp->address_list, list) {
++		if (!laddr->valid && laddr->state != SCTP_ADDR_SRC)
++			continue;
++		if ((laddr->a.sa.sa_family = AF_INET6) &&
++		    (scope <= sctp_scope(&laddr->a))) {
++			bmatchlen = sctp_v6_addr_match_len(daddr, &laddr->a);
++			if (!baddr || (matchlen < bmatchlen)) {
++				baddr = &laddr->a;
++				matchlen = bmatchlen;
++			}
+ 		}
+ 	}
++	rcu_read_unlock();
++	if (baddr) {
++		ipv6_addr_copy(&fl6->saddr, &baddr->v6.sin6_addr);
++		err = ip6_dst_lookup(sk, &dst, fl6);
++	}
 +
-+	sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP, SCTP_ULPEVENT(event));
-+
-+	return SCTP_DISPOSITION_CONSUME;
-+}
-+
-+/*
-  * Start the shutdown negotiation.
-  *
-  * From Section 9.2:
-diff --git a/net/sctp/sm_statetable.c b/net/sctp/sm_statetable.c
-index 546d438..382fa40 100644
---- a/net/sctp/sm_statetable.c
-+++ b/net/sctp/sm_statetable.c
-@@ -722,7 +722,7 @@ static const sctp_sm_table_entry_t primitive_event_table[SCTP_NUM_PRIMITIVE_TYPE
- 	/* SCTP_STATE_COOKIE_ECHOED */ \
- 	TYPE_SCTP_FUNC(sctp_sf_ignore_other), \
- 	/* SCTP_STATE_ESTABLISHED */ \
--	TYPE_SCTP_FUNC(sctp_sf_ignore_other), \
-+	TYPE_SCTP_FUNC(sctp_sf_do_no_pending_tsn), \
- 	/* SCTP_STATE_SHUTDOWN_PENDING */ \
- 	TYPE_SCTP_FUNC(sctp_sf_do_9_2_start_shutdown), \
- 	/* SCTP_STATE_SHUTDOWN_SENT */ \
-diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
-index 62d4a7b..c962c60 100644
---- a/net/sctp/ulpevent.c
-+++ b/net/sctp/ulpevent.c
-@@ -862,6 +862,34 @@ fail:
+ out:
+-	if (!dst->error) {
++	if (!err) {
+ 		struct rt6_info *rt;
+ 		rt = (struct rt6_info *)dst;
+ 		SCTP_DEBUG_PRINTK("rt6_dst:%pI6 rt6_src:%pI6\n",
+-			&rt->rt6i_dst.addr, &rt->rt6i_src.addr);
++			&rt->rt6i_dst.addr, &fl6->saddr);
+ 		return dst;
+ 	}
+ 	SCTP_DEBUG_PRINTK("NO ROUTE\n");
+-	dst_release(dst);
  	return NULL;
  }
  
-+/*
-+ * Socket Extensions for SCTP
-+ * 6.3.10. SCTP_SENDER_DRY_EVENT
-+ */
-+struct sctp_ulpevent *sctp_ulpevent_make_sender_dry_event(
-+	const struct sctp_association *asoc, gfp_t gfp)
-+{
-+	struct sctp_ulpevent *event;
-+	struct sctp_sender_dry_event *sdry;
-+	struct sk_buff *skb;
-+
-+	event = sctp_ulpevent_new(sizeof(struct sctp_sender_dry_event),
-+				  MSG_NOTIFICATION, gfp);
-+	if (!event)
-+		return NULL;
-+
-+	skb = sctp_event2skb(event);
-+	sdry = (struct sctp_sender_dry_event *)
-+		skb_put(skb, sizeof(struct sctp_sender_dry_event));
-+
-+	sdry->sender_dry_type = SCTP_SENDER_DRY_EVENT;
-+	sdry->sender_dry_flags = 0;
-+	sdry->sender_dry_length = sizeof(struct sctp_sender_dry_event);
-+	sctp_ulpevent_set_owner(event, asoc);
-+	sdry->sender_dry_assoc_id = sctp_assoc2id(asoc);
-+
-+	return event;
-+}
+@@ -328,64 +358,21 @@ static inline int sctp_v6_addr_match_len(union sctp_addr *s1,
+  * and asoc's bind address list.
+  */
+ static void sctp_v6_get_saddr(struct sctp_sock *sk,
+-			      struct sctp_association *asoc,
+-			      struct dst_entry *dst,
++			      struct sctp_transport *t,
+ 			      union sctp_addr *daddr,
+-			      union sctp_addr *saddr)
++			      struct flowi *fl)
+ {
+-	struct sctp_bind_addr *bp;
+-	struct sctp_sockaddr_entry *laddr;
+-	sctp_scope_t scope;
+-	union sctp_addr *baddr = NULL;
+-	__u8 matchlen = 0;
+-	__u8 bmatchlen;
++	struct flowi6 *fl6 = &fl->u.ip6;
++	union sctp_addr *saddr = &t->saddr;
  
- /* Return the notification type, assuming this is a notification
-  * event.
+ 	SCTP_DEBUG_PRINTK("%s: asoc:%p dst:%p daddr:%pI6 ",
+-			  __func__, asoc, dst, &daddr->v6.sin6_addr);
+-
+-	if (!asoc) {
+-		ipv6_dev_get_saddr(sock_net(sctp_opt2sk(sk)),
+-				   dst ? ip6_dst_idev(dst)->dev : NULL,
+-				   &daddr->v6.sin6_addr,
+-				   inet6_sk(&sk->inet.sk)->srcprefs,
+-				   &saddr->v6.sin6_addr);
+-		SCTP_DEBUG_PRINTK("saddr from ipv6_get_saddr: %pI6\n",
+-				  &saddr->v6.sin6_addr);
+-		return;
+-	}
+-
+-	scope = sctp_scope(daddr);
++			  __func__, t->asoc, t->dst, &daddr->v6.sin6_addr);
+ 
+-	bp = &asoc->base.bind_addr;
+-
+-	/* Go through the bind address list and find the best source address
+-	 * that matches the scope of the destination address.
+-	 */
+-	rcu_read_lock();
+-	list_for_each_entry_rcu(laddr, &bp->address_list, list) {
+-		if (!laddr->valid)
+-			continue;
+-		if ((laddr->state = SCTP_ADDR_SRC) &&
+-		    (laddr->a.sa.sa_family = AF_INET6) &&
+-		    (scope <= sctp_scope(&laddr->a))) {
+-			bmatchlen = sctp_v6_addr_match_len(daddr, &laddr->a);
+-			if (!baddr || (matchlen < bmatchlen)) {
+-				baddr = &laddr->a;
+-				matchlen = bmatchlen;
+-			}
+-		}
+-	}
+ 
+-	if (baddr) {
+-		memcpy(saddr, baddr, sizeof(union sctp_addr));
+-		SCTP_DEBUG_PRINTK("saddr: %pI6\n", &saddr->v6.sin6_addr);
+-	} else {
+-		pr_err("%s: asoc:%p Could not find a valid source "
+-		       "address for the dest:%pI6\n",
+-		       __func__, asoc, &daddr->v6.sin6_addr);
++	if (t->dst) {
++		saddr->v6.sin6_family = AF_INET6;
++		ipv6_addr_copy(&saddr->v6.sin6_addr, &fl6->saddr);
+ 	}
+-
+-	rcu_read_unlock();
+ }
+ 
+ /* Make a copy of all potential local addresses. */
+@@ -507,14 +494,13 @@ static int sctp_v6_to_addr_param(const union sctp_addr *addr,
+ 	return length;
+ }
+ 
+-/* Initialize a sctp_addr from a dst_entry. */
+-static void sctp_v6_dst_saddr(union sctp_addr *addr, struct dst_entry *dst,
++/* Initialize a sctp_addr from struct in6_addr. */
++static void sctp_v6_to_addr(union sctp_addr *addr, struct in6_addr *saddr,
+ 			      __be16 port)
+ {
+-	struct rt6_info *rt = (struct rt6_info *)dst;
+ 	addr->sa.sa_family = AF_INET6;
+ 	addr->v6.sin6_port = port;
+-	ipv6_addr_copy(&addr->v6.sin6_addr, &rt->rt6i_src.addr);
++	ipv6_addr_copy(&addr->v6.sin6_addr, saddr);
+ }
+ 
+ /* Compare addresses exactly.
+@@ -1001,7 +987,6 @@ static struct sctp_af sctp_af_inet6 = {
+ 	.to_sk_daddr	   = sctp_v6_to_sk_daddr,
+ 	.from_addr_param   = sctp_v6_from_addr_param,
+ 	.to_addr_param	   = sctp_v6_to_addr_param,
+-	.dst_saddr	   = sctp_v6_dst_saddr,
+ 	.cmp_addr	   = sctp_v6_cmp_addr,
+ 	.scope		   = sctp_v6_scope,
+ 	.addr_valid	   = sctp_v6_addr_valid,
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index d5bf91d..3421645 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -465,33 +465,35 @@ static sctp_scope_t sctp_v4_scope(union sctp_addr *addr)
+  */
+ static struct dst_entry *sctp_v4_get_dst(struct sctp_association *asoc,
+ 					 union sctp_addr *daddr,
+-					 union sctp_addr *saddr)
++					 union sctp_addr *saddr,
++					 struct flowi *fl,
++					 struct sock *sk)
+ {
+ 	struct rtable *rt;
+-	struct flowi4 fl4;
++	struct flowi4 *fl4 = &fl->u.ip4;
+ 	struct sctp_bind_addr *bp;
+ 	struct sctp_sockaddr_entry *laddr;
+ 	struct dst_entry *dst = NULL;
+ 	union sctp_addr dst_saddr;
+ 
+-	memset(&fl4, 0x0, sizeof(struct flowi4));
+-	fl4.daddr  = daddr->v4.sin_addr.s_addr;
+-	fl4.fl4_dport = daddr->v4.sin_port;
+-	fl4.flowi4_proto = IPPROTO_SCTP;
++	memset(fl4, 0x0, sizeof(struct flowi4));
++	fl4->daddr  = daddr->v4.sin_addr.s_addr;
++	fl4->fl4_dport = daddr->v4.sin_port;
++	fl4->flowi4_proto = IPPROTO_SCTP;
+ 	if (asoc) {
+-		fl4.flowi4_tos = RT_CONN_FLAGS(asoc->base.sk);
+-		fl4.flowi4_oif = asoc->base.sk->sk_bound_dev_if;
+-		fl4.fl4_sport = htons(asoc->base.bind_addr.port);
++		fl4->flowi4_tos = RT_CONN_FLAGS(asoc->base.sk);
++		fl4->flowi4_oif = asoc->base.sk->sk_bound_dev_if;
++		fl4->fl4_sport = htons(asoc->base.bind_addr.port);
+ 	}
+ 	if (saddr) {
+-		fl4.saddr = saddr->v4.sin_addr.s_addr;
+-		fl4.fl4_sport = saddr->v4.sin_port;
++		fl4->saddr = saddr->v4.sin_addr.s_addr;
++		fl4->fl4_sport = saddr->v4.sin_port;
+ 	}
+ 
+ 	SCTP_DEBUG_PRINTK("%s: DST:%pI4, SRC:%pI4 - ",
+-			  __func__, &fl4.daddr, &fl4.saddr);
++			  __func__, &fl4->daddr, &fl4->saddr);
+ 
+-	rt = ip_route_output_key(&init_net, &fl4);
++	rt = ip_route_output_key(&init_net, fl4);
+ 	if (!IS_ERR(rt))
+ 		dst = &rt->dst;
+ 
+@@ -533,9 +535,9 @@ static struct dst_entry *sctp_v4_get_dst(struct sctp_association *asoc,
+ 			continue;
+ 		if ((laddr->state = SCTP_ADDR_SRC) &&
+ 		    (AF_INET = laddr->a.sa.sa_family)) {
+-			fl4.saddr = laddr->a.v4.sin_addr.s_addr;
+-			fl4.fl4_sport = laddr->a.v4.sin_port;
+-			rt = ip_route_output_key(&init_net, &fl4);
++			fl4->saddr = laddr->a.v4.sin_addr.s_addr;
++			fl4->fl4_sport = laddr->a.v4.sin_port;
++			rt = ip_route_output_key(&init_net, fl4);
+ 			if (!IS_ERR(rt)) {
+ 				dst = &rt->dst;
+ 				goto out_unlock;
+@@ -559,19 +561,15 @@ out:
+  * to cache it separately and hence this is an empty routine.
+  */
+ static void sctp_v4_get_saddr(struct sctp_sock *sk,
+-			      struct sctp_association *asoc,
+-			      struct dst_entry *dst,
++			      struct sctp_transport *t,
+ 			      union sctp_addr *daddr,
+-			      union sctp_addr *saddr)
++			      struct flowi *fl)
+ {
+-	struct rtable *rt = (struct rtable *)dst;
+-
+-	if (!asoc)
+-		return;
++	union sctp_addr *saddr = &t->saddr;
++	struct rtable *rt = (struct rtable *)t->dst;
+ 
+ 	if (rt) {
+ 		saddr->v4.sin_family = AF_INET;
+-		saddr->v4.sin_port = htons(asoc->base.bind_addr.port);
+ 		saddr->v4.sin_addr.s_addr = rt->rt_src;
+ 	}
+ }
+@@ -950,7 +948,6 @@ static struct sctp_af sctp_af_inet = {
+ 	.to_sk_daddr	   = sctp_v4_to_sk_daddr,
+ 	.from_addr_param   = sctp_v4_from_addr_param,
+ 	.to_addr_param	   = sctp_v4_to_addr_param,
+-	.dst_saddr	   = sctp_v4_dst_saddr,
+ 	.cmp_addr	   = sctp_v4_cmp_addr,
+ 	.addr_valid	   = sctp_v4_addr_valid,
+ 	.inaddr_any	   = sctp_v4_inaddr_any,
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index f694ee1..33d9ee6 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -2287,7 +2287,7 @@ static int sctp_apply_peer_addr_params(struct sctp_paddrparams *params,
+ 			trans->param_flags  				(trans->param_flags & ~SPP_PMTUD) | pmtud_change;
+ 			if (update) {
+-				sctp_transport_pmtu(trans);
++				sctp_transport_pmtu(trans, sctp_opt2sk(sp));
+ 				sctp_assoc_sync_pmtu(asoc);
+ 			}
+ 		} else if (asoc) {
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index d3ae493..2544b9b 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -211,11 +211,15 @@ void sctp_transport_set_owner(struct sctp_transport *transport,
+ }
+ 
+ /* Initialize the pmtu of a transport. */
+-void sctp_transport_pmtu(struct sctp_transport *transport)
++void sctp_transport_pmtu(struct sctp_transport *transport, struct sock *sk)
+ {
+ 	struct dst_entry *dst;
++	struct flowi fl;
+ 
+-	dst = transport->af_specific->get_dst(NULL, &transport->ipaddr, NULL);
++	dst = transport->af_specific->get_dst(transport->asoc,
++					      &transport->ipaddr,
++					      &transport->saddr,
++					      &fl, sk);
+ 
+ 	if (dst) {
+ 		transport->pathmtu = dst_mtu(dst);
+@@ -272,15 +276,16 @@ void sctp_transport_route(struct sctp_transport *transport,
+ 	struct sctp_af *af = transport->af_specific;
+ 	union sctp_addr *daddr = &transport->ipaddr;
+ 	struct dst_entry *dst;
++	struct flowi fl;
+ 
+-	dst = af->get_dst(asoc, daddr, saddr);
++	dst = af->get_dst(asoc, daddr, saddr, &fl, sctp_opt2sk(opt));
++	transport->dst = dst;
+ 
+ 	if (saddr)
+ 		memcpy(&transport->saddr, saddr, sizeof(union sctp_addr));
+ 	else
+-		af->get_saddr(opt, asoc, dst, daddr, &transport->saddr);
++		af->get_saddr(opt, transport, daddr, &fl);
+ 
+-	transport->dst = dst;
+ 	if ((transport->param_flags & SPP_PMTUD_DISABLE) && transport->pathmtu) {
+ 		return;
+ 	}
 -- 
 1.6.5.2
 
