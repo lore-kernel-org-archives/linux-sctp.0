@@ -1,113 +1,89 @@
 From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Wed, 20 Apr 2011 07:30:01 +0000
-Subject: [PATCH net-next-2.6 6/9] sctp: handle ootb packet in chunk order
-Message-Id: <4DAE8B79.7060007@cn.fujitsu.com>
+Date: Wed, 27 Apr 2011 07:52:27 +0000
+Subject: [PATCH net-next-2.6 3/5] sctp: make sctp over IPv6 work with IPsec
+Message-Id: <4DB7CB3B.6030307@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4DAE8A27.3040007@cn.fujitsu.com>
-In-Reply-To: <4DAE8A27.3040007@cn.fujitsu.com>
+References: <4DB7C73D.3000406@cn.fujitsu.com>
+In-Reply-To: <4DB7C73D.3000406@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: David Miller <davem@davemloft.net>
 Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, lksctp <linux-sctp@vger.kernel.org>
 
-From: Shan Wei <shanwei@cn.fujitsu.com>
+From: Vlad Yasevich <vladislav.yasevich@hp.com>
 
-Changed the order of processing SHUTDOWN ACK and COOKIE ACK
-refer to section 8.4:Handle "Out of the Blue" Packets.
+SCTP never called xfrm_output after it's v6 route lookups so
+that never really worked with ipsec.  Additioanlly, we never
+passed port nubmers and protocol in the flowi, so any port
+based policies were never applied as well.  Now that we can
+fixed ipv6 routing lookup code, using ip6_dst_lookup_flow()
+and pass port numbers.
 
-SHUTDOWN ACK chunk should be processed before processing
-"Stale Cookie" ERROR or a COOKIE ACK.
-
-Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
 Signed-off-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 ---
- net/sctp/input.c        |   15 ---------------
- net/sctp/sm_statefuns.c |   21 +++++++++++++++++++++
- 2 files changed, 21 insertions(+), 15 deletions(-)
+ net/sctp/ipv6.c |   16 +++++++++++-----
+ 1 files changed, 11 insertions(+), 5 deletions(-)
 
-diff --git a/net/sctp/input.c b/net/sctp/input.c
-index 30cec77..3a8eb79 100644
---- a/net/sctp/input.c
-+++ b/net/sctp/input.c
-@@ -661,7 +661,6 @@ static int sctp_rcv_ootb(struct sk_buff *skb)
- {
- 	sctp_chunkhdr_t *ch;
- 	__u8 *ch_end;
--	sctp_errhdr_t *err;
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 51c048d..593c801 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -262,22 +262,27 @@ static struct dst_entry *sctp_v6_get_dst(struct sctp_association *asoc,
+ 	__u8 matchlen = 0;
+ 	__u8 bmatchlen;
+ 	sctp_scope_t scope;
+-	int err = 0;
  
- 	ch = (sctp_chunkhdr_t *) skb->data;
+ 	memset(fl6, 0, sizeof(struct flowi6));
+ 	ipv6_addr_copy(&fl6->daddr, &daddr->v6.sin6_addr);
++	fl6->fl6_dport = daddr->v6.sin6_port;
++	fl6->flowi6_proto = IPPROTO_SCTP;
+ 	if (ipv6_addr_type(&daddr->v6.sin6_addr) & IPV6_ADDR_LINKLOCAL)
+ 		fl6->flowi6_oif = daddr->v6.sin6_scope_id;
  
-@@ -697,20 +696,6 @@ static int sctp_rcv_ootb(struct sk_buff *skb)
- 		if (SCTP_CID_INIT = ch->type && (void *)ch != skb->data)
- 			goto discard;
  
--		/* RFC 8.4, 7) If the packet contains a "Stale cookie" ERROR
--		 * or a COOKIE ACK the SCTP Packet should be silently
--		 * discarded.
--		 */
--		if (SCTP_CID_COOKIE_ACK = ch->type)
--			goto discard;
--
--		if (SCTP_CID_ERROR = ch->type) {
--			sctp_walk_errors(err, ch) {
--				if (SCTP_ERROR_STALE_COOKIE = err->cause)
--					goto discard;
--			}
--		}
--
- 		ch = (sctp_chunkhdr_t *) ch_end;
- 	} while (ch_end < skb_tail_pointer(skb));
+ 	SCTP_DEBUG_PRINTK("%s: DST=%pI6 ", __func__, &fl6->daddr);
  
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 194d5ec..ad3b43b 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -3332,8 +3332,10 @@ sctp_disposition_t sctp_sf_ootb(const struct sctp_endpoint *ep,
- 	struct sctp_chunk *chunk = arg;
- 	struct sk_buff *skb = chunk->skb;
- 	sctp_chunkhdr_t *ch;
-+	sctp_errhdr_t *err;
- 	__u8 *ch_end;
- 	int ootb_shut_ack = 0;
-+	int ootb_cookie_ack = 0;
- 
- 	SCTP_INC_STATS(SCTP_MIB_OUTOFBLUES);
- 
-@@ -3358,6 +3360,23 @@ sctp_disposition_t sctp_sf_ootb(const struct sctp_endpoint *ep,
- 		if (SCTP_CID_ABORT = ch->type)
- 			return sctp_sf_pdiscard(ep, asoc, type, arg, commands);
- 
-+		/* RFC 8.4, 7) If the packet contains a "Stale cookie" ERROR
-+		 * or a COOKIE ACK the SCTP Packet should be silently
-+		 * discarded.
-+		 */
++	if (asoc)
++		fl6->fl6_sport = htons(asoc->base.bind_addr.port);
 +
-+		if (SCTP_CID_COOKIE_ACK = ch->type)
-+			ootb_cookie_ack = 1;
-+
-+		if (SCTP_CID_ERROR = ch->type) {
-+			sctp_walk_errors(err, ch) {
-+				if (SCTP_ERROR_STALE_COOKIE = err->cause) {
-+					ootb_cookie_ack = 1;
-+					break;
-+				}
-+			}
-+		}
-+
- 		/* Report violation if chunk len overflows */
- 		ch_end = ((__u8 *)ch) + WORD_ROUND(ntohs(ch->length));
- 		if (ch_end > skb_tail_pointer(skb))
-@@ -3369,6 +3388,8 @@ sctp_disposition_t sctp_sf_ootb(const struct sctp_endpoint *ep,
+ 	if (saddr) {
+ 		ipv6_addr_copy(&fl6->saddr, &saddr->v6.sin6_addr);
++		fl6->fl6_sport = saddr->v6.sin6_port;
+ 		SCTP_DEBUG_PRINTK("SRC=%pI6 - ", &fl6->saddr);
+ 	}
  
- 	if (ootb_shut_ack)
- 		return sctp_sf_shut_8_4_5(ep, asoc, type, arg, commands);
-+	else if (ootb_cookie_ack)
-+		return sctp_sf_pdiscard(ep, asoc, type, arg, commands);
- 	else
- 		return sctp_sf_tabort_8_4_8(ep, asoc, type, arg, commands);
- }
+-	err = ip6_dst_lookup(sk, &dst, fl6);
++	dst = ip6_dst_lookup_flow(sk, fl6, NULL, false);
+ 	if (!asoc || saddr)
+ 		goto out;
+ 
+@@ -286,7 +291,7 @@ static struct dst_entry *sctp_v6_get_dst(struct sctp_association *asoc,
+ 	/* ip6_dst_lookup has filled in the fl6->saddr for us.  Check
+ 	 * to see if we can use it.
+ 	 */
+-	if (!err) {
++	if (!IS_ERR(dst)) {
+ 		/* Walk through the bind address list and look for a bind
+ 		 * address that matches the source address of the returned dst.
+ 		 */
+@@ -330,11 +335,12 @@ static struct dst_entry *sctp_v6_get_dst(struct sctp_association *asoc,
+ 	rcu_read_unlock();
+ 	if (baddr) {
+ 		ipv6_addr_copy(&fl6->saddr, &baddr->v6.sin6_addr);
+-		err = ip6_dst_lookup(sk, &dst, fl6);
++		fl6->fl6_sport = baddr->v6.sin6_port;
++		dst = ip6_dst_lookup_flow(sk, fl6, NULL, false);
+ 	}
+ 
+ out:
+-	if (!err) {
++	if (!IS_ERR(dst)) {
+ 		struct rt6_info *rt;
+ 		rt = (struct rt6_info *)dst;
+ 		SCTP_DEBUG_PRINTK("rt6_dst:%pI6 rt6_src:%pI6\n",
 -- 
 1.6.5.2
 
