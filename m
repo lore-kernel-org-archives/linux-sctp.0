@@ -1,54 +1,34 @@
-From: Joe Perches <joe@perches.com>
-Date: Thu, 12 May 2011 19:19:09 +0000
-Subject: [PATCH 1/2] sctp: sctp_sendmsg: Don't initialize default_sinfo
-Message-Id: <a4e846ed62d7f9222dc9b09ca00b5356a1eb9b73.1305227620.git.joe@perches.com>
+From: David Miller <davem@davemloft.net>
+Date: Thu, 12 May 2011 21:06:03 +0000
+Subject: Re: [PATCH 1/2] sctp: sctp_sendmsg: Don't initialize default_sinfo
+Message-Id: <20110512.170603.549349521517995900.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1305227620.git.joe@perches.com>
-In-Reply-To: <cover.1305227620.git.joe@perches.com>
+	<a4e846ed62d7f9222dc9b09ca00b5356a1eb9b73.1305227620.git.joe@perches.com>
+In-Reply-To: <a4e846ed62d7f9222dc9b09ca00b5356a1eb9b73.1305227620.git.joe@perches.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>
-Cc: "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: joe@perches.com
+Cc: vladislav.yasevich@hp.com, sri@us.ibm.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-This variable only needs initialization when cmsgs.info
-is NULL.
+From: Joe Perches <joe@perches.com>
+Date: Thu, 12 May 2011 12:19:09 -0700
 
-Don't use memset, just initialize every struct member.
+> This variable only needs initialization when cmsgs.info
+> is NULL.
+> 
+> Don't use memset, just initialize every struct member.
+> 
+> Signed-off-by: Joe Perches <joe@perches.com>
 
-Signed-off-by: Joe Perches <joe@perches.com>
----
- net/sctp/socket.c |    5 ++++-
- 1 files changed, 4 insertions(+), 1 deletions(-)
+I don't think you do this, this structure has padding holes on pretty
+much every architecture.
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 33d9ee6..a5d3560 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -1496,8 +1496,8 @@ SCTP_STATIC int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
- 	struct sctp_chunk *chunk;
- 	union sctp_addr to;
- 	struct sockaddr *msg_name = NULL;
--	struct sctp_sndrcvinfo default_sinfo = { 0 };
- 	struct sctp_sndrcvinfo *sinfo;
-+	struct sctp_sndrcvinfo default_sinfo;
- 	struct sctp_initmsg *sinit;
- 	sctp_assoc_t associd = 0;
- 	sctp_cmsgs_t cmsgs = { NULL };
-@@ -1761,10 +1761,13 @@ SCTP_STATIC int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
- 		 * some defaults.
- 		 */
- 		default_sinfo.sinfo_stream = asoc->default_stream;
-+		default_sinfo.sinfo_ssn = 0;
- 		default_sinfo.sinfo_flags = asoc->default_flags;
- 		default_sinfo.sinfo_ppid = asoc->default_ppid;
- 		default_sinfo.sinfo_context = asoc->default_context;
- 		default_sinfo.sinfo_timetolive = asoc->default_timetolive;
-+		default_sinfo.sinfo_tsn = 0;
-+		default_sinfo.sinfo_cumtsn = 0;
- 		default_sinfo.sinfo_assoc_id = sctp_assoc2id(asoc);
- 		sinfo = &default_sinfo;
- 	}
--- 
-1.7.5.rc3.dirty
+It starts with 3 u16's, then there is a u32, so there is a 2-byte
+piece of padding after the 3rd u16.
 
+Can you prove that these uninitialized portions never make it to
+userspace?  If you can, that proof belongs in the commit message.
+
+I think it's too risky.
