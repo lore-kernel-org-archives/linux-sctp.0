@@ -1,27 +1,28 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 12 May 2011 21:31:12 +0000
-Subject: Re: [PATCH 1/2 v2] sctp: sctp_sendmsg: Don't initialize
-Message-Id: <20110512.173112.1134946518914800656.davem@davemloft.net>
+From: Joe Perches <joe@perches.com>
+Date: Thu, 12 May 2011 19:19:08 +0000
+Subject: [PATCH 0/2] sctp: socket cleanups
+Message-Id: <cover.1305227620.git.joe@perches.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <a4e846ed62d7f9222dc9b09ca00b5356a1eb9b73.1305227620.git.joe@perches.com>
-	<20110512.170603.549349521517995900.davem@davemloft.net>
-	<1305235641.6124.64.camel@Joe-Laptop>
-In-Reply-To: <1305235641.6124.64.camel@Joe-Laptop>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: joe@perches.com
-Cc: vladislav.yasevich@hp.com, sri@us.ibm.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-From: Joe Perches <joe@perches.com>
-Date: Thu, 12 May 2011 14:27:20 -0700
+Size trivially reduced as well.
 
-> This variable only needs initialization when cmsgs.info
-> is NULL.
-> 
-> Use memset to ensure padding is also zeroed so
-> kernel doesn't leak any data.
-> 
-> Signed-off-by: Joe Perches <joe@perches.com>
+$ size net/sctp/socket.o
+   text	   data	    bss	    dec	    hex	filename
+  55720	    442	  14988	  71150	  115ee	net/sctp/socket.o.new
+  55730	    442	  14996	  71168	  11600	net/sctp/socket.o.old
 
-This looks a lot better, applied.
+Joe Perches (2):
+  sctp: sctp_sendmsg: Don't initialize default_sinfo
+  sctp: sctp_sendmsg: Don't test known non-null sinfo
+
+ net/sctp/socket.c |   15 ++++++++-------
+ 1 files changed, 8 insertions(+), 7 deletions(-)
+
+-- 
+1.7.5.rc3.dirty
+
