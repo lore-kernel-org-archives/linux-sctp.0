@@ -1,8 +1,10 @@
 From: Thanh Nguyen <ht22.pt@gmail.com>
-Date: Thu, 19 May 2011 17:43:53 +0000
+Date: Thu, 19 May 2011 17:43:59 +0000
 Subject: [Question] About Multi-homing in LKSCTP
-Message-Id: <1305852113.16286.9.camel@SLinux>
+Message-Id: <1305852219.16380.1.camel@SLinux>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1305852113.16286.9.camel@SLinux>
+In-Reply-To: <1305852113.16286.9.camel@SLinux>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -18,4 +20,5 @@ endpoint SHOULD try to retransmit a chunk that timed out to an active
 destination transport address that is different from the last
 destination address to which the DATA chunk was sent." in section 6.4
 In LKSCTP use this feature or not? If not, which do LKSCTP use?
+
 
