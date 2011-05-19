@@ -1,23 +1,21 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 31 May 2011 22:29:36 +0000
-Subject: Re: [PATCH] sctp: stop pending timers and purge queues when peer
-Message-Id: <20110531.152936.59320562.davem@davemloft.net>
+From: Thanh Nguyen <ht22.pt@gmail.com>
+Date: Thu, 19 May 2011 17:43:53 +0000
+Subject: [Question] About Multi-homing in LKSCTP
+Message-Id: <1305852113.16286.9.camel@SLinux>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4DE36218.2090400@cn.fujitsu.com>
-In-Reply-To: <4DE36218.2090400@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: yjwei@cn.fujitsu.com
-Cc: vladislav.yasevich@hp.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Mon, 30 May 2011 17:23:36 +0800
+In LKSCTP with multi-homing, if association using 4 IP(list Ip1 Ip2 Ip3
+IP4 and bandwith,delay different) and peer have 3 IP (IP5 Ip 6 Ip7 ).
+When establish association, primary path is IP1-IP5, if path IP1-IP5
+die, how is SCTP choose new path? (select by best bandwith and delay or
+list IP).
+And in RFC have sentence "Furthermore, when its peer is multi-homed, an
+endpoint SHOULD try to retransmit a chunk that timed out to an active
+destination transport address that is different from the last
+destination address to which the DATA chunk was sent." in section 6.4
+In LKSCTP use this feature or not? If not, which do LKSCTP use?
 
-> If the peer restart the asoc, we should not only fail any unsent/unacked
-> data, but also stop the T3-rtx, SACK, T4-rto timers, and teardown ASCONF
-> queues.
-> 
-> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-
-Applied, thanks.
