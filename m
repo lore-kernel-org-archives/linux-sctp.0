@@ -1,34 +1,66 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 12 May 2011 21:06:03 +0000
-Subject: Re: [PATCH 1/2] sctp: sctp_sendmsg: Don't initialize default_sinfo
-Message-Id: <20110512.170603.549349521517995900.davem@davemloft.net>
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Date: Wed, 25 May 2011 07:48:02 +0000
+Subject: [PATCH] sctp: fix memory leak of the ASCONF queue when free asoc
+Message-Id: <4DDCB432.7000903@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1305227620.git.joe@perches.com>
-	<a4e846ed62d7f9222dc9b09ca00b5356a1eb9b73.1305227620.git.joe@perches.com>
-In-Reply-To: <a4e846ed62d7f9222dc9b09ca00b5356a1eb9b73.1305227620.git.joe@perches.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: joe@perches.com
-Cc: vladislav.yasevich@hp.com, sri@us.ibm.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: David Miller <davem@davemloft.net>, Vlad Yasevich <vladislav.yasevich@hp.com>
+Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, lksctp <linux-sctp@vger.kernel.org>
 
-From: Joe Perches <joe@perches.com>
-Date: Thu, 12 May 2011 12:19:09 -0700
+If an ASCONF chunk is outstanding, then the following ASCONF
+chunk will be queued for later transmission. But when we free
+the asoc, we forget to free the ASCONF queue at the same time,
+this will cause memory leak.
 
-> This variable only needs initialization when cmsgs.info
-> is NULL.
-> 
-> Don't use memset, just initialize every struct member.
-> 
-> Signed-off-by: Joe Perches <joe@perches.com>
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+---
+ net/sctp/associola.c |   16 ++++++++++++++++
+ 1 files changed, 16 insertions(+), 0 deletions(-)
 
-I don't think you do this, this structure has padding holes on pretty
-much every architecture.
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 1a21c57..525f97c 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -64,6 +64,7 @@
+ /* Forward declarations for internal functions. */
+ static void sctp_assoc_bh_rcv(struct work_struct *work);
+ static void sctp_assoc_free_asconf_acks(struct sctp_association *asoc);
++static void sctp_assoc_free_asconf_queue(struct sctp_association *asoc);
+ 
+ /* Keep track of the new idr low so that we don't re-use association id
+  * numbers too fast.  It is protected by they idr spin lock is in the
+@@ -446,6 +447,9 @@ void sctp_association_free(struct sctp_association *asoc)
+ 	/* Free any cached ASCONF_ACK chunk. */
+ 	sctp_assoc_free_asconf_acks(asoc);
+ 
++	/* Free the ASCONF queue. */
++	sctp_assoc_free_asconf_queue(asoc);
++
+ 	/* Free any cached ASCONF chunk. */
+ 	if (asoc->addip_last_asconf)
+ 		sctp_chunk_free(asoc->addip_last_asconf);
+@@ -1578,6 +1582,18 @@ retry:
+ 	return error;
+ }
+ 
++/* Free the ASCONF queue */
++static void sctp_assoc_free_asconf_queue(struct sctp_association *asoc)
++{
++	struct sctp_chunk *asconf;
++	struct sctp_chunk *tmp;
++
++	list_for_each_entry_safe(asconf, tmp, &asoc->addip_chunk_list, list) {
++		list_del_init(&asconf->list);
++		sctp_chunk_free(asconf);
++	}
++}
++
+ /* Free asconf_ack cache */
+ static void sctp_assoc_free_asconf_acks(struct sctp_association *asoc)
+ {
+-- 
+1.6.5.2
 
-It starts with 3 u16's, then there is a u32, so there is a 2-byte
-piece of padding after the 3rd u16.
 
-Can you prove that these uninitialized portions never make it to
-userspace?  If you can, that proof belongs in the commit message.
-
-I think it's too risky.
