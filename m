@@ -1,40 +1,27 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 27 May 2011 17:37:00 +0000
-Subject: [PATCH] sctp: fixed missing fixup of sctp_local_addr_free
-Message-Id: <1306517820-4793-1-git-send-email-nhorman@tuxdriver.com>
+From: David Miller <davem@davemloft.net>
+Date: Fri, 27 May 2011 17:40:04 +0000
+Subject: Re: [PATCH] sctp: fixed missing fixup of sctp_local_addr_free
+Message-Id: <20110527.134004.1654129007987862831.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1306517820-4793-1-git-send-email-nhorman@tuxdriver.com>
+In-Reply-To: <1306517820-4793-1-git-send-email-nhorman@tuxdriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org
+To: nhorman@tuxdriver.com
+Cc: netdev@vger.kernel.org, vladislav.yasevich@hp.com, sri@us.ibm.com, linux-sctp@vger.kernel.org
 
-commit 1231f0baa547a541a7481119323b7f964dda4788  Converted sctp to use
-kfree_rcu from sctp_local_addr_free but missed this one call point.  Fix it up
-accordingly.
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Fri, 27 May 2011 13:37:00 -0400
 
-Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-CC: Vlad Yasevich <vladislav.yasevich@hp.com>
-CC: Sridhar Samudrala <sri@us.ibm.com>
-CC: "David S. Miller" <davem@davemloft.net>
-CC: linux-sctp@vger.kernel.org
----
- net/sctp/bind_addr.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+> commit 1231f0baa547a541a7481119323b7f964dda4788  Converted sctp to use
+> kfree_rcu from sctp_local_addr_free but missed this one call point.  Fix it up
+> accordingly.
+> 
+> Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
 
-diff --git a/net/sctp/bind_addr.c b/net/sctp/bind_addr.c
-index 6338413..83e3011 100644
---- a/net/sctp/bind_addr.c
-+++ b/net/sctp/bind_addr.c
-@@ -145,7 +145,7 @@ static void sctp_bind_addr_clean(struct sctp_bind_addr *bp)
- 	/* Empty the bind address list. */
- 	list_for_each_entry_safe(addr, temp, &bp->address_list, list) {
- 		list_del_rcu(&addr->list);
--		call_rcu(&addr->rcu, sctp_local_addr_free);
-+		kfree_rcu(addr, rcu);
- 		SCTP_DBG_OBJCNT_DEC(addr);
- 	}
- }
--- 
-1.7.5.2
+This has been fixed for several days now.
 
+If you're using the net-next-2.6 tree, don't, when it's not active
+it's just a dummy tree for Stephen Rothwell to pull into -next
+and it will be rebuilt as soon as the merge window is over.
