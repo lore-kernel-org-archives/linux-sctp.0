@@ -1,24 +1,40 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 25 May 2011 21:57:04 +0000
-Subject: Re: [PATCH] sctp: fix memory leak of the ASCONF queue when free
-Message-Id: <20110525.175704.394251370550456184.davem@davemloft.net>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Fri, 27 May 2011 17:37:00 +0000
+Subject: [PATCH] sctp: fixed missing fixup of sctp_local_addr_free
+Message-Id: <1306517820-4793-1-git-send-email-nhorman@tuxdriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4DDCB432.7000903@cn.fujitsu.com>
-In-Reply-To: <4DDCB432.7000903@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: yjwei@cn.fujitsu.com
-Cc: vladislav.yasevich@hp.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org
 
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Wed, 25 May 2011 15:48:02 +0800
+commit 1231f0baa547a541a7481119323b7f964dda4788  Converted sctp to use
+kfree_rcu from sctp_local_addr_free but missed this one call point.  Fix it up
+accordingly.
 
-> If an ASCONF chunk is outstanding, then the following ASCONF
-> chunk will be queued for later transmission. But when we free
-> the asoc, we forget to free the ASCONF queue at the same time,
-> this will cause memory leak.
-> 
-> Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+CC: Vlad Yasevich <vladislav.yasevich@hp.com>
+CC: Sridhar Samudrala <sri@us.ibm.com>
+CC: "David S. Miller" <davem@davemloft.net>
+CC: linux-sctp@vger.kernel.org
+---
+ net/sctp/bind_addr.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Applied.
+diff --git a/net/sctp/bind_addr.c b/net/sctp/bind_addr.c
+index 6338413..83e3011 100644
+--- a/net/sctp/bind_addr.c
++++ b/net/sctp/bind_addr.c
+@@ -145,7 +145,7 @@ static void sctp_bind_addr_clean(struct sctp_bind_addr *bp)
+ 	/* Empty the bind address list. */
+ 	list_for_each_entry_safe(addr, temp, &bp->address_list, list) {
+ 		list_del_rcu(&addr->list);
+-		call_rcu(&addr->rcu, sctp_local_addr_free);
++		kfree_rcu(addr, rcu);
+ 		SCTP_DBG_OBJCNT_DEC(addr);
+ 	}
+ }
+-- 
+1.7.5.2
+
