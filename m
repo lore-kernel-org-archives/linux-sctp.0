@@ -1,66 +1,116 @@
-From: Vladislav Yasevich <vladislav.yasevich@hp.com>
-Date: Wed, 29 Jun 2011 14:09:18 +0000
-Subject: Re: [PATCH] sctp: Reducing rwnd by sizeof(struct sk_buff) for each
-Message-Id: <4E0B320E.4040309@hp.com>
+From: =?UTF-8?B?Tmd1eeG7hW4gUGjGsOG7m2MgVGjDoG5o?= <ht22.pt@gmail.com>
+Date: Thu, 09 Jun 2011 03:09:33 +0000
+Subject: Problem code multi-streaming
+Message-Id: <4DF0396D.50401@gmail.com>
+MIME-Version: 1
+Content-Type: multipart/mixed; boundary="------------060101040805040805090401"
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20110624101535.GB9222@canuck.infradead.org> <4E0495C3.30102@hp.com> <20110624144251.GC9222@canuck.infradead.org> <4E04AB67.1040407@hp.com> <20110627091136.GA10085@canuck.infradead.org>
-In-Reply-To: <20110627091136.GA10085@canuck.infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+To: linux-sctp@vger.kernel.org
+
+This is a multi-part message in MIME format.
+--------------060101040805040805090401
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-To: Sridhar Samudrala <sri@us.ibm.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On 06/27/2011 05:11 AM, Thomas Graf wrote:
-> On Fri, Jun 24, 2011 at 11:21:11AM -0400, Vladislav Yasevich wrote:
->> We, instead of trying to underestimate the window size, try to over-estimate it.
->> Almost every implementation has some kind of overhead and we don't know how
->> that overhead will impact the window.  As such we try to temporarily account for this
->> overhead.
-> 
-> I looked into this some more and it turns out that adding per-packet
-> overhead is difficult because when we mark chunks for retransmissions
-> we have to add its data size to the peer rwnd again but we have no
-> idea how many packets were used for the initial transmission. Therefore
-> if we add an overhead, we can only do so per chunk.
-> 
+I have some code demo using multi-streaming, but it is not run right.I 
+attach my code send file in this mail. I using this code from sctp_test, 
+but i don't know why it error.
+I use sinfo->sinfo_stream = 1; and when send one chunk I change stream :
 
-Good point.
+  if(stream==1) stream=2;
+  if(stream==2)  stream=1;
 
->> If we treat the window as strictly available data, then we may end up sending a lot more traffic
->> then the window can take thus causing us to enter 0 window probe and potential retransmission
->> issues that will trigger congestion control.  
->> We'd like to avoid that so we put some overhead into our computations.  It may not be ideal
->> since we do this on a per-chunk basis.  It could probably be done on per-packet basis instead.
->> This way, we'll essentially over-estimate but under-subscribe our current view of the peers
->> window.  So in one shot, we are not going to over-fill it and will get an updated view next
->> time the SACK arrives.
-> 
-> What kind of configuration showed this behaviour? Did you observe that
-> issue with Linux peers?
+But capture packet with Wireshark I see SID is always 1, I send packet 
+is order, using multi-homing.
+All different functions run ok.I don't know why SID don't change.I read 
+this darft of socket API SCTP in folder doc of LKSCTP, but I don't 
+understand why I write code like sctp_test but sctp_test run ok.
 
-Yes, this was observed with linux peers.
+--------------060101040805040805090401
+Content-Type: text/plain;
+ name="codesend_file.c"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="codesend_file.c"
 
-> If a peer announces an a_rwnd which it cannot
-> handle then that is a implementation bug of the receiver and not of the
-> sender.
-> 
-> We won't go into zero window probe mode that easily, remember it's only
-> one packet allowed in flight while rwnd is 0. We always take into
-> account outstanding bytes when updating rwnd with a_rwnd so our view of
-> the peer's rwnd is very accurate.
-> 
-> In fact the RFC clearly states when and how to update the peer rwnd:
-> 
->    B) Any time a DATA chunk is transmitted (or retransmitted) to a peer,
->       the endpoint subtracts the data size of the chunk from the rwnd of
->       that peer.
-> 
-> I would like to try and reproduce the behaviour you have observed and
-> fix it without cutting our ability to produce pmtu maxed packets with
-> small data chunks.
-> 
-
-This was easily reproducible with sctp_darn tool using 1 byte payload.
-This was a while ago, and I dont' know if anyone has tried it recently.
-
--vlad
+dm9pZCBzZW5kX2ZpbGUoaW50IHNrKQ17DSAgICBzdHJ1Y3QgbXNnaGRyIG91dG1zZzsNICAg
+IGNoYXIgb3V0Y21zZ1tDTVNHX1NQQUNFKHNpemVvZihzdHJ1Y3Qgc2N0cF9zbmRyY3ZpbmZv
+KSldOw0gICAgc3RydWN0IGNtc2doZHIgKmNtc2c7DSAgICBzdHJ1Y3Qgc2N0cF9zbmRyY3Zp
+bmZvICpzaW5mbzsNICAgIHN0cnVjdCBpb3ZlYyBpb3Y7DSAgICBjaGFyIG1lc3NhZ2VbMTUw
+MF07DSAgICBzdHJ1Y3QgaG9zdGVudCAqaHN0Ow0gICAgc3RydWN0IHNvY2thZGRyICphZGRy
+czsNICAgIGludCBtc2dsZW47DSAgICBpbnQgZXJyb3IgPSAwOw0gICAgaW50IHRyeV9lcnJv
+cj0wOw0gICAgaW50IHN0cmVhbSA9IDE7DSAgICAvL0tpZW0gbGFpIGRpYSBjaGkgZGljaCB2
+YSBnYW4gY2FjIHRob25nIHRpbiBwaHUgaG9wDSAgICAgICAgaWYgKHJlbW90ZV9ob3N0ICE9
+IE5VTEwpIHsNCQloc3QgPSBnZXRob3N0YnluYW1lKHJlbW90ZV9ob3N0KTsNCQlpZiAoaHN0
+ID09IE5VTEwgfHwgaHN0LT5oX2xlbmd0aCA8IDEpIHsNCQkJZnByaW50ZihzdGRlcnIsICIl
+czogYmFkIGhvc3RuYW1lOiBcbiIsDQkJCQlyZW1vdGVfaG9zdCk7DQkJCWV4aXQoMSk7DQkJ
+fQ0JCXJhX2ZhbWlseSA9IGhzdC0+aF9hZGRydHlwZTsNICAgICAgICAgICAgICAgIHJhX2xl
+biA9IHNpemVvZihyZW1vdGVfYWRkcik7DSAgICAgICAgICAgICAgICByYV9yYXcgPSAmcmVt
+b3RlX2FkZHIuc2luX2FkZHI7DQkJcmVtb3RlX2FkZHIuc2luX3BvcnQgPSBodG9ucyg4MDAw
+KTsNCQlyZW1vdGVfYWRkci5zaW5fZmFtaWx5ID0gQUZfSU5FVDsNCQltZW1jcHkocmFfcmF3
+LCBoc3QtPmhfYWRkcl9saXN0WzBdLCBoc3QtPmhfbGVuZ3RoKTsNICAgICAgICB9DSAgICAg
+ICAgZWxzZQ0gICAgICAgIHsNICAgICAgICAgICAgLy9Ib3N0bmFtZSBraG9uZyB0b24gdGFp
+IHRob2F0IGNodW9uZyB0cmluaC4uLg0gICAgICAgICAgICBwcmludGYoIk5vdCBmb3VuZCBy
+ZW1vdGUgaG9zdCEhIVxuIik7DSAgICAgICAgICAgIHByaW50ZigiU2h1dGRvd24gcHJvZ3Jh
+bS5cbiIpOw0gICAgICAgICAgICBleGl0KDEpOw0gICAgICAgIH0NICAgICAgICBwcmludGYo
+Ikhvc3QgbmFtZSBpcyAlcy5cbiIscmVtb3RlX2hvc3QpOw0gICAgICAgIC8vIEtJZW0gdHJh
+IHN1IHRvbiB0YWkgY3VhIGtldCBub2kgdG9pIHJlbW90ZSBhZGRycw0gICAgICAgIGlmICgo
+U09DS19TRVFQQUNLRVQgPT0gc29ja2V0X3R5cGUpICYmIGFzc29jaWQgJiYNICAgICAgICAg
+ICAgKDAgIT0gdGVzdF9za19mb3JfYXNzb2Moc2ssIGFzc29jaWQpKSkgew0JCWFzc29jaWQg
+PSB0ZXN0X3JlY3ZfYXNzb2NfY2hhbmdlKHNrKTsNCQlwcmludGYoIk9sZCBhc3NvY2lhdGlv
+biBnb25lLCBTdGFydGluZyBhIG5ldyBvbmUhXG4iKTsNCQluZXdfY29ubmVjdGlvbiA9IDE7
+DQl9DSAgICAgICAgaW50IGZkOw0gICAgICAgIGlmICggbG9jYWxmaWxlID09IE5VTEwgKSBm
+ZCA9IDA7DQlmZCA9IG9wZW4obG9jYWxmaWxlLE9fUkRPTkxZKTsNICAgICAgICBpZihmZD09
+LTEpDSAgICAgICAgew0gICAgICAgICAgICBwcmludGYoIlJlYWQgZmlsZSBlcnJvci5cbiIp
+Ow0gICAgICAgICAgICBleGl0KDEpOw0gICAgICAgIH0NCWZwcmludGYoc3RkZXJyLCIgcmVh
+ZHkgdG8gc2VuZC4uLlxuIik7DSAgICAgICAgcHJpbnRmKCJSZWFkeSB0byBzZW5kIGZpbGUu
+Li4uXG4iKTsNICAgICAgICBtc2dsZW49cmVhZChmZCxtZXNzYWdlLDEwMjQpOw0gICAgICAg
+IGRvIHsNICAgICAgICAgICAgLyogSW5pdGlhbGl6ZSB0aGUgbWVzc2FnZSBzdHJ1Y3Qgd2Ug
+dXNlIHRvIHBhc3MNCQkgKiBtZXNzYWdlcyB0byB0aGUgcmVtb3RlIHNvY2tldC4NICAgICAg
+ICAgICAgICovDSAgICAgICAgICAgIHRyeV9lcnJvcisrOw0gICAgICAgICAgICBpZih0cnlf
+ZXJyb3I9PTEwMCkNICAgICAgICAgICAgew0gICAgICAgICAgICAgICAgcHJpbnRmKCJDYW4n
+dCBjb25uZWN0IHJlbW90ZSBhZGRyZXNzLHByb2dyYW0gc2h1dGRvd24uXG4iKTsNICAgICAg
+ICAgICAgICAgIGV4aXQoMSk7DSAgICAgICAgICAgIH0NICAgICAgICAgICAgaW92Lmlvdl9i
+YXNlID0gbWVzc2FnZTsNICAgICAgICAgICAgaW92Lmlvdl9sZW4gPSBtc2dsZW47DSAgICAg
+ICAgICAgIG91dG1zZy5tc2dfaW92ID0gJmlvdjsNICAgICAgICAgICAgb3V0bXNnLm1zZ19p
+b3ZsZW4gPSAxOw0gICAgICAgICAgICBvdXRtc2cubXNnX2NvbnRyb2wgPSBvdXRjbXNnOzsN
+ICAgICAgICAgICAgb3V0bXNnLm1zZ19jb250cm9sbGVuID0gc2l6ZW9mKG91dGNtc2cpOw0g
+ICAgICAgICAgICBvdXRtc2cubXNnX25hbWUgPSAmcmVtb3RlX2FkZHI7DSAgICAgICAgICAg
+IG91dG1zZy5tc2dfbmFtZWxlbiA9IHJhX2xlbjsNICAgICAgICAgICAgY21zZyA9IENNU0df
+RklSU1RIRFIoJm91dG1zZyk7DSAgICAgICAgICAgIGNtc2ctPmNtc2dfbGV2ZWwgPSBJUFBS
+T1RPX1NDVFA7DSAgICAgICAgICAgIGNtc2ctPmNtc2dfdHlwZSA9IFNDVFBfU05EUkNWOw0g
+ICAgICAgICAgICBjbXNnLT5jbXNnX2xlbiA9IENNU0dfTEVOKHNpemVvZihzdHJ1Y3Qgc2N0
+cF9zbmRyY3ZpbmZvKSk7DSAgICAgICAgICAgIG91dG1zZy5tc2dfY29udHJvbGxlbiA9IGNt
+c2ctPmNtc2dfbGVuOw0gICAgICAgICAgICBzaW5mbyA9IChzdHJ1Y3Qgc2N0cF9zbmRyY3Zp
+bmZvICopQ01TR19EQVRBKGNtc2cpOw0gICAgICAgICAgICBtZW1zZXQoc2luZm8sIDAsIHNp
+emVvZihzdHJ1Y3Qgc2N0cF9zbmRyY3ZpbmZvKSk7DSAgICAgICAgICAgIHNpbmZvLT5zaW5m
+b19mbGFncyA9IDA7DSAgICAgICAgICAgIHNpbmZvLT5zaW5mb19zdHJlYW0gPSAxOw0gICAg
+ICAgICAgICBzaW5mby0+c2luZm9fcHBpZD1yYW5kKCk7DSAgICAgICAgICAgIGVycm9yID0g
+c2VuZG1zZyhzaywgJm91dG1zZywgTVNHX1dBSVRBTEwpOw0gICAgICAgICAgICBpZiAoZXJy
+b3IgIT0gbXNnbGVuKSANCQlwcmludGYoc3RkZXJyLCAiOiBlcnJvcjogJXMuXG4iLCBzdHJl
+cnJvcihlcnJubykpOw0JfSB3aGlsZSAoZXJyb3IgIT0gbXNnbGVuKTsNDSAgICAvKiBJZiB0
+aGlzIGlzIHRoZSBmaXJzdCBtZXNzYWdlIHNlbnQgb3ZlciBhIFVEUC1zdHlsZSBzb2NrZXQs
+DSAgICAgKiBnZXQgdGhlIGFzc29jaWQgZnJvbSB0aGUgU0NUUF9BU1NPQ19DSEFOR0Ugbm90
+aWZpY2F0aW9uLg0gICAgICovDQlpZiAoKFNPQ0tfU0VRUEFDS0VUID09IHNvY2tldF90eXBl
+KSAmJiAoMCA9PSBhc3NvY2lkKSkNCQkJYXNzb2NpZCA9IHRlc3RfcmVjdl9hc3NvY19jaGFu
+Z2Uoc2spOw0NCS8qIFZlcmlmeSB0aGVyZSBpcyBubyBhc3NvY2lhdGlvbi4gICovDQlpZiAo
+MCAhPSB0ZXN0X3NrX2Zvcl9hc3NvYyhzaywgYXNzb2NpZCkpIHsNCQlwcmludGYoIk5vIGFz
+c29jaWF0aW9uIGlzIHByZXNlbnQgbm93ISFcbiIpOw0JCW5ld19jb25uZWN0aW9uID0gMTsN
+CQl9DSAgICAgICAgZWxzZSB7DQkJaWYgKG5ld19jb25uZWN0aW9uKSB7DQkJaW50IHJjID0g
+c2N0cF9nZXRwYWRkcnMoc2ssIGFzc29jaWQsICZhZGRycyk7DQkJaWYgKDAgPj0gcmMpIHsN
+ICAgICAgICAgICAgICAgICAgICBpZiAocmMgPT0gMCkgew0JCQlmcHJpbnRmKHN0ZGVyciwg
+InNjdHBfZ2V0cGFkZHJzIGZhaWxlZCwgbm8gcGVlcnMuXG4iKTsNICAgICAgICAgICAgICAg
+ICAgICB9IGVsc2Ugew0JCQlmcHJpbnRmKHN0ZGVyciwgInNjdHBfZ2V0cGFkZHJzIGZhaWxl
+ZCAlcyglZCkuXG4iLCBzdHJlcnJvcihlcnJubyksIGVycm5vKTsNCQkJfQ0gICAgICAgICAg
+ICAgICAgICAgICAgICAgZXhpdCgxKTsNCQl9DQkJcHJpbnRmKCJOZXcgY29ubmVjdGlvbiwg
+cGVlciBhZGRyZXNzZXNcbiIpOw0JCS8vcHJpbnRfYWRkcl9idWYoYWRkcnMsIHJjKTsNCQlz
+Y3RwX2ZyZWVwYWRkcnMoYWRkcnMpOw0JCW5ld19jb25uZWN0aW9uID0gMDsNCQl9DSAgICAg
+ICAgfQ0gICAgICAgIGlvdi5pb3ZfYmFzZSA9IGJ1ZmZlcjsNCWlvdi5pb3ZfbGVuID0gMTsN
+CW91dG1zZy5tc2dfaW92ID0gJmlvdjsNCW91dG1zZy5tc2dfaW92bGVuID0gMTsNICAgICAg
+ICAvKiBvcGVuIHRoZSBmaWxlICovDQkNCXdoaWxlICggKG1zZ2xlbiA9IHJlYWQoZmQsYnVm
+ZmVyLDEwMjQpKSA+IDAgKSB7DQkJLyogU2VuZCB0byBvdXIgbmVpZ2hib3IuICAqLw0gICAg
+ICAgICAgICBpZihzdHJlYW09PTEpIHN0cmVhbT0yOw0gICAgICAgICAgICBpZihzdHJlYW09
+PTIpICBzdHJlYW09MTsNICAgICAgICAgICAgc2luZm8tPnNpbmZvX3N0cmVhbSA9IHN0cmVh
+bTsNCQkJaW92Lmlvdl9sZW4gPSBtc2dsZW47DQkJIHNlbmRtc2coc2ssICZvdXRtc2csIE1T
+R19XQUlUQUxMKTsNCX0NDQljbG9zZShmZCk7DQljbG9zZShzayk7DX0=
+--------------060101040805040805090401--
