@@ -1,116 +1,33 @@
-From: =?UTF-8?B?Tmd1eeG7hW4gUGjGsOG7m2MgVGjDoG5o?= <ht22.pt@gmail.com>
-Date: Thu, 09 Jun 2011 03:09:33 +0000
-Subject: Problem code multi-streaming
-Message-Id: <4DF0396D.50401@gmail.com>
-MIME-Version: 1
-Content-Type: multipart/mixed; boundary="------------060101040805040805090401"
+From: Max Matveev <makc@redhat.com>
+Date: Thu, 09 Jun 2011 04:27:37 +0000
+Subject: Re: Problem code multi-streaming
+Message-Id: <19952.19385.729252.681401@regina.usersys.redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <4DF0396D.50401@gmail.com>
+In-Reply-To: <4DF0396D.50401@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 To: linux-sctp@vger.kernel.org
 
-This is a multi-part message in MIME format.
---------------060101040805040805090401
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+On Thu, 09 Jun 2011 10:09:33 +0700, Nguyễn Phước Thành wrote:
 
-I have some code demo using multi-streaming, but it is not run right.I 
-attach my code send file in this mail. I using this code from sctp_test, 
-but i don't know why it error.
-I use sinfo->sinfo_stream = 1; and when send one chunk I change stream :
+ ht22.pt> I have some code demo using multi-streaming, but it is not run right.I 
+ ht22.pt> attach my code send file in this mail. I using this code from sctp_test, 
+ ht22.pt> but i don't know why it error.
 
-  if(stream==1) stream=2;
-  if(stream==2)  stream=1;
+ ht22.pt> I use sinfo->sinfo_stream = 1; and when send one chunk I change stream :
 
-But capture packet with Wireshark I see SID is always 1, I send packet 
-is order, using multi-homing.
-All different functions run ok.I don't know why SID don't change.I read 
-this darft of socket API SCTP in folder doc of LKSCTP, but I don't 
-understand why I write code like sctp_test but sctp_test run ok.
+ ht22.pt>   if(stream=1) stream=2;
+ ht22.pt>   if(stream=2)  stream=1;
 
---------------060101040805040805090401
-Content-Type: text/plain;
- name="codesend_file.c"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
- filename="codesend_file.c"
+ ht22.pt> But capture packet with Wireshark I see SID is always 1, I send packet 
+ ht22.pt> is order, using multi-homing.
 
-dm9pZCBzZW5kX2ZpbGUoaW50IHNrKQ17DSAgICBzdHJ1Y3QgbXNnaGRyIG91dG1zZzsNICAg
-IGNoYXIgb3V0Y21zZ1tDTVNHX1NQQUNFKHNpemVvZihzdHJ1Y3Qgc2N0cF9zbmRyY3ZpbmZv
-KSldOw0gICAgc3RydWN0IGNtc2doZHIgKmNtc2c7DSAgICBzdHJ1Y3Qgc2N0cF9zbmRyY3Zp
-bmZvICpzaW5mbzsNICAgIHN0cnVjdCBpb3ZlYyBpb3Y7DSAgICBjaGFyIG1lc3NhZ2VbMTUw
-MF07DSAgICBzdHJ1Y3QgaG9zdGVudCAqaHN0Ow0gICAgc3RydWN0IHNvY2thZGRyICphZGRy
-czsNICAgIGludCBtc2dsZW47DSAgICBpbnQgZXJyb3IgPSAwOw0gICAgaW50IHRyeV9lcnJv
-cj0wOw0gICAgaW50IHN0cmVhbSA9IDE7DSAgICAvL0tpZW0gbGFpIGRpYSBjaGkgZGljaCB2
-YSBnYW4gY2FjIHRob25nIHRpbiBwaHUgaG9wDSAgICAgICAgaWYgKHJlbW90ZV9ob3N0ICE9
-IE5VTEwpIHsNCQloc3QgPSBnZXRob3N0YnluYW1lKHJlbW90ZV9ob3N0KTsNCQlpZiAoaHN0
-ID09IE5VTEwgfHwgaHN0LT5oX2xlbmd0aCA8IDEpIHsNCQkJZnByaW50ZihzdGRlcnIsICIl
-czogYmFkIGhvc3RuYW1lOiBcbiIsDQkJCQlyZW1vdGVfaG9zdCk7DQkJCWV4aXQoMSk7DQkJ
-fQ0JCXJhX2ZhbWlseSA9IGhzdC0+aF9hZGRydHlwZTsNICAgICAgICAgICAgICAgIHJhX2xl
-biA9IHNpemVvZihyZW1vdGVfYWRkcik7DSAgICAgICAgICAgICAgICByYV9yYXcgPSAmcmVt
-b3RlX2FkZHIuc2luX2FkZHI7DQkJcmVtb3RlX2FkZHIuc2luX3BvcnQgPSBodG9ucyg4MDAw
-KTsNCQlyZW1vdGVfYWRkci5zaW5fZmFtaWx5ID0gQUZfSU5FVDsNCQltZW1jcHkocmFfcmF3
-LCBoc3QtPmhfYWRkcl9saXN0WzBdLCBoc3QtPmhfbGVuZ3RoKTsNICAgICAgICB9DSAgICAg
-ICAgZWxzZQ0gICAgICAgIHsNICAgICAgICAgICAgLy9Ib3N0bmFtZSBraG9uZyB0b24gdGFp
-IHRob2F0IGNodW9uZyB0cmluaC4uLg0gICAgICAgICAgICBwcmludGYoIk5vdCBmb3VuZCBy
-ZW1vdGUgaG9zdCEhIVxuIik7DSAgICAgICAgICAgIHByaW50ZigiU2h1dGRvd24gcHJvZ3Jh
-bS5cbiIpOw0gICAgICAgICAgICBleGl0KDEpOw0gICAgICAgIH0NICAgICAgICBwcmludGYo
-Ikhvc3QgbmFtZSBpcyAlcy5cbiIscmVtb3RlX2hvc3QpOw0gICAgICAgIC8vIEtJZW0gdHJh
-IHN1IHRvbiB0YWkgY3VhIGtldCBub2kgdG9pIHJlbW90ZSBhZGRycw0gICAgICAgIGlmICgo
-U09DS19TRVFQQUNLRVQgPT0gc29ja2V0X3R5cGUpICYmIGFzc29jaWQgJiYNICAgICAgICAg
-ICAgKDAgIT0gdGVzdF9za19mb3JfYXNzb2Moc2ssIGFzc29jaWQpKSkgew0JCWFzc29jaWQg
-PSB0ZXN0X3JlY3ZfYXNzb2NfY2hhbmdlKHNrKTsNCQlwcmludGYoIk9sZCBhc3NvY2lhdGlv
-biBnb25lLCBTdGFydGluZyBhIG5ldyBvbmUhXG4iKTsNCQluZXdfY29ubmVjdGlvbiA9IDE7
-DQl9DSAgICAgICAgaW50IGZkOw0gICAgICAgIGlmICggbG9jYWxmaWxlID09IE5VTEwgKSBm
-ZCA9IDA7DQlmZCA9IG9wZW4obG9jYWxmaWxlLE9fUkRPTkxZKTsNICAgICAgICBpZihmZD09
-LTEpDSAgICAgICAgew0gICAgICAgICAgICBwcmludGYoIlJlYWQgZmlsZSBlcnJvci5cbiIp
-Ow0gICAgICAgICAgICBleGl0KDEpOw0gICAgICAgIH0NCWZwcmludGYoc3RkZXJyLCIgcmVh
-ZHkgdG8gc2VuZC4uLlxuIik7DSAgICAgICAgcHJpbnRmKCJSZWFkeSB0byBzZW5kIGZpbGUu
-Li4uXG4iKTsNICAgICAgICBtc2dsZW49cmVhZChmZCxtZXNzYWdlLDEwMjQpOw0gICAgICAg
-IGRvIHsNICAgICAgICAgICAgLyogSW5pdGlhbGl6ZSB0aGUgbWVzc2FnZSBzdHJ1Y3Qgd2Ug
-dXNlIHRvIHBhc3MNCQkgKiBtZXNzYWdlcyB0byB0aGUgcmVtb3RlIHNvY2tldC4NICAgICAg
-ICAgICAgICovDSAgICAgICAgICAgIHRyeV9lcnJvcisrOw0gICAgICAgICAgICBpZih0cnlf
-ZXJyb3I9PTEwMCkNICAgICAgICAgICAgew0gICAgICAgICAgICAgICAgcHJpbnRmKCJDYW4n
-dCBjb25uZWN0IHJlbW90ZSBhZGRyZXNzLHByb2dyYW0gc2h1dGRvd24uXG4iKTsNICAgICAg
-ICAgICAgICAgIGV4aXQoMSk7DSAgICAgICAgICAgIH0NICAgICAgICAgICAgaW92Lmlvdl9i
-YXNlID0gbWVzc2FnZTsNICAgICAgICAgICAgaW92Lmlvdl9sZW4gPSBtc2dsZW47DSAgICAg
-ICAgICAgIG91dG1zZy5tc2dfaW92ID0gJmlvdjsNICAgICAgICAgICAgb3V0bXNnLm1zZ19p
-b3ZsZW4gPSAxOw0gICAgICAgICAgICBvdXRtc2cubXNnX2NvbnRyb2wgPSBvdXRjbXNnOzsN
-ICAgICAgICAgICAgb3V0bXNnLm1zZ19jb250cm9sbGVuID0gc2l6ZW9mKG91dGNtc2cpOw0g
-ICAgICAgICAgICBvdXRtc2cubXNnX25hbWUgPSAmcmVtb3RlX2FkZHI7DSAgICAgICAgICAg
-IG91dG1zZy5tc2dfbmFtZWxlbiA9IHJhX2xlbjsNICAgICAgICAgICAgY21zZyA9IENNU0df
-RklSU1RIRFIoJm91dG1zZyk7DSAgICAgICAgICAgIGNtc2ctPmNtc2dfbGV2ZWwgPSBJUFBS
-T1RPX1NDVFA7DSAgICAgICAgICAgIGNtc2ctPmNtc2dfdHlwZSA9IFNDVFBfU05EUkNWOw0g
-ICAgICAgICAgICBjbXNnLT5jbXNnX2xlbiA9IENNU0dfTEVOKHNpemVvZihzdHJ1Y3Qgc2N0
-cF9zbmRyY3ZpbmZvKSk7DSAgICAgICAgICAgIG91dG1zZy5tc2dfY29udHJvbGxlbiA9IGNt
-c2ctPmNtc2dfbGVuOw0gICAgICAgICAgICBzaW5mbyA9IChzdHJ1Y3Qgc2N0cF9zbmRyY3Zp
-bmZvICopQ01TR19EQVRBKGNtc2cpOw0gICAgICAgICAgICBtZW1zZXQoc2luZm8sIDAsIHNp
-emVvZihzdHJ1Y3Qgc2N0cF9zbmRyY3ZpbmZvKSk7DSAgICAgICAgICAgIHNpbmZvLT5zaW5m
-b19mbGFncyA9IDA7DSAgICAgICAgICAgIHNpbmZvLT5zaW5mb19zdHJlYW0gPSAxOw0gICAg
-ICAgICAgICBzaW5mby0+c2luZm9fcHBpZD1yYW5kKCk7DSAgICAgICAgICAgIGVycm9yID0g
-c2VuZG1zZyhzaywgJm91dG1zZywgTVNHX1dBSVRBTEwpOw0gICAgICAgICAgICBpZiAoZXJy
-b3IgIT0gbXNnbGVuKSANCQlwcmludGYoc3RkZXJyLCAiOiBlcnJvcjogJXMuXG4iLCBzdHJl
-cnJvcihlcnJubykpOw0JfSB3aGlsZSAoZXJyb3IgIT0gbXNnbGVuKTsNDSAgICAvKiBJZiB0
-aGlzIGlzIHRoZSBmaXJzdCBtZXNzYWdlIHNlbnQgb3ZlciBhIFVEUC1zdHlsZSBzb2NrZXQs
-DSAgICAgKiBnZXQgdGhlIGFzc29jaWQgZnJvbSB0aGUgU0NUUF9BU1NPQ19DSEFOR0Ugbm90
-aWZpY2F0aW9uLg0gICAgICovDQlpZiAoKFNPQ0tfU0VRUEFDS0VUID09IHNvY2tldF90eXBl
-KSAmJiAoMCA9PSBhc3NvY2lkKSkNCQkJYXNzb2NpZCA9IHRlc3RfcmVjdl9hc3NvY19jaGFu
-Z2Uoc2spOw0NCS8qIFZlcmlmeSB0aGVyZSBpcyBubyBhc3NvY2lhdGlvbi4gICovDQlpZiAo
-MCAhPSB0ZXN0X3NrX2Zvcl9hc3NvYyhzaywgYXNzb2NpZCkpIHsNCQlwcmludGYoIk5vIGFz
-c29jaWF0aW9uIGlzIHByZXNlbnQgbm93ISFcbiIpOw0JCW5ld19jb25uZWN0aW9uID0gMTsN
-CQl9DSAgICAgICAgZWxzZSB7DQkJaWYgKG5ld19jb25uZWN0aW9uKSB7DQkJaW50IHJjID0g
-c2N0cF9nZXRwYWRkcnMoc2ssIGFzc29jaWQsICZhZGRycyk7DQkJaWYgKDAgPj0gcmMpIHsN
-ICAgICAgICAgICAgICAgICAgICBpZiAocmMgPT0gMCkgew0JCQlmcHJpbnRmKHN0ZGVyciwg
-InNjdHBfZ2V0cGFkZHJzIGZhaWxlZCwgbm8gcGVlcnMuXG4iKTsNICAgICAgICAgICAgICAg
-ICAgICB9IGVsc2Ugew0JCQlmcHJpbnRmKHN0ZGVyciwgInNjdHBfZ2V0cGFkZHJzIGZhaWxl
-ZCAlcyglZCkuXG4iLCBzdHJlcnJvcihlcnJubyksIGVycm5vKTsNCQkJfQ0gICAgICAgICAg
-ICAgICAgICAgICAgICAgZXhpdCgxKTsNCQl9DQkJcHJpbnRmKCJOZXcgY29ubmVjdGlvbiwg
-cGVlciBhZGRyZXNzZXNcbiIpOw0JCS8vcHJpbnRfYWRkcl9idWYoYWRkcnMsIHJjKTsNCQlz
-Y3RwX2ZyZWVwYWRkcnMoYWRkcnMpOw0JCW5ld19jb25uZWN0aW9uID0gMDsNCQl9DSAgICAg
-ICAgfQ0gICAgICAgIGlvdi5pb3ZfYmFzZSA9IGJ1ZmZlcjsNCWlvdi5pb3ZfbGVuID0gMTsN
-CW91dG1zZy5tc2dfaW92ID0gJmlvdjsNCW91dG1zZy5tc2dfaW92bGVuID0gMTsNICAgICAg
-ICAvKiBvcGVuIHRoZSBmaWxlICovDQkNCXdoaWxlICggKG1zZ2xlbiA9IHJlYWQoZmQsYnVm
-ZmVyLDEwMjQpKSA+IDAgKSB7DQkJLyogU2VuZCB0byBvdXIgbmVpZ2hib3IuICAqLw0gICAg
-ICAgICAgICBpZihzdHJlYW09PTEpIHN0cmVhbT0yOw0gICAgICAgICAgICBpZihzdHJlYW09
-PTIpICBzdHJlYW09MTsNICAgICAgICAgICAgc2luZm8tPnNpbmZvX3N0cmVhbSA9IHN0cmVh
-bTsNCQkJaW92Lmlvdl9sZW4gPSBtc2dsZW47DQkJIHNlbmRtc2coc2ssICZvdXRtc2csIE1T
-R19XQUlUQUxMKTsNCX0NDQljbG9zZShmZCk7DQljbG9zZShzayk7DX0=
---------------060101040805040805090401--
+You also ignore return code from sendmsg in your send loop - it could
+give you a clue about possible problems. For example, did you set the
+correct number of outgoing streams? Keep in mind that 2 means 2
+streams: 0 and 1, not stream 1 and 2.
+
+max
+
