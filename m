@@ -1,45 +1,46 @@
-From: =?UTF-8?B?4KSF4KSo4KWB4KSc?= <anuj01@gmail.com>
-Date: Thu, 23 Jun 2011 12:54:44 +0000
-Subject: Error in inserting sctp.ko module
-Message-Id: <BANLkTimCeAv8KYQBNeMywv_=wa-hVZJCbg@mail.gmail.com>
+From: Joe Perches <joe@perches.com>
+Date: Tue, 14 Jun 2011 02:21:25 +0000
+Subject: [PATCH net-next 0/2] net: remove casts of void *
+Message-Id: <cover.1308017857.git.joe@perches.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, ebtables-user@lists.sourceforge.net, ebtables-devel@lists.sourceforge.net, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, coreteam@netfilter.org, bridge@lists.linux-foundation.org, ceph-devel@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-sctp@vger.kernel.org
 
-Hi list
+Joe Perches (2):
+  net: Remove casts of void *
+  net: netfilter: Remove casts of void *
 
+ net/8021q/vlanproc.c                |    2 +-
+ net/atm/mpc.c                       |    2 +-
+ net/bridge/netfilter/ebtables.c     |    2 +-
+ net/ceph/crypto.c                   |    2 +-
+ net/decnet/dn_dev.c                 |    2 +-
+ net/ipv4/netfilter/arp_tables.c     |   16 ++++++----------
+ net/ipv4/netfilter/ip_tables.c      |   13 +++++--------
+ net/ipv6/netfilter/ip6_tables.c     |   13 +++++--------
+ net/irda/af_irda.c                  |    4 ++--
+ net/irda/ircomm/ircomm_tty_attach.c |    2 +-
+ net/irda/irda_device.c              |    2 +-
+ net/irda/iriap.c                    |    8 ++++----
+ net/irda/irlan/irlan_client.c       |   10 +++++-----
+ net/irda/irlan/irlan_common.c       |   10 +++++-----
+ net/irda/irlan/irlan_eth.c          |    2 +-
+ net/irda/irlan/irlan_provider.c     |   10 +++++-----
+ net/irda/irqueue.c                  |    4 ++--
+ net/irda/irttp.c                    |   18 +++++++++---------
+ net/key/af_key.c                    |   20 ++++++++++----------
+ net/netfilter/ipset/ip_set_core.c   |    2 +-
+ net/netfilter/nf_conntrack_proto.c  |    2 +-
+ net/netlabel/netlabel_unlabeled.c   |   10 ++++------
+ net/sctp/bind_addr.c                |    2 +-
+ net/sctp/input.c                    |    3 +--
+ net/sctp/sm_make_chunk.c            |   26 ++++++++++----------------
+ net/sctp/sm_sideeffect.c            |    2 +-
+ net/sctp/socket.c                   |   16 ++++++++--------
+ 27 files changed, 93 insertions(+), 112 deletions(-)
 
-I installed freshly CentOS release 5.6 (Final) with kernel version
-2.6.18-238.el5 64-bit.
-
-# uname -a
-Linux localhost.localdomain 2.6.18-238.el5 #1 SMP Thu Jan 13 15:51:15
-EST 2011 x86_64 x86_64 x86_64 GNU/Linux
-
-But when I try to insert module sctp.ko using
-
-# insmod sctp.ko
-
-I got error
-
-insmod: error inserting
-'/lib/modules/2.6.18-238.el5/kernel/net/sctp/sctp.ko': -1 Address
-family not supported by protocol
-
-
-I also tried with modprobe. And I also checked Ipv6 module is already inserted.
-
-
-Please help.
-
-
-Thanks & Regards,
---
-Anuj Aggarwal
-
- .''`.
-: :Ⓐ :   # apt-get install hakuna-matata
-`. `'`
-   `-
+-- 
+1.7.6.rc0
