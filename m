@@ -1,33 +1,62 @@
-From: Vladislav Yasevich <vladislav.yasevich@hp.com>
-Date: Thu, 30 Jun 2011 16:27:10 +0000
-Subject: Re: [PATCH] sctp: ABORT if receive queue is not empty while closing
-Message-Id: <4E0CA3DE.7010205@hp.com>
+From: Max Matveev <makc@redhat.com>
+Date: Wed, 22 Jun 2011 07:18:13 +0000
+Subject: [PATCH 2/2] Update documented default values for various TCP/UDP tunables
+Message-Id: <20110704083616.43F2C8156C57@regina.usersys.redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20110629135704.GB10085@canuck.infradead.org> <4E0B3491.1060603@hp.com> <20110629143649.GC10085@canuck.infradead.org> <4E0B3DA1.9060200@hp.com> <20110629154814.GD10085@canuck.infradead.org> <4E0B4F71.4020108@hp.com> <20110630133122.GB24074@canuck.infradead.org> <4E0C83FA.2090909@hp.com> <20110630161938.GD24074@canuck.infradead.org>
-In-Reply-To: <20110630161938.GD24074@canuck.infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org, davem@davemloft.net, Wei Yongjun <yjwei@cn.fujitsu.com>, Sridhar Samudrala <sri@us.ibm.com>, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org
 
-On 06/30/2011 12:19 PM, Thomas Graf wrote:
-> On Thu, Jun 30, 2011 at 10:11:06AM -0400, Vladislav Yasevich wrote:
->> On 06/30/2011 09:31 AM, Thomas Graf wrote:
->>> On Wed, Jun 29, 2011 at 12:14:41PM -0400, Vladislav Yasevich wrote:
->>>> Right.  The lack of ABORT from the receive of data is a bug.  I was trying to point out
->>>> that instead of modified the sender of data to send the ABORT, you modify the receiver
->>>> to send the ABORT when it is being closed while having data queued.
->>>
->>> Is this what you had in mind?
->>
->> Almost.  It could really be a simple true/false condition about recvqueue or inqueue
->> being non-empty.  If that's the case, trigger abort.
-> 
-> What would be the advantage of that?
-> 
+tcp_rmem and tcp_wmem use 1 page as default value for the minimum
+amount of memory to be used, same as udp_wmem_min and udp_rmem_min.
+Pages are different size on different architectures - use the right
+units when describing the defaults.
 
-Wrt to true/false, it's simpler to test for non-empty then it is to go through and count
-the data (but I perfectly ok with either way).  WRT to testing the inqueue, as you stated,
-not everything may be in receive queue.
+Signed-off-by: Max Matveev <makc@redhat.com>
+---
+ Documentation/networking/ip-sysctl.txt |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
--vlad
+diff --git a/Documentation/networking/ip-sysctl.txt b/Documentation/networking/ip-sysctl.txt
+index f37d374..387ee53 100644
+--- a/Documentation/networking/ip-sysctl.txt
++++ b/Documentation/networking/ip-sysctl.txt
+@@ -394,7 +394,7 @@ tcp_rmem - vector of 3 INTEGERs: min, default, max
+ 	min: Minimal size of receive buffer used by TCP sockets.
+ 	It is guaranteed to each TCP socket, even under moderate memory
+ 	pressure.
+-	Default: 8K
++	Default: 1 page
+ 
+ 	default: initial size of receive buffer used by TCP sockets.
+ 	This value overrides net.core.rmem_default used by other protocols.
+@@ -483,7 +483,7 @@ tcp_window_scaling - BOOLEAN
+ tcp_wmem - vector of 3 INTEGERs: min, default, max
+ 	min: Amount of memory reserved for send buffers for TCP sockets.
+ 	Each TCP socket has rights to use it due to fact of its birth.
+-	Default: 4K
++	Default: 1 page
+ 
+ 	default: initial size of send buffer used by TCP sockets.  This
+ 	value overrides net.core.wmem_default used by other protocols.
+@@ -553,13 +553,13 @@ udp_rmem_min - INTEGER
+ 	Minimal size of receive buffer used by UDP sockets in moderation.
+ 	Each UDP socket is able to use the size for receiving data, even if
+ 	total pages of UDP sockets exceed udp_mem pressure. The unit is byte.
+-	Default: 4096
++	Default: 1 page
+ 
+ udp_wmem_min - INTEGER
+ 	Minimal size of send buffer used by UDP sockets in moderation.
+ 	Each UDP socket is able to use the size for sending data, even if
+ 	total pages of UDP sockets exceed udp_mem pressure. The unit is byte.
+-	Default: 4096
++	Default: 1 page
+ 
+ CIPSOv4 Variables:
+ 
+-- 
+1.7.3.3
+
