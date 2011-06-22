@@ -1,46 +1,64 @@
-From: Joe Perches <joe@perches.com>
-Date: Tue, 14 Jun 2011 02:21:25 +0000
-Subject: [PATCH net-next 0/2] net: remove casts of void *
-Message-Id: <cover.1308017857.git.joe@perches.com>
+From: Max Matveev <makc@redhat.com>
+Date: Wed, 22 Jun 2011 07:18:13 +0000
+Subject: [PATCH v2 2/2] Update documented default values for various TCP/UDP tunables
+Message-Id: <20110705015729.91CD5815DBB1@regina.usersys.redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, ebtables-user@lists.sourceforge.net, ebtables-devel@lists.sourceforge.net, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, coreteam@netfilter.org, bridge@lists.linux-foundation.org, ceph-devel@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org
 
-Joe Perches (2):
-  net: Remove casts of void *
-  net: netfilter: Remove casts of void *
+tcp_rmem and tcp_wmem use 1 page as default value for the minimum
+amount of memory to be used, same as udp_wmem_min and udp_rmem_min.
+Pages are different size on different architectures - use the right
+units when describing the defaults.
 
- net/8021q/vlanproc.c                |    2 +-
- net/atm/mpc.c                       |    2 +-
- net/bridge/netfilter/ebtables.c     |    2 +-
- net/ceph/crypto.c                   |    2 +-
- net/decnet/dn_dev.c                 |    2 +-
- net/ipv4/netfilter/arp_tables.c     |   16 ++++++----------
- net/ipv4/netfilter/ip_tables.c      |   13 +++++--------
- net/ipv6/netfilter/ip6_tables.c     |   13 +++++--------
- net/irda/af_irda.c                  |    4 ++--
- net/irda/ircomm/ircomm_tty_attach.c |    2 +-
- net/irda/irda_device.c              |    2 +-
- net/irda/iriap.c                    |    8 ++++----
- net/irda/irlan/irlan_client.c       |   10 +++++-----
- net/irda/irlan/irlan_common.c       |   10 +++++-----
- net/irda/irlan/irlan_eth.c          |    2 +-
- net/irda/irlan/irlan_provider.c     |   10 +++++-----
- net/irda/irqueue.c                  |    4 ++--
- net/irda/irttp.c                    |   18 +++++++++---------
- net/key/af_key.c                    |   20 ++++++++++----------
- net/netfilter/ipset/ip_set_core.c   |    2 +-
- net/netfilter/nf_conntrack_proto.c  |    2 +-
- net/netlabel/netlabel_unlabeled.c   |   10 ++++------
- net/sctp/bind_addr.c                |    2 +-
- net/sctp/input.c                    |    3 +--
- net/sctp/sm_make_chunk.c            |   26 ++++++++++----------------
- net/sctp/sm_sideeffect.c            |    2 +-
- net/sctp/socket.c                   |   16 ++++++++--------
- 27 files changed, 93 insertions(+), 112 deletions(-)
+Reviewed-by: Shan Wei <shanwei@cn.fujitsu.com>
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Signed-off-by: Max Matveev <makc@redhat.com>
+---
+ Documentation/networking/ip-sysctl.txt |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
+diff --git a/Documentation/networking/ip-sysctl.txt b/Documentation/networking/ip-sysctl.txt
+index ce09f83..940a404 100644
+--- a/Documentation/networking/ip-sysctl.txt
++++ b/Documentation/networking/ip-sysctl.txt
+@@ -394,7 +394,7 @@ tcp_rmem - vector of 3 INTEGERs: min, default, max
+ 	min: Minimal size of receive buffer used by TCP sockets.
+ 	It is guaranteed to each TCP socket, even under moderate memory
+ 	pressure.
+-	Default: 8K
++	Default: 1 page
+ 
+ 	default: initial size of receive buffer used by TCP sockets.
+ 	This value overrides net.core.rmem_default used by other protocols.
+@@ -483,7 +483,7 @@ tcp_window_scaling - BOOLEAN
+ tcp_wmem - vector of 3 INTEGERs: min, default, max
+ 	min: Amount of memory reserved for send buffers for TCP sockets.
+ 	Each TCP socket has rights to use it due to fact of its birth.
+-	Default: 4K
++	Default: 1 page
+ 
+ 	default: initial size of send buffer used by TCP sockets.  This
+ 	value overrides net.core.wmem_default used by other protocols.
+@@ -553,13 +553,13 @@ udp_rmem_min - INTEGER
+ 	Minimal size of receive buffer used by UDP sockets in moderation.
+ 	Each UDP socket is able to use the size for receiving data, even if
+ 	total pages of UDP sockets exceed udp_mem pressure. The unit is byte.
+-	Default: 4096
++	Default: 1 page
+ 
+ udp_wmem_min - INTEGER
+ 	Minimal size of send buffer used by UDP sockets in moderation.
+ 	Each UDP socket is able to use the size for sending data, even if
+ 	total pages of UDP sockets exceed udp_mem pressure. The unit is byte.
+-	Default: 4096
++	Default: 1 page
+ 
+ CIPSOv4 Variables:
+ 
 -- 
-1.7.6.rc0
+1.7.3.3
+
