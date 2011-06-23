@@ -1,30 +1,45 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Date: Thu, 09 Jun 2011 07:31:18 +0000
-Subject: Re: Problem code multi-streaming
-Message-Id: <4DF076C6.408@cn.fujitsu.com>
+From: =?UTF-8?B?4KSF4KSo4KWB4KSc?= <anuj01@gmail.com>
+Date: Thu, 23 Jun 2011 12:54:44 +0000
+Subject: Error in inserting sctp.ko module
+Message-Id: <BANLkTimCeAv8KYQBNeMywv_=wa-hVZJCbg@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4DF0396D.50401@gmail.com>
-In-Reply-To: <4DF0396D.50401@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 To: linux-sctp@vger.kernel.org
 
-I have some code demo using multi-streaming, but it is not run right.I attach my code send file in this mail. I using this code from sctp_test, but i don't know why it error.
-> I use sinfo->sinfo_stream = 1; and when send one chunk I change stream :
->
-
->  if(stream=1) stream=2;
->  if(stream=2)  stream=1;
-
-The above code let stream always equal to 1.
+Hi list
 
 
-if(stream=1)
-   stream=2;
-else if(stream=2)
-   stream=1;
+I installed freshly CentOS release 5.6 (Final) with kernel version
+2.6.18-238.el5 64-bit.
 
->
-> But capture packet with Wireshark I see SID is always 1, I send packet is order, using multi-homing.
-> All different functions run ok.I don't know why SID don't change.I read this darft of socket API SCTP in folder doc of LKSCTP, but I don't understand why I write code like sctp_test but sctp_test run ok.
+# uname -a
+Linux localhost.localdomain 2.6.18-238.el5 #1 SMP Thu Jan 13 15:51:15
+EST 2011 x86_64 x86_64 x86_64 GNU/Linux
+
+But when I try to insert module sctp.ko using
+
+# insmod sctp.ko
+
+I got error
+
+insmod: error inserting
+'/lib/modules/2.6.18-238.el5/kernel/net/sctp/sctp.ko': -1 Address
+family not supported by protocol
+
+
+I also tried with modprobe. And I also checked Ipv6 module is already inserted.
+
+
+Please help.
+
+
+Thanks & Regards,
+--
+Anuj Aggarwal
+
+ .''`.
+: :Ⓐ :   # apt-get install hakuna-matata
+`. `'`
+   `-
