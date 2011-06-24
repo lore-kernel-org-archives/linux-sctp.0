@@ -1,51 +1,43 @@
 From: Thomas Graf <tgraf@infradead.org>
-Date: Thu, 30 Jun 2011 16:17:03 +0000
-Subject: Re: [PATCH] sctp: Enforce maximum retransmissions during shutdown
-Message-Id: <20110630161703.GC24074@canuck.infradead.org>
+Date: Fri, 24 Jun 2011 10:15:35 +0000
+Subject: [PATCH] sctp: Reducing rwnd by sizeof(struct sk_buff) for each CHUNK
+Message-Id: <20110624101535.GB9222@canuck.infradead.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20110629135704.GB10085@canuck.infradead.org>
- <4E0B3491.1060603@hp.com>
- <20110629143649.GC10085@canuck.infradead.org>
- <4E0B3DA1.9060200@hp.com>
- <20110629154814.GD10085@canuck.infradead.org>
- <4E0B4F71.4020108@hp.com>
- <20110630084933.GA24074@canuck.infradead.org>
- <4E0C8368.5090502@hp.com>
-In-Reply-To: <4E0C8368.5090502@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vladislav Yasevich <vladislav.yasevich@hp.com>
-Cc: netdev@vger.kernel.org, davem@davemloft.net, Wei Yongjun <yjwei@cn.fujitsu.com>, Sridhar Samudrala <sri@us.ibm.com>, linux-sctp@vger.kernel.org
+To: Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On Thu, Jun 30, 2011 at 10:08:40AM -0400, Vladislav Yasevich wrote:
-> How about this.  If we in SHUTDOWN_PENDING state, let the errors accumulate upto
-> max_retrans.  After that, start SHUTDOWN_GUARD timer to let the association live a
-> bit longer just on the off-chance the receive comes back.  When SHUTDOWN_GUARD
-> expires it will abort the association.
-> 
-> When we are in this state, SACK processing will have to reset SHUTDOWN_GUARD when
-> the SACK is actually acknowledging something.
+Currently we subtract sizeof(struct sk_buff) of our view of the
+receiver's rwnd for each DATA chunk appended to a sctp packet.
+Reducing the rwnd by >200 bytes for each DATA chunk quickly
+consumes the available window and prevents max MTU sized packets
+(for large MTU values) from being generated in combination with
+small DATA chunks. The sender has to wait for the next SACK to
+be processed for the rwnd to be corrected.
 
-Good idea. I'll update my patch.
+Accounting for data structures required for rx is the responsibility
+of the stack which is why we announce a rwnd of sk_rcvbuf/2.
 
-> > 
-> > What sideeffects are you worried about resulting from my proposal?
-> > 
-> 
-> There is a potential that the sender may abort prematurely.  The issue is that
-> the sender has no way of knowing if the remote process somehow terminated and
-> will never consume data, or if it is just extremely busy with something else and
-> will come back.  Since this is a reliable protocol, we given the receive the benefit
-> of the doubt and try our hardest to get the data across.
+Signed-off-by: Thomas Graf <tgraf@suug.ch>
 
-Understood although we are talking 10 * RTO here without an actual SACK.
-
-> My suggestion above is still a bit of a hack that one could argue still violates the
-> protocol, but the time period tries to remove as much doubt from the sender as possible
-> the the receiver is really out-to-lunch.
-
-Assuming that by 'shutdown sequence' the spec is only referring to the
-SHUTDOWN / SHUTDOWN ACK exchange it would still violate the protocol
-but I don't see how to avoid having association hang around forever without
-violating the spec. This really looks like a hole in the spec to me.
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index b4f3cf0..ceb55b2 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -700,13 +700,7 @@ static void sctp_packet_append_data(struct sctp_packet *packet,
+ 	/* Keep track of how many bytes are in flight to the receiver. */
+ 	asoc->outqueue.outstanding_bytes += datasize;
+ 
+-	/* Update our view of the receiver's rwnd. Include sk_buff overhead
+-	 * while updating peer.rwnd so that it reduces the chances of a
+-	 * receiver running out of receive buffer space even when receive
+-	 * window is still open. This can happen when a sender is sending
+-	 * sending small messages.
+-	 */
+-	datasize += sizeof(struct sk_buff);
++	/* Update our view of the receiver's rwnd. */
+ 	if (datasize < rwnd)
+ 		rwnd -= datasize;
+ 	else
