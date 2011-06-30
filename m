@@ -1,68 +1,118 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 06 Jun 2011 20:06:20 +0000
-Subject: Re: linux-next: Tree for June 6 (sctp)
-Message-Id: <20110606.130620.1866725220563870006.davem@davemloft.net>
+From: Thomas Graf <tgraf@infradead.org>
+Date: Thu, 30 Jun 2011 13:31:22 +0000
+Subject: [PATCH] sctp: ABORT if receive queue is not empty while closing
+Message-Id: <20110630133122.GB24074@canuck.infradead.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20110606132036.aebd73a4.sfr@canb.auug.org.au>
-	<20110606125532.793b3cfd.randy.dunlap@oracle.com>
-In-Reply-To: <20110606125532.793b3cfd.randy.dunlap@oracle.com>
+References: <20110629135704.GB10085@canuck.infradead.org>
+ <4E0B3491.1060603@hp.com>
+ <20110629143649.GC10085@canuck.infradead.org>
+ <4E0B3DA1.9060200@hp.com>
+ <20110629154814.GD10085@canuck.infradead.org>
+ <4E0B4F71.4020108@hp.com>
+In-Reply-To: <4E0B4F71.4020108@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: randy.dunlap@oracle.com
-Cc: sfr@canb.auug.org.au, linux-sctp@vger.kernel.org, linux-next@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org
+To: Vladislav Yasevich <vladislav.yasevich@hp.com>
+Cc: netdev@vger.kernel.org, davem@davemloft.net, Wei Yongjun <yjwei@cn.fujitsu.com>, Sridhar Samudrala <sri@us.ibm.com>, linux-sctp@vger.kernel.org
 
-From: Randy Dunlap <randy.dunlap@oracle.com>
-Date: Mon, 6 Jun 2011 12:55:32 -0700
+On Wed, Jun 29, 2011 at 12:14:41PM -0400, Vladislav Yasevich wrote:
+> Right.  The lack of ABORT from the receive of data is a bug.  I was trying to point out
+> that instead of modified the sender of data to send the ABORT, you modify the receiver
+> to send the ABORT when it is being closed while having data queued.
 
-> On Mon, 6 Jun 2011 13:20:36 +1000 Stephen Rothwell wrote:
-> 
->> Hi all,
->> 
->> Changes since 20110603:
-> 
-> 
-> when CONFIG_IPV6 is not enabled:
-> 
-> ERROR: "ipv6_chk_addr" [net/sctp/sctp.ko] undefined!
+Is this what you had in mind?
 
-I'll push the following after some build testing, thanks.
+Trigger user ABORT when a socket is closed which has skbs sitting on
+the receive queue. If data was lost, there is no point in doing a
+graceful shutdown. This is consistent with TCP behaviour.
 
---------------------
-sctp: Guard IPV6 specific code properly.
+This also resolves the situation when a receiver cannot reopen its rwnd
+and the sender continues retransmission attempts indefinitely before
+initiating the shutdown.
 
-Outside of net/sctp/ipv6.c, IPV6 specific code needs to
-be ifdef guarded.
+Signed-off-by: Thomas Graf <tgraf@infradead.org>
 
-This fixes build failures with IPV6 disabled.
-
-Reported-by: Randy Dunlap <randy.dunlap@oracle.com>
-Signed-off-by: David S. Miller <davem@davemloft.net>
----
- net/sctp/protocol.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
-
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index af0a6b0..ab5ded2 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -637,6 +637,7 @@ void sctp_addr_wq_timeout_handler(unsigned long arg)
- 		    " for cmd %d at entry %p\n", &sctp_addr_waitq, &addrw->a, addrw->state,
- 		    addrw);
+diff --git a/include/net/sctp/ulpevent.h b/include/net/sctp/ulpevent.h
+index 99b027b..ca4693b 100644
+--- a/include/net/sctp/ulpevent.h
++++ b/include/net/sctp/ulpevent.h
+@@ -80,7 +80,7 @@ static inline struct sctp_ulpevent *sctp_skb2event(struct sk_buff *skb)
  
-+#if defined(CONFIG_IPV6) || defined (CONFIG_IPV6_MODULE)
- 		/* Now we send an ASCONF for each association */
- 		/* Note. we currently don't handle link local IPv6 addressees */
- 		if (addrw->a.sa.sa_family = AF_INET6) {
-@@ -659,7 +660,7 @@ void sctp_addr_wq_timeout_handler(unsigned long arg)
- 				break;
+ void sctp_ulpevent_free(struct sctp_ulpevent *);
+ int sctp_ulpevent_is_notification(const struct sctp_ulpevent *);
+-void sctp_queue_purge_ulpevents(struct sk_buff_head *list);
++unsigned int sctp_queue_purge_ulpevents(struct sk_buff_head *list);
+ 
+ struct sctp_ulpevent *sctp_ulpevent_make_assoc_change(
+ 	const struct sctp_association *asoc,
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 6766913..958253a 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1384,6 +1384,7 @@ SCTP_STATIC void sctp_close(struct sock *sk, long timeout)
+ 	struct sctp_endpoint *ep;
+ 	struct sctp_association *asoc;
+ 	struct list_head *pos, *temp;
++	unsigned int data_was_unread;
+ 
+ 	SCTP_DEBUG_PRINTK("sctp_close(sk: 0x%p, timeout:%ld)\n", sk, timeout);
+ 
+@@ -1393,6 +1394,10 @@ SCTP_STATIC void sctp_close(struct sock *sk, long timeout)
+ 
+ 	ep = sctp_sk(sk)->ep;
+ 
++	/* Clean up any skbs sitting on the receive queue.  */
++	data_was_unread = sctp_queue_purge_ulpevents(&sk->sk_receive_queue);
++	data_was_unread += sctp_queue_purge_ulpevents(&sctp_sk(sk)->pd_lobby);
++
+ 	/* Walk all associations on an endpoint.  */
+ 	list_for_each_safe(pos, temp, &ep->asocs) {
+ 		asoc = list_entry(pos, struct sctp_association, asocs);
+@@ -1410,7 +1415,8 @@ SCTP_STATIC void sctp_close(struct sock *sk, long timeout)
  			}
  		}
--
-+#endif
- 		list_for_each_entry(sp, &sctp_auto_asconf_splist, auto_asconf_list) {
- 			struct sock *sk;
  
--- 
-1.7.5.2
-
+-		if (sock_flag(sk, SOCK_LINGER) && !sk->sk_lingertime) {
++		if (data_was_unread ||
++		    (sock_flag(sk, SOCK_LINGER) && !sk->sk_lingertime)) {
+ 			struct sctp_chunk *chunk;
+ 
+ 			chunk = sctp_make_abort_user(asoc, NULL, 0);
+@@ -1420,10 +1426,6 @@ SCTP_STATIC void sctp_close(struct sock *sk, long timeout)
+ 			sctp_primitive_SHUTDOWN(asoc, NULL);
+ 	}
+ 
+-	/* Clean up any skbs sitting on the receive queue.  */
+-	sctp_queue_purge_ulpevents(&sk->sk_receive_queue);
+-	sctp_queue_purge_ulpevents(&sctp_sk(sk)->pd_lobby);
+-
+ 	/* On a TCP-style socket, block for at most linger_time if set. */
+ 	if (sctp_style(sk, TCP) && timeout)
+ 		sctp_wait_for_close(sk, timeout);
+diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
+index e70e5fc..aab3184 100644
+--- a/net/sctp/ulpevent.c
++++ b/net/sctp/ulpevent.c
+@@ -1081,9 +1081,19 @@ void sctp_ulpevent_free(struct sctp_ulpevent *event)
+ }
+ 
+ /* Purge the skb lists holding ulpevents. */
+-void sctp_queue_purge_ulpevents(struct sk_buff_head *list)
++unsigned int sctp_queue_purge_ulpevents(struct sk_buff_head *list)
+ {
+ 	struct sk_buff *skb;
+-	while ((skb = skb_dequeue(list)) != NULL)
++	unsigned int data_unread = 0;
++
++	while ((skb = skb_dequeue(list)) != NULL) {
++		struct sctp_ulpevent *event = sctp_skb2event(skb);
++
++		if (!sctp_ulpevent_is_notification(event))
++			data_unread += skb->len;
++
+ 		sctp_ulpevent_free(sctp_skb2event(skb));
++	}
++
++	return data_unread;
+ }
