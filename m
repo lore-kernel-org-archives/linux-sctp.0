@@ -1,55 +1,43 @@
-From: Vladislav Yasevich <vladislav.yasevich@hp.com>
-Date: Wed, 29 Jun 2011 16:14:41 +0000
+From: Thomas Graf <tgraf@infradead.org>
+Date: Thu, 30 Jun 2011 08:49:33 +0000
 Subject: Re: [PATCH] sctp: Enforce maximum retransmissions during shutdown
-Message-Id: <4E0B4F71.4020108@hp.com>
+Message-Id: <20110630084933.GA24074@canuck.infradead.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20110629135704.GB10085@canuck.infradead.org> <4E0B3491.1060603@hp.com> <20110629143649.GC10085@canuck.infradead.org> <4E0B3DA1.9060200@hp.com> <20110629154814.GD10085@canuck.infradead.org>
-In-Reply-To: <20110629154814.GD10085@canuck.infradead.org>
+References: <20110629135704.GB10085@canuck.infradead.org>
+ <4E0B3491.1060603@hp.com>
+ <20110629143649.GC10085@canuck.infradead.org>
+ <4E0B3DA1.9060200@hp.com>
+ <20110629154814.GD10085@canuck.infradead.org>
+ <4E0B4F71.4020108@hp.com>
+In-Reply-To: <4E0B4F71.4020108@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org, davem@davemloft.net, Wei Yongjun <yjwei@cn.fujitsu.com>, Sridhar Samudrala <sri@us.ibm.com>, linux-sctp@vger.kernel.org
+To: Vladislav Yasevich <vladislav.yasevich@hp.com>
+Cc: netdev@vger.kernel.org, davem@davemloft.net, Wei Yongjun <yjwei@cn.fujitsu.com>, Sridhar Samudrala <sri@us.ibm.com>, linux-sctp@vger.kernel.org
 
-On 06/29/2011 11:48 AM, Thomas Graf wrote:
-> On Wed, Jun 29, 2011 at 10:58:41AM -0400, Vladislav Yasevich wrote:
->> But what you are proposing violates the protocol.  Zero-window probes do
->> not count against max retransmissions, even when you are in shutdown pending
->> state.
->>
->> You'll come out of this one of 2 ways:
->>   1) receiver wakes up and processes data.  This will allow for graceful termination.
->>   2) receiver dies.  Since receive window is full, we have data queued, and this will
->>      trigger an ABORT to be sent to the sender.
-> 
-> If by die you mean kill the process then this is exactly what I do to trigger
-> the issue. I simulatenously kill both processes. Not sure what you mean by
-> trigger an ABORT but I don't see that happen. I also don't see the rwnd reopen
-> after the socket is closed on the receiver side but that's a separate issue.
+On Wed, Jun 29, 2011 at 12:14:41PM -0400, Vladislav Yasevich wrote:
+> Right.  The lack of ABORT from the receive of data is a bug.  I was trying to point out
+> that instead of modified the sender of data to send the ABORT, you modify the receiver
+> to send the ABORT when it is being closed while having data queued.
 
-Right.  The lack of ABORT from the receive of data is a bug.  I was trying to point out
-that instead of modified the sender of data to send the ABORT, you modify the receiver
-to send the ABORT when it is being closed while having data queued.
+Agreed. This makes a good procedure if there is data is on
+sk_receive_queue and gets us in line with TCP although I don't see this
+in the spec at all :-)
 
-> 
->> What you patch is doing is taking a perfectly valid scenario and putting a time limit
->> on it in violation of the spec.
-> 
-> We also violate the spec by not doing so. The spec says that the number of
-> SHUTDOWN retransmissions has to be limited by Max.Retrans which we also
-> can't enforce because of the above.
+> But we don't even get to sending the SHUTDOWN, so from the wire protocol, we
+> do not violated it.  We have bad behavior in that when both sender and receiver
+> are dead, the association is hung.
 
-But we don't even get to sending the SHUTDOWN, so from the wire protocol, we
-do not violated it.  We have bad behavior in that when both sender and receiver
-are dead, the association is hung.
+So how do we get out if ...
 
-> 
-> The scenario is closed sockets on both sides, endpoints on both sides gone
-> already and retransmissions + heartbeat requests forever.
-> 
-> Any alternative suggestion how to fix this?
-> 
+1) there is nothing queued on sk_receive_queue but the window still
+   remains 0 forver?
+   
+2) the receiver is an older Linux without the above fix or another stack
+   that does not ABORT?
 
-The receiver, on sctp_close() checks to see if it has queued data and if it does, the
-ABORT is triggered.  This is the same behavior as tcp_close().
+I agree that using ABORT on the receiver is the ideal way whenver
+possible but we still need to fix this if the receiver does not do so.
 
--vlad
+What sideeffects are you worried about resulting from my proposal?
