@@ -1,65 +1,19 @@
-From: Joe Perches <joe@perches.com>
-Date: Fri, 01 Jul 2011 19:43:01 +0000
-Subject: [PATCH 00/12] net switch/case reformatting
-Message-Id: <cover.1309549243.git.joe@perches.com>
+From: David Miller <davem@davemloft.net>
+Date: Fri, 01 Jul 2011 23:15:50 +0000
+Subject: Re: [PATCH 00/12] net switch/case reformatting
+Message-Id: <20110701.161550.1316844563798183164.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1309549243.git.joe@perches.com>
+In-Reply-To: <cover.1309549243.git.joe@perches.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-decnet-user@lists.sourceforge.net, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, coreteam@netfilter.org, netdev@vger.kernel.org, linux-x25@vger.kernel.org, linux-hams@vger.kernel.org, linux-sctp@vger.kernel.org, linux-nfs@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
+To: joe@perches.com
+Cc: linux-decnet-user@lists.sourceforge.net, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, coreteam@netfilter.org, netdev@vger.kernel.org, linux-x25@vger.kernel.org, linux-hams@vger.kernel.org, linux-sctp@vger.kernel.org, linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
 
-Just whitespace cleanups with a couple trivial corrections
+From: Joe Perches <joe@perches.com>
+Date: Fri,  1 Jul 2011 12:43:01 -0700
 
-Joe Perches (12):
-  appletalk: Reduce switch/case indent
-  decnet: Reduce switch/case indent
-  econet: Reduce switch/case indent
-  ipconfig: Reduce switch/case indent
-  netfilter: Reduce switch/case indent
-  ipv4: Reduce switch/case indent
-  ipv6: Reduce switch/case indent
-  lapb: Reduce switch/case indent
-  netrom:  Reduce switch/case indent
-  sctp: Reduce switch/case indent
-  sunrpc: Reduce switch/case indent
-  x25: Reduce switch/case indent
+> Just whitespace cleanups with a couple trivial corrections
 
- net/appletalk/aarp.c                   |  138 +++---
- net/appletalk/ddp.c                    |  398 +++++++-------
- net/decnet/af_decnet.c                 |  697 +++++++++++++-------------
- net/decnet/dn_dev.c                    |   70 ++--
- net/decnet/dn_fib.c                    |   77 ++--
- net/decnet/dn_neigh.c                  |   14 +-
- net/decnet/dn_nsp_in.c                 |  182 ++++----
- net/decnet/dn_route.c                  |  102 ++--
- net/decnet/dn_table.c                  |   23 +-
- net/decnet/netfilter/dn_rtmsg.c        |   18 +-
- net/decnet/sysctl_net_decnet.c         |   17 +-
- net/econet/af_econet.c                 |   23 +-
- net/ipv4/ipconfig.c                    |   73 ++--
- net/ipv4/netfilter/ipt_CLUSTERIP.c     |   26 +-
- net/ipv4/netfilter/nf_nat_snmp_basic.c |  210 ++++----
- net/ipv4/raw.c                         |   36 +-
- net/ipv4/route.c                       |   28 +-
- net/ipv6/raw.c                         |  145 +++---
- net/lapb/lapb_iface.c                  |   30 +-
- net/lapb/lapb_in.c                     |  881 ++++++++++++++++----------------
- net/netfilter/xt_HL.c                  |   64 ++--
- net/netfilter/xt_hl.c                  |   32 +-
- net/netrom/nr_route.c                  |   22 +-
- net/sctp/sm_statefuns.c                |   51 +-
- net/sctp/socket.c                      |   10 +-
- net/sunrpc/auth_gss/auth_gss.c         |   46 +-
- net/sunrpc/clnt.c                      |   25 +-
- net/sunrpc/rpc_pipe.c                  |   14 +-
- net/x25/af_x25.c                       |  473 +++++++++---------
- net/x25/x25_dev.c                      |   44 +-
- net/x25/x25_in.c                       |  118 +++---
- net/x25/x25_link.c                     |   87 ++--
- net/x25/x25_subr.c                     |   78 ++--
- 33 files changed, 2111 insertions(+), 2141 deletions(-)
-
--- 
-1.7.6.rc1
-
+All applied, thanks Joe.
