@@ -1,30 +1,63 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 07 Jul 2011 21:09:04 +0000
-Subject: Re: [PATCHv3] sctp: Enforce retransmission limit during shutdown
-Message-Id: <20110707.140904.252541509664898900.davem@davemloft.net>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 04 Jul 2011 14:54:54 +0000
+Subject: Re: [PATCH 1/2] Update description of net.sctp.sctp_rmem and
+Message-Id: <20110704145454.GA10310@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4E148C16.8090505@hp.com>
-	<20110707102835.GA6277@canuck.infradead.org>
-	<4E15B65A.3010209@hp.com>
-In-Reply-To: <4E15B65A.3010209@hp.com>
+References: <20110704083605.AF9C28156C57@regina.usersys.redhat.com>
+In-Reply-To: <20110704083605.AF9C28156C57@regina.usersys.redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: netdev@vger.kernel.org, yjwei@cn.fujitsu.com, sri@us.ibm.com, linux-sctp@vger.kernel.org
+To: Max Matveev <makc@redhat.com>
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-From: Vladislav Yasevich <vladislav.yasevich@hp.com>
-Date: Thu, 07 Jul 2011 09:36:26 -0400
-
-> On 07/07/2011 06:28 AM, Thomas Graf wrote:
->> When initiating a graceful shutdown while having data chunks
->> on the retransmission queue with a peer which is in zero
->> window mode the shutdown is never completed because the
->> retransmission error count is reset periodically by the
->> following two rules:
- ...
->> Signed-off-by: Thomas Graf <tgraf@infradead.org>
+On Mon, Jun 20, 2011 at 06:08:10PM +1000, Max Matveev wrote:
+> sctp does not use second and third ("default" and "max") values
+> of sctp_(r|w)mem tunables. The format is the same and tcp_(r|w)mem
+> but the meaning is different so make the documentation explicit to
+> avoid confusion.
 > 
-> Acked-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+> Signed-off-by: Max Matveev <makc@redhat.com>
+> ---
+>  Documentation/networking/ip-sysctl.txt |   11 +++++++++--
+>  1 files changed, 9 insertions(+), 2 deletions(-)
+> 
+> diff --git a/Documentation/networking/ip-sysctl.txt b/Documentation/networking/ip-sysctl.txt
+> index d3d653a..f37d374 100644
+> --- a/Documentation/networking/ip-sysctl.txt
+> +++ b/Documentation/networking/ip-sysctl.txt
+> @@ -1465,10 +1465,17 @@ sctp_mem - vector of 3 INTEGERs: min, pressure, max
+>  	Default is calculated at boot time from amount of available memory.
+>  
+>  sctp_rmem - vector of 3 INTEGERs: min, default, max
+> -	See tcp_rmem for a description.
+> +	Only the first value ("min") is used, "default" and "max" are
+> +	ignored and may be removed in the future versions.
+> +
+Its accurate to say that only the first value is usd currently, but because of
+the way this sysctl is contructed (its used by the sysctl_rmem pointer in the
+sctp_prot struct, which expects an array of three integers in the commong
+__sk_mem_schedule function), we wont' be removing the other two values.  Drop
+that bit and its an ack from me.
+Neil
 
-Applied.
+> +	min: Minimal size of receive buffer used by SCTP socket.
+> +	It is guaranteed to each STCP socket (but not association) even 
+> +	under moderate memory pressure.
+> +
+> +	Default: 1 page
+>  
+>  sctp_wmem  - vector of 3 INTEGERs: min, default, max
+> -	See tcp_wmem for a description.
+> +	Currently this tunable has no effect.
+>  
+>  addr_scope_policy - INTEGER
+>  	Control IPv4 address scoping - draft-stewart-tsvwg-sctp-ipv4-00
+> -- 
+> 1.7.3.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe netdev" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
