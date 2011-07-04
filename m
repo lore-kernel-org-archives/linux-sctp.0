@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 04 Jul 2011 14:54:54 +0000
+From: Ben Hutchings <bhutchings@solarflare.com>
+Date: Mon, 04 Jul 2011 16:11:57 +0000
 Subject: Re: [PATCH 1/2] Update description of net.sctp.sctp_rmem and
-Message-Id: <20110704145454.GA10310@hmsreliant.think-freely.org>
+Message-Id: <1309795917.2729.0.camel@bwh-desktop>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20110704083605.AF9C28156C57@regina.usersys.redhat.com>
 In-Reply-To: <20110704083605.AF9C28156C57@regina.usersys.redhat.com>
@@ -11,7 +11,7 @@ Content-Transfer-Encoding: 7bit
 To: Max Matveev <makc@redhat.com>
 Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On Mon, Jun 20, 2011 at 06:08:10PM +1000, Max Matveev wrote:
+On Mon, 2011-06-20 at 18:08 +1000, Max Matveev wrote:
 > sctp does not use second and third ("default" and "max") values
 > of sctp_(r|w)mem tunables. The format is the same and tcp_(r|w)mem
 > but the meaning is different so make the documentation explicit to
@@ -34,15 +34,13 @@ On Mon, Jun 20, 2011 at 06:08:10PM +1000, Max Matveev wrote:
 > +	Only the first value ("min") is used, "default" and "max" are
 > +	ignored and may be removed in the future versions.
 > +
-Its accurate to say that only the first value is usd currently, but because of
-the way this sysctl is contructed (its used by the sysctl_rmem pointer in the
-sctp_prot struct, which expects an array of three integers in the commong
-__sk_mem_schedule function), we wont' be removing the other two values.  Drop
-that bit and its an ack from me.
-Neil
-
 > +	min: Minimal size of receive buffer used by SCTP socket.
 > +	It is guaranteed to each STCP socket (but not association) even 
+
+Typo: 'STCP' should be 'SCTP'.
+
+Ben.
+
 > +	under moderate memory pressure.
 > +
 > +	Default: 1 page
@@ -53,11 +51,9 @@ Neil
 >  
 >  addr_scope_policy - INTEGER
 >  	Control IPv4 address scoping - draft-stewart-tsvwg-sctp-ipv4-00
-> -- 
-> 1.7.3.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe netdev" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
+-- 
+Ben Hutchings, Senior Software Engineer, Solarflare
+Not speaking for my employer; that's the marketing department's job.
+They asked us to note that Solarflare product names are trademarked.
+
