@@ -1,37 +1,62 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 08 Jul 2011 16:53:18 +0000
-Subject: Re: [PATCHv3] sctp: ABORT if receive, reassmbly, or reodering
-Message-Id: <20110708.095318.419802655953112570.davem@davemloft.net>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 04 Jul 2011 14:58:20 +0000
+Subject: Re: [PATCH 2/2] Update documented default values for various TCP/UDP
+Message-Id: <20110704145820.GB10310@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4E170B00.9080406@hp.com>
-	<20110708143746.GB24249@canuck.infradead.org>
-	<4E1733CF.5090004@hp.com>
-In-Reply-To: <4E1733CF.5090004@hp.com>
+References: <20110704083616.43F2C8156C57@regina.usersys.redhat.com>
+In-Reply-To: <20110704083616.43F2C8156C57@regina.usersys.redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vladislav.yasevich@hp.com
-Cc: netdev@vger.kernel.org, yjwei@cn.fujitsu.com, sri@us.ibm.com, linux-sctp@vger.kernel.org
+To: Max Matveev <makc@redhat.com>
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-From: Vladislav Yasevich <vladislav.yasevich@hp.com>
-Date: Fri, 08 Jul 2011 12:43:59 -0400
-
-> On 07/08/2011 10:37 AM, Thomas Graf wrote:
->> Trigger user ABORT if application closes a socket which has data
->> queued on the socket receive queue or chunks waiting on the
->> reassembly or ordering queue as this would imply data being lost
->> which defeats the point of a graceful shutdown.
->> 
->> This behavior is already practiced in TCP.
->> 
->> We do not check the input queue because that would mean to parse
->> all chunks on it to look for unacknowledged data which seems too
->> much of an effort. Control chunks or duplicated chunks may also
->> be in the input queue and should not be stopping a graceful
->> shutdown.
->> 
->> Signed-off-by: Thomas Graf <tgraf@infradead.org>
+On Wed, Jun 22, 2011 at 05:18:13PM +1000, Max Matveev wrote:
+> tcp_rmem and tcp_wmem use 1 page as default value for the minimum
+> amount of memory to be used, same as udp_wmem_min and udp_rmem_min.
+> Pages are different size on different architectures - use the right
+> units when describing the defaults.
 > 
-> Acked-by: Vlad Yasevich <vladislav.yasevich@hp.com>
+> Signed-off-by: Max Matveev <makc@redhat.com>
+> ---
+>  Documentation/networking/ip-sysctl.txt |    8 ++++----
+>  1 files changed, 4 insertions(+), 4 deletions(-)
+> 
+> diff --git a/Documentation/networking/ip-sysctl.txt b/Documentation/networking/ip-sysctl.txt
+> index f37d374..387ee53 100644
+> --- a/Documentation/networking/ip-sysctl.txt
+> +++ b/Documentation/networking/ip-sysctl.txt
+> @@ -394,7 +394,7 @@ tcp_rmem - vector of 3 INTEGERs: min, default, max
+>  	min: Minimal size of receive buffer used by TCP sockets.
+>  	It is guaranteed to each TCP socket, even under moderate memory
+>  	pressure.
+> -	Default: 8K
+> +	Default: 1 page
+>  
+>  	default: initial size of receive buffer used by TCP sockets.
+>  	This value overrides net.core.rmem_default used by other protocols.
+> @@ -483,7 +483,7 @@ tcp_window_scaling - BOOLEAN
+>  tcp_wmem - vector of 3 INTEGERs: min, default, max
+>  	min: Amount of memory reserved for send buffers for TCP sockets.
+>  	Each TCP socket has rights to use it due to fact of its birth.
+> -	Default: 4K
+> +	Default: 1 page
+>  
+>  	default: initial size of send buffer used by TCP sockets.  This
+>  	value overrides net.core.wmem_default used by other protocols.
+> @@ -553,13 +553,13 @@ udp_rmem_min - INTEGER
+>  	Minimal size of receive buffer used by UDP sockets in moderation.
+>  	Each UDP socket is able to use the size for receiving data, even if
+>  	total pages of UDP sockets exceed udp_mem pressure. The unit is byte.
+> -	Default: 4096
+> +	Default: 1 page
+>  
+>  udp_wmem_min - INTEGER
+>  	Minimal size of send buffer used by UDP sockets in moderation.
+>  	Each UDP socket is able to use the size for sending data, even if
+>  	total pages of UDP sockets exceed udp_mem pressure. The unit is byte.
+> -	Default: 4096
+> +	Default: 1 page
+>  
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
-Applied, thanks.
