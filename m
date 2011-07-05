@@ -1,50 +1,26 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 05 Jul 2011 11:34:46 +0000
-Subject: Re: [PATCH 1/2] Update description of net.sctp.sctp_rmem and
-Message-Id: <20110705113446.GA2959@hmsreliant.think-freely.org>
+From: Max Matveev <makc@redhat.com>
+Date: Tue, 05 Jul 2011 01:57:18 +0000
+Subject: [PATCHv2 0/2] Minor documentation updates for ip-related tunables
+Message-Id: <20110705015718.32777815DBB1@regina.usersys.redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20110704083605.AF9C28156C57@regina.usersys.redhat.com>
- <20110704145454.GA10310@hmsreliant.think-freely.org>
- <19986.28723.546267.454485@regina.usersys.redhat.com>
-In-Reply-To: <19986.28723.546267.454485@regina.usersys.redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Max Matveev <makc@redhat.com>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org
 
-On Tue, Jul 05, 2011 at 12:00:19PM +1000, Max Matveev wrote:
-> On Mon, 4 Jul 2011 10:54:54 -0400, Neil Horman wrote:
-> 
->  nhorman> On Mon, Jun 20, 2011 at 06:08:10PM +1000, Max Matveev wrote:
-> 
->  >> sctp_rmem - vector of 3 INTEGERs: min, default, max
->  >> -	See tcp_rmem for a description.
->  >> +	Only the first value ("min") is used, "default" and "max" are
->  >> +	ignored and may be removed in the future versions.
->  >> +
-> 
->  nhorman> Its accurate to say that only the first value is usd
->  nhorman> currently, but because of the way this sysctl is contructed
->  nhorman> (its used by the sysctl_rmem pointer in the sctp_prot
->  nhorman> struct, which expects an array of three integers in the
->  nhorman> commong __sk_mem_schedule function), we wont' be removing
->  nhorman> the other two values.
-> 
-> Technically it can be just a single integer - UDP does use it 
-> that way but I'm not going to argue, v2 of the patch removed
-> that bit.
-> 
-Yeah, but the only reason udp gets away with it is because the common code in
-__sk_mem_schedule only happens to touch the first element in the array.  I
-suppose we could just drop the array semantics in the common code and save the
-sizeof(int) bytes per protocol, but then individual protocols may (or may not)
-access other elements of the array.  Hmm, odd situation.  I'd just as soon leave
-the sctp elements in place, they probably have use for ongoing work to fix up
-sctp's buffer accounting.
+Confusion about the way SCTP uses its rmem and wmem tunables
+prompted a documentation revision.
 
-Anywho, thanks!
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+v2: incorporate suggestions by Shan Wei and Neil Horman.
 
-> max
-> 
+Max Matveev (2):
+  Update description of net.sctp.sctp_rmem and net.sctp.sctp_wmem tunables
+  Update documented default values for various TCP/UDP tunables
+
+ Documentation/networking/ip-sysctl.txt |   19 +++++++++++++------
+ 1 files changed, 13 insertions(+), 6 deletions(-)
+
+-- 
+1.7.3.3
+
