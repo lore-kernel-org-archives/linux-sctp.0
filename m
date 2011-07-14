@@ -1,51 +1,66 @@
-From: Max Matveev <makc@redhat.com>
-Date: Mon, 20 Jun 2011 08:08:10 +0000
-Subject: [PATCH v2 1/2] Update description of net.sctp.sctp_rmem and net.sctp.sctp_wmem tunables
-Message-Id: <20110705015723.8B226815DBB1@regina.usersys.redhat.com>
+From: =?UTF-8?q?Micha=C5=82=20Miros=C5=82aw?= <mirq-linux@rere.qmqm.pl>
+Date: Thu, 14 Jul 2011 00:10:29 +0000
+Subject: [PATCH 01/10] net: sctp: fix checksum marking for outgoing packets
+Message-Id: <d67799da9624127ffabf05226c0f20090be4f785.1310601401.git.mirq-linux@rere.qmqm.pl>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1310601401.git.mirq-linux@rere.qmqm.pl>
+In-Reply-To: <cover.1310601401.git.mirq-linux@rere.qmqm.pl>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
-Cc: netdev@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: netdev@vger.kernel.org
+Cc: Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>, linux-sctp@vger.kernel.org
 
-sctp does not use second and third ("default" and "max") values
-of sctp_rmem tunable. The format is the same as tcp_rmem
-but the meaning is different so make the documentation explicit to
-avoid confusion.
+Packets to devices without NETIF_F_SCTP_CSUM (including NETIF_F_NO_CSUM)
+should be properly checksummed because the packets can be diverted or
+rerouted after construction. This still leaves packets diverted from
+NETIF_F_SCTP_CSUM-enabled devices with broken checksums. Fixing this
+needs implementing software offload fallback in networking core.
 
-sctp_wmem is not used at all.
+For users of sctp_checksum_disable, skb->ip_summed should be left as
+CHECKSUM_NONE and not CHECKSUM_UNNECESSARY as per include/linux/skbuff.h.
 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
-Signed-off-by: Max Matveev <makc@redhat.com>
+Signed-off-by: Michał Mirosław <mirq-linux@rere.qmqm.pl>
 ---
- Documentation/networking/ip-sysctl.txt |   11 +++++++++--
- 1 files changed, 9 insertions(+), 2 deletions(-)
+ net/sctp/output.c |   19 ++++++++-----------
+ 1 files changed, 8 insertions(+), 11 deletions(-)
 
-diff --git a/Documentation/networking/ip-sysctl.txt b/Documentation/networking/ip-sysctl.txt
-index d3d653a..ce09f83 100644
---- a/Documentation/networking/ip-sysctl.txt
-+++ b/Documentation/networking/ip-sysctl.txt
-@@ -1465,10 +1465,17 @@ sctp_mem - vector of 3 INTEGERs: min, pressure, max
- 	Default is calculated at boot time from amount of available memory.
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index b4f3cf0..08b3cea 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -500,23 +500,20 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+ 	 * Note: Adler-32 is no longer applicable, as has been replaced
+ 	 * by CRC32-C as described in <draft-ietf-tsvwg-sctpcsum-02.txt>.
+ 	 */
+-	if (!sctp_checksum_disable &&
+-	    !(dst->dev->features & (NETIF_F_NO_CSUM | NETIF_F_SCTP_CSUM))) {
+-		__u32 crc32 = sctp_start_cksum((__u8 *)sh, cksum_buf_len);
++	if (!sctp_checksum_disable) {
++		if (!(dst->dev->features & NETIF_F_SCTP_CSUM)) {
++			__u32 crc32 = sctp_start_cksum((__u8 *)sh, cksum_buf_len);
  
- sctp_rmem - vector of 3 INTEGERs: min, default, max
--	See tcp_rmem for a description.
-+	Only the first value ("min") is used, "default" and "max" are
-+	ignored.
-+
-+	min: Minimal size of receive buffer used by SCTP socket.
-+	It is guaranteed to each SCTP socket (but not association) even 
-+	under moderate memory pressure.
-+
-+	Default: 1 page
+-		/* 3) Put the resultant value into the checksum field in the
+-		 *    common header, and leave the rest of the bits unchanged.
+-		 */
+-		sh->checksum = sctp_end_cksum(crc32);
+-	} else {
+-		if (dst->dev->features & NETIF_F_SCTP_CSUM) {
++			/* 3) Put the resultant value into the checksum field in the
++			 *    common header, and leave the rest of the bits unchanged.
++			 */
++			sh->checksum = sctp_end_cksum(crc32);
++		} else {
+ 			/* no need to seed pseudo checksum for SCTP */
+ 			nskb->ip_summed = CHECKSUM_PARTIAL;
+ 			nskb->csum_start = (skb_transport_header(nskb) -
+ 			                    nskb->head);
+ 			nskb->csum_offset = offsetof(struct sctphdr, checksum);
+-		} else {
+-			nskb->ip_summed = CHECKSUM_UNNECESSARY;
+ 		}
+ 	}
  
- sctp_wmem  - vector of 3 INTEGERs: min, default, max
--	See tcp_wmem for a description.
-+	Currently this tunable has no effect.
- 
- addr_scope_policy - INTEGER
- 	Control IPv4 address scoping - draft-stewart-tsvwg-sctp-ipv4-00
 -- 
-1.7.3.3
+1.7.5.4
 
