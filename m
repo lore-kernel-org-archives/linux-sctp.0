@@ -1,75 +1,55 @@
-From: Max Matveev <makc@redhat.com>
-Date: Tue, 30 Aug 2011 07:02:24 +0000
-Subject: [PATCH] sctp: deal with multiple COOKIE_ECHO chunks
-Message-Id: <20110830072010.94AE98132707@regina.usersys.redhat.com>
+From: Joe Perches <joe@perches.com>
+Date: Mon, 29 Aug 2011 21:17:37 +0000
+Subject: [PATCH 18/24] sctp: Remove unnecessary OOM logging messages
+Message-Id: <21b4d996c8861373ac77d427914ec7882fe0c83e.1314650069.git.joe@perches.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1314650069.git.joe@perches.com>
+In-Reply-To: <cover.1314650069.git.joe@perches.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
-Cc: netdev@vger.kernel.org, vladislav.yasevich@hp.com
+To: Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>
+Cc: "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-Attempt to reduce the number of IP packets emitted in response to single
-SCTP packet (2e3216cd) introduced a complication - if a packet contains
-two COOKIE_ECHO chunks and nothing else then SCTP state machine corks the
-socket while processing first COOKIE_ECHO and then loses the association
-and forgets to uncork the socket. To deal with the issue add new SCTP
-command which can be used to set association explictly. Use this new
-command when processing second COOKIE_ECHO chunk to restore the context
-for SCTP state machine.
+Removing unnecessary messages saves code and text.
 
-Signed-off-by: Max Matveev <makc@redhat.com>
+Site specific OOM messages are duplications of a generic MM
+out of memory message and aren't really useful, so just
+delete them.
+
+Signed-off-by: Joe Perches <joe@perches.com>
 ---
- include/net/sctp/command.h |    1 +
- net/sctp/sm_sideeffect.c   |    5 +++++
- net/sctp/sm_statefuns.c    |    6 ++++++
- 3 files changed, 12 insertions(+), 0 deletions(-)
+ net/sctp/protocol.c |    3 ---
+ 1 files changed, 0 insertions(+), 3 deletions(-)
 
-diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
-index 6506458..712b3be 100644
---- a/include/net/sctp/command.h
-+++ b/include/net/sctp/command.h
-@@ -109,6 +109,7 @@ typedef enum {
- 	SCTP_CMD_SEND_MSG,	 /* Send the whole use message */
- 	SCTP_CMD_SEND_NEXT_ASCONF, /* Send the next ASCONF after ACK */
- 	SCTP_CMD_PURGE_ASCONF_QUEUE, /* Purge all asconf queues.*/
-+	SCTP_CMD_SET_ASOC,	 /* Restore association context */
- 	SCTP_CMD_LAST
- } sctp_verb_t;
- 
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index 167c880..76388b0 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -1689,6 +1689,11 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
- 		case SCTP_CMD_PURGE_ASCONF_QUEUE:
- 			sctp_asconf_queue_teardown(asoc);
- 			break;
-+
-+		case SCTP_CMD_SET_ASOC:
-+			asoc = cmd->obj.asoc;
-+			break;
-+
- 		default:
- 			pr_warn("Impossible command: %u, %p\n",
- 				cmd->verb, cmd->obj.ptr);
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 49b847b..1949703 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -2047,6 +2047,12 @@ sctp_disposition_t sctp_sf_do_5_2_4_dupcook(const struct sctp_endpoint *ep,
- 	sctp_add_cmd_sf(commands, SCTP_CMD_NEW_ASOC, SCTP_ASOC(new_asoc));
- 	sctp_add_cmd_sf(commands, SCTP_CMD_DELETE_TCB, SCTP_NULL());
- 
-+	/* Restore association pointer to provide SCTP command interpeter 
-+ 	 * with a valid context in case it needs to manipulate 
-+ 	 * the queues */
-+	sctp_add_cmd_sf(commands, SCTP_CMD_SET_ASOC,
-+			 SCTP_ASOC((struct sctp_association *)asoc));
-+
- 	return retval;
- 
- nomem:
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 91784f4..0801444 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -1326,7 +1326,6 @@ SCTP_STATIC __init int sctp_init(void)
+ 			__get_free_pages(GFP_ATOMIC|__GFP_NOWARN, order);
+ 	} while (!sctp_assoc_hashtable && --order > 0);
+ 	if (!sctp_assoc_hashtable) {
+-		pr_err("Failed association hash alloc\n");
+ 		status = -ENOMEM;
+ 		goto err_ahash_alloc;
+ 	}
+@@ -1340,7 +1339,6 @@ SCTP_STATIC __init int sctp_init(void)
+ 	sctp_ep_hashtable = (struct sctp_hashbucket *)
+ 		kmalloc(64 * sizeof(struct sctp_hashbucket), GFP_KERNEL);
+ 	if (!sctp_ep_hashtable) {
+-		pr_err("Failed endpoint_hash alloc\n");
+ 		status = -ENOMEM;
+ 		goto err_ehash_alloc;
+ 	}
+@@ -1359,7 +1357,6 @@ SCTP_STATIC __init int sctp_init(void)
+ 			__get_free_pages(GFP_ATOMIC|__GFP_NOWARN, order);
+ 	} while (!sctp_port_hashtable && --order > 0);
+ 	if (!sctp_port_hashtable) {
+-		pr_err("Failed bind hash alloc\n");
+ 		status = -ENOMEM;
+ 		goto err_bhash_alloc;
+ 	}
 -- 
-1.7.4.4
+1.7.6.405.gc1be0
 
