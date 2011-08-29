@@ -1,17 +1,18 @@
-From: Vladislav Yasevich <vladislav.yasevich@hp.com>
-Date: Mon, 29 Aug 2011 21:29:49 +0000
+From: Eric Dumazet <eric.dumazet@gmail.com>
+Date: Mon, 29 Aug 2011 21:43:28 +0000
 Subject: Re: [PATCH 18/24] sctp: Remove unnecessary OOM logging messages
-Message-Id: <4E5C04CD.8070902@hp.com>
+Message-Id: <1314654209.2563.7.camel@edumazet-laptop>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1314650069.git.joe@perches.com> <21b4d996c8861373ac77d427914ec7882fe0c83e.1314650069.git.joe@perches.com>
+References: <cover.1314650069.git.joe@perches.com>
+	 <21b4d996c8861373ac77d427914ec7882fe0c83e.1314650069.git.joe@perches.com>
 In-Reply-To: <21b4d996c8861373ac77d427914ec7882fe0c83e.1314650069.git.joe@perches.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 To: Joe Perches <joe@perches.com>
-Cc: Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On 08/29/2011 05:17 PM, Joe Perches wrote:
+Le lundi 29 août 2011 à 14:17 -0700, Joe Perches a écrit :
 > Removing unnecessary messages saves code and text.
 > 
 > Site specific OOM messages are duplications of a generic MM
@@ -19,11 +20,6 @@ On 08/29/2011 05:17 PM, Joe Perches wrote:
 > delete them.
 > 
 > Signed-off-by: Joe Perches <joe@perches.com>
-
-Acked-by: Vlad Yasevich <vladislav.yasevich@hp.com>
-
--vlad
-
 > ---
 >  net/sctp/protocol.c |    3 ---
 >  1 files changed, 0 insertions(+), 3 deletions(-)
@@ -56,4 +52,22 @@ Acked-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 >  		status = -ENOMEM;
 >  		goto err_bhash_alloc;
 >  	}
+
+
+It would be nice if you could avoid all these patches, that you dont
+even read.
+
+As I already told you in the past, __GFP_NOWARN dont print generic OOM
+messages.
+
+Its not because I told Wang Shaoyan not adding a useless "pr_err("Out of
+memory\n");" in last gianfar patch, that you have to remove all
+messages, with one hundred or more patches.
+
+If I remember well, you even disagreed at that time.
+
+Furthermore, a failed vmalloc() is not guaranteed to emit an OOM
+message, is it ?
+
+
 
