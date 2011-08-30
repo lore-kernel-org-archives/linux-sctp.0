@@ -1,39 +1,75 @@
-From: Thomas Meyer <thomas@m3y3r.de>
-Date: Sat, 13 Aug 2011 09:43:45 +0000
-Subject: [PATCH] sctp: dont cast void* from kmalloc()
-Message-Id: <1313228625.16820.42.camel@localhost.localdomain>
+From: Max Matveev <makc@redhat.com>
+Date: Tue, 30 Aug 2011 07:02:24 +0000
+Subject: [PATCH] sctp: deal with multiple COOKIE_ECHO chunks
+Message-Id: <20110830072010.94AE98132707@regina.usersys.redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1313228502.16820.40.camel@localhost.localdomain>
-In-Reply-To: <1313228502.16820.40.camel@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
+To: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org, vladislav.yasevich@hp.com
 
-From: Thomas Meyer <thomas@m3y3r.de>
+Attempt to reduce the number of IP packets emitted in response to single
+SCTP packet (2e3216cd) introduced a complication - if a packet contains
+two COOKIE_ECHO chunks and nothing else then SCTP state machine corks the
+socket while processing first COOKIE_ECHO and then loses the association
+and forgets to uncork the socket. To deal with the issue add new SCTP
+command which can be used to set association explictly. Use this new
+command when processing second COOKIE_ECHO chunk to restore the context
+for SCTP state machine.
 
- Casting (void *) value returned by kmalloc is useless
- as mentioned in Documentation/CodingStyle, Chap 14.
-
- The semantic patch that makes this output is available
- in scripts/coccinelle/api/alloc/drop_kmalloc_cast.cocci.
-
- More information about semantic patching is available at
- http://coccinelle.lip6.fr/
-
-Signed-off-by: Thomas Meyer <thomas@m3y3r.de>
+Signed-off-by: Max Matveev <makc@redhat.com>
 ---
+ include/net/sctp/command.h |    1 +
+ net/sctp/sm_sideeffect.c   |    5 +++++
+ net/sctp/sm_statefuns.c    |    6 ++++++
+ 3 files changed, 12 insertions(+), 0 deletions(-)
 
-diff -u -p a/net/sctp/protocol.c b/net/sctp/protocol.c
---- a/net/sctp/protocol.c 2011-07-26 00:46:12.663489013 +0200
-+++ b/net/sctp/protocol.c 2011-08-01 20:02:43.478907122 +0200
-@@ -1337,7 +1337,7 @@ SCTP_STATIC __init int sctp_init(void)
+diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
+index 6506458..712b3be 100644
+--- a/include/net/sctp/command.h
++++ b/include/net/sctp/command.h
+@@ -109,6 +109,7 @@ typedef enum {
+ 	SCTP_CMD_SEND_MSG,	 /* Send the whole use message */
+ 	SCTP_CMD_SEND_NEXT_ASCONF, /* Send the next ASCONF after ACK */
+ 	SCTP_CMD_PURGE_ASCONF_QUEUE, /* Purge all asconf queues.*/
++	SCTP_CMD_SET_ASOC,	 /* Restore association context */
+ 	SCTP_CMD_LAST
+ } sctp_verb_t;
  
- 	/* Allocate and initialize the endpoint hash table.  */
- 	sctp_ep_hashsize = 64;
--	sctp_ep_hashtable = (struct sctp_hashbucket *)
-+	sctp_ep_hashtable  		kmalloc(64 * sizeof(struct sctp_hashbucket), GFP_KERNEL);
- 	if (!sctp_ep_hashtable) {
- 		pr_err("Failed endpoint_hash alloc\n");
-
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 167c880..76388b0 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -1689,6 +1689,11 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
+ 		case SCTP_CMD_PURGE_ASCONF_QUEUE:
+ 			sctp_asconf_queue_teardown(asoc);
+ 			break;
++
++		case SCTP_CMD_SET_ASOC:
++			asoc = cmd->obj.asoc;
++			break;
++
+ 		default:
+ 			pr_warn("Impossible command: %u, %p\n",
+ 				cmd->verb, cmd->obj.ptr);
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 49b847b..1949703 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -2047,6 +2047,12 @@ sctp_disposition_t sctp_sf_do_5_2_4_dupcook(const struct sctp_endpoint *ep,
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_NEW_ASOC, SCTP_ASOC(new_asoc));
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_DELETE_TCB, SCTP_NULL());
+ 
++	/* Restore association pointer to provide SCTP command interpeter 
++ 	 * with a valid context in case it needs to manipulate 
++ 	 * the queues */
++	sctp_add_cmd_sf(commands, SCTP_CMD_SET_ASOC,
++			 SCTP_ASOC((struct sctp_association *)asoc));
++
+ 	return retval;
+ 
+ nomem:
+-- 
+1.7.4.4
 
