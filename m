@@ -1,38 +1,76 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 29 Aug 2011 22:15:20 +0000
+From: Joe Perches <joe@perches.com>
+Date: Tue, 30 Aug 2011 01:21:21 +0000
 Subject: Re: [PATCH 18/24] sctp: Remove unnecessary OOM logging messages
-Message-Id: <20110829.181520.933815499847625814.davem@davemloft.net>
+Message-Id: <1314667281.6852.47.camel@Joe-Laptop>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <21b4d996c8861373ac77d427914ec7882fe0c83e.1314650069.git.joe@perches.com>
-	<1314654209.2563.7.camel@edumazet-laptop>
-	<1314654681.2563.10.camel@edumazet-laptop>
-In-Reply-To: <1314654681.2563.10.camel@edumazet-laptop>
+References: <cover.1314650069.git.joe@perches.com>
+	 <21b4d996c8861373ac77d427914ec7882fe0c83e.1314650069.git.joe@perches.com>
+	 <1314654209.2563.7.camel@edumazet-laptop>
+In-Reply-To: <1314654209.2563.7.camel@edumazet-laptop>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: eric.dumazet@gmail.com
-Cc: joe@perches.com, vladislav.yasevich@hp.com, sri@us.ibm.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: Eric Dumazet <eric.dumazet@gmail.com>
+Cc: Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-From: Eric Dumazet <eric.dumazet@gmail.com>
-Date: Mon, 29 Aug 2011 23:51:21 +0200
+On Mon, 2011-08-29 at 23:43 +0200, Eric Dumazet wrote:
+> Le lundi 29 août 2011 à 14:17 -0700, Joe Perches a écrit :
+> > Removing unnecessary messages saves code and text.
+> > Site specific OOM messages are duplications of a generic MM
+> > out of memory message and aren't really useful, so just
+> > delete them.
+> > Signed-off-by: Joe Perches <joe@perches.com>
+> > ---
+> >  net/sctp/protocol.c |    3 ---
+> >  1 files changed, 0 insertions(+), 3 deletions(-)
+> > diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+[]
+> > @@ -1326,7 +1326,6 @@ SCTP_STATIC __init int sctp_init(void)
+> >  			__get_free_pages(GFP_ATOMIC|__GFP_NOWARN, order);
+> >  	} while (!sctp_assoc_hashtable && --order > 0);
+> >  	if (!sctp_assoc_hashtable) {
+> > -		pr_err("Failed association hash alloc\n");
+> >  		status = -ENOMEM;
+> >  		goto err_ahash_alloc;
+> >  	}
+[]
+> > @@ -1359,7 +1357,6 @@ SCTP_STATIC __init int sctp_init(void)
+> >  			__get_free_pages(GFP_ATOMIC|__GFP_NOWARN, order);
+> >  	} while (!sctp_port_hashtable && --order > 0);
+> >  	if (!sctp_port_hashtable) {
+> > -		pr_err("Failed bind hash alloc\n");
+> >  		status = -ENOMEM;
+> >  		goto err_bhash_alloc;
+> >  	}
+> It would be nice if you could avoid all these patches, that you dont
+> even read.
 
-> Le lundi 29 ao=FBt 2011 =E0 23:43 +0200, Eric Dumazet a =E9crit :
->=20
->> Furthermore, a failed vmalloc() is not guaranteed to emit an OOM
->> message, is it ?
->=20
-> It currently displays a message without context :
->=20
-> vmap allocation for size XXXXXX failed: use vmalloc=3D<size> to increase
-> size.
->=20
-> So we dont know which part of the kernel asked this allocation.
->=20
-> Please dont remove existing error messages after failed vmalloc() calls.
+Didn't read is not the same thing as didn't notice.
 
-Indeed.
+> As I already told you in the past, __GFP_NOWARN dont print generic OOM
+> messages.
 
-Joe, these vmalloc() and also the __GFP_NOWARN cases will need to be
-attended to and this series resubmitted as such.
+I didn't notice those had GFP_NOWARN.
 
-Thanks.
+> Its not because I told Wang Shaoyan not adding a useless "pr_err("Out of
+> memory\n");" in last gianfar patch, that you have to remove all
+> messages, with one hundred or more patches.
+
+> If I remember well, you even disagreed at that time.
+
+No, what I said was that it'd be better to get agreement
+to delete them before deleting them.
+
+https://lkml.org/lkml/2011/8/9/379
+
+So I submitted an RFC and cc'd you.
+You did not reply.
+
+https://lkml.org/lkml/2011/8/25/580
+
+> Furthermore, a failed vmalloc() is not guaranteed to emit an OOM
+> message, is it ?
+
+Doesn't seem to be, perhaps it should be
+when __GFP_NOWARN is not set...
+
