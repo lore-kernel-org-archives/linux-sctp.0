@@ -1,11 +1,37 @@
-From: lisa hedstrand <lisa_hedstrand@indiatimes.com>
-Date: Fri, 28 Oct 2011 11:30:25 +0000
-Subject: Hi
-Message-Id: <1851786347.935251319800705182.JavaMail.root@tilmb17.indiatimes.com>
+From: Xi Wang <xi.wang@gmail.com>
+Date: Wed, 23 Nov 2011 01:55:30 +0000
+Subject: [PATCH] sctp: integer overflow in sctp_auth_create_key()
+Message-Id: <028246D6-9024-4E43-93A1-25A87878CBBC@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: linux-kernel@vger.kernel.org
+Cc: Vlad Yasevich <vladislav.yasevich@hp.com>, Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, security@kernel.org
 
-My name is Miss Lisa Please accept my apology if my mode of contacting you will in any way offend you. I am compelled to contact you via this medium because i needed a friend from that part of the world. We will get to know each other in details if my proposition accepted. l am a student in UK but originally from USA.
+The previous commit 30c2235c is incomplete and cannot prevent integer
+overflows. For example, when key_len is 0x80000000 (INT_MAX + 1), the
+left-hand side of the check, (INT_MAX - key_len), which is unsigned,
+becomes 0xffffffff (UINT_MAX) and bypasses the check.
+
+Signed-off-by: Xi Wang <xi.wang@gmail.com>
+---
+net/sctp/auth.c |    2 +-
+1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/net/sctp/auth.c b/net/sctp/auth.c
+index 865e68f..989e0fd 100644
+--- a/net/sctp/auth.c
++++ b/net/sctp/auth.c
+@@ -82,7 +82,7 @@ static struct sctp_auth_bytes *sctp_auth_create_key(__u32 key_len, gfp_t gfp)
+	struct sctp_auth_bytes *key;
+
+	/* Verify that we are not going to overflow INT_MAX */
+-	if ((INT_MAX - key_len) < sizeof(struct sctp_auth_bytes))
++	if (key_len > INT_MAX - sizeof(struct sctp_auth_bytes))
+		return NULL;
+
+	/* Allocate the shared key */
+-- 
+1.7.5.4
+
