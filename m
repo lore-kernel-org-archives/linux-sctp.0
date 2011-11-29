@@ -1,30 +1,30 @@
 From: Xi Wang <xi.wang@gmail.com>
-Date: Tue, 29 Nov 2011 19:24:01 +0000
+Date: Tue, 29 Nov 2011 19:31:30 +0000
 Subject: Re: [PATCH] sctp: integer overflow in sctp_auth_create_key()
-Message-Id: <A1A6AF9D-8C35-4702-9693-7BCBEDE27219@gmail.com>
+Message-Id: <BC344CCF-A50F-4E5E-A9A5-F506D8BD9DB9@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <426D7BA8-ECD0-44D6-A09F-2033F0C825FC@gmail.com> <4ED3AC7D.6090108@hp.com> <147F953A-CC69-41FF-ACD4-64E5E2956411@gmail.com> <4ED4F428.9030807@hp.com>
-In-Reply-To: <4ED4F428.9030807@hp.com>
+References: <028246D6-9024-4E43-93A1-25A87878CBBC@gmail.com> <20111129.011932.1501413448765180498.davem@davemloft.net>
+In-Reply-To: <20111129.011932.1501413448765180498.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vladislav Yasevich <vladislav.yasevich@hp.com>
-Cc: linux-kernel@vger.kernel.org, Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, security@kernel.org
+To: David Miller <davem@davemloft.net>
+Cc: linux-kernel@vger.kernel.org, vladislav.yasevich@hp.com, sri@us.ibm.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, security@kernel.org
 
-Thanks for clarifying this!
+Sorry my bad.
 
-I will leave the check there and incorporate your comments into a new patch.
+BTW it seems that the patch was not applied correctly either in
+the commit a5e5c374 --- it says "No differences found".
+
+Can you please apply the new patch v2?  Thanks.
 
 - xi
 
-On Nov 29, 2011, at 10:03 AM, Vladislav Yasevich wrote:
+On Nov 29, 2011, at 1:19 AM, David Miller wrote:
 > 
-> That should be ok as well.  There is an overflow guard in the api
-> entry point so that should guard against overflows from user space.
+> Applied, but I had to apply your patch by hand because it was
+> corrupted by your email client.
 > 
-> On the network end I miscalculated a little.  The key is actually made up
-> of user_key (1 short) + 2 * key_vector (3 shorts) for a total of 7*MAX_USHORT;
-> however, that still will not overflow 32 bits.
-> 
-> -vlad
+> Please fix this problem because I am not applying any other patch
+> you've submitted which has this issue.
 
