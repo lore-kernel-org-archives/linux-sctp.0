@@ -1,49 +1,21 @@
-From: Vlad Yasevich <vladislav.yasevich@hp.com>
-Date: Fri, 16 Dec 2011 13:00:05 +0000
+From: Xi Wang <xi.wang@gmail.com>
+Date: Fri, 16 Dec 2011 22:25:37 +0000
 Subject: Re: [PATCH v2] sctp: fix incorrect overflow check on autoclose
-Message-Id: <4EEB40D5.7030906@hp.com>
+Message-Id: <D216BA11-0779-45C8-85DB-3E553069215C@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1323393883-3759-1-git-send-email-xi.wang@gmail.com> <4EE919B5.3090901@gmail.com> <4EEA6176.9020704@hp.com> <0BF79838-C86F-4C3F-8D51-4223D579764C@gmail.com>
-In-Reply-To: <0BF79838-C86F-4C3F-8D51-4223D579764C@gmail.com>
+References: <1323393883-3759-1-git-send-email-xi.wang@gmail.com> <4EE919B5.3090901@gmail.com> <4EEA6176.9020704@hp.com> <0BF79838-C86F-4C3F-8D51-4223D579764C@gmail.com> <4EEB40D5.7030906@hp.com>
+In-Reply-To: <4EEB40D5.7030906@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xi Wang <xi.wang@gmail.com>
+To: Vlad Yasevich <vladislav.yasevich@hp.com>
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>, Andrei Pelinescu-Onciul <andrei@iptel.org>, "David S. Miller" <davem@davemloft.net>
 
+On Dec 16, 2011, at 8:00 AM, Vlad Yasevich wrote:
+> This would work as well.  I do like the max configurable though as it
+> might be a nice feature, but the above code is exactly what I was
+> thinking about too.
 
+Okay I will do a v3 based on that with the max autoclose. ;-)
 
-On 12/15/2011 05:13 PM, Xi Wang wrote:
-> On Dec 15, 2011, at 4:07 PM, Vlad Yasevich wrote:
->> I think it would be better to keep this value in seconds and get rid
->> of division in the setsockopt code.  We could then have a min and max
->> values where max value could be something like 2 days.  I really don't
->> see an autoclose value that is bigger then that being very useful.  In
->> fact, most of the time these values are very small as one wants to close
->> out idle associations.
-> 
-> Now I start to think exposing a new sysctl option might be a little
-> overkill since autoclose is often small.
-> 
-> How about this?
-> 
-> 1) Simply store autoclose in seconds in setsockopt.
-> 
-> 2) Avoid overflow in associola.c.
-> 
-> 	asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE] > 		(sp->autoclose > MAX_SCHEDULE_TIMEOUT / HZ)
-> 		? MAX_SCHEDULE_TIMEOUT
-> 		: (unsigned long)sp->autoclose * HZ;
-> 
-> Or we could use INT_MAX instead of MAX_SCHEDULE_TIMEOUT if you want to
-> keep that value consistent across 32/64 bits.
-
-This would work as well.  I do like the max configurable though as it
-might be a nice feature, but the above code is exactly what I was
-thinking about too.
-
--vlad
-
-> 
-> - xi
-> 
+- xi
