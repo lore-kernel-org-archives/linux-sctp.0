@@ -1,227 +1,102 @@
-From: Stanislav Kozina <skozina@redhat.com>
-Date: Thu, 15 Dec 2011 15:58:34 +0000
-Subject: Re: SCTP multihoming sends incorrect ARP request
-Message-Id: <8efdc551-0abe-49ff-914c-2c0fc1908e49@zmail01.collab.prod.int.phx2.redhat.com>
+From: Thomas Graf <tgraf@redhat.com>
+Date: Mon, 19 Dec 2011 14:11:40 +0000
+Subject: [PATCH] sctp: Do not account for sizeof(struct sk_buff) in estimated rwnd
+Message-Id: <1324303900-8360-1-git-send-email-tgraf@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <50cc07d6-006c-40ad-a846-f082e5365c08@zmail01.collab.prod.int.phx2.redhat.com>
-In-Reply-To: <50cc07d6-006c-40ad-a846-f082e5365c08@zmail01.collab.prod.int.phx2.redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: Vladislav Yasevich <vladislav.yasevich@hp.com>
+Cc: linux-sctp@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org, Thomas Graf <tgraf@redhat.com>
 
-vlad,
+When checking whether a DATA chunk fits into the estimated rwnd a
+full sizeof(struct sk_buff) is added to the needed chunk size. This
+quickly exhausts the available rwnd space and leads to packets being
+sent which are much below the PMTU limit. This can lead to much worse
+performance.
 
-Thanks a lot for your reply, you are right.
-I set both arp_ignore and arp_announce to 1 and now only ARP packets on respective interfaces are replied.
+The reason for this behaviour was to avoid putting too much memory
+pressure on the receiver. The concept is not completely irational
+because a Linux receiver does in fact clone an skb for each DATA chunk
+delivered. However, Linux also reserves half the available socket
+buffer space for data structures therefore usage of it is already
+accounted for.
 
-Thanks once again,
--Stanislav
+When proposing to change this the last time it was noted that this
+behaviour was introduced to solve a performance issue caused by rwnd
+overusage in combination with small DATA chunks.
 
-> # echo 1 > /proc/sys/net/ipv4/conf/all/arp_ignore
-> 
-> This has nothing to do with SCTP.  IP by default will answer ARP on
-> the
-> first interface that sees the packet (weak-host model).  Turning
-> above
-> on will make sure that you only answer ARPs on interfaces that have
-> the
-> address configured.
-> 
-> -vlad
-> 
-> > 
-> > Thank you once again and regards,
-> > -Stanislav
-> > 
-> >>
-> >> inet 192.168.100.14/16 brd 192.168.200.255 scope global eth0
-> >>
-> >> You see that /16 in there and the odd-looking broadcast address
-> >> (given your diagram stating all subnets are /24)? That's your
-> >> configuration issue :)
-> >>
-> >> Cheers,
-> >> malc.
-> >>
-> >>
-> >> On Wed, Dec 14, 2011 at 11:41 AM, Stanislav Kozina <
-> >> skozina@redhat.com > wrote:
-> >>
-> >>
-> >> Greetings,
-> >>
-> >> I'd like to discuss obscure behavior of SCTP in multihoming
-> >> environment.
-> >> SCTP connect() leads to incorrect ARP who-has request and reply.
-> >>
-> >> Suppose we have two hosts (hostA, hostB), each with two NICs
-> >> (nicA,
-> >> nicB),
-> >> each NIC with two addresses (addrA, addrB). So in our scenario we
-> >> have 8
-> >> addresses in total. All NICs are connected to the same physical
-> >> network
-> >> switch.
-> >> Both addresses on both nicA are in one subnet, both addresses on
-> >> both
-> >> nicB are
-> >> in one different subnet.
-> >>
-> >> So my settings looks like:
-> >>
-> >> ==hostA======== ==hostB========
-> >> | 192.168.100.4/24 nicA-\ /-nicB 192.168.100.5/24 |
-> >> | 192.168.100.14/24 | || | 192.168.100.15/24 |
-> >> |----------------------| || |----------------------|
-> >> | 192.168.200.4/24 nicB-/ \-nicB 192.168.200.5/24 |
-> >> | 192.168.200.14/24 | | 192.168.200.15/24 |
-> >> ============ ============
-> >>
-> >> (in real setup both subnets would be routed through different
-> >> physical networks etc.)
-> >>
-> >> Now suppose we are running SCTP server on hostB, which does:
-> >>
-> >> socket(AF_INET, SOCK_STREAM,IPPROTO_SCTP);
-> >> bind(192.168.100.5)
-> >> sctp_bindx(192.168.200.5)
-> >> listen()
-> >> accept()
-> >>
-> >> And SCTP client running on hostA doing:
-> >>
-> >> socket(AF_INET, SOCK_STREAM,IPPROTO_SCTP);
-> >> bind(192.168.100.4);
-> >> sctp_bindx(192.168.200.4);
-> >> connect(192.168.200.5);
-> >>
-> >> So in short - the client does connect to the secondary interface
-> >> of
-> >> the server.
-> >>
-> >> The problem here is ARP resolution before actual SCTP handshake.
-> >> Here
-> >> the
-> >> client sends incorrect ARP request, see **) below for tcpdump
-> >> output.
-> >> In the showed packets, the ARP Who-has request contains incorrect
-> >> combination
-> >> of Sender's MAC and IP address. It has Sender's MAC address of
-> >> nicB,
-> >> but
-> >> Sender's IP address of nicA.
-> >> The server then replies with the same wrong packet - Sender's MAC
-> >> address of
-> >> his nicA, but IP address from nicB.
-> >> This leads to wrong ARP tables on both hosts - they both only only
-> >> one MAC
-> >> address of their respective partner.
-> >> Wrong ARP tables leads for incorrect source IP in future SCTP
-> >> packets.
-> >>
-> >> Possible workaround is to ping all partners before starting SCTP
-> >> connection to
-> >> fill ARP tables correctly.
-> >>
-> >> I was testing this on yesterday's build of the kernel:
-> >>
-> >> $ git log | head
-> >> commit dc47ce90c3a822cd7c9e9339fe4d5f61dcb26b50
-> >> Author: Linus Torvalds < torvalds@linux-foundation.org >
-> >> Date: Fri Dec 9 15:09:32 2011 -0800
-> >>
-> >> Linux 3.2-rc5
-> >>
-> >> hostA$ uname -a
-> >> Linux hostA-2 3.2.0-rc5 #1 SMP Mon Dec 12 17:31:15 CET 2011 x86_64
-> >> x86_64 x86_64 GNU/Linux
-> >>
-> >> The question is - do you agree that this is a bug, and the ARP
-> >> who-has request
-> >> should be sent with matching pair of MAC and IP address?
-> >> In that case - I would be happy to propose a patch with fix (which
-> >> might take
-> >> me some time...).
-> >>
-> >> Thanks for reply and regards,
-> >> -Stanislav Kozina
-> >>
-> >> *) IP configuration of both hosts
-> >> hostA# ip addr show
-> >> 2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc
-> >> pfifo_fast
-> >> state UP qlen 1000
-> >> link/ether 52:54:00:92:35:7a brd ff:ff:ff:ff:ff:ff
-> >> inet 192.168.100.14/16 brd 192.168.200.255 scope global eth0
-> >> inet 192.168.100.4/24 brd 192.168.100.255 scope global eth0:1
-> >> 3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc
-> >> pfifo_fast
-> >> state UP qlen 1000
-> >> link/ether 52:54:00:92:35:7b brd ff:ff:ff:ff:ff:ff
-> >> inet 192.168.200.14/24 brd 192.168.200.255 scope global eth1
-> >> inet 192.168.200.4/24 brd 192.168.200.255 scope global secondary
-> >> eth1:1
-> >>
-> >> hostB# ip addr show
-> >> 2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc
-> >> pfifo_fast
-> >> state UP qlen 1000
-> >> link/ether 00:16:36:d3:6a:5e brd ff:ff:ff:ff:ff:ff
-> >> inet 192.168.100.15/16 brd 192.168.200.255 scope global eth0
-> >> inet 192.168.100.5/24 brd 192.168.100.255 scope global eth0:1
-> >> 3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc
-> >> pfifo_fast
-> >> state UP qlen 1000
-> >> link/ether 00:16:36:d3:6a:5f brd ff:ff:ff:ff:ff:ff
-> >> inet 192.168.200.15/24 brd 192.168.200.255 scope global eth1
-> >> inet 192.168.200.5/24 brd 192.168.200.255 scope global secondary
-> >> eth1:1
-> >>
-> >> **) Tcpdump of respective ARP packets
-> >> No. Time Source Destination Protocol Info
-> >> 7 7.185516 RealtekU_92:35:7b Broadcast ARP Who has 192.168.200.5?
-> >> Tell 192.168.100.4
-> >>
-> >> Frame 7 (42 bytes on wire, 42 bytes captured)
-> >> Ethernet II, Src: RealtekU_92:35:7b (52:54:00:92:35:7b), Dst:
-> >> Broadcast (ff:ff:ff:ff:ff:ff)
-> >> Address Resolution Protocol (request)
-> >> <!SNIP>
-> >> Sender MAC address: RealtekU_92:35:7b (52:54:00:92:35:7b)
-> >> Sender IP address: 192.168.100.4 (192.168.100.4) /** Here the
-> >> Senders
-> >> MAC and IP do not match */
-> >> Target MAC address: 00:00:00_00:00:00 (00:00:00:00:00:00)
-> >> Target IP address: 192.168.200.5 (192.168.200.5)
-> >>
-> >> No. Time Source Destination Protocol Info
-> >> 8 7.185832 QuantaCo_d3:6a:5e RealtekU_92:35:7b ARP 192.168.200.5
-> >> is
-> >> at 00:16:36:d3:6a:5e
-> >>
-> >> Frame 8 (42 bytes on wire, 42 bytes captured)
-> >> Ethernet II, Src: QuantaCo_d3:6a:5e (00:16:36:d3:6a:5e), Dst:
-> >> RealtekU_92:35:7b (52:54:00:92:35:7b)
-> >> Address Resolution Protocol (reply)
-> >> <!SNIP>
-> >> Sender MAC address: QuantaCo_d3:6a:5e (00:16:36:d3:6a:5e)
-> >> Sender IP address: 192.168.200.5 (192.168.200.5) /** Here also
-> >> Senders MAC and IP do not match */
-> >> Target MAC address: RealtekU_92:35:7b (52:54:00:92:35:7b)
-> >> Target IP address: 192.168.100.4 (192.168.100.4)
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe
-> >> linux-sctp"
-> >> in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at http://vger.kernel.org/majordomo-info.html
-> >>
-> >>
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp"
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Trying to reproduce this I found that with the sk_buff overhead removed,
+the performance would improve significantly unless socket buffer limits
+are increased.
+
+The following numbers have been gathered using a patched iperf
+supporting SCTP over a live 1 Gbit ethernet network. The -l option
+was used to limit DATA chunk sizes. The numbers listed are based on
+the average of 3 test runs each. Default values have been used for
+sk_(r|w)mem.
+
+Chunk
+Size    Unpatched     No Overhead
+-------------------------------------
+   4    15.2 Kbit [!]   12.2 Mbit [!]
+   8    35.8 Kbit [!]   26.0 Mbit [!]
+  16    95.5 Kbit [!]   54.4 Mbit [!]
+  32   106.7 Mbit      102.3 Mbit
+  64   189.2 Mbit      188.3 Mbit
+ 128   331.2 Mbit      334.8 Mbit
+ 256   537.7 Mbit      536.0 Mbit
+ 512   766.9 Mbit      766.6 Mbit
+1024   810.1 Mbit      808.6 Mbit
+
+Signed-off-by: Thomas Graf <tgraf@redhat.com>
+---
+ net/sctp/output.c   |    8 +-------
+ net/sctp/outqueue.c |    6 ++----
+ 2 files changed, 3 insertions(+), 11 deletions(-)
+
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 08b3cea..817174e 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -697,13 +697,7 @@ static void sctp_packet_append_data(struct sctp_packet *packet,
+ 	/* Keep track of how many bytes are in flight to the receiver. */
+ 	asoc->outqueue.outstanding_bytes += datasize;
+ 
+-	/* Update our view of the receiver's rwnd. Include sk_buff overhead
+-	 * while updating peer.rwnd so that it reduces the chances of a
+-	 * receiver running out of receive buffer space even when receive
+-	 * window is still open. This can happen when a sender is sending
+-	 * sending small messages.
+-	 */
+-	datasize += sizeof(struct sk_buff);
++	/* Update our view of the receiver's rwnd. */
+ 	if (datasize < rwnd)
+ 		rwnd -= datasize;
+ 	else
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 14c2b06..cfeb1d4 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -411,8 +411,7 @@ void sctp_retransmit_mark(struct sctp_outq *q,
+ 					chunk->transport->flight_size - 							sctp_data_size(chunk);
+ 				q->outstanding_bytes -= sctp_data_size(chunk);
+-				q->asoc->peer.rwnd += (sctp_data_size(chunk) +
+-							sizeof(struct sk_buff));
++				q->asoc->peer.rwnd += sctp_data_size(chunk);
+ 			}
+ 			continue;
+ 		}
+@@ -432,8 +431,7 @@ void sctp_retransmit_mark(struct sctp_outq *q,
+ 			 * (Section 7.2.4)), add the data size of those
+ 			 * chunks to the rwnd.
+ 			 */
+-			q->asoc->peer.rwnd += (sctp_data_size(chunk) +
+-						sizeof(struct sk_buff));
++			q->asoc->peer.rwnd += sctp_data_size(chunk);
+ 			q->outstanding_bytes -= sctp_data_size(chunk);
+ 			if (chunk->transport)
+ 				transport->flight_size -= sctp_data_size(chunk);
+-- 
+1.7.7.4
+
