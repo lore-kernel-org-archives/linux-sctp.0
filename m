@@ -1,114 +1,28 @@
-From: Vladislav Yasevich <vladislav.yasevich@hp.com>
-Date: Thu, 08 Mar 2012 20:07:40 +0000
+From: David Miller <davem@davemloft.net>
+Date: Thu, 08 Mar 2012 21:52:35 +0000
 Subject: Re: [PATCH v2 1/2] sctp: Export sctp_do_peeloff
-Message-Id: <4F59118C.9090605@hp.com>
+Message-Id: <20120308.135235.216702729705858755.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20120308.002447.1062706659978103072.davem@davemloft.net> <1331222159-28980-1-git-send-email-bpoirier@suse.de>
-In-Reply-To: <1331222159-28980-1-git-send-email-bpoirier@suse.de>
+References: <20120308.002447.1062706659978103072.davem@davemloft.net>
+	<1331222159-28980-1-git-send-email-bpoirier@suse.de>
+	<4F59118C.9090605@hp.com>
+In-Reply-To: <4F59118C.9090605@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Benjamin Poirier <bpoirier@suse.de>
-Cc: "David S. Miller" <davem@davemloft.net>, Christine Caulfield <ccaulfie@redhat.com>, David Teigland <teigland@redhat.com>, Sridhar Samudrala <sri@us.ibm.com>, cluster-devel@redhat.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: vladislav.yasevich@hp.com
+Cc: bpoirier@suse.de, ccaulfie@redhat.com, teigland@redhat.com, sri@us.ibm.com, cluster-devel@redhat.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On 03/08/2012 10:55 AM, Benjamin Poirier wrote:
-> lookup sctp_association within sctp_do_peeloff() to enable its use outside of
-> the sctp code with minimal knowledge of the former.
+From: Vladislav Yasevich <vladislav.yasevich@hp.com>
+Date: Thu, 08 Mar 2012 15:07:40 -0500
+
+> On 03/08/2012 10:55 AM, Benjamin Poirier wrote:
+>> lookup sctp_association within sctp_do_peeloff() to enable its use outside of
+>> the sctp code with minimal knowledge of the former.
+>> 
+>> Signed-off-by: Benjamin Poirier <bpoirier@suse.de>
+>> 
 > 
-> Signed-off-by: Benjamin Poirier <bpoirier@suse.de>
-> 
+> Acked-by: Vlad Yasevich <vladislav.yasevich@hp.com>
 
-Acked-by: Vlad Yasevich <vladislav.yasevich@hp.com>
-
--vlad
-
-> ---
-> Changes from v1:
-> * make sctp_do_peeloff() take the assoc id as argument so that the dlm code
->   doesn't need to do the id to struct lookup itself
-> * split those sctp changes to their own patch
-> 
->  include/net/sctp/sctp.h |    1 +
->  net/sctp/socket.c       |   24 +++++++++---------------
->  2 files changed, 10 insertions(+), 15 deletions(-)
-> 
-> diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-> index d368561..6ee44b2 100644
-> --- a/include/net/sctp/sctp.h
-> +++ b/include/net/sctp/sctp.h
-> @@ -413,6 +413,7 @@ static inline sctp_assoc_t sctp_assoc2id(const struct sctp_association *asoc)
->  /* Look up the association by its id.  */
->  struct sctp_association *sctp_id2assoc(struct sock *sk, sctp_assoc_t id);
->  
-> +int sctp_do_peeloff(struct sock *sk, sctp_assoc_t id, struct socket **sockp);
->  
->  /* A macro to walk a list of skbs.  */
->  #define sctp_skb_for_each(pos, head, tmp) \
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 408ebd0..06b42b7 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -4170,14 +4170,16 @@ static int sctp_getsockopt_autoclose(struct sock *sk, int len, char __user *optv
->  }
->  
->  /* Helper routine to branch off an association to a new socket.  */
-> -SCTP_STATIC int sctp_do_peeloff(struct sctp_association *asoc,
-> -				struct socket **sockp)
-> +int sctp_do_peeloff(struct sock *sk, sctp_assoc_t id, struct socket **sockp)
->  {
-> -	struct sock *sk = asoc->base.sk;
-> +	struct sctp_association *asoc = sctp_id2assoc(sk, id);
->  	struct socket *sock;
->  	struct sctp_af *af;
->  	int err = 0;
->  
-> +	if (!asoc)
-> +		return -EINVAL;
-> +
->  	/* An association cannot be branched off from an already peeled-off
->  	 * socket, nor is this supported for tcp style sockets.
->  	 */
-> @@ -4206,13 +4208,13 @@ SCTP_STATIC int sctp_do_peeloff(struct sctp_association *asoc,
->  
->  	return err;
->  }
-> +EXPORT_SYMBOL(sctp_do_peeloff);
->  
->  static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval, int __user *optlen)
->  {
->  	sctp_peeloff_arg_t peeloff;
->  	struct socket *newsock;
->  	int retval = 0;
-> -	struct sctp_association *asoc;
->  
->  	if (len < sizeof(sctp_peeloff_arg_t))
->  		return -EINVAL;
-> @@ -4220,15 +4222,7 @@ static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval
->  	if (copy_from_user(&peeloff, optval, len))
->  		return -EFAULT;
->  
-> -	asoc = sctp_id2assoc(sk, peeloff.associd);
-> -	if (!asoc) {
-> -		retval = -EINVAL;
-> -		goto out;
-> -	}
-> -
-> -	SCTP_DEBUG_PRINTK("%s: sk: %p asoc: %p\n", __func__, sk, asoc);
-> -
-> -	retval = sctp_do_peeloff(asoc, &newsock);
-> +	retval = sctp_do_peeloff(sk, peeloff.associd, &newsock);
->  	if (retval < 0)
->  		goto out;
->  
-> @@ -4239,8 +4233,8 @@ static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval
->  		goto out;
->  	}
->  
-> -	SCTP_DEBUG_PRINTK("%s: sk: %p asoc: %p newsk: %p sd: %d\n",
-> -			  __func__, sk, asoc, newsock->sk, retval);
-> +	SCTP_DEBUG_PRINTK("%s: sk: %p newsk: %p sd: %d\n",
-> +			  __func__, sk, newsock->sk, retval);
->  
->  	/* Return the fd mapped to the new socket.  */
->  	peeloff.sd = retval;
-
+Applied to net-next.
