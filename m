@@ -1,15 +1,35 @@
-From: laurarey111@hotmail.com
-Date: Tue, 27 Mar 2012 13:30:20 +0000
-Subject: Hello
-Message-Id: <4f71c0ec.15c.1230.17328@econetmobile.co.zw>
+From: Julia Lawall <julia.lawall@lip6.fr>
+Date: Mon, 02 Apr 2012 13:24:23 +0000
+Subject: question about net/sctp/socket.c
+Message-Id: <alpine.DEB.2.02.1204021521460.1959@hadrien>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Hello xxxxx,
- How are you doing over there? My name is Laura, Please let
-me know if i got the right address so we can open
-communication, here is my email address I am waiting for
-your confirmation with care Laura...
+In the file net/sctp/socket.c, the function sctp_getsockopt_peeloff ends 
+with:
+
+        retval = sock_map_fd(newsock, 0);
+         if (retval < 0) {
+                 sock_release(newsock);
+                 goto out;
+         }
+
+         SCTP_DEBUG_PRINTK("%s: sk: %p newsk: %p sd: %d\n",
+                           __func__, sk, newsock->sk, retval);
+
+         /* Return the fd mapped to the new socket.  */
+         peeloff.sd = retval;
+         if (put_user(len, optlen))
+                 return -EFAULT;
+         if (copy_to_user(optval, &peeloff, len))
+                 retval = -EFAULT;
+
+Should there be a call to sock_release in the final two error cases as 
+well?  I don't see anything that removes the need for it.  And is some 
+cleanup of the effect of sock_map_fd needed as well?
+
+thanks,
+julia
