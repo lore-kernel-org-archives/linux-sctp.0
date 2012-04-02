@@ -1,7 +1,7 @@
-From: Vladislav Yasevich <vladislav.yasevich@hp.com>
-Date: Mon, 02 Apr 2012 18:19:52 +0000
+From: Julia Lawall <julia.lawall@lip6.fr>
+Date: Mon, 02 Apr 2012 21:01:15 +0000
 Subject: Re: question about net/sctp/socket.c
-Message-Id: <4F79EDC8.9050906@hp.com>
+Message-Id: <alpine.DEB.2.02.1204022257371.2054@localhost6.localdomain6>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <alpine.DEB.2.02.1204021521460.1959@hadrien>
 In-Reply-To: <alpine.DEB.2.02.1204021521460.1959@hadrien>
@@ -10,88 +10,122 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On 04/02/2012 12:31 PM, Julia Lawall wrote:
-> On Mon, 2 Apr 2012, Vladislav Yasevich wrote:
-> 
->> On 04/02/2012 10:59 AM, Julia Lawall wrote:
->>>
->>> On Mon, 2 Apr 2012, Vladislav Yasevich wrote:
->>>
->>>> On 04/02/2012 09:24 AM, Julia Lawall wrote:
->>>>> In the file net/sctp/socket.c, the function sctp_getsockopt_peeloff ends with:
->>>>>
->>>>>        retval = sock_map_fd(newsock, 0);
->>>>>         if (retval < 0) {
->>>>>                 sock_release(newsock);
->>>>>                 goto out;
->>>>>         }
->>>>>
->>>>>         SCTP_DEBUG_PRINTK("%s: sk: %p newsk: %p sd: %d\n",
->>>>>                           __func__, sk, newsock->sk, retval);
->>>>>
->>>>>         /* Return the fd mapped to the new socket.  */
->>>>>         peeloff.sd = retval;
->>>>>         if (put_user(len, optlen))
->>>>>                 return -EFAULT;
->>>>>         if (copy_to_user(optval, &peeloff, len))
->>>>>                 retval = -EFAULT;
->>>>>
->>>>> Should there be a call to sock_release in the final two error cases as well?  I don't see anything that removes the need for it.  And is some cleanup of the effect of sock_map_fd needed as well?
->>>>>
->>>>> thanks,
->>>>> julia
->>>>>
->>>>
->>>> Hi Julia
->>>>
->>>> This is an interesting case.  The possible issue I see calling sock_release here as well as after sock_map_fd
->>>> call is that if the peeloff call fails in these 3 instances, the association is terminated.  There is no
->>>> graceful recovery at all.
->>>>
->>>> It may make sense to re-arrange the code so that failures here are recoverable. By that I mean, that if a
->>>> call to peeloff() fails, the original socket and association lists aren't touched. That would allow
->>>> a repeated call to peeloff to potentially succeed.
->>>
->>> Thank you for the quick response.  I thought that sock_release could be used because it is used in sock_create on failure.  But I guess that the point is that the subsequent operations in sctp_do_peeloff increase the impact of sock_release, to affect the original socket as well?
->>
->> Calling it after sock_create is fine since the association is still attached to the old socket,
->> so a failure doesn't result in termination of the association.  However, once we move the
->> association to the newly created socket, calling sock_release() on that socket terminates
->> the association.
->>
->> Our alternatives are:
->> 1) move the association back to the original in case of failure
->> 2) restructure the code so that all setup is done first, and the move happens last.
-> 
-> The problem in both cases seems to be that the information that is required is in the middle of sctp_do_peeloff, and thisa function is exported, so maybe it should not be changed?  If this is not a constraint, then perhaps the sock_map_fd could be moved to just after the sock_create. The put_user could be moved quite far up, because it only wrires a constant value.  But perhaps the copy_to_user is stuck where it is because it would not be good to tell the user level about the file descriptor is set up properly?
+Below is an attempt to inline the code.  Is it a problem that the file 
+descriptor is copied to the user level before the socket is fully 
+initialized?  And does something need to be done at the end of the 
+function in the case of failure of put_user and copy_to_user to freethe 
+file descriptor?  And finally, perhaps the duplication of code is a bit 
+unfortunate.
 
-We could always write 0 to user in case of of error.
+julia
 
->  But could the original association returned by create_sock be invalid once the socket has been migrated?
 
-I can't parse that one.  Sockets aren't migrated, but associations are.  Think of association as a child under the socket.
-The peeoloff() calls moves this child from one socket to another. 
 
-The issue is that sctp_do_peeloff() is called by kernel modules.  Almost tempting to make 2 version of the function, one
-to be called by user space, and one by kernel.
+int sctp_do_peeloff(struct sock *sk, sctp_assoc_t id, struct socket **sockp)
+{
+ 	struct sctp_association *asoc = sctp_id2assoc(sk, id);
+ 	struct socket *sock;
+ 	struct sctp_af *af;
+ 	int err = 0;
 
--vlad
+ 	if (!asoc)
+ 		return -EINVAL;
 
-> 
-> julia
-> 
->>
->>>
->>> I have the impression that this can be called from the user level, since there are two user level addresses as arguments.  If the provided optlen address is repeatedly invalid, could one eventually run out of sockets?
->>>
->>
->> That's actually the main usage scenario.  So, yes one can run out of file descriptors.  Not sure if one can run out of sockets.
->>
->> -vlad
->>
->>> julia
->>>
->>
->>
-> 
+ 	/* An association cannot be branched off from an already peeled-off
+ 	 * socket, nor is this supported for tcp style sockets.
+ 	 */
+ 	if (!sctp_style(sk, UDP))
+ 		return -EINVAL;
 
+ 	/* Create a new socket.  */
+ 	err = sock_create(sk->sk_family, SOCK_SEQPACKET, IPPROTO_SCTP, &sock);
+ 	if (err < 0)
+ 		return err;
+
+ 	sctp_copy_sock(sock->sk, sk, asoc);
+
+ 	/* Make peeled-off sockets more like 1-1 accepted sockets.
+ 	 * Set the daddr and initialize id to something more random
+ 	 */
+ 	af = sctp_get_af_specific(asoc->peer.primary_addr.sa.sa_family);
+ 	af->to_sk_daddr(&asoc->peer.primary_addr, sk);
+
+ 	/* Populate the fields of the newsk from the oldsk and migrate the
+ 	 * asoc to the newsk.
+ 	 */
+ 	sctp_sock_migrate(sk, sock->sk, asoc, SCTP_SOCKET_UDP_HIGH_BANDWIDTH);
+
+ 	*sockp = sock;
+
+ 	return err;
+}
+EXPORT_SYMBOL(sctp_do_peeloff);
+
+static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval, int __user *optlen)
+{
+ 	struct sctp_association *asoc;
+ 	sctp_peeloff_arg_t peeloff;
+ 	struct socket *newsock;
+ 	int retval = 0;
+
+ 	if (len < sizeof(sctp_peeloff_arg_t))
+ 		return -EINVAL;
+ 	len = sizeof(sctp_peeloff_arg_t);
+ 	if (copy_from_user(&peeloff, optval, len))
+ 		return -EFAULT;
+
+ 	asoc = sctp_id2assoc(sk, peeloff.associd);
+
+ 	if (!asoc)
+ 		return -EINVAL;
+
+ 	/* An association cannot be branched off from an already peeled-off
+ 	 * socket, nor is this supported for tcp style sockets.
+ 	 */
+ 	if (!sctp_style(sk, UDP))
+ 		return -EINVAL;
+
+ 	/* Create a new socket.  */
+ 	err = sock_create(sk->sk_family, SOCK_SEQPACKET, IPPROTO_SCTP,
+ 			  &newsock);
+ 	if (err < 0)
+ 		return err;
+
+ 	/* Map the socket to an unused fd that can be returned to the user.  */
+ 	retval = sock_map_fd(newsock, 0);
+ 	if (retval < 0)
+ 		goto out;
+
+ 	SCTP_DEBUG_PRINTK("%s: sk: %p newsk: %p sd: %d\n",
+ 			  __func__, sk, newsock->sk, retval);
+
+ 	/* Return the fd mapped to the new socket.  */
+ 	peeloff.sd = retval;
+ 	if (put_user(len, optlen)) {
+ 		retval = -EFAULT;
+ 		goto out;
+ 	}
+ 	if (copy_to_user(optval, &peeloff, len)) {
+ 		retval = -EFAULT;
+ 		goto out;
+ 	}
+
+ 	sctp_copy_sock(newsock->sk, sk, asoc);
+
+ 	/* Make peeled-off sockets more like 1-1 accepted sockets.
+ 	 * Set the daddr and initialize id to something more random
+ 	 */
+ 	af = sctp_get_af_specific(asoc->peer.primary_addr.sa.sa_family);
+ 	af->to_sk_daddr(&asoc->peer.primary_addr, sk);
+
+ 	/* Populate the fields of the newsk from the oldsk and migrate the
+ 	 * asoc to the newsk.
+ 	 */
+ 	sctp_sock_migrate(sk, newsock->sk, asoc,
+ 			  SCTP_SOCKET_UDP_HIGH_BANDWIDTH);
+ 	return 0;
+
+out:
+ 	sock_release(newsock);
+ 	return retval;
+}
