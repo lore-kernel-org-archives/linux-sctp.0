@@ -1,131 +1,53 @@
-From: Julia Lawall <julia.lawall@lip6.fr>
-Date: Mon, 02 Apr 2012 21:01:15 +0000
-Subject: Re: question about net/sctp/socket.c
-Message-Id: <alpine.DEB.2.02.1204022257371.2054@localhost6.localdomain6>
+From: Thomas Graf <tgraf@infradead.org>
+Date: Wed, 04 Apr 2012 08:17:53 +0000
+Subject: [PATCH] scpt: Allow struct sctp_event_subscribe to grow without breaking binaries
+Message-Id: <20120404081753.GA5124@canuck.infradead.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <alpine.DEB.2.02.1204021521460.1959@hadrien>
-In-Reply-To: <alpine.DEB.2.02.1204021521460.1959@hadrien>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: vladislav.yasevich@hp.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Below is an attempt to inline the code.  Is it a problem that the file 
-descriptor is copied to the user level before the socket is fully 
-initialized?  And does something need to be done at the end of the 
-function in the case of failure of put_user and copy_to_user to freethe 
-file descriptor?  And finally, perhaps the duplication of code is a bit 
-unfortunate.
+getsockopt(..., SCTP_EVENTS, ...) performs a length check and returns
+an error if the user provides less bytes than the size of struct
+sctp_event_subscribe.
 
-julia
+Struct sctp_event_subscribe needs to be extended by an u8 for every
+new event or notification type that is added.
 
+This obviously makes getsockopt fail for binaries that are compiled
+against an older versions of <net/sctp/user.h> which do not contain
+all event types.
 
+This patch changes getsockopt behaviour to no longer return an error
+if not enough bytes are being provided by the user. Instead, it
+returns as much of sctp_event_subscribe as fits into the provided buffer.
 
-int sctp_do_peeloff(struct sock *sk, sctp_assoc_t id, struct socket **sockp)
-{
- 	struct sctp_association *asoc = sctp_id2assoc(sk, id);
- 	struct socket *sock;
- 	struct sctp_af *af;
- 	int err = 0;
+This leads to the new behavior that users see what they have been aware
+of at compile time.
 
- 	if (!asoc)
+The setsockopt(..., SCTP_EVENTS, ...) API is already behaving like this.
+
+Signed-off-by: Thomas Graf <tgraf@suug.ch>
+---
+ net/sctp/socket.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 06b42b7..92ba71d 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4133,9 +4133,10 @@ static int sctp_getsockopt_disable_fragments(struct sock *sk, int len,
+ static int sctp_getsockopt_events(struct sock *sk, int len, char __user *optval,
+ 				  int __user *optlen)
+ {
+-	if (len < sizeof(struct sctp_event_subscribe))
++	if (len <= 0)
  		return -EINVAL;
-
- 	/* An association cannot be branched off from an already peeled-off
- 	 * socket, nor is this supported for tcp style sockets.
- 	 */
- 	if (!sctp_style(sk, UDP))
- 		return -EINVAL;
-
- 	/* Create a new socket.  */
- 	err = sock_create(sk->sk_family, SOCK_SEQPACKET, IPPROTO_SCTP, &sock);
- 	if (err < 0)
- 		return err;
-
- 	sctp_copy_sock(sock->sk, sk, asoc);
-
- 	/* Make peeled-off sockets more like 1-1 accepted sockets.
- 	 * Set the daddr and initialize id to something more random
- 	 */
- 	af = sctp_get_af_specific(asoc->peer.primary_addr.sa.sa_family);
- 	af->to_sk_daddr(&asoc->peer.primary_addr, sk);
-
- 	/* Populate the fields of the newsk from the oldsk and migrate the
- 	 * asoc to the newsk.
- 	 */
- 	sctp_sock_migrate(sk, sock->sk, asoc, SCTP_SOCKET_UDP_HIGH_BANDWIDTH);
-
- 	*sockp = sock;
-
- 	return err;
-}
-EXPORT_SYMBOL(sctp_do_peeloff);
-
-static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval, int __user *optlen)
-{
- 	struct sctp_association *asoc;
- 	sctp_peeloff_arg_t peeloff;
- 	struct socket *newsock;
- 	int retval = 0;
-
- 	if (len < sizeof(sctp_peeloff_arg_t))
- 		return -EINVAL;
- 	len = sizeof(sctp_peeloff_arg_t);
- 	if (copy_from_user(&peeloff, optval, len))
+-	len = sizeof(struct sctp_event_subscribe);
++	if (len > sizeof(struct sctp_event_subscribe))
++		len = sizeof(struct sctp_event_subscribe);
+ 	if (put_user(len, optlen))
  		return -EFAULT;
-
- 	asoc = sctp_id2assoc(sk, peeloff.associd);
-
- 	if (!asoc)
- 		return -EINVAL;
-
- 	/* An association cannot be branched off from an already peeled-off
- 	 * socket, nor is this supported for tcp style sockets.
- 	 */
- 	if (!sctp_style(sk, UDP))
- 		return -EINVAL;
-
- 	/* Create a new socket.  */
- 	err = sock_create(sk->sk_family, SOCK_SEQPACKET, IPPROTO_SCTP,
- 			  &newsock);
- 	if (err < 0)
- 		return err;
-
- 	/* Map the socket to an unused fd that can be returned to the user.  */
- 	retval = sock_map_fd(newsock, 0);
- 	if (retval < 0)
- 		goto out;
-
- 	SCTP_DEBUG_PRINTK("%s: sk: %p newsk: %p sd: %d\n",
- 			  __func__, sk, newsock->sk, retval);
-
- 	/* Return the fd mapped to the new socket.  */
- 	peeloff.sd = retval;
- 	if (put_user(len, optlen)) {
- 		retval = -EFAULT;
- 		goto out;
- 	}
- 	if (copy_to_user(optval, &peeloff, len)) {
- 		retval = -EFAULT;
- 		goto out;
- 	}
-
- 	sctp_copy_sock(newsock->sk, sk, asoc);
-
- 	/* Make peeled-off sockets more like 1-1 accepted sockets.
- 	 * Set the daddr and initialize id to something more random
- 	 */
- 	af = sctp_get_af_specific(asoc->peer.primary_addr.sa.sa_family);
- 	af->to_sk_daddr(&asoc->peer.primary_addr, sk);
-
- 	/* Populate the fields of the newsk from the oldsk and migrate the
- 	 * asoc to the newsk.
- 	 */
- 	sctp_sock_migrate(sk, newsock->sk, asoc,
- 			  SCTP_SOCKET_UDP_HIGH_BANDWIDTH);
- 	return 0;
-
-out:
- 	sock_release(newsock);
- 	return retval;
-}
+ 	if (copy_to_user(optval, &sctp_sk(sk)->subscribe, len))
