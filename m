@@ -1,24 +1,48 @@
-From: Thomas Graf <tgraf@infradead.org>
-Date: Wed, 04 Apr 2012 22:13:49 +0000
-Subject: Re: [PATCH] scpt: Allow struct sctp_event_subscribe to grow without breaking binaries
-Message-Id: <20120404221349.GB5124@canuck.infradead.org>
+From: Michele Baldessari <michele@acksyn.org>
+Date: Wed, 04 Apr 2012 22:16:08 +0000
+Subject: [PATCH] Return error to userspace in __sctp_connect when inconsistent ports are used
+Message-Id: <20120404221608.GA1999@marquez.int.rhx>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20120404081753.GA5124@canuck.infradead.org>
- <4F7C5204.9040703@hp.com>
- <20120404.180552.936202389292040147.davem@davemloft.net>
-In-Reply-To: <20120404.180552.936202389292040147.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: vladislav.yasevich@hp.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-On Wed, Apr 04, 2012 at 06:05:52PM -0400, David Miller wrote:
-> From: Vladislav Yasevich <vladislav.yasevich@hp.com>
-> Date: Wed, 04 Apr 2012 09:52:04 -0400
-> > 
-> > Acked-by: Vlad Yasevich <vladislav.yasevich@hp.com>
-> 
-> Applied, but I had to fix the Subject to read "sctp: " not "scpt: " :-)
+Hi Vlad,
+  
+just as we similarly do in sctp_do_bind() we should return EINVAL when
+sctp_connectx is called with multiple addresses but different ports. 
 
-Thanks much Dave :)
+Issue first mentioned with patch in sourceforge #3323780
+
+regards,
+Michele
+      
+Tested-by: Michele Baldessari <michele@acksyn.org>
+
+---
+ net/sctp/socket.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 626e4ed..553d54a 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1110,10 +1110,12 @@ static int __sctp_connect(struct sock* sk,
+ 			goto out_free;
+ 
+ 		/* Make sure the destination port is correctly set
+-		 * in all addresses.
++		 * in all addresses and return EINVAL otherwise
+ 		 */
+-		if (asoc && asoc->peer.port && asoc->peer.port != port)
++		if (asoc && asoc->peer.port && asoc->peer.port != port) {
++			err = -EINVAL;
+ 			goto out_free;
++		}
+ 
+ 
+ 		/* Check if there already is a matching association on the
+-- 
+1.7.9.3
+
