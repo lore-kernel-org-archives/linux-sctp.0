@@ -1,35 +1,17 @@
-From: dan rhodes <n0_reply@e-mailusa.us>
-Date: Mon, 14 May 2012 04:57:03 +0000
-Subject: HP  TONERS  Cartridge
-Message-Id: <E1STnLD-0002TM-JI@pos.postmodernsublime.com>
+From: "Mrs. Mary Parker" <parker@googlemail.com>
+Date: Fri, 04 May 2012 12:15:19 +0000
+Subject: Dear Beloved
+Message-Id: <201205041215.q44AuMmN032449@mail.ucla.edu>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Can  you  send  me  the pricing  and  availablity  of this  product
+Dear Beloved in Christ,
 
- LASER JET PRINT CARTRIDGE, (OEM ONLY)
- HP LASER JET PRINT CARTRIDGE
- 1Q6000A (OEM ONLY)
- 2. HEWC9730A (30A) (OEM ONLY)
- 3. HEWC9731A (31A) (OEM ONLY)
- 4. Q5942A (42A)(OEM ONLY)
- 5. HP Q7551A (51A)(OEM ONLY)
- 6. HP Q3964A (64A) BLACK  COULOUR ONLY (OEM ONLY)
- 7  HP    Q7553A 53A)  OEM ONLY
- 8 NEW & USED, COMPUTERS  NOTEBOOK
-9 USB  FLASH  DRIVES
+I am Mrs.Mary Parker an aging widow suffering from long time illness. I have some funds I inherited from my late husband, the sum of 7.5 Million Pounds and I needed a very honest and God fearing Christian that will use the fund for God's work, I found your email address from the internet and decided to contact you. Please if you would be able to use the funds for the Lord's work, kindly reply me back.
 
- The mode of our  payment  is   with  our visa, master
- cards
+Yours in the Lord, 
 
-
-Hope  to  read  from  you  asap
-DAN RHODES
-CA 90703
-
-
-
-
+Mrs. Mary Parker
