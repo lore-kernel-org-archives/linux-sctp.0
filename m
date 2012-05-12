@@ -1,21 +1,15 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 11 May 2012 03:15:31 +0000
-Subject: Re: [Lksctp-developers] Bug: sctp packets are dropped after IPSEC rekeying (route cache issue)
-Message-Id: <20120510.231531.1651495177866040758.davem@davemloft.net>
+From: abi <abiokom88@yahoo.com>
+Date: Sat, 12 May 2012 17:07:54 +0000
+Subject: haalloo,
+Message-Id: <20705496.8673331336842474187.JavaMail.defaultUser@defaultHost>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20120504.104812.502049217620285020.davem@davemloft.net>
-	<4FA3F4C6.7070605@6wind.com>
-	<CAGCdqXFjyWst22DJgxNfakz3-JwRq0Z+WZVj-XT=qRQFY5w3rw@mail.gmail.com>
-In-Reply-To: <CAGCdqXFjyWst22DJgxNfakz3-JwRq0Z+WZVj-XT=qRQFY5w3rw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vyasevich@gmail.com
-Cc: nicolas.dichtel@6wind.com, babu.srinivasan@gmail.com, lksctp-developers@lists.sourceforge.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, michael.kreuzer@nsn.com
+To: linux-sctp@vger.kernel.org
 
-From: Vladislav Yasevich <vyasevich@gmail.com>
-Date: Fri, 4 May 2012 14:15:05 -0400
-
-> Acked-by: Vlad Yaseivch <vyasevich@gmail.com>
-
-Applied.
+haalloo,
+how are you doing,i hope you are fine,my name is miss abi okom i got your
+contact and want us to be a good friend,
+please try and write back to me so that i will give you my pictures and tell
+you more about me,
