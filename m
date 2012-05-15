@@ -1,25 +1,25 @@
 From: David Miller <davem@davemloft.net>
-Date: Tue, 15 May 2012 18:13:48 +0000
+Date: Tue, 15 May 2012 18:14:23 +0000
 Subject: Re: [RFC net-next 0/2] net: Use net_<level>_ratelimit
-Message-Id: <20120515.141348.892964316296815698.davem@davemloft.net>
+Message-Id: <20120515.141423.885518974251878746.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20120515.134531.530903973750646107.davem@davemloft.net>
+References: <cover.1336981915.git.joe@perches.com>
+	<20120515.134531.530903973750646107.davem@davemloft.net>
 	<1337104765.7050.24.camel@joe2Laptop>
-	<1337105028.15553.3.camel@jlt3.sipsolutions.net>
-In-Reply-To: <1337105028.15553.3.camel@jlt3.sipsolutions.net>
+In-Reply-To: <1337104765.7050.24.camel@joe2Laptop>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: johannes@sipsolutions.net
-Cc: joe@perches.com, netdev@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, coreteam@netfilter.org, linux-wireless@vger.kernel.org, dev@openvswitch.org, linux-sctp@vger.kernel.org, linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: joe@perches.com
+Cc: netdev@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, netfilter-devel@vger.kernel.org, netfilter@vger.kernel.org, coreteam@netfilter.org, linux-wireless@vger.kernel.org, dev@openvswitch.org, linux-sctp@vger.kernel.org, linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
 
-From: Johannes Berg <johannes@sipsolutions.net>
-Date: Tue, 15 May 2012 20:03:48 +0200
+From: Joe Perches <joe@perches.com>
+Date: Tue, 15 May 2012 10:59:25 -0700
 
-> Oops. Yes, please do that, mac80211 doesn't have DEBUG yet
+> I could produce a net_printk_ratelimited that would keep
+> the original behavior if necessary.
+> 
+> 	net_printk_ratelimited(KERN_DEBUG etc...)
 
-If you want debugging messages you would turn on dynamic_debug
-via sysctl or whatever, not define DEBUG in your sources.
-
-I don't think we should add yet another interface just to get
-KERN_DEBUG in there.
+I don't think it's worth the hassle, we'd rather get people
+into the habit of using dynamic_debug.
