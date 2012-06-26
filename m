@@ -1,10 +1,8 @@
 From: Neil Horman <nhorman@tuxdriver.com>
-Date: Sat, 30 Jun 2012 13:04:26 +0000
-Subject: [PATCH v6] sctp: be more restrictive in transport selection on bundled sacks
-Message-Id: <1341061466-4186-1-git-send-email-nhorman@tuxdriver.com>
+Date: Tue, 26 Jun 2012 20:31:44 +0000
+Subject: [PATCH] sctp: be mroe restrictive in transport selection on bundled sacks
+Message-Id: <1340742704-2192-1-git-send-email-nhorman@tuxdriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1340742704-2192-1-git-send-email-nhorman@tuxdriver.com>
-In-Reply-To: <1340742704-2192-1-git-send-email-nhorman@tuxdriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -45,61 +43,33 @@ CC: David S. Miller <davem@davemloft.net>
 CC: linux-sctp@vger.kernel.org
 Reported-by: Michele Baldessari <michele@redhat.com>
 Reported-by: sorin serban <sserban@redhat.com>
-
 ---
-Change Notes:
-V2)
-	* Removed unused variable as per Dave M. Request
-	* Delayed rwnd adjustment until we are sure we will sack (Vlad Y.)
-V3)
-	* Switched test to use pkt->transport rather than chunk->transport
-	* Modified detection of sacka-able transport.  Instead of just setting
-	  and clearning a flag, we now mark each transport and association with
-	  a sack generation tag.  We increment the associations generation on
-	  every sack, and assign that generation tag to every transport that
-	  updates the ctsn.  This prevents us from having to iterate over a for
-	  loop on every sack, which is much more scalable.
-V4)
-	* Fixed up wrapping comment and logic
-V5)
-	* Simplified wrap logic further per request from vlad
-V6)
-	* Changed some style point as per request from Dave M.
----
- include/net/sctp/structs.h |    4 ++++
+ include/net/sctp/structs.h |    5 ++++-
  include/net/sctp/tsnmap.h  |    3 ++-
- net/sctp/associola.c       |    1 +
- net/sctp/output.c          |    5 +++++
- net/sctp/sm_make_chunk.c   |   16 ++++++++++++++++
+ net/sctp/output.c          |    9 +++++++--
+ net/sctp/sm_make_chunk.c   |    8 ++++++++
  net/sctp/sm_sideeffect.c   |    2 +-
- net/sctp/transport.c       |    2 ++
- net/sctp/tsnmap.c          |    6 +++++-
+ net/sctp/tsnmap.c          |    5 ++++-
  net/sctp/ulpevent.c        |    3 ++-
  net/sctp/ulpqueue.c        |    2 +-
- 10 files changed, 39 insertions(+), 5 deletions(-)
+ 8 files changed, 29 insertions(+), 8 deletions(-)
 
 diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index e4652fe..fecdf31 100644
+index e4652fe..712bf09 100644
 --- a/include/net/sctp/structs.h
 +++ b/include/net/sctp/structs.h
-@@ -912,6 +912,9 @@ struct sctp_transport {
- 		/* Is this structure kfree()able? */
- 		malloced:1;
+@@ -910,7 +910,10 @@ struct sctp_transport {
+ 		pmtu_pending:1,
  
-+	/* Has this transport moved the ctsn since we last sacked */
-+	__u32 sack_generation;
+ 		/* Is this structure kfree()able? */
+-		malloced:1;
++		malloced:1,
 +
++		/* Has this transport moved the ctsn since we last sacked */
++		moved_ctsn:1;
+ 
  	struct flowi fl;
  
- 	/* This is the peer's IP address and port. */
-@@ -1584,6 +1587,7 @@ struct sctp_association {
- 		 */
- 		__u8    sack_needed;     /* Do we need to sack the peer? */
- 		__u32	sack_cnt;
-+		__u32	sack_generation;
- 
- 		/* These are capabilities which our peer advertised.  */
- 		__u8	ecn_capable:1,	    /* Can peer do ECN? */
 diff --git a/include/net/sctp/tsnmap.h b/include/net/sctp/tsnmap.h
 index e7728bc..2c5d2b4 100644
 --- a/include/net/sctp/tsnmap.h
@@ -114,65 +84,55 @@ index e7728bc..2c5d2b4 100644
  
  /* Mark this TSN and all lower as seen. */
  void sctp_tsnmap_skip(struct sctp_tsnmap *map, __u32 tsn);
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index 5bc9ab1..b16517e 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -271,6 +271,7 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
- 	 */
- 	asoc->peer.sack_needed = 1;
- 	asoc->peer.sack_cnt = 0;
-+	asoc->peer.sack_generation = 1;
- 
- 	/* Assume that the peer will tell us if he recognizes ASCONF
- 	 * as part of INIT exchange.
 diff --git a/net/sctp/output.c b/net/sctp/output.c
-index f1b7d4b..6ae47ac 100644
+index f1b7d4b..c9f47b6 100644
 --- a/net/sctp/output.c
 +++ b/net/sctp/output.c
-@@ -248,6 +248,11 @@ static sctp_xmit_t sctp_packet_bundle_sack(struct sctp_packet *pkt,
+@@ -240,15 +240,20 @@ static sctp_xmit_t sctp_packet_bundle_sack(struct sctp_packet *pkt,
+ 	 */
+ 	if (sctp_chunk_is_data(chunk) && !pkt->has_sack &&
+ 	    !pkt->has_cookie_echo) {
+-		struct sctp_association *asoc;
+ 		struct timer_list *timer;
+-		asoc = pkt->transport->asoc;
++		struct sctp_association *asoc = pkt->transport->asoc;
++		struct sctp_transport *trans;
++
+ 		timer = &asoc->timers[SCTP_EVENT_TIMEOUT_SACK];
+ 
  		/* If the SACK timer is running, we have a pending SACK */
  		if (timer_pending(timer)) {
  			struct sctp_chunk *sack;
+ 			asoc->a_rwnd = asoc->rwnd;
 +
-+			if (pkt->transport->sack_generation !+			    pkt->transport->asoc->peer.sack_generation)
++			if (chunk->transport && !chunk->transport->moved_ctsn)
 +				return retval;
 +
- 			asoc->a_rwnd = asoc->rwnd;
  			sack = sctp_make_sack(asoc);
  			if (sack) {
+ 				retval = sctp_packet_append_chunk(pkt, sack);
 diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index a85eeeb..098cff5 100644
+index a85eeeb..bad469b 100644
 --- a/net/sctp/sm_make_chunk.c
 +++ b/net/sctp/sm_make_chunk.c
-@@ -734,8 +734,10 @@ struct sctp_chunk *sctp_make_sack(const struct sctp_association *asoc)
- 	int len;
- 	__u32 ctsn;
+@@ -736,6 +736,7 @@ struct sctp_chunk *sctp_make_sack(const struct sctp_association *asoc)
  	__u16 num_gabs, num_dup_tsns;
-+	struct sctp_association *aptr = (struct sctp_association *)asoc;
  	struct sctp_tsnmap *map = (struct sctp_tsnmap *)&asoc->peer.tsn_map;
  	struct sctp_gap_ack_block gabs[SCTP_MAX_GABS];
 +	struct sctp_transport *trans;
  
  	memset(gabs, 0, sizeof(gabs));
  	ctsn = sctp_tsnmap_get_ctsn(map);
-@@ -805,6 +807,20 @@ struct sctp_chunk *sctp_make_sack(const struct sctp_association *asoc)
+@@ -805,6 +806,13 @@ struct sctp_chunk *sctp_make_sack(const struct sctp_association *asoc)
  		sctp_addto_chunk(retval, sizeof(__u32) * num_dup_tsns,
  				 sctp_tsnmap_get_dups(map));
  
-+	/* Once we have a sack generated, check to see what our sack
-+	 * generation is, if its 0, reset the transports to 0, and reset
-+	 * the association generation to 1
-+	 *
-+	 * The idea is that zero is never used as a valid generation for the
-+	 * association so no transport will match after a wrap event like this,
-+	 * Until the next sack
-+	 */ 
-+	if (++aptr->peer.sack_generation = 0) {
-+		list_for_each_entry(trans, &asoc->peer.transport_addr_list,
-+				    transports)
-+			trans->sack_generation = 0;
-+		aptr->peer.sack_generation = 1;
++	/*
++	 * Once we have a sack generated, clear the moved_tsn information
++	 * from all the transports
++	 */
++	list_for_each_entry(trans, &asoc->peer.transport_addr_list, transports) {
++		trans->moved_ctsn = 0;
 +	}
  nodata:
  	return retval;
@@ -190,21 +150,8 @@ index c96d1a8..8716da1 100644
  			break;
  
  		case SCTP_CMD_REPORT_FWDTSN:
-diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-index b026ba0..1dcceb6 100644
---- a/net/sctp/transport.c
-+++ b/net/sctp/transport.c
-@@ -68,6 +68,8 @@ static struct sctp_transport *sctp_transport_init(struct sctp_transport *peer,
- 	peer->af_specific = sctp_get_af_specific(addr->sa.sa_family);
- 	memset(&peer->saddr, 0, sizeof(union sctp_addr));
- 
-+	peer->sack_generation = 0;
-+
- 	/* From 6.3.1 RTO Calculation:
- 	 *
- 	 * C1) Until an RTT measurement has been made for a packet sent to the
 diff --git a/net/sctp/tsnmap.c b/net/sctp/tsnmap.c
-index f1e40ceb..b5fb7c4 100644
+index f1e40ceb..619c638 100644
 --- a/net/sctp/tsnmap.c
 +++ b/net/sctp/tsnmap.c
 @@ -114,7 +114,8 @@ int sctp_tsnmap_check(const struct sctp_tsnmap *map, __u32 tsn)
@@ -217,12 +164,12 @@ index f1e40ceb..b5fb7c4 100644
  {
  	u16 gap;
  
-@@ -133,6 +134,9 @@ int sctp_tsnmap_mark(struct sctp_tsnmap *map, __u32 tsn)
+@@ -133,6 +134,8 @@ int sctp_tsnmap_mark(struct sctp_tsnmap *map, __u32 tsn)
  		 */
  		map->max_tsn_seen++;
  		map->cumulative_tsn_ack_point++;
 +		if (trans)
-+			trans->sack_generation +				trans->asoc->peer.sack_generation;
++			trans->moved_ctsn = 1;
  		map->base_tsn++;
  	} else {
  		/* Either we already have a gap, or about to record a gap, so
