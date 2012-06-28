@@ -1,7 +1,7 @@
 From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 28 Jun 2012 18:36:35 +0000
+Date: Thu, 28 Jun 2012 20:14:43 +0000
 Subject: Re: [PATCH v2] sctp: be more restrictive in transport selection on bundled sacks
-Message-Id: <20120628183635.GD29277@hmsreliant.think-freely.org>
+Message-Id: <20120628201442.GE29277@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1340742704-2192-1-git-send-email-nhorman@tuxdriver.com>
  <1340807003-23139-1-git-send-email-nhorman@tuxdriver.com>
@@ -95,6 +95,18 @@ On Thu, Jun 28, 2012 at 02:22:07PM -0400, Vlad Yasevich wrote:
 > So we might be using the wrong transport and as result you send data
 > and then end up waiting for a SACK.
 > 
-Thats what I'm looking into now.  I'll let you know when I've figured it out
+
+So, good news, and more good news - 
+
+The good news is that I found the problem - and its me :)
+When I modified the code to use pkt->transport over chunk->transport I removed
+the ! in front of the test on accident, and and so was not bundling when I
+should have been.  Quite stupid of me, sorry for the noise.
+
+The other good news is that while doing this I think I have a way to save us
+from having to do that for loop in sctp_make_sack, so this should be a bit more
+scalable.  I'll post when I finish testing tomorrow.
+
+Best
 Neil
 
