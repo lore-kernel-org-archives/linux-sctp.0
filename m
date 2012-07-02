@@ -1,69 +1,164 @@
-From: Flavio Leitner <fbl@redhat.com>
-Date: Fri, 20 Jul 2012 16:51:39 +0000
-Subject: Re: [PATCH v3] sctp: Implement quick failover draft from tsvwg
-Message-Id: <20120720135139.34f2c8c9@obelix.rh>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 02 Jul 2012 19:59:24 +0000
+Subject: [PATCH] sctp: refactor sctp_packet_append_chunk and clenup some memory leaks
+Message-Id: <1341259164-7396-1-git-send-email-nhorman@tuxdriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1342203998-24037-1-git-send-email-nhorman@tuxdriver.com>
-	<1342716704-6532-1-git-send-email-nhorman@tuxdriver.com>
-In-Reply-To: <1342716704-6532-1-git-send-email-nhorman@tuxdriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, joe@perches.com
+To: netdev@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org
 
-On Thu, 19 Jul 2012 12:51:44 -0400
-Neil Horman <nhorman@tuxdriver.com> wrote:
-[...]
->  
-> +pf_retrans - INTEGER
-> +	The number of retransmissions that will be attempted on a given path
-> +	before traffic is redirected to an alternate transport (should one
-> +	exist).  Note this is distinct from path_max_retrans, as a path that
-> +	passes the pf_retrans threshold can still be used.  Its only
-> +	deprioritized when a transmission path is selected by the stack.  This
-> +	setting is primarily used to enable fast failover mechanisms without
-> +	having to reduce path_max_retrans to a very low value.  See:
-> +	http://www.ietf.org/id/draft-nishida-tsvwg-sctp-failover-05.txt
-> +	for details.  Note also that a value of pf_retrans > path_max_retrans
-> +	disables this feature
-> +
-> +	Default: 0
-> +
->  rto_initial - INTEGER
-[...]
-> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-> index e4652fe..f70726c 100644
-> --- a/include/net/sctp/structs.h
-> +++ b/include/net/sctp/structs.h
-> @@ -160,6 +160,7 @@ extern struct sctp_globals {
->  	int max_retrans_association;
->  	int max_retrans_path;
->  	int max_retrans_init;
-> +	int pf_retrans;
+While doing some recent work on sctp sack bundling I noted that
+sctp_packet_append_chunk was pretty inefficient.  Specifially, it was called
+recursively while trying to bundle auth and sack chunks.  Because of that we
+call sctp_packet_bundle_sack and sctp_packet_bundle_auth a total of 4 times for
+every call to sctp_packet_append_chunk, knowing that at least 3 of those calls
+will do nothing.
 
-[...]
->  
-> +	/* This is the partially failed retrans value for the transport
-> +	 * and will be initialized from the assocs value.  This can be changed
-> +	 * using the SCTP_PEER_ADDR_THLDS socket option
-> +	 */
-> +	int pf_retrans;
->  	/* PMTU	      : The current known path MTU.  */
->  	__u32 pathmtu;
->  
-> @@ -1660,6 +1667,8 @@ struct sctp_association {
->  	 */
->  	int max_retrans;
->  
-> +	int pf_retrans;
-> +
+So lets refactor sctp_packet_bundle_auth to have an outer part that does the
+attempted bundling, and an inner part that just does the chunk appends.  This
+saves us several calls per iteration that we just don't need.
 
+Also, noticed that the auth and sack bundling fail to free the chunks they
+allocate if the append fails, so make sure we add that in
 
-You've documented in one place, but not in the others.  I suggest to include
-references like this
-       /* See the description in struct sctp_transport */
-at the two missing places.
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+CC: Vlad Yasevich <vyasevich@gmail.com>
+CC: "David S. Miller" <davem@davemloft.net>
+CC: linux-sctp@vger.kernel.org
+---
+ net/sctp/output.c |   80 +++++++++++++++++++++++++++++++++++------------------
+ 1 files changed, 53 insertions(+), 27 deletions(-)
 
-Nice feature,
-fbl
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 0de6cd5..0b62f6c 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -64,6 +64,8 @@
+ #include <net/sctp/checksum.h>
+ 
+ /* Forward declarations for private helpers. */
++static sctp_xmit_t __sctp_packet_append_chunk(struct sctp_packet *packet,
++					      struct sctp_chunk *chunk);
+ static sctp_xmit_t sctp_packet_can_append_data(struct sctp_packet *packet,
+ 					   struct sctp_chunk *chunk);
+ static void sctp_packet_append_data(struct sctp_packet *packet,
+@@ -224,7 +226,10 @@ static sctp_xmit_t sctp_packet_bundle_auth(struct sctp_packet *pkt,
+ 	if (!auth)
+ 		return retval;
+ 
+-	retval = sctp_packet_append_chunk(pkt, auth);
++	retval = __sctp_packet_append_chunk(pkt, auth);
++
++	if (retval != SCTP_XMIT_OK)
++		sctp_chunk_free(auth);
+ 
+ 	return retval;
+ }
+@@ -256,48 +261,31 @@ static sctp_xmit_t sctp_packet_bundle_sack(struct sctp_packet *pkt,
+ 			asoc->a_rwnd = asoc->rwnd;
+ 			sack = sctp_make_sack(asoc);
+ 			if (sack) {
+-				retval = sctp_packet_append_chunk(pkt, sack);
++				retval = __sctp_packet_append_chunk(pkt, sack);
++				if (retval != SCTP_XMIT_OK) {
++					sctp_chunk_free(sack);
++					goto out;
++				}
+ 				asoc->peer.sack_needed = 0;
+ 				if (del_timer(timer))
+ 					sctp_association_put(asoc);
+ 			}
+ 		}
+ 	}
++out:
+ 	return retval;
+ }
+ 
++
+ /* Append a chunk to the offered packet reporting back any inability to do
+  * so.
+  */
+-sctp_xmit_t sctp_packet_append_chunk(struct sctp_packet *packet,
+-				     struct sctp_chunk *chunk)
++static sctp_xmit_t __sctp_packet_append_chunk(struct sctp_packet *packet,
++					      struct sctp_chunk *chunk)
+ {
+ 	sctp_xmit_t retval = SCTP_XMIT_OK;
+ 	__u16 chunk_len = WORD_ROUND(ntohs(chunk->chunk_hdr->length));
+ 
+-	SCTP_DEBUG_PRINTK("%s: packet:%p chunk:%p\n", __func__, packet,
+-			  chunk);
+-
+-	/* Data chunks are special.  Before seeing what else we can
+-	 * bundle into this packet, check to see if we are allowed to
+-	 * send this DATA.
+-	 */
+-	if (sctp_chunk_is_data(chunk)) {
+-		retval = sctp_packet_can_append_data(packet, chunk);
+-		if (retval != SCTP_XMIT_OK)
+-			goto finish;
+-	}
+-
+-	/* Try to bundle AUTH chunk */
+-	retval = sctp_packet_bundle_auth(packet, chunk);
+-	if (retval != SCTP_XMIT_OK)
+-		goto finish;
+-
+-	/* Try to bundle SACK chunk */
+-	retval = sctp_packet_bundle_sack(packet, chunk);
+-	if (retval != SCTP_XMIT_OK)
+-		goto finish;
+-
+ 	/* Check to see if this chunk will fit into the packet */
+ 	retval = sctp_packet_will_fit(packet, chunk, chunk_len);
+ 	if (retval != SCTP_XMIT_OK)
+@@ -339,6 +327,44 @@ finish:
+ 	return retval;
+ }
+ 
++/* Append a chunk to the offered packet reporting back any inability to do
++ * so.
++ */
++sctp_xmit_t sctp_packet_append_chunk(struct sctp_packet *packet,
++				     struct sctp_chunk *chunk)
++{
++	sctp_xmit_t retval = SCTP_XMIT_OK;
++	__u16 chunk_len = WORD_ROUND(ntohs(chunk->chunk_hdr->length));
++
++	SCTP_DEBUG_PRINTK("%s: packet:%p chunk:%p\n", __func__, packet,
++			  chunk);
++
++	/* Data chunks are special.  Before seeing what else we can
++	 * bundle into this packet, check to see if we are allowed to
++	 * send this DATA.
++	 */
++	if (sctp_chunk_is_data(chunk)) {
++		retval = sctp_packet_can_append_data(packet, chunk);
++		if (retval != SCTP_XMIT_OK)
++			goto finish;
++	}
++
++	/* Try to bundle AUTH chunk */
++	retval = sctp_packet_bundle_auth(packet, chunk);
++	if (retval != SCTP_XMIT_OK)
++		goto finish;
++
++	/* Try to bundle SACK chunk */
++	retval = sctp_packet_bundle_sack(packet, chunk);
++	if (retval != SCTP_XMIT_OK)
++		goto finish;
++
++	retval = __sctp_packet_append_chunk(packet, chunk);
++
++finish:
++	return retval;
++}
++
+ /* All packets are sent to the network through this function from
+  * sctp_outq_tail().
+  *
+-- 
+1.7.7.6
+
