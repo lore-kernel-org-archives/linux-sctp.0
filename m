@@ -1,115 +1,56 @@
-From: xufeng zhang <xufeng.zhang@windriver.com>
-Date: Mon, 23 Jul 2012 05:16:37 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 23 Jul 2012 12:14:11 +0000
 Subject: Re: [PATCH] sctp: Make "Invalid Stream Identifier" ERROR follows SACK when bundling
-Message-Id: <500CDE35.6000009@windriver.com>
+Message-Id: <20120723121411.GC16518@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1342677450-21810-1-git-send-email-xufengzhang.main@gmail.com>
-In-Reply-To: <1342677450-21810-1-git-send-email-xufengzhang.main@gmail.com>
+ <20120723004932.GB8040@neilslaptop.think-freely.org>
+ <500CB74A.4040300@windriver.com>
+In-Reply-To: <500CB74A.4040300@windriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vyasevich@gmail.com, sri@us.ibm.com, davem@davemloft.net
-Cc: xufengzhang.main@gmail.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: xufeng zhang <xufeng.zhang@windriver.com>
+Cc: xufengzhang.main@gmail.com, vyasevich@gmail.com, sri@us.ibm.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On 07/19/2012 01:57 PM, xufengzhang.main@gmail.com wrote:
-> When "Invalid Stream Identifier" ERROR happens after process the
-> received DATA chunks, this ERROR chunk is enqueued into outqueue
-> before SACK chunk, so when bundling ERROR chunk with SACK chunk,
-> the ERROR chunk is always placed first in the packet because of
-> the chunk's position in the outqueue.
-> This violates sctp specification:
->      RFC 4960 6.5. Stream Identifier and Stream Sequence Number
->      ...The endpoint may bundle the ERROR chunk in the same
->      packet as the SACK as long as the ERROR follows the SACK.
-> So we must place SACK first when bundling "Invalid Stream Identifier"
-> ERROR and SACK in one packet.
-> Although we can do that by enqueue SACK chunk into outqueue before
-> ERROR chunk, it will violate the side-effect interpreter processing.
-> It's easy to do this job when dequeue chunks from the outqueue,
-> by this way, we introduce a flag 'has_isi_err' which indicate
-> whether or not the "Invalid Stream Identifier" ERROR happens.
->
-> Signed-off-by: Xufeng Zhang<xufeng.zhang@windriver.com>
-> ---
->   include/net/sctp/structs.h |    2 ++
->   net/sctp/output.c          |   26 ++++++++++++++++++++++++++
->   2 files changed, 28 insertions(+), 0 deletions(-)
->
-> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-> index 88949a9..5adf4de 100644
-> --- a/include/net/sctp/structs.h
-> +++ b/include/net/sctp/structs.h
-> @@ -842,6 +842,8 @@ struct sctp_packet {
->   	    has_sack:1,		/* This packet contains a SACK chunk. */
->   	    has_auth:1,		/* This packet contains an AUTH chunk */
->   	    has_data:1,		/* This packet contains at least 1 DATA chunk */
-> +	    has_isi_err:1,	/* This packet contains a "Invalid Stream
-> +				 * Identifier" ERROR chunk */
->   	    ipfragok:1,		/* So let ip fragment this packet */
->   	    malloced:1;		/* Is it malloced? */
->   };
-> diff --git a/net/sctp/output.c b/net/sctp/output.c
-> index 817174e..77fb1ae 100644
-> --- a/net/sctp/output.c
-> +++ b/net/sctp/output.c
-> @@ -79,6 +79,7 @@ static void sctp_packet_reset(struct sctp_packet *packet)
->   	packet->has_sack = 0;
->   	packet->has_data = 0;
->   	packet->has_auth = 0;
-> +	packet->has_isi_err = 0;
->   	packet->ipfragok = 0;
->   	packet->auth = NULL;
->   }
-> @@ -267,6 +268,7 @@ static sctp_xmit_t sctp_packet_bundle_sack(struct sctp_packet *pkt,
->   sctp_xmit_t sctp_packet_append_chunk(struct sctp_packet *packet,
->   				     struct sctp_chunk *chunk)
->   {
-> +	struct sctp_chunk *lchunk;
->   	sctp_xmit_t retval = SCTP_XMIT_OK;
->   	__u16 chunk_len = WORD_ROUND(ntohs(chunk->chunk_hdr->length));
->
-> @@ -316,7 +318,31 @@ sctp_xmit_t sctp_packet_append_chunk(struct sctp_packet *packet,
->   		packet->has_cookie_echo = 1;
->   		break;
->
-> +	    case SCTP_CID_ERROR:
-> +		if (chunk->subh.err_hdr->cause&  SCTP_ERROR_INV_STRM)
-> +			packet->has_isi_err = 1;
-> +		break;
-> +
->   	    case SCTP_CID_SACK:
-> +		/* RFC 4960
-> +		 * 6.5 Stream Identifier and Stream Sequence Number
-> +		 * The endpoint may bundle the ERROR chunk in the same
-> +		 * packet as the SACK as long as the ERROR follows the SACK.
-> +		 */
-> +		if (packet->has_isi_err) {
-> +			if (list_is_singular(&packet->chunk_list))
-> +				list_add(&chunk->list,&packet->chunk_list);
-> +			else {
-> +				lchunk = list_first_entry(&packet->chunk_list,
-> +						struct sctp_chunk, list);
-> +				list_add(&chunk->list,&lchunk->list);
-> +			}
->    
-And I should clarify the above judgment code.
-AFAIK, there should be two cases for the bundling when invalid stream 
-identifier error happens:
-1). COOKIE_ACK ERROR SACK
-2). ERROR SACK
-So I need to deal with the two cases differently.
+On Mon, Jul 23, 2012 at 10:30:34AM +0800, xufeng zhang wrote:
+> On 07/23/2012 08:49 AM, Neil Horman wrote:
+> >
+> >Not sure I understand how you came into this error.  If we get an invalid
+> >stream, we issue an SCTP_REPORT_TSN side effect, followed by an SCTP_CMD_REPLY
+> >which sends the error chunk.  The reply goes through
+> >sctp_outq_tail->sctp_outq_chunk->sctp_outq_transmit_chunk->sctp_outq_append_chunk.
+> >That last function checks to see if a sack is already part of the packet, and if
+> >there isn't one, appends one, using the updated tsn map.
+> Yes, you are right, but consider the invalid stream identifier's
+> DATA chunk is the first
+> DATA chunk in the association which will need SACK immediately.
+> Here is what I thought of the scenario:
+>     sctp_sf_eat_data_6_2()
+>         -->sctp_eat_data()
+>             -->sctp_make_op_error()
+>             -->sctp_add_cmd_sf(commands, SCTP_CMD_REPLY, SCTP_CHUNK(err))
+>             -->sctp_outq_tail()          /* First enqueue ERROR chunk */
+>         -->sctp_add_cmd_sf(commands, SCTP_CMD_GEN_SACK, SCTP_FORCE())
+>             -->sctp_gen_sack()
+>                 -->sctp_make_sack()
+>                 -->sctp_add_cmd_sf(commands, SCTP_CMD_REPLY,
+> SCTP_CHUNK(sack))
+>                 -->sctp_outq_tail()          /* Then enqueue SACK chunk */
+> 
+> So SACK chunk is enqueued after ERROR chunk.
+Ah, I see.  Since the ERROR and SACK chunks are both control chunks, and since
+we explicitly add the SACK to the control queue instead of going through the
+bundle path in sctp_packet_append_chunk the ordering gets wrong.
 
+Ok, so the problem makes sense.  I think the soultion could be alot easier
+though.  IIRC SACK chunks always live at the head of a packet, so why not just
+special case it in sctp_outq_tail?  I.e. instead of doing a list_add_tail, in
+the else clause of sctp_outq_tail check the chunk_hdr->type to see if its
+SCTP_CID_SACK.  If it is, use list_add_head rather than list_add_tail.  I think
+that will fix up both the COOKIE_ECHO and ESTABLISHED cases, won't it?  And then
+you won't have keep track of extra state in the packet configuration.
 
-Thanks,
-Xufeng Zhang
-> +			packet->size += chunk_len;
-> +			chunk->transport = packet->transport;
-> +			packet->has_sack = 1;
-> +			goto finish;
-> +		}
-> +
->   		packet->has_sack = 1;
->   		break;
->
->    
+Regards
+Neil
 
