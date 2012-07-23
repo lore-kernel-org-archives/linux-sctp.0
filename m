@@ -1,8 +1,10 @@
 From: contact@colorblender.info
-Date: Tue, 17 Jul 2012 06:02:10 +0000
+Date: Mon, 23 Jul 2012 13:35:32 +0000
 Subject: Link Exchange with lksctp.sourceforge.net (PR6)
-Message-Id: <20120717060210.24090.71892@mx1.colorblender.info>
+Message-Id: <20120723133532.22359.20120@m1.colorblender.info>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20120717060210.24090.71892@mx1.colorblender.info>
+In-Reply-To: <20120717060210.24090.71892@mx1.colorblender.info>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
