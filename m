@@ -1,37 +1,25 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Sat, 21 Jul 2012 11:03:43 +0000
+From: Flavio Leitner <fbl@redhat.com>
+Date: Mon, 23 Jul 2012 14:28:17 +0000
 Subject: Re: [PATCH v5] sctp: Implement quick failover draft from tsvwg
-Message-Id: <20120721110343.GA5128@neilslaptop.think-freely.org>
+Message-Id: <20120723112817.687dde24@obelix.rh>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1342203998-24037-1-git-send-email-nhorman@tuxdriver.com>
- <1342810319-27457-1-git-send-email-nhorman@tuxdriver.com>
- <ab3918ef-84db-413c-93d7-c3b9afe8fa87@email.android.com>
-In-Reply-To: <ab3918ef-84db-413c-93d7-c3b9afe8fa87@email.android.com>
+	<1342810319-27457-1-git-send-email-nhorman@tuxdriver.com>
+	<20120720161001.1cc1bb10@obelix.rh>
+	<20120720.123109.718847527715087868.davem@davemloft.net>
+In-Reply-To: <20120720.123109.718847527715087868.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>
-Cc: netdev@vger.kernel.org, Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, joe@perches.com
+To: David Miller <davem@davemloft.net>
+Cc: nhorman@tuxdriver.com, netdev@vger.kernel.org, vyasevich@gmail.com, sri@us.ibm.com, linux-sctp@vger.kernel.org, joe@perches.com
 
-On Sat, Jul 21, 2012 at 02:45:03AM -0400, Vlad Yasevich wrote:
-> Neil Horman <nhorman@tuxdriver.com> wrote:
-><snip>
-> >+
-> >+		val.spt_pathmaxrxt = trans->pathmaxrxt;
-> >+		val.spt_pathpfthld = trans->pf_retrans;
-> >+	}
-> >+
-> >+	if (copy_to_user(optval, &val, optlen))
-> >+		return -EFAULT;
-> >+
-> >+	return optlen;
-> 
-> I don't think you can simply return this.  You have to call put_user() with the value to write it back to the User.  See how other get calls are done.
-> 
-> -Vlad
-> 
-Yeah, sorry, I had assumed that the put_user for the return code was part of the
-common sctp_getsockopt path and didn't go check.  Thanks, I'll respin this later
-tonight.
-Neil
+On Fri, 20 Jul 2012 12:31:09 -0700 (PDT)
+David Miller <davem@davemloft.net> wrote:
+[...]
+> Just quote the commit message or similar.
 
+Sure thing. I was going to clean up when I accidentally sent that email.
+The previous ones were fine though :)
+Sorry about that.
+fbl
