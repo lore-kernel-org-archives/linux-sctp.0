@@ -1,7 +1,7 @@
-From: David Miller <davem@davemloft.net>
-Date: Sun, 22 Jul 2012 19:45:14 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 23 Jul 2012 00:49:32 +0000
 Subject: Re: [PATCH] sctp: Make "Invalid Stream Identifier" ERROR follows SACK when bundling
-Message-Id: <20120722.124514.239340989320198501.davem@davemloft.net>
+Message-Id: <20120723004932.GB8040@neilslaptop.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1342677450-21810-1-git-send-email-xufengzhang.main@gmail.com>
 In-Reply-To: <1342677450-21810-1-git-send-email-xufengzhang.main@gmail.com>
@@ -9,11 +9,9 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: xufengzhang.main@gmail.com
-Cc: vyasevich@gmail.com, sri@us.ibm.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: vyasevich@gmail.com, sri@us.ibm.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-From: <xufengzhang.main@gmail.com>
-Date: Thu, 19 Jul 2012 13:57:30 +0800
-
+On Thu, Jul 19, 2012 at 01:57:30PM +0800, xufengzhang.main@gmail.com wrote:
 > When "Invalid Stream Identifier" ERROR happens after process the
 > received DATA chunks, this ERROR chunk is enqueued into outqueue
 > before SACK chunk, so when bundling ERROR chunk with SACK chunk,
@@ -33,4 +31,14 @@ Date: Thu, 19 Jul 2012 13:57:30 +0800
 > 
 > Signed-off-by: Xufeng Zhang <xufeng.zhang@windriver.com>
 
-Can some SCTP experts please review this?
+Not sure I understand how you came into this error.  If we get an invalid
+stream, we issue an SCTP_REPORT_TSN side effect, followed by an SCTP_CMD_REPLY
+which sends the error chunk.  The reply goes through
+sctp_outq_tail->sctp_outq_chunk->sctp_outq_transmit_chunk->sctp_outq_append_chunk.
+That last function checks to see if a sack is already part of the packet, and if
+there isn't one, appends one, using the updated tsn map.  So Can you explain in
+some more detail how you're getting into this situation?
+
+Thanks!
+Neil
+
