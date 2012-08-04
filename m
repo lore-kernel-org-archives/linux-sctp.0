@@ -1,63 +1,311 @@
-From: ebiederm@xmission.com (Eric W. Biederman)
-Date: Mon, 06 Aug 2012 18:38:09 +0000
-Subject: [PATCH net-next 0/9] sctp: Basic support for network namespaces
-Message-Id: <87zk67q31q.fsf_-_@xmission.com>
+From: Jan Ariyasu <jan.ariyasu@gmail.com>
+Date: Sat, 04 Aug 2012 21:33:41 +0000
+Subject: [PATCH 08/13] SCTP: Make associations use per-namespace configuration.
+Message-Id: <1344116021-6429-1-git-send-email-jan.ariyasu@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1344115837-6150-1-git-send-email-jan.ariyasu@hp.com>
-	<87mx27rig7.fsf@xmission.com>
-In-Reply-To: <87mx27rig7.fsf@xmission.com> (Eric W. Biederman's message of
-	"Mon, 06 Aug 2012 11:20:08 -0700")
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, Jan Ariyasu <jan.ariyasu@hp.com>, Jan Ariyasu <jan.ariyasu@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Thomas Graf <tgraf@infradead.org>, Xi Wang <xi.wang@gmail.com>
+To: Vlad Yasevich <vyasevich@gmail.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Jan Ariyasu <jan.ariyasu@hp.com>
 
+These changes make associations namespace aware, including
+association ID lists and their associated locks.
 
-The other day I wanted to play around with sctp and did a basic pass to
-make sctp per network namespace, so that I could play more conviniently.
-Apparently this is an idea who's time has come because Jan Ariyasu also
-made a similar set of changes.
+Signed-off-by: Jan Ariyasu <jan.ariyasu@hp.com>
+---
+ include/net/sctp/sctp.h    |    3 ---
+ include/net/sctp/structs.h |    3 ++-
+ net/sctp/associola.c       |   37 ++++++++++++++++++++++++-------------
+ net/sctp/input.c           |   25 +++++++++++++++----------
+ net/sctp/sm_sideeffect.c   |    9 ++++-----
+ 5 files changed, 45 insertions(+), 32 deletions(-)
 
-I have played around some with these changes and have confirmed that
-sctp_test from lksctp-tools works without problems.
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 8488d5e..363a786 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -601,9 +601,6 @@ extern struct proto sctp_prot;
+ extern struct proto sctpv6_prot;
+ void sctp_put_port(struct sock *sk);
+ 
+-extern struct idr sctp_assocs_id;
+-extern spinlock_t sctp_assocs_id_lock;
+-
+ /* Static inline functions. */
+ 
+ /* Convert from an IP version number to an Address Family symbol.  */
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 2034d53..72d473b 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -2153,7 +2153,8 @@ struct sctp_transport *sctp_assoc_is_match(struct sctp_association *,
+ 					   const union sctp_addr *,
+ 					   const union sctp_addr *);
+ void sctp_assoc_migrate(struct sctp_association *, struct sock *);
+-void sctp_assoc_update(struct sctp_association *old,
++void sctp_assoc_update(struct net *net,
++		       struct sctp_association *old,
+ 		       struct sctp_association *new);
+ 
+ __u32 sctp_association_get_next_tsn(struct sctp_association *);
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 1bd956b..5b4be66 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -86,6 +86,8 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
+ 	int i;
+ 	sctp_paramhdr_t *p;
+ 	int err;
++	struct sctp_net_params *net_params +			sctp_get_params(sock_net(sk));
+ 
+ 	/* Retrieve the SCTP per socket area.  */
+ 	sp = sctp_sk((struct sock *)sk);
+@@ -124,7 +126,7 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
+ 	 * socket values.
+ 	 */
+ 	asoc->max_retrans = sp->assocparams.sasoc_asocmaxrxt;
+-	asoc->pf_retrans  = sctp_pf_retrans;
++	asoc->pf_retrans  = net_params->pf_retrans;
+ 
+ 	asoc->rto_initial = msecs_to_jiffies(sp->rtoinfo.srto_initial);
+ 	asoc->rto_max = msecs_to_jiffies(sp->rtoinfo.srto_max);
+@@ -175,7 +177,8 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
+ 	asoc->timeouts[SCTP_EVENT_TIMEOUT_HEARTBEAT] = 0;
+ 	asoc->timeouts[SCTP_EVENT_TIMEOUT_SACK] = asoc->sackdelay;
+ 	asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE] -		min_t(unsigned long, sp->autoclose, sctp_max_autoclose) * HZ;
++		min_t(unsigned long, sp->autoclose,
++			net_params->max_autoclose) * HZ;
+ 
+ 	/* Initializes the timers */
+ 	for (i = SCTP_EVENT_TIMEOUT_NONE; i < SCTP_NUM_TIMEOUT_TYPES; ++i)
+@@ -281,7 +284,7 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
+ 	 * and will revert old behavior.
+ 	 */
+ 	asoc->peer.asconf_capable = 0;
+-	if (sctp_addip_noauth)
++	if (net_params->addip_noauth_enable)
+ 		asoc->peer.asconf_capable = 1;
+ 	asoc->asconf_addr_del_pending = NULL;
+ 	asoc->src_out_of_asoc_ok = 0;
+@@ -468,15 +471,18 @@ void sctp_association_free(struct sctp_association *asoc)
+ /* Cleanup and free up an association. */
+ static void sctp_association_destroy(struct sctp_association *asoc)
+ {
++	struct sctp_ns_globals *ns_globals +		sctp_get_ns_globals(sock_net(asoc->base.sk));
++
+ 	SCTP_ASSERT(asoc->base.dead, "Assoc is not dead", return);
+ 
+ 	sctp_endpoint_put(asoc->ep);
+ 	sock_put(asoc->base.sk);
+ 
+ 	if (asoc->assoc_id != 0) {
+-		spin_lock_bh(&sctp_assocs_id_lock);
+-		idr_remove(&sctp_assocs_id, asoc->assoc_id);
+-		spin_unlock_bh(&sctp_assocs_id_lock);
++		spin_lock_bh(&ns_globals->assocs_id_lock);
++		idr_remove(&ns_globals->assocs_id, asoc->assoc_id);
++		spin_unlock_bh(&ns_globals->assocs_id_lock);
+ 	}
+ 
+ 	WARN_ON(atomic_read(&asoc->rmem_alloc));
+@@ -1204,7 +1210,8 @@ void sctp_assoc_migrate(struct sctp_association *assoc, struct sock *newsk)
+ }
+ 
+ /* Update an association (possibly from unexpected COOKIE-ECHO processing).  */
+-void sctp_assoc_update(struct sctp_association *asoc,
++void sctp_assoc_update(struct net *net,
++		       struct sctp_association *asoc,
+ 		       struct sctp_association *new)
+ {
+ 	struct sctp_transport *trans;
+@@ -1416,6 +1423,8 @@ void sctp_assoc_sync_pmtu(struct sock *sk, struct sctp_association *asoc)
+ /* Should we send a SACK to update our peer? */
+ static inline int sctp_peer_needs_update(struct sctp_association *asoc)
+ {
++	struct sctp_net_params *net_params +		sctp_get_params(sock_net(asoc->base.sk));
+ 	switch (asoc->state) {
+ 	case SCTP_STATE_ESTABLISHED:
+ 	case SCTP_STATE_SHUTDOWN_PENDING:
+@@ -1423,8 +1432,8 @@ static inline int sctp_peer_needs_update(struct sctp_association *asoc)
+ 	case SCTP_STATE_SHUTDOWN_SENT:
+ 		if ((asoc->rwnd > asoc->a_rwnd) &&
+ 		    ((asoc->rwnd - asoc->a_rwnd) >= max_t(__u32,
+-			   (asoc->base.sk->sk_rcvbuf >> sctp_rwnd_upd_shift),
+-			   asoc->pathmtu)))
++			(asoc->base.sk->sk_rcvbuf >>
++			  net_params->rwnd_update_shift), asoc->pathmtu)))
+ 			return 1;
+ 		break;
+ 	default:
+@@ -1582,23 +1591,25 @@ int sctp_assoc_set_id(struct sctp_association *asoc, gfp_t gfp)
+ {
+ 	int assoc_id;
+ 	int error = 0;
++	struct sctp_ns_globals *ns_globals +		sctp_get_ns_globals(sock_net(asoc->base.sk));
+ 
+ 	/* If the id is already assigned, keep it. */
+ 	if (asoc->assoc_id)
+ 		return error;
+ retry:
+-	if (unlikely(!idr_pre_get(&sctp_assocs_id, gfp)))
++	if (unlikely(!idr_pre_get(&ns_globals->assocs_id, gfp)))
+ 		return -ENOMEM;
+ 
+-	spin_lock_bh(&sctp_assocs_id_lock);
+-	error = idr_get_new_above(&sctp_assocs_id, (void *)asoc,
++	spin_lock_bh(&ns_globals->assocs_id_lock);
++	error = idr_get_new_above(&ns_globals->assocs_id, (void *)asoc,
+ 				    idr_low, &assoc_id);
+ 	if (!error) {
+ 		idr_low = assoc_id + 1;
+ 		if (idr_low = INT_MAX)
+ 			idr_low = 1;
+ 	}
+-	spin_unlock_bh(&sctp_assocs_id_lock);
++	spin_unlock_bh(&ns_globals->assocs_id_lock);
+ 	if (error = -EAGAIN)
+ 		goto retry;
+ 	else if (error)
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 1b92da2..9b53b95 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -70,7 +70,8 @@ static struct sctp_association *__sctp_rcv_lookup(struct sk_buff *skb,
+ 				      const union sctp_addr *laddr,
+ 				      const union sctp_addr *paddr,
+ 				      struct sctp_transport **transportp);
+-static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(const union sctp_addr *laddr);
++static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(struct net *net,
++					const union sctp_addr *laddr);
+ static struct sctp_association *__sctp_lookup_association(
+ 					const union sctp_addr *local,
+ 					const union sctp_addr *peer,
+@@ -129,6 +130,7 @@ int sctp_rcv(struct sk_buff *skb)
+ 	union sctp_addr dest;
+ 	int family;
+ 	struct sctp_af *af;
++	struct net *net = dev_net(skb->dev);
+ 
+ 	if (skb->pkt_type!=PACKET_HOST)
+ 		goto discard_it;
+@@ -181,7 +183,7 @@ int sctp_rcv(struct sk_buff *skb)
+ 	asoc = __sctp_rcv_lookup(skb, &src, &dest, &transport);
+ 
+ 	if (!asoc)
+-		ep = __sctp_rcv_lookup_endpoint(&dest);
++		ep = __sctp_rcv_lookup_endpoint(net, &dest);
+ 
+ 	/* Retrieve the common input handling substructure. */
+ 	rcvr = asoc ? &asoc->base : &ep->base;
+@@ -200,7 +202,7 @@ int sctp_rcv(struct sk_buff *skb)
+ 			sctp_endpoint_put(ep);
+ 			ep = NULL;
+ 		}
+-		sk = *(sctp_get_ctl_sock(&init_net));
++		sk = *(sctp_get_ctl_sock(net));
+ 		ep = sctp_sk(sk)->ep;
+ 		sctp_endpoint_hold(ep);
+ 		rcvr = &ep->base;
+@@ -539,7 +541,7 @@ struct sock *sctp_err_lookup(int family, struct sk_buff *skb,
+ 	 * servers this needs to be solved differently.
+ 	 */
+ 	if (sock_owned_by_user(sk))
+-		NET_INC_STATS_BH(&init_net, LINUX_MIB_LOCKDROPPEDICMPS);
++		NET_INC_STATS_BH(sock_net(sk), LINUX_MIB_LOCKDROPPEDICMPS);
+ 
+ 	*app = asoc;
+ 	*tpp = transport;
+@@ -588,7 +590,7 @@ void sctp_v4_err(struct sk_buff *skb, __u32 info)
+ 	int err;
+ 
+ 	if (skb->len < ihlen + 8) {
+-		ICMP_INC_STATS_BH(&init_net, ICMP_MIB_INERRORS);
++		ICMP_INC_STATS_BH(dev_net(skb->dev), ICMP_MIB_INERRORS);
+ 		return;
+ 	}
+ 
+@@ -602,7 +604,7 @@ void sctp_v4_err(struct sk_buff *skb, __u32 info)
+ 	skb->network_header = saveip;
+ 	skb->transport_header = savesctp;
+ 	if (!sk) {
+-		ICMP_INC_STATS_BH(&init_net, ICMP_MIB_INERRORS);
++		ICMP_INC_STATS_BH(dev_net(skb->dev), ICMP_MIB_INERRORS);
+ 		return;
+ 	}
+ 	/* Warning:  The sock lock is held.  Remember to call
+@@ -770,7 +772,8 @@ void sctp_unhash_endpoint(struct sctp_endpoint *ep)
+ }
+ 
+ /* Look up an endpoint. */
+-static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(const union sctp_addr *laddr)
++static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(struct net *net,
++					const union sctp_addr *laddr)
+ {
+ 	struct sctp_hashbucket *head;
+ 	struct sctp_ep_common *epb;
+@@ -787,7 +790,7 @@ static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(const union sctp_addr *l
+ 			goto hit;
+ 	}
+ 
+-	ep = sctp_sk(*(sctp_get_ctl_sock(&init_net)))->ep;
++	ep = sctp_sk(*(sctp_get_ctl_sock(net)))->ep;
+ 
+ hit:
+ 	sctp_endpoint_hold(ep);
+@@ -1042,6 +1045,8 @@ static struct sctp_association *__sctp_rcv_walk_lookup(struct sk_buff *skb,
+ 	int have_auth = 0;
+ 	unsigned int chunk_num = 1;
+ 	__u8 *ch_end;
++	struct sctp_net_params *net_params +			sctp_get_params(dev_net(skb->dev));
+ 
+ 	/* Walk through the chunks looking for AUTH or ASCONF chunks
+ 	 * to help us find the association.
+@@ -1074,8 +1079,8 @@ static struct sctp_association *__sctp_rcv_walk_lookup(struct sk_buff *skb,
+ 			    break;
+ 
+ 		    case SCTP_CID_ASCONF:
+-			    if (have_auth || sctp_addip_noauth)
+-				    asoc = __sctp_rcv_asconf_lookup(ch, laddr,
++			    if (have_auth || net_params->addip_noauth_enable)
++				asoc = __sctp_rcv_asconf_lookup(ch, laddr,
+ 							sctp_hdr(skb)->source,
+ 							transportp);
+ 		    default:
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 2c895fd..35cbbe5 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -1058,8 +1058,8 @@ static void sctp_cmd_send_asconf(struct sctp_association *asoc)
+ 
+ 		/* Hold the chunk until an ASCONF_ACK is received. */
+ 		sctp_chunk_hold(asconf);
+-		if (sctp_primitive_ASCONF(sock_net(asoc->base.sk), asoc,
+-					  asconf))
++		if (sctp_primitive_ASCONF(sock_net(asoc->base.sk),
++					  asoc, asconf))
+ 			sctp_chunk_free(asconf);
+ 		else
+ 			asoc->addip_last_asconf = asconf;
+@@ -1277,7 +1277,7 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
+ 			break;
+ 
+ 		case SCTP_CMD_UPDATE_ASSOC:
+-		       sctp_assoc_update(asoc, cmd->obj.ptr);
++		       sctp_assoc_update(net, asoc, cmd->obj.ptr);
+ 		       break;
+ 
+ 		case SCTP_CMD_PURGE_OUTQUEUE:
+@@ -1354,8 +1354,7 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
+ 			 * layer which will bail.
+ 			 */
+ 			error = sctp_cmd_process_init(net, commands, asoc,
+-						      chunk, cmd->obj.ptr,
+-						      gfp);
++						      chunk, cmd->obj.ptr, gfp);
+ 			break;
+ 
+ 		case SCTP_CMD_GEN_COOKIE_ECHO:
+-- 
+1.7.9.5
 
-Compared to Jan's changes I have per network namespace association and
-endpoint hash table lookups, my patch has per network namespace mib
-statistics, my changes don't contiain per network namespace tunables
-and my patchset only touches about half as many lines as Jan's change.
-
-So for both correctness and simplicity reasons it looks like the
-practical way to handle this is to merge my changes and get Jan rebase
-his tunable changes on top.
-
- include/net/net_namespace.h |    4 +
- include/net/netns/sctp.h    |   37 +++++
- include/net/sctp/sctp.h     |   44 +++----
- include/net/sctp/structs.h  |   28 +----
- net/sctp/associola.c        |    9 +-
- net/sctp/bind_addr.c        |   14 +-
- net/sctp/chunk.c            |    2 +-
- net/sctp/endpointola.c      |   12 +-
- net/sctp/input.c            |  109 +++++++++------
- net/sctp/ipv6.c             |   36 +++---
- net/sctp/output.c           |    2 +-
- net/sctp/outqueue.c         |   18 ++-
- net/sctp/proc.c             |   58 +++++---
- net/sctp/protocol.c         |  305 ++++++++++++++++++++++---------------------
- net/sctp/sm_statefuns.c     |  208 ++++++++++++++++++-----------
- net/sctp/socket.c           |   29 +++--
- net/sctp/ulpqueue.c         |   18 ++-
- 17 files changed, 533 insertions(+), 400 deletions(-)
-
-
-Eric W. Biederman (9):
-      sctp: Make the port hash table use struct net in it's key.
-      sctp: Make the endpoint hashtable handle multiple network namespaces
-      sctp: Make the association hashtable handle multiple network namespaces
-      sctp: Make the address lists per network namespace
-      sctp: Make the ctl_sock per network namespace
-      sctp: Move the percpu sockets counter out of sctp_proc_init
-      sctp: Make the proc files per network namespace.
-      sctp: Enable sctp in all network namespaces
-      sctp: Make the mib per network namespace
