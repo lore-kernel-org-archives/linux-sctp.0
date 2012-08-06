@@ -1,73 +1,154 @@
-From: Wei Yongjun <weiyj.lk@gmail.com>
-Date: Mon, 02 Jul 2012 05:06:37 +0000
-Subject: Re: possible integer underflow in __sctp_auth_cid()
-Message-Id: <CAPgLHd_irof=D+R=HfqQR1Yo4MxvRP7S4WWHCyV65-QpYJziBQ@mail.gmail.com>
+From: ebiederm@xmission.com (Eric W. Biederman)
+Date: Mon, 06 Aug 2012 18:39:38 +0000
+Subject: [PATCH net-next 1/9] sctp: Make the port hash table use struct net in it's key.
+Message-Id: <87txwfq2z9.fsf_-_@xmission.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1344115837-6150-1-git-send-email-jan.ariyasu@hp.com>
+	<87mx27rig7.fsf@xmission.com> <87zk67q31q.fsf_-_@xmission.com>
+In-Reply-To: <87zk67q31q.fsf_-_@xmission.com> (Eric W. Biederman's message of
+	"Mon, 06 Aug 2012 11:38:09 -0700")
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dan.carpenter@oracle.com
-Cc: vyasevich@gmail.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
-
-On 06/30/2012 08:17 PM, Dan Carpenter wrote:
-> In 555d3d5d "SCTP: Fix chunk acceptance when no authenticated chunks
-> were listed.", we added a check for if (param->param_hdr.length = 0).
-> Shouldn't that check be a check for if
-> (param->param_hdr.length < sizeos(sizeof(sctp_paramhdr_t)))?  Otherwise,
-> when we do the substraction on the next line we would unintentionally
-> end up with a high positive number.
->
-> I had a similar question about sctp_auth_ep_add_chunkid():
->
-> net/sctp/auth.c
->    770          /* Check if we can add this chunk to the array */
->    771          param_len = ntohs(p->param_hdr.length);
->    772          nchunks = param_len - sizeof(sctp_paramhdr_t);
->    773          if (nchunks = SCTP_NUM_CHUNK_TYPES)
->    774                  return -EINVAL;
->    775
->    776          p->chunks[nchunks] = chunk_id;
->
-> If param_len is less than sizeof(sctp_paramhdr_t) we could write past
-> the end of the array.  There are a couple other places with this same
-> subtraction as well.
+To: David Miller <davem@davemloft.net>
+Cc: Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, Jan Ariyasu <jan.ariyasu@hp.com>, Jan Ariyasu <jan.ariyasu@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Thomas Graf <tgraf@infradead.org>, Xi Wang <xi.wang@gmail.com>
 
 
-This will not happen because that p which means ep->auth_chunk_list
-is maintained by the endpoint itself, and the default value is
-sizeof(sctp_paramhdr_t) or sizeof(sctp_paramhdr_t) + 2.
+- Add struct net into the port hash table hash calculation
+- Add struct net inot the struct sctp_bind_bucket so there
+  is a memory of which network namespace a port is allocated in.
+  No need for a ref count because sctp_bind_bucket only exists
+  when there are sockets in the hash table and sockets can not
+  change their network namspace, and sockets already ref count
+  their network namespace.
+- Add struct net into the key comparison when we are testing
+  to see if we have found the port hash table entry we are
+  looking for.
 
-Instead, I found that if user enable AUTH after the endpoint is
-created, set the AUTH chunk may cause panic, because the
-ep->auth_chunk_list is NULL.
+With these changes lookups in the port hash table becomes
+safe to use in multiple network namespaces.
 
-I think we should introduce a help function to check whether the
-AUTH is enabled instead only check sctp_auth_enable, may like:
+Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
+---
+ include/net/sctp/sctp.h    |    4 ++--
+ include/net/sctp/structs.h |    1 +
+ net/sctp/socket.c          |   22 +++++++++++++---------
+ 3 files changed, 16 insertions(+), 11 deletions(-)
 
-bool sctp_auth_ep_enabled(struct sctp_endpoint *ep)
-{
-	if (!sctp_auth_enable)
-		return false;
-
-	if (!ep->auth_chunk_list || !ep->auth_hmacs_list)
-		return false;
-
-	return true;
-}
-
-
-Regards
-Yongjun Wei
-
->
-> regards,
-> dan carpenter
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
-
-
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index ff49964..7c05040 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -632,9 +632,9 @@ static inline int sctp_sanity_check(void)
+ 
+ /* Warning: The following hash functions assume a power of two 'size'. */
+ /* This is the hash function for the SCTP port hash table. */
+-static inline int sctp_phashfn(__u16 lport)
++static inline int sctp_phashfn(struct net *net, __u16 lport)
+ {
+-	return lport & (sctp_port_hashsize - 1);
++	return (net_hash_mix(net) + lport) & (sctp_port_hashsize - 1);
+ }
+ 
+ /* This is the hash function for the endpoint hash table. */
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index fc5e600..c089bb1 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -102,6 +102,7 @@ struct sctp_bind_bucket {
+ 	unsigned short	fastreuse;
+ 	struct hlist_node	node;
+ 	struct hlist_head	owner;
++	struct net	*net;
+ };
+ 
+ struct sctp_bind_hashbucket {
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 5e25981..4316b0f 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -5769,7 +5769,7 @@ static void sctp_unhash(struct sock *sk)
+  * a fastreuse flag (FIXME: NPI ipg).
+  */
+ static struct sctp_bind_bucket *sctp_bucket_create(
+-	struct sctp_bind_hashbucket *head, unsigned short snum);
++	struct sctp_bind_hashbucket *head, struct net *, unsigned short snum);
+ 
+ static long sctp_get_port_local(struct sock *sk, union sctp_addr *addr)
+ {
+@@ -5799,11 +5799,12 @@ static long sctp_get_port_local(struct sock *sk, union sctp_addr *addr)
+ 				rover = low;
+ 			if (inet_is_reserved_local_port(rover))
+ 				continue;
+-			index = sctp_phashfn(rover);
++			index = sctp_phashfn(sock_net(sk), rover);
+ 			head = &sctp_port_hashtable[index];
+ 			sctp_spin_lock(&head->lock);
+ 			sctp_for_each_hentry(pp, node, &head->chain)
+-				if (pp->port = rover)
++				if ((pp->port = rover) &&
++				    net_eq(sock_net(sk), pp->net))
+ 					goto next;
+ 			break;
+ 		next:
+@@ -5827,10 +5828,10 @@ static long sctp_get_port_local(struct sock *sk, union sctp_addr *addr)
+ 		 * to the port number (snum) - we detect that with the
+ 		 * port iterator, pp being NULL.
+ 		 */
+-		head = &sctp_port_hashtable[sctp_phashfn(snum)];
++		head = &sctp_port_hashtable[sctp_phashfn(sock_net(sk), snum)];
+ 		sctp_spin_lock(&head->lock);
+ 		sctp_for_each_hentry(pp, node, &head->chain) {
+-			if (pp->port = snum)
++			if ((pp->port = snum) && net_eq(pp->net, sock_net(sk)))
+ 				goto pp_found;
+ 		}
+ 	}
+@@ -5881,7 +5882,7 @@ pp_found:
+ pp_not_found:
+ 	/* If there was a hash table miss, create a new port.  */
+ 	ret = 1;
+-	if (!pp && !(pp = sctp_bucket_create(head, snum)))
++	if (!pp && !(pp = sctp_bucket_create(head, sock_net(sk), snum)))
+ 		goto fail_unlock;
+ 
+ 	/* In either case (hit or miss), make sure fastreuse is 1 only
+@@ -6113,7 +6114,7 @@ unsigned int sctp_poll(struct file *file, struct socket *sock, poll_table *wait)
+  ********************************************************************/
+ 
+ static struct sctp_bind_bucket *sctp_bucket_create(
+-	struct sctp_bind_hashbucket *head, unsigned short snum)
++	struct sctp_bind_hashbucket *head, struct net *net, unsigned short snum)
+ {
+ 	struct sctp_bind_bucket *pp;
+ 
+@@ -6123,6 +6124,7 @@ static struct sctp_bind_bucket *sctp_bucket_create(
+ 		pp->port = snum;
+ 		pp->fastreuse = 0;
+ 		INIT_HLIST_HEAD(&pp->owner);
++		pp->net = net;
+ 		hlist_add_head(&pp->node, &head->chain);
+ 	}
+ 	return pp;
+@@ -6142,7 +6144,8 @@ static void sctp_bucket_destroy(struct sctp_bind_bucket *pp)
+ static inline void __sctp_put_port(struct sock *sk)
+ {
+ 	struct sctp_bind_hashbucket *head -		&sctp_port_hashtable[sctp_phashfn(inet_sk(sk)->inet_num)];
++		&sctp_port_hashtable[sctp_phashfn(sock_net(sk),
++						  inet_sk(sk)->inet_num)];
+ 	struct sctp_bind_bucket *pp;
+ 
+ 	sctp_spin_lock(&head->lock);
+@@ -6809,7 +6812,8 @@ static void sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
+ 	newsp->hmac = NULL;
+ 
+ 	/* Hook this new socket in to the bind_hash list. */
+-	head = &sctp_port_hashtable[sctp_phashfn(inet_sk(oldsk)->inet_num)];
++	head = &sctp_port_hashtable[sctp_phashfn(sock_net(oldsk),
++						 inet_sk(oldsk)->inet_num)];
+ 	sctp_local_bh_disable();
+ 	sctp_spin_lock(&head->lock);
+ 	pp = sctp_sk(oldsk)->bind_hash;
+-- 
+1.7.5.4
 
