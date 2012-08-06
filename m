@@ -1,166 +1,90 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Wed, 15 Aug 2012 03:18:39 +0000
-Subject: Re: [PATCH net-next 2/9] sctp: Make the endpoint hashtable handle multiple network namespaces
-Message-Id: <502B150F.8040402@gmail.com>
+From: ebiederm@xmission.com (Eric W. Biederman)
+Date: Mon, 06 Aug 2012 18:44:24 +0000
+Subject: [PATCH net-next 6/9] sctp: Move the percpu sockets counter out of sctp_proc_init
+Message-Id: <87393zq2rb.fsf_-_@xmission.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1344115837-6150-1-git-send-email-jan.ariyasu@hp.com> <87mx27rig7.fsf@xmission.com> <87zk67q31q.fsf_-_@xmission.com> <87obmnq2y2.fsf_-_@xmission.com>
-In-Reply-To: <87obmnq2y2.fsf_-_@xmission.com>
+References: <1344115837-6150-1-git-send-email-jan.ariyasu@hp.com>
+	<87mx27rig7.fsf@xmission.com> <87zk67q31q.fsf_-_@xmission.com>
+In-Reply-To: <87zk67q31q.fsf_-_@xmission.com> (Eric W. Biederman's message of
+	"Mon, 06 Aug 2012 11:38:09 -0700")
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "Eric W. Biederman" <ebiederm@xmission.com>
-Cc: David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, Jan Ariyasu <jan.ariyasu@hp.com>, Jan Ariyasu <jan.ariyasu@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Thomas Graf <tgraf@infradead.org>, Xi Wang <xi.wang@gmail.com>
+To: David Miller <davem@davemloft.net>
+Cc: Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, Jan Ariyasu <jan.ariyasu@hp.com>, Jan Ariyasu <jan.ariyasu@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Thomas Graf <tgraf@infradead.org>, Xi Wang <xi.wang@gmail.com>
 
-On 08/06/2012 02:40 PM, Eric W. Biederman wrote:
->
-> - Use struct net in the hash calculation
-> - Use sock_net(endpoint.base.sk) in the endpoint lookups.
-> - On receive calculate the network namespace from skb->dev.
->
-> Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+The percpu sctp socket counter has nothing at all to do with the sctp
+proc files, and having it in the wrong initialization is confusing,
+and makes network namespace support a pain.
 
-> ---
->   include/net/sctp/sctp.h    |    4 ++--
->   include/net/sctp/structs.h |    2 +-
->   net/sctp/endpointola.c     |    4 +++-
->   net/sctp/input.c           |   19 ++++++++++++-------
->   4 files changed, 18 insertions(+), 11 deletions(-)
->
-> diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-> index 7c05040..87b119f 100644
-> --- a/include/net/sctp/sctp.h
-> +++ b/include/net/sctp/sctp.h
-> @@ -638,9 +638,9 @@ static inline int sctp_phashfn(struct net *net, __u16 lport)
->   }
->
->   /* This is the hash function for the endpoint hash table. */
-> -static inline int sctp_ep_hashfn(__u16 lport)
-> +static inline int sctp_ep_hashfn(struct net *net, __u16 lport)
->   {
-> -	return lport & (sctp_ep_hashsize - 1);
-> +	return (net_hash_mix(net) + lport) & (sctp_ep_hashsize - 1);
->   }
->
->   /* This is the hash function for the association hash table. */
-> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-> index c089bb1..9f9de55 100644
-> --- a/include/net/sctp/structs.h
-> +++ b/include/net/sctp/structs.h
-> @@ -1426,7 +1426,7 @@ struct sctp_association *sctp_endpoint_lookup_assoc(
->   int sctp_endpoint_is_peeled_off(struct sctp_endpoint *,
->   				const union sctp_addr *);
->   struct sctp_endpoint *sctp_endpoint_is_match(struct sctp_endpoint *,
-> -					const union sctp_addr *);
-> +					struct net *, const union sctp_addr *);
->   int sctp_has_association(const union sctp_addr *laddr,
->   			 const union sctp_addr *paddr);
->
-> diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
-> index 68a385d..50c87b4 100644
-> --- a/net/sctp/endpointola.c
-> +++ b/net/sctp/endpointola.c
-> @@ -302,11 +302,13 @@ void sctp_endpoint_put(struct sctp_endpoint *ep)
->
->   /* Is this the endpoint we are looking for?  */
->   struct sctp_endpoint *sctp_endpoint_is_match(struct sctp_endpoint *ep,
-> +					       struct net *net,
->   					       const union sctp_addr *laddr)
->   {
->   	struct sctp_endpoint *retval = NULL;
->
-> -	if (htons(ep->base.bind_addr.port) = laddr->v4.sin_port) {
-> +	if ((htons(ep->base.bind_addr.port) = laddr->v4.sin_port) &&
-> +	    net_eq(sock_net(ep->base.sk), net)) {
->   		if (sctp_bind_addr_match(&ep->base.bind_addr, laddr,
->   					 sctp_sk(ep->base.sk)))
->   			retval = ep;
-> diff --git a/net/sctp/input.c b/net/sctp/input.c
-> index e64d521..c0ca893 100644
-> --- a/net/sctp/input.c
-> +++ b/net/sctp/input.c
-> @@ -70,7 +70,8 @@ static struct sctp_association *__sctp_rcv_lookup(struct sk_buff *skb,
->   				      const union sctp_addr *laddr,
->   				      const union sctp_addr *paddr,
->   				      struct sctp_transport **transportp);
-> -static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(const union sctp_addr *laddr);
-> +static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(struct net *net,
-> +						const union sctp_addr *laddr);
->   static struct sctp_association *__sctp_lookup_association(
->   					const union sctp_addr *local,
->   					const union sctp_addr *peer,
-> @@ -129,6 +130,7 @@ int sctp_rcv(struct sk_buff *skb)
->   	union sctp_addr dest;
->   	int family;
->   	struct sctp_af *af;
-> +	struct net *net = dev_net(skb->dev);
->
->   	if (skb->pkt_type!=PACKET_HOST)
->   		goto discard_it;
-> @@ -181,7 +183,7 @@ int sctp_rcv(struct sk_buff *skb)
->   	asoc = __sctp_rcv_lookup(skb, &src, &dest, &transport);
->
->   	if (!asoc)
-> -		ep = __sctp_rcv_lookup_endpoint(&dest);
-> +		ep = __sctp_rcv_lookup_endpoint(net, &dest);
->
->   	/* Retrieve the common input handling substructure. */
->   	rcvr = asoc ? &asoc->base : &ep->base;
-> @@ -723,12 +725,13 @@ discard:
->   /* Insert endpoint into the hash table.  */
->   static void __sctp_hash_endpoint(struct sctp_endpoint *ep)
->   {
-> +	struct net *net = sock_net(ep->base.sk);
->   	struct sctp_ep_common *epb;
->   	struct sctp_hashbucket *head;
->
->   	epb = &ep->base;
->
-> -	epb->hashent = sctp_ep_hashfn(epb->bind_addr.port);
-> +	epb->hashent = sctp_ep_hashfn(net, epb->bind_addr.port);
->   	head = &sctp_ep_hashtable[epb->hashent];
->
->   	sctp_write_lock(&head->lock);
-> @@ -747,12 +750,13 @@ void sctp_hash_endpoint(struct sctp_endpoint *ep)
->   /* Remove endpoint from the hash table.  */
->   static void __sctp_unhash_endpoint(struct sctp_endpoint *ep)
->   {
-> +	struct net *net = sock_net(ep->base.sk);
->   	struct sctp_hashbucket *head;
->   	struct sctp_ep_common *epb;
->
->   	epb = &ep->base;
->
-> -	epb->hashent = sctp_ep_hashfn(epb->bind_addr.port);
-> +	epb->hashent = sctp_ep_hashfn(net, epb->bind_addr.port);
->
->   	head = &sctp_ep_hashtable[epb->hashent];
->
-> @@ -770,7 +774,8 @@ void sctp_unhash_endpoint(struct sctp_endpoint *ep)
->   }
->
->   /* Look up an endpoint. */
-> -static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(const union sctp_addr *laddr)
-> +static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(struct net *net,
-> +						const union sctp_addr *laddr)
->   {
->   	struct sctp_hashbucket *head;
->   	struct sctp_ep_common *epb;
-> @@ -778,12 +783,12 @@ static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(const union sctp_addr *l
->   	struct hlist_node *node;
->   	int hash;
->
-> -	hash = sctp_ep_hashfn(ntohs(laddr->v4.sin_port));
-> +	hash = sctp_ep_hashfn(net, ntohs(laddr->v4.sin_port));
->   	head = &sctp_ep_hashtable[hash];
->   	read_lock(&head->lock);
->   	sctp_for_each_hentry(epb, node, &head->chain) {
->   		ep = sctp_ep(epb);
-> -		if (sctp_endpoint_is_match(ep, laddr))
-> +		if (sctp_endpoint_is_match(ep, net, laddr))
->   			goto hit;
->   	}
->
->
+Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
+---
+ net/sctp/protocol.c |   13 +++++++------
+ 1 files changed, 7 insertions(+), 6 deletions(-)
+
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 6193d20..976d765 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -93,8 +93,6 @@ int sysctl_sctp_wmem[3];
+ /* Set up the proc fs entry for the SCTP protocol. */
+ static __init int sctp_proc_init(void)
+ {
+-	if (percpu_counter_init(&sctp_sockets_allocated, 0))
+-		goto out_nomem;
+ #ifdef CONFIG_PROC_FS
+ 	if (!proc_net_sctp) {
+ 		proc_net_sctp = proc_mkdir("sctp", init_net.proc_net);
+@@ -125,12 +123,9 @@ out_snmp_proc_init:
+ 		remove_proc_entry("sctp", init_net.proc_net);
+ 	}
+ out_free_percpu:
+-	percpu_counter_destroy(&sctp_sockets_allocated);
+ #else
+ 	return 0;
+ #endif /* CONFIG_PROC_FS */
+-
+-out_nomem:
+ 	return -ENOMEM;
+ }
+ 
+@@ -151,7 +146,6 @@ static void sctp_proc_exit(void)
+ 		remove_proc_entry("sctp", init_net.proc_net);
+ 	}
+ #endif
+-	percpu_counter_destroy(&sctp_sockets_allocated);
+ }
+ 
+ /* Private helper to extract ipv4 address and stash them in
+@@ -1261,6 +1255,10 @@ SCTP_STATIC __init int sctp_init(void)
+ 	if (status)
+ 		goto err_init_mibs;
+ 
++	status = percpu_counter_init(&sctp_sockets_allocated, 0);
++	if (status)
++		goto err_percpu_counter_init;
++
+ 	/* Initialize proc fs directory.  */
+ 	status = sctp_proc_init();
+ 	if (status)
+@@ -1481,6 +1479,8 @@ err_ahash_alloc:
+ 	sctp_dbg_objcnt_exit();
+ 	sctp_proc_exit();
+ err_init_proc:
++	percpu_counter_destroy(&sctp_sockets_allocated);
++err_percpu_counter_init:
+ 	cleanup_sctp_mibs();
+ err_init_mibs:
+ 	kmem_cache_destroy(sctp_chunk_cachep);
+@@ -1521,6 +1521,7 @@ SCTP_STATIC __exit void sctp_exit(void)
+ 			     sizeof(struct sctp_bind_hashbucket)));
+ 
+ 	sctp_dbg_objcnt_exit();
++	percpu_counter_destroy(&sctp_sockets_allocated);
+ 	sctp_proc_exit();
+ 	cleanup_sctp_mibs();
+ 
+-- 
+1.7.5.4
 
