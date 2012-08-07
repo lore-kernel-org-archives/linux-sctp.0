@@ -1,343 +1,100 @@
-From: Jan Ariyasu <jan.ariyasu@gmail.com>
-Date: Sat, 04 Aug 2012 21:34:43 +0000
-Subject: [PATCH 13/13] SCTP: make socket-initialization use per-namespace protocol parameters.
-Message-Id: <1344116083-6596-1-git-send-email-jan.ariyasu@hp.com>
+From: ebiederm@xmission.com (Eric W. Biederman)
+Date: Tue, 07 Aug 2012 17:27:02 +0000
+Subject: [PATCH net-next 4/7] sctp: Push struct net down into sctp_in_scope
+Message-Id: <87sjbybok9.fsf_-_@xmission.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1344115837-6150-1-git-send-email-jan.ariyasu@hp.com>
+	<87mx27rig7.fsf@xmission.com> <87zk67q31q.fsf_-_@xmission.com>
+	<87ipcud3ld.fsf_-_@xmission.com>
+In-Reply-To: <87ipcud3ld.fsf_-_@xmission.com> (Eric W. Biederman's message of
+	"Tue, 07 Aug 2012 10:17:02 -0700")
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc: Jan Ariyasu <jan.ariyasu@hp.com>
+To: David Miller <davem@davemloft.net>
+Cc: Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, Jan Ariyasu <jan.ariyasu@hp.com>, Jan Ariyasu <jan.ariyasu@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Thomas Graf <tgraf@infradead.org>, Xi Wang <xi.wang@gmail.com>
 
-Made the last few protocol parameters per-namespace; sndbuf_policy,
-rcvbuf_policy, addip_enable, addip_noauth_enable and prsctp_enable.
 
-Signed-off-by: Jan Ariyasu <jan.ariyasu@hp.com>
+struct net will be needed shortly when the tunables are made per network
+namespace.
+
+Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- net/sctp/endpointola.c   |    6 ++---
- net/sctp/protocol.c      |    6 ++---
- net/sctp/sm_statefuns.c  |   12 ++++++---
- net/sctp/sm_statetable.c |    4 +--
- net/sctp/socket.c        |   67 +++++++++++++++++++++++++++-------------------
- 5 files changed, 55 insertions(+), 40 deletions(-)
+ include/net/sctp/structs.h |    2 +-
+ net/sctp/bind_addr.c       |    4 ++--
+ net/sctp/protocol.c        |    2 +-
+ net/sctp/sm_make_chunk.c   |    3 ++-
+ 4 files changed, 6 insertions(+), 5 deletions(-)
 
-diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
-index 5fa20a1..b919d71 100644
---- a/net/sctp/endpointola.c
-+++ b/net/sctp/endpointola.c
-@@ -109,7 +109,7 @@ static struct sctp_endpoint *sctp_endpoint_init(struct sctp_endpoint *ep,
- 		/* If the Add-IP functionality is enabled, we must
- 		 * authenticate, ASCONF and ASCONF-ACK chunks
- 		 */
--		if (sctp_addip_enable) {
-+		if (net_params->addip_enable) {
- 			auth_chunks->chunks[0] = SCTP_CID_ASCONF;
- 			auth_chunks->chunks[1] = SCTP_CID_ASCONF_ACK;
- 			auth_chunks->param_hdr.length @@ -143,14 +143,14 @@ static struct sctp_endpoint *sctp_endpoint_init(struct sctp_endpoint *ep,
- 	INIT_LIST_HEAD(&ep->asocs);
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 88d2179..b0882f3 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1248,7 +1248,7 @@ int sctp_raw_to_bind_addrs(struct sctp_bind_addr *bp, __u8 *raw, int len,
+ 			   __u16 port, gfp_t gfp);
  
- 	/* Use SCTP specific send buffer space queues.  */
--	ep->sndbuf_policy = sctp_sndbuf_policy;
-+	ep->sndbuf_policy = net_params->sndbuf_policy;
+ sctp_scope_t sctp_scope(const union sctp_addr *);
+-int sctp_in_scope(const union sctp_addr *addr, const sctp_scope_t scope);
++int sctp_in_scope(struct net *net, const union sctp_addr *addr, const sctp_scope_t scope);
+ int sctp_is_any(struct sock *sk, const union sctp_addr *addr);
+ int sctp_addr_is_valid(const union sctp_addr *addr);
+ int sctp_is_ep_boundall(struct sock *sk);
+diff --git a/net/sctp/bind_addr.c b/net/sctp/bind_addr.c
+index a85ce4b..23389ba 100644
+--- a/net/sctp/bind_addr.c
++++ b/net/sctp/bind_addr.c
+@@ -457,7 +457,7 @@ static int sctp_copy_one_addr(struct net *net, struct sctp_bind_addr *dest,
  
- 	sk->sk_data_ready = sctp_data_ready;
- 	sk->sk_write_space = sctp_write_space;
- 	sock_set_flag(sk, SOCK_USE_WRITE_QUEUE);
- 
- 	/* Get the receive buffer policy for this endpoint */
--	ep->rcvbuf_policy = sctp_rcvbuf_policy;
-+	ep->rcvbuf_policy = net_params->rcvbuf_policy;
- 
- 	/* Initialize the secret key used with cookie. */
- 	get_random_bytes(&ep->secret_key[0], SCTP_SECRET_SIZE);
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index 6862bf0..b819424 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -665,7 +665,8 @@ void sctp_addr_wq_timeout_handler(unsigned long arg)
- 			}
- 		}
- #endif
--		list_for_each_entry(sp, &sctp_auto_asconf_splist, auto_asconf_list) {
-+		list_for_each_entry(sp, &net_params->auto_asconf_splist,
-+				    auto_asconf_list) {
- 			struct sock *sk;
- 
- 			sk = sctp_opt2sk(sp);
-@@ -1082,6 +1083,7 @@ static const struct net_protocol sctp_protocol = {
- 	.handler     = sctp_rcv,
- 	.err_handler = sctp_v4_err,
- 	.no_policy   = 1,
-+	.netns_ok    = 1,
- };
- 
- /* IPv4 address related functions.  */
-@@ -1658,8 +1660,6 @@ SCTP_STATIC __init int sctp_init(void)
- 	sctp_v4_pf_init();
- 	sctp_v6_pf_init();
- 
--
--
- 	/* Register SCTP protocol */
- 	status = sctp_v4_protosw_init();
- 	if (status)
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 8f41f42..0778f05 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -3594,6 +3594,8 @@ sctp_disposition_t sctp_sf_do_asconf(struct net *net,
- 	union sctp_addr_param	*addr_param;
- 	__u32			serial;
- 	int			length;
-+	struct sctp_net_params *net_params +		sctp_get_params(net);
- 
- 	if (!sctp_vtag_verify(chunk, asoc)) {
- 		sctp_add_cmd_sf(commands, SCTP_CMD_REPORT_BAD_TAG,
-@@ -3607,9 +3609,9 @@ sctp_disposition_t sctp_sf_do_asconf(struct net *net,
- 	 * is received unauthenticated it MUST be silently discarded as
- 	 * described in [I-D.ietf-tsvwg-sctp-auth].
- 	 */
--	if (!sctp_addip_noauth && !chunk->auth)
--		return sctp_sf_discard_chunk(net, ep, asoc, type,
--					     arg, commands);
-+	if (!net_params->addip_noauth_enable && !chunk->auth)
-+		return sctp_sf_discard_chunk(net, ep, asoc, type, arg,
-+					     commands);
- 
- 	/* Make sure that the ASCONF ADDIP chunk has a valid length.  */
- 	if (!sctp_chunk_length_valid(chunk, sizeof(sctp_addip_chunk_t)))
-@@ -3723,6 +3725,8 @@ sctp_disposition_t sctp_sf_do_asconf_ack(struct net *net,
- 	struct sctp_paramhdr	*err_param = NULL;
- 	sctp_addiphdr_t		*addip_hdr;
- 	__u32			sent_serial, rcvd_serial;
-+	struct sctp_net_params  *net_params +		sctp_get_params(net);
- 
- 	if (!sctp_vtag_verify(asconf_ack, asoc)) {
- 		sctp_add_cmd_sf(commands, SCTP_CMD_REPORT_BAD_TAG,
-@@ -3736,7 +3740,7 @@ sctp_disposition_t sctp_sf_do_asconf_ack(struct net *net,
- 	 * is received unauthenticated it MUST be silently discarded as
- 	 * described in [I-D.ietf-tsvwg-sctp-auth].
- 	 */
--	if (!sctp_addip_noauth && !asconf_ack->auth)
-+	if (!net_params->addip_noauth_enable && !asconf_ack->auth)
- 		return sctp_sf_discard_chunk(net, ep, asoc, type, arg,
- 					     commands);
- 
-diff --git a/net/sctp/sm_statetable.c b/net/sctp/sm_statetable.c
-index 5177130..b5d1801 100644
---- a/net/sctp/sm_statetable.c
-+++ b/net/sctp/sm_statetable.c
-@@ -919,12 +919,12 @@ static const sctp_sm_table_entry_t *sctp_chunk_event_lookup(struct net *net,
- 	if (cid <= SCTP_CID_BASE_MAX)
- 		return &chunk_event_table[cid][state];
- 
--	if (sctp_prsctp_enable) {
-+	if (net_params->prsctp_enable) {
- 		if (cid = SCTP_CID_FWD_TSN)
- 			return &prsctp_chunk_event_table[0][state];
- 	}
- 
--	if (sctp_addip_enable) {
-+	if (net_params->addip_enable) {
- 		if (cid = SCTP_CID_ASCONF)
- 			return &addip_chunk_event_table[0][state];
- 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index e8148a0..219712c 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -534,8 +534,10 @@ static int sctp_send_asconf_add_ip(struct net		*net,
- 	struct list_head		*p;
- 	int 				i;
- 	int 				retval = 0;
-+	struct sctp_net_params		*net_params +		sctp_get_params(net);
- 
--	if (!sctp_addip_enable)
-+	if (!net_params->addip_enable)
- 		return retval;
- 
- 	sp = sctp_sk(sk);
-@@ -737,9 +739,11 @@ static int sctp_send_asconf_del_ip(struct net		*net,
- 	int 			i;
- 	int 			retval = 0;
- 	int			stored = 0;
-+	struct sctp_net_params	*net_params +		sctp_get_params(net);
- 
- 	chunk = NULL;
--	if (!sctp_addip_enable)
-+	if (!net_params->addip_enable)
- 		return retval;
- 
- 	sp = sctp_sk(sk);
-@@ -1077,6 +1081,7 @@ static int __sctp_connect(struct sock* sk,
- 	void *addr_buf;
- 	unsigned short port;
- 	unsigned int f_flags = 0;
-+	struct net *net = sock_net(sk);
- 
- 	sp = sctp_sk(sk);
- 	ep = sp->ep;
-@@ -1181,9 +1186,8 @@ static int __sctp_connect(struct sock* sk,
- 				goto out_free;
- 			}
- 
--			err = sctp_assoc_set_bind_addr_from_ep(asoc,
--							sock_net(sk), scope,
--							GFP_KERNEL);
-+			err = sctp_assoc_set_bind_addr_from_ep(asoc, net,
-+							scope, GFP_KERNEL);
- 			if (err < 0) {
- 				goto out_free;
- 			}
-@@ -1212,7 +1216,7 @@ static int __sctp_connect(struct sock* sk,
- 			goto out_free;
- 	}
- 
--	err = sctp_primitive_ASSOCIATE(sock_net(sk), asoc, NULL);
-+	err = sctp_primitive_ASSOCIATE(net, asoc, NULL);
- 	if (err < 0) {
- 		goto out_free;
- 	}
-@@ -3059,10 +3063,12 @@ static int sctp_setsockopt_peer_primary_addr(struct sock *sk, char __user *optva
- 	struct sctp_chunk	*chunk;
- 	struct sctp_af		*af;
- 	int 			err;
-+	struct sctp_net_params	*net_params +		sctp_get_params(sock_net(sk));
- 
- 	sp = sctp_sk(sk);
- 
--	if (!sctp_addip_enable)
-+	if (!net_params->addip_enable)
- 		return -EPERM;
- 
- 	if (optlen != sizeof(struct sctp_setpeerprim))
-@@ -3417,9 +3423,8 @@ static int sctp_setsockopt_active_key(struct sock *sk,
- {
- 	struct sctp_authkeyid val;
- 	struct sctp_association *asoc;
--	struct net *net = sock_net(sk);
- 	struct sctp_net_params *net_params -		sctp_get_params(net);
-+		sctp_get_params(sock_net(sk));
- 
- 	if (!net_params->auth_enable)
- 		return -EACCES;
-@@ -3433,8 +3438,8 @@ static int sctp_setsockopt_active_key(struct sock *sk,
- 	if (!asoc && val.scact_assoc_id && sctp_style(sk, UDP))
- 		return -EINVAL;
- 
--	return sctp_auth_set_active_key(net, sctp_sk(sk)->ep, asoc,
--					val.scact_keynumber);
-+	return sctp_auth_set_active_key(sock_net(sk), sctp_sk(sk)->ep,
-+					asoc, val.scact_keynumber);
+ 	if (sctp_is_any(NULL, addr)) {
+ 		error = sctp_copy_local_addr_list(net, dest, scope, gfp, flags);
+-	} else if (sctp_in_scope(addr, scope)) {
++	} else if (sctp_in_scope(net, addr, scope)) {
+ 		/* Now that the address is in scope, check to see if
+ 		 * the address type is supported by local sock as
+ 		 * well as the remote peer.
+@@ -494,7 +494,7 @@ int sctp_is_any(struct sock *sk, const union sctp_addr *addr)
  }
  
- /*
-@@ -3487,6 +3492,8 @@ static int sctp_setsockopt_auto_asconf(struct sock *sk, char __user *optval,
+ /* Is 'addr' valid for 'scope'?  */
+-int sctp_in_scope(const union sctp_addr *addr, sctp_scope_t scope)
++int sctp_in_scope(struct net *net, const union sctp_addr *addr, sctp_scope_t scope)
  {
- 	int val;
- 	struct sctp_sock *sp = sctp_sk(sk);
-+	struct sctp_net_params  *net_params +		sctp_get_params(sock_net(sk));
+ 	sctp_scope_t addr_scope = sctp_scope(addr);
  
- 	if (optlen < sizeof(int))
- 		return -EINVAL;
-@@ -3502,7 +3509,7 @@ static int sctp_setsockopt_auto_asconf(struct sock *sk, char __user *optval,
- 		sp->do_auto_asconf = 0;
- 	} else if (val && !sp->do_auto_asconf) {
- 		list_add_tail(&sp->auto_asconf_list,
--		    &sctp_auto_asconf_splist);
-+		    &net_params->auto_asconf_splist);
- 		sp->do_auto_asconf = 1;
- 	}
- 	return 0;
-@@ -3876,6 +3883,8 @@ SCTP_STATIC int sctp_init_sock(struct sock *sk)
- {
- 	struct sctp_endpoint *ep;
- 	struct sctp_sock *sp;
-+	struct sctp_net_params *net_params +		sctp_get_params(sock_net(sk));
- 
- 	SCTP_DEBUG_PRINTK("sctp_init_sock(sk: %p)\n", sk);
- 
-@@ -3903,32 +3912,32 @@ SCTP_STATIC int sctp_init_sock(struct sock *sk)
- 	sp->default_timetolive = 0;
- 
- 	sp->default_rcv_context = 0;
--	sp->max_burst = sctp_max_burst;
-+	sp->max_burst = net_params->max_burst;
- 
- 	/* Initialize default setup parameters. These parameters
- 	 * can be modified with the SCTP_INITMSG socket option or
- 	 * overridden by the SCTP_INIT CMSG.
- 	 */
--	sp->initmsg.sinit_num_ostreams   = sctp_max_outstreams;
--	sp->initmsg.sinit_max_instreams  = sctp_max_instreams;
--	sp->initmsg.sinit_max_attempts   = sctp_max_retrans_init;
--	sp->initmsg.sinit_max_init_timeo = sctp_rto_max;
-+	sp->initmsg.sinit_num_ostreams   = net_params->max_outstreams;
-+	sp->initmsg.sinit_max_instreams  = net_params->max_instreams;
-+	sp->initmsg.sinit_max_attempts   = net_params->max_retrans_init;
-+	sp->initmsg.sinit_max_init_timeo = net_params->rto_max;
- 
- 	/* Initialize default RTO related parameters.  These parameters can
- 	 * be modified for with the SCTP_RTOINFO socket option.
- 	 */
--	sp->rtoinfo.srto_initial = sctp_rto_initial;
--	sp->rtoinfo.srto_max     = sctp_rto_max;
--	sp->rtoinfo.srto_min     = sctp_rto_min;
-+	sp->rtoinfo.srto_initial = net_params->rto_initial;
-+	sp->rtoinfo.srto_max     = net_params->rto_max;
-+	sp->rtoinfo.srto_min     = net_params->rto_min;
- 
- 	/* Initialize default association related parameters. These parameters
- 	 * can be modified with the SCTP_ASSOCINFO socket option.
- 	 */
--	sp->assocparams.sasoc_asocmaxrxt = sctp_max_retrans_association;
-+	sp->assocparams.sasoc_asocmaxrxt = net_params->max_retrans_association;
- 	sp->assocparams.sasoc_number_peer_destinations = 0;
- 	sp->assocparams.sasoc_peer_rwnd = 0;
- 	sp->assocparams.sasoc_local_rwnd = 0;
--	sp->assocparams.sasoc_cookie_life = sctp_valid_cookie_life;
-+	sp->assocparams.sasoc_cookie_life = net_params->valid_cookie_life;
- 
- 	/* Initialize default event subscriptions. By default, all the
- 	 * options are off.
-@@ -3938,10 +3947,10 @@ SCTP_STATIC int sctp_init_sock(struct sock *sk)
- 	/* Default Peer Address Parameters.  These defaults can
- 	 * be modified via SCTP_PEER_ADDR_PARAMS
- 	 */
--	sp->hbinterval  = sctp_hb_interval;
--	sp->pathmaxrxt  = sctp_max_retrans_path;
-+	sp->hbinterval  = net_params->hb_interval;
-+	sp->pathmaxrxt  = net_params->max_retrans_path;
- 	sp->pathmtu     = 0; // allow default discovery
--	sp->sackdelay   = sctp_sack_timeout;
-+	sp->sackdelay   = net_params->sack_timeout;
- 	sp->sackfreq	= 2;
- 	sp->param_flags = SPP_HB_ENABLE |
- 			  SPP_PMTUD_ENABLE |
-@@ -3993,9 +4002,9 @@ SCTP_STATIC int sctp_init_sock(struct sock *sk)
- 	local_bh_disable();
- 	percpu_counter_inc(&sctp_sockets_allocated);
- 	sock_prot_inuse_add(sock_net(sk), sk->sk_prot, 1);
--	if (sctp_default_auto_asconf) {
-+	if (net_params->default_auto_asconf) {
- 		list_add_tail(&sp->auto_asconf_list,
--		    &sctp_auto_asconf_splist);
-+		    &net_params->auto_asconf_splist);
- 		sp->do_auto_asconf = 1;
- 	} else
- 		sp->do_auto_asconf = 0;
-@@ -4684,9 +4693,11 @@ static int sctp_copy_laddrs(struct sock *sk, __u16 port, void *to,
- 	union sctp_addr temp;
- 	int cnt = 0;
- 	int addrlen;
-+	struct sctp_net_params *net_params +		sctp_get_params(sock_net(sk));
- 
- 	rcu_read_lock();
--	list_for_each_entry_rcu(addr, &sctp_local_addr_list, list) {
-+	list_for_each_entry_rcu(addr, &net_params->local_addr_list, list) {
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index de25d9c..85f87c3 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -210,7 +210,7 @@ int sctp_copy_local_addr_list(struct net *net, struct sctp_bind_addr *bp,
+ 	list_for_each_entry_rcu(addr, &net->sctp.local_addr_list, list) {
  		if (!addr->valid)
  			continue;
- 
+-		if (sctp_in_scope(&addr->a, scope)) {
++		if (sctp_in_scope(net, &addr->a, scope)) {
+ 			/* Now that the address is in scope, check to see if
+ 			 * the address type is really supported by the local
+ 			 * sock as well as the remote peer.
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 479a70e..fb12835 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2466,6 +2466,7 @@ static int sctp_process_param(struct sctp_association *asoc,
+ 			      const union sctp_addr *peer_addr,
+ 			      gfp_t gfp)
+ {
++	struct net *net = sock_net(asoc->base.sk);
+ 	union sctp_addr addr;
+ 	int i;
+ 	__u16 sat;
+@@ -2494,7 +2495,7 @@ do_addr_param:
+ 		af = sctp_get_af_specific(param_type2af(param.p->type));
+ 		af->from_addr_param(&addr, param.addr, htons(asoc->peer.port), 0);
+ 		scope = sctp_scope(peer_addr);
+-		if (sctp_in_scope(&addr, scope))
++		if (sctp_in_scope(net, &addr, scope))
+ 			if (!sctp_assoc_add_peer(asoc, &addr, gfp, SCTP_UNCONFIRMED))
+ 				return 0;
+ 		break;
 -- 
-1.7.9.5
+1.7.5.4
 
