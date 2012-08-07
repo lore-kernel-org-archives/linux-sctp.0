@@ -1,353 +1,471 @@
-From: Jan Ariyasu <jan.ariyasu@gmail.com>
-Date: Sat, 04 Aug 2012 21:33:01 +0000
-Subject: [PATCH 05/13] SCTP: register per-namespace sysctl.
-Message-Id: <1344115981-6330-1-git-send-email-jan.ariyasu@hp.com>
+From: ebiederm@xmission.com (Eric W. Biederman)
+Date: Tue, 07 Aug 2012 17:25:24 +0000
+Subject: [PATCH net-next 2/7] sctp: Push struct net down to sctp_chunk_event_lookup
+Message-Id: <874noed37f.fsf_-_@xmission.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1344115837-6150-1-git-send-email-jan.ariyasu@hp.com>
+	<87mx27rig7.fsf@xmission.com> <87zk67q31q.fsf_-_@xmission.com>
+	<87ipcud3ld.fsf_-_@xmission.com>
+In-Reply-To: <87ipcud3ld.fsf_-_@xmission.com> (Eric W. Biederman's message of
+	"Tue, 07 Aug 2012 10:17:02 -0700")
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc: Jan Ariyasu <jan.ariyasu@hp.com>
+To: David Miller <davem@davemloft.net>
+Cc: Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, Jan Ariyasu <jan.ariyasu@hp.com>, Jan Ariyasu <jan.ariyasu@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Thomas Graf <tgraf@infradead.org>, Xi Wang <xi.wang@gmail.com>
 
-Updated sysctl registration to be per-netns and to use per-net
-protocol parameters.
 
-Signed-off-by: Jan Ariyasu <jan.ariyasu@hp.com>
+This trickles up through sctp_sm_lookup_event up to sctp_do_sm
+and up further into sctp_primitiv_NAME before the code reaches
+places where struct net can be reliably found.
+
+Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
- include/net/sctp/sctp.h |    8 +-
- net/sctp/protocol.c     |   24 +++++-
- net/sctp/sysctl.c       |  218 +++++++++++++++++++++++++++++++++++++++++------
- 3 files changed, 221 insertions(+), 29 deletions(-)
+ include/net/sctp/sctp.h  |   12 ++++++------
+ include/net/sctp/sm.h    |    5 +++--
+ net/sctp/associola.c     |    5 +++--
+ net/sctp/endpointola.c   |    4 +++-
+ net/sctp/input.c         |    4 +++-
+ net/sctp/primitive.c     |    4 ++--
+ net/sctp/sm_sideeffect.c |   24 ++++++++++++++++--------
+ net/sctp/sm_statetable.c |   11 +++++++----
+ net/sctp/socket.c        |   27 +++++++++++++++++----------
+ 9 files changed, 60 insertions(+), 36 deletions(-)
 
 diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index bda317a..eb2ec98 100644
+index 15037e7..ef4ca25 100644
 --- a/include/net/sctp/sctp.h
 +++ b/include/net/sctp/sctp.h
-@@ -381,11 +381,15 @@ static inline void sctp_dbg_objcnt_exit(void) { return; }
- #endif /* CONFIG_SCTP_DBG_OBJCOUNT */
+@@ -139,12 +139,12 @@ extern int sctp_asconf_mgmt(struct sctp_sock *, struct sctp_sockaddr_entry *);
+ /*
+  * sctp/primitive.c
+  */
+-int sctp_primitive_ASSOCIATE(struct sctp_association *, void *arg);
+-int sctp_primitive_SHUTDOWN(struct sctp_association *, void *arg);
+-int sctp_primitive_ABORT(struct sctp_association *, void *arg);
+-int sctp_primitive_SEND(struct sctp_association *, void *arg);
+-int sctp_primitive_REQUESTHEARTBEAT(struct sctp_association *, void *arg);
+-int sctp_primitive_ASCONF(struct sctp_association *, void *arg);
++int sctp_primitive_ASSOCIATE(struct net *, struct sctp_association *, void *arg);
++int sctp_primitive_SHUTDOWN(struct net *, struct sctp_association *, void *arg);
++int sctp_primitive_ABORT(struct net *, struct sctp_association *, void *arg);
++int sctp_primitive_SEND(struct net *, struct sctp_association *, void *arg);
++int sctp_primitive_REQUESTHEARTBEAT(struct net *, struct sctp_association *, void *arg);
++int sctp_primitive_ASCONF(struct net *, struct sctp_association *, void *arg);
  
- #if defined CONFIG_SYSCTL
--void sctp_sysctl_register(void);
-+int sctp_sysctl_register(void);
- void sctp_sysctl_unregister(void);
-+int __net_init sctp_sysctl_init_net(struct net *net);
-+void __net_exit sctp_sysctl_exit_net(struct net *net);
- #else
--static inline void sctp_sysctl_register(void) { return; }
-+static inline int sctp_sysctl_register(void) { return 0; }
- static inline void sctp_sysctl_unregister(void) { return; }
-+static inline int sctp_sysctl_init_net(struct net *net) { return 0; };
-+static inline void sctp_sysctl_exit_net(struct net *net) { return 0; };
- #endif
+ /*
+  * sctp/input.c
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index 9148632..bcef130 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -178,7 +178,8 @@ sctp_state_fn_t sctp_sf_autoclose_timer_expire;
  
- /* Size of Supported Address Parameter for 'x' address types. */
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index dce07d6..32bb8f4e2 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -1582,8 +1582,15 @@ static int __net_init sctp_net_init(struct net *net)
- 	if (err)
- 		goto err_param_init;
+ /* Prototypes for utility support functions.  */
+ __u8 sctp_get_chunk_type(struct sctp_chunk *chunk);
+-const sctp_sm_table_entry_t *sctp_sm_lookup_event(sctp_event_t,
++const sctp_sm_table_entry_t *sctp_sm_lookup_event(struct net *,
++					    sctp_event_t,
+ 					    sctp_state_t,
+ 					    sctp_subtype_t);
+ int sctp_chunk_iif(const struct sctp_chunk *);
+@@ -268,7 +269,7 @@ void sctp_chunk_assign_ssn(struct sctp_chunk *);
  
-+#ifdef CONFIG_SYSCTL
-+	err = sctp_sysctl_init_net(net);
-+	if (err)
-+		goto err_param_init;
-+#endif
+ /* Prototypes for statetable processing. */
+ 
+-int sctp_do_sm(sctp_event_t event_type, sctp_subtype_t subtype,
++int sctp_do_sm(struct net *net, sctp_event_t event_type, sctp_subtype_t subtype,
+ 	       sctp_state_t state,
+                struct sctp_endpoint *,
+                struct sctp_association *asoc,
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 8a1f27a..6bcbeca 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1118,6 +1118,7 @@ static void sctp_assoc_bh_rcv(struct work_struct *work)
+ 	struct sctp_association *asoc  		container_of(work, struct sctp_association,
+ 			     base.inqueue.immediate);
++	struct net *net = sock_net(asoc->base.sk);
+ 	struct sctp_endpoint *ep;
+ 	struct sctp_chunk *chunk;
+ 	struct sctp_inq *inqueue;
+@@ -1150,13 +1151,13 @@ static void sctp_assoc_bh_rcv(struct work_struct *work)
+ 		if (sctp_chunk_is_data(chunk))
+ 			asoc->peer.last_data_from = chunk->transport;
+ 		else
+-			SCTP_INC_STATS(sock_net(asoc->base.sk), SCTP_MIB_INCTRLCHUNKS);
++			SCTP_INC_STATS(net, SCTP_MIB_INCTRLCHUNKS);
+ 
+ 		if (chunk->transport)
+ 			chunk->transport->last_time_heard = jiffies;
+ 
+ 		/* Run through the state machine. */
+-		error = sctp_do_sm(SCTP_EVENT_T_CHUNK, subtype,
++		error = sctp_do_sm(net, SCTP_EVENT_T_CHUNK, subtype,
+ 				   state, ep, asoc, chunk, GFP_ATOMIC);
+ 
+ 		/* Check to see if the association is freed in response to
+diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
+index 3edca80..8315792 100644
+--- a/net/sctp/endpointola.c
++++ b/net/sctp/endpointola.c
+@@ -413,6 +413,7 @@ static void sctp_endpoint_bh_rcv(struct work_struct *work)
+ 			     base.inqueue.immediate);
+ 	struct sctp_association *asoc;
+ 	struct sock *sk;
++	struct net *net;
+ 	struct sctp_transport *transport;
+ 	struct sctp_chunk *chunk;
+ 	struct sctp_inq *inqueue;
+@@ -427,6 +428,7 @@ static void sctp_endpoint_bh_rcv(struct work_struct *work)
+ 	asoc = NULL;
+ 	inqueue = &ep->base.inqueue;
+ 	sk = ep->base.sk;
++	net = sock_net(sk);
+ 
+ 	while (NULL != (chunk = sctp_inq_pop(inqueue))) {
+ 		subtype = SCTP_ST_CHUNK(chunk->chunk_hdr->type);
+@@ -483,7 +485,7 @@ normal:
+ 		if (chunk->transport)
+ 			chunk->transport->last_time_heard = jiffies;
+ 
+-		error = sctp_do_sm(SCTP_EVENT_T_CHUNK, subtype, state,
++		error = sctp_do_sm(net, SCTP_EVENT_T_CHUNK, subtype, state,
+ 				   ep, asoc, chunk, GFP_ATOMIC);
+ 
+ 		if (error && chunk)
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 5308301..a2ceb70 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -466,11 +466,13 @@ void sctp_icmp_proto_unreachable(struct sock *sk,
+ 		}
+ 			
+ 	} else {
++		struct net *net = sock_net(sk);
 +
- 	sctp_get_local_addr_list(net);
- 	goto out;
-+
- err_param_init:
- 	sctp_proc_exit(net);
- err_proc_init:
-@@ -1601,6 +1608,10 @@ static void __net_exit sctp_net_exit(struct net *net)
- 	sctp_free_local_addr_list(net);
- 	/* Clean up procfs */
- 	sctp_proc_exit(net);
-+#ifdef CONFIG_SYSCTL
-+	/* Clean up sysfs */
-+	sctp_sysctl_exit_net(net);
-+#endif
+ 		if (timer_pending(&t->proto_unreach_timer) &&
+ 		    del_timer(&t->proto_unreach_timer))
+ 			sctp_association_put(asoc);
+ 
+-		sctp_do_sm(SCTP_EVENT_T_OTHER,
++		sctp_do_sm(net, SCTP_EVENT_T_OTHER,
+ 			   SCTP_ST_OTHER(SCTP_EVENT_ICMP_PROTO_UNREACH),
+ 			   asoc->state, asoc->ep, asoc, t,
+ 			   GFP_ATOMIC);
+diff --git a/net/sctp/primitive.c b/net/sctp/primitive.c
+index 534c7ea..794bb14 100644
+--- a/net/sctp/primitive.c
++++ b/net/sctp/primitive.c
+@@ -57,7 +57,7 @@
+ 
+ #define DECLARE_PRIMITIVE(name) \
+ /* This is called in the code as sctp_primitive_ ## name.  */ \
+-int sctp_primitive_ ## name(struct sctp_association *asoc, \
++int sctp_primitive_ ## name(struct net *net, struct sctp_association *asoc, \
+ 			    void *arg) { \
+ 	int error = 0; \
+ 	sctp_event_t event_type; sctp_subtype_t subtype; \
+@@ -69,7 +69,7 @@ int sctp_primitive_ ## name(struct sctp_association *asoc, \
+ 	state = asoc ? asoc->state : SCTP_STATE_CLOSED; \
+ 	ep = asoc ? asoc->ep : NULL; \
+ 	\
+-	error = sctp_do_sm(event_type, subtype, state, ep, asoc, \
++	error = sctp_do_sm(net, event_type, subtype, state, ep, asoc,	\
+ 			   arg, GFP_KERNEL); \
+ 	return error; \
  }
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index fe99628..02c4c1c 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -251,6 +251,7 @@ void sctp_generate_t3_rtx_event(unsigned long peer)
+ 	int error;
+ 	struct sctp_transport *transport = (struct sctp_transport *) peer;
+ 	struct sctp_association *asoc = transport->asoc;
++	struct net *net = sock_net(asoc->base.sk);
  
- static __net_initdata struct pernet_operations sctp_sk_ops = {
-@@ -1671,7 +1682,11 @@ SCTP_STATIC __init int sctp_init(void)
- 		goto err_v6_add_protocol;
+ 	/* Check whether a task is in the sock.  */
  
- 	/*  Set up sysctl parameters.   */
--	sctp_sysctl_register();
-+#ifdef CONFIG_SYSCTL
-+	status = sctp_sysctl_register();
-+	if (status)
-+		goto err_sysctl_init;
-+#endif
+@@ -271,7 +272,7 @@ void sctp_generate_t3_rtx_event(unsigned long peer)
+ 		goto out_unlock;
  
- 	/*
- 	 * Register for pernet packet handling
-@@ -1694,10 +1709,13 @@ SCTP_STATIC __init int sctp_init(void)
- 	goto out;
+ 	/* Run through the state machine.  */
+-	error = sctp_do_sm(SCTP_EVENT_T_TIMEOUT,
++	error = sctp_do_sm(net, SCTP_EVENT_T_TIMEOUT,
+ 			   SCTP_ST_TIMEOUT(SCTP_EVENT_TIMEOUT_T3_RTX),
+ 			   asoc->state,
+ 			   asoc->ep, asoc,
+@@ -291,6 +292,7 @@ out_unlock:
+ static void sctp_generate_timeout_event(struct sctp_association *asoc,
+ 					sctp_event_timeout_t timeout_type)
+ {
++	struct net *net = sock_net(asoc->base.sk);
+ 	int error = 0;
  
- err_mib_init:
--	sctp_sysctl_unregister();
- 	sctp_dbg_objcnt_exit();
- 	sctp_ns_exit();
- err_ns_init:
-+#ifdef CONFIG_SYSCTL
-+	sctp_sysctl_unregister();
-+#endif
-+err_sysctl_init:
- 	sctp_v6_del_protocol();
- err_v6_add_protocol:
- 	sctp_v4_del_protocol();
-@@ -1735,7 +1753,9 @@ SCTP_STATIC __exit void sctp_exit(void)
- 	sctp_v6_pf_exit();
- 	sctp_v4_pf_exit();
+ 	sctp_bh_lock_sock(asoc->base.sk);
+@@ -312,7 +314,7 @@ static void sctp_generate_timeout_event(struct sctp_association *asoc,
+ 		goto out_unlock;
  
-+#ifdef CONFIG_SYSCTL
- 	sctp_sysctl_unregister();
-+#endif
- 	sctp_hashtable_globals_free();
+ 	/* Run through the state machine.  */
+-	error = sctp_do_sm(SCTP_EVENT_T_TIMEOUT,
++	error = sctp_do_sm(net, SCTP_EVENT_T_TIMEOUT,
+ 			   SCTP_ST_TIMEOUT(timeout_type),
+ 			   asoc->state, asoc->ep, asoc,
+ 			   (void *)timeout_type, GFP_ATOMIC);
+@@ -371,6 +373,7 @@ void sctp_generate_heartbeat_event(unsigned long data)
+ 	int error = 0;
+ 	struct sctp_transport *transport = (struct sctp_transport *) data;
+ 	struct sctp_association *asoc = transport->asoc;
++	struct net *net = sock_net(asoc->base.sk);
  
- 	sctp_dbg_objcnt_exit();
-diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
-index 2b2bfe9..0d42d90 100644
---- a/net/sctp/sysctl.c
-+++ b/net/sctp/sysctl.c
-@@ -219,27 +219,6 @@ static ctl_table sctp_table[] = {
- 		.extra2         = &sack_timer_max,
- 	},
- 	{
--		.procname	= "sctp_mem",
--		.data		= &sysctl_sctp_mem,
--		.maxlen		= sizeof(sysctl_sctp_mem),
--		.mode		= 0644,
--		.proc_handler	= proc_doulongvec_minmax
--	},
--	{
--		.procname	= "sctp_rmem",
--		.data		= &sysctl_sctp_rmem,
--		.maxlen		= sizeof(sysctl_sctp_rmem),
--		.mode		= 0644,
--		.proc_handler	= proc_dointvec,
--	},
--	{
--		.procname	= "sctp_wmem",
--		.data		= &sysctl_sctp_wmem,
--		.maxlen		= sizeof(sysctl_sctp_wmem),
--		.mode		= 0644,
--		.proc_handler	= proc_dointvec,
--	},
--	{
- 		.procname	= "auth_enable",
- 		.data		= &sctp_auth_enable,
- 		.maxlen		= sizeof(int),
-@@ -284,16 +263,205 @@ static ctl_table sctp_table[] = {
- 	{ /* sentinel */ }
+ 	sctp_bh_lock_sock(asoc->base.sk);
+ 	if (sock_owned_by_user(asoc->base.sk)) {
+@@ -388,7 +391,7 @@ void sctp_generate_heartbeat_event(unsigned long data)
+ 	if (transport->dead)
+ 		goto out_unlock;
+ 
+-	error = sctp_do_sm(SCTP_EVENT_T_TIMEOUT,
++	error = sctp_do_sm(net, SCTP_EVENT_T_TIMEOUT,
+ 			   SCTP_ST_TIMEOUT(SCTP_EVENT_TIMEOUT_HEARTBEAT),
+ 			   asoc->state, asoc->ep, asoc,
+ 			   transport, GFP_ATOMIC);
+@@ -408,6 +411,7 @@ void sctp_generate_proto_unreach_event(unsigned long data)
+ {
+ 	struct sctp_transport *transport = (struct sctp_transport *) data;
+ 	struct sctp_association *asoc = transport->asoc;
++	struct net *net = sock_net(asoc->base.sk);
+ 	
+ 	sctp_bh_lock_sock(asoc->base.sk);
+ 	if (sock_owned_by_user(asoc->base.sk)) {
+@@ -426,7 +430,7 @@ void sctp_generate_proto_unreach_event(unsigned long data)
+ 	if (asoc->base.dead)
+ 		goto out_unlock;
+ 
+-	sctp_do_sm(SCTP_EVENT_T_OTHER,
++	sctp_do_sm(net, SCTP_EVENT_T_OTHER,
+ 		   SCTP_ST_OTHER(SCTP_EVENT_ICMP_PROTO_UNREACH),
+ 		   asoc->state, asoc->ep, asoc, transport, GFP_ATOMIC);
+ 
+@@ -753,8 +757,10 @@ static int sctp_cmd_process_sack(sctp_cmd_seq_t *cmds,
+ 	int err = 0;
+ 
+ 	if (sctp_outq_sack(&asoc->outqueue, sackh)) {
++		struct net *net = sock_net(asoc->base.sk);
++
+ 		/* There are no more TSNs awaiting SACK.  */
+-		err = sctp_do_sm(SCTP_EVENT_T_OTHER,
++		err = sctp_do_sm(net, SCTP_EVENT_T_OTHER,
+ 				 SCTP_ST_OTHER(SCTP_EVENT_NO_PENDING_TSN),
+ 				 asoc->state, asoc->ep, asoc, NULL,
+ 				 GFP_ATOMIC);
+@@ -1042,6 +1048,8 @@ static int sctp_cmd_send_msg(struct sctp_association *asoc,
+  */
+ static void sctp_cmd_send_asconf(struct sctp_association *asoc)
+ {
++	struct net *net = sock_net(asoc->base.sk);
++
+ 	/* Send the next asconf chunk from the addip chunk
+ 	 * queue.
+ 	 */
+@@ -1053,7 +1061,7 @@ static void sctp_cmd_send_asconf(struct sctp_association *asoc)
+ 
+ 		/* Hold the chunk until an ASCONF_ACK is received. */
+ 		sctp_chunk_hold(asconf);
+-		if (sctp_primitive_ASCONF(asoc, asconf))
++		if (sctp_primitive_ASCONF(net, asoc, asconf))
+ 			sctp_chunk_free(asconf);
+ 		else
+ 			asoc->addip_last_asconf = asconf;
+@@ -1089,7 +1097,7 @@ static void sctp_cmd_send_asconf(struct sctp_association *asoc)
+  * If you want to understand all of lksctp, this is a
+  * good place to start.
+  */
+-int sctp_do_sm(sctp_event_t event_type, sctp_subtype_t subtype,
++int sctp_do_sm(struct net *net, sctp_event_t event_type, sctp_subtype_t subtype,
+ 	       sctp_state_t state,
+ 	       struct sctp_endpoint *ep,
+ 	       struct sctp_association *asoc,
+@@ -1110,7 +1118,7 @@ int sctp_do_sm(sctp_event_t event_type, sctp_subtype_t subtype,
+ 	/* Look up the state function, run it, and then process the
+ 	 * side effects.  These three steps are the heart of lksctp.
+ 	 */
+-	state_fn = sctp_sm_lookup_event(event_type, state, subtype);
++	state_fn = sctp_sm_lookup_event(net, event_type, state, subtype);
+ 
+ 	sctp_init_cmd_seq(&commands);
+ 
+diff --git a/net/sctp/sm_statetable.c b/net/sctp/sm_statetable.c
+index 7c211a7..4a029d7 100644
+--- a/net/sctp/sm_statetable.c
++++ b/net/sctp/sm_statetable.c
+@@ -59,7 +59,8 @@ other_event_table[SCTP_NUM_OTHER_TYPES][SCTP_STATE_NUM_STATES];
+ static const sctp_sm_table_entry_t
+ timeout_event_table[SCTP_NUM_TIMEOUT_TYPES][SCTP_STATE_NUM_STATES];
+ 
+-static const sctp_sm_table_entry_t *sctp_chunk_event_lookup(sctp_cid_t cid,
++static const sctp_sm_table_entry_t *sctp_chunk_event_lookup(struct net *net,
++							    sctp_cid_t cid,
+ 							    sctp_state_t state);
+ 
+ 
+@@ -82,13 +83,14 @@ static const sctp_sm_table_entry_t bug = {
+ 	rtn;								\
+ })
+ 
+-const sctp_sm_table_entry_t *sctp_sm_lookup_event(sctp_event_t event_type,
++const sctp_sm_table_entry_t *sctp_sm_lookup_event(struct net *net,
++						  sctp_event_t event_type,
+ 						  sctp_state_t state,
+ 						  sctp_subtype_t event_subtype)
+ {
+ 	switch (event_type) {
+ 	case SCTP_EVENT_T_CHUNK:
+-		return sctp_chunk_event_lookup(event_subtype.chunk, state);
++		return sctp_chunk_event_lookup(net, event_subtype.chunk, state);
+ 	case SCTP_EVENT_T_TIMEOUT:
+ 		return DO_LOOKUP(SCTP_EVENT_TIMEOUT_MAX, timeout,
+ 				 timeout_event_table);
+@@ -906,7 +908,8 @@ static const sctp_sm_table_entry_t timeout_event_table[SCTP_NUM_TIMEOUT_TYPES][S
+ 	TYPE_SCTP_EVENT_TIMEOUT_AUTOCLOSE,
  };
  
--static struct ctl_table_header * sctp_sysctl_header;
-+static struct ctl_table sctp_mem_table[] = {
-+	{
-+		.procname	= "sctp_mem",
-+		.data		= &sysctl_sctp_mem,
-+		.maxlen		= sizeof(sysctl_sctp_mem),
-+		.mode		= 0644,
-+		.proc_handler	= proc_doulongvec_minmax
-+	},
-+	{
-+		.procname	= "sctp_rmem",
-+		.data		= &sysctl_sctp_rmem,
-+		.maxlen		= sizeof(sysctl_sctp_rmem),
-+		.mode		= 0644,
-+		.proc_handler	= proc_dointvec,
-+	},
-+	{
-+		.procname	= "sctp_wmem",
-+		.data		= &sysctl_sctp_wmem,
-+		.maxlen		= sizeof(sysctl_sctp_wmem),
-+		.mode		= 0644,
-+		.proc_handler	= proc_dointvec,
-+	},
-+
-+	{ /* sentinel */ }
-+};
-+
-+static struct ctl_path sctp_path[] = {
-+	{ .procname = "net", },
-+	{ .procname = "sctp", },
-+	{ }
-+};
-+
-+static struct ctl_table_header *sctp_sysctl_mem_header;
- 
- /* Sysctl registration.  */
--void sctp_sysctl_register(void)
-+int sctp_sysctl_register(void)
+-static const sctp_sm_table_entry_t *sctp_chunk_event_lookup(sctp_cid_t cid,
++static const sctp_sm_table_entry_t *sctp_chunk_event_lookup(struct net *net,
++							    sctp_cid_t cid,
+ 							    sctp_state_t state)
  {
--	sctp_sysctl_header = register_net_sysctl(&init_net, "net/sctp", sctp_table);
-+	int err = 0;
-+	sctp_sysctl_mem_header = NULL;
-+	sctp_sysctl_mem_header = register_sysctl_paths(sctp_path,
-+							sctp_mem_table);
-+	if (sctp_sysctl_mem_header = NULL) {
-+		pr_err("Failed to register sctp_mem_table sysctl path\n");
-+		err = -ENOMEM;
-+	}
-+	return err;
- }
- 
- /* Sysctl deregistration.  */
- void sctp_sysctl_unregister(void)
+ 	if (state > SCTP_STATE_MAX)
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 5b6dd0e..a6a4226 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -427,6 +427,7 @@ SCTP_STATIC int sctp_do_bind(struct sock *sk, union sctp_addr *addr, int len)
+ static int sctp_send_asconf(struct sctp_association *asoc,
+ 			    struct sctp_chunk *chunk)
  {
--	unregister_net_sysctl_table(sctp_sysctl_header);
-+	unregister_net_sysctl_table(sctp_sysctl_mem_header);
-+}
++	struct net 	*net = sock_net(asoc->base.sk);
+ 	int		retval = 0;
+ 
+ 	/* If there is an outstanding ASCONF chunk, queue it for later
+@@ -439,7 +440,7 @@ static int sctp_send_asconf(struct sctp_association *asoc,
+ 
+ 	/* Hold the chunk until an ASCONF_ACK is received. */
+ 	sctp_chunk_hold(chunk);
+-	retval = sctp_primitive_ASCONF(asoc, chunk);
++	retval = sctp_primitive_ASCONF(net, asoc, chunk);
+ 	if (retval)
+ 		sctp_chunk_free(chunk);
+ 	else
+@@ -1050,6 +1051,7 @@ static int __sctp_connect(struct sock* sk,
+ 			  int addrs_size,
+ 			  sctp_assoc_t *assoc_id)
+ {
++	struct net *net = sock_net(sk);
+ 	struct sctp_sock *sp;
+ 	struct sctp_endpoint *ep;
+ 	struct sctp_association *asoc = NULL;
+@@ -1200,7 +1202,7 @@ static int __sctp_connect(struct sock* sk,
+ 			goto out_free;
+ 	}
+ 
+-	err = sctp_primitive_ASSOCIATE(asoc, NULL);
++	err = sctp_primitive_ASSOCIATE(net, asoc, NULL);
+ 	if (err < 0) {
+ 		goto out_free;
+ 	}
+@@ -1458,6 +1460,7 @@ SCTP_STATIC int sctp_getsockopt_connectx3(struct sock* sk, int len,
+  */
+ SCTP_STATIC void sctp_close(struct sock *sk, long timeout)
+ {
++	struct net *net = sock_net(sk);
+ 	struct sctp_endpoint *ep;
+ 	struct sctp_association *asoc;
+ 	struct list_head *pos, *temp;
+@@ -1499,9 +1502,9 @@ SCTP_STATIC void sctp_close(struct sock *sk, long timeout)
+ 
+ 			chunk = sctp_make_abort_user(asoc, NULL, 0);
+ 			if (chunk)
+-				sctp_primitive_ABORT(asoc, chunk);
++				sctp_primitive_ABORT(net, asoc, chunk);
+ 		} else
+-			sctp_primitive_SHUTDOWN(asoc, NULL);
++			sctp_primitive_SHUTDOWN(net, asoc, NULL);
+ 	}
+ 
+ 	/* On a TCP-style socket, block for at most linger_time if set. */
+@@ -1569,6 +1572,7 @@ SCTP_STATIC int sctp_msghdr_parse(const struct msghdr *, sctp_cmsgs_t *);
+ SCTP_STATIC int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
+ 			     struct msghdr *msg, size_t msg_len)
+ {
++	struct net *net = sock_net(sk);
+ 	struct sctp_sock *sp;
+ 	struct sctp_endpoint *ep;
+ 	struct sctp_association *new_asoc=NULL, *asoc=NULL;
+@@ -1714,7 +1718,7 @@ SCTP_STATIC int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
+ 		if (sinfo_flags & SCTP_EOF) {
+ 			SCTP_DEBUG_PRINTK("Shutting down association: %p\n",
+ 					  asoc);
+-			sctp_primitive_SHUTDOWN(asoc, NULL);
++			sctp_primitive_SHUTDOWN(net, asoc, NULL);
+ 			err = 0;
+ 			goto out_unlock;
+ 		}
+@@ -1727,7 +1731,7 @@ SCTP_STATIC int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
+ 			}
+ 
+ 			SCTP_DEBUG_PRINTK("Aborting association: %p\n", asoc);
+-			sctp_primitive_ABORT(asoc, chunk);
++			sctp_primitive_ABORT(net, asoc, chunk);
+ 			err = 0;
+ 			goto out_unlock;
+ 		}
+@@ -1900,7 +1904,7 @@ SCTP_STATIC int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
+ 
+ 	/* Auto-connect, if we aren't connected already. */
+ 	if (sctp_state(asoc, CLOSED)) {
+-		err = sctp_primitive_ASSOCIATE(asoc, NULL);
++		err = sctp_primitive_ASSOCIATE(net, asoc, NULL);
+ 		if (err < 0)
+ 			goto out_free;
+ 		SCTP_DEBUG_PRINTK("We associated primitively.\n");
+@@ -1928,7 +1932,7 @@ SCTP_STATIC int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
+ 	 * works that way today.  Keep it that way or this
+ 	 * breaks.
+ 	 */
+-	err = sctp_primitive_SEND(asoc, datamsg);
++	err = sctp_primitive_SEND(net, asoc, datamsg);
+ 	/* Did the lower layer accept the chunk? */
+ 	if (err)
+ 		sctp_datamsg_free(datamsg);
+@@ -2320,7 +2324,9 @@ static int sctp_apply_peer_addr_params(struct sctp_paddrparams *params,
+ 	int error;
+ 
+ 	if (params->spp_flags & SPP_HB_DEMAND && trans) {
+-		error = sctp_primitive_REQUESTHEARTBEAT (trans->asoc, trans);
++		struct net *net = sock_net(trans->asoc->base.sk);
 +
-+/* Per-net sysctl registration */
-+int __net_init sctp_sysctl_init_net(struct net *net)
-+{
-+	struct sctp_ns_globals *ns_globals = sctp_get_ns_globals(net);
-+	struct sctp_net_params *net_params = sctp_get_params(net);
-+	struct ctl_table *table, *tmp_tbl;
-+
-+	table = sctp_table;
-+	if (!net_eq(net, &init_net)) {
-+		table = kmemdup(table, sizeof(sctp_table), GFP_KERNEL);
-+		if (table = NULL)
-+			goto err_alloc;
-+
-+		for (tmp_tbl = table; tmp_tbl->procname; tmp_tbl++) {
-+			if (strcmp(tmp_tbl->procname, "rto_initial") = 0) {
-+				tmp_tbl->data = &net_params->rto_initial;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname, "rto_min") = 0) {
-+				tmp_tbl->data = &net_params->rto_min;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname, "rto_max") = 0) {
-+				tmp_tbl->data = &net_params->rto_max;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname,
-+				   "valid_cookie_life") = 0) {
-+				tmp_tbl->data = &net_params->valid_cookie_life;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname, "max_burst") = 0) {
-+				tmp_tbl->data = &net_params->max_burst;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname,
-+				   "association_max_retrans") = 0) {
-+				tmp_tbl->data +					&net_params->max_retrans_association;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname, "sndbuf_policy") = 0) {
-+				tmp_tbl->data = &net_params->sndbuf_policy;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname, "rcvbuf_policy") = 0) {
-+				tmp_tbl->data = &net_params->rcvbuf_policy;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname,
-+					"path_max_retrans") = 0) {
-+				tmp_tbl->data = &net_params->max_retrans_path;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname, "pf_retrans") = 0) {
-+				tmp_tbl->data = &net_params->pf_retrans;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname,
-+					"max_init_retransmits") = 0) {
-+				tmp_tbl->data = &net_params->max_retrans_init;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname, "hb_interval") = 0) {
-+				tmp_tbl->data = &net_params->hb_interval;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname,
-+					"cookie_preserve_enable") = 0) {
-+				tmp_tbl->data +					&net_params->cookie_preserve_enable;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname,
-+					"rto_alpha_exp_divisor") = 0) {
-+				tmp_tbl->data = &net_params->rto_alpha;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname,
-+					"rto_beta_exp_divisor") = 0) {
-+				tmp_tbl->data = &net_params->rto_beta;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname, "addip_enable") = 0) {
-+				tmp_tbl->data = &net_params->addip_enable;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname,
-+					"default_auto_asconf") = 0) {
-+				tmp_tbl->data +					&net_params->default_auto_asconf;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname, "prsctp_enable") = 0) {
-+				tmp_tbl->data = &net_params->prsctp_enable;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname, "sack_timeout") = 0) {
-+				tmp_tbl->data = &net_params->sack_timeout;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname, "auth_enable") = 0) {
-+				tmp_tbl->data = &net_params->auth_enable;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname,
-+					"addip_noauth_enable") = 0) {
-+				tmp_tbl->data +					&net_params->addip_noauth_enable;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname,
-+					"addr_scope_policy") = 0) {
-+				tmp_tbl->data = &net_params->ipv4_scope_policy;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname,
-+					"rwnd_update_shift") = 0) {
-+				tmp_tbl->data = &net_params->rwnd_update_shift;
-+				continue;
-+			}
-+			if (strcmp(tmp_tbl->procname, "max_autoclose") = 0) {
-+				tmp_tbl->data = &net_params->max_autoclose;
-+				continue;
-+			}
-+		}
-+	}
-+	ns_globals->sctp_sysctl_tbl = register_net_sysctl(net,
-+							  "net/sctp", table);
-+	if (ns_globals->sctp_sysctl_tbl = NULL)
-+		goto err_reg;
-+
-+	return 0;
-+err_reg:
-+	if (!net_eq(net, &init_net))
-+		kfree(table);
-+
-+err_alloc:
-+	return -ENOMEM;
-+}
-+
-+void __net_exit sctp_sysctl_exit_net(struct net *net)
-+{
-+	struct sctp_ns_globals *ns_globals = sctp_get_ns_globals(net);
-+	struct ctl_table *table = ns_globals->sctp_sysctl_tbl->ctl_table_arg;
-+	unregister_net_sysctl_table(ns_globals->sctp_sysctl_tbl);
-+	kfree(table);
++		error = sctp_primitive_REQUESTHEARTBEAT(net, trans->asoc, trans);
+ 		if (error)
+ 			return error;
+ 	}
+@@ -4011,6 +4017,7 @@ SCTP_STATIC void sctp_destroy_sock(struct sock *sk)
+  */
+ SCTP_STATIC void sctp_shutdown(struct sock *sk, int how)
+ {
++	struct net *net = sock_net(sk);
+ 	struct sctp_endpoint *ep;
+ 	struct sctp_association *asoc;
+ 
+@@ -4022,7 +4029,7 @@ SCTP_STATIC void sctp_shutdown(struct sock *sk, int how)
+ 		if (!list_empty(&ep->asocs)) {
+ 			asoc = list_entry(ep->asocs.next,
+ 					  struct sctp_association, asocs);
+-			sctp_primitive_SHUTDOWN(asoc, NULL);
++			sctp_primitive_SHUTDOWN(net, asoc, NULL);
+ 		}
+ 	}
  }
 -- 
-1.7.9.5
+1.7.5.4
 
