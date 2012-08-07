@@ -1,10 +1,10 @@
 From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Date: Tue, 07 Aug 2012 22:44:48 +0000
-Subject: [ 30/49] sctp: Fix list corruption resulting from freeing an association on a list
-Message-Id: <20120807222029.587343926@linuxfoundation.org>
+Date: Tue, 07 Aug 2012 22:35:42 +0000
+Subject: [ 083/109] sctp: Fix list corruption resulting from freeing an association on a list
+Message-Id: <20120807222050.372800323@linuxfoundation.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20120807222026.848194739@linuxfoundation.org>
-In-Reply-To: <20120807222026.848194739@linuxfoundation.org>
+References: <20120807222043.089735600@linuxfoundation.org>
+In-Reply-To: <20120807222043.089735600@linuxfoundation.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -13,7 +13,7 @@ Cc: Greg KH <gregkh@linuxfoundation.org>, torvalds@linux-foundation.org, akpm@li
 
 From: Greg KH <gregkh@linuxfoundation.org>
 
-3.0-stable review patch.  If anyone has any objections, please let me know.
+3.4-stable review patch.  If anyone has any objections, please let me know.
 
 ------------------
 
@@ -139,7 +139,7 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 
 --- a/net/sctp/input.c
 +++ b/net/sctp/input.c
-@@ -737,15 +737,12 @@ static void __sctp_unhash_endpoint(struc
+@@ -736,15 +736,12 @@ static void __sctp_unhash_endpoint(struc
  
  	epb = &ep->base;
  
@@ -156,7 +156,7 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
  	sctp_write_unlock(&head->lock);
  }
  
-@@ -826,7 +823,7 @@ static void __sctp_unhash_established(st
+@@ -825,7 +822,7 @@ static void __sctp_unhash_established(st
  	head = &sctp_assoc_hashtable[epb->hashent];
  
  	sctp_write_lock(&head->lock);
@@ -167,7 +167,7 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
  
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -1160,8 +1160,14 @@ out_free:
+@@ -1231,8 +1231,14 @@ out_free:
  	SCTP_DEBUG_PRINTK("About to exit __sctp_connect() free asoc: %p"
  			  " kaddrs: %p err: %d\n",
  			  asoc, kaddrs, err);
@@ -183,7 +183,7 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
  	return err;
  }
  
-@@ -1871,8 +1877,10 @@ SCTP_STATIC int sctp_sendmsg(struct kioc
+@@ -1942,8 +1948,10 @@ SCTP_STATIC int sctp_sendmsg(struct kioc
  	goto out_unlock;
  
  out_free:
