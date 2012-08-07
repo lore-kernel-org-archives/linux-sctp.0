@@ -1,144 +1,132 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Wed, 15 Aug 2012 03:20:49 +0000
-Subject: Re: [PATCH net-next 1/7] sctp: Add infrastructure for per net sysctls
-Message-Id: <502B1591.4010704@gmail.com>
+From: ebiederm@xmission.com (Eric W. Biederman)
+Date: Tue, 07 Aug 2012 17:29:08 +0000
+Subject: [PATCH net-next 6/7] sctp: Push struct net down into sctp_verify_ext_param
+Message-Id: <87fw7ybogr.fsf_-_@xmission.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1344115837-6150-1-git-send-email-jan.ariyasu@hp.com> <87mx27rig7.fsf@xmission.com> <87zk67q31q.fsf_-_@xmission.com> <87ipcud3ld.fsf_-_@xmission.com> <87d332d39s.fsf_-_@xmission.com>
-In-Reply-To: <87d332d39s.fsf_-_@xmission.com>
+References: <1344115837-6150-1-git-send-email-jan.ariyasu@hp.com>
+	<87mx27rig7.fsf@xmission.com> <87zk67q31q.fsf_-_@xmission.com>
+	<87ipcud3ld.fsf_-_@xmission.com>
+In-Reply-To: <87ipcud3ld.fsf_-_@xmission.com> (Eric W. Biederman's message of
+	"Tue, 07 Aug 2012 10:17:02 -0700")
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "Eric W. Biederman" <ebiederm@xmission.com>
-Cc: David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, Jan Ariyasu <jan.ariyasu@hp.com>, Jan Ariyasu <jan.ariyasu@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Thomas Graf <tgraf@infradead.org>, Xi Wang <xi.wang@gmail.com>
+To: David Miller <davem@davemloft.net>
+Cc: Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, Jan Ariyasu <jan.ariyasu@hp.com>, Jan Ariyasu <jan.ariyasu@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Thomas Graf <tgraf@infradead.org>, Xi Wang <xi.wang@gmail.com>
 
-On 08/07/2012 01:23 PM, Eric W. Biederman wrote:
->
-> Start with an empty sctp_net_table that will be populated as the various
-> tunable sysctls are made per net.
->
-> Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+Add struct net as a parameter to sctp_verify_param so it can be passed
+to sctp_verify_ext_param where struct net will be needed when the sctp
+tunables become per net tunables.
 
-> ---
->   include/net/netns/sctp.h |    6 +++++-
->   include/net/sctp/sctp.h  |    4 ++++
->   net/sctp/protocol.c      |    7 +++++++
->   net/sctp/sysctl.c        |   21 +++++++++++++++++++++
->   4 files changed, 37 insertions(+), 1 deletions(-)
->
-> diff --git a/include/net/netns/sctp.h b/include/net/netns/sctp.h
-> index 06ccddf..9576b60 100644
-> --- a/include/net/netns/sctp.h
-> +++ b/include/net/netns/sctp.h
-> @@ -4,6 +4,7 @@
->   struct sock;
->   struct proc_dir_entry;
->   struct sctp_mib;
-> +struct ctl_table_header;
->
->   struct netns_sctp {
->   	DEFINE_SNMP_STAT(struct sctp_mib, sctp_statistics);
-> @@ -11,7 +12,9 @@ struct netns_sctp {
->   #ifdef CONFIG_PROC_FS
->   	struct proc_dir_entry *proc_net_sctp;
->   #endif
-> -
-> +#ifdef CONFIG_SYSCTL
-> +	struct ctl_table_header *sysctl_header;
-> +#endif
->   	/* This is the global socket data structure used for responding to
->   	 * the Out-of-the-blue (OOTB) packets.  A control sock will be created
->   	 * for this socket at the initialization time.
-> @@ -32,6 +35,7 @@ struct netns_sctp {
->
->   	/* Lock that protects the local_addr_list writers */
->   	spinlock_t local_addr_lock;
-> +
->   };
->
->   #endif /* __NETNS_SCTP_H__ */
-> diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-> index b0e6fe5..15037e7 100644
-> --- a/include/net/sctp/sctp.h
-> +++ b/include/net/sctp/sctp.h
-> @@ -375,9 +375,13 @@ static inline void sctp_dbg_objcnt_exit(void) { return; }
->   #if defined CONFIG_SYSCTL
->   void sctp_sysctl_register(void);
->   void sctp_sysctl_unregister(void);
-> +int sctp_sysctl_net_register(struct net *net);
-> +void sctp_sysctl_net_unregister(struct net *net);
->   #else
->   static inline void sctp_sysctl_register(void) { return; }
->   static inline void sctp_sysctl_unregister(void) { return; }
-> +static inline int sctp_sysctl_net_register(struct net *net) { return 0; }
-> +static inline void sctp_sysctl_net_unregister(struct net *net) { return; }
->   #endif
->
->   /* Size of Supported Address Parameter for 'x' address types. */
-> diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-> index 69bdc72..de25d9c 100644
-> --- a/net/sctp/protocol.c
-> +++ b/net/sctp/protocol.c
-> @@ -1169,6 +1169,10 @@ static int sctp_net_init(struct net *net)
->   {
->   	int status;
->
-> +	status = sctp_sysctl_net_register(net);
-> +	if (status)
-> +		goto err_sysctl_register;
-> +
->   	/* Allocate and initialise sctp mibs.  */
->   	status = init_sctp_mibs(net);
->   	if (status)
-> @@ -1205,6 +1209,8 @@ err_ctl_sock_init:
->   err_init_proc:
->   	cleanup_sctp_mibs(net);
->   err_init_mibs:
-> +	sctp_sysctl_net_unregister(net);
-> +err_sysctl_register:
->   	return status;
->   }
->
-> @@ -1219,6 +1225,7 @@ static void sctp_net_exit(struct net *net)
->
->   	sctp_proc_exit(net);
->   	cleanup_sctp_mibs(net);
-> +	sctp_sysctl_net_unregister(net);
->   }
->
->   static struct pernet_operations sctp_net_ops = {
-> diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
-> index 2b2bfe9..7528d59 100644
-> --- a/net/sctp/sysctl.c
-> +++ b/net/sctp/sysctl.c
-> @@ -284,6 +284,27 @@ static ctl_table sctp_table[] = {
->   	{ /* sentinel */ }
->   };
->
-> +static ctl_table sctp_net_table[] = {
-> +	{ /* sentinel */ }	
-> +};
-> +
-> +int sctp_sysctl_net_register(struct net *net)
-> +{
-> +	struct ctl_table *table;
-> +
-> +	table = kmemdup(sctp_net_table, sizeof(sctp_net_table), GFP_KERNEL);
-> +	if (!table)
-> +		return -ENOMEM;
-> +
-> +	net->sctp.sysctl_header = register_net_sysctl(net, "net/sctp", table);
-> +	return 0;
-> +}
-> +
-> +void sctp_sysctl_net_unregister(struct net *net)
-> +{
-> +	unregister_net_sysctl_table(net->sctp.sysctl_header);
-> +}
-> +
->   static struct ctl_table_header * sctp_sysctl_header;
->
->   /* Sysctl registration.  */
->
+Add struct net as a parameter to sctp_verify_init so struct net can be
+passed to sctp_verify_param.
+
+Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
+---
+ include/net/sctp/structs.h |    6 +++---
+ net/sctp/sm_make_chunk.c   |   11 ++++++-----
+ net/sctp/sm_statefuns.c    |    6 +++---
+ 3 files changed, 12 insertions(+), 11 deletions(-)
+
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index b0882f3..18052b4 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1410,9 +1410,9 @@ struct sctp_endpoint *sctp_endpoint_is_match(struct sctp_endpoint *,
+ int sctp_has_association(struct net *net, const union sctp_addr *laddr,
+ 			 const union sctp_addr *paddr);
+ 
+-int sctp_verify_init(const struct sctp_association *asoc, sctp_cid_t,
+-		     sctp_init_chunk_t *peer_init, struct sctp_chunk *chunk,
+-		     struct sctp_chunk **err_chunk);
++int sctp_verify_init(struct net *net, const struct sctp_association *asoc,
++		     sctp_cid_t, sctp_init_chunk_t *peer_init,
++		     struct sctp_chunk *chunk, struct sctp_chunk **err_chunk);
+ int sctp_process_init(struct sctp_association *, struct sctp_chunk *chunk,
+ 		      const union sctp_addr *peer,
+ 		      sctp_init_chunk_t *init, gfp_t gfp);
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index fb12835..a4b096f 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -1940,7 +1940,7 @@ static int sctp_process_hn_param(const struct sctp_association *asoc,
+ 	return 0;
+ }
+ 
+-static int sctp_verify_ext_param(union sctp_params param)
++static int sctp_verify_ext_param(struct net *net, union sctp_params param)
+ {
+ 	__u16 num_ext = ntohs(param.p->length) - sizeof(sctp_paramhdr_t);
+ 	int have_auth = 0;
+@@ -2081,7 +2081,8 @@ static sctp_ierror_t sctp_process_unk_param(const struct sctp_association *asoc,
+  *	SCTP_IERROR_ERROR - stop processing, trigger an ERROR
+  * 	SCTP_IERROR_NO_ERROR - continue with the chunk
+  */
+-static sctp_ierror_t sctp_verify_param(const struct sctp_association *asoc,
++static sctp_ierror_t sctp_verify_param(struct net *net,
++					const struct sctp_association *asoc,
+ 					union sctp_params param,
+ 					sctp_cid_t cid,
+ 					struct sctp_chunk *chunk,
+@@ -2110,7 +2111,7 @@ static sctp_ierror_t sctp_verify_param(const struct sctp_association *asoc,
+ 		break;
+ 
+ 	case SCTP_PARAM_SUPPORTED_EXT:
+-		if (!sctp_verify_ext_param(param))
++		if (!sctp_verify_ext_param(net, param))
+ 			return SCTP_IERROR_ABORT;
+ 		break;
+ 
+@@ -2198,7 +2199,7 @@ fallthrough:
+ }
+ 
+ /* Verify the INIT packet before we process it.  */
+-int sctp_verify_init(const struct sctp_association *asoc,
++int sctp_verify_init(struct net *net, const struct sctp_association *asoc,
+ 		     sctp_cid_t cid,
+ 		     sctp_init_chunk_t *peer_init,
+ 		     struct sctp_chunk *chunk,
+@@ -2245,7 +2246,7 @@ int sctp_verify_init(const struct sctp_association *asoc,
+ 	/* Verify all the variable length parameters */
+ 	sctp_walk_params(param, peer_init, init_hdr.params) {
+ 
+-		result = sctp_verify_param(asoc, param, cid, chunk, errp);
++		result = sctp_verify_param(net, asoc, param, cid, chunk, errp);
+ 		switch (result) {
+ 		    case SCTP_IERROR_ABORT:
+ 		    case SCTP_IERROR_NOMEM:
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 3e5ca61..3722af2 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -364,7 +364,7 @@ sctp_disposition_t sctp_sf_do_5_1B_init(struct net *net,
+ 
+ 	/* Verify the INIT chunk before processing it. */
+ 	err_chunk = NULL;
+-	if (!sctp_verify_init(asoc, chunk->chunk_hdr->type,
++	if (!sctp_verify_init(net, asoc, chunk->chunk_hdr->type,
+ 			      (sctp_init_chunk_t *)chunk->chunk_hdr, chunk,
+ 			      &err_chunk)) {
+ 		/* This chunk contains fatal error. It is to be discarded.
+@@ -531,7 +531,7 @@ sctp_disposition_t sctp_sf_do_5_1C_ack(struct net *net,
+ 
+ 	/* Verify the INIT chunk before processing it. */
+ 	err_chunk = NULL;
+-	if (!sctp_verify_init(asoc, chunk->chunk_hdr->type,
++	if (!sctp_verify_init(net, asoc, chunk->chunk_hdr->type,
+ 			      (sctp_init_chunk_t *)chunk->chunk_hdr, chunk,
+ 			      &err_chunk)) {
+ 
+@@ -1429,7 +1429,7 @@ static sctp_disposition_t sctp_sf_do_unexpected_init(
+ 
+ 	/* Verify the INIT chunk before processing it. */
+ 	err_chunk = NULL;
+-	if (!sctp_verify_init(asoc, chunk->chunk_hdr->type,
++	if (!sctp_verify_init(net, asoc, chunk->chunk_hdr->type,
+ 			      (sctp_init_chunk_t *)chunk->chunk_hdr, chunk,
+ 			      &err_chunk)) {
+ 		/* This chunk contains fatal error. It is to be discarded.
+-- 
+1.7.5.4
 
