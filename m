@@ -1,28 +1,64 @@
 From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Wed, 15 Aug 2012 03:16:56 +0000
+Date: Wed, 15 Aug 2012 03:21:33 +0000
 Subject: Re: [PATCH net-next 0/7] sctp: network namespace support Part 2: per net tunables
-Message-Id: <502B14A8.9060806@gmail.com>
+Message-Id: <502B15BD.1040904@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <87zk67q31q.fsf_-_@xmission.com> <87ipcud3ld.fsf_-_@xmission.com> <20120808.232058.1128673474849407813.davem@davemloft.net> <20120814.141415.556937052577510995.davem@davemloft.net>
-In-Reply-To: <20120814.141415.556937052577510995.davem@davemloft.net>
+References: <1344115837-6150-1-git-send-email-jan.ariyasu@hp.com> <87mx27rig7.fsf@xmission.com> <87zk67q31q.fsf_-_@xmission.com> <87ipcud3ld.fsf_-_@xmission.com>
+In-Reply-To: <87ipcud3ld.fsf_-_@xmission.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: ebiederm@xmission.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, jan.ariyasu@hp.com, jan.ariyasu@gmail.com, nhorman@tuxdriver.com, tgraf@infradead.org, xi.wang@gmail.com
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, Jan Ariyasu <jan.ariyasu@hp.com>, Jan Ariyasu <jan.ariyasu@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Thomas Graf <tgraf@infradead.org>, Xi Wang <xi.wang@gmail.com>
 
-On 08/14/2012 05:14 PM, David Miller wrote:
+On 08/07/2012 01:17 PM, Eric W. Biederman wrote:
 >
-> Come on Vlad, please review this stuff some time this century.  If you
-> want inclusion to be dependent upon your review, then the onus is on
-> you to review it in a timely manner.  And you are not doing so here.
+> Since I am motivated to get things done, and since there has been much
+> grumbling about my patches not implementing tunables, I have added
+> tunable support on top of my last patchset.
 >
-> I'm not letting Eric's patches rot in patchwork for more than a week,
-> this is completely unacceptable.
+> I have performed basic testing on the these patches and nothing
+> appears amis.
+>
+> The sm statemachine is a major tease as it has all of these association
+> and endpoint pointers in the common set of function parameters that turn
+> out to be NULL at the most inconvinient times.  So I added to the common
+> parameter list a struct net pointer, that is never NULL.
+>
+>   include/net/netns/sctp.h   |   96 +++++++-
+>   include/net/sctp/sctp.h    |   16 +-
+>   include/net/sctp/sm.h      |    8 +-
+>   include/net/sctp/structs.h |  126 +---------
+>   net/sctp/associola.c       |   18 +-
+>   net/sctp/auth.c            |   20 ++-
+>   net/sctp/bind_addr.c       |    6 +-
+>   net/sctp/endpointola.c     |   13 +-
+>   net/sctp/input.c           |    6 +-
+>   net/sctp/primitive.c       |    4 +-
+>   net/sctp/protocol.c        |  137 +++++-----
+>   net/sctp/sm_make_chunk.c   |   61 +++--
+>   net/sctp/sm_sideeffect.c   |   26 ++-
+>   net/sctp/sm_statefuns.c    |  631 ++++++++++++++++++++++++--------------------
+>   net/sctp/sm_statetable.c   |   17 +-
+>   net/sctp/socket.c          |   92 ++++---
+>   net/sctp/sysctl.c          |  200 ++++++++------
+>   net/sctp/transport.c       |   23 +-
+>   18 files changed, 817 insertions(+), 683 deletions(-)
+>
+> Eric W. Biederman (7):
+>        sctp: Add infrastructure for per net sysctls
+>        sctp: Push struct net down to sctp_chunk_event_lookup
+>        sctp: Push struct net down into sctp_transport_init
+>        sctp: Push struct net down into sctp_in_scope
+>        sctp: Push struct net down into all of the state machine functions
+>        sctp: Push struct net down into sctp_verify_ext_param
+>        sctp: Making sysctl tunables per net
+>
+> Eric
+>
 >
 
+Acked-by: Vlad Yasevich <vyasevich@gmail.com>
 
-I swear I sent an ACK 2 days ago, but I now see it sitting in my draft 
-folder.  My bad.  I'll go now and dust off the ACK...
+To this entire follow-on series.  This is much better.
 
--vlad
