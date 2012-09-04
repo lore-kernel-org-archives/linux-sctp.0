@@ -1,50 +1,53 @@
-From: Nicolas Dichtel <nicolas.dichtel@6wind.com>
-Date: Fri, 07 Sep 2012 13:47:15 +0000
-Subject: Re: [PATCH] sctp: check dst validity after IPsec operations
-Message-Id: <5049FAE3.2050403@6wind.com>
+From: Wei Yongjun <weiyj.lk@gmail.com>
+Date: Tue, 04 Sep 2012 09:58:16 +0000
+Subject: [PATCH] sctp: use list_move_tail instead of list_del/list_add_tail
+Message-Id: <CAPgLHd_w3-iAT66PW2i_jYyqmNrF-fKczcUEdBemPMvWX+fbOQ@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1346953229-3825-1-git-send-email-nicolas.dichtel@6wind.com> <20120906.141019.129727465932440024.davem@davemloft.net>
-In-Reply-To: <20120906.141019.129727465932440024.davem@davemloft.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: David Miller <davem@davemloft.net>
-Cc: vyasevich@gmail.com, sri@us.ibm.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: vyasevich@gmail.com, sri@us.ibm.com, davem@davemloft.net
+Cc: yongjun_wei@trendmicro.com.cn, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Le 06/09/2012 20:10, David Miller a =E9crit :
-> From: Nicolas Dichtel <nicolas.dichtel@6wind.com>
-> Date: Thu,  6 Sep 2012 13:40:29 -0400
->
->> dst stored in struct sctp_transport needs to be recalculated when ipsec =
-policy
->> are updated. We use flow_cache_genid for that.
->>
->> For example, if a SCTP connection is established and then an IPsec polic=
-y is
->> set, the old SCTP flow will not be updated and thus will not use the new
->> IPsec policy.
->>
->> Signed-off-by: Nicolas Dichtel <nicolas.dichtel@6wind.com>
->
-> I don't like that SCTP need to perform special DST validation.
-Ipv6 do the same:
+From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
 
-inet6_csk_xmit()->inet6_csk_route_socket()->__inet6_csk_dst_check()
--> compare flow_cache_genid and rt6i_flow_cache_genid.
+Using list_move_tail() instead of list_del() + list_add_tail().
 
->
-> The normal DST validation mechanism already in place should be
-> sufficient.
-I don't find why TCP recalculate the route, but it's not immediate, we shou=
-ld=20
-wait a little.
+spatch with a semantic match is used to found this problem.
+(http://coccinelle.lip6.fr/)
 
->
-> Otherwise this problem must exist in other protocols too, and
-> fixing a tree wide issue privately inside of one protocol is
-> not acceptable.
-I will propose another patch.
+Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
+---
+ net/sctp/outqueue.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
+
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index e7aa177c..d10cbf1 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -589,9 +589,8 @@ static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+ 		 * next chunk.
+ 		 */
+ 		if (chunk->tsn_gap_acked) {
+-			list_del(&chunk->transmitted_list);
+-			list_add_tail(&chunk->transmitted_list,
+-					&transport->transmitted);
++			list_move_tail(&chunk->transmitted_list,
++				       &transport->transmitted);
+ 			continue;
+ 		}
+ 
+@@ -655,9 +654,8 @@ redo:
+ 			/* The append was successful, so add this chunk to
+ 			 * the transmitted list.
+ 			 */
+-			list_del(&chunk->transmitted_list);
+-			list_add_tail(&chunk->transmitted_list,
+-					&transport->transmitted);
++			list_move_tail(&chunk->transmitted_list,
++				       &transport->transmitted);
+ 
+ 			/* Mark the chunk as ineligible for fast retransmit
+ 			 * after it is retransmitted.
 
 
-Regards,
-Nicolas
