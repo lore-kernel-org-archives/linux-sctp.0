@@ -1,22 +1,101 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 18 Sep 2012 20:08:47 +0000
-Subject: Re: [PATCH net-next v3 0/4] Take care of xfrm policy when checking dst entries
-Message-Id: <20120918.160847.2054515542637762354.davem@davemloft.net>
+From: Nicolas Dichtel <nicolas.dichtel@6wind.com>
+Date: Fri, 07 Sep 2012 13:56:04 +0000
+Subject: [PATCH 1/2] dst: take into account policy update on check()
+Message-Id: <1347033467-3757-2-git-send-email-nicolas.dichtel@6wind.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20120917.142504.115219640757684297.davem@davemloft.net>
-	<50577F74.9040200@6wind.com>
-	<20120917.155458.777649470378504320.davem@davemloft.net>
-In-Reply-To: <20120917.155458.777649470378504320.davem@davemloft.net>
+References: <5049FAE3.2050403@6wind.com>
+ <1347033467-3757-1-git-send-email-nicolas.dichtel@6wind.com>
+In-Reply-To: <1347033467-3757-1-git-send-email-nicolas.dichtel@6wind.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: nicolas.dichtel@6wind.com
-Cc: vyasevich@gmail.com, eric.dumazet@gmail.com, sds@tycho.nsa.gov, james.l.morris@oracle.com, eparis@parisplace.org, sri@us.ibm.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: vyasevich@gmail.com, davem@davemloft.net
+Cc: sri@us.ibm.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>
 
-From: David Miller <davem@davemloft.net>
-Date: Mon, 17 Sep 2012 15:54:58 -0400 (EDT)
+When a xfrm policy is inserted or deleted, we must invalidate
+all dst and recalculate the route.
 
-> I'm reconsidering putting Eric's patch into 'net' and that would
-> allow me to use your v3 patches as-is.
+Signed-off-by: Nicolas Dichtel <nicolas.dichtel@6wind.com>
+---
+ include/net/dst.h     | 7 +++++++
+ net/core/dst.c        | 1 +
+ net/core/sock.c       | 4 ++--
+ net/ipv6/ip6_tunnel.c | 3 +--
+ 4 files changed, 11 insertions(+), 4 deletions(-)
 
-And that's what I've done just now, thanks.
+diff --git a/include/net/dst.h b/include/net/dst.h
+index 9a78810..478e55a 100644
+--- a/include/net/dst.h
++++ b/include/net/dst.h
+@@ -101,6 +101,9 @@ struct dst_entry {
+ 	atomic_t		__refcnt;	/* client references	*/
+ 	int			__use;
+ 	unsigned long		lastuse;
++#ifdef CONFIG_XFRM
++	u32			flow_cache_genid;
++#endif
+ 	union {
+ 		struct dst_entry	*next;
+ 		struct rtable __rcu	*rt_next;
+@@ -457,6 +460,10 @@ static inline int dst_input(struct sk_buff *skb)
+ 
+ static inline struct dst_entry *dst_check(struct dst_entry *dst, u32 cookie)
+ {
++#ifdef CONFIG_XFRM
++	if (dst->flow_cache_genid != atomic_read(&flow_cache_genid))
++		return NULL;
++#endif
+ 	if (dst->obsolete)
+ 		dst = dst->ops->check(dst, cookie);
+ 	return dst;
+diff --git a/net/core/dst.c b/net/core/dst.c
+index f6593d2..19899d3 100644
+--- a/net/core/dst.c
++++ b/net/core/dst.c
+@@ -181,6 +181,7 @@ void *dst_alloc(struct dst_ops *ops, struct net_device *dev,
+ 	dst->path = dst;
+ #ifdef CONFIG_XFRM
+ 	dst->xfrm = NULL;
++	dst->flow_cache_genid = atomic_read(&flow_cache_genid);
+ #endif
+ 	dst->input = dst_discard;
+ 	dst->output = dst_discard;
+diff --git a/net/core/sock.c b/net/core/sock.c
+index d765156..1d06d4e 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -491,7 +491,7 @@ struct dst_entry *__sk_dst_check(struct sock *sk, u32 cookie)
+ {
+ 	struct dst_entry *dst = __sk_dst_get(sk);
+ 
+-	if (dst && dst->obsolete && dst->ops->check(dst, cookie) = NULL) {
++	if (dst && dst_check(dst, cookie) = NULL) {
+ 		sk_tx_queue_clear(sk);
+ 		RCU_INIT_POINTER(sk->sk_dst_cache, NULL);
+ 		dst_release(dst);
+@@ -506,7 +506,7 @@ struct dst_entry *sk_dst_check(struct sock *sk, u32 cookie)
+ {
+ 	struct dst_entry *dst = sk_dst_get(sk);
+ 
+-	if (dst && dst->obsolete && dst->ops->check(dst, cookie) = NULL) {
++	if (dst && dst_check(dst, cookie) = NULL) {
+ 		sk_dst_reset(sk);
+ 		dst_release(dst);
+ 		return NULL;
+diff --git a/net/ipv6/ip6_tunnel.c b/net/ipv6/ip6_tunnel.c
+index cb7e2de..e96431a 100644
+--- a/net/ipv6/ip6_tunnel.c
++++ b/net/ipv6/ip6_tunnel.c
+@@ -130,8 +130,7 @@ struct dst_entry *ip6_tnl_dst_check(struct ip6_tnl *t)
+ {
+ 	struct dst_entry *dst = t->dst_cache;
+ 
+-	if (dst && dst->obsolete &&
+-	    dst->ops->check(dst, t->dst_cookie) = NULL) {
++	if (dst && dst_check(dst, t->dst_cookie) = NULL) {
+ 		t->dst_cache = NULL;
+ 		dst_release(dst);
+ 		return NULL;
+-- 
+1.7.12
+
