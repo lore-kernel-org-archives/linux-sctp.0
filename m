@@ -1,57 +1,36 @@
-From: Eric Dumazet <eric.dumazet@gmail.com>
-Date: Wed, 12 Sep 2012 07:40:31 +0000
-Subject: Re: [PATCH net-next v3 4/4] ipv6: use DST_* macro to set obselete field
-Message-Id: <1347435631.13103.691.camel@edumazet-glaptop>
+From: Nicolas Dichtel <nicolas.dichtel@6wind.com>
+Date: Mon, 10 Sep 2012 13:22:16 +0000
+Subject: [PATCH net-next v2 2/4] xfrm: invalidate dst on policy insertion/deletion
+Message-Id: <1347283338-4249-3-git-send-email-nicolas.dichtel@6wind.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <504DFF90.3010802@6wind.com>
-	 <1347350987-8054-1-git-send-email-nicolas.dichtel@6wind.com>
-	 <1347350987-8054-5-git-send-email-nicolas.dichtel@6wind.com>
-In-Reply-To: <1347350987-8054-5-git-send-email-nicolas.dichtel@6wind.com>
+References: <20120907.144828.97793990734588625.davem@davemloft.net>
+ <1347283338-4249-1-git-send-email-nicolas.dichtel@6wind.com>
+In-Reply-To: <1347283338-4249-1-git-send-email-nicolas.dichtel@6wind.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Nicolas Dichtel <nicolas.dichtel@6wind.com>
-Cc: vyasevich@gmail.com, davem@davemloft.net, sds@tycho.nsa.gov, james.l.morris@oracle.com, eparis@parisplace.org, sri@us.ibm.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: vyasevich@gmail.com, davem@davemloft.net, eric.dumazet@gmail.com
+Cc: sri@us.ibm.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>
 
-On Tue, 2012-09-11 at 10:09 +0200, Nicolas Dichtel wrote:
-> Signed-off-by: Nicolas Dichtel <nicolas.dichtel@6wind.com>
-> ---
->  net/ipv6/route.c | 6 +++---
->  1 file changed, 3 insertions(+), 3 deletions(-)
-> 
-> diff --git a/net/ipv6/route.c b/net/ipv6/route.c
-> index 561f249..0c6f132 100644
-> --- a/net/ipv6/route.c
-> +++ b/net/ipv6/route.c
-> @@ -226,7 +226,7 @@ static struct rt6_info ip6_null_entry_template = {
->  	.dst = {
->  		.__refcnt	= ATOMIC_INIT(1),
->  		.__use		= 1,
-> -		.obsolete	= -1,
-> +		.obsolete	= DST_OBSOLETE_FORCE_CHK,
->  		.error		= -ENETUNREACH,
->  		.input		= ip6_pkt_discard,
->  		.output		= ip6_pkt_discard_out,
-> @@ -246,7 +246,7 @@ static struct rt6_info ip6_prohibit_entry_template = {
->  	.dst = {
->  		.__refcnt	= ATOMIC_INIT(1),
->  		.__use		= 1,
-> -		.obsolete	= -1,
-> +		.obsolete	= DST_OBSOLETE_FORCE_CHK,
->  		.error		= -EACCES,
->  		.input		= ip6_pkt_prohibit,
->  		.output		= ip6_pkt_prohibit_out,
-> @@ -261,7 +261,7 @@ static struct rt6_info ip6_blk_hole_entry_template = {
->  	.dst = {
->  		.__refcnt	= ATOMIC_INIT(1),
->  		.__use		= 1,
-> -		.obsolete	= -1,
-> +		.obsolete	= DST_OBSOLETE_FORCE_CHK,
->  		.error		= -EINVAL,
->  		.input		= dst_discard,
->  		.output		= dst_discard,
+When a policy is inserted or deleted, all dst should be recalculated.
 
-Acked-by: Eric Dumazet <edumazet@google.com>
+Signed-off-by: Nicolas Dichtel <nicolas.dichtel@6wind.com>
+---
+ net/xfrm/xfrm_policy.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-
+diff --git a/net/xfrm/xfrm_policy.c b/net/xfrm/xfrm_policy.c
+index 741a32a..67f456d 100644
+--- a/net/xfrm/xfrm_policy.c
++++ b/net/xfrm/xfrm_policy.c
+@@ -602,6 +602,7 @@ int xfrm_policy_insert(int dir, struct xfrm_policy *policy, int excl)
+ 	xfrm_pol_hold(policy);
+ 	net->xfrm.policy_count[dir]++;
+ 	atomic_inc(&flow_cache_genid);
++	rt_genid_bump(net);
+ 	if (delpol)
+ 		__xfrm_policy_unlink(delpol, dir);
+ 	policy->index = delpol ? delpol->index : xfrm_gen_index(net, dir);
+-- 
+1.7.12
 
