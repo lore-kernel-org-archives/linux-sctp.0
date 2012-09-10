@@ -1,25 +1,31 @@
-From: Eric Dumazet <eric.dumazet@gmail.com>
-Date: Mon, 10 Sep 2012 13:10:39 +0000
-Subject: Re: [PATCH 1/2] dst: take into account policy update on check()
-Message-Id: <1347282639.1234.1569.camel@edumazet-glaptop>
+From: Nicolas Dichtel <nicolas.dichtel@6wind.com>
+Date: Mon, 10 Sep 2012 13:22:14 +0000
+Subject: [PATCH net-next v2] Take care of xfrm policy when checking dst entries
+Message-Id: <1347283338-4249-1-git-send-email-nicolas.dichtel@6wind.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <504A08EA.3080506@6wind.com>
-	 <1347030598.2484.777.camel@edumazet-glaptop> <504A0F1F.5060504@6wind.com>
-	 <20120907.144828.97793990734588625.davem@davemloft.net>
-	 <504DE17A.1000908@6wind.com>
-In-Reply-To: <504DE17A.1000908@6wind.com>
+References: <20120907.144828.97793990734588625.davem@davemloft.net>
+In-Reply-To: <20120907.144828.97793990734588625.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: nicolas.dichtel@6wind.com
-Cc: David Miller <davem@davemloft.net>, vyasevich@gmail.com, sri@us.ibm.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: vyasevich@gmail.com, davem@davemloft.net, eric.dumazet@gmail.com
+Cc: sri@us.ibm.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On Mon, 2012-09-10 at 14:47 +0200, Nicolas Dichtel wrote:
+The goal of these patches is to fix the following problem: a session is
+established (TCP, SCTP) and after a new policy is inserted. The current
+code does not recalculate the route, thus the traffic is not encrypted.
 
-> So it means that IPv6 dst entries will be invalidated by IPv4 route management. 
-> For example, calling rt_cache_flush() will flush IPv6 dst too. Is this acceptable?
+The patch propose to check flow_cache_genid value when checking a dst
+entry, which is incremented each time a policy is inserted or deleted.
 
-If it can save another test in fast path, this is acceptable, yes.
+v2: use net->ipv4.rt_genid instead of flow_cache_genid (and thus save a test
+    in fast path). Also move it to net->rt_genid, to be able to use it for IPv6
+    too. Note that IPv6 will have one more test in fast path.
 
+Patches are tested with TCP and SCTP, IPv4 and IPv6.
 
+Comments are welcome.
+
+Regards,
+Nicolas
 
