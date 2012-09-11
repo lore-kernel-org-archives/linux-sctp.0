@@ -1,26 +1,34 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 04 Sep 2012 18:16:37 +0000
-Subject: Re: [PATCH] sctp: use list_move_tail instead of list_del/list_add_tail
-Message-Id: <20120904.141637.1002775415545971280.davem@davemloft.net>
+From: Nicolas Dichtel <nicolas.dichtel@6wind.com>
+Date: Tue, 11 Sep 2012 08:09:43 +0000
+Subject: [PATCH net-next v3 0/4] Take care of xfrm policy when checking dst entries
+Message-Id: <1347350987-8054-1-git-send-email-nicolas.dichtel@6wind.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAPgLHd_w3-iAT66PW2i_jYyqmNrF-fKczcUEdBemPMvWX+fbOQ@mail.gmail.com>
-In-Reply-To: <CAPgLHd_w3-iAT66PW2i_jYyqmNrF-fKczcUEdBemPMvWX+fbOQ@mail.gmail.com>
+References: <504DFF90.3010802@6wind.com>
+In-Reply-To: <504DFF90.3010802@6wind.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: weiyj.lk@gmail.com
-Cc: vyasevich@gmail.com, sri@us.ibm.com, yongjun_wei@trendmicro.com.cn, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: vyasevich@gmail.com, davem@davemloft.net, eric.dumazet@gmail.com, sds@tycho.nsa.gov, james.l.morris@oracle.com, eparis@parisplace.org
+Cc: sri@us.ibm.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-From: Wei Yongjun <weiyj.lk@gmail.com>
-Date: Tue, 4 Sep 2012 17:58:16 +0800
+The goal of these patches is to fix the following problem: a session is
+established (TCP, SCTP) and after a new policy is inserted. The current
+code does not recalculate the route, thus the traffic is not encrypted.
 
-> From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
-> 
-> Using list_move_tail() instead of list_del() + list_add_tail().
-> 
-> spatch with a semantic match is used to found this problem.
-> (http://coccinelle.lip6.fr/)
-> 
-> Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
+The patch propose to check flow_cache_genid value when checking a dst
+entry, which is incremented each time a policy is inserted or deleted.
 
-Applied to net-next, thank you.
+v2: use net->ipv4.rt_genid instead of flow_cache_genid (and thus save a test
+    in fast path). Also move it to net->rt_genid, to be able to use it for IPv6
+    too. Note that IPv6 will have one more test in fast path.
+
+v3: remove unrelated "#ifdef CONFIG_XFRM" in IPv6 part
+    bump rt_genid in selinux code (same place than flow_cache_genid)
+
+Patches are tested with TCP and SCTP, IPv4 and IPv6.
+
+Comments are welcome.
+
+Regards,
+Nicolas
+
