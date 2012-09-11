@@ -1,79 +1,49 @@
 From: Nicolas Dichtel <nicolas.dichtel@6wind.com>
-Date: Fri, 07 Sep 2012 13:56:10 +0000
-Subject: [PATCH 2/2] ipv6: remove rt6i_flow_cache_genid field in rt6_info
-Message-Id: <1347033467-3757-3-git-send-email-nicolas.dichtel@6wind.com>
+Date: Tue, 11 Sep 2012 08:09:45 +0000
+Subject: [PATCH net-next v3 2/4] xfrm: invalidate dst on policy insertion/deletion
+Message-Id: <1347350987-8054-3-git-send-email-nicolas.dichtel@6wind.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <5049FAE3.2050403@6wind.com>
- <1347033467-3757-1-git-send-email-nicolas.dichtel@6wind.com>
-In-Reply-To: <1347033467-3757-1-git-send-email-nicolas.dichtel@6wind.com>
+References: <504DFF90.3010802@6wind.com>
+ <1347350987-8054-1-git-send-email-nicolas.dichtel@6wind.com>
+In-Reply-To: <1347350987-8054-1-git-send-email-nicolas.dichtel@6wind.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vyasevich@gmail.com, davem@davemloft.net
+To: vyasevich@gmail.com, davem@davemloft.net, eric.dumazet@gmail.com, sds@tycho.nsa.gov, james.l.morris@oracle.com, eparis@parisplace.org
 Cc: sri@us.ibm.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>
 
-Now that flow_cache_genid is stored in dst, there is no need to add
-specific code here.
+When a policy is inserted or deleted, all dst should be recalculated.
 
 Signed-off-by: Nicolas Dichtel <nicolas.dichtel@6wind.com>
 ---
- include/net/ip6_fib.h            |  3 ---
- net/ipv6/inet6_connection_sock.c | 23 +----------------------
- 2 files changed, 1 insertion(+), 25 deletions(-)
+ net/xfrm/xfrm_policy.c          | 1 +
+ security/selinux/include/xfrm.h | 1 +
+ 2 files changed, 2 insertions(+)
 
-diff --git a/include/net/ip6_fib.h b/include/net/ip6_fib.h
-index cd64cf3..af11e95 100644
---- a/include/net/ip6_fib.h
-+++ b/include/net/ip6_fib.h
-@@ -112,9 +112,6 @@ struct rt6_info {
- 	struct inet6_dev		*rt6i_idev;
- 	unsigned long			_rt6i_peer;
- 
--#ifdef CONFIG_XFRM
--	u32				rt6i_flow_cache_genid;
--#endif
- 	/* more non-fragment space at head required */
- 	unsigned short			rt6i_nfheader_len;
- 
-diff --git a/net/ipv6/inet6_connection_sock.c b/net/ipv6/inet6_connection_sock.c
-index 0251a60..c4f9341 100644
---- a/net/ipv6/inet6_connection_sock.c
-+++ b/net/ipv6/inet6_connection_sock.c
-@@ -175,33 +175,12 @@ void __inet6_csk_dst_store(struct sock *sk, struct dst_entry *dst,
- 			   const struct in6_addr *saddr)
+diff --git a/net/xfrm/xfrm_policy.c b/net/xfrm/xfrm_policy.c
+index 741a32a..67f456d 100644
+--- a/net/xfrm/xfrm_policy.c
++++ b/net/xfrm/xfrm_policy.c
+@@ -602,6 +602,7 @@ int xfrm_policy_insert(int dir, struct xfrm_policy *policy, int excl)
+ 	xfrm_pol_hold(policy);
+ 	net->xfrm.policy_count[dir]++;
+ 	atomic_inc(&flow_cache_genid);
++	rt_genid_bump(net);
+ 	if (delpol)
+ 		__xfrm_policy_unlink(delpol, dir);
+ 	policy->index = delpol ? delpol->index : xfrm_gen_index(net, dir);
+diff --git a/security/selinux/include/xfrm.h b/security/selinux/include/xfrm.h
+index c220f31..65f67cb 100644
+--- a/security/selinux/include/xfrm.h
++++ b/security/selinux/include/xfrm.h
+@@ -51,6 +51,7 @@ int selinux_xfrm_decode_session(struct sk_buff *skb, u32 *sid, int ckall);
+ static inline void selinux_xfrm_notify_policyload(void)
  {
- 	__ip6_dst_store(sk, dst, daddr, saddr);
--
--#ifdef CONFIG_XFRM
--	{
--		struct rt6_info *rt = (struct rt6_info  *)dst;
--		rt->rt6i_flow_cache_genid = atomic_read(&flow_cache_genid);
--	}
--#endif
+ 	atomic_inc(&flow_cache_genid);
++	rt_genid_bump(&init_net);
  }
- 
- static inline
- struct dst_entry *__inet6_csk_dst_check(struct sock *sk, u32 cookie)
- {
--	struct dst_entry *dst;
--
--	dst = __sk_dst_check(sk, cookie);
--
--#ifdef CONFIG_XFRM
--	if (dst) {
--		struct rt6_info *rt = (struct rt6_info *)dst;
--		if (rt->rt6i_flow_cache_genid != atomic_read(&flow_cache_genid)) {
--			__sk_dst_reset(sk);
--			dst = NULL;
--		}
--	}
--#endif
--
--	return dst;
-+	return __sk_dst_check(sk, cookie);
- }
- 
- static struct dst_entry *inet6_csk_route_socket(struct sock *sk,
+ #else
+ static inline int selinux_xfrm_enabled(void)
 -- 
 1.7.12
 
