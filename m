@@ -1,43 +1,48 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 17 Sep 2012 16:49:53 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Mon, 17 Sep 2012 18:14:35 +0000
 Subject: Re: [PATCH net-next v3 0/4] Take care of xfrm policy when checking dst entries
-Message-Id: <20120917.124953.1599275868994343219.davem@davemloft.net>
+Message-Id: <5057688B.3030509@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <504DFF90.3010802@6wind.com>
-	<1347350987-8054-1-git-send-email-nicolas.dichtel@6wind.com>
-In-Reply-To: <1347350987-8054-1-git-send-email-nicolas.dichtel@6wind.com>
+References: <504DFF90.3010802@6wind.com> <1347350987-8054-1-git-send-email-nicolas.dichtel@6wind.com> <20120917.124953.1599275868994343219.davem@davemloft.net>
+In-Reply-To: <20120917.124953.1599275868994343219.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: nicolas.dichtel@6wind.com
-Cc: vyasevich@gmail.com, eric.dumazet@gmail.com, sds@tycho.nsa.gov, james.l.morris@oracle.com, eparis@parisplace.org, sri@us.ibm.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: David Miller <davem@davemloft.net>
+Cc: nicolas.dichtel@6wind.com, eric.dumazet@gmail.com, sds@tycho.nsa.gov, james.l.morris@oracle.com, eparis@parisplace.org, sri@us.ibm.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-From: Nicolas Dichtel <nicolas.dichtel@6wind.com>
-Date: Tue, 11 Sep 2012 10:09:43 +0200
+On 09/17/2012 12:49 PM, David Miller wrote:
+> From: Nicolas Dichtel <nicolas.dichtel@6wind.com>
+> Date: Tue, 11 Sep 2012 10:09:43 +0200
+>
+>> The goal of these patches is to fix the following problem: a session is
+>> established (TCP, SCTP) and after a new policy is inserted. The current
+>> code does not recalculate the route, thus the traffic is not encrypted.
+>>
+>> The patch propose to check flow_cache_genid value when checking a dst
+>> entry, which is incremented each time a policy is inserted or deleted.
+>>
+>> v2: use net->ipv4.rt_genid instead of flow_cache_genid (and thus save a test
+>>      in fast path). Also move it to net->rt_genid, to be able to use it for IPv6
+>>      too. Note that IPv6 will have one more test in fast path.
+>>
+>> v3: remove unrelated "#ifdef CONFIG_XFRM" in IPv6 part
+>>      bump rt_genid in selinux code (same place than flow_cache_genid)
+>>
+>> Patches are tested with TCP and SCTP, IPv4 and IPv6.
+>
+> These patches don't apply cleanly at all.
+>
+> In the net/ipv4/route.c code we don't initialize the genid to zero,
+> we stick a random value there.
+>
+> And we don't increment it by one on flushes, instead we increment
+> it by a random amount.
+>
+> I wonder what tree these were even against, the differences were
+> so great.
+>
 
-> The goal of these patches is to fix the following problem: a session is
-> established (TCP, SCTP) and after a new policy is inserted. The current
-> code does not recalculate the route, thus the traffic is not encrypted.
-> 
-> The patch propose to check flow_cache_genid value when checking a dst
-> entry, which is incremented each time a policy is inserted or deleted.
-> 
-> v2: use net->ipv4.rt_genid instead of flow_cache_genid (and thus save a test
->     in fast path). Also move it to net->rt_genid, to be able to use it for IPv6
->     too. Note that IPv6 will have one more test in fast path.
-> 
-> v3: remove unrelated "#ifdef CONFIG_XFRM" in IPv6 part
->     bump rt_genid in selinux code (same place than flow_cache_genid)
-> 
-> Patches are tested with TCP and SCTP, IPv4 and IPv6.
+I think he expected you to take Eric's patch that removed those pieces.
 
-These patches don't apply cleanly at all.
-
-In the net/ipv4/route.c code we don't initialize the genid to zero,
-we stick a random value there.
-
-And we don't increment it by one on flushes, instead we increment
-it by a random amount.
-
-I wonder what tree these were even against, the differences were
-so great.
+-vlad
