@@ -1,386 +1,203 @@
-From: Joe Perches <joe@perches.com>
-Date: Fri, 19 Oct 2012 03:55:31 +0000
-Subject: [PATCH net-next 00/21] treewide: Use consistent api style for address testing
-Message-Id: <cover.1350618006.git.joe@perches.com>
+From: Willy Tarreau <w@1wt.eu>
+Date: Mon, 01 Oct 2012 22:53:48 +0000
+Subject: [ 111/180] sctp: Fix list corruption resulting from freeing an association on a list
+Message-Id: <20121001225202.309708269@1wt.eu>
 List-Id: <linux-sctp.vger.kernel.org>
+In-Reply-To: <6a854f579a99b4fe2efaca1057e8ae22@local>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-arm-kernel@lists.infradead.org
+To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, davej@redhat.com, "David S. Miller" <davem@davemloft.net>, Vlad Yasevich <vyasevich@gmail.com>, Sridhar Samudrala <sri@us.ibm.com>, linux-sctp@vger.kernel.org, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, Willy Tarreau <w@1wt.eu>
 
-ethernet, ipv4, and ipv6 address testing uses 3 different api naming styles.
+2.6.32-longterm review patch.  If anyone has any objections, please let me know.
 
-ethernet uses:	is_<foo>_ether_addr
-ipv4 uses:	ipv4_is_<foo>
-ipv6 uses:	ipv6_addr_<foo>
+------------------
 
-Standardize on the ipv6 style of <prefix>_addr_<type> to reduce
-the number of styles to remember.
+From: Neil Horman <nhorman@tuxdriver.com>
 
-The new consistent styles are:
+[ Upstream commit 2eebc1e188e9e45886ee00662519849339884d6d ]
 
-eth_addr_<foo>(const u8 *)
-ipv4_addr_<foo>(__be32)
-ipv6_addr_<foo>(const struct in6_addr *)
+A few days ago Dave Jones reported this oops:
 
-Add temporary backward compatibility #defines for the old names too.
+[22766.294255] general protection fault: 0000 [#1] PREEMPT SMP
+[22766.295376] CPU 0
+[22766.295384] Modules linked in:
+[22766.387137]  ffffffffa169f292 6b6b6b6b6b6b6b6b ffff880147c03a90
+ffff880147c03a74
+[22766.387135] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 00000000000
+[22766.387136] Process trinity-watchdo (pid: 10896, threadinfo ffff88013e7d2000,
+[22766.387137] Stack:
+[22766.387140]  ffff880147c03a10
+[22766.387140]  ffffffffa169f2b6
+[22766.387140]  ffff88013ed95728
+[22766.387143]  0000000000000002
+[22766.387143]  0000000000000000
+[22766.387143]  ffff880003fad062
+[22766.387144]  ffff88013c120000
+[22766.387144]
+[22766.387145] Call Trace:
+[22766.387145]  <IRQ>
+[22766.387150]  [<ffffffffa169f292>] ? __sctp_lookup_association+0x62/0xd0
+[sctp]
+[22766.387154]  [<ffffffffa169f2b6>] __sctp_lookup_association+0x86/0xd0 [sctp]
+[22766.387157]  [<ffffffffa169f597>] sctp_rcv+0x207/0xbb0 [sctp]
+[22766.387161]  [<ffffffff810d4da8>] ? trace_hardirqs_off_caller+0x28/0xd0
+[22766.387163]  [<ffffffff815827e3>] ? nf_hook_slow+0x133/0x210
+[22766.387166]  [<ffffffff815902fc>] ? ip_local_deliver_finish+0x4c/0x4c0
+[22766.387168]  [<ffffffff8159043d>] ip_local_deliver_finish+0x18d/0x4c0
+[22766.387169]  [<ffffffff815902fc>] ? ip_local_deliver_finish+0x4c/0x4c0
+[22766.387171]  [<ffffffff81590a07>] ip_local_deliver+0x47/0x80
+[22766.387172]  [<ffffffff8158fd80>] ip_rcv_finish+0x150/0x680
+[22766.387174]  [<ffffffff81590c54>] ip_rcv+0x214/0x320
+[22766.387176]  [<ffffffff81558c07>] __netif_receive_skb+0x7b7/0x910
+[22766.387178]  [<ffffffff8155856c>] ? __netif_receive_skb+0x11c/0x910
+[22766.387180]  [<ffffffff810d423e>] ? put_lock_stats.isra.25+0xe/0x40
+[22766.387182]  [<ffffffff81558f83>] netif_receive_skb+0x23/0x1f0
+[22766.387183]  [<ffffffff815596a9>] ? dev_gro_receive+0x139/0x440
+[22766.387185]  [<ffffffff81559280>] napi_skb_finish+0x70/0xa0
+[22766.387187]  [<ffffffff81559cb5>] napi_gro_receive+0xf5/0x130
+[22766.387218]  [<ffffffffa01c4679>] e1000_receive_skb+0x59/0x70 [e1000e]
+[22766.387242]  [<ffffffffa01c5aab>] e1000_clean_rx_irq+0x28b/0x460 [e1000e]
+[22766.387266]  [<ffffffffa01c9c18>] e1000e_poll+0x78/0x430 [e1000e]
+[22766.387268]  [<ffffffff81559fea>] net_rx_action+0x1aa/0x3d0
+[22766.387270]  [<ffffffff810a495f>] ? account_system_vtime+0x10f/0x130
+[22766.387273]  [<ffffffff810734d0>] __do_softirq+0xe0/0x420
+[22766.387275]  [<ffffffff8169826c>] call_softirq+0x1c/0x30
+[22766.387278]  [<ffffffff8101db15>] do_softirq+0xd5/0x110
+[22766.387279]  [<ffffffff81073bc5>] irq_exit+0xd5/0xe0
+[22766.387281]  [<ffffffff81698b03>] do_IRQ+0x63/0xd0
+[22766.387283]  [<ffffffff8168ee2f>] common_interrupt+0x6f/0x6f
+[22766.387283]  <EOI>
+[22766.387284]
+[22766.387285]  [<ffffffff8168eed9>] ? retint_swapgs+0x13/0x1b
+[22766.387285] Code: c0 90 5d c3 66 0f 1f 44 00 00 4c 89 c8 5d c3 0f 1f 00 55 48
+89 e5 48 83
+ec 20 48 89 5d e8 4c 89 65 f0 4c 89 6d f8 66 66 66 66 90 <0f> b7 87 98 00 00 00
+48 89 fb
+49 89 f5 66 c1 c0 08 66 39 46 02
+[22766.387307]
+[22766.387307] RIP
+[22766.387311]  [<ffffffffa168a2c9>] sctp_assoc_is_match+0x19/0x90 [sctp]
+[22766.387311]  RSP <ffff880147c039b0>
+[22766.387142]  ffffffffa16ab120
+[22766.599537] ---[ end trace 3f6dae82e37b17f5 ]---
+[22766.601221] Kernel panic - not syncing: Fatal exception in interrupt
 
-Joe Perches (21):
-  etherdevice: Rename is_<foo>_ether_addr tests to eth_addr_<foo>
-  net: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
-  arch: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
-  wireless: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
-  drivers: net: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
-  staging: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
-  infiniband: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
-  scsi: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
-  of: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
-  s390: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
-  usb: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
-  uwb: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
-  Documentation: networking: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
-  llc_if.h: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
-  in.h: Rename ipv4_is_<foo> functions to ipv4_addr_<foo>
-  net: Convert ipv4_is_<foo> uses to ipv4_addr_<foo>
-  infiniband: Convert ipv4_is_<foo> uses to ipv4_addr_<foo>
-  ath6kl: Convert ipv4_is_<foo> uses to ipv4_addr_<foo>
-  parisc: Convert ipv4_is_<foo> uses to ipv4_addr_<foo>
-  lockd: Convert ipv4_is_<foo> uses to ipv4_addr_<foo>
-  sctp: Convert ipv4_is_<foo> uses to ipv4_addr_<foo>
+It appears from his analysis and some staring at the code that this is likely
+occuring because an association is getting freed while still on the
+sctp_assoc_hashtable.  As a result, we get a gpf when traversing the hashtable
+while a freed node corrupts part of the list.
 
- Documentation/networking/driver.txt                |    2 +-
- arch/arm/mach-davinci/board-mityomapl138.c         |    2 +-
- arch/arm/mach-pxa/colibri-pxa3xx.c                 |    2 +-
- arch/avr32/boards/atngw100/setup.c                 |    2 +-
- arch/avr32/boards/atstk1000/atstk1002.c            |    2 +-
- arch/avr32/boards/favr-32/setup.c                  |    2 +-
- arch/avr32/boards/hammerhead/setup.c               |    2 +-
- arch/avr32/boards/merisc/setup.c                   |    2 +-
- arch/avr32/boards/mimc200/setup.c                  |    2 +-
- arch/mips/alchemy/common/platform.c                |    4 +-
- arch/um/drivers/net_kern.c                         |    6 +-
- drivers/infiniband/core/cma.c                      |    4 +-
- drivers/infiniband/hw/amso1100/c2.c                |    2 +-
- drivers/infiniband/hw/nes/nes_nic.c                |    2 +-
- drivers/net/bonding/bond_3ad.c                     |    2 +-
- drivers/net/bonding/bond_alb.c                     |    2 +-
- drivers/net/bonding/bond_main.c                    |    6 +-
- drivers/net/dummy.c                                |    2 +-
- drivers/net/ethernet/3com/3c59x.c                  |    2 +-
- drivers/net/ethernet/3com/typhoon.c                |    2 +-
- drivers/net/ethernet/8390/etherh.c                 |    2 +-
- drivers/net/ethernet/adi/bfin_mac.c                |    6 +-
- drivers/net/ethernet/aeroflex/greth.c              |    4 +-
- drivers/net/ethernet/amd/au1000_eth.c              |    2 +-
- drivers/net/ethernet/amd/depca.c                   |    4 +-
- drivers/net/ethernet/amd/pcnet32.c                 |    8 ++--
- drivers/net/ethernet/atheros/atl1c/atl1c_hw.c      |    2 +-
- drivers/net/ethernet/atheros/atl1c/atl1c_main.c    |    2 +-
- drivers/net/ethernet/atheros/atl1e/atl1e_hw.c      |    4 +-
- drivers/net/ethernet/atheros/atl1e/atl1e_main.c    |    2 +-
- drivers/net/ethernet/atheros/atlx/atl1.c           |   10 ++--
- drivers/net/ethernet/atheros/atlx/atl2.c           |   14 +++---
- drivers/net/ethernet/atheros/atlx/atlx.c           |    2 +-
- drivers/net/ethernet/broadcom/b44.c                |    4 +-
- drivers/net/ethernet/broadcom/bnx2.c               |    2 +-
- drivers/net/ethernet/broadcom/bnx2x/bnx2x_cmn.c    |    6 +-
- drivers/net/ethernet/broadcom/bnx2x/bnx2x_cmn.h    |    4 +-
- drivers/net/ethernet/broadcom/bnx2x/bnx2x_main.c   |    6 +-
- drivers/net/ethernet/broadcom/bnx2x/bnx2x_sp.c     |    2 +-
- drivers/net/ethernet/broadcom/cnic.c               |    2 +-
- drivers/net/ethernet/broadcom/tg3.c                |    6 +-
- drivers/net/ethernet/brocade/bna/bnad.c            |    6 +-
- drivers/net/ethernet/cadence/at91_ether.c          |    6 +-
- drivers/net/ethernet/cadence/macb.c                |    4 +-
- drivers/net/ethernet/calxeda/xgmac.c               |    6 +-
- drivers/net/ethernet/chelsio/cxgb3/cxgb3_main.c    |    2 +-
- drivers/net/ethernet/chelsio/cxgb4/cxgb4_main.c    |    2 +-
- .../net/ethernet/chelsio/cxgb4vf/cxgb4vf_main.c    |    2 +-
- drivers/net/ethernet/cirrus/ep93xx_eth.c           |    2 +-
- drivers/net/ethernet/cirrus/mac89x0.c              |    2 +-
- drivers/net/ethernet/cisco/enic/enic_dev.c         |    4 +-
- drivers/net/ethernet/cisco/enic/enic_main.c        |   10 ++--
- drivers/net/ethernet/cisco/enic/enic_pp.c          |   10 ++--
- drivers/net/ethernet/davicom/dm9000.c              |    6 +-
- drivers/net/ethernet/dec/ewrk3.c                   |    4 +-
- drivers/net/ethernet/dec/tulip/de4x5.c             |    4 +-
- drivers/net/ethernet/dlink/sundance.c              |    2 +-
- drivers/net/ethernet/dnet.c                        |    6 +-
- drivers/net/ethernet/emulex/benet/be_main.c        |    8 ++--
- drivers/net/ethernet/ethoc.c                       |    6 +-
- drivers/net/ethernet/faraday/ftgmac100.c           |    2 +-
- drivers/net/ethernet/faraday/ftmac100.c            |    2 +-
- drivers/net/ethernet/freescale/fec.c               |    8 ++--
- drivers/net/ethernet/freescale/fec_mpc52xx.c       |    2 +-
- drivers/net/ethernet/freescale/gianfar_ethtool.c   |   12 ++--
- drivers/net/ethernet/freescale/ucc_geth.c          |    2 +-
- drivers/net/ethernet/i825xx/ether1.c               |    2 +-
- drivers/net/ethernet/ibm/ehea/ehea_main.c          |    4 +-
- drivers/net/ethernet/intel/e100.c                  |    4 +-
- drivers/net/ethernet/intel/e1000/e1000_main.c      |    4 +-
- drivers/net/ethernet/intel/e1000e/mac.c            |    2 +-
- drivers/net/ethernet/intel/e1000e/netdev.c         |    4 +-
- drivers/net/ethernet/intel/igb/e1000_mac.c         |    2 +-
- drivers/net/ethernet/intel/igb/igb_main.c          |    8 ++--
- drivers/net/ethernet/intel/igbvf/netdev.c          |    6 +-
- drivers/net/ethernet/intel/ixgb/ixgb_hw.c          |    6 +-
- drivers/net/ethernet/intel/ixgb/ixgb_main.c        |    6 +-
- drivers/net/ethernet/intel/ixgbe/ixgbe_fcoe.c      |    2 +-
- drivers/net/ethernet/intel/ixgbe/ixgbe_main.c      |   14 +++---
- drivers/net/ethernet/intel/ixgbe/ixgbe_sriov.c     |    6 +-
- drivers/net/ethernet/intel/ixgbevf/ixgbevf_main.c  |    8 ++--
- drivers/net/ethernet/lantiq_etop.c                 |    2 +-
- drivers/net/ethernet/marvell/mv643xx_eth.c         |    4 +-
- drivers/net/ethernet/marvell/pxa168_eth.c          |    2 +-
- drivers/net/ethernet/marvell/skge.c                |    6 +-
- drivers/net/ethernet/marvell/sky2.c                |    2 +-
- drivers/net/ethernet/mellanox/mlx4/en_netdev.c     |    2 +-
- .../net/ethernet/mellanox/mlx4/resource_tracker.c  |    4 +-
- drivers/net/ethernet/micrel/ks8695net.c            |    6 +-
- drivers/net/ethernet/micrel/ks8842.c               |    4 +-
- drivers/net/ethernet/micrel/ks8851.c               |    4 +-
- drivers/net/ethernet/micrel/ks8851_mll.c           |    2 +-
- drivers/net/ethernet/microchip/enc28j60.c          |    4 +-
- drivers/net/ethernet/myricom/myri10ge/myri10ge.c   |    2 +-
- drivers/net/ethernet/neterion/s2io.c               |    2 +-
- drivers/net/ethernet/neterion/vxge/vxge-config.c   |    2 +-
- drivers/net/ethernet/neterion/vxge/vxge-main.c     |   12 ++--
- drivers/net/ethernet/netx-eth.c                    |    2 +-
- drivers/net/ethernet/nuvoton/w90p910_ether.c       |    4 +-
- drivers/net/ethernet/nvidia/forcedeth.c            |    4 +-
- drivers/net/ethernet/nxp/lpc_eth.c                 |    8 ++--
- drivers/net/ethernet/octeon/octeon_mgmt.c          |    2 +-
- .../net/ethernet/oki-semi/pch_gbe/pch_gbe_main.c   |    6 +-
- drivers/net/ethernet/pasemi/pasemi_mac.c           |    4 +-
- .../net/ethernet/qlogic/netxen/netxen_nic_main.c   |    4 +-
- drivers/net/ethernet/qlogic/qla3xxx.c              |    2 +-
- drivers/net/ethernet/qlogic/qlcnic/qlcnic_main.c   |    4 +-
- drivers/net/ethernet/qlogic/qlge/qlge_main.c       |    6 +-
- drivers/net/ethernet/realtek/8139cp.c              |    2 +-
- drivers/net/ethernet/realtek/8139too.c             |    2 +-
- drivers/net/ethernet/realtek/r8169.c               |    2 +-
- drivers/net/ethernet/renesas/sh_eth.c              |    4 +-
- drivers/net/ethernet/seeq/ether3.c                 |    2 +-
- drivers/net/ethernet/sfc/efx.c                     |    2 +-
- drivers/net/ethernet/sfc/ethtool.c                 |    6 +-
- drivers/net/ethernet/sfc/siena_sriov.c             |    6 +-
- drivers/net/ethernet/sis/sis900.c                  |    2 +-
- drivers/net/ethernet/smsc/smc911x.c                |    4 +-
- drivers/net/ethernet/smsc/smc91x.c                 |    4 +-
- drivers/net/ethernet/smsc/smsc911x.c               |   10 ++--
- drivers/net/ethernet/smsc/smsc9420.c               |    6 +-
- drivers/net/ethernet/stmicro/stmmac/stmmac_main.c  |    4 +-
- drivers/net/ethernet/sun/niu.c                     |    8 ++--
- drivers/net/ethernet/sun/sungem.c                  |    2 +-
- drivers/net/ethernet/ti/cpsw.c                     |    2 +-
- drivers/net/ethernet/ti/davinci_emac.c             |    6 +-
- drivers/net/ethernet/tile/tilegx.c                 |    4 +-
- drivers/net/ethernet/tile/tilepro.c                |    4 +-
- drivers/net/ethernet/toshiba/ps3_gelic_net.c       |    2 +-
- drivers/net/ethernet/toshiba/ps3_gelic_wireless.c  |    2 +-
- drivers/net/ethernet/toshiba/spider_net.c          |    4 +-
- drivers/net/ethernet/toshiba/tc35815.c             |    4 +-
- drivers/net/ethernet/tundra/tsi108_eth.c           |    8 ++--
- drivers/net/ethernet/via/via-rhine.c               |    2 +-
- drivers/net/ethernet/wiznet/w5100.c                |    6 +-
- drivers/net/ethernet/wiznet/w5300.c                |    6 +-
- drivers/net/ethernet/xilinx/ll_temac_main.c        |    2 +-
- drivers/net/ethernet/xilinx/xilinx_axienet_main.c  |    2 +-
- drivers/net/hamradio/bpqether.c                    |    2 +-
- drivers/net/ifb.c                                  |    2 +-
- drivers/net/macvlan.c                              |   16 +++---
- drivers/net/phy/at803x.c                           |    2 +-
- drivers/net/rionet.c                               |    4 +-
- drivers/net/team/team.c                            |    4 +-
- drivers/net/tun.c                                  |    4 +-
- drivers/net/usb/asix_common.c                      |    2 +-
- drivers/net/usb/dm9601.c                           |    4 +-
- drivers/net/usb/mcs7830.c                          |    2 +-
- drivers/net/usb/smsc75xx.c                         |    2 +-
- drivers/net/usb/smsc95xx.c                         |    2 +-
- drivers/net/veth.c                                 |    2 +-
- drivers/net/vxlan.c                                |    4 +-
- drivers/net/wimax/i2400m/driver.c                  |    2 +-
- drivers/net/wireless/adm8211.c                     |    2 +-
- drivers/net/wireless/airo.c                        |    4 +-
- drivers/net/wireless/at76c50x-usb.c                |    8 ++--
- drivers/net/wireless/ath/ath6kl/cfg80211.c         |    8 ++--
- drivers/net/wireless/ath/ath6kl/main.c             |    8 ++--
- drivers/net/wireless/ath/ath6kl/txrx.c             |   10 ++--
- drivers/net/wireless/ath/ath6kl/wmi.c              |    4 +-
- drivers/net/wireless/ath/ath9k/recv.c              |    8 ++--
- drivers/net/wireless/b43/main.c                    |    2 +-
- drivers/net/wireless/b43legacy/main.c              |    2 +-
- .../net/wireless/brcm80211/brcmfmac/dhd_linux.c    |    4 +-
- .../net/wireless/brcm80211/brcmfmac/wl_cfg80211.c  |    2 +-
- .../net/wireless/brcm80211/brcmsmac/mac80211_if.c  |    2 +-
- drivers/net/wireless/brcm80211/brcmsmac/main.c     |   16 +++---
- drivers/net/wireless/hostap/hostap_info.c          |    2 +-
- drivers/net/wireless/hostap/hostap_ioctl.c         |    8 ++--
- drivers/net/wireless/hostap/hostap_main.c          |    2 +-
- drivers/net/wireless/ipw2x00/ipw2100.c             |    6 +-
- drivers/net/wireless/ipw2x00/ipw2200.c             |   18 +++---
- drivers/net/wireless/ipw2x00/libipw_rx.c           |   12 ++--
- drivers/net/wireless/ipw2x00/libipw_tx.c           |    4 +-
- drivers/net/wireless/iwlegacy/3945-mac.c           |    2 +-
- drivers/net/wireless/iwlegacy/4965-mac.c           |    2 +-
- drivers/net/wireless/iwlegacy/common.c             |    2 +-
- drivers/net/wireless/iwlwifi/dvm/sta.c             |    2 +-
- drivers/net/wireless/libertas_tf/main.c            |    2 +-
- drivers/net/wireless/mwifiex/join.c                |    2 +-
- drivers/net/wireless/mwifiex/scan.c                |    2 +-
- drivers/net/wireless/mwifiex/sta_cmd.c             |    2 +-
- drivers/net/wireless/mwifiex/sta_cmdresp.c         |    2 +-
- drivers/net/wireless/mwifiex/uap_txrx.c            |    2 +-
- drivers/net/wireless/mwl8k.c                       |    2 +-
- drivers/net/wireless/orinoco/wext.c                |    4 +-
- drivers/net/wireless/p54/eeprom.c                  |    2 +-
- drivers/net/wireless/rndis_wlan.c                  |   18 +++---
- drivers/net/wireless/rt2x00/rt2400pci.c            |    2 +-
- drivers/net/wireless/rt2x00/rt2500pci.c            |    2 +-
- drivers/net/wireless/rt2x00/rt2500usb.c            |    2 +-
- drivers/net/wireless/rt2x00/rt2800lib.c            |    8 ++--
- drivers/net/wireless/rt2x00/rt61pci.c              |    2 +-
- drivers/net/wireless/rt2x00/rt73usb.c              |    2 +-
- drivers/net/wireless/rtl818x/rtl8180/dev.c         |    4 +-
- drivers/net/wireless/rtl818x/rtl8187/dev.c         |    4 +-
- drivers/net/wireless/rtlwifi/base.c                |    6 +-
- drivers/net/wireless/rtlwifi/cam.c                 |    2 +-
- drivers/net/wireless/rtlwifi/pci.c                 |    8 ++--
- drivers/net/wireless/rtlwifi/rc.c                  |    4 +-
- drivers/net/wireless/rtlwifi/rtl8192ce/trx.c       |    4 +-
- drivers/net/wireless/rtlwifi/rtl8192cu/trx.c       |    4 +-
- drivers/net/wireless/rtlwifi/usb.c                 |   12 ++--
- drivers/net/wireless/ti/wl1251/main.c              |   12 ++--
- drivers/net/wireless/ti/wlcore/cmd.c               |    2 +-
- drivers/net/wireless/ti/wlcore/main.c              |    6 +-
- drivers/net/wireless/ti/wlcore/tx.c                |    2 +-
- drivers/net/wireless/wl3501_cs.c                   |    2 +-
- drivers/net/wireless/zd1211rw/zd_mac.c             |    2 +-
- drivers/of/of_net.c                                |    6 +-
- drivers/parisc/led.c                               |    2 +-
- drivers/s390/net/qeth_l2_main.c                    |    4 +-
- drivers/scsi/bnx2fc/bnx2fc_els.c                   |    4 +-
- drivers/scsi/bnx2fc/bnx2fc_fcoe.c                  |    2 +-
- drivers/scsi/fcoe/fcoe.c                           |   12 ++--
- drivers/scsi/fcoe/fcoe_ctlr.c                      |    8 ++--
- drivers/scsi/fnic/fnic_fcs.c                       |    6 +-
- drivers/staging/ccg/u_ether.c                      |    6 +-
- drivers/staging/csr/sme_wext.c                     |    2 +-
- drivers/staging/et131x/et131x.c                    |    4 +-
- drivers/staging/gdm72xx/gdm_wimax.c                |    2 +-
- drivers/staging/octeon/ethernet.c                  |    2 +-
- drivers/staging/ozwpan/ozcdev.c                    |    2 +-
- .../rtl8187se/ieee80211/ieee80211_softmac.c        |    2 +-
- .../rtl8187se/ieee80211/ieee80211_softmac_wx.c     |    2 +-
- drivers/staging/rtl8187se/ieee80211/ieee80211_tx.c |    2 +-
- drivers/staging/rtl8187se/r8180_core.c             |    2 +-
- drivers/staging/rtl8192e/rtl8192e/rtl_core.c       |    6 +-
- drivers/staging/rtl8192e/rtl819x_TSProc.c          |    2 +-
- drivers/staging/rtl8192e/rtllib_rx.c               |    8 ++--
- drivers/staging/rtl8192e/rtllib_softmac.c          |    4 +-
- drivers/staging/rtl8192e/rtllib_softmac_wx.c       |    4 +-
- drivers/staging/rtl8192e/rtllib_tx.c               |   12 ++--
- drivers/staging/rtl8192u/ieee80211/ieee80211_rx.c  |    4 +-
- .../staging/rtl8192u/ieee80211/ieee80211_softmac.c |    2 +-
- .../rtl8192u/ieee80211/ieee80211_softmac_wx.c      |    2 +-
- drivers/staging/rtl8192u/ieee80211/ieee80211_tx.c  |   12 ++--
- .../staging/rtl8192u/ieee80211/rtl819x_TSProc.c    |    2 +-
- drivers/staging/rtl8192u/r8192U_core.c             |    8 ++--
- drivers/staging/rtl8712/rtl871x_ioctl_linux.c      |    2 +-
- drivers/staging/rtl8712/rtl871x_ioctl_set.c        |    2 +-
- drivers/staging/rtl8712/rtl871x_mlme.c             |    2 +-
- drivers/staging/rtl8712/rtl871x_recv.c             |    8 ++--
- drivers/staging/slicoss/slicoss.c                  |    2 +-
- drivers/staging/vt6655/bssdb.c                     |    2 +-
- drivers/staging/vt6655/card.c                      |    2 +-
- drivers/staging/vt6655/device_main.c               |    2 +-
- drivers/staging/vt6655/dpc.c                       |    4 +-
- drivers/staging/vt6655/hostap.c                    |    4 +-
- drivers/staging/vt6655/iwctl.c                     |    2 +-
- drivers/staging/vt6655/key.c                       |    2 +-
- drivers/staging/vt6655/mib.c                       |    8 ++--
- drivers/staging/vt6655/rxtx.c                      |   10 ++--
- drivers/staging/vt6655/wpactl.c                    |    4 +-
- drivers/staging/vt6656/bssdb.c                     |    2 +-
- drivers/staging/vt6656/dpc.c                       |    4 +-
- drivers/staging/vt6656/hostap.c                    |    4 +-
- drivers/staging/vt6656/iwctl.c                     |    2 +-
- drivers/staging/vt6656/key.c                       |    2 +-
- drivers/staging/vt6656/rxtx.c                      |   14 +++---
- drivers/staging/vt6656/wpactl.c                    |    2 +-
- drivers/staging/wlags49_h2/wl_wext.c               |    2 +-
- drivers/usb/gadget/u_ether.c                       |    6 +-
- drivers/uwb/address.c                              |    2 +-
- include/linux/etherdevice.h                        |   36 ++++++++-----
- include/linux/in.h                                 |   40 ++++++++++----
- include/linux/lockd/lockd.h                        |    4 +-
- include/net/llc_if.h                               |    4 +-
- include/net/sctp/constants.h                       |   12 ++--
- net/802/stp.c                                      |    4 +-
- net/8021q/vlan_dev.c                               |    6 +-
- net/8021q/vlan_netlink.c                           |    2 +-
- net/batman-adv/bat_iv_ogm.c                        |    2 +-
- net/batman-adv/bridge_loop_avoidance.c             |    8 ++--
- net/batman-adv/routing.c                           |   20 ++++----
- net/batman-adv/soft-interface.c                    |    4 +-
- net/batman-adv/unicast.c                           |    2 +-
- net/batman-adv/vis.c                               |    4 +-
- net/bridge/br_device.c                             |    6 +-
- net/bridge/br_fdb.c                                |    2 +-
- net/bridge/br_if.c                                 |    2 +-
- net/bridge/br_input.c                              |    8 ++--
- net/bridge/br_multicast.c                          |    4 +-
- net/bridge/br_netlink.c                            |    2 +-
- net/core/netpoll.c                                 |    2 +-
- net/core/pktgen.c                                  |   14 +++---
- net/core/rtnetlink.c                               |    2 +-
- net/dsa/slave.c                                    |    2 +-
- net/ethernet/eth.c                                 |    6 +-
- net/ipv4/arp.c                                     |    4 +-
- net/ipv4/datagram.c                                |    2 +-
- net/ipv4/devinet.c                                 |    4 +-
- net/ipv4/fib_frontend.c                            |   12 ++--
- net/ipv4/igmp.c                                    |   12 ++--
- net/ipv4/ip_gre.c                                  |   22 ++++----
- net/ipv4/ipmr.c                                    |    4 +-
- net/ipv4/netfilter/ipt_rpfilter.c                  |   10 ++--
- net/ipv4/ping.c                                    |    2 +-
- net/ipv4/raw.c                                     |    2 +-
- net/ipv4/route.c                                   |   58 ++++++++++----------
- net/ipv4/udp.c                                     |    2 +-
- net/ipv6/addrconf.c                                |   12 ++--
- net/ipv6/ip6_gre.c                                 |    2 +-
- net/l2tp/l2tp_ip.c                                 |    2 +-
- net/l2tp/l2tp_ip6.c                                |    2 +-
- net/mac80211/cfg.c                                 |    2 +-
- net/mac80211/ibss.c                                |    8 ++--
- net/mac80211/ieee80211_i.h                         |    2 +-
- net/mac80211/iface.c                               |   12 ++--
- net/mac80211/mesh.c                                |    2 +-
- net/mac80211/mesh_hwmp.c                           |    4 +-
- net/mac80211/mesh_pathtbl.c                        |    4 +-
- net/mac80211/mesh_plink.c                          |    2 +-
- net/mac80211/mlme.c                                |    4 +-
- net/mac80211/rx.c                                  |   50 +++++++++---------
- net/mac80211/sta_info.c                            |    2 +-
- net/mac80211/status.c                              |    6 +-
- net/mac80211/tx.c                                  |   22 ++++----
- net/mac80211/wme.c                                 |    4 +-
- net/netfilter/ipvs/ip_vs_xmit.c                    |    6 +-
- net/netfilter/xt_cluster.c                         |    2 +-
- net/netfilter/xt_pkttype.c                         |    2 +-
- net/openvswitch/flow.c                             |    4 +-
- net/openvswitch/vport-internal_dev.c               |    2 +-
- net/sctp/protocol.c                                |   10 ++--
- net/wireless/core.c                                |    2 +-
- net/wireless/ibss.c                                |    2 +-
- net/wireless/nl80211.c                             |    4 +-
- net/wireless/util.c                                |    4 +-
- net/wireless/wext-compat.c                         |    2 +-
- net/wireless/wext-sme.c                            |    2 +-
- 331 files changed, 833 insertions(+), 809 deletions(-)
+Nominally I would think that an mibalanced refcount was responsible for this,
+but I can't seem to find any obvious imbalance.  What I did note however was
+that the two places where we create an association using
+sctp_primitive_ASSOCIATE (__sctp_connect and sctp_sendmsg), have failure paths
+which free a newly created association after calling sctp_primitive_ASSOCIATE.
+sctp_primitive_ASSOCIATE brings us into the sctp_sf_do_prm_asoc path, which
+issues a SCTP_CMD_NEW_ASOC side effect, which in turn adds a new association to
+the aforementioned hash table.  the sctp command interpreter that process side
+effects has not way to unwind previously processed commands, so freeing the
+association from the __sctp_connect or sctp_sendmsg error path would lead to a
+freed association remaining on this hash table.
 
+I've fixed this but modifying sctp_[un]hash_established to use hlist_del_init,
+which allows us to proerly use hlist_unhashed to check if the node is on a
+hashlist safely during a delete.  That in turn alows us to safely call
+sctp_unhash_established in the __sctp_connect and sctp_sendmsg error paths
+before freeing them, regardles of what the associations state is on the hash
+list.
+
+I noted, while I was doing this, that the __sctp_unhash_endpoint was using
+hlist_unhsashed in a simmilar fashion, but never nullified any removed nodes
+pointers to make that function work properly, so I fixed that up in a simmilar
+fashion.
+
+I attempted to test this using a virtual guest running the SCTP_RR test from
+netperf in a loop while running the trinity fuzzer, both in a loop.  I wasn't
+able to recreate the problem prior to this fix, nor was I able to trigger the
+failure after (neither of which I suppose is suprising).  Given the trace above
+however, I think its likely that this is what we hit.
+
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+Reported-by: davej@redhat.com
+CC: davej@redhat.com
+CC: "David S. Miller" <davem@davemloft.net>
+CC: Vlad Yasevich <vyasevich@gmail.com>
+CC: Sridhar Samudrala <sri@us.ibm.com>
+CC: linux-sctp@vger.kernel.org
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Willy Tarreau <w@1wt.eu>
+---
+ net/sctp/input.c  |    7 ++-----
+ net/sctp/socket.c |   12 ++++++++++--
+ 2 files changed, 12 insertions(+), 7 deletions(-)
+
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 254afea..e8e73f1 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -739,15 +739,12 @@ static void __sctp_unhash_endpoint(struct sctp_endpoint *ep)
+ 
+ 	epb = &ep->base;
+ 
+-	if (hlist_unhashed(&epb->node))
+-		return;
+-
+ 	epb->hashent = sctp_ep_hashfn(epb->bind_addr.port);
+ 
+ 	head = &sctp_ep_hashtable[epb->hashent];
+ 
+ 	sctp_write_lock(&head->lock);
+-	__hlist_del(&epb->node);
++	hlist_del_init(&epb->node);
+ 	sctp_write_unlock(&head->lock);
+ }
+ 
+@@ -828,7 +825,7 @@ static void __sctp_unhash_established(struct sctp_association *asoc)
+ 	head = &sctp_assoc_hashtable[epb->hashent];
+ 
+ 	sctp_write_lock(&head->lock);
+-	__hlist_del(&epb->node);
++	hlist_del_init(&epb->node);
+ 	sctp_write_unlock(&head->lock);
+ }
+ 
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 3a95fcb..1f9843e 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1142,8 +1142,14 @@ out_free:
+ 	SCTP_DEBUG_PRINTK("About to exit __sctp_connect() free asoc: %p"
+ 			  " kaddrs: %p err: %d\n",
+ 			  asoc, kaddrs, err);
+-	if (asoc)
++	if (asoc) {
++		/* sctp_primitive_ASSOCIATE may have added this association
++		 * To the hash table, try to unhash it, just in case, its a noop
++		 * if it wasn't hashed so we're safe
++		 */
++		sctp_unhash_established(asoc);
+ 		sctp_association_free(asoc);
++	}
+ 	return err;
+ }
+ 
+@@ -1851,8 +1857,10 @@ SCTP_STATIC int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
+ 	goto out_unlock;
+ 
+ out_free:
+-	if (new_asoc)
++	if (new_asoc) {
++		sctp_unhash_established(asoc);
+ 		sctp_association_free(asoc);
++	}
+ out_unlock:
+ 	sctp_release_sock(sk);
+ 
 -- 
-1.7.8.111.gad25c.dirty
+1.7.2.1.45.g54fbc
+
+
 
