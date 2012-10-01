@@ -1,14 +1,19 @@
-From: "supreme. finance" <suttr@gmail.com>
-Date: Mon, 15 Oct 2012 20:04:45 +0000
-Subject: Business-Darlehen
-Message-Id: <1350331485.507c6c5ddb64d@netmail.pipex.net>
+From: "Mrs. Maria Bristow" <no-reply@mx2.4shared.com>
+Date: Mon, 01 Oct 2012 12:09:14 +0000
+Subject: RE: Please am dying of breast cancer !!!
+Message-Id: <201210011213.q91CCjvb031201@srv1.iexpress.com.br>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="windows-1252"
 Content-Transfer-Encoding: quoted-printable
+To: Recipients <no-reply@mx2.4shared.com>
 
-Wir bieten legitimen Darlehen wie pers=F6nliche Kredite & Business Darlehen=
- ohne Sicherheiten mit maximaler Garantie,
-=80 5.000 bis =80 90.000.000, Zinss=E4tze niedrig wie 3% in 1 Jahr bis 40 J=
-ahre R=FCckzahlungsfrist =FCberall in der Welt
+Hello,
 
+Am dying of breast cancer and I need your assistance to help me carry out m=
+y dream charity work with my funds =E2=82=AC2.8M Euros with a Security firm=
+, if you are interested please reach me for more details on this email: mar=
+ia.bristow@1email.eu
+
+Yours Sincerely,
+Mrs. Maria Bristow
