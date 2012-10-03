@@ -1,41 +1,35 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Mon, 08 Oct 2012 12:38:43 +0000
-Subject: Re: [PATCH] net: sctp: Fix typo in socket.c
-Message-Id: <5072C953.9080207@gmail.com>
+From: Nicolas Dichtel <nicolas.dichtel@6wind.com>
+Date: Wed, 03 Oct 2012 15:43:21 +0000
+Subject: [RFC PATCH 1/2] sctp: fix a typo in prototype of __sctp_rcv_lookup()
+Message-Id: <1349279002-4008-1-git-send-email-nicolas.dichtel@6wind.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1349448624-15060-1-git-send-email-standby24x7@gmail.com>
-In-Reply-To: <1349448624-15060-1-git-send-email-standby24x7@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Masanari Iida <standby24x7@gmail.com>
-Cc: sri@us.ibm.com, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
+To: linux-sctp@vger.kernel.org, vyasevich@gmail.com
+Cc: netdev@vger.kernel.org, Nicolas Dichtel <nicolas.dichtel@6wind.com>
 
-On 10/05/2012 10:50 AM, Masanari Iida wrote:
-> Correct spelling typo in net/sctp/socket.c
->
-> Signed-off-by: Masanari Iida <standby24x7@gmail.com>
+Just to avoid confusion when people only reads this prototype.
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+Signed-off-by: Nicolas Dichtel <nicolas.dichtel@6wind.com>
+---
+ net/sctp/input.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
--vlad
-
-> ---
->   net/sctp/socket.c | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
->
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index d37d24f..aaeff63 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -973,7 +973,7 @@ SCTP_STATIC int sctp_setsockopt_bindx(struct sock* sk,
->   	void *addr_buf;
->   	struct sctp_af *af;
->
-> -	SCTP_DEBUG_PRINTK("sctp_setsocktopt_bindx: sk %p addrs %p"
-> +	SCTP_DEBUG_PRINTK("sctp_setsockopt_bindx: sk %p addrs %p"
->   			  " addrs_size %d opt %d\n", sk, addrs, addrs_size, op);
->
->   	if (unlikely(addrs_size <= 0))
->
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 25dfe73..8bd3c27 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -68,8 +68,8 @@
+ static int sctp_rcv_ootb(struct sk_buff *);
+ static struct sctp_association *__sctp_rcv_lookup(struct net *net,
+ 				      struct sk_buff *skb,
+-				      const union sctp_addr *laddr,
+ 				      const union sctp_addr *paddr,
++				      const union sctp_addr *laddr,
+ 				      struct sctp_transport **transportp);
+ static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(struct net *net,
+ 						const union sctp_addr *laddr);
+-- 
+1.7.12
 
