@@ -1,32 +1,34 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 26 Oct 2012 06:23:03 +0000
-Subject: Re: [PATCH] MAINTAINERS: Add myself to list of SCTP maintainers
-Message-Id: <20121026.022303.1471074243347952967.davem@davemloft.net>
+From: Masanari Iida <standby24x7@gmail.com>
+Date: Fri, 05 Oct 2012 14:50:24 +0000
+Subject: [PATCH] net: sctp: Fix typo in socket.c
+Message-Id: <1349448624-15060-1-git-send-email-standby24x7@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1351106811-23601-1-git-send-email-nhorman@tuxdriver.com>
-	<50893A28.8060206@gmail.com>
-In-Reply-To: <50893A28.8060206@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vyasevich@gmail.com
-Cc: nhorman@tuxdriver.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: vyasevich@gmail.com, sri@us.ibm.com, linux-sctp@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, Masanari Iida <standby24x7@gmail.com>
 
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Thu, 25 Oct 2012 09:10:00 -0400
+Correct spelling typo in net/sctp/socket.c
 
-> On 10/24/2012 03:26 PM, Neil Horman wrote:
->> I've been messing with the code for a bit, and I figured Vlad could
->> use a hand
->> as interest in the protocol has picked up over the last year or so.
->> I've asked
->> him, and he doesn't seem too upset over the idea :)
->>
->> Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
->> CC: Vlad Yasevich <vyasevich@gmail.com>
->> CC: "David S. Miller" <davem@davemloft.net>
->> CC: linux-sctp@vger.kernel.org
-> 
-> Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+Signed-off-by: Masanari Iida <standby24x7@gmail.com>
+---
+ net/sctp/socket.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Applied.
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index d37d24f..aaeff63 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -973,7 +973,7 @@ SCTP_STATIC int sctp_setsockopt_bindx(struct sock* sk,
+ 	void *addr_buf;
+ 	struct sctp_af *af;
+ 
+-	SCTP_DEBUG_PRINTK("sctp_setsocktopt_bindx: sk %p addrs %p"
++	SCTP_DEBUG_PRINTK("sctp_setsockopt_bindx: sk %p addrs %p"
+ 			  " addrs_size %d opt %d\n", sk, addrs, addrs_size, op);
+ 
+ 	if (unlikely(addrs_size <= 0))
+-- 
+1.8.0.rc0.18.gf84667d
+
