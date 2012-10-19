@@ -1,36 +1,81 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 29 Oct 2012 19:04:44 +0000
-Subject: Re: [PATCH] sctp: Clean up type-punning in sctp_cmd_t union
-Message-Id: <20121029.150444.905377521761602639.davem@davemloft.net>
+From: Sasha Levin <sasha.levin@oracle.com>
+Date: Fri, 19 Oct 2012 02:33:29 +0000
+Subject: net,sctp: oops in sctp_do_sm
+Message-Id: <5080BBF9.1080208@oracle.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20121026.171019.702275326710216395.davem@davemloft.net>
-	<AE90C24D6B3A694183C094C60CF0A2F6026B7076@saturn3.aculab.com>
-	<20121029185932.GC10177@hmsreliant.think-freely.org>
-In-Reply-To: <20121029185932.GC10177@hmsreliant.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: nhorman@tuxdriver.com
-Cc: David.Laight@ACULAB.COM, vyasevich@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: vyasevich@gmail.com, sri@us.ibm.com, davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, Dave Jones <davej@redhat.com>
 
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 29 Oct 2012 14:59:32 -0400
+Hi all,
 
-> I don't think thats whats going on at all.  The problem, as commit
-> 19c7e9eef503dc1ae926f3d26c56f88bee568d7b describes it, is that ia64 was
-> speculatively loading a value from memory of type sctp_arg_t.  If the
-> initialization step set the value of one of the smaller members of the union
-> (say a short), then the load stage may still load a larger amount of data (given
-> that the union is larger than its smallest members).  That results in part of
-> the load being uninitalized, and ia64 declaring it Not A Thing, and consequently
-> trapping out.
+While fuzzing with trinity inside a KVM tools (lkvm) guest running today's linux-next, I've
+stumbled on the following:
 
-Agreed.
+[  439.574039] BUG: unable to handle kernel paging request at ffff88001b9f40c8
+[  439.576486] IP: [<ffffffff83746fc3>] sctp_do_sm+0x293/0x310
+[  439.578128] PGD 4e27063 PUD 4e2b063 PMD 1fa57067 PTE 1b9f4160
+[  439.580796] Oops: 0000 [#1] PREEMPT SMP DEBUG_PAGEALLOC
+[  439.581635] Dumping ftrace buffer:
+[  439.582171]    (ftrace buffer empty)
+[  439.582673] CPU 3
+[  439.582957] Pid: 7101, comm: trinity-child16 Tainted: G        W    3.7.0-rc1-next-20121018-sasha-00002-g60a870d-dirty #62
+[  439.582986] RIP: 0010:[<ffffffff83746fc3>]  [<ffffffff83746fc3>] sctp_do_sm+0x293/0x310
+[  439.582986] RSP: 0018:ffff880010c57988  EFLAGS: 00010286
+[  439.582986] RAX: 0000000000000003 RBX: 0000000000000001 RCX: 0000000000000006
+[  439.582986] RDX: 0000000000000003 RSI: 0000000000000001 RDI: ffff880010c579d0
+[  439.582986] RBP: ffff880010c57ae8 R08: 0000000000000000 R09: 0000000000000000
+[  439.582986] R10: 0000000000000001 R11: 0000000000000000 R12: 0000000000000004
+[  439.582986] R13: ffff88001b9f4000 R14: ffff880065d22600 R15: 0000000000000003
+[  439.582986] FS:  00007f9a949c3700(0000) GS:ffff880067600000(0000) knlGS:0000000000000000
+[  439.582986] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  439.582986] CR2: ffff88001b9f40c8 CR3: 0000000015850000 CR4: 00000000000406e0
+[  439.582986] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+[  439.582986] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+[  439.582986] Process trinity-child16 (pid: 7101, threadinfo ffff880010c56000, task ffff880010a98000)
+[  439.582986] Stack:
+[  439.582986]  ffffffff000000d0 0000000000000000 ffffffff84c92d36 ffffffff84cc4b50
+[  439.582986]  ffffffff83763b30 0000000000000004 ffffffff842c0370 0000000181152f15
+[  439.582986]  ffff880010c579f8 0000000000000002 0000000000000015 0000000000000000
+[  439.582986] Call Trace:
+[  439.582986]  [<ffffffff83763b30>] ? sctp_cname+0x70/0x70
+[  439.582986]  [<ffffffff83761403>] sctp_primitive_SHUTDOWN+0x43/0x50
+[  439.582986]  [<ffffffff8375bd70>] sctp_close+0x150/0x310
+[  439.606533]  [<ffffffff8351bf22>] inet_release+0x1b2/0x1c0
+[  439.606533]  [<ffffffff8351bd8d>] ? inet_release+0x1d/0x1c0
+[  439.606533]  [<ffffffff83578b04>] inet6_release+0x34/0x60
+[  439.606533]  [<ffffffff833c17b8>] sock_release+0x18/0x80
+[  439.610261]  [<ffffffff833c1849>] sock_close+0x29/0x30
+[  439.610261]  [<ffffffff812773f2>] __fput+0x122/0x2d0
+[  439.610261]  [<ffffffff812775a9>] ____fput+0x9/0x10
+[  439.610261]  [<ffffffff81131afe>] task_work_run+0xbe/0x100
+[  439.610261]  [<ffffffff811107e2>] do_exit+0x432/0xbd0
+[  439.610261]  [<ffffffff811243d9>] ? get_signal_to_deliver+0x899/0x910
+[  439.610261]  [<ffffffff8117b2e2>] ? get_lock_stats+0x22/0x70
+[  439.610261]  [<ffffffff8117b36e>] ? put_lock_stats.isra.16+0xe/0x40
+[  439.610261]  [<ffffffff83a6802b>] ? _raw_spin_unlock_irq+0x2b/0x80
+[  439.610261]  [<ffffffff81111044>] do_group_exit+0x84/0xd0
+[  439.610261]  [<ffffffff8112433d>] get_signal_to_deliver+0x7fd/0x910
+[  439.610261]  [<ffffffff8117dffd>] ? trace_hardirqs_off+0xd/0x10
+[  439.620391]  [<ffffffff819fe7db>] ? debug_object_assert_init+0xbb/0x110
+[  439.620391]  [<ffffffff8106d59a>] do_signal+0x3a/0x950
+[  439.620391]  [<ffffffff811c62c3>] ? rcu_cleanup_after_idle+0x23/0x170
+[  439.620391]  [<ffffffff811ca824>] ? rcu_eqs_exit_common+0x64/0x270
+[  439.620391]  [<ffffffff811c90bd>] ? rcu_user_enter+0x10d/0x140
+[  439.620391]  [<ffffffff811cae05>] ? rcu_user_exit+0xc5/0xf0
+[  439.620391]  [<ffffffff8106df1f>] do_notify_resume+0x4f/0xa0
+[  439.620391]  [<ffffffff83a69bea>] int_signal+0x12/0x17
+[  439.620391] Code: e8 eb 48 2c 00 0f 0b 90 41 b8 f4 ff ff ff 66 2e 0f 1f 84 00 00 00 00 00 8b 35 5a 0a 06 02 85 f6 74 66 4d 85
+ed 75 04 31 c0 eb 2a <41> 8b b5 c8 00 00 00 44 89 85 b8 fe ff ff 49 8b 7e 20 e8 f6 51
+[  439.630251] RIP  [<ffffffff83746fc3>] sctp_do_sm+0x293/0x310
+[  439.630251]  RSP <ffff880010c57988>
+[  439.630251] CR2: ffff88001b9f40c8
+[  439.630251] ---[ end trace aa5ad9f036ee09dd ]---
 
-> The fix previously was to just initazlie the unsigned long member zero in that
-> union before setting the actuall type member that was requried so as to ensure
-> all the data was initalized.  That works well enough, but it presumes that
-> unsigned long is the largest member of the union, which is risky.  Its better to
-> memset the union to 0 for sizeof bytes to ensure future proofing.
+This points to the DEBUG_POST_SFX macro in sctp_do_sm().
 
-Also agreed.
+
+Thanks,
+Sasha
