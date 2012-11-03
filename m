@@ -1,26 +1,38 @@
 From: David Miller <davem@davemloft.net>
-Date: Wed, 28 Nov 2012 16:11:48 +0000
-Subject: Re: [PATCH] sctp: fix memory leak in sctp_datamsg_from_user() when copy from user space fails
-Message-Id: <20121128.111148.259100136370359105.davem@davemloft.net>
+Date: Sat, 03 Nov 2012 18:55:17 +0000
+Subject: Re: [PATCH v3] sctp: Clean up type-punning in sctp_cmd_t union
+Message-Id: <20121103.145517.1686027994101913314.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20121126.173429.323283427379416132.davem@davemloft.net>
-	<1354024906-1925-1-git-send-email-tt.rantala@gmail.com>
-In-Reply-To: <1354024906-1925-1-git-send-email-tt.rantala@gmail.com>
+References: <1351535533-23402-1-git-send-email-nhorman@tuxdriver.com>
+In-Reply-To: <1351535533-23402-1-git-send-email-nhorman@tuxdriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: tt.rantala@gmail.com
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, nhorman@tuxdriver.com, vyasevich@gmail.com, sri@us.ibm.com, davej@redhat.com
+To: nhorman@tuxdriver.com
+Cc: netdev@vger.kernel.org, vyasevich@gmail.com, linux-sctp@vger.kernel.org
 
-From: Tommi Rantala <tt.rantala@gmail.com>
-Date: Tue, 27 Nov 2012 16:01:46 +0200
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 29 Oct 2012 14:32:13 -0400
 
-> Trinity (the syscall fuzzer) discovered a memory leak in SCTP,
-> reproducible e.g. with the sendto() syscall by passing invalid
-> user space pointer in the second argument:
-...
-> As far as I can tell, the leak has been around since ~2003.
+> Lots of points in the sctp_cmd_interpreter function treat the sctp_cmd_t arg as
+> a void pointer, even though they are written as various other types.  Theres no
+> need for this as doing so just leads to possible type-punning issues that could
+> cause crashes, and if we remain type-consistent we can actually just remove the
+> void * member of the union entirely.
 > 
-> Signed-off-by: Tommi Rantala <tt.rantala@gmail.com>
+> Change Notes:
+> 
+> v2)
+> 	* Dropped chunk that modified SCTP_NULL to create a marker pattern
+> 	 should anyone try to use a SCTP_NULL() assigned sctp_arg_t, Assigning
+> 	 to .zero provides the same effect and should be faster, per Vlad Y.
+> 
+> v3)
+> 	* Reverted part of V2, opting to use memset instead of .zero, so that
+> 	 the entire union is initalized thus avoiding the i164 speculative load
+> 	 problems previously encountered, per Dave M..  Also rewrote
+> 	 SCTP_[NO]FORCE so as to use common infrastructure a little more
+> 
+> Signed-off-by: Neil Horman <nhorman@tuxdriver.com
 
-Applied.
+Applied, thanks.
