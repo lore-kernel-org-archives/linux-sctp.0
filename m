@@ -1,67 +1,64 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Fri, 30 Nov 2012 17:34:12 +0000
-Subject: Re: [PATCH] sctp: verify length provided in heartbeat information parameter
-Message-Id: <50B8EE14.7050804@gmail.com>
+From: Tommi Rantala <tt.rantala@gmail.com>
+Date: Tue, 13 Nov 2012 14:01:16 +0000
+Subject: [PATCH] sctp: fix /proc/net/sctp/ memory leak
+Message-Id: <1352815276-24628-1-git-send-email-tt.rantala@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20121130121627.GG30697@casper.infradead.org>
-In-Reply-To: <20121130121627.GG30697@casper.infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Thomas Graf <tgraf@suug.ch>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-On 11/30/2012 07:16 AM, Thomas Graf wrote:
-> If the variable parameter length provided in the mandatory
-> heartbeat information parameter exceeds the calculated payload
-> length the packet has been corrupted. Reply with a parameter
-> length protocol violation message.
->
-> Signed-off-by: Thomas Graf <tgraf@suug.ch>
+We are using single_open_net() and seq_open_net() in the opener
+functions, so avoid leaking memory by using single_release_net() and
+seq_release_net() as the struct file_operations release functions.
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+Discovered with Trinity (the syscall fuzzer).
 
--vlad
+Signed-off-by: Tommi Rantala <tt.rantala@gmail.com>
+---
+ net/sctp/proc.c |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-> ---
->   net/sctp/sm_statefuns.c | 10 ++++++++--
->   1 file changed, 8 insertions(+), 2 deletions(-)
->
-> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-> index b6adef8..e92079d 100644
-> --- a/net/sctp/sm_statefuns.c
-> +++ b/net/sctp/sm_statefuns.c
-> @@ -1055,6 +1055,7 @@ sctp_disposition_t sctp_sf_beat_8_3(struct net *net,
->   				    void *arg,
->   				    sctp_cmd_seq_t *commands)
->   {
-> +	sctp_paramhdr_t *param_hdr;
->   	struct sctp_chunk *chunk = arg;
->   	struct sctp_chunk *reply;
->   	size_t paylen = 0;
-> @@ -1072,12 +1073,17 @@ sctp_disposition_t sctp_sf_beat_8_3(struct net *net,
->   	 * Information field copied from the received HEARTBEAT chunk.
->   	 */
->   	chunk->subh.hb_hdr = (sctp_heartbeathdr_t *) chunk->skb->data;
-> +	param_hdr = (sctp_paramhdr_t *) chunk->subh.hb_hdr;
->   	paylen = ntohs(chunk->chunk_hdr->length) - sizeof(sctp_chunkhdr_t);
-> +
-> +	if (ntohs(param_hdr->length) > paylen)
-> +		return sctp_sf_violation_paramlen(net, ep, asoc, type, arg,
-> +						  param_hdr, commands);
-> +
->   	if (!pskb_pull(chunk->skb, paylen))
->   		goto nomem;
->
-> -	reply = sctp_make_heartbeat_ack(asoc, chunk,
-> -					chunk->subh.hb_hdr, paylen);
-> +	reply = sctp_make_heartbeat_ack(asoc, chunk, param_hdr, paylen);
->   	if (!reply)
->   		goto nomem;
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe netdev" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+index c3bea26..9966e7b 100644
+--- a/net/sctp/proc.c
++++ b/net/sctp/proc.c
+@@ -102,7 +102,7 @@ static const struct file_operations sctp_snmp_seq_fops = {
+ 	.open	 = sctp_snmp_seq_open,
+ 	.read	 = seq_read,
+ 	.llseek	 = seq_lseek,
+-	.release = single_release,
++	.release = single_release_net,
+ };
+ 
+ /* Set up the proc fs entry for 'snmp' object. */
+@@ -251,7 +251,7 @@ static const struct file_operations sctp_eps_seq_fops = {
+ 	.open	 = sctp_eps_seq_open,
+ 	.read	 = seq_read,
+ 	.llseek	 = seq_lseek,
+-	.release = seq_release,
++	.release = seq_release_net,
+ };
+ 
+ /* Set up the proc fs entry for 'eps' object. */
+@@ -372,7 +372,7 @@ static const struct file_operations sctp_assocs_seq_fops = {
+ 	.open	 = sctp_assocs_seq_open,
+ 	.read	 = seq_read,
+ 	.llseek	 = seq_lseek,
+-	.release = seq_release,
++	.release = seq_release_net,
+ };
+ 
+ /* Set up the proc fs entry for 'assocs' object. */
+@@ -517,7 +517,7 @@ static const struct file_operations sctp_remaddr_seq_fops = {
+ 	.open = sctp_remaddr_seq_open,
+ 	.read = seq_read,
+ 	.llseek = seq_lseek,
+-	.release = seq_release,
++	.release = seq_release_net,
+ };
+ 
+ int __net_init sctp_remaddr_proc_init(struct net *net)
+-- 
+1.7.9.5
 
