@@ -1,58 +1,302 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 13 Nov 2012 14:57:25 +0000
-Subject: Re: [PATCH v2]sctp: Error in calculation of RTTvar
-Message-Id: <20121113145724.GA27416@hmsreliant.think-freely.org>
+From: Matija Glavinic Pecotic <matija.glavinic-pecotic.ext@nsn.com>
+Date: Wed, 14 Nov 2012 15:44:17 +0000
+Subject: Re: [Lksctp-developers] route/dst_entry caching issue
+Message-Id: <50A3BC51.2090905@nsn.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20121113074620.21386wv4qcpbm75o@webmail.tuwien.ac.at>
-In-Reply-To: <20121113074620.21386wv4qcpbm75o@webmail.tuwien.ac.at>
+References: <5047370C.8080604@nsn.com>
+In-Reply-To: <5047370C.8080604@nsn.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On Tue, Nov 13, 2012 at 07:46:20AM +0100, Schoch Christian wrote:
-> The calculation of RTTVAR involves the subtraction of two unsigned
-> numbers which
-> may causes rollover and results in very high values of RTTVAR when RTT > SRTT.
-> With this patch it is possible to set RTOmin = 1 to get the minimum of RTO at
-> 4 times the clock granularity.
-> 
-> 
-> Change Notes:
-> 
-> v2)
->        *Replaced abs() by abs64() and long by __s64, changed patch
-> description.
-> 
-> Signed-off-by: Christian Schoch <e0326715@student.tuwien.ac.at>
-> CC: Vlad Yasevich <vyasevich@gmail.com>
-> CC: Sridhar Samudrala <sri@us.ibm.com>
-> CC: Neil Horman <nhorman@tuxdriver.com>
-> CC: linux-sctp@vger.kernel.org
-> ---
-> 
-> diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-> index 953c21e..206cf52 100644
-> --- a/net/sctp/transport.c
-> +++ b/net/sctp/transport.c
-> @@ -331,7 +331,7 @@ void sctp_transport_update_rto(struct
-> sctp_transport *tp, __u32 rtt)
->                  * 1/8, rto_alpha would be expressed as 3.
->                  */
->                 tp->rttvar = tp->rttvar - (tp->rttvar >> net->sctp.rto_beta)
-> -                       + ((abs(tp->srtt - rtt)) >> net->sctp.rto_beta);
-> +                       + (((__u32)abs64((__s64)tp->srtt -
-> (__s64)rtt)) >> net->sctp.rto_beta);
->                 tp->srtt = tp->srtt - (tp->srtt >> net->sctp.rto_alpha)
->                         + (rtt >> net->sctp.rto_alpha);
->         } else {
-> --
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Hello,
 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+sorry for resending, but did someone maybe had a look on this? Any 
+feedback would be appreciated.
+
+Thanks!
+
+Matija
+
+On 10.09.2012 08:33, Matija Glavinic Pecotic wrote:
+> Hello,
+>
+> re-sending after 4 days, I believe something went wrong.
+>
+> Regards,
+>
+> Matija
+>
+> On 06.09.2012 13:23, Matija Glavinic Pecotic wrote:
+>> Hello,
+>>
+>> On 05.09.2012 16:55, ext Vlad Yasevich wrote:
+>>> On 09/05/2012 07:27 AM, Matija Glavinic Pecotic wrote:
+>>>> Hello lksctp developers,
+>>>>
+>>>> a while back we noticed below described issue.
+>>>>
+>>>> In order to quick-fix this, we implemented following workaround:
+>>>>
+>>>> 1) added interface to sctp for invalidating all dst entries on all
+>>>> associations (0002-sctp-export-dst-entries-invalidation-if.patch) -
+>>>> this
+>>>> is on top of below mentioned patch
+>>>> (0001-sctp-check-cached-dst-before-using-it.patch)
+>>>>
+>>>> 2) in a separate module route and ipsec events are monitored and upon
+>>>> addition and deletion of routes, along with xfrm events interface is
+>>>> called. This is done by netlink socket opened within the kernel. If
+>>>> interested, I can share that one as well.
+>>>>
+>>>> Could you please give some comments on both workaround and mentioned
+>>>> issue?
+>>>
+>>> These workarounds should not be needed.  The code should function
+>>> correctly.  We just need to get to the root cause...
+>>>
+>>>
+>>>>
+>>>> Thanks and regards,
+>>>>
+>>>> Matija
+>>>>
+>>>> On 12.06.2012 19:10, ext Matija Glavinic Pecotic wrote:
+>>>>> Hello,
+>>>>>
+>>>>> We're facing an issue regarding route change and startup of ipsec
+>>>>> tunnel. Here is setup and test scenarios:
+>>>>>
+>>>>> 1) Setup
+>>>>> Simple sctp client and server. Client is bound to the loopback address
+>>>>> 10.0.0.1 and it is connected to the server via eth3 (192.168.2.1)
+>>>>> which
+>>>>> is in LAN with eth2 (192.168.2.2) and eth3 (192.168.2.3) on the server
+>>>>> and server is bound to the 20.0.0.1 which is loopback.
+>>>>>
+>>>>> Client:
+>>>>>
+>>>>> 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN
+>>>>>        link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+>>>>>        inet 10.0.0.1/8 scope global lo
+>>>>>        inet6 ::1/128 scope host
+>>>>>           valid_lft forever preferred_lft forever
+>>>>>
+>>>>> 13: eth3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue
+>>>>> state UP
+>>>>>        link/ether 00:40:43:30:81:80 brd ff:ff:ff:ff:ff:ff
+>>>>>        inet 192.168.2.1/24 brd 192.168.2.255 scope global eth3
+>>>>>        inet6 fe80::240:43ff:fe30:8180/64 scope link
+>>>>>           valid_lft forever preferred_lft forever
+>>>>>
+>>>>> 192.168.2.0/24 dev eth3  proto kernel  scope link  src 192.168.2.1
+>>>>> 192.168.253.0/24 dev rio0  proto kernel  scope link  src
+>>>>> 192.168.253.16
+>>>>> 192.168.254.0/23 dev eth0  proto kernel  scope link  src 192.168.255.1
+>>>>> 20.0.0.0/8 via 192.168.2.1 dev eth3  scope link
+>>>
+>>> Should the above route be via 192.168.2.2 (typo), or is this correct?
+>>
+>> No, I want to say that traffic on the lo is to go over eth3 interface. I
+>> dont want to tie it directly to 192.168.2.2.
+>>
+>>>>>
+>>>>> Server:
+>>>>>
+>>>>> 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 16436 qdisc noqueue state UNKNOWN
+>>>>>        link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+>>>>>        inet 20.0.0.1/8 scope global lo
+>>>>>        inet6 ::1/128 scope host
+>>>>>           valid_lft forever preferred_lft forever
+>>>>>
+>>>>> 12: eth2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue
+>>>>> state UP
+>>>>>        link/ether 00:40:43:b1:f8:ae brd ff:ff:ff:ff:ff:ff
+>>>>>        inet 192.168.2.2/24 brd 192.168.2.255 scope global eth2
+>>>>>        inet6 fe80::240:43ff:feb1:f8ae/64 scope link
+>>>>>           valid_lft forever preferred_lft forever
+>>>>>
+>>>>> 13: eth3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue
+>>>>> state UP
+>>>>>        link/ether 00:40:43:b1:f8:af brd ff:ff:ff:ff:ff:ff
+>>>>>        inet 192.168.2.3/24 brd 192.168.2.255 scope global eth3
+>>>>>        inet6 fe80::240:43ff:feb1:f8af/64 scope link
+>>>>>           valid_lft forever preferred_lft forever
+>>>>>
+>>>>> 192.168.2.0/24 dev eth2  proto kernel  scope link  src 192.168.2.2
+>>>>> 192.168.2.0/24 dev eth3  proto kernel  scope link  src 192.168.2.3
+>>>>> 192.168.253.0/24 dev rio0  proto kernel  scope link  src
+>>>>> 192.168.253.16
+>>>>> 192.168.255.0/24 dev eth0  proto kernel  scope link  src 192.168.255.2
+>>>>> 10.0.0.0/8 via 192.168.2.1 dev eth2
+>>>>> 10.0.0.0/8 via 192.168.2.1 dev eth3  metric 10
+>>>>>
+>>>>> Server listens on 20.0.0.1 and when client is connected it sends
+>>>>> message
+>>>>> indefinitely
+>>>>>
+>>>>> Kernel is 2.6.32.58 and sctp is applied with patch from this thread:
+>>>>> http://sourceforge.net/mailarchive/message.php?msg_id%786006
+>>>>> (0001-sctp-check-cached-dst-before-using-it.patch)
+>>>>>
+>>>>> 2) Test scenario 1
+>>>>>
+>>>>> Start sctp_server
+>>>>> Start sctp_client -> clients receives messages from the server
+>>>>> Observe traffic flow -> as expected it goes over eth2 on the server
+>>>>> Delete route 10.0.0.0/8 via 192.168.2.1 dev eth2
+>>>>> Traffic still goes over eth2, on server restart it goes over eth3
+>>>
+>>> Very interesting... Upon route deletion the cache should be invalidated
+>>> and sctp should look-up a new route.
+>>>
+>>> Can you turn on debug output in net/sctp/protocol.c and see what the
+>>> route printed is after the delete call?
+>>>
+>>> You can turn it on by adding #define CONFIG_SCTP_DBG_MSG to the top of
+>>> protocol.c
+>>
+>> attached two logs, in one, cable was plugged out, we can see that stack
+>> copes with it, especially since we have new dst (I added print of
+>> address)
+>>
+>>>     if (dst)
+>>>         SCTP_DEBUG_PRINTK("rt_dst:%pI4, rt_src:%pI4, rt@0x%p\n",
+>>>                   &rt->rt_dst, &rt->rt_src, rt);
+>>
+>>
+>> other log is as scenario mentioned, additional info inside regarding
+>> routes. You can look for:
+>>
+>> 2004-01-01T00:01:48.329137+00:00 (none) [notice]      root:  Deleting
+>> route
+>>
+>> Scenario went as described previously, traffic continued over eth2
+>>
+>> Thanks and regards,
+>>
+>> Matija
+>>
+>>>
+>>> -vlad
+>>>
+>>>>>
+>>>>> For reference, I've run also TCP server/client which does the same
+>>>>> thing, after deletion of mentioned route traffic continued over eth3.
+>>>>> Other kinds of traffic are also rerouted on route deletion (icmp)
+>>>>>
+>>>>> 3) Test scenario 2
+>>>>>
+>>>>> Setup same as before, eth3 on server isn't used.
+>>>>>
+>>>>> Start sctp_server
+>>>>> Start sctp_client -> traffic ok
+>>>>> Start ipsec tunnel:
+>>>>>        left2.168.2.2
+>>>>>        leftsubnet .0.0.0/24
+>>>>>        right2.168.2.1
+>>>>>        rightsubnet.0.0.0/24
+>>>>> After start of ipsec tunnel, traffic went over same dst unencrypted
+>>>>> for
+>>>>> a short period of time.
+>>>>> For reference, again same scenario with TCP server/client -> traffic
+>>>>> started to be encrypted immediately
+>>>>>
+>>>>> ------
+>>>>>
+>>>>> In my opinion there is problem with cached dst_entry. I've tried
+>>>>> following:
+>>>>>
+>>>>> [sctp.h]
+>>>>> /* The cookie is always 0 since this is how it's used in the
+>>>>>     * pmtu code.
+>>>>>     */
+>>>>> static inline struct dst_entry *sctp_transport_dst_check(struct
+>>>>> sctp_transport *t)
+>>>>> {
+>>>>>      if (t->dst) {
+>>>>>          dst_release(t->dst);
+>>>>>          t->dst = NULL;
+>>>>>      }
+>>>>>
+>>>>>      return t->dst;
+>>>>> }
+>>>>>
+>>>>> With this I just wanted to force sctp to route every time it wants to
+>>>>> send packet, and after this change above mentioned scenarios passed.
+>>>>> Here is my short analysis, ignore it if I got something wrong: I see
+>>>>> potential problem with SCTP's dst_entry: struct dst_entry *dst
+>>>>> which is
+>>>>> member of sctp_transport. For example, ipv4&6 implement operations on
+>>>>> dst_entry (ipv4_dst_ops ) which are to be done when event occurs, such
+>>>>> as unreachability, route deleteion, etc. SCTP doesn't, and it also
+>>>>> doesn't use dst_entries from ipv*. In this way, only events which
+>>>>> impact
+>>>>> SCTPs dst_entries are default ones, NETDEV_DOWN and NETDEV_UNREGISTER
+>>>>> and these are only which will be noted with dst_check().
+>>>>>
+>>>>> Could you comment please? I'll be glad to make tests/verifications or
+>>>>> provide any sort of help on this.
+>>>>>
+>>>>> Thanks & regards,
+>>>>>
+>>>>> Matija
+>>>>>
+>>>>> ------------------------------------------------------------------------------
+>>>>>
+>>>>>
+>>>>>
+>>>>> Live Security Virtual Conference
+>>>>> Exclusive live event will cover all the ways today's security and
+>>>>> threat landscape has changed and how IT managers can respond.
+>>>>> Discussions
+>>>>> will include endpoint security, mobile security and the latest in
+>>>>> malware
+>>>>> threats. http://www.accelacomm.com/jaw/sfrnl04242012/114/50122263/
+>>>>> _______________________________________________
+>>>>> Lksctp-developers mailing list
+>>>>> Lksctp-developers@lists.sourceforge.net
+>>>>> https://lists.sourceforge.net/lists/listinfo/lksctp-developers
+>>>>>
+>>>>
+>>>>
+>>>>
+>>>> ------------------------------------------------------------------------------
+>>>>
+>>>>
+>>>> Live Security Virtual Conference
+>>>> Exclusive live event will cover all the ways today's security and
+>>>> threat landscape has changed and how IT managers can respond.
+>>>> Discussions
+>>>> will include endpoint security, mobile security and the latest in
+>>>> malware
+>>>> threats. http://www.accelacomm.com/jaw/sfrnl04242012/114/50122263/
+>>>>
+>>>>
+>>>>
+>>>> _______________________________________________
+>>>> Lksctp-developers mailing list
+>>>> Lksctp-developers@lists.sourceforge.net
+>>>> https://lists.sourceforge.net/lists/listinfo/lksctp-developers
+>>>>
+>>>
+>>>
+>>> ------------------------------------------------------------------------------
+>>>
+>>>
+>>> Live Security Virtual Conference
+>>> Exclusive live event will cover all the ways today's security and
+>>> threat landscape has changed and how IT managers can respond.
+>>> Discussions
+>>> will include endpoint security, mobile security and the latest in
+>>> malware
+>>> threats. http://www.accelacomm.com/jaw/sfrnl04242012/114/50122263/
+>>> _______________________________________________
+>>> Lksctp-developers mailing list
+>>> Lksctp-developers@lists.sourceforge.net
+>>> https://lists.sourceforge.net/lists/listinfo/lksctp-developers
+>>>
+>>
+>
 
