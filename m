@@ -1,48 +1,25 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 16 Nov 2012 16:39:22 +0000
+From: Thomas Graf <tgraf@suug.ch>
+Date: Fri, 16 Nov 2012 21:47:42 +0000
 Subject: Re: [PATCH v2 net-next] sctp: Add support to per-association statistics via a new SCTP_GET_ASSOC_STA
-Message-Id: <20121116163922.GA9722@hmsreliant.think-freely.org>
+Message-Id: <20121116214742.GH10831@casper.infradead.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1352991680-12289-1-git-send-email-michele@acksyn.org>
-In-Reply-To: <1352991680-12289-1-git-send-email-michele@acksyn.org>
+ <20121116163922.GA9722@hmsreliant.think-freely.org>
+In-Reply-To: <20121116163922.GA9722@hmsreliant.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Michele Baldessari <michele@acksyn.org>
-Cc: linux-sctp@vger.kernel.org, Thomas Graf <tgraf@suug.ch>, Vlad Yasevich <vyasevich@gmail.com>, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>
+To: Neil Horman <nhorman@tuxdriver.com>
+Cc: Michele Baldessari <michele@acksyn.org>, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>
 
-On Thu, Nov 15, 2012 at 04:01:20PM +0100, Michele Baldessari wrote:
-> The current SCTP stack is lacking a mechanism to have per association
-> statistics. This is an implementation modeled after OpenSolaris'
-> SCTP_GET_ASSOC_STATS.
-> 
-> Userspace part will follow on lksctp if/when there is a general ACK on
-> this.
-> 
-> V2)
->   - Implement partial retrieval of stat struct to cope for future expansion
->   - Kill the rtxpackets counter as it cannot be precise anyway
->   - Rename outseqtsns to outofseqtsns to make it clearer that these are out
->     of sequence unexpected TSNs
->   - Move asoc->ipackets++ under a lock to avoid potential miscounts
->   - Fold asoc->opackets++ into the already existing asoc check
->   - Kill unneeded (q->asoc) test when increasing rtxchunks
->   - Do not count octrlchunks if sending failed (SCTP_XMIT_OK != 0)
->   - Don't count SHUTDOWNs as SACKs
->   - Move SCTP_GET_ASSOC_STATS to the private space API
->   - Adjust the len check in sctp_getsockopt_assoc_stats() to allow for
->     future struct growth
->   - Move association statistics in their own struct
->   - Update idupchunks when we send a SACK with dup TSNs
->   - return min_rto in max_rto when RTO has not changed. Also return the
->     transport when max_rto last changed.
-> 
-> Signed-off: Michele Baldessari <michele@acksyn.org>
-> Acked-by: Thomas Graf <tgraf@suug.ch>
+On 11/16/12 at 11:39am, Neil Horman wrote:
+> Yes, I think this is good, I still don't like the idea of having to do these via
+> an ioctl, but I suppose it fits well enough.
 
-Yes, I think this is good, I still don't like the idea of having to do these via
-an ioctl, but I suppose it fits well enough.
-Neil
+I'm with you on this. I have started scribbling notes on paper for
+a netlink based stats retriever. We should discuss this at some
+point making sure we get everyone on board with interests in this
+and solve this nice and clean for everyone to enjoy.
 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
-
+I guess the ioctl is the best we can do as long as we don't have
+the above.
