@@ -1,25 +1,39 @@
-From: Thomas Graf <tgraf@suug.ch>
-Date: Fri, 16 Nov 2012 21:47:42 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Sat, 17 Nov 2012 13:20:41 +0000
 Subject: Re: [PATCH v2 net-next] sctp: Add support to per-association statistics via a new SCTP_GET_ASSOC_STA
-Message-Id: <20121116214742.GH10831@casper.infradead.org>
+Message-Id: <20121117132041.GA30406@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1352991680-12289-1-git-send-email-michele@acksyn.org>
  <20121116163922.GA9722@hmsreliant.think-freely.org>
-In-Reply-To: <20121116163922.GA9722@hmsreliant.think-freely.org>
+ <20121116214742.GH10831@casper.infradead.org>
+In-Reply-To: <20121116214742.GH10831@casper.infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
+To: Thomas Graf <tgraf@suug.ch>
 Cc: Michele Baldessari <michele@acksyn.org>, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>
 
-On 11/16/12 at 11:39am, Neil Horman wrote:
-> Yes, I think this is good, I still don't like the idea of having to do these via
-> an ioctl, but I suppose it fits well enough.
+On Fri, Nov 16, 2012 at 09:47:42PM +0000, Thomas Graf wrote:
+> On 11/16/12 at 11:39am, Neil Horman wrote:
+> > Yes, I think this is good, I still don't like the idea of having to do these via
+> > an ioctl, but I suppose it fits well enough.
+> 
+> I'm with you on this. I have started scribbling notes on paper for
+> a netlink based stats retriever. We should discuss this at some
+> point making sure we get everyone on board with interests in this
+> and solve this nice and clean for everyone to enjoy.
+> 
+Agreed, I was also doodling out some protocol format and kernel API ideas for
+this.  We have a short week due to Thanksgiving here next week, but why don't I
+email you after the holiday and we can exchange thoughts? I think a netlink
+stats protocol would be a great way to solve the process-private/global access
+problem.
 
-I'm with you on this. I have started scribbling notes on paper for
-a netlink based stats retriever. We should discuss this at some
-point making sure we get everyone on board with interests in this
-and solve this nice and clean for everyone to enjoy.
+> I guess the ioctl is the best we can do as long as we don't have
+> the above.
+> 
+Agreed, it will do, and if we do a good job with the kernel API for the netlink
+idea above, maybe we can even inherit existing stats transparently.
 
-I guess the ioctl is the best we can do as long as we don't have
-the above.
+Neil
+
