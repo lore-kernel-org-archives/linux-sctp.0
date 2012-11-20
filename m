@@ -1,37 +1,113 @@
-From: ebiederm@xmission.com (Eric W. Biederman)
-Date: Thu, 15 Nov 2012 21:48:43 +0000
-Subject: Re: [PATCHv2] sctp: fix /proc/net/sctp/ memory leak
-Message-Id: <87k3tmedvo.fsf@xmission.com>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 20 Nov 2012 17:59:04 +0000
+Subject: [PATCH] sctp: send abort chunk when max_retrans exceeded
+Message-Id: <1353434344-17864-1-git-send-email-nhorman@tuxdriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1352987345-11263-1-git-send-email-tt.rantala@gmail.com>
-In-Reply-To: <1352987345-11263-1-git-send-email-tt.rantala@gmail.com> (Tommi
-	Rantala's message of "Thu, 15 Nov 2012 15:49:05 +0200")
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Tommi Rantala <tt.rantala@gmail.com>
-Cc: netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, Dave Jones <davej@redhat.com>
+To: netdev@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org
 
-Tommi Rantala <tt.rantala@gmail.com> writes:
+In the event that an association exceeds its max_retrans attempts, we should
+send an ABORT chunk indicating that we are closing the assocation as a result.
+Because of the nature of the error, its unlikely to be received, but its a nice
+clean way to close the association if it does make it through, and it will give
+anyone watching via tcpdump a clue as to what happened.
 
-> Commit 13d782f ("sctp: Make the proc files per network namespace.")
-> changed the /proc/net/sctp/ struct file_operations opener functions to
-> use single_open_net() and seq_open_net().
->
-> Avoid leaking memory by using single_release_net() and seq_release_net()
-> as the release functions.
->
-> Discovered with Trinity (the syscall fuzzer).
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+CC: Vlad Yasevich <vyasevich@gmail.com>
+CC: "David S. Miller" <davem@davemloft.net>
+CC: linux-sctp@vger.kernel.org
+---
+ include/net/sctp/sm.h    |  2 ++
+ net/sctp/sm_make_chunk.c | 26 +++++++++++++++++++++-----
+ net/sctp/sm_sideeffect.c |  9 ++++++++-
+ 3 files changed, 31 insertions(+), 6 deletions(-)
 
-Doh!  Thanks for catching this.
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index b5887e1..2a82d13 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -234,6 +234,8 @@ struct sctp_chunk *sctp_make_abort_violation(const struct sctp_association *,
+ struct sctp_chunk *sctp_make_violation_paramlen(const struct sctp_association *,
+ 				   const struct sctp_chunk *,
+ 				   struct sctp_paramhdr *);
++struct sctp_chunk *sctp_make_violation_max_retrans(const struct sctp_association *,
++						   const struct sctp_chunk *);
+ struct sctp_chunk *sctp_make_heartbeat(const struct sctp_association *,
+ 				  const struct sctp_transport *);
+ struct sctp_chunk *sctp_make_heartbeat_ack(const struct sctp_association *,
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index fbe1636..d6a8c80 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -1074,17 +1074,33 @@ struct sctp_chunk *sctp_make_violation_paramlen(
+ {
+ 	struct sctp_chunk *retval;
+ 	static const char error[] = "The following parameter had invalid length:";
+-	size_t payload_len = sizeof(error) + sizeof(sctp_errhdr_t) +
+-				sizeof(sctp_paramhdr_t);
++	size_t payload_len = sizeof(error) + sizeof(sctp_errhdr_t);
+ 
+ 	retval = sctp_make_abort(asoc, chunk, payload_len);
+ 	if (!retval)
+ 		goto nodata;
+ 
+-	sctp_init_cause(retval, SCTP_ERROR_PROTO_VIOLATION,
+-			sizeof(error) + sizeof(sctp_paramhdr_t));
++	sctp_init_cause(retval, SCTP_ERROR_PROTO_VIOLATION, sizeof(error));
++	sctp_addto_chunk(retval, sizeof(error), error);
++
++nodata:
++	return retval;
++}
++
++struct sctp_chunk *sctp_make_violation_max_retrans(
++	const struct sctp_association *asoc,
++	const struct sctp_chunk *chunk)
++{
++	struct sctp_chunk *retval;
++	static const char error[] = "Association exceeded its max_retans count";
++	size_t payload_len = sizeof(error) + sizeof(sctp_errhdr_t);
++
++	retval = sctp_make_abort(asoc, chunk, payload_len);
++	if (!retval)
++		goto nodata;
++
++	sctp_init_cause(retval, SCTP_ERROR_PROTO_VIOLATION, sizeof(error));
+ 	sctp_addto_chunk(retval, sizeof(error), error);
+-	sctp_addto_param(retval, sizeof(sctp_paramhdr_t), param);
+ 
+ nodata:
+ 	return retval;
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 6eecf7e..c076956 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -577,7 +577,7 @@ static void sctp_cmd_assoc_failed(sctp_cmd_seq_t *commands,
+ 				  unsigned int error)
+ {
+ 	struct sctp_ulpevent *event;
+-
++	struct sctp_chunk *abort;
+ 	/* Cancel any partial delivery in progress. */
+ 	sctp_ulpq_abort_pd(&asoc->ulpq, GFP_ATOMIC);
+ 
+@@ -593,6 +593,13 @@ static void sctp_cmd_assoc_failed(sctp_cmd_seq_t *commands,
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP,
+ 				SCTP_ULPEVENT(event));
+ 
++	if (asoc->overall_error_count >= asoc->max_retrans) {
++		abort = sctp_make_violation_max_retrans(asoc, chunk);
++		if (abort)
++			sctp_add_cmd_sf(commands, SCTP_CMD_REPLY,
++					SCTP_CHUNK(abort));
++	}
++
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_NEW_STATE,
+ 			SCTP_STATE(SCTP_STATE_CLOSED));
+ 
+-- 
+1.7.11.7
 
-Eric
-
-> -	.release = single_release,
-> +	.release = single_release_net,
->  };
-
-> -	.release = seq_release,
-> +	.release = seq_release_net,
->  };
->  
