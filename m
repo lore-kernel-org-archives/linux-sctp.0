@@ -1,111 +1,39 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Tue, 20 Nov 2012 20:25:56 +0000
+From: David Miller <davem@davemloft.net>
+Date: Tue, 20 Nov 2012 20:51:03 +0000
 Subject: Re: [PATCH v2] sctp: send abort chunk when max_retrans exceeded
-Message-Id: <50ABE754.7060306@gmail.com>
+Message-Id: <20121120.155103.478583415099211037.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1353434344-17864-1-git-send-email-nhorman@tuxdriver.com> <1353442470-20660-1-git-send-email-nhorman@tuxdriver.com>
-In-Reply-To: <1353442470-20660-1-git-send-email-nhorman@tuxdriver.com>
+References: <1353434344-17864-1-git-send-email-nhorman@tuxdriver.com>
+	<1353442470-20660-1-git-send-email-nhorman@tuxdriver.com>
+	<50ABE754.7060306@gmail.com>
+In-Reply-To: <50ABE754.7060306@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org
+To: vyasevich@gmail.com
+Cc: nhorman@tuxdriver.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On 11/20/2012 03:14 PM, Neil Horman wrote:
-> In the event that an association exceeds its max_retrans attempts, we should
-> send an ABORT chunk indicating that we are closing the assocation as a result.
-> Because of the nature of the error, its unlikely to be received, but its a nice
-> clean way to close the association if it does make it through, and it will give
-> anyone watching via tcpdump a clue as to what happened.
->
-> Change notes:
-> v2)
-> 	* Removed erroneous changes from sctp_make_violation_parmlen
->
-> Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-> CC: Vlad Yasevich <vyasevich@gmail.com>
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Tue, 20 Nov 2012 15:25:56 -0500
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+> On 11/20/2012 03:14 PM, Neil Horman wrote:
+>> In the event that an association exceeds its max_retrans attempts, we
+>> should
+>> send an ABORT chunk indicating that we are closing the assocation as a
+>> result.
+>> Because of the nature of the error, its unlikely to be received, but
+>> its a nice
+>> clean way to close the association if it does make it through, and it
+>> will give
+>> anyone watching via tcpdump a clue as to what happened.
+>>
+>> Change notes:
+>> v2)
+>> 	* Removed erroneous changes from sctp_make_violation_parmlen
+>>
+>> Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+>> CC: Vlad Yasevich <vyasevich@gmail.com>
+> 
+> Acked-by: Vlad Yasevich <vyasevich@gmail.com>
 
--vlad
-
-> CC: "David S. Miller" <davem@davemloft.net>
-> CC: linux-sctp@vger.kernel.org
-> ---
->   include/net/sctp/sm.h    |  2 ++
->   net/sctp/sm_make_chunk.c | 19 +++++++++++++++++++
->   net/sctp/sm_sideeffect.c |  9 ++++++++-
->   3 files changed, 29 insertions(+), 1 deletion(-)
->
-> diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-> index b5887e1..2a82d13 100644
-> --- a/include/net/sctp/sm.h
-> +++ b/include/net/sctp/sm.h
-> @@ -234,6 +234,8 @@ struct sctp_chunk *sctp_make_abort_violation(const struct sctp_association *,
->   struct sctp_chunk *sctp_make_violation_paramlen(const struct sctp_association *,
->   				   const struct sctp_chunk *,
->   				   struct sctp_paramhdr *);
-> +struct sctp_chunk *sctp_make_violation_max_retrans(const struct sctp_association *,
-> +						   const struct sctp_chunk *);
->   struct sctp_chunk *sctp_make_heartbeat(const struct sctp_association *,
->   				  const struct sctp_transport *);
->   struct sctp_chunk *sctp_make_heartbeat_ack(const struct sctp_association *,
-> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> index fbe1636..e0f01a4 100644
-> --- a/net/sctp/sm_make_chunk.c
-> +++ b/net/sctp/sm_make_chunk.c
-> @@ -1090,6 +1090,25 @@ nodata:
->   	return retval;
->   }
->
-> +struct sctp_chunk *sctp_make_violation_max_retrans(
-> +	const struct sctp_association *asoc,
-> +	const struct sctp_chunk *chunk)
-> +{
-> +	struct sctp_chunk *retval;
-> +	static const char error[] = "Association exceeded its max_retans count";
-> +	size_t payload_len = sizeof(error) + sizeof(sctp_errhdr_t);
-> +
-> +	retval = sctp_make_abort(asoc, chunk, payload_len);
-> +	if (!retval)
-> +		goto nodata;
-> +
-> +	sctp_init_cause(retval, SCTP_ERROR_PROTO_VIOLATION, sizeof(error));
-> +	sctp_addto_chunk(retval, sizeof(error), error);
-> +
-> +nodata:
-> +	return retval;
-> +}
-> +
->   /* Make a HEARTBEAT chunk.  */
->   struct sctp_chunk *sctp_make_heartbeat(const struct sctp_association *asoc,
->   				  const struct sctp_transport *transport)
-> diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-> index 6eecf7e..c076956 100644
-> --- a/net/sctp/sm_sideeffect.c
-> +++ b/net/sctp/sm_sideeffect.c
-> @@ -577,7 +577,7 @@ static void sctp_cmd_assoc_failed(sctp_cmd_seq_t *commands,
->   				  unsigned int error)
->   {
->   	struct sctp_ulpevent *event;
-> -
-> +	struct sctp_chunk *abort;
->   	/* Cancel any partial delivery in progress. */
->   	sctp_ulpq_abort_pd(&asoc->ulpq, GFP_ATOMIC);
->
-> @@ -593,6 +593,13 @@ static void sctp_cmd_assoc_failed(sctp_cmd_seq_t *commands,
->   		sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP,
->   				SCTP_ULPEVENT(event));
->
-> +	if (asoc->overall_error_count >= asoc->max_retrans) {
-> +		abort = sctp_make_violation_max_retrans(asoc, chunk);
-> +		if (abort)
-> +			sctp_add_cmd_sf(commands, SCTP_CMD_REPLY,
-> +					SCTP_CHUNK(abort));
-> +	}
-> +
->   	sctp_add_cmd_sf(commands, SCTP_CMD_NEW_STATE,
->   			SCTP_STATE(SCTP_STATE_CLOSED));
->
->
-
+Applied, thanks.
