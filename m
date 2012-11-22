@@ -1,47 +1,80 @@
-From: Eric Dumazet <eric.dumazet@gmail.com>
-Date: Thu, 15 Nov 2012 13:13:02 +0000
-Subject: Re: [PATCH] sctp: fix /proc/net/sctp/ memory leak
-Message-Id: <1352985182.4497.26.camel@edumazet-glaptop>
+From: Tommi Rantala <tt.rantala@gmail.com>
+Date: Thu, 22 Nov 2012 13:21:31 +0000
+Subject: [PATCH] sctp: fix memory leak in sctp_datamsg_from_user() when copy from user space fails
+Message-Id: <1353590491-12166-1-git-send-email-tt.rantala@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1352967802-2335-1-git-send-email-tt.rantala@gmail.com>
-In-Reply-To: <1352967802-2335-1-git-send-email-tt.rantala@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Tommi Rantala <tt.rantala@gmail.com>
-Cc: netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, Dave Jones <davej@redhat.com>
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>, Dave Jones <davej@redhat.com>, Tommi Rantala <tt.rantala@gmail.com>
 
-On Thu, 2012-11-15 at 10:23 +0200, Tommi Rantala wrote:
-> We are using single_open_net() and seq_open_net() in the opener
-> functions, so avoid leaking memory by using single_release_net() and
-> seq_release_net() as the struct file_operations release functions.
-> 
-> Discovered with Trinity (the syscall fuzzer).
-> 
-> Signed-off-by: Tommi Rantala <tt.rantala@gmail.com>
-> Acked-by: Neil Horman <nhorman@tuxdriver.com>
-> ---
->  net/sctp/proc.c |    8 ++++----
->  1 file changed, 4 insertions(+), 4 deletions(-)
-> 
-> diff --git a/net/sctp/proc.c b/net/sctp/proc.c
-> index c3bea26..9966e7b 100644
-> --- a/net/sctp/proc.c
-> +++ b/net/sctp/proc.c
-> @@ -102,7 +102,7 @@ static const struct file_operations sctp_snmp_seq_fops = {
->  	.open	 = sctp_snmp_seq_open,
->  	.read	 = seq_read,
->  	.llseek	 = seq_lseek,
-> -	.release = single_release,
-> +	.release = single_release_net,
->  };
->  
+Trinity (the syscall fuzzer) discovered a memory leak in SCTP,
+reproducible e.g. with the sendto() syscall by passing invalid
+user space pointer in the second argument:
 
-It seems you forgot to do do some work to pinpoint which commit added
-this bug. Please add this in the changelog to ease maintainer and stable
-teams work, and CC the author of said commit so that he has a chance to
-Ack your patch.
+ #include <string.h>
+ #include <arpa/inet.h>
+ #include <sys/socket.h>
 
-Thanks !
+ int main(void)
+ {
+         int fd;
+         struct sockaddr_in sa;
 
+         fd = socket(AF_INET, SOCK_STREAM, 132 /*IPPROTO_SCTP*/);
+         if (fd < 0)
+                 return 1;
+
+         memset(&sa, 0, sizeof(sa));
+         sa.sin_family = AF_INET;
+         sa.sin_addr.s_addr = inet_addr("127.0.0.1");
+         sa.sin_port = htons(11111);
+
+         sendto(fd, NULL, 1, 0, (struct sockaddr *)&sa, sizeof(sa));
+
+         return 0;
+ }
+
+As far as I can tell, the leak has been around since ~2003.
+
+Signed-off-by: Tommi Rantala <tt.rantala@gmail.com>
+---
+ net/sctp/chunk.c |    7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
+index 7c2df9c..d241ef5 100644
+--- a/net/sctp/chunk.c
++++ b/net/sctp/chunk.c
+@@ -284,7 +284,7 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
+ 			goto errout;
+ 		err = sctp_user_addto_chunk(chunk, offset, len, msgh->msg_iov);
+ 		if (err < 0)
+-			goto errout;
++			goto errout_chunk_put;
+ 
+ 		offset += len;
+ 
+@@ -324,7 +324,7 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
+ 		__skb_pull(chunk->skb, (__u8 *)chunk->chunk_hdr
+ 			   - (__u8 *)chunk->skb->data);
+ 		if (err < 0)
+-			goto errout;
++			goto errout_chunk_put;
+ 
+ 		sctp_datamsg_assign(msg, chunk);
+ 		list_add_tail(&chunk->frag_list, &msg->chunks);
+@@ -332,6 +332,9 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
+ 
+ 	return msg;
+ 
++errout_chunk_put:
++	sctp_chunk_put(chunk);
++
+ errout:
+ 	list_for_each_safe(pos, temp, &msg->chunks) {
+ 		list_del_init(pos);
+-- 
+1.7.9.5
 
