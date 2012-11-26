@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 26 Nov 2012 15:28:22 +0000
-Subject: Re: Possible SCTP peer receive window bug
-Message-Id: <20121126152822.GD8016@hmsreliant.think-freely.org>
+From: Jamie Parsons <Jamie.Parsons@metaswitch.com>
+Date: Mon, 26 Nov 2012 17:27:47 +0000
+Subject: RE: Possible SCTP peer receive window bug
+Message-Id: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA6D38726D@ENFIRHMBX1.datcon.co.uk>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA6D387197@ENFIRHMBX1.datcon.co.uk>
 In-Reply-To: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA6D387197@ENFIRHMBX1.datcon.co.uk>
@@ -9,6 +9,22 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
 To: linux-sctp@vger.kernel.org
+
+Hi Neil,
+
+Could you send me your IP address so that I can give you access to an FTP s=
+erver?
+
+Thanks,
+
+Jamie
+
+-----Original Message-----
+From: Neil Horman [mailto:nhorman@tuxdriver.com]=20
+Sent: 26 November 2012 15:28
+To: Jamie Parsons
+Cc: linux-sctp@vger.kernel.org; Peter Brittain
+Subject: Re: Possible SCTP peer receive window bug
 
 On Mon, Nov 26, 2012 at 01:31:57PM +0000, Jamie Parsons wrote:
 > Hi,
@@ -23,10 +39,10 @@ e found a bug with the peer receive window size.
 report a bug.=A0 If not, please let me know who I should be talking to inst=
 ead.
 >=20
-> If you are the correct people, can you please look at the detailed descri=
-ption below?=A0 I think that the issue may be some problem to do with data =
-structures not being reinitialized correctly after receiving an unexpected =
-INIT. =A0
+> If you are the correct people, can you please look at the detailed=20
+> description below?=A0 I think that the issue may be some problem to do wi=
+th data structures not being reinitialized correctly after receiving an une=
+xpected INIT.
 >=20
 > I've had a quick look at recent check ins for the kernel and couldn't see=
  anything which was obviously a fix for this bug.=A0 Would you be able to h=
@@ -35,7 +51,7 @@ stics required.
 >=20
 > Thanks for your help,
 >=20
-> Jamie=20
+> Jamie
 >=20
 > =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
 >=20
@@ -57,11 +73,11 @@ cking the value of sstat_rwnd.=A0 At this stage there is no problem, the SC=
 TP stack reports a value of 2000 with a slight deviation if there is some u=
 nacked data outstanding. =A0All good so far!
 >=20
-> After failing over, the wireshark trace still shows that the peer is adve=
-rtising a receive window of 2000.=A0 However, if I now check the peer recei=
-ve window through the Linux SCTP stack as above, it reports a consistently =
-lower value (of 916 in my last run) again with slight deviation if there ar=
-e unacked packets.=A0=20
+> After failing over, the wireshark trace still shows that the peer is=20
+> advertising a receive window of 2000.=A0 However, if I now check the peer=
+ receive window through the Linux SCTP stack as above, it reports a consist=
+ently lower value (of 916 in my last run) again with slight deviation if th=
+ere are unacked packets.
 >=20
 > At this point I stop sending any data from the Linux box, and wait a coup=
 le of minutes to ensure that the send buffer is emptied and all packets hav=
@@ -82,13 +98,12 @@ ch means it is waiting for packets to be acked.=A0 This is despite the fact=
  that it reports a value of 0 for unacked packets.
 >=20
 Can you provide a diagram of your network setup, a link to someplace I can =
-see
-your tcpdump, and the specific kernel version that you're using?
+see your tcpdump, and the specific kernel version that you're using?
 Neil
 
 >=20
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp"=20
+> in the body of a message to majordomo@vger.kernel.org More majordomo=20
+> info at  http://vger.kernel.org/majordomo-info.html
 >=20
