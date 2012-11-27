@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 27 Nov 2012 14:38:05 +0000
-Subject: Re: Possible SCTP peer receive window bug
-Message-Id: <20121127143805.GA17541@shamino.rdu.redhat.com>
+From: Jamie Parsons <Jamie.Parsons@metaswitch.com>
+Date: Tue, 27 Nov 2012 14:42:47 +0000
+Subject: RE: Possible SCTP peer receive window bug
+Message-Id: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA6D389530@ENFIRHMBX1.datcon.co.uk>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA6D387197@ENFIRHMBX1.datcon.co.uk>
 In-Reply-To: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA6D387197@ENFIRHMBX1.datcon.co.uk>
@@ -9,6 +9,19 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
 To: linux-sctp@vger.kernel.org
+
+Thanks Neil,
+
+That would be great.
+
+Jamie
+
+-----Original Message-----
+From: Neil Horman [mailto:nhorman@tuxdriver.com]=20
+Sent: 27 November 2012 14:38
+To: Jamie Parsons
+Cc: linux-sctp@vger.kernel.org; Peter Brittain
+Subject: Re: Possible SCTP peer receive window bug
 
 On Tue, Nov 27, 2012 at 11:05:03AM +0000, Jamie Parsons wrote:
 > Hi Neil,
@@ -56,12 +69,11 @@ tell me how to get it? =20
 > Jamie
 >=20
 Thank you, I'm not at my home system at the moment, but I've downloaded the=
- pcap
-file and will look at it in depth tonight.
+ pcap file and will look at it in depth tonight.
 Neil
 
 > -----Original Message-----
-> From: Neil Horman [mailto:nhorman@tuxdriver.com]=20
+> From: Neil Horman [mailto:nhorman@tuxdriver.com]
 > Sent: 26 November 2012 20:11
 > To: Jamie Parsons
 > Cc: linux-sctp@vger.kernel.org; Peter Brittain
@@ -135,12 +147,11 @@ Linux SCTP agrees with this value by doing a getsockopt for SCTP_STATUS and=
 e SCTP stack reports a value of 2000 with a slight deviation if there is so=
 me unacked data outstanding. =A0All good so far!
 > > >=20
-> > > After failing over, the wireshark trace still shows that the peer is =
-
-> > > advertising a receive window of 2000.=A0 However, if I now check the =
-peer receive window through the Linux SCTP stack as above, it reports a con=
-sistently lower value (of 916 in my last run) again with slight deviation i=
-f there are unacked packets.
+> > > After failing over, the wireshark trace still shows that the peer=20
+> > > is advertising a receive window of 2000.=A0 However, if I now check t=
+he peer receive window through the Linux SCTP stack as above, it reports a =
+consistently lower value (of 916 in my last run) again with slight deviatio=
+n if there are unacked packets.
 > > >=20
 > > > At this point I stop sending any data from the Linux box, and wait a =
 couple of minutes to ensure that the send buffer is emptied and all packets=
@@ -168,9 +179,8 @@ can see your tcpdump, and the specific kernel version that you're using?
 > > > --
 > > > To unsubscribe from this list: send the line "unsubscribe linux-sctp"=
 =20
-> > > in the body of a message to majordomo@vger.kernel.org More majordomo =
-
-> > > info at  http://vger.kernel.org/majordomo-info.html
+> > > in the body of a message to majordomo@vger.kernel.org More=20
+> > > majordomo info at  http://vger.kernel.org/majordomo-info.html
 > > >=20
 > >=20
 >=20
