@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 26 Nov 2012 20:10:56 +0000
-Subject: Re: Possible SCTP peer receive window bug
-Message-Id: <20121126201056.GE8016@hmsreliant.think-freely.org>
+From: Jamie Parsons <Jamie.Parsons@metaswitch.com>
+Date: Tue, 27 Nov 2012 11:05:03 +0000
+Subject: RE: Possible SCTP peer receive window bug
+Message-Id: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA6D3885C0@ENFIRHMBX1.datcon.co.uk>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA6D387197@ENFIRHMBX1.datcon.co.uk>
 In-Reply-To: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA6D387197@ENFIRHMBX1.datcon.co.uk>
@@ -9,6 +9,57 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
 To: linux-sctp@vger.kernel.org
+
+Hi Neil,
+
+The FTP server is ftp.uk.metaswitch.com.
+username:  linux-sctp
+password:  8RyJ97Th
+
+You will only be able to access it from 99.127.245.201.
+
+The tcpdump file is called 9932filter.pcap
+
+My test setup is as follows:
+
+___________               ___________               ____________
+|          |              |  Linux  |               |           |
+| Peer A   |--------------|   Box   |---------------|  Peer B   |
+|__________|              |_________|               |___________|
+
+
+Peer A and Peer B are using the Linux box as a pipe to send ISDN messages b=
+etween themselves.  The ISDN messages are sent over SCTP connections from o=
+ne peer to the linux box, the linux box then forwards them over another SCT=
+P connection to the other peer.  There are multiple SCTP connections betwee=
+n the linux box and both Peer A and Peer B, each of the SCTP connections us=
+es a different port on the linux box.  Peer A is the box which fails over.
+
+The tcpdump which I have placed in the FTP directory was gathered on the li=
+nux box and filtered on the port so that only contains packets for one part=
+icular SCTP connection between Peer A and the linux box.
+
+In the tcpdump the IP addresses are as follows:
+Peer A: 10.249.59.1
+linux box: 10.224.191.1
+
+Peer A fails over at 12:20:59.
+The linux box stops sending messages at 12:21:24.
+
+The kernel version on the linux box (obtained using uname -a) is 2.6.32-279=
+.9.1.el6.x86_64.  If there is something more specific you want could you te=
+ll me how to get it? =20
+
+Thanks for your help,
+
+Jamie
+
+-----Original Message-----
+From: Neil Horman [mailto:nhorman@tuxdriver.com]=20
+Sent: 26 November 2012 20:11
+To: Jamie Parsons
+Cc: linux-sctp@vger.kernel.org; Peter Brittain
+Subject: Re: Possible SCTP peer receive window bug
 
 On Mon, Nov 26, 2012 at 05:27:47PM +0000, Jamie Parsons wrote:
 > Hi Neil,
@@ -24,7 +75,7 @@ On Mon, Nov 26, 2012 at 05:27:47PM +0000, Jamie Parsons wrote:
 Neil
 
 > -----Original Message-----
-> From: Neil Horman [mailto:nhorman@tuxdriver.com]=20
+> From: Neil Horman [mailto:nhorman@tuxdriver.com]
 > Sent: 26 November 2012 15:28
 > To: Jamie Parsons
 > Cc: linux-sctp@vger.kernel.org; Peter Brittain
