@@ -1,7 +1,7 @@
 From: Jamie Parsons <Jamie.Parsons@metaswitch.com>
-Date: Thu, 29 Nov 2012 09:14:58 +0000
+Date: Thu, 29 Nov 2012 09:17:39 +0000
 Subject: RE: Possible SCTP peer receive window bug
-Message-Id: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA6D38D58E@ENFIRHMBX1.datcon.co.uk>
+Message-Id: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA6D38D59B@ENFIRHMBX1.datcon.co.uk>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA6D387197@ENFIRHMBX1.datcon.co.uk>
 In-Reply-To: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA6D387197@ENFIRHMBX1.datcon.co.uk>
@@ -9,6 +9,15 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
+
+Sorry on point 2 I obviously meant that Peer A is running a third party SCTP stack.
+
+-----Original Message-----
+From: Jamie Parsons 
+Sent: 29 November 2012 09:15
+To: 'Neil Horman'; 'vyasevich@gmail.com'
+Cc: Peter Brittain; linux-sctp@vger.kernel.org
+Subject: RE: Possible SCTP peer receive window bug
 
 Hi Neil and Vlad,
 
@@ -22,8 +31,7 @@ Let me see if I can answer your points/questions:
 
 I've placed the trace from this run (containing all the SCTP_STATUS output) in the FTP directory.  SCTP_STATUS is polled periodically as well as when we receive an association change (confusingly it gets printed just before the SCTP_ASSOC_CHANGE output in this case).  The SCTP_STATUS dumps take the form:
 
-pest_stdout 29437 171:Fri Nov 23 12:11:00 2012: assoc id = 1028, state = 4, instrms = 86, outstrms = 86, frag point = 1452, pending data = 0, receive window =  2000, unacked data = 0 for port 9932 
-pest_stdout 29438 152:Fri Nov 23 12:11:00 2012: spinfo_state = 1, spinfo_cwnd = 4380, spinfo_srtt = 0, spinfo_rto = 3000, spinfo_mtu = 1500, spinfo_assoc_id = 1028 for port 9932
+pest_stdout 29437 171:Fri Nov 23 12:11:00 2012: assoc id = 1028, state = 4, instrms = 86, outstrms = 86, frag point = 1452, pending data = 0, receive window =  2000, unacked data = 0 for port 9932 pest_stdout 29438 152:Fri Nov 23 12:11:00 2012: spinfo_state = 1, spinfo_cwnd = 4380, spinfo_srtt = 0, spinfo_rto = 3000, spinfo_mtu = 1500, spinfo_assoc_id = 1028 for port 9932
 
 Apologies for all the other rubbish in the file, we were trying to obtain some other trace at the time as well.
 
@@ -101,7 +109,7 @@ Thanks
 >
 > 3) Describe in more detail how you force the failover event to occur, 
 > and what sort of failover paths exist between Peer A and the Linux box 
-> (your description below suggests there is only one path between the 
+> (your description below suggests there is only one path between the
 > two)
 >
 > Also, you should open a support ticket with Red Hat, as they will be 
