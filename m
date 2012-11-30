@@ -1,7 +1,7 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Fri, 30 Nov 2012 14:18:26 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Fri, 30 Nov 2012 15:20:24 +0000
 Subject: Re: [PATCH] sctp: fix CONFIG_SCTP_DBG_MSG=y null pointer dereference in sctp_v6_get_dst()
-Message-Id: <50B8C032.7030307@gmail.com>
+Message-Id: <20121130152024.GB6039@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1354267062-15888-1-git-send-email-tt.rantala@gmail.com>
 In-Reply-To: <1354267062-15888-1-git-send-email-tt.rantala@gmail.com>
@@ -9,15 +9,15 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Tommi Rantala <tt.rantala@gmail.com>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>, Dave Jones <davej@redhat.com>
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>, Dave Jones <davej@redhat.com>
 
-On 11/30/2012 04:17 AM, Tommi Rantala wrote:
+On Fri, Nov 30, 2012 at 11:17:42AM +0200, Tommi Rantala wrote:
 > Trinity (the syscall fuzzer) triggered the following BUG, reproducible
 > only when the kernel is configured with CONFIG_SCTP_DBG_MSG=y.
->
+> 
 > When CONFIG_SCTP_DBG_MSG is not set, the null pointer is never
 > dereferenced.
->
+> 
 > ---[ end trace a4de0bfcb38a3642 ]---
 > BUG: unable to handle kernel NULL pointer dereference at 0000000000000100
 > IP: [<ffffffff8136796e>] ip6_string+0x1e/0xa0
@@ -40,64 +40,62 @@ On 11/30/2012 04:17 AM, Tommi Rantala wrote:
 > DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
 > Process trinity-child11 (pid: 21324, threadinfo ffff88004e462000, task ffff8800524b0000)
 > Stack:
->   ffff88004e4637da ffff88004e463828 ffffffff81368eee 000000004e4637d8
->   ffffffff0000ffff ffff88000000ffff 0000000000000000 000000004e4637f8
->   ffffffff826285d8 ffff88004e4637f8 0000000000000000 ffff8800524b06b0
+>  ffff88004e4637da ffff88004e463828 ffffffff81368eee 000000004e4637d8
+>  ffffffff0000ffff ffff88000000ffff 0000000000000000 000000004e4637f8
+>  ffffffff826285d8 ffff88004e4637f8 0000000000000000 ffff8800524b06b0
 > Call Trace:
->   [<ffffffff81368eee>] ip6_addr_string.isra.11+0x3e/0xa0
->   [<ffffffff81369183>] pointer.isra.12+0x233/0x2d0
->   [<ffffffff810a413a>] ? vprintk_emit+0x1ba/0x450
->   [<ffffffff8110953d>] ? trace_hardirqs_on_caller+0x10d/0x1a0
->   [<ffffffff81369757>] vsnprintf+0x187/0x5d0
->   [<ffffffff81369c62>] vscnprintf+0x12/0x30
->   [<ffffffff810a4028>] vprintk_emit+0xa8/0x450
->   [<ffffffff81e5cb00>] printk+0x49/0x4b
->   [<ffffffff81d17221>] sctp_v6_get_dst+0x731/0x780
->   [<ffffffff81d16e15>] ? sctp_v6_get_dst+0x325/0x780
->   [<ffffffff81d00a96>] sctp_transport_route+0x46/0x120
->   [<ffffffff81cff0f1>] sctp_assoc_add_peer+0x161/0x350
->   [<ffffffff81d0fd8d>] sctp_sendmsg+0x6cd/0xcb0
->   [<ffffffff81b55bf0>] ? inet_create+0x670/0x670
->   [<ffffffff81b55cfb>] inet_sendmsg+0x10b/0x220
->   [<ffffffff81b55bf0>] ? inet_create+0x670/0x670
->   [<ffffffff81a72a64>] ? sock_update_classid+0xa4/0x2b0
->   [<ffffffff81a72ab0>] ? sock_update_classid+0xf0/0x2b0
->   [<ffffffff81a6ac1c>] sock_sendmsg+0xdc/0xf0
->   [<ffffffff8118e9e5>] ? might_fault+0x85/0x90
->   [<ffffffff8118e99c>] ? might_fault+0x3c/0x90
->   [<ffffffff81a6e12a>] sys_sendto+0xfa/0x130
->   [<ffffffff810a9887>] ? do_setitimer+0x197/0x380
->   [<ffffffff81e960d5>] ? sysret_check+0x22/0x5d
->   [<ffffffff81e960a9>] system_call_fastpath+0x16/0x1b
+>  [<ffffffff81368eee>] ip6_addr_string.isra.11+0x3e/0xa0
+>  [<ffffffff81369183>] pointer.isra.12+0x233/0x2d0
+>  [<ffffffff810a413a>] ? vprintk_emit+0x1ba/0x450
+>  [<ffffffff8110953d>] ? trace_hardirqs_on_caller+0x10d/0x1a0
+>  [<ffffffff81369757>] vsnprintf+0x187/0x5d0
+>  [<ffffffff81369c62>] vscnprintf+0x12/0x30
+>  [<ffffffff810a4028>] vprintk_emit+0xa8/0x450
+>  [<ffffffff81e5cb00>] printk+0x49/0x4b
+>  [<ffffffff81d17221>] sctp_v6_get_dst+0x731/0x780
+>  [<ffffffff81d16e15>] ? sctp_v6_get_dst+0x325/0x780
+>  [<ffffffff81d00a96>] sctp_transport_route+0x46/0x120
+>  [<ffffffff81cff0f1>] sctp_assoc_add_peer+0x161/0x350
+>  [<ffffffff81d0fd8d>] sctp_sendmsg+0x6cd/0xcb0
+>  [<ffffffff81b55bf0>] ? inet_create+0x670/0x670
+>  [<ffffffff81b55cfb>] inet_sendmsg+0x10b/0x220
+>  [<ffffffff81b55bf0>] ? inet_create+0x670/0x670
+>  [<ffffffff81a72a64>] ? sock_update_classid+0xa4/0x2b0
+>  [<ffffffff81a72ab0>] ? sock_update_classid+0xf0/0x2b0
+>  [<ffffffff81a6ac1c>] sock_sendmsg+0xdc/0xf0
+>  [<ffffffff8118e9e5>] ? might_fault+0x85/0x90
+>  [<ffffffff8118e99c>] ? might_fault+0x3c/0x90
+>  [<ffffffff81a6e12a>] sys_sendto+0xfa/0x130
+>  [<ffffffff810a9887>] ? do_setitimer+0x197/0x380
+>  [<ffffffff81e960d5>] ? sysret_check+0x22/0x5d
+>  [<ffffffff81e960a9>] system_call_fastpath+0x16/0x1b
 > Code: 01 eb 89 66 2e 0f 1f 84 00 00 00 00 00 55 48 89 f8 31 c9 48 89 e5 53 eb 12 0f 1f 40 00 48 83 c1 01 48 83 c0 04 48 83 f9 08 74 70 <0f> b6 3c 4e 89 fb 83 e7 0f c0 eb 04 41 89 d8 41 83 e0 0f 0f b6
 > RIP  [<ffffffff8136796e>] ip6_string+0x1e/0xa0
->   RSP <ffff88004e4637a0>
+>  RSP <ffff88004e4637a0>
 > CR2: 0000000000000100
 > ---[ end trace a4de0bfcb38a3643 ]---
->
+> 
 > Signed-off-by: Tommi Rantala <tt.rantala@gmail.com>
-
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-
-Thanks
--vlad
-
 > ---
->   net/sctp/ipv6.c |    2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
->
+>  net/sctp/ipv6.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
 > diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
 > index ea14cb4..f3f0f4d 100644
 > --- a/net/sctp/ipv6.c
 > +++ b/net/sctp/ipv6.c
 > @@ -345,7 +345,7 @@ static void sctp_v6_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
->   	}
->
->   out:
+>  	}
+>  
+>  out:
 > -	if (!IS_ERR(dst)) {
 > +	if (!IS_ERR_OR_NULL(dst)) {
->   		struct rt6_info *rt;
->   		rt = (struct rt6_info *)dst;
->   		t->dst = dst;
->
+>  		struct rt6_info *rt;
+>  		rt = (struct rt6_info *)dst;
+>  		t->dst = dst;
+> -- 
+> 1.7.9.5
+> 
+> 
+Acked-by; Neil Horman <nhorman@tuxdriver.com>
 
