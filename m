@@ -1,68 +1,112 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 26 Dec 2012 00:42:07 +0000
-Subject: Re: [PATCH 28/29] net/: rename net_random() to prandom_u32()
-Message-Id: <20121226004207.GA21931@hmsreliant.think-freely.org>
+From: Michele Baldessari <michele@acksyn.org>
+Date: Sat, 01 Dec 2012 14:36:42 +0000
+Subject: Re: [PATCH v3 net-next] sctp: Add support to per-association statistics via a new SCTP_GET_ASSOC_STA
+Message-Id: <20121201143642.GA14332@marquez.int.rhx>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1356315256-6572-1-git-send-email-akinobu.mita@gmail.com>
- <1356315256-6572-29-git-send-email-akinobu.mita@gmail.com>
- <20121225002149.GA5235@neilslaptop.think-freely.org>
- <CAC5umyhhTJWfsFtZ_5Qm_HJHy2+sx7iMgcV=T=MMKLdi50-HQw@mail.gmail.com>
-In-Reply-To: <CAC5umyhhTJWfsFtZ_5Qm_HJHy2+sx7iMgcV=T=MMKLdi50-HQw@mail.gmail.com>
+References: <1354131552-24889-1-git-send-email-michele@acksyn.org>
+ <50B79BE5.7000500@gmail.com>
+In-Reply-To: <50B79BE5.7000500@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Akinobu Mita <akinobu.mita@gmail.com>
-Cc: linux-kernel@vger.kernel.org, akpm@linux-foundation.org, Jesse Gross <jesse@nicira.com>, Venkat Venkatsubra <venkat.x.venkatsubra@oracle.com>, Vlad Yasevich <vyasevich@gmail.com>, Sridhar Samudrala <sri@us.ibm.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.hengli.com.au>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, dev@openvswitch.org, netdev@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Thomas Graf <tgraf@suug.ch>, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>
 
-On Tue, Dec 25, 2012 at 08:47:26PM +0900, Akinobu Mita wrote:
-> 2012/12/25 Neil Horman <nhorman@tuxdriver.com>:
-> > On Mon, Dec 24, 2012 at 11:14:15AM +0900, Akinobu Mita wrote:
-> >> Use more preferable function name which implies using a pseudo-random
-> >> number generator.
-> >>
-> >> Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
-> >> Cc: Jesse Gross <jesse@nicira.com>
-> >> Cc: Venkat Venkatsubra <venkat.x.venkatsubra@oracle.com>
-> >> Cc: Vlad Yasevich <vyasevich@gmail.com>
-> >> Cc: Sridhar Samudrala <sri@us.ibm.com>
-> >> Cc: Neil Horman <nhorman@tuxdriver.com>
-> >> Cc: Steffen Klassert <steffen.klassert@secunet.com>
-> >> Cc: Herbert Xu <herbert@gondor.apana.org.au>
-> >> Cc: "David S. Miller" <davem@davemloft.net>
-> >> Cc: linux-sctp@vger.kernel.org
-> >> Cc: dev@openvswitch.org
-> >> Cc: netdev@vger.kernel.org
-> >> ---
-> >>  include/net/red.h         | 2 +-
-> >>  net/802/garp.c            | 2 +-
-> >>  net/openvswitch/actions.c | 2 +-
-> >>  net/rds/bind.c            | 2 +-
-> >>  net/sctp/socket.c         | 2 +-
-> >>  net/xfrm/xfrm_state.c     | 2 +-
-> >>  6 files changed, 6 insertions(+), 6 deletions(-)
-> >>
-> > I'm largely indifferent to this patch, but I kind of feel like its just churn.
-> > Whats the real advantage in making this change?  I grant that it clearly
-> > indicates the type of random number generator we're using at a given call site,
-> > But for those using net_random, you probably don't care too much about
-> > the source of your random bits.  If you did really want true random vs.
-> > pseudo-random data, you need to explicitly use the right call.  You're previous
-> > patch series did good cleanup on differentiating the different random calls, but
-> > this just seems like its removing what is otherwise useful indirection.
+Hi Vlad,
+
+On Thu, Nov 29, 2012 at 12:31:17PM -0500, Vlad Yasevich wrote:
+> On 11/28/2012 02:39 PM, Michele Baldessari wrote:
 > 
-> I overlooked the importance of  net_random() indirection.
-> Thanks for the feedback. I'll leave all net_random() callers as-is in
-> the next version.
-Well, I guess I should qualify my opinion.  I find it useful personally (the
-generation of nonces in many cases can be left to most any pseudo random
-generator that the system deems is a 'good enough' balance between a fast
-generator that doesn't block on low entropy and a reasonably secure one that
-doesn't allow for easy prediction.  As those needs and factors change, its nice
-to have a set point to change them at.  If you (or anyone else has a differing
-opinion, I'm happy to listen to it.
-
-
-Regards
-Neil
-
+> >diff --git a/net/sctp/inqueue.c b/net/sctp/inqueue.c
+> >index 397296f..7edc89d 100644
+> >--- a/net/sctp/inqueue.c
+> >+++ b/net/sctp/inqueue.c
+> >@@ -105,6 +105,9 @@ void sctp_inq_push(struct sctp_inq *q, struct sctp_chunk *chunk)
+> >  	 */
+> >  	list_add_tail(&chunk->list, &q->in_chunk_list);
+> >  	q->immediate.func(&q->immediate);
+> >+
+> >+	if (chunk->asoc)
+> >+		chunk->asoc->stats.ipackets++;
 > 
+> you may want to consider putting this before the immediate.func()
+> call, so that you record an incoming packet before it's fully
+> processed.  This
+> would mimic the behavior of the rest of the stats you are collecting, as
+> you typically increment the stat and then process the data.
+
+ok, makes sense.
+
+> >  }
+> >
+> >  /* Peek at the next chunk on the inqeue. */
+> 
+> >
+> >+/*
+> >+ * SCTP_GET_ASSOC_STATS
+> >+ *
+> >+ * This option retrieves local per endpoint statistics. It is modeled
+> >+ * after OpenSolaris' implementation
+> >+ */
+> >+static int sctp_getsockopt_assoc_stats(struct sock *sk, int len,
+> >+				       char __user *optval,
+> >+				       int __user *optlen)
+> >+{
+> >+	struct sctp_assoc_stats sas;
+> >+	struct sctp_association *asoc = NULL;
+> >+
+> >+	/* User must provide at least the assoc id */
+> >+	if (len < sizeof(sctp_assoc_t))
+> >+		return -EINVAL;
+> >+
+> >+	if (copy_from_user(&sas, optval, len))
+> >+		return -EFAULT;
+> >+
+> >+	asoc = sctp_id2assoc(sk, sas.sas_assoc_id);
+> >+	if (!asoc)
+> >+		return -EINVAL;
+> >+
+> >+	sas.sas_rtxchunks = asoc->stats.rtxchunks;
+> >+	sas.sas_gapcnt = asoc->stats.gapcnt;
+> >+	sas.sas_outofseqtsns = asoc->stats.outofseqtsns;
+> >+	sas.sas_osacks = asoc->stats.osacks;
+> >+	sas.sas_isacks = asoc->stats.isacks;
+> >+	sas.sas_octrlchunks = asoc->stats.octrlchunks;
+> >+	sas.sas_ictrlchunks = asoc->stats.ictrlchunks;
+> >+	sas.sas_oodchunks = asoc->stats.oodchunks;
+> >+	sas.sas_iodchunks = asoc->stats.iodchunks;
+> >+	sas.sas_ouodchunks = asoc->stats.ouodchunks;
+> >+	sas.sas_iuodchunks = asoc->stats.iuodchunks;
+> >+	sas.sas_idupchunks = asoc->stats.idupchunks;
+> >+	sas.sas_opackets = asoc->stats.opackets;
+> >+	sas.sas_ipackets = asoc->stats.ipackets;
+> >+
+> >+	/* New high max rto observed, will return 0 if not a single
+> >+	 * RTO update took place. obs_rto_ipaddr will be bogus
+> >+	 * in such a case
+> >+	 */
+> >+	sas.sas_maxrto = asoc->stats.max_obs_rto;
+> >+	memcpy(&sas.sas_obs_rto_ipaddr, &asoc->stats.obs_rto_ipaddr,
+> >+		sizeof(struct sockaddr_storage));
+> >+
+> >+	/* Mark beginning of a new observation period */
+> >+	asoc->stats.max_obs_rto = 0;
+> 
+> Ok.  That's better.  If there are 2 fast queries you get 0 on the
+> second, but that still feels a bit strange to me.  I think resetting
+> max_obs_rto to rto_min might make more sense.  rto_min is the low bound
+> and rto can't go below that.  So, on the next rto measurement, that'll
+> be the smallest value of max_obs_rto.  IMO, it might be better to reset
+> the max_obs_rto to rto_min, so that
+>  1) We always see a valid rto value in the field.
+>  2) We can more easily see the variances in rto over time.
+> 
+> What do you think?
+
+I agree, it makes more sense (will send an updated version shortly)
+
+thanks,
+Michele
+-- 
+Michele Baldessari            <michele@acksyn.org>
+C2A5 9DA3 9961 4FFB E01B  D0BC DDD4 DCCB 7515 5C6D
