@@ -1,31 +1,56 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 06 Dec 2012 19:16:36 +0000
-Subject: Re: [PATCH] sctp: proc: protect bind_addr->address_list accesses with rcu_read_lock()
-Message-Id: <20121206191636.GD17192@hmsreliant.think-freely.org>
+From: Thomas Graf <tgraf@suug.ch>
+Date: Thu, 06 Dec 2012 19:25:04 +0000
+Subject: [PATCH 1/2] sctp: proc: protect bind_addr->address_list accesses with rcu_read_lock()
+Message-Id: <28cdea17e7b2c0f9f9c2a18949b10abc8cb84db2.1354821623.git.tgraf@suug.ch>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <a803093c70e857e8e01e554288ee79f66f7acda4.1354814846.git.tgraf@suug.ch>
- <50C0E300.3000703@gmail.com>
- <20121206182840.GD16122@casper.infradead.org>
-In-Reply-To: <20121206182840.GD16122@casper.infradead.org>
+References: <cover.1354821623.git.tgraf@suug.ch>
+In-Reply-To: <cover.1354821623.git.tgraf@suug.ch>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Thomas Graf <tgraf@suug.ch>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, Thomas Graf <tgraf@redhat.com>
 
-On Thu, Dec 06, 2012 at 06:28:40PM +0000, Thomas Graf wrote:
-> On 12/06/12 at 01:25pm, Vlad Yasevich wrote:
-> > May want to avoid printing addresses that are !addr->valid.
-> > 
-> > Otherwise looks good.
-> 
-> Good point, I'll send a follow-up patch if that is OK. Same
-> applies to dead transports obviously.
-Assuming a followup patch to avoid dead addresses..
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+From: Thomas Graf <tgraf@redhat.com>
 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+address_list is protected via the socket lock or RCU. Since we don't want
+to take the socket lock for each assoc we dump in procfs a RCU read-side
+critical section must be entered.
+
+V2: Skip local addresses marked as dead
+
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Signed-off-by: Thomas Graf <tgraf@suug.ch>
+---
+ net/sctp/proc.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+index 9966e7b..06b05ee 100644
+--- a/net/sctp/proc.c
++++ b/net/sctp/proc.c
+@@ -139,7 +139,11 @@ static void sctp_seq_dump_local_addrs(struct seq_file *seq, struct sctp_ep_commo
+ 	    primary = &peer->saddr;
+ 	}
+ 
+-	list_for_each_entry(laddr, &epb->bind_addr.address_list, list) {
++	rcu_read_lock();
++	list_for_each_entry_rcu(laddr, &epb->bind_addr.address_list, list) {
++		if (!laddr->valid)
++			continue;
++
+ 		addr = &laddr->a;
+ 		af = sctp_get_af_specific(addr->sa.sa_family);
+ 		if (primary && af->cmp_addr(addr, primary)) {
+@@ -147,6 +151,7 @@ static void sctp_seq_dump_local_addrs(struct seq_file *seq, struct sctp_ep_commo
+ 		}
+ 		af->seq_dump_addr(seq, addr);
+ 	}
++	rcu_read_unlock();
+ }
+ 
+ /* Dump remote addresses of an association. */
+-- 
+1.7.11.7
+
