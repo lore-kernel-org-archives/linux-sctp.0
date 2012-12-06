@@ -1,68 +1,171 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Thu, 06 Dec 2012 14:40:05 +0000
-Subject: Re: [PATCH] sctp: Fix compiler warning when CONFIG_DEBUG_SECTION_MISMATCH=y
-Message-Id: <50C0AE45.3030902@gmail.com>
+From: Thomas Graf <tgraf@suug.ch>
+Date: Thu, 06 Dec 2012 19:25:05 +0000
+Subject: [PATCH 2/2] sctp: Add RCU protection to assoc->transport_addr_list
+Message-Id: <93b74d9f3e36e0009e8ca77192f417bc9f3e8dea.1354821623.git.tgraf@suug.ch>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1354798992-25622-1-git-send-email-christoph.paasch@uclouvain.be>
-In-Reply-To: <1354798992-25622-1-git-send-email-christoph.paasch@uclouvain.be>
+References: <cover.1354821623.git.tgraf@suug.ch>
+In-Reply-To: <cover.1354821623.git.tgraf@suug.ch>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Christoph Paasch <christoph.paasch@uclouvain.be>
-Cc: linux-sctp@vger.kernel.org, davem@davemloft.net, sri@us.ibm.com, nhorman@tuxdriver.com, netdev@vger.kernel.org
+To: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com
 
-On 12/06/2012 08:03 AM, Christoph Paasch wrote:
-> WARNING: net/sctp/sctp.o(.text+0x72f1): Section mismatch in reference
-> from the function sctp_net_init() to the function
-> .init.text:sctp_proc_init()
-> The function sctp_net_init() references
-> the function __init sctp_proc_init().
-> This is often because sctp_net_init lacks a __init
-> annotation or the annotation of sctp_proc_init is wrong.
->
-> And put __net_init after 'int' for sctp_proc_init - as it is done
-> everywhere else in the sctp-stack.
->
-> Signed-off-by: Christoph Paasch <christoph.paasch@uclouvain.be>
+peer.transport_addr_list is currently only protected by sk_sock
+which is inpractical to acquire for procfs dumping purposes.
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+This patch adds RCU protection allowing for the procfs readers to
+enter RCU read-side critical sections.
 
--vlad
+Modification of the list continues to be serialized via sk_lock.
 
-> ---
->   net/sctp/protocol.c |    6 +++---
->   1 file changed, 3 insertions(+), 3 deletions(-)
->
-> diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-> index 456bc3d..2c7785b 100644
-> --- a/net/sctp/protocol.c
-> +++ b/net/sctp/protocol.c
-> @@ -86,7 +86,7 @@ int sysctl_sctp_rmem[3];
->   int sysctl_sctp_wmem[3];
->
->   /* Set up the proc fs entry for the SCTP protocol. */
-> -static __net_init int sctp_proc_init(struct net *net)
-> +static int __net_init sctp_proc_init(struct net *net)
->   {
->   #ifdef CONFIG_PROC_FS
->   	net->sctp.proc_net_sctp = proc_net_mkdir(net, "sctp", net->proc_net);
-> @@ -1165,7 +1165,7 @@ static void sctp_v4_del_protocol(void)
->   	unregister_inetaddr_notifier(&sctp_inetaddr_notifier);
->   }
->
-> -static int sctp_net_init(struct net *net)
-> +static int __net_init sctp_net_init(struct net *net)
->   {
->   	int status;
->
-> @@ -1290,7 +1290,7 @@ err_sysctl_register:
->   	return status;
->   }
->
-> -static void sctp_net_exit(struct net *net)
-> +static void __net_exit sctp_net_exit(struct net *net)
->   {
->   	/* Free the local address list */
->   	sctp_free_addr_wq(net);
->
+V2: Use list_del_rcu() in sctp_association_free() to be safe
+    Skip transports marked dead when dumping for procfs
+
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Signed-off-by: Thomas Graf <tgraf@suug.ch>
+---
+ include/net/sctp/structs.h |  2 ++
+ net/sctp/associola.c       |  6 +++---
+ net/sctp/proc.c            | 14 ++++++++++++--
+ net/sctp/transport.c       | 18 +++++++++++++-----
+ 4 files changed, 30 insertions(+), 10 deletions(-)
+
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 64158aa..5d6987b 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -948,6 +948,8 @@ struct sctp_transport {
+ 
+ 	/* 64-bit random number sent with heartbeat. */
+ 	__u64 hb_nonce;
++
++	struct rcu_head rcu;
+ };
+ 
+ struct sctp_transport *sctp_transport_new(struct net *, const union sctp_addr *,
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index b1ef3bc..81b1236 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -445,7 +445,7 @@ void sctp_association_free(struct sctp_association *asoc)
+ 	/* Release the transport structures. */
+ 	list_for_each_safe(pos, temp, &asoc->peer.transport_addr_list) {
+ 		transport = list_entry(pos, struct sctp_transport, transports);
+-		list_del(pos);
++		list_del_rcu(pos);
+ 		sctp_transport_free(transport);
+ 	}
+ 
+@@ -565,7 +565,7 @@ void sctp_assoc_rm_peer(struct sctp_association *asoc,
+ 		sctp_assoc_update_retran_path(asoc);
+ 
+ 	/* Remove this peer from the list. */
+-	list_del(&peer->transports);
++	list_del_rcu(&peer->transports);
+ 
+ 	/* Get the first transport of asoc. */
+ 	pos = asoc->peer.transport_addr_list.next;
+@@ -765,7 +765,7 @@ struct sctp_transport *sctp_assoc_add_peer(struct sctp_association *asoc,
+ 	peer->state = peer_state;
+ 
+ 	/* Attach the remote transport to our asoc.  */
+-	list_add_tail(&peer->transports, &asoc->peer.transport_addr_list);
++	list_add_tail_rcu(&peer->transports, &asoc->peer.transport_addr_list);
+ 	asoc->peer.transport_count++;
+ 
+ 	/* If we do not yet have a primary path, set one.  */
+diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+index 06b05ee..8c19e97 100644
+--- a/net/sctp/proc.c
++++ b/net/sctp/proc.c
+@@ -162,15 +162,20 @@ static void sctp_seq_dump_remote_addrs(struct seq_file *seq, struct sctp_associa
+ 	struct sctp_af *af;
+ 
+ 	primary = &assoc->peer.primary_addr;
+-	list_for_each_entry(transport, &assoc->peer.transport_addr_list,
++	rcu_read_lock();
++	list_for_each_entry_rcu(transport, &assoc->peer.transport_addr_list,
+ 			transports) {
+ 		addr = &transport->ipaddr;
++		if (transport->dead)
++			continue;
++
+ 		af = sctp_get_af_specific(addr->sa.sa_family);
+ 		if (af->cmp_addr(addr, primary)) {
+ 			seq_printf(seq, "*");
+ 		}
+ 		af->seq_dump_addr(seq, addr);
+ 	}
++	rcu_read_unlock();
+ }
+ 
+ static void * sctp_eps_seq_start(struct seq_file *seq, loff_t *pos)
+@@ -441,12 +446,16 @@ static int sctp_remaddr_seq_show(struct seq_file *seq, void *v)
+ 	head = &sctp_assoc_hashtable[hash];
+ 	sctp_local_bh_disable();
+ 	read_lock(&head->lock);
++	rcu_read_lock();
+ 	sctp_for_each_hentry(epb, node, &head->chain) {
+ 		if (!net_eq(sock_net(epb->sk), seq_file_net(seq)))
+ 			continue;
+ 		assoc = sctp_assoc(epb);
+-		list_for_each_entry(tsp, &assoc->peer.transport_addr_list,
++		list_for_each_entry_rcu(tsp, &assoc->peer.transport_addr_list,
+ 					transports) {
++			if (tsp->dead)
++				continue;
++
+ 			/*
+ 			 * The remote address (ADDR)
+ 			 */
+@@ -492,6 +501,7 @@ static int sctp_remaddr_seq_show(struct seq_file *seq, void *v)
+ 		}
+ 	}
+ 
++	rcu_read_unlock();
+ 	read_unlock(&head->lock);
+ 	sctp_local_bh_enable();
+ 
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index 206cf52..1295aec 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -163,13 +163,11 @@ void sctp_transport_free(struct sctp_transport *transport)
+ 	sctp_transport_put(transport);
+ }
+ 
+-/* Destroy the transport data structure.
+- * Assumes there are no more users of this structure.
+- */
+-static void sctp_transport_destroy(struct sctp_transport *transport)
++static void sctp_transport_destroy_rcu(struct rcu_head *head)
+ {
+-	SCTP_ASSERT(transport->dead, "Transport is not dead", return);
++	struct sctp_transport *transport;
+ 
++	transport = container_of(head, struct sctp_transport, rcu);
+ 	if (transport->asoc)
+ 		sctp_association_put(transport->asoc);
+ 
+@@ -180,6 +178,16 @@ static void sctp_transport_destroy(struct sctp_transport *transport)
+ 	SCTP_DBG_OBJCNT_DEC(transport);
+ }
+ 
++/* Destroy the transport data structure.
++ * Assumes there are no more users of this structure.
++ */
++static void sctp_transport_destroy(struct sctp_transport *transport)
++{
++	SCTP_ASSERT(transport->dead, "Transport is not dead", return);
++
++	call_rcu(&transport->rcu, sctp_transport_destroy_rcu);
++}
++
+ /* Start T3_rtx timer if it is not already running and update the heartbeat
+  * timer.  This routine is called every time a DATA chunk is sent.
+  */
+-- 
+1.7.11.7
 
