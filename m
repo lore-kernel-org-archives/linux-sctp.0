@@ -1,165 +1,80 @@
-From: Jamie Parsons <Jamie.Parsons@metaswitch.com>
-Date: Thu, 20 Dec 2012 12:17:35 +0000
-Subject: RE: Possible SCTP peer receive window bug
-Message-Id: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA721FD06B@ENFIRHMBX1.datcon.co.uk>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Fri, 14 Dec 2012 18:51:00 +0000
+Subject: [PATCH] sctp: Change defaults on cookie hmac selection
+Message-Id: <1355511060-27320-1-git-send-email-nhorman@tuxdriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA6D387197@ENFIRHMBX1.datcon.co.uk>
-In-Reply-To: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA6D387197@ENFIRHMBX1.datcon.co.uk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, David Miller <davem@davemloft.net>, Linus Torvalds <torvalds@linux-foundation.org>, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
 
-Hi,
+Recently I posted commit 3c68198e75 which made selection of the cookie hmac
+algorithm selectable.  This is all well and good, but Linus noted that it
+changes the default config:
+http://marc.info/?l=linux-netdev&m5536629004808&w=2
 
-I had some problems using system tap on append_data() due to it being an inline function.  append_data() is only called from sctp_packet_append_chunk() so I used system tap on that instead.
+I've modified the sctp Kconfig file to reflect the recommended way of making
+this choice, using the thermal driver example specified, and brought the
+defaults back into line with the way they were prior to my origional patch
 
-I'm off on holiday tomorrow so won't get a chance to repro the issue before Christmas, but I'll look at it again in January.
+Tested by myself (allbeit fairly quickly).  All configuration combinations seems
+to work soundly.
 
-Jamie
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+CC: David Miller <davem@davemloft.net>
+CC: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Vlad Yasevich <vyasevich@gmail.com>
+CC: linux-sctp@vger.kernel.org
+---
+ net/sctp/Kconfig | 22 ++++++++++++++++++++--
+ 1 file changed, 20 insertions(+), 2 deletions(-)
 
------Original Message-----
-From: Vlad Yasevich [mailto:vyasevich@gmail.com] 
-Sent: 17 December 2012 15:12
-To: Neil Horman
-Cc: Jamie Parsons; Peter Brittain; linux-sctp@vger.kernel.org
-Subject: Re: Possible SCTP peer receive window bug
-
-On 12/06/2012 02:14 PM, Neil Horman wrote:
-> On Thu, Dec 06, 2012 at 03:42:20PM +0000, Jamie Parsons wrote:
->> Hi Neil and Vlad,
->>
->> I've reproed the problem on Fedora 17 with a 3.6.9-2.fc17.x86_64 kernel.  I've placed the trace and tcpdump in the ftp directory, they are named Fedora17.txt and Fedora17.pcap respectively.  I've also placed some systemtap trace (stap.txt) along with the system tap script (rwnd_stap) in the ftp directory.
->>
->> There is still a bug in the system tap script as the exit value of functions is always returned as the same as the entry value to functions.  The output may still be of some use to you though.
->>
->> Let me know if there is anything else you need (or if you spot what the stap script bug is).
->>
->> Thanks,
->>
->> Jamie
->>
-> Jamie, thanks for the info.  I figured out the problem with my stap 
-> script - basically just an older version of systemtap that had a bug.  
-> Anywho, regarding your stap output, yes, I think its useful - or 
-> rather its interesting.  The output of sctp_packet_append_chunk is always like this:
-> sctp_packet_append_chunk input asoc = 0xffff880216137800 peer rwnd = 
-> 1236 sctp_packet_append_chunk input asoc = 0xffff880216137800 peer 
-> rwnd = 1236 sctp_packet_append_chunk reduces asoc 0xffff880216137800 
-> peer rwnd to 1236
-
-I thought we were probing append_data()?
-
->
-> That is to say we always appear to get two input probe triggers, and a 
-> single output probe trigger.  Not sure if thats some buffering problem 
-> in systemtap or indicative of something else. If it were something 
-> else Id start by guessing that we're getting parallel accesses to the 
-> same association from 2 different contexts, but from what I can see, 
-> lock_sock and friends protects all of our access paths properly at the 
-> top and bottom of the stack (save for the ootb case, which is only triggered if we don't find an association in sctp_rcv.
->
-> About the only thing that jumps out at me in that receive path is the 
-> case in which sk_bound_dev_if != af->skb_iif(skb).  If we fall into 
-> that case, even if we did find an assocation, we move to using the 
-> ctl_sock to process the chunk, but we may end up using the transport 
-> that was found during the association lookup.  If that were to occur, 
-> we would have two contexts not sharing the same socket lock, but 
-> sharing a transport pointer, that could lead to double access of the same association.
->
-> Unfortunately, since we're only using a single interface here, I don't 
-> quite see how that can happen.  Vlad, do you have any thoughts?
-
-Hmm.. this is bad.   Probably not the bug Jamie is seeing, but it's 
-definitely a bug, considering sctp_endpoint_bh_rcv accesses 
-chunk->transport and would end up doing so without a lock in the case
-you described...
-
--vlad
-
->
-> Regards
-> Neil
->
->> -----Original Message-----
->> From: Neil Horman [mailto:nhorman@tuxdriver.com]
->> Sent: 06 December 2012 14:04
->> To: Vlad Yasevich
->> Cc: Jamie Parsons; Peter Brittain; linux-sctp@vger.kernel.org
->> Subject: Re: Possible SCTP peer receive window bug
->>
->> On Wed, Dec 05, 2012 at 12:11:02PM -0500, Vlad Yasevich wrote:
->>> On 12/05/2012 11:30 AM, Neil Horman wrote:
->>>> On Tue, Dec 04, 2012 at 09:58:35AM -0500, Neil Horman wrote:
->>>>> On Tue, Dec 04, 2012 at 01:34:54PM +0000, Jamie Parsons wrote:
->>>>>> Hi Neil and Vlad,
->>>>>>
->>>>>> I've spoken to IT services and they can install the Fedora 17 OS on a box for me.  Is that recent enough a kernel to repro the issue on?
->>>>>>
->>>>>> Thanks,
->>>>>>
->>>>>> Jamie
->>>>>>
->>>>> Yes, it is I think.  Vlad and I have also discussed this and we 
->>>>> think a systemtap script might be in order here so we can better 
->>>>> track what the rwnd value is doing as your test case progresses.
->>>>> I'm sorry I've not gotten that to you yet, but I'm working on it.
->>>>> Neil
->>>>>
->>>>
->>>>
->>>> So, I have to apologize, but systemtap kinda sucks to work with.  
->>>> Its not working yet, but I wanted to post this too you in case you 
->>>> have better systemtap skills than I do.  Regardless this stap 
->>>> script is generall the thing we want to run and should give us a 
->>>> fairly good view (when it works) of whats happening with an associations peer rwnd value in the stack.
->>>>
->>>> Best
->>>> Neil
->>>>
->>>>
->>>> probe module("sctp").function("sctp_assoc_update").return {
->>>> 	printf("sctp_assoc_update updates asoc %p peer rwnd to %d\n", 
->>>> $asoc, $asoc->peer->rwnd); }
->>>>
->>>>
->>>> probe module("sctp").function("sctp_retransmit_mark") {
->>>> 	printf("sctp_retransmit_mark increases asoc %p peer rwnd to %d\n", 
->>>> $asoc, $q->asoc->peer->rwnd); }
->>>>
->>>
->>> shouldn't the above be ".return"?  Otherwise, we are triggered at 
->>> function start.  might be worth a try to probe both start and end 
->>> and see what the diff.
->>>
->>>> probe module("sctp").function("sctp_outq_sack") {
->>>> 	printf("sctp_outq_sack updates asoc %p peer rwnd to %d\n", 
->>>> $q->asoc, $q->asoc->peer->rwnd); }
->>>>
->>>
->>> Same here...
->>>
->> Yeah, it should be a .return, thanks.  We could definately do it at the start and end as well if you'd like, it might be handy.  Unfortunately, the major problem I'm running into at the moment, is that stap is telling me that $q isn't accessible at the start and end of the function, which makes no sense to me.
->> I'm trying to get up with Will Cohen to help me sort that particular mess out.
->>
->> Neil
->>
->>> -vlad
->>>
->>>> probe module("sctp").function("sctp_packet_append_data").return {
->>>> 	printf("sctp_packet_append_data reduces asoc %p peer rwnd to 
->>>> %d\n", $asoc, $asoc->peer->rwnd); }
->>>>
->>>> probe module("sctp").function("sctp_process_init").return {
->>>> 	printf("sctp_process_init updates assoc %p peer rwnd to %d\n", 
->>>> $asoc, $asoc->peer->rwnd); }
->>>>
->>>>
->>>
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp" 
->> in the body of a message to majordomo@vger.kernel.org More majordomo 
->> info at  http://vger.kernel.org/majordomo-info.html
->>
+diff --git a/net/sctp/Kconfig b/net/sctp/Kconfig
+index a9edd2e..7cd47be 100644
+--- a/net/sctp/Kconfig
++++ b/net/sctp/Kconfig
+@@ -66,12 +66,31 @@ config SCTP_DBG_OBJCNT
+ 	  'cat /proc/net/sctp/sctp_dbg_objcnt'
+ 
+ 	  If unsure, say N
++choice
++	prompt "Default SCTP cookie HMAC encoding"
++	default SCTP_COOKIE_HMAC_MD5
++	help
++	  This option sets the default sctp cookie hmac algorithm
++	  when in doubt select 'md5'
++
++config SCTP_DEFAULT_COOKIE_HMAC_MD5
++	bool "Enable optional MD5 hmac cookie generation"
++	help
++	  Enable optional MD5 hmac based SCTP cookie generation
++	select SCTP_COOKIE_HMAC_MD5
++
++config SCTP_DEFAULT_COOKIE_HMAC_SHA1
++	bool "Enable optional SHA1 hmac cookie generation"
++	help
++	  Enable optional SHA1 hmac based SCTP cookie generation
++	select SCTP_COOKIE_HMAC_SHA1
++
++endchoice
+ 
+ config SCTP_COOKIE_HMAC_MD5
+ 	bool "Enable optional MD5 hmac cookie generation"
+ 	help
+ 	  Enable optional MD5 hmac based SCTP cookie generation
+-	default y
+ 	select CRYPTO_HMAC if SCTP_COOKIE_HMAC_MD5
+ 	select CRYPTO_MD5 if SCTP_COOKIE_HMAC_MD5
+ 
+@@ -79,7 +98,6 @@ config SCTP_COOKIE_HMAC_SHA1
+ 	bool "Enable optional SHA1 hmac cookie generation"
+ 	help
+ 	  Enable optional SHA1 hmac based SCTP cookie generation
+-	default y
+ 	select CRYPTO_HMAC if SCTP_COOKIE_HMAC_SHA1
+ 	select CRYPTO_SHA1 if SCTP_COOKIE_HMAC_SHA1
+ 
+-- 
+1.7.11.7
 
