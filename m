@@ -1,7 +1,7 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Mon, 17 Dec 2012 15:12:06 +0000
-Subject: Re: Possible SCTP peer receive window bug
-Message-Id: <50CF3646.5040606@gmail.com>
+From: Jamie Parsons <Jamie.Parsons@metaswitch.com>
+Date: Thu, 20 Dec 2012 12:17:35 +0000
+Subject: RE: Possible SCTP peer receive window bug
+Message-Id: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA721FD06B@ENFIRHMBX1.datcon.co.uk>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA6D387197@ENFIRHMBX1.datcon.co.uk>
 In-Reply-To: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA6D387197@ENFIRHMBX1.datcon.co.uk>
@@ -9,6 +9,21 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
+
+Hi,
+
+I had some problems using system tap on append_data() due to it being an inline function.  append_data() is only called from sctp_packet_append_chunk() so I used system tap on that instead.
+
+I'm off on holiday tomorrow so won't get a chance to repro the issue before Christmas, but I'll look at it again in January.
+
+Jamie
+
+-----Original Message-----
+From: Vlad Yasevich [mailto:vyasevich@gmail.com] 
+Sent: 17 December 2012 15:12
+To: Neil Horman
+Cc: Jamie Parsons; Peter Brittain; linux-sctp@vger.kernel.org
+Subject: Re: Possible SCTP peer receive window bug
 
 On 12/06/2012 02:14 PM, Neil Horman wrote:
 > On Thu, Dec 06, 2012 at 03:42:20PM +0000, Jamie Parsons wrote:
@@ -24,35 +39,36 @@ On 12/06/2012 02:14 PM, Neil Horman wrote:
 >>
 >> Jamie
 >>
-> Jamie, thanks for the info.  I figured out the problem with my stap script -
-> basically just an older version of systemtap that had a bug.  Anywho, regarding
-> your stap output, yes, I think its useful - or rather its interesting.  The
-> output of sctp_packet_append_chunk is always like this:
-> sctp_packet_append_chunk input asoc = 0xffff880216137800 peer rwnd = 1236
-> sctp_packet_append_chunk input asoc = 0xffff880216137800 peer rwnd = 1236
-> sctp_packet_append_chunk reduces asoc 0xffff880216137800 peer rwnd to 1236
+> Jamie, thanks for the info.  I figured out the problem with my stap 
+> script - basically just an older version of systemtap that had a bug.  
+> Anywho, regarding your stap output, yes, I think its useful - or 
+> rather its interesting.  The output of sctp_packet_append_chunk is always like this:
+> sctp_packet_append_chunk input asoc = 0xffff880216137800 peer rwnd = 
+> 1236 sctp_packet_append_chunk input asoc = 0xffff880216137800 peer 
+> rwnd = 1236 sctp_packet_append_chunk reduces asoc 0xffff880216137800 
+> peer rwnd to 1236
 
 I thought we were probing append_data()?
 
 >
-> That is to say we always appear to get two input probe triggers, and a single
-> output probe trigger.  Not sure if thats some buffering problem in systemtap or
-> indicative of something else. If it were something else Id start by guessing
-> that we're getting parallel accesses to the same association from 2 different
-> contexts, but from what I can see, lock_sock and friends protects all of our
-> access paths properly at the top and bottom of the stack (save for the ootb
-> case, which is only triggered if we don't find an association in sctp_rcv.
+> That is to say we always appear to get two input probe triggers, and a 
+> single output probe trigger.  Not sure if thats some buffering problem 
+> in systemtap or indicative of something else. If it were something 
+> else Id start by guessing that we're getting parallel accesses to the 
+> same association from 2 different contexts, but from what I can see, 
+> lock_sock and friends protects all of our access paths properly at the 
+> top and bottom of the stack (save for the ootb case, which is only triggered if we don't find an association in sctp_rcv.
 >
-> About the only thing that jumps out at me in that receive path is the case in
-> which sk_bound_dev_if != af->skb_iif(skb).  If we fall into that case, even if
-> we did find an assocation, we move to using the ctl_sock to process the chunk,
-> but we may end up using the transport that was found during the association
-> lookup.  If that were to occur, we would have two contexts not sharing the same
-> socket lock, but sharing a transport pointer, that could lead to double access
-> of the same association.
+> About the only thing that jumps out at me in that receive path is the 
+> case in which sk_bound_dev_if != af->skb_iif(skb).  If we fall into 
+> that case, even if we did find an assocation, we move to using the 
+> ctl_sock to process the chunk, but we may end up using the transport 
+> that was found during the association lookup.  If that were to occur, 
+> we would have two contexts not sharing the same socket lock, but 
+> sharing a transport pointer, that could lead to double access of the same association.
 >
-> Unfortunately, since we're only using a single interface here, I don't quite see
-> how that can happen.  Vlad, do you have any thoughts?
+> Unfortunately, since we're only using a single interface here, I don't 
+> quite see how that can happen.  Vlad, do you have any thoughts?
 
 Hmm.. this is bad.   Probably not the bug Jamie is seeing, but it's 
 definitely a bug, considering sctp_endpoint_bh_rcv accesses 
@@ -84,41 +100,41 @@ you described...
 >>>>>>
 >>>>>> Jamie
 >>>>>>
->>>>> Yes, it is I think.  Vlad and I have also discussed this and we
->>>>> think a systemtap script might be in order here so we can better
+>>>>> Yes, it is I think.  Vlad and I have also discussed this and we 
+>>>>> think a systemtap script might be in order here so we can better 
 >>>>> track what the rwnd value is doing as your test case progresses.
 >>>>> I'm sorry I've not gotten that to you yet, but I'm working on it.
 >>>>> Neil
 >>>>>
 >>>>
 >>>>
->>>> So, I have to apologize, but systemtap kinda sucks to work with.  Its
->>>> not working yet, but I wanted to post this too you in case you have
->>>> better systemtap skills than I do.  Regardless this stap script is
->>>> generall the thing we want to run and should give us a fairly good
->>>> view (when it works) of whats happening with an associations peer rwnd value in the stack.
+>>>> So, I have to apologize, but systemtap kinda sucks to work with.  
+>>>> Its not working yet, but I wanted to post this too you in case you 
+>>>> have better systemtap skills than I do.  Regardless this stap 
+>>>> script is generall the thing we want to run and should give us a 
+>>>> fairly good view (when it works) of whats happening with an associations peer rwnd value in the stack.
 >>>>
 >>>> Best
 >>>> Neil
 >>>>
 >>>>
 >>>> probe module("sctp").function("sctp_assoc_update").return {
->>>> 	printf("sctp_assoc_update updates asoc %p peer rwnd to %d\n", $asoc,
->>>> $asoc->peer->rwnd); }
+>>>> 	printf("sctp_assoc_update updates asoc %p peer rwnd to %d\n", 
+>>>> $asoc, $asoc->peer->rwnd); }
 >>>>
 >>>>
 >>>> probe module("sctp").function("sctp_retransmit_mark") {
->>>> 	printf("sctp_retransmit_mark increases asoc %p peer rwnd to %d\n",
+>>>> 	printf("sctp_retransmit_mark increases asoc %p peer rwnd to %d\n", 
 >>>> $asoc, $q->asoc->peer->rwnd); }
 >>>>
 >>>
->>> shouldn't the above be ".return"?  Otherwise, we are triggered at
->>> function start.  might be worth a try to probe both start and end and
->>> see what the diff.
+>>> shouldn't the above be ".return"?  Otherwise, we are triggered at 
+>>> function start.  might be worth a try to probe both start and end 
+>>> and see what the diff.
 >>>
 >>>> probe module("sctp").function("sctp_outq_sack") {
->>>> 	printf("sctp_outq_sack updates asoc %p peer rwnd to %d\n", $q->asoc,
->>>> $q->asoc->peer->rwnd); }
+>>>> 	printf("sctp_outq_sack updates asoc %p peer rwnd to %d\n", 
+>>>> $q->asoc, $q->asoc->peer->rwnd); }
 >>>>
 >>>
 >>> Same here...
@@ -131,19 +147,19 @@ you described...
 >>> -vlad
 >>>
 >>>> probe module("sctp").function("sctp_packet_append_data").return {
->>>> 	printf("sctp_packet_append_data reduces asoc %p peer rwnd to %d\n",
->>>> $asoc, $asoc->peer->rwnd); }
+>>>> 	printf("sctp_packet_append_data reduces asoc %p peer rwnd to 
+>>>> %d\n", $asoc, $asoc->peer->rwnd); }
 >>>>
 >>>> probe module("sctp").function("sctp_process_init").return {
->>>> 	printf("sctp_process_init updates assoc %p peer rwnd to %d\n",
+>>>> 	printf("sctp_process_init updates assoc %p peer rwnd to %d\n", 
 >>>> $asoc, $asoc->peer->rwnd); }
 >>>>
 >>>>
 >>>
 >>>
 >> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> To unsubscribe from this list: send the line "unsubscribe linux-sctp" 
+>> in the body of a message to majordomo@vger.kernel.org More majordomo 
+>> info at  http://vger.kernel.org/majordomo-info.html
 >>
 
