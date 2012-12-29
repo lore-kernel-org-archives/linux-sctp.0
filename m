@@ -1,36 +1,27 @@
-From: David Miller <davem@davemloft.net>
-Date: Sat, 15 Dec 2012 01:14:26 +0000
-Subject: Re: [PATCH] sctp: Change defaults on cookie hmac selection
-Message-Id: <20121214.201426.1300133389027142871.davem@davemloft.net>
+From: Stephen Hemminger <shemminger@vyatta.com>
+Date: Sat, 29 Dec 2012 04:18:55 +0000
+Subject: [PATCH] sctp: make sctp_addr_wq_timeout_handler static
+Message-Id: <20121228201855.4275db64@nehalam.linuxnetplumber.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20121215003844.GA10508@neilslaptop.think-freely.org>
-	<CA+55aFw-D2J-S8gH0PxO52nDeK31KHxum2gfT8RrzRoNF93yrg@mail.gmail.com>
-	<20121215011229.GD10508@neilslaptop.think-freely.org>
-In-Reply-To: <20121215011229.GD10508@neilslaptop.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: nhorman@tuxdriver.com
-Cc: torvalds@linux-foundation.org, netdev@vger.kernel.org, vyasevich@gmail.com, linux-sctp@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Sridhar Samudrala <sri@us.ibm.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 14 Dec 2012 20:12:29 -0500
+Fix sparse warning about local function that should be static.
 
-> On Fri, Dec 14, 2012 at 04:44:56PM -0800, Linus Torvalds wrote:
->> On Fri, Dec 14, 2012 at 4:38 PM, Neil Horman <nhorman@tuxdriver.com> wrote:
->> >
->> > No need, I think.  Since its a user configurable choice now, the user can just
->> > set the selector to "None" in proc, and none will be used.
->> 
->> Well, by the same logic, there's no point to defaulting to MD5 either,
->> since the user could just put MD5 in the there.
->> 
->> The point is, if you're asking for a default, you should include the
->> actual choices, and not limit it to some random subset of choices. No?
->> 
->>              Linus
->> 
-> Ok, Thats a fair point, I can add a option to choose the "None" option as the
-> deafult.  Dave, do you want a delta patch, or a new version?
+Signed-off-by: Stephen Hemminger <shemminger@vyatta.com>
 
-New version please.
+
+--- a/net/sctp/protocol.c	2012-12-27 11:36:34.817072247 -0800
++++ b/net/sctp/protocol.c	2012-12-28 20:02:51.445778974 -0800
+@@ -595,7 +595,7 @@ static void sctp_v4_ecn_capable(struct s
+ 	INET_ECN_xmit(sk);
+ }
+ 
+-void sctp_addr_wq_timeout_handler(unsigned long arg)
++static void sctp_addr_wq_timeout_handler(unsigned long arg)
+ {
+ 	struct net *net = (struct net *)arg;
+ 	struct sctp_sockaddr_entry *addrw, *temp;
