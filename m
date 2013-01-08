@@ -1,79 +1,105 @@
 From: Florian Fainelli <florian@openwrt.org>
-Date: Tue, 08 Jan 2013 17:36:50 +0000
+Date: Tue, 08 Jan 2013 17:48:23 +0000
 Subject: Re: [PATCH v2] sctp: Change defaults on cookie hmac selection
-Message-Id: <50EC5932.4040407@openwrt.org>
+Message-Id: <50EC5BE7.3090401@openwrt.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1355511060-27320-1-git-send-email-nhorman@tuxdriver.com> <1355534521-32719-1-git-send-email-nhorman@tuxdriver.com> <50EACCD3.90609@openwrt.org> <20130107144921.GA31577@hmsreliant.think-freely.org> <50EAE68C.2050300@openwrt.org> <20130107153812.GC31577@hmsreliant.think-freely.org> <50EAEE64.5010300@gmail.com>
-In-Reply-To: <50EAEE64.5010300@gmail.com>
+References: <1355511060-27320-1-git-send-email-nhorman@tuxdriver.com> <1355534521-32719-1-git-send-email-nhorman@tuxdriver.com> <50EACCD3.90609@openwrt.org> <20130107144921.GA31577@hmsreliant.think-freely.org> <50EAEA71.1060007@gmail.com> <20130107154625.GD31577@hmsreliant.think-freely.org> <50EAFA2A.3000200@gmail.com>
+In-Reply-To: <50EAFA2A.3000200@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
 To: Vlad Yasevich <vyasevich@gmail.com>
 Cc: Neil Horman <nhorman@tuxdriver.com>, netdev@vger.kernel.org, David Miller <davem@davemloft.net>, Linus Torvalds <torvalds@linux-foundation.org>, linux-sctp@vger.kernel.org
 
-Le 01/07/13 16:48, Vlad Yasevich a =C3=A9crit :
-> No, thats the problem, your old config is no longer valid with this=20
-> new Kconfig
->> file.  Your config is telling the config utility that you want your=20
->> default
->> Cookie hmac to be MD5, but you've explicitly told it (via your yes ""=20
->> | make
->> oldconfig command), that you want SCTP_COOKIE_HMAC_MD5 to be=20
->> disabled, so the
->> config utility is left with no choice to prompt you again for a=20
->> default hmac,
->> which your command answers again by saying=20
->> SCTP_DEFAULT_COOKIE_HMAC_MD5 (the
->> default choice of 1).  Thats your loop, you keep telling the config=20
->> utility that
->> you both want the default hmac to be md5, and that you don't want to=20
->> allow md5
->> to be an available hmac alg.
+Le 01/07/13 17:39, Vlad Yasevich a =C3=A9crit :
 >>
->> Thats not a bug.  I'm sorry if your old configuration needs manual=20
->> updating, but
->> there are no guarantees that old configurations will 'just work' in=20
->> perpituity.
->>
+>>> Would that save all the config trouble?
+>>>
+>> Yes, it would fix it as Florian has noted, but at the cost of=20
+>> silently modifying
+>> what the default hmac config vaule is.  If you've expressly disabled
+>> SCTP_COOKIE_HMAC_MD5, and then blindly take the default choice in the
+>> SCTP_DEFAULT_COOKIE selection option (the default default as it=20
+>> were), using the
+>> approach your suggesting, then that will silently enable=20
+>> SCTP_COOKIE_HMAC_MD5
+>> again, which may not be expected by users.  If you expressly have a=20
+>> config
+>> option disabled in an old configuration, we should leave it there.
 >
-> Neil
+> GACK.  Just reproduced this and I really don't like this infinite loop=20
+> of choice prompts.  That's a horrible bug and we need to fix this.
 >
-> Actually, I think we have a bug in the config.  Look at the thermal=20
-> driver config again.  It has:
+> I don't think overriding the value is that big of a deal, especially=20
+> considering that this is exactly what 'make menuconfig' and other=20
+> graphical configs will do.
+> If I start with:
+>     CONFIG_IP_SCTP=3Dm
+>     CONFIG_NET_SCTPPROBE=3Dm
+>     # CONFIG_SCTP_DBG_MSG is not set
+>     # CONFIG_SCTP_DBG_OBJCNT is not set
+>     # CONFIG_SCTP_HMAC_NONE is not set
+>     CONFIG_SCTP_HMAC_SHA1=3Dy
+>     # CONFIG_SCTP_HMAC_MD5 is not set
 >
-> choice
->         prompt "Default Thermal governor"
->         default THERMAL_DEFAULT_GOV_STEP_WISE
+> then run:
+>     yes "" | make oldconfig
 >
-> config THERMAL_DEFAULT_GOV_STEP_WISE
->     ...
-> config THERMAL_DEFAULT_GOV_FAIR_SHARE
->     ...
-> config THERMAL_DEFAULT_GOV_USER_SPACE
->     ...
-> endchoice
+> I get an infinite loop.
 >
+> If I run "make menuconfig", I get:
+>     CONFIG_IP_SCTP=3Dm
+>     CONFIG_NET_SCTPPROBE=3Dm
+>     # CONFIG_SCTP_DBG_MSG is not set
+>     # CONFIG_SCTP_DBG_OBJCNT is not set
+>     CONFIG_SCTP_DEFAULT_COOKIE_HMAC_MD5=3Dy
+>     # CONFIG_SCTP_DEFAULT_COOKIE_HMAC_SHA1 is not set
+>     # CONFIG_SCTP_DEFAULT_COOKIE_HMAC_NONE is not set
+>     CONFIG_SCTP_COOKIE_HMAC_MD5=3Dy
+>     # CONFIG_SCTP_COOKIE_HMAC_SHA1 is not set
 >
-> SCTP has:
+> Note, that SHA1 is now overridden with MD5.
 >
-> choice
->         prompt "Default SCTP cookie HMAC encoding"
->         default SCTP_COOKIE_HMAC_MD5
->
-> config SCTP_DEFAULT_COOKIE_HMAC_MD5
->     ...
-> config SCTP_DEFAULT_COOKIE_HMAC_SHA1
->     ...
-> config SCTP_DEFAULT_COOKIE_HMAC_NONE
->     ...
-> endchoice
->
-> See the difference?  The default value of the choice statement needs to
-> be one of the available choices.
+> If I change the value of the default choice in Kconfig, the behavior=20
+> between oldconfig and menuconfig is the same.
 
-Right, since none of the config symbols actually exist when migrating=20
-from and oldconfig we are still being prompted, which is just fine=20
-actually. Having the config symbol being the default a member of the=20
-choice/endchoice section is what should be expected.
---
-Florian
+Right, the issue is as simple as there is no default *valid* config=20
+symbol being proposed. In any case Neil's patch changes both config=20
+symbol names such that they are non-existent when transitionning from a=20
+pre-3.8-rc config and a 3.8-rc config. The following patch fixes this=20
+for me:
+
+ From c8e277512bafafc009a3fbf889c78d6b6a06d5fa Mon Sep 17 00:00:00 2001
+From: Florian Fainelli <florian@openwrt.org>
+Date: Mon, 7 Jan 2013 14:26:15 +0100
+Subject: [PATCH] sctp: fix typo in default SCTP cookie choice
+
+Commit 0d0863b0 (sctp: Change defaults on cookie hmac selection)
+introduced a choice configuration option to select the default SCTP
+cookie hashing algorithm, a typo was introduced for the default choice.
+This is an issue when running make oldconfig because an explicit choice
+number must be entered since no default is available. This patch fixes
+the typo, thus providing a valid default choice.
+
+Signed-off-by: Florian Fainelli <florian@openwrt.org>
+---
+  net/sctp/Kconfig |    2 +-
+  1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sctp/Kconfig b/net/sctp/Kconfig
+index c262106..7521d94 100644
+--- a/net/sctp/Kconfig
++++ b/net/sctp/Kconfig
+@@ -68,7 +68,7 @@ config SCTP_DBG_OBJCNT
+        If unsure, say N
+  choice
+      prompt "Default SCTP cookie HMAC encoding"
+-    default SCTP_COOKIE_HMAC_MD5
++    default SCTP_DEFAULT_COOKIE_HMAC_MD5
+      help
+        This option sets the default sctp cookie hmac algorithm
+        when in doubt select 'md5'
+--=20
+1.7.10.4
+
+
