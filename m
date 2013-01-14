@@ -1,61 +1,88 @@
-From: Fan Du <fan.du@windriver.com>
-Date: Mon, 14 Jan 2013 02:40:46 +0000
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Mon, 14 Jan 2013 08:40:35 +0000
 Subject: Re: [PATCH] sctp_xconnect: memory leak when malloc big buffer
-Message-Id: <50F3702E.8090909@windriver.com>
+Message-Id: <50F3C483.7020902@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1357888961-1546-1-git-send-email-fan.du@windriver.com>
 In-Reply-To: <1357888961-1546-1-git-send-email-fan.du@windriver.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-
-
-On 2013年01月11日 21:48, Neil Horman wrote:
-> On Fri, Jan 11, 2013 at 03:22:41PM +0800, Fan Du wrote:
->> CLIENT repeatly call process_ready_sockets, which malloc without free,
->> so sctp_xconnect exit unexpectly.
->>
->> Signed-off-by: Fan Du<fan.du@windriver.com>
->> ---
->>   apps/sctp_xconnect.c |    1 +
->>   1 files changed, 1 insertions(+), 0 deletions(-)
->>
->> diff --git a/apps/sctp_xconnect.c b/apps/sctp_xconnect.c
->> index 5874c33..4e33040 100644
->> --- a/apps/sctp_xconnect.c
->> +++ b/apps/sctp_xconnect.c
->> @@ -573,6 +573,7 @@ void process_ready_sockets(int client_socket[], int assoc_num, fd_set *rfds) {
->>   			}
->>   		}
->>   	}
->> +	free(big_buffer);
->>   }
->>
-> Definately a leak, but it seems like it would be better solved by making those
-> buffers static allocations.  Its a single threaded app, why do all that malloc
-> and free in a forever while loop when you don't really need to?
-
-Hi, Neil
-
-Thanks for your advice.
-
-I have send another version to the list.
-
-> Neil
+On 01/14/2013 03:37 AM, Fan Du wrote:
+> CLIENT repeatly call process_ready_sockets, which malloc without free,
+> so sctp_xconnect exit unexpectly. Since SERVER and CLIENT could share
+> one buffer, so we malloc an global buffer at start.
 >
->>   int main(int argc, char *argv[]) {
->> --
->> 1.7.1
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+> Signed-off-by: Fan Du <fan.du@windriver.com>
+> ---
+>   apps/sctp_xconnect.c |   19 ++++++++-----------
+>   1 files changed, 8 insertions(+), 11 deletions(-)
+>
+> diff --git a/apps/sctp_xconnect.c b/apps/sctp_xconnect.c
+> index 5874c33..5be5a34 100644
+> --- a/apps/sctp_xconnect.c
+> +++ b/apps/sctp_xconnect.c
+> @@ -73,6 +73,7 @@ char *remote_host = NULL;
+>   sockaddr_storage_t client_loop,
+>   		server_loop;
+>   struct hostent *hst;
+> +char *big_buffer;
+>
+>   void usage(char *argv0);
+>   void parse_arguments(int argc, char*argv[]);
+> @@ -380,13 +381,8 @@ void server_mode() {
+>   	int assoc_num =0;
+>   	struct msghdr inmessage;
+>   	struct iovec iov;
+> -	char *big_buffer;
+>   	char incmsg[CMSG_SPACE(sizeof(sctp_cmsg_data_t))];
+>
+> -	if ((big_buffer = malloc(REALLY_BIG)) = NULL) {
+> -		printf("malloc failure: %s\n", strerror(errno));
+> -		DUMP_CORE;
+> -	}
+>
+>   	printf("Running in Server Mode...\n");
+>
+> @@ -530,15 +526,9 @@ void process_ready_sockets(int client_socket[], int assoc_num, fd_set *rfds) {
+>           int i, stream, error;
+>   	struct msghdr inmessage;
+>   	struct iovec iov;
+> -	char *big_buffer;
+>   	char incmsg[CMSG_SPACE(sizeof (sctp_cmsg_data_t))];
+>   	sockaddr_storage_t msgname;
+>
+> -	if ((big_buffer = malloc(REALLY_BIG)) = NULL) {
+> -		printf("malloc failure: %s\n", strerror(errno));
+> -		DUMP_CORE;
+> -	}
+> -
+>           /* Setup inmessage to be able to receive in incomming message */
+>   	memset(&inmessage, 0, sizeof (inmessage));
+>   	iov.iov_base = big_buffer;
+> @@ -579,11 +569,18 @@ int main(int argc, char *argv[]) {
+>
+>   	parse_arguments(argc, argv);
+>
+> +	if ((big_buffer = malloc(REALLY_BIG)) = NULL) {
+> +		printf("malloc failure: %s\n", strerror(errno));
+> +		DUMP_CORE;
+> +	}
+> +
 
--- 
-浮沉随浪只记今朝笑
+This is still not what Neil meant in his feedback. Please fix it and resend
+your patch.
 
---fan
+>   	if (mode = SERVER) {
+>   		server_mode();
+>   	} else if (mode = CLIENT){
+>   		client_mode();
+>   	}
+> +
+> +	free (big_buffer);
+>   	exit(1);
+>   }
+>
+>
