@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 16 Jan 2013 21:11:31 +0000
-Subject: Re: Possible SCTP peer receive window bug
-Message-Id: <20130116211131.GB2182@hmsreliant.think-freely.org>
+From: Jamie Parsons <Jamie.Parsons@metaswitch.com>
+Date: Thu, 17 Jan 2013 16:45:34 +0000
+Subject: RE: Possible SCTP peer receive window bug
+Message-Id: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA722151E6@ENFIRHMBX1.datcon.co.uk>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA6D387197@ENFIRHMBX1.datcon.co.uk>
 In-Reply-To: <B1BF0D5B21C20F4D8AE9BB4366C9BFCA6D387197@ENFIRHMBX1.datcon.co.uk>
@@ -9,6 +9,23 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
+
+Hi,
+
+That patch looks good apart from a typo - in sctp_outq_teardown(), __sctp_outq_teardown() should be called rather than the recursive call to sctp_outq_teardown().
+
+I've run the test again with this patch in place on the fedora17 LINUX kernel.  It went through the same code path as before receiving the duplicate COOKIE ECHO, outstanding bytes was reinitialized and the peer receive window returned to the expected value.
+
+Thanks for all your help,
+
+Jamie
+
+-----Original Message-----
+From: Neil Horman [mailto:nhorman@tuxdriver.com] 
+Sent: 16 January 2013 21:12
+To: Jamie Parsons
+Cc: Vlad Yasevich; Peter Brittain; linux-sctp@vger.kernel.org
+Subject: Re: Possible SCTP peer receive window bug
 
 On Wed, Jan 16, 2013 at 04:58:08PM +0000, Jamie Parsons wrote:
 > Hi Neil and Vlad,
@@ -37,18 +54,13 @@ On Wed, Jan 16, 2013 at 04:58:08PM +0000, Jamie Parsons wrote:
 I've not yet looked at your stap scripts, but the theory makes good sense to me.
 Nice work!
 
-Can you try this patch out?  Its untested, but it should correct the problem if
-your theory is correct.  Its a bit more than is strictly necessecary, but given
-what you describe, it makes more sense to me to ensure a re-initalization of the
-entire structure rather than just fixing up the one value thats wrong for this
-specific bug. That will future proof us against simmilar errors down the road.
+Can you try this patch out?  Its untested, but it should correct the problem if your theory is correct.  Its a bit more than is strictly necessecary, but given what you describe, it makes more sense to me to ensure a re-initalization of the entire structure rather than just fixing up the one value thats wrong for this specific bug. That will future proof us against simmilar errors down the road.
 
 Thanks!
 Neil
 
 
-diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index 379c81d..bef6a31 100644
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c index 379c81d..bef6a31 100644
 --- a/net/sctp/outqueue.c
 +++ b/net/sctp/outqueue.c
 @@ -224,7 +224,7 @@ void sctp_outq_init(struct sctp_association *asoc, struct sctp_outq *q)
@@ -73,15 +85,12 @@ index 379c81d..bef6a31 100644
  	}
  }
  
-+void sctp_outq_teardown(struct sctp_outq *q)
-+{
++void sctp_outq_teardown(struct sctp_outq *q) {
 +	sctp_outq_teardown(q);
 +	sctp_outq_init(q->asoc, q);
 +}
 +
- /* Free the outqueue structure and any related pending chunks.  */
- void sctp_outq_free(struct sctp_outq *q)
- {
+ /* Free the outqueue structure and any related pending chunks.  */  void sctp_outq_free(struct sctp_outq *q)  {
  	/* Throw away leftover chunks. */
 -	sctp_outq_teardown(q);
 +	__sctp_outq_teardown(q);
