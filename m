@@ -1,65 +1,65 @@
-From: Yuanhan Liu <yuanhan.liu@linux.intel.com>
-Date: Wed, 09 Jan 2013 02:42:26 +0000
-Subject: Re: [PATCH 5/5] kfifo: log based kfifo API
-Message-Id: <20130109024226.GD304@yliu-dev.sh.intel.com>
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Thu, 24 Jan 2013 16:02:47 +0000
+Subject: [PATCH] SCTP: Free the per-net sysctl table on net exit.
+Message-Id: <1359043367-30180-1-git-send-email-vyasevich@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1357657073-27352-1-git-send-email-yuanhan.liu@linux.intel.com>
- <1357657073-27352-6-git-send-email-yuanhan.liu@linux.intel.com>
- <20130108181645.GA7972@core.coreip.homeip.net>
-In-Reply-To: <20130108181645.GA7972@core.coreip.homeip.net>
+References: <51004F2D.9000405@fold.natur.cuni.cz>
+In-Reply-To: <51004F2D.9000405@fold.natur.cuni.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Dmitry Torokhov <dmitry.torokhov@gmail.com>
-Cc: linux-kernel@vger.kernel.org, Stefani Seibold <stefani@seibold.net>, Andrew Morton <akpm@linux-foundation.org>, linux-omap@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, platform-driver-x86@vger.kernel.org, linux-input@vger.kernel.org, linux-iio@vger.kernel.org, linux-rdma@vger.kernel.org, linux-media@vger.kernel.org, linux-mmc@vger.kernel.org, linux-mtd@lists.infradead.org, libertas-dev@lists.infradead.org, linux-wireless@vger.kernel.org, netdev@vger.kernel.org, linux-pci@vger.kernel.org, open-iscsi@googlegroups.com, linux-scsi@vger.kernel.org, devel@driverdev.osuosl.org, linux-serial@vger.kernel.org, linux-usb@vger.kernel.org, linux-mm@kvack.org, dccp@vger.kernel.org, linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, mmokrejs@fold.natur.cuni.cz, Vlad Yasevich <vyasevich@gmail.com>, "Eric W. Biederman" <ebiederm@xmission.com>
 
-On Tue, Jan 08, 2013 at 10:16:46AM -0800, Dmitry Torokhov wrote:
-> Hi Yuanhan,
-> 
-> On Tue, Jan 08, 2013 at 10:57:53PM +0800, Yuanhan Liu wrote:
-> > The current kfifo API take the kfifo size as input, while it rounds
-> >  _down_ the size to power of 2 at __kfifo_alloc. This may introduce
-> > potential issue.
-> > 
-> > Take the code at drivers/hid/hid-logitech-dj.c as example:
-> > 
-> > 	if (kfifo_alloc(&djrcv_dev->notif_fifo,
-> >                        DJ_MAX_NUMBER_NOTIFICATIONS * sizeof(struct dj_report),
-> >                        GFP_KERNEL)) {
-> > 
-> > Where, DJ_MAX_NUMBER_NOTIFICATIONS is 8, and sizeo of(struct dj_report)
-> > is 15.
-> > 
-> > Which means it wants to allocate a kfifo buffer which can store 8
-> > dj_report entries at once. The expected kfifo buffer size would be
-> > 8 * 15 = 120 then. While, in the end, __kfifo_alloc will turn the
-> > size to rounddown_power_of_2(120) =  64, and then allocate a buf
-> > with 64 bytes, which I don't think this is the original author want.
-> > 
-> > With the new log API, we can do like following:
-> > 
-> > 	int kfifo_size_order = order_base_2(DJ_MAX_NUMBER_NOTIFICATIONS *
-> > 					    sizeof(struct dj_report));
-> > 
-> > 	if (kfifo_alloc(&djrcv_dev->notif_fifo, kfifo_size_order, GFP_KERNEL)) {
-> > 
-> > This make sure we will allocate enough kfifo buffer for holding
-> > DJ_MAX_NUMBER_NOTIFICATIONS dj_report entries.
-> 
-> Why don't you simply change __kfifo_alloc to round the allocation up
-> instead of down?
+Per-net sysctl table needs to be explicitly freed at
+net exit.  Otherwise we see the following with kmemleak:
 
-Hi Dmitry,
+unreferenced object 0xffff880402d08000 (size 2048):
+  comm "chrome_sandbox", pid 18437, jiffies 4310887172 (age 9097.630s)
+  hex dump (first 32 bytes):
+    b2 68 89 81 ff ff ff ff 20 04 04 f8 01 88 ff ff  .h...... .......
+    04 00 00 00 a4 01 00 00 00 00 00 00 00 00 00 00  ................
+  backtrace:
+    [<ffffffff815b4aad>] kmemleak_alloc+0x21/0x3e
+    [<ffffffff81110352>] slab_post_alloc_hook+0x28/0x2a
+    [<ffffffff81113fad>] __kmalloc_track_caller+0xf1/0x104
+    [<ffffffff810f10c2>] kmemdup+0x1b/0x30
+    [<ffffffff81571e9f>] sctp_sysctl_net_register+0x1f/0x72
+    [<ffffffff8155d305>] sctp_net_init+0x100/0x39f
+    [<ffffffff814ad53c>] ops_init+0xc6/0xf5
+    [<ffffffff814ad5b7>] setup_net+0x4c/0xd0
+    [<ffffffff814ada5e>] copy_net_ns+0x6d/0xd6
+    [<ffffffff810938b1>] create_new_namespaces+0xd7/0x147
+    [<ffffffff810939f4>] copy_namespaces+0x63/0x99
+    [<ffffffff81076733>] copy_process+0xa65/0x1233
+    [<ffffffff81077030>] do_fork+0x10b/0x271
+    [<ffffffff8100a0e9>] sys_clone+0x23/0x25
+    [<ffffffff815dda73>] stub_clone+0x13/0x20
+    [<ffffffffffffffff>] 0xffffffffffffffff
 
-Yes, it would be neat and that was my first reaction as well. I then
-sent out a patch, but it was NACKed by Stefani(the original kfifo
-author). Here is the link:
+Reported-by: Martin Mokrejs <mmokrejs@fold.natur.cuni.cz>
+Signed-off-by: Vlad Yasevich <vyasevich@gmail.com>
+CC: "Eric W. Biederman" <ebiederm@xmission.com>
+---
+ net/sctp/sysctl.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
 
-    https://lkml.org/lkml/2012/10/26/144
+diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
+index 043889a..cd5712f 100644
+--- a/net/sctp/sysctl.c
++++ b/net/sctp/sysctl.c
+@@ -366,7 +366,11 @@ int sctp_sysctl_net_register(struct net *net)
+ 
+ void sctp_sysctl_net_unregister(struct net *net)
+ {
++	struct ctl_table *table;
++
++	table = net->sctp.sysctl_hdr->ctl_table_arg;
+ 	unregister_net_sysctl_table(net->sctp.sysctl_header);
++	kfree(table);
+ }
+ 
+ static struct ctl_table_header * sctp_sysctl_header;
+-- 
+1.7.7.6
 
-Then Stefani proposed to change the API to take log of size as input to
-root fix this kind of issues. And here it is.
-
-Thanks.
-
-	--yliu
