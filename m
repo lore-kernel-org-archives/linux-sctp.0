@@ -1,19 +1,22 @@
 From: ebiederm@xmission.com (Eric W. Biederman)
-Date: Mon, 28 Jan 2013 01:58:54 +0000
-Subject: [PATCH] SCTP: Free the per-net sysctl table on net exit.
-Message-Id: <87libe3w69.fsf@xmission.com>
+Date: Mon, 28 Jan 2013 03:25:11 +0000
+Subject: [PATCH] SCTP: Free the per-net sysctl table on net exit. v2
+Message-Id: <87obgayoo8.fsf_-_@xmission.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <51004F2D.9000405@fold.natur.cuni.cz>
 	<1359043367-30180-1-git-send-email-vyasevich@gmail.com>
 	<20130127.193511.2294954038548420781.davem@davemloft.net>
-In-Reply-To: <20130127.193511.2294954038548420781.davem@davemloft.net> (David
-	Miller's message of "Sun, 27 Jan 2013 19:35:11 -0500 (EST)")
+	<87libe3w69.fsf@xmission.com>
+In-Reply-To: <87libe3w69.fsf@xmission.com> (Eric W. Biederman's message of
+	"Sun, 27 Jan 2013 17:58:54 -0800")
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: David Miller <davem@davemloft.net>
 Cc: vyasevich@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, mmokrejs@fold.natur.cuni.cz
 
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Thu, 24 Jan 2013 11:02:47 -0500
 
 Per-net sysctl table needs to be explicitly freed at
 net exit.  Otherwise we see the following with kmemleak:
@@ -49,11 +52,15 @@ Signed-off-by: Vlad Yasevich <vyasevich@gmail.com>
 Acked-by: Neil Horman <nhorman@tuxdriver.com>
 Signed-off-by: "Eric W. Biederman" <ebiederm@xmission.com>
 ---
+
+The typo is fixed in the patch this time in addition to my test
+tree.
+
  net/sctp/sysctl.c |    4 ++++
  1 files changed, 4 insertions(+), 0 deletions(-)
 
 diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
-index 043889a..cd5712f 100644
+index 043889a..bf3c6e8 100644
 --- a/net/sctp/sysctl.c
 +++ b/net/sctp/sysctl.c
 @@ -366,7 +366,11 @@ int sctp_sysctl_net_register(struct net *net)
@@ -62,7 +69,7 @@ index 043889a..cd5712f 100644
  {
 +	struct ctl_table *table;
 +
-+	table = net->sctp.sysctl_hdr->ctl_table_arg;
++	table = net->sctp.sysctl_header->ctl_table_arg;
  	unregister_net_sysctl_table(net->sctp.sysctl_header);
 +	kfree(table);
  }
