@@ -1,167 +1,89 @@
-From: Fan Du <fan.du@windriver.com>
-Date: Wed, 16 Jan 2013 01:13:28 +0000
-Subject: Re: [PATCH] sctp_xconnect: memory leak when malloc big buffer
-Message-Id: <50F5FEB8.7010500@windriver.com>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Thu, 31 Jan 2013 16:51:44 +0000
+Subject: [PATCH net-next] sctp: sctp_close: fix release of bindings for deferred call_rcu's
+Message-Id: <13ea81dcf399f935bd8e048ce225411d8f29a792.1359650254.git.dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1357888961-1546-1-git-send-email-fan.du@windriver.com>
-In-Reply-To: <1357888961-1546-1-git-send-email-fan.du@windriver.com>
+References: <cover.1359650254.git.dborkman@redhat.com>
+In-Reply-To: <cover.1359650254.git.dborkman@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, netdev@vger.kernel.org
 
+It seems due to RCU usage, i.e. within SCTP's address binding list,
+a, say, ``behavioral change'' was introduced which does actually
+not conform to the RFC anymore. In particular consider the following
+(fictional) scenario to demonstrate this:
 
+  do:
+    Two SOCK_SEQPACKET-style sockets are openend (S1, S2)
+    S1 is bound to 127.0.0.1, port 1024 [server]
+    S2 is bound to 127.0.0.1, port 1025 [client]
+    listen(2) is invoked on S1
+    From S2 we call one sendmsg(2) with msg.msg_name and
+       msg.msg_namelen parameters set to the server's
+       address
+    S1, S2 are closed
+    goto do
 
-On 2013年01月15日 20:42, Neil Horman wrote:
-> On Tue, Jan 15, 2013 at 09:28:42AM +0800, Fan Du wrote:
->>
->>
->> On 2013年01月14日 22:16, Neil Horman wrote:
->>> On Mon, Jan 14, 2013 at 05:45:43PM +0800, Fan Du wrote:
->>>>
->>>>
->>>> On 2013年01月14日 16:40, Daniel Borkmann wrote:
->>>>> On 01/14/2013 03:37 AM, Fan Du wrote:
->>>>>> CLIENT repeatly call process_ready_sockets, which malloc without free,
->>>>>> so sctp_xconnect exit unexpectly. Since SERVER and CLIENT could share
->>>>>> one buffer, so we malloc an global buffer at start.
->>>>>>
->>>>>> Signed-off-by: Fan Du<fan.du@windriver.com>
->>>>>> ---
->>>>>> apps/sctp_xconnect.c | 19 ++++++++-----------
->>>>>> 1 files changed, 8 insertions(+), 11 deletions(-)
->>>>>>
->>>>>> diff --git a/apps/sctp_xconnect.c b/apps/sctp_xconnect.c
->>>>>> index 5874c33..5be5a34 100644
->>>>>> --- a/apps/sctp_xconnect.c
->>>>>> +++ b/apps/sctp_xconnect.c
->>>>>> @@ -73,6 +73,7 @@ char *remote_host = NULL;
->>>>>> sockaddr_storage_t client_loop,
->>>>>> server_loop;
->>>>>> struct hostent *hst;
->>>>>> +char *big_buffer;
->>>>>>
->>>>>> void usage(char *argv0);
->>>>>> void parse_arguments(int argc, char*argv[]);
->>>>>> @@ -380,13 +381,8 @@ void server_mode() {
->>>>>> int assoc_num =0;
->>>>>> struct msghdr inmessage;
->>>>>> struct iovec iov;
->>>>>> - char *big_buffer;
->>>>>> char incmsg[CMSG_SPACE(sizeof(sctp_cmsg_data_t))];
->>>>>>
->>>>>> - if ((big_buffer = malloc(REALLY_BIG)) = NULL) {
->>>>>> - printf("malloc failure: %s\n", strerror(errno));
->>>>>> - DUMP_CORE;
->>>>>> - }
->>>>>>
->>>>>> printf("Running in Server Mode...\n");
->>>>>>
->>>>>> @@ -530,15 +526,9 @@ void process_ready_sockets(int client_socket[], int assoc_num, fd_set *rfds) {
->>>>>> int i, stream, error;
->>>>>> struct msghdr inmessage;
->>>>>> struct iovec iov;
->>>>>> - char *big_buffer;
->>>>>> char incmsg[CMSG_SPACE(sizeof (sctp_cmsg_data_t))];
->>>>>> sockaddr_storage_t msgname;
->>>>>>
->>>>>> - if ((big_buffer = malloc(REALLY_BIG)) = NULL) {
->>>>>> - printf("malloc failure: %s\n", strerror(errno));
->>>>>> - DUMP_CORE;
->>>>>> - }
->>>>>> -
->>>>>> /* Setup inmessage to be able to receive in incomming message */
->>>>>> memset(&inmessage, 0, sizeof (inmessage));
->>>>>> iov.iov_base = big_buffer;
->>>>>> @@ -579,11 +569,18 @@ int main(int argc, char *argv[]) {
->>>>>>
->>>>>> parse_arguments(argc, argv);
->>>>>>
->>>>>> + if ((big_buffer = malloc(REALLY_BIG)) = NULL) {
->>>>>> + printf("malloc failure: %s\n", strerror(errno));
->>>>>> + DUMP_CORE;
->>>>>> + }
->>>>>> +
->>>>>
->>>>> This is still not what Neil meant in his feedback. Please fix it and resend
->>>>> your patch.
->>>>>
->>>>
->>>> Oh, This malloced size is about 64K bytes, I don't think static declare 64k bytes buffer is good for a quite few codes.
->>>> And also, as I have stated, SERVER and CLIENT could share the same buffer, so malloc this space at startup for one time
->>>> is easy for the rest to use.
->>>>
->>> Daniel is right.  While this is again a fine solution, but suggestion was to
->>> statically declare the buffer in a global location.  It provides the same shared
->>> usage between client and server modes, and doesn't require the NULL checking.
->>
->> Yes, no NULL pointer checking, that's true.
->>
->>> understand its a large buffer, but I'm not sure in what situation a statically
->>> declared 64k buffer would be inadvisable whereas a heap allocated 64k buffer
->>> would be acceptable, at least not in a bit of code so small as this.
->>
->> Hmmm, Ok, I will send another patch to follow your suggestion by declaring it statically :)
->>
->> But sorry, I have to argue this a bit more privately, because I'm not convinced why it should do that way.
->> This statically declared buffer contains nothing before its running, not like a CRC32
->> table which is a MUST to declare statically, so why bother to declare it statically to
->> make the executable file size explode considering its few code size.
+The first pass of this loop passes sucessful, while the second round
+fails during binding of S1 (address still in use). What is happening?
+In the first round, the initial handshake is being done, and, at the
+time close(2) is called on S1, a nongraceful shutdown is performed via
+ABORT since in S1's receive queue an unprocessed packet is present,
+thus stating an error condition. This can be considered as a correct
+behavior.
 
-crap! I regret once I sent this out.....
+During close also all bound addresses are freed, thus nothing *must*
+be active anymore.
 
+  After checking the Verification Tag, the receiving endpoint shall
+  remove the association from its record, and shall report the
+  termination to its upper layer. (RFC2960, 9.1 Abort of an Association)
 
->>
-> Well, 64k isn't that big, and it won't increase the size of the exutable by that
-> anyway.  If you don't initalize the global variable, then it will be placed in
-> the bss section of the elf file, where it is stored as just an offset and a
-> distance.  Give it a try and check the resultant binary size.
->
-> This doesn't make sense for all situations, but given the small size of this
-> program, I think you will find you will actually reduce your program size, as
-> the disk storage for a global uninitalized variable will be smaller than the
-> amount of storage for the code you remove in the NULL checking.
+Also, no half-open states are supported, thus after an ungraceful
+shutdown, we leave nothing behind. However, this seems not to be
+happening though. In a real-world scenario, this is exactly where
+it breaks the lksctp-tools functional test suite, *for instance*:
 
-You are right, I forgot the uninitialized variable sits in bss.
+  ./test_sockopt
+  test_sockopt.c  1 PASS : getsockopt(SCTP_STATUS) on a socket with no assoc
+  test_sockopt.c  2 PASS : getsockopt(SCTP_STATUS)
+  test_sockopt.c  3 PASS : getsockopt(SCTP_STATUS) with invalid associd
+  test_sockopt.c  4 PASS : getsockopt(SCTP_STATUS) with NULL associd
+  test_sockopt.c  5 BROK : bind: Address already in use
 
+With this patch, the example above (which simulates a similar scenario
+as in the implementation of this test case) and therefore also this test
+runs successfully through.
 
+If one wants to fix this issue, an RCU barrier needs to be introduced
+within the sctp_close handler. One could argue that this is quite costly,
+which is true, but on the other hand, if an application calls close on
+its socket, it likely might be out of its critical path anyway.
 
-> Neil
->
->>
->>
->>> Neil
->>>
->>>>
->>>>>> if (mode = SERVER) {
->>>>>> server_mode();
->>>>>> } else if (mode = CLIENT){
->>>>>> client_mode();
->>>>>> }
->>>>>> +
->>>>>> + free (big_buffer);
->>>>>> exit(1);
->>>>>> }
->>>>>>
->>>>>>
->>>>
->>>> --
->>>> 浮沉随浪只记今朝笑
->>>>
->>>> --fan
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>
->>
->> --
->> 浮沉随浪只记今朝笑
->>
->> --fan
->>
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/socket.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 9e65758..a9c18b4 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1536,6 +1536,11 @@ SCTP_STATIC void sctp_close(struct sock *sk, long timeout)
+ 
+ 	sock_put(sk);
+ 
++	/* There can still be (non-)TCP-style associations be waiting
++	 * to be processed via deferred RCU.
++	 */
++	rcu_barrier();
++
+ 	SCTP_DBG_OBJCNT_DEC(sock);
+ }
+ 
 -- 
-浮沉随浪只记今朝笑
+1.7.11.7
 
---fan
