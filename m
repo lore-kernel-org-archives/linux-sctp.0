@@ -1,7 +1,7 @@
-From: "Roberts, Lee A." <lee.roberts@hp.com>
-Date: Thu, 31 Jan 2013 04:30:07 +0000
-Subject: RE: Suspected renege problem in sctp
-Message-Id: <D64EC45690EF85409BA6C4730E016224430F427E@G4W3231.americas.hpqcorp.net>
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Thu, 31 Jan 2013 15:08:05 +0000
+Subject: Re: Suspected renege problem in sctp
+Message-Id: <510A88D5.9000904@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <5109DDE8.9050700@gmail.com>
 In-Reply-To: <5109DDE8.9050700@gmail.com>
@@ -10,131 +10,202 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-VmxhZCwNCg0KVGhlIHRlc3QgY29kZSB0aGF0IEknbSBydW5uaW5nIGF0IHRoZSBtb21lbnQgaGFz
-IGNoYW5nZXMgc2ltaWxhciB0byB0aGUgZm9sbG93aW5nLg0KSSB0aGluayB3ZSB3YW50IHRvIHBl
-ZWsgYXQgdGhlIHRhaWwgb2YgdGhlIHF1ZXVlLS0tYW5kIG5vdCBkZXF1ZXVlIChvciB1bmxpbmsp
-IHRoZQ0KZGF0YSB1bnRpbCB3ZSdyZSBzdXJlIHdlIHdhbnQgdG8gcmVuZWdlLg0KDQogICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAtLSBMZWUgUm9iZXJ0cw0K
-DQoNCiMgZGlmZiAtYyB1bHBxdWV1ZS5jfiB1bHBxdWV1ZS5jDQoqKiogdWxwcXVldWUuY34gMjAx
-Mi0xMC0wOSAxNDozMTozNS4wMDAwMDAwMDAgLTA2MDANCi0tLSB1bHBxdWV1ZS5jICAyMDEzLTAx
-LTMwIDIxOjIyOjQ5LjAwMDAwMDAwMCAtMDcwMA0KKioqKioqKioqKioqKioqDQoqKiogOTYzLDk3
-MyAqKioqDQogIA0KICAgICAgICB0c25tYXAgPSAmdWxwcS0+YXNvYy0+cGVlci50c25fbWFwOw0K
-ICANCiEgICAgICAgd2hpbGUgKChza2IgPSBfX3NrYl9kZXF1ZXVlX3RhaWwobGlzdCkpICE9IE5V
-TEwpIHsNCiEgICAgICAgICAgICAgICBmcmVlZCArPSBza2JfaGVhZGxlbihza2IpOw0KICAgICAg
-ICAgICAgICAgIGV2ZW50ID0gc2N0cF9za2IyZXZlbnQoc2tiKTsNCiAgICAgICAgICAgICAgICB0
-c24gPSBldmVudC0+dHNuOw0KICANCiAgICAgICAgICAgICAgICBzY3RwX3VscGV2ZW50X2ZyZWUo
-ZXZlbnQpOw0KICAgICAgICAgICAgICAgIHNjdHBfdHNubWFwX3JlbmVnZSh0c25tYXAsIHRzbik7
-DQogICAgICAgICAgICAgICAgaWYgKGZyZWVkID49IG5lZWRlZCkNCi0tLSA5NjMsOTc2IC0tLS0N
-CiAgDQogICAgICAgIHRzbm1hcCA9ICZ1bHBxLT5hc29jLT5wZWVyLnRzbl9tYXA7DQogIA0KISAg
-ICAgICB3aGlsZSAoKHNrYiA9IHNrYl9wZWVrX3RhaWwobGlzdCkpICE9IE5VTEwpIHsNCiAgICAg
-ICAgICAgICAgICBldmVudCA9IHNjdHBfc2tiMmV2ZW50KHNrYik7DQogICAgICAgICAgICAgICAg
-dHNuID0gZXZlbnQtPnRzbjsNCisgICAgICAgICAgICAgICBpZiAoVFNOX2x0ZSh0c24sIHNjdHBf
-dHNubWFwX2dldF9jdHNuKHRzbm1hcCkpKQ0KKyAgICAgICAgICAgICAgICAgICAgICAgYnJlYWs7
-DQogIA0KKyAgICAgICAgICAgICAgIF9fc2tiX3VubGluayhza2IsIGxpc3QpOw0KKyAgICAgICAg
-ICAgICAgIGZyZWVkICs9IHNrYl9oZWFkbGVuKHNrYik7DQogICAgICAgICAgICAgICAgc2N0cF91
-bHBldmVudF9mcmVlKGV2ZW50KTsNCiAgICAgICAgICAgICAgICBzY3RwX3Rzbm1hcF9yZW5lZ2Uo
-dHNubWFwLCB0c24pOw0KICAgICAgICAgICAgICAgIGlmIChmcmVlZCA+PSBuZWVkZWQpDQojDQoN
-Cg0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogVmxhZCBZYXNldmljaCBbbWFp
-bHRvOnZ5YXNldmljaEBnbWFpbC5jb21dIA0KU2VudDogV2VkbmVzZGF5LCBKYW51YXJ5IDMwLCAy
-MDEzIDc6NTkgUE0NClRvOiBNb250Z29tZXJ5LCBCb2INCkNjOiBSb2JlcnRzLCBMZWUgQS47IGxp
-bnV4LXNjdHBAdmdlci5rZXJuZWwub3JnDQpTdWJqZWN0OiBSZTogU3VzcGVjdGVkIHJlbmVnZSBw
-cm9ibGVtIGluIHNjdHANCg0KT24gMDEvMzAvMjAxMyAwNzo1MSBQTSwgQm9iIE1vbnRnb21lcnkg
-d3JvdGU6DQo+IFZsYWQsDQo+DQo+IElmIHlvdSdyZSBub3QgdGhlIHJpZ2h0IGd1eSB0byBhc2sg
-Y2FuIHlvdSBsZXQgbWUga25vdyB3aG8gbWlnaHQgYmU/DQoNCkhpIEJvYi4gIEkgYW0gc3RpbGwg
-dGhlIHJpZ2h0IHBlcnNvbiwgYnV0IGl0IHdvdWxkIGJlIGV2ZW4gYmV0dGVyIHRvDQphZGRyZXNz
-IHRoZXNlIHR5cGVzIG9mIHF1ZXN0aW9ucyBhbmQgd3JpdGV1cHMgdG8gbGludXgtc2N0cEB2Z2Vy
-Lmtlcm5lbC5vcmcuDQoNCj4NCj4gV2UndmUgYmVlbiBpbnZlc3RpZ2F0aW5nIHNjdHBzcHJheSBo
-YW5ncyBmb3IgcXVpdGUgc29tZSB0aW1lLg0KPg0KPiBJIHRoaW5rIHdlJ3JlIHNlZWluZyBhIGNh
-c2Ugd2hlcmUgYSByZW5lZ2Ugb3BlcmF0aW9uIGlzIHJlbW92aW5nDQo+IGZyYWdtZW50cyBmcm9t
-IHRoZSB1bHAgcmVhc20gcXVldWUgdGhhdCBhcmUgYXQgb3IgYmVsb3cgdGhlIHZhbHVlDQo+IG9m
-IGN1bXVsYXRpdmVfdHNuX2Fja19wb2ludC4gIFdlIHB1dCBhIEJVRyBzdGF0ZW1lbnQgaW4NCj4g
-c2N0cF90c25tYXBfcmVuZWdlIHNvIHdlJ2QgY3Jhc2ggaW5zdGVhZCBvZiBpZ25vcmluZyB0aGlz
-IGNhc2U6DQo+DQo+ICAgICAgICAgIGlmIChUU05fbHQodHNuLCBtYXAtPmJhc2VfdHNuKSkNCj4g
-ICAgICAgICAgICAgICAgICByZXR1cm47DQoNCg0KSG1tLi4gIExvb2tpbmcgYXQgdGhlIHJlbmVn
-aW5nIGZ1bmN0aW9ucyB0aGVyZSBpcyBubyBUU04gY2hlY2tpbmcgYXQgDQphbGwuICBZb3UgYXJl
-IGNvbXBsZXRlbHkgcmlnaHQuICBXZSBNVVNUIG5vdCByZW5lZ2UgREFUQSB0aGF0IGhhcyBtb3Zl
-ZA0KdGhlIGN1bXVsYXRpdmVfdHNuX2Fja19wb2ludC4NCg0KQWRkaW5nIHNvbWV0aGluZyBsaWtl
-IHRoaXMgaW4gc2N0cF91bHBxX3JlbmVnZV9saXN0IHNob3VsZCBmaXggdGhpczoNCg0KZGlmZiAt
-LWdpdCBhL25ldC9zY3RwL3VscHF1ZXVlLmMgYi9uZXQvc2N0cC91bHBxdWV1ZS5jDQppbmRleCBh
-ZGExNzQ2Li45YmQ5NGU2IDEwMDY0NA0KLS0tIGEvbmV0L3NjdHAvdWxwcXVldWUuYw0KKysrIGIv
-bmV0L3NjdHAvdWxwcXVldWUuYw0KQEAgLTk3MCwxMCArOTcwLDE0IEBAIHN0YXRpYyBfX3UxNiBz
-Y3RwX3VscHFfcmVuZWdlX2xpc3Qoc3RydWN0IA0Kc2N0cF91bHBxICp1bHBxLA0KICAgICAgICAg
-dHNubWFwID0gJnVscHEtPmFzb2MtPnBlZXIudHNuX21hcDsNCg0KICAgICAgICAgd2hpbGUgKChz
-a2IgPSBfX3NrYl9kZXF1ZXVlX3RhaWwobGlzdCkpICE9IE5VTEwpIHsNCi0gICAgICAgICAgICAg
-ICBmcmVlZCArPSBza2JfaGVhZGxlbihza2IpOw0KICAgICAgICAgICAgICAgICBldmVudCA9IHNj
-dHBfc2tiMmV2ZW50KHNrYik7DQogICAgICAgICAgICAgICAgIHRzbiA9IGV2ZW50LT50c247DQot
-DQorDQorICAgICAgICAgICAgICAgLyogTWFrZSBzdXJlIHdlIGRvIG5vdCByZW5lZ2UgYmVsb3cg
-Q1RTTiAqLw0KKyAgICAgICAgICAgICAgIGlmIChUU05fbHRlKHRzbiwgc2N0cF90c25tYXBfZ2V0
-X2N0c24odHNubWFwKSkpDQorICAgICAgICAgICAgICAgICAgICAgICBicmVhazsNCisNCisgICAg
-ICAgICAgICAgICBmcmVlZCArPSBza2JfaGVhZGxlbihza2IpOw0KICAgICAgICAgICAgICAgICBz
-Y3RwX3VscGV2ZW50X2ZyZWUoZXZlbnQpOw0KICAgICAgICAgICAgICAgICBzY3RwX3Rzbm1hcF9y
-ZW5lZ2UodHNubWFwLCB0c24pOw0KICAgICAgICAgICAgICAgICBpZiAoZnJlZWQgPj0gbmVlZGVk
-KQ0KDQpJIHRoaW5rIHRoZXJlIGFsc28gbWlnaHQgYmUgYSBidWcgaGVyZSB3aGVuIHJlbmVnaW5n
-IGZyb20gdGhlIG9yZGVyZWQgDQpxdWV1ZSBhbmQgdGhlIG1lc3NhZ2UgaGFzIGJlZW4gcmVhc3Nl
-bWJsZWQuICBJIG5lZWQgdG8gbG9vayBhdCB0aGF0IGEgDQpiaXQgbW9yZS4NCg0KLXZsYWQNCg0K
-Pg0KPiBBbmQgYWZ0ZXIgdHdvIGRheXMgb2Ygc2N0cHNwcmF5IHBvdW5kaW5nLCBoaXQgdGhlIGJ1
-Zy4NCj4NCj4gSGVyZSdzIGEgcGFydGlhbCB3cml0ZS11cCB1c2luZyBleGFtcGxlcyBmcm9tIHRo
-ZSBjb3JlIGZpbGU6DQo+DQo+ID09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0NCj4gRmFjdCAxOiAgYSByZW5lZ2Ug
-b3BlcmF0aW9uIHdpbGwgb25seSBiZSBsYXVuY2hlZCBpZiB0aGVyZSdzIGEgZ2FwIGluDQo+IHRo
-ZSB0c24uDQo+DQo+IFNvIGEgcmVhc3NlbWJseSBxdWV1ZSBsaWtlIHRoaXMgb25lIHdvdWxkIG5v
-dCBiZSBzZXQgdXBvbjoNCj4NCj4gUElEIDE3ODQNCj4gc2N0cF9hc3NvY2lhdGlvbiAweGZmZmY4
-ODA0MWI2YTIwMDANCj4NCj4gICAgICAgIHRzbl9tYXAgPSAweGZmZmY4ODA0MWRkOGQ1NjAsDQo+
-ICAgICAgICBiYXNlX3RzbiA9IDB4NTU3NTE3MTUsDQo+ICAgICAgICBjdW11bGF0aXZlX3Rzbl9h
-Y2tfcG9pbnQgPSAweDU1NzUxNzE0LA0KPiAgICAgICAgbWF4X3Rzbl9zZWVuID0gMHg1NTc1MTcx
-NCwNCj4NCj4gcmVhc20gcXVldWUgc3VtbWFyeToNCj4gICAgc3NuID0gMHgzNDUsICAgdHNuID0g
-MHg1NTc1MTcwYywgICBtc2dfZmxhZ3MgPSAweDIsICAgcm1lbV9sZW4gPSAweDY5Yw0KPiAgICBz
-c24gPSAweDM0NSwgICB0c24gPSAweDU1NzUxNzBkLCAgIG1zZ19mbGFncyA9IDB4MCwgICBybWVt
-X2xlbiA9IDB4NjljDQo+ICAgIHNzbiA9IDB4MzQ1LCAgIHRzbiA9IDB4NTU3NTE3MGUsICAgbXNn
-X2ZsYWdzID0gMHgwLCAgIHJtZW1fbGVuID0gMHg2OWMNCj4gICAgc3NuID0gMHgzNDUsICAgdHNu
-ID0gMHg1NTc1MTcwZiwgICBtc2dfZmxhZ3MgPSAweDAsICAgcm1lbV9sZW4gPSAweDY5Yw0KPiAg
-ICBzc24gPSAweDM0NSwgICB0c24gPSAweDU1NzUxNzEwLCAgIG1zZ19mbGFncyA9IDB4MCwgICBy
-bWVtX2xlbiA9IDB4NjljDQo+ICAgIHNzbiA9IDB4MzQ1LCAgIHRzbiA9IDB4NTU3NTE3MTEsICAg
-bXNnX2ZsYWdzID0gMHgwLCAgIHJtZW1fbGVuID0gMHg2OWMNCj4gICAgc3NuID0gMHgzNDUsICAg
-dHNuID0gMHg1NTc1MTcxMiwgICBtc2dfZmxhZ3MgPSAweDAsICAgcm1lbV9sZW4gPSAweDY5Yw0K
-PiAgICBzc24gPSAweDM0NSwgICB0c24gPSAweDU1NzUxNzEzLCAgIG1zZ19mbGFncyA9IDB4MCwg
-ICBybWVtX2xlbiA9IDB4NjljDQo+ICAgIHNzbiA9IDB4MzQ1LCAgIHRzbiA9IDB4NTU3NTE3MTQs
-ICAgbXNnX2ZsYWdzID0gMHgwLCAgIHJtZW1fbGVuID0gMHg2OWMNCj4NCj4gTm8gZ2FwOiB0aGUg
-bGFzdCB0c24gaW4gdGhlIHJlYXNtIHF1ZXVlIG1hdGNoZXMgY3VtdWxhdGl2ZV90c25fYWNrX3Bv
-aW50ID0gMHg1NTc1MTcxNCwNCj4NCj4NCj4gSW4gb3VyIGNhc2UsIEkgYmVsaWV2ZSB0aGUgcmVh
-c20gcXVldWUgbG9va2VkIGxpa2UgdGhpcyB3aGVuIHRoZSByZW5lZ2UgbGF1bmNoZWQ6DQo+DQo+
-IEluIHNjdHBfYXNzb2NpYXRpb24gMHhmZmZmODgwNDFiODQ1MDAwDQo+DQo+ICAgICAgICBiYXNl
-X3RzbiA9IDB4OTM2YTZkNzYsDQo+ICAgICAgICBjdW11bGF0aXZlX3Rzbl9hY2tfcG9pbnQgPSAw
-eDkzNmE2ZDc1LA0KPiAgICAgICAgbWF4X3Rzbl9zZWVuID0gMHg5MzZhNmQ3OSwNCj4NCj4gICAg
-c3NuID0gMHgwLCAgIHRzbiA9IDB4OTM2YTZkNmYsICAgbXNnX2ZsYWdzID0gMHgyLCAgIHJtZW1f
-bGVuID0gMHg2OWMNCj4gICAgc3NuID0gMHgwLCAgIHRzbiA9IDB4OTM2YTZkNzAsICAgbXNnX2Zs
-YWdzID0gMHgwLCAgIHJtZW1fbGVuID0gMHg2OWMNCj4gICAgc3NuID0gMHgwLCAgIHRzbiA9IDB4
-OTM2YTZkNzEsICAgbXNnX2ZsYWdzID0gMHgwLCAgIHJtZW1fbGVuID0gMHg2OWMNCj4gICAgc3Nu
-ID0gMHgwLCAgIHRzbiA9IDB4OTM2YTZkNzIsICAgbXNnX2ZsYWdzID0gMHgwLCAgIHJtZW1fbGVu
-ID0gMHg2OWMNCj4gICAgc3NuID0gMHgwLCAgIHRzbiA9IDB4OTM2YTZkNzMsICAgbXNnX2ZsYWdz
-ID0gMHgwLCAgIHJtZW1fbGVuID0gMHg2OWMNCj4gICAgc3NuID0gMHgwLCAgIHRzbiA9IDB4OTM2
-YTZkNzQsICAgbXNnX2ZsYWdzID0gMHgwLCAgIHJtZW1fbGVuID0gMHg2OWMNCj4gICAgc3NuID0g
-MHgwLCAgIHRzbiA9IDB4OTM2YTZkNzUsICAgbXNnX2ZsYWdzID0gMHgwLCAgIHJtZW1fbGVuID0g
-MHg2OWMNCj4NCj4gICAgc3NuID0gMHgwLCAgIHRzbiA9IDB4OTM2YTZkNzgsICAgbXNnX2ZsYWdz
-ID0gMHgwLCAgIHJtZW1fbGVuID0gMHg2MjgNCj4NCj4gVGhlIGdhcCBiZXR3ZWVuIDc1IGFuZCA3
-OCBtZWFudCB0aGF0IGEgcmVuZWdlIGNvdWxkIGJlIGxhdW5jaGVkLg0KPg0KPiBJdCB3YXMgbGF1
-bmNoZWQgZm9yIHRzbiA9IDB4OTM2YTZkNzYgKGp1c3QgYXJyaXZpbmcgYW5kIGFwcGFyZW50bHkg
-b3V0DQo+IG9mIG1lbW9yeSksIGFuZCB0aGUgIm5lZWRlZCIgYW1vdW50IHdhcyAweDA1YWMgKDE0
-NTIgYnl0ZXMpLg0KPg0KPiB0c24gPSAweDkzNmE2ZDc4IHdhcyByZW1vdmVkLCBhbmQgdGhlIGFt
-b3VudCByZWNvdmVyZWQgd2FzIDB4NTM4ICgxMzM2IGJ5dGVzKS4NCj4gVGhlIHZhbHVlIG9mICJy
-bWVtX2xlbiIgaW4gdGhlIGV2ZW50IGlzIG5vdCB3aGF0IGlzIHVzZWQgdG8gY2FsY3VsYXRlZCBu
-ZWVkZWQNCj4gYW5kIGZyZWVkLg0KPg0KPiBTaW5jZSAweDUzOCBkaWRuJ3Qgc2F0aXNmeSAweDVh
-YywgaXQgd2VudCBmb3IgdGhlIG5leHQgb25lIGRvd24gb24gdGhlIHF1ZXVlDQo+ICh0c24gPSAw
-eDkzNmE2ZDc1KQ0KPiBhbmQgcmVjb3ZlcmVkIDB4NWFjIGZyb20gaXQgZm9yIGEgdG90YWwgcmVj
-b3Zlcnkgb2YgMHhhZTQgKDI3ODggYnl0ZXMpLg0KPiBTbyBiZWNhdXNlIHRoZSBmaXJzdCBwb3N0
-LWdhcCBmcmFnbWVudCBoYXBwZW5lZCB0byBiZSBhIExBU1RfRlJBRyBhbmQgc2hvcnRlciB0aGFu
-DQo+IHRoZSByZXN0IG9mIHRoZW0sIGl0IHdhc24ndCBlbm91Z2ggdG8gc2F0aXNmeSB0aGUgcmVx
-dWVzdCBhbmQgd2UgbW92ZWQgb24NCj4gdG8gdGhlIG9uZSB0aGF0IGNhdXNlZCB0aGUgQlVHLg0K
-Pg0KPiBJZiB0aGVyZSBoYWQgYmVlbiB0d28gZ2FwcGVkIGZyYWdzLCBvciBpZiB0aGUgZ2FwcGVk
-IGZyYWcgaGFkIGJlZW4gYW5vdGhlcg0KPiBtaWRkbGUgb25lIHRoYXQgd2FzIGJpZyBlbm91Z2gg
-dG8gc2F0aXNmeSB0aGUgcmVxdWVzdCwgaXQgd291bGQgbm90IGhhdmUNCj4gYmVlbiBjYXVnaHQg
-ZnJlZWluZyBhIGZyYWdtZW50IHRoYXQgd2FzIGF0IHRoZSBjdW11bGF0aXZlIHRzbiBhY2sgcG9p
-bnQuDQo+ID09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PQ0KPg0KPiBTaW5jZSB0aGUgYmFzZV90c24gYW5kIGN1bXVs
-YXRpdmVfdHNuX2Fja19wb2ludCBhcmUgYWR2YW5jZWQgaW4NCj4gc2N0cF91bHBldmVudF9tYWtl
-X3Jjdm1zZygpIGJlZm9yZSBwdXR0aW5nIHRoZSBmcmFnbWVudHMgb24gdGhlDQo+IHJlYXNtIHF1
-ZXVlLCB0aGUgcmVuZWdlIGNvZGUgc2hvdWxkIG5vdCBiZSBhbGxvd2VkIHRvIGRpcCBiZWxvdw0K
-PiB0aGF0IHBvaW50IGluIHNjdHBfdWxwcV9yZW5lZ2VfbGlzdCgpLiAgIE90aGVyd2lzZSwgeW91
-J3JlDQo+IGRpc2NhcmRpbmcgdW5kZWxpdmVyZWQgZGF0YSB0aGF0IHlvdSd2ZSBhbHJlYWR5IHJl
-cG9ydGVkIGFzDQo+ICJkZWxpdmVyZWQiIHRvIHRoZSBzZW5kZXIsIHJpZ2h0Pw0KPg0KPiBUaGFu
-a3MsDQo+IEJvYiBNb250Z29tZXJ5DQo+DQo+DQo+DQo+DQoNCg=
+On 01/30/2013 11:30 PM, Roberts, Lee A. wrote:
+> Vlad,
+>
+> The test code that I'm running at the moment has changes similar to the following.
+> I think we want to peek at the tail of the queue---and not dequeue (or unlink) the
+> data until we're sure we want to renege.
+
+You are right.  If Bob can send a signed-off patch linux-sctp and 
+netdev, we can get it upstream and into stable releases.
+
+-vlad
+
+>
+>                                                  -- Lee Roberts
+>
+>
+> # diff -c ulpqueue.c~ ulpqueue.c
+> *** ulpqueue.c~ 2012-10-09 14:31:35.000000000 -0600
+> --- ulpqueue.c  2013-01-30 21:22:49.000000000 -0700
+> ***************
+> *** 963,973 ****
+>
+>          tsnmap = &ulpq->asoc->peer.tsn_map;
+>
+> !       while ((skb = __skb_dequeue_tail(list)) != NULL) {
+> !               freed += skb_headlen(skb);
+>                  event = sctp_skb2event(skb);
+>                  tsn = event->tsn;
+>
+>                  sctp_ulpevent_free(event);
+>                  sctp_tsnmap_renege(tsnmap, tsn);
+>                  if (freed >= needed)
+> --- 963,976 ----
+>
+>          tsnmap = &ulpq->asoc->peer.tsn_map;
+>
+> !       while ((skb = skb_peek_tail(list)) != NULL) {
+>                  event = sctp_skb2event(skb);
+>                  tsn = event->tsn;
+> +               if (TSN_lte(tsn, sctp_tsnmap_get_ctsn(tsnmap)))
+> +                       break;
+>
+> +               __skb_unlink(skb, list);
+> +               freed += skb_headlen(skb);
+>                  sctp_ulpevent_free(event);
+>                  sctp_tsnmap_renege(tsnmap, tsn);
+>                  if (freed >= needed)
+> #
+>
+>
+>
+> -----Original Message-----
+> From: Vlad Yasevich [mailto:vyasevich@gmail.com]
+> Sent: Wednesday, January 30, 2013 7:59 PM
+> To: Montgomery, Bob
+> Cc: Roberts, Lee A.; linux-sctp@vger.kernel.org
+> Subject: Re: Suspected renege problem in sctp
+>
+> On 01/30/2013 07:51 PM, Bob Montgomery wrote:
+>> Vlad,
+>>
+>> If you're not the right guy to ask can you let me know who might be?
+>
+> Hi Bob.  I am still the right person, but it would be even better to
+> address these types of questions and writeups to linux-sctp@vger.kernel.org.
+>
+>>
+>> We've been investigating sctpspray hangs for quite some time.
+>>
+>> I think we're seeing a case where a renege operation is removing
+>> fragments from the ulp reasm queue that are at or below the value
+>> of cumulative_tsn_ack_point.  We put a BUG statement in
+>> sctp_tsnmap_renege so we'd crash instead of ignoring this case:
+>>
+>>           if (TSN_lt(tsn, map->base_tsn))
+>>                   return;
+>
+>
+> Hmm..  Looking at the reneging functions there is no TSN checking at
+> all.  You are completely right.  We MUST not renege DATA that has moved
+> the cumulative_tsn_ack_point.
+>
+> Adding something like this in sctp_ulpq_renege_list should fix this:
+>
+> diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
+> index ada1746..9bd94e6 100644
+> --- a/net/sctp/ulpqueue.c
+> +++ b/net/sctp/ulpqueue.c
+> @@ -970,10 +970,14 @@ static __u16 sctp_ulpq_renege_list(struct
+> sctp_ulpq *ulpq,
+>           tsnmap = &ulpq->asoc->peer.tsn_map;
+>
+>           while ((skb = __skb_dequeue_tail(list)) != NULL) {
+> -               freed += skb_headlen(skb);
+>                   event = sctp_skb2event(skb);
+>                   tsn = event->tsn;
+> -
+> +
+> +               /* Make sure we do not renege below CTSN */
+> +               if (TSN_lte(tsn, sctp_tsnmap_get_ctsn(tsnmap)))
+> +                       break;
+> +
+> +               freed += skb_headlen(skb);
+>                   sctp_ulpevent_free(event);
+>                   sctp_tsnmap_renege(tsnmap, tsn);
+>                   if (freed >= needed)
+>
+> I think there also might be a bug here when reneging from the ordered
+> queue and the message has been reassembled.  I need to look at that a
+> bit more.
+>
+> -vlad
+>
+>>
+>> And after two days of sctpspray pounding, hit the bug.
+>>
+>> Here's a partial write-up using examples from the core file:
+>>
+>> ====================================>> Fact 1:  a renege operation will only be launched if there's a gap in
+>> the tsn.
+>>
+>> So a reassembly queue like this one would not be set upon:
+>>
+>> PID 1784
+>> sctp_association 0xffff88041b6a2000
+>>
+>>         tsn_map = 0xffff88041dd8d560,
+>>         base_tsn = 0x55751715,
+>>         cumulative_tsn_ack_point = 0x55751714,
+>>         max_tsn_seen = 0x55751714,
+>>
+>> reasm queue summary:
+>>     ssn = 0x345,   tsn = 0x5575170c,   msg_flags = 0x2,   rmem_len = 0x69c
+>>     ssn = 0x345,   tsn = 0x5575170d,   msg_flags = 0x0,   rmem_len = 0x69c
+>>     ssn = 0x345,   tsn = 0x5575170e,   msg_flags = 0x0,   rmem_len = 0x69c
+>>     ssn = 0x345,   tsn = 0x5575170f,   msg_flags = 0x0,   rmem_len = 0x69c
+>>     ssn = 0x345,   tsn = 0x55751710,   msg_flags = 0x0,   rmem_len = 0x69c
+>>     ssn = 0x345,   tsn = 0x55751711,   msg_flags = 0x0,   rmem_len = 0x69c
+>>     ssn = 0x345,   tsn = 0x55751712,   msg_flags = 0x0,   rmem_len = 0x69c
+>>     ssn = 0x345,   tsn = 0x55751713,   msg_flags = 0x0,   rmem_len = 0x69c
+>>     ssn = 0x345,   tsn = 0x55751714,   msg_flags = 0x0,   rmem_len = 0x69c
+>>
+>> No gap: the last tsn in the reasm queue matches cumulative_tsn_ack_point = 0x55751714,
+>>
+>>
+>> In our case, I believe the reasm queue looked like this when the renege launched:
+>>
+>> In sctp_association 0xffff88041b845000
+>>
+>>         base_tsn = 0x936a6d76,
+>>         cumulative_tsn_ack_point = 0x936a6d75,
+>>         max_tsn_seen = 0x936a6d79,
+>>
+>>     ssn = 0x0,   tsn = 0x936a6d6f,   msg_flags = 0x2,   rmem_len = 0x69c
+>>     ssn = 0x0,   tsn = 0x936a6d70,   msg_flags = 0x0,   rmem_len = 0x69c
+>>     ssn = 0x0,   tsn = 0x936a6d71,   msg_flags = 0x0,   rmem_len = 0x69c
+>>     ssn = 0x0,   tsn = 0x936a6d72,   msg_flags = 0x0,   rmem_len = 0x69c
+>>     ssn = 0x0,   tsn = 0x936a6d73,   msg_flags = 0x0,   rmem_len = 0x69c
+>>     ssn = 0x0,   tsn = 0x936a6d74,   msg_flags = 0x0,   rmem_len = 0x69c
+>>     ssn = 0x0,   tsn = 0x936a6d75,   msg_flags = 0x0,   rmem_len = 0x69c
+>>
+>>     ssn = 0x0,   tsn = 0x936a6d78,   msg_flags = 0x0,   rmem_len = 0x628
+>>
+>> The gap between 75 and 78 meant that a renege could be launched.
+>>
+>> It was launched for tsn = 0x936a6d76 (just arriving and apparently out
+>> of memory), and the "needed" amount was 0x05ac (1452 bytes).
+>>
+>> tsn = 0x936a6d78 was removed, and the amount recovered was 0x538 (1336 bytes).
+>> The value of "rmem_len" in the event is not what is used to calculated needed
+>> and freed.
+>>
+>> Since 0x538 didn't satisfy 0x5ac, it went for the next one down on the queue
+>> (tsn = 0x936a6d75)
+>> and recovered 0x5ac from it for a total recovery of 0xae4 (2788 bytes).
+>> So because the first post-gap fragment happened to be a LAST_FRAG and shorter than
+>> the rest of them, it wasn't enough to satisfy the request and we moved on
+>> to the one that caused the BUG.
+>>
+>> If there had been two gapped frags, or if the gapped frag had been another
+>> middle one that was big enough to satisfy the request, it would not have
+>> been caught freeing a fragment that was at the cumulative tsn ack point.
+>> ====================================
+>>
+>> Since the base_tsn and cumulative_tsn_ack_point are advanced in
+>> sctp_ulpevent_make_rcvmsg() before putting the fragments on the
+>> reasm queue, the renege code should not be allowed to dip below
+>> that point in sctp_ulpq_renege_list().   Otherwise, you're
+>> discarding undelivered data that you've already reported as
+>> "delivered" to the sender, right?
+>>
+>> Thanks,
+>> Bob Montgomery
+>>
+>>
+>>
+>>
+>
+
