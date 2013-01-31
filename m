@@ -1,81 +1,150 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 07 Jan 2013 18:04:16 +0000
-Subject: Re: [PATCH] sctp: fix Kconfig bug in default cookie hmac selection
-Message-Id: <20130107180416.GH31577@hmsreliant.think-freely.org>
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Thu, 31 Jan 2013 02:58:48 +0000
+Subject: Re: Suspected renege problem in sctp
+Message-Id: <5109DDE8.9050700@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <50EAFC32.9030104@inktank.com>
-In-Reply-To: <50EAFC32.9030104@inktank.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On Mon, Jan 07, 2013 at 11:53:19AM -0600, Alex Elder wrote:
-> On 01/07/2013 11:41 AM, Neil Horman wrote:
-> > On Mon, Jan 07, 2013 at 10:47:46AM -0600, Alex Elder wrote:
-> >> The following commit added a "choice" to the sctp Kconfig file.  It
-> >> introduced a bug which led to an infinite loop when while running
-> >> "make oldconfig".
-> >>
-> >>     0d0863b0 sctp: Change defaults on cookie hmac selection
-> >>
-> >> The problem is that the wrong symbol was defined as the default
-> >> value for the choice.  Using the correct value gets rid of the
-> >> infinite loop.
-> >>
-> >> Note:  if CONFIG_SCTP_COOKIE_HMAC_SHA1=y was present in the input
-> >> config file, both that and CONFIG_SCTP_COOKIE_HMAC_MD5=y be present
-> >> in the generated config file.
-> >>
-> >> Signed-off-by: Alex Elder <elder@inktank.com>
-> >> ---
-> >>  net/sctp/Kconfig |    2 +-
-> >>  1 file changed, 1 insertion(+), 1 deletion(-)
-> >>
-> >> diff --git a/net/sctp/Kconfig b/net/sctp/Kconfig
-> >> index c262106..7521d94 100644
-> >> --- a/net/sctp/Kconfig
-> >> +++ b/net/sctp/Kconfig
-> >> @@ -68,7 +68,7 @@ config SCTP_DBG_OBJCNT
-> >>  	  If unsure, say N
-> >>  choice
-> >>  	prompt "Default SCTP cookie HMAC encoding"
-> >> -	default SCTP_COOKIE_HMAC_MD5
-> >> +	default SCTP_DEFAULT_COOKIE_HMAC_MD5
-> >>  	help
-> >>  	  This option sets the default sctp cookie hmac algorithm
-> >>  	  when in doubt select 'md5'
-> >> -- 
-> >> 1.7.9.5
-> >>
-> >>
-> > I really, _really_ don't like this.  This does exactly what I was talking about
-> > before, in that it resolves the loop, but it does so by silently overriding the
-> > pre-existing configuration, which I think is wrong.  Vlad and I have discussed
-> 
-> I know, that's why I mentioned it explicitly in my explanation.
-> 
-> I experiemented with "optional" but it didn't do the right thing
-> either.
-> 
-> > it though, and he's convinced me that, despite the silent override, the rest of
-> > the kernel behaves the same arguably broken way, so we may as well have this
-> 
-> Yup, I checked that too.  It's risky, but at the moment, it
-> will have no adverse affect on the how the code functions.
-> 
-> > operate in the same way.  I would really far prefer that the config looped to
-> > make you select a default that was't in conflict with your existing config, but
-> > I guess those who care to select non-deafult options will catch the change
-> > anyway, and if you just hit enter, you have to expect changes.
-> >
-> > Acked-by: Neil Horman <nhorman@tuxriver.com>
-> 
-> Thanks a lot.
-> 
-No worries, thanks for bearing with me.
-Neil
+On 01/30/2013 07:51 PM, Bob Montgomery wrote:
+> Vlad,
+>
+> If you're not the right guy to ask can you let me know who might be?
 
-> 					-Alex
-> 
-> 
+Hi Bob.  I am still the right person, but it would be even better to
+address these types of questions and writeups to linux-sctp@vger.kernel.org.
+
+>
+> We've been investigating sctpspray hangs for quite some time.
+>
+> I think we're seeing a case where a renege operation is removing
+> fragments from the ulp reasm queue that are at or below the value
+> of cumulative_tsn_ack_point.  We put a BUG statement in
+> sctp_tsnmap_renege so we'd crash instead of ignoring this case:
+>
+>          if (TSN_lt(tsn, map->base_tsn))
+>                  return;
+
+
+Hmm..  Looking at the reneging functions there is no TSN checking at 
+all.  You are completely right.  We MUST not renege DATA that has moved
+the cumulative_tsn_ack_point.
+
+Adding something like this in sctp_ulpq_renege_list should fix this:
+
+diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
+index ada1746..9bd94e6 100644
+--- a/net/sctp/ulpqueue.c
++++ b/net/sctp/ulpqueue.c
+@@ -970,10 +970,14 @@ static __u16 sctp_ulpq_renege_list(struct 
+sctp_ulpq *ulpq,
+         tsnmap = &ulpq->asoc->peer.tsn_map;
+
+         while ((skb = __skb_dequeue_tail(list)) != NULL) {
+-               freed += skb_headlen(skb);
+                 event = sctp_skb2event(skb);
+                 tsn = event->tsn;
+-
++
++               /* Make sure we do not renege below CTSN */
++               if (TSN_lte(tsn, sctp_tsnmap_get_ctsn(tsnmap)))
++                       break;
++
++               freed += skb_headlen(skb);
+                 sctp_ulpevent_free(event);
+                 sctp_tsnmap_renege(tsnmap, tsn);
+                 if (freed >= needed)
+
+I think there also might be a bug here when reneging from the ordered 
+queue and the message has been reassembled.  I need to look at that a 
+bit more.
+
+-vlad
+
+>
+> And after two days of sctpspray pounding, hit the bug.
+>
+> Here's a partial write-up using examples from the core file:
+>
+> ====================================> Fact 1:  a renege operation will only be launched if there's a gap in
+> the tsn.
+>
+> So a reassembly queue like this one would not be set upon:
+>
+> PID 1784
+> sctp_association 0xffff88041b6a2000
+>
+>        tsn_map = 0xffff88041dd8d560,
+>        base_tsn = 0x55751715,
+>        cumulative_tsn_ack_point = 0x55751714,
+>        max_tsn_seen = 0x55751714,
+>
+> reasm queue summary:
+>    ssn = 0x345,   tsn = 0x5575170c,   msg_flags = 0x2,   rmem_len = 0x69c
+>    ssn = 0x345,   tsn = 0x5575170d,   msg_flags = 0x0,   rmem_len = 0x69c
+>    ssn = 0x345,   tsn = 0x5575170e,   msg_flags = 0x0,   rmem_len = 0x69c
+>    ssn = 0x345,   tsn = 0x5575170f,   msg_flags = 0x0,   rmem_len = 0x69c
+>    ssn = 0x345,   tsn = 0x55751710,   msg_flags = 0x0,   rmem_len = 0x69c
+>    ssn = 0x345,   tsn = 0x55751711,   msg_flags = 0x0,   rmem_len = 0x69c
+>    ssn = 0x345,   tsn = 0x55751712,   msg_flags = 0x0,   rmem_len = 0x69c
+>    ssn = 0x345,   tsn = 0x55751713,   msg_flags = 0x0,   rmem_len = 0x69c
+>    ssn = 0x345,   tsn = 0x55751714,   msg_flags = 0x0,   rmem_len = 0x69c
+>
+> No gap: the last tsn in the reasm queue matches cumulative_tsn_ack_point = 0x55751714,
+>
+>
+> In our case, I believe the reasm queue looked like this when the renege launched:
+>
+> In sctp_association 0xffff88041b845000
+>
+>        base_tsn = 0x936a6d76,
+>        cumulative_tsn_ack_point = 0x936a6d75,
+>        max_tsn_seen = 0x936a6d79,
+>
+>    ssn = 0x0,   tsn = 0x936a6d6f,   msg_flags = 0x2,   rmem_len = 0x69c
+>    ssn = 0x0,   tsn = 0x936a6d70,   msg_flags = 0x0,   rmem_len = 0x69c
+>    ssn = 0x0,   tsn = 0x936a6d71,   msg_flags = 0x0,   rmem_len = 0x69c
+>    ssn = 0x0,   tsn = 0x936a6d72,   msg_flags = 0x0,   rmem_len = 0x69c
+>    ssn = 0x0,   tsn = 0x936a6d73,   msg_flags = 0x0,   rmem_len = 0x69c
+>    ssn = 0x0,   tsn = 0x936a6d74,   msg_flags = 0x0,   rmem_len = 0x69c
+>    ssn = 0x0,   tsn = 0x936a6d75,   msg_flags = 0x0,   rmem_len = 0x69c
+>
+>    ssn = 0x0,   tsn = 0x936a6d78,   msg_flags = 0x0,   rmem_len = 0x628
+>
+> The gap between 75 and 78 meant that a renege could be launched.
+>
+> It was launched for tsn = 0x936a6d76 (just arriving and apparently out
+> of memory), and the "needed" amount was 0x05ac (1452 bytes).
+>
+> tsn = 0x936a6d78 was removed, and the amount recovered was 0x538 (1336 bytes).
+> The value of "rmem_len" in the event is not what is used to calculated needed
+> and freed.
+>
+> Since 0x538 didn't satisfy 0x5ac, it went for the next one down on the queue
+> (tsn = 0x936a6d75)
+> and recovered 0x5ac from it for a total recovery of 0xae4 (2788 bytes).
+> So because the first post-gap fragment happened to be a LAST_FRAG and shorter than
+> the rest of them, it wasn't enough to satisfy the request and we moved on
+> to the one that caused the BUG.
+>
+> If there had been two gapped frags, or if the gapped frag had been another
+> middle one that was big enough to satisfy the request, it would not have
+> been caught freeing a fragment that was at the cumulative tsn ack point.
+> ====================================
+>
+> Since the base_tsn and cumulative_tsn_ack_point are advanced in
+> sctp_ulpevent_make_rcvmsg() before putting the fragments on the
+> reasm queue, the renege code should not be allowed to dip below
+> that point in sctp_ulpq_renege_list().   Otherwise, you're
+> discarding undelivered data that you've already reported as
+> "delivered" to the sender, right?
+>
+> Thanks,
+> Bob Montgomery
+>
+>
+>
+>
+
