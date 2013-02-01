@@ -1,59 +1,111 @@
-From: Vlad Yasevich <vyasevic@redhat.com>
-Date: Wed, 27 Feb 2013 20:58:04 +0000
-Subject: Re: [PATCH] net/sctp: Validate parameter size for SCTP_GET_ASSOC_STATS control message
-Message-Id: <512E735C.10600@redhat.com>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Fri, 01 Feb 2013 14:37:43 +0000
+Subject: [PATCH net-next v3] sctp: sctp_close: fix release of bindings for deferred call_rcu's
+Message-Id: <1359729463-11833-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1361994231-5355-1-git-send-email-linux@roeck-us.net> <20130227.153344.2178498124458359369.davem@davemloft.net>
-In-Reply-To: <20130227.153344.2178498124458359369.davem@davemloft.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: David Miller <davem@davemloft.net>
-Cc: linux@roeck-us.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, sri@us.ibm.com, nhorman@tuxdriver.com
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>
 
-On 02/27/2013 03:33 PM, David Miller wrote:
-> From: Guenter Roeck <linux@roeck-us.net>
-> Date: Wed, 27 Feb 2013 11:43:51 -0800
->
->> Building sctp may fail with:
->>
->> In function =A1copy_from_user=A2,
->>      inlined from =A1sctp_getsockopt_assoc_stats=A2 at
->>      net/sctp/socket.c:5656:20:
->> arch/x86/include/asm/uaccess_32.h:211:26: error: call to
->>      =A1copy_from_user_overflow=A2 declared with attribute error: copy_f=
-rom_user()
->>      buffer size is not provably correct
->>
->> if built with W=3D1 due to a missing parameter size validation.
->>
->> Signed-off-by: Guenter Roeck <linux@roeck-us.net>
->
-> This change is correct, but please fix this by simply moving the:
->
-> 	/* Allow the struct to grow and fill in as much as possible */
-> 	len =3D min_t(size_t, len, sizeof(sas));
->
-> line higher up in the function.
->
-> And I also prefer this because:
->
-> 	something testing sizeof(foo);
-> 	if (copy_from_user(..., ..., sizeof(foo)))
->
-> must easier to audit and validate, especially in patch form.
->
-> Otherwise I have to bring the code into an editor and read the whole
-> function just to make sure you got the type correct.
+It seems due to RCU usage, i.e. within SCTP's address binding list,
+a, say, ``behavioral change'' was introduced which does actually
+not conform to the RFC anymore. In particular consider the following
+(fictional) scenario to demonstrate this:
 
-Right.  In this particular case, we are after a very small portion of=20
-user data (just the association id) and copying the entire structure is
-rather pointless.
+  do:
+    Two SOCK_SEQPACKET-style sockets are opened (S1, S2)
+    S1 is bound to 127.0.0.1, port 1024 [server]
+    S2 is bound to 127.0.0.1, port 1025 [client]
+    listen(2) is invoked on S1
+    From S2 we call one sendmsg(2) with msg.msg_name and
+       msg.msg_namelen parameters set to the server's
+       address
+    S1, S2 are closed
+    goto do
 
-A nicer solution here would be to do this:
-	 if (copy_from_user(&sas, optval, sizeof(sctp_assoc_t))
+The first pass of this loop passes successful, while the second round
+fails during binding of S1 (address still in use). What is happening?
+In the first round, the initial handshake is being done, and, at the
+time close(2) is called on S1, a non-graceful shutdown is performed via
+ABORT since in S1's receive queue an unprocessed packet is present,
+thus stating an error condition. This can be considered as a correct
+behavior.
 
-We are already guaranteed that much space and we make sure that we don't=20
-overwrite the kernel stack.
+During close also all bound addresses are freed, thus nothing *must*
+be active anymore. In reference to RFC2960:
 
--vlad
+  After checking the Verification Tag, the receiving endpoint shall
+  remove the association from its record, and shall report the
+  termination to its upper layer. (9.1 Abort of an Association)
+
+Also, no half-open states are supported, thus after an ungraceful
+shutdown, we leave nothing behind. However, this seems not to be
+happening though. In a real-world scenario, this is exactly where
+it breaks the lksctp-tools functional test suite, *for instance*:
+
+  ./test_sockopt
+  test_sockopt.c  1 PASS : getsockopt(SCTP_STATUS) on a socket with no assoc
+  test_sockopt.c  2 PASS : getsockopt(SCTP_STATUS)
+  test_sockopt.c  3 PASS : getsockopt(SCTP_STATUS) with invalid associd
+  test_sockopt.c  4 PASS : getsockopt(SCTP_STATUS) with NULL associd
+  test_sockopt.c  5 BROK : bind: Address already in use
+
+The underlying problem is that sctp_endpoint_destroy() hasn't been
+triggered yet while the next bind attempt is being done. It will be
+triggered eventually (but too late) by sctp_transport_destroy_rcu()
+after one RCU grace period:
+
+  sctp_transport_destroy()
+    sctp_transport_destroy_rcu() ----.
+      sctp_association_put() [*]  <--+--> sctp_packet_free()
+        sctp_association_destroy()          [...]
+          sctp_endpoint_put()                 skb->destructor
+            sctp_endpoint_destroy()             sctp_wfree()
+              sctp_bind_addr_free()               sctp_association_put() [*]
+
+Thus, we move out the condition with sctp_association_put() as well as
+the sctp_packet_free() invocation and the issue can be solved. We also
+better free the SCTP chunks first before putting the ref of the association.
+
+With this patch, the example above (which simulates a similar scenario
+as in the implementation of this test case) and therefore also the test
+suite run successfully through. Tested by myself.
+
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/transport.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index 4e45bb6..ca5331c 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -168,10 +168,6 @@ static void sctp_transport_destroy_rcu(struct rcu_head *head)
+ 	struct sctp_transport *transport;
+ 
+ 	transport = container_of(head, struct sctp_transport, rcu);
+-	if (transport->asoc)
+-		sctp_association_put(transport->asoc);
+-
+-	sctp_packet_free(&transport->packet);
+ 
+ 	dst_release(transport->dst);
+ 	kfree(transport);
+@@ -186,6 +182,11 @@ static void sctp_transport_destroy(struct sctp_transport *transport)
+ 	SCTP_ASSERT(transport->dead, "Transport is not dead", return);
+ 
+ 	call_rcu(&transport->rcu, sctp_transport_destroy_rcu);
++
++	sctp_packet_free(&transport->packet);
++
++	if (transport->asoc)
++		sctp_association_put(transport->asoc);
+ }
+ 
+ /* Start T3_rtx timer if it is not already running and update the heartbeat
+-- 
+1.7.11.7
+
