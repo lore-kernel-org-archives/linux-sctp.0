@@ -1,81 +1,112 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Fri, 01 Feb 2013 08:04:21 +0000
-Subject: Re: [PATCH net-next] sctp: sctp_close: fix release of bindings for deferred call_rcu's
-Message-Id: <510B7705.1030500@redhat.com>
+Date: Fri, 01 Feb 2013 14:07:20 +0000
+Subject: [PATCH net-next v2] sctp: sctp_close: fix release of bindings for deferred call_rcu's
+Message-Id: <2e8cac1036ff146d5e4c609e9aecb3765f19b067.1359726681.git.dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1359650254.git.dborkman@redhat.com> <13ea81dcf399f935bd8e048ce225411d8f29a792.1359650254.git.dborkman@redhat.com> <510ACAAF.8010902@gmail.com>
-In-Reply-To: <510ACAAF.8010902@gmail.com>
+References: <cover.1359726681.git.dborkman@redhat.com>
+In-Reply-To: <cover.1359726681.git.dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>
-Cc: linux-sctp@vger.kernel.org, davem@davemloft.net, netdev@vger.kernel.org
+To: davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>
 
-On 01/31/2013 08:49 PM, Vlad Yasevich wrote:
-> On 01/31/2013 11:51 AM, Daniel Borkmann wrote:
->> It seems due to RCU usage, i.e. within SCTP's address binding list,
->> a, say, ``behavioral change'' was introduced which does actually
->> not conform to the RFC anymore. In particular consider the following
->> (fictional) scenario to demonstrate this:
->>
->>    do:
->>      Two SOCK_SEQPACKET-style sockets are openend (S1, S2)
->>      S1 is bound to 127.0.0.1, port 1024 [server]
->>      S2 is bound to 127.0.0.1, port 1025 [client]
->>      listen(2) is invoked on S1
->>      From S2 we call one sendmsg(2) with msg.msg_name and
->>         msg.msg_namelen parameters set to the server's
->>         address
->>      S1, S2 are closed
->>      goto do
->>
->> The first pass of this loop passes sucessful, while the second round
->> fails during binding of S1 (address still in use). What is happening?
->> In the first round, the initial handshake is being done, and, at the
->> time close(2) is called on S1, a nongraceful shutdown is performed via
->> ABORT since in S1's receive queue an unprocessed packet is present,
->> thus stating an error condition. This can be considered as a correct
->> behavior.
->>
->> During close also all bound addresses are freed, thus nothing *must*
->> be active anymore.
->>
->>    After checking the Verification Tag, the receiving endpoint shall
->>    remove the association from its record, and shall report the
->>    termination to its upper layer. (RFC2960, 9.1 Abort of an Association)
->>
->> Also, no half-open states are supported, thus after an ungraceful
->> shutdown, we leave nothing behind. However, this seems not to be
->> happening though. In a real-world scenario, this is exactly where
->> it breaks the lksctp-tools functional test suite, *for instance*:
->>
->>    ./test_sockopt
->>    test_sockopt.c  1 PASS : getsockopt(SCTP_STATUS) on a socket with no assoc
->>    test_sockopt.c  2 PASS : getsockopt(SCTP_STATUS)
->>    test_sockopt.c  3 PASS : getsockopt(SCTP_STATUS) with invalid associd
->>    test_sockopt.c  4 PASS : getsockopt(SCTP_STATUS) with NULL associd
->>    test_sockopt.c  5 BROK : bind: Address already in use
->>
->> With this patch, the example above (which simulates a similar scenario
->> as in the implementation of this test case) and therefore also this test
->> runs successfully through.
->>
->> If one wants to fix this issue, an RCU barrier needs to be introduced
->> within the sctp_close handler. One could argue that this is quite costly,
->> which is true, but on the other hand, if an application calls close on
->> its socket, it likely might be out of its critical path anyway.
->
-> The fact that we delay freeing bind_addr list due to rcu shouldn't change the endpoint destruction path.
->
-> The reason you'd get a EADDRINSUE would be that the sctp_endpoint_destroy() hasn't been triggered.  That means that something is still referencing the endpoint.  However, there doesn't
-> appear to be anything holding a reference to the association or the
-> endpoint from the bind address list.  So the fact that the entries might not have been kfreed yet shouldn't impact the binding of new sockets.
->
-> What is most likely happening instead is that we now have rcu delayed
-> transport destruction and in that path, we delay dropping the association refcount until after the rcu grace period.  That in turn causes delayed endpoint refcount drop, which in turn causes delayed removed of the socket from the port list.  This is the cause of the issue.
->
-> The right solution would be to see if we can drop the refcounts at delete instead of at destroy.  That should remove the delay.
+It seems due to RCU usage, i.e. within SCTP's address binding list,
+a, say, ``behavioral change'' was introduced which does actually
+not conform to the RFC anymore. In particular consider the following
+(fictional) scenario to demonstrate this:
 
-Thanks for your feedback Vlad!
+  do:
+    Two SOCK_SEQPACKET-style sockets are openend (S1, S2)
+    S1 is bound to 127.0.0.1, port 1024 [server]
+    S2 is bound to 127.0.0.1, port 1025 [client]
+    listen(2) is invoked on S1
+    From S2 we call one sendmsg(2) with msg.msg_name and
+       msg.msg_namelen parameters set to the server's
+       address
+    S1, S2 are closed
+    goto do
 
-I'll do a rework of this patch and send a version 2.
+The first pass of this loop passes sucessful, while the second round
+fails during binding of S1 (address still in use). What is happening?
+In the first round, the initial handshake is being done, and, at the
+time close(2) is called on S1, a nongraceful shutdown is performed via
+ABORT since in S1's receive queue an unprocessed packet is present,
+thus stating an error condition. This can be considered as a correct
+behavior.
+
+During close also all bound addresses are freed, thus nothing *must*
+be active anymore. In reference to RFC2960:
+
+  After checking the Verification Tag, the receiving endpoint shall
+  remove the association from its record, and shall report the
+  termination to its upper layer. (9.1 Abort of an Association)
+
+Also, no half-open states are supported, thus after an ungraceful
+shutdown, we leave nothing behind. However, this seems not to be
+happening though. In a real-world scenario, this is exactly where
+it breaks the lksctp-tools functional test suite, *for instance*:
+
+  ./test_sockopt
+  test_sockopt.c  1 PASS : getsockopt(SCTP_STATUS) on a socket with no assoc
+  test_sockopt.c  2 PASS : getsockopt(SCTP_STATUS)
+  test_sockopt.c  3 PASS : getsockopt(SCTP_STATUS) with invalid associd
+  test_sockopt.c  4 PASS : getsockopt(SCTP_STATUS) with NULL associd
+  test_sockopt.c  5 BROK : bind: Address already in use
+
+The underlying problem is that sctp_endpoint_destroy() hasn't been
+triggered yet while the next bind attempt is being done. It will be
+triggered eventually (but too late) by sctp_transport_destroy_rcu()
+after one RCU grace period:
+
+  sctp_transport_destroy()
+    sctp_transport_destroy_rcu() ----.
+      sctp_association_put() [*]  <--+--> sctp_packet_free()
+        sctp_association_destroy()          [...]
+          sctp_endpoint_put()                 skb->destructor
+            sctp_endpoint_destroy()             sctp_wfree()
+              sctp_bind_addr_free()               sctp_association_put() [*]
+
+Thus, we move out the condition with sctp_association_put() as well as
+the sctp_packet_free() invokation and the issue can be solved.
+
+With this patch, the example above (which simulates a similar scenario
+as in the implementation of this test case) and therefore also the test
+suite run successfully through. Tested by myself.
+
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/transport.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index 4e45bb6..624edeb 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -168,10 +168,6 @@ static void sctp_transport_destroy_rcu(struct rcu_head *head)
+ 	struct sctp_transport *transport;
+ 
+ 	transport = container_of(head, struct sctp_transport, rcu);
+-	if (transport->asoc)
+-		sctp_association_put(transport->asoc);
+-
+-	sctp_packet_free(&transport->packet);
+ 
+ 	dst_release(transport->dst);
+ 	kfree(transport);
+@@ -186,6 +182,11 @@ static void sctp_transport_destroy(struct sctp_transport *transport)
+ 	SCTP_ASSERT(transport->dead, "Transport is not dead", return);
+ 
+ 	call_rcu(&transport->rcu, sctp_transport_destroy_rcu);
++
++	if (transport->asoc)
++		sctp_association_put(transport->asoc);
++
++	sctp_packet_free(&transport->packet);
+ }
+ 
+ /* Start T3_rtx timer if it is not already running and update the heartbeat
+-- 
+1.7.11.7
+
