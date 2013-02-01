@@ -1,74 +1,81 @@
-From: Dan Carpenter <dan.carpenter@oracle.com>
-Date: Mon, 25 Feb 2013 07:40:20 +0000
-Subject: re: sctp: Add ASCONF operation on the single-homed host
-Message-Id: <20130225074018.GA31806@longonot.mountain>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Fri, 01 Feb 2013 08:04:21 +0000
+Subject: Re: [PATCH net-next] sctp: sctp_close: fix release of bindings for deferred call_rcu's
+Message-Id: <510B7705.1030500@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20110608065302.GF3846@shale.localdomain>
-In-Reply-To: <20110608065302.GF3846@shale.localdomain>
+References: <cover.1359650254.git.dborkman@redhat.com> <13ea81dcf399f935bd8e048ce225411d8f29a792.1359650254.git.dborkman@redhat.com> <510ACAAF.8010902@gmail.com>
+In-Reply-To: <510ACAAF.8010902@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>
+Cc: linux-sctp@vger.kernel.org, davem@davemloft.net, netdev@vger.kernel.org
 
-[ This warning is old but I haven't sent it before.  I guess back
-  in the day we didn't do cross function analysis. ]
+On 01/31/2013 08:49 PM, Vlad Yasevich wrote:
+> On 01/31/2013 11:51 AM, Daniel Borkmann wrote:
+>> It seems due to RCU usage, i.e. within SCTP's address binding list,
+>> a, say, ``behavioral change'' was introduced which does actually
+>> not conform to the RFC anymore. In particular consider the following
+>> (fictional) scenario to demonstrate this:
+>>
+>>    do:
+>>      Two SOCK_SEQPACKET-style sockets are openend (S1, S2)
+>>      S1 is bound to 127.0.0.1, port 1024 [server]
+>>      S2 is bound to 127.0.0.1, port 1025 [client]
+>>      listen(2) is invoked on S1
+>>      From S2 we call one sendmsg(2) with msg.msg_name and
+>>         msg.msg_namelen parameters set to the server's
+>>         address
+>>      S1, S2 are closed
+>>      goto do
+>>
+>> The first pass of this loop passes sucessful, while the second round
+>> fails during binding of S1 (address still in use). What is happening?
+>> In the first round, the initial handshake is being done, and, at the
+>> time close(2) is called on S1, a nongraceful shutdown is performed via
+>> ABORT since in S1's receive queue an unprocessed packet is present,
+>> thus stating an error condition. This can be considered as a correct
+>> behavior.
+>>
+>> During close also all bound addresses are freed, thus nothing *must*
+>> be active anymore.
+>>
+>>    After checking the Verification Tag, the receiving endpoint shall
+>>    remove the association from its record, and shall report the
+>>    termination to its upper layer. (RFC2960, 9.1 Abort of an Association)
+>>
+>> Also, no half-open states are supported, thus after an ungraceful
+>> shutdown, we leave nothing behind. However, this seems not to be
+>> happening though. In a real-world scenario, this is exactly where
+>> it breaks the lksctp-tools functional test suite, *for instance*:
+>>
+>>    ./test_sockopt
+>>    test_sockopt.c  1 PASS : getsockopt(SCTP_STATUS) on a socket with no assoc
+>>    test_sockopt.c  2 PASS : getsockopt(SCTP_STATUS)
+>>    test_sockopt.c  3 PASS : getsockopt(SCTP_STATUS) with invalid associd
+>>    test_sockopt.c  4 PASS : getsockopt(SCTP_STATUS) with NULL associd
+>>    test_sockopt.c  5 BROK : bind: Address already in use
+>>
+>> With this patch, the example above (which simulates a similar scenario
+>> as in the implementation of this test case) and therefore also this test
+>> runs successfully through.
+>>
+>> If one wants to fix this issue, an RCU barrier needs to be introduced
+>> within the sctp_close handler. One could argue that this is quite costly,
+>> which is true, but on the other hand, if an application calls close on
+>> its socket, it likely might be out of its critical path anyway.
+>
+> The fact that we delay freeing bind_addr list due to rcu shouldn't change the endpoint destruction path.
+>
+> The reason you'd get a EADDRINSUE would be that the sctp_endpoint_destroy() hasn't been triggered.  That means that something is still referencing the endpoint.  However, there doesn't
+> appear to be anything holding a reference to the association or the
+> endpoint from the bind address list.  So the fact that the entries might not have been kfreed yet shouldn't impact the binding of new sockets.
+>
+> What is most likely happening instead is that we now have rcu delayed
+> transport destruction and in that path, we delay dropping the association refcount until after the rcu grace period.  That in turn causes delayed endpoint refcount drop, which in turn causes delayed removed of the socket from the port list.  This is the cause of the issue.
+>
+> The right solution would be to see if we can drop the refcounts at delete instead of at destroy.  That should remove the delay.
 
-Hello Michio Honda,
+Thanks for your feedback Vlad!
 
-This is a semi-automatic email about new static checker warnings.
-
-The patch 8a07eb0a50ae: "sctp: Add ASCONF operation on the 
-single-homed host" from Apr 26, 2011, leads to the following Smatch 
-complaint:
-
-net/sctp/socket.c:827 sctp_send_asconf_del_ip()
-	 error: we previously assumed 'laddr' could be null (see line 791)
-
-net/sctp/socket.c
-   790						       addrcnt, sp);
-   791			if ((laddr = NULL) && (addrcnt = 1)) {
-                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-If laddr is NULL and addrcnt is 2 then it will lead to a NULL
-dereference.
-
-   792				if (asoc->asconf_addr_del_pending)
-   793					continue;
-   794				asoc->asconf_addr_del_pending    795				    kzalloc(sizeof(union sctp_addr), GFP_ATOMIC);
-   796				if (asoc->asconf_addr_del_pending = NULL) {
-   797					retval = -ENOMEM;
-   798					goto out;
-   799				}
-   800				asoc->asconf_addr_del_pending->sa.sa_family    801					    addrs->sa_family;
-   802				asoc->asconf_addr_del_pending->v4.sin_port    803					    htons(bp->port);
-   804				if (addrs->sa_family = AF_INET) {
-   805					struct sockaddr_in *sin;
-   806	
-   807					sin = (struct sockaddr_in *)addrs;
-   808					asoc->asconf_addr_del_pending->v4.sin_addr.s_addr = sin->sin_addr.s_addr;
-   809				} else if (addrs->sa_family = AF_INET6) {
-   810					struct sockaddr_in6 *sin6;
-   811	
-   812					sin6 = (struct sockaddr_in6 *)addrs;
-   813					asoc->asconf_addr_del_pending->v6.sin6_addr = sin6->sin6_addr;
-   814				}
-   815				SCTP_DEBUG_PRINTK_IPADDR("send_asconf_del_ip: keep the last address asoc: %p ",
-   816				    " at %p\n", asoc, asoc->asconf_addr_del_pending,
-   817				    asoc->asconf_addr_del_pending);
-   818				asoc->src_out_of_asoc_ok = 1;
-   819				stored = 1;
-   820				goto skip_mkasconf;
-   821			}
-   822	
-   823			/* We do not need RCU protection throughout this loop
-   824			 * because this is done under a socket lock from the
-   825			 * setsockopt call.
-   826			 */
-   827			chunk = sctp_make_asconf_update_ip(asoc, laddr, addrs, addrcnt,
-                                                                 ^^^^^
-Null dereference here.
-
-   828							   SCTP_PARAM_DEL_IP);
-   829			if (!chunk) {
-
-regards,
-dan carpenter
+I'll do a rework of this patch and send a version 2.
