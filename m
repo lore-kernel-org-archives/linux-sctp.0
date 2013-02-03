@@ -1,129 +1,81 @@
-From: Julian Anastasov <ja@ssi.bg>
-Date: Tue, 05 Feb 2013 21:41:53 +0000
-Subject: Re: [PATCH net] ipvs: sctp: fix checksumming on snat and dnat handlers
-Message-Id: <alpine.LFD.2.00.1302052324220.2007@ja.ssi.bg>
+From: Tejun Heo <tj@kernel.org>
+Date: Sun, 03 Feb 2013 01:21:01 +0000
+Subject: [PATCH 60/62] sctp: convert to idr_alloc()
+Message-Id: <1359854463-2538-61-git-send-email-tj@kernel.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1360081291-30698-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1360081291-30698-1-git-send-email-dborkman@redhat.com>
+References: <1359854463-2538-1-git-send-email-tj@kernel.org>
+In-Reply-To: <1359854463-2538-1-git-send-email-tj@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: horms@verge.net.au, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-sctp@vger.kernel.org
+To: akpm@linux-foundation.org
+Cc: linux-kernel@vger.kernel.org, rusty@rustcorp.com.au, bfields@fieldses.org, skinsbursky@parallels.com, ebiederm@xmission.com, jmorris@namei.org, axboe@kernel.dk, Tejun Heo <tj@kernel.org>, Vlad Yasevich <vyasevich@gmail.com>, Sridhar Samudrala <sri@us.ibm.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org
 
+Convert to the much saner new idr interface.
 
-	Hello,
+Only compile tested.
 
-On Tue, 5 Feb 2013, Daniel Borkmann wrote:
+Signed-off-by: Tejun Heo <tj@kernel.org>
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Sridhar Samudrala <sri@us.ibm.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: linux-sctp@vger.kernel.org
+---
+This patch depends on an earlier idr changes and I think it would be
+best to route these together through -mm.  Please holler if there's
+any objection.  Thanks.
 
-> In our test lab, we have a simple SCTP client connecting to a SCTP
-> server via an IPVS load balancer. On some machines, load balancing
-> works, but on others the initial handshake just fails, thus no
-> SCTP connection whatsoever can be established!
-> 
-> We observed that the SCTP INIT-ACK handshake reply from the IPVS
-> machine to the client had a correct IP checksum, but corrupt SCTP
-> checksum when forwarded, thus on the client-side the packet was
-> dropped and an intial handshake retriggered until all attempts
-> run into the void.
-> 
-> To fix this issue, this patch i) adds a missing CHECKSUM_UNNECESSARY
-> after the full checksum (re-)calculation (as done in IPVS TCP and UDP
-> code as well), ii) calculates the checksum in little-endian format
-> (as fixed with the SCTP code in commit 4458f04c: sctp: Clean up sctp
-> checksumming code) and iii) refactors duplicate checksum code into a
-> common function. Tested by myself.
-> 
-> Cc: Simon Horman <horms@verge.net.au>
-> Cc: Julian Anastasov <ja@ssi.bg>
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+ net/sctp/associola.c | 27 +++++++++++----------------
+ 1 file changed, 11 insertions(+), 16 deletions(-)
 
-	Looks good to me. Simon, please apply as bugfix.
-It seems we have this problem from day 1 (2.6.34).
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index b45ed1f..a9962e4 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1592,32 +1592,27 @@ int sctp_assoc_lookup_laddr(struct sctp_association *asoc,
+ /* Set an association id for a given association */
+ int sctp_assoc_set_id(struct sctp_association *asoc, gfp_t gfp)
+ {
+-	int assoc_id;
+-	int error = 0;
++	int ret;
+ 
+ 	/* If the id is already assigned, keep it. */
+ 	if (asoc->assoc_id)
+-		return error;
+-retry:
+-	if (unlikely(!idr_pre_get(&sctp_assocs_id, gfp)))
+-		return -ENOMEM;
++		return 0;
+ 
++	idr_preload(gfp);
+ 	spin_lock_bh(&sctp_assocs_id_lock);
+-	error = idr_get_new_above(&sctp_assocs_id, (void *)asoc,
+-				    idr_low, &assoc_id);
+-	if (!error) {
+-		idr_low = assoc_id + 1;
++	ret = idr_alloc(&sctp_assocs_id, asoc, idr_low, 0, GFP_NOWAIT);
++	if (ret >= 0) {
++		idr_low = ret + 1;
+ 		if (idr_low = INT_MAX)
+ 			idr_low = 1;
+ 	}
+ 	spin_unlock_bh(&sctp_assocs_id_lock);
+-	if (error = -EAGAIN)
+-		goto retry;
+-	else if (error)
+-		return error;
++	idr_preload_end();
++	if (ret < 0)
++		return ret;
+ 
+-	asoc->assoc_id = (sctp_assoc_t) assoc_id;
+-	return error;
++	asoc->assoc_id = (sctp_assoc_t)ret;
++	return 0;
+ }
+ 
+ /* Free the ASCONF queue */
+-- 
+1.8.1
 
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-> ---
->  net/netfilter/ipvs/ip_vs_proto_sctp.c |   35 ++++++++++++++++-----------------
->  1 files changed, 17 insertions(+), 18 deletions(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-> index 746048b..ae8ec6f 100644
-> --- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
-> +++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-> @@ -61,14 +61,27 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
->  	return 1;
->  }
->  
-> +static void sctp_nat_csum(struct sk_buff *skb, sctp_sctphdr_t *sctph,
-> +			  unsigned int sctphoff)
-> +{
-> +	__u32 crc32;
-> +	struct sk_buff *iter;
-> +
-> +	crc32 = sctp_start_cksum((__u8 *)sctph, skb_headlen(skb) - sctphoff);
-> +	skb_walk_frags(skb, iter)
-> +		crc32 = sctp_update_cksum((u8 *) iter->data,
-> +					  skb_headlen(iter), crc32);
-> +	sctph->checksum = sctp_end_cksum(crc32);
-> +
-> +	skb->ip_summed = CHECKSUM_UNNECESSARY;
-> +}
-> +
->  static int
->  sctp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
->  		  struct ip_vs_conn *cp, struct ip_vs_iphdr *iph)
->  {
->  	sctp_sctphdr_t *sctph;
->  	unsigned int sctphoff = iph->len;
-> -	struct sk_buff *iter;
-> -	__be32 crc32;
->  
->  #ifdef CONFIG_IP_VS_IPV6
->  	if (cp->af = AF_INET6 && iph->fragoffs)
-> @@ -92,13 +105,7 @@ sctp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
->  	sctph = (void *) skb_network_header(skb) + sctphoff;
->  	sctph->source = cp->vport;
->  
-> -	/* Calculate the checksum */
-> -	crc32 = sctp_start_cksum((u8 *) sctph, skb_headlen(skb) - sctphoff);
-> -	skb_walk_frags(skb, iter)
-> -		crc32 = sctp_update_cksum((u8 *) iter->data, skb_headlen(iter),
-> -				          crc32);
-> -	crc32 = sctp_end_cksum(crc32);
-> -	sctph->checksum = crc32;
-> +	sctp_nat_csum(skb, sctph, sctphoff);
->  
->  	return 1;
->  }
-> @@ -109,8 +116,6 @@ sctp_dnat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
->  {
->  	sctp_sctphdr_t *sctph;
->  	unsigned int sctphoff = iph->len;
-> -	struct sk_buff *iter;
-> -	__be32 crc32;
->  
->  #ifdef CONFIG_IP_VS_IPV6
->  	if (cp->af = AF_INET6 && iph->fragoffs)
-> @@ -134,13 +139,7 @@ sctp_dnat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
->  	sctph = (void *) skb_network_header(skb) + sctphoff;
->  	sctph->dest = cp->dport;
->  
-> -	/* Calculate the checksum */
-> -	crc32 = sctp_start_cksum((u8 *) sctph, skb_headlen(skb) - sctphoff);
-> -	skb_walk_frags(skb, iter)
-> -		crc32 = sctp_update_cksum((u8 *) iter->data, skb_headlen(iter),
-> -					  crc32);
-> -	crc32 = sctp_end_cksum(crc32);
-> -	sctph->checksum = crc32;
-> +	sctp_nat_csum(skb, sctph, sctphoff);
->  
->  	return 1;
->  }
-> -- 
-> 1.7.1
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
