@@ -1,49 +1,81 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 13 Feb 2013 21:15:53 +0000
-Subject: Re: [PATCH net-next 2/2] net: sctp: add build check for sctp_sf_eat_sack_6_2/jsctp_sf_eat_sack
-Message-Id: <20130213211553.GA15598@hmsreliant.think-freely.org>
+From: Tejun Heo <tj@kernel.org>
+Date: Mon, 04 Feb 2013 16:42:38 +0000
+Subject: [PATCH v2 60/62] sctp: convert to idr_alloc()
+Message-Id: <20130204164238.GC27963@mtj.dyndns.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1360752304.git.dborkman@redhat.com>
- <84afa536e3652ea27a7efb1f6c9f7c4f29c15043.1360752304.git.dborkman@redhat.com>
-In-Reply-To: <84afa536e3652ea27a7efb1f6c9f7c4f29c15043.1360752304.git.dborkman@redhat.com>
+References: <1359854463-2538-1-git-send-email-tj@kernel.org>
+ <1359854463-2538-61-git-send-email-tj@kernel.org>
+In-Reply-To: <1359854463-2538-61-git-send-email-tj@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: akpm@linux-foundation.org
+Cc: linux-kernel@vger.kernel.org, rusty@rustcorp.com.au, bfields@fieldses.org, skinsbursky@parallels.com, ebiederm@xmission.com, jmorris@namei.org, axboe@kernel.dk, Vlad Yasevich <vyasevich@gmail.com>, Sridhar Samudrala <sri@us.ibm.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org
 
-On Wed, Feb 13, 2013 at 12:03:50PM +0100, Daniel Borkmann wrote:
-> In order to avoid any future surprises of kernel panics due to jprobes
-> function mismatches (as e.g. fixed in 4cb9d6eaf85ecd: sctp: jsctp_sf_eat_sack:
-> fix jprobes function signature mismatch), we should check both function
-> types during build and scream loudly if they do not match. __same_type
-> resolves to __builtin_types_compatible_p, which is 1 in case both types
-> are the same and 0 otherwise, qualifiers are ignored. Tested by myself.
-> 
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-> ---
->  net/sctp/probe.c | 7 +++++++
->  1 file changed, 7 insertions(+)
-> 
-> diff --git a/net/sctp/probe.c b/net/sctp/probe.c
-> index 4eaaaf6..261b7b9 100644
-> --- a/net/sctp/probe.c
-> +++ b/net/sctp/probe.c
-> @@ -183,6 +183,13 @@ static __init int sctpprobe_init(void)
->  {
->  	int ret = -ENOMEM;
->  
-> +	/* Warning: if the function signature of sctp_sf_eat_sack_6_2,
-> +	 * has been changed, you also have to change the signature of
-> +	 * jsctp_sf_eat_sack, otherwise you end up right here!
-> +	 */
-> +	BUILD_BUG_ON(__same_type(sctp_sf_eat_sack_6_2,
-> +				 jsctp_sf_eat_sack) = 0);
-> +
->  	init_waitqueue_head(&sctpw.wait);
->  	spin_lock_init(&sctpw.lock);
->  	if (kfifo_alloc(&sctpw.fifo, bufsize, GFP_KERNEL))
-> -- 
-> 1.7.11.7
+Convert to the much saner new idr interface.
+
+Only compile tested.
+
+v2: Don't preload if @gfp doesn't contain __GFP_WAIT as the function
+    may be being called from non-process ocntext.  Also, add a comment
+    explaining @idr_low never becomes zero.
+
+Signed-off-by: Tejun Heo <tj@kernel.org>
 Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Sridhar Samudrala <sri@us.ibm.com>
+Cc: linux-sctp@vger.kernel.org
+---
+ net/sctp/associola.c |   31 +++++++++++++++----------------
+ 1 file changed, 15 insertions(+), 16 deletions(-)
 
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1592,32 +1592,31 @@ int sctp_assoc_lookup_laddr(struct sctp_
+ /* Set an association id for a given association */
+ int sctp_assoc_set_id(struct sctp_association *asoc, gfp_t gfp)
+ {
+-	int assoc_id;
+-	int error = 0;
++	bool preload = gfp & __GFP_WAIT;
++	int ret;
+ 
+ 	/* If the id is already assigned, keep it. */
+ 	if (asoc->assoc_id)
+-		return error;
+-retry:
+-	if (unlikely(!idr_pre_get(&sctp_assocs_id, gfp)))
+-		return -ENOMEM;
++		return 0;
+ 
++	if (preload)
++		idr_preload(gfp);
+ 	spin_lock_bh(&sctp_assocs_id_lock);
+-	error = idr_get_new_above(&sctp_assocs_id, (void *)asoc,
+-				    idr_low, &assoc_id);
+-	if (!error) {
+-		idr_low = assoc_id + 1;
++	/* 0 is not a valid id, idr_low is always >= 1 */
++	ret = idr_alloc(&sctp_assocs_id, asoc, idr_low, 0, GFP_NOWAIT);
++	if (ret >= 0) {
++		idr_low = ret + 1;
+ 		if (idr_low = INT_MAX)
+ 			idr_low = 1;
+ 	}
+ 	spin_unlock_bh(&sctp_assocs_id_lock);
+-	if (error = -EAGAIN)
+-		goto retry;
+-	else if (error)
+-		return error;
++	if (preload)
++		idr_preload_end();
++	if (ret < 0)
++		return ret;
+ 
+-	asoc->assoc_id = (sctp_assoc_t) assoc_id;
+-	return error;
++	asoc->assoc_id = (sctp_assoc_t)ret;
++	return 0;
+ }
+ 
+ /* Free the ASCONF queue */
