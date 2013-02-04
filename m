@@ -1,90 +1,89 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Thu, 21 Feb 2013 17:23:37 +0000
-Subject: Re: [PATCH 3/4] sctp: fix association hangs due to errors when reneging events from the ordering que
-Message-Id: <51265819.80101@gmail.com>
+From: Bob Montgomery <bob.montgomery@hp.com>
+Date: Mon, 04 Feb 2013 23:47:38 +0000
+Subject: Re: Suspected renege problem in sctp
+Message-Id: <1360021658.1992.7214.camel@amd.troyhebe>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <D64EC45690EF85409BA6C4730E0162244310DF0B@G4W3231.americas.hpqcorp.net>
-In-Reply-To: <D64EC45690EF85409BA6C4730E0162244310DF0B@G4W3231.americas.hpqcorp.net>
+References: <5109DDE8.9050700@gmail.com>
+In-Reply-To: <5109DDE8.9050700@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "Roberts, Lee A." <lee.roberts@hp.com>
-Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: linux-sctp@vger.kernel.org
 
-On 02/21/2013 11:44 AM, Roberts, Lee A. wrote:
-> From: Lee A. Roberts <lee.roberts@hp.com>
->
-> Resolve SCTP association hangs observed during SCTP stress
-> testing.  Observable symptoms include communications hangs
-> with data being held in the association reassembly and/or lobby
-> (ordering) queues.  Close examination of reassembly queue shows
-> missing packets.
->
-> In sctp_ulpq_renege_list(), events being reneged from the
-> ordering queue may correspond to multiple TSNs.  Identify
-> all affected packets; sum freed space and renege from the
-> tsnmap.
->
-> Patch applies to linux-3.8 kernel.
->
-> Signed-off-by: Lee A. Roberts <lee.roberts@hp.com>
+On Thu, 2013-01-31 at 10:08 -0500, Vlad Yasevich wrote:
+> On 01/30/2013 11:30 PM, Roberts, Lee A. wrote:
+> > Vlad,
+> >
+> > The test code that I'm running at the moment has changes similar to the following.
+> > I think we want to peek at the tail of the queue---and not dequeue (or unlink) the
+> > data until we're sure we want to renege.
+> 
+> You are right.  If Bob can send a signed-off patch linux-sctp and 
+> netdev, we can get it upstream and into stable releases.
+> 
+> -vlad
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+Vlad,
 
--vlad
+This is just one of many things we suspect, and doesn't explain (or fix)
+the hang we're looking at.  Lee and I are working on a list of problems
+around renege, tsnmap management, reassembly, and partial delivery mode.
 
-> ---
->   net/sctp/ulpqueue.c |   26 ++++++++++++++++++++++----
->   1 file changed, 22 insertions(+), 4 deletions(-)
->
-> diff -uprN -X linux-3.8-vanilla/Documentation/dontdiff linux-3.8-SCTP+2/net/sctp/ulpqueue.c linux-3.8-SCTP+3/net/sctp/ulpqueue.c
-> --- linux-3.8-SCTP+2/net/sctp/ulpqueue.c	2013-02-21 07:39:40.888281496 -0700
-> +++ linux-3.8-SCTP+3/net/sctp/ulpqueue.c	2013-02-21 07:55:32.817713326 -0700
-> @@ -962,8 +962,8 @@ static __u16 sctp_ulpq_renege_list(struc
->   		struct sk_buff_head *list, __u16 needed)
->   {
->   	__u16 freed = 0;
-> -	__u32 tsn;
-> -	struct sk_buff *skb;
-> +	__u32 tsn, last_tsn;
-> +	struct sk_buff *skb, *flist, *last;
->   	struct sctp_ulpevent *event;
->   	struct sctp_tsnmap *tsnmap;
->
-> @@ -977,10 +977,28 @@ static __u16 sctp_ulpq_renege_list(struc
->   		if (TSN_lte(tsn, sctp_tsnmap_get_ctsn(tsnmap)))
->   			break;
->
-> -		__skb_unlink(skb, list);
-> +		/* Events in ordering queue may have multiple fragments
-> +		 * corresponding to additional TSNs.  Sum the total
-> +		 * freed space; find the last TSN.
-> +		 */
->   		freed += skb_headlen(skb);
-> +		flist = skb_shinfo(skb)->frag_list;
-> +		for (last = flist; flist; flist = flist->next) {
-> +			last = flist;
-> +			freed += skb_headlen(last);
-> +		}
-> +		if (last)
-> +			last_tsn = sctp_skb2event(last)->tsn;
-> +		else
-> +			last_tsn = tsn;
-> +
-> +		/* Unlink the event, then renege all applicable TSNs. */
-> +		__skb_unlink(skb, list);
->   		sctp_ulpevent_free(event);
-> -		sctp_tsnmap_renege(tsnmap, tsn);
-> +		while (TSN_lte(tsn, last_tsn)) {
-> +			sctp_tsnmap_renege(tsnmap, tsn);
-> +			tsn++;
-> +		}
->   		if (freed >= needed)
->   			return freed;
->   	}
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+Here's a current favorite potential issue (documented by Lee):
+
+In sctp_ulpq_renege():
+
+        /* If able to free enough room, accept this chunk. */
+        if (chunk && (freed >= needed)) {
+                __u32 tsn;
+                tsn = ntohl(chunk->subh.data_hdr->tsn);
+                sctp_tsnmap_mark(&asoc->peer.tsn_map, tsn);
+                sctp_ulpq_tail_data(ulpq, chunk, gfp);
+
+                sctp_ulpq_partial_delivery(ulpq, chunk, gfp);
+        }
+
+sctp_tsnmap_mark is called *before* calling sctp_ulpq_tail_data().  But
+sctp_ulpq_tail_data can fail to allocated memory and return -ENOMEM.  So
+potentially we've marked this tsn as present and then failed to actually
+keep it, right?
+
+
+Here's another potential issue:
+
+Since an event in the lobby has a single tsn value, but it might have
+been reassembled from several fragments (with sequential tsn's), the
+renege_list operation only calls sctp_tsnmap_renege with the single
+tsn.  So now I've discarded multiple tsn's worth of data, but only
+noted one of them in the map, right??
+
+And another:
+
+Under normal operation, an event that fills a hole in the lobby will
+result in a list of events (the new one and sequential ones that had
+been waiting in the lobby) being sent to sctp_ulpq_tail_event().  Then
+we do this:
+         /* Check if the user wishes to receive this event.  */
+        if (!sctp_ulpevent_is_enabled(event, &sctp_sk(sk)->subscribe))
+                goto out_free;
+
+In out_free, we do 
+                sctp_queue_purge_ulpevents(skb_list);
+
+
+So if the first event was a notification that we don't subscribe to,
+but the remaining 100 were data, do we really throw out all the
+other data with it??
+
+These don't explain my favorite hang either, but I think I'm finally
+getting close to that problem.
+
+These things uncovered while trying to understand this code, and the
+fact that we're not testing and debugging on the current kernel is why
+we're not sending in any patches yet.  
+
+Thanks for any confirmation or insight you can provide :-)
+
+Bob Montgomery
+
 
