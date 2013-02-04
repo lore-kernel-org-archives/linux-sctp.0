@@ -1,99 +1,121 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Wed, 20 Feb 2013 16:38:58 +0000
-Subject: Re: [PATCH 2/3] sctp: fix association hangs due to reassembly/ordering logic
-Message-Id: <5124FC22.2090706@gmail.com>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Mon, 04 Feb 2013 17:27:54 +0000
+Subject: [PATCH net] ipvs: sctp: fix checksumming by adding hardware offload support
+Message-Id: <916047bfad2e27385c15954a71e9462bb2f828f2.1359997089.git.dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1361374925.3450.2.camel@laptop.lroberts> <D64EC45690EF85409BA6C4730E0162244310CBB5@G4W3231.americas.hpqcorp.net>
-In-Reply-To: <D64EC45690EF85409BA6C4730E0162244310CBB5@G4W3231.americas.hpqcorp.net>
+References: <cover.1359997089.git.dborkman@redhat.com>
+In-Reply-To: <cover.1359997089.git.dborkman@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: "Roberts, Lee A." <lee.roberts@hp.com>
-Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: horms@verge.net.au
+Cc: mohanreddykv@gmail.com, pablo@netfilter.org, lvs-devel@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-sctp@vger.kernel.org, root Daniel Borkmann <dborkman@redhat.com>
 
-On 02/20/2013 10:55 AM, Roberts, Lee A. wrote:
-> From: Lee A. Roberts <lee.roberts@hp.com>
->
-> Resolve SCTP association hangs observed during SCTP stress
-> testing.  Observable symptoms include communications hangs
-> with data being held in the association reassembly and/or lobby
-> (ordering) queues.  Close examination of reassembly queue shows
-> missing packets.
->
-> In sctp_ulpq_renege_list(), do not renege packets below the
-> cumulative TSN ACK point.  Events being reneged from the
-> ordering queue may correspond to multiple TSNs; identify
-> and renege all affected packets from the tsnmap.
->
-> Patch applies to linux-3.8 kernel.
->
-> Signed-off-by: Lee A. Roberts <lee.roberts@hp.com>
-> ---
->   net/sctp/ulpqueue.c |   30 +++++++++++++++++++++++++-----
->   1 file changed, 25 insertions(+), 5 deletions(-)
->
-> diff -uprN -X linux-3.8-vanilla/Documentation/dontdiff linux-3.8-SCTP
-> +1/net/sctp/ulpqueue.c linux-3.8-SCTP+2/net/sctp/ulpqueue.c
-> --- linux-3.8-SCTP+1/net/sctp/ulpqueue.c	2013-02-18 16:58:34.000000000
-> -0700
-> +++ linux-3.8-SCTP+2/net/sctp/ulpqueue.c	2013-02-20 08:17:53.679233365
-> -0700
-> @@ -962,20 +962,40 @@ static __u16 sctp_ulpq_renege_list(struc
->   		struct sk_buff_head *list, __u16 needed)
->   {
->   	__u16 freed = 0;
-> -	__u32 tsn;
-> -	struct sk_buff *skb;
-> +	__u32 tsn, last_tsn;
-> +	struct sk_buff *skb, *flist, *last;
->   	struct sctp_ulpevent *event;
->   	struct sctp_tsnmap *tsnmap;
->
->   	tsnmap = &ulpq->asoc->peer.tsn_map;
->
-> -	while ((skb = __skb_dequeue_tail(list)) != NULL) {
-> -		freed += skb_headlen(skb);
-> +	while ((skb = skb_peek_tail(list)) != NULL) {
->   		event = sctp_skb2event(skb);
->   		tsn = event->tsn;
->
-> +		/* Don't renege below the Cumulative TSN ACK Point. */
-> +		if (TSN_lte(tsn, sctp_tsnmap_get_ctsn(tsnmap)))
-> +			break;
-> +
-> +		/* Events in ordering queue may have multiple fragments
-> +		 * corresponding to additional TSNs.  Find the last one.
-> +		 */
-> +		flist = skb_shinfo(skb)->frag_list;
-> +		for (last = flist; flist; flist = flist->next)
-> +			last = flist;
-> +		if (last)
-> +			last_tsn = sctp_skb2event(last)->tsn;
-> +		else
-> +			last_tsn = tsn;
-> +
-> +		/* Unlink the event, then renege all applicable TSNs. */
-> +		__skb_unlink(skb, list);
-> +		freed += skb_headlen(skb);
+From: root Daniel Borkmann <dborkman@redhat.com>
 
+In our test lab, we have a simple SCTP client connecting to a SCTP
+server via an IPVS load balancer. On some machines, load balancing
+works, but on others the initial handshake just fails, thus no
+SCTP connection whatsoever can be established.
 
-This is no longer correct.  You are actually freeing more space if you 
-are reneging a reassembled event from the the ordered queue.
+We observed that the SCTP INIT-ACK handshake reply from the IPVS
+machine to the client had a correct IP checksum, but corrupt SCTP
+checksum when forwarded, thus on the client-side the packet was
+dropped and an intial handshake retriggered until all attempts
+run into the void.
 
-Please separate the 2 patches since they fix 2 distinct bugs.
+This patch fixes the problem by taking hardware offload features
+of the NIC into account (which was just ignored here), similar as
+done in the SCTP checksumming code itself. Also, while at it,
+the checksum is in little-endian format (as fixed in commit 458f04c:
+sctp: Clean up sctp checksumming code). Tested by myself.
 
-Thanks
--vlad
+Cc: Venkata Mohan Reddy <mohanreddykv@gmail.com>
+Cc: Simon Horman <horms@verge.net.au>
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/netfilter/ipvs/ip_vs_proto_sctp.c | 41 ++++++++++++++++++++---------------
+ 1 file changed, 23 insertions(+), 18 deletions(-)
 
->   		sctp_ulpevent_free(event);
-> -		sctp_tsnmap_renege(tsnmap, tsn);
-> +		while (TSN_lte(tsn, last_tsn)) {
-> +			sctp_tsnmap_renege(tsnmap, tsn);
-> +			tsn++;
-> +		}
->   		if (freed >= needed)
->   			return freed;
->   	}
->
-> N�����r��y���b�X��ǧv�^�)޺{.n�+����{���i�{ay�ʇڙ�,j��f���h���z��w������j:+v���w�j�m��������zZ+��ݢj"��!tml>
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index 746048b..dc41622 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -61,14 +61,33 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
+ 	return 1;
+ }
+ 
++static void sctp_nat_csum(struct sk_buff *skb, sctp_sctphdr_t *sctph,
++			  unsigned int sctphoff)
++{
++	struct sk_buff *iter;
++
++	/* Calculate the checksum */
++	if (!(skb->dev->features & NETIF_F_SCTP_CSUM)) {
++		__u32 crc32 = sctp_start_cksum((__u8 *)sctph,
++					       skb_headlen(skb) - sctphoff);
++		skb_walk_frags(skb, iter)
++			crc32 = sctp_update_cksum((u8 *) iter->data,
++						  skb_headlen(iter), crc32);
++		sctph->checksum = sctp_end_cksum(crc32);
++	} else {
++		/* no need to seed pseudo checksum for SCTP */
++		skb->ip_summed = CHECKSUM_PARTIAL;
++		skb->csum_start = (skb_transport_header(skb) - skb->head);
++		skb->csum_offset = offsetof(struct sctphdr, checksum);
++	}
++}
++
+ static int
+ sctp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+ 		  struct ip_vs_conn *cp, struct ip_vs_iphdr *iph)
+ {
+ 	sctp_sctphdr_t *sctph;
+ 	unsigned int sctphoff = iph->len;
+-	struct sk_buff *iter;
+-	__be32 crc32;
+ 
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (cp->af = AF_INET6 && iph->fragoffs)
+@@ -92,13 +111,7 @@ sctp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+ 	sctph = (void *) skb_network_header(skb) + sctphoff;
+ 	sctph->source = cp->vport;
+ 
+-	/* Calculate the checksum */
+-	crc32 = sctp_start_cksum((u8 *) sctph, skb_headlen(skb) - sctphoff);
+-	skb_walk_frags(skb, iter)
+-		crc32 = sctp_update_cksum((u8 *) iter->data, skb_headlen(iter),
+-				          crc32);
+-	crc32 = sctp_end_cksum(crc32);
+-	sctph->checksum = crc32;
++	sctp_nat_csum(skb, sctph, sctphoff);
+ 
+ 	return 1;
+ }
+@@ -109,8 +122,6 @@ sctp_dnat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+ {
+ 	sctp_sctphdr_t *sctph;
+ 	unsigned int sctphoff = iph->len;
+-	struct sk_buff *iter;
+-	__be32 crc32;
+ 
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (cp->af = AF_INET6 && iph->fragoffs)
+@@ -134,13 +145,7 @@ sctp_dnat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+ 	sctph = (void *) skb_network_header(skb) + sctphoff;
+ 	sctph->dest = cp->dport;
+ 
+-	/* Calculate the checksum */
+-	crc32 = sctp_start_cksum((u8 *) sctph, skb_headlen(skb) - sctphoff);
+-	skb_walk_frags(skb, iter)
+-		crc32 = sctp_update_cksum((u8 *) iter->data, skb_headlen(iter),
+-					  crc32);
+-	crc32 = sctp_end_cksum(crc32);
+-	sctph->checksum = crc32;
++	sctp_nat_csum(skb, sctph, sctphoff);
+ 
+ 	return 1;
+ }
+-- 
+1.7.11.7
 
