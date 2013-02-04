@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 04 Feb 2013 12:10:19 +0000
+From: David Miller <davem@davemloft.net>
+Date: Mon, 04 Feb 2013 18:23:02 +0000
 Subject: Re: [PATCH net-next v3] sctp: sctp_close: fix release of bindings for deferred call_rcu's
-Message-Id: <20130204121019.GA19661@hmsreliant.think-freely.org>
+Message-Id: <20130204.132302.931092608711964255.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1359729463-11833-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1359729463-11833-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>
+To: dborkman@redhat.com
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, vyasevich@gmail.com
 
-On Fri, Feb 01, 2013 at 03:37:43PM +0100, Daniel Borkmann wrote:
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Fri,  1 Feb 2013 15:37:43 +0100
+
 > It seems due to RCU usage, i.e. within SCTP's address binding list,
 > a, say, ``behavioral change'' was introduced which does actually
 > not conform to the RFC anymore. In particular consider the following
@@ -78,36 +80,5 @@ On Fri, Feb 01, 2013 at 03:37:43PM +0100, Daniel Borkmann wrote:
 > 
 > Cc: Vlad Yasevich <vyasevich@gmail.com>
 > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-> ---
->  net/sctp/transport.c | 9 +++++----
->  1 file changed, 5 insertions(+), 4 deletions(-)
-> 
-> diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-> index 4e45bb6..ca5331c 100644
-> --- a/net/sctp/transport.c
-> +++ b/net/sctp/transport.c
-> @@ -168,10 +168,6 @@ static void sctp_transport_destroy_rcu(struct rcu_head *head)
->  	struct sctp_transport *transport;
->  
->  	transport = container_of(head, struct sctp_transport, rcu);
-> -	if (transport->asoc)
-> -		sctp_association_put(transport->asoc);
-> -
-> -	sctp_packet_free(&transport->packet);
->  
->  	dst_release(transport->dst);
->  	kfree(transport);
-> @@ -186,6 +182,11 @@ static void sctp_transport_destroy(struct sctp_transport *transport)
->  	SCTP_ASSERT(transport->dead, "Transport is not dead", return);
->  
->  	call_rcu(&transport->rcu, sctp_transport_destroy_rcu);
-> +
-> +	sctp_packet_free(&transport->packet);
-> +
-> +	if (transport->asoc)
-> +		sctp_association_put(transport->asoc);
->  }
->  
-Yup, this looks good, thanks!
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
+Applied.
