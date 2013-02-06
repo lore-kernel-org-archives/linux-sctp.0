@@ -1,93 +1,85 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Thu, 07 Feb 2013 15:45:08 +0000
-Subject: Re: [PATCH net 1/2] net: sctp: sctp_auth_make_key_vector: fix undefined ref-count behaviour
-Message-Id: <5113CC04.40600@gmail.com>
+From: Tejun Heo <tj@kernel.org>
+Date: Wed, 06 Feb 2013 19:40:48 +0000
+Subject: [PATCH 76/77] sctp: convert to idr_alloc()
+Message-Id: <1360179649-22465-77-git-send-email-tj@kernel.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1360231701.git.dborkman@redhat.com> <5eff11271160e84c7fc2d97b81161b1ae7be4a6e.1360231701.git.dborkman@redhat.com> <5113C28C.2050607@gmail.com> <5113C745.10103@redhat.com>
-In-Reply-To: <5113C745.10103@redhat.com>
+References: <1360179649-22465-1-git-send-email-tj@kernel.org>
+In-Reply-To: <1360179649-22465-1-git-send-email-tj@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: akpm@linux-foundation.org
+Cc: linux-kernel@vger.kernel.org, Tejun Heo <tj@kernel.org>, Vlad Yasevich <vyasevich@gmail.com>, Sridhar Samudrala <sri@us.ibm.com>, linux-sctp@vger.kernel.org
 
-On 02/07/2013 10:24 AM, Daniel Borkmann wrote:
-> On 02/07/2013 04:04 PM, Vlad Yasevich wrote:
->> On 02/07/2013 05:55 AM, Daniel Borkmann wrote:
->>> In sctp_auth_make_key_vector(), a sctp_auth_bytes structure is being
->>> allocated, but without setting its object reference count, thus it's
->>> initialized with a random value from the memory, which can lead to
->>> i) premature free's of this object when being put (with possible
->>> subsequent kernel panics), or ii) memory leaks when refcount has a
->>> high value.
->>>
->>> Fix this by using the appropriate sctp_auth_create_key() allocator,
->>> which performs sanity checks, sets length and the refcount, as similar
->>> done in sctp_auth_asoc_set_secret() and others. This bug seems to be
->>> present since 2007 (1f485649f529: Implement SCTP-AUTH internals).
->>
->> Not strictly a bug.  The vectors are temporary and directly freed by
->> the caller.   They are only used by sctp_auth_asoc_create_secret()
->> which builds the association secret key.  The vectors are destroyed at
->> the end of that function using kfree() thus noone really cares about
->> the refcount on them and there are no leaks.
->>
->> If you are going to convert to using sctp_auth_create_key() then you
->> need to convert the callers to user to use sctp_auth_key_put().
->> Otherwise you are leaking object counts.
->
-> Thanks for your feedback!
->
-> If Dave is okay with this, then:
->
->   - [PATCH net 2/2] net: sctp: sctp_auth_key_put: use kzfree instead of
-> kfree
->   - [PATCH net-next] net: sctp: sctp_auth_make_key_vector: remove
-> duplicate ntohs calls
->
-> can be applied as is. (If necessary, I could send the first one
-> _unchanged_ as a
-> single patch again, since it was part of a patchset. However, it will apply
-> cleanly as we have it right here.)
->
+Convert to the much saner new idr interface.
 
-That's fine. Those 2 patches are ok.
+Only compile tested.
 
-> Then, to avoid any future confusion and to stay consistent, I'll convert
-> this
-> to sctp_auth_create_key() API as well and make use of the
-> sctp_auth_key_put()
-> in a later possible patch *after* those two have been applied.
+v2: Don't preload if @gfp doesn't contain __GFP_WAIT as the function
+    may be being called from non-process ocntext.  Also, add a comment
+    explaining @idr_low never becomes zero.
 
-Fine by me.
+Signed-off-by: Tejun Heo <tj@kernel.org>
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Sridhar Samudrala <sri@us.ibm.com>
+Cc: linux-sctp@vger.kernel.org
+---
+ net/sctp/associola.c | 31 +++++++++++++++----------------
+ 1 file changed, 15 insertions(+), 16 deletions(-)
 
--vlad
-
->
->>> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
->>> ---
->>>   net/sctp/auth.c | 4 +---
->>>   1 file changed, 1 insertion(+), 3 deletions(-)
->>>
->>> diff --git a/net/sctp/auth.c b/net/sctp/auth.c
->>> index 159b9bc..55f1b06 100644
->>> --- a/net/sctp/auth.c
->>> +++ b/net/sctp/auth.c
->>> @@ -205,12 +205,10 @@ static struct sctp_auth_bytes
->>> *sctp_auth_make_key_vector(
->>>           if (chunks)
->>>           len += ntohs(chunks->param_hdr.length);
->>>
->>> -    new = kmalloc(sizeof(struct sctp_auth_bytes) + len, gfp);
->>> +    new = sctp_auth_create_key(len, gfp);
->>>       if (!new)
->>>           return NULL;
->>>
->>> -    new->len = len;
->>> -
->>>       memcpy(new->data, random, ntohs(random->param_hdr.length));
->>>       offset += ntohs(random->param_hdr.length);
->>>
->>>
->>
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index b45ed1f..0c9a791 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1592,32 +1592,31 @@ int sctp_assoc_lookup_laddr(struct sctp_association *asoc,
+ /* Set an association id for a given association */
+ int sctp_assoc_set_id(struct sctp_association *asoc, gfp_t gfp)
+ {
+-	int assoc_id;
+-	int error = 0;
++	bool preload = gfp & __GFP_WAIT;
++	int ret;
+ 
+ 	/* If the id is already assigned, keep it. */
+ 	if (asoc->assoc_id)
+-		return error;
+-retry:
+-	if (unlikely(!idr_pre_get(&sctp_assocs_id, gfp)))
+-		return -ENOMEM;
++		return 0;
+ 
++	if (preload)
++		idr_preload(gfp);
+ 	spin_lock_bh(&sctp_assocs_id_lock);
+-	error = idr_get_new_above(&sctp_assocs_id, (void *)asoc,
+-				    idr_low, &assoc_id);
+-	if (!error) {
+-		idr_low = assoc_id + 1;
++	/* 0 is not a valid id, idr_low is always >= 1 */
++	ret = idr_alloc(&sctp_assocs_id, asoc, idr_low, 0, GFP_NOWAIT);
++	if (ret >= 0) {
++		idr_low = ret + 1;
+ 		if (idr_low = INT_MAX)
+ 			idr_low = 1;
+ 	}
+ 	spin_unlock_bh(&sctp_assocs_id_lock);
+-	if (error = -EAGAIN)
+-		goto retry;
+-	else if (error)
+-		return error;
++	if (preload)
++		idr_preload_end();
++	if (ret < 0)
++		return ret;
+ 
+-	asoc->assoc_id = (sctp_assoc_t) assoc_id;
+-	return error;
++	asoc->assoc_id = (sctp_assoc_t)ret;
++	return 0;
+ }
+ 
+ /* Free the ASCONF queue */
+-- 
+1.8.1
 
