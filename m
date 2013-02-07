@@ -1,110 +1,38 @@
-From: "Roberts, Lee A." <lee.roberts@hp.com>
-Date: Thu, 21 Feb 2013 18:25:05 +0000
-Subject: RE: [PATCH 1/4] sctp: fix association hangs due to off-by-one errors in sctp_tsnmap_grow()
-Message-Id: <D64EC45690EF85409BA6C4730E0162244310DF9B@G4W3231.americas.hpqcorp.net>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Thu, 07 Feb 2013 10:55:37 +0000
+Subject: [PATCH net 2/2] net: sctp: sctp_auth_key_put: use kzfree instead of kfree
+Message-Id: <8c764d916f21d56402a5b9a915ea31d927898da0.1360231701.git.dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <D64EC45690EF85409BA6C4730E0162244310DEE7@G4W3231.americas.hpqcorp.net>
- <512656E7.3060908@gmail.com> 
+References: <cover.1360231701.git.dborkman@redhat.com>
+In-Reply-To: <cover.1360231701.git.dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>
-Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: vyasevich@gmail.com
+Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-Vlad,
+For sensitive data like keying material, it is common practice to zero
+out keys before returning the memory back to the allocator. Thus, use
+kzfree instead of kfree.
 
-> -----Original Message-----
-> From: Roberts, Lee A.
-> Sent: Thursday, February 21, 2013 11:00 AM
-> To: 'Vlad Yasevich'
-> Cc: linux-sctp@vger.kernel.org; netdev@vger.kernel.org; linux-kernel@vger.kernel.org
-> Subject: RE: [PATCH 1/4] sctp: fix association hangs due to off-by-one errors in sctp_tsnmap_grow()
-> 
-> Vlad,
-> 
-> > -----Original Message-----
-> > From: Vlad Yasevich [mailto:vyasevich@gmail.com]
-> > Sent: Thursday, February 21, 2013 10:19 AM
-> > To: Roberts, Lee A.
-> > Cc: linux-sctp@vger.kernel.org; netdev@vger.kernel.org; linux-kernel@vger.kernel.org
-> > Subject: Re: [PATCH 1/4] sctp: fix association hangs due to off-by-one errors in sctp_tsnmap_grow()
-> >
-> > On 02/21/2013 11:44 AM, Roberts, Lee A. wrote:
-> > > From: Lee A. Roberts <lee.roberts@hp.com>
-> > >
-> > > Resolve SCTP association hangs observed during SCTP stress
-> > > testing.  Observable symptoms include communications hangs
-> > > with data being held in the association lobby (ordering)
-> > > queue.  Close examination of reassembly/ordering queues shows
-> > > duplicated packets.
-> > >
-> > > In sctp_tsnmap_grow(), correct off-by-one errors when copying
-> > > and resizing the tsnmap.  If max_tsn_seen is in the LSB of the
-> > > word, this bit can be lost, causing the corresponding packet
-> > > to be transmitted again and to be entered as a duplicate into
-> > > the SCTP reassembly/ordering queues.
-> > >
-> > > Patch applies to linux-3.8 kernel.
-> > >
-> > > Signed-off-by: Lee A. Roberts <lee.roberts@hp.com>
-> > > ---
-> > >   net/sctp/tsnmap.c |    5 +++--
-> > >   1 file changed, 3 insertions(+), 2 deletions(-)
-> > >
-> > > diff -uprN -X linux-3.8-vanilla/Documentation/dontdiff linux-3.8-vanilla/net/sctp/tsnmap.c linux-
-> > 3.8-SCTP+1/net/sctp/tsnmap.c
-> > > --- linux-3.8-vanilla/net/sctp/tsnmap.c	2013-02-18 16:58:34.000000000 -0700
-> > > +++ linux-3.8-SCTP+1/net/sctp/tsnmap.c	2013-02-20 08:01:02.555223259 -0700
-> > > @@ -369,14 +369,15 @@ static int sctp_tsnmap_grow(struct sctp_
-> > >   	if (gap >= SCTP_TSN_MAP_SIZE)
-> >
-> > No that I think about this a bit more, this should be gap + 1.  If you
-> > do that, you might as well call sctp_tsnmap_grow() with gap+1 as
-> > argument and then can just use the 'gap' everywhere inside.
-> 
-> I think the calculation of "gap" in sctp_tsnmap_mark() should change:
-> 
-> -	gap = tsn - map->base_tsn;
-> +	gap = tsn - map->cumulative_tsn_ack_point;
-> 
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/auth.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Oops, this breaks the logic that follows.  Using "gap + 1" in the call should work.
-I sent an updated patch (v3).
-
-                                    - Lee
-
-> >
-> > >   		return 0;
-> > >
-> > > -	inc = ALIGN((gap - map->len),BITS_PER_LONG) + SCTP_TSN_MAP_INCREMENT;
-> > > +	inc = ALIGN((gap - map->len + 1), BITS_PER_LONG)
-> > > +		+ SCTP_TSN_MAP_INCREMENT;
-> > >   	len = min_t(u16, map->len + inc, SCTP_TSN_MAP_SIZE);
-> > >
-> > >   	new = kzalloc(len>>3, GFP_ATOMIC);
-> > >   	if (!new)
-> > >   		return 0;
-> > >
-> > > -	bitmap_copy(new, map->tsn_map, map->max_tsn_seen - map->base_tsn);
-> > > +	bitmap_copy(new, map->tsn_map, map->max_tsn_seen - map->base_tsn + 1);
-> >
-> > Can simplify that this by using map->cumulative_tsn_ack_point instead of
-> > base_tsn.
-> >
-> > -vlad
-> >
-> 
-> I changed the code to use "cumulative_tsn_ack_point" in an updated version
-> of the patch.
-> 
->                                          -- Lee
-> 
-> > >   	kfree(map->tsn_map);
-> > >   	map->tsn_map = new;
-> > >   	map->len = len;
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > >
+diff --git a/net/sctp/auth.c b/net/sctp/auth.c
+index 55f1b06..69fcd6d 100644
+--- a/net/sctp/auth.c
++++ b/net/sctp/auth.c
+@@ -71,7 +71,7 @@ void sctp_auth_key_put(struct sctp_auth_bytes *key)
+ 		return;
+ 
+ 	if (atomic_dec_and_test(&key->refcnt)) {
+-		kfree(key);
++		kzfree(key);
+ 		SCTP_DBG_OBJCNT_DEC(keys);
+ 	}
+ }
+-- 
+1.7.11.7
 
