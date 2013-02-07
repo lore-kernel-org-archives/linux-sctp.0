@@ -1,60 +1,51 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 12 Feb 2013 14:36:27 +0000
-Subject: Re: [PATCH net-next] net: sctp: remove unused multiple cookie keys
-Message-Id: <20130212143627.GA7849@hmsreliant.think-freely.org>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Thu, 07 Feb 2013 10:55:36 +0000
+Subject: [PATCH net 1/2] net: sctp: sctp_auth_make_key_vector: fix undefined ref-count behaviour
+Message-Id: <5eff11271160e84c7fc2d97b81161b1ae7be4a6e.1360231701.git.dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1360593589.git.dborkman@redhat.com>
- <c1d3c108e6dc72f14e6251543b9ff826f56f5f78.1360593589.git.dborkman@redhat.com>
-In-Reply-To: <c1d3c108e6dc72f14e6251543b9ff826f56f5f78.1360593589.git.dborkman@redhat.com>
+References: <cover.1360231701.git.dborkman@redhat.com>
+In-Reply-To: <cover.1360231701.git.dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Vlad Yasevich <vyasevic@redhat.com>
+To: vyasevich@gmail.com
+Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Mon, Feb 11, 2013 at 03:50:07PM +0100, Daniel Borkmann wrote:
-> Vlad says: The whole multiple cookie keys code is completely unused
-> and has been all this time. Noone uses anything other then the
-> secret_key[0] since there is no changeover support anywhere.
-> 
-> Thus, for now clean up its left-over fragments.
-> 
-> Cc: Vlad Yasevich <vyasevic@redhat.com>
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
->  
->  	/* Remove and free the port */
->  	if (sctp_sk(ep->base.sk)->bind_hash)
-> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> index e1c5fc2..1063b83 100644
-> --- a/net/sctp/sm_make_chunk.c
-> +++ b/net/sctp/sm_make_chunk.c
-> @@ -1650,8 +1650,8 @@ static sctp_cookie_param_t *sctp_pack_cookie(const struct sctp_endpoint *ep,
->  
->  		/* Sign the message.  */
->  		sg_init_one(&sg, &cookie->c, bodysize);
-> -		keylen = SCTP_SECRET_SIZE;
-> -		key = (char *)ep->secret_key[ep->current_key];
-> +		keylen = sizeof(ep->secret_key);
-> +		key = (char *) ep->secret_key;
-You can drop the use of they local key variable entirely here.
-crypto_hash_setkey takes a u8 * as a key parameter, so you can pass
-ep->secret_key directly.
+In sctp_auth_make_key_vector(), a sctp_auth_bytes structure is being
+allocated, but without setting its object reference count, thus it's
+initialized with a random value from the memory, which can lead to
+i) premature free's of this object when being put (with possible
+subsequent kernel panics), or ii) memory leaks when refcount has a
+high value.
 
->  		desc.tfm = sctp_sk(ep->base.sk)->hmac;
->  		desc.flags = 0;
->  
-> @@ -1718,9 +1718,9 @@ struct sctp_association *sctp_unpack_cookie(
->  		goto no_hmac;
->  
->  	/* Check the signature.  */
-> -	keylen = SCTP_SECRET_SIZE;
->  	sg_init_one(&sg, bear_cookie, bodysize);
-> -	key = (char *)ep->secret_key[ep->current_key];
-> +	keylen = sizeof(ep->secret_key);
-> +	key = (char *) ep->secret_key;
-Ditto the above.
+Fix this by using the appropriate sctp_auth_create_key() allocator,
+which performs sanity checks, sets length and the refcount, as similar
+done in sctp_auth_asoc_set_secret() and others. This bug seems to be
+present since 2007 (1f485649f529: Implement SCTP-AUTH internals).
 
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/auth.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
-Otherwise it looks good.
-Neil
+diff --git a/net/sctp/auth.c b/net/sctp/auth.c
+index 159b9bc..55f1b06 100644
+--- a/net/sctp/auth.c
++++ b/net/sctp/auth.c
+@@ -205,12 +205,10 @@ static struct sctp_auth_bytes *sctp_auth_make_key_vector(
+         if (chunks)
+ 		len += ntohs(chunks->param_hdr.length);
+ 
+-	new = kmalloc(sizeof(struct sctp_auth_bytes) + len, gfp);
++	new = sctp_auth_create_key(len, gfp);
+ 	if (!new)
+ 		return NULL;
+ 
+-	new->len = len;
+-
+ 	memcpy(new->data, random, ntohs(random->param_hdr.length));
+ 	offset += ntohs(random->param_hdr.length);
+ 
+-- 
+1.7.11.7
 
