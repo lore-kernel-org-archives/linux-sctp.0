@@ -1,28 +1,48 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 08 Feb 2013 22:57:49 +0000
-Subject: Re: [PATCH net-next] net: sctp: sctp_auth_make_key_vector: use sctp_auth_create_key
-Message-Id: <20130208.175749.439352484305130110.davem@davemloft.net>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Fri, 08 Feb 2013 13:04:35 +0000
+Subject: [PATCH net 2/2] net: sctp: sctp_endpoint_free: zero out secret key data
+Message-Id: <cf390ae999888aafe57914bcd87e5207be154557.1360327229.git.dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1360314390.git.dborkman@redhat.com>
-	<783e1129996c3f09c7da121f5dd91c8ac7ba5baa.1360314390.git.dborkman@redhat.com>
-In-Reply-To: <783e1129996c3f09c7da121f5dd91c8ac7ba5baa.1360314390.git.dborkman@redhat.com>
+References: <cover.1360327229.git.dborkman@redhat.com>
+In-Reply-To: <cover.1360327229.git.dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dborkman@redhat.com
+To: davem@davemloft.net
 Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Fri,  8 Feb 2013 10:22:58 +0100
+On sctp_endpoint_destroy, previously used sensitive keying material
+should be zeroed out before the memory is returned, as we already do
+with e.g. auth keys when released.
 
-> In sctp_auth_make_key_vector, we allocate a temporary sctp_auth_bytes
-> structure with kmalloc instead of the sctp_auth_create_key allocator.
-> Change this to sctp_auth_create_key as it is the case everywhere else,
-> so that we also can properly free it via sctp_auth_key_put. This makes
-> it easier for future code changes in the structure and allocator itself,
-> since a single API is consistently used for this purpose. Also, by
-> using sctp_auth_create_key we're doing sanity checks over the arguments.
-> 
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/endpointola.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-Applied.
+diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
+index 17a001b..1a9c5fb 100644
+--- a/net/sctp/endpointola.c
++++ b/net/sctp/endpointola.c
+@@ -249,6 +249,8 @@ void sctp_endpoint_free(struct sctp_endpoint *ep)
+ /* Final destructor for endpoint.  */
+ static void sctp_endpoint_destroy(struct sctp_endpoint *ep)
+ {
++	int i;
++
+ 	SCTP_ASSERT(ep->base.dead, "Endpoint is not dead", return);
+ 
+ 	/* Free up the HMAC transform. */
+@@ -271,6 +273,9 @@ static void sctp_endpoint_destroy(struct sctp_endpoint *ep)
+ 	sctp_inq_free(&ep->base.inqueue);
+ 	sctp_bind_addr_free(&ep->base.bind_addr);
+ 
++	for (i = 0; i < SCTP_HOW_MANY_SECRETS; ++i)
++		memset(&ep->secret_key[i], 0, SCTP_SECRET_SIZE);
++
+ 	/* Remove and free the port */
+ 	if (sctp_sk(ep->base.sk)->bind_hash)
+ 		sctp_put_port(ep->base.sk);
+-- 
+1.7.11.7
+
