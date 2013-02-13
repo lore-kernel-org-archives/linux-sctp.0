@@ -1,42 +1,46 @@
-From: Pablo Neira Ayuso <pablo@netfilter.org>
-Date: Mon, 25 Feb 2013 15:40:25 +0000
-Subject: Re: [PATCH stable] ipvs: sctp: fix checksumming on snat and dnat handlers
-Message-Id: <20130225154025.GC20561@localhost>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Wed, 13 Feb 2013 11:03:50 +0000
+Subject: [PATCH net-next 2/2] net: sctp: add build check for sctp_sf_eat_sack_6_2/jsctp_sf_eat_sack
+Message-Id: <84afa536e3652ea27a7efb1f6c9f7c4f29c15043.1360752304.git.dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1361451476.git.dborkman@redhat.com>
- <f904dab20914b562ad9c0baf0727971dc5a4b549.1361451476.git.dborkman@redhat.com>
- <20130221151451.GB2730@shamino.rdu.redhat.com>
-In-Reply-To: <20130221151451.GB2730@shamino.rdu.redhat.com>
+References: <7eef4b701794c1bb78819bc6e6c45bf99b49801d.1360752304.git.dborkman@redhat.com>
+In-Reply-To: <7eef4b701794c1bb78819bc6e6c45bf99b49801d.1360752304.git.dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: Daniel Borkmann <dborkman@redhat.com>, netfilter-devel@vger.kernel.org, lvs-devel@vger.kernel.org, linux-sctp@vger.kernel.org, Julian Anastasov <ja@ssi.bg>, Simon Horman <horms@verge.net.au>
+To: davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On Thu, Feb 21, 2013 at 10:14:51AM -0500, Neil Horman wrote:
-> On Thu, Feb 21, 2013 at 02:05:39PM +0100, Daniel Borkmann wrote:
-> > In our test lab, we have a simple SCTP client connecting to a SCTP
-> > server via an IPVS load balancer. On some machines, load balancing
-> > works, but on others the initial handshake just fails, thus no
-> > SCTP connection whatsoever can be established!
-> > 
-> > We observed that the SCTP INIT-ACK handshake reply from the IPVS
-> > machine to the client had a correct IP checksum, but corrupt SCTP
-> > checksum when forwarded, thus on the client-side the packet was
-> > dropped and an intial handshake retriggered until all attempts
-> > run into the void.
-> > 
-> > To fix this issue, this patch i) adds a missing CHECKSUM_UNNECESSARY
-> > after the full checksum (re-)calculation (as done in IPVS TCP and UDP
-> > code as well), and ii) calculates the checksum in little-endian format
-> > (as fixed with the SCTP code in commit 4458f04c: sctp: Clean up sctp
-> > checksumming code). Stable backport of upstream commit 4b47bc9a.
-> > 
-> > Cc: Julian Anastasov <ja@ssi.bg>
-> > Cc: Simon Horman <horms@verge.net.au>
-> > Cc: Pablo Neira Ayuso <pablo@netfilter.org>
-> > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-[...]
-> Acked-by: Neil Horman <nhorman@tuxdriver.com>
+In order to avoid any future surprises of kernel panics due to jprobes
+function mismatches (as e.g. fixed in 4cb9d6eaf85ecd: sctp: jsctp_sf_eat_sack:
+fix jprobes function signature mismatch), we should check both function
+types during build and scream loudly if they do not match. __same_type
+resolves to __builtin_types_compatible_p, which is 1 in case both types
+are the same and 0 otherwise, qualifiers are ignored. Tested by myself.
 
-Enqueued to -stable. Thanks.
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/probe.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/net/sctp/probe.c b/net/sctp/probe.c
+index 4eaaaf6..261b7b9 100644
+--- a/net/sctp/probe.c
++++ b/net/sctp/probe.c
+@@ -183,6 +183,13 @@ static __init int sctpprobe_init(void)
+ {
+ 	int ret = -ENOMEM;
+ 
++	/* Warning: if the function signature of sctp_sf_eat_sack_6_2,
++	 * has been changed, you also have to change the signature of
++	 * jsctp_sf_eat_sack, otherwise you end up right here!
++	 */
++	BUILD_BUG_ON(__same_type(sctp_sf_eat_sack_6_2,
++				 jsctp_sf_eat_sack) = 0);
++
+ 	init_waitqueue_head(&sctpw.wait);
+ 	spin_lock_init(&sctpw.lock);
+ 	if (kfifo_alloc(&sctpw.fifo, bufsize, GFP_KERNEL))
+-- 
+1.7.11.7
+
