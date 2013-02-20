@@ -1,220 +1,368 @@
-From: "Roberts, Lee A." <lee.roberts@hp.com>
-Date: Wed, 20 Feb 2013 19:24:29 +0000
-Subject: RE: [PATCH 3/3] sctp: fix association hangs due to reassembly/ordering logic
-Message-Id: <D64EC45690EF85409BA6C4730E0162244310CC65@G4W3231.americas.hpqcorp.net>
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Wed, 20 Feb 2013 20:13:54 +0000
+Subject: Re: [PATCH 3/3] sctp: fix association hangs due to reassembly/ordering logic
+Message-Id: <51252E82.2060902@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1361374996.3450.3.camel@laptop.lroberts>
- <D64EC45690EF85409BA6C4730E0162244310CBC1@G4W3231.americas.hpqcorp.net>
- <5125108D.3010508@gmail.com>
-In-Reply-To: <5125108D.3010508@gmail.com>
+References: <1361374996.3450.3.camel@laptop.lroberts> <D64EC45690EF85409BA6C4730E0162244310CBC1@G4W3231.americas.hpqcorp.net> <5125108D.3010508@gmail.com> <D64EC45690EF85409BA6C4730E0162244310CC65@G4W3231.americas.hpqcorp.net>
+In-Reply-To: <D64EC45690EF85409BA6C4730E0162244310CC65@G4W3231.americas.hpqcorp.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: "Roberts, Lee A." <lee.roberts@hp.com>
 Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 
-VmxhZCwNCg0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBWbGFkIFlhc2V2
-aWNoIFttYWlsdG86dnlhc2V2aWNoQGdtYWlsLmNvbV0NCj4gU2VudDogV2VkbmVzZGF5LCBGZWJy
-dWFyeSAyMCwgMjAxMyAxMTowNiBBTQ0KPiBUbzogUm9iZXJ0cywgTGVlIEEuDQo+IENjOiBsaW51
-eC1zY3RwQHZnZXIua2VybmVsLm9yZzsgbmV0ZGV2QHZnZXIua2VybmVsLm9yZzsgbGludXgtDQo+
-IGtlcm5lbEB2Z2VyLmtlcm5lbC5vcmcNCj4gU3ViamVjdDogUmU6IFtQQVRDSCAzLzNdIHNjdHA6
-IGZpeCBhc3NvY2lhdGlvbiBoYW5ncyBkdWUgdG8NCj4gcmVhc3NlbWJseS9vcmRlcmluZyBsb2dp
-Yw0KPiANCj4gSGkgTGVlDQo+IA0KPiBPbiAwMi8yMC8yMDEzIDEwOjU2IEFNLCBSb2JlcnRzLCBM
-ZWUgQS4gd3JvdGU6DQo+ID4gRnJvbTogTGVlIEEuIFJvYmVydHMgPGxlZS5yb2JlcnRzQGhwLmNv
-bT4NCj4gPg0KPiA+IFJlc29sdmUgU0NUUCBhc3NvY2lhdGlvbiBoYW5ncyBvYnNlcnZlZCBkdXJp
-bmcgU0NUUCBzdHJlc3MNCj4gPiB0ZXN0aW5nLiAgT2JzZXJ2YWJsZSBzeW1wdG9tcyBpbmNsdWRl
-IGNvbW11bmljYXRpb25zIGhhbmdzDQo+ID4gd2l0aCBkYXRhIGJlaW5nIGhlbGQgaW4gdGhlIGFz
-c29jaWF0aW9uIHJlYXNzZW1ibHkgYW5kL29yIGxvYmJ5DQo+ID4gKG9yZGVyaW5nKSBxdWV1ZXMu
-ICBDbG9zZSBleGFtaW5hdGlvbiBvZiByZWFzc2VtYmx5IHF1ZXVlIHNob3dzDQo+ID4gbWlzc2lu
-ZyBwYWNrZXRzLg0KPiANCj4gQXMgYSBnZW5lcmFsIG5vdGUgZm9yIHRoaXMgcGF0Y2ggc2VyaWVz
-LCB5b3UgY291bGQgcmVhbGx5IGJlbmVmaXQNCj4gZnJvbSBhIGNvdmVyIGxldHRlciB0aGF0IGRl
-c2NyaWJlcyB0aGUgc3ltcHRvbXMgYW5kIGFsbCB0aGUgZGlmZmVyZW50DQo+IGlzc3VlcyB5b3Ug
-Zm91bmQuDQo+IA0KPiBBbHNvLCBwbGVhc2UgdGl0bGUgeW91ciBwYXRjaGVzIGJhc2VkIG9uIHRo
-ZSBjb250ZXh0IG9mIHRoZSBwYXRjaC4NCj4gR2l2aW5nIHRoZW0gYWxsIHRoZSBzYW1lIHRpdGxl
-IGlzIHZlcnkgY29uZnVzaW5nIGFuZCBhdCBxdWljayBnbGFuY2UNCj4gbWFrZXMgYXBwZWFyIHRo
-YXQgdGhlIHNhbWUgcGF0Y2ggd2FzIGFwcGxpZWQgMyB0aW1lcy4NCj4gDQo+ID4NCj4gPiBJbiBz
-Y3RwX2VhdF9kYXRhKCksIGVudGVyIHBhcnRpYWwgZGVsaXZlcnkgbW9kZSBvbmx5IGlmIHRoZQ0K
-PiA+IGRhdGEgb24gdGhlIGhlYWQgb2YgdGhlIHJlYXNzZW1ibHkgcXVldWUgaXMgYXQgb3IgYmVm
-b3JlIHRoZQ0KPiA+IGN1bXVsYXRpdmUgVFNOIEFDSyBwb2ludC4NCj4gPg0KPiA+IEluIHNjdHBf
-dWxwcV9yZXRyaWV2ZV9wYXJ0aWFsKCkgYW5kIHNjdHBfdWxwcV9yZXRyaWV2ZV9maXJzdCgpLA0K
-PiA+IGNvcnJlY3QgbWVzc2FnZSByZWFzc2VtYmx5IGxvZ2ljIGZvciBTQ1RQIHBhcnRpYWwgZGVs
-aXZlcnkuDQo+ID4gQ2hhbmdlIGxvZ2ljIHRvIGVuc3VyZSB0aGF0IGFzIG11Y2ggZGF0YSBhcyBw
-b3NzaWJsZSBpcyBzZW50DQo+ID4gd2l0aCB0aGUgaW5pdGlhbCBwYXJ0aWFsIGRlbGl2ZXJ5IGFu
-ZCB0aGF0IGZvbGxvd2luZyBwYXJ0aWFsDQo+ID4gZGVsaXZlcmllcyBjb250YWluIGFsbCBhdmFp
-bGFibGUgZGF0YS4NCj4gPg0KPiA+IEluIHNjdHBfdWxwcV9yZW5lZ2UoKSwgYWRqdXN0IGxvZ2lj
-IHRvIGVudGVyIHBhcnRpYWwgZGVsaXZlcnkNCj4gPiBvbmx5IGlmIHRoZSBpbmNvbWluZyBjaHVu
-ayByZW1haW5zIG9uIHRoZSByZWFzc2VtYmx5IHF1ZXVlDQo+ID4gYWZ0ZXIgcHJvY2Vzc2luZyBi
-eSBzY3RwX3VscHFfdGFpbF9kYXRhKCkuICBSZW1vdmUgY2FsbCB0bw0KPiA+IHNjdHBfdHNubWFw
-X21hcmsoKSwgYXMgdGhpcyBpcyBoYW5kbGVkIGNvcnJlY3RseSBpbiBjYWxsIHRvDQo+ID4gc2N0
-cF91bHBxX3RhaWxfZGF0YSgpLg0KPiA+DQo+ID4gUGF0Y2ggYXBwbGllcyB0byBsaW51eC0zLjgg
-a2VybmVsLg0KPiA+DQo+ID4gU2lnbmVkLW9mZi1ieTogTGVlIEEuIFJvYmVydHMgPGxlZS5yb2Jl
-cnRzQGhwLmNvbT4NCj4gPiAtLS0NCj4gPiAgIG5ldC9zY3RwL3NtX3N0YXRlZnVucy5jIHwgICAx
-MiArKysrKysrKysrLS0NCj4gPiAgIG5ldC9zY3RwL3VscHF1ZXVlLmMgICAgIHwgICAzMyArKysr
-KysrKysrKysrKysrKysrKysrKysrKy0tLS0tLS0NCj4gPiAgIDIgZmlsZXMgY2hhbmdlZCwgMzYg
-aW5zZXJ0aW9ucygrKSwgOSBkZWxldGlvbnMoLSkNCj4gPg0KPiA+IGRpZmYgLXVwck4gLVggbGlu
-dXgtMy44LXZhbmlsbGEvRG9jdW1lbnRhdGlvbi9kb250ZGlmZiBsaW51eC0zLjgtU0NUUA0KPiA+
-ICsyL25ldC9zY3RwL3NtX3N0YXRlZnVucy5jIGxpbnV4LTMuOC1TQ1RQKzMvbmV0L3NjdHAvc21f
-c3RhdGVmdW5zLmMNCj4gPiAtLS0gbGludXgtMy44LVNDVFArMi9uZXQvc2N0cC9zbV9zdGF0ZWZ1
-bnMuYwkyMDEzLTAyLTE4DQo+ID4gMTY6NTg6MzQuMDAwMDAwMDAwIC0wNzAwDQo+ID4gKysrIGxp
-bnV4LTMuOC1TQ1RQKzMvbmV0L3NjdHAvc21fc3RhdGVmdW5zLmMJMjAxMy0wMi0yMA0KPiA+IDA4
-OjMxOjUxLjA5MjEzMjg4NCAtMDcwMA0KPiA+IEBAIC02MDkwLDcgKzYwOTAsOCBAQCBzdGF0aWMg
-aW50IHNjdHBfZWF0X2RhdGEoY29uc3Qgc3RydWN0IHNjDQo+ID4gICAJc2l6ZV90IGRhdGFsZW47
-DQo+ID4gICAJc2N0cF92ZXJiX3QgZGVsaXZlcjsNCj4gPiAgIAlpbnQgdG1wOw0KPiA+IC0JX191
-MzIgdHNuOw0KPiA+ICsJX191MzIgdHNuLCBjdHNuOw0KPiA+ICsJc3RydWN0IHNrX2J1ZmYgKnNr
-YjsNCj4gPiAgIAlzdHJ1Y3Qgc2N0cF90c25tYXAgKm1hcCA9IChzdHJ1Y3Qgc2N0cF90c25tYXAg
-KikmYXNvYy0NCj4gPnBlZXIudHNuX21hcDsNCj4gPiAgIAlzdHJ1Y3Qgc29jayAqc2sgPSBhc29j
-LT5iYXNlLnNrOw0KPiA+ICAgCXN0cnVjdCBuZXQgKm5ldCA9IHNvY2tfbmV0KHNrKTsNCj4gPiBA
-QCAtNjE2MCw3ICs2MTYxLDE0IEBAIHN0YXRpYyBpbnQgc2N0cF9lYXRfZGF0YShjb25zdCBzdHJ1
-Y3Qgc2MNCj4gPiAgIAkJLyogRXZlbiBpZiB3ZSBkb24ndCBhY2NlcHQgdGhpcyBjaHVuayB0aGVy
-ZSBpcw0KPiA+ICAgCQkgKiBtZW1vcnkgcHJlc3N1cmUuDQo+ID4gICAJCSAqLw0KPiA+IC0JCXNj
-dHBfYWRkX2NtZF9zZihjb21tYW5kcywgU0NUUF9DTURfUEFSVF9ERUxJVkVSLA0KPiBTQ1RQX05V
-TEwoKSk7DQo+ID4gKwkJc2tiID0gc2tiX3BlZWsoJmFzb2MtPnVscHEucmVhc20pOw0KPiA+ICsJ
-CWlmIChza2IgIT0gTlVMTCkgew0KPiA+ICsJCQljdHNuID0gc2N0cF9za2IyZXZlbnQoc2tiKS0+
-dHNuOw0KPiA+ICsJCQlpZiAoVFNOX2x0ZShjdHNuLA0KPiA+ICsJCQkJc2N0cF90c25tYXBfZ2V0
-X2N0c24oJmFzb2MtPnBlZXIudHNuX21hcCkpKQ0KPiA+ICsJCQkJc2N0cF9hZGRfY21kX3NmKGNv
-bW1hbmRzLA0KPiA+ICsJCQkJCVNDVFBfQ01EX1BBUlRfREVMSVZFUiwgU0NUUF9OVUxMKCkpOw0K
-PiA+ICsJCX0NCj4gDQo+IFdoYXQgaWYgdGhlIHRzbiB5b3UgYXJlIGN1cnJlbnRseSBwcm9jZXNz
-aW5nIHdpbGwgYWR2YW5jZSB0aGUNCj4gQ1VNIFRTTj8gIFlvdSBtYXkgc3RpbGwgbmVlZCB0byBl
-bmV0ZXIgUEQuICBUaGlzIGlzIHdoeQ0KPiBzY3RwX2VhdF9kYXRhKCkgaXMgbm90IHRoZSByaWdo
-dCBwbGFjZSB0byBwbGFjZSB0aGlzIGNoZWNrLg0KPiANCj4gVGhlIG1vcmUgSSBsb29rIGF0IHRo
-ZSBTQ1RQX0NNRF9QQVJUX0RFTElWRVJZIHRoZSBtb3JlIEkgYW0gdGhpbmtpbmcNCj4gdGhhdCBp
-dCBoYXMgdG8gY29tZSBhZnRlciB0aGUgY3VycmVudCBUU04gaGFzIGJlZW4gZGVsaXZlcmVkIHRv
-IHRoZQ0KPiBxdWV1ZS4gIFRoYXQgd2F5LCBpZiB3ZSBhcmUgY3VycmVudGx5IHByb2Nlc3Npbmcg
-dGhlIGZpcnN0IGZyYWdtZW50LA0KPiB3ZSdsbCBxdWV1ZSBpdCwgdGhlbiBlbnRlciBQRCBhbmQg
-cHVsbCBpdCBvZmYgdGhlIHF1ZXVlIHByb3Blcmx5Lg0KPiBJZiB3ZSBhcmUgcHJvY2Vzc2luZyB0
-aGUgbWlkZGxlIG9yIGxhc3QsIGl0IHdpbGwgZ2V0IHF1ZXVlZCBmaXJzdCwgYW5kDQo+IHRoZW4g
-UEQgd2lsbCBiZSBlbnRlcmVkIHRvIGZldGNoIGFueXRoaW5nIHRoYXQgd2UgY2FuIGZldGNoLg0K
-PiANCj4gSW4gZmFjdCwgdGhlIGFib3ZlIGlzIHdoYXQgaGFwcGVucyB3aGVuIHdlIGlzc3VlIGEg
-UkVORUdFIGNvbW1hbmQsIGJ1dA0KPiB0aGUgb3JkZXIgaXMgcmV2ZXJzZWQgaXMgUkVORUdFIGlz
-IHNraXBwZWQgZm9yIHNvbWUgcmVhc29uLiAgSSBhbSBzdGlsbA0KPiB0cnlpbmcgdG8gZmlndXJl
-IG91dCBpZiBpdCdzIHBvc3NpYmxlIHRvIGVudGVyIFBEIHdpdGhvdXQgUkVORUdFLCBidXQgSQ0K
-PiBkaWQgbm90aWNlIHRoZSBhYm92ZSBhYmVycmF0aW9uLg0KPiANCg0KVGhlIGN1cnJlbnQgY29k
-ZSBlbnRlcnMgcGFydGlhbCBkZWxpdmVyeSBieSBjYWxsaW5nIHNjdHBfdWxwcV9wYXJ0aWFsX2Rl
-bGl2ZXJ5KCkNCmluIHR3byBsb2NhdGlvbnMuICBJbiBzY3RwX2NtZF9pbnRlcnByZXRlcigpIFts
-b2NhdGVkIGluIC4uL25ldC9zY3RwL3NtX3NpZGVlZmZlY3QuY10sDQphcyBhIHJlc3VsdCBvZiB0
-aGUgY29kZSBpbiBzY3RwX2VhdF9kYXRhKCkgW2xvY2F0ZWQgaW4gLi4vbmV0L3NjdHAvc2N0cF9z
-dGF0ZWZ1bnMuY106DQoNCjE2NzUgICAgICAgICAgICAgICAgIGNhc2UgU0NUUF9DTURfUEFSVF9E
-RUxJVkVSOg0KMTY3NiAgICAgICAgICAgICAgICAgICAgICAgICBzY3RwX3VscHFfcGFydGlhbF9k
-ZWxpdmVyeSgmYXNvYy0+dWxwcSwgR0ZQX0FUT01JQykgICAgIDsNCjE2NzcgICAgICAgICAgICAg
-ICAgICAgICAgICAgYnJlYWs7DQoNCmFuZCBpbiBzY3RwX3VscHFfcmVuZWdlKCkgW2xvY2F0ZWQg
-aW4gLi4vbmV0L3NjdHAvdWxwcXVldWUuY10NCg0KDQoxMDU1ICAgICAgICAgLyogSWYgYWJsZSB0
-byBmcmVlIGVub3VnaCByb29tLCBhY2NlcHQgdGhpcyBjaHVuay4gKi8NCjEwNTYgICAgICAgICBp
-ZiAoY2h1bmsgJiYgKGZyZWVkID49IG5lZWRlZCkpIHsNCjEwNTcgICAgICAgICAgICAgICAgIF9f
-dTMyIHRzbjsNCjEwNTggICAgICAgICAgICAgICAgIHRzbiA9IG50b2hsKGNodW5rLT5zdWJoLmRh
-dGFfaGRyLT50c24pOw0KMTA1OSAgICAgICAgICAgICAgICAgc2N0cF90c25tYXBfbWFyaygmYXNv
-Yy0+cGVlci50c25fbWFwLCB0c24sIGNodW5rLT50cmFuc3BvcnQgICAgICk7DQoxMDYwICAgICAg
-ICAgICAgICAgICBzY3RwX3VscHFfdGFpbF9kYXRhKHVscHEsIGNodW5rLCBnZnApOw0KMTA2MSAN
-CjEwNjIgICAgICAgICAgICAgICAgIHNjdHBfdWxwcV9wYXJ0aWFsX2RlbGl2ZXJ5KHVscHEsIGdm
-cCk7DQoxMDYzICAgICAgICAgfQ0KDQpOZWl0aGVyIGxvY2F0aW9uIGNoZWNrcyB0byBzZWUgd2hl
-dGhlciB0aGUgdHNuIG9uIHRoZSBoZWFkIG9mIHRoZSByZWFzc2VtYmx5IHF1ZXVlDQppcyBsZXNz
-IHRoYW4gb3IgZXF1YWwgdG8gdGhlIGN1bXVsYXRpdmUgVFNOIEFDSyBwb2ludC4gIFBlcmhhcHMg
-YSBiZXR0ZXIgc29sdXRpb24NCmlzIHRvIHB1dCB0aGlzIGNoZWNrIGluIHRoZSBiZWdpbm5pbmcg
-b2Ygc2N0cF91bHBxX3BhcnRpYWxfZGVsaXZlcnkoKSBhbmQgYWJvcnQgdGhlDQpwYXJ0aWFsIGRl
-bGl2ZXJ5IGF0dGVtcHQgaWYgdGhpcyBjb25kaXRpb24gaXNuJ3QgbWV0LiAgSSdsbCB0cnkgdGhp
-cy4NCg0KVGhlIGNvZGUgaW4gc2N0cF9lYXRfZGF0YSgpIGludm9sdmluZyBTQ1RQX0NNRF9QQVJU
-X0RFTElWRVIgbWF5IGJlIGJldHRlciBpZiBpbnZva2VkDQphZnRlciB0aGUgY3VycmVudCBwYWNr
-ZXQgaXMgaGFuZGxlZCwgYnV0IHRoYXQgaXMgcHJvYmFibHkgYW4gb3B0aW1pemF0aW9uLiAgQXMg
-aXMsDQp0aGUgcGFydGlhbCBkZWxpdmVyeSBtYXkgbm90IHN0YXJ0IHVudGlsIGFub3RoZXIgcGFj
-a2V0IGFycml2ZXMuDQoNCj4gDQo+ID4gICAJfQ0KPiA+DQo+ID4gICAJLyogU3BpbGwgb3ZlciBy
-d25kIGEgbGl0dGxlIGJpdC4gIE5vdGU6IFdoaWxlIGFsbG93ZWQsIHRoaXMgc3BpbGwNCj4gb3Zl
-cg0KPiA+IGRpZmYgLXVwck4gLVggbGludXgtMy44LXZhbmlsbGEvRG9jdW1lbnRhdGlvbi9kb250
-ZGlmZiBsaW51eC0zLjgtU0NUUA0KPiA+ICsyL25ldC9zY3RwL3VscHF1ZXVlLmMgbGludXgtMy44
-LVNDVFArMy9uZXQvc2N0cC91bHBxdWV1ZS5jDQo+ID4gLS0tIGxpbnV4LTMuOC1TQ1RQKzIvbmV0
-L3NjdHAvdWxwcXVldWUuYwkyMDEzLTAyLTIwDQo+IDA4OjE3OjUzLjY3OTIzMzM2NQ0KPiA+IC0w
-NzAwDQo+ID4gKysrIGxpbnV4LTMuOC1TQ1RQKzMvbmV0L3NjdHAvdWxwcXVldWUuYwkyMDEzLTAy
-LTIwDQo+IDA4OjI3OjAyLjc4NTA0Mjc0NA0KPiA+IC0wNzAwDQo+ID4gQEAgLTU0MCwxNCArNTQw
-LDE5IEBAIHN0YXRpYyBzdHJ1Y3Qgc2N0cF91bHBldmVudCAqc2N0cF91bHBxX3INCj4gPiAgIAkJ
-Y3RzbiA9IGNldmVudC0+dHNuOw0KPiA+DQo+ID4gICAJCXN3aXRjaCAoY2V2ZW50LT5tc2dfZmxh
-Z3MgJiBTQ1RQX0RBVEFfRlJBR19NQVNLKSB7DQo+ID4gKwkJY2FzZSBTQ1RQX0RBVEFfRklSU1Rf
-RlJBRzoNCj4gPiArCQkJaWYgKCFmaXJzdF9mcmFnKQ0KPiA+ICsJCQkJcmV0dXJuIE5VTEw7DQo+
-ID4gKwkJCWdvdG8gZG9uZTsNCj4gPiAgIAkJY2FzZSBTQ1RQX0RBVEFfTUlERExFX0ZSQUc6DQo+
-ID4gICAJCQlpZiAoIWZpcnN0X2ZyYWcpIHsNCj4gPiAgIAkJCQlmaXJzdF9mcmFnID0gcG9zOw0K
-PiA+ICAgCQkJCW5leHRfdHNuID0gY3RzbiArIDE7DQo+ID4gICAJCQkJbGFzdF9mcmFnID0gcG9z
-Ow0KPiA+IC0JCQl9IGVsc2UgaWYgKG5leHRfdHNuID09IGN0c24pDQo+ID4gKwkJCX0gZWxzZSBp
-ZiAobmV4dF90c24gPT0gY3Rzbikgew0KPiA+ICAgCQkJCW5leHRfdHNuKys7DQo+ID4gLQkJCWVs
-c2UNCj4gPiArCQkJCWxhc3RfZnJhZyA9IHBvczsNCj4gPiArCQkJfSBlbHNlDQo+ID4gICAJCQkJ
-Z290byBkb25lOw0KPiA+ICAgCQkJYnJlYWs7DQo+ID4gICAJCWNhc2UgU0NUUF9EQVRBX0xBU1Rf
-RlJBRzoNCj4gDQo+IFRoaXMgbWF5IHN0aWxsIGFsbG93IHlvdSB0byBza2lwIG92ZXIgYSBnYXAg
-aWYgdGhlIGZpcnN0IG1pZGRsZQ0KPiBmcmFnbWVudA0KPiBpbiB0aGUgcXVldWUgc3RhcnRzIGFm
-dGVyIHRoZSBnYXAuICBXZSBuZWVkIHRvIG1ha2Ugc3VyZSB0aGF0DQo+IFRTTiBvZiB0aGUgY3Vy
-cmVudCBjaHVuayBpcyBsZXNzIHRoZW4gZXF1YWwgdG8NCj4gc2N0cF90c25tYXBfZ2V0X2N0c24o
-bWFwKS4NCj4gDQoNCkN1cnJlbnRseSwgaW4gc2N0cF91bHBxX3JlYXNtKCkgW2xvY2F0ZWQgaW4g
-Li4vbmV0L3NjdHAvdWxwcXVldWUuY10sIHdlDQpvbmx5IGNvbnRpbnVlIGEgcGFydGlhbCBkZWxp
-dmVyeSBpZiB0aGUgbmV3IHRzbiBpcyBsZXNzIHRoYW4gb3IgZXF1YWwgdG8NCnNjdHBfdHNubWFw
-X2dldF9jdHNuKG1hcCk6DQoNCiA1OTQgICAgICAgICBpZiAoIXVscHEtPnBkX21vZGUpDQogNTk1
-ICAgICAgICAgICAgICAgICByZXR2YWwgPSBzY3RwX3VscHFfcmV0cmlldmVfcmVhc3NlbWJsZWQo
-dWxwcSk7DQogNTk2ICAgICAgICAgZWxzZSB7DQogNTk3ICAgICAgICAgICAgICAgICBfX3UzMiBj
-dHNuLCBjdHNuYXA7DQogNTk4IA0KIDU5OSAgICAgICAgICAgICAgICAgLyogRG8gbm90IGV2ZW4g
-Ym90aGVyIHVubGVzcyB0aGlzIGlzIHRoZSBuZXh0IHRzbiB0bw0KIDYwMCAgICAgICAgICAgICAg
-ICAgICogYmUgZGVsaXZlcmVkLg0KIDYwMSAgICAgICAgICAgICAgICAgICovDQogNjAyICAgICAg
-ICAgICAgICAgICBjdHNuID0gZXZlbnQtPnRzbjsNCiA2MDMgICAgICAgICAgICAgICAgIGN0c25h
-cCA9IHNjdHBfdHNubWFwX2dldF9jdHNuKCZ1bHBxLT5hc29jLT5wZWVyLnRzbl9tYXApOw0KIDYw
-NCAgICAgICAgICAgICAgICAgaWYgKFRTTl9sdGUoY3RzbiwgY3RzbmFwKSkNCiA2MDUgICAgICAg
-ICAgICAgICAgICAgICAgICAgcmV0dmFsID0gc2N0cF91bHBxX3JldHJpZXZlX3BhcnRpYWwodWxw
-cSk7DQogNjA2ICAgICAgICAgfQ0KDQpUaGlzIGlzIHRoZSBvbmx5IHBsYWNlIHdlIGNhbGwgc2N0
-cF91bHBxX3JldHJpZXZlX3BhcnRpYWwoKS4NCg0KPiA+IEBAIC02NTEsNiArNjU2LDE0IEBAIHN0
-YXRpYyBzdHJ1Y3Qgc2N0cF91bHBldmVudCAqc2N0cF91bHBxX3INCj4gPiAgIAkJCX0gZWxzZQ0K
-PiA+ICAgCQkJCWdvdG8gZG9uZTsNCj4gPiAgIAkJCWJyZWFrOw0KPiA+ICsNCj4gPiArCQljYXNl
-IFNDVFBfREFUQV9MQVNUX0ZSQUc6DQo+ID4gKwkJCWlmICghZmlyc3RfZnJhZykNCj4gPiArCQkJ
-CXJldHVybiBOVUxMOw0KPiA+ICsJCQllbHNlDQo+ID4gKwkJCQlnb3RvIGRvbmU7DQo+ID4gKwkJ
-CWJyZWFrOw0KPiA+ICsNCj4gPiAgIAkJZGVmYXVsdDoNCj4gPiAgIAkJCXJldHVybiBOVUxMOw0K
-PiANCj4gU2FtZSB0aGluZyBoZXJlLiAgQm90aCwgRklSU1QgYW5kIE1JRERMRSBmcmFnbWVudHMg
-bmVlZCB0byBiZSB2YWxpZGF0ZWQNCj4gYWdhaW5zdCBzY3RwX3Rzbm1hcF9nZXRfY3RzbigpLCBv
-dGhlcndpc2UgeW91IG1heSBiZSBzdGVwcGluZyBvdmVyIGENCj4gZ2FwLg0KPiANCg0KSWYgd2Ug
-Y2hlY2sgdGhhdCB0aGUgaGVhZCBvZiB0aGUgcmVhc3NlbWJseSBxdWV1ZSBpcyBhdCBvciBiZWxv
-dyB0aGUgY3VtdWxhdGl2ZSB0c24NCmJlZm9yZSBlbnRlcmluZyBwYXJ0aWFsIGRlbGl2ZXJ5LCB3
-ZSBzaG91bGQgYmUgT0suDQoNCkluIHNjdHBfdWxwcV9yZXRyaWV2ZV9maXJzdCgpLCB3ZSBleHBl
-Y3QgdGhlIGZpcnN0IHBhY2tldCBvbiB0aGUgcmVhc3NlbWJseSBxdWV1ZQ0Kd2lsbCBiZSBhIEZJ
-UlNULiAgKElmIG5vdCwgc29tZXRoaW5nIHdlbnQgd3Jvbmcgc29tZXdoZXJlIGVsc2UuKSAgSWYg
-d2UgZmluZCBhbm90aGVyDQpGSVJTVCwgd2Uga25vdyB0aGF0IHdlJ3ZlIGdvbmUgdG9vIGZhci4g
-IElmIHRoZSBzZWNvbmQgcGFja2V0IGlzIGEgTUlERExFLCB3ZSBjaGVjaw0KdGhhdCBpdCBoYXMg
-dGhlIGNvcnJlY3QgdHNuLiAgV2Uga2VlcCBwcm9jZXNzaW5nIE1JRERMRSBwYWNrZXRzIGFzIGxv
-bmcgYXMgdGhlIHRzbg0KdmFsdWVzIGFyZSBzZXF1ZW50aWFsLiAgSWYgdGhlIHBhY2tldCBpcyBh
-IE1JRERMRSBhbmQgdGhlIHRzbiBpc24ndCByaWdodCwgd2UndmUNCmdvbmUgdG9vIGZhci4gIElu
-IHNjdHBfdWxwcV9yZXRyZWl2ZV9maXJzdCgpLCB3ZSBkb24ndCByZXR1cm4gYSBMQVNULCBieSBk
-ZWZpbml0aW9uLA0Kc2luY2UgdGhhdCB3b3VsZG4ndCBiZSBhIHBhcnRpYWwgZGVsaXZlcnkuDQoN
-CkluIHNjdHBfdWxwcV9yZXRyaWV2ZV9wYXJ0aWFsKCksIHdlIGV4cGVjdCB0aGF0IHRoZSBmaXJz
-dCBwYWNrZXQgb24gdGhlIHJlYXNzZW1ibHkgcXVldWUNCmlzIG5vdCBhIEZJUlNULiAgV2UncmUg
-bG9va2luZyBmb3IgTUlERExFIG9yIExBU1QgZnJhZ21lbnRzIHRvIGNvbXBsZXRlIHRoZSBtZXNz
-YWdlLg0KU2luY2Ugd2Uga25vdyB0aGF0IHRoZSBoZWFkIG9mIHRoZSByZWFzc2VtYmx5IHF1ZXVl
-IGlzIGF0IG9yIGJlZm9yZSB0aGUgY3VtdWxhdGl2ZSBUU04sDQp3ZSBzaG91bGRuJ3QgaGF2ZSBh
-IGdhcC4gIFdlIHdhbnQgdG8gcGljayB1cCBNSURETEUgcGFja2V0cyB1bnRpbCB3ZSBzZWUgYSB0
-c24gZ2FwDQpvciB1bnRpbCB3ZSBmaW5kIHRoZSByaWdodCBMQVNUIHBhY2tldC4gIFdoZW4gd2Ug
-ZmluZCB0aGUgcmlnaHQgTEFTVCBwYWNrZXQsIHdlIHNldA0KTVNHX0VPUiBhbmQgZXhpdCBmcm9t
-IHBhcnRpYWwgZGVsaXZlcnkuDQoNCj4gPiAgIAkJfQ0KPiA+IEBAIC0xMDU0LDYgKzEwNjcsNyBA
-QCB2b2lkIHNjdHBfdWxwcV9yZW5lZ2Uoc3RydWN0IHNjdHBfdWxwcSAqDQo+ID4gICAJCSAgICAg
-IGdmcF90IGdmcCkNCj4gPiAgIHsNCj4gPiAgIAlzdHJ1Y3Qgc2N0cF9hc3NvY2lhdGlvbiAqYXNv
-YzsNCj4gPiArCXN0cnVjdCBza19idWZmICpza2I7DQo+ID4gICAJX191MTYgbmVlZGVkLCBmcmVl
-ZDsNCj4gPg0KPiA+ICAgCWFzb2MgPSB1bHBxLT5hc29jOw0KPiA+IEBAIC0xMDc0LDEyICsxMDg4
-LDE3IEBAIHZvaWQgc2N0cF91bHBxX3JlbmVnZShzdHJ1Y3Qgc2N0cF91bHBxICoNCj4gPiAgIAl9
-DQo+ID4gICAJLyogSWYgYWJsZSB0byBmcmVlIGVub3VnaCByb29tLCBhY2NlcHQgdGhpcyBjaHVu
-ay4gKi8NCj4gPiAgIAlpZiAoY2h1bmsgJiYgKGZyZWVkID49IG5lZWRlZCkpIHsNCj4gPiAtCQlf
-X3UzMiB0c247DQo+ID4gKwkJX191MzIgdHNuLCBjdHNuOw0KPiA+ICAgCQl0c24gPSBudG9obChj
-aHVuay0+c3ViaC5kYXRhX2hkci0+dHNuKTsNCj4gPiAtCQlzY3RwX3Rzbm1hcF9tYXJrKCZhc29j
-LT5wZWVyLnRzbl9tYXAsIHRzbiwgY2h1bmstDQo+ID50cmFuc3BvcnQpOw0KPiA+IC0JCXNjdHBf
-dWxwcV90YWlsX2RhdGEodWxwcSwgY2h1bmssIGdmcCk7DQo+ID4gLQ0KPiA+IC0JCXNjdHBfdWxw
-cV9wYXJ0aWFsX2RlbGl2ZXJ5KHVscHEsIGdmcCk7DQo+ID4gKwkJaWYgKHNjdHBfdWxwcV90YWls
-X2RhdGEodWxwcSwgY2h1bmssIGdmcCkgPT0gMCkgew0KPiA+ICsJCQlza2IgPSBza2JfcGVlaygm
-dWxwcS0+cmVhc20pOw0KPiA+ICsJCQlpZiAoc2tiICE9IE5VTEwpIHsNCj4gPiArCQkJCWN0c24g
-PSBzY3RwX3NrYjJldmVudChza2IpLT50c247DQo+ID4gKwkJCQlpZiAoVFNOX2x0ZShjdHNuLCB0
-c24pKQ0KPiA+ICsJCQkJCXNjdHBfdWxwcV9wYXJ0aWFsX2RlbGl2ZXJ5KHVscHEsIGNodW5rLA0K
-PiA+ICsJCQkJCQlnZnApOw0KPiA+ICsJCQl9DQo+ID4gKwkJfQ0KPiA+ICAgCX0NCj4gDQo+IEkg
-YW0gbm90IHN1cmUgdGhpcyBodW5rIGlzIHJlYWxseSBuZWVkZWQuDQo+IA0KPiBZb3UgYXJlIHRy
-eWluZyB0byB1c2UgdGhpcyBjb2RlIG1ha2Ugc3VyZSB0aGF0IHlvdSBzdGFydCBQRCB3aXRoDQo+
-IHNvbWV0aGluZyB0byBkZWxpdmVyLCBidXQgdGhlIFBEIGNvZGUgYWxyZWFkeSB0YWtlcyBjYXJl
-IG9mIHRoYXQuDQo+IFlvdSBhbHNvIGdldCBzb21lIGJhc2ljIGN1bV90c24gY2hlY2tpbmcgZm9y
-IHRoZSBjdXJyZW50IGNodW5rIGJlY2F1c2UNCj4gb2YgaG93IHJlbmVnZSBpcyBjYWxsZWQsIGJ1
-dCB5b3Ugc3RpbGwgZG9uJ3QgZG8gdGhlIGNoZWNrcyBmb3INCj4gc3Vic2VxdWVudCBjaHVua3Mg
-aW4gdGhlIHF1ZXVlIGFzIEkgc3RhdGVkIGFib3ZlLCBzbyB5b3UgYXJlIHN0aWxsDQo+IHN1Ympl
-Y3QgdG8gcG9zc2libGUgaGFuZ3MuDQo+IA0KPiAtdmxhZA0KPiANCg0KSWYgb3VyIGluY29taW5n
-IHBhY2tldCBjb21wbGV0ZXMgYSBtZXNzYWdlLCB0aGUgY2FsbCB0byBzY3RwX3VscHFfdGFpbF9k
-YXRhKCkNCnNob3VsZCBjYXVzZSBpdCB0byBiZSBkZWxpdmVyZWQuICBJZiBzbywgdGhlIHdob2xl
-IG1lc3NhZ2UgaXMgZ29uZSwgc28gd2Ugc2hvdWxkbid0DQpuZWVkIHRvIGVudGVyIHBhcnRpYWwg
-ZGVsaXZlcnkuICBXZSBkb24ndCB3YW50IHRvIGVudGVyIHBhcnRpYWwgZGVsaXZlcnkNCnVubmVj
-ZXNzYXJpbHksIHNpbmNlIGl0IGNhbiBibG9jayBkZWxpdmVyeSBvbiBvdGhlciBzdHJlYW1zLg0K
-DQoNCj4gPg0KPiA+ICAgCXNrX21lbV9yZWNsYWltKGFzb2MtPmJhc2Uuc2spOw0KPiA+DQo+ID4g
-Tu+/ve+/ve+/ve+/ve+/vXLvv73vv71577+977+977+9Yu+/vVjvv73vv73Hp3bvv71e77+9Kd66
-ey5u77+9K++/ve+/ve+/ve+/vXvvv73vv73vv71p77+9e2F577+9HcqH2pnvv70sag3vv73vv71m
-77+977+977+9aO+/ve+/ve+/vXrvv70e77+9d++/ve+/ve+/vQ0KPiANCj4g77+977+977+9ajor
-du+/ve+/ve+/vXfvv71q77+9be+/ve+/ve+/ve+/vQ3vv73vv73vv73vv716Wivvv73vv73domoi
-77+977+9IXRtbD0NCj4gPg0KDQo
+On 02/20/2013 02:24 PM, Roberts, Lee A. wrote:
+> Vlad,
+>
+>> -----Original Message-----
+>> From: Vlad Yasevich [mailto:vyasevich@gmail.com]
+>> Sent: Wednesday, February 20, 2013 11:06 AM
+>> To: Roberts, Lee A.
+>> Cc: linux-sctp@vger.kernel.org; netdev@vger.kernel.org; linux-
+>> kernel@vger.kernel.org
+>> Subject: Re: [PATCH 3/3] sctp: fix association hangs due to
+>> reassembly/ordering logic
+>>
+>> Hi Lee
+>>
+>> On 02/20/2013 10:56 AM, Roberts, Lee A. wrote:
+>>> From: Lee A. Roberts <lee.roberts@hp.com>
+>>>
+>>> Resolve SCTP association hangs observed during SCTP stress
+>>> testing.  Observable symptoms include communications hangs
+>>> with data being held in the association reassembly and/or lobby
+>>> (ordering) queues.  Close examination of reassembly queue shows
+>>> missing packets.
+>>
+>> As a general note for this patch series, you could really benefit
+>> from a cover letter that describes the symptoms and all the different
+>> issues you found.
+>>
+>> Also, please title your patches based on the context of the patch.
+>> Giving them all the same title is very confusing and at quick glance
+>> makes appear that the same patch was applied 3 times.
+>>
+>>>
+>>> In sctp_eat_data(), enter partial delivery mode only if the
+>>> data on the head of the reassembly queue is at or before the
+>>> cumulative TSN ACK point.
+>>>
+>>> In sctp_ulpq_retrieve_partial() and sctp_ulpq_retrieve_first(),
+>>> correct message reassembly logic for SCTP partial delivery.
+>>> Change logic to ensure that as much data as possible is sent
+>>> with the initial partial delivery and that following partial
+>>> deliveries contain all available data.
+>>>
+>>> In sctp_ulpq_renege(), adjust logic to enter partial delivery
+>>> only if the incoming chunk remains on the reassembly queue
+>>> after processing by sctp_ulpq_tail_data().  Remove call to
+>>> sctp_tsnmap_mark(), as this is handled correctly in call to
+>>> sctp_ulpq_tail_data().
+>>>
+>>> Patch applies to linux-3.8 kernel.
+>>>
+>>> Signed-off-by: Lee A. Roberts <lee.roberts@hp.com>
+>>> ---
+>>>    net/sctp/sm_statefuns.c |   12 ++++++++++--
+>>>    net/sctp/ulpqueue.c     |   33 ++++++++++++++++++++++++++-------
+>>>    2 files changed, 36 insertions(+), 9 deletions(-)
+>>>
+>>> diff -uprN -X linux-3.8-vanilla/Documentation/dontdiff linux-3.8-SCTP
+>>> +2/net/sctp/sm_statefuns.c linux-3.8-SCTP+3/net/sctp/sm_statefuns.c
+>>> --- linux-3.8-SCTP+2/net/sctp/sm_statefuns.c	2013-02-18
+>>> 16:58:34.000000000 -0700
+>>> +++ linux-3.8-SCTP+3/net/sctp/sm_statefuns.c	2013-02-20
+>>> 08:31:51.092132884 -0700
+>>> @@ -6090,7 +6090,8 @@ static int sctp_eat_data(const struct sc
+>>>    	size_t datalen;
+>>>    	sctp_verb_t deliver;
+>>>    	int tmp;
+>>> -	__u32 tsn;
+>>> +	__u32 tsn, ctsn;
+>>> +	struct sk_buff *skb;
+>>>    	struct sctp_tsnmap *map = (struct sctp_tsnmap *)&asoc-
+>>> peer.tsn_map;
+>>>    	struct sock *sk = asoc->base.sk;
+>>>    	struct net *net = sock_net(sk);
+>>> @@ -6160,7 +6161,14 @@ static int sctp_eat_data(const struct sc
+>>>    		/* Even if we don't accept this chunk there is
+>>>    		 * memory pressure.
+>>>    		 */
+>>> -		sctp_add_cmd_sf(commands, SCTP_CMD_PART_DELIVER,
+>> SCTP_NULL());
+>>> +		skb = skb_peek(&asoc->ulpq.reasm);
+>>> +		if (skb != NULL) {
+>>> +			ctsn = sctp_skb2event(skb)->tsn;
+>>> +			if (TSN_lte(ctsn,
+>>> +				sctp_tsnmap_get_ctsn(&asoc->peer.tsn_map)))
+>>> +				sctp_add_cmd_sf(commands,
+>>> +					SCTP_CMD_PART_DELIVER, SCTP_NULL());
+>>> +		}
+>>
+>> What if the tsn you are currently processing will advance the
+>> CUM TSN?  You may still need to eneter PD.  This is why
+>> sctp_eat_data() is not the right place to place this check.
+>>
+>> The more I look at the SCTP_CMD_PART_DELIVERY the more I am thinking
+>> that it has to come after the current TSN has been delivered to the
+>> queue.  That way, if we are currently processing the first fragment,
+>> we'll queue it, then enter PD and pull it off the queue properly.
+>> If we are processing the middle or last, it will get queued first, and
+>> then PD will be entered to fetch anything that we can fetch.
+>>
+>> In fact, the above is what happens when we issue a RENEGE command, but
+>> the order is reversed is RENEGE is skipped for some reason.  I am still
+>> trying to figure out if it's possible to enter PD without RENEGE, but I
+>> did notice the above aberration.
+>>
+>
+> The current code enters partial delivery by calling sctp_ulpq_partial_delivery()
+> in two locations.  In sctp_cmd_interpreter() [located in ../net/sctp/sm_sideeffect.c],
+> as a result of the code in sctp_eat_data() [located in ../net/sctp/sctp_statefuns.c]:
+>
+> 1675                 case SCTP_CMD_PART_DELIVER:
+> 1676                         sctp_ulpq_partial_delivery(&asoc->ulpq, GFP_ATOMIC)     ;
+> 1677                         break;
+>
+> and in sctp_ulpq_renege() [located in ../net/sctp/ulpqueue.c]
+>
+>
+> 1055         /* If able to free enough room, accept this chunk. */
+> 1056         if (chunk && (freed >= needed)) {
+> 1057                 __u32 tsn;
+> 1058                 tsn = ntohl(chunk->subh.data_hdr->tsn);
+> 1059                 sctp_tsnmap_mark(&asoc->peer.tsn_map, tsn, chunk->transport     );
+> 1060                 sctp_ulpq_tail_data(ulpq, chunk, gfp);
+> 1061
+> 1062                 sctp_ulpq_partial_delivery(ulpq, gfp);
+> 1063         }
+>
+> Neither location checks to see whether the tsn on the head of the reassembly queue
+> is less than or equal to the cumulative TSN ACK point.  Perhaps a better solution
+> is to put this check in the beginning of sctp_ulpq_partial_delivery() and abort the
+> partial delivery attempt if this condition isn't met.  I'll try this.
+
+I don't really think you need do any of that.  What you needs to happen 
+is that sctp_ulpq_retrieve_first() and sctp_ulpq_retrieve_partial() need 
+code in them to make sure we don't use a fragment that has
+TSN > CUM_TSN.
+
+PD is not really entered if sctp_ulpq_retrieve_first() returns NULL so 
+we are ok.
+
+>
+> The code in sctp_eat_data() involving SCTP_CMD_PART_DELIVER may be better if invoked
+> after the current packet is handled, but that is probably an optimization.  As is,
+> the partial delivery may not start until another packet arrives.
+>
+
+What I was saying is that have the possibilities of the following 2 
+sequences of commands:
+
+	SCTP_CMD_PART_DELIVER  - calls sctp_ulpq_partial_delivery
+	SCTP_CMD_RENEGE - calls sctp_ulpq_tail_data followed by 
+sctp_ulpq_partial_delivery
+
+or
+	SCTP_CMD_PART_DELIVER  - calls sctp_ulpq_partial_delivery
+	SCTP_CMD_CHUNK_ULP - calls sctp_ulpq_tail_data
+
+
+What I am saying is that in the first sequence, we call 
+sctp_ulpq_partial_delivery twice which is more then useless.  It is 
+actually wrong.  We may Partial Deliver first and may not even need to 
+reneg at all after that.
+
+In the second case, we have the order reversed.  We should put the data 
+of the uplq first and then if needed attempt PD since now we have a 
+higher chance of it succeeding.
+
+>>
+>>>    	}
+>>>
+>>>    	/* Spill over rwnd a little bit.  Note: While allowed, this spill
+>> over
+>>> diff -uprN -X linux-3.8-vanilla/Documentation/dontdiff linux-3.8-SCTP
+>>> +2/net/sctp/ulpqueue.c linux-3.8-SCTP+3/net/sctp/ulpqueue.c
+>>> --- linux-3.8-SCTP+2/net/sctp/ulpqueue.c	2013-02-20
+>> 08:17:53.679233365
+>>> -0700
+>>> +++ linux-3.8-SCTP+3/net/sctp/ulpqueue.c	2013-02-20
+>> 08:27:02.785042744
+>>> -0700
+>>> @@ -540,14 +540,19 @@ static struct sctp_ulpevent *sctp_ulpq_r
+>>>    		ctsn = cevent->tsn;
+>>>
+>>>    		switch (cevent->msg_flags & SCTP_DATA_FRAG_MASK) {
+>>> +		case SCTP_DATA_FIRST_FRAG:
+>>> +			if (!first_frag)
+>>> +				return NULL;
+>>> +			goto done;
+>>>    		case SCTP_DATA_MIDDLE_FRAG:
+>>>    			if (!first_frag) {
+>>>    				first_frag = pos;
+>>>    				next_tsn = ctsn + 1;
+>>>    				last_frag = pos;
+>>> -			} else if (next_tsn = ctsn)
+>>> +			} else if (next_tsn = ctsn) {
+>>>    				next_tsn++;
+>>> -			else
+>>> +				last_frag = pos;
+>>> +			} else
+>>>    				goto done;
+>>>    			break;
+>>>    		case SCTP_DATA_LAST_FRAG:
+>>
+>> This may still allow you to skip over a gap if the first middle
+>> fragment
+>> in the queue starts after the gap.  We need to make sure that
+>> TSN of the current chunk is less then equal to
+>> sctp_tsnmap_get_ctsn(map).
+>>
+>
+>
+>   594         if (!ulpq->pd_mode)
+>   595                 retval = sctp_ulpq_retrieve_reassembled(ulpq);
+>   596         else {
+>   597                 __u32 ctsn, ctsnap;
+>   598
+>   599                 /* Do not even bother unless this is the next tsn to
+>   600                  * be delivered.
+>   601                  */
+>   602                 ctsn = event->tsn;
+>   603                 ctsnap = sctp_tsnmap_get_ctsn(&ulpq->asoc->peer.tsn_map);
+>   604                 if (TSN_lte(ctsn, ctsnap))
+>   605                         retval = sctp_ulpq_retrieve_partial(ulpq);
+>   606         }
+>
+> This is the only place we call sctp_ulpq_retrieve_partial().
+
+Ok, you are right.  We are seem to be ok here, but I am not really crazy 
+about doing the checks ouside these functions.  the functions themselves 
+should be smart enough to return the right data.
+
+>
+>>> @@ -651,6 +656,14 @@ static struct sctp_ulpevent *sctp_ulpq_r
+>>>    			} else
+>>>    				goto done;
+>>>    			break;
+>>> +
+>>> +		case SCTP_DATA_LAST_FRAG:
+>>> +			if (!first_frag)
+>>> +				return NULL;
+>>> +			else
+>>> +				goto done;
+>>> +			break;
+>>> +
+>>>    		default:
+>>>    			return NULL;
+>>
+>> Same thing here.  Both, FIRST and MIDDLE fragments need to be validated
+>> against sctp_tsnmap_get_ctsn(), otherwise you may be stepping over a
+>> gap.
+>>
+>
+> If we check that the head of the reassembly queue is at or below the cumulative tsn
+> before entering partial delivery, we should be OK.
+
+But you have to do it everywhere you try to enter PD instead of just in 
+once place that actually iterates and checks tsns.
+
+>
+> In sctp_ulpq_retrieve_first(), we expect the first packet on the reassembly queue
+> will be a FIRST.  (If not, something went wrong somewhere else.)
+
+Not necessarily wrong.  It may have just been still lost on the network. 
+  It is perfectly ok that we may still be waiting for this FIRST fragment.
+
+Also, what if the FIRST fragment you have here is bigger then 
+cum_tsn_ack_point?  I guess this is why you check before calling into 
+partial delivery functions, but you call before fully processing the TSN 
+sometimes.  It is more correct to have these functions do the validation 
+and return proper results that have the callers do validation.  It is 
+simpler to miss call sights and you duplicate code.
+
+
+> If we find another
+> FIRST, we know that we've gone too far.  If the second packet is a MIDDLE, we check
+> that it has the correct tsn.  We keep processing MIDDLE packets as long as the tsn
+> values are sequential.  If the packet is a MIDDLE and the tsn isn't right, we've
+> gone too far.  In sctp_ulpq_retreive_first(), we don't return a LAST, by definition,
+> since that wouldn't be a partial delivery.
+>
+> In sctp_ulpq_retrieve_partial(), we expect that the first packet on the reassembly queue
+> is not a FIRST.  We're looking for MIDDLE or LAST fragments to complete the message.
+> Since we know that the head of the reassembly queue is at or before the cumulative TSN,
+> we shouldn't have a gap.  We want to pick up MIDDLE packets until we see a tsn gap
+> or until we find the right LAST packet.  When we find the right LAST packet, we set
+> MSG_EOR and exit from partial delivery.
+>
+>>>    		}
+>>> @@ -1054,6 +1067,7 @@ void sctp_ulpq_renege(struct sctp_ulpq *
+>>>    		      gfp_t gfp)
+>>>    {
+>>>    	struct sctp_association *asoc;
+>>> +	struct sk_buff *skb;
+>>>    	__u16 needed, freed;
+>>>
+>>>    	asoc = ulpq->asoc;
+>>> @@ -1074,12 +1088,17 @@ void sctp_ulpq_renege(struct sctp_ulpq *
+>>>    	}
+>>>    	/* If able to free enough room, accept this chunk. */
+>>>    	if (chunk && (freed >= needed)) {
+>>> -		__u32 tsn;
+>>> +		__u32 tsn, ctsn;
+>>>    		tsn = ntohl(chunk->subh.data_hdr->tsn);
+>>> -		sctp_tsnmap_mark(&asoc->peer.tsn_map, tsn, chunk-
+>>> transport);
+>>> -		sctp_ulpq_tail_data(ulpq, chunk, gfp);
+>>> -
+>>> -		sctp_ulpq_partial_delivery(ulpq, gfp);
+>>> +		if (sctp_ulpq_tail_data(ulpq, chunk, gfp) = 0) {
+>>> +			skb = skb_peek(&ulpq->reasm);
+>>> +			if (skb != NULL) {
+>>> +				ctsn = sctp_skb2event(skb)->tsn;
+>>> +				if (TSN_lte(ctsn, tsn))
+>>> +					sctp_ulpq_partial_delivery(ulpq, chunk,
+>>> +						gfp);
+>>> +			}
+>>> +		}
+>>>    	}
+>>
+>> I am not sure this hunk is really needed.
+>>
+>> You are trying to use this code make sure that you start PD with
+>> something to deliver, but the PD code already takes care of that.
+>> You also get some basic cum_tsn checking for the current chunk because
+>> of how renege is called, but you still don't do the checks for
+>> subsequent chunks in the queue as I stated above, so you are still
+>> subject to possible hangs.
+>>
+>> -vlad
+>>
+>
+> If our incoming packet completes a message, the call to sctp_ulpq_tail_data()
+> should cause it to be delivered.  If so, the whole message is gone, so we shouldn't
+> need to enter partial delivery.  We don't want to enter partial delivery
+> unnecessarily, since it can block delivery on other streams.
+
+OK.  Then it might be nice to have some status from 
+sctp_ulpq_tail_data() of whether EOR has been reached or not.  If not 
+EOR , then do partial deliver. If EOR, then you may want to consider 
+calling sctp_ulpq_reasm_drain() to see you can pull get more fully 
+reassembled events.
+
+-vlad
+
+>
+>
+>>>
+>>>    	sk_mem_reclaim(asoc->base.sk);
+>>>
+>>> N�����r��y���b�X��ǧv�^�)޺{.n�+����{���i�{ay�ʇڙ�,j
+> ��f���h���z��w���
+>>
+>> ���j:+v���w�j�m����
+> ����zZ+��ݢj"��!tml>>>
+>
+
