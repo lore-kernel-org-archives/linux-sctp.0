@@ -1,25 +1,55 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Fri, 01 Feb 2013 14:33:48 +0000
-Subject: Re: [PATCH net-next v2] sctp: sctp_close: fix release of bindings for deferred call_rcu's
-Message-Id: <510BD24C.3050507@redhat.com>
+From: "Roberts, Lee A." <lee.roberts@hp.com>
+Date: Wed, 20 Feb 2013 15:55:46 +0000
+Subject: [PATCH 2/3] sctp: fix association hangs due to reassembly/ordering logic
+Message-Id: <D64EC45690EF85409BA6C4730E0162244310CBB5@G4W3231.americas.hpqcorp.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1359726681.git.dborkman@redhat.com> <2e8cac1036ff146d5e4c609e9aecb3765f19b067.1359726681.git.dborkman@redhat.com> <510BCFB7.3050603@gmail.com>
-In-Reply-To: <510BCFB7.3050603@gmail.com>
+References: <1361374925.3450.2.camel@laptop.lroberts>
+In-Reply-To: <1361374925.3450.2.camel@laptop.lroberts>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>
-Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 
-On 02/01/2013 03:22 PM, Vlad Yasevich wrote:
->> +
->> +    if (transport->asoc)
->> +        sctp_association_put(transport->asoc);
->> +
->> +    sctp_packet_free(&transport->packet);
->
-> I think it might be better to do sctp_packet_free() before releasing transports ref on the association.  The reason is that if for some reason that ref is the last one, you'd trigger association_destroy()
-> call and then come back to try to free the packet.  It just doesn't sound right.  It would be better to free the packet (which should be
-> empty at this point anyway), and then drop the ref on the association.
-
-Agreed, that's more sound.
+RnJvbTogTGVlIEEuIFJvYmVydHMgPGxlZS5yb2JlcnRzQGhwLmNvbT4NCg0KUmVzb2x2ZSBTQ1RQ
+IGFzc29jaWF0aW9uIGhhbmdzIG9ic2VydmVkIGR1cmluZyBTQ1RQIHN0cmVzcw0KdGVzdGluZy4g
+IE9ic2VydmFibGUgc3ltcHRvbXMgaW5jbHVkZSBjb21tdW5pY2F0aW9ucyBoYW5ncw0Kd2l0aCBk
+YXRhIGJlaW5nIGhlbGQgaW4gdGhlIGFzc29jaWF0aW9uIHJlYXNzZW1ibHkgYW5kL29yIGxvYmJ5
+DQoob3JkZXJpbmcpIHF1ZXVlcy4gIENsb3NlIGV4YW1pbmF0aW9uIG9mIHJlYXNzZW1ibHkgcXVl
+dWUgc2hvd3MNCm1pc3NpbmcgcGFja2V0cy4NCg0KSW4gc2N0cF91bHBxX3JlbmVnZV9saXN0KCks
+IGRvIG5vdCByZW5lZ2UgcGFja2V0cyBiZWxvdyB0aGUNCmN1bXVsYXRpdmUgVFNOIEFDSyBwb2lu
+dC4gIEV2ZW50cyBiZWluZyByZW5lZ2VkIGZyb20gdGhlDQpvcmRlcmluZyBxdWV1ZSBtYXkgY29y
+cmVzcG9uZCB0byBtdWx0aXBsZSBUU05zOyBpZGVudGlmeQ0KYW5kIHJlbmVnZSBhbGwgYWZmZWN0
+ZWQgcGFja2V0cyBmcm9tIHRoZSB0c25tYXAuDQoNClBhdGNoIGFwcGxpZXMgdG8gbGludXgtMy44
+IGtlcm5lbC4NCg0KU2lnbmVkLW9mZi1ieTogTGVlIEEuIFJvYmVydHMgPGxlZS5yb2JlcnRzQGhw
+LmNvbT4NCi0tLQ0KIG5ldC9zY3RwL3VscHF1ZXVlLmMgfCAgIDMwICsrKysrKysrKysrKysrKysr
+KysrKysrKystLS0tLQ0KIDEgZmlsZSBjaGFuZ2VkLCAyNSBpbnNlcnRpb25zKCspLCA1IGRlbGV0
+aW9ucygtKQ0KDQpkaWZmIC11cHJOIC1YIGxpbnV4LTMuOC12YW5pbGxhL0RvY3VtZW50YXRpb24v
+ZG9udGRpZmYgbGludXgtMy44LVNDVFANCisxL25ldC9zY3RwL3VscHF1ZXVlLmMgbGludXgtMy44
+LVNDVFArMi9uZXQvc2N0cC91bHBxdWV1ZS5jDQotLS0gbGludXgtMy44LVNDVFArMS9uZXQvc2N0
+cC91bHBxdWV1ZS5jCTIwMTMtMDItMTggMTY6NTg6MzQuMDAwMDAwMDAwDQotMDcwMA0KKysrIGxp
+bnV4LTMuOC1TQ1RQKzIvbmV0L3NjdHAvdWxwcXVldWUuYwkyMDEzLTAyLTIwIDA4OjE3OjUzLjY3
+OTIzMzM2NQ0KLTA3MDANCkBAIC05NjIsMjAgKzk2Miw0MCBAQCBzdGF0aWMgX191MTYgc2N0cF91
+bHBxX3JlbmVnZV9saXN0KHN0cnVjDQogCQlzdHJ1Y3Qgc2tfYnVmZl9oZWFkICpsaXN0LCBfX3Ux
+NiBuZWVkZWQpDQogew0KIAlfX3UxNiBmcmVlZCA9IDA7DQotCV9fdTMyIHRzbjsNCi0Jc3RydWN0
+IHNrX2J1ZmYgKnNrYjsNCisJX191MzIgdHNuLCBsYXN0X3RzbjsNCisJc3RydWN0IHNrX2J1ZmYg
+KnNrYiwgKmZsaXN0LCAqbGFzdDsNCiAJc3RydWN0IHNjdHBfdWxwZXZlbnQgKmV2ZW50Ow0KIAlz
+dHJ1Y3Qgc2N0cF90c25tYXAgKnRzbm1hcDsNCiANCiAJdHNubWFwID0gJnVscHEtPmFzb2MtPnBl
+ZXIudHNuX21hcDsNCiANCi0Jd2hpbGUgKChza2IgPSBfX3NrYl9kZXF1ZXVlX3RhaWwobGlzdCkp
+ICE9IE5VTEwpIHsNCi0JCWZyZWVkICs9IHNrYl9oZWFkbGVuKHNrYik7DQorCXdoaWxlICgoc2ti
+ID0gc2tiX3BlZWtfdGFpbChsaXN0KSkgIT0gTlVMTCkgew0KIAkJZXZlbnQgPSBzY3RwX3NrYjJl
+dmVudChza2IpOw0KIAkJdHNuID0gZXZlbnQtPnRzbjsNCiANCisJCS8qIERvbid0IHJlbmVnZSBi
+ZWxvdyB0aGUgQ3VtdWxhdGl2ZSBUU04gQUNLIFBvaW50LiAqLw0KKwkJaWYgKFRTTl9sdGUodHNu
+LCBzY3RwX3Rzbm1hcF9nZXRfY3Rzbih0c25tYXApKSkNCisJCQlicmVhazsNCisNCisJCS8qIEV2
+ZW50cyBpbiBvcmRlcmluZyBxdWV1ZSBtYXkgaGF2ZSBtdWx0aXBsZSBmcmFnbWVudHMNCisJCSAq
+IGNvcnJlc3BvbmRpbmcgdG8gYWRkaXRpb25hbCBUU05zLiAgRmluZCB0aGUgbGFzdCBvbmUuDQor
+CQkgKi8NCisJCWZsaXN0ID0gc2tiX3NoaW5mbyhza2IpLT5mcmFnX2xpc3Q7DQorCQlmb3IgKGxh
+c3QgPSBmbGlzdDsgZmxpc3Q7IGZsaXN0ID0gZmxpc3QtPm5leHQpDQorCQkJbGFzdCA9IGZsaXN0
+Ow0KKwkJaWYgKGxhc3QpDQorCQkJbGFzdF90c24gPSBzY3RwX3NrYjJldmVudChsYXN0KS0+dHNu
+Ow0KKwkJZWxzZQ0KKwkJCWxhc3RfdHNuID0gdHNuOw0KKw0KKwkJLyogVW5saW5rIHRoZSBldmVu
+dCwgdGhlbiByZW5lZ2UgYWxsIGFwcGxpY2FibGUgVFNOcy4gKi8NCisJCV9fc2tiX3VubGluayhz
+a2IsIGxpc3QpOw0KKwkJZnJlZWQgKz0gc2tiX2hlYWRsZW4oc2tiKTsNCiAJCXNjdHBfdWxwZXZl
+bnRfZnJlZShldmVudCk7DQotCQlzY3RwX3Rzbm1hcF9yZW5lZ2UodHNubWFwLCB0c24pOw0KKwkJ
+d2hpbGUgKFRTTl9sdGUodHNuLCBsYXN0X3RzbikpIHsNCisJCQlzY3RwX3Rzbm1hcF9yZW5lZ2Uo
+dHNubWFwLCB0c24pOw0KKwkJCXRzbisrOw0KKwkJfQ0KIAkJaWYgKGZyZWVkID49IG5lZWRlZCkN
+CiAJCQlyZXR1cm4gZnJlZWQ7DQogCX0NCg0K
