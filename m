@@ -1,26 +1,43 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 21 Feb 2013 18:02:32 +0000
-Subject: Re: [PATCH 1/4 v2] sctp: fix association hangs due to off-by-one errors in sctp_tsnmap_grow()
-Message-Id: <20130221.130232.875234888321258862.davem@davemloft.net>
+From: "Roberts, Lee A." <lee.roberts@hp.com>
+Date: Wed, 20 Feb 2013 15:54:00 +0000
+Subject: [PATCH 1/3] sctp: fix association hangs due to reassembly/ordering logic
+Message-Id: <D64EC45690EF85409BA6C4730E0162244310ABA1@G4W3231.americas.hpqcorp.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <D64EC45690EF85409BA6C4730E0162244310DF62@G4W3231.americas.hpqcorp.net>
-In-Reply-To: <D64EC45690EF85409BA6C4730E0162244310DF62@G4W3231.americas.hpqcorp.net>
+References: <1361374860.3450.1.camel@laptop.lroberts>
+In-Reply-To: <1361374860.3450.1.camel@laptop.lroberts>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lee.roberts@hp.com
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 
-From: "Roberts, Lee A." <lee.roberts@hp.com>
-Date: Thu, 21 Feb 2013 17:57:46 +0000
-
-
-When you are given feedback on patches you submit, you should wait
-some time for all the feedback to settle, then resubmit your entire
-series (not just the patches that needed changes).
-
-> Patch applies to linux-3.8 kernel.
-
-This is not appropriate to mention in a commit message, your patches
-might get ported to -stable trees and elsewhere, and such a comment
-looks awkward at best in such scenerios.
+RnJvbTogTGVlIEEuIFJvYmVydHMgPGxlZS5yb2JlcnRzQGhwLmNvbT4NCg0KUmVzb2x2ZSBTQ1RQ
+IGFzc29jaWF0aW9uIGhhbmdzIG9ic2VydmVkIGR1cmluZyBTQ1RQIHN0cmVzcw0KdGVzdGluZy4g
+IE9ic2VydmFibGUgc3ltcHRvbXMgaW5jbHVkZSBjb21tdW5pY2F0aW9ucyBoYW5ncw0Kd2l0aCBk
+YXRhIGJlaW5nIGhlbGQgaW4gdGhlIGFzc29jaWF0aW9uIGxvYmJ5IChvcmRlcmluZykNCnF1ZXVl
+LiAgQ2xvc2UgZXhhbWluYXRpb24gb2YgcmVhc3NlbWJseS9vcmRlcmluZyBxdWV1ZXMgc2hvd3MN
+CmR1cGxpY2F0ZWQgcGFja2V0cy4NCg0KSW4gc2N0cF90c25tYXBfZ3JvdygpLCBjb3JyZWN0IG9m
+Zi1ieS1vbmUgZXJyb3JzIHdoZW4gY29weWluZw0KYW5kIHJlc2l6aW5nIHRoZSB0c25tYXAuICBJ
+ZiBtYXhfdHNuX3NlZW4gaXMgaW4gdGhlIExTQiBvZiB0aGUNCndvcmQsIHRoaXMgYml0IGNhbiBi
+ZSBsb3N0LCBjYXVzaW5nIHRoZSBjb3JyZXNwb25kaW5nIHBhY2tldA0KdG8gYmUgdHJhbnNtaXR0
+ZWQgYWdhaW4gYW5kIHRvIGJlIGVudGVyZWQgYXMgYSBkdXBsaWNhdGUgaW50bw0KdGhlIFNDVFAg
+cmVhc3NlbWJseS9vcmRlcmluZyBxdWV1ZXMuDQoNClBhdGNoIGFwcGxpZXMgdG8gbGludXgtMy44
+IGtlcm5lbC4NCg0KU2lnbmVkLW9mZi1ieTogTGVlIEEuIFJvYmVydHMgPGxlZS5yb2JlcnRzQGhw
+LmNvbT4NCi0tLQ0KIG5ldC9zY3RwL3Rzbm1hcC5jIHwgICAgNSArKystLQ0KIDEgZmlsZSBjaGFu
+Z2VkLCAzIGluc2VydGlvbnMoKyksIDIgZGVsZXRpb25zKC0pDQoNCmRpZmYgLXVwck4gLVggbGlu
+dXgtMy44LXZhbmlsbGEvRG9jdW1lbnRhdGlvbi9kb250ZGlmZg0KbGludXgtMy44LXZhbmlsbGEv
+bmV0L3NjdHAvdHNubWFwLmMgbGludXgtMy44LVNDVFArMS9uZXQvc2N0cC90c25tYXAuYw0KLS0t
+IGxpbnV4LTMuOC12YW5pbGxhL25ldC9zY3RwL3Rzbm1hcC5jCTIwMTMtMDItMTggMTY6NTg6MzQu
+MDAwMDAwMDAwDQotMDcwMA0KKysrIGxpbnV4LTMuOC1TQ1RQKzEvbmV0L3NjdHAvdHNubWFwLmMJ
+MjAxMy0wMi0yMCAwODowMTowMi41NTUyMjMyNTkNCi0wNzAwDQpAQCAtMzY5LDE0ICszNjksMTUg
+QEAgc3RhdGljIGludCBzY3RwX3Rzbm1hcF9ncm93KHN0cnVjdCBzY3RwXw0KIAlpZiAoZ2FwID49
+IFNDVFBfVFNOX01BUF9TSVpFKQ0KIAkJcmV0dXJuIDA7DQogDQotCWluYyA9IEFMSUdOKChnYXAg
+LSBtYXAtPmxlbiksQklUU19QRVJfTE9ORykgKyBTQ1RQX1RTTl9NQVBfSU5DUkVNRU5UOw0KKwlp
+bmMgPSBBTElHTigoZ2FwIC0gbWFwLT5sZW4gKyAxKSwgQklUU19QRVJfTE9ORykNCisJCSsgU0NU
+UF9UU05fTUFQX0lOQ1JFTUVOVDsNCiAJbGVuID0gbWluX3QodTE2LCBtYXAtPmxlbiArIGluYywg
+U0NUUF9UU05fTUFQX1NJWkUpOw0KIA0KIAluZXcgPSBremFsbG9jKGxlbj4+MywgR0ZQX0FUT01J
+Qyk7DQogCWlmICghbmV3KQ0KIAkJcmV0dXJuIDA7DQogDQotCWJpdG1hcF9jb3B5KG5ldywgbWFw
+LT50c25fbWFwLCBtYXAtPm1heF90c25fc2VlbiAtIG1hcC0+YmFzZV90c24pOw0KKwliaXRtYXBf
+Y29weShuZXcsIG1hcC0+dHNuX21hcCwgbWFwLT5tYXhfdHNuX3NlZW4gLSBtYXAtPmJhc2VfdHNu
+ICsgMSk7DQogCWtmcmVlKG1hcC0+dHNuX21hcCk7DQogCW1hcC0+dHNuX21hcCA9IG5ldzsNCiAJ
+bWFwLT5sZW4gPSBsZW47DQoNCg=
