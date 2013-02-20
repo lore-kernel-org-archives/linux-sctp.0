@@ -1,92 +1,205 @@
-From: "Roberts, Lee A." <lee.roberts@hp.com>
-Date: Wed, 20 Feb 2013 15:56:59 +0000
-Subject: [PATCH 3/3] sctp: fix association hangs due to reassembly/ordering logic
-Message-Id: <D64EC45690EF85409BA6C4730E0162244310CBC1@G4W3231.americas.hpqcorp.net>
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Wed, 20 Feb 2013 18:06:05 +0000
+Subject: Re: [PATCH 3/3] sctp: fix association hangs due to reassembly/ordering logic
+Message-Id: <5125108D.3010508@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1361374996.3450.3.camel@laptop.lroberts>
-In-Reply-To: <1361374996.3450.3.camel@laptop.lroberts>
+References: <1361374996.3450.3.camel@laptop.lroberts> <D64EC45690EF85409BA6C4730E0162244310CBC1@G4W3231.americas.hpqcorp.net>
+In-Reply-To: <D64EC45690EF85409BA6C4730E0162244310CBC1@G4W3231.americas.hpqcorp.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: "Roberts, Lee A." <lee.roberts@hp.com>
+Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 
-RnJvbTogTGVlIEEuIFJvYmVydHMgPGxlZS5yb2JlcnRzQGhwLmNvbT4NCg0KUmVzb2x2ZSBTQ1RQ
-IGFzc29jaWF0aW9uIGhhbmdzIG9ic2VydmVkIGR1cmluZyBTQ1RQIHN0cmVzcw0KdGVzdGluZy4g
-IE9ic2VydmFibGUgc3ltcHRvbXMgaW5jbHVkZSBjb21tdW5pY2F0aW9ucyBoYW5ncw0Kd2l0aCBk
-YXRhIGJlaW5nIGhlbGQgaW4gdGhlIGFzc29jaWF0aW9uIHJlYXNzZW1ibHkgYW5kL29yIGxvYmJ5
-DQoob3JkZXJpbmcpIHF1ZXVlcy4gIENsb3NlIGV4YW1pbmF0aW9uIG9mIHJlYXNzZW1ibHkgcXVl
-dWUgc2hvd3MNCm1pc3NpbmcgcGFja2V0cy4NCg0KSW4gc2N0cF9lYXRfZGF0YSgpLCBlbnRlciBw
-YXJ0aWFsIGRlbGl2ZXJ5IG1vZGUgb25seSBpZiB0aGUNCmRhdGEgb24gdGhlIGhlYWQgb2YgdGhl
-IHJlYXNzZW1ibHkgcXVldWUgaXMgYXQgb3IgYmVmb3JlIHRoZQ0KY3VtdWxhdGl2ZSBUU04gQUNL
-IHBvaW50Lg0KDQpJbiBzY3RwX3VscHFfcmV0cmlldmVfcGFydGlhbCgpIGFuZCBzY3RwX3VscHFf
-cmV0cmlldmVfZmlyc3QoKSwNCmNvcnJlY3QgbWVzc2FnZSByZWFzc2VtYmx5IGxvZ2ljIGZvciBT
-Q1RQIHBhcnRpYWwgZGVsaXZlcnkuDQpDaGFuZ2UgbG9naWMgdG8gZW5zdXJlIHRoYXQgYXMgbXVj
-aCBkYXRhIGFzIHBvc3NpYmxlIGlzIHNlbnQNCndpdGggdGhlIGluaXRpYWwgcGFydGlhbCBkZWxp
-dmVyeSBhbmQgdGhhdCBmb2xsb3dpbmcgcGFydGlhbA0KZGVsaXZlcmllcyBjb250YWluIGFsbCBh
-dmFpbGFibGUgZGF0YS4NCg0KSW4gc2N0cF91bHBxX3JlbmVnZSgpLCBhZGp1c3QgbG9naWMgdG8g
-ZW50ZXIgcGFydGlhbCBkZWxpdmVyeQ0Kb25seSBpZiB0aGUgaW5jb21pbmcgY2h1bmsgcmVtYWlu
-cyBvbiB0aGUgcmVhc3NlbWJseSBxdWV1ZQ0KYWZ0ZXIgcHJvY2Vzc2luZyBieSBzY3RwX3VscHFf
-dGFpbF9kYXRhKCkuICBSZW1vdmUgY2FsbCB0bw0Kc2N0cF90c25tYXBfbWFyaygpLCBhcyB0aGlz
-IGlzIGhhbmRsZWQgY29ycmVjdGx5IGluIGNhbGwgdG8NCnNjdHBfdWxwcV90YWlsX2RhdGEoKS4N
-Cg0KUGF0Y2ggYXBwbGllcyB0byBsaW51eC0zLjgga2VybmVsLg0KDQpTaWduZWQtb2ZmLWJ5OiBM
-ZWUgQS4gUm9iZXJ0cyA8bGVlLnJvYmVydHNAaHAuY29tPg0KLS0tDQogbmV0L3NjdHAvc21fc3Rh
-dGVmdW5zLmMgfCAgIDEyICsrKysrKysrKystLQ0KIG5ldC9zY3RwL3VscHF1ZXVlLmMgICAgIHwg
-ICAzMyArKysrKysrKysrKysrKysrKysrKysrKysrKy0tLS0tLS0NCiAyIGZpbGVzIGNoYW5nZWQs
-IDM2IGluc2VydGlvbnMoKyksIDkgZGVsZXRpb25zKC0pDQoNCmRpZmYgLXVwck4gLVggbGludXgt
-My44LXZhbmlsbGEvRG9jdW1lbnRhdGlvbi9kb250ZGlmZiBsaW51eC0zLjgtU0NUUA0KKzIvbmV0
-L3NjdHAvc21fc3RhdGVmdW5zLmMgbGludXgtMy44LVNDVFArMy9uZXQvc2N0cC9zbV9zdGF0ZWZ1
-bnMuYw0KLS0tIGxpbnV4LTMuOC1TQ1RQKzIvbmV0L3NjdHAvc21fc3RhdGVmdW5zLmMJMjAxMy0w
-Mi0xOA0KMTY6NTg6MzQuMDAwMDAwMDAwIC0wNzAwDQorKysgbGludXgtMy44LVNDVFArMy9uZXQv
-c2N0cC9zbV9zdGF0ZWZ1bnMuYwkyMDEzLTAyLTIwDQowODozMTo1MS4wOTIxMzI4ODQgLTA3MDAN
-CkBAIC02MDkwLDcgKzYwOTAsOCBAQCBzdGF0aWMgaW50IHNjdHBfZWF0X2RhdGEoY29uc3Qgc3Ry
-dWN0IHNjDQogCXNpemVfdCBkYXRhbGVuOw0KIAlzY3RwX3ZlcmJfdCBkZWxpdmVyOw0KIAlpbnQg
-dG1wOw0KLQlfX3UzMiB0c247DQorCV9fdTMyIHRzbiwgY3RzbjsNCisJc3RydWN0IHNrX2J1ZmYg
-KnNrYjsNCiAJc3RydWN0IHNjdHBfdHNubWFwICptYXAgPSAoc3RydWN0IHNjdHBfdHNubWFwICop
-JmFzb2MtPnBlZXIudHNuX21hcDsNCiAJc3RydWN0IHNvY2sgKnNrID0gYXNvYy0+YmFzZS5zazsN
-CiAJc3RydWN0IG5ldCAqbmV0ID0gc29ja19uZXQoc2spOw0KQEAgLTYxNjAsNyArNjE2MSwxNCBA
-QCBzdGF0aWMgaW50IHNjdHBfZWF0X2RhdGEoY29uc3Qgc3RydWN0IHNjDQogCQkvKiBFdmVuIGlm
-IHdlIGRvbid0IGFjY2VwdCB0aGlzIGNodW5rIHRoZXJlIGlzDQogCQkgKiBtZW1vcnkgcHJlc3N1
-cmUuDQogCQkgKi8NCi0JCXNjdHBfYWRkX2NtZF9zZihjb21tYW5kcywgU0NUUF9DTURfUEFSVF9E
-RUxJVkVSLCBTQ1RQX05VTEwoKSk7DQorCQlza2IgPSBza2JfcGVlaygmYXNvYy0+dWxwcS5yZWFz
-bSk7DQorCQlpZiAoc2tiICE9IE5VTEwpIHsNCisJCQljdHNuID0gc2N0cF9za2IyZXZlbnQoc2ti
-KS0+dHNuOw0KKwkJCWlmIChUU05fbHRlKGN0c24sDQorCQkJCXNjdHBfdHNubWFwX2dldF9jdHNu
-KCZhc29jLT5wZWVyLnRzbl9tYXApKSkNCisJCQkJc2N0cF9hZGRfY21kX3NmKGNvbW1hbmRzLA0K
-KwkJCQkJU0NUUF9DTURfUEFSVF9ERUxJVkVSLCBTQ1RQX05VTEwoKSk7DQorCQl9DQogCX0NCiAN
-CiAJLyogU3BpbGwgb3ZlciByd25kIGEgbGl0dGxlIGJpdC4gIE5vdGU6IFdoaWxlIGFsbG93ZWQs
-IHRoaXMgc3BpbGwgb3Zlcg0KZGlmZiAtdXByTiAtWCBsaW51eC0zLjgtdmFuaWxsYS9Eb2N1bWVu
-dGF0aW9uL2RvbnRkaWZmIGxpbnV4LTMuOC1TQ1RQDQorMi9uZXQvc2N0cC91bHBxdWV1ZS5jIGxp
-bnV4LTMuOC1TQ1RQKzMvbmV0L3NjdHAvdWxwcXVldWUuYw0KLS0tIGxpbnV4LTMuOC1TQ1RQKzIv
-bmV0L3NjdHAvdWxwcXVldWUuYwkyMDEzLTAyLTIwIDA4OjE3OjUzLjY3OTIzMzM2NQ0KLTA3MDAN
-CisrKyBsaW51eC0zLjgtU0NUUCszL25ldC9zY3RwL3VscHF1ZXVlLmMJMjAxMy0wMi0yMCAwODoy
-NzowMi43ODUwNDI3NDQNCi0wNzAwDQpAQCAtNTQwLDE0ICs1NDAsMTkgQEAgc3RhdGljIHN0cnVj
-dCBzY3RwX3VscGV2ZW50ICpzY3RwX3VscHFfcg0KIAkJY3RzbiA9IGNldmVudC0+dHNuOw0KIA0K
-IAkJc3dpdGNoIChjZXZlbnQtPm1zZ19mbGFncyAmIFNDVFBfREFUQV9GUkFHX01BU0spIHsNCisJ
-CWNhc2UgU0NUUF9EQVRBX0ZJUlNUX0ZSQUc6DQorCQkJaWYgKCFmaXJzdF9mcmFnKQ0KKwkJCQly
-ZXR1cm4gTlVMTDsNCisJCQlnb3RvIGRvbmU7DQogCQljYXNlIFNDVFBfREFUQV9NSURETEVfRlJB
-RzoNCiAJCQlpZiAoIWZpcnN0X2ZyYWcpIHsNCiAJCQkJZmlyc3RfZnJhZyA9IHBvczsNCiAJCQkJ
-bmV4dF90c24gPSBjdHNuICsgMTsNCiAJCQkJbGFzdF9mcmFnID0gcG9zOw0KLQkJCX0gZWxzZSBp
-ZiAobmV4dF90c24gPT0gY3RzbikNCisJCQl9IGVsc2UgaWYgKG5leHRfdHNuID09IGN0c24pIHsN
-CiAJCQkJbmV4dF90c24rKzsNCi0JCQllbHNlDQorCQkJCWxhc3RfZnJhZyA9IHBvczsNCisJCQl9
-IGVsc2UNCiAJCQkJZ290byBkb25lOw0KIAkJCWJyZWFrOw0KIAkJY2FzZSBTQ1RQX0RBVEFfTEFT
-VF9GUkFHOg0KQEAgLTY1MSw2ICs2NTYsMTQgQEAgc3RhdGljIHN0cnVjdCBzY3RwX3VscGV2ZW50
-ICpzY3RwX3VscHFfcg0KIAkJCX0gZWxzZQ0KIAkJCQlnb3RvIGRvbmU7DQogCQkJYnJlYWs7DQor
-DQorCQljYXNlIFNDVFBfREFUQV9MQVNUX0ZSQUc6DQorCQkJaWYgKCFmaXJzdF9mcmFnKQ0KKwkJ
-CQlyZXR1cm4gTlVMTDsNCisJCQllbHNlDQorCQkJCWdvdG8gZG9uZTsNCisJCQlicmVhazsNCisN
-CiAJCWRlZmF1bHQ6DQogCQkJcmV0dXJuIE5VTEw7DQogCQl9DQpAQCAtMTA1NCw2ICsxMDY3LDcg
-QEAgdm9pZCBzY3RwX3VscHFfcmVuZWdlKHN0cnVjdCBzY3RwX3VscHEgKg0KIAkJICAgICAgZ2Zw
-X3QgZ2ZwKQ0KIHsNCiAJc3RydWN0IHNjdHBfYXNzb2NpYXRpb24gKmFzb2M7DQorCXN0cnVjdCBz
-a19idWZmICpza2I7DQogCV9fdTE2IG5lZWRlZCwgZnJlZWQ7DQogDQogCWFzb2MgPSB1bHBxLT5h
-c29jOw0KQEAgLTEwNzQsMTIgKzEwODgsMTcgQEAgdm9pZCBzY3RwX3VscHFfcmVuZWdlKHN0cnVj
-dCBzY3RwX3VscHEgKg0KIAl9DQogCS8qIElmIGFibGUgdG8gZnJlZSBlbm91Z2ggcm9vbSwgYWNj
-ZXB0IHRoaXMgY2h1bmsuICovDQogCWlmIChjaHVuayAmJiAoZnJlZWQgPj0gbmVlZGVkKSkgew0K
-LQkJX191MzIgdHNuOw0KKwkJX191MzIgdHNuLCBjdHNuOw0KIAkJdHNuID0gbnRvaGwoY2h1bmst
-PnN1YmguZGF0YV9oZHItPnRzbik7DQotCQlzY3RwX3Rzbm1hcF9tYXJrKCZhc29jLT5wZWVyLnRz
-bl9tYXAsIHRzbiwgY2h1bmstPnRyYW5zcG9ydCk7DQotCQlzY3RwX3VscHFfdGFpbF9kYXRhKHVs
-cHEsIGNodW5rLCBnZnApOw0KLQ0KLQkJc2N0cF91bHBxX3BhcnRpYWxfZGVsaXZlcnkodWxwcSwg
-Z2ZwKTsNCisJCWlmIChzY3RwX3VscHFfdGFpbF9kYXRhKHVscHEsIGNodW5rLCBnZnApID09IDAp
-IHsNCisJCQlza2IgPSBza2JfcGVlaygmdWxwcS0+cmVhc20pOw0KKwkJCWlmIChza2IgIT0gTlVM
-TCkgew0KKwkJCQljdHNuID0gc2N0cF9za2IyZXZlbnQoc2tiKS0+dHNuOw0KKwkJCQlpZiAoVFNO
-X2x0ZShjdHNuLCB0c24pKQ0KKwkJCQkJc2N0cF91bHBxX3BhcnRpYWxfZGVsaXZlcnkodWxwcSwg
-Y2h1bmssDQorCQkJCQkJZ2ZwKTsNCisJCQl9DQorCQl9DQogCX0NCiANCiAJc2tfbWVtX3JlY2xh
-aW0oYXNvYy0+YmFzZS5zayk7DQoNCg=
+Hi Lee
+
+On 02/20/2013 10:56 AM, Roberts, Lee A. wrote:
+> From: Lee A. Roberts <lee.roberts@hp.com>
+>
+> Resolve SCTP association hangs observed during SCTP stress
+> testing.  Observable symptoms include communications hangs
+> with data being held in the association reassembly and/or lobby
+> (ordering) queues.  Close examination of reassembly queue shows
+> missing packets.
+
+As a general note for this patch series, you could really benefit
+from a cover letter that describes the symptoms and all the different
+issues you found.
+
+Also, please title your patches based on the context of the patch.
+Giving them all the same title is very confusing and at quick glance
+makes appear that the same patch was applied 3 times.
+
+>
+> In sctp_eat_data(), enter partial delivery mode only if the
+> data on the head of the reassembly queue is at or before the
+> cumulative TSN ACK point.
+>
+> In sctp_ulpq_retrieve_partial() and sctp_ulpq_retrieve_first(),
+> correct message reassembly logic for SCTP partial delivery.
+> Change logic to ensure that as much data as possible is sent
+> with the initial partial delivery and that following partial
+> deliveries contain all available data.
+>
+> In sctp_ulpq_renege(), adjust logic to enter partial delivery
+> only if the incoming chunk remains on the reassembly queue
+> after processing by sctp_ulpq_tail_data().  Remove call to
+> sctp_tsnmap_mark(), as this is handled correctly in call to
+> sctp_ulpq_tail_data().
+>
+> Patch applies to linux-3.8 kernel.
+>
+> Signed-off-by: Lee A. Roberts <lee.roberts@hp.com>
+> ---
+>   net/sctp/sm_statefuns.c |   12 ++++++++++--
+>   net/sctp/ulpqueue.c     |   33 ++++++++++++++++++++++++++-------
+>   2 files changed, 36 insertions(+), 9 deletions(-)
+>
+> diff -uprN -X linux-3.8-vanilla/Documentation/dontdiff linux-3.8-SCTP
+> +2/net/sctp/sm_statefuns.c linux-3.8-SCTP+3/net/sctp/sm_statefuns.c
+> --- linux-3.8-SCTP+2/net/sctp/sm_statefuns.c	2013-02-18
+> 16:58:34.000000000 -0700
+> +++ linux-3.8-SCTP+3/net/sctp/sm_statefuns.c	2013-02-20
+> 08:31:51.092132884 -0700
+> @@ -6090,7 +6090,8 @@ static int sctp_eat_data(const struct sc
+>   	size_t datalen;
+>   	sctp_verb_t deliver;
+>   	int tmp;
+> -	__u32 tsn;
+> +	__u32 tsn, ctsn;
+> +	struct sk_buff *skb;
+>   	struct sctp_tsnmap *map = (struct sctp_tsnmap *)&asoc->peer.tsn_map;
+>   	struct sock *sk = asoc->base.sk;
+>   	struct net *net = sock_net(sk);
+> @@ -6160,7 +6161,14 @@ static int sctp_eat_data(const struct sc
+>   		/* Even if we don't accept this chunk there is
+>   		 * memory pressure.
+>   		 */
+> -		sctp_add_cmd_sf(commands, SCTP_CMD_PART_DELIVER, SCTP_NULL());
+> +		skb = skb_peek(&asoc->ulpq.reasm);
+> +		if (skb != NULL) {
+> +			ctsn = sctp_skb2event(skb)->tsn;
+> +			if (TSN_lte(ctsn,
+> +				sctp_tsnmap_get_ctsn(&asoc->peer.tsn_map)))
+> +				sctp_add_cmd_sf(commands,
+> +					SCTP_CMD_PART_DELIVER, SCTP_NULL());
+> +		}
+
+What if the tsn you are currently processing will advance the
+CUM TSN?  You may still need to eneter PD.  This is why
+sctp_eat_data() is not the right place to place this check.
+
+The more I look at the SCTP_CMD_PART_DELIVERY the more I am thinking 
+that it has to come after the current TSN has been delivered to the 
+queue.  That way, if we are currently processing the first fragment, 
+we'll queue it, then enter PD and pull it off the queue properly.
+If we are processing the middle or last, it will get queued first, and
+then PD will be entered to fetch anything that we can fetch.
+
+In fact, the above is what happens when we issue a RENEGE command, but 
+the order is reversed is RENEGE is skipped for some reason.  I am still
+trying to figure out if it's possible to enter PD without RENEGE, but I 
+did notice the above aberration.
+
+
+>   	}
+>
+>   	/* Spill over rwnd a little bit.  Note: While allowed, this spill over
+> diff -uprN -X linux-3.8-vanilla/Documentation/dontdiff linux-3.8-SCTP
+> +2/net/sctp/ulpqueue.c linux-3.8-SCTP+3/net/sctp/ulpqueue.c
+> --- linux-3.8-SCTP+2/net/sctp/ulpqueue.c	2013-02-20 08:17:53.679233365
+> -0700
+> +++ linux-3.8-SCTP+3/net/sctp/ulpqueue.c	2013-02-20 08:27:02.785042744
+> -0700
+> @@ -540,14 +540,19 @@ static struct sctp_ulpevent *sctp_ulpq_r
+>   		ctsn = cevent->tsn;
+>
+>   		switch (cevent->msg_flags & SCTP_DATA_FRAG_MASK) {
+> +		case SCTP_DATA_FIRST_FRAG:
+> +			if (!first_frag)
+> +				return NULL;
+> +			goto done;
+>   		case SCTP_DATA_MIDDLE_FRAG:
+>   			if (!first_frag) {
+>   				first_frag = pos;
+>   				next_tsn = ctsn + 1;
+>   				last_frag = pos;
+> -			} else if (next_tsn = ctsn)
+> +			} else if (next_tsn = ctsn) {
+>   				next_tsn++;
+> -			else
+> +				last_frag = pos;
+> +			} else
+>   				goto done;
+>   			break;
+>   		case SCTP_DATA_LAST_FRAG:
+
+This may still allow you to skip over a gap if the first middle fragment 
+in the queue starts after the gap.  We need to make sure that
+TSN of the current chunk is less then equal to sctp_tsnmap_get_ctsn(map).
+
+> @@ -651,6 +656,14 @@ static struct sctp_ulpevent *sctp_ulpq_r
+>   			} else
+>   				goto done;
+>   			break;
+> +
+> +		case SCTP_DATA_LAST_FRAG:
+> +			if (!first_frag)
+> +				return NULL;
+> +			else
+> +				goto done;
+> +			break;
+> +
+>   		default:
+>   			return NULL;
+
+Same thing here.  Both, FIRST and MIDDLE fragments need to be validated
+against sctp_tsnmap_get_ctsn(), otherwise you may be stepping over a gap.
+
+>   		}
+> @@ -1054,6 +1067,7 @@ void sctp_ulpq_renege(struct sctp_ulpq *
+>   		      gfp_t gfp)
+>   {
+>   	struct sctp_association *asoc;
+> +	struct sk_buff *skb;
+>   	__u16 needed, freed;
+>
+>   	asoc = ulpq->asoc;
+> @@ -1074,12 +1088,17 @@ void sctp_ulpq_renege(struct sctp_ulpq *
+>   	}
+>   	/* If able to free enough room, accept this chunk. */
+>   	if (chunk && (freed >= needed)) {
+> -		__u32 tsn;
+> +		__u32 tsn, ctsn;
+>   		tsn = ntohl(chunk->subh.data_hdr->tsn);
+> -		sctp_tsnmap_mark(&asoc->peer.tsn_map, tsn, chunk->transport);
+> -		sctp_ulpq_tail_data(ulpq, chunk, gfp);
+> -
+> -		sctp_ulpq_partial_delivery(ulpq, gfp);
+> +		if (sctp_ulpq_tail_data(ulpq, chunk, gfp) = 0) {
+> +			skb = skb_peek(&ulpq->reasm);
+> +			if (skb != NULL) {
+> +				ctsn = sctp_skb2event(skb)->tsn;
+> +				if (TSN_lte(ctsn, tsn))
+> +					sctp_ulpq_partial_delivery(ulpq, chunk,
+> +						gfp);
+> +			}
+> +		}
+>   	}
+
+I am not sure this hunk is really needed.
+
+You are trying to use this code make sure that you start PD with 
+something to deliver, but the PD code already takes care of that.
+You also get some basic cum_tsn checking for the current chunk because
+of how renege is called, but you still don't do the checks for 
+subsequent chunks in the queue as I stated above, so you are still
+subject to possible hangs.
+
+-vlad
+
+>
+>   	sk_mem_reclaim(asoc->base.sk);
+>
+> N�����r��y���b�X��ǧv�^�)޺{.n�+����{���i�{ay�ʇڙ�,j��f���h���z��w������j:+v���w�j�m��������zZ+��ݢj"��!tml>
+
