@@ -1,55 +1,92 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Tue, 26 Feb 2013 15:21:28 +0000
-Subject: Re: How to unload lksctp kernel module?
-Message-Id: <512CD2F8.5040609@gmail.com>
+From: "Roberts, Lee A." <lee.roberts@hp.com>
+Date: Wed, 20 Feb 2013 15:56:59 +0000
+Subject: [PATCH 3/3] sctp: fix association hangs due to reassembly/ordering logic
+Message-Id: <D64EC45690EF85409BA6C4730E0162244310CBC1@G4W3231.americas.hpqcorp.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <512BDEFF.4090103@redhat.com>
-In-Reply-To: <512BDEFF.4090103@redhat.com>
+References: <1361374996.3450.3.camel@laptop.lroberts>
+In-Reply-To: <1361374996.3450.3.camel@laptop.lroberts>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 
-On 02/26/2013 10:00 AM, Jon Leighton wrote:
-> On 2/26/13 9:13 AM, Vlad Yasevich wrote:
->> On 02/25/2013 05:00 PM, Daniel Borkmann wrote:
->>> (cc: linux-sctp, which is the right list to address this question)
->>>
->>> On 02/25/2013 03:39 PM, Jon Leighton wrote:
->>>> I'm trying to unload the lksctp kernel module (sudo modprobe -r sctp),
->>>> but the operation fails with "FATAL: Module sctp is in use.". lsmod
->>>> shows a reference count of 2 for sctp. If I restart the machine, and
->>>> load the lksctp module by running a simple SCTP based program, the
->>>> module loads, but the reference count is 2 again, and the module can't
->>>> be unloaded. I've also tried to force the unload with sudo rmmod -f
->>>> sctp, but that fails with "ERROR: Removing 'sctp': Resource temporarily
->>>> unavailable". Is there a way to unload the module? I'm running Ubuntu
->>>> 10.04 LTS with linux kernel 2.6.32-45-generic-pae. Thanks for any help.
->>
->> rmmod -f used to work, but I haven't tried it lately.
->>
->> The reason for the ref=2 is that when lksctp starts up, it creates a
->> control socket which holds those 2 refs on the module. 'modprobe -r'
->> will not let you unload when the module is refed.  rmmod -f works
->> around that.
->
-> sudo rmmod -f sctp returns "ERROR: Removing 'sctp': Resource temporarily
-> unavailable". Is there any workaround for this? Or perhaps this means
-> that I need to rebuild my kernel with CONFIG_MODULE_FORCE_UNLOAD enabled?
-
-Yes, you need CONFIG_MODULE_FORCE_UNLOAD.  Without it rmmod -f doesn't work.
-
--vlad
-
->
->> -vlad
->>
->>>>
->>>> - Jon
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at http://vger.kernel.org/majordomo-info.html
->>
->
-
+RnJvbTogTGVlIEEuIFJvYmVydHMgPGxlZS5yb2JlcnRzQGhwLmNvbT4NCg0KUmVzb2x2ZSBTQ1RQ
+IGFzc29jaWF0aW9uIGhhbmdzIG9ic2VydmVkIGR1cmluZyBTQ1RQIHN0cmVzcw0KdGVzdGluZy4g
+IE9ic2VydmFibGUgc3ltcHRvbXMgaW5jbHVkZSBjb21tdW5pY2F0aW9ucyBoYW5ncw0Kd2l0aCBk
+YXRhIGJlaW5nIGhlbGQgaW4gdGhlIGFzc29jaWF0aW9uIHJlYXNzZW1ibHkgYW5kL29yIGxvYmJ5
+DQoob3JkZXJpbmcpIHF1ZXVlcy4gIENsb3NlIGV4YW1pbmF0aW9uIG9mIHJlYXNzZW1ibHkgcXVl
+dWUgc2hvd3MNCm1pc3NpbmcgcGFja2V0cy4NCg0KSW4gc2N0cF9lYXRfZGF0YSgpLCBlbnRlciBw
+YXJ0aWFsIGRlbGl2ZXJ5IG1vZGUgb25seSBpZiB0aGUNCmRhdGEgb24gdGhlIGhlYWQgb2YgdGhl
+IHJlYXNzZW1ibHkgcXVldWUgaXMgYXQgb3IgYmVmb3JlIHRoZQ0KY3VtdWxhdGl2ZSBUU04gQUNL
+IHBvaW50Lg0KDQpJbiBzY3RwX3VscHFfcmV0cmlldmVfcGFydGlhbCgpIGFuZCBzY3RwX3VscHFf
+cmV0cmlldmVfZmlyc3QoKSwNCmNvcnJlY3QgbWVzc2FnZSByZWFzc2VtYmx5IGxvZ2ljIGZvciBT
+Q1RQIHBhcnRpYWwgZGVsaXZlcnkuDQpDaGFuZ2UgbG9naWMgdG8gZW5zdXJlIHRoYXQgYXMgbXVj
+aCBkYXRhIGFzIHBvc3NpYmxlIGlzIHNlbnQNCndpdGggdGhlIGluaXRpYWwgcGFydGlhbCBkZWxp
+dmVyeSBhbmQgdGhhdCBmb2xsb3dpbmcgcGFydGlhbA0KZGVsaXZlcmllcyBjb250YWluIGFsbCBh
+dmFpbGFibGUgZGF0YS4NCg0KSW4gc2N0cF91bHBxX3JlbmVnZSgpLCBhZGp1c3QgbG9naWMgdG8g
+ZW50ZXIgcGFydGlhbCBkZWxpdmVyeQ0Kb25seSBpZiB0aGUgaW5jb21pbmcgY2h1bmsgcmVtYWlu
+cyBvbiB0aGUgcmVhc3NlbWJseSBxdWV1ZQ0KYWZ0ZXIgcHJvY2Vzc2luZyBieSBzY3RwX3VscHFf
+dGFpbF9kYXRhKCkuICBSZW1vdmUgY2FsbCB0bw0Kc2N0cF90c25tYXBfbWFyaygpLCBhcyB0aGlz
+IGlzIGhhbmRsZWQgY29ycmVjdGx5IGluIGNhbGwgdG8NCnNjdHBfdWxwcV90YWlsX2RhdGEoKS4N
+Cg0KUGF0Y2ggYXBwbGllcyB0byBsaW51eC0zLjgga2VybmVsLg0KDQpTaWduZWQtb2ZmLWJ5OiBM
+ZWUgQS4gUm9iZXJ0cyA8bGVlLnJvYmVydHNAaHAuY29tPg0KLS0tDQogbmV0L3NjdHAvc21fc3Rh
+dGVmdW5zLmMgfCAgIDEyICsrKysrKysrKystLQ0KIG5ldC9zY3RwL3VscHF1ZXVlLmMgICAgIHwg
+ICAzMyArKysrKysrKysrKysrKysrKysrKysrKysrKy0tLS0tLS0NCiAyIGZpbGVzIGNoYW5nZWQs
+IDM2IGluc2VydGlvbnMoKyksIDkgZGVsZXRpb25zKC0pDQoNCmRpZmYgLXVwck4gLVggbGludXgt
+My44LXZhbmlsbGEvRG9jdW1lbnRhdGlvbi9kb250ZGlmZiBsaW51eC0zLjgtU0NUUA0KKzIvbmV0
+L3NjdHAvc21fc3RhdGVmdW5zLmMgbGludXgtMy44LVNDVFArMy9uZXQvc2N0cC9zbV9zdGF0ZWZ1
+bnMuYw0KLS0tIGxpbnV4LTMuOC1TQ1RQKzIvbmV0L3NjdHAvc21fc3RhdGVmdW5zLmMJMjAxMy0w
+Mi0xOA0KMTY6NTg6MzQuMDAwMDAwMDAwIC0wNzAwDQorKysgbGludXgtMy44LVNDVFArMy9uZXQv
+c2N0cC9zbV9zdGF0ZWZ1bnMuYwkyMDEzLTAyLTIwDQowODozMTo1MS4wOTIxMzI4ODQgLTA3MDAN
+CkBAIC02MDkwLDcgKzYwOTAsOCBAQCBzdGF0aWMgaW50IHNjdHBfZWF0X2RhdGEoY29uc3Qgc3Ry
+dWN0IHNjDQogCXNpemVfdCBkYXRhbGVuOw0KIAlzY3RwX3ZlcmJfdCBkZWxpdmVyOw0KIAlpbnQg
+dG1wOw0KLQlfX3UzMiB0c247DQorCV9fdTMyIHRzbiwgY3RzbjsNCisJc3RydWN0IHNrX2J1ZmYg
+KnNrYjsNCiAJc3RydWN0IHNjdHBfdHNubWFwICptYXAgPSAoc3RydWN0IHNjdHBfdHNubWFwICop
+JmFzb2MtPnBlZXIudHNuX21hcDsNCiAJc3RydWN0IHNvY2sgKnNrID0gYXNvYy0+YmFzZS5zazsN
+CiAJc3RydWN0IG5ldCAqbmV0ID0gc29ja19uZXQoc2spOw0KQEAgLTYxNjAsNyArNjE2MSwxNCBA
+QCBzdGF0aWMgaW50IHNjdHBfZWF0X2RhdGEoY29uc3Qgc3RydWN0IHNjDQogCQkvKiBFdmVuIGlm
+IHdlIGRvbid0IGFjY2VwdCB0aGlzIGNodW5rIHRoZXJlIGlzDQogCQkgKiBtZW1vcnkgcHJlc3N1
+cmUuDQogCQkgKi8NCi0JCXNjdHBfYWRkX2NtZF9zZihjb21tYW5kcywgU0NUUF9DTURfUEFSVF9E
+RUxJVkVSLCBTQ1RQX05VTEwoKSk7DQorCQlza2IgPSBza2JfcGVlaygmYXNvYy0+dWxwcS5yZWFz
+bSk7DQorCQlpZiAoc2tiICE9IE5VTEwpIHsNCisJCQljdHNuID0gc2N0cF9za2IyZXZlbnQoc2ti
+KS0+dHNuOw0KKwkJCWlmIChUU05fbHRlKGN0c24sDQorCQkJCXNjdHBfdHNubWFwX2dldF9jdHNu
+KCZhc29jLT5wZWVyLnRzbl9tYXApKSkNCisJCQkJc2N0cF9hZGRfY21kX3NmKGNvbW1hbmRzLA0K
+KwkJCQkJU0NUUF9DTURfUEFSVF9ERUxJVkVSLCBTQ1RQX05VTEwoKSk7DQorCQl9DQogCX0NCiAN
+CiAJLyogU3BpbGwgb3ZlciByd25kIGEgbGl0dGxlIGJpdC4gIE5vdGU6IFdoaWxlIGFsbG93ZWQs
+IHRoaXMgc3BpbGwgb3Zlcg0KZGlmZiAtdXByTiAtWCBsaW51eC0zLjgtdmFuaWxsYS9Eb2N1bWVu
+dGF0aW9uL2RvbnRkaWZmIGxpbnV4LTMuOC1TQ1RQDQorMi9uZXQvc2N0cC91bHBxdWV1ZS5jIGxp
+bnV4LTMuOC1TQ1RQKzMvbmV0L3NjdHAvdWxwcXVldWUuYw0KLS0tIGxpbnV4LTMuOC1TQ1RQKzIv
+bmV0L3NjdHAvdWxwcXVldWUuYwkyMDEzLTAyLTIwIDA4OjE3OjUzLjY3OTIzMzM2NQ0KLTA3MDAN
+CisrKyBsaW51eC0zLjgtU0NUUCszL25ldC9zY3RwL3VscHF1ZXVlLmMJMjAxMy0wMi0yMCAwODoy
+NzowMi43ODUwNDI3NDQNCi0wNzAwDQpAQCAtNTQwLDE0ICs1NDAsMTkgQEAgc3RhdGljIHN0cnVj
+dCBzY3RwX3VscGV2ZW50ICpzY3RwX3VscHFfcg0KIAkJY3RzbiA9IGNldmVudC0+dHNuOw0KIA0K
+IAkJc3dpdGNoIChjZXZlbnQtPm1zZ19mbGFncyAmIFNDVFBfREFUQV9GUkFHX01BU0spIHsNCisJ
+CWNhc2UgU0NUUF9EQVRBX0ZJUlNUX0ZSQUc6DQorCQkJaWYgKCFmaXJzdF9mcmFnKQ0KKwkJCQly
+ZXR1cm4gTlVMTDsNCisJCQlnb3RvIGRvbmU7DQogCQljYXNlIFNDVFBfREFUQV9NSURETEVfRlJB
+RzoNCiAJCQlpZiAoIWZpcnN0X2ZyYWcpIHsNCiAJCQkJZmlyc3RfZnJhZyA9IHBvczsNCiAJCQkJ
+bmV4dF90c24gPSBjdHNuICsgMTsNCiAJCQkJbGFzdF9mcmFnID0gcG9zOw0KLQkJCX0gZWxzZSBp
+ZiAobmV4dF90c24gPT0gY3RzbikNCisJCQl9IGVsc2UgaWYgKG5leHRfdHNuID09IGN0c24pIHsN
+CiAJCQkJbmV4dF90c24rKzsNCi0JCQllbHNlDQorCQkJCWxhc3RfZnJhZyA9IHBvczsNCisJCQl9
+IGVsc2UNCiAJCQkJZ290byBkb25lOw0KIAkJCWJyZWFrOw0KIAkJY2FzZSBTQ1RQX0RBVEFfTEFT
+VF9GUkFHOg0KQEAgLTY1MSw2ICs2NTYsMTQgQEAgc3RhdGljIHN0cnVjdCBzY3RwX3VscGV2ZW50
+ICpzY3RwX3VscHFfcg0KIAkJCX0gZWxzZQ0KIAkJCQlnb3RvIGRvbmU7DQogCQkJYnJlYWs7DQor
+DQorCQljYXNlIFNDVFBfREFUQV9MQVNUX0ZSQUc6DQorCQkJaWYgKCFmaXJzdF9mcmFnKQ0KKwkJ
+CQlyZXR1cm4gTlVMTDsNCisJCQllbHNlDQorCQkJCWdvdG8gZG9uZTsNCisJCQlicmVhazsNCisN
+CiAJCWRlZmF1bHQ6DQogCQkJcmV0dXJuIE5VTEw7DQogCQl9DQpAQCAtMTA1NCw2ICsxMDY3LDcg
+QEAgdm9pZCBzY3RwX3VscHFfcmVuZWdlKHN0cnVjdCBzY3RwX3VscHEgKg0KIAkJICAgICAgZ2Zw
+X3QgZ2ZwKQ0KIHsNCiAJc3RydWN0IHNjdHBfYXNzb2NpYXRpb24gKmFzb2M7DQorCXN0cnVjdCBz
+a19idWZmICpza2I7DQogCV9fdTE2IG5lZWRlZCwgZnJlZWQ7DQogDQogCWFzb2MgPSB1bHBxLT5h
+c29jOw0KQEAgLTEwNzQsMTIgKzEwODgsMTcgQEAgdm9pZCBzY3RwX3VscHFfcmVuZWdlKHN0cnVj
+dCBzY3RwX3VscHEgKg0KIAl9DQogCS8qIElmIGFibGUgdG8gZnJlZSBlbm91Z2ggcm9vbSwgYWNj
+ZXB0IHRoaXMgY2h1bmsuICovDQogCWlmIChjaHVuayAmJiAoZnJlZWQgPj0gbmVlZGVkKSkgew0K
+LQkJX191MzIgdHNuOw0KKwkJX191MzIgdHNuLCBjdHNuOw0KIAkJdHNuID0gbnRvaGwoY2h1bmst
+PnN1YmguZGF0YV9oZHItPnRzbik7DQotCQlzY3RwX3Rzbm1hcF9tYXJrKCZhc29jLT5wZWVyLnRz
+bl9tYXAsIHRzbiwgY2h1bmstPnRyYW5zcG9ydCk7DQotCQlzY3RwX3VscHFfdGFpbF9kYXRhKHVs
+cHEsIGNodW5rLCBnZnApOw0KLQ0KLQkJc2N0cF91bHBxX3BhcnRpYWxfZGVsaXZlcnkodWxwcSwg
+Z2ZwKTsNCisJCWlmIChzY3RwX3VscHFfdGFpbF9kYXRhKHVscHEsIGNodW5rLCBnZnApID09IDAp
+IHsNCisJCQlza2IgPSBza2JfcGVlaygmdWxwcS0+cmVhc20pOw0KKwkJCWlmIChza2IgIT0gTlVM
+TCkgew0KKwkJCQljdHNuID0gc2N0cF9za2IyZXZlbnQoc2tiKS0+dHNuOw0KKwkJCQlpZiAoVFNO
+X2x0ZShjdHNuLCB0c24pKQ0KKwkJCQkJc2N0cF91bHBxX3BhcnRpYWxfZGVsaXZlcnkodWxwcSwg
+Y2h1bmssDQorCQkJCQkJZ2ZwKTsNCisJCQl9DQorCQl9DQogCX0NCiANCiAJc2tfbWVtX3JlY2xh
+aW0oYXNvYy0+YmFzZS5zayk7DQoNCg=
