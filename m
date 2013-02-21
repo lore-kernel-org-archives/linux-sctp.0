@@ -1,43 +1,76 @@
 From: "Roberts, Lee A." <lee.roberts@hp.com>
-Date: Thu, 21 Feb 2013 16:43:52 +0000
-Subject: RE: [PATCH 1/3] sctp: fix association hangs due to reassembly/ordering logic
-Message-Id: <D64EC45690EF85409BA6C4730E0162244310DEE0@G4W3231.americas.hpqcorp.net>
+Date: Thu, 21 Feb 2013 16:44:48 +0000
+Subject: [PATCH 3/4] sctp: fix association hangs due to errors when reneging events from the ordering queue
+Message-Id: <D64EC45690EF85409BA6C4730E0162244310DF0B@G4W3231.americas.hpqcorp.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1361374860.3450.1.camel@laptop.lroberts>
-	<D64EC45690EF85409BA6C4730E0162244310ABA1@G4W3231.americas.hpqcorp.net>
- <20130220.125301.1295321158433252629.davem@davemloft.net>
-In-Reply-To: <20130220.125301.1295321158433252629.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 
-David,
+From: Lee A. Roberts <lee.roberts@hp.com>
 
-> -----Original Message-----
-> From: David Miller [mailto:davem@davemloft.net]
-> Sent: Wednesday, February 20, 2013 10:53 AM
-> To: Roberts, Lee A.
-> Cc: linux-sctp@vger.kernel.org; netdev@vger.kernel.org; linux-kernel@vger.kernel.org
-> Subject: Re: [PATCH 1/3] sctp: fix association hangs due to reassembly/ordering logic
-> 
-> 
-> Your email client has corrupted every one of your patches, splitting up
-> new lines as well as making other alterations, making them useless for
-> us.
-> 
-> Please read Documentation/email-clients.txt to learn how to fix this
-> problem, and only resubmit your patches when you can successfully
-> email a patch to yourself and cleanly apply the patch you receive
-> in that email as-is.
-> 
-> Thanks.
+Resolve SCTP association hangs observed during SCTP stress
+testing.  Observable symptoms include communications hangs
+with data being held in the association reassembly and/or lobby
+(ordering) queues.  Close examination of reassembly queue shows
+missing packets.
 
-I have addressed the e-mail client issue and have successfully mailed the
-patches to myself and applied them.  I will be sending updated version shortly.
+In sctp_ulpq_renege_list(), events being reneged from the
+ordering queue may correspond to multiple TSNs.  Identify
+all affected packets; sum freed space and renege from the
+tsnmap.
 
-I have incorporated changes and recommendations from Vlad Yasevich into
-the updated patches.
+Patch applies to linux-3.8 kernel.
 
-                                 - Lee Roberts
+Signed-off-by: Lee A. Roberts <lee.roberts@hp.com>
+---
+ net/sctp/ulpqueue.c |   26 ++++++++++++++++++++++----
+ 1 file changed, 22 insertions(+), 4 deletions(-)
+
+diff -uprN -X linux-3.8-vanilla/Documentation/dontdiff linux-3.8-SCTP+2/net/sctp/ulpqueue.c linux-3.8-SCTP+3/net/sctp/ulpqueue.c
+--- linux-3.8-SCTP+2/net/sctp/ulpqueue.c	2013-02-21 07:39:40.888281496 -0700
++++ linux-3.8-SCTP+3/net/sctp/ulpqueue.c	2013-02-21 07:55:32.817713326 -0700
+@@ -962,8 +962,8 @@ static __u16 sctp_ulpq_renege_list(struc
+ 		struct sk_buff_head *list, __u16 needed)
+ {
+ 	__u16 freed = 0;
+-	__u32 tsn;
+-	struct sk_buff *skb;
++	__u32 tsn, last_tsn;
++	struct sk_buff *skb, *flist, *last;
+ 	struct sctp_ulpevent *event;
+ 	struct sctp_tsnmap *tsnmap;
+ 
+@@ -977,10 +977,28 @@ static __u16 sctp_ulpq_renege_list(struc
+ 		if (TSN_lte(tsn, sctp_tsnmap_get_ctsn(tsnmap)))
+ 			break;
+ 
+-		__skb_unlink(skb, list);
++		/* Events in ordering queue may have multiple fragments
++		 * corresponding to additional TSNs.  Sum the total
++		 * freed space; find the last TSN.
++		 */
+ 		freed += skb_headlen(skb);
++		flist = skb_shinfo(skb)->frag_list;
++		for (last = flist; flist; flist = flist->next) {
++			last = flist;
++			freed += skb_headlen(last);
++		}
++		if (last)
++			last_tsn = sctp_skb2event(last)->tsn;
++		else
++			last_tsn = tsn;
++
++		/* Unlink the event, then renege all applicable TSNs. */
++		__skb_unlink(skb, list);
+ 		sctp_ulpevent_free(event);
+-		sctp_tsnmap_renege(tsnmap, tsn);
++		while (TSN_lte(tsn, last_tsn)) {
++			sctp_tsnmap_renege(tsnmap, tsn);
++			tsn++;
++		}
+ 		if (freed >= needed)
+ 			return freed;
+ 	}
