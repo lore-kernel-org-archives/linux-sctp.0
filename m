@@ -1,84 +1,32 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 04 Feb 2013 18:23:02 +0000
-Subject: Re: [PATCH net-next v3] sctp: sctp_close: fix release of bindings for deferred call_rcu's
-Message-Id: <20130204.132302.931092608711964255.davem@davemloft.net>
+From: =?UTF-8?q?Diego=20Elio=20Petten=C3=B2?= <flameeyes@flameeyes.eu>
+Date: Sun, 24 Feb 2013 07:10:27 +0000
+Subject: [PATCH lksctp-tools] build: fix out-of-tree build of withsctp.
+Message-Id: <1361689827-613022-1-git-send-email-flameeyes@flameeyes.eu>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1359729463-11833-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1359729463-11833-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: dborkman@redhat.com
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, vyasevich@gmail.com
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: linux-sctp@vger.kernel.org
 
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Fri,  1 Feb 2013 15:37:43 +0100
 
-> It seems due to RCU usage, i.e. within SCTP's address binding list,
-> a, say, ``behavioral change'' was introduced which does actually
-> not conform to the RFC anymore. In particular consider the following
-> (fictional) scenario to demonstrate this:
-> 
->   do:
->     Two SOCK_SEQPACKET-style sockets are opened (S1, S2)
->     S1 is bound to 127.0.0.1, port 1024 [server]
->     S2 is bound to 127.0.0.1, port 1025 [client]
->     listen(2) is invoked on S1
->     From S2 we call one sendmsg(2) with msg.msg_name and
->        msg.msg_namelen parameters set to the server's
->        address
->     S1, S2 are closed
->     goto do
-> 
-> The first pass of this loop passes successful, while the second round
-> fails during binding of S1 (address still in use). What is happening?
-> In the first round, the initial handshake is being done, and, at the
-> time close(2) is called on S1, a non-graceful shutdown is performed via
-> ABORT since in S1's receive queue an unprocessed packet is present,
-> thus stating an error condition. This can be considered as a correct
-> behavior.
-> 
-> During close also all bound addresses are freed, thus nothing *must*
-> be active anymore. In reference to RFC2960:
-> 
->   After checking the Verification Tag, the receiving endpoint shall
->   remove the association from its record, and shall report the
->   termination to its upper layer. (9.1 Abort of an Association)
-> 
-> Also, no half-open states are supported, thus after an ungraceful
-> shutdown, we leave nothing behind. However, this seems not to be
-> happening though. In a real-world scenario, this is exactly where
-> it breaks the lksctp-tools functional test suite, *for instance*:
-> 
->   ./test_sockopt
->   test_sockopt.c  1 PASS : getsockopt(SCTP_STATUS) on a socket with no assoc
->   test_sockopt.c  2 PASS : getsockopt(SCTP_STATUS)
->   test_sockopt.c  3 PASS : getsockopt(SCTP_STATUS) with invalid associd
->   test_sockopt.c  4 PASS : getsockopt(SCTP_STATUS) with NULL associd
->   test_sockopt.c  5 BROK : bind: Address already in use
-> 
-> The underlying problem is that sctp_endpoint_destroy() hasn't been
-> triggered yet while the next bind attempt is being done. It will be
-> triggered eventually (but too late) by sctp_transport_destroy_rcu()
-> after one RCU grace period:
-> 
->   sctp_transport_destroy()
->     sctp_transport_destroy_rcu() ----.
->       sctp_association_put() [*]  <--+--> sctp_packet_free()
->         sctp_association_destroy()          [...]
->           sctp_endpoint_put()                 skb->destructor
->             sctp_endpoint_destroy()             sctp_wfree()
->               sctp_bind_addr_free()               sctp_association_put() [*]
-> 
-> Thus, we move out the condition with sctp_association_put() as well as
-> the sctp_packet_free() invocation and the issue can be solved. We also
-> better free the SCTP chunks first before putting the ref of the association.
-> 
-> With this patch, the example above (which simulates a similar scenario
-> as in the implementation of this test case) and therefore also the test
-> suite run successfully through. Tested by myself.
-> 
-> Cc: Vlad Yasevich <vyasevich@gmail.com>
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Signed-off-by: Diego Elio Petten=C3=B2 <flameeyes@flameeyes.eu>
+---
+ src/withsctp/Makefile.am | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Applied.
+diff --git a/src/withsctp/Makefile.am b/src/withsctp/Makefile.am
+index e091049..cecf606 100644
+--- a/src/withsctp/Makefile.am
++++ b/src/withsctp/Makefile.am
+@@ -10,7 +10,7 @@ include $(top_srcdir)/Makefile.rules
+ bin_PROGRAMS =3D checksctp
+ bin_SCRIPTS =3D withsctp
+=20
+-AM_CPPFLAGS=3D-I../include
++AM_CPPFLAGS=3D-I$(top_srcdir)/src/include
+ pkglib_LTLIBRARIES =3D libwithsctp.la
+ libwithsctp_la_SOURCES =3D sctp_load_libs.c sctp_socket.c sctp_bind.c \
+ 	sctp_sockopt.c sctp_socket.h
+--=20
+1.8.1.2
+
