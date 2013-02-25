@@ -1,94 +1,74 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 07 Feb 2013 14:49:05 +0000
-Subject: Re: [PATCH 76/77] sctp: convert to idr_alloc()
-Message-Id: <20130207144905.GB2379@shamino.rdu.redhat.com>
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Mon, 25 Feb 2013 07:40:20 +0000
+Subject: re: sctp: Add ASCONF operation on the single-homed host
+Message-Id: <20130225074018.GA31806@longonot.mountain>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1360179649-22465-1-git-send-email-tj@kernel.org>
- <1360179649-22465-77-git-send-email-tj@kernel.org>
-In-Reply-To: <1360179649-22465-77-git-send-email-tj@kernel.org>
+References: <20110608065302.GF3846@shale.localdomain>
+In-Reply-To: <20110608065302.GF3846@shale.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Tejun Heo <tj@kernel.org>
-Cc: akpm@linux-foundation.org, linux-kernel@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Sridhar Samudrala <sri@us.ibm.com>, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-On Wed, Feb 06, 2013 at 11:40:48AM -0800, Tejun Heo wrote:
-> Convert to the much saner new idr interface.
-> 
-> Only compile tested.
-> 
-> v2: Don't preload if @gfp doesn't contain __GFP_WAIT as the function
->     may be being called from non-process ocntext.  Also, add a comment
->     explaining @idr_low never becomes zero.
-> 
-> Signed-off-by: Tejun Heo <tj@kernel.org>
-> Acked-by: Neil Horman <nhorman@tuxdriver.com>
-> Cc: Vlad Yasevich <vyasevich@gmail.com>
-> Cc: Sridhar Samudrala <sri@us.ibm.com>
-> Cc: linux-sctp@vger.kernel.org
-> ---
->  net/sctp/associola.c | 31 +++++++++++++++----------------
->  1 file changed, 15 insertions(+), 16 deletions(-)
-> 
-> diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-> index b45ed1f..0c9a791 100644
-> --- a/net/sctp/associola.c
-> +++ b/net/sctp/associola.c
-> @@ -1592,32 +1592,31 @@ int sctp_assoc_lookup_laddr(struct sctp_association *asoc,
->  /* Set an association id for a given association */
->  int sctp_assoc_set_id(struct sctp_association *asoc, gfp_t gfp)
->  {
-> -	int assoc_id;
-> -	int error = 0;
-> +	bool preload = gfp & __GFP_WAIT;
-> +	int ret;
->  
->  	/* If the id is already assigned, keep it. */
->  	if (asoc->assoc_id)
-> -		return error;
-> -retry:
-> -	if (unlikely(!idr_pre_get(&sctp_assocs_id, gfp)))
-> -		return -ENOMEM;
-> +		return 0;
->  
-> +	if (preload)
-> +		idr_preload(gfp);
->  	spin_lock_bh(&sctp_assocs_id_lock);
-> -	error = idr_get_new_above(&sctp_assocs_id, (void *)asoc,
-> -				    idr_low, &assoc_id);
-> -	if (!error) {
-> -		idr_low = assoc_id + 1;
-> +	/* 0 is not a valid id, idr_low is always >= 1 */
-> +	ret = idr_alloc(&sctp_assocs_id, asoc, idr_low, 0, GFP_NOWAIT);
-> +	if (ret >= 0) {
-> +		idr_low = ret + 1;
->  		if (idr_low = INT_MAX)
->  			idr_low = 1;
->  	}
->  	spin_unlock_bh(&sctp_assocs_id_lock);
-> -	if (error = -EAGAIN)
-> -		goto retry;
-> -	else if (error)
-> -		return error;
-> +	if (preload)
-> +		idr_preload_end();
-> +	if (ret < 0)
-> +		return ret;
->  
-> -	asoc->assoc_id = (sctp_assoc_t) assoc_id;
-> -	return error;
-> +	asoc->assoc_id = (sctp_assoc_t)ret;
-> +	return 0;
->  }
->  
->  /* Free the ASCONF queue */
-> -- 
-> 1.8.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+[ This warning is old but I haven't sent it before.  I guess back
+  in the day we didn't do cross function analysis. ]
 
+Hello Michio Honda,
+
+This is a semi-automatic email about new static checker warnings.
+
+The patch 8a07eb0a50ae: "sctp: Add ASCONF operation on the 
+single-homed host" from Apr 26, 2011, leads to the following Smatch 
+complaint:
+
+net/sctp/socket.c:827 sctp_send_asconf_del_ip()
+	 error: we previously assumed 'laddr' could be null (see line 791)
+
+net/sctp/socket.c
+   790						       addrcnt, sp);
+   791			if ((laddr = NULL) && (addrcnt = 1)) {
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+If laddr is NULL and addrcnt is 2 then it will lead to a NULL
+dereference.
+
+   792				if (asoc->asconf_addr_del_pending)
+   793					continue;
+   794				asoc->asconf_addr_del_pending    795				    kzalloc(sizeof(union sctp_addr), GFP_ATOMIC);
+   796				if (asoc->asconf_addr_del_pending = NULL) {
+   797					retval = -ENOMEM;
+   798					goto out;
+   799				}
+   800				asoc->asconf_addr_del_pending->sa.sa_family    801					    addrs->sa_family;
+   802				asoc->asconf_addr_del_pending->v4.sin_port    803					    htons(bp->port);
+   804				if (addrs->sa_family = AF_INET) {
+   805					struct sockaddr_in *sin;
+   806	
+   807					sin = (struct sockaddr_in *)addrs;
+   808					asoc->asconf_addr_del_pending->v4.sin_addr.s_addr = sin->sin_addr.s_addr;
+   809				} else if (addrs->sa_family = AF_INET6) {
+   810					struct sockaddr_in6 *sin6;
+   811	
+   812					sin6 = (struct sockaddr_in6 *)addrs;
+   813					asoc->asconf_addr_del_pending->v6.sin6_addr = sin6->sin6_addr;
+   814				}
+   815				SCTP_DEBUG_PRINTK_IPADDR("send_asconf_del_ip: keep the last address asoc: %p ",
+   816				    " at %p\n", asoc, asoc->asconf_addr_del_pending,
+   817				    asoc->asconf_addr_del_pending);
+   818				asoc->src_out_of_asoc_ok = 1;
+   819				stored = 1;
+   820				goto skip_mkasconf;
+   821			}
+   822	
+   823			/* We do not need RCU protection throughout this loop
+   824			 * because this is done under a socket lock from the
+   825			 * setsockopt call.
+   826			 */
+   827			chunk = sctp_make_asconf_update_ip(asoc, laddr, addrs, addrcnt,
+                                                                 ^^^^^
+Null dereference here.
+
+   828							   SCTP_PARAM_DEL_IP);
+   829			if (!chunk) {
+
+regards,
+dan carpenter
