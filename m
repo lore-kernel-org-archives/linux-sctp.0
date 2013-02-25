@@ -1,74 +1,41 @@
-From: "Lee A. Roberts" <lee.roberts@hp.com>
-Date: Thu, 28 Feb 2013 14:37:29 +0000
-Subject: [PATCH v3 3/4] sctp: fix association hangs due to errors when reneging events from the ordering queu
-Message-Id: <1362062250-26749-4-git-send-email-lee.roberts@hp.com>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 25 Feb 2013 12:26:46 +0000
+Subject: [PATCH net-next] sctp: Fix smatch error in ASCONF code
+Message-Id: <1361795206-4703-1-git-send-email-nhorman@tuxdriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1361991273-30578-1-git-send-email-lee.roberts@hp.com>
-In-Reply-To: <1361991273-30578-1-git-send-email-lee.roberts@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, lee.roberts@hp.com
+To: linux-sctp@vger.kernel.org
 
-From: "Lee A. Roberts" <lee.roberts@hp.com>
+Fix up a missed null pointer check in the asconf code.  If we don't find a
+local address, but we pass in an address length of more than 1, we may
+dereference a NULL laddr pointer.  Currently this can't happen, as the only
+users of the function pass in the value 1 as the addrcnt parameter, but its not
+a hot path, and it doesn't hurt to check for NULL should that ever be the case
 
-In sctp_ulpq_renege_list(), events being reneged from the
-ordering queue may correspond to multiple TSNs.  Identify
-all affected packets; sum freed space and renege from the
-tsnmap.
-
-Signed-off-by: Lee A. Roberts <lee.roberts@hp.com>
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+CC: Vlad Yasevich <vyasevich@gmail.com>
+CC: "David S. Miller" <davem@davemloft.net>
+CC: Dan Carpenter <dan.carpenter@oracle.com>
 ---
- net/sctp/ulpqueue.c |   26 ++++++++++++++++++++++----
- 1 file changed, 22 insertions(+), 4 deletions(-)
+ net/sctp/socket.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
-index 63afddc..f221fbb 100644
---- a/net/sctp/ulpqueue.c
-+++ b/net/sctp/ulpqueue.c
-@@ -962,8 +962,8 @@ static __u16 sctp_ulpq_renege_list(struct sctp_ulpq *ulpq,
- 		struct sk_buff_head *list, __u16 needed)
- {
- 	__u16 freed = 0;
--	__u32 tsn;
--	struct sk_buff *skb;
-+	__u32 tsn, last_tsn;
-+	struct sk_buff *skb, *flist, *last;
- 	struct sctp_ulpevent *event;
- 	struct sctp_tsnmap *tsnmap;
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index cedd9bf..75ebde9 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -820,6 +820,9 @@ static int sctp_send_asconf_del_ip(struct sock		*sk,
+ 			goto skip_mkasconf;
+ 		}
  
-@@ -977,10 +977,28 @@ static __u16 sctp_ulpq_renege_list(struct sctp_ulpq *ulpq,
- 		if (TSN_lte(tsn, sctp_tsnmap_get_ctsn(tsnmap)))
- 			break;
- 
--		__skb_unlink(skb, list);
-+		/* Events in ordering queue may have multiple fragments
-+		 * corresponding to additional TSNs.  Sum the total
-+		 * freed space; find the last TSN.
-+		 */
- 		freed += skb_headlen(skb);
-+		flist = skb_shinfo(skb)->frag_list;
-+		for (last = flist; flist; flist = flist->next) {
-+			last = flist;
-+			freed += skb_headlen(last);
-+		}
-+		if (last)
-+			last_tsn = sctp_skb2event(last)->tsn;
-+		else
-+			last_tsn = tsn;
++		if (laddr = NULL)
++			return -EINVAL;
 +
-+		/* Unlink the event, then renege all applicable TSNs. */
-+		__skb_unlink(skb, list);
- 		sctp_ulpevent_free(event);
--		sctp_tsnmap_renege(tsnmap, tsn);
-+		while (TSN_lte(tsn, last_tsn)) {
-+			sctp_tsnmap_renege(tsnmap, tsn);
-+			tsn++;
-+		}
- 		if (freed >= needed)
- 			return freed;
- 	}
+ 		/* We do not need RCU protection throughout this loop
+ 		 * because this is done under a socket lock from the
+ 		 * setsockopt call.
 -- 
-1.7.9.5
+1.7.11.7
 
