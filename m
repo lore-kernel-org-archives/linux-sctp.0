@@ -1,65 +1,58 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Thu, 21 Feb 2013 17:19:35 +0000
-Subject: Re: [PATCH 2/4] sctp: fix association hangs due to reneging packets below the cumulative TSN ACK poi
-Message-Id: <51265727.8090501@gmail.com>
+From: Guenter Roeck <linux@roeck-us.net>
+Date: Wed, 27 Feb 2013 20:57:31 +0000
+Subject: [PATCH v2] net/sctp: Validate parameter size for SCTP_GET_ASSOC_STATS
+Message-Id: <1361998651-19354-1-git-send-email-linux@roeck-us.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <D64EC45690EF85409BA6C4730E0162244310DEFE@G4W3231.americas.hpqcorp.net>
-In-Reply-To: <D64EC45690EF85409BA6C4730E0162244310DEFE@G4W3231.americas.hpqcorp.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: "Roberts, Lee A." <lee.roberts@hp.com>
-Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Sridhar Samudrala <sri@us.ibm.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, Guenter Roeck <linux@roeck-us.net>
 
-On 02/21/2013 11:44 AM, Roberts, Lee A. wrote:
-> From: Lee A. Roberts <lee.roberts@hp.com>
->
-> Resolve SCTP association hangs observed during SCTP stress
-> testing.  Observable symptoms include communications hangs
-> with data being held in the association reassembly and/or lobby
-> (ordering) queues.  Close examination of reassembly queue shows
-> missing packets.
->
-> In sctp_ulpq_renege_list(), do not renege packets below the
-> cumulative TSN ACK point.
->
-> Patch applies to linux-3.8 kernel.
->
-> Signed-off-by: Lee A. Roberts <lee.roberts@hp.com>
+Building sctp may fail with:
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+In function ‘copy_from_user’,
+    inlined from ‘sctp_getsockopt_assoc_stats’ at
+    net/sctp/socket.c:5656:20:
+arch/x86/include/asm/uaccess_32.h:211:26: error: call to
+    ‘copy_from_user_overflow’ declared with attribute error: copy_from_user()
+    buffer size is not provably correct
 
--vlad
+if built with W=1 due to a missing parameter size validation
+before the call to copy_from_user.
 
-> ---
->   net/sctp/ulpqueue.c |    9 +++++++--
->   1 file changed, 7 insertions(+), 2 deletions(-)
->
-> diff -uprN -X linux-3.8-vanilla/Documentation/dontdiff linux-3.8-SCTP+1/net/sctp/ulpqueue.c linux-3.8-SCTP+2/net/sctp/ulpqueue.c
-> --- linux-3.8-SCTP+1/net/sctp/ulpqueue.c	2013-02-18 16:58:34.000000000 -0700
-> +++ linux-3.8-SCTP+2/net/sctp/ulpqueue.c	2013-02-21 07:39:40.888281496 -0700
-> @@ -969,11 +969,16 @@ static __u16 sctp_ulpq_renege_list(struc
->
->   	tsnmap = &ulpq->asoc->peer.tsn_map;
->
-> -	while ((skb = __skb_dequeue_tail(list)) != NULL) {
-> -		freed += skb_headlen(skb);
-> +	while ((skb = skb_peek_tail(list)) != NULL) {
->   		event = sctp_skb2event(skb);
->   		tsn = event->tsn;
->
-> +		/* Don't renege below the Cumulative TSN ACK Point. */
-> +		if (TSN_lte(tsn, sctp_tsnmap_get_ctsn(tsnmap)))
-> +			break;
-> +
-> +		__skb_unlink(skb, list);
-> +		freed += skb_headlen(skb);
->   		sctp_ulpevent_free(event);
->   		sctp_tsnmap_renege(tsnmap, tsn);
->   		if (freed >= needed)
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+Signed-off-by: Guenter Roeck <linux@roeck-us.net>
+---
+v2: Fix by moving the existing parameter size validation up
+    in the function instead of adding an additional one.
+
+ net/sctp/socket.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index cedd9bf..9ef5c73 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -5653,6 +5653,9 @@ static int sctp_getsockopt_assoc_stats(struct sock *sk, int len,
+ 	if (len < sizeof(sctp_assoc_t))
+ 		return -EINVAL;
+ 
++	/* Allow the struct to grow and fill in as much as possible */
++	len = min_t(size_t, len, sizeof(sas));
++
+ 	if (copy_from_user(&sas, optval, len))
+ 		return -EFAULT;
+ 
+@@ -5686,9 +5689,6 @@ static int sctp_getsockopt_assoc_stats(struct sock *sk, int len,
+ 	/* Mark beginning of a new observation period */
+ 	asoc->stats.max_obs_rto = asoc->rto_min;
+ 
+-	/* Allow the struct to grow and fill in as much as possible */
+-	len = min_t(size_t, len, sizeof(sas));
+-
+ 	if (put_user(len, optlen))
+ 		return -EFAULT;
+ 
+-- 
+1.7.9.7
 
