@@ -1,61 +1,50 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 27 Feb 2013 20:09:31 +0000
+From: David Miller <davem@davemloft.net>
+Date: Wed, 27 Feb 2013 20:22:33 +0000
 Subject: Re: [PATCH] net/sctp: Validate parameter size for SCTP_GET_ASSOC_STATS control message
-Message-Id: <20130227200931.GB7993@hmsreliant.think-freely.org>
+Message-Id: <20130227.152233.1255341111357013803.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1361994231-5355-1-git-send-email-linux@roeck-us.net>
-In-Reply-To: <1361994231-5355-1-git-send-email-linux@roeck-us.net>
+	<20130227200931.GB7993@hmsreliant.think-freely.org>
+In-Reply-To: <20130227200931.GB7993@hmsreliant.think-freely.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: Guenter Roeck <linux@roeck-us.net>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: nhorman@tuxdriver.com
+Cc: linux@roeck-us.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, sri@us.ibm.com
 
-On Wed, Feb 27, 2013 at 11:43:51AM -0800, Guenter Roeck wrote:
-> Building sctp may fail with:
-> 
-> In function ‘copy_from_user’,
->     inlined from ‘sctp_getsockopt_assoc_stats’ at
->     net/sctp/socket.c:5656:20:
-> arch/x86/include/asm/uaccess_32.h:211:26: error: call to
->     ‘copy_from_user_overflow’ declared with attribute error: copy_from_user()
->     buffer size is not provably correct
-> 
-> if built with W=1 due to a missing parameter size validation.
-> 
-> Signed-off-by: Guenter Roeck <linux@roeck-us.net>
-> ---
->  net/sctp/socket.c |    2 ++
->  1 file changed, 2 insertions(+)
-> 
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index cedd9bf..0a5f2bf 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -5652,6 +5652,8 @@ static int sctp_getsockopt_assoc_stats(struct sock *sk, int len,
->  	/* User must provide at least the assoc id */
->  	if (len < sizeof(sctp_assoc_t))
->  		return -EINVAL;
-> +	if (len > sizeof(struct sctp_assoc_stats))
-> +		len = sizeof(struct sctp_assoc_stats);
->  
->  	if (copy_from_user(&sas, optval, len))
->  		return -EFAULT;
-> -- 
-> 1.7.9.7
-> 
-> 
-
-Theres more than that going on here.  This will fix the warning, but the
-function is written such that, if you pass in a size that is greater than the
-size of a struct sctp_association, but less than a struct sctp_assoc_stats.  I'm
-not sure that a partial stat struct is really that useful to people.  What if
-you were to check for max(struct sctp_association, struct sctp_assoc_stats) as
-your minimum length check, then just did a copy_from_user of that length.  It
-would save you having to compute two lengths separately, since you could then
-just do a copy_to_user(...,sizeof(struct sctp_assoc_stats), at the bottom of
-that function.
-
-Thanks!
-Neil
-
+RnJvbTogTmVpbCBIb3JtYW4gPG5ob3JtYW5AdHV4ZHJpdmVyLmNvbT4NCkRhdGU6IFdlZCwgMjcg
+RmViIDIwMTMgMTU6MDk6MzEgLTA1MDANCg0KPiBPbiBXZWQsIEZlYiAyNywgMjAxMyBhdCAxMTo0
+Mzo1MUFNIC0wODAwLCBHdWVudGVyIFJvZWNrIHdyb3RlOg0KPj4gQnVpbGRpbmcgc2N0cCBtYXkg
+ZmFpbCB3aXRoOg0KPj4gDQo+PiBJbiBmdW5jdGlvbiChY29weV9mcm9tX3VzZXKiLA0KPj4gICAg
+IGlubGluZWQgZnJvbSChc2N0cF9nZXRzb2Nrb3B0X2Fzc29jX3N0YXRzoiBhdA0KPj4gICAgIG5l
+dC9zY3RwL3NvY2tldC5jOjU2NTY6MjA6DQo+PiBhcmNoL3g4Ni9pbmNsdWRlL2FzbS91YWNjZXNz
+XzMyLmg6MjExOjI2OiBlcnJvcjogY2FsbCB0bw0KPj4gICAgIKFjb3B5X2Zyb21fdXNlcl9vdmVy
+Zmxvd6IgZGVjbGFyZWQgd2l0aCBhdHRyaWJ1dGUgZXJyb3I6IGNvcHlfZnJvbV91c2VyKCkNCj4+
+ICAgICBidWZmZXIgc2l6ZSBpcyBub3QgcHJvdmFibHkgY29ycmVjdA0KPj4gDQo+PiBpZiBidWls
+dCB3aXRoIFc9MSBkdWUgdG8gYSBtaXNzaW5nIHBhcmFtZXRlciBzaXplIHZhbGlkYXRpb24uDQo+
+PiANCj4+IFNpZ25lZC1vZmYtYnk6IEd1ZW50ZXIgUm9lY2sgPGxpbnV4QHJvZWNrLXVzLm5ldD4N
+Cj4+IC0tLQ0KPj4gIG5ldC9zY3RwL3NvY2tldC5jIHwgICAgMiArKw0KPj4gIDEgZmlsZSBjaGFu
+Z2VkLCAyIGluc2VydGlvbnMoKykNCj4+IA0KPj4gZGlmZiAtLWdpdCBhL25ldC9zY3RwL3NvY2tl
+dC5jIGIvbmV0L3NjdHAvc29ja2V0LmMNCj4+IGluZGV4IGNlZGQ5YmYuLjBhNWYyYmYgMTAwNjQ0
+DQo+PiAtLS0gYS9uZXQvc2N0cC9zb2NrZXQuYw0KPj4gKysrIGIvbmV0L3NjdHAvc29ja2V0LmMN
+Cj4+IEBAIC01NjUyLDYgKzU2NTIsOCBAQCBzdGF0aWMgaW50IHNjdHBfZ2V0c29ja29wdF9hc3Nv
+Y19zdGF0cyhzdHJ1Y3Qgc29jayAqc2ssIGludCBsZW4sDQo+PiAgCS8qIFVzZXIgbXVzdCBwcm92
+aWRlIGF0IGxlYXN0IHRoZSBhc3NvYyBpZCAqLw0KPj4gIAlpZiAobGVuIDwgc2l6ZW9mKHNjdHBf
+YXNzb2NfdCkpDQo+PiAgCQlyZXR1cm4gLUVJTlZBTDsNCj4+ICsJaWYgKGxlbiA+IHNpemVvZihz
+dHJ1Y3Qgc2N0cF9hc3NvY19zdGF0cykpDQo+PiArCQlsZW4gPSBzaXplb2Yoc3RydWN0IHNjdHBf
+YXNzb2Nfc3RhdHMpOw0KPj4gIA0KPj4gIAlpZiAoY29weV9mcm9tX3VzZXIoJnNhcywgb3B0dmFs
+LCBsZW4pKQ0KPj4gIAkJcmV0dXJuIC1FRkFVTFQ7DQo+PiAtLSANCj4+IDEuNy45LjcNCj4+IA0K
+Pj4gDQo+IA0KPiBUaGVyZXMgbW9yZSB0aGFuIHRoYXQgZ29pbmcgb24gaGVyZS4gIFRoaXMgd2ls
+bCBmaXggdGhlIHdhcm5pbmcsIGJ1dCB0aGUNCj4gZnVuY3Rpb24gaXMgd3JpdHRlbiBzdWNoIHRo
+YXQsIGlmIHlvdSBwYXNzIGluIGEgc2l6ZSB0aGF0IGlzIGdyZWF0ZXIgdGhhbiB0aGUNCj4gc2l6
+ZSBvZiBhIHN0cnVjdCBzY3RwX2Fzc29jaWF0aW9uLCBidXQgbGVzcyB0aGFuIGEgc3RydWN0IHNj
+dHBfYXNzb2Nfc3RhdHMuICBJJ20NCj4gbm90IHN1cmUgdGhhdCBhIHBhcnRpYWwgc3RhdCBzdHJ1
+Y3QgaXMgcmVhbGx5IHRoYXQgdXNlZnVsIHRvIHBlb3BsZS4gIFdoYXQgaWYNCj4geW91IHdlcmUg
+dG8gY2hlY2sgZm9yIG1heChzdHJ1Y3Qgc2N0cF9hc3NvY2lhdGlvbiwgc3RydWN0IHNjdHBfYXNz
+b2Nfc3RhdHMpIGFzDQo+IHlvdXIgbWluaW11bSBsZW5ndGggY2hlY2ssIHRoZW4ganVzdCBkaWQg
+YSBjb3B5X2Zyb21fdXNlciBvZiB0aGF0IGxlbmd0aC4gIEl0DQo+IHdvdWxkIHNhdmUgeW91IGhh
+dmluZyB0byBjb21wdXRlIHR3byBsZW5ndGhzIHNlcGFyYXRlbHksIHNpbmNlIHlvdSBjb3VsZCB0
+aGVuDQo+IGp1c3QgZG8gYSBjb3B5X3RvX3VzZXIoLi4uLHNpemVvZihzdHJ1Y3Qgc2N0cF9hc3Nv
+Y19zdGF0cyksIGF0IHRoZSBib3R0b20gb2YNCj4gdGhhdCBmdW5jdGlvbi4NCg0KR2VucmVhbGx5
+LCBnZXRzb2Nrb3B0KCkgaW1wbGVtZW50YXRpb25zIGhhcHBpbHkgZ2l2ZSBwYXJ0aWFsIHJldHVy
+biB2YWx1ZXMNCndoZW4gdGhlIHVzZXIgZ2l2ZXMgYSB0b28gc21hbGwgbGVuZ3RoLg0K
