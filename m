@@ -1,17 +1,27 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Sun, 24 Feb 2013 15:20:10 +0000
-Subject: Re: [PATCH lksctp-tools] build: fix out-of-tree build of withsctp.
-Message-Id: <512A2FAA.10303@redhat.com>
+From: Dilip Daya <dilip.daya@hp.com>
+Date: Wed, 27 Feb 2013 12:15:41 +0000
+Subject: SCTP Auto Buffer Tuning
+Message-Id: <1361967341.2923.9.camel@pro6455b.example.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1361689827-613022-1-git-send-email-flameeyes@flameeyes.eu>
-In-Reply-To: <1361689827-613022-1-git-send-email-flameeyes@flameeyes.eu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On 02/24/2013 08:10 AM, Diego Elio Pettenò wrote:
->
-> Signed-off-by: Diego Elio Pettenò <flameeyes@flameeyes.eu>
+Is SCTP Auto Buffer (Rx/Tx) Tuning implemented?
+If 'yes' is there a way to disable auto-tuning, maybe via setting
+SO_SNDBUF/SO_RCVBUF using setsockopt() ?
 
-Applied.
+As per the following references, mentions lack of SCTP Auto-buffer
+tuning:
+http://heim.ifi.uio.no/michawe/research/projects/new-transport/implementing-sctp-auto-buffer-tuning.html
+http://www.ietf.org/mail-archive/web/tsvwg/current/msg11212.html
+http://www.nlnet.nl/project/sctp-linux/
+
+
+Thanks.
+-- 
+-DilipD.
+
+
+
