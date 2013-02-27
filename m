@@ -1,61 +1,38 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Fri, 08 Feb 2013 16:02:25 +0000
-Subject: Re: [PATCH net 2/2] net: sctp: sctp_endpoint_free: zero out secret key data
-Message-Id: <51152191.5070201@redhat.com>
+Date: Wed, 27 Feb 2013 19:36:50 +0000
+Subject: Re: [PATCH v2 0/4] sctp: fix association hangs due to reassembly/ordering logic
+Message-Id: <512E6052.6050301@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1360327229.git.dborkman@redhat.com> <cf390ae999888aafe57914bcd87e5207be154557.1360327229.git.dborkman@redhat.com> <51151EAA.2090302@gmail.com>
-In-Reply-To: <51151EAA.2090302@gmail.com>
+References: <1361889376-22171-1-git-send-email-lee.roberts@hp.com> <1361991273-30578-1-git-send-email-lee.roberts@hp.com>
+In-Reply-To: <1361991273-30578-1-git-send-email-lee.roberts@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>
-Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: "Lee A. Roberts" <lee.roberts@hp.com>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On 02/08/2013 04:50 PM, Vlad Yasevich wrote:
-> On 02/08/2013 08:04 AM, Daniel Borkmann wrote:
->> On sctp_endpoint_destroy, previously used sensitive keying material
->> should be zeroed out before the memory is returned, as we already do
->> with e.g. auth keys when released.
->>
->> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+On 02/27/2013 07:54 PM, Lee A. Roberts wrote:
+> From: "Lee A. Roberts" <lee.roberts@hp.com>
 >
-> I'll ack this, but the whole multiple cookie keys code is completely unused and has been all this time.  Noone uses anything other then the secret_key[0] since there is no changeover support anywhere.  It might be nice to clean that up too.
+> This series of patches resolves several SCTP association hangs observed during
+> SCTP stress testing.  Observable symptoms include communications hangs with
+> data being held in the association reassembly and/or lobby (ordering) queues.
+> Close examination of reassembly/ordering queues may show either duplicated
+> or missing packets.
 
-Put on my todo list for follow-up patches, thanks.
+Just nitpicking here ... all of your 4 patches have the same first paragraph,
+which can actually be left out completely if it is already in your patch cover
+letter stated.
 
-> Acked-by: Vlad Yasevich <vyasevic@redhat.com>
+> Lee A. Roberts (4):
+>    sctp: fix association hangs due to off-by-one errors in
+>      sctp_tsnmap_grow()
+>    sctp: fix association hangs due to reneging packets below the
+>      cumulative TSN ACK point
+>    sctp: fix association hangs due to errors when reneging events from
+>      the ordering queue
+>    sctp: fix association hangs due to partial delivery errors
 >
-> -vlad
->
->> ---
->>   net/sctp/endpointola.c | 5 +++++
->>   1 file changed, 5 insertions(+)
->>
->> diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
->> index 17a001b..1a9c5fb 100644
->> --- a/net/sctp/endpointola.c
->> +++ b/net/sctp/endpointola.c
->> @@ -249,6 +249,8 @@ void sctp_endpoint_free(struct sctp_endpoint *ep)
->>   /* Final destructor for endpoint.  */
->>   static void sctp_endpoint_destroy(struct sctp_endpoint *ep)
->>   {
->> +    int i;
->> +
->>       SCTP_ASSERT(ep->base.dead, "Endpoint is not dead", return);
->>
->>       /* Free up the HMAC transform. */
->> @@ -271,6 +273,9 @@ static void sctp_endpoint_destroy(struct sctp_endpoint *ep)
->>       sctp_inq_free(&ep->base.inqueue);
->>       sctp_bind_addr_free(&ep->base.bind_addr);
->>
->> +    for (i = 0; i < SCTP_HOW_MANY_SECRETS; ++i)
->> +        memset(&ep->secret_key[i], 0, SCTP_SECRET_SIZE);
->> +
->>       /* Remove and free the port */
->>       if (sctp_sk(ep->base.sk)->bind_hash)
->>           sctp_put_port(ep->base.sk);
->>
->
->
-> c
-> If
+>   net/sctp/tsnmap.c   |   13 ++++----
+>   net/sctp/ulpqueue.c |   87 +++++++++++++++++++++++++++++++++++++++++----------
+>   2 files changed, 78 insertions(+), 22 deletions(-)
