@@ -1,65 +1,31 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Wed, 27 Feb 2013 21:00:42 +0000
+From: David Miller <davem@davemloft.net>
+Date: Wed, 27 Feb 2013 21:08:50 +0000
 Subject: Re: [PATCH v2] net/sctp: Validate parameter size for SCTP_GET_ASSOC_STATS
-Message-Id: <512E73FA.1090407@gmail.com>
+Message-Id: <20130227.160850.660037788307311215.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1361998651-19354-1-git-send-email-linux@roeck-us.net>
-In-Reply-To: <1361998651-19354-1-git-send-email-linux@roeck-us.net>
+	<512E73FA.1090407@gmail.com>
+In-Reply-To: <512E73FA.1090407@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: Guenter Roeck <linux@roeck-us.net>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Sridhar Samudrala <sri@us.ibm.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: vyasevich@gmail.com
+Cc: linux@roeck-us.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, sri@us.ibm.com, nhorman@tuxdriver.com
 
-On 02/27/2013 03:57 PM, Guenter Roeck wrote:
-> Building sctp may fail with:
->
-> In function ‘copy_from_user’,
->      inlined from ‘sctp_getsockopt_assoc_stats’ at
->      net/sctp/socket.c:5656:20:
-> arch/x86/include/asm/uaccess_32.h:211:26: error: call to
->      ‘copy_from_user_overflow’ declared with attribute error: copy_from_user()
->      buffer size is not provably correct
->
-> if built with W=1 due to a missing parameter size validation
-> before the call to copy_from_user.
->
-> Signed-off-by: Guenter Roeck <linux@roeck-us.net>
-> ---
-> v2: Fix by moving the existing parameter size validation up
->      in the function instead of adding an additional one.
-
-This works too...
-
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-
->
->   net/sctp/socket.c |    6 +++---
->   1 file changed, 3 insertions(+), 3 deletions(-)
->
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index cedd9bf..9ef5c73 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -5653,6 +5653,9 @@ static int sctp_getsockopt_assoc_stats(struct sock *sk, int len,
->   	if (len < sizeof(sctp_assoc_t))
->   		return -EINVAL;
->
-> +	/* Allow the struct to grow and fill in as much as possible */
-> +	len = min_t(size_t, len, sizeof(sas));
-> +
->   	if (copy_from_user(&sas, optval, len))
->   		return -EFAULT;
->
-> @@ -5686,9 +5689,6 @@ static int sctp_getsockopt_assoc_stats(struct sock *sk, int len,
->   	/* Mark beginning of a new observation period */
->   	asoc->stats.max_obs_rto = asoc->rto_min;
->
-> -	/* Allow the struct to grow and fill in as much as possible */
-> -	len = min_t(size_t, len, sizeof(sas));
-> -
->   	if (put_user(len, optlen))
->   		return -EFAULT;
->
->
-
+RnJvbTogVmxhZCBZYXNldmljaCA8dnlhc2V2aWNoQGdtYWlsLmNvbT4NCkRhdGU6IFdlZCwgMjcg
+RmViIDIwMTMgMTY6MDA6NDIgLTA1MDANCg0KPiBPbiAwMi8yNy8yMDEzIDAzOjU3IFBNLCBHdWVu
+dGVyIFJvZWNrIHdyb3RlOg0KPj4gQnVpbGRpbmcgc2N0cCBtYXkgZmFpbCB3aXRoOg0KPj4NCj4+
+IEluIGZ1bmN0aW9uIKFjb3B5X2Zyb21fdXNlcqIsDQo+PiAgICAgIGlubGluZWQgZnJvbSChc2N0
+cF9nZXRzb2Nrb3B0X2Fzc29jX3N0YXRzoiBhdA0KPj4gICAgICBuZXQvc2N0cC9zb2NrZXQuYzo1
+NjU2OjIwOg0KPj4gYXJjaC94ODYvaW5jbHVkZS9hc20vdWFjY2Vzc18zMi5oOjIxMToyNjogZXJy
+b3I6IGNhbGwgdG8NCj4+ICAgICAgoWNvcHlfZnJvbV91c2VyX292ZXJmbG93oiBkZWNsYXJlZCB3
+aXRoIGF0dHJpYnV0ZSBlcnJvcjoNCj4+ICAgICAgY29weV9mcm9tX3VzZXIoKQ0KPj4gICAgICBi
+dWZmZXIgc2l6ZSBpcyBub3QgcHJvdmFibHkgY29ycmVjdA0KPj4NCj4+IGlmIGJ1aWx0IHdpdGgg
+Vz0xIGR1ZSB0byBhIG1pc3NpbmcgcGFyYW1ldGVyIHNpemUgdmFsaWRhdGlvbg0KPj4gYmVmb3Jl
+IHRoZSBjYWxsIHRvIGNvcHlfZnJvbV91c2VyLg0KPj4NCj4+IFNpZ25lZC1vZmYtYnk6IEd1ZW50
+ZXIgUm9lY2sgPGxpbnV4QHJvZWNrLXVzLm5ldD4NCj4+IC0tLQ0KPj4gdjI6IEZpeCBieSBtb3Zp
+bmcgdGhlIGV4aXN0aW5nIHBhcmFtZXRlciBzaXplIHZhbGlkYXRpb24gdXANCj4+ICAgICAgaW4g
+dGhlIGZ1bmN0aW9uIGluc3RlYWQgb2YgYWRkaW5nIGFuIGFkZGl0aW9uYWwgb25lLg0KPiANCj4g
+VGhpcyB3b3JrcyB0b28uLi4NCj4gDQo+IEFja2VkLWJ5OiBWbGFkIFlhc2V2aWNoIDx2eWFzZXZp
+Y2hAZ21haWwuY29tPg0KDQpJJ2xsIGFwcGx5IHRoaXMgYW5kIHF1ZXVlIGl0IHVwIGZvciAtc3Rh
+YmxlLCB0aGFua3MgZXZlcnlvbmUuDQo
