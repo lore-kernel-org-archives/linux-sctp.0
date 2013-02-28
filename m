@@ -1,39 +1,43 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 27 Feb 2013 19:43:20 +0000
-Subject: Re: [PATCH v2 0/4] sctp: fix association hangs due to reassembly/ordering logic
-Message-Id: <20130227.144320.1686689616982948637.davem@davemloft.net>
+From: "Lee A. Roberts" <lee.roberts@hp.com>
+Date: Thu, 28 Feb 2013 14:37:26 +0000
+Subject: [PATCH v3 0/4] sctp: fix association hangs due to reassembly/ordering logic
+Message-Id: <1362062250-26749-1-git-send-email-lee.roberts@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1361889376-22171-1-git-send-email-lee.roberts@hp.com>
-	<1361991273-30578-1-git-send-email-lee.roberts@hp.com>
-	<512E6052.6050301@redhat.com>
-In-Reply-To: <512E6052.6050301@redhat.com>
+References: <1361991273-30578-1-git-send-email-lee.roberts@hp.com>
+In-Reply-To: <1361991273-30578-1-git-send-email-lee.roberts@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dborkman@redhat.com
-Cc: lee.roberts@hp.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, lee.roberts@hp.com
 
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Wed, 27 Feb 2013 20:36:50 +0100
+From: "Lee A. Roberts" <lee.roberts@hp.com>
 
-> On 02/27/2013 07:54 PM, Lee A. Roberts wrote:
->> From: "Lee A. Roberts" <lee.roberts@hp.com>
->>
->> This series of patches resolves several SCTP association hangs
->> observed during
->> SCTP stress testing.  Observable symptoms include communications hangs
->> with
->> data being held in the association reassembly and/or lobby (ordering)
->> queues.
->> Close examination of reassembly/ordering queues may show either
->> duplicated
->> or missing packets.
-> 
-> Just nitpicking here ... all of your 4 patches have the same first
-> paragraph,
-> which can actually be left out completely if it is already in your
-> patch cover
-> letter stated.
+This series of patches resolves several SCTP association hangs observed during
+SCTP stress testing.  Observable symptoms include communications hangs with
+data being held in the association reassembly and/or lobby (ordering) queues.
+Close examination of reassembly/ordering queues may show either duplicated
+or missing packets.
 
-Right because I can create a merge commit for the series when I apply
-it and put that text there.
+In version #2, corrected build failure in initial version of patch series
+due to wrong calling sequence for sctp_ulpq_partial_delivery() being inserted
+in sctp_ulpq_renege().
+
+In version #3, adjusted patch documentation to be less repetitive.
+
+Lee A. Roberts (4):
+  sctp: fix association hangs due to off-by-one errors in
+    sctp_tsnmap_grow()
+  sctp: fix association hangs due to reneging packets below the
+    cumulative TSN ACK point
+  sctp: fix association hangs due to errors when reneging events from
+    the ordering queue
+  sctp: fix association hangs due to partial delivery errors
+
+ net/sctp/tsnmap.c   |   13 ++++----
+ net/sctp/ulpqueue.c |   87 +++++++++++++++++++++++++++++++++++++++++----------
+ 2 files changed, 78 insertions(+), 22 deletions(-)
+
+-- 
+1.7.9.5
+
