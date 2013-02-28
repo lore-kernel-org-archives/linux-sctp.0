@@ -1,41 +1,49 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Fri, 08 Feb 2013 13:04:34 +0000
-Subject: [PATCH net 1/2] net: sctp: sctp_setsockopt_auth_key: use kzfree instead of kfree
-Message-Id: <696cf7a140197488ab830222890fe5b803de6952.1360327229.git.dborkman@redhat.com>
+From: "Lee A. Roberts" <lee.roberts@hp.com>
+Date: Thu, 28 Feb 2013 14:37:28 +0000
+Subject: [PATCH v3 2/4] sctp: fix association hangs due to reneging packets below the cumulative TSN ACK poin
+Message-Id: <1362062250-26749-3-git-send-email-lee.roberts@hp.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1360327229.git.dborkman@redhat.com>
-In-Reply-To: <cover.1360327229.git.dborkman@redhat.com>
+References: <1361991273-30578-1-git-send-email-lee.roberts@hp.com>
+In-Reply-To: <1361991273-30578-1-git-send-email-lee.roberts@hp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, lee.roberts@hp.com
 
-In sctp_setsockopt_auth_key, we create a temporary copy of the user
-passed shared auth key for the endpoint or association and after
-internal setup, we free it right away. Since it's sensitive data, we
-should zero out the key before returning the memory back to the
-allocator. Thus, use kzfree instead of kfree, just as we do in
-sctp_auth_key_put().
+From: "Lee A. Roberts" <lee.roberts@hp.com>
 
-Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+In sctp_ulpq_renege_list(), do not renege packets below the
+cumulative TSN ACK point.
+
+Signed-off-by: Lee A. Roberts <lee.roberts@hp.com>
 ---
- net/sctp/socket.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/sctp/ulpqueue.c |    9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 9e65758..cedd9bf 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3390,7 +3390,7 @@ static int sctp_setsockopt_auth_key(struct sock *sk,
+diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
+index ada1746..63afddc 100644
+--- a/net/sctp/ulpqueue.c
++++ b/net/sctp/ulpqueue.c
+@@ -969,11 +969,16 @@ static __u16 sctp_ulpq_renege_list(struct sctp_ulpq *ulpq,
  
- 	ret = sctp_auth_set_key(sctp_sk(sk)->ep, asoc, authkey);
- out:
--	kfree(authkey);
-+	kzfree(authkey);
- 	return ret;
- }
+ 	tsnmap = &ulpq->asoc->peer.tsn_map;
  
+-	while ((skb = __skb_dequeue_tail(list)) != NULL) {
+-		freed += skb_headlen(skb);
++	while ((skb = skb_peek_tail(list)) != NULL) {
+ 		event = sctp_skb2event(skb);
+ 		tsn = event->tsn;
+ 
++		/* Don't renege below the Cumulative TSN ACK Point. */
++		if (TSN_lte(tsn, sctp_tsnmap_get_ctsn(tsnmap)))
++			break;
++
++		__skb_unlink(skb, list);
++		freed += skb_headlen(skb);
+ 		sctp_ulpevent_free(event);
+ 		sctp_tsnmap_renege(tsnmap, tsn);
+ 		if (freed >= needed)
 -- 
-1.7.11.7
+1.7.9.5
 
