@@ -1,31 +1,63 @@
-From: Eric Dumazet <eric.dumazet@gmail.com>
-Date: Mon, 18 Mar 2013 20:48:48 +0000
-Subject: Re: sctp: hang in sctp_remaddr_seq_show
-Message-Id: <1363639728.21184.8.camel@edumazet-glaptop>
+From: Cong Wang <amwang@redhat.com>
+Date: Mon, 04 Mar 2013 02:28:27 +0000
+Subject: [Patch net] sctp: use KMALLOC_MAX_SIZE instead of its own MAX_KMALLOC_SIZE
+Message-Id: <1362364107-26908-1-git-send-email-amwang@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <51434D78.9030308@oracle.com>
-	 <20130318110415.GA9478@hmsreliant.think-freely.org>
-	 <1363620340.29475.132.camel@edumazet-glaptop> <5147333A.3010907@gmail.com>
-	 <20130318203202.GB9478@hmsreliant.think-freely.org>
-In-Reply-To: <20130318203202.GB9478@hmsreliant.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, Sasha Levin <sasha.levin@oracle.com>, sri@us.ibm.com, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Dave Jones <davej@redhat.com>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Sridhar Samudrala <sri@us.ibm.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, Cong Wang <amwang@redhat.com>
 
-On Mon, 2013-03-18 at 16:32 -0400, Neil Horman wrote:
+From: Cong Wang <amwang@redhat.com>
 
-> Vlads, right.  We need to grab the rcu lock before the read lock, but we should
-> probably use the rcu_read_lock_bh variant, since we're going to disable bottom
-> halves anyway.
-> Neil
+Don't definite its own MAX_KMALLOC_SIZE, use the one
+defined in mm.
 
-rcu_read_lock_bh() and {local_bh_disable();rcu_read_lock();} have quite
-different semantics.
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Sridhar Samudrala <sri@us.ibm.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: David S. Miller <davem@davemloft.net>
+Signed-off-by: Cong Wang <amwang@redhat.com>
 
-If you use rcu_read_lock_bh(), you also need to change rcu_dereference()
-calls to rcu_dereference_bh() variant.
-
-
-
+---
+diff --git a/net/sctp/ssnmap.c b/net/sctp/ssnmap.c
+index 442ad4e..825ea94 100644
+--- a/net/sctp/ssnmap.c
++++ b/net/sctp/ssnmap.c
+@@ -41,8 +41,6 @@
+ #include <net/sctp/sctp.h>
+ #include <net/sctp/sm.h>
+ 
+-#define MAX_KMALLOC_SIZE	131072
+-
+ static struct sctp_ssnmap *sctp_ssnmap_init(struct sctp_ssnmap *map, __u16 in,
+ 					    __u16 out);
+ 
+@@ -65,7 +63,7 @@ struct sctp_ssnmap *sctp_ssnmap_new(__u16 in, __u16 out,
+ 	int size;
+ 
+ 	size = sctp_ssnmap_size(in, out);
+-	if (size <= MAX_KMALLOC_SIZE)
++	if (size <= KMALLOC_MAX_SIZE)
+ 		retval = kmalloc(size, gfp);
+ 	else
+ 		retval = (struct sctp_ssnmap *)
+@@ -82,7 +80,7 @@ struct sctp_ssnmap *sctp_ssnmap_new(__u16 in, __u16 out,
+ 	return retval;
+ 
+ fail_map:
+-	if (size <= MAX_KMALLOC_SIZE)
++	if (size <= KMALLOC_MAX_SIZE)
+ 		kfree(retval);
+ 	else
+ 		free_pages((unsigned long)retval, get_order(size));
+@@ -124,7 +122,7 @@ void sctp_ssnmap_free(struct sctp_ssnmap *map)
+ 		int size;
+ 
+ 		size = sctp_ssnmap_size(map->in.len, map->out.len);
+-		if (size <= MAX_KMALLOC_SIZE)
++		if (size <= KMALLOC_MAX_SIZE)
+ 			kfree(map);
+ 		else
+ 			free_pages((unsigned long)map, get_order(size));
