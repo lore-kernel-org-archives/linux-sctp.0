@@ -1,20 +1,45 @@
-From: Karl Heiss <kheiss@gmail.com>
-Date: Wed, 06 Mar 2013 22:57:40 +0000
-Subject: NULL primary_path
-Message-Id: <CAGugRbVkLt2AzKkxX3SzJhjDfyPJpviD64_Y5-hgtqxSTwzQiA@mail.gmail.com>
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Thu, 07 Mar 2013 01:53:02 +0000
+Subject: Re: NULL primary_path
+Message-Id: <5137F2FE.6070807@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <CAGugRbVkLt2AzKkxX3SzJhjDfyPJpviD64_Y5-hgtqxSTwzQiA@mail.gmail.com>
+In-Reply-To: <CAGugRbVkLt2AzKkxX3SzJhjDfyPJpviD64_Y5-hgtqxSTwzQiA@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-I am getting kernel panics due to a NULL dereference in
-sctp_getsockopt_sctp_status() when calling getsockopt() with
-SCTP_STATUS immediately after establishing a connection.  This occurs
-when transport = asoc->peer.primary_path; is NULL and transport is
-later dereferenced.  Is there any way that an association would be
-present but have no primary_path?  Should
-sctp_getsockopt_sctp_status() be checking asoc->peer.primary_path and
-returning -EINVAL?
+On 03/06/2013 05:57 PM, Karl Heiss wrote:
+> I am getting kernel panics due to a NULL dereference in
+> sctp_getsockopt_sctp_status() when calling getsockopt() with
+> SCTP_STATUS immediately after establishing a connection.  This occurs
+> when transport = asoc->peer.primary_path; is NULL and transport is
+> later dereferenced.  Is there any way that an association would be
+> present but have no primary_path?
 
-Karl
+No, that shouldn't happen.  The very first transport that is added
+to the association is assigned to the primary_path.  Primary_path can
+never be null since the association must have at least 1 transport and
+that 1 transport will always be primary.
+
+Is this happening on the server or the client side?
+
+Which kernel version?
+
+Is Add-IP on and are there any Add-IP options in the packets?
+
+Thanks
+-vlad
+
+>  Should
+> sctp_getsockopt_sctp_status() be checking asoc->peer.primary_path and
+> returning -EINVAL?
+>
+> Karl
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+
