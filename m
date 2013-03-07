@@ -1,7 +1,7 @@
 From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Thu, 07 Mar 2013 22:08:21 +0000
+Date: Thu, 07 Mar 2013 23:09:53 +0000
 Subject: Re: NULL primary_path
-Message-Id: <51390FD5.8020703@gmail.com>
+Message-Id: <51391E41.8090304@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CAGugRbVkLt2AzKkxX3SzJhjDfyPJpviD64_Y5-hgtqxSTwzQiA@mail.gmail.com>
 In-Reply-To: <CAGugRbVkLt2AzKkxX3SzJhjDfyPJpviD64_Y5-hgtqxSTwzQiA@mail.gmail.com>
@@ -54,9 +54,41 @@ d=8C98653f05534acd1cb07ea4929702a3659177d1
 > Karl
 >
 
-I see.  Let me take another look.  If this race was happening before the
-rcu, then it'll probably be there after.
-If you don't hear anything for a few days, pester me.
+Hi Karl
 
-Thanks
--vlad
+I think I see the problem now.  The problem happens when the association=20
+is destroyed.  We delay removing the association from
+the association id pool until all references on the association
+have dropped.  As a result, it is possible (for a very short
+period of time) for an association structure to still exist in
+the kernel and still be found via the association id, but that=20
+association has no transports and is about to be completely destroyed.
+
+This is a really interesting race and I need to figure out if it is
+there on purpose or not?
+
+In the mean time, here is a patch that should solve it for you.
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index b907073..2d92c89 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -223,7 +223,7 @@ struct sctp_association *sctp_id2assoc(struct sock=20
+*sk, sctp_assoc_t id)
+		if (!list_empty(&sctp_sk(sk)->ep->asocs))
+			asoc =3D list_entry(sctp_sk(sk)->ep->asocs.next,
+					  struct sctp_association, asocs);
+-		return asoc;
++		goto done;
+	}
+
+	/* Otherwise this is a UDP-style socket. */
+@@ -234,6 +234,7 @@ struct sctp_association *sctp_id2assoc(struct sock=20
+*sk, sctp_assoc_t id)
+	asoc =3D (struct sctp_association *)idr_find(&sctp_assocs_id, (int)id);
+	spin_unlock_bh(&sctp_assocs_id_lock);
+
++done:
+	if (!asoc || (asoc->base.sk !=3D sk) || asoc->base.dead)
+		return NULL;
+
