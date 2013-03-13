@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 13 Mar 2013 13:29:13 +0000
+From: David Miller <davem@davemloft.net>
+Date: Wed, 13 Mar 2013 14:04:31 +0000
 Subject: Re: [PATCH] sctp: Use correct sideffect command in duplicate cookie handling
-Message-Id: <20130313132913.GB17592@hmsreliant.think-freely.org>
+Message-Id: <20130313.100431.523451251434580538.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1363139603-14042-1-git-send-email-vyasevich@gmail.com>
 In-Reply-To: <1363139603-14042-1-git-send-email-vyasevich@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: vyasevich@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, nhorman@tuxdriver.com
 
-On Tue, Mar 12, 2013 at 09:53:23PM -0400, Vlad Yasevich wrote:
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Tue, 12 Mar 2013 21:53:23 -0400
+
 > When SCTP is done processing a duplicate cookie chunk, it tries
 > to delete a newly created association.  For that, it has to set
 > the right association for the side-effect processing to work.
@@ -31,26 +33,5 @@ On Tue, Mar 12, 2013 at 09:53:23PM -0400, Vlad Yasevich wrote:
 > Tested-by: Karl Heiss <kheiss@gmail.com>
 > CC: Neil Horman <nhorman@tuxdriver.com>
 > Signed-off-by: Vlad Yasevich <vyasevich@gmail.com>
-> ---
->  net/sctp/sm_statefuns.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-> index 5131fcf..de1a013 100644
-> --- a/net/sctp/sm_statefuns.c
-> +++ b/net/sctp/sm_statefuns.c
-> @@ -2082,7 +2082,7 @@ sctp_disposition_t sctp_sf_do_5_2_4_dupcook(struct net *net,
->  	}
->  
->  	/* Delete the tempory new association. */
-> -	sctp_add_cmd_sf(commands, SCTP_CMD_NEW_ASOC, SCTP_ASOC(new_asoc));
-> +	sctp_add_cmd_sf(commands, SCTP_CMD_SET_ASOC, SCTP_ASOC(new_asoc));
->  	sctp_add_cmd_sf(commands, SCTP_CMD_DELETE_TCB, SCTP_NULL());
->  
->  	/* Restore association pointer to provide SCTP command interpeter
-> -- 
-> 1.7.7.6
-> 
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
+Applied.
