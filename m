@@ -1,54 +1,50 @@
-From: Jeff Layton <jlayton@redhat.com>
-Date: Sun, 31 Mar 2013 10:23:38 +0000
-Subject: Re: [PATCH v2 6/6] sctp: convert sctp_assoc_set_id to use idr_alloc_cyclic
-Message-Id: <20130331062338.6c80022a@tlielax.poochiereds.net>
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Wed, 13 Mar 2013 01:53:23 +0000
+Subject: [PATCH] sctp: Use correct sideffect command in duplicate cookie handling
+Message-Id: <1363139603-14042-1-git-send-email-vyasevich@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1364412578-7462-1-git-send-email-jlayton@redhat.com>
-	<1364412578-7462-7-git-send-email-jlayton@redhat.com>
-	<20130328135308.GA14489@neilslaptop.think-freely.org>
-	<20130328140406.GB14489@neilslaptop.think-freely.org>
-In-Reply-To: <20130328140406.GB14489@neilslaptop.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: akpm@linux-foundation.org, linux-kernel@vger.kernel.org, tj@kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Sridhar Samudrala <sri@us.ibm.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Thu, 28 Mar 2013 10:04:06 -0400
-Neil Horman <nhorman@tuxdriver.com> wrote:
+When SCTP is done processing a duplicate cookie chunk, it tries
+to delete a newly created association.  For that, it has to set
+the right association for the side-effect processing to work.
+However, when it uses the SCTP_CMD_NEW_ASOC command, that performs
+more work then really needed (like hashing the associationa and
+assigning it an id) and there is no point to do that only to
+delete the association as a next step.  In fact, it also creates
+an impossible condition where an association may be found by
+the getsockopt() call, and that association is empty.  This
+causes a crash in some sctp getsockopts.
 
-> On Thu, Mar 28, 2013 at 09:53:08AM -0400, Neil Horman wrote:
-> > On Wed, Mar 27, 2013 at 03:29:38PM -0400, Jeff Layton wrote:
-> > > (Note: compile-tested only)
-> > > 
-> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > Cc: Vlad Yasevich <vyasevich@gmail.com>
-> > > Cc: Sridhar Samudrala <sri@us.ibm.com>
-> > > Cc: Neil Horman <nhorman@tuxdriver.com>
-> > > Cc: "David S. Miller" <davem@davemloft.net>
-> > > Cc: linux-sctp@vger.kernel.org
-> > > Cc: netdev@vger.kernel.org
-> > > ---
-> > >  net/sctp/associola.c | 16 ++--------------
-> > >  1 file changed, 2 insertions(+), 14 deletions(-)
-> > > 
-> > I don't see anything wrong with this patch per-se, but the idr_alloc_cyclic call
-> > isn't integrated with net/net-next or Linus' tree yet.  If we don't gate this
-> > patch on that integration, we'll break the build.
-> > Neil
-> > 
-> Actually, I just noticed that you only sent us 6/6 here, I'm assuming a prior
-> patch in the series adds the idr_alloc_cyclic code?  if so, I've seen the prior
-> version
+The solution is rather simple.  We simply use SCTP_CMD_SET_ASOC
+command that doesn't have all the overhead and does exactly
+what we need.
 
+Reported-by: Karl Heiss <kheiss@gmail.com>
+Tested-by: Karl Heiss <kheiss@gmail.com>
+CC: Neil Horman <nhorman@tuxdriver.com>
+Signed-off-by: Vlad Yasevich <vyasevich@gmail.com>
+---
+ net/sctp/sm_statefuns.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Yes, idr_alloc_cyclic is added in patch #1. v2 has some slight changes
-from v1 but it's essentially the same concept.
-
-> 
-> Acked-by: Neil Horman <nhorman@tuxdriver.com>
-> 
-
-Thanks!
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 5131fcf..de1a013 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -2082,7 +2082,7 @@ sctp_disposition_t sctp_sf_do_5_2_4_dupcook(struct net *net,
+ 	}
+ 
+ 	/* Delete the tempory new association. */
+-	sctp_add_cmd_sf(commands, SCTP_CMD_NEW_ASOC, SCTP_ASOC(new_asoc));
++	sctp_add_cmd_sf(commands, SCTP_CMD_SET_ASOC, SCTP_ASOC(new_asoc));
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_DELETE_TCB, SCTP_NULL());
+ 
+ 	/* Restore association pointer to provide SCTP command interpeter
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.7.6
+
