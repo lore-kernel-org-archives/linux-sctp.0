@@ -1,63 +1,73 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 12 Mar 2013 11:35:48 +0000
-Subject: Re: [PATCH 18/18] net: sctp: remove cast for kmalloc/kzalloc return value
-Message-Id: <20130312113548.GB25870@hmsreliant.think-freely.org>
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Wed, 20 Mar 2013 12:40:31 +0000
+Subject: Re: [Lksctp-developers] ARP request being sent every 20 seconds or so
+Message-Id: <5149AE3F.50000@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <513EB23D.7020303@cn.fujitsu.com>
- <513EBFA3.4070303@cn.fujitsu.com>
-In-Reply-To: <513EBFA3.4070303@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Zhang Yanfei <zhangyanfei@cn.fujitsu.com>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, Sridhar Samudrala <sri@us.ibm.com>, Andrew Morton <akpm@linux-foundation.org>, linux-sctp@vger.kernel.org, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: linux-sctp@vger.kernel.org
 
-On Tue, Mar 12, 2013 at 01:39:47PM +0800, Zhang Yanfei wrote:
-> remove cast for kmalloc/kzalloc return value.
-> 
-> Signed-off-by: Zhang Yanfei <zhangyanfei@cn.fujitsu.com>
-> Cc: Vlad Yasevich <vyasevich@gmail.com>
-> Cc: Sridhar Samudrala <sri@us.ibm.com>
-> Cc: Neil Horman <nhorman@tuxdriver.com>
-> Cc: Andrew Morton <akpm@linux-foundation.org>
-> Cc: linux-sctp@vger.kernel.org
-> ---
->  include/net/sctp/sctp.h |    2 +-
->  net/sctp/protocol.c     |    2 +-
->  2 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-> index df85a0c..cd89510 100644
-> --- a/include/net/sctp/sctp.h
-> +++ b/include/net/sctp/sctp.h
-> @@ -576,7 +576,7 @@ for (pos = chunk->subh.fwdtsn_hdr->skip;\
->  #define WORD_ROUND(s) (((s)+3)&~3)
->  
->  /* Make a new instance of type.  */
-> -#define t_new(type, flags)	(type *)kzalloc(sizeof(type), flags)
-> +#define t_new(type, flags)	kzalloc(sizeof(type), flags)
->  
->  /* Compare two timevals.  */
->  #define tv_lt(s, t) \
-> diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-> index 1c2e46c..eaee00c 100644
-> --- a/net/sctp/protocol.c
-> +++ b/net/sctp/protocol.c
-> @@ -1403,7 +1403,7 @@ SCTP_STATIC __init int sctp_init(void)
->  
->  	/* Allocate and initialize the endpoint hash table.  */
->  	sctp_ep_hashsize = 64;
-> -	sctp_ep_hashtable = (struct sctp_hashbucket *)
-> +	sctp_ep_hashtable >  		kmalloc(64 * sizeof(struct sctp_hashbucket), GFP_KERNEL);
->  	if (!sctp_ep_hashtable) {
->  		pr_err("Failed endpoint_hash alloc\n");
-> -- 
-> 1.7.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+On 03/20/2013 06:40 AM, upma gandhi wrote:
+> Hi Vlad,
+>      I am using linux kernel  2.6.32 and wondering if the fix you are
+> referring is after that ?
+> I would like to know if MIB variable SCTP_MIB_OUTSCTPPACKS  is picked
+> up by ICMP to figure out if  neighbour is stale/unreachable/delay etc.
+> ? Can you pls. point me to variable which is being set by SCTp on
+> successful packet out and pickup by ARP to figure out if resolution is
+> required or not ? I am sorry for writing personal mail but I am in
+> need of solution faster.
+
+I just checked, and we don't appear to have this fix.  Let me see if I 
+can cook something up for you to test.
+
+-vlad
+
+>
+> Thanks
+> Upma
+>
+> On Tue, Mar 19, 2013 at 5:37 PM, Vlad Yasevich <vyasevich@gmail.com> wrote:
+>> On 03/19/2013 05:03 AM, upma gandhi wrote:
+>>> Hello All,
+>>>     I have one basic SCTP client and server ( having single network
+>>> connection) and client is continuously sending data to server every 1
+>>> second. I am seeing that server is sending ARP request every 20
+>>> seconds or so ( see below logs) for client IP address. If I use TCP
+>>> client/ server  instead of SCTP, I see that ARP request is being sent
+>>> every 4 minute. Can somebody clarify why its happening or if my
+>>> observation is wrong ?
+>>
+>> There was an old bug that SCTP didn't update the route forward progress
+>> thus causing NUD to kick in even though reachability was configured
+>> through SCTP.  I thought it was fixed a long time ago.  Which kernel
+>> version are you using?
+>>
+>> -vlad
+>>
+>>>
+>>> Thanks
+>>>
+>>> ------------------------------------------------------------------------------
+>>> Everyone hates slow websites. So do we.
+>>> Make your web apps faster with AppDynamics
+>>> Download AppDynamics Lite for free today:
+>>> http://p.sf.net/sfu/appdyn_d2d_mar
+>>> _______________________________________________
+>>> Lksctp-developers mailing list
+>>> Lksctp-developers@lists.sourceforge.net
+>>> https://lists.sourceforge.net/lists/listinfo/lksctp-developers
+>>>
+>>
+>>
+>> ------------------------------------------------------------------------------
+>> Everyone hates slow websites. So do we.
+>> Make your web apps faster with AppDynamics
+>> Download AppDynamics Lite for free today:
+>> http://p.sf.net/sfu/appdyn_d2d_mar
+>> _______________________________________________
+>> Lksctp-developers mailing list
+>> Lksctp-developers@lists.sourceforge.net
+>> https://lists.sourceforge.net/lists/listinfo/lksctp-developers
 
