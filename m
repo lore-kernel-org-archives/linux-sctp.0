@@ -1,58 +1,76 @@
-From: Ankit Mahawar <ankit.mahawar@tcs.com>
-Date: Wed, 20 Mar 2013 10:37:45 +0000
-Subject: Query regarding heartbeat re-transmission pattern
-Message-Id: <OFC9C24BC7.4A688B98-ON65257B34.00393EBB-65257B34.00394A48@tcs.com>
+From: Jeff Layton <jlayton@redhat.com>
+Date: Wed, 27 Mar 2013 13:18:08 +0000
+Subject: [PATCH v1 6/6] sctp: convert sctp_assoc_set_id to use idr_alloc_cyclic
+Message-Id: <1364390288-30968-7-git-send-email-jlayton@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1364390288-30968-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1364390288-30968-1-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: akpm@linux-foundation.org
+Cc: linux-kernel@vger.kernel.org, tj@kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Sridhar Samudrala <sri@us.ibm.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
+(Note: compile-tested only)
 
-Hi All ,
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Sridhar Samudrala <sri@us.ibm.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org
+---
+ net/sctp/associola.c | 15 +--------------
+ net/sctp/protocol.c  |  2 +-
+ 2 files changed, 2 insertions(+), 15 deletions(-)
 
-I have a basic query regarding SCTP heartbeat re-transmission pattern .
-
-As per the RFC 4960 :
-
-Furthermore, when its peer is multi-homed, an endpoint SHOULD try to
-retransmit a chunk that timed out to an active destination transport
-address that is different from the last destination address to which the
-DATA chunk was sent.
-
-Also,
-When retransmitting data that timed out, if the endpoint is multi-homed, it
-should consider each source-destination address pair in its retransmission
-selection policy.  When retransmitting timed-out data, the endpoint should
-attempt to pick the most divergent source-destination pair from the
-original source-destination pair to which the packet was transmitted.
-
-Suppose if we have multihomed SCTP endpoints A and B .
-
-A                      B
-
-a.a.a.p               b.b.b.p
-a.a.a.s               b.b.b.s
-
-If we transmit heartbeat from a.a.a.s to b.b.b.s and it is not acknowledged
-so does it re-transmit it using the same src and destination or with
-a.a.a.p to b.b.b.s.
-
-Please help to understand .
-
-Thanks
-
-===-----===-----==Notice: The information contained in this e-mail
-message and/or attachments to it may contain 
-confidential or privileged information. If you are 
-not the intended recipient, any dissemination, use, 
-review, distribution, printing or copying of the 
-information contained in this e-mail message 
-and/or attachments to it are strictly prohibited. If 
-you have received this communication in error, 
-please notify us by reply e-mail or telephone and 
-immediately and permanently delete the message 
-and any attachments. Thank you
-
-
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index d2709e2..8b21563 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -66,13 +66,6 @@ static void sctp_assoc_bh_rcv(struct work_struct *work);
+ static void sctp_assoc_free_asconf_acks(struct sctp_association *asoc);
+ static void sctp_assoc_free_asconf_queue(struct sctp_association *asoc);
+ 
+-/* Keep track of the new idr low so that we don't re-use association id
+- * numbers too fast.  It is protected by they idr spin lock is in the
+- * range of 1 - INT_MAX.
+- */
+-static u32 idr_low = 1;
+-
+-
+ /* 1st Level Abstractions. */
+ 
+ /* Initialize a new association from provided memory. */
+@@ -1601,13 +1594,7 @@ int sctp_assoc_set_id(struct sctp_association *asoc, gfp_t gfp)
+ 	if (preload)
+ 		idr_preload(gfp);
+ 	spin_lock_bh(&sctp_assocs_id_lock);
+-	/* 0 is not a valid id, idr_low is always >= 1 */
+-	ret = idr_alloc(&sctp_assocs_id, asoc, idr_low, 0, GFP_NOWAIT);
+-	if (ret >= 0) {
+-		idr_low = ret + 1;
+-		if (idr_low = INT_MAX)
+-			idr_low = 1;
+-	}
++	ret = idr_alloc_cyclic(&sctp_assocs_id, asoc, 1, 0, GFP_NOWAIT);
+ 	spin_unlock_bh(&sctp_assocs_id_lock);
+ 	if (preload)
+ 		idr_preload_end();
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 1c2e46c..bc7b069 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -1352,7 +1352,7 @@ SCTP_STATIC __init int sctp_init(void)
+ 	sctp_max_outstreams   		= SCTP_DEFAULT_OUTSTREAMS;
+ 
+ 	/* Initialize handle used for association ids. */
+-	idr_init(&sctp_assocs_id);
++	idr_init_cyclic(&sctp_assocs_id, 1);
+ 
+ 	limit = nr_free_buffer_pages() / 8;
+ 	limit = max(limit, 128UL);
+-- 
+1.7.11.7
 
