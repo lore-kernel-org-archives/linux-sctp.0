@@ -1,19 +1,17 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 09 Apr 2013 17:21:56 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 09 Apr 2013 18:04:29 +0000
 Subject: Re: [PATCH net-next] net: sctp: introduce uapi header for sctp
-Message-Id: <20130409.132156.1556520014623362577.davem@davemloft.net>
+Message-Id: <20130409180429.GC11337@neilslaptop.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1365522841-19549-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1365522841-19549-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dborkman@redhat.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, nhorman@tuxdriver.com, vyasevich@gmail.com
+To: Daniel Borkmann <dborkman@redhat.com>
+Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>
 
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Tue,  9 Apr 2013 17:54:01 +0200
-
+On Tue, Apr 09, 2013 at 05:54:01PM +0200, Daniel Borkmann wrote:
 > This patch introduces an UAPI header for the SCTP protocol,
 > so that we can facilitate the maintenance and development of
 > user land applications or libraries, in particular in terms
@@ -31,5 +29,5 @@ Date: Tue,  9 Apr 2013 17:54:01 +0200
 > Cc: Neil Horman <nhorman@tuxdriver.com>
 > Cc: Vlad Yasevich <vyasevich@gmail.com>
 > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-
-This looks great, applied, thanks Daniel.
+Yup, Thanks Daniel.  Davids already applied it, but FWIW
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
