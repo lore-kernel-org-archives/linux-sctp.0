@@ -1,54 +1,97 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Wed, 17 Apr 2013 15:44:11 +0000
-Subject: Re: [PATCH net-next 4/9] net: sctp: sctp_outq: consolidate chars into bitfield
-Message-Id: <516EC34B.1040503@gmail.com>
+From: Dilip Daya <dilip.daya@hp.com>
+Date: Thu, 11 Apr 2013 19:49:56 +0000
+Subject: [PATCH v2] sctp: Add buffer utilization fields to /proc/net/sctp/assocs
+Message-Id: <1365709796.14620.43.camel@pro6455b.example.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1366146438-8815-1-git-send-email-dborkman@redhat.com> <1366146438-8815-5-git-send-email-dborkman@redhat.com> <AE90C24D6B3A694183C094C60CF0A2F6026B71DC@saturn3.aculab.com> <516E6ABD.2040904@redhat.com>
-In-Reply-To: <516E6ABD.2040904@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: David Laight <David.Laight@ACULAB.COM>, davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Daniel Borkmann <dborkman@redhat.com>
 
-On 04/17/2013 05:26 AM, Daniel Borkmann wrote:
-> On 04/17/2013 10:43 AM, David Laight wrote:
->>>       __u32 outstanding_bytes;
->>>
->>> -    /* Are we doing fast-rtx on this queue */
->>> -    char fast_rtx;
->>> -
->>> -    /* Corked? */
->>> -    char cork;
->>> -
->>> -    /* Is this structure empty?  */
->>> -    char empty;
->>> +    __u8 fast_rtx:1,    /* Are we doing fast-rtx on this queue */
->>> +         cork:1,        /* Corked? */
->>> +         empty:1;        /* Is this structure empty?  */
->>>   };
->>
->> Use of bitfields just makes the code slower.
->> The only real excuse for using them is to reduce the size
->> of a structure that is allocated a lot.
->
-> sctp_outq is _embedded_ into an sctp_association structure, which
-> has [size: 2280, cachelines: 36, members: 76]! A next step would be
-> to try to reorder its elements carefully and see if we can reduce
-> the size by filling some holes.
+From: Dilip Daya <dilip.daya@hp.com>
 
-I remember attempting this undertaking that led me down the rabbit hole 
-so fast that my head started to spin.  It is a badly needed project, but 
-be prepared to spend a lot of time on it.
+sctp: Add buffer utilization fields to /proc/net/sctp/assocs
 
-Not sure if the space saving is worth the bad code generated for 
-bit-fields, especially considering that empty and cork are used on 
-almost every packet.
+This patch adds the following fields to /proc/net/sctp/assocs output:
 
--vlad
+	- sk->sk_wmem_alloc    (transmit queue bytes committed)
+	- sk->sk_wmem_queued   (persistent queue size)
+	- sk->sk_sndbuf        (size of send buffer in bytes)
+	- sk->sk_rcvbuf        (size of receive buffer in bytes)
 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Patch applies to v3.8.6 and v3.9-rc6.
+
+When small DATA chunks containing 136 bytes data are sent the TX_QUEUE
+(assoc->sndbuf_used) reaches a maximum of 40.9% of sk_sndbuf value when
+peer.rwnd = 0. This was diagnosed from sk_wmem_alloc value reaching maximum
+value of sk_sndbuf.
+
+TX_QUEUE (assoc->sndbuf_used), sk_wmem_alloc and sk_wmem_queued values are
+incremented in sctp_set_owner_w() for outgoing data chunks. Having access to
+the above values in /proc/net/sctp/assocs will provide a better understanding
+of SCTP buffer management.
+
+With patch applied, example output when peer.rwnd = 0
+
+where:
+    ASSOC ffff880132298000 is sender
+          ffff880125343000 is receiver
+
+ ASSOC           SOCK            STY SST ST  HBKT ASSOC-ID TX_QUEUE RX_QUEUE \
+ffff880132298000 ffff880124a0a0c0 2   1   3  29325    1      214656        0 \
+ffff880125343000 ffff8801237d7700 2   1   3  36210    2           0   524520 \
+
+UID   INODE LPORT  RPORT LADDRS <-> RADDRS       HBINT   INS  OUTS \
+  0   25108 3455   3456  *10.4.8.3 <-> *10.5.8.3  7500     2     2 \
+  0   27819 3456   3455  *10.5.8.3 <-> *10.4.8.3  7500     2     2 \
+
+MAXRT T1X  T2X     RTXC sk_wmem_alloc sk_wmem_queued sk_sndbuf sk_rcvbuf
+    4   0   0        72      525633         440320      524288    524288
+    4   0   0         0           1              0      524288    524288
+
+v2: Not changing spacing between the fields.
+
+Signed-off-by: Dilip Daya <dilip.daya@hp.com>
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+---
+ net/sctp/proc.c |   12 +++++++++---
+ 1 files changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+index ab3bba8..80175cd 100644
+--- a/net/sctp/proc.c
++++ b/net/sctp/proc.c
+@@ -295,7 +295,8 @@ static void * sctp_assocs_seq_start(struct seq_file *seq, loff_t *pos)
+ 		seq_printf(seq, " ASSOC     SOCK   STY SST ST HBKT "
+ 				"ASSOC-ID TX_QUEUE RX_QUEUE UID INODE LPORT "
+ 				"RPORT LADDRS <-> RADDRS "
+-				"HBINT INS OUTS MAXRT T1X T2X RTXC\n");
++				"HBINT INS OUTS MAXRT T1X T2X RTXC "
++				"sk_wmem_alloc sk_wmem_queued sk_sndbuf sk_rcvbuf\n");
+ 
+ 	return (void *)pos;
+ }
+@@ -349,11 +350,16 @@ static int sctp_assocs_seq_show(struct seq_file *seq, void *v)
+ 		sctp_seq_dump_local_addrs(seq, epb);
+ 		seq_printf(seq, "<-> ");
+ 		sctp_seq_dump_remote_addrs(seq, assoc);
+-		seq_printf(seq, "\t%8lu %5d %5d %4d %4d %4d %8d ",
++		seq_printf(seq, "\t%8lu %5d %5d %4d %4d %4d %8d "
++						"%8d %8d %8d %8d",
+ 			assoc->hbinterval, assoc->c.sinit_max_instreams,
+ 			assoc->c.sinit_num_ostreams, assoc->max_retrans,
+ 			assoc->init_retries, assoc->shutdown_retries,
+-			assoc->rtx_data_chunks);
++			assoc->rtx_data_chunks,
++			atomic_read(&sk->sk_wmem_alloc),
++			sk->sk_wmem_queued,
++			sk->sk_sndbuf,
++			sk->sk_rcvbuf);
+ 		seq_printf(seq, "\n");
+ 	}
+ 	read_unlock(&head->lock);
+-- 
+1.5.6.5
+
 
