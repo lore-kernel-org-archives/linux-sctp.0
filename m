@@ -1,29 +1,37 @@
 From: David Miller <davem@davemloft.net>
-Date: Fri, 12 Apr 2013 23:28:00 +0000
+Date: Fri, 12 Apr 2013 23:29:29 +0000
 Subject: Re: [PATCH v3] sctp: Add buffer utilization fields to /proc/net/sctp/assocs
-Message-Id: <20130412.192800.2206884577519855725.davem@davemloft.net>
+Message-Id: <20130412.192929.1554590427271186672.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1365808931.6961.14.camel@pro6455b.example.com>
-In-Reply-To: <1365808931.6961.14.camel@pro6455b.example.com>
+	<20130412.192800.2206884577519855725.davem@davemloft.net>
+In-Reply-To: <20130412.192800.2206884577519855725.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: dilip.daya@hp.com
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, nhorman@tuxdriver.com, dborkman@redhat.com
 
-From: Dilip Daya <dilip.daya@hp.com>
-Date: Fri, 12 Apr 2013 19:22:11 -0400
-
-> From: Dilip Daya <dilip.daya@hp.com>
-> 
-> This patch adds the following fields to /proc/net/sctp/assocs output:
-> 
-> 	- sk->sk_wmem_alloc as "wmema"	(transmit queue bytes committed)
-> 	- sk->sk_wmem_queued as "wmemq"	(persistent queue size)
-> 	- sk->sk_sndbuf as "sndbuf"	(size of send buffer in bytes)
-> 	- sk->sk_rcvbuf as "rcvbuf"	(size of receive buffer in bytes)
- ...
-> Signed-off-by: Dilip Daya <dilip.daya@hp.com>
-> Acked-by: Neil Horman <nhorman@tuxdriver.com>
-
-Looks good, applied, thanks.
+RnJvbTogRGF2aWQgTWlsbGVyIDxkYXZlbUBkYXZlbWxvZnQubmV0Pg0KRGF0ZTogRnJpLCAxMiBB
+cHIgMjAxMyAxOToyODowMCAtMDQwMCAoRURUKQ0KDQo+IExvb2tzIGdvb2QsIGFwcGxpZWQsIHRo
+YW5rcy4NCg0KQWN0dWFsbHksIG5vLCB0aGlzIGlzIGNvbXBsZXRlbHkgYnJva2VuOg0KDQpuZXQv
+c2N0cC9wcm9jLmM6IEluIGZ1bmN0aW9uIKFzY3RwX2Fzc29jc19zZXFfc2hvd6I6DQpuZXQvc2N0
+cC9wcm9jLmM6MzYzOjE4OiBlcnJvcjogZXhwZWN0ZWQgoSmiIGJlZm9yZSChO6IgdG9rZW4NCm5l
+dC9zY3RwL3Byb2MuYzozNjU6Mjogd2FybmluZzogZm9ybWF0IKElbHWiIGV4cGVjdHMgYXJndW1l
+bnQgb2YgdHlwZSChbG9uZyB1bnNpZ25lZCBpbnSiLCBidXQgYXJndW1lbnQgMyBoYXMgdHlwZSCh
+aW50oiBbLVdmb3JtYXRdDQpuZXQvc2N0cC9wcm9jLmM6MzY1OjI6IHdhcm5pbmc6IGZvcm1hdCCh
+JWSiIGV4cGVjdHMgYSBtYXRjaGluZyChaW50oiBhcmd1bWVudCBbLVdmb3JtYXRdDQpuZXQvc2N0
+cC9wcm9jLmM6MzY1OjI6IHdhcm5pbmc6IGZvcm1hdCChJWSiIGV4cGVjdHMgYSBtYXRjaGluZyCh
+aW50oiBhcmd1bWVudCBbLVdmb3JtYXRdDQpuZXQvc2N0cC9wcm9jLmM6MzY1OjI6IHdhcm5pbmc6
+IGZvcm1hdCChJWSiIGV4cGVjdHMgYSBtYXRjaGluZyChaW50oiBhcmd1bWVudCBbLVdmb3JtYXRd
+DQpuZXQvc2N0cC9wcm9jLmM6MzY1OjI6IHdhcm5pbmc6IGZvcm1hdCChJWSiIGV4cGVjdHMgYSBt
+YXRjaGluZyChaW50oiBhcmd1bWVudCBbLVdmb3JtYXRdDQpuZXQvc2N0cC9wcm9jLmM6MzY1OjI6
+IHdhcm5pbmc6IGZvcm1hdCChJWSiIGV4cGVjdHMgYSBtYXRjaGluZyChaW50oiBhcmd1bWVudCBb
+LVdmb3JtYXRdDQpuZXQvc2N0cC9wcm9jLmM6MzY1OjI6IHdhcm5pbmc6IGZvcm1hdCChJWSiIGV4
+cGVjdHMgYSBtYXRjaGluZyChaW50oiBhcmd1bWVudCBbLVdmb3JtYXRdDQpuZXQvc2N0cC9wcm9j
+LmM6MzY1OjI6IGVycm9yOiBleHBlY3RlZCChO6IgYmVmb3JlIKF9oiB0b2tlbg0KbWFrZVsxXTog
+KioqIFtuZXQvc2N0cC9wcm9jLm9dIEVycm9yIDENCm1ha2U6ICoqKiBbbmV0L3NjdHAvcHJvYy5v
+XSBFcnJvciAyDQoNCllvdSBkaWRuJ3QgZXZlbiBjb21waWxlIHRlc3QgdGhpcy4NCg0KSSB0aGlu
+ayBJJ2xsIGlnbm9yZSB5b3VyIHN1Ym1pc3Npb25zIGZvciBhIHdoaWxlLCB5b3VyIGFuYWx5c2lz
+IGlzDQpleHRyZW1lbHkgcG9vciBpZiB5b3UgZG9uJ3QgdGhpbmsgeW91IG5lZWQgdG8gYnVpbGQg
+dGVzdCBhZnRlcg0KInNpbXBsZSIgZWRpdHMgb2YgeW91ciBjaGFuZ2VzLg0K
