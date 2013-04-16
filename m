@@ -1,67 +1,41 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 17 Apr 2013 15:46:21 +0000
-Subject: Re: [PATCH net-next 8/9] net: sctp: sctp_ulpq: remove 'malloced' struct member
-Message-Id: <20130417154621.GK5149@hmsreliant.think-freely.org>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Tue, 16 Apr 2013 21:07:09 +0000
+Subject: [PATCH net-next 0/9] Minor SCTP cleanups all over the place
+Message-Id: <1366146438-8815-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1366146438-8815-1-git-send-email-dborkman@redhat.com>
- <1366146438-8815-9-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1366146438-8815-9-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Tue, Apr 16, 2013 at 11:07:17PM +0200, Daniel Borkmann wrote:
-> The structure sctp_ulpq is embedded into sctp_association and never
-> separately allocated, also ulpq->malloced is always 0, so that
-> kfree() is never called. Therefore, remove this code.
-> 
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-> ---
->  include/net/sctp/ulpqueue.h | 1 -
->  net/sctp/ulpqueue.c         | 3 ---
->  2 files changed, 4 deletions(-)
-> 
-> diff --git a/include/net/sctp/ulpqueue.h b/include/net/sctp/ulpqueue.h
-> index ff1b8ba7..00e50ba 100644
-> --- a/include/net/sctp/ulpqueue.h
-> +++ b/include/net/sctp/ulpqueue.h
-> @@ -49,7 +49,6 @@
->  
->  /* A structure to carry information to the ULP (e.g. Sockets API) */
->  struct sctp_ulpq {
-> -	char malloced;
->  	char pd_mode;
->  	struct sctp_association *asoc;
->  	struct sk_buff_head reasm;
-> diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
-> index 0fd5b3d..04e3d47 100644
-> --- a/net/sctp/ulpqueue.c
-> +++ b/net/sctp/ulpqueue.c
-> @@ -68,7 +68,6 @@ struct sctp_ulpq *sctp_ulpq_init(struct sctp_ulpq *ulpq,
->  	skb_queue_head_init(&ulpq->reasm);
->  	skb_queue_head_init(&ulpq->lobby);
->  	ulpq->pd_mode  = 0;
-> -	ulpq->malloced = 0;
->  
->  	return ulpq;
->  }
-> @@ -96,8 +95,6 @@ void sctp_ulpq_flush(struct sctp_ulpq *ulpq)
->  void sctp_ulpq_free(struct sctp_ulpq *ulpq)
->  {
->  	sctp_ulpq_flush(ulpq);
-> -	if (ulpq->malloced)
-> -		kfree(ulpq);
->  }
->  
->  /* Process an incoming DATA chunk.  */
-> -- 
-> 1.7.11.7
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+That's a batch of cleanups for the SCTP protocol. Probably all
+deadly boring and trivial patches, but it always bugs me. :-) I
+guess this is still from the very SCTP beginning in Linux. Well,
+at least we can now remove 41 lines of code in total. lksctp-tools
+test suite run through without problems.
+
+Daniel Borkmann (9):
+  net: sctp: sctp_ssnmap: remove 'malloced' element from struct
+  net: sctp: sctp_inq: remove dead code
+  net: sctp: sctp_outq: remove 'malloced' from its struct
+  net: sctp: sctp_outq: consolidate chars into bitfield
+  net: sctp: outqueue: simplify sctp_outq_uncork function
+  net: sctp: sctp_transport: remove unused variable
+  net: sctp: sctp_bind_addr: remove dead code
+  net: sctp: sctp_ulpq: remove 'malloced' struct member
+  net: sctp: sctp_ulpq: do not use char as a struct member
+
+ include/net/sctp/structs.h  | 24 ++++--------------------
+ include/net/sctp/ulpqueue.h |  3 +--
+ net/sctp/bind_addr.c        |  7 -------
+ net/sctp/inqueue.c          |  7 -------
+ net/sctp/outqueue.c         | 11 ++---------
+ net/sctp/ssnmap.c           | 23 ++++++++++++-----------
+ net/sctp/transport.c        |  1 -
+ net/sctp/ulpqueue.c         |  3 ---
+ 8 files changed, 19 insertions(+), 60 deletions(-)
+
+-- 
+1.7.11.7
+
