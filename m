@@ -1,49 +1,39 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 12 Apr 2013 19:09:56 +0000
-Subject: Re: [PATCH v2] sctp: Add buffer utilization fields to /proc/net/sctp/assocs
-Message-Id: <20130412.150956.828923278890458461.davem@davemloft.net>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Tue, 16 Apr 2013 21:07:18 +0000
+Subject: [PATCH net-next 9/9] net: sctp: sctp_ulpq: do not use char as a struct member
+Message-Id: <1366146438-8815-10-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1365709796.14620.43.camel@pro6455b.example.com>
-In-Reply-To: <1365709796.14620.43.camel@pro6455b.example.com>
+References: <1366146438-8815-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1366146438-8815-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dilip.daya@hp.com
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, nhorman@tuxdriver.com, dborkman@redhat.com
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-From: Dilip Daya <dilip.daya@hp.com>
-Date: Thu, 11 Apr 2013 15:49:56 -0400
+Replace char with a more appropriate __u8 bitfield for pd_mode.
 
-> From: Dilip Daya <dilip.daya@hp.com>
-> 
-> sctp: Add buffer utilization fields to /proc/net/sctp/assocs
-> 
-> This patch adds the following fields to /proc/net/sctp/assocs output:
-> 
-> 	- sk->sk_wmem_alloc    (transmit queue bytes committed)
-> 	- sk->sk_wmem_queued   (persistent queue size)
-> 	- sk->sk_sndbuf        (size of send buffer in bytes)
-> 	- sk->sk_rcvbuf        (size of receive buffer in bytes)
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ include/net/sctp/ulpqueue.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Please use smaller field names, perhaps "wmema wmemq sndbuf rcvbuf"
+diff --git a/include/net/sctp/ulpqueue.h b/include/net/sctp/ulpqueue.h
+index 00e50ba..a2bebd4 100644
+--- a/include/net/sctp/ulpqueue.h
++++ b/include/net/sctp/ulpqueue.h
+@@ -49,10 +49,10 @@
+ 
+ /* A structure to carry information to the ULP (e.g. Sockets API) */
+ struct sctp_ulpq {
+-	char pd_mode;
+ 	struct sctp_association *asoc;
+ 	struct sk_buff_head reasm;
+ 	struct sk_buff_head lobby;
++	__u8 pd_mode:1;
+ };
+ 
+ /* Prototypes. */
+-- 
+1.7.11.7
 
-> Patch applies to v3.8.6 and v3.9-rc6.
-
-This does not belong in the commit message proper, it belongs in the
-ancillary information you provide after the "---" delimeter.
-
-> v2: Not changing spacing between the fields.
-
-Similarly this supplemental information belongs after "---"
-
-> +		seq_printf(seq, "\t%8lu %5d %5d %4d %4d %4d %8d "
-> +						"%8d %8d %8d %8d",
-
-This is not indented properly, the second line should have the "
-appearing at the first column after the openning parenthesis
-of the seq_printf() call.
-
-The goal is not to exclusively use TAB characters to indent the
-line into outer space, the goal is to use the appropriate of
-TAB, then space, characters as necessary to indent the code to
-the correct column.
