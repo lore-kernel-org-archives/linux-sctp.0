@@ -1,122 +1,59 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 17 Apr 2013 19:18:54 +0000
-Subject: Re: [PATCH net-next 1/9] net: sctp: sctp_ssnmap: remove 'malloced' element from struct
-Message-Id: <20130417191854.GN5149@hmsreliant.think-freely.org>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Tue, 16 Apr 2013 21:07:17 +0000
+Subject: [PATCH net-next 8/9] net: sctp: sctp_ulpq: remove 'malloced' struct member
+Message-Id: <1366146438-8815-9-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1366146438-8815-1-git-send-email-dborkman@redhat.com>
- <1366146438-8815-2-git-send-email-dborkman@redhat.com>
- <20130417124539.GA5149@hmsreliant.think-freely.org>
- <516E9B12.3040300@redhat.com>
- <516ED91E.1030103@redhat.com>
-In-Reply-To: <516ED91E.1030103@redhat.com>
+In-Reply-To: <1366146438-8815-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, David Laight <David.Laight@ACULAB.COM>
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Wed, Apr 17, 2013 at 07:17:18PM +0200, Daniel Borkmann wrote:
-> On 04/17/2013 02:52 PM, Daniel Borkmann wrote:
-> >On 04/17/2013 02:45 PM, Neil Horman wrote:
-> >>On Tue, Apr 16, 2013 at 11:07:10PM +0200, Daniel Borkmann wrote:
-> >>>sctp_ssnmap_init() can only be called from sctp_ssnmap_new()
-> >>>where malloced is always set to 1. Thus, when we call
-> >>>sctp_ssnmap_free() the test for map->malloced evaluates always
-> >>>to true.
-> >>>
-> >>>Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-> >>>---
-> >>>  include/net/sctp/structs.h |  1 -
-> >>>  net/sctp/ssnmap.c          | 23 ++++++++++++-----------
-> >>>  2 files changed, 12 insertions(+), 12 deletions(-)
-> >>>
-> >>>diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-> >>>index e12aa77..3c1bb8d 100644
-> >>>--- a/include/net/sctp/structs.h
-> >>>+++ b/include/net/sctp/structs.h
-> >>>@@ -399,7 +399,6 @@ struct sctp_stream {
-> >>>  struct sctp_ssnmap {
-> >>>      struct sctp_stream in;
-> >>>      struct sctp_stream out;
-> >>>-    int malloced;
-> >>>  };
-> >>>
-> >>>  struct sctp_ssnmap *sctp_ssnmap_new(__u16 in, __u16 out,
-> >>>diff --git a/net/sctp/ssnmap.c b/net/sctp/ssnmap.c
-> >>>index 825ea94..da86035 100644
-> >>>--- a/net/sctp/ssnmap.c
-> >>>+++ b/net/sctp/ssnmap.c
-> >>>@@ -74,7 +74,6 @@ struct sctp_ssnmap *sctp_ssnmap_new(__u16 in, __u16 out,
-> >>>      if (!sctp_ssnmap_init(retval, in, out))
-> >>>          goto fail_map;
-> >>>
-> >>>-    retval->malloced = 1;
-> >>>      SCTP_DBG_OBJCNT_INC(ssnmap);
-> >>>
-> >>>      return retval;
-> >>>@@ -118,14 +117,16 @@ void sctp_ssnmap_clear(struct sctp_ssnmap *map)
-> >>>  /* Dispose of a ssnmap.  */
-> >>>  void sctp_ssnmap_free(struct sctp_ssnmap *map)
-> >>>  {
-> >>>-    if (map && map->malloced) {
-> >>>-        int size;
-> >>>-
-> >>>-        size = sctp_ssnmap_size(map->in.len, map->out.len);
-> >>>-        if (size <= KMALLOC_MAX_SIZE)
-> >>>-            kfree(map);
-> >>>-        else
-> >>>-            free_pages((unsigned long)map, get_order(size));
-> >>>-        SCTP_DBG_OBJCNT_DEC(ssnmap);
-> >>>-    }
-> >>>+    int size;
-> >>>+
-> >>>+    if (unlikely(!map))
-> >>>+        return;
-> >>>+
-> >>>+    size = sctp_ssnmap_size(map->in.len, map->out.len);
-> >>>+    if (size <= KMALLOC_MAX_SIZE)
-> >>>+        kfree(map);
-> >>>+    else
-> >>>+        free_pages((unsigned long)map, get_order(size));
-> >>>+
-> >>>+    SCTP_DBG_OBJCNT_DEC(ssnmap);
-> >>>  }
-> >>>--
-> >>>1.7.11.7
-> >>>
-> >>I definately like what you're doing here, as the use of the ->malloced member
-> >>always struck me as a half-assed way to try and avoid a double free that someone
-> >>couldn't track down during this code's initial development.  That said, I'm
-> >>wondering if the !map check is going to fail at some point, given that the call
-> >>site for sctp_ssnmap_free never sets asoc->ssnmap to NULL after its call.  Maybe
-> >>worthwhile adding such a NULL assoginment to the call site to ensure that we
-> >>don't accidentally trigger a double free?
-> >
-> >I'll test that with lksctp-tools suite and come back to you today.
-> 
-> Just did that.
-> 
-> I've poisoned the pointers, so that they would throw a WARN_ON() if they have
-> already been seen. Also, I've put a WARN_ON() before sctp_ssnmap_new() in
-> sctp_process_init(), in case asoc->ssnmap was not NULL. I've run the lksctp-tools
-> suite for v4/v6 and nothing was thrown, also it all passed.
-> 
-> That said, I think that the !map check is there because we init the asoc first
-> with a NULL ssnmap. I suggest, if Dave wants to and if there are no other
-> objections, that we could apply to net-next the patches ...
-> 
->   * [1/9] http://patchwork.ozlabs.org/patch/237101/
->   * [2/9] http://patchwork.ozlabs.org/patch/237102/
->   * [3/9] http://patchwork.ozlabs.org/patch/237103/
->   * [5/9] http://patchwork.ozlabs.org/patch/237105/
->   * [6/9] http://patchwork.ozlabs.org/patch/237109/
->   * [7/9] http://patchwork.ozlabs.org/patch/237106/
->   * [8/9] http://patchwork.ozlabs.org/patch/237107/
-> 
-> ... as is. I've just tested it, they apply cleanly on top of each other without
-> the missing. Alternatively, I could resend the set without the two that we cut
-> out (nr 4 and 9). How you prefer, let me know.
-> 
-Dave's the final word, but I think the typical workflow is a resend to the list.
+The structure sctp_ulpq is embedded into sctp_association and never
+separately allocated, also ulpq->malloced is always 0, so that
+kfree() is never called. Therefore, remove this code.
 
-Neil
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ include/net/sctp/ulpqueue.h | 1 -
+ net/sctp/ulpqueue.c         | 3 ---
+ 2 files changed, 4 deletions(-)
+
+diff --git a/include/net/sctp/ulpqueue.h b/include/net/sctp/ulpqueue.h
+index ff1b8ba7..00e50ba 100644
+--- a/include/net/sctp/ulpqueue.h
++++ b/include/net/sctp/ulpqueue.h
+@@ -49,7 +49,6 @@
+ 
+ /* A structure to carry information to the ULP (e.g. Sockets API) */
+ struct sctp_ulpq {
+-	char malloced;
+ 	char pd_mode;
+ 	struct sctp_association *asoc;
+ 	struct sk_buff_head reasm;
+diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
+index 0fd5b3d..04e3d47 100644
+--- a/net/sctp/ulpqueue.c
++++ b/net/sctp/ulpqueue.c
+@@ -68,7 +68,6 @@ struct sctp_ulpq *sctp_ulpq_init(struct sctp_ulpq *ulpq,
+ 	skb_queue_head_init(&ulpq->reasm);
+ 	skb_queue_head_init(&ulpq->lobby);
+ 	ulpq->pd_mode  = 0;
+-	ulpq->malloced = 0;
+ 
+ 	return ulpq;
+ }
+@@ -96,8 +95,6 @@ void sctp_ulpq_flush(struct sctp_ulpq *ulpq)
+ void sctp_ulpq_free(struct sctp_ulpq *ulpq)
+ {
+ 	sctp_ulpq_flush(ulpq);
+-	if (ulpq->malloced)
+-		kfree(ulpq);
+ }
+ 
+ /* Process an incoming DATA chunk.  */
+-- 
+1.7.11.7
+
