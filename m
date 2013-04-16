@@ -1,63 +1,78 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Thu, 11 Apr 2013 18:44:46 +0000
-Subject: Re: [PATCH] sctp: Add buffer utilization fields to /proc/net/sctp/assocs
-Message-Id: <5167049E.4020609@redhat.com>
+Date: Tue, 16 Apr 2013 21:07:10 +0000
+Subject: [PATCH net-next 1/9] net: sctp: sctp_ssnmap: remove 'malloced' element from struct
+Message-Id: <1366146438-8815-2-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4BC2A2E3B1AB5441B4415258B8908D4D10DBD103@G2W2530.americas.hpqcorp.net>
-In-Reply-To: <4BC2A2E3B1AB5441B4415258B8908D4D10DBD103@G2W2530.americas.hpqcorp.net>
+References: <1366146438-8815-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1366146438-8815-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On 04/11/2013 07:30 PM, Neil Horman wrote:
-> On Thu, Apr 11, 2013 at 01:04:59PM -0400, Dilip Daya wrote:
->> On Thu, 2013-04-11 at 09:28 -0400, Neil Horman wrote:
->>> On Wed, Apr 10, 2013 at 09:02:19PM +0000, Daya, Dilip (Telco Linux) wrote:
->>>> From: Dilip Daya <dilip.daya@hp.com>
->>>>
->>>> This patch adds the following fields to /proc/net/sctp/assocs output:
->>>>
->>>> 	- sk->sk_wmem_alloc      (transmit queue bytes committed)
->>>> 	- sk->sk_wmem_queued  (persistent queue size)
->>>> 	- sk->sk_sndbuf              (size of send buffer in bytes)
->>>> 	- sk->sk_rcvbuf               (size of receive buffer in bytes)
->>>>
->>>> When small DATA chunks containing 136 bytes data are sent the TX_QUEUE
->>>> (assoc->sndbuf_used) reaches a maximum of 40.9% of sk_sndbuf value when
->>>> peer.rwnd = 0. This was diagnosed from sk_wmem_alloc value reaching maximum
->>>> value of sk_sndbuf.
->>>>
->>>> TX_QUEUE (assoc->sndbuf_used), sk_wmem_alloc and sk_wmem_queued values are
->>>> incremented in sctp_set_owner_w() for outgoing data chunks. Having access to
->>>> the above values in /proc/net/sctp/assocs will provide a better understanding
->>>> of SCTP buffer management.
->>>>
->>>> With patch applied, example output when peer.rwnd = 0
->>>>
->>>> where:
->>>>      ASSOC ffff880132298000 is sender
->>>>                   ffff880125343000 is receiver
->>>>
->>>> # cat /proc/net/sctp/assocs
->>>>   ASSOC           SOCK            STY SST ST  HBKT ASSOC-ID TX_QUEUE RX_QUEUE \
->>>> ffff880132298000 ffff880124a0a0c0 2   1   3  29325    1      214656        0 \
->>>> ffff880125343000 ffff8801237d7700 2   1   3  36210    2           0   524520 \
->>>>
->>>> UID   INODE LPORT  RPORT LADDRS <-> RADDRS       HBINT   INS  OUTS \
->>>>    0   25108 3455   3456  *10.4.8.3 <-> *10.5.8.3  7500     2     2 \
->>>>    0   27819 3456   3455  *10.5.8.3 <-> *10.4.8.3  7500     2     2 \
->>>>
->>>> MAXRT T1X  T2X     RTXC sk_wmem_alloc sk_wmem_queued sk_sndbuf sk_rcvbuf
->>>>      4   0   0        72      525633         440320      524288    524288
->>>>      4   0   0         0           1              0      524288    524288
->>>>
->>>>
->>>>
->>>> Signed-off-by: Dilip Daya <dilip.daya@hp.com>
-> Its still a bit risky, but we've done it before, so I don't see a problem with
-> this at this point.  Thanks!
-> Acked-by: Neil Horman <nhorman@tuxdriver.com>
+sctp_ssnmap_init() can only be called from sctp_ssnmap_new()
+where malloced is always set to 1. Thus, when we call
+sctp_ssnmap_free() the test for map->malloced evaluates always
+to true.
 
-Dilip, you also need to CC netdev at least, otherwise your patch will not
-land in patchwork, so that Dave can pick it up.
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ include/net/sctp/structs.h |  1 -
+ net/sctp/ssnmap.c          | 23 ++++++++++++-----------
+ 2 files changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index e12aa77..3c1bb8d 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -399,7 +399,6 @@ struct sctp_stream {
+ struct sctp_ssnmap {
+ 	struct sctp_stream in;
+ 	struct sctp_stream out;
+-	int malloced;
+ };
+ 
+ struct sctp_ssnmap *sctp_ssnmap_new(__u16 in, __u16 out,
+diff --git a/net/sctp/ssnmap.c b/net/sctp/ssnmap.c
+index 825ea94..da86035 100644
+--- a/net/sctp/ssnmap.c
++++ b/net/sctp/ssnmap.c
+@@ -74,7 +74,6 @@ struct sctp_ssnmap *sctp_ssnmap_new(__u16 in, __u16 out,
+ 	if (!sctp_ssnmap_init(retval, in, out))
+ 		goto fail_map;
+ 
+-	retval->malloced = 1;
+ 	SCTP_DBG_OBJCNT_INC(ssnmap);
+ 
+ 	return retval;
+@@ -118,14 +117,16 @@ void sctp_ssnmap_clear(struct sctp_ssnmap *map)
+ /* Dispose of a ssnmap.  */
+ void sctp_ssnmap_free(struct sctp_ssnmap *map)
+ {
+-	if (map && map->malloced) {
+-		int size;
+-
+-		size = sctp_ssnmap_size(map->in.len, map->out.len);
+-		if (size <= KMALLOC_MAX_SIZE)
+-			kfree(map);
+-		else
+-			free_pages((unsigned long)map, get_order(size));
+-		SCTP_DBG_OBJCNT_DEC(ssnmap);
+-	}
++	int size;
++
++	if (unlikely(!map))
++		return;
++
++	size = sctp_ssnmap_size(map->in.len, map->out.len);
++	if (size <= KMALLOC_MAX_SIZE)
++		kfree(map);
++	else
++		free_pages((unsigned long)map, get_order(size));
++
++	SCTP_DBG_OBJCNT_DEC(ssnmap);
+ }
+-- 
+1.7.11.7
+
