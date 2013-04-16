@@ -1,24 +1,42 @@
-From: David Miller <davem@davemloft.net>
-Date: Sun, 07 Apr 2013 21:04:39 +0000
-Subject: Re: [PATCH -next] sctp: fix error return code in __sctp_connect()
-Message-Id: <20130407.170439.70609816272776228.davem@davemloft.net>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Tue, 16 Apr 2013 21:07:14 +0000
+Subject: [PATCH net-next 5/9] net: sctp: outqueue: simplify sctp_outq_uncork function
+Message-Id: <1366146438-8815-6-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAPgLHd-X5Qw64BnaSMr2ny6==jXGpRAYC7_1MGhP2v_GcVeApQ@mail.gmail.com>
-In-Reply-To: <CAPgLHd-X5Qw64BnaSMr2ny6==jXGpRAYC7_1MGhP2v_GcVeApQ@mail.gmail.com>
+References: <1366146438-8815-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1366146438-8815-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: weiyj.lk@gmail.com
-Cc: vyasevich@gmail.com, sri@us.ibm.com, nhorman@tuxdriver.com, yongjun_wei@trendmicro.com.cn, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-From: Wei Yongjun <weiyj.lk@gmail.com>
-Date: Wed, 3 Apr 2013 21:02:28 +0800
+Just a minor edit to simplify the function. No need for this
+error variable here.
 
-> From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
-> 
-> Fix to return a negative error code from the error handling
-> case instead of 0, as returned elsewhere in this function.
-> 
-> Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/outqueue.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-Applied.
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index d4c137e..32a4625 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -701,11 +701,10 @@ redo:
+ /* Cork the outqueue so queued chunks are really queued. */
+ int sctp_outq_uncork(struct sctp_outq *q)
+ {
+-	int error = 0;
+ 	if (q->cork)
+ 		q->cork = 0;
+-	error = sctp_outq_flush(q, 0);
+-	return error;
++
++	return sctp_outq_flush(q, 0);
+ }
+ 
+ 
+-- 
+1.7.11.7
+
