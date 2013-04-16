@@ -1,18 +1,64 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Wed, 17 Apr 2013 18:55:04 +0000
-Subject: Re: [PATCH net-next 0/9] Minor SCTP cleanups all over the place
-Message-Id: <516EF008.9000209@redhat.com>
+Date: Tue, 16 Apr 2013 21:07:11 +0000
+Subject: [PATCH net-next 2/9] net: sctp: sctp_inq: remove dead code
+Message-Id: <1366146438-8815-3-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1366146438-8815-1-git-send-email-dborkman@redhat.com> <20130417.141321.1161500597576212704.davem@davemloft.net>
-In-Reply-To: <20130417.141321.1161500597576212704.davem@davemloft.net>
+References: <1366146438-8815-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1366146438-8815-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
+To: davem@davemloft.net
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On 04/17/2013 08:13 PM, David Miller wrote:
+sctp_inq is never kmalloced, since it's integrated into sctp_ep_common
+and only initialized from eps and assocs. Therefore, remove the dead
+code from there.
 
-> All applied except for #4 and #9, thanks.
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ include/net/sctp/structs.h | 2 --
+ net/sctp/inqueue.c         | 7 -------
+ 2 files changed, 9 deletions(-)
 
-Thanks David !
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 3c1bb8d..125a19c 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -991,8 +991,6 @@ struct sctp_inq {
+ 	 * messages.
+ 	 */
+ 	struct work_struct immediate;
+-
+-	int malloced;	     /* Is this structure kfree()able?	*/
+ };
+ 
+ void sctp_inq_init(struct sctp_inq *);
+diff --git a/net/sctp/inqueue.c b/net/sctp/inqueue.c
+index 2d5ad28..3221d07 100644
+--- a/net/sctp/inqueue.c
++++ b/net/sctp/inqueue.c
+@@ -58,8 +58,6 @@ void sctp_inq_init(struct sctp_inq *queue)
+ 
+ 	/* Create a task for delivering data.  */
+ 	INIT_WORK(&queue->immediate, NULL);
+-
+-	queue->malloced = 0;
+ }
+ 
+ /* Release the memory associated with an SCTP inqueue.  */
+@@ -80,11 +78,6 @@ void sctp_inq_free(struct sctp_inq *queue)
+ 		sctp_chunk_free(queue->in_progress);
+ 		queue->in_progress = NULL;
+ 	}
+-
+-	if (queue->malloced) {
+-		/* Dump the master memory segment.  */
+-		kfree(queue);
+-	}
+ }
+ 
+ /* Put a new packet in an SCTP inqueue.
+-- 
+1.7.11.7
+
