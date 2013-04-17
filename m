@@ -1,59 +1,67 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Tue, 16 Apr 2013 21:07:17 +0000
-Subject: [PATCH net-next 8/9] net: sctp: sctp_ulpq: remove 'malloced' struct member
-Message-Id: <1366146438-8815-9-git-send-email-dborkman@redhat.com>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Wed, 17 Apr 2013 15:46:21 +0000
+Subject: Re: [PATCH net-next 8/9] net: sctp: sctp_ulpq: remove 'malloced' struct member
+Message-Id: <20130417154621.GK5149@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1366146438-8815-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1366146438-8815-1-git-send-email-dborkman@redhat.com>
+ <1366146438-8815-9-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1366146438-8815-9-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: Daniel Borkmann <dborkman@redhat.com>
+Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-The structure sctp_ulpq is embedded into sctp_association and never
-separately allocated, also ulpq->malloced is always 0, so that
-kfree() is never called. Therefore, remove this code.
-
-Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
----
- include/net/sctp/ulpqueue.h | 1 -
- net/sctp/ulpqueue.c         | 3 ---
- 2 files changed, 4 deletions(-)
-
-diff --git a/include/net/sctp/ulpqueue.h b/include/net/sctp/ulpqueue.h
-index ff1b8ba7..00e50ba 100644
---- a/include/net/sctp/ulpqueue.h
-+++ b/include/net/sctp/ulpqueue.h
-@@ -49,7 +49,6 @@
- 
- /* A structure to carry information to the ULP (e.g. Sockets API) */
- struct sctp_ulpq {
--	char malloced;
- 	char pd_mode;
- 	struct sctp_association *asoc;
- 	struct sk_buff_head reasm;
-diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
-index 0fd5b3d..04e3d47 100644
---- a/net/sctp/ulpqueue.c
-+++ b/net/sctp/ulpqueue.c
-@@ -68,7 +68,6 @@ struct sctp_ulpq *sctp_ulpq_init(struct sctp_ulpq *ulpq,
- 	skb_queue_head_init(&ulpq->reasm);
- 	skb_queue_head_init(&ulpq->lobby);
- 	ulpq->pd_mode  = 0;
--	ulpq->malloced = 0;
- 
- 	return ulpq;
- }
-@@ -96,8 +95,6 @@ void sctp_ulpq_flush(struct sctp_ulpq *ulpq)
- void sctp_ulpq_free(struct sctp_ulpq *ulpq)
- {
- 	sctp_ulpq_flush(ulpq);
--	if (ulpq->malloced)
--		kfree(ulpq);
- }
- 
- /* Process an incoming DATA chunk.  */
--- 
-1.7.11.7
-
+On Tue, Apr 16, 2013 at 11:07:17PM +0200, Daniel Borkmann wrote:
+> The structure sctp_ulpq is embedded into sctp_association and never
+> separately allocated, also ulpq->malloced is always 0, so that
+> kfree() is never called. Therefore, remove this code.
+> 
+> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+> ---
+>  include/net/sctp/ulpqueue.h | 1 -
+>  net/sctp/ulpqueue.c         | 3 ---
+>  2 files changed, 4 deletions(-)
+> 
+> diff --git a/include/net/sctp/ulpqueue.h b/include/net/sctp/ulpqueue.h
+> index ff1b8ba7..00e50ba 100644
+> --- a/include/net/sctp/ulpqueue.h
+> +++ b/include/net/sctp/ulpqueue.h
+> @@ -49,7 +49,6 @@
+>  
+>  /* A structure to carry information to the ULP (e.g. Sockets API) */
+>  struct sctp_ulpq {
+> -	char malloced;
+>  	char pd_mode;
+>  	struct sctp_association *asoc;
+>  	struct sk_buff_head reasm;
+> diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
+> index 0fd5b3d..04e3d47 100644
+> --- a/net/sctp/ulpqueue.c
+> +++ b/net/sctp/ulpqueue.c
+> @@ -68,7 +68,6 @@ struct sctp_ulpq *sctp_ulpq_init(struct sctp_ulpq *ulpq,
+>  	skb_queue_head_init(&ulpq->reasm);
+>  	skb_queue_head_init(&ulpq->lobby);
+>  	ulpq->pd_mode  = 0;
+> -	ulpq->malloced = 0;
+>  
+>  	return ulpq;
+>  }
+> @@ -96,8 +95,6 @@ void sctp_ulpq_flush(struct sctp_ulpq *ulpq)
+>  void sctp_ulpq_free(struct sctp_ulpq *ulpq)
+>  {
+>  	sctp_ulpq_flush(ulpq);
+> -	if (ulpq->malloced)
+> -		kfree(ulpq);
+>  }
+>  
+>  /* Process an incoming DATA chunk.  */
+> -- 
+> 1.7.11.7
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
