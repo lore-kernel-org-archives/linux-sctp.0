@@ -1,20 +1,11 @@
-From: "SYSTEM ADMINISTRATOR" <webmaster-service-upgrade@noreply.com>
-Date: Wed, 24 Apr 2013 00:42:16 +0000
-Subject: Restore Your Email Quota
-Message-Id: <55140.1366764136@noreply.com>
+From: "Dr.Liu Tang" <info@sbi.co.in>
+Date: Fri, 19 Apr 2013 23:56:42 +0000
+Subject: Matter of Urgency
+Message-Id: <20130420000007.126603D316D@mail.minpptrass.gob.ve>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: linux-sctp@vger.kernel.org
 
-You have reached the storage email quota limit of your mailbox.=20
-Please visit the below link to restore your email access.=20
-Click the below link to upgrade your account.=20
-http://www.webhostadministrator.com/
-
-Failure to comply might result in the de-activation of your account
-
-Thank you for your understanding.=20
-Webmaster Administrator=20
-Copyright =C2=A92013 | Webmail Helpdest Support Centre.
-
+I am Dr Liu Tang director of operations of the State Bank Of India.Business transaction for you reply for more details.Phone Number: +918826639568, Email: drliu.tang@dgoh.org
