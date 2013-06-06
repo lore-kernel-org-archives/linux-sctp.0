@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 06 Jun 2013 14:22:23 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Thu, 06 Jun 2013 14:39:52 +0000
 Subject: Re: [PATCH net v2] net: sctp: fix NULL pointer dereference in socket destruction
-Message-Id: <20130606142223.GA26373@hmsreliant.think-freely.org>
+Message-Id: <51B09F38.2000907@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1370526827-23882-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1370526827-23882-1-git-send-email-dborkman@redhat.com>
@@ -11,9 +11,9 @@ Content-Transfer-Encoding: 7bit
 To: Daniel Borkmann <dborkman@redhat.com>
 Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Thu, Jun 06, 2013 at 03:53:47PM +0200, Daniel Borkmann wrote:
+On 06/06/2013 09:53 AM, Daniel Borkmann wrote:
 > While stress testing sctp sockets, I hit the following panic:
-> 
+>
 > BUG: unable to handle kernel NULL pointer dereference at 0000000000000020
 > IP: [<ffffffffa0490c4e>] sctp_endpoint_free+0xe/0x40 [sctp]
 > PGD 7cead067 PUD 7ce76067 PMD 0
@@ -35,33 +35,33 @@ On Thu, Jun 06, 2013 at 03:53:47PM +0200, Daniel Borkmann wrote:
 > DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
 > DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
 > Stack:
->  ffff88007b569e38 ffff88007db78a00 ffff88007b569e38 ffffffffa049fded
->  ffffffff81abf0c0 ffff88007db78a00 ffff88007b569e58 ffffffff8145b60e
->  0000000000000000 0000000000000000 ffff88007b569eb8 ffffffff814df36e
+>   ffff88007b569e38 ffff88007db78a00 ffff88007b569e38 ffffffffa049fded
+>   ffffffff81abf0c0 ffff88007db78a00 ffff88007b569e58 ffffffff8145b60e
+>   0000000000000000 0000000000000000 ffff88007b569eb8 ffffffff814df36e
 > Call Trace:
->  [<ffffffffa049fded>] sctp_destroy_sock+0x3d/0x80 [sctp]
->  [<ffffffff8145b60e>] sk_common_release+0x1e/0xf0
->  [<ffffffff814df36e>] inet_create+0x2ae/0x350
->  [<ffffffff81455a6f>] __sock_create+0x11f/0x240
->  [<ffffffff81455bf0>] sock_create+0x30/0x40
->  [<ffffffff8145696c>] SyS_socket+0x4c/0xc0
->  [<ffffffff815403be>] ? do_page_fault+0xe/0x10
->  [<ffffffff8153cb32>] ? page_fault+0x22/0x30
->  [<ffffffff81544e02>] system_call_fastpath+0x16/0x1b
+>   [<ffffffffa049fded>] sctp_destroy_sock+0x3d/0x80 [sctp]
+>   [<ffffffff8145b60e>] sk_common_release+0x1e/0xf0
+>   [<ffffffff814df36e>] inet_create+0x2ae/0x350
+>   [<ffffffff81455a6f>] __sock_create+0x11f/0x240
+>   [<ffffffff81455bf0>] sock_create+0x30/0x40
+>   [<ffffffff8145696c>] SyS_socket+0x4c/0xc0
+>   [<ffffffff815403be>] ? do_page_fault+0xe/0x10
+>   [<ffffffff8153cb32>] ? page_fault+0x22/0x30
+>   [<ffffffff81544e02>] system_call_fastpath+0x16/0x1b
 > Code: 0c c9 c3 66 2e 0f 1f 84 00 00 00 00 00 e8 fb fe ff ff c9 c3 66 0f
->       1f 84 00 00 00 00 00 55 48 89 e5 53 48 83 ec 08 66 66 66 66 90 <48>
->       8b 47 20 48 89 fb c6 47 1c 01 c6 40 12 07 e8 9e 68 01 00 48
+>        1f 84 00 00 00 00 00 55 48 89 e5 53 48 83 ec 08 66 66 66 66 90 <48>
+>        8b 47 20 48 89 fb c6 47 1c 01 c6 40 12 07 e8 9e 68 01 00 48
 > RIP  [<ffffffffa0490c4e>] sctp_endpoint_free+0xe/0x40 [sctp]
->  RSP <ffff88007b569e08>
+>   RSP <ffff88007b569e08>
 > CR2: 0000000000000020
 > ---[ end trace e0d71ec1108c1dd9 ]---
-> 
+>
 > I did not hit this with the lksctp-tools functional tests, but with a
 > small, multi-threaded test program, that heavily allocates, binds,
 > listens and waits in accept on sctp sockets, and then randomly kills
 > some of them (no need for an actual client in this case to hit this).
 > Then, again, allocating, binding, etc, and then killing child processes.
-> 
+>
 > This panic then only occurs when ``echo 1 > /proc/sys/net/sctp/auth_enable''
 > is set. The cause for that is actually very simple: in sctp_endpoint_init()
 > we enter the path of sctp_auth_init_hmacs(). There, we try to allocate
@@ -73,35 +73,35 @@ On Thu, Jun 06, 2013 at 03:53:47PM +0200, Daniel Borkmann wrote:
 > sctp_endpoint_free(), since endpoint at that time is still NULL. Now,
 > if we have that case, we do not need to do any cleanup work and just
 > leave the destruction handler.
-> 
+>
 > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+
+Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+
+should be queued for stable as well.
+
+-vlad
+
 > ---
->  net/sctp/socket.c | 6 ++++++
->  1 file changed, 6 insertions(+)
-> 
+>   net/sctp/socket.c | 6 ++++++
+>   1 file changed, 6 insertions(+)
+>
 > diff --git a/net/sctp/socket.c b/net/sctp/socket.c
 > index f631c5f..3df7327 100644
 > --- a/net/sctp/socket.c
 > +++ b/net/sctp/socket.c
 > @@ -4003,6 +4003,12 @@ SCTP_STATIC void sctp_destroy_sock(struct sock *sk)
->  
->  	/* Release our hold on the endpoint. */
->  	sp = sctp_sk(sk);
+>
+>   	/* Release our hold on the endpoint. */
+>   	sp = sctp_sk(sk);
 > +	/* This could happen during socket init, thus we bail out
 > +	 * early, since the rest of the below is not setup either.
 > +	 */
 > +	if (sp->ep = NULL)
 > +		return;
 > +
->  	if (sp->do_auto_asconf) {
->  		sp->do_auto_asconf = 0;
->  		list_del(&sp->auto_asconf_list);
-> -- 
-> 1.7.11.7
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+>   	if (sp->do_auto_asconf) {
+>   		sp->do_auto_asconf = 0;
+>   		list_del(&sp->auto_asconf_list);
+>
+
