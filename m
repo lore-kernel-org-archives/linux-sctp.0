@@ -1,107 +1,161 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 27 Jun 2013 11:00:23 +0000
-Subject: Re: [PATCH net-next 1/2] lib: vsprintf: add IPv4/v6 generic %pig/%pIg format specifier
-Message-Id: <20130627110023.GA26130@hmsreliant.think-freely.org>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Tue, 11 Jun 2013 16:47:46 +0000
+Subject: [PATCH net] net: sctp: sctp_seq_dump_local_addrs: fix NULL pointer dereference
+Message-Id: <1370969266-16974-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1372266073-11998-1-git-send-email-dborkman@redhat.com>
- <1372266073-11998-2-git-send-email-dborkman@redhat.com>
- <51CB2477.6070903@gmail.com>
-In-Reply-To: <51CB2477.6070903@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>
-Cc: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On Wed, Jun 26, 2013 at 01:27:19PM -0400, Vlad Yasevich wrote:
-> On 06/26/2013 01:01 PM, Daniel Borkmann wrote:
-> >In order to avoid making code that deals with printing both, IPv4 and
-> >IPv6 addresses, unnecessary complicated as for example ...
-> >
-> >   if (sa.sa_family = AF_INET6)
-> >     printk("... %pI6 ...", sin6_addr);
-> >   else
-> >     printk("... %pI4 ...", sin_addr.s_addr);
-> >
-> >... it would be better to introduce a format specifier that can deal
-> >with those kind of situations internally; just as we have a "struct
-> >sockaddr" for generic mapping into "struct sockaddr_in" or "struct
-> >sockaddr_in6" as e.g. done in "union sctp_addr". Then, we could
-> >reduce the above statement into something like:
-> >
-> >   printk("... %pIg ..", &sockaddr);
-> >
-> >While we're at it, support for both %pig/%pIg, where 'g' stands for
-> >generic, comes for free. In case our pointer is NULL, pointer() then
-> >deals with that already at an earlier point in time internally.
-> >
-> >Likely, there are many other areas than just SCTP in the kernel to make
-> >use of this extension as well.
-> >
-> >Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-> >---
-> >  lib/vsprintf.c | 18 ++++++++++++++++--
-> >  1 file changed, 16 insertions(+), 2 deletions(-)
-> 
-> I think you should also update Documentation/printk-formats.txt
-> 
-> -vlad
-> 
-Just FYI, Cong Wang just posted a patch series to netdev to make generic
-printing of addresses possible
-http://marc.info/?l=linux-netdev&m7231556918786&w=2
-Neil
+The following NULL pointer dereference has occured on a 2.6.32-358 kernel,
+but upstream is affected as well since there are not many differences:
 
-> >
-> >diff --git a/lib/vsprintf.c b/lib/vsprintf.c
-> >index e149c64..7243742 100644
-> >--- a/lib/vsprintf.c
-> >+++ b/lib/vsprintf.c
-> >@@ -1004,10 +1004,10 @@ int kptr_restrict __read_mostly;
-> >   * - 'MF' For a 6-byte MAC FDDI address, it prints the address
-> >   *       with a dash-separated hex notation
-> >   * - '[mM]R' For a 6-byte MAC address, Reverse order (Bluetooth)
-> >- * - 'I' [46] for IPv4/IPv6 addresses printed in the usual way
-> >+ * - 'I' [46g] for IPv4/IPv6 addresses printed in the usual way
-> >   *       IPv4 uses dot-separated decimal without leading 0's (1.2.3.4)
-> >   *       IPv6 uses colon separated network-order 16 bit hex with leading 0's
-> >- * - 'i' [46] for 'raw' IPv4/IPv6 addresses
-> >+ * - 'i' [46g] for 'raw' IPv4/IPv6 addresses
-> >   *       IPv6 omits the colons (01020304...0f)
-> >   *       IPv4 uses dot-separated decimal with leading 0's (010.123.045.006)
-> >   * - '[Ii]4[hnbl]' IPv4 addresses in host, network, big or little endian order
-> >@@ -1093,6 +1093,18 @@ char *pointer(const char *fmt, char *buf, char *end, void *ptr,
-> >  			return ip6_addr_string(buf, end, ptr, spec, fmt);
-> >  		case '4':
-> >  			return ip4_addr_string(buf, end, ptr, spec, fmt);
-> >+		case 'g':
-> >+			{
-> >+				const struct sockaddr *sa = ptr;
-> >+
-> >+				if (sa->sa_family = AF_INET6) {
-> >+					ptr = &((struct sockaddr_in6 *) sa)->sin6_addr;
-> >+					return ip6_addr_string(buf, end, ptr, spec, fmt);
-> >+				} else {
-> >+					ptr = &((struct sockaddr_in *) sa)->sin_addr.s_addr;
-> >+					return ip4_addr_string(buf, end, ptr, spec, fmt);
-> >+				}
-> >+			}
-> >  		}
-> >  		break;
-> >  	case 'U':
-> >@@ -1370,6 +1382,8 @@ qualifier:
-> >   * %pI6 print an IPv6 address with colons
-> >   * %pi6 print an IPv6 address without colons
-> >   * %pI6c print an IPv6 address as specified by RFC 5952
-> >+ * %pIg depending on sa_family of 'struct sockaddr *' switch to %pI6/%pI4
-> >+ * %pig depending on sa_family of 'struct sockaddr *' switch to %pi6/%pi4
-> >   * %pU[bBlL] print a UUID/GUID in big or little endian using lower or upper
-> >   *   case.
-> >   * %*ph[CDN] a variable-length hex string with a separator (supports up to 64
-> >
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+sctp protocol violation state 4 chunkid 8
+BUG: unable to handle kernel NULL pointer dereference at 0000000000000078
+IP: [<ffffffffa0354cac>] sctp_v4_cmp_addr+0xc/0x30 [sctp]
+PGD c2758c067 PUD 87ecf1067 PMD 0
+Oops: 0000 [#1] SMP
+last sysfs file: /sys/devices/pci0000:00/0000:00:0a.0/0000:02:00.1/local_cpus
+CPU 7
+Modules linked in: [...]
+Pid: 15475, comm: netstat Not tainted 2.6.32-358.el6.x86_64 #1 KONTRON AT8050/FYA/AT8050/FYA
+RIP: 0010:[<ffffffffa0354cac>]  [<ffffffffa0354cac>] sctp_v4_cmp_addr+0xc/0x30 [sctp]
+RSP: 0018:ffff880c280f3d08  EFLAGS: 00010206
+RAX: 0000000000000002 RBX: ffff880827a25c00 RCX: 0000000000000001
+RDX: 000000000000027f RSI: 0000000000000078 RDI: ffff880827a25c20
+RBP: ffff880c280f3d08 R08: 00000000fffffffd R09: 0000000000000001
+R10: 0000000000000003 R11: 0000000000000000 R12: ffff880c27d9d870
+R13: ffffffffa03751c0 R14: ffff880827a25c20 R15: 0000000000000078
+FS:  00007fb7b7d0f7a0(0000) GS:ffff8800282e0000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+ -- MORE --  forward: <SPACE>, <ENTER> or j  backward: b or k  quit: q
+CR2: 0000000000000078 CR3: 000000087c36d000 CR4: 00000000000007e0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Process netstat (pid: 15475, threadinfo ffff880c280f2000, task ffff88091e361540)
+Stack:
+ ffff880c280f3d58 ffffffffa036dbac ffff880c280f3d28 ffff88098fefebc0
+<d> ffff880c280f3d38 ffff880c27d9d800 ffff88098fefebc0 0000000000000f83
+<d> ffff8808d12a7b80 ffff880c27d9d948 ffff880c280f3e18 ffffffffa036de3d
+Call Trace:
+ [<ffffffffa036dbac>] sctp_seq_dump_local_addrs+0x6c/0xc0 [sctp]
+ [<ffffffffa036de3d>] sctp_assocs_seq_show+0x12d/0x250 [sctp]
+ [<ffffffff811a4ee0>] ? seq_read+0x0/0x400
+ [<ffffffff811a5169>] seq_read+0x289/0x400
+ [<ffffffff811e966e>] proc_reg_read+0x7e/0xc0
+ [<ffffffff811816c5>] vfs_read+0xb5/0x1a0
+ [<ffffffff81181801>] sys_read+0x51/0x90
+ [<ffffffff810dc565>] ? __audit_syscall_exit+0x265/0x290
+ [<ffffffff8100b072>] system_call_fastpath+0x16/0x1b
+Code: 02 00 08 8b 47 04 89 46 04 b8 08 00 00 00 c9 c3 66 66 66 66 66 66
+      2e 0f 1f 84 00 00 00 00 00 55 48 89 e5 0f 1f 44 00 00 0f b7 07 <66>
+      3b 06 74 07 31 c0 c9 c3 0f 1f 00 0f b7 47 02 66 3b 46 02 75
+RIP  [<ffffffffa0354cac>] sctp_v4_cmp_addr+0xc/0x30 [sctp]
+ RSP <ffff880c280f3d08>
+CR2: 0000000000000078
+
+./decodecode < oops.file:
+  ...
+  1f:	55                   	push   %rbp
+  20:	48 89 e5             	mov    %rsp,%rbp
+  23:	0f 1f 44 00 00       	nopl   0x0(%rax,%rax,1)
+  28:	0f b7 07             	movzwl (%rdi),%eax
+  2b:*	66 3b 06             	cmp    (%rsi),%ax  <-- trapping instruction
+  2e:	74 07                	je     0x37       (1st 'if' in sctp_v4_cmp_addr)
+  30:	31 c0                	xor    %eax,%eax
+  32:	c9                   	leaveq
+  33:	c3                   	retq
+  34:	0f 1f 00             	nopl   (%rax)
+  37:	0f b7 47 02          	movzwl 0x2(%rdi),%eax
+  ...
+
+There have been some approaches to fix corruptions with the same or
+very similar stack trace such as 2eebc1e ("sctp: Fix list corruption
+resulting from freeing an association on a list"), 0b0fe913 ("sctp:
+proc: protect bind_addr->address_list accesses with rcu_read_lock()"),
+45122ca ("sctp: Add RCU protection to assoc->transport_addr_list")
+that are all important fixes, but the panic still can occur in some
+cases with such a stack trace above.
+
+When entering into sctp_seq_dump_local_addrs(), the sctp_ep_common
+structure is correctly of type SCTP_EP_TYPE_ASSOCIATION, and has a
+refcnt of 1 and dead is 0. Also from kdump, the ebp's pointer members
+do not look corrupted. When entering sctp_v4_cmp_addr(), the first
+sctp_addr argument looks good/valid, but the second sctp_addr argument
+('primary') is 0000000000000078 and results suddenly in a NULL pointer
+_dereference_ in sctp_v4_cmp_addr() although in the test before it
+seems to have been "primary != NULL".
+
+Now, how can this happen? Let's assume asoc->peer.primary_path is NULL
+which is possible to happen. Here, we do not check for it, but take the
+address (note we do not actually dereference it!) of its saddr member.
+This is then exactly 0000000000000078 as reported in the trace, since
+that is equal to the offset of saddr from the primary_path container
+(in the reported kernel). Thus, the check for NULL (= (void *) 0) will
+pass, eventually leading to the NULL pointer dereference in cmp_addr()
+since this address is within the NULL page.
+
+Lets fix it by being paranoid and checking first if our primary transport
+is != NULL and in case of != NULL if it is alive. Then, let us hold a
+copy of the sctp_addr on the stack instead of using a pointer just in
+case the transport could be destroyed at a later point in time (we're not
+in a hurry anyway). By that, we can avoid this very scenario, only just
+for the sake of printing this asterisk and can fix the NULL pointer
+dereference eventually. Introduced by bca735bd ("Extend the info exported
+via /proc/net/sctp to support netstat for SCTP.").
+
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Reported-by: Madhavprasad Pai <mkpai@redhat.com>
+Reported-by: Vivek Dasgupta <vdasgupt@redhat.com>
+---
+ Also should go to stable kernels.
+
+ net/sctp/proc.c | 18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
+
+diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+index 4e45ee3..9564b90 100644
+--- a/net/sctp/proc.c
++++ b/net/sctp/proc.c
+@@ -127,16 +127,19 @@ void sctp_snmp_proc_exit(struct net *net)
+ /* Dump local addresses of an association/endpoint. */
+ static void sctp_seq_dump_local_addrs(struct seq_file *seq, struct sctp_ep_common *epb)
+ {
+-	struct sctp_association *asoc;
++	struct sctp_association *assoc;
+ 	struct sctp_sockaddr_entry *laddr;
+-	struct sctp_transport *peer;
+-	union sctp_addr *addr, *primary = NULL;
++	union sctp_addr *addr, primary;
+ 	struct sctp_af *af;
++	bool have_primary = false;
+ 
+ 	if (epb->type = SCTP_EP_TYPE_ASSOCIATION) {
+-	    asoc = sctp_assoc(epb);
+-	    peer = asoc->peer.primary_path;
+-	    primary = &peer->saddr;
++		assoc = sctp_assoc(epb);
++		if (assoc->peer.primary_path != NULL &&
++		    !assoc->peer.primary_path->dead) {
++			primary = assoc->peer.primary_path->saddr;
++			have_primary = true;
++		}
+ 	}
+ 
+ 	rcu_read_lock();
+@@ -146,9 +149,8 @@ static void sctp_seq_dump_local_addrs(struct seq_file *seq, struct sctp_ep_commo
+ 
+ 		addr = &laddr->a;
+ 		af = sctp_get_af_specific(addr->sa.sa_family);
+-		if (primary && af->cmp_addr(addr, primary)) {
++		if (have_primary && af->cmp_addr(addr, &primary))
+ 			seq_printf(seq, "*");
+-		}
+ 		af->seq_dump_addr(seq, addr);
+ 	}
+ 	rcu_read_unlock();
+-- 
+1.7.11.7
+
