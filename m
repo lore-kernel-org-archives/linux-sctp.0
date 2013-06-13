@@ -1,46 +1,58 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Fri, 28 Jun 2013 12:05:29 +0000
-Subject: [PATCH net-next v3 0/2] Rework SCTP debugging framework
-Message-Id: <1372421131-1672-1-git-send-email-dborkman@redhat.com>
+Date: Thu, 13 Jun 2013 16:04:23 +0000
+Subject: [PATCH net-next 4/4] net: sctp: sctp_association_init: put refs in reverse order
+Message-Id: <1371139463-12512-5-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1371139463-12512-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1371139463-12512-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: davem@davemloft.net
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-Please see patch 2 for a detailed description. Tested with lksctp-tools
-suite and other stress tests. For the changes between v1,v2,v3, please
-have a look into the individual patches.
+In case we need to bail out for whatever reason during assoc
+init, we call sctp_endpoint_put() and then sock_put(), however,
+we've hold both refs in reverse, non-symmetric order, so first
+sctp_endpoint_hold() and then sock_hold().
 
-Thanks for feedback/comments to Vlad Yasevich, Neil Horman, Joe Perches,
-Andy Shevchenko.
+Reverse this, so that in an error case we have sock_put() and then
+sctp_endpoint_put(). Actually shouldn't matter too much, since both
+cleanup paths do the right thing, but that way, it is more consistent
+with the rest of the code.
 
-Daniel Borkmann (2):
-  lib: vsprintf: add IPv4/v6 generic %p[Ii]S[pfs] format specifier
-  net: sctp: rework debugging framework to use pr_debug and friends
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/associola.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
- Documentation/printk-formats.txt |  32 ++++++++
- include/net/sctp/sctp.h          |  75 -----------------
- lib/vsprintf.c                   | 108 ++++++++++++++++++++++++-
- net/sctp/Kconfig                 |  12 +--
- net/sctp/associola.c             |  67 ++++++++--------
- net/sctp/chunk.c                 |   5 +-
- net/sctp/debug.c                 |   4 -
- net/sctp/endpointola.c           |   5 +-
- net/sctp/input.c                 |   6 +-
- net/sctp/inqueue.c               |   9 +--
- net/sctp/ipv6.c                  |  21 ++---
- net/sctp/output.c                |  40 ++++------
- net/sctp/outqueue.c              | 160 ++++++++++++++++---------------------
- net/sctp/protocol.c              |  48 +++++------
- net/sctp/sm_make_chunk.c         |  25 +++---
- net/sctp/sm_sideeffect.c         |  96 ++++++++++------------
- net/sctp/sm_statefuns.c          |  77 +++++++++++-------
- net/sctp/socket.c                | 168 +++++++++++++++++++--------------------
- net/sctp/transport.c             |  49 ++++++------
- 19 files changed, 521 insertions(+), 486 deletions(-)
-
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 91cfd8f..756025c 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -86,10 +86,9 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
+ 
+ 	/* Discarding const is appropriate here.  */
+ 	asoc->ep = (struct sctp_endpoint *)ep;
+-	sctp_endpoint_hold(asoc->ep);
+-
+-	/* Hold the sock.  */
+ 	asoc->base.sk = (struct sock *)sk;
++
++	sctp_endpoint_hold(asoc->ep);
+ 	sock_hold(asoc->base.sk);
+ 
+ 	/* Initialize the common base substructure.  */
+@@ -343,8 +342,8 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
+ 	return asoc;
+ 
+ fail_init:
+-	sctp_endpoint_put(asoc->ep);
+ 	sock_put(asoc->base.sk);
++	sctp_endpoint_put(asoc->ep);
+ 	return NULL;
+ }
+ 
 -- 
 1.7.11.7
 
