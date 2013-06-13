@@ -1,76 +1,55 @@
-From: "AFG GTBANK LOAN" <turnos-escuelas@ifir-conicet.gov.ar>
-Date: Mon, 17 Jun 2013 19:28:00 +0000
-Subject: 
-Message-Id: <bf2bd1c7747c2b14e57da8b2a5c50f0c.squirrel@ifir-conicet.gov.ar>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Thu, 13 Jun 2013 16:04:21 +0000
+Subject: [PATCH net-next 2/4] net: sctp: sctp_sf_do_prm_asoc: do SCTP_CMD_INIT_CHOOSE_TRANSPORT first
+Message-Id: <1371139463-12512-3-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1371139463-12512-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1371139463-12512-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
+While this currently cannot trigger any NULL pointer dereference in
+sctp_seq_dump_local_addrs(), better change the order of commands to
+prevent a future bug to happen. Although we first add SCTP_CMD_NEW_ASOC
+and then set the SCTP_CMD_INIT_CHOOSE_TRANSPORT, it is okay for now,
+since this primitive is only called by sctp_connect() or sctp_sendmsg()
+with sctp_assoc_add_peer() set first. However, lets do this precaution
+and first set the transport and then add it to the association hashlist
+to prevent in future something to possibly triggering this.
 
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/sm_statefuns.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-
-Loan Syndicacion
-
-Am AFG Guaranty Trust Bank, zu strukturieren wir Kreditlinien treffen Sie
-unsere
-Kunden spezifischen gesch=E4ftlichen Anforderungen und einen deutlichen
-Mehrwert f=FCr unsere
-Kunden Unternehmen.
-eine Division der AFG Finance und Private Bank plc.
-
-Wenn Sie erw=E4gen, eine gro=DFe Akquisition oder ein Gro=DFprojekt sind, k=
-=F6nnen
-Sie
-brauchen eine erhebliche Menge an Kredit. AFG Guaranty Trust Bank setzen
-k=F6nnen
-zusammen das Syndikat, das die gesamte Kredit schn=FCrt f=FCr
-Sie.
-
-
-Als Bank mit internationaler Reichweite, sind wir gekommen, um Darlehen zu
-identifizieren
-Syndizierungen als Teil unseres Kerngesch=E4fts und durch spitzte diese Zei=
-le
-aggressiv sind wir an einem Punkt, wo wir kommen, um als erkannt haben
-Hauptakteur in diesem Bereich.
-
-
-=F6ffnen Sie ein Girokonto heute mit einem Minimum Bankguthaben von 500 =A3=
- und
-Getup zu =A3 10.000 als Darlehen und auch den Hauch einer Chance und gewann
-die Sterne
-Preis von =A3 500.000 in die sparen und gewinnen promo in may.aply jetzt.
-
-
-mit dem Folowing Informationen =FCber Rechtsanwalt steven lee das Konto
-Offizier.
-
-
-FULL NAME;
-
-
-Wohnadresse;
-
-
-E-MAIL-ADRESSE;
-
-Telefonnummer;
-
-N=E4chsten KINS;
-
-MUTTER MAIDEN NAME;
-
-
-Familienstand;
-
-
-B=DCROADRESSE;
-
-ALTERNATIVE Telefonnummer;
-
-TO @ yahoo.com bar.stevenlee
-NOTE; ALLE Darlehen sind f=FCr 10JAHRE RATE VALID
-ANGEBOT ENDET BALD SO JETZT HURRY
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index de1a013..b3d1868 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -4632,16 +4632,16 @@ sctp_disposition_t sctp_sf_do_prm_asoc(struct net *net,
+ 	if (!repl)
+ 		goto nomem;
+ 
++	/* Choose transport for INIT. */
++	sctp_add_cmd_sf(commands, SCTP_CMD_INIT_CHOOSE_TRANSPORT,
++			SCTP_CHUNK(repl));
++
+ 	/* Cast away the const modifier, as we want to just
+ 	 * rerun it through as a sideffect.
+ 	 */
+ 	my_asoc = (struct sctp_association *)asoc;
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_NEW_ASOC, SCTP_ASOC(my_asoc));
+ 
+-	/* Choose transport for INIT. */
+-	sctp_add_cmd_sf(commands, SCTP_CMD_INIT_CHOOSE_TRANSPORT,
+-			SCTP_CHUNK(repl));
+-
+ 	/* After sending the INIT, "A" starts the T1-init timer and
+ 	 * enters the COOKIE-WAIT state.
+ 	 */
+-- 
+1.7.11.7
 
