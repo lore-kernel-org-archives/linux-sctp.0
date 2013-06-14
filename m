@@ -1,19 +1,17 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 14 Jun 2013 00:45:30 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Fri, 14 Jun 2013 14:07:00 +0000
 Subject: Re: [PATCH net-next 0/4] Some SCTP cleanups/improvements
-Message-Id: <20130613.174530.2244357764542712221.davem@davemloft.net>
+Message-Id: <20130614140700.GA19213@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1371139463-12512-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1371139463-12512-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dborkman@redhat.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: Daniel Borkmann <dborkman@redhat.com>
+Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Thu, 13 Jun 2013 18:04:19 +0200
-
+On Thu, Jun 13, 2013 at 06:04:19PM +0200, Daniel Borkmann wrote:
 > v1 -> v2:
 >   - Apply Neil's feedback, I'll send out the first patch at a later
 >     point in time though, have not included it in this set
@@ -25,5 +23,21 @@ Date: Thu, 13 Jun 2013 18:04:19 +0200
 >   net: sctp: sctp_sf_do_prm_asoc: do SCTP_CMD_INIT_CHOOSE_TRANSPORT first
 >   net: sctp: minor: remove variable in sctp_init_sock
 >   net: sctp: sctp_association_init: put refs in reverse order on error
+> 
+>  net/sctp/associola.c    |  7 +++----
+>  net/sctp/proc.c         | 15 ++++++++++++---
+>  net/sctp/sm_statefuns.c |  8 ++++----
+>  net/sctp/socket.c       |  6 ++----
+>  4 files changed, 21 insertions(+), 15 deletions(-)
+> 
+> -- 
+> 1.7.11.7
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-Looks good to me, SCTP folks please review.
+For the series
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
