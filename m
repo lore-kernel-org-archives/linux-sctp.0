@@ -1,43 +1,45 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 14 Jun 2013 14:07:00 +0000
-Subject: Re: [PATCH net-next 0/4] Some SCTP cleanups/improvements
-Message-Id: <20130614140700.GA19213@hmsreliant.think-freely.org>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Tue, 18 Jun 2013 08:55:15 +0000
+Subject: [PATCH net-next 0/5] Further SCTP changes
+Message-Id: <1371545720-22950-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1371139463-12512-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1371139463-12512-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Thu, Jun 13, 2013 at 06:04:19PM +0200, Daniel Borkmann wrote:
-> v1 -> v2:
->   - Apply Neil's feedback, I'll send out the first patch at a later
->     point in time though, have not included it in this set
->   - Add two other patches that appear to be useful from the last
->     couple of days debugging SCTP code
-> 
-> Daniel Borkmann (4):
->   net: sctp: throw BUG if primary_path in sctp_seq_dump_local_addrs is NULL
->   net: sctp: sctp_sf_do_prm_asoc: do SCTP_CMD_INIT_CHOOSE_TRANSPORT first
->   net: sctp: minor: remove variable in sctp_init_sock
->   net: sctp: sctp_association_init: put refs in reverse order on error
-> 
->  net/sctp/associola.c    |  7 +++----
->  net/sctp/proc.c         | 15 ++++++++++++---
->  net/sctp/sm_statefuns.c |  8 ++++----
->  net/sctp/socket.c       |  6 ++----
->  4 files changed, 21 insertions(+), 15 deletions(-)
-> 
-> -- 
-> 1.7.11.7
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Mostly it's all about getting rid of unnecessary code, and/or making
+it more clean and readable.
 
-For the series
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Code has been tested with lksctp-tools functional test suite and
+also my small sctp stress test helper that was used to discover
+the recent null-ptr derefs. This test was also sucessfully run against
+auth_enabled=0 and auth_enabled=1, where I also previously applied
+the following two patches:
+
+  - http://marc.info/?l=linux-crypto-vger&m7121898331017&w=2
+    -> not yet applied, still pending review for crypto tree
+  - 1abd165 (net: sctp: fix NULL pointer dereference in socket destruction)
+    -> cherry picked from net tree
+
+Daniel Borkmann (5):
+  net: sctp: remove TEST_FRAME ifdef
+  ktime: add ms_to_ktime() and ktime_add_ms() helpers
+  net: sctp: migrate cookie life from timeval to ktime
+  net: sctp: decouple cleaning socket data from endpoint
+  net: sctp: minor: sctp_seq_dump_local_addrs add missing newline
+
+ include/linux/ktime.h      | 13 +++++++++++++
+ include/net/sctp/sctp.h    | 25 -------------------------
+ include/net/sctp/structs.h |  6 +++---
+ net/sctp/associola.c       |  8 +-------
+ net/sctp/endpointola.c     |  7 -------
+ net/sctp/proc.c            |  2 +-
+ net/sctp/sm_make_chunk.c   | 19 ++++++++-----------
+ net/sctp/socket.c          | 34 ++++++++++++++++++++++------------
+ 8 files changed, 48 insertions(+), 66 deletions(-)
+
+-- 
+1.7.11.7
+
