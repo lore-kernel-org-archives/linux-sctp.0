@@ -1,119 +1,59 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 18 Jun 2013 14:22:40 +0000
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Tue, 18 Jun 2013 16:02:26 +0000
 Subject: Re: [PATCH net-next 4/5] net: sctp: decouple cleaning socket data from endpoint
-Message-Id: <20130618142240.GA27099@hmsreliant.think-freely.org>
+Message-Id: <51C08492.7040602@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1371545720-22950-1-git-send-email-dborkman@redhat.com>
- <1371545720-22950-5-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1371545720-22950-5-git-send-email-dborkman@redhat.com>
+References: <1371545720-22950-1-git-send-email-dborkman@redhat.com> <1371545720-22950-5-git-send-email-dborkman@redhat.com> <20130618142240.GA27099@hmsreliant.think-freely.org>
+In-Reply-To: <20130618142240.GA27099@hmsreliant.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
+To: Neil Horman <nhorman@tuxdriver.com>
 Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Tue, Jun 18, 2013 at 10:55:19AM +0200, Daniel Borkmann wrote:
-> Rather instead of having the endpoint clean the garbage for the
-> socket, use a sk_destruct handler sctp_destruct_sock(), that does
-> the job for that when there are no more references on the socket.
-> 
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-> ---
->  net/sctp/endpointola.c |  7 -------
->  net/sctp/socket.c      | 20 +++++++++++++++++++-
->  2 files changed, 19 insertions(+), 8 deletions(-)
-> 
-> diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
-> index a8b2674..9a9ebd2 100644
-> --- a/net/sctp/endpointola.c
-> +++ b/net/sctp/endpointola.c
-> @@ -249,9 +249,6 @@ static void sctp_endpoint_destroy(struct sctp_endpoint *ep)
->  {
->  	SCTP_ASSERT(ep->base.dead, "Endpoint is not dead", return);
->  
-> -	/* Free up the HMAC transform. */
-> -	crypto_free_hash(sctp_sk(ep->base.sk)->hmac);
-> -
->  	/* Free the digest buffer */
->  	kfree(ep->digest);
->  
-> @@ -271,10 +268,6 @@ static void sctp_endpoint_destroy(struct sctp_endpoint *ep)
->  
->  	memset(ep->secret_key, 0, sizeof(ep->secret_key));
->  
-> -	/* Remove and free the port */
-> -	if (sctp_sk(ep->base.sk)->bind_hash)
-> -		sctp_put_port(ep->base.sk);
-> -
->  	/* Give up our hold on the sock. */
->  	if (ep->base.sk)
->  		sock_put(ep->base.sk);
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 68a6b70..67f721e 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -93,6 +93,7 @@ static int sctp_wait_for_packet(struct sock * sk, int *err, long *timeo_p);
->  static int sctp_wait_for_connect(struct sctp_association *, long *timeo_p);
->  static int sctp_wait_for_accept(struct sock *sk, long timeo);
->  static void sctp_wait_for_close(struct sock *sk, long timeo);
-> +static void sctp_destruct_sock(struct sock *sk);
->  static struct sctp_af *sctp_sockaddr_af(struct sctp_sock *opt,
->  					union sctp_addr *addr, int len);
->  static int sctp_bindx_add(struct sock *, struct sockaddr *, int);
-> @@ -3966,6 +3967,8 @@ static int sctp_init_sock(struct sock *sk)
->  
->  	sp->hmac = NULL;
->  
-> +	sk->sk_destruct = sctp_destruct_sock;
-> +
->  	SCTP_DBG_OBJCNT_INC(sock);
->  
->  	local_bh_disable();
-> @@ -4002,6 +4005,21 @@ static void sctp_destroy_sock(struct sock *sk)
->  	local_bh_enable();
->  }
->  
-> +/* Triggered when there are no references on the socket anymore */
-> +static void sctp_destruct_sock(struct sock *sk)
-> +{
-> +	struct sctp_sock *sp = sctp_sk(sk);
-> +
-> +	/* Free up the HMAC transform. */
-> +	crypto_free_hash(sp->hmac);
-> +
-> +	/* Remove and free the port */
-> +	if (sp->bind_hash)
-> +		sctp_put_port(sk);
-> +
-> +	inet_sock_destruct(sk);
-> +}
-> +
->  /* API 4.1.7 shutdown() - TCP Style Syntax
->   *     int shutdown(int socket, int how);
->   *
-> @@ -6842,7 +6860,7 @@ void sctp_copy_sock(struct sock *newsk, struct sock *sk,
->  	newsk->sk_reuse = sk->sk_reuse;
->  
->  	newsk->sk_shutdown = sk->sk_shutdown;
-> -	newsk->sk_destruct = inet_sock_destruct;
-> +	newsk->sk_destruct = sctp_destruct_sock;
->  	newsk->sk_family = sk->sk_family;
->  	newsk->sk_protocol = IPPROTO_SCTP;
->  	newsk->sk_backlog_rcv = sk->sk_prot->backlog_rcv;
-> -- 
-> 1.7.11.7
-> 
+On 06/18/2013 04:22 PM, Neil Horman wrote:
+> I like this idea, but I think I'm maybe missing something from it - we reference
+> the socket in both the receive and send paths (sctp_unpack_cookie, is
+> specifically called from the rx path, which makes use of sp->hmac).  a socket
+> destructor can be called from __sk_free when sk_wmem_alloc reaches zero, but we
+> use sk_refcnt in the rx path to prevent premature socket cleanup.  If we drain
+> our send queeue while wer'e still processing rx messages, what prevents us from
+> freeing the socket in the tx path, via sk_free while we're still using the
+> socket in the rx path.  Note I don't think this patch is wrong per-se, but it
+> seems to me there is more work to do to properly interlock the use of sk_refcnt
+> and sk_wmem_alloc here (unless I'm just missing something obvious, which is
+> entirely possible, I've been in the sun alot lately :) ).
 
-I like this idea, but I think I'm maybe missing something from it - we reference
-the socket in both the receive and send paths (sctp_unpack_cookie, is
-specifically called from the rx path, which makes use of sp->hmac).  a socket
-destructor can be called from __sk_free when sk_wmem_alloc reaches zero, but we
-use sk_refcnt in the rx path to prevent premature socket cleanup.  If we drain
-our send queeue while wer'e still processing rx messages, what prevents us from
-freeing the socket in the tx path, via sk_free while we're still using the
-socket in the rx path.  Note I don't think this patch is wrong per-se, but it
-seems to me there is more work to do to properly interlock the use of sk_refcnt
-and sk_wmem_alloc here (unless I'm just missing something obvious, which is
-entirely possible, I've been in the sun alot lately :) ).
+Hm, __sk_free() calls sk_prot_free() which frees our socket structure and in
+sctp_wfree() we do a sctp_association_put(asoc) after sock_wfree(skb).
 
-Neil
+So no matter if having this patch or not, couldn't this use-after-free like
+scenario already happen with the current code?
+
+F.e. through a given call graph like that:
+
+sctp_wfree(skb):
+  1) sock_wfree(skb)
+     -> __sk_free()
+      -> sk_prot_free(.., sk)
+       -> kmem_cache_free(.., sk) or kfree(sk)
+  2) __sctp_write_space(asoc)
+  3) sctp_association_put(asoc)
+     -> sctp_association_destroy(asoc)
+      -> sctp_endpoint_put(asoc->ep)
+       -> sctp_endpoint_destroy(ep)
+        -> crypto_free_hash(sctp_sk(ep->base.sk)->hmac)
+           (etc, all unconditionally accessed while sk is
+            already dead/freed)
+
+Then, this might need a fix in general. :-)
+
+Assuming you would reduce the buffer space via setsockopt(.., SO_SNDBUF, ..),
+you might end up with a minimum buffer space of SOCK_MIN_SNDBUF [*] and a call to
+sk->sk_write_space(sk), which is sctp_write_space() and calls __sctp_write_space()
+on all asocs belonging to the socket, but it seems not to alter the current
+sk->sk_wmem_alloc I think, but rather sk->sk_sndbuf.
+
+[*] Btw, shouldn't this rather be (2048 + sizeof(struct sk_buff)) or
+     SKB_TRUESIZE(2048), at least like in SOCK_MIN_RCVBUF since we operate
+     on skb->truesize as well?
