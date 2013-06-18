@@ -1,58 +1,56 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Thu, 13 Jun 2013 16:04:23 +0000
-Subject: [PATCH net-next 4/4] net: sctp: sctp_association_init: put refs in reverse order
-Message-Id: <1371139463-12512-5-git-send-email-dborkman@redhat.com>
+Date: Tue, 18 Jun 2013 08:55:17 +0000
+Subject: [PATCH net-next 2/5] ktime: add ms_to_ktime() and ktime_add_ms() helpers
+Message-Id: <1371545720-22950-3-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1371139463-12512-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1371139463-12512-1-git-send-email-dborkman@redhat.com>
+References: <1371545720-22950-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1371545720-22950-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: davem@davemloft.net
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-In case we need to bail out for whatever reason during assoc
-init, we call sctp_endpoint_put() and then sock_put(), however,
-we've hold both refs in reverse, non-symmetric order, so first
-sctp_endpoint_hold() and then sock_hold().
-
-Reverse this, so that in an error case we have sock_put() and then
-sctp_endpoint_put(). Actually shouldn't matter too much, since both
-cleanup paths do the right thing, but that way, it is more consistent
-with the rest of the code.
+Add two ktime helper functions that i) convert a given msec value to
+a ktime structure and ii) that adds a msec value to a ktime structure.
 
 Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
 ---
- net/sctp/associola.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ include/linux/ktime.h | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index 91cfd8f..756025c 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -86,10 +86,9 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
- 
- 	/* Discarding const is appropriate here.  */
- 	asoc->ep = (struct sctp_endpoint *)ep;
--	sctp_endpoint_hold(asoc->ep);
--
--	/* Hold the sock.  */
- 	asoc->base.sk = (struct sock *)sk;
-+
-+	sctp_endpoint_hold(asoc->ep);
- 	sock_hold(asoc->base.sk);
- 
- 	/* Initialize the common base substructure.  */
-@@ -343,8 +342,8 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
- 	return asoc;
- 
- fail_init:
--	sctp_endpoint_put(asoc->ep);
- 	sock_put(asoc->base.sk);
-+	sctp_endpoint_put(asoc->ep);
- 	return NULL;
+diff --git a/include/linux/ktime.h b/include/linux/ktime.h
+index bbca128..b4fa5e4 100644
+--- a/include/linux/ktime.h
++++ b/include/linux/ktime.h
+@@ -323,6 +323,11 @@ static inline ktime_t ktime_add_us(const ktime_t kt, const u64 usec)
+ 	return ktime_add_ns(kt, usec * 1000);
  }
  
++static inline ktime_t ktime_add_ms(const ktime_t kt, const u64 msec)
++{
++	return ktime_add_ns(kt, msec * NSEC_PER_MSEC);
++}
++
+ static inline ktime_t ktime_sub_us(const ktime_t kt, const u64 usec)
+ {
+ 	return ktime_sub_ns(kt, usec * 1000);
+@@ -366,7 +371,15 @@ extern void ktime_get_ts(struct timespec *ts);
+ static inline ktime_t ns_to_ktime(u64 ns)
+ {
+ 	static const ktime_t ktime_zero = { .tv64 = 0 };
++
+ 	return ktime_add_ns(ktime_zero, ns);
+ }
+ 
++static inline ktime_t ms_to_ktime(u64 ms)
++{
++	static const ktime_t ktime_zero = { .tv64 = 0 };
++
++	return ktime_add_ms(ktime_zero, ms);
++}
++
+ #endif
 -- 
 1.7.11.7
 
