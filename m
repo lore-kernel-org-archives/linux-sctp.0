@@ -1,126 +1,56 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Mon, 17 Jun 2013 09:40:04 +0000
-Subject: [PATCH net-next 1/2] net: sctp: get rid of t_new macro for kzalloc
-Message-Id: <1371462005-19310-2-git-send-email-dborkman@redhat.com>
+Date: Tue, 25 Jun 2013 15:13:37 +0000
+Subject: [PATCH net-next 2/6] ktime: add ms_to_ktime() and ktime_add_ms() helpers
+Message-Id: <1372173221-15244-3-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1371462005-19310-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1371462005-19310-1-git-send-email-dborkman@redhat.com>
+References: <1372173221-15244-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1372173221-15244-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: davem@davemloft.net
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-t_new rather obfuscates things where everyone else is using actual
-function names instead of that macro, so replace it with kzalloc,
-which is the function t_new wraps.
+Add two ktime helper functions that i) convert a given msec value to
+a ktime structure and ii) that adds a msec value to a ktime structure.
 
 Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
 ---
- include/net/sctp/sctp.h | 3 ---
- net/sctp/associola.c    | 2 +-
- net/sctp/bind_addr.c    | 2 +-
- net/sctp/endpointola.c  | 3 ++-
- net/sctp/ipv6.c         | 2 +-
- net/sctp/protocol.c     | 2 +-
- net/sctp/transport.c    | 2 +-
- 7 files changed, 7 insertions(+), 9 deletions(-)
+ include/linux/ktime.h | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index cd89510..b9f136a 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -575,9 +575,6 @@ for (pos = chunk->subh.fwdtsn_hdr->skip;\
- /* Round an int up to the next multiple of 4.  */
- #define WORD_ROUND(s) (((s)+3)&~3)
+diff --git a/include/linux/ktime.h b/include/linux/ktime.h
+index bbca128..b4fa5e4 100644
+--- a/include/linux/ktime.h
++++ b/include/linux/ktime.h
+@@ -323,6 +323,11 @@ static inline ktime_t ktime_add_us(const ktime_t kt, const u64 usec)
+ 	return ktime_add_ns(kt, usec * 1000);
+ }
  
--/* Make a new instance of type.  */
--#define t_new(type, flags)	kzalloc(sizeof(type), flags)
--
- /* Compare two timevals.  */
- #define tv_lt(s, t) \
-    (s.tv_sec < t.tv_sec || (s.tv_sec = t.tv_sec && s.tv_usec < t.tv_usec))
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index 756025c..bf6e6bd 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -355,7 +355,7 @@ struct sctp_association *sctp_association_new(const struct sctp_endpoint *ep,
- {
- 	struct sctp_association *asoc;
- 
--	asoc = t_new(struct sctp_association, gfp);
-+	asoc = kzalloc(sizeof(*asoc), gfp);
- 	if (!asoc)
- 		goto fail;
- 
-diff --git a/net/sctp/bind_addr.c b/net/sctp/bind_addr.c
-index 41145fe..64977ea 100644
---- a/net/sctp/bind_addr.c
-+++ b/net/sctp/bind_addr.c
-@@ -162,7 +162,7 @@ int sctp_add_bind_addr(struct sctp_bind_addr *bp, union sctp_addr *new,
- 	struct sctp_sockaddr_entry *addr;
- 
- 	/* Add the address to the bind address list.  */
--	addr = t_new(struct sctp_sockaddr_entry, gfp);
-+	addr = kzalloc(sizeof(*addr), gfp);
- 	if (!addr)
- 		return -ENOMEM;
- 
-diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
-index 5fbd7bc..a8b2674 100644
---- a/net/sctp/endpointola.c
-+++ b/net/sctp/endpointola.c
-@@ -192,9 +192,10 @@ struct sctp_endpoint *sctp_endpoint_new(struct sock *sk, gfp_t gfp)
- 	struct sctp_endpoint *ep;
- 
- 	/* Build a local endpoint. */
--	ep = t_new(struct sctp_endpoint, gfp);
-+	ep = kzalloc(sizeof(*ep), gfp);
- 	if (!ep)
- 		goto fail;
++static inline ktime_t ktime_add_ms(const ktime_t kt, const u64 msec)
++{
++	return ktime_add_ns(kt, msec * NSEC_PER_MSEC);
++}
 +
- 	if (!sctp_endpoint_init(ep, sk, gfp))
- 		goto fail_init;
- 
-diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-index fffc7b6..4f3e13b 100644
---- a/net/sctp/ipv6.c
-+++ b/net/sctp/ipv6.c
-@@ -402,7 +402,7 @@ static void sctp_v6_copy_addrlist(struct list_head *addrlist,
- 	read_lock_bh(&in6_dev->lock);
- 	list_for_each_entry(ifp, &in6_dev->addr_list, if_list) {
- 		/* Add the address to the local list.  */
--		addr = t_new(struct sctp_sockaddr_entry, GFP_ATOMIC);
-+		addr = kzalloc(sizeof(*addr), GFP_ATOMIC);
- 		if (addr) {
- 			addr->a.v6.sin6_family = AF_INET6;
- 			addr->a.v6.sin6_port = 0;
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index eaee00c..fad7d1b 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -153,7 +153,7 @@ static void sctp_v4_copy_addrlist(struct list_head *addrlist,
- 
- 	for (ifa = in_dev->ifa_list; ifa; ifa = ifa->ifa_next) {
- 		/* Add the address to the local list.  */
--		addr = t_new(struct sctp_sockaddr_entry, GFP_ATOMIC);
-+		addr = kzalloc(sizeof(*addr), GFP_ATOMIC);
- 		if (addr) {
- 			addr->a.v4.sin_family = AF_INET;
- 			addr->a.v4.sin_port = 0;
-diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-index 098f1d5f..5d3c71b 100644
---- a/net/sctp/transport.c
-+++ b/net/sctp/transport.c
-@@ -116,7 +116,7 @@ struct sctp_transport *sctp_transport_new(struct net *net,
+ static inline ktime_t ktime_sub_us(const ktime_t kt, const u64 usec)
  {
- 	struct sctp_transport *transport;
+ 	return ktime_sub_ns(kt, usec * 1000);
+@@ -366,7 +371,15 @@ extern void ktime_get_ts(struct timespec *ts);
+ static inline ktime_t ns_to_ktime(u64 ns)
+ {
+ 	static const ktime_t ktime_zero = { .tv64 = 0 };
++
+ 	return ktime_add_ns(ktime_zero, ns);
+ }
  
--	transport = t_new(struct sctp_transport, gfp);
-+	transport = kzalloc(sizeof(*transport), gfp);
- 	if (!transport)
- 		goto fail;
- 
++static inline ktime_t ms_to_ktime(u64 ms)
++{
++	static const ktime_t ktime_zero = { .tv64 = 0 };
++
++	return ktime_add_ms(ktime_zero, ms);
++}
++
+ #endif
 -- 
 1.7.11.7
 
