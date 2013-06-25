@@ -1,32 +1,45 @@
-From: Joe Perches <joe@perches.com>
-Date: Fri, 28 Jun 2013 16:30:39 +0000
-Subject: Re: [PATCH net-next v3 1/2] lib: vsprintf: add IPv4/v6 generic %p[Ii]S[pfs] format specifier
-Message-Id: <1372437039.29380.19.camel@joe-AO722>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Tue, 25 Jun 2013 16:17:24 +0000
+Subject: [PATCH net-next v3 0/6] Further SCTP changes
+Message-Id: <1372177050-17829-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1372421131-1672-1-git-send-email-dborkman@redhat.com>
-	 <1372421131-1672-2-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1372421131-1672-2-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Fri, 2013-06-28 at 14:05 +0200, Daniel Borkmann wrote:
+Mostly it's all about getting rid of unnecessary code, and/or making
+it more clean and readable. Code has been tested with lksctp-tools
+functional test suite and also my small sctp stress test helper that
+was used to discover the recent null-ptr derefs.
 
-> +static noinline_for_stack
-> +char *ip4_addr_string_sa(char *buf, char *end, const struct sockaddr_in *sa,
-> +			 struct printf_spec spec, const char *fmt)
-> +{
-> +	bool have_p = (fmt[2] && fmt[2] = 'p');
+v2->v3:
+  - Just changed "net: sctp: decouple cleaning some socket data from endpoint"
+    patch description slightly and made assignment explicit as Vlad requested
+  - Rest is unchanged
+v1->v2:
+  - Left sctp_put_port() still in sctp_endpoint_destroy() for now
+  - Added minor "net: sctp: simplify sctp_get_port" patch
 
-	bool have_p = fmt[2] = 'p';
+Daniel Borkmann (6):
+  net: sctp: remove TEST_FRAME ifdef
+  ktime: add ms_to_ktime() and ktime_add_ms() helpers
+  net: sctp: migrate cookie life from timeval to ktime
+  net: sctp: minor: sctp_seq_dump_local_addrs add missing newline
+  net: sctp: decouple cleaning some socket data from endpoint
+  net: sctp: simplify sctp_get_port
 
-you don't need the first "fmt[2] &&"
-but I can imagine a case where the other flow/scope types
-could be specified generically and the 'p' may not be in
-array index 2
+ include/linux/ktime.h      | 13 +++++++++++++
+ include/net/sctp/sctp.h    | 25 -------------------------
+ include/net/sctp/structs.h |  6 +++---
+ net/sctp/associola.c       |  8 +-------
+ net/sctp/endpointola.c     | 19 ++++++++++---------
+ net/sctp/proc.c            |  2 +-
+ net/sctp/sm_make_chunk.c   | 19 ++++++++-----------
+ net/sctp/socket.c          | 35 +++++++++++++++++++----------------
+ 8 files changed, 55 insertions(+), 72 deletions(-)
 
-I think you should probably do the same while loop like
-the ip6_addr_string_sa block.
+-- 
+1.7.11.7
 
