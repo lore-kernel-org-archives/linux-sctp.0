@@ -1,7 +1,7 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Tue, 25 Jun 2013 16:17:30 +0000
-Subject: [PATCH net-next v3 6/6] net: sctp: simplify sctp_get_port
-Message-Id: <1372177050-17829-7-git-send-email-dborkman@redhat.com>
+Date: Tue, 25 Jun 2013 16:17:26 +0000
+Subject: [PATCH net-next v3 2/6] ktime: add ms_to_ktime() and ktime_add_ms() helpers
+Message-Id: <1372177050-17829-3-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1372177050-17829-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1372177050-17829-1-git-send-email-dborkman@redhat.com>
@@ -11,37 +11,46 @@ Content-Transfer-Encoding: 7bit
 To: davem@davemloft.net
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-No need to have an extra ret variable when we directly can return
-the value of sctp_get_port_local().
+Add two ktime helper functions that i) convert a given msec value to
+a ktime structure and ii) that adds a msec value to a ktime structure.
 
 Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
 ---
- net/sctp/socket.c | 5 +----
- 1 file changed, 1 insertion(+), 4 deletions(-)
+ include/linux/ktime.h | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index ba9359c..66fcdcf 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -6036,7 +6036,6 @@ fail:
-  */
- static int sctp_get_port(struct sock *sk, unsigned short snum)
- {
--	long ret;
- 	union sctp_addr addr;
- 	struct sctp_af *af = sctp_sk(sk)->pf->af;
- 
-@@ -6045,9 +6044,7 @@ static int sctp_get_port(struct sock *sk, unsigned short snum)
- 	addr.v4.sin_port = htons(snum);
- 
- 	/* Note: sk->sk_num gets filled in if ephemeral port request. */
--	ret = sctp_get_port_local(sk, &addr);
--
--	return ret ? 1 : 0;
-+	return !!sctp_get_port_local(sk, &addr);
+diff --git a/include/linux/ktime.h b/include/linux/ktime.h
+index bbca128..b4fa5e4 100644
+--- a/include/linux/ktime.h
++++ b/include/linux/ktime.h
+@@ -323,6 +323,11 @@ static inline ktime_t ktime_add_us(const ktime_t kt, const u64 usec)
+ 	return ktime_add_ns(kt, usec * 1000);
  }
  
- /*
++static inline ktime_t ktime_add_ms(const ktime_t kt, const u64 msec)
++{
++	return ktime_add_ns(kt, msec * NSEC_PER_MSEC);
++}
++
+ static inline ktime_t ktime_sub_us(const ktime_t kt, const u64 usec)
+ {
+ 	return ktime_sub_ns(kt, usec * 1000);
+@@ -366,7 +371,15 @@ extern void ktime_get_ts(struct timespec *ts);
+ static inline ktime_t ns_to_ktime(u64 ns)
+ {
+ 	static const ktime_t ktime_zero = { .tv64 = 0 };
++
+ 	return ktime_add_ns(ktime_zero, ns);
+ }
+ 
++static inline ktime_t ms_to_ktime(u64 ms)
++{
++	static const ktime_t ktime_zero = { .tv64 = 0 };
++
++	return ktime_add_ms(ktime_zero, ms);
++}
++
+ #endif
 -- 
 1.7.11.7
 
