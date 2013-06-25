@@ -1,7 +1,7 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Tue, 25 Jun 2013 15:13:41 +0000
-Subject: [PATCH net-next 6/6] net: sctp: simplify sctp_get_port
-Message-Id: <1372173221-15244-7-git-send-email-dborkman@redhat.com>
+Date: Tue, 25 Jun 2013 15:13:36 +0000
+Subject: [PATCH net-next 1/6] net: sctp: remove TEST_FRAME ifdef
+Message-Id: <1372173221-15244-2-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1372173221-15244-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1372173221-15244-1-git-send-email-dborkman@redhat.com>
@@ -11,37 +11,40 @@ Content-Transfer-Encoding: 7bit
 To: davem@davemloft.net
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-No need to have an extra ret variable when we directly can return
-the value of sctp_get_port_local().
+We do neither ship a test_frame.h, nor will this be compatible with
+the 2.5 out-of-tree lksctp kernel test suite anyway. So remove this
+artefact.
 
 Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
 ---
- net/sctp/socket.c | 5 +----
- 1 file changed, 1 insertion(+), 4 deletions(-)
+ include/net/sctp/sctp.h | 7 -------
+ 1 file changed, 7 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index ba9359c..66fcdcf 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -6036,7 +6036,6 @@ fail:
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 6321c08..15214a8 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -188,11 +188,6 @@ extern struct kmem_cache *sctp_bucket_cachep __read_mostly;
+  *  Section:  Macros, externs, and inlines
   */
- static int sctp_get_port(struct sock *sk, unsigned short snum)
- {
--	long ret;
- 	union sctp_addr addr;
- 	struct sctp_af *af = sctp_sk(sk)->pf->af;
  
-@@ -6045,9 +6044,7 @@ static int sctp_get_port(struct sock *sk, unsigned short snum)
- 	addr.v4.sin_port = htons(snum);
- 
- 	/* Note: sk->sk_num gets filled in if ephemeral port request. */
--	ret = sctp_get_port_local(sk, &addr);
 -
--	return ret ? 1 : 0;
-+	return !!sctp_get_port_local(sk, &addr);
- }
+-#ifdef TEST_FRAME
+-#include <test_frame.h>
+-#else
+-
+ /* spin lock wrappers. */
+ #define sctp_spin_lock_irqsave(lock, flags) spin_lock_irqsave(lock, flags)
+ #define sctp_spin_unlock_irqrestore(lock, flags)  \
+@@ -218,8 +213,6 @@ extern struct kmem_cache *sctp_bucket_cachep __read_mostly;
+ #define SCTP_INC_STATS_USER(net, field) SNMP_INC_STATS_USER((net)->sctp.sctp_statistics, field)
+ #define SCTP_DEC_STATS(net, field)      SNMP_DEC_STATS((net)->sctp.sctp_statistics, field)
  
- /*
+-#endif /* !TEST_FRAME */
+-
+ /* sctp mib definitions */
+ enum {
+ 	SCTP_MIB_NUM = 0,
 -- 
 1.7.11.7
 
