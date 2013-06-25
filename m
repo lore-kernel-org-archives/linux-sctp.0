@@ -1,36 +1,41 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Tue, 18 Jun 2013 08:55:20 +0000
-Subject: [PATCH net-next 5/5] net: sctp: minor: sctp_seq_dump_local_addrs add missing newline
-Message-Id: <1371545720-22950-6-git-send-email-dborkman@redhat.com>
+Date: Tue, 25 Jun 2013 15:13:35 +0000
+Subject: [PATCH net-next 0/6] Further SCTP changes
+Message-Id: <1372173221-15244-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1371545720-22950-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1371545720-22950-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: davem@davemloft.net
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-A trailing newline has been forgotten to add into the WARN().
+Mostly it's all about getting rid of unnecessary code, and/or making
+it more clean and readable. Code has been tested with lksctp-tools
+functional test suite and also my small sctp stress test helper that
+was used to discover the recent null-ptr derefs.
 
-Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
----
- net/sctp/proc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes since last version:
+  - Left sctp_put_port() still in sctp_endpoint_destroy() for now
+  - Added minor "net: sctp: simplify sctp_get_port" patch
 
-diff --git a/net/sctp/proc.c b/net/sctp/proc.c
-index 0c83162..62526c4 100644
---- a/net/sctp/proc.c
-+++ b/net/sctp/proc.c
-@@ -138,7 +138,7 @@ static void sctp_seq_dump_local_addrs(struct seq_file *seq, struct sctp_ep_commo
- 
- 		peer = asoc->peer.primary_path;
- 		if (unlikely(peer = NULL)) {
--			WARN(1, "Association %p with NULL primary path!", asoc);
-+			WARN(1, "Association %p with NULL primary path!\n", asoc);
- 			return;
- 		}
- 
+Daniel Borkmann (6):
+  net: sctp: remove TEST_FRAME ifdef
+  ktime: add ms_to_ktime() and ktime_add_ms() helpers
+  net: sctp: migrate cookie life from timeval to ktime
+  net: sctp: minor: sctp_seq_dump_local_addrs add missing newline
+  net: sctp: decouple cleaning some socket data from endpoint
+  net: sctp: simplify sctp_get_port
+
+ include/linux/ktime.h      | 13 +++++++++++++
+ include/net/sctp/sctp.h    | 25 -------------------------
+ include/net/sctp/structs.h |  6 +++---
+ net/sctp/associola.c       |  8 +-------
+ net/sctp/endpointola.c     | 18 +++++++++---------
+ net/sctp/proc.c            |  2 +-
+ net/sctp/sm_make_chunk.c   | 19 ++++++++-----------
+ net/sctp/socket.c          | 35 +++++++++++++++++++----------------
+ 8 files changed, 54 insertions(+), 72 deletions(-)
+
 -- 
 1.7.11.7
 
