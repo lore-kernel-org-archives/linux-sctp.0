@@ -1,50 +1,36 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Tue, 18 Jun 2013 08:55:16 +0000
-Subject: [PATCH net-next 1/5] net: sctp: remove TEST_FRAME ifdef
-Message-Id: <1371545720-22950-2-git-send-email-dborkman@redhat.com>
+Date: Tue, 25 Jun 2013 15:13:39 +0000
+Subject: [PATCH net-next 4/6] net: sctp: minor: sctp_seq_dump_local_addrs add missing newline
+Message-Id: <1372173221-15244-5-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1371545720-22950-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1371545720-22950-1-git-send-email-dborkman@redhat.com>
+References: <1372173221-15244-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1372173221-15244-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: davem@davemloft.net
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-We do neither ship a test_frame.h, nor will this be compatible with
-the 2.5 out-of-tree lksctp kernel test suite anyway. So remove this
-artefact.
+A trailing newline has been forgotten to add into the WARN().
 
 Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
 ---
- include/net/sctp/sctp.h | 7 -------
- 1 file changed, 7 deletions(-)
+ net/sctp/proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index 6321c08..15214a8 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -188,11 +188,6 @@ extern struct kmem_cache *sctp_bucket_cachep __read_mostly;
-  *  Section:  Macros, externs, and inlines
-  */
+diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+index 0c83162..62526c4 100644
+--- a/net/sctp/proc.c
++++ b/net/sctp/proc.c
+@@ -138,7 +138,7 @@ static void sctp_seq_dump_local_addrs(struct seq_file *seq, struct sctp_ep_commo
  
--
--#ifdef TEST_FRAME
--#include <test_frame.h>
--#else
--
- /* spin lock wrappers. */
- #define sctp_spin_lock_irqsave(lock, flags) spin_lock_irqsave(lock, flags)
- #define sctp_spin_unlock_irqrestore(lock, flags)  \
-@@ -218,8 +213,6 @@ extern struct kmem_cache *sctp_bucket_cachep __read_mostly;
- #define SCTP_INC_STATS_USER(net, field) SNMP_INC_STATS_USER((net)->sctp.sctp_statistics, field)
- #define SCTP_DEC_STATS(net, field)      SNMP_DEC_STATS((net)->sctp.sctp_statistics, field)
+ 		peer = asoc->peer.primary_path;
+ 		if (unlikely(peer = NULL)) {
+-			WARN(1, "Association %p with NULL primary path!", asoc);
++			WARN(1, "Association %p with NULL primary path!\n", asoc);
+ 			return;
+ 		}
  
--#endif /* !TEST_FRAME */
--
- /* sctp mib definitions */
- enum {
- 	SCTP_MIB_NUM = 0,
 -- 
 1.7.11.7
 
