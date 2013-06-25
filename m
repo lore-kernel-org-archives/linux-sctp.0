@@ -1,53 +1,118 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Sun, 09 Jun 2013 09:14:09 +0000
-Subject: Re: [PATCH net-next 1/3] net: sctp: let sctp_destroy_sock destroy related members
-Message-Id: <51B44761.3050902@redhat.com>
+Date: Tue, 25 Jun 2013 15:13:40 +0000
+Subject: [PATCH net-next 5/6] net: sctp: decouple cleaning some socket data from endpoint
+Message-Id: <1372173221-15244-6-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1370594106-25745-1-git-send-email-dborkman@redhat.com> <1370594106-25745-2-git-send-email-dborkman@redhat.com> <20130607105419.GA3249@hmsreliant.think-freely.org> <51B1C5A4.7080906@redhat.com> <20130609002054.GA5386@neilslaptop.think-freely.org>
-In-Reply-To: <20130609002054.GA5386@neilslaptop.think-freely.org>
+References: <1372173221-15244-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1372173221-15244-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On 06/09/2013 02:20 AM, Neil Horman wrote:
-> On Fri, Jun 07, 2013 at 01:36:04PM +0200, Daniel Borkmann wrote:
->> On 06/07/2013 12:54 PM, Neil Horman wrote:
->>> I'm not sure this is safe.  Comment in sk_common_release indicates that the
->>> network can still find the socket in the receive path.  What if we receive a
->>> cookie chunk while the socket is being torn down?  We would wind up using the
->>> hmac to unpack it potentially after you just freed it.  I think you need to wait
->>> until you drop the last reference to the endpoint, not whenever you destroy the
->>> local socket.  Note that sctp_endpoint_free doesn't actually free anything, it
->>> just removes it from the hash list so it can't be found again, and drops a
->>> refcount.  If a parallel recieve op has already found it, hmac may still be
->>> used.
->>
->> Agreed, you're right, thanks for pointing this out Neil! Is it *always* guaranteed
->> that at the time the endpoint is destroyed in a deferred way (e.g. exactly in such
->> a scenario you describe), the socket structure is still alive and not yet freed?
->> Either the ep->base.sk test in sctp_endpoint_destroy() would then be unnecessary
->> or, if necessary, we should move crypto_free_hash() and sctp_put_port() within this
->> body since they deref. socket members (but then that memory would be leaked in case
->> ep->base.sk is NULL). Probably, it might be best to add sth like this to explicitly
->> decouple it from the endpoint, which is then called when all refs are released from
->> the socket; then we could call this from __sk_free() via sk->sk_destruct():
->>
-> Thats a good question, I'm on vacation right now, so I'm not looking to closely
-> at much (I've spent all day in a pool).  I think what you're proposing below
-> probably makes sense.  Since the hmac crypo instance is allocated when the
+Rather instead of having the endpoint clean the garbage from the
+socket, use a sk_destruct handler sctp_destruct_sock(), that does
+the job for that when there are no more references on the socket.
+At least do this for our crypto transform through crypto_free_hash()
+that is allocated when in listening state. Also, for now, move the
+sctp_put_port() into the sk if body. At a later point in time we
+can still determine if there's an option of placing this into
+unhash() or sctp_endpoint_free() without any races. For now, leave
+it in sctp_endpoint_destroy() though.
 
-Cool, sounds relaxing. :-) Have nice holidays then!
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/endpointola.c | 18 +++++++++---------
+ net/sctp/socket.c      | 16 +++++++++++++++-
+ 2 files changed, 24 insertions(+), 10 deletions(-)
 
-> socket transitions to the listening state in sctp_listen, it makes sense to
-> destroy it in sctp_sock_destroy.  If we need to we can protect it as an rcu
-> variable to protect it against parallel reads from cookie processing.  If it
-> fails in that case, its irrelevant, as the local socket is shutting down anyway.
+diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
+index a8b2674..8ad7781 100644
+--- a/net/sctp/endpointola.c
++++ b/net/sctp/endpointola.c
+@@ -247,10 +247,9 @@ void sctp_endpoint_free(struct sctp_endpoint *ep)
+ /* Final destructor for endpoint.  */
+ static void sctp_endpoint_destroy(struct sctp_endpoint *ep)
+ {
+-	SCTP_ASSERT(ep->base.dead, "Endpoint is not dead", return);
++	struct sock *sk;
+ 
+-	/* Free up the HMAC transform. */
+-	crypto_free_hash(sctp_sk(ep->base.sk)->hmac);
++	SCTP_ASSERT(ep->base.dead, "Endpoint is not dead", return);
+ 
+ 	/* Free the digest buffer */
+ 	kfree(ep->digest);
+@@ -271,13 +270,14 @@ static void sctp_endpoint_destroy(struct sctp_endpoint *ep)
+ 
+ 	memset(ep->secret_key, 0, sizeof(ep->secret_key));
+ 
+-	/* Remove and free the port */
+-	if (sctp_sk(ep->base.sk)->bind_hash)
+-		sctp_put_port(ep->base.sk);
+-
+ 	/* Give up our hold on the sock. */
+-	if (ep->base.sk)
+-		sock_put(ep->base.sk);
++	if ((sk = ep->base.sk)) {
++		/* Remove and free the port */
++		if (sctp_sk(sk)->bind_hash)
++			sctp_put_port(sk);
++
++		sock_put(sk);
++	}
+ 
+ 	kfree(ep);
+ 	SCTP_DBG_OBJCNT_DEC(ep);
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 4c47e55..ba9359c 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -93,6 +93,7 @@ static int sctp_wait_for_packet(struct sock * sk, int *err, long *timeo_p);
+ static int sctp_wait_for_connect(struct sctp_association *, long *timeo_p);
+ static int sctp_wait_for_accept(struct sock *sk, long timeo);
+ static void sctp_wait_for_close(struct sock *sk, long timeo);
++static void sctp_destruct_sock(struct sock *sk);
+ static struct sctp_af *sctp_sockaddr_af(struct sctp_sock *opt,
+ 					union sctp_addr *addr, int len);
+ static int sctp_bindx_add(struct sock *, struct sockaddr *, int);
+@@ -3966,6 +3967,8 @@ static int sctp_init_sock(struct sock *sk)
+ 
+ 	sp->hmac = NULL;
+ 
++	sk->sk_destruct = sctp_destruct_sock;
++
+ 	SCTP_DBG_OBJCNT_INC(sock);
+ 
+ 	local_bh_disable();
+@@ -4008,6 +4011,17 @@ static void sctp_destroy_sock(struct sock *sk)
+ 	local_bh_enable();
+ }
+ 
++/* Triggered when there are no references on the socket anymore */
++static void sctp_destruct_sock(struct sock *sk)
++{
++	struct sctp_sock *sp = sctp_sk(sk);
++
++	/* Free up the HMAC transform. */
++	crypto_free_hash(sp->hmac);
++
++	inet_sock_destruct(sk);
++}
++
+ /* API 4.1.7 shutdown() - TCP Style Syntax
+  *     int shutdown(int socket, int how);
+  *
+@@ -6848,7 +6862,7 @@ void sctp_copy_sock(struct sock *newsk, struct sock *sk,
+ 	newsk->sk_reuse = sk->sk_reuse;
+ 
+ 	newsk->sk_shutdown = sk->sk_shutdown;
+-	newsk->sk_destruct = inet_sock_destruct;
++	newsk->sk_destruct = sctp_destruct_sock;
+ 	newsk->sk_family = sk->sk_family;
+ 	newsk->sk_protocol = IPPROTO_SCTP;
+ 	newsk->sk_backlog_rcv = sk->sk_prot->backlog_rcv;
+-- 
+1.7.11.7
 
-I'll evaluate this further and then send a v2 of the set, but I think it makes
-sense this way.
-
-Thanks,
-
-Daniel
