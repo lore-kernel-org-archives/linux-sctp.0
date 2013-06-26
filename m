@@ -1,120 +1,89 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Fri, 14 Jun 2013 15:04:19 +0000
-Subject: Re: [PATCH net-next 1/4] net: sctp: sctp_seq_dump_local_addrs: throw BUG if primary_path is NULL
-Message-Id: <51BB30F3.7080606@gmail.com>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Wed, 26 Jun 2013 17:01:12 +0000
+Subject: [PATCH net-next 1/2] lib: vsprintf: add IPv4/v6 generic %pig/%pIg format specifier
+Message-Id: <1372266073-11998-2-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1371139463-12512-1-git-send-email-dborkman@redhat.com> <1371139463-12512-2-git-send-email-dborkman@redhat.com> <51BB29A4.7090106@gmail.com> <51BB2DE6.40703@redhat.com>
-In-Reply-To: <51BB2DE6.40703@redhat.com>
+References: <1372266073-11998-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1372266073-11998-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On 06/14/2013 10:51 AM, Daniel Borkmann wrote:
-> On 06/14/2013 04:33 PM, Vlad Yasevich wrote:
->> On 06/13/2013 12:04 PM, Daniel Borkmann wrote:
->>> This clearly states a BUG somewhere in the SCTP code as e.g. fixed once
->>> in f28156335 ("sctp: Use correct sideffect command in duplicate cookie
->>> handling"). If this ever comes up again, throw a BUG and add a comment
->>> why this is the case since it is not too obvious when primary != NULL
->>> test passes and at a later point in time triggering a NULL ptr
->>> dereference
->>> caused by primary. While at it, also fix up the white space.
->>>
->>> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
->>> ---
->>>   net/sctp/proc.c | 15 ++++++++++++---
->>>   1 file changed, 12 insertions(+), 3 deletions(-)
->>>
->>> diff --git a/net/sctp/proc.c b/net/sctp/proc.c
->>> index 4e45ee3..f171366 100644
->>> --- a/net/sctp/proc.c
->>> +++ b/net/sctp/proc.c
->>> @@ -134,9 +134,18 @@ static void sctp_seq_dump_local_addrs(struct
->>> seq_file *seq, struct sctp_ep_commo
->>>       struct sctp_af *af;
->>>
->>>       if (epb->type = SCTP_EP_TYPE_ASSOCIATION) {
->>> -        asoc = sctp_assoc(epb);
->>> -        peer = asoc->peer.primary_path;
->>> -        primary = &peer->saddr;
->>> +        asoc = sctp_assoc(epb);
->>> +        peer = asoc->peer.primary_path;
->>> +
->>> +        /* There must be no such case where an association is linked
->>> +         * into sctp_assoc_hashtable that does not have a primary
->>> +         * path! This means either sctp_association_free() was called
->>> +         * without sctp_unhash_established(), or somewhere in the
->>> +         * interpreter SCTP_CMD_ASOC_NEW was called on a non-fully
->>> +         * set up association. So do hara-kiri until this is fixed.
->>> +         */
->>> +        BUG_ON(peer = NULL);
->>> +        primary = &peer->saddr;
->>
->> I am still trying to convince myself whether this BUG_ON() is the
->> right thing to do...
->>
->> The fact that we reached this association may not necessarily help in
->> diagnosing how we managed that and what might be going on.  Also
->> crashing the system just because someone read /proc is a bit of an
->> overkill, especially considering that the system might have stayed up
->> if the user did not read /proc.
->
-> Well, but this patch actually makes no difference at all. Even if this
-> BUG_ON would
-> not be there, then the next thing that happens is a NULL ptr dereference
-> in cmp_addr()
-> on the primary pointer, right as in the stack trace I've sent with the
-> recent patch.
->
-> So we might as well tell the user why this is happening before he debugs
-> on this code
-> for quite a while.
->
->> One thought I had was to change the above into something like this:
->>      if (peer = NULL) {
->>          WARN(1, "Association %p with NULL primary path", asoc);
->>          return;
->>      }
->
-> Ok, this could be an alternative. It would suck to just have a crash
-> because we want
-> to print out an asterisk character. :-)
->
-> I'm not sure about the side effects if we leave that association in the
-> list and just
-> warn, maybe it will also trigger a crash sooner or later, but sure, we
-> could do this
-> like that.
+In order to avoid making code that deals with printing both, IPv4 and
+IPv6 addresses, unnecessary complicated as for example ...
 
-It may trigger the crash later if the user performs some action on the 
-association that touches the primary.   That's the reason why I was 
-proposing the checks below.
+  if (sa.sa_family = AF_INET6)
+    printk("... %pI6 ...", sin6_addr);
+  else
+    printk("... %pI4 ...", sin_addr.s_addr);
 
-With the checks in command interpreter, we are only left with the 
-possibility that primary_path changes to NULL during the association 
-lifetime, which code audit doesn't support right now.  If that ever 
-changes we would at least have a bit more information to go on.
+... it would be better to introduce a format specifier that can deal
+with those kind of situations internally; just as we have a "struct
+sockaddr" for generic mapping into "struct sockaddr_in" or "struct
+sockaddr_in6" as e.g. done in "union sctp_addr". Then, we could
+reduce the above statement into something like:
 
->
->> And add the following to handler for SCTP_CMD_NEW_ASOC and may be also
->> to sctp_cmd_delete_tcb()
->>
->>      BUG_ON(asoc->peer.primary_path = NULL);
->>
->> This way, we would bug on additional and removal paths which have the
->> possibility of giving us a lot more information about why the condition
->> occurred in the first place.
->
-> Agreed, sounds good to me. Then let me resubmit the set with the
-> proposed change.
->
+  printk("... %pIg ..", &sockaddr);
 
-OK.
+While we're at it, support for both %pig/%pIg, where 'g' stands for
+generic, comes for free. In case our pointer is NULL, pointer() then
+deals with that already at an earlier point in time internally.
 
--vlad
-> Cheers,
->
-> Daniel
+Likely, there are many other areas than just SCTP in the kernel to make
+use of this extension as well.
+
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ lib/vsprintf.c | 18 ++++++++++++++++--
+ 1 file changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/lib/vsprintf.c b/lib/vsprintf.c
+index e149c64..7243742 100644
+--- a/lib/vsprintf.c
++++ b/lib/vsprintf.c
+@@ -1004,10 +1004,10 @@ int kptr_restrict __read_mostly;
+  * - 'MF' For a 6-byte MAC FDDI address, it prints the address
+  *       with a dash-separated hex notation
+  * - '[mM]R' For a 6-byte MAC address, Reverse order (Bluetooth)
+- * - 'I' [46] for IPv4/IPv6 addresses printed in the usual way
++ * - 'I' [46g] for IPv4/IPv6 addresses printed in the usual way
+  *       IPv4 uses dot-separated decimal without leading 0's (1.2.3.4)
+  *       IPv6 uses colon separated network-order 16 bit hex with leading 0's
+- * - 'i' [46] for 'raw' IPv4/IPv6 addresses
++ * - 'i' [46g] for 'raw' IPv4/IPv6 addresses
+  *       IPv6 omits the colons (01020304...0f)
+  *       IPv4 uses dot-separated decimal with leading 0's (010.123.045.006)
+  * - '[Ii]4[hnbl]' IPv4 addresses in host, network, big or little endian order
+@@ -1093,6 +1093,18 @@ char *pointer(const char *fmt, char *buf, char *end, void *ptr,
+ 			return ip6_addr_string(buf, end, ptr, spec, fmt);
+ 		case '4':
+ 			return ip4_addr_string(buf, end, ptr, spec, fmt);
++		case 'g':
++			{
++				const struct sockaddr *sa = ptr;
++
++				if (sa->sa_family = AF_INET6) {
++					ptr = &((struct sockaddr_in6 *) sa)->sin6_addr;
++					return ip6_addr_string(buf, end, ptr, spec, fmt);
++				} else {
++					ptr = &((struct sockaddr_in *) sa)->sin_addr.s_addr;
++					return ip4_addr_string(buf, end, ptr, spec, fmt);
++				}
++			}
+ 		}
+ 		break;
+ 	case 'U':
+@@ -1370,6 +1382,8 @@ qualifier:
+  * %pI6 print an IPv6 address with colons
+  * %pi6 print an IPv6 address without colons
+  * %pI6c print an IPv6 address as specified by RFC 5952
++ * %pIg depending on sa_family of 'struct sockaddr *' switch to %pI6/%pI4
++ * %pig depending on sa_family of 'struct sockaddr *' switch to %pi6/%pi4
+  * %pU[bBlL] print a UUID/GUID in big or little endian using lower or upper
+  *   case.
+  * %*ph[CDN] a variable-length hex string with a separator (supports up to 64
+-- 
+1.7.11.7
 
