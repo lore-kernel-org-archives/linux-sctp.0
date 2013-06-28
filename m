@@ -1,61 +1,270 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 07 Jun 2013 11:04:24 +0000
-Subject: Re: [PATCH net-next 3/3] net: sctp: minor: remove variable in sctp_init_sock
-Message-Id: <20130607110424.GC3249@hmsreliant.think-freely.org>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Fri, 28 Jun 2013 17:49:39 +0000
+Subject: [PATCH net-next v4 1/2] lib: vsprintf: add IPv4/v6 generic %p[Ii]S[pfs] format specifier
+Message-Id: <1372441780-9844-2-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1370594106-25745-1-git-send-email-dborkman@redhat.com>
- <1370594106-25745-4-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1370594106-25745-4-git-send-email-dborkman@redhat.com>
+References: <1372441780-9844-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1372441780-9844-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Joe Perches <joe@perches.com>, linux-kernel@vger.kernel.org
 
-On Fri, Jun 07, 2013 at 10:35:06AM +0200, Daniel Borkmann wrote:
-> It's only used at this one time, so we could remove it as well.
-> This is valid and also makes it more explicit/obvious that in case
-> of error the sp->ep is NULL here, i.e. for the sctp_destroy_sock()
-> check.
-> 
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+In order to avoid making code that deals with printing both, IPv4 and
+IPv6 addresses, unnecessary complicated as for example ...
 
-> ---
->  net/sctp/socket.c | 6 ++----
->  1 file changed, 2 insertions(+), 4 deletions(-)
-> 
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 3267534..e71d399 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -3862,7 +3862,6 @@ out:
->  SCTP_STATIC int sctp_init_sock(struct sock *sk)
->  {
->  	struct net *net = sock_net(sk);
-> -	struct sctp_endpoint *ep;
->  	struct sctp_sock *sp;
->  
->  	SCTP_DEBUG_PRINTK("sctp_init_sock(sk: %p)\n", sk);
-> @@ -3971,11 +3970,10 @@ SCTP_STATIC int sctp_init_sock(struct sock *sk)
->  	 * change the data structure relationships, this may still
->  	 * be useful for storing pre-connect address information.
->  	 */
-> -	ep = sctp_endpoint_new(sk, GFP_KERNEL);
-> -	if (!ep)
-> +	sp->ep = sctp_endpoint_new(sk, GFP_KERNEL);
-> +	if (!sp->ep)
->  		return -ENOMEM;
->  
-> -	sp->ep = ep;
->  	sp->hmac = NULL;
->  
->  	SCTP_DBG_OBJCNT_INC(sock);
-> -- 
-> 1.7.11.7
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+  if (sa.sa_family = AF_INET6)
+    printk("... %pI6 ...", ..sin6_addr);
+  else
+    printk("... %pI4 ...", ..sin_addr.s_addr);
+
+... it would be better to introduce a format specifier that can deal
+with those kind of situations internally; just as we have a "struct
+sockaddr" for generic mapping into "struct sockaddr_in" or "struct
+sockaddr_in6" as e.g. done in "union sctp_addr". Then, we could
+reduce the above statement into something like:
+
+  printk("... %pIS ..", &sockaddr);
+
+In case our pointer is NULL, pointer() then deals with that already at
+an earlier point in time internally. While we're at it, support for both
+%piS/%pIS, where 'S' stands for sockaddr, comes (almost) for free.
+
+Additionally to that, postfix specifiers 'p', 'f' and 's' are supported
+as suggested and initially implemented in 2009 by Joe Perches [1].
+Handling of those additional specifiers orientate on the initial RFC that
+was proposed. Also we support IPv6 compressed format specified by 'c' and
+various other IPv4 extensions as stated in the documentation part.
+
+Likely, there are many other areas than just SCTP in the kernel to make
+use of this extension as well.
+
+ [1] http://patchwork.ozlabs.org/patch/31480/
+
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+CC: Joe Perches <joe@perches.com>
+CC: linux-kernel@vger.kernel.org
+---
+ v1->v2:
+  - Added documentation into printk-formats.txt
+  - Changed %pig/%pIg into %piS/%pIS
+  - Changed braces/indent in pointer()
+  - Also CC lkml
+ v2->v3:
+  - Reworked entire patch to include port, flowinfo, scope and others
+  - Various printk tests with these new specifiers
+  - Improved documentation
+ v3->v4:
+  - Applied Joe's feedback, 'p' et al can be on various positions
+    in v4 print handler, so make it similar to v6
+
+ Documentation/printk-formats.txt |  32 ++++++++++
+ lib/vsprintf.c                   | 124 ++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 154 insertions(+), 2 deletions(-)
+
+diff --git a/Documentation/printk-formats.txt b/Documentation/printk-formats.txt
+index 3af5ae6..3d4b76f 100644
+--- a/Documentation/printk-formats.txt
++++ b/Documentation/printk-formats.txt
+@@ -121,6 +121,38 @@ IPv6 addresses:
+ 	print a compressed IPv6 address as described by
+ 	http://tools.ietf.org/html/rfc5952
+ 
++IPv4/IPv6 addresses (generic, with port, flowinfo, scope):
++
++	%pIS	1.2.3.4		or 0001:0002:0003:0004:0005:0006:0007:0008
++	%piS	001.002.003.004	or 00010002000300040005000600070008
++	%pISc	1.2.3.4		or 1:2:3:4:5:6:7:8
++	%pISpc	1.2.3.4:12345	or [1:2:3:4:5:6:7:8]:12345
++	%p[Ii]S[pfschnbl]
++
++	For printing an IP address without the need to distinguish whether it's
++	of type AF_INET or AF_INET6, a pointer to a valid 'struct sockaddr',
++	specified through 'IS' or 'iS', can be passed to this format specifier.
++
++	The additional 'p', 'f', and 's' specifiers are used to specify port
++	(IPv4, IPv6), flowinfo (IPv6) and scope (IPv6). Ports have a ':' prefix,
++	flowinfo a '/' and scope a '%', each followed by the actual value.
++
++	In case of an IPv6 address the compressed IPv6 address as described by
++	http://tools.ietf.org/html/rfc5952 is being used if the additional
++	specifier 'c' is given. The IPv6 address is surrounded by '[', ']' in
++	case of additional specifiers 'p', 'f' or 's' as suggested by
++	https://tools.ietf.org/html/draft-ietf-6man-text-addr-representation-07
++
++	In case of IPv4 addresses, the additional 'h', 'n', 'b', and 'l'
++	specifiers can be used as well and are ignored in case of an IPv6
++	address.
++
++	Further examples:
++
++	%pISfc		1.2.3.4		or [1:2:3:4:5:6:7:8]/123456789
++	%pISsc		1.2.3.4		or [1:2:3:4:5:6:7:8]%1234567890
++	%pISpfc		1.2.3.4:12345	or [1:2:3:4:5:6:7:8]:12345/123456789
++
+ UUID/GUID addresses:
+ 
+ 	%pUb	00010203-0405-0607-0809-0a0b0c0d0e0f
+diff --git a/lib/vsprintf.c b/lib/vsprintf.c
+index e149c64..31febc0 100644
+--- a/lib/vsprintf.c
++++ b/lib/vsprintf.c
+@@ -923,6 +923,103 @@ char *ip4_addr_string(char *buf, char *end, const u8 *addr,
+ }
+ 
+ static noinline_for_stack
++char *ip6_addr_string_sa(char *buf, char *end, const struct sockaddr_in6 *sa,
++			 struct printf_spec spec, const char *fmt)
++{
++	bool have_p = false, have_s = false, have_f = false, have_c = false;
++	char ip6_addr[sizeof("[xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:255.255.255.255]") +
++		      sizeof(":12345") + sizeof("/123456789") +
++		      sizeof("%1234567890")];
++	char *p = ip6_addr, *pend = ip6_addr + sizeof(ip6_addr);
++	const u8 *addr = (const u8 *) &sa->sin6_addr;
++	char fmt6[2] = { fmt[0], '6' };
++	u8 off = 0;
++
++	fmt++;
++	while (isalpha(*++fmt)) {
++		switch (*fmt) {
++		case 'p':
++			have_p = true;
++			break;
++		case 'f':
++			have_f = true;
++			break;
++		case 's':
++			have_s = true;
++			break;
++		case 'c':
++			have_c = true;
++			break;
++		}
++	}
++
++	if (have_p || have_s || have_f) {
++		*p = '[';
++		off = 1;
++	}
++
++	if (fmt6[0] = 'I' && have_c)
++		p = ip6_compressed_string(ip6_addr + off, addr);
++	else
++		p = ip6_string(ip6_addr + off, addr, fmt6);
++
++	if (have_p || have_s || have_f)
++		*p++ = ']';
++
++	if (have_p) {
++		*p++ = ':';
++		p = number(p, pend, ntohs(sa->sin6_port), spec);
++	}
++	if (have_f) {
++		*p++ = '/';
++		p = number(p, pend, ntohl(sa->sin6_flowinfo &
++					  IPV6_FLOWINFO_MASK), spec);
++	}
++	if (have_s) {
++		*p++ = '%';
++		p = number(p, pend, sa->sin6_scope_id, spec);
++	}
++	*p = '\0';
++
++	return string(buf, end, ip6_addr, spec);
++}
++
++static noinline_for_stack
++char *ip4_addr_string_sa(char *buf, char *end, const struct sockaddr_in *sa,
++			 struct printf_spec spec, const char *fmt)
++{
++	bool have_p = false;
++	char *p, ip4_addr[sizeof("255.255.255.255") + sizeof(":12345")];
++	char *pend = ip4_addr + sizeof(ip4_addr);
++	const u8 *addr = (const u8 *) &sa->sin_addr.s_addr;
++	char fmt4[3] = { fmt[0], '4', 0 };
++
++	fmt++;
++	while (isalpha(*++fmt)) {
++		switch (*fmt) {
++		case 'p':
++			have_p = true;
++			break;
++		case 'h':
++		case 'l':
++		case 'n':
++		case 'b':
++			fmt4[2] = *fmt;
++			break;
++		}
++	}
++
++	p = ip4_string(ip4_addr, addr, fmt4);
++	if (have_p) {
++		*p++ = ':';
++		p = number(p, pend, ntohs(sa->sin_port), spec);
++	}
++	*p = '\0';
++
++	return string(buf, end, ip4_addr, spec);
++}
++
++static noinline_for_stack
+ char *uuid_string(char *buf, char *end, const u8 *addr,
+ 		  struct printf_spec spec, const char *fmt)
+ {
+@@ -1007,11 +1104,17 @@ int kptr_restrict __read_mostly;
+  * - 'I' [46] for IPv4/IPv6 addresses printed in the usual way
+  *       IPv4 uses dot-separated decimal without leading 0's (1.2.3.4)
+  *       IPv6 uses colon separated network-order 16 bit hex with leading 0's
++ *       [S][pfs]
++ *       Generic IPv4/IPv6 address (struct sockaddr *) that falls back to
++ *       [4] or [6] and is able to print port [p], flowinfo [f], scope [s]
+  * - 'i' [46] for 'raw' IPv4/IPv6 addresses
+  *       IPv6 omits the colons (01020304...0f)
+  *       IPv4 uses dot-separated decimal with leading 0's (010.123.045.006)
+- * - '[Ii]4[hnbl]' IPv4 addresses in host, network, big or little endian order
+- * - 'I6c' for IPv6 addresses printed as specified by
++ *       [S][pfs]
++ *       Generic IPv4/IPv6 address (struct sockaddr *) that falls back to
++ *       [4] or [6] and is able to print port [p], flowinfo [f], scope [s]
++ * - '[Ii][4S][hnbl]' IPv4 addresses in host, network, big or little endian order
++ * - 'I[6S]c' for IPv6 addresses printed as specified by
+  *       http://tools.ietf.org/html/rfc5952
+  * - 'U' For a 16 byte UUID/GUID, it prints the UUID/GUID in the form
+  *       "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+@@ -1093,6 +1196,21 @@ char *pointer(const char *fmt, char *buf, char *end, void *ptr,
+ 			return ip6_addr_string(buf, end, ptr, spec, fmt);
+ 		case '4':
+ 			return ip4_addr_string(buf, end, ptr, spec, fmt);
++		case 'S': {
++			const union {
++				struct sockaddr		raw;
++				struct sockaddr_in	v4;
++				struct sockaddr_in6	v6;
++			} *sa = ptr;
++
++			switch (sa->raw.sa_family) {
++			case AF_INET:
++				return ip4_addr_string_sa(buf, end, &sa->v4, spec, fmt);
++			case AF_INET6:
++				return ip6_addr_string_sa(buf, end, &sa->v6, spec, fmt);
++			default:
++				return string(buf, end, "(invalid address)", spec);
++			}}
+ 		}
+ 		break;
+ 	case 'U':
+@@ -1370,6 +1488,8 @@ qualifier:
+  * %pI6 print an IPv6 address with colons
+  * %pi6 print an IPv6 address without colons
+  * %pI6c print an IPv6 address as specified by RFC 5952
++ * %pIS depending on sa_family of 'struct sockaddr *' print IPv4/IPv6 address
++ * %piS depending on sa_family of 'struct sockaddr *' print IPv4/IPv6 address
+  * %pU[bBlL] print a UUID/GUID in big or little endian using lower or upper
+  *   case.
+  * %*ph[CDN] a variable-length hex string with a separator (supports up to 64
+-- 
+1.7.11.7
+
