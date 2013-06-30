@@ -1,8 +1,10 @@
-From: "George Daniels" <dir.agroindustrial@unipaz.edu.co>
-Date: Sat, 22 Jun 2013 13:37:36 +0000
+From: "George Daniels" <dangeorgds@live.com>
+Date: Sun, 30 Jun 2013 20:16:39 +0000
 Subject: Greetings from George Daniels
-Message-Id: <1371908257_230027@6a77u4sisda98nt>
+Message-Id: <31058289AD0A4FBA89B49919B52FEC5F.MAI@joinhosting.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1371908257_230027@6a77u4sisda98nt>
+In-Reply-To: <1371908257_230027@6a77u4sisda98nt>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -19,6 +21,7 @@ for obvious reason which you will understand.
 I am sending this mail just to know if this email address is OK, 
 reply me back so that I will send  more details to you. 
 I have a very important thing to discuss with you, I look forward to receiving your response at 
-georgedaniels@postino.net . Have a pleasant day.
+jscregoffice@postino.net . Have a pleasant day.
 
 George Daniels
+
