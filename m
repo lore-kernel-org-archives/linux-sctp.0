@@ -1,45 +1,42 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 02 Jul 2013 23:14:28 +0000
-Subject: Re: [PATCH 12/13] sctp: use get_unused_fd_flags(0) instead of get_unused_fd()
-Message-Id: <20130702.161428.1703028286206350504.davem@davemloft.net>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Mon, 01 Jul 2013 16:10:36 +0000
+Subject: [PATCH net-next] net: sctp: prevent checksum.h from double inclusion
+Message-Id: <1372695036-10914-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1372777600.git.ydroneaud@opteya.com>
-	<6d4271e2e0b05ae2728cba1d890e77cac50cf8f0.1372777600.git.ydroneaud@opteya.com>
-	<51D312E8.6090702@gmail.com>
-In-Reply-To: <51D312E8.6090702@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vyasevich@gmail.com
-Cc: ydroneaud@opteya.com, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Tue, 02 Jul 2013 13:50:32 -0400
+The header file checksum.h is missing proper defines that prevents
+it from double inclusion.
 
-> On 07/02/2013 12:39 PM, Yann Droneaud wrote:
->> Macro get_unused_fd() is used to allocate a file descriptor with
->> default flags. Those default flags (0) can be "unsafe":
->> O_CLOEXEC must be used by default to not leak file descriptor
->> across exec().
->>
->> Instead of macro get_unused_fd(), functions anon_inode_getfd()
->> or get_unused_fd_flags() should be used with flags given by userspace.
->> If not possible, flags should be set to O_CLOEXEC to provide userspace
->> with a default safe behavor.
->>
->> In a further patch, get_unused_fd() will be removed so that
->> new code start using anon_inode_getfd() or get_unused_fd_flags()
->> with correct flags.
->>
->> This patch replaces calls to get_unused_fd() with equivalent call to
->> get_unused_fd_flags(0) to preserve current behavor for existing code.
->>
->> The hard coded flag value (0) should be reviewed on a per-subsystem
->> basis,
->> and, if possible, set to O_CLOEXEC.
->>
->> Signed-off-by: Yann Droneaud <ydroneaud@opteya.com>
-> 
-> Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ include/net/sctp/checksum.h | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-Applied to net-next, thanks.
+diff --git a/include/net/sctp/checksum.h b/include/net/sctp/checksum.h
+index 5a2110d..0cb08e6 100644
+--- a/include/net/sctp/checksum.h
++++ b/include/net/sctp/checksum.h
+@@ -42,6 +42,9 @@
+  * be incorporated into the next SCTP release.
+  */
+ 
++#ifndef __sctp_checksum_h__
++#define __sctp_checksum_h__
++
+ #include <linux/types.h>
+ #include <net/sctp/sctp.h>
+ #include <linux/crc32c.h>
+@@ -81,3 +84,5 @@ static inline __le32 sctp_end_cksum(__u32 crc32)
+ {
+ 	return cpu_to_le32(~crc32);
+ }
++
++#endif /* __sctp_checksum_h__ */
+-- 
+1.7.11.7
+
