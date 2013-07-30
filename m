@@ -1,28 +1,28 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 25 Jul 2013 00:53:53 +0000
-Subject: Re: [PATCH net-next 1/2] net: sctp: trivial: update mailing list address
-Message-Id: <20130724.175353.1336368016980085619.davem@davemloft.net>
+From: Vipul Singhania <vipsinghania@gmail.com>
+Date: Tue, 30 Jul 2013 11:34:52 +0000
+Subject: Association issue.
+Message-Id: <CAAwSLG+fNrUKrfd1dBshHvsSUOpsEASBtwXb2iZF+uQ+uM8kxw@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1374583908-17152-1-git-send-email-dborkman@redhat.com>
-	<51EE9591.8090800@gmail.com>
-In-Reply-To: <51EE9591.8090800@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vyasevich@gmail.com
-Cc: dborkman@redhat.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Tue, 23 Jul 2013 10:39:13 -0400
+Hi All,
 
-> On 07/23/2013 08:51 AM, Daniel Borkmann wrote:
->> The SCTP mailing list address to send patches or questions
->> to is linux-sctp@vger.kernel.org and not
->> lksctp-developers@lists.sourceforge.net anymore. Therefore,
->> update all occurences.
->>
->> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-> 
-> Acked-by: Vlad Yasevich <vyasevich@gmail.com>
 
-Applied.
+I have one test case in which I have 2 interfaces on each machine (two hosts).
+
+One is working as server and one is as client.
+
+If in server I make one interface as public (IP address 164.x.x.x)
+then the server sends reset to the client).
+
+So question is does SCTP support association between public to private
+range IP address?
+
+
+Thanks in advance.
+-- 
+-=vipsy
+http://through-dlens.blogspot.in
