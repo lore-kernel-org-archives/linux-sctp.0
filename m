@@ -1,23 +1,89 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 09 Aug 2013 20:10:08 +0000
-Subject: Re: [PATCH net-next 1/2] net: sctp: convert sctp_checksum_disable module param into sctp sysctl
-Message-Id: <20130809.131008.773918164482459670.davem@davemloft.net>
+From: Vipul Singhania <vipsinghania@gmail.com>
+Date: Thu, 01 Aug 2013 10:34:50 +0000
+Subject: Re: Association issue.
+Message-Id: <CAAwSLG+8cS+qWnMmgUiW+syCtRODHSmRT5DHBGUyP2ZSH6VG6w@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1375816693-7697-1-git-send-email-dborkman@redhat.com>
-	<20130809.113320.681399334989952629.davem@davemloft.net>
-	<52053A00.80808@gmail.com>
-In-Reply-To: <52053A00.80808@gmail.com>
+References: <CAAwSLG+fNrUKrfd1dBshHvsSUOpsEASBtwXb2iZF+uQ+uM8kxw@mail.gmail.com>
+In-Reply-To: <CAAwSLG+fNrUKrfd1dBshHvsSUOpsEASBtwXb2iZF+uQ+uM8kxw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vyasevich@gmail.com
-Cc: dborkman@redhat.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Fri, 09 Aug 2013 14:50:40 -0400
+On Wed, Jul 31, 2013 at 6:41 PM, Neil Horman <nhorman@tuxdriver.com> wrote:
+> On Wed, Jul 31, 2013 at 10:33:50AM +0530, Vipul Singhania wrote:
+>> Thanks for reply.
+>>
+>> There is no firewall in that network. This is just separate network.
+>> and I can say they are directly connected to each other using L1
+>> switch and no other connection to outside world.
+>>
+>> It was jut testing that I have giving public IP to one of interface in one host.
+>>
+>> - The association look like with public IP.
+>>
+>> sh-3.2# cat /proc/net/sctp/assocs
+>>  ASSOC     SOCK   STY SST ST HBKT ASSOC-ID TX_QUEUE RX_QUEUE UID INODE
+>> LPORT RPORT LADDRS <-> RADDRS HBINT INS OUTS MAXRT T1X T2X RTXC
+>> ffff8800089b0000 ffff8800335944c0 2   1   3  37916    3      516
+>>  0       0 10635 48520  7168  127.3.253.1 127.3.21.1 127.4.253.1
+>> 127.2.253.1 127.1.221.1 164.48.1.1 127.3.254.1 <-> *127.4.252.1
+>>  7500   300   300   10    0    0        0
+>> ffff8800089b2000 ffff880033594000 2   1   3  50717    4      516
+>>  0       0 10634 60890  7169  127.3.253.1 127.3.21.1 127.4.253.1
+>> 127.2.253.1 127.1.221.1 164.48.1.1 127.3.254.1 <-> *127.4.252.1
+>>  7500   300   300   10    0    0        0
+>>
+>> -----------------------------------------------------------------------------
+>> - But if I give private IP (10.1.1.1) this look like.
+>>
+>> sh-3.2# cat /proc/net/sctp/assocs
+>>  ASSOC     SOCK   STY SST ST HBKT ASSOC-ID TX_QUEUE RX_QUEUE UID INODE
+>> LPORT RPORT LADDRS <-> RADDRS HBINT INS OUTS MAXRT T1X T2X RTXC
+>> ffff88003c721800 ffff8800335944c0 2   1   3  22045    2        0
+>>  0       0  5674 47434  7169  127.3.253.1 127.3.21.1 127.4.253.1
+>> 127.2.253.1 127.1.221.1 <-> *127.4.252.1         7500   300   300   10
+>>    0    0        0
+>> ffff88003c720800 ffff880033594000 2   1   3  36124    1        0
+>>  0       0  5673 58513  7168  127.3.253.1 127.3.21.1 127.4.253.1
+>> 127.2.253.1 127.1.221.1 <-> *127.4.252.1         7500   300   300   10
+>>    0    0        0
+>>
+> I don't see any difference between the two environments here.  How exactly are
+> you 'giving' a private ip here?  Are you attempting an ADDIP operation?
+>
 
-> Please revert this.  This isn't a knob that that should be
-> so freely exposed.  I thought my response to Daniel made
-> that clear.
+[Vipul] -- The difference which I can is the public IP 164.48.1.1 is
+there in association list. (Why & how this case in this list this I am
+not able to understand). however If I assign the IP 10.1.1.1/24 to my
+eth0 it doesn't come in this association.
+The IP address assignment is using ifconfig.
 
-Done, sorry about that.
+>>
+>> - I may be wrong but is it possible that when we do bind with on IP
+>> (and if multi homing is enabled) it'll build with all available
+>> interfaces?
+>>
+> The opposite in fact.  If you bind to a local address the association on that
+> socket will be creating using only the bound address, if you do not bind on a
+> local address (the autobind case), and multihoming is enabled, then all
+> available addresses will be used.
+>
+[Vipul] -- If this is the case one host is working as server and I am
+doing bind on that for IP 127.4.252.1 and the other host is always
+acting as client and in this I just do connect().
+So Client will bind with all IP addresses, in this case I am not clear
+why & how private IP is not coming for the accociation and why public
+IP is coming in this association?
+I have also tries with "echo "2" >
+/proc/sys/net/sctp/addr_scope_policy" which even doesn't allow the
+association with private IP. for both (private & public IP) the server
+receiver end receives the connection reset by peer.
+
+> Neil
+>
+
+
+-- 
+-=vipsy
+http://through-dlens.blogspot.in
