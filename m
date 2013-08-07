@@ -1,33 +1,69 @@
-From: Daniel Borkmann <borkmann@iogearbox.net>
-Date: Thu, 15 Aug 2013 10:18:46 +0000
-Subject: Fwd: [Lksctp-developers] one-to-many question
-Message-Id: <520CAB06.4040400@iogearbox.net>
+From: "WilliT" <drug@centrum-group.com>
+Date: Wed, 07 Aug 2013 19:44:27 +0000
+Subject: Mail Back If Interested!
+Message-Id: <50643.89.7.18.101.1375904667.squirrel@mail1.centrum-group.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: @casper.infradead.org
 
-(Please use linux-sctp@vger.kernel.org for posting SCTP questions.)
+Good Day,
 
--------- Original Message --------
-Subject: [Lksctp-developers] one-to-many question
-Date: Thu, 15 Aug 2013 16:21:23 +0800
-From: xiong wei <xiongwei@skyge.com>
-To: Daniel Borkmann <dborkman@redhat.com>
-CC: lksctp-developers@lists.sourceforge.net
+RE:INVESTMENT / BUSINESS PARTNERSHIP PROPOSAL.
 
-Hi, Daniel.
+I represent a group of company based in the Gulf Region with access to
+over 270 Million Euros and we are seeking means of expanding and
+relocating our business interest abroad in the following sectors: oil/Gas,
+banking, real estate, stock speculation and mining, transportation, health
+sector and tobacco, Communication Services, Agriculture Forestry &
+Fishing, thus any sector.
 
-For one-to-many mode. Suppose I have a socket which contain several
-associations in it. that means there are several clients connect with
-server.
+If you have a solid background and idea of making good profit in any of
+the mentioned business sectors or any other business in your country,
+Please write me for possible business co-operation. More so, we are ready
+to facilitate and fund any business that is capable of generating 10%
+annual return on investment (AROI) Joint Venture partnership and Hard loan
+funding can also be considered.
 
-If I use sendmsg(...) function to send msg from server, How does sctp
-identify which association will receive the data? Does all clients will
-receive the msg?
+I am confident that you will give your consideration to this proposal and
+respond positively within a short period of time. I am available to
+discuss this proposal with you and to answer any questions you may have in
+regard to this investment. As soon as you give your positive response  to
+this proposal, I will not hesitate in sending you the details information
+of this great investment partnership opportunity. Email contact:
 
-And, Does sctp provide a way for server to send msg to all associations
-in one syscall ?
+I look forward to discussing this opportunity further with you.
 
-Thanks.
+Sincerely,
+Willi Tenisch
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
