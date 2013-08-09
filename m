@@ -1,31 +1,49 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 22 Aug 2013 12:57:08 +0000
-Subject: Re: mulithoming sample
-Message-Id: <20130822125708.GA16781@hmsreliant.think-freely.org>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Fri, 09 Aug 2013 14:25:21 +0000
+Subject: [PATCH net v3] net: sctp: sctp_transport_destroy{,_rcu}: fix potential pointer corruption
+Message-Id: <1376058321-2461-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAGXs5wVmt=MsfG5H0_yFXLt_swtDFB8CkcfT7Tv=BzwFDpxZtg@mail.gmail.com>
-In-Reply-To: <CAGXs5wVmt=MsfG5H0_yFXLt_swtDFB8CkcfT7Tv=BzwFDpxZtg@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Thu, Aug 22, 2013 at 02:17:10PM +0300, Kevin Wilson wrote:
-> Hello,
-> Is there some simple  mulithoming sample available?
-> I found  SCP multistreaming sample, but not  mulithoming.
-> 
-I don't know about a specific example, but the sctp_darn utility will do it
-automatically if you just use two hosts with multiple ip addresses that are all
-reachable from one another.  Just specify all the addresses you want to listen
-on with the -B option and all the addresses you want to connect to with the -c
-option.
-Neil
+Probably this one is quite unlikely to be triggered, but it's more safe
+to do the call_rcu() at the end after we have dropped the reference on
+the asoc and freed sctp packet chunks. The reason why is because in
+sctp_transport_destroy_rcu() the transport is being kfree()'d, and if
+we're unlucky enough we could run into corrupted pointers. Probably
+that's more of theoretical nature, but it's safer to have this simple fix.
 
-> regards,
-> Kevin
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Introduced by commit 8c98653f ("sctp: sctp_close: fix release of bindings
+for deferred call_rcu's"). I also did the 8c98653f regression test and
+it's fine that way.
+
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/transport.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index bdbbc3f..8fdd160 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -181,12 +181,12 @@ static void sctp_transport_destroy(struct sctp_transport *transport)
+ 		return;
+ 	}
+ 
+-	call_rcu(&transport->rcu, sctp_transport_destroy_rcu);
+-
+ 	sctp_packet_free(&transport->packet);
+ 
+ 	if (transport->asoc)
+ 		sctp_association_put(transport->asoc);
++
++	call_rcu(&transport->rcu, sctp_transport_destroy_rcu);
+ }
+ 
+ /* Start T3_rtx timer if it is not already running and update the heartbeat
+-- 
+1.7.11.7
+
