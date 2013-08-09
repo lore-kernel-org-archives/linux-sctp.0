@@ -1,73 +1,45 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Fri, 09 Aug 2013 13:59:15 +0000
-Subject: Re: [PATCH net v2] net: sctp: sctp_transport_destroy{,_rcu}: fix potential pointer corruption
-Message-Id: <5204F5B3.7020800@redhat.com>
+Date: Fri, 09 Aug 2013 13:09:08 +0000
+Subject: [PATCH net] net: sctp: sctp_assoc_control_transport: fix MTU size in SCTP_PF state
+Message-Id: <1376053748-31783-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1376054842-376-1-git-send-email-dborkman@redhat.com> <5204F55B.2040704@gmail.com>
-In-Reply-To: <5204F55B.2040704@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: kheiss@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>
 
-On 08/09/2013 03:57 PM, Vlad Yasevich wrote:
-> On 08/09/2013 09:27 AM, Daniel Borkmann wrote:
->> Probably this one is quite unlikely to be triggered, but it's more safe
->> to hold a pointer to asoc (instead of dereferencing), free the packet
->> chunks first, and access asoc though the pointer after we have called
->> sctp_transport_destroy_rcu() where the transport is being kfree()'d.
->> Introduced by commit 8c98653f ("sctp: sctp_close: fix release of bindings
->> for deferred call_rcu's"). I also did the 8c98653f regression test and
->> it's fine that way.
->>
->> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
->> ---
->>   v1->v2: do sctp_packet_free before call_rcu
->>
->>   net/sctp/transport.c | 10 ++++++----
->>   1 file changed, 6 insertions(+), 4 deletions(-)
->>
->> diff --git a/net/sctp/transport.c b/net/sctp/transport.c
->> index bdbbc3f..c691455 100644
->> --- a/net/sctp/transport.c
->> +++ b/net/sctp/transport.c
->> @@ -176,17 +176,19 @@ static void sctp_transport_destroy_rcu(struct rcu_head *head)
->>    */
->>   static void sctp_transport_destroy(struct sctp_transport *transport)
->>   {
->> +    struct sctp_association *asoc = transport->asoc;
->> +
->>       if (unlikely(!transport->dead)) {
->>           WARN(1, "Attempt to destroy undead transport %p!\n", transport);
->>           return;
->>       }
->>
->> -    call_rcu(&transport->rcu, sctp_transport_destroy_rcu);
->> -
->>       sctp_packet_free(&transport->packet);
->>
->> -    if (transport->asoc)
->> -        sctp_association_put(transport->asoc);
->> +    call_rcu(&transport->rcu, sctp_transport_destroy_rcu);
->> +
->> +    if (asoc != NULL)
->> +        sctp_association_put(asoc);
->
-> I think it is safe to move call_rcu to be the last call in this function. This should never be a last ref on the association.  If
-> by some chance it is, we'll get the same warning.
->
-> And if you move call_rcu(), this becomes an ever smaller patch :)
+The SCTP Quick failover draft [1] section 5.1, point 5 says that the cwnd
+should be 1 MTU. So, instead of 1, set it to 1 MTU.
 
-Ok, that's also a way to go. Will send v3. :-)
+  [1] https://tools.ietf.org/html/draft-nishida-tsvwg-sctp-failover-05
 
-> -vlad
->>   }
->>
->>   /* Start T3_rtx timer if it is not already running and update the heartbeat
->>
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe netdev" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Reported-by: Karl Heiss <kheiss@gmail.com>
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+---
+ net/sctp/associola.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index bce5b79..ab67efc 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -846,12 +846,12 @@ void sctp_assoc_control_transport(struct sctp_association *asoc,
+ 		else
+ 			spc_state = SCTP_ADDR_AVAILABLE;
+ 		/* Don't inform ULP about transition from PF to
+-		 * active state and set cwnd to 1, see SCTP
++		 * active state and set cwnd to 1 MTU, see SCTP
+ 		 * Quick failover draft section 5.1, point 5
+ 		 */
+ 		if (transport->state = SCTP_PF) {
+ 			ulp_notify = false;
+-			transport->cwnd = 1;
++			transport->cwnd = asoc->pathmtu;
+ 		}
+ 		transport->state = SCTP_ACTIVE;
+ 		break;
+-- 
+1.7.11.7
+
