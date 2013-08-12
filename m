@@ -1,25 +1,22 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 29 Aug 2013 19:55:27 +0000
-Subject: Re: [PATCH net-next v3] net: sctp: sctp_verify_init: clean up mandatory checks and add comment
-Message-Id: <20130829.155527.1331594681514143386.davem@davemloft.net>
+From: Karl Heiss <kheiss@gmail.com>
+Date: Mon, 12 Aug 2013 12:23:12 +0000
+Subject: Socket buffer autotuning
+Message-Id: <CAGugRbWZMasbRMkt01VU7OOU2N0C_YaE7orkwALPrFa+yBCDPg@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1377615232-11412-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1377615232-11412-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dborkman@redhat.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Tue, 27 Aug 2013 16:53:52 +0200
+All,
 
-> Add a comment related to RFC4960 explaning why we do not check for initial
-> TSN, and while at it, remove yoda notation checks and clean up code from
-> checks of mandatory conditions. That's probably just really minor, but makes
-> reviewing easier.
-> 
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-> Acked-by: Neil Horman <nhorman@tuxdriver.com>
+A recent post to the netdev mailing list made it clear that SCTP
+doesn't support socket buffer autotuning.  All of a sudden, many of
+our benchmarks start to make sense...  Has there been any
+work/investigation to support this?  I suspect that there might be
+some difficulty due to the multihoming nature of SCTP, but I haven't
+taken the time to really investigate this avenue...  Any insight it
+greatly appreciated.
 
-Applied, thanks.
+Thanks,
+Karl
