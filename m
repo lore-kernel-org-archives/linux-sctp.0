@@ -1,42 +1,107 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Fri, 09 Aug 2013 20:47:32 +0000
-Subject: Re: [PATCH net-next] net: sctp: sctp_set_owner_w: fix panic during skb orphaning
-Message-Id: <52055564.50500@redhat.com>
+From: Alexander Sverdlin <alexander.sverdlin@nsn.com>
+Date: Wed, 14 Aug 2013 08:50:03 +0000
+Subject: SCTP rwnd issues [0/2]
+Message-Id: <520B44BB.9030603@nsn.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1375872121-12429-1-git-send-email-dborkman@redhat.com> <20130809.133720.232424253997869104.davem@davemloft.net>
-In-Reply-To: <20130809.133720.232424253997869104.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-On 08/09/2013 10:37 PM, David Miller wrote:
-> From: Daniel Borkmann <dborkman@redhat.com>
-> Date: Wed,  7 Aug 2013 12:42:01 +0200
->
->> This patch fixes the following triggered bug ...
->   ...
->> ... that is triggered after commit 376c7311b ("net: add a temporary sanity
->> check in skb_orphan()"). What is happening is that we call sctp_set_owner_w()
->> for chunks in the SCTP output path from sctp_sendmsg(). Such chunks eventually
->> origin from constructors like sctp_make_chunk() where skb->sk = sk is being
->> set for socket accounting. Doing a git grep -n "skb->sk" net/sctp/ shows that
->> also in other places the socket pointer is being set, before issuing a
->> SCTP_CMD_SEND_PKT command and the like. Since SCTP is doing it's own memory
->> accounting anyway and has its own skb destructor functions, we should
->> customize sctp_set_owner_w() and call skb_orphan() if we set a different
->> owner of the skb than the current one in order to properly call their
->> destructor function, but not run into a panic due to our non-exisiting one as
->> we set sctp_wfree() destructor right after that. Otherwise, we can just skip
->> orphaning and reassignment to the very same socket and only set the destructor
->> handler.
->
-> This debugging check is exactly trying to catch what SCTP is doing,
-> setting skb->sk without also setting the destructor.
->
-> I would much rather see you reorganize and fix SCTP to behave properly
-> rather than coding up a check which is essentially "if skb_orphan() bug
-> won't trigger, call it"  That defeats the whole purpose of the check.
+Hello!
 
-Ok, will try to come up with a patch next week. Thanks.
+Basing on the field observations we have carried some tests and figured out that
+current algorithm of rwnd calculation has several issues. They occur when small
+packets are transmitted and are connected to the "memory pressure" condition.
+
+While we will try to come up with some patches for this, I want to prepare a
+basis for the discussion, therefore, I've prepared a couple of test programs.
+They intentionally send smallest-possible packets (1 byte) to show the situation
+in most-dramatical way. Both of them were tested with LKSCTP of 2.6.32 and
+3.10.6 and show absolutely no difference (no surprise -- the same algorithm).
+
+First test case shows, that after "memory pressure" condition, rwnd never
+restores to it's initial state if small packets were used to trigger this
+condition. The program opens two sockets locally and intentionally fills one
+input buffer to trigger memory pressure. After rwnd drops to 0, program reads
+everything from the read buffer, but it stays at 985 bytes for the rest of the
+time. If the situation repeats, rwnd goes again to 0 and restores to 985, so no
+further degradation. But already this decrease has major performance impact. We
+found no workaround for this problem.
+
+The problem is that sctp_assoc_rwnd_decrease() detects memory pressure using the
+real memory consumption including overhead, but stores current rwnd that was only
+accounted for payload:
+
+	if (asoc->rwnd >= len) {
+		asoc->rwnd -= len;
+		if (over) {
+			asoc->rwnd_press += asoc->rwnd;
+			asoc->rwnd = 0;
+		}
+
+
+Unfortunately, desired condition will never happen in sctp_assoc_rwnd_increase()
+with small packets:
+
+		asoc->rwnd += len;
+	}
+
+	/* If we had window pressure, start recovering it
+	 * once our rwnd had reached the accumulated pressure
+	 * threshold.  The idea is to recover slowly, but up
+	 * to the initial advertised window.
+	 */
+	if (asoc->rwnd_press && asoc->rwnd >= asoc->rwnd_press) {
+		int change = min(asoc->pathmtu, asoc->rwnd_press);
+		asoc->rwnd += change;
+		asoc->rwnd_press -= change;
+	}
+
+i.e. asoc->rwnd will grow only up to 985 and will never reach asoc->rwnd_press,
+which is about (60000-985) for 1-byte packets.
+
+The program which demonstrates this effect will go as separate email.
+
+Even worse could be the situation if two associations share the same socket.
+If rcvbuf_policy=0 (default), both associations will share the same memory
+limits. If input queue will be full of packets just for one of the associations
+it will trigger memory pressure condition. Then, just one small packet for
+second association will also close it's rwnd:
+
+	if (asoc->ep->rcvbuf_policy)
+		rx_count = atomic_read(&asoc->rmem_alloc);
+	else
+		rx_count = atomic_read(&asoc->base.sk->sk_rmem_alloc);
+
+	/* If we've reached or overflowed our receive buffer, announce
+	 * a 0 rwnd if rwnd would still be positive.  Store the
+	 * the pottential pressure overflow so that the window can be restored
+	 * back to original value.
+	 */
+	if (rx_count >= asoc->base.sk->sk_rcvbuf)
+		over = 1;
+
+	if (asoc->rwnd >= len) {
+		asoc->rwnd -= len;
+		if (over) {
+			asoc->rwnd_press += asoc->rwnd;
+			asoc->rwnd = 0;
+		}
+
+After that, sctp_assoc_rwnd_increase() will try to restore rwnd for second
+association, but as there is only one small packet in the input queue,
+rwnd will only increase by the payload size of this packet and will stay
+at this level forever! In case of 1-byte packet, rwnd of the second association
+will stay as low as 1 byte. The workaround for this could be rcvbuf_policy=1,
+but the default policy is really dangerous because of above...
+
+The program that demonstrates this will go as third email.
+
+All of the above demonstrates how important is it to adapt TCP rwnd algorithm
+also in SCTP... Once again, we will try to come with the patches, but in the
+mean time, all ideas, code snippets etc are appreciated!
+
+-- 
+Best regards,
+Alexander Sverdlin.
