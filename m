@@ -1,7 +1,7 @@
 From: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
-Date: Thu, 15 Aug 2013 11:42:39 +0000
+Date: Thu, 15 Aug 2013 15:13:10 +0000
 Subject: Re: one-to-many question
-Message-Id: <64A7EEF5-F4DA-4A6B-96A1-420E05DC0D7A@lurchi.franken.de>
+Message-Id: <D00CA6E1-73DF-4AD8-B956-BEB6E98CFC87@lurchi.franken.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <520CAC87.5020402@skyge.com>
 In-Reply-To: <520CAC87.5020402@skyge.com>
@@ -10,32 +10,39 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On Aug 15, 2013, at 12:25 PM, xiong wei <xiongwei@skyge.com> wrote:
+On Aug 15, 2013, at 1:42 PM, Daniel Borkmann <dborkman@redhat.com> wrote:
 
-> Hi, experts
+> On 08/15/2013 12:25 PM, xiong wei wrote:
+>> Hi, experts
+>> 
+>> For one-to-many mode. Suppose I have a socket which contain several
+>> associations in it. that means there are several clients connect with
+>> server.
+>> 
+>> If I use sendmsg(...) function to send msg from server, How does sctp
+>> identify which association will receive the data? Does all clients will
+>> receive the msg?
+>> 
+>> And, Does sctp provide a way for server to send msg to all associations
+>> in one syscall ?
 > 
-> For one-to-many mode. Suppose I have a socket which contain several
-> associations in it. that means there are several clients connect with
-> server.
+> Neil Horman wrote:
 > 
-> If I use sendmsg(...) function to send msg from server, How does sctp
-> identify which association will receive the data? Does all clients will
-> receive the msg?
-You can use the deprecated cmsg SCTP_SNDRCV and specify the association id.
-See http://tools.ietf.org/html/rfc6458#section-5.3.2
-I'm not sure if Linux supports the newer cmsg SCTP_SNDINFO yet.
-See http://tools.ietf.org/html/rfc6458#section-5.3.4
-> 
-> And, Does sctp provide a way for server to send msg to all associations
-> in one syscall ?
-To send the message on all associations, you can set the SCTP_SENDALL
-flags. See the above references. I'm not sure if this flag is supported
-by Linux or not.
+> The receiving association is specified in either the msg_name field of the
+Can you specify on Linux an sctp_assoc_t? Or would you specify one of the
+remote IP addresses? Specifying an sctp_assoc_t would be Linux specific,
+I guess. At least this isn't covered by 
+http://tools.ietf.org/html/rfc6458
+as far as I know.
 
 Best regards
 Michael
-> 
-> Thanks.
+> message header or the association id field of the sndrcv_info cmsg header in the
+> datagram.  IIRC there is no was to send to all associations at once in a single
+> syscall, unless you want to marshall up all the data and pass it down via the
+> sendmmsg syscall, which I don't think lksctp-tools supports yet (though that
+> would be a nice feature).
+> Neil
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
 > the body of a message to majordomo@vger.kernel.org
