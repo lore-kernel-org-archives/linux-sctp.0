@@ -1,97 +1,24 @@
-From: Yann Droneaud <ydroneaud@opteya.com>
-Date: Tue, 02 Jul 2013 16:39:24 +0000
-Subject: [PATCH 00/13] Getting rid of get_unused_fd()
-Message-Id: <cover.1372777600.git.ydroneaud@opteya.com>
+From: xiong wei <xiongwei@skyge.com>
+Date: Thu, 15 Aug 2013 10:25:11 +0000
+Subject: one-to-many question
+Message-Id: <520CAC87.5020402@skyge.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-kernel@vger.kernel.org, linux-ia64@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, cbe-oss-dev@lists.ozlabs.org, linux-rdma@vger.kernel.org, devel@driverdev.osuosl.org, kvm@vger.kernel.org, linux-fsdevel@vger.kernel.org, xfs@oss.sgi.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Eric Paris <eparis@redhat.com>, Peter Zijlstra <a.p.zijlstra@chello.nl>, Paul Mackerras <paulus@samba.org>, Ingo Molnar <mingo@redhat.com>, Arnaldo Carvalho de Melo <acme@ghostprotocols.net>
-Cc: Yann Droneaud <ydroneaud@opteya.com>
+To: linux-sctp@vger.kernel.org
 
-Hi,
+Hi, experts
 
-Macro get_unused_fd() is a shortcut to call function get_unused_fd_flags(),
-to allocate a file descriptor.
+For one-to-many mode. Suppose I have a socket which contain several
+associations in it. that means there are several clients connect with
+server.
 
-The macro use 0 as flags, so the file descriptor is created
-without O_CLOEXEC flag.
+If I use sendmsg(...) function to send msg from server, How does sctp
+identify which association will receive the data? Does all clients will
+receive the msg?
 
-This can be seen as an unsafe default eg. in most case O_CLOEXEC
-must be used to not leak file descriptor across exec().
+And, Does sctp provide a way for server to send msg to all associations
+in one syscall ?
 
-Newer kernel code should use anon_inode_getfd() or get_unused_fd_flags()
-with flags provided by userspace. If flags cannot be given by userspace,
-O_CLOEXEC must be the default flag.
-
-Using O_CLOEXEC by default allows userspace to choose, without race,
-if the file descriptor is going to be inherited across exec().
-
-They are two ways to achieve this:
-
-- makes get_unused_fd() use O_CLOEXEC by default
-
-  It's difficult to get it right: every code using of get_unused_fd()
-  must take this change into account and be fixed as soon as
-  macro get_unused_fd() do the switch. Non updated code will have
-  unexpected behavor and it's likely going to break API contract.
-
-- remove get_unused_fd()
-
-  It's going to break some out of tree, not yet upstream kernel code,
-  but it's easy to notice and fix. Anyway, newer code should use
-  anon_inode_getfd() or get_unused_fd_flags().
-
-The latter option was choosen to ensure no unexpected behavor
-for out of tree, not yet upstream code. Removing the macro is the safest
-choice: it's better to break build than trying to make get_unused_fd()
-use O_CLOEXEC by default and get all user of get_unused_fd() update.
-
-Additionnaly, removing the macro is not going to break modules ABI.
-
-In linux-next tag 20130702, they're currently:
-
-- 15 calls to get_unused_fd_flags()
-     not counting get_unused_fd() and anon_inode_getfd()
-- 14 calls to get_unused_fd()
-- 11 calls to anon_inode_getfd()
-
-The following patchset try to convert all calls to get_unused_fd()
-to get_unused_fd_flags(0) before removing get_unused_fd() macro.
-
-Without get_unused_fd() macro, more subsystems are likely to use
-anon_inode_getfd() and be teached to provide an API that let userspace
-choose the opening flags of the file descriptor.
-
-Yann Droneaud (13):
-  ia64: use get_unused_fd_flags(0) instead of get_unused_fd()
-  ppc/cell: use get_unused_fd_flags(0) instead of get_unused_fd()
-  infiniband: use get_unused_fd_flags(0) instead of get_unused_fd()
-  android/sw_sync: use get_unused_fd_flags(0) instead of get_unused_fd()
-  android/sync: use get_unused_fd_flags(0) instead of get_unused_fd()
-  vfio: use get_unused_fd_flags(0) instead of get_unused_fd()
-  binfmt_misc: use get_unused_fd_flags(0) instead of get_unused_fd()
-  file: use get_unused_fd_flags(0) instead of get_unused_fd()
-  fanotify: use get_unused_fd_flags(0) instead of get_unused_fd()
-  xfs: use get_unused_fd_flags(0) instead of get_unused_fd()
-  events: use get_unused_fd_flags(0) instead of get_unused_fd()
-  sctp: use get_unused_fd_flags(0) instead of get_unused_fd()
-  file: remove get_unused_fd()
-
- arch/ia64/kernel/perfmon.c                | 2 +-
- arch/powerpc/platforms/cell/spufs/inode.c | 4 ++--
- drivers/infiniband/core/uverbs_cmd.c      | 4 ++--
- drivers/staging/android/sw_sync.c         | 2 +-
- drivers/staging/android/sync.c            | 2 +-
- drivers/vfio/vfio.c                       | 2 +-
- fs/binfmt_misc.c                          | 2 +-
- fs/file.c                                 | 2 +-
- fs/notify/fanotify/fanotify_user.c        | 2 +-
- fs/xfs/xfs_ioctl.c                        | 2 +-
- include/linux/file.h                      | 1 -
- kernel/events/core.c                      | 2 +-
- net/sctp/socket.c                         | 2 +-
- 13 files changed, 14 insertions(+), 15 deletions(-)
-
--- 
-1.8.3.1
+Thanks.
