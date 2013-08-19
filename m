@@ -1,261 +1,201 @@
-From: Alexander Sverdlin <alexander.sverdlin@nsn.com>
-Date: Wed, 14 Aug 2013 08:50:07 +0000
-Subject: SCTP rwnd issues [1/2]
-Message-Id: <520B44BF.6080402@nsn.com>
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Mon, 19 Aug 2013 15:05:31 +0000
+Subject: Re: [Patch net-next v3 8/9] sctp: use generic union inet_addr
+Message-Id: <5212343B.3090409@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1376907278-26377-1-git-send-email-amwang@redhat.com> <1376907278-26377-9-git-send-email-amwang@redhat.com>
+In-Reply-To: <1376907278-26377-9-git-send-email-amwang@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: Cong Wang <amwang@redhat.com>
+Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Daniel Borkmann <dborkman@redhat.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org
 
-Hello!
+On 08/19/2013 06:14 AM, Cong Wang wrote:
+> From: Cong Wang <amwang@redhat.com>
+>
+> sctp has its own union sctp_addr which is nearly same
+> with the generic union inet_addr, so just convert it
+> to the generic one.
+>
+> Sorry for the big patch, it is not easy to split it. Most
+> of the patch simply does s/union sctp_addr/union inet_addr/
+> and some adjustments for the fields.
+>
+> The address family specific ops, ->cmp_addr(), ->is_any() etc.,
+> are removed, since we have generic helpers, they are unnecessary.
 
-A sample program that demonstrates a situation when rwnd drops to 0 because
-of memory pressure and never grows to its original value...
+You are not actually removing cmp_addr(), so that's invalid.
+For the usage of ->is_any, see below.
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <netdb.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#include <error.h>
-#include <fcntl.h>
-#include <netinet/in.h>
-#include <netinet/sctp.h>
-#include <arpa/inet.h>
-#include <sys/select.h>
-#include <errno.h>
+> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+> index 422db6c..8dfaa39 100644
+> --- a/include/net/sctp/structs.h
+> +++ b/include/net/sctp/structs.h
+> @@ -1117,10 +1105,10 @@ union sctp_params sctp_bind_addrs_to_raw(const struct sctp_bind_addr *bp,
+>   int sctp_raw_to_bind_addrs(struct sctp_bind_addr *bp, __u8 *raw, int len,
+>   			   __u16 port, gfp_t gfp);
+>
+> -sctp_scope_t sctp_scope(const union sctp_addr *);
+> -int sctp_in_scope(struct net *net, const union sctp_addr *addr, const sctp_scope_t scope);
+> -int sctp_is_any(struct sock *sk, const union sctp_addr *addr);
+> -int sctp_addr_is_valid(const union sctp_addr *addr);
+> +sctp_scope_t sctp_scope(const union inet_addr *);
+> +int sctp_in_scope(struct net *net, const union inet_addr *addr, const sctp_scope_t scope);
+> +int sctp_is_any(struct sock *sk, const union inet_addr *addr);
 
-int open_sockets(int *rcsock, int *trsock, int *rcbufsize,
-                 struct sockaddr_in *saddr)
-{
-	int optval, optlen;
-	int ret;
-	struct sctp_event_subscribe events;
+You are keeping the prototype and remove the implementation of 
+sctp_is_any later, but that's ok since I don't think the implementation
+should be removed.  However, this points out that this should probably
+be a separate patch (first do straight conversion to new data structure,
+then fix up usage and delete unneeded functions).
 
-	*rcsock = socket(PF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
-	if (*rcsock = -1)
-		return errno;
+> +int sctp_addr_is_valid(const union inet_addr *addr);
+>   int sctp_is_ep_boundall(struct sock *sk);
+>
+>
+> diff --git a/net/sctp/bind_addr.c b/net/sctp/bind_addr.c
+> index 077bb07..03d8f85 100644
+> --- a/net/sctp/bind_addr.c
+> +++ b/net/sctp/bind_addr.c
+> @@ -47,7 +47,7 @@
+> @@ -436,13 +436,13 @@ union sctp_addr *sctp_find_unmatch_addr(struct sctp_bind_addr	*bp,
+>
+>   /* Copy out addresses from the global local address list. */
+>   static int sctp_copy_one_addr(struct net *net, struct sctp_bind_addr *dest,
+> -			      union sctp_addr *addr,
+> +			      union inet_addr *addr,
+>   			      sctp_scope_t scope, gfp_t gfp,
+>   			      int flags)
+>   {
+>   	int error = 0;
+>
+> -	if (sctp_is_any(NULL, addr)) {
+> +	if (inet_addr_any(addr)) {
+>   		error = sctp_copy_local_addr_list(net, dest, scope, gfp, flags);
+>   	} else if (sctp_in_scope(net, addr, scope)) {
+>   		/* Now that the address is in scope, check to see if
+> @@ -461,27 +461,8 @@ static int sctp_copy_one_addr(struct net *net, struct sctp_bind_addr *dest,
+>   	return error;
+>   }
+>
+> -/* Is this a wildcard address?  */
+> -int sctp_is_any(struct sock *sk, const union sctp_addr *addr)
+> -{
+> -	unsigned short fam = 0;
+> -	struct sctp_af *af;
+> -
+> -	/* Try to get the right address family */
+> -	if (addr->sa.sa_family != AF_UNSPEC)
+> -		fam = addr->sa.sa_family;
+> -	else if (sk)
+> -		fam = sk->sk_family;
+> -
+> -	af = sctp_get_af_specific(fam);
+> -	if (!af)
+> -		return 0;
+> -
+> -	return af->is_any(addr);
+> -}
+> -
 
-	*trsock = socket(PF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
-	if (*trsock = -1)
-		return errno;
+I don't think you can remove this implentation.  It is would introduce
+a lot of regressions for code that does:
+	struct sockaddr_in sin;
+	memset(&sin, 0, sizeof(sin));
 
-	optlen = sizeof(optval);
-	ret = getsockopt(*rcsock, SOL_SOCKET, SO_RCVBUF, &optval, &optlen);
-	if (ret = -1)
-		return errno;
+	/* Do some setsockopt... with sin */
 
-	printf("Receive socket buffer size: %d\n", optval);
-	*rcbufsize = optval;
+While I do agree that this is a bit sloppy (and I've made that argument 
+to all the bug submitters), this type of bug has been reported for a 
+long time and sctp_is_any() was finally changed to fix it once and for
+all.  You are un-fixing it...
 
-	memset(&events, 0, sizeof(events));
-	events.sctp_data_io_event = 1;
-	ret = setsockopt(*rcsock, IPPROTO_SCTP, SCTP_EVENTS, &events,
-	                 sizeof(events));
-	if (ret = -1)
-		return errno;
+>   /* Is 'addr' valid for 'scope'?  */
+> -int sctp_in_scope(struct net *net, const union sctp_addr *addr, sctp_scope_t scope)
+> +int sctp_in_scope(struct net *net, const union inet_addr *addr, sctp_scope_t scope)
+>   {
+>   	sctp_scope_t addr_scope = sctp_scope(addr);
+>
+> @@ -530,7 +511,7 @@ int sctp_is_ep_boundall(struct sock *sk)
+>   	if (sctp_list_single_entry(&bp->address_list)) {
+>   		addr = list_entry(bp->address_list.next,
+>   				  struct sctp_sockaddr_entry, list);
+> -		if (sctp_is_any(sk, &addr->a))
+> +		if (inet_addr_any(&addr->a))
+>   			return 1;
+>   	}
+>   	return 0;
+> diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+> index da613ce..2e1262b 100644
+> --- a/net/sctp/ipv6.c
+> +++ b/net/sctp/ipv6.c
+>
+>   /* Compare addresses exactly.
+>    * v4-mapped-v6 is also in consideration.
+>    */
+> -static int sctp_v6_cmp_addr(const union sctp_addr *addr1,
+> -			    const union sctp_addr *addr2)
+> +static bool sctp_v6_cmp_addr(const union inet_addr *addr1,
+> +			     const union inet_addr *addr2)
+>   {
+>   	if (addr1->sa.sa_family != addr2->sa.sa_family) {
+>   		if (addr1->sa.sa_family = AF_INET &&
+>   		    addr2->sa.sa_family = AF_INET6 &&
+> -		    ipv6_addr_v4mapped(&addr2->v6.sin6_addr)) {
+> -			if (addr2->v6.sin6_port = addr1->v4.sin_port &&
+> -			    addr2->v6.sin6_addr.s6_addr32[3] =
+> -			    addr1->v4.sin_addr.s_addr)
+> +		    ipv6_addr_v4mapped(&addr2->sin6.sin6_addr)) {
+> +			if (addr2->sin6.sin6_port = addr1->sin.sin_port &&
+> +			    addr2->sin6.sin6_addr.s6_addr32[3] =
+> +			    addr1->sin.sin_addr.s_addr)
+>   				return 1;
+>   		}
+>   		if (addr2->sa.sa_family = AF_INET &&
+>   		    addr1->sa.sa_family = AF_INET6 &&
+> -		    ipv6_addr_v4mapped(&addr1->v6.sin6_addr)) {
+> -			if (addr1->v6.sin6_port = addr2->v4.sin_port &&
+> -			    addr1->v6.sin6_addr.s6_addr32[3] =
+> -			    addr2->v4.sin_addr.s_addr)
+> +		    ipv6_addr_v4mapped(&addr1->sin6.sin6_addr)) {
+> +			if (addr1->sin6.sin6_port = addr2->sin.sin_port &&
+> +			    addr1->sin6.sin6_addr.s6_addr32[3] =
+> +			    addr2->sin.sin_addr.s_addr)
+>   				return 1;
+>   		}
+>   		return 0;
+>   	}
+> -	if (!ipv6_addr_equal(&addr1->v6.sin6_addr, &addr2->v6.sin6_addr))
+> -		return 0;
+> -	/* If this is a linklocal address, compare the scope_id. */
+> -	if (ipv6_addr_type(&addr1->v6.sin6_addr) & IPV6_ADDR_LINKLOCAL) {
+> -		if (addr1->v6.sin6_scope_id && addr2->v6.sin6_scope_id &&
+> -		    (addr1->v6.sin6_scope_id != addr2->v6.sin6_scope_id)) {
+> -			return 0;
+> -		}
+> -	}
+> -
+> -	return 1;
+> -}
+>
+> -/* Initialize addr struct to INADDR_ANY. */
+> -static void sctp_v6_inaddr_any(union sctp_addr *addr, __be16 port)
+> -{
+> -	memset(addr, 0x00, sizeof(union sctp_addr));
+> -	addr->v6.sin6_family = AF_INET6;
+> -	addr->v6.sin6_port = port;
+> -}
+> -
+> -/* Is this a wildcard address? */
+> -static int sctp_v6_is_any(const union sctp_addr *addr)
+> -{
+> -	return ipv6_addr_any(&addr->v6.sin6_addr);
+> +	return inet_addr_equal(addr1, addr2);
 
-	optval = 1;
-	ret = setsockopt(*trsock, IPPROTO_SCTP, SCTP_NODELAY, &optval,
-	                 sizeof(optval));
-	if (ret = -1)
-		return errno;
+You've dropped the scope_id comparision which inet_addr_equal does not 
+seem to do.   As far as I can see from this series,  inet_addr_equal()
+just calls ipv6_addr_equal.
 
-	saddr->sin_family = AF_INET;
-	ret = inet_pton(AF_INET, "127.0.0.1", &saddr->sin_addr);
-	if (ret != 1)
-		return EFAULT;
-	saddr->sin_port = htons(54321);
 
-	ret = bind(*rcsock, (struct sockaddr *)saddr, sizeof(*saddr));
-	if (ret = -1)
-		return errno;
-
-	ret = listen(*rcsock, 1);
-	if (ret = -1)
-		return errno;
-
-	printf("Server is listening on 127.0.0.1:%d...\n",
-	       ntohs(saddr->sin_port));
-	return 0;
-}
-
-/* Fill receive buffer until memory pressure closes rwnd */
-int fill_rxbuffer(int trsock, int rcsock, struct sockaddr_in *saddr,
-                  sctp_assoc_t *rcassoc, void *buf, int bufsize)
-{
-	int ret;
-	int optlen;
-	struct sockaddr_in caddr;
-	int rflags;
-	struct sctp_sndrcvinfo sinfo;
-	struct sctp_assocparams args;
-	int total = 0;
-	int reported = 0;
-
-	while (1) {
-		ret = sctp_sendmsg(trsock, buf, bufsize,
-		                   (struct sockaddr *)saddr,
-		                   sizeof(struct sockaddr_in), 0, 0, 0, 0, 0);
-		if (ret = -1)
-			return errno;
-
-		if (*rcassoc = 0) {
-			optlen = sizeof(caddr);
-			rflags = 0;
-			ret = sctp_recvmsg(rcsock, buf, bufsize,
-			                   (struct sockaddr *)&caddr, &optlen,
-			                   &sinfo, &rflags);
-			if (ret = -1)
-				return errno;
-			if (!(rflags & MSG_NOTIFICATION)) {
-				*rcassoc = sinfo.sinfo_assoc_id;
-				printf("Receiver association=%d\n", *rcassoc);
-				continue;
-			}
-		}
-
-		optlen = sizeof(args);
-		ret = sctp_opt_info(rcsock, *rcassoc, SCTP_ASSOCINFO, &args,
-		                    &optlen);
-		if (ret = -1)
-			return errno;
-
-		total += bufsize;
-		if ((total >= reported * 2) || !args.sasoc_local_rwnd) {
-			reported = total;
-			printf("Sent %d bytes ... rwnd=%d\n", total,
-			       args.sasoc_local_rwnd);
-		}
-
-		if (!args.sasoc_local_rwnd)
-			break;
-	}
-
-	return 0;
-}
-
-/* Clean the receive buffer */
-int free_rxbuffer(int rcsock, sctp_assoc_t rcassoc, void *buf, int bufsize)
-{
-	int ret;
-	int total = 0;
-	int reported = 0;
-	int rflags;
-	struct sctp_sndrcvinfo sinfo;
-	int optlen;
-	struct sctp_assocparams args;
-	int err;
-
-	while (1) {
-		rflags = MSG_DONTWAIT;
-		ret = sctp_recvmsg(rcsock, buf, bufsize, NULL, NULL, &sinfo,
-		                   &rflags);
-		if (ret = -1) {
-			if ((errno = EWOULDBLOCK) || (errno = EAGAIN))
-				ret = 0;
-			else
-				return errno;
-		}
-
-		if (rflags & MSG_NOTIFICATION)
-			continue;
-
-		optlen = sizeof(args);
-		err = sctp_opt_info(rcsock, rcassoc, SCTP_ASSOCINFO, &args,
-		                    &optlen);
-		if (err = -1)
-			return errno;
-
-		total += ret;
-		if ((total >= reported * 2) || !ret) {
-			reported = total;
-			printf("Received %d bytes ... rwnd=%d\n", total,
-			       args.sasoc_local_rwnd);
-		}
-
-		if (!ret)
-			break;
-	}
-
-	return 0;
-}
-
-/* Transmit some packets, give rwnd a chance to restore */
-int give_chance(int trsock, int rcsock, struct sockaddr_in *saddr, void *buf,
-                int bufsize, int rcbufsize)
-{
-	int total = rcbufsize;
-	struct sctp_sndrcvinfo sinfo;
-	int ret;
-	int rflags;
-
-	printf("Transferring %d packets...\n", total);
-
-	while (total--) {
-		ret = sctp_sendmsg(trsock, buf, bufsize,
-		                   (struct sockaddr *)saddr,
-		                   sizeof(struct sockaddr_in), 0, 0, 0, 0, 0);
-
-		rflags = 0;
-		if (ret != -1)
-			ret = sctp_recvmsg(rcsock, buf, bufsize, NULL, NULL,
-			                   &sinfo, &rflags);
-
-		if (ret = -1) {
-			if ((errno = EAGAIN) || (errno = EWOULDBLOCK))
-				printf("We are LOCKED\n");
-			else
-				printf("Some unexpected error...\n");
-			return errno;
-		}
-	}
-
-	return 0;
-}
-
-int main(int argc, char **argv)
-{
-	int rcsock, trsock;
-	int ret;
-	int optlen;
-	struct sockaddr_in saddr;
-	struct sctp_assocparams args;
-	sctp_assoc_t rcassoc = 0;
-	char buf[1];
-	int rcbufsize;
-
-	ret = open_sockets(&rcsock, &trsock, &rcbufsize, &saddr);
-	if (ret)
-		exit(ret);
-
-	ret = fill_rxbuffer(trsock, rcsock, &saddr, &rcassoc, &buf, sizeof(buf));
-	if (ret)
-		exit(ret);
-
-	ret = free_rxbuffer(rcsock, rcassoc, &buf, sizeof(buf));
-	if (ret)
-		exit(ret);
-
-	ret = give_chance(trsock, rcsock, &saddr, &buf, sizeof(buf), rcbufsize);
-	if (ret)
-		exit(ret);
-
-	optlen = sizeof(args);
-	ret = sctp_opt_info(rcsock, rcassoc, SCTP_ASSOCINFO, &args, &optlen);
-	if (ret = -1)
-		exit(errno);
-
-	printf("rwnd=%d\n", args.sasoc_local_rwnd);
-
-	printf("Finished.\n");
-
-	close(trsock);
-	close(rcsock);
-}
-
--- 
-Best regards,
-Alexander Sverdlin.
+-vlad
