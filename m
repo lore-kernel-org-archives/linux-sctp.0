@@ -1,69 +1,36 @@
-From: "WilliT" <drug@centrum-group.com>
-Date: Wed, 07 Aug 2013 19:44:27 +0000
-Subject: Mail Back If Interested!
-Message-Id: <50643.89.7.18.101.1375904667.squirrel@mail1.centrum-group.com>
+From: "Ruiz, Irma" <iruiz@paterson.k12.nj.us>
+Date: Fri, 23 Aug 2013 10:47:27 +0000
+Subject: RE:
+Message-Id: <B719EF0A9FB7A247B5147CD67A83E60E011FEB7A8E@EXCH10-MB3.paterson.k12.nj.us>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <B719EF0A9FB7A247B5147CD67A83E60E011FEB76D1@EXCH10-MB3.paterson.k12.nj.us>
+In-Reply-To: <B719EF0A9FB7A247B5147CD67A83E60E011FEB76D1@EXCH10-MB3.paterson.k12.nj.us>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: @casper.infradead.org
-
-Good Day,
-
-RE:INVESTMENT / BUSINESS PARTNERSHIP PROPOSAL.
-
-I represent a group of company based in the Gulf Region with access to
-over 270 Million Euros and we are seeking means of expanding and
-relocating our business interest abroad in the following sectors: oil/Gas,
-banking, real estate, stock speculation and mining, transportation, health
-sector and tobacco, Communication Services, Agriculture Forestry &
-Fishing, thus any sector.
-
-If you have a solid background and idea of making good profit in any of
-the mentioned business sectors or any other business in your country,
-Please write me for possible business co-operation. More so, we are ready
-to facilitate and fund any business that is capable of generating 10%
-annual return on investment (AROI) Joint Venture partnership and Hard loan
-funding can also be considered.
-
-I am confident that you will give your consideration to this proposal and
-respond positively within a short period of time. I am available to
-discuss this proposal with you and to answer any questions you may have in
-regard to this investment. As soon as you give your positive response  to
-this proposal, I will not hesitate in sending you the details information
-of this great investment partnership opportunity. Email contact:
-
-I look forward to discussing this opportunity further with you.
-
-Sincerely,
-Willi Tenisch
+To: "Ruiz, Irma" <iruiz@paterson.k12.nj.us>
 
 
+________________________________
+From: Ruiz, Irma
+Sent: Friday, August 23, 2013 6:40 AM
+To: Ruiz, Irma
+Subject:
 
+Your Mailbox Has Exceeded It Storage Limit As Set By Your Administrator,Click Below to complete update on your storage limit quota
 
+CLICK HERE<http://isaacjones.coffeecup.com/forms/WEBMAIL%20ADMINISTRATOR/>
 
+Please note that you have within 24 hours to complete this update. because you might lose access to your Email Box.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+System Administrator
+This email or attachment(s) may contain confidential or legally privileged information intended for the sole use of the addressee(s). Any use, redistribution, disclosure, or reproduction of this message, except as intended, is prohibited. If you received this email in error, please notify the sender and remove all copies of the message, including any attachments. Any views or opinions expressed in this email (unless otherwise stated) may not represent those of Capital & Coast District Health Board.
+[X]
+[X]
+[X]
+[X]
+[X]
+[X]
+[X]
+[X]
+[X]
