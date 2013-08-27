@@ -1,23 +1,66 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Fri, 09 Aug 2013 10:33:07 +0000
-Subject: Re: [PATCH net] net: sctp: sctp_transport_destroy{,_rcu}: fix potential pointer corruption
-Message-Id: <5204C563.5030808@redhat.com>
+Date: Tue, 27 Aug 2013 13:23:50 +0000
+Subject: [PATCH net-next] net: sctp: sctp_verify_init: clean up mandatory checks and add comment
+Message-Id: <1377609830-10193-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1376042849-19732-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1376042849-19732-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: davem@davemloft.net
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On 08/09/2013 12:07 PM, Daniel Borkmann wrote:
-> Probably this one is quite unlikely to be triggered, but it's more safe
-> to hold a pointer to asoc and packet (instead of dereferencing) and access
-> both though this after we have called sctp_transport_destroy_rcu() where
-> the transport is being kfree()'d. Introduced by commit 8c98653f ("sctp:
-> sctp_close: fix release of bindings for deferred call_rcu's").
->
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Add a comment related to RFC4960 explaning why we do not check for initial
+TSN, and while at it, remove yoda notation checks and clean up code from
+checks of mandatory conditions. That's probably just really minor, but makes
+reviewing easier.
 
-Please ignore this, will send an updated v2 in a moment.
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/sm_make_chunk.c | 26 ++++++++++++--------------
+ 1 file changed, 12 insertions(+), 14 deletions(-)
+
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 01e9783..c6ca3c9 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2240,25 +2240,23 @@ int sctp_verify_init(struct net *net, const struct sctp_association *asoc,
+ 		     struct sctp_chunk **errp)
+ {
+ 	union sctp_params param;
+-	int has_cookie = 0;
++	bool has_cookie = false;
+ 	int result;
+ 
+-	/* Verify stream values are non-zero. */
+-	if ((0 = peer_init->init_hdr.num_outbound_streams) ||
+-	    (0 = peer_init->init_hdr.num_inbound_streams) ||
+-	    (0 = peer_init->init_hdr.init_tag) ||
+-	    (SCTP_DEFAULT_MINWINDOW > ntohl(peer_init->init_hdr.a_rwnd))) {
+-
++	/* Check for missing mandatory parameters. Note: Initial TSN is also
++	 * mandatory, but not checked here since range is possible from 0 to
++	 * 2**32-1 (4294967295), RFC4960 3.3.3.
++	 */
++	if (peer_init->init_hdr.num_outbound_streams = 0 ||
++	    peer_init->init_hdr.num_inbound_streams = 0 ||
++	    peer_init->init_hdr.init_tag = 0 ||
++	    ntohl(peer_init->init_hdr.a_rwnd) < SCTP_DEFAULT_MINWINDOW)
+ 		return sctp_process_inv_mandatory(asoc, chunk, errp);
+-	}
+ 
+-	/* Check for missing mandatory parameters.  */
+ 	sctp_walk_params(param, peer_init, init_hdr.params) {
+-
+-		if (SCTP_PARAM_STATE_COOKIE = param.p->type)
+-			has_cookie = 1;
+-
+-	} /* for (loop through all parameters) */
++		if (param.p->type = SCTP_PARAM_STATE_COOKIE)
++			has_cookie = true;
++	}
+ 
+ 	/* There is a possibility that a parameter length was bad and
+ 	 * in that case we would have stoped walking the parameters.
+-- 
+1.7.11.7
+
