@@ -1,31 +1,76 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 13 Aug 2013 05:12:52 +0000
-Subject: Re: [PATCH net] net: sctp: sctp_assoc_control_transport: fix MTU size in SCTP_PF state
-Message-Id: <20130812.221252.2248587650673854871.davem@davemloft.net>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Thu, 29 Aug 2013 16:54:49 +0000
+Subject: [PATCH net-next] net: sctp: probe: allow more advanced ingress filtering by mark
+Message-Id: <1377795289-1914-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1376053748-31783-1-git-send-email-dborkman@redhat.com>
-	<5204F121.7080609@gmail.com>
-In-Reply-To: <5204F121.7080609@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vyasevich@gmail.com
-Cc: dborkman@redhat.com, kheiss@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, nhorman@tuxdriver.com
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Fri, 09 Aug 2013 09:39:45 -0400
+This is a follow-up commit for commit b1dcdc68b1f4 ("net: tcp_probe:
+allow more advanced ingress filtering by mark") that allows for
+advanced SCTP probe module filtering based on skb mark (for a more
+detailed description and advantages using mark, refer to b1dcdc68b1f4).
+The current option to filter by a given port is still being preserved.
 
-> On 08/09/2013 09:09 AM, Daniel Borkmann wrote:
->> The SCTP Quick failover draft [1] section 5.1, point 5 says that the
->> cwnd
->> should be 1 MTU. So, instead of 1, set it to 1 MTU.
->>
->>    [1] https://tools.ietf.org/html/draft-nishida-tsvwg-sctp-failover-05
->>
->> Reported-by: Karl Heiss <kheiss@gmail.com>
->> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
->> Cc: Neil Horman <nhorman@tuxdriver.com>
- ...
-> Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ Tested with various marked flows.
 
-Applied, thanks.
+ net/sctp/probe.c | 18 +++++++++++++-----
+ 1 file changed, 13 insertions(+), 5 deletions(-)
+
+diff --git a/net/sctp/probe.c b/net/sctp/probe.c
+index cd72ae5..0118178 100644
+--- a/net/sctp/probe.c
++++ b/net/sctp/probe.c
+@@ -46,6 +46,10 @@ static int port __read_mostly = 0;
+ MODULE_PARM_DESC(port, "Port to match (0=all)");
+ module_param(port, int, 0);
+ 
++static unsigned int fwmark __read_mostly = 0;
++MODULE_PARM_DESC(fwmark, "skb mark to match (0=no mark)");
++module_param(fwmark, uint, 0);
++
+ static int bufsize __read_mostly = 64 * 1024;
+ MODULE_PARM_DESC(bufsize, "Log buffer size (default 64k)");
+ module_param(bufsize, int, 0);
+@@ -129,15 +133,19 @@ static sctp_disposition_t jsctp_sf_eat_sack(struct net *net,
+ 					    void *arg,
+ 					    sctp_cmd_seq_t *commands)
+ {
++	struct sctp_chunk *chunk = arg;
++	struct sk_buff *skb = chunk->skb;
+ 	struct sctp_transport *sp;
+ 	static __u32 lcwnd = 0;
+ 	struct timespec now;
+ 
+ 	sp = asoc->peer.primary_path;
+ 
+-	if ((full || sp->cwnd != lcwnd) &&
+-	    (!port || asoc->peer.port = port ||
+-	     ep->base.bind_addr.port = port)) {
++	if (((port = 0 && fwmark = 0) ||
++	     asoc->peer.port = port ||
++	     ep->base.bind_addr.port = port ||
++	     (fwmark > 0 && skb->mark = fwmark)) &&
++	    (full || sp->cwnd != lcwnd)) {
+ 		lcwnd = sp->cwnd;
+ 
+ 		getnstimeofday(&now);
+@@ -198,8 +206,8 @@ static __init int sctpprobe_init(void)
+ 	if (ret)
+ 		goto remove_proc;
+ 
+-	pr_info("probe registered (port=%d)\n", port);
+-
++	pr_info("probe registered (port=%d/fwmark=%u) bufsize=%u\n",
++		port, fwmark, bufsize);
+ 	return 0;
+ 
+ remove_proc:
+-- 
+1.7.11.7
+
