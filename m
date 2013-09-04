@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 03 Sep 2013 16:46:47 +0000
+From: David Miller <davem@davemloft.net>
+Date: Wed, 04 Sep 2013 17:20:58 +0000
 Subject: Re: [PATCH] net: sctp: Fix data chunk fragmentation for MTU values which are not multiple of 4
-Message-Id: <20130903164647.GA18516@hmsreliant.think-freely.org>
+Message-Id: <20130904.132058.515642898688349547.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <52249981.8040006@nsn.com>
 In-Reply-To: <52249981.8040006@nsn.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Alexander Sverdlin <alexander.sverdlin@nsn.com>
-Cc: linux-sctp@vger.kernel.org, davem@davemloft.net, vyasevich@gmail.com, "Glavinic-Pecotic, Matija (EXT-Other - DE/Ulm)" <matija.glavinic-pecotic.ext@nsn.com>, netdev@vger.kernel.org
+To: alexander.sverdlin@nsn.com
+Cc: linux-sctp@vger.kernel.org, vyasevich@gmail.com, matija.glavinic-pecotic.ext@nsn.com, netdev@vger.kernel.org
 
-On Mon, Sep 02, 2013 at 03:58:25PM +0200, Alexander Sverdlin wrote:
+From: Alexander Sverdlin <alexander.sverdlin@nsn.com>
+Date: Mon, 02 Sep 2013 15:58:25 +0200
+
 > From: Alexander Sverdlin <alexander.sverdlin@nsn.com>
 > 
 > net: sctp: Fix data chunk fragmentation for MTU values which are not multiple of 4
@@ -21,25 +23,7 @@ On Mon, Sep 02, 2013 at 03:58:25PM +0200, Alexander Sverdlin wrote:
 > not multiple of 4. Test program was used which just transmits 2000 bytes long
 > packets to other host. tcpdump was used to observe re-fragmentation in IP layer
 > after SCTP already fragmented data chunks.
-> 
-> With MTU 1500:
-> 12:54:34.082904 IP (tos 0x2,ECT(0), ttl 64, id 0, offset 0, flags [DF], proto SCTP (132), length 1500)
->     10.151.38.153.39303 > 10.151.24.91.54321: sctp (1) [DATA] (B) [TSN: 2366088589] [SID: 0] [SSEQ 1] [PPID 0x0]
-> 12:54:34.082933 IP (tos 0x2,ECT(0), ttl 64, id 0, offset 0, flags [DF], proto SCTP (132), length 596)
->     10.151.38.153.39303 > 10.151.24.91.54321: sctp (1) [DATA] (E) [TSN: 2366088590] [SID: 0] [SSEQ 1] [PPID 0x0]
-> 12:54:34.090576 IP (tos 0x2,ECT(0), ttl 63, id 0, offset 0, flags [DF], proto SCTP (132), length 48)
->     10.151.24.91.54321 > 10.151.38.153.39303: sctp (1) [SACK] [cum ack 2366088590] [a_rwnd 79920] [#gap acks 0] [#dup tsns 0]
-> 
-> With MTU 1499:
-> 13:02:49.955220 IP (tos 0x2,ECT(0), ttl 64, id 48215, offset 0, flags [+], proto SCTP (132), length 1492)
->     10.151.38.153.39084 > 10.151.24.91.54321: sctp[|sctp]
-> 13:02:49.955249 IP (tos 0x2,ECT(0), ttl 64, id 48215, offset 1472, flags [none], proto SCTP (132), length 28)
->     10.151.38.153 > 10.151.24.91: ip-proto-132
-> 13:02:49.955262 IP (tos 0x2,ECT(0), ttl 64, id 0, offset 0, flags [DF], proto SCTP (132), length 600)
->     10.151.38.153.39084 > 10.151.24.91.54321: sctp (1) [DATA] (E) [TSN: 404355346] [SID: 0] [SSEQ 1] [PPID 0x0]
-> 13:02:49.956770 IP (tos 0x2,ECT(0), ttl 63, id 0, offset 0, flags [DF], proto SCTP (132), length 48)
->     10.151.24.91.54321 > 10.151.38.153.39084: sctp (1) [SACK] [cum ack 404355346] [a_rwnd 79920] [#gap acks 0] [#dup tsns 0]
-> 
+ ...
 > Here problem in data portion limit calculation leads to re-fragmentation in IP,
 > which is sub-optimal. The problem is max_data initial value, which doesn't take
 > into account the fact, that data chunk must be padded to 4-bytes boundary.
@@ -47,38 +31,11 @@ On Mon, Sep 02, 2013 at 03:58:25PM +0200, Alexander Sverdlin wrote:
 > aligned to 4-bytes boundary.
 > 
 > After the fix is applied, everything is fragmented correctly for uneven MTUs:
-> 15:16:27.083881 IP (tos 0x2,ECT(0), ttl 64, id 0, offset 0, flags [DF], proto SCTP (132), length 1496)
->     10.151.38.153.53417 > 10.151.24.91.54321: sctp (1) [DATA] (B) [TSN: 3077098183] [SID: 0] [SSEQ 1] [PPID 0x0]
-> 15:16:27.083907 IP (tos 0x2,ECT(0), ttl 64, id 0, offset 0, flags [DF], proto SCTP (132), length 600)
->     10.151.38.153.53417 > 10.151.24.91.54321: sctp (1) [DATA] (E) [TSN: 3077098184] [SID: 0] [SSEQ 1] [PPID 0x0]
-> 15:16:27.085640 IP (tos 0x2,ECT(0), ttl 63, id 0, offset 0, flags [DF], proto SCTP (132), length 48)
->     10.151.24.91.54321 > 10.151.38.153.53417: sctp (1) [SACK] [cum ack 3077098184] [a_rwnd 79920] [#gap acks 0] [#dup tsns 0]
-> 
+ ...
 > The bug was there for years already, but
 >  - is a performance issue, the packets are still transmitted
 >  - doesn't show up with default MTU 1500, but possibly with ipsec (MTU 1438)
 > 
 > Signed-off-by: Alexander Sverdlin <alexander.sverdlin@nsn.com>
-> ---
-> 
-> --- linux-3.10.orig/net/sctp/chunk.c
-> +++ linux-3.10/net/sctp/chunk.c
-> @@ -200,9 +200,9 @@ struct sctp_datamsg *sctp_datamsg_from_u
->  	/* This is the biggest possible DATA chunk that can fit into
->  	 * the packet
->  	 */
-> -	max_data = asoc->pathmtu -
-> +	max_data = (asoc->pathmtu -
->  		sctp_sk(asoc->base.sk)->pf->af->net_header_len -
-> -		sizeof(struct sctphdr) - sizeof(struct sctp_data_chunk);
-> +		sizeof(struct sctphdr) - sizeof(struct sctp_data_chunk)) & ~3;
-> 
->  	max = asoc->frag_point;
->  	/* If the the peer requested that we authenticate DATA chunks
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
+Applied, thanks.
