@@ -1,54 +1,44 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Mon, 09 Sep 2013 13:56:12 +0000
+From: "Keller, Jacob E" <jacob.e.keller@intel.com>
+Date: Mon, 09 Sep 2013 19:12:03 +0000
 Subject: Re: [PATCH net] net: sctp: fix bug in sctp_poll for SOCK_SELECT_ERR_QUEUE
-Message-Id: <522DD37C.5070108@gmail.com>
+Message-Id: <1378753922.10690.0.camel@jekeller-desk1.amr.corp.intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1378565099-20987-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1378565099-20987-1-git-send-email-dborkman@redhat.com>
+	 <522DD37C.5070108@gmail.com>
+In-Reply-To: <522DD37C.5070108@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Jacob Keller <jacob.e.keller@intel.com>
+To: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Daniel Borkmann <dborkman@redhat.com>, "davem@davemloft.net" <davem@davemloft.net>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
 
-On 09/07/2013 10:44 AM, Daniel Borkmann wrote:
-> If we do not add braces around ...
->
->    mask |= POLLERR |
->            sock_flag(sk, SOCK_SELECT_ERR_QUEUE) ? POLLPRI : 0;
->
-> ... then this condition always evaluates to true as POLLERR is
-> defined as 8 and binary or'd with whatever result comes out of
-> sock_flag(). Hence instead of (X | Y) ? A : B, transform it into
-> X | (Y ? A : B). Unfortunatelty, commit 8facd5fb73 ("net: fix
-> smatch warnings inside datagram_poll") forgot about SCTP. :-(
->
-> Introduced by 7d4c04fc170 ("net: add option to enable error queue
-> packets waking select").
->
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-> Cc Jacob Keller <jacob.e.keller@intel.com>
-
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-
--vlad
-
-> ---
->   net/sctp/socket.c | 2 +-
->   1 file changed, 1 insertion(+), 1 deletion(-)
->
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index d5d5882..5462bbb 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -6176,7 +6176,7 @@ unsigned int sctp_poll(struct file *file, struct socket *sock, poll_table *wait)
->   	/* Is there any exceptional events?  */
->   	if (sk->sk_err || !skb_queue_empty(&sk->sk_error_queue))
->   		mask |= POLLERR |
-> -			sock_flag(sk, SOCK_SELECT_ERR_QUEUE) ? POLLPRI : 0;
-> +			(sock_flag(sk, SOCK_SELECT_ERR_QUEUE) ? POLLPRI : 0);
->   	if (sk->sk_shutdown & RCV_SHUTDOWN)
->   		mask |= POLLRDHUP | POLLIN | POLLRDNORM;
->   	if (sk->sk_shutdown = SHUTDOWN_MASK)
->
-
+T24gTW9uLCAyMDEzLTA5LTA5IGF0IDA5OjU2IC0wNDAwLCBWbGFkIFlhc2V2aWNoIHdyb3RlOg0K
+PiBPbiAwOS8wNy8yMDEzIDEwOjQ0IEFNLCBEYW5pZWwgQm9ya21hbm4gd3JvdGU6DQo+ID4gSWYg
+d2UgZG8gbm90IGFkZCBicmFjZXMgYXJvdW5kIC4uLg0KPiA+DQo+ID4gICAgbWFzayB8PSBQT0xM
+RVJSIHwNCj4gPiAgICAgICAgICAgIHNvY2tfZmxhZyhzaywgU09DS19TRUxFQ1RfRVJSX1FVRVVF
+KSA/IFBPTExQUkkgOiAwOw0KPiA+DQo+ID4gLi4uIHRoZW4gdGhpcyBjb25kaXRpb24gYWx3YXlz
+IGV2YWx1YXRlcyB0byB0cnVlIGFzIFBPTExFUlIgaXMNCj4gPiBkZWZpbmVkIGFzIDggYW5kIGJp
+bmFyeSBvcidkIHdpdGggd2hhdGV2ZXIgcmVzdWx0IGNvbWVzIG91dCBvZg0KPiA+IHNvY2tfZmxh
+ZygpLiBIZW5jZSBpbnN0ZWFkIG9mIChYIHwgWSkgPyBBIDogQiwgdHJhbnNmb3JtIGl0IGludG8N
+Cj4gPiBYIHwgKFkgPyBBIDogQikuIFVuZm9ydHVuYXRlbHR5LCBjb21taXQgOGZhY2Q1ZmI3MyAo
+Im5ldDogZml4DQo+ID4gc21hdGNoIHdhcm5pbmdzIGluc2lkZSBkYXRhZ3JhbV9wb2xsIikgZm9y
+Z290IGFib3V0IFNDVFAuIDotKA0KPiA+DQo+ID4gSW50cm9kdWNlZCBieSA3ZDRjMDRmYzE3MCAo
+Im5ldDogYWRkIG9wdGlvbiB0byBlbmFibGUgZXJyb3IgcXVldWUNCj4gPiBwYWNrZXRzIHdha2lu
+ZyBzZWxlY3QiKS4NCj4gPg0KPiA+IFNpZ25lZC1vZmYtYnk6IERhbmllbCBCb3JrbWFubiA8ZGJv
+cmttYW5AcmVkaGF0LmNvbT4NCj4gPiBDYyBKYWNvYiBLZWxsZXIgPGphY29iLmUua2VsbGVyQGlu
+dGVsLmNvbT4NCj4gDQo+IEFja2VkLWJ5OiBWbGFkIFlhc2V2aWNoIDx2eWFzZXZpY2hAZ21haWwu
+Y29tPg0KDQpBY2tlZC1ieTogSmFjb2IgS2VsbGVyIDxqYWNvYi5lLmtlbGxlckBpbnRlbC5jb20+
+DQoNCj4gLXZsYWQNCj4gDQo+ID4gLS0tDQo+ID4gICBuZXQvc2N0cC9zb2NrZXQuYyB8IDIgKy0N
+Cj4gPiAgIDEgZmlsZSBjaGFuZ2VkLCAxIGluc2VydGlvbigrKSwgMSBkZWxldGlvbigtKQ0KPiA+
+DQo+ID4gZGlmZiAtLWdpdCBhL25ldC9zY3RwL3NvY2tldC5jIGIvbmV0L3NjdHAvc29ja2V0LmMN
+Cj4gPiBpbmRleCBkNWQ1ODgyLi41NDYyYmJiIDEwMDY0NA0KPiA+IC0tLSBhL25ldC9zY3RwL3Nv
+Y2tldC5jDQo+ID4gKysrIGIvbmV0L3NjdHAvc29ja2V0LmMNCj4gPiBAQCAtNjE3Niw3ICs2MTc2
+LDcgQEAgdW5zaWduZWQgaW50IHNjdHBfcG9sbChzdHJ1Y3QgZmlsZSAqZmlsZSwgc3RydWN0IHNv
+Y2tldCAqc29jaywgcG9sbF90YWJsZSAqd2FpdCkNCj4gPiAgIAkvKiBJcyB0aGVyZSBhbnkgZXhj
+ZXB0aW9uYWwgZXZlbnRzPyAgKi8NCj4gPiAgIAlpZiAoc2stPnNrX2VyciB8fCAhc2tiX3F1ZXVl
+X2VtcHR5KCZzay0+c2tfZXJyb3JfcXVldWUpKQ0KPiA+ICAgCQltYXNrIHw9IFBPTExFUlIgfA0K
+PiA+IC0JCQlzb2NrX2ZsYWcoc2ssIFNPQ0tfU0VMRUNUX0VSUl9RVUVVRSkgPyBQT0xMUFJJIDog
+MDsNCj4gPiArCQkJKHNvY2tfZmxhZyhzaywgU09DS19TRUxFQ1RfRVJSX1FVRVVFKSA/IFBPTExQ
+UkkgOiAwKTsNCj4gPiAgIAlpZiAoc2stPnNrX3NodXRkb3duICYgUkNWX1NIVVRET1dOKQ0KPiA+
+ICAgCQltYXNrIHw9IFBPTExSREhVUCB8IFBPTExJTiB8IFBPTExSRE5PUk07DQo+ID4gICAJaWYg
+KHNrLT5za19zaHV0ZG93biA9PSBTSFVURE9XTl9NQVNLKQ0KPiA+DQo+IA0KDQoNCg=
