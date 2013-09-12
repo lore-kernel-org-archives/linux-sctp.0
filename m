@@ -1,53 +1,114 @@
-From: "David Laight" <David.Laight@ACULAB.COM>
-Date: Thu, 12 Sep 2013 08:06:04 +0000
-Subject: RE: [RFC PATCH] vsnprintf: Remove use of %n and convert existing uses
-Message-Id: <AE90C24D6B3A694183C094C60CF0A2F6026B732A@saturn3.aculab.com>
+From: Joe Perches <joe@perches.com>
+Date: Thu, 12 Sep 2013 15:59:22 +0000
+Subject: Re: [RFC PATCH] vsnprintf: Remove use of %n and convert existing uses
+Message-Id: <1379001562.2075.9.camel@joe-AO722>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1378926562.4714.11.camel@joe-AO722> <CAGXu5jLO6109fkejXqX=WhkQnfAUeWtTcow0v1BNqyi=8=Qa3Q@mail.gmail.com> <1378928700.4714.17.camel@joe-AO722> <CAGXu5jLTjrPr=GwOmMcu55Qp9K-_XS75xq9NJ0vBUEwy-i_YMw@mail.gmail.com> <1378941761.4714.37.camel@joe-AO722> <201309120840.HHE37542.OJMFFHSOQOtVFL@I-love.SAKURA.ne.jp> <1378944257.4714.45.camel@joe-AO722> <20130912001911.GO13318@ZenIV.linux.org.uk>
-In-Reply-To: <20130912001911.GO13318@ZenIV.linux.org.uk>
+References: <1378926562.4714.11.camel@joe-AO722>
+	 <CAGXu5jLO6109fkejXqX=WhkQnfAUeWtTcow0v1BNqyi=8=Qa3Q@mail.gmail.com>
+	 <1378928700.4714.17.camel@joe-AO722>
+	 <CAGXu5jLTjrPr=GwOmMcu55Qp9K-_XS75xq9NJ0vBUEwy-i_YMw@mail.gmail.com>
+	 <1378941761.4714.37.camel@joe-AO722>
+	 <201309120840.HHE37542.OJMFFHSOQOtVFL@I-love.SAKURA.ne.jp>
+	 <1378944257.4714.45.camel@joe-AO722>
+	 <20130912001911.GO13318@ZenIV.linux.org.uk>
+	 <AE90C24D6B3A694183C094C60CF0A2F6026B732A@saturn3.aculab.com>
+In-Reply-To: <AE90C24D6B3A694183C094C60CF0A2F6026B732A@saturn3.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Al Viro <viro@ZenIV.linux.org.uk>, Joe Perches <joe@perches.com>
-Cc: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>, linux-kernel@vger.kernel.org, kosaki.motohiro@jp.fujitsu.com, keescook@chromium.org, fweisbec@gmail.com, dan.carpenter@oracle.com, devel@driverdev.osuosl.org, gregkh@linuxfoundation.org, tushar.behera@linaro.org, lidza.louina@gmail.com, davem@davemloft.net, kuznet@ms2.inr.ac.ru, jmorris@namei.org, yoshfuji@linux-ipv6.org, kaber@trash.net, courmisch@gmail.com, vyasevich@gmail.com, nhorman@tuxdriver.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: David Laight <David.Laight@ACULAB.COM>
+Cc: Al Viro <viro@ZenIV.linux.org.uk>, Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>, linux-kernel@vger.kernel.org, kosaki.motohiro@jp.fujitsu.com, keescook@chromium.org, fweisbec@gmail.com, dan.carpenter@oracle.com, devel@driverdev.osuosl.org, gregkh@linuxfoundation.org, tushar.behera@linaro.org, lidza.louina@gmail.com, davem@davemloft.net, kuznet@ms2.inr.ac.ru, jmorris@namei.org, yoshfuji@linux-ipv6.org, kaber@trash.net, courmisch@gmail.com, vyasevich@gmail.com, nhorman@tuxdriver.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-> On Wed, Sep 11, 2013 at 05:04:17PM -0700, Joe Perches wrote:
-> > On Thu, 2013-09-12 at 08:40 +0900, Tetsuo Handa wrote:
-> > > Joe Perches wrote:
-> > > > -	seq_printf(m, "%s%d%n", con->name, con->index, &len);
-> > > > +	len = seq_printf(m, "%s%d", con->name, con->index);
+On Thu, 2013-09-12 at 09:06 +0100, David Laight wrote:
+> > On Wed, Sep 11, 2013 at 05:04:17PM -0700, Joe Perches wrote:
+> > > On Thu, 2013-09-12 at 08:40 +0900, Tetsuo Handa wrote:
+> > > > Joe Perches wrote:
+> > > > > -	seq_printf(m, "%s%d%n", con->name, con->index, &len);
+> > > > > +	len = seq_printf(m, "%s%d", con->name, con->index);
+> > > >
+> > > > Isn't len always 0 or -1 ?
 > > >
-> > > Isn't len always 0 or -1 ?
-> >
-> > Right.  Well you're no fun...
-> >
-> > These uses would seem broken anyway because the
-> > seq_printf isn't itself tested for correctness.
-> >
-> > Hmm.
-> >
-> > Also, there's a large amount of code that appears
-> > to do calculations with pos or len like:
-> >
-> > 	pos += seq_printf(handle, fmt. ...)
+> > > Right.  Well you're no fun...
+[]
+> > > Suggestions?
 > 
-> ... and most of that code proceeds to ignore pos completely.
-> Note that ->show() is *NOT* supposed to return the number of
-> characters it has/would like to have produced.  Just return
-> 0 and be done with that; overflows are dealt with just fine.
-> The large amount, BTW, is below 100 lines, AFAICS, in rather
-> few files.
-> 
-> > There are very few that seem to use it correctly
-> > like netfilter.
-> 
-> > Suggestions?
+> Change the return type of seq_printf() to void and require that
+> code use access functions/macros to find the length and error
+> status. Possibly save the length of the last call separately.
 
-Change the return type of seq_printf() to void and require that
-code use access functions/macros to find the length and error
-status. Possibly save the length of the last call separately.
+Are there any races if this is done?
+---
+ fs/seq_file.c            | 15 +++++++--------
+ include/linux/seq_file.h |  6 ++++--
+ 2 files changed, 11 insertions(+), 10 deletions(-)
 
-	David
-
+diff --git a/fs/seq_file.c b/fs/seq_file.c
+index 3135c25..b6c9eab 100644
+--- a/fs/seq_file.c
++++ b/fs/seq_file.c
+@@ -389,32 +389,31 @@ int seq_escape(struct seq_file *m, const char *s, const char *esc)
+ }
+ EXPORT_SYMBOL(seq_escape);
+ 
+-int seq_vprintf(struct seq_file *m, const char *f, va_list args)
++void seq_vprintf(struct seq_file *m, const char *f, va_list args)
+ {
+ 	int len;
+ 
+ 	if (m->count < m->size) {
+ 		len = vsnprintf(m->buf + m->count, m->size - m->count, f, args);
++		m->last_len = len;
+ 		if (m->count + len < m->size) {
+ 			m->count += len;
+-			return 0;
++			m->last_rtn = 0;
++			return;
+ 		}
+ 	}
+ 	seq_set_overflow(m);
+-	return -1;
++	m->last_rtn = -1;
+ }
+ EXPORT_SYMBOL(seq_vprintf);
+ 
+-int seq_printf(struct seq_file *m, const char *f, ...)
++void seq_printf(struct seq_file *m, const char *f, ...)
+ {
+-	int ret;
+ 	va_list args;
+ 
+ 	va_start(args, f);
+-	ret = seq_vprintf(m, f, args);
++	seq_vprintf(m, f, args);
+ 	va_end(args);
+-
+-	return ret;
+ }
+ EXPORT_SYMBOL(seq_printf);
+ 
+diff --git a/include/linux/seq_file.h b/include/linux/seq_file.h
+index 4e32edc..9af05e1 100644
+--- a/include/linux/seq_file.h
++++ b/include/linux/seq_file.h
+@@ -20,6 +20,8 @@ struct seq_file {
+ 	size_t size;
+ 	size_t from;
+ 	size_t count;
++	size_t last_len;
++	int last_rtn;
+ 	loff_t index;
+ 	loff_t read_pos;
+ 	u64 version;
+@@ -89,8 +91,8 @@ int seq_putc(struct seq_file *m, char c);
+ int seq_puts(struct seq_file *m, const char *s);
+ int seq_write(struct seq_file *seq, const void *data, size_t len);
+ 
+-__printf(2, 3) int seq_printf(struct seq_file *, const char *, ...);
+-__printf(2, 0) int seq_vprintf(struct seq_file *, const char *, va_list args);
++__printf(2, 3) void seq_printf(struct seq_file *, const char *, ...);
++__printf(2, 0) void seq_vprintf(struct seq_file *, const char *, va_list args);
+ 
+ int seq_path(struct seq_file *, const struct path *, const char *);
+ int seq_dentry(struct seq_file *, struct dentry *, const char *);
 
 
