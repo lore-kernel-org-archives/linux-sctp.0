@@ -1,74 +1,57 @@
-From: Joe Perches <joe@perches.com>
-Date: Thu, 12 Sep 2013 00:04:17 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Date: Thu, 12 Sep 2013 00:19:11 +0000
 Subject: Re: [RFC PATCH] vsnprintf: Remove use of %n and convert existing uses
-Message-Id: <1378944257.4714.45.camel@joe-AO722>
+Message-Id: <20130912001911.GO13318@ZenIV.linux.org.uk>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1378926562.4714.11.camel@joe-AO722>
-	 <CAGXu5jLO6109fkejXqX=WhkQnfAUeWtTcow0v1BNqyi=8=Qa3Q@mail.gmail.com>
-	 <1378928700.4714.17.camel@joe-AO722>
-	 <CAGXu5jLTjrPr=GwOmMcu55Qp9K-_XS75xq9NJ0vBUEwy-i_YMw@mail.gmail.com>
-	 <1378941761.4714.37.camel@joe-AO722>
-	 <201309120840.HHE37542.OJMFFHSOQOtVFL@I-love.SAKURA.ne.jp>
-In-Reply-To: <201309120840.HHE37542.OJMFFHSOQOtVFL@I-love.SAKURA.ne.jp>
+ <CAGXu5jLO6109fkejXqX=WhkQnfAUeWtTcow0v1BNqyi=8=Qa3Q@mail.gmail.com>
+ <1378928700.4714.17.camel@joe-AO722>
+ <CAGXu5jLTjrPr=GwOmMcu55Qp9K-_XS75xq9NJ0vBUEwy-i_YMw@mail.gmail.com>
+ <1378941761.4714.37.camel@joe-AO722>
+ <201309120840.HHE37542.OJMFFHSOQOtVFL@I-love.SAKURA.ne.jp>
+ <1378944257.4714.45.camel@joe-AO722>
+In-Reply-To: <1378944257.4714.45.camel@joe-AO722>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
-Cc: linux-kernel@vger.kernel.org, kosaki.motohiro@jp.fujitsu.com, keescook@chromium.org, fweisbec@gmail.com, dan.carpenter@oracle.com, devel@driverdev.osuosl.org, gregkh@linuxfoundation.org, tushar.behera@linaro.org, lidza.louina@gmail.com, davem@davemloft.net, kuznet@ms2.inr.ac.ru, jmorris@namei.org, yoshfuji@linux-ipv6.org, kaber@trash.net, courmisch@gmail.com, vyasevich@gmail.com, nhorman@tuxdriver.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: Joe Perches <joe@perches.com>
+Cc: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>, linux-kernel@vger.kernel.org, kosaki.motohiro@jp.fujitsu.com, keescook@chromium.org, fweisbec@gmail.com, dan.carpenter@oracle.com, devel@driverdev.osuosl.org, gregkh@linuxfoundation.org, tushar.behera@linaro.org, lidza.louina@gmail.com, davem@davemloft.net, kuznet@ms2.inr.ac.ru, jmorris@namei.org, yoshfuji@linux-ipv6.org, kaber@trash.net, courmisch@gmail.com, vyasevich@gmail.com, nhorman@tuxdriver.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Thu, 2013-09-12 at 08:40 +0900, Tetsuo Handa wrote:
-> Joe Perches wrote:
-> > -	seq_printf(m, "%s%d%n", con->name, con->index, &len);
-> > +	len = seq_printf(m, "%s%d", con->name, con->index);
+On Wed, Sep 11, 2013 at 05:04:17PM -0700, Joe Perches wrote:
+> On Thu, 2013-09-12 at 08:40 +0900, Tetsuo Handa wrote:
+> > Joe Perches wrote:
+> > > -	seq_printf(m, "%s%d%n", con->name, con->index, &len);
+> > > +	len = seq_printf(m, "%s%d", con->name, con->index);
+> > 
+> > Isn't len always 0 or -1 ?
 > 
-> Isn't len always 0 or -1 ?
-
-Right.  Well you're no fun...
-
-These uses would seem broken anyway because the
-seq_printf isn't itself tested for correctness.
-
-Hmm.
-
-Also, there's a large amount of code that appears
-to do calculations with pos or len like:
-
-	pos += seq_printf(handle, fmt. ...)
-
-There are very few that seem to use it correctly
-like netfilter.
-
-$ grep -rP --include=*.[ch] "^[ \t]*\S[ \t\S]*\bseq_[v]?printf\b" *
-
-Suggestions?
-
-> int seq_vprintf(struct seq_file *m, const char *f, va_list args)
-> {
-> 	int len;
+> Right.  Well you're no fun...
 > 
-> 	if (m->count < m->size) {
-> 		len = vsnprintf(m->buf + m->count, m->size - m->count, f, args);
-> 		if (m->count + len < m->size) {
-> 			m->count += len;
-> 			return 0;
-> 		}
-> 	}
-> 	seq_set_overflow(m);
-> 	return -1;
-> }
-> EXPORT_SYMBOL(seq_vprintf);
+> These uses would seem broken anyway because the
+> seq_printf isn't itself tested for correctness.
 > 
-> int seq_printf(struct seq_file *m, const char *f, ...)
-> {
-> 	int ret;
-> 	va_list args;
+> Hmm.
 > 
-> 	va_start(args, f);
-> 	ret = seq_vprintf(m, f, args);
-> 	va_end(args);
+> Also, there's a large amount of code that appears
+> to do calculations with pos or len like:
 > 
-> 	return ret;
-> }
-> EXPORT_SYMBOL(seq_printf);
+> 	pos += seq_printf(handle, fmt. ...)
 
+... and most of that code proceeds to ignore pos completely.
+Note that ->show() is *NOT* supposed to return the number of
+characters it has/would like to have produced.  Just return
+0 and be done with that; overflows are dealt with just fine.
+The large amount, BTW, is below 100 lines, AFAICS, in rather
+few files.
 
+> There are very few that seem to use it correctly
+> like netfilter.
+
+> Suggestions?
+
+Just bury the cargo-culting crap.  All those += seq_printf() should
+be simply calling it.  The *only* reason to look at the return
+value is "if we'd already overflown the buffer, I'd rather skipped
+the costly generation of the rest of the record".  In that case
+seq_printf() returning -1 means "skip it, nothing else will fit and
+caller will be repeating with bigger buffer anyway".
