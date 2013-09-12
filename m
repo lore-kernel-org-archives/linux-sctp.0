@@ -1,126 +1,76 @@
-From: Duan Jiong <duanj.fnst@cn.fujitsu.com>
-Date: Mon, 16 Sep 2013 11:51:17 +0000
-Subject: [PATCH v3 2/6] ipv6: just match on ICMPV6_PKT_TOOBIG in those err_handle
-Message-Id: <5236F0B5.4070406@cn.fujitsu.com>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Thu, 12 Sep 2013 12:33:32 +0000
+Subject: Re: [PATCH 09/11] sctp: move route updating for redirect to ndisc layer
+Message-Id: <5231B49C.5010305@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <5236EFEB.60106@cn.fujitsu.com>
-In-Reply-To: <5236EFEB.60106@cn.fujitsu.com>
+References: <52319A6E.6090503@cn.fujitsu.com> <52319CA7.8080809@cn.fujitsu.com>
+In-Reply-To: <52319CA7.8080809@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net
-Cc: netdev@vger.kernel.org, hannes@stressinduktion.org, linux-sctp@vger.kernel.org, vyasevic@redhat.com, dborkman@redhat.com
+To: Duan Jiong <duanj.fnst@cn.fujitsu.com>
+Cc: davem@davemloft.net, netdev@vger.kernel.org, hannes@stressinduktion.org, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
 
-From: Duan Jiong <duanj.fnst@cn.fujitsu.com>
+(Please also cc linux-sctp on this one.)
 
-we don't handle NDISC_REDIRECTs here any more, and the match
-on ICMPV6_DEST_UNREACH is meaningless.
-
-Signed-off-by: Duan Jiong <duanj.fnst@cn.fujitsu.com>
----
- net/dccp/ipv6.c    | 7 -------
- net/ipv6/ah6.c     | 9 ++-------
- net/ipv6/esp6.c    | 9 ++-------
- net/ipv6/ipcomp6.c | 9 ++-------
- 4 files changed, 6 insertions(+), 28 deletions(-)
-
-diff --git a/net/dccp/ipv6.c b/net/dccp/ipv6.c
-index 300840c..980cfba 100644
---- a/net/dccp/ipv6.c
-+++ b/net/dccp/ipv6.c
-@@ -91,13 +91,6 @@ static void dccp_v6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
- 	__u64 seq;
- 	struct net *net = dev_net(skb->dev);
- 
--	if (skb->len < offset + sizeof(*dh) ||
--	    skb->len < offset + __dccp_basic_hdr_len(dh)) {
--		ICMP6_INC_STATS_BH(net, __in6_dev_get(skb->dev),
--				   ICMP6_MIB_INERRORS);
--		return;
--	}
--
- 	if (type = NDISC_REDIRECT)
- 		return;
- 
-diff --git a/net/ipv6/ah6.c b/net/ipv6/ah6.c
-index 73784c3..79fb40f 100644
---- a/net/ipv6/ah6.c
-+++ b/net/ipv6/ah6.c
-@@ -618,19 +618,14 @@ static void ah6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
- 	struct ip_auth_hdr *ah = (struct ip_auth_hdr*)(skb->data+offset);
- 	struct xfrm_state *x;
- 
--	if (type != ICMPV6_DEST_UNREACH &&
--	    type != ICMPV6_PKT_TOOBIG &&
--	    type != NDISC_REDIRECT)
-+	if (type != ICMPV6_PKT_TOOBIG)
- 		return;
- 
- 	x = xfrm_state_lookup(net, skb->mark, (xfrm_address_t *)&iph->daddr, ah->spi, IPPROTO_AH, AF_INET6);
- 	if (!x)
- 		return;
- 
--	if (type = NDISC_REDIRECT)
--		ip6_redirect(skb, net, skb->dev->ifindex, 0);
--	else
--		ip6_update_pmtu(skb, net, info, 0, 0);
-+	ip6_update_pmtu(skb, net, info, 0, 0);
- 	xfrm_state_put(x);
- }
- 
-diff --git a/net/ipv6/esp6.c b/net/ipv6/esp6.c
-index d3618a7..6aa64e1 100644
---- a/net/ipv6/esp6.c
-+++ b/net/ipv6/esp6.c
-@@ -436,9 +436,7 @@ static void esp6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
- 	struct ip_esp_hdr *esph = (struct ip_esp_hdr *)(skb->data + offset);
- 	struct xfrm_state *x;
- 
--	if (type != ICMPV6_DEST_UNREACH &&
--	    type != ICMPV6_PKT_TOOBIG &&
--	    type != NDISC_REDIRECT)
-+	if (type != ICMPV6_PKT_TOOBIG)
- 		return;
- 
- 	x = xfrm_state_lookup(net, skb->mark, (const xfrm_address_t *)&iph->daddr,
-@@ -446,10 +444,7 @@ static void esp6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
- 	if (!x)
- 		return;
- 
--	if (type = NDISC_REDIRECT)
--		ip6_redirect(skb, net, skb->dev->ifindex, 0);
--	else
--		ip6_update_pmtu(skb, net, info, 0, 0);
-+	ip6_update_pmtu(skb, net, info, 0, 0);
- 	xfrm_state_put(x);
- }
- 
-diff --git a/net/ipv6/ipcomp6.c b/net/ipv6/ipcomp6.c
-index 5636a91..e943158 100644
---- a/net/ipv6/ipcomp6.c
-+++ b/net/ipv6/ipcomp6.c
-@@ -64,9 +64,7 @@ static void ipcomp6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
- 		(struct ip_comp_hdr *)(skb->data + offset);
- 	struct xfrm_state *x;
- 
--	if (type != ICMPV6_DEST_UNREACH &&
--	    type != ICMPV6_PKT_TOOBIG &&
--	    type != NDISC_REDIRECT)
-+	if (type != ICMPV6_PKT_TOOBIG)
- 		return;
- 
- 	spi = htonl(ntohs(ipcomph->cpi));
-@@ -75,10 +73,7 @@ static void ipcomp6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
- 	if (!x)
- 		return;
- 
--	if (type = NDISC_REDIRECT)
--		ip6_redirect(skb, net, skb->dev->ifindex, 0);
--	else
--		ip6_update_pmtu(skb, net, info, 0, 0);
-+	ip6_update_pmtu(skb, net, info, 0, 0);
- 	xfrm_state_put(x);
- }
- 
--- 
-1.8.3.1
+On 09/12/2013 12:51 PM, Duan Jiong wrote:
+> From: Duan Jiong <duanj.fnst@cn.fujitsu.com>
+> 
+> In additon, when dealing with redirect message, it should
+> not report error message to user, and need to return
+> directly.
+> 
+> Signed-off-by: Duan Jiong <duanj.fnst@cn.fujitsu.com>
+> ---
+>   net/sctp/input.c | 12 ------------
+>   net/sctp/ipv6.c  |  6 +++---
+>   2 files changed, 3 insertions(+), 15 deletions(-)
+> 
+> diff --git a/net/sctp/input.c b/net/sctp/input.c
+> index 5f20686..0d2d4b7 100644
+> --- a/net/sctp/input.c
+> +++ b/net/sctp/input.c
+> @@ -413,18 +413,6 @@ void sctp_icmp_frag_needed(struct sock *sk, struct sctp_association *asoc,
+>   	sctp_retransmit(&asoc->outqueue, t, SCTP_RTXR_PMTUD);
+>   }
+>   
+> -void sctp_icmp_redirect(struct sock *sk, struct sctp_transport *t,
+> -			struct sk_buff *skb)
+> -{
+> -	struct dst_entry *dst;
+> -
+> -	if (!t)
+> -		return;
+> -	dst = sctp_transport_dst_check(t);
+> -	if (dst)
+> -		dst->ops->redirect(dst, sk, skb);
+> -}
+> -
+>   /*
+>    * SCTP Implementer's Guide, 2.37 ICMP handling procedures
+>    *
+> diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+> index da613ce..ee12d87 100644
+> --- a/net/sctp/ipv6.c
+> +++ b/net/sctp/ipv6.c
+> @@ -151,6 +151,9 @@ static void sctp_v6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
+>   	int err;
+>   	struct net *net = dev_net(skb->dev);
+>   
+> +	if (type = NDISC_REDIRECT)
+> +		return;
+> +
+>   	idev = in6_dev_get(skb->dev);
+>   
+>   	/* Fix up skb to look at the embedded net header. */
+> @@ -181,9 +184,6 @@ static void sctp_v6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
+>   			goto out_unlock;
+>   		}
+>   		break;
+> -	case NDISC_REDIRECT:
+> -		sctp_icmp_redirect(sk, transport, skb);
+> -		break;
+>   	default:
+>   		break;
+>   	}
+> 
