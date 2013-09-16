@@ -1,41 +1,66 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 04 Sep 2013 17:20:58 +0000
-Subject: Re: [PATCH] net: sctp: Fix data chunk fragmentation for MTU values which are not multiple of 4
-Message-Id: <20130904.132058.515642898688349547.davem@davemloft.net>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Mon, 16 Sep 2013 10:36:02 +0000
+Subject: [PATCH net] net: sctp: rfc4443: do not report ICMP redirects to user space
+Message-Id: <1379327762-4638-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <52249981.8040006@nsn.com>
-In-Reply-To: <52249981.8040006@nsn.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: alexander.sverdlin@nsn.com
-Cc: linux-sctp@vger.kernel.org, vyasevich@gmail.com, matija.glavinic-pecotic.ext@nsn.com, netdev@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, hannes@stressinduktion.org
 
-From: Alexander Sverdlin <alexander.sverdlin@nsn.com>
-Date: Mon, 02 Sep 2013 15:58:25 +0200
+Adapt the same behaviour for SCTP as present in TCP for ICMP redirect
+messages. For IPv6, RFC4443, section 2.4. says:
 
-> From: Alexander Sverdlin <alexander.sverdlin@nsn.com>
-> 
-> net: sctp: Fix data chunk fragmentation for MTU values which are not multiple of 4
-> 
-> Initially the problem was observed with ipsec, but later it became clear that
-> SCTP data chunk fragmentation algorithm has problems with MTU values which are
-> not multiple of 4. Test program was used which just transmits 2000 bytes long
-> packets to other host. tcpdump was used to observe re-fragmentation in IP layer
-> after SCTP already fragmented data chunks.
- ...
-> Here problem in data portion limit calculation leads to re-fragmentation in IP,
-> which is sub-optimal. The problem is max_data initial value, which doesn't take
-> into account the fact, that data chunk must be padded to 4-bytes boundary.
-> It's enough to correct max_data, because all later adjustments are correctly
-> aligned to 4-bytes boundary.
-> 
-> After the fix is applied, everything is fragmented correctly for uneven MTUs:
- ...
-> The bug was there for years already, but
->  - is a performance issue, the packets are still transmitted
->  - doesn't show up with default MTU 1500, but possibly with ipsec (MTU 1438)
-> 
-> Signed-off-by: Alexander Sverdlin <alexander.sverdlin@nsn.com>
+  ...
+  (e) An ICMPv6 error message MUST NOT be originated as a result of
+      receiving the following:
+  ...
+       (e.2) An ICMPv6 redirect message [IPv6-DISC].
+  ...
 
-Applied, thanks.
+Therefore, do not report an error to user space, just invoke dst's redirect
+callback and leave, same for IPv4 as done in TCP as well. The implication
+w/o having this patch could be that the reception of such packets would
+generate a poll notification and in worst case it could even tear down the
+whole connection. Therefore, stop updating sk_err on redirects.
+
+Reported-by: Duan Jiong <duanj.fnst@cn.fujitsu.com>
+Reported-by: Hannes Frederic Sowa <hannes@stressinduktion.org>
+Suggested-by: Vlad Yasevich <vyasevich@gmail.com>
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/input.c | 3 +--
+ net/sctp/ipv6.c  | 2 +-
+ 2 files changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 5f20686..98b69bb 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -634,8 +634,7 @@ void sctp_v4_err(struct sk_buff *skb, __u32 info)
+ 		break;
+ 	case ICMP_REDIRECT:
+ 		sctp_icmp_redirect(sk, transport, skb);
+-		err = 0;
+-		break;
++		/* Fall through to out_unlock. */
+ 	default:
+ 		goto out_unlock;
+ 	}
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 4f52e2c..e7b2d4f 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -183,7 +183,7 @@ static void sctp_v6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
+ 		break;
+ 	case NDISC_REDIRECT:
+ 		sctp_icmp_redirect(sk, transport, skb);
+-		break;
++		goto out_unlock;
+ 	default:
+ 		break;
+ 	}
+-- 
+1.7.11.7
+
