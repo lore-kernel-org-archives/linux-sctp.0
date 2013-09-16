@@ -1,30 +1,126 @@
-From: Ryan <liquidbreeze1@yahoo.com>
-Date: Tue, 10 Sep 2013 19:16:29 +0000
-Subject: Multihoming setup
-Message-Id: <1378840589.23283.YahooMailNeo@web140604.mail.bf1.yahoo.com>
+From: Duan Jiong <duanj.fnst@cn.fujitsu.com>
+Date: Mon, 16 Sep 2013 11:51:17 +0000
+Subject: [PATCH v3 2/6] ipv6: just match on ICMPV6_PKT_TOOBIG in those err_handle
+Message-Id: <5236F0B5.4070406@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <5236EFEB.60106@cn.fujitsu.com>
+In-Reply-To: <5236EFEB.60106@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, hannes@stressinduktion.org, linux-sctp@vger.kernel.org, vyasevic@redhat.com, dborkman@redhat.com
 
-Hi all,
+From: Duan Jiong <duanj.fnst@cn.fujitsu.com>
 
-I am pretty new to sctp. I am trying to replicate heartbeat packets in a te=
-st env, because we believe one of our devices is having issues w/ these pac=
-kets
+we don't handle NDISC_REDIRECTs here any more, and the match
+on ICMPV6_DEST_UNREACH is meaningless.
 
-We have enabled.
-sysctl -w net.sctp.addip_enable=3D1
-sysctl -w net.sctp.auth_enable=3D1=A0
+Signed-off-by: Duan Jiong <duanj.fnst@cn.fujitsu.com>
+---
+ net/dccp/ipv6.c    | 7 -------
+ net/ipv6/ah6.c     | 9 ++-------
+ net/ipv6/esp6.c    | 9 ++-------
+ net/ipv6/ipcomp6.c | 9 ++-------
+ 4 files changed, 6 insertions(+), 28 deletions(-)
 
-Non-multihomed sctp traffic between an sctp_test client and server works.
-
-But I cannot seem to figure out how to get sctp_test to generate heartbeat =
-packets, which I believe multihoming is required.
-
-How do I generate heartbeat packets and/or configure sctp_test to do multih=
-oming?
-
-Thanks in advance,
-Ryan
+diff --git a/net/dccp/ipv6.c b/net/dccp/ipv6.c
+index 300840c..980cfba 100644
+--- a/net/dccp/ipv6.c
++++ b/net/dccp/ipv6.c
+@@ -91,13 +91,6 @@ static void dccp_v6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
+ 	__u64 seq;
+ 	struct net *net = dev_net(skb->dev);
+ 
+-	if (skb->len < offset + sizeof(*dh) ||
+-	    skb->len < offset + __dccp_basic_hdr_len(dh)) {
+-		ICMP6_INC_STATS_BH(net, __in6_dev_get(skb->dev),
+-				   ICMP6_MIB_INERRORS);
+-		return;
+-	}
+-
+ 	if (type = NDISC_REDIRECT)
+ 		return;
+ 
+diff --git a/net/ipv6/ah6.c b/net/ipv6/ah6.c
+index 73784c3..79fb40f 100644
+--- a/net/ipv6/ah6.c
++++ b/net/ipv6/ah6.c
+@@ -618,19 +618,14 @@ static void ah6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
+ 	struct ip_auth_hdr *ah = (struct ip_auth_hdr*)(skb->data+offset);
+ 	struct xfrm_state *x;
+ 
+-	if (type != ICMPV6_DEST_UNREACH &&
+-	    type != ICMPV6_PKT_TOOBIG &&
+-	    type != NDISC_REDIRECT)
++	if (type != ICMPV6_PKT_TOOBIG)
+ 		return;
+ 
+ 	x = xfrm_state_lookup(net, skb->mark, (xfrm_address_t *)&iph->daddr, ah->spi, IPPROTO_AH, AF_INET6);
+ 	if (!x)
+ 		return;
+ 
+-	if (type = NDISC_REDIRECT)
+-		ip6_redirect(skb, net, skb->dev->ifindex, 0);
+-	else
+-		ip6_update_pmtu(skb, net, info, 0, 0);
++	ip6_update_pmtu(skb, net, info, 0, 0);
+ 	xfrm_state_put(x);
+ }
+ 
+diff --git a/net/ipv6/esp6.c b/net/ipv6/esp6.c
+index d3618a7..6aa64e1 100644
+--- a/net/ipv6/esp6.c
++++ b/net/ipv6/esp6.c
+@@ -436,9 +436,7 @@ static void esp6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
+ 	struct ip_esp_hdr *esph = (struct ip_esp_hdr *)(skb->data + offset);
+ 	struct xfrm_state *x;
+ 
+-	if (type != ICMPV6_DEST_UNREACH &&
+-	    type != ICMPV6_PKT_TOOBIG &&
+-	    type != NDISC_REDIRECT)
++	if (type != ICMPV6_PKT_TOOBIG)
+ 		return;
+ 
+ 	x = xfrm_state_lookup(net, skb->mark, (const xfrm_address_t *)&iph->daddr,
+@@ -446,10 +444,7 @@ static void esp6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
+ 	if (!x)
+ 		return;
+ 
+-	if (type = NDISC_REDIRECT)
+-		ip6_redirect(skb, net, skb->dev->ifindex, 0);
+-	else
+-		ip6_update_pmtu(skb, net, info, 0, 0);
++	ip6_update_pmtu(skb, net, info, 0, 0);
+ 	xfrm_state_put(x);
+ }
+ 
+diff --git a/net/ipv6/ipcomp6.c b/net/ipv6/ipcomp6.c
+index 5636a91..e943158 100644
+--- a/net/ipv6/ipcomp6.c
++++ b/net/ipv6/ipcomp6.c
+@@ -64,9 +64,7 @@ static void ipcomp6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
+ 		(struct ip_comp_hdr *)(skb->data + offset);
+ 	struct xfrm_state *x;
+ 
+-	if (type != ICMPV6_DEST_UNREACH &&
+-	    type != ICMPV6_PKT_TOOBIG &&
+-	    type != NDISC_REDIRECT)
++	if (type != ICMPV6_PKT_TOOBIG)
+ 		return;
+ 
+ 	spi = htonl(ntohs(ipcomph->cpi));
+@@ -75,10 +73,7 @@ static void ipcomp6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
+ 	if (!x)
+ 		return;
+ 
+-	if (type = NDISC_REDIRECT)
+-		ip6_redirect(skb, net, skb->dev->ifindex, 0);
+-	else
+-		ip6_update_pmtu(skb, net, info, 0, 0);
++	ip6_update_pmtu(skb, net, info, 0, 0);
+ 	xfrm_state_put(x);
+ }
+ 
+-- 
+1.8.3.1
