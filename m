@@ -1,31 +1,88 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Tue, 10 Sep 2013 19:08:41 +0000
-Subject: Re: [PATCH net] net: sctp: fix ipv6 ipsec encryption bug in sctp_v6_xmit
-Message-Id: <522F6E39.1050305@redhat.com>
+Date: Mon, 16 Sep 2013 12:22:32 +0000
+Subject: Re: [PATCH  v3 0/6] ipv6: Do route updating for redirect in ndisc layer
+Message-Id: <5236F808.9050605@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1378836316-17503-1-git-send-email-dborkman@redhat.com> <522F6BDD.3050309@gmail.com>
-In-Reply-To: <522F6BDD.3050309@gmail.com>
+References: <5236EFEB.60106@cn.fujitsu.com>
+In-Reply-To: <5236EFEB.60106@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, adobriyan@gmail.com, Steffen Klassert <steffen.klassert@secunet.com>, Hannes Frederic Sowa <hannes@stressinduktion.org>
+To: Duan Jiong <duanj.fnst@cn.fujitsu.com>
+Cc: davem@davemloft.net, netdev@vger.kernel.org, hannes@stressinduktion.org, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
 
-On 09/10/2013 08:58 PM, Vlad Yasevich wrote:
-[...]
-> I don't think this is actually the correct thing to do.
-> 1) Every transmit has a possibility of changing np and thus changing
-> the result of getsockname() and getpeername()
-> 2) You will end up with a route lookup on every packet since np->dst_cookie is not set properly.
->
-> I wonder if it would solve things if you simply pass the flowi cached in the transport to ip6_xmit().
->
-> If not, then probably sctp_v6_get_dst() needs to be updated to find the
-> correct route, so then it can be cached in the transport along with the
-> flowi and used on output.
+On 09/16/2013 01:47 PM, Duan Jiong wrote:
+> From: Duan Jiong <duanj.fnst@cn.fujitsu.com>
+> 
+> the ip6_redirect() could be replaced with
+> ip6_redirect_no_header(), we could always use ip6_redirect()
+> for route updating in ndisc layer and use the data of the
+> redirected header option just for finding the socket to be
+> notified and then notify user in protocols' err_handler.
 
-Ok, let me have a look at these alternatives tomorrow first thing in the
-morning, and I'll respin.
+If I get this right, it seems to me that this patchset actually consists of two
+different kind of changes:
 
-Thanks,
-Daniel
+1) Not notifying user space on ICMP redirects (net material)
+2) Simplify code for updating route in ndisc layer instead of error handlers (net-next)
+
+Also, you do the *actual* change in the very last patch, which means that from
+patch 1 to 5 we're in an inconsistent and buggy state unless we also apply patch
+number 6. It should actually be the other way around, that you first do the actual
+change and then migrate users (also commit messages are quite terse).
+
+Moreover, just looking at the SCTP part (sctp_err_lookup() function) ...
+
+/* RFC 4960, Appendix C. ICMP Handling
+ *
+ * ICMP6) An implementation MUST validate that the Verification Tag
+ * contained in the ICMP message matches the Verification Tag of
+ * the peer.  If the Verification Tag is not 0 and does NOT
+ * match, discard the ICMP message.  If it is 0 and the ICMP
+ * message contains enough bytes to verify that the chunk type is
+ * an INIT chunk and that the Initiate Tag matches the tag of the
+ * peer, continue with ICMP7.  If the ICMP message is too short
+ * or the chunk type or the Initiate Tag does not match, silently
+ * discard the packet.
+ */
+
+... it seems to me that we would simply ignore such RFC requirements with
+your patch for the sctp_v6_err() part.
+
+Care to elaborate? ;-)
+
+> ---
+>   Changes for v3:
+>   1.del the ICMP6_INC_STATS_BH  error count, these are in fact
+>     no errors.
+> 
+>   Changes for v2:
+>   1.handle the update of the NDISC_REDIRECT error code directly in
+>     icmpv6_err_convert.
+>   2.squash some patchs into one patch.
+>   3.modify the subject of those patchs.
+> 
+> Duan Jiong (6):
+>    ipv6: del the statements for updating route in (dccp|tcp|sctp)_v6_err
+>    ipv6: just match on ICMPV6_PKT_TOOBIG in those err_handle
+>    ipv6: del statements for dealing with NDISC_REDIRECT
+>    ip6tnl: move route updating for redirect to ndisc layer
+>    ipv6: modify the err to 0 when dealing with NDISC_REDIRECT
+>    ipv6: Do route updating for redirect in ndisc layer
+> 
+>   include/net/ip6_route.h |  3 ---
+>   net/dccp/ipv6.c         | 13 +------------
+>   net/ipv6/ah6.c          |  9 ++-------
+>   net/ipv6/esp6.c         |  9 ++-------
+>   net/ipv6/icmp.c         |  5 +++--
+>   net/ipv6/ip6_tunnel.c   |  5 -----
+>   net/ipv6/ipcomp6.c      |  9 ++-------
+>   net/ipv6/ndisc.c        |  6 ++----
+>   net/ipv6/raw.c          |  3 +--
+>   net/ipv6/route.c        | 29 ++---------------------------
+>   net/ipv6/tcp_ipv6.c     | 12 ++++--------
+>   net/ipv6/udp.c          |  2 --
+>   net/sctp/input.c        | 12 ------------
+>   net/sctp/ipv6.c         |  6 +++---
+>   14 files changed, 22 insertions(+), 101 deletions(-)
+> 
