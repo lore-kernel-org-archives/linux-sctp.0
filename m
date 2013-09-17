@@ -1,103 +1,87 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Tue, 17 Sep 2013 09:00:07 +0000
+From: Hannes Frederic Sowa <hannes@stressinduktion.org>
+Date: Tue, 17 Sep 2013 13:52:32 +0000
 Subject: Re: [PATCH  v3 0/6] ipv6: Do route updating for redirect in ndisc layer
-Message-Id: <52381A17.7080309@redhat.com>
+Message-Id: <20130917135232.GG13408@order.stressinduktion.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <5236EFEB.60106@cn.fujitsu.com> <5236F808.9050605@redhat.com> <523710CC.1090404@gmail.com>
 In-Reply-To: <523710CC.1090404@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 To: Duan Jiong <djduanjiong@gmail.com>
-Cc: Duan Jiong <duanj.fnst@cn.fujitsu.com>, davem@davemloft.net, netdev@vger.kernel.org, hannes@stressinduktion.org, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
+Cc: Daniel Borkmann <dborkman@redhat.com>, Duan Jiong <duanj.fnst@cn.fujitsu.com>, davem@davemloft.net, netdev@vger.kernel.org, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
 
-On 09/16/2013 04:08 PM, Duan Jiong wrote:
-> =D3=DA 2013/9/16 20:22, Daniel Borkmann =D0=B4=B5=C0:
->> On 09/16/2013 01:47 PM, Duan Jiong wrote:
->>> From: Duan Jiong <duanj.fnst@cn.fujitsu.com>
->>>
->>> the ip6_redirect() could be replaced with
->>> ip6_redirect_no_header(), we could always use ip6_redirect()
->>> for route updating in ndisc layer and use the data of the
->>> redirected header option just for finding the socket to be
->>> notified and then notify user in protocols' err_handler.
->> If I get this right, it seems to me that this patchset actually consists=
- of two
->> different kind of changes:
->>
->> 1) Not notifying user space on ICMP redirects (net material)
->> 2) Simplify code for updating route in ndisc layer instead of error hand=
-lers (net-next)
->>
->> Also, you do the *actual* change in the very last patch, which means tha=
-t from
->> patch 1 to 5 we're in an inconsistent and buggy state unless we also app=
-ly patch
->> number 6. It should actually be the other way around, that you first do =
-the actual
->> change and then migrate users (also commit messages are quite terse).
->=20
+On Mon, Sep 16, 2013 at 10:08:12PM +0800, Duan Jiong wrote:
+> 于 2013/9/16 20:22, Daniel Borkmann 写道:
+> > On 09/16/2013 01:47 PM, Duan Jiong wrote:
+> >> From: Duan Jiong <duanj.fnst@cn.fujitsu.com>
+> >>
+> >> the ip6_redirect() could be replaced with
+> >> ip6_redirect_no_header(), we could always use ip6_redirect()
+> >> for route updating in ndisc layer and use the data of the
+> >> redirected header option just for finding the socket to be
+> >> notified and then notify user in protocols' err_handler.
+> > If I get this right, it seems to me that this patchset actually consists of two
+> > different kind of changes:
+> >
+> > 1) Not notifying user space on ICMP redirects (net material)
+> > 2) Simplify code for updating route in ndisc layer instead of error handlers (net-next)
+> >
+> > Also, you do the *actual* change in the very last patch, which means that from
+> > patch 1 to 5 we're in an inconsistent and buggy state unless we also apply patch
+> > number 6. It should actually be the other way around, that you first do the actual
+> > change and then migrate users (also commit messages are quite terse).
+> 
 > I make the patch set on net tree, not on net-next. Maybe those
 > things should be done in two patch sets.
->=20
->> Moreover, just looking at the SCTP part (sctp_err_lookup() function) ...
->>
->> /* RFC 4960, Appendix C. ICMP Handling
->>   *
->>   * ICMP6) An implementation MUST validate that the Verification Tag
->>   * contained in the ICMP message matches the Verification Tag of
->>   * the peer.  If the Verification Tag is not 0 and does NOT
->>   * match, discard the ICMP message.  If it is 0 and the ICMP
->>   * message contains enough bytes to verify that the chunk type is
->>   * an INIT chunk and that the Initiate Tag matches the tag of the
->>   * peer, continue with ICMP7.  If the ICMP message is too short
->>   * or the chunk type or the Initiate Tag does not match, silently
->>   * discard the packet.
->>   */
->>  =20
->> ... it seems to me that we would simply ignore such RFC requirements with
->> your patch for the sctp_v6_err() part.
->>
->> Care to elaborate? ;-)
->=20
+
+I have thought about going the other direction. Just make it one patch
+and update the whole logic atomically in the git tree. So we won't have
+any partial logic updates in the tree.
+
+Please also rebase your series onto net from today, because Daniel's
+patch regarding updating sk->sk_err in sctp went in yesterday.
+
+> > Moreover, just looking at the SCTP part (sctp_err_lookup() function) ...
+> >
+> > /* RFC 4960, Appendix C. ICMP Handling
+> >  *
+> >  * ICMP6) An implementation MUST validate that the Verification Tag
+> >  * contained in the ICMP message matches the Verification Tag of
+> >  * the peer.  If the Verification Tag is not 0 and does NOT
+> >  * match, discard the ICMP message.  If it is 0 and the ICMP
+> >  * message contains enough bytes to verify that the chunk type is
+> >  * an INIT chunk and that the Initiate Tag matches the tag of the
+> >  * peer, continue with ICMP7.  If the ICMP message is too short
+> >  * or the chunk type or the Initiate Tag does not match, silently
+> >  * discard the packet.
+> >  */
+> >  
+> > ... it seems to me that we would simply ignore such RFC requirements with
+> > your patch for the sctp_v6_err() part.
+> >
+> > Care to elaborate? ;-)
+> 
 > Sorry, i didn't notice that.
->=20
+> 
 > According to the RFC requirements, it suggests that we can't update
 > route for redirect in ndisc layer before calling into sctp_err_lookup(),
 > because we must verify the ICMP Message. Now maybe we update route for
 > redirect in ndisc layer is wrong.
+> 
+> Do you have any idea?
 
-Looking further into RFC4960 [1] ... it says:
+IMO updating of routes in ndisc layer is fine. We already accept redirects
+(and also change routes) for sctp connections where the redirect packet does
+not contain any tag. Also it is debatable if redirects are counted as
+icmp packets or merely just belong to the kind of neighbour discovery
+packets which just use icmp framing (and so the sctp rfc would not say
+anything about them).
 
-Appendix C.  ICMP Handling
+As Daniel already said, it would be better to update the commit message
+to clarify the reasons why this is ok (with some pointers to RFCs).
 
-   Whenever an ICMP message is received by an SCTP endpoint, the
-   following procedures MUST be followed to ensure proper utilization of
-   the information being provided by layer 3.
+Greetings,
 
-   ICMP1) An implementation MAY ignore all ICMPv4 messages where the
-          type field is not set to "Destination Unreachable".
+  Hannes
 
-   ICMP2) An implementation MAY ignore all ICMPv6 messages where the
-          type field is not "Destination Unreachable", "Parameter
-          Problem", or "Packet Too Big".
-   ...
-
-So this basically means that only packets in step 2 are interesting for us =
-here,
-we *may* ignore the rest. The verification comes at step 6, so we may have
-ignored the packet first. ;-) Therefore, I think your proposal should not b=
-e an
-issue for SCTP.
-
-I'd however prefer that your patch handles this similarly as in sctp_v4_err=
-(),
-so that in the default switch-case, we just go to out_unlock.
-
-In any case, your commit message would need to be more elaborate and reflect
-"why" it is okay/safe to change that in SCTP or other cases, preferably with
-reference to the RFC. Otherwise, looking at the Git history in future will =
-just be
-confusing as it won't clarify why it was reasonable doing so this way.
-
-  [1] http://tools.ietf.org/html/rfc4960#appendix-C
