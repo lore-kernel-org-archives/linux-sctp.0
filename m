@@ -1,29 +1,32 @@
-From: Joe Perches <joe@perches.com>
-Date: Fri, 20 Sep 2013 19:33:16 +0000
+From: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
+Date: Sat, 21 Sep 2013 00:28:14 +0000
 Subject: Re: [PATCH 1/2] remove all uses of printf's %n
-Message-Id: <1379705596.2301.17.camel@joe-AO722>
+Message-Id: <201309210928.JCF90671.OtOFLFQSOJVFMH@I-love.SAKURA.ne.jp>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAGXu5jL+NeBw2_vXymM81UdtS6UO7KZA2S4rf3gwM_7nSJ2h6g@mail.gmail.com>
-	 <20130917205742.16147.qmail@science.horizon.com>
-	 <201309191756.BCF65661.MQFOLSJOFHFtOV@I-love.SAKURA.ne.jp>
-	 <CAGXu5jK_D1BJOQr=1A-UFrpM5Ad+Qu894HT_XjkZh4EmsbCkTQ@mail.gmail.com>
-	 <201309201309.GFB52620.OQOtSFLMJVHOFF@I-love.SAKURA.ne.jp>
-	 <523C0268.20404@suse.cz>
-	 <CAGXu5jLENb+x6b9XOY7-pWMT7GsFgnLr0=A8VNFLkqMi0BX4=w@mail.gmail.com>
+References: <201309191756.BCF65661.MQFOLSJOFHFtOV@I-love.SAKURA.ne.jp>
+	<CAGXu5jK_D1BJOQr=1A-UFrpM5Ad+Qu894HT_XjkZh4EmsbCkTQ@mail.gmail.com>
+	<201309201309.GFB52620.OQOtSFLMJVHOFF@I-love.SAKURA.ne.jp>
+	<523C0268.20404@suse.cz>
+	<CAGXu5jLENb+x6b9XOY7-pWMT7GsFgnLr0=A8VNFLkqMi0BX4=w@mail.gmail.com>
 In-Reply-To: <CAGXu5jLENb+x6b9XOY7-pWMT7GsFgnLr0=A8VNFLkqMi0BX4=w@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Kees Cook <keescook@chromium.org>
-Cc: Jiri Slaby <jslaby@suse.cz>, Tetsuo Handa <penguin-kernel@i-love.sakura.ne.jp>, Al Viro <viro@zeniv.linux.org.uk>, Pavel Emelyanov <xemul@openvz.org>, =?ISO-8859-1?Q?R=E9mi?= Denis-Courmont <remi.denis-courmont@nokia.com>, LKML <linux-kernel@vger.kernel.org>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, George Spelvin <linux@horizon.com>, Andrew Morton <akpm@linux-foundation.org>, Dan Carpenter <dan.carpenter@oracle.com>, Geert Uytterhoeven <geert@linux-m68k.org>, Jan Beulich <JBeulich@suse.com>, Motohiro KOSAKI <kosaki.motohiro@gmail.com>
+To: keescook@chromium.org, jslaby@suse.cz
+Cc: viro@zeniv.linux.org.uk, xemul@openvz.org, remi.denis-courmont@nokia.com, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, linux@horizon.com, akpm@linux-foundation.org, dan.carpenter@oracle.com, geert@linux-m68k.org, JBeulich@suse.com, joe@perches.com, kosaki.motohiro@gmail.com
 
-On Fri, 2013-09-20 at 12:24 -0700, Kees Cook wrote:
-> There are a few problems that have been discussed on the various
-> threads. Namely, we want to minimize the changes to the seq_file
-> structure and to not add additional work to all the seq_file users
-> that don't care about padding.
+Kees Cook wrote:
+> >> -                     seq_printf(seq, "%*s\n", 127 - len, "");
+> >> +                     seq_pad(seq, '\n');
+> >
+> > Hmm, seq_pad is unintuitive. I would say it pads the string by '\n'. Of
+> > course it does not, but...
+> 
+> I don't think this is a very serious problem. Currently, the padding
+> character is always ' ' for all existing callers, so it only makes
+> sense to make the trailing character an argument.
 
-I don't think saving a couple more values to a struct
-is that big a deal.
-
-
+If you want, we can rename seq_pad() to seq_pad_and_putc(). Also we can pass
+both the padding character (e.g. ' ') and the trailing character (e.g. '\n')
+like seq_pad_and_putc((' ' << 8) | '\n'), though I wonder someone wants to
+use '\0', '\t', '\n' etc. as the padding character...
