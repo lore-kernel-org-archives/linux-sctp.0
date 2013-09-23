@@ -1,38 +1,60 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 17 Sep 2013 01:40:54 +0000
-Subject: Re: [PATCH net] net: sctp: rfc4443: do not report ICMP redirects to user space
-Message-Id: <20130916.214054.1994711412361848197.davem@davemloft.net>
+From: Joe Perches <joe@perches.com>
+Date: Mon, 23 Sep 2013 18:37:59 +0000
+Subject: [PATCH 12/12] sctp: Remove extern from function prototypes
+Message-Id: <6738b115d30d40f33c688863f5421d84d2aa706c.1379961014.git.joe@perches.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1379327762-4638-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1379327762-4638-1-git-send-email-dborkman@redhat.com>
+References: <445209f8885ccd8234fa787c30d63e63fc7917d7.1379961014.git.joe@perches.com>
+In-Reply-To: <445209f8885ccd8234fa787c30d63e63fc7917d7.1379961014.git.joe@perches.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dborkman@redhat.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, hannes@stressinduktion.org
+To: netdev@vger.kernel.org
+Cc: "David S. Miller" <davem@davemloft.net>, linux-kernel@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org
 
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Mon, 16 Sep 2013 12:36:02 +0200
+There are a mix of function prototypes with and without extern
+in the kernel sources.  Standardize on not using extern for
+function prototypes.
 
-> Adapt the same behaviour for SCTP as present in TCP for ICMP redirect
-> messages. For IPv6, RFC4443, section 2.4. says:
-> 
->   ...
->   (e) An ICMPv6 error message MUST NOT be originated as a result of
->       receiving the following:
->   ...
->        (e.2) An ICMPv6 redirect message [IPv6-DISC].
->   ...
-> 
-> Therefore, do not report an error to user space, just invoke dst's redirect
-> callback and leave, same for IPv4 as done in TCP as well. The implication
-> w/o having this patch could be that the reception of such packets would
-> generate a poll notification and in worst case it could even tear down the
-> whole connection. Therefore, stop updating sk_err on redirects.
-> 
-> Reported-by: Duan Jiong <duanj.fnst@cn.fujitsu.com>
-> Reported-by: Hannes Frederic Sowa <hannes@stressinduktion.org>
-> Suggested-by: Vlad Yasevich <vyasevich@gmail.com>
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Function prototypes don't need to be written with extern.
+extern is assumed by the compiler.  Its use is as unnecessary as
+using auto to declare automatic/local variables in a block.
 
-Applied and queued up for -stable, thanks Daniel.
+Signed-off-by: Joe Perches <joe@perches.com>
+---
+ include/net/sctp/sctp.h | 13 ++++++-------
+ 1 file changed, 6 insertions(+), 7 deletions(-)
+
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 3794c5a..c5fe806 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -90,12 +90,11 @@
+ /*
+  * sctp/protocol.c
+  */
+-extern int sctp_copy_local_addr_list(struct net *, struct sctp_bind_addr *,
+-				     sctp_scope_t, gfp_t gfp,
+-				     int flags);
+-extern struct sctp_pf *sctp_get_pf_specific(sa_family_t family);
+-extern int sctp_register_pf(struct sctp_pf *, sa_family_t);
+-extern void sctp_addr_wq_mgmt(struct net *, struct sctp_sockaddr_entry *, int);
++int sctp_copy_local_addr_list(struct net *, struct sctp_bind_addr *,
++			      sctp_scope_t, gfp_t gfp, int flags);
++struct sctp_pf *sctp_get_pf_specific(sa_family_t family);
++int sctp_register_pf(struct sctp_pf *, sa_family_t);
++void sctp_addr_wq_mgmt(struct net *, struct sctp_sockaddr_entry *, int);
+ 
+ /*
+  * sctp/socket.c
+@@ -110,7 +109,7 @@ void sctp_sock_rfree(struct sk_buff *skb);
+ void sctp_copy_sock(struct sock *newsk, struct sock *sk,
+ 		    struct sctp_association *asoc);
+ extern struct percpu_counter sctp_sockets_allocated;
+-extern int sctp_asconf_mgmt(struct sctp_sock *, struct sctp_sockaddr_entry *);
++int sctp_asconf_mgmt(struct sctp_sock *, struct sctp_sockaddr_entry *);
+ 
+ /*
+  * sctp/primitive.c
+-- 
+1.8.1.2.459.gbcd45b4.dirty
+
