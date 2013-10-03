@@ -1,37 +1,20 @@
-From: Wang Weidong <wangweidong1@huawei.com>
-Date: Fri, 25 Oct 2013 03:45:48 +0000
-Subject: [PATCH net-next 4/4] sctp: fix comment in chunk.c
-Message-Id: <1382672748-10156-5-git-send-email-wangweidong1@huawei.com>
+From: Aijaz Lending <yin01@aijaz527.onmicrosoft.com>
+Date: Thu, 03 Oct 2013 20:16:01 +0000
+Subject: looking for loan
+Message-Id: <ddd5688b-aff8-4404-b45b-b91d13d34e0e@HKXPR02MB213.apcprd02.prod.outlook.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1382672748-10156-1-git-send-email-wangweidong1@huawei.com>
-In-Reply-To: <1382672748-10156-1-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: nhorman@tuxdriver.com, vyasevich@gmail.com
-Cc: davem@davemloft.net, dingtianhong@huawei.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: Recipients <yin01-3M0T/LkHzJdO0n7uQEQMm4CZgX+1HZI1@public.gmane.org>
 
-fix a spelling
+Do you have a firm or company that need loan to start up a business or need,personal loan, Debt consolidation? For more information,Contact us now for a guarantee loan with low interest rate. We will provide you with loan to meet your needs. For more information contact us with the following information's.
+Full name:
+country:
+Address:
+Phone Number:
+Amount needed:
+Duration of loan:
 
-Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
----
- net/sctp/chunk.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
-index 7bd5ed4..f2044fc 100644
---- a/net/sctp/chunk.c
-+++ b/net/sctp/chunk.c
-@@ -201,7 +201,7 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
- 
- 	max = asoc->frag_point;
- 	/* If the the peer requested that we authenticate DATA chunks
--	 * we need to accound for bundling of the AUTH chunks along with
-+	 * we need to account for bundling of the AUTH chunks along with
- 	 * DATA.
- 	 */
- 	if (sctp_auth_send_cid(SCTP_CID_DATA, asoc)) {
--- 
-1.7.12
-
-
+sg.loan.sg@outlook.com
+Kind regards
