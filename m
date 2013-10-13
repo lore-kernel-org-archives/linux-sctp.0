@@ -1,76 +1,48 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Thu, 12 Sep 2013 12:33:32 +0000
-Subject: Re: [PATCH 09/11] sctp: move route updating for redirect to ndisc layer
-Message-Id: <5231B49C.5010305@redhat.com>
+From: Chang <changxiangzhong@gmail.com>
+Date: Sun, 13 Oct 2013 10:14:38 +0000
+Subject: potential bug on SFR-CACC
+Message-Id: <525A728E.8040007@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <52319A6E.6090503@cn.fujitsu.com> <52319CA7.8080809@cn.fujitsu.com>
-In-Reply-To: <52319CA7.8080809@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Duan Jiong <duanj.fnst@cn.fujitsu.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, hannes@stressinduktion.org, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
+To: linux-sctp@vger.kernel.org
 
-(Please also cc linux-sctp on this one.)
+Hi all,
+I'm reading the source code of LK-SCTP and find something that I 
+couldn't understand on the SFR-CACC feature of LK-SCTP, which might be a 
+bug.
 
-On 09/12/2013 12:51 PM, Duan Jiong wrote:
-> From: Duan Jiong <duanj.fnst@cn.fujitsu.com>
-> 
-> In additon, when dealing with redirect message, it should
-> not report error message to user, and need to return
-> directly.
-> 
-> Signed-off-by: Duan Jiong <duanj.fnst@cn.fujitsu.com>
-> ---
->   net/sctp/input.c | 12 ------------
->   net/sctp/ipv6.c  |  6 +++---
->   2 files changed, 3 insertions(+), 15 deletions(-)
-> 
-> diff --git a/net/sctp/input.c b/net/sctp/input.c
-> index 5f20686..0d2d4b7 100644
-> --- a/net/sctp/input.c
-> +++ b/net/sctp/input.c
-> @@ -413,18 +413,6 @@ void sctp_icmp_frag_needed(struct sock *sk, struct sctp_association *asoc,
->   	sctp_retransmit(&asoc->outqueue, t, SCTP_RTXR_PMTUD);
->   }
->   
-> -void sctp_icmp_redirect(struct sock *sk, struct sctp_transport *t,
-> -			struct sk_buff *skb)
-> -{
-> -	struct dst_entry *dst;
-> -
-> -	if (!t)
-> -		return;
-> -	dst = sctp_transport_dst_check(t);
-> -	if (dst)
-> -		dst->ops->redirect(dst, sk, skb);
-> -}
-> -
->   /*
->    * SCTP Implementer's Guide, 2.37 ICMP handling procedures
->    *
-> diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-> index da613ce..ee12d87 100644
-> --- a/net/sctp/ipv6.c
-> +++ b/net/sctp/ipv6.c
-> @@ -151,6 +151,9 @@ static void sctp_v6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
->   	int err;
->   	struct net *net = dev_net(skb->dev);
->   
-> +	if (type = NDISC_REDIRECT)
-> +		return;
-> +
->   	idev = in6_dev_get(skb->dev);
->   
->   	/* Fix up skb to look at the embedded net header. */
-> @@ -181,9 +184,6 @@ static void sctp_v6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
->   			goto out_unlock;
->   		}
->   		break;
-> -	case NDISC_REDIRECT:
-> -		sctp_icmp_redirect(sk, transport, skb);
-> -		break;
->   	default:
->   		break;
->   	}
-> 
+When a sender receiving a SACK, ***sctp_check_transmitted()*** would be 
+invoked to update the state variables related to SFR-CACC, including 
+***highest_new_tsn_in_sack*** and ***cacc_saw_newack***.
+
+---------------------------------------------------------
+The scripts to update ***highest_new_tsn_in_sack*** is as follow. 
+Function ***sctp_acked*** checks if the tsn is acked(EITHER cumulatively 
+OR selectively) in the sack reply.
+---------------------------------------------------------
+if(sctp_acked(sack, tsn)) {
+     ......
+     *highest_new_tsn_in_sack  = tsn;
+     ......
+}
+---------------------------------------------------------
+The scripts to upate ***cacc_saw_newack*** is as follow. It checks if 
+the tsn is less/euqal than the cumulatively acked TSN ONLY in the sack 
+reply, which is INCONSISTENCY with the abovementioned.
+---------------------------------------------------------
+if (TSN_lte(tsn, sack_ctsn)) {// sack_ctsn is cumulatively-acked
+     ......
+     if (!tchunk->tsn_gap_acked) {
+         if (transport && sack->num_gap_ack_blocks && 
+q->asoc->peer.primary_path->cacc.changeover_active)
+         transport->cacc.cacc_saw_newack = 1;
+     }
+     ......
+}
+
+I would appreicate if anyone could confirm this is a work-as-design or a 
+bug?
+
+Cheers!
