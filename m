@@ -1,121 +1,132 @@
-From: Hangbin Liu <liuhangbin@gmail.com>
-Date: Thu, 31 Oct 2013 02:54:56 +0000
-Subject: Re: [lksctp-developers] sctp_status: Got sendmsg: Invalid argument when set max_stream larger than 1
-Message-Id: <20131031025455.GE14331@localhost.localdomain>
+From: Chang Xiangzhong <changxiangzhong@gmail.com>
+Date: Tue, 15 Oct 2013 18:13:04 +0000
+Subject: [PATCH V2] For for each TSN t being newly acked (Not only cumulatively, but also SELECTIVELY) cacc_s
+Message-Id: <1381860784-16481-1-git-send-email-changxiangzhong@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAPwn2JQRx3j3GieoZaFh4wO7MPGmZPNY9W2U7hsQJ0xUULX3MA@mail.gmail.com>
-In-Reply-To: <CAPwn2JQRx3j3GieoZaFh4wO7MPGmZPNY9W2U7hsQJ0xUULX3MA@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="windows-1252"
-Content-Transfer-Encoding: quoted-printable
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: vyasevich@gmail.com
+Cc: nhorman@tuxdriver.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, Chang Xiangzhong <changxiangzhong@gmail.com>
 
-On Wed, Oct 30, 2013 at 04:24:08PM +0100, Daniel Borkmann wrote:
-> On 10/27/2013 04:11 AM, Hangbin Liu wrote:
-> >Hi Daniel,
-> >
-> >When I run sctp_status test and set max_stream >=3D 10, the client will
-> >fail with "sendmsg: Invalid argument". Would you like to help have a
-> >look at this?
-> >
-> ># ./sctp_status -H 127.0.0.1 -P 9998 -h 127.0.0.1 -p 9999 -s -d 2 -M 20
-> >remote:addr=127.0.0.1, port=3Ddistinct, family=3D2
-> >local:addr=127.0.0.1, port=3Ddistinct32, family=3D2
-> >
-> >Starting tests...
-> >         socket(SOCK_STREAM, IPPROTO_SCTP)  ->  sk=3D3
-> >         bind(sk=3D3, [a:127.0.0.1,p:distinct32])  --  attempt 1/10
-> >         connect(sk=3D3)
-> >Client: Sending packets.(1/10)
-> >         sendmsg(sk=3D3, assoc=3D0) 17768 bytes.
-> >           SNDRCV(stream=3D1 flags=3D0x1 ppid=846930886)
-> >         sendmsg(sk=3D3, assoc=3D0) 6250 bytes.
-> >           SNDRCV(stream=3D2 flags=3D0x1 ppid=1714636915)
-> >         sendmsg(sk=3D3, assoc=3D0) 23634 bytes.
-> >           SNDRCV(stream=3D3 flags=3D0x1 ppidB4238335)
-> >         sendmsg(sk=3D3, assoc=3D0) 5195 bytes.
-> >           SNDRCV(stream=3D4 flags=3D0x1 ppid=1649760492)
-> >         sendmsg(sk=3D3, assoc=3D0) 7978 bytes.
-> >           SNDRCV(stream=3D5 flags=3D0x1 ppid=1189641421)
-> >         sendmsg(sk=3D3, assoc=3D0) 22715 bytes.
-> >           SNDRCV(stream=3D6 flags=3D0x1 ppid=1350490027)
-> >         sendmsg(sk=3D3, assoc=3D0) 16883 bytes.
-> >           SNDRCV(stream=3D7 flags=3D0x1 ppid=1102520059)
-> >         sendmsg(sk=3D3, assoc=3D0) 10724 bytes.
-> >           SNDRCV(stream=3D8 flags=3D0x1 ppid=1967513926)
-> >         sendmsg(sk=3D3, assoc=3D0)  125 bytes.
-> >           SNDRCV(stream=3D9 flags=3D0x1 ppid=1540383426)
-> >         sendmsg(sk=3D3, assoc=3D0) 2133 bytes.
-> >           SNDRCV(stream=10 flags=3D0x1 ppid=1303455736)
-> >
-> >                 *** sendmsg: Invalid argument ***
->=20
-> Hangbin, the below fix should do it (it worked for you up to that point as
-> that is the default number of streams) ... will push that _at latest_ on
+Signed-off-by: Xiangzhong Chang <changxiangzhong@gmail.com>
+---
+ net/sctp/outqueue.c |   76 ++++++++++++++++++++++++---------------------------
+ 1 file changed, 35 insertions(+), 41 deletions(-)
 
-Ah, I see, thanks for this patch
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 94df758..84ef3b8 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -1357,13 +1357,13 @@ static void sctp_check_transmitted(struct sctp_outq *q,
+ 
+ 		tsn = ntohl(tchunk->subh.data_hdr->tsn);
+ 		if (sctp_acked(sack, tsn)) {
+-			/* If this queue is the retransmit queue, the
+-			 * retransmit timer has already reclaimed
+-			 * the outstanding bytes for this chunk, so only
+-			 * count bytes associated with a transport.
+-			 */
+-			if (transport) {
+-				/* If this chunk is being used for RTT
++			if (!tchunk->tsn_gap_acked) {
++				/* If this queue is the retransmit queue, the
++				 * retransmit timer has already reclaimed
++				 * the outstanding bytes for this chunk, so only
++				 * count bytes associated with a transport.
++				 *
++				 * If this chunk is being used for RTT
+ 				 * measurement, calculate the RTT and update
+ 				 * the RTO using this value.
+ 				 *
+@@ -1374,28 +1374,44 @@ static void sctp_check_transmitted(struct sctp_outq *q,
+ 				 * first instance of the packet or a later
+ 				 * instance).
+ 				 */
+-				if (!tchunk->tsn_gap_acked &&
+-				    tchunk->rtt_in_progress) {
++				if (transport && tchunk->rtt_in_progress) {
+ 					tchunk->rtt_in_progress = 0;
+ 					rtt = jiffies - tchunk->sent_at;
+ 					sctp_transport_update_rto(transport,
+-								  rtt);
++						rtt);
+ 				}
+-			}
+ 
+-			/* If the chunk hasn't been marked as ACKED,
+-			 * mark it and account bytes_acked if the
+-			 * chunk had a valid transport (it will not
+-			 * have a transport if ASCONF had deleted it
+-			 * while DATA was outstanding).
+-			 */
+-			if (!tchunk->tsn_gap_acked) {
++				/* If the chunk hasn't been marked as ACKED,
++				 * mark it and account bytes_acked if the
++				 * chunk had a valid transport (it will not
++				 * have a transport if ASCONF had deleted it
++				 * while DATA was outstanding).
++				 */
+ 				tchunk->tsn_gap_acked = 1;
+ 				*highest_new_tsn_in_sack = tsn;
+ 				bytes_acked += sctp_data_size(tchunk);
+ 				if (!tchunk->transport)
+ 					migrate_bytes += sctp_data_size(tchunk);
+ 				forward_progress = true;
++
++				/* SFR-CACC algorithm:
++				 * 2) If the SACK contains gap acks
++				 * and the flag CHANGEOVER_ACTIVE is
++				 * set the receiver of the SACK MUST
++				 * take the following action:
++				 *
++				 * B) For each TSN t being acked that
++				 * has not been acked in any SACK so
++				 * far, set cacc_saw_newack to 1 for
++				 * the destination that the TSN was
++				 * sent to.
++				 */
++				if (transport &&
++					sack->num_gap_ack_blocks &&
++					q->asoc->peer.primary_path->cacc.
++					changeover_active
++				   )
++					transport->cacc.cacc_saw_newack = 1;
+ 			}
+ 
+ 			if (TSN_lte(tsn, sack_ctsn)) {
+@@ -1411,30 +1427,8 @@ static void sctp_check_transmitted(struct sctp_outq *q,
+ 				restart_timer = 1;
+ 				forward_progress = true;
+ 
+-				if (!tchunk->tsn_gap_acked) {
+-					/*
+-					 * SFR-CACC algorithm:
+-					 * 2) If the SACK contains gap acks
+-					 * and the flag CHANGEOVER_ACTIVE is
+-					 * set the receiver of the SACK MUST
+-					 * take the following action:
+-					 *
+-					 * B) For each TSN t being acked that
+-					 * has not been acked in any SACK so
+-					 * far, set cacc_saw_newack to 1 for
+-					 * the destination that the TSN was
+-					 * sent to.
+-					 */
+-					if (transport &&
+-					    sack->num_gap_ack_blocks &&
+-					    q->asoc->peer.primary_path->cacc.
+-					    changeover_active)
+-						transport->cacc.cacc_saw_newack
+-							= 1;
+-				}
+-
+ 				list_add_tail(&tchunk->transmitted_list,
+-					      &q->sacked);
++					&q->sacked);
+ 			} else {
+ 				/* RFC2960 7.2.4, sctpimpguide-05 2.8.2
+ 				 * M2) Each time a SACK arrives reporting
+-- 
+1.7.9.5
 
-> Sunday night as I'll be mostly on travel the next days.
->=20
-> Well, looking at the code, at some point in time these tools need a fresh
-> start in general; those were probably just quickly clobbered together from
-> the very early days of lksctp. :)
-
-Yes, It looks like this tool was written for SCTP conformance testing
-
->=20
-> diff --git a/src/apps/sctp_status.c b/src/apps/sctp_status.c
-> index 3a05dc4..5bb48ef 100644
-> --- a/src/apps/sctp_status.c
-> +++ b/src/apps/sctp_status.c
-> @@ -675,11 +675,11 @@ int next_stream(int state, int pattern)
->  {
->  	switch (pattern){
->  	case STREAM_PATTERN_RANDOM:
-> -		state =3D rand() % (max_stream + 1);
-> +		state =3D rand() % max_stream;
->  		break;
->  	case STREAM_PATTERN_SEQUENTIAL:
->  		state =3D state + 1;
-> -		if (state > max_stream)
-> +		if (state >=3D max_stream)
->  			state =3D 0;
->  		break;
->  	}
-> @@ -723,7 +723,7 @@ void client(int sk) {
->  } /* client() */
->=20
->  void start_test(int role) {
-> -	int sk, pid;
-> +	int sk, pid, ret;
->  	int i =3D 0;
->=20
->  	DEBUG_PRINT(DEBUG_NONE, "\nStarting tests...\n");
-> @@ -745,6 +745,22 @@ void start_test(int role) {
->  		listen_r(sk, 1);
->  		accept_r(sk);
->  	} else {
-> +		if (max_stream > 0) {
-> +			struct sctp_initmsg initmsg;
-> +
-> +			memset(&initmsg, 0, sizeof(initmsg));
-> +			initmsg.sinit_num_ostreams =3D max_stream;
-> +			initmsg.sinit_max_instreams =3D max_stream;
-> +			initmsg.sinit_max_attempts =3D 3;
-> +
-> +			ret =3D setsockopt(sk, IPPROTO_SCTP, SCTP_INITMSG,
-> +					 &initmsg, sizeof(initmsg));
-> +			if (ret < 0) {
-> +				perror("setsockopt(SCTP_INITMSG)");
-> +				exit(0);
-> +			}
-> +		}
-> +
->  		connect_r(sk, (struct sockaddr *)&s_rem, r_len);
->  	}
->=20
-
---=20
-
-Thanks & Best Regards
-Hangbin Liu <liuhangbin@gmail.com>
