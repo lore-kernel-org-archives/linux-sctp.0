@@ -1,32 +1,34 @@
-From: Simon Horman <horms@verge.net.au>
-Date: Mon, 28 Oct 2013 09:38:21 +0000
-Subject: Re: [PATCH ipvs 2/2] net: ipvs: sctp: do not recalc sctp checksum when not needed
-Message-Id: <20131028093821.GA11662@verge.net.au>
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Wed, 16 Oct 2013 02:01:28 +0000
+Subject: [PATCH v4 net 0/3] sctp: Use software checksum under certain
+Message-Id: <1381888891-31186-1-git-send-email-vyasevich@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <8390127344501c35ed3c23f3690b8a671d353870.1382689350.git.dborkman@redhat.com>
-In-Reply-To: <8390127344501c35ed3c23f3690b8a671d353870.1382689350.git.dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, fan.du@windriver.com, Vlad Yasevich <vyasevich@gmail.com>
 
-[ Cc: Pablo ]
+There are some cards that support SCTP checksum offloading.  When using
+these cards with IPSec or forcing IP fragmentation of SCTP traffic,
+the checksum is computed incorrectly due to the fact that xfrm and IP/IPv6
+fragmentation code do not know that this is SCTP traffic and do not
+know that checksum has to be computed differently.
 
-On Mon, Oct 28, 2013 at 11:00:37AM +0200, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Mon, 28 Oct 2013, Simon Horman wrote:
-> 
-> > Thanks, I have pushed it to ipvs-next.
-> > 
-> > I will hold off on sending a pull-request to Pablo until you send
-> > the 2nd patch.
-> 
-> 	First patch is a bugfix, it should go to stable
-> kernels. The second patch looks like an optimization.
+To fix this, we let SCTP detect these conditions and perform software
+checksum calculation.
 
-Good point.
+Fan Du (1):
+  sctp: Use software crc32 checksum when xfrm transform will happen.
 
-Pablo, what is the best way to handle this?
-Should I send the fix as a pull-request for nf or nf-next?
+Vlad Yasevich (2):
+  net: dst: provide accessor function to dst->xfrm
+  sctp: Perform software checksum if packet has to be fragmented.
+
+ include/net/dst.h | 12 ++++++++++++
+ net/sctp/output.c |  3 ++-
+ 2 files changed, 14 insertions(+), 1 deletion(-)
+
+-- 
+1.8.3.1
+
