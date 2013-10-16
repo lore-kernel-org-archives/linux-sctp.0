@@ -1,55 +1,100 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 16 Oct 2013 13:32:53 +0000
-Subject: Re: [PATCH v4 net 2/3] sctp: Use software crc32 checksum when xfrm transform will happen.
-Message-Id: <20131016133253.GB10623@neilslaptop.think-freely.org>
+From: Chang Xiangzhong <changxiangzhong@gmail.com>
+Date: Wed, 16 Oct 2013 07:22:11 +0000
+Subject: [PATCH v3] net: sctp: fix a cacc_saw_newack missetting issue
+Message-Id: <1381908131-24809-1-git-send-email-changxiangzhong@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1381888891-31186-1-git-send-email-vyasevich@gmail.com>
- <1381888891-31186-3-git-send-email-vyasevich@gmail.com>
-In-Reply-To: <1381888891-31186-3-git-send-email-vyasevich@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, fan.du@windriver.com, Steffen Klassert <steffen.klassert@secunet.com>
+To: vyasevich@gmail.com
+Cc: nhorman@tuxdriver.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, Chang Xiangzhong <changxiangzhong@gmail.com>
 
-On Tue, Oct 15, 2013 at 10:01:30PM -0400, Vlad Yasevich wrote:
-> From: Fan Du <fan.du@windriver.com>
-> 
-> igb/ixgbe have hardware sctp checksum support, when this feature is enabled
-> and also IPsec is armed to protect sctp traffic, ugly things happened as
-> xfrm_output checks CHECKSUM_PARTIAL to do checksum operation(sum every thing
-> up and pack the 16bits result in the checksum field). The result is fail
-> establishment of sctp communication.
-> 
-> Cc: Neil Horman <nhorman@tuxdriver.com>
-> Cc: Steffen Klassert <steffen.klassert@secunet.com>
-> Signed-off-by: Fan Du <fan.du@windriver.com>
-> Signed-off-by: Vlad Yasevich <vyasevich@gmail.com>
-> ---
->  net/sctp/output.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/output.c b/net/sctp/output.c
-> index 0ac3a65..d35b54c 100644
-> --- a/net/sctp/output.c
-> +++ b/net/sctp/output.c
-> @@ -536,7 +536,8 @@ int sctp_packet_transmit(struct sctp_packet *packet)
->  	 * by CRC32-C as described in <draft-ietf-tsvwg-sctpcsum-02.txt>.
->  	 */
->  	if (!sctp_checksum_disable) {
-> -		if (!(dst->dev->features & NETIF_F_SCTP_CSUM)) {
-> +		if (!(dst->dev->features & NETIF_F_SCTP_CSUM) ||
-> +		    (dst_xfrm(dst) != NULL)) {
->  			__u32 crc32 = sctp_start_cksum((__u8 *)sh, cksum_buf_len);
->  
->  			/* 3) Put the resultant value into the checksum field in the
-> -- 
-> 1.8.3.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+For for each TSN t being newly acked (Not only cumulatively,
+but also SELECTIVELY) cacc_saw_newack should be set to 1.
+
+Signed-off-by: Xiangzhong Chang <changxiangzhong@gmail.com>
+---
+ net/sctp/outqueue.c |   53 ++++++++++++++++++++++++---------------------------
+ 1 file changed, 25 insertions(+), 28 deletions(-)
+
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 94df758..da9a778 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -1383,19 +1383,38 @@ static void sctp_check_transmitted(struct sctp_outq *q,
+ 				}
+ 			}
+ 
+-			/* If the chunk hasn't been marked as ACKED,
+-			 * mark it and account bytes_acked if the
+-			 * chunk had a valid transport (it will not
+-			 * have a transport if ASCONF had deleted it
+-			 * while DATA was outstanding).
+-			 */
+ 			if (!tchunk->tsn_gap_acked) {
++				/* If the chunk hasn't been marked as ACKED,
++				 * mark it and account bytes_acked if the
++				 * chunk had a valid transport (it will not
++				 * have a transport if ASCONF had deleted it
++				 * while DATA was outstanding).
++				 */
+ 				tchunk->tsn_gap_acked = 1;
+ 				*highest_new_tsn_in_sack = tsn;
+ 				bytes_acked += sctp_data_size(tchunk);
+ 				if (!tchunk->transport)
+ 					migrate_bytes += sctp_data_size(tchunk);
+ 				forward_progress = true;
++
++				/*
++				 * SFR-CACC algorithm:
++				 * 2) If the SACK contains gap acks
++				 * and the flag CHANGEOVER_ACTIVE is
++				 * set the receiver of the SACK MUST
++				 * take the following action:
++				 *
++				 * B) For each TSN t being acked that
++				 * has not been acked in any SACK so
++				 * far, set cacc_saw_newack to 1 for
++				 * the destination that the TSN was
++				 * sent to.
++				 */
++				if (transport &&
++					sack->num_gap_ack_blocks &&
++					q->asoc->peer.primary_path->cacc.
++					changeover_active)
++					transport->cacc.cacc_saw_newack = 1;
+ 			}
+ 
+ 			if (TSN_lte(tsn, sack_ctsn)) {
+@@ -1411,28 +1430,6 @@ static void sctp_check_transmitted(struct sctp_outq *q,
+ 				restart_timer = 1;
+ 				forward_progress = true;
+ 
+-				if (!tchunk->tsn_gap_acked) {
+-					/*
+-					 * SFR-CACC algorithm:
+-					 * 2) If the SACK contains gap acks
+-					 * and the flag CHANGEOVER_ACTIVE is
+-					 * set the receiver of the SACK MUST
+-					 * take the following action:
+-					 *
+-					 * B) For each TSN t being acked that
+-					 * has not been acked in any SACK so
+-					 * far, set cacc_saw_newack to 1 for
+-					 * the destination that the TSN was
+-					 * sent to.
+-					 */
+-					if (transport &&
+-					    sack->num_gap_ack_blocks &&
+-					    q->asoc->peer.primary_path->cacc.
+-					    changeover_active)
+-						transport->cacc.cacc_saw_newack
+-							= 1;
+-				}
+-
+ 				list_add_tail(&tchunk->transmitted_list,
+ 					      &q->sacked);
+ 			} else {
+-- 
+1.7.9.5
 
