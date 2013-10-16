@@ -1,39 +1,51 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Mon, 28 Oct 2013 09:47:25 +0000
-Subject: Re: [PATCH v2 ipvs-next] net: ipvs: sctp: do not recalc sctp csum when ports didn't change
-Message-Id: <526E32AD.8030203@redhat.com>
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Wed, 16 Oct 2013 02:01:29 +0000
+Subject: [PATCH v4 net 1/3] net: dst: provide accessor function to dst->xfrm
+Message-Id: <1381888891-31186-2-git-send-email-vyasevich@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1382951695-7759-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1382951695-7759-1-git-send-email-dborkman@redhat.com>
+References: <1381888891-31186-1-git-send-email-vyasevich@gmail.com>
+In-Reply-To: <1381888891-31186-1-git-send-email-vyasevich@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, fan.du@windriver.com, Vlad Yasevich <vyasevich@gmail.com>
 
-On 10/28/2013 10:44 AM, Julian Anastasov wrote:
-[...]
-> 	Sorry, just now noticed the errors from
-> scripts/checkpatch.pl:
->
-> ERROR: do not use assignment in if condition
-> #78: FILE: net/netfilter/ipvs/ip_vs_proto_sctp.c:103:
-> +               if (!(ret = ip_vs_app_pkt_out(cp, skb)))
->
-> ERROR: do not use assignment in if condition
-> #120: FILE: net/netfilter/ipvs/ip_vs_proto_sctp.c:149:
-> +               if (!(ret = ip_vs_app_pkt_in(cp, skb)))
->
-> total: 2 errors, 0 warnings, 81 lines checked
->
-> 	I know that you copied the TCP logic that was
-> added by me but now we should split the complex conditions
-> at both places:
->
-> 	ret = ...
-> 	if (!ret)
-> 		return 0;
->
-> 	Otherwise patch looks good and I'll ack v3 with
-> the above changes.
+dst->xfrm is conditionally defined.  Provide accessor funtion that
+is always available.
 
-Ok, sure, I'll update with the cosmetic change.
+Signed-off-by: Vlad Yasevich <vyasevich@gmail.com>
+---
+ include/net/dst.h | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/include/net/dst.h b/include/net/dst.h
+index 3bc4865..3c4c944 100644
+--- a/include/net/dst.h
++++ b/include/net/dst.h
+@@ -479,10 +479,22 @@ static inline struct dst_entry *xfrm_lookup(struct net *net,
+ {
+ 	return dst_orig;
+ } 
++
++static inline struct xfrm_state *dst_xfrm(const struct dst_entry *dst)
++{
++	return NULL;
++}
++
+ #else
+ extern struct dst_entry *xfrm_lookup(struct net *net, struct dst_entry *dst_orig,
+ 				     const struct flowi *fl, struct sock *sk,
+ 				     int flags);
++
++/* skb attached with this dst needs transformation if dst->xfrm is valid */
++static inline struct xfrm_state *dst_xfrm(const struct dst_entry *dst)
++{
++	return dst->xfrm;
++}
+ #endif
+ 
+ #endif /* _NET_DST_H */
+-- 
+1.8.3.1
+
