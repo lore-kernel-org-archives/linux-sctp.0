@@ -1,61 +1,29 @@
-From: Wang Weidong <wangweidong1@huawei.com>
-Date: Sat, 26 Oct 2013 08:06:30 +0000
-Subject: [PATCH v2 1/3] sctp: fix some comments in chunk.c and associola.c
-Message-Id: <1382774792-13440-2-git-send-email-wangweidong1@huawei.com>
+From: Sung Lee <suzlee@aswara.edu.my>
+Date: Sun, 20 Oct 2013 11:47:30 +0000
+Subject: Greetings
+Message-Id: <ec9e4461-9fb7-4108-81e8-e2f0ba2fb51a@zimbra>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1382774792-13440-1-git-send-email-wangweidong1@huawei.com>
-In-Reply-To: <1382774792-13440-1-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: nhorman@tuxdriver.com, vyasevich@gmail.com
-Cc: davem@davemloft.net, dingtianhong@huawei.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
-
-fix some typos
-
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
----
- net/sctp/associola.c | 4 ++--
- net/sctp/chunk.c     | 2 +-
- 2 files changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index cef5099..c9b91cb 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -602,7 +602,7 @@ void sctp_assoc_rm_peer(struct sctp_association *asoc,
- 
- 		/* Start a T3 timer here in case it wasn't running so
- 		 * that these migrated packets have a chance to get
--		 * retrnasmitted.
-+		 * retransmitted.
- 		 */
- 		if (!timer_pending(&active->T3_rtx_timer))
- 			if (!mod_timer(&active->T3_rtx_timer,
-@@ -665,7 +665,7 @@ struct sctp_transport *sctp_assoc_add_peer(struct sctp_association *asoc,
- 	/* Set the path max_retrans.  */
- 	peer->pathmaxrxt = asoc->pathmaxrxt;
- 
--	/* And the partial failure retrnas threshold */
-+	/* And the partial failure retrans threshold */
- 	peer->pf_retrans = asoc->pf_retrans;
- 
- 	/* Initialize the peer's SACK delay timeout based on the
-diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
-index 7bd5ed4..f2044fc 100644
---- a/net/sctp/chunk.c
-+++ b/net/sctp/chunk.c
-@@ -201,7 +201,7 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
- 
- 	max = asoc->frag_point;
- 	/* If the the peer requested that we authenticate DATA chunks
--	 * we need to accound for bundling of the AUTH chunks along with
-+	 * we need to account for bundling of the AUTH chunks along with
- 	 * DATA.
- 	 */
- 	if (sctp_auth_send_cid(SCTP_CID_DATA, asoc)) {
--- 
-1.7.12
 
 
+
+
+
+DAH SING BANK LTD
+DES VOEUX RD.BRANCH,CENTRAL HONG KONG,
+HONG KONG.
+
+Greetings,
+
+I am Mr.Sung Lee, Auditing and Account Credit Officer, Dah Sing Bank Ltd,(Hong Kong). I ask for your partnership in re-profiling funds Transfer. 
+
+Further to this,details would be made known if interested but in summary the funds would be transferred from my bank and further to this other informations to facilitate the remittance of the funds will be revealed to you in due course. For your assistance, you shall receive 25% of the funds to be transferred .
+
+I will appreciate if you can reply me.
+
+I'm looking forward to it
+Sung Lee
+
+The information contained in this email and any attachments is confidential and may be subject to copyright or other intellectual property protection. If you are not the intended recipient, you are not authorized to use or disclose this information, and we request that you notify us by reply mail or telephone and delete the original message from your mail system.
