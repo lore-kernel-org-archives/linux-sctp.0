@@ -1,14 +1,30 @@
-From: "Mr. X" <jul217@juy793.onmicrosoft.com>
-Date: Sat, 26 Oct 2013 08:50:55 +0000
-Subject: my subject
-Message-Id: <c5b65d86-1483-49f2-98ff-578009684b1c@HKNPR06MB067.apcprd06.prod.outlook.com>
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Fri, 25 Oct 2013 03:45:44 +0000
+Subject: [PATCH net-next 0/4] sctp: do some clean up and fix comments
+Message-Id: <1382672748-10156-1-git-send-email-wangweidong1@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: nhorman@tuxdriver.com, vyasevich@gmail.com
+Cc: davem@davemloft.net, dingtianhong@huawei.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
+This patch series includes some comments fix, merge two if-statements,
+remove the repeat initialize with 0.
 
-Need a Loan, Loans from $5000 - $10,000,000 00. Get your no obligation FREE quote now! Repayments up to 54 Months. No Collateral, Money paid into your account within 24 hours after approval. For more Info contact us today  guaranteeloancompany1@gmail.com
+Wang Weidong (4):
+  sctp: merge two if statements to one
+  sctp: remove the repeat initialize with 0
+  sctp: fix some comments in associola.c
+  sctp: fix comment in chunk.c
+
+ net/sctp/associola.c     |  4 ++--
+ net/sctp/auth.c          | 12 ++++--------
+ net/sctp/chunk.c         |  2 +-
+ net/sctp/sm_make_chunk.c | 29 ++++++++---------------------
+ 4 files changed, 15 insertions(+), 32 deletions(-)
+
+-- 
+1.7.12
 
 
