@@ -1,31 +1,25 @@
-From: Sergei Shtylyov <sergei.shtylyov@cogentembedded.com>
-Date: Fri, 25 Oct 2013 13:04:05 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Fri, 25 Oct 2013 23:40:29 +0000
 Subject: Re: [PATCH 1/4] sctp: merge two if statements to one
-Message-Id: <526A6C45.3080200@cogentembedded.com>
+Message-Id: <526B016D.6030301@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1382665805-13952-1-git-send-email-wangweidong1@huawei.com> <1382665805-13952-2-git-send-email-wangweidong1@huawei.com>
 In-Reply-To: <1382665805-13952-2-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Wang Weidong <wangweidong1@huawei.com>, davem@davemloft.net, nhorman@tuxdriver.com, vyasevich@gmail.com
+To: Wang Weidong <wangweidong1@huawei.com>, davem@davemloft.net, nhorman@tuxdriver.com
 Cc: dingtianhong@huawei.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Hello.
-
-On 25-10-2013 5:50, Wang Weidong wrote:
-
+On 10/24/2013 09:50 PM, Wang Weidong wrote:
 > Two if statements do the same work, maybe we can merge them to
 > one. There is just code simplification, no functional changes.
-
+>
 > Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
 > ---
 >   net/sctp/auth.c | 12 ++++--------
 >   1 file changed, 4 insertions(+), 8 deletions(-)
-
-    I understand what I noticed below is not your typos but maybe it's time to 
-fix them?
-
+>
 > diff --git a/net/sctp/auth.c b/net/sctp/auth.c
 > index 8c4fa5d..19fb0ae 100644
 > --- a/net/sctp/auth.c
@@ -43,12 +37,23 @@ fix them?
 > -		/* See is we support the id.  Supported IDs have name and
 > +		/* Check the id is in the supported range. And
 > +		 * see is we support the id.  Supported IDs have name and
-
-    s/is/if/.
-
 >   		 * length fields set, so that we can allocated and use
+>   		 * them.  We can safely just check for name, for without the
+>   		 * name, we can't allocate the TFM.
+>   		 	*/
+> -		if (!sctp_hmac_list[id].hmac_name) {
+> +		if (id > SCTP_AUTH_HMAC_ID_MAX ||
+> +			!sctp_hmac_list[id].hmac_name) {
 
-    s/allocated/allocate/.
+Can you please make the 2 parts of the 'if' statement above line up
+with each other instead of the code below.  I makes it easy to see what
+the whole 'if conditional' is.
 
-WBR, Sergei
+Thanks
+-vlad
+
+>   			id = 0;
+>   			continue;
+>   		}
+>
 
