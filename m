@@ -1,27 +1,46 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 28 Oct 2013 05:02:51 +0000
-Subject: Re: [PATCH v2 0/3] sctp: do some clean up and fix comments
-Message-Id: <20131028.010251.1046743704592075726.davem@davemloft.net>
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Fri, 25 Oct 2013 01:50:04 +0000
+Subject: [PATCH 3/4] sctp: fix some comments in associola.c
+Message-Id: <1382665805-13952-4-git-send-email-wangweidong1@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1382774792-13440-1-git-send-email-wangweidong1@huawei.com>
-In-Reply-To: <1382774792-13440-1-git-send-email-wangweidong1@huawei.com>
+References: <1382665805-13952-1-git-send-email-wangweidong1@huawei.com>
+In-Reply-To: <1382665805-13952-1-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: wangweidong1@huawei.com
-Cc: nhorman@tuxdriver.com, vyasevich@gmail.com, dingtianhong@huawei.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: davem@davemloft.net, nhorman@tuxdriver.com, vyasevich@gmail.com
+Cc: dingtianhong@huawei.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-From: Wang Weidong <wangweidong1@huawei.com>
-Date: Sat, 26 Oct 2013 16:06:29 +0800
+fix some spellings
 
-> This patch series includes some comments fix, merge tow if-statements,
-> remove the repeat initialize with 0.
-> 
-> v1 -> v2:
->   - patch1: combine two comment typos fix patches into one,
->     as suggested by Vlad, and add his ACK.
->   - patch2: add Vlad's ACK.
->   - patch3: line up 2 parts of 'if' statements, as suggested by Vlad.
->     fix some comment typos, as suggested by Sergei.
+Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+---
+ net/sctp/associola.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-Applied to net-next, thanks.
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index cef5099..c9b91cb 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -602,7 +602,7 @@ void sctp_assoc_rm_peer(struct sctp_association *asoc,
+ 
+ 		/* Start a T3 timer here in case it wasn't running so
+ 		 * that these migrated packets have a chance to get
+-		 * retrnasmitted.
++		 * retransmitted.
+ 		 */
+ 		if (!timer_pending(&active->T3_rtx_timer))
+ 			if (!mod_timer(&active->T3_rtx_timer,
+@@ -665,7 +665,7 @@ struct sctp_transport *sctp_assoc_add_peer(struct sctp_association *asoc,
+ 	/* Set the path max_retrans.  */
+ 	peer->pathmaxrxt = asoc->pathmaxrxt;
+ 
+-	/* And the partial failure retrnas threshold */
++	/* And the partial failure retrans threshold */
+ 	peer->pf_retrans = asoc->pf_retrans;
+ 
+ 	/* Initialize the peer's SACK delay timeout based on the
+-- 
+1.7.12
+
+
