@@ -1,194 +1,37 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Wed, 30 Oct 2013 10:50:49 +0000
-Subject: [PATCH net-next 2/5] lib: crc32: add functionality to combine two crc32{,c}s in GF(2)
-Message-Id: <1383130252-1515-3-git-send-email-dborkman@redhat.com>
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Fri, 25 Oct 2013 03:45:48 +0000
+Subject: [PATCH net-next 4/4] sctp: fix comment in chunk.c
+Message-Id: <1382672748-10156-5-git-send-email-wangweidong1@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1383130252-1515-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1383130252-1515-1-git-send-email-dborkman@redhat.com>
+References: <1382672748-10156-1-git-send-email-wangweidong1@huawei.com>
+In-Reply-To: <1382672748-10156-1-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
+To: nhorman@tuxdriver.com, vyasevich@gmail.com
+Cc: davem@davemloft.net, dingtianhong@huawei.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-This patch adds a combinator to merge two or more crc32{,c}s
-into a new one. This is useful for checksum computations of
-fragmented skbs that use crc32/crc32c as checksums.
+fix a spelling
 
-The arithmetics for combining both in the GF(2) was taken and
-slightly modified from zlib. Only passing two crcs is insufficient
-as two crcs and the length of the second piece is needed for
-merging. The code is made generic, so that only polynomials
-need to be passed for crc32_le resp. crc32c_le.
-
-Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-Cc: linux-kernel@vger.kernel.org
+Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
 ---
- include/linux/crc32.h | 40 +++++++++++++++++++++++++
- lib/crc32.c           | 81 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 121 insertions(+)
+ net/sctp/chunk.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/linux/crc32.h b/include/linux/crc32.h
-index 68267b6..7d275c4 100644
---- a/include/linux/crc32.h
-+++ b/include/linux/crc32.h
-@@ -11,8 +11,48 @@
- extern u32  crc32_le(u32 crc, unsigned char const *p, size_t len);
- extern u32  crc32_be(u32 crc, unsigned char const *p, size_t len);
+diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
+index 7bd5ed4..f2044fc 100644
+--- a/net/sctp/chunk.c
++++ b/net/sctp/chunk.c
+@@ -201,7 +201,7 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
  
-+/**
-+ * crc32_le_combine - Combine two crc32 check values into one. For two
-+ * 		      sequences of bytes, seq1 and seq2 with lengths len1
-+ * 		      and len2, crc32_le() check values were calculated
-+ * 		      for each, crc1 and crc2.
-+ *
-+ * @crc1: crc32 of the first block
-+ * @crc2: crc32 of the second block
-+ * @len2: length of the second block
-+ *
-+ * Return: The crc32_le() check value of seq1 and seq2 concatenated,
-+ * 	   requiring only crc1, crc2, and len2. Note: If seq_full denotes
-+ * 	   the concatenated memory area of seq1 with seq2, and crc_full
-+ * 	   the crc32_le() value of seq_full, then crc_full =
-+ * 	   crc32_le_combine(crc1, crc2, len2) when crc_full was seeded
-+ * 	   with the same initializer as crc1, and crc2 seed was 0. See
-+ * 	   also crc32_combine_test().
-+ */
-+extern u32  crc32_le_combine(u32 crc1, u32 crc2, size_t len2);
-+
- extern u32  __crc32c_le(u32 crc, unsigned char const *p, size_t len);
- 
-+/**
-+ * __crc32c_le_combine - Combine two crc32c check values into one. For two
-+ * 			 sequences of bytes, seq1 and seq2 with lengths len1
-+ * 			 and len2, __crc32c_le() check values were calculated
-+ * 			 for each, crc1 and crc2.
-+ *
-+ * @crc1: crc32c of the first block
-+ * @crc2: crc32c of the second block
-+ * @len2: length of the second block
-+ *
-+ * Return: The __crc32c_le() check value of seq1 and seq2 concatenated,
-+ * 	   requiring only crc1, crc2, and len2. Note: If seq_full denotes
-+ * 	   the concatenated memory area of seq1 with seq2, and crc_full
-+ * 	   the __crc32c_le() value of seq_full, then crc_full =
-+ * 	   __crc32c_le_combine(crc1, crc2, len2) when crc_full was
-+ * 	   seeded with the same initializer as crc1, and crc2 seed
-+ * 	   was 0. See also crc32c_combine_test().
-+ */
-+extern u32  __crc32c_le_combine(u32 crc1, u32 crc2, size_t len2);
-+
- #define crc32(seed, data, length)  crc32_le(seed, (unsigned char const *)(data), length)
- 
- /*
-diff --git a/lib/crc32.c b/lib/crc32.c
-index 429d61c..595205c 100644
---- a/lib/crc32.c
-+++ b/lib/crc32.c
-@@ -49,6 +49,30 @@ MODULE_AUTHOR("Matt Domsch <Matt_Domsch@dell.com>");
- MODULE_DESCRIPTION("Various CRC32 calculations");
- MODULE_LICENSE("GPL");
- 
-+#define GF2_DIM		32
-+
-+static u32 gf2_matrix_times(u32 *mat, u32 vec)
-+{
-+	u32 sum = 0;
-+
-+	while (vec) {
-+		if (vec & 1)
-+			sum ^= *mat;
-+		vec >>= 1;
-+		mat++;
-+	}
-+
-+	return sum;
-+}
-+
-+static void gf2_matrix_square(u32 *square, u32 *mat)
-+{
-+	int i;
-+
-+	for (i = 0; i < GF2_DIM; i++)
-+		square[i] = gf2_matrix_times(mat, mat[i]);
-+}
-+
- #if CRC_LE_BITS > 8 || CRC_BE_BITS > 8
- 
- /* implements slicing-by-4 or slicing-by-8 algorithm */
-@@ -130,6 +154,52 @@ crc32_body(u32 crc, unsigned char const *buf, size_t len, const u32 (*tab)[256])
- }
- #endif
- 
-+/* For conditions of distribution and use, see copyright notice in zlib.h */
-+static u32 crc32_generic_combine(u32 crc1, u32 crc2, size_t len2,
-+				 u32 polynomial)
-+{
-+	u32 even[GF2_DIM]; /* Even-power-of-two zeros operator */
-+	u32 odd[GF2_DIM];  /* Odd-power-of-two zeros operator  */
-+	u32 row;
-+	int i;
-+
-+	if (len2 <= 0)
-+		return crc1;
-+
-+	/* Put operator for one zero bit in odd */
-+	odd[0] = polynomial;
-+	row = 1;
-+	for (i = 1; i < GF2_DIM; i++) {
-+		odd[i] = row;
-+		row <<= 1;
-+	}
-+
-+	gf2_matrix_square(even, odd); /* Put operator for two zero bits in even */
-+	gf2_matrix_square(odd, even); /* Put operator for four zero bits in odd */
-+
-+	/* Apply len2 zeros to crc1 (first square will put the operator for one
-+	 * zero byte, eight zero bits, in even).
-+	 */
-+	do {
-+		/* Apply zeros operator for this bit of len2 */
-+		gf2_matrix_square(even, odd);
-+		if (len2 & 1)
-+			crc1 = gf2_matrix_times(even, crc1);
-+		len2 >>= 1;
-+		/* If no more bits set, then done */
-+		if (len2 = 0)
-+			break;
-+		/* Another iteration of the loop with odd and even swapped */
-+		gf2_matrix_square(odd, even);
-+		if (len2 & 1)
-+			crc1 = gf2_matrix_times(odd, crc1);
-+		len2 >>= 1;
-+	} while (len2 != 0);
-+
-+	crc1 ^= crc2;
-+	return crc1;
-+}
-+
- /**
-  * crc32_le_generic() - Calculate bitwise little-endian Ethernet AUTODIN II
-  *			CRC32/CRC32C
-@@ -200,8 +270,19 @@ u32 __pure __crc32c_le(u32 crc, unsigned char const *p, size_t len)
- 			(const u32 (*)[256])crc32ctable_le, CRC32C_POLY_LE);
- }
- #endif
-+u32 __pure crc32_le_combine(u32 crc1, u32 crc2, size_t len2)
-+{
-+	return crc32_generic_combine(crc1, crc2, len2, CRCPOLY_LE);
-+}
-+
-+u32 __pure __crc32c_le_combine(u32 crc1, u32 crc2, size_t len2)
-+{
-+	return crc32_generic_combine(crc1, crc2, len2, CRC32C_POLY_LE);
-+}
- EXPORT_SYMBOL(crc32_le);
-+EXPORT_SYMBOL(crc32_le_combine);
- EXPORT_SYMBOL(__crc32c_le);
-+EXPORT_SYMBOL(__crc32c_le_combine);
- 
- /**
-  * crc32_be_generic() - Calculate bitwise big-endian Ethernet AUTODIN II CRC32
+ 	max = asoc->frag_point;
+ 	/* If the the peer requested that we authenticate DATA chunks
+-	 * we need to accound for bundling of the AUTH chunks along with
++	 * we need to account for bundling of the AUTH chunks along with
+ 	 * DATA.
+ 	 */
+ 	if (sctp_auth_send_cid(SCTP_CID_DATA, asoc)) {
 -- 
-1.8.3.1
+1.7.12
+
 
