@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 25 Oct 2013 12:59:52 +0000
+From: Julian Anastasov <ja@ssi.bg>
+Date: Fri, 25 Oct 2013 21:05:32 +0000
 Subject: Re: [PATCH ipvs 1/2] net: ipvs: sctp: add missing verdict assignments in sctp_conn_schedule
-Message-Id: <20131025125952.GA9281@hmsreliant.think-freely.org>
+Message-Id: <alpine.LFD.2.03.1310260004120.1600@ssi.bg>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1af1d5e1aae9df91683625f0cb120b329e8d2f10.1382689350.git.dborkman@redhat.com>
 In-Reply-To: <1af1d5e1aae9df91683625f0cb120b329e8d2f10.1382689350.git.dborkman@redhat.com>
@@ -10,12 +10,21 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On Fri, Oct 25, 2013 at 11:05:04AM +0200, Daniel Borkmann wrote:
+
+	Hello,
+
+On Fri, 25 Oct 2013, Daniel Borkmann wrote:
+
 > If skb_header_pointer() fails, we need to assign a verdict, that is
 > NF_DROP in this case, otherwise, we would leave the verdict from
 > conn_schedule() uninitialized when returning.
 > 
 > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+
+	Looks good,
+
+Acked-by: Julian Anastasov <ja@ssi.bg>
+
 > ---
 >  net/netfilter/ipvs/ip_vs_proto_sctp.c | 9 +++++++--
 >  1 file changed, 7 insertions(+), 2 deletions(-)
@@ -47,10 +56,8 @@ On Fri, Oct 25, 2013 at 11:05:04AM +0200, Daniel Borkmann wrote:
 >  	rcu_read_lock();
 > -- 
 > 1.7.11.7
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
