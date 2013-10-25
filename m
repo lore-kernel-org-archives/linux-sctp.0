@@ -1,30 +1,45 @@
 From: Wang Weidong <wangweidong1@huawei.com>
-Date: Fri, 25 Oct 2013 01:50:01 +0000
-Subject: [PATCH 0/4] sctp: do some clean up and fix comments
-Message-Id: <1382665805-13952-1-git-send-email-wangweidong1@huawei.com>
+Date: Fri, 25 Oct 2013 03:45:47 +0000
+Subject: [PATCH net-next 3/4] sctp: fix some comments in associola.c
+Message-Id: <1382672748-10156-4-git-send-email-wangweidong1@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1382672748-10156-1-git-send-email-wangweidong1@huawei.com>
+In-Reply-To: <1382672748-10156-1-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net, nhorman@tuxdriver.com, vyasevich@gmail.com
-Cc: dingtianhong@huawei.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: nhorman@tuxdriver.com, vyasevich@gmail.com
+Cc: davem@davemloft.net, dingtianhong@huawei.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-I found: two if statements do the same work, we can merge to one;
-kmem_cache_zalloc will reset the memory, no need do the work
-which initialize with 0; some spelling errors, then fix them.
+fix some spellings
 
-Wang Weidong (4):
-  sctp: merge two if statements to one
-  sctp: remove the repeat initialize with 0
-  sctp: fix some comments in associola.c
-  sctp: fix comment in chunk.c
+Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+---
+ net/sctp/associola.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
- net/sctp/associola.c     |  4 ++--
- net/sctp/auth.c          | 12 ++++--------
- net/sctp/chunk.c         |  2 +-
- net/sctp/sm_make_chunk.c | 29 ++++++++---------------------
- 4 files changed, 15 insertions(+), 32 deletions(-)
-
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index cef5099..c9b91cb 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -602,7 +602,7 @@ void sctp_assoc_rm_peer(struct sctp_association *asoc,
+ 
+ 		/* Start a T3 timer here in case it wasn't running so
+ 		 * that these migrated packets have a chance to get
+-		 * retrnasmitted.
++		 * retransmitted.
+ 		 */
+ 		if (!timer_pending(&active->T3_rtx_timer))
+ 			if (!mod_timer(&active->T3_rtx_timer,
+@@ -665,7 +665,7 @@ struct sctp_transport *sctp_assoc_add_peer(struct sctp_association *asoc,
+ 	/* Set the path max_retrans.  */
+ 	peer->pathmaxrxt = asoc->pathmaxrxt;
+ 
+-	/* And the partial failure retrnas threshold */
++	/* And the partial failure retrans threshold */
+ 	peer->pf_retrans = asoc->pf_retrans;
+ 
+ 	/* Initialize the peer's SACK delay timeout based on the
 -- 
 1.7.12
 
