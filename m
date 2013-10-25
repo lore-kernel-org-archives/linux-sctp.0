@@ -1,216 +1,74 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Thu, 17 Oct 2013 17:22:03 +0000
-Subject: Re: kernel BUG at net/sctp/sm_sideeffect.c:863
-Message-Id: <52601CBB.8040408@gmail.com>
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Fri, 25 Oct 2013 01:50:03 +0000
+Subject: [PATCH 2/4] sctp: remove the repeat initialize with 0
+Message-Id: <1382665805-13952-3-git-send-email-wangweidong1@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4A7256EE0796CC44899E9868CE5B83989F6469DC@ENFIRHMBX1.datcon.co.uk>
-In-Reply-To: <4A7256EE0796CC44899E9868CE5B83989F6469DC@ENFIRHMBX1.datcon.co.uk>
+References: <1382665805-13952-1-git-send-email-wangweidong1@huawei.com>
+In-Reply-To: <1382665805-13952-1-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: davem@davemloft.net, nhorman@tuxdriver.com, vyasevich@gmail.com
+Cc: dingtianhong@huawei.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On 10/17/2013 06:39 AM, Daniel Borkmann wrote:
-> On 10/17/2013 12:08 PM, Mark Thomas wrote:
->> Hi,
->>
->> We've been experiencing crashes every few hours in SCTP with the above
->> signature during some of our stress tests.  Full stack trace is at the
->> bottom of this email.   After some effort I have come up with a
->> reliable repro mechanism and a plausible explanation.  I'm not sure
->> what the correct fix is, though.
->>
->> I've reproduced this on 3.12.0-rc5+ (as of 2013-10-16 17:00 GMT).
->>
->> The BUG_ON statement in question was added in commit f9e42b8535:
->>
->> diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
->> index 8aab894..ff91f47 100644
->> --- a/net/sctp/sm_sideeffect.c
->> +++ b/net/sctp/sm_sideeffect.c
->> @@ -864,6 +864,7 @@ static void sctp_cmd_delete_tcb(sctp_cmd_seq_t *cmds,
->>         (!asoc->temp) && (sk->sk_shutdown != SHUTDOWN_MASK))
->>             return;
->> +    BUG_ON(asoc->peer.primary_path = NULL);
->>     sctp_unhash_established(asoc);
->>     sctp_association_free(asoc);
->> }
->>
->> Analyzing one of the crash dumps, it appears the original cause was
->> receipt of a duplicate COOKIE-ECHO packet.  The repro mechanism is to
->> provoke apparent duplicate COOKIE-ECHOs by dropping the COOKIE-ACK,
->> causing the remote end to re-send the COOKIE-ECHO after a timeout.
->>
->> This can be done using netem and the following recipe:
->>
->>     tc qdisc add dev eth0 root handle 1: prio bands 2 priomap 1 1 1 1 1 1
->>     tc qdisc add dev eth0 parent 1:2 handle 20: netem loss 20%
->>     tc filter add dev eth0 protocol ip parent 1: prio 2 u32 match ip
->> protocol 132 0xff match u8 0x0b 0xff at 32 flowid 1:2
->>
->> This drops 20% of COOKIE-ACK packets.
->>
->> Starting an SCTP server (e.g. sctp_darn) on the local machine, and
->> then making a few connections from a remote system to it gives the
->> kernel panic after several attempts.
->>
->> Trying to explain it, looking at sctp_sf_do_5_2_4_dupcook we do:
->>
->>    new_asoc = sctp_unpack_cookie(...); /* This creates a new,
->> temporary, association. */
->>    action = sctp_tietags_compare(new_asoc, asoc); /* This returns 'D'
->> in the dump I looked at. */
->>    sctp_sf_do_dupcook_d(..., new_asoc);
->
-> Could you try out the following (compile-tested) patch if that fixes
-> your problem:
->
-> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-> index dfe3f36..6b10bfe 100644
-> --- a/net/sctp/sm_statefuns.c
-> +++ b/net/sctp/sm_statefuns.c
-> @@ -1895,6 +1895,7 @@ static sctp_disposition_t
-> sctp_sf_do_dupcook_d(struct net *net,
->   {
->       struct sctp_ulpevent *ev = NULL, *ai_ev = NULL;
->       struct sctp_chunk *repl;
-> +    sctp_init_chunk_t *peer_init;
->
->       /* Clarification from Implementor's Guide:
->        * D) When both local and remote tags match the endpoint should
-> @@ -1942,6 +1943,14 @@ static sctp_disposition_t
-> sctp_sf_do_dupcook_d(struct net *net,
->           }
->       }
->
-> +    /* new_asoc is a brand-new association, so these are not yet
-> +     * side effects--it is safe to run them here.
-> +     */
-> +    peer_init = &chunk->subh.cookie_hdr->c.peer_init[0];
-> +    if (!sctp_process_init(new_asoc, chunk, sctp_source(chunk), peer_init,
-> +                   GFP_ATOMIC))
-> +        goto nomem;
-> +
->       repl = sctp_make_cookie_ack(new_asoc, chunk);
->       if (!repl)
->           goto nomem;
+kmem_cache_zalloc had set the allocated memory to zero. I think no need
+to initialize with 0. And move the comments to the function begin.
 
-No, that's really silly.  We do all this work just to delete
-the association...
+Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+---
+ net/sctp/sm_make_chunk.c | 29 ++++++++---------------------
+ 1 file changed, 8 insertions(+), 21 deletions(-)
 
-I think having a BUG_ON in sctp_cmd_delete_tcb() is a mistake.
-It is way to late at this point to throw a bug since we are
-deleting the offending association and that happens under lock
-guaranteeing that there will be no other to this association
-or its primary_path variable.
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index d244a23..fe69032 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -1297,6 +1297,13 @@ struct sctp_chunk *sctp_make_auth(const struct sctp_association *asoc)
+ 
+ /* Turn an skb into a chunk.
+  * FIXME: Eventually move the structure directly inside the skb->cb[].
++ *
++ * sctpimpguide-05.txt Section 2.8.2
++ * M1) Each time a new DATA chunk is transmitted
++ * set the 'TSN.Missing.Report' count for that TSN to 0. The
++ * 'TSN.Missing.Report' count will be used to determine missing chunks
++ * and when to fast retransmit.
++ *
+  */
+ struct sctp_chunk *sctp_chunkify(struct sk_buff *skb,
+ 			    const struct sctp_association *asoc,
+@@ -1314,29 +1321,9 @@ struct sctp_chunk *sctp_chunkify(struct sk_buff *skb,
+ 	INIT_LIST_HEAD(&retval->list);
+ 	retval->skb		= skb;
+ 	retval->asoc		= (struct sctp_association *)asoc;
+-	retval->has_tsn		= 0;
+-	retval->has_ssn         = 0;
+-	retval->rtt_in_progress	= 0;
+-	retval->sent_at		= 0;
+ 	retval->singleton	= 1;
+-	retval->end_of_packet	= 0;
+-	retval->ecn_ce_done	= 0;
+-	retval->pdiscard	= 0;
+-
+-	/* sctpimpguide-05.txt Section 2.8.2
+-	 * M1) Each time a new DATA chunk is transmitted
+-	 * set the 'TSN.Missing.Report' count for that TSN to 0. The
+-	 * 'TSN.Missing.Report' count will be used to determine missing chunks
+-	 * and when to fast retransmit.
+-	 */
+-	retval->tsn_missing_report = 0;
+-	retval->tsn_gap_acked = 0;
+-	retval->fast_retransmit = SCTP_CAN_FRTX;
+ 
+-	/* If this is a fragmented message, track all fragments
+-	 * of the message (for SEND_FAILED).
+-	 */
+-	retval->msg = NULL;
++	retval->fast_retransmit = SCTP_CAN_FRTX;
+ 
+ 	/* Polish the bead hole.  */
+ 	INIT_LIST_HEAD(&retval->transmitted_list);
+-- 
+1.7.12
 
--vlad
-
->
->> and then queue up commands SCTP_CMD_SET_ASOC(new_asoc),
->> SCTP_CMD_DELETE_TCB.
->>
->> None of these steps appear to initialise new_asoc->peer.primary path,
->> so when we get to handling the DELETE_TCB command, it is NULL.
->>
->> Either the assertion that asoc->peer.primary_path can never be NULL at
->> delete_tcb time is wrong (and the BUG_ON should be removed), or the
->> code that handles duplicate cookies needs to set it to some value.  I
->> don't know which of these it should be.  There was some discussion
->> about bugs in this area on linux-sctp back in March, but it looks like
->> the problem still exists, at least in this form.
->>
->> This is potentially a DoS attack for any SCTP server, as you can
->> fairly easily provoke it by sending INIT, COOKIE-ECHO, COOKIE-ECHO.
->>
->> Regards,
->>
->> Mark Thomas
->>
->> [   42.325370] ------------[ cut here ]------------
->> [   42.329216] kernel BUG at net/sctp/sm_sideeffect.c:863!
->> [   42.329216] invalid opcode: 0000 [#1] SMP
->> [   42.329216] Modules linked in: hmac sctp crc32c libcrc32c cls_u32
->> sch_netem sch_prio rfcomm bnep bluetooth rfkill nfsd auth_rpcgss
->> oid_registry nfs_acl nfs lockd fscache sunrpc loop joydev hid_generic
->> usbhid hid snd_intel8x0 snd_ac97_codec snd_pcm snd_page_alloc snd_seq
->> snd_timer snd_seq_device psmouse snd ohci_pci evdev parport_pc parport
->> pcspkr serio_raw ohci_hcd ehci_hcd usbcore ac processor thermal_sys
->> soundcore ac97_bus microcode usb_common button i2c_piix4 i2c_core ext4
->> crc16 jbd2 mbcache sd_mod sg sr_mod cdrom crc_t10dif crct10dif_common
->> ata_generic ahci libahci ata_piix e1000 libata scsi_mod
->> [   42.329216] CPU: 0 PID: 0 Comm: swapper/0 Not tainted 3.12.0-rc5+ #2
->> [   42.329216] Hardware name: innotek GmbH VirtualBox, BIOS VirtualBox
->> 12/01/2006
->> [   42.329216] task: ffffffff81610440 ti: ffffffff81600000 task.ti:
->> ffffffff81600000
->> [   42.329216] RIP: 0010:[<ffffffffa03add10>]  [<ffffffffa03add10>]
->> sctp_do_sm+0x159/0x1091 [sctp]
->> [   42.329216] RSP: 0018:ffff88007fc03990  EFLAGS: 00010246
->> [   42.329216] RAX: ffff8800000829c0 RBX: ffff88002fd0a000 RCX:
->> ffff88002fd0a6e0
->> [   42.329216] RDX: 0000000000002710 RSI: 0000000000000000 RDI:
->> ffff88007fc03900
->> [   42.329216] RBP: ffff88007ca1ce80 R08: ffff88002fd0a6e0 R09:
->> 0000000072a65008
->> [   42.329216] R10: 0000000072a65008 R11: 519a9b1ce38676a9 R12:
->> ffff88007fc039e8
->> [   42.329216] R13: ffff88007fc03a08 R14: 0000000000000000 R15:
->> ffff88000003dbc0
->> [   42.329216] FS:  0000000000000000(0000) GS:ffff88007fc00000(0000)
->> knlGS:0000000000000000
->> [   42.329216] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
->> [   42.329216] CR2: ffffffffff600400 CR3: 000000002fd43000 CR4:
->> 00000000000006f0
->> [   42.329216] Stack:
->> [   42.329216]  0000000000000001 0000000000000286 ffff8800615d31c0
->> 0000000100000000
->> [   42.329216]  0000000a00000001 ffff880075107000 0000000100000003
->> ffff88000003dbc0
->> [   42.329216]  0000000000000000 ffff88007d3b7000 ffff8800615d31c0
->> ffff88007ca1cc80
->> [   42.329216] Call Trace:
->> [   42.329216]  <IRQ>
->> [   42.329216]  [<ffffffffa03b10ac>] ? sctp_assoc_bh_rcv+0xe0/0x11d
->> [sctp]
->> [   42.329216]  [<ffffffffa03c1cb2>] ? sctp_rcv+0x7c2/0x896 [sctp]
->> [   42.329216]  [<ffffffff812eca5b>] ?
->> ip_local_deliver_finish+0x105/0x17b
->> [   42.329216]  [<ffffffff812c42d5>] ?
->> __netif_receive_skb_core+0x44e/0x4c6
->> [   42.329216]  [<ffffffff812c450f>] ? netif_receive_skb+0x4c/0x7d
->> [   42.329216]  [<ffffffff812c4c69>] ? napi_gro_receive+0x35/0x76
->> [   42.329216]  [<ffffffffa007ad4c>] ? e1000_clean_rx_irq+0x330/0x3cd
->> [e1000]
->> [   42.329216]  [<ffffffffa0079cc5>] ? e1000_clean+0x5b9/0x725 [e1000]
->> [   42.329216]  [<ffffffff81051442>] ? autoremove_wake_function+0x9/0x2a
->> [   42.329216]  [<ffffffff81056e7f>] ? __wake_up_common+0x42/0x78
->> [   42.329216]  [<ffffffff812c4a15>] ? net_rx_action+0xa2/0x1c6
->> [   42.329216]  [<ffffffff8103ae04>] ? __do_softirq+0xe8/0x201
->> [   42.329216]  [<ffffffff813838dc>] ? call_softirq+0x1c/0x30
->> [   42.329216]  [<ffffffff81003b7c>] ? do_softirq+0x2c/0x60
->> [   42.329216]  [<ffffffff8103afe2>] ? irq_exit+0x3b/0x7f
->> [   42.329216]  [<ffffffff81003803>] ? do_IRQ+0x81/0x98
->> [   42.329216]  [<ffffffff8137d46a>] ? common_interrupt+0x6a/0x6a
->> [   42.329216]  <EOI>
->> [   42.329216]  [<ffffffff81008aa3>] ? default_idle+0x15/0x3d
->> [   42.329216]  [<ffffffff81009021>] ? arch_cpu_idle+0x6/0x17
->> [   42.329216]  [<ffffffff8106fbad>] ? cpu_startup_entry+0x10d/0x180
->> [   42.329216]  [<ffffffff816adcd8>] ? start_kernel+0x3be/0x3c9
->> [   42.329216]  [<ffffffff816ad730>] ? repair_env_string+0x57/0x57
->> [   42.329216] Code: 50 12 80 fa 0a 75 1a f6 83 dc 07 00 00 02 75 11
->> 8a 80 30 01 00 00 83 e0 03 3c 03 0f 85 1e 0f 00 00 48 83 bb 48 01 00
->> 00 00 75 02 <0f> 0b 48 89 df e8 56 47 01 00 48 89 df e8 e3 41 00 00 e9
->> fd 0e
->> [   42.329216] RIP  [<ffffffffa03add10>] sctp_do_sm+0x159/0x1091 [sctp]
->> [   42.329216]  RSP <ffff88007fc03990>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
