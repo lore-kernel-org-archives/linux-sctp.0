@@ -1,42 +1,36 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Wed, 30 Oct 2013 14:29:48 +0000
-Subject: Re: [PATCH net-next 0/5] SCTP fix/updates
-Message-Id: <527117DC.3030400@gmail.com>
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Sat, 26 Oct 2013 08:06:29 +0000
+Subject: [PATCH v2 0/3] sctp: do some clean up and fix comments
+Message-Id: <1382774792-13440-1-git-send-email-wangweidong1@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1383130252-1515-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1383130252-1515-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: nhorman@tuxdriver.com, vyasevich@gmail.com
+Cc: davem@davemloft.net, dingtianhong@huawei.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On 10/30/2013 06:50 AM, Daniel Borkmann wrote:
-> Please see patch 5 for the main description/motivation, the rest just
-> brings in the needed functionality for that. Although this is actually
-> a fix, I've based it against net-next as some additional work for
-> fixing it was needed.
->
-> Thanks!
->
-> Daniel Borkmann (5):
->    lib: crc32: clean up spacing in test cases
->    lib: crc32: add functionality to combine two crc32{,c}s in GF(2)
->    lib: crc32: add test cases for crc32{,c}_combine routines
->    net: skb_checksum: allow custom update/combine for walking skb
->    net: sctp: fix and consolidate SCTP checksumming code
->
->   include/linux/crc32.h       |  40 ++++
->   include/linux/skbuff.h      |  13 +-
->   include/net/checksum.h      |   6 +
->   include/net/sctp/checksum.h |  56 ++----
->   lib/crc32.c                 | 453 +++++++++++++++++++++++++-------------------
->   net/core/skbuff.c           |  31 ++-
->   net/sctp/output.c           |   9 +-
->   7 files changed, 350 insertions(+), 258 deletions(-)
->
+This patch series includes some comments fix, merge tow if-statements,
+remove the repeat initialize with 0.
 
-Series
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+v1 -> v2:
+  - patch1: combine two comment typos fix patches into one,
+    as suggested by Vlad, and add his ACK.
+  - patch2: add Vlad's ACK.
+  - patch3: line up 2 parts of 'if' statements, as suggested by Vlad.
+    fix some comment typos, as suggested by Sergei.
 
--vlad
+Wang Weidong (3):
+  sctp: fix some comments in chunk.c and associola.c
+  sctp: remove the repeat initialize with 0
+  sctp: merge two if statements to one
+
+ net/sctp/associola.c     |  4 ++--
+ net/sctp/auth.c          | 14 +++++---------
+ net/sctp/chunk.c         |  2 +-
+ net/sctp/sm_make_chunk.c | 29 ++++++++---------------------
+ 4 files changed, 16 insertions(+), 33 deletions(-)
+
+-- 
+1.7.12
+
+
