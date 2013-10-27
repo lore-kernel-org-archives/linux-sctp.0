@@ -1,62 +1,31 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Sat, 19 Oct 2013 17:36:35 +0000
-Subject: Re: net: sctp: possible dereference after freeing
-Message-Id: <DA7AE80C-302D-4B9D-9C0E-BA980E25DFCE@gmail.com>
+From: Hangbin Liu <liuhangbin@gmail.com>
+Date: Sun, 27 Oct 2013 02:55:49 +0000
+Subject: [lksctp-developers] [PATCH] test_1_to_1_sockopt: we have changed the Minimum value to 2048
+Message-Id: <1382842549-527-1-git-send-email-liuhangbin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAGG-pUTXC+6O-wyYp0FZxKH-XWqP++jLEn-Km5kixQFcKsWRZA@mail.gmail.com> <CAGG-pUT=qrYxOQ5jeU=9KipYO+MAA9oJj=241YMqo54S7K+xsA@mail.gmail.com>
-In-Reply-To: <CAGG-pUT=qrYxOQ5jeU=9KipYO+MAA9oJj=241YMqo54S7K+xsA@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: =?utf-8?Q?Geyslan_Greg=C3=B3rio_Bem?= <geyslan@gmail.com>
-Cc: Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: linux-sctp@vger.kernel.org
 
+Signed-off-by: Hangbin Liu <liuhangbin@gmail.com>
+---
+ src/func_tests/test_1_to_1_sockopt.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
+diff --git a/src/func_tests/test_1_to_1_sockopt.c b/src/func_tests/test_1_to_1_sockopt.c
+index 37aac1d..ca5a1b9 100644
+--- a/src/func_tests/test_1_to_1_sockopt.c
++++ b/src/func_tests/test_1_to_1_sockopt.c
+@@ -299,7 +299,7 @@ main(void)
+ 	tst_resm(TPASS, "getsockopt() SCTP_STATUS - SUCCESS");
+ 
+ 	/* Reducing the SO_RCVBUF value using setsockopt() */
+-	/*Minimum value is 128 and hence I am using it*/
++	/* upstream have change the MIN_RCVBUF (2048 + sizeof(struct sk_buff)) */
+ 	len = sizeof(int);
+ 	rcvbuf_val_set = 2048;
+ 	/* TEST16: Test case for setsockopt SO_RCVBUF */
+-- 
+1.8.1.4
 
-On Oct 19, 2013, at 7:49 AM, Geyslan Gregório Bem <geyslan@gmail.com> wrote:
-
-> 2013/10/19 Geyslan Gregório Bem <geyslan@gmail.com>:
->> Hi maintainers,
->> 
->> I would like to know if these are catches:
->> 
->> /net/sctp/endpointola.c (281)
->> static void sctp_endpoint_destroy(struct sctp_endpoint *ep)
->> {
->>    struct sock *sk;
->> ...
->>    kfree(ep);
->>    SCTP_DBG_OBJCNT_DEC(ep);
->> }
->> 
->> The 'ep' object counter is being decremented?! Is the kfree to be there indeed?
->> Let me know what was intended here.
->> 
->> Same here:
->> /net/sctp/endpointola.c (165)
->> static void sctp_transport_destroy_rcu(struct rcu_head *head)
->> {
->>    struct sctp_transport *transport;
->> ...
->>    kfree(transport);
->>    SCTP_DBG_OBJCNT_DEC(transport);
->> }
->> 
->> Regards,
->> 
->> Geyslan Gregório Bem
->> hackingbits.com
-> 
-> Oops. I got it. ;)
-> 
-> extern atomic_t sctp_dbg_objcnt_ep;
-> http://lxr.free-electrons.com/source/include/net/sctp/sctp.h#L269
-> extern atomic_t sctp_dbg_objcnt_transport;
-> http://lxr.free-electrons.com/source/arch/x86/include/asm/atomic.h#L105
-> 
-> Cheers.
-
-There is no reference here since the macro turns variable name to string using ## name.
-So the order doesn't matter really.
-
--vlad 
