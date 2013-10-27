@@ -1,63 +1,47 @@
-From: Julian Anastasov <ja@ssi.bg>
-Date: Fri, 25 Oct 2013 21:05:32 +0000
-Subject: Re: [PATCH ipvs 1/2] net: ipvs: sctp: add missing verdict assignments in sctp_conn_schedule
-Message-Id: <alpine.LFD.2.03.1310260004120.1600@ssi.bg>
+From: Hangbin Liu <liuhangbin@gmail.com>
+Date: Sun, 27 Oct 2013 02:56:23 +0000
+Subject: [lksctp-developers] [PATCH] sctp_status: server side should also receive msg_cnt times
+Message-Id: <1382842583-890-1-git-send-email-liuhangbin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1af1d5e1aae9df91683625f0cb120b329e8d2f10.1382689350.git.dborkman@redhat.com>
-In-Reply-To: <1af1d5e1aae9df91683625f0cb120b329e8d2f10.1382689350.git.dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
+As client side send msg_cnt times for each repeat. Server will exit too early
+if we only receive one time for each repeat and leave client keep sent, which
+makes client could not exit normally
 
-	Hello,
+Signed-off-by: Hangbin Liu <liuhangbin@gmail.com>
+---
+ src/apps/sctp_status.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-On Fri, 25 Oct 2013, Daniel Borkmann wrote:
+diff --git a/src/apps/sctp_status.c b/src/apps/sctp_status.c
+index 4e21af8..76f96e4 100644
+--- a/src/apps/sctp_status.c
++++ b/src/apps/sctp_status.c
+@@ -547,6 +547,8 @@ int receive_r(int sk)
+ } /* receive_r () */
+ 
+ void server(int sk) {
++	int i;
++
+ 	if (max_msgsize > DEFAULT_MAX_WINDOW) {
+ 		if (setsockopt(sk, IPPROTO_SCTP, SO_RCVBUF, &max_msgsize,
+ 			       sizeof(max_msgsize)) < 0) {
+@@ -555,7 +557,10 @@ void server(int sk) {
+ 		}
+ 	}
+ 
+-	receive_r(sk);
++	for (i = 0; i < msg_cnt; i++) {
++		receive_r(sk);
++		DEBUG_PRINT(DEBUG_MIN, "count %d\n", i+1);
++	}
+ } /* server() */
+ 
+ void * build_msg(int len) {
+-- 
+1.8.1.4
 
-> If skb_header_pointer() fails, we need to assign a verdict, that is
-> NF_DROP in this case, otherwise, we would leave the verdict from
-> conn_schedule() uninitialized when returning.
-> 
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-
-	Looks good,
-
-Acked-by: Julian Anastasov <ja@ssi.bg>
-
-> ---
->  net/netfilter/ipvs/ip_vs_proto_sctp.c | 9 +++++++--
->  1 file changed, 7 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-> index 23e596e..9ca7aa0 100644
-> --- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
-> +++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
-> @@ -20,13 +20,18 @@ sctp_conn_schedule(int af, struct sk_buff *skb, struct ip_vs_proto_data *pd,
->  	sctp_sctphdr_t *sh, _sctph;
->  
->  	sh = skb_header_pointer(skb, iph->len, sizeof(_sctph), &_sctph);
-> -	if (sh = NULL)
-> +	if (sh = NULL) {
-> +		*verdict = NF_DROP;
->  		return 0;
-> +	}
->  
->  	sch = skb_header_pointer(skb, iph->len + sizeof(sctp_sctphdr_t),
->  				 sizeof(_schunkh), &_schunkh);
-> -	if (sch = NULL)
-> +	if (sch = NULL) {
-> +		*verdict = NF_DROP;
->  		return 0;
-> +	}
-> +
->  	net = skb_net(skb);
->  	ipvs = net_ipvs(net);
->  	rcu_read_lock();
-> -- 
-> 1.7.11.7
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
