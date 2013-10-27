@@ -1,70 +1,50 @@
-From: Simon Horman <horms@verge.net.au>
-Date: Wed, 30 Oct 2013 00:48:46 +0000
-Subject: Re: [PATCH v3 ipvs-next] net: ipvs: sctp: do not recalc sctp csum when ports didn't change
-Message-Id: <20131030004846.GN21262@verge.net.au>
+From: Hangbin Liu <liuhangbin@gmail.com>
+Date: Sun, 27 Oct 2013 03:11:37 +0000
+Subject: [lksctp-developers] sctp_status: Got sendmsg: Invalid argument when set max_stream larger than 10
+Message-Id: <CAPwn2JQRx3j3GieoZaFh4wO7MPGmZPNY9W2U7hsQJ0xUULX3MA@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1382954180-8264-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1382954180-8264-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="windows-1252"
+Content-Transfer-Encoding: quoted-printable
 To: linux-sctp@vger.kernel.org
 
-On Mon, Oct 28, 2013 at 12:43:26PM +0200, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Mon, 28 Oct 2013, Daniel Borkmann wrote:
-> 
-> > Unlike UDP or TCP, we do not take the pseudo-header into
-> > account in SCTP checksums. So in case port mapping is the
-> > very same, we do not need to recalculate the whole SCTP
-> > checksum in software, which is very expensive.
-> > 
-> > Also, similarly as in TCP, take into account when a private
-> > helper mangled the packet. In that case, we also need to
-> > recalculate the checksum even if ports might be same.
-> > 
-> > Thanks for feedback regarding skb->ip_summed checks from
-> > Julian Anastasov; here's a discussion on these checks for
-> > snat and dnat:
-> > 
-> > * For snat_handler(), we can see CHECKSUM_PARTIAL from
-> >   virtual devices, and from LOCAL_OUT, otherwise it
-> >   should be CHECKSUM_UNNECESSARY. In general, in snat it
-> >   is more complex. skb contains the original route and
-> >   ip_vs_route_me_harder() can change the route after
-> >   snat_handler. So, for locally generated replies from
-> >   local server we can not preserve the CHECKSUM_PARTIAL
-> >   mode. It is an chicken or egg dilemma: snat_handler
-> >   needs the device after rerouting (to check for
-> >   NETIF_F_SCTP_CSUM), while ip_route_me_harder() wants
-> >   the snat_handler() to put the new saddr for proper
-> >   rerouting.
-> > 
-> > * For dnat_handler(), we should not see CHECKSUM_COMPLETE
-> >   for SCTP, in fact the small set of drivers that support
-> >   SCTP offloading return CHECKSUM_UNNECESSARY on correctly
-> >   received SCTP csum. We can see CHECKSUM_PARTIAL from
-> >   local stack or received from virtual drivers. The idea is
-> >   that SCTP decides to avoid csum calculation if hardware
-> >   supports offloading. IPVS can change the device after
-> >   rerouting to real server but we can preserve the
-> >   CHECKSUM_PARTIAL mode if the new device supports
-> >   offloading too. This works because skb dst is changed
-> >   before dnat_handler and we see the new device. So, checks
-> >   in the 'if' part will decide whether it is ok to keep
-> >   CHECKSUM_PARTIAL for the output. If the packet was with
-> >   CHECKSUM_NONE, hence we deal with unknown checksum. As we
-> >   recalculate the sum for IP header in all cases, it should
-> >   be safe to use CHECKSUM_UNNECESSARY. We can forward wrong
-> >   checksum in this case (without cp->app). In case of
-> >   CHECKSUM_UNNECESSARY, the csum was valid on receive.
-> > 
-> > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-> 
-> 	Looks good, thanks!
-> 
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Hi Daniel,
 
-Thanks, I have queued this up.
+When I run sctp_status test and set max_stream >=3D 10, the client will
+fail with "sendmsg: Invalid argument". Would you like to help have a
+look at this?
+
+# ./sctp_status -H 127.0.0.1 -P 9998 -h 127.0.0.1 -p 9999 -s -d 2 -M 20
+remote:addr=127.0.0.1, port=3Ddistinct, family=3D2
+local:addr=127.0.0.1, port=3Ddistinct32, family=3D2
+
+Starting tests...
+        socket(SOCK_STREAM, IPPROTO_SCTP)  ->  sk=3D3
+        bind(sk=3D3, [a:127.0.0.1,p:distinct32])  --  attempt 1/10
+        connect(sk=3D3)
+Client: Sending packets.(1/10)
+        sendmsg(sk=3D3, assoc=3D0) 17768 bytes.
+          SNDRCV(stream=3D1 flags=3D0x1 ppid=846930886)
+        sendmsg(sk=3D3, assoc=3D0) 6250 bytes.
+          SNDRCV(stream=3D2 flags=3D0x1 ppid=1714636915)
+        sendmsg(sk=3D3, assoc=3D0) 23634 bytes.
+          SNDRCV(stream=3D3 flags=3D0x1 ppidB4238335)
+        sendmsg(sk=3D3, assoc=3D0) 5195 bytes.
+          SNDRCV(stream=3D4 flags=3D0x1 ppid=1649760492)
+        sendmsg(sk=3D3, assoc=3D0) 7978 bytes.
+          SNDRCV(stream=3D5 flags=3D0x1 ppid=1189641421)
+        sendmsg(sk=3D3, assoc=3D0) 22715 bytes.
+          SNDRCV(stream=3D6 flags=3D0x1 ppid=1350490027)
+        sendmsg(sk=3D3, assoc=3D0) 16883 bytes.
+          SNDRCV(stream=3D7 flags=3D0x1 ppid=1102520059)
+        sendmsg(sk=3D3, assoc=3D0) 10724 bytes.
+          SNDRCV(stream=3D8 flags=3D0x1 ppid=1967513926)
+        sendmsg(sk=3D3, assoc=3D0)  125 bytes.
+          SNDRCV(stream=3D9 flags=3D0x1 ppid=1540383426)
+        sendmsg(sk=3D3, assoc=3D0) 2133 bytes.
+          SNDRCV(stream=10 flags=3D0x1 ppid=1303455736)
+
+                *** sendmsg: Invalid argument ***
+
+Thanks
+Hangbin Liu
