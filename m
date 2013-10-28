@@ -1,50 +1,157 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Fri, 25 Oct 2013 23:43:20 +0000
-Subject: Re: [PATCH 3/4] sctp: fix some comments in associola.c
-Message-Id: <526B0218.2070809@gmail.com>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Mon, 28 Oct 2013 09:56:20 +0000
+Subject: [PATCH v3 ipvs-next] net: ipvs: sctp: do not recalc sctp csum when ports didn't change
+Message-Id: <1382954180-8264-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1382665805-13952-1-git-send-email-wangweidong1@huawei.com> <1382665805-13952-4-git-send-email-wangweidong1@huawei.com>
-In-Reply-To: <1382665805-13952-4-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Wang Weidong <wangweidong1@huawei.com>, davem@davemloft.net, nhorman@tuxdriver.com
-Cc: dingtianhong@huawei.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-On 10/24/2013 09:50 PM, Wang Weidong wrote:
-> fix some spellings
->
-> Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+Unlike UDP or TCP, we do not take the pseudo-header into
+account in SCTP checksums. So in case port mapping is the
+very same, we do not need to recalculate the whole SCTP
+checksum in software, which is very expensive.
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+Also, similarly as in TCP, take into account when a private
+helper mangled the packet. In that case, we also need to
+recalculate the checksum even if ports might be same.
 
--vlad
+Thanks for feedback regarding skb->ip_summed checks from
+Julian Anastasov; here's a discussion on these checks for
+snat and dnat:
 
-> ---
->   net/sctp/associola.c | 4 ++--
->   1 file changed, 2 insertions(+), 2 deletions(-)
->
-> diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-> index cef5099..c9b91cb 100644
-> --- a/net/sctp/associola.c
-> +++ b/net/sctp/associola.c
-> @@ -602,7 +602,7 @@ void sctp_assoc_rm_peer(struct sctp_association *asoc,
->
->   		/* Start a T3 timer here in case it wasn't running so
->   		 * that these migrated packets have a chance to get
-> -		 * retrnasmitted.
-> +		 * retransmitted.
->   		 */
->   		if (!timer_pending(&active->T3_rtx_timer))
->   			if (!mod_timer(&active->T3_rtx_timer,
-> @@ -665,7 +665,7 @@ struct sctp_transport *sctp_assoc_add_peer(struct sctp_association *asoc,
->   	/* Set the path max_retrans.  */
->   	peer->pathmaxrxt = asoc->pathmaxrxt;
->
-> -	/* And the partial failure retrnas threshold */
-> +	/* And the partial failure retrans threshold */
->   	peer->pf_retrans = asoc->pf_retrans;
->
->   	/* Initialize the peer's SACK delay timeout based on the
->
+* For snat_handler(), we can see CHECKSUM_PARTIAL from
+  virtual devices, and from LOCAL_OUT, otherwise it
+  should be CHECKSUM_UNNECESSARY. In general, in snat it
+  is more complex. skb contains the original route and
+  ip_vs_route_me_harder() can change the route after
+  snat_handler. So, for locally generated replies from
+  local server we can not preserve the CHECKSUM_PARTIAL
+  mode. It is an chicken or egg dilemma: snat_handler
+  needs the device after rerouting (to check for
+  NETIF_F_SCTP_CSUM), while ip_route_me_harder() wants
+  the snat_handler() to put the new saddr for proper
+  rerouting.
+
+* For dnat_handler(), we should not see CHECKSUM_COMPLETE
+  for SCTP, in fact the small set of drivers that support
+  SCTP offloading return CHECKSUM_UNNECESSARY on correctly
+  received SCTP csum. We can see CHECKSUM_PARTIAL from
+  local stack or received from virtual drivers. The idea is
+  that SCTP decides to avoid csum calculation if hardware
+  supports offloading. IPVS can change the device after
+  rerouting to real server but we can preserve the
+  CHECKSUM_PARTIAL mode if the new device supports
+  offloading too. This works because skb dst is changed
+  before dnat_handler and we see the new device. So, checks
+  in the 'if' part will decide whether it is ok to keep
+  CHECKSUM_PARTIAL for the output. If the packet was with
+  CHECKSUM_NONE, hence we deal with unknown checksum. As we
+  recalculate the sum for IP header in all cases, it should
+  be safe to use CHECKSUM_UNNECESSARY. We can forward wrong
+  checksum in this case (without cp->app). In case of
+  CHECKSUM_UNNECESSARY, the csum was valid on receive.
+
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ v1->v2: - Applied skb->ip_summed feedback from Julian, thanks!
+ v2->v3: - Minor cosmetic change to fix checkpatch warning
+
+ net/netfilter/ipvs/ip_vs_proto_sctp.c | 39 +++++++++++++++++++++++++++++------
+ 1 file changed, 33 insertions(+), 6 deletions(-)
+
+diff --git a/net/netfilter/ipvs/ip_vs_proto_sctp.c b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+index 9ca7aa0..2f7ea75 100644
+--- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
++++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
+@@ -81,6 +81,7 @@ sctp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+ {
+ 	sctp_sctphdr_t *sctph;
+ 	unsigned int sctphoff = iph->len;
++	bool payload_csum = false;
+ 
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (cp->af = AF_INET6 && iph->fragoffs)
+@@ -92,19 +93,31 @@ sctp_snat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+ 		return 0;
+ 
+ 	if (unlikely(cp->app != NULL)) {
++		int ret;
++
+ 		/* Some checks before mangling */
+ 		if (pp->csum_check && !pp->csum_check(cp->af, skb, pp))
+ 			return 0;
+ 
+ 		/* Call application helper if needed */
+-		if (!ip_vs_app_pkt_out(cp, skb))
++		ret = ip_vs_app_pkt_out(cp, skb);
++		if (ret = 0)
+ 			return 0;
++		/* ret=2: csum update is needed after payload mangling */
++		if (ret = 2)
++			payload_csum = true;
+ 	}
+ 
+ 	sctph = (void *) skb_network_header(skb) + sctphoff;
+-	sctph->source = cp->vport;
+ 
+-	sctp_nat_csum(skb, sctph, sctphoff);
++	/* Only update csum if we really have to */
++	if (sctph->source != cp->vport || payload_csum ||
++	    skb->ip_summed = CHECKSUM_PARTIAL) {
++		sctph->source = cp->vport;
++		sctp_nat_csum(skb, sctph, sctphoff);
++	} else {
++		skb->ip_summed = CHECKSUM_UNNECESSARY;
++	}
+ 
+ 	return 1;
+ }
+@@ -115,6 +128,7 @@ sctp_dnat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+ {
+ 	sctp_sctphdr_t *sctph;
+ 	unsigned int sctphoff = iph->len;
++	bool payload_csum = false;
+ 
+ #ifdef CONFIG_IP_VS_IPV6
+ 	if (cp->af = AF_INET6 && iph->fragoffs)
+@@ -126,19 +140,32 @@ sctp_dnat_handler(struct sk_buff *skb, struct ip_vs_protocol *pp,
+ 		return 0;
+ 
+ 	if (unlikely(cp->app != NULL)) {
++		int ret;
++
+ 		/* Some checks before mangling */
+ 		if (pp->csum_check && !pp->csum_check(cp->af, skb, pp))
+ 			return 0;
+ 
+ 		/* Call application helper if needed */
+-		if (!ip_vs_app_pkt_in(cp, skb))
++		ret = ip_vs_app_pkt_in(cp, skb);
++		if (ret = 0)
+ 			return 0;
++		/* ret=2: csum update is needed after payload mangling */
++		if (ret = 2)
++			payload_csum = true;
+ 	}
+ 
+ 	sctph = (void *) skb_network_header(skb) + sctphoff;
+-	sctph->dest = cp->dport;
+ 
+-	sctp_nat_csum(skb, sctph, sctphoff);
++	/* Only update csum if we really have to */
++	if (sctph->dest != cp->dport || payload_csum ||
++	    (skb->ip_summed = CHECKSUM_PARTIAL &&
++	     !(skb_dst(skb)->dev->features & NETIF_F_SCTP_CSUM))) {
++		sctph->dest = cp->dport;
++		sctp_nat_csum(skb, sctph, sctphoff);
++	} else if (skb->ip_summed != CHECKSUM_PARTIAL) {
++		skb->ip_summed = CHECKSUM_UNNECESSARY;
++	}
+ 
+ 	return 1;
+ }
+-- 
+1.7.11.7
 
