@@ -1,113 +1,165 @@
-From: Thomas Dreibholz <dreibh@simula.no>
-Date: Thu, 17 Oct 2013 16:20:07 +0000
-Subject: Re: potential bug on SFR-CACC
-Message-Id: <1736507.KZrl4XQOYC@nordmarka.simula.nornet>
-MIME-Version: 1
-Content-Type: multipart/mixed; boundary="nextPart11643972.rs49uCPTBl"
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Wed, 30 Oct 2013 10:50:52 +0000
+Subject: [PATCH net-next 5/5] net: sctp: fix and consolidate SCTP checksumming code
+Message-Id: <1383130252-1515-6-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <525A728E.8040007@gmail.com>
-In-Reply-To: <525A728E.8040007@gmail.com>
-To: linux-sctp@vger.kernel.org
+References: <1383130252-1515-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1383130252-1515-1-git-send-email-dborkman@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
+This fixes an outstanding bug found through IPVS, where SCTP packets
+with skb->data_len > 0 (non-linearized) and empty frag_list, but data
+accumulated in frags[] member, are forwarded with incorrect checksum
+letting SCTP initial handshake fail on some systems. Linearizing each
+SCTP skb in IPVS to prevent that would not be a good solution as
+this leads to an additional and unnecessary performance penalty on
+the load-balancer itself for no good reason (as we actually only want
+to update the checksum, and can do that in a different/better way
+presented here).
 
---nextPart11643972.rs49uCPTBl
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain; charset="iso-8859-1"
+The actual problem is elsewhere, namely, that SCTP's checksumming
+in sctp_compute_cksum() does not take frags[] into account like
+skb_checksum() does. So while we are fixing this up, we better reuse
+the existing code that we have anyway in __skb_checksum() and use it
+for walking through the data doing checksumming. This will not only
+fix this issue, but also consolidates some SCTP code with core
+sk_buff code, bringing it closer together and removing respectively
+avoiding reimplementation of skb_checksum() for no good reason.
 
-Hi Chang,
+As crc32c() can use hardware implementation within the crypto layer,
+we leave that intact (it wraps around / falls back to e.g. slice-by-8
+algorithm in __crc32c_le() otherwise); plus use the __crc32c_le_combine()
+combinator for crc32c blocks.
 
-the first block should find the highest acknowledged TSN. If it is a Ga=
-pAck, the=20
-receiver may revoke this acknowledgement later.
+Also, we remove all other SCTP checksumming code, so that we only
+have to use sctp_compute_cksum() from now on; for doing that, we need
+to transform SCTP checkumming in output path slightly, and can leave
+the rest intact.
 
-For the congestion control, it is important to find out whether there h=
-ave been=20
-*new* acknowledgements. A TSN only counts as new once (when it is ackno=
-wledged=20
-for the very first time). After that, particularly also when the=20
-acknowledgement is revoked (reneging) and the TSN has to be transmitted=
- and=20
-acknowledged again, any further acknowledgements of the same TSN do not=
- count=20
-any more as "new".
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ include/net/sctp/checksum.h | 56 +++++++++++++++------------------------------
+ net/sctp/output.c           |  9 +-------
+ 2 files changed, 20 insertions(+), 45 deletions(-)
 
-
-S=F8ndag 13. oktober 2013 12.11.22 skrev Chang:
-> Hi all,
-> I'm reading the source code of LK-SCTP and find something that I
-> couldn't understand on the SFR-CACC feature of LK-SCTP, which might b=
-e a
-> bug.
->=20
-> When a sender receiving a SACK, ***sctp_check_transmitted()*** would =
-be
-> invoked to update the state variables related to SFR-CACC, including
-> ***highest_new_tsn_in_sack*** and ***cacc_saw_newack***.
->=20
-> ---------------------------------------------------------
-> The scripts to update ***highest_new_tsn_in_sack*** is as follow.
-> Function ***sctp_acked*** checks if the tsn is acked(*either*
-> *cumulatively* *or* *selectively*) in the sack reply.
-> ---------------------------------------------------------
-> if(sctp_acked(sack, tsn)) {
->      ......
->      *highest_new_tsn_in_sack  =3D tsn;
->      ......
-> }
-> ---------------------------------------------------------
-> The scripts to upate ***cacc_saw_newack*** is as follow. It checks if=
-
-> the tsn is less/euqal than the *cumulatively* acked TSN in the sack
-> reply, which is *INCONSISTENCY* with the abovementioned.
-> ---------------------------------------------------------
-> if (TSN_lte(tsn, sack_ctsn)) {// sack_ctsn is cumulatively-acked
->      ......
->      if (!tchunk->tsn_gap_acked) {
->          if (transport && sack->num_gap_ack_blocks &&
-> q->asoc->peer.primary_path->cacc.changeover_active)
->          transport->cacc.cacc_saw_newack =3D 1;
->      }
->      ......
-> }
->=20
-> I would appreicate if anyone could confirm this is a work-as-design o=
-r a
-> bug?
->=20
-> Cheers!
-
---=20
-Best regards / Mit freundlichen Gr=FC=DFen / Med vennlig hilsen
-
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
- Thomas Dreibholz
-
- Simula Research Laboratory
- Simula Innovation AS, Network Systems Group
- Visiting address: Martin Linges vei 17, 1364 Fornebu, Norway
- Mailing address:  P.O.Box 134, 1325 Lysaker, Norway
------------------------------------------------------------------------=
-
- E-Mail:     dreibh@simula.no
- Homepage:   http://simula.no/people/dreibh
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-
---nextPart11643972.rs49uCPTBl
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part.
-Content-Transfer-Encoding: 7Bit
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iEYEABECAAYFAlJgDjcACgkQ32BbsHYPLWVkcQCgjZVbPWxMZ16KKmbbQNA2mPYn
-RSYAn1ujyK0OH7+77ddv28nxXUejBRQa
-=WVZj
------END PGP SIGNATURE-----
-
---nextPart11643972.rs49uCPTBl--
+diff --git a/include/net/sctp/checksum.h b/include/net/sctp/checksum.h
+index 259924d..6bd44fe 100644
+--- a/include/net/sctp/checksum.h
++++ b/include/net/sctp/checksum.h
+@@ -42,56 +42,38 @@
+ #include <linux/types.h>
+ #include <net/sctp/sctp.h>
+ #include <linux/crc32c.h>
++#include <linux/crc32.h>
+ 
+-static inline __u32 sctp_crc32c(__u32 crc, u8 *buffer, u16 length)
++static inline __wsum sctp_csum_update(const void *buff, int len, __wsum sum)
+ {
+-	return crc32c(crc, buffer, length);
+-}
+-
+-static inline __u32 sctp_start_cksum(__u8 *buffer, __u16 length)
+-{
+-	__u32 crc = ~(__u32)0;
+-	__u8  zero[sizeof(__u32)] = {0};
+-
+-	/* Optimize this routine to be SCTP specific, knowing how
+-	 * to skip the checksum field of the SCTP header.
++	/* This uses the crypto implementation of crc32c, which is either
++	 * implemented w/ hardware support or resolves to __crc32c_le().
+ 	 */
+-
+-	/* Calculate CRC up to the checksum. */
+-	crc = sctp_crc32c(crc, buffer, sizeof(struct sctphdr) - sizeof(__u32));
+-
+-	/* Skip checksum field of the header. */
+-	crc = sctp_crc32c(crc, zero, sizeof(__u32));
+-
+-	/* Calculate the rest of the CRC. */
+-	crc = sctp_crc32c(crc, &buffer[sizeof(struct sctphdr)],
+-			    length - sizeof(struct sctphdr));
+-	return crc;
+-}
+-
+-static inline __u32 sctp_update_cksum(__u8 *buffer, __u16 length, __u32 crc32)
+-{
+-	return sctp_crc32c(crc32, buffer, length);
++	return crc32c(sum, buff, len);
+ }
+ 
+-static inline __le32 sctp_end_cksum(__u32 crc32)
++static inline __wsum sctp_csum_combine(__wsum csum, __wsum csum2,
++				       int offset, int len)
+ {
+-	return cpu_to_le32(~crc32);
++	return __crc32c_le_combine(csum, csum2, len);
+ }
+ 
+-/* Calculate the CRC32C checksum of an SCTP packet.  */
+ static inline __le32 sctp_compute_cksum(const struct sk_buff *skb,
+ 					unsigned int offset)
+ {
+-	const struct sk_buff *iter;
++	struct sctphdr *sh = sctp_hdr(skb);
++        __le32 ret, old = sh->checksum;
++	const struct skb_checksum_ops ops = {
++		.update  = sctp_csum_update,
++		.combine = sctp_csum_combine,
++	};
+ 
+-	__u32 crc32 = sctp_start_cksum(skb->data + offset,
+-				       skb_headlen(skb) - offset);
+-	skb_walk_frags(skb, iter)
+-		crc32 = sctp_update_cksum((__u8 *) iter->data,
+-					  skb_headlen(iter), crc32);
++	sh->checksum = 0;
++	ret = cpu_to_le32(~__skb_checksum(skb, offset, skb->len - offset,
++					  ~(__u32)0, &ops));
++	sh->checksum = old;
+ 
+-	return sctp_end_cksum(crc32);
++	return ret;
+ }
+ 
+ #endif /* __sctp_checksum_h__ */
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 3191373..e650978 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -390,7 +390,6 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+ 	__u8 has_data = 0;
+ 	struct dst_entry *dst = tp->dst;
+ 	unsigned char *auth = NULL;	/* pointer to auth in skb data */
+-	__u32 cksum_buf_len = sizeof(struct sctphdr);
+ 
+ 	pr_debug("%s: packet:%p\n", __func__, packet);
+ 
+@@ -493,7 +492,6 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+ 		if (chunk = packet->auth)
+ 			auth = skb_tail_pointer(nskb);
+ 
+-		cksum_buf_len += chunk->skb->len;
+ 		memcpy(skb_put(nskb, chunk->skb->len),
+ 			       chunk->skb->data, chunk->skb->len);
+ 
+@@ -538,12 +536,7 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+ 	if (!sctp_checksum_disable) {
+ 		if (!(dst->dev->features & NETIF_F_SCTP_CSUM) ||
+ 		    (dst_xfrm(dst) != NULL) || packet->ipfragok) {
+-			__u32 crc32 = sctp_start_cksum((__u8 *)sh, cksum_buf_len);
+-
+-			/* 3) Put the resultant value into the checksum field in the
+-			 *    common header, and leave the rest of the bits unchanged.
+-			 */
+-			sh->checksum = sctp_end_cksum(crc32);
++			sh->checksum = sctp_compute_cksum(nskb, 0);
+ 		} else {
+ 			/* no need to seed pseudo checksum for SCTP */
+ 			nskb->ip_summed = CHECKSUM_PARTIAL;
+-- 
+1.8.3.1
 
