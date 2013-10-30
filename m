@@ -1,52 +1,37 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 16 Oct 2013 13:34:31 +0000
-Subject: Re: [PATCH v4 net 3/3] sctp: Perform software checksum if packet has to be fragmented.
-Message-Id: <20131016133431.GC10623@neilslaptop.think-freely.org>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Wed, 30 Oct 2013 10:50:47 +0000
+Subject: [PATCH net-next 0/5] SCTP fix/updates
+Message-Id: <1383130252-1515-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1381888891-31186-1-git-send-email-vyasevich@gmail.com>
- <1381888891-31186-4-git-send-email-vyasevich@gmail.com>
-In-Reply-To: <1381888891-31186-4-git-send-email-vyasevich@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, fan.du@windriver.com
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Tue, Oct 15, 2013 at 10:01:31PM -0400, Vlad Yasevich wrote:
-> IP/IPv6 fragmentation knows how to compute only TCP/UDP checksum.
-> This causes problems if SCTP packets has to be fragmented and
-> ipsummed has been set to PARTIAL due to checksum offload support.
-> This condition can happen when retransmitting after MTU discover,
-> or when INIT or other control chunks are larger then MTU.
-> Check for the rare fragmentation condition in SCTP and use software
-> checksum calculation in this case.
-> 
-> CC: Fan Du <fan.du@windriver.com>
-> Signed-off-by: Vlad Yasevich <vyasevich@gmail.com>
-> ---
->  net/sctp/output.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/output.c b/net/sctp/output.c
-> index d35b54c..3191373 100644
-> --- a/net/sctp/output.c
-> +++ b/net/sctp/output.c
-> @@ -537,7 +537,7 @@ int sctp_packet_transmit(struct sctp_packet *packet)
->  	 */
->  	if (!sctp_checksum_disable) {
->  		if (!(dst->dev->features & NETIF_F_SCTP_CSUM) ||
-> -		    (dst_xfrm(dst) != NULL)) {
-> +		    (dst_xfrm(dst) != NULL) || packet->ipfragok) {
->  			__u32 crc32 = sctp_start_cksum((__u8 *)sh, cksum_buf_len);
->  
->  			/* 3) Put the resultant value into the checksum field in the
-> -- 
-> 1.8.3.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Please see patch 5 for the main description/motivation, the rest just
+brings in the needed functionality for that. Although this is actually
+a fix, I've based it against net-next as some additional work for
+fixing it was needed.
+
+Thanks!
+
+Daniel Borkmann (5):
+  lib: crc32: clean up spacing in test cases
+  lib: crc32: add functionality to combine two crc32{,c}s in GF(2)
+  lib: crc32: add test cases for crc32{,c}_combine routines
+  net: skb_checksum: allow custom update/combine for walking skb
+  net: sctp: fix and consolidate SCTP checksumming code
+
+ include/linux/crc32.h       |  40 ++++
+ include/linux/skbuff.h      |  13 +-
+ include/net/checksum.h      |   6 +
+ include/net/sctp/checksum.h |  56 ++----
+ lib/crc32.c                 | 453 +++++++++++++++++++++++++-------------------
+ net/core/skbuff.c           |  31 ++-
+ net/sctp/output.c           |   9 +-
+ 7 files changed, 350 insertions(+), 258 deletions(-)
+
+-- 
+1.8.3.1
 
