@@ -1,29 +1,32 @@
-From: "David Laight" <David.Laight@ACULAB.COM>
-Date: Wed, 30 Oct 2013 14:10:05 +0000
-Subject: RE: [PATCH net-next 1/5] lib: crc32: clean up spacing in test cases
-Message-Id: <AE90C24D6B3A694183C094C60CF0A2F6026B73C8@saturn3.aculab.com>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Wed, 30 Oct 2013 14:15:29 +0000
+Subject: Re: [PATCH net-next 1/5] lib: crc32: clean up spacing in test cases
+Message-Id: <52711481.8030003@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1383130252-1515-1-git-send-email-dborkman@redhat.com> <1383130252-1515-2-git-send-email-dborkman@redhat.com> <1383141418.12439.76.camel@joe-AO722>
-In-Reply-To: <1383141418.12439.76.camel@joe-AO722>
+References: <1383130252-1515-1-git-send-email-dborkman@redhat.com> <1383130252-1515-2-git-send-email-dborkman@redhat.com> <1383141418.12439.76.camel@joe-AO722> <AE90C24D6B3A694183C094C60CF0A2F6026B73C8@saturn3.aculab.com>
+In-Reply-To: <AE90C24D6B3A694183C094C60CF0A2F6026B73C8@saturn3.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Joe Perches <joe@perches.com>, Daniel Borkmann <dborkman@redhat.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
+To: David Laight <David.Laight@ACULAB.COM>
+Cc: Joe Perches <joe@perches.com>, davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
 
-> > +	{0x674bf11d, 0x00000038, 0x00000542, 0x0af6d466, 0xd8b6e4c1, 0xf6e93d6c},
+On 10/30/2013 03:10 PM, David Laight wrote:
+>>> +	{0x674bf11d, 0x00000038, 0x00000542, 0x0af6d466, 0xd8b6e4c1, 0xf6e93d6c},
+>>
+>> these could be
+>>
+>> +	{0x674bf11d, 0x38, 0x542, 0x0af6d466, 0xd8b6e4c1, 0xf6e93d6c},
 >
-> these could be
-> 
-> +	{0x674bf11d, 0x38, 0x542, 0x0af6d466, 0xd8b6e4c1, 0xf6e93d6c},
+> Or even:
+> #define X(a, b, c, d, e, f) {0x##a, 0x##b, 0x##c, 0x##d, 0x##e. 0x##f}
+> 	X(674bf11d, 38, 542, 0af6d466, d8b6e4c1, f6e93d6c),
+> ...
+> #undef X
 
-Or even:
-#define X(a, b, c, d, e, f) {0x##a, 0x##b, 0x##c, 0x##d, 0x##e. 0x##f}
-	X(674bf11d, 38, 542, 0af6d466, d8b6e4c1, f6e93d6c),
-...
-#undef X
+Sure, sounds good to me. We could do that as a follow-up.
 
-	David
-
-
-
+> 	David
+>
+>
+>
