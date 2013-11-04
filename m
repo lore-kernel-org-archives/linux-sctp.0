@@ -1,98 +1,120 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Fri, 15 Nov 2013 21:36:26 +0000
-Subject: Re: Multi-homing question
-Message-Id: <528693DA.9040602@gmail.com>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Mon, 04 Nov 2013 09:48:40 +0000
+Subject: Re: [lksctp-developers] sctp_status: Got sendmsg: Invalid argument when set max_stream larger than 1
+Message-Id: <52776D78.4060908@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAJ0j_BaKwMix1-N-+5RnT2BLZNi5Usz3XA8V5Ygr6mMExrDesw@mail.gmail.com>
-In-Reply-To: <CAJ0j_BaKwMix1-N-+5RnT2BLZNi5Usz3XA8V5Ygr6mMExrDesw@mail.gmail.com>
+References: <CAPwn2JQRx3j3GieoZaFh4wO7MPGmZPNY9W2U7hsQJ0xUULX3MA@mail.gmail.com>
+In-Reply-To: <CAPwn2JQRx3j3GieoZaFh4wO7MPGmZPNY9W2U7hsQJ0xUULX3MA@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="windows-1252"
+Content-Transfer-Encoding: quoted-printable
 To: linux-sctp@vger.kernel.org
 
-On 11/06/2013 10:45 PM, tsoi andrew wrote:
-> Dear Neil,
->
-> Attached file is our tcpdump.
-> Now our secondary IP doesn't work.
-> Please advise. Thanks.
->
-> IP info:
-> lksctp primary IP is 172.28.129.49
-> lksctp secondary IP is 172.28.129.176
->
-> Client IP is 10.82.29.240/10.82.29.241
->
->
-
-Since it appears that you are using multiple interfaces
-in the same subnet, can you please make sure that:
-1) you have arp_ignore set correctly.
-2) you have route rules that specify that different source
-addresses should be used for different destinations.
-
-Without this, linux will just pick the first/best address
-and interface to use and you will not have real multi-homing.
-
-You alternative of course is to set up secondary ip in a different
-subnet.  This way you would have more appropriate multi-homing
-configuration.
-
--vlad
-
-
->
->
->
-> Regards,
-> Andrew
->
-> On Thu, Nov 7, 2013 at 10:43 AM, tsoi andrew <tsoiandrew@gmail.com> wrote:
->>   Dear Neil,
->>
->> For more information, our secondary IP doesn't response COOKIE_ECHO
->> also. Only our primary IP can response COOKIE_ECHO with COOKIE_ACK.
->>
->> Regards,
->> Andrew
->>
->> On Thu, Nov 7, 2013 at 10:36 AM, tsoi andrew <tsoiandrew@gmail.com> wrote:
->>> Dear Neil,
+On 10/31/2013 03:54 AM, Hangbin Liu wrote:
+> On Wed, Oct 30, 2013 at 04:24:08PM +0100, Daniel Borkmann wrote:
+>> On 10/27/2013 04:11 AM, Hangbin Liu wrote:
+>>> Hi Daniel,
 >>>
->>> Please find my network diagram first.
->>> Now at server side, can't see our lksctp client 4 connection but only
->>> 2 2 connection.  The reason is that heartbeat ACK not found.
+>>> When I run sctp_status test and set max_stream >=3D 10, the client will
+>>> fail with "sendmsg: Invalid argument". Would you like to help have a
+>>> look at this?
 >>>
->>> Regards,
->>> Andrew
+>>> # ./sctp_status -H 127.0.0.1 -P 9998 -h 127.0.0.1 -p 9999 -s -d 2 -M 20
+>>> remote:addr=127.0.0.1, port=3Ddistinct, family=3D2
+>>> local:addr=127.0.0.1, port=3Ddistinct32, family=3D2
 >>>
->>> On Mon, Nov 4, 2013 at 8:09 PM, Neil Horman <nhorman@tuxdriver.com> wrote:
->>>> On Mon, Nov 04, 2013 at 09:59:44AM +0800, tsoi andrew wrote:
->>>>> Dear Sir,
->>>>>
->>>>> I got a problem when set multi-homing to active/active.
->>>>> That mean, It is expected that our lksctp server have 2 IP to connect
->>>>> 2 IP of destination client with total 4 connections.
->>>>> The flow is that client send "INIT" message with 2 (primary and
->>>>> secondary) IP to our server and lksctp server return INIT_ACK. But
->>>>> when second client send 'heartbeat' to us, lksctp server cannot return
->>>>> ACK.
->>>>> Moreover, we already proved our connectivity correct because when our
->>>>> lksctp server send heartbeat to both destination client and they can
->>>>> return ACK.
->>>>> Would you mind sharing if lksctp lib already configure those
->>>>> multi-homing purpose.
->>>>>
->>>> Can you provide a network diagram and a tcpdump of your connection?
->>>> Neil
->>>>
->>>>>
->>>>>
->>>>> Best Regards,
->>>>> Andrew Tsoi
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>
+>>> Starting tests...
+>>>          socket(SOCK_STREAM, IPPROTO_SCTP)  ->  sk=3D3
+>>>          bind(sk=3D3, [a:127.0.0.1,p:distinct32])  --  attempt 1/10
+>>>          connect(sk=3D3)
+>>> Client: Sending packets.(1/10)
+>>>          sendmsg(sk=3D3, assoc=3D0) 17768 bytes.
+>>>            SNDRCV(stream=3D1 flags=3D0x1 ppid=846930886)
+>>>          sendmsg(sk=3D3, assoc=3D0) 6250 bytes.
+>>>            SNDRCV(stream=3D2 flags=3D0x1 ppid=1714636915)
+>>>          sendmsg(sk=3D3, assoc=3D0) 23634 bytes.
+>>>            SNDRCV(stream=3D3 flags=3D0x1 ppidB4238335)
+>>>          sendmsg(sk=3D3, assoc=3D0) 5195 bytes.
+>>>            SNDRCV(stream=3D4 flags=3D0x1 ppid=1649760492)
+>>>          sendmsg(sk=3D3, assoc=3D0) 7978 bytes.
+>>>            SNDRCV(stream=3D5 flags=3D0x1 ppid=1189641421)
+>>>          sendmsg(sk=3D3, assoc=3D0) 22715 bytes.
+>>>            SNDRCV(stream=3D6 flags=3D0x1 ppid=1350490027)
+>>>          sendmsg(sk=3D3, assoc=3D0) 16883 bytes.
+>>>            SNDRCV(stream=3D7 flags=3D0x1 ppid=1102520059)
+>>>          sendmsg(sk=3D3, assoc=3D0) 10724 bytes.
+>>>            SNDRCV(stream=3D8 flags=3D0x1 ppid=1967513926)
+>>>          sendmsg(sk=3D3, assoc=3D0)  125 bytes.
+>>>            SNDRCV(stream=3D9 flags=3D0x1 ppid=1540383426)
+>>>          sendmsg(sk=3D3, assoc=3D0) 2133 bytes.
+>>>            SNDRCV(stream=10 flags=3D0x1 ppid=1303455736)
+>>>
+>>>                  *** sendmsg: Invalid argument ***
+>>
+>> Hangbin, the below fix should do it (it worked for you up to that point =
+as
+>> that is the default number of streams) ... will push that _at latest_ on
+>
+> Ah, I see, thanks for this patch
+>
+>> Sunday night as I'll be mostly on travel the next days.
+>>
+>> Well, looking at the code, at some point in time these tools need a fresh
+>> start in general; those were probably just quickly clobbered together fr=
+om
+>> the very early days of lksctp. :)
+>
+> Yes, It looks like this tool was written for SCTP conformance testing
+>
+>>
+>> diff --git a/src/apps/sctp_status.c b/src/apps/sctp_status.c
+>> index 3a05dc4..5bb48ef 100644
+>> --- a/src/apps/sctp_status.c
+>> +++ b/src/apps/sctp_status.c
+>> @@ -675,11 +675,11 @@ int next_stream(int state, int pattern)
+>>   {
+>>   	switch (pattern){
+>>   	case STREAM_PATTERN_RANDOM:
+>> -		state =3D rand() % (max_stream + 1);
+>> +		state =3D rand() % max_stream;
+>>   		break;
+>>   	case STREAM_PATTERN_SEQUENTIAL:
+>>   		state =3D state + 1;
+>> -		if (state > max_stream)
+>> +		if (state >=3D max_stream)
+>>   			state =3D 0;
+>>   		break;
+>>   	}
+>> @@ -723,7 +723,7 @@ void client(int sk) {
+>>   } /* client() */
+>>
+>>   void start_test(int role) {
+>> -	int sk, pid;
+>> +	int sk, pid, ret;
+>>   	int i =3D 0;
+>>
+>>   	DEBUG_PRINT(DEBUG_NONE, "\nStarting tests...\n");
+>> @@ -745,6 +745,22 @@ void start_test(int role) {
+>>   		listen_r(sk, 1);
+>>   		accept_r(sk);
+>>   	} else {
+>> +		if (max_stream > 0) {
+>> +			struct sctp_initmsg initmsg;
+>> +
+>> +			memset(&initmsg, 0, sizeof(initmsg));
+>> +			initmsg.sinit_num_ostreams =3D max_stream;
+>> +			initmsg.sinit_max_instreams =3D max_stream;
+>> +			initmsg.sinit_max_attempts =3D 3;
+>> +
+>> +			ret =3D setsockopt(sk, IPPROTO_SCTP, SCTP_INITMSG,
+>> +					 &initmsg, sizeof(initmsg));
+>> +			if (ret < 0) {
+>> +				perror("setsockopt(SCTP_INITMSG)");
+>> +				exit(0);
+>> +			}
+>> +		}
+>> +
+>>   		connect_r(sk, (struct sockaddr *)&s_rem, r_len);
+>>   	}
 
+Ok, applied.
