@@ -1,185 +1,100 @@
-From: tsoi andrew <tsoiandrew@gmail.com>
-Date: Thu, 07 Nov 2013 03:45:25 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Thu, 07 Nov 2013 14:16:18 +0000
 Subject: Re: Multi-homing question
-Message-Id: <CAJ0j_BYf3ccEe_ZC9-iYh-e92oumvsx4YXdUAje1SNUkWo=u4w@mail.gmail.com>
-MIME-Version: 1
-Content-Type: multipart/mixed; boundary="089e0111bbe496948204ea8e18d4"
+Message-Id: <20131107141618.GA8960@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CAJ0j_BaKwMix1-N-+5RnT2BLZNi5Usz3XA8V5Ygr6mMExrDesw@mail.gmail.com>
 In-Reply-To: <CAJ0j_BaKwMix1-N-+5RnT2BLZNi5Usz3XA8V5Ygr6mMExrDesw@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
---089e0111bbe496948204ea8e18d4
-Content-Type: text/plain; charset=ISO-8859-1
+On Thu, Nov 07, 2013 at 11:45:25AM +0800, tsoi andrew wrote:
+> Dear Neil,
+> 
+> Attached file is our tcpdump.
+> Now our secondary IP doesn't work.
+> Please advise. Thanks.
+> 
+> IP info:
+> lksctp primary IP is 172.28.129.49
+> lksctp secondary IP is 172.28.129.176
+> 
+> Client IP is 10.82.29.240/10.82.29.241
+> 
+> 
+ I think you mean the lksctp primary is 172.28.129.48, not 49, but no matter.
 
-Dear Neil,
+Looking at this, its not just heartbeats that arent getting answered, nothing is
+getting responded to via the 176 address.  The only data that I see come out of
+that address are two abort frames (not sure what the cause is there yet).  
 
-Attached file is our tcpdump.
-Now our secondary IP doesn't work.
-Please advise. Thanks.
+I would start by verifying basic connectivity via that address.  I'd try
+something like:
+ping -I 172.28.129.176 10.82.29.240
+and
+ping -I 172.28.129.176 10.82.29.241
 
-IP info:
-lksctp primary IP is 172.28.129.49
-lksctp secondary IP is 172.28.129.176
+while running a tcpdump on the interface that holds the 176 address specifically
+to make sure that you're routing tables locally and network in generally can
+pass traffic over that address
 
-Client IP is 10.82.29.240/10.82.29.241
+Neil
 
-
-
-
-
-Regards,
-Andrew
-
-On Thu, Nov 7, 2013 at 10:43 AM, tsoi andrew <tsoiandrew@gmail.com> wrote:
->  Dear Neil,
->
-> For more information, our secondary IP doesn't response COOKIE_ECHO
-> also. Only our primary IP can response COOKIE_ECHO with COOKIE_ACK.
->
+> 
+> 
+> 
 > Regards,
 > Andrew
->
-> On Thu, Nov 7, 2013 at 10:36 AM, tsoi andrew <tsoiandrew@gmail.com> wrote:
->> Dear Neil,
->>
->> Please find my network diagram first.
->> Now at server side, can't see our lksctp client 4 connection but only
->> 2 2 connection.  The reason is that heartbeat ACK not found.
->>
->> Regards,
->> Andrew
->>
->> On Mon, Nov 4, 2013 at 8:09 PM, Neil Horman <nhorman@tuxdriver.com> wrote:
->>> On Mon, Nov 04, 2013 at 09:59:44AM +0800, tsoi andrew wrote:
->>>> Dear Sir,
->>>>
->>>> I got a problem when set multi-homing to active/active.
->>>> That mean, It is expected that our lksctp server have 2 IP to connect
->>>> 2 IP of destination client with total 4 connections.
->>>> The flow is that client send "INIT" message with 2 (primary and
->>>> secondary) IP to our server and lksctp server return INIT_ACK. But
->>>> when second client send 'heartbeat' to us, lksctp server cannot return
->>>> ACK.
->>>> Moreover, we already proved our connectivity correct because when our
->>>> lksctp server send heartbeat to both destination client and they can
->>>> return ACK.
->>>> Would you mind sharing if lksctp lib already configure those
->>>> multi-homing purpose.
->>>>
->>> Can you provide a network diagram and a tcpdump of your connection?
->>> Neil
->>>
->>>>
->>>>
->>>> Best Regards,
->>>> Andrew Tsoi
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>
+> 
+> On Thu, Nov 7, 2013 at 10:43 AM, tsoi andrew <tsoiandrew@gmail.com> wrote:
+> >  Dear Neil,
+> >
+> > For more information, our secondary IP doesn't response COOKIE_ECHO
+> > also. Only our primary IP can response COOKIE_ECHO with COOKIE_ACK.
+> >
+> > Regards,
+> > Andrew
+> >
+> > On Thu, Nov 7, 2013 at 10:36 AM, tsoi andrew <tsoiandrew@gmail.com> wrote:
+> >> Dear Neil,
+> >>
+> >> Please find my network diagram first.
+> >> Now at server side, can't see our lksctp client 4 connection but only
+> >> 2 2 connection.  The reason is that heartbeat ACK not found.
+> >>
+> >> Regards,
+> >> Andrew
+> >>
+> >> On Mon, Nov 4, 2013 at 8:09 PM, Neil Horman <nhorman@tuxdriver.com> wrote:
+> >>> On Mon, Nov 04, 2013 at 09:59:44AM +0800, tsoi andrew wrote:
+> >>>> Dear Sir,
+> >>>>
+> >>>> I got a problem when set multi-homing to active/active.
+> >>>> That mean, It is expected that our lksctp server have 2 IP to connect
+> >>>> 2 IP of destination client with total 4 connections.
+> >>>> The flow is that client send "INIT" message with 2 (primary and
+> >>>> secondary) IP to our server and lksctp server return INIT_ACK. But
+> >>>> when second client send 'heartbeat' to us, lksctp server cannot return
+> >>>> ACK.
+> >>>> Moreover, we already proved our connectivity correct because when our
+> >>>> lksctp server send heartbeat to both destination client and they can
+> >>>> return ACK.
+> >>>> Would you mind sharing if lksctp lib already configure those
+> >>>> multi-homing purpose.
+> >>>>
+> >>> Can you provide a network diagram and a tcpdump of your connection?
+> >>> Neil
+> >>>
+> >>>>
+> >>>>
+> >>>> Best Regards,
+> >>>> Andrew Tsoi
+> >>>> --
+> >>>> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> >>>> the body of a message to majordomo@vger.kernel.org
+> >>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >>>>
 
---089e0111bbe496948204ea8e18d4
-Content-Type: application/octet-stream; name="sctpmultiHomeNow.pcap"
-Content-Disposition: attachment; filename="sctpmultiHomeNow.pcap"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_hnpg4g8l0
 
-1MOyoQIABAAAAAAAAAAAAP//AABxAAAA1fp6Uj+ABwBkAAAAZAAAAAAAAAEABuTT8YJB/wAACABF
-oABUybIAAD2EXUUKUh3wrByBMCN6I3oAAAAAZxz42wEAADICbCh0AACAAAARABECbCh0AAUACApS
-HfAABQAIClId8QAJAAgAAAAAAAwABgAFAADV+npSgqINAGQAAABkAAAAAAAAAQAG5NPx8rN/AAAI
-AEWgAFTJ4wAAPYRdEwpSHfGsHIEwI3ojegAAAABnHPjbAQAAMgJsKHQAAIAAABEAEQJsKHQABQAI
-ClId8AAFAAgKUh3xAAkACAAAAAAADAAGAAUAANb6elKGggQAZAAAAGQAAAAAAAABAAbk0/GCQf8A
-AAgARaAAVMnrAAA9hF0MClId8KwcgTAjeiN6AAAAAGcc+NsBAAAyAmwodAAAgAAAEQARAmwodAAF
-AAgKUh3wAAUACApSHfEACQAIAAAAAAAMAAYABQAA1vp6UvWkCgBkAAAAZAAAAAAAAAEABuTT8fKz
-fwAACABFoABUyhEAAD2EXOUKUh3xrByBMCN6I3oAAAAAZxz42wEAADICbCh0AACAAAARABECbCh0
-AAUACApSHfAABQAIClId8QAJAAgAAAAAAAwABgAFAADX+npSAYUBAGQAAABkAAAAAAAAAQAG5NPx
-gkH/AAAIAEWgAFTKKwAAPYRczApSHfCsHIEwI3ojegAAAABnHPjbAQAAMgJsKHQAAIAAABEAEQJs
-KHQABQAIClId8AAFAAgKUh3xAAkACAAAAAAADAAGAAUAANf6elLKqAcAZAAAAGQAAAAAAAABAAbk
-0/GCQf8AAAgARaAAVMoxAAA9hFxGClId8KwcgbAjeiN6AAAAAEA39MoBAAAyAsnBnQAAgAAAEQAR
-AsnBnQAFAAgKUh3wAAUACApSHfEACQAIAAAAAAAMAAYABQAA1/p6UuGoBwA0AAAANAAAAAAEAAEA
-BjxKkum+8AAACABFAgAkAABAAECE5EWsHIGwClId8CN6I3oCycGdg5MlCgYAAATZ+npS/jkBADQA
-AAA0AAAAAAQAAQAGPEqS6b7uAAAIAEUCACQAAEAAQITu+6wcgTAKUhO6I3ojegOURF4tjBuEBgAA
-BNn6elIxSgQANAAAADQAAAAABAABAAY8SpLpvvAAAAgARQIAJAAAQABAhO56rByBsApSE7sjeiN6
-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
-AAAAAAAAAAAAAAAAADzd/o8CAAAAsz/WnzSMqqU=
---089e0111bbe496948204ea8e18d4--
