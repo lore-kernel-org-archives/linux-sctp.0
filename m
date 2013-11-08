@@ -1,83 +1,45 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Fri, 15 Nov 2013 22:48:52 +0000
-Subject: Re: [PATCH] net: sctp: recover a tranport when an ack comes
-Message-Id: <5286A4D4.10905@gmail.com>
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Fri, 08 Nov 2013 02:55:07 +0000
+Subject: [PATCH net-next 2/5] sctp: remove the else path
+Message-Id: <1383879310-22792-3-git-send-email-wangweidong1@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1384461624-17636-1-git-send-email-changxiangzhong@gmail.com> <5285884F.8030907@gmail.com> <52869A6C.8060900@gmail.com>
-In-Reply-To: <52869A6C.8060900@gmail.com>
+References: <1383879310-22792-1-git-send-email-wangweidong1@huawei.com>
+In-Reply-To: <1383879310-22792-1-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Chang <changxiangzhong@gmail.com>, nhorman@tuxdriver.com
-Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, dreibh@simula.no, ernstgr@simula.no
+To: vyasevich@gmail.com, nhorman@tuxdriver.com
+Cc: dingtianhong@huawei.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On 11/15/2013 05:04 PM, Chang wrote:
->
-> On 11/15/2013 03:34 AM, Vlad Yasevich wrote:
->> I don't think this is right.  The spec states:
->>  8.  ACKs for retransmissions do not transition a PF destination back
->>        to Active state, since a sender cannot disambiguate whether the
->>        ack was for the original transmission or the retransmission(s).
->>
-> Could you please reconsider my proposal?
->
-> In the rule 8, it clearly specifies ACKs for *retransmission* do not
-> transition ... But those chunks were not retransmitted!
->
-> Every transport maintains its own [transport->transmitted] queue, when
-> retransmit happens (no matter time_out or fast_retransmit). The chunk
-> would be removed from the queue and moved to the sctp_outq->retransmit.
->
+Make the code more simplification.
 
-Yes,  this is their temporary holding area.  Once the chunks are
-transmitted again, they are placed on the transports transmitted list.
-See sctp_outq_flush_rtx().
+Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+---
+ net/sctp/associola.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
-> static void sctp_check_transmitted(...) {
-> ...
->     if (transport) {  /*<====This proves that its not the
-> outq->retransmit (the retransmitted queue)*/
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 667f984..2d53d4c 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -954,15 +954,13 @@ int sctp_cmp_addr_exact(const union sctp_addr *ss1,
+  */
+ struct sctp_chunk *sctp_get_ecne_prepend(struct sctp_association *asoc)
+ {
+-	struct sctp_chunk *chunk;
++	struct sctp_chunk *chunk = NULL;
+ 
+ 	/* Send ECNE if needed.
+ 	 * Not being able to allocate a chunk here is not deadly.
+ 	 */
+ 	if (asoc->need_ecne)
+ 		chunk = sctp_make_ecne(asoc, asoc->last_ecne_tsn);
+-	else
+-		chunk = NULL;
+ 
+ 	return chunk;
+ }
+-- 
+1.7.12
 
-Retransmit queue may hold more data then can be drained in a single
-push.  Thus is usually holds data that is pending retransmission, but
-is not retransmitted yet.  If a late SACK arrives acknowledging this
-data, we need to properly mark it.  That is what this code tries
-to do.
-
--vlad
->         if (bytes_acked) {
->         ...
->         if((transport->state in [INACTIVE, UNCONFIRMED, PF]...)
->             sctp_assoc_control_transport(..., SCTP_TRANSPORT_UP).
->
->
-> In addition, if its not appropriate to transition PF->ACTIVE, why is it
-> appropriate to transition INACTIVE->ACTIVE (the original implementation).
->>
->> Now, the proper way to this would would be modify
->> sctp_assoc_control_transport() to transition the transport state to
->> ACTIVE if it was PF transport that was chosen to send data.
->>
->> -vlad
->>
->>> ---
->>>   net/sctp/outqueue.c |    1 +
->>>   1 file changed, 1 insertion(+)
->>>
->>> diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
->>> index 94df758..2557fa5 100644
->>> --- a/net/sctp/outqueue.c
->>> +++ b/net/sctp/outqueue.c
->>> @@ -1517,6 +1517,7 @@ static void sctp_check_transmitted(struct
->>> sctp_outq *q,
->>>                * active if it is not so marked.
->>>                */
->>>               if ((transport->state = SCTP_INACTIVE ||
->>> +                 transport->state = SCTP_PF ||
->>>                    transport->state = SCTP_UNCONFIRMED) &&
->>>                   sctp_cmp_addr_exact(&transport->ipaddr, saddr)) {
->>>                   sctp_assoc_control_transport(
->>>
->>
->
 
