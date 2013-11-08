@@ -1,15 +1,15 @@
 From: Wang Weidong <wangweidong1@huawei.com>
-Date: Fri, 08 Nov 2013 02:55:06 +0000
-Subject: [PATCH net-next 1/5] sctp: remove the duplicate initialize
-Message-Id: <1383879310-22792-2-git-send-email-wangweidong1@huawei.com>
+Date: Fri, 08 Nov 2013 06:17:48 +0000
+Subject: [PATCH net-next v2 1/4] sctp: remove the duplicate initialize
+Message-Id: <1383891471-20892-2-git-send-email-wangweidong1@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1383879310-22792-1-git-send-email-wangweidong1@huawei.com>
-In-Reply-To: <1383879310-22792-1-git-send-email-wangweidong1@huawei.com>
+References: <1383891471-20892-1-git-send-email-wangweidong1@huawei.com>
+In-Reply-To: <1383891471-20892-1-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: vyasevich@gmail.com, nhorman@tuxdriver.com
-Cc: dingtianhong@huawei.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Cc: davem@davemloft.net, dingtianhong@huawei.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
 kzalloc had initialize the allocated memroy. Therefore, remove the
 initialize with 0 and the memset.
