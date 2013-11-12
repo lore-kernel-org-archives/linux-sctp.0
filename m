@@ -1,64 +1,18 @@
-From: Wang Weidong <wangweidong1@huawei.com>
-Date: Fri, 08 Nov 2013 06:17:51 +0000
-Subject: [PATCH net-next v2 4/4] sctp: fix some comments in associola.c
-Message-Id: <1383891471-20892-5-git-send-email-wangweidong1@huawei.com>
+From: "lee hyuk" <leehyuk08@mail2world.com>
+Date: Tue, 12 Nov 2013 10:52:19 +0000
+Subject: Re:Answer back
+Message-Id: <079a78dd28a38da82b11b0df95bd345d.squirrel@137.135.201.199>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1383891471-20892-1-git-send-email-wangweidong1@huawei.com>
-In-Reply-To: <1383891471-20892-1-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vyasevich@gmail.com, nhorman@tuxdriver.com
-Cc: davem@davemloft.net, dingtianhong@huawei.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-fix some typos
 
-Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
----
- net/sctp/associola.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index 8dab0bf..b96b771 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -128,7 +128,7 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
- 	 */
- 	asoc->param_flags = sp->param_flags;
- 
--	/* Initialize the maximum mumber of new data packets that can be sent
-+	/* Initialize the maximum number of new data packets that can be sent
- 	 * in a burst.
- 	 */
- 	asoc->max_burst = sp->max_burst;
-@@ -231,7 +231,7 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
- 
- 	/* Assume that the peer will tell us if he recognizes ASCONF
- 	 * as part of INIT exchange.
--	 * The sctp_addip_noauth option is there for backward compatibilty
-+	 * The sctp_addip_noauth option is there for backward compatibility
- 	 * and will revert old behavior.
- 	 */
- 	if (net->sctp.addip_noauth)
-@@ -1221,7 +1221,7 @@ void sctp_assoc_update(struct sctp_association *asoc,
- 		}
- 	}
- 
--	/* SCTP-AUTH: Save the peer parameters from the new assocaitions
-+	/* SCTP-AUTH: Save the peer parameters from the new associations
- 	 * and also move the association shared keys over
- 	 */
- 	kfree(asoc->peer.peer_random);
-@@ -1446,7 +1446,7 @@ void sctp_assoc_rwnd_decrease(struct sctp_association *asoc, unsigned int len)
- 
- 	/* If we've reached or overflowed our receive buffer, announce
- 	 * a 0 rwnd if rwnd would still be positive.  Store the
--	 * the pottential pressure overflow so that the window can be restored
-+	 * the potential pressure overflow so that the window can be restored
- 	 * back to original value.
- 	 */
- 	if (rx_count >= asoc->base.sk->sk_rcvbuf)
--- 
-1.7.12
 
+I would like to discuss a very important crude oil project withyou,kindly
+revert back to me if this is your valid email address forfurther
+information.
+Regards,
+Lee
 
