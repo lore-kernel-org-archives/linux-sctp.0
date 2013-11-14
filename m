@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 14 Nov 2013 13:55:43 +0000
+From: David Miller <davem@davemloft.net>
+Date: Thu, 14 Nov 2013 21:36:06 +0000
 Subject: Re: [PATCH] net: sctp: bug-fixing: retran_path not set properly after transports recovering (v3)
-Message-Id: <20131114135543.GA14807@hmsreliant.think-freely.org>
+Message-Id: <20131114.163606.2234502533328622215.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1384387106-8105-1-git-send-email-changxiangzhong@gmail.com>
 In-Reply-To: <1384387106-8105-1-git-send-email-changxiangzhong@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Chang Xiangzhong <changxiangzhong@gmail.com>
-Cc: vyasevich@gmail.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: changxiangzhong@gmail.com
+Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On Thu, Nov 14, 2013 at 12:58:26AM +0100, Chang Xiangzhong wrote:
+From: Chang Xiangzhong <changxiangzhong@gmail.com>
+Date: Thu, 14 Nov 2013 00:58:26 +0100
+
 > When a transport recovers due to the new coming sack, SCTP should
 > iterate all of its transport_list to locate the __two__ most recently used
 > transport and set to active_path and retran_path respectively. The exising
@@ -29,5 +31,5 @@ On Thu, Nov 14, 2013 at 12:58:26AM +0100, Chang Xiangzhong wrote:
 > notice this issue.
 > 
 > Signed-off-by: Chang Xiangzhong <changxiangzhong@gmail.com>
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
+Applied, thanks.
