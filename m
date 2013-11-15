@@ -1,18 +1,68 @@
 From: Chang <changxiangzhong@gmail.com>
-Date: Fri, 15 Nov 2013 20:38:15 +0000
+Date: Fri, 15 Nov 2013 22:04:28 +0000
 Subject: Re: [PATCH] net: sctp: recover a tranport when an ack comes
-Message-Id: <52868637.40007@gmail.com>
+Message-Id: <52869A6C.8060900@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1384461624-17636-1-git-send-email-changxiangzhong@gmail.com> <5285884F.8030907@gmail.com> <20131115123055.GA29877@hmsreliant.think-freely.org> <5286291A.7060507@gmail.com> <20131115145609.GC29877@hmsreliant.think-freely.org> <52867D2E.2090907@gmail.com> <52868582.2020509@gmail.com>
-In-Reply-To: <52868582.2020509@gmail.com>
+References: <1384461624-17636-1-git-send-email-changxiangzhong@gmail.com> <5285884F.8030907@gmail.com>
+In-Reply-To: <5285884F.8030907@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+To: Vlad Yasevich <vyasevich@gmail.com>, nhorman@tuxdriver.com
 Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, dreibh@simula.no, ernstgr@simula.no
 
-Thank you very much Neil and Vlad!
-That's exactly what I've been looking for. I'm quite unfamiliar iwth the 
-sctp_net_init part.
 
-Have a nice weekend!
+On 11/15/2013 03:34 AM, Vlad Yasevich wrote:
+> I don't think this is right.  The spec states:
+>  8.  ACKs for retransmissions do not transition a PF destination back
+>        to Active state, since a sender cannot disambiguate whether the
+>        ack was for the original transmission or the retransmission(s).
+>
+Could you please reconsider my proposal?
+
+In the rule 8, it clearly specifies ACKs for *retransmission* do not 
+transition ... But those chunks were not retransmitted!
+
+Every transport maintains its own [transport->transmitted] queue, when 
+retransmit happens (no matter time_out or fast_retransmit). The chunk 
+would be removed from the queue and moved to the sctp_outq->retransmit.
+
+static void sctp_check_transmitted(...) {
+...
+     if (transport) {  /*<====This proves that its not the 
+outq->retransmit (the retransmitted queue)*/
+         if (bytes_acked) {
+         ...
+         if((transport->state in [INACTIVE, UNCONFIRMED, PF]...)
+             sctp_assoc_control_transport(..., SCTP_TRANSPORT_UP).
+
+
+In addition, if its not appropriate to transition PF->ACTIVE, why is it 
+appropriate to transition INACTIVE->ACTIVE (the original implementation).
+>
+> Now, the proper way to this would would be modify 
+> sctp_assoc_control_transport() to transition the transport state to
+> ACTIVE if it was PF transport that was chosen to send data.
+>
+> -vlad
+>
+>> ---
+>>   net/sctp/outqueue.c |    1 +
+>>   1 file changed, 1 insertion(+)
+>>
+>> diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+>> index 94df758..2557fa5 100644
+>> --- a/net/sctp/outqueue.c
+>> +++ b/net/sctp/outqueue.c
+>> @@ -1517,6 +1517,7 @@ static void sctp_check_transmitted(struct 
+>> sctp_outq *q,
+>>                * active if it is not so marked.
+>>                */
+>>               if ((transport->state = SCTP_INACTIVE ||
+>> +                 transport->state = SCTP_PF ||
+>>                    transport->state = SCTP_UNCONFIRMED) &&
+>>                   sctp_cmp_addr_exact(&transport->ipaddr, saddr)) {
+>>                   sctp_assoc_control_transport(
+>>
+>
+
