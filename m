@@ -1,41 +1,47 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Fri, 15 Nov 2013 13:56:01 +0000
-Subject: Re: MTU Probing
-Message-Id: <528627F1.60909@gmail.com>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Tue, 19 Nov 2013 10:51:24 +0000
+Subject: [PATCH net] net: sctp: fix copying sk_v6_rcv_saddr in sctp_v6_create_accept_sk
+Message-Id: <1384858284-2246-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <8A8F98BF0CDFD5438985D4397358E6C73B14A9@idc.vanu.com>
-In-Reply-To: <8A8F98BF0CDFD5438985D4397358E6C73B14A9@idc.vanu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Wang Weidong <wangweidong1@huawei.com>, Eric Dumazet <eric.dumazet@gmail.com>
 
-On 11/15/2013 07:45 AM, Neil Horman wrote:
-> On Fri, Nov 15, 2013 at 10:42:27AM +0530, Prasad, Shashank wrote:
->> Does the kernel SCTP implementation have the implementation of RFC 4821
->> (Packetization Layer Path MTU Discovery) ? I am using 2.6.32-358.23.2
->> kernel, and did NOT find the implementation of RFC 4821 yet.
->>
-> SCTP gets its mtu for outgoing paths from the ip layer (via dst_mtu).  IIRC that
-> is 4821 compliant
+Wang reported an issue that lksctp's test_getname_v6 seems to fail.
 
-No, ip layer mtu discovery is not 4821 compliant.  SCTP does not 
-implement PMTU probing from 4821.  Only TCP in linux appears to support
-that.
+The issue is that we do not copy sk_v6_rcv_saddr over to the new
+socket, although the comment above says so regarding rcv_saddr.
 
--vlad
+Commit 914e1c8b6980 ("sctp: Inherit all socket options from parent
+correctly.") originally moved that over to sctp_copy_sock(), but
+after commit efe4208f47f9 ("ipv6: make lookups simpler and faster")
+this no longer holds and the actual value of sk_v6_rcv_saddr was
+no longer being migrated.
 
-> Neil
->
->> Thanx.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+With this patch, the lksctp test suite passes again for IPv6.
+
+Fixes: efe4208f47f9 ("ipv6: make lookups simpler and faster")
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+Cc: Eric Dumazet <eric.dumazet@gmail.com>
+---
+ net/sctp/ipv6.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 7567e6f..be08592 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -661,6 +661,7 @@ static struct sock *sctp_v6_create_accept_sk(struct sock *sk,
+ 	 * and getpeername().
+ 	 */
+ 	sctp_v6_to_sk_daddr(&asoc->peer.primary_addr, newsk);
++	newsk->sk_v6_rcv_saddr = sk->sk_v6_rcv_saddr;
+ 
+ 	sk_refcnt_debug_inc(newsk);
+ 
+-- 
+1.8.3.1
 
