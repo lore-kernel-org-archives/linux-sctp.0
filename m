@@ -1,7 +1,7 @@
-From: wangweidong <wangweidong1@huawei.com>
-Date: Tue, 19 Nov 2013 11:08:11 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Tue, 19 Nov 2013 15:38:10 +0000
 Subject: Re: [PATCH net] net: sctp: fix copying sk_v6_rcv_saddr in sctp_v6_create_accept_sk
-Message-Id: <528B469B.3060702@huawei.com>
+Message-Id: <528B85E2.5080403@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1384858284-2246-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1384858284-2246-1-git-send-email-dborkman@redhat.com>
@@ -9,9 +9,9 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Eric Dumazet <eric.dumazet@gmail.com>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Wang Weidong <wangweidong1@huawei.com>, Eric Dumazet <eric.dumazet@gmail.com>
 
-On 2013/11/19 18:51, Daniel Borkmann wrote:
+On 11/19/2013 05:51 AM, Daniel Borkmann wrote:
 > Wang reported an issue that lksctp's test_getname_v6 seems to fail.
 > 
 > The issue is that we do not copy sk_v6_rcv_saddr over to the new
@@ -44,10 +44,16 @@ On 2013/11/19 18:51, Daniel Borkmann wrote:
 > +	newsk->sk_v6_rcv_saddr = sk->sk_v6_rcv_saddr;
 >  
 >  	sk_refcnt_debug_inc(newsk);
+>  
 > 
 
-Acked-by: Wang Weidong <wangweidong1@huawei.com>
- 
-> 
+This fixes the issue for the accept() case, but the bug is still there
+in the peeloff case.
 
+I think you should make sctp_copy_sock() use sock_copy() for now.  It
+looks like it will catch all the cases.
+
+We can then look at possibly getting rid of sctp_copy_sock() for net-next.
+
+-vlad
 
