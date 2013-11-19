@@ -1,35 +1,74 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 14 Nov 2013 21:36:06 +0000
-Subject: Re: [PATCH] net: sctp: bug-fixing: retran_path not set properly after transports recovering (v3)
-Message-Id: <20131114.163606.2234502533328622215.davem@davemloft.net>
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Tue, 19 Nov 2013 02:47:27 +0000
+Subject: [PATCH 2/2] ipv6: use sk_v6_copy_addrs when memcpy struct ipv6_pinfo
+Message-Id: <1384829247-8624-3-git-send-email-wangweidong1@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1384387106-8105-1-git-send-email-changxiangzhong@gmail.com>
-In-Reply-To: <1384387106-8105-1-git-send-email-changxiangzhong@gmail.com>
+References: <1384829247-8624-1-git-send-email-wangweidong1@huawei.com>
+In-Reply-To: <1384829247-8624-1-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: changxiangzhong@gmail.com
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: davem@davemloft.net, gerrit@erg.abdn.ac.uk, kuznet@ms2.inr.ac.ru, jmorris@namei.org, yoshfuji@linux-ipv6.org, kaber@trash.net, vyasevich@gmail.com, nhorman@tuxdriver.com
+Cc: dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, dingtianhong@huawei.com
 
-From: Chang Xiangzhong <changxiangzhong@gmail.com>
-Date: Thu, 14 Nov 2013 00:58:26 +0100
+commit efe4208f ("ipv6: make lookups simpler and faster") remove
+the daddr and rcv_saddr from struct ipv6_pinfo. When use memcpy
+the ipv6_pinfo, we lose the sk_v6_daddr and sk_v6_rcv_saddr, so
+use the sk_v6_copy_addrs when needed.
 
-> When a transport recovers due to the new coming sack, SCTP should
-> iterate all of its transport_list to locate the __two__ most recently used
-> transport and set to active_path and retran_path respectively. The exising
-> code does not find the two properly - In case of the following list:
-> 
-> [most-recent] -> [2nd-most-recent] -> ...
-> 
-> Both active_path and retran_path would be set to the 1st element.
-> 
-> The bug happens when:
-> 1) multi-homing
-> 2) failure/partial_failure transport recovers
-> Both active_path and retran_path would be set to the same most-recent one, in
-> other words, retran_path would not take its role - an end user might not even
-> notice this issue.
-> 
-> Signed-off-by: Chang Xiangzhong <changxiangzhong@gmail.com>
+Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+---
+ net/dccp/ipv6.c     | 4 ++++
+ net/ipv6/tcp_ipv6.c | 4 ++++
+ net/sctp/ipv6.c     | 4 ++++
+ 3 files changed, 12 insertions(+)
 
-Applied, thanks.
+diff --git a/net/dccp/ipv6.c b/net/dccp/ipv6.c
+index 4ac71ff..90182a8 100644
+--- a/net/dccp/ipv6.c
++++ b/net/dccp/ipv6.c
+@@ -465,6 +465,10 @@ static struct sock *dccp_v6_request_recv_sock(struct sock *sk,
+ 		newnp = inet6_sk(newsk);
+ 
+ 		memcpy(newnp, np, sizeof(struct ipv6_pinfo));
++		/* Don't forget copy the rcv_saddr and daddr when
++		 * copy ipv6_pinfo.
++		 */
++		sk_v6_copy_addrs(newsk, sk);
+ 
+ 		ipv6_addr_set_v4mapped(newinet->inet_daddr, &newsk->sk_v6_daddr);
+ 
+diff --git a/net/ipv6/tcp_ipv6.c b/net/ipv6/tcp_ipv6.c
+index 0740f93..83d011e 100644
+--- a/net/ipv6/tcp_ipv6.c
++++ b/net/ipv6/tcp_ipv6.c
+@@ -1116,6 +1116,10 @@ static struct sock * tcp_v6_syn_recv_sock(struct sock *sk, struct sk_buff *skb,
+ 		newtp = tcp_sk(newsk);
+ 
+ 		memcpy(newnp, np, sizeof(struct ipv6_pinfo));
++		/* Don't forget copy the rcv_saddr and daddr when
++		 * copy ipv6_pinfo.
++		 */
++		sk_v6_copy_addrs(newsk, sk);
+ 
+ 		ipv6_addr_set_v4mapped(newinet->inet_daddr, &newsk->sk_v6_daddr);
+ 
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 7567e6f..b76f143 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -656,6 +656,10 @@ static struct sock *sctp_v6_create_accept_sk(struct sock *sk,
+ 	newnp = inet6_sk(newsk);
+ 
+ 	memcpy(newnp, np, sizeof(struct ipv6_pinfo));
++	/* Don't forget copy the rcv_saddr and daddr when
++	 * copy ipv6_pinfo.
++	 */
++	sk_v6_copy_addrs(newsk, sk);
+ 
+ 	/* Initialize sk's sport, dport, rcv_saddr and daddr for getsockname()
+ 	 * and getpeername().
+-- 
+1.7.12
+
+
