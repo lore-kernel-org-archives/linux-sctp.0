@@ -1,29 +1,96 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 19 Nov 2013 21:10:49 +0000
+From: wangweidong <wangweidong1@huawei.com>
+Date: Thu, 21 Nov 2013 06:49:57 +0000
 Subject: Re: [PATCH net] net: sctp: fix copying sk_v6_rcv_saddr in sctp_v6_create_accept_sk
-Message-Id: <20131119.161049.40606385929854732.davem@davemloft.net>
+Message-Id: <528DAD15.20901@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1384858284-2246-1-git-send-email-dborkman@redhat.com>
-	<528B85E2.5080403@gmail.com>
+References: <1384858284-2246-1-git-send-email-dborkman@redhat.com> <528B85E2.5080403@gmail.com>
 In-Reply-To: <528B85E2.5080403@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vyasevich@gmail.com
-Cc: dborkman@redhat.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, wangweidong1@huawei.com, eric.dumazet@gmail.com
+To: Vlad Yasevich <vyasevich@gmail.com>, Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Eric Dumazet <eric.dumazet@gmail.com>
 
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Tue, 19 Nov 2013 10:38:10 -0500
-
+On 2013/11/19 23:38, Vlad Yasevich wrote:
+> On 11/19/2013 05:51 AM, Daniel Borkmann wrote:
+>> Wang reported an issue that lksctp's test_getname_v6 seems to fail.
+>>
+>> The issue is that we do not copy sk_v6_rcv_saddr over to the new
+>> socket, although the comment above says so regarding rcv_saddr.
+>>
+>> Commit 914e1c8b6980 ("sctp: Inherit all socket options from parent
+>> correctly.") originally moved that over to sctp_copy_sock(), but
+>> after commit efe4208f47f9 ("ipv6: make lookups simpler and faster")
+>> this no longer holds and the actual value of sk_v6_rcv_saddr was
+>> no longer being migrated.
+>>
+>> With this patch, the lksctp test suite passes again for IPv6.
+>>
+>> Fixes: efe4208f47f9 ("ipv6: make lookups simpler and faster")
+>> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+>> Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+>> Cc: Eric Dumazet <eric.dumazet@gmail.com>
+>> ---
+>>  net/sctp/ipv6.c | 1 +
+>>  1 file changed, 1 insertion(+)
+>>
+>> diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+>> index 7567e6f..be08592 100644
+>> --- a/net/sctp/ipv6.c
+>> +++ b/net/sctp/ipv6.c
+>> @@ -661,6 +661,7 @@ static struct sock *sctp_v6_create_accept_sk(struct sock *sk,
+>>  	 * and getpeername().
+>>  	 */
+>>  	sctp_v6_to_sk_daddr(&asoc->peer.primary_addr, newsk);
+>> +	newsk->sk_v6_rcv_saddr = sk->sk_v6_rcv_saddr;
+>>  
+>>  	sk_refcnt_debug_inc(newsk);
+>>  
+>>
+> 
 > This fixes the issue for the accept() case, but the bug is still there
 > in the peeloff case.
 > 
 > I think you should make sctp_copy_sock() use sock_copy() for now.  It
 > looks like it will catch all the cases.
 > 
-> We can then look at possibly getting rid of sctp_copy_sock() for net-next.
 
-Agreed, it looks like a lot of hair exists because sctp tries to use
-custom code to copy sockets.  Getting away from this will fix this
-address problem as well as things like the pacing rate being wrong
-as Eric Dumazet mentioned.
+I copied the part of the sock_copy() codes into sctp_v6_create_accept_sk instead of
+sctp_copy_sock for testing. Like this:
+
+--------------
+
+@@ -645,7 +645,11 @@ static struct sock *sctp_v6_create_accept_sk(struct sock *sk,
+ 
+        sock_init_data(NULL, newsk);
+ 
+-       sctp_copy_sock(newsk, sk, asoc);
++       memcpy(newsk, sk, offsetof(struct sock, sk_dontcopy_begin));
++
++       memcpy(&newsk->sk_dontcopy_end, &sk->sk_dontcopy_end,
++              sk->sk_prot->obj_size - offsetof(struct sock, sk_dontcopy_end));
++
+        sock_reset_flag(sk, SOCK_ZAPPED);
+ 
+        newsctp6sk = (struct sctp6_sock *)newsk;
+
+--------------
+
+when I did the test_getname_v6 of lksctp tools. It would hang. And I used the ps aux,
+I can see the process got a D+ STAT.
+
+BTW, I test it in the virtual machine.
+
+So I think: when we use the sock_copy or which calls it, maybe we will get the problem here.
+Is there I do something wrong?
+
+Thanks. 
+
+> We can then look at possibly getting rid of sctp_copy_sock() for net-next.
+> 
+> -vlad
+> 
+> 
+> 
+
+
