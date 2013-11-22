@@ -1,57 +1,45 @@
-From: wangweidong <wangweidong1@huawei.com>
-Date: Mon, 11 Nov 2013 01:57:37 +0000
-Subject: Re: [PATCH net-next 2/5] sctp: remove the else path
-Message-Id: <52803991.2000902@huawei.com>
+From: Chang Xiangzhong <changxiangzhong@gmail.com>
+Date: Fri, 22 Nov 2013 07:49:49 +0000
+Subject: [PATCH] net: sctp: set chunk->tsn_gap_acked at the end of cycle
+Message-Id: <1385106589-402-1-git-send-email-changxiangzhong@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1383879310-22792-1-git-send-email-wangweidong1@huawei.com> <1383879310-22792-3-git-send-email-wangweidong1@huawei.com> <527D3949.2000302@cogentembedded.com>
-In-Reply-To: <527D3949.2000302@cogentembedded.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Sergei Shtylyov <sergei.shtylyov@cogentembedded.com>, vyasevich@gmail.com, nhorman@tuxdriver.com
-Cc: dingtianhong@huawei.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: vyasevich@gmail.com, nhorman@tuxdriver.com, davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, Chang Xiangzhong <changxiangzhong@gmail.com>
 
-On 2013/11/9 3:19, Sergei Shtylyov wrote:
-> Hello.
-> 
-> On 11/08/2013 05:55 AM, Wang Weidong wrote:
-> 
->> Make the code more simplification.
-> 
->> Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
->> ---
->>   net/sctp/associola.c | 4 +---
->>   1 file changed, 1 insertion(+), 3 deletions(-)
-> 
->> diff --git a/net/sctp/associola.c b/net/sctp/associola.c
->> index 667f984..2d53d4c 100644
->> --- a/net/sctp/associola.c
->> +++ b/net/sctp/associola.c
->> @@ -954,15 +954,13 @@ int sctp_cmp_addr_exact(const union sctp_addr *ss1,
->>    */
->>   struct sctp_chunk *sctp_get_ecne_prepend(struct sctp_association *asoc)
->>   {
->> -    struct sctp_chunk *chunk;
->> +    struct sctp_chunk *chunk = NULL;
->>
->>       /* Send ECNE if needed.
->>        * Not being able to allocate a chunk here is not deadly.
->>        */
->>       if (asoc->need_ecne)
->>           chunk = sctp_make_ecne(asoc, asoc->last_ecne_tsn);
->> -    else
->> -        chunk = NULL;
-> 
->    This is hardly better/simpler than it was.
-> 
-> WBR, Sergei
-> 
+tsn_gap_acked is an important state flag in chunk, which indicates if the
+chunk has been acked in gap reports before. SFR-CACC algorithm depends on this
+variable. So set this at the end of each iteration, otherwise the SFR-CACC
+algorithm would never be toggled.
 
-Well, you are right. Joe had suggested a good idea to me. And I had fixed
-it in the v2.
-Thanks. 
+Signed-off-by: Chang Xiangzhong <changxiangzhong@gmail.com>
+---
+ net/sctp/outqueue.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-> 
-> 
-
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 1b494fa..bff828c 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -1396,7 +1396,6 @@ static void sctp_check_transmitted(struct sctp_outq *q,
+ 			 * while DATA was outstanding).
+ 			 */
+ 			if (!tchunk->tsn_gap_acked) {
+-				tchunk->tsn_gap_acked = 1;
+ 				if (TSN_lt(*highest_new_tsn_in_sack, tsn))
+ 					*highest_new_tsn_in_sack = tsn;
+ 				bytes_acked += sctp_data_size(tchunk);
+@@ -1460,6 +1459,8 @@ static void sctp_check_transmitted(struct sctp_outq *q,
+ 				 */
+ 				list_add_tail(lchunk, &tlist);
+ 			}
++
++			tchunk->tsn_gap_acked = 1;
+ 		} else {
+ 			if (tchunk->tsn_gap_acked) {
+ 				pr_debug("%s: receiver reneged on data TSN:0x%x\n",
+-- 
+1.8.4.3
 
