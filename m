@@ -1,19 +1,24 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 22 Nov 2013 12:10:30 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Fri, 22 Nov 2013 14:27:03 +0000
 Subject: Re: [PATCH] net: sctp: set chunk->tsn_gap_acked at the end of cycle
-Message-Id: <20131122121030.GB27391@hmsreliant.think-freely.org>
+Message-Id: <528F69B7.7020902@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1385106589-402-1-git-send-email-changxiangzhong@gmail.com>
 In-Reply-To: <1385106589-402-1-git-send-email-changxiangzhong@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Chang Xiangzhong <changxiangzhong@gmail.com>
-Cc: vyasevich@gmail.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Chang Xiangzhong <changxiangzhong@gmail.com>, nhorman@tuxdriver.com, davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On Fri, Nov 22, 2013 at 08:49:49AM +0100, Chang Xiangzhong wrote:
+On 11/22/2013 02:49 AM, Chang Xiangzhong wrote:
 > tsn_gap_acked is an important state flag in chunk, which indicates if the
-> chunk has been acked in gap reports before. SFR-CACC algorithm depends on this
+> chunk has been acked in gap reports before.
+
+Actually, this bit indicates simply that the chunk has been acked.  It
+doesn't state whether it's been acked in a gap report or via cumulative tsn.
+
+> SFR-CACC algorithm depends on this
 > variable. So set this at the end of each iteration, otherwise the SFR-CACC
 > algorithm would never be toggled.
 > 
@@ -40,12 +45,22 @@ On Fri, Nov 22, 2013 at 08:49:49AM +0100, Chang Xiangzhong wrote:
 >  			}
 > +
 > +			tchunk->tsn_gap_acked = 1;
+
+The current code will set the state if it hasn't been set yet.  Why is
+this needed?
+
+Now there is an issue with tracking highest_new_tsn_in_sack.  The spec
+is a little vague on this, but the highest_new_tsn_in_sack only supposed
+to track tsns that have not been resent.  If a tsn has been reneged, and
+then sent again, it is not considered 'new' thus should not count
+toward highest_new_tsn_in_sack.  We currently do not track this right.
+
+-vlad
+
+-vlad
+
 >  		} else {
 >  			if (tchunk->tsn_gap_acked) {
 >  				pr_debug("%s: receiver reneged on data TSN:0x%x\n",
-> -- 
-> 1.8.4.3
-> 
 > 
 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
