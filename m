@@ -1,17 +1,17 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Thu, 21 Nov 2013 22:14:01 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Fri, 22 Nov 2013 11:56:12 +0000
 Subject: Re: [PATCH] net: sctp: find the correct highest_new_tsn in sack
-Message-Id: <528E85A9.3000703@gmail.com>
+Message-Id: <20131122115612.GA27391@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1385070988-29554-1-git-send-email-changxiangzhong@gmail.com>
 In-Reply-To: <1385070988-29554-1-git-send-email-changxiangzhong@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Chang Xiangzhong <changxiangzhong@gmail.com>, nhorman@tuxdriver.com, davem@davemloft.net
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Chang Xiangzhong <changxiangzhong@gmail.com>
+Cc: vyasevich@gmail.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On 11/21/2013 04:56 PM, Chang Xiangzhong wrote:
+On Thu, Nov 21, 2013 at 10:56:28PM +0100, Chang Xiangzhong wrote:
 > Function sctp_check_transmitted(transport t, ...) would iterate all of
 > transport->transmitted queue and looking for the highest __newly__ acked tsn.
 > The original algorithm would depend on the order of the assoc->transport_list
@@ -21,16 +21,6 @@ On 11/21/2013 04:56 PM, Chang Xiangzhong wrote:
 > Solution: checking if the exising is smaller than the new one before assigning
 > 
 > Signed-off-by: Chang Xiangzhong <changxiangzhong@gmail.com>
-
-Good find.  This has been around for since day 1.  It doesn't so much
-depend on the order of the transport list, but on the order the
-transports been used.  I agree it is a problem if chunks have been
-distributed across multiple transports and a singe SACK acking them all.
-
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-
--vlad
-
 > ---
 >  net/sctp/outqueue.c | 3 ++-
 >  1 file changed, 2 insertions(+), 1 deletion(-)
@@ -49,5 +39,9 @@ Acked-by: Vlad Yasevich <vyasevich@gmail.com>
 >  				bytes_acked += sctp_data_size(tchunk);
 >  				if (!tchunk->transport)
 >  					migrate_bytes += sctp_data_size(tchunk);
+> -- 
+> 1.8.4.3
+> 
 > 
 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
