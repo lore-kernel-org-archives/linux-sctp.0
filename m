@@ -1,21 +1,23 @@
 From: Sun Paul <paulrbk@gmail.com>
-Date: Mon, 25 Nov 2013 04:39:57 +0000
+Date: Tue, 26 Nov 2013 01:03:31 +0000
 Subject: Supporting 4 way connections in LKSCTP
-Message-Id: <CAFXGftLXvH21vO0L83uJiPODxgqypxToHLbMeEsmdXGW4cHsHg@mail.gmail.com>
+Message-Id: <CAFXGft+CXk3W8=3w=AuYzqYtYnR8nH4Of9=668tUeT+tugD9-A@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <CAFXGftLXvH21vO0L83uJiPODxgqypxToHLbMeEsmdXGW4cHsHg@mail.gmail.com>
+In-Reply-To: <CAFXGftLXvH21vO0L83uJiPODxgqypxToHLbMeEsmdXGW4cHsHg@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
 Hi
 
 we have a problem on using LKSCTP to form a 4 ways multi-homing network.
 
 Configuration
-Node-A has 2 IP addresses in different subnets, known as IP-A (eth1),
+- Node-A has 2 IP addresses in different subnets, known as IP-A (eth1),
 IP-B (eth2)
-Node-B has 2 IP addresses in different subnets, known as IP-X (eth1),
+- Node-B has 2 IP addresses in different subnets, known as IP-X (eth1),
 IP-Y (eth2)
 
 the four way paths are shown below.
@@ -87,4 +89,4 @@ there anyway can be resolved it?
 
 Thanks
 
-RBK
+PS
