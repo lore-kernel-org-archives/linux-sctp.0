@@ -1,77 +1,79 @@
-From: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
-Date: Mon, 02 Dec 2013 13:08:21 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Mon, 02 Dec 2013 14:51:43 +0000
 Subject: Re: [PATCH] sctp: make the max_burst min value to 1
-Message-Id: <DABC28BB-074A-42CE-ACEC-BE9893B4ED06@lurchi.franken.de>
+Message-Id: <529C9E7F.7040707@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <529C2E01.3090005@huawei.com> <20131202115640.GA10857@hmsreliant.think-freely.org>
-In-Reply-To: <20131202115640.GA10857@hmsreliant.think-freely.org>
+References: <529C2E01.3090005@huawei.com> <20131202115640.GA10857@hmsreliant.think-freely.org> <529C7707.5020908@huawei.com>
+In-Reply-To: <529C7707.5020908@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: Wang Weidong <wangweidong1@huawei.com>, Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, dingtianhong@huawei.com
+To: Wang Weidong <wangweidong1@huawei.com>, Neil Horman <nhorman@tuxdriver.com>
+Cc: David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, dingtianhong@huawei.com
 
-On Dec 2, 2013, at 12:56 PM, Neil Horman <nhorman@tuxdriver.com> wrote:
-
-> On Mon, Dec 02, 2013 at 02:51:45PM +0800, Wang Weidong wrote:
->> From: Wang Weidong <wangweidong1@huawei.com>
->> 
->> when I setted the max_burst to 0, do the lksctp-tools I got hang.
->> I found sctp_transport_burst_limited would make the cwnd to 0.
->> so I make the max_burst min value to 1.
->> Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
->> ---
->> net/sctp/sysctl.c | 2 +-
->> 1 file changed, 1 insertion(+), 1 deletion(-)
->> 
->> diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
->> index 7637e8e..46832d3 100644
->> --- a/net/sctp/sysctl.c
->> +++ b/net/sctp/sysctl.c
->> @@ -135,7 +135,7 @@ static struct ctl_table sctp_net_table[] = {
->> 		.maxlen		= sizeof(int),
->> 		.mode		= 0644,
->> 		.proc_handler	= proc_dointvec_minmax,
->> -		.extra1		= &zero,
->> +		.extra1		= &one,
->> 		.extra2		= &int_max
->> 	},
->> 	{
->> -- 
->> 1.7.12
->> 
->> 
+On 12/02/2013 07:03 AM, Wang Weidong wrote:
+> On 2013/12/2 19:56, Neil Horman wrote:
+>> On Mon, Dec 02, 2013 at 02:51:45PM +0800, Wang Weidong wrote:
+>>> From: Wang Weidong <wangweidong1@huawei.com>
+>>>
+>>> when I setted the max_burst to 0, do the lksctp-tools I got hang.
+>>> I found sctp_transport_burst_limited would make the cwnd to 0.
+>>> so I make the max_burst min value to 1.
+>>> Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+>>> ---
+>>>  net/sctp/sysctl.c | 2 +-
+>>>  1 file changed, 1 insertion(+), 1 deletion(-)
+>>>
+>>> diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
+>>> index 7637e8e..46832d3 100644
+>>> --- a/net/sctp/sysctl.c
+>>> +++ b/net/sctp/sysctl.c
+>>> @@ -135,7 +135,7 @@ static struct ctl_table sctp_net_table[] = {
+>>>  		.maxlen		= sizeof(int),
+>>>  		.mode		= 0644,
+>>>  		.proc_handler	= proc_dointvec_minmax,
+>>> -		.extra1		= &zero,
+>>> +		.extra1		= &one,
+>>>  		.extra2		= &int_max
+>>>  	},
+>>>  	{
+>>> -- 
+>>> 1.7.12
+>>>
+>>>
+>>
+>>
+>> This seems like a band-aid to me.  There are a few things wrong:
+>>
+>> 1) You can also set the the max_burst via setsockopt, and so this would need to
+>> be checked in that path as well.
+>>
+>> 2) I don't see how having a cwnd of zero would cause a hang.  It looks like a
+>> cwnd of zero would perpetually place the association in a slow start state,
+>> which is silly but not illegal.  
+>>
 > 
-> 
-> This seems like a band-aid to me.  There are a few things wrong:
-> 
-> 1) You can also set the the max_burst via setsockopt, and so this would need to
-> be checked in that path as well.
-> 
-> 2) I don't see how having a cwnd of zero would cause a hang.  It looks like a
-> cwnd of zero would perpetually place the association in a slow start state,
-> which is silly but not illegal.  
-> 
-> Please investigate the acutally root cause of the problem before just avoiding
-> it like this.
-I second this.
-
-Please note the using max_burst of  in the socket option means that you
-deactivate max_burst, not that you actually use the value 0. See
-http://tools.ietf.org/html/rfc6458#section-8.1.24
-
-I FreeBSD we use the sysctl variable as the default for sockets. Therefore
-max_burst is a valid value, it just disables max_burst.
-
-Best regards
-Michael
-> 
+> Hm, Good suggestions. Ok, I will try it again and find the root cause.
 > Thanks!
-> Neil
+
+It's really simple.  sctp_transport_burst_limited() should simply do
+nothing if max_burst is 0, essentially allowing unlimited bursts.
+
+-vlad
+
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> Please investigate the acutally root cause of the problem before just avoiding
+>> it like this.
+>>
+>> Thanks!
+>> Neil
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>>
+> 
 > 
 
