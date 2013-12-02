@@ -1,63 +1,41 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 17 Dec 2013 14:18:48 +0000
-Subject: Re: [PATCH v2 1/2] printk: Add a pr_warn_deprecated macro
-Message-Id: <20131217141848.GA8633@hmsreliant.think-freely.org>
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Mon, 02 Dec 2013 07:48:21 +0000
+Subject: [PATCH] lksctp: fix a problem when do test_1_to_1_sockopt
+Message-Id: <529C3B45.3020401@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1387205049-22752-1-git-send-email-nhorman@tuxdriver.com>
- <1387213605-27206-1-git-send-email-nhorman@tuxdriver.com>
- <1387213605-27206-2-git-send-email-nhorman@tuxdriver.com>
- <1387216201.18217.58.camel@joe-AO722>
-In-Reply-To: <1387216201.18217.58.camel@joe-AO722>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Joe Perches <joe@perches.com>
-Cc: linux-sctp@vger.kernel.org, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, "David S. Miller" <davem@davemloft.net>, linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>
+To: linux-sctp@vger.kernel.org
 
-On Mon, Dec 16, 2013 at 09:50:01AM -0800, Joe Perches wrote:
-> (adding Andrew Morton to cc's)
-> 
-> On Mon, 2013-12-16 at 12:06 -0500, Neil Horman wrote:
-> > sctp has several points in its setsockopt path in which it issues deprecation
-> > warnings.  It seems like it might be handy to macrotize such a warning so other
-> > subsystems can use it easily
-> []
-> > diff --git a/include/linux/printk.h b/include/linux/printk.h
-> []
-> > @@ -336,6 +336,9 @@ extern asmlinkage void dump_stack(void) __cold;
-> >  	printk_ratelimited(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__)
-> >  /* no pr_cont_ratelimited, don't do that... */
-> >  
-> > +#define pr_warn_deprecated(fmt, ...)					\
-> > +	pr_warn_ratelimited("Deprecated: " fmt, ##__VA_ARGS__)
-> 
-> Continuing the thread from:
-> http://patchwork.ozlabs.org/patch/301738/
-> 
-> Making this a global kernel #define is different than
-> using it in your subsystem.
-> 
-> I think this is very analogous to the FW_INFO/FW_WARN
-> uses and maybe should just have a #define for the
-> string "deprecated:" inserted as a constant.
-> 
-> ie: just using
-> 
-> 	pr_warn_once(DEPRECATED fmt, args...)
-> or
-> 	pr_warn_ratelimited(DEPRECATED fmt, args...)
-> 
-The define is a nice idea, but I'm not sure about the use of the once variant.
-Multiple users may use multiple programs that trigger these deprecation
-warnings, and we should probably warn on each of them to avoid masking the
-others.
+From: Wang Weidong <wangweidong1@huawei.com>
 
-I'll work up a new patch set
-Neil
+When I do the test_1_to_1_sockopt, I got a Segmentation fault:
+DUMP_CORE test_1_to_1_sockopt.c: 343.
+I used the kernel is 3.12.
+The problem is that the SOCK_MIN_SNDBUF is (TCP_SKB_MIN_TRUESIZE * 2)
+while TCP_SKB_MIN_TRUESIZE is 2048 + SKB_DATA_ALIGN(sizeof(struct sk_buff))
+The SKB_DATA_ALIGN I test is 256, so I make the sndbuf_val_set to 2304.
 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+---
+ src/func_tests/test_1_to_1_sockopt.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/func_tests/test_1_to_1_sockopt.c b/src/func_tests/test_1_to_1_sockopt.c
+index e222991..986533b 100644
+--- a/src/func_tests/test_1_to_1_sockopt.c
++++ b/src/func_tests/test_1_to_1_sockopt.c
+@@ -320,7 +320,7 @@ main(void)
+ 			 "got value differs Set Value=%d Get Value=%d",
+ 			 (2*rcvbuf_val_set), rcvbuf_val_get);
+ 
+-	sndbuf_val_set = 2048;
++	sndbuf_val_set = 2304;
+ 	/* TEST17: Test case for setsockopt SO_SNDBUF */
+ 	error = setsockopt(sk2, SOL_SOCKET, SO_SNDBUF, &sndbuf_val_set, len);
+ 	if (error < 0)
+-- 
+1.7.12
+
+
