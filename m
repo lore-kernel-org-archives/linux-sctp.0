@@ -1,53 +1,60 @@
-From: Sun Paul <paulrbk@gmail.com>
-Date: Tue, 03 Dec 2013 01:39:52 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Tue, 03 Dec 2013 02:02:38 +0000
 Subject: Re: Supporting 4 way connections in LKSCTP
-Message-Id: <CAFXGft+4o6fT4SYbu3musC+-BEi=xOEGUbZSavF1-0_V1mg6zg@mail.gmail.com>
+Message-Id: <529D3BBE.5090303@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAFXGft+CXk3W8=3w=AuYzqYtYnR8nH4Of9=668tUeT+tugD9-A@mail.gmail.com>
-	<5294BC01.7090605@gmail.com>
-	<CAFXGftLsKm9a5bmXX4Fe+rnSvYVdBDOyYGwisRP7XMu+ky=DGw@mail.gmail.com>
-	<CAFXGftLt1p6XpR2eGsMYKjEbbOHvch-LgcFw1sAXThcA2Rtjyw@mail.gmail.com>
-	<20131127124530.GA23369@hmsreliant.think-freely.org>
-	<CAFXGftJQV=5Pqs3bhfiS3T1VO1q8jfaMjAUiqm2tDbtSyBCM3A@mail.gmail.com>
-	<529C9B50.50002@gmail.com>
-	<CAGugRbXFirQ5P3ek9zN86h4vvO6qsy3eNEooJOApotA+dL+C_g@mail.gmail.com>
-	<529CB859.9090904@gmail.com>
-	<CAFXGft+F52p+oaa59=5e5pGfON44N36NA-XMYi5PorzWeybnKw@mail.gmail.com>
+References: <CAFXGft+CXk3W8=3w=AuYzqYtYnR8nH4Of9=668tUeT+tugD9-A@mail.gmail.com>	<5294BC01.7090605@gmail.com>	<CAFXGftLsKm9a5bmXX4Fe+rnSvYVdBDOyYGwisRP7XMu+ky=DGw@mail.gmail.com>	<CAFXGftLt1p6XpR2eGsMYKjEbbOHvch-LgcFw1sAXThcA2Rtjyw@mail.gmail.com>	<20131127124530.GA23369@hmsreliant.think-freely.org>	<CAFXGftJQV=5Pqs3bhfiS3T1VO1q8jfaMjAUiqm2tDbtSyBCM3A@mail.gmail.com>	<529C9B50.50002@gmail.com>	<CAGugRbXFirQ5P3ek9zN86h4vvO6qsy3eNEooJOApotA+dL+C_g@mail.gmail.com>	<529CB859.9090904@gmail.com> <CAFXGft+F52p+oaa59=5e5pGfON44N36NA-XMYi5PorzWeybnKw@mail.gmail.com>
 In-Reply-To: <CAFXGft+F52p+oaa59=5e5pGfON44N36NA-XMYi5PorzWeybnKw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>
+To: Sun Paul <paulrbk@gmail.com>
 Cc: Karl Heiss <kheiss@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-Another question
-
-if a wrong source IP is used, does the association still classified as normal?
-
-On Tue, Dec 3, 2013 at 9:31 AM, Sun Paul <paulrbk@gmail.com> wrote:
+On 12/02/2013 08:31 PM, Sun Paul wrote:
 > Thanks Vlad
->
+> 
 > I checked on the route, and it looks correct.
->
+> 
 > [root@localhost ~]# ip route get 11.1.1.1 from 110.1.1.1
 > 11.1.1.1 from 110.1.1.1 via 110.1.1.254 dev eth1
 >     cache  mtu 1500 advmss 1460 hoplimit 64
->
+> 
 > [root@localhost ~]# ip route get 11.1.1.1 from 120.1.1.1
 > 11.1.1.1 from 120.1.1.1 via 120.1.1.254 dev eth2
 >     cache  mtu 1500 advmss 1460 hoplimit 64
->
+> 
 > [root@localhost ~]# ip route get 12.1.1.1 from 120.1.1.1
 > 12.1.1.1 from 120.1.1.1 via 120.1.1.254 dev eth2
 >     cache  mtu 1500 advmss 1460 hoplimit 64
->
+> 
 > [root@localhost ~]# ip route get 12.1.1.1 from 110.1.1.1
 > 12.1.1.1 from 110.1.1.1 via 110.1.1.254 dev eth1
 >     cache  mtu 1500 advmss 1460 hoplimit 64
->
+> 
 > so, if this is not being handled in LKSCTP, is it possible to suggest
 > a way how we can achieve it?
->
+
+Like I said before lksctp only iterates over the bound address
+list if the source address from the route returned by the kernel
+does not match the bound address list.
+
+To simulate the algorithm with with ip route get, you'd
+get something like this:
+
+   ip route get 11.1.1.1
+   if from_address not in bound address list
+       for each bound_addr in bound address list
+           ip route get 11.1.1.1 from bound_addr
+
+The kernel will almost always give you a valid route even if the
+from address does not belong to the expected interface.
+
+So, in your case, what does a simple ip route get 11.1.1.1 return?
+That's the address that will be used to talk to 11.1.1.1 by default.
+
+-vlad
+> 
 > On Tue, Dec 3, 2013 at 12:42 AM, Vlad Yasevich <vyasevich@gmail.com> wrote:
 >> On 12/02/2013 10:45 AM, Karl Heiss wrote:
 >>> On Mon, Dec 2, 2013 at 9:38 AM, Vlad Yasevich <vyasevich@gmail.com> wrote:
@@ -363,3 +370,4 @@ On Tue, Dec 3, 2013 at 9:31 AM, Sun Paul <paulrbk@gmail.com> wrote:
 >>>> the body of a message to majordomo@vger.kernel.org
 >>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 >>
+
