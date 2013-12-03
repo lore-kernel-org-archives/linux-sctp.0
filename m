@@ -1,81 +1,42 @@
-From: Wang Weidong <weidong1991.wang@gmail.com>
-Date: Thu, 12 Dec 2013 14:58:58 +0000
-Subject: Re: [PATCH] sctp: loading sctp when load sctp_probe
-Message-Id: <52A9CF32.3060000@gmail.com>
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Tue, 03 Dec 2013 06:30:26 +0000
+Subject: [PATCH] sctp: disable max_burst when the max_burst is 0
+Message-Id: <529D7A82.3070207@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <52A9ACE4.3080506@huawei.com> <20131212135406.GA783@hmsreliant.think-freely.org>
-In-Reply-To: <20131212135406.GA783@hmsreliant.think-freely.org>
+References: <529C2E01.3090005@huawei.com> <20131202115640.GA10857@hmsreliant.think-freely.org> <DABC28BB-074A-42CE-ACEC-BE9893B4ED06@lurchi.franken.de>
+In-Reply-To: <DABC28BB-074A-42CE-ACEC-BE9893B4ED06@lurchi.franken.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: David Miller <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
+Cc: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, dingtianhong@huawei.com
 
-From: Wang Weidong <wangweidong1@huawei.com>
+As Michael pointed out that when max_burst is 0, it just disable
+max_burst. It declared in rfc6458#section-8.1.24. so add the check
+in sctp_transport_burst_limited, when it 0, just do nothing.
 
-On 2013/12/12 21:54, Neil Horman wrote:
-> On Thu, Dec 12, 2013 at 08:32:36PM +0800, Wang Weidong wrote:
->> when I modprobe sctp_probe, it failed with "FATAL: ". I found that
->> sctp should load before sctp_probe register jprobe. So I add a
->> sctp_setup_jprobe for loading 'sctp' when first failed to register
->> jprobe, just do this similar to dccp_probe.
->>
->> Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
->> ---
->>   net/sctp/probe.c | 13 ++++++++++++-
->>   1 file changed, 12 insertions(+), 1 deletion(-)
->>
->> diff --git a/net/sctp/probe.c b/net/sctp/probe.c
->> index 53c452e..cd9565a 100644
->> --- a/net/sctp/probe.c
->> +++ b/net/sctp/probe.c
->> @@ -182,6 +182,17 @@ static struct jprobe sctp_recv_probe = {
->>   	.entry	= jsctp_sf_eat_sack,
->>   };
->>
->> +static __init int sctp_setup_jprobe(void)
->> +{
->> +	int ret = register_jprobe(&sctp_recv_probe);
->> +
->> +	if (ret) {
->> +		request_module("sctp");
->> +		ret = register_jprobe(&sctp_recv_probe);
->> +	}
->> +	return ret;
->> +}
->> +
->>   static __init int sctpprobe_init(void)
->>   {
->>   	int ret = -ENOMEM;
->> @@ -202,7 +213,7 @@ static __init int sctpprobe_init(void)
->>   			 &sctpprobe_fops))
->>   		goto free_kfifo;
->>
->> -	ret = register_jprobe(&sctp_recv_probe);
->> +	ret = sctp_setup_jprobe();
->>   	if (ret)
->>   		goto remove_proc;
->>
->> --
->> 1.7.12
->>
->>
->>
-> You need to check the return code of request_module.  if sctp.ko doesn't exist,
-> you'll hit exactly the same problem.
->
-> You might consider also adding a MODULE_SOFTDEP macro in to the patch, so that
-> the dependency is clearly visible in userspace to modprobe.
->
-> Neil
->
-Thanks for your suggestions. I will fix it.
+Suggested-by: Vlad Yasevich <vyasevich@gmail.com>
+Suggested-by: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
+Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+---
+ net/sctp/transport.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-Regards.
-Wang
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index e332efb..e580e34 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -573,7 +573,8 @@ void sctp_transport_burst_limited(struct sctp_transport *t)
+ 	u32 old_cwnd = t->cwnd;
+ 	u32 max_burst_bytes;
+ 
+-	if (t->burst_limited)
++	/* if the max_burst is 0, do notihing */
++	if (t->burst_limited || !asoc->max_burst)
+ 		return;
+ 
+ 	max_burst_bytes = t->flight_size + (asoc->max_burst * asoc->pathmtu);
+-- 
+1.7.12
 
-> --
-> To unsubscribe from this list: send the line "unsubscribe netdev" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+
