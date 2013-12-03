@@ -1,7 +1,7 @@
-From: Karl Heiss <kheiss@gmail.com>
-Date: Mon, 02 Dec 2013 17:10:26 +0000
+From: Sun Paul <paulrbk@gmail.com>
+Date: Tue, 03 Dec 2013 01:31:02 +0000
 Subject: Re: Supporting 4 way connections in LKSCTP
-Message-Id: <CAGugRbXBDy2kt6NxZ6n2+UcpT=RqZSBq1aaDm-VwVYokjAnTpw@mail.gmail.com>
+Message-Id: <CAFXGft+F52p+oaa59=5e5pGfON44N36NA-XMYi5PorzWeybnKw@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CAFXGft+CXk3W8=3w=AuYzqYtYnR8nH4Of9=668tUeT+tugD9-A@mail.gmail.com>
 	<5294BC01.7090605@gmail.com>
@@ -17,9 +17,32 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Vlad Yasevich <vyasevich@gmail.com>
-Cc: Sun Paul <paulrbk@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Karl Heiss <kheiss@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On Mon, Dec 2, 2013 at 11:42 AM, Vlad Yasevich <vyasevich@gmail.com> wrote:
+Thanks Vlad
+
+I checked on the route, and it looks correct.
+
+[root@localhost ~]# ip route get 11.1.1.1 from 110.1.1.1
+11.1.1.1 from 110.1.1.1 via 110.1.1.254 dev eth1
+    cache  mtu 1500 advmss 1460 hoplimit 64
+
+[root@localhost ~]# ip route get 11.1.1.1 from 120.1.1.1
+11.1.1.1 from 120.1.1.1 via 120.1.1.254 dev eth2
+    cache  mtu 1500 advmss 1460 hoplimit 64
+
+[root@localhost ~]# ip route get 12.1.1.1 from 120.1.1.1
+12.1.1.1 from 120.1.1.1 via 120.1.1.254 dev eth2
+    cache  mtu 1500 advmss 1460 hoplimit 64
+
+[root@localhost ~]# ip route get 12.1.1.1 from 110.1.1.1
+12.1.1.1 from 110.1.1.1 via 110.1.1.254 dev eth1
+    cache  mtu 1500 advmss 1460 hoplimit 64
+
+so, if this is not being handled in LKSCTP, is it possible to suggest
+a way how we can achieve it?
+
+On Tue, Dec 3, 2013 at 12:42 AM, Vlad Yasevich <vyasevich@gmail.com> wrote:
 > On 12/02/2013 10:45 AM, Karl Heiss wrote:
 >> On Mon, Dec 2, 2013 at 9:38 AM, Vlad Yasevich <vyasevich@gmail.com> wrote:
 >>> On 11/27/2013 11:03 PM, Sun Paul wrote:
@@ -163,13 +186,6 @@ On Mon, Dec 2, 2013 at 11:42 AM, Vlad Yasevich <vyasevich@gmail.com> wrote:
 > as everyone had slightly different configurations and expectations.  So
 > we left it to the rules engine.
 >
-
-Oops!  You are correct.  I must have accidentally read it as a SHOULD.. ;-)
-
-Thanks for the history on previous attempts.  I had always wondered about this.
-
-Karl
-
 > In this setup, it just appears that the default routing is not what you
 > expect.  You can easily check this with 'ip route get' command.  If it
 > is not what you want linux allows you to change that via ip rules.
