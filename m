@@ -1,17 +1,17 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 03 Dec 2013 15:43:43 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Tue, 03 Dec 2013 16:09:38 +0000
 Subject: Re: [PATCH] sctp: fix a BUG_ON on triggered by setting max_autoclose to
-Message-Id: <20131203154343.GA3251@neilslaptop.think-freely.org>
+Message-Id: <529E0242.6020008@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <529DADE5.4040701@huawei.com>
 In-Reply-To: <529DADE5.4040701@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Wang Weidong <wangweidong1@huawei.com>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: Wang Weidong <wangweidong1@huawei.com>, Neil Horman <nhorman@tuxdriver.com>, David Miller <davem@davemloft.net>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Tue, Dec 03, 2013 at 06:09:41PM +0800, Wang Weidong wrote:
+On 12/03/2013 05:09 AM, Wang Weidong wrote:
 > since 2692ba61, add the max_autoclose to sysctl. when I setted the
 > max_autoclose to 0. Just do the test_autoclose, it will trigger that:
 > 
@@ -97,12 +97,23 @@ On Tue, Dec 03, 2013 at 06:09:41PM +0800, Wang Weidong wrote:
 > 
 > The reason is: In test_autoclose set the autoclose to 5 not 0(default). So when
 > we init the association, the (sctp_sock) sp->autoclose is not 0 while asoc's 
-> timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE] is 0. 
+> timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE] is 0.
 > So when we process the COOKIE_ACK, the sctp_sf_do_5_1E_ca will be called, that
 > will do that:
 > 	if (asoc->autoclose) //asoc->autoclose is equal sp->autoclose
 > 		sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_START,
 > 				SCTP_TO(SCTP_EVENT_TIMEOUT_AUTOCLOSE));
+
+this looks like a bug in how the timeout is being set.  The timeout
+should be based on the association value, not some sysctl value.
+
+The typical socket option values go like this:
+   socket value = starts at sysctl, changed by user.
+   assoc value = starts at socket value, may be changed by user.
+     any timer = starts at assoc value.
+
+this seems to be broken for autoclose.
+
 > then the sctp_do_sm will goto the SCTP_CMD_TIMER_START where place a BUG_ON.
 > So When we do test_autoclose will trigger the BUG_ON.
 > And when the sp->autoclose is 0, it will not happen.
@@ -112,5 +123,25 @@ On Tue, Dec 03, 2013 at 06:09:41PM +0800, Wang Weidong wrote:
 > so I make the max_autoclose min value to 1.
 > 
 > Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+> ---
+>  net/sctp/sysctl.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
+> index 46832d3..8b619d6 100644
+> --- a/net/sctp/sysctl.c
+> +++ b/net/sctp/sysctl.c
+> @@ -47,7 +47,7 @@ static int sack_timer_min = 1;
+>  static int sack_timer_max = 500;
+>  static int addr_scope_max = 3; /* check sctp_scope_policy_t in include/net/sctp/constants.h for max entries */
+>  static int rwnd_scale_max = 16;
+> -static unsigned long max_autoclose_min = 0;
+> +static unsigned long max_autoclose_min = 1;
+>  static unsigned long max_autoclose_max >  	(MAX_SCHEDULE_TIMEOUT / HZ > UINT_MAX)
+>  	? UINT_MAX : MAX_SCHEDULE_TIMEOUT / HZ;
+> 
 
+allowing autoclose_min = 0 might be useful to disable
+autoclose globally.  This is not a fix, but a bandaid.
+
+-vlad
