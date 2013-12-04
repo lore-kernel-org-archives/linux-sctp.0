@@ -1,18 +1,17 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 04 Dec 2013 11:45:41 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Wed, 04 Dec 2013 14:28:03 +0000
 Subject: Re: [PATCH v2] sctp: disable max_burst when the max_burst is 0
-Message-Id: <20131204114541.GA4096@hmsreliant.think-freely.org>
+Message-Id: <529F3BF3.40009@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <529C2E01.3090005@huawei.com>
- <529EF6B7.7000501@huawei.com>
+References: <529C2E01.3090005@huawei.com> <529EF6B7.7000501@huawei.com>
 In-Reply-To: <529EF6B7.7000501@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Wang Weidong <wangweidong1@huawei.com>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Daniel Borkmann <dborkman@redhat.com>
+To: Wang Weidong <wangweidong1@huawei.com>, nhorman@tuxdriver.com, David Miller <davem@davemloft.net>
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Daniel Borkmann <dborkman@redhat.com>
 
-On Wed, Dec 04, 2013 at 05:32:39PM +0800, Wang Weidong wrote:
+On 12/04/2013 04:32 AM, Wang Weidong wrote:
 > As Michael pointed out that when max_burst is 0, it just disable
 > max_burst. It declared in rfc6458#section-8.1.24. so add the check
 > in sctp_transport_burst_limited, when it 0, just do nothing.
@@ -38,11 +37,9 @@ On Wed, Dec 04, 2013 at 05:32:39PM +0800, Wang Weidong wrote:
 >  		return;
 >  
 >  	max_burst_bytes = t->flight_size + (asoc->max_burst * asoc->pathmtu);
-> -- 
-> 1.7.12
 > 
-> 
-> 
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
+Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+
+Thanks
+-vlad
