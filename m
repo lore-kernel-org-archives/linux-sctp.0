@@ -1,26 +1,43 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 20 Dec 2013 14:44:06 +0000
-Subject: Re: [PATCH net-next 2/5] sctp: fix checkpatch errors with foo
-Message-Id: <20131220144406.GC6562@hmsreliant.think-freely.org>
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Wed, 04 Dec 2013 09:32:39 +0000
+Subject: [PATCH v2] sctp: disable max_burst when the max_burst is 0
+Message-Id: <529EF6B7.7000501@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1387435922-24152-1-git-send-email-wangweidong1@huawei.com>
- <1387435922-24152-3-git-send-email-wangweidong1@huawei.com>
-In-Reply-To: <1387435922-24152-3-git-send-email-wangweidong1@huawei.com>
+References: <529C2E01.3090005@huawei.com>
+In-Reply-To: <529C2E01.3090005@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Wang Weidong <wangweidong1@huawei.com>
-Cc: davem@davemloft.net, vyasevich@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, nhorman@tuxdriver.com, David Miller <davem@davemloft.net>
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Daniel Borkmann <dborkman@redhat.com>
 
-On Thu, Dec 19, 2013 at 02:51:59PM +0800, Wang Weidong wrote:
-> fix three foo type errors below:
-> ERROR: "(foo*)" should be "(foo *)"
-> ERROR: "foo * bar" should be "foo *bar"
-> ERROR: "foo* bar" should be "foo *bar"
-> 
-> Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
-Could you come up with a more descriptive subject line please.  I understand the
-meaning, but anyone not familiar with checkpatch won't have any idea what that
-means.
-Neil
+As Michael pointed out that when max_burst is 0, it just disable
+max_burst. It declared in rfc6458#section-8.1.24. so add the check
+in sctp_transport_burst_limited, when it 0, just do nothing.
+
+Reviewed-by: Daniel Borkmann <dborkman@redhat.com>
+Suggested-by: Vlad Yasevich <vyasevich@gmail.com>
+Suggested-by: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
+Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+---
+ net/sctp/transport.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index e332efb..efc46ff 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -573,7 +573,7 @@ void sctp_transport_burst_limited(struct sctp_transport *t)
+ 	u32 old_cwnd = t->cwnd;
+ 	u32 max_burst_bytes;
+ 
+-	if (t->burst_limited)
++	if (t->burst_limited || asoc->max_burst = 0)
+ 		return;
+ 
+ 	max_burst_bytes = t->flight_size + (asoc->max_burst * asoc->pathmtu);
+-- 
+1.7.12
+
+
 
