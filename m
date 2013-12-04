@@ -1,45 +1,72 @@
-From: "David Laight" <David.Laight@ACULAB.COM>
-Date: Wed, 04 Dec 2013 14:50:46 +0000
-Subject: RE: Supporting 4 way connections in LKSCTP
-Message-Id: <AE90C24D6B3A694183C094C60CF0A2F6026B745D@saturn3.aculab.com>
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Wed, 04 Dec 2013 15:41:14 +0000
+Subject: Re: Supporting 4 way connections in LKSCTP
+Message-Id: <529F4D1A.3050304@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAFXGft+CXk3W8=3w=AuYzqYtYnR8nH4Of9=668tUeT+tugD9-A@mail.gmail.com>	<5294BC01.7090605@gmail.com>	<CAFXGftLsKm9a5bmXX4Fe+rnSvYVdBDOyYGwisRP7XMu+ky=DGw@mail.gmail.com>	<CAFXGftLt1p6XpR2eGsMYKjEbbOHvch-LgcFw1sAXThcA2Rtjyw@mail.gmail.com>	<20131127124530.GA23369@hmsreliant.think-freely.org>	<CAFXGftJQV=5Pqs3bhfiS3T1VO1q8jfaMjAUiqm2tDbtSyBCM3A@mail.gmail.com>	<529C9B50.50002@gmail.com>	<CAGugRbXFirQ5P3ek9zN86h4vvO6qsy3eNEooJOApotA+dL+C_g@mail.gmail.com>	<529CB859.9090904@gmail.com>	<CAFXGft+F52p+oaa59=5e5pGfON44N36NA-XMYi5PorzWeybnKw@mail.gmail.com>	<CAFXGft+4o6fT4SYbu3musC+-BEi=xOEGUbZSavF1-0_V1mg6zg@mail.gmail.com>	<529D3BF9.3070208@gmail.com>	<CAFXGftJtCCJ=pVxg_DH-+n2bKmoKXavog0y8mfX+h-1z3hP49Q@mail.gmail.com>	<529DCF42.1070800@gmail.com>	<CAFXGftK5tz90OzObiV7Hi+g080j3zWCNdo217CKdNkOY4JWQUg@mail.gmail.com>	<529DF73E.7060604@gmail.com> <CAFXGftKZD0zN1S=UTa_bYr71-v=7mzU=_CewTNkjPv9CGGB_Fg@mail.gmail.com> <529F395B.9040308@gmail.com>
-In-Reply-To: <529F395B.9040308@gmail.com>
+References: <CAFXGft+CXk3W8=3w=AuYzqYtYnR8nH4Of9=668tUeT+tugD9-A@mail.gmail.com>	<CAFXGftLsKm9a5bmXX4Fe+rnSvYVdBDOyYGwisRP7XMu+ky=DGw@mail.gmail.com>	<CAFXGftLt1p6XpR2eGsMYKjEbbOHvch-LgcFw1sAXThcA2Rtjyw@mail.gmail.com>	<20131127124530.GA23369@hmsreliant.think-freely.org>	<CAFXGftJQV=5Pqs3bhfiS3T1VO1q8jfaMjAUiqm2tDbtSyBCM3A@mail.gmail.com>	<529C9B50.50002@gmail.com>	<CAGugRbXFirQ5P3ek9zN86h4vvO6qsy3eNEooJOApotA+dL+C_g@mail.gmail.com>	<529CB859.9090904@gmail.com>	<CAFXGft+F52p+oaa59=5e5pGfON44N36NA-XMYi5PorzWeybnKw@mail.gmail.com>	<CAFXGft+4o6fT4SYbu3musC+-BEi=xOEGUbZSavF1-0_V1mg6zg@mail.gmail.com>	<529D3BF9.3070208@gmail.com>	<CAFXGftJtCCJ=pVxg_DH-+n2bKmoKXavog0y8mfX+h-1z3hP49Q@mail.gmail.com>	<529DCF42.1070800@gmail.com>	<CAFXGftK5tz90OzObiV7Hi+g080j3zWCNdo217CKdNkOY4JWQUg@mail.gmail.com>	<529DF73E.7060604@gmail.com> <CAFXGftKZD0zN1S=UTa_bYr71-v=7mzU=_CewTNkjPv9CGGB_Fg@mail.gmail.com> <529F395B.9040308@gmail.com> <AE90C24D6B3A694183C094C60CF0A2F6026B745D@saturn3.aculab.com>
+In-Reply-To: <AE90C24D6B3A694183C094C60CF0A2F6026B745D@saturn3.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Sun Paul <paulrbk@gmail.com>
+To: David Laight <David.Laight@ACULAB.COM>, Sun Paul <paulrbk@gmail.com>
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Karl Heiss <kheiss@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-kernel@vger.kernel.org
 
-PiA+IEluIG5vcm1hbCBvcGVyYXRpb24sIElQLUEgc2VuZHMgSU5JVCB0byBJUC1YLCBJUC1YIHJl
-dHVybnMgSU5JVF9BQ0sgdG8NCj4gPiBJUC1BLiBJUC1BIHRoZW4gc2VuZHMgSEIgdG8gSVAtWCwg
-SVAtWCB0aGVuIHJldHVybnMgSEJfQUNLIHRvIElQLUEuIEluDQo+ID4gdGhlIG1lYW50aW1lLCBJ
-UC1CIHNlbmRzIEhCIHRvIElQLVkgYW5kIElQWSByZXR1cm5zIEhCX0FDSy4NCj4gPg0KPiA+IElu
-IGNhc2Ugb2YgdGhlIHBhdGggYmV0d2VlbiBJUC1BIGFuZCBJUC1YIGlzIGJyb2tlbiwgSVAtQiBz
-ZW5kcyBJTklUDQo+ID4gdG8gSVAtWCwgTk9ERS1CIHVzZXMgSVAtWSB0byByZXR1cm4gSU5JVF9B
-Q0sgdG8gSVAtQi4gVGhlbiBJUC1CIHNlbmRzDQo+ID4gSEIgdG8gSVAtWCwgYW5kIElQLVkgcmV0
-dXJucyBIQl9BQ0sgdG8gSVAtQi4gSW4gdGhlIG1lYW50aW1lLCB0aGUgSEINCj4gPiBjb21tdW5p
-Y2F0aW9uIGJldHdlZW4gSVAtQiBhbmQgSVAtWSBmb2xsb3dzIHRoZSBub3JtYWwgZmxvdy4NCj4g
-Pg0KPiA+IENhbiBJIGNvbmZpcm0sIGlzIGl0IHJlYWxseSB2YWxpZD8NCj4gDQo+IEFzIGxvbmcg
-YXMgTk9ERS1CIGtub3dzIGFib3V0IGJvdGggSVAtQSBhbmQgSVAtQiwgYW5kIE5PREUtQSBrbm93
-cyBhYm91dA0KPiBib3RoIElQLVggYW5kIElQLVkgKG1lYW5pbmcgYWxsIHRoZSBhZGRyZXNzZXMg
-d2VyZSBleGNoYW5nZWQgaW5zaWRlIElOSVQNCj4gYW5kIElOSVQtQUNLKSwgdGhlbiB0aGlzIHNp
-dHVhdGlvbiBpcyBwZXJmZWN0bHkgdmFsaWQuICBJbiBmYWN0LCB0aGlzDQo+IGhhcyBiZWVuIHRl
-c3RlZCBhbiBtdWx0aXBsZSBpbnRlcm9wcy4NCg0KVGhlcmUgYXJlIHNvbWUgbmV0d29yayBjb25m
-aWd1cmF0aW9ucyB0aGF0IGRvIGNhdXNlIHByb2JsZW1zLg0KQ29uc2lkZXIgNCBzeXN0ZW1zIHdp
-dGggMyBMQU4gc2VnbWVudHM6DQpBKSAxMC4xMC4xMC4xIG9uIExBTiBYIGFuZCAxOTIuMTY4LjEu
-MSBvbiBMQU4gWS4NCkIpIDEwLjEwLjEwLjIgb24gTEFOIFggYW5kIDE5Mi4xNjguMS4yIG9uIExB
-TiBZLg0KQykgMTAuMTAuMTAuMyBvbiBMQU4gWC4NCkQpIDEwLjEwLjEwLjQgb24gTEFOIFggYW5k
-IDE5Mi4xNjguMS4yIG9uIExBTiBaLg0KVGhlcmUgYXJlIG5vIHJvdXRlcnMgYmV0d2VlbiB0aGUg
-bmV0d29ya3MgKGFuZCBub25lIG9mIHRoZSBzeXN0ZW1zDQphcmUgcnVubmluZyBJUCBmb3J3YXJk
-aW5nKS4NCg0KSWYgQSBjb25uZWN0cyB0byBCIGV2ZXJ5dGhpbmcgaXMgZmluZSAtIHRyYWZmaWMg
-Y2FuIHVzZSBlaXRoZXIgTEFOLg0KDQpDb25uZWN0aW9ucyBmcm9tIEEgdG8gQyBhcmUgcHJvYmxl
-bWF0aWMgaWYgQyB0cmllcyB0byBzZW5kIGFueXRoaW5nDQooZXhjZXB0IGEgSEIpIHRvIDE5Mi4x
-NjguMS4xIGJlZm9yZSByZWNlaXZpbmcgYSBIQiByZXNwb25zZS4NCk9uZSBvZiB0aGUgU0NUUCBz
-dGFja3Mgd2UndmUgdXNlZCBkaWQgc2VuZCBtZXNzYWdlcyB0byBhbg0KaW5hcHByb3ByaWF0ZSBh
-ZGRyZXNzLCBidXQgSSd2ZSBmb3Jnb3R0ZW4gd2hpY2ggb25lLg0KDQpDb25uZWN0aW9ucyBiZXR3
-ZWVuIEEgYW5kIEQgZmFpbCB1bmxlc3MgdGhlIEhCIGVycm9ycyBBIHJlY2VpdmVzDQpmb3IgMTky
-LjE2OC4xLjIgYXJlIGlnbm9yZWQuDQoNCk9mIGNvdXJzZSB0aGUgYXBwbGljYXRpb24gY291bGQg
-ZXhwbGljaXRseSBiaW5kIHRvIG9ubHkgdGhlIDEwLnggYWRkcmVzcw0KYnV0IHRoYXQgcmVxdWly
-ZXMgdGhlIGFwcGxpY2F0aW9uIGtub3cgdGhlIGV4YWN0IG5ldHdvcmsgdG9wb2xvZ3kNCmFuZCBt
-YXkgYmUgZGlmZmljdWx0IGZvciBpbmNvbWluZyBjYWxscy4NCg0KCURhdmlkDQoNCg=
+On 12/04/2013 09:50 AM, David Laight wrote:
+>>> In normal operation, IP-A sends INIT to IP-X, IP-X returns INIT_ACK to
+>>> IP-A. IP-A then sends HB to IP-X, IP-X then returns HB_ACK to IP-A. In
+>>> the meantime, IP-B sends HB to IP-Y and IPY returns HB_ACK.
+>>>
+>>> In case of the path between IP-A and IP-X is broken, IP-B sends INIT
+>>> to IP-X, NODE-B uses IP-Y to return INIT_ACK to IP-B. Then IP-B sends
+>>> HB to IP-X, and IP-Y returns HB_ACK to IP-B. In the meantime, the HB
+>>> communication between IP-B and IP-Y follows the normal flow.
+>>>
+>>> Can I confirm, is it really valid?
+>>
+>> As long as NODE-B knows about both IP-A and IP-B, and NODE-A knows about
+>> both IP-X and IP-Y (meaning all the addresses were exchanged inside INIT
+>> and INIT-ACK), then this situation is perfectly valid.  In fact, this
+>> has been tested an multiple interops.
+> 
+> There are some network configurations that do cause problems.
+> Consider 4 systems with 3 LAN segments:
+> A) 10.10.10.1 on LAN X and 192.168.1.1 on LAN Y.
+> B) 10.10.10.2 on LAN X and 192.168.1.2 on LAN Y.
+> C) 10.10.10.3 on LAN X.
+> D) 10.10.10.4 on LAN X and 192.168.1.2 on LAN Z.
+> There are no routers between the networks (and none of the systems
+> are running IP forwarding).
+> 
+> If A connects to B everything is fine - traffic can use either LAN.
+> 
+> Connections from A to C are problematic if C tries to send anything
+> (except a HB) to 192.168.1.1 before receiving a HB response.
+> One of the SCTP stacks we've used did send messages to an
+> inappropriate address, but I've forgotten which one.
+
+I guess that would be problematic if A can not receive traffic for
+192.168.1.1 on the interface connected to LAN X.  I shouldn't
+technically be a problem for C as it should mark the path to 192.168.1.1
+as down.  For A, as long as it doesn't decide to ABORT the association,
+it shouldn't be a problem either.  It would be interesting to know more
+about what problems you've observed.
+
+> 
+> Connections between A and D fail unless the HB errors A receives
+> for 192.168.1.2 are ignored.
+
+Yes, this configuration is very error prone, especially if system B and
+system D are up at the same time.  Any attempts by system A to use
+LAN Y will result in an ABORT generated by system B.  I have seen
+this issue well in production and we had to renumber system D to solve
+it.
+
+-vlad
+> 
+> Of course the application could explicitly bind to only the 10.x address
+> but that requires the application know the exact network topology
+> and may be difficult for incoming calls.
+> 
+> 	David
+> 
+
