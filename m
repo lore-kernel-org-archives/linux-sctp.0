@@ -1,131 +1,173 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Mon, 30 Dec 2013 11:39:57 +0000
-Subject: Re: [RFC PATCH net-next 0/3] sctp accept socket fix
-Message-Id: <52C15B8D.8040803@redhat.com>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Fri, 06 Dec 2013 15:29:15 +0000
+Subject: [PATCH] sctp: properly latch and use autoclose value from sock to association
+Message-Id: <1386343755-14130-1-git-send-email-nhorman@tuxdriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1387891183-21169-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1387891183-21169-1-git-send-email-dborkman@redhat.com>
+References: <52A0A300.3010409@gmail.com>
+In-Reply-To: <52A0A300.3010409@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Wang Weidong <wangweidong1@huawei.com>, David Miller <davem@davemloft.net>, Vlad Yasevich <vyasevich@gmail.com>, netdev@vger.kernel.org
 
-On 12/30/2013 12:32 PM, Wang Weidong wrote:
-> On 2013/12/24 21:19, Daniel Borkmann wrote:
->> lksctp-tools test suite seems to work just fine with this set.
->>
->> Found a bit of time, so I continued on this, still on TODO for after Xmas:
->>
->>    - Peeled-off sockets, shall we treat them just like accepted sockets
->>      and do a flat copy here, or do we want to avoid this for some reasons?
->>    - Polish up commit messages, further stress tests
->>
->> Daniel Borkmann (3):
->>    net: sock: introduce sock_sanitize
->>    net: sock: add sk_copy_sanitize for use in modules
->>    net: sctp: use sk_copy_sanitize for accept sockets
->>
->>   include/net/sctp/sctp.h |   4 +-
->>   include/net/sock.h      |   1 +
->>   net/core/sock.c         | 197 ++++++++++++++++++++++++++----------------------
->>   net/sctp/ipv6.c         |  11 ++-
->>   net/sctp/protocol.c     |  13 ++--
->>   net/sctp/socket.c       | 102 +++++++++++++++----------
->>   6 files changed, 182 insertions(+), 146 deletions(-)
->>
-> Hi Daniel,
->
-> I test them on my machine. I open the LOCKDEP and got the result below:
+Currently, sctp associations latch a sockets autoclose value to an association
+at association init time, subject to capping constraints from the max_autoclose
+sysctl value.  This leads to an odd situation where an application may set a
+socket level autoclose timeout, but sliently sctp will limit the autoclose
+timeout to something less than that.
 
-Thanks Wang, this could either be the result of the TODO comment I posted
-for patch 3, or some other issue. Will look into this when I'm back from
-vacations, as I planned to continue with the fix anyway.
+Fix this by modifying the autoclose setsockopt function to check the limit, cap
+it and warn the user via syslog that the timeout is capped.  This will allow
+getsockopt to return valid autoclose timeout values that reflect what subsequent
+associations actually use.
 
-Thanks again.
+While were at it, also elimintate the assoc->autoclose variable, it duplicates
+whats in the timeout array, which leads to multiple sources for the same
+information, that may differ (as the former isn't subject to any capping).  This
+gives us the timeout information in a canonical place and saves some space in
+the association structure as well.
 
-Daniel
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+CC: Wang Weidong <wangweidong1@huawei.com>
+CC: David Miller <davem@davemloft.net>
+CC: Vlad Yasevich <vyasevich@gmail.com>
+CC: netdev@vger.kernel.org
+---
+ include/net/sctp/structs.h |  6 ------
+ net/sctp/associola.c       |  2 --
+ net/sctp/output.c          |  3 ++-
+ net/sctp/sm_statefuns.c    | 12 ++++++------
+ net/sctp/socket.c          |  7 +++++++
+ 5 files changed, 15 insertions(+), 15 deletions(-)
 
-> ------------
-> [   74.750256] sctp: Hash tables configured (established 52428 bind 52428)
-> [   92.173914]
-> [   92.173923] ================> [   92.173930] [ INFO: inconsistent lock state ]
-> [   92.173938] 3.13.0-rc4-0.27-default+ #2 Not tainted
-> [   92.173944] ---------------------------------
-> [   92.173953] inconsistent {IN-SOFTIRQ-W} -> {SOFTIRQ-ON-W} usage.
-> [   92.173963] test_1_to_1_acc/3321 [HC0[0]:SC0[0]:HE1:SE1] takes:
-> [   92.173972]  (slock-AF_INET){+.?...}, at: [<ffffffff81437f31>] sock_sanitize+0xc1/0x3e0
-> [   92.173995] {IN-SOFTIRQ-W} state was registered at:
-> [   92.174003]   [<ffffffff810a2546>] mark_irqflags+0xf6/0x190
-> [   92.174017]   [<ffffffff810a40cc>] __lock_acquire+0x53c/0x670
-> [   92.174027]   [<ffffffff810a42e2>] lock_acquire+0xe2/0x110
-> [   92.174037]   [<ffffffff8152a6e1>] _raw_spin_lock+0x31/0x70
-> [   92.174050]   [<ffffffff814b1763>] tcp_write_timer+0x23/0x90
-> [   92.174063]   [<ffffffff810599e7>] call_timer_fn+0xb7/0x160
-> [   92.174076]   [<ffffffff8105a937>] run_timer_softirq+0x267/0x280
-> [   92.174087]   [<ffffffff810519bb>] __do_softirq+0x11b/0x290
-> [   92.174099]   [<ffffffff81051c55>] irq_exit+0xd5/0xe0
-> [   92.174109]   [<ffffffff81032a75>] smp_apic_timer_interrupt+0x45/0x60
-> [   92.174121]   [<ffffffff81534c6f>] apic_timer_interrupt+0x6f/0x80
-> [   92.174133]   [<ffffffff8100b52e>] arch_cpu_idle+0x1e/0x30
-> [   92.174146]   [<ffffffff810b5b8b>] cpu_idle_loop+0x7b/0x240
-> [   92.174158]   [<ffffffff810b5d6e>] cpu_startup_entry+0x1e/0x20
-> [   92.174168]   [<ffffffff810305ae>] start_secondary+0x7e/0x80
-> [   92.174181] irq event stamp: 19389
-> [   92.174187] hardirqs last  enabled at (19389): [<ffffffff810a2ca3>] debug_check_no_locks_freed+0x93/0xd0
-> [   92.174202] hardirqs last disabled at (19388): [<ffffffff810a2c3d>] debug_check_no_locks_freed+0x2d/0xd0
-> [   92.174216] softirqs last  enabled at (19370): [<ffffffff81435465>] lock_sock_nested+0x75/0x90
-> [   92.174229] softirqs last disabled at (19368): [<ffffffff8152a9d3>] _raw_spin_lock_bh+0x13/0x70
-> [   92.174241]
-> [   92.174241] other info that might help us debug this:
-> [   92.174251]  Possible unsafe locking scenario:
-> [   92.174251]
-> [   92.174260]        CPU0
-> [   92.174265]        ----
-> [   92.174270]   lock(slock-AF_INET);
-> [   92.174277]   <Interrupt>
-> [   92.174282]     lock(slock-AF_INET);
-> [   92.174290]
-> [   92.174290]  *** DEADLOCK ***
-> [   92.174290]
-> [   92.174301] 1 lock held by test_1_to_1_acc/3321:
-> [   92.174308]  #0:  (sk_lock-AF_INET){+.+.+.}, at: [<ffffffffa0291b46>] sctp_accept+0x36/0xf0 [sctp]
-> [   92.174337]
-> [   92.174337] stack backtrace:
-> [   92.174347] CPU: 3 PID: 3321 Comm: test_1_to_1_acc Not tainted 3.13.0-rc4-0.27-default+ #2
-> [   92.174358] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-> [   92.174366]  ffffffff821bc6d8 ffff880037583b58 ffffffff81524e7b ffff880037583bb8
-> [   92.174381]  ffffffff810a1a27 0000000000000000 0000000000000001 ffff880000000001
-> [   92.174394]  0000000000000046 ffffffff817d631c 0000000000000004 0000000000000006
-> [   92.174408] Call Trace:
-> [   92.174419]  [<ffffffff81524e7b>] dump_stack+0x6a/0x77
-> [   92.174429]  [<ffffffff810a1a27>] print_usage_bug+0x197/0x1a0
-> [   92.174440]  [<ffffffff810a1260>] ? check_usage_forwards+0x110/0x110
-> [   92.174451]  [<ffffffff810a212c>] mark_lock_irq+0xfc/0x220
-> [   92.174461]  [<ffffffff810a2375>] mark_lock+0x125/0x200
-> [   92.174471]  [<ffffffff810a2594>] mark_irqflags+0x144/0x190
-> [   92.174481]  [<ffffffff810a40cc>] __lock_acquire+0x53c/0x670
-> [   92.174491]  [<ffffffff810a42e2>] lock_acquire+0xe2/0x110
-> [   92.174501]  [<ffffffff81437f31>] ? sock_sanitize+0xc1/0x3e0
-> [   92.174511]  [<ffffffff8152a6e1>] _raw_spin_lock+0x31/0x70
-> [   92.174520]  [<ffffffff81437f31>] ? sock_sanitize+0xc1/0x3e0
-> [   92.174530]  [<ffffffff81437f31>] sock_sanitize+0xc1/0x3e0
-> [   92.174540]  [<ffffffff814382f8>] sk_copy_sanitize+0xa8/0xc0
-> [   92.174550]  [<ffffffff8143833e>] sk_clone_lock+0x2e/0x40
-> [   92.174560]  [<ffffffff81096580>] ? bit_waitqueue+0xe0/0xe0
-> [   92.174579]  [<ffffffffa028db92>] sctp_clone_lock+0x12/0xb0 [sctp]
-> [   92.174597]  [<ffffffffa027b777>] sctp_v4_create_accept_sk+0x17/0x90 [sctp]
-> [   92.174617]  [<ffffffffa0291bd3>] sctp_accept+0xc3/0xf0 [sctp]
-> [   92.174630]  [<ffffffff814cf978>] inet_accept+0x28/0x270
-> [   92.174642]  [<ffffffff81431d31>] SyS_accept4+0x141/0x1e0
-> [   92.174652]  [<ffffffff81534047>] ? sysret_check+0x1b/0x56
-> [   92.174663]  [<ffffffff8142f2db>] SyS_accept+0xb/0x10
-> [   92.174672]  [<ffffffff81534022>] system_call_fastpath+0x16/0x1b
-> -------------------
->
-> I am not sure what happen to it, So I post it here.
->
-> Regards,
-> Wang
->
->
->
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 2174d8d..0b069a0 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1725,12 +1725,6 @@ struct sctp_association {
+ 	/* How many duplicated TSNs have we seen?  */
+ 	int numduptsns;
+ 
+-	/* Number of seconds of idle time before an association is closed.
+-	 * In the association context, this is really used as a boolean
+-	 * since the real timeout is stored in the timeouts array
+-	 */
+-	__u32 autoclose;
+-
+ 	/* These are to support
+ 	 * "SCTP Extensions for Dynamic Reconfiguration of IP Addresses
+ 	 *  and Enforcement of Flow and Message Limits"
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index c9b91cb..0c9d1f1 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -291,8 +291,6 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
+ 		asoc->peer.ipv6_address = 1;
+ 	INIT_LIST_HEAD(&asoc->asocs);
+ 
+-	asoc->autoclose = sp->autoclose;
+-
+ 	asoc->default_stream = sp->default_stream;
+ 	asoc->default_ppid = sp->default_ppid;
+ 	asoc->default_flags = sp->default_flags;
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index e650978..c89e57d 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -580,7 +580,8 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+ 		unsigned long timeout;
+ 
+ 		/* Restart the AUTOCLOSE timer when sending data. */
+-		if (sctp_state(asoc, ESTABLISHED) && asoc->autoclose) {
++		if (sctp_state(asoc, ESTABLISHED) &&
++		    asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE]) {
+ 			timer = &asoc->timers[SCTP_EVENT_TIMEOUT_AUTOCLOSE];
+ 			timeout = asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE];
+ 
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index dfe3f36..a26065b 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -820,7 +820,7 @@ sctp_disposition_t sctp_sf_do_5_1D_ce(struct net *net,
+ 	SCTP_INC_STATS(net, SCTP_MIB_PASSIVEESTABS);
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_HB_TIMERS_START, SCTP_NULL());
+ 
+-	if (new_asoc->autoclose)
++	if (new_asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE])
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_START,
+ 				SCTP_TO(SCTP_EVENT_TIMEOUT_AUTOCLOSE));
+ 
+@@ -908,7 +908,7 @@ sctp_disposition_t sctp_sf_do_5_1E_ca(struct net *net,
+ 	SCTP_INC_STATS(net, SCTP_MIB_CURRESTAB);
+ 	SCTP_INC_STATS(net, SCTP_MIB_ACTIVEESTABS);
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_HB_TIMERS_START, SCTP_NULL());
+-	if (asoc->autoclose)
++	if (asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE])
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_START,
+ 				SCTP_TO(SCTP_EVENT_TIMEOUT_AUTOCLOSE));
+ 
+@@ -2970,7 +2970,7 @@ sctp_disposition_t sctp_sf_eat_data_6_2(struct net *net,
+ 	if (chunk->chunk_hdr->flags & SCTP_DATA_SACK_IMM)
+ 		force = SCTP_FORCE();
+ 
+-	if (asoc->autoclose) {
++	if (asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE]) {
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_RESTART,
+ 				SCTP_TO(SCTP_EVENT_TIMEOUT_AUTOCLOSE));
+ 	}
+@@ -3878,7 +3878,7 @@ sctp_disposition_t sctp_sf_eat_fwd_tsn(struct net *net,
+ 				SCTP_CHUNK(chunk));
+ 
+ 	/* Count this as receiving DATA. */
+-	if (asoc->autoclose) {
++	if (asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE]) {
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_RESTART,
+ 				SCTP_TO(SCTP_EVENT_TIMEOUT_AUTOCLOSE));
+ 	}
+@@ -5267,7 +5267,7 @@ sctp_disposition_t sctp_sf_do_9_2_start_shutdown(
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_RESTART,
+ 			SCTP_TO(SCTP_EVENT_TIMEOUT_T5_SHUTDOWN_GUARD));
+ 
+-	if (asoc->autoclose)
++	if (asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE])
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_STOP,
+ 				SCTP_TO(SCTP_EVENT_TIMEOUT_AUTOCLOSE));
+ 
+@@ -5346,7 +5346,7 @@ sctp_disposition_t sctp_sf_do_9_2_shutdown_ack(
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_RESTART,
+ 			SCTP_TO(SCTP_EVENT_TIMEOUT_T2_SHUTDOWN));
+ 
+-	if (asoc->autoclose)
++	if (asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE])
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_STOP,
+ 				SCTP_TO(SCTP_EVENT_TIMEOUT_AUTOCLOSE));
+ 
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 72046b9..9486ffd 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -2196,6 +2196,7 @@ static int sctp_setsockopt_autoclose(struct sock *sk, char __user *optval,
+ 				     unsigned int optlen)
+ {
+ 	struct sctp_sock *sp = sctp_sk(sk);
++	struct net *net = sock_net(sk);
+ 
+ 	/* Applicable to UDP-style socket only */
+ 	if (sctp_style(sk, TCP))
+@@ -2205,6 +2206,12 @@ static int sctp_setsockopt_autoclose(struct sock *sk, char __user *optval,
+ 	if (copy_from_user(&sp->autoclose, optval, optlen))
+ 		return -EFAULT;
+ 
++	if (sp->autoclose > net->sctp.max_autoclose) {
++		pr_warn("Capping autoclose value %d to defined maximum of %lu\n",
++			sp->autoclose, net->sctp.max_autoclose);
++		sp->autoclose = net->sctp.max_autoclose;
++	}
++
+ 	return 0;
+ }
+ 
+-- 
+1.8.3.1
+
