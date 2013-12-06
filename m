@@ -1,17 +1,20 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Wed, 04 Dec 2013 14:28:03 +0000
+From: David Miller <davem@davemloft.net>
+Date: Fri, 06 Dec 2013 01:56:24 +0000
 Subject: Re: [PATCH v2] sctp: disable max_burst when the max_burst is 0
-Message-Id: <529F3BF3.40009@gmail.com>
+Message-Id: <20131205.205624.1643659823573912858.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <529C2E01.3090005@huawei.com> <529EF6B7.7000501@huawei.com>
+References: <529C2E01.3090005@huawei.com>
+	<529EF6B7.7000501@huawei.com>
 In-Reply-To: <529EF6B7.7000501@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Wang Weidong <wangweidong1@huawei.com>, nhorman@tuxdriver.com, David Miller <davem@davemloft.net>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Daniel Borkmann <dborkman@redhat.com>
+To: wangweidong1@huawei.com
+Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, dborkman@redhat.com
 
-On 12/04/2013 04:32 AM, Wang Weidong wrote:
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Wed, 4 Dec 2013 17:32:39 +0800
+
 > As Michael pointed out that when max_burst is 0, it just disable
 > max_burst. It declared in rfc6458#section-8.1.24. so add the check
 > in sctp_transport_burst_limited, when it 0, just do nothing.
@@ -20,26 +23,5 @@ On 12/04/2013 04:32 AM, Wang Weidong wrote:
 > Suggested-by: Vlad Yasevich <vyasevich@gmail.com>
 > Suggested-by: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
 > Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
-> ---
->  net/sctp/transport.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-> index e332efb..efc46ff 100644
-> --- a/net/sctp/transport.c
-> +++ b/net/sctp/transport.c
-> @@ -573,7 +573,7 @@ void sctp_transport_burst_limited(struct sctp_transport *t)
->  	u32 old_cwnd = t->cwnd;
->  	u32 max_burst_bytes;
->  
-> -	if (t->burst_limited)
-> +	if (t->burst_limited || asoc->max_burst = 0)
->  		return;
->  
->  	max_burst_bytes = t->flight_size + (asoc->max_burst * asoc->pathmtu);
-> 
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-
-Thanks
--vlad
+Applied, thank you.
