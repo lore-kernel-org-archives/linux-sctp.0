@@ -1,7 +1,7 @@
 From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 06 Dec 2013 16:04:35 +0000
+Date: Fri, 06 Dec 2013 16:29:31 +0000
 Subject: Re: [PATCH] sctp: properly latch and use autoclose value from sock to association
-Message-Id: <20131206160435.GB1426@hmsreliant.think-freely.org>
+Message-Id: <20131206162931.GC1426@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <52A0A300.3010409@gmail.com>
  <1386343755-14130-1-git-send-email-nhorman@tuxdriver.com>
@@ -36,11 +36,13 @@ On Fri, Dec 06, 2013 at 03:46:31PM -0000, David Laight wrote:
 > 
 > 	David
 > 
-Hmm, good point, maybe a pr_ratelimit gate?
-
+> 
+Actually, I think its ok, or at least common.  Theres lots of pr_messages
+checking common user errors in the various setockopt paths.  We should probably
+undertake a larger effort to convert those all to printk_ratelimited with some
+level of sctp shared state.
 Neil
 
-> 
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
