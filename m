@@ -1,60 +1,96 @@
-From: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
-Date: Thu, 05 Dec 2013 13:07:41 +0000
+From: Sun Paul <paulrbk@gmail.com>
+Date: Fri, 06 Dec 2013 02:12:01 +0000
 Subject: Re: Supporting 4 way connections in LKSCTP
-Message-Id: <E816D349-2DE7-4F28-9297-F212ED4C6935@lurchi.franken.de>
+Message-Id: <CAFXGft+2vxKnQ88988L9v+YrWB3OBxUqDwEAO4tLFH+CEyGNJA@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAFXGft+CXk3W8=3w=AuYzqYtYnR8nH4Of9=668tUeT+tugD9-A@mail.gmail.com>	<CAFXGftJQV=5Pqs3bhfiS3T1VO1q8jfaMjAUiqm2tDbtSyBCM3A@mail.gmail.com>	<529C9B50.50002@gmail.com>	<CAGugRbXFirQ5P3ek9zN86h4vvO6qsy3eNEooJOApotA+dL+C_g@mail.gmail.com>	<529CB859.9090904@gmail.com>	<CAFXGft+F52p+oaa59=5e5pGfON44N36NA-XMYi5PorzWeybnKw@mail.gmail.com>	<CAFXGft+4o6fT4SYbu3musC+-BEi=xOEGUbZSavF1-0_V1mg6zg@mail.gmail.com>	<529D3BF9.3070208@gmail.com>	<CAFXGftJtCCJ=pVxg_DH-+n2bKmoKXavog0y8mfX+h-1z3hP49Q@mail.gmail.com>	<529DCF42.1070800@gmail.com>	<CAFXGftK5tz90OzObiV7Hi+g080j3zWCNdo217CKdNkOY4JWQUg@mail.gmail.com>	<529DF73E.7060604@gmail.com> <CAFXGftKZD0zN1S=UTa_bYr71-v=7mzU=_CewTNkjPv9CGGB_Fg@mail.gmail.com> <529F395B.9040308@gmail.com> <AE90C24D6B3A694183C094C60CF0A2F6026B745D@saturn3.aculab.com> <529F4D1A.3050304@gmail.com> <7A4B9BD9-B2BF-4625-A2E5-500CD4A6D399@lurchi.franken.de> <529F5472.9030207@gmail.com> <4F0BC498-2F09-4DB6-83DC-82571645476B@lurchi.franken.de> <529F7336.1000007@gmail.com> <AE90C24D6B3A694183C094C60CF0A2F6026B7460@saturn3.aculab.com>
-In-Reply-To: <AE90C24D6B3A694183C094C60CF0A2F6026B7460@saturn3.aculab.com>
+References: <CAFXGft+CXk3W8=3w=AuYzqYtYnR8nH4Of9=668tUeT+tugD9-A@mail.gmail.com>
+In-Reply-To: <CAFXGft+CXk3W8=3w=AuYzqYtYnR8nH4Of9=668tUeT+tugD9-A@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@ACULAB.COM>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, Sun Paul <paulrbk@gmail.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Karl Heiss <kheiss@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-kernel@vger.kernel.org
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On Dec 5, 2013, at 10:35 AM, David Laight <David.Laight@ACULAB.COM> wrote:
+So, can I get confirmation that whether we can enhance to support the
+scenarios or any resolution on providing the correct routing?
 
->>>> the configured addresses could be:
->>>> System A) 10.0.0.1 on Lan X, 10.10.0.1 on Lan Y
->>>> System B) 10.0.0.2 on Lan X, 10.10.0.2 on Lan Y
->>>> System C) 10.0.0.3 on Lan X, 10.10.0.2 on Lan Z
->>>> 
->>>> Same problem will occur.
-> ...
->> With that, Sys A talking to Sys C will get an abort
->> from Sys B when trying to talk to 10.10.0.2.  With /8, it'll be
->> even worse since SysB and SysC will have duplicate addresses
->> within the subnet. :)
->> 
->> The point is that you don't always know that the same private subnet
->> is in reality 2 different subnets with duplicate addresses.
->> 
->> I've had to debug an actual production issue similar to this where
->> customer had a very similar configuration to above, and their
->> associations kept getting aborted.  When I tried accessing the
->> system that kept sending aborts, I found it was some windows
->> server and not a Diameter station they were expecting.
-> 
-> Does seem that the addresses listed in INIT and INIT_ACK chunks
-> should be ignored until a valid HB response has been received.
-You are not allowed to send DATA to them until they are confirmed.
-> If an abort is received before a valid HB response then the
-> address should be ignored rather than the connection aborted.
-No.
-> Then it wouldn't matter anywhere near as much if addresses are
-> advertised that are not reachable from the remote system.
-> 
-> All this should have been thought about when the original RFC
-> was written.
-Scoping wasn't considered that much, same as NAT traversal.
-The assumption was that in SIGTRAN networks no NAT boxes are
-deployed and you use appropriate addressing (for redundancy).
-
-Best regards
-Michael
-> 
-> 	David
-> 
-> 
-> 
-> 
-
+On Tue, Nov 26, 2013 at 9:03 AM, Sun Paul <paulrbk@gmail.com> wrote:
+> Hi
+>
+> we have a problem on using LKSCTP to form a 4 ways multi-homing network.
+>
+> Configuration
+> - Node-A has 2 IP addresses in different subnets, known as IP-A (eth1),
+> IP-B (eth2)
+> - Node-B has 2 IP addresses in different subnets, known as IP-X (eth1),
+> IP-Y (eth2)
+>
+> the four way paths are shown below.
+> 1. IP-A (11.1.1.1) to IP-X (11.1.1.11)
+> 2. IP-B (12.1.1.1) to IP-Y (12.1.1.11)
+> 3. IP-A (11.1.1.1) to IP-Y (12.1.1.11)
+> 4. IP-B (12.1.1.1) to IP-X (11.1.1.11)
+>
+> the HB/HB_ACK is normal for the paths " IP-A to IP-X" and "IP-B to
+> IP-Y", but it is not correct for the rest of two.
+>
+> First of all, we are using iproute2 to form 2 table such that when
+> IP-B arrives on IP-X, it will know how to route back to IP-B on the
+> same interface, i.e (eth1). Same logic for the path "IP-A to IP-X".
+>
+> What we observed here is that when 12.1.1.1 sends INIT to 11.1.1.11,
+> LKSCTP will send back the INIT_ACK to 12.1.1.1 using 12.1.1.11 but not
+> using the IP 11.1.1.11.
+>
+> The above operation makes the subsequence HB/HB_ACK in using wrong IP address.
+>
+> TCP trace on eth1
+> 18:02:41.058640 IP 12.1.1.1.2905 > 11.1.1.11.2905: sctp (1) [INIT]
+> [init tag: 19933036] [rwnd: 102400] [OS: 16] [MIS: 16] [init TSN: 0]
+> 18:02:41.061634 IP 12.1.1.1.2905 > 11.1.1.11.2905: sctp (1) [COOKIE ECHO]
+> 18:02:41.062642 IP 12.1.1.1.2905 > 11.1.1.11.2905: sctp (1) [HB REQ]
+> 18:02:41.062846 IP 11.1.1.11.2905 > 11.1.1.1.2905: sctp (1) [HB ACK]
+> 18:02:41.361811 IP 11.1.1.11.2905 > 11.1.1.1.2905: sctp (1) [HB ACK]
+> 18:02:41.661791 IP 11.1.1.11.2905 > 11.1.1.1.2905: sctp (1) [HB ACK]
+> 18:02:41.961791 IP 11.1.1.11.2905 > 11.1.1.1.2905: sctp (1) [HB ACK]
+>
+> TCP trace on eth2
+> 18:02:41.058755 IP 12.1.1.11.2905 > 12.1.1.1.2905: sctp (1) [INIT ACK]
+> [init tag: 424726157] [rwnd: 131072] [OS: 5] [MIS: 5] [init TSN:
+> 3340756356]
+> 18:02:41.061696 IP 12.1.1.11.2905 > 12.1.1.1.2905: sctp (1) [COOKIE ACK]
+> 18:02:41.062663 IP 12.1.1.11.2905 > 12.1.1.1.2905: sctp (1) [HB ACK]
+> 18:02:41.062791 IP 11.1.1.1.2905 > 12.1.1.11.2905: sctp (1) [HB REQ]
+> 18:02:41.361777 IP 11.1.1.1.2905 > 12.1.1.11.2905: sctp (1) [HB REQ]
+> 18:02:41.661772 IP 11.1.1.1.2905 > 12.1.1.11.2905: sctp (1) [HB REQ]
+> 18:02:41.961772 IP 11.1.1.1.2905 > 12.1.1.11.2905: sctp (1) [HB REQ]
+> 18:02:42.161771 IP 11.1.1.1.2905 > 12.1.1.11.2905: sctp (1) [HB REQ]
+> 18:02:42.461770 IP 11.1.1.1.2905 > 12.1.1.11.2905: sctp (1) [HB REQ]
+> 18:02:42.675770 IP 11.1.1.1.2905 > 12.1.1.11.2905: sctp (1) [HB REQ]
+>
+>
+> If we are using single homing, there is no problem on the SCTP
+> communication. Below is the TCP trace on eth1 using sctp_test
+>
+> 18:09:55.356727 IP 12.1.1.1.2905 > 11.1.1.11.2905: sctp (1) [INIT]
+> [init tag: 32516609] [rwnd: 102400] [OS: 16] [MIS: 16] [init TSN: 0]
+> 18:09:55.356811 IP 11.1.1.11.2905 > 12.1.1.1.2905: sctp (1) [INIT ACK]
+> [init tag: 3168861995] [rwnd: 131072] [OS: 10] [MIS: 16] [init TSN:
+> 1877695021]
+> 18:09:55.357727 IP 12.1.1.1.2905 > 11.1.1.11.2905: sctp (1) [COOKIE ECHO]
+> 18:09:55.357788 IP 11.1.1.11.2905 > 12.1.1.1.2905: sctp (1) [COOKIE ACK]
+> 18:09:55.358724 IP 12.1.1.1.2905 > 11.1.1.11.2905: sctp (1) [HB REQ]
+> 18:09:55.358740 IP 11.1.1.11.2905 > 12.1.1.1.2905: sctp (1) [HB ACK]
+> 18:09:55.379715 IP 12.1.1.1.2905 > 11.1.1.11.2905: sctp (1) [DATA]
+> (B)(E) [TSN: 0] [SID: 0] [SSEQ 0] [PPID 0x3]
+> 18:09:55.379735 IP 11.1.1.11.2905 > 12.1.1.1.2905: sctp (1) [SACK]
+> [cum ack 0] [a_rwnd 131064] [#gap acks 0] [#dup tsns 0]
+> 18:09:55.657716 IP 12.1.1.1.2905 > 11.1.1.11.2905: sctp (1) [HB REQ]
+> 18:09:55.657732 IP 11.1.1.11.2905 > 12.1.1.1.2905: sctp (1) [HB ACK]
+>
+> From the observations, it seems that the LKSCTP library is not able to
+> use the original local address when multi-homing is being used. Is
+> there anyway can be resolved it?
+>
+> Thanks
+>
+> PS
