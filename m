@@ -1,7 +1,7 @@
 From: Wang Weidong <wangweidong1@huawei.com>
-Date: Fri, 06 Dec 2013 09:52:45 +0000
+Date: Fri, 06 Dec 2013 10:36:45 +0000
 Subject: Re: [PATCH v4] sctp: check the rto_min and rto_max
-Message-Id: <52A19E6D.1090503@huawei.com>
+Message-Id: <52A1A8BD.6040502@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <529FE2AD.5020700@huawei.com> <20131205133217.GA20349@hmsreliant.think-freely.org> <52A18F6D.9010606@huawei.com> <52A19DF6.1080808@redhat.com>
 In-Reply-To: <52A19DF6.1080808@redhat.com>
@@ -20,11 +20,13 @@ On 2013/12/6 17:50, Daniel Borkmann wrote:
 > Preferably in include/net/sctp/constants.h where we already have most
 > other constants anyway.
 > 
+> 
+Hi Daniel,
 
-Nice, Thanks for your suggestion.
+in sysctl.c it will use a point to the value while the socket.c use the value.
+So if I define macros SCTP_ONE or SCTP_TIMER_MAX in include/net/sctp/constants.h
+which only used by socket.c. Is it OK?
 
 Regards.
 Wang
-> 
-
 
