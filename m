@@ -1,53 +1,51 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 17 Dec 2013 16:19:58 +0000
-Subject: [PATCH v3 1/2] printk: Add a DEPRECATED macro
-Message-Id: <1387297199-14363-2-git-send-email-nhorman@tuxdriver.com>
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Fri, 06 Dec 2013 01:36:28 +0000
+Subject: [PATCH v3 net-next 2/4] sctp: remove the else path
+Message-Id: <1386293790-19956-3-git-send-email-wangweidong1@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1387205049-22752-1-git-send-email-nhorman@tuxdriver.com>
- <1387297199-14363-1-git-send-email-nhorman@tuxdriver.com>
-In-Reply-To: <1387297199-14363-1-git-send-email-nhorman@tuxdriver.com>
+References: <1386293790-19956-1-git-send-email-wangweidong1@huawei.com>
+In-Reply-To: <1386293790-19956-1-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
-Cc: Neil Horman <nhorman@tuxdriver.com>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, "David S. Miller" <davem@davemloft.net>, linux-kernel@vger.kernel.org
+To: nhorman@tuxdriver.com, vyasevich@gmail.com, davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-sctp has several points in its setsockopt path in which it issues deprecation
-warnings.  It seems like it might be handy to macrotize such a warning so other
-subsystems can use it easily
+Make the code more simplification.
 
-Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-CC: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-CC: "David S. Miller" <davem@davemloft.net>
-CC: linux-kernel@vger.kernel.org
-
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Suggested-by: Joe Perches <joe@perches.com>
+Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
 ---
-Change Notes:
+ net/sctp/associola.c | 10 +++-------
+ 1 file changed, 3 insertions(+), 7 deletions(-)
 
-v3)
-* Convert to using a string prefix rather than a specific pr_ macro
----
- include/linux/printk.h | 7 +++++++
- 1 file changed, 7 insertions(+)
-
-diff --git a/include/linux/printk.h b/include/linux/printk.h
-index 6949258..26fb95c 100644
---- a/include/linux/printk.h
-+++ b/include/linux/printk.h
-@@ -88,6 +88,13 @@ struct va_format {
- #define HW_ERR		"[Hardware Error]: "
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 06534fa..ccc7a58 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -956,17 +956,13 @@ int sctp_cmp_addr_exact(const union sctp_addr *ss1,
+  */
+ struct sctp_chunk *sctp_get_ecne_prepend(struct sctp_association *asoc)
+ {
+-	struct sctp_chunk *chunk;
++	if (!asoc->need_ecne)
++		return NULL;
+ 
+ 	/* Send ECNE if needed.
+ 	 * Not being able to allocate a chunk here is not deadly.
+ 	 */
+-	if (asoc->need_ecne)
+-		chunk = sctp_make_ecne(asoc, asoc->last_ecne_tsn);
+-	else
+-		chunk = NULL;
+-
+-	return chunk;
++	return sctp_make_ecne(asoc, asoc->last_ecne_tsn);
+ }
  
  /*
-+ * DEPRECATED
-+ * Add this to a message whenever you want to warn user space about the use
-+ * of a deprecated aspect of an API so they can stop using it
-+ */
-+#define DEPRECATED	"[Deprecated]: "
-+
-+/*
-  * Dummy printk for disabled debugging statements to use whilst maintaining
-  * gcc's format and side-effect checking.
-  */
 -- 
-1.8.3.1
+1.7.12
+
 
