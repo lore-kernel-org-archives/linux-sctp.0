@@ -1,205 +1,189 @@
-From: Chang <changxiangzhong@gmail.com>
-Date: Thu, 12 Dec 2013 21:48:02 +0000
-Subject: Re: Try to Implement load balancer for transmit & retransmit
-Message-Id: <52AA2F12.1020603@gmail.com>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Fri, 06 Dec 2013 17:22:40 +0000
+Subject: [PATCH v2] sctp: properly latch and use autoclose value from sock to association
+Message-Id: <1386350560-20920-1-git-send-email-nhorman@tuxdriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1386880952-18756-1-git-send-email-changxiangzhong@gmail.com>
-In-Reply-To: <1386880952-18756-1-git-send-email-changxiangzhong@gmail.com>
+References: <52A1EEFA.601@gmail.com>
+In-Reply-To: <52A1EEFA.601@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Wang Weidong <wangweidong1@huawei.com>, David Miller <davem@davemloft.net>, Vlad Yasevich <vyasevich@gmail.com>, netdev@vger.kernel.org
 
-Yeah,
-In my essay, I would implement SFR and CUC algorithms to manage the cwnd 
-increment/decrement, but in current implementation, the load is not 
-balanced to all of the pathes. So my 1st step is to evenly distribute 
-the load
+Currently, sctp associations latch a sockets autoclose value to an association
+at association init time, subject to capping constraints from the max_autoclose
+sysctl value.  This leads to an odd situation where an application may set a
+socket level autoclose timeout, but sliently sctp will limit the autoclose
+timeout to something less than that.
 
-Cheers
+Fix this by modifying the autoclose setsockopt function to check the limit, cap
+it and warn the user via syslog that the timeout is capped.  This will allow
+getsockopt to return valid autoclose timeout values that reflect what subsequent
+associations actually use.
 
-On 12/12/2013 10:39 PM, Neil Horman wrote:
-> On Thu, Dec 12, 2013 at 09:42:32PM +0100, Chang Xiangzhong wrote:
->> The current implementation uses only one path as the "active path" and one
->> path as a "retran path". This patch tries to use all of the pathes for
->> transmission. But I'm afraid there must be something missing, such things like
->> state update and etcs.
->>
->> The current implementation is very simple - just distribute the load on all of
->> the pathes - just check if it satisifes cwnd>flight_size.
->>
->> And comments would be appreciated!
->> ---
->>   include/net/sctp/cmt.h   |    5 +++-
->>   net/sctp/Makefile        |    4 +--
->>   net/sctp/associola.c     |   33 +++++++++++++++++++--
->>   net/sctp/cmt_debug.c     |    2 +-
->>   net/sctp/outqueue.c      |   73 +++++++++++++++++++++++++++++++++++-----------
->>   net/sctp/protocol.c      |    1 +
->>   net/sctp/sm_sideeffect.c |    2 +-
->>   7 files changed, 95 insertions(+), 25 deletions(-)
->>
->> diff --git a/include/net/sctp/cmt.h b/include/net/sctp/cmt.h
->> index edbbfc2..858def8 100644
->> --- a/include/net/sctp/cmt.h
->> +++ b/include/net/sctp/cmt.h
->> @@ -47,8 +47,11 @@
->>   	extern char* cmt_print_assoc(struct sctp_association *asoc);
->>   	extern char* cmt_print_sackhdr(struct sctp_sackhdr *sack);
->>   	extern char* cmt_print_queued_tsn(struct list_head *queue,
->> -					  struct sctp_transport *transport);
->> +					  struct sctp_transport *t);
->>   	extern char* cmt_print_cwnd(struct list_head *transport_list);
->> +	
->> +	extern struct sctp_transport* sctp_assoc_most_vacant_path(
->> +			struct sctp_association *asoc);
->>   #endif
->>   
->>   /* SACK Chunk Specific Flags*/
->> diff --git a/net/sctp/associola.c b/net/sctp/associola.c
->> index 626bdca..28f1f60 100644
->> --- a/net/sctp/associola.c
->> +++ b/net/sctp/associola.c
->> @@ -1295,6 +1295,33 @@ void sctp_assoc_update(struct sctp_association *asoc,
->>   	sctp_auth_asoc_init_active_key(asoc, GFP_ATOMIC);
->>   }
->>   
->> +struct sctp_transport*
->> +sctp_assoc_most_vacant_path(struct sctp_association *asoc, int threshold)
->> +{
->> +	struct sctp_transport *t, *ret = NULL;
->> +	int vacancy, best=-1;
->> +	if (threshold < 0)
->> +		threshold = 0;
->> +	list_for_each_entry(t, &asoc->peer.transport_addr_list, transports) {
->> +		vacancy = t->cwnd - t->flight_size;
->> +		if (t->state != SCTP_ACTIVE || vacancy <= threshold /*t->pathmtu/4*/)
->> +			continue;
->> +		// This is in slow-start state
->> +		if (t->ssthresh > t->cwnd) {
->> +			ret = t;
->> +			break;
->> +		}
->> +		if (vacancy > best) {
->> +			best = vacancy;
->> +			ret = t;	
->> +		}
->> +
->> +
->> +	}
->> +	cmt_debug("==>Find a most vacant path: %p\n", ret);
->> +	return ret;
->> +}
->> +
->>
->> diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
->> index d20816d..9010080 100644
->> --- a/net/sctp/outqueue.c
->> +++ b/net/sctp/outqueue.c
->> @@ -57,13 +57,13 @@
->>   
->>   #include <net/sctp/sctp.h>
->>   #include <net/sctp/sm.h>
->> -#include <net/sctp/cmt_debug.h>
->> +#include <net/sctp/cmt.h>
->>   
->>   
->>   /* Declare internal functions here.  */
->> @@ -920,14 +920,32 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
->>   		 * current cwnd).
->>   		 */
->>   		if (!list_empty(&q->retransmit)) {
->> -			if (asoc->peer.retran_path->state = SCTP_UNCONFIRMED)
->> -				goto sctp_flush_out;
->> -			if (transport = asoc->peer.retran_path)
->> -				goto retran;
->>   
->> -			/* Switch transports & prepare the packet.  */
->> -
->> -			transport = asoc->peer.retran_path;
->> +if (q->fast_rtx && !rtx_timeout)
->> +{
->> +	struct sctp_chunk *chunk, *chunk1;
->> +	int chunk_size = 0; // not count the header!
->> +	list_for_each_entry_safe(
->> +			chunk, chunk1, &q->retransmit, transmitted_list) {
->> +		// not the one to fast_rtx
->> +		if (sctp_chunk_abandoned(chunk)
->> +		    || chunk->tsn_gap_acked
->> +		    || !chunk->fast_retransmit) {
->> +			continue;
->> +		}
->> +		// found the chunk to fast_rtx
->> +		chunk_size = ntohs(chunk->chunk_hdr->length);
->> +		break;	
->> +	}
->> +	transport = sctp_assoc_most_vacant_path(asoc, chunk_size);
->> +	cmt_debug("%s: fast_rtx most vacant=%p, chunk_size=%d", __func__, transport, chunk_size);
->> +} else {
->> +	transport = sctp_assoc_most_vacant_path(asoc, -1);
->> +}
->> +			if (!transport) {
->> +				cmt_debug("could not find a vacant path!\n");
->> +				goto sctp_flush_out;
->> +			}
->>   
->>   			if (list_empty(&transport->send_ready)) {
->>   				list_add_tail(&transport->send_ready,
->> @@ -989,12 +1007,22 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
->>   			/* If there is a specified transport, use it.
->>   			 * Otherwise, we want to use the active path.
->>   			 */
->> -			new_transport = chunk->transport;
->> +			bool path_specified;
->> +retry:			new_transport = chunk->transport;
->>   			if (!new_transport ||
->>   			    ((new_transport->state = SCTP_INACTIVE) ||
->>   			     (new_transport->state = SCTP_UNCONFIRMED) ||
->> -			     (new_transport->state = SCTP_PF)))
->> -				new_transport = asoc->peer.active_path;
->> +			     (new_transport->state = SCTP_PF))) {
->> +				path_specified = false;
->> +				// new_transport = asoc->peer.active_path;
->> +				new_transport = sctp_assoc_most_vacant_path(
->> +						asoc, -1);
->> +				if (!new_transport) {// no available path
->> +					sctp_outq_head_data(q, chunk);
->> +					goto sctp_flush_out;
->> +				}
->> +			} else
->> +				path_specified = true;
->>   			if (new_transport->state = SCTP_UNCONFIRMED)
->>   				continue;
->>   
->> @@ -1032,7 +1060,18 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
->>   
->>   			switch (status) {
->>   			case SCTP_XMIT_CWND_FULL:// 3
->> -			case SCTP_XMIT_PMTU_FULL://1
->> +				cmt_debug("==>CWND full\n");
->> +				// The App didn't specify a path, so the path
->> +				// was chosen by us. Then we could retry with
->> +				// another path
->> +				if (!path_specified) {
->> +					cmt_debug("==>retry!\n");
->> +					goto retry;
->> +				}	
->> +			// PMTU_FULL not likely. As sctp_packet_transmit_chunk
->> +			// would flush the transport and transmit the next
->> +			// chunk in the queue if PMTU_FULL happens.
->> +			case SCTP_XMIT_PMTU_FULL://1
->>   			case SCTP_XMIT_RWND_FULL://2
->>   			case SCTP_XMIT_NAGLE_DELAY://4
->>   				/* We could not append this chunk, so put
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> Agree with vlad.  This patch just doles out new aasociations accross less loaded
-> transports (using a very transient metric).  What you want to do is
-> multipathing.
->
-> Neil
->
+While were at it, also elimintate the assoc->autoclose variable, it duplicates
+whats in the timeout array, which leads to multiple sources for the same
+information, that may differ (as the former isn't subject to any capping).  This
+gives us the timeout information in a canonical place and saves some space in
+the association structure as well.
+
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+CC: Wang Weidong <wangweidong1@huawei.com>
+CC: David Miller <davem@davemloft.net>
+CC: Vlad Yasevich <vyasevich@gmail.com>
+CC: netdev@vger.kernel.org
+
+---
+Change notes:
+
+V2) Based on conversation with Vlad, removing the cap operation from
+sctp_association_init.  The spec is vague as to how we should handle this, and
+so we're removing it as a code savings, and will readdress if anyone complains.
+---
+ include/net/sctp/structs.h |  6 ------
+ net/sctp/associola.c       |  5 +----
+ net/sctp/output.c          |  3 ++-
+ net/sctp/sm_statefuns.c    | 12 ++++++------
+ net/sctp/socket.c          |  7 +++++++
+ 5 files changed, 16 insertions(+), 17 deletions(-)
+
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 2174d8d..0b069a0 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1725,12 +1725,6 @@ struct sctp_association {
+ 	/* How many duplicated TSNs have we seen?  */
+ 	int numduptsns;
+ 
+-	/* Number of seconds of idle time before an association is closed.
+-	 * In the association context, this is really used as a boolean
+-	 * since the real timeout is stored in the timeouts array
+-	 */
+-	__u32 autoclose;
+-
+ 	/* These are to support
+ 	 * "SCTP Extensions for Dynamic Reconfiguration of IP Addresses
+ 	 *  and Enforcement of Flow and Message Limits"
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index c9b91cb..be939b1 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -154,8 +154,7 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
+ 
+ 	asoc->timeouts[SCTP_EVENT_TIMEOUT_HEARTBEAT] = 0;
+ 	asoc->timeouts[SCTP_EVENT_TIMEOUT_SACK] = asoc->sackdelay;
+-	asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE] -		min_t(unsigned long, sp->autoclose, net->sctp.max_autoclose) * HZ;
++	asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE] = sp->autoclose * HZ;
+ 
+ 	/* Initializes the timers */
+ 	for (i = SCTP_EVENT_TIMEOUT_NONE; i < SCTP_NUM_TIMEOUT_TYPES; ++i)
+@@ -291,8 +290,6 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
+ 		asoc->peer.ipv6_address = 1;
+ 	INIT_LIST_HEAD(&asoc->asocs);
+ 
+-	asoc->autoclose = sp->autoclose;
+-
+ 	asoc->default_stream = sp->default_stream;
+ 	asoc->default_ppid = sp->default_ppid;
+ 	asoc->default_flags = sp->default_flags;
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index e650978..c89e57d 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -580,7 +580,8 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+ 		unsigned long timeout;
+ 
+ 		/* Restart the AUTOCLOSE timer when sending data. */
+-		if (sctp_state(asoc, ESTABLISHED) && asoc->autoclose) {
++		if (sctp_state(asoc, ESTABLISHED) &&
++		    asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE]) {
+ 			timer = &asoc->timers[SCTP_EVENT_TIMEOUT_AUTOCLOSE];
+ 			timeout = asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE];
+ 
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index dfe3f36..a26065b 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -820,7 +820,7 @@ sctp_disposition_t sctp_sf_do_5_1D_ce(struct net *net,
+ 	SCTP_INC_STATS(net, SCTP_MIB_PASSIVEESTABS);
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_HB_TIMERS_START, SCTP_NULL());
+ 
+-	if (new_asoc->autoclose)
++	if (new_asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE])
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_START,
+ 				SCTP_TO(SCTP_EVENT_TIMEOUT_AUTOCLOSE));
+ 
+@@ -908,7 +908,7 @@ sctp_disposition_t sctp_sf_do_5_1E_ca(struct net *net,
+ 	SCTP_INC_STATS(net, SCTP_MIB_CURRESTAB);
+ 	SCTP_INC_STATS(net, SCTP_MIB_ACTIVEESTABS);
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_HB_TIMERS_START, SCTP_NULL());
+-	if (asoc->autoclose)
++	if (asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE])
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_START,
+ 				SCTP_TO(SCTP_EVENT_TIMEOUT_AUTOCLOSE));
+ 
+@@ -2970,7 +2970,7 @@ sctp_disposition_t sctp_sf_eat_data_6_2(struct net *net,
+ 	if (chunk->chunk_hdr->flags & SCTP_DATA_SACK_IMM)
+ 		force = SCTP_FORCE();
+ 
+-	if (asoc->autoclose) {
++	if (asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE]) {
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_RESTART,
+ 				SCTP_TO(SCTP_EVENT_TIMEOUT_AUTOCLOSE));
+ 	}
+@@ -3878,7 +3878,7 @@ sctp_disposition_t sctp_sf_eat_fwd_tsn(struct net *net,
+ 				SCTP_CHUNK(chunk));
+ 
+ 	/* Count this as receiving DATA. */
+-	if (asoc->autoclose) {
++	if (asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE]) {
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_RESTART,
+ 				SCTP_TO(SCTP_EVENT_TIMEOUT_AUTOCLOSE));
+ 	}
+@@ -5267,7 +5267,7 @@ sctp_disposition_t sctp_sf_do_9_2_start_shutdown(
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_RESTART,
+ 			SCTP_TO(SCTP_EVENT_TIMEOUT_T5_SHUTDOWN_GUARD));
+ 
+-	if (asoc->autoclose)
++	if (asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE])
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_STOP,
+ 				SCTP_TO(SCTP_EVENT_TIMEOUT_AUTOCLOSE));
+ 
+@@ -5346,7 +5346,7 @@ sctp_disposition_t sctp_sf_do_9_2_shutdown_ack(
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_RESTART,
+ 			SCTP_TO(SCTP_EVENT_TIMEOUT_T2_SHUTDOWN));
+ 
+-	if (asoc->autoclose)
++	if (asoc->timeouts[SCTP_EVENT_TIMEOUT_AUTOCLOSE])
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_STOP,
+ 				SCTP_TO(SCTP_EVENT_TIMEOUT_AUTOCLOSE));
+ 
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 72046b9..9486ffd 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -2196,6 +2196,7 @@ static int sctp_setsockopt_autoclose(struct sock *sk, char __user *optval,
+ 				     unsigned int optlen)
+ {
+ 	struct sctp_sock *sp = sctp_sk(sk);
++	struct net *net = sock_net(sk);
+ 
+ 	/* Applicable to UDP-style socket only */
+ 	if (sctp_style(sk, TCP))
+@@ -2205,6 +2206,12 @@ static int sctp_setsockopt_autoclose(struct sock *sk, char __user *optval,
+ 	if (copy_from_user(&sp->autoclose, optval, optlen))
+ 		return -EFAULT;
+ 
++	if (sp->autoclose > net->sctp.max_autoclose) {
++		pr_warn("Capping autoclose value %d to defined maximum of %lu\n",
++			sp->autoclose, net->sctp.max_autoclose);
++		sp->autoclose = net->sctp.max_autoclose;
++	}
++
+ 	return 0;
+ }
+ 
+-- 
+1.8.3.1
 
