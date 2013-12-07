@@ -1,7 +1,7 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Fri, 06 Dec 2013 18:47:46 +0000
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Sat, 07 Dec 2013 06:29:49 +0000
 Subject: Re: [PATCH v2] sctp: properly latch and use autoclose value from sock to association
-Message-Id: <52A21BD2.40502@gmail.com>
+Message-Id: <52A2C05D.3080608@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <52A1EEFA.601@gmail.com> <1386350560-20920-1-git-send-email-nhorman@tuxdriver.com>
 In-Reply-To: <1386350560-20920-1-git-send-email-nhorman@tuxdriver.com>
@@ -9,9 +9,9 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org
-Cc: Wang Weidong <wangweidong1@huawei.com>, David Miller <davem@davemloft.net>, netdev@vger.kernel.org
+Cc: David Miller <davem@davemloft.net>, Vlad Yasevich <vyasevich@gmail.com>, netdev@vger.kernel.org
 
-On 12/06/2013 12:22 PM, Neil Horman wrote:
+On 2013/12/7 1:22, Neil Horman wrote:
 > Currently, sctp associations latch a sockets autoclose value to an association
 > at association init time, subject to capping constraints from the max_autoclose
 > sysctl value.  This leads to an odd situation where an application may set a
@@ -41,15 +41,6 @@ On 12/06/2013 12:22 PM, Neil Horman wrote:
 > V2) Based on conversation with Vlad, removing the cap operation from
 > sctp_association_init.  The spec is vague as to how we should handle this, and
 > so we're removing it as a code savings, and will readdress if anyone complains.
-
-This is makes this behavior consistent with the rest of the timers that
-SCTP uses, i.e. the association timer is latched to the current socket
-value.
-
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-
--vlad
-
 > ---
 >  include/net/sctp/structs.h |  6 ------
 >  net/sctp/associola.c       |  5 +----
@@ -195,4 +186,10 @@ Acked-by: Vlad Yasevich <vyasevich@gmail.com>
 >  }
 >  
 > 
+
+I test it on my machine. And it works for me.
+Thanks.
+
+Acked-by: Wang Weidong <wangweidong1@huawei.com>
+
 
