@@ -1,7 +1,7 @@
 From: Wang Weidong <wangweidong1@huawei.com>
-Date: Mon, 09 Dec 2013 02:51:10 +0000
+Date: Mon, 09 Dec 2013 03:28:44 +0000
 Subject: Re: [PATCH v5 1/2] sctp: check the rto_min and rto_max
-Message-Id: <52A5301E.3060105@huawei.com>
+Message-Id: <52A538EC.9000200@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1386400651-21744-1-git-send-email-wangweidong1@huawei.com> <1386400651-21744-2-git-send-email-wangweidong1@huawei.com> <52A36EE1.4010209@gmail.com> <52A522A3.7010201@huawei.com> <52A52894.6060600@gmail.com> <52A52AC9.6050907@huawei.com> <52A52D8F.7010202@gmail.com>
 In-Reply-To: <52A52D8F.7010202@gmail.com>
@@ -130,9 +130,28 @@ On 2013/12/9 10:40, Vlad Yasevich wrote:
 > 
 > -vlad
 
-Nice.
+Hi vald,
 
-Thanks. 
+I found that we had checked the value of 0 in sctp_setsockopt_rtoinfo.
+So I only do this:
+
+if (asoc) {
++	if (msecs_to_jiffies(rtoinfo.srto_min) >
++                   msecs_to_jiffies(rtoinfo.srto_max))
++                       return -EINVAL;
+	...
+} else {
+	...
++	if (rtoinfo.srto_min > rtoinfo.srto_max)
++                       return -EINVAL;
+	...
+}
+
+There because we set value to asoc and sp is not same. So I add the
+check into two path.
+
+Regards.
+Wang
 
 >>
 >> Thanks.
