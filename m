@@ -1,37 +1,75 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Tue, 10 Dec 2013 12:51:04 +0000
+From: Wang Weidong <weidong1991.wang@gmail.com>
+Date: Tue, 10 Dec 2013 14:34:08 +0000
 Subject: Re: [PATCH v6 0/3] sctp: check the rto_min and rto_max
-Message-Id: <52A70E38.9020906@redhat.com>
+Message-Id: <52A72660.9050403@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1386643597-22156-1-git-send-email-wangweidong1@huawei.com>
-In-Reply-To: <1386643597-22156-1-git-send-email-wangweidong1@huawei.com>
+References: <1386643597-22156-1-git-send-email-wangweidong1@huawei.com> <52A70E38.9020906@redhat.com>
+In-Reply-To: <52A70E38.9020906@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Wang Weidong <wangweidong1@huawei.com>
+To: Daniel Borkmann <dborkman@redhat.com>, Wang Weidong <wangweidong1@huawei.com>
 Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On 12/10/2013 03:46 AM, Wang Weidong wrote:
-> v5 -> v6
->    -patch1: do rto_min/max socket option handling in its own patch, and
->     fix the check of rto_min/max.
->    -patch2: do rto_min/max sysctl handling in its own patch.
->    -patch3: add Suggested-by Daniel.
+From: Wang Weidong <wangweidong1@huawei.com>
 
-Fyi, for future submission, please keep the full changelog.
-
-I would have much rather liked seeing you with finishing the last
-2 patches first, and then approach the newly introduced 1st one
-in this series for now. You still haven't fully fixed whitespace
-issues in your second patch in the function itself which I hoped
-you would address, but fair enough ...
-
-> Wang Weidong (3):
->    sctp: check the rto_min and rto_max in setsockopt
->    sctp: add check rto_min and rto_max in sysctl
->    sctp: fix up a spacing
+On 2013/12/10 20:51, Daniel Borkmann wrote:
+> On 12/10/2013 03:46 AM, Wang Weidong wrote:
+>> v5 -> v6
+>>    -patch1: do rto_min/max socket option handling in its own patch, and
+>>     fix the check of rto_min/max.
+>>    -patch2: do rto_min/max sysctl handling in its own patch.
+>>    -patch3: add Suggested-by Daniel.
 >
->   net/sctp/socket.c | 32 +++++++++++++++--------
->   net/sctp/sysctl.c | 76 ++++++++++++++++++++++++++++++++++++++++++++++++-------
->   2 files changed, 89 insertions(+), 19 deletions(-)
+> Fyi, for future submission, please keep the full changelog.
 >
+
+Yeah, Thanks! I will do this in future submission.
+
+> I would have much rather liked seeing you with finishing the last
+> 2 patches first, and then approach the newly introduced 1st one
+> in this series for now. You still haven't fully fixed whitespace
+> issues in your second patch in the function itself which I hoped
+> you would address, but fair enough ...
+>
+
+As Vlad's suggestion, I split it to 2 patches. Should I combine these
+2 patch to one?
+
+The second patch, do you mean that?
+I should do it from
+
++static int proc_sctp_do_rto_min(struct ctl_table *ctl, int write,
++				void __user *buffer, size_t *lenp,
++				loff_t *ppos);
++static int proc_sctp_do_rto_max(struct ctl_table *ctl, int write,
++				void __user *buffer, size_t *lenp,
++				loff_t *ppos);
+
+to
+
++static int proc_sctp_do_rto_min(struct ctl_table *ctl, int write,
++				 void __user *buffer, size_t *lenp,
++				 loff_t *ppos);
++static int proc_sctp_do_rto_max(struct ctl_table *ctl, int write,
++				 void __user *buffer, size_t *lenp,
++				 loff_t *ppos);
+
+Just line up to first line? And I should change the third patch as well.
+
+Regards.
+Wang
+
+>> Wang Weidong (3):
+>>    sctp: check the rto_min and rto_max in setsockopt
+>>    sctp: add check rto_min and rto_max in sysctl
+>>    sctp: fix up a spacing
+>>
+>>   net/sctp/socket.c | 32 +++++++++++++++--------
+>>   net/sctp/sysctl.c | 76 ++++++++++++++++++++++++++++++++++++++++++++++++-------
+>>   2 files changed, 89 insertions(+), 19 deletions(-)
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe netdev" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
