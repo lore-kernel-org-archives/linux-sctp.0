@@ -1,37 +1,127 @@
 From: Wang Weidong <wangweidong1@huawei.com>
-Date: Mon, 02 Dec 2013 01:33:26 +0000
-Subject: Re: [PATCH] sctp: check the rto_min and rto_max
-Message-Id: <529BE366.2060504@huawei.com>
+Date: Tue, 10 Dec 2013 02:46:36 +0000
+Subject: [PATCH v6 2/3] sctp: add check rto_min and rto_max in sysctl
+Message-Id: <1386643597-22156-3-git-send-email-wangweidong1@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <5299BCB8.6070409@huawei.com> <20131130.160847.361995350346508364.davem@davemloft.net>
-In-Reply-To: <20131130.160847.361995350346508364.davem@davemloft.net>
+References: <1386643597-22156-1-git-send-email-wangweidong1@huawei.com>
+In-Reply-To: <1386643597-22156-1-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, dingtianhong@huawei.com
+To: vyasevich@gmail.com, nhorman@tuxdriver.com, davem@davemloft.net
+Cc: dborkman@redhat.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On 2013/12/1 5:08, David Miller wrote:
-> From: wangweidong <wangweidong1@huawei.com>
-> Date: Sat, 30 Nov 2013 18:23:52 +0800
-> 
->> rto_min should be smaller than rto_max while rto_max should be larger
->> than rto_min. so just add the check.
->>
->> Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
-> 
-> Please fix your submission process such that your real full name
-> appears in the "From: " field of your patch emails, instead of
-> just "wangweidong", which is your username not your real full
-> name.
-> 
-> I'm not applying your patches until you correct this and submit
-> the patch properly, thanks.
-> 
+rto_min should be smaller than rto_max while rto_max should be larger
+than rto_min. Add two proc_handler for the checking.
 
-Ok, I will fix it in v2.
-Thanks.
+Suggested-by: Vlad Yasevich <vyasevich@gmail.com>
+Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+---
+ net/sctp/sysctl.c | 69 +++++++++++++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 65 insertions(+), 4 deletions(-)
 
-> 
+diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
+index 6b36561..ed4ec89 100644
+--- a/net/sctp/sysctl.c
++++ b/net/sctp/sysctl.c
+@@ -61,6 +61,13 @@ static int proc_sctp_do_hmac_alg(struct ctl_table *ctl,
+ 				void __user *buffer, size_t *lenp,
+ 
+ 				loff_t *ppos);
++static int proc_sctp_do_rto_min(struct ctl_table *ctl, int write,
++				void __user *buffer, size_t *lenp,
++				loff_t *ppos);
++static int proc_sctp_do_rto_max(struct ctl_table *ctl, int write,
++				void __user *buffer, size_t *lenp,
++				loff_t *ppos);
++
+ static struct ctl_table sctp_table[] = {
+ 	{
+ 		.procname	= "sctp_mem",
+@@ -102,17 +109,17 @@ static struct ctl_table sctp_net_table[] = {
+ 		.data		= &init_net.sctp.rto_min,
+ 		.maxlen		= sizeof(unsigned int),
+ 		.mode		= 0644,
+-		.proc_handler	= proc_dointvec_minmax,
++		.proc_handler	= proc_sctp_do_rto_min,
+ 		.extra1         = &one,
+-		.extra2         = &timer_max
++		.extra2         = &init_net.sctp.rto_max
+ 	},
+ 	{
+ 		.procname	= "rto_max",
+ 		.data		= &init_net.sctp.rto_max,
+ 		.maxlen		= sizeof(unsigned int),
+ 		.mode		= 0644,
+-		.proc_handler	= proc_dointvec_minmax,
+-		.extra1         = &one,
++		.proc_handler	= proc_sctp_do_rto_max,
++		.extra1         = &init_net.sctp.rto_min,
+ 		.extra2         = &timer_max
+ 	},
+ 	{
+@@ -342,6 +349,60 @@ static int proc_sctp_do_hmac_alg(struct ctl_table *ctl,
+ 	return ret;
+ }
+ 
++static int proc_sctp_do_rto_min(struct ctl_table *ctl, int write,
++				void __user*buffer, size_t *lenp,
++				loff_t *ppos)
++{
++	struct net *net = current->nsproxy->net_ns;
++	int new_value;
++	struct ctl_table tbl;
++	unsigned int min = *(unsigned int *) ctl->extra1;
++	unsigned int max = *(unsigned int *) ctl->extra2;
++	int ret;
++
++	memset(&tbl, 0, sizeof(struct ctl_table));
++	tbl.maxlen = sizeof(unsigned int);
++
++	if (write)
++		tbl.data = &new_value;
++	else
++		tbl.data = &net->sctp.rto_min;
++	ret = proc_dointvec(&tbl, write, buffer, lenp, ppos);
++	if (write) {
++		if (ret || new_value > max || new_value < min)
++			return -EINVAL;
++		net->sctp.rto_min = new_value;
++	}
++	return ret;
++}
++
++static int proc_sctp_do_rto_max(struct ctl_table *ctl, int write,
++				void __user*buffer, size_t *lenp,
++				loff_t *ppos)
++{
++	struct net *net = current->nsproxy->net_ns;
++	int new_value;
++	struct ctl_table tbl;
++	unsigned int min = *(unsigned int *) ctl->extra1;
++	unsigned int max = *(unsigned int *) ctl->extra2;
++	int ret;
++
++	memset(&tbl, 0, sizeof(struct ctl_table));
++	tbl.maxlen = sizeof(unsigned int);
++
++	if (write)
++		tbl.data = &new_value;
++	else
++		tbl.data = &net->sctp.rto_max;
++	ret = proc_dointvec(&tbl, write, buffer, lenp, ppos);
++	if (write) {
++                if (ret || new_value > max || new_value < min)
++			return -EINVAL;
++		net->sctp.rto_max = new_value;
++	}
++	return ret;
++}
++
+ int sctp_sysctl_net_register(struct net *net)
+ {
+ 	struct ctl_table *table;
+-- 
+1.7.12
 
 
