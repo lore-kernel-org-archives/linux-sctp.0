@@ -1,31 +1,28 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 10 Dec 2013 01:32:38 +0000
+From: nhorman@tuxdriver.com
+Date: Tue, 10 Dec 2013 03:03:41 +0000
 Subject: Re: [PATCH] sctp: properly latch and use autoclose value from sock to association
-Message-Id: <20131209.203238.1909015829128815864.davem@davemloft.net>
+Message-Id: <E1VqDbx-0006lk-Ka@smtp.tuxdriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <52A0A300.3010409@gmail.com>
-	<1386343755-14130-1-git-send-email-nhorman@tuxdriver.com>
+References: <1386343755-14130-1-git-send-email-nhorman@tuxdriver.com>
 In-Reply-To: <1386343755-14130-1-git-send-email-nhorman@tuxdriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: nhorman@tuxdriver.com
-Cc: linux-sctp@vger.kernel.org, wangweidong1@huawei.com, vyasevich@gmail.com, netdev@vger.kernel.org
+To: David Miller <davem@davemloft.net>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, wangweidong1@huawei.com
 
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri,  6 Dec 2013 10:29:15 -0500
+T2sgSSdsbCByZXBvc3Qgd2hlbiBJIGdldCBvdXQgb2YgY2xhc3MgdG9tb3Jyb3cgZXZlbmluZwoK
+TmVpbAoKT24gRGVjIDksIDIwMTMgODozMiBQTSwgRGF2aWQgTWlsbGVyIDxkYXZlbUBkYXZlbWxv
+ZnQubmV0PiB3cm90ZToKPgo+IEZyb206IE5laWwgSG9ybWFuIDxuaG9ybWFuQHR1eGRyaXZlci5j
+b20+IAo+IERhdGU6IEZyaSzCoCA2IERlYyAyMDEzIDEwOjI5OjE1IC0wNTAwIAo+Cj4gPiBAQCAt
+MjIwNSw2ICsyMjA2LDEyIEBAIHN0YXRpYyBpbnQgc2N0cF9zZXRzb2Nrb3B0X2F1dG9jbG9zZShz
+dHJ1Y3Qgc29jayAqc2ssIGNoYXIgX191c2VyICpvcHR2YWwsIAo+ID7CoCBpZiAoY29weV9mcm9t
+X3VzZXIoJnNwLT5hdXRvY2xvc2UsIG9wdHZhbCwgb3B0bGVuKSkgCj4gPsKgIHJldHVybiAtRUZB
+VUxUOyAKPiA+wqAgCj4gPiArIGlmIChzcC0+YXV0b2Nsb3NlID4gbmV0LT5zY3RwLm1heF9hdXRv
+Y2xvc2UpIHsgCj4gPiArIHByX3dhcm4oIkNhcHBpbmcgYXV0b2Nsb3NlIHZhbHVlICVkIHRvIGRl
+ZmluZWQgbWF4aW11bSBvZiAlbHVcbiIsIAo+ID4gKyBzcC0+YXV0b2Nsb3NlLCBuZXQtPnNjdHAu
+bWF4X2F1dG9jbG9zZSk7IAo+ID4gKyBzcC0+YXV0b2Nsb3NlID0gbmV0LT5zY3RwLm1heF9hdXRv
+Y2xvc2U7IAo+ID4gKyB9IAo+Cj4gUGxlYXNlIGRvbid0IGFkZCB0aGlzIHdhcm5pbmcuIAo+Cj4g
+SWYgd2UgYWxyZWFkeSBkbyB0aGlzIGZvciBjZXJ0YWluIHNldHNvY2tvcHQgY2FsbHMgaW4gU0NU
+UCwgdGhhdCBqdXN0IAo+IG1lYW5zIHdlIGhhdmUgYnVncyB0byBmaXguIAo+Cg=
 
-> @@ -2205,6 +2206,12 @@ static int sctp_setsockopt_autoclose(struct sock *sk, char __user *optval,
->  	if (copy_from_user(&sp->autoclose, optval, optlen))
->  		return -EFAULT;
->  
-> +	if (sp->autoclose > net->sctp.max_autoclose) {
-> +		pr_warn("Capping autoclose value %d to defined maximum of %lu\n",
-> +			sp->autoclose, net->sctp.max_autoclose);
-> +		sp->autoclose = net->sctp.max_autoclose;
-> +	}
-
-Please don't add this warning.
-
-If we already do this for certain setsockopt calls in SCTP, that just
-means we have bugs to fix.
