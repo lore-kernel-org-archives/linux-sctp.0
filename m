@@ -1,124 +1,52 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 17 Dec 2013 16:19:59 +0000
-Subject: [PATCH v3 2/2] SCTP: Reduce log spamming for sctp setsockopt
-Message-Id: <1387297199-14363-3-git-send-email-nhorman@tuxdriver.com>
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Wed, 11 Dec 2013 01:50:40 +0000
+Subject: [PATCH v7 3/3] sctp: fix up a spacing
+Message-Id: <1386726640-9584-4-git-send-email-wangweidong1@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1387205049-22752-1-git-send-email-nhorman@tuxdriver.com>
- <1387297199-14363-1-git-send-email-nhorman@tuxdriver.com>
-In-Reply-To: <1387297199-14363-1-git-send-email-nhorman@tuxdriver.com>
+References: <1386726640-9584-1-git-send-email-wangweidong1@huawei.com>
+In-Reply-To: <1386726640-9584-1-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
-Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, netdev@vger.kernel.org
+To: vyasevich@gmail.com, nhorman@tuxdriver.com, davem@davemloft.net
+Cc: dborkman@redhat.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-During a recent discussion regarding some sctp socket options, it was noted that
-we have several points at which we issue log warnings that can be flooded at an
-unbounded rate by any user.  Fix this by converting all the pr_warns in the
-sctp_setsockopt path to be pr_warn_ratelimited.
+fix up spacing of proc_sctp_do_hmac_alg for according to the
+proc_sctp_do_rto_min[max] in sysctl.c
 
-Note there are several debug level messages as well.  I'm leaving those alone,
-as, if you turn on pr_debug, you likely want lots of verbosity.
-
-Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-CC: Vlad Yasevich <vyasevich@gmail.com>
-CC: David Miller <davem@davemloft.net>
-CC: netdev@vger.kernel.org
-
+Suggested-by: Daniel Borkmann <dborkman@redhat.com>
+Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
 ---
+ net/sctp/sysctl.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
-Change notes:
-
-V2)
-	* Based on suggestions from Daniel Borkman, and Joe Perches I'm creating
-and using a new pr_warn_deprecated macro
-
-	* Note from David Laight, The pr_warn statements come in pairs, and if
-one is printed through the ratelimit filter, the other should also be printed.
-Correct this by merging both calls into a single pr_warn_deprecated call.
-
-v3)
-	* Convert to using DEPRECATED macro
----
- net/sctp/socket.c | 30 ++++++++++++++++++------------
- 1 file changed, 18 insertions(+), 12 deletions(-)
-
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 42b709c..edd261e 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -2579,8 +2579,9 @@ static int sctp_setsockopt_delayed_ack(struct sock *sk,
- 		if (params.sack_delay = 0 && params.sack_freq = 0)
- 			return 0;
- 	} else if (optlen = sizeof(struct sctp_assoc_value)) {
--		pr_warn("Use of struct sctp_assoc_value in delayed_ack socket option deprecated\n");
--		pr_warn("Use struct sctp_sack_info instead\n");
-+		pr_warn_ratelimited(DEPRECATED
-+				    "Use of struct sctp_assoc_value in delayed_ack socket option.\n"
-+				    "Use struct sctp_sack_info instead\n");
- 		if (copy_from_user(&params, optval, optlen))
- 			return -EFAULT;
+diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
+index 43b5e32..b0565af 100644
+--- a/net/sctp/sysctl.c
++++ b/net/sctp/sysctl.c
+@@ -56,10 +56,8 @@ extern long sysctl_sctp_mem[3];
+ extern int sysctl_sctp_rmem[3];
+ extern int sysctl_sctp_wmem[3];
  
-@@ -2995,8 +2996,9 @@ static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned
- 	int val;
+-static int proc_sctp_do_hmac_alg(struct ctl_table *ctl,
+-				int write,
++static int proc_sctp_do_hmac_alg(struct ctl_table *ctl, int write,
+ 				void __user *buffer, size_t *lenp,
+-
+ 				loff_t *ppos);
+ static int proc_sctp_do_rto_min(struct ctl_table *ctl, int write,
+ 				void __user *buffer, size_t *lenp,
+@@ -301,8 +299,7 @@ static struct ctl_table sctp_net_table[] = {
+ 	{ /* sentinel */ }
+ };
  
- 	if (optlen = sizeof(int)) {
--		pr_warn("Use of int in maxseg socket option deprecated\n");
--		pr_warn("Use struct sctp_assoc_value instead\n");
-+		pr_warn_ratelimited(DEPRECATED
-+				    "Use of int in maxseg socket option.\n"
-+				    "Use struct sctp_assoc_value instead\n");
- 		if (copy_from_user(&val, optval, optlen))
- 			return -EFAULT;
- 		params.assoc_id = 0;
-@@ -3253,8 +3255,9 @@ static int sctp_setsockopt_maxburst(struct sock *sk,
- 	int assoc_id = 0;
- 
- 	if (optlen = sizeof(int)) {
--		pr_warn("Use of int in max_burst socket option deprecated\n");
--		pr_warn("Use struct sctp_assoc_value instead\n");
-+		pr_warn_ratelimited(DEPRECATED
-+				    "Use of int in max_burst socket option deprecated.\n"
-+				    "Use struct sctp_assoc_value instead\n");
- 		if (copy_from_user(&val, optval, optlen))
- 			return -EFAULT;
- 	} else if (optlen = sizeof(struct sctp_assoc_value)) {
-@@ -4574,8 +4577,9 @@ static int sctp_getsockopt_delayed_ack(struct sock *sk, int len,
- 		if (copy_from_user(&params, optval, len))
- 			return -EFAULT;
- 	} else if (len = sizeof(struct sctp_assoc_value)) {
--		pr_warn("Use of struct sctp_assoc_value in delayed_ack socket option deprecated\n");
--		pr_warn("Use struct sctp_sack_info instead\n");
-+		pr_warn_ratelimited(DEPRECATED
-+				    "Use of struct sctp_assoc_value in delayed_ack socket option.\n"
-+				    "Use struct sctp_sack_info instead\n");
- 		if (copy_from_user(&params, optval, len))
- 			return -EFAULT;
- 	} else
-@@ -5219,8 +5223,9 @@ static int sctp_getsockopt_maxseg(struct sock *sk, int len,
- 	struct sctp_association *asoc;
- 
- 	if (len = sizeof(int)) {
--		pr_warn("Use of int in maxseg socket option deprecated\n");
--		pr_warn("Use struct sctp_assoc_value instead\n");
-+		pr_warn_ratelimited(DEPRECATED
-+				    "Use of int in maxseg socket option.\n"
-+				    "Use struct sctp_assoc_value instead\n");
- 		params.assoc_id = 0;
- 	} else if (len >= sizeof(struct sctp_assoc_value)) {
- 		len = sizeof(struct sctp_assoc_value);
-@@ -5311,8 +5316,9 @@ static int sctp_getsockopt_maxburst(struct sock *sk, int len,
- 	struct sctp_association *asoc;
- 
- 	if (len = sizeof(int)) {
--		pr_warn("Use of int in max_burst socket option deprecated\n");
--		pr_warn("Use struct sctp_assoc_value instead\n");
-+		pr_warn_ratelimited(DEPRECATED
-+				    "Use of int in max_burst socket option.\n"
-+				    "Use struct sctp_assoc_value instead\n");
- 		params.assoc_id = 0;
- 	} else if (len >= sizeof(struct sctp_assoc_value)) {
- 		len = sizeof(struct sctp_assoc_value);
+-static int proc_sctp_do_hmac_alg(struct ctl_table *ctl,
+-				int write,
++static int proc_sctp_do_hmac_alg(struct ctl_table *ctl, int write,
+ 				void __user *buffer, size_t *lenp,
+ 				loff_t *ppos)
+ {
 -- 
-1.8.3.1
+1.7.12
+
 
