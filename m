@@ -1,38 +1,53 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 11 Dec 2013 03:42:11 +0000
-Subject: Re: [PATCH v3] sctp: properly latch and use autoclose value from sock to association
-Message-Id: <20131210.224211.270455193754339098.davem@davemloft.net>
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Wed, 11 Dec 2013 01:50:37 +0000
+Subject: [PATCH v7 0/3] sctp: check the rto_min and rto_max
+Message-Id: <1386726640-9584-1-git-send-email-wangweidong1@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1386350560-20920-1-git-send-email-nhorman@tuxdriver.com>
-	<1386676095-15286-1-git-send-email-nhorman@tuxdriver.com>
-In-Reply-To: <1386676095-15286-1-git-send-email-nhorman@tuxdriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: nhorman@tuxdriver.com
-Cc: linux-sctp@vger.kernel.org, wangweidong1@huawei.com, vyasevich@gmail.com, netdev@vger.kernel.org
+To: vyasevich@gmail.com, nhorman@tuxdriver.com, davem@davemloft.net
+Cc: dborkman@redhat.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 10 Dec 2013 06:48:15 -0500
+v6 -> v7:
+  -patch2: fix the whitespace issues which pointed out by Daniel
 
-> Currently, sctp associations latch a sockets autoclose value to an association
-> at association init time, subject to capping constraints from the max_autoclose
-> sysctl value.  This leads to an odd situation where an application may set a
-> socket level autoclose timeout, but sliently sctp will limit the autoclose
-> timeout to something less than that.
-> 
-> Fix this by modifying the autoclose setsockopt function to check the limit, cap
-> it and warn the user via syslog that the timeout is capped.  This will allow
-> getsockopt to return valid autoclose timeout values that reflect what subsequent
-> associations actually use.
-> 
-> While were at it, also elimintate the assoc->autoclose variable, it duplicates
-> whats in the timeout array, which leads to multiple sources for the same
-> information, that may differ (as the former isn't subject to any capping).  This
-> gives us the timeout information in a canonical place and saves some space in
-> the association structure as well.
-> 
-> Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-> Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+v5 -> v6:
+  split the v5' first patch to patch1 and patch2, and remove the
+  macro in constants.h
 
-Applied, thanks Neil.
+  -patch1: do rto_min/max socket option handling in its own patch, and
+   fix the check of rto_min/max.
+  -patch2: do rto_min/max sysctl handling in its own patch.
+  -patch3: add Suggested-by Daniel.
+
+v4 -> v5:
+  - patch1: add marco in constants.h and fix up spacing as
+    suggested by Daniel
+  - patch2: add a patch for fix up do_hmac_alg for according
+    to do_rto_min[max]
+
+v3 -> v4:
+  -patch1: fix use init_net directly which suggested by Vlad.
+
+v2 -> v3:
+  -patch1: add proc_handler for check rto_min and rto_max which suggested
+   by Vlad
+
+v1 -> v2:
+  -patch1: fix the From Name which pointed out by David, and
+   add the ACK by Neil
+
+Wang Weidong (3):
+  sctp: check the rto_min and rto_max in setsockopt
+  sctp: add check rto_min and rto_max in sysctl
+  sctp: fix up a spacing
+
+ net/sctp/socket.c | 32 +++++++++++++++--------
+ net/sctp/sysctl.c | 76 ++++++++++++++++++++++++++++++++++++++++++++++++-------
+ 2 files changed, 89 insertions(+), 19 deletions(-)
+
+-- 
+1.7.12
+
+
