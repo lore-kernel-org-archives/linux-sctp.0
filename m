@@ -1,23 +1,30 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 11 Dec 2013 12:09:36 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Wed, 11 Dec 2013 14:38:58 +0000
 Subject: Re: [PATCH net-next] sctp: remove redundant null check on asoc
-Message-Id: <20131211120936.GA24339@hmsreliant.think-freely.org>
+Message-Id: <52A87902.8070900@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <52A82566.1050601@huawei.com>
 In-Reply-To: <52A82566.1050601@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Wang Weidong <wangweidong1@huawei.com>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: Wang Weidong <wangweidong1@huawei.com>, Neil Horman <nhorman@tuxdriver.com>, David Miller <davem@davemloft.net>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Wed, Dec 11, 2013 at 04:42:14PM +0800, Wang Weidong wrote:
+On 12/11/2013 03:42 AM, Wang Weidong wrote:
 > In sctp_err_lookup, goto out while the asoc is not NULL, so remove the
 > check NULL. Also, in sctp_err_finish which called by sctp_v4_err and
 > sctp_v6_err, they pass asoc to sctp_err_finish while the asoc is not
 > NULL, so remove the check.
 > 
 > Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+
+
+Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+
+Thanks
+-vlad
+
 > ---
 >  net/sctp/input.c | 6 ++----
 >  1 file changed, 2 insertions(+), 4 deletions(-)
@@ -46,16 +53,5 @@ On Wed, Dec 11, 2013 at 04:42:14PM +0800, Wang Weidong wrote:
 >  }
 >  
 >  /*
-> -- 
-> 1.7.12
 > 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
-Seems reasonable
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
