@@ -1,7 +1,7 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Thu, 12 Dec 2013 21:05:34 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Thu, 12 Dec 2013 21:39:21 +0000
 Subject: Re: Try to Implement load balancer for transmit & retransmit
-Message-Id: <52AA251E.6040605@gmail.com>
+Message-Id: <20131212213921.GB783@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1386880952-18756-1-git-send-email-changxiangzhong@gmail.com>
 In-Reply-To: <1386880952-18756-1-git-send-email-changxiangzhong@gmail.com>
@@ -10,7 +10,7 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On 12/12/2013 03:42 PM, Chang Xiangzhong wrote:
+On Thu, Dec 12, 2013 at 09:42:32PM +0100, Chang Xiangzhong wrote:
 > The current implementation uses only one path as the "active path" and one
 > path as a "retran path". This patch tries to use all of the pathes for
 > transmission. But I'm afraid there must be something missing, such things like
@@ -19,12 +19,6 @@ On 12/12/2013 03:42 PM, Chang Xiangzhong wrote:
 > The current implementation is very simple - just distribute the load on all of
 > the pathes - just check if it satisifes cwnd>flight_size.
 > 
-
-If you are interested in pursuing this work I recommend you look at
-https://tools.ietf.org/id/draft-tuexen-tsvwg-sctp-multipath-06.txt
-
--vlad
-
 > And comments would be appreciated! 
 > ---
 >  include/net/sctp/cmt.h   |    5 +++-
@@ -188,5 +182,14 @@ https://tools.ietf.org/id/draft-tuexen-tsvwg-sctp-multipath-06.txt
 >  			case SCTP_XMIT_RWND_FULL://2
 >  			case SCTP_XMIT_NAGLE_DELAY://4
 >  				/* We could not append this chunk, so put
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
+Agree with vlad.  This patch just doles out new aasociations accross less loaded
+transports (using a very transient metric).  What you want to do is
+multipathing.
+
+Neil
 
