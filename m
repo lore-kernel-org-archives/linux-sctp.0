@@ -1,27 +1,68 @@
 From: Wang Weidong <wangweidong1@huawei.com>
-Date: Tue, 19 Nov 2013 02:47:25 +0000
-Subject: [PATCH 0/2] ipv6: fix the missing copies when memcpy ipv6_pinfo
-Message-Id: <1384829247-8624-1-git-send-email-wangweidong1@huawei.com>
+Date: Fri, 13 Dec 2013 03:00:10 +0000
+Subject: [PATCH v2] sctp: loading sctp when load sctp_probe
+Message-Id: <52AA783A.7090502@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net, gerrit@erg.abdn.ac.uk, kuznet@ms2.inr.ac.ru, jmorris@namei.org, yoshfuji@linux-ipv6.org, kaber@trash.net, vyasevich@gmail.com, nhorman@tuxdriver.com
-Cc: dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, dingtianhong@huawei.com
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Miller <davem@davemloft.net>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-This patch series include: add the helper function, use it when
-memcpy struct ipv6_pinfo.
+when I modprobe sctp_probe, it failed with "FATAL: ". I found that
+sctp should load before sctp_probe register jprobe. So I add a
+sctp_setup_jprobe for loading 'sctp' when first failed to register
+jprobe, just do this similar to dccp_probe.
 
-Wang Weidong (2):
-  ipv6: add helper function for copy addrs from old sock
-  ipv6: use sk_v6_copy_addrs when memcpy struct ipv6_pinfo
+v2: add MODULE_SOFTDEP and check of request_module, as suggested by Neil
 
- include/net/sock.h  | 6 ++++++
- net/dccp/ipv6.c     | 4 ++++
- net/ipv6/tcp_ipv6.c | 4 ++++
- net/sctp/ipv6.c     | 4 ++++
- 4 files changed, 18 insertions(+)
+Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+---
+ net/sctp/probe.c | 17 ++++++++++++++++-
+ 1 file changed, 16 insertions(+), 1 deletion(-)
 
+diff --git a/net/sctp/probe.c b/net/sctp/probe.c
+index 53c452e..5e68b94 100644
+--- a/net/sctp/probe.c
++++ b/net/sctp/probe.c
+@@ -38,6 +38,7 @@
+ #include <net/sctp/sctp.h>
+ #include <net/sctp/sm.h>
+ 
++MODULE_SOFTDEP("pre: sctp");
+ MODULE_AUTHOR("Wei Yongjun <yjwei@cn.fujitsu.com>");
+ MODULE_DESCRIPTION("SCTP snooper");
+ MODULE_LICENSE("GPL");
+@@ -182,6 +183,20 @@ static struct jprobe sctp_recv_probe = {
+ 	.entry	= jsctp_sf_eat_sack,
+ };
+ 
++static __init int sctp_setup_jprobe(void)
++{
++	int ret = register_jprobe(&sctp_recv_probe);
++
++	if (ret) {
++		if (request_module("sctp"))
++			goto out;
++		ret = register_jprobe(&sctp_recv_probe);
++	}
++
++out:
++	return ret;
++}
++
+ static __init int sctpprobe_init(void)
+ {
+ 	int ret = -ENOMEM;
+@@ -202,7 +217,7 @@ static __init int sctpprobe_init(void)
+ 			 &sctpprobe_fops))
+ 		goto free_kfifo;
+ 
+-	ret = register_jprobe(&sctp_recv_probe);
++	ret = sctp_setup_jprobe();
+ 	if (ret)
+ 		goto remove_proc;
+ 
 -- 
 1.7.12
 
