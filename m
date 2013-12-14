@@ -1,24 +1,34 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 17 Dec 2013 19:32:56 +0000
-Subject: Re: [PATCH] sctp: Reorder 'struc association' members to reduce its size
-Message-Id: <20131217.143256.233394040400199988.davem@davemloft.net>
+From: Jamal Hadi Salim <jhs@mojatatu.com>
+Date: Sat, 14 Dec 2013 15:04:21 +0000
+Subject: undetected closed apps
+Message-Id: <52AC7375.6010505@mojatatu.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <52AAA048.2040704@huawei.com>
-In-Reply-To: <52AAA048.2040704@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: wangweidong1@huawei.com
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-From: Wang Weidong <wangweidong1@huawei.com>
-Date: Fri, 13 Dec 2013 13:51:04 +0800
 
-> Members of 'struct association' are not in appropriate order to
-> reuse compiler added padding on 64bit architectures. In this patch
-> we reorder those struct members and help reduce the size of the
-> structure from 2776 bytes to 2720 bytes on 64 bit architectures.
-> 
-> Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+Folks,
 
-Applied, thanks.
+I have a problem which manifests in kernels > 3.8. I am no sure how
+best to debug it.
+I have looked at strace and dont see anything different between when it
+works (kernels <= 3.8) and when it doesnt (kernels > 3.8).
+When i dump /proc/net/sctp/assocs I can see in the non-working case
+the socket is still there - which means there is no way for the server
+to be notified.
+If kill the server, the socket disappears.
+
+Is there something else that would help narrow this down?
+
+cheers,
+jamal
+
+PS:
+Essentially I have a client app that does some nasty stuff (on purpose
+to test robustness). Client and server are connected locally within same
+machine.
+Client sends as fast as it can packets with partial reliability (timeout
+of about 100ms). The only time client checks for any kernel obsoleted
+msgs is when the send socket queue write will block.
