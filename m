@@ -1,7 +1,7 @@
-From: Jamal Hadi Salim <jhs@mojatatu.com>
-Date: Sat, 14 Dec 2013 15:27:00 +0000
+From: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
+Date: Sat, 14 Dec 2013 17:06:18 +0000
 Subject: Re: undetected closed apps
-Message-Id: <52AC78C4.8040207@mojatatu.com>
+Message-Id: <BEBE71AD-0EB2-438A-B961-1BAF7ABE2D6B@lurchi.franken.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <52AC7375.6010505@mojatatu.com>
 In-Reply-To: <52AC7375.6010505@mojatatu.com>
@@ -10,38 +10,32 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-More info:
+On Dec 14, 2013, at 4:16 PM, Jamal Hadi Salim <jhs@mojatatu.com> wrote:
 
-1) In the non-working case I dont see the shutdown sequence on tcpdump
-2) Thing seem to break only when i have a number of SEND_FAILED events
-when i read. The brain in my stomach is thinking this probably has to
-do with some outstanding obsoleted messages which the app didnt have
-a chance to do recv on although cat /proc/net/sctp/assocs shows
-both send/recv queue at 0.
-
-cheers,
-jamal
-
-On 12/14/13 10:16, Jamal Hadi Salim wrote:
->
+> 
 > I wasnt clear, sorry. Basically I kill the app after it sends
 > a 100K or more messages (about 300 bytes each). The server
 > is still thinking the client is connected. The client does
 > a close/shutdown. I enabled SCTP heartbeats between the client
+What does this mean? Do you call close() or shutdown()? Do you
+kill the client?
+
+Best regards
+Michael
 > and server and running tcpdump after killing the client
 > shows heartbeats going on happily.
->
+> 
 > Sorry - I cant put out out the code, it is too big to cut
 > down into something small enough to demonstrate.
->
+> 
 > cheers,
 > jamal
->
->
+> 
+> 
 > On 12/14/13 10:04, Jamal Hadi Salim wrote:
->>
+>> 
 >> Folks,
->>
+>> 
 >> I have a problem which manifests in kernels > 3.8. I am no sure how
 >> best to debug it.
 >> I have looked at strace and dont see anything different between when it
@@ -50,12 +44,12 @@ On 12/14/13 10:16, Jamal Hadi Salim wrote:
 >> the socket is still there - which means there is no way for the server
 >> to be notified.
 >> If kill the server, the socket disappears.
->>
+>> 
 >> Is there something else that would help narrow this down?
->>
+>> 
 >> cheers,
 >> jamal
->>
+>> 
 >> PS:
 >> Essentially I have a client app that does some nasty stuff (on purpose
 >> to test robustness). Client and server are connected locally within same
@@ -63,5 +57,10 @@ On 12/14/13 10:16, Jamal Hadi Salim wrote:
 >> Client sends as fast as it can packets with partial reliability (timeout
 >> of about 100ms). The only time client checks for any kernel obsoleted
 >> msgs is when the send socket queue write will block.
->
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
