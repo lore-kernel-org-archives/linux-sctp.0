@@ -1,7 +1,7 @@
-From: Wang Weidong <weidong1991.wang@gmail.com>
-Date: Fri, 13 Dec 2013 14:41:11 +0000
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Mon, 16 Dec 2013 02:47:00 +0000
 Subject: Re: [PATCH v2] sctp: loading sctp when load sctp_probe
-Message-Id: <52AB1C87.2010808@gmail.com>
+Message-Id: <52AE69A4.7090806@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <52AA783A.7090502@huawei.com> <20131213122605.GA23384@hmsreliant.think-freely.org>
 In-Reply-To: <20131213122605.GA23384@hmsreliant.think-freely.org>
@@ -10,8 +10,6 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Neil Horman <nhorman@tuxdriver.com>
 Cc: Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
-
-From: Wang weidong <wangweidong1@huawei.com>
 
 On 2013/12/13 20:26, Neil Horman wrote:
 > On Fri, Dec 13, 2013 at 11:00:10AM +0800, Wang Weidong wrote:
@@ -24,25 +22,25 @@ On 2013/12/13 20:26, Neil Horman wrote:
 >>
 >> Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
 >> ---
->>   net/sctp/probe.c | 17 ++++++++++++++++-
->>   1 file changed, 16 insertions(+), 1 deletion(-)
+>>  net/sctp/probe.c | 17 ++++++++++++++++-
+>>  1 file changed, 16 insertions(+), 1 deletion(-)
 >>
 >> diff --git a/net/sctp/probe.c b/net/sctp/probe.c
 >> index 53c452e..5e68b94 100644
 >> --- a/net/sctp/probe.c
 >> +++ b/net/sctp/probe.c
 >> @@ -38,6 +38,7 @@
->>   #include <net/sctp/sctp.h>
->>   #include <net/sctp/sm.h>
->>
+>>  #include <net/sctp/sctp.h>
+>>  #include <net/sctp/sm.h>
+>>  
 >> +MODULE_SOFTDEP("pre: sctp");
->>   MODULE_AUTHOR("Wei Yongjun <yjwei@cn.fujitsu.com>");
->>   MODULE_DESCRIPTION("SCTP snooper");
->>   MODULE_LICENSE("GPL");
+>>  MODULE_AUTHOR("Wei Yongjun <yjwei@cn.fujitsu.com>");
+>>  MODULE_DESCRIPTION("SCTP snooper");
+>>  MODULE_LICENSE("GPL");
 >> @@ -182,6 +183,20 @@ static struct jprobe sctp_recv_probe = {
->>   	.entry	= jsctp_sf_eat_sack,
->>   };
->>
+>>  	.entry	= jsctp_sf_eat_sack,
+>>  };
+>>  
 >> +static __init int sctp_setup_jprobe(void)
 >> +{
 >> +	int ret = register_jprobe(&sctp_recv_probe);
@@ -57,30 +55,34 @@ On 2013/12/13 20:26, Neil Horman wrote:
 >> +	return ret;
 >> +}
 >> +
->>   static __init int sctpprobe_init(void)
->>   {
->>   	int ret = -ENOMEM;
+>>  static __init int sctpprobe_init(void)
+>>  {
+>>  	int ret = -ENOMEM;
 >> @@ -202,7 +217,7 @@ static __init int sctpprobe_init(void)
->>   			 &sctpprobe_fops))
->>   		goto free_kfifo;
->>
+>>  			 &sctpprobe_fops))
+>>  		goto free_kfifo;
+>>  
 >> -	ret = register_jprobe(&sctp_recv_probe);
 >> +	ret = sctp_setup_jprobe();
 > You don't need to create your own function for this, you can collapse it down to
 > a call to try_then_request_module(regitser_jprobe(...), "sctp");
 > Neil
->
-It looks good. Thanks. I will try to use it and fix in v3.
+> 
+Hi Neil,
+
+I try to use try_then_request_module(!regitser_jprobe(...), "sctp"); I found that if
+I used this, I couldn't get the ture value which returned by register_jprobe(). Is the
+returned value not important? The problem("if sctp.ko doesn't exist") you had pointed out
+is exist as well.
 
 Regards.
 Wang
+> 
+>>  	if (ret)
+>>  		goto remove_proc;
+>>  
+> 
+> .
+> 
 
->
->>   	if (ret)
->>   		goto remove_proc;
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe netdev" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+
