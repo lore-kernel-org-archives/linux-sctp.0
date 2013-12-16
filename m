@@ -1,27 +1,43 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 06 Dec 2013 01:56:24 +0000
-Subject: Re: [PATCH v2] sctp: disable max_burst when the max_burst is 0
-Message-Id: <20131205.205624.1643659823573912858.davem@davemloft.net>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 16 Dec 2013 17:06:44 +0000
+Subject: [PATCH v2 1/2] printk: Add a pr_warn_deprecated macro
+Message-Id: <1387213605-27206-2-git-send-email-nhorman@tuxdriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <529C2E01.3090005@huawei.com>
-	<529EF6B7.7000501@huawei.com>
-In-Reply-To: <529EF6B7.7000501@huawei.com>
+References: <1387205049-22752-1-git-send-email-nhorman@tuxdriver.com>
+ <1387213605-27206-1-git-send-email-nhorman@tuxdriver.com>
+In-Reply-To: <1387213605-27206-1-git-send-email-nhorman@tuxdriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: wangweidong1@huawei.com
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, dborkman@redhat.com
+To: linux-sctp@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, "David S. Miller" <davem@davemloft.net>, linux-kernel@vger.kernel.org
 
-From: Wang Weidong <wangweidong1@huawei.com>
-Date: Wed, 4 Dec 2013 17:32:39 +0800
+sctp has several points in its setsockopt path in which it issues deprecation
+warnings.  It seems like it might be handy to macrotize such a warning so other
+subsystems can use it easily
 
-> As Michael pointed out that when max_burst is 0, it just disable
-> max_burst. It declared in rfc6458#section-8.1.24. so add the check
-> in sctp_transport_burst_limited, when it 0, just do nothing.
-> 
-> Reviewed-by: Daniel Borkmann <dborkman@redhat.com>
-> Suggested-by: Vlad Yasevich <vyasevich@gmail.com>
-> Suggested-by: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
-> Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+CC: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+CC: "David S. Miller" <davem@davemloft.net>
+CC: linux-kernel@vger.kernel.org
+---
+ include/linux/printk.h | 3 +++
+ 1 file changed, 3 insertions(+)
 
-Applied, thank you.
+diff --git a/include/linux/printk.h b/include/linux/printk.h
+index 6949258..2e043b3 100644
+--- a/include/linux/printk.h
++++ b/include/linux/printk.h
+@@ -336,6 +336,9 @@ extern asmlinkage void dump_stack(void) __cold;
+ 	printk_ratelimited(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__)
+ /* no pr_cont_ratelimited, don't do that... */
+ 
++#define pr_warn_deprecated(fmt, ...)					\
++	pr_warn_ratelimited("Deprecated: " fmt, ##__VA_ARGS__)
++
+ #if defined(DEBUG)
+ #define pr_devel_ratelimited(fmt, ...)					\
+ 	printk_ratelimited(KERN_DEBUG pr_fmt(fmt), ##__VA_ARGS__)
+-- 
+1.8.3.1
+
