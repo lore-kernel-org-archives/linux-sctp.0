@@ -1,43 +1,48 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 16 Dec 2013 17:06:44 +0000
-Subject: [PATCH v2 1/2] printk: Add a pr_warn_deprecated macro
-Message-Id: <1387213605-27206-2-git-send-email-nhorman@tuxdriver.com>
+From: Joe Perches <joe@perches.com>
+Date: Mon, 16 Dec 2013 17:50:01 +0000
+Subject: Re: [PATCH v2 1/2] printk: Add a pr_warn_deprecated macro
+Message-Id: <1387216201.18217.58.camel@joe-AO722>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1387205049-22752-1-git-send-email-nhorman@tuxdriver.com>
- <1387213605-27206-1-git-send-email-nhorman@tuxdriver.com>
-In-Reply-To: <1387213605-27206-1-git-send-email-nhorman@tuxdriver.com>
+	 <1387213605-27206-1-git-send-email-nhorman@tuxdriver.com>
+	 <1387213605-27206-2-git-send-email-nhorman@tuxdriver.com>
+In-Reply-To: <1387213605-27206-2-git-send-email-nhorman@tuxdriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
-Cc: Neil Horman <nhorman@tuxdriver.com>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, "David S. Miller" <davem@davemloft.net>, linux-kernel@vger.kernel.org
+To: Neil Horman <nhorman@tuxdriver.com>
+Cc: linux-sctp@vger.kernel.org, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, "David S. Miller" <davem@davemloft.net>, linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>
 
-sctp has several points in its setsockopt path in which it issues deprecation
-warnings.  It seems like it might be handy to macrotize such a warning so other
-subsystems can use it easily
+(adding Andrew Morton to cc's)
 
-Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-CC: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-CC: "David S. Miller" <davem@davemloft.net>
-CC: linux-kernel@vger.kernel.org
----
- include/linux/printk.h | 3 +++
- 1 file changed, 3 insertions(+)
+On Mon, 2013-12-16 at 12:06 -0500, Neil Horman wrote:
+> sctp has several points in its setsockopt path in which it issues deprecation
+> warnings.  It seems like it might be handy to macrotize such a warning so other
+> subsystems can use it easily
+[]
+> diff --git a/include/linux/printk.h b/include/linux/printk.h
+[]
+> @@ -336,6 +336,9 @@ extern asmlinkage void dump_stack(void) __cold;
+>  	printk_ratelimited(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__)
+>  /* no pr_cont_ratelimited, don't do that... */
+>  
+> +#define pr_warn_deprecated(fmt, ...)					\
+> +	pr_warn_ratelimited("Deprecated: " fmt, ##__VA_ARGS__)
 
-diff --git a/include/linux/printk.h b/include/linux/printk.h
-index 6949258..2e043b3 100644
---- a/include/linux/printk.h
-+++ b/include/linux/printk.h
-@@ -336,6 +336,9 @@ extern asmlinkage void dump_stack(void) __cold;
- 	printk_ratelimited(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__)
- /* no pr_cont_ratelimited, don't do that... */
- 
-+#define pr_warn_deprecated(fmt, ...)					\
-+	pr_warn_ratelimited("Deprecated: " fmt, ##__VA_ARGS__)
-+
- #if defined(DEBUG)
- #define pr_devel_ratelimited(fmt, ...)					\
- 	printk_ratelimited(KERN_DEBUG pr_fmt(fmt), ##__VA_ARGS__)
--- 
-1.8.3.1
+Continuing the thread from:
+http://patchwork.ozlabs.org/patch/301738/
+
+Making this a global kernel #define is different than
+using it in your subsystem.
+
+I think this is very analogous to the FW_INFO/FW_WARN
+uses and maybe should just have a #define for the
+string "deprecated:" inserted as a constant.
+
+ie: just using
+
+	pr_warn_once(DEPRECATED fmt, args...)
+or
+	pr_warn_ratelimited(DEPRECATED fmt, args...)
+
 
