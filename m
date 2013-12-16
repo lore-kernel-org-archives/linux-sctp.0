@@ -1,73 +1,100 @@
-From: Wang Weidong <wangweidong1@huawei.com>
-Date: Tue, 03 Dec 2013 01:58:19 +0000
-Subject: Re: [PATCH v2] sctp: check the rto_min and rto_max
-Message-Id: <529D3ABB.8040908@huawei.com>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 16 Dec 2013 14:44:09 +0000
+Subject: [PATCH] SCTP: Reduce log spamming for sctp setsockopt
+Message-Id: <1387205049-22752-1-git-send-email-nhorman@tuxdriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <529BE620.8090004@huawei.com> <529C9D13.10107@gmail.com>
-In-Reply-To: <529C9D13.10107@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, nhorman@tuxdriver.com, David Miller <davem@davemloft.net>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, dingtianhong@huawei.com
+To: linux-sctp@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, netdev@vger.kernel.org
 
-On 2013/12/2 22:45, Vlad Yasevich wrote:
-> On 12/01/2013 08:45 PM, Wang Weidong wrote:
->> rto_min should be smaller than rto_max while rto_max should be larger
->> than rto_min. so just add the check.
->>
->> Acked-by: Neil Horman <nhorman@tuxdriver.com>
->> Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
->> ---
->>  net/sctp/sysctl.c | 4 ++--
->>  1 file changed, 2 insertions(+), 2 deletions(-)
->>
->> diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
->> index 6b36561..7637e8e 100644
->> --- a/net/sctp/sysctl.c
->> +++ b/net/sctp/sysctl.c
->> @@ -104,7 +104,7 @@ static struct ctl_table sctp_net_table[] = {
->>  		.mode		= 0644,
->>  		.proc_handler	= proc_dointvec_minmax,
->>  		.extra1         = &one,
->> -		.extra2         = &timer_max
->> +		.extra2         = &init_net.sctp.rto_max
->>  	},
->>  	{
->>  		.procname	= "rto_max",
->> @@ -112,7 +112,7 @@ static struct ctl_table sctp_net_table[] = {
->>  		.maxlen		= sizeof(unsigned int),
->>  		.mode		= 0644,
->>  		.proc_handler	= proc_dointvec_minmax,
->> -		.extra1         = &one,
->> +		.extra1         = &init_net.sctp.rto_min,
->>  		.extra2         = &timer_max
->>  	},
->>  	{
->>
-> 
-> So, now if initial namespace change rto_min and rto_max, it limits the
-> values that another namespace can set?  I don't think so.
+During a recent discussion regarding some sctp socket options, it was noted that
+we have several points at which we issue log warnings that can be flooded at an
+unbounded rate by any user.  Fix this by converting all the pr_warns in the
+sctp_setsockopt path to be pr_warn_ratelimited.
 
-Hm, you are right.
-I think we have two path to set the rto_min or rto_max: 1)systclt, 2)setsockopt
-In 2) we can make the assoc or sk rto_max smaller than rto_min. so we should a
-check in the sctp_setsockopt_rtoinfo or proc_handler.
+Note there are several debug level messages as well.  I'm leaving those alone,
+as, if you turn on pr_debug, you likely want lots of verbosity.
 
->
-> If you are looking to fix an issue where rto_max may be set below
-> rto_min, then do a separate proc_handler.
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+CC: Vlad Yasevich <vyasevich@gmail.com>
+CC: David Miller <davem@davemloft.net>
+CC: netdev@vger.kernel.org
+---
+ net/sctp/socket.c | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
 
-I will try to add a separate  proc_handler.
-Thanks.
-
->
-> -vlad
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 42b709c..8261e69 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -2579,8 +2579,8 @@ static int sctp_setsockopt_delayed_ack(struct sock *sk,
+ 		if (params.sack_delay = 0 && params.sack_freq = 0)
+ 			return 0;
+ 	} else if (optlen = sizeof(struct sctp_assoc_value)) {
+-		pr_warn("Use of struct sctp_assoc_value in delayed_ack socket option deprecated\n");
+-		pr_warn("Use struct sctp_sack_info instead\n");
++		pr_warn_ratelimited("Use of struct sctp_assoc_value in delayed_ack socket option deprecated\n");
++		pr_warn_ratelimited("Use struct sctp_sack_info instead\n");
+ 		if (copy_from_user(&params, optval, optlen))
+ 			return -EFAULT;
+ 
+@@ -2995,8 +2995,8 @@ static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned
+ 	int val;
+ 
+ 	if (optlen = sizeof(int)) {
+-		pr_warn("Use of int in maxseg socket option deprecated\n");
+-		pr_warn("Use struct sctp_assoc_value instead\n");
++		pr_warn_ratelimited("Use of int in maxseg socket option deprecated\n");
++		pr_warn_ratelimited("Use struct sctp_assoc_value instead\n");
+ 		if (copy_from_user(&val, optval, optlen))
+ 			return -EFAULT;
+ 		params.assoc_id = 0;
+@@ -3253,8 +3253,8 @@ static int sctp_setsockopt_maxburst(struct sock *sk,
+ 	int assoc_id = 0;
+ 
+ 	if (optlen = sizeof(int)) {
+-		pr_warn("Use of int in max_burst socket option deprecated\n");
+-		pr_warn("Use struct sctp_assoc_value instead\n");
++		pr_warn_ratelimited("Use of int in max_burst socket option deprecated\n");
++		pr_warn_ratelimited("Use struct sctp_assoc_value instead\n");
+ 		if (copy_from_user(&val, optval, optlen))
+ 			return -EFAULT;
+ 	} else if (optlen = sizeof(struct sctp_assoc_value)) {
+@@ -4574,8 +4574,8 @@ static int sctp_getsockopt_delayed_ack(struct sock *sk, int len,
+ 		if (copy_from_user(&params, optval, len))
+ 			return -EFAULT;
+ 	} else if (len = sizeof(struct sctp_assoc_value)) {
+-		pr_warn("Use of struct sctp_assoc_value in delayed_ack socket option deprecated\n");
+-		pr_warn("Use struct sctp_sack_info instead\n");
++		pr_warn_ratelimited("Use of struct sctp_assoc_value in delayed_ack socket option deprecated\n");
++		pr_warn_ratelimited("Use struct sctp_sack_info instead\n");
+ 		if (copy_from_user(&params, optval, len))
+ 			return -EFAULT;
+ 	} else
+@@ -5219,8 +5219,8 @@ static int sctp_getsockopt_maxseg(struct sock *sk, int len,
+ 	struct sctp_association *asoc;
+ 
+ 	if (len = sizeof(int)) {
+-		pr_warn("Use of int in maxseg socket option deprecated\n");
+-		pr_warn("Use struct sctp_assoc_value instead\n");
++		pr_warn_ratelimited("Use of int in maxseg socket option deprecated\n");
++		pr_warn_ratelimited("Use struct sctp_assoc_value instead\n");
+ 		params.assoc_id = 0;
+ 	} else if (len >= sizeof(struct sctp_assoc_value)) {
+ 		len = sizeof(struct sctp_assoc_value);
+@@ -5311,8 +5311,8 @@ static int sctp_getsockopt_maxburst(struct sock *sk, int len,
+ 	struct sctp_association *asoc;
+ 
+ 	if (len = sizeof(int)) {
+-		pr_warn("Use of int in max_burst socket option deprecated\n");
+-		pr_warn("Use struct sctp_assoc_value instead\n");
++		pr_warn_ratelimited("Use of int in max_burst socket option deprecated\n");
++		pr_warn_ratelimited("Use struct sctp_assoc_value instead\n");
+ 		params.assoc_id = 0;
+ 	} else if (len >= sizeof(struct sctp_assoc_value)) {
+ 		len = sizeof(struct sctp_assoc_value);
+-- 
+1.8.3.1
 
