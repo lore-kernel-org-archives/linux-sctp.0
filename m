@@ -1,17 +1,17 @@
-From: Wang Weidong <wangweidong1@huawei.com>
-Date: Wed, 18 Dec 2013 09:38:29 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Wed, 18 Dec 2013 14:06:54 +0000
 Subject: Re: [PATCH net-next 2/3] sctp: remove the never used 'return' and, redundant 'break'
-Message-Id: <52B16D15.2010501@huawei.com>
+Message-Id: <20131218140654.GB10471@neilslaptop.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <52B168E0.1060108@huawei.com>
 In-Reply-To: <52B168E0.1060108@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: Wang Weidong <wangweidong1@huawei.com>
+Cc: David Miller <davem@davemloft.net>, Vlad Yasevich <vyasevich@gmail.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On 2013/12/18 17:20, Wang Weidong wrote:
+On Wed, Dec 18, 2013 at 05:20:32PM +0800, Wang Weidong wrote:
 > In switch() had do return, and never use the 'return NULL'. The
 > 'break' after return or goto has no effect. Remove it.
 > 
@@ -40,11 +40,17 @@ On 2013/12/18 17:20, Wang Weidong wrote:
 >  }
 >  
 >  /* Lookup an association for an inbound skb. */
+> -- 
+> 1.7.12
+> 
+> 
 > 
 
-Sorry for sending the Subject "[PATCH net-next 2/3] ...".
-It is only one patch, not series.
+If you're going to do this, it seems like you may just as well convert the
+switch to be if (ch->type && ch->type <= SCTP_CID_INIT_ACK) {...} else {...}
 
-Regards.
-Wang
+
+That seems like it would be more readable to me.
+
+Neil
 
