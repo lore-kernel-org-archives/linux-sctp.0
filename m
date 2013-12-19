@@ -1,84 +1,41 @@
 From: Wang Weidong <wangweidong1@huawei.com>
-Date: Wed, 11 Dec 2013 01:50:38 +0000
-Subject: [PATCH v7 1/3] sctp: check the rto_min and rto_max in setsockopt
-Message-Id: <1386726640-9584-2-git-send-email-wangweidong1@huawei.com>
+Date: Thu, 19 Dec 2013 06:51:57 +0000
+Subject: [PATCH net-next 0/5] sctp: fix checkpatch errors
+Message-Id: <1387435922-24152-1-git-send-email-wangweidong1@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1386726640-9584-1-git-send-email-wangweidong1@huawei.com>
-In-Reply-To: <1386726640-9584-1-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vyasevich@gmail.com, nhorman@tuxdriver.com, davem@davemloft.net
-Cc: dborkman@redhat.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: davem@davemloft.net, vyasevich@gmail.com, nhorman@tuxdriver.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-When we set 0 to rto_min or rto_max, just not change the value. Also
-we should check the rto_min > rto_max.
+fix checkpatch errors.
 
-Suggested-by: Vlad Yasevich <vyasevich@gmail.com>
-Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
----
- net/sctp/socket.c | 32 ++++++++++++++++++++++----------
- 1 file changed, 22 insertions(+), 10 deletions(-)
+Wang Weidong (5):
+  sctp: fix checkpatch errors with space required or prohibited
+  sctp: fix checkpatch errors with foo
+  sctp: fix checkpatch errors with indent
+  sctp: fix checkpatch errors
+  sctp: fix checkpatch errors with //commen
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 72046b9..da09e59 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -2811,6 +2811,8 @@ static int sctp_setsockopt_rtoinfo(struct sock *sk, char __user *optval, unsigne
- {
- 	struct sctp_rtoinfo rtoinfo;
- 	struct sctp_association *asoc;
-+	unsigned long rto_min, rto_max;
-+	struct sctp_sock *sp = sctp_sk(sk);
- 
- 	if (optlen != sizeof (struct sctp_rtoinfo))
- 		return -EINVAL;
-@@ -2824,26 +2826,36 @@ static int sctp_setsockopt_rtoinfo(struct sock *sk, char __user *optval, unsigne
- 	if (!asoc && rtoinfo.srto_assoc_id && sctp_style(sk, UDP))
- 		return -EINVAL;
- 
-+	rto_max = rtoinfo.srto_max;
-+	rto_min = rtoinfo.srto_min;
-+
-+	if (rto_max)
-+		rto_max = asoc ? msecs_to_jiffies(rto_max) : rto_max;
-+	else
-+		rto_max = asoc ? asoc->rto_max : sp->rtoinfo.srto_max;
-+
-+	if (rto_min)
-+		rto_min = asoc ? msecs_to_jiffies(rto_min) : rto_min;
-+	else
-+		rto_min = asoc ? asoc->rto_min : sp->rtoinfo.srto_min;
-+
-+	if (rto_min > rto_max)
-+		return -EINVAL;
-+
- 	if (asoc) {
- 		if (rtoinfo.srto_initial != 0)
- 			asoc->rto_initial  				msecs_to_jiffies(rtoinfo.srto_initial);
--		if (rtoinfo.srto_max != 0)
--			asoc->rto_max = msecs_to_jiffies(rtoinfo.srto_max);
--		if (rtoinfo.srto_min != 0)
--			asoc->rto_min = msecs_to_jiffies(rtoinfo.srto_min);
-+		asoc->rto_max = rto_max;
-+		asoc->rto_min = rto_min;
- 	} else {
- 		/* If there is no association or the association-id = 0
- 		 * set the values to the endpoint.
- 		 */
--		struct sctp_sock *sp = sctp_sk(sk);
--
- 		if (rtoinfo.srto_initial != 0)
- 			sp->rtoinfo.srto_initial = rtoinfo.srto_initial;
--		if (rtoinfo.srto_max != 0)
--			sp->rtoinfo.srto_max = rtoinfo.srto_max;
--		if (rtoinfo.srto_min != 0)
--			sp->rtoinfo.srto_min = rtoinfo.srto_min;
-+		sp->rtoinfo.srto_max = rto_max;
-+		sp->rtoinfo.srto_min = rto_min;
- 	}
- 
- 	return 0;
+ net/sctp/auth.c          | 27 +++++++++---------
+ net/sctp/chunk.c         |  4 +--
+ net/sctp/input.c         | 58 +++++++++++++++++++--------------------
+ net/sctp/ipv6.c          |  2 +-
+ net/sctp/objcnt.c        |  2 +-
+ net/sctp/output.c        | 11 ++++----
+ net/sctp/outqueue.c      |  8 +++---
+ net/sctp/proc.c          |  8 +++---
+ net/sctp/protocol.c      |  4 +--
+ net/sctp/sm_make_chunk.c | 71 ++++++++++++++++++++++++------------------------
+ net/sctp/sm_sideeffect.c |  4 +--
+ net/sctp/sm_statefuns.c  | 27 +++++++++---------
+ net/sctp/sm_statetable.c |  2 +-
+ net/sctp/socket.c        | 53 ++++++++++++++++++------------------
+ net/sctp/sysctl.c        |  2 +-
+ net/sctp/ulpqueue.c      | 11 ++++----
+ 16 files changed, 145 insertions(+), 149 deletions(-)
+
 -- 
 1.7.12
 
