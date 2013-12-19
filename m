@@ -1,31 +1,36 @@
-From: Hannes Frederic Sowa <hannes@stressinduktion.org>
-Date: Fri, 20 Dec 2013 13:58:07 +0000
-Subject: Re: randconfig build error with next-20131220, in net/sctp/input.c
-Message-Id: <20131220135807.GE32129@order.stressinduktion.org>
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Thu, 19 Dec 2013 06:52:02 +0000
+Subject: [PATCH net-next 5/5] sctp: fix checkpatch errors with //commen
+Message-Id: <1387435922-24152-6-git-send-email-wangweidong1@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CA+r1ZhjYQoZJQLFO=t=mtV8g4CQD5HPU1NjCcYG_HGH=L=xiZw@mail.gmail.com>
-In-Reply-To: <CA+r1ZhjYQoZJQLFO=t=mtV8g4CQD5HPU1NjCcYG_HGH=L=xiZw@mail.gmail.com>
+References: <1387435922-24152-1-git-send-email-wangweidong1@huawei.com>
+In-Reply-To: <1387435922-24152-1-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: Jim Davis <jim.epost@gmail.com>
-Cc: Stephen Rothwell <sfr@canb.auug.org.au>, linux-next@vger.kernel.org, linux-kernel@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: davem@davemloft.net, vyasevich@gmail.com, nhorman@tuxdriver.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Fri, Dec 20, 2013 at 06:51:20AM -0700, Jim Davis wrote:
-> Building with the attached random configuration file,
-> 
-> net/sctp/input.c: In function ‘sctp_icmp_frag_needed’:
-> net/sctp/input.c:392:2: error: implicit declaration of function
-> ‘ip6_sk_accept_pmtu’ [-Werror=implicit-function-declaration]
->   if (!ip6_sk_accept_pmtu(sk))
->   ^
-> cc1: some warnings being treated as errors
-> make[2]: *** [net/sctp/input.o] Error 1
 
-Sorry, for that. I already proposed a patch:
-<http://patchwork.ozlabs.org/patch/303308/>
+Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+---
+ net/sctp/socket.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Greetings,
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 2df5564..adc5e37 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3924,7 +3924,7 @@ static int sctp_init_sock(struct sock *sk)
+ 	 */
+ 	sp->hbinterval  = net->sctp.hb_interval;
+ 	sp->pathmaxrxt  = net->sctp.max_retrans_path;
+-	sp->pathmtu     = 0; // allow default discovery
++	sp->pathmtu     = 0; /* allow default discovery */
+ 	sp->sackdelay   = net->sctp.sack_timeout;
+ 	sp->sackfreq	= 2;
+ 	sp->param_flags = SPP_HB_ENABLE |
+-- 
+1.7.12
 
-  Hannes
 
