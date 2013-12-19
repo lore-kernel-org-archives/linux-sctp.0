@@ -1,68 +1,62 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Tue, 24 Dec 2013 13:19:42 +0000
-Subject: [RFC PATCH net-next 2/3] net: sock: add sk_copy_sanitize for use in modules
-Message-Id: <1387891183-21169-3-git-send-email-dborkman@redhat.com>
+Date: Thu, 19 Dec 2013 12:57:54 +0000
+Subject: Re: [PATCH net-next] ipv6: move ip6_sk_accept_pmtu from generic pmtu update path to ipv6 one
+Message-Id: <52B2ED52.90604@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20131219115458.GC14429@order.stressinduktion.org>
+In-Reply-To: <20131219115458.GC14429@order.stressinduktion.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org, fengguang.wu@intel.com
+Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Hannes Frederic Sowa <hannes@stressinduktion.org>
 
-Combine socket copy and sanitise routines and export them, so that
-it can be used in modules such as SCTP.
+On 12/19/2013 12:54 PM, Hannes Frederic Sowa wrote:
+> In commit 93b36cf3425b9b ("ipv6: support IPV6_PMTU_INTERFACE on sockets")
+> I made a horrible mistake to add ip6_sk_accept_pmtu to the generic
+> sctp_icmp_frag_needed path. This results in build warnings if IPv6 is
+> disabled which were luckily caught by Fengguang's kbuild bot. But it
+> also leads to a kernel panic IPv4 frag-needed packet is received.
+>
+> Reported-by: kbuild test robot <fengguang.wu@intel.com>
+> Signed-off-by: Hannes Frederic Sowa <hannes@stressinduktion.org>
 
-Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
----
- include/net/sock.h |  1 +
- net/core/sock.c    | 15 ++++++++++-----
- 2 files changed, 11 insertions(+), 5 deletions(-)
+Thanks, also cc'ing linux-sctp.
 
-diff --git a/include/net/sock.h b/include/net/sock.h
-index 2ef3c3e..1789690 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -1532,6 +1532,7 @@ struct sock *sk_alloc(struct net *net, int family, gfp_t priority,
- void sk_free(struct sock *sk);
- void sk_release_kernel(struct sock *sk);
- struct sock *sk_clone_lock(const struct sock *sk, const gfp_t priority);
-+struct sock *sk_copy_sanitize(struct sock *nsk, const struct sock *osk);
- 
- struct sk_buff *sock_wmalloc(struct sock *sk, unsigned long size, int force,
- 			     gfp_t priority);
-diff --git a/net/core/sock.c b/net/core/sock.c
-index 68a4251..46920a3 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -1520,6 +1520,13 @@ void sk_release_kernel(struct sock *sk)
- }
- EXPORT_SYMBOL(sk_release_kernel);
- 
-+struct sock *sk_copy_sanitize(struct sock *nsk, const struct sock *osk)
-+{
-+	sock_copy(nsk, osk);
-+	return sock_sanitize(nsk, osk);
-+}
-+EXPORT_SYMBOL_GPL(sk_copy_sanitize);
-+
- /**
-  *	sk_clone_lock - clone a socket, and lock its clone
-  *	@sk: the socket to clone
-@@ -1532,12 +1539,10 @@ struct sock *sk_clone_lock(const struct sock *sk, const gfp_t priority)
- 	struct sock *newsk;
- 
- 	newsk = sk_prot_alloc(sk->sk_prot, priority, sk->sk_family);
--	if (newsk = NULL)
-+	if (unlikely(newsk = NULL))
- 		return NULL;
--
--	sock_copy(newsk, sk);
--
--	return sock_sanitize(newsk, sk);
-+	else
-+		return sk_copy_sanitize(newsk, sk);
- }
- EXPORT_SYMBOL_GPL(sk_clone_lock);
- 
--- 
-1.8.3.1
+Fixes: 93b36cf3425b ("ipv6: support IPV6_PMTU_INTERFACE on sockets")
+Acked-by: Daniel Borkmann <dborkman@redhat.com>
 
+> ---
+>   net/sctp/input.c | 3 ---
+>   net/sctp/ipv6.c  | 3 ++-
+>   2 files changed, 2 insertions(+), 4 deletions(-)
+>
+> diff --git a/net/sctp/input.c b/net/sctp/input.c
+> index 042ec6c..2a192a7 100644
+> --- a/net/sctp/input.c
+> +++ b/net/sctp/input.c
+> @@ -389,9 +389,6 @@ void sctp_icmp_frag_needed(struct sock *sk, struct sctp_association *asoc,
+>   	if (!t || (t->pathmtu <= pmtu))
+>   		return;
+>
+> -	if (!ip6_sk_accept_pmtu(sk))
+> -		return;
+> -
+>   	if (sock_owned_by_user(sk)) {
+>   		asoc->pmtu_pending = 1;
+>   		t->pmtu_pending = 1;
+> diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+> index 32db816..00bea3f 100644
+> --- a/net/sctp/ipv6.c
+> +++ b/net/sctp/ipv6.c
+> @@ -172,7 +172,8 @@ static void sctp_v6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
+>
+>   	switch (type) {
+>   	case ICMPV6_PKT_TOOBIG:
+> -		sctp_icmp_frag_needed(sk, asoc, transport, ntohl(info));
+> +		if (ip6_sk_accept_pmtu(sk))
+> +			sctp_icmp_frag_needed(sk, asoc, transport, ntohl(info));
+>   		goto out_unlock;
+>   	case ICMPV6_PARAMPROB:
+>   		if (ICMPV6_UNK_NEXTHDR = code) {
+>
