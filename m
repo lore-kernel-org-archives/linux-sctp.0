@@ -1,26 +1,35 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 17 Dec 2013 01:11:52 +0000
-Subject: Re: [PATCH v2] sctp: loading sctp when load sctp_probe
-Message-Id: <20131216.201152.1820334028788828960.davem@davemloft.net>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Sat, 21 Dec 2013 09:44:30 +0000
+Subject: Re: [PATCH net-next] sctp: fix missing include file
+Message-Id: <52B562FE.4000207@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <52AA783A.7090502@huawei.com>
-In-Reply-To: <52AA783A.7090502@huawei.com>
+References: <20131221025110.9758.12509.stgit@monster-03.cumulusnetworks.com> <20131221.000055.1377147691178558975.davem@davemloft.net>
+In-Reply-To: <20131221.000055.1377147691178558975.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: wangweidong1@huawei.com
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: David Miller <davem@davemloft.net>
+Cc: sfeldma@cumulusnetworks.com, vyasevich@gmail.com, nhorman@tuxdriver.com, netdev@vger.kernel.org, roopa@cumulusnetworks.com, shm@cumulusnetworks.com, Hannes Frederic Sowa <hannes@stressinduktion.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
 
-From: Wang Weidong <wangweidong1@huawei.com>
-Date: Fri, 13 Dec 2013 11:00:10 +0800
+On 12/21/2013 06:00 AM, David Miller wrote:
+> From: Scott Feldman <sfeldma@cumulusnetworks.com>
+> Date: Fri, 20 Dec 2013 18:51:10 -0800
+>
+>> Compile error reported by Jim Davis on netdev.
+>>
+>> ip6_sk_accept_pmtu() needs net/ip6_route.h
+>>
+>> Signed-off-by: Scott Feldman <sfeldma@cumulusnetworks.com>
+>
+> Applied, thanks.
 
-> when I modprobe sctp_probe, it failed with "FATAL: ". I found that
-> sctp should load before sctp_probe register jprobe. So I add a
-> sctp_setup_jprobe for loading 'sctp' when first failed to register
-> jprobe, just do this similar to dccp_probe.
-> 
-> v2: add MODULE_SOFTDEP and check of request_module, as suggested by Neil
-> 
-> Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+Sorry for the late reply as I'm on travel with limited connectivity.
 
-Applied.
+Scott, this fix is not correct, and probably should be reverted. The
+correct one was already in patchwork under [1]. In SCTP, we have
+net/sctp/ipv6.c for all IPv6 related functions. Also there, this
+include file is already present.
+
+Thanks !
+
+  [1] http://patchwork.ozlabs.org/patch/303308/
