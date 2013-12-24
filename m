@@ -1,42 +1,68 @@
-From: Wang Weidong <wangweidong1@huawei.com>
-Date: Thu, 19 Dec 2013 06:51:57 +0000
-Subject: [PATCH net-next 0/5] sctp: fix checkpatch errors
-Message-Id: <1387435922-24152-1-git-send-email-wangweidong1@huawei.com>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Tue, 24 Dec 2013 13:19:42 +0000
+Subject: [RFC PATCH net-next 2/3] net: sock: add sk_copy_sanitize for use in modules
+Message-Id: <1387891183-21169-3-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net, vyasevich@gmail.com, nhorman@tuxdriver.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-fix checkpatch errors.
+Combine socket copy and sanitise routines and export them, so that
+it can be used in modules such as SCTP.
 
-Wang Weidong (5):
-  sctp: fix checkpatch errors with space required or prohibited
-  sctp: fix checkpatch errors with foo
-  sctp: fix checkpatch errors with indent
-  sctp: fix checkpatch errors
-  sctp: fix checkpatch errors with //commen
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ include/net/sock.h |  1 +
+ net/core/sock.c    | 15 ++++++++++-----
+ 2 files changed, 11 insertions(+), 5 deletions(-)
 
- net/sctp/auth.c          | 27 +++++++++---------
- net/sctp/chunk.c         |  4 +--
- net/sctp/input.c         | 58 +++++++++++++++++++--------------------
- net/sctp/ipv6.c          |  2 +-
- net/sctp/objcnt.c        |  2 +-
- net/sctp/output.c        | 11 ++++----
- net/sctp/outqueue.c      |  8 +++---
- net/sctp/proc.c          |  8 +++---
- net/sctp/protocol.c      |  4 +--
- net/sctp/sm_make_chunk.c | 71 ++++++++++++++++++++++++------------------------
- net/sctp/sm_sideeffect.c |  4 +--
- net/sctp/sm_statefuns.c  | 27 +++++++++---------
- net/sctp/sm_statetable.c |  2 +-
- net/sctp/socket.c        | 53 ++++++++++++++++++------------------
- net/sctp/sysctl.c        |  2 +-
- net/sctp/ulpqueue.c      | 11 ++++----
- 16 files changed, 145 insertions(+), 149 deletions(-)
-
+diff --git a/include/net/sock.h b/include/net/sock.h
+index 2ef3c3e..1789690 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -1532,6 +1532,7 @@ struct sock *sk_alloc(struct net *net, int family, gfp_t priority,
+ void sk_free(struct sock *sk);
+ void sk_release_kernel(struct sock *sk);
+ struct sock *sk_clone_lock(const struct sock *sk, const gfp_t priority);
++struct sock *sk_copy_sanitize(struct sock *nsk, const struct sock *osk);
+ 
+ struct sk_buff *sock_wmalloc(struct sock *sk, unsigned long size, int force,
+ 			     gfp_t priority);
+diff --git a/net/core/sock.c b/net/core/sock.c
+index 68a4251..46920a3 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -1520,6 +1520,13 @@ void sk_release_kernel(struct sock *sk)
+ }
+ EXPORT_SYMBOL(sk_release_kernel);
+ 
++struct sock *sk_copy_sanitize(struct sock *nsk, const struct sock *osk)
++{
++	sock_copy(nsk, osk);
++	return sock_sanitize(nsk, osk);
++}
++EXPORT_SYMBOL_GPL(sk_copy_sanitize);
++
+ /**
+  *	sk_clone_lock - clone a socket, and lock its clone
+  *	@sk: the socket to clone
+@@ -1532,12 +1539,10 @@ struct sock *sk_clone_lock(const struct sock *sk, const gfp_t priority)
+ 	struct sock *newsk;
+ 
+ 	newsk = sk_prot_alloc(sk->sk_prot, priority, sk->sk_family);
+-	if (newsk = NULL)
++	if (unlikely(newsk = NULL))
+ 		return NULL;
+-
+-	sock_copy(newsk, sk);
+-
+-	return sock_sanitize(newsk, sk);
++	else
++		return sk_copy_sanitize(newsk, sk);
+ }
+ EXPORT_SYMBOL_GPL(sk_clone_lock);
+ 
 -- 
-1.7.12
-
+1.8.3.1
 
