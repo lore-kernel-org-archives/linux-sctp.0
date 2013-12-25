@@ -1,7 +1,7 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Wed, 25 Dec 2013 10:24:06 +0000
+Date: Wed, 25 Dec 2013 10:25:06 +0000
 Subject: Re: [PATCH net-next] sctp: check dst 'NULL' before use it in, sctp_packet_transmit
-Message-Id: <52BAB246.7060709@redhat.com>
+Message-Id: <52BAB282.4000308@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <52BA8DA2.6030405@huawei.com>
 In-Reply-To: <52BA8DA2.6030405@huawei.com>
