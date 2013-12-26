@@ -1,62 +1,55 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Thu, 19 Dec 2013 12:57:54 +0000
-Subject: Re: [PATCH net-next] ipv6: move ip6_sk_accept_pmtu from generic pmtu update path to ipv6 one
-Message-Id: <52B2ED52.90604@redhat.com>
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Thu, 26 Dec 2013 05:55:56 +0000
+Subject: [PATCH net-next v2] sctp: move skb_dst_set() a bit downwards in sctp_packet_transmit()
+Message-Id: <52BBC4EC.2070303@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20131219115458.GC14429@order.stressinduktion.org>
-In-Reply-To: <20131219115458.GC14429@order.stressinduktion.org>
+References: <52BA8DA2.6030405@huawei.com>
+In-Reply-To: <52BA8DA2.6030405@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org, fengguang.wu@intel.com
-Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Hannes Frederic Sowa <hannes@stressinduktion.org>
+To: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>
+Cc: Daniel Borkmann <dborkman@redhat.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On 12/19/2013 12:54 PM, Hannes Frederic Sowa wrote:
-> In commit 93b36cf3425b9b ("ipv6: support IPV6_PMTU_INTERFACE on sockets")
-> I made a horrible mistake to add ip6_sk_accept_pmtu to the generic
-> sctp_icmp_frag_needed path. This results in build warnings if IPv6 is
-> disabled which were luckily caught by Fengguang's kbuild bot. But it
-> also leads to a kernel panic IPv4 frag-needed packet is received.
->
-> Reported-by: kbuild test robot <fengguang.wu@intel.com>
-> Signed-off-by: Hannes Frederic Sowa <hannes@stressinduktion.org>
+skb_dst_set will use dst, if dst is NULL although is not a problem,
+then goto the 'no_route' and free nskb, so do the skb_dst_set is pointless.
+so move the skb_dst_set after dst check.
+Remove the unnecessary initialization as well.
 
-Thanks, also cc'ing linux-sctp.
+v2: fix the subject line because it would confuse people,
+    as pointed out by Daniel.
 
-Fixes: 93b36cf3425b ("ipv6: support IPV6_PMTU_INTERFACE on sockets")
-Acked-by: Daniel Borkmann <dborkman@redhat.com>
+Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+---
+ net/sctp/output.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-> ---
->   net/sctp/input.c | 3 ---
->   net/sctp/ipv6.c  | 3 ++-
->   2 files changed, 2 insertions(+), 4 deletions(-)
->
-> diff --git a/net/sctp/input.c b/net/sctp/input.c
-> index 042ec6c..2a192a7 100644
-> --- a/net/sctp/input.c
-> +++ b/net/sctp/input.c
-> @@ -389,9 +389,6 @@ void sctp_icmp_frag_needed(struct sock *sk, struct sctp_association *asoc,
->   	if (!t || (t->pathmtu <= pmtu))
->   		return;
->
-> -	if (!ip6_sk_accept_pmtu(sk))
-> -		return;
-> -
->   	if (sock_owned_by_user(sk)) {
->   		asoc->pmtu_pending = 1;
->   		t->pmtu_pending = 1;
-> diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-> index 32db816..00bea3f 100644
-> --- a/net/sctp/ipv6.c
-> +++ b/net/sctp/ipv6.c
-> @@ -172,7 +172,8 @@ static void sctp_v6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
->
->   	switch (type) {
->   	case ICMPV6_PKT_TOOBIG:
-> -		sctp_icmp_frag_needed(sk, asoc, transport, ntohl(info));
-> +		if (ip6_sk_accept_pmtu(sk))
-> +			sctp_icmp_frag_needed(sk, asoc, transport, ntohl(info));
->   		goto out_unlock;
->   	case ICMPV6_PARAMPROB:
->   		if (ICMPV6_UNK_NEXTHDR = code) {
->
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 3be70a4..9b76d62 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -387,7 +387,7 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+ 	int err = 0;
+ 	int padding;		/* How much padding do we need?  */
+ 	__u8 has_data = 0;
+-	struct dst_entry *dst = tp->dst;
++	struct dst_entry *dst;
+ 	unsigned char *auth = NULL;	/* pointer to auth in skb data */
+ 
+ 	pr_debug("%s: packet:%p\n", __func__, packet);
+@@ -420,9 +420,9 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+ 		}
+ 	}
+ 	dst = dst_clone(tp->dst);
+-	skb_dst_set(nskb, dst);
+ 	if (!dst)
+ 		goto no_route;
++	skb_dst_set(nskb, dst);
+ 
+ 	/* Build the SCTP header.  */
+ 	sh = (struct sctphdr *)skb_push(nskb, sizeof(struct sctphdr));
+-- 
+1.7.12
+
+
+
