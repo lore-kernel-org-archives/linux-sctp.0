@@ -1,55 +1,65 @@
-From: Wang Weidong <wangweidong1@huawei.com>
-Date: Tue, 21 Jan 2014 07:44:06 +0000
-Subject: [PATCH net-next 1/7] sctp: remove macros sctp_spin_[un]lock_irqrestore
-Message-Id: <1390290252-16080-2-git-send-email-wangweidong1@huawei.com>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Thu, 02 Jan 2014 14:58:21 +0000
+Subject: Re: [PATCH net-next v2] sctp: move skb_dst_set() a bit downwards in sctp_packet_transmit()
+Message-Id: <20140102145821.GB7526@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1390290252-16080-1-git-send-email-wangweidong1@huawei.com>
-In-Reply-To: <1390290252-16080-1-git-send-email-wangweidong1@huawei.com>
+References: <52BA8DA2.6030405@huawei.com>
+ <52BBC4EC.2070303@huawei.com>
+In-Reply-To: <52BBC4EC.2070303@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: nhorman@tuxdriver.com, davem@davemloft.net, vyasevich@gmail.com
-Cc: dborkman@redhat.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: Wang Weidong <wangweidong1@huawei.com>
+Cc: Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, Daniel Borkmann <dborkman@redhat.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-Redefined spin_[un]lock_irqstore to sctp_spin_[un]lock_irqrestore for user
-space friendly code which we haven't use in years, so removing them.
+On Thu, Dec 26, 2013 at 01:55:56PM +0800, Wang Weidong wrote:
+> skb_dst_set will use dst, if dst is NULL although is not a problem,
+> then goto the 'no_route' and free nskb, so do the skb_dst_set is pointless.
+> so move the skb_dst_set after dst check.
+> Remove the unnecessary initialization as well.
+> 
+> v2: fix the subject line because it would confuse people,
+>     as pointed out by Daniel.
+> 
+> Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
 
-Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
----
- include/net/sctp/sctp.h | 7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index 610a8c8..b180a8f 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -171,9 +171,6 @@ extern struct kmem_cache *sctp_bucket_cachep __read_mostly;
-  */
- 
- /* spin lock wrappers. */
--#define sctp_spin_lock_irqsave(lock, flags) spin_lock_irqsave(lock, flags)
--#define sctp_spin_unlock_irqrestore(lock, flags)  \
--       spin_unlock_irqrestore(lock, flags)
- #define sctp_local_bh_disable() local_bh_disable()
- #define sctp_local_bh_enable()  local_bh_enable()
- #define sctp_spin_lock(lock)    spin_lock(lock)
-@@ -353,13 +350,13 @@ static inline void sctp_skb_list_tail(struct sk_buff_head *list,
- {
- 	unsigned long flags;
- 
--	sctp_spin_lock_irqsave(&head->lock, flags);
-+	spin_lock_irqsave(&head->lock, flags);
- 	sctp_spin_lock(&list->lock);
- 
- 	skb_queue_splice_tail_init(list, head);
- 
- 	sctp_spin_unlock(&list->lock);
--	sctp_spin_unlock_irqrestore(&head->lock, flags);
-+	spin_unlock_irqrestore(&head->lock, flags);
- }
- 
- /**
--- 
-1.7.12
-
-
+> ---
+>  net/sctp/output.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/sctp/output.c b/net/sctp/output.c
+> index 3be70a4..9b76d62 100644
+> --- a/net/sctp/output.c
+> +++ b/net/sctp/output.c
+> @@ -387,7 +387,7 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+>  	int err = 0;
+>  	int padding;		/* How much padding do we need?  */
+>  	__u8 has_data = 0;
+> -	struct dst_entry *dst = tp->dst;
+> +	struct dst_entry *dst;
+>  	unsigned char *auth = NULL;	/* pointer to auth in skb data */
+>  
+>  	pr_debug("%s: packet:%p\n", __func__, packet);
+> @@ -420,9 +420,9 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+>  		}
+>  	}
+>  	dst = dst_clone(tp->dst);
+> -	skb_dst_set(nskb, dst);
+>  	if (!dst)
+>  		goto no_route;
+> +	skb_dst_set(nskb, dst);
+>  
+>  	/* Build the SCTP header.  */
+>  	sh = (struct sctphdr *)skb_push(nskb, sizeof(struct sctphdr));
+> -- 
+> 1.7.12
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
