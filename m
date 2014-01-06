@@ -1,60 +1,17 @@
-From: Wang Weidong <wangweidong1@huawei.com>
-Date: Mon, 20 Jan 2014 12:32:12 +0000
-Subject: Re: [PATCH net-next 0/2] sctp: some small clean ups
-Message-Id: <52DD174C.7010608@huawei.com>
+From: Karl Heiss <kheiss@gmail.com>
+Date: Mon, 06 Jan 2014 16:33:57 +0000
+Subject: SCTP SIOCOUTQ ioctl
+Message-Id: <CAGugRbX9kWb0zDAG69tbENGzcY3vjqtigie2QXmTAuMUrN0d+Q@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1390217247-9408-1-git-send-email-wangweidong1@huawei.com> <52DD0A62.9050807@redhat.com> <20140120122055.GA22690@hmsreliant.think-freely.org>
-In-Reply-To: <20140120122055.GA22690@hmsreliant.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>, Daniel Borkmann <dborkman@redhat.com>
-Cc: davem@davemloft.net, vyasevich@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-On 2014/1/20 20:20, Neil Horman wrote:
-> On Mon, Jan 20, 2014 at 12:37:06PM +0100, Daniel Borkmann wrote:
->> On 01/20/2014 12:27 PM, Wang Weidong wrote:
->>> We have the macros in sctp.h, so use them for coding accordance
->>> in sctp.
->>
->> Thanks for doing this Wang.
->>
->> I am actually wondering why we have these macro locking wrappers
->> and not use these functions directly? Hm, any reasons? Maybe we
->> should rather go in the other direction with this?
->>
-> Its because in the origional implementation of the sctp protocol, there was a
-> user space test harness which built the kernel module for userspace execution to
-> cary our some unit testing on the code.  It did so by redefining some of those
-> locking macros to user space friendly code.  IIRC we haven't use those unit
-> tests in years, and so should be removing them, not adding them to other
-> locations.
-> 
-
-Thanks for your answers.
-
-I will send the patches with removing these macros soon.
+Is there any reason why there is a SIOCINQ ioctl for SCTP sockets, but
+SIOCOUTQ is not supported?  It seems on the surface like it should be
+trivial to implement, but is there a more complex reason why it is not
+present?
 
 Regards,
-Wang
-
-> Neil
-> 
->>> Wang Weidong (2):
->>>   sctp: use sctp_local_bh_{disable|enable} instead
->>>     local_bh_{disable|enable}
->>>   sctp: use sctp_read_[un]lock instead of read_[un]lock
->>>
->>>  net/sctp/endpointola.c   |  4 ++--
->>>  net/sctp/input.c         | 10 +++++-----
->>>  net/sctp/proc.c          | 12 ++++++------
->>>  net/sctp/sm_make_chunk.c |  8 ++++----
->>>  net/sctp/socket.c        |  8 ++++----
->>>  5 files changed, 21 insertions(+), 21 deletions(-)
->>>
->>
-> 
-> .
-> 
-
-
+Karl
