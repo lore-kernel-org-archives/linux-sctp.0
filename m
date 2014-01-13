@@ -1,19 +1,28 @@
-From: Abdul Nasser <abdulnas500@justin.ddo.jp>
-Date: Sun, 26 Jan 2014 22:31:38 +0000
-Subject: Kind Regards
-Message-Id: <SECEXCHANGEWY6r6TS90000634b@mail.standardelectronics.com>
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Mon, 13 Jan 2014 13:46:08 +0000
+Subject: [PATCH] sctp: remove a redundant NULL check
+Message-Id: <20140113134608.GA5232@elgon.mountain>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <SECEXCHANGEHaKtKufV00003a32@mail.standardelectronics.com>
-In-Reply-To: <SECEXCHANGEHaKtKufV00003a32@mail.standardelectronics.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, kernel-janitors@vger.kernel.org
 
-Greetings,
-My name is Abdul Nasser Sokariah and I am writing you from Syria, I choose to contact you directly as I need a reliable person to trust who can help me handle my huge deposit  with a vault company in EUROPE, and based on my present situation in Syria, I need you urgently to take possession of everything and further modalities/directives will follow.Please reply to my private  Email: nasserabdul190@yahoo.com
+It confuses Smatch when we check "sinit" for NULL and then non-NULL and
+that causes a false positive warning later.
 
-I wait for your response.
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
 
-Yours truly,
-Abdul Nasser Sokariah
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index d32dae78a486..27f1717170c2 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1743,7 +1743,7 @@ static int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
+ 		 * either the default or the user specified stream counts.
+ 		 */
+ 		if (sinfo) {
+-			if (!sinit || (sinit && !sinit->sinit_num_ostreams)) {
++			if (!sinit || !sinit->sinit_num_ostreams) {
+ 				/* Check against the defaults. */
+ 				if (sinfo->sinfo_stream > 				    sp->initmsg.sinit_num_ostreams) {
