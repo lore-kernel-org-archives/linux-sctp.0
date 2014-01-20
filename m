@@ -1,90 +1,95 @@
 From: Wang Weidong <wangweidong1@huawei.com>
-Date: Tue, 21 Jan 2014 07:44:09 +0000
-Subject: [PATCH net-next 4/7] sctp: remove macros sctp_write_[un]_lock
-Message-Id: <1390290252-16080-5-git-send-email-wangweidong1@huawei.com>
+Date: Mon, 20 Jan 2014 11:27:26 +0000
+Subject: [PATCH net-next 1/2] sctp: use sctp_local_bh_{disable|enable} instead local_bh_{disable|enable}
+Message-Id: <1390217247-9408-2-git-send-email-wangweidong1@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1390290252-16080-1-git-send-email-wangweidong1@huawei.com>
-In-Reply-To: <1390290252-16080-1-git-send-email-wangweidong1@huawei.com>
+References: <1390217247-9408-1-git-send-email-wangweidong1@huawei.com>
+In-Reply-To: <1390217247-9408-1-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: nhorman@tuxdriver.com, davem@davemloft.net, vyasevich@gmail.com
 Cc: dborkman@redhat.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-Redefined write_[un]lock to sctp_write_[un]lock for user space
-friendly code which we haven't use in years, so removing them.
+While we have the macros sctp_local_bh_{disable|enable}, so use them.
 
 Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
 ---
- include/net/sctp/sctp.h |  2 --
- net/sctp/input.c        | 16 ++++++++--------
- 2 files changed, 8 insertions(+), 10 deletions(-)
+ net/sctp/sm_make_chunk.c | 8 ++++----
+ net/sctp/socket.c        | 8 ++++----
+ 2 files changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index 4f77e98..73dcc0c 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -171,8 +171,6 @@ extern struct kmem_cache *sctp_bucket_cachep __read_mostly;
-  */
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 632090b..1bbac08 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -3266,12 +3266,12 @@ static void sctp_asconf_param_success(struct sctp_association *asoc,
+ 		/* This is always done in BH context with a socket lock
+ 		 * held, so the list can not change.
+ 		 */
+-		local_bh_disable();
++		sctp_local_bh_disable();
+ 		list_for_each_entry(saddr, &bp->address_list, list) {
+ 			if (sctp_cmp_addr_exact(&saddr->a, &addr))
+ 				saddr->state = SCTP_ADDR_SRC;
+ 		}
+-		local_bh_enable();
++		sctp_local_bh_enable();
+ 		list_for_each_entry(transport, &asoc->peer.transport_addr_list,
+ 				transports) {
+ 			dst_release(transport->dst);
+@@ -3279,14 +3279,14 @@ static void sctp_asconf_param_success(struct sctp_association *asoc,
+ 		}
+ 		break;
+ 	case SCTP_PARAM_DEL_IP:
+-		local_bh_disable();
++		sctp_local_bh_disable();
+ 		sctp_del_bind_addr(bp, &addr);
+ 		if (asoc->asconf_addr_del_pending != NULL &&
+ 		    sctp_cmp_addr_exact(asoc->asconf_addr_del_pending, &addr)) {
+ 			kfree(asoc->asconf_addr_del_pending);
+ 			asoc->asconf_addr_del_pending = NULL;
+ 		}
+-		local_bh_enable();
++		sctp_local_bh_enable();
+ 		list_for_each_entry(transport, &asoc->peer.transport_addr_list,
+ 				transports) {
+ 			dst_release(transport->dst);
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index fd7337a..f73918c 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3985,7 +3985,7 @@ static int sctp_init_sock(struct sock *sk)
  
- /* spin lock wrappers. */
--#define sctp_write_lock(lock)   write_lock(lock)
--#define sctp_write_unlock(lock) write_unlock(lock)
- #define sctp_read_lock(lock)    read_lock(lock)
- #define sctp_read_unlock(lock)  read_unlock(lock)
+ 	SCTP_DBG_OBJCNT_INC(sock);
  
-diff --git a/net/sctp/input.c b/net/sctp/input.c
-index e22b326..94f7f440 100644
---- a/net/sctp/input.c
-+++ b/net/sctp/input.c
-@@ -718,9 +718,9 @@ static void __sctp_hash_endpoint(struct sctp_endpoint *ep)
- 	epb->hashent = sctp_ep_hashfn(net, epb->bind_addr.port);
- 	head = &sctp_ep_hashtable[epb->hashent];
+-	local_bh_disable();
++	sctp_local_bh_disable();
+ 	percpu_counter_inc(&sctp_sockets_allocated);
+ 	sock_prot_inuse_add(net, sk->sk_prot, 1);
+ 	if (net->sctp.default_auto_asconf) {
+@@ -3994,7 +3994,7 @@ static int sctp_init_sock(struct sock *sk)
+ 		sp->do_auto_asconf = 1;
+ 	} else
+ 		sp->do_auto_asconf = 0;
+-	local_bh_enable();
++	sctp_local_bh_enable();
  
--	sctp_write_lock(&head->lock);
-+	write_lock(&head->lock);
- 	hlist_add_head(&epb->node, &head->chain);
--	sctp_write_unlock(&head->lock);
-+	write_unlock(&head->lock);
+ 	return 0;
+ }
+@@ -4019,10 +4019,10 @@ static void sctp_destroy_sock(struct sock *sk)
+ 		list_del(&sp->auto_asconf_list);
+ 	}
+ 	sctp_endpoint_free(sp->ep);
+-	local_bh_disable();
++	sctp_local_bh_disable();
+ 	percpu_counter_dec(&sctp_sockets_allocated);
+ 	sock_prot_inuse_add(sock_net(sk), sk->sk_prot, -1);
+-	local_bh_enable();
++	sctp_local_bh_enable();
  }
  
- /* Add an endpoint to the hash. Local BH-safe. */
-@@ -744,9 +744,9 @@ static void __sctp_unhash_endpoint(struct sctp_endpoint *ep)
- 
- 	head = &sctp_ep_hashtable[epb->hashent];
- 
--	sctp_write_lock(&head->lock);
-+	write_lock(&head->lock);
- 	hlist_del_init(&epb->node);
--	sctp_write_unlock(&head->lock);
-+	write_unlock(&head->lock);
- }
- 
- /* Remove endpoint from the hash.  Local BH-safe. */
-@@ -798,9 +798,9 @@ static void __sctp_hash_established(struct sctp_association *asoc)
- 
- 	head = &sctp_assoc_hashtable[epb->hashent];
- 
--	sctp_write_lock(&head->lock);
-+	write_lock(&head->lock);
- 	hlist_add_head(&epb->node, &head->chain);
--	sctp_write_unlock(&head->lock);
-+	write_unlock(&head->lock);
- }
- 
- /* Add an association to the hash. Local BH-safe. */
-@@ -828,9 +828,9 @@ static void __sctp_unhash_established(struct sctp_association *asoc)
- 
- 	head = &sctp_assoc_hashtable[epb->hashent];
- 
--	sctp_write_lock(&head->lock);
-+	write_lock(&head->lock);
- 	hlist_del_init(&epb->node);
--	sctp_write_unlock(&head->lock);
-+	write_unlock(&head->lock);
- }
- 
- /* Remove association from the hash table.  Local BH-safe. */
+ /* Triggered when there are no references on the socket anymore */
 -- 
 1.7.12
 
