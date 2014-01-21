@@ -1,17 +1,17 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 21 Jan 2014 14:10:24 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Tue, 21 Jan 2014 15:16:09 +0000
 Subject: Re: [PATCH net-next 0/7] sctp: remove some macro locking wrappers
-Message-Id: <20140121141024.GA23113@hmsreliant.think-freely.org>
+Message-Id: <52DE8F39.30902@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1390290252-16080-1-git-send-email-wangweidong1@huawei.com>
 In-Reply-To: <1390290252-16080-1-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Wang Weidong <wangweidong1@huawei.com>
-Cc: davem@davemloft.net, vyasevich@gmail.com, dborkman@redhat.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: Wang Weidong <wangweidong1@huawei.com>, nhorman@tuxdriver.com, davem@davemloft.net
+Cc: dborkman@redhat.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Tue, Jan 21, 2014 at 03:44:05PM +0800, Wang Weidong wrote:
+On 01/21/2014 02:44 AM, Wang Weidong wrote:
 > In sctp.h we can find some macro locking wrappers. As Neil point out that:
 > 
 > "Its because in the origional implementation of the sctp protocol, there was a
@@ -41,15 +41,11 @@ On Tue, Jan 21, 2014 at 03:44:05PM +0800, Wang Weidong wrote:
 >  net/sctp/socket.c        | 98 ++++++++++++++++++++++++------------------------
 >  7 files changed, 98 insertions(+), 117 deletions(-)
 > 
-> -- 
-> 1.7.12
-> 
-> 
-> 
-I would have preferred that this all be done as one patch, so that if anyone was
-still using this macro set they would have a single change to bisect to, but
-given that we already had several non-macrotized uses of these locks, its not
-overly relevant
 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+I like this series just the way it is.  Very simple to review.
 
+Series
+Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+
+Thanks
+-vlad
