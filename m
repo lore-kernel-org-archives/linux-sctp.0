@@ -1,37 +1,41 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 02 Jan 2014 14:31:35 +0000
-Subject: Re: [PATCH v4 0/2] sctp: Consolidate and ratelimit deprecation warnings
-Message-Id: <20140102143135.GA7526@hmsreliant.think-freely.org>
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Tue, 21 Jan 2014 07:44:10 +0000
+Subject: [PATCH net-next 5/7] sctp: remove macros sctp_read_[un]lock
+Message-Id: <1390290252-16080-6-git-send-email-wangweidong1@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1387205049-22752-1-git-send-email-nhorman@tuxdriver.com>
- <1387805383-21500-1-git-send-email-nhorman@tuxdriver.com>
- <20131231.140000.463004971089550957.davem@davemloft.net>
-In-Reply-To: <20131231.140000.463004971089550957.davem@davemloft.net>
+References: <1390290252-16080-1-git-send-email-wangweidong1@huawei.com>
+In-Reply-To: <1390290252-16080-1-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: linux-sctp@vger.kernel.org, vyasevich@gmail.com, gregkh@linuxfoundation.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: nhorman@tuxdriver.com, davem@davemloft.net, vyasevich@gmail.com
+Cc: dborkman@redhat.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Tue, Dec 31, 2013 at 02:00:00PM -0500, David Miller wrote:
-> From: Neil Horman <nhorman@tuxdriver.com>
-> Date: Mon, 23 Dec 2013 08:29:41 -0500
-> 
-> > The SCTP protocol has several deprecation warnings in its setsockopt path that
-> > can be triggered by unprivlidged users.  Since these are not ratelimited, we can
-> > spam the logs quite easily here.  Since these are all deprecation warnings, and
-> > that type of warning isn't uncommon in the rest of the kernel, lets make a
-> > common pr_warn_deprecated macro to produce somewhat generalized ratelimited
-> > deprecation warnings easily
-> > 
-> > Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-> 
-> Series applied, thanks Neil.
-> 
-> Please consider Ben's suggestion to provide the offending command string
-> in the log output.
-> 
-Of course, I'll take care of it this week after I dig through all the holiday
-email.
-Neil
+Redefined read_[un]lock to sctp_read_[un]lock for user space
+friendly code which we haven't use in years, and the macros
+we never used, so removing them.
+
+Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+---
+ include/net/sctp/sctp.h | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 73dcc0c..572cd5a 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -170,10 +170,6 @@ extern struct kmem_cache *sctp_bucket_cachep __read_mostly;
+  *  Section:  Macros, externs, and inlines
+  */
+ 
+-/* spin lock wrappers. */
+-#define sctp_read_lock(lock)    read_lock(lock)
+-#define sctp_read_unlock(lock)  read_unlock(lock)
+-
+ /* sock lock wrappers. */
+ #define sctp_lock_sock(sk)       lock_sock(sk)
+ #define sctp_release_sock(sk)    release_sock(sk)
+-- 
+1.7.12
+
 
