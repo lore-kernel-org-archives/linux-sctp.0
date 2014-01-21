@@ -1,7 +1,7 @@
 From: Wang Weidong <wangweidong1@huawei.com>
-Date: Tue, 21 Jan 2014 07:44:08 +0000
-Subject: [PATCH net-next 3/7] sctp: remove macros sctp_spin_[un]lock
-Message-Id: <1390290252-16080-4-git-send-email-wangweidong1@huawei.com>
+Date: Tue, 21 Jan 2014 07:44:12 +0000
+Subject: [PATCH net-next 7/7] sctp: remove macros sctp_bh_[un]lock_sock
+Message-Id: <1390290252-16080-8-git-send-email-wangweidong1@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1390290252-16080-1-git-send-email-wangweidong1@huawei.com>
 In-Reply-To: <1390290252-16080-1-git-send-email-wangweidong1@huawei.com>
@@ -11,112 +11,224 @@ Content-Transfer-Encoding: 7bit
 To: nhorman@tuxdriver.com, davem@davemloft.net, vyasevich@gmail.com
 Cc: dborkman@redhat.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-Redefined spin_[un]lock to sctp_spin_[un]lock for user space friendly
-code which we haven't use in years, so removing them.
+Redefined bh_[un]lock_sock to sctp_bh[un]lock_sock for user
+space friendly code which we haven't use in years, so removing them.
 
 Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
 ---
- include/net/sctp/sctp.h |  6 ++----
- net/sctp/socket.c       | 16 ++++++++--------
- 2 files changed, 10 insertions(+), 12 deletions(-)
+ include/net/sctp/sctp.h  |  4 ----
+ net/sctp/input.c         | 18 +++++++++---------
+ net/sctp/protocol.c      |  4 ++--
+ net/sctp/sm_sideeffect.c | 16 ++++++++--------
+ net/sctp/socket.c        |  4 ++--
+ 5 files changed, 21 insertions(+), 25 deletions(-)
 
 diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index c17121a..4f77e98 100644
+index ec18d30..a3353f4 100644
 --- a/include/net/sctp/sctp.h
 +++ b/include/net/sctp/sctp.h
-@@ -171,8 +171,6 @@ extern struct kmem_cache *sctp_bucket_cachep __read_mostly;
+@@ -170,10 +170,6 @@ extern struct kmem_cache *sctp_bucket_cachep __read_mostly;
+  *  Section:  Macros, externs, and inlines
   */
  
- /* spin lock wrappers. */
--#define sctp_spin_lock(lock)    spin_lock(lock)
--#define sctp_spin_unlock(lock)  spin_unlock(lock)
- #define sctp_write_lock(lock)   write_lock(lock)
- #define sctp_write_unlock(lock) write_unlock(lock)
- #define sctp_read_lock(lock)    read_lock(lock)
-@@ -349,11 +347,11 @@ static inline void sctp_skb_list_tail(struct sk_buff_head *list,
- 	unsigned long flags;
+-/* sock lock wrappers. */
+-#define sctp_bh_lock_sock(sk)    bh_lock_sock(sk)
+-#define sctp_bh_unlock_sock(sk)  bh_unlock_sock(sk)
+-
+ /* SCTP SNMP MIB stats handlers */
+ #define SCTP_INC_STATS(net, field)      SNMP_INC_STATS((net)->sctp.sctp_statistics, field)
+ #define SCTP_INC_STATS_BH(net, field)   SNMP_INC_STATS_BH((net)->sctp.sctp_statistics, field)
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 94f7f440..f2e2cbd 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -238,7 +238,7 @@ int sctp_rcv(struct sk_buff *skb)
+ 	 * bottom halves on this lock, but a user may be in the lock too,
+ 	 * so check if it is busy.
+ 	 */
+-	sctp_bh_lock_sock(sk);
++	bh_lock_sock(sk);
  
- 	spin_lock_irqsave(&head->lock, flags);
--	sctp_spin_lock(&list->lock);
-+	spin_lock(&list->lock);
+ 	if (sk != rcvr->sk) {
+ 		/* Our cached sk is different from the rcvr->sk.  This is
+@@ -248,14 +248,14 @@ int sctp_rcv(struct sk_buff *skb)
+ 		 * be doing something with the new socket.  Switch our veiw
+ 		 * of the current sk.
+ 		 */
+-		sctp_bh_unlock_sock(sk);
++		bh_unlock_sock(sk);
+ 		sk = rcvr->sk;
+-		sctp_bh_lock_sock(sk);
++		bh_lock_sock(sk);
+ 	}
  
- 	skb_queue_splice_tail_init(list, head);
+ 	if (sock_owned_by_user(sk)) {
+ 		if (sctp_add_backlog(sk, skb)) {
+-			sctp_bh_unlock_sock(sk);
++			bh_unlock_sock(sk);
+ 			sctp_chunk_free(chunk);
+ 			skb = NULL; /* sctp_chunk_free already freed the skb */
+ 			goto discard_release;
+@@ -266,7 +266,7 @@ int sctp_rcv(struct sk_buff *skb)
+ 		sctp_inq_push(&chunk->rcvr->inqueue, chunk);
+ 	}
  
--	sctp_spin_unlock(&list->lock);
-+	spin_unlock(&list->lock);
- 	spin_unlock_irqrestore(&head->lock, flags);
+-	sctp_bh_unlock_sock(sk);
++	bh_unlock_sock(sk);
+ 
+ 	/* Release the asoc/ep ref we took in the lookup calls. */
+ 	if (asoc)
+@@ -327,7 +327,7 @@ int sctp_backlog_rcv(struct sock *sk, struct sk_buff *skb)
+ 		 */
+ 
+ 		sk = rcvr->sk;
+-		sctp_bh_lock_sock(sk);
++		bh_lock_sock(sk);
+ 
+ 		if (sock_owned_by_user(sk)) {
+ 			if (sk_add_backlog(sk, skb, sk->sk_rcvbuf))
+@@ -337,7 +337,7 @@ int sctp_backlog_rcv(struct sock *sk, struct sk_buff *skb)
+ 		} else
+ 			sctp_inq_push(inqueue, chunk);
+ 
+-		sctp_bh_unlock_sock(sk);
++		bh_unlock_sock(sk);
+ 
+ 		/* If the chunk was backloged again, don't drop refs */
+ 		if (backloged)
+@@ -522,7 +522,7 @@ struct sock *sctp_err_lookup(struct net *net, int family, struct sk_buff *skb,
+ 		goto out;
+ 	}
+ 
+-	sctp_bh_lock_sock(sk);
++	bh_lock_sock(sk);
+ 
+ 	/* If too many ICMPs get dropped on busy
+ 	 * servers this needs to be solved differently.
+@@ -542,7 +542,7 @@ out:
+ /* Common cleanup code for icmp/icmpv6 error handler. */
+ void sctp_err_finish(struct sock *sk, struct sctp_association *asoc)
+ {
+-	sctp_bh_unlock_sock(sk);
++	bh_unlock_sock(sk);
+ 	sctp_association_put(asoc);
+ }
+ 
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index d6934dc..4e1d0fc 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -634,10 +634,10 @@ static void sctp_addr_wq_timeout_handler(unsigned long arg)
+ 			/* ignore bound-specific endpoints */
+ 			if (!sctp_is_ep_boundall(sk))
+ 				continue;
+-			sctp_bh_lock_sock(sk);
++			bh_lock_sock(sk);
+ 			if (sctp_asconf_mgmt(sp, addrw) < 0)
+ 				pr_debug("%s: sctp_asconf_mgmt failed\n", __func__);
+-			sctp_bh_unlock_sock(sk);
++			bh_unlock_sock(sk);
+ 		}
+ #if IS_ENABLED(CONFIG_IPV6)
+ free_next:
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index ded6db6..bd85915 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -248,7 +248,7 @@ void sctp_generate_t3_rtx_event(unsigned long peer)
+ 
+ 	/* Check whether a task is in the sock.  */
+ 
+-	sctp_bh_lock_sock(asoc->base.sk);
++	bh_lock_sock(asoc->base.sk);
+ 	if (sock_owned_by_user(asoc->base.sk)) {
+ 		pr_debug("%s: sock is busy\n", __func__);
+ 
+@@ -275,7 +275,7 @@ void sctp_generate_t3_rtx_event(unsigned long peer)
+ 		asoc->base.sk->sk_err = -error;
+ 
+ out_unlock:
+-	sctp_bh_unlock_sock(asoc->base.sk);
++	bh_unlock_sock(asoc->base.sk);
+ 	sctp_transport_put(transport);
+ }
+ 
+@@ -288,7 +288,7 @@ static void sctp_generate_timeout_event(struct sctp_association *asoc,
+ 	struct net *net = sock_net(asoc->base.sk);
+ 	int error = 0;
+ 
+-	sctp_bh_lock_sock(asoc->base.sk);
++	bh_lock_sock(asoc->base.sk);
+ 	if (sock_owned_by_user(asoc->base.sk)) {
+ 		pr_debug("%s: sock is busy: timer %d\n", __func__,
+ 			 timeout_type);
+@@ -315,7 +315,7 @@ static void sctp_generate_timeout_event(struct sctp_association *asoc,
+ 		asoc->base.sk->sk_err = -error;
+ 
+ out_unlock:
+-	sctp_bh_unlock_sock(asoc->base.sk);
++	bh_unlock_sock(asoc->base.sk);
+ 	sctp_association_put(asoc);
+ }
+ 
+@@ -367,7 +367,7 @@ void sctp_generate_heartbeat_event(unsigned long data)
+ 	struct sctp_association *asoc = transport->asoc;
+ 	struct net *net = sock_net(asoc->base.sk);
+ 
+-	sctp_bh_lock_sock(asoc->base.sk);
++	bh_lock_sock(asoc->base.sk);
+ 	if (sock_owned_by_user(asoc->base.sk)) {
+ 		pr_debug("%s: sock is busy\n", __func__);
+ 
+@@ -392,7 +392,7 @@ void sctp_generate_heartbeat_event(unsigned long data)
+ 		 asoc->base.sk->sk_err = -error;
+ 
+ out_unlock:
+-	sctp_bh_unlock_sock(asoc->base.sk);
++	bh_unlock_sock(asoc->base.sk);
+ 	sctp_transport_put(transport);
+ }
+ 
+@@ -405,7 +405,7 @@ void sctp_generate_proto_unreach_event(unsigned long data)
+ 	struct sctp_association *asoc = transport->asoc;
+ 	struct net *net = sock_net(asoc->base.sk);
+ 
+-	sctp_bh_lock_sock(asoc->base.sk);
++	bh_lock_sock(asoc->base.sk);
+ 	if (sock_owned_by_user(asoc->base.sk)) {
+ 		pr_debug("%s: sock is busy\n", __func__);
+ 
+@@ -427,7 +427,7 @@ void sctp_generate_proto_unreach_event(unsigned long data)
+ 		   asoc->state, asoc->ep, asoc, transport, GFP_ATOMIC);
+ 
+ out_unlock:
+-	sctp_bh_unlock_sock(asoc->base.sk);
++	bh_unlock_sock(asoc->base.sk);
+ 	sctp_association_put(asoc);
  }
  
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index f2e0005..98532cb 100644
+index 893aa56..9e91d6e 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -5937,14 +5937,14 @@ static long sctp_get_port_local(struct sock *sk, union sctp_addr *addr)
- 				continue;
- 			index = sctp_phashfn(sock_net(sk), rover);
- 			head = &sctp_port_hashtable[index];
--			sctp_spin_lock(&head->lock);
-+			spin_lock(&head->lock);
- 			sctp_for_each_hentry(pp, &head->chain)
- 				if ((pp->port = rover) &&
- 				    net_eq(sock_net(sk), pp->net))
- 					goto next;
- 			break;
- 		next:
--			sctp_spin_unlock(&head->lock);
-+			spin_unlock(&head->lock);
- 		} while (--remaining > 0);
- 
- 		/* Exhausted local port range during search? */
-@@ -5965,7 +5965,7 @@ static long sctp_get_port_local(struct sock *sk, union sctp_addr *addr)
- 		 * port iterator, pp being NULL.
- 		 */
- 		head = &sctp_port_hashtable[sctp_phashfn(sock_net(sk), snum)];
--		sctp_spin_lock(&head->lock);
-+		spin_lock(&head->lock);
- 		sctp_for_each_hentry(pp, &head->chain) {
- 			if ((pp->port = snum) && net_eq(pp->net, sock_net(sk)))
- 				goto pp_found;
-@@ -6049,7 +6049,7 @@ success:
- 	ret = 0;
- 
- fail_unlock:
--	sctp_spin_unlock(&head->lock);
-+	spin_unlock(&head->lock);
- 
- fail:
- 	local_bh_enable();
-@@ -6286,13 +6286,13 @@ static inline void __sctp_put_port(struct sock *sk)
- 						  inet_sk(sk)->inet_num)];
- 	struct sctp_bind_bucket *pp;
- 
--	sctp_spin_lock(&head->lock);
-+	spin_lock(&head->lock);
- 	pp = sctp_sk(sk)->bind_hash;
- 	__sk_del_bind_node(sk);
- 	sctp_sk(sk)->bind_hash = NULL;
- 	inet_sk(sk)->inet_num = 0;
- 	sctp_bucket_destroy(pp);
--	sctp_spin_unlock(&head->lock);
-+	spin_unlock(&head->lock);
- }
- 
- void sctp_put_port(struct sock *sk)
-@@ -6951,12 +6951,12 @@ static void sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
- 	head = &sctp_port_hashtable[sctp_phashfn(sock_net(oldsk),
- 						 inet_sk(oldsk)->inet_num)];
+@@ -1511,7 +1511,7 @@ static void sctp_close(struct sock *sk, long timeout)
+ 	 * the net layers still may.
+ 	 */
  	local_bh_disable();
--	sctp_spin_lock(&head->lock);
-+	spin_lock(&head->lock);
- 	pp = sctp_sk(oldsk)->bind_hash;
- 	sk_add_bind_node(newsk, &pp->owner);
- 	sctp_sk(newsk)->bind_hash = pp;
- 	inet_sk(newsk)->inet_num = inet_sk(oldsk)->inet_num;
--	sctp_spin_unlock(&head->lock);
-+	spin_unlock(&head->lock);
+-	sctp_bh_lock_sock(sk);
++	bh_lock_sock(sk);
+ 
+ 	/* Hold the sock, since sk_common_release() will put sock_put()
+ 	 * and we have just a little more cleanup.
+@@ -1519,7 +1519,7 @@ static void sctp_close(struct sock *sk, long timeout)
+ 	sock_hold(sk);
+ 	sk_common_release(sk);
+ 
+-	sctp_bh_unlock_sock(sk);
++	bh_unlock_sock(sk);
  	local_bh_enable();
  
- 	/* Copy the bind_addr list from the original endpoint to the new
+ 	sock_put(sk);
 -- 
 1.7.12
 
