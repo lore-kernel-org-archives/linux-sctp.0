@@ -1,43 +1,123 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 22 Jan 2014 19:45:41 +0000
-Subject: Re: MD5 HMAC in FIPS mode
-Message-Id: <20140122194541.GB14646@hmsreliant.think-freely.org>
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Tue, 21 Jan 2014 07:44:08 +0000
+Subject: [PATCH net-next 3/7] sctp: remove macros sctp_spin_[un]lock
+Message-Id: <1390290252-16080-4-git-send-email-wangweidong1@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAGugRbVVLAddsidEeBQ879UcMsiaxo3g2kTVqNJUj6VUAYhXkQ@mail.gmail.com>
-In-Reply-To: <CAGugRbVVLAddsidEeBQ879UcMsiaxo3g2kTVqNJUj6VUAYhXkQ@mail.gmail.com>
+References: <1390290252-16080-1-git-send-email-wangweidong1@huawei.com>
+In-Reply-To: <1390290252-16080-1-git-send-email-wangweidong1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: nhorman@tuxdriver.com, davem@davemloft.net, vyasevich@gmail.com
+Cc: dborkman@redhat.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Wed, Jan 22, 2014 at 07:46:02PM +0100, Daniel Borkmann wrote:
-> On 01/22/2014 07:23 PM, Karl Heiss wrote:
-> >When fips=1 is set on the kernel command line, the hmac(md5) algorithm
-> >is not usable.  This leads to errors when listen() is called with the
-> >default configuration.  So this leads me to the following questions:
-> >
-> >Does it make sense to change the default value when fips mode is
-> >enabled?  If so, does it make more sense to handle it in userspace via
-> >sysctl, or enforce directly in the SCTP stack?  It seems easy enough
-> >to check for the fips_enabled variable and disallow setting md5
-> >through the kernel directly.
-> 
-> Indeed it seems easy enough, but I think we should not do any
-> special treatment in SCTP whereas the rest of the code is not
-> handling fips_enabled, imho.
-> 
-> You can choose default alg in Kconfig at compile time or select
-> a different algorithm through cookie_hmac_alg sysctl already.
-> If a kernel is specifically built for fips mode, then that would
-> be the better option in my opinion.
-Daniel is exactly right here.  We modified the config method so that at build
-time the default cookie algorithm can be selected, specifcially so people could
-build sctp in such a way as to work by default in FIPS mode.
+Redefined spin_[un]lock to sctp_spin_[un]lock for user space friendly
+code which we haven't use in years, so removing them.
 
-Neil
+Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+---
+ include/net/sctp/sctp.h |  6 ++----
+ net/sctp/socket.c       | 16 ++++++++--------
+ 2 files changed, 10 insertions(+), 12 deletions(-)
 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index c17121a..4f77e98 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -171,8 +171,6 @@ extern struct kmem_cache *sctp_bucket_cachep __read_mostly;
+  */
+ 
+ /* spin lock wrappers. */
+-#define sctp_spin_lock(lock)    spin_lock(lock)
+-#define sctp_spin_unlock(lock)  spin_unlock(lock)
+ #define sctp_write_lock(lock)   write_lock(lock)
+ #define sctp_write_unlock(lock) write_unlock(lock)
+ #define sctp_read_lock(lock)    read_lock(lock)
+@@ -349,11 +347,11 @@ static inline void sctp_skb_list_tail(struct sk_buff_head *list,
+ 	unsigned long flags;
+ 
+ 	spin_lock_irqsave(&head->lock, flags);
+-	sctp_spin_lock(&list->lock);
++	spin_lock(&list->lock);
+ 
+ 	skb_queue_splice_tail_init(list, head);
+ 
+-	sctp_spin_unlock(&list->lock);
++	spin_unlock(&list->lock);
+ 	spin_unlock_irqrestore(&head->lock, flags);
+ }
+ 
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index f2e0005..98532cb 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -5937,14 +5937,14 @@ static long sctp_get_port_local(struct sock *sk, union sctp_addr *addr)
+ 				continue;
+ 			index = sctp_phashfn(sock_net(sk), rover);
+ 			head = &sctp_port_hashtable[index];
+-			sctp_spin_lock(&head->lock);
++			spin_lock(&head->lock);
+ 			sctp_for_each_hentry(pp, &head->chain)
+ 				if ((pp->port = rover) &&
+ 				    net_eq(sock_net(sk), pp->net))
+ 					goto next;
+ 			break;
+ 		next:
+-			sctp_spin_unlock(&head->lock);
++			spin_unlock(&head->lock);
+ 		} while (--remaining > 0);
+ 
+ 		/* Exhausted local port range during search? */
+@@ -5965,7 +5965,7 @@ static long sctp_get_port_local(struct sock *sk, union sctp_addr *addr)
+ 		 * port iterator, pp being NULL.
+ 		 */
+ 		head = &sctp_port_hashtable[sctp_phashfn(sock_net(sk), snum)];
+-		sctp_spin_lock(&head->lock);
++		spin_lock(&head->lock);
+ 		sctp_for_each_hentry(pp, &head->chain) {
+ 			if ((pp->port = snum) && net_eq(pp->net, sock_net(sk)))
+ 				goto pp_found;
+@@ -6049,7 +6049,7 @@ success:
+ 	ret = 0;
+ 
+ fail_unlock:
+-	sctp_spin_unlock(&head->lock);
++	spin_unlock(&head->lock);
+ 
+ fail:
+ 	local_bh_enable();
+@@ -6286,13 +6286,13 @@ static inline void __sctp_put_port(struct sock *sk)
+ 						  inet_sk(sk)->inet_num)];
+ 	struct sctp_bind_bucket *pp;
+ 
+-	sctp_spin_lock(&head->lock);
++	spin_lock(&head->lock);
+ 	pp = sctp_sk(sk)->bind_hash;
+ 	__sk_del_bind_node(sk);
+ 	sctp_sk(sk)->bind_hash = NULL;
+ 	inet_sk(sk)->inet_num = 0;
+ 	sctp_bucket_destroy(pp);
+-	sctp_spin_unlock(&head->lock);
++	spin_unlock(&head->lock);
+ }
+ 
+ void sctp_put_port(struct sock *sk)
+@@ -6951,12 +6951,12 @@ static void sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
+ 	head = &sctp_port_hashtable[sctp_phashfn(sock_net(oldsk),
+ 						 inet_sk(oldsk)->inet_num)];
+ 	local_bh_disable();
+-	sctp_spin_lock(&head->lock);
++	spin_lock(&head->lock);
+ 	pp = sctp_sk(oldsk)->bind_hash;
+ 	sk_add_bind_node(newsk, &pp->owner);
+ 	sctp_sk(newsk)->bind_hash = pp;
+ 	inet_sk(newsk)->inet_num = inet_sk(oldsk)->inet_num;
+-	sctp_spin_unlock(&head->lock);
++	spin_unlock(&head->lock);
+ 	local_bh_enable();
+ 
+ 	/* Copy the bind_addr list from the original endpoint to the new
+-- 
+1.7.12
+
+
