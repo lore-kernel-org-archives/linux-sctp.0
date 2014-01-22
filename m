@@ -1,83 +1,83 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Wed, 22 Jan 2014 13:41:01 +0000
-Subject: RE: [PATCH] net: sctp: Fix a_rwnd/rwnd management to reflect real state of the receiver's buffer
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6D463A0F@AcuExch.aculab.com>
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Wed, 22 Jan 2014 14:18:28 +0000
+Subject: Re: [PATCH] net: sctp: Fix a_rwnd/rwnd management to reflect real state of the receiver's buffer
+Message-Id: <52DFD334.7030507@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <52D8D544.5050501@nsn.com>
-In-Reply-To: <52D8D544.5050501@nsn.com>
+References: <52D8D544.5050501@nsn.com> <20140122123059.GA9393@hmsreliant.think-freely.org>
+In-Reply-To: <20140122123059.GA9393@hmsreliant.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Matija Glavinic Pecotic' <matija.glavinic-pecotic.ext@nsn.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
-Cc: Alexander Sverdlin <alexander.sverdlin@nsn.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+To: Neil Horman <nhorman@tuxdriver.com>, Matija Glavinic Pecotic <matija.glavinic-pecotic.ext@nsn.com>
+Cc: linux-sctp@vger.kernel.org, Alexander Sverdlin <alexander.sverdlin@nsn.com>, netdev@vger.kernel.org
 
-RnJvbTogTWF0aWphIEdsYXZpbmljIFBlY290aWMNCj4gSW1wbGVtZW50YXRpb24gb2YgKGEpcndu
-ZCBjYWxjdWxhdGlvbiBtaWdodCBsZWFkIHRvIHNldmVyZSBwZXJmb3JtYW5jZSBpc3N1ZXMNCj4g
-YW5kIGFzc29jaWF0aW9ucyBjb21wbGV0ZWx5IHN0YWxsaW5nLiBUaGVzZSBwcm9ibGVtcyBhcmUg
-ZGVzY3JpYmVkIGFuZCBzb2x1dGlvbg0KPiBpcyBwcm9wb3NlZCB3aGljaCBpbXByb3ZlcyBsa3Nj
-dHAncyByb2J1c3RuZXNzIGluIGNvbmdlc3Rpb24gc3RhdGUuDQo+IA0KPiAxKSBTdWRkZW4gZHJv
-cCBvZiBhX3J3bmQgYW5kIGluY29tcGxldGUgd2luZG93IHJlY292ZXJ5IGFmdGVyd2FyZHMNCj4g
-DQo+IERhdGEgYWNjb3VudGVkIGluIHNjdHBfYXNzb2NfcnduZF9kZWNyZWFzZSB0YWtlcyBvbmx5
-IHBheWxvYWQgc2l6ZSAoc2N0cCBkYXRhKSwNCj4gYnV0IHNpemUgb2Ygc2tfYnVmZiwgd2hpY2gg
-aXMgYmxhbWVkIGFnYWluc3QgcmVjZWl2ZXIgYnVmZmVyLCBpcyBub3QgYWNjb3VudGVkDQo+IGlu
-IHJ3bmQuIFRoZW9yZXRpY2FsbHksIHRoaXMgc2hvdWxkIG5vdCBiZSB0aGUgcHJvYmxlbSBhcyBh
-Y3R1YWwgc2l6ZSBvZiBidWZmZXINCj4gaXMgZG91YmxlIHRoZSBhbW91bnQgcmVxdWVzdGVkIG9u
-IHRoZSBzb2NrZXQgKFNPX1JFQ1ZCVUYpLiBQcm9ibGVtIGhlcmUgaXMNCj4gdGhhdCB0aGlzIHdp
-bGwgaGF2ZSBiYWQgc2NhbGluZyBmb3IgZGF0YSB3aGljaCBpcyBsZXNzIHRoZW4gc2l6ZW9mIHNr
-X2J1ZmYuDQo+IEUuZy4gaW4gNEcgKExURSkgbmV0d29ya3MsIGxpbmsgaW50ZXJmYWNpbmcgcmFk
-aW8gc2lkZSB3aWxsIGhhdmUgYSBsYXJnZSBwb3J0aW9uDQo+IG9mIHRyYWZmaWMgb2YgdGhpcyBz
-aXplIChsZXNzIHRoZW4gMTAwQikuDQouLi4NCj4gDQo+IFByb3Bvc2VkIHNvbHV0aW9uOg0KPiAN
-Cj4gQm90aCBwcm9ibGVtcyBzaGFyZSB0aGUgc2FtZSByb290IGNhdXNlLCBhbmQgdGhhdCBpcyBp
-bXByb3BlciBzY2FsaW5nIG9mIHNvY2tldA0KPiBidWZmZXIgd2l0aCByd25kLiBTb2x1dGlvbiBp
-biB3aGljaCBzaXplb2Yoc2tfYnVmZikgaXMgdGFrZW4gaW50byBjb25jZXJuIHdoaWxlDQo+IGNh
-bGN1bGF0aW5nIHJ3bmQgaXMgbm90IHBvc3NpYmxlIGR1ZSB0byBmYWN0IHRoYXQgdGhlcmUgaXMg
-bm8gbGluZWFyDQo+IHJlbGF0aW9uc2hpcCBiZXR3ZWVuIGFtb3VudCBvZiBkYXRhIGJsYW1lZCBp
-biBpbmNyZWFzZS9kZWNyZWFzZSB3aXRoIElQIHBhY2tldA0KPiBpbiB3aGljaCBwYXlsb2FkIGFy
-cml2ZWQuIEV2ZW4gaW4gY2FzZSBzdWNoIHNvbHV0aW9uIHdvdWxkIGJlIGZvbGxvd2VkLA0KPiBj
-b21wbGV4aXR5IG9mIHRoZSBjb2RlIHdvdWxkIGluY3JlYXNlLiBEdWUgdG8gbmF0dXJlIG9mIGN1
-cnJlbnQgcnduZCBoYW5kbGluZywNCj4gc2xvdyBpbmNyZWFzZSAoaW4gc2N0cF9hc3NvY19yd25k
-X2luY3JlYXNlKSBvZiByd25kIGFmdGVyIHByZXNzdXJlIHN0YXRlIGlzDQo+IGVudGVyZWQgaXMg
-cmF0aW9uYWxlLCBidXQgaXQgZ2l2ZXMgZmFsc2UgcmVwcmVzZW50YXRpb24gdG8gdGhlIHNlbmRl
-ciBvZiBjdXJyZW50DQo+IGJ1ZmZlciBzcGFjZS4gRnVydGhlcm1vcmUsIGl0IGltcGxlbWVudHMg
-YWRkaXRpb25hbCBjb25nZXN0aW9uIGNvbnRyb2wgbWVjaGFuaXNtDQo+IHdoaWNoIGlzIGRlZmlu
-ZWQgb24gaW1wbGVtZW50YXRpb24sIGFuZCBub3Qgb24gc3RhbmRhcmQgYmFzaXMuDQo+IA0KPiBQ
-cm9wb3NlZCBzb2x1dGlvbiBzaW1wbGlmaWVzIHdob2xlIGFsZ29yaXRobSBoYXZpbmcgb24gbWlu
-ZCBkZWZpbml0aW9uIGZyb20gcmZjOg0KPiANCj4gbyAgUmVjZWl2ZXIgV2luZG93IChyd25kKTog
-VGhpcyBnaXZlcyB0aGUgc2VuZGVyIGFuIGluZGljYXRpb24gb2YgdGhlIHNwYWNlDQo+ICAgIGF2
-YWlsYWJsZSBpbiB0aGUgcmVjZWl2ZXIncyBpbmJvdW5kIGJ1ZmZlci4NCj4gDQo+IENvcmUgb2Yg
-dGhlIHByb3Bvc2VkIHNvbHV0aW9uIGlzIGdpdmVuIHdpdGggdGhlc2UgbGluZXM6DQo+IA0KPiBz
-Y3RwX2Fzc29jX3J3bmRfYWNjb3VudDoNCj4gCWlmICgoYXNvYy0+YmFzZS5zay0+c2tfcmN2YnVm
-IC0gcnhfY291bnQpID4gMCkNCj4gCQlhc29jLT5yd25kID0gKGFzb2MtPmJhc2Uuc2stPnNrX3Jj
-dmJ1ZiAtIHJ4X2NvdW50KSA+PiAxOw0KPiAJZWxzZQ0KPiAJCWFzb2MtPnJ3bmQgPSAwOw0KPiAN
-Cj4gV2UgYWR2ZXJ0aXNlIHRvIHNlbmRlciAoaGFsZiBvZikgYWN0dWFsIHNwYWNlIHdlIGhhdmUu
-IEhhbGYgaXMgaW4gdGhlIGJyYWNlcw0KPiBkZXBlbmRpbmcgd2hldGhlciB5b3Ugd291bGQgbGlr
-ZSB0byBvYnNlcnZlIHNpemUgb2Ygc29ja2V0IGJ1ZmZlciBhcyBTT19SRUNWQlVGDQo+IG9yIHR3
-aWNlIHRoZSBhbW91bnQsIGkuZS4gc2l6ZSBpcyB0aGUgb25lIHZpc2libGUgZnJvbSB1c2Vyc3Bh
-Y2UsIHRoYXQgaXMsDQo+IGZyb20ga2VybmVsc3BhY2UuDQo+IEluIHRoaXMgd2F5IHNlbmRlciBp
-cyBnaXZlbiB3aXRoIGdvb2QgYXBwcm94aW1hdGlvbiBvZiBvdXIgYnVmZmVyIHNwYWNlLA0KPiBy
-ZWdhcmRsZXNzIG9mIHRoZSBidWZmZXIgcG9saWN5IC0gd2UgYWx3YXlzIGFkdmVydGlzZSB3aGF0
-IHdlIGhhdmUuIFByb3Bvc2VkDQo+IHNvbHV0aW9uIGZpeGVzIGRlc2NyaWJlZCBwcm9ibGVtcyBh
-bmQgcmVtb3ZlcyBuZWNlc3NpdHkgZm9yIHJ3bmQgcmVzdG9yYXRpb24NCj4gYWxnb3JpdGhtLiBG
-aW5hbGx5LCBhcyBwcm9wb3NlZCBzb2x1dGlvbiBpcyBzaW1wbGlmaWNhdGlvbiwgc29tZSBsaW5l
-cyBvZiBjb2RlLA0KPiBhbG9uZyB3aXRoIHNvbWUgYnl0ZXMgaW4gc3RydWN0IHNjdHBfYXNzb2Np
-YXRpb24gYXJlIHNhdmVkLg0KDQpJSVJDIHRoZSAnc2l6ZScgdGFrZW4gb2YgdGhlIHNvY2tldCBi
-dWZmZXIgaXMgdGhlIHNrYidzICd0cnVlIHNpemUnIGFuZCB0aGF0DQppbmNsdWRlcyBhbnkgcGFk
-ZGluZyBiZWZvcmUgYW5kIGFmdGVyIHRoZSBhY3R1YWwgcnggZGF0YS4gRm9yIHNob3J0IHBhY2tl
-dHMNCnRoZSBkcml2ZXIgbWF5IGhhdmUgY29waWVkIHRoZSBkYXRhIGludG8gYSBzbWFsbGVyIHNr
-YiwgZm9yIGxvbmcgcGFja2V0cyBpdA0KaXMgbGlrZWx5IHRvIGJlIG1vcmUgdGhhbiB0aGF0IG9m
-IGEgZnVsbCBsZW5ndGggZXRoZXJuZXQgcGFja2V0Lg0KSW4gZWl0aGVyIGNhc2UgaXQgY2FuIGJl
-IHNpZ25pZmljYW50bHkgbW9yZSB0aGFuIHNpemVvZihza19idWZmKSAoMTkwPykgcGx1cw0KdGhl
-IHNpemUgb2YgdGhlIGFjdHVhbCBkYXRhLg0KDQpJJ20gYWxzbyBub3Qgc3VyZSB0aGF0IGNvbnRp
-bnVvdXNseSByZW1vdmluZyAnY3JlZGl0JyBpcyBhIGdvb2QgaWRlYS4NCkkndmUgZG9uZSBhIGxv
-dCBvZiBjb21tcyBwcm90b2NvbCBjb2RlLCByZW1vdmluZyBjcmVkaXQgYW5kICd3aW5kb3cNCnNs
-YW1taW5nJyBhY2tzIGFyZSBub3QgZ29vZCBpZGVhcy4NCg0KUGVyaGFwcyB0aGUgYWR2ZXJ0aXNl
-ZCB3aW5kb3cgc2hvdWxkIGJlIGJvdW5kZWQgYnkgdGhlIGNvbmZpZ3VyZWQgc29ja2V0DQpidWZm
-ZXIgc2l6ZSwgYW5kIG9ubHkgcmVkdWNlZCBpZiB0aGUgYWN0dWFsIHNwYWNlIGlzbid0IGxpa2Vs
-eSB0byBiZSBsYXJnZQ0KZW5vdWdoIGdpdmVuIHRoZSB0eXBpY2FsIG92ZXJoZWFkIG9mIHRoZSBy
-ZWNlaXZlZCBkYXRhLg0KDQpTaW1pbGFybHksIGFzIHRoZSB3aW5kb3cgaXMgb3BlbmVkIGFmdGVy
-IGNvbmdlc3Rpb24gaXQgc2hvdWxkIGJlIGluY3JlYXNlZA0KYnkgdGhlIGFtb3VudCBvZiBkYXRh
-IGFjdHVhbGx5IHJlbW92ZWQgKG5vdCB0aGUgbnVtYmVyIG9mIGZyZWUgYnl0ZXMpLg0KV2hlbiB0
-aGVyZSBpcyBhIHNpZ25pZmljYW50IGFtb3VudCBvZiBzcGFjZSB0aGUgd2luZG93IGNvdWxkIGJl
-IGluY3JlYXNlZA0KZmFzdGVyIC0gYWxsb3dpbmcgYSBzbWFsbGVyIG51bWJlciBvZiBsYXJnZXIg
-c2tiIGNhcnJ5aW5nIG1vcmUgZGF0YSBiZSBxdWV1ZWQuDQoNCkFzIGEgbWF0dGVyIG9mIGludGVy
-ZXN0LCBob3cgZG9lcyBUQ1AgaGFuZGxlIHRoaXM/DQoNCglEYXZpZA0KDQo
+On 01/22/2014 07:30 AM, Neil Horman wrote:
+> On Fri, Jan 17, 2014 at 08:01:24AM +0100, Matija Glavinic Pecotic wrote:
+>>
+>> Proposed solution simplifies whole algorithm having on mind
+definition from rfc:
+>>
+>> o  Receiver Window (rwnd): This gives the sender an indication of the
+space
+>>    available in the receiver's inbound buffer.
+>>
+>> Core of the proposed solution is given with these lines:
+>>
+>> sctp_assoc_rwnd_account:
+>> 	if ((asoc->base.sk->sk_rcvbuf - rx_count) > 0)
+>> 		asoc->rwnd = (asoc->base.sk->sk_rcvbuf - rx_count) >> 1;
+>> 	else
+>> 		asoc->rwnd = 0;
+>>
+>> We advertise to sender (half of) actual space we have. Half is in the
+braces
+>> depending whether you would like to observe size of socket buffer as
+SO_RECVBUF
+>> or twice the amount, i.e. size is the one visible from userspace,
+that is,
+>> from kernelspace.
+>> In this way sender is given with good approximation of our buffer space,
+>> regardless of the buffer policy - we always advertise what we have.
+Proposed
+>> solution fixes described problems and removes necessity for rwnd
+restoration
+>> algorithm. Finally, as proposed solution is simplification, some
+lines of code,
+>> along with some bytes in struct sctp_association are saved.
+>>
+>> Signed-off-by: Matija Glavinic Pecotic
+<matija.glavinic-pecotic.ext@nsn.com>
+>> Reviewed-by: Alexander Sverdlin <alexander.sverdlin@nsn.com>
+>>
+>
+>
+> General comment - While this seems to make sense to me generally speaking,
+> doesn't it currently violate section 6 of the RFC?
+>
+>
+> A SCTP receiver MUST be able to receive a minimum of 1500 bytes in
+>    one SCTP packet.  This means that a SCTP endpoint MUST NOT indicate
+>    less than 1500 bytes in its Initial a_rwnd sent in the INIT or INIT
+>    ACK.
+>
+> Since we set the initial rwnd value to the larger of sk->sk_rcvbuf/2 or
+> SCTP_MIN_RWND (1500 bytes), won't we potentially advertize half that
+amount?
+
+Not initially.  Initial window will still be advertized properly.  Once
+we receive the first packet and consumed some space, we'll advertize
+half of available receive buffer.  It is perfectly OK to advertize a
+window smaller the MIN_WINDOW in the middle of the transfer.
+
+> It seems we need to double the minimum socket receive buffer here.
+
+Not here specifically, but yes.  It is already broken and this patch
+doesn't change current behavior.  This is something SCTP may need to do
+separately.
+
+-vlad
+
+>
+> Neil
+>
+>
