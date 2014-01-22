@@ -1,156 +1,64 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Wed, 22 Jan 2014 14:52:14 +0000
-Subject: Re: [PATCH] net: sctp: Fix a_rwnd/rwnd management to reflect real state of the receiver's buffer
-Message-Id: <52DFDB1E.7070701@gmail.com>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Wed, 22 Jan 2014 15:30:48 +0000
+Subject: RE: [PATCH] net: sctp: Fix a_rwnd/rwnd management to reflect real state of the receiver's buffer
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6D463CC4@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <52D8D544.5050501@nsn.com> <063D6719AE5E284EB5DD2968C1650D6D463A0F@AcuExch.aculab.com>
-In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6D463A0F@AcuExch.aculab.com>
+References: <52D8D544.5050501@nsn.com>
+ <063D6719AE5E284EB5DD2968C1650D6D463A0F@AcuExch.aculab.com>
+ <52DFDB1E.7070701@gmail.com>
+In-Reply-To: <52DFDB1E.7070701@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: David Laight <David.Laight@ACULAB.COM>, 'Matija Glavinic Pecotic' <matija.glavinic-pecotic.ext@nsn.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: 'Vlad Yasevich' <vyasevich@gmail.com>, 'Matija Glavinic Pecotic' <matija.glavinic-pecotic.ext@nsn.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
 Cc: Alexander Sverdlin <alexander.sverdlin@nsn.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
 
-On 01/22/2014 08:41 AM, David Laight wrote:
-> From: Matija Glavinic Pecotic
->> Implementation of (a)rwnd calculation might lead to severe
-performance issues
->> and associations completely stalling. These problems are described
-and solution
->> is proposed which improves lksctp's robustness in congestion state.
->>
->> 1) Sudden drop of a_rwnd and incomplete window recovery afterwards
->>
->> Data accounted in sctp_assoc_rwnd_decrease takes only payload size
-(sctp data),
->> but size of sk_buff, which is blamed against receiver buffer, is not
-accounted
->> in rwnd. Theoretically, this should not be the problem as actual size
-of buffer
->> is double the amount requested on the socket (SO_RECVBUF). Problem
-here is
->> that this will have bad scaling for data which is less then sizeof
-sk_buff.
->> E.g. in 4G (LTE) networks, link interfacing radio side will have a
-large portion
->> of traffic of this size (less then 100B).
-> ...
->>
->> Proposed solution:
->>
->> Both problems share the same root cause, and that is improper scaling
-of socket
->> buffer with rwnd. Solution in which sizeof(sk_buff) is taken into
-concern while
->> calculating rwnd is not possible due to fact that there is no linear
->> relationship between amount of data blamed in increase/decrease with
-IP packet
->> in which payload arrived. Even in case such solution would be followed,
->> complexity of the code would increase. Due to nature of current rwnd
-handling,
->> slow increase (in sctp_assoc_rwnd_increase) of rwnd after pressure
-state is
->> entered is rationale, but it gives false representation to the sender
-of current
->> buffer space. Furthermore, it implements additional congestion
-control mechanism
->> which is defined on implementation, and not on standard basis.
->>
->> Proposed solution simplifies whole algorithm having on mind
-definition from rfc:
->>
->> o  Receiver Window (rwnd): This gives the sender an indication of the
-space
->>    available in the receiver's inbound buffer.
->>
->> Core of the proposed solution is given with these lines:
->>
->> sctp_assoc_rwnd_account:
->> 	if ((asoc->base.sk->sk_rcvbuf - rx_count) > 0)
->> 		asoc->rwnd = (asoc->base.sk->sk_rcvbuf - rx_count) >> 1;
->> 	else
->> 		asoc->rwnd = 0;
->>
->> We advertise to sender (half of) actual space we have. Half is in the
-braces
->> depending whether you would like to observe size of socket buffer as
-SO_RECVBUF
->> or twice the amount, i.e. size is the one visible from userspace,
-that is,
->> from kernelspace.
->> In this way sender is given with good approximation of our buffer space,
->> regardless of the buffer policy - we always advertise what we have.
-Proposed
->> solution fixes described problems and removes necessity for rwnd
-restoration
->> algorithm. Finally, as proposed solution is simplification, some
-lines of code,
->> along with some bytes in struct sctp_association are saved.
->
-> IIRC the 'size' taken of the socket buffer is the skb's 'true size'
-and that
-> includes any padding before and after the actual rx data. For short
-packets
-> the driver may have copied the data into a smaller skb, for long
-packets it
-> is likely to be more than that of a full length ethernet packet.
-> In either case it can be significantly more than sizeof(sk_buff)
-(190?) plus
-> the size of the actual data.
-
-SCTP currently doesn't support GRO, so each packet is limited to
-ethernet packet plus sk_buff overhead.  What throws a real monkey
-wrench into this whole accounting business is SCTP bundling.  If you
-bundle multiple messages into the single packet, accounting for it
-is a mess.
-
->
-> I'm also not sure that continuously removing 'credit' is a good idea.
-> I've done a lot of comms protocol code, removing credit and 'window
-> slamming' acks are not good ideas.
-
-This patch doesn't continuously remove 'credit'.  It advertises the
-closest approximation of the window that we support and computes it
-the same way as we do for Initial Window (available sk_rcvbuff >> 1).
-As the receiver drains the receive queue, available buffer will increase
-and the available window will grow.
-
-In fact, the current implementation does more 'windows slamming' then
-this proposed patch.
-
->
-> Perhaps the advertised window should be bounded by the configured socket
-> buffer size, and only reduced if the actual space isn't likely to be large
-> enough given the typical overhead of the received data.
-
-Problem is there is no typical overhead due to the message oriented
-nature of the SCTP, and the socket buffer limits entire buffer space
-(overhead included).   What happens when the socket buffer buffer is
-consumed faster then the window due to overhead being significantly
-larger then the payload?  You have "window slamming" of the worst
-kind.  The available window slowly decreases until it hits a point
-receive buffer exhaustion and then it slams shut.
-
-This patch is better is that it gradually reduces the window based
-on available buffer space providing a more accurate depiction of what
-is happening on the receiver.
-
->
-> Similarly, as the window is opened after congestion it should be increased
-> by the amount of data actually removed (not the number of free bytes).
-> When there is a significant amount of space the window could be increased
-> faster - allowing a smaller number of larger skb carrying more data be
-queued.
->
-> As a matter of interest, how does TCP handle this?
-
-TCP also calculates it's available window based on available receive
-buffer space.
-
--vlad
->
-> 	David
->
->
-N�����r��y���b�X��ǧv�^�)޺{.n�+����{���i�{ay�ʇڙ�,j��f���h���z��w������j:+v���w�j�m��������zZ+�����ݢj"��!tml>
-
+RnJvbTogVmxhZCBZYXNldmljaCANCi4uLg0KPiA+IElJUkMgdGhlICdzaXplJyB0YWtlbiBvZiB0
+aGUgc29ja2V0IGJ1ZmZlciBpcyB0aGUgc2tiJ3MgJ3RydWUgc2l6ZScNCj4gPiBhbmQgdGhhdCBp
+bmNsdWRlcyBhbnkgcGFkZGluZyBiZWZvcmUgYW5kIGFmdGVyIHRoZSBhY3R1YWwgcnggZGF0YS4N
+Cj4gPiBGb3Igc2hvcnQgcGFja2V0cyB0aGUgZHJpdmVyIG1heSBoYXZlIGNvcGllZCB0aGUgZGF0
+YSBpbnRvIGEgc21hbGxlcg0KPiA+IHNrYiwgZm9yIGxvbmcgcGFja2V0cyBpdCBpcyBsaWtlbHkg
+dG8gYmUgbW9yZSB0aGFuIHRoYXQgb2YgYSBmdWxsDQo+ID4gbGVuZ3RoIGV0aGVybmV0IHBhY2tl
+dC4NCj4gPiBJbiBlaXRoZXIgY2FzZSBpdCBjYW4gYmUgc2lnbmlmaWNhbnRseSBtb3JlIHRoYW4g
+c2l6ZW9mKHNrX2J1ZmYpDQo+ID4gKDE5MD8pIHBsdXMgdGhlIHNpemUgb2YgdGhlIGFjdHVhbCBk
+YXRhLg0KPiANCj4gU0NUUCBjdXJyZW50bHkgZG9lc24ndCBzdXBwb3J0IEdSTywgc28gZWFjaCBw
+YWNrZXQgaXMgbGltaXRlZCB0bw0KPiBldGhlcm5ldCBwYWNrZXQgcGx1cyBza19idWZmIG92ZXJo
+ZWFkLg0KDQpUaGUgZXRoZXJuZXQgZHJpdmVyIG1pZ2h0IHN0aWxsIHBhc3MgdXAgYSAyayBidWZm
+ZXIsIG9yIGV2ZW4gYSA0ayBvbmUuDQpFc3BlY2lhbGx5IGlmIGl0IHN1cHBvcnRzIEdSTyBmb3Ig
+VENQLg0KDQo+IFdoYXQgdGhyb3dzIGEgcmVhbCBtb25rZXkNCj4gd3JlbmNoIGludG8gdGhpcyB3
+aG9sZSBhY2NvdW50aW5nIGJ1c2luZXNzIGlzIFNDVFAgYnVuZGxpbmcuICBJZiB5b3UNCj4gYnVu
+ZGxlIG11bHRpcGxlIG1lc3NhZ2VzIGludG8gdGhlIHNpbmdsZSBwYWNrZXQsIGFjY291bnRpbmcg
+Zm9yIGl0DQo+IGlzIGEgbWVzcy4NCg0KSG93IGFib3V0IGRpdmlkaW5nIHRoZSAndHJ1ZXNpemUn
+IGJ5IHRoZSByZWZlcmVuY2UgY291bnQ/DQooZXhjZXB0IHRoYXQgaXNuJ3QgcXVpdGUgcmlnaHQu
+Li4pDQpJIGFzc3VtZSB0aGVyZSBhcmUgbXVsdGlwbGUgc2tiIGhlYWRlcnMgYnV0IG9ubHkgb25l
+IGRhdGEgYnVmZmVyPw0KQXQgbGVhc3QgdGhlIGNodW5rcyBhcmUgYWxsIGZvciB0aGUgc2FtZSBj
+b25uZWN0aW9uIHNvIGVuZCB1cCBvbg0Kb25lIHNvY2tldCAoZXhjZXB0IEkgcmVtZW1iZXIgc29t
+ZSBvdGhlciBob3JyaWQgc3R1ZmYgZm9yIGRhdGFncmFtcykuDQogDQo+ID4gSSdtIGFsc28gbm90
+IHN1cmUgdGhhdCBjb250aW51b3VzbHkgcmVtb3ZpbmcgJ2NyZWRpdCcgaXMgYSBnb29kIGlkZWEu
+DQo+ID4gSSd2ZSBkb25lIGEgbG90IG9mIGNvbW1zIHByb3RvY29sIGNvZGUsIHJlbW92aW5nIGNy
+ZWRpdCBhbmQgJ3dpbmRvdw0KPiA+IHNsYW1taW5nJyBhY2tzIGFyZSBub3QgZ29vZCBpZGVhcy4N
+Cj4gDQo+IFRoaXMgcGF0Y2ggZG9lc24ndCBjb250aW51b3VzbHkgcmVtb3ZlICdjcmVkaXQnLiAg
+SXQgYWR2ZXJ0aXNlcyB0aGUNCj4gY2xvc2VzdCBhcHByb3hpbWF0aW9uIG9mIHRoZSB3aW5kb3cg
+dGhhdCB3ZSBzdXBwb3J0IGFuZCBjb21wdXRlcyBpdA0KPiB0aGUgc2FtZSB3YXkgYXMgd2UgZG8g
+Zm9yIEluaXRpYWwgV2luZG93IChhdmFpbGFibGUgc2tfcmN2YnVmZiA+PiAxKS4NCj4gQXMgdGhl
+IHJlY2VpdmVyIGRyYWlucyB0aGUgcmVjZWl2ZSBxdWV1ZSwgYXZhaWxhYmxlIGJ1ZmZlciB3aWxs
+IGluY3JlYXNlDQo+IGFuZCB0aGUgYXZhaWxhYmxlIHdpbmRvdyB3aWxsIGdyb3cuDQoNCkxldCdz
+IGFzc3VtZSB0aGUgc29ja2V0IGJ1ZmZlciBzaXplIGlzIDEwMGsuDQpXZSBhZHZlcnRpc2UgYSB3
+aW5kb3cgb2YgNTBrLg0KV2Ugbm93IHJlY2VpdmUgMTAwIGJ5dGVzIG9mIGRhdGEsIHRoZSByZW1v
+dGUgaGFzIDQ5OTAwIHdpbmRvdyBsZWZ0Lg0KVGhlICd0cnVlc2l6ZScgaXMgc29tZXRoaW5nIGxp
+a2UgMTkwKzY0KGlzaCkrMTAwK3RhaWxfcGFkLCBzYXkgNDAwLg0KU29ja2V0IGJ1ZmZlciBzcGFj
+ZSBpcyByZWR1Y2VkIHRvIDk5NjAwIGFuZCBhbnkgYWNrIHdvdWxkIGdpdmUgNDk4MDAuDQpTbyB3
+ZSBoYXZlIHJlZHVjZWQgdGhlIHdpbmRvdyBieSAxMDAgYnl0ZXMuDQpXaXRoIHRoYXQgbXVjaCBz
+cGFjZSBpdCBwcm9iYWJseSBkb2Vzbid0IG1hdHRlciBtdWNoLg0KDQpIb3dldmVyIGlmIHRoZSBj
+b25uZWN0aW9uIGlzIHJlY2VpdmUgbGltaXRlZCB0aGVuIHRoZSByZW1vdGUgc3lzdGVtDQp3aWxs
+IGhhdmUgYSBzZWNvbmQgcGFja2V0IGluIGZsaWdodCB0aGF0IHVzZXMgdGhlIHJlc3Qgb2YgdGhl
+IHdpbmRvdy4NCldlIHRoZW4gcmVjZWl2ZSBhbiBpbi1zZXF1ZW5jZSBidXQgb3V0LW9mLXdpbmRv
+dyBwYWNrZXQgdGhhdCByZWZlcnMNCnRvIHdpbmRvdyB0aGF0IHdlIGhhZCBwcmV2aW91c2x5IGdp
+dmVuIHRvIHRoZSByZW1vdGUgc3lzdGVtLg0KDQpJIGRvbid0IGtub3cgd2hhdCB0aGUgc2N0cCAo
+b3IgdGNwKSBjb2RlIGRvZXMgd2l0aCBzdWNoIHBhY2tldHMuDQpJbiBteSBleHBlcmllbmNlIGl0
+IGlzIGJlc3QgdG8gdHJlYXQgdGhlbSBhcyB2YWxpZCBkYXRhICh1bmxlc3MNCnRoZXJlIGFyZSBs
+YXJnZXIgZnJlZSBtZW1vcnkgaXNzdWVzKSBhbmQgYWNrIHRoZW0gYXQgc29tZSBwb2ludC4NCkhv
+cGVmdWxseSB0aGUgcnVsZXMgb2YgdGhlIHVuZGVybHlpbmcgcHJvdG9jb2wgbGV0IHlvdSBkbyB0
+aGlzIQ0KDQpJZiB5b3UgZGlzY2FyZCB0aGVzZSBwYWNrZXRzIHRoZW4gZXZlcnkgcGFja2V0IGdl
+dHMgc2VudCB0d2ljZQ0KKG9yIGV2ZW4gbW9yZSBvZnRlbiBpZiB0aGUgZGF0YSBpcyB2ZXJ5IHNo
+b3J0KS4NCg0KCURhdmlkDQoNCg=
