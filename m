@@ -1,64 +1,271 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Wed, 22 Jan 2014 15:30:48 +0000
-Subject: RE: [PATCH] net: sctp: Fix a_rwnd/rwnd management to reflect real state of the receiver's buffer
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6D463CC4@AcuExch.aculab.com>
+From: Matija Glavinic Pecotic <matija.glavinic-pecotic.ext@nsn.com>
+Date: Wed, 22 Jan 2014 19:21:39 +0000
+Subject: Re: [PATCH] net: sctp: Fix a_rwnd/rwnd management to reflect real state of the receiver's buffer
+Message-Id: <52E01A43.4050502@nsn.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <52D8D544.5050501@nsn.com>
- <063D6719AE5E284EB5DD2968C1650D6D463A0F@AcuExch.aculab.com>
- <52DFDB1E.7070701@gmail.com>
-In-Reply-To: <52DFDB1E.7070701@gmail.com>
+References: <52D8D544.5050501@nsn.com> <52DF28F1.1030602@gmail.com>
+In-Reply-To: <52DF28F1.1030602@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Vlad Yasevich' <vyasevich@gmail.com>, 'Matija Glavinic Pecotic' <matija.glavinic-pecotic.ext@nsn.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
-Cc: Alexander Sverdlin <alexander.sverdlin@nsn.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+To: ext Vlad Yasevich <vyasevich@gmail.com>
+Cc: linux-sctp@vger.kernel.org, Alexander Sverdlin <alexander.sverdlin@nsn.com>, netdev@vger.kernel.org
 
-RnJvbTogVmxhZCBZYXNldmljaCANCi4uLg0KPiA+IElJUkMgdGhlICdzaXplJyB0YWtlbiBvZiB0
-aGUgc29ja2V0IGJ1ZmZlciBpcyB0aGUgc2tiJ3MgJ3RydWUgc2l6ZScNCj4gPiBhbmQgdGhhdCBp
-bmNsdWRlcyBhbnkgcGFkZGluZyBiZWZvcmUgYW5kIGFmdGVyIHRoZSBhY3R1YWwgcnggZGF0YS4N
-Cj4gPiBGb3Igc2hvcnQgcGFja2V0cyB0aGUgZHJpdmVyIG1heSBoYXZlIGNvcGllZCB0aGUgZGF0
-YSBpbnRvIGEgc21hbGxlcg0KPiA+IHNrYiwgZm9yIGxvbmcgcGFja2V0cyBpdCBpcyBsaWtlbHkg
-dG8gYmUgbW9yZSB0aGFuIHRoYXQgb2YgYSBmdWxsDQo+ID4gbGVuZ3RoIGV0aGVybmV0IHBhY2tl
-dC4NCj4gPiBJbiBlaXRoZXIgY2FzZSBpdCBjYW4gYmUgc2lnbmlmaWNhbnRseSBtb3JlIHRoYW4g
-c2l6ZW9mKHNrX2J1ZmYpDQo+ID4gKDE5MD8pIHBsdXMgdGhlIHNpemUgb2YgdGhlIGFjdHVhbCBk
-YXRhLg0KPiANCj4gU0NUUCBjdXJyZW50bHkgZG9lc24ndCBzdXBwb3J0IEdSTywgc28gZWFjaCBw
-YWNrZXQgaXMgbGltaXRlZCB0bw0KPiBldGhlcm5ldCBwYWNrZXQgcGx1cyBza19idWZmIG92ZXJo
-ZWFkLg0KDQpUaGUgZXRoZXJuZXQgZHJpdmVyIG1pZ2h0IHN0aWxsIHBhc3MgdXAgYSAyayBidWZm
-ZXIsIG9yIGV2ZW4gYSA0ayBvbmUuDQpFc3BlY2lhbGx5IGlmIGl0IHN1cHBvcnRzIEdSTyBmb3Ig
-VENQLg0KDQo+IFdoYXQgdGhyb3dzIGEgcmVhbCBtb25rZXkNCj4gd3JlbmNoIGludG8gdGhpcyB3
-aG9sZSBhY2NvdW50aW5nIGJ1c2luZXNzIGlzIFNDVFAgYnVuZGxpbmcuICBJZiB5b3UNCj4gYnVu
-ZGxlIG11bHRpcGxlIG1lc3NhZ2VzIGludG8gdGhlIHNpbmdsZSBwYWNrZXQsIGFjY291bnRpbmcg
-Zm9yIGl0DQo+IGlzIGEgbWVzcy4NCg0KSG93IGFib3V0IGRpdmlkaW5nIHRoZSAndHJ1ZXNpemUn
-IGJ5IHRoZSByZWZlcmVuY2UgY291bnQ/DQooZXhjZXB0IHRoYXQgaXNuJ3QgcXVpdGUgcmlnaHQu
-Li4pDQpJIGFzc3VtZSB0aGVyZSBhcmUgbXVsdGlwbGUgc2tiIGhlYWRlcnMgYnV0IG9ubHkgb25l
-IGRhdGEgYnVmZmVyPw0KQXQgbGVhc3QgdGhlIGNodW5rcyBhcmUgYWxsIGZvciB0aGUgc2FtZSBj
-b25uZWN0aW9uIHNvIGVuZCB1cCBvbg0Kb25lIHNvY2tldCAoZXhjZXB0IEkgcmVtZW1iZXIgc29t
-ZSBvdGhlciBob3JyaWQgc3R1ZmYgZm9yIGRhdGFncmFtcykuDQogDQo+ID4gSSdtIGFsc28gbm90
-IHN1cmUgdGhhdCBjb250aW51b3VzbHkgcmVtb3ZpbmcgJ2NyZWRpdCcgaXMgYSBnb29kIGlkZWEu
-DQo+ID4gSSd2ZSBkb25lIGEgbG90IG9mIGNvbW1zIHByb3RvY29sIGNvZGUsIHJlbW92aW5nIGNy
-ZWRpdCBhbmQgJ3dpbmRvdw0KPiA+IHNsYW1taW5nJyBhY2tzIGFyZSBub3QgZ29vZCBpZGVhcy4N
-Cj4gDQo+IFRoaXMgcGF0Y2ggZG9lc24ndCBjb250aW51b3VzbHkgcmVtb3ZlICdjcmVkaXQnLiAg
-SXQgYWR2ZXJ0aXNlcyB0aGUNCj4gY2xvc2VzdCBhcHByb3hpbWF0aW9uIG9mIHRoZSB3aW5kb3cg
-dGhhdCB3ZSBzdXBwb3J0IGFuZCBjb21wdXRlcyBpdA0KPiB0aGUgc2FtZSB3YXkgYXMgd2UgZG8g
-Zm9yIEluaXRpYWwgV2luZG93IChhdmFpbGFibGUgc2tfcmN2YnVmZiA+PiAxKS4NCj4gQXMgdGhl
-IHJlY2VpdmVyIGRyYWlucyB0aGUgcmVjZWl2ZSBxdWV1ZSwgYXZhaWxhYmxlIGJ1ZmZlciB3aWxs
-IGluY3JlYXNlDQo+IGFuZCB0aGUgYXZhaWxhYmxlIHdpbmRvdyB3aWxsIGdyb3cuDQoNCkxldCdz
-IGFzc3VtZSB0aGUgc29ja2V0IGJ1ZmZlciBzaXplIGlzIDEwMGsuDQpXZSBhZHZlcnRpc2UgYSB3
-aW5kb3cgb2YgNTBrLg0KV2Ugbm93IHJlY2VpdmUgMTAwIGJ5dGVzIG9mIGRhdGEsIHRoZSByZW1v
-dGUgaGFzIDQ5OTAwIHdpbmRvdyBsZWZ0Lg0KVGhlICd0cnVlc2l6ZScgaXMgc29tZXRoaW5nIGxp
-a2UgMTkwKzY0KGlzaCkrMTAwK3RhaWxfcGFkLCBzYXkgNDAwLg0KU29ja2V0IGJ1ZmZlciBzcGFj
-ZSBpcyByZWR1Y2VkIHRvIDk5NjAwIGFuZCBhbnkgYWNrIHdvdWxkIGdpdmUgNDk4MDAuDQpTbyB3
-ZSBoYXZlIHJlZHVjZWQgdGhlIHdpbmRvdyBieSAxMDAgYnl0ZXMuDQpXaXRoIHRoYXQgbXVjaCBz
-cGFjZSBpdCBwcm9iYWJseSBkb2Vzbid0IG1hdHRlciBtdWNoLg0KDQpIb3dldmVyIGlmIHRoZSBj
-b25uZWN0aW9uIGlzIHJlY2VpdmUgbGltaXRlZCB0aGVuIHRoZSByZW1vdGUgc3lzdGVtDQp3aWxs
-IGhhdmUgYSBzZWNvbmQgcGFja2V0IGluIGZsaWdodCB0aGF0IHVzZXMgdGhlIHJlc3Qgb2YgdGhl
-IHdpbmRvdy4NCldlIHRoZW4gcmVjZWl2ZSBhbiBpbi1zZXF1ZW5jZSBidXQgb3V0LW9mLXdpbmRv
-dyBwYWNrZXQgdGhhdCByZWZlcnMNCnRvIHdpbmRvdyB0aGF0IHdlIGhhZCBwcmV2aW91c2x5IGdp
-dmVuIHRvIHRoZSByZW1vdGUgc3lzdGVtLg0KDQpJIGRvbid0IGtub3cgd2hhdCB0aGUgc2N0cCAo
-b3IgdGNwKSBjb2RlIGRvZXMgd2l0aCBzdWNoIHBhY2tldHMuDQpJbiBteSBleHBlcmllbmNlIGl0
-IGlzIGJlc3QgdG8gdHJlYXQgdGhlbSBhcyB2YWxpZCBkYXRhICh1bmxlc3MNCnRoZXJlIGFyZSBs
-YXJnZXIgZnJlZSBtZW1vcnkgaXNzdWVzKSBhbmQgYWNrIHRoZW0gYXQgc29tZSBwb2ludC4NCkhv
-cGVmdWxseSB0aGUgcnVsZXMgb2YgdGhlIHVuZGVybHlpbmcgcHJvdG9jb2wgbGV0IHlvdSBkbyB0
-aGlzIQ0KDQpJZiB5b3UgZGlzY2FyZCB0aGVzZSBwYWNrZXRzIHRoZW4gZXZlcnkgcGFja2V0IGdl
-dHMgc2VudCB0d2ljZQ0KKG9yIGV2ZW4gbW9yZSBvZnRlbiBpZiB0aGUgZGF0YSBpcyB2ZXJ5IHNo
-b3J0KS4NCg0KCURhdmlkDQoNCg=
+Hello Vlad,
+
+On 01/22/2014 03:12 AM, ext Vlad Yasevich wrote:
+> On 01/17/2014 02:01 AM, Matija Glavinic Pecotic wrote:
+> [ snip long description ...]
+>> Proposed solution simplifies whole algorithm having on mind definition from rfc:
+>>
+>> o  Receiver Window (rwnd): This gives the sender an indication of the space
+>>    available in the receiver's inbound buffer.
+>>
+>> Core of the proposed solution is given with these lines:
+>>
+>> sctp_assoc_rwnd_account:
+>> 	if ((asoc->base.sk->sk_rcvbuf - rx_count) > 0)
+>> 		asoc->rwnd = (asoc->base.sk->sk_rcvbuf - rx_count) >> 1;
+>> 	else
+>> 		asoc->rwnd = 0;
+>>
+>> We advertise to sender (half of) actual space we have. Half is in the braces
+>> depending whether you would like to observe size of socket buffer as SO_RECVBUF
+>> or twice the amount, i.e. size is the one visible from userspace, that is,
+>> from kernelspace.
+>> In this way sender is given with good approximation of our buffer space,
+>> regardless of the buffer policy - we always advertise what we have. Proposed
+>> solution fixes described problems and removes necessity for rwnd restoration
+>> algorithm. Finally, as proposed solution is simplification, some lines of code,
+>> along with some bytes in struct sctp_association are saved.
+>>
+>> Signed-off-by: Matija Glavinic Pecotic <matija.glavinic-pecotic.ext@nsn.com>
+>> Reviewed-by: Alexander Sverdlin <alexander.sverdlin@nsn.com>
+>>
+> 
+> This is the correct approach.  However there is one issue and
+> a few cosmetic suggestions.
+> 
+>> ---
+>>
+>> --- net-next.orig/net/sctp/associola.c
+>> +++ net-next/net/sctp/associola.c
+>> @@ -1367,44 +1367,35 @@ static inline bool sctp_peer_needs_updat
+>>  	return false;
+>>  }
+>>  
+>> -/* Increase asoc's rwnd by len and send any window update SACK if needed. */
+>> -void sctp_assoc_rwnd_increase(struct sctp_association *asoc, unsigned int len)
+>> +/* Account asoc's rwnd for the approximated state in the buffer,
+>> + * and check whether SACK needs to be sent.
+>> + */
+>> +void sctp_assoc_rwnd_account(struct sctp_association *asoc, int check_sack)
+> 
+> Maybe sctp_assoc_rwnd_update()?
+> 
+> 'check_sack' isn't a very descriptive name for what we are doing.  May
+> be 'update_peer'?  Also, since it is either 0 or 1, just make a bool.
+
+these would be more appropriate names, I agree.
+
+>>  {
+>> +	int rx_count;
+>>  	struct sctp_chunk *sack;
+>>  	struct timer_list *timer;
+>>  
+>> -	if (asoc->rwnd_over) {
+>> -		if (asoc->rwnd_over >= len) {
+>> -			asoc->rwnd_over -= len;
+>> -		} else {
+>> -			asoc->rwnd += (len - asoc->rwnd_over);
+>> -			asoc->rwnd_over = 0;
+>> -		}
+>> -	} else {
+>> -		asoc->rwnd += len;
+>> -	}
+>> +	if (asoc->ep->rcvbuf_policy)
+>> +		rx_count = atomic_read(&asoc->rmem_alloc);
+>> +	else
+>> +		rx_count = atomic_read(&asoc->base.sk->sk_rmem_alloc);
+>>  
+>> -	/* If we had window pressure, start recovering it
+>> -	 * once our rwnd had reached the accumulated pressure
+>> -	 * threshold.  The idea is to recover slowly, but up
+>> -	 * to the initial advertised window.
+>> -	 */
+>> -	if (asoc->rwnd_press && asoc->rwnd >= asoc->rwnd_press) {
+>> -		int change = min(asoc->pathmtu, asoc->rwnd_press);
+>> -		asoc->rwnd += change;
+>> -		asoc->rwnd_press -= change;
+>> -	}
+>> +	if ((asoc->base.sk->sk_rcvbuf - rx_count) > 0)
+>> +		asoc->rwnd = (asoc->base.sk->sk_rcvbuf - rx_count) >> 1;
+>> +	else
+>> +		asoc->rwnd = 0;
+>>  
+>> -	pr_debug("%s: asoc:%p rwnd increased by %d to (%u, %u) - %u\n",
+>> -		 __func__, asoc, len, asoc->rwnd, asoc->rwnd_over,
+>> -		 asoc->a_rwnd);
+>> +	pr_debug("%s: asoc:%p rwnd=%u, rx_count=%d, sk_rcvbuf=%d\n",
+>> +		 __func__, asoc, asoc->rwnd, rx_count,
+>> +		 asoc->base.sk->sk_rcvbuf);
+>>  
+>>  	/* Send a window update SACK if the rwnd has increased by at least the
+>>  	 * minimum of the association's PMTU and half of the receive buffer.
+>>  	 * The algorithm used is similar to the one described in
+>>  	 * Section 4.2.3.3 of RFC 1122.
+>>  	 */
+>> -	if (sctp_peer_needs_update(asoc)) {
+>> +	if (check_sack && sctp_peer_needs_update(asoc)) {
+>>  		asoc->a_rwnd = asoc->rwnd;
+>>  
+>>  		pr_debug("%s: sending window update SACK- asoc:%p rwnd:%u "
+>> @@ -1426,45 +1417,6 @@ void sctp_assoc_rwnd_increase(struct sct
+>>  	}
+>>  }
+>>  
+>> -/* Decrease asoc's rwnd by len. */
+>> -void sctp_assoc_rwnd_decrease(struct sctp_association *asoc, unsigned int len)
+>> -{
+>> -	int rx_count;
+>> -	int over = 0;
+>> -
+>> -	if (unlikely(!asoc->rwnd || asoc->rwnd_over))
+>> -		pr_debug("%s: association:%p has asoc->rwnd:%u, "
+>> -			 "asoc->rwnd_over:%u!\n", __func__, asoc,
+>> -			 asoc->rwnd, asoc->rwnd_over);
+>> -
+>> -	if (asoc->ep->rcvbuf_policy)
+>> -		rx_count = atomic_read(&asoc->rmem_alloc);
+>> -	else
+>> -		rx_count = atomic_read(&asoc->base.sk->sk_rmem_alloc);
+>> -
+>> -	/* If we've reached or overflowed our receive buffer, announce
+>> -	 * a 0 rwnd if rwnd would still be positive.  Store the
+>> -	 * the potential pressure overflow so that the window can be restored
+>> -	 * back to original value.
+>> -	 */
+>> -	if (rx_count >= asoc->base.sk->sk_rcvbuf)
+>> -		over = 1;
+>> -
+>> -	if (asoc->rwnd >= len) {
+>> -		asoc->rwnd -= len;
+>> -		if (over) {
+>> -			asoc->rwnd_press += asoc->rwnd;
+>> -			asoc->rwnd = 0;
+>> -		}
+>> -	} else {
+>> -		asoc->rwnd_over = len - asoc->rwnd;
+>> -		asoc->rwnd = 0;
+>> -	}
+>> -
+>> -	pr_debug("%s: asoc:%p rwnd decreased by %d to (%u, %u, %u)\n",
+>> -		 __func__, asoc, len, asoc->rwnd, asoc->rwnd_over,
+>> -		 asoc->rwnd_press);
+>> -}
+>>  
+>>  /* Build the bind address list for the association based on info from the
+>>   * local endpoint and the remote peer.
+>> --- net-next.orig/include/net/sctp/structs.h
+>> +++ net-next/include/net/sctp/structs.h
+>> @@ -1653,17 +1653,6 @@ struct sctp_association {
+>>  	/* This is the last advertised value of rwnd over a SACK chunk. */
+>>  	__u32 a_rwnd;
+>>  
+>> -	/* Number of bytes by which the rwnd has slopped.  The rwnd is allowed
+>> -	 * to slop over a maximum of the association's frag_point.
+>> -	 */
+>> -	__u32 rwnd_over;
+>> -
+>> -	/* Keeps treack of rwnd pressure.  This happens when we have
+>> -	 * a window, but not recevie buffer (i.e small packets).  This one
+>> -	 * is releases slowly (1 PMTU at a time ).
+>> -	 */
+>> -	__u32 rwnd_press;
+>> -
+>>  	/* This is the sndbuf size in use for the association.
+>>  	 * This corresponds to the sndbuf size for the association,
+>>  	 * as specified in the sk->sndbuf.
+>> @@ -1892,8 +1881,7 @@ void sctp_assoc_update(struct sctp_assoc
+>>  __u32 sctp_association_get_next_tsn(struct sctp_association *);
+>>  
+>>  void sctp_assoc_sync_pmtu(struct sock *, struct sctp_association *);
+>> -void sctp_assoc_rwnd_increase(struct sctp_association *, unsigned int);
+>> -void sctp_assoc_rwnd_decrease(struct sctp_association *, unsigned int);
+>> +void sctp_assoc_rwnd_account(struct sctp_association *, int);
+>>  void sctp_assoc_set_primary(struct sctp_association *,
+>>  			    struct sctp_transport *);
+>>  void sctp_assoc_del_nonprimary_peers(struct sctp_association *,
+>> --- net-next.orig/net/sctp/sm_statefuns.c
+>> +++ net-next/net/sctp/sm_statefuns.c
+>> @@ -6176,7 +6176,7 @@ static int sctp_eat_data(const struct sc
+>>  	 * PMTU.  In cases, such as loopback, this might be a rather
+>>  	 * large spill over.
+>>  	 */
+>> -	if ((!chunk->data_accepted) && (!asoc->rwnd || asoc->rwnd_over ||
+>> +	if ((!chunk->data_accepted) && (!asoc->rwnd ||
+>>  	    (datalen > asoc->rwnd + asoc->frag_point))) {
+>>  
+>>  		/* If this is the next TSN, consider reneging to make
+>> --- net-next.orig/net/sctp/socket.c
+>> +++ net-next/net/sctp/socket.c
+>> @@ -2097,7 +2097,7 @@ static int sctp_recvmsg(struct kiocb *io
+>>  		 * rwnd is updated when the event is freed.
+>>  		 */
+>>  		if (!sctp_ulpevent_is_notification(event))
+>> -			sctp_assoc_rwnd_increase(event->asoc, copied);
+>> +			sctp_assoc_rwnd_account(event->asoc, 1);
+> 
+> This is not going to do anything.  The event has not been freed, thus
+> rmem_alloc has not changed.  So, the rwnd will not change.
+
+You are right. With current approach we can only remove this code.
+I cannot imagine potential problem with it. I simply do not see situation in which receivers behavior regarding reading the whole message would depend on the current state of rwnd. 
+In fact, behavior which you pointed is actually in sync with the whole idea. I would say it is safe to remove it.
+
+>>  		goto out;
+>>  	} else if ((event->msg_flags & MSG_NOTIFICATION) ||
+>>  		   (event->msg_flags & MSG_EOR))
+>> --- net-next.orig/net/sctp/ulpevent.c
+>> +++ net-next/net/sctp/ulpevent.c
+>> @@ -989,7 +989,7 @@ static void sctp_ulpevent_receive_data(s
+>>  	skb = sctp_event2skb(event);
+>>  	/* Set the owner and charge rwnd for bytes received.  */
+>>  	sctp_ulpevent_set_owner(event, asoc);
+>> -	sctp_assoc_rwnd_decrease(asoc, skb_headlen(skb));
+>> +	sctp_assoc_rwnd_account(asoc, 0);
+>>  
+>>  	if (!skb->data_len)
+>>  		return;
+>> @@ -1035,7 +1035,7 @@ static void sctp_ulpevent_release_data(s
+>>  	}
+>>  
+>>  done:
+>> -	sctp_assoc_rwnd_increase(event->asoc, len);
+>> +	sctp_assoc_rwnd_account(event->asoc, 1);
+> 
+> Same here.  The below call to sctp_ulpevent_release_owner() will
+> finally update the rmem_alloc, so the a above call to rwnd_account()
+> will not trigger a window update.
+
+And if we have sack on the way, it will contain approximated rwnd minus the size of the last message received. Ideally, we would here first account rmem_alloc, update rwnd, then put association.
+
+The only thing which comes to my mind is to rewrite this part exactly as described.
+Any suggestions from your side?
+
+Thanks,
+
+Matija
+
+> Thanks
+> -vlad
+> 
+>>  	sctp_ulpevent_release_owner(event);
+>>  }
+>>  
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+> 
