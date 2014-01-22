@@ -1,111 +1,85 @@
 From: Matija Glavinic Pecotic <matija.glavinic-pecotic.ext@nsn.com>
-Date: Wed, 22 Jan 2014 19:34:07 +0000
+Date: Wed, 22 Jan 2014 19:48:47 +0000
 Subject: Re: [PATCH] net: sctp: Fix a_rwnd/rwnd management to reflect real state of the receiver's buffer
-Message-Id: <52E01D2F.5020305@nsn.com>
+Message-Id: <52E0209F.4020200@nsn.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <52D8D544.5050501@nsn.com> <20140122123059.GA9393@hmsreliant.think-freely.org> <52DFD334.7030507@gmail.com>
-In-Reply-To: <52DFD334.7030507@gmail.com>
+References: <52D8D544.5050501@nsn.com> <063D6719AE5E284EB5DD2968C1650D6D463A0F@AcuExch.aculab.com> <52DFDB1E.7070701@gmail.com> <063D6719AE5E284EB5DD2968C1650D6D463CC4@AcuExch.aculab.com>
+In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6D463CC4@AcuExch.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: ext Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
-Cc: linux-sctp@vger.kernel.org, Alexander Sverdlin <alexander.sverdlin@nsn.com>, netdev@vger.kernel.org
+To: ext David Laight <David.Laight@ACULAB.COM>
+Cc: 'Vlad Yasevich' <vyasevich@gmail.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Alexander Sverdlin <alexander.sverdlin@nsn.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
 
-Hello Neil, Vlad,
+Hello David,
 
-On 01/22/2014 03:18 PM, ext Vlad Yasevich wrote:
-> On 01/22/2014 07:30 AM, Neil Horman wrote:
->> On Fri, Jan 17, 2014 at 08:01:24AM +0100, Matija Glavinic Pecotic wrote:
->>>
->>> Proposed solution simplifies whole algorithm having on mind
-> definition from rfc:
->>>
->>> o  Receiver Window (rwnd): This gives the sender an indication of the
-> space
->>>    available in the receiver's inbound buffer.
->>>
->>> Core of the proposed solution is given with these lines:
->>>
->>> sctp_assoc_rwnd_account:
->>> 	if ((asoc->base.sk->sk_rcvbuf - rx_count) > 0)
->>> 		asoc->rwnd = (asoc->base.sk->sk_rcvbuf - rx_count) >> 1;
->>> 	else
->>> 		asoc->rwnd = 0;
->>>
->>> We advertise to sender (half of) actual space we have. Half is in the
-> braces
->>> depending whether you would like to observe size of socket buffer as
-> SO_RECVBUF
->>> or twice the amount, i.e. size is the one visible from userspace,
-> that is,
->>> from kernelspace.
->>> In this way sender is given with good approximation of our buffer space,
->>> regardless of the buffer policy - we always advertise what we have.
-> Proposed
->>> solution fixes described problems and removes necessity for rwnd
-> restoration
->>> algorithm. Finally, as proposed solution is simplification, some
-> lines of code,
->>> along with some bytes in struct sctp_association are saved.
->>>
->>> Signed-off-by: Matija Glavinic Pecotic
-> <matija.glavinic-pecotic.ext@nsn.com>
->>> Reviewed-by: Alexander Sverdlin <alexander.sverdlin@nsn.com>
->>>
+On 01/22/2014 04:30 PM, ext David Laight wrote:
+> From: Vlad Yasevich 
+> ...
+>>> IIRC the 'size' taken of the socket buffer is the skb's 'true size'
+>>> and that includes any padding before and after the actual rx data.
+>>> For short packets the driver may have copied the data into a smaller
+>>> skb, for long packets it is likely to be more than that of a full
+>>> length ethernet packet.
+>>> In either case it can be significantly more than sizeof(sk_buff)
+>>> (190?) plus the size of the actual data.
 >>
->>
->> General comment - While this seems to make sense to me generally speaking,
->> doesn't it currently violate section 6 of the RFC?
->>
->>
->> A SCTP receiver MUST be able to receive a minimum of 1500 bytes in
->>    one SCTP packet.  This means that a SCTP endpoint MUST NOT indicate
->>    less than 1500 bytes in its Initial a_rwnd sent in the INIT or INIT
->>    ACK.
->>
->> Since we set the initial rwnd value to the larger of sk->sk_rcvbuf/2 or
->> SCTP_MIN_RWND (1500 bytes), won't we potentially advertize half that
-> amount?
+>> SCTP currently doesn't support GRO, so each packet is limited to
+>> ethernet packet plus sk_buff overhead.
 > 
-> Not initially.  Initial window will still be advertized properly.  Once
-> we receive the first packet and consumed some space, we'll advertize
-> half of available receive buffer.  It is perfectly OK to advertize a
-> window smaller the MIN_WINDOW in the middle of the transfer.
-
-I agree to this, although we might be in gray area here:
-
-   Advertised Receiver Window Credit (a_rwnd): 32 bits (unsigned
-   integer)
-
-      This value represents the dedicated buffer space, in number of
-      bytes, the sender of the INIT has reserved in association with
-      this window.  During the life of the association, this buffer
-      space SHOULD NOT be lessened (i.e., dedicated buffers taken away
-      from this association); however, an endpoint MAY change the value
-      of a_rwnd it sends in SACK chunks.
-
-this might be considered as taking away buffer space, although I would agree with point below about doubling.
-
-This however opens another question which you should be aware of. This patch brakes regression, two TCs:
-
-test_timetolive and test_sctp_sendrcvmsg.
-
-This is simply due to 'honest' rwnd reporting. Both of these TCs share code in which initial rwnd is set very low, later socket buffer is increased but with counting on the fact that rwnd will stay as initially set. In TCs, this latter rwnd is fetched from the socket and used as value for the message size which in the end breaks it as message to be sent is too big.
-What is important difference to current implementation is that changes of SO_RECVBUF will also change a_rwnd. It is not a big problem to add code which will keep the idea, but bound rwnd to initially set rwnd, but we haven't found it mandated by rfc.
-
-Thanks,
-
-Matija 
-
->> It seems we need to double the minimum socket receive buffer here.
+> The ethernet driver might still pass up a 2k buffer, or even a 4k one.
+> Especially if it supports GRO for TCP.
 > 
-> Not here specifically, but yes.  It is already broken and this patch
-> doesn't change current behavior.  This is something SCTP may need to do
-> separately.
+>> What throws a real monkey
+>> wrench into this whole accounting business is SCTP bundling.  If you
+>> bundle multiple messages into the single packet, accounting for it
+>> is a mess.
 > 
-> -vlad
+> How about dividing the 'truesize' by the reference count?
+> (except that isn't quite right...)
+> I assume there are multiple skb headers but only one data buffer?
+> At least the chunks are all for the same connection so end up on
+> one socket (except I remember some other horrid stuff for datagrams).
+>  
+>>> I'm also not sure that continuously removing 'credit' is a good idea.
+>>> I've done a lot of comms protocol code, removing credit and 'window
+>>> slamming' acks are not good ideas.
+>>
+>> This patch doesn't continuously remove 'credit'.  It advertises the
+>> closest approximation of the window that we support and computes it
+>> the same way as we do for Initial Window (available sk_rcvbuff >> 1).
+>> As the receiver drains the receive queue, available buffer will increase
+>> and the available window will grow.
 > 
->>
->> Neil
->>
->>
+> Let's assume the socket buffer size is 100k.
+> We advertise a window of 50k.
+> We now receive 100 bytes of data, the remote has 49900 window left.
+> The 'truesize' is something like 190+64(ish)+100+tail_pad, say 400.
+> Socket buffer space is reduced to 99600 and any ack would give 49800.
+> So we have reduced the window by 100 bytes.
+> With that much space it probably doesn't matter much.
+> 
+> However if the connection is receive limited then the remote system
+> will have a second packet in flight that uses the rest of the window.
+> We then receive an in-sequence but out-of-window packet that refers
+> to window that we had previously given to the remote system.
+
+AFAIK, if the packet is not discarded due to depleted buffer, it will normally be processed.
+In case its discarded, sender will have to resend it since it wont be acked.
+
+> I don't know what the sctp (or tcp) code does with such packets.
+> In my experience it is best to treat them as valid data (unless
+> there are larger free memory issues) and ack them at some point.
+> Hopefully the rules of the underlying protocol let you do this!
+> 
+> If you discard these packets then every packet gets sent twice
+> (or even more often if the data is very short).
+
+For small packets we will not get into trouble since sctp has same as tcp sws avoidance algorithm
+
+Regards,
+
+Matija
+
+> 	David
+> 
