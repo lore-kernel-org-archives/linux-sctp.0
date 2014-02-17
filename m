@@ -1,94 +1,108 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Thu, 13 Feb 2014 17:14:43 +0000
-Subject: Re: [PATCH v2] net: sctp: Fix a_rwnd/rwnd management to reflect real state of the receiver's buffer
-Message-Id: <52FCFD83.7050204@gmail.com>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Mon, 17 Feb 2014 11:11:11 +0000
+Subject: [PATCH net] net: sctp: fix sctp_connectx abi for ia32 emulation/compat mode
+Message-Id: <1392635471-31528-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <52F72AFE.4060802@nsn.com> <52FA3914.90002@gmail.com> <52FA8073.2060607@nsn.com>
-In-Reply-To: <52FA8073.2060607@nsn.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Matija Glavinic Pecotic <matija.glavinic-pecotic.ext@nsn.com>
-Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, Alexander Sverdlin <alexander.sverdlin@nsn.com>
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On 02/11/2014 02:56 PM, Matija Glavinic Pecotic wrote:
-> Hello Vlad,
->
-> On 02/11/2014 03:52 PM, ext Vlad Yasevich wrote:
->> Hi Matija
->>
->> On 02/09/2014 02:15 AM, Matija Glavinic Pecotic wrote:
->>>
->>> --- net-next.orig/net/sctp/ulpevent.c
->>> +++ net-next/net/sctp/ulpevent.c
->>> @@ -989,7 +989,7 @@ static void sctp_ulpevent_receive_data(s
->>>  	skb = sctp_event2skb(event);
->>>  	/* Set the owner and charge rwnd for bytes received.  */
->>>  	sctp_ulpevent_set_owner(event, asoc);
->>> -	sctp_assoc_rwnd_decrease(asoc, skb_headlen(skb));
->>> +	sctp_assoc_rwnd_update(asoc, false);
->>>
->>>  	if (!skb->data_len)
->>>  		return;
->>> @@ -1035,8 +1035,9 @@ static void sctp_ulpevent_release_data(s
->>>  	}
->>>
->>>  done:
->>> -	sctp_assoc_rwnd_increase(event->asoc, len);
->>> -	sctp_ulpevent_release_owner(event);
->>> +	atomic_sub(event->rmem_len, &event->asoc->rmem_alloc);
->>> +	sctp_assoc_rwnd_update(event->asoc, true);
->>> +	sctp_association_put(event->asoc)
->>
->> Can't we simply change the order of window update and release instead
->> of open coding it like this?
->
-> that was the initial idea, but sctp_ulpevent_release_owner puts
-> the association and calls sctp_association_destroy if its time to
-> do so. IMHO, in the case if we would switch it, we would open a
-> potential race condition.
+SCTP's sctp_connectx() abi breaks for 64bit kernels compiled with 32bit
+emulation (e.g. ia32 emulation or x86_x32). Due to internal usage of
+'struct sctp_getaddrs_old' which includes a struct sockaddr pointer,
+sizeof(param) check will always fail in kernel as the structure in
+64bit kernel space is 4bytes larger than for user binaries compiled
+in 32bit mode. Thus, applications making use of sctp_connectx() won't
+be able to run under such circumstances.
 
-On the tx side, I agree that there would be race.  One the recieve side,
-I don't think you could ever be in the codition where the last reference
-on the asoc is held by a data chunk you are feeing.
+Introduce a compat interface in the kernel to deal with such
+situations by using a 'struct compat_sctp_getaddrs_old' structure
+where user data is copied into it, and then sucessively transformed
+into a 'struct sctp_getaddrs_old' structure with the help of
+compat_ptr(). That fixes sctp_connectx() abi without any changes
+needed in user space, and lets the SCTP test suite pass when compiled
+in 32bit and run on 64bit kernels.
 
-However, to be completely safe we could do:
-    asoc = event->asoc;
-    sctp_association_hold(asoc);
-    sctp_ulpevent_release_owner(event);
-    sctp_assoc_rwnd_update(asoc, true);
-    sctp_assocition_put(asoc);
+Fixes: f9c67811ebc0 ("sctp: Fix regression introduced by new sctp_connectx api")
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/socket.c | 41 ++++++++++++++++++++++++++++++++---------
+ 1 file changed, 32 insertions(+), 9 deletions(-)
 
-
-The reason I don't like to open-code release owner is that if it
-ever changes, we'll have to rememeber to change this open-coded
-implementation as well.
-
-Thanks
--vlad
-
->
-> I agree this doesn't look the best. But since we should call
-> sctp_assoc_rwnd_update after accounting and before put, we have only
-> option to move sctp_assoc_rwnd_update to _ulpevent_release_owner. As on
-> this path we wish to update peer and generate sack, but we for sure do not
-> want it on all paths where ulpevent_release_owner is used, I see no
-> alternative but to add additional parameter to ulpevent_release_owner
-> which would be just passed to rwnd_update - bool update_peer. On the
-> other hand, I wonder whether ulpevent_release_owner would do more then
-> it should in that case?
->
->>
->> -vlad
->>
->>>  }
->>>
->>>  static void sctp_ulpevent_release_frag_data(struct sctp_ulpevent
-*event)
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->>
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 7075ac8..9145ffc 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -64,6 +64,7 @@
+ #include <linux/crypto.h>
+ #include <linux/slab.h>
+ #include <linux/file.h>
++#include <linux/compat.h>
+ 
+ #include <net/ip.h>
+ #include <net/icmp.h>
+@@ -1368,11 +1369,19 @@ static int sctp_setsockopt_connectx(struct sock *sk,
+ /*
+  * New (hopefully final) interface for the API.
+  * We use the sctp_getaddrs_old structure so that use-space library
+- * can avoid any unnecessary allocations.   The only defferent part
++ * can avoid any unnecessary allocations. The only different part
+  * is that we store the actual length of the address buffer into the
+- * addrs_num structure member.  That way we can re-use the existing
++ * addrs_num structure member. That way we can re-use the existing
+  * code.
+  */
++#ifdef CONFIG_COMPAT
++struct compat_sctp_getaddrs_old {
++	sctp_assoc_t	assoc_id;
++	s32		addr_num;
++	compat_uptr_t	addrs;		/* struct sockaddr * */
++};
++#endif
++
+ static int sctp_getsockopt_connectx3(struct sock *sk, int len,
+ 				     char __user *optval,
+ 				     int __user *optlen)
+@@ -1381,16 +1390,30 @@ static int sctp_getsockopt_connectx3(struct sock *sk, int len,
+ 	sctp_assoc_t assoc_id = 0;
+ 	int err = 0;
+ 
+-	if (len < sizeof(param))
+-		return -EINVAL;
++#ifdef CONFIG_COMPAT
++	if (is_compat_task()) {
++		struct compat_sctp_getaddrs_old param32;
+ 
+-	if (copy_from_user(&param, optval, sizeof(param)))
+-		return -EFAULT;
++		if (len < sizeof(param32))
++			return -EINVAL;
++		if (copy_from_user(&param32, optval, sizeof(param32)))
++			return -EFAULT;
+ 
+-	err = __sctp_setsockopt_connectx(sk,
+-			(struct sockaddr __user *)param.addrs,
+-			param.addr_num, &assoc_id);
++		param.assoc_id = param32.assoc_id;
++		param.addr_num = param32.addr_num;
++		param.addrs = compat_ptr(param32.addrs);
++	} else
++#endif
++	{
++		if (len < sizeof(param))
++			return -EINVAL;
++		if (copy_from_user(&param, optval, sizeof(param)))
++			return -EFAULT;
++	}
+ 
++	err = __sctp_setsockopt_connectx(sk, (struct sockaddr __user *)
++					 param.addrs, param.addr_num,
++					 &assoc_id);
+ 	if (err = 0 || err = -EINPROGRESS) {
+ 		if (copy_to_user(optval, &assoc_id, sizeof(assoc_id)))
+ 			return -EFAULT;
+-- 
+1.7.11.7
 
