@@ -1,17 +1,19 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Mon, 17 Feb 2014 15:52:20 +0000
+From: David Miller <davem@davemloft.net>
+Date: Tue, 18 Feb 2014 21:07:30 +0000
 Subject: Re: [PATCH net] net: sctp: fix sctp_connectx abi for ia32 emulation/compat mode
-Message-Id: <53023034.3090700@gmail.com>
+Message-Id: <20140218.160730.1363339001953107311.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1392635471-31528-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1392635471-31528-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net
+To: dborkman@redhat.com
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On 02/17/2014 06:11 AM, Daniel Borkmann wrote:
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Mon, 17 Feb 2014 12:11:11 +0100
+
 > SCTP's sctp_connectx() abi breaks for 64bit kernels compiled with 32bit
 > emulation (e.g. ia32 emulation or x86_x32). Due to internal usage of
 > 'struct sctp_getaddrs_old' which includes a struct sockaddr pointer,
@@ -31,7 +33,4 @@ On 02/17/2014 06:11 AM, Daniel Borkmann wrote:
 > Fixes: f9c67811ebc0 ("sctp: Fix regression introduced by new sctp_connectx api")
 > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-
--vlad
-
+Applied and queued up for -stable, thanks.
