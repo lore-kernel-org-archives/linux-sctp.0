@@ -1,39 +1,25 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Tue, 18 Feb 2014 11:22:06 +0000
-Subject: [ANNOUNCE] lksctp-tools-1.0.16
-Message-Id: <5303425E.4000003@redhat.com>
+From: "Dr. Pius Okagba" <renato.ardigo@alice.it>
+Date: Tue, 18 Feb 2014 11:36:40 +0000
+Subject: Dear
+Message-Id: <14444c89825.renato.ardigo@alice.it>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-The user space package is available at:
-	http://lksctp.org/
-
-You can download the source from:
-	git://github.com/borkmann/lksctp-tools.git
-
----
-Daniel Borkmann (2):
-       sctp_status: fix usage of max_stream parameter
-       Release lksctp-tools-1.0.16
-
-Hangbin Liu (5):
-       Remove duplicate sys/errno.h
-       Move bzero to memset
-       test_1_to_1_sockopt: we have changed the minimum value to 2048
-       sctp_status: add missed parameter description and remove unused option
-       sctp_status: server side should also receive msg_cnt times
-
-Markos Chandras (1):
-       lib/connectx: Fix build for prefixed architectures
-
-Matija Glavinic Pecotic (1):
-       Remove dependency to implementation-specific a_rwnd behavior
-
-Simon Xu (1):
-       lksctp: Avoid using file descriptor 0 to get ENOTSOCK
-
-Wang Weidong (1):
-       tests: fix test_1_to_1_sockopt sock buff test case
+Attention:
+Regarding the transaction made so far, I waited for your message as you told 
+me
+with none received. Remember, I supposed to have traveled last night 
+but the
+weather is too bad. I will be leaving to Paraguay tomorrow for estate project.
+Meanwhile, contact the Bank manager with below address, i have kept the cheque
+worth of USD2.5M. They will either mail it to you or remit it for transfer
+depending on how you want it; Here is Bank contact information:
+ 
+Name Of Manager: Mr. Franklin Barnard
+MAIL: (franklinb1@barid.com,
+okagbapius1@live.com
+Thank you
+UN Office.
