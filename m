@@ -1,36 +1,92 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 18 Feb 2014 21:07:30 +0000
-Subject: Re: [PATCH net] net: sctp: fix sctp_connectx abi for ia32 emulation/compat mode
-Message-Id: <20140218.160730.1363339001953107311.davem@davemloft.net>
+From: Matija Glavinic Pecotic <matija.glavinic-pecotic.ext@nsn.com>
+Date: Wed, 19 Feb 2014 17:06:34 +0000
+Subject: Re: [sctp] ef2820a735: -50% netperf Throughput_Mbps
+Message-Id: <5304E49A.3000801@nsn.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1392635471-31528-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1392635471-31528-1-git-send-email-dborkman@redhat.com>
+References: <20140219132034.GC8704@localhost>
+In-Reply-To: <20140219132034.GC8704@localhost>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dborkman@redhat.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: ext Fengguang Wu <fengguang.wu@intel.com>
+Cc: LKML <linux-kernel@vger.kernel.org>, Linux Netdev List <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
 
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Mon, 17 Feb 2014 12:11:11 +0100
+Hello Fengguang,
 
-> SCTP's sctp_connectx() abi breaks for 64bit kernels compiled with 32bit
-> emulation (e.g. ia32 emulation or x86_x32). Due to internal usage of
-> 'struct sctp_getaddrs_old' which includes a struct sockaddr pointer,
-> sizeof(param) check will always fail in kernel as the structure in
-> 64bit kernel space is 4bytes larger than for user binaries compiled
-> in 32bit mode. Thus, applications making use of sctp_connectx() won't
-> be able to run under such circumstances.
+On 02/19/2014 02:20 PM, ext Fengguang Wu wrote:
+> Hi Matija,
 > 
-> Introduce a compat interface in the kernel to deal with such
-> situations by using a 'struct compat_sctp_getaddrs_old' structure
-> where user data is copied into it, and then sucessively transformed
-> into a 'struct sctp_getaddrs_old' structure with the help of
-> compat_ptr(). That fixes sctp_connectx() abi without any changes
-> needed in user space, and lets the SCTP test suite pass when compiled
-> in 32bit and run on 64bit kernels.
-> 
-> Fixes: f9c67811ebc0 ("sctp: Fix regression introduced by new sctp_connectx api")
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+> We noticed the below changes on commit ef2820a735f74ea60335f8ba3801b844f0cb184d
+> (" net: sctp: Fix a_rwnd/rwnd management to reflect real state of the receiver's buffer")
+> in netperf SCTP_STREAM tests:
 
-Applied and queued up for -stable, thanks.
+thanks for the info. Though, I've ran netperf in my environment, with and without patch, and I havent observed any difference.
+
+Could you please give me information on your environment, how do you invoke netperf, and other details you think I might be interested in to observe problem by myself
+
+Thanks!
+
+> cd0f0b95fd2cd2b  ef2820a735f74ea60335f8ba3  
+> ---------------  -------------------------  
+>          8 ~ 0%     -50.0%          4 ~ 0%  TOTAL netperf.Throughput_Mbps
+>      54287 ~44%    +338.1%     237842 ~48%  TOTAL cpuidle.C1E-NHM.time
+>   12008353 ~12%     -56.0%    5281848 ~ 0%  TOTAL proc-vmstat.pgalloc_normal
+>     114861 ~ 0%     -50.3%      57085 ~ 3%  TOTAL softirqs.NET_RX
+>   12964639 ~11%     -55.1%    5818663 ~ 0%  TOTAL proc-vmstat.pgfree
+>     866489 ~ 0%     -43.3%     491417 ~ 0%  TOTAL proc-vmstat.pgalloc_dma32
+>     119373 ~17%     -39.1%      72661 ~ 1%  TOTAL softirqs.SCHED
+>       1985 ~13%     -24.3%       1502 ~19%  TOTAL slabinfo.kmalloc-128.active_objs
+>       2139 ~20%     -28.4%       1532 ~ 4%  TOTAL proc-vmstat.nr_alloc_batch
+>     124360 ~33%     -31.0%      85748 ~ 2%  TOTAL softirqs.RCU
+>       1977 ~ 9%     -18.5%       1610 ~ 9%  TOTAL slabinfo.UDP.active_objs
+>       1977 ~ 9%     -18.5%       1610 ~ 9%  TOTAL slabinfo.UDP.num_objs
+>       2066 ~ 6%     -12.9%       1800 ~ 7%  TOTAL slabinfo.kmalloc-128.num_objs
+>       1738 ~10%     -18.4%       1418 ~ 9%  TOTAL slabinfo.UDPv6.active_objs
+>       1738 ~10%     -18.4%       1418 ~ 9%  TOTAL slabinfo.UDPv6.num_objs
+>        923 ~10%     -17.7%        760 ~ 8%  TOTAL slabinfo.TCPv6.active_objs
+>        923 ~10%     -17.7%        760 ~ 8%  TOTAL slabinfo.TCPv6.num_objs
+>        989 ~ 9%     -17.1%        820 ~ 7%  TOTAL slabinfo.TCP.active_objs
+>        989 ~ 9%     -17.1%        820 ~ 7%  TOTAL slabinfo.TCP.num_objs
+>     398761 ~44%     -32.6%     268792 ~ 3%  TOTAL numa-vmstat.node2.numa_hit
+>     389672 ~49%     -32.9%     261443 ~ 3%  TOTAL numa-vmstat.node0.numa_hit
+>        447 ~ 1%     -13.8%        385 ~ 0%  TOTAL vmstat.system.cs
+> 
+> Note: the "~ XX%" numbers are stddev percent.
+> 
+>                               netperf.Throughput_Mbps
+> 
+>      4 *+-*--*--*--*-*--*--*--*--*--*--*--*-*--*--*--*--*--*--*--*-*--*--*--*
+>        |                                                                    |
+>        |                                                                    |
+>    3.5 ++                                                                   |
+>        |                                                                    |
+>        |                                                                    |
+>        |                                                                    |
+>      3 ++                                                                   |
+>        |                                                                    |
+>        |                                                                    |
+>    2.5 ++                                                                   |
+>        |                                                                    |
+>        |                                                                    |
+>        |                                                                    |
+>      2 O+-O--O--O--O-O--O--O--O--O--O--O--O-O--O--O--O--O--O--O-------------+
+> 
+> 
+>                                  vmstat.system.cs
+> 
+>    460 ++------------------------*--*----------------*----------------------+
+>        |       .*..    .*..     :    +              +              *..     .*
+>    450 ++    *.     .*.    *..  :     +    .*..*.. +    *..*..*.. +     .*. |
+>    440 *+   :      *           :       *..*       *              *    *.    |
+>        |:   :                 *                                             |
+>    430 ++: :                                                                |
+>    420 ++: :                                                                |
+>        |  *                                                                 |
+>    410 ++                                                                   |
+>    400 ++                                                                   |
+>        |                                                                    |
+>    390 ++            O        O             O     O        O                |
+>    380 O+ O  O  O       O  O     O  O  O  O    O     O  O     O             |
+>        |           O                                                        |
+>    370 ++-------------------------------------------------------------------+
+> 
