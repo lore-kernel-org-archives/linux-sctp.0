@@ -1,17 +1,19 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Thu, 20 Feb 2014 17:58:43 +0000
+From: David Miller <davem@davemloft.net>
+Date: Thu, 20 Feb 2014 18:25:16 +0000
 Subject: Re: [PATCH] net: sctp: Potentially-Failed state should not be reached from unconfirmed state
-Message-Id: <53064253.7060309@gmail.com>
+Message-Id: <20140220.132516.300630512363540955.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <5305FF60.80404@nsn.com>
 In-Reply-To: <5305FF60.80404@nsn.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Matija Glavinic Pecotic <matija.glavinic-pecotic.ext@nsn.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
-Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+To: matija.glavinic-pecotic.ext@nsn.com
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On 02/20/2014 08:13 AM, Matija Glavinic Pecotic wrote:
+From: Matija Glavinic Pecotic <matija.glavinic-pecotic.ext@nsn.com>
+Date: Thu, 20 Feb 2014 14:13:04 +0100
+
 > In current implementation it is possible to reach PF state from unconfirmed.
 > We can interpret sctp-failover-02 in a way that PF state is meant to be reached
 > only from active state, in the end, this is when entering PF state makes sense.
@@ -49,33 +51,4 @@ On 02/20/2014 08:13 AM, Matija Glavinic Pecotic wrote:
 > 
 > Signed-off-by: Matija Glavinic Pecotic <matija.glavinic-pecotic.ext@nsn.com>
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-
-Thanks
--vlad
-
-> 
-> --- net-next.orig/net/sctp/sm_sideeffect.c
-> +++ net-next/net/sctp/sm_sideeffect.c
-> @@ -495,11 +495,12 @@ static void sctp_do_8_2_transport_strike
->  	}
->  
->  	/* If the transport error count is greater than the pf_retrans
-> -	 * threshold, and less than pathmaxrtx, then mark this transport
-> -	 * as Partially Failed, ee SCTP Quick Failover Draft, secon 5.1,
-> -	 * point 1
-> +	 * threshold, and less than pathmaxrtx, and if the current state
-> +	 * is not SCTP_UNCONFIRMED, then mark this transport as Partially
-> +	 * Failed, see SCTP Quick Failover Draft, section 5.1
->  	 */
->  	if ((transport->state != SCTP_PF) &&
-> +	   (transport->state != SCTP_UNCONFIRMED) &&
->  	   (asoc->pf_retrans < transport->pathmaxrxt) &&
->  	   (transport->error_count > asoc->pf_retrans)) {
->  
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+Applied, thank you.
