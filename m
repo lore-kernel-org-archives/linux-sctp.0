@@ -1,54 +1,260 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 20 Feb 2014 18:25:16 +0000
-Subject: Re: [PATCH] net: sctp: Potentially-Failed state should not be reached from unconfirmed state
-Message-Id: <20140220.132516.300630512363540955.davem@davemloft.net>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Thu, 20 Feb 2014 19:51:06 +0000
+Subject: [PATCH net v2] net: sctp: rework multihoming retransmission path selection to rfc4960
+Message-Id: <1392925866-11084-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <5305FF60.80404@nsn.com>
-In-Reply-To: <5305FF60.80404@nsn.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: matija.glavinic-pecotic.ext@nsn.com
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Gui Jianfeng <guijianfeng@cn.fujitsu.com>
 
-From: Matija Glavinic Pecotic <matija.glavinic-pecotic.ext@nsn.com>
-Date: Thu, 20 Feb 2014 14:13:04 +0100
+Problem statement: 1) both paths (primary path1 and alternate
+path2) are up after the association has been established i.e.,
+HB packets are normally exchanged, 2) path2 gets inactive after
+path_max_retrans * max_rto timed out (i.e. path2 is down completely),
+3) now, if a transmission times out on the only surviving/active
+path1 (any ~1sec network service impact could cause this like
+a channel bonding failover), then the retransmitted packets are
+sent over the inactive path2; this happens with partial failover
+and without it.
 
-> In current implementation it is possible to reach PF state from unconfirmed.
-> We can interpret sctp-failover-02 in a way that PF state is meant to be reached
-> only from active state, in the end, this is when entering PF state makes sense.
-> Here are few quotes from sctp-failover-02, but regardless of these, same
-> understanding can be reached from whole section 5:
-> 
-> Section 5.1, quickfailover guide:
->     "The PF state is an intermediate state between Active and Failed states."
-> 
->     "Each time the T3-rtx timer expires on an active or idle
->     destination, the error counter of that destination address will 
->     be incremented.  When the value in the error counter exceeds
->     PFMR, the endpoint should mark the destination transport address as PF."
-> 
-> There are several concrete reasons for such interpretation. For start, rfc4960
-> does not take into concern quickfailover algorithm. Therefore, quickfailover
-> must comply to 4960. Point where this compliance can be argued is following
-> behavior:
-> When PF is entered, association overall error counter is incremented for each
-> missed HB. This is contradictory to rfc4960, as address, while in unconfirmed
-> state, is subjected to probing, and while it is probed, it should not increment
-> association overall error counter. This has as a consequence that we might end
-> up in situation in which we drop association due path failure on unconfirmed
-> address, in case we have wrong configuration in a way:
-> Association.Max.Retrans = Path.Max.Retrans.
-> 
-> Another reason is that entering PF from unconfirmed will cause a loss of address
-> confirmed event when address is once (if) confirmed. This is fine from failover
-> guide point of view, but it is not consistent with behavior preceding failover
-> implementation and recommendation from 4960:
-> 
-> 5.4.  Path Verification
->    Whenever a path is confirmed, an indication MAY be given to the upper
->    layer.
-> 
-> Signed-off-by: Matija Glavinic Pecotic <matija.glavinic-pecotic.ext@nsn.com>
+Besides not being optimal in the above scenario, a small failure
+or timeout in the only existing path has the potential to cause
+long delays in the retransmission (depending on RTO_MAX) until
+the still active path is reselected. Further, when the T3-timeout
+occurs, we have active_patch = retrans_path, and even though the
+timeout occurred on the initial transmission of data, not a
+retransmit, we end up updating retransmit path.
 
-Applied, thank you.
+RFC4960, section 6.4. "Multi-Homed SCTP Endpoints" states under
+6.4.1. "Failover from an Inactive Destination Address" the
+following:
+
+  Some of the transport addresses of a multi-homed SCTP endpoint
+  may become inactive due to either the occurrence of certain
+  error conditions (see Section 8.2) or adjustments from the
+  SCTP user.
+
+  When there is outbound data to send and the primary path
+  becomes inactive (e.g., due to failures), or where the SCTP
+  user explicitly requests to send data to an inactive
+  destination transport address, before reporting an error to
+  its ULP, the SCTP endpoint should try to send the data to an
+  alternate __active__ destination transport address if one
+  exists.
+
+  When retransmitting data that timed out, if the endpoint is
+  multihomed, it should consider each source-destination address
+  pair in its retransmission selection policy. When retransmitting
+  timed-out data, the endpoint should attempt to pick the most
+  divergent source-destination pair from the original
+  source-destination pair to which the packet was transmitted.
+
+  Note: Rules for picking the most divergent source-destination
+  pair are an implementation decision and are not specified
+  within this document.
+
+So, we should first reconsider to take the current active
+retransmission transport if we cannot find an alternative
+active one. If all of that fails, we can still round robin
+through unkown, partial failover, and inactive ones in the
+hope to find something still suitable.
+
+Commit 4141ddc02a92 ("sctp: retran_path update bug fix") broke
+that behaviour by selecting the next inactive transport when
+no other active transport was found besides the current assoc's
+peer.retran_path. Before commit 4141ddc02a92, we would have
+traversed through the list until we reach our peer.retran_path
+again, and in case that is still in state SCTP_ACTIVE, we would
+take it and return. Only if that is not the case either, we
+take the next inactive transport.
+
+Besides all that, another issue is that transports in state
+SCTP_UNKNOWN could be preferred over transports in state
+SCTP_ACTIVE in case a SCTP_ACTIVE transport appears after
+SCTP_UNKNOWN in the transport list yielding a weaker transport
+state to be used in retransmission.
+
+This patch mostly reverts 4141ddc02a92, but also rewrites
+this function to introduce more clarity and strictness into
+the code. A strict priority of transport states is enforced
+in this patch, hence selection is active > unkown > partial
+failover > inactive.
+
+Fixes: 4141ddc02a92 ("sctp: retran_path update bug fix")
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Cc: Gui Jianfeng <guijianfeng@cn.fujitsu.com>
+---
+ v1->v2:
+  - added short-cut as suggested by Vlad, thanks!
+  - rest stays as is
+
+ net/sctp/associola.c | 129 +++++++++++++++++++++++++++++++--------------------
+ 1 file changed, 79 insertions(+), 50 deletions(-)
+
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index f558433..e55f3df 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1239,78 +1239,107 @@ void sctp_assoc_update(struct sctp_association *asoc,
+ }
+ 
+ /* Update the retran path for sending a retransmitted packet.
+- * Round-robin through the active transports, else round-robin
+- * through the inactive transports as this is the next best thing
+- * we can try.
++ * See also RFC4960, 6.4. Multi-Homed SCTP Endpoints:
++ *
++ *   When there is outbound data to send and the primary path
++ *   becomes inactive (e.g., due to failures), or where the
++ *   SCTP user explicitly requests to send data to an
++ *   inactive destination transport address, before reporting
++ *   an error to its ULP, the SCTP endpoint should try to send
++ *   the data to an alternate active destination transport
++ *   address if one exists.
++ *
++ *   When retransmitting data that timed out, if the endpoint
++ *   is multihomed, it should consider each source-destination
++ *   address pair in its retransmission selection policy.
++ *   When retransmitting timed-out data, the endpoint should
++ *   attempt to pick the most divergent source-destination
++ *   pair from the original source-destination pair to which
++ *   the packet was transmitted.
++ *
++ *   Note: Rules for picking the most divergent source-destination
++ *   pair are an implementation decision and are not specified
++ *   within this document.
++ *
++ * Our basic strategy is to round-robin transports in priorities
++ * according to sctp_state_prio_map[] e.g., if no such
++ * transport with state SCTP_ACTIVE exists, round-robin through
++ * SCTP_UNKNOWN, etc. You get the picture.
+  */
+-void sctp_assoc_update_retran_path(struct sctp_association *asoc)
++static const u8 sctp_trans_state_to_prio_map[] = {
++	[SCTP_ACTIVE]	= 3,	/* best case */
++	[SCTP_UNKNOWN]	= 2,
++	[SCTP_PF]	= 1,
++	[SCTP_INACTIVE] = 0,	/* worst case */
++};
++
++static u8 sctp_trans_score(const struct sctp_transport *trans)
+ {
+-	struct sctp_transport *t, *next;
+-	struct list_head *head = &asoc->peer.transport_addr_list;
+-	struct list_head *pos;
++	return sctp_trans_state_to_prio_map[trans->state];
++}
+ 
+-	if (asoc->peer.transport_count = 1)
+-		return;
++static struct sctp_transport *sctp_trans_elect_best(struct sctp_transport *curr,
++						    struct sctp_transport *best)
++{
++	if (best = NULL)
++		return curr;
+ 
+-	/* Find the next transport in a round-robin fashion. */
+-	t = asoc->peer.retran_path;
+-	pos = &t->transports;
+-	next = NULL;
++	return sctp_trans_score(curr) > sctp_trans_score(best) ? curr : best;
++}
+ 
+-	while (1) {
+-		/* Skip the head. */
+-		if (pos->next = head)
+-			pos = head->next;
+-		else
+-			pos = pos->next;
++void sctp_assoc_update_retran_path(struct sctp_association *asoc)
++{
++	struct sctp_transport *trans = asoc->peer.retran_path;
++	struct sctp_transport *trans_next = NULL;
+ 
+-		t = list_entry(pos, struct sctp_transport, transports);
++	/* We're done as we only have the one and only path. */
++	if (asoc->peer.transport_count = 1)
++		return;
++	/* If active_path and retran_path are the same and active,
++	 * then this is the only active path. Use it.
++	 */
++	if (asoc->peer.active_path = asoc->peer.retran_path &&
++	    asoc->peer.active_path->state = SCTP_ACTIVE)
++		return;
+ 
+-		/* We have exhausted the list, but didn't find any
+-		 * other active transports.  If so, use the next
+-		 * transport.
+-		 */
+-		if (t = asoc->peer.retran_path) {
+-			t = next;
++	/* Iterate from retran_path's successor back to retran_path. */
++	for (trans = list_next_entry(trans, transports); 1;
++	     trans = list_next_entry(trans, transports)) {
++		/* Manually skip the head element. */
++		if (&trans->transports = &asoc->peer.transport_addr_list)
++			continue;
++		if (trans->state = SCTP_UNCONFIRMED)
++			continue;
++		trans_next = sctp_trans_elect_best(trans, trans_next);
++		/* Active is good enough for immediate return. */
++		if (trans_next->state = SCTP_ACTIVE)
+ 			break;
+-		}
+-
+-		/* Try to find an active transport. */
+-
+-		if ((t->state = SCTP_ACTIVE) ||
+-		    (t->state = SCTP_UNKNOWN)) {
++		/* We've reached the end, time to update path. */
++		if (trans = asoc->peer.retran_path)
+ 			break;
+-		} else {
+-			/* Keep track of the next transport in case
+-			 * we don't find any active transport.
+-			 */
+-			if (t->state != SCTP_UNCONFIRMED && !next)
+-				next = t;
+-		}
+ 	}
+ 
+-	if (t)
+-		asoc->peer.retran_path = t;
+-	else
+-		t = asoc->peer.retran_path;
++	if (trans_next != NULL)
++		asoc->peer.retran_path = trans_next;
+ 
+-	pr_debug("%s: association:%p addr:%pISpc\n", __func__, asoc,
+-		 &t->ipaddr.sa);
++	pr_debug("%s: association:%p updated new path to addr:%pISpc\n",
++		 __func__, asoc, &asoc->peer.retran_path->ipaddr.sa);
+ }
+ 
+-/* Choose the transport for sending retransmit packet.  */
+-struct sctp_transport *sctp_assoc_choose_alter_transport(
+-	struct sctp_association *asoc, struct sctp_transport *last_sent_to)
++struct sctp_transport *
++sctp_assoc_choose_alter_transport(struct sctp_association *asoc,
++				  struct sctp_transport *last_sent_to)
+ {
+ 	/* If this is the first time packet is sent, use the active path,
+ 	 * else use the retran path. If the last packet was sent over the
+ 	 * retran path, update the retran path and use it.
+ 	 */
+-	if (!last_sent_to)
++	if (last_sent_to = NULL) {
+ 		return asoc->peer.active_path;
+-	else {
++	} else {
+ 		if (last_sent_to = asoc->peer.retran_path)
+ 			sctp_assoc_update_retran_path(asoc);
++
+ 		return asoc->peer.retran_path;
+ 	}
+ }
+-- 
+1.7.11.7
+
