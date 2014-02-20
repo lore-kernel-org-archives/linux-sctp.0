@@ -1,33 +1,66 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 25 Feb 2014 00:00:36 +0000
-Subject: Re: [PATCH net-next] loopback: sctp: add NETIF_F_SCTP_CSUM to device features
-Message-Id: <20140224.190036.1932145515925400435.davem@davemloft.net>
+From: Matija Glavinic Pecotic <matija.glavinic-pecotic.ext@nsn.com>
+Date: Thu, 20 Feb 2014 13:13:04 +0000
+Subject: [PATCH] net: sctp: Potentially-Failed state should not be reached from unconfirmed state
+Message-Id: <5305FF60.80404@nsn.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1393074113-9922-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1393074113-9922-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dborkman@redhat.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
+Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>
 
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Sat, 22 Feb 2014 14:01:53 +0100
+In current implementation it is possible to reach PF state from unconfirmed.
+We can interpret sctp-failover-02 in a way that PF state is meant to be reached
+only from active state, in the end, this is when entering PF state makes sense.
+Here are few quotes from sctp-failover-02, but regardless of these, same
+understanding can be reached from whole section 5:
 
-> Drivers are allowed to set NETIF_F_SCTP_CSUM if they have
-> hardware crc32c checksumming support for the SCTP protocol.
-> Currently, NETIF_F_SCTP_CSUM flag is available in igb,
-> ixgbe, i40e/i40evf drivers and for vlan devices.
-> 
-> If we don't have NETIF_F_SCTP_CSUM then crc32c is done
-> through CPU instructions, invoked from crypto layer, or
-> if not available as slow-path fallback in software.
-> 
-> Currently, loopback device propagates checksum offloading
-> feature flags in dev->features, but is missing SCTP checksum
-> offloading. Therefore, account for NETIF_F_SCTP_CSUM as
-> well.
- ...
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Section 5.1, quickfailover guide:
+    "The PF state is an intermediate state between Active and Failed states."
 
-Applied, thanks a lot Daniel.
+    "Each time the T3-rtx timer expires on an active or idle
+    destination, the error counter of that destination address will 
+    be incremented.  When the value in the error counter exceeds
+    PFMR, the endpoint should mark the destination transport address as PF."
+
+There are several concrete reasons for such interpretation. For start, rfc4960
+does not take into concern quickfailover algorithm. Therefore, quickfailover
+must comply to 4960. Point where this compliance can be argued is following
+behavior:
+When PF is entered, association overall error counter is incremented for each
+missed HB. This is contradictory to rfc4960, as address, while in unconfirmed
+state, is subjected to probing, and while it is probed, it should not increment
+association overall error counter. This has as a consequence that we might end
+up in situation in which we drop association due path failure on unconfirmed
+address, in case we have wrong configuration in a way:
+Association.Max.Retrans = Path.Max.Retrans.
+
+Another reason is that entering PF from unconfirmed will cause a loss of address
+confirmed event when address is once (if) confirmed. This is fine from failover
+guide point of view, but it is not consistent with behavior preceding failover
+implementation and recommendation from 4960:
+
+5.4.  Path Verification
+   Whenever a path is confirmed, an indication MAY be given to the upper
+   layer.
+
+Signed-off-by: Matija Glavinic Pecotic <matija.glavinic-pecotic.ext@nsn.com>
+
+--- net-next.orig/net/sctp/sm_sideeffect.c
++++ net-next/net/sctp/sm_sideeffect.c
+@@ -495,11 +495,12 @@ static void sctp_do_8_2_transport_strike
+ 	}
+ 
+ 	/* If the transport error count is greater than the pf_retrans
+-	 * threshold, and less than pathmaxrtx, then mark this transport
+-	 * as Partially Failed, ee SCTP Quick Failover Draft, secon 5.1,
+-	 * point 1
++	 * threshold, and less than pathmaxrtx, and if the current state
++	 * is not SCTP_UNCONFIRMED, then mark this transport as Partially
++	 * Failed, see SCTP Quick Failover Draft, section 5.1
+ 	 */
+ 	if ((transport->state != SCTP_PF) &&
++	   (transport->state != SCTP_UNCONFIRMED) &&
+ 	   (asoc->pf_retrans < transport->pathmaxrxt) &&
+ 	   (transport->error_count > asoc->pf_retrans)) {
+ 
