@@ -1,41 +1,67 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 26 Feb 2014 12:10:04 +0000
-Subject: Re: Why is not const used for parameters in the socket API?
-Message-Id: <20140226121004.GA19027@hmsreliant.think-freely.org>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Sat, 22 Feb 2014 13:01:53 +0000
+Subject: [PATCH net-next] loopback: sctp: add NETIF_F_SCTP_CSUM to device features
+Message-Id: <1393074113-9922-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <D7BA2F9242E12945A40DB1D20344484413C3DD3D@stomail01.se.aastra.com>
-In-Reply-To: <D7BA2F9242E12945A40DB1D20344484413C3DD3D@stomail01.se.aastra.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Wed, Feb 26, 2014 at 08:27:01AM +0100, Roger Nyberg wrote:
-> 
-> Why isn't const used in the socket API to make it clearer?
-> Example:
->  
-> int sctp_sendmsg(int s, const void *msg, size_t len, struct sockaddr
-> *to,
->                  socklen_t tolen, uint32_t ppid, uint32_t flags,
->                  uint16_t stream_no, uint32_t timetolive, uint32_t
-> context);
-> 
-> If i am not missing something, i guess the "struct sockaddr *to" could
-> be const (that is: "const struct sockaddr *to").
-> 
-> Please use const for every paramater where it is possible. This makes
-> usage simpler. There are more functions than the (sctp_sendmsg) where
-> parameters can const.
-> 
+Drivers are allowed to set NETIF_F_SCTP_CSUM if they have
+hardware crc32c checksumming support for the SCTP protocol.
+Currently, NETIF_F_SCTP_CSUM flag is available in igb,
+ixgbe, i40e/i40evf drivers and for vlan devices.
 
-Send a patch?
+If we don't have NETIF_F_SCTP_CSUM then crc32c is done
+through CPU instructions, invoked from crypto layer, or
+if not available as slow-path fallback in software.
 
-Neil
+Currently, loopback device propagates checksum offloading
+feature flags in dev->features, but is missing SCTP checksum
+offloading. Therefore, account for NETIF_F_SCTP_CSUM as
+well.
 
-> /Roger
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Before patch:
+
+./netperf_sctp -H 192.168.0.100 -t SCTP_STREAM_MANY
+SCTP 1-TO-MANY STREAM TEST from 0.0.0.0 (0.0.0.0) port 0 AF_INET to 192.168.0.100 () port 0 AF_INET
+Recv   Send    Send
+Socket Socket  Message  Elapsed
+Size   Size    Size     Time     Throughput
+bytes  bytes   bytes    secs.    10^6bits/sec
+
+4194304 4194304   4096    10.00    4683.50
+
+After patch:
+
+./netperf_sctp -H 192.168.0.100 -t SCTP_STREAM_MANY
+SCTP 1-TO-MANY STREAM TEST from 0.0.0.0 (0.0.0.0) port 0 AF_INET to 192.168.0.100 () port 0 AF_INET
+Recv   Send    Send
+Socket Socket  Message  Elapsed
+Size   Size    Size     Time     Throughput
+bytes  bytes   bytes    secs.    10^6bits/sec
+
+4194304 4194304   4096    10.00    15348.26
+
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ drivers/net/loopback.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/net/loopback.c b/drivers/net/loopback.c
+index 771c9bf..282effe 100644
+--- a/drivers/net/loopback.c
++++ b/drivers/net/loopback.c
+@@ -176,6 +176,7 @@ static void loopback_setup(struct net_device *dev)
+ 		| NETIF_F_UFO
+ 		| NETIF_F_HW_CSUM
+ 		| NETIF_F_RXCSUM
++		| NETIF_F_SCTP_CSUM
+ 		| NETIF_F_HIGHDMA
+ 		| NETIF_F_LLTX
+ 		| NETIF_F_NETNS_LOCAL
+-- 
+1.7.11.7
+
