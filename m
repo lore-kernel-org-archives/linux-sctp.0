@@ -1,24 +1,28 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Tue, 18 Feb 2014 10:48:28 +0000
-Subject: Re: [PATCH lksctp-tools] Remove dependency to implementation-specific a_rwnd behavior
-Message-Id: <53033A7C.1060703@redhat.com>
+From: "Roger Nyberg" <roger.nyberg@aastra.com>
+Date: Wed, 26 Feb 2014 07:27:01 +0000
+Subject: Why is not const used for parameters in the socket API?
+Message-Id: <D7BA2F9242E12945A40DB1D20344484413C3DD3D@stomail01.se.aastra.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <52F72A2F.2070705@nsn.com>
-In-Reply-To: <52F72A2F.2070705@nsn.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On 02/09/2014 08:11 AM, Matija Glavinic Pecotic wrote:
-> test_timetolive and test_sctp_sendrecvmsq take advantage of the following lksctp
-> characteristic:
->
-...
-> This change was done in course of '[PATCH v2] net: sctp: Fix a_rwnd/rwnd
-> management to reflect real state of the receiver's buffer', as with this patch
-> behavior is changed from described to rwnd reflecting real buffer state.
->
-> Signed-off-by: Matija Glavinic Pecotic <matija.glavinic-pecotic.ext@nsn.com>
 
-Applied.
+Why isn't const used in the socket API to make it clearer?
+Example:
+ 
+int sctp_sendmsg(int s, const void *msg, size_t len, struct sockaddr
+*to,
+                 socklen_t tolen, uint32_t ppid, uint32_t flags,
+                 uint16_t stream_no, uint32_t timetolive, uint32_t
+context);
+
+If i am not missing something, i guess the "struct sockaddr *to" could
+be const (that is: "const struct sockaddr *to").
+
+Please use const for every paramater where it is possible. This makes
+usage simpler. There are more functions than the (sctp_sendmsg) where
+parameters can const.
+
+/Roger
