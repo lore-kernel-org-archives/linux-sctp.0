@@ -1,25 +1,20 @@
-From: "Dr. Pius Okagba" <renato.ardigo@alice.it>
-Date: Tue, 18 Feb 2014 11:36:40 +0000
-Subject: Dear
-Message-Id: <14444c89825.renato.ardigo@alice.it>
+From: Karen Williams <KWilliams@gloversvilleschools.org>
+Date: Wed, 26 Feb 2014 06:32:14 +0000
+Subject: Outlook gebruiker waarschuwing.
+Message-Id: <34AEC189DE25054ABC8B6B969C68365215080226@GESDMBX01.gesda.gesd.gsd>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: "acount-security-noreply@account.microsoft.com" <acount-security-noreply@account.microsoft.com>
 
-Attention:
-Regarding the transaction made so far, I waited for your message as you told 
-me
-with none received. Remember, I supposed to have traveled last night 
-but the
-weather is too bad. I will be leaving to Paraguay tomorrow for estate project.
-Meanwhile, contact the Bank manager with below address, i have kept the cheque
-worth of USD2.5M. They will either mail it to you or remit it for transfer
-depending on how you want it; Here is Bank contact information:
- 
-Name Of Manager: Mr. Franklin Barnard
-MAIL: (franklinb1@barid.com,
-okagbapius1@live.com
-Thank you
-UN Office.
+Geachte Webmail Gebruiker,
+Uw twee inkomende mails hangende toestand geplaatst als gevolg van de recente upgrade in onze database.
+
+in volgorde te ontvangen uw berichten KLIK HIER<http://goorsoicuesaeorusdoisda.webs.com/>
+
+Login met uw juiste Webmail informatie en wachten op antwoordt van onze data service.
+Onze excuses voor het ongemak en waarderen uw begrip.
+
+Exchange administrator
+The Microsoft Account Team 2014.
