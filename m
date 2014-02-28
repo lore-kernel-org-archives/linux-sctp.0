@@ -1,104 +1,55 @@
-From: Fengguang Wu <fengguang.wu@intel.com>
-Date: Sun, 23 Feb 2014 01:37:39 +0000
-Subject: Re: [sctp] ef2820a735: -50% netperf Throughput_Mbps
-Message-Id: <20140223013739.GA13631@localhost>
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Fri, 28 Feb 2014 23:15:12 +0000
+Subject: re: net: sctp: rework multihoming retransmission path selection to rfc4960
+Message-Id: <20140228231512.GA22115@elgon.mountain>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20140219132034.GC8704@localhost>
- <5304E49A.3000801@nsn.com>
-In-Reply-To: <5304E49A.3000801@nsn.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Matija Glavinic Pecotic <matija.glavinic-pecotic.ext@nsn.com>
-Cc: LKML <linux-kernel@vger.kernel.org>, Linux Netdev List <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
+To: linux-sctp@vger.kernel.org
 
-Hi Matija,
+Hello Daniel Borkmann,
 
-On Wed, Feb 19, 2014 at 06:06:34PM +0100, Matija Glavinic Pecotic wrote:
-> Hello Fengguang,
-> 
-> On 02/19/2014 02:20 PM, ext Fengguang Wu wrote:
-> > Hi Matija,
-> > 
-> > We noticed the below changes on commit ef2820a735f74ea60335f8ba3801b844f0cb184d
-> > (" net: sctp: Fix a_rwnd/rwnd management to reflect real state of the receiver's buffer")
-> > in netperf SCTP_STREAM tests:
-> 
-> thanks for the info. Though, I've ran netperf in my environment, with and without patch, and I havent observed any difference.
-> 
-> Could you please give me information on your environment, how do you invoke netperf, and other details you think I might be interested in to observe problem by myself
+This is a semi-automatic email about new static checker warnings.
 
-I see the same regression on both T410 and NHM EX server. On each test
-machine, I'm running (2*nr_logical_cpu) the below command in parallel:
+The patch 4c47af4d5eb2: "net: sctp: rework multihoming retransmission
+path selection to rfc4960" from Feb 20, 2014, leads to the following
+Smatch complaint:
 
-        netperf -t SCTP_STREAM -c -C -l 120
+net/sctp/associola.c:1322 sctp_assoc_update_retran_path()
+	 warn: variable dereferenced before check 'trans_next' (see line 1319)
 
-Thanks,
-Fengguang
+net/sctp/associola.c
+  1305          /* Iterate from retran_path's successor back to retran_path. */
+  1306          for (trans = list_next_entry(trans, transports); 1;
+  1307               trans = list_next_entry(trans, transports)) {
+  1308                  /* Manually skip the head element. */
+  1309                  if (&trans->transports = &asoc->peer.transport_addr_list)
+  1310                          continue;
+  1311                  if (trans->state = SCTP_UNCONFIRMED)
+  1312                          continue;
+  1313                  trans_next = sctp_trans_elect_best(trans, trans_next);
+  1314                  /* Active is good enough for immediate return. */
+  1315                  if (trans_next->state = SCTP_ACTIVE)
+                            ^^^^^^^^^^^^^^^^^
+Dereference.
 
-> Thanks!
-> 
-> > cd0f0b95fd2cd2b  ef2820a735f74ea60335f8ba3  
-> > ---------------  -------------------------  
-> >          8 ~ 0%     -50.0%          4 ~ 0%  TOTAL netperf.Throughput_Mbps
-> >      54287 ~44%    +338.1%     237842 ~48%  TOTAL cpuidle.C1E-NHM.time
-> >   12008353 ~12%     -56.0%    5281848 ~ 0%  TOTAL proc-vmstat.pgalloc_normal
-> >     114861 ~ 0%     -50.3%      57085 ~ 3%  TOTAL softirqs.NET_RX
-> >   12964639 ~11%     -55.1%    5818663 ~ 0%  TOTAL proc-vmstat.pgfree
-> >     866489 ~ 0%     -43.3%     491417 ~ 0%  TOTAL proc-vmstat.pgalloc_dma32
-> >     119373 ~17%     -39.1%      72661 ~ 1%  TOTAL softirqs.SCHED
-> >       1985 ~13%     -24.3%       1502 ~19%  TOTAL slabinfo.kmalloc-128.active_objs
-> >       2139 ~20%     -28.4%       1532 ~ 4%  TOTAL proc-vmstat.nr_alloc_batch
-> >     124360 ~33%     -31.0%      85748 ~ 2%  TOTAL softirqs.RCU
-> >       1977 ~ 9%     -18.5%       1610 ~ 9%  TOTAL slabinfo.UDP.active_objs
-> >       1977 ~ 9%     -18.5%       1610 ~ 9%  TOTAL slabinfo.UDP.num_objs
-> >       2066 ~ 6%     -12.9%       1800 ~ 7%  TOTAL slabinfo.kmalloc-128.num_objs
-> >       1738 ~10%     -18.4%       1418 ~ 9%  TOTAL slabinfo.UDPv6.active_objs
-> >       1738 ~10%     -18.4%       1418 ~ 9%  TOTAL slabinfo.UDPv6.num_objs
-> >        923 ~10%     -17.7%        760 ~ 8%  TOTAL slabinfo.TCPv6.active_objs
-> >        923 ~10%     -17.7%        760 ~ 8%  TOTAL slabinfo.TCPv6.num_objs
-> >        989 ~ 9%     -17.1%        820 ~ 7%  TOTAL slabinfo.TCP.active_objs
-> >        989 ~ 9%     -17.1%        820 ~ 7%  TOTAL slabinfo.TCP.num_objs
-> >     398761 ~44%     -32.6%     268792 ~ 3%  TOTAL numa-vmstat.node2.numa_hit
-> >     389672 ~49%     -32.9%     261443 ~ 3%  TOTAL numa-vmstat.node0.numa_hit
-> >        447 ~ 1%     -13.8%        385 ~ 0%  TOTAL vmstat.system.cs
-> > 
-> > Note: the "~ XX%" numbers are stddev percent.
-> > 
-> >                               netperf.Throughput_Mbps
-> > 
-> >      4 *+-*--*--*--*-*--*--*--*--*--*--*--*-*--*--*--*--*--*--*--*-*--*--*--*
-> >        |                                                                    |
-> >        |                                                                    |
-> >    3.5 ++                                                                   |
-> >        |                                                                    |
-> >        |                                                                    |
-> >        |                                                                    |
-> >      3 ++                                                                   |
-> >        |                                                                    |
-> >        |                                                                    |
-> >    2.5 ++                                                                   |
-> >        |                                                                    |
-> >        |                                                                    |
-> >        |                                                                    |
-> >      2 O+-O--O--O--O-O--O--O--O--O--O--O--O-O--O--O--O--O--O--O-------------+
-> > 
-> > 
-> >                                  vmstat.system.cs
-> > 
-> >    460 ++------------------------*--*----------------*----------------------+
-> >        |       .*..    .*..     :    +              +              *..     .*
-> >    450 ++    *.     .*.    *..  :     +    .*..*.. +    *..*..*.. +     .*. |
-> >    440 *+   :      *           :       *..*       *              *    *.    |
-> >        |:   :                 *                                             |
-> >    430 ++: :                                                                |
-> >    420 ++: :                                                                |
-> >        |  *                                                                 |
-> >    410 ++                                                                   |
-> >    400 ++                                                                   |
-> >        |                                                                    |
-> >    390 ++            O        O             O     O        O                |
-> >    380 O+ O  O  O       O  O     O  O  O  O    O     O  O     O             |
-> >        |           O                                                        |
-> >    370 ++-------------------------------------------------------------------+
-> > 
+  1316                          break;
+                                ^^^^^^
+  1317                  /* We've reached the end, time to update path. */
+  1318			if (trans = asoc->peer.retran_path)
+  1319				break;
+                                ^^^^^
+These two breaks are the the only way to exit from the loop.
+
+  1320		}
+  1321	
+  1322		if (trans_next != NULL)
+                    ^^^^^^^^^^^^^^^^^^
+Check to late.
+
+  1323			asoc->peer.retran_path = trans_next;
+  1324	
+
+regards,
+dan carpenter
