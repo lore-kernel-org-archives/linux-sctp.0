@@ -1,53 +1,143 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Sat, 01 Mar 2014 10:24:05 +0000
-Subject: Re: net: sctp: rework multihoming retransmission path selection to rfc4960
-Message-Id: <5311B545.1090707@redhat.com>
+Date: Mon, 03 Mar 2014 16:23:04 +0000
+Subject: [PATCH net] net: sctp: fix sctp_sf_do_5_1D_ce to verify if we/peer is AUTH capable
+Message-Id: <1393863784-28860-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20140228231512.GA22115@elgon.mountain>
-In-Reply-To: <20140228231512.GA22115@elgon.mountain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <yasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On 03/01/2014 09:44 AM, Dan Carpenter wrote:
-> On Sat, Mar 01, 2014 at 12:30:09AM +0100, Daniel Borkmann wrote:
->> On 03/01/2014 12:15 AM, Dan Carpenter wrote:
->>> Hello Daniel Borkmann,
->>>
->>> This is a semi-automatic email about new static checker warnings.
->>>
->>> The patch 4c47af4d5eb2: "net: sctp: rework multihoming retransmission
->>> path selection to rfc4960" from Feb 20, 2014, leads to the following
->>> Smatch complaint:
->>>
->>> net/sctp/associola.c:1322 sctp_assoc_update_retran_path()
->>> 	 warn: variable dereferenced before check 'trans_next' (see line 1319)
->>>
->>> net/sctp/associola.c
->>>    1305          /* Iterate from retran_path's successor back to retran_path. */
->>>    1306          for (trans = list_next_entry(trans, transports); 1;
->>>    1307               trans = list_next_entry(trans, transports)) {
->>>    1308                  /* Manually skip the head element. */
->>>    1309                  if (&trans->transports = &asoc->peer.transport_addr_list)
->>>    1310                          continue;
->>>    1311                  if (trans->state = SCTP_UNCONFIRMED)
->>>    1312                          continue;
->>>    1313                  trans_next = sctp_trans_elect_best(trans, trans_next);
->>>    1314                  /* Active is good enough for immediate return. */
->>>    1315                  if (trans_next->state = SCTP_ACTIVE)
->>>                              ^^^^^^^^^^^^^^^^^
->>> Dereference.
->>
->> That is a false-positive.
->>
->> trans_next at that time is being assigned through sctp_trans_elect_best() a
->> guaranteed non-NULL pointer.
->
-> Can you remove the NULL check then?
+RFC4895 introduced AUTH chunks for SCTP; during the SCTP
+handshake RANDOM; CHUNKS; HMAC-ALGO are negotiated (CHUNKS
+being optional though):
 
-Will do when this merges into net-next. Thanks.
+  ---------- INIT[RANDOM; CHUNKS; HMAC-ALGO] ---------->
+  <------- INIT-ACK[RANDOM; CHUNKS; HMAC-ALGO] ---------
+  -------------------- COOKIE-ECHO -------------------->
+  <-------------------- COOKIE-ACK ---------------------
 
-> regards,
-> dan carpenter
->
+A special case is when an endpoint requires COOKIE-ECHO
+chunks to be authenticated:
+
+  ---------- INIT[RANDOM; CHUNKS; HMAC-ALGO] ---------->
+  <------- INIT-ACK[RANDOM; CHUNKS; HMAC-ALGO] ---------
+  ------------------ AUTH; COOKIE-ECHO ---------------->
+  <-------------------- COOKIE-ACK ---------------------
+
+RFC4895, section 6.3. Receiving Authenticated Chunks says:
+
+  The receiver MUST use the HMAC algorithm indicated in
+  the HMAC Identifier field. If this algorithm was not
+  specified by the receiver in the HMAC-ALGO parameter in
+  the INIT or INIT-ACK chunk during association setup, the
+  AUTH chunk and all the chunks after it MUST be discarded
+  and an ERROR chunk SHOULD be sent with the error cause
+  defined in Section 4.1. [...] If no endpoint pair shared
+  key has been configured for that Shared Key Identifier,
+  all authenticated chunks MUST be silently discarded. [...]
+
+  When an endpoint requires COOKIE-ECHO chunks to be
+  authenticated, some special procedures have to be followed
+  because the reception of a COOKIE-ECHO chunk might result
+  in the creation of an SCTP association. If a packet arrives
+  containing an AUTH chunk as a first chunk, a COOKIE-ECHO
+  chunk as the second chunk, and possibly more chunks after
+  them, and the receiver does not have an STCB for that
+  packet, then authentication is based on the contents of
+  the COOKIE-ECHO chunk. In this situation, the receiver MUST
+  authenticate the chunks in the packet by using the RANDOM
+  parameters, CHUNKS parameters and HMAC_ALGO parameters
+  obtained from the COOKIE-ECHO chunk, and possibly a local
+  shared secret as inputs to the authentication procedure
+  specified in Section 6.3. If authentication fails, then
+  the packet is discarded. If the authentication is successful,
+  the COOKIE-ECHO and all the chunks after the COOKIE-ECHO
+  MUST be processed. If the receiver has an STCB, it MUST
+  process the AUTH chunk as described above using the STCB
+  from the existing association to authenticate the
+  COOKIE-ECHO chunk and all the chunks after it. [...]
+
+Commit bbd0d59809f9 introduced the possibility to receive
+and verification of AUTH chunk, including the edge case for
+authenticated COOKIE-ECHO. On reception of COOKIE-ECHO,
+the function sctp_sf_do_5_1D_ce() handles processing,
+unpacks and creates a new association if it passed sanity
+checks and also tests for authentication chunks being
+present. After a new association has been processed, it
+invokes sctp_process_init() on the new association and
+walks through the parameter list it received from the INIT
+chunk. It checks SCTP_PARAM_RANDOM, SCTP_PARAM_HMAC_ALGO
+and SCTP_PARAM_CHUNKS, and copies them into asoc->peer
+meta data (peer_random, peer_hmacs, peer_chunks) in case
+sysctl -w net.sctp.auth_enable=1 is set. If in INIT's
+SCTP_PARAM_SUPPORTED_EXT parameter SCTP_CID_AUTH is set,
+peer_random != NULL and peer_hmacs != NULL the peer is to be
+assumed asoc->peer.auth_capable=1, in any other case
+asoc->peer.auth_capable=0.
+
+Now, if in sctp_sf_do_5_1D_ce() chunk->auth_chunk is
+available, we set up a fake auth chunk and pass that on to
+sctp_sf_authenticate(), which at latest in
+sctp_auth_calculate_hmac() reliably dereferences a NULL pointer
+at position 0..0008 when setting up the crypto key in
+crypto_hash_setkey() by using asoc->asoc_shared_key that is
+NULL as condition key_id = asoc->active_key_id is true if
+the AUTH chunk was injected correctly from remote. This
+happens no matter what net.sctp.auth_enable sysctl says.
+
+The fix is to check for net->sctp.auth_enable and for
+asoc->peer.auth_capable before doing any operations like
+sctp_sf_authenticate() as no key is activated in
+sctp_auth_asoc_init_active_key() for each case.
+
+Now as RFC4895 section 6.3 states that if the used HMAC-ALGO
+passed from the INIT chunk was not used in the AUTH chunk, we
+SHOULD send an error; however in this case it would be better
+to just silently discard such a maliciously prepared handshake
+as we didn't even receive a parameter at all. Also, as our
+endpoint has no shared key configured, section 6.3 says that
+MUST silently discard, which we are doing from now onwards.
+
+Before calling sctp_sf_pdiscard(), we need not only to free
+the association, but also the chunk->auth_chunk skb, as
+commit bbd0d59809f9 created a skb clone in that case.
+
+I have tested this locally by using netfilter's nfqueue and
+re-injecting packets into the local stack after maliciously
+modifying the INIT chunk (removing RANDOM; HMAC-ALGO param)
+and the SCTP packet containing the COOKIE_ECHO (injecting
+AUTH chunk before COOKIE_ECHO). Fixed with this patch applied.
+
+Fixes: bbd0d59809f9 ("[SCTP]: Implement the receive and verification of AUTH chunk")
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Cc: Vlad Yasevich <yasevich@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+---
+ Also needs to go to -stable.
+
+ net/sctp/sm_statefuns.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 591b44d..ae65b6b 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -758,6 +758,13 @@ sctp_disposition_t sctp_sf_do_5_1D_ce(struct net *net,
+ 		struct sctp_chunk auth;
+ 		sctp_ierror_t ret;
+ 
++		/* Make sure that we and the peer are AUTH capable */
++		if (!net->sctp.auth_enable || !new_asoc->peer.auth_capable) {
++			kfree_skb(chunk->auth_chunk);
++			sctp_association_free(new_asoc);
++			return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
++		}
++
+ 		/* set-up our fake chunk so that we can process it */
+ 		auth.skb = chunk->auth_chunk;
+ 		auth.asoc = chunk->asoc;
+-- 
+1.7.11.7
+
