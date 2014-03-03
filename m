@@ -1,67 +1,23 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Mon, 03 Mar 2014 18:07:53 +0000
+From: David Miller <davem@davemloft.net>
+Date: Mon, 03 Mar 2014 21:40:48 +0000
 Subject: Re: [PATCH net] net: sctp: fix sctp_sf_do_5_1D_ce to verify if we/peer is AUTH capable
-Message-Id: <5314C4F9.6090806@gmail.com>
+Message-Id: <20140303.164048.1803306262753946511.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1393863784-28860-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1393863784-28860-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <yasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+To: dborkman@redhat.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, yasevich@gmail.com, nhorman@tuxdriver.com
 
-On 03/03/2014 11:23 AM, Daniel Borkmann wrote:
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Mon,  3 Mar 2014 17:23:04 +0100
+
 > RFC4895 introduced AUTH chunks for SCTP; during the SCTP
 > handshake RANDOM; CHUNKS; HMAC-ALGO are negotiated (CHUNKS
 > being optional though):
-> 
->   ---------- INIT[RANDOM; CHUNKS; HMAC-ALGO] ---------->
->   <------- INIT-ACK[RANDOM; CHUNKS; HMAC-ALGO] ---------
->   -------------------- COOKIE-ECHO -------------------->
->   <-------------------- COOKIE-ACK ---------------------
-> 
-> A special case is when an endpoint requires COOKIE-ECHO
-> chunks to be authenticated:
-> 
->   ---------- INIT[RANDOM; CHUNKS; HMAC-ALGO] ---------->
->   <------- INIT-ACK[RANDOM; CHUNKS; HMAC-ALGO] ---------
->   ------------------ AUTH; COOKIE-ECHO ---------------->
->   <-------------------- COOKIE-ACK ---------------------
-> 
-> RFC4895, section 6.3. Receiving Authenticated Chunks says:
-> 
->   The receiver MUST use the HMAC algorithm indicated in
->   the HMAC Identifier field. If this algorithm was not
->   specified by the receiver in the HMAC-ALGO parameter in
->   the INIT or INIT-ACK chunk during association setup, the
->   AUTH chunk and all the chunks after it MUST be discarded
->   and an ERROR chunk SHOULD be sent with the error cause
->   defined in Section 4.1. [...] If no endpoint pair shared
->   key has been configured for that Shared Key Identifier,
->   all authenticated chunks MUST be silently discarded. [...]
-> 
->   When an endpoint requires COOKIE-ECHO chunks to be
->   authenticated, some special procedures have to be followed
->   because the reception of a COOKIE-ECHO chunk might result
->   in the creation of an SCTP association. If a packet arrives
->   containing an AUTH chunk as a first chunk, a COOKIE-ECHO
->   chunk as the second chunk, and possibly more chunks after
->   them, and the receiver does not have an STCB for that
->   packet, then authentication is based on the contents of
->   the COOKIE-ECHO chunk. In this situation, the receiver MUST
->   authenticate the chunks in the packet by using the RANDOM
->   parameters, CHUNKS parameters and HMAC_ALGO parameters
->   obtained from the COOKIE-ECHO chunk, and possibly a local
->   shared secret as inputs to the authentication procedure
->   specified in Section 6.3. If authentication fails, then
->   the packet is discarded. If the authentication is successful,
->   the COOKIE-ECHO and all the chunks after the COOKIE-ECHO
->   MUST be processed. If the receiver has an STCB, it MUST
->   process the AUTH chunk as described above using the STCB
->   from the existing association to authenticate the
->   COOKIE-ECHO chunk and all the chunks after it. [...]
-> 
+ ...
 > Commit bbd0d59809f9 introduced the possibility to receive
 > and verification of AUTH chunk, including the edge case for
 > authenticated COOKIE-ECHO. On reception of COOKIE-ECHO,
@@ -115,36 +71,6 @@ On 03/03/2014 11:23 AM, Daniel Borkmann wrote:
 > 
 > Fixes: bbd0d59809f9 ("[SCTP]: Implement the receive and verification of AUTH chunk")
 > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-> Cc: Vlad Yasevich <yasevich@gmail.com>
-> Cc: Neil Horman <nhorman@tuxdriver.com>
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-
--vlad
-
-> ---
->  Also needs to go to -stable.
-> 
->  net/sctp/sm_statefuns.c | 7 +++++++
->  1 file changed, 7 insertions(+)
-> 
-> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-> index 591b44d..ae65b6b 100644
-> --- a/net/sctp/sm_statefuns.c
-> +++ b/net/sctp/sm_statefuns.c
-> @@ -758,6 +758,13 @@ sctp_disposition_t sctp_sf_do_5_1D_ce(struct net *net,
->  		struct sctp_chunk auth;
->  		sctp_ierror_t ret;
->  
-> +		/* Make sure that we and the peer are AUTH capable */
-> +		if (!net->sctp.auth_enable || !new_asoc->peer.auth_capable) {
-> +			kfree_skb(chunk->auth_chunk);
-> +			sctp_association_free(new_asoc);
-> +			return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
-> +		}
-> +
->  		/* set-up our fake chunk so that we can process it */
->  		auth.skb = chunk->auth_chunk;
->  		auth.asoc = chunk->asoc;
-> 
-
+Applied and queued up for -stable, exemplary commit message I
+must say, thanks!
