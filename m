@@ -1,17 +1,17 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Tue, 04 Mar 2014 15:59:06 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 04 Mar 2014 16:17:37 +0000
 Subject: Re: [PATCH net] net: sctp: fix skb leakage in COOKIE ECHO path of chunk->auth_chunk
-Message-Id: <5315F84A.2060401@gmail.com>
+Message-Id: <20140304161737.GA12496@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1393947351-11664-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1393947351-11664-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <yasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+To: Daniel Borkmann <dborkman@redhat.com>
+Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <yasevich@gmail.com>
 
-On 03/04/2014 10:35 AM, Daniel Borkmann wrote:
+On Tue, Mar 04, 2014 at 04:35:51PM +0100, Daniel Borkmann wrote:
 > While working on ec0223ec48a9 ("net: sctp: fix sctp_sf_do_5_1D_ce to
 > verify if we/peer is AUTH capable"), we noticed that there's a skb
 > memory leakage in the error path.
@@ -80,11 +80,6 @@ On 03/04/2014 10:35 AM, Daniel Borkmann wrote:
 > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
 > Cc: Vlad Yasevich <yasevich@gmail.com>
 > Cc: Neil Horman <nhorman@tuxdriver.com>
-
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-
--vlad
-
 > ---
 >  net/sctp/sm_make_chunk.c | 4 ++--
 >  net/sctp/sm_statefuns.c  | 5 -----
@@ -128,5 +123,9 @@ Acked-by: Vlad Yasevich <vyasevich@gmail.com>
 >  		if (ret != SCTP_IERROR_NO_ERROR) {
 >  			sctp_association_free(new_asoc);
 >  			return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+> -- 
+> 1.7.11.7
 > 
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
