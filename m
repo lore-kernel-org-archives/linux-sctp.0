@@ -1,48 +1,66 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 18 Apr 2014 22:41:45 +0000
-Subject: Re: [PATCH net] net: sctp: cache auth_enable per endpoint
-Message-Id: <20140418.184145.990138802576449617.davem@davemloft.net>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Tue, 08 Apr 2014 23:32:37 +0000
+Subject: [PATCH net v2] net: sctp: test if association is dead in sctp_wake_up_waiters
+Message-Id: <de3e98e644dde7dcaea9a952de38eb32a2959eeb.1396999714.git.dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1397748410-1983-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1397748410-1983-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dborkman@redhat.com
-Cc: kumba@gentoo.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevic@redhat.com
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevic@redhat.com>
 
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Thu, 17 Apr 2014 17:26:50 +0200
+In function sctp_wake_up_waiters(), we need to involve a test
+if the association is declared dead. If so, we don't have any
+reference to a possible sibling association anymore and need
+to invoke sctp_write_space() instead and normally walk the
+socket's associations and notify them of new wmem space. The
+reason for special casing is that, otherwise, we could run
+into the following issue:
 
-> From: Vlad Yasevich <vyasevic@redhat.com>
-> 
-> Currently, it is possible to create an SCTP socket, then switch
-> auth_enable via sysctl setting to 1 and crash the system on connect:
- ...
-> What happens while auth_enable=0 in that case is, that
-> ep->auth_hmacs is initialized to NULL in sctp_auth_init_hmacs()
-> when endpoint is being created.
-> 
-> After that point, if an admin switches over to auth_enable=1,
-> the machine can crash due to NULL pointer dereference during
-> reception of an INIT chunk. When we enter sctp_process_init()
-> via sctp_sf_do_5_1B_init() in order to respond to an INIT chunk,
-> the INIT verification succeeds and while we walk and process
-> all INIT params via sctp_process_param() we find that
-> net->sctp.auth_enable is set, therefore do not fall through,
-> but invoke sctp_auth_asoc_set_default_hmac() instead, and thus,
-> dereference what we have set to NULL during endpoint
-> initialization phase.
-> 
-> The fix is to make auth_enable immutable by caching its value
-> during endpoint initialization, so that its original value is
-> being carried along until destruction. The bug seems to originate
-> from the very first days.
-> 
-> Fix in joint work with Daniel Borkmann.
-> 
-> Reported-by: Joshua Kinard <kumba@gentoo.org>
-> Signed-off-by: Vlad Yasevich <vyasevic@redhat.com>
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+sctp_association_free()
+`-> list_del(&asoc->asocs)         <-- poisons list pointer
+    asoc->base.dead = true
+    sctp_outq_free(&asoc->outqueue)
+    `-> __sctp_outq_teardown()
+     `-> sctp_chunk_free()
+      `-> consume_skb()
+       `-> sctp_wfree()
+        `-> sctp_wake_up_waiters() <-- dereferences poisoned pointers
+                                       if asoc->ep->sndbuf_policy=0
 
-Applied and queued up for -stable, thanks everyone.
+Therefore, only walk the list in an 'optimized' way if we find
+that the current association is still active. We could also use
+list_del_init() in addition when we call sctp_association_free(),
+but as Vlad suggests, we want to trap such bugs and thus leave
+it poisoned as is. Stress-testing seems fine now.
+
+Fixes: cd253f9f357d ("net: sctp: wake up all assocs if sndbuf policy is per socket")
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Cc: Vlad Yasevich <vyasevic@redhat.com>
+---
+ v1->v2:
+  - leave list_del()
+
+ net/sctp/socket.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 5f83a6a..270d5bd 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -6604,6 +6604,12 @@ static void sctp_wake_up_waiters(struct sock *sk,
+ 	if (asoc->ep->sndbuf_policy)
+ 		return __sctp_write_space(asoc);
+ 
++	/* If association goes down and is just flushing its
++	 * outq, then just normally notify others.
++	 */
++	if (asoc->base.dead)
++		return sctp_write_space(sk);
++
+ 	/* Accounting for the sndbuf space is per socket, so we
+ 	 * need to wake up others, try to be fair and in case of
+ 	 * other associations, let them have a go first instead
+-- 
+1.7.11.7
+
