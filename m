@@ -1,132 +1,126 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Wed, 23 Apr 2014 12:59:25 +0000
-Subject: Re: Is SCTP throughput really this low compared to TCP?
-Message-Id: <5357B92D.1000901@gmail.com>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Tue, 08 Apr 2014 15:26:13 +0000
+Subject: [PATCH net v2] net: sctp: wake up all assocs if sndbuf policy is per socket
+Message-Id: <1396970773-17500-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1383F7BACEF3F141A39A7AC90F80407E31B23A@psmwsonsmbx01.sonusnet.com>
-In-Reply-To: <1383F7BACEF3F141A39A7AC90F80407E31B23A@psmwsonsmbx01.sonusnet.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Thomas Graf <tgraf@suug.ch>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevic@redhat.com>
 
-On 04/22/2014 05:50 PM, Butler, Peter wrote:
-> When I apply the patch you provided to the standard 3.14.0 kernel, I still get the highly erratic throughput (see output below).  It was only when I did the full "git revert" as suggested by Daniel that the erratic behaviour went away.
-> 
-> [root@Lab200slot2 ~]# iperf3 --sctp -4 -c 192.168.240.3 -V -l 1452 -t 60
-> iperf version 3.0.1 (10 January 2014)
-> Linux Lab200slot2 3.14.0 #1 SMP Thu Apr 3 23:18:29 EDT 2014 x86_64
-> Time: Tue, 22 Apr 2014 21:44:24 GMT
-> Connecting to host 192.168.240.3, port 5201
->       Cookie: Lab200slot2.1398203064.823332.513f07
-> [  4] local 192.168.240.2 port 55819 connected to 192.168.240.3 port 5201
-> Starting Test: protocol: SCTP, 1 streams, 1452 byte blocks, omitting 0 seconds, 60 second test
-> [ ID] Interval           Transfer     Bandwidth
-> [  4]   0.00-1.08   sec  23.9 MBytes   186 Mbits/sec                  
-> [  4]   1.08-2.13   sec  16.0 MBytes   128 Mbits/sec                  
-> [  4]   2.13-3.95   sec   198 MBytes   913 Mbits/sec                  
-> [  4]   3.95-4.00   sec  15.8 MBytes  2.62 Gbits/sec                  
-> [  4]   4.00-5.00   sec   226 MBytes  1.90 Gbits/sec                  
-> [  4]   5.00-6.84   sec   180 MBytes   819 Mbits/sec                  
-> [  4]   6.84-7.00   sec  44.0 MBytes  2.30 Gbits/sec                  
-> [  4]   7.00-8.01   sec  6.31 MBytes  52.2 Mbits/sec                  
-> [  4]   8.01-9.08   sec  21.3 MBytes   167 Mbits/sec                  
-> [  4]   9.08-10.12  sec  13.2 MBytes   107 Mbits/sec                  
-> [  4]  10.12-11.17  sec  14.8 MBytes   119 Mbits/sec                  
-> [  4]  11.17-12.97  sec   180 MBytes   839 Mbits/sec                  
-> [  4]  12.97-13.00  sec  8.25 MBytes  2.27 Gbits/sec                  
-> [  4]  13.00-14.10  sec  30.6 MBytes   234 Mbits/sec                  
-> [  4]  14.10-15.95  sec   191 MBytes   866 Mbits/sec                  
-> [  4]  15.95-16.00  sec  15.1 MBytes  2.51 Gbits/sec                  
-> [  4]  16.00-17.00  sec   219 MBytes  1.84 Gbits/sec                  
-> [  4]  17.00-18.09  sec  28.5 MBytes   218 Mbits/sec                  
-> [  4]  18.09-19.13  sec  11.4 MBytes  92.5 Mbits/sec                  
-> [  4]  19.13-20.17  sec  14.1 MBytes   114 Mbits/sec                  
-> [  4]  20.17-21.21  sec  13.0 MBytes   105 Mbits/sec                  
-> [  4]  21.21-23.27  sec  16.8 MBytes  68.4 Mbits/sec                  
-> [  4]  23.27-23.27  sec  0.00 Bytes  0.00 bits/sec                  
-> [  4]  23.27-24.00  sec   168 MBytes  1.91 Gbits/sec                  
-> [  4]  24.00-25.76  sec   179 MBytes   852 Mbits/sec                  
-> [  4]  25.76-26.00  sec  21.2 MBytes   760 Mbits/sec                  
-> 
-> 
+SCTP charges chunks for wmem accounting via skb->truesize in
+sctp_set_owner_w(), and sctp_wfree() respectively as the
+reverse operation. If a sender runs out of wmem, it needs to
+wait via sctp_wait_for_sndbuf(), and gets woken up by a call
+to __sctp_write_space() mostly via sctp_wfree().
 
-Thanks Peter.  This means there is something else wrong...
+__sctp_write_space() is being called per association. Although
+we assign sk->sk_write_space() to sctp_write_space(), which
+is then being done per socket, it is only used if send space
+is increased per socket option (SO_SNDBUF), as SOCK_USE_WRITE_QUEUE
+is set and therefore not invoked in sock_wfree().
 
--vlad
+Commit 4c3a5bdae293 ("sctp: Don't charge for data in sndbuf
+again when transmitting packet") fixed an issue where in case
+sctp_packet_transmit() manages to queue up more than sndbuf
+bytes, sctp_wait_for_sndbuf() will never be woken up again
+unless it is interrupted by a signal. However, a still
+remaining issue is that if net.sctp.sndbuf_policy=0, that is
+accounting per socket, and one-to-many sockets are in use,
+the reclaimed write space from sctp_wfree() is 'unfairly'
+handed back on the server to the association that is the lucky
+one to be woken up again via __sctp_write_space(), while
+the remaining associations are never be woken up again
+(unless by a signal).
 
-> 
-> 
-> 
-> 
-> -----Original Message-----
-> From: Vlad Yasevich [mailto:vyasevich@gmail.com] 
-> Sent: April-17-14 11:27 AM
-> To: Butler, Peter; Daniel Borkmann
-> Cc: linux-sctp@vger.kernel.org
-> Subject: Re: Is SCTP throughput really this low compared to TCP?
-> 
-> On 04/14/2014 12:47 PM, Butler, Peter wrote:
->> Glad to be of help :o)
->>
-> 
-> Hi Peter
-> 
-> Would you be able to run this test again with the following patch on top of the problematic code.
-> 
-> Thanks
-> -vlad
-> 
-> 
-> commit c9888a220916284403c5115d6c6c7e33a00d0b55
-> Author: Vlad Yasevich <vyasevic@redhat.com>
-> Date:   Thu Apr 17 09:21:52 2014 -0400
-> 
->     sctp: Trigger window update SACK after skb has been freed.
-> 
->     Signed-off-by: Vlad Yasevich <vyasevic@redhat.com>
-> 
-> diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c index 8d198ae..b59a7c5 100644
-> --- a/net/sctp/ulpevent.c
-> +++ b/net/sctp/ulpevent.c
-> @@ -1011,7 +1011,6 @@ static void sctp_ulpevent_release_data(struct sctp_ulpevent *event)  {
->  	struct sk_buff *skb, *frag;
->  	unsigned int	len;
-> -	struct sctp_association *asoc;
-> 
->  	/* Current stack structures assume that the rcv buffer is
->  	 * per socket.   For UDP style sockets this is not true as
-> @@ -1036,11 +1035,7 @@ static void sctp_ulpevent_release_data(struct sctp_ulpevent *event)
->  	}
-> 
->  done:
-> -	asoc = event->asoc;
-> -	sctp_association_hold(asoc);
->  	sctp_ulpevent_release_owner(event);
-> -	sctp_assoc_rwnd_update(asoc, true);
-> -	sctp_association_put(asoc);
->  }
-> 
->  static void sctp_ulpevent_release_frag_data(struct sctp_ulpevent *event) @@ -1071,12 +1066,21 @@ done:
->   */
->  void sctp_ulpevent_free(struct sctp_ulpevent *event)  {
-> +	struct sctp_association *asoc = event->asoc;
-> +
->  	if (sctp_ulpevent_is_notification(event))
->  		sctp_ulpevent_release_owner(event);
->  	else
->  		sctp_ulpevent_release_data(event);
-> 
->  	kfree_skb(sctp_event2skb(event));
-> +	/* The socket is locked and the assocaiton can't go anywhere
-> +	 * since we are walking the uplqueue.  No need to hold
-> +	 * another ref on the association.  Now that the skb has been
-> +	 * freed and accounted for everywhere, see if we need to send
-> +	 * a window update SACK.
-> +	 */
-> +	sctp_assoc_rwnd_update(asoc, true);
->  }
-> 
->  /* Purge the skb lists holding ulpevents. */
-> 
+The effect disappears with net.sctp.sndbuf_policy=1, that
+is wmem accounting per association, as it guarantees a fair
+share of wmem among associations.
+
+Therefore, if we have reclaimed memory in case of per socket
+accounting, wake all related associations to a socket in a
+fair manner, that is, traverse the socket association list
+starting from the current neighbour of the association and
+issue a __sctp_write_space() to everyone until we end up
+waking ourselves. This guarantees that no association is
+preferred over another and even if more associations are
+taken into the one-to-many session, all receivers will get
+messages from the server and are not stalled forever on
+high load. This setting still leaves the advantage of per
+socket accounting in touch as an association can still use
+up global limits if unused by others.
+
+Fixes: 4eb701dfc618 ("[SCTP] Fix SCTP sendbuffer accouting.")
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Cc: Thomas Graf <tgraf@suug.ch>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: Vlad Yasevich <vyasevic@redhat.com>
+---
+ [ When net-next opens up again, we need to think how
+   we can ideally make a new list interface and simplify
+   both open-coded list traversals. ]
+
+ v1->v2:
+  - Improved comment, included note about locking
+
+ net/sctp/socket.c | 36 +++++++++++++++++++++++++++++++++++-
+ 1 file changed, 35 insertions(+), 1 deletion(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 981aaf8..96cfaba 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -6593,6 +6593,40 @@ static void __sctp_write_space(struct sctp_association *asoc)
+ 	}
+ }
+ 
++static void sctp_wake_up_waiters(struct sock *sk,
++				 struct sctp_association *asoc)
++{
++	struct sctp_association *tmp = asoc;
++
++	/* We do accounting for the sndbuf space per association,
++	 * so we only need to wake our own association.
++	 */
++	if (asoc->ep->sndbuf_policy)
++		return __sctp_write_space(asoc);
++
++	/* Accounting for the sndbuf space is per socket, so we
++	 * need to wake up others, try to be fair and in case of
++	 * other associations, let them have a go first instead
++	 * of just doing a sctp_write_space() call.
++	 *
++	 * Note that we reach sctp_wake_up_waiters() only when
++	 * associations free up queued chunks, thus we are under
++	 * lock and the list of associations on a socket is
++	 * guaranteed not to change.
++	 */
++	for (tmp = list_next_entry(tmp, asocs); 1;
++	     tmp = list_next_entry(tmp, asocs)) {
++		/* Manually skip the head element. */
++		if (&tmp->asocs = &((sctp_sk(sk))->ep->asocs))
++			continue;
++		/* Wake up association. */
++		__sctp_write_space(tmp);
++		/* We've reached the end. */
++		if (tmp = asoc)
++			break;
++	}
++}
++
+ /* Do accounting for the sndbuf space.
+  * Decrement the used sndbuf space of the corresponding association by the
+  * data size which was just transmitted(freed).
+@@ -6620,7 +6654,7 @@ static void sctp_wfree(struct sk_buff *skb)
+ 	sk_mem_uncharge(sk, skb->truesize);
+ 
+ 	sock_wfree(skb);
+-	__sctp_write_space(asoc);
++	sctp_wake_up_waiters(sk, asoc);
+ 
+ 	sctp_association_put(asoc);
+ }
+-- 
+1.7.11.7
 
