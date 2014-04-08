@@ -1,17 +1,17 @@
-From: Vlad Yasevich <vyasevic@redhat.com>
-Date: Tue, 08 Apr 2014 15:28:43 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 08 Apr 2014 15:37:59 +0000
 Subject: Re: [PATCH net v2] net: sctp: wake up all assocs if sndbuf policy is per socket
-Message-Id: <534415AB.80108@redhat.com>
+Message-Id: <20140408153759.GC26003@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1396970773-17500-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1396970773-17500-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Thomas Graf <tgraf@suug.ch>, Neil Horman <nhorman@tuxdriver.com>
+To: Daniel Borkmann <dborkman@redhat.com>
+Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Thomas Graf <tgraf@suug.ch>, Vlad Yasevich <vyasevic@redhat.com>
 
-On 04/08/2014 11:26 AM, Daniel Borkmann wrote:
+On Tue, Apr 08, 2014 at 05:26:13PM +0200, Daniel Borkmann wrote:
 > SCTP charges chunks for wmem accounting via skb->truesize in
 > sctp_set_owner_w(), and sctp_wfree() respectively as the
 > reverse operation. If a sender runs out of wmem, it needs to
@@ -59,11 +59,6 @@ On 04/08/2014 11:26 AM, Daniel Borkmann wrote:
 > Cc: Thomas Graf <tgraf@suug.ch>
 > Cc: Neil Horman <nhorman@tuxdriver.com>
 > Cc: Vlad Yasevich <vyasevic@redhat.com>
-
-Acked-by: Vlad Yasevich <vyasevic@redhat.com>
-
--vlad
-
 > ---
 >  [ When net-next opens up again, we need to think how
 >    we can ideally make a new list interface and simplify
@@ -129,5 +124,9 @@ Acked-by: Vlad Yasevich <vyasevic@redhat.com>
 >  
 >  	sctp_association_put(asoc);
 >  }
+> -- 
+> 1.7.11.7
 > 
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
