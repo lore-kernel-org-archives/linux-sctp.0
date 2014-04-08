@@ -1,140 +1,76 @@
-From: Joshua Kinard <kumba@gentoo.org>
-Date: Wed, 16 Apr 2014 21:49:21 +0000
-Subject: Re: [PATCH]: NULL pointer dereference in sctp_auth_asoc_set_default_hmac
-Message-Id: <534EFAE1.8000206@gentoo.org>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Tue, 08 Apr 2014 22:23:36 +0000
+Subject: [PATCH net] net: sctp: test if association is dead in sctp_wake_up_waiters
+Message-Id: <1396995816-25275-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <534E0C7A.9070309@gentoo.org>
-In-Reply-To: <534E0C7A.9070309@gentoo.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevic@redhat.com>
 
-On 04/16/2014 16:30, Daniel Borkmann wrote:
-> On 04/16/2014 09:56 PM, Joshua Kinard wrote:
->> On 04/16/2014 15:12, Vlad Yasevich wrote:
->>> On 04/16/2014 12:52 AM, Joshua Kinard wrote:
->>>> Hi linux-sctp,
->>>>
->>>> I stumbled into a NULL pointer dereference on amd64 and mips when rece=
-iving
->>>> an INIT chunk containing the HMAC Algorithm Parameter (0x8004) when
->>>> net.sctp.auth_enable =3D 1.
->>>>
->>>>  From some quick debugging I did, even if net.sctp.auth_enable =3D 1, =
-the if
->>>> statement on line 448 in net/sctp/auth.c::sctp_auth_init_hmacs() checks
->>>> net->sctp.auth_enable and gets '0' back, which causes ep->auth_hmacs t=
-o get
->>>> set to NULL:
->>>>
->>>> 448         if (!net->sctp.auth_enable) {
->>>> 449                 ep->auth_hmacs =3D NULL;
->>>> 450                 return 0;
->>>> 451         }
->>>>
->>>>
->>>> Later, the if statement on line 621 in
->>>> net/sctp/auth.c::sctp_auth_asoc_set_default_hmac() attempts to access
->>>> ep->auth_hmacs without first checking for NULL, which triggers the oop=
-s:
->>>>
->>>> 620                 /* If this TFM has been allocated, use this id */
->>>> 621                 if (ep->auth_hmacs[id]) {
->>>> 622                         asoc->default_hmac_id =3D id;
->>>> 623                         break;
->>>> 624                 }
->>>>
->>>>
->>>> I am not sure why net->sctp.auth_enable is initially returning '0' when
->>>> it's
->>>> set in sysctl, and verified in /proc/sys/net/sctp/auth_enable.  Adding=
- a
->>>> check for NULL on ep->auth_hmacs in the if statement stops the oops fr=
-om
->>>> happening, though I am not sure if this is the correct fix.
->>>>
->>>> Another thing I noticed, is that I cannot trigger the Oops from the
->>>> SCTP/DTLS samples on this page:
->>>> http://sctp.fh-muenster.de/dtls-samples.html
->>>>
->>>> But if I patch OpenSSH with the SCTP patch below, that does trigger it=
- on
->>>> the sshd server machine as soon as I issue 'ssh -z user@host ...'.  I'=
-ve
->>>> looked at both INIT chunks sent out by the respective programs in
->>>> Wireshark,
->>>> but nothing stands out.
->>>>
->>>> OpenSSH SCTP:
->>>> https://bugzilla.mindrot.org/show_bug.cgi?id 16
->>>>
->>>> If anyone's got other ideas to try out, let me know, thanks!
->>>>
->>>
->>>
->>> Which kernel are you running?  Does it have this commit in it?
->>> https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/=
-?id=EFb842c45e667332774196bd5a1d539d048159cc
->>>
->>>
->>> Without that, I could see how a bug might happen...
->>>
->>> -vlad
->>
->> For my MIPS machine (SGI O2), 3.14.1, built off of a linux-mips git pull.
->> For the amd64 VM, 3.14 from Gentoo's sources.  I tested reversing that p=
-atch
->> on one of my kernel trees, and it's reversible, so it's definitely inclu=
-ded.
->>
->> I haven't tried stepping through the kernel w/ kgdb yet.  The MIPS machi=
-ne
->> runs headless, and breaking into kdb to set a breakpoint, then resuming
->> kills ssh some how (still responds to pings, but won't connect), and tty=
-S0
->> gets stuck trying to talk to a remote gdb session.  The amd64 VM spikes =
-my
->> host system's CPU when it enters the debugger, so I can't run that for t=
-oo
->> long of a time.  I suppose I could enable telnet on the mips box and see=
- if
->> that's still usable after setting the breakpoint.
->>
->> If someone wants to try and reproduce it:
->> 1. Compile OpenSSH w/ the patch from their bugzilla #2016 (use the latest
->> copy I uploaded for 6.6p1), making sure to enable SCTP via --with-sctp on
->> both a client and server machine.
->> 2. Start sshd w/ at least "Transport all" in sshd_config (the SCTP patch
->> adds this config directive) or via the command line.
->> 3. On sshd machine, sysctl -w net.sctp.auth_enable=3D1.
->=20
-> Could you give it a try and do *first* the sysctl -w net.sctp.auth_enable=
-=3D1
-> on server side and after that start the sshd instance? We definitely need
-> to fix that, but it seems ep is created on server side at time of auth_en=
-able=3D0
-> and you're setting if *afterwards* to 1. Looks this needs to be made immu=
-table
-> during ep life-time.
+In function sctp_wake_up_waiters() we need to involve a test
+if the association is declared dead. If so, we don't have any
+reference to a possible sibling association anymore and need
+to invoke sctp_write_space() instead and normally walk the
+socket's associations and notify them of new wmem space. The
+reason for special casing is that, otherwise, we could run
+into the following issue:
 
-Confirmed, this fixes it.  I shut sshd down, set the sysctl flag, and then
-restarted it.  No oops.  Also, no oops if I do it in reverse.  I.e.,
-auth_enable=3D1, set to 0, without restarting sshd.  So I guess making it
-immutable at some point after the after the system is booted looks like the
-way to go (I assume so it can be set in sysctl.conf, before the network is
-brought up).
+sctp_association_free()
+`-> list_del(&asoc->asocs)         <-- poisons list pointer
+    asoc->base.dead = true
+    sctp_outq_free(&asoc->outqueue)
+    `-> __sctp_outq_teardown()
+     `-> sctp_chunk_free()
+      `-> consume_skb()
+       `-> sctp_wfree()
+        `-> sctp_wake_up_waiters() <-- dereferences poisoned pointers
+                                       if asoc->ep->sndbuf_policy=0
 
+Therefore, only walk the list in an 'optimized' way if we find
+that the current association is still active. It's also more
+clean in that context to just use list_del_init() when we call
+sctp_association_free(). Stress-testing seems fine now.
 
->> 4. On client, ssh -z <server>, and watch the bada boom.
->>
->> If there's a specific function I should go look at or pepper w/ printk()
->> statements, let me know.  Not fully familiar w/ the call chain that the =
-SCTP
->> stack uses when it receives an INIT chunk.  If it's something bad in the
->> INIT chunk sent by the ssh client machine, shouldn't be too hard to manu=
-ally
->> walk the functions and deduce how the code is interpreting things.
->>
->> --J
+Fixes: cd253f9f357d ("net: sctp: wake up all assocs if sndbuf policy is per socket")
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Cc: Vlad Yasevich <vyasevic@redhat.com>
+---
+ net/sctp/associola.c | 2 +-
+ net/sctp/socket.c    | 6 ++++++
+ 2 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 4f6d6f9..0f8fa97 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -331,7 +331,7 @@ void sctp_association_free(struct sctp_association *asoc)
+ 	 * don't bother for if this is a temporary association.
+ 	 */
+ 	if (!asoc->temp) {
+-		list_del(&asoc->asocs);
++		list_del_init(&asoc->asocs);
+ 
+ 		/* Decrement the backlog value for a TCP-style listening
+ 		 * socket.
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 5f83a6a..270d5bd 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -6604,6 +6604,12 @@ static void sctp_wake_up_waiters(struct sock *sk,
+ 	if (asoc->ep->sndbuf_policy)
+ 		return __sctp_write_space(asoc);
+ 
++	/* If association goes down and is just flushing its
++	 * outq, then just normally notify others.
++	 */
++	if (asoc->base.dead)
++		return sctp_write_space(sk);
++
+ 	/* Accounting for the sndbuf space is per socket, so we
+ 	 * need to wake up others, try to be fair and in case of
+ 	 * other associations, let them have a go first instead
+-- 
+1.7.11.7
 
