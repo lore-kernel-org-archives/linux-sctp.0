@@ -1,48 +1,117 @@
-From: David Miller <davem@davemloft.net>
-Date: Sun, 27 Apr 2014 23:54:33 +0000
-Subject: Re: [PATCH V2] sctp: reset flowi4_oif parameter on route lookup
-Message-Id: <20140427.195433.2215921916326497758.davem@davemloft.net>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Tue, 08 Apr 2014 13:33:57 +0000
+Subject: [PATCH net] net: sctp: wake up all assocs if sndbuf policy is per socket
+Message-Id: <1396964037-13245-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1398416141-18916-1-git-send-email-xufeng.zhang@windriver.com>
-In-Reply-To: <1398416141-18916-1-git-send-email-xufeng.zhang@windriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: xufeng.zhang@windriver.com
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, ja@ssi.bg, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, stable@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Thomas Graf <tgraf@suug.ch>, Neil Horman <nhorman@tuxdriver.com>
 
-From: Xufeng Zhang <xufeng.zhang@windriver.com>
-Date: Fri, 25 Apr 2014 16:55:41 +0800
+SCTP charges chunks for wmem accounting via skb->truesize in
+sctp_set_owner_w(), and sctp_wfree() respectively as the
+reverse operation. If a sender runs out of wmem, it needs to
+wait via sctp_wait_for_sndbuf(), and gets woken up by a call
+to __sctp_write_space() mostly via sctp_wfree().
 
-> commit 813b3b5db83 (ipv4: Use caller's on-stack flowi as-is
-> in output route lookups.) introduces another regression which
-> is very similar to the problem of commit e6b45241c (ipv4: reset
-> flowi parameters on route connect) wants to fix:
-> Before we call ip_route_output_key() in sctp_v4_get_dst() to
-> get a dst that matches a bind address as the source address,
-> we have already called this function previously and the flowi
-> parameters have been initialized including flowi4_oif, so when
-> we call this function again, the process in __ip_route_output_key()
-> will be different because of the setting of flowi4_oif, and we'll
-> get a networking device which corresponds to the inputted flowi4_oif
-> as the output device, this is wrong because we'll never hit this
-> place if the previously returned source address of dst match one
-> of the bound addresses.
-> 
-> To reproduce this problem, a vlan setting is enough:
->   # ifconfig eth0 up
->   # route del default
->   # vconfig add eth0 2
->   # vconfig add eth0 3
->   # ifconfig eth0.2 10.0.1.14 netmask 255.255.255.0
->   # route add default gw 10.0.1.254 dev eth0.2
->   # ifconfig eth0.3 10.0.0.14 netmask 255.255.255.0
->   # ip rule add from 10.0.0.14 table 4
->   # ip route add table 4 default via 10.0.0.254 src 10.0.0.14 dev eth0.3
->   # sctp_darn -H 10.0.0.14 -P 36422 -h 10.1.4.134 -p 36422 -s -I
-> You'll detect that all the flow are routed to eth0.2(10.0.1.254).
-> 
-> Signed-off-by: Xufeng Zhang <xufeng.zhang@windriver.com>
-> Signed-off-by: Julian Anastasov <ja@ssi.bg>
+__sctp_write_space() is being called per association. Although
+we assign sk->sk_write_space() to sctp_write_space(), which
+is then being done per socket, it is only used if send space
+is increased per socket option (SO_SNDBUF), as SOCK_USE_WRITE_QUEUE
+is set and therefore not invoked in sock_wfree().
 
-Applied and queued up for -stable.
+Commit 4c3a5bdae293 ("sctp: Don't charge for data in sndbuf
+again when transmitting packet") fixed an issue where in case
+sctp_packet_transmit() manages to queue up more than sndbuf
+bytes, sctp_wait_for_sndbuf() will never be woken up again
+unless it is interrupted by a signal. However, a still
+remaining issue is that if net.sctp.sndbuf_policy=0, that is
+accounting per socket, and one-to-many sockets are in use,
+the reclaimed write space from sctp_wfree() is 'unfairly'
+handed back on the server to the association that is the lucky
+one to be woken up again via __sctp_write_space(), while
+the remaining associations are never be woken up again
+(unless by a signal).
+
+The effect disappears with net.sctp.sndbuf_policy=1, that
+is wmem accounting per association, as it guarantees a fair
+share of wmem among associations.
+
+Therefore, if we have reclaimed memory in case of per socket
+accouting, wake all related associations to a socket in a
+fair manner, that is, traverse the socket association list
+starting from the current neighbour of the association and
+issue a __sctp_write_space() to everyone until we end up
+waking ourselves. This guarantees that no association is
+preferred over another and even if more associations are
+taken into the one-to-many session, all receivers will get
+messages from the server and are not stalled forever on
+high load. This setting still leaves the advantage of per
+socket accounting in touch as an association can still use
+up global limits if unused by others.
+
+Fixes: 4eb701dfc618 ("[SCTP] Fix SCTP sendbuffer accouting.")
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Cc: Thomas Graf <tgraf@suug.ch>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+---
+ [ When net-next opens up again, we need to think how
+   we can ideally make a new list interface and simplify
+   both open-coded list traversals. ]
+
+ net/sctp/socket.c | 31 ++++++++++++++++++++++++++++++-
+ 1 file changed, 30 insertions(+), 1 deletion(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 981aaf8..a4c8c1f 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -6593,6 +6593,35 @@ static void __sctp_write_space(struct sctp_association *asoc)
+ 	}
+ }
+ 
++static void sctp_wake_up_waiters(struct sock *sk,
++				 struct sctp_association *asoc)
++{
++	struct sctp_association *tmp = asoc;
++
++	/* We do accounting for the sndbuf space per association,
++	 * so we only need to wake our own association.
++	 */
++	if (asoc->ep->sndbuf_policy)
++		return __sctp_write_space(asoc);
++
++	/* Accounting for the sndbuf space is per socket, so we need
++	 * to wake up others, try to be fair and in case of other
++	 * associations, let them have a go first instead of just
++	 * doing a sctp_write_space() call.
++	 */
++	for (tmp = list_next_entry(tmp, asocs); 1;
++	     tmp = list_next_entry(tmp, asocs)) {
++		/* Manually skip the head element. */
++		if (&tmp->asocs = &((sctp_sk(sk))->ep->asocs))
++			continue;
++		/* Wake up association. */
++		__sctp_write_space(tmp);
++		/* We've reached the end. */
++		if (tmp = asoc)
++			break;
++	}
++}
++
+ /* Do accounting for the sndbuf space.
+  * Decrement the used sndbuf space of the corresponding association by the
+  * data size which was just transmitted(freed).
+@@ -6620,7 +6649,7 @@ static void sctp_wfree(struct sk_buff *skb)
+ 	sk_mem_uncharge(sk, skb->truesize);
+ 
+ 	sock_wfree(skb);
+-	__sctp_write_space(asoc);
++	sctp_wake_up_waiters(sk, asoc);
+ 
+ 	sctp_association_put(asoc);
+ }
+-- 
+1.7.11.7
+
