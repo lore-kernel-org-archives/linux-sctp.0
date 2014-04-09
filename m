@@ -1,80 +1,72 @@
 From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Wed, 09 Apr 2014 12:52:44 +0000
+Date: Wed, 09 Apr 2014 12:55:07 +0000
 Subject: Re: [PATCH net v2] net: sctp: test if association is dead in sctp_wake_up_waiters
-Message-Id: <5345429C.6030108@gmail.com>
+Message-Id: <5345432B.40100@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <de3e98e644dde7dcaea9a952de38eb32a2959eeb.1396999714.git.dborkman@redhat.com> <5345003B.8080601@redhat.com>
-In-Reply-To: <5345003B.8080601@redhat.com>
+References: <de3e98e644dde7dcaea9a952de38eb32a2959eeb.1396999714.git.dborkman@redhat.com>
+In-Reply-To: <de3e98e644dde7dcaea9a952de38eb32a2959eeb.1396999714.git.dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevic@redhat.com>
 
-On 04/09/2014 04:09 AM, Daniel Borkmann wrote:
-> On 04/09/2014 01:10 AM, Vlad Yasevich wrote:
->> On 04/08/2014 06:23 PM, Daniel Borkmann wrote:
->>> In function sctp_wake_up_waiters() we need to involve a test
->>> if the association is declared dead. If so, we don't have any
->>> reference to a possible sibling association anymore and need
->>> to invoke sctp_write_space() instead and normally walk the
->>> socket's associations and notify them of new wmem space. The
->>> reason for special casing is that, otherwise, we could run
->>> into the following issue:
->>>
->>> sctp_association_free()
->>> `-> list_del(&asoc->asocs)         <-- poisons list pointer
->>>      asoc->base.dead = true
->>>      sctp_outq_free(&asoc->outqueue)
->>>      `-> __sctp_outq_teardown()
->>>       `-> sctp_chunk_free()
->>>        `-> consume_skb()
->>>         `-> sctp_wfree()
->>>          `-> sctp_wake_up_waiters() <-- dereferences poisoned pointers
->>>                                         if asoc->ep->sndbuf_policy=0
->>>
->>> Therefore, only walk the list in an 'optimized' way if we find
->>> that the current association is still active. It's also more
->>> clean in that context to just use list_del_init() when we call
->>> sctp_association_free(). Stress-testing seems fine now.
->>
->> One of the reasons that we don't use list_del_init() here is that
->> we want to be able to trap on uninitialized/corrupt list manipulation,
->> just like you did.  If it wasn't there, the bug would have been hidden.
->>
->> Please keep it there.  The rest of the patch is fine.
+On 04/08/2014 07:32 PM, Daniel Borkmann wrote:
+> In function sctp_wake_up_waiters(), we need to involve a test
+> if the association is declared dead. If so, we don't have any
+> reference to a possible sibling association anymore and need
+> to invoke sctp_write_space() instead and normally walk the
+> socket's associations and notify them of new wmem space. The
+> reason for special casing is that, otherwise, we could run
+> into the following issue:
 > 
-> Test run over night and I've seen no issues.
+> sctp_association_free()
+> `-> list_del(&asoc->asocs)         <-- poisons list pointer
+>     asoc->base.dead = true
+>     sctp_outq_free(&asoc->outqueue)
+>     `-> __sctp_outq_teardown()
+>      `-> sctp_chunk_free()
+>       `-> consume_skb()
+>        `-> sctp_wfree()
+>         `-> sctp_wake_up_waiters() <-- dereferences poisoned pointers
+>                                        if asoc->ep->sndbuf_policy=0
 > 
-> But I'd still question the usage of asoc->base.dead though, I think
-> this approach of testing for asoc->base.dead is a bit racy (perhaps
-> general usage of it, imho) - at least here there's a tiny window where
-> we poison pointers before we actually declare the associaton dead.
+> Therefore, only walk the list in an 'optimized' way if we find
+> that the current association is still active. We could also use
+> list_del_init() in addition when we call sctp_association_free(),
+> but as Vlad suggests, we want to trap such bugs and thus leave
+> it poisoned as is. Stress-testing seems fine now.
 > 
-> Also, I think even if we would have deleted ourselves from the list
-> after declaring the association dead, a different CPU accessing this
-> association via sctp_wfree() might already have gotten past the
-> asoc->base.dead test while we declare it dead in the meantime.
+> Fixes: cd253f9f357d ("net: sctp: wake up all assocs if sndbuf policy is per socket")
+> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+> Cc: Vlad Yasevich <vyasevic@redhat.com>
 
-sctp_wfree is the destructor for the chunk.  Chunks are freed directly
-by association while under lock.  So, a different CPU can't be running
-sctp_wfree while another CPU is destroying the association as both
-actions happen under the same socket lock.
-
-The times we check asoc->base.dead is when we've cached an association
-pointer for later processing.  In between cache and processing, the
-association may have been freed and is simply still around due to
-reference counts.  We check asoc->base.dead under a lock, so it
-should always be safe to check and not race against sctp_association_free().
+Acked-by: Vlad Yasevich <vyasevic@redhat.com>
 
 -vlad
-
--vlad
-
+> ---
+>  v1->v2:
+>   - leave list_del()
 > 
-> Imho, this still needs to be resolved differently. I'll look further ...
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>  net/sctp/socket.c | 6 ++++++
+>  1 file changed, 6 insertions(+)
+> 
+> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+> index 5f83a6a..270d5bd 100644
+> --- a/net/sctp/socket.c
+> +++ b/net/sctp/socket.c
+> @@ -6604,6 +6604,12 @@ static void sctp_wake_up_waiters(struct sock *sk,
+>  	if (asoc->ep->sndbuf_policy)
+>  		return __sctp_write_space(asoc);
+>  
+> +	/* If association goes down and is just flushing its
+> +	 * outq, then just normally notify others.
+> +	 */
+> +	if (asoc->base.dead)
+> +		return sctp_write_space(sk);
+> +
+>  	/* Accounting for the sndbuf space is per socket, so we
+>  	 * need to wake up others, try to be fair and in case of
+>  	 * other associations, let them have a go first instead
+> 
 
