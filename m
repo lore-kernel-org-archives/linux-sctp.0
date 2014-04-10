@@ -1,20 +1,23 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Wed, 09 Apr 2014 13:34:25 +0000
-Subject: Re: [PATCH net v2] net: sctp: test if association is dead in sctp_wake_up_waiters
-Message-Id: <53454C61.70007@redhat.com>
+From: "Butler, Peter" <pbutler@sonusnet.com>
+Date: Thu, 10 Apr 2014 19:12:27 +0000
+Subject: Is SCTP throughput really this low compared to TCP?
+Message-Id: <1383F7BACEF3F141A39A7AC90F80407E31B23A@psmwsonsmbx01.sonusnet.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <de3e98e644dde7dcaea9a952de38eb32a2959eeb.1396999714.git.dborkman@redhat.com> <5345003B.8080601@redhat.com> <534521D0.7050707@redhat.com> <20140409105908.GC13412@hmsreliant.think-freely.org>
-In-Reply-To: <20140409105908.GC13412@hmsreliant.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevic@redhat.com>
+To: linux-sctp@vger.kernel.org
 
-On 04/09/2014 12:59 PM, Neil Horman wrote:
-...
-> Both to the patch, and the documentation, as its not at all clear what lock
-> protects the reading and writing of the dead variable.
+I've been testing SCTP throughput between two nodes over a 10Gb-Ethernet backplane, and am finding that at best, its throughput is about a third of that of TCP.  Is this number generally accepted for current LKSCTP performance?
 
-Agreed, I'll send a v3 with an improved commit message to
-summarize everything for future reference. Thanks everyone.
+All TCP/SCTP tests performed with 1000-byte (payload) messages, between 8-core Xeon nodes @ 2.13GHz, with no CPU throttling (always running at 100%) on otherwise idle systems.  Test applications include netperf, iperf and proprietary in-house stubs.
+
+The latency between nodes is generally 0.2 ms.  Tests were run using this low-latency scenario, as well as using traffic control (tc) to simulate networks with 10 ms, 20 ms and 50 ms latency (i.e. 20 ms, 40 ms and 100 ms RTT, respectively).
+
+In addition, each of these network scenarios were tested using various kernel socket buffer sizes, ranging from the default kernel size (100-200 kB), to several MB for send and receive buffers, and multiple send:receive ratios for these buffer sizes (generally using larger receive buffer sizes, up to a factor of about 6).
+
+Finally, tests were performed on kernels as old as 3.4.2 and as recent as 3.14.
+
+The TCP throughput is about 3x higher than that of SCTP as a best-case scenario (i.e. from an SCTP perspective), and much higher still in worst-case scenarios.
+
+
