@@ -1,7 +1,7 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Thu, 10 Apr 2014 21:00:50 +0000
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Fri, 11 Apr 2014 07:42:48 +0000
 Subject: Re: Is SCTP throughput really this low compared to TCP?
-Message-Id: <53470682.30406@gmail.com>
+Message-Id: <53479CF8.7040807@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1383F7BACEF3F141A39A7AC90F80407E31B23A@psmwsonsmbx01.sonusnet.com>
 In-Reply-To: <1383F7BACEF3F141A39A7AC90F80407E31B23A@psmwsonsmbx01.sonusnet.com>
@@ -10,23 +10,9 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On 04/10/2014 04:40 PM, Butler, Peter wrote:
-> Thanks - I will give that a try.  What about generic-receive-offload and large-receive-offload ?
+Hi Peter,
 
-They do help tcp a bit by allowing it to ack more data in one shot.
-If they are on, might make sense to turn them off.
-
-I suppose sctp could benefit from GRO a bit...
-
--vlad
-
-> 
-> -----Original Message-----
-> From: Vlad Yasevich [mailto:vyasevich@gmail.com] 
-> Sent: April-10-14 4:21 PM
-> To: Butler, Peter; linux-sctp@vger.kernel.org
-> Subject: Re: Is SCTP throughput really this low compared to TCP?
-> 
+On 04/10/2014 10:21 PM, Vlad Yasevich wrote:
 > On 04/10/2014 03:12 PM, Butler, Peter wrote:
 >> I've been testing SCTP throughput between two nodes over a 10Gb-Ethernet backplane, and am finding that at best, its throughput is about a third of that of TCP.  Is this number generally accepted for current LKSCTP performance?
 >>
@@ -39,20 +25,25 @@ I suppose sctp could benefit from GRO a bit...
 >> Finally, tests were performed on kernels as old as 3.4.2 and as recent as 3.14.
 >>
 >> The TCP throughput is about 3x higher than that of SCTP as a best-case scenario (i.e. from an SCTP perspective), and much higher still in worst-case scenarios.
->>
->>
-> 
-> To do a more of apples-to-apples comparison, you need to disable tso/gso on the sending node.
-> 
-> The reason is that even if you limit buffer sizes, tcp will still try to do tso on the transmit size, thus coalescing you 1000-byte messages into something much larger, thus utilizing your MTU much more efficiently.
-> 
-> SCTP, on the other hand, has to preserve message boundaries which results in sub-optimal mtu utilization when using 1000-byte payloads.
-> 
-> My recommendation is to use 1464 byte message for SCTP on a 1500 byte MTU nic.
-> 
+>
+> To do a more of apples-to-apples comparison, you need to disable tso/gso
+> on the sending node.
+>
+> The reason is that even if you limit buffer sizes, tcp will still try to
+> do tso on the transmit size, thus coalescing you 1000-byte messages into
+> something much larger, thus utilizing your MTU much more efficiently.
+>
+> SCTP, on the other hand, has to preserve message boundaries which
+> results in sub-optimal mtu utilization when using 1000-byte payloads.
+>
+> My recommendation is to use 1464 byte message for SCTP on a 1500 byte
+> MTU nic.
+>
 > I would be interested to see the results.  There could very well be issues.
-> 
-> -vlad
-> 
-> 
 
+Agreed.
+
+Also, what NIC are you using? It seems only Intel provides SCTP checksum
+offloading so far, i.e. ixgbe/i40e NICs.
+
+> -vlad
