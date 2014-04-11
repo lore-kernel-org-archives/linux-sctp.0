@@ -1,7 +1,7 @@
 From: "Butler, Peter" <pbutler@sonusnet.com>
-Date: Fri, 11 Apr 2014 19:24:38 +0000
+Date: Fri, 11 Apr 2014 20:14:02 +0000
 Subject: RE: Is SCTP throughput really this low compared to TCP?
-Message-Id: <1383F7BACEF3F141A39A7AC90F80407E31B632@psmwsonsmbx01.sonusnet.com>
+Message-Id: <1383F7BACEF3F141A39A7AC90F80407E31B706@psmwsonsmbx01.sonusnet.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1383F7BACEF3F141A39A7AC90F80407E31B23A@psmwsonsmbx01.sonusnet.com>
 In-Reply-To: <1383F7BACEF3F141A39A7AC90F80407E31B23A@psmwsonsmbx01.sonusnet.com>
@@ -10,69 +10,90 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-I can certainly try that patch, however see the previous email where Daniel suggested that the issue may be IPv4 only.  I have subsequently tested it (email sent out 5 minutes ago) and he was right: IPv6 is smooth, whereas IPv4 is erratic.
+I tried setting /proc/sys/net/sctp/max_burst to 0 on both nodes (both sides of the association): doing so prevented iperf from sending any traffic at all.  Only the initial 4-way handshake and subsequent heartbeat packets were transmitted.  When I kill the process (client and/or server) it reports 0 bits/s throughput.
 
-Although even when using the smooth IPv6 behaviour, the 3.4.2 throughput is still better than 3.14; for example, 2.1 Gbps in the 'no' latency case (0.2 ms RTT) on 3.4.2 but only 1.6 Gbps with 3.14.
-
-Should I try out the patch, or does the IPv4 vs IPv6 data shed new light on this?
+I then tried various different values from 1 to 16 (default was 4), they all result in about the same 2.1 Gbps throughput (for the low-latency (0.2 ms RTT) case) as originally reported.
 
 
 
 
 -----Original Message-----
 From: Vlad Yasevich [mailto:vyasevich@gmail.com] 
-Sent: April-11-14 3:21 PM
+Sent: April-11-14 2:20 PM
 To: Butler, Peter; Daniel Borkmann
 Cc: linux-sctp@vger.kernel.org
 Subject: Re: Is SCTP throughput really this low compared to TCP?
 
-On 04/11/2014 02:22 PM, Butler, Peter wrote:
-> The difference between 3.14 and 3.4.2 is staggering.  An order of
-magnitude or so.  For example, using the precisely same setup as before, whereas I get about 2.1 Gbps throughput with 3.4 2, I can only manage between 70-150 Mbps with 3.14 - a staggering difference.
->
-> Moreover, the SCTP throughput seems to 'choke' itself with 3.14, such
-that it is always trying to recover.  For example, with 3.4.2 the 2.1 Gbps throughput is quite consistent from one second to the next (as you would expect):
->
-> but with 3.14 the numbers as all over the place:
->
-> [root@Lab200slot2 ~]# iperf3 --sctp -4 -c 192.168.241.3 -V -l 1452 -t 
-> 60 iperf version 3.0.1 (10 January 2014) Linux Lab200slot2 3.14.0 #1 
-> SMP Thu Apr 3 23:18:29 EDT 2014 x86_64
-> Time: Fri, 11 Apr 2014 17:56:21 GMT
-> Connecting to host 192.168.241.3, port 5201
->       Cookie: Lab200slot2.1397238981.812898.548918
-> [  4] local 192.168.241.2 port 38616 connected to 192.168.241.3 port 
-> 5201 Starting Test: protocol: SCTP, 1 streams, 1452 byte blocks, 
-> omitting 0
-seconds, 60 second test
-> [ ID] Interval           Transfer     Bandwidth
-> [  4]   0.00-1.09   sec  20.8 MBytes   161 Mbits/sec
-> [  4]   1.09-2.13   sec  10.8 MBytes  86.8 Mbits/sec
-> [  4]   2.13-3.15   sec  3.57 MBytes  29.5 Mbits/sec
-> [  4]   3.15-4.16   sec  4.33 MBytes  35.7 Mbits/sec
-> [  4]   4.16-6.21   sec  10.4 MBytes  42.7 Mbits/sec
-> [  4]   6.21-6.21   sec  0.00 Bytes  0.00 bits/sec
-> [  4]   6.21-7.35   sec  34.6 MBytes   253 Mbits/sec
-> [  4]   7.35-11.45  sec  22.0 MBytes  45.0 Mbits/sec
-> [  4]  11.45-11.45  sec  0.00 Bytes  0.00 bits/sec [  4]  11.45-11.45  
-> sec  0.00 Bytes  0.00 bits/sec [  4]  11.45-11.45  sec  0.00 Bytes  
-> 0.00 bits/sec
-> [  4]  11.45-12.51  sec  16.0 MBytes   126 Mbits/sec
-> [  4]  12.51-13.59  sec  20.3 MBytes   158 Mbits/sec
-> [  4]  13.59-14.65  sec  13.4 MBytes   107 Mbits/sec
-> [  4]  14.65-16.79  sec  33.3 MBytes   130 Mbits/sec
-> [  4]  16.79-16.79  sec  0.00 Bytes  0.00 bits/sec [  4]  16.79-17.82  
-> sec  5.94 MBytes  48.7 Mbits/sec
-> (etc)
->
-> Note: the difference appears to be SCTP-specific, as I get exactly the
-same TCP throughput in both kernels.
->
+On 04/11/2014 11:07 AM, Butler, Peter wrote:
+> Yes indeed this is ixgbe and I do have SCTP checksum offloading 
+> enabled.  (For what it's worth, the checksum offload gives about a 20% 
+> throughput gain - but this is, of course, already included in the 
+> numbers I posted to this thread as I've been using the CRC offload all 
+> along.)
+> 
+> I re-did all the tests with TSO/GSO/LRO/GRO disabled (on both sides of the association - i.e. on both endpoint nodes), and using 1452-byte messages instead of 1000-byte messages.  With this new setup, the TCP performance drops significantly, as expected, while the SCTP performance is boosted, and the playing field is somewhat more 'level'.   (Note that I could not use 1464-byte messages as suggested by Vlad, as anything above 1452 cut the SCTP performance in half - must have hit the segmentation limit at this slightly lower message size.  MTU is 1500.)
+> 
+> So comparing "apples to apples" now, TCP only out-performs SCTP by approximately 40-70% over the various range of network latencies I tested with (RTTs of 0.2 ms, 10 ms, 20 ms, and 50 ms).  40-70% is still significant, but nowhere near the 200% better (i.e. 3 times the throughput) I was getting before.
+> 
+> Does this value (i.e. 40-70%) sound reasonable?  Is this the more-or-less accepted performance difference with the current LKSCTP implementation?
+> 
+> Also, for what it's worth, I get better SCTP throughput numbers with the older kernel (3.4.2) than with the newer kernel (3.14)...
+> 
 
-Ouch.  That is not very good behavior...  I wonder if this a side-effect of the new rwnd algorithm...
+Hi Peter
 
-In fact, I think I do see a small problem with the algorithm.
+Could you run an experiment setting max_burst to 0?
 
-Can you try this patch:
+The way the SCTP spec is written, upon every SACK, if the stack has new data to send, it will only sent max_burst*mtu bytes.  This may not always fill the current congestion window and might preclude growth.
 
-<snipped>
+Setting max_burst to 0 will disable burst limitation.  I am curious to see if this would impact throughput on a low-rtt link like yours.
+
+-vlad
+
+
+> 
+> 
+> -----Original Message-----
+> From: Daniel Borkmann [mailto:dborkman@redhat.com]
+> Sent: April-11-14 3:43 AM
+> To: Vlad Yasevich
+> Cc: Butler, Peter; linux-sctp@vger.kernel.org
+> Subject: Re: Is SCTP throughput really this low compared to TCP?
+> 
+> Hi Peter,
+> 
+> On 04/10/2014 10:21 PM, Vlad Yasevich wrote:
+>> On 04/10/2014 03:12 PM, Butler, Peter wrote:
+>>> I've been testing SCTP throughput between two nodes over a 10Gb-Ethernet backplane, and am finding that at best, its throughput is about a third of that of TCP.  Is this number generally accepted for current LKSCTP performance?
+>>>
+>>> All TCP/SCTP tests performed with 1000-byte (payload) messages, between 8-core Xeon nodes @ 2.13GHz, with no CPU throttling (always running at 100%) on otherwise idle systems.  Test applications include netperf, iperf and proprietary in-house stubs.
+>>>
+>>> The latency between nodes is generally 0.2 ms.  Tests were run using this low-latency scenario, as well as using traffic control (tc) to simulate networks with 10 ms, 20 ms and 50 ms latency (i.e. 20 ms, 40 ms and 100 ms RTT, respectively).
+>>>
+>>> In addition, each of these network scenarios were tested using various kernel socket buffer sizes, ranging from the default kernel size (100-200 kB), to several MB for send and receive buffers, and multiple send:receive ratios for these buffer sizes (generally using larger receive buffer sizes, up to a factor of about 6).
+>>>
+>>> Finally, tests were performed on kernels as old as 3.4.2 and as recent as 3.14.
+>>>
+>>> The TCP throughput is about 3x higher than that of SCTP as a best-case scenario (i.e. from an SCTP perspective), and much higher still in worst-case scenarios.
+>>
+>> To do a more of apples-to-apples comparison, you need to disable 
+>> tso/gso on the sending node.
+>>
+>> The reason is that even if you limit buffer sizes, tcp will still try 
+>> to do tso on the transmit size, thus coalescing you 1000-byte 
+>> messages into something much larger, thus utilizing your MTU much more efficiently.
+>>
+>> SCTP, on the other hand, has to preserve message boundaries which 
+>> results in sub-optimal mtu utilization when using 1000-byte payloads.
+>>
+>> My recommendation is to use 1464 byte message for SCTP on a 1500 byte 
+>> MTU nic.
+>>
+>> I would be interested to see the results.  There could very well be issues.
+> 
+> Agreed.
+> 
+> Also, what NIC are you using? It seems only Intel provides SCTP checksum offloading so far, i.e. ixgbe/i40e NICs.
+> 
+>> -vlad
+
