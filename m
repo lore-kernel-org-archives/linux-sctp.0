@@ -1,7 +1,7 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Fri, 11 Apr 2014 20:53:41 +0000
-Subject: Re: Is SCTP throughput really this low compared to TCP?
-Message-Id: <53485655.3000708@gmail.com>
+From: "Butler, Peter" <pbutler@sonusnet.com>
+Date: Fri, 11 Apr 2014 20:57:04 +0000
+Subject: RE: Is SCTP throughput really this low compared to TCP?
+Message-Id: <1383F7BACEF3F141A39A7AC90F80407E31B772@psmwsonsmbx01.sonusnet.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1383F7BACEF3F141A39A7AC90F80407E31B23A@psmwsonsmbx01.sonusnet.com>
 In-Reply-To: <1383F7BACEF3F141A39A7AC90F80407E31B23A@psmwsonsmbx01.sonusnet.com>
@@ -9,6 +9,20 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
+
+I just realized that I didn't mention which kernel I tested the max_burst values with: it was 3.4.2.  (I haven't tested it with the 3.14 kernel)
+
+So, to recap: on 3.4.2 max_burst=0 prevented any DATA traffic from being sent, and max_burst values from 1 to 16 yielded the same throughput of ~2.1 Gbps on the low latency network setup.
+
+
+
+
+-----Original Message-----
+From: Vlad Yasevich [mailto:vyasevich@gmail.com] 
+Sent: April-11-14 4:54 PM
+To: Butler, Peter; Daniel Borkmann
+Cc: linux-sctp@vger.kernel.org
+Subject: Re: Is SCTP throughput really this low compared to TCP?
 
 On 04/11/2014 04:14 PM, Butler, Peter wrote:
 > I tried setting /proc/sys/net/sctp/max_burst to 0 on both nodes (both sides of the association): doing so prevented iperf from sending any traffic at all.  Only the initial 4-way handshake and subsequent heartbeat packets were transmitted.  When I kill the process (client and/or server) it reports 0 bits/s throughput.
@@ -18,15 +32,14 @@ On 04/11/2014 04:14 PM, Butler, Peter wrote:
 > 
 
 I didn't realize that max_burst=0 only works in the 3.14 kernel.
-However, the data for burst of 16 definitely helps.  I was concerned
-that this might be a congestion window issue.
+However, the data for burst of 16 definitely helps.  I was concerned that this might be a congestion window issue.
 
 Thanks
 -vlad
 > 
 > 
 > -----Original Message-----
-> From: Vlad Yasevich [mailto:vyasevich@gmail.com] 
+> From: Vlad Yasevich [mailto:vyasevich@gmail.com]
 > Sent: April-11-14 2:20 PM
 > To: Butler, Peter; Daniel Borkmann
 > Cc: linux-sctp@vger.kernel.org
@@ -34,9 +47,10 @@ Thanks
 > 
 > On 04/11/2014 11:07 AM, Butler, Peter wrote:
 >> Yes indeed this is ixgbe and I do have SCTP checksum offloading 
->> enabled.  (For what it's worth, the checksum offload gives about a 20% 
->> throughput gain - but this is, of course, already included in the 
->> numbers I posted to this thread as I've been using the CRC offload all 
+>> enabled.  (For what it's worth, the checksum offload gives about a 
+>> 20% throughput gain - but this is, of course, already included in the 
+>> numbers I posted to this thread as I've been using the CRC offload 
+>> all
 >> along.)
 >>
 >> I re-did all the tests with TSO/GSO/LRO/GRO disabled (on both sides of the association - i.e. on both endpoint nodes), and using 1452-byte messages instead of 1000-byte messages.  With this new setup, the TCP performance drops significantly, as expected, while the SCTP performance is boosted, and the playing field is somewhat more 'level'.   (Note that I could not use 1464-byte messages as suggested by Vlad, as anything above 1452 cut the SCTP performance in half - must have hit the segmentation limit at this slightly lower message size.  MTU is 1500.)
@@ -87,15 +101,15 @@ Thanks
 >>> To do a more of apples-to-apples comparison, you need to disable 
 >>> tso/gso on the sending node.
 >>>
->>> The reason is that even if you limit buffer sizes, tcp will still try 
->>> to do tso on the transmit size, thus coalescing you 1000-byte 
+>>> The reason is that even if you limit buffer sizes, tcp will still 
+>>> try to do tso on the transmit size, thus coalescing you 1000-byte 
 >>> messages into something much larger, thus utilizing your MTU much more efficiently.
 >>>
 >>> SCTP, on the other hand, has to preserve message boundaries which 
 >>> results in sub-optimal mtu utilization when using 1000-byte payloads.
 >>>
->>> My recommendation is to use 1464 byte message for SCTP on a 1500 byte 
->>> MTU nic.
+>>> My recommendation is to use 1464 byte message for SCTP on a 1500 
+>>> byte MTU nic.
 >>>
 >>> I would be interested to see the results.  There could very well be issues.
 >>
