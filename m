@@ -1,7 +1,7 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Fri, 11 Apr 2014 07:42:48 +0000
-Subject: Re: Is SCTP throughput really this low compared to TCP?
-Message-Id: <53479CF8.7040807@redhat.com>
+From: "Butler, Peter" <pbutler@sonusnet.com>
+Date: Fri, 11 Apr 2014 15:07:04 +0000
+Subject: RE: Is SCTP throughput really this low compared to TCP?
+Message-Id: <1383F7BACEF3F141A39A7AC90F80407E31B3EF@psmwsonsmbx01.sonusnet.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1383F7BACEF3F141A39A7AC90F80407E31B23A@psmwsonsmbx01.sonusnet.com>
 In-Reply-To: <1383F7BACEF3F141A39A7AC90F80407E31B23A@psmwsonsmbx01.sonusnet.com>
@@ -9,6 +9,25 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
+
+Yes indeed this is ixgbe and I do have SCTP checksum offloading enabled.  (For what it's worth, the checksum offload gives about a 20% throughput gain - but this is, of course, already included in the numbers I posted to this thread as I've been using the CRC offload all along.)
+
+I re-did all the tests with TSO/GSO/LRO/GRO disabled (on both sides of the association - i.e. on both endpoint nodes), and using 1452-byte messages instead of 1000-byte messages.  With this new setup, the TCP performance drops significantly, as expected, while the SCTP performance is boosted, and the playing field is somewhat more 'level'.   (Note that I could not use 1464-byte messages as suggested by Vlad, as anything above 1452 cut the SCTP performance in half - must have hit the segmentation limit at this slightly lower message size.  MTU is 1500.)
+
+So comparing "apples to apples" now, TCP only out-performs SCTP by approximately 40-70% over the various range of network latencies I tested with (RTTs of 0.2 ms, 10 ms, 20 ms, and 50 ms).  40-70% is still significant, but nowhere near the 200% better (i.e. 3 times the throughput) I was getting before.
+
+Does this value (i.e. 40-70%) sound reasonable?  Is this the more-or-less accepted performance difference with the current LKSCTP implementation?
+
+Also, for what it's worth, I get better SCTP throughput numbers with the older kernel (3.4.2) than with the newer kernel (3.14)...
+
+
+
+-----Original Message-----
+From: Daniel Borkmann [mailto:dborkman@redhat.com] 
+Sent: April-11-14 3:43 AM
+To: Vlad Yasevich
+Cc: Butler, Peter; linux-sctp@vger.kernel.org
+Subject: Re: Is SCTP throughput really this low compared to TCP?
 
 Hi Peter,
 
@@ -26,24 +45,23 @@ On 04/10/2014 10:21 PM, Vlad Yasevich wrote:
 >>
 >> The TCP throughput is about 3x higher than that of SCTP as a best-case scenario (i.e. from an SCTP perspective), and much higher still in worst-case scenarios.
 >
-> To do a more of apples-to-apples comparison, you need to disable tso/gso
-> on the sending node.
+> To do a more of apples-to-apples comparison, you need to disable 
+> tso/gso on the sending node.
 >
-> The reason is that even if you limit buffer sizes, tcp will still try to
-> do tso on the transmit size, thus coalescing you 1000-byte messages into
-> something much larger, thus utilizing your MTU much more efficiently.
+> The reason is that even if you limit buffer sizes, tcp will still try 
+> to do tso on the transmit size, thus coalescing you 1000-byte messages 
+> into something much larger, thus utilizing your MTU much more efficiently.
 >
-> SCTP, on the other hand, has to preserve message boundaries which
+> SCTP, on the other hand, has to preserve message boundaries which 
 > results in sub-optimal mtu utilization when using 1000-byte payloads.
 >
-> My recommendation is to use 1464 byte message for SCTP on a 1500 byte
+> My recommendation is to use 1464 byte message for SCTP on a 1500 byte 
 > MTU nic.
 >
 > I would be interested to see the results.  There could very well be issues.
 
 Agreed.
 
-Also, what NIC are you using? It seems only Intel provides SCTP checksum
-offloading so far, i.e. ixgbe/i40e NICs.
+Also, what NIC are you using? It seems only Intel provides SCTP checksum offloading so far, i.e. ixgbe/i40e NICs.
 
 > -vlad
