@@ -1,36 +1,48 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Tue, 15 Apr 2014 07:08:37 +0000
+From: Alexander Sverdlin <alexander.sverdlin@nsn.com>
+Date: Tue, 15 Apr 2014 08:46:03 +0000
 Subject: Re: [PATCH net] Revert "net: sctp: Fix a_rwnd/rwnd management to reflect real state of the receiver'
-Message-Id: <534CDAF5.1040900@redhat.com>
+Message-Id: <534CF1CB.9090502@nsn.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1397504717-19566-1-git-send-email-dborkman@redhat.com> <534CD523.50301@nsn.com>
-In-Reply-To: <534CD523.50301@nsn.com>
+References: <1397504717-19566-1-git-send-email-dborkman@redhat.com> <20140414.164839.2032159104530481155.davem@davemloft.net>
+In-Reply-To: <20140414.164839.2032159104530481155.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Alexander Sverdlin <alexander.sverdlin@nsn.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Matija Glavinic Pecotic <matija.glavinic-pecotic.ext@nsn.com>, Vlad Yasevich <vyasevich@gmail.com>, pbutler@sonusnet.com
+To: ext David Miller <davem@davemloft.net>, dborkman@redhat.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, matija.glavinic-pecotic.ext@nsn.com, vyasevich@gmail.com
 
-Hi Matija,
+Hi!
 
-[cc'ing Peter]
-
-On 04/15/2014 08:43 AM, Alexander Sverdlin wrote:
-> On 14/04/14 21:45, ext Daniel Borkmann wrote:
+On 14/04/14 22:48, ext David Miller wrote:
 >> This reverts commit ef2820a735f7 ("net: sctp: Fix a_rwnd/rwnd management
 >> to reflect real state of the receiver's buffer") as it introduced a
 >> serious performance regression on SCTP over IPv4 and IPv6, though a not
 >> as dramatic on the latter. Measurements are on 10Gbit/s with ixgbe NICs.
->
-> Could you please share other HW details? I wonder how much CPU power one needs for such a throughput?
+>>
+>> Current state:
+>  ...
+>> With the reverted patch applied, the SCTP/IPv4 performance is back
+>> to normal on latest upstream for IPv4 and IPv6 and has same throughput
+>> as 3.4.2 test kernel, steady and interval reports are smooth again.
+>>
+>> Fixes: ef2820a735f7 ("net: sctp: Fix a_rwnd/rwnd management to reflect real state of the receiver's buffer")
+>> Reported-by: Peter Butler <pbutler@sonusnet.com>
+>> Reported-by: Dongsheng Song <dongsheng.song@gmail.com>
+>> Reported-by: Fengguang Wu <fengguang.wu@intel.com>
+>> Tested-by: Peter Butler <pbutler@sonusnet.com>
+>> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+> 
+> Applied and queued up for -stable.
 
-If you would like to get to know the exact specifics from the bug report,
-resp. numbers from the commit message, I refer you to Peter's setup, i.e.
-he used ixgbe NICs as these are one of the few with SCTP checksum
-offloading available.
+Should not this be fixed actually in SCTP congestion control part?
+RWND calculation is actually not responsible for congestion control.
+And this revert actually introduces serious bug again, which leads to SCTP being stuck completely in particular 
+multi-homed use-cases (refer to http://www.spinics.net/lists/linux-sctp/msg02516.html).
 
-Thanks,
+We are not arguing against another version of the patch, but:
+- you are choosing speed instead of stability here
+- you are masking the problem reverting the code, which is not responsible for the problem observed
 
-Daniel
-
-  [1] http://www.spinics.net/lists/linux-sctp/msg03290.html
+-- 
+Best regards,
+Alexander Sverdlin.
