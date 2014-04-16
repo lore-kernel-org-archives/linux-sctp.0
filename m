@@ -1,7 +1,7 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Wed, 16 Apr 2014 20:29:05 +0000
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Wed, 16 Apr 2014 20:30:33 +0000
 Subject: Re: [PATCH]: NULL pointer dereference in sctp_auth_asoc_set_default_hmac
-Message-Id: <534EE811.7090507@gmail.com>
+Message-Id: <534EE869.2010009@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <534E0C7A.9070309@gentoo.org>
 In-Reply-To: <534E0C7A.9070309@gentoo.org>
@@ -10,7 +10,7 @@ Content-Type: text/plain; charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
 To: linux-sctp@vger.kernel.org
 
-On 04/16/2014 03:56 PM, Joshua Kinard wrote:
+On 04/16/2014 09:56 PM, Joshua Kinard wrote:
 > On 04/16/2014 15:12, Vlad Yasevich wrote:
 >> On 04/16/2014 12:52 AM, Joshua Kinard wrote:
 >>> Hi linux-sctp,
@@ -20,8 +20,8 @@ ving
 >>> an INIT chunk containing the HMAC Algorithm Parameter (0x8004) when
 >>> net.sctp.auth_enable =3D 1.
 >>>
->>> From some quick debugging I did, even if net.sctp.auth_enable =3D 1, th=
-e if
+>>>  From some quick debugging I did, even if net.sctp.auth_enable =3D 1, t=
+he if
 >>> statement on line 448 in net/sctp/auth.c::sctp_auth_init_hmacs() checks
 >>> net->sctp.auth_enable and gets '0' back, which causes ep->auth_hmacs to=
  get
@@ -75,23 +75,13 @@ id=EFb842c45e667332774196bd5a1d539d048159cc
 >> Without that, I could see how a bug might happen...
 >>
 >> -vlad
->=20
+>
 > For my MIPS machine (SGI O2), 3.14.1, built off of a linux-mips git pull.
 > For the amd64 VM, 3.14 from Gentoo's sources.  I tested reversing that pa=
 tch
 > on one of my kernel trees, and it's reversible, so it's definitely includ=
 ed.
->=20
-
-Dan and I talked and the problem is that you are starting sshd fist and
-then changing auth capability.  Restart sshd after you change the sysctl
-and you should be OK.
-
-I'll try to audit the paths and cook up a patch that plugs this hole.
-
-Thanks
--vlad
-
+>
 > I haven't tried stepping through the kernel w/ kgdb yet.  The MIPS machine
 > runs headless, and breaking into kdb to set a breakpoint, then resuming
 > kills ssh some how (still responds to pings, but won't connect), and ttyS0
@@ -100,7 +90,7 @@ Thanks
 > long of a time.  I suppose I could enable telnet on the mips box and see =
 if
 > that's still usable after setting the breakpoint.
->=20
+>
 > If someone wants to try and reproduce it:
 > 1. Compile OpenSSH w/ the patch from their bugzilla #2016 (use the latest
 > copy I uploaded for 6.6p1), making sure to enable SCTP via --with-sctp on
@@ -108,8 +98,18 @@ if
 > 2. Start sshd w/ at least "Transport all" in sshd_config (the SCTP patch
 > adds this config directive) or via the command line.
 > 3. On sshd machine, sysctl -w net.sctp.auth_enable=3D1.
+
+Could you give it a try and do *first* the sysctl -w net.sctp.auth_enable=
+=3D1
+on server side and after that start the sshd instance? We definitely need
+to fix that, but it seems ep is created on server side at time of auth_enab=
+le=3D0
+and you're setting if *afterwards* to 1. Looks this needs to be made immuta=
+ble
+during ep life-time.
+
 > 4. On client, ssh -z <server>, and watch the bada boom.
->=20
+>
 > If there's a specific function I should go look at or pepper w/ printk()
 > statements, let me know.  Not fully familiar w/ the call chain that the S=
 CTP
@@ -117,7 +117,10 @@ CTP
 > INIT chunk sent by the ssh client machine, shouldn't be too hard to manua=
 lly
 > walk the functions and deduce how the code is interpreting things.
->=20
+>
 > --J
->=20
-
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
