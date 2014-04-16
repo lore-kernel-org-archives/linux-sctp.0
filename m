@@ -1,44 +1,26 @@
-From: "Butler, Peter" <pbutler@sonusnet.com>
-Date: Tue, 15 Apr 2014 14:27:26 +0000
-Subject: RE: [PATCH net] Revert "net: sctp: Fix a_rwnd/rwnd management to reflect real state of the receiver'
-Message-Id: <1383F7BACEF3F141A39A7AC90F80407E31E525@psmwsonsmbx01.sonusnet.com>
+From: Matija Glavinic Pecotic <matija.glavinic-pecotic.ext@nsn.com>
+Date: Wed, 16 Apr 2014 06:57:24 +0000
+Subject: Re: [PATCH net] Revert "net: sctp: Fix a_rwnd/rwnd management to reflect real state of the receiver'
+Message-Id: <534E29D4.60100@nsn.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1397504717-19566-1-git-send-email-dborkman@redhat.com>
- <534CD523.50301@nsn.com>
-In-Reply-To: <534CD523.50301@nsn.com>
+References: <1397504717-19566-1-git-send-email-dborkman@redhat.com> <534C3DC2.9070604@gmail.com>
+In-Reply-To: <534C3DC2.9070604@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Alexander Sverdlin <alexander.sverdlin@nsn.com>, ext Daniel Borkmann <dborkman@redhat.com>, "davem@davemloft.net" <davem@davemloft.net>
-Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Matija Glavinic Pecotic <matija.glavinic-pecotic.ext@nsn.com>, Vlad Yasevich <vyasevich@gmail.com>
+To: ext Vlad Yasevich <vyasevich@gmail.com>
+Cc: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Alexander Sverdlin <alexander.sverdlin@nsn.com>
 
-SSdtIG5vdCBzdXJlIGlmIHRoZSBmb2xsb3dpbmcgcHJvY2Vzc2luZyBwb3dlciBpcyBhY3R1YWxs
-eSByZXF1aXJlZCB0byByZXByb2R1Y2UgdGhlIHByb2JsZW0sIGJ1dCB0aGlzIGlzIG15IHNldHVw
-Og0KDQotIDIgc2luZ2xlLWJvYXJkIGNvbXB1dGVycyAoU0JDcyksIGVhY2ggYSBYZW9uIEM1NTI4
-IEAgMi4xM0dIeiAoNC1jb3JlIHdpdGggSFQgPSA4IGNvcmVzIGVhY2gpDQotIDEwR2IgSW50ZWwg
-ODI1OTlFQiBOSUNzIChJWEdCRSk7IGVhY2ggU0JDIGhhcyAyIG9mIHRoZXNlIGJ1dCBvbmx5IDEg
-d2FzIHVzZWQgZm9yIHRoaXMgU0NUUCB0ZXN0aW5nIChpLmUuIE5PVCBtdWx0aS1ob21lZCkNCi0g
-MTBHYiBiYWNrcGxhbmUsIGFwcHJveC4gMC4yIG1zIFJUVCAoaG93ZXZlciBJIGFsc28gdGVzdGVk
-IHRoaXMgd2l0aCBSVFQgPSAxMCBtcywgMjAgbXMsIDUwIG1zIGFuZCBpdCBpcyByZXByb2R1Y2li
-bGUgaW4gYWxsIHNjZW5hcmlvcykNCi0gc2VuZCBidWZmZXIgc2l6ZSA9IDEyMDAwMDAsIHJlY2Vp
-dmUgYnVmZmVyIHNpemUgPSAzMDAwMDAwDQoNCg0KDQoNCi0tLS0tT3JpZ2luYWwgTWVzc2FnZS0t
-LS0tDQpGcm9tOiBsaW51eC1zY3RwLW93bmVyQHZnZXIua2VybmVsLm9yZyBbbWFpbHRvOmxpbnV4
-LXNjdHAtb3duZXJAdmdlci5rZXJuZWwub3JnXSBPbiBCZWhhbGYgT2YgQWxleGFuZGVyIFN2ZXJk
-bGluDQpTZW50OiBBcHJpbC0xNS0xNCAyOjQ0IEFNDQpUbzogZXh0IERhbmllbCBCb3JrbWFubjsg
-ZGF2ZW1AZGF2ZW1sb2Z0Lm5ldA0KQ2M6IG5ldGRldkB2Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LXNj
-dHBAdmdlci5rZXJuZWwub3JnOyBNYXRpamEgR2xhdmluaWMgUGVjb3RpYzsgVmxhZCBZYXNldmlj
-aA0KU3ViamVjdDogUmU6IFtQQVRDSCBuZXRdIFJldmVydCAibmV0OiBzY3RwOiBGaXggYV9yd25k
-L3J3bmQgbWFuYWdlbWVudCB0byByZWZsZWN0IHJlYWwgc3RhdGUgb2YgdGhlIHJlY2VpdmVyJ3Mg
-YnVmZmVyIg0KDQpIZWxsbyBEYW5pZWwsDQoNCk9uIDE0LzA0LzE0IDIxOjQ1LCBleHQgRGFuaWVs
-IEJvcmttYW5uIHdyb3RlOg0KPiBUaGlzIHJldmVydHMgY29tbWl0IGVmMjgyMGE3MzVmNyAoIm5l
-dDogc2N0cDogRml4IGFfcnduZC9yd25kIA0KPiBtYW5hZ2VtZW50IHRvIHJlZmxlY3QgcmVhbCBz
-dGF0ZSBvZiB0aGUgcmVjZWl2ZXIncyBidWZmZXIiKSBhcyBpdCANCj4gaW50cm9kdWNlZCBhIHNl
-cmlvdXMgcGVyZm9ybWFuY2UgcmVncmVzc2lvbiBvbiBTQ1RQIG92ZXIgSVB2NCBhbmQgDQo+IElQ
-djYsIHRob3VnaCBhIG5vdCBhcyBkcmFtYXRpYyBvbiB0aGUgbGF0dGVyLiBNZWFzdXJlbWVudHMg
-YXJlIG9uIDEwR2JpdC9zIHdpdGggaXhnYmUgTklDcy4NCg0KQ291bGQgeW91IHBsZWFzZSBzaGFy
-ZSBvdGhlciBIVyBkZXRhaWxzPyBJIHdvbmRlciBob3cgbXVjaCBDUFUgcG93ZXIgb25lIG5lZWRz
-IGZvciBzdWNoIGEgdGhyb3VnaHB1dD8NCg0KLS0NCkJlc3QgcmVnYXJkcywNCkFsZXhhbmRlciBT
-dmVyZGxpbi4NCi0tDQpUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGlu
-ZSAidW5zdWJzY3JpYmUgbGludXgtc2N0cCIgaW4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1h
-am9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcgTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3Zn
-ZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo
+Hello Vlad,
+
+On 04/14/2014 09:57 PM, ext Vlad Yasevich wrote:
+> The base approach is sound.  The idea is to calculate rwnd based
+> on receiver buffer available.  The algorithm chosen however, is
+> gives a much higher preference to small data and penalizes large
+> data transfers.  We need to figure our something else here..
+
+I don't follow you here. Could you please explain what do you see as penalty?
+
+Thanks,
+
+Matija
