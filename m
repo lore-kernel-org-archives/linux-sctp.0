@@ -1,63 +1,94 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 25 Apr 2014 18:40:40 +0000
-Subject: Re: [PATCH v3 net] net: sctp: Don't transition to PF state when transport has exhausted 'Path.Max.Re
-Message-Id: <20140425184040.GI14074@hmsreliant.think-freely.org>
+From: Joshua Kinard <kumba@gentoo.org>
+Date: Wed, 16 Apr 2014 04:52:10 +0000
+Subject: [PATCH]: NULL pointer dereference in sctp_auth_asoc_set_default_hmac
+Message-Id: <534E0C7A.9070309@gentoo.org>
+MIME-Version: 1
+Content-Type: multipart/mixed; boundary="------------010509070703060909060800"
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1398445570-11429-1-git-send-email-kheiss@gmail.com>
-In-Reply-To: <1398445570-11429-1-git-send-email-kheiss@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+To: linux-sctp@vger.kernel.org
+
+This is a multi-part message in MIME format.
+--------------010509070703060909060800
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: Karl Heiss <kheiss@gmail.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, davem@davemloft.net, vyasevich@gmail.com
 
-On Fri, Apr 25, 2014 at 01:06:10PM -0400, Karl Heiss wrote:
-> Don't transition to the PF state on every strike after 'Path.Max.Retrans'.
-> Per draft-ietf-tsvwg-sctp-failover-03 Section 5.1.6:
-> 
->    Additional (PMR - PFMR) consecutive timeouts on a PF destination
->    confirm the path failure, upon which the destination transitions to the
->    Inactive state.  As described in [RFC4960], the sender (i) SHOULD notify
->    ULP about this state transition, and (ii) transmit heartbeats to the
->    Inactive destination at a lower frequency as described in Section 8.3 of
->    [RFC4960].
-> 
-> This also prevents sending SCTP_ADDR_UNREACHABLE to the user as the state
-> bounces between SCTP_INACTIVE and SCTP_PF for each subsequent strike.
-> 
-> Signed-off-by: Karl Heiss <kheiss@gmail.com>
-> ---
-> Changes in v2:
->   - Flesh out commit message
-> 
-> Changes in v3:
->   - Compare transport state instead of pathmaxrxt
-> 
->  net/sctp/sm_sideeffect.c |    5 +++--
->  1 files changed, 3 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-> index 5d6883f..7805623 100644
-> --- a/net/sctp/sm_sideeffect.c
-> +++ b/net/sctp/sm_sideeffect.c
-> @@ -496,11 +496,12 @@ static void sctp_do_8_2_transport_strike(sctp_cmd_seq_t *commands,
->  
->  	/* If the transport error count is greater than the pf_retrans
->  	 * threshold, and less than pathmaxrtx, and if the current state
-> -	 * is not SCTP_UNCONFIRMED, then mark this transport as Partially
-> -	 * Failed, see SCTP Quick Failover Draft, section 5.1
-> +	 * is not SCTP_UNCONFIRMED or SCTP_INACTIVE, then mark this transport
-> +	 * as Partially Failed, see SCTP Quick Failover Draft, section 5.1
->  	 */
->  	if ((transport->state != SCTP_PF) &&
->  	   (transport->state != SCTP_UNCONFIRMED) &&
-> +	   (transport->state != SCTP_INACTIVE) &&
->  	   (asoc->pf_retrans < transport->pathmaxrxt) &&
->  	   (transport->error_count > asoc->pf_retrans)) {
->  
-> -- 
-> 1.7.1
-> 
-> 
+Hi linux-sctp,
 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+I stumbled into a NULL pointer dereference on amd64 and mips when receiving
+an INIT chunk containing the HMAC Algorithm Parameter (0x8004) when
+net.sctp.auth_enable = 1.
+
+From some quick debugging I did, even if net.sctp.auth_enable = 1, the if
+statement on line 448 in net/sctp/auth.c::sctp_auth_init_hmacs() checks
+net->sctp.auth_enable and gets '0' back, which causes ep->auth_hmacs to get
+set to NULL:
+
+448         if (!net->sctp.auth_enable) {
+449                 ep->auth_hmacs = NULL;
+450                 return 0;
+451         }
+
+
+Later, the if statement on line 621 in
+net/sctp/auth.c::sctp_auth_asoc_set_default_hmac() attempts to access
+ep->auth_hmacs without first checking for NULL, which triggers the oops:
+
+620                 /* If this TFM has been allocated, use this id */
+621                 if (ep->auth_hmacs[id]) {
+622                         asoc->default_hmac_id = id;
+623                         break;
+624                 }
+
+
+I am not sure why net->sctp.auth_enable is initially returning '0' when it's
+set in sysctl, and verified in /proc/sys/net/sctp/auth_enable.  Adding a
+check for NULL on ep->auth_hmacs in the if statement stops the oops from
+happening, though I am not sure if this is the correct fix.
+
+Another thing I noticed, is that I cannot trigger the Oops from the
+SCTP/DTLS samples on this page:
+http://sctp.fh-muenster.de/dtls-samples.html
+
+But if I patch OpenSSH with the SCTP patch below, that does trigger it on
+the sshd server machine as soon as I issue 'ssh -z user@host ...'.  I've
+looked at both INIT chunks sent out by the respective programs in Wireshark,
+but nothing stands out.
+
+OpenSSH SCTP:
+https://bugzilla.mindrot.org/show_bug.cgi?id=2016
+
+If anyone's got other ideas to try out, let me know, thanks!
+
+-- 
+Joshua Kinard
+Gentoo/MIPS
+kumba@gentoo.org
+4096R/D25D95E3 2011-03-28
+
+"The past tempts us, the present confuses us, the future frightens us.  And
+our lives slip away, moment by moment, lost in that vast, terrible in-between."
+
+--Emperor Turhan, Centauri Republic
+
+--------------010509070703060909060800
+Content-Type: text/x-patch;
+ name="net_sctp_auth-sctp_auth_asoc_set_default_hmac-NULL.diff"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename*0="net_sctp_auth-sctp_auth_asoc_set_default_hmac-NULL.diff"
+
+diff --git a/net/sctp/auth.c b/net/sctp/auth.c
+index 683c7d1..2244508 100644
+--- a/net/sctp/auth.c
++++ b/net/sctp/auth.c
+@@ -618,7 +618,7 @@ void sctp_auth_asoc_set_default_hmac(struct sctp_association *asoc,
+ 			continue;
+ 
+ 		/* If this TFM has been allocated, use this id */
+-		if (ep->auth_hmacs[id]) {
++		if (ep->auth_hmacs && ep->auth_hmacs[id]) {
+ 			asoc->default_hmac_id = id;
+ 			break;
+ 		}
+
+--------------010509070703060909060800--
