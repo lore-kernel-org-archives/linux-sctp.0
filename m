@@ -1,38 +1,74 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 08 Apr 2014 17:19:03 +0000
-Subject: Re: [PATCH net] net: sctp: wake up all assocs if sndbuf policy is per socket
-Message-Id: <20140408.131903.479985343376816007.davem@davemloft.net>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Thu, 17 Apr 2014 19:26:51 +0000
+Subject: [PATCH] sctp: add support for busy polling to sctp protocol
+Message-Id: <1397762811-2989-1-git-send-email-nhorman@tuxdriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1396964037-13245-1-git-send-email-dborkman@redhat.com>
-	<20140408.125032.810691136561418545.davem@davemloft.net>
-	<53442E4A.2090004@gmail.com>
-In-Reply-To: <53442E4A.2090004@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vyasevich@gmail.com
-Cc: dborkman@redhat.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, tgraf@suug.ch, nhorman@tuxdriver.com
+To: linux-sctp@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, "David S. Miller" <davem@davemloft.net>, Daniel Borkmann <dborkman@redhat.com>, netdev@vger.kernel.org
 
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Tue, 08 Apr 2014 13:13:46 -0400
+The busy polling socket option adds support for sockets to busy wait on data
+arriving on the napi queue from which they have most recently received a frame.
+Currently only tcp and udp support this feature, but theres no reason sctp can't
+do so as well.  Add it in so appliations can take advantage of it
 
-> On 04/08/2014 12:50 PM, David Miller wrote:
->> From: Daniel Borkmann <dborkman@redhat.com>
->> Date: Tue,  8 Apr 2014 15:33:57 +0200
->> 
->>>  [ When net-next opens up again, we need to think how
->>>    we can ideally make a new list interface and simplify
->>>    both open-coded list traversals. ]
->> 
->> I don't think you need a new list interface.
->> 
->> Instead, just have a back pointer to the sctp_sk() from the asoc, then
->> you can do normal list traversals over the asocs.
-> 
-> We already have that, but doing so will give preference to first
-> association and possibly starving the last one.
-> 
-> This starvation avoidance is the whole point of having a per-association
-> accounting.
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+CC: Vlad Yasevich <vyasevich@gmail.com>
+CC: "David S. Miller" <davem@davemloft.net>
+CC: Daniel Borkmann <dborkman@redhat.com>
+CC: netdev@vger.kernel.org
+---
+ net/sctp/socket.c   | 5 +++++
+ net/sctp/ulpqueue.c | 4 ++++
+ 2 files changed, 9 insertions(+)
 
-I see, thanks for explaining.
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 981aaf8..9788e07 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -71,6 +71,7 @@
+ #include <net/route.h>
+ #include <net/ipv6.h>
+ #include <net/inet_common.h>
++#include <net/busy_poll.h>
+ 
+ #include <linux/socket.h> /* for sa_family_t */
+ #include <linux/export.h>
+@@ -6553,6 +6554,10 @@ static struct sk_buff *sctp_skb_recv_datagram(struct sock *sk, int flags,
+ 		if (sk->sk_shutdown & RCV_SHUTDOWN)
+ 			break;
+ 
++		if (sk_can_busy_loop(sk) &&
++		    sk_busy_loop(sk, noblock))
++			continue;
++
+ 		/* User doesn't want to wait.  */
+ 		error = -EAGAIN;
+ 		if (!timeo)
+diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
+index 5dc9411..a4df012 100644
+--- a/net/sctp/ulpqueue.c
++++ b/net/sctp/ulpqueue.c
+@@ -38,6 +38,7 @@
+ #include <linux/types.h>
+ #include <linux/skbuff.h>
+ #include <net/sock.h>
++#include <net/busy_poll.h>
+ #include <net/sctp/structs.h>
+ #include <net/sctp/sctp.h>
+ #include <net/sctp/sm.h>
+@@ -204,6 +205,9 @@ int sctp_ulpq_tail_event(struct sctp_ulpq *ulpq, struct sctp_ulpevent *event)
+ 	if (sock_flag(sk, SOCK_DEAD) || (sk->sk_shutdown & RCV_SHUTDOWN))
+ 		goto out_free;
+ 
++	if (!sctp_ulpevent_is_notification(event))
++		sk_mark_napi_id(sk, skb);
++
+ 	/* Check if the user wishes to receive this event.  */
+ 	if (!sctp_ulpevent_is_enabled(event, &sctp_sk(sk)->subscribe))
+ 		goto out_free;
+-- 
+1.8.3.1
+
