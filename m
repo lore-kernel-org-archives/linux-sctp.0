@@ -1,7 +1,7 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Thu, 17 Apr 2014 15:26:45 +0000
-Subject: Re: Is SCTP throughput really this low compared to TCP?
-Message-Id: <534FF2B5.5010207@gmail.com>
+From: "Butler, Peter" <pbutler@sonusnet.com>
+Date: Thu, 17 Apr 2014 16:15:31 +0000
+Subject: RE: Is SCTP throughput really this low compared to TCP?
+Message-Id: <1383F7BACEF3F141A39A7AC90F80407E31EFBC@psmwsonsmbx01.sonusnet.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1383F7BACEF3F141A39A7AC90F80407E31B23A@psmwsonsmbx01.sonusnet.com>
 In-Reply-To: <1383F7BACEF3F141A39A7AC90F80407E31B23A@psmwsonsmbx01.sonusnet.com>
@@ -9,6 +9,15 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
+
+I should be able to, but won't be able to run the test until Tuesday April 22...
+
+________________________________________
+From: Vlad Yasevich [vyasevich@gmail.com]
+Sent: Thursday, April 17, 2014 11:26 AM
+To: Butler, Peter; Daniel Borkmann
+Cc: linux-sctp@vger.kernel.org
+Subject: Re: Is SCTP throughput really this low compared to TCP?
 
 On 04/14/2014 12:47 PM, Butler, Peter wrote:
 > Glad to be of help :o)
@@ -38,22 +47,22 @@ index 8d198ae..b59a7c5 100644
 @@ -1011,7 +1011,6 @@ static void sctp_ulpevent_release_data(struct
 sctp_ulpevent *event)
  {
- 	struct sk_buff *skb, *frag;
- 	unsigned int	len;
--	struct sctp_association *asoc;
+        struct sk_buff *skb, *frag;
+        unsigned int    len;
+-       struct sctp_association *asoc;
 
- 	/* Current stack structures assume that the rcv buffer is
- 	 * per socket.   For UDP style sockets this is not true as
+        /* Current stack structures assume that the rcv buffer is
+         * per socket.   For UDP style sockets this is not true as
 @@ -1036,11 +1035,7 @@ static void sctp_ulpevent_release_data(struct
 sctp_ulpevent *event)
- 	}
+        }
 
  done:
--	asoc = event->asoc;
--	sctp_association_hold(asoc);
- 	sctp_ulpevent_release_owner(event);
--	sctp_assoc_rwnd_update(asoc, true);
--	sctp_association_put(asoc);
+-       asoc = event->asoc;
+-       sctp_association_hold(asoc);
+        sctp_ulpevent_release_owner(event);
+-       sctp_assoc_rwnd_update(asoc, true);
+-       sctp_association_put(asoc);
  }
 
  static void sctp_ulpevent_release_frag_data(struct sctp_ulpevent *event)
@@ -61,21 +70,21 @@ sctp_ulpevent *event)
   */
  void sctp_ulpevent_free(struct sctp_ulpevent *event)
  {
-+	struct sctp_association *asoc = event->asoc;
++       struct sctp_association *asoc = event->asoc;
 +
- 	if (sctp_ulpevent_is_notification(event))
- 		sctp_ulpevent_release_owner(event);
- 	else
- 		sctp_ulpevent_release_data(event);
+        if (sctp_ulpevent_is_notification(event))
+                sctp_ulpevent_release_owner(event);
+        else
+                sctp_ulpevent_release_data(event);
 
- 	kfree_skb(sctp_event2skb(event));
-+	/* The socket is locked and the assocaiton can't go anywhere
-+	 * since we are walking the uplqueue.  No need to hold
-+	 * another ref on the association.  Now that the skb has been
-+	 * freed and accounted for everywhere, see if we need to send
-+	 * a window update SACK.
-+	 */
-+	sctp_assoc_rwnd_update(asoc, true);
+        kfree_skb(sctp_event2skb(event));
++       /* The socket is locked and the assocaiton can't go anywhere
++        * since we are walking the uplqueue.  No need to hold
++        * another ref on the association.  Now that the skb has been
++        * freed and accounted for everywhere, see if we need to send
++        * a window update SACK.
++        */
++       sctp_assoc_rwnd_update(asoc, true);
  }
 
  /* Purge the skb lists holding ulpevents. */
