@@ -1,7 +1,7 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Mon, 14 Apr 2014 19:46:47 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Thu, 17 Apr 2014 15:26:45 +0000
 Subject: Re: Is SCTP throughput really this low compared to TCP?
-Message-Id: <534C3B27.3070706@redhat.com>
+Message-Id: <534FF2B5.5010207@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1383F7BACEF3F141A39A7AC90F80407E31B23A@psmwsonsmbx01.sonusnet.com>
 In-Reply-To: <1383F7BACEF3F141A39A7AC90F80407E31B23A@psmwsonsmbx01.sonusnet.com>
@@ -10,18 +10,72 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On 04/14/2014 08:54 PM, Matija Glavinic Pecotic wrote:
-> Hello,
+On 04/14/2014 12:47 PM, Butler, Peter wrote:
+> Glad to be of help :o)
 >
-> On 04/14/2014 06:45 PM, ext Daniel Borkmann wrote:
->> Ok, thanks! I'll send out a revert for now today as this is otherwise
->> catastrophic ... when that is done, we/the developer from NSN can still
->> think about his patch and how to solve that differently.
->
-> Thanks from my side as well, I will for sure look into it. Congestion control seems to be completely broken. Seems stack doesnt like the new way how rwnd is calculated. Dependency to ipv4 is also interesting.
->
-> I also wasnt able to reproduce with my laptop/desktop, it seems some higher processing power is also needed to hit the case.
 
-Posted here, Peter: http://patchwork.ozlabs.org/patch/339046/
+Hi Peter
 
-Thanks for reporting and testing!
+Would you be able to run this test again with the following patch
+on top of the problematic code.
+
+Thanks
+-vlad
+
+
+commit c9888a220916284403c5115d6c6c7e33a00d0b55
+Author: Vlad Yasevich <vyasevic@redhat.com>
+Date:   Thu Apr 17 09:21:52 2014 -0400
+
+    sctp: Trigger window update SACK after skb has been freed.
+
+    Signed-off-by: Vlad Yasevich <vyasevic@redhat.com>
+
+diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
+index 8d198ae..b59a7c5 100644
+--- a/net/sctp/ulpevent.c
++++ b/net/sctp/ulpevent.c
+@@ -1011,7 +1011,6 @@ static void sctp_ulpevent_release_data(struct
+sctp_ulpevent *event)
+ {
+ 	struct sk_buff *skb, *frag;
+ 	unsigned int	len;
+-	struct sctp_association *asoc;
+
+ 	/* Current stack structures assume that the rcv buffer is
+ 	 * per socket.   For UDP style sockets this is not true as
+@@ -1036,11 +1035,7 @@ static void sctp_ulpevent_release_data(struct
+sctp_ulpevent *event)
+ 	}
+
+ done:
+-	asoc = event->asoc;
+-	sctp_association_hold(asoc);
+ 	sctp_ulpevent_release_owner(event);
+-	sctp_assoc_rwnd_update(asoc, true);
+-	sctp_association_put(asoc);
+ }
+
+ static void sctp_ulpevent_release_frag_data(struct sctp_ulpevent *event)
+@@ -1071,12 +1066,21 @@ done:
+  */
+ void sctp_ulpevent_free(struct sctp_ulpevent *event)
+ {
++	struct sctp_association *asoc = event->asoc;
++
+ 	if (sctp_ulpevent_is_notification(event))
+ 		sctp_ulpevent_release_owner(event);
+ 	else
+ 		sctp_ulpevent_release_data(event);
+
+ 	kfree_skb(sctp_event2skb(event));
++	/* The socket is locked and the assocaiton can't go anywhere
++	 * since we are walking the uplqueue.  No need to hold
++	 * another ref on the association.  Now that the skb has been
++	 * freed and accounted for everywhere, see if we need to send
++	 * a window update SACK.
++	 */
++	sctp_assoc_rwnd_update(asoc, true);
+ }
+
+ /* Purge the skb lists holding ulpevents. */
