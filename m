@@ -1,17 +1,17 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 17 Apr 2014 20:44:26 +0000
+From: Joshua Kinard <kumba@gentoo.org>
+Date: Fri, 18 Apr 2014 01:54:10 +0000
 Subject: Re: [PATCH net] net: sctp: cache auth_enable per endpoint
-Message-Id: <20140417204426.GK13715@hmsreliant.think-freely.org>
+Message-Id: <535085C2.8040409@gentoo.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1397748410-1983-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1397748410-1983-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: davem@davemloft.net, kumba@gentoo.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevic@redhat.com>
+To: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevic@redhat.com>
 
-On Thu, Apr 17, 2014 at 05:26:50PM +0200, Daniel Borkmann wrote:
+On 04/17/2014 11:26, Daniel Borkmann wrote:
 > From: Vlad Yasevich <vyasevic@redhat.com>
 > 
 > Currently, it is possible to create an SCTP socket, then switch
@@ -69,6 +69,8 @@ On Thu, Apr 17, 2014 at 05:26:50PM +0200, Daniel Borkmann wrote:
 > Reported-by: Joshua Kinard <kumba@gentoo.org>
 > Signed-off-by: Vlad Yasevich <vyasevic@redhat.com>
 > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-Looks pretty straighforward
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
+This solves the problem for me, thanks!
+
+Tested-by: Joshua Kinard <kumba@gentoo.org>
 
