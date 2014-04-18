@@ -1,49 +1,24 @@
-From: Joshua Kinard <kumba@gentoo.org>
-Date: Fri, 18 Apr 2014 01:54:10 +0000
+From: David Miller <davem@davemloft.net>
+Date: Fri, 18 Apr 2014 22:41:45 +0000
 Subject: Re: [PATCH net] net: sctp: cache auth_enable per endpoint
-Message-Id: <535085C2.8040409@gentoo.org>
+Message-Id: <20140418.184145.990138802576449617.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1397748410-1983-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1397748410-1983-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevic@redhat.com>
+To: dborkman@redhat.com
+Cc: kumba@gentoo.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevic@redhat.com
 
-On 04/17/2014 11:26, Daniel Borkmann wrote:
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Thu, 17 Apr 2014 17:26:50 +0200
+
 > From: Vlad Yasevich <vyasevic@redhat.com>
 > 
 > Currently, it is possible to create an SCTP socket, then switch
 > auth_enable via sysctl setting to 1 and crash the system on connect:
-> 
-> Oops[#1]:
-> CPU: 0 PID: 0 Comm: swapper Not tainted 3.14.1-mipsgit-20140415 #1
-> task: ffffffff8056ce80 ti: ffffffff8055c000 task.ti: ffffffff8055c000
-> [...]
-> Call Trace:
-> [<ffffffff8043c4e8>] sctp_auth_asoc_set_default_hmac+0x68/0x80
-> [<ffffffff8042b300>] sctp_process_init+0x5e0/0x8a4
-> [<ffffffff8042188c>] sctp_sf_do_5_1B_init+0x234/0x34c
-> [<ffffffff804228c8>] sctp_do_sm+0xb4/0x1e8
-> [<ffffffff80425a08>] sctp_endpoint_bh_rcv+0x1c4/0x214
-> [<ffffffff8043af68>] sctp_rcv+0x588/0x630
-> [<ffffffff8043e8e8>] sctp6_rcv+0x10/0x24
-> [<ffffffff803acb50>] ip6_input+0x2c0/0x440
-> [<ffffffff8030fc00>] __netif_receive_skb_core+0x4a8/0x564
-> [<ffffffff80310650>] process_backlog+0xb4/0x18c
-> [<ffffffff80313cbc>] net_rx_action+0x12c/0x210
-> [<ffffffff80034254>] __do_softirq+0x17c/0x2ac
-> [<ffffffff800345e0>] irq_exit+0x54/0xb0
-> [<ffffffff800075a4>] ret_from_irq+0x0/0x4
-> [<ffffffff800090ec>] rm7k_wait_irqoff+0x24/0x48
-> [<ffffffff8005e388>] cpu_startup_entry+0xc0/0x148
-> [<ffffffff805a88b0>] start_kernel+0x37c/0x398
-> Code: dd0900b8  000330f8  0126302d <dcc60000> 50c0fff1  0047182a  a48306a0
-> 03e00008  00000000
-> ---[ end trace b530b0551467f2fd ]---
-> Kernel panic - not syncing: Fatal exception in interrupt
-> 
+ ...
 > What happens while auth_enable=0 in that case is, that
 > ep->auth_hmacs is initialized to NULL in sctp_auth_init_hmacs()
 > when endpoint is being created.
@@ -70,7 +45,4 @@ On 04/17/2014 11:26, Daniel Borkmann wrote:
 > Signed-off-by: Vlad Yasevich <vyasevic@redhat.com>
 > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
 
-This solves the problem for me, thanks!
-
-Tested-by: Joshua Kinard <kumba@gentoo.org>
-
+Applied and queued up for -stable, thanks everyone.
