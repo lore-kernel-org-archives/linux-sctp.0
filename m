@@ -1,17 +1,17 @@
-From: Greg KH <greg@kroah.com>
-Date: Fri, 25 Apr 2014 13:38:19 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Fri, 25 Apr 2014 13:45:03 +0000
 Subject: Re: [PATCH V2] sctp: reset flowi4_oif parameter on route lookup
-Message-Id: <20140425133819.GA26979@kroah.com>
+Message-Id: <535A66DF.7080207@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1398416141-18916-1-git-send-email-xufeng.zhang@windriver.com>
 In-Reply-To: <1398416141-18916-1-git-send-email-xufeng.zhang@windriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xufeng Zhang <xufeng.zhang@windriver.com>
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, davem@davemloft.net, ja@ssi.bg, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, stable@vger.kernel.org
+To: Xufeng Zhang <xufeng.zhang@windriver.com>, nhorman@tuxdriver.com, davem@davemloft.net, ja@ssi.bg
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, stable@vger.kernel.org
 
-On Fri, Apr 25, 2014 at 04:55:41PM +0800, Xufeng Zhang wrote:
+On 04/25/2014 04:55 AM, Xufeng Zhang wrote:
 > commit 813b3b5db83 (ipv4: Use caller's on-stack flowi as-is
 > in output route lookups.) introduces another regression which
 > is very similar to the problem of commit e6b45241c (ipv4: reset
@@ -42,19 +42,7 @@ On Fri, Apr 25, 2014 at 04:55:41PM +0800, Xufeng Zhang wrote:
 > 
 > Signed-off-by: Xufeng Zhang <xufeng.zhang@windriver.com>
 > Signed-off-by: Julian Anastasov <ja@ssi.bg>
-> ---
-> Changelog:
-> 
-> v1->v2:
->  Suggested by Julian Anastasov, reset flowi parameters by flowi4_update_output().
-> 
->  net/sctp/protocol.c |    7 ++++++-
->  1 files changed, 6 insertions(+), 1 deletions(-)
 
-<formletter>
+Acked-by: Vlad Yasevich <vyasevich@gmail.com>
 
-This is not the correct way to submit patches for inclusion in the
-stable kernel tree.  Please read Documentation/stable_kernel_rules.txt
-for how to do this properly.
-
-</formletter>
+-vlad
