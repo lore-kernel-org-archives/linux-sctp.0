@@ -1,64 +1,77 @@
 From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Fri, 25 Apr 2014 17:22:37 +0000
+Date: Fri, 25 Apr 2014 17:34:11 +0000
 Subject: Re: [PATCH v3 net] net: sctp: Don't transition to PF state when transport has exhausted 'Path.Max.Re
-Message-Id: <535A99DD.8070303@gmail.com>
+Message-Id: <535A9C93.9090106@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1398445570-11429-1-git-send-email-kheiss@gmail.com>
-In-Reply-To: <1398445570-11429-1-git-send-email-kheiss@gmail.com>
+References: <1398445570-11429-1-git-send-email-kheiss@gmail.com> <CAGugRbVRL0Dz0Vc_X0Qu-FjMRPr7OhZtrb+rW-qktt1ji_i44A@mail.gmail.com>
+In-Reply-To: <CAGugRbVRL0Dz0Vc_X0Qu-FjMRPr7OhZtrb+rW-qktt1ji_i44A@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Karl Heiss <kheiss@gmail.com>, netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, davem@davemloft.net, nhorman@tuxdriver.com
+Cc: linux-sctp@vger.kernel.org, davem <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>
 
-On 04/25/2014 01:06 PM, Karl Heiss wrote:
-> Don't transition to the PF state on every strike after 'Path.Max.Retrans'.
-> Per draft-ietf-tsvwg-sctp-failover-03 Section 5.1.6:
+On 04/25/2014 01:21 PM, Karl Heiss wrote:
+> On Fri, Apr 25, 2014 at 1:06 PM, Karl Heiss <kheiss@gmail.com> wrote:
+>> Don't transition to the PF state on every strike after 'Path.Max.Retrans'.
+>> Per draft-ietf-tsvwg-sctp-failover-03 Section 5.1.6:
+>>
+>>    Additional (PMR - PFMR) consecutive timeouts on a PF destination
+>>    confirm the path failure, upon which the destination transitions to the
+>>    Inactive state.  As described in [RFC4960], the sender (i) SHOULD notify
+>>    ULP about this state transition, and (ii) transmit heartbeats to the
+>>    Inactive destination at a lower frequency as described in Section 8.3 of
+>>    [RFC4960].
+>>
+>> This also prevents sending SCTP_ADDR_UNREACHABLE to the user as the state
+>> bounces between SCTP_INACTIVE and SCTP_PF for each subsequent strike.
+>>
+>> Signed-off-by: Karl Heiss <kheiss@gmail.com>
+>> ---
+>> Changes in v2:
+>>   - Flesh out commit message
+>>
+>> Changes in v3:
+>>   - Compare transport state instead of pathmaxrxt
+>>
+>>  net/sctp/sm_sideeffect.c |    5 +++--
+>>  1 files changed, 3 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+>> index 5d6883f..7805623 100644
+>> --- a/net/sctp/sm_sideeffect.c
+>> +++ b/net/sctp/sm_sideeffect.c
+>> @@ -496,11 +496,12 @@ static void sctp_do_8_2_transport_strike(sctp_cmd_seq_t *commands,
+>>
+>>         /* If the transport error count is greater than the pf_retrans
+>>          * threshold, and less than pathmaxrtx, and if the current state
+>> -        * is not SCTP_UNCONFIRMED, then mark this transport as Partially
+>> -        * Failed, see SCTP Quick Failover Draft, section 5.1
+>> +        * is not SCTP_UNCONFIRMED or SCTP_INACTIVE, then mark this transport
+>> +        * as Partially Failed, see SCTP Quick Failover Draft, section 5.1
+>>          */
+>>         if ((transport->state != SCTP_PF) &&
+>>            (transport->state != SCTP_UNCONFIRMED) &&
+>> +          (transport->state != SCTP_INACTIVE) &&
 > 
->    Additional (PMR - PFMR) consecutive timeouts on a PF destination
->    confirm the path failure, upon which the destination transitions to the
->    Inactive state.  As described in [RFC4960], the sender (i) SHOULD notify
->    ULP about this state transition, and (ii) transmit heartbeats to the
->    Inactive destination at a lower frequency as described in Section 8.3 of
->    [RFC4960].
+> On second thought, would this not make more sense to be:
 > 
-> This also prevents sending SCTP_ADDR_UNREACHABLE to the user as the state
-> bounces between SCTP_INACTIVE and SCTP_PF for each subsequent strike.
+>          if ((transport->state = SCTP_ACTIVE) &&
 > 
-> Signed-off-by: Karl Heiss <kheiss@gmail.com>
+> Since the only valid transition into PF is from ACTIVE?
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+Hmm..  we that UNKNOWN state, but it doesn't look like it survives
+past the handshake...
+
+So, yes, this would simplify things.
 
 -vlad
 
-> ---
-> Changes in v2:
->   - Flesh out commit message
 > 
-> Changes in v3:
->   - Compare transport state instead of pathmaxrxt
-> 
->  net/sctp/sm_sideeffect.c |    5 +++--
->  1 files changed, 3 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-> index 5d6883f..7805623 100644
-> --- a/net/sctp/sm_sideeffect.c
-> +++ b/net/sctp/sm_sideeffect.c
-> @@ -496,11 +496,12 @@ static void sctp_do_8_2_transport_strike(sctp_cmd_seq_t *commands,
->  
->  	/* If the transport error count is greater than the pf_retrans
->  	 * threshold, and less than pathmaxrtx, and if the current state
-> -	 * is not SCTP_UNCONFIRMED, then mark this transport as Partially
-> -	 * Failed, see SCTP Quick Failover Draft, section 5.1
-> +	 * is not SCTP_UNCONFIRMED or SCTP_INACTIVE, then mark this transport
-> +	 * as Partially Failed, see SCTP Quick Failover Draft, section 5.1
->  	 */
->  	if ((transport->state != SCTP_PF) &&
->  	   (transport->state != SCTP_UNCONFIRMED) &&
-> +	   (transport->state != SCTP_INACTIVE) &&
->  	   (asoc->pf_retrans < transport->pathmaxrxt) &&
->  	   (transport->error_count > asoc->pf_retrans)) {
->  
-> 
+>>            (asoc->pf_retrans < transport->pathmaxrxt) &&
+>>            (transport->error_count > asoc->pf_retrans)) {
+>>
+>> --
+>> 1.7.1
+>>
 
