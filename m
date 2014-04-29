@@ -1,59 +1,142 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Fri, 25 Apr 2014 13:39:38 +0000
-Subject: Re: [PATCH net] net: sctp: Don't transition to PF state when transport has exhausted 'Path.Max.Retra
-Message-Id: <535A659A.1050805@gmail.com>
+From: =?iso-8859-1?Q?Gergely_P=E9li?= <gergely@voipfone.co.uk>
+Date: Tue, 29 Apr 2014 09:20:17 +0000
+Subject: Incorrect man page for sctp_recvmsg
+Message-Id: <4E55918D-8D31-46F3-8FE5-BDD6F80C109D@voipfone.co.uk>
+MIME-Version: 1
+Content-Type: multipart/mixed; boundary="Apple-Mail=_632A5A54-E63B-404C-9B8E-CF05FB626134"
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1398432520-19863-1-git-send-email-kheiss@gmail.com>
-In-Reply-To: <1398432520-19863-1-git-send-email-kheiss@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Karl Heiss <kheiss@gmail.com>, netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, davem@davemloft.net, nhorman@tuxdriver.com
+To: linux-sctp@vger.kernel.org
 
-On 04/25/2014 09:28 AM, Karl Heiss wrote:
-> Don't transition to the PF state on every strike after 'Path.Max.Retrans'.
-> Per draft-ietf-tsvwg-sctp-failover-03 Section 5.1.6:
-> 
->    Additional (PMR - PFMR) consecutive timeouts on a PF destination
->    confirm the path failure, upon which the destination transitions to the
->    Inactive state.  As described in [RFC4960], the sender (i) SHOULD notify
->    ULP about this state transition, and (ii) transmit heartbeats to the
->    Inactive destination at a lower frequency as described in Section 8.3 of
->    [RFC4960].
-> 
-> This also prevents sending SCTP_ADDR_UNREACHABLE to the user as the state
-> bounces between SCTP_INACTIVE and SCTP_PF for each subsequent strike.
-> 
 
-Hi Karl
+--Apple-Mail=_632A5A54-E63B-404C-9B8E-CF05FB626134
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=iso-8859-1
 
-Please mark your patch versions.
+Hello,
 
-I send a comment for the prior version you sent, but I'll say it here as
-well.  It would be better that you make it explicit that transition
-from INACTIVE to PF is not allowed by using transport state.
+I think the man page for sctp_recvmsg (dating back to 2005) incorrectly =
+states that
 
--vlad
+  msg_flags is a pointer to a integer that is filled with any message =
+flags like MSG_NOTIFICATION or MSG_EOR
 
-> Signed-off-by: Karl Heiss <kheiss@gmail.com>
-> ---
->  net/sctp/sm_sideeffect.c |    3 ++-
->  1 files changed, 2 insertions(+), 1 deletions(-)
-> 
-> diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-> index 5d6883f..07f26fe 100644
-> --- a/net/sctp/sm_sideeffect.c
-> +++ b/net/sctp/sm_sideeffect.c
-> @@ -502,7 +502,8 @@ static void sctp_do_8_2_transport_strike(sctp_cmd_seq_t *commands,
->  	if ((transport->state != SCTP_PF) &&
->  	   (transport->state != SCTP_UNCONFIRMED) &&
->  	   (asoc->pf_retrans < transport->pathmaxrxt) &&
-> -	   (transport->error_count > asoc->pf_retrans)) {
-> +	   (transport->error_count > asoc->pf_retrans) &&
-> +	   (transport->error_count <= transport->pathmaxrxt)) {
->  
->  		sctp_assoc_control_transport(asoc, transport,
->  					     SCTP_TRANSPORT_PF,
-> 
+as it seems to be an incoming argument as well. I used to pass a pointer =
+to an uninitialized value (only expecting some flags being returned =
+here), but my test app behaved erratically, and an strace showed that a =
+rather random set of flags were passed to the underlying recvmsg system =
+call. Initializing the pointed integer to 0 solved the problems.
 
+It seems that others were bitten by this since 2008 like
+
+  http://www.ietf.org/mail-archive/web/tsvwg/current/msg08640.html
+
+Would you please update the man page? It also seems that the incoming =
+and outgoing flags have a rather different semantics, which may also be =
+worth noting.
+
+Kind Regards,
+
+
+Gergely P=E9li
+
+
+--Apple-Mail=_632A5A54-E63B-404C-9B8E-CF05FB626134
+Content-Disposition: attachment;
+	filename=smime.p7s
+Content-Type: application/pkcs7-signature;
+	name=smime.p7s
+Content-Transfer-Encoding: base64
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIQDjCCBN0w
+ggPFoAMCAQICEHGS++YZX6xNEoV0cTSiGKcwDQYJKoZIhvcNAQEFBQAwezELMAkGA1UEBhMCR0Ix
+GzAZBgNVBAgMEkdyZWF0ZXIgTWFuY2hlc3RlcjEQMA4GA1UEBwwHU2FsZm9yZDEaMBgGA1UECgwR
+Q29tb2RvIENBIExpbWl0ZWQxITAfBgNVBAMMGEFBQSBDZXJ0aWZpY2F0ZSBTZXJ2aWNlczAeFw0w
+NDAxMDEwMDAwMDBaFw0yODEyMzEyMzU5NTlaMIGuMQswCQYDVQQGEwJVUzELMAkGA1UECBMCVVQx
+FzAVBgNVBAcTDlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVUaGUgVVNFUlRSVVNUIE5ldHdvcmsx
+ITAfBgNVBAsTGGh0dHA6Ly93d3cudXNlcnRydXN0LmNvbTE2MDQGA1UEAxMtVVROLVVTRVJGaXJz
+dC1DbGllbnQgQXV0aGVudGljYXRpb24gYW5kIEVtYWlsMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A
+MIIBCgKCAQEAsjmFpPJ9q0E7YkY3rs3BYHW8OWX5ShpHornMSMxqmNVNNRm5pELlzkniii8efNIx
+B8dOtINknS4p1aJkxIW9hVE1eaROaJB7HHqkkqgX8pgV8pPMyaQylbsMTzC9mKALi+VuG6JG+ni8
+om+rWV6lL8/K2m2qL+usobNqqrcuZzWLeeEeaYji5kbNoKXqvgvOdjp6Dpvq/NonWz1zHyLmSGHG
+TPNpsaguG7bUMSAsvIKKjqQOpdeJQ/wWWq8dcdcRWdq6hw2v+vPhwvCkxWeM1tZUOt4KpLoDd7Nl
+yP0e03RiqhjKaJMeoYV+9Udly/hNVyh00jT/MLbu9mIwFIws6wIDAQABo4IBJzCCASMwHwYDVR0j
+BBgwFoAUoBEKIz6W8Qfs4q8p74Klf9AwpLQwHQYDVR0OBBYEFImCZ33EnSZwAEu0UEh83j2uBG59
+MA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMBAf8EBTADAQH/MB0GA1UdJQQWMBQGCCsGAQUFBwMCBggr
+BgEFBQcDBDARBgNVHSAECjAIMAYGBFUdIAAwewYDVR0fBHQwcjA4oDagNIYyaHR0cDovL2NybC5j
+b21vZG9jYS5jb20vQUFBQ2VydGlmaWNhdGVTZXJ2aWNlcy5jcmwwNqA0oDKGMGh0dHA6Ly9jcmwu
+Y29tb2RvLm5ldC9BQUFDZXJ0aWZpY2F0ZVNlcnZpY2VzLmNybDARBglghkgBhvhCAQEEBAMCAQYw
+DQYJKoZIhvcNAQEFBQADggEBAJ2Vyzy4fqUJxB6/C8LHdo45PJTGEKpPDMngq4RdiVTgZTvzbRx8
+NywlVF+WIfw3hJGdFdwUT4HPVB1rbEVgxy35l1FM+WbKPKCCjKbI8OLp1Er57D9Wyd12jMOCAU9s
+APMeGmF0BEcDqcZAV5G8ZSLFJ2dPV9tkWtmNH7qGL/QGrpxp7en0zykX2OBKnxogL5dMUbtGB8SK
+N04g4wkxaMeexIud6H4RvDJoEJYRmETYKlFgTYjrdDrfQwYyyDlWjDoRUtNBpEMD9O3vMyfbOeAU
+TibJ2PU54om4k123KSZB6rObroP8d3XK6Mq1/uJlSmM+RMTQw16Hc6mYHK9/FX8wggUaMIIEAqAD
+AgECAhBtGeqnGU9qMyLmIjJ6qnHeMA0GCSqGSIb3DQEBBQUAMIGuMQswCQYDVQQGEwJVUzELMAkG
+A1UECBMCVVQxFzAVBgNVBAcTDlNhbHQgTGFrZSBDaXR5MR4wHAYDVQQKExVUaGUgVVNFUlRSVVNU
+IE5ldHdvcmsxITAfBgNVBAsTGGh0dHA6Ly93d3cudXNlcnRydXN0LmNvbTE2MDQGA1UEAxMtVVRO
+LVVTRVJGaXJzdC1DbGllbnQgQXV0aGVudGljYXRpb24gYW5kIEVtYWlsMB4XDTExMDQyODAwMDAw
+MFoXDTIwMDUzMDEwNDgzOFowgZMxCzAJBgNVBAYTAkdCMRswGQYDVQQIExJHcmVhdGVyIE1hbmNo
+ZXN0ZXIxEDAOBgNVBAcTB1NhbGZvcmQxGjAYBgNVBAoTEUNPTU9ETyBDQSBMaW1pdGVkMTkwNwYD
+VQQDEzBDT01PRE8gQ2xpZW50IEF1dGhlbnRpY2F0aW9uIGFuZCBTZWN1cmUgRW1haWwgQ0EwggEi
+MA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCShIRbS1eY1F4vi6ThQMijU1hfZmXxMk73nzJ9
+VdB4TFW3QpTg+SdxB8XGaaS5MsTxQBqQzCdWYn8XtXFpruUgG+TLY15gyqJB9mrho/+43x9IbWVD
+jCouK2M4d9+xF6zC2oIC1tQyatRnbyATj1w1+uVUgK/YcQodNwoCUFNslR2pEBS0mZVZEjH/CaLS
+TNxS297iQAFbSGjdxUq04O0kHzqvcV8H46y/FDuwJXFoPfQP1hdYRhWBPGiLi4MPbXohV+Y0sNsy
+fuNK4aVScmQmkU6lkg//4LFg/RpvaFGZY40ai6XMQpubfSJj06mg/M6ekN9EGfRcWzW6FvOnm//B
+AgMBAAGjggFLMIIBRzAfBgNVHSMEGDAWgBSJgmd9xJ0mcABLtFBIfN49rgRufTAdBgNVHQ4EFgQU
+ehNOAHRbxnhjZCfBL+KgW7x5xXswDgYDVR0PAQH/BAQDAgEGMBIGA1UdEwEB/wQIMAYBAf8CAQAw
+EQYDVR0gBAowCDAGBgRVHSAAMFgGA1UdHwRRME8wTaBLoEmGR2h0dHA6Ly9jcmwudXNlcnRydXN0
+LmNvbS9VVE4tVVNFUkZpcnN0LUNsaWVudEF1dGhlbnRpY2F0aW9uYW5kRW1haWwuY3JsMHQGCCsG
+AQUFBwEBBGgwZjA9BggrBgEFBQcwAoYxaHR0cDovL2NydC51c2VydHJ1c3QuY29tL1VUTkFkZFRy
+dXN0Q2xpZW50X0NBLmNydDAlBggrBgEFBQcwAYYZaHR0cDovL29jc3AudXNlcnRydXN0LmNvbTAN
+BgkqhkiG9w0BAQUFAAOCAQEAhda+eFdVbTN/RFL+QtUGqAEDgIr7DbL9Sr/2r0FJ9RtaxdKtG3Nu
+PukmfOZMmMEwKN/L+0I8oSU+CnXW0D05hmbRoZu1TZtvryhsHa/l6nRaqNqxwPF1ei+eupN5yv7i
+kR5WdLL4jdPgQ3Ib7Y/9YDkgR/uLrzplSDyYPaUlv73vYOBJ5RbI6z9Dg/Dg7g3B080zX5vQvWBq
+szv++tTJOjwf7Zv/m0kzvkIpOYPuM2kugp1FTahp2oAbHj3SGl18R5mlmwhtEpmG1l1XBxunML5L
+SUS4kH7K0Xk467Qz+qA6XSZYnmFVGLQh1ZnV4ENAQjC+6qXnlNKw/vN1+X9u5zCCBgswggTzoAMC
+AQICEQDKuJtDZtPkg9ROFfhOLtWAMA0GCSqGSIb3DQEBBQUAMIGTMQswCQYDVQQGEwJHQjEbMBkG
+A1UECBMSR3JlYXRlciBNYW5jaGVzdGVyMRAwDgYDVQQHEwdTYWxmb3JkMRowGAYDVQQKExFDT01P
+RE8gQ0EgTGltaXRlZDE5MDcGA1UEAxMwQ09NT0RPIENsaWVudCBBdXRoZW50aWNhdGlvbiBhbmQg
+U2VjdXJlIEVtYWlsIENBMB4XDTEzMTEyNjAwMDAwMFoXDTE2MTEyNTIzNTk1OVowggEYMQswCQYD
+VQQGEwJHQjEQMA4GA1UEERMHRTE0IDlTRDEXMBUGA1UECBMOR3JlYXRlciBMb25kb24xDzANBgNV
+BAcTBkxvbmRvbjEXMBUGA1UECRMOMjI3IE1hcnNoIFdhbGwxETAPBgNVBAoTCFZvaXBmb25lMRIw
+EAYDVQQLEwlUZWNobmljYWwxLjAsBgNVBAsTJUlzc3VlZCB0aHJvdWdoIFZvaXBmb25lIEUtUEtJ
+IE1hbmFnZXIxHzAdBgNVBAsTFkNvcnBvcmF0ZSBTZWN1cmUgRW1haWwxFTATBgNVBAMTDEdlcmdl
+bHkgUGVsaTElMCMGCSqGSIb3DQEJARYWZ2VyZ2VseUB2b2lwZm9uZS5jby51azCCASIwDQYJKoZI
+hvcNAQEBBQADggEPADCCAQoCggEBAKK2LeOoXR3UyjjZDldMlazXSrhFTMhpC9l4/uvh2dPj3/mA
+9x4metHC4DYSiaiEac84wkP4UjRsy+PMaJZMqg2iviQd10iY+2hbR0sImalEQn48ALpNx3+jGW1t
+8NZjf+nYkcFUmbSBhDCM0cuvhJjN1hM9BqbVm1jsysUAWiLqvdkj9z06IedpPSUe+Paj7DQ+gHcU
+MFCgPyvl7oWWYZY28/S5JaafmPLjVUKtiejME3EB4KgHxv+2ntiU+h0hfEuI8gM6uvFUXn/krba7
+qu6zQJgZpj7+mVSzXQqYskttP1al1imPHGjje2eZ5mQqKdrquvanyAhky8suXVQ4UIcCAwEAAaOC
+AdAwggHMMB8GA1UdIwQYMBaAFHoTTgB0W8Z4Y2QnwS/ioFu8ecV7MB0GA1UdDgQWBBQi5xxFh5Dn
+B2q8zJVaYMpPP9m6WjAOBgNVHQ8BAf8EBAMCBaAwDAYDVR0TAQH/BAIwADAdBgNVHSUEFjAUBggr
+BgEFBQcDBAYIKwYBBQUHAwIwRgYDVR0gBD8wPTA7BgwrBgEEAbIxAQIBAwUwKzApBggrBgEFBQcC
+ARYdaHR0cHM6Ly9zZWN1cmUuY29tb2RvLm5ldC9DUFMwVwYDVR0fBFAwTjBMoEqgSIZGaHR0cDov
+L2NybC5jb21vZG9jYS5jb20vQ09NT0RPQ2xpZW50QXV0aGVudGljYXRpb25hbmRTZWN1cmVFbWFp
+bENBLmNybDCBiAYIKwYBBQUHAQEEfDB6MFIGCCsGAQUFBzAChkZodHRwOi8vY3J0LmNvbW9kb2Nh
+LmNvbS9DT01PRE9DbGllbnRBdXRoZW50aWNhdGlvbmFuZFNlY3VyZUVtYWlsQ0EuY3J0MCQGCCsG
+AQUFBzABhhhodHRwOi8vb2NzcC5jb21vZG9jYS5jb20wIQYDVR0RBBowGIEWZ2VyZ2VseUB2b2lw
+Zm9uZS5jby51azANBgkqhkiG9w0BAQUFAAOCAQEAc3s4yR7p7f5PdniNf6HkMbtKATshjFnEjbsk
+63Q9eKt6Msyz2lFe5sn00a4cq3xWhBtlbRYdekAk15GYHDTonWQoOG8pyHeHNzDr50xz6egGThM4
+zsd5lpt9k07MP4E2iTqmJgAEMx3vAWPOcTGUp+LIlwr1RNZ5oEAL48vYUuCOccLn5/iGenJeGDm+
+4kJbmFUV2mC2/W7Qnkox93qnDTap/RGyLS4l0ThpSK6gXK3XnPVhU/uG6A1BTDtr4x95lBDYPb9U
+b604LbaM4Szfu7GYF5dkYZXnHcp6xRkmB4BkZrQVELlVOXPPpvbfY4Ajf7fj3opx6NI4/rxGgSzQ
+CTGCA64wggOqAgEBMIGpMIGTMQswCQYDVQQGEwJHQjEbMBkGA1UECBMSR3JlYXRlciBNYW5jaGVz
+dGVyMRAwDgYDVQQHEwdTYWxmb3JkMRowGAYDVQQKExFDT01PRE8gQ0EgTGltaXRlZDE5MDcGA1UE
+AxMwQ09NT0RPIENsaWVudCBBdXRoZW50aWNhdGlvbiBhbmQgU2VjdXJlIEVtYWlsIENBAhEAyrib
+Q2bT5IPUThX4Ti7VgDAJBgUrDgMCGgUAoIIB2TAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwG
+CSqGSIb3DQEJBTEPFw0xNDA0MjkwOTIwMTdaMCMGCSqGSIb3DQEJBDEWBBR1AcMi/wuE7HPihDuH
+t17/YunhkzCBugYJKwYBBAGCNxAEMYGsMIGpMIGTMQswCQYDVQQGEwJHQjEbMBkGA1UECBMSR3Jl
+YXRlciBNYW5jaGVzdGVyMRAwDgYDVQQHEwdTYWxmb3JkMRowGAYDVQQKExFDT01PRE8gQ0EgTGlt
+aXRlZDE5MDcGA1UEAxMwQ09NT0RPIENsaWVudCBBdXRoZW50aWNhdGlvbiBhbmQgU2VjdXJlIEVt
+YWlsIENBAhEAyribQ2bT5IPUThX4Ti7VgDCBvAYLKoZIhvcNAQkQAgsxgayggakwgZMxCzAJBgNV
+BAYTAkdCMRswGQYDVQQIExJHcmVhdGVyIE1hbmNoZXN0ZXIxEDAOBgNVBAcTB1NhbGZvcmQxGjAY
+BgNVBAoTEUNPTU9ETyBDQSBMaW1pdGVkMTkwNwYDVQQDEzBDT01PRE8gQ2xpZW50IEF1dGhlbnRp
+Y2F0aW9uIGFuZCBTZWN1cmUgRW1haWwgQ0ECEQDKuJtDZtPkg9ROFfhOLtWAMA0GCSqGSIb3DQEB
+AQUABIIBACpyj+yuAz9BiZHCpH4rmT4AJPMj6mWPNvO0iTi2YAvuKrOKDmmFNi5sQN2CbgK6SZWG
+dVgK0F1is01m6KzEQzVjo6YsDGiqkkhockSgwu5fTvK9Dnw3ABOKyypuI+gd/z60KYhcb5DVykut
+EZgEXWZpfHcNVodbVLjDCmZPsLg4dEQhl/D5XTtjRodAkXSr0F20JcfeQZRyzgJFOxiMEAzfddg0
+H7kZNY5rymMimTVAeowfSoDejk53YBi2onkZVVIhIy3Uc/ys1MnSWEnJdXVBtkvLaGdf8fV58dwA
+KWOVFnuHjeR/jyXtArkFM8IkwciNgbkTcfdRfqK7WH7PemkAAAAAAAA=
+
+--Apple-Mail=_632A5A54-E63B-404C-9B8E-CF05FB626134--
