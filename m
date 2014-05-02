@@ -1,7 +1,7 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Fri, 02 May 2014 19:39:15 +0000
-Subject: Re: SCTP throughput does not scale
-Message-Id: <5363F463.3080607@gmail.com>
+From: "Butler, Peter" <pbutler@sonusnet.com>
+Date: Fri, 02 May 2014 20:14:40 +0000
+Subject: RE: SCTP throughput does not scale
+Message-Id: <1383F7BACEF3F141A39A7AC90F80407E334BA4@psmwsonsmbx01.sonusnet.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1383F7BACEF3F141A39A7AC90F80407E333BF5@psmwsonsmbx01.sonusnet.com>
 In-Reply-To: <1383F7BACEF3F141A39A7AC90F80407E333BF5@psmwsonsmbx01.sonusnet.com>
@@ -10,16 +10,45 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
+Those are excellent points you make.
+
+I just tried retesting as per your suggestion (2 parallel connections/associations with default netem settings) and sure enough I do not see any drops in the TCP test whereas I do in the SCTP test.
+
+I also tried testing with a drastically inflated qdisc queue size (i.e. 1000000 as opposed to the default of 1000 - overkill for sure, but just wanted to eliminate any ambiguity for this quick test) , and as such the SCTP behaviour now *much* more closely resembles the TCP behaviour.  Not quite as good as TCP (that is, I do not necessarily scale linearly), but by adding more and more associations I do indeed get significantly greater and greater throughput.  
+
+Granted, this is all based only on some quick tests that I just ran but the results sure look promising insofar as clearing up this 'scaling' issue.
+
+Thanks a great deal for your valuable input!
+
+
+
+
+
+-----Original Message-----
+From: Vlad Yasevich [mailto:vyasevich@gmail.com] 
+Sent: May-02-14 3:39 PM
+To: Butler, Peter; Neil Horman
+Cc: linux-sctp@vger.kernel.org
+Subject: Re: SCTP throughput does not scale
+
 On 05/02/2014 03:13 PM, Butler, Peter wrote:
-> Recall that the issue here isn't that TCP outperforms SCTP - i.e. that it has higher throughput overall - but that TCP (and UDP) scale up when more connections are added, whereas SCTP does not.  So while changing the message size (say, from 1000 bytes to 1452 bytes) and modifying the GSO/TSO/GRO/LRO NIC settings does indeed change the overall SCTP and TCP throughput (and closes the throughput gap between these protocols), the fact remains that I can still then double the overall TCP system throughput by adding in a second TCP connection, whereas I cannot double the SCTP throughput by adding in a second SCTP association.  (Again, in the latter case the overall throughput remains constant with the two associations now carrying half the traffic as the lone association did in the former case.)
+> Recall that the issue here isn't that TCP outperforms SCTP - i.e. that 
+> it has higher throughput overall - but that TCP (and UDP) scale up 
+> when more connections are added, whereas SCTP does not.  So while 
+> changing the message size (say, from 1000 bytes to 1452 bytes) and 
+> modifying the GSO/TSO/GRO/LRO NIC settings does indeed change the 
+> overall SCTP and TCP throughput (and closes the throughput gap between 
+> these protocols), the fact remains that I can still then double the 
+> overall TCP system throughput by adding in a second TCP connection, 
+> whereas I cannot double the SCTP throughput by adding in a second SCTP 
+> association.  (Again, in the latter case the overall throughput 
+> remains constant with the two associations now carrying half the 
+> traffic as the lone association did in the former case.)
 > 
 
-Right, I understand.  However, TCP will end up sending less packets then
-SCTP due to the stream nature of TCP.  So, you may not be hitting
-a netem drop limitation with TCP.  This would be an interesting data point.
+Right, I understand.  However, TCP will end up sending less packets then SCTP due to the stream nature of TCP.  So, you may not be hitting a netem drop limitation with TCP.  This would be an interesting data point.
 
-Run a 2 stream TCP perf session with default netem settings and see
-if you have qdisc drops.
+Run a 2 stream TCP perf session with default netem settings and see if you have qdisc drops.
 
 Then run a 2 stream SCTP perf session and check for drops.
 
@@ -28,7 +57,7 @@ Then run a 2 stream SCTP perf session and check for drops.
 > 
 > 
 > -----Original Message-----
-> From: Vlad Yasevich [mailto:vyasevich@gmail.com] 
+> From: Vlad Yasevich [mailto:vyasevich@gmail.com]
 > Sent: May-02-14 1:34 PM
 > To: Butler, Peter; Neil Horman
 > Cc: linux-sctp@vger.kernel.org
@@ -36,14 +65,16 @@ Then run a 2 stream SCTP perf session and check for drops.
 > 
 > On 05/02/2014 01:10 PM, Butler, Peter wrote:
 >> [root@slot2 ~]# tc -s qdisc show
->> qdisc netem 8002: dev p19p2 root refcnt 65 limit 1000 delay 25.0ms  
->> Sent 590200 bytes 7204 pkt (dropped 0, overlimits 0 requeues 0)  
+>> qdisc netem 8002: dev p19p2 root refcnt 65 limit 1000 delay 25.0ms 
+>> Sent 590200 bytes 7204 pkt (dropped 0, overlimits 0 requeues 0) 
 >> backlog 0b 0p requeues 0 qdisc netem 8001: dev p19p1 root refcnt 65 
->> limit 1000 delay 25.0ms  Sent 997332352 bytes 946411 pkt (dropped 478, 
->> overlimits 0 requeues 1)  backlog 114b 1p requeues 1
+>> limit 1000 delay 25.0ms  Sent 997332352 bytes 946411 pkt (dropped 
+>> 478, overlimits 0 requeues 1)  backlog 114b 1p requeues 1
 >>
 > 
-> Thanks.  The above shows a drop of 478 packets.  You might try growing you queue size.  Remember that SCTP is very much packet oriented and with your size of 1000 bytes, each message ends up taking up
+> Thanks.  The above shows a drop of 478 packets.  You might try growing 
+> you queue size.  Remember that SCTP is very much packet oriented and 
+> with your size of 1000 bytes, each message ends up taking up
 > 1 under-utilized packet.
 > 
 > Meanwhile TCP will coalesce your 1000 byte writes into full mss sized writes (plug GSO/TSO if you are still using it).  That allows TCP to much more effectively utilized the packets.
@@ -52,8 +83,8 @@ Then run a 2 stream SCTP perf session and check for drops.
 > 
 >>
 >> [root@slot3 ~]# tc -s qdisc show
->> qdisc netem 8002: dev p19p2 root refcnt 65 limit 1000 delay 25.0ms  
->> Sent 90352 bytes 1666 pkt (dropped 0, overlimits 0 requeues 0)  
+>> qdisc netem 8002: dev p19p2 root refcnt 65 limit 1000 delay 25.0ms 
+>> Sent 90352 bytes 1666 pkt (dropped 0, overlimits 0 requeues 0) 
 >> backlog 0b 0p requeues 0 qdisc netem 8001: dev p19p1 root refcnt 65 
 >> limit 1000 delay 25.0ms  Sent 29544962 bytes 475167 pkt (dropped 0, 
 >> overlimits 0 requeues 2)  backlog 130b 1p requeues 2
