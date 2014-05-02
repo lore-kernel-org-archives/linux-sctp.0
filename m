@@ -1,7 +1,7 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Fri, 02 May 2014 17:07:29 +0000
-Subject: Re: SCTP throughput does not scale
-Message-Id: <5363D0D1.6030101@gmail.com>
+From: "Butler, Peter" <pbutler@sonusnet.com>
+Date: Fri, 02 May 2014 17:10:26 +0000
+Subject: RE: SCTP throughput does not scale
+Message-Id: <1383F7BACEF3F141A39A7AC90F80407E334939@psmwsonsmbx01.sonusnet.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1383F7BACEF3F141A39A7AC90F80407E333BF5@psmwsonsmbx01.sonusnet.com>
 In-Reply-To: <1383F7BACEF3F141A39A7AC90F80407E333BF5@psmwsonsmbx01.sonusnet.com>
@@ -9,6 +9,33 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
+
+[root@slot2 ~]# tc -s qdisc show
+qdisc netem 8002: dev p19p2 root refcnt 65 limit 1000 delay 25.0ms
+ Sent 590200 bytes 7204 pkt (dropped 0, overlimits 0 requeues 0) 
+ backlog 0b 0p requeues 0 
+qdisc netem 8001: dev p19p1 root refcnt 65 limit 1000 delay 25.0ms
+ Sent 997332352 bytes 946411 pkt (dropped 478, overlimits 0 requeues 1) 
+ backlog 114b 1p requeues 1 
+
+
+[root@slot3 ~]# tc -s qdisc show
+qdisc netem 8002: dev p19p2 root refcnt 65 limit 1000 delay 25.0ms
+ Sent 90352 bytes 1666 pkt (dropped 0, overlimits 0 requeues 0) 
+ backlog 0b 0p requeues 0 
+qdisc netem 8001: dev p19p1 root refcnt 65 limit 1000 delay 25.0ms
+ Sent 29544962 bytes 475167 pkt (dropped 0, overlimits 0 requeues 2) 
+ backlog 130b 1p requeues 2
+
+
+
+
+-----Original Message-----
+From: Vlad Yasevich [mailto:vyasevich@gmail.com] 
+Sent: May-02-14 1:07 PM
+To: Butler, Peter; Neil Horman
+Cc: linux-sctp@vger.kernel.org
+Subject: Re: SCTP throughput does not scale
 
 On 05/02/2014 12:33 PM, Butler, Peter wrote:
 > The only entries from "tc qdisc show" are the ones used to implement the 50 ms RTT, which applies to all packet types (not just SCTP).
@@ -41,7 +68,8 @@ Thanks
 > 
 > 
 > -----Original Message-----
-> From: linux-sctp-owner@vger.kernel.org [mailto:linux-sctp-owner@vger.kernel.org] On Behalf Of Neil Horman
+> From: linux-sctp-owner@vger.kernel.org 
+> [mailto:linux-sctp-owner@vger.kernel.org] On Behalf Of Neil Horman
 > Sent: May-02-14 9:36 AM
 > To: Butler, Peter
 > Cc: linux-sctp@vger.kernel.org
@@ -58,10 +86,12 @@ Thanks
 > Neil
 > 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" 
+> in the body of a message to majordomo@vger.kernel.org More majordomo 
+> info at  http://vger.kernel.org/majordomo-info.html
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" 
+> in the body of a message to majordomo@vger.kernel.org More majordomo 
+> info at  http://vger.kernel.org/majordomo-info.html
 > 
 
