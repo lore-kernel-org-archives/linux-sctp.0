@@ -1,31 +1,21 @@
-From: John Abdulaziz <fabrizio.tarallo@alice.it>
-Date: Thu, 08 May 2014 15:54:50 +0000
-Subject: Contact Dhl office for your atm card
-Message-Id: <145dc8b5759.fabrizio.tarallo@alice.it>
+From: "Gva Abogados" <Molly.Mee@acf.hhs.gov>
+Date: Sat, 03 May 2014 12:20:40 +0000
+Subject: Please Acknowledge My Proposal
+Message-Id: <281f66fefbbe04055c78ea619c75c388.squirrel@162.222.106.162>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
+To: linux-sctp@vger.kernel.org
 
-Attn dear 
-We have finally arranged to deliver your atm cardworth $4.5, usd
-through the national dhl company. We were able to accomplish this through
-the help of IMF director John Andy and every necessary arrangement has been
-made successfully with the national dhl director  Mr. Louis More
-so contact Mr Louis More the manager director
-Telephone: +22999441700
-email  atmpaymenthead@ymail.com
+Please Acknowledge My Proposal!!
 
-contact the dhl director with your delivery information, your phone number,
-address, city, nearest airport and your receiver's name. and also be
-informed that delivery agent will leave to this country as soon as you have
-proceed with the dhl requirement for your funds deliver,
+My name is Mr. Juan Martin Domingo a lawyer resident in Spain. I am
+writing to let you know I have some FUNDS I want to transfer and am
+seeking if you can be a beneficiary...Do not hesitate to Contact me for
+more information if interested: gva_abogados@aim.com
 
-your atm card 
-pin code Is 4421.
-
-sincerely
-John Abdulaziz
-
-Ginette Kenny  
+Sincerely
+Juan Martin Domingo.
+Domijdo@aim.com
 
