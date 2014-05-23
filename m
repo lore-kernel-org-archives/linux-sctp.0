@@ -1,161 +1,56 @@
-From: "Butler, Peter" <pbutler@sonusnet.com>
-Date: Fri, 02 May 2014 20:14:40 +0000
-Subject: RE: SCTP throughput does not scale
-Message-Id: <1383F7BACEF3F141A39A7AC90F80407E334BA4@psmwsonsmbx01.sonusnet.com>
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Fri, 23 May 2014 03:14:33 +0000
+Subject: [PATCH] lksctp-tools: make bind_test can do while disable IPV6
+Message-Id: <537EBD19.2030003@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1383F7BACEF3F141A39A7AC90F80407E333BF5@psmwsonsmbx01.sonusnet.com>
-In-Reply-To: <1383F7BACEF3F141A39A7AC90F80407E333BF5@psmwsonsmbx01.sonusnet.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Those are excellent points you make.
+From e496cc0da4b43f4686e91aa9ffa73869e1f4c91d Mon Sep 17 00:00:00 2001
+From: Wang Weidong <wangweidong1@huawei.com>
+Date: Mon, 9 Jun 2014 23:32:39 +0800
+Subject: [PATCH] lksctp-tools: make bind_test can do while disable IPV6
 
-I just tried retesting as per your suggestion (2 parallel connections/associations with default netem settings) and sure enough I do not see any drops in the TCP test whereas I do in the SCTP test.
+When disable IPv6, the bind_test can't work for IPv4. So add
+a variable 'domain' for support working for IPv4.
 
-I also tried testing with a drastically inflated qdisc queue size (i.e. 1000000 as opposed to the default of 1000 - overkill for sure, but just wanted to eliminate any ambiguity for this quick test) , and as such the SCTP behaviour now *much* more closely resembles the TCP behaviour.  Not quite as good as TCP (that is, I do not necessarily scale linearly), but by adding more and more associations I do indeed get significantly greater and greater throughput.  
+Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+---
+ src/apps/bindx_test.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-Granted, this is all based only on some quick tests that I just ran but the results sure look promising insofar as clearing up this 'scaling' issue.
+diff --git a/src/apps/bindx_test.c b/src/apps/bindx_test.c
+index b1c9ffa..ff3de86 100644
+--- a/src/apps/bindx_test.c
++++ b/src/apps/bindx_test.c
+@@ -42,6 +42,7 @@ int main (int argc, char **argv)
+ 	void *addr_buf_size = 0;
+ 	size_t addrs, cnt;
+ 	int sd, result, port;
++	int domain = PF_INET6;
+ 
+ 	if (argc < 3) {
+ 		fprintf(stderr,
+@@ -84,6 +85,7 @@ int main (int argc, char **argv)
+ 		} else if (strchr(argv[cnt], '.')) {
+ 			struct sockaddr_in *sa; 
+ 
++			domain = PF_INET;
+ 			sa = (struct sockaddr_in *)buf_ptr;
+ 			printf (" IPv4 address number %zu", addrs);
+ 			sa->sin_family = AF_INET;
+@@ -103,7 +105,7 @@ int main (int argc, char **argv)
+ 	printf ("bindx_test: INFO: Got %zu addrs\n", addrs);
+   
+ 	/* Create the socket */
+-	sd = socket(PF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
++	sd = socket(domain, SOCK_SEQPACKET, IPPROTO_SCTP);
+ 	if (sd = -1) {
+ 		perror("bindx_test: ERROR: Cannot open socket");
+ 		return 1;
+-- 
+1.8.0.2
 
-Thanks a great deal for your valuable input!
-
-
-
-
-
------Original Message-----
-From: Vlad Yasevich [mailto:vyasevich@gmail.com] 
-Sent: May-02-14 3:39 PM
-To: Butler, Peter; Neil Horman
-Cc: linux-sctp@vger.kernel.org
-Subject: Re: SCTP throughput does not scale
-
-On 05/02/2014 03:13 PM, Butler, Peter wrote:
-> Recall that the issue here isn't that TCP outperforms SCTP - i.e. that 
-> it has higher throughput overall - but that TCP (and UDP) scale up 
-> when more connections are added, whereas SCTP does not.  So while 
-> changing the message size (say, from 1000 bytes to 1452 bytes) and 
-> modifying the GSO/TSO/GRO/LRO NIC settings does indeed change the 
-> overall SCTP and TCP throughput (and closes the throughput gap between 
-> these protocols), the fact remains that I can still then double the 
-> overall TCP system throughput by adding in a second TCP connection, 
-> whereas I cannot double the SCTP throughput by adding in a second SCTP 
-> association.  (Again, in the latter case the overall throughput 
-> remains constant with the two associations now carrying half the 
-> traffic as the lone association did in the former case.)
-> 
-
-Right, I understand.  However, TCP will end up sending less packets then SCTP due to the stream nature of TCP.  So, you may not be hitting a netem drop limitation with TCP.  This would be an interesting data point.
-
-Run a 2 stream TCP perf session with default netem settings and see if you have qdisc drops.
-
-Then run a 2 stream SCTP perf session and check for drops.
-
--vlad
-
-> 
-> 
-> -----Original Message-----
-> From: Vlad Yasevich [mailto:vyasevich@gmail.com]
-> Sent: May-02-14 1:34 PM
-> To: Butler, Peter; Neil Horman
-> Cc: linux-sctp@vger.kernel.org
-> Subject: Re: SCTP throughput does not scale
-> 
-> On 05/02/2014 01:10 PM, Butler, Peter wrote:
->> [root@slot2 ~]# tc -s qdisc show
->> qdisc netem 8002: dev p19p2 root refcnt 65 limit 1000 delay 25.0ms 
->> Sent 590200 bytes 7204 pkt (dropped 0, overlimits 0 requeues 0) 
->> backlog 0b 0p requeues 0 qdisc netem 8001: dev p19p1 root refcnt 65 
->> limit 1000 delay 25.0ms  Sent 997332352 bytes 946411 pkt (dropped 
->> 478, overlimits 0 requeues 1)  backlog 114b 1p requeues 1
->>
-> 
-> Thanks.  The above shows a drop of 478 packets.  You might try growing 
-> you queue size.  Remember that SCTP is very much packet oriented and 
-> with your size of 1000 bytes, each message ends up taking up
-> 1 under-utilized packet.
-> 
-> Meanwhile TCP will coalesce your 1000 byte writes into full mss sized writes (plug GSO/TSO if you are still using it).  That allows TCP to much more effectively utilized the packets.
-> 
-> -vlad
-> 
->>
->> [root@slot3 ~]# tc -s qdisc show
->> qdisc netem 8002: dev p19p2 root refcnt 65 limit 1000 delay 25.0ms 
->> Sent 90352 bytes 1666 pkt (dropped 0, overlimits 0 requeues 0) 
->> backlog 0b 0p requeues 0 qdisc netem 8001: dev p19p1 root refcnt 65 
->> limit 1000 delay 25.0ms  Sent 29544962 bytes 475167 pkt (dropped 0, 
->> overlimits 0 requeues 2)  backlog 130b 1p requeues 2
->>
->>
->>
->>
->> -----Original Message-----
->> From: Vlad Yasevich [mailto:vyasevich@gmail.com]
->> Sent: May-02-14 1:07 PM
->> To: Butler, Peter; Neil Horman
->> Cc: linux-sctp@vger.kernel.org
->> Subject: Re: SCTP throughput does not scale
->>
->> On 05/02/2014 12:33 PM, Butler, Peter wrote:
->>> The only entries from "tc qdisc show" are the ones used to implement the 50 ms RTT, which applies to all packet types (not just SCTP).
->>>
->>
->> I am assuming that you are using netem.  What is the queue length?
->> What is the output of
->>  # tc -s qdisc show
->>
->> look like.
->>
->> Thanks
->> -vlad
->>
->>> As for dropped frames, are you referring to SctpInPktDiscards?    SctpInPktDiscards is zero or very small (compared to the total number of transmitted packets).  For example, starting with all stats in /proc/net/sctp/snmp zeroed out, and then running one minute's worth of traffic with the same setup (50 ms RTT, 1000-byte messages, 2 MB tx/rx buffer size) I get the following data in /proc/net/sctp/snmp when running two parallel associations (only relevant lines shown here):
->>>
->>> client side (sending DATA):
->>> SctpOutSCTPPacks                        938945
->>> SctpInSCTPPacks                         473209
->>> SctpInPktDiscards                       0
->>> SctpInDataChunkDiscards                 0
->>>
->>>
->>> server side (receiving DATA):
->>> SctpOutSCTPPacks                        473209
->>> SctpInSCTPPacks                         938457
->>> SctpInPktDiscards                       0
->>> SctpInDataChunkDiscards                 0
->>>
->>>
->>>
->>> -----Original Message-----
->>> From: linux-sctp-owner@vger.kernel.org 
->>> [mailto:linux-sctp-owner@vger.kernel.org] On Behalf Of Neil Horman
->>> Sent: May-02-14 9:36 AM
->>> To: Butler, Peter
->>> Cc: linux-sctp@vger.kernel.org
->>> Subject: Re: SCTP throughput does not scale
->>>
->>> On Fri, May 02, 2014 at 11:45:00AM +0000, Butler, Peter wrote:
->>>> I have tested with /proc/sys/net/sctp/[snd|rcv]buf_policy set to 0 and to 1.  I get the same behaviour both ways.  Note that my associations are all TCP-style SOCK_DGRAM associations, and not UDP-style SOCK_SEQPACKET associations.  As such, each association has its own socket - rather than all the associations sharing a single socket - and thus, to my understanding, the parameters in question will have no effect (as my testing has shown).  
->>>>
->>> You're correct, if you're using TCP style associations, the above policies won't change much.
->>>
->>> Such consistent throughput sharing though still seems odd.  You don't have any traffic shaping or policing implimented on your network devices do you?  Either on your sending or receiving system?  tc qdisc show would be able to tell you.
->>> Such low throughput on a 10G interface seems like it could not be much other than that.  Are you seeing any droped frames in /proc/net/sctp/snmp or in /proc/net/snmp[6]?
->>>
->>> Neil
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-sctp" 
->>> in the body of a message to majordomo@vger.kernel.org More majordomo 
->>> info at  http://vger.kernel.org/majordomo-info.html
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-sctp" 
->>> in the body of a message to majordomo@vger.kernel.org More majordomo 
->>> info at  http://vger.kernel.org/majordomo-info.html
->>>
->>
-> 
 
