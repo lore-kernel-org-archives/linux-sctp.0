@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 23 May 2014 10:47:33 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Fri, 23 May 2014 15:05:20 +0000
 Subject: Re: [PATCH] lksctp-tools: make bind_test can do while disable IPV6
-Message-Id: <20140523104733.GA26978@hmsreliant.think-freely.org>
+Message-Id: <537F63B0.8000201@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <537EBD19.2030003@huawei.com>
 In-Reply-To: <537EBD19.2030003@huawei.com>
@@ -10,7 +10,7 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On Fri, May 23, 2014 at 11:14:33AM +0800, Wang Weidong wrote:
+On 05/22/2014 11:14 PM, Wang Weidong wrote:
 > From e496cc0da4b43f4686e91aa9ffa73869e1f4c91d Mon Sep 17 00:00:00 2001
 > From: Wang Weidong <wangweidong1@huawei.com>
 > Date: Mon, 9 Jun 2014 23:32:39 +0800
@@ -20,7 +20,10 @@ On Fri, May 23, 2014 at 11:14:33AM +0800, Wang Weidong wrote:
 > a variable 'domain' for support working for IPv4.
 > 
 > Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
+Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+
+-vlad
 
 > ---
 >  src/apps/bindx_test.c | 4 +++-
@@ -55,12 +58,5 @@ Acked-by: Neil Horman <nhorman@tuxdriver.com>
 >  	if (sd = -1) {
 >  		perror("bindx_test: ERROR: Cannot open socket");
 >  		return 1;
-> -- 
-> 1.8.0.2
 > 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
