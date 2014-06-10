@@ -1,22 +1,37 @@
-From: Jiri Pirko <jiri@resnulli.us>
-Date: Mon, 30 Jun 2014 13:04:50 +0000
-Subject: Re: [PATCH net-next 2/2] net: sctp: only warn in proc_sctp_do_alpha_beta if write
-Message-Id: <20140630130450.GB2941@minipsycho.orion>
+From: Xufeng Zhang <xufengzhang.main@gmail.com>
+Date: Tue, 10 Jun 2014 06:27:07 +0000
+Subject: sctp bug: sk_ack_backlog wrap-around problem
+Message-Id: <CA+=dFzg6gXDTXr6AusZ40_swrjQa-yoS1YLv3=SJAjKYgKzrbQ@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1404129129-23270-1-git-send-email-dborkman@redhat.com>
- <1404129129-23270-3-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1404129129-23270-3-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+Cc: linux-sctp <linux-sctp@vger.kernel.org>, netdev <netdev@vger.kernel.org>, linux-kernel <linux-kernel@vger.kernel.org>, xufeng zhang <xufeng.zhang@windriver.com>
 
-Mon, Jun 30, 2014 at 01:52:09PM CEST, dborkman@redhat.com wrote:
->Only warn if the value is written to alpha or beta. We don't care
->emitting a one-time warning when only reading it.
->
->Reported-by: Jiri Pirko <jpirko@redhat.com>
->Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Hi Vlad and Neil,
 
-Reviewed-by: Jiri Pirko <jiri@resnulli.us>
+I found a sk_ack_backlog wrap-around problem during handling received
+COOKIE_ECHO.
+
+Consider the scenario:
+For a TCP-style socket, while processing the COOKIE_ECHO chunk in
+sctp_sf_do_5_1D_ce(),
+after it has passed a series of sanity check, a new association would
+be created in
+sctp_unpack_cookie(), but afterwards, some processing maybe failed,
+and sctp_association_free()
+will be called to free the previously allocated association, in
+sctp_association_free(),
+sk_ack_backlog value is decremented for this socket, since the initial
+value for sk_ack_backlog is 0,
+after the decrement, it will be 65535, a wrap-around problem happens,
+and if we want to establish
+new associations afterward in the same socket, ABORT would be
+triggered since sctp deem the
+accept queue as full.
+
+Do you have any idea to fix such kind of issue?
+
+Thanks a lot!
+Xufeng
