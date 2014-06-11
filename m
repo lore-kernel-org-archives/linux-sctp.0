@@ -1,114 +1,154 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Mon, 30 Jun 2014 11:52:08 +0000
-Subject: [PATCH net-next 1/2] net: sctp: improve timer slack calculation for transport HBs
-Message-Id: <1404129129-23270-2-git-send-email-dborkman@redhat.com>
+Date: Wed, 11 Jun 2014 16:19:31 +0000
+Subject: [PATCH v3 net-next 4/5] net: sctp: improve sctp_select_active_and_retran_path selection
+Message-Id: <1402503572-32237-5-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1404129129-23270-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1404129129-23270-1-git-send-email-dborkman@redhat.com>
+References: <1402503572-32237-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1402503572-32237-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: davem@davemloft.net
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-RFC4960, section 8.3 says:
+In function sctp_select_active_and_retran_path(), we walk the
+transport list in order to look for the two most recently used
+ACTIVE transports (trans_pri, trans_sec). In case we didn't find
+anything ACTIVE, we currently just camp on a possibly PF or
+INACTIVE transport that is primary path; this behavior actually
+dates back to linux-history tree of the very early days of
+lksctp, and can yield a behavior that chooses suboptimal
+transport paths.
 
-  On an idle destination address that is allowed to heartbeat,
-  it is recommended that a HEARTBEAT chunk is sent once per RTO
-  of that destination address plus the protocol parameter
-  'HB.interval', with jittering of +/- 50% of the RTO value,
-  and exponential backoff of the RTO if the previous HEARTBEAT
-  is unanswered.
+Instead, be a bit more clever by reusing and extending the
+recently introduced sctp_trans_elect_best() handler. In case
+both transports are evaluated to have the same score resulting
+from their states, break the tie by looking at: 1) transport
+patch error count 2) last_time_heard value from each transport.
 
-Currently, we calculate jitter via sctp_jitter() function first,
-and then add its result to the current RTO for the new timeout:
+This is analogous to Nishida's Quick Failover draft [1],
+section 5.1, 3:
 
-  TMO = RTO + (RAND() % RTO) - (RTO / 2)
-              `------------------------^-=> sctp_jitter()
+  The sender SHOULD avoid data transmission to PF destinations.
+  When all destinations are in either PF or Inactive state,
+  the sender MAY either move the destination from PF to active
+  state (and transmit data to the active destination) or the
+  sender MAY transmit data to a PF destination. In the former
+  scenario, (i) the sender MUST NOT notify the ULP about the
+  state transition, and (ii) MUST NOT clear the destination's
+  error counter. It is recommended that the sender picks the
+  PF destination with least error count (fewest consecutive
+  timeouts) for data transmission. In case of a tie (multiple PF
+  destinations with same error count), the sender MAY choose the
+  last active destination.
 
-Instead, we can just simplify all this by directly calculating:
+Thus for sctp_select_active_and_retran_path(), we keep track of
+the best, if any, transport that is in PF state and in case no
+ACTIVE transport has been found (hence trans_{pri,sec} is NULL),
+we select the best out of the three: current primary_path and
+retran_path as well as a possible PF transport.
 
-  TMO = (RTO / 2) + (RAND() % RTO)
+The secondary may still camp on the original primary_path as
+before. The change in sctp_trans_elect_best() with a more fine
+grained tie selection also improves at the same time path selection
+for sctp_assoc_update_retran_path() in case of non-ACTIVE states.
 
-With the help of prandom_u32_max(), we don't need to open code
-our own global PRNG, but can instead just make use of the per
-CPU implementation of prandom with better quality numbers. Also,
-we can now spare us the conditional for divide by zero check
-since no div or mod operation needs to be used. Note that
-prandom_u32_max() won't emit the same result as a mod operation,
-but we really don't care here as we only want to have a random
-number scaled into RTO interval.
-
-Note, exponential RTO backoff is handeled elsewhere, namely in
-sctp_do_8_2_transport_strike().
+  [1] http://tools.ietf.org/html/draft-nishida-tsvwg-sctp-failover-05
 
 Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
 ---
- include/net/sctp/sctp.h | 21 ---------------------
- net/sctp/transport.c    | 17 +++++++++--------
- 2 files changed, 9 insertions(+), 29 deletions(-)
+ net/sctp/associola.c | 50 +++++++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 45 insertions(+), 5 deletions(-)
 
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index 8e4de46..c2035c9 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -388,27 +388,6 @@ static inline int sctp_list_single_entry(struct list_head *head)
- 	return (head->next != head) && (head->next = head->prev);
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 620c99e..58bbb73 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1224,13 +1224,41 @@ static u8 sctp_trans_score(const struct sctp_transport *trans)
+ 	return sctp_trans_state_to_prio_map[trans->state];
  }
  
--/* Generate a random jitter in the range of -50% ~ +50% of input RTO. */
--static inline __s32 sctp_jitter(__u32 rto)
--{
--	static __u32 sctp_rand;
--	__s32 ret;
--
--	/* Avoid divide by zero. */
--	if (!rto)
--		rto = 1;
--
--	sctp_rand += jiffies;
--	sctp_rand ^= (sctp_rand << 12);
--	sctp_rand ^= (sctp_rand >> 20);
--
--	/* Choose random number from 0 to rto, then move to -50% ~ +50%
--	 * of rto.
--	 */
--	ret = sctp_rand % rto - (rto >> 1);
--	return ret;
--}
--
- /* Break down data chunks at this point.  */
- static inline int sctp_frag_point(const struct sctp_association *asoc, int pmtu)
- {
-diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-index 7dd672f..b10e047 100644
---- a/net/sctp/transport.c
-+++ b/net/sctp/transport.c
-@@ -594,15 +594,16 @@ void sctp_transport_burst_reset(struct sctp_transport *t)
- }
- 
- /* What is the next timeout value for this transport? */
--unsigned long sctp_transport_timeout(struct sctp_transport *t)
-+unsigned long sctp_transport_timeout(struct sctp_transport *trans)
- {
--	unsigned long timeout;
--	timeout = t->rto + sctp_jitter(t->rto);
--	if ((t->state != SCTP_UNCONFIRMED) &&
--	    (t->state != SCTP_PF))
--		timeout += t->hbinterval;
--	timeout += jiffies;
--	return timeout;
-+	/* RTO + timer slack +/- 50% of RTO */
-+	unsigned long timeout = (trans->rto >> 1) + prandom_u32_max(trans->rto);
++static struct sctp_transport *sctp_trans_elect_tie(struct sctp_transport *trans1,
++						   struct sctp_transport *trans2)
++{
++	if (trans1->error_count > trans2->error_count) {
++		return trans2;
++	} else if (trans1->error_count = trans2->error_count &&
++		   ktime_after(trans2->last_time_heard,
++			       trans1->last_time_heard)) {
++		return trans2;
++	} else {
++		return trans1;
++	}
++}
 +
-+	if (trans->state != SCTP_UNCONFIRMED &&
-+	    trans->state != SCTP_PF)
-+		timeout += trans->hbinterval;
+ static struct sctp_transport *sctp_trans_elect_best(struct sctp_transport *curr,
+ 						    struct sctp_transport *best)
+ {
++	u8 score_curr, score_best;
 +
-+	return timeout + jiffies;
+ 	if (best = NULL)
+ 		return curr;
+ 
+-	return sctp_trans_score(curr) > sctp_trans_score(best) ? curr : best;
++	score_curr = sctp_trans_score(curr);
++	score_best = sctp_trans_score(best);
++
++	/* First, try a score-based selection if both transport states
++	 * differ. If we're in a tie, lets try to make a more clever
++	 * decision here based on error counts and last time heard.
++	 */
++	if (score_curr > score_best)
++		return curr;
++	else if (score_curr = score_best)
++		return sctp_trans_elect_tie(curr, best);
++	else
++		return best;
  }
  
- /* Reset transport variables to their initial values */
+ void sctp_assoc_update_retran_path(struct sctp_association *asoc)
+@@ -1274,14 +1302,23 @@ void sctp_assoc_update_retran_path(struct sctp_association *asoc)
+ static void sctp_select_active_and_retran_path(struct sctp_association *asoc)
+ {
+ 	struct sctp_transport *trans, *trans_pri = NULL, *trans_sec = NULL;
++	struct sctp_transport *trans_pf = NULL;
+ 
+ 	/* Look for the two most recently used active transports. */
+ 	list_for_each_entry(trans, &asoc->peer.transport_addr_list,
+ 			    transports) {
++		/* Skip uninteresting transports. */
+ 		if (trans->state = SCTP_INACTIVE ||
+-		    trans->state = SCTP_UNCONFIRMED ||
+-		    trans->state = SCTP_PF)
++		    trans->state = SCTP_UNCONFIRMED)
+ 			continue;
++		/* Keep track of the best PF transport from our
++		 * list in case we don't find an active one.
++		 */
++		if (trans->state = SCTP_PF) {
++			trans_pf = sctp_trans_elect_best(trans, trans_pf);
++			continue;
++		}
++		/* For active transports, pick the most recent ones. */
+ 		if (trans_pri = NULL ||
+ 		    ktime_after(trans->last_time_heard,
+ 				trans_pri->last_time_heard)) {
+@@ -1317,10 +1354,13 @@ static void sctp_select_active_and_retran_path(struct sctp_association *asoc)
+ 		trans_sec = trans_pri;
+ 
+ 	/* If we failed to find a usable transport, just camp on the
+-	 * primary, even if they are inactive.
++	 * primary or retran, even if they are inactive, if possible
++	 * pick a PF iff it's the better choice.
+ 	 */
+ 	if (trans_pri = NULL) {
+-		trans_pri = asoc->peer.primary_path;
++		trans_pri = sctp_trans_elect_best(asoc->peer.primary_path,
++						  asoc->peer.retran_path);
++		trans_pri = sctp_trans_elect_best(trans_pri, trans_pf);
+ 		trans_sec = asoc->peer.primary_path;
+ 	}
+ 
 -- 
 1.7.11.7
 
