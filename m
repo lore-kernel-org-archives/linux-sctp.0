@@ -1,164 +1,190 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Mon, 30 Jun 2014 13:01:04 +0000
-Subject: [PATCH net-next 1/3] net: sctp: Inline the functions from command.c
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1726978C@AcuExch.aculab.com>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Wed, 11 Jun 2014 15:03:20 +0000
+Subject: [PATCH v2 net-next 2/5] net: sctp: refactor active path selection
+Message-Id: <1402499003-29355-3-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1402499003-29355-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1402499003-29355-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Network Development <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
-Cc: "David S. Miller" <davem@davemloft.net>
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-sctp_init_cmd_seq() and sctp_next_cmd() are only called from one place.
-The call sequence for sctp_add_cmd_sf() is likely to be longer than
-the inlined code.
-With sctp_add_cmd_sf() inlined the compiler can optimise repeated calls.
+This patch just refactors and moves the code for the active
+path selection into its own helper function outside of
+sctp_assoc_control_transport() which is already big enough.
+No functional changes here.
 
-
-Signed-off-by: David Laight <david.laight@aculab.com>
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
 ---
- include/net/sctp/command.h | 27 +++++++++++++++---
- net/sctp/Makefile          |  2 +-
- net/sctp/command.c         | 68 ----------------------------------------------
- 3 files changed, 24 insertions(+), 73 deletions(-)
- delete mode 100644 net/sctp/command.c
+ net/sctp/associola.c | 120 ++++++++++++++++++++++++++-------------------------
+ 1 file changed, 61 insertions(+), 59 deletions(-)
 
-diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
-index 6547ab7..020eb95 100644
---- a/include/net/sctp/command.h
-+++ b/include/net/sctp/command.h
-@@ -210,19 +210,38 @@ typedef struct {
- /* Initialize a block of memory as a command sequence.
-  * Return 0 if the initialization fails.
-  */
--int sctp_init_cmd_seq(sctp_cmd_seq_t *seq);
-+static inline int sctp_init_cmd_seq(sctp_cmd_seq_t *seq)
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 39579c3..9f1cc6f 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -55,6 +55,7 @@
+ #include <net/sctp/sm.h>
+ 
+ /* Forward declarations for internal functions. */
++static void sctp_select_active_and_retran_path(struct sctp_association *asoc);
+ static void sctp_assoc_bh_rcv(struct work_struct *work);
+ static void sctp_assoc_free_asconf_acks(struct sctp_association *asoc);
+ static void sctp_assoc_free_asconf_queue(struct sctp_association *asoc);
+@@ -774,9 +775,6 @@ void sctp_assoc_control_transport(struct sctp_association *asoc,
+ 				  sctp_transport_cmd_t command,
+ 				  sctp_sn_error_t error)
+ {
+-	struct sctp_transport *t = NULL;
+-	struct sctp_transport *first;
+-	struct sctp_transport *second;
+ 	struct sctp_ulpevent *event;
+ 	struct sockaddr_storage addr;
+ 	int spc_state = 0;
+@@ -829,13 +827,14 @@ void sctp_assoc_control_transport(struct sctp_association *asoc,
+ 		return;
+ 	}
+ 
+-	/* Generate and send a SCTP_PEER_ADDR_CHANGE notification to the
+-	 * user.
++	/* Generate and send a SCTP_PEER_ADDR_CHANGE notification
++	 * to the user.
+ 	 */
+ 	if (ulp_notify) {
+ 		memset(&addr, 0, sizeof(struct sockaddr_storage));
+ 		memcpy(&addr, &transport->ipaddr,
+ 		       transport->af_specific->sockaddr_len);
++
+ 		event = sctp_ulpevent_make_peer_addr_change(asoc, &addr,
+ 					0, spc_state, error, GFP_ATOMIC);
+ 		if (event)
+@@ -843,60 +842,7 @@ void sctp_assoc_control_transport(struct sctp_association *asoc,
+ 	}
+ 
+ 	/* Select new active and retran paths. */
+-
+-	/* Look for the two most recently used active transports.
+-	 *
+-	 * This code produces the wrong ordering whenever jiffies
+-	 * rolls over, but we still get usable transports, so we don't
+-	 * worry about it.
+-	 */
+-	first = NULL; second = NULL;
+-
+-	list_for_each_entry(t, &asoc->peer.transport_addr_list,
+-			transports) {
+-
+-		if ((t->state = SCTP_INACTIVE) ||
+-		    (t->state = SCTP_UNCONFIRMED) ||
+-		    (t->state = SCTP_PF))
+-			continue;
+-		if (!first || t->last_time_heard > first->last_time_heard) {
+-			second = first;
+-			first = t;
+-		} else if (!second ||
+-			   t->last_time_heard > second->last_time_heard)
+-			second = t;
+-	}
+-
+-	/* RFC 2960 6.4 Multi-Homed SCTP Endpoints
+-	 *
+-	 * By default, an endpoint should always transmit to the
+-	 * primary path, unless the SCTP user explicitly specifies the
+-	 * destination transport address (and possibly source
+-	 * transport address) to use.
+-	 *
+-	 * [If the primary is active but not most recent, bump the most
+-	 * recently used transport.]
+-	 */
+-	if (((asoc->peer.primary_path->state = SCTP_ACTIVE) ||
+-	     (asoc->peer.primary_path->state = SCTP_UNKNOWN)) &&
+-	    first != asoc->peer.primary_path) {
+-		second = first;
+-		first = asoc->peer.primary_path;
+-	}
+-
+-	if (!second)
+-		second = first;
+-	/* If we failed to find a usable transport, just camp on the
+-	 * primary, even if it is inactive.
+-	 */
+-	if (!first) {
+-		first = asoc->peer.primary_path;
+-		second = asoc->peer.primary_path;
+-	}
+-
+-	/* Set the active and retran transports.  */
+-	asoc->peer.active_path = first;
+-	asoc->peer.retran_path = second;
++	sctp_select_active_and_retran_path(asoc);
+ }
+ 
+ /* Hold a reference to an association. */
+@@ -1325,6 +1271,62 @@ void sctp_assoc_update_retran_path(struct sctp_association *asoc)
+ 		 __func__, asoc, &asoc->peer.retran_path->ipaddr.sa);
+ }
+ 
++static void sctp_select_active_and_retran_path(struct sctp_association *asoc)
 +{
-+	memset(seq, 0, sizeof(sctp_cmd_seq_t));
-+	return 1;		/* We always succeed.  */
++	struct sctp_transport *trans, *trans_pri = NULL, *trans_sec = NULL;
++
++	/* Look for the two most recently used active transports. */
++	list_for_each_entry(trans, &asoc->peer.transport_addr_list,
++			    transports) {
++		if (trans->state = SCTP_INACTIVE ||
++		    trans->state = SCTP_UNCONFIRMED ||
++		    trans->state = SCTP_PF)
++			continue;
++		if (trans_pri = NULL ||
++		    trans->last_time_heard > trans_pri->last_time_heard) {
++			trans_sec = trans_pri;
++			trans_pri = trans;
++		} else if (trans_sec = NULL ||
++			   trans->last_time_heard > trans_sec->last_time_heard) {
++			trans_sec = trans;
++		}
++	}
++
++	/* RFC 2960 6.4 Multi-Homed SCTP Endpoints
++	 *
++	 * By default, an endpoint should always transmit to the primary
++	 * path, unless the SCTP user explicitly specifies the
++	 * destination transport address (and possibly source transport
++	 * address) to use. [If the primary is active but not most recent,
++	 * bump the most recently used transport.]
++	 */
++	if ((asoc->peer.primary_path->state = SCTP_ACTIVE ||
++	     asoc->peer.primary_path->state = SCTP_UNKNOWN) &&
++	     asoc->peer.primary_path != trans_pri) {
++		trans_sec = trans_pri;
++		trans_pri = asoc->peer.primary_path;
++	}
++
++	/* We did not find anything useful for a possible retransmission
++	 * path; either primary path that we found is the the same as
++	 * the current one, or we didn't generally find an active one.
++	 */
++	if (trans_sec = NULL)
++		trans_sec = trans_pri;
++
++	/* If we failed to find a usable transport, just camp on the
++	 * primary, even if they are inactive.
++	 */
++	if (trans_pri = NULL) {
++		trans_pri = asoc->peer.primary_path;
++		trans_sec = asoc->peer.primary_path;
++	}
++
++	/* Set the active and retran transports. */
++	asoc->peer.active_path = trans_pri;
++	asoc->peer.retran_path = trans_sec;
 +}
 +
- 
- /* Add a command to an sctp_cmd_seq_t.
-  *
-  * Use the SCTP_* constructors defined by SCTP_ARG_CONSTRUCTOR() above
-  * to wrap data which goes in the obj argument.
-  */
--void sctp_add_cmd_sf(sctp_cmd_seq_t *seq, sctp_verb_t verb, sctp_arg_t obj);
-+static inline void sctp_add_cmd_sf(sctp_cmd_seq_t *seq, sctp_verb_t verb,
-+				   sctp_arg_t obj)
-+{
-+	BUG_ON(seq->next_free_slot >= SCTP_MAX_NUM_COMMANDS);
-+
-+	seq->cmds[seq->next_free_slot].verb = verb;
-+	seq->cmds[seq->next_free_slot++].obj = obj;
-+}
- 
- /* Return the next command structure in an sctp_cmd_seq.
-  * Return NULL at the end of the sequence.
-  */
--sctp_cmd_t *sctp_next_cmd(sctp_cmd_seq_t *seq);
-+static inline sctp_cmd_t *sctp_next_cmd(sctp_cmd_seq_t *seq)
-+{
-+	sctp_cmd_t *retval = NULL;
- 
--#endif /* __net_sctp_command_h__ */
-+	if (seq->next_cmd < seq->next_free_slot)
-+		retval = &seq->cmds[seq->next_cmd++];
-+
-+	return retval;
-+}
- 
-+#endif /* __net_sctp_command_h__ */
-diff --git a/net/sctp/Makefile b/net/sctp/Makefile
-index 5c30b7a..3b4ffb0 100644
---- a/net/sctp/Makefile
-+++ b/net/sctp/Makefile
-@@ -8,7 +8,7 @@ obj-$(CONFIG_NET_SCTPPROBE) += sctp_probe.o
- sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
- 	  protocol.o endpointola.o associola.o \
- 	  transport.o chunk.o sm_make_chunk.o ulpevent.o \
--	  inqueue.o outqueue.o ulpqueue.o command.o \
-+	  inqueue.o outqueue.o ulpqueue.o \
- 	  tsnmap.o bind_addr.o socket.o primitive.o \
- 	  output.o input.o debug.o ssnmap.o auth.o
- 
-diff --git a/net/sctp/command.c b/net/sctp/command.c
-deleted file mode 100644
-index dd73758..0000000
---- a/net/sctp/command.c
-+++ /dev/null
-@@ -1,68 +0,0 @@
--/* SCTP kernel implementation Copyright (C) 1999-2001
-- * Cisco, Motorola, and IBM
-- * Copyright 2001 La Monte H.P. Yarroll
-- *
-- * This file is part of the SCTP kernel implementation
-- *
-- * These functions manipulate sctp command sequences.
-- *
-- * This SCTP implementation is free software;
-- * you can redistribute it and/or modify it under the terms of
-- * the GNU General Public License as published by
-- * the Free Software Foundation; either version 2, or (at your option)
-- * any later version.
-- *
-- * This SCTP implementation is distributed in the hope that it
-- * will be useful, but WITHOUT ANY WARRANTY; without even the implied
-- *                 ************************
-- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-- * See the GNU General Public License for more details.
-- *
-- * You should have received a copy of the GNU General Public License
-- * along with GNU CC; see the file COPYING.  If not, see
-- * <http://www.gnu.org/licenses/>.
-- *
-- * Please send any bug reports or fixes you make to the
-- * email address(es):
-- *    lksctp developers <linux-sctp@vger.kernel.org>
-- *
-- * Written or modified by:
-- *    La Monte H.P. Yarroll <piggy@acm.org>
-- *    Karl Knutson <karl@athena.chicago.il.us>
-- */
--
--#include <linux/types.h>
--#include <net/sctp/sctp.h>
--#include <net/sctp/sm.h>
--
--/* Initialize a block of memory as a command sequence. */
--int sctp_init_cmd_seq(sctp_cmd_seq_t *seq)
--{
--	memset(seq, 0, sizeof(sctp_cmd_seq_t));
--	return 1;		/* We always succeed.  */
--}
--
--/* Add a command to a sctp_cmd_seq_t.
-- * Return 0 if the command sequence is full.
-- */
--void sctp_add_cmd_sf(sctp_cmd_seq_t *seq, sctp_verb_t verb, sctp_arg_t obj)
--{
--	BUG_ON(seq->next_free_slot >= SCTP_MAX_NUM_COMMANDS);
--
--	seq->cmds[seq->next_free_slot].verb = verb;
--	seq->cmds[seq->next_free_slot++].obj = obj;
--}
--
--/* Return the next command structure in a sctp_cmd_seq.
-- * Returns NULL at the end of the sequence.
-- */
--sctp_cmd_t *sctp_next_cmd(sctp_cmd_seq_t *seq)
--{
--	sctp_cmd_t *retval = NULL;
--
--	if (seq->next_cmd < seq->next_free_slot)
--		retval = &seq->cmds[seq->next_cmd++];
--
--	return retval;
--}
--
+ struct sctp_transport *
+ sctp_assoc_choose_alter_transport(struct sctp_association *asoc,
+ 				  struct sctp_transport *last_sent_to)
 -- 
-1.8.1.2
-
-
+1.7.11.7
 
