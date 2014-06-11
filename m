@@ -1,10 +1,10 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Wed, 11 Jun 2014 16:19:32 +0000
-Subject: [PATCH v3 net-next 5/5] net: sctp: fix incorrect type in gfp initializer
-Message-Id: <1402503572-32237-6-git-send-email-dborkman@redhat.com>
+Date: Wed, 11 Jun 2014 15:03:23 +0000
+Subject: [PATCH v2 net-next 5/5] net: sctp: fix incorrect type in gfp initializer
+Message-Id: <1402499003-29355-6-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1402503572-32237-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1402503572-32237-1-git-send-email-dborkman@redhat.com>
+References: <1402499003-29355-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1402499003-29355-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
