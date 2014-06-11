@@ -1,31 +1,40 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Wed, 11 Jun 2014 15:52:38 +0000
-Subject: Re: [PATCH v2 net-next 4/5] net: sctp: improve sctp_select_active_and_retran_path selection
-Message-Id: <53987B46.3040504@redhat.com>
+Date: Wed, 11 Jun 2014 14:34:57 +0000
+Subject: [PATCH net-next 5/5] net: sctp: fix incorrect type in gfp initializer
+Message-Id: <1402497297-27100-6-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1402499003-29355-1-git-send-email-dborkman@redhat.com> <1402499003-29355-5-git-send-email-dborkman@redhat.com> <539873E2.3020003@gmail.com> <539874E3.2010607@redhat.com> <53987B09.30904@gmail.com>
-In-Reply-To: <53987B09.30904@gmail.com>
+References: <1402497297-27100-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1402497297-27100-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On 06/11/2014 05:51 PM, Vlad Yasevich wrote:
-> On 06/11/2014 11:25 AM, Daniel Borkmann wrote:
->> On 06/11/2014 05:21 PM, Vlad Yasevich wrote:
->>> On 06/11/2014 11:03 AM, Daniel Borkmann wrote:
->>>> In case we neither found a possible ACTIVE or UNKNOWN trans_pri
->>>> resp. trans_sec from our current transport list, we currently
->>> ^^^^^^
->>>
->>> Not sure what you wanted to say here.
->>
->> Actually just the case of trans_pri = NULL, trans_sec = NULL
->> since they weren't updated when traversing the list, sorry if
->> this was unclear.
->
-> The "resp." seemed like either an abbreviation or an incomplete
-> word.  In either case, it should be clarified.
+This fixes the following sparse warning:
 
-Ok, sure, will reword it.
+  net/sctp/associola.c:1556:29: warning: incorrect type in initializer (different base types)
+  net/sctp/associola.c:1556:29:    expected bool [unsigned] [usertype] preload
+  net/sctp/associola.c:1556:29:    got restricted gfp_t
+
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/associola.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 58bbb73..9e0509c 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1591,7 +1591,7 @@ int sctp_assoc_lookup_laddr(struct sctp_association *asoc,
+ /* Set an association id for a given association */
+ int sctp_assoc_set_id(struct sctp_association *asoc, gfp_t gfp)
+ {
+-	bool preload = gfp & __GFP_WAIT;
++	bool preload = !!(gfp & __GFP_WAIT);
+ 	int ret;
+ 
+ 	/* If the id is already assigned, keep it. */
+-- 
+1.7.11.7
+
