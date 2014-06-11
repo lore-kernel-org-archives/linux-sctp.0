@@ -1,73 +1,38 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Wed, 11 Jun 2014 15:03:19 +0000
-Subject: [PATCH v2 net-next 1/5] ktime: add ktime_after and ktime_before helper
-Message-Id: <1402499003-29355-2-git-send-email-dborkman@redhat.com>
+Date: Wed, 11 Jun 2014 15:03:18 +0000
+Subject: [PATCH v2 net-next 0/5] SCTP update
+Message-Id: <1402499003-29355-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1402499003-29355-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1402499003-29355-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: davem@davemloft.net
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-Add two minimal helper functions analogous to time_before() and
-time_after() that will later on both be needed by SCTP code.
+This set contains transport path selection improvements in
+SCTP. Please see individual patches for details.
 
-Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
----
- include/linux/ktime.h    | 24 ++++++++++++++++++++++++
- net/sctp/sm_make_chunk.c |  2 +-
- 2 files changed, 25 insertions(+), 1 deletion(-)
+Thanks!
 
-diff --git a/include/linux/ktime.h b/include/linux/ktime.h
-index 31c0cd1..3787f33 100644
---- a/include/linux/ktime.h
-+++ b/include/linux/ktime.h
-@@ -304,6 +304,30 @@ static inline int ktime_compare(const ktime_t cmp1, const ktime_t cmp2)
- 	return 0;
- }
- 
-+/**
-+ * ktime_after - Compare if a ktime_t value is bigger than another one.
-+ * @cmp1:	comparable1
-+ * @cmp2:	comparable2
-+ *
-+ * Return: true if cmp1 happened after cmp2.
-+ */
-+static inline bool ktime_after(const ktime_t cmp1, const ktime_t cmp2)
-+{
-+	return ktime_compare(cmp1, cmp2) > 0;
-+}
-+
-+/**
-+ * ktime_before - Compare if a ktime_t value is smaller than another one.
-+ * @cmp1:	comparable1
-+ * @cmp2:	comparable2
-+ *
-+ * Return: true if cmp1 happened before cmp2.
-+ */
-+static inline bool ktime_before(const ktime_t cmp1, const ktime_t cmp2)
-+{
-+	return ktime_compare(cmp1, cmp2) < 0;
-+}
-+
- static inline s64 ktime_to_us(const ktime_t kt)
- {
- 	struct timeval tv = ktime_to_timeval(kt);
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index fee5552..ae0e616 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -1782,7 +1782,7 @@ no_hmac:
- 	else
- 		kt = ktime_get();
- 
--	if (!asoc && ktime_compare(bear_cookie->expiration, kt) < 0) {
-+	if (!asoc && ktime_before(bear_cookie->expiration, kt)) {
- 		/*
- 		 * Section 3.3.10.3 Stale Cookie Error (3)
- 		 *
+v1->v2:
+ - Fixed a typo in a comment in patch 1, thanks Florian Westphal
+   for pointing this out, rest stays as is.
+
+Daniel Borkmann (5):
+  ktime: add ktime_after and ktime_before helper
+  net: sctp: refactor active path selection
+  net: sctp: migrate most recently used transport to ktime
+  net: sctp: improve sctp_select_active_and_retran_path selection
+  net: sctp: fix incorrect type in gfp initializer
+
+ include/linux/ktime.h      |  24 +++++++
+ include/net/sctp/structs.h |   6 +-
+ net/sctp/associola.c       | 168 ++++++++++++++++++++++++++++-----------------
+ net/sctp/endpointola.c     |   2 +-
+ net/sctp/sm_make_chunk.c   |   2 +-
+ net/sctp/transport.c       |   2 +-
+ 6 files changed, 136 insertions(+), 68 deletions(-)
+
 -- 
 1.7.11.7
 
