@@ -1,7 +1,7 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Wed, 11 Jun 2014 16:19:28 +0000
-Subject: [PATCH v3 net-next 1/5] ktime: add ktime_after and ktime_before helper
-Message-Id: <1402503572-32237-2-git-send-email-dborkman@redhat.com>
+Date: Wed, 11 Jun 2014 16:19:32 +0000
+Subject: [PATCH v3 net-next 5/5] net: sctp: fix incorrect type in gfp initializer
+Message-Id: <1402503572-32237-6-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1402503572-32237-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1402503572-32237-1-git-send-email-dborkman@redhat.com>
@@ -11,63 +11,30 @@ Content-Transfer-Encoding: 7bit
 To: davem@davemloft.net
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-Add two minimal helper functions analogous to time_before() and
-time_after() that will later on both be needed by SCTP code.
+This fixes the following sparse warning:
+
+  net/sctp/associola.c:1556:29: warning: incorrect type in initializer (different base types)
+  net/sctp/associola.c:1556:29:    expected bool [unsigned] [usertype] preload
+  net/sctp/associola.c:1556:29:    got restricted gfp_t
 
 Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
 ---
- include/linux/ktime.h    | 24 ++++++++++++++++++++++++
- net/sctp/sm_make_chunk.c |  2 +-
- 2 files changed, 25 insertions(+), 1 deletion(-)
+ net/sctp/associola.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/linux/ktime.h b/include/linux/ktime.h
-index 31c0cd1..3787f33 100644
---- a/include/linux/ktime.h
-+++ b/include/linux/ktime.h
-@@ -304,6 +304,30 @@ static inline int ktime_compare(const ktime_t cmp1, const ktime_t cmp2)
- 	return 0;
- }
- 
-+/**
-+ * ktime_after - Compare if a ktime_t value is bigger than another one.
-+ * @cmp1:	comparable1
-+ * @cmp2:	comparable2
-+ *
-+ * Return: true if cmp1 happened after cmp2.
-+ */
-+static inline bool ktime_after(const ktime_t cmp1, const ktime_t cmp2)
-+{
-+	return ktime_compare(cmp1, cmp2) > 0;
-+}
-+
-+/**
-+ * ktime_before - Compare if a ktime_t value is smaller than another one.
-+ * @cmp1:	comparable1
-+ * @cmp2:	comparable2
-+ *
-+ * Return: true if cmp1 happened before cmp2.
-+ */
-+static inline bool ktime_before(const ktime_t cmp1, const ktime_t cmp2)
-+{
-+	return ktime_compare(cmp1, cmp2) < 0;
-+}
-+
- static inline s64 ktime_to_us(const ktime_t kt)
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 58bbb73..9e0509c 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1591,7 +1591,7 @@ int sctp_assoc_lookup_laddr(struct sctp_association *asoc,
+ /* Set an association id for a given association */
+ int sctp_assoc_set_id(struct sctp_association *asoc, gfp_t gfp)
  {
- 	struct timeval tv = ktime_to_timeval(kt);
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index fee5552..ae0e616 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -1782,7 +1782,7 @@ no_hmac:
- 	else
- 		kt = ktime_get();
+-	bool preload = gfp & __GFP_WAIT;
++	bool preload = !!(gfp & __GFP_WAIT);
+ 	int ret;
  
--	if (!asoc && ktime_compare(bear_cookie->expiration, kt) < 0) {
-+	if (!asoc && ktime_before(bear_cookie->expiration, kt)) {
- 		/*
- 		 * Section 3.3.10.3 Stale Cookie Error (3)
- 		 *
+ 	/* If the id is already assigned, keep it. */
 -- 
 1.7.11.7
 
