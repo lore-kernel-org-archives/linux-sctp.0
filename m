@@ -1,23 +1,47 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 18 Jun 2014 23:30:28 +0000
-Subject: Re: [PATCH net-next 2/6] Support for SCTP_RCVINFO ancillary data
-Message-Id: <20140618.163028.64645484433325569.davem@davemloft.net>
+From: Xufeng Zhang <xufeng.zhang@windriver.com>
+Date: Wed, 11 Jun 2014 02:37:24 +0000
+Subject: [PATCH] sctp: Fix sk_ack_backlog wrap-around problem
+Message-Id: <1402454244-8427-1-git-send-email-xufeng.zhang@windriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1403017296-28469-1-git-send-email-geirola@gmail.com>
-	<1403017296-28469-3-git-send-email-geirola@gmail.com>
-In-Reply-To: <1403017296-28469-3-git-send-email-geirola@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: geirola@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com
+To: vyasevich@gmail.com, nhorman@tuxdriver.com, davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-From: Geir Ola Vaagland <geirola@gmail.com>
-Date: Tue, 17 Jun 2014 17:01:32 +0200
+Consider the scenario:
+For a TCP-style socket, while processing the COOKIE_ECHO chunk in
+sctp_sf_do_5_1D_ce(), after it has passed a series of sanity check,
+a new association would be created in sctp_unpack_cookie(), but afterwards,
+some processing maybe failed, and sctp_association_free() will be called to
+free the previously allocated association, in sctp_association_free(),
+sk_ack_backlog value is decremented for this socket, since the initial
+value for sk_ack_backlog is 0, after the decrement, it will be 65535,
+a wrap-around problem happens, and if we want to establish new associations
+afterward in the same socket, ABORT would be triggered since sctp deem the
+accept queue as full.
+Fix this issue by only decrementing sk_ack_backlog for associations in
+the endpoint's list.
 
-> +}
-> +
-> +
->  /* Copy out the sndrcvinfo into a msghdr.  */
+Fix-suggested-by: Neil Horman <nhorman@tuxdriver.com>
+Signed-off-by: Xufeng Zhang <xufeng.zhang@windriver.com>
+---
+ net/sctp/associola.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-One empty line only here, thanks.
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 39579c3..60564f2 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -330,7 +330,7 @@ void sctp_association_free(struct sctp_association *asoc)
+ 	/* Only real associations count against the endpoint, so
+ 	 * don't bother for if this is a temporary association.
+ 	 */
+-	if (!asoc->temp) {
++	if (!asoc->temp && !list_empty(&asoc->asocs)) {
+ 		list_del(&asoc->asocs);
+ 
+ 		/* Decrement the backlog value for a TCP-style listening
+-- 
+1.7.0.2
+
