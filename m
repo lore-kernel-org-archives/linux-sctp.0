@@ -1,69 +1,50 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Mon, 30 Jun 2014 13:01:07 +0000
-Subject: [PATCH net-next 2/3] net: sctp: Optimise the way 'sctp_arg_t' values are initialised
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6D17269789@AcuExch.aculab.com>
+From: Xufeng Zhang <xufeng.zhang@windriver.com>
+Date: Thu, 12 Jun 2014 02:53:36 +0000
+Subject: [PATCH v2] sctp: Fix sk_ack_backlog wrap-around problem
+Message-Id: <1402541616-15117-1-git-send-email-xufeng.zhang@windriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Network Development <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
-Cc: "David S. Miller" <davem@davemloft.net>
+To: vyasevich@gmail.com, nhorman@tuxdriver.com, davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-Even if memset() is inlined (as on x86) using it to zero the union
-generates a memory word write of zero, followed by a write of the
-smaller field, and then a read of the word.
-As well as being a lot of instructions the sequence is unlikely to
-be optimised by the store-load forward hardware so will be slow.
+Consider the scenario:
+For a TCP-style socket, while processing the COOKIE_ECHO chunk in
+sctp_sf_do_5_1D_ce(), after it has passed a series of sanity check,
+a new association would be created in sctp_unpack_cookie(), but afterwards,
+some processing maybe failed, and sctp_association_free() will be called to
+free the previously allocated association, in sctp_association_free(),
+sk_ack_backlog value is decremented for this socket, since the initial
+value for sk_ack_backlog is 0, after the decrement, it will be 65535,
+a wrap-around problem happens, and if we want to establish new associations
+afterward in the same socket, ABORT would be triggered since sctp deem the
+accept queue as full.
+Fix this issue by only decrementing sk_ack_backlog for associations in
+the endpoint's list.
 
-Instead allocate a field of the union that is the same size as the
-entire union and write a zero value to it. The compiler will then
-generate the required value in a register.
-
-Signed-off-by: David Laight <david.laight@aculab.com>
+Fix-suggested-by: Neil Horman <nhorman@tuxdriver.com>
+Signed-off-by: Xufeng Zhang <xufeng.zhang@windriver.com>
 ---
- include/net/sctp/command.h | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+Change for v2:
+  Drop the redundant test for temp suggested by Vlad Yasevich.
 
-diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
-index 020eb95..5fcd1a7 100644
---- a/include/net/sctp/command.h
-+++ b/include/net/sctp/command.h
-@@ -118,6 +118,7 @@ typedef enum {
- #define SCTP_MAX_NUM_COMMANDS 18
+ net/sctp/associola.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 39579c3..0b99998 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -330,7 +330,7 @@ void sctp_association_free(struct sctp_association *asoc)
+ 	/* Only real associations count against the endpoint, so
+ 	 * don't bother for if this is a temporary association.
+ 	 */
+-	if (!asoc->temp) {
++	if (!list_empty(&asoc->asocs)) {
+ 		list_del(&asoc->asocs);
  
- typedef union {
-+	void *zero_all;	/* Set to NULL to clear the entire union */
- 	__s32 i32;
- 	__u32 u32;
- 	__be32 be32;
-@@ -154,7 +155,7 @@ typedef union {
- static inline sctp_arg_t	\
- SCTP_## name (type arg)		\
- { sctp_arg_t retval;\
--  memset(&retval, 0, sizeof(sctp_arg_t));\
-+  retval.zero_all = NULL;\
-   retval.elt = arg;\
-   return retval;\
- }
-@@ -191,7 +192,7 @@ static inline sctp_arg_t SCTP_NOFORCE(void)
- static inline sctp_arg_t SCTP_NULL(void)
- {
- 	sctp_arg_t retval;
--	memset(&retval, 0, sizeof(sctp_arg_t));
-+	retval.zero_all = NULL;
- 	return retval;
- }
- 
-@@ -212,7 +213,6 @@ typedef struct {
-  */
- static inline int sctp_init_cmd_seq(sctp_cmd_seq_t *seq)
- {
--	memset(seq, 0, sizeof(sctp_cmd_seq_t));
- 	return 1;		/* We always succeed.  */
- }
- 
+ 		/* Decrement the backlog value for a TCP-style listening
 -- 
-1.8.1.2
-
-
+1.7.0.2
 
