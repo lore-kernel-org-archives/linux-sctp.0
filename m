@@ -1,17 +1,19 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Thu, 12 Jun 2014 14:29:46 +0000
+From: David Miller <davem@davemloft.net>
+Date: Thu, 12 Jun 2014 17:38:14 +0000
 Subject: Re: [PATCH v2] sctp: Fix sk_ack_backlog wrap-around problem
-Message-Id: <5399B95A.9080804@gmail.com>
+Message-Id: <20140612.103814.1635322528200849616.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1402541616-15117-1-git-send-email-xufeng.zhang@windriver.com>
 In-Reply-To: <1402541616-15117-1-git-send-email-xufeng.zhang@windriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xufeng Zhang <xufeng.zhang@windriver.com>, nhorman@tuxdriver.com, davem@davemloft.net
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: xufeng.zhang@windriver.com
+Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On 06/11/2014 10:53 PM, Xufeng Zhang wrote:
+From: Xufeng Zhang <xufeng.zhang@windriver.com>
+Date: Thu, 12 Jun 2014 10:53:36 +0800
+
 > Consider the scenario:
 > For a TCP-style socket, while processing the COOKIE_ECHO chunk in
 > sctp_sf_do_5_1D_ce(), after it has passed a series of sanity check,
@@ -28,32 +30,8 @@ On 06/11/2014 10:53 PM, Xufeng Zhang wrote:
 > 
 > Fix-suggested-by: Neil Horman <nhorman@tuxdriver.com>
 > Signed-off-by: Xufeng Zhang <xufeng.zhang@windriver.com>
-
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-
-Thanks
--vlad
-
-
 > ---
 > Change for v2:
 >   Drop the redundant test for temp suggested by Vlad Yasevich.
-> 
->  net/sctp/associola.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-> index 39579c3..0b99998 100644
-> --- a/net/sctp/associola.c
-> +++ b/net/sctp/associola.c
-> @@ -330,7 +330,7 @@ void sctp_association_free(struct sctp_association *asoc)
->  	/* Only real associations count against the endpoint, so
->  	 * don't bother for if this is a temporary association.
->  	 */
-> -	if (!asoc->temp) {
-> +	if (!list_empty(&asoc->asocs)) {
->  		list_del(&asoc->asocs);
->  
->  		/* Decrement the backlog value for a TCP-style listening
-> 
 
+Applied and queued up for -stable, thanks.
