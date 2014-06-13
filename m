@@ -1,154 +1,147 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Wed, 11 Jun 2014 16:19:31 +0000
-Subject: [PATCH v3 net-next 4/5] net: sctp: improve sctp_select_active_and_retran_path selection
-Message-Id: <1402503572-32237-5-git-send-email-dborkman@redhat.com>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Fri, 13 Jun 2014 16:12:16 +0000
+Subject: [PATCH RFC] sctp: optimise sctp/command.[ch]
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1725C577@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1402503572-32237-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1402503572-32237-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
 
-In function sctp_select_active_and_retran_path(), we walk the
-transport list in order to look for the two most recently used
-ACTIVE transports (trans_pri, trans_sec). In case we didn't find
-anything ACTIVE, we currently just camp on a possibly PF or
-INACTIVE transport that is primary path; this behavior actually
-dates back to linux-history tree of the very early days of
-lksctp, and can yield a behavior that chooses suboptimal
-transport paths.
+This an RFC because net-next is closed :-)
 
-Instead, be a bit more clever by reusing and extending the
-recently introduced sctp_trans_elect_best() handler. In case
-both transports are evaluated to have the same score resulting
-from their states, break the tie by looking at: 1) transport
-patch error count 2) last_time_heard value from each transport.
+It might deserve a couple of real patches.
 
-This is analogous to Nishida's Quick Failover draft [1],
-section 5.1, 3:
+I was looking at the code in sctp/command.[ch] and realised that is was rather
+sub-optimal.
 
-  The sender SHOULD avoid data transmission to PF destinations.
-  When all destinations are in either PF or Inactive state,
-  the sender MAY either move the destination from PF to active
-  state (and transmit data to the active destination) or the
-  sender MAY transmit data to a PF destination. In the former
-  scenario, (i) the sender MUST NOT notify the ULP about the
-  state transition, and (ii) MUST NOT clear the destination's
-  error counter. It is recommended that the sender picks the
-  PF destination with least error count (fewest consecutive
-  timeouts) for data transmission. In case of a tie (multiple PF
-  destinations with same error count), the sender MAY choose the
-  last active destination.
+All the functions in command.c are only used from within the sctp module
+so there is no reason they shouldn't be inlined.
+With all the patches the new version is 4k smaller (and64 from lsmod).
 
-Thus for sctp_select_active_and_retran_path(), we keep track of
-the best, if any, transport that is in PF state and in case no
-ACTIVE transport has been found (hence trans_{pri,sec} is NULL),
-we select the best out of the three: current primary_path and
-retran_path as well as a possible PF transport.
+Even on x86 (where memset() gets inlined) there are memory store-load pairs
+with different byte enables that are unlikely to be fast pathed - so are
+very slow. If memset() is a function call it will be horrific.
 
-The secondary may still camp on the original primary_path as
-before. The change in sctp_trans_elect_best() with a more fine
-grained tie selection also improves at the same time path selection
-for sctp_assoc_update_retran_path() in case of non-ACTIVE states.
+Instead of using memset() to zero the union, just write to a member that
+is the size of the union itself.
+Any of the 'pointer' entries would do - but I've added a special one.
 
-  [1] http://tools.ietf.org/html/draft-nishida-tsvwg-sctp-failover-05
+There is no need to zero the entire structure before use.
+Indeed it shouldn't be necessary to zero the rest of the union.
+If the values are picked up from the wrong field then big-endian
+systems won't work.
 
-Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
----
- net/sctp/associola.c | 50 +++++++++++++++++++++++++++++++++++++++++++++-----
- 1 file changed, 45 insertions(+), 5 deletions(-)
+Using array indexing for cmds[] is a lot slower than using pointers.
+If the array slots are used 'backwards' the check for overflow is
+simplified (the compiler has the base address of the structure).
 
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index 620c99e..58bbb73 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -1224,13 +1224,41 @@ static u8 sctp_trans_score(const struct sctp_transport *trans)
- 	return sctp_trans_state_to_prio_map[trans->state];
+I've increased SCTP_MAX_NUM_COMMANDS because another patch needs it.
+
+net/sctp/command.c should be deleted and include/net/sctp/command.h patched.
+
+	David
+
+diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
+index 4b7cd69..74a8d3d 100644
+--- a/include/net/sctp/command.h
++++ b/include/net/sctp/command.h
+@@ -113,11 +113,15 @@ typedef enum {
+ /* How many commands can you put in an sctp_cmd_seq_t?
+  * This is a rather arbitrary number, ideally derived from a careful
+  * analysis of the state functions, but in reality just taken from
+- * thin air in the hopes othat we don't trigger a kernel panic.
++ * thin air in the hopes that we don't trigger a kernel panic.
++ *
++ * 17 slots are needed for a duplicate COOKIE_ECHO that hits an association
++ * that is waiting for a DATA ack in order to do a graceful shutdown.
+  */
+-#define SCTP_MAX_NUM_COMMANDS 14
++#define SCTP_MAX_NUM_COMMANDS 18
+ 
+ typedef union {
++	void *zero_all;	/* Set to NULL to clear the entire union */
+ 	__s32 i32;
+ 	__u32 u32;
+ 	__be32 be32;
+@@ -154,7 +158,7 @@ typedef union {
+ static inline sctp_arg_t	\
+ SCTP_## name (type arg)		\
+ { sctp_arg_t retval;\
+-  memset(&retval, 0, sizeof(sctp_arg_t));\
++  retval.zero_all = NULL;\
+   retval.elt = arg;\
+   return retval;\
+ }
+@@ -191,7 +195,8 @@ static inline sctp_arg_t SCTP_NOFORCE(void)
+ static inline sctp_arg_t SCTP_NULL(void)
+ {
+ 	sctp_arg_t retval;
+-	memset(&retval, 0, sizeof(sctp_arg_t));
++	
++	retval.zero_all = NULL;
+ 	return retval;
  }
  
-+static struct sctp_transport *sctp_trans_elect_tie(struct sctp_transport *trans1,
-+						   struct sctp_transport *trans2)
+@@ -202,27 +207,44 @@ typedef struct {
+ 
+ typedef struct {
+ 	sctp_cmd_t cmds[SCTP_MAX_NUM_COMMANDS];
+-	__u8 next_free_slot;
+-	__u8 next_cmd;
++	sctp_cmd_t *last_used_slot;
++	sctp_cmd_t *next_cmd;
+ } sctp_cmd_seq_t;
+ 
++static inline int
++sctp_init_cmd_seq(sctp_cmd_seq_t *seq)
 +{
-+	if (trans1->error_count > trans2->error_count) {
-+		return trans2;
-+	} else if (trans1->error_count = trans2->error_count &&
-+		   ktime_after(trans2->last_time_heard,
-+			       trans1->last_time_heard)) {
-+		return trans2;
-+	} else {
-+		return trans1;
-+	}
++	/* cmds[] is filled backwards to simplify the overflow BUG() check */
+ 
+-/* Initialize a block of memory as a command sequence.
+- * Return 0 if the initialization fails.
+- */
+-int sctp_init_cmd_seq(sctp_cmd_seq_t *seq);
++	seq->last_used_slot = seq->next_cmd = seq->cmds + SCTP_MAX_NUM_COMMANDS;
++	return 1;		/* We always succeed.  */
++}
+ 
+-/* Add a command to an sctp_cmd_seq_t.
+- *
+- * Use the SCTP_* constructors defined by SCTP_ARG_CONSTRUCTOR() above
+- * to wrap data which goes in the obj argument.
+- */
+-void sctp_add_cmd_sf(sctp_cmd_seq_t *seq, sctp_verb_t verb, sctp_arg_t obj);
++/* Add a command to a sctp_cmd_seq_t. */
+ 
+-/* Return the next command structure in an sctp_cmd_seq.
+- * Return NULL at the end of the sequence.
++static inline void
++sctp_add_cmd_sf(sctp_cmd_seq_t *seq, sctp_verb_t verb, sctp_arg_t obj)
++{
++	sctp_cmd_t *cmd = seq->last_used_slot - 1;
++
++	BUG_ON(cmd < seq->cmds);
++	
++	cmd->verb = verb;
++	cmd->obj = obj;
++	seq->last_used_slot = cmd;
 +}
 +
- static struct sctp_transport *sctp_trans_elect_best(struct sctp_transport *curr,
- 						    struct sctp_transport *best)
- {
-+	u8 score_curr, score_best;
++/* Return the next command structure in a sctp_cmd_seq.
++ * Returns NULL at the end of the sequence.
+  */
+-sctp_cmd_t *sctp_next_cmd(sctp_cmd_seq_t *seq);
++static inline sctp_cmd_t
++*sctp_next_cmd(sctp_cmd_seq_t *seq)
++{
++	if (seq->next_cmd <= seq->last_used_slot)
++		return NULL;
 +
- 	if (best = NULL)
- 		return curr;
++	return --seq->next_cmd;
++}
  
--	return sctp_trans_score(curr) > sctp_trans_score(best) ? curr : best;
-+	score_curr = sctp_trans_score(curr);
-+	score_best = sctp_trans_score(best);
-+
-+	/* First, try a score-based selection if both transport states
-+	 * differ. If we're in a tie, lets try to make a more clever
-+	 * decision here based on error counts and last time heard.
-+	 */
-+	if (score_curr > score_best)
-+		return curr;
-+	else if (score_curr = score_best)
-+		return sctp_trans_elect_tie(curr, best);
-+	else
-+		return best;
- }
- 
- void sctp_assoc_update_retran_path(struct sctp_association *asoc)
-@@ -1274,14 +1302,23 @@ void sctp_assoc_update_retran_path(struct sctp_association *asoc)
- static void sctp_select_active_and_retran_path(struct sctp_association *asoc)
- {
- 	struct sctp_transport *trans, *trans_pri = NULL, *trans_sec = NULL;
-+	struct sctp_transport *trans_pf = NULL;
- 
- 	/* Look for the two most recently used active transports. */
- 	list_for_each_entry(trans, &asoc->peer.transport_addr_list,
- 			    transports) {
-+		/* Skip uninteresting transports. */
- 		if (trans->state = SCTP_INACTIVE ||
--		    trans->state = SCTP_UNCONFIRMED ||
--		    trans->state = SCTP_PF)
-+		    trans->state = SCTP_UNCONFIRMED)
- 			continue;
-+		/* Keep track of the best PF transport from our
-+		 * list in case we don't find an active one.
-+		 */
-+		if (trans->state = SCTP_PF) {
-+			trans_pf = sctp_trans_elect_best(trans, trans_pf);
-+			continue;
-+		}
-+		/* For active transports, pick the most recent ones. */
- 		if (trans_pri = NULL ||
- 		    ktime_after(trans->last_time_heard,
- 				trans_pri->last_time_heard)) {
-@@ -1317,10 +1354,13 @@ static void sctp_select_active_and_retran_path(struct sctp_association *asoc)
- 		trans_sec = trans_pri;
- 
- 	/* If we failed to find a usable transport, just camp on the
--	 * primary, even if they are inactive.
-+	 * primary or retran, even if they are inactive, if possible
-+	 * pick a PF iff it's the better choice.
- 	 */
- 	if (trans_pri = NULL) {
--		trans_pri = asoc->peer.primary_path;
-+		trans_pri = sctp_trans_elect_best(asoc->peer.primary_path,
-+						  asoc->peer.retran_path);
-+		trans_pri = sctp_trans_elect_best(trans_pri, trans_pf);
- 		trans_sec = asoc->peer.primary_path;
- 	}
- 
--- 
-1.7.11.7
+ #endif /* __net_sctp_command_h__ */
+
+
 
