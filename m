@@ -1,10 +1,10 @@
 From: Geir Ola Vaagland <geirola@gmail.com>
-Date: Tue, 17 Jun 2014 11:57:53 +0000
+Date: Tue, 17 Jun 2014 15:01:36 +0000
 Subject: [PATCH net-next 6/6] Support for SCTP_DEFAULT_SNDINFO socket option
-Message-Id: <1403006273-27859-7-git-send-email-geirola@gmail.com>
+Message-Id: <1403017296-28469-7-git-send-email-geirola@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1403006273-27859-1-git-send-email-geirola@gmail.com>
-In-Reply-To: <1403006273-27859-1-git-send-email-geirola@gmail.com>
+References: <1403017296-28469-1-git-send-email-geirola@gmail.com>
+In-Reply-To: <1403017296-28469-1-git-send-email-geirola@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -38,8 +38,8 @@ index 57106e8..a725376 100644
  
  	return 0;
  }
-+/*
-+ * 8.1.31. Set Default Send Parameters (SCTP_DEFAULT_SNDINFO)
++
++/* 8.1.31. Set Default Send Parameters (SCTP_DEFAULT_SNDINFO)
 + *
 + *   Applications that wish to use the sendto() system call may wish to
 + *   specify a default set of parameters that would normally be supplied
@@ -56,8 +56,8 @@ index 57106e8..a725376 100644
 + *   one-to-one style sockets.
 + */
 +static int sctp_setsockopt_default_sndinfo(struct sock *sk,
-+		char __user *optval,
-+		unsigned int optlen){
++					    char __user *optval,
++					    unsigned int optlen){
 +	struct sctp_sndinfo info;
 +	struct sctp_association *asoc;
 +	struct sctp_sock *sp = sctp_sk(sk);
@@ -72,7 +72,8 @@ index 57106e8..a725376 100644
 +		return -EINVAL;
 +
 +	/* Note! asoc->default_timetolive is not set in this way anymore.
-+	 * The PR-SCTP extension needs to be implemented.  */
++	 * The PR-SCTP extension needs to be implemented.
++    */
 +	if (asoc) {
 +		asoc->default_stream = info.snd_sid;
 +		asoc->default_flags = info.snd_flags;
@@ -105,8 +106,8 @@ index 57106e8..a725376 100644
  	return 0;
  }
 +static int sctp_getsockopt_default_sndinfo(struct sock *sk,
-+		int len, char __user *optval,
-+		int __user *optlen)
++					int len, char __user *optval,
++					int __user *optlen)
 +{
 +	struct sctp_sndinfo info;
 +	struct sctp_association *asoc;
@@ -151,7 +152,8 @@ index 57106e8..a725376 100644
  							    optval, optlen);
  		break;
 +	case SCTP_DEFAULT_SNDINFO:
-+		retval = sctp_getsockopt_default_sndinfo(sk, len, optval, optlen);
++		retval = sctp_getsockopt_default_sndinfo(sk, len,
++							 optval, optlen);
 +		break;
  	case SCTP_PRIMARY_ADDR:
  		retval = sctp_getsockopt_primary_addr(sk, len, optval, optlen);
