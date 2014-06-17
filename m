@@ -1,53 +1,155 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 18 Jun 2014 23:33:01 +0000
-Subject: Re: [PATCH net-next 6/6] Support for SCTP_DEFAULT_SNDINFO socket option
-Message-Id: <20140618.163301.1261423911029627800.davem@davemloft.net>
+From: Geir Ola Vaagland <geirola@gmail.com>
+Date: Tue, 17 Jun 2014 11:57:52 +0000
+Subject: [PATCH net-next 5/6] Support for receiving SCTP_NXTINFO ancillary data
+Message-Id: <1403006273-27859-6-git-send-email-geirola@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1403017296-28469-1-git-send-email-geirola@gmail.com>
-	<1403017296-28469-7-git-send-email-geirola@gmail.com>
-In-Reply-To: <1403017296-28469-7-git-send-email-geirola@gmail.com>
+References: <1403006273-27859-1-git-send-email-geirola@gmail.com>
+In-Reply-To: <1403006273-27859-1-git-send-email-geirola@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: geirola@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>
 
-From: Geir Ola Vaagland <geirola@gmail.com>
-Date: Tue, 17 Jun 2014 17:01:36 +0200
+CC: Vlad Yasevich <vyasevich@gmail.com>
+Signed-off-by: Geir Ola Vaagland <geirola@gmail.com>
+---
+ include/net/sctp/ulpevent.h |  2 ++
+ net/sctp/socket.c           | 16 +++++++++--
+ net/sctp/ulpevent.c         | 67 +++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 82 insertions(+), 3 deletions(-)
 
-> +
-> +	/* Note! asoc->default_timetolive is not set in this way anymore.
-> +	 * The PR-SCTP extension needs to be implemented.
-> +    */
-
-This comment is not formatted correctly.
-
-> +	if (asoc) {
-> +		asoc->default_stream = info.snd_sid;
-> +		asoc->default_flags = info.snd_flags;
-> +		asoc->default_ppid = info.snd_ppid;
-> +		asoc->default_context = info.snd_context;
-> +	} else {
-> +		sp->default_stream = info.snd_sid;
-> +		sp->default_flags = info.snd_flags;
-> +		sp->default_ppid = info.snd_ppid;
-> +		sp->default_context = info.snd_context;
-> +	}
-> +	return 0;
-> +}
-> +
->  
->  /* 7.1.10 Set Primary Address (SCTP_PRIMARY_ADDR)
-
-Only one empty line between top-level objects in a source file,
-thank you.
-
->   *
-> @@ -5063,6 +5115,45 @@ static int sctp_getsockopt_default_send_param(struct sock *sk,
->  
->  	return 0;
->  }
-> +static int sctp_getsockopt_default_sndinfo(struct sock *sk,
-> +					int len, char __user *optval,
-
-Please one empty line between top level objects in the source file.
+diff --git a/include/net/sctp/ulpevent.h b/include/net/sctp/ulpevent.h
+index 2f42831..d15b835 100644
+--- a/include/net/sctp/ulpevent.h
++++ b/include/net/sctp/ulpevent.h
+@@ -133,6 +133,8 @@ void sctp_ulpevent_read_sndrcvinfo(const struct sctp_ulpevent *event,
+ 	struct msghdr *);
+ void sctp_ulpevent_read_rcvinfo(const struct sctp_ulpevent *event,
+ 	struct msghdr *);
++void sctp_ulpevent_read_nxtinfo(const struct sctp_ulpevent *event,
++	struct msghdr *, struct sk_buff *);
+ __u16 sctp_ulpevent_get_notification_type(const struct sctp_ulpevent *event);
+ 
+ /* Is this event type enabled? */
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 10e12da..57106e8 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -2061,11 +2061,11 @@ static int sctp_recvmsg(struct kiocb *iocb, struct sock *sk,
+ 			struct msghdr *msg, size_t len, int noblock,
+ 			int flags, int *addr_len)
+ {
+-	struct sctp_ulpevent *event = NULL;
++	struct sctp_ulpevent *event = NULL, *nxt_event = NULL;
+ 	struct sctp_sock *sp = sctp_sk(sk);
+-	struct sk_buff *skb;
++	struct sk_buff *skb, *nxtskb = NULL;
+ 	int copied;
+-	int err = 0;
++	int err = 0, err2 = 0;
+ 	int skb_len;
+ 
+ 	pr_debug("%s: sk:%p, msghdr:%p, len:%zd, noblock:%d, flags:0x%x, "
+@@ -2113,6 +2113,14 @@ static int sctp_recvmsg(struct kiocb *iocb, struct sock *sk,
+ 		sctp_ulpevent_read_rcvinfo(event, msg);
+ 	}
+ 
++	if(sp->recvnxtinfo){
++		nxtskb = sctp_skb_recv_datagram(sk, MSG_PEEK, 1, &err2);
++		if(nxtskb && nxtskb->len){
++			nxt_event = sctp_skb2event(nxtskb);
++			sctp_ulpevent_read_nxtinfo(nxt_event, msg, nxtskb);
++		}
++	}
++
+ 	/* Check if we allow SCTP_SNDRCVINFO. */
+ 	if (sp->subscribe.sctp_data_io_event)
+ 		sctp_ulpevent_read_sndrcvinfo(event, msg);
+@@ -2162,6 +2170,8 @@ out_free:
+ 		sctp_ulpevent_free(event);
+ 	}
+ out:
++	if(nxtskb)
++		kfree_skb(nxtskb);
+ 	sctp_release_sock(sk);
+ 	return err;
+ }
+diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
+index d1b9a02..94da2b4 100644
+--- a/net/sctp/ulpevent.c
++++ b/net/sctp/ulpevent.c
+@@ -900,6 +900,73 @@ __u16 sctp_ulpevent_get_notification_type(const struct sctp_ulpevent *event)
+ 	return notification->sn_header.sn_type;
+ }
+ 
++void sctp_ulpevent_read_nxtinfo(const struct sctp_ulpevent *event,
++		struct msghdr *msghdr, struct sk_buff* skb)
++{
++	struct sctp_nxtinfo nxtinfo;
++
++
++	/* Sockets API Extensions for SCTP
++	 * Section 5.3.6 SCTP Next Receive Information Structure (SCTP_NXTINFO)
++	 *
++	 * nxt_sid: 16 bits (unsigned integer)
++	 *
++	 * The SCTP stack places the next message's stream number in
++	 * this value.
++	 */
++	nxtinfo.nxt_sid = event->stream;
++
++	/* nxt_ppid: 32 bits (unsigned integer)
++	 *
++	 * This value is the same information that was passed by the
++	 * upper layer in the peer application for the next message.  Please
++	 * note  that the SCTP stack performs no byte order modification of
++	 * this field.  For example, if the DATA chunk has to contain a given
++	 * value in network byte order, the SCTP user has to perform the
++	 * ntohl() computation.
++	 */
++	nxtinfo.nxt_ppid = event->ppid;
++
++	/* nxt_flags: 16 bits (unsigned integer)
++	 *
++	 * This field may contain any of the following flags and is
++	 * composed of a bitwise OR of these values.
++	 */
++	nxtinfo.nxt_flags = event->flags;
++
++	/*
++	 * SCTP_NOTIFICATION is not set in Linux yet.
++	 *
++	 * if (sctp_ulpevent_is_notification(event)){
++	 *     nxtinfo.nxt_flags |= SCTP_NOTIFICATION;
++	 * }
++	 *
++	 */
++
++	/* nxt_length: 32 bits (unsigned integer)
++	 *
++	 * This value is the length of the message currently within
++	 * the socket buffer.  This might NOT be the entire length of the
++	 * message, since a partial delivery may be in progress.  Only if the
++	 * flag SCTP_COMPLETE is set in the nxt_flags field does this field
++	 * represent the size of the entire next message.
++	 */
++	nxtinfo.nxt_length = skb->len;
++
++	/* nxt_assoc_id: sizeof(sctp_assoc_t)
++	 * The association handle field of the next message,
++	 * nxt_assoc_id, holds the identifier for the association
++	 * announced in the SCTP_COMM_UP notification.  All
++	 * notifications for a given association have the same
++	 * identifier.  This field is ignored for one-to-one style
++	 * sockets.
++	 */
++	nxtinfo.nxt_assoc_id = sctp_assoc2id(event->asoc);
++
++	put_cmsg(msghdr, IPPROTO_SCTP, SCTP_NXTINFO,
++			sizeof(struct sctp_nxtinfo), (void *)&nxtinfo);
++}
++
+ void sctp_ulpevent_read_rcvinfo(const struct sctp_ulpevent *event,
+ 		struct msghdr *msghdr)
+ {
