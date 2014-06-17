@@ -1,115 +1,172 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 30 Jun 2014 12:30:20 +0000
-Subject: Re: SCTP Multihoming Heartbeat ACK Behavior
-Message-Id: <20140630123020.GA15777@hmsreliant.think-freely.org>
+From: Geir Ola Vaagland <geirola@gmail.com>
+Date: Tue, 17 Jun 2014 11:57:50 +0000
+Subject: [PATCH net-next 3/6] Support for SCTP_SNDINFO ancillary data
+Message-Id: <1403006273-27859-4-git-send-email-geirola@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20140628190435.AF72.327CAA51@tspi.com.ph>
-In-Reply-To: <20140628190435.AF72.327CAA51@tspi.com.ph>
+References: <1403006273-27859-1-git-send-email-geirola@gmail.com>
+In-Reply-To: <1403006273-27859-1-git-send-email-geirola@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>
 
-On Mon, Jun 30, 2014 at 04:58:36PM +0800, Winston V. Tizon wrote:
-> TO: Mr. Borkmann
-> 
-> Good day!
-> 
-> Thank you very much for your quick reply.
-> 
-> I need to confirm if your environment there with
-> 2 machines with 5 interfaces each have the same RHEL and
-> LKSCTP versions with the ones we are using?
-> 
-> If you are using the latest RHEL and LKSCTP versions
-> and HB-ACKS are doing fine there, we might think that 
-> our older LKSCTP version has something to do with the 
-> abnormal HB-ACK behavior.
-> 
-> Thanks,
-> 
-> W. Tizon
-> 
-How are you determining which transport is getting used to send the HEARTBEAT
-ACK?  Are you looking at the chunks destination IP address?  Looking at
-sctp_outq_flush in RHEL6 it appears we should always use the inbound transport
-to send the response, which is the correct thing to do. Sometimes however, while
-the destination ip address is correct, funny routing tables can lead to a single
-source address getting selected.
+CC: Vlad Yasevich <vyasevich@gmail.com>
+Signed-off-by: Geir Ola Vaagland <geirola@gmail.com>
+---
+ include/net/sctp/structs.h |  9 +++++++-
+ include/uapi/linux/sctp.h  | 19 +++++++++++++++++
+ net/sctp/socket.c          | 53 +++++++++++++++++++++++++++++++++++++++++-----
+ 3 files changed, 75 insertions(+), 6 deletions(-)
 
-Neil
-
-> On Mon, 30 Jun 2014 10:24:09 +0200
-> Daniel Borkmann <dborkman@redhat.com> wrote:
-> 
-> > On 06/28/2014 01:04 PM, Winston V. Tizon wrote:
-> > > Hello everyone!
-> > >
-> > > We are having some issues regarding SCTP multihoming
-> > > and we would like to ask your opinion on this matter.
-> > > We have two RHEL6.4 (2.6.32-358.el6.x86_64, lksctp-tools
-> > > -1.0.10-5(64 bit)) machines connected by two L2 switch
-> > > and a L3 switch (please see "Environment Setup" below).
-> > > When we execute SCTP connection (using multihoming) between
-> > > the two machines, the following behavior occurred:
-> > >
-> > >        CLIENT           L2 and L3         SERVER
-> > > Secondary Primary           |      Primary Secondary
-> > >      |        |              |          |       |
-> > >      |        |              |          |       |
-> > >      |        |INIT-INIT_ACK |          |       |
-> > >      |        |<-------------|--------->|       |
-> > >      |        |COOKIE_ECHO-COOKIE_ACK   |       |
-> > >      |        |              |          |       |
-> > >      |        |<-------------|--------->|       |
-> > >      |        |HB/HB_ACK     |          |       |
-> > >      |        |              |          |       |
-> > >      |<-------|--------------|----------|       |
-> > >      |        |              |       HB |       |
-> > >      |        |--------------|--------->|       |
-> > >      |        |HB_ACK        |          |       |
-> > >      |        |        :     |          |       |
-> > >      |        |        :     |          |       |
-> > >
-> > > INIT/INIT_ACK handshake occurred in the primary
-> > > path of both machines which is expected. When a
-> > > Primary path sends HEARTBEAT to another Primary,
-> > > HEARTBEAT_ACK was returned to the sender. But
-> > > when a Primary path sends HEARTBEAT to a
-> > > Secondary path, the HEARTBEAT_ACK chunk was sent
-> > > by the Primary path. We expect that the
-> > > HEARTBEAT_ACK would come from the Secondary.
-> > >
-> > > [Questions]
-> > > 1. Is this a normal behavior with regards to SCTP multihoming?
-> > 
-> > So looking at the RFC, it says (RFC4960, 3.3.6. + 6.4.) ...
-> > 
-> >   An endpoint should send this chunk to its peer endpoint as a
-> >   response to a HEARTBEAT chunk (see Section 8.3). A HEARTBEAT ACK
-> >   is always sent to the source IP address of the IP datagram
-> >   containing the HEARTBEAT chunk to which this ack is responding.
-> > 
-> >   [...]
-> > 
-> >   An endpoint SHOULD transmit reply chunks (e.g., SACK, HEARTBEAT ACK,
-> >   etc.) to the same destination transport address from which it
-> >   received the DATA or control chunk to which it is replying. This
-> >   rule should also be followed if the endpoint is bundling DATA chunks
-> >   together with the reply chunk.
-> > 
-> > ... it would be more correct to reply via the same transport, imho.
-> > I just checked upstream kernel with multihoming on 2 machines with
-> > 5 interfaces each, and HB, HB-ACK replies seem to be fine there,
-> > that is, HB-ACKs go via same transports.
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 75c598a..5ed8a3c 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1921,9 +1921,16 @@ struct sctp_chunk *sctp_get_ecne_prepend(struct sctp_association *asoc);
+ /* A convenience structure to parse out SCTP specific CMSGs. */
+ typedef struct sctp_cmsgs {
+ 	struct sctp_initmsg *init;
+-	struct sctp_sndrcvinfo *info;
++	union {
++		struct sctp_sndrcvinfo *srinfo;
++		struct sctp_sndinfo *sinfo;
++	} info;
++	sctp_cmsg_t cmsg_type;
+ } sctp_cmsgs_t;
+ 
++#define sr_info info.srinfo
++#define s_info info.sinfo
++
+ /* Structure for tracking memory objects */
+ typedef struct {
+ 	char *label;
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index 7e8736b..d725e30 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -156,6 +156,23 @@ struct sctp_sndrcvinfo {
+ 	__u32 sinfo_cumtsn;
+ 	sctp_assoc_t sinfo_assoc_id;
+ };
++/*
++ * 5.3.4 SCTP Send Information Structure (SCTP_SNDINFO)
++ *
++ *   This cmsghdr structure specifies SCTP options for sendmsg().
++ *
++ *   cmsg_level    cmsg_type      cmsg_data[]
++ *   ------------  ------------   -------------------
++ *   IPPROTO_SCTP  SCTP_SNDINFO   struct sctp_sndinfo
++ *
++ */
++struct sctp_sndinfo {
++	__u16 snd_sid;
++	__u16 snd_flags;
++	__u32 snd_ppid;
++	__u32 snd_context;
++	sctp_assoc_t snd_assoc_id;
++};
+ 
+ /*
+  *  5.3.5 SCTP Receive Information Structure (SCTP_RCVINFO)
+@@ -207,6 +224,8 @@ typedef enum sctp_cmsg_type {
+ #define SCTP_SNDRCV	SCTP_SNDRCV
+ 	SCTP_RCVINFO,
+ #define SCTP_RCVINFO SCTP_RCVINFO
++	SCTP_SNDINFO,
++#define SCTP_SNDINFO SCTP_SNDINFO
+ } sctp_cmsg_t;
+ 
+ /*
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index aee161b..57657b6 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1648,10 +1648,21 @@ static int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
+ 		msg_name = msg->msg_name;
+ 	}
+ 
+-	sinfo = cmsgs.info;
++	if(cmsgs.cmsg_type = SCTP_SNDINFO){
++		memset(&default_sinfo, 0, sizeof(default_sinfo));
++		default_sinfo.sinfo_flags = cmsgs.s_info->snd_flags;
++		default_sinfo.sinfo_stream = cmsgs.s_info->snd_sid;
++		default_sinfo.sinfo_assoc_id = cmsgs.s_info->snd_assoc_id;
++		default_sinfo.sinfo_ppid = cmsgs.s_info->snd_ppid;
++		default_sinfo.sinfo_context = cmsgs.s_info->snd_context;
++		sinfo = &default_sinfo;
++	}else{
++		sinfo = cmsgs.sr_info;
++	}
++
+ 	sinit = cmsgs.init;
+ 
+-	/* Did the user specify SNDRCVINFO?  */
++	/* Did the user specify SNDINFO/SNDRCVINFO?  */
+ 	if (sinfo) {
+ 		sinfo_flags = sinfo->sinfo_flags;
+ 		associd = sinfo->sinfo_assoc_id;
+@@ -1858,7 +1869,7 @@ static int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
+ 	pr_debug("%s: we have a valid association\n", __func__);
+ 
+ 	if (!sinfo) {
+-		/* If the user didn't specify SNDRCVINFO, make up one with
++		/* If the user didn't specify SNDINFO/SNDRCVINFO, make up one with
+ 		 * some defaults.
+ 		 */
+ 		memset(&default_sinfo, 0, sizeof(default_sinfo));
+@@ -1869,6 +1880,8 @@ static int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
+ 		default_sinfo.sinfo_timetolive = asoc->default_timetolive;
+ 		default_sinfo.sinfo_assoc_id = sctp_assoc2id(asoc);
+ 		sinfo = &default_sinfo;
++	}else{
++		sinfo->sinfo_timetolive = asoc->default_timetolive;
+ 	}
+ 
+ 	/* API 7.1.7, the sndbuf size per association bounds the
+@@ -6473,16 +6486,46 @@ static int sctp_msghdr_parse(const struct msghdr *msg, sctp_cmsgs_t *cmsgs)
+ 			    CMSG_LEN(sizeof(struct sctp_sndrcvinfo)))
+ 				return -EINVAL;
+ 
+-			cmsgs->info +			cmsgs->info.srinfo  				(struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
+ 
+ 			/* Minimally, validate the sinfo_flags. */
+-			if (cmsgs->info->sinfo_flags &
++			if (cmsgs->sr_info->sinfo_flags &
+ 			    ~(SCTP_UNORDERED | SCTP_ADDR_OVER |
+ 			      SCTP_ABORT | SCTP_EOF))
+ 				return -EINVAL;
+ 			break;
+ 
++		case SCTP_SNDINFO:
++			/* SCTP Socket API Extension
++			 * 5.3.4 SCTP Send Information Structure (SCTP_SNDINFO)
++			 *
++			 * This cmsghdr structure specifies SCTP options for
++			 * sendmsg(). This structure and SCTP_RCVINFO replaces
++			 * SCTP_SNDRCV which has been depleted.
++			 *
++			 * cmsg_level    cmsg_type      cmsg_data[]
++			 * ------------  ------------   ---------------------
++			 * IPPROTO_SCTP  SCTP_SNDINFO    struct sctp_sndinfo
++			 * */
++			if(cmsg->cmsg_len !+					CMSG_LEN(sizeof(struct sctp_sndinfo))){
++
++				return -EINVAL;
++			}
++
++			/* SCTP_SENDALL should also be added here when
++			 * it is implemented */
++			cmsgs->info.sinfo = (struct sctp_sndinfo *)CMSG_DATA(cmsg);
++			cmsgs->cmsg_type = SCTP_SNDINFO;
++
++			if (cmsgs->s_info->snd_flags &
++					~(SCTP_UNORDERED | SCTP_ADDR_OVER |
++						SCTP_ABORT | SCTP_EOF)){
++				return -EINVAL;
++			}
++			break;
++
+ 		default:
+ 			return -EINVAL;
+ 		}
