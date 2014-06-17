@@ -1,17 +1,27 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Tue, 17 Jun 2014 12:32:16 +0000
-Subject: RE: [PATCH net-next 0/6] A step closer to RFC 6458 compliancy
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1725DC3F@AcuExch.aculab.com>
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Tue, 17 Jun 2014 13:40:55 +0000
+Subject: Re: [PATCH net-next 0/6] A step closer to RFC 6458 compliancy
+Message-Id: <53A04567.7030905@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1403006273-27859-1-git-send-email-geirola@gmail.com>
 In-Reply-To: <1403006273-27859-1-git-send-email-geirola@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Geir Ola Vaagland' <geirola@gmail.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
-Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
+To: Geir Ola Vaagland <geirola@gmail.com>, netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org
 
-From: Geir Ola Vaagland
+On 06/17/2014 07:57 AM, Geir Ola Vaagland wrote:
+
+Hi Geir
+
+Please provide a bit more description for the those who are not familiar
+with the series.
+
+Thanks
+-vlad
+
+
 > Geir Ola Vaagland (6):
 >   Support for SCTP_RECVRCVINFO socket option
 >   Support for SCTP_RCVINFO ancillary data
@@ -26,11 +36,10 @@ From: Geir Ola Vaagland
 >  net/sctp/socket.c           | 260 ++++++++++++++++++++++++++++++++++++++++++--
 >  net/sctp/ulpevent.c         | 158 +++++++++++++++++++++++++++
 >  5 files changed, 470 insertions(+), 9 deletions(-)
-
-You need to make your C match the expected layout for kernel code.
-In particular the whitespace rules.
-
-	David
-
-
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe netdev" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
