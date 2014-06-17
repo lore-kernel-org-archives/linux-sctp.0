@@ -1,10 +1,10 @@
 From: Geir Ola Vaagland <geirola@gmail.com>
-Date: Tue, 17 Jun 2014 11:57:51 +0000
+Date: Tue, 17 Jun 2014 15:01:34 +0000
 Subject: [PATCH net-next 4/6] Support for SCTP_NXTINFO socket option
-Message-Id: <1403006273-27859-5-git-send-email-geirola@gmail.com>
+Message-Id: <1403017296-28469-5-git-send-email-geirola@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1403006273-27859-1-git-send-email-geirola@gmail.com>
-In-Reply-To: <1403006273-27859-1-git-send-email-geirola@gmail.com>
+References: <1403017296-28469-1-git-send-email-geirola@gmail.com>
+In-Reply-To: <1403017296-28469-1-git-send-email-geirola@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -52,16 +52,16 @@ index 57657b6..10e12da 100644
  
  
 +static int sctp_setsockopt_recvnxtinfo(struct sock *sk,
-+		char __user *optval,
-+		unsigned int optlen){
++					char __user *optval,
++					unsigned int optlen){
 +	int val;
 +
-+	if(optlen < sizeof(int))
++	if (optlen < sizeof(int))
 +		return -EINVAL;
 +
-+	if(get_user(val, (int __user*)optval)){
++	if (get_user(val, (int __user *)optval))
 +		return -EFAULT;
-+	}
++
 +	sctp_sk(sk)->recvnxtinfo = (val = 0) ? 0 : 1;
 +	return 0;
 +}
@@ -93,9 +93,9 @@ index 57657b6..10e12da 100644
  }
  
 +static int sctp_getsockopt_recvnxtinfo(struct sock *sk,
-+		int len,
-+		char __user *optval,
-+		int __user *optlen){
++					int len,
++					char __user *optval,
++					int __user *optlen){
 +
 +	int val;
 +	if (len < sizeof(int))
@@ -104,9 +104,9 @@ index 57657b6..10e12da 100644
 +	len = sizeof(int);
 +	val = (sctp_sk(sk)->recvnxtinfo = 1);
 +
-+	if(put_user(len, optlen))
++	if (put_user(len, optlen))
 +		return -EFAULT;
-+	if(copy_to_user(optval, &val, len))
++	if (copy_to_user(optval, &val, len))
 +		return -EFAULT;
 +
 +	return 0;
