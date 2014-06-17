@@ -1,32 +1,27 @@
-From: Geir Ola Vaagland <geirola@gmail.com>
-Date: Tue, 17 Jun 2014 15:01:30 +0000
-Subject: [PATCH net-next 0/6] A step closer to RFC 6458 compliancy
-Message-Id: <1403017296-28469-1-git-send-email-geirola@gmail.com>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Tue, 17 Jun 2014 15:14:28 +0000
+Subject: RE: [PATCH net-next 0/6] A step closer to RFC 6458 compliancy
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1725DE4C@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1403006273-27859-1-git-send-email-geirola@gmail.com>
-In-Reply-To: <1403006273-27859-1-git-send-email-geirola@gmail.com>
+References: <1403017296-28469-1-git-send-email-geirola@gmail.com>
+In-Reply-To: <1403017296-28469-1-git-send-email-geirola@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org
+To: 'Geir Ola Vaagland' <geirola@gmail.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
 
-These patches are part of my master thesis project. I have been searching for discrepancies between 
-the socket API specificiation in RFC 6458 and the current Linux SCTP implementation. The following 
-patches are my humble attempts at getting somewhat closer to compliancy. 
+From: Geir Ola Vaagland
+> These patches are part of my master thesis project. I have been searching for discrepancies between
+> the socket API specificiation in RFC 6458 and the current Linux SCTP implementation. The following
+> patches are my humble attempts at getting somewhat closer to compliancy.
 
-Geir Ola Vaagland (6):
-  Support for SCTP_RECVRCVINFO socket option
-  Support for SCTP_RCVINFO ancillary data
-  Support for SCTP_SNDINFO ancillary data
-  Support for SCTP_NXTINFO socket option
-  Support for receiving SCTP_NXTINFO ancillary data
-  Support for SCTP_DEFAULT_SNDINFO socket option
+You should keep commit messages with 80 columns.
+The message subject should say that this is 'v2'.
+You still haven't fixed all the code style issues.
+This email should include a list of the differences from the earlier version.
 
- include/net/sctp/structs.h  |  11 +-
- include/net/sctp/ulpevent.h |   4 +
- include/uapi/linux/sctp.h   |  46 ++++++++
- net/sctp/socket.c           | 260 ++++++++++++++++++++++++++++++++++++++++++--
- net/sctp/ulpevent.c         | 158 +++++++++++++++++++++++++++
- 5 files changed, 470 insertions(+), 9 deletions(-)
+	David
+
+
 
