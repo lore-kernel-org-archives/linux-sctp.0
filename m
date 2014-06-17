@@ -1,36 +1,27 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 19 Jun 2014 00:03:41 +0000
-Subject: Re: [PATCH net] net: sctp: propagate sysctl errors from proc_do* properly
-Message-Id: <20140618.170341.270139335969927828.davem@davemloft.net>
+From: Geir Ola Vaagland <geirola@gmail.com>
+Date: Tue, 17 Jun 2014 11:57:47 +0000
+Subject: [PATCH net-next 0/6] A step closer to RFC 6458 compliancy
+Message-Id: <1403006273-27859-1-git-send-email-geirola@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1403134290-23765-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1403134290-23765-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dborkman@redhat.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org
 
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Thu, 19 Jun 2014 01:31:30 +0200
 
-> sysctl handler proc_sctp_do_hmac_alg(), proc_sctp_do_rto_min() and
-> proc_sctp_do_rto_max() do not properly reflect some error cases
-> when writing values via sysctl from internal proc functions such
-> as proc_dointvec() and proc_dostring().
-> 
-> In all these cases we pass the test for write != 0 and partially
-> do additional work just to notice that additional sanity checks
-> fail and we return with hard-coded -EINVAL while proc_do*
-> functions might also return different errors. So fix this up by
-> simply testing a successful return of proc_do* right after
-> calling it.
-> 
-> This also allows to propagate its return value onwards to the user.
-> While touching this, also fix up some minor style issues.
-> 
-> Fixes: 4f3fdf3bc59c ("sctp: add check rto_min and rto_max in sysctl")
-> Fixes: 3c68198e7511 ("sctp: Make hmac algorithm selection for cookie generation dynamic")
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Geir Ola Vaagland (6):
+  Support for SCTP_RECVRCVINFO socket option
+  Support for SCTP_RCVINFO ancillary data
+  Support for SCTP_SNDINFO ancillary data
+  Support for SCTP_NXTINFO socket option
+  Support for receiving SCTP_NXTINFO ancillary data
+  Support for SCTP_DEFAULT_SNDINFO socket option
 
-Applied, thanks Daniel
+ include/net/sctp/structs.h  |  11 +-
+ include/net/sctp/ulpevent.h |   4 +
+ include/uapi/linux/sctp.h   |  46 ++++++++
+ net/sctp/socket.c           | 260 ++++++++++++++++++++++++++++++++++++++++++--
+ net/sctp/ulpevent.c         | 158 +++++++++++++++++++++++++++
+ 5 files changed, 470 insertions(+), 9 deletions(-)
+
