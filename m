@@ -1,83 +1,158 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Wed, 18 Jun 2014 13:53:22 +0000
-Subject: RE: [PATCH net-next 0/6] A step closer to RFC 6458 compliancy
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1725E97A@AcuExch.aculab.com>
+From: Geir Ola Vaagland <geirola@gmail.com>
+Date: Tue, 17 Jun 2014 11:57:53 +0000
+Subject: [PATCH net-next 6/6] Support for SCTP_DEFAULT_SNDINFO socket option
+Message-Id: <1403006273-27859-7-git-send-email-geirola@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1403017296-28469-1-git-send-email-geirola@gmail.com>
- <063D6719AE5E284EB5DD2968C1650D6D1725DEC9@AcuExch.aculab.com>
- <53A08C10.70103@gmail.com>
- <063D6719AE5E284EB5DD2968C1650D6D1725E555@AcuExch.aculab.com>
- <84A786A6-D242-4DC6-8FC4-573A91A88311@lurchi.franken.de>
- <063D6719AE5E284EB5DD2968C1650D6D1725E8B7@AcuExch.aculab.com>
- <53A19339.80908@gmail.com>
- <B7899B51-FDA0-4189-8DBA-FDC193C1D6ED@lurchi.franken.de>
-In-Reply-To: <B7899B51-FDA0-4189-8DBA-FDC193C1D6ED@lurchi.franken.de>
+References: <1403006273-27859-1-git-send-email-geirola@gmail.com>
+In-Reply-To: <1403006273-27859-1-git-send-email-geirola@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Michael Tuexen' <Michael.Tuexen@lurchi.franken.de>, Vlad Yasevich <vyasevich@gmail.com>
-Cc: Geir Ola Vaagland <geirola@gmail.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>
 
-From: Michael Tuexen 
-> On 18 Jun 2014, at 15:25, Vlad Yasevich <vyasevich@gmail.com> wrote:
-> 
-> > On 06/18/2014 09:16 AM, David Laight wrote:
-> >> From: Michael Tuexen [
-> >>> On 18 Jun 2014, at 10:42, David Laight <David.Laight@ACULAB.COM> wrote:
-> >>>
-> >>>> From: Vlad Yasevich
-> >>>>> On 06/17/2014 11:36 AM, David Laight wrote:
-> >>>>>> From: Of Geir Ola Vaagland
-> >>>>>>> These patches are part of my master thesis project. I have been searching for discrepancies
-> >>> between
-> >>>>>>> the socket API specificiation in RFC 6458 and the current Linux SCTP implementation. The
-> >>> following
-> >>>>>>> patches are my humble attempts at getting somewhat closer to compliancy.
-> >>>>>>
-> >>>>>> I've just been reading RFC 6458 - HTF did it get past the editors and
-> >>>>>> then published in its current form?
-> >>>>>> Lots of the structures have implied padding.
-> >>>> ...
-> >>>>> I've argued the padding issue, but the editor stance is that it's implementation
-> >>>>> dependent.
-> >>>>
-> >>>> It wouldn't be as bad if the RFC said that the structure contained the
-> >>>> fields that followed (as is typical of the posix definitions),
-> >>>> but instead it gives a definition of the structure.
-> >>
-> >>> That would have been a possibility, but it was never suggested.
-> >>> As far as I know, C does not guarantee the memory layout for structs,
-> >>> except for the sequence of the components. So a compiler might add
-> >>> some padding at any place. When implementing this, you need to take
-> >>> care of this (and your job might be simpler, since you might only
-> >>> work with a specific set of compilers).
-> >>> In FreeBSD we also added some padding to some structures since they
-> >>> "evolved" during the lifetime of of the internet draft and we wanted
-> >>> to preserve some compatibility.
-> >>> I agree, that one must take care of the implied padding and I will double
-> >>> check how this is handled in FreeBSD. Not sure...
-> >>
-> >> You need to add explicit named pad fields in order to zero them.
-> >> (since you don't really want a memset())
-> >> That is against my reading of the RFC.
-> >>
-> >> What does FreeBSD do about the 'sockaddr_storage'?
-> >> I'd have thought it had the same rules as NetBSD - where (IIRC) it should never
-> >> be instantiated, but only exists as a pointer type for function parameters.
-> >>
-> >
-> > I don't remember any such rules when sockaddr_storage was defined.  Can you
-> > point to any document stating such rules?
-> > It is definitely useful as a container object at times.
-> I agree. The description would be OK for struct sockaddr. I have never instantiated
-> a variable of that type. The only use (I know of) of struct sockaddr_storage
-> is as a container object.
+CC: Vlad Yasevich <vyasevich@gmail.com>
+Signed-off-by: Geir Ola Vaagland <geirola@gmail.com>
+---
+ include/uapi/linux/sctp.h |  1 +
+ net/sctp/socket.c         | 94 +++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 95 insertions(+)
 
-I remember Christos saying something to that effect on one of the NetBSD lists.
-But I can't remember exactly when and searching the archives might be hard.
-He might remember.
-
-	David
-
-
-
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index 986563e..133df4e 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -99,6 +99,7 @@ typedef __s32 sctp_assoc_t;
+ 
+ #define SCTP_RECVRCVINFO 32
+ #define SCTP_RECVNXTINFO 33
++#define SCTP_DEFAULT_SNDINFO 34
+ 
+ /* Internal Socket Options. Some of the sctp library functions are
+  * implemented using these socket options.
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 57106e8..a725376 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -2801,6 +2801,55 @@ static int sctp_setsockopt_default_send_param(struct sock *sk,
+ 
+ 	return 0;
+ }
++/*
++ * 8.1.31. Set Default Send Parameters (SCTP_DEFAULT_SNDINFO)
++ *
++ *   Applications that wish to use the sendto() system call may wish to
++ *   specify a default set of parameters that would normally be supplied
++ *   through the inclusion of ancillary data.  This socket option allows
++ *   such an application to set the default sctp_sndinfo structure.  The
++ *   application that wishes to use this socket option simply passes the
++ *   sctp_sndinfo structure (defined in Section 5.3.4) to this call.  The
++ *   input parameters accepted by this call include snd_sid, snd_flags,
++ *   snd_ppid, and snd_context.  The snd_flags parameter is composed of a
++ *   bitwise OR of SCTP_UNORDERED, SCTP_EOF, and SCTP_SENDALL.  The
++ *   snd_assoc_id field specifies the association to which to apply the
++ *   parameters.  For a one-to-many style socket, any of the predefined
++ *   constants are also allowed in this field.  The field is ignored for
++ *   one-to-one style sockets.
++ */
++static int sctp_setsockopt_default_sndinfo(struct sock *sk,
++		char __user *optval,
++		unsigned int optlen){
++	struct sctp_sndinfo info;
++	struct sctp_association *asoc;
++	struct sctp_sock *sp = sctp_sk(sk);
++
++	if (optlen != sizeof(struct sctp_sndinfo))
++		return -EINVAL;
++	if (copy_from_user(&info, optval, optlen))
++		return -EFAULT;
++
++	asoc = sctp_id2assoc(sk, info.snd_assoc_id);
++	if (!asoc && info.snd_assoc_id && sctp_style(sk, UDP))
++		return -EINVAL;
++
++	/* Note! asoc->default_timetolive is not set in this way anymore.
++	 * The PR-SCTP extension needs to be implemented.  */
++	if (asoc) {
++		asoc->default_stream = info.snd_sid;
++		asoc->default_flags = info.snd_flags;
++		asoc->default_ppid = info.snd_ppid;
++		asoc->default_context = info.snd_context;
++	} else {
++		sp->default_stream = info.snd_sid;
++		sp->default_flags = info.snd_flags;
++		sp->default_ppid = info.snd_ppid;
++		sp->default_context = info.snd_context;
++	}
++	return 0;
++}
++
+ 
+ /* 7.1.10 Set Primary Address (SCTP_PRIMARY_ADDR)
+  *
+@@ -3724,6 +3773,9 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_default_send_param(sk, optval,
+ 							    optlen);
+ 		break;
++	case SCTP_DEFAULT_SNDINFO:
++		retval = sctp_setsockopt_default_sndinfo(sk, optval, optlen);
++		break;
+ 	case SCTP_PRIMARY_ADDR:
+ 		retval = sctp_setsockopt_primary_addr(sk, optval, optlen);
+ 		break;
+@@ -5063,6 +5115,45 @@ static int sctp_getsockopt_default_send_param(struct sock *sk,
+ 
+ 	return 0;
+ }
++static int sctp_getsockopt_default_sndinfo(struct sock *sk,
++		int len, char __user *optval,
++		int __user *optlen)
++{
++	struct sctp_sndinfo info;
++	struct sctp_association *asoc;
++	struct sctp_sock *sp = sctp_sk(sk);
++
++	if (len < sizeof(struct sctp_sndinfo))
++		return -EINVAL;
++
++	len = sizeof(struct sctp_sndinfo);
++
++	if (copy_from_user(&info, optval, len))
++		return -EFAULT;
++
++	asoc = sctp_id2assoc(sk, info.snd_assoc_id);
++	if (!asoc && info.snd_assoc_id && sctp_style(sk, UDP))
++		return -EINVAL;
++
++	if (asoc) {
++		info.snd_sid = asoc->default_stream;
++		info.snd_flags = asoc->default_flags;
++		info.snd_ppid = asoc->default_ppid;
++		info.snd_context = asoc->default_context;
++	} else {
++		info.snd_sid = sp->default_stream;
++		info.snd_flags = sp->default_flags;
++		info.snd_ppid = sp->default_ppid;
++		info.snd_context = sp->default_context;
++	}
++
++	if (put_user(len, optlen))
++		return -EFAULT;
++	if (copy_to_user(optval, &info, len))
++		return -EFAULT;
++
++	return 0;
++}
+ 
+ /*
+  *
+@@ -5917,6 +6008,9 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_getsockopt_default_send_param(sk, len,
+ 							    optval, optlen);
+ 		break;
++	case SCTP_DEFAULT_SNDINFO:
++		retval = sctp_getsockopt_default_sndinfo(sk, len, optval, optlen);
++		break;
+ 	case SCTP_PRIMARY_ADDR:
+ 		retval = sctp_getsockopt_primary_addr(sk, len, optval, optlen);
+ 		break;
