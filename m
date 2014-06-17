@@ -1,10 +1,10 @@
 From: Geir Ola Vaagland <geirola@gmail.com>
-Date: Tue, 17 Jun 2014 11:57:52 +0000
+Date: Tue, 17 Jun 2014 15:01:35 +0000
 Subject: [PATCH net-next 5/6] Support for receiving SCTP_NXTINFO ancillary data
-Message-Id: <1403006273-27859-6-git-send-email-geirola@gmail.com>
+Message-Id: <1403017296-28469-6-git-send-email-geirola@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1403006273-27859-1-git-send-email-geirola@gmail.com>
-In-Reply-To: <1403006273-27859-1-git-send-email-geirola@gmail.com>
+References: <1403017296-28469-1-git-send-email-geirola@gmail.com>
+In-Reply-To: <1403017296-28469-1-git-send-email-geirola@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -55,9 +55,9 @@ index 10e12da..57106e8 100644
  		sctp_ulpevent_read_rcvinfo(event, msg);
  	}
  
-+	if(sp->recvnxtinfo){
++	if (sp->recvnxtinfo) {
 +		nxtskb = sctp_skb_recv_datagram(sk, MSG_PEEK, 1, &err2);
-+		if(nxtskb && nxtskb->len){
++		if (nxtskb && nxtskb->len) {
 +			nxt_event = sctp_skb2event(nxtskb);
 +			sctp_ulpevent_read_nxtinfo(nxt_event, msg, nxtskb);
 +		}
@@ -70,7 +70,7 @@ index 10e12da..57106e8 100644
  		sctp_ulpevent_free(event);
  	}
  out:
-+	if(nxtskb)
++	if (nxtskb)
 +		kfree_skb(nxtskb);
  	sctp_release_sock(sk);
  	return err;
@@ -84,7 +84,7 @@ index d1b9a02..94da2b4 100644
  }
  
 +void sctp_ulpevent_read_nxtinfo(const struct sctp_ulpevent *event,
-+		struct msghdr *msghdr, struct sk_buff* skb)
++		struct msghdr *msghdr, struct sk_buff *skb)
 +{
 +	struct sctp_nxtinfo nxtinfo;
 +
@@ -117,8 +117,8 @@ index d1b9a02..94da2b4 100644
 +	 */
 +	nxtinfo.nxt_flags = event->flags;
 +
-+	/*
-+	 * SCTP_NOTIFICATION is not set in Linux yet.
++
++	/* SCTP_NOTIFICATION is not set in Linux yet.
 +	 *
 +	 * if (sctp_ulpevent_is_notification(event)){
 +	 *     nxtinfo.nxt_flags |= SCTP_NOTIFICATION;
