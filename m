@@ -1,50 +1,47 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 10 Jun 2014 11:33:42 +0000
-Subject: Re: sctp bug: sk_ack_backlog wrap-around problem
-Message-Id: <20140610113342.GC6275@hmsreliant.think-freely.org>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Wed, 18 Jun 2014 21:46:31 +0000
+Subject: [PATCH net] net: sctp: check proc_dointvec result in proc_sctp_do_auth
+Message-Id: <1403127991-18114-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CA+=dFzg6gXDTXr6AusZ40_swrjQa-yoS1YLv3=SJAjKYgKzrbQ@mail.gmail.com>
-In-Reply-To: <CA+=dFzg6gXDTXr6AusZ40_swrjQa-yoS1YLv3=SJAjKYgKzrbQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xufeng Zhang <xufengzhang.main@gmail.com>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, linux-sctp <linux-sctp@vger.kernel.org>, netdev <netdev@vger.kernel.org>, linux-kernel <linux-kernel@vger.kernel.org>, xufeng zhang <xufeng.zhang@windriver.com>
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Tue, Jun 10, 2014 at 02:27:07PM +0800, Xufeng Zhang wrote:
-> Hi Vlad and Neil,
-> 
-> I found a sk_ack_backlog wrap-around problem during handling received
-> COOKIE_ECHO.
-> 
-> Consider the scenario:
-> For a TCP-style socket, while processing the COOKIE_ECHO chunk in
-> sctp_sf_do_5_1D_ce(),
-> after it has passed a series of sanity check, a new association would
-> be created in
-> sctp_unpack_cookie(), but afterwards, some processing maybe failed,
-> and sctp_association_free()
-> will be called to free the previously allocated association, in
-> sctp_association_free(),
-> sk_ack_backlog value is decremented for this socket, since the initial
-> value for sk_ack_backlog is 0,
-> after the decrement, it will be 65535, a wrap-around problem happens,
-> and if we want to establish
-> new associations afterward in the same socket, ABORT would be
-> triggered since sctp deem the
-> accept queue as full.
-> 
-> Do you have any idea to fix such kind of issue?
-> 
+When writing to the sysctl field net.sctp.auth_enable, it can well
+be that the user buffer we handed over to proc_dointvec() via
+proc_sctp_do_auth() handler contains something other than integers.
 
-first thought would be to traverse the list of associations on the endpoint in
-sctp_association_free if its a tcp style socket, and then only decrement the
-backlog if we find the association being freed on the list.  By doing that we
-can be confident that we've increased the backlog via sctp_endpoint_add_asoc.
+In that case, we would set an uninitialized 4-byte value from the
+stack to net->sctp.auth_enable that can be leaked back when reading
+the sysctl variable, and it can unintentionally turn auth_enable
+on/off based on the stack content since auth_enable is interpreted
+as a boolean.
 
-Best
-Neil
+Fix it up by making sure proc_dointvec() returned sucessfully.
 
-> Thanks a lot!
-> Xufeng
-> 
+Fixes: b14878ccb7fa ("net: sctp: cache auth_enable per endpoint")
+Reported-by: Florian Westphal <fwestpha@redhat.com>
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/sysctl.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
+index dcb1959..8a5b5c2 100644
+--- a/net/sctp/sysctl.c
++++ b/net/sctp/sysctl.c
+@@ -444,8 +444,7 @@ static int proc_sctp_do_auth(struct ctl_table *ctl, int write,
+ 		tbl.data = &net->sctp.auth_enable;
+ 
+ 	ret = proc_dointvec(&tbl, write, buffer, lenp, ppos);
+-
+-	if (write) {
++	if (write && ret = 0) {
+ 		struct sock *sk = net->sctp.ctl_sock;
+ 
+ 		net->sctp.auth_enable = new_value;
+-- 
+1.7.11.7
+
