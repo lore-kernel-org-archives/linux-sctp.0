@@ -1,17 +1,17 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 19 Jun 2014 13:05:19 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Thu, 19 Jun 2014 13:28:16 +0000
 Subject: Re: [PATCH net] net: sctp: check proc_dointvec result in proc_sctp_do_auth
-Message-Id: <20140619130519.GB21904@hmsreliant.think-freely.org>
+Message-Id: <53A2E570.7000404@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1403127991-18114-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1403127991-18114-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Wed, Jun 18, 2014 at 11:46:31PM +0200, Daniel Borkmann wrote:
+On 06/18/2014 05:46 PM, Daniel Borkmann wrote:
 > When writing to the sysctl field net.sctp.auth_enable, it can well
 > be that the user buffer we handed over to proc_dointvec() via
 > proc_sctp_do_auth() handler contains something other than integers.
@@ -45,14 +45,8 @@ On Wed, Jun 18, 2014 at 11:46:31PM +0200, Daniel Borkmann wrote:
 >  		struct sock *sk = net->sctp.ctl_sock;
 >  
 >  		net->sctp.auth_enable = new_value;
-> -- 
-> 1.7.11.7
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Acked-by: Vlad Yasevich <vyasevich@gmail.com>
 
+-vlad
