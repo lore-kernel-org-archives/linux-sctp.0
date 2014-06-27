@@ -1,83 +1,15 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Mon, 30 Jun 2014 13:01:08 +0000
-Subject: [PATCH net-next 3/3] net: sctp: Use pointers (not array indexes) to access sctp_cmd_seq_t.cmds[]
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1726978B@AcuExch.aculab.com>
+From: John ven den Berg <johnjacknwanne@gmail.com>
+Date: Fri, 27 Jun 2014 11:44:55 +0000
+Subject: Re: Your Family.
+Message-Id: <201406271144.s5RBitRm019347@sapucaia.ufop.br>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Network Development <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
-Cc: "David S. Miller" <davem@davemloft.net>
+To: linux-sctp@vger.kernel.org
 
-Using pointers into sctp_cmd_seq_t.cmds[] lets the compiler generate much
-better code.
-Use the last entry first to optimise the overflow check.
-
-Signed-off-by: David Laight <david.laight@aculab.com>
----
- include/net/sctp/command.h | 24 ++++++++++++++----------
- 1 file changed, 14 insertions(+), 10 deletions(-)
-
-diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
-index 5fcd1a7..059720c 100644
---- a/include/net/sctp/command.h
-+++ b/include/net/sctp/command.h
-@@ -203,8 +203,8 @@ typedef struct {
- 
- typedef struct {
- 	sctp_cmd_t cmds[SCTP_MAX_NUM_COMMANDS];
--	__u8 next_free_slot;
--	__u8 next_cmd;
-+	sctp_cmd_t *last_used_slot;
-+	sctp_cmd_t *next_cmd;
- } sctp_cmd_seq_t;
- 
- 
-@@ -213,6 +213,9 @@ typedef struct {
-  */
- static inline int sctp_init_cmd_seq(sctp_cmd_seq_t *seq)
- {
-+	/* cmds[] is filled backwards to simplify the overflow BUG() check */
-+	seq->last_used_slot = seq->cmds + SCTP_MAX_NUM_COMMANDS;
-+	seq->next_cmd = seq->last_used_slot;
- 	return 1;		/* We always succeed.  */
- }
- 
-@@ -225,10 +228,13 @@ static inline int sctp_init_cmd_seq(sctp_cmd_seq_t *seq)
- static inline void sctp_add_cmd_sf(sctp_cmd_seq_t *seq, sctp_verb_t verb,
- 				   sctp_arg_t obj)
- {
--	BUG_ON(seq->next_free_slot >= SCTP_MAX_NUM_COMMANDS);
-+	sctp_cmd_t *cmd = seq->last_used_slot - 1;
- 
--	seq->cmds[seq->next_free_slot].verb = verb;
--	seq->cmds[seq->next_free_slot++].obj = obj;
-+	BUG_ON(cmd < seq->cmds);
-+
-+	cmd->verb = verb;
-+	cmd->obj = obj;
-+	seq->last_used_slot = cmd;
- }
- 
- /* Return the next command structure in an sctp_cmd_seq.
-@@ -236,12 +242,10 @@ static inline void sctp_add_cmd_sf(sctp_cmd_seq_t *seq, sctp_verb_t verb,
-  */
- static inline sctp_cmd_t *sctp_next_cmd(sctp_cmd_seq_t *seq)
- {
--	sctp_cmd_t *retval = NULL;
--
--	if (seq->next_cmd < seq->next_free_slot)
--		retval = &seq->cmds[seq->next_cmd++];
-+	if (seq->next_cmd <= seq->last_used_slot)
-+		return NULL;
- 
--	return retval;
-+	return --seq->next_cmd;
- }
- 
- #endif /* __net_sctp_command_h__ */
--- 
-1.8.1.2
-
+Compliments. This is in regards to my previous message concerning a deceased client with similar last name with you, I have given you all necessary details about this and I haven't gotten any positive response from you, so kindly get back to me today.
+Thank you,
+John.
 
 
