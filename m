@@ -1,15 +1,29 @@
-From: John ven den Berg <johnjacknwanne@gmail.com>
-Date: Fri, 27 Jun 2014 11:44:55 +0000
-Subject: Re: Your Family.
-Message-Id: <201406271144.s5RBitRm019347@sapucaia.ufop.br>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Mon, 30 Jun 2014 13:00:57 +0000
+Subject: [PATCH net-next 0/3] net: sctp: Optimisations to sctp command queue code
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1726977C@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: Network Development <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
+Cc: "David S. Miller" <davem@davemloft.net>
 
-Compliments. This is in regards to my previous message concerning a deceased client with similar last name with you, I have given you all necessary details about this and I haven't gotten any positive response from you, so kindly get back to me today.
-Thank you,
-John.
+These 3 patches optimise the code that processes sctp's command queue.
+(A list of 'tasks' to be performed after the rest of the chunk processing.)
+
+1) Inline all the functions from command.c
+2) Remove the memset() calls used to zero a word-sized union.
+3) Use pointers instead of array indexes.
+
+The combined changes reduce the code size (amd64) by a few kb.
+
+I'm not 100% convinced that the zeroing done in patch 2 is needed at all.
+On BE systems it is likely to generate more code than on LE ones.
+In fact it might be best to change the union to only contain 'long' sized
+items.
+
+	David
+
 
 
