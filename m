@@ -1,23 +1,33 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Mon, 30 Jun 2014 11:52:07 +0000
-Subject: [PATCH net-next 0/2] Misc SCTP updates
-Message-Id: <1404129129-23270-1-git-send-email-dborkman@redhat.com>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 30 Jun 2014 12:37:04 +0000
+Subject: Re: [PATCH net-next 0/2] Misc SCTP updates
+Message-Id: <20140630123704.GB15777@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1404129129-23270-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1404129129-23270-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: Daniel Borkmann <dborkman@redhat.com>
+Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-Daniel Borkmann (2):
-  net: sctp: improve timer slack calculation for transport HBs
-  net: sctp: only warn in proc_sctp_do_alpha_beta if write
+On Mon, Jun 30, 2014 at 01:52:07PM +0200, Daniel Borkmann wrote:
+> Daniel Borkmann (2):
+>   net: sctp: improve timer slack calculation for transport HBs
+>   net: sctp: only warn in proc_sctp_do_alpha_beta if write
+> 
+>  include/net/sctp/sctp.h | 21 ---------------------
+>  net/sctp/sysctl.c       |  5 +++--
+>  net/sctp/transport.c    | 17 +++++++++--------
+>  3 files changed, 12 insertions(+), 31 deletions(-)
+> 
+> -- 
+> 1.7.11.7
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
- include/net/sctp/sctp.h | 21 ---------------------
- net/sctp/sysctl.c       |  5 +++--
- net/sctp/transport.c    | 17 +++++++++--------
- 3 files changed, 12 insertions(+), 31 deletions(-)
-
--- 
-1.7.11.7
-
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
