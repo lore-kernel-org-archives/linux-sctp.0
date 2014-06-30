@@ -1,18 +1,23 @@
-From: Royal Assured Loan <info@devilbendgolf.com.au>
-Date: Fri, 02 May 2014 21:56:41 +0000
-Subject: Darlehen Angebot !
-Message-Id: <20140503075641.184074g6wlnc5c84@webmail.devilbendgolf.com.au>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Mon, 30 Jun 2014 11:52:07 +0000
+Subject: [PATCH net-next 0/2] Misc SCTP updates
+Message-Id: <1404129129-23270-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="windows-1252"
-Content-Transfer-Encoding: quoted-printable
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-Wir bieten privaten und gewerblichen Darlehen ohne Sicherheiten, bei =20
-3% Zinssatz, ab =80 10.000 bis =80 90.000.000 in 1 Jahr bis 20 Jahren =20
-Laufzeit =FCberall in der Welt
+Daniel Borkmann (2):
+  net: sctp: improve timer slack calculation for transport HBs
+  net: sctp: only warn in proc_sctp_do_alpha_beta if write
 
-----------------------------------------------------------------
-This message was sent using IMP, the Internet Messaging Program.
+ include/net/sctp/sctp.h | 21 ---------------------
+ net/sctp/sysctl.c       |  5 +++--
+ net/sctp/transport.c    | 17 +++++++++--------
+ 3 files changed, 12 insertions(+), 31 deletions(-)
 
+-- 
+1.7.11.7
 
