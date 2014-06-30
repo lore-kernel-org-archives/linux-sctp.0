@@ -1,37 +1,41 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Wed, 25 Jun 2014 10:28:28 +0000
-Subject: Re: [PATCH net-next] sctp: Add partially support for MSG_MORE to SCTP.
-Message-Id: <53AAA44C.5010206@redhat.com>
+Date: Mon, 30 Jun 2014 11:52:09 +0000
+Subject: [PATCH net-next 2/2] net: sctp: only warn in proc_sctp_do_alpha_beta if write
+Message-Id: <1404129129-23270-3-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <063D6719AE5E284EB5DD2968C1650D6D1725FB90@AcuExch.aculab.com> <53A4B165.6050504@gmail.com> <063D6719AE5E284EB5DD2968C1650D6D1726152D@AcuExch.aculab.com>
-In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6D1726152D@AcuExch.aculab.com>
+References: <1404129129-23270-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1404129129-23270-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@ACULAB.COM>
-Cc: 'Vlad Yasevich' <vyasevich@gmail.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
+To: davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On 06/23/2014 04:27 PM, David Laight wrote:
-> From: Vlad Yasevich
->> On 06/20/2014 12:24 PM, David Laight wrote:
->>> If MSG_MORE is set then buffer sends as if Nagle were enabled.
->>> The first data chunk is still sent on its own, but subsequent chunks
->>> will be bundled and full packets sent.
->>> Full MSG_MORE support would require a timeout (preferably configurable
->>> per-socket) to send the last chunk(s), instead of sending them
->>> when there is nothing outstanding.
->>
->> Instead of using 1 and 2, can you define them as flags please
->
-> Will do....
->
-> It is worth inverting nagle/nodelay bit; so that:
-> 0 => SCTP_NODELAY
-> 1 => Nagle (default)
-> 2 => MSG_MORE
-> 4 => reserved for corked
->
-> That would require working out where the structure is initialised
-> (in order to default to Nagle).
+Only warn if the value is written to alpha or beta. We don't care
+emitting a one-time warning when only reading it.
 
-I think that should be fine, too.
+Reported-by: Jiri Pirko <jpirko@redhat.com>
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/sysctl.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
+index 12c7e01..2e9ada1 100644
+--- a/net/sctp/sysctl.c
++++ b/net/sctp/sysctl.c
+@@ -424,8 +424,9 @@ static int proc_sctp_do_alpha_beta(struct ctl_table *ctl, int write,
+ 				   void __user *buffer, size_t *lenp,
+ 				   loff_t *ppos)
+ {
+-	pr_warn_once("Changing rto_alpha or rto_beta may lead to "
+-		     "suboptimal rtt/srtt estimations!\n");
++	if (write)
++		pr_warn_once("Changing rto_alpha or rto_beta may lead to "
++			     "suboptimal rtt/srtt estimations!\n");
+ 
+ 	return proc_dointvec_minmax(ctl, write, buffer, lenp, ppos);
+ }
+-- 
+1.7.11.7
+
