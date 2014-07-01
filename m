@@ -1,7 +1,7 @@
-From: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
-Date: Tue, 01 Jul 2014 11:57:33 +0000
-Subject: Re: SCTP Multihoming Heartbeat ACK Behavior
-Message-Id: <A5C13ED7-7959-4CAA-9F5E-3FA690DDDF54@lurchi.franken.de>
+From: Jeff Carter <J.Carter@F5.com>
+Date: Tue, 01 Jul 2014 13:59:57 +0000
+Subject: RE: SCTP Multihoming Heartbeat ACK Behavior
+Message-Id: <c9bf89508e4a46aa8db05982c14a2a1c@LWLEXCHMBX01.olympus.F5Net.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20140628190435.AF72.327CAA51@tspi.com.ph>
 In-Reply-To: <20140628190435.AF72.327CAA51@tspi.com.ph>
@@ -9,6 +9,26 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
+
+Also notice that the RFC states this:
+
+" The Sender-Specific Heartbeat Info field should normally include
+  information about the sender's current time when this HEARTBEAT
+  chunk is sent and the destination transport address to which this
+  HEARTBEAT is sent (see Section 8.3)."
+
+So that is perfectly well expected that the HEARTBEAT ACK source
+address won't be the destination address of the HEARTBEAT.
+
+Jeff Carter
+
+
+-----Original Message-----
+From: linux-sctp-owner@vger.kernel.org [mailto:linux-sctp-owner@vger.kernel.org] On Behalf Of Michael Tuexen
+Sent: Tuesday, July 01, 2014 7:58 AM
+To: Daniel Borkmann
+Cc: Neil Horman; Winston V. Tizon; linux-sctp@vger.kernel.org
+Subject: Re: SCTP Multihoming Heartbeat ACK Behavior
 
 On 01 Jul 2014, at 13:38, Daniel Borkmann <dborkman@redhat.com> wrote:
 
@@ -47,3 +67,7 @@ Michael
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
 
+--
+To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
