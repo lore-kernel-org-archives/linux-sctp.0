@@ -1,256 +1,173 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Sat, 12 Jul 2014 18:30:36 +0000
-Subject: [PATCH net-next v2 2/6] net: sctp: implement rfc6458, 5.3.4. SCTP_SNDINFO cmsg support
-Message-Id: <1405189840-31171-3-git-send-email-dborkman@redhat.com>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 01 Jul 2014 11:38:08 +0000
+Subject: Re: [PATCH net-next 1/3] net: sctp: Inline the functions from command.c
+Message-Id: <20140701113808.GD7322@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <063D6719AE5E284EB5DD2968C1650D6D1726978C@AcuExch.aculab.com>
+In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6D1726978C@AcuExch.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: David Laight <David.Laight@ACULAB.COM>
+Cc: Network Development <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "David S. Miller" <davem@davemloft.net>
 
-From: Geir Ola Vaagland <geirola@gmail.com>
-
-This patch implements section 5.3.4. of RFC6458, that is, support
-for 'SCTP Send Information Structure' (SCTP_SNDINFO) which can be
-placed into ancillary data cmsghdr structure for sendmsg() calls.
-
-The sctp_sndinfo structure is defined as per RFC as below ...
-
-  struct sctp_sndinfo {
-    uint16_t snd_sid;
-    uint16_t snd_flags;
-    uint32_t snd_ppid;
-    uint32_t snd_context;
-    sctp_assoc_t snd_assoc_id;
-  };
-
-... and supplied under cmsg_level IPPROTO_SCTP, cmsg_type
-SCTP_SNDINFO, while cmsg_data[] contains struct sctp_sndinfo.
-An sctp_sndinfo item always corresponds to the data in msg_iov.
-
-Joint work with Daniel Borkmann.
-
-Signed-off-by: Geir Ola Vaagland <geirola@gmail.com>
-Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
----
- include/net/sctp/structs.h |  3 +-
- include/uapi/linux/sctp.h  | 22 +++++++++++--
- net/sctp/socket.c          | 77 ++++++++++++++++++++++++++++++++++------------
- 3 files changed, 79 insertions(+), 23 deletions(-)
-
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index f38588b..7af9a0f 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -1919,7 +1919,8 @@ struct sctp_chunk *sctp_get_ecne_prepend(struct sctp_association *asoc);
- /* A convenience structure to parse out SCTP specific CMSGs. */
- typedef struct sctp_cmsgs {
- 	struct sctp_initmsg *init;
--	struct sctp_sndrcvinfo *info;
-+	struct sctp_sndrcvinfo *srinfo;
-+	struct sctp_sndinfo *sinfo;
- } sctp_cmsgs_t;
- 
- /* Structure for tracking memory objects */
-diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index 266022a..a387761 100644
---- a/include/uapi/linux/sctp.h
-+++ b/include/uapi/linux/sctp.h
-@@ -154,6 +154,22 @@ struct sctp_sndrcvinfo {
- 	sctp_assoc_t sinfo_assoc_id;
- };
- 
-+/* 5.3.4 SCTP Send Information Structure (SCTP_SNDINFO)
-+ *
-+ *   This cmsghdr structure specifies SCTP options for sendmsg().
-+ *
-+ *   cmsg_level    cmsg_type      cmsg_data[]
-+ *   ------------  ------------   -------------------
-+ *   IPPROTO_SCTP  SCTP_SNDINFO   struct sctp_sndinfo
-+ */
-+struct sctp_sndinfo {
-+	__u16 snd_sid;
-+	__u16 snd_flags;
-+	__u32 snd_ppid;
-+	__u32 snd_context;
-+	sctp_assoc_t snd_assoc_id;
-+};
-+
- /*
-  *  sinfo_flags: 16 bits (unsigned integer)
-  *
-@@ -177,10 +193,12 @@ typedef union {
- 
- /* These are cmsg_types.  */
- typedef enum sctp_cmsg_type {
--	SCTP_INIT,              /* 5.2.1 SCTP Initiation Structure */
-+	SCTP_INIT,		/* 5.2.1 SCTP Initiation Structure */
- #define SCTP_INIT	SCTP_INIT
--	SCTP_SNDRCV,            /* 5.2.2 SCTP Header Information Structure */
-+	SCTP_SNDRCV,		/* 5.2.2 SCTP Header Information Structure */
- #define SCTP_SNDRCV	SCTP_SNDRCV
-+	SCTP_SNDINFO,		/* 5.3.4 SCTP Send Information Structure */
-+#define SCTP_SNDINFO	SCTP_SNDINFO
- } sctp_cmsg_t;
- 
- /*
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 4298996..d61729e 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -1602,12 +1602,13 @@ static int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
- 	struct sctp_initmsg *sinit;
- 	sctp_assoc_t associd = 0;
- 	sctp_cmsgs_t cmsgs = { NULL };
--	int err;
- 	sctp_scope_t scope;
--	long timeo;
--	__u16 sinfo_flags = 0;
-+	bool fill_sinfo_ttl = false;
- 	struct sctp_datamsg *datamsg;
- 	int msg_flags = msg->msg_flags;
-+	__u16 sinfo_flags = 0;
-+	long timeo;
-+	int err;
- 
- 	err = 0;
- 	sp = sctp_sk(sk);
-@@ -1648,10 +1649,21 @@ static int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
- 		msg_name = msg->msg_name;
- 	}
- 
--	sinfo = cmsgs.info;
- 	sinit = cmsgs.init;
-+	if (cmsgs.sinfo != NULL) {
-+		memset(&default_sinfo, 0, sizeof(default_sinfo));
-+		default_sinfo.sinfo_stream = cmsgs.sinfo->snd_sid;
-+		default_sinfo.sinfo_flags = cmsgs.sinfo->snd_flags;
-+		default_sinfo.sinfo_ppid = cmsgs.sinfo->snd_ppid;
-+		default_sinfo.sinfo_context = cmsgs.sinfo->snd_context;
-+		default_sinfo.sinfo_assoc_id = cmsgs.sinfo->snd_assoc_id;
- 
--	/* Did the user specify SNDRCVINFO?  */
-+		sinfo = &default_sinfo;
-+		fill_sinfo_ttl = true;
-+	} else {
-+		sinfo = cmsgs.srinfo;
-+	}
-+	/* Did the user specify SNDINFO/SNDRCVINFO? */
- 	if (sinfo) {
- 		sinfo_flags = sinfo->sinfo_flags;
- 		associd = sinfo->sinfo_assoc_id;
-@@ -1858,8 +1870,8 @@ static int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
- 	pr_debug("%s: we have a valid association\n", __func__);
- 
- 	if (!sinfo) {
--		/* If the user didn't specify SNDRCVINFO, make up one with
--		 * some defaults.
-+		/* If the user didn't specify SNDINFO/SNDRCVINFO, make up
-+		 * one with some defaults.
- 		 */
- 		memset(&default_sinfo, 0, sizeof(default_sinfo));
- 		default_sinfo.sinfo_stream = asoc->default_stream;
-@@ -1868,7 +1880,13 @@ static int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
- 		default_sinfo.sinfo_context = asoc->default_context;
- 		default_sinfo.sinfo_timetolive = asoc->default_timetolive;
- 		default_sinfo.sinfo_assoc_id = sctp_assoc2id(asoc);
-+
- 		sinfo = &default_sinfo;
-+	} else if (fill_sinfo_ttl) {
-+		/* In case SNDINFO was specified, we still need to fill
-+		 * it with a default ttl from the assoc here.
-+		 */
-+		sinfo->sinfo_timetolive = asoc->default_timetolive;
- 	}
- 
- 	/* API 7.1.7, the sndbuf size per association bounds the
-@@ -6390,8 +6408,7 @@ static int sctp_msghdr_parse(const struct msghdr *msg, sctp_cmsgs_t *cmsgs)
- 	struct cmsghdr *cmsg;
- 	struct msghdr *my_msg = (struct msghdr *)msg;
- 
--	for (cmsg = CMSG_FIRSTHDR(msg);
--	     cmsg != NULL;
-+	for (cmsg = CMSG_FIRSTHDR(msg); cmsg != NULL;
- 	     cmsg = CMSG_NXTHDR(my_msg, cmsg)) {
- 		if (!CMSG_OK(my_msg, cmsg))
- 			return -EINVAL;
-@@ -6404,7 +6421,7 @@ static int sctp_msghdr_parse(const struct msghdr *msg, sctp_cmsgs_t *cmsgs)
- 		switch (cmsg->cmsg_type) {
- 		case SCTP_INIT:
- 			/* SCTP Socket API Extension
--			 * 5.2.1 SCTP Initiation Structure (SCTP_INIT)
-+			 * 5.3.1 SCTP Initiation Structure (SCTP_INIT)
- 			 *
- 			 * This cmsghdr structure provides information for
- 			 * initializing new SCTP associations with sendmsg().
-@@ -6416,15 +6433,15 @@ static int sctp_msghdr_parse(const struct msghdr *msg, sctp_cmsgs_t *cmsgs)
- 			 * ------------  ------------   ----------------------
- 			 * IPPROTO_SCTP  SCTP_INIT      struct sctp_initmsg
- 			 */
--			if (cmsg->cmsg_len !-			    CMSG_LEN(sizeof(struct sctp_initmsg)))
-+			if (cmsg->cmsg_len != CMSG_LEN(sizeof(struct sctp_initmsg)))
- 				return -EINVAL;
--			cmsgs->init = (struct sctp_initmsg *)CMSG_DATA(cmsg);
-+
-+			cmsgs->init = CMSG_DATA(cmsg);
- 			break;
- 
- 		case SCTP_SNDRCV:
- 			/* SCTP Socket API Extension
--			 * 5.2.2 SCTP Header Information Structure(SCTP_SNDRCV)
-+			 * 5.3.2 SCTP Header Information Structure(SCTP_SNDRCV)
- 			 *
- 			 * This cmsghdr structure specifies SCTP options for
- 			 * sendmsg() and describes SCTP header information
-@@ -6434,24 +6451,44 @@ static int sctp_msghdr_parse(const struct msghdr *msg, sctp_cmsgs_t *cmsgs)
- 			 * ------------  ------------   ----------------------
- 			 * IPPROTO_SCTP  SCTP_SNDRCV    struct sctp_sndrcvinfo
- 			 */
--			if (cmsg->cmsg_len !-			    CMSG_LEN(sizeof(struct sctp_sndrcvinfo)))
-+			if (cmsg->cmsg_len != CMSG_LEN(sizeof(struct sctp_sndrcvinfo)))
- 				return -EINVAL;
- 
--			cmsgs->info -				(struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
-+			cmsgs->srinfo = CMSG_DATA(cmsg);
- 
--			/* Minimally, validate the sinfo_flags. */
--			if (cmsgs->info->sinfo_flags &
-+			if (cmsgs->srinfo->sinfo_flags &
- 			    ~(SCTP_UNORDERED | SCTP_ADDR_OVER |
- 			      SCTP_ABORT | SCTP_EOF))
- 				return -EINVAL;
- 			break;
- 
-+		case SCTP_SNDINFO:
-+			/* SCTP Socket API Extension
-+			 * 5.3.4 SCTP Send Information Structure (SCTP_SNDINFO)
-+			 *
-+			 * This cmsghdr structure specifies SCTP options for
-+			 * sendmsg(). This structure and SCTP_RCVINFO replaces
-+			 * SCTP_SNDRCV which has been deprecated.
-+			 *
-+			 * cmsg_level    cmsg_type      cmsg_data[]
-+			 * ------------  ------------   ---------------------
-+			 * IPPROTO_SCTP  SCTP_SNDINFO    struct sctp_sndinfo
-+			 */
-+			if (cmsg->cmsg_len != CMSG_LEN(sizeof(struct sctp_sndinfo)))
-+				return -EINVAL;
-+
-+			cmsgs->sinfo = CMSG_DATA(cmsg);
-+
-+			if (cmsgs->sinfo->snd_flags &
-+			    ~(SCTP_UNORDERED | SCTP_ADDR_OVER |
-+			      SCTP_ABORT | SCTP_EOF))
-+				return -EINVAL;
-+			break;
- 		default:
- 			return -EINVAL;
- 		}
- 	}
-+
- 	return 0;
- }
- 
--- 
-1.7.11.7
-
+On Mon, Jun 30, 2014 at 01:01:04PM +0000, David Laight wrote:
+> sctp_init_cmd_seq() and sctp_next_cmd() are only called from one place.
+> The call sequence for sctp_add_cmd_sf() is likely to be longer than
+> the inlined code.
+> With sctp_add_cmd_sf() inlined the compiler can optimise repeated calls.
+> 
+> 
+> Signed-off-by: David Laight <david.laight@aculab.com>
+> ---
+>  include/net/sctp/command.h | 27 +++++++++++++++---
+>  net/sctp/Makefile          |  2 +-
+>  net/sctp/command.c         | 68 ----------------------------------------------
+>  3 files changed, 24 insertions(+), 73 deletions(-)
+>  delete mode 100644 net/sctp/command.c
+> 
+> diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
+> index 6547ab7..020eb95 100644
+> --- a/include/net/sctp/command.h
+> +++ b/include/net/sctp/command.h
+> @@ -210,19 +210,38 @@ typedef struct {
+>  /* Initialize a block of memory as a command sequence.
+>   * Return 0 if the initialization fails.
+>   */
+> -int sctp_init_cmd_seq(sctp_cmd_seq_t *seq);
+> +static inline int sctp_init_cmd_seq(sctp_cmd_seq_t *seq)
+> +{
+> +	memset(seq, 0, sizeof(sctp_cmd_seq_t));
+> +	return 1;		/* We always succeed.  */
+> +}
+> +
+>  
+>  /* Add a command to an sctp_cmd_seq_t.
+>   *
+>   * Use the SCTP_* constructors defined by SCTP_ARG_CONSTRUCTOR() above
+>   * to wrap data which goes in the obj argument.
+>   */
+> -void sctp_add_cmd_sf(sctp_cmd_seq_t *seq, sctp_verb_t verb, sctp_arg_t obj);
+> +static inline void sctp_add_cmd_sf(sctp_cmd_seq_t *seq, sctp_verb_t verb,
+> +				   sctp_arg_t obj)
+> +{
+> +	BUG_ON(seq->next_free_slot >= SCTP_MAX_NUM_COMMANDS);
+> +
+> +	seq->cmds[seq->next_free_slot].verb = verb;
+> +	seq->cmds[seq->next_free_slot++].obj = obj;
+> +}
+>  
+>  /* Return the next command structure in an sctp_cmd_seq.
+>   * Return NULL at the end of the sequence.
+>   */
+> -sctp_cmd_t *sctp_next_cmd(sctp_cmd_seq_t *seq);
+> +static inline sctp_cmd_t *sctp_next_cmd(sctp_cmd_seq_t *seq)
+> +{
+> +	sctp_cmd_t *retval = NULL;
+>  
+> -#endif /* __net_sctp_command_h__ */
+> +	if (seq->next_cmd < seq->next_free_slot)
+> +		retval = &seq->cmds[seq->next_cmd++];
+> +
+> +	return retval;
+> +}
+>  
+> +#endif /* __net_sctp_command_h__ */
+> diff --git a/net/sctp/Makefile b/net/sctp/Makefile
+> index 5c30b7a..3b4ffb0 100644
+> --- a/net/sctp/Makefile
+> +++ b/net/sctp/Makefile
+> @@ -8,7 +8,7 @@ obj-$(CONFIG_NET_SCTPPROBE) += sctp_probe.o
+>  sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
+>  	  protocol.o endpointola.o associola.o \
+>  	  transport.o chunk.o sm_make_chunk.o ulpevent.o \
+> -	  inqueue.o outqueue.o ulpqueue.o command.o \
+> +	  inqueue.o outqueue.o ulpqueue.o \
+>  	  tsnmap.o bind_addr.o socket.o primitive.o \
+>  	  output.o input.o debug.o ssnmap.o auth.o
+>  
+> diff --git a/net/sctp/command.c b/net/sctp/command.c
+> deleted file mode 100644
+> index dd73758..0000000
+> --- a/net/sctp/command.c
+> +++ /dev/null
+> @@ -1,68 +0,0 @@
+> -/* SCTP kernel implementation Copyright (C) 1999-2001
+> - * Cisco, Motorola, and IBM
+> - * Copyright 2001 La Monte H.P. Yarroll
+> - *
+> - * This file is part of the SCTP kernel implementation
+> - *
+> - * These functions manipulate sctp command sequences.
+> - *
+> - * This SCTP implementation is free software;
+> - * you can redistribute it and/or modify it under the terms of
+> - * the GNU General Public License as published by
+> - * the Free Software Foundation; either version 2, or (at your option)
+> - * any later version.
+> - *
+> - * This SCTP implementation is distributed in the hope that it
+> - * will be useful, but WITHOUT ANY WARRANTY; without even the implied
+> - *                 ************************
+> - * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+> - * See the GNU General Public License for more details.
+> - *
+> - * You should have received a copy of the GNU General Public License
+> - * along with GNU CC; see the file COPYING.  If not, see
+> - * <http://www.gnu.org/licenses/>.
+> - *
+> - * Please send any bug reports or fixes you make to the
+> - * email address(es):
+> - *    lksctp developers <linux-sctp@vger.kernel.org>
+> - *
+> - * Written or modified by:
+> - *    La Monte H.P. Yarroll <piggy@acm.org>
+> - *    Karl Knutson <karl@athena.chicago.il.us>
+> - */
+> -
+> -#include <linux/types.h>
+> -#include <net/sctp/sctp.h>
+> -#include <net/sctp/sm.h>
+> -
+> -/* Initialize a block of memory as a command sequence. */
+> -int sctp_init_cmd_seq(sctp_cmd_seq_t *seq)
+> -{
+> -	memset(seq, 0, sizeof(sctp_cmd_seq_t));
+> -	return 1;		/* We always succeed.  */
+> -}
+> -
+> -/* Add a command to a sctp_cmd_seq_t.
+> - * Return 0 if the command sequence is full.
+> - */
+> -void sctp_add_cmd_sf(sctp_cmd_seq_t *seq, sctp_verb_t verb, sctp_arg_t obj)
+> -{
+> -	BUG_ON(seq->next_free_slot >= SCTP_MAX_NUM_COMMANDS);
+> -
+> -	seq->cmds[seq->next_free_slot].verb = verb;
+> -	seq->cmds[seq->next_free_slot++].obj = obj;
+> -}
+> -
+> -/* Return the next command structure in a sctp_cmd_seq.
+> - * Returns NULL at the end of the sequence.
+> - */
+> -sctp_cmd_t *sctp_next_cmd(sctp_cmd_seq_t *seq)
+> -{
+> -	sctp_cmd_t *retval = NULL;
+> -
+> -	if (seq->next_cmd < seq->next_free_slot)
+> -		retval = &seq->cmds[seq->next_cmd++];
+> -
+> -	return retval;
+> -}
+> -
+> -- 
+> 1.8.1.2
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
