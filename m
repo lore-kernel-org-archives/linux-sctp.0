@@ -1,89 +1,90 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Fri, 11 Jul 2014 20:03:11 +0000
-Subject: Re: [PATCH net-next v2 2/3] net: sctp: Rename SCTP_XMIT_NAGLE_DELAY to SCTP_XMIT_DELAY
-Message-Id: <53C042FF.3040109@gmail.com>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 01 Jul 2014 11:32:07 +0000
+Subject: Re: [PATCH net-next 2/3] net: sctp: Optimise the way 'sctp_arg_t' values are initialised
+Message-Id: <20140701113207.GC7322@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <063D6719AE5E284EB5DD2968C1650D6D1726EEB8@AcuExch.aculab.com>
-In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6D1726EEB8@AcuExch.aculab.com>
+References: <063D6719AE5E284EB5DD2968C1650D6D17269789@AcuExch.aculab.com>
+In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6D17269789@AcuExch.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@ACULAB.COM>, "'netdev@vger.kernel.org'" <netdev@vger.kernel.org>, "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>
-Cc: "'davem@davemloft.net'" <davem@davemloft.net>
+To: David Laight <David.Laight@ACULAB.COM>
+Cc: Network Development <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "David S. Miller" <davem@davemloft.net>
 
-On 07/09/2014 04:29 AM, David Laight wrote:
-> MSG_MORE and 'corking' a socket would require that the transmit of
-> a data chunk be delayed.
-> Rename the return value to be less specific.
+On Mon, Jun 30, 2014 at 01:01:07PM +0000, David Laight wrote:
+> Even if memset() is inlined (as on x86) using it to zero the union
+> generates a memory word write of zero, followed by a write of the
+> smaller field, and then a read of the word.
+> As well as being a lot of instructions the sequence is unlikely to
+> be optimised by the store-load forward hardware so will be slow.
+> 
+> Instead allocate a field of the union that is the same size as the
+> entire union and write a zero value to it. The compiler will then
+> generate the required value in a register.
 > 
 > Signed-off-by: David Laight <david.laight@aculab.com>
-
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-
--vlad
-
 > ---
->  include/net/sctp/constants.h | 2 +-
->  net/sctp/output.c            | 4 ++--
->  net/sctp/outqueue.c          | 4 ++--
->  3 files changed, 5 insertions(+), 5 deletions(-)
+>  include/net/sctp/command.h | 6 +++---
+>  1 file changed, 3 insertions(+), 3 deletions(-)
 > 
-> diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
-> index 307728f..8c337cd 100644
-> --- a/include/net/sctp/constants.h
-> +++ b/include/net/sctp/constants.h
-> @@ -311,7 +311,7 @@ typedef enum {
->  	SCTP_XMIT_OK,
->  	SCTP_XMIT_PMTU_FULL,
->  	SCTP_XMIT_RWND_FULL,
-> -	SCTP_XMIT_NAGLE_DELAY,
-> +	SCTP_XMIT_DELAY,
->  } sctp_xmit_t;
+> diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
+> index 020eb95..5fcd1a7 100644
+> --- a/include/net/sctp/command.h
+> +++ b/include/net/sctp/command.h
+> @@ -118,6 +118,7 @@ typedef enum {
+>  #define SCTP_MAX_NUM_COMMANDS 18
 >  
->  /* These are the commands for manipulating transports.  */
-> diff --git a/net/sctp/output.c b/net/sctp/output.c
-> index 553ba1d..7f28a8e 100644
-> --- a/net/sctp/output.c
-> +++ b/net/sctp/output.c
-> @@ -178,7 +178,7 @@ sctp_xmit_t sctp_packet_transmit_chunk(struct sctp_packet *packet,
->  
->  	case SCTP_XMIT_RWND_FULL:
->  	case SCTP_XMIT_OK:
-> -	case SCTP_XMIT_NAGLE_DELAY:
-> +	case SCTP_XMIT_DELAY:
->  		break;
->  	}
->  
-> @@ -712,7 +712,7 @@ static sctp_xmit_t sctp_packet_can_append_data(struct sctp_packet *packet,
->  		return SCTP_XMIT_OK;
->  
->  	/* Defer until all data acked or packet full */
-> -	return SCTP_XMIT_NAGLE_DELAY;
-> +	return SCTP_XMIT_DELAY;
+>  typedef union {
+> +	void *zero_all;	/* Set to NULL to clear the entire union */
+>  	__s32 i32;
+>  	__u32 u32;
+>  	__be32 be32;
+> @@ -154,7 +155,7 @@ typedef union {
+>  static inline sctp_arg_t	\
+>  SCTP_## name (type arg)		\
+>  { sctp_arg_t retval;\
+> -  memset(&retval, 0, sizeof(sctp_arg_t));\
+> +  retval.zero_all = NULL;\
+>    retval.elt = arg;\
+>    return retval;\
+>  }
+> @@ -191,7 +192,7 @@ static inline sctp_arg_t SCTP_NOFORCE(void)
+>  static inline sctp_arg_t SCTP_NULL(void)
+>  {
+>  	sctp_arg_t retval;
+> -	memset(&retval, 0, sizeof(sctp_arg_t));
+> +	retval.zero_all = NULL;
+>  	return retval;
 >  }
 >  
->  /* This private function does management things when adding DATA chunk */
-> diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-> index 9c77947..9ce0f3d 100644
-> --- a/net/sctp/outqueue.c
-> +++ b/net/sctp/outqueue.c
-> @@ -629,7 +629,7 @@ redo:
->  			done = 1;
->  			break;
+> @@ -212,7 +213,6 @@ typedef struct {
+>   */
+>  static inline int sctp_init_cmd_seq(sctp_cmd_seq_t *seq)
+>  {
+> -	memset(seq, 0, sizeof(sctp_cmd_seq_t));
+>  	return 1;		/* We always succeed.  */
+>  }
 >  
-> -		case SCTP_XMIT_NAGLE_DELAY:
-> +		case SCTP_XMIT_DELAY:
->  			/* Send this packet. */
->  			error = sctp_packet_transmit(pkt);
->  
-> @@ -1015,7 +1015,7 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
->  			switch (status) {
->  			case SCTP_XMIT_PMTU_FULL:
->  			case SCTP_XMIT_RWND_FULL:
-> -			case SCTP_XMIT_NAGLE_DELAY:
-> +			case SCTP_XMIT_DELAY:
->  				/* We could not append this chunk, so put
->  				 * the chunk back on the output queue.
->  				 */
+> -- 
+> 1.8.1.2
 > 
+I get the advantage here, but this seems a bit rickety to me, in that it relies
+on the size of the union never being more than sizeof(void *) bytes long.  I
+understand thats not likely to happen, but its not the sort of thing we're
+likely to notice if it does.
 
+That said, I'd almost make the argument that we don't need to do this zeroing at
+all.  A while back I fixed a few outlier cases where we accidentally read a
+union member which we didn't set, so now we shouldn't have any type punning
+going on here.  It should be sufficient to just set the field you want, and
+leave it at that.
+
+Neil
+
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
