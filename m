@@ -1,21 +1,85 @@
-From: Monica Suwayd <monica.suayd@hotmail.com>
-Date: Mon, 28 Jul 2014 17:50:03 +0000
-Subject: =?utf-8?b?RG9icsO9IA==?= =?utf-8?b?dmXEjWVy?=
-Message-Id: <20140728175003.Horde.X0kjMTgXOYZnLEs3ZWYaBw8@webmail.drilroc.com>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Fri, 04 Jul 2014 14:35:51 +0000
+Subject: [PATCH net-next v2 2/3] net: sctp: Optimise the way 'sctp_arg_t' values are initialised.
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1726CA66@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Network Development <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
+Cc: "David S. Miller" <davem@davemloft.net>
+
+Even if memset() is inlined (as on x86) using it to zero the union
+generates a memory word write of zero, followed by a write of the
+smaller field, and then a read of the word.
+As well as being a lot of instructions the sequence is unlikely to
+be optimised by the store-load forward hardware so will be slow.
+
+Instead allocate a field of the union that is the same size as the
+entire union and write a zero value to it. The compiler will then
+generate the required value in a register.
+
+Zeroing the union shouldn't be necessary, but this patch series isn't
+intended to have a behavioural change.
+
+Signed-off-by: David Laight <david.laight@aculab.com>
+---
+
+Changes for v2:
+	- Remember to zero next_free_slot and next_cmd
+	  (they are removed by patch 3/3).
+	- Update commit message to mention that zeroing the union isn't
+	  really necessary.
+
+A further patch could delete the assignments to 'zero-all'.
+If the wrong sized union members are used that would expose
+bugs on LE systems that currently only affect BE systems.
+
+ include/net/sctp/command.h | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
+index 020eb95..a4f76d3 100644
+--- a/include/net/sctp/command.h
++++ b/include/net/sctp/command.h
+@@ -118,6 +118,7 @@ typedef enum {
+ #define SCTP_MAX_NUM_COMMANDS 18
+ 
+ typedef union {
++	void *zero_all;	/* Set to NULL to clear the entire union */
+ 	__s32 i32;
+ 	__u32 u32;
+ 	__be32 be32;
+@@ -154,7 +155,7 @@ typedef union {
+ static inline sctp_arg_t	\
+ SCTP_## name (type arg)		\
+ { sctp_arg_t retval;\
+-  memset(&retval, 0, sizeof(sctp_arg_t));\
++  retval.zero_all = NULL;\
+   retval.elt = arg;\
+   return retval;\
+ }
+@@ -191,7 +192,7 @@ static inline sctp_arg_t SCTP_NOFORCE(void)
+ static inline sctp_arg_t SCTP_NULL(void)
+ {
+ 	sctp_arg_t retval;
+-	memset(&retval, 0, sizeof(sctp_arg_t));
++	retval.zero_all = NULL;
+ 	return retval;
+ }
+ 
+@@ -212,7 +213,8 @@ typedef struct {
+  */
+ static inline int sctp_init_cmd_seq(sctp_cmd_seq_t *seq)
+ {
+-	memset(seq, 0, sizeof(sctp_cmd_seq_t));
++	seq->next_free_slot = 0;
++	seq->next_cmd = 0;
+ 	return 1;		/* We always succeed.  */
+ }
+ 
+-- 
+1.8.1.2
 
 
 
-ahoj
-Dobrý večer, já jsem Monica Suwayd budu muset, mít nějakou diskusi s
-vámi. Pokud vám to nebude vadit. Prosím, dejte mi vědět, zda můj dopis
-je vítán. Jde Monica Suwayd.
-.........
-
-Hello
-Good evening, I'm Monica Suwayd I would have like to have some
-discussion with you. If you don't mind. Please let me know if my letter
-is welcome. Regards Monica Suwayd.
