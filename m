@@ -1,229 +1,166 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Fri, 04 Jul 2014 21:05:08 +0000
-Subject: [PATCH net-next 5/5] net: sctp: implement rfc6458, 8.1.31. SCTP_DEFAULT_SNDINFO support
-Message-Id: <1404507908-6949-6-git-send-email-dborkman@redhat.com>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Fri, 04 Jul 2014 14:35:51 +0000
+Subject: [PATCH net-next v2 1/3] net: sctp: Inline the functions from command.c
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1726CA65@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1404507908-6949-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1404507908-6949-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net
-Cc: geirola@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: Network Development <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
+Cc: "David S. Miller" <davem@davemloft.net>
 
-From: Geir Ola Vaagland <geirola@gmail.com>
+sctp_init_cmd_seq() and sctp_next_cmd() are only called from one place.
+The call sequence for sctp_add_cmd_sf() is likely to be longer than
+the inlined code. 
+With sctp_add_cmd_sf() inlined the compiler can optimise repeated calls.
 
-This patch implements section 8.1.31. of RFC6458, which adds support
-for setting/retrieving SCTP_DEFAULT_SNDINFO:
-
-  Applications that wish to use the sendto() system call may wish
-  to specify a default set of parameters that would normally be
-  supplied through the inclusion of ancillary data. This socket
-  option allows such an application to set the default sctp_sndinfo
-  structure. The application that wishes to use this socket option
-  simply passes the sctp_sndinfo structure (defined in Section 5.3.4)
-  to this call. The input parameters accepted by this call include
-  snd_sid, snd_flags, snd_ppid, and snd_context. The snd_flags
-  parameter is composed of a bitwise OR of SCTP_UNORDERED, SCTP_EOF,
-  and SCTP_SENDALL. The snd_assoc_id field specifies the association
-  to which to apply the parameters. For a one-to-many style socket,
-  any of the predefined constants are also allowed in this field.
-  The field is ignored for one-to-one style sockets.
-
-Joint work with Daniel Borkmann.
-
-Signed-off-by: Geir Ola Vaagland <geirola@gmail.com>
-Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Signed-off-by: David Laight <david.laight@aculab.com>
 ---
- include/uapi/linux/sctp.h |   1 +
- net/sctp/socket.c         | 107 ++++++++++++++++++++++++++++++++++++++++++----
- 2 files changed, 99 insertions(+), 9 deletions(-)
 
-diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index 222f82f..ce70fe6 100644
---- a/include/uapi/linux/sctp.h
-+++ b/include/uapi/linux/sctp.h
-@@ -97,6 +97,7 @@ typedef __s32 sctp_assoc_t;
- #define SCTP_PEER_ADDR_THLDS	31
- #define SCTP_RECVRCVINFO	32
- #define SCTP_RECVNXTINFO	33
-+#define SCTP_DEFAULT_SNDINFO	34
- 
- /* Internal Socket Options. Some of the sctp library functions are
-  * implemented using these socket options.
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 9bca87e..d95a50c 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -2770,19 +2770,22 @@ static int sctp_setsockopt_default_send_param(struct sock *sk,
- 					      char __user *optval,
- 					      unsigned int optlen)
- {
--	struct sctp_sndrcvinfo info;
--	struct sctp_association *asoc;
- 	struct sctp_sock *sp = sctp_sk(sk);
-+	struct sctp_association *asoc;
-+	struct sctp_sndrcvinfo info;
- 
--	if (optlen != sizeof(struct sctp_sndrcvinfo))
-+	if (optlen != sizeof(info))
- 		return -EINVAL;
- 	if (copy_from_user(&info, optval, optlen))
- 		return -EFAULT;
-+	if (info.sinfo_flags &
-+	    ~(SCTP_UNORDERED | SCTP_ADDR_OVER |
-+	      SCTP_ABORT | SCTP_EOF))
-+		return -EINVAL;
- 
- 	asoc = sctp_id2assoc(sk, info.sinfo_assoc_id);
- 	if (!asoc && info.sinfo_assoc_id && sctp_style(sk, UDP))
- 		return -EINVAL;
--
- 	if (asoc) {
- 		asoc->default_stream = info.sinfo_stream;
- 		asoc->default_flags = info.sinfo_flags;
-@@ -2800,6 +2803,44 @@ static int sctp_setsockopt_default_send_param(struct sock *sk,
- 	return 0;
- }
- 
-+/* RFC6458, Section 8.1.31. Set/get Default Send Parameters
-+ * (SCTP_DEFAULT_SNDINFO)
-+ */
-+static int sctp_setsockopt_default_sndinfo(struct sock *sk,
-+					   char __user *optval,
-+					   unsigned int optlen)
+Changes for v2: None
+
+ include/net/sctp/command.h | 27 +++++++++++++++---
+ net/sctp/Makefile          |  2 +-
+ net/sctp/command.c         | 68 ----------------------------------------------
+ 3 files changed, 24 insertions(+), 73 deletions(-)
+ delete mode 100644 net/sctp/command.c
+
+diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
+index 6547ab7..020eb95 100644
+--- a/include/net/sctp/command.h
++++ b/include/net/sctp/command.h
+@@ -210,19 +210,38 @@ typedef struct {
+ /* Initialize a block of memory as a command sequence.
+  * Return 0 if the initialization fails.
+  */
+-int sctp_init_cmd_seq(sctp_cmd_seq_t *seq);
++static inline int sctp_init_cmd_seq(sctp_cmd_seq_t *seq)
 +{
-+	struct sctp_sock *sp = sctp_sk(sk);
-+	struct sctp_association *asoc;
-+	struct sctp_sndinfo info;
-+
-+	if (optlen != sizeof(info))
-+		return -EINVAL;
-+	if (copy_from_user(&info, optval, optlen))
-+		return -EFAULT;
-+	if (info.snd_flags &
-+	    ~(SCTP_UNORDERED | SCTP_ADDR_OVER |
-+	      SCTP_ABORT | SCTP_EOF))
-+		return -EINVAL;
-+
-+	asoc = sctp_id2assoc(sk, info.snd_assoc_id);
-+	if (!asoc && info.snd_assoc_id && sctp_style(sk, UDP))
-+		return -EINVAL;
-+	if (asoc) {
-+		asoc->default_stream = info.snd_sid;
-+		asoc->default_flags = info.snd_flags;
-+		asoc->default_ppid = info.snd_ppid;
-+		asoc->default_context = info.snd_context;
-+	} else {
-+		sp->default_stream = info.snd_sid;
-+		sp->default_flags = info.snd_flags;
-+		sp->default_ppid = info.snd_ppid;
-+		sp->default_context = info.snd_context;
-+	}
-+
-+	return 0;
++	memset(seq, 0, sizeof(sctp_cmd_seq_t));
++	return 1;		/* We always succeed.  */
 +}
 +
- /* 7.1.10 Set Primary Address (SCTP_PRIMARY_ADDR)
+ 
+ /* Add a command to an sctp_cmd_seq_t.
   *
-  * Requests that the local SCTP stack use the enclosed peer address as
-@@ -3725,6 +3766,9 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_default_send_param(sk, optval,
- 							    optlen);
- 		break;
-+	case SCTP_DEFAULT_SNDINFO:
-+		retval = sctp_setsockopt_default_sndinfo(sk, optval, optlen);
-+		break;
- 	case SCTP_PRIMARY_ADDR:
- 		retval = sctp_setsockopt_primary_addr(sk, optval, optlen);
- 		break;
-@@ -5027,14 +5071,14 @@ static int sctp_getsockopt_default_send_param(struct sock *sk,
- 					int len, char __user *optval,
- 					int __user *optlen)
- {
--	struct sctp_sndrcvinfo info;
--	struct sctp_association *asoc;
- 	struct sctp_sock *sp = sctp_sk(sk);
-+	struct sctp_association *asoc;
-+	struct sctp_sndrcvinfo info;
- 
--	if (len < sizeof(struct sctp_sndrcvinfo))
-+	if (len < sizeof(info))
- 		return -EINVAL;
- 
--	len = sizeof(struct sctp_sndrcvinfo);
-+	len = sizeof(info);
- 
- 	if (copy_from_user(&info, optval, len))
- 		return -EFAULT;
-@@ -5042,7 +5086,6 @@ static int sctp_getsockopt_default_send_param(struct sock *sk,
- 	asoc = sctp_id2assoc(sk, info.sinfo_assoc_id);
- 	if (!asoc && info.sinfo_assoc_id && sctp_style(sk, UDP))
- 		return -EINVAL;
--
- 	if (asoc) {
- 		info.sinfo_stream = asoc->default_stream;
- 		info.sinfo_flags = asoc->default_flags;
-@@ -5065,6 +5108,48 @@ static int sctp_getsockopt_default_send_param(struct sock *sk,
- 	return 0;
- }
- 
-+/* RFC6458, Section 8.1.31. Set/get Default Send Parameters
-+ * (SCTP_DEFAULT_SNDINFO)
-+ */
-+static int sctp_getsockopt_default_sndinfo(struct sock *sk, int len,
-+					   char __user *optval,
-+					   int __user *optlen)
+  * Use the SCTP_* constructors defined by SCTP_ARG_CONSTRUCTOR() above
+  * to wrap data which goes in the obj argument.
+  */
+-void sctp_add_cmd_sf(sctp_cmd_seq_t *seq, sctp_verb_t verb, sctp_arg_t obj);
++static inline void sctp_add_cmd_sf(sctp_cmd_seq_t *seq, sctp_verb_t verb,
++				   sctp_arg_t obj)
 +{
-+	struct sctp_sock *sp = sctp_sk(sk);
-+	struct sctp_association *asoc;
-+	struct sctp_sndinfo info;
++	BUG_ON(seq->next_free_slot >= SCTP_MAX_NUM_COMMANDS);
 +
-+	if (len < sizeof(info))
-+		return -EINVAL;
-+
-+	len = sizeof(info);
-+
-+	if (copy_from_user(&info, optval, len))
-+		return -EFAULT;
-+
-+	asoc = sctp_id2assoc(sk, info.snd_assoc_id);
-+	if (!asoc && info.snd_assoc_id && sctp_style(sk, UDP))
-+		return -EINVAL;
-+	if (asoc) {
-+		info.snd_sid = asoc->default_stream;
-+		info.snd_flags = asoc->default_flags;
-+		info.snd_ppid = asoc->default_ppid;
-+		info.snd_context = asoc->default_context;
-+	} else {
-+		info.snd_sid = sp->default_stream;
-+		info.snd_flags = sp->default_flags;
-+		info.snd_ppid = sp->default_ppid;
-+		info.snd_context = sp->default_context;
-+	}
-+
-+	if (put_user(len, optlen))
-+		return -EFAULT;
-+	if (copy_to_user(optval, &info, len))
-+		return -EFAULT;
-+
-+	return 0;
++	seq->cmds[seq->next_free_slot].verb = verb;
++	seq->cmds[seq->next_free_slot++].obj = obj;
 +}
+ 
+ /* Return the next command structure in an sctp_cmd_seq.
+  * Return NULL at the end of the sequence.
+  */
+-sctp_cmd_t *sctp_next_cmd(sctp_cmd_seq_t *seq);
++static inline sctp_cmd_t *sctp_next_cmd(sctp_cmd_seq_t *seq)
++{
++	sctp_cmd_t *retval = NULL;
+ 
+-#endif /* __net_sctp_command_h__ */
++	if (seq->next_cmd < seq->next_free_slot)
++		retval = &seq->cmds[seq->next_cmd++];
 +
- /*
-  *
-  * 7.1.5 SCTP_NODELAY
-@@ -5924,6 +6009,10 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_getsockopt_default_send_param(sk, len,
- 							    optval, optlen);
- 		break;
-+	case SCTP_DEFAULT_SNDINFO:
-+		retval = sctp_getsockopt_default_sndinfo(sk, len,
-+							 optval, optlen);
-+		break;
- 	case SCTP_PRIMARY_ADDR:
- 		retval = sctp_getsockopt_primary_addr(sk, len, optval, optlen);
- 		break;
++	return retval;
++}
+ 
++#endif /* __net_sctp_command_h__ */
+diff --git a/net/sctp/Makefile b/net/sctp/Makefile
+index 5c30b7a..3b4ffb0 100644
+--- a/net/sctp/Makefile
++++ b/net/sctp/Makefile
+@@ -8,7 +8,7 @@ obj-$(CONFIG_NET_SCTPPROBE) += sctp_probe.o
+ sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
+ 	  protocol.o endpointola.o associola.o \
+ 	  transport.o chunk.o sm_make_chunk.o ulpevent.o \
+-	  inqueue.o outqueue.o ulpqueue.o command.o \
++	  inqueue.o outqueue.o ulpqueue.o \
+ 	  tsnmap.o bind_addr.o socket.o primitive.o \
+ 	  output.o input.o debug.o ssnmap.o auth.o
+ 
+diff --git a/net/sctp/command.c b/net/sctp/command.c
+deleted file mode 100644
+index dd73758..0000000
+--- a/net/sctp/command.c
++++ /dev/null
+@@ -1,68 +0,0 @@
+-/* SCTP kernel implementation Copyright (C) 1999-2001
+- * Cisco, Motorola, and IBM
+- * Copyright 2001 La Monte H.P. Yarroll
+- *
+- * This file is part of the SCTP kernel implementation
+- *
+- * These functions manipulate sctp command sequences.
+- *
+- * This SCTP implementation is free software;
+- * you can redistribute it and/or modify it under the terms of
+- * the GNU General Public License as published by
+- * the Free Software Foundation; either version 2, or (at your option)
+- * any later version.
+- *
+- * This SCTP implementation is distributed in the hope that it
+- * will be useful, but WITHOUT ANY WARRANTY; without even the implied
+- *                 ************************
+- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+- * See the GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with GNU CC; see the file COPYING.  If not, see
+- * <http://www.gnu.org/licenses/>.
+- *
+- * Please send any bug reports or fixes you make to the
+- * email address(es):
+- *    lksctp developers <linux-sctp@vger.kernel.org>
+- *
+- * Written or modified by:
+- *    La Monte H.P. Yarroll <piggy@acm.org>
+- *    Karl Knutson <karl@athena.chicago.il.us>
+- */
+-
+-#include <linux/types.h>
+-#include <net/sctp/sctp.h>
+-#include <net/sctp/sm.h>
+-
+-/* Initialize a block of memory as a command sequence. */
+-int sctp_init_cmd_seq(sctp_cmd_seq_t *seq)
+-{
+-	memset(seq, 0, sizeof(sctp_cmd_seq_t));
+-	return 1;		/* We always succeed.  */
+-}
+-
+-/* Add a command to a sctp_cmd_seq_t.
+- * Return 0 if the command sequence is full.
+- */
+-void sctp_add_cmd_sf(sctp_cmd_seq_t *seq, sctp_verb_t verb, sctp_arg_t obj)
+-{
+-	BUG_ON(seq->next_free_slot >= SCTP_MAX_NUM_COMMANDS);
+-
+-	seq->cmds[seq->next_free_slot].verb = verb;
+-	seq->cmds[seq->next_free_slot++].obj = obj;
+-}
+-
+-/* Return the next command structure in a sctp_cmd_seq.
+- * Returns NULL at the end of the sequence.
+- */
+-sctp_cmd_t *sctp_next_cmd(sctp_cmd_seq_t *seq)
+-{
+-	sctp_cmd_t *retval = NULL;
+-
+-	if (seq->next_cmd < seq->next_free_slot)
+-		retval = &seq->cmds[seq->next_cmd++];
+-
+-	return retval;
+-}
+-
 -- 
-1.7.11.7
+1.8.1.2
+
+
 
