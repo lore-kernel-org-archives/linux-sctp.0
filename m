@@ -1,20 +1,28 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Tue, 08 Jul 2014 14:05:26 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 08 Jul 2014 14:41:27 +0000
 Subject: Re: [PATCH net-next 0/5] SCTP updates
-Message-Id: <53BBFAA6.80408@redhat.com>
+Message-Id: <20140708144127.GB23026@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1404507908-6949-1-git-send-email-dborkman@redhat.com> <20140708111408.GA23026@hmsreliant.think-freely.org>
-In-Reply-To: <20140708111408.GA23026@hmsreliant.think-freely.org>
+References: <1404507908-6949-1-git-send-email-dborkman@redhat.com>
+ <20140708111408.GA23026@hmsreliant.think-freely.org>
+ <53BBFAA6.80408@redhat.com>
+In-Reply-To: <53BBFAA6.80408@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
+To: Daniel Borkmann <dborkman@redhat.com>
 Cc: davem@davemloft.net, geirola@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On 07/08/2014 01:14 PM, Neil Horman wrote:
-...
-> since you're adding cmsg's from rfc6458, do you also want to add some
-> deprecation warnings around the use of SCTP_SNDRCVINFO too, so we can start to
-> schedule its eventual removal?
+On Tue, Jul 08, 2014 at 04:05:26PM +0200, Daniel Borkmann wrote:
+> On 07/08/2014 01:14 PM, Neil Horman wrote:
+> ...
+> >since you're adding cmsg's from rfc6458, do you also want to add some
+> >deprecation warnings around the use of SCTP_SNDRCVINFO too, so we can start to
+> >schedule its eventual removal?
+> 
+> Sure, we can do that. Do you want me to include it into the set?
+> 
 
-Sure, we can do that. Do you want me to include it into the set?
+If you're plan is to implement 6458, then yes, I think that would be good.
+Neil
+
