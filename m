@@ -1,7 +1,7 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Wed, 09 Jul 2014 15:19:52 +0000
+From: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
+Date: Wed, 09 Jul 2014 15:44:18 +0000
 Subject: Re: [PATCH net-next 2/5] net: sctp: implement rfc6458, 5.3.4. SCTP_SNDINFO cmsg support
-Message-Id: <53BD5D98.1030605@gmail.com>
+Message-Id: <40231A64-9CDB-43F2-8116-51F66A918608@lurchi.franken.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1404507908-6949-3-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1404507908-6949-3-git-send-email-dborkman@redhat.com>
@@ -10,21 +10,23 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On 07/09/2014 10:57 AM, David Laight wrote:
+On 09 Jul 2014, at 16:57, David Laight <David.Laight@ACULAB.COM> wrote:
+
 >>> My 'other' test system in running 2.6.26 and probably sends multiple sacks
 >>> for packets containing a lot of data chunks.
->>>
+>>> 
 >>> 	David
->>
+>> 
 >> That shouldn't happen even in 2.6.26.  SACKs were always per packet, not per chunk
 > 
 > There seem to be a lot of SACKs at the bottom of the trace below.
 > Maybe they are being sent as the application reads the data off the
 > socket, rather than directly in response to the received data.
+Correct. These are all window updates. They shouldn't be that many.
+
+Best regards
+Michael
 > 
-
-Looks more of less correct if you correlate cum ack values to the data tsns.
-
 > tcpdump output edited to shorten the lines.
 > All the [SACK] have [#gap acks] [#dup tsns 0]
 > All the [DATA] have [PPIDx3]
@@ -74,47 +76,47 @@ Looks more of less correct if you correlate cum ack values to the data tsns.
 > 10:14:49.663510 dsl-a > ss7-3: [DATA] (B)(E) [TSN: 647] [SID: 4] [SSEQ 2513] 
 > 10:14:49.663512 dsl-a > ss7-3: [DATA] (B)(E) [TSN: 648] [SID: 1] [SSEQ 2514] 
 > 10:14:49.663514 dsl-a > ss7-3: [DATA] (B)(E) [TSN: 649] [SID: 2] [SSEQ 2514] ,
->                             (2) [DATA] (B)(E) [TSN: 650] [SID: 3] [SSEQ 2514] ,
->                             (3) [DATA] (B)(E) [TSN: 651] [SID: 4] [SSEQ 2514] ,
->                             (4) [DATA] (B)(E) [TSN: 652] [SID: 1] [SSEQ 2515] 
+>                            (2) [DATA] (B)(E) [TSN: 650] [SID: 3] [SSEQ 2514] ,
+>                            (3) [DATA] (B)(E) [TSN: 651] [SID: 4] [SSEQ 2514] ,
+>                            (4) [DATA] (B)(E) [TSN: 652] [SID: 1] [SSEQ 2515] 
 > 10:14:49.663515 dsl-a > ss7-3: [DATA] (B)(E) [TSN: 653] [SID: 2] [SSEQ 2515] ,
->                             (2) [DATA] (B)(E) [TSN: 654] [SID: 3] [SSEQ 2515] ,
->                             (3) [DATA] (B)(E) [TSN: 655] [SID: 4] [SSEQ 2515] ,
->                             (4) [DATA] (B)(E) [TSN: 656] [SID: 1] [SSEQ 2516] 
+>                            (2) [DATA] (B)(E) [TSN: 654] [SID: 3] [SSEQ 2515] ,
+>                            (3) [DATA] (B)(E) [TSN: 655] [SID: 4] [SSEQ 2515] ,
+>                            (4) [DATA] (B)(E) [TSN: 656] [SID: 1] [SSEQ 2516] 
 > 10:14:49.663517 dsl-a > ss7-3: [DATA] (B)(E) [TSN: 657] [SID: 2] [SSEQ 2516] ,
->                             (2) [DATA] (B)(E) [TSN: 658] [SID: 3] [SSEQ 2516] ,
->                             (3) [DATA] (B)(E) [TSN: 659] [SID: 4] [SSEQ 2516] ,
->                             (4) [DATA] (B)(E) [TSN: 660] [SID: 1] [SSEQ 2517] 
+>                            (2) [DATA] (B)(E) [TSN: 658] [SID: 3] [SSEQ 2516] ,
+>                            (3) [DATA] (B)(E) [TSN: 659] [SID: 4] [SSEQ 2516] ,
+>                            (4) [DATA] (B)(E) [TSN: 660] [SID: 1] [SSEQ 2517] 
 > 10:14:49.663519 dsl-a > ss7-3: [DATA] (B)(E) [TSN: 661] [SID: 2] [SSEQ 2517] ,
->                             (2) [DATA] (B)(E) [TSN: 662] [SID: 3] [SSEQ 2517] ,
->                             (3) [DATA] (B)(E) [TSN: 663] [SID: 4] [SSEQ 2517] ,
->                             (4) [DATA] (B)(E) [TSN: 664] [SID: 1] [SSEQ 2518] 
+>                            (2) [DATA] (B)(E) [TSN: 662] [SID: 3] [SSEQ 2517] ,
+>                            (3) [DATA] (B)(E) [TSN: 663] [SID: 4] [SSEQ 2517] ,
+>                            (4) [DATA] (B)(E) [TSN: 664] [SID: 1] [SSEQ 2518] 
 > 10:14:49.663523 dsl-a > ss7-3: [DATA] (B)(E) [TSN: 665] [SID: 2] [SSEQ 2518] ,
->                             (2) [DATA] (B)(E) [TSN: 666] [SID: 3] [SSEQ 2518] ,
->                             (3) [DATA] (B)(E) [TSN: 667] [SID: 4] [SSEQ 2518] ,
->                             (4) [DATA] (B)(E) [TSN: 668] [SID: 1] [SSEQ 2519] 
+>                            (2) [DATA] (B)(E) [TSN: 666] [SID: 3] [SSEQ 2518] ,
+>                            (3) [DATA] (B)(E) [TSN: 667] [SID: 4] [SSEQ 2518] ,
+>                            (4) [DATA] (B)(E) [TSN: 668] [SID: 1] [SSEQ 2519] 
 > 10:14:49.663524 dsl-a > ss7-3: [DATA] (B)(E) [TSN: 669] [SID: 2] [SSEQ 2519] ,
->                             (2) [DATA] (B)(E) [TSN: 670] [SID: 3] [SSEQ 2519] ,
->                             (3) [DATA] (B)(E) [TSN: 671] [SID: 4] [SSEQ 2519] ,
->                             (4) [DATA] (B)(E) [TSN: 672] [SID: 1] [SSEQ 2520] 
+>                            (2) [DATA] (B)(E) [TSN: 670] [SID: 3] [SSEQ 2519] ,
+>                            (3) [DATA] (B)(E) [TSN: 671] [SID: 4] [SSEQ 2519] ,
+>                            (4) [DATA] (B)(E) [TSN: 672] [SID: 1] [SSEQ 2520] 
 > 10:14:49.663627 dsl-a > ss7-3: [DATA] (B)(E) [TSN: 673] [SID: 2] [SSEQ 2520] ,
->                             (2) [DATA] (B)(E) [TSN: 674] [SID: 3] [SSEQ 2520] ,
->                             (3) [DATA] (B)(E) [TSN: 675] [SID: 4] [SSEQ 2520] ,
->                             (4) [DATA] (B)(E) [TSN: 676] [SID: 1] [SSEQ 2521] 
+>                            (2) [DATA] (B)(E) [TSN: 674] [SID: 3] [SSEQ 2520] ,
+>                            (3) [DATA] (B)(E) [TSN: 675] [SID: 4] [SSEQ 2520] ,
+>                            (4) [DATA] (B)(E) [TSN: 676] [SID: 1] [SSEQ 2521] 
 > 10:14:49.663631 dsl-a > ss7-3: [DATA] (B)(E) [TSN: 677] [SID: 2] [SSEQ 2521] ,
->                             (2) [DATA] (B)(E) [TSN: 678] [SID: 3] [SSEQ 2521] 
+>                            (2) [DATA] (B)(E) [TSN: 678] [SID: 3] [SSEQ 2521] 
 > 10:14:49.663632 dsl-a > ss7-3: [DATA] (B)(E) [TSN: 679] [SID: 4] [SSEQ 2521] ,
->                             (2) [DATA] (B)(E) [TSN: 680] [SID: 1] [SSEQ 2522] ,
->                             (3) [DATA] (B)(E) [TSN: 681] [SID: 2] [SSEQ 2522] ,
->                             (4) [DATA] (B)(E) [TSN: 682] [SID: 3] [SSEQ 2522] 
+>                            (2) [DATA] (B)(E) [TSN: 680] [SID: 1] [SSEQ 2522] ,
+>                            (3) [DATA] (B)(E) [TSN: 681] [SID: 2] [SSEQ 2522] ,
+>                            (4) [DATA] (B)(E) [TSN: 682] [SID: 3] [SSEQ 2522] 
 > 10:14:49.663633 dsl-a > ss7-3: [DATA] (B)(E) [TSN: 683] [SID: 4] [SSEQ 2522] ,
->                             (2) [DATA] (B)(E) [TSN: 684] [SID: 1] [SSEQ 2523] ,
->                             (3) [DATA] (B)(E) [TSN: 685] [SID: 2] [SSEQ 2523] ,
->                             (4) [DATA] (B)(E) [TSN: 686] [SID: 3] [SSEQ 2523] 
+>                            (2) [DATA] (B)(E) [TSN: 684] [SID: 1] [SSEQ 2523] ,
+>                            (3) [DATA] (B)(E) [TSN: 685] [SID: 2] [SSEQ 2523] ,
+>                            (4) [DATA] (B)(E) [TSN: 686] [SID: 3] [SSEQ 2523] 
 > 10:14:49.663634 dsl-a > ss7-3: [DATA] (B)(E) [TSN: 687] [SID: 4] [SSEQ 2523] ,
->                             (2) [DATA] (B)(E) [TSN: 688] [SID: 1] [SSEQ 2524] ,
->                             (3) [DATA] (B)(E) [TSN: 689] [SID: 2] [SSEQ 2524] ,
->                             (4) [DATA] (B)(E) [TSN: 690] [SID: 3] [SSEQ 2524] 
+>                            (2) [DATA] (B)(E) [TSN: 688] [SID: 1] [SSEQ 2524] ,
+>                            (3) [DATA] (B)(E) [TSN: 689] [SID: 2] [SSEQ 2524] ,
+>                            (4) [DATA] (B)(E) [TSN: 690] [SID: 3] [SSEQ 2524] 
 > 10:14:49.663674 ss7-3 > dsl-a: [SACK] [cum ack 593] [a_rwnd 61280]
 > 10:14:49.663687 ss7-3 > dsl-a: [SACK] [cum ack 595] [a_rwnd 61280]
 > 10:14:49.663695 ss7-3 > dsl-a: [SACK] [cum ack 597] [a_rwnd 61280]
@@ -131,9 +133,6 @@ Looks more of less correct if you correlate cum ack values to the data tsns.
 > 10:14:49.663964 ss7-3 > dsl-a: [SACK] [cum ack 616] [a_rwnd 61132]
 > 10:14:49.663976 ss7-3 > dsl-a: [SACK] [cum ack 618] [a_rwnd 61132]
 > 10:14:49.664183 ss7-3 > dsl-a: [SACK] [cum ack 620] [a_rwnd 61132]
-
-Don't see the data for the above so can't tell if they are right or not.
-
 > 10:14:49.664194 ss7-3 > dsl-a: [SACK] [cum ack 622] [a_rwnd 61132]
 > 10:14:49.664200 ss7-3 > dsl-a: [SACK] [cum ack 624] [a_rwnd 61132]
 > 10:14:49.664209 ss7-3 > dsl-a: [SACK] [cum ack 626] [a_rwnd 61132]
@@ -150,10 +149,6 @@ Don't see the data for the above so can't tell if they are right or not.
 > 10:14:49.664479 ss7-3 > dsl-a: [SACK] [cum ack 644] [a_rwnd 62464]
 > 10:14:49.664676 ss7-3 > dsl-a: [SACK] [cum ack 646] [a_rwnd 62168]
 > 10:14:49.664687 ss7-3 > dsl-a: [SACK] [cum ack 648] [a_rwnd 61872]
-
-All of the above chunks were send as individual packets so they are
-acked every 2 packets.
-
 > 10:14:49.664693 ss7-3 > dsl-a: [SACK] [cum ack 656] [a_rwnd 60688]
 > 10:14:49.664825 ss7-3 > dsl-a: [SACK] [cum ack 660] [a_rwnd 62316]
 > 10:14:49.664945 ss7-3 > dsl-a: [SACK] [cum ack 668] [a_rwnd 61280]
@@ -162,19 +157,13 @@ acked every 2 packets.
 > 10:14:49.665179 ss7-3 > dsl-a: [SACK] [cum ack 682] [a_rwnd 61724]
 > 10:14:49.665193 ss7-3 > dsl-a: [SACK] [cum ack 690] [a_rwnd 61724]
 > 10:14:49.864258 ss7-3 > dsl-a: [SACK] [cum ack 691] [a_rwnd 61724]
-
-Starting with TSN 649 you have bundling and the first two packets contains
-649-656.  Note the first cum ack is 656 in this block.  If you look above,
-the SACKs are still for every other packet.
-
-There are a few repeats (like 2 sacks with cum ack 676 where a_rwnd grows).
-Those are just window update sacks.  We did used to send window updates much more
-often then we do now.
-
--vlad
-
 > 
 > 
 > 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
 
