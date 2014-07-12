@@ -1,7 +1,7 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Sat, 12 Jul 2014 18:30:37 +0000
-Subject: [PATCH net-next v2 3/6] net: sctp: implement rfc6458, 5.3.5. SCTP_RCVINFO cmsg support
-Message-Id: <1405189840-31171-4-git-send-email-dborkman@redhat.com>
+Date: Sat, 12 Jul 2014 18:30:36 +0000
+Subject: [PATCH net-next v2 2/6] net: sctp: implement rfc6458, 5.3.4. SCTP_SNDINFO cmsg support
+Message-Id: <1405189840-31171-3-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -10,315 +10,247 @@ To: linux-sctp@vger.kernel.org
 
 From: Geir Ola Vaagland <geirola@gmail.com>
 
-This patch implements section 5.3.5. of RFC6458, that is, support
-for 'SCTP Receive Information Structure' (SCTP_RCVINFO) which is
-placed into ancillary data cmsghdr structure for each recvmsg()
-call.
+This patch implements section 5.3.4. of RFC6458, that is, support
+for 'SCTP Send Information Structure' (SCTP_SNDINFO) which can be
+placed into ancillary data cmsghdr structure for sendmsg() calls.
 
-This option can be enabled/disabled via setsockopt(2) on SOL_SCTP
-level by setting an int value with 1/0 for SCTP_RECVRCVINFO in user
-space applications as per RFC6458, section 8.1.29.
+The sctp_sndinfo structure is defined as per RFC as below ...
 
-The sctp_rcvinfo structure is defined as per RFC as below ...
-
-  struct sctp_rcvinfo {
-    uint16_t rcv_sid;
-    uint16_t rcv_ssn;
-    uint16_t rcv_flags;
-    <-- 2 bytes hole  -->
-    uint32_t rcv_ppid;
-    uint32_t rcv_tsn;
-    uint32_t rcv_cumtsn;
-    uint32_t rcv_context;
-    sctp_assoc_t rcv_assoc_id;
+  struct sctp_sndinfo {
+    uint16_t snd_sid;
+    uint16_t snd_flags;
+    uint32_t snd_ppid;
+    uint32_t snd_context;
+    sctp_assoc_t snd_assoc_id;
   };
 
-... and provided under cmsg_level IPPROTO_SCTP, cmsg_type
-SCTP_RCVINFO, while cmsg_data[] contains struct sctp_rcvinfo.
-An sctp_rcvinfo item always corresponds to the data in msg_iov.
+... and supplied under cmsg_level IPPROTO_SCTP, cmsg_type
+SCTP_SNDINFO, while cmsg_data[] contains struct sctp_sndinfo.
+An sctp_sndinfo item always corresponds to the data in msg_iov.
 
 Joint work with Daniel Borkmann.
 
 Signed-off-by: Geir Ola Vaagland <geirola@gmail.com>
 Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
 ---
- include/net/sctp/structs.h  |  3 +++
- include/net/sctp/ulpevent.h |  5 ++++-
- include/uapi/linux/sctp.h   | 32 ++++++++++++++++++++++-------
- net/sctp/socket.c           | 49 ++++++++++++++++++++++++++++++++++++++++++++-
- net/sctp/ulpevent.c         | 25 +++++++++++++++++++++++
- 5 files changed, 105 insertions(+), 9 deletions(-)
+ include/net/sctp/structs.h |  3 +-
+ include/uapi/linux/sctp.h  | 22 +++++++++++--
+ net/sctp/socket.c          | 77 ++++++++++++++++++++++++++++++++++------------
+ 3 files changed, 79 insertions(+), 23 deletions(-)
 
 diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 7af9a0f..11d5df0 100644
+index f38588b..7af9a0f 100644
 --- a/include/net/sctp/structs.h
 +++ b/include/net/sctp/structs.h
-@@ -207,7 +207,9 @@ struct sctp_sock {
- 	struct sctp_paddrparams paddrparam;
- 	struct sctp_event_subscribe subscribe;
- 	struct sctp_assocparams assocparams;
-+
- 	int user_frag;
-+
- 	__u32 autoclose;
- 	__u8 nodelay;
- 	__u8 disable_fragments;
-@@ -215,6 +217,7 @@ struct sctp_sock {
- 	__u8 frag_interleave;
- 	__u32 adaptation_ind;
- 	__u32 pd_point;
-+	__u8 recvrcvinfo;
+@@ -1919,7 +1919,8 @@ struct sctp_chunk *sctp_get_ecne_prepend(struct sctp_association *asoc);
+ /* A convenience structure to parse out SCTP specific CMSGs. */
+ typedef struct sctp_cmsgs {
+ 	struct sctp_initmsg *init;
+-	struct sctp_sndrcvinfo *info;
++	struct sctp_sndrcvinfo *srinfo;
++	struct sctp_sndinfo *sinfo;
+ } sctp_cmsgs_t;
  
- 	atomic_t pd_mode;
- 	/* Receive to here while partial delivery is in effect. */
-diff --git a/include/net/sctp/ulpevent.h b/include/net/sctp/ulpevent.h
-index daacb32..e8095f9 100644
---- a/include/net/sctp/ulpevent.h
-+++ b/include/net/sctp/ulpevent.h
-@@ -129,7 +129,10 @@ struct sctp_ulpevent *sctp_ulpevent_make_sender_dry_event(
- 	const struct sctp_association *asoc, gfp_t gfp);
- 
- void sctp_ulpevent_read_sndrcvinfo(const struct sctp_ulpevent *event,
--	struct msghdr *);
-+				   struct msghdr *);
-+void sctp_ulpevent_read_rcvinfo(const struct sctp_ulpevent *event,
-+				struct msghdr *);
-+
- __u16 sctp_ulpevent_get_notification_type(const struct sctp_ulpevent *event);
- 
- /* Is this event type enabled? */
+ /* Structure for tracking memory objects */
 diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index a387761..29b81bb 100644
+index 266022a..a387761 100644
 --- a/include/uapi/linux/sctp.h
 +++ b/include/uapi/linux/sctp.h
-@@ -95,6 +95,7 @@ typedef __s32 sctp_assoc_t;
- #define SCTP_GET_ASSOC_ID_LIST	29	/* Read only */
- #define SCTP_AUTO_ASCONF       30
- #define SCTP_PEER_ADDR_THLDS	31
-+#define SCTP_RECVRCVINFO	32
- 
- /* Internal Socket Options. Some of the sctp library functions are
-  * implemented using these socket options.
-@@ -110,8 +111,7 @@ typedef __s32 sctp_assoc_t;
- #define SCTP_SOCKOPT_CONNECTX3	111	/* CONNECTX requests (updated) */
- #define SCTP_GET_ASSOC_STATS	112	/* Read only */
- 
--/*
-- * 5.2.1 SCTP Initiation Structure (SCTP_INIT)
-+/* 5.3.1 SCTP Initiation Structure (SCTP_INIT)
-  *
-  *   This cmsghdr structure provides information for initializing new
-  *   SCTP associations with sendmsg().  The SCTP_INITMSG socket option
-@@ -121,7 +121,6 @@ typedef __s32 sctp_assoc_t;
-  *   cmsg_level    cmsg_type      cmsg_data[]
-  *   ------------  ------------   ----------------------
-  *   IPPROTO_SCTP  SCTP_INIT      struct sctp_initmsg
-- *
-  */
- struct sctp_initmsg {
- 	__u16 sinit_num_ostreams;
-@@ -130,8 +129,7 @@ struct sctp_initmsg {
- 	__u16 sinit_max_init_timeo;
+@@ -154,6 +154,22 @@ struct sctp_sndrcvinfo {
+ 	sctp_assoc_t sinfo_assoc_id;
  };
  
--/*
-- * 5.2.2 SCTP Header Information Structure (SCTP_SNDRCV)
-+/* 5.3.2 SCTP Header Information Structure (SCTP_SNDRCV)
-  *
-  *   This cmsghdr structure specifies SCTP options for sendmsg() and
-  *   describes SCTP header information about a received message through
-@@ -140,7 +138,6 @@ struct sctp_initmsg {
-  *   cmsg_level    cmsg_type      cmsg_data[]
-  *   ------------  ------------   ----------------------
-  *   IPPROTO_SCTP  SCTP_SNDRCV    struct sctp_sndrcvinfo
-- *
-  */
- struct sctp_sndrcvinfo {
- 	__u16 sinfo_stream;
-@@ -170,13 +167,32 @@ struct sctp_sndinfo {
- 	sctp_assoc_t snd_assoc_id;
- };
- 
-+/* 5.3.5 SCTP Receive Information Structure (SCTP_RCVINFO)
++/* 5.3.4 SCTP Send Information Structure (SCTP_SNDINFO)
 + *
-+ *   This cmsghdr structure describes SCTP receive information
-+ *   about a received message through recvmsg().
++ *   This cmsghdr structure specifies SCTP options for sendmsg().
 + *
 + *   cmsg_level    cmsg_type      cmsg_data[]
 + *   ------------  ------------   -------------------
-+ *   IPPROTO_SCTP  SCTP_RCVINFO   struct sctp_rcvinfo
++ *   IPPROTO_SCTP  SCTP_SNDINFO   struct sctp_sndinfo
 + */
-+struct sctp_rcvinfo {
-+	__u16 rcv_sid;
-+	__u16 rcv_ssn;
-+	__u16 rcv_flags;
-+	__u32 rcv_ppid;
-+	__u32 rcv_tsn;
-+	__u32 rcv_cumtsn;
-+	__u32 rcv_context;
-+	sctp_assoc_t rcv_assoc_id;
++struct sctp_sndinfo {
++	__u16 snd_sid;
++	__u16 snd_flags;
++	__u32 snd_ppid;
++	__u32 snd_context;
++	sctp_assoc_t snd_assoc_id;
 +};
 +
  /*
   *  sinfo_flags: 16 bits (unsigned integer)
   *
-  *   This field may contain any of the following flags and is composed of
-  *   a bitwise OR of these values.
-  */
--
- enum sctp_sinfo_flags {
- 	SCTP_UNORDERED = 1,  /* Send/receive message unordered. */
- 	SCTP_ADDR_OVER = 2,  /* Override the primary destination. */
-@@ -199,6 +215,8 @@ typedef enum sctp_cmsg_type {
+@@ -177,10 +193,12 @@ typedef union {
+ 
+ /* These are cmsg_types.  */
+ typedef enum sctp_cmsg_type {
+-	SCTP_INIT,              /* 5.2.1 SCTP Initiation Structure */
++	SCTP_INIT,		/* 5.2.1 SCTP Initiation Structure */
+ #define SCTP_INIT	SCTP_INIT
+-	SCTP_SNDRCV,            /* 5.2.2 SCTP Header Information Structure */
++	SCTP_SNDRCV,		/* 5.2.2 SCTP Header Information Structure */
  #define SCTP_SNDRCV	SCTP_SNDRCV
- 	SCTP_SNDINFO,		/* 5.3.4 SCTP Send Information Structure */
- #define SCTP_SNDINFO	SCTP_SNDINFO
-+	SCTP_RCVINFO,		/* 5.3.5 SCTP Receive Information Structure */
-+#define SCTP_RCVINFO	SCTP_RCVINFO
++	SCTP_SNDINFO,		/* 5.3.4 SCTP Send Information Structure */
++#define SCTP_SNDINFO	SCTP_SNDINFO
  } sctp_cmsg_t;
  
  /*
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index d61729e..9c19388 100644
+index 4298996..d61729e 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -2112,9 +2112,13 @@ static int sctp_recvmsg(struct kiocb *iocb, struct sock *sk,
- 		sp->pf->skb_msgname(skb, msg->msg_name, addr_len);
+@@ -1602,12 +1602,13 @@ static int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
+ 	struct sctp_initmsg *sinit;
+ 	sctp_assoc_t associd = 0;
+ 	sctp_cmsgs_t cmsgs = { NULL };
+-	int err;
+ 	sctp_scope_t scope;
+-	long timeo;
+-	__u16 sinfo_flags = 0;
++	bool fill_sinfo_ttl = false;
+ 	struct sctp_datamsg *datamsg;
+ 	int msg_flags = msg->msg_flags;
++	__u16 sinfo_flags = 0;
++	long timeo;
++	int err;
+ 
+ 	err = 0;
+ 	sp = sctp_sk(sk);
+@@ -1648,10 +1649,21 @@ static int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
+ 		msg_name = msg->msg_name;
  	}
  
-+	/* Check if we allow SCTP_RCVINFO. */
-+	if (sp->recvrcvinfo)
-+		sctp_ulpevent_read_rcvinfo(event, msg);
- 	/* Check if we allow SCTP_SNDRCVINFO. */
- 	if (sp->subscribe.sctp_data_io_event)
- 		sctp_ulpevent_read_sndrcvinfo(event, msg);
+-	sinfo = cmsgs.info;
+ 	sinit = cmsgs.init;
++	if (cmsgs.sinfo != NULL) {
++		memset(&default_sinfo, 0, sizeof(default_sinfo));
++		default_sinfo.sinfo_stream = cmsgs.sinfo->snd_sid;
++		default_sinfo.sinfo_flags = cmsgs.sinfo->snd_flags;
++		default_sinfo.sinfo_ppid = cmsgs.sinfo->snd_ppid;
++		default_sinfo.sinfo_context = cmsgs.sinfo->snd_context;
++		default_sinfo.sinfo_assoc_id = cmsgs.sinfo->snd_assoc_id;
+ 
+-	/* Did the user specify SNDRCVINFO?  */
++		sinfo = &default_sinfo;
++		fill_sinfo_ttl = true;
++	} else {
++		sinfo = cmsgs.srinfo;
++	}
++	/* Did the user specify SNDINFO/SNDRCVINFO? */
+ 	if (sinfo) {
+ 		sinfo_flags = sinfo->sinfo_flags;
+ 		associd = sinfo->sinfo_assoc_id;
+@@ -1858,8 +1870,8 @@ static int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
+ 	pr_debug("%s: we have a valid association\n", __func__);
+ 
+ 	if (!sinfo) {
+-		/* If the user didn't specify SNDRCVINFO, make up one with
+-		 * some defaults.
++		/* If the user didn't specify SNDINFO/SNDRCVINFO, make up
++		 * one with some defaults.
+ 		 */
+ 		memset(&default_sinfo, 0, sizeof(default_sinfo));
+ 		default_sinfo.sinfo_stream = asoc->default_stream;
+@@ -1868,7 +1880,13 @@ static int sctp_sendmsg(struct kiocb *iocb, struct sock *sk,
+ 		default_sinfo.sinfo_context = asoc->default_context;
+ 		default_sinfo.sinfo_timetolive = asoc->default_timetolive;
+ 		default_sinfo.sinfo_assoc_id = sctp_assoc2id(asoc);
 +
- #if 0
- 	/* FIXME: we should be calling IP/IPv6 layers.  */
- 	if (sk->sk_protinfo.af_inet.cmsg_flags)
-@@ -3541,7 +3545,6 @@ static int sctp_setsockopt_auto_asconf(struct sock *sk, char __user *optval,
+ 		sinfo = &default_sinfo;
++	} else if (fill_sinfo_ttl) {
++		/* In case SNDINFO was specified, we still need to fill
++		 * it with a default ttl from the assoc here.
++		 */
++		sinfo->sinfo_timetolive = asoc->default_timetolive;
+ 	}
+ 
+ 	/* API 7.1.7, the sndbuf size per association bounds the
+@@ -6390,8 +6408,7 @@ static int sctp_msghdr_parse(const struct msghdr *msg, sctp_cmsgs_t *cmsgs)
+ 	struct cmsghdr *cmsg;
+ 	struct msghdr *my_msg = (struct msghdr *)msg;
+ 
+-	for (cmsg = CMSG_FIRSTHDR(msg);
+-	     cmsg != NULL;
++	for (cmsg = CMSG_FIRSTHDR(msg); cmsg != NULL;
+ 	     cmsg = CMSG_NXTHDR(my_msg, cmsg)) {
+ 		if (!CMSG_OK(my_msg, cmsg))
+ 			return -EINVAL;
+@@ -6404,7 +6421,7 @@ static int sctp_msghdr_parse(const struct msghdr *msg, sctp_cmsgs_t *cmsgs)
+ 		switch (cmsg->cmsg_type) {
+ 		case SCTP_INIT:
+ 			/* SCTP Socket API Extension
+-			 * 5.2.1 SCTP Initiation Structure (SCTP_INIT)
++			 * 5.3.1 SCTP Initiation Structure (SCTP_INIT)
+ 			 *
+ 			 * This cmsghdr structure provides information for
+ 			 * initializing new SCTP associations with sendmsg().
+@@ -6416,15 +6433,15 @@ static int sctp_msghdr_parse(const struct msghdr *msg, sctp_cmsgs_t *cmsgs)
+ 			 * ------------  ------------   ----------------------
+ 			 * IPPROTO_SCTP  SCTP_INIT      struct sctp_initmsg
+ 			 */
+-			if (cmsg->cmsg_len !-			    CMSG_LEN(sizeof(struct sctp_initmsg)))
++			if (cmsg->cmsg_len != CMSG_LEN(sizeof(struct sctp_initmsg)))
+ 				return -EINVAL;
+-			cmsgs->init = (struct sctp_initmsg *)CMSG_DATA(cmsg);
++
++			cmsgs->init = CMSG_DATA(cmsg);
+ 			break;
+ 
+ 		case SCTP_SNDRCV:
+ 			/* SCTP Socket API Extension
+-			 * 5.2.2 SCTP Header Information Structure(SCTP_SNDRCV)
++			 * 5.3.2 SCTP Header Information Structure(SCTP_SNDRCV)
+ 			 *
+ 			 * This cmsghdr structure specifies SCTP options for
+ 			 * sendmsg() and describes SCTP header information
+@@ -6434,24 +6451,44 @@ static int sctp_msghdr_parse(const struct msghdr *msg, sctp_cmsgs_t *cmsgs)
+ 			 * ------------  ------------   ----------------------
+ 			 * IPPROTO_SCTP  SCTP_SNDRCV    struct sctp_sndrcvinfo
+ 			 */
+-			if (cmsg->cmsg_len !-			    CMSG_LEN(sizeof(struct sctp_sndrcvinfo)))
++			if (cmsg->cmsg_len != CMSG_LEN(sizeof(struct sctp_sndrcvinfo)))
+ 				return -EINVAL;
+ 
+-			cmsgs->info -				(struct sctp_sndrcvinfo *)CMSG_DATA(cmsg);
++			cmsgs->srinfo = CMSG_DATA(cmsg);
+ 
+-			/* Minimally, validate the sinfo_flags. */
+-			if (cmsgs->info->sinfo_flags &
++			if (cmsgs->srinfo->sinfo_flags &
+ 			    ~(SCTP_UNORDERED | SCTP_ADDR_OVER |
+ 			      SCTP_ABORT | SCTP_EOF))
+ 				return -EINVAL;
+ 			break;
+ 
++		case SCTP_SNDINFO:
++			/* SCTP Socket API Extension
++			 * 5.3.4 SCTP Send Information Structure (SCTP_SNDINFO)
++			 *
++			 * This cmsghdr structure specifies SCTP options for
++			 * sendmsg(). This structure and SCTP_RCVINFO replaces
++			 * SCTP_SNDRCV which has been deprecated.
++			 *
++			 * cmsg_level    cmsg_type      cmsg_data[]
++			 * ------------  ------------   ---------------------
++			 * IPPROTO_SCTP  SCTP_SNDINFO    struct sctp_sndinfo
++			 */
++			if (cmsg->cmsg_len != CMSG_LEN(sizeof(struct sctp_sndinfo)))
++				return -EINVAL;
++
++			cmsgs->sinfo = CMSG_DATA(cmsg);
++
++			if (cmsgs->sinfo->snd_flags &
++			    ~(SCTP_UNORDERED | SCTP_ADDR_OVER |
++			      SCTP_ABORT | SCTP_EOF))
++				return -EINVAL;
++			break;
+ 		default:
+ 			return -EINVAL;
+ 		}
+ 	}
++
  	return 0;
  }
  
--
- /*
-  * SCTP_PEER_ADDR_THLDS
-  *
-@@ -3592,6 +3595,22 @@ static int sctp_setsockopt_paddr_thresholds(struct sock *sk,
- 	return 0;
- }
- 
-+static int sctp_setsockopt_recvrcvinfo(struct sock *sk,
-+				       char __user *optval,
-+				       unsigned int optlen)
-+{
-+	int val;
-+
-+	if (optlen < sizeof(int))
-+		return -EINVAL;
-+	if (get_user(val, (int __user *) optval))
-+		return -EFAULT;
-+
-+	sctp_sk(sk)->recvrcvinfo = (val = 0) ? 0 : 1;
-+
-+	return 0;
-+}
-+
- /* API 6.2 setsockopt(), getsockopt()
-  *
-  * Applications use setsockopt() and getsockopt() to set or retrieve
-@@ -3743,6 +3762,9 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 	case SCTP_PEER_ADDR_THLDS:
- 		retval = sctp_setsockopt_paddr_thresholds(sk, optval, optlen);
- 		break;
-+	case SCTP_RECVRCVINFO:
-+		retval = sctp_setsockopt_recvrcvinfo(sk, optval, optlen);
-+		break;
- 	default:
- 		retval = -ENOPROTOOPT;
- 		break;
-@@ -3989,6 +4011,8 @@ static int sctp_init_sock(struct sock *sk)
- 	/* Enable Nagle algorithm by default.  */
- 	sp->nodelay           = 0;
- 
-+	sp->recvrcvinfo = 0;
-+
- 	/* Enable by default. */
- 	sp->v4mapped          = 1;
- 
-@@ -5770,6 +5794,26 @@ static int sctp_getsockopt_assoc_stats(struct sock *sk, int len,
- 	return 0;
- }
- 
-+static int sctp_getsockopt_recvrcvinfo(struct sock *sk,	int len,
-+				       char __user *optval,
-+				       int __user *optlen)
-+{
-+	int val = 0;
-+
-+	if (len < sizeof(int))
-+		return -EINVAL;
-+
-+	len = sizeof(int);
-+	if (sctp_sk(sk)->recvrcvinfo)
-+		val = 1;
-+	if (put_user(len, optlen))
-+		return -EFAULT;
-+	if (copy_to_user(optval, &val, len))
-+		return -EFAULT;
-+
-+	return 0;
-+}
-+
- static int sctp_getsockopt(struct sock *sk, int level, int optname,
- 			   char __user *optval, int __user *optlen)
- {
-@@ -5913,6 +5957,9 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
- 	case SCTP_GET_ASSOC_STATS:
- 		retval = sctp_getsockopt_assoc_stats(sk, len, optval, optlen);
- 		break;
-+	case SCTP_RECVRCVINFO:
-+		retval = sctp_getsockopt_recvrcvinfo(sk, len, optval, optlen);
-+		break;
- 	default:
- 		retval = -ENOPROTOOPT;
- 		break;
-diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
-index b6842fd..b31f365 100644
---- a/net/sctp/ulpevent.c
-+++ b/net/sctp/ulpevent.c
-@@ -886,6 +886,31 @@ void sctp_ulpevent_read_sndrcvinfo(const struct sctp_ulpevent *event,
- 		 sizeof(sinfo), &sinfo);
- }
- 
-+/* RFC6458, Section 5.3.5 SCTP Receive Information Structure
-+ * (SCTP_SNDRCV)
-+ */
-+void sctp_ulpevent_read_rcvinfo(const struct sctp_ulpevent *event,
-+				struct msghdr *msghdr)
-+{
-+	struct sctp_rcvinfo rinfo;
-+
-+	if (sctp_ulpevent_is_notification(event))
-+		return;
-+
-+	memset(&rinfo, 0, sizeof(struct sctp_rcvinfo));
-+	rinfo.rcv_sid = event->stream;
-+	rinfo.rcv_ssn = event->ssn;
-+	rinfo.rcv_ppid = event->ppid;
-+	rinfo.rcv_flags = event->flags;
-+	rinfo.rcv_tsn = event->tsn;
-+	rinfo.rcv_cumtsn = event->cumtsn;
-+	rinfo.rcv_assoc_id = sctp_assoc2id(event->asoc);
-+	rinfo.rcv_context = event->asoc->default_rcv_context;
-+
-+	put_cmsg(msghdr, IPPROTO_SCTP, SCTP_RCVINFO,
-+		 sizeof(rinfo), &rinfo);
-+}
-+
- /* Do accounting for bytes received and hold a reference to the association
-  * for each skb.
-  */
 -- 
 1.7.11.7
 
