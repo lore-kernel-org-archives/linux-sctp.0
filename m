@@ -1,166 +1,66 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Fri, 04 Jul 2014 14:35:51 +0000
-Subject: [PATCH net-next v2 1/3] net: sctp: Inline the functions from command.c
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1726CA65@AcuExch.aculab.com>
+From: Fabian Frederick <fabf@skynet.be>
+Date: Mon, 14 Jul 2014 16:36:39 +0000
+Subject: [PATCH 16/16] net: sctp: remove unnecessary break after return/goto
+Message-Id: <1405355799-7691-7-git-send-email-fabf@skynet.be>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1405355799-7691-1-git-send-email-fabf@skynet.be>
+In-Reply-To: <1405355799-7691-1-git-send-email-fabf@skynet.be>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Network Development <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
-Cc: "David S. Miller" <davem@davemloft.net>
+To: linux-kernel@vger.kernel.org
+Cc: davem@davemloft.net, joe@perches.com, Fabian Frederick <fabf@skynet.be>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-sctp_init_cmd_seq() and sctp_next_cmd() are only called from one place.
-The call sequence for sctp_add_cmd_sf() is likely to be longer than
-the inlined code. 
-With sctp_add_cmd_sf() inlined the compiler can optimise repeated calls.
-
-Signed-off-by: David Laight <david.laight@aculab.com>
+Signed-off-by: Fabian Frederick <fabf@skynet.be>
 ---
+ net/sctp/outqueue.c     | 1 -
+ net/sctp/sm_statefuns.c | 4 ----
+ 2 files changed, 5 deletions(-)
 
-Changes for v2: None
-
- include/net/sctp/command.h | 27 +++++++++++++++---
- net/sctp/Makefile          |  2 +-
- net/sctp/command.c         | 68 ----------------------------------------------
- 3 files changed, 24 insertions(+), 73 deletions(-)
- delete mode 100644 net/sctp/command.c
-
-diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
-index 6547ab7..020eb95 100644
---- a/include/net/sctp/command.h
-+++ b/include/net/sctp/command.h
-@@ -210,19 +210,38 @@ typedef struct {
- /* Initialize a block of memory as a command sequence.
-  * Return 0 if the initialization fails.
-  */
--int sctp_init_cmd_seq(sctp_cmd_seq_t *seq);
-+static inline int sctp_init_cmd_seq(sctp_cmd_seq_t *seq)
-+{
-+	memset(seq, 0, sizeof(sctp_cmd_seq_t));
-+	return 1;		/* We always succeed.  */
-+}
-+
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 9c77947..d31435e 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -1025,7 +1025,6 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
  
- /* Add a command to an sctp_cmd_seq_t.
-  *
-  * Use the SCTP_* constructors defined by SCTP_ARG_CONSTRUCTOR() above
-  * to wrap data which goes in the obj argument.
-  */
--void sctp_add_cmd_sf(sctp_cmd_seq_t *seq, sctp_verb_t verb, sctp_arg_t obj);
-+static inline void sctp_add_cmd_sf(sctp_cmd_seq_t *seq, sctp_verb_t verb,
-+				   sctp_arg_t obj)
-+{
-+	BUG_ON(seq->next_free_slot >= SCTP_MAX_NUM_COMMANDS);
-+
-+	seq->cmds[seq->next_free_slot].verb = verb;
-+	seq->cmds[seq->next_free_slot++].obj = obj;
-+}
+ 				sctp_outq_head_data(q, chunk);
+ 				goto sctp_flush_out;
+-				break;
  
- /* Return the next command structure in an sctp_cmd_seq.
-  * Return NULL at the end of the sequence.
-  */
--sctp_cmd_t *sctp_next_cmd(sctp_cmd_seq_t *seq);
-+static inline sctp_cmd_t *sctp_next_cmd(sctp_cmd_seq_t *seq)
-+{
-+	sctp_cmd_t *retval = NULL;
- 
--#endif /* __net_sctp_command_h__ */
-+	if (seq->next_cmd < seq->next_free_slot)
-+		retval = &seq->cmds[seq->next_cmd++];
-+
-+	return retval;
-+}
- 
-+#endif /* __net_sctp_command_h__ */
-diff --git a/net/sctp/Makefile b/net/sctp/Makefile
-index 5c30b7a..3b4ffb0 100644
---- a/net/sctp/Makefile
-+++ b/net/sctp/Makefile
-@@ -8,7 +8,7 @@ obj-$(CONFIG_NET_SCTPPROBE) += sctp_probe.o
- sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
- 	  protocol.o endpointola.o associola.o \
- 	  transport.o chunk.o sm_make_chunk.o ulpevent.o \
--	  inqueue.o outqueue.o ulpqueue.o command.o \
-+	  inqueue.o outqueue.o ulpqueue.o \
- 	  tsnmap.o bind_addr.o socket.o primitive.o \
- 	  output.o input.o debug.o ssnmap.o auth.o
- 
-diff --git a/net/sctp/command.c b/net/sctp/command.c
-deleted file mode 100644
-index dd73758..0000000
---- a/net/sctp/command.c
-+++ /dev/null
-@@ -1,68 +0,0 @@
--/* SCTP kernel implementation Copyright (C) 1999-2001
-- * Cisco, Motorola, and IBM
-- * Copyright 2001 La Monte H.P. Yarroll
-- *
-- * This file is part of the SCTP kernel implementation
-- *
-- * These functions manipulate sctp command sequences.
-- *
-- * This SCTP implementation is free software;
-- * you can redistribute it and/or modify it under the terms of
-- * the GNU General Public License as published by
-- * the Free Software Foundation; either version 2, or (at your option)
-- * any later version.
-- *
-- * This SCTP implementation is distributed in the hope that it
-- * will be useful, but WITHOUT ANY WARRANTY; without even the implied
-- *                 ************************
-- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-- * See the GNU General Public License for more details.
-- *
-- * You should have received a copy of the GNU General Public License
-- * along with GNU CC; see the file COPYING.  If not, see
-- * <http://www.gnu.org/licenses/>.
-- *
-- * Please send any bug reports or fixes you make to the
-- * email address(es):
-- *    lksctp developers <linux-sctp@vger.kernel.org>
-- *
-- * Written or modified by:
-- *    La Monte H.P. Yarroll <piggy@acm.org>
-- *    Karl Knutson <karl@athena.chicago.il.us>
-- */
--
--#include <linux/types.h>
--#include <net/sctp/sctp.h>
--#include <net/sctp/sm.h>
--
--/* Initialize a block of memory as a command sequence. */
--int sctp_init_cmd_seq(sctp_cmd_seq_t *seq)
--{
--	memset(seq, 0, sizeof(sctp_cmd_seq_t));
--	return 1;		/* We always succeed.  */
--}
--
--/* Add a command to a sctp_cmd_seq_t.
-- * Return 0 if the command sequence is full.
-- */
--void sctp_add_cmd_sf(sctp_cmd_seq_t *seq, sctp_verb_t verb, sctp_arg_t obj)
--{
--	BUG_ON(seq->next_free_slot >= SCTP_MAX_NUM_COMMANDS);
--
--	seq->cmds[seq->next_free_slot].verb = verb;
--	seq->cmds[seq->next_free_slot++].obj = obj;
--}
--
--/* Return the next command structure in a sctp_cmd_seq.
-- * Returns NULL at the end of the sequence.
-- */
--sctp_cmd_t *sctp_next_cmd(sctp_cmd_seq_t *seq)
--{
--	sctp_cmd_t *retval = NULL;
--
--	if (seq->next_cmd < seq->next_free_slot)
--		retval = &seq->cmds[seq->next_cmd++];
--
--	return retval;
--}
--
+ 			case SCTP_XMIT_OK:
+ 				/* The sender is in the SHUTDOWN-PENDING state,
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 5170a1f..d3f1ea4 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -4182,7 +4182,6 @@ sctp_disposition_t sctp_sf_unk_chunk(struct net *net,
+ 	case SCTP_CID_ACTION_DISCARD:
+ 		/* Discard the packet.  */
+ 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+-		break;
+ 	case SCTP_CID_ACTION_DISCARD_ERR:
+ 		/* Generate an ERROR chunk as response. */
+ 		hdr = unk_chunk->chunk_hdr;
+@@ -4198,11 +4197,9 @@ sctp_disposition_t sctp_sf_unk_chunk(struct net *net,
+ 		/* Discard the packet.  */
+ 		sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+ 		return SCTP_DISPOSITION_CONSUME;
+-		break;
+ 	case SCTP_CID_ACTION_SKIP:
+ 		/* Skip the chunk.  */
+ 		return SCTP_DISPOSITION_DISCARD;
+-		break;
+ 	case SCTP_CID_ACTION_SKIP_ERR:
+ 		/* Generate an ERROR chunk as response. */
+ 		hdr = unk_chunk->chunk_hdr;
+@@ -4216,7 +4213,6 @@ sctp_disposition_t sctp_sf_unk_chunk(struct net *net,
+ 		}
+ 		/* Skip the chunk.  */
+ 		return SCTP_DISPOSITION_CONSUME;
+-		break;
+ 	default:
+ 		break;
+ 	}
 -- 
-1.8.1.2
-
-
+1.8.4.5
 
