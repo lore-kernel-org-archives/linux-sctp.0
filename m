@@ -1,59 +1,32 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Wed, 09 Jul 2014 08:29:11 +0000
-Subject: [PATCH v2 net-next 0/3] net: sctp:  Add partial MSG_MORE support to SCTP
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1726E6A3@AcuExch.aculab.com>
+From: "Mr.Jerry Smith" <sbelay@spsu.edu>
+Date: Thu, 17 Jul 2014 01:42:52 +0000
+Subject: 2014 FINANCIAL AID
+Message-Id: <938959092.13897921.1405561372368.JavaMail.root@zstore2.spsu.edu>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "'netdev@vger.kernel.org'" <netdev@vger.kernel.org>, "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>
-Cc: "'davem@davemloft.net'" <davem@davemloft.net>
 
-If an application has disabled Nagle then it is almost impossible
-to get more than one DATA chunk into an ethernet packet even if
-the application has more than one data chunk ready to transmit.
+Are you in need of A personal loan? or are  you in need of a business loan? we offer loan  to individual and co-operate bodies in need of financial assistance, Application are available for applicant over 18 years only. contact us by email if interested in a fast and easy loan  at a low and affordable interest rate of 3%. 
 
-This could be fixed by adding an SCTP_CORK socket option - but
-using that requires a lot of system calls.
-An alternative is to honour MSG_MORE - using it to mean that
-another chunk will be sent soon.
-(There isn't much point using MSG_MORE to allow a chunk be extended,
-sendv() can be used for fragmented data.)
+Interested applicant are require to fill this form below and send it back to us:
 
-This is a partial implementation and takes a couple of shortcuts:
-1) We only worry about whether MSG_MORE was set on the last send.
-   Data sent (by the application) with MSG_MORE unset will only be
-   unsent for flow control reasons.
-   So if the last send had MSG_MORE set, and an ack opens the window
-   then the unsent data won't be sent immediately.
+Full Name:..........
+Amount Required:.............
+Loan Terms/Duration:.......
+Country:............
+State:............
+Occupation:..........
+Sex:............
+Address:.........
+Tel Number:............
 
-2) If the application doesn't do a send with MSG_MORE unset, then
-   buffered data shouldn't be buffered forever.
-   Rather than using a timer (as TCP does - which ought to be configurable
-   on a per-socket basis) we use the same rules as Nagle and ensure
-   that there is always some data outstanding.
-   This does mean that the first data chunk on an idle connection
-   is send in its own packet even if MSG_MORE is set.
+ We do hope to hear from you soonest so that we can send you
+the loan Terms, Conditions and Repayment Schedule.
 
-Because of the way Nagle is implemented in SCTP, the change is effectively
-just enabling and disabling Nagle prior to each send.
+Be assured that the possibility of getting a Loan from our firm is extremely Guaranteed.
 
-The patch is split into 3 parts:
-Parts 1 and 2 do not affect the logic.
-1) Splits out the 6-clause condition (all of which must be true)
-   for Nagle to delay sends into 6 if statements.
-   This allows each condition to have its own comment.
-2) Renames an internal return value.
-3) Renames the 'nodelay' field to 'tx_delay' and defines separate bits for 'Nagle'
-   and MSG_MORE (an extra bit could be used for SCTP_CORKED).
-   So 'tx_delay' contains the 'reason(s) why a transmit should be delayed'.
-   Save the MSG_MORE bit from the last send in 'tx_delay', apply the same
-   delay rules as if Nagle were enabled.
-
-Changes for v2:
-Parts 1 and 2 added, constants replaced by defines.
-
-	David
-
-
-
+Regards
+Jazmin Fox Fin Aid
+Jazminfoxfinaid@gmail.com
++16464195728
