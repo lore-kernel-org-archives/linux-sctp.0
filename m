@@ -1,32 +1,87 @@
-From: "Mr.Jerry Smith" <sbelay@spsu.edu>
-Date: Thu, 17 Jul 2014 01:42:52 +0000
-Subject: 2014 FINANCIAL AID
-Message-Id: <938959092.13897921.1405561372368.JavaMail.root@zstore2.spsu.edu>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Fri, 18 Jul 2014 17:36:27 +0000
+Subject: [PATCH net-next v3 2/3] Rename SCTP_XMIT_NAGLE_DELAY to SCTP_XMIT_DELAY
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6D17278F4C@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
+To: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>
+Cc: 'David Miller' <davem@davemloft.net>
 
-Are you in need of A personal loan? or are  you in need of a business loan? we offer loan  to individual and co-operate bodies in need of financial assistance, Application are available for applicant over 18 years only. contact us by email if interested in a fast and easy loan  at a low and affordable interest rate of 3%. 
+MSG_MORE and 'corking' a socket would require that the transmit of
+a data chunk be delayed.
+Rename the return value to be less specific.
 
-Interested applicant are require to fill this form below and send it back to us:
+Signed-off-by: David Laight <david.laight@aculab.com>
+---
 
-Full Name:..........
-Amount Required:.............
-Loan Terms/Duration:.......
-Country:............
-State:............
-Occupation:..........
-Sex:............
-Address:.........
-Tel Number:............
+No change from v2.
 
- We do hope to hear from you soonest so that we can send you
-the loan Terms, Conditions and Repayment Schedule.
+ include/net/sctp/constants.h | 2 +-
+ net/sctp/output.c            | 4 ++--
+ net/sctp/outqueue.c          | 4 ++--
+ 3 files changed, 5 insertions(+), 5 deletions(-)
 
-Be assured that the possibility of getting a Loan from our firm is extremely Guaranteed.
+diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
+index 307728f..8c337cd 100644
+--- a/include/net/sctp/constants.h
++++ b/include/net/sctp/constants.h
+@@ -311,7 +311,7 @@ typedef enum {
+ 	SCTP_XMIT_OK,
+ 	SCTP_XMIT_PMTU_FULL,
+ 	SCTP_XMIT_RWND_FULL,
+-	SCTP_XMIT_NAGLE_DELAY,
++	SCTP_XMIT_DELAY,
+ } sctp_xmit_t;
+ 
+ /* These are the commands for manipulating transports.  */
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 553ba1d..7f28a8e 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -178,7 +178,7 @@ sctp_xmit_t sctp_packet_transmit_chunk(struct sctp_packet *packet,
+ 
+ 	case SCTP_XMIT_RWND_FULL:
+ 	case SCTP_XMIT_OK:
+-	case SCTP_XMIT_NAGLE_DELAY:
++	case SCTP_XMIT_DELAY:
+ 		break;
+ 	}
+ 
+@@ -712,7 +712,7 @@ static sctp_xmit_t sctp_packet_can_append_data(struct sctp_packet *packet,
+ 		return SCTP_XMIT_OK;
+ 
+ 	/* Defer until all data acked or packet full */
+-	return SCTP_XMIT_NAGLE_DELAY;
++	return SCTP_XMIT_DELAY;
+ }
+ 
+ /* This private function does management things when adding DATA chunk */
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 9c77947..9ce0f3d 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -629,7 +629,7 @@ redo:
+ 			done = 1;
+ 			break;
+ 
+-		case SCTP_XMIT_NAGLE_DELAY:
++		case SCTP_XMIT_DELAY:
+ 			/* Send this packet. */
+ 			error = sctp_packet_transmit(pkt);
+ 
+@@ -1015,7 +1015,7 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
+ 			switch (status) {
+ 			case SCTP_XMIT_PMTU_FULL:
+ 			case SCTP_XMIT_RWND_FULL:
+-			case SCTP_XMIT_NAGLE_DELAY:
++			case SCTP_XMIT_DELAY:
+ 				/* We could not append this chunk, so put
+ 				 * the chunk back on the output queue.
+ 				 */
+-- 
+1.8.1.2
 
-Regards
-Jazmin Fox Fin Aid
-Jazminfoxfinaid@gmail.com
-+16464195728
+
+
