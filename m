@@ -1,17 +1,17 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 18 Jul 2014 12:35:42 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Fri, 18 Jul 2014 14:38:15 +0000
 Subject: Re: [PATCH net] net: sctp: inherit auth_capable on INIT collisions
-Message-Id: <20140718123542.GA30353@localhost.localdomain>
+Message-Id: <53C93157.1050002@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1405620319-2021-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1405620319-2021-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: davem@davemloft.net, jgunthorpe@obsidianresearch.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net
+Cc: jgunthorpe@obsidianresearch.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Thu, Jul 17, 2014 at 08:05:19PM +0200, Daniel Borkmann wrote:
+On 07/17/2014 02:05 PM, Daniel Borkmann wrote:
 > Jason reported an oops caused by SCTP on his ARM machine with
 > SCTP authentication enabled:
 > 
@@ -128,6 +128,22 @@ On Thu, Jul 17, 2014 at 08:05:19PM +0200, Daniel Borkmann wrote:
 > sctp_auth_asoc_init_active_key() leaving asoc->asoc_shared_key
 > as NULL. However, we now have to authenticate chunks from
 > the updated chunk list (e.g. COOKIE-ACK, ...).
+
+Why is the original value of asoc->peer.auth_capable = 0?
+In case of collision, asoc is the old association that
+existed on the system.  That association was created as part of
+sending the INIT.  If it is processing a duplicate COOKIE-ECHO
+as you say, then it has already processed the INIT-ACK and
+should have determined that the peer is auth capable.
+
+Thus the capability of the new and the old associations should
+be same if we are in fact processing case B (collision).
+
+If not, then something else if wrong and my guess is that all
+other capabilities would be wrong too.
+
+-vlad
+
 > 
 > That in fact causes the server side when responding with ...
 > 
@@ -161,5 +177,21 @@ On Thu, Jul 17, 2014 at 08:05:19PM +0200, Daniel Borkmann wrote:
 > Reported-by: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
 > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
 > Tested-by: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+> ---
+>  net/sctp/associola.c | 1 +
+>  1 file changed, 1 insertion(+)
+> 
+> diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+> index 9de23a2..06a9ee6 100644
+> --- a/net/sctp/associola.c
+> +++ b/net/sctp/associola.c
+> @@ -1097,6 +1097,7 @@ void sctp_assoc_update(struct sctp_association *asoc,
+>  	asoc->c = new->c;
+>  	asoc->peer.rwnd = new->peer.rwnd;
+>  	asoc->peer.sack_needed = new->peer.sack_needed;
+> +	asoc->peer.auth_capable = new->peer.auth_capable;
+>  	asoc->peer.i = new->peer.i;
+>  	sctp_tsnmap_init(&asoc->peer.tsn_map, SCTP_TSN_MAP_INITIAL,
+>  			 asoc->peer.i.initial_tsn, GFP_ATOMIC);
+> 
 
