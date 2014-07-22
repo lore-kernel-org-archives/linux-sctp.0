@@ -1,40 +1,66 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Tue, 22 Jul 2014 09:03:17 +0000
-Subject: RE: [PATCH net-next v3 1/3] Open out the check for Nagle
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1727AF43@AcuExch.aculab.com>
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Tue, 22 Jul 2014 16:24:11 +0000
+Subject: Re: SCTP Quick failover status
+Message-Id: <53CE902B.5030208@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <063D6719AE5E284EB5DD2968C1650D6D17278F4D@AcuExch.aculab.com>
- <20140721.162537.1473346987310446422.davem@davemloft.net>
-In-Reply-To: <20140721.162537.1473346987310446422.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'David Miller' <davem@davemloft.net>
-Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
+To: linux-sctp@vger.kernel.org
 
-> From: David Laight <David.Laight@ACULAB.COM>
-> Date: Fri, 18 Jul 2014 17:36:24 +0000
+On 07/22/2014 10:55 AM, Karen E. Egede Nielsen wrote:
+> Hi Vlad,
 > 
-> > The check for Nagle contains 6 separate checks all of which must be true
-> > before a data packet is delayed.
-> > Separate out each into its own 'if (test) return SCTP_XMIT_OK' so that
-> > the reasons can be individually described.
-> >
-> > Also return directly with SCTP_XMIT_RWND_FULL.
-> > Delete the now-unused 'retval' variable and 'finish' label from
-> > sctp_packet_can_append_data().
-> >
-> > Signed-off-by: David Laight <david.laight@aculab.com>
+> Would it possibly be feasible for you to  provide feedback on as  to
+> whether:
 > 
-> Please add the "sctp: " subsystem prefix to this subject line.
+> * Linux SCTP supports the most recent version of the SCTP PF draft,
+> http://datatracker.ietf.org/doc/draft-ietf-tsvwg-sctp-failover/, ?
 
-I've resent all 3 patches with net: sctp: added to the subject line
-and a comment below the ---.
+It appears that Linux partially supports the latest draft.  Some of
+the newer language in section 4.1 is not supported.  The API doesn't
+appear to be supported either.
 
-I must check whether I can send patches directly, instead of pasting
-from wordpad into outlook (which seems to preserve any tabs).
+We'll work on adding this functionality.
 
-	David
+> 
+> * The Linux SCTP implementers group have any comments to the draft in
+> question ?
+> 
 
+I do not.  I've cc'd the implementers mailing list to see if anyone else
+has any comments.
 
+Thanks
+-vlad
+
+> The draft is proposed for publication as Proposed Standard[*] by tsvwg.
+> The check up towards potential comments from Linux SCTP
+> was a request made by the chairs at the tsvwg  at IETF90.
+> 
+> Many thanks in advance !
+> 
+> BR, Karen
+> 
+> [* Even if present version says Experimental]
+> 
+> PS. As you can see Michael kindly provided you as a good reference.. :-)
+> 
+>> -----Original Message-----
+>> From: Michael Tuexen [mailto:tuexen@fh-muenster.de]
+>> Sent: 22. juli 2014 15:52
+>> To: Karen E. Egede Nielsen
+>> Cc: Vlad Yasevich
+>> Subject: SCTP Quick failover status
+>>
+>> Hi Karen,
+>>
+>> Vlad, who is the Linux SCTP kernel maintainer, might be able to comment
+> on
+>> the status of the Linux implementation if quick failover and if there
+> were any
+>> comments related to the ID.
+>>
+>> Best regards
+>> Michael
 
