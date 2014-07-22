@@ -1,78 +1,137 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Thu, 10 Jul 2014 19:04:26 +0000
-Subject: Re: [PATCH net-next 0/5] SCTP updates
-Message-Id: <53BEE3BA.5070500@gmail.com>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Tue, 22 Jul 2014 08:59:08 +0000
+Subject: [PATCH net-next v3 1/3] net: sctp: Open out the check for Nagle
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1727AF04@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20140708111408.GA23026@hmsreliant.think-freely.org> <53BBFAA6.80408@redhat.com> <20140708144127.GB23026@hmsreliant.think-freely.org> <53BD1211.4080504@redhat.com> <20140709104958.GA3784@hmsreliant.think-freely.org> <53BD4363.70306@redhat.com> <20140709151354.GA5250@localhost.localdomain> <53BD6167.1030000@gmail.com> <20140709154428.GD5250@localhost.localdomain> <53BD6EB7.7070302@gmail.com> <20140709183508.GB14509@hmsreliant.think-freely.org> <063D6719AE5E284EB5DD2968C1650D6D1726FBA0@AcuExch.aculab.com> <53BE5ECF.3050202@redhat.com>
-In-Reply-To: <53BE5ECF.3050202@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>, David Laight <David.Laight@ACULAB.COM>
-Cc: 'Neil Horman' <nhorman@tuxdriver.com>, "davem@davemloft.net" <davem@davemloft.net>, "geirola@gmail.com" <geirola@gmail.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
+To: Linux Networking Development Mailing List <netdev@vger.kernel.org>, "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>
+Cc: David Miller <davem@davemloft.net>
 
-On 07/10/2014 05:37 AM, Daniel Borkmann wrote:
-> On 07/10/2014 11:02 AM, David Laight wrote:
->> From: Neil Horman
->> ...
->>>> No there is not direct overlap between the two.  However, as Michael pointed out,
->>>> there is a new option to control SCTP_RCVINFO.  So would could add a deprecation
->>>> warning to the over SCTP_EVENTS option and carry SCTP_SNDRCVINFO with it.
->>>> Once SCTP_EVENTS goes away so can SCTP_SNDRCVINFO.
->>>>
->>> Ok, so we should still consider deprecation warnings then.  Daniel, what about
->>> ratelimited warnings with pids included then?
->>
->> Can you defer any deprecation warnings for a few kernel versions?
->> This gives time for applications to be recoded.
-> 
-> I am fine either way, adding the warning a bit later seems fine, too.
-> 
-> Right now, even in-kernel users like dlm would hit it if we include
-> it immediately.
-> 
-> Otherwise, I'll just add something like the below ...
-> 
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index d95a50c..6a0e5a4 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -2205,8 +2205,13 @@ static int sctp_setsockopt_events(struct sock *sk, char __user
-> *optval,
->      if (copy_from_user(&sctp_sk(sk)->subscribe, optval, optlen))
->          return -EFAULT;
-> 
-> -    /*
-> -     * At the time when a user app subscribes to SCTP_SENDER_DRY_EVENT,
-> +    if (sctp_sk(sk)->subscribe.sctp_data_io_event)
-> +        pr_warn_ratelimited(DEPRECATED "%s (pid %d) "
-> +                    "Requested SCTP_SNDRCVINFO event.\n"
-> +                    "Use SCTP_RCVINFO through SCTP_RECVRCVINFO option instead.\n",
-> +                    current->comm, task_pid_nr(current));
-> +
-> +    /* At the time when a user app subscribes to SCTP_SENDER_DRY_EVENT,
->       * if there is no data to be sent or retransmit, the stack will
->       * immediately send up this notification.
->       */
-> 
+The check for Nagle contains 6 separate checks all of which must be true
+before a data packet is delayed.
+Separate out each into its own 'if (test) return SCTP_XMIT_OK' so that
+the reasons can be individually described.
 
-This is OK for step 1.  Once we implement SCTP_EVENT, we can cover the rest of the events.
+Also return directly with SCTP_XMIT_RWND_FULL.
+Delete the now-unused 'retval' variable and 'finish' label from
+sctp_packet_can_append_data().
 
--vlad
+Signed-off-by: David Laight <david.laight@aculab.com>
+---
 
->> Including argv[0] (even just the exec-time value) is much more use than the pid.
->>
->> Actually this is 'right PITA' for an application.
->> A program binary that needs to work with old and new kernels will have to
->> try the new option, and if it fails fall back to the old one, and then
->> conditionally create/inspect the cmsg data.
->> I can't actually imagine anyone bothering!
->>
->> Our sctp code is actually in a kernel module, so we can look at the kernel
->> version when (part of) the driver is compiled on the target system.
->>
->>     David
->>
->>
->>
+Resend with corrected subject line.
+
+Changes from v2:
+- Fix inverted test for 'inflight = 0'
+
+ net/sctp/output.c | 69 +++++++++++++++++++++++++++++--------------------------
+ 1 file changed, 36 insertions(+), 33 deletions(-)
+
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 0f4d15f..553ba1d 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -633,7 +633,6 @@ nomem:
+ static sctp_xmit_t sctp_packet_can_append_data(struct sctp_packet *packet,
+ 					   struct sctp_chunk *chunk)
+ {
+-	sctp_xmit_t retval = SCTP_XMIT_OK;
+ 	size_t datasize, rwnd, inflight, flight_size;
+ 	struct sctp_transport *transport = packet->transport;
+ 	struct sctp_association *asoc = transport->asoc;
+@@ -658,15 +657,11 @@ static sctp_xmit_t sctp_packet_can_append_data(struct sctp_packet *packet,
+ 
+ 	datasize = sctp_data_size(chunk);
+ 
+-	if (datasize > rwnd) {
+-		if (inflight > 0) {
+-			/* We have (at least) one data chunk in flight,
+-			 * so we can't fall back to rule 6.1 B).
+-			 */
+-			retval = SCTP_XMIT_RWND_FULL;
+-			goto finish;
+-		}
+-	}
++	if (datasize > rwnd && inflight > 0)
++		/* We have (at least) one data chunk in flight,
++		 * so we can't fall back to rule 6.1 B).
++		 */
++		return SCTP_XMIT_RWND_FULL;
+ 
+ 	/* RFC 2960 6.1  Transmission of DATA Chunks
+ 	 *
+@@ -680,36 +675,44 @@ static sctp_xmit_t sctp_packet_can_append_data(struct sctp_packet *packet,
+ 	 *    When a Fast Retransmit is being performed the sender SHOULD
+ 	 *    ignore the value of cwnd and SHOULD NOT delay retransmission.
+ 	 */
+-	if (chunk->fast_retransmit != SCTP_NEED_FRTX)
+-		if (flight_size >= transport->cwnd) {
+-			retval = SCTP_XMIT_RWND_FULL;
+-			goto finish;
+-		}
++	if (chunk->fast_retransmit != SCTP_NEED_FRTX &&
++	    flight_size >= transport->cwnd)
++		return SCTP_XMIT_RWND_FULL;
+ 
+ 	/* Nagle's algorithm to solve small-packet problem:
+ 	 * Inhibit the sending of new chunks when new outgoing data arrives
+ 	 * if any previously transmitted data on the connection remains
+ 	 * unacknowledged.
+ 	 */
+-	if (!sctp_sk(asoc->base.sk)->nodelay && sctp_packet_empty(packet) &&
+-	    inflight && sctp_state(asoc, ESTABLISHED)) {
+-		unsigned int max = transport->pathmtu - packet->overhead;
+-		unsigned int len = chunk->skb->len + q->out_qlen;
+-
+-		/* Check whether this chunk and all the rest of pending
+-		 * data will fit or delay in hopes of bundling a full
+-		 * sized packet.
+-		 * Don't delay large message writes that may have been
+-		 * fragmeneted into small peices.
+-		 */
+-		if ((len < max) && chunk->msg->can_delay) {
+-			retval = SCTP_XMIT_NAGLE_DELAY;
+-			goto finish;
+-		}
+-	}
+ 
+-finish:
+-	return retval;
++	if (sctp_sk(asoc->base.sk)->nodelay)
++		/* Nagle disabled */
++		return SCTP_XMIT_OK;
++
++	if (!sctp_packet_empty(packet))
++		/* Append to packet */
++		return SCTP_XMIT_OK;
++
++	if (inflight = 0)
++		/* Nothing unacked */
++		return SCTP_XMIT_OK;
++	
++	if (!sctp_state(asoc, ESTABLISHED))
++		return SCTP_XMIT_OK;
++
++	/* Check whether this chunk and all the rest of pending data will fit
++	 * or delay in hopes of bundling a full sized packet.
++	 */
++	if (chunk->skb->len + q->out_qlen >= transport->pathmtu - packet->overhead)
++		/* Enough data queued to fill a packet */
++		return SCTP_XMIT_OK;
++
++	/* Don't delay large message writes that may have been fragmented */
++	if (!chunk->msg->can_delay)
++		return SCTP_XMIT_OK;
++
++	/* Defer until all data acked or packet full */
++	return SCTP_XMIT_NAGLE_DELAY;
+ }
+ 
+ /* This private function does management things when adding DATA chunk */
+-- 
+1.8.1.2
+
+
 
