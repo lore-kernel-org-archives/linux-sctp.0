@@ -1,88 +1,89 @@
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-Date: Wed, 23 Jul 2014 17:22:14 +0000
-Subject: Re: Ooops with SCTP
-Message-Id: <20140723172214.GA11270@obsidianresearch.com>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Tue, 22 Jul 2014 08:59:14 +0000
+Subject: [PATCH net-next v3 2/3] net: sctp: Rename SCTP_XMIT_NAGLE_DELAY to SCTP_XMIT_DELAY
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1727AF03@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20140705001606.GA29369@obsidianresearch.com>
-In-Reply-To: <20140705001606.GA29369@obsidianresearch.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: Linux Networking Development Mailing List <netdev@vger.kernel.org>, "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>
+Cc: David Miller <davem@davemloft.net>
 
-On Mon, Jul 21, 2014 at 07:15:45AM -0400, Neil Horman wrote:
+MSG_MORE and 'corking' a socket would require that the transmit of
+a data chunk be delayed.
+Rename the return value to be less specific.
 
-> ok, I've looked at this over the weekend, and for the most part I think it looks
-> ok.  Regarding your questions, I think sctp_id2transport is ok as it is, since
-> that path is used for both ipv4 and ipv6, making unconditional promotion a bad
-> idea.  Calling the addr_map method lets us choose the v4 mapping function
-> (empty), or the v6 mapping function, which only does a map if a v4 address is
-> passed in.
+Signed-off-by: David Laight <david.laight@aculab.com>
+---
 
-Well, v4mapped should only change the presentation of addresses being
-returned by syscalls, it should never change the internal behavior of
-SCTP.
+Resend with corrected subject line.
 
-Hrm.. So sctp_id2transport has this as a trailing call:
+No change from v2.
 
-	sctp_get_pf_specific(sk->sk_family)->addr_v4map(sctp_sk(sk),
-						(union sctp_addr
-						*)addr);
+ include/net/sctp/constants.h | 2 +-
+ net/sctp/output.c            | 4 ++--
+ net/sctp/outqueue.c          | 4 ++--
+ 3 files changed, 5 insertions(+), 5 deletions(-)
 
-Thus it does not alter the operation of sctp_id2transport in any way,
-it just changes the presentation of the address for the caller.. So
-that is good.
+diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
+index 307728f..8c337cd 100644
+--- a/include/net/sctp/constants.h
++++ b/include/net/sctp/constants.h
+@@ -311,7 +311,7 @@ typedef enum {
+ 	SCTP_XMIT_OK,
+ 	SCTP_XMIT_PMTU_FULL,
+ 	SCTP_XMIT_RWND_FULL,
+-	SCTP_XMIT_NAGLE_DELAY,
++	SCTP_XMIT_DELAY,
+ } sctp_xmit_t;
+ 
+ /* These are the commands for manipulating transports.  */
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 553ba1d..7f28a8e 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -178,7 +178,7 @@ sctp_xmit_t sctp_packet_transmit_chunk(struct sctp_packet *packet,
+ 
+ 	case SCTP_XMIT_RWND_FULL:
+ 	case SCTP_XMIT_OK:
+-	case SCTP_XMIT_NAGLE_DELAY:
++	case SCTP_XMIT_DELAY:
+ 		break;
+ 	}
+ 
+@@ -712,7 +712,7 @@ static sctp_xmit_t sctp_packet_can_append_data(struct sctp_packet *packet,
+ 		return SCTP_XMIT_OK;
+ 
+ 	/* Defer until all data acked or packet full */
+-	return SCTP_XMIT_NAGLE_DELAY;
++	return SCTP_XMIT_DELAY;
+ }
+ 
+ /* This private function does management things when adding DATA chunk */
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 9c77947..9ce0f3d 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -629,7 +629,7 @@ redo:
+ 			done = 1;
+ 			break;
+ 
+-		case SCTP_XMIT_NAGLE_DELAY:
++		case SCTP_XMIT_DELAY:
+ 			/* Send this packet. */
+ 			error = sctp_packet_transmit(pkt);
+ 
+@@ -1015,7 +1015,7 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout)
+ 			switch (status) {
+ 			case SCTP_XMIT_PMTU_FULL:
+ 			case SCTP_XMIT_RWND_FULL:
+-			case SCTP_XMIT_NAGLE_DELAY:
++			case SCTP_XMIT_DELAY:
+ 				/* We could not append this chunk, so put
+ 				 * the chunk back on the output queue.
+ 				 */
+-- 
+1.8.1.2
 
-Going through the callers:
 
-sctp_getsockopt_peer_addr_params -
-sctp_getsockopt_peer_addr_info -
-sctp_getsockopt_peer_addr_params -
-sctp_getsockopt_paddr_thresholds
-   The address is copied back to user space after the call
-   completes
 
-sctp_setsockopt_peer_addr_params -
-sctp_setsockopt_primary_addr -
-sctp_setsockopt_paddr_thresholds -
-  The address is never used again
-
-Basically, if you do a getsockopt with an address then the structure
-return'd by the kernel will be passed through addr_v4map.
-
-It is a bit odd that the kernel transforms an input argument when
-copying to output, but that doesn't necessarily seem bad...
-
-> And I don't think we need to do any demotion of addresses as sctp_v6_addr_v4map
-> is only called if the socket is AF_INET6, and can handle v6 addresses
-> transparently.  If the socket was created as AF_INET, we're safe, because that
-> will reject AF_INET6 addresses anyway.
-
-sctp_v6_addr_v4map appears to be called on every sockaddr before
-returning it to user space. 
-
-So the job of sctp_v6_addr_v4map is to enforce the v4mapped behavior:
- - If v4mapped is set all returns from the kernel should be AF_INET6
- - If v4mapped is unset, all IPv4 addresses should be AF_INET, a V6
-   mapped should never be returned.
-
-Right now it only promotes AF_INET to AF_INET6, it doesn't demote
-AF_INET6 v4mapped back to AF_INET.
-
-So the question is if v4mapped AF_INET6 addresses can exist inside the
-kernel. If yes, we need to demote them in sctp_v6_addr_v4map for
-correct presentation to userspace.
-
-Unless you know the design is to keep v4 as AF_INET, then I'm thinking
-for robustness it should just demote. Then we know the user API is
-going to work properly no matter what changes are made to the
-internals.
-
-> If you're testing in the interviening week hasn't shown any further problems,
-> I'd say officially post this with my signed off please.
-
-I'll try to get a few mins to verify the above for sctp_v6_addr_v4map
-and post the result.
-
-Thanks,
-Jason
