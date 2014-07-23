@@ -1,17 +1,42 @@
-From: Michele Baldessari <michele@acksyn.org>
-Date: Tue, 22 Jul 2014 08:03:04 +0000
-Subject: Re: Information about SCTP patch
-Message-Id: <20140722080304.GB7011@fante.int.rhx>
+From: "Padiyar, Prasad (NSN - IN/Bangalore)" <prasad.padiyar@nsn.com>
+Date: Wed, 23 Jul 2014 11:55:20 +0000
+Subject: RE: Information about SCTP patch
+Message-Id: <48119AB6DF184B48B2056EE384375EA91E965765@SGSIMBX006.nsn-intra.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CAJ5TDg_0GjTWVin1Xr4sZwNhzMiT+bJPZwzfKB0xBdPMuK7T+g@mail.gmail.com>
  <20140627200644.GA9086@marquez.int.rhx>
  <CAJ5TDg_qOkpGe7Ouzn_wfbsODL4FoVLmq7EmQes6hEW-dnMLWg@mail.gmail.com>
-In-Reply-To: <CAJ5TDg_qOkpGe7Ouzn_wfbsODL4FoVLmq7EmQes6hEW-dnMLWg@mail.gmail.com>
+ <20140722080304.GB7011@fante.int.rhx>
+In-Reply-To: <20140722080304.GB7011@fante.int.rhx>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: kishan simha <ksimha123@gmail.com>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, prasad.padiyar@nsn.com, sumit.11.kumar@nsn.com
+To: ext Michele Baldessari <michele@acksyn.org>
+Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "Kumar, Sumit 11. (NSN - IN/Bangalore)" <sumit.11.kumar@nsn.com>, kishan simha <ksimha123@gmail.com>
+
+Hi Michele,
+
+Thanks for your time and reply.
+
+We here have a requirement to implement a CLI to get these stats.
+And one of the options we thought to use was /proc files to get these stats.
+
+Going through the mail chain of this patch (http://www.spinics.net/lists/linux-sctp/msg01813.html) , I came across this.
+" socket option is preferable as /proc doesn't scale very well as number of associations grows."
+
+
+Here I am just curious to know how much "is the number of associations" referred to?
+
+
+Thanks & Regards,
+Prasad 
+
+-----Original Message-----
+From: ext Michele Baldessari [mailto:michele@acksyn.org] 
+Sent: Tuesday, July 22, 2014 1:33 PM
+To: kishan simha
+Cc: linux-sctp@vger.kernel.org; netdev@vger.kernel.org; Padiyar, Prasad (NSN - IN/Bangalore); Kumar, Sumit 11. (NSN - IN/Bangalore)
+Subject: Re: Information about SCTP patch
 
 Hi Kishan,
 
