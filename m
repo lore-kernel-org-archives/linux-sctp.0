@@ -1,18 +1,18 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 05 Aug 2014 14:59:07 +0000
+From: Hannes Frederic Sowa <hannes@stressinduktion.org>
+Date: Tue, 05 Aug 2014 15:03:28 +0000
 Subject: Re: [PATCH] sctp: fix possible seqlock seadlock in sctp_packet_transmit()
-Message-Id: <20140805145907.GA20550@hmsreliant.think-freely.org>
+Message-Id: <1407251008.8179.5.camel@localhost>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20140805134115.GA25110@redhat.com>
- <1407250192.3178.86.camel@edumazet-glaptop2.roam.corp.google.com>
+	 <1407250192.3178.86.camel@edumazet-glaptop2.roam.corp.google.com>
 In-Reply-To: <1407250192.3178.86.camel@edumazet-glaptop2.roam.corp.google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: Dave Jones <davej@redhat.com>, Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Hannes Frederic Sowa <hannes@stressinduktion.org>
+Cc: Dave Jones <davej@redhat.com>, Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org
 
-On Tue, Aug 05, 2014 at 04:49:52PM +0200, Eric Dumazet wrote:
+On Di, 2014-08-05 at 16:49 +0200, Eric Dumazet wrote:
 > From: Eric Dumazet <edumazet@google.com>
 > 
 > Dave reported following splat, caused by improper use of
@@ -58,29 +58,9 @@ On Tue, Aug 05, 2014 at 04:49:52PM +0200, Eric Dumazet wrote:
 > Signed-off-by: Eric Dumazet <edumazet@google.com>
 > Cc: Hannes Frederic Sowa <hannes@stressinduktion.org>
 > Reported-by: Dave Jones <davej@redhat.com>
-> ---
->  net/sctp/output.c |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/output.c b/net/sctp/output.c
-> index 1eedba5195a3..42dffd428389 100644
-> --- a/net/sctp/output.c
-> +++ b/net/sctp/output.c
-> @@ -599,7 +599,7 @@ out:
->  	return err;
->  no_route:
->  	kfree_skb(nskb);
-> -	IP_INC_STATS_BH(sock_net(asoc->base.sk), IPSTATS_MIB_OUTNOROUTES);
-> +	IP_INC_STATS(sock_net(asoc->base.sk), IPSTATS_MIB_OUTNOROUTES);
->  
->  	/* FIXME: Returning the 'err' will effect all the associations
->  	 * associated with a socket, although only one of the paths of the
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
+Exactly!
+
+Acked-by: Hannes Frederic Sowa <hannes@stressinduktion.org>
+
 
