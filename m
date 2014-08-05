@@ -1,47 +1,77 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Thu, 28 Aug 2014 13:12:31 +0000
-Subject: Re: uapi header mismatch with kernel ?
-Message-Id: <53FF2ABF.30907@redhat.com>
+From: Eric Dumazet <eric.dumazet@gmail.com>
+Date: Tue, 05 Aug 2014 14:49:52 +0000
+Subject: [PATCH] sctp: fix possible seqlock seadlock in sctp_packet_transmit()
+Message-Id: <1407250192.3178.86.camel@edumazet-glaptop2.roam.corp.google.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CA+sbV4gaHaEskjKiAZOGUXAr5zjbCF7F70KC01y9xgOb8KcPng@mail.gmail.com>
-In-Reply-To: <CA+sbV4gaHaEskjKiAZOGUXAr5zjbCF7F70KC01y9xgOb8KcPng@mail.gmail.com>
+References: <20140805134115.GA25110@redhat.com>
+In-Reply-To: <20140805134115.GA25110@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Dave Jones <davej@redhat.com>, Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>
+Cc: netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, Hannes Frederic Sowa <hannes@stressinduktion.org>
 
-On 08/28/2014 03:05 PM, Tristan Su wrote:
-> On Thu, Aug 28, 2014 at 3:47 PM, Daniel Borkmann <dborkman@redhat.com> wrote:
->> On 08/28/2014 09:34 AM, Daniel Borkmann wrote:
->>>
->>> On 08/28/2014 08:33 AM, 苏庆 wrote:
->>>>
->>>> Hi all,
->>>>
->>>> I found that In 3.x kernel, the sctp states are defined differently
->>>> between kernel and uapi header. This makes our application fails to
->>>> work.
->>>>
->>>> Is that a mismatch or am I missing something?
->>>
->>>
->>> You are correct, and that's not good ... can you try out the below
->>> kernel patch?
->
-> Thank you for the confirmation.
-> I'm not kernel developer and have no experience on kernel patching/compiling
-> but the fix looks straightforwards to me.
->
-> It seems that the issue exists in mainline kernel and also distributions
->   like RHEL7, Ubuntu 14.04, etc. Applications that care SCTP_STATUS
->   would be impacted and it would not help even to recompile the application.
+From: Eric Dumazet <edumazet@google.com>
 
-I'm currently verifying it myself and will send out a patch ASAP. It will
-then go to stable afterwards on the next pull request from Dave to Linus.
+Dave reported following splat, caused by improper use of
+IP_INC_STATS_BH() in process context.
 
-> BTW, any idea on how long it would take for the fix to be delivered by
-> distributions like RHEL?
->
-> Should I report this to bugzilla.kernel.org or to linux distributions?
+BUG: using __this_cpu_add() in preemptible [00000000] code: trinity-c117/14551
+caller is __this_cpu_preempt_check+0x13/0x20
+CPU: 3 PID: 14551 Comm: trinity-c117 Not tainted 3.16.0+ #33
+ ffffffff9ec898f0 0000000047ea7e23 ffff88022d32f7f0 ffffffff9e7ee207
+ 0000000000000003 ffff88022d32f818 ffffffff9e397eaa ffff88023ee70b40
+ ffff88022d32f970 ffff8801c026d580 ffff88022d32f828 ffffffff9e397ee3
+Call Trace:
+ [<ffffffff9e7ee207>] dump_stack+0x4e/0x7a
+ [<ffffffff9e397eaa>] check_preemption_disabled+0xfa/0x100
+ [<ffffffff9e397ee3>] __this_cpu_preempt_check+0x13/0x20
+ [<ffffffffc0839872>] sctp_packet_transmit+0x692/0x710 [sctp]
+ [<ffffffffc082a7f2>] sctp_outq_flush+0x2a2/0xc30 [sctp]
+ [<ffffffff9e0d985c>] ? mark_held_locks+0x7c/0xb0
+ [<ffffffff9e7f8c6d>] ? _raw_spin_unlock_irqrestore+0x5d/0x80
+ [<ffffffffc082b99a>] sctp_outq_uncork+0x1a/0x20 [sctp]
+ [<ffffffffc081e112>] sctp_cmd_interpreter.isra.23+0x1142/0x13f0 [sctp]
+ [<ffffffffc081c86b>] sctp_do_sm+0xdb/0x330 [sctp]
+ [<ffffffff9e0b8f1b>] ? preempt_count_sub+0xab/0x100
+ [<ffffffffc083b350>] ? sctp_cname+0x70/0x70 [sctp]
+ [<ffffffffc08389ca>] sctp_primitive_ASSOCIATE+0x3a/0x50 [sctp]
+ [<ffffffffc083358f>] sctp_sendmsg+0x88f/0xe30 [sctp]
+ [<ffffffff9e0d673a>] ? lock_release_holdtime.part.28+0x9a/0x160
+ [<ffffffff9e0d62ce>] ? put_lock_stats.isra.27+0xe/0x30
+ [<ffffffff9e73b624>] inet_sendmsg+0x104/0x220
+ [<ffffffff9e73b525>] ? inet_sendmsg+0x5/0x220
+ [<ffffffff9e68ac4e>] sock_sendmsg+0x9e/0xe0
+ [<ffffffff9e1c0c09>] ? might_fault+0xb9/0xc0
+ [<ffffffff9e1c0bae>] ? might_fault+0x5e/0xc0
+ [<ffffffff9e68b234>] SYSC_sendto+0x124/0x1c0
+ [<ffffffff9e0136b0>] ? syscall_trace_enter+0x250/0x330
+ [<ffffffff9e68c3ce>] SyS_sendto+0xe/0x10
+ [<ffffffff9e7f9be4>] tracesys+0xdd/0xe2
 
-They will include it when it gets delivered via stable kernels.
+This is a followup of commits f1d8cba61c3c4b ("inet: fix possible
+seqlock deadlocks") and 7f88c6b23afbd315 ("ipv6: fix possible seqlock
+deadlock in ip6_finish_output2")
+
+Signed-off-by: Eric Dumazet <edumazet@google.com>
+Cc: Hannes Frederic Sowa <hannes@stressinduktion.org>
+Reported-by: Dave Jones <davej@redhat.com>
+---
+ net/sctp/output.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 1eedba5195a3..42dffd428389 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -599,7 +599,7 @@ out:
+ 	return err;
+ no_route:
+ 	kfree_skb(nskb);
+-	IP_INC_STATS_BH(sock_net(asoc->base.sk), IPSTATS_MIB_OUTNOROUTES);
++	IP_INC_STATS(sock_net(asoc->base.sk), IPSTATS_MIB_OUTNOROUTES);
+ 
+ 	/* FIXME: Returning the 'err' will effect all the associations
+ 	 * associated with a socket, although only one of the paths of the
+
+
