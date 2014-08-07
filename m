@@ -1,59 +1,42 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Fri, 22 Aug 2014 14:39:36 +0000
-Subject: Re: [PATCH net 2/2] net: sctp: fix suboptimal edge-case on non-active active/retrans path selection
-Message-Id: <53F75628.8050109@gmail.com>
+From: "Butler, Peter" <pbutler@sonusnet.com>
+Date: Thu, 07 Aug 2014 21:08:19 +0000
+Subject: MSG_EOR flag in conjunction with SOCK_STREAM
+Message-Id: <1383F7BACEF3F141A39A7AC90F80407E38504E@psmwsonsmbx01.sonusnet.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1408705410-28558-1-git-send-email-dborkman@redhat.com> <1408705410-28558-3-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1408705410-28558-3-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-On 08/22/2014 07:03 AM, Daniel Borkmann wrote:
-> In SCTP, selection of active (T.ACT) and retransmission (T.RET)
-> transports is being done whenever transport control operations
-> (UP, DOWN, PF, ...) are engaged through sctp_assoc_control_transport().
-> 
-> Commits 4c47af4d5eb2 ("net: sctp: rework multihoming retransmission
-> path selection to rfc4960") and a7288c4dd509 ("net: sctp: improve
-> sctp_select_active_and_retran_path selection") have both improved
-> it towards a more fine-grained and optimal path selection.
-> 
-.. snip excellent changelog description ...
+A question about using a SOCK_STREAM socket (one-to-one TCP-style) and checking for the MSG_EOR flag.
 
->     T2 S(ACTIVE) T.RET
-> 
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+If, on a given association (i.e. a single file descriptor, as per the one-to-one TCP-style SOCK_STREAM socket semantics), a message is received via sctp_recvmsg() with the MSG_EOR flag *not* set (such that more of the message is yet to be retrieved), does LKSCTP guarantee that the subsequent call to sctp_recvmsg() will still pertain to the same message (i.e. record)?
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+That is, could the following message sequence (as returned by sctp_recvmsg(); not necessarily in this order on the wire) ever occur in subsequent calls to sctp_recvmsg() on the aforementioned file descriptor?
 
-> ---
->  net/sctp/associola.c | 9 +++------
->  1 file changed, 3 insertions(+), 6 deletions(-)
-> 
-> diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-> index 104fae4..a88b852 100644
-> --- a/net/sctp/associola.c
-> +++ b/net/sctp/associola.c
-> @@ -1356,14 +1356,11 @@ static void sctp_select_active_and_retran_path(struct sctp_association *asoc)
->  		trans_sec = trans_pri;
->  
->  	/* If we failed to find a usable transport, just camp on the
-> -	 * primary or retran, even if they are inactive, if possible
-> -	 * pick a PF iff it's the better choice.
-> +	 * active or pick a PF iff it's the better choice.
->  	 */
->  	if (trans_pri = NULL) {
-> -		trans_pri = sctp_trans_elect_best(asoc->peer.primary_path,
-> -						  asoc->peer.retran_path);
-> -		trans_pri = sctp_trans_elect_best(trans_pri, trans_pf);
-> -		trans_sec = asoc->peer.primary_path;
-> +		trans_pri = sctp_trans_elect_best(asoc->peer.active_path, trans_pf);
-> +		trans_sec = trans_pri;
->  	}
->  
->  	/* Set the active and retran transports. */
-> 
+MSG A, part 1
+MSG A, part 2
+MSG A, part 3
+MSG B
+MSG A, part 4
+MSG A, part 5 (EOR)
+.
+.
+.
+
+Or will the kernel always guarantee the following:
+
+MSG A, part 1
+MSG A, part 2
+MSG A, part 3
+MSG A, part 4
+MSG A, part 5 (EOR)
+MSG B
+.
+.
+.
+
+If the former is indeed possible, can the 'interleaving' only occur within separate streams of the association?  Or can it also occur within a single given stream?
+
+Can unordered data ever cause this to occur?
 
