@@ -1,18 +1,17 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 22 Aug 2014 12:30:05 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Fri, 22 Aug 2014 14:39:36 +0000
 Subject: Re: [PATCH net 2/2] net: sctp: fix suboptimal edge-case on non-active active/retrans path selection
-Message-Id: <20140822123005.GC9307@hmsreliant.think-freely.org>
+Message-Id: <53F75628.8050109@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1408705410-28558-1-git-send-email-dborkman@redhat.com>
- <1408705410-28558-3-git-send-email-dborkman@redhat.com>
+References: <1408705410-28558-1-git-send-email-dborkman@redhat.com> <1408705410-28558-3-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1408705410-28558-3-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Fri, Aug 22, 2014 at 01:03:30PM +0200, Daniel Borkmann wrote:
+On 08/22/2014 07:03 AM, Daniel Borkmann wrote:
 > In SCTP, selection of active (T.ACT) and retransmission (T.RET)
 > transports is being done whenever transport control operations
 > (UP, DOWN, PF, ...) are engaged through sctp_assoc_control_transport().
@@ -22,111 +21,14 @@ On Fri, Aug 22, 2014 at 01:03:30PM +0200, Daniel Borkmann wrote:
 > sctp_select_active_and_retran_path selection") have both improved
 > it towards a more fine-grained and optimal path selection.
 > 
-> Currently, the selection algorithm for T.ACT and T.RET is as follows:
-> 
-> 1) Elect the two most recently used ACTIVE transports T1, T2 for
->    T.ACT, T.RET, where T.ACT<-T1 and T1 is most recently used
-> 2) In case primary path T.PRI not in {T1, T2} but ACTIVE, set
->    T.ACT<-T.PRI and T.RET<-T1
-> 3) If only T1 is ACTIVE from the set, set T.ACT<-T1 and T.RET<-T1
-> 4) If none is ACTIVE, set T.ACT<-best(T.PRI, T.RET, T3) where
->    T3 is the most recently used (if avail) in PF, set T.RET<-T.PRI
-> 
-> Prior to above commits, 4) was simply a camp on T.ACT<-T.PRI and
-> T.RET<-T.PRI, ignoring possible paths in PF. Camping on T.PRI is
-> still slightly suboptimal as it can lead to the following scenario:
-> 
-> Setup:
->         <A>                                <B>
->     T1: p1p1 (10.0.10.10) <=>  .'`)  <=> p1p1 (10.0.10.12)  <= T.PRI
->     T2: p1p2 (10.0.10.20) <=> (_ . ) <=> p1p2 (10.0.10.22)
-> 
->     net.sctp.rto_min = 1000
->     net.sctp.path_max_retrans = 2
->     net.sctp.pf_retrans = 0
->     net.sctp.hb_interval = 1000
-> 
-> T.PRI is permanently down, T2 is put briefly into PF state (e.g. due to
-> link flapping). Here, the first time transmission is sent over PF path
-> T2 as it's the only non-INACTIVE path, but the retransmitted data-chunks
-> are sent over the INACTIVE path T1 (T.PRI), which is not good.
-> 
-> After the patch, it's choosing better transports in both cases by
-> modifying step 4):
-> 
-> 4) If none is ACTIVE, set T.ACT_new<-best(T.ACT_old, T3) where T3 is
->    the most recently used (if avail) in PF, set T.RET<-T.ACT_new
-> 
-> This will still select a best possible path in PF if available (which
-> can also include T.PRI/T.RET), and set both T.ACT/T.RET to it.
-> 
-> In case sctp_assoc_control_transport() *just* put T.ACT_old into INACTIVE
-> as it transitioned from ACTIVE->PF->INACTIVE and stays in INACTIVE just
-> for a very short while before going back ACTIVE, it will guarantee that
-> this path will be reselected for T.ACT/T.RET since T3 (PF) is not
-> available.
-> 
-> Previously, this was not possible, as we would only select between T.PRI
-> and T.RET, and a possible T3 would be NULL due to the fact that we have
-> just transitioned T3 in sctp_assoc_control_transport() from PF->INACTIVE
-> and would select a suboptimal path when T.PRI/T.RET have worse properties.
-> 
-> In the case that T.ACT_old permanently went to INACTIVE during this
-> transition and there's no PF path available, plus T.PRI and T.RET are
-> INACTIVE as well, we would now camp on T.ACT_old, but if everything is
-> being INACTIVE there's really not much we can do except hoping for a
-> successful HB to bring one of the transports back up again and, thus
-> cause a new selection through sctp_assoc_control_transport().
-> 
-> Now both tests work fine:
-> 
-> Case 1:
-> 
->  1. T1 S(ACTIVE) T.ACT
->     T2 S(ACTIVE) T.RET
-> 
->  2. T1 S(ACTIVE) T.ACT, T.RET
->     T2 S(PF)
-> 
->  3. T1 S(ACTIVE) T.ACT, T.RET
->     T2 S(INACTIVE)
-> 
->  5. T1 S(PF) T.ACT, T.RET
->     T2 S(INACTIVE)
-> 
-> [ 5.1 T1 S(INACTIVE) T.ACT, T.RET
->       T2 S(INACTIVE) ]
-> 
->  6. T1 S(ACTIVE) T.ACT, T.RET
->     T2 S(INACTIVE)
-> 
->  7. T1 S(ACTIVE) T.ACT
->     T2 S(ACTIVE) T.RET
-> 
-> Case 2:
-> 
->  1. T1 S(ACTIVE) T.ACT
->     T2 S(ACTIVE) T.RET
-> 
->  2. T1 S(PF)
->     T2 S(ACTIVE) T.ACT, T.RET
-> 
->  3. T1 S(INACTIVE)
->     T2 S(ACTIVE) T.ACT, T.RET
-> 
->  5. T1 S(INACTIVE)
->     T2 S(PF) T.ACT, T.RET
-> 
-> [ 5.1 T1 S(INACTIVE)
->       T2 S(INACTIVE) T.ACT, T.RET ]
-> 
->  6. T1 S(INACTIVE)
->     T2 S(ACTIVE) T.ACT, T.RET
-> 
->  7. T1 S(ACTIVE) T.ACT
+.. snip excellent changelog description ...
+
 >     T2 S(ACTIVE) T.RET
 > 
 > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+
+Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+
 > ---
 >  net/sctp/associola.c | 9 +++------
 >  1 file changed, 3 insertions(+), 6 deletions(-)
@@ -153,12 +55,5 @@ On Fri, Aug 22, 2014 at 01:03:30PM +0200, Daniel Borkmann wrote:
 >  	}
 >  
 >  	/* Set the active and retran transports. */
-> -- 
-> 1.7.11.7
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
