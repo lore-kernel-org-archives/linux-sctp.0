@@ -1,59 +1,74 @@
-From: =?UTF-8?B?6IuP5bqG?= <sooqing@gmail.com>
-Date: Thu, 28 Aug 2014 06:33:33 +0000
-Subject: uapi header mismatch with kernel ?
-Message-Id: <CA+sbV4gaHaEskjKiAZOGUXAr5zjbCF7F70KC01y9xgOb8KcPng@mail.gmail.com>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Thu, 28 Aug 2014 07:34:27 +0000
+Subject: Re: uapi header mismatch with kernel ?
+Message-Id: <53FEDB83.1090903@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <CA+sbV4gaHaEskjKiAZOGUXAr5zjbCF7F70KC01y9xgOb8KcPng@mail.gmail.com>
+In-Reply-To: <CA+sbV4gaHaEskjKiAZOGUXAr5zjbCF7F70KC01y9xgOb8KcPng@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 To: linux-sctp@vger.kernel.org
 
-Hi all,
+On 08/28/2014 08:33 AM, 苏庆 wrote:
+> Hi all,
+>
+> I found that In 3.x kernel, the sctp states are defined differently
+> between kernel and uapi header. This makes our application fails to
+> work.
+>
+> Is that a mismatch or am I missing something?
 
-I found that In 3.x kernel, the sctp states are defined differently
-between kernel and uapi header. This makes our application fails to
-work.
+You are correct, and that's not good ... can you try out the below
+kernel patch?
 
-Is that a mismatch or am I missing something?
+ From 90653829a4d406898f6906849f3eca481ec01894 Mon Sep 17 00:00:00 2001
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Thu, 28 Aug 2014 09:26:36 +0200
+Subject: [PATCH] net: sctp: fix ABI through sctp_assoc_to_state helper
 
-----------------------------------------------------------------
-in include/uapi/linux/sctp.h
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+  include/net/sctp/sctp.h | 13 +++++++++++++
+  net/sctp/socket.c       |  2 +-
+  2 files changed, 14 insertions(+), 1 deletion(-)
 
-/* Association states.  */
-enum sctp_sstat_state {
-    SCTP_EMPTY                = 0,
-    SCTP_CLOSED               = 1,
-    SCTP_COOKIE_WAIT          = 2,
-    SCTP_COOKIE_ECHOED        = 3,
-    SCTP_ESTABLISHED          = 4,
-    SCTP_SHUTDOWN_PENDING     = 5,
-    SCTP_SHUTDOWN_SENT        = 6,
-    SCTP_SHUTDOWN_RECEIVED    = 7,
-    SCTP_SHUTDOWN_ACK_SENT    = 8,
-};
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index f6e7397..f50dccf 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -320,6 +320,19 @@ static inline sctp_assoc_t sctp_assoc2id(const struct sctp_association *asoc)
+  	return asoc ? asoc->assoc_id : 0;
+  }
 
-in include/net/sctp/constants.h
++static inline enum sctp_sstat_state
++sctp_assoc_to_state(const struct sctp_association *asoc)
++{
++	/* SCTP's uapi always had SCTP_EMPTY(=0) as a dummy state, but we
++	 * got rid of it in kernel space. Therefore SCTP_CLOSED et al
++	 * start at =1 in user space, but actually as =0 in kernel space.
++	 * Now that we may not break user space and SCTP_EMPTY is exposed
++	 * there, hence we need to fix it up with an ugly offset to not
++	 * break applications. :(
++	 */
++	return asoc->state + 1;
++}
++
+  /* Look up the association by its id.  */
+  struct sctp_association *sctp_id2assoc(struct sock *sk, sctp_assoc_t id);
 
-/* SCTP state defines for internal state machine */
-typedef enum {
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index eb71d49..634a2ab 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4243,7 +4243,7 @@ static int sctp_getsockopt_sctp_status(struct sock *sk, int len,
+  	transport = asoc->peer.primary_path;
 
-        SCTP_STATE_CLOSED               = 0,
-        SCTP_STATE_COOKIE_WAIT          = 1,
-        SCTP_STATE_COOKIE_ECHOED        = 2,
-        SCTP_STATE_ESTABLISHED          = 3,
-        SCTP_STATE_SHUTDOWN_PENDING     = 4,
-        SCTP_STATE_SHUTDOWN_SENT        = 5,
-        SCTP_STATE_SHUTDOWN_RECEIVED    = 6,
-        SCTP_STATE_SHUTDOWN_ACK_SENT    = 7,
+  	status.sstat_assoc_id = sctp_assoc2id(asoc);
+-	status.sstat_state = asoc->state;
++	status.sstat_state = sctp_assoc_to_state(asoc);
+  	status.sstat_rwnd =  asoc->peer.rwnd;
+  	status.sstat_unackdata = asoc->unack_data;
 
-} sctp_state_t;
-
-
-
-and it looks like the SCTP_STATE_EMPTY was removed by this
-patch:http://lists.openwall.net/netdev/2011/04/20/31
-
-Any help will be appreciated.
-
-Thanks,
-Tristan
+-- 
+1.7.11.7
