@@ -1,36 +1,24 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Thu, 28 Aug 2014 16:48:40 +0000
+From: David Miller <davem@davemloft.net>
+Date: Sat, 30 Aug 2014 03:31:57 +0000
 Subject: Re: [PATCH net] net: sctp: fix ABI mismatch through sctp_assoc_to_state helper
-Message-Id: <53FF5D68.80105@gmail.com>
+Message-Id: <20140829.203157.2160456466066148505.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1409232506-16598-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1409232506-16598-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net
+To: dborkman@redhat.com
 Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On 08/28/2014 09:28 AM, Daniel Borkmann wrote:
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Thu, 28 Aug 2014 15:28:26 +0200
+
 > Since SCTP day 1, that is, 19b55a2af145 ("Initial commit") from lksctp
 > tree, the official <netinet/sctp.h> header carries a copy of enum
 > sctp_sstat_state that looks like (compared to the current in-kernel
 > enumeration):
-> 
->   User definition:                     Kernel definition:
-> 
->   enum sctp_sstat_state {              typedef enum {
->     SCTP_EMPTY             = 0,          <removed>
->     SCTP_CLOSED            = 1,          SCTP_STATE_CLOSED            = 0,
->     SCTP_COOKIE_WAIT       = 2,          SCTP_STATE_COOKIE_WAIT       = 1,
->     SCTP_COOKIE_ECHOED     = 3,          SCTP_STATE_COOKIE_ECHOED     = 2,
->     SCTP_ESTABLISHED       = 4,          SCTP_STATE_ESTABLISHED       = 3,
->     SCTP_SHUTDOWN_PENDING  = 5,          SCTP_STATE_SHUTDOWN_PENDING  = 4,
->     SCTP_SHUTDOWN_SENT     = 6,          SCTP_STATE_SHUTDOWN_SENT     = 5,
->     SCTP_SHUTDOWN_RECEIVED = 7,          SCTP_STATE_SHUTDOWN_RECEIVED = 6,
->     SCTP_SHUTDOWN_ACK_SENT = 8,          SCTP_STATE_SHUTDOWN_ACK_SENT = 7,
->   };                                   } sctp_state_t;
-> 
+ ...
 > This header was later on also placed into the uapi, so that user space
 > programs can compile without having <netinet/sctp.h>, but the shipped
 > with <linux/sctp.h> instead.
@@ -56,7 +44,4 @@ On 08/28/2014 09:28 AM, Daniel Borkmann wrote:
 > Fixes: 0b8f9e25b0aa ("sctp: remove completely unsed EMPTY state")
 > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
 
-Looks good. Thanks.
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-
--vlad
+Oh well, applied and queued up for -stable, thanks!
