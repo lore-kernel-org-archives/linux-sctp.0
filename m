@@ -1,23 +1,35 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 30 Oct 2014 23:40:37 +0000
-Subject: Re: [net-next 1/2] sctp: add transport state in /proc/net/sctp/remaddr
-Message-Id: <20141030.194037.985317768601307127.davem@davemloft.net>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Thu, 09 Oct 2014 20:55:30 +0000
+Subject: [PATCH net 0/3] SCTP fixes
+Message-Id: <1412888133-833-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1414661356-17255-1-git-send-email-michele@acksyn.org>
-In-Reply-To: <1414661356-17255-1-git-send-email-michele@acksyn.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: michele@acksyn.org
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-From: Michele Baldessari <michele@acksyn.org>
-Date: Thu, 30 Oct 2014 10:29:15 +0100
+Here are some SCTP fixes.
 
-> It is often quite helpful to be able to know the state of a transport
-> outside of the application itself (for troubleshooting purposes or for
-> monitoring purposes). Add it under /proc/net/sctp/remaddr.
-> 
-> Signed-off-by: Michele Baldessari <michele@acksyn.org>
+[ Note, immediate workaround would be to disable ASCONF (it
+  is sysctl disabled by default). It is actually only used
+  together with chunk authentication. ]
 
-Applied.
+Thanks!
+
+Daniel Borkmann (3):
+  net: sctp: fix skb_over_panic when receiving malformed ASCONF chunks
+  net: sctp: fix panic on duplicate ASCONF chunks
+  net: sctp: fix remote memory pressure from excessive queueing
+
+ include/net/sctp/sctp.h  |  5 +++
+ include/net/sctp/sm.h    |  6 +--
+ net/sctp/associola.c     |  2 +
+ net/sctp/inqueue.c       | 33 ++++------------
+ net/sctp/sm_make_chunk.c | 99 +++++++++++++++++++++++++++---------------------
+ net/sctp/sm_statefuns.c  | 21 +++-------
+ 6 files changed, 77 insertions(+), 89 deletions(-)
+
+-- 
+1.7.11.7
+
