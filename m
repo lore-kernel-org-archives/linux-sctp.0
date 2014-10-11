@@ -1,50 +1,32 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 30 Oct 2014 10:20:38 +0000
-Subject: Re: [PATCH net-next] sctp: spelling fixes
-Message-Id: <20141030102038.GB24783@hmsreliant.think-freely.org>
+From: =?UTF-8?q?S=C3=A9bastien=20Barr=C3=A9?=  <sebastien.barre@uclouvain.be>
+Date: Sat, 11 Oct 2014 14:29:24 +0000
+Subject: [PATCH net-next] Removed unused function sctp_addr_is_valid()
+Message-Id: <1413037764-12165-1-git-send-email-sebastien.barre@uclouvain.be>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20141029160738.51e79b9a@urahara>
-In-Reply-To: <20141029160738.51e79b9a@urahara>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 To: linux-sctp@vger.kernel.org
 
-On Wed, Oct 29, 2014 at 04:07:38PM -0700, Stephen Hemminger wrote:
-> 
-> Signed-off-by: Stephen Hemminger <stephen@networkplumber.org>
-> 
-> 
-> --- a/net/sctp/bind_addr.c	2014-02-12 08:21:56.844855761 -0800
-> +++ b/net/sctp/bind_addr.c	2014-10-27 20:31:26.734947629 -0700
-> @@ -212,7 +212,7 @@ int sctp_del_bind_addr(struct sctp_bind_
->  }
->  
->  /* Create a network byte-order representation of all the addresses
-> - * formated as SCTP parameters.
-> + * formatted as SCTP parameters.
->   *
->   * The second argument is the return value for the length.
->   */
-> --- a/net/sctp/sm_make_chunk.c	2014-10-26 10:43:41.766315430 -0700
-> +++ b/net/sctp/sm_make_chunk.c	2014-10-27 20:31:04.078833733 -0700
-> @@ -3153,7 +3153,7 @@ bool sctp_verify_asconf(const struct sct
->  				return false;
->  			break;
->  		default:
-> -			/* This is unkown to us, reject! */
-> +			/* This is unknown to us, reject! */
->  			return false;
->  		}
->  	}
-> @@ -3214,7 +3214,7 @@ struct sctp_chunk *sctp_process_asconf(s
->  
->  	/* Process the TLVs contained within the ASCONF chunk. */
->  	sctp_walk_params(param, addip, addip_hdr.params) {
-> -		/* Skip preceeding address parameters. */
-> +		/* Skip preceding address parameters. */
->  		if (param.p->type = SCTP_PARAM_IPV4_ADDRESS ||
->  		    param.p->type = SCTP_PARAM_IPV6_ADDRESS)
->  			continue;
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+sctp_addr_is_valid() only appeared in its definition.
+
+Signed-off-by: Sébastien Barré <sebastien.barre@uclouvain.be>
+
+---
+ include/net/sctp/structs.h | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 4ff3f67..806e3b5 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1116,7 +1116,6 @@ int sctp_raw_to_bind_addrs(struct sctp_bind_addr *bp, __u8 *raw, int len,
+ sctp_scope_t sctp_scope(const union sctp_addr *);
+ int sctp_in_scope(struct net *net, const union sctp_addr *addr, const sctp_scope_t scope);
+ int sctp_is_any(struct sock *sk, const union sctp_addr *addr);
+-int sctp_addr_is_valid(const union sctp_addr *addr);
+ int sctp_is_ep_boundall(struct sock *sk);
+ 
+ 
+-- 
+tg: (64b1f00..) net-next/removed-unused-sctp-function (depends on: net-next/master)
