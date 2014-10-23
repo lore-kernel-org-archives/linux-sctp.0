@@ -1,71 +1,45 @@
-From: =?utf-8?B?5bCP6aG+?= <miguel@ubannet.com.br>
-Date: Tue, 23 Sep 2014 14:33:00 +0000
-Subject: =?utf-8?B?55So6L+Z5Liq5bmz5Y+w5Y+R55+t5L+h77yM6L+Z5bCx5a+55LqGICAgICAgIA==?= =?utf-8?B?ICAgICAgICAgI
-Message-Id: <20140923223307650072@ubannet.com.br>
+From: Michele Baldessari <michele@acksyn.org>
+Date: Thu, 23 Oct 2014 19:48:41 +0000
+Subject: [net 2/2] sctp: replace seq_printf with seq_puts
+Message-Id: <1414093721-14921-2-git-send-email-michele@acksyn.org>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1414093721-14921-1-git-send-email-michele@acksyn.org>
+In-Reply-To: <1414093721-14921-1-git-send-email-michele@acksyn.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
+Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, netdev@vger.kernel.org, dborkman@redhat.com, Michele Baldessari <michele@acksyn.org>
 
-DQogIOWbveWGheacgOWlveeUqOeahOefreS/oeW5s+WPsO+8jOmAiei/meS4qui/meWwseWvueS6
-huOAguato+inhOWGheWuuemDveWPr+S7peWPke+8jOWIsOi+vumrmO+8jOS4jeWxj+iUveOAguWS
-qOivouivt+WKoFFRMTkzOTg5NzI177yM5Y+v5Lul5rWL6K+V5ZOm44CCDQoNCg0KDQoNCg0KIA0K
-DQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoN
-Cg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0K
-DQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoN
-Cg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCiDku5bor7TigJzljJflpKfkuK3m
-lofns7vigJ3pgqPkuKrlh6DkuKrnmoTml7blgJnvvIzor63msJTnqIDmnb7lubPluLjvvIzkvJfk
-urrkuI3npoHlv4PkuK3nlpHmg5HvvIzov5nkurrliLDlupXmmK/kvZXnp43lh7rouqvvvJ8gICAg
-5aSP5bCP5rSb5Zi/54S25LiA56yR77yM5rKh5pyJ5aSa6K+077yM5pu55rWp5pqE5bey57uP6LW3
-5LqG57uT5Lqk5LmL5b+D77yM6YGT77ya4oCc5LiN55+l6L+Z5L2N5ZCM5a2m5bi46Lqr5rOV5peg
-5q+U6L+F6YCf5Zyw5b6u5b6u5LiL6Lmy77yM6Lqy6L+H5re35re355qE5ouz5aS077yM5ZCM5pe2
-5bem5ouz5Y+R5Yqb77yM6L+Z5LiA5ouz5Zug5Li65oSk5oCS6ICM5Yed57uT552A5peg56m35bC9
-55qE5Yqb6YeP77yM5q2j5Lit5re35re355qE5bCP6IW544CCICAgIOS4pOS4quaciOeahOW8uuWM
-luiuree7g++8jOavj+WkqeS6lOWNg+exs+eahOi3keatpe+8jOWNiuS4quWwj+aXtueahOmprOat
-pe+8jOi/mOWFieeci+edgOS7luOAgiAgICDkuI3nn6XkuI3op4nvvIzlt7Lnu4/otbDliLDljr/m
-lL/lupzlpKfpmaLnmoTpl6jlj6PkuobvvIzkuKTkurrmjKXmiYvpgZPliKvjgIIgICAg57uP6L+H
-6L+Z55+t55+t55qE5LiA5bit6K+d77yM5L2V6K+X6Z+15a+55aSP5bCP5rSb55qE54ix5oWV5Y+I
-5aKe5Yqg5Yeg5YiG44CCICAgIOWQjOaXtu+8jOWlueS5n+makOmakOe6pue6puWcsOacieS4gOS4
-neaBkOaDp++8jOS7lui/meagt+S8mOWNouWNl+WNjuaKpeWRiu+8jOWNouWNl+WNjuWvueWkj+Ww
-j+a0m+eahOatpuWKm+WAvOS4gOaXoOaJgOefpe+8jOS9huaYr+WNleWNleS7juWkj+Wwj+a0m+WK
-nuS6i+aWueW8j+S4iu+8jOS7luS5n+iDveaEn+inieWHuui/meS4quS6uuS4jeiDveWwj+eqpeOA
-giAgICDlpI/lsI/mtJvnu4/ov4fnlLXlvbHpmaLkuIDmiJjvvIzlr7noh6rlt7HnmoTmrablipvl
-gLzmnInkuoblvojlpKfnmoTkv6Hlv4PjgILku5bnu53lr7nkuI3kvJrmmK/lpb3kurrorqnnu5nk
-vaDlvZPkuYjvvJ/kvaDkuI3nn6XpgZPov5nlgYfng5/lpJrlj5fmrKLov47vvIzkvaDmibnkuobm
-naHlrZDvvIzpgqPkupvkurrov5jkuI3mhJ/osKLkvaDvvIHigJ0gICAg5L2V5Lqs55Sf6KKr5LuW
-5ZmO5b6X5ZOR5Y+j5peg6KiA44CCICAgIOS4gOaXtumXtO+8jOWFqOWOv+W5sumDqOeahOeDn+mD
-veS4iuS6huS4gOS4quaho+asoe+8jOS4jeaYr+KAnOe6ouWhlOWxseKAne+8jOWwseaYr+KAnOi9
-r+S4gOeVquWogemAvOWIqeivse+8jOeOi+Wkp+WKm+W8gOWni+iupOWQjOi/meS4quS4jemUmeea
-hOaPkOiuru+8jOS4jei/h+S7lui/mOaYr+aLheW/g+WcsOmXru+8muKAnOWwj+a0m+WViu+8jOS9
-oOWTquWEv+adpeeahOmSseWViu+8n+WwseaYr+i/m+WOn+aWme+8jOW4g+WMueWSjOajieiKse+8
-jOi/meS4quaVsOWtl+S5n+S4jeWwj+WViuOAguKAnSAgICDlpI/lsI/mtJvpqoTlgrLlnLDpgZPv
-vJrigJzlp6jlpKvvvIznjrDlnKgJDQrkuIDkuKrnlLXor53lj7fnoIHkvaDorrDkuIvvvIzopoHm
-mK/lubPml7bkvaDlsLHmiZPov5nkuKrnlLXor53vvIzlkajmnKvkvaDlsLHmiZPljavnlJ/lsYDk
-vKDovr7lrqTnmoTnlLXor53jgILigJ0gICAg5LuW5oqK5Ymv5qCh6ZW/6IuP57ub5ZSH55qE5Yqe
-5YWs5a6k55qE55S16K+d5Y+356CB55WZ57uZ5aSP6L+R5ZGo44CCICAgIOayoeWKnuazle+8jOKA
-nOWkp+WTpeWkp+KAnei/meenjeW9seinhuWJp+S4reeahOKAnOiKseagt+e+jueUt+KAneWGsuS7
-luS7rOi1sOS6hui/h+adpe+8jOWkj+Wwj+a0m+S4gOaJr+WxiOWwj+WFg+eahOiDs+iGiumBk++8
-muKAnOWFg+WEv++8jOi1tue0p+aSpO+8jOKAmOeBree7neW4iOWPlOKAmeadpeS6huOAguKAnSAg
-ICDigJznga3nu53luIjlj5TigJ3mmK/ku5bku6zmiYDlnKjnmoTor4HliLjlhazlj7jnmoTluLjl
-iqHlia/mgLvnu4/nkIbvvIzljZXlkKzov5nlkI3lrZflsLHnn6XpgZPmmK/kvZXnp43mioDnmoTn
-u5PmmbbjgILigJ0gICAg5Lit5bm055S35a2Q5L+h5pyN5LqG77ya4oCc5YWI55Sf6YO96K+05b6X
-5a+577yM5oiR55eF5LqG6L+Z5LmI5LmF77yM5Lmf5piv5Y2K5Liq5Yy755Sf5LqG44CC4oCdICAg
-IOeOi+Wkp+WKm+aVsui+uem8k++8jOmBk++8muKAnOWkj+S4u+S7u+aYr+S4reWOn+S4reWMu+Wt
-pumZouavleS4mueahOehleWjq++8jOS7luivtOS4jeWIsOeCueWtkOS4iu+8jOmCo+i/mOacieiw
-ge+8n+KAnSAgICDlpbPlhL/lq4Hnu5nokaPkuZ3mmJ/vvIzkuI3mmK/miorlpbPlhL/lvoDngavl
-nZHph4zmjqjkuYjvvJ/pgqPlsI/lrZDomb3nhLbmnInpkrHvvIzkurrplb/lvpfkuJHkuZ/lsLHn
-rpfkuobvvIzlhbPplK7mmK/ku5blkIPllp3lq5botYzmoLfmoLfmsr7vvIzov5nml6XlrZDog73p
-lb/kuYXkuYjvvJ/igJ0gICAgICDigJzpgqPorqnmn7PmnIjliLDljoLph4zkuIrnj63lkKfvvIzl
-hYjnu5nlpbnpooTmlK/kuIDlubTnmoTlt6XotYTnqoHmv4DljJbvvIzlhrLnnYDov5nnvqTlubLp
-g6jvvIzor7TvvJrigJzkvaDku6zosIHkuZ/liKvliqjvvIHigJ0gICAg6L+Z5YCS5piv5o+Q6YaS
-5LqG5Yeg5Liq5Zu06KeC55qE5bmy6YOo77yM6KeJ5b6X6Ieq5bex5Lq66KKr6Lip5Zyo6ISa5LiL
-77yM5LiN5Yqo5LiA5LiL5Lmf5LiN5ZCI6YCC44CCICAgIOS7luS7rOaAneW/lueJh+WIu++8jOiu
-pOS4uumdouWvueatpuWKm+WAvOi2heW8uueahOS6jOeLl++8jOWKqOaJi+aYvuaAjuS5iOiDveS/
-neivgeavj+S4gOS4quihjOWKqOmDveeZvuaImOeZvuiDnOWRou+8n+S4jeS5heS5i+WJje+8jOeO
-i+S/iuS8n+WcqOmAvOWIsOatu+inkuS5i+S4i+WBmuWHuueahOi/h+a/gOWPjeW6lOWwseWHuuS7
-luaEj+aWmeS5i+WkluOAgiAgICAgIOS4pOS6uuWcqOS4pOS4quadkeW6hOS5i+mXtOeahOi/mead
-oeS5oemXtOWwj+mBk+S4iu+8jOi1sOS6huS4ieS4quadpeWbnu+8jOaJjeaBi+aBi+S4jeiIjeWc
-sOi1sOWbngkNCg=
+Fixes checkpatch warning:
+"WARNING: Prefer seq_puts to seq_printf"
 
+Signed-off-by: Michele Baldessari <michele@acksyn.org>
+---
+ net/sctp/proc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+index bfb242af06ab..0697eda5aed8 100644
+--- a/net/sctp/proc.c
++++ b/net/sctp/proc.c
+@@ -490,14 +490,14 @@ static int sctp_remaddr_seq_show(struct seq_file *seq, void *v)
+ 			 * Note: We don't have a way to tally this at the moment
+ 			 * so lets just leave it as zero for the moment
+ 			 */
+-			seq_printf(seq, "0 ");
++			seq_puts(seq, "0 ");
+ 
+ 			/*
+ 			 * remote address start time (START).  This is also not
+ 			 * currently implemented, but we can record it with a
+ 			 * jiffies marker in a subsequent patch
+ 			 */
+-			seq_printf(seq, "0 ");
++			seq_puts(seq, "0 ");
+ 
+ 			/*
+ 			 * The current state of this destination. I.e.
+-- 
+2.1.0
 
