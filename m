@@ -1,59 +1,51 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Wed, 15 Oct 2014 23:13:18 +0000
-Subject: Re: [PATCH net 2/3] net: sctp: fix panic on duplicate ASCONF chunks
-Message-Id: <543EFF8E.7050608@redhat.com>
+From: Michele Baldessari <michele@acksyn.org>
+Date: Thu, 23 Oct 2014 19:48:40 +0000
+Subject: [net 1/2] sctp: add transport state in /proc/net/sctp/remaddr
+Message-Id: <1414093721-14921-1-git-send-email-michele@acksyn.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1412888133-833-1-git-send-email-dborkman@redhat.com> <1412888133-833-3-git-send-email-dborkman@redhat.com> <20141010153954.GE19499@hmsreliant.think-freely.org> <54385777.7090907@redhat.com> <20141012014233.GA16360@localhost.localdomain> <543B0DD7.7000900@redhat.com> <20141015025833.GA6493@localhost.localdomain>
-In-Reply-To: <20141015025833.GA6493@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>
+To: linux-sctp@vger.kernel.org
+Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, netdev@vger.kernel.org, dborkman@redhat.com, Michele Baldessari <michele@acksyn.org>
 
-On 10/15/2014 04:58 AM, Neil Horman wrote:
-> On Mon, Oct 13, 2014 at 01:25:11AM +0200, Daniel Borkmann wrote:
->> On 10/12/2014 03:42 AM, Neil Horman wrote:
->>> On Sat, Oct 11, 2014 at 12:02:31AM +0200, Daniel Borkmann wrote:
->>>> On 10/10/2014 05:39 PM, Neil Horman wrote:
->>>> ...
->>>>> Is it worth adding a WARN_ON, to indicate that two ASCONF chunks have been
->>>>> received with duplicate serials?
->>>>
->>>> Don't think so, as this would be triggerable from outside.
->>>>
->>> WARN_ON_ONCE then, per serial number?
->>
->> Sorry, but no. If someone seriously runs that in production and it
->> triggers a WARN() from outside, admins will start sending us bug
->> reports that apparently something with the kernel code is wrong.
->>
->> WARN() should only be used if we have some *internal* unexpected bug,
->> but can still fail gracefully. This would neither be an actual code bug
->> nor would it be an internally triggered one, plus we add unnecessary
->> complexity to the code. Similarly, for those reasons we don't WARN()
->> and throw a stack trace when we receive, say, an skb of invalid length
->> elsewhere.
->>
->> I'd also like to avoid any additional pr_debug().
->>
->> I don't think people enable them in production, and if they really do,
->> it's too late anyway as we already have received this chunk. If anything,
->> I'd rather like to see debugging code further removed as we have already
->> different facilities in the kernel for runtime debugging that are much
->> more powerful.
- >
-> What do you suggest then?  It seems like this is a protocol error that an
-> administrator will want to be made aware of.  I'm open to other options, but
-> just saying "no" isn't sufficient for me.
+It is often quite helpful to be able to know the state of a transport
+outside of the application itself (for troubleshooting purposes or for
+monitoring purposes). Add it under /proc/net/sctp/remaddr.
 
-So what do you want an admin to do with this information?
+Signed-off-by: Michele Baldessari <michele@acksyn.org>
+---
+ net/sctp/proc.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
-Currently, we don't throw WARN() stack traces or whatever on other 'malformed'
-inputs, we either discard them silently in SCTP or send an ABORT, for example.
+diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+index 34229ee7f379..bfb242af06ab 100644
+--- a/net/sctp/proc.c
++++ b/net/sctp/proc.c
+@@ -417,7 +417,7 @@ static void *sctp_remaddr_seq_start(struct seq_file *seq, loff_t *pos)
+ 
+ 	if (*pos = 0)
+ 		seq_printf(seq, "ADDR ASSOC_ID HB_ACT RTO MAX_PATH_RTX "
+-				"REM_ADDR_RTX  START\n");
++				"REM_ADDR_RTX START STATE\n");
+ 
+ 	return (void *)pos;
+ }
+@@ -497,7 +497,13 @@ static int sctp_remaddr_seq_show(struct seq_file *seq, void *v)
+ 			 * currently implemented, but we can record it with a
+ 			 * jiffies marker in a subsequent patch
+ 			 */
+-			seq_printf(seq, "0");
++			seq_printf(seq, "0 ");
++
++			/*
++			 * The current state of this destination. I.e.
++			 * SCTP_ACTIVE, SCTP_INACTIVE, ...
++			 */
++			seq_printf(seq, "%d", tsp->state);
+ 
+ 			seq_printf(seq, "\n");
+ 		}
+-- 
+2.1.0
 
-Do you suggest the kernel should now start throwing a WARN() on every possible
-skb that we discard in order to inform the admin?
-
-Given that we can handle this gracefully by basically ignoring the 2nd identical
-ASCONF chunk in a packet and send out a single reply, that's just handled fine.
