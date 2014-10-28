@@ -1,7 +1,7 @@
-From: Michele Baldessari <michele@acksyn.org>
-Date: Tue, 28 Oct 2014 07:20:40 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 28 Oct 2014 10:27:41 +0000
 Subject: Re: [net 1/2] sctp: add transport state in /proc/net/sctp/remaddr
-Message-Id: <20141028072040.GA6825@marquez.int.rhx>
+Message-Id: <20141028102741.GA18365@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1414093721-14921-1-git-send-email-michele@acksyn.org>
  <20141027.185545.551457974536550723.davem@davemloft.net>
@@ -10,9 +10,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: David Miller <davem@davemloft.net>
-Cc: linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, netdev@vger.kernel.org, dborkman@redhat.com
-
-Hi David,
+Cc: michele@acksyn.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, netdev@vger.kernel.org, dborkman@redhat.com
 
 On Mon, Oct 27, 2014 at 06:55:45PM -0400, David Miller wrote:
 > From: Michele Baldessari <michele@acksyn.org>
@@ -26,20 +24,16 @@ On Mon, Oct 27, 2014 at 06:55:45PM -0400, David Miller wrote:
 > 
 > You can't change the layout of procfs files, applications parse
 > these files and any modification can potentially break such tools.
-
-Thanks for the review. I assumed that extending a procfile by adding
-a column at the end is ok and that tools must cope with that anyway.
-(i.e. like it's been done in f19c29e3e391a66a273e9afebaf01917245148cd)
-
+> 
 > Secondly, even if this change were acceptable, targetting this
 > change at anything other than the net-next tree is not appropriate
 > because it is a new feature.
+> 
 
-Ok. Unless you are against adding a column, I'll resubmit to net-next
-later this week.
+Agree on the net-next submission, though there is precident for extending this
+procfile, as we've done it a few times in the past to this, and other files in
+the sctp area (see commits f406c8b9693f2f71ef2caeb0b68521a7d22d00f0 and
+58fbbed4fbc0094fc808a568fe99a915f85402ee)
 
-Thanks,
-Michele
--- 
-Michele Baldessari            <michele@acksyn.org>
-C2A5 9DA3 9961 4FFB E01B  D0BC DDD4 DCCB 7515 5C6D
+Neil
+
