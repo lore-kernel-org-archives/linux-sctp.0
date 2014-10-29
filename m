@@ -1,23 +1,45 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 30 Oct 2014 23:40:43 +0000
-Subject: Re: [net-next 2/2] sctp: replace seq_printf with seq_puts
-Message-Id: <20141030.194043.767828738171481168.davem@davemloft.net>
+From: Stephen Hemminger <stephen@networkplumber.org>
+Date: Wed, 29 Oct 2014 23:07:38 +0000
+Subject: [PATCH net-next] sctp: spelling fixes
+Message-Id: <20141029160738.51e79b9a@urahara>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1414661356-17255-1-git-send-email-michele@acksyn.org>
-	<1414661356-17255-2-git-send-email-michele@acksyn.org>
-In-Reply-To: <1414661356-17255-2-git-send-email-michele@acksyn.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: michele@acksyn.org
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-From: Michele Baldessari <michele@acksyn.org>
-Date: Thu, 30 Oct 2014 10:29:16 +0100
 
-> Fixes checkpatch warning:
-> "WARNING: Prefer seq_puts to seq_printf"
-> 
-> Signed-off-by: Michele Baldessari <michele@acksyn.org>
+Signed-off-by: Stephen Hemminger <stephen@networkplumber.org>
 
-Applied.
+
+--- a/net/sctp/bind_addr.c	2014-02-12 08:21:56.844855761 -0800
++++ b/net/sctp/bind_addr.c	2014-10-27 20:31:26.734947629 -0700
+@@ -212,7 +212,7 @@ int sctp_del_bind_addr(struct sctp_bind_
+ }
+ 
+ /* Create a network byte-order representation of all the addresses
+- * formated as SCTP parameters.
++ * formatted as SCTP parameters.
+  *
+  * The second argument is the return value for the length.
+  */
+--- a/net/sctp/sm_make_chunk.c	2014-10-26 10:43:41.766315430 -0700
++++ b/net/sctp/sm_make_chunk.c	2014-10-27 20:31:04.078833733 -0700
+@@ -3153,7 +3153,7 @@ bool sctp_verify_asconf(const struct sct
+ 				return false;
+ 			break;
+ 		default:
+-			/* This is unkown to us, reject! */
++			/* This is unknown to us, reject! */
+ 			return false;
+ 		}
+ 	}
+@@ -3214,7 +3214,7 @@ struct sctp_chunk *sctp_process_asconf(s
+ 
+ 	/* Process the TLVs contained within the ASCONF chunk. */
+ 	sctp_walk_params(param, addip, addip_hdr.params) {
+-		/* Skip preceeding address parameters. */
++		/* Skip preceding address parameters. */
+ 		if (param.p->type = SCTP_PARAM_IPV4_ADDRESS ||
+ 		    param.p->type = SCTP_PARAM_IPV6_ADDRESS)
+ 			continue;
