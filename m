@@ -1,158 +1,82 @@
 From: Daniel Borkmann <dborkman@redhat.com>
-Date: Thu, 09 Oct 2014 20:55:33 +0000
-Subject: [PATCH net 3/3] net: sctp: fix remote memory pressure from excessive queueing
-Message-Id: <1412888133-833-4-git-send-email-dborkman@redhat.com>
+Date: Mon, 10 Nov 2014 16:54:26 +0000
+Subject: [PATCH net] net: sctp: fix NULL pointer dereference in af->from_addr_param on malformed packet
+Message-Id: <1415638466-20176-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1412888133-833-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1412888133-833-1-git-send-email-dborkman@redhat.com>
+References: <1370426303-2069-1-git-send-email-dborkman@redhat.com>
+In-Reply-To: <1370426303-2069-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: davem@davemloft.net
 Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>
 
-This scenario is not limited to ASCONF, just taken as one
-example triggering the issue. When receiving ASCONF probes
-in the form of ...
+An SCTP server doing ASCONF will panic on malformed INIT ping-of-death
+in the form of:
 
-  -------------- INIT[ASCONF; ASCONF_ACK] ------------->
-  <----------- INIT-ACK[ASCONF; ASCONF_ACK] ------------
-  -------------------- COOKIE-ECHO -------------------->
-  <-------------------- COOKIE-ACK ---------------------
-  ---- ASCONF_a; [ASCONF_b; ...; ASCONF_n;] JUNK ------>
-  [...]
-  ---- ASCONF_m; [ASCONF_o; ...; ASCONF_z;] JUNK ------>
+  ------------ INIT[PARAM: SET_PRIMARY_IP] ------------>
 
-... where ASCONF_a, ASCONF_b, ..., ASCONF_z are good-formed
-ASCONFs and have increasing serial numbers, we process such
-ASCONF chunk(s) marked with !end_of_packet and !singleton,
-since we have not yet reached the SCTP packet end. SCTP does
-only do verification on a chunk by chunk basis, as an SCTP
-packet is nothing more than just a container of a stream of
-chunks which it eats up one by one.
+While the INIT chunk parameter verification dissects through many things
+in order to detect malformed input, it misses to actually check parameters
+inside of parameters. E.g. RFC5061, section 4.2.4 proposes a 'set primary
+IP address' parameter in ASCONF, which has as a subparameter an address
+parameter.
 
-We could run into the case that we receive a packet with a
-malformed tail, above marked as trailing JUNK. All previous
-chunks are here goodformed, so the stack will eat up all
-previous chunks up to this point. In case JUNK does not fit
-into a chunk header and there are no more other chunks in
-the input queue, or in case JUNK contains a garbage chunk
-header, but the encoded chunk length would exceed the skb
-tail, or we came here from an entirely different scenario
-and the chunk has pdiscard=1 mark (without having had a flush
-point), it will happen, that we will excessively queue up
-the association's output queue (a correct final chunk may
-then turn it into a response flood when flushing the
-queue ;)): I ran a simple script with incremental ASCONF
-serial numbers and could see the server side consuming
-excessive amount of RAM [before/after: up to 2GB and more].
+So an attacker may send a parameter type other than SCTP_PARAM_IPV4_ADDRESS
+or SCTP_PARAM_IPV6_ADDRESS, param_type2af() will subsequently return 0
+and thus sctp_get_af_specific() returns NULL, too, which we then happily
+dereference unconditionally through af->from_addr_param().
 
-The issue at heart is that the chunk train basically ends
-with !end_of_packet and !singleton markers and since commit
-2e3216cd54b1 ("sctp: Follow security requirement of responding
-with 1 packet") therefore preventing an output queue flush
-point in sctp_do_sm() -> sctp_cmd_interpreter() on the input
-chunk (chunk = event_arg) even though local_cork is set,
-but its precedence has changed since then. In the normal
-case, the last chunk with end_of_packet=1 would trigger the
-queue flush to accommodate possible outgoing bundling.
+The trace for the log:
 
-In the input queue, sctp_inq_pop() seems to do the right thing
-in terms of discarding invalid chunks. So, above JUNK will
-not enter the state machine and instead be released and exit
-the sctp_assoc_bh_rcv() chunk processing loop. It's simply
-the flush point being missing at loop exit. Adding a try-flush
-approach on the output queue might not work as the underlying
-infrastructure might be long gone at this point due to the
-side-effect interpreter run.
+BUG: unable to handle kernel NULL pointer dereference at 0000000000000078
+IP: [<ffffffffa01e9c62>] sctp_process_init+0x492/0x990 [sctp]
+PGD 0
+Oops: 0000 [#1] SMP
+[...]
+Pid: 0, comm: swapper Not tainted 2.6.32-504.el6.x86_64 #1 Bochs Bochs
+RIP: 0010:[<ffffffffa01e9c62>]  [<ffffffffa01e9c62>] sctp_process_init+0x492/0x990 [sctp]
+[...]
+Call Trace:
+ <IRQ>
+ [<ffffffffa01f2add>] ? sctp_bind_addr_copy+0x5d/0xe0 [sctp]
+ [<ffffffffa01e1fcb>] sctp_sf_do_5_1B_init+0x21b/0x340 [sctp]
+ [<ffffffffa01e3751>] sctp_do_sm+0x71/0x1210 [sctp]
+ [<ffffffffa01e5c09>] ? sctp_endpoint_lookup_assoc+0xc9/0xf0 [sctp]
+ [<ffffffffa01e61f6>] sctp_endpoint_bh_rcv+0x116/0x230 [sctp]
+ [<ffffffffa01ee986>] sctp_inq_push+0x56/0x80 [sctp]
+ [<ffffffffa01fcc42>] sctp_rcv+0x982/0xa10 [sctp]
+ [<ffffffffa01d5123>] ? ipt_local_in_hook+0x23/0x28 [iptable_filter]
+ [<ffffffff8148bdc9>] ? nf_iterate+0x69/0xb0
+ [<ffffffff81496d10>] ? ip_local_deliver_finish+0x0/0x2d0
+ [<ffffffff8148bf86>] ? nf_hook_slow+0x76/0x120
+ [<ffffffff81496d10>] ? ip_local_deliver_finish+0x0/0x2d0
+[...]
 
-One possibility, albeit a bit of a kludge, would be to defer
-invalid chunk freeing into the state machine in order to
-possibly trigger packet discards and thus indirectly a queue
-flush on error. It would surely be better to discard chunks
-as in the current, perhaps better controlled environment, but
-going back and forth, it's simply architecturally not possible.
-I tried various trailing JUNK attack cases and it seems to
-look good now.
+A minimal way to address this is to check for NULL as we do on all
+other such occasions where we know sctp_get_af_specific() could
+possibly return with NULL.
 
-Joint work with Vlad Yasevich.
-
-Fixes: 2e3216cd54b1 ("sctp: Follow security requirement of responding with 1 packet")
+Fixes: d6de3097592b ("[SCTP]: Add the handling of "Set Primary IP Address" parameter to INIT")
 Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-Signed-off-by: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Vlad Yasevich <vyasevich@gmail.com>
 ---
- net/sctp/inqueue.c      | 33 +++++++--------------------------
- net/sctp/sm_statefuns.c |  3 +++
- 2 files changed, 10 insertions(+), 26 deletions(-)
+ net/sctp/sm_make_chunk.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/net/sctp/inqueue.c b/net/sctp/inqueue.c
-index 4de12af..7e8a16c 100644
---- a/net/sctp/inqueue.c
-+++ b/net/sctp/inqueue.c
-@@ -140,18 +140,9 @@ struct sctp_chunk *sctp_inq_pop(struct sctp_inq *queue)
- 		} else {
- 			/* Nothing to do. Next chunk in the packet, please. */
- 			ch = (sctp_chunkhdr_t *) chunk->chunk_end;
--
- 			/* Force chunk->skb->data to chunk->chunk_end.  */
--			skb_pull(chunk->skb,
--				 chunk->chunk_end - chunk->skb->data);
--
--			/* Verify that we have at least chunk headers
--			 * worth of buffer left.
--			 */
--			if (skb_headlen(chunk->skb) < sizeof(sctp_chunkhdr_t)) {
--				sctp_chunk_free(chunk);
--				chunk = queue->in_progress = NULL;
--			}
-+			skb_pull(chunk->skb, chunk->chunk_end - chunk->skb->data);
-+			/* We are guaranteed to pull a SCTP header. */
- 		}
- 	}
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index ab734be..9f32741 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2609,6 +2609,9 @@ do_addr_param:
+ 		addr_param = param.v + sizeof(sctp_addip_param_t);
  
-@@ -187,24 +178,14 @@ struct sctp_chunk *sctp_inq_pop(struct sctp_inq *queue)
- 	skb_pull(chunk->skb, sizeof(sctp_chunkhdr_t));
- 	chunk->subh.v = NULL; /* Subheader is no longer valid.  */
- 
--	if (chunk->chunk_end < skb_tail_pointer(chunk->skb)) {
-+	if (chunk->chunk_end + sizeof(sctp_chunkhdr_t) <
-+	    skb_tail_pointer(chunk->skb)) {
- 		/* This is not a singleton */
- 		chunk->singleton = 0;
- 	} else if (chunk->chunk_end > skb_tail_pointer(chunk->skb)) {
--		/* RFC 2960, Section 6.10  Bundling
--		 *
--		 * Partial chunks MUST NOT be placed in an SCTP packet.
--		 * If the receiver detects a partial chunk, it MUST drop
--		 * the chunk.
--		 *
--		 * Since the end of the chunk is past the end of our buffer
--		 * (which contains the whole packet, we can freely discard
--		 * the whole packet.
--		 */
--		sctp_chunk_free(chunk);
--		chunk = queue->in_progress = NULL;
--
--		return NULL;
-+		/* Discard inside state machine. */
-+		chunk->pdiscard = 1;
-+		chunk->chunk_end = skb_tail_pointer(chunk->skb);
- 	} else {
- 		/* We are at the end of the packet, so mark the chunk
- 		 * in case we need to send a SACK.
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index bdea3df..3ee27b7 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -170,6 +170,9 @@ sctp_chunk_length_valid(struct sctp_chunk *chunk,
- {
- 	__u16 chunk_length = ntohs(chunk->chunk_hdr->length);
- 
-+	/* Previously already marked? */
-+	if (unlikely(chunk->pdiscard))
-+		return 0;
- 	if (unlikely(chunk_length < required_length))
- 		return 0;
+ 		af = sctp_get_af_specific(param_type2af(param.p->type));
++		if (af = NULL)
++			break;
++
+ 		af->from_addr_param(&addr, addr_param,
+ 				    htons(asoc->peer.port), 0);
  
 -- 
 1.7.11.7
