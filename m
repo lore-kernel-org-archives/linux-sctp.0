@@ -1,43 +1,61 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 11 Nov 2014 20:20:09 +0000
-Subject: Re: [PATCH net] net: sctp: fix NULL pointer dereference in af->from_addr_param on malformed packet
-Message-Id: <20141111.152009.393006371622381121.davem@davemloft.net>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Mon, 10 Nov 2014 17:00:09 +0000
+Subject: [PATCH net] net: sctp: fix memory leak in auth key management
+Message-Id: <1415638809-20288-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1415638466-20176-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1415638466-20176-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dborkman@redhat.com
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, vyasevich@gmail.com
+To: davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>
 
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Mon, 10 Nov 2014 17:54:26 +0100
+A very minimal and simple user space application allocating an SCTP
+socket, setting SCTP_AUTH_KEY setsockopt(2) on it and then closing
+the socket again will leak the memory containing the authentication
+key from user space:
 
-> An SCTP server doing ASCONF will panic on malformed INIT ping-of-death
-> in the form of:
-> 
->   ------------ INIT[PARAM: SET_PRIMARY_IP] ------------>
-> 
-> While the INIT chunk parameter verification dissects through many things
-> in order to detect malformed input, it misses to actually check parameters
-> inside of parameters. E.g. RFC5061, section 4.2.4 proposes a 'set primary
-> IP address' parameter in ASCONF, which has as a subparameter an address
-> parameter.
-> 
-> So an attacker may send a parameter type other than SCTP_PARAM_IPV4_ADDRESS
-> or SCTP_PARAM_IPV6_ADDRESS, param_type2af() will subsequently return 0
-> and thus sctp_get_af_specific() returns NULL, too, which we then happily
-> dereference unconditionally through af->from_addr_param().
-> 
-> The trace for the log:
- ...
-> A minimal way to address this is to check for NULL as we do on all
-> other such occasions where we know sctp_get_af_specific() could
-> possibly return with NULL.
-> 
-> Fixes: d6de3097592b ("[SCTP]: Add the handling of "Set Primary IP Address" parameter to INIT")
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-> Cc: Vlad Yasevich <vyasevich@gmail.com>
+unreferenced object 0xffff8800837047c0 (size 16):
+  comm "a.out", pid 2789, jiffies 4296954322 (age 192.258s)
+  hex dump (first 16 bytes):
+    01 00 00 00 04 00 00 00 00 00 00 00 00 00 00 00  ................
+  backtrace:
+    [<ffffffff816d7e8e>] kmemleak_alloc+0x4e/0xb0
+    [<ffffffff811c88d8>] __kmalloc+0xe8/0x270
+    [<ffffffffa0870c23>] sctp_auth_create_key+0x23/0x50 [sctp]
+    [<ffffffffa08718b1>] sctp_auth_set_key+0xa1/0x140 [sctp]
+    [<ffffffffa086b383>] sctp_setsockopt+0xd03/0x1180 [sctp]
+    [<ffffffff815bfd94>] sock_common_setsockopt+0x14/0x20
+    [<ffffffff815beb61>] SyS_setsockopt+0x71/0xd0
+    [<ffffffff816e58a9>] system_call_fastpath+0x12/0x17
+    [<ffffffffffffffff>] 0xffffffffffffffff
 
-Applied and queued up for -stable.
+This is bad because of two things, we can bring down a machine from
+user space when auth_enable=1, but also we would leave security sensitive
+keying material in memory without clearing it after use. The issue is
+that sctp_auth_create_key() already sets the refcount to 1, but after
+allocation sctp_auth_set_key() does an additional refcount on it, and
+thus leaving it around when we free the socket.
+
+Fixes: 65b07e5d0d0 ("[SCTP]: API updates to suport SCTP-AUTH extensions.")
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+---
+ net/sctp/auth.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/net/sctp/auth.c b/net/sctp/auth.c
+index 0e85291..fb7976a 100644
+--- a/net/sctp/auth.c
++++ b/net/sctp/auth.c
+@@ -862,8 +862,6 @@ int sctp_auth_set_key(struct sctp_endpoint *ep,
+ 		list_add(&cur_key->key_list, sh_keys);
+ 
+ 	cur_key->key = key;
+-	sctp_auth_key_hold(key);
+-
+ 	return 0;
+ nomem:
+ 	if (!replace)
+-- 
+1.7.11.7
+
