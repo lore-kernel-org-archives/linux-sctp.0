@@ -1,33 +1,70 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 11 Nov 2014 20:20:24 +0000
-Subject: Re: [PATCH net] net: sctp: fix memory leak in auth key management
-Message-Id: <20141111.152024.1200108289213327921.davem@davemloft.net>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Wed, 19 Nov 2014 23:21:06 +0000
+Subject: [PATCH net-next] net: sctp: keep owned chunk in destructor_arg instead of skb->cb
+Message-Id: <1416439266-11396-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1415638809-20288-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1415638809-20288-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dborkman@redhat.com
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, vyasevich@gmail.com
+To: davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Mon, 10 Nov 2014 18:00:09 +0100
+It's just silly to hold the skb destructor argument around inside
+skb->cb[] as we currently do in SCTP.
 
-> A very minimal and simple user space application allocating an SCTP
-> socket, setting SCTP_AUTH_KEY setsockopt(2) on it and then closing
-> the socket again will leak the memory containing the authentication
-> key from user space:
- ...
-> This is bad because of two things, we can bring down a machine from
-> user space when auth_enable=1, but also we would leave security sensitive
-> keying material in memory without clearing it after use. The issue is
-> that sctp_auth_create_key() already sets the refcount to 1, but after
-> allocation sctp_auth_set_key() does an additional refcount on it, and
-> thus leaving it around when we free the socket.
-> 
-> Fixes: 65b07e5d0d0 ("[SCTP]: API updates to suport SCTP-AUTH extensions.")
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-> Cc: Vlad Yasevich <vyasevich@gmail.com>
+Though this has been around forever, I'm inclined to say that prior
+to 4c3a5bdae293 ("sctp: Don't charge for data in sndbuf again when
+transmitting packet") this may well have caused issues as doing so
+violates the cb[] usage accross layers; before 4c3a5bdae293-times,
+we have charged twice for data, and when destructor kicks in, cb[]
+could have been overwritten already by someone else.
 
-Also applied and queued up for -stable, thanks again.
+Nowadays, we're sort of cheating on data accounting in the sense
+that due to commit 4c3a5bdae293, we orphan the skb already in the
+SCTP output path, and use a different destructor only to make sure
+the sk doesn't vanish on skb destruction time. Thus, cb[] is still
+valid here as we operate within the SCTP layer. It's actually a big
+candidate for future rework, imho.
+
+Anyhow, lets keep the chunk in destructor_arg, as this is the actual
+purpose for it so that in future, we don't run into trouble.
+
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/socket.c | 12 ++++--------
+ 1 file changed, 4 insertions(+), 8 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 2120292..85e0b65 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -162,7 +162,7 @@ static inline void sctp_set_owner_w(struct sctp_chunk *chunk)
+ 
+ 	chunk->skb->destructor = sctp_wfree;
+ 	/* Save the chunk pointer in skb for sctp_wfree to use later.  */
+-	*((struct sctp_chunk **)(chunk->skb->cb)) = chunk;
++	skb_shinfo(chunk->skb)->destructor_arg = chunk;
+ 
+ 	asoc->sndbuf_used += SCTP_DATA_SNDSIZE(chunk) +
+ 				sizeof(struct sk_buff) +
+@@ -6870,14 +6870,10 @@ static void sctp_wake_up_waiters(struct sock *sk,
+  */
+ static void sctp_wfree(struct sk_buff *skb)
+ {
+-	struct sctp_association *asoc;
+-	struct sctp_chunk *chunk;
+-	struct sock *sk;
++	struct sctp_chunk *chunk = skb_shinfo(skb)->destructor_arg;
++	struct sctp_association *asoc = chunk->asoc;
++	struct sock *sk = asoc->base.sk;
+ 
+-	/* Get the saved chunk pointer.  */
+-	chunk = *((struct sctp_chunk **)(skb->cb));
+-	asoc = chunk->asoc;
+-	sk = asoc->base.sk;
+ 	asoc->sndbuf_used -= SCTP_DATA_SNDSIZE(chunk) +
+ 				sizeof(struct sk_buff) +
+ 				sizeof(struct sctp_chunk);
+-- 
+1.7.11.7
+
