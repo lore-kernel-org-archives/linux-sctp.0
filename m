@@ -1,17 +1,17 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Thu, 20 Nov 2014 03:02:00 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Thu, 20 Nov 2014 14:07:51 +0000
 Subject: Re: [PATCH net-next v2] net: sctp: keep owned chunk in destructor_arg instead of skb->cb
-Message-Id: <546D59A8.4090704@gmail.com>
+Message-Id: <20141120140751.GC2609@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1416444888-12778-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1416444888-12778-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: Daniel Borkmann <dborkman@redhat.com>
+Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On 11/19/2014 07:54 PM, Daniel Borkmann wrote:
+On Thu, Nov 20, 2014 at 01:54:48AM +0100, Daniel Borkmann wrote:
 > It's just silly to hold the skb destructor argument around inside
 > skb->cb[] as we currently do in SCTP.
 > 
@@ -32,13 +32,6 @@ On 11/19/2014 07:54 PM, Daniel Borkmann wrote:
 > purpose for it.
 > 
 > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-
-Good clean-up.
-
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-
--vlad
-
 > ---
 >  v1->v2:
 >   - Only reworded commit message to make it more clear
@@ -77,5 +70,13 @@ Acked-by: Vlad Yasevich <vyasevich@gmail.com>
 >  	asoc->sndbuf_used -= SCTP_DATA_SNDSIZE(chunk) +
 >  				sizeof(struct sk_buff) +
 >  				sizeof(struct sctp_chunk);
+> -- 
+> 1.7.11.7
 > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
