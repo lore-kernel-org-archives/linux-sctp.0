@@ -1,34 +1,70 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 09 Dec 2014 18:24:55 +0000
-Subject: Re: [PATCH net] net: sctp: use MAX_HEADER for headroom reserve in output path
-Message-Id: <20141209.132455.111095755280708974.davem@davemloft.net>
+From: Richard Haines <richard_c_haines@btinternet.com>
+Date: Tue, 02 Dec 2014 14:15:47 +0000
+Subject: [RFC-PATCH 2/3] net: Extend security get/setsockopt entries
+Message-Id: <1417529747-2643-1-git-send-email-richard_c_haines@btinternet.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1417605238-9936-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1417605238-9936-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: dborkman@redhat.com
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, robert@swiecki.net
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: selinux@tycho.nsa.gov, linux-sctp@vger.kernel.org
 
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Wed,  3 Dec 2014 12:13:58 +0100
+Extend security_socket_getsockopt and security_socket_setsockopt to support
+optname and optval parameters.
 
-> To accomodate for enough headroom for tunnels, use MAX_HEADER instead
-> of LL_MAX_HEADER. Robert reported that he has hit after roughly 40hrs
-> of trinity an skb_under_panic() via SCTP output path (see reference).
-> I couldn't reproduce it from here, but not using MAX_HEADER as elsewhere
-> in other protocols might be one possible cause for this.
->=20
-> In any case, it looks like accounting on chunks themself seems to look
-> good as the skb already passed the SCTP output path and did not hit
-> any skb_over_panic(). Given tunneling was enabled in his .config, the
-> headroom would have been expanded by MAX_HEADER in this case.
->=20
-> Reported-by: Robert =A6wi=EAcki <robert@swiecki.net>
-> Reference: https://lkml.org/lkml/2014/12/1/507
-> Fixes: 594ccc14dfe4d ("[SCTP] Replace incorrect use of dev_alloc_skb with=
- alloc_skb in sctp_packet_transmit().")
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Signed-off-by: Richard Haines <richard_c_haines@btinternet.com>
+---
+ net/compat.c | 6 ++++--
+ net/socket.c | 6 ++++--
+ 2 files changed, 8 insertions(+), 4 deletions(-)
 
-Applied and queued up for -stable, thanks.
+diff --git a/net/compat.c b/net/compat.c
+index bc8aeef..6341f04 100644
+--- a/net/compat.c
++++ b/net/compat.c
+@@ -392,7 +392,8 @@ COMPAT_SYSCALL_DEFINE5(setsockopt, int, fd, int, level, int, optname,
+ 	struct socket *sock = sockfd_lookup(fd, &err);
+ 
+ 	if (sock) {
+-		err = security_socket_setsockopt(sock, level, optname);
++		err = security_socket_setsockopt(sock, level, optname, optval,
++					    optlen);
+ 		if (err) {
+ 			sockfd_put(sock);
+ 			return err;
+@@ -512,7 +513,8 @@ COMPAT_SYSCALL_DEFINE5(getsockopt, int, fd, int, level, int, optname,
+ 	struct socket *sock = sockfd_lookup(fd, &err);
+ 
+ 	if (sock) {
+-		err = security_socket_getsockopt(sock, level, optname);
++		err = security_socket_getsockopt(sock, level, optname,
++					optval, optlen);
+ 		if (err) {
+ 			sockfd_put(sock);
+ 			return err;
+diff --git a/net/socket.c b/net/socket.c
+index 4cdbc10..12ee18e 100644
+--- a/net/socket.c
++++ b/net/socket.c
+@@ -1910,7 +1910,8 @@ SYSCALL_DEFINE5(setsockopt, int, fd, int, level, int, optname,
+ 
+ 	sock = sockfd_lookup_light(fd, &err, &fput_needed);
+ 	if (sock != NULL) {
+-		err = security_socket_setsockopt(sock, level, optname);
++		err = security_socket_setsockopt(sock, level, optname, optval,
++					    optlen);
+ 		if (err)
+ 			goto out_put;
+ 
+@@ -1941,7 +1942,8 @@ SYSCALL_DEFINE5(getsockopt, int, fd, int, level, int, optname,
+ 
+ 	sock = sockfd_lookup_light(fd, &err, &fput_needed);
+ 	if (sock != NULL) {
+-		err = security_socket_getsockopt(sock, level, optname);
++		err = security_socket_getsockopt(sock, level, optname, optval,
++						  optlen);
+ 		if (err)
+ 			goto out_put;
+ 
+-- 
+1.9.3
+
