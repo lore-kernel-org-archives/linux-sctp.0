@@ -1,50 +1,52 @@
-From: "Boiteux Frederic" <fboiteux@prosodie.com>
-Date: Wed, 03 Dec 2014 15:41:20 +0000
-Subject: RE: wrong family for IP addresses given by sctp library
-Message-Id: <B8F3375A902A0648BD5D9A5ADDE687B005721D15@cadine.france.prosodie.local>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Wed, 03 Dec 2014 11:13:58 +0000
+Subject: [PATCH net] net: sctp: use MAX_HEADER for headroom reserve in output path
+Message-Id: <1417605238-9936-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <B8F3375A902A0648BD5D9A5ADDE687B00569F8CC@cadine.france.prosodie.local>
-In-Reply-To: <B8F3375A902A0648BD5D9A5ADDE687B00569F8CC@cadine.france.prosodie.local>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, robert@swiecki.net
 
->> Isn't the returned address simply a IPv6-mapped IPv4 address (::ffff:1.2=
-.3.4) ? You can test it with IN6_IS_ADDR_V4MAPPED.
+To accomodate for enough headroom for tunnels, use MAX_HEADER instead
+of LL_MAX_HEADER. Robert reported that he has hit after roughly 40hrs
+of trinity an skb_under_panic() via SCTP output path (see reference).
+I couldn't reproduce it from here, but not using MAX_HEADER as elsewhere
+in other protocols might be one possible cause for this.
 
-> Yes, it is (I've verified with the provided macro) ! I'll use this macro =
-to detect and update provided addresses, thanks !
+In any case, it looks like accounting on chunks themself seems to look
+good as the skb already passed the SCTP output path and did not hit
+any skb_over_panic(). Given tunneling was enabled in his .config, the
+headroom would have been expanded by MAX_HEADER in this case.
 
-Testing more carefully, no it actually seems NOT=A0to be IPv4-mapped addres=
-ses !
+Reported-by: Robert Święcki <robert@swiecki.net>
+Reference: https://lkml.org/lkml/2014/12/1/507
+Fixes: 594ccc14dfe4d ("[SCTP] Replace incorrect use of dev_alloc_skb with alloc_skb in sctp_packet_transmit().")
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/output.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-I test it like this :
-
-static struct sockaddr *fix_adr(struct sockaddr *addr)
-{
-    if (addr->sa_family !=3D AF_INET6) {
-        log_info("not an IPv6 address, nothing to do\n");
-        return addr;
-    }
-
-  struct sockaddr_in6 *addr6 =3D (struct sockaddr_in6 *) &addr;
-    if (! IN6_IS_ADDR_V4MAPPED(&(addr6->sin6_addr))) {
-        log_warn("@IP v6 '%s' is NOT an IPv4-mapped address !",
-                   addr_ntoa(addr));
-    }
-
-  // convert it to ipv4 addr...
-...
-}
-
-I get messages like :
-@IP v6 '10.7.11.132' is NOT an IPv4-mapped address!
-
-(the addr_ntoa() function uses getnameinfo(..., NI_NUMERICHOST) to retrieve=
- ascii notation from given sockaddr address).
-
-  I'm not fluent with IPv6 addressing, so I don't know what to check...
-
-	Fred.
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 42dffd4..fc5e45b 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -401,12 +401,12 @@ int sctp_packet_transmit(struct sctp_packet *packet)
+ 	sk = chunk->skb->sk;
+ 
+ 	/* Allocate the new skb.  */
+-	nskb = alloc_skb(packet->size + LL_MAX_HEADER, GFP_ATOMIC);
++	nskb = alloc_skb(packet->size + MAX_HEADER, GFP_ATOMIC);
+ 	if (!nskb)
+ 		goto nomem;
+ 
+ 	/* Make sure the outbound skb has enough header room reserved. */
+-	skb_reserve(nskb, packet->overhead + LL_MAX_HEADER);
++	skb_reserve(nskb, packet->overhead + MAX_HEADER);
+ 
+ 	/* Set the owning socket so that we know where to get the
+ 	 * destination IP address.
+-- 
+1.7.11.7
 
