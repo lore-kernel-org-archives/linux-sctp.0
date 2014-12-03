@@ -1,27 +1,36 @@
-From: Matt <mattator@gmail.com>
-Date: Fri, 14 Nov 2014 16:54:14 +0000
-Subject: Is it possible to schedule packets from userspace ?
-Message-Id: <CADHp1NxYf7bWiO6e2YjOVrA8ruRK_JLv5fNAWRdjMSZ5Xby3cA@mail.gmail.com>
+From: "Boiteux Frederic" <fboiteux@prosodie.com>
+Date: Wed, 03 Dec 2014 16:11:10 +0000
+Subject: Problem with a host having an UNREACHABLE address ?
+Message-Id: <B8F3375A902A0648BD5D9A5ADDE687B005721E0A@cadine.france.prosodie.local>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-hi,
+   Hi,
 
-I would like to test different CMT-SCTP scheduling strategies that
-mimic an MPTCP-like connection (ie. per path buffer, one ordered
-stream of data).
+I've another problem to submit to your knowledge !
 
-My question is:
-is it possible with the current implementation to schedule packets
-from userspace, ie to let the application choose over which path to
-send which packet ?
+I test my SCTP messaging small application between two hosts far away
+one from another, with possible packet loss on the net. Each of them is
+advertising two different [IPv4] addresses, but in fact, on one host,
+one IP isn't actually connected and can't be used for messages.
 
-If yes, could you give me a few function names/pointers on wher to
-look at please ? I've seen some tutorials on the net, but none with
-the previous usecase.
+When I start SCTP messages exchanges, the hosts are using the first
+address, which is working, and messages are correctly transmitted. On
+the peer of the failing-IP host, I get notifications that this IP
+address is UNREACHABLE, it's correct. In fact, I get one notification
+each 100ms, but this can probably be setup.
+The problem is that after some time of message exchanges, about 20
+seconds, the hosts get a LOST notification for the association and no
+message can't be sent anymore until a new association is built.
 
-Cheers
-Matt
+Should I do something when I get a UNREACHABLE peer change notification
+? is the LOST related to these UNREACHABLE notifications, or should I
+look for other cause ? I didn't saw this behavior during my tests (on
+virtual hosts)...
+
+                Thanks for you help,
+                               Fred.
+
