@@ -1,49 +1,50 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Wed, 03 Dec 2014 15:36:10 +0000
-Subject: Re: wrong family for IP addresses given by sctp library
-Message-Id: <547F2DEA.3060609@gmail.com>
+From: "Boiteux Frederic" <fboiteux@prosodie.com>
+Date: Wed, 03 Dec 2014 15:41:20 +0000
+Subject: RE: wrong family for IP addresses given by sctp library
+Message-Id: <B8F3375A902A0648BD5D9A5ADDE687B005721D15@cadine.france.prosodie.local>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <B8F3375A902A0648BD5D9A5ADDE687B00569F8CC@cadine.france.prosodie.local>
 In-Reply-To: <B8F3375A902A0648BD5D9A5ADDE687B00569F8CC@cadine.france.prosodie.local>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 To: linux-sctp@vger.kernel.org
 
-On 12/03/2014 10:30 AM, Michael Tuexen wrote:
-> On 03 Dec 2014, at 14:27, Boiteux Frederic <fboiteux@prosodie.com> wrote:
-> 
->> 	Hello Ivan, Michael, Daniel,
->>
->>> Isn't the returned address simply a IPv6-mapped IPv4 address (::ffff:1.2.3.4) ? You can test it with IN6_IS_ADDR_V4MAPPED.
->>
->> Yes, it is (I've verified with the provided macro) ! I'll use this macro to detect and update provided addresses, thanks !
-> Not sure if LKSCTP supports it, but you can use
-> https://tools.ietf.org/html/rfc6458#section-8.1.15
-> to control if the addresses should be provided as IPv4 addresses or mapped IPv6 ones.
+>> Isn't the returned address simply a IPv6-mapped IPv4 address (::ffff:1.2=
+.3.4) ? You can test it with IN6_IS_ADDR_V4MAPPED.
 
-Yes it's supported, but there was an issue that was recently fixed.
+> Yes, it is (I've verified with the provided macro) ! I'll use this macro =
+to detect and update provided addresses, thanks !
 
--vlad
+Testing more carefully, no it actually seems NOT=A0to be IPv4-mapped addres=
+ses !
 
-> 
-> Best regards
-> Michael
->>
->>
->> Daniel, I'll try to test it on a recent kernel, but it will take some time to set up... thanks for the commit's reference !
->>
->> 	Regards,
->> 		Fred.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+I test it like this :
+
+static struct sockaddr *fix_adr(struct sockaddr *addr)
+{
+    if (addr->sa_family !=3D AF_INET6) {
+        log_info("not an IPv6 address, nothing to do\n");
+        return addr;
+    }
+
+  struct sockaddr_in6 *addr6 =3D (struct sockaddr_in6 *) &addr;
+    if (! IN6_IS_ADDR_V4MAPPED(&(addr6->sin6_addr))) {
+        log_warn("@IP v6 '%s' is NOT an IPv4-mapped address !",
+                   addr_ntoa(addr));
+    }
+
+  // convert it to ipv4 addr...
+...
+}
+
+I get messages like :
+@IP v6 '10.7.11.132' is NOT an IPv4-mapped address!
+
+(the addr_ntoa() function uses getnameinfo(..., NI_NUMERICHOST) to retrieve=
+ ascii notation from given sockaddr address).
+
+  I'm not fluent with IPv6 addressing, so I don't know what to check...
+
+	Fred.
 
