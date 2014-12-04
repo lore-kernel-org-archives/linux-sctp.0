@@ -1,17 +1,17 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Wed, 03 Dec 2014 15:32:02 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Thu, 04 Dec 2014 13:41:48 +0000
 Subject: Re: [PATCH net] net: sctp: use MAX_HEADER for headroom reserve in output path
-Message-Id: <547F2CF2.4050609@gmail.com>
+Message-Id: <20141204134148.GC16249@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1417605238-9936-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1417605238-9936-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-To: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, robert@swiecki.net
+To: Daniel Borkmann <dborkman@redhat.com>
+Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, robert@swiecki.net
 
-On 12/03/2014 06:13 AM, Daniel Borkmann wrote:
+On Wed, Dec 03, 2014 at 12:13:58PM +0100, Daniel Borkmann wrote:
 > To accomodate for enough headroom for tunnels, use MAX_HEADER instead
 > of LL_MAX_HEADER. Robert reported that he has hit after roughly 40hrs
 > of trinity an skb_under_panic() via SCTP output path (see reference).
@@ -27,13 +27,6 @@ On 12/03/2014 06:13 AM, Daniel Borkmann wrote:
 > Reference: https://lkml.org/lkml/2014/12/1/507
 > Fixes: 594ccc14dfe4d ("[SCTP] Replace incorrect use of dev_alloc_skb with alloc_skb in sctp_packet_transmit().")
 > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-
-Looks right.  If sctp path is over any kind of L3 tunnel, we'll see this.
-
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-
--vlad
-
 > ---
 >  net/sctp/output.c | 4 ++--
 >  1 file changed, 2 insertions(+), 2 deletions(-)
@@ -57,5 +50,12 @@ Acked-by: Vlad Yasevich <vyasevich@gmail.com>
 >  
 >  	/* Set the owning socket so that we know where to get the
 >  	 * destination IP address.
+> -- 
+> 1.7.11.7
 > 
-
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
