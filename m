@@ -1,17 +1,32 @@
-From: "Jessica Kuku" <babylove123@mynet.com>
-Date: Mon, 08 Dec 2014 17:58:43 +0000
-Subject: Nothing is better than you!
-Message-Id: <20141208175906.B3EE12BC4FB@reaccionarltda.com>
+From: "George" <bigtimejoy@emailn.de>
+Date: Wed, 31 Dec 2014 17:41:39 +0000
+Subject: But do not tell anyone
+Message-Id: <11123878311442619311965@WIN-TM1KAIADIOV>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
+To: linux-sctp@vger.kernel.org
 
-Hi Dear,
+Everything could become real....
 
-May peace be with you. I am Miss Jessica. Actually, We may not known in person but relationship can start like this!. Please, I'm sorry if I am embarrassing you by my gesture. 
 
-I really wish to be your friend, learn to know you and to have a place in your heart for an ideal relationship with us. I will be very happy if you contact me for my picture and more about me.
-See you soon?
-Thanks in advance and remain blessed!
-Jessica
+http://binaryperform.go2cloud.org/aff_c?offer_id6&aff_id76
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+No more such Info? Simply answer <NO>
