@@ -1,29 +1,45 @@
-From: David Miller <davem@davemloft.net>
-Date: Sun, 18 Jan 2015 04:53:54 +0000
-Subject: Re: [PATCH net] net: sctp: fix race for one-to-many sockets in sendmsg's auto associate
-Message-Id: <20150117.235354.784017919774639035.davem@davemloft.net>
+From: Simon Xu <xu.simon@oracle.com>
+Date: Thu, 15 Jan 2015 07:39:35 +0000
+Subject: [PATCH] also expect EACCES when accept on an established socket
+Message-Id: <1421307575-28655-1-git-send-email-xu.simon@oracle.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1421336075-25061-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1421336075-25061-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dborkman@redhat.com
-Cc: vyasevich@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Thu, 15 Jan 2015 16:34:35 +0100
+When SELinux is set to enforcing, errno may be EACCES when accept
+on an established socket.
 
- ...
-> The fix defers waiting after sctp_primitive_ASSOCIATE() and
-> sctp_primitive_SEND() succeeded, so that DATA chunks cooked up
-> from sctp_sendmsg() have already been placed into the output
-> queue through the side-effect interpreter, and therefore can then
-> be bundeled together with COOKIE_ECHO control chunks.
- ...
-> Looks like this bug is from the pre-git history museum. ;)
-> 
-> Fixes: 08707d5482df ("lksctp-2_5_31-0_5_1.patch")
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+Signed-off-by: Simon Xu <xu.simon@oracle.com>
+---
+ src/func_tests/test_1_to_1_accept_close.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-Applied, thanks.
+diff --git a/src/func_tests/test_1_to_1_accept_close.c b/src/func_tests/test_1_to_1_accept_close.c
+index cbb1814..0e9e9c1 100644
+--- a/src/func_tests/test_1_to_1_accept_close.c
++++ b/src/func_tests/test_1_to_1_accept_close.c
+@@ -175,13 +175,15 @@ main(int argc, char *argv[])
+ 	/*Calling accept to establish the connection*/
+ 	acpt_sk = test_accept(lstn_sk, (struct sockaddr *) &acpt_addr, &len);
+ 
+-	/*accept() TEST5: On a established socket EINVAL, Expected error*/
++	/*accept() TEST5: On a established socket EINVAL or EACCES when
++	SELinux set to enforcing, Expected error*/
+ 	error = accept(acpt_sk, (struct sockaddr *) &acpt_addr, &len);
+-	if (error != -1 || errno != EINVAL)
++	if (error != -1 || (errno != EINVAL && errno != EACCES)) {
+ 		tst_brkm(TBROK, tst_exit, "accept on an established socket"
+-                         "error:%d, errno:%d", error, errno);
++			"error:%d, errno:%d", error, errno);
++	}
+ 
+-	tst_resm(TPASS, "accept() on an established socket - EINVAL");
++	tst_resm(TPASS, "accept() on an established socket - %d", errno);
+ 
+ 	/*Closing the previously established association*/
+ 	close(acpt_sk);
+-- 
+2.2.2
+
