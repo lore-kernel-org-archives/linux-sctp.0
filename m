@@ -1,93 +1,153 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 26 Jan 2015 13:47:27 +0000
-Subject: Re: Fwd: Question on SCTP ABORT chunk is generated when the association_max_retrans is reached
-Message-Id: <20150126134727.GC31293@hmsreliant.think-freely.org>
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Thu, 15 Jan 2015 15:34:35 +0000
+Subject: [PATCH net] net: sctp: fix race for one-to-many sockets in sendmsg's auto associate
+Message-Id: <1421336075-25061-1-git-send-email-dborkman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAFXGftKp3=OfjkCVBuR-zM3+uZ42Sk_9i2UjAHBNnbX=hQJwpA@mail.gmail.com>
- <CAFXGft+fwo=8LJEG7h6uOpGciSo5f_dXjSx3sn67RZZp7jsYHw@mail.gmail.com>
- <54C23581.9060809@redhat.com>
- <54C27137.5010405@gmail.com>
- <54C2807E.8080607@redhat.com>
- <54C2935F.2000105@gmail.com>
-In-Reply-To: <54C2935F.2000105@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>
-Cc: Daniel Borkmann <dborkman@redhat.com>, Sun Paul <paulrbk@gmail.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, tuexen@fh-muenster.de
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: davem@davemloft.net
+Cc: vyasevich@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Fri, Jan 23, 2015 at 01:30:55PM -0500, Vlad Yasevich wrote:
-> On 01/23/2015 12:10 PM, Daniel Borkmann wrote:
-> > On 01/23/2015 05:05 PM, Vlad Yasevich wrote:
-> >> On 01/23/2015 06:50 AM, Daniel Borkmann wrote:
-> >>> On 01/23/2015 11:25 AM, Sun Paul wrote:
-> >>> ...
-> >>>> I would like to check the behave in LKSCTP.
-> >>>>
-> >>>> we are running DIAMETER message over SCTP, and we have set the
-> >>>> parameter "net.sctp.association_max_retrans = 4" in the LinuxOS.
-> >>>>
-> >>>> We noticed that when remote peer have retry to send the same request
-> >>>> for 4 times, the LKSCTP will initiate an ABORT chunk with reason
-> >>>> "association exceeded its max_retrans count".
-> >>>>
-> >>>> We would like to know whether this is the correct behavior? is there
-> >>>> any other option that we can alter in order to avoid the ABORT chunk
-> >>>> being sent?
-> >>>
-> >>> I don't recall the RFC saying to send an ABORT, but let me double
-> >>> check in the mean time.
-> >>
-> >> The RFC is silent on the matter.  The abort got added in 3.8 so
-> >> it's been there for a while.
-> > 
-> > I see, commit de4594a51c90 ("sctp: send abort chunk when max_retrans
-> > exceeded") added the behaviour.
-> > 
-> >>> Hmm, untested, but could you try something like that?
-> >>>
-> >>> diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-> >>> index fef2acd..5ce198d 100644
-> >>> --- a/net/sctp/sm_sideeffect.c
-> >>> +++ b/net/sctp/sm_sideeffect.c
-> >>> @@ -584,7 +584,8 @@ static void sctp_cmd_assoc_failed(sctp_cmd_seq_t *commands,
-> >>>           sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP,
-> >>>                   SCTP_ULPEVENT(event));
-> >>>
-> >>> -    if (asoc->overall_error_count >= asoc->max_retrans) {
-> >>> +    if (asoc->overall_error_count >= asoc->max_retrans &&
-> >>> +        error != SCTP_ERROR_NO_ERROR) {
-> >>>           abort = sctp_make_violation_max_retrans(asoc, chunk);
-> >>>           if (abort)
-> >>>               sctp_add_cmd_sf(commands, SCTP_CMD_REPLY,
-> >>
-> >> This would pretty much stop all ABORTs due to excessive rtx.  Might
-> >> as well take the code out :).
-> >>
-> >> I was a bit concerned about this ABORT when it went in.
-> > 
-> > So effectively, if I understand the argument from the commit, the
-> > assumption is that the ABORT would never reach the peer anyway, but
-> > is a way for tcpdump users to see on the wire that rtx limit has
-> > been exceeded and since there's not mentioned anything in the RFC
-> > about this, it doesn't break it. Hm.
-> > 
-> 
-> Additionally I seem to recall BSD sending this type of ABORT for pretty
-> much the same reason.
-> 
-> -vlad
-> 
-IIRC, BSD is where this patch came from initially.
-Neil
+I.e. one-to-many sockets in SCTP are not required to explicitly
+call into connect(2) or sctp_connectx(2) prior to data exchange.
+Instead, they can directly invoke sendmsg(2) and the SCTP stack
+will automatically trigger connection establishment through 4WHS
+via sctp_primitive_ASSOCIATE(). However, this in its current
+implementation is racy: INIT is being sent out immediately (as
+it cannot be bundled anyway) and the rest of the DATA chunks are
+queued up for later xmit when connection is established, meaning
+sendmsg(2) will return successfully. This behaviour can result
+in an undesired side-effect that the kernel made the application
+think the data has already been transmitted, although none of it
+has actually left the machine, worst case even after close(2)'ing
+the socket.
 
-> > Sun Paul, what exactly broke in your scenario? Can you be more explicit?
-> > 
-> > Thanks,
-> > Daniel
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Instead, when the association from client side has been shut down
+e.g. first gracefully through SCTP_EOF and then close(2), the
+client could afterwards still receive the server's INIT_ACK due
+to a connection with higher latency. This INIT_ACK is then considered
+out of the blue and hence responded with ABORT as there was no
+alive assoc found anymore. This can be easily reproduced f.e.
+with sctp_test application from lksctp. One way to fix this race
+is to wait for the handshake to actually complete.
+
+The fix defers waiting after sctp_primitive_ASSOCIATE() and
+sctp_primitive_SEND() succeeded, so that DATA chunks cooked up
+from sctp_sendmsg() have already been placed into the output
+queue through the side-effect interpreter, and therefore can then
+be bundeled together with COOKIE_ECHO control chunks.
+
+strace from example application (shortened):
+
+socket(PF_INET, SOCK_SEQPACKET, IPPROTO_SCTP) =3D 3
+sendmsg(3, {msg_name(28)=3D{sa_family=AF_INET, sin_port=3Dhtons(8888), sin_=
+addr=3Dinet_addr("192.168.1.115")},
+           msg_iov(1)=3D[{"hello", 5}], msg_controllen=3D0, msg_flags=3D0},=
+ 0) =3D 5
+sendmsg(3, {msg_name(28)=3D{sa_family=AF_INET, sin_port=3Dhtons(8888), sin_=
+addr=3Dinet_addr("192.168.1.115")},
+           msg_iov(1)=3D[{"hello", 5}], msg_controllen=3D0, msg_flags=3D0},=
+ 0) =3D 5
+sendmsg(3, {msg_name(28)=3D{sa_family=AF_INET, sin_port=3Dhtons(8888), sin_=
+addr=3Dinet_addr("192.168.1.115")},
+           msg_iov(1)=3D[{"hello", 5}], msg_controllen=3D0, msg_flags=3D0},=
+ 0) =3D 5
+sendmsg(3, {msg_name(28)=3D{sa_family=AF_INET, sin_port=3Dhtons(8888), sin_=
+addr=3Dinet_addr("192.168.1.115")},
+           msg_iov(1)=3D[{"hello", 5}], msg_controllen=3D0, msg_flags=3D0},=
+ 0) =3D 5
+sendmsg(3, {msg_name(28)=3D{sa_family=AF_INET, sin_port=3Dhtons(8888), sin_=
+addr=3Dinet_addr("192.168.1.115")},
+           msg_iov(0)=3D[], msg_controllenH, {cmsg_lenH, cmsg_level=3D0x84 =
+/* SOL_??? */, cmsg_type=3D, ...},
+           msg_flags=3D0}, 0) =3D 0 // graceful shutdown for SOCK_SEQPACKET=
+ via SCTP_EOF
+close(3) =3D 0
+
+tcpdump before patch (fooling the application):
+
+22:33:36.306142 IP 192.168.1.114.41462 > 192.168.1.115.8888: sctp (1) [INIT=
+] [init tag: 3879023686] [rwnd: 106496] [OS: 10] [MIS: 65535] [init TSN: 31=
+39201684]
+22:33:36.316619 IP 192.168.1.115.8888 > 192.168.1.114.41462: sctp (1) [INIT=
+ ACK] [init tag: 3345394793] [rwnd: 106496] [OS: 10] [MIS: 10] [init TSN: 3=
+380109591]
+22:33:36.317600 IP 192.168.1.114.41462 > 192.168.1.115.8888: sctp (1) [ABOR=
+T]
+
+tcpdump after patch:
+
+14:28:58.884116 IP 192.168.1.114.35846 > 192.168.1.115.8888: sctp (1) [INIT=
+] [init tag: 438593213] [rwnd: 106496] [OS: 10] [MIS: 65535] [init TSN: 309=
+2969729]
+14:28:58.888414 IP 192.168.1.115.8888 > 192.168.1.114.35846: sctp (1) [INIT=
+ ACK] [init tag: 381429855] [rwnd: 106496] [OS: 10] [MIS: 10] [init TSN: 21=
+41904492]
+14:28:58.888638 IP 192.168.1.114.35846 > 192.168.1.115.8888: sctp (1) [COOK=
+IE ECHO] , (2) [DATA] (B)(E) [TSN: 3092969729] [...]
+14:28:58.893278 IP 192.168.1.115.8888 > 192.168.1.114.35846: sctp (1) [COOK=
+IE ACK] , (2) [SACK] [cum ack 3092969729] [a_rwnd 106491] [#gap acks 0] [#d=
+up tsns 0]
+14:28:58.893591 IP 192.168.1.114.35846 > 192.168.1.115.8888: sctp (1) [DATA=
+] (B)(E) [TSN: 3092969730] [...]
+14:28:59.096963 IP 192.168.1.115.8888 > 192.168.1.114.35846: sctp (1) [SACK=
+] [cum ack 3092969730] [a_rwnd 106496] [#gap acks 0] [#dup tsns 0]
+14:28:59.097086 IP 192.168.1.114.35846 > 192.168.1.115.8888: sctp (1) [DATA=
+] (B)(E) [TSN: 3092969731] [...] , (2) [DATA] (B)(E) [TSN: 3092969732] [...]
+14:28:59.103218 IP 192.168.1.115.8888 > 192.168.1.114.35846: sctp (1) [SACK=
+] [cum ack 3092969732] [a_rwnd 106486] [#gap acks 0] [#dup tsns 0]
+14:28:59.103330 IP 192.168.1.114.35846 > 192.168.1.115.8888: sctp (1) [SHUT=
+DOWN]
+14:28:59.107793 IP 192.168.1.115.8888 > 192.168.1.114.35846: sctp (1) [SHUT=
+DOWN ACK]
+14:28:59.107890 IP 192.168.1.114.35846 > 192.168.1.115.8888: sctp (1) [SHUT=
+DOWN COMPLETE]
+
+Looks like this bug is from the pre-git history museum. ;)
+
+Fixes: 08707d5482df ("lksctp-2_5_31-0_5_1.patch")
+Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+---
+ net/sctp/socket.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 2625ecc..aafe94b 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1603,7 +1603,7 @@ static int sctp_sendmsg(struct kiocb *iocb, struct so=
+ck *sk,
+ 	sctp_assoc_t associd =3D 0;
+ 	sctp_cmsgs_t cmsgs =3D { NULL };
+ 	sctp_scope_t scope;
+-	bool fill_sinfo_ttl =3D false;
++	bool fill_sinfo_ttl =3D false, wait_connect =3D false;
+ 	struct sctp_datamsg *datamsg;
+ 	int msg_flags =3D msg->msg_flags;
+ 	__u16 sinfo_flags =3D 0;
+@@ -1943,6 +1943,7 @@ static int sctp_sendmsg(struct kiocb *iocb, struct so=
+ck *sk,
+ 		if (err < 0)
+ 			goto out_free;
+=20
++		wait_connect =3D true;
+ 		pr_debug("%s: we associated primitively\n", __func__);
+ 	}
+=20
+@@ -1980,6 +1981,11 @@ static int sctp_sendmsg(struct kiocb *iocb, struct s=
+ock *sk,
+ 	sctp_datamsg_put(datamsg);
+ 	err =3D msg_len;
+=20
++	if (unlikely(wait_connect)) {
++		timeo =3D sock_sndtimeo(sk, msg_flags & MSG_DONTWAIT);
++		sctp_wait_for_connect(asoc, &timeo);
++	}
++
+ 	/* If we are already past ASSOCIATE, the lower
+ 	 * layers are responsible for association cleanup.
+ 	 */
+--=20
+1.7.11.7
+
