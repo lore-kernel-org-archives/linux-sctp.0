@@ -1,26 +1,30 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 27 Jan 2015 01:05:10 +0000
-Subject: Re: [PATCH net] net: sctp: fix slab corruption from use after free on INIT collisions
-Message-Id: <20150126.170510.1181175198992396635.davem@davemloft.net>
+From: Sun Paul <paulrbk@gmail.com>
+Date: Fri, 23 Jan 2015 10:25:01 +0000
+Subject: Fwd: Question on SCTP ABORT chunk is generated when the association_max_retrans is reached
+Message-Id: <CAFXGft+fwo=8LJEG7h6uOpGciSo5f_dXjSx3sn67RZZp7jsYHw@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1421947614-31407-1-git-send-email-dborkman@redhat.com>
-In-Reply-To: <1421947614-31407-1-git-send-email-dborkman@redhat.com>
+References: <CAFXGftKp3=OfjkCVBuR-zM3+uZ42Sk_9i2UjAHBNnbX=hQJwpA@mail.gmail.com>
+In-Reply-To: <CAFXGftKp3=OfjkCVBuR-zM3+uZ42Sk_9i2UjAHBNnbX=hQJwpA@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dborkman@redhat.com
-Cc: vyasevich@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Thu, 22 Jan 2015 18:26:54 +0100
+Hi
 
-> When hitting an INIT collision case during the 4WHS with AUTH enabled, as
-> already described in detail in commit 1be9a950c646 ("net: sctp: inherit
-> auth_capable on INIT collisions"), it can happen that we occasionally
-> still remotely trigger the following panic on server side which seems to
-> have been uncovered after the fix from commit 1be9a950c646 ...
- ...
-> Fixes: 730fc3d05cd4 ("[SCTP]: Implete SCTP-AUTH parameter processing")
-> Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
+I would like to check the behave in LKSCTP.
 
-Applied and queued up for -stable, thanks.
+we are running DIAMETER message over SCTP, and we have set the
+parameter "net.sctp.association_max_retrans = 4" in the LinuxOS.
+
+We noticed that when remote peer have retry to send the same request
+for 4 times, the LKSCTP will initiate an ABORT chunk with reason
+"association exceeded its max_retrans count".
+
+We would like to know whether this is the correct behavior? is there
+any other option that we can alter in order to avoid the ABORT chunk
+being sent?
+
+Thanks
+
+PS
