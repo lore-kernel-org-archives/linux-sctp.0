@@ -1,17 +1,17 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Thu, 22 Jan 2015 17:52:34 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 26 Jan 2015 12:33:59 +0000
 Subject: Re: [PATCH net] net: sctp: fix slab corruption from use after free on INIT collisions
-Message-Id: <54C138E2.30807@gmail.com>
+Message-Id: <20150126123359.GB31293@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1421947614-31407-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1421947614-31407-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: Daniel Borkmann <dborkman@redhat.com>
+Cc: davem@davemloft.net, vyasevich@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On 01/22/2015 12:26 PM, Daniel Borkmann wrote:
+On Thu, Jan 22, 2015 at 06:26:54PM +0100, Daniel Borkmann wrote:
 > When hitting an INIT collision case during the 4WHS with AUTH enabled, as
 > already described in detail in commit 1be9a950c646 ("net: sctp: inherit
 > auth_capable on INIT collisions"), it can happen that we occasionally
@@ -116,11 +116,6 @@ On 01/22/2015 12:26 PM, Daniel Borkmann wrote:
 > 
 > Fixes: 730fc3d05cd4 ("[SCTP]: Implete SCTP-AUTH parameter processing")
 > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-
--vlad
-
 > ---
 >  net/sctp/associola.c | 1 -
 >  1 file changed, 1 deletion(-)
@@ -137,5 +132,13 @@ Acked-by: Vlad Yasevich <vyasevich@gmail.com>
 >  	sctp_auth_asoc_init_active_key(asoc, GFP_ATOMIC);
 >  }
 >  
+> -- 
+> 1.7.11.7
 > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
