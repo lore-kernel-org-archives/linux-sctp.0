@@ -1,22 +1,32 @@
-From: Daniel Borkmann <dborkman@redhat.com>
-Date: Thu, 15 Jan 2015 17:02:14 +0000
-Subject: Re: [PATCH] also expect EACCES when accept on an established socket
-Message-Id: <54B7F296.6020401@redhat.com>
+From: Saran Maruti Ramanara <Saran.Neti@telus.com>
+Date: Wed, 28 Jan 2015 16:45:42 +0000
+Subject: SCTP ASCONF Set Primary Address Parameter Type bug
+Message-Id: <4BC5337E23A5EE4A96D91D9DABA8FAE561E6B67FBD@WP40068.corp.ads>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1421307575-28655-1-git-send-email-xu.simon@oracle.com>
-In-Reply-To: <1421307575-28655-1-git-send-email-xu.simon@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On 01/15/2015 08:39 AM, Simon Xu wrote:
-> When SELinux is set to enforcing, errno may be EACCES when accept
-> on an established socket.
->
-> Signed-off-by: Simon Xu <xu.simon@oracle.com>
+Hi,
 
-Yep, that's due to a still missing SELinux support, thus it
-interprets SCTP as raw sockets.
+While investigating CVE-2014-7841 patched by e40607cbe270, I noticed that in sctp_process_param() in the switch-case where param.p->type = SCTP_PARAM_SET_PRIMARY (0xC004), the argument to param_type2af() is param.p->type, which is always 0xC004 in this case, and not addr_param's type. This causes af to always be NULL, i.e. even when IPv4 or IPv6 Address sub-parameters are received. 
 
-Applied to lksctp-tools, thanks Simon!
+The following patch--untested for functionality, compiles against c59c961ca511--gets the right Address Parameter type through to param_type2af(). 
+
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index e49e231..06320c8 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2608,7 +2608,7 @@ do_addr_param:
+ 
+        addr_param = param.v + sizeof(sctp_addip_param_t);
+ 
+-       af = sctp_get_af_specific(param_type2af(param.p->type));
++       af = sctp_get_af_specific(param_type2af(addr_param->p.type));
+        if (af = NULL)
+            break;
+
+--
+Regards,
+Saran Neti, TELUS Security Labs
