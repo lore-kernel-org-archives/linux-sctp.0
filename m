@@ -1,17 +1,17 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Thu, 29 Jan 2015 13:27:07 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Thu, 29 Jan 2015 14:43:51 +0000
 Subject: Re: [PATCH net] net: sctp: fix passing wrong parameter header to param_type2af in sctp_process_param
-Message-Id: <54CA352B.7020203@gmail.com>
+Message-Id: <20150129144351.GC1999@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1422525958-5737-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1422525958-5737-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>, davem@davemloft.net
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Saran Maruti Ramanara <saran.neti@telus.com>
+To: Daniel Borkmann <dborkman@redhat.com>
+Cc: davem@davemloft.net, vyasevich@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Saran Maruti Ramanara <saran.neti@telus.com>
 
-On 01/29/2015 05:05 AM, Daniel Borkmann wrote:
+On Thu, Jan 29, 2015 at 11:05:58AM +0100, Daniel Borkmann wrote:
 > From: Saran Maruti Ramanara <saran.neti@telus.com>
 > 
 > When making use of RFC5061, section 4.2.4. for setting the primary IP
@@ -29,12 +29,6 @@ On 01/29/2015 05:05 AM, Daniel Borkmann wrote:
 > Fixes: d6de3097592b ("[SCTP]: Add the handling of "Set Primary IP Address" parameter to INIT")
 > Signed-off-by: Saran Maruti Ramanara <saran.neti@telus.com>
 > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-
-Thanks
--vlad
-
 > ---
 >  net/sctp/sm_make_chunk.c | 2 +-
 >  1 file changed, 1 insertion(+), 1 deletion(-)
@@ -52,5 +46,13 @@ Thanks
 >  		if (af = NULL)
 >  			break;
 >  
+> -- 
+> 1.7.11.7
 > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
