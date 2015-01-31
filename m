@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 29 Jan 2015 14:43:51 +0000
+From: David Miller <davem@davemloft.net>
+Date: Sat, 31 Jan 2015 01:45:43 +0000
 Subject: Re: [PATCH net] net: sctp: fix passing wrong parameter header to param_type2af in sctp_process_param
-Message-Id: <20150129144351.GC1999@hmsreliant.think-freely.org>
+Message-Id: <20150130.174543.641220081613613919.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1422525958-5737-1-git-send-email-dborkman@redhat.com>
 In-Reply-To: <1422525958-5737-1-git-send-email-dborkman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Daniel Borkmann <dborkman@redhat.com>
-Cc: davem@davemloft.net, vyasevich@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Saran Maruti Ramanara <saran.neti@telus.com>
+To: dborkman@redhat.com
+Cc: vyasevich@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, saran.neti@telus.com
 
-On Thu, Jan 29, 2015 at 11:05:58AM +0100, Daniel Borkmann wrote:
+From: Daniel Borkmann <dborkman@redhat.com>
+Date: Thu, 29 Jan 2015 11:05:58 +0100
+
 > From: Saran Maruti Ramanara <saran.neti@telus.com>
 > 
 > When making use of RFC5061, section 4.2.4. for setting the primary IP
@@ -29,30 +31,5 @@ On Thu, Jan 29, 2015 at 11:05:58AM +0100, Daniel Borkmann wrote:
 > Fixes: d6de3097592b ("[SCTP]: Add the handling of "Set Primary IP Address" parameter to INIT")
 > Signed-off-by: Saran Maruti Ramanara <saran.neti@telus.com>
 > Signed-off-by: Daniel Borkmann <dborkman@redhat.com>
-> ---
->  net/sctp/sm_make_chunk.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> index e49e231..06320c8 100644
-> --- a/net/sctp/sm_make_chunk.c
-> +++ b/net/sctp/sm_make_chunk.c
-> @@ -2608,7 +2608,7 @@ do_addr_param:
->  
->  		addr_param = param.v + sizeof(sctp_addip_param_t);
->  
-> -		af = sctp_get_af_specific(param_type2af(param.p->type));
-> +		af = sctp_get_af_specific(param_type2af(addr_param->p.type));
->  		if (af = NULL)
->  			break;
->  
-> -- 
-> 1.7.11.7
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
+Applied, thanks.
