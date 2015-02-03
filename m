@@ -1,38 +1,29 @@
-From: Mikko Rapeli <mikko.rapeli@iki.fi>
-Date: Wed, 18 Feb 2015 16:05:13 +0000
-Subject: Re: [PATCH 20/45] sctp.h: include stdint.h in userspace
-Message-Id: <20150218160513.GN12550@lakka.kapsi.fi>
+From: David Miller <davem@davemloft.net>
+Date: Tue, 03 Feb 2015 03:30:12 +0000
+Subject: Re: [PATCH] net: sctp: Deletion of an unnecessary check before the function call "kfree"
+Message-Id: <20150202.193012.1930991920361082218.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1424127948-22484-1-git-send-email-mikko.rapeli@iki.fi>
- <1424127948-22484-21-git-send-email-mikko.rapeli@iki.fi>
- <54E4B434.3030302@iogearbox.net>
-In-Reply-To: <54E4B434.3030302-FeC+5ew28dpmcu3hnIyYJQ@public.gmane.org>
+References: <alpine.DEB.2.02.1402262129250.2221@localhost6.localdomain6>
+	<5317A59D.4@users.sourceforge.net>
+	<54CD0DCF.9020804@users.sourceforge.net>
+In-Reply-To: <54CD0DCF.9020804@users.sourceforge.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: Daniel Borkmann <daniel-FeC+5ew28dpmcu3hnIyYJQ@public.gmane.org>
-Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Vlad Yasevich <vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Neil Horman <nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org>, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: elfring@users.sourceforge.net
+Cc: nhorman@tuxdriver.com, vyasevich@gmail.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, kernel-janitors@vger.kernel.org, julia.lawall@lip6.fr
 
-On Wed, Feb 18, 2015 at 04:48:04PM +0100, Daniel Borkmann wrote:
-> On 02/17/2015 12:05 AM, Mikko Rapeli wrote:
-> >Fixes compilation error:
-> >
-> >linux/sctp.h:652:2: error: unknown type name ‘uint32_t’
-> >
-> >Signed-off-by: Mikko Rapeli <mikko.rapeli@iki.fi>
+From: SF Markus Elfring <elfring@users.sourceforge.net>
+Date: Sat, 31 Jan 2015 18:15:59 +0100
+
+> From: Markus Elfring <elfring@users.sourceforge.net>
+> Date: Sat, 31 Jan 2015 18:10:03 +0100
 > 
-> I have no idea where the rest of this series went (neither netdev, nor
-> lkml, nor linux-sctp) and what user space application making use of the
-> header you are trying to fix !?
+> The kfree() function tests whether its argument is NULL and then
+> returns immediately. Thus the test around the call is not needed.
+> 
+> This issue was detected by using the Coccinelle software.
+> 
+> Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
 
-There is a test written to test compilation of exported kernel headers
-one by one in userspace. lkml thread is here:
-
-https://lkml.org/lkml/2015/2/16/521
-
-The series should have gone to the right addresses with:
-
-$ git send-email --to linux-kernel@vger.kernel.org \
-	--cc-cmd "scripts/get_maintainer.pl --norolestats"
-
--Mikko
+Applied to net-next, thanks.
