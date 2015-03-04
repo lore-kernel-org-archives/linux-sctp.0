@@ -1,52 +1,33 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Wed, 11 Mar 2015 13:27:31 +0000
-Subject: Re: Source IP address of SCTP INIT chunk and the IPv4 address parameter inside SCTP INIT chunk
-Message-Id: <550042C3.3010106@gmail.com>
+From: =?UTF-8?Q?D=C3=A1vid_Fekete?= <dfekete88@gmail.com>
+Date: Wed, 04 Mar 2015 14:18:24 +0000
+Subject: unexpected notification
+Message-Id: <CADV_2PSg0XQ9BT6fci=k9zXvzHC2gOp7Q7UEhu80oxG+mXa=yg@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAFXGftK0QQiazx3MCdz+8rXosOLbXS0E52DyTjwDGiYZzTB8GQ@mail.gmail.com>
-In-Reply-To: <CAFXGftK0QQiazx3MCdz+8rXosOLbXS0E52DyTjwDGiYZzTB8GQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On 03/10/2015 10:55 PM, Sun Paul wrote:
-> Hi
-> 
-> I would like to ask about the IP address on dource IP address of SCTP
-> INIT chunk and the IPv4 address parameter inside SCTP INIT chunk.
-> 
-> If the source IP of the SCTP INIT chunk is 10.1.1.84, but the IP
-> address INSIDE the INIT chunk, i.e. the IPv4 address parameter, is
-> using a different IP address, says 192.1.1.84, what will be happened?
+Hi,
 
-This is part of multihoming support of sctp.  The system generating
-such INIT chunk says that is can be reached via either address.  The
-peer system will the create 2 paths, one to 10.1.1.84 and the other
-to 192.1.1.84 and will use them in cases of failover and retransmission.
+I have written an application which is based an one-to-many sctp application.
+In the first phase I tested my socket which one represents multiple
+associations .
+So I connected to different servers from the same socket with multiple
+calling of connect function. (addresses were different)
+Then I got messages from all servers and it worked fine.
+When I started to answer a to the servers, I mean I extended my code
+with sending, I got SCTP_PARTIAL_DELIVERY_EVENT from servers. It comes
+continuously.
+What can be the reason behind of this?
+I have checked this with messages which can be checked visually and it
+seems to work perfectly.
 
-> 
-> I did a testing on a SCTP server and client environment, and it seems
-> the SCTP server tried to send INIT_ACK back to the source IP to the
-> client, i.e. the destination IP address is 10.1.1.84. but somehow, the
-> SCTP server generate two HEARTBEAT request, one to 10.1.1.84 and one
-> to 192.1.1.84.
-> 
-> is it a problem on our SCTP server application?
+It is like the reverse of the first situation, not from different
+servers to one socket, but from one socket to all servers. The later
+one works, I mean the message go well, but there are those
+notifications
 
-No, this is behaving exactly how specified in the SCTP specification.
+I am using sctp_sendmsg/recmsg functions.
 
--vlad
-
-> 
-> any idea on this?
-> 
-> Thanks
-> 
-> - RBK
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+David
