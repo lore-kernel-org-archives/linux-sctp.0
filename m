@@ -1,47 +1,22 @@
-From: Marcelo Ricardo Leitner <mleitner@redhat.com>
-Date: Fri, 06 Mar 2015 17:09:18 +0000
-Subject: Re: unexpected notification
-Message-Id: <20150306170918.GA2305@localhost.localdomain>
+From: Jerry Jerry <jerry.jerry2008@gmail.com>
+Date: Wed, 04 Mar 2015 20:59:21 +0000
+Subject: Does IPv6 have to be enabled to run lksctp-tools?
+Message-Id: <CAAyB5cKp6+dwfcbJT763nTvF0U1JXixv6uRYy=6XPD2h0_RGUQ@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CADV_2PSg0XQ9BT6fci=k9zXvzHC2gOp7Q7UEhu80oxG+mXa=yg@mail.gmail.com>
-In-Reply-To: <CADV_2PSg0XQ9BT6fci=k9zXvzHC2gOp7Q7UEhu80oxG+mXa=yg@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Hi D=E1vid,
+Hello,
 
-> Hi,
->=20
-> I have written an application which is based an one-to-many sctp applicat=
-ion.
-> In the first phase I tested my socket which one represents multiple
-> associations .
-> So I connected to different servers from the same socket with multiple
-> calling of connect function. (addresses were different)
-> Then I got messages from all servers and it worked fine.
-> When I started to answer a to the servers, I mean I extended my code
-> with sending, I got SCTP_PARTIAL_DELIVERY_EVENT from servers. It comes
-> continuously.
-> What can be the reason behind of this?
-> I have checked this with messages which can be checked visually and it
-> seems to work perfectly.
+We had a strange problem using lksctp-tool where checksctp would hang
+there on some of our machines and process cannot be killed anyway
+(with status d/d+). After some investigation, we found out that
+whether ipv6 is enabled could impact the behavior of the library. So,
+my question is that, is this a requirement by design or it just
+happens to occur that ipv6 is required? Any suggestion to bypass this
+(not to rely on ipv6) would be appreciated very much.
 
-What do you mean with 'checked visually'? Did you check traffic
-captures? If possible, please share a capture (binary).
-
-> It is like the reverse of the first situation, not from different
-> servers to one socket, but from one socket to all servers. The later
-> one works, I mean the message go well, but there are those
-> notifications
->=20
-> I am using sctp_sendmsg/recmsg functions.
-
-There isn't many ways to trigger such event, and one of them is when
-there is an issue with the association. As far as I understood, you're
-having issue with tx path only and it's possible that the traffic
-capture will shed some light.
-
-  Marcelo
-
+Regards,
+Jerry
