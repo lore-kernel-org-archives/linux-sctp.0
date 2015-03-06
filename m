@@ -1,7 +1,7 @@
-From: Danny Smit <danny.smit.0@gmail.com>
-Date: Fri, 06 Mar 2015 10:52:05 +0000
-Subject: Memory issue with kernel sctp_connectx
-Message-Id: <CACoz=-wys+KxBj7UEzQhdWPVaxyw5m0Gm65-KD-2+cC=B1Aqrw@mail.gmail.com>
+From: Adam Endrodi <adam.endrodi@nsn.com>
+Date: Fri, 06 Mar 2015 11:13:41 +0000
+Subject: Re: Memory issue with kernel sctp_connectx
+Message-Id: <20150306111341.GC2684@timmy>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CACoz=-y7yC27C7_jopeJy=55J_Og9czP9fVY_xVE6Zmoo7apTA@mail.gmail.com>
 In-Reply-To: <CACoz=-y7yC27C7_jopeJy=55J_Og9czP9fVY_xVE6Zmoo7apTA@mail.gmail.com>
@@ -10,54 +10,46 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Hi all,
+On Fri, Mar 06, 2015 at 11:52:05AM +0100, ext Danny Smit wrote:
+> 
+> I'm look into a possible memory issue when using sctp_connectx. This
+> week I've asked to following on the CentOS mailing list:
 
-I'm look into a possible memory issue when using sctp_connectx. This
-week I've asked to following on the CentOS mailing list:
+I think you'll find this thread relevant:
+http://www.spinics.net/lists/linux-sctp/msg03705.html
 
-------------------------------
-I'm running into a possible memory issue with the SCTP implementation
-in CentOS 6, using lksctp-tools. So far I've not seen the problem with
-other distributions yet.
+> ------------------------------
+> I'm running into a possible memory issue with the SCTP implementation
+> in CentOS 6, using lksctp-tools. So far I've not seen the problem with
+> other distributions yet.
+> 
+> The problem is that whenever a SCTP client connection is initiated to
+> a second host and port at which no SCTP server application is
+> listening
+> 
+> The scenario is simple:
+> - call socket() to create a socket.
+> - call sctp_connectx() to establish a connection.
+> 
+> The last call is repeated periodically to retry to establish a connection.
+> 
+> When looking on the wire using wireshark it shows that an SCTP INIT
+> packet is sent to the second host, which replies with an SCTP ABORT.
+> 
+> This is exactly according to the SCTP specification. However it
+> appears ABORT isn't propagated into to application layer that calls
+> sctp_connectx().
+[...] 
+> Note that the API is used in non-blocking mode.
 
-The problem is that whenever a SCTP client connection is initiated to
-a second host and port at which no SCTP server application is
-listening
+This case sctp_connectx() doesn't wait until the connection is established.
+You need to use sctp_recvmsg() to get the notification.
 
-The scenario is simple:
-- call socket() to create a socket.
-- call sctp_connectx() to establish a connection.
+> Furthermore, because reconnect attempts are made, a steady memory
+> increasement occurs. Looking at /proc/meminfo, the increasement occurs
+> in SUnreclaim, the kernel slab cache.
 
-The last call is repeated periodically to retry to establish a connection.
+Perhaps these are the event being queued up?
 
-When looking on the wire using wireshark it shows that an SCTP INIT
-packet is sent to the second host, which replies with an SCTP ABORT.
-
-This is exactly according to the SCTP specification. However it
-appears ABORT isn't propagated into to application layer that calls
-sctp_connectx().
-
-Furthermore, because reconnect attempts are made, a steady memory
-increasement occurs. Looking at /proc/meminfo, the increasement occurs
-in SUnreclaim, the kernel slab cache.
-
-Can you advice if this can be an issue with the SCTP implementation in
-the kernel? Maybe an issue solved upstream, but not (yet) backported
-into centos 6?
-
-It applies to the following package versions (also to older kernels):
-
-- kernel-2.6.32-504.8.1.el6.x86_64
-- lksctp-tools-1.0.10-7.el6.x86_64
-------------------------------
-
-Note that the API is used in non-blocking mode.
-
-However, I've now seen the problem also with other distributions and
-came to realize that it may not be a CentOS specific problem. Can
-someone advice whether this may be an issue in the linux kernel sctp
-implementation?
-
-Kind regards,
-
-Danny Smit
+-- 
+So if you walk away, who is gonna stay?
