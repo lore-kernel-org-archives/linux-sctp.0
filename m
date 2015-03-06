@@ -1,8 +1,10 @@
 From: Danny Smit <danny.smit.0@gmail.com>
-Date: Fri, 06 Mar 2015 10:39:03 +0000
+Date: Fri, 06 Mar 2015 10:52:05 +0000
 Subject: Memory issue with kernel sctp_connectx
-Message-Id: <CACoz=-y7yC27C7_jopeJy=55J_Og9czP9fVY_xVE6Zmoo7apTA@mail.gmail.com>
+Message-Id: <CACoz=-wys+KxBj7UEzQhdWPVaxyw5m0Gm65-KD-2+cC=B1Aqrw@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <CACoz=-y7yC27C7_jopeJy=55J_Og9czP9fVY_xVE6Zmoo7apTA@mail.gmail.com>
+In-Reply-To: <CACoz=-y7yC27C7_jopeJy=55J_Og9czP9fVY_xVE6Zmoo7apTA@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
