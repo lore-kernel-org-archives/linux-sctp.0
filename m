@@ -1,7 +1,7 @@
-From: Jerry Jerry <jerry.jerry2008@gmail.com>
-Date: Fri, 20 Mar 2015 17:44:56 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Fri, 20 Mar 2015 18:11:40 +0000
 Subject: Re: modprobe sctp error
-Message-Id: <CAAyB5c+Z4x5yaQwox_7AOsjp=MpL7kzXUAsRrXs9npF=WB2R7Q@mail.gmail.com>
+Message-Id: <20150320181140.GE19548@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CAAyB5cLYfj24-+fGiZtGWa3Ae=c2=xpz2=3Ok3s=iMGxu5Abcw@mail.gmail.com>
 In-Reply-To: <CAAyB5cLYfj24-+fGiZtGWa3Ae=c2=xpz2=3Ok3s=iMGxu5Abcw@mail.gmail.com>
@@ -10,56 +10,71 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Thanks, Neil, not sure if this is cause but I'll double check.
+On Fri, Mar 20, 2015 at 10:44:56AM -0700, Jerry Jerry wrote:
+> Thanks, Neil, not sure if this is cause but I'll double check.
+> 
+> Meanwhile, we hit another issue that checksctp hangs:
+> 
+> 
+> 83356 pts/0    D+     0:00 checksctp
+> 
+> And  /proc/83356/stack shows:
+> 
+> [<ffffffff8105f357>] call_usermodehelper_exec+0xc7/0xd0
+> [<ffffffff8105f5a2>] __request_module+0x142/0x190
+> [<ffffffff8134d3bb>] inet_create+0x10b/0x300
+> [<ffffffff812e1aad>] __sock_create+0x12d/0x2c0
+> [<ffffffff812e1f1d>] sys_socket+0x3d/0x70
+> [<ffffffff81002f7b>] system_call_fastpath+0x16/0x1b
+> [<00007f29c4c2fa07>] 0x7f29c4c2fa07
+> [<ffffffffffffffff>] 0xffffffffffffffff
+> 
+This indicates that the kernel is attempting to demand load the sctp module.  If
+its hung in purpituity, that means that the callout process (forked by
+call_usermodehelper_exec) is blocked.  Look for the running modprobe process,
+and see whats blocking that.  That will lead you a step closer to your root
+cause.
 
-Meanwhile, we hit another issue that checksctp hangs:
+> We have libsctp.so.1.0.16 under /usr/local/lib/ but rpm -V
+> lksctp-tools shows it's not installed. Could this matter, or there
+> might be other reasons?
+> 
+No RHEL shipped rpm installs things to /usr/local/lib, ever.  Sounds like
+perhaps you've built your own libsctp and installed it.  As to which one is in
+use (the one in /usr/local/lib or the one in /usr/lib, where lksctp-tools rpm
+install libraries), is a matter of how your LD_LIBRARY_PATH is set.
 
+Neil
 
-83356 pts/0    D+     0:00 checksctp
-
-And  /proc/83356/stack shows:
-
-[<ffffffff8105f357>] call_usermodehelper_exec+0xc7/0xd0
-[<ffffffff8105f5a2>] __request_module+0x142/0x190
-[<ffffffff8134d3bb>] inet_create+0x10b/0x300
-[<ffffffff812e1aad>] __sock_create+0x12d/0x2c0
-[<ffffffff812e1f1d>] sys_socket+0x3d/0x70
-[<ffffffff81002f7b>] system_call_fastpath+0x16/0x1b
-[<00007f29c4c2fa07>] 0x7f29c4c2fa07
-[<ffffffffffffffff>] 0xffffffffffffffff
-
-We have libsctp.so.1.0.16 under /usr/local/lib/ but rpm -V
-lksctp-tools shows it's not installed. Could this matter, or there
-might be other reasons?
-
-Regards,
-Jerry
-
-On Fri, Mar 20, 2015 at 4:49 AM, Neil Horman <nhorman@tuxdriver.com> wrote:
-> On Thu, Mar 19, 2015 at 07:15:28PM -0700, Jerry Jerry wrote:
->> Hello everyone,
->>
->> We had another problem today, where modprobe shows an error in
->> /var/log/message when we ran an sctp application:
->>
->> modprobe: FATAL: Error inserting sctp
->> (/lib/modules/2.6.32.12-0.7-default/kernel/net/sctp/sctp.ko): Invalid
->> argument
->>
->> I'm wondering what might be possible causes of this and how should we
->> bypass this.... Appreciate any comments and suggestions.
->>
->> Regards,
->> Jerry
-> EINVAL is returned by mod_sysfs_setup.  Ostensibly its because you either
-> specified a module option that doesn't exist, or because the module is already
-> loaded.  There could be other reasons, but those are the ones that pop
-> immediately to mind.
->
-> Neil
->
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+> Regards,
+> Jerry
+> 
+> On Fri, Mar 20, 2015 at 4:49 AM, Neil Horman <nhorman@tuxdriver.com> wrote:
+> > On Thu, Mar 19, 2015 at 07:15:28PM -0700, Jerry Jerry wrote:
+> >> Hello everyone,
+> >>
+> >> We had another problem today, where modprobe shows an error in
+> >> /var/log/message when we ran an sctp application:
+> >>
+> >> modprobe: FATAL: Error inserting sctp
+> >> (/lib/modules/2.6.32.12-0.7-default/kernel/net/sctp/sctp.ko): Invalid
+> >> argument
+> >>
+> >> I'm wondering what might be possible causes of this and how should we
+> >> bypass this.... Appreciate any comments and suggestions.
+> >>
+> >> Regards,
+> >> Jerry
+> > EINVAL is returned by mod_sysfs_setup.  Ostensibly its because you either
+> > specified a module option that doesn't exist, or because the module is already
+> > loaded.  There could be other reasons, but those are the ones that pop
+> > immediately to mind.
+> >
+> > Neil
+> >
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >>
+> 
