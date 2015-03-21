@@ -1,7 +1,7 @@
 From: Jerry Jerry <jerry.jerry2008@gmail.com>
-Date: Fri, 20 Mar 2015 22:52:48 +0000
+Date: Sat, 21 Mar 2015 00:38:26 +0000
 Subject: Re: modprobe sctp error
-Message-Id: <CAAyB5cKiXpz6D97Ln7rJCnMHGPyCHgwL8J4_gObm6-QtO=oncQ@mail.gmail.com>
+Message-Id: <CAAyB5cLsikWAsz93PeJktvAHmU9d-uLokK-RnksXZyZ+F8vZ9g@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CAAyB5cLYfj24-+fGiZtGWa3Ae=c2=xpz2=3Ok3s=iMGxu5Abcw@mail.gmail.com>
 In-Reply-To: <CAAyB5cLYfj24-+fGiZtGWa3Ae=c2=xpz2=3Ok3s=iMGxu5Abcw@mail.gmail.com>
@@ -10,9 +10,34 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Thanks a lot, Neil, I'll be looking into it.
+Hi Neil,
 
+I checked mobprobe and it looks like its last step was to flush cpu
+workqueue while trying to stop_machine, which I don't quite understand
+why.
+
+
+Hereunder 83356 is checksctp process, and 83360 is mobprobe process
+
+root      83356  83270  0  2244   452   0 Mar20 pts/0    00:00:00 checksctp
+root      83359     16  0     0     0   1 Mar20 ?        00:00:00 [khelper]
+root      83360  83359  0  2307   712   0 Mar20 ?        00:00:00
+/sbin/modprobe -q -- net_pf_2_proto_132
+
+cat /proc/83360/stack
+[<ffffffff8105fb1c>] flush_cpu_workqueue+0x4c/0x80
+[<ffffffff8105fd5c>] flush_workqueue+0x3c/0x60
+[<ffffffff810933e9>] __stop_machine+0xf9/0x120
+[<ffffffff8109365f>] stop_machine+0x3f/0x70
+[<ffffffff8107fddc>] unwind_remove_table+0x3c/0x70
+[<ffffffff8107d047>] sys_init_module+0x157/0x270
+[<ffffffff81002f7b>] system_call_fastpath+0x16/0x1b
+[<00007fc7c1bccf4a>] 0x7fc7c1bccf4a
+[<ffffffffffffffff>] 0xffffffffffffffff
+
+Regards,
 Jerry
+
 
 On Fri, Mar 20, 2015 at 11:11 AM, Neil Horman <nhorman@tuxdriver.com> wrote:
 > On Fri, Mar 20, 2015 at 10:44:56AM -0700, Jerry Jerry wrote:
