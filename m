@@ -1,55 +1,63 @@
-From: Mikko Rapeli <mikko.rapeli@iki.fi>
-Date: Sat, 30 May 2015 15:38:17 +0000
-Subject: [PATCH 25/98] sctp.h: use __u8 and __u32 from linux/types.h
-Message-Id: <1433000370-19509-26-git-send-email-mikko.rapeli@iki.fi>
+From: Atalay Ozgovde <aozgovde@gmail.com>
+Date: Wed, 13 May 2015 14:21:22 +0000
+Subject: 
+Message-Id: <CAD26VjM7TYXzA-m-1Oa-1KeT=kX=Uu-M9Hg2YN79dA42S6BjRg@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1433000370-19509-1-git-send-email-mikko.rapeli@iki.fi>
-In-Reply-To: <1433000370-19509-1-git-send-email-mikko.rapeli@iki.fi>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: linux-kernel@vger.kernel.org
-Cc: Mikko Rapeli <mikko.rapeli@iki.fi>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, linux-api@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: linux-sctp@vger.kernel.org
 
-Fixes userspace compilation errors like:
+We are essentially trying to implement "fire and forget" TCP with
+SCTP. That is, a single server port that services clients that
+establish separate connections. We are not broadcasting same messages
+over to every client. Each client can issue different sets of requests
+from the server and receive response as streams of messages over its
+own channel. Messages are time sensitive and expire fast, therefore
+retransmission of lost messages is not desirable. Due to large number
+of clients and uniqueness of clients' needs UDP is not an option.
+We have one-to-one SCTP connections to clients where we send unordered
+messages with short time to live parameters. When clients' network
+degrade to about 60% packet loss (which happens often in some
+regions), server can continue to write (sctp_sendmsg) to the clients
+connection but wireshark shows that message don't get to the wire
+(blocked at the transport layer).
+We enabled SCTP Kernel logging and here is what we see:
+We start getting the following for each write attempt (some lines are
+removed for brevity):
+ May 11 09:58:43 localhost kernel: [250220.363867] sctp:
+sctp_outq_flush: could not transmit TSN: 0x0, status: 2
+   75877 May 11 09:58:43 localhost kernel: [250220.363870] sctp:
+sctp_do_sm post sfx: error 0, asoc ffff88036943a000[STATE_ESTABLISHED]
 
-linux/sctp.h:652:2: error: unknown type name ‘uint32_t’
+After several of the above eventually we get:
 
-Signed-off-by: Mikko Rapeli <mikko.rapeli@iki.fi>
----
- include/uapi/linux/sctp.h | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+   75878 May 11 09:58:43 localhost kernel: [250220.363871] sctp: We
+sent primitively.
+   75879 May 11 09:58:43 localhost kernel: [250220.363933] sctp:
+sctp_close(sk: 0xffff880369693dc0, timeout:0)
+   75880 May 11 09:58:43 localhost kernel: [250220.363938] sctp:
+sctp_do_sm prefn: ep ffff8807d159e200, EVENT_T_PRIMITIVE,
+PRIMITIVE_SHUTDOWN, asoc ffff880         36943a000[STATE_ESTABLISHED],
+sctp_sf_do_9_2_prm_shutdown
+   75881 May 11 09:58:43 localhost kernel: [250220.363941] sctp:
+sctp_do_sm postfn: asoc ffff88036943a000, status: DISPOSITION_CONSUME
+   75882 May 11 09:58:43 localhost kernel: [250220.363943] sctp:
+sctp_cmd_new_state: asoc ffff88036943a000[STATE_SHUTDOWN_PENDING]
+   75883 May 11 09:58:43 localhost kernel: [250220.363945] sctp:
+sctp_do_sm post sfx: error 0, asoc ffff88036943a000[STATE_CLOSED]
+   75884 May 11 09:58:43 localhost kernel: [250220.363947] sctp:
+sctp_destroy_sock(sk: ffff880369693dc0)
 
-diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index ce70fe6..dd0a9c2 100644
---- a/include/uapi/linux/sctp.h
-+++ b/include/uapi/linux/sctp.h
-@@ -718,13 +718,13 @@ struct sctp_authkeyid {
-  */
- struct sctp_sack_info {
- 	sctp_assoc_t	sack_assoc_id;
--	uint32_t	sack_delay;
--	uint32_t	sack_freq;
-+	__u32	sack_delay;
-+	__u32	sack_freq;
- };
- 
- struct sctp_assoc_value {
-     sctp_assoc_t            assoc_id;
--    uint32_t                assoc_value;
-+    __u32                assoc_value;
- };
- 
- /*
-@@ -794,7 +794,7 @@ struct sctp_status {
- struct sctp_authchunks {
- 	sctp_assoc_t	gauth_assoc_id;
- 	__u32		gauth_number_of_chunks;
--	uint8_t		gauth_chunks[];
-+	__u8		gauth_chunks[];
- };
- 
- /* The broken spelling has been released already in lksctp-tools header,
--- 
-2.1.4
+SCTP is abandoning the connection due to status = 2. I found in the
+kernel SCTP source that it means: SCTP_XMIT_RWND_FULL. ie. rwindow is
+full. Clearly SCTP reacting to what is sees as heavy congestion.
+We can detect congestion before connection is closed (using sctp
+events), my question is is there a way to reset a connection
+(association) without having to close it? Alternatively, is there a
+way to relax congestion parameters so that we can continue using the
+connection as we don't care about the packet loss?
 
+Thanks,
+
+Atalay
