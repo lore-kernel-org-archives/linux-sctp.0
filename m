@@ -1,39 +1,47 @@
-From: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
-Date: Wed, 13 May 2015 05:55:18 +0000
+From: Moohyoung KIM <emusal@gmail.com>
+Date: Wed, 13 May 2015 06:48:55 +0000
 Subject: Re: Checksum at INIT ACK.
-Message-Id: <F0EBF5C3-EAD5-48DA-923B-F5FCA5AE888F@lurchi.franken.de>
+Message-Id: <E99AD068-C0F6-4B7F-9636-0812D81167D5@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <FF69E842-A2CC-4870-9894-D355FFE80086@gmail.com>
 In-Reply-To: <FF69E842-A2CC-4870-9894-D355FFE80086@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="euc-kr"
+Content-Transfer-Encoding: base64
 To: linux-sctp@vger.kernel.org
 
-> On 13 May 2015, at 04:14, Moohyoung KIM <emusal@gmail.com> wrote:
-> 
-> Dear all,
-> 
-> I am currently trying to make an association with otter vendor's system. but it is failed.
-> The engineer of peer side requests me to set checksum parameter into INIT Ack. message we sent.
-> 
-> Q1. is it possible to differently set checksum value for each associations on linux-sctp?
-> Q2-1. If it is possible to set checksum separately, how to set the flag either use or not?
-> Q2-2. If it is NOT possible, we MUST turn the checksum feature on for whole association? how to do that? I am using lksctp-1.0.10-7 on Linux 2.6.32-432 (RHEL6).
-SCTP only uses CRC32c as the checksum and it is mandatory to use it. There is no
-"checksum parameter" for negotiating it.
-Does your peer still use the deprecated Adler32? It has been changed to CRC32c in
-https://tools.ietf.org/html/rfc3309
-The updated SCTP specification
-https://tools.ietf.org/html/rfc4960
-doesn't mention Adler32 anymore.
-
-Best regards
-Michael
-> 
-> Thanks--
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+VGhhbmtzIGZvciB5b3VyIGtpbmQgcmVzcG9uc2UKClRoZSByb290IGNhdXNlIG9mIHRoaXMgcHJv
+YmxlbSBpcyBwcm9iYWJseSBsa3NjdHAgdGhhdCBpcyBpbmNsdWRlZCBpbiBMaW51eCAyLjYuMzIt
+NDMyLgpJIGZvdW5kIHRoZSBsa3NjdHAgdGhhdCBpcyBpbmNsdWRlZCBpbiBMaW51eCAyLjYuMzIt
+NTA0IGlzIGNoYW5nZWQgc29tZXRoaW5nIHJlbGF0ZWQgdG8gY2hlY2tzdW0uCldoZW4gdXNpbmcg
+dmlydHVhbCBJUCBvbiBib25kaW5nIGludGVyZmFjZSBhcyBvdXIgY29uZmlndXJhdGlvbiwgb2xk
+IGxrc2N0cCBkaWQgbm90IHNldCBjaGVja3N1bSB2YWx1ZSBpbnRvIHRoZWlyIGhlYWRlci4KCkFm
+dGVyIGluc3RhbGxpbmcga2VybmVsIHVwZGF0ZSB0aGF0IGluY2x1ZGUgbmV3IGxrc2N0cCB0aGF0
+IHRoaXMgcHJvYmxlbSBpcyBwYXRjaGVkLCB0aGUgY2hlY2tzdW0gaXMgc3VjY2Vzc2Z1bGx5IHNl
+dC4KClRoYW5rcyAgIAoKMjAxNS4gNS4gMTMuLCC/wMjEIDI6NTUsIE1pY2hhZWwgVHVleGVuIDxN
+aWNoYWVsLlR1ZXhlbkBsdXJjaGkuZnJhbmtlbi5kZT4gwNu8ujoKCj4gT24gMTMgTWF5IDIwMTUs
+IGF0IDA0OjE0LCBNb29oeW91bmcgS0lNIDxlbXVzYWxAZ21haWwuY29tPiB3cm90ZToKPiAKPiBE
+ZWFyIGFsbCwKPiAKPiBJIGFtIGN1cnJlbnRseSB0cnlpbmcgdG8gbWFrZSBhbiBhc3NvY2lhdGlv
+biB3aXRoIG90dGVyIHZlbmRvcidzIHN5c3RlbS4gYnV0IGl0IGlzIGZhaWxlZC4KPiBUaGUgZW5n
+aW5lZXIgb2YgcGVlciBzaWRlIHJlcXVlc3RzIG1lIHRvIHNldCBjaGVja3N1bSBwYXJhbWV0ZXIg
+aW50byBJTklUIEFjay4gbWVzc2FnZSB3ZSBzZW50Lgo+IAo+IFExLiBpcyBpdCBwb3NzaWJsZSB0
+byBkaWZmZXJlbnRseSBzZXQgY2hlY2tzdW0gdmFsdWUgZm9yIGVhY2ggYXNzb2NpYXRpb25zIG9u
+IGxpbnV4LXNjdHA/Cj4gUTItMS4gSWYgaXQgaXMgcG9zc2libGUgdG8gc2V0IGNoZWNrc3VtIHNl
+cGFyYXRlbHksIGhvdyB0byBzZXQgdGhlIGZsYWcgZWl0aGVyIHVzZSBvciBub3Q/Cj4gUTItMi4g
+SWYgaXQgaXMgTk9UIHBvc3NpYmxlLCB3ZSBNVVNUIHR1cm4gdGhlIGNoZWNrc3VtIGZlYXR1cmUg
+b24gZm9yIHdob2xlIGFzc29jaWF0aW9uPyBob3cgdG8gZG8gdGhhdD8gSSBhbSB1c2luZyBsa3Nj
+dHAtMS4wLjEwLTcgb24gTGludXggMi42LjMyLTQzMiAoUkhFTDYpLgpTQ1RQIG9ubHkgdXNlcyBD
+UkMzMmMgYXMgdGhlIGNoZWNrc3VtIGFuZCBpdCBpcyBtYW5kYXRvcnkgdG8gdXNlIGl0LiBUaGVy
+ZSBpcyBubwoiY2hlY2tzdW0gcGFyYW1ldGVyIiBmb3IgbmVnb3RpYXRpbmcgaXQuCkRvZXMgeW91
+ciBwZWVyIHN0aWxsIHVzZSB0aGUgZGVwcmVjYXRlZCBBZGxlcjMyPyBJdCBoYXMgYmVlbiBjaGFu
+Z2VkIHRvIENSQzMyYyBpbgpodHRwczovL3Rvb2xzLmlldGYub3JnL2h0bWwvcmZjMzMwOQpUaGUg
+dXBkYXRlZCBTQ1RQIHNwZWNpZmljYXRpb24KaHR0cHM6Ly90b29scy5pZXRmLm9yZy9odG1sL3Jm
+YzQ5NjAKZG9lc24ndCBtZW50aW9uIEFkbGVyMzIgYW55bW9yZS4KCkJlc3QgcmVnYXJkcwpNaWNo
+YWVsCj4gCj4gVGhhbmtzLS0KPiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0
+aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtc2N0cCIgaW4KPiB0aGUgYm9keSBvZiBhIG1lc3Nh
+Z2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZwo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQg
+IGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbAo+IAoKCgotLQpUbyB1
+bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGlu
+dXgtc2N0cCIgaW4KdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5l
+bC5vcmcKTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpv
+cmRvbW8taW5mby5odG1s
