@@ -1,27 +1,38 @@
-From: Daniel Borkmann <daniel@iogearbox.net>
-Date: Wed, 27 May 2015 09:34:21 +0000
-Subject: Re: [PATCH] sctp: Fix mangled IPv4 addresses on a IPv6 listening socket
-Message-Id: <55658F9D.6030404@iogearbox.net>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Wed, 27 May 2015 10:11:22 +0000
+Subject: RE: [PATCH] sctp: Fix mangled IPv4 addresses on a IPv6 listening socket
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1CB409AD@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20150526233017.GB22391@obsidianresearch.com> <063D6719AE5E284EB5DD2968C1650D6D1CB408FE@AcuExch.aculab.com>
-In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6D1CB408FE@AcuExch.aculab.com>
+References: <20150526233017.GB22391@obsidianresearch.com>
+ <063D6719AE5E284EB5DD2968C1650D6D1CB408FE@AcuExch.aculab.com>
+ <55658F9D.6030404@iogearbox.net>
+In-Reply-To: <55658F9D.6030404@iogearbox.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@ACULAB.COM>, 'Jason Gunthorpe' <jgunthorpe@obsidianresearch.com>
+To: 'Daniel Borkmann' <daniel@iogearbox.net>, 'Jason Gunthorpe' <jgunthorpe@obsidianresearch.com>
 Cc: Neil Horman <nhorman@tuxdriver.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Vlad Yasevich <vyasevich@gmail.com>, "davem@davemloft.net" <davem@davemloft.net>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
 
-On 05/27/2015 11:06 AM, David Laight wrote:
-> From: Jason Gunthorpe
+From: Daniel Borkmann
+> Sent: 27 May 2015 10:34
 ...
->> Fixes: 299ee123e198 (sctp: Fixup v4mapped behaviour to comply with Sock API)
-> ...
->> This bugfix should be a candidate for -stable
->
-> Anyone know off-hand which kernel releases are affected?
-> I'm going to have to note this in the release notes for one of our products.
+> >> Fixes: 299ee123e198 (sctp: Fixup v4mapped behaviour to comply with Sock API)
+> > ...
+> >> This bugfix should be a candidate for -stable
+> >
+> > Anyone know off-hand which kernel releases are affected?
+> > I'm going to have to note this in the release notes for one of our products.
+> 
+> Ever heard of git-describe(1) ? ;)
+> 
+> git describe 299ee123e19889d511092347f5fc14db0f10e3a6
+> v3.16-rc7-1525-g299ee12
 
-Ever heard of git-describe(1) ? ;)
+Probably last time I asked the same question :-)
+Since I don't spend all day fighting git, I don't know all the sub-commands.
 
-git describe 299ee123e19889d511092347f5fc14db0f10e3a6
-v3.16-rc7-1525-g299ee12
+In any case it looks like I can escape by turning off
+SCTP_I_WANT_MAPPED_V4_ADDR for kernels 3.17 through 4.0.
+
+	David
+
