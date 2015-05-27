@@ -1,77 +1,40 @@
-From: Daniel Borkmann <daniel@iogearbox.net>
-Date: Wed, 27 May 2015 08:11:16 +0000
-Subject: Re: [PATCH] sctp: Fix mangled IPv4 addresses on a IPv6 listening socket
-Message-Id: <55657C24.1010601@iogearbox.net>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Wed, 27 May 2015 09:06:54 +0000
+Subject: RE: [PATCH] sctp: Fix mangled IPv4 addresses on a IPv6 listening socket
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1CB408FE@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20150526233017.GB22391@obsidianresearch.com>
 In-Reply-To: <20150526233017.GB22391@obsidianresearch.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>, Neil Horman <nhorman@tuxdriver.com>
-Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net, netdev@vger.kernel.org
+To: 'Jason Gunthorpe' <jgunthorpe@obsidianresearch.com>, Neil Horman <nhorman@tuxdriver.com>, Daniel Borkmann <dborkman@redhat.com>
+Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Vlad Yasevich <vyasevich@gmail.com>, "davem@davemloft.net" <davem@davemloft.net>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
 
-On 05/27/2015 01:30 AM, Jason Gunthorpe wrote:
+From: Jason Gunthorpe
+> Sent: 27 May 2015 00:30
 > sctp_v4_map_v6 was subtly writing and reading from members
 > of a union in a way the clobbered data it needed to read before
-
-s/the/that/
-
 > it read it.
->
+> 
 > Zeroing the v6 flowinfo overwrites the v4 sin_addr with 0, meaning
 > that every place that calls sctp_v4_map_v6 gets ::ffff:0.0.0.0 as the
 > result.
->
+> 
 > Reorder things to guarantee correct behaviour no matter what the
 > union layout is.
->
+> 
 > This impacts user space clients that open an IPv6 SCTP socket and
 > receive IPv4 connections. Prior to 299ee user space would see a
 > sockaddr with AF_INET and a correct address, after 299ee the sockaddr
 > is AF_INET6, but the address is wrong.
->
+> 
 > Fixes: 299ee123e198 (sctp: Fixup v4mapped behaviour to comply with Sock API)
-> Signed-off-by: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-> ---
->   include/net/sctp/sctp.h | 7 +++++--
->   1 file changed, 5 insertions(+), 2 deletions(-)
->
+...
 > This bugfix should be a candidate for -stable
->
-> diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-> index 856f01cb51dd..230775f5952a 100644
-> --- a/include/net/sctp/sctp.h
-> +++ b/include/net/sctp/sctp.h
-> @@ -571,11 +571,14 @@ static inline void sctp_v6_map_v4(union sctp_addr *addr)
->   /* Map v4 address to v4-mapped v6 address */
->   static inline void sctp_v4_map_v6(union sctp_addr *addr)
->   {
-> +	__be16 port;
-> +
-> +	port = addr->v4.sin_port;
-> +	addr->v6.sin6_addr.s6_addr32[3] = addr->v4.sin_addr.s_addr;
-> +	addr->v6.sin6_port = port;
->   	addr->v6.sin6_family = AF_INET6;
->   	addr->v6.sin6_flowinfo = 0;
->   	addr->v6.sin6_scope_id = 0;
-> -	addr->v6.sin6_port = addr->v4.sin_port;
-> -	addr->v6.sin6_addr.s6_addr32[3] = addr->v4.sin_addr.s_addr;
 
-Change looks good to me. You actually would only need to address
-the issue where the v4.sin_addr is copied before you overwrite/zero
-the flowinfo as only these two overlap in the union. Given that
-sockaddr_in and sockaddr_in6 are exported to uapi, they are immutable,
-but I see the point that union sctp_addr is kernel private - bad
-things happen if v4/v6 don't overlap the way anymore as they'd do
-now. ;)
+Anyone know off-hand which kernel releases are affected?
+I'm going to have to note this in the release notes for one of our products.
 
-Anyways:
-
-Acked-by: Daniel Borkmann <daniel@iogearbox.net>
-
->   	addr->v6.sin6_addr.s6_addr32[0] = 0;
->   	addr->v6.sin6_addr.s6_addr32[1] = 0;
->   	addr->v6.sin6_addr.s6_addr32[2] = htonl(0x0000ffff);
->
+	David
 
