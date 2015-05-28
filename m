@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 28 May 2015 14:31:22 +0000
+From: Marcelo Ricardo Leitner <mleitner@redhat.com>
+Date: Thu, 28 May 2015 14:46:29 +0000
 Subject: Re: [PATCH] sctp: fix ASCONF list handling
-Message-Id: <20150528143122.GB14938@hmsreliant.think-freely.org>
+Message-Id: <20150528144629.GD3387@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <d78e23c156981e761086f4e37517e441c84d6f90.1432769183.git.marcelo.leitner@gmail.com>
  <20150528101511.GA14938@hmsreliant.think-freely.org>
@@ -11,7 +11,7 @@ In-Reply-To: <20150528132732.GC3387@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <mleitner@redhat.com>
+To: Neil Horman <nhorman@tuxdriver.com>
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Daniel Borkmann <daniel@iogearbox.net>, Vlad Yasevich <vyasevich@gmail.com>, Michio Honda <micchie@sfc.wide.ad.jp>
 
 On Thu, May 28, 2015 at 10:27:32AM -0300, Marcelo Ricardo Leitner wrote:
@@ -85,13 +85,15 @@ On Thu, May 28, 2015 at 10:27:32AM -0300, Marcelo Ricardo Leitner wrote:
 > writers with addr_wq_lock.
 > 
 > Nice, thanks Neil.
-> 
-Yup, thanks!
-Neil
 
->   Marcelo
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Cannot really do that.. as that creates a lock inversion between
+sctp_destroy_sock() (which already holds lock_sock) and
+sctp_addr_wq_timeout_handler(), which first grabs addr_wq_lock and then
+locks socket by socket.
+
+Due to that, I'm afraid reusing this lock is not possible, and we should
+stick with the patch.. what do you think? (though I have to fix the nits
+in there)
+
+  Marcelo
+
