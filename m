@@ -1,63 +1,33 @@
-From: Atalay Ozgovde <aozgovde@gmail.com>
-Date: Wed, 13 May 2015 14:21:22 +0000
-Subject: 
-Message-Id: <CAD26VjM7TYXzA-m-1Oa-1KeT=kX=Uu-M9Hg2YN79dA42S6BjRg@mail.gmail.com>
+From: Ann Beattie Sanchez <rsan4ril@gmail.com>
+Date: Fri, 29 May 2015 03:49:16 +0000
+Subject: Hello My Dear
+Message-Id: <CAOzfBbDTVnSE7mqSjLPcNAiBJ=59ivy43tjNXMpwNGWNd545Yg@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
 
-We are essentially trying to implement "fire and forget" TCP with
-SCTP. That is, a single server port that services clients that
-establish separate connections. We are not broadcasting same messages
-over to every client. Each client can issue different sets of requests
-from the server and receive response as streams of messages over its
-own channel. Messages are time sensitive and expire fast, therefore
-retransmission of lost messages is not desirable. Due to large number
-of clients and uniqueness of clients' needs UDP is not an option.
-We have one-to-one SCTP connections to clients where we send unordered
-messages with short time to live parameters. When clients' network
-degrade to about 60% packet loss (which happens often in some
-regions), server can continue to write (sctp_sendmsg) to the clients
-connection but wireshark shows that message don't get to the wire
-(blocked at the transport layer).
-We enabled SCTP Kernel logging and here is what we see:
-We start getting the following for each write attempt (some lines are
-removed for brevity):
- May 11 09:58:43 localhost kernel: [250220.363867] sctp:
-sctp_outq_flush: could not transmit TSN: 0x0, status: 2
-   75877 May 11 09:58:43 localhost kernel: [250220.363870] sctp:
-sctp_do_sm post sfx: error 0, asoc ffff88036943a000[STATE_ESTABLISHED]
+Hi Dear,
+It is my pleasure to meet you , I hope all is well with you.
 
-After several of the above eventually we get:
+I am Ann Beattie Sanchez, a United States army officer from the United States
+of America. I am supportive, loving and humble. I really need a good
+friend with whom I can have a genuine , meaningful and intimate
+relationship full of love, passion and romance.
 
-   75878 May 11 09:58:43 localhost kernel: [250220.363871] sctp: We
-sent primitively.
-   75879 May 11 09:58:43 localhost kernel: [250220.363933] sctp:
-sctp_close(sk: 0xffff880369693dc0, timeout:0)
-   75880 May 11 09:58:43 localhost kernel: [250220.363938] sctp:
-sctp_do_sm prefn: ep ffff8807d159e200, EVENT_T_PRIMITIVE,
-PRIMITIVE_SHUTDOWN, asoc ffff880         36943a000[STATE_ESTABLISHED],
-sctp_sf_do_9_2_prm_shutdown
-   75881 May 11 09:58:43 localhost kernel: [250220.363941] sctp:
-sctp_do_sm postfn: asoc ffff88036943a000, status: DISPOSITION_CONSUME
-   75882 May 11 09:58:43 localhost kernel: [250220.363943] sctp:
-sctp_cmd_new_state: asoc ffff88036943a000[STATE_SHUTDOWN_PENDING]
-   75883 May 11 09:58:43 localhost kernel: [250220.363945] sctp:
-sctp_do_sm post sfx: error 0, asoc ffff88036943a000[STATE_CLOSED]
-   75884 May 11 09:58:43 localhost kernel: [250220.363947] sctp:
-sctp_destroy_sock(sk: ffff880369693dc0)
+I took Interest in you and would love to meet you for a serious
+relationship, although I am not always available to write mail due to
+the condition of my duty.
 
-SCTP is abandoning the connection due to status = 2. I found in the
-kernel SCTP source that it means: SCTP_XMIT_RWND_FULL. ie. rwindow is
-full. Clearly SCTP reacting to what is sees as heavy congestion.
-We can detect congestion before connection is closed (using sctp
-events), my question is is there a way to reset a connection
-(association) without having to close it? Alternatively, is there a
-way to relax congestion parameters so that we can continue using the
-connection as we don't care about the packet loss?
+Note that neither age nor ethnic differences will not be a barrier to
+our relationship , what I need is your love, trust and care and I will
+give you my best love.
 
-Thanks,
+Please let us continue this conversation through my private email
+account (ann_sanchez105@outlook.com)
+I will introduce myself better and send you my picture as soon as I
+receive your mail.
 
-Atalay
+I hope to read your mail soon.
+Warmest Regards,
+Ann Beattie Sanchez
