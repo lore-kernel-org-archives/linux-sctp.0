@@ -1,38 +1,55 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Thu, 28 May 2015 08:58:35 +0000
-Subject: RE: [PATCH] sctp: Fix mangled IPv4 addresses on a IPv6 listening socket
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1CB4177C@AcuExch.aculab.com>
+From: Mikko Rapeli <mikko.rapeli@iki.fi>
+Date: Sat, 30 May 2015 15:38:17 +0000
+Subject: [PATCH 25/98] sctp.h: use __u8 and __u32 from linux/types.h
+Message-Id: <1433000370-19509-26-git-send-email-mikko.rapeli@iki.fi>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20150526233017.GB22391@obsidianresearch.com>
- <063D6719AE5E284EB5DD2968C1650D6D1CB408FE@AcuExch.aculab.com>
- <55658F9D.6030404@iogearbox.net>
- <063D6719AE5E284EB5DD2968C1650D6D1CB409AD@AcuExch.aculab.com>
- <20150527153226.GA9909@obsidianresearch.com>
- <063D6719AE5E284EB5DD2968C1650D6D1CB40D32@AcuExch.aculab.com>
- <20150527163157.GA15041@obsidianresearch.com>
- <063D6719AE5E284EB5DD2968C1650D6D1CB40E15@AcuExch.aculab.com>
- <20150527170440.GA15308@obsidianresearch.com>
-In-Reply-To: <20150527170440.GA15308@obsidianresearch.com>
+References: <1433000370-19509-1-git-send-email-mikko.rapeli@iki.fi>
+In-Reply-To: <1433000370-19509-1-git-send-email-mikko.rapeli@iki.fi>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: 'Jason Gunthorpe' <jgunthorpe@obsidianresearch.com>
-Cc: 'Daniel Borkmann' <daniel@iogearbox.net>, Neil Horman <nhorman@tuxdriver.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Vlad Yasevich <vyasevich@gmail.com>, "davem@davemloft.net" <davem@davemloft.net>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: linux-kernel@vger.kernel.org
+Cc: Mikko Rapeli <mikko.rapeli@iki.fi>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, linux-api@vger.kernel.org
 
-From: Jason Gunthorpe
-> Sent: 27 May 2015 18:05
-> On Wed, May 27, 2015 at 04:41:18PM +0000, David Laight wrote:
-> 
-> > The code will be sleeping in kernel_accept() and later calls
-> > kernel_getpeername().
-> > The code is used for both TCP and SCTP and this part is common (using
-> > the TCP semantics).
-> 
-> getpeername uses a different flow, it calls into inet6_getname which
-> will always return the AF_INET6 version.
+Fixes userspace compilation errors like:
 
-Ok, that explains why I hadn't seen the problem.
-It also means I don't have to worry about it.
+linux/sctp.h:652:2: error: unknown type name ‘uint32_t’
 
-	David
+Signed-off-by: Mikko Rapeli <mikko.rapeli@iki.fi>
+---
+ include/uapi/linux/sctp.h | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index ce70fe6..dd0a9c2 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -718,13 +718,13 @@ struct sctp_authkeyid {
+  */
+ struct sctp_sack_info {
+ 	sctp_assoc_t	sack_assoc_id;
+-	uint32_t	sack_delay;
+-	uint32_t	sack_freq;
++	__u32	sack_delay;
++	__u32	sack_freq;
+ };
+ 
+ struct sctp_assoc_value {
+     sctp_assoc_t            assoc_id;
+-    uint32_t                assoc_value;
++    __u32                assoc_value;
+ };
+ 
+ /*
+@@ -794,7 +794,7 @@ struct sctp_status {
+ struct sctp_authchunks {
+ 	sctp_assoc_t	gauth_assoc_id;
+ 	__u32		gauth_number_of_chunks;
+-	uint8_t		gauth_chunks[];
++	__u8		gauth_chunks[];
+ };
+ 
+ /* The broken spelling has been released already in lksctp-tools header,
+-- 
+2.1.4
 
