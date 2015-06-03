@@ -1,64 +1,69 @@
 From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 01 Jun 2015 13:40:00 +0000
-Subject: Re: [PATCH 25/98] sctp.h: use __u8 and __u32 from linux/types.h
-Message-Id: <20150601134000.GA21592@hmsreliant.think-freely.org>
+Date: Wed, 03 Jun 2015 10:22:54 +0000
+Subject: Re: [PATCH] sctp: Make the function sctp_chunk_abandoned bool
+Message-Id: <20150603102254.GA7234@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1433000370-19509-1-git-send-email-mikko.rapeli@iki.fi>
- <1433000370-19509-26-git-send-email-mikko.rapeli@iki.fi>
-In-Reply-To: <1433000370-19509-26-git-send-email-mikko.rapeli-X3B1VOXEql0@public.gmane.org>
+References: <1433304173-4367-1-git-send-email-xerofoify@gmail.com>
+In-Reply-To: <1433304173-4367-1-git-send-email-xerofoify@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: Mikko Rapeli <mikko.rapeli-X3B1VOXEql0@public.gmane.org>
-Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Vlad Yasevich <vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Nicholas Krause <xerofoify@gmail.com>
+Cc: vyasevich@gmail.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On Sat, May 30, 2015 at 05:38:17PM +0200, Mikko Rapeli wrote:
-> Fixes userspace compilation errors like:
+On Wed, Jun 03, 2015 at 12:02:53AM -0400, Nicholas Krause wrote:
+> This makes the function sctp_chunk_abandoned bool due to this
+> function only returning either one or zero as its return value.
 > 
-> linux/sctp.h:652:2: error: unknown type name ‘uint32_t’
-> 
-> Signed-off-by: Mikko Rapeli <mikko.rapeli@iki.fi>
+> Signed-off-by: Nicholas Krause <xerofoify@gmail.com>
 > ---
->  include/uapi/linux/sctp.h | 8 ++++----
->  1 file changed, 4 insertions(+), 4 deletions(-)
+>  include/net/sctp/structs.h | 2 +-
+>  net/sctp/chunk.c           | 8 ++++----
+>  2 files changed, 5 insertions(+), 5 deletions(-)
 > 
-> diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-> index ce70fe6..dd0a9c2 100644
-> --- a/include/uapi/linux/sctp.h
-> +++ b/include/uapi/linux/sctp.h
-> @@ -718,13 +718,13 @@ struct sctp_authkeyid {
->   */
->  struct sctp_sack_info {
->  	sctp_assoc_t	sack_assoc_id;
-> -	uint32_t	sack_delay;
-> -	uint32_t	sack_freq;
-> +	__u32	sack_delay;
-> +	__u32	sack_freq;
->  };
+> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+> index 2bb2fcf..2691490 100644
+> --- a/include/net/sctp/structs.h
+> +++ b/include/net/sctp/structs.h
+> @@ -535,7 +535,7 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *,
+>  void sctp_datamsg_free(struct sctp_datamsg *);
+>  void sctp_datamsg_put(struct sctp_datamsg *);
+>  void sctp_chunk_fail(struct sctp_chunk *, int error);
+> -int sctp_chunk_abandoned(struct sctp_chunk *);
+> +bool sctp_chunk_abandoned(struct sctp_chunk *);
 >  
->  struct sctp_assoc_value {
->      sctp_assoc_t            assoc_id;
-> -    uint32_t                assoc_value;
-> +    __u32                assoc_value;
->  };
+>  /* RFC2960 1.4 Key Terms
+>   *
+> diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
+> index a338091..7bd1991 100644
+> --- a/net/sctp/chunk.c
+> +++ b/net/sctp/chunk.c
+> @@ -344,17 +344,17 @@ errout:
+>  }
 >  
->  /*
-> @@ -794,7 +794,7 @@ struct sctp_status {
->  struct sctp_authchunks {
->  	sctp_assoc_t	gauth_assoc_id;
->  	__u32		gauth_number_of_chunks;
-> -	uint8_t		gauth_chunks[];
-> +	__u8		gauth_chunks[];
->  };
+>  /* Check whether this message has expired. */
+> -int sctp_chunk_abandoned(struct sctp_chunk *chunk)
+> +bool sctp_chunk_abandoned(struct sctp_chunk *chunk)
+>  {
+>  	struct sctp_datamsg *msg = chunk->msg;
 >  
->  /* The broken spelling has been released already in lksctp-tools header,
+>  	if (!msg->can_abandon)
+> -		return 0;
+> +		return false;
+>  
+>  	if (time_after(jiffies, msg->expires_at))
+> -		return 1;
+> +		return true;
+>  
+> -	return 0;
+> +	return false;
+>  }
+>  
+>  /* This chunk (and consequently entire message) has failed in its sending. */
 > -- 
 > 2.1.4
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
+Seems reasonable
 Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
