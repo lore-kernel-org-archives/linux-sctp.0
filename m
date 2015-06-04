@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <mleitner@redhat.com>
-Date: Wed, 03 Jun 2015 17:19:23 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Thu, 04 Jun 2015 14:27:10 +0000
 Subject: Re: [PATCH v2 1/2] sctp: rcu-ify addr_waitq
-Message-Id: <20150603171923.GA3402@localhost.localdomain>
+Message-Id: <20150604142710.GD24585@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20150602134851.GA15847@hmsreliant.think-freely.org>
  <660872d4d795833eca5f7e517c7e1dabbc1df02b.1433350421.git.marcelo.leitner@gmail.com>
@@ -9,8 +9,8 @@ In-Reply-To: <660872d4d795833eca5f7e517c7e1dabbc1df02b.1433350421.git.marcelo.le
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>, netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Daniel Borkmann <daniel@iogearbox.net>, Vlad Yasevich <vyasevich@gmail.com>, Michio Honda <micchie@sfc.wide.ad.jp>
+To: mleitner@redhat.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Daniel Borkmann <daniel@iogearbox.net>, Vlad Yasevich <vyasevich@gmail.com>, Michio Honda <micchie@sfc.wide.ad.jp>
 
 On Wed, Jun 03, 2015 at 01:54:01PM -0300, mleitner@redhat.com wrote:
 > From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
@@ -80,11 +80,6 @@ On Wed, Jun 03, 2015 at 01:54:01PM -0300, mleitner@redhat.com wrote:
 > +		if (temp = addrw) {
 > +			list_del_rcu(&addrw->list);
 > +			kfree_rcu(addrw, rcu);
-
-Missed a break here, will issue a v3 when you review it too..
-
-  Marcelo
-
 > +		}
 > +	}
 > +	spin_unlock_bh(&net->sctp.addr_wq_lock);
@@ -112,6 +107,9 @@ Missed a break here, will issue a v3 when you review it too..
 > +				spin_lock_bh(&net->sctp.addr_wq_lock);
 >  				mod_timer(&net->sctp.addr_wq_timer, timeo_val);
 > +				spin_unlock_bh(&net->sctp.addr_wq_lock);
+Do we actually need to lock the addr_wq_lock here?  mod_timer has its own
+internal locking.
+
 >  				break;
 >  			}
 >  		}
@@ -194,6 +192,12 @@ Missed a break here, will issue a v3 when you review it too..
 >  
 >  	pr_debug("%s: add new entry for cmd:%d, addr:%pISc in wq:%p\n",
 >  		 __func__, addrw->state, &addrw->a.sa, &net->sctp.addr_waitq);
+
+Other than the comment above, and the break you need to insert, I think this
+looks good, thanks for taking the extra time on it!
+Best
+Neil
+
 > -- 
 > 2.4.1
 > 
