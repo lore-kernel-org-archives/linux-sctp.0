@@ -1,150 +1,209 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 17 Jun 2015 18:45:53 +0000
-Subject: Re: [RFC PATCH 0/2] sctp: add new getsockopt option SCTP_SOCKOPT_PEELOFF_KERNEL
-Message-Id: <20150617184553.GA24075@hmsreliant.think-freely.org>
+From: mleitner@redhat.com
+Date: Thu, 11 Jun 2015 14:30:46 +0000
+Subject: [PATCH v4] sctp: fix ASCONF list handling
+Message-Id: <94ae715119611f8df1baccd4f016c5d49a047a8d.1434032881.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1434492495.git.marcelo.leitner@gmail.com>
- <20150617102119.GA24677@hmsreliant.think-freely.org>
- <55815C22.2000605@gmail.com>
- <20150617122004.GC24677@hmsreliant.think-freely.org>
- <55816AC0.2070508@gmail.com>
- <20150617131658.GD24677@hmsreliant.think-freely.org>
- <558178CA.3010806@gmail.com>
-In-Reply-To: <558178CA.3010806@gmail.com>
+References: <20150610191418.GA19556@hmsreliant.think-freely.org>
+In-Reply-To: <20150610191418.GA19556@hmsreliant.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
+To: Neil Horman <nhorman@tuxdriver.com>, Hannes Frederic Sowa <hannes@stressinduktion.org>, netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Daniel Borkmann <daniel@iogearbox.net>, Vlad Yasevich <vyasevich@gmail.com>, Michio Honda <micchie@sfc.wide.ad.jp>
 
-On Wed, Jun 17, 2015 at 10:40:26AM -0300, Marcelo Ricardo Leitner wrote:
-> On 17-06-2015 10:16, Neil Horman wrote:
-> >On Wed, Jun 17, 2015 at 09:40:32AM -0300, Marcelo Ricardo Leitner wrote:
-> >>On 17-06-2015 09:20, Neil Horman wrote:
-> >>>On Wed, Jun 17, 2015 at 08:38:10AM -0300, Marcelo Ricardo Leitner wrote:
-> >>>>On 17-06-2015 07:21, Neil Horman wrote:
-> >>>>>On Tue, Jun 16, 2015 at 07:42:31PM -0300, Marcelo Ricardo Leitner wrote:
-> >>>>>>Hi,
-> >>>>>>
-> >>>>>>I'm trying to remove a direct dependency of dlm module on sctp one.
-> >>>>>>Currently dlm code is calling sctp_do_peeloff() directly and only this
-> >>>>>>call is causing the load of sctp module together with dlm. For that, we
-> >>>>>>have basically 3 options:
-> >>>>>>- Doing a module split on dlm
-> >>>>>>   - which I'm avoiding because it was already split and was merged (more
-> >>>>>>     info on patch2 changelog)
-> >>>>>>   - and the sctp code on it is rather small if compared with sctp module
-> >>>>>>     itself
-> >>>>>>- Using some other infra that gets indirectly activated, like getsockopt()
-> >>>>>>   - It was like this before, but the exposed sockopt created a file
-> >>>>>>     descriptor for the new socket and that create some serious issues.
-> >>>>>>     More info on 2f2d76cc3e93 ("dlm: Do not allocate a fd for peeloff")
-> >>>>>>- Doing something like ipv6_stub (which is used by vxlan) or similar
-> >>>>>>   - but I don't feel that's a good way out here, it doesn't feel right.
-> >>>>>>
-> >>>>>>So I'm approaching this by going with 2nd option again but this time
-> >>>>>>also creating a new sockopt that is only accessible for kernel users of
-> >>>>>>this protocol, so that we are safe to directly return a struct socket *
-> >>>>>>via getsockopt() results. This is the tricky part of it of this series.
-> >>>>>>
-> >>>>>>It smells hacky yes but currently most of sctp calls are wrapped behind
-> >>>>>>kernel_*(). Even if we set a flag (like netlink does) saying that this
-> >>>>>>is a kernel socket, we still have the issue of getting the function call
-> >>>>>>through and returning such non-usual return value.
-> >>>>>>
-> >>>>>>I kept __user marker on sctp_getsockopt_peeloff_kernel() prototype and
-> >>>>>>its helpers just to avoid issues with static checkers.
-> >>>>>>
-> >>>>>>Kernel path not really tested yet.. mainly willing to know what do you
-> >>>>>>think, is this feasible? getsockopt option only reachable by kernel
-> >>>>>>itself? Couldn't find any other like this.
-> >>>>>>
-> >>>>>>Thanks,
-> >>>>>>Marcelo
-> >>>>>>
-> >>>>>>Marcelo Ricardo Leitner (2):
-> >>>>>>   sctp: add new getsockopt option SCTP_SOCKOPT_PEELOFF_KERNEL
-> >>>>>>   dlm: avoid using sctp_do_peeloff directly
-> >>>>>>
-> >>>>>>  fs/dlm/lowcomms.c         | 17 ++++++++---------
-> >>>>>>  include/uapi/linux/sctp.h | 12 ++++++++++++
-> >>>>>>  net/sctp/socket.c         | 39 +++++++++++++++++++++++++++++++++++++++
-> >>>>>>  3 files changed, 59 insertions(+), 9 deletions(-)
-> >>>>>>
-> >>>>>>--
-> >>>>>>2.4.1
-> >>>>>>
-> >>>>>>
-> >>>>>
-> >>>>>Why not just use the existing PEELOFF socket option with the kernel_getsockopt
-> >>>>>interface, and sockfd_lookup to translate the returned value back to a socket
-> >>>>>struct?  That seems less redundant and less hack-ish to me.
-> >>>>
-> >>>>It was like that before commit 2f2d76cc3e93 ("dlm: Do not allocate a fd for
-> >>>>peeloff"), but it caused serious issues due to the fd allocation, so that's
-> >>>>what I'm willing to avoid now.
-> >>>>
-> >>>>References:
-> >>>>http://article.gmane.org/gmane.linux.network.drbd/22529
-> >>>>https://bugzilla.redhat.com/show_bug.cgi?id75629 (this one is closed,
-> >>>>sorry)
-> >>>>
-> >>>>   Marcelo
-> >>>>
-> >>>Ah, I see.  You're using the new socket option as a differentiator to just skip
-> >>>the creation of an FD.
-> >>
-> >>Exactly.
-> >>
-> >>>I get your reasoning, but I'm still not in love with the idea of duplicating
-> >>>code paths to avoid that action.  Can we use some data inside the socket
-> >>>structure to do this differentiation?  Specifically here I'm thinking of
-> >>>sock->file.  IIRC that will be non-null for any sockets created in user space,
-> >>
-> >>I had thought about using some socket flags like netlink does but couldn't
-> >>get around with that. Hadn't thought about sock->file though, nice idea.
-> >>
-> >>>but will always be NULL for dlm created sockets (since we use sock_create
-> >>>directly to create them.  If that is a sufficient differentiator, then we can
-> >>>just optionally allocate the new socket fd for the peeled off socket, iff the
-> >>>parent sock->file pointer is non-null.
-> >>>
-> >>>Thoughts?
-> >>>Neil
-> >>
-> >>We can re-use the current code path, by either checking it via sock->file or
-> >>via get_fs(). That will require us to change the option arg format so we
-> >>keep it nice and clean but as it would be kernel-side only, it should be ok
-> >>right? It currently is:
-> >>
-> >>typedef struct {
-> >>         sctp_assoc_t associd;
-> >>         int sd;
-> >>} sctp_peeloff_arg_t;
-> >>
-> >>And we would have to fit a pointer in there, something like:
-> >>typedef union {
-> >>	struct {
-> >>	        sctp_assoc_t associd;
-> >>	        int sd;
-> >>	};
-> >>	void *sock;
-> >>} sctp_peeloff_arg_t;
-> >>
-> >>Sounds good?
-> >>
-> >Yes, sounds reasonable.
-> >
-> >Thanks!
-> >Neil
-> 
-> Cool, thanks Neil. I'll rework these now but will post the new version
-> probably by next week only, as we can get dlm properly tested too.
-> 
-Worksforme :)
-Neil
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-> Cheers,
-> Marcelo
-> 
-> 
+->auto_asconf_splist is per namespace and mangled by functions like
+sctp_setsockopt_auto_asconf() which doesn't guarantee any serialization.
+
+Also, the call to inet_sk_copy_descendant() was backuping
+->auto_asconf_list through the copy but was not honoring
+->do_auto_asconf, which could lead to list corruption if it was
+different between both sockets.
+
+This commit thus fixes the list handling by using ->addr_wq_lock
+spinlock to protect the list. A special handling is done upon socket
+creation and destruction for that. Error handlig on sctp_init_sock()
+will never return an error after having initialized asconf, so
+sctp_destroy_sock() can be called without addrq_wq_lock. The lock now
+will be take on sctp_close_sock(), before locking the socket, so we
+don't do it in inverse order compared to sctp_addr_wq_timeout_handler().
+
+Instead of taking the lock on sctp_sock_migrate() for copying and
+restoring the list values, it's preferred to avoid rewritting it by
+implementing sctp_copy_descendant().
+
+Issue was found with a test application that kept flipping sysctl
+default_auto_asconf on and off, but one could trigger it by issuing
+simultaneous setsockopt() calls on multiple sockets or by
+creating/destroying sockets fast enough. This is only triggerable
+locally.
+
+Fixes: 9f7d653b67ae ("sctp: Add Auto-ASCONF support (core).")
+Reported-by: Ji Jianwen <jiji@redhat.com>
+Suggested-by: Neil Horman <nhorman@tuxdriver.com>
+Suggested-by: Hannes Frederic Sowa <hannes@stressinduktion.org>
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+
+Notes:
+    Attempts to circumvent this lock invertion with RCU and/or list splicing
+    were unsuccessful, as they led to more and more code to handle it
+    properly.
+    
+    Back when Hannes started reviewing the patches, he had asked if I
+    couldn't take the lock earlier during the socket destruction. I had said
+    no because sctp_destroy_sock() is called with socket lock already held
+    on sctp_close_sock() and such would not be possible to handle on error
+    handling situations like when sctp_init_sock() fails and
+    sctp_destroy_sock() is called right after that.
+    
+    But if we take care that nothing fails after initializing asconf on
+    sctp_init_sock(), this is possible, and less complicated than my RCU and
+    list splicing attempts.
+
+ include/net/netns/sctp.h   |  1 +
+ include/net/sctp/structs.h |  4 ++++
+ net/sctp/socket.c          | 38 ++++++++++++++++++++++++++++++--------
+ 3 files changed, 35 insertions(+), 8 deletions(-)
+
+diff --git a/include/net/netns/sctp.h b/include/net/netns/sctp.h
+index 3573a81815ad9e0efb6ceb721eb066d3726419f0..8ba379f9e4678d7f00209a6b2ac12d41d82f4b25 100644
+--- a/include/net/netns/sctp.h
++++ b/include/net/netns/sctp.h
+@@ -31,6 +31,7 @@ struct netns_sctp {
+ 	struct list_head addr_waitq;
+ 	struct timer_list addr_wq_timer;
+ 	struct list_head auto_asconf_splist;
++	/* Lock that protects both addr_waitq and auto_asconf_splist */
+ 	spinlock_t addr_wq_lock;
+ 
+ 	/* Lock that protects the local_addr_list writers */
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 2bb2fcf5b11f0387c81b860ad2d3a6607da19a7d..495c87e367b3f2e8941807f56a77d2e14469bfed 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -223,6 +223,10 @@ struct sctp_sock {
+ 	atomic_t pd_mode;
+ 	/* Receive to here while partial delivery is in effect. */
+ 	struct sk_buff_head pd_lobby;
++
++	/* These must be the last fields, as they will skipped on copies,
++	 * like on accept and peeloff operations
++	 */
+ 	struct list_head auto_asconf_list;
+ 	int do_auto_asconf;
+ };
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index f09de7fac2e6acddad8b2e046dbf626e329cb674..9af02e777944552f3035ce499a929766119c0e9f 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1528,7 +1528,10 @@ static void sctp_close(struct sock *sk, long timeout)
+ 
+ 	/* Supposedly, no process has access to the socket, but
+ 	 * the net layers still may.
++	 * Also, sctp_destroy_sock() needs to be called with addr_wq_lock
++	 * held and that should be grabbed before socket lock.
+ 	 */
++	spin_lock_bh(&net->sctp.addr_wq_lock);
+ 	local_bh_disable();
+ 	bh_lock_sock(sk);
+ 
+@@ -1540,6 +1543,7 @@ static void sctp_close(struct sock *sk, long timeout)
+ 
+ 	bh_unlock_sock(sk);
+ 	local_bh_enable();
++	spin_unlock_bh(&net->sctp.addr_wq_lock);
+ 
+ 	sock_put(sk);
+ 
+@@ -3580,6 +3584,7 @@ static int sctp_setsockopt_auto_asconf(struct sock *sk, char __user *optval,
+ 	if ((val && sp->do_auto_asconf) || (!val && !sp->do_auto_asconf))
+ 		return 0;
+ 
++	spin_lock_bh(&sock_net(sk)->sctp.addr_wq_lock);
+ 	if (val = 0 && sp->do_auto_asconf) {
+ 		list_del(&sp->auto_asconf_list);
+ 		sp->do_auto_asconf = 0;
+@@ -3588,6 +3593,7 @@ static int sctp_setsockopt_auto_asconf(struct sock *sk, char __user *optval,
+ 		    &sock_net(sk)->sctp.auto_asconf_splist);
+ 		sp->do_auto_asconf = 1;
+ 	}
++	spin_unlock_bh(&sock_net(sk)->sctp.addr_wq_lock);
+ 	return 0;
+ }
+ 
+@@ -4121,18 +4127,27 @@ static int sctp_init_sock(struct sock *sk)
+ 	local_bh_disable();
+ 	percpu_counter_inc(&sctp_sockets_allocated);
+ 	sock_prot_inuse_add(net, sk->sk_prot, 1);
++
++	/* Nothing can fail after this block, otherwise
++	 * sctp_destroy_sock() will be called without addr_wq_lock held
++	 */
+ 	if (net->sctp.default_auto_asconf) {
++		spin_lock_bh(&sock_net(sk)->sctp.addr_wq_lock);
+ 		list_add_tail(&sp->auto_asconf_list,
+ 		    &net->sctp.auto_asconf_splist);
+ 		sp->do_auto_asconf = 1;
++		spin_unlock_bh(&sock_net(sk)->sctp.addr_wq_lock);
+ 	} else
+ 		sp->do_auto_asconf = 0;
++
+ 	local_bh_enable();
+ 
+ 	return 0;
+ }
+ 
+-/* Cleanup any SCTP per socket resources.  */
++/* Cleanup any SCTP per socket resources. Must be called with
++ * sock_net(sk)->sctp.addr_wq_lock held if sp->do_auto_asconf is true
++ */
+ static void sctp_destroy_sock(struct sock *sk)
+ {
+ 	struct sctp_sock *sp;
+@@ -7195,6 +7210,19 @@ void sctp_copy_sock(struct sock *newsk, struct sock *sk,
+ 	newinet->mc_list = NULL;
+ }
+ 
++static inline void sctp_copy_descendant(struct sock *sk_to,
++					const struct sock *sk_from)
++{
++	int ancestor_size = sizeof(struct inet_sock) +
++			    sizeof(struct sctp_sock) -
++			    offsetof(struct sctp_sock, auto_asconf_list);
++
++	if (sk_from->sk_family = PF_INET6)
++		ancestor_size += sizeof(struct ipv6_pinfo);
++
++	__inet_sk_copy_descendant(sk_to, sk_from, ancestor_size);
++}
++
+ /* Populate the fields of the newsk from the oldsk and migrate the assoc
+  * and its messages to the newsk.
+  */
+@@ -7209,7 +7237,6 @@ static void sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
+ 	struct sk_buff *skb, *tmp;
+ 	struct sctp_ulpevent *event;
+ 	struct sctp_bind_hashbucket *head;
+-	struct list_head tmplist;
+ 
+ 	/* Migrate socket buffer sizes and all the socket level options to the
+ 	 * new socket.
+@@ -7217,12 +7244,7 @@ static void sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
+ 	newsk->sk_sndbuf = oldsk->sk_sndbuf;
+ 	newsk->sk_rcvbuf = oldsk->sk_rcvbuf;
+ 	/* Brute force copy old sctp opt. */
+-	if (oldsp->do_auto_asconf) {
+-		memcpy(&tmplist, &newsp->auto_asconf_list, sizeof(tmplist));
+-		inet_sk_copy_descendant(newsk, oldsk);
+-		memcpy(&newsp->auto_asconf_list, &tmplist, sizeof(tmplist));
+-	} else
+-		inet_sk_copy_descendant(newsk, oldsk);
++	sctp_copy_descendant(newsk, oldsk);
+ 
+ 	/* Restore the ep value that was overwritten with the above structure
+ 	 * copy.
+-- 
+2.4.1
+
