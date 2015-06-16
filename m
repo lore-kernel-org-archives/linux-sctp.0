@@ -1,85 +1,61 @@
-From: Marcelo Ricardo Leitner <mleitner@redhat.com>
-Date: Fri, 05 Jun 2015 17:16:25 +0000
-Subject: Re: [PATCH] sctp:Make the function sctp_assoc_lookup_laddr bool
-Message-Id: <20150605171625.GB3402@localhost.localdomain>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 16 Jun 2015 22:42:31 +0000
+Subject: [RFC PATCH 0/2] sctp: add new getsockopt option SCTP_SOCKOPT_PEELOFF_KERNEL
+Message-Id: <cover.1434492495.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1433335867-1871-1-git-send-email-xerofoify@gmail.com>
- <20150604103503.GA24585@hmsreliant.think-freely.org>
-In-Reply-To: <20150604103503.GA24585@hmsreliant.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: Nicholas Krause <xerofoify@gmail.com>, vyasevich@gmail.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
 
-On Thu, Jun 04, 2015 at 06:35:03AM -0400, Neil Horman wrote:
-> On Wed, Jun 03, 2015 at 08:51:07AM -0400, Nicholas Krause wrote:
-> > This makes the function sctp_assoc_lookup_laddr bool due to this
-> > function only returning either one or zero as its return value.
-> > 
-> > Signed-off-by: Nicholas Krause <xerofoify@gmail.com>
-> > ---
-> >  include/net/sctp/structs.h | 4 ++--
-> >  net/sctp/associola.c       | 8 ++++----
-> >  2 files changed, 6 insertions(+), 6 deletions(-)
-> > 
-> > diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-> > index 2bb2fcf..1381be9 100644
-> > --- a/include/net/sctp/structs.h
-> > +++ b/include/net/sctp/structs.h
-> > @@ -1870,8 +1870,8 @@ struct sctp_transport *sctp_assoc_choose_alter_transport(
-> >  void sctp_assoc_update_retran_path(struct sctp_association *);
-> >  struct sctp_transport *sctp_assoc_lookup_paddr(const struct sctp_association *,
-> >  					  const union sctp_addr *);
-> > -int sctp_assoc_lookup_laddr(struct sctp_association *asoc,
-> > -			    const union sctp_addr *laddr);
-> > +bool sctp_assoc_lookup_laddr(struct sctp_association *asoc,
-> > +			     const union sctp_addr *laddr);
-> >  struct sctp_transport *sctp_assoc_add_peer(struct sctp_association *,
-> >  				     const union sctp_addr *address,
-> >  				     const gfp_t gfp,
-> > diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-> > index 197c3f5..69abe78 100644
-> > --- a/net/sctp/associola.c
-> > +++ b/net/sctp/associola.c
-> > @@ -1572,15 +1572,15 @@ int sctp_assoc_set_bind_addr_from_cookie(struct sctp_association *asoc,
-> >  }
-> >  
-> >  /* Lookup laddr in the bind address list of an association. */
-> > -int sctp_assoc_lookup_laddr(struct sctp_association *asoc,
-> > -			    const union sctp_addr *laddr)
-> > +bool sctp_assoc_lookup_laddr(struct sctp_association *asoc,
-> > +			     const union sctp_addr *laddr)
-> >  {
-> > -	int found = 0;
-> > +	bool found = false;
-> >  
-> >  	if ((asoc->base.bind_addr.port = ntohs(laddr->v4.sin_port)) &&
-> >  	    sctp_bind_addr_match(&asoc->base.bind_addr, laddr,
-> >  				 sctp_sk(asoc->base.sk)))
-> > -		found = 1;
-> > +		found = true;
-> >  
-> >  	return found;
-> >  }
-> > -- 
-> > 2.1.4
-> > 
-> > 
-> 
-> If you're going to do this, you might as well also remove the conditional
-> statement here entirely.  I.e. just have the function be this:
-> 
-> return (asoc->base.bind_addr.port = ntohs(laddr->v4.sin_port)) &&
-> 	sctp_bind_addr_match(&asoc->base.bind_addr, laddr,
-> 	sctp_sk(asoc->base.sk)));
-> 
-> You might also look into makeing it inline, though it doesn't appear in any hot
-> paths so thats likely overkill
+Hi,
 
-+1
-just in case you cut&paste, be careful that the 3rd line should start
-right after the ( in the 2nd line. (Like it was before)
+I'm trying to remove a direct dependency of dlm module on sctp one.
+Currently dlm code is calling sctp_do_peeloff() directly and only this
+call is causing the load of sctp module together with dlm. For that, we
+have basically 3 options:
+- Doing a module split on dlm
+  - which I'm avoiding because it was already split and was merged (more
+    info on patch2 changelog)
+  - and the sctp code on it is rather small if compared with sctp module
+    itself
+- Using some other infra that gets indirectly activated, like getsockopt()
+  - It was like this before, but the exposed sockopt created a file
+    descriptor for the new socket and that create some serious issues.
+    More info on 2f2d76cc3e93 ("dlm: Do not allocate a fd for peeloff")
+- Doing something like ipv6_stub (which is used by vxlan) or similar
+  - but I don't feel that's a good way out here, it doesn't feel right.
 
-  Marcelo
+So I'm approaching this by going with 2nd option again but this time
+also creating a new sockopt that is only accessible for kernel users of
+this protocol, so that we are safe to directly return a struct socket *
+via getsockopt() results. This is the tricky part of it of this series. 
+
+It smells hacky yes but currently most of sctp calls are wrapped behind
+kernel_*(). Even if we set a flag (like netlink does) saying that this
+is a kernel socket, we still have the issue of getting the function call
+through and returning such non-usual return value.
+
+I kept __user marker on sctp_getsockopt_peeloff_kernel() prototype and
+its helpers just to avoid issues with static checkers.
+
+Kernel path not really tested yet.. mainly willing to know what do you
+think, is this feasible? getsockopt option only reachable by kernel
+itself? Couldn't find any other like this.
+
+Thanks,
+Marcelo
+
+Marcelo Ricardo Leitner (2):
+  sctp: add new getsockopt option SCTP_SOCKOPT_PEELOFF_KERNEL
+  dlm: avoid using sctp_do_peeloff directly
+
+ fs/dlm/lowcomms.c         | 17 ++++++++---------
+ include/uapi/linux/sctp.h | 12 ++++++++++++
+ net/sctp/socket.c         | 39 +++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 59 insertions(+), 9 deletions(-)
+
+-- 
+2.4.1
 
