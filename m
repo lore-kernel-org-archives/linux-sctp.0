@@ -1,69 +1,139 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 03 Jun 2015 10:22:54 +0000
-Subject: Re: [PATCH] sctp: Make the function sctp_chunk_abandoned bool
-Message-Id: <20150603102254.GA7234@hmsreliant.think-freely.org>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 16 Jun 2015 22:42:32 +0000
+Subject: [RFC PATCH 1/2] sctp: add new getsockopt option SCTP_SOCKOPT_PEELOFF_KERNEL
+Message-Id: <7c625395f94fd7bdeb3b28fe74f2c6ae1a96be6b.1434492495.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1433304173-4367-1-git-send-email-xerofoify@gmail.com>
-In-Reply-To: <1433304173-4367-1-git-send-email-xerofoify@gmail.com>
+References: <cover.1434492495.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1434492495.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Nicholas Krause <xerofoify@gmail.com>
-Cc: vyasevich@gmail.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
 
-On Wed, Jun 03, 2015 at 12:02:53AM -0400, Nicholas Krause wrote:
-> This makes the function sctp_chunk_abandoned bool due to this
-> function only returning either one or zero as its return value.
-> 
-> Signed-off-by: Nicholas Krause <xerofoify@gmail.com>
-> ---
->  include/net/sctp/structs.h | 2 +-
->  net/sctp/chunk.c           | 8 ++++----
->  2 files changed, 5 insertions(+), 5 deletions(-)
-> 
-> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-> index 2bb2fcf..2691490 100644
-> --- a/include/net/sctp/structs.h
-> +++ b/include/net/sctp/structs.h
-> @@ -535,7 +535,7 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *,
->  void sctp_datamsg_free(struct sctp_datamsg *);
->  void sctp_datamsg_put(struct sctp_datamsg *);
->  void sctp_chunk_fail(struct sctp_chunk *, int error);
-> -int sctp_chunk_abandoned(struct sctp_chunk *);
-> +bool sctp_chunk_abandoned(struct sctp_chunk *);
->  
->  /* RFC2960 1.4 Key Terms
->   *
-> diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
-> index a338091..7bd1991 100644
-> --- a/net/sctp/chunk.c
-> +++ b/net/sctp/chunk.c
-> @@ -344,17 +344,17 @@ errout:
->  }
->  
->  /* Check whether this message has expired. */
-> -int sctp_chunk_abandoned(struct sctp_chunk *chunk)
-> +bool sctp_chunk_abandoned(struct sctp_chunk *chunk)
->  {
->  	struct sctp_datamsg *msg = chunk->msg;
->  
->  	if (!msg->can_abandon)
-> -		return 0;
-> +		return false;
->  
->  	if (time_after(jiffies, msg->expires_at))
-> -		return 1;
-> +		return true;
->  
-> -	return 0;
-> +	return false;
->  }
->  
->  /* This chunk (and consequently entire message) has failed in its sending. */
-> -- 
-> 2.1.4
-> 
-> 
-Seems reasonable
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+SCTP has this operation to peel off associations from a given socket and
+create a new socket using this association. We currently have two ways
+to use this operation:
+- via getsockopt(), on which it will also create and return a file
+  descriptor for this new socket
+- via sctp_do_peeloff(), which is for kernel only
+
+The caveat with using sctp_do_peeloff() directly is that it creates a
+dependency to SCTP module, while all other operations are handled via
+kernel_{socket,sendmsg,getsockopt...}() interface. This causes the
+kernel to load SCTP module even when it's not directly used
+
+This patch then creates a new sockopt that is to be used only by kernel
+users of this protocol. This new sockopt will not allocate a file
+descriptor but instead just return the socket pointer directly.
+
+If called by an user application, it will just return -EPERM.
+
+Even though it's not intended for user applications, it's listed under
+uapi header. That's because hidding this wouldn't add any extra security
+and to keep the sockopt list in one place, so it's easy to check
+available numbers to use.
+
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ include/uapi/linux/sctp.h | 12 ++++++++++++
+ net/sctp/socket.c         | 39 +++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 51 insertions(+)
+
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index ce70fe6b45df3e841c35accbdb6379c16563893c..b3aad3ce456ab3c1ebf4d81fdb7269ba40b3d92a 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -105,6 +105,10 @@ typedef __s32 sctp_assoc_t;
+ #define SCTP_SOCKOPT_BINDX_ADD	100	/* BINDX requests for adding addrs */
+ #define SCTP_SOCKOPT_BINDX_REM	101	/* BINDX requests for removing addrs. */
+ #define SCTP_SOCKOPT_PEELOFF	102	/* peel off association. */
++#define SCTP_SOCKOPT_PEELOFF_KERNEL	103	/* peel off association.
++						 * only valid for kernel
++						 * users
++						 */
+ /* Options 104-106 are deprecated and removed. Do not use this space */
+ #define SCTP_SOCKOPT_CONNECTX_OLD	107	/* CONNECTX old requests. */
+ #define SCTP_GET_PEER_ADDRS	108		/* Get all peer address. */
+@@ -892,6 +896,14 @@ typedef struct {
+ 	int sd;
+ } sctp_peeloff_arg_t;
+ 
++/* This is the union that is passed as an argument(optval) to
++ * getsockopt(SCTP_SOCKOPT_PEELOFF_KERNEL).
++ */
++typedef union {
++	sctp_assoc_t associd;
++	struct socket *socket;
++} sctp_peeloff_kernel_arg_t;
++
+ /*
+  *  Peer Address Thresholds socket option
+  */
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index f09de7fac2e6acddad8b2e046dbf626e329cb674..dab6f9be260229f012e10e8f67c80ce99c0d2d06 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4448,6 +4448,32 @@ int sctp_do_peeloff(struct sock *sk, sctp_assoc_t id, struct socket **sockp)
+ }
+ EXPORT_SYMBOL(sctp_do_peeloff);
+ 
++static int sctp_getsockopt_peeloff_kernel(struct sock *sk, int len,
++					  char __user *optval, int __user *optlen)
++{
++	sctp_peeloff_kernel_arg_t peeloff;
++	struct socket *newsock;
++	int retval = 0;
++
++	if (len < sizeof(sctp_peeloff_kernel_arg_t))
++		return -EINVAL;
++	len = sizeof(sctp_peeloff_kernel_arg_t);
++	if (copy_from_user(&peeloff, optval, len))
++		return -EFAULT;
++
++	retval = sctp_do_peeloff(sk, peeloff.associd, &newsock);
++	if (retval < 0)
++		goto out;
++
++	peeloff.socket = newsock;
++	if (copy_to_user(optval, &peeloff, len)) {
++		sock_release(newsock);
++		return -EFAULT;
++	}
++out:
++	return retval;
++}
++
+ static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval, int __user *optlen)
+ {
+ 	sctp_peeloff_arg_t peeloff;
+@@ -5943,6 +5969,11 @@ static int sctp_getsockopt_recvnxtinfo(struct sock *sk,	int len,
+ 	return 0;
+ }
+ 
++static inline bool sctp_is_kernel(void)
++{
++	return segment_eq(get_fs(), KERNEL_DS);
++}
++
+ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 			   char __user *optval, int __user *optlen)
+ {
+@@ -5986,6 +6017,14 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 	case SCTP_SOCKOPT_PEELOFF:
+ 		retval = sctp_getsockopt_peeloff(sk, len, optval, optlen);
+ 		break;
++	case SCTP_SOCKOPT_PEELOFF_KERNEL:
++		if (!sctp_is_kernel()) {
++			retval = -EPERM;
++			break;
++		}
++		retval = sctp_getsockopt_peeloff_kernel(sk, len, optval,
++							optlen);
++		break;
+ 	case SCTP_PEER_ADDR_PARAMS:
+ 		retval = sctp_getsockopt_peer_addr_params(sk, len, optval,
+ 							  optlen);
+-- 
+2.4.1
 
