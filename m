@@ -1,36 +1,20 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 12 Jun 2015 21:18:55 +0000
-Subject: Re: [PATCH] sctp: allow authenticating DATA chunks that are bundled with COOKIE_ECHO
-Message-Id: <20150612.141855.497341688044235937.davem@davemloft.net>
+From: Sun Paul <paulrbk@gmail.com>
+Date: Thu, 18 Jun 2015 10:20:42 +0000
+Subject: NO TCB to Destory
+Message-Id: <CAFXGft+hN7KOqGVWqa1xn0dKNJNarc65YYYFiLnSn7CMYarLHA@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <ca8fca62141ed9e108170919cdc12bdb09cdda73.1434043704.git.marcelo.leitner@gmail.com>
-In-Reply-To: <ca8fca62141ed9e108170919cdc12bdb09cdda73.1434043704.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: mleitner@redhat.com
-Cc: netdev@vger.kernel.org, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, vyasevich@gmail.com
+To: linux-sctp@vger.kernel.org
 
-From: mleitner@redhat.com
-Date: Thu, 11 Jun 2015 14:49:46 -0300
+Hi
 
-> From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> 
-> Currently, we can ask to authenticate DATA chunks and we can send DATA
-> chunks on the same packet as COOKIE_ECHO, but if you try to combine
-> both, the DATA chunk will be sent unauthenticated and peer won't accept
-> it, leading to a communication failure.
-> 
-> This happens because even though the data was queued after it was
-> requested to authenticate DATA chunks, it was also queued before we
-> could know that remote peer can handle authenticating, so
-> sctp_auth_send_cid() returns false.
-> 
-> The fix is whenever we set up an active key, re-check send queue for
-> chunks that now should be authenticated. As a result, such packet will
-> now contain COOKIE_ECHO + AUTH + DATA chunks, in that order.
-> 
-> Reported-by: Liu Wei <weliu@redhat.com>
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+I suffered a case on a SCTP connection.
 
-Applied, thanks.
+HOST A sends INIT chunk to HOST B
+HOST B returns INIT_ACK chunk back to HOST A
+HOST A sends COOKIE_ECHO chunk to HOST B
+HOST B then send ABORT chunk with T-bit set to 1.
+
+Any idea on why ABORT chunk is sent out?
