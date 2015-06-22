@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 22 Jun 2015 13:16:41 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Mon, 22 Jun 2015 13:31:21 +0000
 Subject: Re: [PATCH] sctp: Fix race between OOTB response and route removal
-Message-Id: <20150622131641.GA1766@localhost.localdomain>
+Message-Id: <55880E29.2070903@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <5587FD63.5060408@nokia.com>
 In-Reply-To: <5587FD63.5060408@nokia.com>
@@ -10,7 +10,7 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On Mon, Jun 22, 2015 at 02:19:47PM +0200, Alexander Sverdlin wrote:
+On 06/22/2015 08:19 AM, Alexander Sverdlin wrote:
 > There is NULL pointer dereference possible during statistics update if the route
 > used for OOTB response is removed at unfortunate time. If the route exists when
 > we receive OOTB packet and we finally jump into sctp_packet_transmit() to send
@@ -108,6 +108,11 @@ On Mon, Jun 22, 2015 at 02:19:47PM +0200, Alexander Sverdlin wrote:
 > CR2: 0000000000000020
 > 
 > Signed-off-by: Alexander Sverdlin <alexander.sverdlin@nokia.com>
+
+Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+
+-vlad
+
 > ---
 >  net/sctp/output.c |    4 +++-
 >  1 files changed, 3 insertions(+), 1 deletions(-)
@@ -128,10 +133,6 @@ On Mon, Jun 22, 2015 at 02:19:47PM +0200, Alexander Sverdlin wrote:
 >  	/* FIXME: Returning the 'err' will effect all the associations
 >  	 * associated with a socket, although only one of the paths of the
 > 
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-Thanks
 
 --
 To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
