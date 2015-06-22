@@ -1,173 +1,128 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 10 Jun 2015 19:14:18 +0000
-Subject: Re: [PATCH v3 1/2] sctp: rcu-ify addr_waitq
-Message-Id: <20150610191418.GA19556@hmsreliant.think-freely.org>
+From: Alexander Sverdlin <alexander.sverdlin@nokia.com>
+Date: Mon, 22 Jun 2015 12:19:47 +0000
+Subject: [PATCH] sctp: Fix race between OOTB response and route removal
+Message-Id: <5587FD63.5060408@nokia.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20150604142710.GD24585@hmsreliant.think-freely.org>
- <9ebea428aa10e30e4b6c92aa95c56fc5cbc9cd98.1433524062.git.marcelo.leitner@gmail.com>
- <1433774798.3152487.289784457.4E5FCE86@webmail.messagingengine.com>
- <1433775558.3155807.289796417.0EFF401F@webmail.messagingengine.com>
- <20150608151955.GE7616@hmsreliant.think-freely.org>
- <1433777825.13489.16.camel@stressinduktion.org>
- <20150609113638.GA27870@hmsreliant.think-freely.org>
- <20150609193259.GA4062@localhost.localdomain>
- <20150610133142.GB4062@localhost.localdomain>
-In-Reply-To: <20150610133142.GB4062@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <mleitner@redhat.com>
-Cc: Hannes Frederic Sowa <hannes@stressinduktion.org>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Daniel Borkmann <daniel@iogearbox.net>, Vlad Yasevich <vyasevich@gmail.com>, Michio Honda <micchie@sfc.wide.ad.jp>
+To: linux-sctp@vger.kernel.org
 
-On Wed, Jun 10, 2015 at 10:31:42AM -0300, Marcelo Ricardo Leitner wrote:
-> On Tue, Jun 09, 2015 at 04:32:59PM -0300, Marcelo Ricardo Leitner wrote:
-> > On Tue, Jun 09, 2015 at 07:36:38AM -0400, Neil Horman wrote:
-> > > On Mon, Jun 08, 2015 at 05:37:05PM +0200, Hannes Frederic Sowa wrote:
-> > > > On Mo, 2015-06-08 at 11:19 -0400, Neil Horman wrote:
-> > > > > On Mon, Jun 08, 2015 at 04:59:18PM +0200, Hannes Frederic Sowa wrote:
-> > > > > > On Mon, Jun 8, 2015, at 16:46, Hannes Frederic Sowa wrote:
-> > > > > > > Hi Marcelo,
-> > > > > > > 
-> > > > > > > a few hints on rcuification, sorry I reviewed the code so late:
-> > > > > > > 
-> > > > > > > On Fri, Jun 5, 2015, at 19:08, mleitner@redhat.com wrote:
-> > > > > > > > From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> > > > > > > > 
-> > > > > > > > That's needed for the next patch, so we break the lock 
-> > > > > > > > inversion between
-> > > > > > > > netns_sctp->addr_wq_lock and socket lock on
-> > > > > > > > sctp_addr_wq_timeout_handler(). With this, we can traverse 
-> > > > > > > > addr_waitq
-> > > > > > > > without taking addr_wq_lock, taking it just for the write 
-> > > > > > > > operations.
-> > > > > > > > 
-> > > > > > > > Signed-off-by: Marcelo Ricardo Leitner <
-> > > > > > > > marcelo.leitner@gmail.com>
-> > > > > > > > ---
-> > > > > > > > 
-> > > > > > > > Notes:
-> > > > > > > >     v2->v3:
-> > > > > > > >       placed break statement on sctp_free_addr_wq_entry()
-> > > > > > > >       removed unnecessary spin_lock noticed by Neil
-> > > > > > > > 
-> > > > > > > >  include/net/netns/sctp.h |  2 +-
-> > > > > > > >  net/sctp/protocol.c      | 80
-> > > > > > > >  +++++++++++++++++++++++++++++-------------------
-> > > > > > > >  2 files changed, 49 insertions(+), 33 deletions(-)
-> > > > > > > > 
-> > > > > > > > diff --git a/include/net/netns/sctp.h 
-> > > > > > > > b/include/net/netns/sctp.h
-> > > > > > > > index
-> > > > > > > > 3573a81815ad9e0efb6ceb721eb066d3726419f0..9e53412c4ed829e8e4577
-> > > > > > > > 7a6d95406d490dbaa75
-> > > > > > > > 100644
-> > > > > > > > --- a/include/net/netns/sctp.h
-> > > > > > > > +++ b/include/net/netns/sctp.h
-> > > > > > > > @@ -28,7 +28,7 @@ struct netns_sctp {
-> > > > > > > >          * It is a list of sctp_sockaddr_entry.
-> > > > > > > >          */
-> > > > > > > >         struct list_head local_addr_list;
-> > > > > > > > -       struct list_head addr_waitq;
-> > > > > > > > +       struct list_head __rcu addr_waitq;
-> > > > > > > >         struct timer_list addr_wq_timer;
-> > > > > > > >         struct list_head auto_asconf_splist;
-> > > > > > > >         spinlock_t addr_wq_lock;
-> > > > > > > > diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-> > > > > > > > index
-> > > > > > > > 53b7acde9aa37bf3d4029c459421564d5270f4c0..9954fb8c9a9455d5ad7a6
-> > > > > > > > 27e2d7f9a1fef861fc2
-> > > > > > > > 100644
-> > > > > > > > --- a/net/sctp/protocol.c
-> > > > > > > > +++ b/net/sctp/protocol.c
-> > > > > > > > @@ -593,15 +593,47 @@ static void sctp_v4_ecn_capable(struct 
-> > > > > > > > sock *sk)
-> > > > > > > >         INET_ECN_xmit(sk);
-> > > > > > > >  }
-> > > > > > > >  
-> > > > > > > > +static void sctp_free_addr_wq(struct net *net)
-> > > > > > > > +{
-> > > > > > > > +       struct sctp_sockaddr_entry *addrw;
-> > > > > > > > +
-> > > > > > > > +       spin_lock_bh(&net->sctp.addr_wq_lock);
-> > > > > > > 
-> > > > > > > Instead of holding spin_lock_bh you need to hold 
-> > > > > > > rcu_read_lock_bh, so
-> > > > > > > kfree_rcu does not call free function at once (in theory ;) ).
-> > > > > > > 
-> > > > > > > > +       del_timer(&net->sctp.addr_wq_timer);
-> > > > > > > > +       list_for_each_entry_rcu(addrw, &net->sctp.addr_waitq, 
-> > > > > > > > list) {
-> > > > > > > > +               list_del_rcu(&addrw->list);
-> > > > > > > > +               kfree_rcu(addrw, rcu);
-> > > > > > > > +       }
-> > > > > > > > +       spin_unlock_bh(&net->sctp.addr_wq_lock);
-> > > > > > > > +}
-> > > > > > > > +
-> > > > > > > > +/* As there is no refcnt on sctp_sockaddr_entry, we must check 
-> > > > > > > > inside
-> > > > > > > > + * the lock if it wasn't removed from addr_waitq already, 
-> > > > > > > > otherwise we
-> > > > > > > > + * could double-free it.
-> > > > > > > > + */
-> > > > > > > > +static void sctp_free_addr_wq_entry(struct net *net,
-> > > > > > > > +                                   struct sctp_sockaddr_entry 
-> > > > > > > > *addrw)
-> > > > > > > > +{
-> > > > > > > > +       struct sctp_sockaddr_entry *temp;
-> > > > > > > > +
-> > > > > > > > +       spin_lock_bh(&net->sctp.addr_wq_lock);
-> > > > > > > 
-> > > > > > > I don't think this spin_lock operation is needed. The del_timer
-> > > > > > > functions do synchronize themselves.
-> > > > > > > 
-> > > > > > 
-> > > > > > Sorry, those above two locks are needed, they are not implied by 
-> > > > > > other
-> > > > > > locks.
-> > > > > > 
-> > > > > What makes you say that? Multiple contexts can issue mod_timer calls 
-> > > > > on the
-> > > > > same timer safely no, because of the internal locking?
-> > > > 
-> > > > That's true for timer handling but not to protect net->sctp.addr_waitq
-> > > > list (Marcelo just explained it to me off-list). Looking at the patch
-> > > > only in patchworks lost quite a lot of context you were already
-> > > > discussing. ;)
-> > > > 
-> > > I can imagine :)
-> > > 
-> > > > We are currently checking if the double iteration can be avoided by
-> > > > splicing addr_waitq on the local stack while holding the spin_lock and
-> > > > later on notifying the sockets.
-> > > > 
-> > > As we discussed, this I think would make a good alternate approach.
-> > 
-> > I was experimenting on this but this would introduce another complex
-> > logic instead, as not all elements are pruned from net->sctp.addr_waitq
-> > at sctp_addr_wq_timeout_handler(), mainly ipv6 addresses in DAD state
-> > (which I believe that break statement is misplaced and should be a
-> > continue instead, I'll check on this later)
-> > 
-> > That means we would have to do the splice, process the loop, merge the
-> > remaining elements with the new net->sctp.addr_waitq that was possibly
-> > was built meanwhile and then squash oppositve events (logic currently in
-> > sctp_addr_wq_mgmt() ), otherwise we could be issuing spurious events.
-> > 
-> > But it will probably do more harm than good as the double search will
-> > usually hit the first list element on this 2nd search, unless the
-> > element we are trying to remove was already removed from it (which is
-> > rare, it's when user add and remove addresses too fast) or some other
-> > address was skipped (DAD addresses).
-> 
-> Better thinking.. actually it may be the way to go. If we rcu-cify
-> addr_waitq like that and if the user manage to add an address and remove
-> it while the timeout handler is running, the system may emit just the
-> address add and not the remove, while if we splice the list, this won't
-> happen. 
-> 
->   Marcelo
-> 
-> 
-Thats a good point.  Seems like a list splice makes more sense here.
-Neil
+There is NULL pointer dereference possible during statistics update if the route
+used for OOTB response is removed at unfortunate time. If the route exists when
+we receive OOTB packet and we finally jump into sctp_packet_transmit() to send
+ABORT, but in the meantime route is removed under our feet, we take "no_route"
+path and try to update stats with IP_INC_STATS(sock_net(asoc->base.sk), ...).
 
+But sctp_ootb_pkt_new() used to prepare response packet doesn't call
+sctp_transport_set_owner() and therefore there is no asoc associated with this
+packet. Probably temporary asoc just for OOTB responses is overkill, so just
+introduce a check like in all other places in sctp_packet_transmit(), where
+"asoc" is dereferenced.
+
+To reproduce this, one needs to
+0. ensure that sctp module is loaded (otherwise ABORT is not generated)
+1. remove default route on the machine
+2. arp -s [another host] [another MAC]
+   fixed ARP entry would be necessary when route will be blinking
+3. similarly add ARP entry on another host for the test system
+4. while true; do
+     ip route del [interface-specific route]
+     ip route add [interface-specific route]
+   done
+5. send enough OOTB packets (i.e. HB REQs) from another host to trigger ABORT
+   response
+
+For some reason the problem is not reproducible before 662a0e381.
+
+On x86_64 the crash looks like this:
+
+BUG: unable to handle kernel NULL pointer dereference at 0000000000000020
+IP: [<ffffffffa05ec9ac>] sctp_packet_transmit+0x63c/0x730 [sctp]
+PGD 0
+Oops: 0000 [#1] PREEMPT SMP
+Modules linked in: [...]
+CPU: 0 PID: 0 Comm: swapper/0 Tainted: G           O    4.0.5-1-ARCH #1
+Hardware name: [...]
+task: ffffffff818124c0 ti: ffffffff81800000 task.ti: ffffffff81800000
+RIP: 0010:[<ffffffffa05ec9ac>]  [<ffffffffa05ec9ac>] sctp_packet_transmit+0x63c/0x730 [sctp]
+RSP: 0018:ffff880127c037b8  EFLAGS: 00010296
+RAX: 0000000000000000 RBX: 0000000000000000 RCX: 00000015ff66b480
+RDX: 00000015ff66b400 RSI: ffff880127c17200 RDI: ffff880123403700
+RBP: ffff880127c03888 R08: 0000000000017200 R09: ffffffff814625af
+R10: ffffea00047e4680 R11: 00000000ffffff80 R12: ffff8800b0d38a28
+R13: ffff8800b0d38a28 R14: ffff8800b3e88000 R15: ffffffffa05f24e0
+FS:  0000000000000000(0000) GS:ffff880127c00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+CR2: 0000000000000020 CR3: 00000000c855b000 CR4: 00000000000007f0
+Stack:
+ ffff880127c03910 ffff8800b0d38a28 ffffffff8189d240 ffff88011f91b400
+ ffff880127c03828 ffffffffa05c94c5 0000000000000000 ffff8800baa1c520
+ 0000000000000000 0000000000000001 0000000000000000 0000000000000000
+Call Trace:
+ <IRQ>
+ [<ffffffffa05c94c5>] ? sctp_sf_tabort_8_4_8.isra.20+0x85/0x140 [sctp]
+ [<ffffffffa05d6b42>] ? sctp_transport_put+0x52/0x80 [sctp]
+ [<ffffffffa05d0bfc>] sctp_do_sm+0xb8c/0x19a0 [sctp]
+ [<ffffffff810b0e00>] ? trigger_load_balance+0x90/0x210
+ [<ffffffff810e0329>] ? update_process_times+0x59/0x60
+ [<ffffffff812c7a40>] ? timerqueue_add+0x60/0xb0
+ [<ffffffff810e0549>] ? enqueue_hrtimer+0x29/0xa0
+ [<ffffffff8101f599>] ? read_tsc+0x9/0x10
+ [<ffffffff8116d4b5>] ? put_page+0x55/0x60
+ [<ffffffff810ee1ad>] ? clockevents_program_event+0x6d/0x100
+ [<ffffffff81462b68>] ? skb_free_head+0x58/0x80
+ [<ffffffffa029a10b>] ? chksum_update+0x1b/0x27 [crc32c_generic]
+ [<ffffffff81283f3e>] ? crypto_shash_update+0xce/0xf0
+ [<ffffffffa05d3993>] sctp_endpoint_bh_rcv+0x113/0x280 [sctp]
+ [<ffffffffa05dd4e6>] sctp_inq_push+0x46/0x60 [sctp]
+ [<ffffffffa05ed7a0>] sctp_rcv+0x880/0x910 [sctp]
+ [<ffffffffa05ecb50>] ? sctp_packet_transmit_chunk+0xb0/0xb0 [sctp]
+ [<ffffffffa05ecb70>] ? sctp_csum_update+0x20/0x20 [sctp]
+ [<ffffffff814b05a5>] ? ip_route_input_noref+0x235/0xd30
+ [<ffffffff81051d6b>] ? ack_ioapic_level+0x7b/0x150
+ [<ffffffff814b27be>] ip_local_deliver_finish+0xae/0x210
+ [<ffffffff814b2e15>] ip_local_deliver+0x35/0x90
+ [<ffffffff814b2a15>] ip_rcv_finish+0xf5/0x370
+ [<ffffffff814b3128>] ip_rcv+0x2b8/0x3a0
+ [<ffffffff81474193>] __netif_receive_skb_core+0x763/0xa50
+ [<ffffffff81476c28>] __netif_receive_skb+0x18/0x60
+ [<ffffffff81476cb0>] netif_receive_skb_internal+0x40/0xd0
+ [<ffffffff814776c8>] napi_gro_receive+0xe8/0x120
+ [<ffffffffa03946aa>] rtl8169_poll+0x2da/0x660 [r8169]
+ [<ffffffff8147896a>] net_rx_action+0x21a/0x360
+ [<ffffffff81078dc1>] __do_softirq+0xe1/0x2d0
+ [<ffffffff8107912d>] irq_exit+0xad/0xb0
+ [<ffffffff8157d158>] do_IRQ+0x58/0xf0
+ [<ffffffff8157b06d>] common_interrupt+0x6d/0x6d
+ <EOI>
+[...]
+Code: 90 48 8b 80 b8 00 00 00 48 89 85 70 ff ff ff 48 83 bd 70 ff ff ff 00 0f 85
+      cd fa ff ff 48 89 df 31 db e8 18 63 e7 e0 48 8b 45 80 <48> 8b 40 20 48 8b
+      40 30 48 8b 80 68 01 00 00 65 48 ff 40 78 e9
+RIP  [<ffffffffa05ec9ac>] sctp_packet_transmit+0x63c/0x730 [sctp]
+ RSP <ffff880127c037b8>
+CR2: 0000000000000020
+
+Signed-off-by: Alexander Sverdlin <alexander.sverdlin@nokia.com>
+---
+ net/sctp/output.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
+
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index fc5e45b..abe7c2d 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -599,7 +599,9 @@ out:
+ 	return err;
+ no_route:
+ 	kfree_skb(nskb);
+-	IP_INC_STATS(sock_net(asoc->base.sk), IPSTATS_MIB_OUTNOROUTES);
++
++	if (asoc)
++		IP_INC_STATS(sock_net(asoc->base.sk), IPSTATS_MIB_OUTNOROUTES);
+
+ 	/* FIXME: Returning the 'err' will effect all the associations
+ 	 * associated with a socket, although only one of the paths of the
+--
+To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
