@@ -1,128 +1,140 @@
-From: Alexander Sverdlin <alexander.sverdlin@nokia.com>
-Date: Mon, 22 Jun 2015 12:19:47 +0000
-Subject: [PATCH] sctp: Fix race between OOTB response and route removal
-Message-Id: <5587FD63.5060408@nokia.com>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 22 Jun 2015 12:36:53 +0000
+Subject: Re: [PATCH] sctp: Fix race between OOTB response and route removal
+Message-Id: <20150622123653.GA15581@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <5587FD63.5060408@nokia.com>
+In-Reply-To: <5587FD63.5060408@nokia.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-There is NULL pointer dereference possible during statistics update if the route
-used for OOTB response is removed at unfortunate time. If the route exists when
-we receive OOTB packet and we finally jump into sctp_packet_transmit() to send
-ABORT, but in the meantime route is removed under our feet, we take "no_route"
-path and try to update stats with IP_INC_STATS(sock_net(asoc->base.sk), ...).
+On Mon, Jun 22, 2015 at 02:19:47PM +0200, Alexander Sverdlin wrote:
+> There is NULL pointer dereference possible during statistics update if the route
+> used for OOTB response is removed at unfortunate time. If the route exists when
+> we receive OOTB packet and we finally jump into sctp_packet_transmit() to send
+> ABORT, but in the meantime route is removed under our feet, we take "no_route"
+> path and try to update stats with IP_INC_STATS(sock_net(asoc->base.sk), ...).
+> 
+> But sctp_ootb_pkt_new() used to prepare response packet doesn't call
+> sctp_transport_set_owner() and therefore there is no asoc associated with this
+> packet. Probably temporary asoc just for OOTB responses is overkill, so just
+> introduce a check like in all other places in sctp_packet_transmit(), where
+> "asoc" is dereferenced.
+> 
+> To reproduce this, one needs to
+> 0. ensure that sctp module is loaded (otherwise ABORT is not generated)
+> 1. remove default route on the machine
+> 2. arp -s [another host] [another MAC]
+>    fixed ARP entry would be necessary when route will be blinking
+> 3. similarly add ARP entry on another host for the test system
+> 4. while true; do
+>      ip route del [interface-specific route]
+>      ip route add [interface-specific route]
+>    done
+> 5. send enough OOTB packets (i.e. HB REQs) from another host to trigger ABORT
+>    response
+> 
+> For some reason the problem is not reproducible before 662a0e381.
+> 
+> On x86_64 the crash looks like this:
+> 
+> BUG: unable to handle kernel NULL pointer dereference at 0000000000000020
+> IP: [<ffffffffa05ec9ac>] sctp_packet_transmit+0x63c/0x730 [sctp]
+> PGD 0
+> Oops: 0000 [#1] PREEMPT SMP
+> Modules linked in: [...]
+> CPU: 0 PID: 0 Comm: swapper/0 Tainted: G           O    4.0.5-1-ARCH #1
+> Hardware name: [...]
+> task: ffffffff818124c0 ti: ffffffff81800000 task.ti: ffffffff81800000
+> RIP: 0010:[<ffffffffa05ec9ac>]  [<ffffffffa05ec9ac>] sctp_packet_transmit+0x63c/0x730 [sctp]
+> RSP: 0018:ffff880127c037b8  EFLAGS: 00010296
+> RAX: 0000000000000000 RBX: 0000000000000000 RCX: 00000015ff66b480
+> RDX: 00000015ff66b400 RSI: ffff880127c17200 RDI: ffff880123403700
+> RBP: ffff880127c03888 R08: 0000000000017200 R09: ffffffff814625af
+> R10: ffffea00047e4680 R11: 00000000ffffff80 R12: ffff8800b0d38a28
+> R13: ffff8800b0d38a28 R14: ffff8800b3e88000 R15: ffffffffa05f24e0
+> FS:  0000000000000000(0000) GS:ffff880127c00000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> CR2: 0000000000000020 CR3: 00000000c855b000 CR4: 00000000000007f0
+> Stack:
+>  ffff880127c03910 ffff8800b0d38a28 ffffffff8189d240 ffff88011f91b400
+>  ffff880127c03828 ffffffffa05c94c5 0000000000000000 ffff8800baa1c520
+>  0000000000000000 0000000000000001 0000000000000000 0000000000000000
+> Call Trace:
+>  <IRQ>
+>  [<ffffffffa05c94c5>] ? sctp_sf_tabort_8_4_8.isra.20+0x85/0x140 [sctp]
+>  [<ffffffffa05d6b42>] ? sctp_transport_put+0x52/0x80 [sctp]
+>  [<ffffffffa05d0bfc>] sctp_do_sm+0xb8c/0x19a0 [sctp]
+>  [<ffffffff810b0e00>] ? trigger_load_balance+0x90/0x210
+>  [<ffffffff810e0329>] ? update_process_times+0x59/0x60
+>  [<ffffffff812c7a40>] ? timerqueue_add+0x60/0xb0
+>  [<ffffffff810e0549>] ? enqueue_hrtimer+0x29/0xa0
+>  [<ffffffff8101f599>] ? read_tsc+0x9/0x10
+>  [<ffffffff8116d4b5>] ? put_page+0x55/0x60
+>  [<ffffffff810ee1ad>] ? clockevents_program_event+0x6d/0x100
+>  [<ffffffff81462b68>] ? skb_free_head+0x58/0x80
+>  [<ffffffffa029a10b>] ? chksum_update+0x1b/0x27 [crc32c_generic]
+>  [<ffffffff81283f3e>] ? crypto_shash_update+0xce/0xf0
+>  [<ffffffffa05d3993>] sctp_endpoint_bh_rcv+0x113/0x280 [sctp]
+>  [<ffffffffa05dd4e6>] sctp_inq_push+0x46/0x60 [sctp]
+>  [<ffffffffa05ed7a0>] sctp_rcv+0x880/0x910 [sctp]
+>  [<ffffffffa05ecb50>] ? sctp_packet_transmit_chunk+0xb0/0xb0 [sctp]
+>  [<ffffffffa05ecb70>] ? sctp_csum_update+0x20/0x20 [sctp]
+>  [<ffffffff814b05a5>] ? ip_route_input_noref+0x235/0xd30
+>  [<ffffffff81051d6b>] ? ack_ioapic_level+0x7b/0x150
+>  [<ffffffff814b27be>] ip_local_deliver_finish+0xae/0x210
+>  [<ffffffff814b2e15>] ip_local_deliver+0x35/0x90
+>  [<ffffffff814b2a15>] ip_rcv_finish+0xf5/0x370
+>  [<ffffffff814b3128>] ip_rcv+0x2b8/0x3a0
+>  [<ffffffff81474193>] __netif_receive_skb_core+0x763/0xa50
+>  [<ffffffff81476c28>] __netif_receive_skb+0x18/0x60
+>  [<ffffffff81476cb0>] netif_receive_skb_internal+0x40/0xd0
+>  [<ffffffff814776c8>] napi_gro_receive+0xe8/0x120
+>  [<ffffffffa03946aa>] rtl8169_poll+0x2da/0x660 [r8169]
+>  [<ffffffff8147896a>] net_rx_action+0x21a/0x360
+>  [<ffffffff81078dc1>] __do_softirq+0xe1/0x2d0
+>  [<ffffffff8107912d>] irq_exit+0xad/0xb0
+>  [<ffffffff8157d158>] do_IRQ+0x58/0xf0
+>  [<ffffffff8157b06d>] common_interrupt+0x6d/0x6d
+>  <EOI>
+> [...]
+> Code: 90 48 8b 80 b8 00 00 00 48 89 85 70 ff ff ff 48 83 bd 70 ff ff ff 00 0f 85
+>       cd fa ff ff 48 89 df 31 db e8 18 63 e7 e0 48 8b 45 80 <48> 8b 40 20 48 8b
+>       40 30 48 8b 80 68 01 00 00 65 48 ff 40 78 e9
+> RIP  [<ffffffffa05ec9ac>] sctp_packet_transmit+0x63c/0x730 [sctp]
+>  RSP <ffff880127c037b8>
+> CR2: 0000000000000020
+> 
+> Signed-off-by: Alexander Sverdlin <alexander.sverdlin@nokia.com>
+> ---
+>  net/sctp/output.c |    4 +++-
+>  1 files changed, 3 insertions(+), 1 deletions(-)
+> 
+> diff --git a/net/sctp/output.c b/net/sctp/output.c
+> index fc5e45b..abe7c2d 100644
+> --- a/net/sctp/output.c
+> +++ b/net/sctp/output.c
+> @@ -599,7 +599,9 @@ out:
+>  	return err;
+>  no_route:
+>  	kfree_skb(nskb);
+> -	IP_INC_STATS(sock_net(asoc->base.sk), IPSTATS_MIB_OUTNOROUTES);
+> +
+> +	if (asoc)
+> +		IP_INC_STATS(sock_net(asoc->base.sk), IPSTATS_MIB_OUTNOROUTES);
+> 
+>  	/* FIXME: Returning the 'err' will effect all the associations
+>  	 * associated with a socket, although only one of the paths of the
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> 
 
-But sctp_ootb_pkt_new() used to prepare response packet doesn't call
-sctp_transport_set_owner() and therefore there is no asoc associated with this
-packet. Probably temporary asoc just for OOTB responses is overkill, so just
-introduce a check like in all other places in sctp_packet_transmit(), where
-"asoc" is dereferenced.
+Makes sense, we have to do simmilar checks at several other points in the same
+function
 
-To reproduce this, one needs to
-0. ensure that sctp module is loaded (otherwise ABORT is not generated)
-1. remove default route on the machine
-2. arp -s [another host] [another MAC]
-   fixed ARP entry would be necessary when route will be blinking
-3. similarly add ARP entry on another host for the test system
-4. while true; do
-     ip route del [interface-specific route]
-     ip route add [interface-specific route]
-   done
-5. send enough OOTB packets (i.e. HB REQs) from another host to trigger ABORT
-   response
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
-For some reason the problem is not reproducible before 662a0e381.
-
-On x86_64 the crash looks like this:
-
-BUG: unable to handle kernel NULL pointer dereference at 0000000000000020
-IP: [<ffffffffa05ec9ac>] sctp_packet_transmit+0x63c/0x730 [sctp]
-PGD 0
-Oops: 0000 [#1] PREEMPT SMP
-Modules linked in: [...]
-CPU: 0 PID: 0 Comm: swapper/0 Tainted: G           O    4.0.5-1-ARCH #1
-Hardware name: [...]
-task: ffffffff818124c0 ti: ffffffff81800000 task.ti: ffffffff81800000
-RIP: 0010:[<ffffffffa05ec9ac>]  [<ffffffffa05ec9ac>] sctp_packet_transmit+0x63c/0x730 [sctp]
-RSP: 0018:ffff880127c037b8  EFLAGS: 00010296
-RAX: 0000000000000000 RBX: 0000000000000000 RCX: 00000015ff66b480
-RDX: 00000015ff66b400 RSI: ffff880127c17200 RDI: ffff880123403700
-RBP: ffff880127c03888 R08: 0000000000017200 R09: ffffffff814625af
-R10: ffffea00047e4680 R11: 00000000ffffff80 R12: ffff8800b0d38a28
-R13: ffff8800b0d38a28 R14: ffff8800b3e88000 R15: ffffffffa05f24e0
-FS:  0000000000000000(0000) GS:ffff880127c00000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 0000000000000020 CR3: 00000000c855b000 CR4: 00000000000007f0
-Stack:
- ffff880127c03910 ffff8800b0d38a28 ffffffff8189d240 ffff88011f91b400
- ffff880127c03828 ffffffffa05c94c5 0000000000000000 ffff8800baa1c520
- 0000000000000000 0000000000000001 0000000000000000 0000000000000000
-Call Trace:
- <IRQ>
- [<ffffffffa05c94c5>] ? sctp_sf_tabort_8_4_8.isra.20+0x85/0x140 [sctp]
- [<ffffffffa05d6b42>] ? sctp_transport_put+0x52/0x80 [sctp]
- [<ffffffffa05d0bfc>] sctp_do_sm+0xb8c/0x19a0 [sctp]
- [<ffffffff810b0e00>] ? trigger_load_balance+0x90/0x210
- [<ffffffff810e0329>] ? update_process_times+0x59/0x60
- [<ffffffff812c7a40>] ? timerqueue_add+0x60/0xb0
- [<ffffffff810e0549>] ? enqueue_hrtimer+0x29/0xa0
- [<ffffffff8101f599>] ? read_tsc+0x9/0x10
- [<ffffffff8116d4b5>] ? put_page+0x55/0x60
- [<ffffffff810ee1ad>] ? clockevents_program_event+0x6d/0x100
- [<ffffffff81462b68>] ? skb_free_head+0x58/0x80
- [<ffffffffa029a10b>] ? chksum_update+0x1b/0x27 [crc32c_generic]
- [<ffffffff81283f3e>] ? crypto_shash_update+0xce/0xf0
- [<ffffffffa05d3993>] sctp_endpoint_bh_rcv+0x113/0x280 [sctp]
- [<ffffffffa05dd4e6>] sctp_inq_push+0x46/0x60 [sctp]
- [<ffffffffa05ed7a0>] sctp_rcv+0x880/0x910 [sctp]
- [<ffffffffa05ecb50>] ? sctp_packet_transmit_chunk+0xb0/0xb0 [sctp]
- [<ffffffffa05ecb70>] ? sctp_csum_update+0x20/0x20 [sctp]
- [<ffffffff814b05a5>] ? ip_route_input_noref+0x235/0xd30
- [<ffffffff81051d6b>] ? ack_ioapic_level+0x7b/0x150
- [<ffffffff814b27be>] ip_local_deliver_finish+0xae/0x210
- [<ffffffff814b2e15>] ip_local_deliver+0x35/0x90
- [<ffffffff814b2a15>] ip_rcv_finish+0xf5/0x370
- [<ffffffff814b3128>] ip_rcv+0x2b8/0x3a0
- [<ffffffff81474193>] __netif_receive_skb_core+0x763/0xa50
- [<ffffffff81476c28>] __netif_receive_skb+0x18/0x60
- [<ffffffff81476cb0>] netif_receive_skb_internal+0x40/0xd0
- [<ffffffff814776c8>] napi_gro_receive+0xe8/0x120
- [<ffffffffa03946aa>] rtl8169_poll+0x2da/0x660 [r8169]
- [<ffffffff8147896a>] net_rx_action+0x21a/0x360
- [<ffffffff81078dc1>] __do_softirq+0xe1/0x2d0
- [<ffffffff8107912d>] irq_exit+0xad/0xb0
- [<ffffffff8157d158>] do_IRQ+0x58/0xf0
- [<ffffffff8157b06d>] common_interrupt+0x6d/0x6d
- <EOI>
-[...]
-Code: 90 48 8b 80 b8 00 00 00 48 89 85 70 ff ff ff 48 83 bd 70 ff ff ff 00 0f 85
-      cd fa ff ff 48 89 df 31 db e8 18 63 e7 e0 48 8b 45 80 <48> 8b 40 20 48 8b
-      40 30 48 8b 80 68 01 00 00 65 48 ff 40 78 e9
-RIP  [<ffffffffa05ec9ac>] sctp_packet_transmit+0x63c/0x730 [sctp]
- RSP <ffff880127c037b8>
-CR2: 0000000000000020
-
-Signed-off-by: Alexander Sverdlin <alexander.sverdlin@nokia.com>
----
- net/sctp/output.c |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletions(-)
-
-diff --git a/net/sctp/output.c b/net/sctp/output.c
-index fc5e45b..abe7c2d 100644
---- a/net/sctp/output.c
-+++ b/net/sctp/output.c
-@@ -599,7 +599,9 @@ out:
- 	return err;
- no_route:
- 	kfree_skb(nskb);
--	IP_INC_STATS(sock_net(asoc->base.sk), IPSTATS_MIB_OUTNOROUTES);
-+
-+	if (asoc)
-+		IP_INC_STATS(sock_net(asoc->base.sk), IPSTATS_MIB_OUTNOROUTES);
-
- 	/* FIXME: Returning the 'err' will effect all the associations
- 	 * associated with a socket, although only one of the paths of the
 --
 To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
