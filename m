@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 22 Jun 2015 12:36:53 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Mon, 22 Jun 2015 13:16:41 +0000
 Subject: Re: [PATCH] sctp: Fix race between OOTB response and route removal
-Message-Id: <20150622123653.GA15581@hmsreliant.think-freely.org>
+Message-Id: <20150622131641.GA1766@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <5587FD63.5060408@nokia.com>
 In-Reply-To: <5587FD63.5060408@nokia.com>
@@ -127,14 +127,11 @@ On Mon, Jun 22, 2015 at 02:19:47PM +0200, Alexander Sverdlin wrote:
 > 
 >  	/* FIXME: Returning the 'err' will effect all the associations
 >  	 * associated with a socket, although only one of the paths of the
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
 > 
 
-Makes sense, we have to do simmilar checks at several other points in the same
-function
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Thanks
 
 --
 To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
