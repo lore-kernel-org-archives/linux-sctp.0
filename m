@@ -1,73 +1,133 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Mon, 06 Jul 2015 18:46:32 +0000
-Subject: Re: [PATCH] sctp: Add counters for out data chunk discards
-Message-Id: <559ACD08.1080902@gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 14 Jul 2015 17:13:24 +0000
+Subject: [PATCH v2 1/2] sctp: add new getsockopt option SCTP_SOCKOPT_PEELOFF_KERNEL
+Message-Id: <6091a8542d13f43fbe1abfa25062d28d15b15e66.1436891629.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1436204245-21645-1-git-send-email-vitalya@ti.com>
-In-Reply-To: <1436204245-21645-1-git-send-email-vitalya@ti.com>
+References: <cover.1436891629.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1436891629.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vitaly Andrianov <vitalya@ti.com>, nhorman@tuxdriver.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, m-karicheri2@ti.com
+To: netdev@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
 
-On 07/06/2015 01:37 PM, Vitaly Andrianov wrote:
-> This commit adds a MIB entry for out data chunk discards.
-> Number of outgoing SCTP DATA chunks for a SCTP association for which no
-> problems were encountered to prevent their transmission but were discarded.
-> Data chunks are discarded due to ungraceful closing of the SCTP
-> association.
-> 
-> Signed-off-by: Vitaly Andrianov <vitalya@ti.com>
-> ---
->  include/net/sctp/sctp.h | 1 +
->  net/sctp/outqueue.c     | 1 +
->  net/sctp/proc.c         | 2 ++
->  3 files changed, 4 insertions(+)
-> 
-> diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-> index ce13cf2..fd806ea 100644
-> --- a/include/net/sctp/sctp.h
-> +++ b/include/net/sctp/sctp.h
-> @@ -216,6 +216,7 @@ enum {
->  	SCTP_MIB_IN_PKT_BACKLOG,
->  	SCTP_MIB_IN_PKT_DISCARDS,
->  	SCTP_MIB_IN_DATA_CHUNK_DISCARDS,
-> +	SCTP_MIB_OUT_DATA_CHUNK_DISCARDS,
->  	__SCTP_MIB_MAX
->  };
->  
-> diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-> index 7e8f0a1..dc1a40f 100644
-> --- a/net/sctp/outqueue.c
-> +++ b/net/sctp/outqueue.c
-> @@ -315,6 +315,7 @@ int sctp_outq_tail(struct sctp_outq *q, struct sctp_chunk *chunk)
->  		case SCTP_STATE_SHUTDOWN_RECEIVED:
->  		case SCTP_STATE_SHUTDOWN_ACK_SENT:
->  			/* Cannot send after transport endpoint shutdown */
-> +			SCTP_INC_STATS(net, SCTP_MIB_OUT_DATA_CHUNK_DISCARDS);
->  			error = -ESHUTDOWN;
->  			break;
+SCTP has this operation to peel off associations from a given socket and
+create a new socket using this association. We currently have two ways
+to use this operation:
+- via getsockopt(), on which it will also create and return a file
+  descriptor for this new socket
+- via sctp_do_peeloff(), which is for kernel only
 
-First, this is not the only case where a chunk is discarded on output.  If you
-are going to add an OUT_DATA_DISCARDS counter, you need to catch all such discards.
-Second,  in this particular case, you will count discarded messages, not chunks since
-sctp_outq_tail is guaranteed to queue the whole message or none of it.
+The caveat with using sctp_do_peeloff() directly is that it creates a
+dependency to SCTP module, while all other operations are handled via
+kernel_{socket,sendmsg,getsockopt...}() interface. This causes the
+kernel to load SCTP module even when it's not really used.
 
--vlad
+This patch then creates a new sockopt that is to be used only by kernel
+users of this protocol. This new sockopt will not allocate a file
+descriptor but instead just return the socket pointer directly.
 
->  
-> diff --git a/net/sctp/proc.c b/net/sctp/proc.c
-> index 0697eda..1a10b81 100644
-> --- a/net/sctp/proc.c
-> +++ b/net/sctp/proc.c
-> @@ -67,6 +67,8 @@ static const struct snmp_mib sctp_snmp_list[] = {
->  	SNMP_MIB_ITEM("SctpInPktBacklog", SCTP_MIB_IN_PKT_BACKLOG),
->  	SNMP_MIB_ITEM("SctpInPktDiscards", SCTP_MIB_IN_PKT_DISCARDS),
->  	SNMP_MIB_ITEM("SctpInDataChunkDiscards", SCTP_MIB_IN_DATA_CHUNK_DISCARDS),
-> +	SNMP_MIB_ITEM("SctpOutDataChunkDiscards",
-> +		      SCTP_MIB_OUT_DATA_CHUNK_DISCARDS),
->  	SNMP_MIB_SENTINEL
->  };
->  
-> 
+Kernel users are actually identified by if the parent socket has or not
+a fd attached to it. If not, it's a kernel a user.
+
+If called by an user application, it will just return -EPERM.
+
+Even though it's not intended for user applications, it's listed under
+uapi header. That's because hidding this wouldn't add any extra security
+and to keep the sockopt list in one place, so it's easy to check
+available numbers to use.
+
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ include/uapi/linux/sctp.h | 12 ++++++++++++
+ net/sctp/socket.c         | 37 +++++++++++++++++++++++++++++++++++++
+ 2 files changed, 49 insertions(+)
+
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index ce70fe6b45df3e841c35accbdb6379c16563893c..b3aad3ce456ab3c1ebf4d81fdb7269ba40b3d92a 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -105,6 +105,10 @@ typedef __s32 sctp_assoc_t;
+ #define SCTP_SOCKOPT_BINDX_ADD	100	/* BINDX requests for adding addrs */
+ #define SCTP_SOCKOPT_BINDX_REM	101	/* BINDX requests for removing addrs. */
+ #define SCTP_SOCKOPT_PEELOFF	102	/* peel off association. */
++#define SCTP_SOCKOPT_PEELOFF_KERNEL	103	/* peel off association.
++						 * only valid for kernel
++						 * users
++						 */
+ /* Options 104-106 are deprecated and removed. Do not use this space */
+ #define SCTP_SOCKOPT_CONNECTX_OLD	107	/* CONNECTX old requests. */
+ #define SCTP_GET_PEER_ADDRS	108		/* Get all peer address. */
+@@ -892,6 +896,14 @@ typedef struct {
+ 	int sd;
+ } sctp_peeloff_arg_t;
+ 
++/* This is the union that is passed as an argument(optval) to
++ * getsockopt(SCTP_SOCKOPT_PEELOFF_KERNEL).
++ */
++typedef union {
++	sctp_assoc_t associd;
++	struct socket *socket;
++} sctp_peeloff_kernel_arg_t;
++
+ /*
+  *  Peer Address Thresholds socket option
+  */
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index f1a65398f3118ab5d3a884e9c875620560e6b5ef..7968de7a1aeabd5cd0a0398461dbf2081bd4c5b7 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4504,6 +4504,39 @@ out:
+ 	return retval;
+ }
+ 
++static int sctp_getsockopt_peeloff_kernel(struct sock *sk, int len,
++					  char __user *optval, int __user *optlen)
++{
++	sctp_peeloff_kernel_arg_t peeloff;
++	struct socket *newsock;
++	int retval = 0;
++
++	/* We only allow this operation if parent socket also hadn't a
++	 * file descriptor allocated to it, mainly as a way to make sure
++	 * that this is really a kernel socket.
++	 */
++	if (sk->sk_socket->file)
++		return -EPERM;
++
++	if (len < sizeof(sctp_peeloff_kernel_arg_t))
++		return -EINVAL;
++	len = sizeof(sctp_peeloff_kernel_arg_t);
++	if (copy_from_user(&peeloff, optval, len))
++		return -EFAULT;
++
++	retval = sctp_do_peeloff(sk, peeloff.associd, &newsock);
++	if (retval < 0)
++		goto out;
++
++	peeloff.socket = newsock;
++	if (copy_to_user(optval, &peeloff, len)) {
++		sock_release(newsock);
++		return -EFAULT;
++	}
++out:
++	return retval;
++}
++
+ /* 7.1.13 Peer Address Parameters (SCTP_PEER_ADDR_PARAMS)
+  *
+  * Applications can enable or disable heartbeats for any peer address of
+@@ -5991,6 +6024,10 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 	case SCTP_SOCKOPT_PEELOFF:
+ 		retval = sctp_getsockopt_peeloff(sk, len, optval, optlen);
+ 		break;
++	case SCTP_SOCKOPT_PEELOFF_KERNEL:
++		retval = sctp_getsockopt_peeloff_kernel(sk, len, optval,
++							optlen);
++		break;
+ 	case SCTP_PEER_ADDR_PARAMS:
+ 		retval = sctp_getsockopt_peer_addr_params(sk, len, optval,
+ 							  optlen);
+-- 
+2.4.1
 
