@@ -1,22 +1,30 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 21 Jul 2015 07:21:55 +0000
-Subject: Re: [PATCH] sctp: fix cut and paste issue in comment
-Message-Id: <20150721.002155.2017726726827816640.davem@davemloft.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 17 Jul 2015 15:34:16 +0000
+Subject: [PATCH v2 0/2] sctp: fix src address selection if using secondary address
+Message-Id: <cover.1437145508.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <c77ce1886beb4879f76bf7ca47b0d801609296df.1437151659.git.marcelo.leitner@gmail.com>
-In-Reply-To: <c77ce1886beb4879f76bf7ca47b0d801609296df.1437151659.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: marcelo.leitner@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, nhorman@tuxdriver.com, vyasevich@gmail.com
+To: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 17 Jul 2015 13:50:21 -0300
+This series improves the way SCTP chooses its src address so that the
+choosen one will always belong to the interface being used for output.
 
-> Cookie ACK is always received by the association initiator, so fix the
-> comment to avoid confusion.
-> 
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+v1->v2:
+ - split out the refactoring from the fix itself
+ - Doing a full reverse routing as in v1 is not necessary. Only looking
+   for the interface that has the address and comparing its number is
+   enough.
 
-Applied, thanks.
+Marcelo Ricardo Leitner (2):
+  sctp: reduce indent level on sctp_v4_get_dst
+  sctp: fix src address selection if using secondary addresses
+
+ net/sctp/protocol.c | 42 +++++++++++++++++++++++++++---------------
+ 1 file changed, 27 insertions(+), 15 deletions(-)
+
+-- 
+2.4.1
+
