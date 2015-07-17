@@ -1,83 +1,112 @@
-From: Viresh Kumar <viresh.kumar@linaro.org>
-Date: Fri, 31 Jul 2015 08:50:35 +0000
-Subject: [PATCH 15/15] net: Drop unlikely before IS_ERR(_OR_NULL)
-Message-Id: <88a6d5b3eb1579a29ed896d7fd6e58c94663d3ac.1438331416.git.viresh.kumar@linaro.org>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 17 Jul 2015 15:34:18 +0000
+Subject: [PATCH v2 2/2] sctp: fix src address selection if using secondary addresses
+Message-Id: <53d841d90dee5e1e621f9e8e3c07ef3154491128.1437145508.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1438331416.git.viresh.kumar@linaro.org>
-In-Reply-To: <cover.1438331416.git.viresh.kumar@linaro.org>
+References: <cover.1437145508.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1437145508.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: akpm@linux-foundation.org
-Cc: linaro-kernel@lists.linaro.org, linux-kernel@vger.kernel.org, Viresh Kumar <viresh.kumar@linaro.org>, "David S. Miller" <davem@davemloft.net>, "open list:OPENVSWITCH" <dev@openvswitch.org>, "open list:SCTP PROTOCOL" <linux-sctp@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, "open list:OPENVSWITCH" <netdev@vger.kernel.org>, Pravin Shelar <pshelar@nicira.com>, Vlad Yasevich <vyasevich@gmail.com>
+To: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-IS_ERR(_OR_NULL) already contain an 'unlikely' compiler flag and there
-is no need to do that again from its callers. Drop it.
+In short, sctp is likely to incorrectly choose src address if socket is
+bound to secondary addresses. This patch fixes it by adding a new check
+that checks if such src address belongs to the interface that routing
+identified as output.
 
-Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+This is enough to avoid rp_filter drops on remote peer.
+
+Details:
+
+Currently, sctp will do a routing attempt without specifying the src
+address and compare the returned value (preferred source) with the
+addresses that the socket is bound to. When using secondary addresses,
+this will not match.
+
+Then it will try specifying each of the addresses that the socket is
+bound to and re-routing, checking if that address is valid as src for
+that dst. Thing is, this check alone is weak:
+
+# ip r l
+192.168.100.0/24 dev eth1  proto kernel  scope link  src 192.168.100.149
+192.168.122.0/24 dev eth0  proto kernel  scope link  src 192.168.122.147
+
+# ip a l
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 52:54:00:15:18:6a brd ff:ff:ff:ff:ff:ff
+    inet 192.168.122.147/24 brd 192.168.122.255 scope global dynamic eth0
+       valid_lft 2160sec preferred_lft 2160sec
+    inet 192.168.122.148/24 scope global secondary eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::5054:ff:fe15:186a/64 scope link
+       valid_lft forever preferred_lft forever
+3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 52:54:00:b3:91:46 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.100.149/24 brd 192.168.100.255 scope global dynamic eth1
+       valid_lft 2162sec preferred_lft 2162sec
+    inet 192.168.100.148/24 scope global secondary eth1
+       valid_lft forever preferred_lft forever
+    inet6 fe80::5054:ff:feb3:9146/64 scope link
+       valid_lft forever preferred_lft forever
+4: ens9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 52:54:00:05:47:ee brd ff:ff:ff:ff:ff:ff
+    inet6 fe80::5054:ff:fe05:47ee/64 scope link
+       valid_lft forever preferred_lft forever
+
+# ip r g 192.168.100.193 from 192.168.122.148
+192.168.100.193 from 192.168.122.148 dev eth1
+    cache
+
+Even if you specify an interface:
+
+# ip r g 192.168.100.193 from 192.168.122.148 oif eth1
+192.168.100.193 from 192.168.122.148 dev eth1
+    cache
+
+Although this would be valid, peers using rp_filter will drop such
+packets as their src doesn't match the routes for that interface.
+
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- net/openvswitch/datapath.c | 2 +-
- net/sctp/socket.c          | 2 +-
- net/socket.c               | 6 +++---
- 3 files changed, 5 insertions(+), 5 deletions(-)
+ net/sctp/protocol.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-diff --git a/net/openvswitch/datapath.c b/net/openvswitch/datapath.c
-index ff8c4a4c1609..01d69680ba5d 100644
---- a/net/openvswitch/datapath.c
-+++ b/net/openvswitch/datapath.c
-@@ -1143,7 +1143,7 @@ static int ovs_flow_cmd_set(struct sk_buff *skb, struct genl_info *info)
- 						info, OVS_FLOW_CMD_NEW, false,
- 						ufid_flags);
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index fa80fe4f23629fc3c3f5c44f99dbf3cc524cc6a0..4345790ad3266c353eeac5398593c2a9ce4effda 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -487,6 +487,8 @@ static void sctp_v4_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
+ 	 */
+ 	rcu_read_lock();
+ 	list_for_each_entry_rcu(laddr, &bp->address_list, list) {
++		struct net_device *odev;
++
+ 		if (!laddr->valid)
+ 			continue;
+ 		if (laddr->state != SCTP_ADDR_SRC ||
+@@ -504,6 +506,14 @@ static void sctp_v4_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
+ 		if (IS_ERR(rt))
+ 			continue;
  
--		if (unlikely(IS_ERR(reply))) {
-+		if (IS_ERR(reply)) {
- 			error = PTR_ERR(reply);
- 			goto err_unlock_ovs;
- 		}
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 1425ec2bbd5a..c1569432235e 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -4481,7 +4481,7 @@ static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval
++		/* Ensure the src address belongs to the output
++		 * interface.
++		 */
++		odev = __ip_dev_find(sock_net(sk), laddr->a.v4.sin_addr.s_addr,
++				     false);
++		if (!odev || odev->ifindex != fl4->flowi4_oif)
++			continue;
++
+ 		dst = &rt->dst;
+ 		break;
  	}
- 
- 	newfile = sock_alloc_file(newsock, 0, NULL);
--	if (unlikely(IS_ERR(newfile))) {
-+	if (IS_ERR(newfile)) {
- 		put_unused_fd(retval);
- 		sock_release(newsock);
- 		return PTR_ERR(newfile);
-diff --git a/net/socket.c b/net/socket.c
-index 9963a0b53a64..dd2c247c99e3 100644
---- a/net/socket.c
-+++ b/net/socket.c
-@@ -373,7 +373,7 @@ struct file *sock_alloc_file(struct socket *sock, int flags, const char *dname)
- 
- 	file = alloc_file(&path, FMODE_READ | FMODE_WRITE,
- 		  &socket_file_ops);
--	if (unlikely(IS_ERR(file))) {
-+	if (IS_ERR(file)) {
- 		/* drop dentry, keep inode */
- 		ihold(d_inode(path.dentry));
- 		path_put(&path);
-@@ -1303,7 +1303,7 @@ SYSCALL_DEFINE4(socketpair, int, family, int, type, int, protocol,
- 	}
- 
- 	newfile1 = sock_alloc_file(sock1, flags, NULL);
--	if (unlikely(IS_ERR(newfile1))) {
-+	if (IS_ERR(newfile1)) {
- 		err = PTR_ERR(newfile1);
- 		goto out_put_unused_both;
- 	}
-@@ -1467,7 +1467,7 @@ SYSCALL_DEFINE4(accept4, int, fd, struct sockaddr __user *, upeer_sockaddr,
- 		goto out_put;
- 	}
- 	newfile = sock_alloc_file(newsock, flags, sock->sk->sk_prot_creator->name);
--	if (unlikely(IS_ERR(newfile))) {
-+	if (IS_ERR(newfile)) {
- 		err = PTR_ERR(newfile);
- 		put_unused_fd(newfd);
- 		sock_release(newsock);
 -- 
-2.4.0
+2.4.1
 
