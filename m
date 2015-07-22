@@ -1,38 +1,68 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 20 Jul 2015 18:53:26 +0000
-Subject: Re: [PATCH v2 1/2] sctp: add new getsockopt option SCTP_SOCKOPT_PEELOFF_KERNEL
-Message-Id: <20150720185326.GA2456@localhost.localdomain>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Wed, 22 Jul 2015 13:13:22 +0000
+Subject: RE: [PATCH v2 1/2] sctp: add new getsockopt option SCTP_SOCKOPT_PEELOFF_KERNEL
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1CB695E7@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1436891629.git.marcelo.leitner@gmail.com>
  <6091a8542d13f43fbe1abfa25062d28d15b15e66.1436891629.git.marcelo.leitner@gmail.com>
- <55A7B698.8080409@gmail.com>
- <20150716140314.GC1855@localhost.localdomain>
-In-Reply-To: <20150716140314.GC1855@localhost.localdomain>
+In-Reply-To: <6091a8542d13f43fbe1abfa25062d28d15b15e66.1436891629.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>
-Cc: netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org
+To: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
 
-On Thu, Jul 16, 2015 at 11:03:14AM -0300, Marcelo Ricardo Leitner wrote:
-> On Thu, Jul 16, 2015 at 09:50:16AM -0400, Vlad Yasevich wrote:
-...
-> > I am not familiar enough with DLM and its history, but my question is this:
-> > If dlm always peels off a socket for a new associations, why is it using
-> > 1-to-many api in the first place?  Doing a quick scan of DLM lowcoms code
-> > for sctp specific things, I see nothing that has specific dependencies
-> > on 1-to-many api.  It might be simpler to switch to using 1-to-1 api, similar
-> > to dlm tcp and eliminate this dependency.
-> > 
-> > Is that a naive point of view?
+From: Marcelo Ricardo Leitner
+> Sent: 14 July 2015 18:13
+> SCTP has this operation to peel off associations from a given socket and
+> create a new socket using this association. We currently have two ways
+> to use this operation:
+> - via getsockopt(), on which it will also create and return a file
+>   descriptor for this new socket
+> - via sctp_do_peeloff(), which is for kernel only
 > 
-> Not at all, that's a very good question. I also don't know much of DLM
-> code itself, I'll check that.
+> The caveat with using sctp_do_peeloff() directly is that it creates a
+> dependency to SCTP module, while all other operations are handled via
+> kernel_{socket,sendmsg,getsockopt...}() interface. This causes the
+> kernel to load SCTP module even when it's not really used.
+> 
+> This patch then creates a new sockopt that is to be used only by kernel
+> users of this protocol. This new sockopt will not allocate a file
+> descriptor but instead just return the socket pointer directly.
+> 
+> Kernel users are actually identified by if the parent socket has or not
+> a fd attached to it. If not, it's a kernel a user.
+> 
+> If called by an user application, it will just return -EPERM.
+> 
+> Even though it's not intended for user applications, it's listed under
+> uapi header. That's because hidding this wouldn't add any extra security
+> and to keep the sockopt list in one place, so it's easy to check
+> available numbers to use.
+> 
+> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+...
+> +static int sctp_getsockopt_peeloff_kernel(struct sock *sk, int len,
+> +					  char __user *optval, int __user *optlen)
+> +{
+> +	sctp_peeloff_kernel_arg_t peeloff;
+> +	struct socket *newsock;
+> +	int retval = 0;
+> +
+> +	/* We only allow this operation if parent socket also hadn't a
+> +	 * file descriptor allocated to it, mainly as a way to make sure
+> +	 * that this is really a kernel socket.
+> +	 */
+> +	if (sk->sk_socket->file)
+> +		return -EPERM;
+> +
+> +	if (len < sizeof(sctp_peeloff_kernel_arg_t))
+> +		return -EINVAL;
+> +	len = sizeof(sctp_peeloff_kernel_arg_t);
+> +	if (copy_from_user(&peeloff, optval, len))
+> +		return -EFAULT;
 
-Sounds like DLM is using 1-to-many just in an attempt to use
-multi-homing, but we can do that with 1-to-1 too. I'll draft a patch and
-see how it goes, and perhaps with that we can avoid/postpone this
-question regarding indirect call to sctp_do_peeloff by kernel.
+You can't need copy_from_user() here, the buffer would surely be kernel.
 
-  Marcelo
+	David
 
