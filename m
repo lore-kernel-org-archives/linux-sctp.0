@@ -1,80 +1,83 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 14 Jul 2015 17:13:25 +0000
-Subject: [PATCH v2 2/2] dlm: avoid using sctp_do_peeloff directly
-Message-Id: <3c7c8a7a413146c661ef3df5346becf03f626e32.1436891629.git.marcelo.leitner@gmail.com>
+From: Viresh Kumar <viresh.kumar@linaro.org>
+Date: Fri, 31 Jul 2015 08:50:35 +0000
+Subject: [PATCH 15/15] net: Drop unlikely before IS_ERR(_OR_NULL)
+Message-Id: <88a6d5b3eb1579a29ed896d7fd6e58c94663d3ac.1438331416.git.viresh.kumar@linaro.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1436891629.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1436891629.git.marcelo.leitner@gmail.com>
+References: <cover.1438331416.git.viresh.kumar@linaro.org>
+In-Reply-To: <cover.1438331416.git.viresh.kumar@linaro.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
+To: akpm@linux-foundation.org
+Cc: linaro-kernel@lists.linaro.org, linux-kernel@vger.kernel.org, Viresh Kumar <viresh.kumar@linaro.org>, "David S. Miller" <davem@davemloft.net>, "open list:OPENVSWITCH" <dev@openvswitch.org>, "open list:SCTP PROTOCOL" <linux-sctp@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, "open list:OPENVSWITCH" <netdev@vger.kernel.org>, Pravin Shelar <pshelar@nicira.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-This patch reverts 2f2d76cc3e93 ("dlm: Do not allocate a fd for
-peeloff") but also makes use of a new sockopt:
-SCTP_SOCKOPT_PEELOFF_KERNEL, which avoids allocating file descriptors
-while doing this operation.
+IS_ERR(_OR_NULL) already contain an 'unlikely' compiler flag and there
+is no need to do that again from its callers. Drop it.
 
-By this we avoid creating a direct dependency from dlm to sctp module,
-which can then be left unloaded if dlm is not really using it.
-
-Note that this was preferred other than a module split as it once was
-split and was merged back in 2007 by commit 6ed7257b4670 ("[DLM]
-Consolidate transport protocols") so that we don't revert it.
-
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
 ---
- fs/dlm/lowcomms.c | 17 ++++++++---------
- 1 file changed, 8 insertions(+), 9 deletions(-)
+ net/openvswitch/datapath.c | 2 +-
+ net/sctp/socket.c          | 2 +-
+ net/socket.c               | 6 +++---
+ 3 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
-index d08e079ea5d3aa37cf685cce89eb00122fe7ba02..dd14fe05a69565d9ec061fc2c93671c49d12fdcb 100644
---- a/fs/dlm/lowcomms.c
-+++ b/fs/dlm/lowcomms.c
-@@ -52,7 +52,6 @@
- #include <linux/mutex.h>
- #include <linux/sctp.h>
- #include <linux/slab.h>
--#include <net/sctp/sctp.h>
- #include <net/ipv6.h>
+diff --git a/net/openvswitch/datapath.c b/net/openvswitch/datapath.c
+index ff8c4a4c1609..01d69680ba5d 100644
+--- a/net/openvswitch/datapath.c
++++ b/net/openvswitch/datapath.c
+@@ -1143,7 +1143,7 @@ static int ovs_flow_cmd_set(struct sk_buff *skb, struct genl_info *info)
+ 						info, OVS_FLOW_CMD_NEW, false,
+ 						ufid_flags);
  
- #include "dlm_internal.h"
-@@ -671,6 +670,8 @@ static void process_sctp_notification(struct connection *con,
- 			int prim_len, ret;
- 			int addr_len;
- 			struct connection *new_con;
-+			sctp_peeloff_kernel_arg_t parg;
-+			int parglen = sizeof(parg);
+-		if (unlikely(IS_ERR(reply))) {
++		if (IS_ERR(reply)) {
+ 			error = PTR_ERR(reply);
+ 			goto err_unlock_ovs;
+ 		}
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 1425ec2bbd5a..c1569432235e 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4481,7 +4481,7 @@ static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval
+ 	}
  
- 			/*
- 			 * We get this before any data for an association.
-@@ -719,19 +720,17 @@ static void process_sctp_notification(struct connection *con,
- 				return;
+ 	newfile = sock_alloc_file(newsock, 0, NULL);
+-	if (unlikely(IS_ERR(newfile))) {
++	if (IS_ERR(newfile)) {
+ 		put_unused_fd(retval);
+ 		sock_release(newsock);
+ 		return PTR_ERR(newfile);
+diff --git a/net/socket.c b/net/socket.c
+index 9963a0b53a64..dd2c247c99e3 100644
+--- a/net/socket.c
++++ b/net/socket.c
+@@ -373,7 +373,7 @@ struct file *sock_alloc_file(struct socket *sock, int flags, const char *dname)
  
- 			/* Peel off a new sock */
--			lock_sock(con->sock->sk);
--			ret = sctp_do_peeloff(con->sock->sk,
--				sn->sn_assoc_change.sac_assoc_id,
--				&new_con->sock);
--			release_sock(con->sock->sk);
-+			parg.associd = sn->sn_assoc_change.sac_assoc_id;
-+			ret = kernel_getsockopt(con->sock, IPPROTO_SCTP,
-+						SCTP_SOCKOPT_PEELOFF_KERNEL,
-+						(void *)&parg, &parglen);
- 			if (ret < 0) {
- 				log_print("Can't peel off a socket for "
- 					  "connection %d to node %d: err=%d",
--					  (int)sn->sn_assoc_change.sac_assoc_id,
--					  nodeid, ret);
-+					  parg.associd, nodeid, ret);
- 				return;
- 			}
--			add_sock(new_con->sock, new_con);
-+			add_sock(parg.socket, new_con);
+ 	file = alloc_file(&path, FMODE_READ | FMODE_WRITE,
+ 		  &socket_file_ops);
+-	if (unlikely(IS_ERR(file))) {
++	if (IS_ERR(file)) {
+ 		/* drop dentry, keep inode */
+ 		ihold(d_inode(path.dentry));
+ 		path_put(&path);
+@@ -1303,7 +1303,7 @@ SYSCALL_DEFINE4(socketpair, int, family, int, type, int, protocol,
+ 	}
  
- 			linger.l_onoff = 1;
- 			linger.l_linger = 0;
+ 	newfile1 = sock_alloc_file(sock1, flags, NULL);
+-	if (unlikely(IS_ERR(newfile1))) {
++	if (IS_ERR(newfile1)) {
+ 		err = PTR_ERR(newfile1);
+ 		goto out_put_unused_both;
+ 	}
+@@ -1467,7 +1467,7 @@ SYSCALL_DEFINE4(accept4, int, fd, struct sockaddr __user *, upeer_sockaddr,
+ 		goto out_put;
+ 	}
+ 	newfile = sock_alloc_file(newsock, flags, sock->sk->sk_prot_creator->name);
+-	if (unlikely(IS_ERR(newfile))) {
++	if (IS_ERR(newfile)) {
+ 		err = PTR_ERR(newfile);
+ 		put_unused_fd(newfd);
+ 		sock_release(newsock);
 -- 
-2.4.1
+2.4.0
 
