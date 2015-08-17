@@ -1,37 +1,43 @@
-From: Ravi Puttachannaiah <ravi.puttachannaiah@aricent.com>
-Date: Mon, 17 Aug 2015 11:45:35 +0000
-Subject: SCTP heartbeat transmission interval in not working as expected
-Message-Id: <f0156706abe9412c9d158cac2724d12a@BGHMBXV01.AD.ARICENT.COM>
+From: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
+Date: Mon, 17 Aug 2015 13:12:34 +0000
+Subject: Re: SCTP heartbeat transmission interval in not working as expected
+Message-Id: <43C2F12F-CA84-4742-9909-FDC0893CB085@lurchi.franken.de>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <f0156706abe9412c9d158cac2724d12a@BGHMBXV01.AD.ARICENT.COM>
+In-Reply-To: <f0156706abe9412c9d158cac2724d12a@BGHMBXV01.AD.ARICENT.COM>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 To: linux-sctp@vger.kernel.org
 
-SGksDQoNCiAgICAgICAgICAgICAgICBXZSBhcmUgdXNpbmcgTEtTQ1RQICh2ZXIgMS4wLjE2KSBh
-bmQgd2Ugb2JzZXJ2ZSB0aGF0IHRoZSBTQ1RQIGhlYXJ0YmVhdCB0cmFuc21pc3Npb24gaW50ZXJ2
-YWwgaW4gbm90IHdvcmtpbmcgYXMgZXhwZWN0ZWQuIEZvbGxvd2luZyBpcyB0aGUgU0NUUCBjb25m
-aWd1cmF0aW9uIHNldHRpbmdzIHdlIGFyZSB1c2luZyAoYXBwbGllZCB1c2luZyBzZXRzb2Nrb3B0
-KCkpLg0KDQoNCmhiaW50ZXJ2YWw9MzAtc2VjDQpSVE8gaW5pdGlhbD0zLXNlYw0KUlRPIG1pbj0x
-LXNlYw0KUlRPIG1heD02MC1zZWMNCg0KICAgICAgICAgICAgICAgIEFzIHBlciBvdXIgdW5kZXJz
-dGFuZGluZyB0aGUgU0NUUCBoZWFydGJlYXQgdHJhbnNtaXNzaW9uIGludGVydmFsIHZhbHVlIHNo
-b3VsZCBiZSBiZXR3ZWVuIDMxLjUgdG8gMzQuNSBzZWNvbmRzIGFzIHBlciB0aGUgY2FsY3VsYXRp
-b24gIlJUTytIQkludGVydmFsK2RlbHRhKMKxMC41b2ZSVE8pIiBidXQgd2UgYXJlIGFsd2F5cyBz
-ZWVpbmcgdGhlIHZhbHVlIGluLWJldHdlZW4gMzAuNiB0byAzMS41IHNlY29uZHMuDQoNCiAgICAg
-ICAgICAgICAgICBDb3VsZCBzb21lYm9keSBjb25maXJtIGlmIHRoaXMgaXMgYW4gaXNzdWUgb3Ig
-bm90IGFuZCBpbi1jYXNlIG9mIGFuIGlzc3VlIGhvdyB3ZSBjYW4gcmVzb2x2ZS4NCg0KICAgICAg
-ICAgICAgICAgIFdlIGFyZSB1c2luZyBMS1NDVFAgdmVyc2lvbiAxLjAuMTYgYW5kIDEuMC43IGFu
-ZCBpbiBib3RoIHRoZSB2ZXJzaW9ucyB3ZSBhcmUgb2JzZXJ2aW5nIHRoZSBzYW1lIGJlaGF2aW9y
-Lg0KDQoNClJlZ2FyZHMsDQoNClJhdmnigIsNCg0KIkRJU0NMQUlNRVI6IFRoaXMgbWVzc2FnZSBp
-cyBwcm9wcmlldGFyeSB0byBBcmljZW50IGFuZCBpcyBpbnRlbmRlZCBzb2xlbHkgZm9yIHRoZSB1
-c2Ugb2YgdGhlIGluZGl2aWR1YWwgdG8gd2hvbSBpdCBpcyBhZGRyZXNzZWQuIEl0IG1heSBjb250
-YWluIHByaXZpbGVnZWQgb3IgY29uZmlkZW50aWFsIGluZm9ybWF0aW9uIGFuZCBzaG91bGQgbm90
-IGJlIGNpcmN1bGF0ZWQgb3IgdXNlZCBmb3IgYW55IHB1cnBvc2Ugb3RoZXIgdGhhbiBmb3Igd2hh
-dCBpdCBpcyBpbnRlbmRlZC4gSWYgeW91IGhhdmUgcmVjZWl2ZWQgdGhpcyBtZXNzYWdlIGluIGVy
-cm9yLCBwbGVhc2Ugbm90aWZ5IHRoZSBvcmlnaW5hdG9yIGltbWVkaWF0ZWx5LiBJZiB5b3UgYXJl
-IG5vdCB0aGUgaW50ZW5kZWQgcmVjaXBpZW50LCB5b3UgYXJlIG5vdGlmaWVkIHRoYXQgeW91IGFy
-ZSBzdHJpY3RseSBwcm9oaWJpdGVkIGZyb20gdXNpbmcsIGNvcHlpbmcsIGFsdGVyaW5nLCBvciBk
-aXNjbG9zaW5nIHRoZSBjb250ZW50cyBvZiB0aGlzIG1lc3NhZ2UuIEFyaWNlbnQgYWNjZXB0cyBu
-byByZXNwb25zaWJpbGl0eSBmb3IgbG9zcyBvciBkYW1hZ2UgYXJpc2luZyBmcm9tIHRoZSB1c2Ug
-b2YgdGhlIGluZm9ybWF0aW9uIHRyYW5zbWl0dGVkIGJ5IHRoaXMgZW1haWwgaW5jbHVkaW5nIGRh
-bWFnZSBmcm9tIHZpcnVzLiINCg=
+> On 17 Aug 2015, at 13:45, Ravi Puttachannaiah <ravi.puttachannaiah@aricent.com> wrote:
+> 
+> Hi,
+> 
+>                We are using LKSCTP (ver 1.0.16) and we observe that the SCTP heartbeat transmission interval in not working as expected. Following is the SCTP configuration settings we are using (applied using setsockopt()).
+> 
+> 
+> hbinterval0-sec
+> RTO initial=3-sec
+> RTO min=1-sec
+> RTO max`-sec
+> 
+>                As per our understanding the SCTP heartbeat transmission interval value should be between 31.5 to 34.5 seconds as per the calculation "RTO+HBInterval+delta(Âą0.5ofRTO)" but we are always seeing the value in-between 30.6 to 31.5 seconds.
+Assuming that the RTO is 1 second (after an RTT measurement this is true, I guess), you would get HBs every
+30.5 and 31.5 seconds. Seems to be about what you measure.
+
+Best regards
+Michael
+> 
+>                Could somebody confirm if this is an issue or not and in-case of an issue how we can resolve.
+> 
+>                We are using LKSCTP version 1.0.16 and 1.0.7 and in both the versions we are observing the same behavior.
+> 
+> 
+> Regards,
+> 
+> Raviâ
+> 
+> "DISCLAIMER: This message is proprietary to Aricent and is intended solely for the use of the individual to whom it is addressed. It may contain privileged or confidential information and should not be circulated or used for any purpose other than for what it is intended. If you have received this message in error, please notify the originator immediately. If you are not the intended recipient, you are notified that you are strictly prohibited from using, copying, altering, or disclosing the contents of this message. Aricent accepts no responsibility for loss or damage arising from the use of the information transmitted by this email including damage from virus."
+> N§ēæėrļyúčØbēXŽķĮ§vØ^)Þš{.nĮ+·Ĩ{ąąËi{ayšĘÚë,j­ĒfĢĒ·hāzđŪwĨĒļĒ·Ķj:+vĻwčjØmķĸūŦęįzZ+ųÝĒj"ú!
+
