@@ -1,66 +1,37 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 17 Jul 2015 15:34:17 +0000
-Subject: [PATCH v2 1/2] sctp: reduce indent level on sctp_v4_get_dst
-Message-Id: <3ad52d0eb6028974a0b6c9010de44772bf181169.1437145508.git.marcelo.leitner@gmail.com>
+From: Ravi Puttachannaiah <ravi.puttachannaiah@aricent.com>
+Date: Mon, 17 Aug 2015 11:45:35 +0000
+Subject: SCTP heartbeat transmission interval in not working as expected
+Message-Id: <f0156706abe9412c9d158cac2724d12a@BGHMBXV01.AD.ARICENT.COM>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1437145508.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1437145508.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
-Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
+To: linux-sctp@vger.kernel.org
 
-Paves the day for the next patch. Functionality stays untouched.
-
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
----
- net/sctp/protocol.c | 32 +++++++++++++++++---------------
- 1 file changed, 17 insertions(+), 15 deletions(-)
-
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index 59e80356672bdf89777265ae1f8c384792dfb98c..fa80fe4f23629fc3c3f5c44f99dbf3cc524cc6a0 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -489,21 +489,23 @@ static void sctp_v4_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
- 	list_for_each_entry_rcu(laddr, &bp->address_list, list) {
- 		if (!laddr->valid)
- 			continue;
--		if ((laddr->state = SCTP_ADDR_SRC) &&
--		    (AF_INET = laddr->a.sa.sa_family)) {
--			fl4->fl4_sport = laddr->a.v4.sin_port;
--			flowi4_update_output(fl4,
--					     asoc->base.sk->sk_bound_dev_if,
--					     RT_CONN_FLAGS(asoc->base.sk),
--					     daddr->v4.sin_addr.s_addr,
--					     laddr->a.v4.sin_addr.s_addr);
--
--			rt = ip_route_output_key(sock_net(sk), fl4);
--			if (!IS_ERR(rt)) {
--				dst = &rt->dst;
--				goto out_unlock;
--			}
--		}
-+		if (laddr->state != SCTP_ADDR_SRC ||
-+		    AF_INET != laddr->a.sa.sa_family)
-+			continue;
-+
-+		fl4->fl4_sport = laddr->a.v4.sin_port;
-+		flowi4_update_output(fl4,
-+				     asoc->base.sk->sk_bound_dev_if,
-+				     RT_CONN_FLAGS(asoc->base.sk),
-+				     daddr->v4.sin_addr.s_addr,
-+				     laddr->a.v4.sin_addr.s_addr);
-+
-+		rt = ip_route_output_key(sock_net(sk), fl4);
-+		if (IS_ERR(rt))
-+			continue;
-+
-+		dst = &rt->dst;
-+		break;
- 	}
- 
- out_unlock:
--- 
-2.4.1
-
+SGksDQoNCiAgICAgICAgICAgICAgICBXZSBhcmUgdXNpbmcgTEtTQ1RQICh2ZXIgMS4wLjE2KSBh
+bmQgd2Ugb2JzZXJ2ZSB0aGF0IHRoZSBTQ1RQIGhlYXJ0YmVhdCB0cmFuc21pc3Npb24gaW50ZXJ2
+YWwgaW4gbm90IHdvcmtpbmcgYXMgZXhwZWN0ZWQuIEZvbGxvd2luZyBpcyB0aGUgU0NUUCBjb25m
+aWd1cmF0aW9uIHNldHRpbmdzIHdlIGFyZSB1c2luZyAoYXBwbGllZCB1c2luZyBzZXRzb2Nrb3B0
+KCkpLg0KDQoNCmhiaW50ZXJ2YWw9MzAtc2VjDQpSVE8gaW5pdGlhbD0zLXNlYw0KUlRPIG1pbj0x
+LXNlYw0KUlRPIG1heD02MC1zZWMNCg0KICAgICAgICAgICAgICAgIEFzIHBlciBvdXIgdW5kZXJz
+dGFuZGluZyB0aGUgU0NUUCBoZWFydGJlYXQgdHJhbnNtaXNzaW9uIGludGVydmFsIHZhbHVlIHNo
+b3VsZCBiZSBiZXR3ZWVuIDMxLjUgdG8gMzQuNSBzZWNvbmRzIGFzIHBlciB0aGUgY2FsY3VsYXRp
+b24gIlJUTytIQkludGVydmFsK2RlbHRhKMKxMC41b2ZSVE8pIiBidXQgd2UgYXJlIGFsd2F5cyBz
+ZWVpbmcgdGhlIHZhbHVlIGluLWJldHdlZW4gMzAuNiB0byAzMS41IHNlY29uZHMuDQoNCiAgICAg
+ICAgICAgICAgICBDb3VsZCBzb21lYm9keSBjb25maXJtIGlmIHRoaXMgaXMgYW4gaXNzdWUgb3Ig
+bm90IGFuZCBpbi1jYXNlIG9mIGFuIGlzc3VlIGhvdyB3ZSBjYW4gcmVzb2x2ZS4NCg0KICAgICAg
+ICAgICAgICAgIFdlIGFyZSB1c2luZyBMS1NDVFAgdmVyc2lvbiAxLjAuMTYgYW5kIDEuMC43IGFu
+ZCBpbiBib3RoIHRoZSB2ZXJzaW9ucyB3ZSBhcmUgb2JzZXJ2aW5nIHRoZSBzYW1lIGJlaGF2aW9y
+Lg0KDQoNClJlZ2FyZHMsDQoNClJhdmnigIsNCg0KIkRJU0NMQUlNRVI6IFRoaXMgbWVzc2FnZSBp
+cyBwcm9wcmlldGFyeSB0byBBcmljZW50IGFuZCBpcyBpbnRlbmRlZCBzb2xlbHkgZm9yIHRoZSB1
+c2Ugb2YgdGhlIGluZGl2aWR1YWwgdG8gd2hvbSBpdCBpcyBhZGRyZXNzZWQuIEl0IG1heSBjb250
+YWluIHByaXZpbGVnZWQgb3IgY29uZmlkZW50aWFsIGluZm9ybWF0aW9uIGFuZCBzaG91bGQgbm90
+IGJlIGNpcmN1bGF0ZWQgb3IgdXNlZCBmb3IgYW55IHB1cnBvc2Ugb3RoZXIgdGhhbiBmb3Igd2hh
+dCBpdCBpcyBpbnRlbmRlZC4gSWYgeW91IGhhdmUgcmVjZWl2ZWQgdGhpcyBtZXNzYWdlIGluIGVy
+cm9yLCBwbGVhc2Ugbm90aWZ5IHRoZSBvcmlnaW5hdG9yIGltbWVkaWF0ZWx5LiBJZiB5b3UgYXJl
+IG5vdCB0aGUgaW50ZW5kZWQgcmVjaXBpZW50LCB5b3UgYXJlIG5vdGlmaWVkIHRoYXQgeW91IGFy
+ZSBzdHJpY3RseSBwcm9oaWJpdGVkIGZyb20gdXNpbmcsIGNvcHlpbmcsIGFsdGVyaW5nLCBvciBk
+aXNjbG9zaW5nIHRoZSBjb250ZW50cyBvZiB0aGlzIG1lc3NhZ2UuIEFyaWNlbnQgYWNjZXB0cyBu
+byByZXNwb25zaWJpbGl0eSBmb3IgbG9zcyBvciBkYW1hZ2UgYXJpc2luZyBmcm9tIHRoZSB1c2Ug
+b2YgdGhlIGluZm9ybWF0aW9uIHRyYW5zbWl0dGVkIGJ5IHRoaXMgZW1haWwgaW5jbHVkaW5nIGRh
+bWFnZSBmcm9tIHZpcnVzLiINCg=
