@@ -1,99 +1,94 @@
-From: Ravi Puttachannaiah <ravi.puttachannaiah@aricent.com>
-Date: Mon, 17 Aug 2015 16:05:06 +0000
-Subject: RE: SCTP heartbeat transmission interval in not working as expected
-Message-Id: <70b5e47b23a64713bfed91960e16749d@BGHMBXV01.AD.ARICENT.COM>
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Mon, 17 Aug 2015 21:37:21 +0000
+Subject: Re: SCTP heartbeat transmission interval in not working as expected
+Message-Id: <55D25411.80904@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <f0156706abe9412c9d158cac2724d12a@BGHMBXV01.AD.ARICENT.COM>
 In-Reply-To: <f0156706abe9412c9d158cac2724d12a@BGHMBXV01.AD.ARICENT.COM>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 To: linux-sctp@vger.kernel.org
 
-SGkgTWFsYywNCg0KICAgICAgICAgICAgICAgIFRoYW5rcyBmb3IgdGhlIHJlc3BvbnNlLiBXaGF0
-IHRyYWNlcyB5b3UgcmVxdWlyZSB0byBjaGVjayB0aGUgYmVoYXZpb3IuIEkgaGF2ZSBvbmx5IHdp
-cmVzaGFyayBsb2dzLg0KDQogICAgICAgICAgICAgICAgSWYgeW91IGFyZSBsb29raW5nIGZvciBh
-IExLU0NUUCB0cmFjZXMgY291bGQgeW91IHBsZWFzZSBoZWxwIG1lIG9uIGhvdyB0byBlbmFibGUg
-YW5kIGdldCB0aGUgTEtTQ1RQIHRyYWNlcy4NCg0KDQpSZWdhcmRzLA0KDQpSYXZpDQoNCg0KDQpG
-cm9tOiBtYWxjIFttYWlsdG86bWxhc2hsZXlAZ21haWwuY29tXQ0KU2VudDogTW9uZGF5LCBBdWd1
-c3QgMTcsIDIwMTUgODoyMCBQTQ0KVG86IFJhdmkgUHV0dGFjaGFubmFpYWgNCkNjOiBsaW51eC1z
-Y3RwQHZnZXIua2VybmVsLm9yZw0KU3ViamVjdDogUmU6IFNDVFAgaGVhcnRiZWF0IHRyYW5zbWlz
-c2lvbiBpbnRlcnZhbCBpbiBub3Qgd29ya2luZyBhcyBleHBlY3RlZA0KDQpSYXZpLA0KDQpJdCBz
-aG91bGQgL3N0YXJ0LyB3aXRoIFJUTyBpbml0aWFsLCBidXQgeW91IGhhdmUgbGlrZWx5IGFscmVh
-ZHkgbWFkZSBhbiBSVFQgbWVhc3VyZW1lbnQgKHNlbnQgREFUQSBhbmQgcmVjZWl2ZWQgU0FDSykg
-LSB0aHVzIHJlbW92aW5nIFJUTy5pbml0IGZyb20gdGhlIGVxdWF0aW9uIGluIHRoaXMgY2FzZS4N
-Ckkgc3VzcGVjdCB3ZSB3b3VsZCBuZWVkIHRvIHNlZSB0cmFjZXMgdG8gZXhwbGFpbiBmdXJ0aGVy
-IGFueSBwYXJ0aWN1bGFyIGJlaGF2aW91ciB5b3UgYXJlIHNlZWluZyBpbiB0aGlzIHRlc3QgKGJ1
-dCBpdCBjb3VsZCBoYXBwZW4gZm9yIGV4YW1wbGUgd2hlcmUgeW91IGJ1bmRsZSBEQVRBIGNodW5r
-cyB3aXRoIENPT0tJRSBFQ0hPKQ0KDQpDaGVlcnMsDQptYWxjLg0KDQoNCg0KDQoNCk9uIE1vbiwg
-QXVnIDE3LCAyMDE1IGF0IDI6NDUgUE0sIFJhdmkgUHV0dGFjaGFubmFpYWggPHJhdmkucHV0dGFj
-aGFubmFpYWhAYXJpY2VudC5jb20+IHdyb3RlOg0KSGkgTWljaGFlbCwNCg0KVGhhbmtzIGZvciB5
-b3VyIHF1aWNrIHJlc3BvbnNlLiBJdCB3aWxsIGJlIGhlbHBmdWwgaWYgeW91IGNhbiBleHBsYWlu
-IHdoeSBpdCBzaG91bGQgYmUgMzAuNSB0byAzMS41Lg0KDQpBcyBwZXIgb3VyIHVuZGVyc3RhbmRp
-bmcgaW5pdGlhbGx5IGl0IHNob3VsZCBzdGFydCB3aXRoIDMzLXNlY29uZHMgKDMwW0hCSW50ZXJ2
-YWxdKzNbUlRPIGluaXRpYWxdKSByaWdodCA/LiBQbGVhc2UgY29ycmVjdCBtZSBpZiBteSB1bmRl
-cnN0YW5kaW5nIGlzIGluLWNvcnJlY3QuDQoNCg0KUmVnYXJkcywNCg0KUmF2aQ0KDQoNCi0tLS0t
-T3JpZ2luYWwgTWVzc2FnZS0tLS0tDQpGcm9tOiBNaWNoYWVsIFR1ZXhlbiBbbWFpbHRvOk1pY2hh
-ZWwuVHVleGVuQGx1cmNoaS5mcmFua2VuLmRlXQ0KU2VudDogTW9uZGF5LCBBdWd1c3QgMTcsIDIw
-MTUgNjo0MyBQTQ0KVG86IFJhdmkgUHV0dGFjaGFubmFpYWgNCkNjOiBsaW51eC1zY3RwQHZnZXIu
-a2VybmVsLm9yZw0KU3ViamVjdDogUmU6IFNDVFAgaGVhcnRiZWF0IHRyYW5zbWlzc2lvbiBpbnRl
-cnZhbCBpbiBub3Qgd29ya2luZyBhcyBleHBlY3RlZA0KDQo+IE9uIDE3IEF1ZyAyMDE1LCBhdCAx
-Mzo0NSwgUmF2aSBQdXR0YWNoYW5uYWlhaCA8cmF2aS5wdXR0YWNoYW5uYWlhaEBhcmljZW50LmNv
-bT4gd3JvdGU6DQo+DQo+IEhpLA0KPg0KPiAgICAgICAgICAgICAgICBXZSBhcmUgdXNpbmcgTEtT
-Q1RQICh2ZXIgMS4wLjE2KSBhbmQgd2Ugb2JzZXJ2ZSB0aGF0IHRoZSBTQ1RQIGhlYXJ0YmVhdCB0
-cmFuc21pc3Npb24gaW50ZXJ2YWwgaW4gbm90IHdvcmtpbmcgYXMgZXhwZWN0ZWQuIEZvbGxvd2lu
-ZyBpcyB0aGUgU0NUUCBjb25maWd1cmF0aW9uIHNldHRpbmdzIHdlIGFyZSB1c2luZyAoYXBwbGll
-ZCB1c2luZyBzZXRzb2Nrb3B0KCkpLg0KPg0KPg0KPiBoYmludGVydmFsPTMwLXNlYw0KPiBSVE8g
-aW5pdGlhbD0zLXNlYw0KPiBSVE8gbWluPTEtc2VjDQo+IFJUTyBtYXg9NjAtc2VjDQo+DQo+ICAg
-ICAgICAgICAgICAgIEFzIHBlciBvdXIgdW5kZXJzdGFuZGluZyB0aGUgU0NUUCBoZWFydGJlYXQg
-dHJhbnNtaXNzaW9uIGludGVydmFsIHZhbHVlIHNob3VsZCBiZSBiZXR3ZWVuIDMxLjUgdG8gMzQu
-NSBzZWNvbmRzIGFzIHBlciB0aGUgY2FsY3VsYXRpb24gIlJUTytIQkludGVydmFsK2RlbHRhKMOC
-xIUwLjVvZlJUTykiIGJ1dCB3ZSBhcmUgYWx3YXlzIHNlZWluZyB0aGUgdmFsdWUgaW4tYmV0d2Vl
-biAzMC42IHRvIDMxLjUgc2Vjb25kcy4NCkFzc3VtaW5nIHRoYXQgdGhlIFJUTyBpcyAxIHNlY29u
-ZCAoYWZ0ZXIgYW4gUlRUIG1lYXN1cmVtZW50IHRoaXMgaXMgdHJ1ZSwgSSBndWVzcyksIHlvdSB3
-b3VsZCBnZXQgSEJzIGV2ZXJ5DQozMC41IGFuZCAzMS41IHNlY29uZHMuIFNlZW1zIHRvIGJlIGFi
-b3V0IHdoYXQgeW91IG1lYXN1cmUuDQoNCkJlc3QgcmVnYXJkcw0KTWljaGFlbA0KPg0KPiAgICAg
-ICAgICAgICAgICBDb3VsZCBzb21lYm9keSBjb25maXJtIGlmIHRoaXMgaXMgYW4gaXNzdWUgb3Ig
-bm90IGFuZCBpbi1jYXNlIG9mIGFuIGlzc3VlIGhvdyB3ZSBjYW4gcmVzb2x2ZS4NCj4NCj4gICAg
-ICAgICAgICAgICAgV2UgYXJlIHVzaW5nIExLU0NUUCB2ZXJzaW9uIDEuMC4xNiBhbmQgMS4wLjcg
-YW5kIGluIGJvdGggdGhlIHZlcnNpb25zIHdlIGFyZSBvYnNlcnZpbmcgdGhlIHNhbWUgYmVoYXZp
-b3IuDQo+DQo+DQo+IFJlZ2FyZHMsDQo+DQo+IFJhdmnDouKCrOKAuQ0KPg0KPiAiRElTQ0xBSU1F
-UjogVGhpcyBtZXNzYWdlIGlzIHByb3ByaWV0YXJ5IHRvIEFyaWNlbnQgYW5kIGlzIGludGVuZGVk
-IHNvbGVseSBmb3IgdGhlIHVzZSBvZiB0aGUgaW5kaXZpZHVhbCB0byB3aG9tIGl0IGlzIGFkZHJl
-c3NlZC4gSXQgbWF5IGNvbnRhaW4gcHJpdmlsZWdlZCBvciBjb25maWRlbnRpYWwgaW5mb3JtYXRp
-b24gYW5kIHNob3VsZCBub3QgYmUgY2lyY3VsYXRlZCBvciB1c2VkIGZvciBhbnkgcHVycG9zZSBv
-dGhlciB0aGFuIGZvciB3aGF0IGl0IGlzIGludGVuZGVkLiBJZiB5b3UgaGF2ZSByZWNlaXZlZCB0
-aGlzIG1lc3NhZ2UgaW4gZXJyb3IsIHBsZWFzZSBub3RpZnkgdGhlIG9yaWdpbmF0b3IgaW1tZWRp
-YXRlbHkuIElmIHlvdSBhcmUgbm90IHRoZSBpbnRlbmRlZCByZWNpcGllbnQsIHlvdSBhcmUgbm90
-aWZpZWQgdGhhdCB5b3UgYXJlIHN0cmljdGx5IHByb2hpYml0ZWQgZnJvbSB1c2luZywgY29weWlu
-ZywgYWx0ZXJpbmcsIG9yIGRpc2Nsb3NpbmcgdGhlIGNvbnRlbnRzIG9mIHRoaXMgbWVzc2FnZS4g
-QXJpY2VudCBhY2NlcHRzIG5vIHJlc3BvbnNpYmlsaXR5IGZvciBsb3NzIG9yIGRhbWFnZSBhcmlz
-aW5nIGZyb20gdGhlIHVzZSBvZiB0aGUgaW5mb3JtYXRpb24gdHJhbnNtaXR0ZWQgYnkgdGhpcyBl
-bWFpbCBpbmNsdWRpbmcgZGFtYWdlIGZyb20gdmlydXMuIg0KPiBO4oC5wqfEk8OmxJdyxLzigLp5
-w7rEjcWhw5hixJNYxb3Et8Suwqd2w5he4oCTKcOexaF7Lm7ErivigLDCt8SoxaB7xIXEhcOLacWg
-e2F5xaEgxJjigKHDmuKEosOrLGoNCsSSZsSixJLCt2jFoeKAucSBesSRIMWqd8SoxJLEvA0KxJLC
-t8S2ajorduKAsMS7xaB3xI1qw5htxLfFuMS4xasNCsWm4oCYxJnEr3paK8aSxbPFocuHxaDDncSS
-aiLCr8O6IQ0KDQoiRElTQ0xBSU1FUjogVGhpcyBtZXNzYWdlIGlzIHByb3ByaWV0YXJ5IHRvIEFy
-aWNlbnQgYW5kIGlzIGludGVuZGVkIHNvbGVseSBmb3IgdGhlIHVzZSBvZiB0aGUgaW5kaXZpZHVh
-bCB0byB3aG9tIGl0IGlzIGFkZHJlc3NlZC4gSXQgbWF5IGNvbnRhaW4gcHJpdmlsZWdlZCBvciBj
-b25maWRlbnRpYWwgaW5mb3JtYXRpb24gYW5kIHNob3VsZCBub3QgYmUgY2lyY3VsYXRlZCBvciB1
-c2VkIGZvciBhbnkgcHVycG9zZSBvdGhlciB0aGFuIGZvciB3aGF0IGl0IGlzIGludGVuZGVkLiBJ
-ZiB5b3UgaGF2ZSByZWNlaXZlZCB0aGlzIG1lc3NhZ2UgaW4gZXJyb3IsIHBsZWFzZSBub3RpZnkg
-dGhlIG9yaWdpbmF0b3IgaW1tZWRpYXRlbHkuIElmIHlvdSBhcmUgbm90IHRoZSBpbnRlbmRlZCBy
-ZWNpcGllbnQsIHlvdSBhcmUgbm90aWZpZWQgdGhhdCB5b3UgYXJlIHN0cmljdGx5IHByb2hpYml0
-ZWQgZnJvbSB1c2luZywgY29weWluZywgYWx0ZXJpbmcsIG9yIGRpc2Nsb3NpbmcgdGhlIGNvbnRl
-bnRzIG9mIHRoaXMgbWVzc2FnZS4gQXJpY2VudCBhY2NlcHRzIG5vIHJlc3BvbnNpYmlsaXR5IGZv
-ciBsb3NzIG9yIGRhbWFnZSBhcmlzaW5nIGZyb20gdGhlIHVzZSBvZiB0aGUgaW5mb3JtYXRpb24g
-dHJhbnNtaXR0ZWQgYnkgdGhpcyBlbWFpbCBpbmNsdWRpbmcgZGFtYWdlIGZyb20gdmlydXMuIg0K
-DQoiRElTQ0xBSU1FUjogVGhpcyBtZXNzYWdlIGlzIHByb3ByaWV0YXJ5IHRvIEFyaWNlbnQgYW5k
-IGlzIGludGVuZGVkIHNvbGVseSBmb3IgdGhlIHVzZSBvZiB0aGUgaW5kaXZpZHVhbCB0byB3aG9t
-IGl0IGlzIGFkZHJlc3NlZC4gSXQgbWF5IGNvbnRhaW4gcHJpdmlsZWdlZCBvciBjb25maWRlbnRp
-YWwgaW5mb3JtYXRpb24gYW5kIHNob3VsZCBub3QgYmUgY2lyY3VsYXRlZCBvciB1c2VkIGZvciBh
-bnkgcHVycG9zZSBvdGhlciB0aGFuIGZvciB3aGF0IGl0IGlzIGludGVuZGVkLiBJZiB5b3UgaGF2
-ZSByZWNlaXZlZCB0aGlzIG1lc3NhZ2UgaW4gZXJyb3IsIHBsZWFzZSBub3RpZnkgdGhlIG9yaWdp
-bmF0b3IgaW1tZWRpYXRlbHkuIElmIHlvdSBhcmUgbm90IHRoZSBpbnRlbmRlZCByZWNpcGllbnQs
-IHlvdSBhcmUgbm90aWZpZWQgdGhhdCB5b3UgYXJlIHN0cmljdGx5IHByb2hpYml0ZWQgZnJvbSB1
-c2luZywgY29weWluZywgYWx0ZXJpbmcsIG9yIGRpc2Nsb3NpbmcgdGhlIGNvbnRlbnRzIG9mIHRo
-aXMgbWVzc2FnZS4gQXJpY2VudCBhY2NlcHRzIG5vIHJlc3BvbnNpYmlsaXR5IGZvciBsb3NzIG9y
-IGRhbWFnZSBhcmlzaW5nIGZyb20gdGhlIHVzZSBvZiB0aGUgaW5mb3JtYXRpb24gdHJhbnNtaXR0
-ZWQgYnkgdGhpcyBlbWFpbCBpbmNsdWRpbmcgZGFtYWdlIGZyb20gdmlydXMuIg0K
+On 08/17/2015 06:45 AM, Ravi Puttachannaiah wrote:
+> Hi Michael,
+> 
+> Thanks for your quick response. It will be helpful if you can explain why it should be 30.5 to 31.5.
+> 
+> As per our understanding initially it should start with 33-seconds (30[HBInterval]+3[RTO initial]) right ?. Please correct me if my understanding is in-correct.
+> 
+> 
+
+So this is what the SCTP spec actually states:
+
+   On an idle destination address that is allowed to heartbeat, it is
+   recommended that a HEARTBEAT chunk is sent once per RTO of that
+   destination address plus the protocol parameterh 'HB.interval', with
+   jittering of +/- 50% of the RTO value, and exponential backoff of the
+   RTO if the previous HEARTBEAT is unanswered.
+
+
+I can see how this could be interpreted as  RTO + HB.Interval +/- 50% RTO,
+but that's not what should actually happen.
+
+The basis of the algorithm is that packet is sent once per RTO with an RTO
+jittering of %50.  So, for the RTO of X, the base "once per RTO" transmission
+is .5X - 1.5X.  Then you add to this the HB.Interval value.
+
+For your RTO values, with an RTO.min of 1sec, your RTO will most likely be clamped
+at 1 sec (unless you really have very long RTO values).
+This means that for HBs, your base RTO will vary between 0.5-1.5 sec.
+
+This should explain what you are actually seeing on the wire.
+
+-vlad
+
+> Regards,
+> 
+> Ravi
+> 
+> 
+> -----Original Message-----
+> From: Michael Tuexen [mailto:Michael.Tuexen@lurchi.franken.de]
+> Sent: Monday, August 17, 2015 6:43 PM
+> To: Ravi Puttachannaiah
+> Cc: linux-sctp@vger.kernel.org
+> Subject: Re: SCTP heartbeat transmission interval in not working as expected
+> 
+>> On 17 Aug 2015, at 13:45, Ravi Puttachannaiah <ravi.puttachannaiah@aricent.com> wrote:
+>>
+>> Hi,
+>>
+>>                We are using LKSCTP (ver 1.0.16) and we observe that the SCTP heartbeat transmission interval in not working as expected. Following is the SCTP configuration settings we are using (applied using setsockopt()).
+>>
+>>
+>> hbinterval0-sec
+>> RTO initial=3-sec
+>> RTO min=1-sec
+>> RTO max`-sec
+>>
+>>                As per our understanding the SCTP heartbeat transmission interval value should be between 31.5 to 34.5 seconds as per the calculation "RTO+HBInterval+delta(Âą0.5ofRTO)" but we are always seeing the value in-between 30.6 to 31.5 seconds.
+> Assuming that the RTO is 1 second (after an RTT measurement this is true, I guess), you would get HBs every
+> 30.5 and 31.5 seconds. Seems to be about what you measure.
+> 
+> Best regards
+> Michael
+>>
+>>                Could somebody confirm if this is an issue or not and in-case of an issue how we can resolve.
+>>
+>>                We are using LKSCTP version 1.0.16 and 1.0.7 and in both the versions we are observing the same behavior.
+>>
+>>
+>> Regards,
+>>
+>> Raviâ€‹
+>>
+>> "DISCLAIMER: This message is proprietary to Aricent and is intended solely for the use of the individual to whom it is addressed. It may contain privileged or confidential information and should not be circulated or used for any purpose other than for what it is intended. If you have received this message in error, please notify the originator immediately. If you are not the intended recipient, you are notified that you are strictly prohibited from using, copying, altering, or disclosing the contents of this message. Aricent accepts no responsibility for loss or damage arising from the use of the information transmitted by this email including damage from virus."
+>> N‹§ēæėrļ›yúčØbēXŽķĮ§vØ^–)Þš{.nĮ+‰·Ĩ{ąąËi{ayšĘ‡Ú™ë,j
+> ­ĒfĢĒ·h‹āzđŪwĨĒļ
+> Ē·Ķj:+v‰ĻwčjØmķĸū
+> Ŧ‘ęįzZ+ųˇÝĒj"¯ú!
+> 
+> "DISCLAIMER: This message is proprietary to Aricent and is intended solely for the use of the individual to whom it is addressed. It may contain privileged or confidential information and should not be circulated or used for any purpose other than for what it is intended. If you have received this message in error, please notify the originator immediately. If you are not the intended recipient, you are notified that you are strictly prohibited from using, copying, altering, or disclosing the contents of this message. Aricent accepts no responsibility for loss or damage arising from the use of the information transmitted by this email including damage from virus."
+> N�����r��y���b�X��ǧv�^�)޺{.n�+����{���i�{ay�ʇڙ�,j��f���h���z��w������j:+v���w�j�m��������zZ+�����ݢj"��!tml> 
+
