@@ -1,70 +1,76 @@
-From: Ravi Puttachannaiah <ravi.puttachannaiah@aricent.com>
-Date: Mon, 17 Aug 2015 13:45:22 +0000
-Subject: RE: SCTP heartbeat transmission interval in not working as expected
-Message-Id: <f889d43cdd634b82a6ddf832d3405c05@BGHMBXV01.AD.ARICENT.COM>
+From: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
+Date: Mon, 17 Aug 2015 14:37:56 +0000
+Subject: Re: SCTP heartbeat transmission interval in not working as expected
+Message-Id: <BBCC4900-7B6C-474C-A2B7-CA80163B22B6@lurchi.franken.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <f0156706abe9412c9d158cac2724d12a@BGHMBXV01.AD.ARICENT.COM>
 In-Reply-To: <f0156706abe9412c9d158cac2724d12a@BGHMBXV01.AD.ARICENT.COM>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 To: linux-sctp@vger.kernel.org
 
-SGkgTWljaGFlbCwNCg0KVGhhbmtzIGZvciB5b3VyIHF1aWNrIHJlc3BvbnNlLiBJdCB3aWxsIGJl
-IGhlbHBmdWwgaWYgeW91IGNhbiBleHBsYWluIHdoeSBpdCBzaG91bGQgYmUgMzAuNSB0byAzMS41
-Lg0KDQpBcyBwZXIgb3VyIHVuZGVyc3RhbmRpbmcgaW5pdGlhbGx5IGl0IHNob3VsZCBzdGFydCB3
-aXRoIDMzLXNlY29uZHMgKDMwW0hCSW50ZXJ2YWxdKzNbUlRPIGluaXRpYWxdKSByaWdodCA/LiBQ
-bGVhc2UgY29ycmVjdCBtZSBpZiBteSB1bmRlcnN0YW5kaW5nIGlzIGluLWNvcnJlY3QuDQoNCg0K
-UmVnYXJkcywNCg0KUmF2aQ0KDQoNCi0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQpGcm9tOiBN
-aWNoYWVsIFR1ZXhlbiBbbWFpbHRvOk1pY2hhZWwuVHVleGVuQGx1cmNoaS5mcmFua2VuLmRlXQ0K
-U2VudDogTW9uZGF5LCBBdWd1c3QgMTcsIDIwMTUgNjo0MyBQTQ0KVG86IFJhdmkgUHV0dGFjaGFu
-bmFpYWgNCkNjOiBsaW51eC1zY3RwQHZnZXIua2VybmVsLm9yZw0KU3ViamVjdDogUmU6IFNDVFAg
-aGVhcnRiZWF0IHRyYW5zbWlzc2lvbiBpbnRlcnZhbCBpbiBub3Qgd29ya2luZyBhcyBleHBlY3Rl
-ZA0KDQo+IE9uIDE3IEF1ZyAyMDE1LCBhdCAxMzo0NSwgUmF2aSBQdXR0YWNoYW5uYWlhaCA8cmF2
-aS5wdXR0YWNoYW5uYWlhaEBhcmljZW50LmNvbT4gd3JvdGU6DQo+DQo+IEhpLA0KPg0KPiAgICAg
-ICAgICAgICAgICBXZSBhcmUgdXNpbmcgTEtTQ1RQICh2ZXIgMS4wLjE2KSBhbmQgd2Ugb2JzZXJ2
-ZSB0aGF0IHRoZSBTQ1RQIGhlYXJ0YmVhdCB0cmFuc21pc3Npb24gaW50ZXJ2YWwgaW4gbm90IHdv
-cmtpbmcgYXMgZXhwZWN0ZWQuIEZvbGxvd2luZyBpcyB0aGUgU0NUUCBjb25maWd1cmF0aW9uIHNl
-dHRpbmdzIHdlIGFyZSB1c2luZyAoYXBwbGllZCB1c2luZyBzZXRzb2Nrb3B0KCkpLg0KPg0KPg0K
-PiBoYmludGVydmFsPTMwLXNlYw0KPiBSVE8gaW5pdGlhbD0zLXNlYw0KPiBSVE8gbWluPTEtc2Vj
-DQo+IFJUTyBtYXg9NjAtc2VjDQo+DQo+ICAgICAgICAgICAgICAgIEFzIHBlciBvdXIgdW5kZXJz
-dGFuZGluZyB0aGUgU0NUUCBoZWFydGJlYXQgdHJhbnNtaXNzaW9uIGludGVydmFsIHZhbHVlIHNo
-b3VsZCBiZSBiZXR3ZWVuIDMxLjUgdG8gMzQuNSBzZWNvbmRzIGFzIHBlciB0aGUgY2FsY3VsYXRp
-b24gIlJUTytIQkludGVydmFsK2RlbHRhKMOCxIUwLjVvZlJUTykiIGJ1dCB3ZSBhcmUgYWx3YXlz
-IHNlZWluZyB0aGUgdmFsdWUgaW4tYmV0d2VlbiAzMC42IHRvIDMxLjUgc2Vjb25kcy4NCkFzc3Vt
-aW5nIHRoYXQgdGhlIFJUTyBpcyAxIHNlY29uZCAoYWZ0ZXIgYW4gUlRUIG1lYXN1cmVtZW50IHRo
-aXMgaXMgdHJ1ZSwgSSBndWVzcyksIHlvdSB3b3VsZCBnZXQgSEJzIGV2ZXJ5DQozMC41IGFuZCAz
-MS41IHNlY29uZHMuIFNlZW1zIHRvIGJlIGFib3V0IHdoYXQgeW91IG1lYXN1cmUuDQoNCkJlc3Qg
-cmVnYXJkcw0KTWljaGFlbA0KPg0KPiAgICAgICAgICAgICAgICBDb3VsZCBzb21lYm9keSBjb25m
-aXJtIGlmIHRoaXMgaXMgYW4gaXNzdWUgb3Igbm90IGFuZCBpbi1jYXNlIG9mIGFuIGlzc3VlIGhv
-dyB3ZSBjYW4gcmVzb2x2ZS4NCj4NCj4gICAgICAgICAgICAgICAgV2UgYXJlIHVzaW5nIExLU0NU
-UCB2ZXJzaW9uIDEuMC4xNiBhbmQgMS4wLjcgYW5kIGluIGJvdGggdGhlIHZlcnNpb25zIHdlIGFy
-ZSBvYnNlcnZpbmcgdGhlIHNhbWUgYmVoYXZpb3IuDQo+DQo+DQo+IFJlZ2FyZHMsDQo+DQo+IFJh
-dmnDouKCrOKAuQ0KPg0KPiAiRElTQ0xBSU1FUjogVGhpcyBtZXNzYWdlIGlzIHByb3ByaWV0YXJ5
-IHRvIEFyaWNlbnQgYW5kIGlzIGludGVuZGVkIHNvbGVseSBmb3IgdGhlIHVzZSBvZiB0aGUgaW5k
-aXZpZHVhbCB0byB3aG9tIGl0IGlzIGFkZHJlc3NlZC4gSXQgbWF5IGNvbnRhaW4gcHJpdmlsZWdl
-ZCBvciBjb25maWRlbnRpYWwgaW5mb3JtYXRpb24gYW5kIHNob3VsZCBub3QgYmUgY2lyY3VsYXRl
-ZCBvciB1c2VkIGZvciBhbnkgcHVycG9zZSBvdGhlciB0aGFuIGZvciB3aGF0IGl0IGlzIGludGVu
-ZGVkLiBJZiB5b3UgaGF2ZSByZWNlaXZlZCB0aGlzIG1lc3NhZ2UgaW4gZXJyb3IsIHBsZWFzZSBu
-b3RpZnkgdGhlIG9yaWdpbmF0b3IgaW1tZWRpYXRlbHkuIElmIHlvdSBhcmUgbm90IHRoZSBpbnRl
-bmRlZCByZWNpcGllbnQsIHlvdSBhcmUgbm90aWZpZWQgdGhhdCB5b3UgYXJlIHN0cmljdGx5IHBy
-b2hpYml0ZWQgZnJvbSB1c2luZywgY29weWluZywgYWx0ZXJpbmcsIG9yIGRpc2Nsb3NpbmcgdGhl
-IGNvbnRlbnRzIG9mIHRoaXMgbWVzc2FnZS4gQXJpY2VudCBhY2NlcHRzIG5vIHJlc3BvbnNpYmls
-aXR5IGZvciBsb3NzIG9yIGRhbWFnZSBhcmlzaW5nIGZyb20gdGhlIHVzZSBvZiB0aGUgaW5mb3Jt
-YXRpb24gdHJhbnNtaXR0ZWQgYnkgdGhpcyBlbWFpbCBpbmNsdWRpbmcgZGFtYWdlIGZyb20gdmly
-dXMuIg0KPiBO4oC5wqfEk8OmxJdyxLzigLp5w7rEjcKaw5hixJNYxb3Et8Suwqd2w5he4oCTKcOe
-xaF7Lm7ErivigLDCt8Sowop7xIXEhcOLacKKe2F5xaEdxJjigKHDmuKEosOrLGoNCsKtxJJmxKLE
-ksK3aMKa4oC5xIF6xJEexap3xKjEksS8DQrEksK3xLZqOit24oCwxLvCinfEjWrDmG3Et8KfxLjF
-qw0KxabigJjEmcSvelorwoPFs8Kay4fCisOdxJJqIsKvw7ohDQoNCiJESVNDTEFJTUVSOiBUaGlz
-IG1lc3NhZ2UgaXMgcHJvcHJpZXRhcnkgdG8gQXJpY2VudCBhbmQgaXMgaW50ZW5kZWQgc29sZWx5
-IGZvciB0aGUgdXNlIG9mIHRoZSBpbmRpdmlkdWFsIHRvIHdob20gaXQgaXMgYWRkcmVzc2VkLiBJ
-dCBtYXkgY29udGFpbiBwcml2aWxlZ2VkIG9yIGNvbmZpZGVudGlhbCBpbmZvcm1hdGlvbiBhbmQg
-c2hvdWxkIG5vdCBiZSBjaXJjdWxhdGVkIG9yIHVzZWQgZm9yIGFueSBwdXJwb3NlIG90aGVyIHRo
-YW4gZm9yIHdoYXQgaXQgaXMgaW50ZW5kZWQuIElmIHlvdSBoYXZlIHJlY2VpdmVkIHRoaXMgbWVz
-c2FnZSBpbiBlcnJvciwgcGxlYXNlIG5vdGlmeSB0aGUgb3JpZ2luYXRvciBpbW1lZGlhdGVseS4g
-SWYgeW91IGFyZSBub3QgdGhlIGludGVuZGVkIHJlY2lwaWVudCwgeW91IGFyZSBub3RpZmllZCB0
-aGF0IHlvdSBhcmUgc3RyaWN0bHkgcHJvaGliaXRlZCBmcm9tIHVzaW5nLCBjb3B5aW5nLCBhbHRl
-cmluZywgb3IgZGlzY2xvc2luZyB0aGUgY29udGVudHMgb2YgdGhpcyBtZXNzYWdlLiBBcmljZW50
-IGFjY2VwdHMgbm8gcmVzcG9uc2liaWxpdHkgZm9yIGxvc3Mgb3IgZGFtYWdlIGFyaXNpbmcgZnJv
-bSB0aGUgdXNlIG9mIHRoZSBpbmZvcm1hdGlvbiB0cmFuc21pdHRlZCBieSB0aGlzIGVtYWlsIGlu
-Y2x1ZGluZyBkYW1hZ2UgZnJvbSB2aXJ1cy4iDQo
+
+> On 17 Aug 2015, at 15:45, Ravi Puttachannaiah <ravi.puttachannaiah@aricent.com> wrote:
+> 
+> Hi Michael,
+> 
+> Thanks for your quick response. It will be helpful if you can explain why it should be 30.5 to 31.5.
+> 
+> As per our understanding initially it should start with 33-seconds (30[HBInterval]+3[RTO initial]) right ?. Please correct me if my understanding is in-correct.
+It should be [HB.Interval + 0.5 RTO, HB.Interval + 1.5 RTO]. I don't know when LKSCTP does RTT measurement, but assuming that the RTT is small,
+I expect the RTO to be roughly RTO.min after the first measurement. So I was using RTO = RTO.Min
+
+Best regards
+Michael
+> 
+> 
+> Regards,
+> 
+> Ravi
+> 
+> 
+> -----Original Message-----
+> From: Michael Tuexen [mailto:Michael.Tuexen@lurchi.franken.de]
+> Sent: Monday, August 17, 2015 6:43 PM
+> To: Ravi Puttachannaiah
+> Cc: linux-sctp@vger.kernel.org
+> Subject: Re: SCTP heartbeat transmission interval in not working as expected
+> 
+>> On 17 Aug 2015, at 13:45, Ravi Puttachannaiah <ravi.puttachannaiah@aricent.com> wrote:
+>> 
+>> Hi,
+>> 
+>>               We are using LKSCTP (ver 1.0.16) and we observe that the SCTP heartbeat transmission interval in not working as expected. Following is the SCTP configuration settings we are using (applied using setsockopt()).
+>> 
+>> 
+>> hbinterval0-sec
+>> RTO initial=3-sec
+>> RTO min=1-sec
+>> RTO max`-sec
+>> 
+>>               As per our understanding the SCTP heartbeat transmission interval value should be between 31.5 to 34.5 seconds as per the calculation "RTO+HBInterval+delta(脗膮0.5ofRTO)" but we are always seeing the value in-between 30.6 to 31.5 seconds.
+> Assuming that the RTO is 1 second (after an RTT measurement this is true, I guess), you would get HBs every
+> 30.5 and 31.5 seconds. Seems to be about what you measure.
+> 
+> Best regards
+> Michael
+>> 
+>>               Could somebody confirm if this is an issue or not and in-case of an issue how we can resolve.
+>> 
+>>               We are using LKSCTP version 1.0.16 and 1.0.7 and in both the versions we are observing the same behavior.
+>> 
+>> 
+>> Regards,
+>> 
+>> Ravi芒鈧��
+>> 
+>> "DISCLAIMER: This message is proprietary to Aricent and is intended solely for the use of the individual to whom it is addressed. It may contain privileged or confidential information and should not be circulated or used for any purpose other than for what it is intended. If you have received this message in error, please notify the originator immediately. If you are not the intended recipient, you are notified that you are strictly prohibited from using, copying, altering, or disclosing the contents of this message. Aricent accepts no responsibility for loss or damage arising from the use of the information transmitted by this email including damage from virus."
+>> N鈥孤撁δ梤募鈥簓煤膷職脴b膿X沤姆漠搂v脴^鈥�)脼拧{.n漠+鈥奥纺妠膮膮脣i聤{ay拧�臉鈥∶氣劉毛,j
+> 颅膾f蘑膾路h職鈥鼓亃膽�弄w抹膾募
+> 膾路亩j:+v鈥澳宦妛膷j脴m姆聼母奴
+> 纽鈥樐櫮痾Z+聝懦職藝聤脻膾j"炉煤!
+> 
+> "DISCLAIMER: This message is proprietary to Aricent and is intended solely for the use of the individual to whom it is addressed. It may contain privileged or confidential information and should not be circulated or used for any purpose other than for what it is intended. If you have received this message in error, please notify the originator immediately. If you are not the intended recipient, you are notified that you are strictly prohibited from using, copying, altering, or disclosing the contents of this message. Aricent accepts no responsibility for loss or damage arising from the use of the information transmitted by this email including damage from virus."
+> �N嫥叉靣笡y氊b瞂千v豝�)藓{.n�+壏{北薸妠ay��蕠跈�,j�f＂穐殝鄗��畐ア�⒎:+v墾妛鑚豰稛���珣赙zZ+凒殠娸"濟!
+
