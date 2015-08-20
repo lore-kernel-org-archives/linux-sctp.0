@@ -1,166 +1,177 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Wed, 19 Aug 2015 17:25:24 +0000
-Subject: Re: SCTP heartbeat transmission interval in not working as expected
-Message-Id: <55D4BC04.1080203@gmail.com>
+From: Ravi Puttachannaiah <ravi.puttachannaiah@aricent.com>
+Date: Thu, 20 Aug 2015 14:30:45 +0000
+Subject: RE: SCTP heartbeat transmission interval in not working as expected
+Message-Id: <ea084dc4a8bf4e19adfaa8bc65d5fee2@BGHMBXV03.AD.ARICENT.COM>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <f0156706abe9412c9d158cac2724d12a@BGHMBXV01.AD.ARICENT.COM>
 In-Reply-To: <f0156706abe9412c9d158cac2724d12a@BGHMBXV01.AD.ARICENT.COM>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On 08/18/2015 10:37 PM, Ravi Puttachannaiah wrote:
-> Hi Malc,
-> 
-> Did you get a chance to check the wireshark traces I shared ?. Could you please help.
-> 
-
-Ravi
-
-I've looked at the traces you've provided and the HBs interval is correctly enforced.
-The formula you initially posted is not correct and that stems from a slightly confusing
-text in the RFC.  Please look lower in this email to see the explanation.
-
-Hope that clears things up.
--vlad
-
-> 
-> Regards,
-> 
-> Ravi
-> 
-> 
-> -----Original Message-----
-> From: linux-sctp-owner@vger.kernel.org [mailto:linux-sctp-owner@vger.kernel.org] On Behalf Of Vlad Yasevich
-> Sent: Tuesday, August 18, 2015 9:05 PM
-> To: malc; linux-sctp@vger.kernel.org
-> Subject: Re: SCTP heartbeat transmission interval in not working as expected
-> 
-> On 08/17/2015 04:06 PM, malc wrote:
->> Hey Vlad, Ravi,
->>
->> Pretty sure the initial confusion was around the first HB apparently
->> not using HB.Interval + RTO.*Init* (=3s in the given scenario) +/-
->> 50%. (I sent a message suggesting that this would not be the case if
->> DATA/SACK had been exchanged causing an RTT calculation before the HB
->> timer was started, but forgot to set plaintext so vger bounced me...)
->> I am pretty sure this can happen if we bundle DATA with COOKIE ECHO,
->> wasn't sure if we do an RTO calc for any of the initial handshake
->> /without/ DATA being exchanged (spec doesn't say to afaik, but it
->> doesn't say not to either...)
-> 
-> First HB on a non-primary path will be within an RTO without HB.Interval as it would be a path confirmation probe HB.  Until the path is confirmed, HBs are sent based on RTO only.  Once the path is confirmed, HB.Interval takes effect.
-> 
-> -vlad
-> 
->>
->> If Ravi can share wireshark traces - I guess it will make it most
->> obvious exactly which scenario he is seeing. I can tell you that last
->> time I tested with a 3rd party conformance tool (Testing Tech), albeit
->> a while ago now - this was all working as I understood it should.
->>
->> Cheers,
->> malc.
->>
->> On Mon, Aug 17, 2015 at 10:37 PM, Vlad Yasevich <vyasevich@gmail.com> wrote:
->>> On 08/17/2015 06:45 AM, Ravi Puttachannaiah wrote:
->>>> Hi Michael,
->>>>
->>>> Thanks for your quick response. It will be helpful if you can explain why it should be 30.5 to 31.5.
->>>>
->>>> As per our understanding initially it should start with 33-seconds (30[HBInterval]+3[RTO initial]) right ?. Please correct me if my understanding is in-correct.
->>>>
->>>>
->>>
->>> So this is what the SCTP spec actually states:
->>>
->>>    On an idle destination address that is allowed to heartbeat, it is
->>>    recommended that a HEARTBEAT chunk is sent once per RTO of that
->>>    destination address plus the protocol parameterh 'HB.interval', with
->>>    jittering of +/- 50% of the RTO value, and exponential backoff of the
->>>    RTO if the previous HEARTBEAT is unanswered.
->>>
->>>
->>> I can see how this could be interpreted as  RTO + HB.Interval +/- 50%
->>> RTO, but that's not what should actually happen.
->>>
->>> The basis of the algorithm is that packet is sent once per RTO with
->>> an RTO jittering of %50.  So, for the RTO of X, the base "once per
->>> RTO" transmission is .5X - 1.5X.  Then you add to this the HB.Interval value.
->>>
->>> For your RTO values, with an RTO.min of 1sec, your RTO will most
->>> likely be clamped at 1 sec (unless you really have very long RTO values).
->>> This means that for HBs, your base RTO will vary between 0.5-1.5 sec.
->>>
->>> This should explain what you are actually seeing on the wire.
->>>
->>> -vlad
->>>
->>>> Regards,
->>>>
->>>> Ravi
->>>>
->>>>
->>>> -----Original Message-----
->>>> From: Michael Tuexen [mailto:Michael.Tuexen@lurchi.franken.de]
->>>> Sent: Monday, August 17, 2015 6:43 PM
->>>> To: Ravi Puttachannaiah
->>>> Cc: linux-sctp@vger.kernel.org
->>>> Subject: Re: SCTP heartbeat transmission interval in not working as
->>>> expected
->>>>
->>>>> On 17 Aug 2015, at 13:45, Ravi Puttachannaiah <ravi.puttachannaiah@aricent.com> wrote:
->>>>>
->>>>> Hi,
->>>>>
->>>>>                We are using LKSCTP (ver 1.0.16) and we observe that the SCTP heartbeat transmission interval in not working as expected. Following is the SCTP configuration settings we are using (applied using setsockopt()).
->>>>>
->>>>>
->>>>> hbinterval0-sec
->>>>> RTO initial=3-sec
->>>>> RTO min=1-sec
->>>>> RTO max`-sec
->>>>>
->>>>>                As per our understanding the SCTP heartbeat transmission interval value should be between 31.5 to 34.5 seconds as per the calculation "RTO+HBInterval+delta(Âą0.5ofRTO)" but we are always seeing the value in-between 30.6 to 31.5 seconds.
->>>> Assuming that the RTO is 1 second (after an RTT measurement this is
->>>> true, I guess), you would get HBs every
->>>> 30.5 and 31.5 seconds. Seems to be about what you measure.
->>>>
->>>> Best regards
->>>> Michael
->>>>>
->>>>>                Could somebody confirm if this is an issue or not and in-case of an issue how we can resolve.
->>>>>
->>>>>                We are using LKSCTP version 1.0.16 and 1.0.7 and in both the versions we are observing the same behavior.
->>>>>
->>>>>
->>>>> Regards,
->>>>>
->>>>> Raviâ€‹
->>>>>
->>>>> "DISCLAIMER: This message is proprietary to Aricent and is intended solely for the use of the individual to whom it is addressed. It may contain privileged or confidential information and should not be circulated or used for any purpose other than for what it is intended. If you have received this message in error, please notify the originator immediately. If you are not the intended recipient, you are notified that you are strictly prohibited from using, copying, altering, or disclosing the contents of this message. Aricent accepts no responsibility for loss or damage arising from the use of the information transmitted by this email including damage from virus."
->>>>> N‹§ēæėrļ›yúčšØbēXŽķĮ§vØ^–)Þš{.nĮ+‰·ĨŠ{ąąËiŠ{ayš Ę‡Ú™ë,j
->>>> ­ĒfĢĒ·hš‹āzđ ŪwĨĒļ
->>>> Ē·Ķj:+v‰ĻŠwčjØmķŸĸū
->>>> Ŧ‘ęįzZ+ƒųšˇŠÝĒj"¯ú!
->>>>
->>>> "DISCLAIMER: This message is proprietary to Aricent and is intended solely for the use of the individual to whom it is addressed. It may contain privileged or confidential information and should not be circulated or used for any purpose other than for what it is intended. If you have received this message in error, please notify the originator immediately. If you are not the intended recipient, you are notified that you are strictly prohibited from using, copying, altering, or disclosing the contents of this message. Aricent accepts no responsibility for loss or damage arising from the use of the information transmitted by this email including damage from virus."
->>>> N     r  y   b X  ǧv ^ )޺{.n +    {   i {ay  ʇڙ ,j   f   h   z
->>>>  w       j:+v   w j m         zZ+     ݢj"  !tml>>>>
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-sctp"
->>> in the body of a message to majordomo@vger.kernel.org More majordomo
->>> info at  http://vger.kernel.org/majordomo-info.html
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp"
->> in the body of a message to majordomo@vger.kernel.org More majordomo
->> info at  http://vger.kernel.org/majordomo-info.html
->>
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> "DISCLAIMER: This message is proprietary to Aricent and is intended solely for the use of the individual to whom it is addressed. It may contain privileged or confidential information and should not be circulated or used for any purpose other than for what it is intended. If you have received this message in error, please notify the originator immediately. If you are not the intended recipient, you are notified that you are strictly prohibited from using, copying, altering, or disclosing the contents of this message. Aricent accepts no responsibility for loss or damage arising from the use of the information transmitted by this email including damage from virus."
-> 
-
+SGkgVmxhZCwgTWFsYywgTWljaGFlbCwNCg0KVGhhbmtzIGZvciBhbGwgeW91ciBzdXBwb3J0IGFu
+ZCBoZWxwaW5nIG1lIHRvIHVuZGVyc3RhbmQgdGhlIExLU0NUUCBiZWhhdmlvci4NCg0KUmVnYXJk
+cywNCg0KUmF2aQ0KDQoNCi0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQpGcm9tOiBWbGFkIFlh
+c2V2aWNoIFttYWlsdG86dnlhc2V2aWNoQGdtYWlsLmNvbV0NClNlbnQ6IFdlZG5lc2RheSwgQXVn
+dXN0IDE5LCAyMDE1IDEwOjU1IFBNDQpUbzogUmF2aSBQdXR0YWNoYW5uYWlhaDsgbWFsYzsgbGlu
+dXgtc2N0cEB2Z2VyLmtlcm5lbC5vcmcNClN1YmplY3Q6IFJlOiBTQ1RQIGhlYXJ0YmVhdCB0cmFu
+c21pc3Npb24gaW50ZXJ2YWwgaW4gbm90IHdvcmtpbmcgYXMgZXhwZWN0ZWQNCg0KT24gMDgvMTgv
+MjAxNSAxMDozNyBQTSwgUmF2aSBQdXR0YWNoYW5uYWlhaCB3cm90ZToNCj4gSGkgTWFsYywNCj4N
+Cj4gRGlkIHlvdSBnZXQgYSBjaGFuY2UgdG8gY2hlY2sgdGhlIHdpcmVzaGFyayB0cmFjZXMgSSBz
+aGFyZWQgPy4gQ291bGQgeW91IHBsZWFzZSBoZWxwLg0KPg0KDQpSYXZpDQoNCkkndmUgbG9va2Vk
+IGF0IHRoZSB0cmFjZXMgeW91J3ZlIHByb3ZpZGVkIGFuZCB0aGUgSEJzIGludGVydmFsIGlzIGNv
+cnJlY3RseSBlbmZvcmNlZC4NClRoZSBmb3JtdWxhIHlvdSBpbml0aWFsbHkgcG9zdGVkIGlzIG5v
+dCBjb3JyZWN0IGFuZCB0aGF0IHN0ZW1zIGZyb20gYSBzbGlnaHRseSBjb25mdXNpbmcgdGV4dCBp
+biB0aGUgUkZDLiAgUGxlYXNlIGxvb2sgbG93ZXIgaW4gdGhpcyBlbWFpbCB0byBzZWUgdGhlIGV4
+cGxhbmF0aW9uLg0KDQpIb3BlIHRoYXQgY2xlYXJzIHRoaW5ncyB1cC4NCi12bGFkDQoNCj4NCj4g
+UmVnYXJkcywNCj4NCj4gUmF2aQ0KPg0KPg0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0K
+PiBGcm9tOiBsaW51eC1zY3RwLW93bmVyQHZnZXIua2VybmVsLm9yZw0KPiBbbWFpbHRvOmxpbnV4
+LXNjdHAtb3duZXJAdmdlci5rZXJuZWwub3JnXSBPbiBCZWhhbGYgT2YgVmxhZCBZYXNldmljaA0K
+PiBTZW50OiBUdWVzZGF5LCBBdWd1c3QgMTgsIDIwMTUgOTowNSBQTQ0KPiBUbzogbWFsYzsgbGlu
+dXgtc2N0cEB2Z2VyLmtlcm5lbC5vcmcNCj4gU3ViamVjdDogUmU6IFNDVFAgaGVhcnRiZWF0IHRy
+YW5zbWlzc2lvbiBpbnRlcnZhbCBpbiBub3Qgd29ya2luZyBhcw0KPiBleHBlY3RlZA0KPg0KPiBP
+biAwOC8xNy8yMDE1IDA0OjA2IFBNLCBtYWxjIHdyb3RlOg0KPj4gSGV5IFZsYWQsIFJhdmksDQo+
+Pg0KPj4gUHJldHR5IHN1cmUgdGhlIGluaXRpYWwgY29uZnVzaW9uIHdhcyBhcm91bmQgdGhlIGZp
+cnN0IEhCIGFwcGFyZW50bHkNCj4+IG5vdCB1c2luZyBIQi5JbnRlcnZhbCArIFJUTy4qSW5pdCog
+KD0zcyBpbiB0aGUgZ2l2ZW4gc2NlbmFyaW8pICsvLQ0KPj4gNTAlLiAoSSBzZW50IGEgbWVzc2Fn
+ZSBzdWdnZXN0aW5nIHRoYXQgdGhpcyB3b3VsZCBub3QgYmUgdGhlIGNhc2UgaWYNCj4+IERBVEEv
+U0FDSyBoYWQgYmVlbiBleGNoYW5nZWQgY2F1c2luZyBhbiBSVFQgY2FsY3VsYXRpb24gYmVmb3Jl
+IHRoZSBIQg0KPj4gdGltZXIgd2FzIHN0YXJ0ZWQsIGJ1dCBmb3Jnb3QgdG8gc2V0IHBsYWludGV4
+dCBzbyB2Z2VyIGJvdW5jZWQgbWUuLi4pDQo+PiBJIGFtIHByZXR0eSBzdXJlIHRoaXMgY2FuIGhh
+cHBlbiBpZiB3ZSBidW5kbGUgREFUQSB3aXRoIENPT0tJRSBFQ0hPLA0KPj4gd2Fzbid0IHN1cmUg
+aWYgd2UgZG8gYW4gUlRPIGNhbGMgZm9yIGFueSBvZiB0aGUgaW5pdGlhbCBoYW5kc2hha2UNCj4+
+IC93aXRob3V0LyBEQVRBIGJlaW5nIGV4Y2hhbmdlZCAoc3BlYyBkb2Vzbid0IHNheSB0byBhZmFp
+aywgYnV0IGl0DQo+PiBkb2Vzbid0IHNheSBub3QgdG8gZWl0aGVyLi4uKQ0KPg0KPiBGaXJzdCBI
+QiBvbiBhIG5vbi1wcmltYXJ5IHBhdGggd2lsbCBiZSB3aXRoaW4gYW4gUlRPIHdpdGhvdXQgSEIu
+SW50ZXJ2YWwgYXMgaXQgd291bGQgYmUgYSBwYXRoIGNvbmZpcm1hdGlvbiBwcm9iZSBIQi4gIFVu
+dGlsIHRoZSBwYXRoIGlzIGNvbmZpcm1lZCwgSEJzIGFyZSBzZW50IGJhc2VkIG9uIFJUTyBvbmx5
+LiAgT25jZSB0aGUgcGF0aCBpcyBjb25maXJtZWQsIEhCLkludGVydmFsIHRha2VzIGVmZmVjdC4N
+Cj4NCj4gLXZsYWQNCj4NCj4+DQo+PiBJZiBSYXZpIGNhbiBzaGFyZSB3aXJlc2hhcmsgdHJhY2Vz
+IC0gSSBndWVzcyBpdCB3aWxsIG1ha2UgaXQgbW9zdA0KPj4gb2J2aW91cyBleGFjdGx5IHdoaWNo
+IHNjZW5hcmlvIGhlIGlzIHNlZWluZy4gSSBjYW4gdGVsbCB5b3UgdGhhdCBsYXN0DQo+PiB0aW1l
+IEkgdGVzdGVkIHdpdGggYSAzcmQgcGFydHkgY29uZm9ybWFuY2UgdG9vbCAoVGVzdGluZyBUZWNo
+KSwNCj4+IGFsYmVpdCBhIHdoaWxlIGFnbyBub3cgLSB0aGlzIHdhcyBhbGwgd29ya2luZyBhcyBJ
+IHVuZGVyc3Rvb2QgaXQgc2hvdWxkLg0KPj4NCj4+IENoZWVycywNCj4+IG1hbGMuDQo+Pg0KPj4g
+T24gTW9uLCBBdWcgMTcsIDIwMTUgYXQgMTA6MzcgUE0sIFZsYWQgWWFzZXZpY2ggPHZ5YXNldmlj
+aEBnbWFpbC5jb20+IHdyb3RlOg0KPj4+IE9uIDA4LzE3LzIwMTUgMDY6NDUgQU0sIFJhdmkgUHV0
+dGFjaGFubmFpYWggd3JvdGU6DQo+Pj4+IEhpIE1pY2hhZWwsDQo+Pj4+DQo+Pj4+IFRoYW5rcyBm
+b3IgeW91ciBxdWljayByZXNwb25zZS4gSXQgd2lsbCBiZSBoZWxwZnVsIGlmIHlvdSBjYW4gZXhw
+bGFpbiB3aHkgaXQgc2hvdWxkIGJlIDMwLjUgdG8gMzEuNS4NCj4+Pj4NCj4+Pj4gQXMgcGVyIG91
+ciB1bmRlcnN0YW5kaW5nIGluaXRpYWxseSBpdCBzaG91bGQgc3RhcnQgd2l0aCAzMy1zZWNvbmRz
+ICgzMFtIQkludGVydmFsXSszW1JUTyBpbml0aWFsXSkgcmlnaHQgPy4gUGxlYXNlIGNvcnJlY3Qg
+bWUgaWYgbXkgdW5kZXJzdGFuZGluZyBpcyBpbi1jb3JyZWN0Lg0KPj4+Pg0KPj4+Pg0KPj4+DQo+
+Pj4gU28gdGhpcyBpcyB3aGF0IHRoZSBTQ1RQIHNwZWMgYWN0dWFsbHkgc3RhdGVzOg0KPj4+DQo+
+Pj4gICAgT24gYW4gaWRsZSBkZXN0aW5hdGlvbiBhZGRyZXNzIHRoYXQgaXMgYWxsb3dlZCB0byBo
+ZWFydGJlYXQsIGl0IGlzDQo+Pj4gICAgcmVjb21tZW5kZWQgdGhhdCBhIEhFQVJUQkVBVCBjaHVu
+ayBpcyBzZW50IG9uY2UgcGVyIFJUTyBvZiB0aGF0DQo+Pj4gICAgZGVzdGluYXRpb24gYWRkcmVz
+cyBwbHVzIHRoZSBwcm90b2NvbCBwYXJhbWV0ZXJoICdIQi5pbnRlcnZhbCcsIHdpdGgNCj4+PiAg
+ICBqaXR0ZXJpbmcgb2YgKy8tIDUwJSBvZiB0aGUgUlRPIHZhbHVlLCBhbmQgZXhwb25lbnRpYWwg
+YmFja29mZiBvZiB0aGUNCj4+PiAgICBSVE8gaWYgdGhlIHByZXZpb3VzIEhFQVJUQkVBVCBpcyB1
+bmFuc3dlcmVkLg0KPj4+DQo+Pj4NCj4+PiBJIGNhbiBzZWUgaG93IHRoaXMgY291bGQgYmUgaW50
+ZXJwcmV0ZWQgYXMgIFJUTyArIEhCLkludGVydmFsICsvLQ0KPj4+IDUwJSBSVE8sIGJ1dCB0aGF0
+J3Mgbm90IHdoYXQgc2hvdWxkIGFjdHVhbGx5IGhhcHBlbi4NCj4+Pg0KPj4+IFRoZSBiYXNpcyBv
+ZiB0aGUgYWxnb3JpdGhtIGlzIHRoYXQgcGFja2V0IGlzIHNlbnQgb25jZSBwZXIgUlRPIHdpdGgN
+Cj4+PiBhbiBSVE8gaml0dGVyaW5nIG9mICU1MC4gIFNvLCBmb3IgdGhlIFJUTyBvZiBYLCB0aGUg
+YmFzZSAib25jZSBwZXINCj4+PiBSVE8iIHRyYW5zbWlzc2lvbiBpcyAuNVggLSAxLjVYLiAgVGhl
+biB5b3UgYWRkIHRvIHRoaXMgdGhlIEhCLkludGVydmFsIHZhbHVlLg0KPj4+DQo+Pj4gRm9yIHlv
+dXIgUlRPIHZhbHVlcywgd2l0aCBhbiBSVE8ubWluIG9mIDFzZWMsIHlvdXIgUlRPIHdpbGwgbW9z
+dA0KPj4+IGxpa2VseSBiZSBjbGFtcGVkIGF0IDEgc2VjICh1bmxlc3MgeW91IHJlYWxseSBoYXZl
+IHZlcnkgbG9uZyBSVE8gdmFsdWVzKS4NCj4+PiBUaGlzIG1lYW5zIHRoYXQgZm9yIEhCcywgeW91
+ciBiYXNlIFJUTyB3aWxsIHZhcnkgYmV0d2VlbiAwLjUtMS41IHNlYy4NCj4+Pg0KPj4+IFRoaXMg
+c2hvdWxkIGV4cGxhaW4gd2hhdCB5b3UgYXJlIGFjdHVhbGx5IHNlZWluZyBvbiB0aGUgd2lyZS4N
+Cj4+Pg0KPj4+IC12bGFkDQo+Pj4NCj4+Pj4gUmVnYXJkcywNCj4+Pj4NCj4+Pj4gUmF2aQ0KPj4+
+Pg0KPj4+Pg0KPj4+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPj4+PiBGcm9tOiBNaWNo
+YWVsIFR1ZXhlbiBbbWFpbHRvOk1pY2hhZWwuVHVleGVuQGx1cmNoaS5mcmFua2VuLmRlXQ0KPj4+
+PiBTZW50OiBNb25kYXksIEF1Z3VzdCAxNywgMjAxNSA2OjQzIFBNDQo+Pj4+IFRvOiBSYXZpIFB1
+dHRhY2hhbm5haWFoDQo+Pj4+IENjOiBsaW51eC1zY3RwQHZnZXIua2VybmVsLm9yZw0KPj4+PiBT
+dWJqZWN0OiBSZTogU0NUUCBoZWFydGJlYXQgdHJhbnNtaXNzaW9uIGludGVydmFsIGluIG5vdCB3
+b3JraW5nIGFzDQo+Pj4+IGV4cGVjdGVkDQo+Pj4+DQo+Pj4+PiBPbiAxNyBBdWcgMjAxNSwgYXQg
+MTM6NDUsIFJhdmkgUHV0dGFjaGFubmFpYWggPHJhdmkucHV0dGFjaGFubmFpYWhAYXJpY2VudC5j
+b20+IHdyb3RlOg0KPj4+Pj4NCj4+Pj4+IEhpLA0KPj4+Pj4NCj4+Pj4+ICAgICAgICAgICAgICAg
+IFdlIGFyZSB1c2luZyBMS1NDVFAgKHZlciAxLjAuMTYpIGFuZCB3ZSBvYnNlcnZlIHRoYXQgdGhl
+IFNDVFAgaGVhcnRiZWF0IHRyYW5zbWlzc2lvbiBpbnRlcnZhbCBpbiBub3Qgd29ya2luZyBhcyBl
+eHBlY3RlZC4gRm9sbG93aW5nIGlzIHRoZSBTQ1RQIGNvbmZpZ3VyYXRpb24gc2V0dGluZ3Mgd2Ug
+YXJlIHVzaW5nIChhcHBsaWVkIHVzaW5nIHNldHNvY2tvcHQoKSkuDQo+Pj4+Pg0KPj4+Pj4NCj4+
+Pj4+IGhiaW50ZXJ2YWw9MzAtc2VjDQo+Pj4+PiBSVE8gaW5pdGlhbD0zLXNlYw0KPj4+Pj4gUlRP
+IG1pbj0xLXNlYw0KPj4+Pj4gUlRPIG1heD02MC1zZWMNCj4+Pj4+DQo+Pj4+PiAgICAgICAgICAg
+ICAgICBBcyBwZXIgb3VyIHVuZGVyc3RhbmRpbmcgdGhlIFNDVFAgaGVhcnRiZWF0IHRyYW5zbWlz
+c2lvbiBpbnRlcnZhbCB2YWx1ZSBzaG91bGQgYmUgYmV0d2VlbiAzMS41IHRvIDM0LjUgc2Vjb25k
+cyBhcyBwZXIgdGhlIGNhbGN1bGF0aW9uICJSVE8rSEJJbnRlcnZhbCtkZWx0YSjDgsSFMC41b2ZS
+VE8pIiBidXQgd2UgYXJlIGFsd2F5cyBzZWVpbmcgdGhlIHZhbHVlIGluLWJldHdlZW4gMzAuNiB0
+byAzMS41IHNlY29uZHMuDQo+Pj4+IEFzc3VtaW5nIHRoYXQgdGhlIFJUTyBpcyAxIHNlY29uZCAo
+YWZ0ZXIgYW4gUlRUIG1lYXN1cmVtZW50IHRoaXMgaXMNCj4+Pj4gdHJ1ZSwgSSBndWVzcyksIHlv
+dSB3b3VsZCBnZXQgSEJzIGV2ZXJ5DQo+Pj4+IDMwLjUgYW5kIDMxLjUgc2Vjb25kcy4gU2VlbXMg
+dG8gYmUgYWJvdXQgd2hhdCB5b3UgbWVhc3VyZS4NCj4+Pj4NCj4+Pj4gQmVzdCByZWdhcmRzDQo+
+Pj4+IE1pY2hhZWwNCj4+Pj4+DQo+Pj4+PiAgICAgICAgICAgICAgICBDb3VsZCBzb21lYm9keSBj
+b25maXJtIGlmIHRoaXMgaXMgYW4gaXNzdWUgb3Igbm90IGFuZCBpbi1jYXNlIG9mIGFuIGlzc3Vl
+IGhvdyB3ZSBjYW4gcmVzb2x2ZS4NCj4+Pj4+DQo+Pj4+PiAgICAgICAgICAgICAgICBXZSBhcmUg
+dXNpbmcgTEtTQ1RQIHZlcnNpb24gMS4wLjE2IGFuZCAxLjAuNyBhbmQgaW4gYm90aCB0aGUgdmVy
+c2lvbnMgd2UgYXJlIG9ic2VydmluZyB0aGUgc2FtZSBiZWhhdmlvci4NCj4+Pj4+DQo+Pj4+Pg0K
+Pj4+Pj4gUmVnYXJkcywNCj4+Pj4+DQo+Pj4+PiBSYXZpw6LigqzigLkNCj4+Pj4+DQo+Pj4+PiAi
+RElTQ0xBSU1FUjogVGhpcyBtZXNzYWdlIGlzIHByb3ByaWV0YXJ5IHRvIEFyaWNlbnQgYW5kIGlz
+IGludGVuZGVkIHNvbGVseSBmb3IgdGhlIHVzZSBvZiB0aGUgaW5kaXZpZHVhbCB0byB3aG9tIGl0
+IGlzIGFkZHJlc3NlZC4gSXQgbWF5IGNvbnRhaW4gcHJpdmlsZWdlZCBvciBjb25maWRlbnRpYWwg
+aW5mb3JtYXRpb24gYW5kIHNob3VsZCBub3QgYmUgY2lyY3VsYXRlZCBvciB1c2VkIGZvciBhbnkg
+cHVycG9zZSBvdGhlciB0aGFuIGZvciB3aGF0IGl0IGlzIGludGVuZGVkLiBJZiB5b3UgaGF2ZSBy
+ZWNlaXZlZCB0aGlzIG1lc3NhZ2UgaW4gZXJyb3IsIHBsZWFzZSBub3RpZnkgdGhlIG9yaWdpbmF0
+b3IgaW1tZWRpYXRlbHkuIElmIHlvdSBhcmUgbm90IHRoZSBpbnRlbmRlZCByZWNpcGllbnQsIHlv
+dSBhcmUgbm90aWZpZWQgdGhhdCB5b3UgYXJlIHN0cmljdGx5IHByb2hpYml0ZWQgZnJvbSB1c2lu
+ZywgY29weWluZywgYWx0ZXJpbmcsIG9yIGRpc2Nsb3NpbmcgdGhlIGNvbnRlbnRzIG9mIHRoaXMg
+bWVzc2FnZS4gQXJpY2VudCBhY2NlcHRzIG5vIHJlc3BvbnNpYmlsaXR5IGZvciBsb3NzIG9yIGRh
+bWFnZSBhcmlzaW5nIGZyb20gdGhlIHVzZSBvZiB0aGUgaW5mb3JtYXRpb24gdHJhbnNtaXR0ZWQg
+YnkgdGhpcyBlbWFpbCBpbmNsdWRpbmcgZGFtYWdlIGZyb20gdmlydXMuIg0KPj4+Pj4gTuKAucKn
+xJPDpsSXcsS84oC6ecO6xI3FocOYYsSTWMW9xLfErsKndsOYXuKAkynDnsWhey5uxK4r4oCwwrfE
+qMWge8SFxIXDi2nFoHthecWhIMSY4oChw5rihKLDqyxqDQo+Pj4+IMKtxJJmxKLEksK3aMWh4oC5
+xIF6xJEgxap3xKjEksS8DQo+Pj4+IMSSwrfEtmo6K3bigLDEu8Wgd8SNasOYbcS3xbjEuMWrDQo+
+Pj4+IMWm4oCYxJnEr3paK8aSxbPFocuHxaDDncSSaiLCr8O6IQ0KPj4+Pg0KPj4+PiAiRElTQ0xB
+SU1FUjogVGhpcyBtZXNzYWdlIGlzIHByb3ByaWV0YXJ5IHRvIEFyaWNlbnQgYW5kIGlzIGludGVu
+ZGVkIHNvbGVseSBmb3IgdGhlIHVzZSBvZiB0aGUgaW5kaXZpZHVhbCB0byB3aG9tIGl0IGlzIGFk
+ZHJlc3NlZC4gSXQgbWF5IGNvbnRhaW4gcHJpdmlsZWdlZCBvciBjb25maWRlbnRpYWwgaW5mb3Jt
+YXRpb24gYW5kIHNob3VsZCBub3QgYmUgY2lyY3VsYXRlZCBvciB1c2VkIGZvciBhbnkgcHVycG9z
+ZSBvdGhlciB0aGFuIGZvciB3aGF0IGl0IGlzIGludGVuZGVkLiBJZiB5b3UgaGF2ZSByZWNlaXZl
+ZCB0aGlzIG1lc3NhZ2UgaW4gZXJyb3IsIHBsZWFzZSBub3RpZnkgdGhlIG9yaWdpbmF0b3IgaW1t
+ZWRpYXRlbHkuIElmIHlvdSBhcmUgbm90IHRoZSBpbnRlbmRlZCByZWNpcGllbnQsIHlvdSBhcmUg
+bm90aWZpZWQgdGhhdCB5b3UgYXJlIHN0cmljdGx5IHByb2hpYml0ZWQgZnJvbSB1c2luZywgY29w
+eWluZywgYWx0ZXJpbmcsIG9yIGRpc2Nsb3NpbmcgdGhlIGNvbnRlbnRzIG9mIHRoaXMgbWVzc2Fn
+ZS4gQXJpY2VudCBhY2NlcHRzIG5vIHJlc3BvbnNpYmlsaXR5IGZvciBsb3NzIG9yIGRhbWFnZSBh
+cmlzaW5nIGZyb20gdGhlIHVzZSBvZiB0aGUgaW5mb3JtYXRpb24gdHJhbnNtaXR0ZWQgYnkgdGhp
+cyBlbWFpbCBpbmNsdWRpbmcgZGFtYWdlIGZyb20gdmlydXMuIg0KPj4+PiBOICAgICByICB5ICAg
+YiBYICDHp3YgXiAp3rp7Lm4gKyAgICB7ICAgaSB7YXkgIMqH2pkgLGogICBmICAgaCAgIHoNCj4+
+Pj4gIHcgICAgICAgajordiAgIHcgaiBtICAgICAgICAgelorICAgICDdomoiICAhdG1sPQ0KPj4+
+Pg0KPj4+DQo+Pj4gLS0NCj4+PiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0
+aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtc2N0cCINCj4+PiBpbiB0aGUgYm9keSBvZiBhIG1l
+c3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZyBNb3JlIG1ham9yZG9tbw0KPj4+IGlu
+Zm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KPj4gLS0N
+Cj4+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNj
+cmliZSBsaW51eC1zY3RwIg0KPj4gaW4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9t
+b0B2Z2VyLmtlcm5lbC5vcmcgTW9yZSBtYWpvcmRvbW8NCj4+IGluZm8gYXQgIGh0dHA6Ly92Z2Vy
+Lmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KPj4NCj4NCj4gLS0NCj4gVG8gdW5zdWJz
+Y3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LXNj
+dHAiDQo+IGluIHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwu
+b3JnIE1vcmUgbWFqb3Jkb21vDQo+IGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFq
+b3Jkb21vLWluZm8uaHRtbA0KPiAiRElTQ0xBSU1FUjogVGhpcyBtZXNzYWdlIGlzIHByb3ByaWV0
+YXJ5IHRvIEFyaWNlbnQgYW5kIGlzIGludGVuZGVkIHNvbGVseSBmb3IgdGhlIHVzZSBvZiB0aGUg
+aW5kaXZpZHVhbCB0byB3aG9tIGl0IGlzIGFkZHJlc3NlZC4gSXQgbWF5IGNvbnRhaW4gcHJpdmls
+ZWdlZCBvciBjb25maWRlbnRpYWwgaW5mb3JtYXRpb24gYW5kIHNob3VsZCBub3QgYmUgY2lyY3Vs
+YXRlZCBvciB1c2VkIGZvciBhbnkgcHVycG9zZSBvdGhlciB0aGFuIGZvciB3aGF0IGl0IGlzIGlu
+dGVuZGVkLiBJZiB5b3UgaGF2ZSByZWNlaXZlZCB0aGlzIG1lc3NhZ2UgaW4gZXJyb3IsIHBsZWFz
+ZSBub3RpZnkgdGhlIG9yaWdpbmF0b3IgaW1tZWRpYXRlbHkuIElmIHlvdSBhcmUgbm90IHRoZSBp
+bnRlbmRlZCByZWNpcGllbnQsIHlvdSBhcmUgbm90aWZpZWQgdGhhdCB5b3UgYXJlIHN0cmljdGx5
+IHByb2hpYml0ZWQgZnJvbSB1c2luZywgY29weWluZywgYWx0ZXJpbmcsIG9yIGRpc2Nsb3Npbmcg
+dGhlIGNvbnRlbnRzIG9mIHRoaXMgbWVzc2FnZS4gQXJpY2VudCBhY2NlcHRzIG5vIHJlc3BvbnNp
+YmlsaXR5IGZvciBsb3NzIG9yIGRhbWFnZSBhcmlzaW5nIGZyb20gdGhlIHVzZSBvZiB0aGUgaW5m
+b3JtYXRpb24gdHJhbnNtaXR0ZWQgYnkgdGhpcyBlbWFpbCBpbmNsdWRpbmcgZGFtYWdlIGZyb20g
+dmlydXMuIg0KPg0KDQoiRElTQ0xBSU1FUjogVGhpcyBtZXNzYWdlIGlzIHByb3ByaWV0YXJ5IHRv
+IEFyaWNlbnQgYW5kIGlzIGludGVuZGVkIHNvbGVseSBmb3IgdGhlIHVzZSBvZiB0aGUgaW5kaXZp
+ZHVhbCB0byB3aG9tIGl0IGlzIGFkZHJlc3NlZC4gSXQgbWF5IGNvbnRhaW4gcHJpdmlsZWdlZCBv
+ciBjb25maWRlbnRpYWwgaW5mb3JtYXRpb24gYW5kIHNob3VsZCBub3QgYmUgY2lyY3VsYXRlZCBv
+ciB1c2VkIGZvciBhbnkgcHVycG9zZSBvdGhlciB0aGFuIGZvciB3aGF0IGl0IGlzIGludGVuZGVk
+LiBJZiB5b3UgaGF2ZSByZWNlaXZlZCB0aGlzIG1lc3NhZ2UgaW4gZXJyb3IsIHBsZWFzZSBub3Rp
+ZnkgdGhlIG9yaWdpbmF0b3IgaW1tZWRpYXRlbHkuIElmIHlvdSBhcmUgbm90IHRoZSBpbnRlbmRl
+ZCByZWNpcGllbnQsIHlvdSBhcmUgbm90aWZpZWQgdGhhdCB5b3UgYXJlIHN0cmljdGx5IHByb2hp
+Yml0ZWQgZnJvbSB1c2luZywgY29weWluZywgYWx0ZXJpbmcsIG9yIGRpc2Nsb3NpbmcgdGhlIGNv
+bnRlbnRzIG9mIHRoaXMgbWVzc2FnZS4gQXJpY2VudCBhY2NlcHRzIG5vIHJlc3BvbnNpYmlsaXR5
+IGZvciBsb3NzIG9yIGRhbWFnZSBhcmlzaW5nIGZyb20gdGhlIHVzZSBvZiB0aGUgaW5mb3JtYXRp
+b24gdHJhbnNtaXR0ZWQgYnkgdGhpcyBlbWFpbCBpbmNsdWRpbmcgZGFtYWdlIGZyb20gdmlydXMu
+Ig0K
