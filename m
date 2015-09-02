@@ -1,51 +1,64 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Wed, 09 Sep 2015 20:39:57 +0000
-Subject: Re: SCTP PMTU calculation not accounting chunk padding.
-Message-Id: <55F0991D.6080509@gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 02 Sep 2015 19:20:22 +0000
+Subject: [PATCH net 2/2] sctp: add routing output fallback
+Message-Id: <47e46293bcd8786484a815786a615c68253f3b50.1441220305.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1441220305.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1441220305.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-On 09/09/2015 03:00 AM, Deepak Khandelwal wrote:
-> Hi,
-> 
-> 
-> It looks like the PMTU calculation in SCTP kernel / RFC, seems to be not
-> accounting the chunk padding
-> 
-> 
-> SCTP calculate the fragmentation point to fragment the packet.
-> 
-> 
-> 
-> Frag_point = PMTU – (sctp header length + sctp chunk length) – IP header
-> length
-> 
-> 
-> 
-> After the frag_point, user data fragmentation happens at SCTP layer, but
-> while sending packet due the need of chunk padding, data size still more
-> then mtu of in between router, and packet doesn’t pass through to the
-> channel . local SCPT stack always end up receiving the ICMP FRAG _NEEDED
-> messages.
-> 
-> I am using Kernel version 2.6.34.9-WR4.3
-> 
+Commit 0ca50d12fe46 added a restriction that the address must belong to
+the output interface, so that sctp will use the right interface even
+when using secondary addresses.
 
-You are missing
+But it breaks IPVS setups, on which people is used to attach VIP
+addresses to loopback interface on real servers. It's preferred to
+attach to the interface actually in use, but it's a very common setup
+and that used to work.
 
-commit c08751c851b78514f6ec5f77f7cbebaac63d15c0
-Author: Alexander Sverdlin <alexander.sverdlin@nsn.com>
-Date:   Mon Sep 2 15:58:25 2013 +0200
+This patch then saves the first routing good result, even if it would be
+going out through an interface that doesn't have that address. If no
+better hit found, it's then used. This effectively restores the original
+behavior if no better interface could be found.
 
-    net: sctp: Fix data chunk fragmentation for MTU values which are not multiple of 4
+Fixes: 0ca50d12fe46 ("sctp: fix src address selection if using secondary addresses")
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/protocol.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-
--vlad
-> Thanks !
-> Best Regards,
-> Deepak
-> 
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 4abf94d4cce769371260b42d13c38dbe5776c809..b7143337e4fa025fdb473732fdc064503e731dd4 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -506,16 +506,22 @@ static void sctp_v4_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
+ 		if (IS_ERR(rt))
+ 			continue;
+ 
++		if (!dst)
++			dst = &rt->dst;
++
+ 		/* Ensure the src address belongs to the output
+ 		 * interface.
+ 		 */
+ 		odev = __ip_dev_find(sock_net(sk), laddr->a.v4.sin_addr.s_addr,
+ 				     false);
+ 		if (!odev || odev->ifindex != fl4->flowi4_oif) {
+-			dst_release(&rt->dst);
++			if (&rt->dst != dst)
++				dst_release(&rt->dst);
+ 			continue;
+ 		}
+ 
++		if (dst != &rt->dst)
++			dst_release(dst);
+ 		dst = &rt->dst;
+ 		break;
+ 	}
+-- 
+2.4.3
 
