@@ -1,25 +1,34 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 29 Sep 2015 05:52:42 +0000
-Subject: Re: [PATCH v2] net: sctp: Don't use 64 kilobyte lookup table for four elements
-Message-Id: <20150928.225242.1547755659279670596.davem@davemloft.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 02 Sep 2015 19:20:20 +0000
+Subject: [PATCH net 0/2] couple of sctp fixes for 0ca50d12fe46
+Message-Id: <cover.1441220305.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1443443644-12825-1-git-send-email-dvlasenk@redhat.com>
-In-Reply-To: <1443443644-12825-1-git-send-email-dvlasenk@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dvlasenk@redhat.com
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-From: Denys Vlasenko <dvlasenk@redhat.com>
-Date: Mon, 28 Sep 2015 14:34:04 +0200
+These are two fixes for sctp after my patch on 0ca50d12fe46 ("sctp: fix
+src address selection if using secondary addresses")
 
-> Seemingly innocuous sctp_trans_state_to_prio_map[] array
-> is way bigger than it looks, since
-> "[SCTP_UNKNOWN] = 2" expands into "[0xffff] = 2" !
-> 
-> This patch replaces it with switch() statement.
-> 
-> Signed-off-by: Denys Vlasenko <dvlasenk@redhat.com>
+The first, fix a dst leak on those it decided to skip.
 
-Applied, thank you.
+The second, adds the fallback on src selection that Vlad had asked
+about. Unfortunatelly a lot of ipvs setups relies on the old behavior
+and I don't see a better fix for it.
+
+Please consider both to -stable tree.
+
+Thanks!
+
+Marcelo Ricardo Leitner (2):
+  sctp: fix dst leak
+  sctp: add routing output fallback
+
+ net/sctp/protocol.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+-- 
+2.4.3
+
