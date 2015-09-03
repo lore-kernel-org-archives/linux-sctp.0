@@ -1,17 +1,17 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 03 Sep 2015 13:58:09 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Thu, 03 Sep 2015 14:37:47 +0000
 Subject: Re: [PATCH net 0/2] couple of sctp fixes for 0ca50d12fe46
-Message-Id: <20150903135809.GA16879@hmsreliant.think-freely.org>
+Message-Id: <55E85B3B.6010607@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1441220305.git.marcelo.leitner@gmail.com>
 In-Reply-To: <cover.1441220305.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>
 
-On Wed, Sep 02, 2015 at 04:20:20PM -0300, Marcelo Ricardo Leitner wrote:
+On 09/02/2015 03:20 PM, Marcelo Ricardo Leitner wrote:
 > These are two fixes for sctp after my patch on 0ca50d12fe46 ("sctp: fix
 > src address selection if using secondary addresses")
 > 
@@ -32,11 +32,9 @@ On Wed, Sep 02, 2015 at 04:20:20PM -0300, Marcelo Ricardo Leitner wrote:
 >  net/sctp/protocol.c | 10 +++++++++-
 >  1 file changed, 9 insertions(+), 1 deletion(-)
 > 
-> -- 
-> 2.4.3
-> 
-> 
 
-for the series
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+For the series
 
+Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+
+-vlad
