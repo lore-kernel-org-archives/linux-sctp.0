@@ -1,38 +1,54 @@
-From: Karl Heiss <kheiss@gmail.com>
-Date: Thu, 24 Sep 2015 16:15:06 +0000
-Subject: [PATCH net 1/2] sctp: Whitespace fix
-Message-Id: <1443111307-16503-2-git-send-email-kheiss@gmail.com>
+From: Stephen Hemminger <stephen@networkplumber.org>
+Date: Wed, 09 Sep 2015 14:47:59 +0000
+Subject: Fw: [Bug 104301] New: Connect failure on sctp socket under debug
+Message-Id: <20150909074759.1e256966@urahara>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1443111307-16503-1-git-send-email-kheiss@gmail.com>
-In-Reply-To: <1443111307-16503-1-git-send-email-kheiss@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-Fix indentation in sctp_generate_heartbeat_event.
 
-Signed-off-by: Karl Heiss <kheiss@gmail.com>
----
- net/sctp/sm_sideeffect.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index 35df126..f554b9a 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -388,8 +388,8 @@ void sctp_generate_heartbeat_event(unsigned long data)
- 			   asoc->state, asoc->ep, asoc,
- 			   transport, GFP_ATOMIC);
- 
--	 if (error)
--		 asoc->base.sk->sk_err = -error;
-+	if (error)
-+		asoc->base.sk->sk_err = -error;
- 
- out_unlock:
- 	bh_unlock_sock(asoc->base.sk);
+Begin forwarded message:
+
+Date: Wed, 9 Sep 2015 13:57:38 +0000
+From: "bugzilla-daemon@bugzilla.kernel.org" <bugzilla-daemon@bugzilla.kernel.org>
+To: "shemminger@linux-foundation.org" <shemminger@linux-foundation.org>
+Subject: [Bug 104301] New: Connect failure on sctp socket under debug
+
+
+https://bugzilla.kernel.org/show_bug.cgi?id4301
+
+            Bug ID: 104301
+           Summary: Connect failure on sctp socket under debug
+           Product: Networking
+           Version: 2.5
+    Kernel Version: 3.13.0-63-generic
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: Other
+          Assignee: shemminger@linux-foundation.org
+          Reporter: riccardomanfrin@gmail.com
+        Regression: No
+
+When starting an sctp client with gdb, I experience a connect failure (-1 is
+returned), with errno 106 (Transport endpoint is already connected).
+
+If I then cat /proc/net/sctp/assocs, I see the connection and I see the
+successful handshake on wireshark.
+
+If I ignore the connect failure, and pretend I'm actually connected, I can send
+and receive packets without any trouble.
+
+The same client application, run not-under-gdb, does not exhibits the issue and
+the connect returns 0.
+
 -- 
-1.7.1
-
+You are receiving this mail because:
+You are the assignee for the bug.
