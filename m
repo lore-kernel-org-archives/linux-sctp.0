@@ -1,68 +1,212 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 30 Sep 2015 14:28:00 +0000
-Subject: Re: [PATCH 10/12] net: sctp: avoid incorrect time_t use
-Message-Id: <20150930142800.GB4893@localhost.localdomain>
+From: Karl Heiss <kheiss@gmail.com>
+Date: Thu, 17 Sep 2015 17:32:23 +0000
+Subject: [PATCH RFC 1/1] sctp: Prevent soft lockup when sctp_accept() is called during a timeout event
+Message-Id: <1442511143-26992-1-git-send-email-kheiss@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1443612402-3000775-1-git-send-email-arnd@arndb.de>
- <1443612402-3000775-11-git-send-email-arnd@arndb.de>
-In-Reply-To: <1443612402-3000775-11-git-send-email-arnd@arndb.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Arnd Bergmann <arnd@arndb.de>
-Cc: netdev@vger.kernel.org, y2038@lists.linaro.org, linux-kernel@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-On Wed, Sep 30, 2015 at 01:26:40PM +0200, Arnd Bergmann wrote:
-> We want to avoid using time_t in the kernel because of the y2038
-> overflow problem. The use in sctp is not for storing seconds at
-> all, but instead uses microseconds and is passed as 32-bit
-> on all machines.
-> 
-> This patch changes the type to u32, which better fits the use.
-> 
-> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-> Cc: Vlad Yasevich <vyasevich@gmail.com>
-> Cc: Neil Horman <nhorman@tuxdriver.com>
-> Cc: linux-sctp@vger.kernel.org
+A case can occur when sctp_accept() is called by the user during
+a heartbeat timeout event after the 4-way handshake.  Since
+sctp_assoc_migrate() changes both assoc->base.sk and assoc->ep, the
+bh_sock_lock in sctp_generate_heartbeat_event() will be taken with
+the listening socket but released with the new association socket.
+The result is a deadlock on any future attempts to take the listening
+socket lock.
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Note that this race can occur with other SCTP timeouts that take
+the bh_lock_sock() in the event sctp_accept() is called.
 
-> ---
->  net/sctp/sm_make_chunk.c | 2 +-
->  net/sctp/sm_statefuns.c  | 2 +-
->  2 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> index 7954c52e1794..763e06a55155 100644
-> --- a/net/sctp/sm_make_chunk.c
-> +++ b/net/sctp/sm_make_chunk.c
-> @@ -2494,7 +2494,7 @@ static int sctp_process_param(struct sctp_association *asoc,
->  	__u16 sat;
->  	int retval = 1;
->  	sctp_scope_t scope;
-> -	time_t stale;
-> +	u32 stale;
->  	struct sctp_af *af;
->  	union sctp_addr_param *addr_param;
->  	struct sctp_transport *t;
-> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-> index d7eaa7354cf7..6f46aa16cb76 100644
-> --- a/net/sctp/sm_statefuns.c
-> +++ b/net/sctp/sm_statefuns.c
-> @@ -2306,7 +2306,7 @@ static sctp_disposition_t sctp_sf_do_5_2_6_stale(struct net *net,
->  						 sctp_cmd_seq_t *commands)
->  {
->  	struct sctp_chunk *chunk = arg;
-> -	time_t stale;
-> +	u32 stale;
->  	sctp_cookie_preserve_param_t bht;
->  	sctp_errhdr_t *err;
->  	struct sctp_chunk *reply;
-> -- 
-> 2.1.0.rc2
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+ BUG: soft lockup - CPU#9 stuck for 67s! [swapper:0]
+ ...
+ RIP: 0010:[<ffffffff8152d48e>]  [<ffffffff8152d48e>] _spin_lock+0x1e/0x30
+ RSP: 0018:ffff880028323b20  EFLAGS: 00000206
+ RAX: 0000000000000002 RBX: ffff880028323b20 RCX: 0000000000000000
+ RDX: 0000000000000000 RSI: ffff880028323be0 RDI: ffff8804632c4b48
+ RBP: ffffffff8100bb93 R08: 0000000000000000 R09: 0000000000000000
+ R10: ffff880610662280 R11: 0000000000000100 R12: ffff880028323aa0
+ R13: ffff8804383c3880 R14: ffff880028323a90 R15: ffffffff81534225
+ FS:  0000000000000000(0000) GS:ffff880028320000(0000) knlGS:0000000000000000
+ CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
+ CR2: 00000000006df528 CR3: 0000000001a85000 CR4: 00000000000006e0
+ DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+ DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+ Process swapper (pid: 0, threadinfo ffff880616b70000, task ffff880616b6cab0)
+ Stack:
+ ffff880028323c40 ffffffffa01c2582 ffff880614cfb020 0000000000000000
+ <d> 0100000000000000 00000014383a6c44 ffff8804383c3880 ffff880614e93c00
+ <d> ffff880614e93c00 0000000000000000 ffff8804632c4b00 ffff8804383c38b8
+ Call Trace:
+ <IRQ>
+ [<ffffffffa01c2582>] ? sctp_rcv+0x492/0xa10 [sctp]
+ [<ffffffff8148c559>] ? nf_iterate+0x69/0xb0
+ [<ffffffff814974a0>] ? ip_local_deliver_finish+0x0/0x2d0
+ [<ffffffff8148c716>] ? nf_hook_slow+0x76/0x120
+ [<ffffffff814974a0>] ? ip_local_deliver_finish+0x0/0x2d0
+ [<ffffffff8149757d>] ? ip_local_deliver_finish+0xdd/0x2d0
+ [<ffffffff81497808>] ? ip_local_deliver+0x98/0xa0
+ [<ffffffff81496ccd>] ? ip_rcv_finish+0x12d/0x440
+ [<ffffffff81497255>] ? ip_rcv+0x275/0x350
+ [<ffffffff8145cfeb>] ? __netif_receive_skb+0x4ab/0x750
+ ...
+
+With lockdep debugging:
+
+ ================== [ BUG: bad unlock balance detected! ]
+ -------------------------------------
+ CslRx/12087 is trying to release lock (slock-AF_INET) at:
+ [<ffffffffa01bcae0>] sctp_generate_timeout_event+0x40/0xe0 [sctp]
+ but there are no more locks to release!
+
+ other info that might help us debug this:
+ 2 locks held by CslRx/12087:
+ #0:  (&asoc->timers[i]){+.-...}, at: [<ffffffff8108ce1f>] run_timer_softirq+0x16f/0x3e0
+ #1:  (slock-AF_INET){+.-...}, at: [<ffffffffa01bcac3>] sctp_generate_timeout_event+0x23/0xe0 [sctp]
+
+Ensure the socket taken is also the same one that is released by
+saving a copy of the socket before entering the timeout event
+critical section.
+
+Signed-off-by: Karl Heiss <kheiss@gmail.com>
+
+-- >8 --
+
+I cooked up the patch above, and while it appears to fix the soft lockups,
+it still seems like a copy of the endpoint should also be saved off for
+the use in sctp_do_sm() since sctp_assoc_migrate() changes it as well.
+
+However, this begs the question, between saving the two off, is that not
+just a smaller race surface?  I had considered wrapping the call to
+sctp_assoc_migrate() in bh_sock_[un]lock() calls, but I don't know if
+that is overkill.
+
+Any feedback would be greatly appreciated.
+
+P.S.: I plan on submitting a separate patch for the whitespace issue this set
+fixes.
+
+---
+ net/sctp/sm_sideeffect.c |   42 +++++++++++++++++++++++-------------------
+ 1 files changed, 23 insertions(+), 19 deletions(-)
+
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 35df126..7cf1c4a 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -244,12 +244,13 @@ void sctp_generate_t3_rtx_event(unsigned long peer)
+ 	int error;
+ 	struct sctp_transport *transport = (struct sctp_transport *) peer;
+ 	struct sctp_association *asoc = transport->asoc;
+-	struct net *net = sock_net(asoc->base.sk);
++	struct sock *sk = asoc->base.sk;
++	struct net *net = sock_net(sk);
+ 
+ 	/* Check whether a task is in the sock.  */
+ 
+-	bh_lock_sock(asoc->base.sk);
+-	if (sock_owned_by_user(asoc->base.sk)) {
++	bh_lock_sock(sk);
++	if (sock_owned_by_user(sk)) {
+ 		pr_debug("%s: sock is busy\n", __func__);
+ 
+ 		/* Try again later.  */
+@@ -272,10 +273,10 @@ void sctp_generate_t3_rtx_event(unsigned long peer)
+ 			   transport, GFP_ATOMIC);
+ 
+ 	if (error)
+-		asoc->base.sk->sk_err = -error;
++		sk->sk_err = -error;
+ 
+ out_unlock:
+-	bh_unlock_sock(asoc->base.sk);
++	bh_unlock_sock(sk);
+ 	sctp_transport_put(transport);
+ }
+ 
+@@ -285,11 +286,12 @@ out_unlock:
+ static void sctp_generate_timeout_event(struct sctp_association *asoc,
+ 					sctp_event_timeout_t timeout_type)
+ {
++	struct sock *sk = asoc->base.sk;
+ 	struct net *net = sock_net(asoc->base.sk);
+ 	int error = 0;
+ 
+-	bh_lock_sock(asoc->base.sk);
+-	if (sock_owned_by_user(asoc->base.sk)) {
++	bh_lock_sock(sk);
++	if (sock_owned_by_user(sk)) {
+ 		pr_debug("%s: sock is busy: timer %d\n", __func__,
+ 			 timeout_type);
+ 
+@@ -312,10 +314,10 @@ static void sctp_generate_timeout_event(struct sctp_association *asoc,
+ 			   (void *)timeout_type, GFP_ATOMIC);
+ 
+ 	if (error)
+-		asoc->base.sk->sk_err = -error;
++		sk->sk_err = -error;
+ 
+ out_unlock:
+-	bh_unlock_sock(asoc->base.sk);
++	bh_unlock_sock(sk);
+ 	sctp_association_put(asoc);
+ }
+ 
+@@ -365,10 +367,11 @@ void sctp_generate_heartbeat_event(unsigned long data)
+ 	int error = 0;
+ 	struct sctp_transport *transport = (struct sctp_transport *) data;
+ 	struct sctp_association *asoc = transport->asoc;
+-	struct net *net = sock_net(asoc->base.sk);
++	struct sock *sk = asoc->base.sk;
++	struct net *net = sock_net(sk);
+ 
+-	bh_lock_sock(asoc->base.sk);
+-	if (sock_owned_by_user(asoc->base.sk)) {
++	bh_lock_sock(sk);
++	if (sock_owned_by_user(sk)) {
+ 		pr_debug("%s: sock is busy\n", __func__);
+ 
+ 		/* Try again later.  */
+@@ -388,11 +391,11 @@ void sctp_generate_heartbeat_event(unsigned long data)
+ 			   asoc->state, asoc->ep, asoc,
+ 			   transport, GFP_ATOMIC);
+ 
+-	 if (error)
+-		 asoc->base.sk->sk_err = -error;
++	if (error)
++		sk->sk_err = -error;
+ 
+ out_unlock:
+-	bh_unlock_sock(asoc->base.sk);
++	bh_unlock_sock(sk);
+ 	sctp_transport_put(transport);
+ }
+ 
+@@ -403,10 +406,11 @@ void sctp_generate_proto_unreach_event(unsigned long data)
+ {
+ 	struct sctp_transport *transport = (struct sctp_transport *) data;
+ 	struct sctp_association *asoc = transport->asoc;
+-	struct net *net = sock_net(asoc->base.sk);
++	struct sock *sk = asoc->base.sk;
++	struct net *net = sock_net(sk);
+ 
+-	bh_lock_sock(asoc->base.sk);
+-	if (sock_owned_by_user(asoc->base.sk)) {
++	bh_lock_sock(sk);
++	if (sock_owned_by_user(sk)) {
+ 		pr_debug("%s: sock is busy\n", __func__);
+ 
+ 		/* Try again later.  */
+@@ -427,7 +431,7 @@ void sctp_generate_proto_unreach_event(unsigned long data)
+ 		   asoc->state, asoc->ep, asoc, transport, GFP_ATOMIC);
+ 
+ out_unlock:
+-	bh_unlock_sock(asoc->base.sk);
++	bh_unlock_sock(sk);
+ 	sctp_association_put(asoc);
+ }
+ 
+-- 
+1.7.1
+
