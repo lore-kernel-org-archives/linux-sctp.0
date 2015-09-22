@@ -1,7 +1,7 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Mon, 21 Sep 2015 17:06:36 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 22 Sep 2015 12:06:25 +0000
 Subject: Re: [PATCH RFC 1/1] sctp: Prevent soft lockup when sctp_accept() is called during a timeout event
-Message-Id: <5600391C.2040309@gmail.com>
+Message-Id: <20150922120625.GB31679@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1442511143-26992-1-git-send-email-kheiss@gmail.com>
 In-Reply-To: <1442511143-26992-1-git-send-email-kheiss@gmail.com>
@@ -10,7 +10,7 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On 09/17/2015 01:32 PM, Karl Heiss wrote:
+On Thu, Sep 17, 2015 at 01:32:23PM -0400, Karl Heiss wrote:
 > A case can occur when sctp_accept() is called by the user during
 > a heartbeat timeout event after the 4-way handshake.  Since
 > sctp_assoc_migrate() changes both assoc->base.sk and assoc->ep, the
@@ -74,43 +74,16 @@ On 09/17/2015 01:32 PM, Karl Heiss wrote:
 > 
 > Signed-off-by: Karl Heiss <kheiss@gmail.com>
 > 
-
-Thanks for finding this.  Good catch.
-
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-
 > -- >8 --
 > 
 > I cooked up the patch above, and while it appears to fix the soft lockups,
 > it still seems like a copy of the endpoint should also be saved off for
 > the use in sctp_do_sm() since sctp_assoc_migrate() changes it as well.
-
-I think you are OK here.  The only time this would actually be an issue is
-in the race of the timer against migrate.  Migrate will run with the user
-side of the lock taken.  The timer grabs the bh side of the lock, checks to
-see if the user side is running and drops the lock.  The issue you see is that
-the association attachment changed between taking of the lock and dropping it.
-Caching the sk pointer solves this.
-
-This is not a problem for actually running through the state machine because
-the user side of lock can not be taken by anyone else while we are holding
-the bh side.  And if the user side isn't running already, we can safely
-access all the pointers.
-
 > 
 > However, this begs the question, between saving the two off, is that not
 > just a smaller race surface?  I had considered wrapping the call to
 > sctp_assoc_migrate() in bh_sock_[un]lock() calls, but I don't know if
 > that is overkill.
-
-No, I don't think there is a race surface at all.  The race was that while
-holding the bh lock, we had a change in assoc->sk linkage due to association
-moving.  If we save the original sk and always lock/unlock the same structure,
-we eliminate the race.  It doesn't really matter whether we cache the new sk
-or the original one as long as we lock/unlock the same one.
-
--vlad
-
 > 
 > Any feedback would be greatly appreciated.
 > 
@@ -237,5 +210,14 @@ or the original one as long as we lock/unlock the same one.
 >  	sctp_association_put(asoc);
 >  }
 >  
+> -- 
+> 1.7.1
 > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
