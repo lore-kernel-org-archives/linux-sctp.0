@@ -1,132 +1,197 @@
-From: Arnd Bergmann <arnd@arndb.de>
-Date: Wed, 30 Sep 2015 11:26:30 +0000
-Subject: [PATCH 00/12] net: assorted y2038 changes
-Message-Id: <1443612402-3000775-1-git-send-email-arnd@arndb.de>
+From: Karl Heiss <kheiss@gmail.com>
+Date: Thu, 24 Sep 2015 16:15:07 +0000
+Subject: [PATCH net 2/2] sctp: Prevent soft lockup when sctp_accept() is called during a timeout event
+Message-Id: <1443111307-16503-3-git-send-email-kheiss@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1443111307-16503-1-git-send-email-kheiss@gmail.com>
+In-Reply-To: <1443111307-16503-1-git-send-email-kheiss@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
-Cc: Arnd Bergmann <arnd@arndb.de>, y2038@lists.linaro.org, linux-api@vger.kernel.org, linux-atm-general@lists.sourceforge.net, linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, linux-can@vger.kernel.org, linux-sctp@vger.kernel.org, coreteam@netfilter.org, intel-wired-lan@lists.osuosl.org, netfilter-devel@vger.kernel.org, "David S. Miller" <davem@davemloft.net>
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-Hi everyone,
+A case can occur when sctp_accept() is called by the user during
+a heartbeat timeout event after the 4-way handshake.  Since
+sctp_assoc_migrate() changes both assoc->base.sk and assoc->ep, the
+bh_sock_lock in sctp_generate_heartbeat_event() will be taken with
+the listening socket but released with the new association socket.
+The result is a deadlock on any future attempts to take the listening
+socket lock.
 
-This is a set of changes for network drivers and core code to
-get rid of the use of time_t and derived data structures.
+Note that this race can occur with other SCTP timeouts that take
+the bh_lock_sock() in the event sctp_accept() is called.
 
-I have a longer set of patches that enables me to build kernels
-with the time_t definition removed completely as a help to find
-y2038 overflow issues. This is the subset for networking that
-contains all code that has a reasonable way of fixing at the
-moment and that is either commonly used (in one of the defconfigs)
-or that blocks building a whole subsystem.
+ BUG: soft lockup - CPU#9 stuck for 67s! [swapper:0]
+ ...
+ RIP: 0010:[<ffffffff8152d48e>]  [<ffffffff8152d48e>] _spin_lock+0x1e/0x30
+ RSP: 0018:ffff880028323b20  EFLAGS: 00000206
+ RAX: 0000000000000002 RBX: ffff880028323b20 RCX: 0000000000000000
+ RDX: 0000000000000000 RSI: ffff880028323be0 RDI: ffff8804632c4b48
+ RBP: ffffffff8100bb93 R08: 0000000000000000 R09: 0000000000000000
+ R10: ffff880610662280 R11: 0000000000000100 R12: ffff880028323aa0
+ R13: ffff8804383c3880 R14: ffff880028323a90 R15: ffffffff81534225
+ FS:  0000000000000000(0000) GS:ffff880028320000(0000) knlGS:0000000000000000
+ CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
+ CR2: 00000000006df528 CR3: 0000000001a85000 CR4: 00000000000006e0
+ DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+ DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+ Process swapper (pid: 0, threadinfo ffff880616b70000, task ffff880616b6cab0)
+ Stack:
+ ffff880028323c40 ffffffffa01c2582 ffff880614cfb020 0000000000000000
+ <d> 0100000000000000 00000014383a6c44 ffff8804383c3880 ffff880614e93c00
+ <d> ffff880614e93c00 0000000000000000 ffff8804632c4b00 ffff8804383c38b8
+ Call Trace:
+ <IRQ>
+ [<ffffffffa01c2582>] ? sctp_rcv+0x492/0xa10 [sctp]
+ [<ffffffff8148c559>] ? nf_iterate+0x69/0xb0
+ [<ffffffff814974a0>] ? ip_local_deliver_finish+0x0/0x2d0
+ [<ffffffff8148c716>] ? nf_hook_slow+0x76/0x120
+ [<ffffffff814974a0>] ? ip_local_deliver_finish+0x0/0x2d0
+ [<ffffffff8149757d>] ? ip_local_deliver_finish+0xdd/0x2d0
+ [<ffffffff81497808>] ? ip_local_deliver+0x98/0xa0
+ [<ffffffff81496ccd>] ? ip_rcv_finish+0x12d/0x440
+ [<ffffffff81497255>] ? ip_rcv+0x275/0x350
+ [<ffffffff8145cfeb>] ? __netif_receive_skb+0x4ab/0x750
+ ...
 
-Most of the patches in this series should be noncontroversial,
-but the last two that I marked [RFC] are a bit tricky and
-need input from people that are more familiar with the code than
-I am. All 12 patches are independent of one another and can
-be applied in any order, so feel free to pick all that look
-good.
+With lockdep debugging:
 
-Patches that are not included here are:
+ ================== [ BUG: bad unlock balance detected! ]
+ -------------------------------------
+ CslRx/12087 is trying to release lock (slock-AF_INET) at:
+ [<ffffffffa01bcae0>] sctp_generate_timeout_event+0x40/0xe0 [sctp]
+ but there are no more locks to release!
 
- - disabling less common device drivers that I don't have a fix
-   for yet, this includes
-	drivers/net/ethernet/brocade/bna/bfa_ioc.c
-	drivers/net/ethernet/qlogic/netxen/netxen_nic_hw.c
-	drivers/net/ethernet/tile/tilegx.c
-	drivers/net/hamradio/baycom_ser_fdx.c
-	drivers/net/wireless/ath/ath10k/core.h
-	drivers/net/wireless/ath/ath9k/
-	drivers/net/wireless/ath/ath9k/
-	drivers/net/wireless/atmel.c
-	drivers/net/wireless/prism54/isl_38xx.c
-	drivers/net/wireless/rt2x00/rt2x00debug.c
-	drivers/net/wireless/rtlwifi/
-	drivers/net/wireless/ti/wlcore/
-	drivers/staging/ozwpan/
-	net/atm/mpoa_caches.c
-	net/atm/mpoa_proc.c
-	net/dccp/probe.c
-	net/ipv4/tcp_probe.c
-	net/netfilter/nfnetlink_queue_core.c
-	net/netfilter/nfnetlink_queue_core.c
-	net/netfilter/xt_time.c
-	net/openvswitch/flow.c
-	net/sctp/probe.c
-	net/sunrpc/auth_gss/
-	net/sunrpc/svcauth_unix.c
-	net/vmw_vsock/af_vsock.c
-   We'll get there eventually, or we an add a dependency to ensure
-   they are not built on 32-bit kernels that need to survive
-   beyond 2038. Most of these should be really easy to fix.
+ other info that might help us debug this:
+ 2 locks held by CslRx/12087:
+ #0:  (&asoc->timers[i]){+.-...}, at: [<ffffffff8108ce1f>] run_timer_softirq+0x16f/0x3e0
+ #1:  (slock-AF_INET){+.-...}, at: [<ffffffffa01bcac3>] sctp_generate_timeout_event+0x23/0xe0 [sctp]
 
- - recvmmsg/sendmmsg system calls: patches have been sent out
-   as part of the syscall series, need a little more work and
-   review
+Ensure the socket taken is also the same one that is released by
+saving a copy of the socket before entering the timeout event
+critical section.
 
- - SIOCGSTAMP/SIOCGSTAMPNS/ ioctl calls: tricky, need to discuss
-   with some folks at kernel summit
+Signed-off-by: Karl Heiss <kheiss@gmail.com>
+---
+ net/sctp/sm_sideeffect.c |   42 +++++++++++++++++++++++-------------------
+ 1 files changed, 23 insertions(+), 19 deletions(-)
 
- - SO_RCVTIMEO/SO_SNDTIMEO/SO_TIMESTAMP/SO_TIMESTAMPNS socket
-   opt: similar and related to the ioctl
-
- - mmapped packet socket: need to create v4 of the API, nontrivial
-
- - pktgen: sends 32-bit timestamps over network, need to find out
-   if using unsigned stamps is good enough
-
- - af_rxpc: similar to pktgen, uses 32-bit times for deadlines
-
- - ppp ioctl: patch is being worked on, nontrivial but doable
-
-	Arnd
-
-Arnd Bergmann (12):
-  net: fec: avoid timespec use
-  net: stmmac: avoid using timespec
-  net: igb: avoid using timespec
-  mwifiex: use ktime_get_real for timestamping
-  mwifiex: avoid gettimeofday in ba_threshold setting
-  mac80211: use ktime_get_seconds
-  atm: hide 'struct zatm_t_hist'
-  nfnetlink: use y2038 safe timestamp
-  ipv6: use ktime_t for internal timestamps
-  net: sctp: avoid incorrect time_t use
-  [RFC] ipv4: avoid timespec in timestamp computation
-  [RFC] can: avoid using timeval for uapi
-
- drivers/net/ethernet/freescale/fec_ptp.c          |  6 ++--
- drivers/net/ethernet/intel/igb/igb.h              |  4 +--
- drivers/net/ethernet/intel/igb/igb_main.c         | 15 +++++-----
- drivers/net/ethernet/intel/igb/igb_ptp.c          |  8 +++---
- drivers/net/ethernet/stmicro/stmmac/stmmac_main.c |  8 ++++--
- drivers/net/wireless/mwifiex/11n_aggr.c           |  4 +--
- drivers/net/wireless/mwifiex/wmm.c                | 15 +++-------
- include/linux/timekeeping.h                       |  2 ++
- include/uapi/linux/atm_zatm.h                     |  3 +-
- include/uapi/linux/can/bcm.h                      |  7 ++++-
- kernel/time/timekeeping.c                         | 34 +++++++++++++++++++++++
- net/can/bcm.c                                     | 15 ++++++----
- net/ipv4/icmp.c                                   |  8 ++----
- net/ipv4/ip_options.c                             |  9 ++----
- net/ipv6/mip6.c                                   | 16 +++++------
- net/mac80211/sta_info.c                           |  8 ++----
- net/netfilter/nfnetlink_log.c                     |  6 ++--
- net/sctp/sm_make_chunk.c                          |  2 +-
- net/sctp/sm_statefuns.c                           |  2 +-
- 19 files changed, 99 insertions(+), 73 deletions(-)
-
-Cc: coreteam@netfilter.org
-Cc: intel-wired-lan@lists.osuosl.org
-Cc: linux-api@vger.kernel.org
-Cc: linux-atm-general@lists.sourceforge.net
-Cc: linux-can@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org
-Cc: linux-wireless@vger.kernel.org
-Cc: netfilter-devel@vger.kernel.org
-
-
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index f554b9a..6098d4c 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -244,12 +244,13 @@ void sctp_generate_t3_rtx_event(unsigned long peer)
+ 	int error;
+ 	struct sctp_transport *transport = (struct sctp_transport *) peer;
+ 	struct sctp_association *asoc = transport->asoc;
+-	struct net *net = sock_net(asoc->base.sk);
++	struct sock *sk = asoc->base.sk;
++	struct net *net = sock_net(sk);
+ 
+ 	/* Check whether a task is in the sock.  */
+ 
+-	bh_lock_sock(asoc->base.sk);
+-	if (sock_owned_by_user(asoc->base.sk)) {
++	bh_lock_sock(sk);
++	if (sock_owned_by_user(sk)) {
+ 		pr_debug("%s: sock is busy\n", __func__);
+ 
+ 		/* Try again later.  */
+@@ -272,10 +273,10 @@ void sctp_generate_t3_rtx_event(unsigned long peer)
+ 			   transport, GFP_ATOMIC);
+ 
+ 	if (error)
+-		asoc->base.sk->sk_err = -error;
++		sk->sk_err = -error;
+ 
+ out_unlock:
+-	bh_unlock_sock(asoc->base.sk);
++	bh_unlock_sock(sk);
+ 	sctp_transport_put(transport);
+ }
+ 
+@@ -285,11 +286,12 @@ out_unlock:
+ static void sctp_generate_timeout_event(struct sctp_association *asoc,
+ 					sctp_event_timeout_t timeout_type)
+ {
+-	struct net *net = sock_net(asoc->base.sk);
++	struct sock *sk = asoc->base.sk;
++	struct net *net = sock_net(sk);
+ 	int error = 0;
+ 
+-	bh_lock_sock(asoc->base.sk);
+-	if (sock_owned_by_user(asoc->base.sk)) {
++	bh_lock_sock(sk);
++	if (sock_owned_by_user(sk)) {
+ 		pr_debug("%s: sock is busy: timer %d\n", __func__,
+ 			 timeout_type);
+ 
+@@ -312,10 +314,10 @@ static void sctp_generate_timeout_event(struct sctp_association *asoc,
+ 			   (void *)timeout_type, GFP_ATOMIC);
+ 
+ 	if (error)
+-		asoc->base.sk->sk_err = -error;
++		sk->sk_err = -error;
+ 
+ out_unlock:
+-	bh_unlock_sock(asoc->base.sk);
++	bh_unlock_sock(sk);
+ 	sctp_association_put(asoc);
+ }
+ 
+@@ -365,10 +367,11 @@ void sctp_generate_heartbeat_event(unsigned long data)
+ 	int error = 0;
+ 	struct sctp_transport *transport = (struct sctp_transport *) data;
+ 	struct sctp_association *asoc = transport->asoc;
+-	struct net *net = sock_net(asoc->base.sk);
++	struct sock *sk = asoc->base.sk;
++	struct net *net = sock_net(sk);
+ 
+-	bh_lock_sock(asoc->base.sk);
+-	if (sock_owned_by_user(asoc->base.sk)) {
++	bh_lock_sock(sk);
++	if (sock_owned_by_user(sk)) {
+ 		pr_debug("%s: sock is busy\n", __func__);
+ 
+ 		/* Try again later.  */
+@@ -389,10 +392,10 @@ void sctp_generate_heartbeat_event(unsigned long data)
+ 			   transport, GFP_ATOMIC);
+ 
+ 	if (error)
+-		asoc->base.sk->sk_err = -error;
++		sk->sk_err = -error;
+ 
+ out_unlock:
+-	bh_unlock_sock(asoc->base.sk);
++	bh_unlock_sock(sk);
+ 	sctp_transport_put(transport);
+ }
+ 
+@@ -403,10 +406,11 @@ void sctp_generate_proto_unreach_event(unsigned long data)
+ {
+ 	struct sctp_transport *transport = (struct sctp_transport *) data;
+ 	struct sctp_association *asoc = transport->asoc;
+-	struct net *net = sock_net(asoc->base.sk);
++	struct sock *sk = asoc->base.sk;
++	struct net *net = sock_net(sk);
+ 
+-	bh_lock_sock(asoc->base.sk);
+-	if (sock_owned_by_user(asoc->base.sk)) {
++	bh_lock_sock(sk);
++	if (sock_owned_by_user(sk)) {
+ 		pr_debug("%s: sock is busy\n", __func__);
+ 
+ 		/* Try again later.  */
+@@ -427,7 +431,7 @@ void sctp_generate_proto_unreach_event(unsigned long data)
+ 		   asoc->state, asoc->ep, asoc, transport, GFP_ATOMIC);
+ 
+ out_unlock:
+-	bh_unlock_sock(asoc->base.sk);
++	bh_unlock_sock(sk);
+ 	sctp_association_put(asoc);
+ }
+ 
 -- 
-2.1.0.rc2
+1.7.1
 
