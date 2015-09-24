@@ -1,64 +1,38 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 02 Sep 2015 19:20:22 +0000
-Subject: [PATCH net 2/2] sctp: add routing output fallback
-Message-Id: <47e46293bcd8786484a815786a615c68253f3b50.1441220305.git.marcelo.leitner@gmail.com>
+From: Karl Heiss <kheiss@gmail.com>
+Date: Thu, 24 Sep 2015 16:15:06 +0000
+Subject: [PATCH net 1/2] sctp: Whitespace fix
+Message-Id: <1443111307-16503-2-git-send-email-kheiss@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1441220305.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1441220305.git.marcelo.leitner@gmail.com>
+References: <1443111307-16503-1-git-send-email-kheiss@gmail.com>
+In-Reply-To: <1443111307-16503-1-git-send-email-kheiss@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
 Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-Commit 0ca50d12fe46 added a restriction that the address must belong to
-the output interface, so that sctp will use the right interface even
-when using secondary addresses.
+Fix indentation in sctp_generate_heartbeat_event.
 
-But it breaks IPVS setups, on which people is used to attach VIP
-addresses to loopback interface on real servers. It's preferred to
-attach to the interface actually in use, but it's a very common setup
-and that used to work.
-
-This patch then saves the first routing good result, even if it would be
-going out through an interface that doesn't have that address. If no
-better hit found, it's then used. This effectively restores the original
-behavior if no better interface could be found.
-
-Fixes: 0ca50d12fe46 ("sctp: fix src address selection if using secondary addresses")
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Signed-off-by: Karl Heiss <kheiss@gmail.com>
 ---
- net/sctp/protocol.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+ net/sctp/sm_sideeffect.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index 4abf94d4cce769371260b42d13c38dbe5776c809..b7143337e4fa025fdb473732fdc064503e731dd4 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -506,16 +506,22 @@ static void sctp_v4_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
- 		if (IS_ERR(rt))
- 			continue;
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 35df126..f554b9a 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -388,8 +388,8 @@ void sctp_generate_heartbeat_event(unsigned long data)
+ 			   asoc->state, asoc->ep, asoc,
+ 			   transport, GFP_ATOMIC);
  
-+		if (!dst)
-+			dst = &rt->dst;
-+
- 		/* Ensure the src address belongs to the output
- 		 * interface.
- 		 */
- 		odev = __ip_dev_find(sock_net(sk), laddr->a.v4.sin_addr.s_addr,
- 				     false);
- 		if (!odev || odev->ifindex != fl4->flowi4_oif) {
--			dst_release(&rt->dst);
-+			if (&rt->dst != dst)
-+				dst_release(&rt->dst);
- 			continue;
- 		}
+-	 if (error)
+-		 asoc->base.sk->sk_err = -error;
++	if (error)
++		asoc->base.sk->sk_err = -error;
  
-+		if (dst != &rt->dst)
-+			dst_release(dst);
- 		dst = &rt->dst;
- 		break;
- 	}
+ out_unlock:
+ 	bh_unlock_sock(asoc->base.sk);
 -- 
-2.4.3
+1.7.1
 
