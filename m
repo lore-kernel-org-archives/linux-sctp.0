@@ -1,84 +1,58 @@
-From: Viresh Kumar <viresh.kumar@linaro.org>
-Date: Wed, 12 Aug 2015 10:41:47 +0000
-Subject: [PATCH V1 Resend 10/10] net: Drop unlikely before IS_ERR(_OR_NULL)
-Message-Id: <173f4a88f99d366f195e253b940d31555b7a30b0.1439375087.git.viresh.kumar@linaro.org>
+From: Arnd Bergmann <arnd@arndb.de>
+Date: Wed, 30 Sep 2015 11:26:40 +0000
+Subject: [PATCH 10/12] net: sctp: avoid incorrect time_t use
+Message-Id: <1443612402-3000775-11-git-send-email-arnd@arndb.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1439375087.git.viresh.kumar@linaro.org>
-In-Reply-To: <cover.1439375087.git.viresh.kumar@linaro.org>
+References: <1443612402-3000775-1-git-send-email-arnd@arndb.de>
+In-Reply-To: <1443612402-3000775-1-git-send-email-arnd@arndb.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: trivial@kernel.org
-Cc: linaro-kernel@lists.linaro.org, linux-kernel@vger.kernel.org, Viresh Kumar <viresh.kumar@linaro.org>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, "open list:OPENVSWITCH" <dev@openvswitch.org>, "open list:SCTP PROTOCOL" <linux-sctp@vger.kernel.org>, "open list:OPENVSWITCH" <netdev@vger.kernel.org>, Pravin Shelar <pshelar@nicira.com>, Vlad Yasevich <vyasevich@gmail.com>
+To: netdev@vger.kernel.org
+Cc: y2038@lists.linaro.org, linux-kernel@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Arnd Bergmann <arnd@arndb.de>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org
 
-IS_ERR(_OR_NULL) already contain an 'unlikely' compiler flag and there
-is no need to do that again from its callers. Drop it.
+We want to avoid using time_t in the kernel because of the y2038
+overflow problem. The use in sctp is not for storing seconds at
+all, but instead uses microseconds and is passed as 32-bit
+on all machines.
 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
-Signed-off-by: Viresh Kumar <viresh.kumar@linaro.org>
+This patch changes the type to u32, which better fits the use.
+
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: linux-sctp@vger.kernel.org
 ---
- net/openvswitch/datapath.c | 2 +-
- net/sctp/socket.c          | 2 +-
- net/socket.c               | 6 +++---
- 3 files changed, 5 insertions(+), 5 deletions(-)
+ net/sctp/sm_make_chunk.c | 2 +-
+ net/sctp/sm_statefuns.c  | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/openvswitch/datapath.c b/net/openvswitch/datapath.c
-index ffe984f5b95c..a515e338cade 100644
---- a/net/openvswitch/datapath.c
-+++ b/net/openvswitch/datapath.c
-@@ -1143,7 +1143,7 @@ static int ovs_flow_cmd_set(struct sk_buff *skb, struct genl_info *info)
- 						info, OVS_FLOW_CMD_NEW, false,
- 						ufid_flags);
- 
--		if (unlikely(IS_ERR(reply))) {
-+		if (IS_ERR(reply)) {
- 			error = PTR_ERR(reply);
- 			goto err_unlock_ovs;
- 		}
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 17bef01b9aa3..897c01c029ca 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -4475,7 +4475,7 @@ static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval
- 	}
- 
- 	newfile = sock_alloc_file(newsock, 0, NULL);
--	if (unlikely(IS_ERR(newfile))) {
-+	if (IS_ERR(newfile)) {
- 		put_unused_fd(retval);
- 		sock_release(newsock);
- 		return PTR_ERR(newfile);
-diff --git a/net/socket.c b/net/socket.c
-index 9963a0b53a64..dd2c247c99e3 100644
---- a/net/socket.c
-+++ b/net/socket.c
-@@ -373,7 +373,7 @@ struct file *sock_alloc_file(struct socket *sock, int flags, const char *dname)
- 
- 	file = alloc_file(&path, FMODE_READ | FMODE_WRITE,
- 		  &socket_file_ops);
--	if (unlikely(IS_ERR(file))) {
-+	if (IS_ERR(file)) {
- 		/* drop dentry, keep inode */
- 		ihold(d_inode(path.dentry));
- 		path_put(&path);
-@@ -1303,7 +1303,7 @@ SYSCALL_DEFINE4(socketpair, int, family, int, type, int, protocol,
- 	}
- 
- 	newfile1 = sock_alloc_file(sock1, flags, NULL);
--	if (unlikely(IS_ERR(newfile1))) {
-+	if (IS_ERR(newfile1)) {
- 		err = PTR_ERR(newfile1);
- 		goto out_put_unused_both;
- 	}
-@@ -1467,7 +1467,7 @@ SYSCALL_DEFINE4(accept4, int, fd, struct sockaddr __user *, upeer_sockaddr,
- 		goto out_put;
- 	}
- 	newfile = sock_alloc_file(newsock, flags, sock->sk->sk_prot_creator->name);
--	if (unlikely(IS_ERR(newfile))) {
-+	if (IS_ERR(newfile)) {
- 		err = PTR_ERR(newfile);
- 		put_unused_fd(newfd);
- 		sock_release(newsock);
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 7954c52e1794..763e06a55155 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2494,7 +2494,7 @@ static int sctp_process_param(struct sctp_association *asoc,
+ 	__u16 sat;
+ 	int retval = 1;
+ 	sctp_scope_t scope;
+-	time_t stale;
++	u32 stale;
+ 	struct sctp_af *af;
+ 	union sctp_addr_param *addr_param;
+ 	struct sctp_transport *t;
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index d7eaa7354cf7..6f46aa16cb76 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -2306,7 +2306,7 @@ static sctp_disposition_t sctp_sf_do_5_2_6_stale(struct net *net,
+ 						 sctp_cmd_seq_t *commands)
+ {
+ 	struct sctp_chunk *chunk = arg;
+-	time_t stale;
++	u32 stale;
+ 	sctp_cookie_preserve_param_t bht;
+ 	sctp_errhdr_t *err;
+ 	struct sctp_chunk *reply;
 -- 
-2.4.0
+2.1.0.rc2
 
