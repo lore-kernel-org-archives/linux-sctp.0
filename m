@@ -1,41 +1,62 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 02 Sep 2015 19:20:21 +0000
-Subject: [PATCH net 1/2] sctp: fix dst leak
-Message-Id: <e6339177cb0ff680f451cbfb6c2cf44f148c1d11.1441220305.git.marcelo.leitner@gmail.com>
+From: Jakub Tomalak <jtomalak@gmail.com>
+Date: Tue, 06 Oct 2015 11:04:43 +0000
+Subject: alignment issue using sctp_assoc_stats via getsockopt
+Message-Id: <CAJzSi+fw7uNkK+ZE227kg2sK6_xZ0crVYDDyJkUR6DfdvsfgcQ@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1441220305.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1441220305.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
+To: linux-sctp@vger.kernel.org
 
-Commit 0ca50d12fe46 failed to release the reference to dst entries that
-it decided to skip.
+Greetings,
 
-Fixes: 0ca50d12fe46 ("sctp: fix src address selection if using secondary addresses")
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
----
- net/sctp/protocol.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+I have discovered an alignment issue when using SCTP in a 32-bit
+binary on a 64-bit host.
 
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index 4345790ad3266c353eeac5398593c2a9ce4effda..4abf94d4cce769371260b42d13c38dbe5776c809 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -511,8 +511,10 @@ static void sctp_v4_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
- 		 */
- 		odev = __ip_dev_find(sock_net(sk), laddr->a.v4.sin_addr.s_addr,
- 				     false);
--		if (!odev || odev->ifindex != fl4->flowi4_oif)
-+		if (!odev || odev->ifindex != fl4->flowi4_oif) {
-+			dst_release(&rt->dst);
- 			continue;
-+		}
- 
- 		dst = &rt->dst;
- 		break;
--- 
-2.4.3
+Essentially, the problem is that struct sctp_assoc_stats contains a
+sockaddr_storage field and is at a different offset for 32-bit and
+64-bit architectures (well, Intel/AMD anyway).
 
+Essentially when a 32-bit binary makes a getsockopt call with
+sctp_assoc_stats againts a 64-bit kernel, the kernel copies the data
+in with a different alignment, causing the 32-bit binary to receive
+incorrect data for all of the chunk counters (fields after the
+sockaddr field)..
+
+The fix is relatively simple for i386 and x86_64 architectures. I am
+not sure about MIPS64 and ARM, since a colleague mentioned they do not
+support unaligned memory access and also mentioned that MIPS64 doesn't
+allow alignment with word sizes smaller than 8 bytes.
+
+Here is the diff I tested against both 32-bit and 64-bit RHEL and
+Ubuntu systems (with kernels ranging from 3.12.x to 3.16.y).
+
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index ce70fe6..41aa566 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -873,7 +873,7 @@ struct sctp_assoc_stats {
+        __u64           sas_iodchunks;   /* Ordered data chunks received */
+        __u64           sas_octrlchunks; /* Control chunks sent */
+        __u64           sas_ictrlchunks; /* Control chunks received */
+-};
++} __attribute__((packed, aligned(4)));
+
+/*
+  * 8.1 sctp_bindx()
+@@ -900,6 +900,6 @@ struct sctp_paddrthlds {
+        struct sockaddr_storage spt_address;
+        __u16 spt_pathmaxrxt;
+        __u16 spt_pathpfthld;
+-};
++} __attribute__((packed, aligned(4)));
+
+#endif /* _UAPI_SCTP_H */
+
+I have no idea what the official process is for submitting patches to
+the SCTP module, and since this is probably a very edge case scenario,
+I thought I would at least mention it in case anyone else comes across
+similar problems.
+
+Best Regards,
+Jaub Tomalak
