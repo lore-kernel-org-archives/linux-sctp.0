@@ -1,76 +1,75 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Mon, 30 Nov 2015 14:43:45 +0000
-Subject: Re: [PATCH] sctp: convert sack_needed and sack_generation to bits
-Message-Id: <565C60A1.1000001@gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 11 Nov 2015 22:17:37 +0000
+Subject: [PATCH] netfilter: nf_ct_sctp: move ip_ct_sctp away from UAPI
+Message-Id: <48dd716ff97dba6dbecfc095c174936888f673cd.1447274676.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <f3803545e5d34adfe83cff5adf01317c56288d59.1448892562.git.marcelo.leitner@gmail.com>
-In-Reply-To: <f3803545e5d34adfe83cff5adf01317c56288d59.1448892562.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, netdev@vger.kernel.org
-Cc: Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, lucien.xin@gmail.com
+To: netfilter-devel@vger.kernel.org
+Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org
 
-On 11/30/2015 09:17 AM, Marcelo Ricardo Leitner wrote:
-> They don't need to be any bigger than that and with this we start a new
-> bitfield for tracking association runtime stuff, like zero window
-> situation.
-> 
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+ip_ct_sctp is an internal structure, embedded by the union
+nf_conntrack_proto to store sctp-specific information at conntrack
+entries. It has no business with UAPI.
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+This patch moves it from UAPI to a saner place, together with similar
+structs for other protocols.
 
--vlad
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
 
-> ---
-> 
-> Motivated by https://patchwork.ozlabs.org/patch/509836/
-> 
->  include/net/sctp/structs.h | 16 ++++++++--------
->  1 file changed, 8 insertions(+), 8 deletions(-)
-> 
-> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-> index 495c87e367b3f2e8941807f56a77d2e14469bfed..7bbb71081aeb6cfdc9cb049cf7a094dbcd4603bb 100644
-> --- a/include/net/sctp/structs.h
-> +++ b/include/net/sctp/structs.h
-> @@ -775,10 +775,10 @@ struct sctp_transport {
->  		hb_sent:1,
->  
->  		/* Is the Path MTU update pending on this tranport */
-> -		pmtu_pending:1;
-> +		pmtu_pending:1,
->  
-> -	/* Has this transport moved the ctsn since we last sacked */
-> -	__u32 sack_generation;
-> +		/* Has this transport moved the ctsn since we last sacked */
-> +		sack_generation:1;
->  	u32 dst_cookie;
->  
->  	struct flowi fl;
-> @@ -1482,19 +1482,19 @@ struct sctp_association {
->  			prsctp_capable:1,   /* Can peer do PR-SCTP? */
->  			auth_capable:1;     /* Is peer doing SCTP-AUTH? */
->  
-> -		/* Ack State   : This flag indicates if the next received
-> +		/* sack_needed : This flag indicates if the next received
->  		 *             : packet is to be responded to with a
-> -		 *             : SACK. This is initializedto 0.  When a packet
-> -		 *             : is received it is incremented. If this value
-> +		 *             : SACK. This is initialized to 0.  When a packet
-> +		 *             : is received sack_cnt is incremented. If this value
->  		 *             : reaches 2 or more, a SACK is sent and the
->  		 *             : value is reset to 0. Note: This is used only
->  		 *             : when no DATA chunks are received out of
->  		 *             : order.  When DATA chunks are out of order,
->  		 *             : SACK's are not delayed (see Section 6).
->  		 */
-> -		__u8    sack_needed;     /* Do we need to sack the peer? */
-> +		__u8    sack_needed:1,     /* Do we need to sack the peer? */
-> +			sack_generation:1;
->  		__u32	sack_cnt;
-> -		__u32	sack_generation;
->  
->  		__u32   adaptation_ind;	 /* Adaptation Code point. */
->  
-> 
+No need to update MAINTAINERS.
+New header is pulled in automatically due to path preference.
+
+ include/linux/netfilter/nf_conntrack_sctp.h      | 13 +++++++++++++
+ include/uapi/linux/netfilter/nf_conntrack_sctp.h | 12 +++---------
+ 2 files changed, 16 insertions(+), 9 deletions(-)
+ create mode 100644 include/linux/netfilter/nf_conntrack_sctp.h
+
+diff --git a/include/linux/netfilter/nf_conntrack_sctp.h b/include/linux/netfilter/nf_conntrack_sctp.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..22a16a23cd8a7e3d6d000ee7249477a3fef11604
+--- /dev/null
++++ b/include/linux/netfilter/nf_conntrack_sctp.h
+@@ -0,0 +1,13 @@
++#ifndef _NF_CONNTRACK_SCTP_H
++#define _NF_CONNTRACK_SCTP_H
++/* SCTP tracking. */
++
++#include <uapi/linux/netfilter/nf_conntrack_sctp.h>
++
++struct ip_ct_sctp {
++	enum sctp_conntrack state;
++
++	__be32 vtag[IP_CT_DIR_MAX];
++};
++
++#endif /* _NF_CONNTRACK_SCTP_H */
+diff --git a/include/uapi/linux/netfilter/nf_conntrack_sctp.h b/include/uapi/linux/netfilter/nf_conntrack_sctp.h
+index ed4e776e1242f586cf1062646903e9afc7bb1af6..2cbc366c3fb4725d06a2def46ac0d54d0dc184f6 100644
+--- a/include/uapi/linux/netfilter/nf_conntrack_sctp.h
++++ b/include/uapi/linux/netfilter/nf_conntrack_sctp.h
+@@ -1,5 +1,5 @@
+-#ifndef _NF_CONNTRACK_SCTP_H
+-#define _NF_CONNTRACK_SCTP_H
++#ifndef _UAPI_NF_CONNTRACK_SCTP_H
++#define _UAPI_NF_CONNTRACK_SCTP_H
+ /* SCTP tracking. */
+ 
+ #include <linux/netfilter/nf_conntrack_tuple_common.h>
+@@ -18,10 +18,4 @@ enum sctp_conntrack {
+ 	SCTP_CONNTRACK_MAX
+ };
+ 
+-struct ip_ct_sctp {
+-	enum sctp_conntrack state;
+-
+-	__be32 vtag[IP_CT_DIR_MAX];
+-};
+-
+-#endif /* _NF_CONNTRACK_SCTP_H */
++#endif /* _UAPI_NF_CONNTRACK_SCTP_H */
+-- 
+2.4.3
 
