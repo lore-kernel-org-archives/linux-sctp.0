@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 09 Nov 2015 17:07:17 +0000
-Subject: Re: About SCTP restart?
-Message-Id: <5640D2C5.5030705@gmail.com>
+From: YUAN Jia <Jia.Yuan@alcatel-sbell.com.cn>
+Date: Wed, 11 Nov 2015 08:31:42 +0000
+Subject: RE: About SCTP restart?
+Message-Id: <07B7943445653648AD9B4DBB916BB48F04FB50B3@cnshjmbx01>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <07B7943445653648AD9B4DBB916BB48F04FB3DC4@cnshjmbx01>
 In-Reply-To: <07B7943445653648AD9B4DBB916BB48F04FB3DC4@cnshjmbx01>
@@ -10,43 +10,46 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Em 09-11-2015 00:17, YUAN Jia escreveu:
-> Indeed, RFC4960 has been already supported. I was misled.
-
-Okay.
-Please don't top post. It makes reading the emails harder.
-
-> Another question:
-> I am making a suite of SCTP testing tools. The paragraph 5.2.4.1 of RFC 4960 describes an example of an association restart. But I don't know how to trig or simulate a procedure of endpoints' restart. I find there are only functions to handle restart initiated by peer, but I've not found functions to initiate restart from local. Does lksctp lib have APIs or functions to initiate a restart? Or some of code fractions in kernel can do so?
->
-> Handling restart initiated by peer:
-> sctp_do_sm
-> 	=> sctp_sf_do_5_2_4_dupcook
-> 		=> sctp_sf_do_dupcook_a	// Section 5.2.4, case 'A'
-
-This is used to handle an error situation on which the peer was 
-restarted, and not as a normal procedure. Please don't confuse it with 
-stream reset. That said, I'm not aware of any mechanism in lksctp to 
-trigger this willingly, but you may do it in your application. You can 
-do it by:
-
-1.bind your client socket to a known local port before connecting to the 
-server
-2.connect to remote server
-3.add a firewall rule on client blocking outputs to that server (port)
-4.kill your client application
-(4.b.ensure association is really down)
-5.remove firewall rule
-6.restart your application (which should bind to the same local port)
-
-The firewall rule will block the shutdown/abort from client to server 
-when you close/kill your client app, thus simulating a crash from the 
-server point of view.
-
-Btw, you may want to take a look on TAHI then. It already supports quite 
-some SCTP tests. http://networktest.sourceforge.net/ maybe you can help 
-us improve it? :-)
-
-Regards,
-Marcelo
-
+SSBncmF0ZWZ1bGx5IGFwcHJlY2lhdGUgeW91ciBoZWxwIGFuZCBzaW5jZXJlIHRydXN0LiBJJ2xs
+IHRyeSB0aGUgYXBwcm9hY2ggeW91IHN1Z2dlc3RlZC4NCg0KQWZ0ZXIgSSBkb3dubG9hZGVkIHRo
+ZSBuZXR3b3JrIFNDVFAgdGVzdCBzdWl0ZSBmcm9tIGdpdCwgSSBmb3VuZCBpdCdzIGRpZmZpY3Vs
+dCBmb3IgbWUgdG8gaGFuZGxlLiBCZWNhdXNlIEkgYW0gbm90IHVuZGVyc3RhbmQgcGVybCBzY3Jp
+cHQgbGFuZ3VhZ2UgZXZlbiBJIGhhdmUgbm8gaWRlYSBvZiBydW5uaW5nIGl0Lg0KSG93ZXZlciwg
+aXQgaGFzIHJlYWxseSBnb29kIGRlc2lnbiBhbmQgaXMgZ3JhY2VmdWxseSBpbXBsZW1lbnRlZC4g
+SXQgbXVzdCBiZSBudXRyaXRpb3VzIHRvIG1lLCBhbmQgSSB3b3VsZCBsZWFybiBwbGVudGlmdWwg
+a25vd2xlZGdlIGZyb20gaXQsIEkgdGhpbmsuDQoNClRoYW5rcyBhIGxvdCENClJpY2hhcmQNCg0K
+DQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogTWFyY2VsbyBSaWNhcmRvIExlaXRu
+ZXIgW21haWx0bzptYXJjZWxvLmxlaXRuZXJAZ21haWwuY29tXSANClNlbnQ6IDIwMTXE6jEx1MIx
+MMjVIDE6MDcNClRvOiBZVUFOIEppYTsgbGludXgtc2N0cEB2Z2VyLmtlcm5lbC5vcmcNClN1Ympl
+Y3Q6IFJlOiBBYm91dCBTQ1RQIHJlc3RhcnQ/DQoNCkVtIDA5LTExLTIwMTUgMDA6MTcsIFlVQU4g
+SmlhIGVzY3JldmV1Og0KPiBJbmRlZWQsIFJGQzQ5NjAgaGFzIGJlZW4gYWxyZWFkeSBzdXBwb3J0
+ZWQuIEkgd2FzIG1pc2xlZC4NCg0KT2theS4NClBsZWFzZSBkb24ndCB0b3AgcG9zdC4gSXQgbWFr
+ZXMgcmVhZGluZyB0aGUgZW1haWxzIGhhcmRlci4NCg0KPiBBbm90aGVyIHF1ZXN0aW9uOg0KPiBJ
+IGFtIG1ha2luZyBhIHN1aXRlIG9mIFNDVFAgdGVzdGluZyB0b29scy4gVGhlIHBhcmFncmFwaCA1
+LjIuNC4xIG9mIFJGQyA0OTYwIGRlc2NyaWJlcyBhbiBleGFtcGxlIG9mIGFuIGFzc29jaWF0aW9u
+IHJlc3RhcnQuIEJ1dCBJIGRvbid0IGtub3cgaG93IHRvIHRyaWcgb3Igc2ltdWxhdGUgYSBwcm9j
+ZWR1cmUgb2YgZW5kcG9pbnRzJyByZXN0YXJ0LiBJIGZpbmQgdGhlcmUgYXJlIG9ubHkgZnVuY3Rp
+b25zIHRvIGhhbmRsZSByZXN0YXJ0IGluaXRpYXRlZCBieSBwZWVyLCBidXQgSSd2ZSBub3QgZm91
+bmQgZnVuY3Rpb25zIHRvIGluaXRpYXRlIHJlc3RhcnQgZnJvbSBsb2NhbC4gRG9lcyBsa3NjdHAg
+bGliIGhhdmUgQVBJcyBvciBmdW5jdGlvbnMgdG8gaW5pdGlhdGUgYSByZXN0YXJ0PyBPciBzb21l
+IG9mIGNvZGUgZnJhY3Rpb25zIGluIGtlcm5lbCBjYW4gZG8gc28/DQo+DQo+IEhhbmRsaW5nIHJl
+c3RhcnQgaW5pdGlhdGVkIGJ5IHBlZXI6DQo+IHNjdHBfZG9fc20NCj4gCT0+IHNjdHBfc2ZfZG9f
+NV8yXzRfZHVwY29vaw0KPiAJCT0+IHNjdHBfc2ZfZG9fZHVwY29va19hCS8vIFNlY3Rpb24gNS4y
+LjQsIGNhc2UgJ0EnDQoNClRoaXMgaXMgdXNlZCB0byBoYW5kbGUgYW4gZXJyb3Igc2l0dWF0aW9u
+IG9uIHdoaWNoIHRoZSBwZWVyIHdhcyByZXN0YXJ0ZWQsIGFuZCBub3QgYXMgYSBub3JtYWwgcHJv
+Y2VkdXJlLiBQbGVhc2UgZG9uJ3QgY29uZnVzZSBpdCB3aXRoIHN0cmVhbSByZXNldC4gVGhhdCBz
+YWlkLCBJJ20gbm90IGF3YXJlIG9mIGFueSBtZWNoYW5pc20gaW4gbGtzY3RwIHRvIHRyaWdnZXIg
+dGhpcyB3aWxsaW5nbHksIGJ1dCB5b3UgbWF5IGRvIGl0IGluIHlvdXIgYXBwbGljYXRpb24uIFlv
+dSBjYW4gZG8gaXQgYnk6DQoNCjEuYmluZCB5b3VyIGNsaWVudCBzb2NrZXQgdG8gYSBrbm93biBs
+b2NhbCBwb3J0IGJlZm9yZSBjb25uZWN0aW5nIHRvIHRoZSBzZXJ2ZXIgMi5jb25uZWN0IHRvIHJl
+bW90ZSBzZXJ2ZXIgMy5hZGQgYSBmaXJld2FsbCBydWxlIG9uIGNsaWVudCBibG9ja2luZyBvdXRw
+dXRzIHRvIHRoYXQgc2VydmVyIChwb3J0KSA0LmtpbGwgeW91ciBjbGllbnQgYXBwbGljYXRpb24g
+KDQuYi5lbnN1cmUgYXNzb2NpYXRpb24gaXMgcmVhbGx5IGRvd24pIDUucmVtb3ZlIGZpcmV3YWxs
+IHJ1bGUgNi5yZXN0YXJ0IHlvdXIgYXBwbGljYXRpb24gKHdoaWNoIHNob3VsZCBiaW5kIHRvIHRo
+ZSBzYW1lIGxvY2FsIHBvcnQpDQoNClRoZSBmaXJld2FsbCBydWxlIHdpbGwgYmxvY2sgdGhlIHNo
+dXRkb3duL2Fib3J0IGZyb20gY2xpZW50IHRvIHNlcnZlciB3aGVuIHlvdSBjbG9zZS9raWxsIHlv
+dXIgY2xpZW50IGFwcCwgdGh1cyBzaW11bGF0aW5nIGEgY3Jhc2ggZnJvbSB0aGUgc2VydmVyIHBv
+aW50IG9mIHZpZXcuDQoNCkJ0dywgeW91IG1heSB3YW50IHRvIHRha2UgYSBsb29rIG9uIFRBSEkg
+dGhlbi4gSXQgYWxyZWFkeSBzdXBwb3J0cyBxdWl0ZSBzb21lIFNDVFAgdGVzdHMuIGh0dHA6Ly9u
+ZXR3b3JrdGVzdC5zb3VyY2Vmb3JnZS5uZXQvIG1heWJlIHlvdSBjYW4gaGVscCB1cyBpbXByb3Zl
+IGl0PyA6LSkNCg0KUmVnYXJkcywNCk1hcmNlbG8NCg0K
