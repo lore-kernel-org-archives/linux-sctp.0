@@ -1,55 +1,47 @@
-From: YUAN Jia <Jia.Yuan@alcatel-sbell.com.cn>
-Date: Wed, 11 Nov 2015 08:31:42 +0000
-Subject: RE: About SCTP restart?
-Message-Id: <07B7943445653648AD9B4DBB916BB48F04FB50B3@cnshjmbx01>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 12 Nov 2015 05:07:07 +0000
+Subject: [PATCH net] sctp: translate host order to network order when setting a hmacid
+Message-Id: <8cede44279b2f01a58fa02d4bb46b40fb630563f.1447304827.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <07B7943445653648AD9B4DBB916BB48F04FB3DC4@cnshjmbx01>
-In-Reply-To: <07B7943445653648AD9B4DBB916BB48F04FB3DC4@cnshjmbx01>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: marcelo.leitner@gmail.com, vyasevic@redhat.com, davem@davemloft.net
 
-SSBncmF0ZWZ1bGx5IGFwcHJlY2lhdGUgeW91ciBoZWxwIGFuZCBzaW5jZXJlIHRydXN0LiBJJ2xs
-IHRyeSB0aGUgYXBwcm9hY2ggeW91IHN1Z2dlc3RlZC4NCg0KQWZ0ZXIgSSBkb3dubG9hZGVkIHRo
-ZSBuZXR3b3JrIFNDVFAgdGVzdCBzdWl0ZSBmcm9tIGdpdCwgSSBmb3VuZCBpdCdzIGRpZmZpY3Vs
-dCBmb3IgbWUgdG8gaGFuZGxlLiBCZWNhdXNlIEkgYW0gbm90IHVuZGVyc3RhbmQgcGVybCBzY3Jp
-cHQgbGFuZ3VhZ2UgZXZlbiBJIGhhdmUgbm8gaWRlYSBvZiBydW5uaW5nIGl0Lg0KSG93ZXZlciwg
-aXQgaGFzIHJlYWxseSBnb29kIGRlc2lnbiBhbmQgaXMgZ3JhY2VmdWxseSBpbXBsZW1lbnRlZC4g
-SXQgbXVzdCBiZSBudXRyaXRpb3VzIHRvIG1lLCBhbmQgSSB3b3VsZCBsZWFybiBwbGVudGlmdWwg
-a25vd2xlZGdlIGZyb20gaXQsIEkgdGhpbmsuDQoNClRoYW5rcyBhIGxvdCENClJpY2hhcmQNCg0K
-DQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogTWFyY2VsbyBSaWNhcmRvIExlaXRu
-ZXIgW21haWx0bzptYXJjZWxvLmxlaXRuZXJAZ21haWwuY29tXSANClNlbnQ6IDIwMTXE6jEx1MIx
-MMjVIDE6MDcNClRvOiBZVUFOIEppYTsgbGludXgtc2N0cEB2Z2VyLmtlcm5lbC5vcmcNClN1Ympl
-Y3Q6IFJlOiBBYm91dCBTQ1RQIHJlc3RhcnQ/DQoNCkVtIDA5LTExLTIwMTUgMDA6MTcsIFlVQU4g
-SmlhIGVzY3JldmV1Og0KPiBJbmRlZWQsIFJGQzQ5NjAgaGFzIGJlZW4gYWxyZWFkeSBzdXBwb3J0
-ZWQuIEkgd2FzIG1pc2xlZC4NCg0KT2theS4NClBsZWFzZSBkb24ndCB0b3AgcG9zdC4gSXQgbWFr
-ZXMgcmVhZGluZyB0aGUgZW1haWxzIGhhcmRlci4NCg0KPiBBbm90aGVyIHF1ZXN0aW9uOg0KPiBJ
-IGFtIG1ha2luZyBhIHN1aXRlIG9mIFNDVFAgdGVzdGluZyB0b29scy4gVGhlIHBhcmFncmFwaCA1
-LjIuNC4xIG9mIFJGQyA0OTYwIGRlc2NyaWJlcyBhbiBleGFtcGxlIG9mIGFuIGFzc29jaWF0aW9u
-IHJlc3RhcnQuIEJ1dCBJIGRvbid0IGtub3cgaG93IHRvIHRyaWcgb3Igc2ltdWxhdGUgYSBwcm9j
-ZWR1cmUgb2YgZW5kcG9pbnRzJyByZXN0YXJ0LiBJIGZpbmQgdGhlcmUgYXJlIG9ubHkgZnVuY3Rp
-b25zIHRvIGhhbmRsZSByZXN0YXJ0IGluaXRpYXRlZCBieSBwZWVyLCBidXQgSSd2ZSBub3QgZm91
-bmQgZnVuY3Rpb25zIHRvIGluaXRpYXRlIHJlc3RhcnQgZnJvbSBsb2NhbC4gRG9lcyBsa3NjdHAg
-bGliIGhhdmUgQVBJcyBvciBmdW5jdGlvbnMgdG8gaW5pdGlhdGUgYSByZXN0YXJ0PyBPciBzb21l
-IG9mIGNvZGUgZnJhY3Rpb25zIGluIGtlcm5lbCBjYW4gZG8gc28/DQo+DQo+IEhhbmRsaW5nIHJl
-c3RhcnQgaW5pdGlhdGVkIGJ5IHBlZXI6DQo+IHNjdHBfZG9fc20NCj4gCT0+IHNjdHBfc2ZfZG9f
-NV8yXzRfZHVwY29vaw0KPiAJCT0+IHNjdHBfc2ZfZG9fZHVwY29va19hCS8vIFNlY3Rpb24gNS4y
-LjQsIGNhc2UgJ0EnDQoNClRoaXMgaXMgdXNlZCB0byBoYW5kbGUgYW4gZXJyb3Igc2l0dWF0aW9u
-IG9uIHdoaWNoIHRoZSBwZWVyIHdhcyByZXN0YXJ0ZWQsIGFuZCBub3QgYXMgYSBub3JtYWwgcHJv
-Y2VkdXJlLiBQbGVhc2UgZG9uJ3QgY29uZnVzZSBpdCB3aXRoIHN0cmVhbSByZXNldC4gVGhhdCBz
-YWlkLCBJJ20gbm90IGF3YXJlIG9mIGFueSBtZWNoYW5pc20gaW4gbGtzY3RwIHRvIHRyaWdnZXIg
-dGhpcyB3aWxsaW5nbHksIGJ1dCB5b3UgbWF5IGRvIGl0IGluIHlvdXIgYXBwbGljYXRpb24uIFlv
-dSBjYW4gZG8gaXQgYnk6DQoNCjEuYmluZCB5b3VyIGNsaWVudCBzb2NrZXQgdG8gYSBrbm93biBs
-b2NhbCBwb3J0IGJlZm9yZSBjb25uZWN0aW5nIHRvIHRoZSBzZXJ2ZXIgMi5jb25uZWN0IHRvIHJl
-bW90ZSBzZXJ2ZXIgMy5hZGQgYSBmaXJld2FsbCBydWxlIG9uIGNsaWVudCBibG9ja2luZyBvdXRw
-dXRzIHRvIHRoYXQgc2VydmVyIChwb3J0KSA0LmtpbGwgeW91ciBjbGllbnQgYXBwbGljYXRpb24g
-KDQuYi5lbnN1cmUgYXNzb2NpYXRpb24gaXMgcmVhbGx5IGRvd24pIDUucmVtb3ZlIGZpcmV3YWxs
-IHJ1bGUgNi5yZXN0YXJ0IHlvdXIgYXBwbGljYXRpb24gKHdoaWNoIHNob3VsZCBiaW5kIHRvIHRo
-ZSBzYW1lIGxvY2FsIHBvcnQpDQoNClRoZSBmaXJld2FsbCBydWxlIHdpbGwgYmxvY2sgdGhlIHNo
-dXRkb3duL2Fib3J0IGZyb20gY2xpZW50IHRvIHNlcnZlciB3aGVuIHlvdSBjbG9zZS9raWxsIHlv
-dXIgY2xpZW50IGFwcCwgdGh1cyBzaW11bGF0aW5nIGEgY3Jhc2ggZnJvbSB0aGUgc2VydmVyIHBv
-aW50IG9mIHZpZXcuDQoNCkJ0dywgeW91IG1heSB3YW50IHRvIHRha2UgYSBsb29rIG9uIFRBSEkg
-dGhlbi4gSXQgYWxyZWFkeSBzdXBwb3J0cyBxdWl0ZSBzb21lIFNDVFAgdGVzdHMuIGh0dHA6Ly9u
-ZXR3b3JrdGVzdC5zb3VyY2Vmb3JnZS5uZXQvIG1heWJlIHlvdSBjYW4gaGVscCB1cyBpbXByb3Zl
-IGl0PyA6LSkNCg0KUmVnYXJkcywNCk1hcmNlbG8NCg0K
+now sctp auth cannot work well when setting a hmacid manually, which
+is caused by that we didn't use the network order for hmacid, so fix
+it by adding the transformation in sctp_auth_ep_set_hmacs.
+
+even we set hmacid with the network order in userspace, it still
+can't work, because of this condition in sctp_auth_ep_set_hmacs():
+
+		if (id > SCTP_AUTH_HMAC_ID_MAX)
+			return -EOPNOTSUPP;
+
+so this wasn't working before and thus it won't break compatibility.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/auth.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/auth.c b/net/sctp/auth.c
+index 4f15b7d..1543e39 100644
+--- a/net/sctp/auth.c
++++ b/net/sctp/auth.c
+@@ -809,8 +809,8 @@ int sctp_auth_ep_set_hmacs(struct sctp_endpoint *ep,
+ 	if (!has_sha1)
+ 		return -EINVAL;
+ 
+-	memcpy(ep->auth_hmacs_list->hmac_ids, &hmacs->shmac_idents[0],
+-		hmacs->shmac_num_idents * sizeof(__u16));
++	for (i = 0; i < hmacs->shmac_num_idents; i++)
++		ep->auth_hmacs_list->hmac_ids[i] = htons(hmacs->shmac_idents[i]);
+ 	ep->auth_hmacs_list->param_hdr.length = htons(sizeof(sctp_paramhdr_t) +
+ 				hmacs->shmac_num_idents * sizeof(__u16));
+ 	return 0;
+-- 
+2.1.0
+
