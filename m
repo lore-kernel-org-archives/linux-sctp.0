@@ -1,80 +1,52 @@
-From: Patrick McHardy <kaber@trash.net>
-Date: Thu, 26 Nov 2015 16:53:46 +0000
-Subject: Re: [RFC PATCH -next] netfilter: nf_ct_sctp: validate vtag for new conntrack entries
-Message-Id: <20151126165346.GW16828@macbook.localdomain>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Mon, 30 Nov 2015 16:32:54 +0000
+Subject: [PATCH] sctp: use GFP_USER for user-controlled kmalloc
+Message-Id: <db23659cdf84bc80aff45e906cbfb67581e7a125.1448901154.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20151126143328.GC32716@breakpoint.cc>
- <20151126144916.GJ16828@macbook.localdomain>
- <20151126150726.GD32716@breakpoint.cc>
- <20151126151229.GA3412@salvia>
- <20151126152410.GN16828@macbook.localdomain>
- <20151126155426.GA4108@salvia>
- <20151126160227.GQ16828@macbook.localdomain>
- <20151126161529.GA4350@salvia>
- <20151126162528.GS16828@macbook.localdomain>
- <20151126164316.GA4495@salvia>
-In-Reply-To: <20151126164316.GA4495@salvia>
+References: <CACT4Y+a_V5WQZNEnYkuA3Xc5qCWmLV3oScNeNiATZm-wW5eg3Q@mail.gmail.comc>
+In-Reply-To: <CACT4Y+a_V5WQZNEnYkuA3Xc5qCWmLV3oScNeNiATZm-wW5eg3Q@mail.gmail.comc>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Pablo Neira Ayuso <pablo@netfilter.org>
-Cc: Florian Westphal <fw@strlen.de>, Michal Kubecek <mkubecek@suse.cz>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, netfilter-devel@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, daniel@iogearbox.net, linux-kernel@vger.kernel.org, davem@davemloft.net, syzkaller@googlegroups.com, dvyukov@google.com, kcc@google.com, glider@google.com, sasha.levin@oracle.com, edumazet@google.com
 
-On 26.11, Pablo Neira Ayuso wrote:
-> On Thu, Nov 26, 2015 at 04:25:28PM +0000, Patrick McHardy wrote:
-> > > This doesn't sound so complicated to me:
-> > > 
-> > >         add rule filter prerouting \
-> > >                 ip protocol { tcp, udp, sctp } track
-> > > 
-> > > You just specify what you need for stateful tracking.
-> > 
-> > Sure, or "filter prerouting track" for everything. Let's stay at that
-> > example because it will be a common case and we don't know anything about
-> > protocols.
-> >
-> > > The case above you indicate is enabling conntrack for all packets, the
-> > > -j CT --track is what should govern this IMO.
-> > 
-> > How does it prevent exactly that case we're talking about - someone is
-> > saying "CT --track" without further qualification and means "track
-> > everything".
-> 
-> That indeed means to me track everything based on what conntrack knows
-> how to track.
+Dmitry Vyukov reported that the user could trigger a kernel warning by
+using a large len value for getsockopt SCTP_GET_LOCAL_ADDRS, as that
+value directly affects the value used as a kmalloc() parameter.
 
-Right. And the problem is that we do this right now but it might not be
-what the user expects since he's explicitly filtering on connection
-identities and expects stateful filtering to be based on those as well.
-This is exactly what was regarded as the rational for the security fix, so
-it doesn't make sense to now state this is all Ok.
+This patch thus switches the allocation flags from all user-controllable
+kmalloc size to GFP_USER to put some more restrictions on it and also
+disables the warn, as they are not necessary.
 
-> > And the SCTP connection tracking module is not available or not
-> > loaded.
-> 
-> If the module is not available, then this is a custom kernel
-> compilation. IMO we should focus on providing good defaults to typical
-> kernel that are included by most distributors.
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Acked-by: Daniel Borkmann <daniel@iogearbox.net>
+---
+ net/sctp/socket.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-Sure, but that's exactly what we're talking about. I think the number of
-distributors enabling SCTP/whatever tracking statically is basically
-non existant.
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 897c01c029cab3d5805cc56b0964c70e06f4143a..676b3bb092e16848fd1c822e1c999af4a2ef198d 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -972,7 +972,7 @@ static int sctp_setsockopt_bindx(struct sock *sk,
+ 		return -EFAULT;
+ 
+ 	/* Alloc space for the address array in kernel memory.  */
+-	kaddrs = kmalloc(addrs_size, GFP_KERNEL);
++	kaddrs = kmalloc(addrs_size, GFP_USER | __GFP_NOWARN);
+ 	if (unlikely(!kaddrs))
+ 		return -ENOMEM;
+ 
+@@ -4928,7 +4928,7 @@ static int sctp_getsockopt_local_addrs(struct sock *sk, int len,
+ 	to = optval + offsetof(struct sctp_getaddrs, addrs);
+ 	space_left = len - offsetof(struct sctp_getaddrs, addrs);
+ 
+-	addrs = kmalloc(space_left, GFP_KERNEL);
++	addrs = kmalloc(space_left, GFP_USER | __GFP_NOWARN);
+ 	if (!addrs)
+ 		return -ENOMEM;
+ 
+-- 
+2.5.0
 
-Every kernel is a custom kernel. We shouldn't expect users to dive into
-.config to figure out how to build their ruleset.
-
-> If the SCTP tracker becomes part of nf_conntrack by default, then we
-> don't have to worry about the "SCTP module not loaded" case.
-
-I agree, but you stated "IMO we should skip enabling things by default"
-and referred to the downside of then having it available in network namespaces.
-Maybe I misunderstood you, but I took that as you don't want to put it
-into nf_conntrack and you don't want it to be autoloaded.
-
-I'm really not sure what you are arguing or proposing. Explicit tracking
-and the CT target suggest you *don't* want it in nf_conntrack, now you state
-the opposite.
-
-Either way fixes the problem, although I do somewhat agree with Florian that
-its better to not enable it if it definitely is not needed, but I guess its
-acceptable.
