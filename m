@@ -1,32 +1,69 @@
-From: David Miller <davem@davemloft.net>
-Date: Sun, 15 Nov 2015 23:28:32 +0000
-Subject: Re: [PATCH net] sctp: translate host order to network order when setting a hmacid
-Message-Id: <20151115.182832.1464025397909135510.davem@davemloft.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Mon, 30 Nov 2015 14:17:06 +0000
+Subject: [PATCH] sctp: convert sack_needed and sack_generation to bits
+Message-Id: <f3803545e5d34adfe83cff5adf01317c56288d59.1448892562.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <8cede44279b2f01a58fa02d4bb46b40fb630563f.1447304827.git.lucien.xin@gmail.com>
-In-Reply-To: <8cede44279b2f01a58fa02d4bb46b40fb630563f.1447304827.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevic@redhat.com
+To: netdev@vger.kernel.org
+Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, lucien.xin@gmail.com
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 12 Nov 2015 13:07:07 +0800
+They don't need to be any bigger than that and with this we start a new
+bitfield for tracking association runtime stuff, like zero window
+situation.
 
-> now sctp auth cannot work well when setting a hmacid manually, which
-> is caused by that we didn't use the network order for hmacid, so fix
-> it by adding the transformation in sctp_auth_ep_set_hmacs.
-> 
-> even we set hmacid with the network order in userspace, it still
-> can't work, because of this condition in sctp_auth_ep_set_hmacs():
-> 
-> 		if (id > SCTP_AUTH_HMAC_ID_MAX)
-> 			return -EOPNOTSUPP;
-> 
-> so this wasn't working before and thus it won't break compatibility.
-> 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
 
-Applied and queued up for -stable, thanks.
+Motivated by https://patchwork.ozlabs.org/patch/509836/
+
+ include/net/sctp/structs.h | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 495c87e367b3f2e8941807f56a77d2e14469bfed..7bbb71081aeb6cfdc9cb049cf7a094dbcd4603bb 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -775,10 +775,10 @@ struct sctp_transport {
+ 		hb_sent:1,
+ 
+ 		/* Is the Path MTU update pending on this tranport */
+-		pmtu_pending:1;
++		pmtu_pending:1,
+ 
+-	/* Has this transport moved the ctsn since we last sacked */
+-	__u32 sack_generation;
++		/* Has this transport moved the ctsn since we last sacked */
++		sack_generation:1;
+ 	u32 dst_cookie;
+ 
+ 	struct flowi fl;
+@@ -1482,19 +1482,19 @@ struct sctp_association {
+ 			prsctp_capable:1,   /* Can peer do PR-SCTP? */
+ 			auth_capable:1;     /* Is peer doing SCTP-AUTH? */
+ 
+-		/* Ack State   : This flag indicates if the next received
++		/* sack_needed : This flag indicates if the next received
+ 		 *             : packet is to be responded to with a
+-		 *             : SACK. This is initializedto 0.  When a packet
+-		 *             : is received it is incremented. If this value
++		 *             : SACK. This is initialized to 0.  When a packet
++		 *             : is received sack_cnt is incremented. If this value
+ 		 *             : reaches 2 or more, a SACK is sent and the
+ 		 *             : value is reset to 0. Note: This is used only
+ 		 *             : when no DATA chunks are received out of
+ 		 *             : order.  When DATA chunks are out of order,
+ 		 *             : SACK's are not delayed (see Section 6).
+ 		 */
+-		__u8    sack_needed;     /* Do we need to sack the peer? */
++		__u8    sack_needed:1,     /* Do we need to sack the peer? */
++			sack_generation:1;
+ 		__u32	sack_cnt;
+-		__u32	sack_generation;
+ 
+ 		__u32   adaptation_ind;	 /* Adaptation Code point. */
+ 
+-- 
+2.5.0
+
