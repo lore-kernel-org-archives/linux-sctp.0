@@ -1,29 +1,29 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 03 Dec 2015 17:06:41 +0000
-Subject: Re: [PATCH net] ipv6: sctp: implement sctp_v6_destroy_sock()
-Message-Id: <20151203.120641.1445164595074464179.davem@davemloft.net>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Tue, 01 Dec 2015 10:46:11 +0000
+Subject: RE: [PATCH] sctp: use GFP_USER for user-controlled kmalloc
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1CBDF85D@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <565DAD8D.9020800@iogearbox.net>
-	<1448980723.25582.24.camel@edumazet-glaptop2.roam.corp.google.com>
-	<1448983207.25582.29.camel@edumazet-glaptop2.roam.corp.google.com>
-In-Reply-To: <1448983207.25582.29.camel@edumazet-glaptop2.roam.corp.google.com>
+References: <CACT4Y+a_V5WQZNEnYkuA3Xc5qCWmLV3oScNeNiATZm-wW5eg3Q@mail.gmail.comc>
+ <db23659cdf84bc80aff45e906cbfb67581e7a125.1448901154.git.marcelo.leitner@gmail.com>
+In-Reply-To: <db23659cdf84bc80aff45e906cbfb67581e7a125.1448901154.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: eric.dumazet@gmail.com
-Cc: daniel@iogearbox.net, dvyukov@google.com, kuznet@ms2.inr.ac.ru, jmorris@namei.org, yoshfuji@linux-ipv6.org, kaber@trash.net, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, syzkaller@googlegroups.com, kcc@google.com, glider@google.com, sasha.levin@oracle.com, edumazet@google.com
+To: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "daniel@iogearbox.net" <daniel@iogearbox.net>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "davem@davemloft.net" <davem@davemloft.net>, "syzkaller@googlegroups.com" <syzkaller@googlegroups.com>, "dvyukov@google.com" <dvyukov@google.com>, "kcc@google.com" <kcc@google.com>, "glider@google.com" <glider@google.com>, "sasha.levin@oracle.com" <sasha.levin@oracle.com>, "edumazet@google.com" <edumazet@google.com>
 
-From: Eric Dumazet <eric.dumazet@gmail.com>
-Date: Tue, 01 Dec 2015 07:20:07 -0800
+From: Marcelo Ricardo Leitner
+> Sent: 30 November 2015 16:33
+> Dmitry Vyukov reported that the user could trigger a kernel warning by
+> using a large len value for getsockopt SCTP_GET_LOCAL_ADDRS, as that
+> value directly affects the value used as a kmalloc() parameter.
+> 
+> This patch thus switches the allocation flags from all user-controllable
+> kmalloc size to GFP_USER to put some more restrictions on it and also
+> disables the warn, as they are not necessary.
 
-> From: Eric Dumazet <edumazet@google.com>
-> 
-> Dmitry Vyukov reported a memory leak using IPV6 SCTP sockets.
-> 
-> We need to call inet6_destroy_sock() to properly release
-> inet6 specific fields.
-> 
-> Reported-by: Dmitry Vyukov <dvyukov@google.com>
-> Signed-off-by: Eric Dumazet <edumazet@google.com>
+ISTM that the code should put some 'sanity limit' on that
+size before allocating the kernel buffer.
 
-Applied and queued up for -stable, thanks.
+	David
+
