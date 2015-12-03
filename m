@@ -1,107 +1,99 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 03 Dec 2015 16:51:33 +0000
+From: Eric Dumazet <edumazet@google.com>
+Date: Thu, 03 Dec 2015 17:02:00 +0000
 Subject: Re: use-after-free in sctp_do_sm
-Message-Id: <20151203165133.GD4164@mrl.redhat.com>
+Message-Id: <CANn89i+d=mTJ-hAhhgPXsZPGAkQdECxRdbkeRLfozRq8i9Ms+g@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CACT4Y+ZnWRZfQC25uW=GXHAJB=GX0L6tJQUy43P6WNR3=hwT8Q@mail.gmail.com>
- <CACT4Y+aAYy4-Ow+gt+1C46CK1+MbspBMM7qz9pVYsXvGXRJ1SQ@mail.gmail.com>
- <CACT4Y+YjAhRSYDFUZYydtWfRzi1yDEKtPrPsJqYN93Km91J=Cw@mail.gmail.com>
- <20151124204553.GB3364@hmsreliant.think-freely.org>
- <5655CFDC.4050206@gmail.com>
- <CACT4Y+aNgjykBXxEM0uv0MPOa=N6zkBuEp+vShR3KHqRE-tPAw@mail.gmail.com>
-In-Reply-To: <CACT4Y+aNgjykBXxEM0uv0MPOa=N6zkBuEp+vShR3KHqRE-tPAw@mail.gmail.com>
+	<20151203130525.GB4164@mrl.redhat.com>
+	<CACT4Y+ZMshfGvb81VhCGuZzbSec2sCBaJUNFb1QQ-ccyH9BPkQ@mail.gmail.com>
+	<CANn89iKEv-q6EFi1eX+Hk_2+jNfZ0ayUqUn_Fh1U7RTs9xjdXg@mail.gmail.com>
+	<CACT4Y+bgeqS05zqkAHkxzAP7fuvFSkeEybwDTizw6Gp8KK28Fw@mail.gmail.com>
+In-Reply-To: <CACT4Y+bgeqS05zqkAHkxzAP7fuvFSkeEybwDTizw6Gp8KK28Fw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Dmitry Vyukov <dvyukov@google.com>
-Cc: syzkaller <syzkaller@googlegroups.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, netdev <netdev@vger.kernel.org>, Kostya Serebryany <kcc@google.com>, Alexander Potapenko <glider@google.com>, Sasha Levin <sasha.levin@oracle.com>, Eric Dumazet <edumazet@google.com>, Maciej =?utf-8?Q?=C5=BBenczykowski?= <maze@google.com>
+Cc: syzkaller <syzkaller@googlegroups.com>, Vladislav Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org, netdev <netdev@vger.kernel.org>, Kostya Serebryany <kcc@google.com>, Alexander Potapenko <glider@google.com>, Sasha Levin <sasha.levin@oracle.com>
 
-On Sat, Nov 28, 2015 at 04:50:56PM +0100, Dmitry Vyukov wrote:
-> This also seems to lead the the following WARNINGS:
-> 
-> ------------[ cut here ]------------
-> WARNING: CPU: 3 PID: 21734 at kernel/jump_label.c:77
-> __static_key_slow_dec+0xfb/0x120()
-> jump label: negative count!
-> Modules linked in:
-> CPU: 3 PID: 21734 Comm: executor Tainted: G    B   W       4.4.0-rc2+ #3
-> Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
->  00000000ffffffff ffff88006083f660 ffffffff82719fc6 ffff88006083f6d0
->  ffff88003bbf8000 ffffffff85a612e0 ffff88006083f6a0 ffffffff81244ec9
->  ffffffff8152c54b ffffed000c107ed6 ffffffff85a612e0 000000000000004d
-> Call Trace:
->  [<     inline     >] __dump_stack lib/dump_stack.c:15
->  [<ffffffff82719fc6>] dump_stack+0x68/0x92 lib/dump_stack.c:50
->  [<ffffffff81244ec9>] warn_slowpath_common+0xd9/0x140 kernel/panic.c:460
->  [<ffffffff81244fd9>] warn_slowpath_fmt+0xa9/0xd0 kernel/panic.c:472
->  [<ffffffff8152c54b>] __static_key_slow_dec+0xfb/0x120 kernel/jump_label.c:76
->  [<ffffffff8152c5c1>] static_key_slow_dec+0x51/0x90 kernel/jump_label.c:100
->  [<ffffffff84962d9b>] net_disable_timestamp+0x3b/0x50 net/core/dev.c:1709
->  [<ffffffff84914d43>] sock_disable_timestamp+0x93/0xb0 net/core/sock.c:444
->  [<ffffffff8491f82c>] sk_destruct+0xec/0x440 net/core/sock.c:1457
->  [<ffffffff8491fbd7>] __sk_free+0x57/0x200 net/core/sock.c:1476
->  [<ffffffff8491fdb0>] sk_free+0x30/0x40 net/core/sock.c:1487
->  [<     inline     >] sock_put include/net/sock.h:1623
->  [<ffffffff854c8a18>] sctp_close+0x628/0x790 net/sctp/socket.c:1546
->  [<ffffffff84d4b3ed>] inet_release+0xed/0x1c0 net/ipv4/af_inet.c:413
->  [<ffffffff84e70240>] inet6_release+0x50/0x70 net/ipv6/af_inet6.c:406
->  [<ffffffff84909bbd>] sock_release+0x8d/0x1d0 net/socket.c:571
->  [<ffffffff84909d16>] sock_close+0x16/0x20 net/socket.c:1022
->  [<ffffffff81663a00>] __fput+0x220/0x770 fs/file_table.c:208
->  [<ffffffff81663fd5>] ____fput+0x15/0x20 fs/file_table.c:244
->  [<ffffffff8129f673>] task_work_run+0x163/0x1f0 kernel/task_work.c:115
->  [<     inline     >] exit_task_work include/linux/task_work.h:21
->  [<ffffffff8124d9e9>] do_exit+0x809/0x2ae0 kernel/exit.c:750
->  [<ffffffff8124fe38>] do_group_exit+0x108/0x320 kernel/exit.c:880
->  [<ffffffff81271df7>] get_signal+0x597/0x1630 kernel/signal.c:2307
->  [<ffffffff8114c77f>] do_signal+0x7f/0x18e0 arch/x86/kernel/signal.c:709
->  [<ffffffff81003901>] exit_to_usermode_loop+0xf1/0x1a0
-> arch/x86/entry/common.c:247
->  [<     inline     >] prepare_exit_to_usermode arch/x86/entry/common.c:282
->  [<ffffffff8100616f>] syscall_return_slowpath+0x19f/0x210
-> arch/x86/entry/common.c:344
->  [<ffffffff85955362>] int_ret_from_sys_call+0x25/0x9f
-> arch/x86/entry/entry_64.S:281
-> ---[ end trace 3e42717665ff2020 ]---
-> 
-> 
-> These WARNINGS always go with the original use-after-free reports. And
-> I was not able to reproduce this WARNING with commented out
-> sctp_association_destroy.
-> 
-> For the reference here is syzkaller program that triggers the WARNING.
-> 
-> r0 = socket(0xa, 0x1, 0x84)
-> mmap(&(0x7f0000000000)=nil, (0x10000), 0x3, 0x32, 0xffffffffffffffff, 0x0)
-> bind(r0, &(0x7f0000000000)="0a0033e049d02e70000000000000000000000000000000014c37ffc4",
-> 0x1c)
-> connect(r0, &(0x7f0000001000)="020033d97f000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-> 0x80)
-> setsockopt$sock_int(r0, 0x1, 0x1d, &(0x7f0000001000+0x336)=0x1, 0x4)
-> listen(r0, 0xbb3)
-> r1 = accept(r0, &(0x7f0000003000+0xfd6)=nil, &(0x7f0000004000-0x2)=nil)
+On Thu, Dec 3, 2015 at 7:55 AM, Dmitry Vyukov <dvyukov@google.com> wrote:
+> On Thu, Dec 3, 2015 at 3:48 PM, Eric Dumazet <edumazet@google.com> wrote:
+>>>
+>>> No, I don't. But pr_debug always computes its arguments. See no_printk
+>>> in printk.h. So this use-after-free happens for all users.
+>>
+>> Hmm.
+>>
+>> pr_debug() should be a nop unless either DEBUG or CONFIG_DYNAMIC_DEBUG are set
+>>
+>> On our production kernels, pr_debug() is a nop.
+>>
+>> Can you double check ? Thanks !
+>
+>
+> Why should it be nop? no_printk thing in printk.h pretty much
+> explicitly makes it not a nop...
+>
+> Double-checked: debug_post_sfx leads to some generated code:
+>
+>         debug_post_sfx();
+> ffffffff8229f256:       48 8b 85 58 fe ff ff    mov    -0x1a8(%rbp),%rax
+> ffffffff8229f25d:       48 85 c0                test   %rax,%rax
+> ffffffff8229f260:       74 24                   je
+> ffffffff8229f286 <sctp_do_sm+0x176>
+> ffffffff8229f262:       8b b0 a8 00 00 00       mov    0xa8(%rax),%esi
+> ffffffff8229f268:       48 8b 85 60 fe ff ff    mov    -0x1a0(%rbp),%rax
+> ffffffff8229f26f:       44 89 85 74 fe ff ff    mov    %r8d,-0x18c(%rbp)
+> ffffffff8229f276:       48 8b 78 20             mov    0x20(%rax),%rdi
+> ffffffff8229f27a:       e8 71 28 01 00          callq
+> ffffffff822b1af0 <sctp_id2assoc>
+> ffffffff8229f27f:       44 8b 85 74 fe ff ff    mov    -0x18c(%rbp),%r8d
+>
+>         return error;
+> }
+> ffffffff8229f286:       48 81 c4 a0 01 00 00    add    $0x1a0,%rsp
+> ffffffff8229f28d:       44 89 c0                mov    %r8d,%eax
+> ffffffff8229f290:       5b                      pop    %rbx
+> ffffffff8229f291:       41 5c                   pop    %r12
+> ffffffff8229f293:       41 5d                   pop    %r13
+> ffffffff8229f295:       41 5e                   pop    %r14
+> ffffffff8229f297:       41 5f                   pop    %r15
+> ffffffff8229f299:       5d                      pop    %rbp
+> ffffffff8229f29a:       c3                      retq
 
-These two are unrelated, actually.
+This is a serious concern, because we let in the past lot of patches
+converting traditional
 
-Do you know if this accept() returned something? Seems so.
-Seems to be originated on
-sctp_v6_create_accept_sk() -> sctp_copy_sock():
+#ifdef DEBUG
+# define some_hand_coded_ugly_debug()  printk( ...._
+#else
+# define some_hand_coded_ugly_debug()
+#endif
 
-void sctp_copy_sock(struct sock *newsk, struct sock *sk,
-                    struct sctp_association *asoc)
-{
-        struct inet_sock *inet = inet_sk(sk);
-        struct inet_sock *newinet;
+On the premise pr_debug() would be a nop.
 
-        newsk->sk_type = sk->sk_type;
-        newsk->sk_bound_dev_if = sk->sk_bound_dev_if;
-        newsk->sk_flags = sk->sk_flags;               <---
+It seems it is not always the case. This is a very serious problem.
 
-As it enabled SO_TIMESTAMP on listening socket, this flag will be copied and
-will trigger the second net_disable_timestamp() by the time the second
-socket is destroyed, because it never had its enable counterpart called.
+We probably have hundred of potential bugs, because few people
+actually make sure all debugging stuff is correct,
+like comments can be wrong because they are not updated properly as time flies.
 
-This also happens via sctp peeloff operation.
+It is definitely a nop for many cases.
 
-  Marcelo
++void eric_test_pr_debug(struct sock *sk)
++{
++       if (atomic_read(&sk->sk_omem_alloc))
++               pr_debug("%s: optmem leakage for sock %p\n",
++                        __func__, sk);
++}
 
+->
+
+0000000000004740 <eric_test_pr_debug>:
+    4740: e8 00 00 00 00       callq  4745 <eric_test_pr_debug+0x5>
+4741: R_X86_64_PC32 __fentry__-0x4
+    4745: 55                   push   %rbp
+    4746: 8b 87 24 01 00 00     mov    0x124(%rdi),%eax     //
+atomic_read()  but nothing follows
+    474c: 48 89 e5             mov    %rsp,%rbp
+    474f: 5d                   pop    %rbp
+    4750: c3                   retq
