@@ -1,39 +1,23 @@
-From: Eric Dumazet <edumazet@google.com>
-Date: Mon, 07 Dec 2015 15:22:49 +0000
-Subject: Re: use-after-free in ip6_xmit
-Message-Id: <CANn89i+BRPvDgSFUZGS5iq63C_OrNFK_86pNT0MUEw4OqkqYJQ@mail.gmail.com>
+From: David Miller <davem@davemloft.net>
+Date: Thu, 03 Dec 2015 04:40:01 +0000
+Subject: Re: [PATCH] sctp: convert sack_needed and sack_generation to bits
+Message-Id: <20151202.234001.1035831453332214345.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CACT4Y+aJdFhzX-QKQR3ZNZ=MHPoNQdoS6arFaVn0c4GgUzfb0g@mail.gmail.com>
-	<1449498980.25029.57.camel@edumazet-glaptop2.roam.corp.google.com>
-	<1449499144.25029.59.camel@edumazet-glaptop2.roam.corp.google.com>
-	<CACT4Y+bGbGT4jA1XKG3_2e8eQgC=oD79FkXEiyELg2UcMZMqMA@mail.gmail.com>
-In-Reply-To: <CACT4Y+bGbGT4jA1XKG3_2e8eQgC=oD79FkXEiyELg2UcMZMqMA@mail.gmail.com>
+References: <f3803545e5d34adfe83cff5adf01317c56288d59.1448892562.git.marcelo.leitner@gmail.com>
+In-Reply-To: <f3803545e5d34adfe83cff5adf01317c56288d59.1448892562.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Dmitry Vyukov <dvyukov@google.com>
-Cc: Eric Dumazet <eric.dumazet@gmail.com>, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, syzkaller <syzkaller@googlegroups.com>, Kostya Serebryany <kcc@google.com>, Alexander Potapenko <glider@google.com>, Sasha Levin <sasha.levin@oracle.com>
+To: marcelo.leitner@gmail.com
+Cc: netdev@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, lucien.xin@gmail.com
 
-On Mon, Dec 7, 2015 at 6:44 AM, Dmitry Vyukov <dvyukov@google.com> wrote:
-> Yes, seems to be fixed on master of
-> git://git.kernel.org/pub/scm/linux/kernel/git/davem/net.git. Just
-> can't pull in all fixes from all trees. Sorry.
-> When will it be merged into Linus tree?
->
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Mon, 30 Nov 2015 12:17:06 -0200
 
-As I said, they are already in Linus tree, part of linux-4.4-rc4,
-released yesterday.
+> They don't need to be any bigger than that and with this we start a new
+> bitfield for tracking association runtime stuff, like zero window
+> situation.
+> 
+> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-I would like to remind you lkml and netdev have thousands of subscribers,
-so please do not flood them with duplicates, especially considering
-you were CC on all
-the patches I cooked to address your original report.
-
-So you knew patches were on their way.
-
-commit 071f5d105a0ae93aeb02197c4ee3557e8cc57a21
-Merge: 2873d32ff493 e3c9b1ef78eb
-Author: Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Thu Dec 3 16:02:46 2015 -0800
-
-    Merge git://git.kernel.org/pub/scm/linux/kernel/git/davem/net
+Applied.
