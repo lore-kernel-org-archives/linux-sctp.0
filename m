@@ -1,25 +1,29 @@
-From: Daniel Borkmann <daniel@iogearbox.net>
-Date: Tue, 01 Dec 2015 15:55:24 +0000
+From: David Miller <davem@davemloft.net>
+Date: Thu, 03 Dec 2015 17:06:41 +0000
 Subject: Re: [PATCH net] ipv6: sctp: implement sctp_v6_destroy_sock()
-Message-Id: <565DC2EC.7020206@iogearbox.net>
+Message-Id: <20151203.120641.1445164595074464179.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CACT4Y+bv56b+opCd=5SHmN47MAHEFyZA18kSsu-Fa+XODj20PA@mail.gmail.com>	 <1448977016.25582.18.camel@edumazet-glaptop2.roam.corp.google.com>	 <565DA9BE.3060006@iogearbox.net>	 <1448979404.25582.23.camel@edumazet-glaptop2.roam.corp.google.com>	 <565DAD8D.9020800@iogearbox.net>	 <1448980723.25582.24.camel@edumazet-glaptop2.roam.corp.google.com> <1448983207.25582.29.camel@edumazet-glaptop2.roam.corp.google.com>
+References: <565DAD8D.9020800@iogearbox.net>
+	<1448980723.25582.24.camel@edumazet-glaptop2.roam.corp.google.com>
+	<1448983207.25582.29.camel@edumazet-glaptop2.roam.corp.google.com>
 In-Reply-To: <1448983207.25582.29.camel@edumazet-glaptop2.roam.corp.google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: Dmitry Vyukov <dvyukov@google.com>, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, syzkaller <syzkaller@googlegroups.com>, Kostya Serebryany <kcc@google.com>, Alexander Potapenko <glider@google.com>, Sasha Levin <sasha.levin@oracle.com>, Eric Dumazet <edumazet@google.com>
+To: eric.dumazet@gmail.com
+Cc: daniel@iogearbox.net, dvyukov@google.com, kuznet@ms2.inr.ac.ru, jmorris@namei.org, yoshfuji@linux-ipv6.org, kaber@trash.net, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, syzkaller@googlegroups.com, kcc@google.com, glider@google.com, sasha.levin@oracle.com, edumazet@google.com
 
-On 12/01/2015 04:20 PM, Eric Dumazet wrote:
+From: Eric Dumazet <eric.dumazet@gmail.com>
+Date: Tue, 01 Dec 2015 07:20:07 -0800
+
 > From: Eric Dumazet <edumazet@google.com>
->
+> 
 > Dmitry Vyukov reported a memory leak using IPV6 SCTP sockets.
->
+> 
 > We need to call inet6_destroy_sock() to properly release
 > inet6 specific fields.
->
+> 
 > Reported-by: Dmitry Vyukov <dvyukov@google.com>
 > Signed-off-by: Eric Dumazet <edumazet@google.com>
 
-Acked-by: Daniel Borkmann <daniel@iogearbox.net>
+Applied and queued up for -stable, thanks.
