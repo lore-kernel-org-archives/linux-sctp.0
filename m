@@ -1,60 +1,39 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Tue, 15 Dec 2015 03:49:16 +0000
-Subject: Re: Question on SCTP parameters tunning
-Message-Id: <566F8DBC.7080502@gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 04 Dec 2015 17:14:05 +0000
+Subject: [PATCH net 3/3] sctp: also copy sk_tsflags when copying the socket
+Message-Id: <ff20b0d68e8652db4406e4b19c93404f9c32637a.1449249050.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAFXGftJ3kdbHc54QwH6m-KEemsDXLkKSRk5E+D+F2jKtBVr4wg@mail.gmail.com>
-In-Reply-To: <CAFXGftJ3kdbHc54QwH6m-KEemsDXLkKSRk5E+D+F2jKtBVr4wg@mail.gmail.com>
+References: <20151203184316.GF4164@mrl.redhat.com> <cover.1449249050.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1449249050.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Eric Dumazet <eric.dumazet@gmail.com>, syzkaller <syzkaller@googlegroups.com>, linux-sctp@vger.kernel.org, Kostya Serebryany <kcc@google.com>, Alexander Potapenko <glider@google.com>, Sasha Levin <sasha.levin@oracle.com>, =?UTF-8?q?Maciej=20=C5=BBenczykowski?= <maze@google.com>, Dmitry Vyukov <dvyukov@google.com>
 
-On 12/14/2015 08:19 PM, Sun Paul wrote:
-> Hi All
-> 
-> the current memory settings on sctp is as below.
-> 
-> net.sctp.sctp_mem = 1531104 2041472 3062208
-> net.sctp.sctp_rmem = 4096 349500 4194304
-> net.sctp.sctp_wmem = 4096 16384 4194304
-> 
-> However, we observed that consumption of one particular SCTP
-> connection is as below.
-> 
-> ffff8803d0609000 ffff8804358a6500 2   1   4  21855 968785  3882668
-> 13184   28674 1132095678 3868  18710  171.109.115.116 171.109.115.122
-> <-> *164.114.213.15 164.114.213.136   10000    10  2048    6    0    0
->      175
-> 
-> The Transmit Q reaches around 3.6MB, we would like to check what is
-> the value we should enlarge. is there any limitation on setting the
-> read/write memory for LKSCTP?
+As we are keeping timestamps on when copying the socket, we also have to
+copy sk_tsflags.
 
-Why do you want to enlarge memory?  That just allows you to buffer
-more data in the kernel, but doesn't really improve anything.
-The fact that you have 3.6 MB of data buffered in the transmit q
-means that you either your receive or your path is very slow and
-buffering more data in the kernel would actually be a bad thing,
+This is needed since b9f40e21ef42 ("net-timestamp: move timestamp flags
+out of sk_flags").
 
-As for programatically limiting of buffer sizes, they are limited by net.core.wmem_max
-and net.core.rmem_max. Bump those value and you can set larger buffer values
-in your application.
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/socket.c | 1 +
+ 1 file changed, 1 insertion(+)
 
--vlad
-
-> 
-> Thanks
-> 
-> - RBK
-> 
-> On Tue, Dec 15, 2015 at 9:14 AM, Sun Paul <paulrbk@gmail.com> wrote:
->> Hi All
->>
->> the current memory settings on sctp is as below.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 4c9282bdd06790a0cca7f7c33986e7eb6c541398..1a32ecdb8bae98de2e76591f0f5ffee1441ff04d 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -7167,6 +7167,7 @@ void sctp_copy_sock(struct sock *newsk, struct sock *sk,
+ 	newsk->sk_type = sk->sk_type;
+ 	newsk->sk_bound_dev_if = sk->sk_bound_dev_if;
+ 	newsk->sk_flags = sk->sk_flags;
++	newsk->sk_tsflags = sk->sk_tsflags;
+ 	newsk->sk_no_check_tx = sk->sk_no_check_tx;
+ 	newsk->sk_no_check_rx = sk->sk_no_check_rx;
+ 	newsk->sk_reuse = sk->sk_reuse;
+-- 
+2.5.0
 
