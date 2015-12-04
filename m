@@ -1,106 +1,45 @@
-From: Jason Baron <jbaron@akamai.com>
-Date: Fri, 04 Dec 2015 16:47:52 +0000
+From: Joe Perches <joe@perches.com>
+Date: Fri, 04 Dec 2015 17:03:09 +0000
 Subject: Re: use-after-free in sctp_do_sm
-Message-Id: <5661C3B8.2030902@akamai.com>
+Message-Id: <1449248589.8611.10.camel@perches.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CACT4Y+ZnWRZfQC25uW=GXHAJB=GX0L6tJQUy43P6WNR3=hwT8Q@mail.gmail.com>
- <20151203130525.GB4164@mrl.redhat.com>
- <CACT4Y+ZMshfGvb81VhCGuZzbSec2sCBaJUNFb1QQ-ccyH9BPkQ@mail.gmail.com>
- <CANn89iKEv-q6EFi1eX+Hk_2+jNfZ0ayUqUn_Fh1U7RTs9xjdXg@mail.gmail.com>
- <CACT4Y+bgeqS05zqkAHkxzAP7fuvFSkeEybwDTizw6Gp8KK28Fw@mail.gmail.com>
- <CANn89i+d=mTJ-hAhhgPXsZPGAkQdECxRdbkeRLfozRq8i9Ms+g@mail.gmail.com>
- <CACT4Y+YJe-OJj9q1Kr5-_ApDt1UBKLjTRxhP62EHtEAwZt5vXw@mail.gmail.com>
- <f7twpsvgyar.fsf@aconole.bos.csb> <566098BD.6010803@akamai.com>
- <1449172984.12092.0.camel@perches.com> <5660A1A7.3080301@akamai.com>
- <1449174246.12092.8.camel@perches.com> <5660A951.4000808@akamai.com>
- <1449175884.17296.2.camel@perches.com>
- <CACT4Y+btkVJBtXkp0QAJhdoK_5TeVJ97GU_wOrMsPNG3E98vaQ@mail.gmail.com>
-In-Reply-To: <CACT4Y+btkVJBtXkp0QAJhdoK_5TeVJ97GU_wOrMsPNG3E98vaQ@mail.gmail.com>
+	 <20151203130525.GB4164@mrl.redhat.com>
+	 <CACT4Y+ZMshfGvb81VhCGuZzbSec2sCBaJUNFb1QQ-ccyH9BPkQ@mail.gmail.com>
+	 <CANn89iKEv-q6EFi1eX+Hk_2+jNfZ0ayUqUn_Fh1U7RTs9xjdXg@mail.gmail.com>
+	 <CACT4Y+bgeqS05zqkAHkxzAP7fuvFSkeEybwDTizw6Gp8KK28Fw@mail.gmail.com>
+	 <CANn89i+d=mTJ-hAhhgPXsZPGAkQdECxRdbkeRLfozRq8i9Ms+g@mail.gmail.com>
+	 <CACT4Y+YJe-OJj9q1Kr5-_ApDt1UBKLjTRxhP62EHtEAwZt5vXw@mail.gmail.com>
+	 <f7twpsvgyar.fsf@aconole.bos.csb> <566098BD.6010803@akamai.com>
+	 <1449172984.12092.0.camel@perches.com> <5660A1A7.3080301@akamai.com>
+	 <1449174246.12092.8.camel@perches.com> <5660A951.4000808@akamai.com>
+	 <1449175884.17296.2.camel@perches.com>
+	 <CACT4Y+btkVJBtXkp0QAJhdoK_5TeVJ97GU_wOrMsPNG3E98vaQ@mail.gmail.com>
+	 <5661C3B8.2030902@akamai.com>
+In-Reply-To: <5661C3B8.2030902@akamai.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Dmitry Vyukov <dvyukov@google.com>, Joe Perches <joe@perches.com>
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: Jason Baron <jbaron@akamai.com>, Dmitry Vyukov <dvyukov@google.com>
 Cc: Aaron Conole <aconole@redhat.com>, Andrew Morton <akpm@linux-foundation.org>, LKML <linux-kernel@vger.kernel.org>, Eric Dumazet <edumazet@google.com>, syzkaller <syzkaller@googlegroups.com>, Vladislav Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org, netdev <netdev@vger.kernel.org>, Kostya Serebryany <kcc@google.com>, Alexander Potapenko <glider@google.com>, Sasha Levin <sasha.levin@oracle.com>
 
-On 12/04/2015 11:12 AM, Dmitry Vyukov wrote:
-> On Thu, Dec 3, 2015 at 9:51 PM, Joe Perches <joe@perches.com> wrote:
->> (adding lkml as this is likely better discussed there)
->>
->> On Thu, 2015-12-03 at 15:42 -0500, Jason Baron wrote:
->>> On 12/03/2015 03:24 PM, Joe Perches wrote:
->>>> On Thu, 2015-12-03 at 15:10 -0500, Jason Baron wrote:
->>>>> On 12/03/2015 03:03 PM, Joe Perches wrote:
->>>>>> On Thu, 2015-12-03 at 14:32 -0500, Jason Baron wrote:
->>>>>>> On 12/03/2015 01:52 PM, Aaron Conole wrote:
->>>>>>>> I think that as a minimum, the following patch should be evaluted,
->>>>>>>> but am unsure to whom I should submit it (after I test):
->>>>>> []
->>>>>>> Agreed - the intention here is certainly to have no side effects. It
->>>>>>> looks like 'no_printk()' is used in quite a few other places that would
->>>>>>> benefit from this change. So we probably want a generic
->>>>>>> 'really_no_printk()' macro.
->>>>>>
->>>>>> https://lkml.org/lkml/2012/6/17/231
->>>>>
->>>>> I don't see this in the tree.
->>>>
->>>> It never got applied.
->>>>
->>>>> Also maybe we should just convert
->>>>> no_printk() to do what your 'eliminated_printk()'.
->>>>
->>>> Some of them at least.
->>>>
->>>>> So we can convert all users with this change?
->>>>
->>>> I don't think so, I think there are some
->>>> function evaluation/side effects that are
->>>> required.  I believe some do hardware I/O.
->>>>
->>>> It'd be good to at least isolate them.
->>>>
->>>> I'm not sure how to find them via some
->>>> automated tool/mechanism though.
->>>>
->>>> I asked Julia Lawall about it once in this
->>>> thread:  https://lkml.org/lkml/2014/12/3/696
->>>>
->>>
->>> Seems rather fragile to have side effects that we rely
->>> upon hidden in a printk().
->>
->> Yup.
->>
->>> Just convert them and see what breaks :)
->>
->> I appreciate your optimism.  It's very 1995.
->> Try it and see what happens.
-> 
-> 
-> But Aaron says that DYNAMIC_DEBUG is enabled in most major
-> distributions, and all these side-effects don't happen with
-> DYNAMIC_DEBUG.
+On Fri, 2015-12-04 at 11:47 -0500, Jason Baron wrote:
+> When DYNAMIC_DEBUG is enabled we have this wrapper from
+> include/linux/dynamic_debug.h:
+>=20
+> if (unlikely(descriptor.flags & _DPRINTK_FLAGS_PRINT))
+> 	<do debug stuff>
+>=20
+> So the compiler is not emitting the side-effects in this
+> case.
 
-When DYNAMIC_DEBUG is enabled we have this wrapper from
-include/linux/dynamic_debug.h:
+Huh? =A0Do I misunderstand what you are writing?
 
-if (unlikely(descriptor.flags & _DPRINTK_FLAGS_PRINT))
-	<do debug stuff>
+You are testing a variable that is not generally set
+so the call is not being performed in the general case,
+but the compiler can not elide the code.
 
-So the compiler is not emitting the side-effects in this
-case.
+If the variable was enabled via the control file, the
+__dynamic_pr_debug would be performed with the
+use-after-free.
 
->This suggests that we can make these side-effects not
-> happen without DYNAMIC_DEBUG as well.
-> Or I am missing something here?
-> 
-
-When DYNAMIC_DEBUG is disabled we are instead replacing
-pr_debug() with the 'no_printk()' function as you've pointed
-out. We are changing this to emit no code at all:
-
-http://marc.info/?l=linux-kernel&m4918276518878&w=2
-
-Thanks,
-
--Jason
