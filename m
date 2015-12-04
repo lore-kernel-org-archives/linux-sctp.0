@@ -1,92 +1,63 @@
-From: Dmitry Vyukov <dvyukov@google.com>
-Date: Fri, 04 Dec 2015 20:25:35 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 04 Dec 2015 21:34:28 +0000
 Subject: Re: use-after-free in sctp_do_sm
-Message-Id: <CACT4Y+b66FHbFyERm804RDWh9oPC==K43TgDJfs52cQG1MDjcg@mail.gmail.com>
+Message-Id: <20151204213428.GH4164@mrl.redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CACT4Y+ZMshfGvb81VhCGuZzbSec2sCBaJUNFb1QQ-ccyH9BPkQ@mail.gmail.com>
  <fcceeb2a58ce2054cedb091f0e251393b36418ba.1449250981.git.marcelo.leitner@gmail.com>
-In-Reply-To: <fcceeb2a58ce2054cedb091f0e251393b36418ba.1449250981.git.marcelo.leitner@gmail.com>
+ <CACT4Y+b66FHbFyERm804RDWh9oPC==K43TgDJfs52cQG1MDjcg@mail.gmail.com>
+In-Reply-To: <CACT4Y+b66FHbFyERm804RDWh9oPC==K43TgDJfs52cQG1MDjcg@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: Dmitry Vyukov <dvyukov@google.com>
 Cc: netdev <netdev@vger.kernel.org>, Vlad Yasevich <vyasevich@gmail.com>, Eric Dumazet <eric.dumazet@gmail.com>, syzkaller <syzkaller@googlegroups.com>, linux-sctp@vger.kernel.org, Kostya Serebryany <kcc@google.com>, Alexander Potapenko <glider@google.com>, Sasha Levin <sasha.levin@oracle.com>
 
-On Fri, Dec 4, 2015 at 6:48 PM, Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
-> Hi Dmitry,
->
-> Can you please test this patch?
-> I'll re-post with proper subject if it works.
+On Fri, Dec 04, 2015 at 09:25:35PM +0100, Dmitry Vyukov wrote:
+> On Fri, Dec 4, 2015 at 6:48 PM, Marcelo Ricardo Leitner
+> <marcelo.leitner@gmail.com> wrote:
+> > Hi Dmitry,
+> >
+> > Can you please test this patch?
+> > I'll re-post with proper subject if it works.
+> 
+> Still happening with the same stacks.
 
-Still happening with the same stacks.
+Then there may be another one, I'm afraid.
 
+I'm using the testapp you shared in the first email, with that debug line
+enabled and added a new one:
++       pr_debug("%p %d\n", asoc, asoc ? asoc->state : 0);
+        debug_post_sfx();
+(should have used %x, but ok)
 
-> ---8<---
->
-> Dmitry Vyukov reported a use-after-free in the code expanded by the
-> macro debug_post_sfx, which is caused by the use of the asoc pointer
-> after it was freed within sctp_side_effect() scope.
->
-> This patch fixes it by allowing sctp_side_effect to clear that asoc
-> pointer when the TCB is freed.
->
-> The macro is already prepared to handle such NULL pointer.
->
-> Reported-by: Dmitry Vyukov <dvyukov@google.com>
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> ---
->  net/sctp/sm_sideeffect.c | 9 +++++----
->  1 file changed, 5 insertions(+), 4 deletions(-)
->
-> diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-> index 6098d4c42fa91287d3cde36ac05d860f76d4fe32..05594dcd93e0d649cace5215d225bef2713f9310 100644
-> --- a/net/sctp/sm_sideeffect.c
-> +++ b/net/sctp/sm_sideeffect.c
-> @@ -63,7 +63,7 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
->  static int sctp_side_effects(sctp_event_t event_type, sctp_subtype_t subtype,
->                              sctp_state_t state,
->                              struct sctp_endpoint *ep,
-> -                            struct sctp_association *asoc,
-> +                            struct sctp_association **asoc,
->                              void *event_arg,
->                              sctp_disposition_t status,
->                              sctp_cmd_seq_t *commands,
-> @@ -1123,7 +1123,7 @@ int sctp_do_sm(struct net *net, sctp_event_t event_type, sctp_subtype_t subtype,
->         debug_post_sfn();
->
->         error = sctp_side_effects(event_type, subtype, state,
-> -                                 ep, asoc, event_arg, status,
-> +                                 ep, &asoc, event_arg, status,
->                                   &commands, gfp);
->         debug_post_sfx();
->
-> @@ -1136,7 +1136,7 @@ int sctp_do_sm(struct net *net, sctp_event_t event_type, sctp_subtype_t subtype,
->  static int sctp_side_effects(sctp_event_t event_type, sctp_subtype_t subtype,
->                              sctp_state_t state,
->                              struct sctp_endpoint *ep,
-> -                            struct sctp_association *asoc,
-> +                            struct sctp_association **asoc,
->                              void *event_arg,
->                              sctp_disposition_t status,
->                              sctp_cmd_seq_t *commands,
-> @@ -1151,7 +1151,7 @@ static int sctp_side_effects(sctp_event_t event_type, sctp_subtype_t subtype,
->          * disposition SCTP_DISPOSITION_CONSUME.
->          */
->         if (0 != (error = sctp_cmd_interpreter(event_type, subtype, state,
-> -                                              ep, asoc,
-> +                                              ep, *asoc,
->                                                event_arg, status,
->                                                commands, gfp)))
->                 goto bail;
-> @@ -1175,6 +1175,7 @@ static int sctp_side_effects(sctp_event_t event_type, sctp_subtype_t subtype,
->
->         case SCTP_DISPOSITION_DELETE_TCB:
->                 /* This should now be a command. */
-> +               *asoc = NULL;
->                 break;
->
->         case SCTP_DISPOSITION_CONSUME:
-> --
-> 2.5.0
->
+Also enabled slub_debug=PUZ, and I get:
+
+without the patch:
+[   87.873640] sctp: ffff8800b71533d8 1
+[   87.873647] sctp: sctp_do_sm[post-sfx]: error:0,
+asoc:ffff8800b71533d8[STATE_CLOSED]
+[   87.873739] sctp: ffff8800b71533d8 1
+[   87.873742] sctp: sctp_do_sm[post-sfx]: error:0,
+asoc:ffff8800b71533d8[STATE_CLOSED]
+[   87.875149] sctp: ffff8800b71533d8 1802201963
+[   87.875238] sctp: sctp_do_sm[post-sfx]: error:0,
+asoc:ffff8800b71533d8[STATE_CLOSED]
+
+1802201963 = 0x6b6b6b6b, poison
+
+with the patch:
+[   81.071265] sctp: ffff880137571148 1
+[   81.071273] sctp: sctp_do_sm[post-sfx]: error:0,
+asoc:ffff880137571148[STATE_CLOSED]
+[   81.071372] sctp: ffff880137571148 1
+[   81.071375] sctp: sctp_do_sm[post-sfx]: error:0,
+asoc:ffff880137571148[STATE_CLOSED]
+[   81.072423] sctp:           (null) 0
+[   81.072427] sctp: sctp_do_sm[post-sfx]: error:0, asoc:
+(null)[STATE_CLOSED]
+
+This one, at least, is gone with this patch.
+
+  Marcelo
+
