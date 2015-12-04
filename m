@@ -1,60 +1,55 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Mon, 14 Dec 2015 14:25:54 +0000
-Subject: Re: use-after-free in sctp_do_sm
-Message-Id: <566ED172.3000906@gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 04 Dec 2015 17:14:03 +0000
+Subject: [PATCH net 1/3] sctp: use the same clock as if sock source timestamps were on
+Message-Id: <8ff122e39159e5ccf1277c692ad7bd6431695825.1449249050.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <5665EE26.3000706@gmail.com> <5665F17B.5030908@gmail.com>
- <CACT4Y+ad0YGve+KB8wiv6f1+eHt9Ci19FGM0SMWQvJFSez+Rcw@mail.gmail.com>
- <20151208174039.GB22987@mrl.redhat.com>
- <CACT4Y+b1OEE9NqN3J5574iN7t8NEi9jPc2Hxoj6AMHZKjCJ-mg@mail.gmail.com>
- <CACT4Y+YYbC53awV4eiDAwjJO=WHYGv3Og3XDh-gTFB1q_w0YXQ@mail.gmail.com>
- <20151209150356.GA3886@mrl.redhat.com> <20151209164108.GB3886@mrl.redhat.com>
- <CACT4Y+YPEqETP7NTOwJ6=4yYoAmM30qv6oRgw7apSS3+UwusAg@mail.gmail.com>
- <566AD4D9.90608@gmail.com> <20151211140333.GE3886@mrl.redhat.com>
- <566B1800.60100@gmail.com>
- <063D6719AE5E284EB5DD2968C1650D6D1CBEC96A@AcuExch.aculab.com>
-In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6D1CBEC96A@AcuExch.aculab.com>
+References: <20151203184316.GF4164@mrl.redhat.com> <cover.1449249050.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1449249050.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@ACULAB.COM>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Dmitry Vyukov <dvyukov@google.com>
-Cc: netdev <netdev@vger.kernel.org>, Eric Dumazet <eric.dumazet@gmail.com>, syzkaller <syzkaller@googlegroups.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Kostya Serebryany <kcc@google.com>, Alexander Potapenko <glider@google.com>, Sasha Levin <sasha.levin@oracle.com>
+To: netdev@vger.kernel.org
+Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Eric Dumazet <eric.dumazet@gmail.com>, syzkaller <syzkaller@googlegroups.com>, linux-sctp@vger.kernel.org, Kostya Serebryany <kcc@google.com>, Alexander Potapenko <glider@google.com>, Sasha Levin <sasha.levin@oracle.com>, =?UTF-8?q?Maciej=20=C5=BBenczykowski?= <maze@google.com>, Dmitry Vyukov <dvyukov@google.com>
 
-On 12/14/2015 04:50 AM, David Laight wrote:
-> From: Vlad Yasevich
->> Sent: 11 December 2015 18:38
-> ...
->>> Found a similar place in abort primitive handling like in this last
->>> patch update, it's probably the issue you're still triggering.
->>>
->>> Also found another place that may lead to this use after free, in case
->>> we receive a packet with a chunk that has no data.
->>>
->>> Oh my.. :)
->>
->> Yes.  This is what I was worried about...  Anything that triggers
->> a DELTE_TCB command has to return a code that we can trap.
->>
->> The other way is to do what Dmitri suggested, but even there, we
->> need to be very careful.
-> 
-> I'm always wary of anything that queues actions up for later processing.
-> It is far too easy (as found here) to end up processing actions
-> in invalid states, or to process actions in 'unusual' orders when
-> specific events happen close together.
-> 
-> I wonder how much fallout there'd be from getting the sctp code
-> to immediately action things, instead of queuing the actions for later.
-> It would certainly remove a lot of the unusual combinations of events.
-> 
+SCTP echoes a cookie o INIT ACK chunks that contains a timestamp, for
+detecting stale cookies. This cookie is echoed back to the server by the
+client and then that timestamp is checked.
 
-We've bandied this idea around for a while, but no one has had the time
-to tackle this.  This would be rather time-consuming task, but in the end
-might be a good idea.
+Thing is, if the listening socket is using packet timestamping, the
+cookie is encoded with ktime_get() value and checked against
+ktime_get_real(), as done by __net_timestamp().
 
--vlad
+The fix is to sctp also use ktime_get_real(), so we can compare bananas
+with bananas later no matter if packet timestamping was enabled or not.
 
-> 	David
-> 
-> 
+Fixes: 52db882f3fc2 ("net: sctp: migrate cookie life from timeval to ktime")
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/sm_make_chunk.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 763e06a55155b2a9e0a9d918ecc1fe2dd6d9e0c0..5d6a03fad3789a12290f5f14c5a7efa69c98f41a 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -1652,7 +1652,7 @@ static sctp_cookie_param_t *sctp_pack_cookie(const struct sctp_endpoint *ep,
+ 
+ 	/* Set an expiration time for the cookie.  */
+ 	cookie->c.expiration = ktime_add(asoc->cookie_life,
+-					 ktime_get());
++					 ktime_get_real());
+ 
+ 	/* Copy the peer's init packet.  */
+ 	memcpy(&cookie->c.peer_init[0], init_chunk->chunk_hdr,
+@@ -1780,7 +1780,7 @@ no_hmac:
+ 	if (sock_flag(ep->base.sk, SOCK_TIMESTAMP))
+ 		kt = skb_get_ktime(skb);
+ 	else
+-		kt = ktime_get();
++		kt = ktime_get_real();
+ 
+ 	if (!asoc && ktime_before(bear_cookie->expiration, kt)) {
+ 		/*
+-- 
+2.5.0
 
