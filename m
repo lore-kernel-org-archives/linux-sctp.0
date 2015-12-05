@@ -1,32 +1,52 @@
-From: David Miller <davem@davemloft.net>
-Date: Sat, 12 Dec 2015 01:19:16 +0000
-Subject: Re: [PATCH net] ipv6: sctp: clone options to avoid use after free
-Message-Id: <20151211.201916.1656429874143124778.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 05 Dec 2015 07:19:27 +0000
+Subject: [PATCH net] sctp: only drop the reference on the datamsg after sending a msg
+Message-Id: <b2b92ed429c3f617f5a22df8b232cf58ab7a0fb5.1449299967.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20151209145917.GA3884@mrl.redhat.com>
-	<CANn89iLhetNbtO6h99zZOrCiMYON50vzVsk7j_AtosXejvvm4Q@mail.gmail.com>
-	<1449674706.9768.5.camel@edumazet-glaptop2.roam.corp.google.com>
-In-Reply-To: <1449674706.9768.5.camel@edumazet-glaptop2.roam.corp.google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: eric.dumazet@gmail.com
-Cc: edumazet@google.com, marcelo.leitner@gmail.com, dvyukov@google.com, kuznet@ms2.inr.ac.ru, jmorris@namei.org, yoshfuji@linux-ipv6.org, kaber@trash.net, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, syzkaller@googlegroups.com, kcc@google.com, glider@google.com, sasha.levin@oracle.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: marcelo.leitner@gmail.com, vyasevic@redhat.com, davem@davemloft.net
 
-From: Eric Dumazet <eric.dumazet@gmail.com>
-Date: Wed, 09 Dec 2015 07:25:06 -0800
+If the chunks are enqueued successfully but sctp_cmd_interpreter()
+return err to sctp_sendmsg() (mainly because of no mem), the chunks will
+get re-queued, but we are dropping the reference and freeing them.
 
-> From: Eric Dumazet <edumazet@google.com>
-> 
-> SCTP is lacking proper np->opt cloning at accept() time.
-> 
-> TCP and DCCP use ipv6_dup_options() helper, do the same
-> in SCTP.
-> 
-> We might later factorize this code in a common helper to avoid
-> future mistakes.
-> 
-> Reported-by: Dmitry Vyukov <dvyukov@google.com>
-> Signed-off-by: Eric Dumazet <edumazet@google.com>
+The fix is to just drop the reference on the datamsg just as it had
+succeeded, as:
+ - if the chunks weren't queued, this is enough to get them freed.
+ - if they were queued, they will get freed when they finally get out or
+ discarded.
 
-Applied and queued up for -stable, thanks.
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/socket.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 03c8256..d8460be 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1966,15 +1966,13 @@ static int sctp_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
+ 	 * breaks.
+ 	 */
+ 	err = sctp_primitive_SEND(net, asoc, datamsg);
++	sctp_datamsg_put(datamsg);
+ 	/* Did the lower layer accept the chunk? */
+-	if (err) {
+-		sctp_datamsg_free(datamsg);
++	if (err)
+ 		goto out_free;
+-	}
+ 
+ 	pr_debug("%s: we sent primitively\n", __func__);
+ 
+-	sctp_datamsg_put(datamsg);
+ 	err = msg_len;
+ 
+ 	if (unlikely(wait_connect)) {
+-- 
+2.1.0
+
