@@ -1,33 +1,39 @@
-From: Dmitry Vyukov <dvyukov@google.com>
-Date: Mon, 07 Dec 2015 14:44:49 +0000
+From: Eric Dumazet <edumazet@google.com>
+Date: Mon, 07 Dec 2015 15:22:49 +0000
 Subject: Re: use-after-free in ip6_xmit
-Message-Id: <CACT4Y+bGbGT4jA1XKG3_2e8eQgC=oD79FkXEiyELg2UcMZMqMA@mail.gmail.com>
+Message-Id: <CANn89i+BRPvDgSFUZGS5iq63C_OrNFK_86pNT0MUEw4OqkqYJQ@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CACT4Y+aJdFhzX-QKQR3ZNZ=MHPoNQdoS6arFaVn0c4GgUzfb0g@mail.gmail.com>
- <1449498980.25029.57.camel@edumazet-glaptop2.roam.corp.google.com> <1449499144.25029.59.camel@edumazet-glaptop2.roam.corp.google.com>
-In-Reply-To: <1449499144.25029.59.camel@edumazet-glaptop2.roam.corp.google.com>
+	<1449498980.25029.57.camel@edumazet-glaptop2.roam.corp.google.com>
+	<1449499144.25029.59.camel@edumazet-glaptop2.roam.corp.google.com>
+	<CACT4Y+bGbGT4jA1XKG3_2e8eQgC=oD79FkXEiyELg2UcMZMqMA@mail.gmail.com>
+In-Reply-To: <CACT4Y+bGbGT4jA1XKG3_2e8eQgC=oD79FkXEiyELg2UcMZMqMA@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, syzkaller <syzkaller@googlegroups.com>, Kostya Serebryany <kcc@google.com>, Alexander Potapenko <glider@google.com>, Eric Dumazet <edumazet@google.com>, Sasha Levin <sasha.levin@oracle.com>
+To: Dmitry Vyukov <dvyukov@google.com>
+Cc: Eric Dumazet <eric.dumazet@gmail.com>, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, syzkaller <syzkaller@googlegroups.com>, Kostya Serebryany <kcc@google.com>, Alexander Potapenko <glider@google.com>, Sasha Levin <sasha.levin@oracle.com>
 
-Yes, seems to be fixed on master of
-git://git.kernel.org/pub/scm/linux/kernel/git/davem/net.git. Just
-can't pull in all fixes from all trees. Sorry.
-When will it be merged into Linus tree?
+On Mon, Dec 7, 2015 at 6:44 AM, Dmitry Vyukov <dvyukov@google.com> wrote:
+> Yes, seems to be fixed on master of
+> git://git.kernel.org/pub/scm/linux/kernel/git/davem/net.git. Just
+> can't pull in all fixes from all trees. Sorry.
+> When will it be merged into Linus tree?
+>
 
+As I said, they are already in Linus tree, part of linux-4.4-rc4,
+released yesterday.
 
+I would like to remind you lkml and netdev have thousands of subscribers,
+so please do not flood them with duplicates, especially considering
+you were CC on all
+the patches I cooked to address your original report.
 
-On Mon, Dec 7, 2015 at 3:39 PM, Eric Dumazet <eric.dumazet@gmail.com> wrote:
-> On Mon, 2015-12-07 at 06:36 -0800, Eric Dumazet wrote:
->
->
->> Thanks
->>
->
-> Also note that Dave Jones reported a SCTP problem fixed by :
->
-> https://patchwork.ozlabs.org/patch/553068/
->
->
+So you knew patches were on their way.
+
+commit 071f5d105a0ae93aeb02197c4ee3557e8cc57a21
+Merge: 2873d32ff493 e3c9b1ef78eb
+Author: Linus Torvalds <torvalds@linux-foundation.org>
+Date:   Thu Dec 3 16:02:46 2015 -0800
+
+    Merge git://git.kernel.org/pub/scm/linux/kernel/git/davem/net
