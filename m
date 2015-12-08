@@ -1,48 +1,39 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 23 Dec 2015 13:18:42 +0000
-Subject: Re: [PATCH net] Revert "net: sctp: Fix a_rwnd/rwnd management to reflect real state of the receiver'
-Message-Id: <20151223131841.GA5440@mrl.redhat.com>
+From: <zyjzyj2000@gmail.com>
+Date: Tue, 08 Dec 2015 09:47:22 +0000
+Subject: [PATCH 1/1] net:sctp: disable to inform ULP about transition from PF to active state
+Message-Id: <1449568042-9176-1-git-send-email-zyjzyj2000@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <567A499B.6020901@bahnhof.se>
-In-Reply-To: <567A499B.6020901@bahnhof.se>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Cc: alexandre.dietsch@windriver.com, stefan.costandache@windriver.com
 
-Hi,
+From: yzhu1 <zyjzyj2000@gmail.com>
 
-On Wed, Dec 23, 2015 at 08:13:31AM +0100, Roger Nyberg wrote:
-> Hi,
-> 
-> Is this fault corrected?
-> “Fix a_rwnd/rwnd management to reflect real state of the receiver's buffer”
-> http://www.spinics.net/lists/linux-sctp/msg03323.html
+This feature is introduced in the commit 5aa93bc "sctp: Implement
+quick failover draft from tsvwg". This feature should be disabled
+if the quick failover feature is disabled.
 
-I don't think so.
+Signed-off-by: yzhu1 <zyjzyj2000@gmail.com>
+---
+ net/sctp/associola.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-> I can’t from the mail list find out if it is corrected in the “Revert "net:
-> sctp: Fix a_rwnd/rwnd management to reflect real state of the receiver's
-> buffer"” correction, or if it remains unfixed.
-> If unfixed, is there any plan or work ongoing for a correction?
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 559afd0..7438625 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -795,7 +795,8 @@ void sctp_assoc_control_transport(struct sctp_association *asoc,
+ 		 * active state and set cwnd to 1 MTU, see SCTP
+ 		 * Quick failover draft section 5.1, point 5
+ 		 */
+-		if (transport->state = SCTP_PF) {
++		if ((asoc->pf_retrans < asoc->max_retrans) && 
++			(transport->state = SCTP_PF)) {
+ 			ulp_notify = false;
+ 			transport->cwnd = asoc->pathmtu;
+ 		}
+-- 
+1.7.9.5
 
-Not that I'm aware of.
-
-  Marcelo
-
-> I have a customer case where my SCTP connection get stuck for ever with
-> a_rwnd returning 0 size.
-> 
-> Best regards
-> Roger Nyberg
-> 
-> 
-> ---
-> Detta e-postmeddelande har sökts igenom efter virus med antivirusprogram från Avast.
-> https://www.avast.com/antivirus
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
