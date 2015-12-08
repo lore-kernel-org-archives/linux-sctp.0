@@ -1,39 +1,66 @@
-From: <zyjzyj2000@gmail.com>
-Date: Tue, 08 Dec 2015 09:47:22 +0000
-Subject: [PATCH 1/1] net:sctp: disable to inform ULP about transition from PF to active state
-Message-Id: <1449568042-9176-1-git-send-email-zyjzyj2000@gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 08 Dec 2015 12:11:31 +0000
+Subject: Re: [PATCH 1/1] net:sctp: disable to inform ULP about transition from PF to active state
+Message-Id: <20151208121131.GA26906@mrl.redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1449568042-9176-1-git-send-email-zyjzyj2000@gmail.com>
+In-Reply-To: <1449568042-9176-1-git-send-email-zyjzyj2000@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
-Cc: alexandre.dietsch@windriver.com, stefan.costandache@windriver.com
+To: zyjzyj2000@gmail.com
+Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, alexandre.dietsch@windriver.com, stefan.costandache@windriver.com
 
-From: yzhu1 <zyjzyj2000@gmail.com>
+Hi,
 
-This feature is introduced in the commit 5aa93bc "sctp: Implement
-quick failover draft from tsvwg". This feature should be disabled
-if the quick failover feature is disabled.
+On Tue, Dec 08, 2015 at 05:47:22PM +0800, zyjzyj2000@gmail.com wrote:
+> From: yzhu1 <zyjzyj2000@gmail.com>
+> 
+> This feature is introduced in the commit 5aa93bc "sctp: Implement
+> quick failover draft from tsvwg". This feature should be disabled
+> if the quick failover feature is disabled.
+> 
+> Signed-off-by: yzhu1 <zyjzyj2000@gmail.com>
+> ---
+>  net/sctp/associola.c |    3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+> index 559afd0..7438625 100644
+> --- a/net/sctp/associola.c
+> +++ b/net/sctp/associola.c
+> @@ -795,7 +795,8 @@ void sctp_assoc_control_transport(struct sctp_association *asoc,
+>  		 * active state and set cwnd to 1 MTU, see SCTP
+>  		 * Quick failover draft section 5.1, point 5
+>  		 */
+> -		if (transport->state = SCTP_PF) {
+> +		if ((asoc->pf_retrans < asoc->max_retrans) && 
+> +			(transport->state = SCTP_PF)) {
+>  			ulp_notify = false;
+>  			transport->cwnd = asoc->pathmtu;
+>  		}
 
-Signed-off-by: yzhu1 <zyjzyj2000@gmail.com>
----
- net/sctp/associola.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+Didn't you confuse asoc->max_retrans with Path.Max.Retrans?
+That draft refers to asoc->pf_retrans having to be bigger than
+Path.Max.Retrans in order to disable PF, and asoc->max_retrans is
+another thing, it's originated from net->sctp.max_retrans_association.
 
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index 559afd0..7438625 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -795,7 +795,8 @@ void sctp_assoc_control_transport(struct sctp_association *asoc,
- 		 * active state and set cwnd to 1 MTU, see SCTP
- 		 * Quick failover draft section 5.1, point 5
- 		 */
--		if (transport->state = SCTP_PF) {
-+		if ((asoc->pf_retrans < asoc->max_retrans) && 
-+			(transport->state = SCTP_PF)) {
- 			ulp_notify = false;
- 			transport->cwnd = asoc->pathmtu;
- 		}
--- 
-1.7.9.5
+The check is performed later in the code:
+
++       if ((transport->state != SCTP_PF) &&
++          (asoc->pf_retrans < transport->pathmaxrxt) &&
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++          (transport->error_count > asoc->pf_retrans)) {
+
+This check should avoid that state transition as it will avoid the path
+from entereing SCTP_PF state at all.
+
+transport->pathmaxrst is originated from net->sctp.max_retrans_path.
+
+Btw, you had indentantion issues with your patch. Extra () that aren't
+needed and the second line should start at the column right after the
+initial ( in the first line. Please run scripts/checkpatch.pl on it next
+time. 
+
+  Marcelo
 
