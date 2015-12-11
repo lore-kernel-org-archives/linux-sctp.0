@@ -1,216 +1,120 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 30 Dec 2015 15:50:47 +0000
-Subject: [PATCH net-next 2/5] sctp: apply rhashtable api to send/recv path
-Message-Id: <8d89800920719b527dbd6e36dbbcf3c0804fbd7c.1451490447.git.lucien.xin@gmail.com>
+From: <zyjzyj2000@gmail.com>
+Date: Fri, 11 Dec 2015 09:05:32 +0000
+Subject: [PATCH 1/1] net: sctp: dynamically enable or disable pf state
+Message-Id: <1449824732-22362-1-git-send-email-zyjzyj2000@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1451490447.git.lucien.xin@gmail.com>
- <2c413161eb3a2c74453bd8dc11815af7e237515e.1451490447.git.lucien.xin@gmail.com>
-In-Reply-To: <2c413161eb3a2c74453bd8dc11815af7e237515e.1451490447.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: mleitner@redhat.com, vyasevic@redhat.com, daniel@iogearbox.net, davem@davemloft.net
+To: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, alexandre.dietsch@windriver.com, stefan.costandache@windriver.com
 
-apply lookup apis to two functions, for __sctp_endpoint_lookup_assoc
-and __sctp_lookup_association, it's invoked in the protection of sock
-lock, it will be safe, but sctp_lookup_association need to call
-rcu_read_lock() and to detect the t->dead to protect it.
+From: Zhu Yanjun <zyjzyj2000@gmail.com>
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+As we all know, the vale of pf_retrans >= max_retrans_path can
+disable pf state. The variables of pf_retrans and max_retrans_path
+can be changed by the user space application.
+
+Sometimes the user expects to disable pf state while the 2
+variables are changed to enable pf state. So it is necessary to
+introduce a new variable to disable pf state.
+
+Signed-off-by: Zhu Yanjun <zyjzyj2000@gmail.com>
 ---
- net/sctp/associola.c   |  5 +++++
- net/sctp/endpointola.c | 35 ++++++++---------------------------
- net/sctp/input.c       | 39 ++++++++++-----------------------------
- net/sctp/protocol.c    |  6 ++++++
- 4 files changed, 29 insertions(+), 56 deletions(-)
+ Documentation/networking/ip-sysctl.txt |   17 +++++++++++++++++
+ include/net/netns/sctp.h               |    7 +++++++
+ net/sctp/sm_sideeffect.c               |    5 ++++-
+ net/sctp/sysctl.c                      |    9 +++++++++
+ 4 files changed, 37 insertions(+), 1 deletion(-)
 
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index 559afd0..2bf8ec9 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -383,6 +383,7 @@ void sctp_association_free(struct sctp_association *asoc)
- 	list_for_each_safe(pos, temp, &asoc->peer.transport_addr_list) {
- 		transport = list_entry(pos, struct sctp_transport, transports);
- 		list_del_rcu(pos);
-+		sctp_unhash_transport(transport);
- 		sctp_transport_free(transport);
- 	}
+diff --git a/Documentation/networking/ip-sysctl.txt b/Documentation/networking/ip-sysctl.txt
+index f647900..7195c24 100644
+--- a/Documentation/networking/ip-sysctl.txt
++++ b/Documentation/networking/ip-sysctl.txt
+@@ -1723,6 +1723,23 @@ addip_enable - BOOLEAN
  
-@@ -500,6 +501,8 @@ void sctp_assoc_rm_peer(struct sctp_association *asoc,
+ 	Default: 0
  
- 	/* Remove this peer from the list. */
- 	list_del_rcu(&peer->transports);
-+	/* Remove this peer from the transport hashtable */
-+	sctp_unhash_transport(peer);
- 
- 	/* Get the first transport of asoc. */
- 	pos = asoc->peer.transport_addr_list.next;
-@@ -699,6 +702,8 @@ struct sctp_transport *sctp_assoc_add_peer(struct sctp_association *asoc,
- 	/* Attach the remote transport to our asoc.  */
- 	list_add_tail_rcu(&peer->transports, &asoc->peer.transport_addr_list);
- 	asoc->peer.transport_count++;
-+	/* Add this peer into the transport hashtable */
-+	sctp_hash_transport(peer);
- 
- 	/* If we do not yet have a primary path, set one.  */
- 	if (!asoc->peer.primary_path) {
-diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
-index 9da76ba..8838bf4 100644
---- a/net/sctp/endpointola.c
-+++ b/net/sctp/endpointola.c
-@@ -314,8 +314,8 @@ struct sctp_endpoint *sctp_endpoint_is_match(struct sctp_endpoint *ep,
- }
- 
- /* Find the association that goes with this chunk.
-- * We do a linear search of the associations for this endpoint.
-- * We return the matching transport address too.
-+ * We lookup the transport from hashtable at first, then get association
-+ * through t->assoc.
-  */
- static struct sctp_association *__sctp_endpoint_lookup_assoc(
- 	const struct sctp_endpoint *ep,
-@@ -323,12 +323,7 @@ static struct sctp_association *__sctp_endpoint_lookup_assoc(
- 	struct sctp_transport **transport)
- {
- 	struct sctp_association *asoc = NULL;
--	struct sctp_association *tmp;
--	struct sctp_transport *t = NULL;
--	struct sctp_hashbucket *head;
--	struct sctp_ep_common *epb;
--	int hash;
--	int rport;
-+	struct sctp_transport *t;
- 
- 	*transport = NULL;
- 
-@@ -337,26 +332,12 @@ static struct sctp_association *__sctp_endpoint_lookup_assoc(
- 	 */
- 	if (!ep->base.bind_addr.port)
- 		goto out;
-+	t = sctp_epaddr_lookup_transport(ep, paddr);
-+	if (!t || t->asoc->temp)
-+		goto out;
- 
--	rport = ntohs(paddr->v4.sin_port);
--
--	hash = sctp_assoc_hashfn(sock_net(ep->base.sk), ep->base.bind_addr.port,
--				 rport);
--	head = &sctp_assoc_hashtable[hash];
--	read_lock(&head->lock);
--	sctp_for_each_hentry(epb, &head->chain) {
--		tmp = sctp_assoc(epb);
--		if (tmp->ep != ep || rport != tmp->peer.port)
--			continue;
--
--		t = sctp_assoc_lookup_paddr(tmp, paddr);
--		if (t) {
--			asoc = tmp;
--			*transport = t;
--			break;
--		}
--	}
--	read_unlock(&head->lock);
-+	*transport = t;
-+	asoc = t->asoc;
- out:
- 	return asoc;
- }
-diff --git a/net/sctp/input.c b/net/sctp/input.c
-index bac8278..6f075d8 100644
---- a/net/sctp/input.c
-+++ b/net/sctp/input.c
-@@ -981,38 +981,19 @@ static struct sctp_association *__sctp_lookup_association(
- 					const union sctp_addr *peer,
- 					struct sctp_transport **pt)
- {
--	struct sctp_hashbucket *head;
--	struct sctp_ep_common *epb;
--	struct sctp_association *asoc;
--	struct sctp_transport *transport;
--	int hash;
-+	struct sctp_transport *t;
- 
--	/* Optimize here for direct hit, only listening connections can
--	 * have wildcards anyways.
--	 */
--	hash = sctp_assoc_hashfn(net, ntohs(local->v4.sin_port),
--				 ntohs(peer->v4.sin_port));
--	head = &sctp_assoc_hashtable[hash];
--	read_lock(&head->lock);
--	sctp_for_each_hentry(epb, &head->chain) {
--		asoc = sctp_assoc(epb);
--		transport = sctp_assoc_is_match(asoc, net, local, peer);
--		if (transport)
--			goto hit;
--	}
-+	t = sctp_addrs_lookup_transport(net, local, peer);
-+	if (!t || t->dead || t->asoc->temp)
-+		return NULL;
- 
--	read_unlock(&head->lock);
-+	sctp_association_hold(t->asoc);
-+	*pt = t;
- 
--	return NULL;
--
--hit:
--	*pt = transport;
--	sctp_association_hold(asoc);
--	read_unlock(&head->lock);
--	return asoc;
-+	return t->asoc;
- }
- 
--/* Look up an association. BH-safe. */
-+/* Look up an association. protected by RCU read lock */
- static
- struct sctp_association *sctp_lookup_association(struct net *net,
- 						 const union sctp_addr *laddr,
-@@ -1021,9 +1002,9 @@ struct sctp_association *sctp_lookup_association(struct net *net,
- {
- 	struct sctp_association *asoc;
- 
--	local_bh_disable();
-+	rcu_read_lock();
- 	asoc = __sctp_lookup_association(net, laddr, paddr, transportp);
--	local_bh_enable();
-+	rcu_read_unlock();
- 
- 	return asoc;
- }
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index 010aced..631cfb3 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -1467,6 +1467,9 @@ static __init int sctp_init(void)
- 		INIT_HLIST_HEAD(&sctp_port_hashtable[i].chain);
- 	}
- 
-+	if (sctp_transport_hashtable_init())
-+		goto err_thash_alloc;
++pf_enable - INTEGER
++	Enable or disable pf state. A value of pf_retrans > path_max_retrans
++	also disables pf state. That is, one of both pf_enable and
++	pf_retrans > path_max_retrans can disable pf state. Since pf_retrans
++	and path_max_retrans can be changed by userspace application, sometimes
++	user expects to disable pf state by the value of
++	pf_retrans > path_max_retrans, but ocassionally the value of pf_retrans
++	or path_max_retrans is changed by the user application, this pf state is
++	enabled. As such, it is necessary to add this to dynamically enable
++	and disable pf state.
 +
- 	pr_info("Hash tables configured (established %d bind %d)\n",
- 		sctp_assoc_hashsize, sctp_port_hashsize);
++	1: Enable pf.
++
++	0: Disable pf.
++
++	Default: 1
++
+ addip_noauth_enable - BOOLEAN
+ 	Dynamic Address Reconfiguration (ADD-IP) requires the use of
+ 	authentication to protect the operations of adding or removing new
+diff --git a/include/net/netns/sctp.h b/include/net/netns/sctp.h
+index 8ba379f..c501d67 100644
+--- a/include/net/netns/sctp.h
++++ b/include/net/netns/sctp.h
+@@ -89,6 +89,13 @@ struct netns_sctp {
+ 	int pf_retrans;
  
-@@ -1521,6 +1524,8 @@ err_register_defaults:
- 		   get_order(sctp_port_hashsize *
- 			     sizeof(struct sctp_bind_hashbucket)));
- err_bhash_alloc:
-+	sctp_transport_hashtable_destroy();
-+err_thash_alloc:
- 	kfree(sctp_ep_hashtable);
- err_ehash_alloc:
- 	free_pages((unsigned long)sctp_assoc_hashtable,
-@@ -1567,6 +1572,7 @@ static __exit void sctp_exit(void)
- 	free_pages((unsigned long)sctp_port_hashtable,
- 		   get_order(sctp_port_hashsize *
- 			     sizeof(struct sctp_bind_hashbucket)));
-+	sctp_transport_hashtable_destroy();
+ 	/*
++	 * Disable Potentially-Failed feature, the feature is enabled by default
++	 * pf_enable	-  0  : disable pf
++	 *		- >0  : enable pf
++	 */
++	int pf_enable;
++
++	/*
+ 	 * Policy for preforming sctp/socket accounting
+ 	 * 0   - do socket level accounting, all assocs share sk_sndbuf
+ 	 * 1   - do sctp accounting, each asoc may use sk_sndbuf bytes
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 6098d4c..50309ed 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -477,6 +477,8 @@ static void sctp_do_8_2_transport_strike(sctp_cmd_seq_t *commands,
+ 					 struct sctp_transport *transport,
+ 					 int is_hb)
+ {
++	struct net *net = sock_net(asoc->base.sk);
++
+ 	/* The check for association's overall error counter exceeding the
+ 	 * threshold is done in the state function.
+ 	 */
+@@ -503,7 +505,8 @@ static void sctp_do_8_2_transport_strike(sctp_cmd_seq_t *commands,
+ 	 * is SCTP_ACTIVE, then mark this transport as Partially Failed,
+ 	 * see SCTP Quick Failover Draft, section 5.1
+ 	 */
+-	if ((transport->state = SCTP_ACTIVE) &&
++	if (net->sctp.pf_enable &&
++	   (transport->state = SCTP_ACTIVE) &&
+ 	   (asoc->pf_retrans < transport->pathmaxrxt) &&
+ 	   (transport->error_count > asoc->pf_retrans)) {
  
- 	percpu_counter_destroy(&sctp_sockets_allocated);
+diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
+index 26d50c5..0a4f402 100644
+--- a/net/sctp/sysctl.c
++++ b/net/sctp/sysctl.c
+@@ -308,6 +308,15 @@ static struct ctl_table sctp_net_table[] = {
+ 		.extra1		= &max_autoclose_min,
+ 		.extra2		= &max_autoclose_max,
+ 	},
++	{
++		.procname	= "pf_enable",
++		.data		= &init_net.sctp.pf_enable,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec,
++		.extra1		= &one,
++		.extra2		= &int_max
++	},
  
+ 	{ /* sentinel */ }
+ };
 -- 
-2.1.0
+1.7.9.5
 
