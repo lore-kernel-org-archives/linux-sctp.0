@@ -1,16 +1,17 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Mon, 14 Dec 2015 14:23:21 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Mon, 14 Dec 2015 15:38:38 +0000
 Subject: Re: [V2 PATCH 1/1] net: sctp: dynamically enable or disable pf state
-Message-Id: <566ED0D9.8040200@gmail.com>
+Message-Id: <20151214153838.GA5352@mrl.redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1450074139-3923-1-git-send-email-zyjzyj2000@gmail.com>
 In-Reply-To: <1450074139-3923-1-git-send-email-zyjzyj2000@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: zyjzyj2000@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, alexandre.dietsch@windriver.com, stefan.costandache@windriver.com
+To: zyjzyj2000@gmail.com
+Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, alexandre.dietsch@windriver.com, stefan.costandache@windriver.com
 
-On 12/14/2015 01:22 AM, zyjzyj2000@gmail.com wrote:
+On Mon, Dec 14, 2015 at 02:22:19PM +0800, zyjzyj2000@gmail.com wrote:
 > From: Zhu Yanjun <zyjzyj2000@gmail.com>
 > 
 > As we all know, the value of pf_retrans >= max_retrans_path can
@@ -25,11 +26,6 @@ On 12/14/2015 01:22 AM, zyjzyj2000@gmail.com wrote:
 > are removed. The initialization of pf_enable is added.
 > 
 > Signed-off-by: Zhu Yanjun <zyjzyj2000@gmail.com>
-
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
-
--vlad
-
 > ---
 >  include/net/netns/sctp.h |    7 +++++++
 >  net/sctp/protocol.c      |    3 +++
@@ -55,60 +51,12 @@ Acked-by: Vlad Yasevich <vyasevich@gmail.com>
 >  	 * Policy for preforming sctp/socket accounting
 >  	 * 0   - do socket level accounting, all assocs share sk_sndbuf
 >  	 * 1   - do sctp accounting, each asoc may use sk_sndbuf bytes
-> diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-> index 4d9912f..571a631 100644
-> --- a/net/sctp/protocol.c
-> +++ b/net/sctp/protocol.c
-> @@ -1223,6 +1223,9 @@ static int __net_init sctp_defaults_init(struct net *net)
->  	/* Max.Burst		    - 4 */
->  	net->sctp.max_burst			= SCTP_DEFAULT_MAX_BURST;
->  
-> +	/* Enable pf state by default */
-> +	net->sctp.pf_enable = 1;
-> +
->  	/* Association.Max.Retrans  - 10 attempts
->  	 * Path.Max.Retrans         - 5  attempts (per destination address)
->  	 * Max.Init.Retransmits     - 8  attempts
-> diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-> index 6098d4c..05cd164 100644
-> --- a/net/sctp/sm_sideeffect.c
-> +++ b/net/sctp/sm_sideeffect.c
-> @@ -477,6 +477,8 @@ static void sctp_do_8_2_transport_strike(sctp_cmd_seq_t *commands,
->  					 struct sctp_transport *transport,
->  					 int is_hb)
->  {
-> +	struct net *net = sock_net(asoc->base.sk);
-> +
->  	/* The check for association's overall error counter exceeding the
->  	 * threshold is done in the state function.
->  	 */
-> @@ -503,7 +505,8 @@ static void sctp_do_8_2_transport_strike(sctp_cmd_seq_t *commands,
->  	 * is SCTP_ACTIVE, then mark this transport as Partially Failed,
->  	 * see SCTP Quick Failover Draft, section 5.1
->  	 */
-> -	if ((transport->state = SCTP_ACTIVE) &&
-> +	if (net->sctp.pf_enable &&
-> +	   (transport->state = SCTP_ACTIVE) &&
->  	   (asoc->pf_retrans < transport->pathmaxrxt) &&
->  	   (transport->error_count > asoc->pf_retrans)) {
->  
-> diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
-> index 26d50c5..ccbfc93 100644
-> --- a/net/sctp/sysctl.c
-> +++ b/net/sctp/sysctl.c
-> @@ -308,6 +308,13 @@ static struct ctl_table sctp_net_table[] = {
->  		.extra1		= &max_autoclose_min,
->  		.extra2		= &max_autoclose_max,
->  	},
-> +	{
-> +		.procname	= "pf_enable",
-> +		.data		= &init_net.sctp.pf_enable,
-> +		.maxlen		= sizeof(int),
-> +		.mode		= 0644,
-> +		.proc_handler	= proc_dointvec,
-> +	},
->  
->  	{ /* sentinel */ }
->  };
-> 
+
+Please add this documentation to Documentation/networking/ip-sysctl.txt
+too, mentioning the RFC/draft it's about. 
+https://datatracker.ietf.org/doc/draft-ietf-tsvwg-sctp-failover/
+
+And update the text on pf_retrans mentioning this new variable as well.
+
+  Marcelo
 
