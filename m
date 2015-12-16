@@ -1,11 +1,11 @@
 From: <zyjzyj2000@gmail.com>
-Date: Wed, 16 Dec 2015 05:39:29 +0000
+Date: Wed, 16 Dec 2015 05:55:04 +0000
 Subject: [PATCH 1/1] net: sctp: dynamically enable or disable pf state
-Message-Id: <1450244369-29801-2-git-send-email-zyjzyj2000@gmail.com>
+Message-Id: <1450245304-29848-2-git-send-email-zyjzyj2000@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <566ED0D9.8040200@gmail.com>
- <1450244369-29801-1-git-send-email-zyjzyj2000@gmail.com>
-In-Reply-To: <1450244369-29801-1-git-send-email-zyjzyj2000@gmail.com>
+ <1450245304-29848-1-git-send-email-zyjzyj2000@gmail.com>
+In-Reply-To: <1450245304-29848-1-git-send-email-zyjzyj2000@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -71,7 +71,7 @@ index 2ea4c45..f43ead3 100644
 -	disables this feature
 +	disables this feature. Since both pf_retrans and path_max_retrans can
 +	be changed by userspace application, a variable pf_enable is used to
-+	disable pf_enable.
++	disable pf state.
  
  	Default: 0
  
