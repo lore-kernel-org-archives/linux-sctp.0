@@ -1,66 +1,76 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 08 Dec 2015 12:11:31 +0000
-Subject: Re: [PATCH 1/1] net:sctp: disable to inform ULP about transition from PF to active state
-Message-Id: <20151208121131.GA26906@mrl.redhat.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 29 Dec 2015 09:49:25 +0000
+Subject: [PATCHv2 net] sctp: sctp should release assoc when sctp_make_abort_user return NULL in sctp_close
+Message-Id: <038f05a2f35f3be88976ee1b59578bd5e5112112.1451382565.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1449568042-9176-1-git-send-email-zyjzyj2000@gmail.com>
-In-Reply-To: <1449568042-9176-1-git-send-email-zyjzyj2000@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: zyjzyj2000@gmail.com
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, alexandre.dietsch@windriver.com, stefan.costandache@windriver.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: marcelo.leitner@gmail.com, vyasevic@redhat.com, daniel@iogearbox.net, davem@davemloft.net
 
-Hi,
+In sctp_close, sctp_make_abort_user may return NULL because of memory
+allocation failure. If this happens, it will bypass any state change
+and never free the assoc. The assoc has no chance to be freed and it
+will be kept in memory with the state it had even after the socket is
+closed by sctp_close().
 
-On Tue, Dec 08, 2015 at 05:47:22PM +0800, zyjzyj2000@gmail.com wrote:
-> From: yzhu1 <zyjzyj2000@gmail.com>
-> 
-> This feature is introduced in the commit 5aa93bc "sctp: Implement
-> quick failover draft from tsvwg". This feature should be disabled
-> if the quick failover feature is disabled.
-> 
-> Signed-off-by: yzhu1 <zyjzyj2000@gmail.com>
-> ---
->  net/sctp/associola.c |    3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-> index 559afd0..7438625 100644
-> --- a/net/sctp/associola.c
-> +++ b/net/sctp/associola.c
-> @@ -795,7 +795,8 @@ void sctp_assoc_control_transport(struct sctp_association *asoc,
->  		 * active state and set cwnd to 1 MTU, see SCTP
->  		 * Quick failover draft section 5.1, point 5
->  		 */
-> -		if (transport->state = SCTP_PF) {
-> +		if ((asoc->pf_retrans < asoc->max_retrans) && 
-> +			(transport->state = SCTP_PF)) {
->  			ulp_notify = false;
->  			transport->cwnd = asoc->pathmtu;
->  		}
+So if sctp_make_abort_user fails to allocate memory, we should abort
+the asoc via sctp_primitive_ABORT as well. Just like the annotation in
+sctp_sf_cookie_wait_prm_abort and sctp_sf_do_9_1_prm_abort said,
+"Even if we can't send the ABORT due to low memory delete the TCB.
+This is a departure from our typical NOMEM handling".
 
-Didn't you confuse asoc->max_retrans with Path.Max.Retrans?
-That draft refers to asoc->pf_retrans having to be bigger than
-Path.Max.Retrans in order to disable PF, and asoc->max_retrans is
-another thing, it's originated from net->sctp.max_retrans_association.
+But then the chunk is NULL (low memory) and the SCTP_CMD_REPLY cmd would
+dereference the chunk pointer, and system crash. So we should add
+SCTP_CMD_REPLY cmd only when the chunk is not NULL, just like other
+places where it adds SCTP_CMD_REPLY cmd.
 
-The check is performed later in the code:
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/sm_statefuns.c | 6 ++++--
+ net/sctp/socket.c       | 3 +--
+ 2 files changed, 5 insertions(+), 4 deletions(-)
 
-+       if ((transport->state != SCTP_PF) &&
-+          (asoc->pf_retrans < transport->pathmaxrxt) &&
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-+          (transport->error_count > asoc->pf_retrans)) {
-
-This check should avoid that state transition as it will avoid the path
-from entereing SCTP_PF state at all.
-
-transport->pathmaxrst is originated from net->sctp.max_retrans_path.
-
-Btw, you had indentantion issues with your patch. Extra () that aren't
-needed and the second line should start at the column right after the
-initial ( in the first line. Please run scripts/checkpatch.pl on it next
-time. 
-
-  Marcelo
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index cd34a4a..22c2bf3 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -4829,7 +4829,8 @@ sctp_disposition_t sctp_sf_do_9_1_prm_abort(
+ 
+ 	retval = SCTP_DISPOSITION_CONSUME;
+ 
+-	sctp_add_cmd_sf(commands, SCTP_CMD_REPLY, SCTP_CHUNK(abort));
++	if (abort)
++		sctp_add_cmd_sf(commands, SCTP_CMD_REPLY, SCTP_CHUNK(abort));
+ 
+ 	/* Even if we can't send the ABORT due to low memory delete the
+ 	 * TCB.  This is a departure from our typical NOMEM handling.
+@@ -4966,7 +4967,8 @@ sctp_disposition_t sctp_sf_cookie_wait_prm_abort(
+ 			SCTP_TO(SCTP_EVENT_TIMEOUT_T1_INIT));
+ 	retval = SCTP_DISPOSITION_CONSUME;
+ 
+-	sctp_add_cmd_sf(commands, SCTP_CMD_REPLY, SCTP_CHUNK(abort));
++	if (abort)
++		sctp_add_cmd_sf(commands, SCTP_CMD_REPLY, SCTP_CHUNK(abort));
+ 
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_NEW_STATE,
+ 			SCTP_STATE(SCTP_STATE_CLOSED));
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 9b6cc6d..6b2f901 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1513,8 +1513,7 @@ static void sctp_close(struct sock *sk, long timeout)
+ 			struct sctp_chunk *chunk;
+ 
+ 			chunk = sctp_make_abort_user(asoc, NULL, 0);
+-			if (chunk)
+-				sctp_primitive_ABORT(net, asoc, chunk);
++			sctp_primitive_ABORT(net, asoc, chunk);
+ 		} else
+ 			sctp_primitive_SHUTDOWN(net, asoc, NULL);
+ 	}
+-- 
+2.1.0
 
