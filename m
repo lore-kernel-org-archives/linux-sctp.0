@@ -1,55 +1,50 @@
 From: Eric Dumazet <eric.dumazet@gmail.com>
-Date: Wed, 30 Dec 2015 19:03:43 +0000
+Date: Wed, 30 Dec 2015 19:11:20 +0000
 Subject: Re: [PATCH net-next 0/5] sctp: use transport hashtable to replace association's with rhashtable
-Message-Id: <1451502223.8255.45.camel@edumazet-glaptop2.roam.corp.google.com>
+Message-Id: <1451502680.8255.50.camel@edumazet-glaptop2.roam.corp.google.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1451490447.git.lucien.xin@gmail.com>
 	 <1451495979.8255.32.camel@edumazet-glaptop2.roam.corp.google.com>
-	 <20151230.125204.1385006803109278855.davem@davemloft.net>
-In-Reply-To: <20151230.125204.1385006803109278855.davem@davemloft.net>
+	 <20151230173202.GB16270@localhost.localdomain>
+In-Reply-To: <20151230173202.GB16270@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: lucien.xin@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, mleitner@redhat.com, vyasevic@redhat.com, daniel@iogearbox.net
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, mleitner@redhat.com, vyasevic@redhat.com, daniel@iogearbox.net, davem@davemloft.net
 
-On Wed, 2015-12-30 at 12:52 -0500, David Miller wrote:
-> From: Eric Dumazet <eric.dumazet@gmail.com>
-> Date: Wed, 30 Dec 2015 12:19:39 -0500
+On Wed, 2015-12-30 at 15:32 -0200, Marcelo Ricardo Leitner wrote:
+> On Wed, Dec 30, 2015 at 12:19:39PM -0500, Eric Dumazet wrote:
+> > On Wed, 2015-12-30 at 23:50 +0800, Xin Long wrote:
+> > 
+> > > besides, this patchset will use transport hashtable to replace
+> > > association hashtable to lookup with rhashtable api. get transport
+> > > first then get association by t->asoc. and also it will make tcp
+> > > style work better.
+> > 
+> > SCTP already has a hash table, why not simply changing the way items are
+> > hashed into it ?
 > 
-> > Switching SCTP to rhashtable at this moment is premature, it is
-> > still moving fast.
+> Because Vlad asked to split the patch so it gets easier to review. The
+> direct change was quite big.
 > 
-> I completely, and totally, disagree.
+> > Sure, storing thousands of sockets in a single hash bucket is not wise.
+> > 
+> > Switching SCTP to rhashtable at this moment is premature, it is still
+> > moving fast.
 > 
-> rhashtable actually _needs_ a strong active user like one of the
-> protocol socket hashes.
-> 
-> It's a step backwards to keep rhashtable in the shadows by only
-> allowing certain subsystems to convert to it.  That's really
-> incredibly stupid if you ask me.
+> Dave and Vlad had asked in the first review for considering using
+> rhashtable (ok, Dave didn't mention it by name).  We did, and it seemed
+> nice beside 1 issue Xin found, regarding multiple rehashing, which I'll
+> highlight in a reply right away. 
+> Said all this, I know this was your second email already against this
+> usage, but I have to ask, sorry: still really against it?
 
-You sure can disagree with me, but calling my opinion 'incredily stupid'
-is not wise.
+Well, it seems that Dave is OK to fix all remaining bugs in rhashtable.
 
-Let me check how stable is rhashtable :
+I was not aware that 'we' decided to force rhashtable all over the
+places, because it looks so sexy and fun.
 
-# git log --oneline v4.2.. lib/rhashtable.c
-179ccc0a7364 rhashtable: Kill harmless RCU warning in rhashtable_walk_init
-c6ff5268293e rhashtable: Fix walker list corruption
-3a324606bbab rhashtable: Enforce minimum size on initial hash table
-a90099d9fabd Revert "rhashtable: Use __vmalloc with GFP_ATOMIC for table allocation"
-d3716f18a7d8 rhashtable: Use __vmalloc with GFP_ATOMIC for table allocation
-3cf92222a39c rhashtable: Prevent spurious EBUSY errors on insertion
-7def0f952ecc lib: fix data race in rhashtable_rehash_one
-
-
-Seriously, I think we can wait one release before 'en masse'
-conversions.
-
-I understand we would love to do that, but what is the hurry for SCTP,
-that needed rhashtable so desperately that it could not be done before
-2016 ?
-
+Let see how funny it will be then.
 
 
