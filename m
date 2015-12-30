@@ -1,48 +1,94 @@
-From: Julien Pourtet <j.pourtet@gmail.com>
-Date: Thu, 03 Dec 2015 19:03:52 +0000
-Subject: Re: Not receiving SCTP_SHUTDOWN_COMP notifications
-Message-Id: <CAJRTQvxEP5cp-T5SnwbLnoFD2zuJ_HotOWS1NBS1oPCy+aPYAQ@mail.gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 30 Dec 2015 15:50:45 +0000
+Subject: [PATCH net-next 0/5] sctp: use transport hashtable to replace association's with rhashtable
+Message-Id: <cover.1451490447.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAJRTQvywGjd87nbug80Xw0LPv0HUGSRp5zP_vu9-omHsh+kROQ@mail.gmail.com>
-In-Reply-To: <CAJRTQvywGjd87nbug80Xw0LPv0HUGSRp5zP_vu9-omHsh+kROQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: mleitner@redhat.com, vyasevic@redhat.com, daniel@iogearbox.net, davem@davemloft.net
 
-Hello,
+for telecom center, the usual case is that a server is connected by thousands
+of clients. but if the server with only one enpoint(udp style) use the same
+sport and dport to communicate with every clients, and every assoc in server
+will be hashed in the same chain of global assoc hashtable due to currently we
+choose dport and sport as the hash key.
 
-On Thu, Dec 3, 2015 at 4:18 AM, Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
-> That's pretty much the thing.. when you did shutdown(SHUT_RDWR), you set
-> that RCV_SHUTDOWN flag. You told the sockets layer that you don't want
-> to receive anything else from this fd.
->
-> Please change that SHUT_RDWR to just SHUT_WR and see how it goes.
+when a packet is received, sctp_rcv try to find the assoc with sport and dport,
+since that chain is too long to find it fast, it make the performance turn to
+very low, some test data is as follow:
 
-Duh! Alright, it works fine with SHUT_WR. I was so focused on the
-transport layer that it didn't occur to me that SHUT_RDWR was what was
-setting the RCV_SHUTDOWN flag on the socket. Sorry about that.
+in server:
+$./ss [start a udp style server there]
+in client:
+$./cc [start 2500 sockets to connect server with same port and different ip,
+       and use one of them to send data to server]
 
-> For one-to-many, there is also this possibility:
-> https://tools.ietf.org/html/rfc6458#section-3.2
-> To shut down the association gracefully, the user must call sendmsg()
-> with no data and with the SCTP_EOF flag set as described in
-> Section 5.3.4.  The function returns immediately, and completion of
-> the graceful shutdown is indicated by an SCTP_ASSOC_CHANGE
-> notification of type SCTP_SHUTDOWN_COMP (see Section 6.1.1).  Note
-> that this can also be done using the sctp_sendv() call described in
-> Section 9.12."
->
-> in case you're intestered. (This cannot be used with
-> one-to-one/tcp-style)
+=== test on net-next
+-- perf top
+server:
+  55.73%  [kernel]             [k] sctp_assoc_is_match
+   6.80%  [kernel]             [k] sctp_assoc_lookup_paddr
+   4.81%  [kernel]             [k] sctp_v4_cmp_addr
+   3.12%  [kernel]             [k] _raw_spin_unlock_irqrestore
+   1.94%  [kernel]             [k] sctp_cmp_addr_exact
 
-Thanks for the clarification about one-to-many. Definitely helpful.
+client:
+  46.01%  [kernel]                    [k] sctp_endpoint_lookup_assoc
+   5.55%  libc-2.17.so                [.] __libc_calloc
+   5.39%  libc-2.17.so                [.] _int_free
+   3.92%  libc-2.17.so                [.] _int_malloc
+   3.23%  [kernel]                    [k] __memset
 
->> Question is, is this a bug? Should we fix it?
->
-> Nope :)
+-- spent time
+time is 487s, send pkt is 10000000
 
-Indeed ;) Thank you very much for your time.
+we need to change the way to calculate the hash key, to use lport +
+rport + paddr as the hash key can avoid this issue.
 
-Julien
+besides, this patchset will use transport hashtable to replace
+association hashtable to lookup with rhashtable api. get transport
+first then get association by t->asoc. and also it will make tcp
+style work better.
+
+=== test with this patchset:
+-- perf top
+server:
+  15.98%  [kernel]                 [k] _raw_spin_unlock_irqrestore
+   9.92%  [kernel]                 [k] __pv_queued_spin_lock_slowpath
+   7.22%  [kernel]                 [k] copy_user_generic_string
+   2.38%  libpthread-2.17.so       [.] __recvmsg_nocancel
+   1.88%  [kernel]                 [k] sctp_recvmsg
+
+client:
+  11.90%  [kernel]                   [k] sctp_hash_cmp
+   8.52%  [kernel]                   [k] rht_deferred_worker
+   4.94%  [kernel]                   [k] __pv_queued_spin_lock_slowpath
+   3.95%  [kernel]                   [k] sctp_bind_addr_match
+   2.49%  [kernel]                   [k] __memset
+
+-- spent time
+time is 22s, send pkt is 10000000
+
+Xin Long (5):
+  sctp: add the rhashtable apis for sctp global transport hashtable
+  sctp: apply rhashtable api to send/recv path
+  sctp: apply rhashtable api to sctp procfs
+  sctp: drop the old assoc hashtable of sctp
+  sctp: remove the local_bh_disable/enable in sctp_endpoint_lookup_assoc
+
+ include/net/sctp/sctp.h    |  32 ++---
+ include/net/sctp/structs.h |  10 +-
+ net/sctp/associola.c       |   5 +
+ net/sctp/endpointola.c     |  52 ++------
+ net/sctp/input.c           | 187 +++++++++++++++++----------
+ net/sctp/proc.c            | 316 +++++++++++++++++++++++++--------------------
+ net/sctp/protocol.c        |  36 ++----
+ net/sctp/sm_sideeffect.c   |   2 -
+ net/sctp/socket.c          |   6 +-
+ 9 files changed, 331 insertions(+), 315 deletions(-)
+
+-- 
+2.1.0
+
