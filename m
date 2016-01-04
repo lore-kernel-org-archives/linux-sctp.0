@@ -1,89 +1,41 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 21 Jan 2016 20:08:40 +0000
-Subject: Re: [PATCH net 2/3] sctp: hold transport before we access t->asoc in sctp proc
-Message-Id: <20160121200840.GH3452@mrl.redhat.com>
+From: David Miller <davem@davemloft.net>
+Date: Mon, 04 Jan 2016 22:30:00 +0000
+Subject: Re: [PATCH net-next 0/5] sctp: use transport hashtable to replace association's with rhashtable
+Message-Id: <20160104.173000.1748782946936467170.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1453398443.git.lucien.xin@gmail.com>
- <9f366422b6a8c6c0c939ccbf993548c1881a2c16.1453398443.git.lucien.xin@gmail.com>
- <4357f1f3ad90ffec1481a265d8ca198d75e25d07.1453398443.git.lucien.xin@gmail.com>
- <1453404456.1223.378.camel@edumazet-glaptop2.roam.corp.google.com>
- <20160121193709.GG3452@mrl.redhat.com>
- <1453406236.1223.381.camel@edumazet-glaptop2.roam.corp.google.com>
-In-Reply-To: <1453406236.1223.381.camel@edumazet-glaptop2.roam.corp.google.com>
+References: <cover.1451490447.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1451490447.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, mleitner@redhat.com, vyasevic@redhat.com, daniel@iogearbox.net
 
-On Thu, Jan 21, 2016 at 11:57:16AM -0800, Eric Dumazet wrote:
-> On Thu, 2016-01-21 at 17:37 -0200, Marcelo Ricardo Leitner wrote:
-> > On Thu, Jan 21, 2016 at 11:27:36AM -0800, Eric Dumazet wrote:
-> > > On Fri, 2016-01-22 at 01:49 +0800, Xin Long wrote:
-> > > > Previously, before rhashtable, /proc assoc listing was done by
-> > > > read-locking the entire hash entry and dumping all assocs at once, so we
-> > > > were sure that the assoc wasn't freed because it wouldn't be possible to
-> > > > remove it from the hash meanwhile.
-> > > > 
-> > > > Now we use rhashtable to list transports, and dump entries one by one.
-> > > > That is, now we have to check if the assoc is still a good one, as the
-> > > > transport we got may be being freed.
-> > > > 
-> > > > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> > > > ---
-> > > >  net/sctp/proc.c | 8 ++++++++
-> > > >  1 file changed, 8 insertions(+)
-> > > > 
-> > > > diff --git a/net/sctp/proc.c b/net/sctp/proc.c
-> > > > index 684c5b3..c74a810 100644
-> > > > --- a/net/sctp/proc.c
-> > > > +++ b/net/sctp/proc.c
-> > > > @@ -380,6 +380,8 @@ static int sctp_assocs_seq_show(struct seq_file *seq, void *v)
-> > > >  	}
-> > > >  
-> > > >  	transport = (struct sctp_transport *)v;
-> > > 
-> > > What protects you from this structure already being freed ?
-> > 
-> > rcu, rhashtable_walk_start() at sctp_assocs_seq_start() starts an
-> > (implicit from this POV) rcu_read_lock() for us which is unlocked only
-> > when the walking is terminated, thus covering this _show.
-> > 
-> > > > +	if (!sctp_transport_hold(transport))
-> > > > +		return 0;
-> > > 
-> > > If this is rcu, then you do not need to increment the refcount, and
-> > > decrement it later.
-> > 
-> > It's an implicit hold on sctp asoc.
-> > 
-> > This code is using contents from asoc pointer, which is not proctected
-> > by rcu. As transport has a hold on the asoc, it's enough to just hold
-> > the transport and not the asoc too, as we had to do in the previous
-> > patch.
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 30 Dec 2015 23:50:45 +0800
+
+> for telecom center, the usual case is that a server is connected by thousands
+> of clients. but if the server with only one enpoint(udp style) use the same
+> sport and dport to communicate with every clients, and every assoc in server
+> will be hashed in the same chain of global assoc hashtable due to currently we
+> choose dport and sport as the hash key.
 > 
-> Then it means fast path also need to do this sctp_transport_hold() ?
-
-Well, kind of broad question, but I think so, yes. It's mostly done when
-the transport is identified and fetched from rhashtable. Otherwise, we
-probably already have the asoc and doesn't need this jump.
-
-It's the first patch in this series. It's the only way we found to
-safely transfer the ref from transport to asoc.
-
-> If sctp_association_put() was called from sctp_transport_destroy_rcu()
-> (ie after rcu grace period), you would not need to increment/decrement
-> the transport refcount.
+> when a packet is received, sctp_rcv try to find the assoc with sport and dport,
+> since that chain is too long to find it fast, it make the performance turn to
+> very low, some test data is as follow:
+ ...
+> we need to change the way to calculate the hash key, to use lport +
+> rport + paddr as the hash key can avoid this issue.
 > 
-> Normally, RCU protection does not need to change the refcount, unless we
-> need to keep an object alive after escaping the rcu section.
+> besides, this patchset will use transport hashtable to replace
+> association hashtable to lookup with rhashtable api. get transport
+> first then get association by t->asoc. and also it will make tcp
+> style work better.
+ ...
 
-sctp_association_put() was in sctp_transport_destroy_rcu(), but it
-caused sctp-issues which Daniel fixed on 8c98653f0553 ("sctp:
-sctp_close: fix release of bindings for deferred call_rcu's").
+I've applied this series, but...
 
-So in this case, we are not leaving the protected section but jumping
-from a RCU-protected object (transport) to a non-protected one (asoc).
+If anything regresses and is not dealt with in a timely manner I
+will revert this series.
 
-  Marcelo
-
+Thanks.
