@@ -1,112 +1,257 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 05 Jan 2016 10:10:15 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Tue, 05 Jan 2016 18:38:27 +0000
 Subject: Re: [PATCH net-next 1/5] sctp: add the rhashtable apis for sctp global transport hashtable
-Message-Id: <CADvbK_evLk8YgYDdNvEoBB-SSqH8s7wWu_K5g=SzP=GOj-TWtw@mail.gmail.com>
-MIME-Version: 1
-Content-Type: multipart/mixed; boundary="089e013a2f0eacd7090528937118"
+Message-Id: <568C0DA3.1090604@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1451490447.git.lucien.xin@gmail.com>
-	<2c413161eb3a2c74453bd8dc11815af7e237515e.1451490447.git.lucien.xin@gmail.com>
-	<20151230174103.GC16270@localhost.localdomain>
-In-Reply-To: <20151230174103.GC16270@localhost.localdomain>
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: Eric Dumazet <eric.dumazet@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <mleitner@redhat.com>, Vlad Yasevich <vyasevic@redhat.com>, daniel@iogearbox.net, davem <davem@davemloft.net>, Herbert Xu <herbert@gondor.apana.org.au>
+ <2c413161eb3a2c74453bd8dc11815af7e237515e.1451490447.git.lucien.xin@gmail.com>
+In-Reply-To: <2c413161eb3a2c74453bd8dc11815af7e237515e.1451490447.git.lucien.xin@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: mleitner@redhat.com, vyasevic@redhat.com, daniel@iogearbox.net, davem@davemloft.net
 
---089e013a2f0eacd7090528937118
-Content-Type: text/plain; charset=UTF-8
+On 12/30/2015 10:50 AM, Xin Long wrote:
+> tranport hashtbale will replace the association hashtable to do the
+> lookup for transport, and then get association by t->assoc, rhashtable
+> apis will be used because of it's resizable, scalable and using rcu.
+> 
+> lport + rport + paddr will be the base hashkey to locate the chain,
+> with net to protect one netns from another, then plus the laddr to
+> compare to get the target.
+> 
+> this patch will provider the lookup functions:
+> - sctp_epaddr_lookup_transport
+> - sctp_addrs_lookup_transport
+> 
+> hash/unhash functions:
+> - sctp_hash_transport
+> - sctp_unhash_transport
+> 
+> init/destroy functions:
+> - sctp_transport_hashtable_init
+> - sctp_transport_hashtable_destroy
+> 
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+> ---
+>  include/net/sctp/sctp.h    |  11 ++++
+>  include/net/sctp/structs.h |   5 ++
+>  net/sctp/input.c           | 131 +++++++++++++++++++++++++++++++++++++++++++++
+>  3 files changed, 147 insertions(+)
+> 
+> diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+> index ce13cf2..7bbdfba 100644
+> --- a/include/net/sctp/sctp.h
+> +++ b/include/net/sctp/sctp.h
+> @@ -143,6 +143,17 @@ void sctp_icmp_proto_unreachable(struct sock *sk,
+>  				 struct sctp_transport *t);
+>  void sctp_backlog_migrate(struct sctp_association *assoc,
+>  			  struct sock *oldsk, struct sock *newsk);
+> +int sctp_transport_hashtable_init(void);
+> +void sctp_transport_hashtable_destroy(void);
+> +void sctp_hash_transport(struct sctp_transport *t);
+> +void sctp_unhash_transport(struct sctp_transport *t);
+> +struct sctp_transport *sctp_addrs_lookup_transport(
+> +				struct net *net,
+> +				const union sctp_addr *laddr,
+> +				const union sctp_addr *paddr);
+> +struct sctp_transport *sctp_epaddr_lookup_transport(
+> +				const struct sctp_endpoint *ep,
+> +				const union sctp_addr *paddr);
+>  
+>  /*
+>   * sctp/proc.c
+> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+> index eea9bde..4ab87d0 100644
+> --- a/include/net/sctp/structs.h
+> +++ b/include/net/sctp/structs.h
+> @@ -48,6 +48,7 @@
+>  #define __sctp_structs_h__
+>  
+>  #include <linux/ktime.h>
+> +#include <linux/rhashtable.h>
+>  #include <linux/socket.h>	/* linux/in.h needs this!!    */
+>  #include <linux/in.h>		/* We get struct sockaddr_in. */
+>  #include <linux/in6.h>		/* We get struct in6_addr     */
+> @@ -123,6 +124,8 @@ extern struct sctp_globals {
+>  	struct sctp_hashbucket *assoc_hashtable;
+>  	/* This is the sctp port control hash.	*/
+>  	struct sctp_bind_hashbucket *port_hashtable;
+> +	/* This is the hash of all transports. */
+> +	struct rhashtable transport_hashtable;
+>  
+>  	/* Sizes of above hashtables. */
+>  	int ep_hashsize;
+> @@ -147,6 +150,7 @@ extern struct sctp_globals {
+>  #define sctp_assoc_hashtable		(sctp_globals.assoc_hashtable)
+>  #define sctp_port_hashsize		(sctp_globals.port_hashsize)
+>  #define sctp_port_hashtable		(sctp_globals.port_hashtable)
+> +#define sctp_transport_hashtable	(sctp_globals.transport_hashtable)
+>  #define sctp_checksum_disable		(sctp_globals.checksum_disable)
+>  
+>  /* SCTP Socket type: UDP or TCP style. */
+> @@ -753,6 +757,7 @@ static inline int sctp_packet_empty(struct sctp_packet *packet)
+>  struct sctp_transport {
+>  	/* A list of transports. */
+>  	struct list_head transports;
+> +	struct rhash_head node;
+>  
+>  	/* Reference counting. */
+>  	atomic_t refcnt;
+> diff --git a/net/sctp/input.c b/net/sctp/input.c
+> index b6493b3..bac8278 100644
+> --- a/net/sctp/input.c
+> +++ b/net/sctp/input.c
+> @@ -782,6 +782,137 @@ hit:
+>  	return ep;
+>  }
+>  
+> +/* rhashtable for transport */
+> +struct sctp_hash_cmp_arg {
+> +	const union sctp_addr		*laddr;
+> +	const union sctp_addr		*paddr;
+> +	const struct net		*net;
+> +};
+> +
+> +static inline int sctp_hash_cmp(struct rhashtable_compare_arg *arg,
+> +				const void *ptr)
+> +{
+> +	const struct sctp_hash_cmp_arg *x = arg->key;
+> +	const struct sctp_transport *t = ptr;
+> +	struct sctp_association *asoc = t->asoc;
+> +	const struct net *net = x->net;
+> +
+> +	if (x->laddr->v4.sin_port != htons(asoc->base.bind_addr.port))
+> +		return 1;
+> +	if (!sctp_cmp_addr_exact(&t->ipaddr, x->paddr))
+> +		return 1;
+> +	if (!net_eq(sock_net(asoc->base.sk), net))
+> +		return 1;
+> +	if (!sctp_bind_addr_match(&asoc->base.bind_addr,
+> +				  x->laddr, sctp_sk(asoc->base.sk)))
+> +		return 1;
+> +
+> +	return 0;
+> +}
+> +
+> +static inline u32 sctp_hash_obj(const void *data, u32 len, u32 seed)
+> +{
+> +	const struct sctp_transport *t = data;
+> +	const union sctp_addr *paddr = &t->ipaddr;
+> +	const struct net *net = sock_net(t->asoc->base.sk);
+> +	u16 lport = htons(t->asoc->base.bind_addr.port);
+> +	u32 addr;
+> +
+> +	if (paddr->sa.sa_family = AF_INET6)
+> +		addr = jhash(&paddr->v6.sin6_addr, 16, seed);
+> +	else
+> +		addr = paddr->v4.sin_addr.s_addr;
+> +
+> +	return  jhash_3words(addr, ((__u32)paddr->v4.sin_port) << 16 |
+> +			     (__force __u32)lport, net_hash_mix(net), seed);
+> +}
+> +
+> +static inline u32 sctp_hash_key(const void *data, u32 len, u32 seed)
+> +{
+> +	const struct sctp_hash_cmp_arg *x = data;
+> +	const union sctp_addr *paddr = x->paddr;
+> +	const struct net *net = x->net;
+> +	u16 lport = x->laddr->v4.sin_port;
+> +	u32 addr;
+> +
+> +	if (paddr->sa.sa_family = AF_INET6)
+> +		addr = jhash(&paddr->v6.sin6_addr, 16, seed);
+> +	else
+> +		addr = paddr->v4.sin_addr.s_addr;
+> +
+> +	return  jhash_3words(addr, ((__u32)paddr->v4.sin_port) << 16 |
+> +			     (__force __u32)lport, net_hash_mix(net), seed);
+> +}
+> +
+> +static const struct rhashtable_params sctp_hash_params = {
+> +	.head_offset		= offsetof(struct sctp_transport, node),
+> +	.hashfn			= sctp_hash_key,
+> +	.obj_hashfn		= sctp_hash_obj,
+> +	.obj_cmpfn		= sctp_hash_cmp,
+> +	.automatic_shrinking	= true,
+> +};
+> +
+> +int sctp_transport_hashtable_init(void)
+> +{
+> +	return rhashtable_init(&sctp_transport_hashtable, &sctp_hash_params);
+> +}
+> +
+> +void sctp_transport_hashtable_destroy(void)
+> +{
+> +	rhashtable_destroy(&sctp_transport_hashtable);
+> +}
+> +
+> +void sctp_hash_transport(struct sctp_transport *t)
+> +{
+> +	struct sctp_sockaddr_entry *addr;
+> +	struct sctp_hash_cmp_arg arg;
+> +
+> +	addr = list_entry(t->asoc->base.bind_addr.address_list.next,
+> +			  struct sctp_sockaddr_entry, list);
+> +	arg.laddr = &addr->a;
+> +	arg.paddr = &t->ipaddr;
+> +	arg.net   = sock_net(t->asoc->base.sk);
+> +
+> +reinsert:
+> +	if (rhashtable_lookup_insert_key(&sctp_transport_hashtable, &arg,
+> +					 &t->node, sctp_hash_params) = -EBUSY)
+> +		goto reinsert;
+> +}
+> +
+> +void sctp_unhash_transport(struct sctp_transport *t)
+> +{
+> +	rhashtable_remove_fast(&sctp_transport_hashtable, &t->node,
+> +			       sctp_hash_params);
+> +}
+> +
+> +struct sctp_transport *sctp_addrs_lookup_transport(
+> +				struct net *net,
+> +				const union sctp_addr *laddr,
+> +				const union sctp_addr *paddr)
+> +{
+> +	struct sctp_hash_cmp_arg arg = {
+> +		.laddr = laddr,
+> +		.paddr = paddr,
+> +		.net   = net,
+> +	};
+> +
+> +	return rhashtable_lookup_fast(&sctp_transport_hashtable, &arg,
+> +				      sctp_hash_params);
+> +}
+> +
+> +struct sctp_transport *sctp_epaddr_lookup_transport(
+> +				const struct sctp_endpoint *ep,
+> +				const union sctp_addr *paddr)
+> +{
+> +	struct sctp_sockaddr_entry *addr;
+> +	struct net *net = sock_net(ep->base.sk);
+> +
+> +	addr = list_entry(ep->base.bind_addr.address_list.next,
+> +			  struct sctp_sockaddr_entry, list);
+> +
+> +	return sctp_addrs_lookup_transport(net, &addr->a, paddr);
+> +} 
+> +
 
-On Thu, Dec 31, 2015 at 1:41 AM, Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
-> On Wed, Dec 30, 2015 at 11:50:46PM +0800, Xin Long wrote:
-> ...
->> +void sctp_hash_transport(struct sctp_transport *t)
->> +{
->> +     struct sctp_sockaddr_entry *addr;
->> +     struct sctp_hash_cmp_arg arg;
->> +
->> +     addr = list_entry(t->asoc->base.bind_addr.address_list.next,
->> +                       struct sctp_sockaddr_entry, list);
->> +     arg.laddr = &addr->a;
->> +     arg.paddr = &t->ipaddr;
->> +     arg.net   = sock_net(t->asoc->base.sk);
->> +
->> +reinsert:
->> +     if (rhashtable_lookup_insert_key(&sctp_transport_hashtable, &arg,
->> +                                      &t->node, sctp_hash_params) == -EBUSY)
->> +             goto reinsert;
->> +}
->
-> This is the nasty situation I mentioned in previous email. It seems that
-> a stress test can trigger a double rehash and cause an entry to not be
-> added.
->
-> This is in fact very near some bugs you caught on rhashtable in the past
-> few days/couple of weeks tops.
->
-> I'm actually against this loop as is. I may have not been clear with Xin
-> about not adding my signature to the patchset due to this.
->
-> Please take a look at Xin's emails on thread 'rhashtable: Prevent
-> spurious EBUSY errors on insertion' about this particular situation.
-> Cc'ing Herbert as he wanted to see the patches for that issue.
->
->   Marcelo
->
-without this 'reinsert'.
+I don't think that this right, mainly because not all endpoint
+addresses will be copied to association bind_addr list.   As a result,
+you may actually have an association on this endpoint to a given
+peer, but may not be using the first address from the endpoint..
 
-we can reproduce this issue like this:
-1. download the attachment
-2. cp sctperf.tar.gz to server and client hosts
-3. in each hosts.
-#make
-4. in server:
-#sh saddr.sh $ethx
-#./ss
-5. in client:
-#sh caddr.sh $ethx
-#ulimit -n 20000
-#./cc
+What might work is to pick an endpoint address that would be usable within
+the scope of the peer address.
 
-when the number of  connections reach about 1600, this issue will be triggered.
+-vlad
 
---089e013a2f0eacd7090528937118
-Content-Type: application/x-gzip; name="sctperf.tar.gz"
-Content-Disposition: attachment; filename="sctperf.tar.gz"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_ij18e7qy0
+>  /* Insert association into the hash table.  */
+>  static void __sctp_hash_established(struct sctp_association *asoc)
+>  {
+> 
 
-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
---089e013a2f0eacd7090528937118--
