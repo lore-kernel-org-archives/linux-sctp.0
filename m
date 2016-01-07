@@ -1,12 +1,22 @@
 From: Ravi Puttachannaiah <ravi.puttachannaiah@aricent.com>
-Date: Tue, 05 Jan 2016 09:05:41 +0000
-Subject: X2AP:handoverPreparationFailure message is not received at source node
-Message-Id: <SG2PR0401MB1519DBCC7B5AEF0FD79DECAEFEF30@SG2PR0401MB1519.apcprd04.prod.outlook.com>
+Date: Thu, 07 Jan 2016 08:55:46 +0000
+Subject: RE: X2AP:handoverPreparationFailure message is not received at source node
+Message-Id: <PS1PR0401MB15132229FF3D4EBF9CC02E35FEF50@PS1PR0401MB1513.apcprd04.prod.outlook.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <SG2PR0401MB1519DBCC7B5AEF0FD79DECAEFEF30@SG2PR0401MB1519.apcprd04.prod.outlook.com>
+In-Reply-To: <SG2PR0401MB1519DBCC7B5AEF0FD79DECAEFEF30@SG2PR0401MB1519.apcprd04.prod.outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
+
+Could somebody please respond and help.
+
+-----Original Message-----
+From: Ravi Puttachannaiah
+Sent: Tuesday, January 05, 2016 2:35 PM
+To: 'linux-sctp@vger.kernel.org' <linux-sctp@vger.kernel.org>
+Subject: X2AP:handoverPreparationFailure message is not received at source node
 
 Hi,
 
