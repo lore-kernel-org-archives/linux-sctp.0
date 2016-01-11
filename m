@@ -1,35 +1,99 @@
-From: Herbert Xu <herbert@gondor.apana.org.au>
-Date: Mon, 11 Jan 2016 09:32:10 +0000
+From: mleitner@redhat.com
+Date: Mon, 11 Jan 2016 16:00:40 +0000
 Subject: Re: [PATCH net-next 1/5] sctp: add the rhashtable apis for sctp global transport hashtable
-Message-Id: <20160111093210.GA23557@gondor.apana.org.au>
+Message-Id: <20160111160039.GA6061@mrl.redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20151230.125046.310343849422003518.davem@davemloft.net>
-In-Reply-To: <20151230.125046.310343849422003518.davem@davemloft.net>
+References: <2c413161eb3a2c74453bd8dc11815af7e237515e.1451490447.git.lucien.xin@gmail.com>
+ <20160111093012.GA23525@gondor.apana.org.au>
+In-Reply-To: <20160111093012.GA23525@gondor.apana.org.au>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: eric.dumazet@gmail.com, lucien.xin@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, mleitner@redhat.com, vyasevic@redhat.com, daniel@iogearbox.net
+To: Herbert Xu <herbert@gondor.apana.org.au>
+Cc: Xin Long <lucien.xin@gmail.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevic@redhat.com, daniel@iogearbox.net, davem@davemloft.net
 
-David Miller <davem@davemloft.net> wrote:
-> From: Eric Dumazet <eric.dumazet@gmail.com>
-> Date: Wed, 30 Dec 2015 11:57:31 -0500
+On Mon, Jan 11, 2016 at 05:30:12PM +0800, Herbert Xu wrote:
+> Xin Long <lucien.xin@gmail.com> wrote:
+> >
+> > +static inline int sctp_hash_cmp(struct rhashtable_compare_arg *arg,
+> > +                               const void *ptr)
+> > +{
+> > +       const struct sctp_hash_cmp_arg *x = arg->key;
+> > +       const struct sctp_transport *t = ptr;
+> > +       struct sctp_association *asoc = t->asoc;
+> > +       const struct net *net = x->net;
+> > +
+> > +       if (x->laddr->v4.sin_port != htons(asoc->base.bind_addr.port))
+> > +               return 1;
+> > +       if (!sctp_cmp_addr_exact(&t->ipaddr, x->paddr))
+> > +               return 1;
+> > +       if (!net_eq(sock_net(asoc->base.sk), net))
+> > +               return 1;
+> > +       if (!sctp_bind_addr_match(&asoc->base.bind_addr,
+> > +                                 x->laddr, sctp_sk(asoc->base.sk)))
+> > +               return 1;
+> > +
+> > +       return 0;
+> > +}
+> > +
+> > +static inline u32 sctp_hash_obj(const void *data, u32 len, u32 seed)
+> > +{
+> > +       const struct sctp_transport *t = data;
+> > +       const union sctp_addr *paddr = &t->ipaddr;
+> > +       const struct net *net = sock_net(t->asoc->base.sk);
+> > +       u16 lport = htons(t->asoc->base.bind_addr.port);
+> > +       u32 addr;
+> > +
+> > +       if (paddr->sa.sa_family = AF_INET6)
+> > +               addr = jhash(&paddr->v6.sin6_addr, 16, seed);
+> > +       else
+> > +               addr = paddr->v4.sin_addr.s_addr;
+> > +
+> > +       return  jhash_3words(addr, ((__u32)paddr->v4.sin_port) << 16 |
+> > +                            (__force __u32)lport, net_hash_mix(net), seed);
+> > +}
+> > +
+> > +static inline u32 sctp_hash_key(const void *data, u32 len, u32 seed)
+> > +{
+> > +       const struct sctp_hash_cmp_arg *x = data;
+> > +       const union sctp_addr *paddr = x->paddr;
+> > +       const struct net *net = x->net;
+> > +       u16 lport = x->laddr->v4.sin_port;
+> > +       u32 addr;
+> > +
+> > +       if (paddr->sa.sa_family = AF_INET6)
+> > +               addr = jhash(&paddr->v6.sin6_addr, 16, seed);
+> > +       else
+> > +               addr = paddr->v4.sin_addr.s_addr;
+> > +
+> > +       return  jhash_3words(addr, ((__u32)paddr->v4.sin_port) << 16 |
+> > +                            (__force __u32)lport, net_hash_mix(net), seed);
+> > +}
 > 
->> I am against using rhashtable in SCTP (or TCP) at this stage, given the
->> number of bugs we have with it.
-> 
-> Come on Eric, we've largely dealt with all of these problems.  I haven't
-> seen a serious report in a while.
+> There's your problem.  You are allowing multiple objects to hash
+> to the same value.  This is unacceptable with rhashtable because
+> we use the hash chain length to determine if we're under attack
+> and need to rehash.  This is the reason why you would see EBUSY
+> during insertion.
 
-Well there is still the outstanding issue with softirq insertion
-potentially failing with ENOMEM if we fail to expand the hash
-table using just kmalloc.
+Cool. Then I guess we don't really have an issue here. The case that
+fails is an artificial load test which is virtually impossible to be hit
+in real world, or at least I really hope so. The test, as in Xin's
+attachment, will load more than 1600 IP addresses in one host (2 vCPU
+during the test) and attempt to start an assoc from each of those using
+the very same (lport, daddr, dport)-tuple.
 
-So if the target user does softirq insertions, I would wait until
-the fix for that is ready.
+Doing so is just unreasonable. Note that net is also hashed, so
+even if we consider it could be 1600 containers, it is fine.
+
+> So instead of inserting your objects as is, you should instead hash
+> a list object that then links to all the objects that has the same
+> hash key.
+
+Now that it is clarified, I'm thinking we should just get ride of that
+loop on EBUSY. No real reason to have extra code only to support an
+artificial test. Agree?
 
 Thanks,
--- 
-Email: Herbert Xu <herbert@gondor.apana.org.au>
-Home Page: http://gondor.apana.org.au/~herbert/
-PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
+Marcelo
+
