@@ -1,42 +1,84 @@
 From: Herbert Xu <herbert@gondor.apana.org.au>
-Date: Mon, 11 Jan 2016 09:22:45 +0000
+Date: Mon, 11 Jan 2016 09:30:12 +0000
 Subject: Re: [PATCH net-next 1/5] sctp: add the rhashtable apis for sctp global transport hashtable
-Message-Id: <20160111092245.GA23331@gondor.apana.org.au>
+Message-Id: <20160111093012.GA23525@gondor.apana.org.au>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1451490447.git.lucien.xin@gmail.com>
- <2c413161eb3a2c74453bd8dc11815af7e237515e.1451490447.git.lucien.xin@gmail.com>
- <20151230174103.GC16270@localhost.localdomain>
- <CADvbK_evLk8YgYDdNvEoBB-SSqH8s7wWu_K5g=SzP=GOj-TWtw@mail.gmail.com>
-In-Reply-To: <CADvbK_evLk8YgYDdNvEoBB-SSqH8s7wWu_K5g=SzP=GOj-TWtw@mail.gmail.com>
+References: <2c413161eb3a2c74453bd8dc11815af7e237515e.1451490447.git.lucien.xin@gmail.com>
+In-Reply-To: <2c413161eb3a2c74453bd8dc11815af7e237515e.1451490447.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Eric Dumazet <eric.dumazet@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <mleitner@redhat.com>, Vlad Yasevich <vyasevic@redhat.com>, daniel@iogearbox.net, davem <davem@davemloft.net>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, mleitner@redhat.com, vyasevic@redhat.com, daniel@iogearbox.net, davem@davemloft.net
 
-On Tue, Jan 05, 2016 at 06:10:15PM +0800, Xin Long wrote:
+Xin Long <lucien.xin@gmail.com> wrote:
 >
-> without this 'reinsert'.
-> 
-> we can reproduce this issue like this:
-> 1. download the attachment
-> 2. cp sctperf.tar.gz to server and client hosts
-> 3. in each hosts.
-> #make
-> 4. in server:
-> #sh saddr.sh $ethx
-> #./ss
-> 5. in client:
-> #sh caddr.sh $ethx
-> #ulimit -n 20000
-> #./cc
-> 
-> when the number of  connections reach about 1600, this issue will be triggered.
+> +static inline int sctp_hash_cmp(struct rhashtable_compare_arg *arg,
+> +                               const void *ptr)
+> +{
+> +       const struct sctp_hash_cmp_arg *x = arg->key;
+> +       const struct sctp_transport *t = ptr;
+> +       struct sctp_association *asoc = t->asoc;
+> +       const struct net *net = x->net;
+> +
+> +       if (x->laddr->v4.sin_port != htons(asoc->base.bind_addr.port))
+> +               return 1;
+> +       if (!sctp_cmp_addr_exact(&t->ipaddr, x->paddr))
+> +               return 1;
+> +       if (!net_eq(sock_net(asoc->base.sk), net))
+> +               return 1;
+> +       if (!sctp_bind_addr_match(&asoc->base.bind_addr,
+> +                                 x->laddr, sctp_sk(asoc->base.sk)))
+> +               return 1;
+> +
+> +       return 0;
+> +}
+> +
+> +static inline u32 sctp_hash_obj(const void *data, u32 len, u32 seed)
+> +{
+> +       const struct sctp_transport *t = data;
+> +       const union sctp_addr *paddr = &t->ipaddr;
+> +       const struct net *net = sock_net(t->asoc->base.sk);
+> +       u16 lport = htons(t->asoc->base.bind_addr.port);
+> +       u32 addr;
+> +
+> +       if (paddr->sa.sa_family = AF_INET6)
+> +               addr = jhash(&paddr->v6.sin6_addr, 16, seed);
+> +       else
+> +               addr = paddr->v4.sin_addr.s_addr;
+> +
+> +       return  jhash_3words(addr, ((__u32)paddr->v4.sin_port) << 16 |
+> +                            (__force __u32)lport, net_hash_mix(net), seed);
+> +}
+> +
+> +static inline u32 sctp_hash_key(const void *data, u32 len, u32 seed)
+> +{
+> +       const struct sctp_hash_cmp_arg *x = data;
+> +       const union sctp_addr *paddr = x->paddr;
+> +       const struct net *net = x->net;
+> +       u16 lport = x->laddr->v4.sin_port;
+> +       u32 addr;
+> +
+> +       if (paddr->sa.sa_family = AF_INET6)
+> +               addr = jhash(&paddr->v6.sin6_addr, 16, seed);
+> +       else
+> +               addr = paddr->v4.sin_addr.s_addr;
+> +
+> +       return  jhash_3words(addr, ((__u32)paddr->v4.sin_port) << 16 |
+> +                            (__force __u32)lport, net_hash_mix(net), seed);
+> +}
 
-Just to confirm this is with the latest upstream kernel, right?
-A git ID would be helpful.
+There's your problem.  You are allowing multiple objects to hash
+to the same value.  This is unacceptable with rhashtable because
+we use the hash chain length to determine if we're under attack
+and need to rehash.  This is the reason why you would see EBUSY
+during insertion.
 
-Thanks,
+So instead of inserting your objects as is, you should instead hash
+a list object that then links to all the objects that has the same
+hash key.
+
+Cheers,
 -- 
 Email: Herbert Xu <herbert@gondor.apana.org.au>
 Home Page: http://gondor.apana.org.au/~herbert/
