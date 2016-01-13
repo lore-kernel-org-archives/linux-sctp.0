@@ -1,190 +1,219 @@
-From: Vlad Yasevich <vyasevich@gmail.com>
-Date: Tue, 12 Jan 2016 15:42:02 +0000
-Subject: Re: X2AP:handoverPreparationFailure message is not received at source node
-Message-Id: <56951ECA.3070609@gmail.com>
+From: Ravi Puttachannaiah <ravi.puttachannaiah@aricent.com>
+Date: Wed, 13 Jan 2016 11:54:25 +0000
+Subject: RE: X2AP:handoverPreparationFailure message is not received at source node
+Message-Id: <SG2PR0401MB151908D2418580E4AAF6EC67FECB0@SG2PR0401MB1519.apcprd04.prod.outlook.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <SG2PR0401MB1519DBCC7B5AEF0FD79DECAEFEF30@SG2PR0401MB1519.apcprd04.prod.outlook.com>
 In-Reply-To: <SG2PR0401MB1519DBCC7B5AEF0FD79DECAEFEF30@SG2PR0401MB1519.apcprd04.prod.outlook.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On 01/12/2016 07:11 AM, Ravi Puttachannaiah wrote:
-> Thanks Vlad..
-> 
-> Please check and let me know if any more logs and details are required.
-> 
-> Thanks for your support.
-
-Well, I looked at the traces and it doesn't show the packet even made it
-to destination host .1.47.  Up until that point everything appears to
-be working properly, there are no drops anywhere.
-
-I would recommend that you try capturing traffic on .1.46 during the
-troubling condition to make sure that the packet is actually sent on
-the wire.
-
-Also, check the nic stats to see if there are any dropped or error frames.
-If there is switch between the systems, try to see if may be it is dropping
-packets.
-
-At this point, there isn't a whole lot we can do as it appears that the
-handoverPreparation:Unsuccessful message from .1.46 isn't making it to .1.47.
-You need to try to find out where it is going?
-
--vlad
-
-> 
-> 
-> Regards,
-> 
-> Ravi
-> 
-> -----Original Message-----
-> From: Vlad Yasevich [mailto:vyasevich@gmail.com]
-> Sent: Tuesday, January 12, 2016 5:38 PM
-> To: Ravi Puttachannaiah <ravi.puttachannaiah@aricent.com>; malc <mlashley@gmail.com>; linux-sctp@vger.kernel.org
-> Subject: Re: X2AP:handoverPreparationFailure message is not received at source node
-> 
-> On 01/12/2016 06:29 AM, Ravi Puttachannaiah wrote:
->> Hi Vlad, Malc,
->>
->> I have uploaded the logs in the dropbox. Please use the below URL to access the logs.
->>
->> https://www.dropbox.com/sh/utmo1jbw7l6itmx/AABSCk04YNxu3XTnq_Bk8l2Ea?d
->> l=0
-> 
-> I'll take a look.
->>
->> Following is the details from the logs.
->>
->> working_sctp_s1ap_x2ap_logs.pcapng -In-case of an working logs you can observe that:
->>
->> 1. In packet no-471, the IP 172.33.1.47 is sending the
->> X2AP:handoverPreperation message to 172.33.1.46 2. In packet no-475,
->> the IP 172.33.1.46 is sending the X2AP:handoverPreperationFailure
->> 172.33.1.47
->>
->> non-working_sctp_s1ap_x2ap_logs.pcappng- In-case of an non-working
->> logs you can observe that
->>
->> 1. In packet no-162, the IP 172.33.1.47 is sending the
->> X2AP:handoverPreperation message to 172.33.1.46 2. But in this case we are not seeing the X2AP:handoverPreperationFailure sent by 172.33.1.46. In the application logs we could see that application is writing to the socket successfully (there are no errors).
->>
->> As indicated previously the issue is not seen "When there is no re-try attempt on-going(between source node to peer-1) then there is no issue observed and we can see that X2AP:handoverPreparationFailure is successfully received at source node."
->>
->> Response to Malc query.
->>
->> 1. Is peer-node-2 putting the packet on the wire?
->> RAVIP>> Yes.. From the application logs we can confirm that peer-node-2 is writing the message to the socket.
-> 
-> Just because the packet was written to the socket doesn't mean it's on the wire.  It may still by buffered if there hasn't been an ack.  I haven't checked yet, but I hope the logs above contain traces from peer-node-2, so we can see the message.
-> 
->>
->> 2. When you say 'not getting received at source node' - Do you mean at the ethernet layer, the application layer, or ?
->> RAVIP>> We are not seeing message both at application level and also at wireshark. I suspect the message could be getting dropped at LKSCTP level.
-> 
-> No, if you are not seeing it in wireshark, then sctp doesn't see the packet either.
-> The packet capture happens before any protocol have an ability to drop anything.  Even some errors handled by the nic can be observed with wireshark.
-> 
-> -vlad
-> 
->>
->> Regards,
->>
->> Ravi
->>
->>
->> -----Original Message-----
->> From: Vlad Yasevich [mailto:vyasevich@gmail.com]
->> Sent: Monday, January 11, 2016 10:51 PM
->> To: Ravi Puttachannaiah <ravi.puttachannaiah@aricent.com>; malc
->> <mlashley@gmail.com>; linux-sctp@vger.kernel.org
->> Subject: Re: X2AP:handoverPreparationFailure message is not received
->> at source node
->>
->> On 01/11/2016 10:27 AM, Ravi Puttachannaiah wrote:
->>> Hi Malc,
->>>
->>> We have collected both working and non-working logs. Could you please let us know where can we share the attachment (since you said the list drop the attachment). How other members share the attachments?
->>>
->>> Regards,
->>
->> Providing a pointer to tcpdump logs is the best way.
->>
->> -vlad
->>
->>>
->>> Ravi
->>>
->>>
->>> -----Original Message-----
->>> From: linux-sctp-owner@vger.kernel.org
->>> [mailto:linux-sctp-owner@vger.kernel.org] On Behalf Of malc
->>> Sent: Thursday, January 07, 2016 8:44 PM
->>> To: linux-sctp@vger.kernel.org
->>> Subject: Re: X2AP:handoverPreparationFailure message is not received
->>> at source node
->>>
->>> Ravi,
->>>
->>> I think in order for anyone to help, you're going to need to provide a packet capture from 'source node' and 'peer-node-2', showing the working case, and the failing case, both from INIT onwards. (since the list drops attachments, you will need to post that somewhere we can access it.
->>>
->>> 1. Is peer-node-2 putting the packet on the wire?
->>> 2. When you say 'not getting received at source node' - Do you mean at the ethernet layer, the application layer, or ?
->>>
->>> Cheers,
->>> malc.
->>>
->>> On Thu, Jan 7, 2016 at 8:55 AM, Ravi Puttachannaiah <ravi.puttachannaiah@aricent.com> wrote:
->>>> Could somebody please respond and help.
->>>>
->>>> -----Original Message-----
->>>> From: Ravi Puttachannaiah
->>>> Sent: Tuesday, January 05, 2016 2:35 PM
->>>> To: 'linux-sctp@vger.kernel.org' <linux-sctp@vger.kernel.org>
->>>> Subject: X2AP:handoverPreparationFailure message is not received at
->>>> source node
->>>>
->>>> Hi,
->>>>
->>>>                 We are using X2AP protocol over the LKSCTP (ver 1.0.16) and we are seeing the following issue.
->>>>
->>>> Scenario:
->>>>
->>>>                 1.            We have source node connected to the two peer nodes peer-1 and peer-2.
->>>>                 2.            Source node does not have a SCTP connectivity with peer-1 because the peer-1 was not reachable. In this case source node will re-try every 4-seconds to establish a SCTP connection by creating a new SCTP association and sending a SCTP:INIT. If there is no response for SCTP:INIT (once all the SCTP:INIT retries are exhausted) then source node will close the socket or sctp association and retry again after 4-seconds.
->>>>
->>>>
->>>> Problem:
->>>>
->>>>                 1.            It is observed that when the retry attempt is going on for peer-1 the X2AP message sent from peer-2 node to source node is not getting received at source node. The source node is sending X2AP:handoverPreparation to peer-2 node and this is successfully received at peer-2. But when peer-2 sends X2AP:handoverPreparationFailure to source node this message is not received at  source node.
->>>>
->>>>                 2.            When there is no re-try attempt on-going(between source node to peer-1) then there is no issue observed and we can see that X2AP:handoverPreparationFailure is successfully received at source node.
->>>>
->>>>                 Could you please help us to resolve this SCTP issue. Please let me know what logs are required to check this issue.
->>>>
->>>> Regards,
->>>>
->>>> Ravi
->>>>
->>>> "DISCLAIMER: This message is proprietary to Aricent and is intended solely for the use of the individual to whom it is addressed. It may contain privileged or confidential information and should not be circulated or used for any purpose other than for what it is intended. If you have received this message in error, please notify the originator immediately. If you are not the intended recipient, you are notified that you are strictly prohibited from using, copying, altering, or disclosing the contents of this message. Aricent accepts no responsibility for loss or damage arising from the use of the information transmitted by this email including damage from virus."
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-sctp"
->>>> in the body of a message to majordomo@vger.kernel.org More majordomo
->>>> info at  http://vger.kernel.org/majordomo-info.html
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-sctp"
->>> in the body of a message to majordomo@vger.kernel.org More majordomo
->>> info at  http://vger.kernel.org/majordomo-info.html
->>> "DISCLAIMER: This message is proprietary to Aricent and is intended solely for the use of the individual to whom it is addressed. It may contain privileged or confidential information and should not be circulated or used for any purpose other than for what it is intended. If you have received this message in error, please notify the originator immediately. If you are not the intended recipient, you are notified that you are strictly prohibited from using, copying, altering, or disclosing the contents of this message. Aricent accepts no responsibility for loss or damage arising from the use of the information transmitted by this email including damage from virus."
->>> N     r  y   b X  ǧv ^ )޺{.n +    {   i {ay ʇڙ ,j   f   h   z  w
->>    j:+v   w j m         zZ+     ݢj"  !tml>>>
->>
->> "DISCLAIMER: This message is proprietary to Aricent and is intended solely for the use of the individual to whom it is addressed. It may contain privileged or confidential information and should not be circulated or used for any purpose other than for what it is intended. If you have received this message in error, please notify the originator immediately. If you are not the intended recipient, you are notified that you are strictly prohibited from using, copying, altering, or disclosing the contents of this message. Aricent accepts no responsibility for loss or damage arising from the use of the information transmitted by this email including damage from virus."
->>
-> 
-> "DISCLAIMER: This message is proprietary to Aricent and is intended solely for the use of the individual to whom it is addressed. It may contain privileged or confidential information and should not be circulated or used for any purpose other than for what it is intended. If you have received this message in error, please notify the originator immediately. If you are not the intended recipient, you are notified that you are strictly prohibited from using, copying, altering, or disclosing the contents of this message. Aricent accepts no responsibility for loss or damage arising from the use of the information transmitted by this email including damage from virus."
-> 
-
+SGkgVmxhZCwNCg0KVGhhbmtzIGZvciBsb29raW5nIGludG8gdGhlIGxvZ3MgYW5kIHNoYXJpbmcg
+dGhlIGFuYWx5c2lzLg0KDQpXZSB3aWxsIGNhcHR1cmUgdGhlIHBjYXAgb24gLjEuNDYgYW5kIHNo
+YXJlIHRoZSBwY2FwIGZpbGVzIGFuZCBhbHNvIGNoZWNrIGZvciBhbnkgZHJvcHBlZCBvciBlcnJv
+ciBmcmFtZXMuDQoNClJlZ2FyZHMsDQoNClJhdmkNCg0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2Ut
+LS0tLQ0KRnJvbTogVmxhZCBZYXNldmljaCBbbWFpbHRvOnZ5YXNldmljaEBnbWFpbC5jb21dDQpT
+ZW50OiBUdWVzZGF5LCBKYW51YXJ5IDEyLCAyMDE2IDk6MTIgUE0NClRvOiBSYXZpIFB1dHRhY2hh
+bm5haWFoIDxyYXZpLnB1dHRhY2hhbm5haWFoQGFyaWNlbnQuY29tPjsgbWFsYyA8bWxhc2hsZXlA
+Z21haWwuY29tPjsgbGludXgtc2N0cEB2Z2VyLmtlcm5lbC5vcmcNClN1YmplY3Q6IFJlOiBYMkFQ
+OmhhbmRvdmVyUHJlcGFyYXRpb25GYWlsdXJlIG1lc3NhZ2UgaXMgbm90IHJlY2VpdmVkIGF0IHNv
+dXJjZSBub2RlDQoNCk9uIDAxLzEyLzIwMTYgMDc6MTEgQU0sIFJhdmkgUHV0dGFjaGFubmFpYWgg
+d3JvdGU6DQo+IFRoYW5rcyBWbGFkLi4NCj4NCj4gUGxlYXNlIGNoZWNrIGFuZCBsZXQgbWUga25v
+dyBpZiBhbnkgbW9yZSBsb2dzIGFuZCBkZXRhaWxzIGFyZSByZXF1aXJlZC4NCj4NCj4gVGhhbmtz
+IGZvciB5b3VyIHN1cHBvcnQuDQoNCldlbGwsIEkgbG9va2VkIGF0IHRoZSB0cmFjZXMgYW5kIGl0
+IGRvZXNuJ3Qgc2hvdyB0aGUgcGFja2V0IGV2ZW4gbWFkZSBpdCB0byBkZXN0aW5hdGlvbiBob3N0
+IC4xLjQ3LiAgVXAgdW50aWwgdGhhdCBwb2ludCBldmVyeXRoaW5nIGFwcGVhcnMgdG8gYmUgd29y
+a2luZyBwcm9wZXJseSwgdGhlcmUgYXJlIG5vIGRyb3BzIGFueXdoZXJlLg0KDQpJIHdvdWxkIHJl
+Y29tbWVuZCB0aGF0IHlvdSB0cnkgY2FwdHVyaW5nIHRyYWZmaWMgb24gLjEuNDYgZHVyaW5nIHRo
+ZSB0cm91YmxpbmcgY29uZGl0aW9uIHRvIG1ha2Ugc3VyZSB0aGF0IHRoZSBwYWNrZXQgaXMgYWN0
+dWFsbHkgc2VudCBvbiB0aGUgd2lyZS4NCg0KQWxzbywgY2hlY2sgdGhlIG5pYyBzdGF0cyB0byBz
+ZWUgaWYgdGhlcmUgYXJlIGFueSBkcm9wcGVkIG9yIGVycm9yIGZyYW1lcy4NCklmIHRoZXJlIGlz
+IHN3aXRjaCBiZXR3ZWVuIHRoZSBzeXN0ZW1zLCB0cnkgdG8gc2VlIGlmIG1heSBiZSBpdCBpcyBk
+cm9wcGluZyBwYWNrZXRzLg0KDQpBdCB0aGlzIHBvaW50LCB0aGVyZSBpc24ndCBhIHdob2xlIGxv
+dCB3ZSBjYW4gZG8gYXMgaXQgYXBwZWFycyB0aGF0IHRoZSBoYW5kb3ZlclByZXBhcmF0aW9uOlVu
+c3VjY2Vzc2Z1bCBtZXNzYWdlIGZyb20gLjEuNDYgaXNuJ3QgbWFraW5nIGl0IHRvIC4xLjQ3Lg0K
+WW91IG5lZWQgdG8gdHJ5IHRvIGZpbmQgb3V0IHdoZXJlIGl0IGlzIGdvaW5nPw0KDQotdmxhZA0K
+DQo+DQo+DQo+IFJlZ2FyZHMsDQo+DQo+IFJhdmkNCj4NCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdl
+LS0tLS0NCj4gRnJvbTogVmxhZCBZYXNldmljaCBbbWFpbHRvOnZ5YXNldmljaEBnbWFpbC5jb21d
+DQo+IFNlbnQ6IFR1ZXNkYXksIEphbnVhcnkgMTIsIDIwMTYgNTozOCBQTQ0KPiBUbzogUmF2aSBQ
+dXR0YWNoYW5uYWlhaCA8cmF2aS5wdXR0YWNoYW5uYWlhaEBhcmljZW50LmNvbT47IG1hbGMNCj4g
+PG1sYXNobGV5QGdtYWlsLmNvbT47IGxpbnV4LXNjdHBAdmdlci5rZXJuZWwub3JnDQo+IFN1Ympl
+Y3Q6IFJlOiBYMkFQOmhhbmRvdmVyUHJlcGFyYXRpb25GYWlsdXJlIG1lc3NhZ2UgaXMgbm90IHJl
+Y2VpdmVkDQo+IGF0IHNvdXJjZSBub2RlDQo+DQo+IE9uIDAxLzEyLzIwMTYgMDY6MjkgQU0sIFJh
+dmkgUHV0dGFjaGFubmFpYWggd3JvdGU6DQo+PiBIaSBWbGFkLCBNYWxjLA0KPj4NCj4+IEkgaGF2
+ZSB1cGxvYWRlZCB0aGUgbG9ncyBpbiB0aGUgZHJvcGJveC4gUGxlYXNlIHVzZSB0aGUgYmVsb3cg
+VVJMIHRvIGFjY2VzcyB0aGUgbG9ncy4NCj4+DQo+PiBodHRwczovL3d3dy5kcm9wYm94LmNvbS9z
+aC91dG1vMWpidzdsNml0bXgvQUFCU0NrMDRZTnh1M1hUbnFfQms4bDJFYT8NCj4+IGQNCj4+IGw9
+MA0KPg0KPiBJJ2xsIHRha2UgYSBsb29rLg0KPj4NCj4+IEZvbGxvd2luZyBpcyB0aGUgZGV0YWls
+cyBmcm9tIHRoZSBsb2dzLg0KPj4NCj4+IHdvcmtpbmdfc2N0cF9zMWFwX3gyYXBfbG9ncy5wY2Fw
+bmcgLUluLWNhc2Ugb2YgYW4gd29ya2luZyBsb2dzIHlvdSBjYW4gb2JzZXJ2ZSB0aGF0Og0KPj4N
+Cj4+IDEuIEluIHBhY2tldCBuby00NzEsIHRoZSBJUCAxNzIuMzMuMS40NyBpcyBzZW5kaW5nIHRo
+ZQ0KPj4gWDJBUDpoYW5kb3ZlclByZXBlcmF0aW9uIG1lc3NhZ2UgdG8gMTcyLjMzLjEuNDYgMi4g
+SW4gcGFja2V0IG5vLTQ3NSwNCj4+IHRoZSBJUCAxNzIuMzMuMS40NiBpcyBzZW5kaW5nIHRoZSBY
+MkFQOmhhbmRvdmVyUHJlcGVyYXRpb25GYWlsdXJlDQo+PiAxNzIuMzMuMS40Nw0KPj4NCj4+IG5v
+bi13b3JraW5nX3NjdHBfczFhcF94MmFwX2xvZ3MucGNhcHBuZy0gSW4tY2FzZSBvZiBhbiBub24t
+d29ya2luZw0KPj4gbG9ncyB5b3UgY2FuIG9ic2VydmUgdGhhdA0KPj4NCj4+IDEuIEluIHBhY2tl
+dCBuby0xNjIsIHRoZSBJUCAxNzIuMzMuMS40NyBpcyBzZW5kaW5nIHRoZQ0KPj4gWDJBUDpoYW5k
+b3ZlclByZXBlcmF0aW9uIG1lc3NhZ2UgdG8gMTcyLjMzLjEuNDYgMi4gQnV0IGluIHRoaXMgY2Fz
+ZSB3ZSBhcmUgbm90IHNlZWluZyB0aGUgWDJBUDpoYW5kb3ZlclByZXBlcmF0aW9uRmFpbHVyZSBz
+ZW50IGJ5IDE3Mi4zMy4xLjQ2LiBJbiB0aGUgYXBwbGljYXRpb24gbG9ncyB3ZSBjb3VsZCBzZWUg
+dGhhdCBhcHBsaWNhdGlvbiBpcyB3cml0aW5nIHRvIHRoZSBzb2NrZXQgc3VjY2Vzc2Z1bGx5ICh0
+aGVyZSBhcmUgbm8gZXJyb3JzKS4NCj4+DQo+PiBBcyBpbmRpY2F0ZWQgcHJldmlvdXNseSB0aGUg
+aXNzdWUgaXMgbm90IHNlZW4gIldoZW4gdGhlcmUgaXMgbm8gcmUtdHJ5IGF0dGVtcHQgb24tZ29p
+bmcoYmV0d2VlbiBzb3VyY2Ugbm9kZSB0byBwZWVyLTEpIHRoZW4gdGhlcmUgaXMgbm8gaXNzdWUg
+b2JzZXJ2ZWQgYW5kIHdlIGNhbiBzZWUgdGhhdCBYMkFQOmhhbmRvdmVyUHJlcGFyYXRpb25GYWls
+dXJlIGlzIHN1Y2Nlc3NmdWxseSByZWNlaXZlZCBhdCBzb3VyY2Ugbm9kZS4iDQo+Pg0KPj4gUmVz
+cG9uc2UgdG8gTWFsYyBxdWVyeS4NCj4+DQo+PiAxLiBJcyBwZWVyLW5vZGUtMiBwdXR0aW5nIHRo
+ZSBwYWNrZXQgb24gdGhlIHdpcmU/DQo+PiBSQVZJUD4+IFllcy4uIEZyb20gdGhlIGFwcGxpY2F0
+aW9uIGxvZ3Mgd2UgY2FuIGNvbmZpcm0gdGhhdCBwZWVyLW5vZGUtMiBpcyB3cml0aW5nIHRoZSBt
+ZXNzYWdlIHRvIHRoZSBzb2NrZXQuDQo+DQo+IEp1c3QgYmVjYXVzZSB0aGUgcGFja2V0IHdhcyB3
+cml0dGVuIHRvIHRoZSBzb2NrZXQgZG9lc24ndCBtZWFuIGl0J3Mgb24gdGhlIHdpcmUuICBJdCBt
+YXkgc3RpbGwgYnkgYnVmZmVyZWQgaWYgdGhlcmUgaGFzbid0IGJlZW4gYW4gYWNrLiAgSSBoYXZl
+bid0IGNoZWNrZWQgeWV0LCBidXQgSSBob3BlIHRoZSBsb2dzIGFib3ZlIGNvbnRhaW4gdHJhY2Vz
+IGZyb20gcGVlci1ub2RlLTIsIHNvIHdlIGNhbiBzZWUgdGhlIG1lc3NhZ2UuDQo+DQo+Pg0KPj4g
+Mi4gV2hlbiB5b3Ugc2F5ICdub3QgZ2V0dGluZyByZWNlaXZlZCBhdCBzb3VyY2Ugbm9kZScgLSBE
+byB5b3UgbWVhbiBhdCB0aGUgZXRoZXJuZXQgbGF5ZXIsIHRoZSBhcHBsaWNhdGlvbiBsYXllciwg
+b3IgPw0KPj4gUkFWSVA+PiBXZSBhcmUgbm90IHNlZWluZyBtZXNzYWdlIGJvdGggYXQgYXBwbGlj
+YXRpb24gbGV2ZWwgYW5kIGFsc28gYXQgd2lyZXNoYXJrLiBJIHN1c3BlY3QgdGhlIG1lc3NhZ2Ug
+Y291bGQgYmUgZ2V0dGluZyBkcm9wcGVkIGF0IExLU0NUUCBsZXZlbC4NCj4NCj4gTm8sIGlmIHlv
+dSBhcmUgbm90IHNlZWluZyBpdCBpbiB3aXJlc2hhcmssIHRoZW4gc2N0cCBkb2Vzbid0IHNlZSB0
+aGUgcGFja2V0IGVpdGhlci4NCj4gVGhlIHBhY2tldCBjYXB0dXJlIGhhcHBlbnMgYmVmb3JlIGFu
+eSBwcm90b2NvbCBoYXZlIGFuIGFiaWxpdHkgdG8gZHJvcCBhbnl0aGluZy4gIEV2ZW4gc29tZSBl
+cnJvcnMgaGFuZGxlZCBieSB0aGUgbmljIGNhbiBiZSBvYnNlcnZlZCB3aXRoIHdpcmVzaGFyay4N
+Cj4NCj4gLXZsYWQNCj4NCj4+DQo+PiBSZWdhcmRzLA0KPj4NCj4+IFJhdmkNCj4+DQo+Pg0KPj4g
+LS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4+IEZyb206IFZsYWQgWWFzZXZpY2ggW21haWx0
+bzp2eWFzZXZpY2hAZ21haWwuY29tXQ0KPj4gU2VudDogTW9uZGF5LCBKYW51YXJ5IDExLCAyMDE2
+IDEwOjUxIFBNDQo+PiBUbzogUmF2aSBQdXR0YWNoYW5uYWlhaCA8cmF2aS5wdXR0YWNoYW5uYWlh
+aEBhcmljZW50LmNvbT47IG1hbGMNCj4+IDxtbGFzaGxleUBnbWFpbC5jb20+OyBsaW51eC1zY3Rw
+QHZnZXIua2VybmVsLm9yZw0KPj4gU3ViamVjdDogUmU6IFgyQVA6aGFuZG92ZXJQcmVwYXJhdGlv
+bkZhaWx1cmUgbWVzc2FnZSBpcyBub3QgcmVjZWl2ZWQNCj4+IGF0IHNvdXJjZSBub2RlDQo+Pg0K
+Pj4gT24gMDEvMTEvMjAxNiAxMDoyNyBBTSwgUmF2aSBQdXR0YWNoYW5uYWlhaCB3cm90ZToNCj4+
+PiBIaSBNYWxjLA0KPj4+DQo+Pj4gV2UgaGF2ZSBjb2xsZWN0ZWQgYm90aCB3b3JraW5nIGFuZCBu
+b24td29ya2luZyBsb2dzLiBDb3VsZCB5b3UgcGxlYXNlIGxldCB1cyBrbm93IHdoZXJlIGNhbiB3
+ZSBzaGFyZSB0aGUgYXR0YWNobWVudCAoc2luY2UgeW91IHNhaWQgdGhlIGxpc3QgZHJvcCB0aGUg
+YXR0YWNobWVudCkuIEhvdyBvdGhlciBtZW1iZXJzIHNoYXJlIHRoZSBhdHRhY2htZW50cz8NCj4+
+Pg0KPj4+IFJlZ2FyZHMsDQo+Pg0KPj4gUHJvdmlkaW5nIGEgcG9pbnRlciB0byB0Y3BkdW1wIGxv
+Z3MgaXMgdGhlIGJlc3Qgd2F5Lg0KPj4NCj4+IC12bGFkDQo+Pg0KPj4+DQo+Pj4gUmF2aQ0KPj4+
+DQo+Pj4NCj4+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPj4+IEZyb206IGxpbnV4LXNj
+dHAtb3duZXJAdmdlci5rZXJuZWwub3JnDQo+Pj4gW21haWx0bzpsaW51eC1zY3RwLW93bmVyQHZn
+ZXIua2VybmVsLm9yZ10gT24gQmVoYWxmIE9mIG1hbGMNCj4+PiBTZW50OiBUaHVyc2RheSwgSmFu
+dWFyeSAwNywgMjAxNiA4OjQ0IFBNDQo+Pj4gVG86IGxpbnV4LXNjdHBAdmdlci5rZXJuZWwub3Jn
+DQo+Pj4gU3ViamVjdDogUmU6IFgyQVA6aGFuZG92ZXJQcmVwYXJhdGlvbkZhaWx1cmUgbWVzc2Fn
+ZSBpcyBub3QgcmVjZWl2ZWQNCj4+PiBhdCBzb3VyY2Ugbm9kZQ0KPj4+DQo+Pj4gUmF2aSwNCj4+
+Pg0KPj4+IEkgdGhpbmsgaW4gb3JkZXIgZm9yIGFueW9uZSB0byBoZWxwLCB5b3UncmUgZ29pbmcg
+dG8gbmVlZCB0byBwcm92aWRlIGEgcGFja2V0IGNhcHR1cmUgZnJvbSAnc291cmNlIG5vZGUnIGFu
+ZCAncGVlci1ub2RlLTInLCBzaG93aW5nIHRoZSB3b3JraW5nIGNhc2UsIGFuZCB0aGUgZmFpbGlu
+ZyBjYXNlLCBib3RoIGZyb20gSU5JVCBvbndhcmRzLiAoc2luY2UgdGhlIGxpc3QgZHJvcHMgYXR0
+YWNobWVudHMsIHlvdSB3aWxsIG5lZWQgdG8gcG9zdCB0aGF0IHNvbWV3aGVyZSB3ZSBjYW4gYWNj
+ZXNzIGl0Lg0KPj4+DQo+Pj4gMS4gSXMgcGVlci1ub2RlLTIgcHV0dGluZyB0aGUgcGFja2V0IG9u
+IHRoZSB3aXJlPw0KPj4+IDIuIFdoZW4geW91IHNheSAnbm90IGdldHRpbmcgcmVjZWl2ZWQgYXQg
+c291cmNlIG5vZGUnIC0gRG8geW91IG1lYW4gYXQgdGhlIGV0aGVybmV0IGxheWVyLCB0aGUgYXBw
+bGljYXRpb24gbGF5ZXIsIG9yID8NCj4+Pg0KPj4+IENoZWVycywNCj4+PiBtYWxjLg0KPj4+DQo+
+Pj4gT24gVGh1LCBKYW4gNywgMjAxNiBhdCA4OjU1IEFNLCBSYXZpIFB1dHRhY2hhbm5haWFoIDxy
+YXZpLnB1dHRhY2hhbm5haWFoQGFyaWNlbnQuY29tPiB3cm90ZToNCj4+Pj4gQ291bGQgc29tZWJv
+ZHkgcGxlYXNlIHJlc3BvbmQgYW5kIGhlbHAuDQo+Pj4+DQo+Pj4+IC0tLS0tT3JpZ2luYWwgTWVz
+c2FnZS0tLS0tDQo+Pj4+IEZyb206IFJhdmkgUHV0dGFjaGFubmFpYWgNCj4+Pj4gU2VudDogVHVl
+c2RheSwgSmFudWFyeSAwNSwgMjAxNiAyOjM1IFBNDQo+Pj4+IFRvOiAnbGludXgtc2N0cEB2Z2Vy
+Lmtlcm5lbC5vcmcnIDxsaW51eC1zY3RwQHZnZXIua2VybmVsLm9yZz4NCj4+Pj4gU3ViamVjdDog
+WDJBUDpoYW5kb3ZlclByZXBhcmF0aW9uRmFpbHVyZSBtZXNzYWdlIGlzIG5vdCByZWNlaXZlZCBh
+dA0KPj4+PiBzb3VyY2Ugbm9kZQ0KPj4+Pg0KPj4+PiBIaSwNCj4+Pj4NCj4+Pj4gICAgICAgICAg
+ICAgICAgIFdlIGFyZSB1c2luZyBYMkFQIHByb3RvY29sIG92ZXIgdGhlIExLU0NUUCAodmVyIDEu
+MC4xNikgYW5kIHdlIGFyZSBzZWVpbmcgdGhlIGZvbGxvd2luZyBpc3N1ZS4NCj4+Pj4NCj4+Pj4g
+U2NlbmFyaW86DQo+Pj4+DQo+Pj4+ICAgICAgICAgICAgICAgICAxLiAgICAgICAgICAgIFdlIGhh
+dmUgc291cmNlIG5vZGUgY29ubmVjdGVkIHRvIHRoZSB0d28gcGVlciBub2RlcyBwZWVyLTEgYW5k
+IHBlZXItMi4NCj4+Pj4gICAgICAgICAgICAgICAgIDIuICAgICAgICAgICAgU291cmNlIG5vZGUg
+ZG9lcyBub3QgaGF2ZSBhIFNDVFAgY29ubmVjdGl2aXR5IHdpdGggcGVlci0xIGJlY2F1c2UgdGhl
+IHBlZXItMSB3YXMgbm90IHJlYWNoYWJsZS4gSW4gdGhpcyBjYXNlIHNvdXJjZSBub2RlIHdpbGwg
+cmUtdHJ5IGV2ZXJ5IDQtc2Vjb25kcyB0byBlc3RhYmxpc2ggYSBTQ1RQIGNvbm5lY3Rpb24gYnkg
+Y3JlYXRpbmcgYSBuZXcgU0NUUCBhc3NvY2lhdGlvbiBhbmQgc2VuZGluZyBhIFNDVFA6SU5JVC4g
+SWYgdGhlcmUgaXMgbm8gcmVzcG9uc2UgZm9yIFNDVFA6SU5JVCAob25jZSBhbGwgdGhlIFNDVFA6
+SU5JVCByZXRyaWVzIGFyZSBleGhhdXN0ZWQpIHRoZW4gc291cmNlIG5vZGUgd2lsbCBjbG9zZSB0
+aGUgc29ja2V0IG9yIHNjdHAgYXNzb2NpYXRpb24gYW5kIHJldHJ5IGFnYWluIGFmdGVyIDQtc2Vj
+b25kcy4NCj4+Pj4NCj4+Pj4NCj4+Pj4gUHJvYmxlbToNCj4+Pj4NCj4+Pj4gICAgICAgICAgICAg
+ICAgIDEuICAgICAgICAgICAgSXQgaXMgb2JzZXJ2ZWQgdGhhdCB3aGVuIHRoZSByZXRyeSBhdHRl
+bXB0IGlzIGdvaW5nIG9uIGZvciBwZWVyLTEgdGhlIFgyQVAgbWVzc2FnZSBzZW50IGZyb20gcGVl
+ci0yIG5vZGUgdG8gc291cmNlIG5vZGUgaXMgbm90IGdldHRpbmcgcmVjZWl2ZWQgYXQgc291cmNl
+IG5vZGUuIFRoZSBzb3VyY2Ugbm9kZSBpcyBzZW5kaW5nIFgyQVA6aGFuZG92ZXJQcmVwYXJhdGlv
+biB0byBwZWVyLTIgbm9kZSBhbmQgdGhpcyBpcyBzdWNjZXNzZnVsbHkgcmVjZWl2ZWQgYXQgcGVl
+ci0yLiBCdXQgd2hlbiBwZWVyLTIgc2VuZHMgWDJBUDpoYW5kb3ZlclByZXBhcmF0aW9uRmFpbHVy
+ZSB0byBzb3VyY2Ugbm9kZSB0aGlzIG1lc3NhZ2UgaXMgbm90IHJlY2VpdmVkIGF0ICBzb3VyY2Ug
+bm9kZS4NCj4+Pj4NCj4+Pj4gICAgICAgICAgICAgICAgIDIuICAgICAgICAgICAgV2hlbiB0aGVy
+ZSBpcyBubyByZS10cnkgYXR0ZW1wdCBvbi1nb2luZyhiZXR3ZWVuIHNvdXJjZSBub2RlIHRvIHBl
+ZXItMSkgdGhlbiB0aGVyZSBpcyBubyBpc3N1ZSBvYnNlcnZlZCBhbmQgd2UgY2FuIHNlZSB0aGF0
+IFgyQVA6aGFuZG92ZXJQcmVwYXJhdGlvbkZhaWx1cmUgaXMgc3VjY2Vzc2Z1bGx5IHJlY2VpdmVk
+IGF0IHNvdXJjZSBub2RlLg0KPj4+Pg0KPj4+PiAgICAgICAgICAgICAgICAgQ291bGQgeW91IHBs
+ZWFzZSBoZWxwIHVzIHRvIHJlc29sdmUgdGhpcyBTQ1RQIGlzc3VlLiBQbGVhc2UgbGV0IG1lIGtu
+b3cgd2hhdCBsb2dzIGFyZSByZXF1aXJlZCB0byBjaGVjayB0aGlzIGlzc3VlLg0KPj4+Pg0KPj4+
+PiBSZWdhcmRzLA0KPj4+Pg0KPj4+PiBSYXZpDQo+Pj4+DQo+Pj4+ICJESVNDTEFJTUVSOiBUaGlz
+IG1lc3NhZ2UgaXMgcHJvcHJpZXRhcnkgdG8gQXJpY2VudCBhbmQgaXMgaW50ZW5kZWQgc29sZWx5
+IGZvciB0aGUgdXNlIG9mIHRoZSBpbmRpdmlkdWFsIHRvIHdob20gaXQgaXMgYWRkcmVzc2VkLiBJ
+dCBtYXkgY29udGFpbiBwcml2aWxlZ2VkIG9yIGNvbmZpZGVudGlhbCBpbmZvcm1hdGlvbiBhbmQg
+c2hvdWxkIG5vdCBiZSBjaXJjdWxhdGVkIG9yIHVzZWQgZm9yIGFueSBwdXJwb3NlIG90aGVyIHRo
+YW4gZm9yIHdoYXQgaXQgaXMgaW50ZW5kZWQuIElmIHlvdSBoYXZlIHJlY2VpdmVkIHRoaXMgbWVz
+c2FnZSBpbiBlcnJvciwgcGxlYXNlIG5vdGlmeSB0aGUgb3JpZ2luYXRvciBpbW1lZGlhdGVseS4g
+SWYgeW91IGFyZSBub3QgdGhlIGludGVuZGVkIHJlY2lwaWVudCwgeW91IGFyZSBub3RpZmllZCB0
+aGF0IHlvdSBhcmUgc3RyaWN0bHkgcHJvaGliaXRlZCBmcm9tIHVzaW5nLCBjb3B5aW5nLCBhbHRl
+cmluZywgb3IgZGlzY2xvc2luZyB0aGUgY29udGVudHMgb2YgdGhpcyBtZXNzYWdlLiBBcmljZW50
+IGFjY2VwdHMgbm8gcmVzcG9uc2liaWxpdHkgZm9yIGxvc3Mgb3IgZGFtYWdlIGFyaXNpbmcgZnJv
+bSB0aGUgdXNlIG9mIHRoZSBpbmZvcm1hdGlvbiB0cmFuc21pdHRlZCBieSB0aGlzIGVtYWlsIGlu
+Y2x1ZGluZyBkYW1hZ2UgZnJvbSB2aXJ1cy4iDQo+Pj4+IC0tDQo+Pj4+IFRvIHVuc3Vic2NyaWJl
+IGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1zY3RwIg0K
+Pj4+PiBpbiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9y
+ZyBNb3JlDQo+Pj4+IG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21h
+am9yZG9tby1pbmZvLmh0bWwNCj4+PiAtLQ0KPj4+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBs
+aXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1zY3RwIg0KPj4+IGluIHRoZSBi
+b2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnIE1vcmUgbWFqb3Jk
+b21vDQo+Pj4gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5o
+dG1sDQo+Pj4gIkRJU0NMQUlNRVI6IFRoaXMgbWVzc2FnZSBpcyBwcm9wcmlldGFyeSB0byBBcmlj
+ZW50IGFuZCBpcyBpbnRlbmRlZCBzb2xlbHkgZm9yIHRoZSB1c2Ugb2YgdGhlIGluZGl2aWR1YWwg
+dG8gd2hvbSBpdCBpcyBhZGRyZXNzZWQuIEl0IG1heSBjb250YWluIHByaXZpbGVnZWQgb3IgY29u
+ZmlkZW50aWFsIGluZm9ybWF0aW9uIGFuZCBzaG91bGQgbm90IGJlIGNpcmN1bGF0ZWQgb3IgdXNl
+ZCBmb3IgYW55IHB1cnBvc2Ugb3RoZXIgdGhhbiBmb3Igd2hhdCBpdCBpcyBpbnRlbmRlZC4gSWYg
+eW91IGhhdmUgcmVjZWl2ZWQgdGhpcyBtZXNzYWdlIGluIGVycm9yLCBwbGVhc2Ugbm90aWZ5IHRo
+ZSBvcmlnaW5hdG9yIGltbWVkaWF0ZWx5LiBJZiB5b3UgYXJlIG5vdCB0aGUgaW50ZW5kZWQgcmVj
+aXBpZW50LCB5b3UgYXJlIG5vdGlmaWVkIHRoYXQgeW91IGFyZSBzdHJpY3RseSBwcm9oaWJpdGVk
+IGZyb20gdXNpbmcsIGNvcHlpbmcsIGFsdGVyaW5nLCBvciBkaXNjbG9zaW5nIHRoZSBjb250ZW50
+cyBvZiB0aGlzIG1lc3NhZ2UuIEFyaWNlbnQgYWNjZXB0cyBubyByZXNwb25zaWJpbGl0eSBmb3Ig
+bG9zcyBvciBkYW1hZ2UgYXJpc2luZyBmcm9tIHRoZSB1c2Ugb2YgdGhlIGluZm9ybWF0aW9uIHRy
+YW5zbWl0dGVkIGJ5IHRoaXMgZW1haWwgaW5jbHVkaW5nIGRhbWFnZSBmcm9tIHZpcnVzLiINCj4+
+PiBOICAgICByICB5ICAgYiBYICDHp3YgXiAp3rp7Lm4gKyAgICB7ICAgaSB7YXkgHcqH2pkgLGog
+ICBmICAgaCAgIHogHiB3DQo+PiAgICBqOit2ICAgdyBqIG0gICAgICAgICB6WisgICAgIN2iaiIg
+ICF0bWw9DQo+Pj4NCj4+DQo+PiAiRElTQ0xBSU1FUjogVGhpcyBtZXNzYWdlIGlzIHByb3ByaWV0
+YXJ5IHRvIEFyaWNlbnQgYW5kIGlzIGludGVuZGVkIHNvbGVseSBmb3IgdGhlIHVzZSBvZiB0aGUg
+aW5kaXZpZHVhbCB0byB3aG9tIGl0IGlzIGFkZHJlc3NlZC4gSXQgbWF5IGNvbnRhaW4gcHJpdmls
+ZWdlZCBvciBjb25maWRlbnRpYWwgaW5mb3JtYXRpb24gYW5kIHNob3VsZCBub3QgYmUgY2lyY3Vs
+YXRlZCBvciB1c2VkIGZvciBhbnkgcHVycG9zZSBvdGhlciB0aGFuIGZvciB3aGF0IGl0IGlzIGlu
+dGVuZGVkLiBJZiB5b3UgaGF2ZSByZWNlaXZlZCB0aGlzIG1lc3NhZ2UgaW4gZXJyb3IsIHBsZWFz
+ZSBub3RpZnkgdGhlIG9yaWdpbmF0b3IgaW1tZWRpYXRlbHkuIElmIHlvdSBhcmUgbm90IHRoZSBp
+bnRlbmRlZCByZWNpcGllbnQsIHlvdSBhcmUgbm90aWZpZWQgdGhhdCB5b3UgYXJlIHN0cmljdGx5
+IHByb2hpYml0ZWQgZnJvbSB1c2luZywgY29weWluZywgYWx0ZXJpbmcsIG9yIGRpc2Nsb3Npbmcg
+dGhlIGNvbnRlbnRzIG9mIHRoaXMgbWVzc2FnZS4gQXJpY2VudCBhY2NlcHRzIG5vIHJlc3BvbnNp
+YmlsaXR5IGZvciBsb3NzIG9yIGRhbWFnZSBhcmlzaW5nIGZyb20gdGhlIHVzZSBvZiB0aGUgaW5m
+b3JtYXRpb24gdHJhbnNtaXR0ZWQgYnkgdGhpcyBlbWFpbCBpbmNsdWRpbmcgZGFtYWdlIGZyb20g
+dmlydXMuIg0KPj4NCj4NCj4gIkRJU0NMQUlNRVI6IFRoaXMgbWVzc2FnZSBpcyBwcm9wcmlldGFy
+eSB0byBBcmljZW50IGFuZCBpcyBpbnRlbmRlZCBzb2xlbHkgZm9yIHRoZSB1c2Ugb2YgdGhlIGlu
+ZGl2aWR1YWwgdG8gd2hvbSBpdCBpcyBhZGRyZXNzZWQuIEl0IG1heSBjb250YWluIHByaXZpbGVn
+ZWQgb3IgY29uZmlkZW50aWFsIGluZm9ybWF0aW9uIGFuZCBzaG91bGQgbm90IGJlIGNpcmN1bGF0
+ZWQgb3IgdXNlZCBmb3IgYW55IHB1cnBvc2Ugb3RoZXIgdGhhbiBmb3Igd2hhdCBpdCBpcyBpbnRl
+bmRlZC4gSWYgeW91IGhhdmUgcmVjZWl2ZWQgdGhpcyBtZXNzYWdlIGluIGVycm9yLCBwbGVhc2Ug
+bm90aWZ5IHRoZSBvcmlnaW5hdG9yIGltbWVkaWF0ZWx5LiBJZiB5b3UgYXJlIG5vdCB0aGUgaW50
+ZW5kZWQgcmVjaXBpZW50LCB5b3UgYXJlIG5vdGlmaWVkIHRoYXQgeW91IGFyZSBzdHJpY3RseSBw
+cm9oaWJpdGVkIGZyb20gdXNpbmcsIGNvcHlpbmcsIGFsdGVyaW5nLCBvciBkaXNjbG9zaW5nIHRo
+ZSBjb250ZW50cyBvZiB0aGlzIG1lc3NhZ2UuIEFyaWNlbnQgYWNjZXB0cyBubyByZXNwb25zaWJp
+bGl0eSBmb3IgbG9zcyBvciBkYW1hZ2UgYXJpc2luZyBmcm9tIHRoZSB1c2Ugb2YgdGhlIGluZm9y
+bWF0aW9uIHRyYW5zbWl0dGVkIGJ5IHRoaXMgZW1haWwgaW5jbHVkaW5nIGRhbWFnZSBmcm9tIHZp
+cnVzLiINCj4NCg0KIkRJU0NMQUlNRVI6IFRoaXMgbWVzc2FnZSBpcyBwcm9wcmlldGFyeSB0byBB
+cmljZW50IGFuZCBpcyBpbnRlbmRlZCBzb2xlbHkgZm9yIHRoZSB1c2Ugb2YgdGhlIGluZGl2aWR1
+YWwgdG8gd2hvbSBpdCBpcyBhZGRyZXNzZWQuIEl0IG1heSBjb250YWluIHByaXZpbGVnZWQgb3Ig
+Y29uZmlkZW50aWFsIGluZm9ybWF0aW9uIGFuZCBzaG91bGQgbm90IGJlIGNpcmN1bGF0ZWQgb3Ig
+dXNlZCBmb3IgYW55IHB1cnBvc2Ugb3RoZXIgdGhhbiBmb3Igd2hhdCBpdCBpcyBpbnRlbmRlZC4g
+SWYgeW91IGhhdmUgcmVjZWl2ZWQgdGhpcyBtZXNzYWdlIGluIGVycm9yLCBwbGVhc2Ugbm90aWZ5
+IHRoZSBvcmlnaW5hdG9yIGltbWVkaWF0ZWx5LiBJZiB5b3UgYXJlIG5vdCB0aGUgaW50ZW5kZWQg
+cmVjaXBpZW50LCB5b3UgYXJlIG5vdGlmaWVkIHRoYXQgeW91IGFyZSBzdHJpY3RseSBwcm9oaWJp
+dGVkIGZyb20gdXNpbmcsIGNvcHlpbmcsIGFsdGVyaW5nLCBvciBkaXNjbG9zaW5nIHRoZSBjb250
+ZW50cyBvZiB0aGlzIG1lc3NhZ2UuIEFyaWNlbnQgYWNjZXB0cyBubyByZXNwb25zaWJpbGl0eSBm
+b3IgbG9zcyBvciBkYW1hZ2UgYXJpc2luZyBmcm9tIHRoZSB1c2Ugb2YgdGhlIGluZm9ybWF0aW9u
+IHRyYW5zbWl0dGVkIGJ5IHRoaXMgZW1haWwgaW5jbHVkaW5nIGRhbWFnZSBmcm9tIHZpcnVzLiIN
+Cg=
