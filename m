@@ -1,59 +1,127 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 19 Jan 2016 20:08:48 +0000
-Subject: Re: [PATCH net] sctp: do sanity checks before migrating the asoc
-Message-Id: <569E97D0.7050109@gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 14 Jan 2016 05:49:34 +0000
+Subject: [PATCH net] sctp: support to lookup with ep+paddr in transport rhashtable
+Message-Id: <66cb37a6d0c3776e9eb3adf0bf6fc33ff947eb63.1452750574.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CACT4Y+Z6jY_n_cpmbFz366=JzoLX=u4Zc_o8gHFwJw8ApKf4zw@mail.gmail.com>
- <10616913996c7a4cbe8a2bb23cf4e78fcfa0a13a.1452891824.git.marcelo.leitner@gmail.com>
- <569E45FD.4040801@gmail.com> <569E5D44.5000103@gmail.com>
- <569E8280.9080701@gmail.com> <569E8F2F.5070906@gmail.com>
- <569E94CF.4030409@gmail.com>
-In-Reply-To: <569E94CF.4030409@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, dvyukov@google.com, eric.dumazet@gmail.com, syzkaller@googlegroups.com, kcc@google.com, glider@google.com, sasha.levin@oracle.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net
 
-Em 19-01-2016 17:55, Vlad Yasevich escreveu:
-> On 01/19/2016 02:31 PM, Marcelo Ricardo Leitner wrote:
->> Em 19-01-2016 16:37, Vlad Yasevich escreveu:
->>> On 01/19/2016 10:59 AM, Marcelo Ricardo Leitner wrote:
->>>> Yes, not thrilled here either about connect-to-self.
->>>>
->>>> But there is a big difference on how both works. For rx we can just look for wanted skbs
->>>> in rx queue, as they aren't going anywhere, but for tx I don't think we can easily block
->>>> sctp_wfree() call because that may be happening on another CPU (or am I mistaken here?
->>>> sctp still doesn't have RFS but even irqbalance could affect this AFAICT) and more than
->>>> one skb may be in transit at a time.
->>>
->>> The way it's done now, we wouldn't have to block sctp_wfree.  Chunks are released under
->>> lock when they are acked, so we are OK here.  The tx completions will just put 1 byte back
->>> to the socket associated with the tx'ed skb, and that should still be ok as
->>> sctp_packet_release_owner will call sk_free().
->>
->> Please let me rephrase it. I'm actually worried about the asoc->base.sk part of the story
->> and how it's fetched in sctp_wfree(). I think we can update that sk pointer after
->> sock_wfree() has fetched it but not used it yet, possibly leading to accounting it twice,
->> one during migration and one on sock_wfree.
->> In sock_wfree() it will update some sk stats like sk->sk_wmem_alloc, among others.
->
-> sctp_wfree() is only used on skbs that were created as sctp chunks to be transmitted.
-> Right now, these skbs aren't actually submitted to the IP or to nic to be transmitted.
-> They are queued at the association level (either in transports or in the outqueue).
-> They are only freed during ACK processing.
->
-> The ACK processing happens under a socket lock and thus asoc->base.sk can not move.
->
-> The migration process also happens under a socket lock.  As a result, during migration
-> we are guaranteed the chunk queues remain consistent and that asoc->base.sk linkage
-> remains consistent.  In fact, if you look at the sctp_sock_migrate, we lock both
-> sockets when we reassign the assoc->base.sk so we know both sockets are properly locked.
->
-> So, I am not sure that what you are worried about can happen.  Please feel free to
-> double-check the above of course.
+Now, when we sendmsg, we translate the ep to laddr by selecting the
+first element of the list, and then do a lookup for a transport.
 
-Ohh, right. That makes sense. I'll rework the patch. Thanks Vlad.
+But sctp_hash_cmp() will compare it against asoc addr_list, which may
+be a subset of ep addr_list, meaning that this chosen laddr may not be
+there, and thus making it impossible to find the transport.
 
-   Marcelo
+So we fix it by using ep + paddr to lookup transports in hashtable. In
+sctp_hash_cmp, if .ep is set, we will check if this ep = asoc->ep,
+or we will do the laddr check.
+
+Fixes: d6c0256a60e6 ("sctp: add the rhashtable apis for sctp global transport hashtable")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Reported-by: Vlad Yasevich <vyasevich@gmail.com>
+---
+ net/sctp/input.c | 38 +++++++++++++++++++++++---------------
+ 1 file changed, 23 insertions(+), 15 deletions(-)
+
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index d9a6e66..b9a536b 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -784,6 +784,7 @@ hit:
+ 
+ /* rhashtable for transport */
+ struct sctp_hash_cmp_arg {
++	const struct sctp_endpoint	*ep;
+ 	const union sctp_addr		*laddr;
+ 	const union sctp_addr		*paddr;
+ 	const struct net		*net;
+@@ -797,15 +798,20 @@ static inline int sctp_hash_cmp(struct rhashtable_compare_arg *arg,
+ 	struct sctp_association *asoc = t->asoc;
+ 	const struct net *net = x->net;
+ 
+-	if (x->laddr->v4.sin_port != htons(asoc->base.bind_addr.port))
+-		return 1;
+ 	if (!sctp_cmp_addr_exact(&t->ipaddr, x->paddr))
+ 		return 1;
+ 	if (!net_eq(sock_net(asoc->base.sk), net))
+ 		return 1;
+-	if (!sctp_bind_addr_match(&asoc->base.bind_addr,
+-				  x->laddr, sctp_sk(asoc->base.sk)))
+-		return 1;
++	if (x->ep) {
++		if (x->ep != asoc->ep)
++			return 1;
++	} else {
++		if (x->laddr->v4.sin_port != htons(asoc->base.bind_addr.port))
++			return 1;
++		if (!sctp_bind_addr_match(&asoc->base.bind_addr,
++					  x->laddr, sctp_sk(asoc->base.sk)))
++			return 1;
++	}
+ 
+ 	return 0;
+ }
+@@ -832,9 +838,11 @@ static inline u32 sctp_hash_key(const void *data, u32 len, u32 seed)
+ 	const struct sctp_hash_cmp_arg *x = data;
+ 	const union sctp_addr *paddr = x->paddr;
+ 	const struct net *net = x->net;
+-	u16 lport = x->laddr->v4.sin_port;
++	u16 lport;
+ 	u32 addr;
+ 
++	lport = x->ep ? htons(x->ep->base.bind_addr.port) :
++			x->laddr->v4.sin_port;
+ 	if (paddr->sa.sa_family = AF_INET6)
+ 		addr = jhash(&paddr->v6.sin6_addr, 16, seed);
+ 	else
+@@ -864,12 +872,9 @@ void sctp_transport_hashtable_destroy(void)
+ 
+ void sctp_hash_transport(struct sctp_transport *t)
+ {
+-	struct sctp_sockaddr_entry *addr;
+ 	struct sctp_hash_cmp_arg arg;
+ 
+-	addr = list_entry(t->asoc->base.bind_addr.address_list.next,
+-			  struct sctp_sockaddr_entry, list);
+-	arg.laddr = &addr->a;
++	arg.ep = t->asoc->ep;
+ 	arg.paddr = &t->ipaddr;
+ 	arg.net   = sock_net(t->asoc->base.sk);
+ 
+@@ -891,6 +896,7 @@ struct sctp_transport *sctp_addrs_lookup_transport(
+ 				const union sctp_addr *paddr)
+ {
+ 	struct sctp_hash_cmp_arg arg = {
++		.ep    = NULL,
+ 		.laddr = laddr,
+ 		.paddr = paddr,
+ 		.net   = net,
+@@ -904,13 +910,15 @@ struct sctp_transport *sctp_epaddr_lookup_transport(
+ 				const struct sctp_endpoint *ep,
+ 				const union sctp_addr *paddr)
+ {
+-	struct sctp_sockaddr_entry *addr;
+ 	struct net *net = sock_net(ep->base.sk);
++	struct sctp_hash_cmp_arg arg = {
++		.ep    = ep,
++		.paddr = paddr,
++		.net   = net,
++	};
+ 
+-	addr = list_entry(ep->base.bind_addr.address_list.next,
+-			  struct sctp_sockaddr_entry, list);
+-
+-	return sctp_addrs_lookup_transport(net, &addr->a, paddr);
++	return rhashtable_lookup_fast(&sctp_transport_hashtable, &arg,
++				      sctp_hash_params);
+ }
+ 
+ /* Look up an association. */
+-- 
+2.1.0
 
