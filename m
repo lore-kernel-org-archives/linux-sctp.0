@@ -1,81 +1,28 @@
-From: malc <mlashley@gmail.com>
-Date: Wed, 20 Jan 2016 19:56:19 +0000
-Subject: Re: FW: Kernel and TIPC utilities question
-Message-Id: <CAPkQJpSy9Kwj+gWmw6nCGPrtmNHi+cmG6LU7ikaJM8mymy+4Lg@mail.gmail.com>
+From: Wenzhuo Zhan <wenzhuo.zhan@mitel.com>
+Date: Fri, 15 Jan 2016 07:42:55 +0000
+Subject: RE: how can I remove Adaptation Layer Indication parameter in INIT_ACK?
+Message-Id: <BN3PR1201MB09327E89F594EB408BE798AE8BCD0@BN3PR1201MB0932.namprd12.prod.outlook.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <BN3PR0301MB08334571D27B7903CAB4E5C6C4CC0@BN3PR0301MB0833.namprd03.prod.outlook.com>
-In-Reply-To: <BN3PR0301MB08334571D27B7903CAB4E5C6C4CC0@BN3PR0301MB0833.namprd03.prod.outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Let me google that for you... (even though it still isn't a relevant
-question for this list...)
-
-https://www.kernel.org/category/releases.html
-
-Your upstream (Fedora) may have a different view of what
-distro-kernels they provide back-ported fixes etc. for..
-
-On Wed, Jan 20, 2016 at 2:55 PM, Balasundaram, Gunabalan
-<gbalasundaram@sonusnet.com> wrote:
-> Thanks Malc.
->
-> Could you tell me that any of the following Linux Kernel defined as LTS (Long Term Support) ?
-> 4.3.3        stable
-> 4.4            mainline
->
-> Thanks,
-> Guna
->
-> -----Original Message-----
-> From: malc [mailto:mlashley@gmail.com]
-> Sent: Tuesday, January 19, 2016 11:29 AM
-> To: Balasundaram, Gunabalan <gbalasundaram@sonusnet.com>
-> Cc: linux-sctp@vger.kernel.org
-> Subject: Re: FW: Kernel and TIPC utilities question
->
-> Guna,
->
-> I guess no-one replied because this mailing list is related to the portion of the linux kernel implementing the SCTP stack, and it has nothing to do with TIPC...
->
-> A quick google shows they have a mailing list at http://tipc.sourceforge.net/mailing_list.shtml you might try there for better luck.
->
-> Cheers,
-> malc.
->
->
->
->
-> On Tue, Jan 19, 2016 at 3:51 PM, Balasundaram, Gunabalan <gbalasundaram@sonusnet.com> wrote:
->> Hello,
->>
->> Could you let me know your comments for my question ASAP.
->>
->> Thanks,
->> Guna
->>
->> -----Original Message-----
->> From: Balasundaram, Gunabalan
->> Sent: Thursday, January 14, 2016 3:59 PM
->> To: 'linux-sctp@vger.kernel.org' <linux-sctp@vger.kernel.org>
->> Subject: Kernel and TIPC utilities question
->>
->> Hello,
->>
->> We are in the process of upgrading the Fedora 16 Kernel from 3.4.2-1 to 4.3.  We have some questions to clarify:
->>
->> 1. The kernel 4.3 is tagged as "stable". Does the Kernel 4.3 a long term support version ?
->> 2. Is the Kernel 4.4 a long term support version ?
->> 3. From 3.4.2-1 kernel, we have used TIPC utilities v2.0.2.
->>         a. Is this version compatible with new Kernel 4.3 or 4.4 ?
->>         b. Do we need to rebuild a tipc_config for Kernel 4.3 or 4.4?
->>         c. To recompile, where I could find the user space tipc.h and tipc_config.h files?
->>
->> Thank you,
->> Guna B
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp"
->> in the body of a message to majordomo@vger.kernel.org More majordomo
->> info at  http://vger.kernel.org/majordomo-info.html
+SGksDQoNClRoaXMgYWRkcmVzcyBvZiBsaW51eC1zY3RwQHZnZXIua2VybmVsLm9yZw0KY2FuIG5v
+dCAgYmUgc2VudCBzdWNjZXNzZnVsbHkgYW55d2F5Lg0KDQpCUiENCg0KLS0tLS1PcmlnaW5hbCBN
+ZXNzYWdlLS0tLS0NCkZyb206IGxrc2N0cC1kZXZlbG9wZXJzLW93bmVyQGxpc3RzLnNvdXJjZWZv
+cmdlLm5ldCBbbWFpbHRvOmxrc2N0cC1kZXZlbG9wZXJzLW93bmVyQGxpc3RzLnNvdXJjZWZvcmdl
+Lm5ldF0NClNlbnQ6IDIwMTbE6jHUwjEzyNUgMTk6NDkNClRvOiBXZW56aHVvIFpoYW4NClN1Ympl
+Y3Q6IGhvdyBjYW4gSSByZW1vdmUgQWRhcHRhdGlvbiBMYXllciBJbmRpY2F0aW9uIHBhcmFtZXRl
+ciBpbiBJTklUX0FDSz8NCg0KUGxlYXNlIHVzZSBsaW51eC1zY3RwQHZnZXIua2VybmVsLm9yZyBm
+b3IgcG9zdGluZyBTQ1RQIHF1ZXN0aW9ucy4NCg0KX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX18NCk5PVEU6IFRoaXMgZS1tYWlsIChpbmNsdWRpbmcgYW55IGF0dGFjaG1lbnRzKSBpcyBm
+b3IgdGhlIHNvbGUgdXNlIG9mIHRoZSBpbnRlbmRlZCByZWNpcGllbnQocykgYW5kIG1heSBjb250
+YWluIGluZm9ybWF0aW9uIHRoYXQgaXMgY29uZmlkZW50aWFsIGFuZC9vciBwcm90ZWN0ZWQgYnkg
+bGVnYWwgcHJpdmlsZWdlLiBBbnkgdW5hdXRob3JpemVkIHJldmlldywgdXNlLCBjb3B5LCBkaXNj
+bG9zdXJlIG9yIGRpc3RyaWJ1dGlvbiBvZiB0aGlzIGUtbWFpbCBpcyBzdHJpY3RseSBwcm9oaWJp
+dGVkLiBJZiB5b3UgYXJlIG5vdCB0aGUgaW50ZW5kZWQgcmVjaXBpZW50LCBwbGVhc2Ugbm90aWZ5
+IE1pdGVsIGltbWVkaWF0ZWx5IGFuZCBkZXN0cm95IGFsbCBjb3BpZXMgb2YgdGhpcyBlLW1haWwu
+IE1pdGVsIGRvZXMgbm90IGFjY2VwdCBhbnkgbGlhYmlsaXR5IGZvciBicmVhY2ggb2Ygc2VjdXJp
+dHksIGVycm9yIG9yIHZpcnVzIHRoYXQgbWF5IHJlc3VsdCBmcm9tIHRoZSB0cmFuc21pc3Npb24g
+b2YgdGhpcyBtZXNzYWdlLg0K
