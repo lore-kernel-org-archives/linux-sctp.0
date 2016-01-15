@@ -1,80 +1,74 @@
-From: malc <mlashley@gmail.com>
-Date: Fri, 15 Jan 2016 09:44:43 +0000
-Subject: Re: how can I remove Adaptation Layer Indication parameter in INIT_ACK?
-Message-Id: <CAPkQJpQbTTJTY6M1nSrFor0RnCd6wvsQgW_U9gPYwNJtg8baZw@mail.gmail.com>
+From: Wenzhuo Zhan <wenzhuo.zhan@mitel.com>
+Date: Fri, 15 Jan 2016 10:00:09 +0000
+Subject: RE: how can I remove Adaptation Layer Indication parameter in INIT_ACK?
+Message-Id: <BN3PR1201MB0932FDF43AED7EF2039D8E788BCD0@BN3PR1201MB0932.namprd12.prod.outlook.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <BN3PR1201MB09327E89F594EB408BE798AE8BCD0@BN3PR1201MB0932.namprd12.prod.outlook.com>
 In-Reply-To: <BN3PR1201MB09327E89F594EB408BE798AE8BCD0@BN3PR1201MB0932.namprd12.prod.outlook.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-It's in the net/sctp subdirectory of the kernel source... the details
-are right there in the link I gave you (on the diff ... line)
-
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-
-
-
-On Fri, Jan 15, 2016 at 9:34 AM, Wenzhuo Zhan <wenzhuo.zhan@mitel.com> wrote:
-> Hi malc,
->
-> Yes, it is our old lab environment. And could you tell me where is file of sm_make_chunk.c?
->
->
-> # uname -a
-> Linux MTAP35 2.6.18-1.2798.fc6 #1 SMP Mon Oct 16 14:54:20 EDT 2006 i686 i686 i386 GNU/Linux
-> [root@MTAP35 src]# cd /usr/src/kernels/2.6.18-1.2798.fc6-i586/include/net/sctp
-> [root@MTAP35 sctp]# ll
-> total 204
-> -rw-r--r-- 1 root root  8377 Sep 20  2006 command.h
-> -rw-r--r-- 1 root root 13946 Sep 20  2006 constants.h
-> -rw-r--r-- 1 root root 18455 Sep 20  2006 sctp.h
-> -rw-r--r-- 1 root root 15433 Sep 20  2006 sm.h
-> -rw-r--r-- 1 root root 59974 Sep 20  2006 structs.h
-> -rw-r--r-- 1 root root  6589 Sep 20  2006 tsnmap.h
-> -rw-r--r-- 1 root root  4834 Sep 20  2006 ulpevent.h
-> -rw-r--r-- 1 root root  3061 Sep 20  2006 ulpqueue.h
-> -rw-r--r-- 1 root root 19221 Sep 20  2006 user.h
->
->
->
-> Thank you for your support!
->
-> BR!
->
-> -----Original Message-----
-> From: malc [mailto:mlashley@gmail.com]
-> Sent: 2016年1月15日 17:23
-> To: Wenzhuo Zhan
-> Cc: lksctp-developers-owner@lists.sourceforge.net; linux-sctp@vger.kernel.org
-> Subject: Re: how can I remove Adaptation Layer Indication parameter in INIT_ACK?
->
-> Are you using a particularly old kernel? This was patched years ago to only include ALI in INIT{_ACK} if the user has specified a valid (i.e.
-> non-zero) application code-point.
->
-> http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?idoc791ee631728b2beddda87560f1af59e32230e
->
-> Cheers,
-> malc.
->
-> On Fri, Jan 15, 2016 at 7:42 AM, Wenzhuo Zhan <wenzhuo.zhan@mitel.com> wrote:
->> Hi,
->>
->> This address of linux-sctp@vger.kernel.org can not  be sent
->> successfully anyway.
->>
->> BR!
->>
->> -----Original Message-----
->> From: lksctp-developers-owner@lists.sourceforge.net
->> [mailto:lksctp-developers-owner@lists.sourceforge.net]
->> Sent: 2016年1月13日 19:49
->> To: Wenzhuo Zhan
->> Subject: how can I remove Adaptation Layer Indication parameter in INIT_ACK?
->>
->> Please use linux-sctp@vger.kernel.org for posting SCTP questions.
->>
->> ________________________________
->> NOTE: This e-mail (including any attachments) is for the sole use of the intended recipient(s) and may contain information that is confidential and/or protected by legal privilege. Any unauthorized review, use, copy, disclosure or distribution of this e-mail is strictly prohibited. If you are not the intended recipient, please notify Mitel immediately and destroy all copies of this e-mail. Mitel does not accept any liability for breach of security, error or virus that may result from the transmission of this message.
+SGkgbWFsYywNCg0KSSBkaWQgbm90IGZpbmQgaXQsIGFuZCBJIGNhbiB1bmRlcnN0YW5kIHRoZSBj
+b2RlIGNoYW5nZSBpbiB0aGUgbGluaw0KDQpbcm9vdEBNVEFQMzUgc2N0cF0jIGZpbmQgLyAtbmFt
+ZSBzbV9tYWtlX2NodW5rLmMNCltyb290QE1UQVAzNSBzY3RwXSMgZmluZCAvIC1uYW1lICJzbV9t
+YWtlX2NodW5rLmMiDQpbcm9vdEBNVEFQMzUgc2N0cF0jIGZpbmQgLyAtbmFtZSAnc21fbWFrZV9j
+aHVuay5jJw0KW3Jvb3RATVRBUDM1IHNjdHBdIw0KDQoNClRoYW5rIHlvdSBmb3IgeW91ciBzdXBw
+b3J0IQ0KDQogQlIhDQoNCi0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQpGcm9tOiBtYWxjIFtt
+YWlsdG86bWxhc2hsZXlAZ21haWwuY29tXSANClNlbnQ6IDIwMTblubQx5pyIMTXml6UgMTc6NDUN
+ClRvOiBXZW56aHVvIFpoYW4NCkNjOiBsa3NjdHAtZGV2ZWxvcGVycy1vd25lckBsaXN0cy5zb3Vy
+Y2Vmb3JnZS5uZXQ7IGxpbnV4LXNjdHBAdmdlci5rZXJuZWwub3JnDQpTdWJqZWN0OiBSZTogaG93
+IGNhbiBJIHJlbW92ZSBBZGFwdGF0aW9uIExheWVyIEluZGljYXRpb24gcGFyYW1ldGVyIGluIElO
+SVRfQUNLPw0KDQpJdCdzIGluIHRoZSBuZXQvc2N0cCBzdWJkaXJlY3Rvcnkgb2YgdGhlIGtlcm5l
+bCBzb3VyY2UuLi4gdGhlIGRldGFpbHMgYXJlIHJpZ2h0IHRoZXJlIGluIHRoZSBsaW5rIEkgZ2F2
+ZSB5b3UgKG9uIHRoZSBkaWZmIC4uLiBsaW5lKQ0KDQpkaWZmIC0tZ2l0IGEvbmV0L3NjdHAvc21f
+bWFrZV9jaHVuay5jIGIvbmV0L3NjdHAvc21fbWFrZV9jaHVuay5jDQoNCg0KDQpPbiBGcmksIEph
+biAxNSwgMjAxNiBhdCA5OjM0IEFNLCBXZW56aHVvIFpoYW4gPHdlbnpodW8uemhhbkBtaXRlbC5j
+b20+IHdyb3RlOg0KPiBIaSBtYWxjLA0KPg0KPiBZZXMsIGl0IGlzIG91ciBvbGQgbGFiIGVudmly
+b25tZW50LiBBbmQgY291bGQgeW91IHRlbGwgbWUgd2hlcmUgaXMgZmlsZSBvZiBzbV9tYWtlX2No
+dW5rLmM/DQo+DQo+DQo+ICMgdW5hbWUgLWENCj4gTGludXggTVRBUDM1IDIuNi4xOC0xLjI3OTgu
+ZmM2ICMxIFNNUCBNb24gT2N0IDE2IDE0OjU0OjIwIEVEVCAyMDA2IA0KPiBpNjg2IGk2ODYgaTM4
+NiBHTlUvTGludXgNCj4gW3Jvb3RATVRBUDM1IHNyY10jIGNkIA0KPiAvdXNyL3NyYy9rZXJuZWxz
+LzIuNi4xOC0xLjI3OTguZmM2LWk1ODYvaW5jbHVkZS9uZXQvc2N0cA0KPiBbcm9vdEBNVEFQMzUg
+c2N0cF0jIGxsDQo+IHRvdGFsIDIwNA0KPiAtcnctci0tci0tIDEgcm9vdCByb290ICA4Mzc3IFNl
+cCAyMCAgMjAwNiBjb21tYW5kLmgNCj4gLXJ3LXItLXItLSAxIHJvb3Qgcm9vdCAxMzk0NiBTZXAg
+MjAgIDIwMDYgY29uc3RhbnRzLmgNCj4gLXJ3LXItLXItLSAxIHJvb3Qgcm9vdCAxODQ1NSBTZXAg
+MjAgIDIwMDYgc2N0cC5oDQo+IC1ydy1yLS1yLS0gMSByb290IHJvb3QgMTU0MzMgU2VwIDIwICAy
+MDA2IHNtLmgNCj4gLXJ3LXItLXItLSAxIHJvb3Qgcm9vdCA1OTk3NCBTZXAgMjAgIDIwMDYgc3Ry
+dWN0cy5oDQo+IC1ydy1yLS1yLS0gMSByb290IHJvb3QgIDY1ODkgU2VwIDIwICAyMDA2IHRzbm1h
+cC5oDQo+IC1ydy1yLS1yLS0gMSByb290IHJvb3QgIDQ4MzQgU2VwIDIwICAyMDA2IHVscGV2ZW50
+LmgNCj4gLXJ3LXItLXItLSAxIHJvb3Qgcm9vdCAgMzA2MSBTZXAgMjAgIDIwMDYgdWxwcXVldWUu
+aA0KPiAtcnctci0tci0tIDEgcm9vdCByb290IDE5MjIxIFNlcCAyMCAgMjAwNiB1c2VyLmgNCj4N
+Cj4NCj4NCj4gVGhhbmsgeW91IGZvciB5b3VyIHN1cHBvcnQhDQo+DQo+IEJSIQ0KPg0KPiAtLS0t
+LU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBtYWxjIFttYWlsdG86bWxhc2hsZXlAZ21h
+aWwuY29tXQ0KPiBTZW50OiAyMDE25bm0MeaciDE15pelIDE3OjIzDQo+IFRvOiBXZW56aHVvIFpo
+YW4NCj4gQ2M6IGxrc2N0cC1kZXZlbG9wZXJzLW93bmVyQGxpc3RzLnNvdXJjZWZvcmdlLm5ldDsg
+DQo+IGxpbnV4LXNjdHBAdmdlci5rZXJuZWwub3JnDQo+IFN1YmplY3Q6IFJlOiBob3cgY2FuIEkg
+cmVtb3ZlIEFkYXB0YXRpb24gTGF5ZXIgSW5kaWNhdGlvbiBwYXJhbWV0ZXIgaW4gSU5JVF9BQ0s/
+DQo+DQo+IEFyZSB5b3UgdXNpbmcgYSBwYXJ0aWN1bGFybHkgb2xkIGtlcm5lbD8gVGhpcyB3YXMg
+cGF0Y2hlZCB5ZWFycyBhZ28gdG8gb25seSBpbmNsdWRlIEFMSSBpbiBJTklUe19BQ0t9IGlmIHRo
+ZSB1c2VyIGhhcyBzcGVjaWZpZWQgYSB2YWxpZCAoaS5lLg0KPiBub24temVybykgYXBwbGljYXRp
+b24gY29kZS1wb2ludC4NCj4NCj4gaHR0cDovL2dpdC5rZXJuZWwub3JnL2NnaXQvbGludXgva2Vy
+bmVsL2dpdC90b3J2YWxkcy9saW51eC5naXQvY29tbWl0Lw0KPiA/aWQ9NmZjNzkxZWU2MzE3Mjhi
+MmJlZGRkYTg3NTYwZjFhZjU5ZTMyMjMwZQ0KPg0KPiBDaGVlcnMsDQo+IG1hbGMuDQo+DQo+IE9u
+IEZyaSwgSmFuIDE1LCAyMDE2IGF0IDc6NDIgQU0sIFdlbnpodW8gWmhhbiA8d2Vuemh1by56aGFu
+QG1pdGVsLmNvbT4gd3JvdGU6DQo+PiBIaSwNCj4+DQo+PiBUaGlzIGFkZHJlc3Mgb2YgbGludXgt
+c2N0cEB2Z2VyLmtlcm5lbC5vcmcgY2FuIG5vdCAgYmUgc2VudCANCj4+IHN1Y2Nlc3NmdWxseSBh
+bnl3YXkuDQo+Pg0KPj4gQlIhDQo+Pg0KPj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4+
+IEZyb206IGxrc2N0cC1kZXZlbG9wZXJzLW93bmVyQGxpc3RzLnNvdXJjZWZvcmdlLm5ldA0KPj4g
+W21haWx0bzpsa3NjdHAtZGV2ZWxvcGVycy1vd25lckBsaXN0cy5zb3VyY2Vmb3JnZS5uZXRdDQo+
+PiBTZW50OiAyMDE25bm0MeaciDEz5pelIDE5OjQ5DQo+PiBUbzogV2Vuemh1byBaaGFuDQo+PiBT
+dWJqZWN0OiBob3cgY2FuIEkgcmVtb3ZlIEFkYXB0YXRpb24gTGF5ZXIgSW5kaWNhdGlvbiBwYXJh
+bWV0ZXIgaW4gSU5JVF9BQ0s/DQo+Pg0KPj4gUGxlYXNlIHVzZSBsaW51eC1zY3RwQHZnZXIua2Vy
+bmVsLm9yZyBmb3IgcG9zdGluZyBTQ1RQIHF1ZXN0aW9ucy4NCj4+DQo+PiBfX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fXw0KPj4gTk9URTogVGhpcyBlLW1haWwgKGluY2x1ZGluZyBhbnkg
+YXR0YWNobWVudHMpIGlzIGZvciB0aGUgc29sZSB1c2Ugb2YgdGhlIGludGVuZGVkIHJlY2lwaWVu
+dChzKSBhbmQgbWF5IGNvbnRhaW4gaW5mb3JtYXRpb24gdGhhdCBpcyBjb25maWRlbnRpYWwgYW5k
+L29yIHByb3RlY3RlZCBieSBsZWdhbCBwcml2aWxlZ2UuIEFueSB1bmF1dGhvcml6ZWQgcmV2aWV3
+LCB1c2UsIGNvcHksIGRpc2Nsb3N1cmUgb3IgZGlzdHJpYnV0aW9uIG9mIHRoaXMgZS1tYWlsIGlz
+IHN0cmljdGx5IHByb2hpYml0ZWQuIElmIHlvdSBhcmUgbm90IHRoZSBpbnRlbmRlZCByZWNpcGll
+bnQsIHBsZWFzZSBub3RpZnkgTWl0ZWwgaW1tZWRpYXRlbHkgYW5kIGRlc3Ryb3kgYWxsIGNvcGll
+cyBvZiB0aGlzIGUtbWFpbC4gTWl0ZWwgZG9lcyBub3QgYWNjZXB0IGFueSBsaWFiaWxpdHkgZm9y
+IGJyZWFjaCBvZiBzZWN1cml0eSwgZXJyb3Igb3IgdmlydXMgdGhhdCBtYXkgcmVzdWx0IGZyb20g
+dGhlIHRyYW5zbWlzc2lvbiBvZiB0aGlzIG1lc3NhZ2UuDQo
