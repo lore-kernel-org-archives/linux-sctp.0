@@ -1,28 +1,39 @@
-From: Wenzhuo Zhan <wenzhuo.zhan@mitel.com>
-Date: Fri, 15 Jan 2016 07:42:55 +0000
-Subject: RE: how can I remove Adaptation Layer Indication parameter in INIT_ACK?
-Message-Id: <BN3PR1201MB09327E89F594EB408BE798AE8BCD0@BN3PR1201MB0932.namprd12.prod.outlook.com>
+From: malc <mlashley@gmail.com>
+Date: Fri, 15 Jan 2016 09:22:56 +0000
+Subject: Re: how can I remove Adaptation Layer Indication parameter in INIT_ACK?
+Message-Id: <CAPkQJpTjERMGWTM0cUNJnbNcob4xpk5xFCWJLKyO159ASda2KQ@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <BN3PR1201MB09327E89F594EB408BE798AE8BCD0@BN3PR1201MB0932.namprd12.prod.outlook.com>
+In-Reply-To: <BN3PR1201MB09327E89F594EB408BE798AE8BCD0@BN3PR1201MB0932.namprd12.prod.outlook.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 To: linux-sctp@vger.kernel.org
 
-SGksDQoNClRoaXMgYWRkcmVzcyBvZiBsaW51eC1zY3RwQHZnZXIua2VybmVsLm9yZw0KY2FuIG5v
-dCAgYmUgc2VudCBzdWNjZXNzZnVsbHkgYW55d2F5Lg0KDQpCUiENCg0KLS0tLS1PcmlnaW5hbCBN
-ZXNzYWdlLS0tLS0NCkZyb206IGxrc2N0cC1kZXZlbG9wZXJzLW93bmVyQGxpc3RzLnNvdXJjZWZv
-cmdlLm5ldCBbbWFpbHRvOmxrc2N0cC1kZXZlbG9wZXJzLW93bmVyQGxpc3RzLnNvdXJjZWZvcmdl
-Lm5ldF0NClNlbnQ6IDIwMTbE6jHUwjEzyNUgMTk6NDkNClRvOiBXZW56aHVvIFpoYW4NClN1Ympl
-Y3Q6IGhvdyBjYW4gSSByZW1vdmUgQWRhcHRhdGlvbiBMYXllciBJbmRpY2F0aW9uIHBhcmFtZXRl
-ciBpbiBJTklUX0FDSz8NCg0KUGxlYXNlIHVzZSBsaW51eC1zY3RwQHZnZXIua2VybmVsLm9yZyBm
-b3IgcG9zdGluZyBTQ1RQIHF1ZXN0aW9ucy4NCg0KX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX18NCk5PVEU6IFRoaXMgZS1tYWlsIChpbmNsdWRpbmcgYW55IGF0dGFjaG1lbnRzKSBpcyBm
-b3IgdGhlIHNvbGUgdXNlIG9mIHRoZSBpbnRlbmRlZCByZWNpcGllbnQocykgYW5kIG1heSBjb250
-YWluIGluZm9ybWF0aW9uIHRoYXQgaXMgY29uZmlkZW50aWFsIGFuZC9vciBwcm90ZWN0ZWQgYnkg
-bGVnYWwgcHJpdmlsZWdlLiBBbnkgdW5hdXRob3JpemVkIHJldmlldywgdXNlLCBjb3B5LCBkaXNj
-bG9zdXJlIG9yIGRpc3RyaWJ1dGlvbiBvZiB0aGlzIGUtbWFpbCBpcyBzdHJpY3RseSBwcm9oaWJp
-dGVkLiBJZiB5b3UgYXJlIG5vdCB0aGUgaW50ZW5kZWQgcmVjaXBpZW50LCBwbGVhc2Ugbm90aWZ5
-IE1pdGVsIGltbWVkaWF0ZWx5IGFuZCBkZXN0cm95IGFsbCBjb3BpZXMgb2YgdGhpcyBlLW1haWwu
-IE1pdGVsIGRvZXMgbm90IGFjY2VwdCBhbnkgbGlhYmlsaXR5IGZvciBicmVhY2ggb2Ygc2VjdXJp
-dHksIGVycm9yIG9yIHZpcnVzIHRoYXQgbWF5IHJlc3VsdCBmcm9tIHRoZSB0cmFuc21pc3Npb24g
-b2YgdGhpcyBtZXNzYWdlLg0K
+Are you using a particularly old kernel? This was patched years ago to
+only include ALI in INIT{_ACK} if the user has specified a valid (i.e.
+non-zero) application code-point.
+
+http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?idoc791ee631728b2beddda87560f1af59e32230e
+
+Cheers,
+malc.
+
+On Fri, Jan 15, 2016 at 7:42 AM, Wenzhuo Zhan <wenzhuo.zhan@mitel.com> wrote:
+> Hi,
+>
+> This address of linux-sctp@vger.kernel.org
+> can not  be sent successfully anyway.
+>
+> BR!
+>
+> -----Original Message-----
+> From: lksctp-developers-owner@lists.sourceforge.net [mailto:lksctp-developers-owner@lists.sourceforge.net]
+> Sent: 2016年1月13日 19:49
+> To: Wenzhuo Zhan
+> Subject: how can I remove Adaptation Layer Indication parameter in INIT_ACK?
+>
+> Please use linux-sctp@vger.kernel.org for posting SCTP questions.
+>
+> ________________________________
+> NOTE: This e-mail (including any attachments) is for the sole use of the intended recipient(s) and may contain information that is confidential and/or protected by legal privilege. Any unauthorized review, use, copy, disclosure or distribution of this e-mail is strictly prohibited. If you are not the intended recipient, please notify Mitel immediately and destroy all copies of this e-mail. Mitel does not accept any liability for breach of security, error or virus that may result from the transmission of this message.
