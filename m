@@ -1,57 +1,80 @@
-From: Wenzhuo Zhan <wenzhuo.zhan@mitel.com>
-Date: Fri, 15 Jan 2016 09:34:40 +0000
-Subject: RE: how can I remove Adaptation Layer Indication parameter in INIT_ACK?
-Message-Id: <BN3PR1201MB09322F07C7D7D11DCE1F72A58BCD0@BN3PR1201MB0932.namprd12.prod.outlook.com>
+From: malc <mlashley@gmail.com>
+Date: Fri, 15 Jan 2016 09:44:43 +0000
+Subject: Re: how can I remove Adaptation Layer Indication parameter in INIT_ACK?
+Message-Id: <CAPkQJpQbTTJTY6M1nSrFor0RnCd6wvsQgW_U9gPYwNJtg8baZw@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <BN3PR1201MB09327E89F594EB408BE798AE8BCD0@BN3PR1201MB0932.namprd12.prod.outlook.com>
 In-Reply-To: <BN3PR1201MB09327E89F594EB408BE798AE8BCD0@BN3PR1201MB0932.namprd12.prod.outlook.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 To: linux-sctp@vger.kernel.org
 
-SGkgbWFsYywNCg0KWWVzLCBpdCBpcyBvdXIgb2xkIGxhYiBlbnZpcm9ubWVudC4gQW5kIGNvdWxk
-IHlvdSB0ZWxsIG1lIHdoZXJlIGlzIGZpbGUgb2Ygc21fbWFrZV9jaHVuay5jPw0KDQoNCiMgdW5h
-bWUgLWENCkxpbnV4IE1UQVAzNSAyLjYuMTgtMS4yNzk4LmZjNiAjMSBTTVAgTW9uIE9jdCAxNiAx
-NDo1NDoyMCBFRFQgMjAwNiBpNjg2IGk2ODYgaTM4NiBHTlUvTGludXgNCltyb290QE1UQVAzNSBz
-cmNdIyBjZCAvdXNyL3NyYy9rZXJuZWxzLzIuNi4xOC0xLjI3OTguZmM2LWk1ODYvaW5jbHVkZS9u
-ZXQvc2N0cA0KW3Jvb3RATVRBUDM1IHNjdHBdIyBsbA0KdG90YWwgMjA0DQotcnctci0tci0tIDEg
-cm9vdCByb290ICA4Mzc3IFNlcCAyMCAgMjAwNiBjb21tYW5kLmgNCi1ydy1yLS1yLS0gMSByb290
-IHJvb3QgMTM5NDYgU2VwIDIwICAyMDA2IGNvbnN0YW50cy5oDQotcnctci0tci0tIDEgcm9vdCBy
-b290IDE4NDU1IFNlcCAyMCAgMjAwNiBzY3RwLmgNCi1ydy1yLS1yLS0gMSByb290IHJvb3QgMTU0
-MzMgU2VwIDIwICAyMDA2IHNtLmgNCi1ydy1yLS1yLS0gMSByb290IHJvb3QgNTk5NzQgU2VwIDIw
-ICAyMDA2IHN0cnVjdHMuaA0KLXJ3LXItLXItLSAxIHJvb3Qgcm9vdCAgNjU4OSBTZXAgMjAgIDIw
-MDYgdHNubWFwLmgNCi1ydy1yLS1yLS0gMSByb290IHJvb3QgIDQ4MzQgU2VwIDIwICAyMDA2IHVs
-cGV2ZW50LmgNCi1ydy1yLS1yLS0gMSByb290IHJvb3QgIDMwNjEgU2VwIDIwICAyMDA2IHVscHF1
-ZXVlLmgNCi1ydy1yLS1yLS0gMSByb290IHJvb3QgMTkyMjEgU2VwIDIwICAyMDA2IHVzZXIuaA0K
-DQoNCg0KVGhhbmsgeW91IGZvciB5b3VyIHN1cHBvcnQhDQoNCkJSIQ0KDQotLS0tLU9yaWdpbmFs
-IE1lc3NhZ2UtLS0tLQ0KRnJvbTogbWFsYyBbbWFpbHRvOm1sYXNobGV5QGdtYWlsLmNvbV0gDQpT
-ZW50OiAyMDE25bm0MeaciDE15pelIDE3OjIzDQpUbzogV2Vuemh1byBaaGFuDQpDYzogbGtzY3Rw
-LWRldmVsb3BlcnMtb3duZXJAbGlzdHMuc291cmNlZm9yZ2UubmV0OyBsaW51eC1zY3RwQHZnZXIu
-a2VybmVsLm9yZw0KU3ViamVjdDogUmU6IGhvdyBjYW4gSSByZW1vdmUgQWRhcHRhdGlvbiBMYXll
-ciBJbmRpY2F0aW9uIHBhcmFtZXRlciBpbiBJTklUX0FDSz8NCg0KQXJlIHlvdSB1c2luZyBhIHBh
-cnRpY3VsYXJseSBvbGQga2VybmVsPyBUaGlzIHdhcyBwYXRjaGVkIHllYXJzIGFnbyB0byBvbmx5
-IGluY2x1ZGUgQUxJIGluIElOSVR7X0FDS30gaWYgdGhlIHVzZXIgaGFzIHNwZWNpZmllZCBhIHZh
-bGlkIChpLmUuDQpub24temVybykgYXBwbGljYXRpb24gY29kZS1wb2ludC4NCg0KaHR0cDovL2dp
-dC5rZXJuZWwub3JnL2NnaXQvbGludXgva2VybmVsL2dpdC90b3J2YWxkcy9saW51eC5naXQvY29t
-bWl0Lz9pZD02ZmM3OTFlZTYzMTcyOGIyYmVkZGRhODc1NjBmMWFmNTllMzIyMzBlDQoNCkNoZWVy
-cywNCm1hbGMuDQoNCk9uIEZyaSwgSmFuIDE1LCAyMDE2IGF0IDc6NDIgQU0sIFdlbnpodW8gWmhh
-biA8d2Vuemh1by56aGFuQG1pdGVsLmNvbT4gd3JvdGU6DQo+IEhpLA0KPg0KPiBUaGlzIGFkZHJl
-c3Mgb2YgbGludXgtc2N0cEB2Z2VyLmtlcm5lbC5vcmcgY2FuIG5vdCAgYmUgc2VudCANCj4gc3Vj
-Y2Vzc2Z1bGx5IGFueXdheS4NCj4NCj4gQlIhDQo+DQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0t
-LS0tDQo+IEZyb206IGxrc2N0cC1kZXZlbG9wZXJzLW93bmVyQGxpc3RzLnNvdXJjZWZvcmdlLm5l
-dCANCj4gW21haWx0bzpsa3NjdHAtZGV2ZWxvcGVycy1vd25lckBsaXN0cy5zb3VyY2Vmb3JnZS5u
-ZXRdDQo+IFNlbnQ6IDIwMTblubQx5pyIMTPml6UgMTk6NDkNCj4gVG86IFdlbnpodW8gWmhhbg0K
-PiBTdWJqZWN0OiBob3cgY2FuIEkgcmVtb3ZlIEFkYXB0YXRpb24gTGF5ZXIgSW5kaWNhdGlvbiBw
-YXJhbWV0ZXIgaW4gSU5JVF9BQ0s/DQo+DQo+IFBsZWFzZSB1c2UgbGludXgtc2N0cEB2Z2VyLmtl
-cm5lbC5vcmcgZm9yIHBvc3RpbmcgU0NUUCBxdWVzdGlvbnMuDQo+DQo+IF9fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fDQo+IE5PVEU6IFRoaXMgZS1tYWlsIChpbmNsdWRpbmcgYW55IGF0
-dGFjaG1lbnRzKSBpcyBmb3IgdGhlIHNvbGUgdXNlIG9mIHRoZSBpbnRlbmRlZCByZWNpcGllbnQo
-cykgYW5kIG1heSBjb250YWluIGluZm9ybWF0aW9uIHRoYXQgaXMgY29uZmlkZW50aWFsIGFuZC9v
-ciBwcm90ZWN0ZWQgYnkgbGVnYWwgcHJpdmlsZWdlLiBBbnkgdW5hdXRob3JpemVkIHJldmlldywg
-dXNlLCBjb3B5LCBkaXNjbG9zdXJlIG9yIGRpc3RyaWJ1dGlvbiBvZiB0aGlzIGUtbWFpbCBpcyBz
-dHJpY3RseSBwcm9oaWJpdGVkLiBJZiB5b3UgYXJlIG5vdCB0aGUgaW50ZW5kZWQgcmVjaXBpZW50
-LCBwbGVhc2Ugbm90aWZ5IE1pdGVsIGltbWVkaWF0ZWx5IGFuZCBkZXN0cm95IGFsbCBjb3BpZXMg
-b2YgdGhpcyBlLW1haWwuIE1pdGVsIGRvZXMgbm90IGFjY2VwdCBhbnkgbGlhYmlsaXR5IGZvciBi
-cmVhY2ggb2Ygc2VjdXJpdHksIGVycm9yIG9yIHZpcnVzIHRoYXQgbWF5IHJlc3VsdCBmcm9tIHRo
-ZSB0cmFuc21pc3Npb24gb2YgdGhpcyBtZXNzYWdlLg0K
+It's in the net/sctp subdirectory of the kernel source... the details
+are right there in the link I gave you (on the diff ... line)
+
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+
+
+
+On Fri, Jan 15, 2016 at 9:34 AM, Wenzhuo Zhan <wenzhuo.zhan@mitel.com> wrote:
+> Hi malc,
+>
+> Yes, it is our old lab environment. And could you tell me where is file of sm_make_chunk.c?
+>
+>
+> # uname -a
+> Linux MTAP35 2.6.18-1.2798.fc6 #1 SMP Mon Oct 16 14:54:20 EDT 2006 i686 i686 i386 GNU/Linux
+> [root@MTAP35 src]# cd /usr/src/kernels/2.6.18-1.2798.fc6-i586/include/net/sctp
+> [root@MTAP35 sctp]# ll
+> total 204
+> -rw-r--r-- 1 root root  8377 Sep 20  2006 command.h
+> -rw-r--r-- 1 root root 13946 Sep 20  2006 constants.h
+> -rw-r--r-- 1 root root 18455 Sep 20  2006 sctp.h
+> -rw-r--r-- 1 root root 15433 Sep 20  2006 sm.h
+> -rw-r--r-- 1 root root 59974 Sep 20  2006 structs.h
+> -rw-r--r-- 1 root root  6589 Sep 20  2006 tsnmap.h
+> -rw-r--r-- 1 root root  4834 Sep 20  2006 ulpevent.h
+> -rw-r--r-- 1 root root  3061 Sep 20  2006 ulpqueue.h
+> -rw-r--r-- 1 root root 19221 Sep 20  2006 user.h
+>
+>
+>
+> Thank you for your support!
+>
+> BR!
+>
+> -----Original Message-----
+> From: malc [mailto:mlashley@gmail.com]
+> Sent: 2016年1月15日 17:23
+> To: Wenzhuo Zhan
+> Cc: lksctp-developers-owner@lists.sourceforge.net; linux-sctp@vger.kernel.org
+> Subject: Re: how can I remove Adaptation Layer Indication parameter in INIT_ACK?
+>
+> Are you using a particularly old kernel? This was patched years ago to only include ALI in INIT{_ACK} if the user has specified a valid (i.e.
+> non-zero) application code-point.
+>
+> http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?idoc791ee631728b2beddda87560f1af59e32230e
+>
+> Cheers,
+> malc.
+>
+> On Fri, Jan 15, 2016 at 7:42 AM, Wenzhuo Zhan <wenzhuo.zhan@mitel.com> wrote:
+>> Hi,
+>>
+>> This address of linux-sctp@vger.kernel.org can not  be sent
+>> successfully anyway.
+>>
+>> BR!
+>>
+>> -----Original Message-----
+>> From: lksctp-developers-owner@lists.sourceforge.net
+>> [mailto:lksctp-developers-owner@lists.sourceforge.net]
+>> Sent: 2016年1月13日 19:49
+>> To: Wenzhuo Zhan
+>> Subject: how can I remove Adaptation Layer Indication parameter in INIT_ACK?
+>>
+>> Please use linux-sctp@vger.kernel.org for posting SCTP questions.
+>>
+>> ________________________________
+>> NOTE: This e-mail (including any attachments) is for the sole use of the intended recipient(s) and may contain information that is confidential and/or protected by legal privilege. Any unauthorized review, use, copy, disclosure or distribution of this e-mail is strictly prohibited. If you are not the intended recipient, please notify Mitel immediately and destroy all copies of this e-mail. Mitel does not accept any liability for breach of security, error or virus that may result from the transmission of this message.
