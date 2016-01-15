@@ -1,29 +1,24 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 15 Jan 2016 19:05:32 +0000
+From: David Miller <davem@davemloft.net>
+Date: Fri, 15 Jan 2016 20:12:13 +0000
 Subject: Re: [PATCH] net: sctp: Move sequence start handling into sctp_transport_get_idx()
-Message-Id: <20160115190532.GH6074@mrl.redhat.com>
+Message-Id: <20160115.151213.2258553264727846515.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1452865471-32509-1-git-send-email-geert@linux-m68k.org>
 In-Reply-To: <1452865471-32509-1-git-send-email-geert@linux-m68k.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: Geert Uytterhoeven <geert@linux-m68k.org>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, Xin Long <lucien.xin@gmail.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: geert@linux-m68k.org
+Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, lucien.xin@gmail.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On Fri, Jan 15, 2016 at 02:44:31PM +0100, Geert Uytterhoeven wrote:
-> net/sctp/proc.c: In function ‘sctp_transport_get_idx’:
-> net/sctp/proc.c:313: warning: ‘obj’ may be used uninitialized in this function
-> 
-> This is currently a false positive, as all callers check for a zero
-> offset first, and handle this case in the exact same way.
-> 
-> Move the check and handling into sctp_transport_get_idx() to kill the
-> compiler warning, and avoid future bugs.
-> 
-> Signed-off-by: Geert Uytterhoeven <geert@linux-m68k.org>
-> ---
-> Compile-tested only.
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
+RnJvbTogR2VlcnQgVXl0dGVyaG9ldmVuIDxnZWVydEBsaW51eC1tNjhrLm9yZz4NCkRhdGU6IEZy
+aSwgMTUgSmFuIDIwMTYgMTQ6NDQ6MzEgKzAxMDANCg0KPiBuZXQvc2N0cC9wcm9jLmM6IEluIGZ1
+bmN0aW9uIKFzY3RwX3RyYW5zcG9ydF9nZXRfaWR4ojoNCj4gbmV0L3NjdHAvcHJvYy5jOjMxMzog
+d2FybmluZzogoW9iaqIgbWF5IGJlIHVzZWQgdW5pbml0aWFsaXplZCBpbiB0aGlzIGZ1bmN0aW9u
+DQo+IA0KPiBUaGlzIGlzIGN1cnJlbnRseSBhIGZhbHNlIHBvc2l0aXZlLCBhcyBhbGwgY2FsbGVy
+cyBjaGVjayBmb3IgYSB6ZXJvDQo+IG9mZnNldCBmaXJzdCwgYW5kIGhhbmRsZSB0aGlzIGNhc2Ug
+aW4gdGhlIGV4YWN0IHNhbWUgd2F5Lg0KPiANCj4gTW92ZSB0aGUgY2hlY2sgYW5kIGhhbmRsaW5n
+IGludG8gc2N0cF90cmFuc3BvcnRfZ2V0X2lkeCgpIHRvIGtpbGwgdGhlDQo+IGNvbXBpbGVyIHdh
+cm5pbmcsIGFuZCBhdm9pZCBmdXR1cmUgYnVncy4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEdlZXJ0
+IFV5dHRlcmhvZXZlbiA8Z2VlcnRAbGludXgtbTY4ay5vcmc+DQoNCkFwcGxpZWQsIHRoYW5rcyBH
+ZWVydC4NCg=
