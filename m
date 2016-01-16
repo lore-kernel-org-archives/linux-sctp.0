@@ -1,51 +1,74 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 21 Jan 2016 13:05:53 +0000
-Subject: Re: [PATCH net] sctp: fix rcu usage on proc listing
-Message-Id: <20160121130553.GA3452@mrl.redhat.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 16 Jan 2016 12:17:17 +0000
+Subject: [PATCH net] sctp: the temp asoc's transports should not be hashed/unhashed
+Message-Id: <488453d4e06805934290a1ef3cf633ee4b26bdc6.1452946637.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <c68813736c92f28f78f1c8cc8f362e4c964f7899.1453240529.git.marcelo.leitner@gmail.com>
- <20160119220230.GA15926@mrl.redhat.com>
- <20160120010720.GA22183@mrl.redhat.com>
-In-Reply-To: <20160120010720.GA22183@mrl.redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>, linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net
 
-On Tue, Jan 19, 2016 at 11:07:20PM -0200, Marcelo Ricardo Leitner wrote:
-> On Tue, Jan 19, 2016 at 08:02:30PM -0200, Marcelo Ricardo Leitner wrote:
-> > > --- a/net/sctp/proc.c
-> > > +++ b/net/sctp/proc.c
-> > > @@ -491,6 +491,7 @@ static int sctp_remaddr_seq_show(struct seq_file *seq, void *v)
-> > >  	tsp = (struct sctp_transport *)v;
-> > >  	assoc = tsp->asoc;
-> > >  
-> > > +	rcu_read_lock();
-> 
-> should have used rcu_read_lock_bh() here, will send a v2 tomorrow.
+Re-establish the previous behavior and avoid hashing temporary asocs by
+checking t->asoc->temp in sctp_(un)hash_transport. Also, remove the
+check of t->asoc->temp in __sctp_lookup_association, since they are
+never hashed now.
 
-Please just drop this one, no change is actually needed.
-rhashtable_walk_start() already puts the rcu_read_lock() in there and
-disabling bh is not necessary. Thanks.
+Fixes: 4f0087812648 ("sctp: apply rhashtable api to send/recv path")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Reported-by: Vlad Yasevich <vyasevich@gmail.com>
+---
+ net/sctp/endpointola.c | 2 +-
+ net/sctp/input.c       | 8 +++++++-
+ 2 files changed, 8 insertions(+), 2 deletions(-)
 
-> > >  	list_for_each_entry_rcu(tsp, &assoc->peer.transport_addr_list,
-> > >  				transports) {
-> > >  		if (tsp->dead)
-> > > @@ -543,6 +544,7 @@ static int sctp_remaddr_seq_show(struct seq_file *seq, void *v)
-> > >  
-> > >  		seq_printf(seq, "\n");
-> > >  	}
-> > > +	rcu_read_unlock();
-> > >  
-> > >  	return 0;
-> > >  }
-> > > -- 
-> > > 2.5.0
-> > > 
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
+index 52838ea..2522a61 100644
+--- a/net/sctp/endpointola.c
++++ b/net/sctp/endpointola.c
+@@ -333,7 +333,7 @@ struct sctp_association *sctp_endpoint_lookup_assoc(
+ 	if (!ep->base.bind_addr.port)
+ 		goto out;
+ 	t = sctp_epaddr_lookup_transport(ep, paddr);
+-	if (!t || t->asoc->temp)
++	if (!t)
+ 		goto out;
+ 
+ 	*transport = t;
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index b9a536b..bf61dfb 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -874,6 +874,9 @@ void sctp_hash_transport(struct sctp_transport *t)
+ {
+ 	struct sctp_hash_cmp_arg arg;
+ 
++	if (t->asoc->temp)
++		return;
++
+ 	arg.ep = t->asoc->ep;
+ 	arg.paddr = &t->ipaddr;
+ 	arg.net   = sock_net(t->asoc->base.sk);
+@@ -886,6 +889,9 @@ reinsert:
+ 
+ void sctp_unhash_transport(struct sctp_transport *t)
+ {
++	if (t->asoc->temp)
++		return;
++
+ 	rhashtable_remove_fast(&sctp_transport_hashtable, &t->node,
+ 			       sctp_hash_params);
+ }
+@@ -931,7 +937,7 @@ static struct sctp_association *__sctp_lookup_association(
+ 	struct sctp_transport *t;
+ 
+ 	t = sctp_addrs_lookup_transport(net, local, peer);
+-	if (!t || t->dead || t->asoc->temp)
++	if (!t || t->dead)
+ 		return NULL;
+ 
+ 	sctp_association_hold(t->asoc);
+-- 
+2.1.0
+
