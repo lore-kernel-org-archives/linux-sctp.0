@@ -1,12 +1,27 @@
 From: "Balasundaram, Gunabalan" <gbalasundaram@sonusnet.com>
-Date: Thu, 14 Jan 2016 20:59:45 +0000
-Subject: Kernel and TIPC utilities question
-Message-Id: <BN3PR0301MB08334571D27B7903CAB4E5C6C4CC0@BN3PR0301MB0833.namprd03.prod.outlook.com>
+Date: Tue, 19 Jan 2016 15:51:42 +0000
+Subject: FW: Kernel and TIPC utilities question
+Message-Id: <BN3PR0301MB083386C4078BA6357A535A62C4C10@BN3PR0301MB0833.namprd03.prod.outlook.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <BN3PR0301MB08334571D27B7903CAB4E5C6C4CC0@BN3PR0301MB0833.namprd03.prod.outlook.com>
+In-Reply-To: <BN3PR0301MB08334571D27B7903CAB4E5C6C4CC0@BN3PR0301MB0833.namprd03.prod.outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
+
+Hello,
+
+Could you let me know your comments for my question ASAP.
+
+Thanks,
+Guna
+
+-----Original Message-----
+From: Balasundaram, Gunabalan 
+Sent: Thursday, January 14, 2016 3:59 PM
+To: 'linux-sctp@vger.kernel.org' <linux-sctp@vger.kernel.org>
+Subject: Kernel and TIPC utilities question
 
 Hello,
 
