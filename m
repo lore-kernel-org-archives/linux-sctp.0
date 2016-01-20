@@ -1,7 +1,7 @@
-From: "Balasundaram, Gunabalan" <gbalasundaram@sonusnet.com>
-Date: Wed, 20 Jan 2016 14:55:57 +0000
-Subject: RE: FW: Kernel and TIPC utilities question
-Message-Id: <BN3PR0301MB083308ACF80881B396D0C139C4C20@BN3PR0301MB0833.namprd03.prod.outlook.com>
+From: malc <mlashley@gmail.com>
+Date: Wed, 20 Jan 2016 19:56:19 +0000
+Subject: Re: FW: Kernel and TIPC utilities question
+Message-Id: <CAPkQJpSy9Kwj+gWmw6nCGPrtmNHi+cmG6LU7ikaJM8mymy+4Lg@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <BN3PR0301MB08334571D27B7903CAB4E5C6C4CC0@BN3PR0301MB0833.namprd03.prod.outlook.com>
 In-Reply-To: <BN3PR0301MB08334571D27B7903CAB4E5C6C4CC0@BN3PR0301MB0833.namprd03.prod.outlook.com>
@@ -10,39 +10,72 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-VGhhbmtzIE1hbGMuDQoNCkNvdWxkIHlvdSB0ZWxsIG1lIHRoYXQgYW55IG9mIHRoZSBmb2xsb3dp
-bmcgTGludXggS2VybmVsIGRlZmluZWQgYXMgTFRTIChMb25nIFRlcm0gU3VwcG9ydCkgPw0KNC4z
-LjMgICAgICAgIHN0YWJsZSAgICAgICAgICAgICAgICAgICAgICANCjQuNCAgICAgICAgICAgIG1h
-aW5saW5lDQoNClRoYW5rcywNCkd1bmENCg0KLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCkZy
-b206IG1hbGMgW21haWx0bzptbGFzaGxleUBnbWFpbC5jb21dIA0KU2VudDogVHVlc2RheSwgSmFu
-dWFyeSAxOSwgMjAxNiAxMToyOSBBTQ0KVG86IEJhbGFzdW5kYXJhbSwgR3VuYWJhbGFuIDxnYmFs
-YXN1bmRhcmFtQHNvbnVzbmV0LmNvbT4NCkNjOiBsaW51eC1zY3RwQHZnZXIua2VybmVsLm9yZw0K
-U3ViamVjdDogUmU6IEZXOiBLZXJuZWwgYW5kIFRJUEMgdXRpbGl0aWVzIHF1ZXN0aW9uDQoNCkd1
-bmEsDQoNCkkgZ3Vlc3Mgbm8tb25lIHJlcGxpZWQgYmVjYXVzZSB0aGlzIG1haWxpbmcgbGlzdCBp
-cyByZWxhdGVkIHRvIHRoZSBwb3J0aW9uIG9mIHRoZSBsaW51eCBrZXJuZWwgaW1wbGVtZW50aW5n
-IHRoZSBTQ1RQIHN0YWNrLCBhbmQgaXQgaGFzIG5vdGhpbmcgdG8gZG8gd2l0aCBUSVBDLi4uDQoN
-CkEgcXVpY2sgZ29vZ2xlIHNob3dzIHRoZXkgaGF2ZSBhIG1haWxpbmcgbGlzdCBhdCBodHRwOi8v
-dGlwYy5zb3VyY2Vmb3JnZS5uZXQvbWFpbGluZ19saXN0LnNodG1sIHlvdSBtaWdodCB0cnkgdGhl
-cmUgZm9yIGJldHRlciBsdWNrLg0KDQpDaGVlcnMsDQptYWxjLg0KDQoNCg0KDQpPbiBUdWUsIEph
-biAxOSwgMjAxNiBhdCAzOjUxIFBNLCBCYWxhc3VuZGFyYW0sIEd1bmFiYWxhbiA8Z2JhbGFzdW5k
-YXJhbUBzb251c25ldC5jb20+IHdyb3RlOg0KPiBIZWxsbywNCj4NCj4gQ291bGQgeW91IGxldCBt
-ZSBrbm93IHlvdXIgY29tbWVudHMgZm9yIG15IHF1ZXN0aW9uIEFTQVAuDQo+DQo+IFRoYW5rcywN
-Cj4gR3VuYQ0KPg0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBCYWxhc3Vu
-ZGFyYW0sIEd1bmFiYWxhbg0KPiBTZW50OiBUaHVyc2RheSwgSmFudWFyeSAxNCwgMjAxNiAzOjU5
-IFBNDQo+IFRvOiAnbGludXgtc2N0cEB2Z2VyLmtlcm5lbC5vcmcnIDxsaW51eC1zY3RwQHZnZXIu
-a2VybmVsLm9yZz4NCj4gU3ViamVjdDogS2VybmVsIGFuZCBUSVBDIHV0aWxpdGllcyBxdWVzdGlv
-bg0KPg0KPiBIZWxsbywNCj4NCj4gV2UgYXJlIGluIHRoZSBwcm9jZXNzIG9mIHVwZ3JhZGluZyB0
-aGUgRmVkb3JhIDE2IEtlcm5lbCBmcm9tIDMuNC4yLTEgdG8gNC4zLiAgV2UgaGF2ZSBzb21lIHF1
-ZXN0aW9ucyB0byBjbGFyaWZ5Og0KPg0KPiAxLiBUaGUga2VybmVsIDQuMyBpcyB0YWdnZWQgYXMg
-InN0YWJsZSIuIERvZXMgdGhlIEtlcm5lbCA0LjMgYSBsb25nIHRlcm0gc3VwcG9ydCB2ZXJzaW9u
-ID8NCj4gMi4gSXMgdGhlIEtlcm5lbCA0LjQgYSBsb25nIHRlcm0gc3VwcG9ydCB2ZXJzaW9uID8N
-Cj4gMy4gRnJvbSAzLjQuMi0xIGtlcm5lbCwgd2UgaGF2ZSB1c2VkIFRJUEMgdXRpbGl0aWVzIHYy
-LjAuMi4NCj4gICAgICAgICBhLiBJcyB0aGlzIHZlcnNpb24gY29tcGF0aWJsZSB3aXRoIG5ldyBL
-ZXJuZWwgNC4zIG9yIDQuNCA/DQo+ICAgICAgICAgYi4gRG8gd2UgbmVlZCB0byByZWJ1aWxkIGEg
-dGlwY19jb25maWcgZm9yIEtlcm5lbCA0LjMgb3IgNC40Pw0KPiAgICAgICAgIGMuIFRvIHJlY29t
-cGlsZSwgd2hlcmUgSSBjb3VsZCBmaW5kIHRoZSB1c2VyIHNwYWNlIHRpcGMuaCBhbmQgdGlwY19j
-b25maWcuaCBmaWxlcz8NCj4NCj4gVGhhbmsgeW91LA0KPiBHdW5hIEINCj4gLS0NCj4gVG8gdW5z
-dWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4
-LXNjdHAiIA0KPiBpbiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2Vy
-bmVsLm9yZyBNb3JlIG1ham9yZG9tbyANCj4gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9y
-Zy9tYWpvcmRvbW8taW5mby5odG1sDQo
+Let me google that for you... (even though it still isn't a relevant
+question for this list...)
+
+https://www.kernel.org/category/releases.html
+
+Your upstream (Fedora) may have a different view of what
+distro-kernels they provide back-ported fixes etc. for..
+
+On Wed, Jan 20, 2016 at 2:55 PM, Balasundaram, Gunabalan
+<gbalasundaram@sonusnet.com> wrote:
+> Thanks Malc.
+>
+> Could you tell me that any of the following Linux Kernel defined as LTS (Long Term Support) ?
+> 4.3.3        stable
+> 4.4            mainline
+>
+> Thanks,
+> Guna
+>
+> -----Original Message-----
+> From: malc [mailto:mlashley@gmail.com]
+> Sent: Tuesday, January 19, 2016 11:29 AM
+> To: Balasundaram, Gunabalan <gbalasundaram@sonusnet.com>
+> Cc: linux-sctp@vger.kernel.org
+> Subject: Re: FW: Kernel and TIPC utilities question
+>
+> Guna,
+>
+> I guess no-one replied because this mailing list is related to the portion of the linux kernel implementing the SCTP stack, and it has nothing to do with TIPC...
+>
+> A quick google shows they have a mailing list at http://tipc.sourceforge.net/mailing_list.shtml you might try there for better luck.
+>
+> Cheers,
+> malc.
+>
+>
+>
+>
+> On Tue, Jan 19, 2016 at 3:51 PM, Balasundaram, Gunabalan <gbalasundaram@sonusnet.com> wrote:
+>> Hello,
+>>
+>> Could you let me know your comments for my question ASAP.
+>>
+>> Thanks,
+>> Guna
+>>
+>> -----Original Message-----
+>> From: Balasundaram, Gunabalan
+>> Sent: Thursday, January 14, 2016 3:59 PM
+>> To: 'linux-sctp@vger.kernel.org' <linux-sctp@vger.kernel.org>
+>> Subject: Kernel and TIPC utilities question
+>>
+>> Hello,
+>>
+>> We are in the process of upgrading the Fedora 16 Kernel from 3.4.2-1 to 4.3.  We have some questions to clarify:
+>>
+>> 1. The kernel 4.3 is tagged as "stable". Does the Kernel 4.3 a long term support version ?
+>> 2. Is the Kernel 4.4 a long term support version ?
+>> 3. From 3.4.2-1 kernel, we have used TIPC utilities v2.0.2.
+>>         a. Is this version compatible with new Kernel 4.3 or 4.4 ?
+>>         b. Do we need to rebuild a tipc_config for Kernel 4.3 or 4.4?
+>>         c. To recompile, where I could find the user space tipc.h and tipc_config.h files?
+>>
+>> Thank you,
+>> Guna B
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-sctp"
+>> in the body of a message to majordomo@vger.kernel.org More majordomo
+>> info at  http://vger.kernel.org/majordomo-info.html
