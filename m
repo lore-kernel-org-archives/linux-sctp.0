@@ -1,24 +1,71 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 15 Jan 2016 20:12:13 +0000
-Subject: Re: [PATCH] net: sctp: Move sequence start handling into sctp_transport_get_idx()
-Message-Id: <20160115.151213.2258553264727846515.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 21 Jan 2016 17:49:08 +0000
+Subject: [PATCH net 2/3] sctp: hold transport before we access t->asoc in sctp proc
+Message-Id: <4357f1f3ad90ffec1481a265d8ca198d75e25d07.1453398443.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1452865471-32509-1-git-send-email-geert@linux-m68k.org>
-In-Reply-To: <1452865471-32509-1-git-send-email-geert@linux-m68k.org>
+References: <cover.1453398443.git.lucien.xin@gmail.com>
+ <9f366422b6a8c6c0c939ccbf993548c1881a2c16.1453398443.git.lucien.xin@gmail.com>
+In-Reply-To: <9f366422b6a8c6c0c939ccbf993548c1881a2c16.1453398443.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: geert@linux-m68k.org
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, lucien.xin@gmail.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net
 
-RnJvbTogR2VlcnQgVXl0dGVyaG9ldmVuIDxnZWVydEBsaW51eC1tNjhrLm9yZz4NCkRhdGU6IEZy
-aSwgMTUgSmFuIDIwMTYgMTQ6NDQ6MzEgKzAxMDANCg0KPiBuZXQvc2N0cC9wcm9jLmM6IEluIGZ1
-bmN0aW9uIKFzY3RwX3RyYW5zcG9ydF9nZXRfaWR4ojoNCj4gbmV0L3NjdHAvcHJvYy5jOjMxMzog
-d2FybmluZzogoW9iaqIgbWF5IGJlIHVzZWQgdW5pbml0aWFsaXplZCBpbiB0aGlzIGZ1bmN0aW9u
-DQo+IA0KPiBUaGlzIGlzIGN1cnJlbnRseSBhIGZhbHNlIHBvc2l0aXZlLCBhcyBhbGwgY2FsbGVy
-cyBjaGVjayBmb3IgYSB6ZXJvDQo+IG9mZnNldCBmaXJzdCwgYW5kIGhhbmRsZSB0aGlzIGNhc2Ug
-aW4gdGhlIGV4YWN0IHNhbWUgd2F5Lg0KPiANCj4gTW92ZSB0aGUgY2hlY2sgYW5kIGhhbmRsaW5n
-IGludG8gc2N0cF90cmFuc3BvcnRfZ2V0X2lkeCgpIHRvIGtpbGwgdGhlDQo+IGNvbXBpbGVyIHdh
-cm5pbmcsIGFuZCBhdm9pZCBmdXR1cmUgYnVncy4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEdlZXJ0
-IFV5dHRlcmhvZXZlbiA8Z2VlcnRAbGludXgtbTY4ay5vcmc+DQoNCkFwcGxpZWQsIHRoYW5rcyBH
-ZWVydC4NCg=
+Previously, before rhashtable, /proc assoc listing was done by
+read-locking the entire hash entry and dumping all assocs at once, so we
+were sure that the assoc wasn't freed because it wouldn't be possible to
+remove it from the hash meanwhile.
+
+Now we use rhashtable to list transports, and dump entries one by one.
+That is, now we have to check if the assoc is still a good one, as the
+transport we got may be being freed.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/proc.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+index 684c5b3..c74a810 100644
+--- a/net/sctp/proc.c
++++ b/net/sctp/proc.c
+@@ -380,6 +380,8 @@ static int sctp_assocs_seq_show(struct seq_file *seq, void *v)
+ 	}
+ 
+ 	transport = (struct sctp_transport *)v;
++	if (!sctp_transport_hold(transport))
++		return 0;
+ 	assoc = transport->asoc;
+ 	epb = &assoc->base;
+ 	sk = epb->sk;
+@@ -412,6 +414,8 @@ static int sctp_assocs_seq_show(struct seq_file *seq, void *v)
+ 		sk->sk_rcvbuf);
+ 	seq_printf(seq, "\n");
+ 
++	sctp_transport_put(transport);
++
+ 	return 0;
+ }
+ 
+@@ -489,6 +493,8 @@ static int sctp_remaddr_seq_show(struct seq_file *seq, void *v)
+ 	}
+ 
+ 	tsp = (struct sctp_transport *)v;
++	if (!sctp_transport_hold(tsp))
++		return 0;
+ 	assoc = tsp->asoc;
+ 
+ 	list_for_each_entry_rcu(tsp, &assoc->peer.transport_addr_list,
+@@ -544,6 +550,8 @@ static int sctp_remaddr_seq_show(struct seq_file *seq, void *v)
+ 		seq_printf(seq, "\n");
+ 	}
+ 
++	sctp_transport_put(tsp);
++
+ 	return 0;
+ }
+ 
+-- 
+2.1.0
+
