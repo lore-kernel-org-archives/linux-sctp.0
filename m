@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 21 Jan 2016 17:53:05 +0000
+From: Vlad Yasevich <vyasevich@gmail.com>
+Date: Fri, 22 Jan 2016 16:50:20 +0000
 Subject: Re: [PATCH net 1/3] sctp: fix the transport dead race check by using atomic_add_unless on refcnt
-Message-Id: <20160121175305.GD3452@mrl.redhat.com>
+Message-Id: <56A25DCC.9040207@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1453398443.git.lucien.xin@gmail.com>
  <9f366422b6a8c6c0c939ccbf993548c1881a2c16.1453398443.git.lucien.xin@gmail.com>
@@ -9,10 +9,10 @@ In-Reply-To: <9f366422b6a8c6c0c939ccbf993548c1881a2c16.1453398443.git.lucien.xin
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net
+To: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, daniel@iogearbox.net, davem@davemloft.net
 
-On Fri, Jan 22, 2016 at 01:49:07AM +0800, Xin Long wrote:
+On 01/21/2016 12:49 PM, Xin Long wrote:
 > Now when __sctp_lookup_association is running in BH, it will try to
 > check if t->dead is set, but meanwhile other CPUs may be freeing this
 > transport and this assoc and if it happens that
@@ -23,6 +23,12 @@ On Fri, Jan 22, 2016 at 01:49:07AM +0800, Xin Long wrote:
 > After we get one transport from hashtable, we will hold it only when
 > this transport's refcnt is not 0, so that we can make sure t->asoc
 > cannot be freed before we hold the asoc again.
+
+atomic_add_unless() uses atomic_read() to check the value.  Since there
+don't appear to be any barriers, what guarantees that the value
+read will not have been modified in another thread under a proper lock?
+
+
 > 
 > Note that sctp association is not freed using RCU so we can't use
 > atomic_add_unless() with it as it may just be too late for that either.
@@ -30,9 +36,6 @@ On Fri, Jan 22, 2016 at 01:49:07AM +0800, Xin Long wrote:
 > Fixes: 4f0087812648 ("sctp: apply rhashtable api to send/recv path")
 > Reported-by: Vlad Yasevich <vyasevich@gmail.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  include/net/sctp/structs.h |  2 +-
 >  net/sctp/input.c           | 17 +++++++++++------
@@ -72,6 +75,12 @@ Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > -	sctp_association_hold(t->asoc);
 > +	asoc = t->asoc;
 > +	sctp_association_hold(asoc);
+
+I don't think you can modify the reference count on a transport, let alone
+the association outside of a lock.
+
+-vlad
+
 >  	*pt = t;
 >  
 > -	return t->asoc;
@@ -109,11 +118,5 @@ Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 >  }
 >  
 >  /* Release a reference to a transport and clean up
-> -- 
-> 2.1.0
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
