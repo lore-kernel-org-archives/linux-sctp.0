@@ -1,132 +1,145 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 25 Jan 2016 16:05:34 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Mon, 25 Jan 2016 16:16:00 +0000
 Subject: Re: net/sctp: out-of-bounds access in sctp_add_bind_addr
-Message-Id: <20160125160534.GC29690@hmsreliant.think-freely.org>
+Message-Id: <f5e86af253fac52b6f78448e9aaf68742a1ec7c5.1453738452.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CACT4Y+YNM_C1_mBBiq40-xe+dTKdsfmxri2SeDyRKSVpw+7nLQ@mail.gmail.com>
- <20160125143130.GB29690@hmsreliant.think-freely.org>
- <CACT4Y+Z36GoxiRDQdFeVNkEvdRvmTXZC47cRM=TA1FCM+vCDcg@mail.gmail.com>
- <20160125144802.GA6602@mrl.redhat.com>
-In-Reply-To: <20160125144802.GA6602@mrl.redhat.com>
+References: <20160125160534.GC29690@hmsreliant.think-freely.org>
+In-Reply-To: <20160125160534.GC29690@hmsreliant.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: Dmitry Vyukov <dvyukov@google.com>, Vlad Yasevich <vyasevich@gmail.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, syzkaller <syzkaller@googlegroups.com>, Kostya Serebryany <kcc@google.com>, Alexander Potapenko <glider@google.com>, Sasha Levin <sasha.levin@oracle.com>, Eric Dumazet <edumazet@google.com>
+To: dvyukov@google.com
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, syzkaller@googlegroups.com, kcc@google.com, glider@google.com, sasha.levin@oracle.com, edumazet@google.com
 
-On Mon, Jan 25, 2016 at 12:48:02PM -0200, Marcelo Ricardo Leitner wrote:
-> On Mon, Jan 25, 2016 at 03:42:14PM +0100, Dmitry Vyukov wrote:
-> > On Mon, Jan 25, 2016 at 3:31 PM, Neil Horman <nhorman@tuxdriver.com> wrote:
-> > > On Mon, Jan 25, 2016 at 03:02:38PM +0100, Dmitry Vyukov wrote:
-> > >> Hello,
-> > >>
-> > >> I've git the following error report while running syzkaller fuzzer:
-> > >>
-> > >> =================================
-> > >> BUG: KASAN: slab-out-of-bounds in memcpy+0x1d/0x40 at addr ffff88006c6361e8
-> > >> Read of size 28 by task syz-executor/12551
-> > >> ======================================> > >> BUG kmalloc-16 (Not tainted): kasan: bad access detected
-> > >> -----------------------------------------------------------------------------
-> > >>
-> > >> INFO: Allocated in sctp_setsockopt_bindx+0xd2/0x3e0 age cpu=2 pid551
-> > >> [<     inline     >] kmalloc include/linux/slab.h:468
-> > >> [<      none      >] sctp_setsockopt_bindx+0xd2/0x3e0 net/sctp/socket.c:975
-> > >> [<      none      >] sctp_setsockopt+0x1493/0x3630 net/sctp/socket.c:3711
-> > >> [<      none      >] sock_common_setsockopt+0x97/0xd0 net/core/sock.c:2620
-> > >> [<     inline     >] SYSC_setsockopt net/socket.c:1752
-> > >> [<      none      >] SyS_setsockopt+0x15b/0x250 net/socket.c:1731
-> > >> [<      none      >] entry_SYSCALL_64_fastpath+0x16/0x7a
-> > >> arch/x86/entry/entry_64.S:185
-> > >>
-> > >> INFO: Slab 0xffffea0001b18d80 objects used=4 fp=0xffff88006c6376e0
-> > >> flags=0x5fffc0000004080
-> > >> INFO: Object 0xffff88006c6361e8 @offsetH8 fp=0x0000000000000002
-> > >> Bytes b4 ffff88006c6361d8: 00 00 00 00 00 00 00 00 2f 98 34 88 ff ff
-> > >> ff ff  ......../.4.....
-> > >> Object ffff88006c6361e8: 02 00 00 00 00 00 00 00 02 00 ab 07 7f 00 00
-> > >> 01  ................
-> > >> CPU: 2 PID: 12551 Comm: syz-executor Tainted: G    B           4.5.0-rc1+ #278
-> > >> Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
-> > >>  00000000ffffffff ffff880036397928 ffffffff8299a02d ffff88003e807900
-> > >>  ffff88006c6361e8 ffff88006c636000 ffff880036397958 ffffffff81752814
-> > >>  ffff88003e807900 ffffea0001b18d80 ffff88006c6361e8 ffff88006c6361e8
-> > >>
-> > >> Call Trace:
-> > >>  [<ffffffff8175ad54>] __asan_loadN+0x124/0x1a0 mm/kasan/kasan.c:512
-> > >>  [<ffffffff8175b2dd>] memcpy+0x1d/0x40 mm/kasan/kasan.c:297
-> > >>  [<ffffffff85dcb249>] sctp_add_bind_addr+0xa9/0x270 net/sctp/bind_addr.c:162
-> > >>  [<ffffffff85dcfd66>] sctp_do_bind+0x336/0x580 net/sctp/socket.c:389
-> > >>  [<ffffffff85dd16ec>] sctp_bindx_add+0xac/0x1a0 net/sctp/socket.c:471
-> > >>  [<ffffffff85dd5cc8>] sctp_setsockopt_bindx+0x2f8/0x3e0 net/sctp/socket.c:1010
-> > >>  [<ffffffff85dde283>] sctp_setsockopt+0x1493/0x3630 net/sctp/socket.c:3711
-> > >>  [<ffffffff851f5ae7>] sock_common_setsockopt+0x97/0xd0 net/core/sock.c:2620
-> > >>  [<     inline     >] SYSC_setsockopt net/socket.c:1752
-> > >>  [<ffffffff851f2c3b>] SyS_setsockopt+0x15b/0x250 net/socket.c:1731
-> > >>  [<ffffffff863595f6>] entry_SYSCALL_64_fastpath+0x16/0x7a
-> > >> arch/x86/entry/entry_64.S:185
-> > >>
-> > >> Memory state around the buggy address:
-> > >>  ffff88006c636080: fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc
-> > >>  ffff88006c636100: fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc
-> > >> >ffff88006c636180: fc fc fc fc fc fc fc fc fc fc fc fc fc 00 00 fc
-> > >>                                                                 ^
-> > >>  ffff88006c636200: fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc
-> > >>  ffff88006c636280: fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc
-> > >> =================================
-> > >>
-> > >>
-> > >> sctp_setsockopt_bindx verifies that the user-passed address has valid
-> > >> len for the specified family, but then sctp_add_bind_addr copies whole
-> > >> sctp_addr from there. This causes heap out-of-bounds access and can
-> > >> crash kernel. Not sure if it is possible to copy out the trailing
-> > >> garbage to user-space later.
-> > >>
-> > >
-> > > It does more than that though.  sctp_setsockopt_bindx checks the following:
-> > > 1) That passed addr_size is greater than zero
-> > > 2) that the entire range of memory between addrs and addrs+addr_size is readable
-> > > 3) That at least one address structure worth of data is available (implicit in
-> > > the while (walk_size < addr_size) loop).
-> > >
-> > > Could one of the sockaddr_len fields in one of the addresses have been mangled
-> > > so that it appeared shorter in the the while loop from (3), so that a copy of
-> > > sizeof(sctp_addr in sctp_add_bind_addr overrun the allocated memory?
-> > 
-> > I may be missing something, but what I see is:
-> > 
-> > 1. we check that there is at least family:
-> > if (walk_size + sizeof(sa_family_t) > addrs_size) {
-> > 
-> > 2. get family descriptor:
-> > af = sctp_get_af_specific(sa_addr->sa_family);
-> > 
-> > 3. check that the address size is enough to hold the declared family:
-> > if (!af || (walk_size + af->sockaddr_len) > addrs_size) {
-> > 
-> > 4. then we do sctp_add_bind_addr, which copies whole sctp_addr from addr:
-> > 
-> > int sctp_add_bind_addr(struct sctp_bind_addr *bp, union sctp_addr *new,
-> > ...
-> > memcpy(&addr->a, new, sizeof(*new));
-> > 
-> > Now imagine that the addr is ipv4 (16 or so bytes, that's what we
-> > checked) and we copy 28 bytes (ipv6) from addr.
-> 
-> Yes, that's pretty much it I think. That memcpy should be limited to
-> af->sockaddr_len, it's just that af is not readily available in that
-> function.
-> 
-Yeah, ok, we're on the same page.  If the size of the sctp_addr struct is larger
-than the size that the address family specifies, we're up the creek.  We should
-augment sctp_add_bind_addr to take the family length as a parameter and either
-limit the copy to the min of the sruct size and the family size
+Something like this. Builds, but UNTESTED.
+Uses union sizeof where possible but when reading from a buffer that is
+not aligned to it, like that user supplied one. Then relies on
+af->sockaddr_len
 
-Neil
+--8<--
 
->   Marcelo
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+---
+ include/net/sctp/structs.h |  2 +-
+ net/sctp/bind_addr.c       | 14 ++++++++------
+ net/sctp/protocol.c        |  1 +
+ net/sctp/sm_make_chunk.c   |  2 +-
+ net/sctp/socket.c          |  5 +++--
+ 5 files changed, 14 insertions(+), 10 deletions(-)
+
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 20e72129be1ce0063eeafcbaadcee1f37e0c614c..97ba8a8c466f5c50bdc87ec578792e56553baa91 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1099,7 +1099,7 @@ int sctp_bind_addr_dup(struct sctp_bind_addr *dest,
+ 			const struct sctp_bind_addr *src,
+ 			gfp_t gfp);
+ int sctp_add_bind_addr(struct sctp_bind_addr *, union sctp_addr *,
+-		       __u8 addr_state, gfp_t gfp);
++		       int new_size, __u8 addr_state, gfp_t gfp);
+ int sctp_del_bind_addr(struct sctp_bind_addr *, union sctp_addr *);
+ int sctp_bind_addr_match(struct sctp_bind_addr *, const union sctp_addr *,
+ 			 struct sctp_sock *);
+diff --git a/net/sctp/bind_addr.c b/net/sctp/bind_addr.c
+index 871cdf9567e6bc9c13cb1077dc6866a67e6e4367..80129d10a0af9c33e7348b79d010b9e5e948e584 100644
+--- a/net/sctp/bind_addr.c
++++ b/net/sctp/bind_addr.c
+@@ -111,7 +111,8 @@ int sctp_bind_addr_dup(struct sctp_bind_addr *dest,
+ 	dest->port = src->port;
+ 
+ 	list_for_each_entry(addr, &src->address_list, list) {
+-		error = sctp_add_bind_addr(dest, &addr->a, 1, gfp);
++		error = sctp_add_bind_addr(dest, &addr->a, sizeof(addr->a),
++					   1, gfp);
+ 		if (error < 0)
+ 			break;
+ 	}
+@@ -150,7 +151,7 @@ void sctp_bind_addr_free(struct sctp_bind_addr *bp)
+ 
+ /* Add an address to the bind address list in the SCTP_bind_addr structure. */
+ int sctp_add_bind_addr(struct sctp_bind_addr *bp, union sctp_addr *new,
+-		       __u8 addr_state, gfp_t gfp)
++		       int new_size, __u8 addr_state, gfp_t gfp)
+ {
+ 	struct sctp_sockaddr_entry *addr;
+ 
+@@ -159,7 +160,7 @@ int sctp_add_bind_addr(struct sctp_bind_addr *bp, union sctp_addr *new,
+ 	if (!addr)
+ 		return -ENOMEM;
+ 
+-	memcpy(&addr->a, new, sizeof(*new));
++	memcpy(&addr->a, new, min_t(size_t, sizeof(*new), new_size));
+ 
+ 	/* Fix up the port if it has not yet been set.
+ 	 * Both v4 and v6 have the port at the same offset.
+@@ -291,7 +292,8 @@ int sctp_raw_to_bind_addrs(struct sctp_bind_addr *bp, __u8 *raw_addr_list,
+ 		}
+ 
+ 		af->from_addr_param(&addr, rawaddr, htons(port), 0);
+-		retval = sctp_add_bind_addr(bp, &addr, SCTP_ADDR_SRC, gfp);
++		retval = sctp_add_bind_addr(bp, &addr, sizeof(addr),
++					    SCTP_ADDR_SRC, gfp);
+ 		if (retval) {
+ 			/* Can't finish building the list, clean up. */
+ 			sctp_bind_addr_clean(bp);
+@@ -453,8 +455,8 @@ static int sctp_copy_one_addr(struct net *net, struct sctp_bind_addr *dest,
+ 		    (((AF_INET6 = addr->sa.sa_family) &&
+ 		      (flags & SCTP_ADDR6_ALLOWED) &&
+ 		      (flags & SCTP_ADDR6_PEERSUPP))))
+-			error = sctp_add_bind_addr(dest, addr, SCTP_ADDR_SRC,
+-						    gfp);
++			error = sctp_add_bind_addr(dest, addr, sizeof(addr),
++						   SCTP_ADDR_SRC, gfp);
+ 	}
+ 
+ 	return error;
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index ab0d538a74ed593571cfaef02cd1bb7ce872abe6..2fb609008311f51344704d82f21b4de9f08253da 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -214,6 +214,7 @@ int sctp_copy_local_addr_list(struct net *net, struct sctp_bind_addr *bp,
+ 			      (copy_flags & SCTP_ADDR6_ALLOWED) &&
+ 			      (copy_flags & SCTP_ADDR6_PEERSUPP)))) {
+ 				error = sctp_add_bind_addr(bp, &addr->a,
++						    sizeof(addr->a),
+ 						    SCTP_ADDR_SRC, GFP_ATOMIC);
+ 				if (error)
+ 					goto end_copy;
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 5d6a03fad3789a12290f5f14c5a7efa69c98f41a..1b91e9760fe514db6d89457e1d5da9e02800745e 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -1830,7 +1830,7 @@ no_hmac:
+ 	/* Also, add the destination address. */
+ 	if (list_empty(&retval->base.bind_addr.address_list)) {
+ 		sctp_add_bind_addr(&retval->base.bind_addr, &chunk->dest,
+-				SCTP_ADDR_SRC, GFP_ATOMIC);
++				   sizeof(chunk->dest), SCTP_ADDR_SRC, GFP_ATOMIC);
+ 	}
+ 
+ 	retval->next_tsn = retval->c.initial_tsn;
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 9bb80ec4c08ff06f6e629078c5a926c3def3ce23..3765f1fd06aac253ec5ee8e8bd18fffefda64d62 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -386,7 +386,8 @@ static int sctp_do_bind(struct sock *sk, union sctp_addr *addr, int len)
+ 	/* Add the address to the bind address list.
+ 	 * Use GFP_ATOMIC since BHs will be disabled.
+ 	 */
+-	ret = sctp_add_bind_addr(bp, addr, SCTP_ADDR_SRC, GFP_ATOMIC);
++	ret = sctp_add_bind_addr(bp, addr, af->sockaddr_len,
++				 SCTP_ADDR_SRC, GFP_ATOMIC);
+ 
+ 	/* Copy back into socket for getsockname() use. */
+ 	if (!ret) {
+@@ -576,7 +577,7 @@ static int sctp_send_asconf_add_ip(struct sock		*sk,
+ 			addr = addr_buf;
+ 			af = sctp_get_af_specific(addr->v4.sin_family);
+ 			memcpy(&saveaddr, addr, af->sockaddr_len);
+-			retval = sctp_add_bind_addr(bp, &saveaddr,
++			retval = sctp_add_bind_addr(bp, &saveaddr, sizeof(saveaddr),
+ 						    SCTP_ADDR_NEW, GFP_ATOMIC);
+ 			addr_buf += af->sockaddr_len;
+ 		}
+-- 
+2.5.0
+
