@@ -1,7 +1,7 @@
 From: David Laight <David.Laight@ACULAB.COM>
-Date: Fri, 29 Jan 2016 15:51:52 +0000
+Date: Fri, 29 Jan 2016 15:57:59 +0000
 Subject: RE: [RFC PATCH net-next 0/3] sctp: add GSO support
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1CCD119A@AcuExch.aculab.com>
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6D1CCD11AF@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1453913331.git.marcelo.leitner@gmail.com>
  <063D6719AE5E284EB5DD2968C1650D6D1CCCEDE4@AcuExch.aculab.com>
@@ -17,65 +17,35 @@ Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxd
 
 From: 'Marcelo Ricardo Leitner'
 > Sent: 28 January 2016 20:56
-> On Thu, Jan 28, 2016 at 05:30:24PM +0000, David Laight wrote:
-> > From: 'Marcelo Ricardo Leitner'
-> > > Sent: 28 January 2016 15:53
-> > > On Thu, Jan 28, 2016 at 01:51:02PM +0000, David Laight wrote:
 ...
-> > > > With Nagle disabled (and it probably has to be since the data flow
-> > > > is unlikely to be 'command-response' or 'unidirectional bulk')
-> > > > it is currently almost impossible to get more than one chunk
-> > > > into an ethernet frame.
-> > > >
-> > > > Support for MSG_MORE would help.
-> > > >
-> > > > Given the current implementation you can get almost the required
-> > > > behaviour by turning nagle off and on repeatedly.
+> > > > I did wonder whether the queued data could actually be picked up
+> > > > be a Heartbeat chunk that is probing a different remote address
+> > > > (which would be bad news).
 > > >
-> > > That's pretty much expected, I think. Without Nagle, if bandwidth and
-> > > cwnd allow, segment will be sent. GSO by itself shouldn't cause a
-> > > buffering to protect from that.
-> > >
-> > > If something causes a bottleneck, tx may get queue up.  Like if I do a
-> > > stress test in my system, generally receiver side is slower than sender,
-> > > so I end up having tx buffers pretty easily. It mimics bandwidth
-> > > restrictions.
+> > > I don't follow. You mean if a heartbeat may get stuck in queue or if
+> > > sending of a heartbeat can end up carrying additional data by accident?
 > >
-> > Imagine a using M2UA to connect local machines (one running mtp3, the other mtp2).
-> > Configure two linksets of 16 signalling links and perform a double-reflect
-> > loopback test.
-> > The SCTP connection won't ever saturate, so every msu ends up in its own
-> > ethernet packet.
-> > It is easy to generate 1000's of ethernet frames/sec on a single connection.
-> >
-> > (We do this with something not entirely quite like M2UA over TCP,
-> > even then it is very hard to get multiple message into a single
-> > ethernet frame.)
-> >
+> > My suspicion was that the heartbeat would carry the queued data.
 > 
-> Agreed, GSO won't help much in there without a corking feature like
-> MSG_MORE or that on/off switch on Nagle you mentioned.
-> 
-> Thing about this (and also GRO) is on identifying how much can be spent
-> on waiting for the next chunk/packet without causing issues to the
-> application. Nagle is there and helps quite a lot, but timing-sensitive
-> applications will turn it off.
+> I'm afraid I'm  still not following, sorry. You mean that this GSO patch
+> would cause the heartbeat to carry queued data? If yes, no, because for
+> SCTP side of it it mangles the packet size and make it look bigger
+> instead of handling multiple packets. It will then break this large
+> sctp_packet into several sk_buff and glue them together as if they were
+> GROed, allowing skb_segment to just split them back. The reason the
+> sctp_packet is generated, being it due to user data or control chunks
+> like heartbeats, is not modified.
 
-Nagle is only any good for unidirectional data (think file transfer)
-and command-response (think telnet or rlogin), for anything else
-it generates 200ms+ delays.
-The SIGTRAN protocols (M3UA etc) are all specified to use SCTP
-and have no real relationship between the send and receive data.
-SCTP is being used to replace 64kb/s links so a few milliseconds
-of delay (1ms is 8 byte times) probably don't matter.
-The Nagle timeout is, however far too long - so has to be disabled.
+I'm thinking of the code prior to your GSO changes.
 
-So never mind GSO to improve 'bulk' output, the big SCTP performance
-issue (as I see it) is the inability for a lot of workloads to
-ever get more than one small data chunk into an ethernet frame.
+IIRC with nagle enabled data chunks are built and put onto an
+internal queue to be sent later (with nagle disabled they are
+sent at the end of the tx processing provided (IIRC) there is window).
+Any message that forces a transmit picks up the queued data - and
+I think this might include heartbeats....
 
-Which other (application) protocols are using SCTP?
-It doesn't seem an appropriate protocol for bulk data.
+I didn't read the code closely enough to find out whether this
+was true or not.
 
 	David
 
