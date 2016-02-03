@@ -1,34 +1,90 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 18 Feb 2016 13:59:33 +0000
-Subject: Re: [PATCH net 1/3] sctp: move rcu_read_lock from __sctp_lookup_association to sctp_lookup_associati
-Message-Id: <CADvbK_dt7WEjw=o1zhObgdT5Q9HLtRAppr5iEQAOu6ggfwvv2Q@mail.gmail.com>
+From: Dmitry Vyukov <dvyukov@google.com>
+Date: Wed, 03 Feb 2016 16:13:25 +0000
+Subject: Re: [PATCH net] sctp: do sanity checks before migrating the asoc
+Message-Id: <CACT4Y+bxFFfE1WYFLuki7sjM4bMhMsONKuu5HK9gUuYmP2-eCA@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1455517541.git.lucien.xin@gmail.com>
-	<c805e4a1994f53947351e8d4dd79609fd206e807.1455517541.git.lucien.xin@gmail.com>
-	<20160217161104.GA17476@hmsreliant.think-freely.org>
-In-Reply-To: <20160217161104.GA17476@hmsreliant.think-freely.org>
+References: <CACT4Y+Z6jY_n_cpmbFz366=JzoLX=u4Zc_o8gHFwJw8ApKf4zw@mail.gmail.com>
+ <10616913996c7a4cbe8a2bb23cf4e78fcfa0a13a.1452891824.git.marcelo.leitner@gmail.com>
+ <569E45FD.4040801@gmail.com> <569E5D44.5000103@gmail.com> <569E8280.9080701@gmail.com>
+ <569E8F2F.5070906@gmail.com> <569E94CF.4030409@gmail.com> <569E97D0.7050109@gmail.com>
+In-Reply-To: <569E97D0.7050109@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, davem <davem@davemloft.net>
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: Vlad Yasevich <vyasevich@gmail.com>, netdev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Eric Dumazet <eric.dumazet@gmail.com>, syzkaller <syzkaller@googlegroups.com>, Kostya Serebryany <kcc@google.com>, Alexander Potapenko <glider@google.com>, Sasha Levin <sasha.levin@oracle.com>
 
-On Thu, Feb 18, 2016 at 12:11 AM, Neil Horman <nhorman@tuxdriver.com> wrote:
-> On Mon, Feb 15, 2016 at 02:28:03PM +0800, Xin Long wrote:
->> __sctp_lookup_association() is only invoked by sctp_v4_err() and
->> sctp_rcv(), both which run on the rx BH, and it has been protected
->> by rcu_read_lock [see ip_local_deliver_finish() / ipv6_rcv()].
+On Tue, Jan 19, 2016 at 9:08 PM, Marcelo Ricardo Leitner
+<marcelo.leitner@gmail.com> wrote:
+> Em 19-01-2016 17:55, Vlad Yasevich escreveu:
 >>
->> So we can move it to sctp_lookup_association, only let
->> sctp_lookup_association use rcu_read_lock.
+>> On 01/19/2016 02:31 PM, Marcelo Ricardo Leitner wrote:
+>>>
+>>> Em 19-01-2016 16:37, Vlad Yasevich escreveu:
+>>>>
+>>>> On 01/19/2016 10:59 AM, Marcelo Ricardo Leitner wrote:
+>>>>>
+>>>>> Yes, not thrilled here either about connect-to-self.
+>>>>>
+>>>>> But there is a big difference on how both works. For rx we can just
+>>>>> look for wanted skbs
+>>>>> in rx queue, as they aren't going anywhere, but for tx I don't think we
+>>>>> can easily block
+>>>>> sctp_wfree() call because that may be happening on another CPU (or am I
+>>>>> mistaken here?
+>>>>> sctp still doesn't have RFS but even irqbalance could affect this
+>>>>> AFAICT) and more than
+>>>>> one skb may be in transit at a time.
+>>>>
+>>>>
+>>>> The way it's done now, we wouldn't have to block sctp_wfree.  Chunks are
+>>>> released under
+>>>> lock when they are acked, so we are OK here.  The tx completions will
+>>>> just put 1 byte back
+>>>> to the socket associated with the tx'ed skb, and that should still be ok
+>>>> as
+>>>> sctp_packet_release_owner will call sk_free().
+>>>
+>>>
+>>> Please let me rephrase it. I'm actually worried about the asoc->base.sk
+>>> part of the story
+>>> and how it's fetched in sctp_wfree(). I think we can update that sk
+>>> pointer after
+>>> sock_wfree() has fetched it but not used it yet, possibly leading to
+>>> accounting it twice,
+>>> one during migration and one on sock_wfree.
+>>> In sock_wfree() it will update some sk stats like sk->sk_wmem_alloc,
+>>> among others.
 >>
->> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+>>
+>> sctp_wfree() is only used on skbs that were created as sctp chunks to be
+>> transmitted.
+>> Right now, these skbs aren't actually submitted to the IP or to nic to be
+>> transmitted.
+>> They are queued at the association level (either in transports or in the
+>> outqueue).
+>> They are only freed during ACK processing.
+>>
+>> The ACK processing happens under a socket lock and thus asoc->base.sk can
+>> not move.
+>>
+>> The migration process also happens under a socket lock.  As a result,
+>> during migration
+>> we are guaranteed the chunk queues remain consistent and that
+>> asoc->base.sk linkage
+>> remains consistent.  In fact, if you look at the sctp_sock_migrate, we
+>> lock both
+>> sockets when we reassign the assoc->base.sk so we know both sockets are
+>> properly locked.
+>>
+>> So, I am not sure that what you are worried about can happen.  Please feel
+>> free to
+>> double-check the above of course.
 >
-> Not that it was right before if this is true, but if we're using rcu in a bottom
-> half path, shouldn't rcu_read_lock_bh be used instead here?
 >
-the resource is also accessed in threads, not only in BH, so we cannot
-use rcu_read_lock_bh here.
+> Ohh, right. That makes sense. I'll rework the patch. Thanks Vlad.
 
-> Neil
->
+
+Hi Marcelo,
+
+Any updates on this? I still see the leak.
