@@ -1,7 +1,7 @@
 From: Ravi Puttachannaiah <ravi.puttachannaiah@aricent.com>
-Date: Thu, 04 Feb 2016 05:30:59 +0000
+Date: Fri, 05 Feb 2016 11:48:30 +0000
 Subject: RE: Query on SCTP:INIT re-transmission interval behavior
-Message-Id: <SG2PR0401MB1519E2DDCD5687ABAF5232EDFED10@SG2PR0401MB1519.apcprd04.prod.outlook.com>
+Message-Id: <SG2PR0401MB1519C7E23D1B1F719DF61025FED20@SG2PR0401MB1519.apcprd04.prod.outlook.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <SG2PR0401MB15190940DB1D58DC1EBFB140FED90@SG2PR0401MB1519.apcprd04.prod.outlook.com>
 In-Reply-To: <SG2PR0401MB15190940DB1D58DC1EBFB140FED90@SG2PR0401MB1519.apcprd04.prod.outlook.com>
@@ -12,14 +12,30 @@ To: linux-sctp@vger.kernel.org
 
 Hi Marcelo,
 
+Did you get a chance to check. Any inputs ?
+
+
+Regards,
+
+Ravi
+
+
+-----Original Message-----
+From: Ravi Puttachannaiah
+Sent: Thursday, February 04, 2016 11:01 AM
+To: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
+Cc: linux-sctp@vger.kernel.org
+Subject: RE: Query on SCTP:INIT re-transmission interval behavior
+
+Hi Marcelo,
+
 Only during sctp_connectx () the code is different for LKSCTP version 1.0.16 and 1.0.7  as follows and rest of the code is common and same for both the version.
 
 
 
 static S32 l3_sctp_connectx(
         S32       connSock,
-        mme_comm_info_t *p_mme_comm_info)
-{
+        mme_comm_info_t *p_mme_comm_info) {
     U32 counter = RRC_NULL;
     U8 no_of_ip_addr = RRC_NULL;
     struct sockaddr_in6 servaddr6[MAX_IP_ADDR];
@@ -36,8 +52,7 @@ static S32 l3_sctp_connectx(
 
 #ifdef LKSCTP_1_0_16
     sctp_assoc_t sctp_assoc;
-    memset_wrapper(&sctp_assoc, 0, sizeof(sctp_assoc_t));
-#endif
+    memset_wrapper(&sctp_assoc, 0, sizeof(sctp_assoc_t)); #endif
 
     /* Specify the peer endpoint(s) to which we'll connect */
 
@@ -82,8 +97,7 @@ static S32 l3_sctp_connectx(
         return  sctp_connectx(
                 connSock,
                 (struct sockaddr *)&servaddr6,
-                no_of_ip_addr, &sctp_assoc);
-#else
+                no_of_ip_addr, &sctp_assoc); #else
         RRC_TRACE(RRC_INFO,"USING LKSCTP Version 1.0.7\n");
         return  sctp_connectx(
                 connSock,
@@ -98,8 +112,7 @@ static S32 l3_sctp_connectx(
     return  sctp_connectx(
                          connSock,
                          (struct sockaddr *)&servaddr,
-                         no_of_ip_addr, &sctp_assoc);
-#else
+                         no_of_ip_addr, &sctp_assoc); #else
     RRC_TRACE(RRC_INFO,"USING LKSCTP Version 1.0.7\n");
         /* Connect to the server */
         return  sctp_connectx(
