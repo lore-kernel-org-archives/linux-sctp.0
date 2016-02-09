@@ -1,17 +1,19 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 04 Feb 2016 09:44:36 +0000
+From: David Miller <davem@davemloft.net>
+Date: Tue, 09 Feb 2016 09:54:09 +0000
 Subject: Re: [PATCH net] sctp: translate network order to host order when users get a hmacid
-Message-Id: <20160204094436.GA31743@localhost.localdomain>
+Message-Id: <20160209.045409.1138087933631573325.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <f763fd2125356a2484bef0b6d083fdd38b13e8db.1454513610.git.lucien.xin@gmail.com>
 In-Reply-To: <f763fd2125356a2484bef0b6d083fdd38b13e8db.1454513610.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com
 
-On Wed, Feb 03, 2016 at 11:33:30PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed,  3 Feb 2016 23:33:30 +0800
+
 > Commit ed5a377d87dc ("sctp: translate host order to network order when
 > setting a hmacid") corrected the hmacid byte-order when setting a hmacid.
 > but the same issue also exists on getting a hmacid.
@@ -22,44 +24,6 @@ On Wed, Feb 03, 2016 at 11:33:30PM +0800, Xin Long wrote:
 > Fixes: Commit ed5a377d87dc ("sctp: translate host order to network order when setting a hmacid")
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Applied and queued up for -stable.
 
-> ---
->  net/sctp/socket.c | 9 +++++++--
->  1 file changed, 7 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 5ca2ebf..e878da0 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -5538,6 +5538,7 @@ static int sctp_getsockopt_hmac_ident(struct sock *sk, int len,
->  	struct sctp_hmac_algo_param *hmacs;
->  	__u16 data_len = 0;
->  	u32 num_idents;
-> +	int i;
->  
->  	if (!ep->auth_enable)
->  		return -EACCES;
-> @@ -5555,8 +5556,12 @@ static int sctp_getsockopt_hmac_ident(struct sock *sk, int len,
->  		return -EFAULT;
->  	if (put_user(num_idents, &p->shmac_num_idents))
->  		return -EFAULT;
-> -	if (copy_to_user(p->shmac_idents, hmacs->hmac_ids, data_len))
-> -		return -EFAULT;
-> +	for (i = 0; i < num_idents; i++) {
-> +		__u16 hmacid = ntohs(hmacs->hmac_ids[i]);
-> +
-> +		if (copy_to_user(&p->shmac_idents[i], &hmacid, sizeof(__u16)))
-> +			return -EFAULT;
-> +	}
->  	return 0;
->  }
->  
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Thanks.
