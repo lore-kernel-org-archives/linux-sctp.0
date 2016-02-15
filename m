@@ -1,64 +1,58 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 18 Feb 2016 20:39:21 +0000
-Subject: Re: [PATCH] sctp: Fix port hash table size computation
-Message-Id: <20160218.153921.2010668846576353053.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 15 Feb 2016 06:28:03 +0000
+Subject: [PATCH net 1/3] sctp: move rcu_read_lock from __sctp_lookup_association to sctp_lookup_association
+Message-Id: <c805e4a1994f53947351e8d4dd79609fd206e807.1455517541.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1455807724-7985-1-git-send-email-nhorman@tuxdriver.com>
-In-Reply-To: <1455807724-7985-1-git-send-email-nhorman@tuxdriver.com>
+References: <cover.1455517541.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1455517541.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: nhorman@tuxdriver.com
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, dvyukov@google.com, vyasevich@gmail.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-RnJvbTogTmVpbCBIb3JtYW4gPG5ob3JtYW5AdHV4ZHJpdmVyLmNvbT4NCkRhdGU6IFRodSwgMTgg
-RmViIDIwMTYgMTA6MDI6MDQgLTA1MDANCg0KPiBEbWl0cnkgVnl1a292IG5vdGVkIHJlY2VudGx5
-IHRoYXQgdGhlIHNjdHBfcG9ydF9oYXNodGFibGUgaGFkIGFuIGVycm9yIGluDQo+IGl0cyBzaXpl
-IGNvbXB1dGF0aW9uLCBvYnNlcnZpbmcgdGhhdCB0aGUgY3VycmVudCBtZXRob2QgbmV2ZXIgZ3Vh
-cmFudGVlZA0KPiB0aGF0IHRoZSBoYXNoc2l6ZSAobWVhc3VyZWQgaW4gbnVtYmVyIG9mIGVudHJp
-ZXMpIHdvdWxkIGJlIGEgcG93ZXIgb2YgdHdvLA0KPiB3aGljaCB0aGUgaW5wdXQgaGFzaCBmdW5j
-dGlvbiBmb3IgdGhhdCB0YWJsZSByZXF1aXJlcy4gIFRoZSByb290IGNhdXNlIG9mDQo+IHRoZSBw
-cm9ibGVtIGlzIHRoYXQgdHdvIHZhbHVlcyBuZWVkIHRvIGJlIGNvbXB1dGVkIChvbmUsIHRoZSBh
-bGxvY2F0aW9uDQo+IG9yZGVyIG9mIHRoZSBzdG9yYWdlIHJlcXVyaWVzLCBhcyBwYXNzZWQgdG8g
-X19nZXRfZnJlZV9wYWdlcywgYW5kIHR3byB0aGUNCj4gbnVtYmVyIG9mIGVudHJpZXMgZm9yIHRo
-ZSBoYXNoIHRhYmxlKS4gIEJvdGggbmVlZCB0byBiZSBeMiwgYnV0IGZvcg0KPiBkaWZmZXJlbnQg
-cmVhc29ucywgYW5kIHRoZSBleGlzdGluZyBjb2RlIGlzIHNpbXBseSBjb21wdXRpbmcgb25lIG9y
-ZGVyDQo+IHZhbHVlLCBhbmQgdXNpbmcgaXQgYXMgdGhlIGJhc2lzIGZvciBib3RoLCB3aGljaCBp
-cyB3cm9uZyAoaS5lLiBpdCBhc3N1bWVzDQo+IHRoYXQgKCgxPDxvcmRlcikqUEFHRV9TSVpFKS9z
-aXplb2YoYnVja2V0KSBpcyBzdGlsbCBeMiB3aGVuIGl0cyBub3QpLg0KPiANCj4gVG8gZml4IHRo
-aXMsIHdlIGNoYW5nZSB0aGUgbG9naWMgc2xpZ2h0bHkuICBXZSBzdGFydCBieSBjb21wdXRpbmcg
-YSBnb2FsDQo+IGFsbG9jYXRpb24gb3JkZXIgKHdoaWNoIGlzIGxpbWl0ZWQgYnkgdGhlIG1heGlt
-dW0gc2l6ZSBoYXNoIHRhYmxlIHdlIHdhbnQNCj4gdG8gc3VwcG9ydC4gIFRoZW4gd2UgYXR0ZW1w
-dCB0byBhbGxvY2F0ZSB0aGF0IHNpemUgdGFibGUsIGRlY3JlYXNpbmcgdGhlDQo+IG9yZGVyIHVu
-dGlsIGEgc3VjY2Vzc2Z1bCBhbGxvY2F0aW9uIGlzIG1hZGUuICBUaGVuLCB3aXRoIHRoZSByZXN1
-bHRhbnQNCj4gc3VjY2Vzc2Z1bCBvcmRlciB3ZSBjb21wdXRlIHRoZSBudW1iZXIgb2YgYnVja2V0
-cyB0aGF0IGhhc2ggdGFibGUgc3VwcG9ydHMsDQo+IHdoaWNoIHdlIHRoZW4gcm91bmQgZG93biB0
-byB0aGUgbmVhcmVzdCBwb3dlciBvZiB0d28sIGdpdmluZyB1cyB0aGUgbnVtYmVyDQo+IG9mIGVu
-dHJpZXMgdGhlIHRhYmxlIGFjdHVhbGx5IHN1cHBvcnRzLg0KPiANCj4gSSd2ZSB0ZXN0ZWQgdGhp
-cyBsb2NhbGx5IGhlcmUsIHVzaW5nIG5vbi1kZWJ1ZyBhbmQgc3BpbmxvY2stZGVidWcga2VybmVs
-cywNCj4gYW5kIHRoZSBudW1iZXIgb2YgZW50cmllcyBpbiB0aGUgaGFzaHRhYmxlIGNvbnNpc3Rl
-bnRseSB3b3JrIG91dCB0byBiZQ0KPiBwb3dlcnMgb2YgdHdvIGluIGFsbCBjYXNlcy4NCj4gDQo+
-IFNpZ25lZC1vZmYtYnk6IE5laWwgSG9ybWFuIDxuaG9ybWFuQHR1eGRyaXZlci5jb20+DQo+IFJl
-cG9ydGVkLWJ5OiBEbWl0cnkgVnl1a292IDxkdnl1a292QGdvb2dsZS5jb20+DQoNClRoaXMgbmVl
-ZHMgc29tZSB3b3JrOg0KDQpJbiBmaWxlIGluY2x1ZGVkIGZyb20gaW5jbHVkZS9saW51eC9saXN0
-Lmg6ODowLA0KICBmcm9tIGluY2x1ZGUvbGludXgvbW9kdWxlLmg6OSwgZnJvbSBuZXQvc2N0cC9w
-cm90b2NvbC5jOjQ0Og0KICBuZXQvc2N0cC9wcm90b2NvbC5jOiBJbiBmdW5jdGlvbiChc2N0cF9p
-bml0ojoNCiAgaW5jbHVkZS9saW51eC9rZXJuZWwuaDo3NTI6MTc6IHdhcm5pbmc6IGNvbXBhcmlz
-b24gb2YgZGlzdGluY3QNCiAgcG9pbnRlciB0eXBlcyBsYWNrcyBhIGNhc3QgKHZvaWQpICgmX21p
-bjEgPT0gJl9taW4yKTsgXCBeDQogIG5ldC9zY3RwL3Byb3RvY29sLmM6MTQzMToxMDogbm90ZTog
-aW4gZXhwYW5zaW9uIG9mIG1hY3JvIKFtaW6iIG9yZGVyDQogID0gbWluKG9yZGVyLCBtYXhfZW50
-cnlfb3JkZXIpOyBeIEluIGZpbGUgaW5jbHVkZWQgZnJvbQ0KICBpbmNsdWRlL2xpbnV4L3ByaW50
-ay5oOjY6MCwgZnJvbSBpbmNsdWRlL2xpbnV4L2tlcm5lbC5oOjEzLCBmcm9tDQogIGluY2x1ZGUv
-bGludXgvbGlzdC5oOjgsIGZyb20gaW5jbHVkZS9saW51eC9tb2R1bGUuaDo5LCBmcm9tDQogIG5l
-dC9zY3RwL3Byb3RvY29sLmM6NDQ6DQppbmNsdWRlL2xpbnV4L2tlcm5fbGV2ZWxzLmg6NDoxODog
-d2FybmluZzogZm9ybWF0IKElZKIgZXhwZWN0cyBhcmd1bWVudCBvZiB0eXBlIKFpbnSiLCBidXQg
-YXJndW1lbnQgMyBoYXMgdHlwZSChbG9uZyB1bnNpZ25lZCBpbnSiIFstV2Zvcm1hdD1dDQogI2Rl
-ZmluZSBLRVJOX1NPSCAiXDAwMSIgIC8qIEFTQ0lJIFN0YXJ0IE9mIEhlYWRlciAqLw0KICAgICAg
-ICAgICAgICAgICAgXg0KaW5jbHVkZS9saW51eC9rZXJuX2xldmVscy5oOjEzOjE5OiBub3RlOiBp
-biBleHBhbnNpb24gb2YgbWFjcm8goUtFUk5fU09Iog0KICNkZWZpbmUgS0VSTl9JTkZPIEtFUk5f
-U09IICI2IiAvKiBpbmZvcm1hdGlvbmFsICovDQogICAgICAgICAgICAgICAgICAgXg0KaW5jbHVk
-ZS9saW51eC9wcmludGsuaDoyNTk6OTogbm90ZTogaW4gZXhwYW5zaW9uIG9mIG1hY3JvIKFLRVJO
-X0lORk+iDQogIHByaW50ayhLRVJOX0lORk8gcHJfZm10KGZtdCksICMjX19WQV9BUkdTX18pDQog
-ICAgICAgICBeDQpuZXQvc2N0cC9wcm90b2NvbC5jOjE0ODQ6Mjogbm90ZTogaW4gZXhwYW5zaW9u
-IG9mIG1hY3JvIKFwcl9pbmZvog0KICBwcl9pbmZvKCJIYXNoIHRhYmxlcyBjb25maWd1cmVkIChi
-aW5kICVkLyVkKVxuIiwgc2N0cF9wb3J0X2hhc2hzaXplLA0KICBeDQo
+__sctp_lookup_association() is only invoked by sctp_v4_err() and
+sctp_rcv(), both which run on the rx BH, and it has been protected
+by rcu_read_lock [see ip_local_deliver_finish() / ipv6_rcv()].
+
+So we can move it to sctp_lookup_association, only let
+sctp_lookup_association use rcu_read_lock.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/input.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 49d2cc7..21a2d6b 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -937,7 +937,6 @@ static struct sctp_association *__sctp_lookup_association(
+ 	struct sctp_transport *t;
+ 	struct sctp_association *asoc = NULL;
+ 
+-	rcu_read_lock();
+ 	t = sctp_addrs_lookup_transport(net, local, peer);
+ 	if (!t || !sctp_transport_hold(t))
+ 		goto out;
+@@ -949,7 +948,6 @@ static struct sctp_association *__sctp_lookup_association(
+ 	sctp_transport_put(t);
+ 
+ out:
+-	rcu_read_unlock();
+ 	return asoc;
+ }
+ 
+@@ -962,7 +960,9 @@ struct sctp_association *sctp_lookup_association(struct net *net,
+ {
+ 	struct sctp_association *asoc;
+ 
++	rcu_read_lock();
+ 	asoc = __sctp_lookup_association(net, laddr, paddr, transportp);
++	rcu_read_unlock();
+ 
+ 	return asoc;
+ }
+-- 
+2.1.0
+
