@@ -1,29 +1,46 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 09 Feb 2016 09:54:09 +0000
-Subject: Re: [PATCH net] sctp: translate network order to host order when users get a hmacid
-Message-Id: <20160209.045409.1138087933631573325.davem@davemloft.net>
+From: Dmitry Vyukov <dvyukov@google.com>
+Date: Mon, 15 Feb 2016 15:11:22 +0000
+Subject: sctp: bad hash index calculation
+Message-Id: <CACT4Y+bKiens=uiZ99t+9ThtXi33W_bQLqh_AgWkQeQDmyUE5w@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <f763fd2125356a2484bef0b6d083fdd38b13e8db.1454513610.git.lucien.xin@gmail.com>
-In-Reply-To: <f763fd2125356a2484bef0b6d083fdd38b13e8db.1454513610.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, linux-sctp@vger.kernel.org, Vladislav Yasevich <vyasevich@gmail.com>, Eric Dumazet <eric.dumazet@gmail.com>, "David S. Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, netdev <netdev@vger.kernel.org>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Wed,  3 Feb 2016 23:33:30 +0800
+Hello,
 
-> Commit ed5a377d87dc ("sctp: translate host order to network order when
-> setting a hmacid") corrected the hmacid byte-order when setting a hmacid.
-> but the same issue also exists on getting a hmacid.
-> 
-> We fix it by changing hmacids to host order when users get them with
-> getsockopt.
-> 
-> Fixes: Commit ed5a377d87dc ("sctp: translate host order to network order when setting a hmacid")
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+While looking into some memory leaks of sctp ports I've noticed that
+sctp_init initializes port hash table as follows:
 
-Applied and queued up for -stable.
+    /* Allocate and initialize the SCTP port hash table.  */
+    do {
+        sctp_port_hashsize = (1UL << order) * PAGE_SIZE /
+                    sizeof(struct sctp_bind_hashbucket);
+        if ((sctp_port_hashsize > (64 * 1024)) && order > 0)
+            continue;
+        sctp_port_hashtable = (struct sctp_bind_hashbucket *)
+            __get_free_pages(GFP_KERNEL | __GFP_NOWARN, order);
+    } while (!sctp_port_hashtable && --order > 0);
 
-Thanks.
+and then hash index is computed as follows:
+
+/* Warning: The following hash functions assume a power of two 'size'. */
+/* This is the hash function for the SCTP port hash table. */
+static inline int sctp_phashfn(struct net *net, __u16 lport)
+{
+    return (net_hash_mix(net) + lport) & (sctp_port_hashsize - 1);
+}
+
+I don't see what ensures that sctp_port_hashsize is in fact a power-of-2.
+
+spinlock_t in sctp_bind_hashbucket can be 2 words in some configs,
+then sizeof(sctp_bind_hashbucket) = 24, which can render half of hash
+table unused.
+
+struct sctp_bind_hashbucket {
+        spinlock_t      lock;
+        struct hlist_head       chain;
+};
+
+Am I missing something?
