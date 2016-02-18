@@ -1,56 +1,69 @@
-From: Deepa Dinamani <deepa.kernel@gmail.com>
-Date: Sat, 27 Feb 2016 08:32:14 +0000
-Subject: [PATCH v2 0/3] Convert network timestamps to be y2038 safe
-Message-Id: <1456561938-7653-1-git-send-email-deepa.kernel@gmail.com>
+From: Lionel Van Bemten <lionel.van_bemten.ext@nokia.com>
+Date: Thu, 18 Feb 2016 11:22:41 +0000
+Subject: Handle notifications and data separately
+Message-Id: <20160218112240.GG18164@devws092.be.alcatel-lucent.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org, y2038@lists.linaro.org
-Cc: arnd@arndb.de, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-Introduction:
+Hello,
 
-The series is aimed at transitioning network timestamps to being
-y2038 safe.
-All patches can be reviewed and merged independently.
+I am writing a user-space layer to manage SCTP sockets and provide a
+high-level API for various applications to exchange data. This layer is
+responsible for handling notifications (e.g. generate traces and logs),
+but I would like the data messages to be handled directly by the
+application. Since notifications are delivered in-band by the SCTP
+stack through recvmsg(), I have something like:
 
-Socket timestamps and ioctl calls will be handled separately.
+  ---------------------------------------------------------
+  APP
+                                  SCTP_receive()
+                                        |
+  --------------------------------------|------------------
+  SCTP layer                            |
+                     NOTIFICATION      DATA
+                                \      /
+                                recvmsg()
+  user-space                       |
+  =================|===========  kernel                           |
 
-Thanks to Arnd Bergmann for discussing solution options with me.
+A trivial implementation is the following:
 
-Solution:
+  int SCTP_receive(int sd, void *buf, size_t count)
+  {
+    do {
+      len = recvmsg(sd, &msg, MSG_WAITALL);
+  
+      if (flags & MSG_NOTIFICATION)
+        handle_sctp_notification(snp);
+      else
+        return len;
+    } while (true);
+  }
 
-Data type struct timespec is not y2038 safe.
-Replace timespec with struct timespec64 which is y2038 safe.
+Problem is that I rely on the application to call SCTP_receive() to read
+any notification. In the case of a send-only application, I never read
+the notifications. So I have to decouple recvmsg() from SCTP_receive()
+and do the system call in my own context. Then I have to buffer all data
+messages until the application calls SCTP_receive(). This overhead I
+would rather not have. Ideally I would like to go read the notifications
+out-of-band, but that does not seem to be possible.
 
-Changes v1 -> v2: 
-  Move and rename inet_current_time() as discussed
-  Squash patches 1 and 2
-  Reword commit text for patch 2/3
-  Carry over review tags
+  ---------------------------------------------------------
+  APP
+                                  SCTP_receive()
+                                        |
+  --------------------------------------|------------------
+  SCTP layer                            |
+                 NOTIFICATION          DATA
+                      |                 |
+                  recvnotif()        recvmsg()
+  user-space          |                 |
+  ==========|=========|=========
+  kernel              |                 |
 
-Deepa Dinamani (3):
-  net: ipv4: Convert IP network timestamps to be y2038 safe
-  net: ipv4: tcp_probe: Replace timespec with timespec64
-  net: sctp: Convert log timestamps to be y2038 safe
+Any suggestions?
 
- include/net/ip.h      |  2 ++
- net/ipv4/af_inet.c    | 26 ++++++++++++++++++++++++++
- net/ipv4/icmp.c       |  5 +----
- net/ipv4/ip_options.c | 14 ++++++--------
- net/ipv4/tcp_probe.c  |  8 ++++----
- net/sctp/probe.c      | 10 +++++-----
- 6 files changed, 44 insertions(+), 21 deletions(-)
-
--- 
-1.9.1
-
-Cc: Vlad Yasevich <vyasevich@gmail.com>
-Cc: Neil Horman <nhorman@tuxdriver.com>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>
-Cc: James Morris <jmorris@namei.org>
-Cc: Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>
-Cc: Patrick McHardy <kaber@trash.net>
-Cc: linux-sctp@vger.kernel.org
+Lionel
