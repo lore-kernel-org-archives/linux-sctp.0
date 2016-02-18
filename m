@@ -1,146 +1,64 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 18 Feb 2016 15:02:04 +0000
-Subject: [PATCH] sctp: Fix port hash table size computation
-Message-Id: <1455807724-7985-1-git-send-email-nhorman@tuxdriver.com>
+From: David Miller <davem@davemloft.net>
+Date: Thu, 18 Feb 2016 20:39:21 +0000
+Subject: Re: [PATCH] sctp: Fix port hash table size computation
+Message-Id: <20160218.153921.2010668846576353053.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1455807724-7985-1-git-send-email-nhorman@tuxdriver.com>
+In-Reply-To: <1455807724-7985-1-git-send-email-nhorman@tuxdriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
-Cc: netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Dmitry Vyukov <dvyukov@google.com>, Vladislav Yasevich <vyasevich@gmail.com>, "David S. Miller" <davem@davemloft.net>
+To: nhorman@tuxdriver.com
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, dvyukov@google.com, vyasevich@gmail.com
 
-Dmitry Vyukov noted recently that the sctp_port_hashtable had an error in
-its size computation, observing that the current method never guaranteed
-that the hashsize (measured in number of entries) would be a power of two,
-which the input hash function for that table requires.  The root cause of
-the problem is that two values need to be computed (one, the allocation
-order of the storage requries, as passed to __get_free_pages, and two the
-number of entries for the hash table).  Both need to be ^2, but for
-different reasons, and the existing code is simply computing one order
-value, and using it as the basis for both, which is wrong (i.e. it assumes
-that ((1<<order)*PAGE_SIZE)/sizeof(bucket) is still ^2 when its not).
-
-To fix this, we change the logic slightly.  We start by computing a goal
-allocation order (which is limited by the maximum size hash table we want
-to support.  Then we attempt to allocate that size table, decreasing the
-order until a successful allocation is made.  Then, with the resultant
-successful order we compute the number of buckets that hash table supports,
-which we then round down to the nearest power of two, giving us the number
-of entries the table actually supports.
-
-I've tested this locally here, using non-debug and spinlock-debug kernels,
-and the number of entries in the hashtable consistently work out to be
-powers of two in all cases.
-
-Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-Reported-by: Dmitry Vyukov <dvyukov@google.com>
-CC: Dmitry Vyukov <dvyukov@google.com>
-CC: Vladislav Yasevich <vyasevich@gmail.com>
-CC: "David S. Miller" <davem@davemloft.net>
----
- net/sctp/protocol.c | 46 ++++++++++++++++++++++++++++++++++++++--------
- 1 file changed, 38 insertions(+), 8 deletions(-)
-
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index ab0d538..779ebee 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -60,6 +60,8 @@
- #include <net/inet_common.h>
- #include <net/inet_ecn.h>
- 
-+#define MAX_SCTP_PORT_HASH_ENTRIES (64 * 1024)
-+
- /* Global data structures. */
- struct sctp_globals sctp_globals __read_mostly;
- 
-@@ -1355,6 +1357,8 @@ static __init int sctp_init(void)
- 	unsigned long limit;
- 	int max_share;
- 	int order;
-+	unsigned long num_entries;
-+	unsigned long max_entry_order;
- 
- 	sock_skb_cb_check_size(sizeof(struct sctp_ulpevent));
- 
-@@ -1407,14 +1411,24 @@ static __init int sctp_init(void)
- 
- 	/* Size and allocate the association hash table.
- 	 * The methodology is similar to that of the tcp hash tables.
-+	 * Though not identical.  Start by getting a goal size
- 	 */
- 	if (totalram_pages >= (128 * 1024))
- 		goal = totalram_pages >> (22 - PAGE_SHIFT);
- 	else
- 		goal = totalram_pages >> (24 - PAGE_SHIFT);
- 
--	for (order = 0; (1UL << order) < goal; order++)
--		;
-+	/* Then compute the page order for said goal */
-+	order = get_order(goal);
-+
-+	/* Now compute the required page order for the maximum sized table we
-+	 * want to create
-+	 */
-+	max_entry_order = get_order(MAX_SCTP_PORT_HASH_ENTRIES *
-+				    sizeof(struct sctp_bind_hashbucket));
-+
-+	/* Limit the page order by that maximum hash table size */
-+	order = min(order, max_entry_order);
- 
- 	/* Allocate and initialize the endpoint hash table.  */
- 	sctp_ep_hashsize = 64;
-@@ -1430,20 +1444,35 @@ static __init int sctp_init(void)
- 		INIT_HLIST_HEAD(&sctp_ep_hashtable[i].chain);
- 	}
- 
--	/* Allocate and initialize the SCTP port hash table.  */
-+	/* Allocate and initialize the SCTP port hash table.
-+	 * Note that order is initalized to start at the max sized
-+	 * table we want to support.  If we can't get that many pages
-+	 * reduce the order and try again
-+	 */
- 	do {
--		sctp_port_hashsize = (1UL << order) * PAGE_SIZE /
--					sizeof(struct sctp_bind_hashbucket);
--		if ((sctp_port_hashsize > (64 * 1024)) && order > 0)
--			continue;
- 		sctp_port_hashtable = (struct sctp_bind_hashbucket *)
- 			__get_free_pages(GFP_KERNEL | __GFP_NOWARN, order);
- 	} while (!sctp_port_hashtable && --order > 0);
-+
- 	if (!sctp_port_hashtable) {
- 		pr_err("Failed bind hash alloc\n");
- 		status = -ENOMEM;
- 		goto err_bhash_alloc;
- 	}
-+
-+	/* Now compute the number of entries that will fit in the
-+	 * port hash space we allocated
-+	 */
-+	num_entries = (1UL << order) * PAGE_SIZE /
-+		      sizeof(struct sctp_bind_hashbucket);
-+
-+	/* And finish by rounding it down to the nearest power of two
-+	 * this wastes some memory of course, but its needed because
-+	 * the hash function operates based on the assumption that
-+	 * that the number of entries is a power of two
-+	 */
-+	sctp_port_hashsize = rounddown_pow_of_two(num_entries);
-+
- 	for (i = 0; i < sctp_port_hashsize; i++) {
- 		spin_lock_init(&sctp_port_hashtable[i].lock);
- 		INIT_HLIST_HEAD(&sctp_port_hashtable[i].chain);
-@@ -1452,7 +1481,8 @@ static __init int sctp_init(void)
- 	if (sctp_transport_hashtable_init())
- 		goto err_thash_alloc;
- 
--	pr_info("Hash tables configured (bind %d)\n", sctp_port_hashsize);
-+	pr_info("Hash tables configured (bind %d/%d)\n", sctp_port_hashsize,
-+		num_entries);
- 
- 	sctp_sysctl_register();
- 
--- 
-2.5.0
-
+RnJvbTogTmVpbCBIb3JtYW4gPG5ob3JtYW5AdHV4ZHJpdmVyLmNvbT4NCkRhdGU6IFRodSwgMTgg
+RmViIDIwMTYgMTA6MDI6MDQgLTA1MDANCg0KPiBEbWl0cnkgVnl1a292IG5vdGVkIHJlY2VudGx5
+IHRoYXQgdGhlIHNjdHBfcG9ydF9oYXNodGFibGUgaGFkIGFuIGVycm9yIGluDQo+IGl0cyBzaXpl
+IGNvbXB1dGF0aW9uLCBvYnNlcnZpbmcgdGhhdCB0aGUgY3VycmVudCBtZXRob2QgbmV2ZXIgZ3Vh
+cmFudGVlZA0KPiB0aGF0IHRoZSBoYXNoc2l6ZSAobWVhc3VyZWQgaW4gbnVtYmVyIG9mIGVudHJp
+ZXMpIHdvdWxkIGJlIGEgcG93ZXIgb2YgdHdvLA0KPiB3aGljaCB0aGUgaW5wdXQgaGFzaCBmdW5j
+dGlvbiBmb3IgdGhhdCB0YWJsZSByZXF1aXJlcy4gIFRoZSByb290IGNhdXNlIG9mDQo+IHRoZSBw
+cm9ibGVtIGlzIHRoYXQgdHdvIHZhbHVlcyBuZWVkIHRvIGJlIGNvbXB1dGVkIChvbmUsIHRoZSBh
+bGxvY2F0aW9uDQo+IG9yZGVyIG9mIHRoZSBzdG9yYWdlIHJlcXVyaWVzLCBhcyBwYXNzZWQgdG8g
+X19nZXRfZnJlZV9wYWdlcywgYW5kIHR3byB0aGUNCj4gbnVtYmVyIG9mIGVudHJpZXMgZm9yIHRo
+ZSBoYXNoIHRhYmxlKS4gIEJvdGggbmVlZCB0byBiZSBeMiwgYnV0IGZvcg0KPiBkaWZmZXJlbnQg
+cmVhc29ucywgYW5kIHRoZSBleGlzdGluZyBjb2RlIGlzIHNpbXBseSBjb21wdXRpbmcgb25lIG9y
+ZGVyDQo+IHZhbHVlLCBhbmQgdXNpbmcgaXQgYXMgdGhlIGJhc2lzIGZvciBib3RoLCB3aGljaCBp
+cyB3cm9uZyAoaS5lLiBpdCBhc3N1bWVzDQo+IHRoYXQgKCgxPDxvcmRlcikqUEFHRV9TSVpFKS9z
+aXplb2YoYnVja2V0KSBpcyBzdGlsbCBeMiB3aGVuIGl0cyBub3QpLg0KPiANCj4gVG8gZml4IHRo
+aXMsIHdlIGNoYW5nZSB0aGUgbG9naWMgc2xpZ2h0bHkuICBXZSBzdGFydCBieSBjb21wdXRpbmcg
+YSBnb2FsDQo+IGFsbG9jYXRpb24gb3JkZXIgKHdoaWNoIGlzIGxpbWl0ZWQgYnkgdGhlIG1heGlt
+dW0gc2l6ZSBoYXNoIHRhYmxlIHdlIHdhbnQNCj4gdG8gc3VwcG9ydC4gIFRoZW4gd2UgYXR0ZW1w
+dCB0byBhbGxvY2F0ZSB0aGF0IHNpemUgdGFibGUsIGRlY3JlYXNpbmcgdGhlDQo+IG9yZGVyIHVu
+dGlsIGEgc3VjY2Vzc2Z1bCBhbGxvY2F0aW9uIGlzIG1hZGUuICBUaGVuLCB3aXRoIHRoZSByZXN1
+bHRhbnQNCj4gc3VjY2Vzc2Z1bCBvcmRlciB3ZSBjb21wdXRlIHRoZSBudW1iZXIgb2YgYnVja2V0
+cyB0aGF0IGhhc2ggdGFibGUgc3VwcG9ydHMsDQo+IHdoaWNoIHdlIHRoZW4gcm91bmQgZG93biB0
+byB0aGUgbmVhcmVzdCBwb3dlciBvZiB0d28sIGdpdmluZyB1cyB0aGUgbnVtYmVyDQo+IG9mIGVu
+dHJpZXMgdGhlIHRhYmxlIGFjdHVhbGx5IHN1cHBvcnRzLg0KPiANCj4gSSd2ZSB0ZXN0ZWQgdGhp
+cyBsb2NhbGx5IGhlcmUsIHVzaW5nIG5vbi1kZWJ1ZyBhbmQgc3BpbmxvY2stZGVidWcga2VybmVs
+cywNCj4gYW5kIHRoZSBudW1iZXIgb2YgZW50cmllcyBpbiB0aGUgaGFzaHRhYmxlIGNvbnNpc3Rl
+bnRseSB3b3JrIG91dCB0byBiZQ0KPiBwb3dlcnMgb2YgdHdvIGluIGFsbCBjYXNlcy4NCj4gDQo+
+IFNpZ25lZC1vZmYtYnk6IE5laWwgSG9ybWFuIDxuaG9ybWFuQHR1eGRyaXZlci5jb20+DQo+IFJl
+cG9ydGVkLWJ5OiBEbWl0cnkgVnl1a292IDxkdnl1a292QGdvb2dsZS5jb20+DQoNClRoaXMgbmVl
+ZHMgc29tZSB3b3JrOg0KDQpJbiBmaWxlIGluY2x1ZGVkIGZyb20gaW5jbHVkZS9saW51eC9saXN0
+Lmg6ODowLA0KICBmcm9tIGluY2x1ZGUvbGludXgvbW9kdWxlLmg6OSwgZnJvbSBuZXQvc2N0cC9w
+cm90b2NvbC5jOjQ0Og0KICBuZXQvc2N0cC9wcm90b2NvbC5jOiBJbiBmdW5jdGlvbiChc2N0cF9p
+bml0ojoNCiAgaW5jbHVkZS9saW51eC9rZXJuZWwuaDo3NTI6MTc6IHdhcm5pbmc6IGNvbXBhcmlz
+b24gb2YgZGlzdGluY3QNCiAgcG9pbnRlciB0eXBlcyBsYWNrcyBhIGNhc3QgKHZvaWQpICgmX21p
+bjEgPT0gJl9taW4yKTsgXCBeDQogIG5ldC9zY3RwL3Byb3RvY29sLmM6MTQzMToxMDogbm90ZTog
+aW4gZXhwYW5zaW9uIG9mIG1hY3JvIKFtaW6iIG9yZGVyDQogID0gbWluKG9yZGVyLCBtYXhfZW50
+cnlfb3JkZXIpOyBeIEluIGZpbGUgaW5jbHVkZWQgZnJvbQ0KICBpbmNsdWRlL2xpbnV4L3ByaW50
+ay5oOjY6MCwgZnJvbSBpbmNsdWRlL2xpbnV4L2tlcm5lbC5oOjEzLCBmcm9tDQogIGluY2x1ZGUv
+bGludXgvbGlzdC5oOjgsIGZyb20gaW5jbHVkZS9saW51eC9tb2R1bGUuaDo5LCBmcm9tDQogIG5l
+dC9zY3RwL3Byb3RvY29sLmM6NDQ6DQppbmNsdWRlL2xpbnV4L2tlcm5fbGV2ZWxzLmg6NDoxODog
+d2FybmluZzogZm9ybWF0IKElZKIgZXhwZWN0cyBhcmd1bWVudCBvZiB0eXBlIKFpbnSiLCBidXQg
+YXJndW1lbnQgMyBoYXMgdHlwZSChbG9uZyB1bnNpZ25lZCBpbnSiIFstV2Zvcm1hdD1dDQogI2Rl
+ZmluZSBLRVJOX1NPSCAiXDAwMSIgIC8qIEFTQ0lJIFN0YXJ0IE9mIEhlYWRlciAqLw0KICAgICAg
+ICAgICAgICAgICAgXg0KaW5jbHVkZS9saW51eC9rZXJuX2xldmVscy5oOjEzOjE5OiBub3RlOiBp
+biBleHBhbnNpb24gb2YgbWFjcm8goUtFUk5fU09Iog0KICNkZWZpbmUgS0VSTl9JTkZPIEtFUk5f
+U09IICI2IiAvKiBpbmZvcm1hdGlvbmFsICovDQogICAgICAgICAgICAgICAgICAgXg0KaW5jbHVk
+ZS9saW51eC9wcmludGsuaDoyNTk6OTogbm90ZTogaW4gZXhwYW5zaW9uIG9mIG1hY3JvIKFLRVJO
+X0lORk+iDQogIHByaW50ayhLRVJOX0lORk8gcHJfZm10KGZtdCksICMjX19WQV9BUkdTX18pDQog
+ICAgICAgICBeDQpuZXQvc2N0cC9wcm90b2NvbC5jOjE0ODQ6Mjogbm90ZTogaW4gZXhwYW5zaW9u
+IG9mIG1hY3JvIKFwcl9pbmZvog0KICBwcl9pbmZvKCJIYXNoIHRhYmxlcyBjb25maWd1cmVkIChi
+aW5kICVkLyVkKVxuIiwgc2N0cF9wb3J0X2hhc2hzaXplLA0KICBeDQo
