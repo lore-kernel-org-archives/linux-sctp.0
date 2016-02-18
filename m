@@ -1,70 +1,146 @@
 From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 15 Feb 2016 15:59:51 +0000
-Subject: Re: sctp: bad hash index calculation
-Message-Id: <20160215155951.GC24321@hmsreliant.think-freely.org>
+Date: Thu, 18 Feb 2016 15:02:04 +0000
+Subject: [PATCH] sctp: Fix port hash table size computation
+Message-Id: <1455807724-7985-1-git-send-email-nhorman@tuxdriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CACT4Y+bKiens=uiZ99t+9ThtXi33W_bQLqh_AgWkQeQDmyUE5w@mail.gmail.com>
- <20160215155017.GB24321@hmsreliant.think-freely.org>
- <CACT4Y+ZnJFyF1nU3dSLczwagr=sV+5MFzMMOJXTQmeUOB1NSXA@mail.gmail.com>
-In-Reply-To: <CACT4Y+ZnJFyF1nU3dSLczwagr=sV+5MFzMMOJXTQmeUOB1NSXA@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Dmitry Vyukov <dvyukov@google.com>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, linux-sctp@vger.kernel.org, Vladislav Yasevich <vyasevich@gmail.com>, Eric Dumazet <eric.dumazet@gmail.com>, "David S. Miller" <davem@davemloft.net>, netdev <netdev@vger.kernel.org>
+To: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Dmitry Vyukov <dvyukov@google.com>, Vladislav Yasevich <vyasevich@gmail.com>, "David S. Miller" <davem@davemloft.net>
 
-On Mon, Feb 15, 2016 at 04:56:01PM +0100, Dmitry Vyukov wrote:
-> On Mon, Feb 15, 2016 at 4:50 PM, Neil Horman <nhorman@tuxdriver.com> wrote:
-> > On Mon, Feb 15, 2016 at 04:11:22PM +0100, Dmitry Vyukov wrote:
-> >> Hello,
-> >>
-> >> While looking into some memory leaks of sctp ports I've noticed that
-> >> sctp_init initializes port hash table as follows:
-> >>
-> >>     /* Allocate and initialize the SCTP port hash table.  */
-> >>     do {
-> >>         sctp_port_hashsize = (1UL << order) * PAGE_SIZE /
-> >>                     sizeof(struct sctp_bind_hashbucket);
-> >>         if ((sctp_port_hashsize > (64 * 1024)) && order > 0)
-> >>             continue;
-> >>         sctp_port_hashtable = (struct sctp_bind_hashbucket *)
-> >>             __get_free_pages(GFP_KERNEL | __GFP_NOWARN, order);
-> >>     } while (!sctp_port_hashtable && --order > 0);
-> >>
-> >> and then hash index is computed as follows:
-> >>
-> >> /* Warning: The following hash functions assume a power of two 'size'. */
-> >> /* This is the hash function for the SCTP port hash table. */
-> >> static inline int sctp_phashfn(struct net *net, __u16 lport)
-> >> {
-> >>     return (net_hash_mix(net) + lport) & (sctp_port_hashsize - 1);
-> >> }
-> >>
-> >> I don't see what ensures that sctp_port_hashsize is in fact a power-of-2.
-> >>
-> >> spinlock_t in sctp_bind_hashbucket can be 2 words in some configs,
-> >> then sizeof(sctp_bind_hashbucket) = 24, which can render half of hash
-> >> table unused.
-> >>
-> >> struct sctp_bind_hashbucket {
-> >>         spinlock_t      lock;
-> >>         struct hlist_head       chain;
-> >> };
-> >>
-> >> Am I missing something?
-> >>
-> > You're right, its not.  It seems to me that sctp_port_hashsize is meant to
-> > simply bound the upper index of the hashtable array, and as such the phashfn
-> > should not assume that its a power of 2 (i.e. it should simply mod the hash
-> > value by sctp_port_hashsize rather than and-ing it).  Alternatively we could
-> > simply use alloc_large_system_hash to allocate this hash table here, the way tcp
-> > does.  I'm traveling right now, but can take care of this as soon as i get home
-> > on wednesday
-> 
-> Hi Neil,
-> 
-> Thanks for confirming. It's yours, I don't pretend to fix it sooner.
-> 
-Copy that, I'll look at it later this week.  Thank you for the report
-neil
+Dmitry Vyukov noted recently that the sctp_port_hashtable had an error in
+its size computation, observing that the current method never guaranteed
+that the hashsize (measured in number of entries) would be a power of two,
+which the input hash function for that table requires.  The root cause of
+the problem is that two values need to be computed (one, the allocation
+order of the storage requries, as passed to __get_free_pages, and two the
+number of entries for the hash table).  Both need to be ^2, but for
+different reasons, and the existing code is simply computing one order
+value, and using it as the basis for both, which is wrong (i.e. it assumes
+that ((1<<order)*PAGE_SIZE)/sizeof(bucket) is still ^2 when its not).
+
+To fix this, we change the logic slightly.  We start by computing a goal
+allocation order (which is limited by the maximum size hash table we want
+to support.  Then we attempt to allocate that size table, decreasing the
+order until a successful allocation is made.  Then, with the resultant
+successful order we compute the number of buckets that hash table supports,
+which we then round down to the nearest power of two, giving us the number
+of entries the table actually supports.
+
+I've tested this locally here, using non-debug and spinlock-debug kernels,
+and the number of entries in the hashtable consistently work out to be
+powers of two in all cases.
+
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+Reported-by: Dmitry Vyukov <dvyukov@google.com>
+CC: Dmitry Vyukov <dvyukov@google.com>
+CC: Vladislav Yasevich <vyasevich@gmail.com>
+CC: "David S. Miller" <davem@davemloft.net>
+---
+ net/sctp/protocol.c | 46 ++++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 38 insertions(+), 8 deletions(-)
+
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index ab0d538..779ebee 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -60,6 +60,8 @@
+ #include <net/inet_common.h>
+ #include <net/inet_ecn.h>
+ 
++#define MAX_SCTP_PORT_HASH_ENTRIES (64 * 1024)
++
+ /* Global data structures. */
+ struct sctp_globals sctp_globals __read_mostly;
+ 
+@@ -1355,6 +1357,8 @@ static __init int sctp_init(void)
+ 	unsigned long limit;
+ 	int max_share;
+ 	int order;
++	unsigned long num_entries;
++	unsigned long max_entry_order;
+ 
+ 	sock_skb_cb_check_size(sizeof(struct sctp_ulpevent));
+ 
+@@ -1407,14 +1411,24 @@ static __init int sctp_init(void)
+ 
+ 	/* Size and allocate the association hash table.
+ 	 * The methodology is similar to that of the tcp hash tables.
++	 * Though not identical.  Start by getting a goal size
+ 	 */
+ 	if (totalram_pages >= (128 * 1024))
+ 		goal = totalram_pages >> (22 - PAGE_SHIFT);
+ 	else
+ 		goal = totalram_pages >> (24 - PAGE_SHIFT);
+ 
+-	for (order = 0; (1UL << order) < goal; order++)
+-		;
++	/* Then compute the page order for said goal */
++	order = get_order(goal);
++
++	/* Now compute the required page order for the maximum sized table we
++	 * want to create
++	 */
++	max_entry_order = get_order(MAX_SCTP_PORT_HASH_ENTRIES *
++				    sizeof(struct sctp_bind_hashbucket));
++
++	/* Limit the page order by that maximum hash table size */
++	order = min(order, max_entry_order);
+ 
+ 	/* Allocate and initialize the endpoint hash table.  */
+ 	sctp_ep_hashsize = 64;
+@@ -1430,20 +1444,35 @@ static __init int sctp_init(void)
+ 		INIT_HLIST_HEAD(&sctp_ep_hashtable[i].chain);
+ 	}
+ 
+-	/* Allocate and initialize the SCTP port hash table.  */
++	/* Allocate and initialize the SCTP port hash table.
++	 * Note that order is initalized to start at the max sized
++	 * table we want to support.  If we can't get that many pages
++	 * reduce the order and try again
++	 */
+ 	do {
+-		sctp_port_hashsize = (1UL << order) * PAGE_SIZE /
+-					sizeof(struct sctp_bind_hashbucket);
+-		if ((sctp_port_hashsize > (64 * 1024)) && order > 0)
+-			continue;
+ 		sctp_port_hashtable = (struct sctp_bind_hashbucket *)
+ 			__get_free_pages(GFP_KERNEL | __GFP_NOWARN, order);
+ 	} while (!sctp_port_hashtable && --order > 0);
++
+ 	if (!sctp_port_hashtable) {
+ 		pr_err("Failed bind hash alloc\n");
+ 		status = -ENOMEM;
+ 		goto err_bhash_alloc;
+ 	}
++
++	/* Now compute the number of entries that will fit in the
++	 * port hash space we allocated
++	 */
++	num_entries = (1UL << order) * PAGE_SIZE /
++		      sizeof(struct sctp_bind_hashbucket);
++
++	/* And finish by rounding it down to the nearest power of two
++	 * this wastes some memory of course, but its needed because
++	 * the hash function operates based on the assumption that
++	 * that the number of entries is a power of two
++	 */
++	sctp_port_hashsize = rounddown_pow_of_two(num_entries);
++
+ 	for (i = 0; i < sctp_port_hashsize; i++) {
+ 		spin_lock_init(&sctp_port_hashtable[i].lock);
+ 		INIT_HLIST_HEAD(&sctp_port_hashtable[i].chain);
+@@ -1452,7 +1481,8 @@ static __init int sctp_init(void)
+ 	if (sctp_transport_hashtable_init())
+ 		goto err_thash_alloc;
+ 
+-	pr_info("Hash tables configured (bind %d)\n", sctp_port_hashsize);
++	pr_info("Hash tables configured (bind %d/%d)\n", sctp_port_hashsize,
++		num_entries);
+ 
+ 	sctp_sysctl_register();
+ 
+-- 
+2.5.0
 
