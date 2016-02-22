@@ -1,57 +1,44 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 19 Feb 2016 16:46:14 +0000
+From: David Miller <davem@davemloft.net>
+Date: Mon, 22 Feb 2016 02:53:46 +0000
 Subject: Re: [PATCHv2] sctp: Fix port hash table size computation
-Message-Id: <20160219164614.GB20372@hmsreliant.think-freely.org>
+Message-Id: <20160221.215346.18865067787438743.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20160218.153921.2010668846576353053.davem@davemloft.net>
- <1455829857-15797-1-git-send-email-nhorman@tuxdriver.com>
- <1455877730.648.21.camel@edumazet-ThinkPad-T530>
- <20160219140703.GA20372@hmsreliant.think-freely.org>
- <1455892869.648.22.camel@edumazet-ThinkPad-T530>
-In-Reply-To: <1455892869.648.22.camel@edumazet-ThinkPad-T530>
+	<1455829857-15797-1-git-send-email-nhorman@tuxdriver.com>
+In-Reply-To: <1455829857-15797-1-git-send-email-nhorman@tuxdriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Dmitry Vyukov <dvyukov@google.com>, Vladislav Yasevich <vyasevich@gmail.com>, "David S. Miller" <davem@davemloft.net>
+To: nhorman@tuxdriver.com
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, dvyukov@google.com, vyasevich@gmail.com
 
-On Fri, Feb 19, 2016 at 03:41:09PM +0100, Eric Dumazet wrote:
-> On ven., 2016-02-19 at 09:07 -0500, Neil Horman wrote:
-> 
-> > I had actually thought about that, but to be frank I felt like the logic to
-> > compute the hashsize was complex the way it was presented currently, and that my
-> > rewite made it more clear, breaking it down into a few easy steps:
-> > 
-> > 1) compute a goal size order
-> > 2) compute the target order for the largest table we want to support
-> > 3) select the minimum of (1) and (2)
-> > 4) allocated the largest table we can up to the size in (3)
-> > 5) compute how many buckets the table we allocated in (4) supports
-> > 
-> > 
-> > I'm happy to use your suggestion above if the consensus is that its more clear,
-> > but it took me a bit to figure out what exactly the existing code was trying to
-> > do (especially given the dual use of the order variable), so I thought some
-> > additional clarity was called for.
-> 
-> No strong feelings. I only took a look in other places like
-> net/dccp/proto.c for similar problem.
-> 
-Understood. Its clear that sctp lifted the code from dccp (or perhaps vice
-versa).  Either way, looking at it, it appears dccp has the same problem that
-sctp does in this area.
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Thu, 18 Feb 2016 16:10:57 -0500
 
-As you don't have strong feelings, if its all the same to Dave and Vlad, I'm
-happy with the way this patch is laid out, and will move on to fix dccp in the
-same manner.
+> Dmitry Vyukov noted recently that the sctp_port_hashtable had an error in
+> its size computation, observing that the current method never guaranteed
+> that the hashsize (measured in number of entries) would be a power of two,
+> which the input hash function for that table requires.  The root cause of
+> the problem is that two values need to be computed (one, the allocation
+> order of the storage requries, as passed to __get_free_pages, and two the
+> number of entries for the hash table).  Both need to be ^2, but for
+> different reasons, and the existing code is simply computing one order
+> value, and using it as the basis for both, which is wrong (i.e. it assumes
+> that ((1<<order)*PAGE_SIZE)/sizeof(bucket) is still ^2 when its not).
+> 
+> To fix this, we change the logic slightly.  We start by computing a goal
+> allocation order (which is limited by the maximum size hash table we want
+> to support.  Then we attempt to allocate that size table, decreasing the
+> order until a successful allocation is made.  Then, with the resultant
+> successful order we compute the number of buckets that hash table supports,
+> which we then round down to the nearest power of two, giving us the number
+> of entries the table actually supports.
+> 
+> I've tested this locally here, using non-debug and spinlock-debug kernels,
+> and the number of entries in the hashtable consistently work out to be
+> powers of two in all cases.
+> 
+> Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+> Reported-by: Dmitry Vyukov <dvyukov@google.com>
 
-Best
-Neil
-
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Applied and queued up for -stable, thanks Neil.
