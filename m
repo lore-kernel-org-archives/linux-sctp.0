@@ -1,27 +1,38 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 29 Mar 2016 13:49:43 +0000
-Subject: [PATCH 0/2] sctp: delay calls to sk_data_ready() as much as possible
-Message-Id: <cover.1459259208.git.marcelo.leitner@gmail.com>
+From: David Miller <davem@davemloft.net>
+Date: Tue, 01 Mar 2016 22:19:03 +0000
+Subject: Re: [PATCH v2 0/3] Convert network timestamps to be y2038 safe
+Message-Id: <20160301.171903.834892722970175631.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1456561938-7653-1-git-send-email-deepa.kernel@gmail.com>
+In-Reply-To: <1456561938-7653-1-git-send-email-deepa.kernel@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
+To: deepa.kernel@gmail.com
+Cc: netdev@vger.kernel.org, y2038@lists.linaro.org, arnd@arndb.de, vyasevich@gmail.com, nhorman@tuxdriver.com, kuznet@ms2.inr.ac.ru, jmorris@namei.org, yoshfuji@linux-ipv6.org, kaber@trash.net, linux-sctp@vger.kernel.org
 
-1st patch is a preparation for the 2nd. The idea is to not call
-->sk_data_ready() for every data chunk processed while processing
-packets but only once before releasing the socket.
+From: Deepa Dinamani <deepa.kernel@gmail.com>
+Date: Sat, 27 Feb 2016 00:32:14 -0800
 
-Marcelo Ricardo Leitner (2):
-  sctp: compress bit-wide flags to a bitfield on sctp_sock
-  sctp: delay calls to sk_data_ready() as much as possible
+> Introduction:
+> 
+> The series is aimed at transitioning network timestamps to being
+> y2038 safe.
+> All patches can be reviewed and merged independently.
+> 
+> Socket timestamps and ioctl calls will be handled separately.
+> 
+> Thanks to Arnd Bergmann for discussing solution options with me.
+> 
+> Solution:
+> 
+> Data type struct timespec is not y2038 safe.
+> Replace timespec with struct timespec64 which is y2038 safe.
+> 
+> Changes v1 -> v2: 
+>   Move and rename inet_current_time() as discussed
+>   Squash patches 1 and 2
+>   Reword commit text for patch 2/3
+>   Carry over review tags
 
- include/net/sctp/structs.h | 13 +++++++------
- net/sctp/sm_sideeffect.c   |  5 +++++
- net/sctp/ulpqueue.c        |  4 ++--
- 3 files changed, 14 insertions(+), 8 deletions(-)
-
--- 
-2.5.0
-
+Series applied to net-next, thanks.
