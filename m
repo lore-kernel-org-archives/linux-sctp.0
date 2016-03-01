@@ -1,54 +1,26 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 29 Mar 2016 13:49:44 +0000
-Subject: [PATCH 1/2] sctp: compress bit-wide flags to a bitfield on sctp_sock
-Message-Id: <8c0364a94403040f1c495841e9e866f5c863e118.1459259208.git.marcelo.leitner@gmail.com>
+From: David Miller <davem@davemloft.net>
+Date: Tue, 01 Mar 2016 22:36:13 +0000
+Subject: Re: [PATCH net] sctp: sctp_remaddr_seq_show use the wrong variable to dump transport info
+Message-Id: <20160301.173613.295919796621489412.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1459259208.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1459259208.git.marcelo.leitner@gmail.com>
+References: <08f9ec3d48c3fffd7224e6eb0c129ed113d23fbd.1456626791.git.lucien.xin@gmail.com>
+In-Reply-To: <08f9ec3d48c3fffd7224e6eb0c129ed113d23fbd.1456626791.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net
 
-It wastes space and gets worse as we add new flags, so convert bit-wide
-flags to a bitfield.
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sun, 28 Feb 2016 10:33:11 +0800
 
-Currently it already saves 4 bytes in sctp_sock.
+> Now in sctp_remaddr_seq_show(), we use variable *tsp to get the param *v.
+> but *tsp is also used to traversal transport_addr_list, which will cover
+> the previous value, and make sctp_transport_put work on the wrong transport.
+> 
+> So fix it by adding a new variable to get the param *v.
+> 
+> Fixes: fba4c330c5b9 ("sctp: hold transport before we access t->asoc in sctp proc")
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Note that do_auto_asconf cannot be merged, as explained in the comment
-before it.
-
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
----
- include/net/sctp/structs.h | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
-
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 6df1ce7a411c548bda4163840a90578b6e1b4cfe..1a6a626904bba4223b7921bbb4be41c2550271a7 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -210,14 +210,14 @@ struct sctp_sock {
- 	int user_frag;
- 
- 	__u32 autoclose;
--	__u8 nodelay;
--	__u8 disable_fragments;
--	__u8 v4mapped;
--	__u8 frag_interleave;
- 	__u32 adaptation_ind;
- 	__u32 pd_point;
--	__u8 recvrcvinfo;
--	__u8 recvnxtinfo;
-+	__u16	nodelay:1,
-+		disable_fragments:1,
-+		v4mapped:1,
-+		frag_interleave:1,
-+		recvrcvinfo:1,
-+		recvnxtinfo:1;
- 
- 	atomic_t pd_mode;
- 	/* Receive to here while partial delivery is in effect. */
--- 
-2.5.0
-
+Applied, thanks.
