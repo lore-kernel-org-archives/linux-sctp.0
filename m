@@ -1,84 +1,74 @@
-From: "'Marcelo Ricardo Leitner'" <marcelo.leitner@gmail.com>
-Date: Thu, 31 Mar 2016 21:25:12 +0000
-Subject: Re: [PATCH] sctp: avoid refreshing heartbeat timer too often
-Message-Id: <20160331212512.GJ3387@mrl.redhat.com>
+From: yegorslists@googlemail.com
+Date: Thu, 03 Mar 2016 11:07:51 +0000
+Subject: [PATCH v2] libsctp: add pkg-config support
+Message-Id: <1457003271-2749-1-git-send-email-yegorslists@googlemail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1459258897-21607-1-git-send-email-marcelo.leitner@gmail.com>
- <063D6719AE5E284EB5DD2968C1650D6D54DBFFCD@AcuExch.aculab.com>
- <56FBC2DE.3000207@gmail.com>
- <063D6719AE5E284EB5DD2968C1650D6D54DC1DB0@AcuExch.aculab.com>
-In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6D54DC1DB0@AcuExch.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@ACULAB.COM>
-Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
+To: linux-sctp@vger.kernel.org
 
-On Thu, Mar 31, 2016 at 11:16:52AM +0000, David Laight wrote:
-> From: Marcelo Ricardo Leitner
-> > Sent: 30 March 2016 13:13
-> > Em 30-03-2016 06:37, David Laight escreveu:
-> > > From: Marcelo Ricardo Leitner
-> > >> Sent: 29 March 2016 14:42
-> > >>
-> > >> Currently on high rate SCTP streams the heartbeat timer refresh can
-> > >> consume quite a lot of resources as timer updates are costly and it
-> > >> contains a random factor, which a) is also costly and b) invalidates
-> > >> mod_timer() optimization for not editing a timer to the same value.
-> > >> It may even cause the timer to be slightly advanced, for no good reason.
-> > >
-> > > Interesting thoughts:
-> > > 1) Is it necessary to use a different 'random factor' until the timer actually
-> > >     expires?
-> > 
-> > I don't understand you fully here, but we have to have a random factor
-> > on timer expire. As noted by Daniel Borkmann on his commit 8f61059a96c2
-> > ("net: sctp: improve timer slack calculation for transport HBs"):
-> 
-> When a HEARTBEAT chunk is sent determine the new interval, use that
-> interval until the timer actually expires when a new interval is
-> calculated. So the random number is only generated once per heartbeat.
-> 
-> >      RFC4960, section 8.3 says:
-> > 
-> >        On an idle destination address that is allowed to heartbeat,
-> >        it is recommended that a HEARTBEAT chunk is sent once per RTO
-> >        of that destination address plus the protocol parameter
-> >        'HB.interval', with jittering of +/- 50% of the RTO value,
-> >        and exponential backoff of the RTO if the previous HEARTBEAT
-> >        is unanswered.
-> > 
-> > Previous to his commit, it was using a random factor based on jiffies.
-> > 
-> > This patch then assumes that random_A+2 is just as random as random_B as
-> > long as it is within the allowed range, avoiding the unnecessary updates.
-> > 
-> > > 2) It might be better to allow the heartbeat timer to expire, on expiry work
-> > >     out the new interval based on when the last 'refresh' was done.
-> > 
-> > Cool, I thought about this too. It would introduce some extra complexity
-> > that is not really worth I think, specially because now we may be doing
-> > more timer updates even with this patch but it's not triggering any wake
-> > ups and we would need at least 2 wake ups then: one for the first
-> > timeout event, and then re-schedule the timer for the next updated one,
-> > and maybe again, and again.. less timer updates but more wake ups, one
-> > at every heartbeat interval even on a busy transport. Seems it's cheaper
-> > to just update the timer then.
-> 
-> One wakeup per heartbeat interval on a busy connection is probably noise.
-> Probably much less than the 1000s of timer updates that would otherwise happen.
+From: Yegor Yefremov <yegorslists@googlemail.com>
 
-I was thinking more on near-idle systems, as the overhead for this
-refresh looked rather small now even for busy transports if compared to
-other points, a worth trade-off for reducing wake ups, imho.
+pkg-config is a helper tool used when compiling applications and libraries.
+This patch adds automatic generation and installation of libsctp.pc file,
+that provides libsctp's version, compiler and linker information.
 
-But then I checked tcp, and it does what you're suggesting.
-I'll rework the patch. Thanks
+Signed-off-by: Yegor Yefremov <yegorslists@googlemail.com>
+---
+Changes:
+	v2: add libsctp.pc to DISTCLEANFILES (Marcelo Ricardo Leitner)
 
-> A further optimisation would be to restart the timer if more than (say) 80%
-> of the way through the timeout period.
-> 
-> Similarly the HEARTBEAT could be sent if the 2nd wakeup would be almost immediate.
+ Makefile.am   |  5 +++++
+ configure.ac  |  3 ++-
+ libsctp.pc.in | 10 ++++++++++
+ 3 files changed, 17 insertions(+), 1 deletion(-)
+ create mode 100644 libsctp.pc.in
 
-
+diff --git a/Makefile.am b/Makefile.am
+index 2c9c8c6..8577184 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -9,6 +9,11 @@ EXTRA_DIST += ChangeLog AUTHORS COPYING COPYING.lib INSTALL \
+ 	README ROADMAP NEWS \
+ 	Makefile.vars Makefile.rules Makefile.dirs
+ 
++pkgconfigdir = $(libdir)/pkgconfig
++pkgconfig_DATA = libsctp.pc
++EXTRA_DIST += libsctp.pc.in
++DISTCLEANFILES += libsctp.pc
++
+ # bin or src products may be required to generate stuff in test/
+ SUBDIRS = man bin src doc
+ 
+diff --git a/configure.ac b/configure.ac
+index 778dac5..675fb96 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -72,5 +72,6 @@ AC_CONFIG_FILES([lksctp-tools.spec
+ 		src/lib/Makefile
+ 		src/testlib/Makefile
+ 		src/withsctp/Makefile
+-		doc/Makefile])
++		doc/Makefile
++		libsctp.pc])
+ AC_OUTPUT
+diff --git a/libsctp.pc.in b/libsctp.pc.in
+new file mode 100644
+index 0000000..b1eafaf
+--- /dev/null
++++ b/libsctp.pc.in
+@@ -0,0 +1,10 @@
++prefix=@prefix@
++exec_prefix=@exec_prefix@
++libdir=@libdir@
++includedir=@includedir@
++
++Name: sctp
++Description: User-level SCTP API library
++Version: @VERSION@
++Libs: -L${libdir} -lsctp
++Cflags: -I${includedir}
+-- 
+2.7.0
 
