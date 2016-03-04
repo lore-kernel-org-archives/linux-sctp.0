@@ -1,87 +1,137 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 21 Mar 2016 11:31:49 +0000
-Subject: Re: [PATCHv2] sctp: Don't add the shutdown timer if its already been added
-Message-Id: <20160321113148.GA22128@hmsreliant.think-freely.org>
+From: yegorslists@googlemail.com
+Date: Fri, 04 Mar 2016 08:41:04 +0000
+Subject: [PATCH 1/2] Add .gitignore files
+Message-Id: <1457080865-30845-1-git-send-email-yegorslists@googlemail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1458334046-26323-1-git-send-email-nhorman@tuxdriver.com>
-In-Reply-To: <1458334046-26323-1-git-send-email-nhorman@tuxdriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On Fri, Mar 18, 2016 at 05:53:21PM -0300, marcelo.leitner@gmail.com wrote:
-> On Fri, Mar 18, 2016 at 04:47:26PM -0400, Neil Horman wrote:
-> > This BUG halt was recently reported:
-> > 
-> > PID: 2879   TASK: c16adaa0  CPU: 1   COMMAND: "sctpn"
-> >  #0 [f418dd28] crash_kexec at c04a7d8c
-> >  #1 [f418dd7c] oops_end at c0863e02
-> >  #2 [f418dd90] do_invalid_op at c040aaca
-> >  #3 [f418de28] error_code (via invalid_op) at c08631a5
-> >     EAX: f34baac0  EBX: 00000090  ECX: f418deb0  EDX: f5542950  EBP: 00000000
-> >     DS:  007b      ESI: f34ba800  ES:  007b      EDI: f418dea0  GS:  00e0
-> >     CS:  0060      EIP: c046fa5e  ERR: ffffffff  EFLAGS: 00010286
-> >  #4 [f418de5c] add_timer at c046fa5e
-> >  #5 [f418de68] sctp_do_sm at f8db8c77 [sctp]
-> >  #6 [f418df30] sctp_primitive_SHUTDOWN at f8dcc1b5 [sctp]
-> >  #7 [f418df48] inet_shutdown at c080baf9
-> >  #8 [f418df5c] sys_shutdown at c079eedf
-> >  #9 [f418df70] sys_socketcall at c079fe88
-> >     EAX: ffffffda  EBX: 0000000d  ECX: bfceea90  EDX: 0937af98
-> >     DS:  007b      ESI: 0000000c  ES:  007b      EDI: b7150ae4
-> >     SS:  007b      ESP: bfceea7c  EBP: bfceeaa8  GS:  0033
-> >     CS:  0073      EIP: b775c424  ERR: 00000066  EFLAGS: 00000282
-> > 
-> > It appears that the side effect that starts the shutdown timer was processed
-> > multiple times, which can happen as multiple paths can trigger it.  This of
-> > course leads to the BUG halt in add_timer getting called.
-> > 
-> > Fix seems pretty straightforward, just check before the timer is added if its
-> > already been started.  If it has mod the timer instead to min(current
-> > expiration, new expiration)
-> > 
-> > Its been tested but not confirmed to fix the problem, as the issue has only
-> > occured in production environments where test kernels are enjoined from being
-> > installed.  It appears to be a sane fix to me though.
-> > 
-> > Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-> > CC: Vlad Yasevich <vyasevich@gmail.com>
-> > CC: "David S. Miller" <davem@davemloft.net>
-> > 
-> > Change notes:
-> > 
-> > v2) Removed WARN_ON, as its not useful
-> > ---
-> 
-> ....
-> 
-> > +			 */
-> > +			if (WARN_ON_ONCE(timer_pending(timer))) {
-> 
-> Not sure what happened but it's still here :-)
-My favorite fat finger action of course, forgot to git add before I did the
-commit --amend.  Sorry, new patch in a sec :)
+From: Yegor Yefremov <yegorslists@googlemail.com>
 
-> 
-> > +				if (time_after(timer->expires, (jiffies + timeout))) {
-> > +					timer->expires = jiffies+timeout;
-> > +					mod_timer(timer, timer->expires);
-> > +				}
-> > +			} else {
-> > +				timer->expires = jiffies + timeout;
-> > +				sctp_association_hold(asoc);
-> > +				mod_timer(timer, timer->expires);
-> > +			}
-> >  			break;
-> >  
-> >  		case SCTP_CMD_TIMER_RESTART:
-> > -- 
-> > 2.5.0
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> 
+Signed-off-by: Yegor Yefremov <yegorslists@googlemail.com>
+---
+ .gitignore                | 20 ++++++++++++++++++++
+ bin/.gitignore            |  5 +++++
+ src/apps/.gitignore       | 10 ++++++++++
+ src/func_tests/.gitignore | 41 +++++++++++++++++++++++++++++++++++++++++
+ src/withsctp/.gitignore   |  2 ++
+ 5 files changed, 78 insertions(+)
+ create mode 100644 .gitignore
+ create mode 100644 bin/.gitignore
+ create mode 100644 src/apps/.gitignore
+ create mode 100644 src/func_tests/.gitignore
+ create mode 100644 src/withsctp/.gitignore
+
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..eac9cca
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,20 @@
++aclocal.m4
++config.guess
++config.log
++config.status
++config.sub
++configure
++Makefile.in
++Makefile
++config.h
++config.h.in
++libsctp.pc
++libtool
++lksctp-tools.spec
++stamp-h1
++*.deps/
++*.libs/
++autom4te.cache/
++*.la
++*.lo
++*.o
+diff --git a/bin/.gitignore b/bin/.gitignore
+new file mode 100644
+index 0000000..813925f
+--- /dev/null
++++ b/bin/.gitignore
+@@ -0,0 +1,5 @@
++compile
++depcomp
++install-sh
++ltmain.sh
++missing
+diff --git a/src/apps/.gitignore b/src/apps/.gitignore
+new file mode 100644
+index 0000000..a7ba019
+--- /dev/null
++++ b/src/apps/.gitignore
+@@ -0,0 +1,10 @@
++bindx_test
++myftp
++nagle_rcv
++nagle_snd
++peel_client
++peel_server
++sctp_darn
++sctp_status
++sctp_test
++sctp_xconnect
+diff --git a/src/func_tests/.gitignore b/src/func_tests/.gitignore
+new file mode 100644
+index 0000000..720db65
+--- /dev/null
++++ b/src/func_tests/.gitignore
+@@ -0,0 +1,41 @@
++test_1_to_1_accept_close
++test_1_to_1_addrs
++test_1_to_1_connect
++test_1_to_1_connectx
++test_1_to_1_events
++test_1_to_1_initmsg_connect
++test_1_to_1_nonblock
++test_1_to_1_recvfrom
++test_1_to_1_recvmsg
++test_1_to_1_rtoinfo
++test_1_to_1_send
++test_1_to_1_sendmsg
++test_1_to_1_sendto
++test_1_to_1_shutdown
++test_1_to_1_socket_bind_listen
++test_1_to_1_sockopt
++test_1_to_1_threads
++test_assoc_abort
++test_assoc_shutdown
++test_autoclose
++test_basic
++test_basic_v6
++test_connect
++test_connectx
++test_fragments
++test_fragments_v6
++test_getname
++test_getname_v6
++test_inaddr_any
++test_inaddr_any_v6
++test_peeloff
++test_peeloff_v6
++test_recvmsg
++test_sctp_sendrecvmsg
++test_sctp_sendrecvmsg_v6
++test_sockopt
++test_sockopt_v6
++test_tcp_style
++test_tcp_style_v6
++test_timetolive
++test_timetolive_v6
+diff --git a/src/withsctp/.gitignore b/src/withsctp/.gitignore
+new file mode 100644
+index 0000000..498e578
+--- /dev/null
++++ b/src/withsctp/.gitignore
+@@ -0,0 +1,2 @@
++checksctp
++withsctp
+-- 
+2.7.0
+
