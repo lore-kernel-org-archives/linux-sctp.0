@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 18 Mar 2016 13:24:32 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 18 Mar 2016 16:38:05 +0000
 Subject: Re: [PATCH] sctp: Don't add the shutdown timer if its already been added
-Message-Id: <20160318132432.GA2560@hmsreliant.think-freely.org>
+Message-Id: <20160318163805.GA3387@mrl.redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1457467429-31904-1-git-send-email-nhorman@tuxdriver.com>
 In-Reply-To: <1457467429-31904-1-git-send-email-nhorman@tuxdriver.com>
@@ -71,6 +71,11 @@ On Tue, Mar 08, 2016 at 03:03:49PM -0500, Neil Horman wrote:
 > +			 * the timer with the shorter of the two expiration times
 > +			 */
 > +			if (WARN_ON_ONCE(timer_pending(timer))) {
+
+I'm not sure if this WARN is needed. As you said, this can happen. The
+user will have the trace logged but no action will be needed, seems to
+be just noise then.
+
 > +				if (time_after(timer->expires, (jiffies + timeout))) {
 > +					timer->expires = jiffies+timeout;
 > +					mod_timer(timer, timer->expires);
@@ -91,6 +96,3 @@ On Tue, Mar 08, 2016 at 03:03:49PM -0500, Neil Horman wrote:
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-Ping, any thoughts here?
-Neil
-
