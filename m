@@ -1,7 +1,7 @@
-From: marcelo.leitner@gmail.com
-Date: Wed, 30 Mar 2016 19:52:54 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Wed, 30 Mar 2016 20:32:11 +0000
 Subject: Re: [PATCH] sctp: flush if we can't fit another DATA chunk
-Message-Id: <20160330195254.GI3387@mrl.redhat.com>
+Message-Id: <20160330203211.GD15549@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1459258885-21502-1-git-send-email-marcelo.leitner@gmail.com>
  <20160330.154622.1322506750240048120.davem@davemloft.net>
@@ -10,7 +10,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: David Miller <davem@davemloft.net>
-Cc: netdev@vger.kernel.org, nhorman@tuxdriver.com, vyasevich@gmail.com, linux-sctp@vger.kernel.org
+Cc: marcelo.leitner@gmail.com, netdev@vger.kernel.org, vyasevich@gmail.com, linux-sctp@vger.kernel.org
 
 On Wed, Mar 30, 2016 at 03:46:22PM -0400, David Miller wrote:
 > From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
@@ -44,13 +44,19 @@ On Wed, Mar 30, 2016 at 03:46:22PM -0400, David Miller wrote:
 > Neil, how were you able to see where 'maxsize' is and how it's even
 > calculated before determining that this change is correct?
 > 
+Shit, sorry, dave, I trusted that Marcello built and tested the patch, and
+reviewed it based on the validity of the math (which making assumptions for what
+maxsize was, should be correct).  No exuse, I screwed up.
+Neil
+
 > Please don't ACK patches you really didn't verify in any way at all,
 > thanks.  It's better to have no reviews than bad reviews, because ACKs
 > are supposed to give me a reason to be more confident in the change.
 > 
 > Marcelo, I'm ignoring the rest of your SCTP changes, you have to get
 > your act together.
-
-Argh, indeed. Bad decision here to split up the patchset. Sorry for that.
-
-  Marcelo
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
