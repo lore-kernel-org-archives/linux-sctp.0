@@ -1,38 +1,39 @@
-From: Nicolas Dichtel <nicolas.dichtel@6wind.com>
-Date: Wed, 13 Apr 2016 08:08:29 +0000
-Subject: Re: uapi header mismatch with kernel ? //[PATCH] net: sctp: fix ABI through sctp_assoc_to_state help
-Message-Id: <570DFE7D.5010603@6wind.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 01 Apr 2016 17:05:48 +0000
+Subject: [PATCH v2] sctp: flush if we can't fit another DATA chunk
+Message-Id: <a9e4f862b5f7a43eccca5966684d172e4de57b13.1459475764.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CA+js23Fr8vHUZi4VnrR7OSAfOqtEK6832WsXCmVNy4W-w=kDxw@mail.gmail.com>
-In-Reply-To: <CA+js23Fr8vHUZi4VnrR7OSAfOqtEK6832WsXCmVNy4W-w=kDxw@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: netdev@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
 
-Le 13/04/2016 04:39, Steven Ding a =C3=A9crit :
-> Hi All,
->
-> This is Steven DING working with sooqing (sooqing@gmail.com).
->
-> He ever contacted in the year 2014 for the Linux kernel 3.x issue
-> where the SCTP states definition differ between kernel space and user
-> space. Daniel Borkmann confirmed the issue and provided a private fix
-> for it. He also planned to submit to the kernel later.
->
-> Now I'm using Debian kernel 3.2.0-4-amd64, and it seems the issue is still
-> there. I looked up the branches 3.14.x and I failed to find the fix.
-> So I'm not sure whether the fix has been in the Linux kernel, or which
-> load has the fix,
-> or probably I just missed it somewhere? Could anyone help me?
-http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id8a=
-b1fa981d5
+There is no point on delaying the packet if we can't fit a single byte
+of data on it anymore. So lets just reduce the threshold by the amount
+that a data chunk with 4 bytes (rounding) would use.
 
-$ git describe --contains 38ab1fa981d5
-v3.17-rc5~41^2~34
+v2: based on the right tree
 
-=3D> patch has been included in v3.17.
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/output.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 97745351d58c2fb32b9f9b57d61831d7724d83b2..9844fe573029b9e262743440980f15277ddaf5a1 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -705,7 +705,8 @@ static sctp_xmit_t sctp_packet_can_append_data(struct sctp_packet *packet,
+ 	/* Check whether this chunk and all the rest of pending data will fit
+ 	 * or delay in hopes of bundling a full sized packet.
+ 	 */
+-	if (chunk->skb->len + q->out_qlen >= transport->pathmtu - packet->overhead)
++	if (chunk->skb->len + q->out_qlen >
++		transport->pathmtu - packet->overhead - sizeof(sctp_data_chunk_t) - 4)
+ 		/* Enough data queued to fill a packet */
+ 		return SCTP_XMIT_OK;
+ 
+-- 
+2.5.0
 
-Regards,
-Nicolas
