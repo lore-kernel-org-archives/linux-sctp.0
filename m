@@ -1,91 +1,107 @@
-From: Tom Herbert <tom@herbertland.com>
-Date: Tue, 12 Apr 2016 21:58:48 +0000
-Subject: Re: [PATCH] sctp: add support for RPS and RFS
-Message-Id: <CALx6S36K0k40yGmFdw5OsT5OLy2HiRuaeGYquciUOmn+mLWnsQ@mail.gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 01 Apr 2016 00:24:27 +0000
+Subject: Re: [PATCH] sctp: avoid refreshing heartbeat timer too often
+Message-Id: <20160401002427.GK3387@mrl.redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <d0b676c036479fe304218a05e1b03a7ba274426c.1460495323.git.marcelo.leitner@gmail.com>
-	<CALx6S35by22eLr-FOFj_RQvOLZm+=cyKYn1MeeD3QQqEEcsRAg@mail.gmail.com>
-	<20160412215728.GI15005@localhost.localdomain>
-In-Reply-To: <20160412215728.GI15005@localhost.localdomain>
+References: <1459258897-21607-1-git-send-email-marcelo.leitner@gmail.com>
+ <063D6719AE5E284EB5DD2968C1650D6D54DBFFCD@AcuExch.aculab.com>
+ <56FBC2DE.3000207@gmail.com>
+ <063D6719AE5E284EB5DD2968C1650D6D54DC1DB0@AcuExch.aculab.com>
+ <20160331212512.GJ3387@mrl.redhat.com>
+In-Reply-To: <20160331212512.GJ3387@mrl.redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: Linux Kernel Network Developers <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
+To: David Laight <David.Laight@ACULAB.COM>
+Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
 
-On Tue, Apr 12, 2016 at 2:57 PM, Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
-> On Tue, Apr 12, 2016 at 02:50:45PM -0700, Tom Herbert wrote:
->> On Tue, Apr 12, 2016 at 2:11 PM, Marcelo Ricardo Leitner
->> <marcelo.leitner@gmail.com> wrote:
->> > This patch adds what's missing to properly support RPS and RFS on SCTP,
->> > as some of it is already implemented in common calls.
->> >
->> > Having support for RPS and RFS allows better scaling specially because
->> > not all NICs support hashing SCTP headers.
->> >
->> > Save the hash right when we dequeue a skb from inqueue so we do it only
->> > once per skb instead of per chunk. New sockets will then inherit the
->> > hash through sctp_copy_sock().
->> >
->> > Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
->> > ---
->> >  net/sctp/inqueue.c | 3 +++
->> >  net/sctp/socket.c  | 3 +++
->> >  2 files changed, 6 insertions(+)
->> >
->> > diff --git a/net/sctp/inqueue.c b/net/sctp/inqueue.c
->> > index 7e8a16c77039e1b70ef89f3e862dbb332bcc614f..b335ffcef0b901b0e71bf0843057dbf5877da31b 100644
->> > --- a/net/sctp/inqueue.c
->> > +++ b/net/sctp/inqueue.c
->> > @@ -163,6 +163,9 @@ struct sctp_chunk *sctp_inq_pop(struct sctp_inq *queue)
->> >                 chunk->singleton = 1;
->> >                 ch = (sctp_chunkhdr_t *) chunk->skb->data;
->> >                 chunk->data_accepted = 0;
->> > +
->> > +               if (chunk->asoc)
->> > +                       sock_rps_save_rxhash(chunk->asoc->base.sk, chunk->skb);
->> >         }
->> >
->> >         chunk->chunk_hdr = ch;
->> > diff --git a/net/sctp/socket.c b/net/sctp/socket.c
->> > index 878d28eda1a68dc639d7b9f3f663d7518f21bb32..36697f85ce48be39f41ddedd9f53369c7f9e28d8 100644
->> > --- a/net/sctp/socket.c
->> > +++ b/net/sctp/socket.c
->> > @@ -6430,6 +6430,8 @@ unsigned int sctp_poll(struct file *file, struct socket *sock, poll_table *wait)
->> >
->> >         poll_wait(file, sk_sleep(sk), wait);
->> >
->> > +       sock_rps_record_flow(sk);
->> > +
->> >         /* A TCP-style listening socket becomes readable when the accept queue
->> >          * is not empty.
->> >          */
->> > @@ -7186,6 +7188,7 @@ void sctp_copy_sock(struct sock *newsk, struct sock *sk,
->> >         newsk->sk_lingertime = sk->sk_lingertime;
->> >         newsk->sk_rcvtimeo = sk->sk_rcvtimeo;
->> >         newsk->sk_sndtimeo = sk->sk_sndtimeo;
->> > +       newsk->sk_rxhash = sk->sk_rxhash;
->> >
->> >         newinet = inet_sk(newsk);
->> >
->> HI Marcelo,
->>
->> sock_rps_record_flow should probably be in sctp_poll also (like it is
->> in tcp_poll).
->>
->> Thanks,
->> Tom
->
-> Hi Tom,
->
-> Yes, that's the middle chunk on this patch, no?
->
-> Note that for udp it's done after the actual poll, while for tcp it's
-> being saved before it. I went more udp-style on this one.
->
+On Thu, Mar 31, 2016 at 06:25:12PM -0300, 'Marcelo Ricardo Leitner' wrote:
+> On Thu, Mar 31, 2016 at 11:16:52AM +0000, David Laight wrote:
+> > From: Marcelo Ricardo Leitner
+> > > Sent: 30 March 2016 13:13
+> > > Em 30-03-2016 06:37, David Laight escreveu:
+> > > > From: Marcelo Ricardo Leitner
+> > > >> Sent: 29 March 2016 14:42
+> > > >>
+> > > >> Currently on high rate SCTP streams the heartbeat timer refresh can
+> > > >> consume quite a lot of resources as timer updates are costly and it
+> > > >> contains a random factor, which a) is also costly and b) invalidates
+> > > >> mod_timer() optimization for not editing a timer to the same value.
+> > > >> It may even cause the timer to be slightly advanced, for no good reason.
+> > > >
+> > > > Interesting thoughts:
+> > > > 1) Is it necessary to use a different 'random factor' until the timer actually
+> > > >     expires?
+> > > 
+> > > I don't understand you fully here, but we have to have a random factor
+> > > on timer expire. As noted by Daniel Borkmann on his commit 8f61059a96c2
+> > > ("net: sctp: improve timer slack calculation for transport HBs"):
+> > 
+> > When a HEARTBEAT chunk is sent determine the new interval, use that
+> > interval until the timer actually expires when a new interval is
+> > calculated. So the random number is only generated once per heartbeat.
+> > 
+> > >      RFC4960, section 8.3 says:
+> > > 
+> > >        On an idle destination address that is allowed to heartbeat,
+> > >        it is recommended that a HEARTBEAT chunk is sent once per RTO
+> > >        of that destination address plus the protocol parameter
+> > >        'HB.interval', with jittering of +/- 50% of the RTO value,
+> > >        and exponential backoff of the RTO if the previous HEARTBEAT
+> > >        is unanswered.
+> > > 
+> > > Previous to his commit, it was using a random factor based on jiffies.
+> > > 
+> > > This patch then assumes that random_A+2 is just as random as random_B as
+> > > long as it is within the allowed range, avoiding the unnecessary updates.
+> > > 
+> > > > 2) It might be better to allow the heartbeat timer to expire, on expiry work
+> > > >     out the new interval based on when the last 'refresh' was done.
+> > > 
+> > > Cool, I thought about this too. It would introduce some extra complexity
+> > > that is not really worth I think, specially because now we may be doing
+> > > more timer updates even with this patch but it's not triggering any wake
+> > > ups and we would need at least 2 wake ups then: one for the first
+> > > timeout event, and then re-schedule the timer for the next updated one,
+> > > and maybe again, and again.. less timer updates but more wake ups, one
+> > > at every heartbeat interval even on a busy transport. Seems it's cheaper
+> > > to just update the timer then.
+> > 
+> > One wakeup per heartbeat interval on a busy connection is probably noise.
+> > Probably much less than the 1000s of timer updates that would otherwise happen.
+> 
+> I was thinking more on near-idle systems, as the overhead for this
+> refresh looked rather small now even for busy transports if compared to
+> other points, a worth trade-off for reducing wake ups, imho.
+> 
+> But then I checked tcp, and it does what you're suggesting.
+> I'll rework the patch. Thanks
 
-Yes, I missed that.
+This is what I'm getting with the new approach. I splitted
+sctp_transport_reset_timers into sctp_transport_reset_t3_rtx and
+sctp_transport_reset_hb_timer, thus why sctp_transport_reset_t3_rtx in there
+and it never updates the timer, only start if it's not running already
+(as before). Ran netperf for 60 seconds now, to be sure that the timer
+would expire twice (1st for initial path validation and 2nd for pure hb).
 
-> Thanks,
-> Marcelo
+Samples: 230K of event 'cpu-clock', Event count (approx.): 57707250000
+  Overhead  Command  Shared Object      Symbol
++    5,65%  netperf  [kernel.vmlinux]   [k] memcpy_erms
++    5,59%  netperf  [kernel.vmlinux]   [k] copy_user_enhanced_fast_string
+-    5,05%  netperf  [kernel.vmlinux]   [k] _raw_spin_unlock_irqrestore
+   - _raw_spin_unlock_irqrestore
+      + 49,89% __wake_up_sync_key
+      + 45,68% sctp_ulpq_tail_event
+      - 2,85% mod_timer
+         + 76,51% sctp_transport_reset_t3_rtx
+         + 23,49% sctp_do_sm
+      + 1,55% del_timer
++    2,50%  netperf  [sctp]             [k] sctp_datamsg_from_user
++    2,26%  netperf  [sctp]             [k] sctp_sendmsg
+
+Doesn't seem much different from v1, but ok.
+
+Also I could do some more cleanups on heartbeat/timer code.
+
+  Marcelo
+
