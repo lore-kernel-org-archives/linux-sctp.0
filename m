@@ -1,41 +1,23 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 01 Apr 2016 17:30:32 +0000
-Subject: [PATCH v2] sctp: use list_* in sctp_list_dequeue
-Message-Id: <729a27385f91aacaee46ecfa6f37f084f2843b9c.1459530791.git.marcelo.leitner@gmail.com>
+From: David Miller <davem@davemloft.net>
+Date: Tue, 05 Apr 2016 19:44:23 +0000
+Subject: Re: [PATCH v2] sctp: use list_* in sctp_list_dequeue
+Message-Id: <20160405.154423.1746284768680802731.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <729a27385f91aacaee46ecfa6f37f084f2843b9c.1459530791.git.marcelo.leitner@gmail.com>
+In-Reply-To: <729a27385f91aacaee46ecfa6f37f084f2843b9c.1459530791.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
+To: marcelo.leitner@gmail.com
+Cc: netdev@vger.kernel.org, nhorman@tuxdriver.com, vyasevich@gmail.com, linux-sctp@vger.kernel.org
 
-Use list_* helpers in sctp_list_dequeue, more readable.
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri,  1 Apr 2016 14:30:32 -0300
 
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
----
-v2: patch rechecked
+> Use list_* helpers in sctp_list_dequeue, more readable.
+> 
+> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+> ---
+> v2: patch rechecked
 
- include/net/sctp/sctp.h | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
-
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index 65521cfdcadeee35d61f280165a387cc2164ab6d..03fb33efcae21d54192204629ff4ced2e36e7d4d 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -386,11 +386,9 @@ static inline struct list_head *sctp_list_dequeue(struct list_head *list)
- {
- 	struct list_head *result = NULL;
- 
--	if (list->next != list) {
-+	if (!list_empty(list)) {
- 		result = list->next;
--		list->next = result->next;
--		list->next->prev = list;
--		INIT_LIST_HEAD(result);
-+		list_del_init(result);
- 	}
- 	return result;
- }
--- 
-2.5.0
-
+Also applied, thanks.
