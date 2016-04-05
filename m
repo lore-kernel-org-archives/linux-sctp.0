@@ -1,68 +1,68 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 12 Apr 2016 19:50:26 +0000
-Subject: Re: [PATCH v3 1/2] sctp: compress bit-wide flags to a bitfield on sctp_sock
-Message-Id: <20160412195026.GA32240@hmsreliant.think-freely.org>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 05 Apr 2016 04:06:25 +0000
+Subject: [PATCH net-next 0/7] sctp: support sctp_diag in kernel
+Message-Id: <cover.1459829123.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1460144373.git.marcelo.leitner@gmail.com>
- <1d6d26426e6f1eee2851aed47b77ffe8bc335210.1460144373.git.marcelo.leitner@gmail.com>
-In-Reply-To: <1d6d26426e6f1eee2851aed47b77ffe8bc335210.1460144373.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org, David Laight <David.Laight@ACULAB.COM>, Jakub Sitnicki <jkbs@redhat.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net
 
-On Fri, Apr 08, 2016 at 04:41:27PM -0300, Marcelo Ricardo Leitner wrote:
-> It wastes space and gets worse as we add new flags, so convert bit-wide
-> flags to a bitfield.
-> 
-> Currently it already saves 4 bytes in sctp_sock, which are left as holes
-> in it for now. The whole struct needs packing, which should be done in
-> another patch.
-> 
-> Note that do_auto_asconf cannot be merged, as explained in the comment
-> before it.
-> 
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> ---
->  include/net/sctp/structs.h | 12 ++++++------
->  1 file changed, 6 insertions(+), 6 deletions(-)
-> 
-> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-> index 6df1ce7a411c548bda4163840a90578b6e1b4cfe..1a6a626904bba4223b7921bbb4be41c2550271a7 100644
-> --- a/include/net/sctp/structs.h
-> +++ b/include/net/sctp/structs.h
-> @@ -210,14 +210,14 @@ struct sctp_sock {
->  	int user_frag;
->  
->  	__u32 autoclose;
-> -	__u8 nodelay;
-> -	__u8 disable_fragments;
-> -	__u8 v4mapped;
-> -	__u8 frag_interleave;
->  	__u32 adaptation_ind;
->  	__u32 pd_point;
-> -	__u8 recvrcvinfo;
-> -	__u8 recvnxtinfo;
-> +	__u16	nodelay:1,
-> +		disable_fragments:1,
-> +		v4mapped:1,
-> +		frag_interleave:1,
-> +		recvrcvinfo:1,
-> +		recvnxtinfo:1;
->  
->  	atomic_t pd_mode;
->  	/* Receive to here while partial delivery is in effect. */
-> -- 
-> 2.5.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+This patchset will add sctp_diag module to implement diag interface on
+sctp in kernel.
 
-I've not run it myself, but this series looks reasonable
+For a listening sctp endpoint, we will just dump it's ep info.
+For a sctp connection, we will the assoc info and it's ep info.
 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+The ss dump will looks like:
+
+[iproute2]# ./misc/ss --sctp  -n -l
+State      Recv-Q Send-Q   Local Address:Port       Peer Address:Port
+LISTEN     0      128      172.16.254.254:8888      *:*
+LISTEN     0      5        127.0.0.1:1234           *:*
+LISTEN     0      5        127.0.0.1:1234           *:*
+  - ESTAB  0      0        127.0.0.1%lo:1234        127.0.0.1:4321
+LISTEN     0      128      172.16.254.254:8888      *:*
+  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.253.253:8888
+  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.1.1:8888
+  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.1.2:8888
+  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.2.1:8888
+  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.2.2:8888
+  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.3.1:8888
+  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.3.2:8888
+LISTEN     0      0        127.0.0.1:4321           *:*
+  - ESTAB  0      0        127.0.0.1%lo:4321        127.0.0.1:1234
+
+The entries with '- ESTAB' are the assocs, some of them may belong to
+the same endpoint. So we will dump the parent endpoint first, like the
+entry with 'LISTEN'. then dump the assocs. ep and assocs entries will
+be dumped in right order so that ss can show them in tree format easily.
+
+Besides, this patchset also simplifies sctp proc codes, cause it has
+some similar codes with sctp diag in sctp transport traversal.
+
+Xin Long (7):
+  sctp: add sctp_info dump api for sctp_diag
+  sctp: export some apis or variables for sctp_diag
+  sctp: export some functions for sctp_diag in inet_diag
+  sctp: add the sctp_diag.c file
+  sctp: reuse the some transport traversal functions in proc
+  sctp: merge the seq_start/next/exits in remaddrs and assocs
+  sctp: fix some rhashtable functions using in sctp proc/diag
+
+ include/linux/sctp.h           |  65 +++++
+ include/net/sctp/sctp.h        |  16 ++
+ include/uapi/linux/inet_diag.h |   2 +
+ net/ipv4/inet_diag.c           |   9 +-
+ net/sctp/Kconfig               |   4 +
+ net/sctp/Makefile              |   1 +
+ net/sctp/proc.c                | 104 ++------
+ net/sctp/sctp_diag.c           | 581 +++++++++++++++++++++++++++++++++++++++++
+ net/sctp/socket.c              | 215 +++++++++++++++
+ 9 files changed, 911 insertions(+), 86 deletions(-)
+ create mode 100644 net/sctp/sctp_diag.c
+
+-- 
+2.1.0
 
