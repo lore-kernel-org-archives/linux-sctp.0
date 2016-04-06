@@ -1,324 +1,312 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 11 Apr 2016 21:21:42 +0000
-Subject: Re: [PATCHv2 net-next 4/6] sctp: add the sctp_diag.c file
-Message-Id: <20160411212142.GH15005@localhost.localdomain>
+Date: Wed, 06 Apr 2016 18:15:19 +0000
+Subject: [PATCH v2] sctp: avoid refreshing heartbeat timer too often
+Message-Id: <7aa05d5d8b9100fa48798b43887de6d14d577eac.1459966346.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1460177331.git.lucien.xin@gmail.com>
- <c507274a984bd1b0a7e7a59d1e825352536efd25.1460177331.git.lucien.xin@gmail.com>
- <a3703f4379eeb3a385d3cc000dd621f77540608e.1460177331.git.lucien.xin@gmail.com>
- <5408d667c2a83b8917a501b92810c82f9a66f584.1460177331.git.lucien.xin@gmail.com>
- <ac19f4966c7df6399c2a3bfa0f7f9589b9ff536f.1460177331.git.lucien.xin@gmail.com>
- <1460181116.6473.483.camel@edumazet-glaptop3.roam.corp.google.com>
-In-Reply-To: <1460181116.6473.483.camel@edumazet-glaptop3.roam.corp.google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net
+To: netdev@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org
 
-On Fri, Apr 08, 2016 at 10:51:56PM -0700, Eric Dumazet wrote:
-> On Sat, 2016-04-09 at 12:53 +0800, Xin Long wrote:
-> > This one will implement all the interface of inet_diag, inet_diag_handler.
-> > which includes sctp_diag_dump, sctp_diag_dump_one and sctp_diag_get_info.
-> 
-> 
-> > +static int inet_assoc_diag_fill(struct sock *sk,
-> > +				struct sctp_association *asoc,
-> > +				struct sk_buff *skb,
-> > +				const struct inet_diag_req_v2 *req,
-> > +				struct user_namespace *user_ns,
-> > +				int portid, u32 seq, u16 nlmsg_flags,
-> > +				const struct nlmsghdr *unlh)
-> > +{
-> > +	const struct inet_sock *inet = inet_sk(sk);
-> > +	const struct inet_diag_handler *handler;
-> > +	int ext = req->idiag_ext;
-> > +	struct inet_diag_msg *r;
-> > +	struct nlmsghdr  *nlh;
-> > +	struct nlattr *attr;
-> > +	void *info = NULL;
-> > +	union sctp_addr laddr, paddr;
-> > +	struct dst_entry *dst;
-> > +	struct sctp_infox infox;
-> > +
-> > +	handler = inet_diag_get_handler(req->sdiag_protocol);
-> > +	BUG_ON(!handler);
-> > +
-> > +	nlh = nlmsg_put(skb, portid, seq, unlh->nlmsg_type, sizeof(*r),
-> > +			nlmsg_flags);
-> > +	if (!nlh)
-> > +		return -EMSGSIZE;
-> > +
-> > +	r = nlmsg_data(nlh);
-> > +	BUG_ON(!sk_fullsock(sk));
-> > +
-> > +	laddr = list_entry(asoc->base.bind_addr.address_list.next,
-> > +			   struct sctp_sockaddr_entry, list)->a;
-> > +	paddr = asoc->peer.primary_path->ipaddr;
-> > +	dst = asoc->peer.primary_path->dst;
-> > +
-> > +	r->idiag_family = sk->sk_family;
-> > +	r->id.idiag_sport = htons(asoc->base.bind_addr.port);
-> > +	r->id.idiag_dport = htons(asoc->peer.port);
-> > +	r->id.idiag_if = dst ? dst->dev->ifindex : 0;
-> > +	sock_diag_save_cookie(sk, r->id.idiag_cookie);
-> > +
-> > +#if IS_ENABLED(CONFIG_IPV6)
-> > +	if (sk->sk_family = AF_INET6) {
-> > +		*(struct in6_addr *)r->id.idiag_src = laddr.v6.sin6_addr;
-> > +		*(struct in6_addr *)r->id.idiag_dst = paddr.v6.sin6_addr;
-> > +	} else
-> > +#endif
-> > +	{
-> > +		memset(&r->id.idiag_src, 0, sizeof(r->id.idiag_src));
-> > +		memset(&r->id.idiag_dst, 0, sizeof(r->id.idiag_dst));
-> > +
-> > +		r->id.idiag_src[0] = laddr.v4.sin_addr.s_addr;
-> > +		r->id.idiag_dst[0] = paddr.v4.sin_addr.s_addr;
-> > +	}
-> > +
-> > +	r->idiag_state = asoc->state;
-> > +	r->idiag_timer = SCTP_EVENT_TIMEOUT_T3_RTX;
-> > +	r->idiag_retrans = asoc->rtx_data_chunks;
-> > +#define EXPIRES_IN_MS(tmo)  DIV_ROUND_UP((tmo - jiffies) * 1000, HZ)
-> > +	r->idiag_expires > > +		EXPIRES_IN_MS(asoc->timeouts[SCTP_EVENT_TIMEOUT_T3_RTX]);
-> > +#undef EXPIRES_IN_MS
-> > +
+Currently on high rate SCTP streams the heartbeat timer refresh can
+consume quite a lot of resources as timer updates are costly and it
+contains a random factor, which a) is also costly and b) invalidates
+mod_timer() optimization for not editing a timer to the same value.
+It may even cause the timer to be slightly advanced, for no good reason.
 
-vvv
-> > +	if (nla_put_u8(skb, INET_DIAG_SHUTDOWN, sk->sk_shutdown))
-> > +		goto errout;
-> > +
-> > +	/* IPv6 dual-stack sockets use inet->tos for IPv4 connections,
-> > +	 * hence this needs to be included regardless of socket family.
-> > +	 */
-> > +	if (ext & (1 << (INET_DIAG_TOS - 1)))
-> > +		if (nla_put_u8(skb, INET_DIAG_TOS, inet->tos) < 0)
-> > +			goto errout;
-> > +
-> > +#if IS_ENABLED(CONFIG_IPV6)
-> > +	if (r->idiag_family = AF_INET6) {
-> > +		if (ext & (1 << (INET_DIAG_TCLASS - 1)))
-> > +			if (nla_put_u8(skb, INET_DIAG_TCLASS,
-> > +				       inet6_sk(sk)->tclass) < 0)
-> > +				goto errout;
-> > +
-> > +		if (((1 << sk->sk_state) & (TCPF_LISTEN | TCPF_CLOSE)) &&
-> > +		    nla_put_u8(skb, INET_DIAG_SKV6ONLY, ipv6_only_sock(sk)))
-> > +			goto errout;
-> > +	}
-> > +#endif
-> > +
-> > +	r->idiag_uid = from_kuid_munged(user_ns, sock_i_uid(sk));
-> > +	r->idiag_inode = sock_i_ino(sk);
-> > +
-> > +	if (ext & (1 << (INET_DIAG_MEMINFO - 1))) {
-> > +		struct inet_diag_meminfo minfo = {
-> > +			.idiag_rmem = sk_rmem_alloc_get(sk),
-> > +			.idiag_wmem = sk->sk_wmem_queued,
-> > +			.idiag_fmem = sk->sk_forward_alloc,
-> > +			.idiag_tmem = sk_wmem_alloc_get(sk),
-> > +		};
-> > +
-> 
-> All this code looks familiar.
-> 
-> Why inet_sk_diag_fill() is not used instead ?
+As suggested by David Laight this patch now removes this timer update
+from hot path by leaving the timer on and re-evaluating upon its
+expiration if the heartbeat is still needed or not, similarly to what is
+done for TCP. If it's not needed anymore the timer is re-scheduled to
+the new timeout, considering the time already elapsed.
 
-Actually we have an issue here. idiag_tmem is using sk_wmem_alloc_get()   
-directly, but it shouldn't. SCTP supports using sndbuf per socket or      
-per assoc on that socket. We need an if and report the correct value,     
-as it's done in sctp_wspace().                                            
+For this, we now record the last tx timestamp per transport, updated in
+the same spots as hb timer was restarted on tx. Also split up
+sctp_transport_reset_timers into sctp_transport_reset_t3_rtx and
+sctp_transport_reset_hb_timer, so we can re-arm T3 without re-arming the
+heartbeat one.
 
-For inet_ep_diag_fill, it's reporting an endpoint, so this is not needed
-as we don't have this option in there.                                    
+On loopback with MTU of 65535 and data chunks with 1636, so that we
+have a considerable amount of chunks without stressing system calls,
+netperf -t SCTP_STREAM -l 30, perf looked like this before:
 
-> > +		if (nla_put(skb, INET_DIAG_MEMINFO, sizeof(minfo), &minfo) < 0)
-> > +			goto errout;
-> > +	}
-> > +
-> > +	if (ext & (1 << (INET_DIAG_SKMEMINFO - 1)))
-> > +		if (sock_diag_put_meminfo(sk, skb, INET_DIAG_SKMEMINFO))
-> > +			goto errout;
+Samples: 103K of event 'cpu-clock', Event count (approx.): 25833000000
+  Overhead  Command  Shared Object      Symbol
++    6,15%  netperf  [kernel.vmlinux]   [k] copy_user_enhanced_fast_string
+-    5,43%  netperf  [kernel.vmlinux]   [k] _raw_write_unlock_irqrestore
+   - _raw_write_unlock_irqrestore
+      - 96,54% _raw_spin_unlock_irqrestore
+         - 36,14% mod_timer
+            + 97,24% sctp_transport_reset_timers
+            + 2,76% sctp_do_sm
+         + 33,65% __wake_up_sync_key
+         + 28,77% sctp_ulpq_tail_event
+         + 1,40% del_timer
+      - 1,84% mod_timer
+         + 99,03% sctp_transport_reset_timers
+         + 0,97% sctp_do_sm
+      + 1,50% sctp_ulpq_tail_event
 
-Same happens in sock_diag_put_meminfo().
+And after this patch, now with netperf -l 60:
 
-I highlighted the section that would have been common to
-inet_sk_diag_fill() if it wasn't for this wmem_alloc difference using
-vvv and ^^^ marks. There is one or another common lines out of it. I
-suggest we try to factor out this common code but only from within these
-two functions in sctp_diag, leaving inet_diag alone for now, just until
-this soak a bit more.
+Samples: 230K of event 'cpu-clock', Event count (approx.): 57707250000
+  Overhead  Command  Shared Object      Symbol
++    5,65%  netperf  [kernel.vmlinux]   [k] memcpy_erms
++    5,59%  netperf  [kernel.vmlinux]   [k] copy_user_enhanced_fast_string
+-    5,05%  netperf  [kernel.vmlinux]   [k] _raw_spin_unlock_irqrestore
+   - _raw_spin_unlock_irqrestore
+      + 49,89% __wake_up_sync_key
+      + 45,68% sctp_ulpq_tail_event
+      - 2,85% mod_timer
+         + 76,51% sctp_transport_reset_t3_rtx
+         + 23,49% sctp_do_sm
+      + 1,55% del_timer
++    2,50%  netperf  [sctp]             [k] sctp_datamsg_from_user
++    2,26%  netperf  [sctp]             [k] sctp_sendmsg
 
-> > +
-> > +	if ((ext & (1 << (INET_DIAG_INFO - 1))) && handler->idiag_info_size) {
-> > +		attr = nla_reserve(skb, INET_DIAG_INFO,
-> > +				   handler->idiag_info_size);
-> > +		if (!attr)
-> > +			goto errout;
-> > +
-> > +		info = nla_data(attr);
-> > +	}
-^^^
+Throughput-wise, from 6800mbps without the patch to 7050mbps with it,
+~3.7%.
 
-> > +	infox.sctpinfo = (struct sctp_info *)info;
-> > +	infox.asoc = asoc;
-> > +	handler->idiag_get_info(sk, r, &infox);
-> > +
-> > +	if (ext & (1 << (INET_DIAG_CONG - 1)))
-> > +		if (nla_put_string(skb, INET_DIAG_CONG, "reno") < 0)
-> > +			goto errout;
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+v2:
+  patch re-checked, fixed indentation issue.
 
-the above block is not common to inet_sk_diag_fill
+ include/net/sctp/structs.h |  8 +++++++-
+ net/sctp/outqueue.c        | 15 ++++++++++-----
+ net/sctp/sm_make_chunk.c   |  3 +--
+ net/sctp/sm_sideeffect.c   | 36 ++++++++++++++++--------------------
+ net/sctp/transport.c       | 19 +++++++++++++------
+ 5 files changed, 47 insertions(+), 34 deletions(-)
 
-> > +
-> > +	if (inet_sctp_fill_laddrs(skb, &asoc->base.bind_addr.address_list))
-> > +		goto errout;
-> > +
-> > +	if (inet_sctp_fill_paddrs(skb, asoc))
-> > +		goto errout;
-> > +
-> > +	nlmsg_end(skb, nlh);
-> > +	return 0;
-> > +
-> > +errout:
-> > +	nlmsg_cancel(skb, nlh);
-> > +	return -EMSGSIZE;
-> > +}
-> > +
-> > +static int inet_ep_diag_fill(struct sock *sk, struct sctp_endpoint *ep,
-> > +			     struct sk_buff *skb,
-> > +			     const struct inet_diag_req_v2 *req,
-> > +			     struct user_namespace *user_ns,
-> > +			     u32 portid, u32 seq, u16 nlmsg_flags,
-> > +			     const struct nlmsghdr *unlh)
-> > +{
-> > +	const struct inet_sock *inet = inet_sk(sk);
-> > +	const struct inet_diag_handler *handler;
-> > +	int ext = req->idiag_ext;
-> > +	struct inet_diag_msg *r;
-> > +	struct nlmsghdr  *nlh;
-> > +	struct nlattr *attr;
-> > +	void *info = NULL;
-> > +	struct sctp_infox infox;
-> > +
-> > +	handler = inet_diag_get_handler(req->sdiag_protocol);
-> > +	BUG_ON(!handler);
-> > +
-> > +	nlh = nlmsg_put(skb, portid, seq, unlh->nlmsg_type, sizeof(*r),
-> > +			nlmsg_flags);
-> > +	if (!nlh)
-> > +		return -EMSGSIZE;
-> > +
-> > +	r = nlmsg_data(nlh);
-> > +	BUG_ON(!sk_fullsock(sk));
-> > +
-> > +	inet_diag_msg_common_fill(r, sk);
-> > +	r->idiag_state = sk->sk_state;
-> > +	r->idiag_timer = 0;
-> > +	r->idiag_retrans = 0;
-> > +
-> > +	if (nla_put_u8(skb, INET_DIAG_SHUTDOWN, sk->sk_shutdown))
-> > +		goto errout;
-> > +
-> > +	/* IPv6 dual-stack sockets use inet->tos for IPv4 connections,
-> > +	 * hence this needs to be included regardless of socket family.
-> > +	 */
-> > +	if (ext & (1 << (INET_DIAG_TOS - 1)))
-> > +		if (nla_put_u8(skb, INET_DIAG_TOS, inet->tos) < 0)
-> > +			goto errout;
-> > +
-> > +#if IS_ENABLED(CONFIG_IPV6)
-> > +	if (r->idiag_family = AF_INET6) {
-> > +		if (ext & (1 << (INET_DIAG_TCLASS - 1)))
-> > +			if (nla_put_u8(skb, INET_DIAG_TCLASS,
-> > +				       inet6_sk(sk)->tclass) < 0)
-> > +				goto errout;
-> > +
-> > +		if (((1 << sk->sk_state) & (TCPF_LISTEN | TCPF_CLOSE)) &&
-> > +		    nla_put_u8(skb, INET_DIAG_SKV6ONLY, ipv6_only_sock(sk)))
-> > +			goto errout;
-> > +	}
-> > +#endif
-> > +
-> > +	r->idiag_uid = from_kuid_munged(user_ns, sock_i_uid(sk));
-> > +	r->idiag_inode = sock_i_ino(sk);
-> > +
-> > +	if (ext & (1 << (INET_DIAG_MEMINFO - 1))) {
-> > +		struct inet_diag_meminfo minfo = {
-> > +			.idiag_rmem = sk_rmem_alloc_get(sk),
-> > +			.idiag_wmem = sk->sk_wmem_queued,
-> > +			.idiag_fmem = sk->sk_forward_alloc,
-> > +			.idiag_tmem = sk_wmem_alloc_get(sk),
-> > +		};
-> > +
-> 
-> Again, looks a lot of duplication.
-> 
-> Also you missed that INET_DIAG_MEMINFO is kind of obsolete,
-> now we have sock_diag_put_meminfo()
-> 
-> 
-> > +		if (nla_put(skb, INET_DIAG_MEMINFO, sizeof(minfo), &minfo) < 0)
-> > +			goto errout;
-> > +	}
-> > +
-> > +	if (ext & (1 << (INET_DIAG_SKMEMINFO - 1)))
-> > +		if (sock_diag_put_meminfo(sk, skb, INET_DIAG_SKMEMINFO))
-> > +			goto errout;
-> > +
-> > +	if ((ext & (1 << (INET_DIAG_INFO - 1))) && handler->idiag_info_size) {
-> > +		attr = nla_reserve(skb, INET_DIAG_INFO,
-> > +				   handler->idiag_info_size);
-> > +		if (!attr)
-> > +			goto errout;
-> > +
-> > +		info = nla_data(attr);
-> > +	}
-> > +	infox.sctpinfo = (struct sctp_info *)info;
-> > +	infox.asoc = NULL;
-> > +	handler->idiag_get_info(sk, r, &infox);
-> > +
-> > +	if (inet_sctp_fill_laddrs(skb, &ep->base.bind_addr.address_list))
-> > +		goto errout;
-> > +
-> > +	nlmsg_end(skb, nlh);
-> > +	return 0;
-> > +
-> > +errout:
-> > +	nlmsg_cancel(skb, nlh);
-> > +	return -EMSGSIZE;
-> > +}
-> > +
-> > +static size_t inet_assoc_attr_size(struct sctp_association *asoc)
-> > +{
-> > +	int addrlen = sizeof(struct sockaddr_storage);
-> > +	int addrcnt = 0;
-> > +	struct sctp_sockaddr_entry *laddr;
-> > +
-> > +	list_for_each_entry_rcu(laddr, &asoc->base.bind_addr.address_list,
-> > +				list)
-> > +		addrcnt++;
-> > +
-> > +	return	  nla_total_size(sizeof(struct tcp_info))
-> 
-> Are you sure you want to use tcp_info ???
-> 
-> > +		+ nla_total_size(1) /* INET_DIAG_SHUTDOWN */
-> > +		+ nla_total_size(1) /* INET_DIAG_TOS */
-> > +		+ nla_total_size(1) /* INET_DIAG_TCLASS */
-> > +		+ nla_total_size(addrlen * asoc->peer.transport_count)
-> > +		+ nla_total_size(addrlen * addrcnt)
-> > +		+ nla_total_size(sizeof(struct inet_diag_meminfo))
-> > +		+ nla_total_size(sizeof(struct inet_diag_msg))
-> > +		+ nla_total_size(sizeof(struct sctp_info))
-> > +		+ 64;
-> > +}
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 6df1ce7a411c548bda4163840a90578b6e1b4cfe..5a404c354f4c787e57a6ab6ca68b3ffc537eb1cc 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -847,6 +847,11 @@ struct sctp_transport {
+ 	 */
+ 	ktime_t last_time_heard;
+ 
++	/* When was the last time that we sent a chunk using this
++	 * transport? We use this to check for idle transports
++	 */
++	unsigned long last_time_sent;
++
+ 	/* Last time(in jiffies) when cwnd is reduced due to the congestion
+ 	 * indication based on ECNE chunk.
+ 	 */
+@@ -952,7 +957,8 @@ void sctp_transport_route(struct sctp_transport *, union sctp_addr *,
+ 			  struct sctp_sock *);
+ void sctp_transport_pmtu(struct sctp_transport *, struct sock *sk);
+ void sctp_transport_free(struct sctp_transport *);
+-void sctp_transport_reset_timers(struct sctp_transport *);
++void sctp_transport_reset_t3_rtx(struct sctp_transport *);
++void sctp_transport_reset_hb_timer(struct sctp_transport *);
+ int sctp_transport_hold(struct sctp_transport *);
+ void sctp_transport_put(struct sctp_transport *);
+ void sctp_transport_update_rto(struct sctp_transport *, __u32);
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 8d3d3625130ee0fd294998554a9290d57eae56e7..084718f9b3dad09e21e41e34b989e25627058c98 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -866,8 +866,10 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
+ 				 * sender MUST assure that at least one T3-rtx
+ 				 * timer is running.
+ 				 */
+-				if (chunk->chunk_hdr->type = SCTP_CID_FWD_TSN)
+-					sctp_transport_reset_timers(transport);
++				if (chunk->chunk_hdr->type = SCTP_CID_FWD_TSN) {
++					sctp_transport_reset_t3_rtx(transport);
++					transport->last_time_sent = jiffies;
++				}
+ 			}
+ 			break;
+ 
+@@ -924,8 +926,10 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
+ 			error = sctp_outq_flush_rtx(q, packet,
+ 						    rtx_timeout, &start_timer);
+ 
+-			if (start_timer)
+-				sctp_transport_reset_timers(transport);
++			if (start_timer) {
++				sctp_transport_reset_t3_rtx(transport);
++				transport->last_time_sent = jiffies;
++			}
+ 
+ 			/* This can happen on COOKIE-ECHO resend.  Only
+ 			 * one chunk can get bundled with a COOKIE-ECHO.
+@@ -1062,7 +1066,8 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
+ 			list_add_tail(&chunk->transmitted_list,
+ 				      &transport->transmitted);
+ 
+-			sctp_transport_reset_timers(transport);
++			sctp_transport_reset_t3_rtx(transport);
++			transport->last_time_sent = jiffies;
+ 
+ 			/* Only let one DATA chunk get bundled with a
+ 			 * COOKIE-ECHO chunk.
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 7f0bf798205ba3c5311bf57ace66aaaa57cb0367..56f364d8f93270f31867333585fb28317f9d87ad 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -3080,8 +3080,7 @@ static __be16 sctp_process_asconf_param(struct sctp_association *asoc,
+ 			return SCTP_ERROR_RSRC_LOW;
+ 
+ 		/* Start the heartbeat timer. */
+-		if (!mod_timer(&peer->hb_timer, sctp_transport_timeout(peer)))
+-			sctp_transport_hold(peer);
++		sctp_transport_reset_hb_timer(peer);
+ 		asoc->new_transport = peer;
+ 		break;
+ 	case SCTP_PARAM_DEL_IP:
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 7fe56d0acabf66cfd8fe29dfdb45f7620b470ac7..41b081a64752da3e4de5dafe6d3afac84bf4923d 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -69,8 +69,6 @@ static int sctp_side_effects(sctp_event_t event_type, sctp_subtype_t subtype,
+ 			     sctp_cmd_seq_t *commands,
+ 			     gfp_t gfp);
+ 
+-static void sctp_cmd_hb_timer_update(sctp_cmd_seq_t *cmds,
+-				     struct sctp_transport *t);
+ /********************************************************************
+  * Helper functions
+  ********************************************************************/
+@@ -367,6 +365,7 @@ void sctp_generate_heartbeat_event(unsigned long data)
+ 	struct sctp_association *asoc = transport->asoc;
+ 	struct sock *sk = asoc->base.sk;
+ 	struct net *net = sock_net(sk);
++	u32 elapsed, timeout;
+ 
+ 	bh_lock_sock(sk);
+ 	if (sock_owned_by_user(sk)) {
+@@ -378,6 +377,16 @@ void sctp_generate_heartbeat_event(unsigned long data)
+ 		goto out_unlock;
+ 	}
+ 
++	/* Check if we should still send the heartbeat or reschedule */
++	elapsed = jiffies - transport->last_time_sent;
++	timeout = sctp_transport_timeout(transport);
++	if (elapsed < timeout) {
++		elapsed = timeout - elapsed;
++		if (!mod_timer(&transport->hb_timer, jiffies + elapsed))
++			sctp_transport_hold(transport);
++		goto out_unlock;
++	}
++
+ 	error = sctp_do_sm(net, SCTP_EVENT_T_TIMEOUT,
+ 			   SCTP_ST_TIMEOUT(SCTP_EVENT_TIMEOUT_HEARTBEAT),
+ 			   asoc->state, asoc->ep, asoc,
+@@ -507,7 +516,7 @@ static void sctp_do_8_2_transport_strike(sctp_cmd_seq_t *commands,
+ 					     0);
+ 
+ 		/* Update the hb timer to resend a heartbeat every rto */
+-		sctp_cmd_hb_timer_update(commands, transport);
++		sctp_transport_reset_hb_timer(transport);
+ 	}
+ 
+ 	if (transport->state != SCTP_INACTIVE &&
+@@ -634,11 +643,8 @@ static void sctp_cmd_hb_timers_start(sctp_cmd_seq_t *cmds,
+ 	 * hold a reference on the transport to make sure none of
+ 	 * the needed data structures go away.
+ 	 */
+-	list_for_each_entry(t, &asoc->peer.transport_addr_list, transports) {
+-
+-		if (!mod_timer(&t->hb_timer, sctp_transport_timeout(t)))
+-			sctp_transport_hold(t);
+-	}
++	list_for_each_entry(t, &asoc->peer.transport_addr_list, transports)
++		sctp_transport_reset_hb_timer(t);
+ }
+ 
+ static void sctp_cmd_hb_timers_stop(sctp_cmd_seq_t *cmds,
+@@ -669,15 +675,6 @@ static void sctp_cmd_t3_rtx_timers_stop(sctp_cmd_seq_t *cmds,
+ }
+ 
+ 
+-/* Helper function to update the heartbeat timer. */
+-static void sctp_cmd_hb_timer_update(sctp_cmd_seq_t *cmds,
+-				     struct sctp_transport *t)
+-{
+-	/* Update the heartbeat timer.  */
+-	if (!mod_timer(&t->hb_timer, sctp_transport_timeout(t)))
+-		sctp_transport_hold(t);
+-}
+-
+ /* Helper function to handle the reception of an HEARTBEAT ACK.  */
+ static void sctp_cmd_transport_on(sctp_cmd_seq_t *cmds,
+ 				  struct sctp_association *asoc,
+@@ -742,8 +739,7 @@ static void sctp_cmd_transport_on(sctp_cmd_seq_t *cmds,
+ 	sctp_transport_update_rto(t, (jiffies - hbinfo->sent_at));
+ 
+ 	/* Update the heartbeat timer.  */
+-	if (!mod_timer(&t->hb_timer, sctp_transport_timeout(t)))
+-		sctp_transport_hold(t);
++	sctp_transport_reset_hb_timer(t);
+ 
+ 	if (was_unconfirmed && asoc->peer.transport_count = 1)
+ 		sctp_transport_immediate_rtx(t);
+@@ -1614,7 +1610,7 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
+ 
+ 		case SCTP_CMD_HB_TIMER_UPDATE:
+ 			t = cmd->obj.transport;
+-			sctp_cmd_hb_timer_update(commands, t);
++			sctp_transport_reset_hb_timer(t);
+ 			break;
+ 
+ 		case SCTP_CMD_HB_TIMERS_STOP:
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index 9b6b48c7524e4b441a151b80f0babec81f539d49..81b86678be4d6fccc527d3c3e509c12576b2194c 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -183,7 +183,7 @@ static void sctp_transport_destroy(struct sctp_transport *transport)
+ /* Start T3_rtx timer if it is not already running and update the heartbeat
+  * timer.  This routine is called every time a DATA chunk is sent.
+  */
+-void sctp_transport_reset_timers(struct sctp_transport *transport)
++void sctp_transport_reset_t3_rtx(struct sctp_transport *transport)
+ {
+ 	/* RFC 2960 6.3.2 Retransmission Timer Rules
+ 	 *
+@@ -197,11 +197,18 @@ void sctp_transport_reset_timers(struct sctp_transport *transport)
+ 		if (!mod_timer(&transport->T3_rtx_timer,
+ 			       jiffies + transport->rto))
+ 			sctp_transport_hold(transport);
++}
++
++void sctp_transport_reset_hb_timer(struct sctp_transport *transport)
++{
++	unsigned long expires;
+ 
+ 	/* When a data chunk is sent, reset the heartbeat interval.  */
+-	if (!mod_timer(&transport->hb_timer,
+-		       sctp_transport_timeout(transport)))
+-	    sctp_transport_hold(transport);
++	expires = jiffies + sctp_transport_timeout(transport);
++	if (time_before(transport->hb_timer.expires, expires) &&
++	    !mod_timer(&transport->hb_timer,
++		       expires + prandom_u32_max(transport->rto)))
++		sctp_transport_hold(transport);
+ }
+ 
+ /* This transport has been assigned to an association.
+@@ -595,13 +602,13 @@ void sctp_transport_burst_reset(struct sctp_transport *t)
+ unsigned long sctp_transport_timeout(struct sctp_transport *trans)
+ {
+ 	/* RTO + timer slack +/- 50% of RTO */
+-	unsigned long timeout = (trans->rto >> 1) + prandom_u32_max(trans->rto);
++	unsigned long timeout = trans->rto >> 1;
+ 
+ 	if (trans->state != SCTP_UNCONFIRMED &&
+ 	    trans->state != SCTP_PF)
+ 		timeout += trans->hbinterval;
+ 
+-	return timeout + jiffies;
++	return timeout;
+ }
+ 
+ /* Reset transport variables to their initial values */
+-- 
+2.5.0
+
