@@ -1,68 +1,24 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 05 Apr 2016 04:06:25 +0000
-Subject: [PATCH net-next 0/7] sctp: support sctp_diag in kernel
-Message-Id: <cover.1459829123.git.lucien.xin@gmail.com>
+From: David Miller <davem@davemloft.net>
+Date: Wed, 06 Apr 2016 20:13:12 +0000
+Subject: Re: [PATCH net-next 0/7] sctp: support sctp_diag in kernel
+Message-Id: <20160406.161312.1132930117025273561.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1459829123.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1459829123.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net
 
-This patchset will add sctp_diag module to implement diag interface on
-sctp in kernel.
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue,  5 Apr 2016 12:06:25 +0800
 
-For a listening sctp endpoint, we will just dump it's ep info.
-For a sctp connection, we will the assoc info and it's ep info.
+> This patchset will add sctp_diag module to implement diag interface on
+> sctp in kernel.
+ ...
 
-The ss dump will looks like:
+This series looks generally fine to me, but I'd like to see some review from
+SCTP experts before I apply this series.
 
-[iproute2]# ./misc/ss --sctp  -n -l
-State      Recv-Q Send-Q   Local Address:Port       Peer Address:Port
-LISTEN     0      128      172.16.254.254:8888      *:*
-LISTEN     0      5        127.0.0.1:1234           *:*
-LISTEN     0      5        127.0.0.1:1234           *:*
-  - ESTAB  0      0        127.0.0.1%lo:1234        127.0.0.1:4321
-LISTEN     0      128      172.16.254.254:8888      *:*
-  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.253.253:8888
-  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.1.1:8888
-  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.1.2:8888
-  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.2.1:8888
-  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.2.2:8888
-  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.3.1:8888
-  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.3.2:8888
-LISTEN     0      0        127.0.0.1:4321           *:*
-  - ESTAB  0      0        127.0.0.1%lo:4321        127.0.0.1:1234
-
-The entries with '- ESTAB' are the assocs, some of them may belong to
-the same endpoint. So we will dump the parent endpoint first, like the
-entry with 'LISTEN'. then dump the assocs. ep and assocs entries will
-be dumped in right order so that ss can show them in tree format easily.
-
-Besides, this patchset also simplifies sctp proc codes, cause it has
-some similar codes with sctp diag in sctp transport traversal.
-
-Xin Long (7):
-  sctp: add sctp_info dump api for sctp_diag
-  sctp: export some apis or variables for sctp_diag
-  sctp: export some functions for sctp_diag in inet_diag
-  sctp: add the sctp_diag.c file
-  sctp: reuse the some transport traversal functions in proc
-  sctp: merge the seq_start/next/exits in remaddrs and assocs
-  sctp: fix some rhashtable functions using in sctp proc/diag
-
- include/linux/sctp.h           |  65 +++++
- include/net/sctp/sctp.h        |  16 ++
- include/uapi/linux/inet_diag.h |   2 +
- net/ipv4/inet_diag.c           |   9 +-
- net/sctp/Kconfig               |   4 +
- net/sctp/Makefile              |   1 +
- net/sctp/proc.c                | 104 ++------
- net/sctp/sctp_diag.c           | 581 +++++++++++++++++++++++++++++++++++++++++
- net/sctp/socket.c              | 215 +++++++++++++++
- 9 files changed, 911 insertions(+), 86 deletions(-)
- create mode 100644 net/sctp/sctp_diag.c
-
--- 
-2.1.0
-
+Thanks.
