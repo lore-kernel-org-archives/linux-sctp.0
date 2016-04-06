@@ -1,60 +1,100 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 06 Apr 2016 19:57:35 +0000
+From: marcelo.leitner@gmail.com
+Date: Wed, 06 Apr 2016 21:21:48 +0000
 Subject: Re: [PATCH v2 1/2] sctp: compress bit-wide flags to a bitfield on sctp_sock
-Message-Id: <20160406.155735.1431363453832315669.davem@davemloft.net>
+Message-Id: <20160406212148.GB15005@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1459952558.git.marcelo.leitner@gmail.com>
-	<69a5ce012d9978ce73aade0004c5937964c54d61.1459952558.git.marcelo.leitner@gmail.com>
-	<1459972404.6715.65.camel@perches.com>
-In-Reply-To: <1459972404.6715.65.camel@perches.com>
+ <69a5ce012d9978ce73aade0004c5937964c54d61.1459952558.git.marcelo.leitner@gmail.com>
+ <1459972404.6715.65.camel@perches.com>
+ <20160406.155735.1431363453832315669.davem@davemloft.net>
+In-Reply-To: <20160406.155735.1431363453832315669.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
-To: joe@perches.com
-Cc: marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, vyasevich@gmail.com, linux-sctp@vger.kernel.org
+To: David Miller <davem@davemloft.net>
+Cc: joe@perches.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, vyasevich@gmail.com, linux-sctp@vger.kernel.org
 
-From: Joe Perches <joe@perches.com>
-Date: Wed, 06 Apr 2016 12:53:24 -0700
-
-> On Wed, 2016-04-06 at 14:53 -0300, Marcelo Ricardo Leitner wrote:
->> It wastes space and gets worse as we add new flags, so convert bit-wide
->> flags to a bitfield.
->>=20
->> Currently it already saves 4 bytes in sctp_sock, which are left as holes
->> in it for now. The whole struct needs packing, which should be done in
->> another patch.
->>=20
->> Note that do_auto_asconf cannot be merged, as explained in the comment
->> before it.
->>=20
->> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
->> ---
-> []
->> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-> []
->> @@ -210,14 +210,14 @@ struct sctp_sock {
->> =A0	int user_frag;
->> =A0
->> =A0	__u32 autoclose;
->> -	__u8 nodelay;
->> -	__u8 disable_fragments;
->> -	__u8 v4mapped;
->> -	__u8 frag_interleave;
->> =A0	__u32 adaptation_ind;
->> =A0	__u32 pd_point;
->> -	__u8 recvrcvinfo;
->> -	__u8 recvnxtinfo;
->> +	__u16	nodelay:1,
->> +		disable_fragments:1,
->> +		v4mapped:1,
->> +		frag_interleave:1,
->> +		recvrcvinfo:1,
->> +		recvnxtinfo:1;
+On Wed, Apr 06, 2016 at 03:57:35PM -0400, David Miller wrote:
+> From: Joe Perches <joe@perches.com>
+> Date: Wed, 06 Apr 2016 12:53:24 -0700
 >=20
-> Might as well make this __u32 as the next field would be
-> aligned on an atomic_t
->=20
-> It might be better if these fields didn't use the __ prefix.
+> > On Wed, 2016-04-06 at 14:53 -0300, Marcelo Ricardo Leitner wrote:
+> >> It wastes space and gets worse as we add new flags, so convert bit-wide
+> >> flags to a bitfield.
+> >>=20
+> >> Currently it already saves 4 bytes in sctp_sock, which are left as hol=
+es
+> >> in it for now. The whole struct needs packing, which should be done in
+> >> another patch.
+> >>=20
+> >> Note that do_auto_asconf cannot be merged, as explained in the comment
+> >> before it.
+> >>=20
+> >> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+> >> ---
+> > []
+> >> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+> > []
+> >> @@ -210,14 +210,14 @@ struct sctp_sock {
+> >> =A0	int user_frag;
+> >> =A0
+> >> =A0	__u32 autoclose;
+> >> -	__u8 nodelay;
+> >> -	__u8 disable_fragments;
+> >> -	__u8 v4mapped;
+> >> -	__u8 frag_interleave;
+> >> =A0	__u32 adaptation_ind;
+> >> =A0	__u32 pd_point;
+> >> -	__u8 recvrcvinfo;
+> >> -	__u8 recvnxtinfo;
+> >> +	__u16	nodelay:1,
+> >> +		disable_fragments:1,
+> >> +		v4mapped:1,
+> >> +		frag_interleave:1,
+> >> +		recvrcvinfo:1,
+> >> +		recvnxtinfo:1;
+> >=20
+> > Might as well make this __u32 as the next field would be
+> > aligned on an atomic_t
 
-Indeed, this isn't in a UAPI file so __ prefixed types really aren't
-appropriate.
+On changelog I meant that this (re-)ordering will happen in another
+patch. The hole is already there today and there are others to be
+considered/fixed too. Please consider this patch as a preparation for
+the other one.
+
+After this patch, pahole gives for this struct:
+
+        /* size: 1272, cachelines: 20, members: 40 */
+        /* sum members: 1250, holes: 7, sum holes: 18 */
+        /* bit holes: 1, sum bit holes: 9 bits */
+        /* padding: 4 */
+        /* paddings: 1, sum paddings: 2 */
+        /* last cacheline: 56 bytes */
+
+Quite some work todo :-)
+
+> > It might be better if these fields didn't use the __ prefix.
+>=20
+> Indeed, this isn't in a UAPI file so __ prefixed types really aren't
+> appropriate.
+
+The whole file is using __ prefixed types. I can remove them in another
+patch instead if that's okay with you.
+It's also present in other files not under UAPI:
+$ git grep -wl '\(__u32\|__u16\)' include/net/sctp/
+include/net/sctp/auth.h
+include/net/sctp/checksum.h
+include/net/sctp/command.h
+include/net/sctp/constants.h
+include/net/sctp/sctp.h
+include/net/sctp/sm.h
+include/net/sctp/structs.h
+include/net/sctp/tsnmap.h
+include/net/sctp/ulpevent.h
+include/net/sctp/ulpqueue.h
+
+We can start changing it progressively but I think it would be better if
+we replace them all at once.
+
+  Marcelo
+
