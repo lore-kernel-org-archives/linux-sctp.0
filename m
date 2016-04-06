@@ -1,187 +1,29 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 05 Apr 2016 04:06:27 +0000
-Subject: [PATCH net-next 2/7] sctp: export some apis or variables for sctp_diag
-Message-Id: <c99aafbc687328f783c0777e10df3e207004db10.1459829123.git.lucien.xin@gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 06 Apr 2016 17:53:11 +0000
+Subject: [PATCH v2 0/2] sctp: delay calls to sk_data_ready() as much as possible
+Message-Id: <cover.1459952558.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1459829123.git.lucien.xin@gmail.com>
- <c507274a984bd1b0a7e7a59d1e825352536efd25.1459829123.git.lucien.xin@gmail.com>
-In-Reply-To: <c507274a984bd1b0a7e7a59d1e825352536efd25.1459829123.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net
+To: netdev@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
 
-For some main variables in sctp.ko, we couldn't export it to other modules,
-so we have to define some api to access them.
+1st patch is a preparation for the 2nd. The idea is to not call
+->sk_data_ready() for every data chunk processed while processing
+packets but only once before releasing the socket.
 
-It will include sctp transport and endpoint's traversal.
+v2: patchset re-checked, small changelog fixes
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- include/net/sctp/sctp.h |  13 +++++
- net/sctp/socket.c       | 124 ++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 137 insertions(+)
+Marcelo Ricardo Leitner (2):
+  sctp: compress bit-wide flags to a bitfield on sctp_sock
+  sctp: delay calls to sk_data_ready() as much as possible
 
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index 36e1eae..c0c4deb 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -116,6 +116,19 @@ extern struct percpu_counter sctp_sockets_allocated;
- int sctp_asconf_mgmt(struct sctp_sock *, struct sctp_sockaddr_entry *);
- struct sk_buff *sctp_skb_recv_datagram(struct sock *, int, int, int *);
- 
-+int sctp_transport_walk_start(struct rhashtable_iter *iter);
-+void sctp_transport_walk_stop(struct rhashtable_iter *iter);
-+struct sctp_transport *sctp_transport_get_next(struct net *net,
-+			struct rhashtable_iter *iter);
-+struct sctp_transport *sctp_transport_get_idx(struct net *net,
-+			struct rhashtable_iter *iter, int pos);
-+int sctp_transport_lookup_process(int (*cb)(struct sctp_transport *, void *),
-+				  struct net *net,
-+				  const union sctp_addr *laddr,
-+				  const union sctp_addr *paddr, void *p);
-+int sctp_for_each_transport(int (*cb)(struct sctp_transport *, void *),
-+			    struct net *net, int pos, void *p);
-+int sctp_for_each_endpoint(int (*cb)(struct sctp_endpoint *, void *), void *p);
- int sctp_get_sctp_info(struct sock *sk, struct sctp_association *asoc,
- 		       struct sctp_info *info);
- 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 8f79f23..b0bf6c7 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -4288,6 +4288,130 @@ int sctp_get_sctp_info(struct sock *sk, struct sctp_association *asoc,
- }
- EXPORT_SYMBOL_GPL(sctp_get_sctp_info);
- 
-+/* use callback to avoid exporting the core structure */
-+int sctp_transport_walk_start(struct rhashtable_iter *iter)
-+{
-+	int err;
-+
-+	err = rhashtable_walk_init(&sctp_transport_hashtable, iter);
-+	if (err)
-+		return err;
-+
-+	err = rhashtable_walk_start(iter);
-+
-+	return err = -EAGAIN ? 0 : err;
-+}
-+
-+void sctp_transport_walk_stop(struct rhashtable_iter *iter)
-+{
-+	rhashtable_walk_stop(iter);
-+	rhashtable_walk_exit(iter);
-+}
-+
-+struct sctp_transport *sctp_transport_get_next(struct net *net,
-+					       struct rhashtable_iter *iter)
-+{
-+	struct sctp_transport *t;
-+
-+	t = rhashtable_walk_next(iter);
-+	for (; t; t = rhashtable_walk_next(iter)) {
-+		if (IS_ERR(t)) {
-+			if (PTR_ERR(t) = -EAGAIN)
-+				continue;
-+			break;
-+		}
-+
-+		if (net_eq(sock_net(t->asoc->base.sk), net) &&
-+		    t->asoc->peer.primary_path = t)
-+			break;
-+	}
-+
-+	return t;
-+}
-+
-+struct sctp_transport *sctp_transport_get_idx(struct net *net,
-+					      struct rhashtable_iter *iter,
-+					      int pos)
-+{
-+	void *obj = SEQ_START_TOKEN;
-+
-+	while (pos && (obj = sctp_transport_get_next(net, iter)) &&
-+	       !IS_ERR(obj))
-+		pos--;
-+
-+	return obj;
-+}
-+
-+int sctp_for_each_endpoint(int (*cb)(struct sctp_endpoint *, void *),
-+			   void *p) {
-+	int err = 0;
-+	int hash = 0;
-+	struct sctp_ep_common *epb;
-+	struct sctp_hashbucket *head;
-+
-+	for (head = sctp_ep_hashtable; hash < sctp_ep_hashsize;
-+	     hash++, head++) {
-+		read_lock(&head->lock);
-+		sctp_for_each_hentry(epb, &head->chain) {
-+			err = cb(sctp_ep(epb), p);
-+			if (err)
-+				break;
-+		}
-+		read_unlock(&head->lock);
-+	}
-+
-+	return err;
-+}
-+EXPORT_SYMBOL_GPL(sctp_for_each_endpoint);
-+
-+int sctp_transport_lookup_process(int (*cb)(struct sctp_transport *, void *),
-+				  struct net *net,
-+				  const union sctp_addr *laddr,
-+				  const union sctp_addr *paddr, void *p)
-+{
-+	struct sctp_transport *transport;
-+	int err = 0;
-+
-+	rcu_read_lock();
-+	transport = sctp_addrs_lookup_transport(net, laddr, paddr);
-+	if (!transport || !sctp_transport_hold(transport))
-+		goto out;
-+	err = cb(transport, p);
-+	sctp_transport_put(transport);
-+
-+out:
-+	rcu_read_unlock();
-+	return err;
-+}
-+EXPORT_SYMBOL_GPL(sctp_transport_lookup_process);
-+
-+int sctp_for_each_transport(int (*cb)(struct sctp_transport *, void *),
-+			    struct net *net, int pos, void *p) {
-+	struct rhashtable_iter hti;
-+	int err = 0;
-+	void *obj;
-+
-+	if (sctp_transport_walk_start(&hti))
-+		goto out;
-+
-+	sctp_transport_get_idx(net, &hti, pos);
-+	obj = sctp_transport_get_next(net, &hti);
-+	for (; obj && !IS_ERR(obj); obj = sctp_transport_get_next(net, &hti)) {
-+		struct sctp_transport *transport = obj;
-+
-+		if (!sctp_transport_hold(transport))
-+			continue;
-+		err = cb(transport, p);
-+		sctp_transport_put(transport);
-+		if (err)
-+			break;
-+	}
-+out:
-+	sctp_transport_walk_stop(&hti);
-+	return err;
-+}
-+EXPORT_SYMBOL_GPL(sctp_for_each_transport);
-+
- /* 7.2.1 Association Status (SCTP_STATUS)
- 
-  * Applications can retrieve current status information about an
+ include/net/sctp/structs.h | 13 +++++++------
+ net/sctp/sm_sideeffect.c   |  5 +++++
+ net/sctp/ulpqueue.c        |  4 ++--
+ 3 files changed, 14 insertions(+), 8 deletions(-)
+
 -- 
-2.1.0
+2.5.0
 
