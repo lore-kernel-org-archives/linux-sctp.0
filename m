@@ -1,84 +1,56 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 06 Apr 2016 17:53:13 +0000
-Subject: [PATCH v2 2/2] sctp: delay calls to sk_data_ready() as much as possible
-Message-Id: <703257ed516669b180fcce57e6745b1853da9a95.1459952558.git.marcelo.leitner@gmail.com>
+From: Jakub Sitnicki <jkbs@redhat.com>
+Date: Thu, 07 Apr 2016 08:05:32 +0000
+Subject: Re: [PATCH v2 2/2] sctp: delay calls to sk_data_ready() as much as possible
+Message-Id: <87egah3ktv.fsf@beetle.home>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1459952558.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1459952558.git.marcelo.leitner@gmail.com>
+References: <cover.1459952558.git.marcelo.leitner@gmail.com> <703257ed516669b180fcce57e6745b1853da9a95.1459952558.git.marcelo.leitner@gmail.com>
+In-Reply-To: <703257ed516669b180fcce57e6745b1853da9a95.1459952558.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
 
-Currently, the processing of multiple chunks in a single SCTP packet
-leads to multiple calls to sk_data_ready, causing multiple wake up
-signals which are costly and doesn't make it wake up any faster.
+On Wed, Apr 06, 2016 at 07:53 PM CEST, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com> wrote:
+> Currently, the processing of multiple chunks in a single SCTP packet
+> leads to multiple calls to sk_data_ready, causing multiple wake up
+> signals which are costly and doesn't make it wake up any faster.
+>
+> With this patch it will notice that the wake up is pending and will do it
+> before leaving the state machine interpreter, latest place possible to
+> do it realiably and cleanly.
+>
+> Note that sk_data_ready events are not dependent on asocs, unlike waking
+> up writers.
+>
+> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+> ---
 
-With this patch it will notice that the wake up is pending and will do it
-before leaving the state machine interpreter, latest place possible to
-do it realiably and cleanly.
+[...]
 
-Note that sk_data_ready events are not dependent on asocs, unlike waking
-up writers.
+> diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+> index 7fe56d0acabf66cfd8fe29dfdb45f7620b470ac7..e7042f9ce63b0cfca50cae252f51b60b68cb5731 100644
+> --- a/net/sctp/sm_sideeffect.c
+> +++ b/net/sctp/sm_sideeffect.c
+> @@ -1742,6 +1742,11 @@ out:
+>  			error = sctp_outq_uncork(&asoc->outqueue, gfp);
+>  	} else if (local_cork)
+>  		error = sctp_outq_uncork(&asoc->outqueue, gfp);
+> +
+> +	if (sctp_sk(ep->base.sk)->pending_data_ready) {
+> +		ep->base.sk->sk_data_ready(ep->base.sk);
+> +		sctp_sk(ep->base.sk)->pending_data_ready = 0;
+> +	}
+>  	return error;
+>  nomem:
+>  	error = -ENOMEM;
 
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
----
- include/net/sctp/structs.h | 3 ++-
- net/sctp/sm_sideeffect.c   | 5 +++++
- net/sctp/ulpqueue.c        | 4 ++--
- 3 files changed, 9 insertions(+), 3 deletions(-)
+Would it make sense to introduce a local variable for ep->base.sk (and
+make this function 535+1 lines long ;-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 1a6a626904bba4223b7921bbb4be41c2550271a7..21cb11107e378b4da1e7efde22fab4349496e35a 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -217,7 +217,8 @@ struct sctp_sock {
- 		v4mapped:1,
- 		frag_interleave:1,
- 		recvrcvinfo:1,
--		recvnxtinfo:1;
-+		recvnxtinfo:1,
-+		pending_data_ready:1;
- 
- 	atomic_t pd_mode;
- 	/* Receive to here while partial delivery is in effect. */
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index 7fe56d0acabf66cfd8fe29dfdb45f7620b470ac7..e7042f9ce63b0cfca50cae252f51b60b68cb5731 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -1742,6 +1742,11 @@ out:
- 			error = sctp_outq_uncork(&asoc->outqueue, gfp);
- 	} else if (local_cork)
- 		error = sctp_outq_uncork(&asoc->outqueue, gfp);
-+
-+	if (sctp_sk(ep->base.sk)->pending_data_ready) {
-+		ep->base.sk->sk_data_ready(ep->base.sk);
-+		sctp_sk(ep->base.sk)->pending_data_ready = 0;
-+	}
- 	return error;
- nomem:
- 	error = -ENOMEM;
-diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
-index ce469d648ffbe166f9ae1c5650f481256f31a7f8..72e5b3e41cddf9d79371de8ab01484e4601b97b6 100644
---- a/net/sctp/ulpqueue.c
-+++ b/net/sctp/ulpqueue.c
-@@ -264,7 +264,7 @@ int sctp_ulpq_tail_event(struct sctp_ulpq *ulpq, struct sctp_ulpevent *event)
- 		sctp_ulpq_clear_pd(ulpq);
- 
- 	if (queue = &sk->sk_receive_queue)
--		sk->sk_data_ready(sk);
-+		sctp_sk(sk)->pending_data_ready = 1;
- 	return 1;
- 
- out_free:
-@@ -1140,5 +1140,5 @@ void sctp_ulpq_abort_pd(struct sctp_ulpq *ulpq, gfp_t gfp)
- 
- 	/* If there is data waiting, send it up the socket now. */
- 	if (sctp_ulpq_clear_pd(ulpq) || ev)
--		sk->sk_data_ready(sk);
-+		sctp_sk(sk)->pending_data_ready = 1;
- }
--- 
-2.5.0
+      struct sock *sk = ep->base.sk;
 
+... like sctp_ulpq_tail_event() does?
+
+Thanks,
+Jakub
