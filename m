@@ -1,157 +1,61 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 05 Apr 2016 04:06:30 +0000
-Subject: [PATCH net-next 5/7] sctp: reuse the some transport traversal functions in proc
-Message-Id: <cdc77cc7b894aab62dad372f0018c571e33cf16e.1459829123.git.lucien.xin@gmail.com>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Thu, 07 Apr 2016 13:09:30 +0000
+Subject: Re: [PATCH net-next 5/7] sctp: reuse the some transport traversal functions in proc
+Message-Id: <20160407130930.GA4573@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1459829123.git.lucien.xin@gmail.com>
- <c507274a984bd1b0a7e7a59d1e825352536efd25.1459829123.git.lucien.xin@gmail.com>
- <c99aafbc687328f783c0777e10df3e207004db10.1459829123.git.lucien.xin@gmail.com>
- <d16e3f12f689f28d8c3b62c7c2a15916177bd7c0.1459829123.git.lucien.xin@gmail.com>
- <123695bf6a49412e15b79049d088903a36538c53.1459829123.git.lucien.xin@gmail.com>
-In-Reply-To: <123695bf6a49412e15b79049d088903a36538c53.1459829123.git.lucien.xin@gmail.com>
+ <cdc77cc7b894aab62dad372f0018c571e33cf16e.1459829123.git.lucien.xin@gmail.com>
+In-Reply-To: <cdc77cc7b894aab62dad372f0018c571e33cf16e.1459829123.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net
+To: Xin Long <lucien.xin@gmail.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net
 
-There are some transport traversal functions for sctp_diag, we can also
-use it for sctp_proc. cause they have the similar situation to traversal
-transport.
+On Tue, Apr 05, 2016 at 12:06:30PM +0800, Xin Long wrote:
+> There are some transport traversal functions for sctp_diag, we can also
+> use it for sctp_proc. cause they have the similar situation to traversal
+> transport.
+> 
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+> ---
+>  net/sctp/proc.c | 80 +++++++++++++--------------------------------------------
+>  1 file changed, 18 insertions(+), 62 deletions(-)
+> 
+> diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+> index 5cfac8d..dd8492f 100644
+> --- a/net/sctp/proc.c
+> +++ b/net/sctp/proc.c
+> @@ -282,80 +282,31 @@ struct sctp_ht_iter {
+>  	struct rhashtable_iter hti;
+>  };
+>  
+> -static struct sctp_transport *sctp_transport_get_next(struct seq_file *seq)
+> -{
+> -	struct sctp_ht_iter *iter = seq->private;
+> -	struct sctp_transport *t;
+> -
+> -	t = rhashtable_walk_next(&iter->hti);
+> -	for (; t; t = rhashtable_walk_next(&iter->hti)) {
+> -		if (IS_ERR(t)) {
+> -			if (PTR_ERR(t) = -EAGAIN)
+> -				continue;
+> -			break;
+> -		}
+> -
+> -		if (net_eq(sock_net(t->asoc->base.sk), seq_file_net(seq)) &&
+> -		    t->asoc->peer.primary_path = t)
+> -			break;
+> -	}
+> -
+> -	return t;
+> -}
+> -
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- net/sctp/proc.c | 80 +++++++++++++--------------------------------------------
- 1 file changed, 18 insertions(+), 62 deletions(-)
+this may just be a nit, but you defined the new sctp_transport_get_next in patch
+2 of this series, and didn't remove this private version until here.  Is that
+going to cause some behavioral issue, if someone builds a kernel between patch 2
+and 7?  Seems like perhaps those two patches should be merged.
 
-diff --git a/net/sctp/proc.c b/net/sctp/proc.c
-index 5cfac8d..dd8492f 100644
---- a/net/sctp/proc.c
-+++ b/net/sctp/proc.c
-@@ -282,80 +282,31 @@ struct sctp_ht_iter {
- 	struct rhashtable_iter hti;
- };
- 
--static struct sctp_transport *sctp_transport_get_next(struct seq_file *seq)
--{
--	struct sctp_ht_iter *iter = seq->private;
--	struct sctp_transport *t;
--
--	t = rhashtable_walk_next(&iter->hti);
--	for (; t; t = rhashtable_walk_next(&iter->hti)) {
--		if (IS_ERR(t)) {
--			if (PTR_ERR(t) = -EAGAIN)
--				continue;
--			break;
--		}
--
--		if (net_eq(sock_net(t->asoc->base.sk), seq_file_net(seq)) &&
--		    t->asoc->peer.primary_path = t)
--			break;
--	}
--
--	return t;
--}
--
--static struct sctp_transport *sctp_transport_get_idx(struct seq_file *seq,
--						     loff_t pos)
--{
--	void *obj = SEQ_START_TOKEN;
--
--	while (pos && (obj = sctp_transport_get_next(seq)) && !IS_ERR(obj))
--		pos--;
--
--	return obj;
--}
--
--static int sctp_transport_walk_start(struct seq_file *seq)
--{
--	struct sctp_ht_iter *iter = seq->private;
--	int err;
--
--	err = rhashtable_walk_init(&sctp_transport_hashtable, &iter->hti);
--	if (err)
--		return err;
--
--	err = rhashtable_walk_start(&iter->hti);
--
--	return err = -EAGAIN ? 0 : err;
--}
--
--static void sctp_transport_walk_stop(struct seq_file *seq)
--{
--	struct sctp_ht_iter *iter = seq->private;
--
--	rhashtable_walk_stop(&iter->hti);
--	rhashtable_walk_exit(&iter->hti);
--}
--
- static void *sctp_assocs_seq_start(struct seq_file *seq, loff_t *pos)
- {
--	int err = sctp_transport_walk_start(seq);
-+	struct sctp_ht_iter *iter = seq->private;
-+	int err = sctp_transport_walk_start(&iter->hti);
- 
- 	if (err)
- 		return ERR_PTR(err);
- 
--	return sctp_transport_get_idx(seq, *pos);
-+	return sctp_transport_get_idx(seq_file_net(seq), &iter->hti, *pos);
- }
- 
- static void sctp_assocs_seq_stop(struct seq_file *seq, void *v)
- {
--	sctp_transport_walk_stop(seq);
-+	struct sctp_ht_iter *iter = seq->private;
-+
-+	sctp_transport_walk_stop(&iter->hti);
- }
- 
- static void *sctp_assocs_seq_next(struct seq_file *seq, void *v, loff_t *pos)
- {
-+	struct sctp_ht_iter *iter = seq->private;
-+
- 	++*pos;
- 
--	return sctp_transport_get_next(seq);
-+	return sctp_transport_get_next(seq_file_net(seq), &iter->hti);
- }
- 
- /* Display sctp associations (/proc/net/sctp/assocs). */
-@@ -457,24 +408,29 @@ void sctp_assocs_proc_exit(struct net *net)
- 
- static void *sctp_remaddr_seq_start(struct seq_file *seq, loff_t *pos)
- {
--	int err = sctp_transport_walk_start(seq);
-+	struct sctp_ht_iter *iter = seq->private;
-+	int err = sctp_transport_walk_start(&iter->hti);
- 
- 	if (err)
- 		return ERR_PTR(err);
- 
--	return sctp_transport_get_idx(seq, *pos);
-+	return sctp_transport_get_idx(seq_file_net(seq), &iter->hti, *pos);
- }
- 
- static void *sctp_remaddr_seq_next(struct seq_file *seq, void *v, loff_t *pos)
- {
-+	struct sctp_ht_iter *iter = seq->private;
-+
- 	++*pos;
- 
--	return sctp_transport_get_next(seq);
-+	return sctp_transport_get_next(seq_file_net(seq), &iter->hti);
- }
- 
- static void sctp_remaddr_seq_stop(struct seq_file *seq, void *v)
- {
--	sctp_transport_walk_stop(seq);
-+	struct sctp_ht_iter *iter = seq->private;
-+
-+	sctp_transport_walk_stop(&iter->hti);
- }
- 
- static int sctp_remaddr_seq_show(struct seq_file *seq, void *v)
--- 
-2.1.0
+Neil
 
