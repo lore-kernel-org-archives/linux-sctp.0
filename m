@@ -1,118 +1,56 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 09 Apr 2016 04:53:13 +0000
-Subject: [PATCHv2 net-next 5/6] sctp: merge the seq_start/next/exits in remaddrs and assocs
-Message-Id: <f8e308aea76c74f37d1235ef384f38a4d27a1808.1460177331.git.lucien.xin@gmail.com>
+Date: Sat, 09 Apr 2016 04:53:11 +0000
+Subject: [PATCHv2 net-next 3/6] sctp: export some functions for sctp_diag in inet_diag
+Message-Id: <5408d667c2a83b8917a501b92810c82f9a66f584.1460177331.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1460177331.git.lucien.xin@gmail.com>
  <c507274a984bd1b0a7e7a59d1e825352536efd25.1460177331.git.lucien.xin@gmail.com>
  <a3703f4379eeb3a385d3cc000dd621f77540608e.1460177331.git.lucien.xin@gmail.com>
- <5408d667c2a83b8917a501b92810c82f9a66f584.1460177331.git.lucien.xin@gmail.com>
- <ac19f4966c7df6399c2a3bfa0f7f9589b9ff536f.1460177331.git.lucien.xin@gmail.com>
-In-Reply-To: <ac19f4966c7df6399c2a3bfa0f7f9589b9ff536f.1460177331.git.lucien.xin@gmail.com>
+In-Reply-To: <a3703f4379eeb3a385d3cc000dd621f77540608e.1460177331.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net
 
-In sctp proc, these three functions in remaddrs and assocs are the
-same. we should merge them into one.
+inet_diag_msg_common_fill is used to fill the diag msg common info,
+we need to use it in sctp_diag as well, so export it.
+
+We also add inet_diag_get_handler() to access inet_diag_table in sctp
+diag.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/sctp/proc.c | 45 +++++++++------------------------------------
- 1 file changed, 9 insertions(+), 36 deletions(-)
+ net/ipv4/inet_diag.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
-diff --git a/net/sctp/proc.c b/net/sctp/proc.c
-index dd8492f..9fe1393 100644
---- a/net/sctp/proc.c
-+++ b/net/sctp/proc.c
-@@ -282,7 +282,7 @@ struct sctp_ht_iter {
- 	struct rhashtable_iter hti;
- };
+diff --git a/net/ipv4/inet_diag.c b/net/ipv4/inet_diag.c
+index bd591eb..5a0bfe0 100644
+--- a/net/ipv4/inet_diag.c
++++ b/net/ipv4/inet_diag.c
+@@ -66,7 +66,13 @@ static void inet_diag_unlock_handler(const struct inet_diag_handler *handler)
+ 	mutex_unlock(&inet_diag_table_mutex);
+ }
  
--static void *sctp_assocs_seq_start(struct seq_file *seq, loff_t *pos)
-+static void *sctp_transport_seq_start(struct seq_file *seq, loff_t *pos)
+-static void inet_diag_msg_common_fill(struct inet_diag_msg *r, struct sock *sk)
++const struct inet_diag_handler *inet_diag_get_handler(int proto)
++{
++	return inet_diag_table[proto];
++}
++EXPORT_SYMBOL_GPL(inet_diag_get_handler);
++
++void inet_diag_msg_common_fill(struct inet_diag_msg *r, struct sock *sk)
  {
- 	struct sctp_ht_iter *iter = seq->private;
- 	int err = sctp_transport_walk_start(&iter->hti);
-@@ -293,14 +293,14 @@ static void *sctp_assocs_seq_start(struct seq_file *seq, loff_t *pos)
- 	return sctp_transport_get_idx(seq_file_net(seq), &iter->hti, *pos);
- }
+ 	r->idiag_family = sk->sk_family;
  
--static void sctp_assocs_seq_stop(struct seq_file *seq, void *v)
-+static void sctp_transport_seq_stop(struct seq_file *seq, void *v)
+@@ -89,6 +95,7 @@ static void inet_diag_msg_common_fill(struct inet_diag_msg *r, struct sock *sk)
+ 	r->id.idiag_dst[0] = sk->sk_daddr;
+ 	}
+ }
++EXPORT_SYMBOL_GPL(inet_diag_msg_common_fill);
+ 
+ static size_t inet_sk_attr_size(void)
  {
- 	struct sctp_ht_iter *iter = seq->private;
- 
- 	sctp_transport_walk_stop(&iter->hti);
- }
- 
--static void *sctp_assocs_seq_next(struct seq_file *seq, void *v, loff_t *pos)
-+static void *sctp_transport_seq_next(struct seq_file *seq, void *v, loff_t *pos)
- {
- 	struct sctp_ht_iter *iter = seq->private;
- 
-@@ -367,9 +367,9 @@ static int sctp_assocs_seq_show(struct seq_file *seq, void *v)
- }
- 
- static const struct seq_operations sctp_assoc_ops = {
--	.start = sctp_assocs_seq_start,
--	.next  = sctp_assocs_seq_next,
--	.stop  = sctp_assocs_seq_stop,
-+	.start = sctp_transport_seq_start,
-+	.next  = sctp_transport_seq_next,
-+	.stop  = sctp_transport_seq_stop,
- 	.show  = sctp_assocs_seq_show,
- };
- 
-@@ -406,33 +406,6 @@ void sctp_assocs_proc_exit(struct net *net)
- 	remove_proc_entry("assocs", net->sctp.proc_net_sctp);
- }
- 
--static void *sctp_remaddr_seq_start(struct seq_file *seq, loff_t *pos)
--{
--	struct sctp_ht_iter *iter = seq->private;
--	int err = sctp_transport_walk_start(&iter->hti);
--
--	if (err)
--		return ERR_PTR(err);
--
--	return sctp_transport_get_idx(seq_file_net(seq), &iter->hti, *pos);
--}
--
--static void *sctp_remaddr_seq_next(struct seq_file *seq, void *v, loff_t *pos)
--{
--	struct sctp_ht_iter *iter = seq->private;
--
--	++*pos;
--
--	return sctp_transport_get_next(seq_file_net(seq), &iter->hti);
--}
--
--static void sctp_remaddr_seq_stop(struct seq_file *seq, void *v)
--{
--	struct sctp_ht_iter *iter = seq->private;
--
--	sctp_transport_walk_stop(&iter->hti);
--}
--
- static int sctp_remaddr_seq_show(struct seq_file *seq, void *v)
- {
- 	struct sctp_association *assoc;
-@@ -506,9 +479,9 @@ static int sctp_remaddr_seq_show(struct seq_file *seq, void *v)
- }
- 
- static const struct seq_operations sctp_remaddr_ops = {
--	.start = sctp_remaddr_seq_start,
--	.next  = sctp_remaddr_seq_next,
--	.stop  = sctp_remaddr_seq_stop,
-+	.start = sctp_transport_seq_start,
-+	.next  = sctp_transport_seq_next,
-+	.stop  = sctp_transport_seq_stop,
- 	.show  = sctp_remaddr_seq_show,
- };
- 
 -- 
 2.1.0
 
