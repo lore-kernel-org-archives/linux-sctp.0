@@ -1,39 +1,81 @@
 From: Eric Dumazet <eric.dumazet@gmail.com>
-Date: Sat, 09 Apr 2016 17:21:47 +0000
+Date: Sat, 09 Apr 2016 17:29:07 +0000
 Subject: Re: [PATCHv2 net-next 1/6] sctp: add sctp_info dump api for sctp_diag
-Message-Id: <1460222507.6473.493.camel@edumazet-glaptop3.roam.corp.google.com>
+Message-Id: <1460222947.6473.497.camel@edumazet-glaptop3.roam.corp.google.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1460177331.git.lucien.xin@gmail.com>
 	 <c507274a984bd1b0a7e7a59d1e825352536efd25.1460177331.git.lucien.xin@gmail.com>
-	 <1460178984.6473.473.camel@edumazet-glaptop3.roam.corp.google.com>
-	 <57091D90.4030905@mojatatu.com>
-In-Reply-To: <57091D90.4030905@mojatatu.com>
+	 <1460179179.6473.476.camel@edumazet-glaptop3.roam.corp.google.com>
+	 <CADvbK_dzvjT=pFYP8uRDa8naNWUp+dkUHSVXP+Y8P0U3=nQM8g@mail.gmail.com>
+In-Reply-To: <CADvbK_dzvjT=pFYP8uRDa8naNWUp+dkUHSVXP+Y8P0U3=nQM8g@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Jamal Hadi Salim <jhs@mojatatu.com>
-Cc: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net
+To: Xin Long <lucien.xin@gmail.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem <davem@davemloft.net>
 
-On Sat, 2016-04-09 at 11:19 -0400, Jamal Hadi Salim wrote:
-> On 16-04-09 01:16 AM, Eric Dumazet wrote:
-> 
+On Sun, 2016-04-10 at 00:10 +0800, Xin Long wrote:
+> On Sat, Apr 9, 2016 at 1:19 PM, Eric Dumazet <eric.dumazet@gmail.com> wrote:
+> > On Sat, 2016-04-09 at 12:53 +0800, Xin Long wrote:
+> >> sctp_diag will dump some important details of sctp's assoc or ep, we use
+> >> sctp_info to describe them,  sctp_get_sctp_info to get them, and export
+> >> it to sctp_diag.ko.
+> >>
 > >
-> > Lots of holes in this structure...
 > >
+> >> +int sctp_get_sctp_info(struct sock *sk, struct sctp_association *asoc,
+> >> +                    struct sctp_info *info)
+> >> +{
+> >> +     struct sctp_transport *prim;
+> >> +     struct list_head *pos, *temp;
+> >> +     int mask;
+> >> +
+> >> +     memset(info, 0, sizeof(*info));
+> >> +     if (!asoc) {
+> >> +             struct sctp_sock *sp = sctp_sk(sk);
+> >> +
+> >> +             info->sctpi_s_autoclose = sp->autoclose;
+> >> +             info->sctpi_s_adaptation_ind = sp->adaptation_ind;
+> >> +             info->sctpi_s_pd_point = sp->pd_point;
+> >> +             info->sctpi_s_nodelay = sp->nodelay;
+> >> +             info->sctpi_s_disable_fragments = sp->disable_fragments;
+> >> +             info->sctpi_s_v4mapped = sp->v4mapped;
+> >> +             info->sctpi_s_frag_interleave = sp->frag_interleave;
+> >> +
+> >> +             return 0;
+> >> +     }
+> >> +
+> >> +     info->sctpi_tag = asoc->c.my_vtag;
+> >> +     info->sctpi_state = asoc->state;
+> >> +     info->sctpi_rwnd = asoc->a_rwnd;
+> >> +     info->sctpi_unackdata = asoc->unack_data;
+> >> +     info->sctpi_penddata = sctp_tsnmap_pending(&asoc->peer.tsn_map);
+> >> +     info->sctpi_instrms = asoc->c.sinit_max_instreams;
+> >> +     info->sctpi_outstrms = asoc->c.sinit_num_ostreams;
+> >> +     list_for_each_safe(pos, temp, &asoc->base.inqueue.in_chunk_list)
+> >> +             info->sctpi_inqueue++;
+> >> +     list_for_each_safe(pos, temp, &asoc->outqueue.out_chunk_list)
+> >> +             info->sctpi_outqueue++;
 > >
+> > Is this safe ?
+> >
+> > Do you own the lock on socket or whatever lock protecting this list ?
+> >
+> there are 2 places will call these codes,
+> 1. sctp_diag_dump -> sctp_for_each_transport -> sctp_tsp_dump
+> this one will use lock_sock to protect them. I think this one is ok.
 > 
+> 1. sctp_diag_dump_one -> sctp_transport_lookup_process-> sctp_tsp_dump_one
+> this one just holds the tsp. and we're using  list_for_each_safe here now,
+> isn't it enough ?
 > 
-> I may have mentioned to you that there is 8 bit hole in tcp_info too ;->
-> (above tcpi_rto). Adding an 8 bit explicit pad seems useful
-> since it is already in the wild. I was going to send the patch after
-> netdev11 but  forgot.
 
-Well, once a hole is there, nothing we can do really, because of
-compatibility with old kernels / old binaries.
+You tell me ;)
 
+For sure in tcp_get_info() the socket is sometimes locked, and sometimes
+is not locked, depending on the caller.
 
-But when a _new_ structure is defined, this is the time where we can ask
-for doing sensible things ;)
+So we had to use only lockless accesses.
 
 
 
