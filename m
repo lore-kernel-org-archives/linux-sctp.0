@@ -1,25 +1,65 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 05 Apr 2016 19:41:22 +0000
-Subject: Re: [PATCH v2] sctp: flush if we can't fit another DATA chunk
-Message-Id: <20160405.154122.24544897927296613.davem@davemloft.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 12 Apr 2016 21:11:31 +0000
+Subject: [PATCH] sctp: add support for RPS and RFS
+Message-Id: <d0b676c036479fe304218a05e1b03a7ba274426c.1460495323.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <a9e4f862b5f7a43eccca5966684d172e4de57b13.1459475764.git.marcelo.leitner@gmail.com>
-In-Reply-To: <a9e4f862b5f7a43eccca5966684d172e4de57b13.1459475764.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: marcelo.leitner@gmail.com
-Cc: netdev@vger.kernel.org, nhorman@tuxdriver.com, vyasevich@gmail.com, linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
 
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri,  1 Apr 2016 14:05:48 -0300
+This patch adds what's missing to properly support RPS and RFS on SCTP,
+as some of it is already implemented in common calls.
 
-> There is no point on delaying the packet if we can't fit a single byte
-> of data on it anymore. So lets just reduce the threshold by the amount
-> that a data chunk with 4 bytes (rounding) would use.
-> 
-> v2: based on the right tree
-> 
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Having support for RPS and RFS allows better scaling specially because
+not all NICs support hashing SCTP headers.
 
-Applied, thanks.
+Save the hash right when we dequeue a skb from inqueue so we do it only
+once per skb instead of per chunk. New sockets will then inherit the
+hash through sctp_copy_sock().
+
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/inqueue.c | 3 +++
+ net/sctp/socket.c  | 3 +++
+ 2 files changed, 6 insertions(+)
+
+diff --git a/net/sctp/inqueue.c b/net/sctp/inqueue.c
+index 7e8a16c77039e1b70ef89f3e862dbb332bcc614f..b335ffcef0b901b0e71bf0843057dbf5877da31b 100644
+--- a/net/sctp/inqueue.c
++++ b/net/sctp/inqueue.c
+@@ -163,6 +163,9 @@ struct sctp_chunk *sctp_inq_pop(struct sctp_inq *queue)
+ 		chunk->singleton = 1;
+ 		ch = (sctp_chunkhdr_t *) chunk->skb->data;
+ 		chunk->data_accepted = 0;
++
++		if (chunk->asoc)
++			sock_rps_save_rxhash(chunk->asoc->base.sk, chunk->skb);
+ 	}
+ 
+ 	chunk->chunk_hdr = ch;
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 878d28eda1a68dc639d7b9f3f663d7518f21bb32..36697f85ce48be39f41ddedd9f53369c7f9e28d8 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -6430,6 +6430,8 @@ unsigned int sctp_poll(struct file *file, struct socket *sock, poll_table *wait)
+ 
+ 	poll_wait(file, sk_sleep(sk), wait);
+ 
++	sock_rps_record_flow(sk);
++
+ 	/* A TCP-style listening socket becomes readable when the accept queue
+ 	 * is not empty.
+ 	 */
+@@ -7186,6 +7188,7 @@ void sctp_copy_sock(struct sock *newsk, struct sock *sk,
+ 	newsk->sk_lingertime = sk->sk_lingertime;
+ 	newsk->sk_rcvtimeo = sk->sk_rcvtimeo;
+ 	newsk->sk_sndtimeo = sk->sk_sndtimeo;
++	newsk->sk_rxhash = sk->sk_rxhash;
+ 
+ 	newinet = inet_sk(newsk);
+ 
+-- 
+2.5.0
+
