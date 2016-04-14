@@ -1,64 +1,76 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 07 Apr 2016 13:35:25 +0000
-Subject: Re: [PATCH v2 2/2] sctp: delay calls to sk_data_ready() as much as possible
-Message-Id: <20160407133525.GD15005@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 14 Apr 2016 07:35:29 +0000
+Subject: [PATCHv3 net-next 0/6] sctp: support sctp_diag in kernel
+Message-Id: <cover.1460618169.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1459952558.git.marcelo.leitner@gmail.com>
- <703257ed516669b180fcce57e6745b1853da9a95.1459952558.git.marcelo.leitner@gmail.com>
- <87egah3ktv.fsf@beetle.home>
-In-Reply-To: <87egah3ktv.fsf@beetle.home>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: Jakub Sitnicki <jkbs@redhat.com>
-Cc: netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net, eric.dumazet@gmail.com
 
-On Thu, Apr 07, 2016 at 10:05:32AM +0200, Jakub Sitnicki wrote:
-> On Wed, Apr 06, 2016 at 07:53 PM CEST, Marcelo Ricardo Leitner <marcelo.l=
-eitner@gmail.com> wrote:
-> > Currently, the processing of multiple chunks in a single SCTP packet
-> > leads to multiple calls to sk_data_ready, causing multiple wake up
-> > signals which are costly and doesn't make it wake up any faster.
-> >
-> > With this patch it will notice that the wake up is pending and will do =
-it
-> > before leaving the state machine interpreter, latest place possible to
-> > do it realiably and cleanly.
-> >
-> > Note that sk_data_ready events are not dependent on asocs, unlike waking
-> > up writers.
-> >
-> > Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> > ---
->=20
-> [...]
->=20
-> > diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-> > index 7fe56d0acabf66cfd8fe29dfdb45f7620b470ac7..e7042f9ce63b0cfca50cae2=
-52f51b60b68cb5731 100644
-> > --- a/net/sctp/sm_sideeffect.c
-> > +++ b/net/sctp/sm_sideeffect.c
-> > @@ -1742,6 +1742,11 @@ out:
-> >  			error =3D sctp_outq_uncork(&asoc->outqueue, gfp);
-> >  	} else if (local_cork)
-> >  		error =3D sctp_outq_uncork(&asoc->outqueue, gfp);
-> > +
-> > +	if (sctp_sk(ep->base.sk)->pending_data_ready) {
-> > +		ep->base.sk->sk_data_ready(ep->base.sk);
-> > +		sctp_sk(ep->base.sk)->pending_data_ready =3D 0;
-> > +	}
-> >  	return error;
-> >  nomem:
-> >  	error =3D -ENOMEM;
->=20
-> Would it make sense to introduce a local variable for ep->base.sk (and
-> make this function 535+1 lines long ;-)
->=20
->       struct sock *sk =3D ep->base.sk;
->=20
-> ... like sctp_ulpq_tail_event() does?
+This patchset will add sctp_diag module to implement diag interface on
+sctp in kernel.
 
-I guess so, yes. Same for sctp_sk() cast then. I=B4ll post a new version
-later, thanks.
+For a listening sctp endpoint, we will just dump it's ep info.
+For a sctp connection, we will the assoc info and it's ep info.
 
-  Marcelo
+The ss dump will looks like:
+
+[iproute2]# ./misc/ss --sctp  -n -l
+State      Recv-Q Send-Q   Local Address:Port       Peer Address:Port
+LISTEN     0      128      172.16.254.254:8888      *:*
+LISTEN     0      5        127.0.0.1:1234           *:*
+LISTEN     0      5        127.0.0.1:1234           *:*
+  - ESTAB  0      0        127.0.0.1%lo:1234        127.0.0.1:4321
+LISTEN     0      128      172.16.254.254:8888      *:*
+  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.253.253:8888
+  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.1.1:8888
+  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.1.2:8888
+  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.2.1:8888
+  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.2.2:8888
+  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.3.1:8888
+  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.3.2:8888
+LISTEN     0      0        127.0.0.1:4321           *:*
+  - ESTAB  0      0        127.0.0.1%lo:4321        127.0.0.1:1234
+
+The entries with '- ESTAB' are the assocs, some of them may belong to
+the same endpoint. So we will dump the parent endpoint first, like the
+entry with 'LISTEN'. then dump the assocs. ep and assocs entries will
+be dumped in right order so that ss can show them in tree format easily.
+
+Besides, this patchset also simplifies sctp proc codes, cause it has
+some similar codes with sctp diag in sctp transport traversal.
+
+v1->v2:
+  1. inet_diag_get_handler needs to return it as const.
+  2. merge 5/7 into 2/7 of v1.
+
+v2->v3:
+  do some improvements and fixes in patch 1-4, see the details in
+  each patch's comment.
+
+Xin Long (6):
+  sctp: add sctp_info dump api for sctp_diag
+  sctp: export some apis or variables for sctp_diag and reuse some for
+    proc
+  sctp: export some functions for sctp_diag in inet_diag
+  sctp: add the sctp_diag.c file
+  sctp: merge the seq_start/next/exits in remaddrs and assocs
+  sctp: fix some rhashtable functions using in sctp proc/diag
+
+ include/linux/sctp.h           |  67 ++++++
+ include/net/sctp/sctp.h        |  16 ++
+ include/uapi/linux/inet_diag.h |   2 +
+ net/ipv4/inet_diag.c           |  67 +++---
+ net/sctp/Kconfig               |   4 +
+ net/sctp/Makefile              |   1 +
+ net/sctp/proc.c                | 105 ++-------
+ net/sctp/sctp_diag.c           | 497 +++++++++++++++++++++++++++++++++++++++++
+ net/sctp/socket.c              | 216 ++++++++++++++++++
+ 9 files changed, 863 insertions(+), 112 deletions(-)
+ create mode 100644 net/sctp/sctp_diag.c
+
+-- 
+2.1.0
+
