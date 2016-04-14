@@ -1,7 +1,7 @@
-From: marcelo.leitner@gmail.com
-Date: Thu, 14 Apr 2016 19:33:28 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Thu, 14 Apr 2016 20:03:51 +0000
 Subject: Re: [PATCH v3 0/2] sctp: delay calls to sk_data_ready() as much as possible
-Message-Id: <20160414193328.GJ15005@localhost.localdomain>
+Message-Id: <20160414200351.GA4632@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20160413.230532.676746231426161126.davem@davemloft.net>
  <20160414130324.GA6806@hmsreliant.think-freely.org>
@@ -12,7 +12,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: David Miller <davem@davemloft.net>
-Cc: nhorman@tuxdriver.com, netdev@vger.kernel.org, vyasevich@gmail.com, linux-sctp@vger.kernel.org, David.Laight@ACULAB.COM, jkbs@redhat.com
+Cc: marcelo.leitner@gmail.com, netdev@vger.kernel.org, vyasevich@gmail.com, linux-sctp@vger.kernel.org, David.Laight@ACULAB.COM, jkbs@redhat.com
 
 On Thu, Apr 14, 2016 at 02:59:16PM -0400, David Miller wrote:
 > From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
@@ -68,7 +68,20 @@ On Thu, Apr 14, 2016 at 02:59:16PM -0400, David Miller wrote:
 > place, either in recv or more likely poll.
 > 
 > I really think signalling early helps performance.
+> 
 
-I see. Okay, I'll revisit this, thanks.
+Early, yes, often, not so much :).  Perhaps what would be adventageous would be
+to signal at the start of a set of enqueues, rather than at the end.  That would
+be equivalent in terms of not signaling more than needed, but would eliminate
+the signaling on every chunk.   Perhaps what you could do Marcelo would be to
+change the sense of the signal_ready flag to be a has_signaled flag.  e.g. call
+sk_data_ready in ulp_event_tail like we used to, but only if the has_signaled
+flag isn't set, then set the flag, and clear it at the end of the command
+interpreter.
 
-  Marcelo
+That would be a best of both worlds solution, as long as theres no chance of
+race with user space reading from the socket before we were done enqueuing (i.e.
+you have to guarantee that the socket lock stays held, which I think we do).
+
+Neil
+
