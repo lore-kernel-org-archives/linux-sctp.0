@@ -1,76 +1,23 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 14 Apr 2016 07:35:29 +0000
-Subject: [PATCHv3 net-next 0/6] sctp: support sctp_diag in kernel
-Message-Id: <cover.1460618169.git.lucien.xin@gmail.com>
+From: David Miller <davem@davemloft.net>
+Date: Fri, 15 Apr 2016 21:30:25 +0000
+Subject: Re: [PATCHv3 net-next 0/6] sctp: support sctp_diag in kernel
+Message-Id: <20160415.173025.576682964050812112.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1460618169.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1460618169.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net, eric.dumazet@gmail.com
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net, eric.dumazet@gmail.com
 
-This patchset will add sctp_diag module to implement diag interface on
-sctp in kernel.
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 14 Apr 2016 15:35:29 +0800
 
-For a listening sctp endpoint, we will just dump it's ep info.
-For a sctp connection, we will the assoc info and it's ep info.
+> This patchset will add sctp_diag module to implement diag interface on
+> sctp in kernel.
+ ...
 
-The ss dump will looks like:
+Looks good to me, series applied, thanks.
 
-[iproute2]# ./misc/ss --sctp  -n -l
-State      Recv-Q Send-Q   Local Address:Port       Peer Address:Port
-LISTEN     0      128      172.16.254.254:8888      *:*
-LISTEN     0      5        127.0.0.1:1234           *:*
-LISTEN     0      5        127.0.0.1:1234           *:*
-  - ESTAB  0      0        127.0.0.1%lo:1234        127.0.0.1:4321
-LISTEN     0      128      172.16.254.254:8888      *:*
-  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.253.253:8888
-  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.1.1:8888
-  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.1.2:8888
-  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.2.1:8888
-  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.2.2:8888
-  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.3.1:8888
-  - ESTAB  0      0        172.16.254.254%eth1:8888 172.16.3.2:8888
-LISTEN     0      0        127.0.0.1:4321           *:*
-  - ESTAB  0      0        127.0.0.1%lo:4321        127.0.0.1:1234
-
-The entries with '- ESTAB' are the assocs, some of them may belong to
-the same endpoint. So we will dump the parent endpoint first, like the
-entry with 'LISTEN'. then dump the assocs. ep and assocs entries will
-be dumped in right order so that ss can show them in tree format easily.
-
-Besides, this patchset also simplifies sctp proc codes, cause it has
-some similar codes with sctp diag in sctp transport traversal.
-
-v1->v2:
-  1. inet_diag_get_handler needs to return it as const.
-  2. merge 5/7 into 2/7 of v1.
-
-v2->v3:
-  do some improvements and fixes in patch 1-4, see the details in
-  each patch's comment.
-
-Xin Long (6):
-  sctp: add sctp_info dump api for sctp_diag
-  sctp: export some apis or variables for sctp_diag and reuse some for
-    proc
-  sctp: export some functions for sctp_diag in inet_diag
-  sctp: add the sctp_diag.c file
-  sctp: merge the seq_start/next/exits in remaddrs and assocs
-  sctp: fix some rhashtable functions using in sctp proc/diag
-
- include/linux/sctp.h           |  67 ++++++
- include/net/sctp/sctp.h        |  16 ++
- include/uapi/linux/inet_diag.h |   2 +
- net/ipv4/inet_diag.c           |  67 +++---
- net/sctp/Kconfig               |   4 +
- net/sctp/Makefile              |   1 +
- net/sctp/proc.c                | 105 ++-------
- net/sctp/sctp_diag.c           | 497 +++++++++++++++++++++++++++++++++++++++++
- net/sctp/socket.c              | 216 ++++++++++++++++++
- 9 files changed, 863 insertions(+), 112 deletions(-)
- create mode 100644 net/sctp/sctp_diag.c
-
--- 
-2.1.0
-
+Please follow up on the suggestion to use jiffies_to_ms(), thanks.
