@@ -1,48 +1,52 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 15 Apr 2016 21:28:58 +0000
+From: Phil Sutter <phil@nwl.cc>
+Date: Mon, 18 Apr 2016 10:18:24 +0000
 Subject: Re: [PATCHv3 net-next 1/6] sctp: add sctp_info dump api for sctp_diag
-Message-Id: <20160415.172858.253625178036493951.davem@davemloft.net>
+Message-Id: <20160418101824.GB14683@orbyte.nwl.cc>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1460618169.git.lucien.xin@gmail.com>
-	<cover.1460618169.git.lucien.xin@gmail.com>
-	<cd6bf9c2696f125a74491e1f82b77a30bb1005dd.1460618169.git.lucien.xin@gmail.com>
-In-Reply-To: <cd6bf9c2696f125a74491e1f82b77a30bb1005dd.1460618169.git.lucien.xin@gmail.com>
+ <cover.1460618169.git.lucien.xin@gmail.com>
+ <cd6bf9c2696f125a74491e1f82b77a30bb1005dd.1460618169.git.lucien.xin@gmail.com>
+ <20160415.172858.253625178036493951.davem@davemloft.net>
+In-Reply-To: <20160415.172858.253625178036493951.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net, eric.dumazet@gmail.com
+To: David Miller <davem@davemloft.net>
+Cc: lucien.xin@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net, eric.dumazet@gmail.com
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 14 Apr 2016 15:35:30 +0800
-
-> sctp_diag will dump some important details of sctp's assoc or ep, we use
-> sctp_info to describe them,  sctp_get_sctp_info to get them, and export
-> it to sctp_diag.ko.
+On Fri, Apr 15, 2016 at 05:28:58PM -0400, David Miller wrote:
+> Feedback was given here not to mix the changelog and the commit message.
 > 
-> v2->v3:
-> - we will not use list_for_each_safe in sctp_get_sctp_info, cause
->   all the callers of it will use lock_sock.
+> And I want to explicitly state that I totally and _COMPLETELY_ disagree
+> with this.
 > 
-> - fix the holes in struct sctp_info with __reserved* field.
->   because sctp_diag is a new feature, and sctp_info is just for now,
->   it may be changed in the future.
+> It is absolutely essential information and belongs in the commit message.
 > 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+> Adding more information never hurts, so don't do this crap of putting
+> things that might be useful to know after the "---", ever.
+> 
+> Someone in the future might ask "why didn't he implement it like XXX"
+> and the changelog can tell him that originally that is what was done
+> and feedback was given to do it differently.
 
-Feedback was given here not to mix the changelog and the commit message.
+I see your point and am well aware the last word on this belongs to you.
+Still I would like to explain why I disagree:
 
-And I want to explicitly state that I totally and _COMPLETELY_ disagree
-with this.
+In my understanding, the changelog addresses reviewers only, so they
+know what to expect or which new chunks to have another look at.  If the
+changelog provides valuable information beyond that, I think the mistake
+was to not update the commit message accordingly.
 
-It is absolutely essential information and belongs in the commit message.
+Imagine a patchset being rerolled ten times with massive changes in
+between - do you really appreciate if the changelog applies to v1 only
+and people have to read through nine increments to find out what is
+actually being done?
 
-Adding more information never hurts, so don't do this crap of putting
-things that might be useful to know after the "---", ever.
+Although I'm exaggerating, one could apply the same logic to the code
+changes itself and demand v1 being applied as is with each evolution
+separately on top, as otherwise information is lost.
 
-Someone in the future might ask "why didn't he implement it like XXX"
-and the changelog can tell him that originally that is what was done
-and feedback was given to do it differently.
-
-So Xin thanks for correctly putting the changelog inside of the commit
-message, so that future developers can benefit from this knowledge.
+Cheers, Phil
+> 
+> So Xin thanks for correctly putting the changelog inside of the commit
+> message, so that future developers can benefit from this knowledge.
