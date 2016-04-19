@@ -1,172 +1,76 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 07 Mar 2016 19:44:06 +0000
-Subject: Re: [PATCH net] sctp: fix copying more bytes than expected in sctp_add_bind_addr
-Message-Id: <20160307194406.GH31743@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 19 Apr 2016 07:10:01 +0000
+Subject: [PATCHv3 net-next] net: use jiffies_to_msecs to replace EXPIRES_IN_MS in inet/sctp_diag
+Message-Id: <87a0e83132ce64a3fe2266a5323fa6577a2e5c96.1461049801.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20160125172902.GD29690@hmsreliant.think-freely.org>
- <508c18fbd4bd0b447e2f9b110190be2fd2dbb3cf.1453744111.git.marcelo.leitner@gmail.com>
- <CACT4Y+YN5V1Eo6C2hyWGCyLEjWGLhaz94XdufHGAdwvXq4uEZQ@mail.gmail.com>
-In-Reply-To: <CACT4Y+YN5V1Eo6C2hyWGCyLEjWGLhaz94XdufHGAdwvXq4uEZQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Dmitry Vyukov <dvyukov@google.com>
-Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, netdev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>, David Miller <davem@davemloft.net>, syzkaller <syzkaller@googlegroups.com>, Kostya Serebryany <kcc@google.com>, Alexander Potapenko <glider@google.com>, Sasha Levin <sasha.levin@oracle.com>, Eric Dumazet <edumazet@google.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net, eric.dumazet@gmail.com, jsitnick@redhat.com
 
-On Tue, Jan 26, 2016 at 02:28:48PM +0100, Dmitry Vyukov wrote:
-> On Mon, Jan 25, 2016 at 6:52 PM, Marcelo Ricardo Leitner
-> <marcelo.leitner@gmail.com> wrote:
-> > Great. Dmitry, please give this a run. Local tests looked good but who
-> > knows what syzkaller may find.
-> 
-> Now running with this patch.
+EXPIRES_IN_MS macro comes from net/ipv4/inet_diag.c and dates
+back to before jiffies_to_msecs() has been introduced.
 
-Hi Dmitry, do you remember if this one succeeded?
+Now we can remove it and use jiffies_to_msecs().
 
-> > Thanks
-> >
-> > --8<--
-> >
-> > Dmitry reported that sctp_add_bind_addr may read more bytes than
-> > expected in case the parameter is a IPv4 addr supplied by the user
-> > through calls such as sctp_bindx_add(), because it always copies
-> > sizeof(union sctp_addr) while the buffer may be just a struct
-> > sockaddr_in, which is smaller.
-> >
-> > This patch then fixes it by limiting the memcpy to the min between the
-> > union size and a (new parameter) provided addr size. Where possible this
-> > parameter still is the size of that union, except for reading from
-> > user-provided buffers, which then it accounts for protocol type.
-> >
-> > Reported-by: Dmitry Vyukov <dvyukov@google.com>
-> > Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> > ---
-> >  include/net/sctp/structs.h |  2 +-
-> >  net/sctp/bind_addr.c       | 14 ++++++++------
-> >  net/sctp/protocol.c        |  1 +
-> >  net/sctp/sm_make_chunk.c   |  2 +-
-> >  net/sctp/socket.c          |  5 +++--
-> >  5 files changed, 14 insertions(+), 10 deletions(-)
-> >
-> > diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-> > index 20e72129be1ce0063eeafcbaadcee1f37e0c614c..97ba8a8c466f5c50bdc87ec578792e56553baa91 100644
-> > --- a/include/net/sctp/structs.h
-> > +++ b/include/net/sctp/structs.h
-> > @@ -1099,7 +1099,7 @@ int sctp_bind_addr_dup(struct sctp_bind_addr *dest,
-> >                         const struct sctp_bind_addr *src,
-> >                         gfp_t gfp);
-> >  int sctp_add_bind_addr(struct sctp_bind_addr *, union sctp_addr *,
-> > -                      __u8 addr_state, gfp_t gfp);
-> > +                      int new_size, __u8 addr_state, gfp_t gfp);
-> >  int sctp_del_bind_addr(struct sctp_bind_addr *, union sctp_addr *);
-> >  int sctp_bind_addr_match(struct sctp_bind_addr *, const union sctp_addr *,
-> >                          struct sctp_sock *);
-> > diff --git a/net/sctp/bind_addr.c b/net/sctp/bind_addr.c
-> > index 871cdf9567e6bc9c13cb1077dc6866a67e6e4367..80129d10a0af9c33e7348b79d010b9e5e948e584 100644
-> > --- a/net/sctp/bind_addr.c
-> > +++ b/net/sctp/bind_addr.c
-> > @@ -111,7 +111,8 @@ int sctp_bind_addr_dup(struct sctp_bind_addr *dest,
-> >         dest->port = src->port;
-> >
-> >         list_for_each_entry(addr, &src->address_list, list) {
-> > -               error = sctp_add_bind_addr(dest, &addr->a, 1, gfp);
-> > +               error = sctp_add_bind_addr(dest, &addr->a, sizeof(addr->a),
-> > +                                          1, gfp);
-> >                 if (error < 0)
-> >                         break;
-> >         }
-> > @@ -150,7 +151,7 @@ void sctp_bind_addr_free(struct sctp_bind_addr *bp)
-> >
-> >  /* Add an address to the bind address list in the SCTP_bind_addr structure. */
-> >  int sctp_add_bind_addr(struct sctp_bind_addr *bp, union sctp_addr *new,
-> > -                      __u8 addr_state, gfp_t gfp)
-> > +                      int new_size, __u8 addr_state, gfp_t gfp)
-> >  {
-> >         struct sctp_sockaddr_entry *addr;
-> >
-> > @@ -159,7 +160,7 @@ int sctp_add_bind_addr(struct sctp_bind_addr *bp, union sctp_addr *new,
-> >         if (!addr)
-> >                 return -ENOMEM;
-> >
-> > -       memcpy(&addr->a, new, sizeof(*new));
-> > +       memcpy(&addr->a, new, min_t(size_t, sizeof(*new), new_size));
-> >
-> >         /* Fix up the port if it has not yet been set.
-> >          * Both v4 and v6 have the port at the same offset.
-> > @@ -291,7 +292,8 @@ int sctp_raw_to_bind_addrs(struct sctp_bind_addr *bp, __u8 *raw_addr_list,
-> >                 }
-> >
-> >                 af->from_addr_param(&addr, rawaddr, htons(port), 0);
-> > -               retval = sctp_add_bind_addr(bp, &addr, SCTP_ADDR_SRC, gfp);
-> > +               retval = sctp_add_bind_addr(bp, &addr, sizeof(addr),
-> > +                                           SCTP_ADDR_SRC, gfp);
-> >                 if (retval) {
-> >                         /* Can't finish building the list, clean up. */
-> >                         sctp_bind_addr_clean(bp);
-> > @@ -453,8 +455,8 @@ static int sctp_copy_one_addr(struct net *net, struct sctp_bind_addr *dest,
-> >                     (((AF_INET6 = addr->sa.sa_family) &&
-> >                       (flags & SCTP_ADDR6_ALLOWED) &&
-> >                       (flags & SCTP_ADDR6_PEERSUPP))))
-> > -                       error = sctp_add_bind_addr(dest, addr, SCTP_ADDR_SRC,
-> > -                                                   gfp);
-> > +                       error = sctp_add_bind_addr(dest, addr, sizeof(addr),
-> > +                                                  SCTP_ADDR_SRC, gfp);
-> >         }
-> >
-> >         return error;
-> > diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-> > index ab0d538a74ed593571cfaef02cd1bb7ce872abe6..2fb609008311f51344704d82f21b4de9f08253da 100644
-> > --- a/net/sctp/protocol.c
-> > +++ b/net/sctp/protocol.c
-> > @@ -214,6 +214,7 @@ int sctp_copy_local_addr_list(struct net *net, struct sctp_bind_addr *bp,
-> >                               (copy_flags & SCTP_ADDR6_ALLOWED) &&
-> >                               (copy_flags & SCTP_ADDR6_PEERSUPP)))) {
-> >                                 error = sctp_add_bind_addr(bp, &addr->a,
-> > +                                                   sizeof(addr->a),
-> >                                                     SCTP_ADDR_SRC, GFP_ATOMIC);
-> >                                 if (error)
-> >                                         goto end_copy;
-> > diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> > index 5d6a03fad3789a12290f5f14c5a7efa69c98f41a..1b91e9760fe514db6d89457e1d5da9e02800745e 100644
-> > --- a/net/sctp/sm_make_chunk.c
-> > +++ b/net/sctp/sm_make_chunk.c
-> > @@ -1830,7 +1830,7 @@ no_hmac:
-> >         /* Also, add the destination address. */
-> >         if (list_empty(&retval->base.bind_addr.address_list)) {
-> >                 sctp_add_bind_addr(&retval->base.bind_addr, &chunk->dest,
-> > -                               SCTP_ADDR_SRC, GFP_ATOMIC);
-> > +                                  sizeof(chunk->dest), SCTP_ADDR_SRC, GFP_ATOMIC);
-> >         }
-> >
-> >         retval->next_tsn = retval->c.initial_tsn;
-> > diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> > index 5ca2ebfe0be83882fcb841de6fa8029b6455ef85..213be3821a1d49e0c469c4ad4e9ff055a03205c5 100644
-> > --- a/net/sctp/socket.c
-> > +++ b/net/sctp/socket.c
-> > @@ -386,7 +386,8 @@ static int sctp_do_bind(struct sock *sk, union sctp_addr *addr, int len)
-> >         /* Add the address to the bind address list.
-> >          * Use GFP_ATOMIC since BHs will be disabled.
-> >          */
-> > -       ret = sctp_add_bind_addr(bp, addr, SCTP_ADDR_SRC, GFP_ATOMIC);
-> > +       ret = sctp_add_bind_addr(bp, addr, af->sockaddr_len,
-> > +                                SCTP_ADDR_SRC, GFP_ATOMIC);
-> >
-> >         /* Copy back into socket for getsockname() use. */
-> >         if (!ret) {
-> > @@ -576,7 +577,7 @@ static int sctp_send_asconf_add_ip(struct sock              *sk,
-> >                         addr = addr_buf;
-> >                         af = sctp_get_af_specific(addr->v4.sin_family);
-> >                         memcpy(&saveaddr, addr, af->sockaddr_len);
-> > -                       retval = sctp_add_bind_addr(bp, &saveaddr,
-> > +                       retval = sctp_add_bind_addr(bp, &saveaddr, sizeof(saveaddr),
-> >                                                     SCTP_ADDR_NEW, GFP_ATOMIC);
-> >                         addr_buf += af->sockaddr_len;
-> >                 }
-> > --
-> > 2.5.0
-> >
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/ipv4/inet_diag.c | 12 ++++++------
+ net/sctp/sctp_diag.c |  6 ++----
+ 2 files changed, 8 insertions(+), 10 deletions(-)
+
+diff --git a/net/ipv4/inet_diag.c b/net/ipv4/inet_diag.c
+index 70212bd..ad7956f 100644
+--- a/net/ipv4/inet_diag.c
++++ b/net/ipv4/inet_diag.c
+@@ -197,27 +197,27 @@ int inet_sk_diag_fill(struct sock *sk, struct inet_connection_sock *icsk,
+ 		goto out;
+ 	}
+ 
+-#define EXPIRES_IN_MS(tmo)  DIV_ROUND_UP((tmo - jiffies) * 1000, HZ)
+-
+ 	if (icsk->icsk_pending = ICSK_TIME_RETRANS ||
+ 	    icsk->icsk_pending = ICSK_TIME_EARLY_RETRANS ||
+ 	    icsk->icsk_pending = ICSK_TIME_LOSS_PROBE) {
+ 		r->idiag_timer = 1;
+ 		r->idiag_retrans = icsk->icsk_retransmits;
+-		r->idiag_expires = EXPIRES_IN_MS(icsk->icsk_timeout);
++		r->idiag_expires +			jiffies_to_msecs(icsk->icsk_timeout - jiffies);
+ 	} else if (icsk->icsk_pending = ICSK_TIME_PROBE0) {
+ 		r->idiag_timer = 4;
+ 		r->idiag_retrans = icsk->icsk_probes_out;
+-		r->idiag_expires = EXPIRES_IN_MS(icsk->icsk_timeout);
++		r->idiag_expires +			jiffies_to_msecs(icsk->icsk_timeout - jiffies);
+ 	} else if (timer_pending(&sk->sk_timer)) {
+ 		r->idiag_timer = 2;
+ 		r->idiag_retrans = icsk->icsk_probes_out;
+-		r->idiag_expires = EXPIRES_IN_MS(sk->sk_timer.expires);
++		r->idiag_expires +			jiffies_to_msecs(sk->sk_timer.expires - jiffies);
+ 	} else {
+ 		r->idiag_timer = 0;
+ 		r->idiag_expires = 0;
+ 	}
+-#undef EXPIRES_IN_MS
+ 
+ 	if ((ext & (1 << (INET_DIAG_INFO - 1))) && handler->idiag_info_size) {
+ 		attr = nla_reserve(skb, INET_DIAG_INFO,
+diff --git a/net/sctp/sctp_diag.c b/net/sctp/sctp_diag.c
+index 98ecd16..bb2d8d9 100644
+--- a/net/sctp/sctp_diag.c
++++ b/net/sctp/sctp_diag.c
+@@ -48,10 +48,8 @@ static void inet_diag_msg_sctpasoc_fill(struct inet_diag_msg *r,
+ 	r->idiag_state = asoc->state;
+ 	r->idiag_timer = SCTP_EVENT_TIMEOUT_T3_RTX;
+ 	r->idiag_retrans = asoc->rtx_data_chunks;
+-#define EXPIRES_IN_MS(tmo)  DIV_ROUND_UP((tmo - jiffies) * 1000, HZ)
+-	r->idiag_expires -		EXPIRES_IN_MS(asoc->timeouts[SCTP_EVENT_TIMEOUT_T3_RTX]);
+-#undef EXPIRES_IN_MS
++	r->idiag_expires = jiffies_to_msecs(
++		asoc->timeouts[SCTP_EVENT_TIMEOUT_T3_RTX] - jiffies);
+ }
+ 
+ static int inet_diag_msg_sctpladdrs_fill(struct sk_buff *skb,
+-- 
+2.1.0
+
