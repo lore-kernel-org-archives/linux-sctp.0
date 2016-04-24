@@ -1,46 +1,40 @@
-From: Jamal Hadi Salim <jhs@mojatatu.com>
-Date: Sun, 10 Apr 2016 13:02:27 +0000
-Subject: Re: [PATCHv2 net-next 1/6] sctp: add sctp_info dump api for sctp_diag
-Message-Id: <570A4EE3.9090302@mojatatu.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sun, 24 Apr 2016 15:21:22 +0000
+Subject: [PATCH net-next] sctp: sctp_diag should fill RMEM_ALLOC with asoc->rmem_alloc when rcvbuf_policy is 
+Message-Id: <f21861d502b04cf3752dce4cde8cd3f5f1806571.1461511282.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1460177331.git.lucien.xin@gmail.com>
- <c507274a984bd1b0a7e7a59d1e825352536efd25.1460177331.git.lucien.xin@gmail.com>
- <1460178984.6473.473.camel@edumazet-glaptop3.roam.corp.google.com>
- <57091D90.4030905@mojatatu.com>
- <1460222507.6473.493.camel@edumazet-glaptop3.roam.corp.google.com>
-In-Reply-To: <1460222507.6473.493.camel@edumazet-glaptop3.roam.corp.google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net, eric.dumazet@gmail.com
 
-On 16-04-09 01:21 PM, Eric Dumazet wrote:
+For sctp assoc, when rcvbuf_policy is set, it will has it's own
+rmem_alloc, when we dump asoc info in sctp_diag, we should use that
+value on RMEM_ALLOC as well, just like WMEM_ALLOC.
 
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/sctp_diag.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-> Well, once a hole is there, nothing we can do really, because of
-> compatibility with old kernels / old binaries.
->
->
-> But when a _new_ structure is defined, this is the time where we can ask
-> for doing sensible things ;)
->
+diff --git a/net/sctp/sctp_diag.c b/net/sctp/sctp_diag.c
+index bb2d8d9..b5269df 100644
+--- a/net/sctp/sctp_diag.c
++++ b/net/sctp/sctp_diag.c
+@@ -145,7 +145,11 @@ static int inet_sctp_diag_fill(struct sock *sk, struct sctp_association *asoc,
+ 		else
+ 			amt = sk_wmem_alloc_get(sk);
+ 		mem[SK_MEMINFO_WMEM_ALLOC] = amt;
+-		mem[SK_MEMINFO_RMEM_ALLOC] = sk_rmem_alloc_get(sk);
++		if (asoc && asoc->ep->rcvbuf_policy)
++			amt = atomic_read(&asoc->rmem_alloc);
++		else
++			amt = sk_rmem_alloc_get(sk);
++		mem[SK_MEMINFO_RMEM_ALLOC] = amt;
+ 		mem[SK_MEMINFO_RCVBUF] = sk->sk_rcvbuf;
+ 		mem[SK_MEMINFO_SNDBUF] = sk->sk_sndbuf;
+ 		mem[SK_MEMINFO_FWD_ALLOC] = sk->sk_forward_alloc;
+-- 
+2.1.0
 
-This one is fixable. sizeof() already includes the accounting of
-the pad. something like:
-
-diff --git a/include/uapi/linux/tcp.h b/include/uapi/linux/tcp.h
-index fe95446..52542eb 100644
---- a/include/uapi/linux/tcp.h
-+++ b/include/uapi/linux/tcp.h
-@@ -158,6 +158,7 @@ struct tcp_info {
-         __u8    tcpi_options;
-         __u8    tcpi_snd_wscale : 4, tcpi_rcv_wscale : 4;
-
-+       __u8    pad;    /*reuse this space if you need 8bits for something*/
-         __u32   tcpi_rto;
-         __u32   tcpi_ato;
-         __u32   tcpi_snd_mss;
-
-cheers,
-jamal
