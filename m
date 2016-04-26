@@ -1,40 +1,23 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 24 Apr 2016 15:21:22 +0000
-Subject: [PATCH net-next] sctp: sctp_diag should fill RMEM_ALLOC with asoc->rmem_alloc when rcvbuf_policy is 
-Message-Id: <f21861d502b04cf3752dce4cde8cd3f5f1806571.1461511282.git.lucien.xin@gmail.com>
+From: David Miller <davem@davemloft.net>
+Date: Tue, 26 Apr 2016 19:19:33 +0000
+Subject: Re: [PATCH net-next] sctp: sctp_diag should fill RMEM_ALLOC with asoc->rmem_alloc when rcvbuf_policy
+Message-Id: <20160426.151933.1727797620994322847.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <f21861d502b04cf3752dce4cde8cd3f5f1806571.1461511282.git.lucien.xin@gmail.com>
+In-Reply-To: <f21861d502b04cf3752dce4cde8cd3f5f1806571.1461511282.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net, eric.dumazet@gmail.com
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net, eric.dumazet@gmail.com
 
-For sctp assoc, when rcvbuf_policy is set, it will has it's own
-rmem_alloc, when we dump asoc info in sctp_diag, we should use that
-value on RMEM_ALLOC as well, just like WMEM_ALLOC.
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sun, 24 Apr 2016 23:21:22 +0800
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- net/sctp/sctp_diag.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+> For sctp assoc, when rcvbuf_policy is set, it will has it's own
+> rmem_alloc, when we dump asoc info in sctp_diag, we should use that
+> value on RMEM_ALLOC as well, just like WMEM_ALLOC.
+> 
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-diff --git a/net/sctp/sctp_diag.c b/net/sctp/sctp_diag.c
-index bb2d8d9..b5269df 100644
---- a/net/sctp/sctp_diag.c
-+++ b/net/sctp/sctp_diag.c
-@@ -145,7 +145,11 @@ static int inet_sctp_diag_fill(struct sock *sk, struct sctp_association *asoc,
- 		else
- 			amt = sk_wmem_alloc_get(sk);
- 		mem[SK_MEMINFO_WMEM_ALLOC] = amt;
--		mem[SK_MEMINFO_RMEM_ALLOC] = sk_rmem_alloc_get(sk);
-+		if (asoc && asoc->ep->rcvbuf_policy)
-+			amt = atomic_read(&asoc->rmem_alloc);
-+		else
-+			amt = sk_rmem_alloc_get(sk);
-+		mem[SK_MEMINFO_RMEM_ALLOC] = amt;
- 		mem[SK_MEMINFO_RCVBUF] = sk->sk_rcvbuf;
- 		mem[SK_MEMINFO_SNDBUF] = sk->sk_sndbuf;
- 		mem[SK_MEMINFO_FWD_ALLOC] = sk->sk_forward_alloc;
--- 
-2.1.0
-
+Applied.
