@@ -1,14 +1,17 @@
-From: =?utf-8?B?5oiR55qE55u454mH5Zyo?= <zhengxuan@jbfx.com.cn>
-Date: Fri, 08 Apr 2016 00:44:43 +0000
+From: =?utf-8?B?5oiR55qE55u454mH5Zyo?= <admin@ydwd.com>
+Date: Wed, 27 Apr 2016 23:52:12 +0000
 Subject: =?utf-8?B?5oiR55qE55u454mH5Zyo?=
-Message-Id: <20160408084449157313@jbfx.com.cn>
+Message-Id: <20160428075222647170@ydwd.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20160408084449157313@jbfx.com.cn>
+In-Reply-To: <20160408084449157313@jbfx.com.cn>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-5L2g55qE6ICB5pyL5Y+L6YKA5L2g5p2lUee+pDozNDMyNTc3NTkg5oqi57qi5YyFIOaKouenkuad
-gCDmiqJ2aXAg5LuA5LmI6YO96KaB5oqi44CC5aSq5Yi65r+A5LqG44CC5LiN6Z2g5omL5rCU5Y+q
-5ou85omL6YCfDQo
+5L2g55qE5pyL5Y+L57uZ5L2g5YiG5Lqr5LqG5LiA5Liq5pSv5LuY5a6d57qi5YyF5Y+j5Luk77ya
+5Yqg576k5pyJ57qi5YyFICAgIOi1tuW/q+aJk+W8gOaUr+S7mOWunUFQUO+8jOi+k+WFpee6ouWM
+heWPo+S7pO+8jOaKoue6ouWMhe+8jOaJi+aFouaXoOOAgg=
+
 
