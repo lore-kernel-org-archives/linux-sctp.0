@@ -1,120 +1,152 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 05 Apr 2016 04:06:32 +0000
-Subject: [PATCH net-next 7/7] sctp: fix some rhashtable functions using in sctp proc/diag
-Message-Id: <805be68474068ea7be3d215f78dcba302cd2520d.1459829123.git.lucien.xin@gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 29 Apr 2016 17:17:08 +0000
+Subject: [PATCH] sctp: signal sk_data_ready earlier on data chunks reception
+Message-Id: <271eaec3c8fad125a48b5acce192dd1080c26528.1461949899.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1459829123.git.lucien.xin@gmail.com>
- <c507274a984bd1b0a7e7a59d1e825352536efd25.1459829123.git.lucien.xin@gmail.com>
- <c99aafbc687328f783c0777e10df3e207004db10.1459829123.git.lucien.xin@gmail.com>
- <d16e3f12f689f28d8c3b62c7c2a15916177bd7c0.1459829123.git.lucien.xin@gmail.com>
- <123695bf6a49412e15b79049d088903a36538c53.1459829123.git.lucien.xin@gmail.com>
- <cdc77cc7b894aab62dad372f0018c571e33cf16e.1459829123.git.lucien.xin@gmail.com>
- <90be0ff11d9675b484c5354ba0bec95b30bf269d.1459829123.git.lucien.xin@gmail.com>
-In-Reply-To: <90be0ff11d9675b484c5354ba0bec95b30bf269d.1459829123.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net
+To: netdev@vger.kernel.org
+Cc: David Miller <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
 
-When rhashtable_walk_init return err, no release function should be
-called, and when rhashtable_walk_start return err, we should only invoke
-rhashtable_walk_exit to release the source.
+Dave Miller pointed out that fb586f25300f ("sctp: delay calls to
+sk_data_ready() as much as possible") may insert latency specially if
+the receiving application is running on another CPU and that it would be
+better if we signalled as early as possible.
 
-But now when sctp_transport_walk_start return err, we just call
-rhashtable_walk_stop/exit, and never care about if rhashtable_walk_init
-or start return err, which is so bad.
+This patch thus basically inverts the logic on fb586f25300f and signals
+it as early as possible, similar to what we had before.
 
-We will fix it by calling rhashtable_walk_exit if rhashtable_walk_start
-return err in sctp_transport_walk_start, and if sctp_transport_walk_start
-return err, we do not need to call sctp_transport_walk_stop any more.
-
-For sctp proc, we will use 'iter->start_fail' to decide if we will call
-rhashtable_walk_stop/exit.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Fixes: fb586f25300f ("sctp: delay calls to sk_data_ready() as much as possible")
+Reported-by: Dave Miller <davem@davemloft.net>
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- net/sctp/proc.c   |  7 ++++++-
- net/sctp/socket.c | 15 ++++++++++-----
- 2 files changed, 16 insertions(+), 6 deletions(-)
+ include/net/sctp/structs.h |  2 +-
+ net/sctp/sm_sideeffect.c   |  7 +++----
+ net/sctp/ulpqueue.c        | 25 ++++++++++++++++---------
+ 3 files changed, 20 insertions(+), 14 deletions(-)
 
-diff --git a/net/sctp/proc.c b/net/sctp/proc.c
-index 9fe1393..4cb5aed 100644
---- a/net/sctp/proc.c
-+++ b/net/sctp/proc.c
-@@ -280,6 +280,7 @@ void sctp_eps_proc_exit(struct net *net)
- struct sctp_ht_iter {
- 	struct seq_net_private p;
- 	struct rhashtable_iter hti;
-+	int start_fail;
- };
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 558bae3cbe0d5107d52c8cb31b324cfd5479def0..16b013a6191cf1c416e4dd1aeb1707a8569ea49b 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -218,7 +218,7 @@ struct sctp_sock {
+ 		frag_interleave:1,
+ 		recvrcvinfo:1,
+ 		recvnxtinfo:1,
+-		pending_data_ready:1;
++		data_ready_signalled:1;
  
- static void *sctp_transport_seq_start(struct seq_file *seq, loff_t *pos)
-@@ -287,8 +288,10 @@ static void *sctp_transport_seq_start(struct seq_file *seq, loff_t *pos)
- 	struct sctp_ht_iter *iter = seq->private;
- 	int err = sctp_transport_walk_start(&iter->hti);
+ 	atomic_t pd_mode;
+ 	/* Receive to here while partial delivery is in effect. */
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index e8f0112f9b28472c39c4c91dcb28576373c858e7..aa37122593684d8501fdca15983fbd8620fabe07 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -1741,10 +1741,9 @@ out:
+ 	} else if (local_cork)
+ 		error = sctp_outq_uncork(&asoc->outqueue, gfp);
  
--	if (err)
-+	if (err) {
-+		iter->start_fail = 1;
- 		return ERR_PTR(err);
-+	}
- 
- 	return sctp_transport_get_idx(seq_file_net(seq), &iter->hti, *pos);
- }
-@@ -297,6 +300,8 @@ static void sctp_transport_seq_stop(struct seq_file *seq, void *v)
- {
- 	struct sctp_ht_iter *iter = seq->private;
- 
-+	if (iter->start_fail)
-+		return;
- 	sctp_transport_walk_stop(&iter->hti);
- }
- 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index b0bf6c7..473a40c 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -4298,8 +4298,12 @@ int sctp_transport_walk_start(struct rhashtable_iter *iter)
- 		return err;
- 
- 	err = rhashtable_walk_start(iter);
-+	if (err && err != -EAGAIN) {
-+		rhashtable_walk_exit(iter);
-+		return err;
-+	}
- 
--	return err = -EAGAIN ? 0 : err;
-+	return 0;
- }
- 
- void sctp_transport_walk_stop(struct rhashtable_iter *iter)
-@@ -4388,11 +4392,12 @@ EXPORT_SYMBOL_GPL(sctp_transport_lookup_process);
- int sctp_for_each_transport(int (*cb)(struct sctp_transport *, void *),
- 			    struct net *net, int pos, void *p) {
- 	struct rhashtable_iter hti;
--	int err = 0;
- 	void *obj;
-+	int err;
- 
--	if (sctp_transport_walk_start(&hti))
--		goto out;
-+	err = sctp_transport_walk_start(&hti);
-+	if (err)
-+		return err;
- 
- 	sctp_transport_get_idx(net, &hti, pos);
- 	obj = sctp_transport_get_next(net, &hti);
-@@ -4406,8 +4411,8 @@ int sctp_for_each_transport(int (*cb)(struct sctp_transport *, void *),
- 		if (err)
- 			break;
- 	}
--out:
- 	sctp_transport_walk_stop(&hti);
+-	if (sp->pending_data_ready) {
+-		sk->sk_data_ready(sk);
+-		sp->pending_data_ready = 0;
+-	}
++	if (sp->data_ready_signalled)
++		sp->data_ready_signalled = 0;
 +
- 	return err;
+ 	return error;
+ nomem:
+ 	error = -ENOMEM;
+diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
+index ec12a8920e5fd7a0f26d19f1695bc2feeae41518..ec166d2bd2d95d9aa69369da2ead9437da4ce8ed 100644
+--- a/net/sctp/ulpqueue.c
++++ b/net/sctp/ulpqueue.c
+@@ -194,6 +194,7 @@ static int sctp_ulpq_clear_pd(struct sctp_ulpq *ulpq)
+ int sctp_ulpq_tail_event(struct sctp_ulpq *ulpq, struct sctp_ulpevent *event)
+ {
+ 	struct sock *sk = ulpq->asoc->base.sk;
++	struct sctp_sock *sp = sctp_sk(sk);
+ 	struct sk_buff_head *queue, *skb_list;
+ 	struct sk_buff *skb = sctp_event2skb(event);
+ 	int clear_pd = 0;
+@@ -211,7 +212,7 @@ int sctp_ulpq_tail_event(struct sctp_ulpq *ulpq, struct sctp_ulpevent *event)
+ 		sk_incoming_cpu_update(sk);
+ 	}
+ 	/* Check if the user wishes to receive this event.  */
+-	if (!sctp_ulpevent_is_enabled(event, &sctp_sk(sk)->subscribe))
++	if (!sctp_ulpevent_is_enabled(event, &sp->subscribe))
+ 		goto out_free;
+ 
+ 	/* If we are in partial delivery mode, post to the lobby until
+@@ -219,7 +220,7 @@ int sctp_ulpq_tail_event(struct sctp_ulpq *ulpq, struct sctp_ulpevent *event)
+ 	 * the association the cause of the partial delivery.
+ 	 */
+ 
+-	if (atomic_read(&sctp_sk(sk)->pd_mode) = 0) {
++	if (atomic_read(&sp->pd_mode) = 0) {
+ 		queue = &sk->sk_receive_queue;
+ 	} else {
+ 		if (ulpq->pd_mode) {
+@@ -231,7 +232,7 @@ int sctp_ulpq_tail_event(struct sctp_ulpq *ulpq, struct sctp_ulpevent *event)
+ 			if ((event->msg_flags & MSG_NOTIFICATION) ||
+ 			    (SCTP_DATA_NOT_FRAG =
+ 				    (event->msg_flags & SCTP_DATA_FRAG_MASK)))
+-				queue = &sctp_sk(sk)->pd_lobby;
++				queue = &sp->pd_lobby;
+ 			else {
+ 				clear_pd = event->msg_flags & MSG_EOR;
+ 				queue = &sk->sk_receive_queue;
+@@ -242,10 +243,10 @@ int sctp_ulpq_tail_event(struct sctp_ulpq *ulpq, struct sctp_ulpevent *event)
+ 			 * can queue this to the receive queue instead
+ 			 * of the lobby.
+ 			 */
+-			if (sctp_sk(sk)->frag_interleave)
++			if (sp->frag_interleave)
+ 				queue = &sk->sk_receive_queue;
+ 			else
+-				queue = &sctp_sk(sk)->pd_lobby;
++				queue = &sp->pd_lobby;
+ 		}
+ 	}
+ 
+@@ -264,8 +265,10 @@ int sctp_ulpq_tail_event(struct sctp_ulpq *ulpq, struct sctp_ulpevent *event)
+ 	if (clear_pd)
+ 		sctp_ulpq_clear_pd(ulpq);
+ 
+-	if (queue = &sk->sk_receive_queue)
+-		sctp_sk(sk)->pending_data_ready = 1;
++	if (queue = &sk->sk_receive_queue && !sp->data_ready_signalled) {
++		sp->data_ready_signalled = 1;
++		sk->sk_data_ready(sk);
++	}
+ 	return 1;
+ 
+ out_free:
+@@ -1126,11 +1129,13 @@ void sctp_ulpq_abort_pd(struct sctp_ulpq *ulpq, gfp_t gfp)
+ {
+ 	struct sctp_ulpevent *ev = NULL;
+ 	struct sock *sk;
++	struct sctp_sock *sp;
+ 
+ 	if (!ulpq->pd_mode)
+ 		return;
+ 
+ 	sk = ulpq->asoc->base.sk;
++	sp = sctp_sk(sk);
+ 	if (sctp_ulpevent_type_enabled(SCTP_PARTIAL_DELIVERY_EVENT,
+ 				       &sctp_sk(sk)->subscribe))
+ 		ev = sctp_ulpevent_make_pdapi(ulpq->asoc,
+@@ -1140,6 +1145,8 @@ void sctp_ulpq_abort_pd(struct sctp_ulpq *ulpq, gfp_t gfp)
+ 		__skb_queue_tail(&sk->sk_receive_queue, sctp_event2skb(ev));
+ 
+ 	/* If there is data waiting, send it up the socket now. */
+-	if (sctp_ulpq_clear_pd(ulpq) || ev)
+-		sctp_sk(sk)->pending_data_ready = 1;
++	if ((sctp_ulpq_clear_pd(ulpq) || ev) && !sp->data_ready_signalled) {
++		sp->data_ready_signalled = 1;
++		sk->sk_data_ready(sk);
++	}
  }
- EXPORT_SYMBOL_GPL(sctp_for_each_transport);
 -- 
-2.1.0
+2.5.0
 
