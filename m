@@ -1,73 +1,44 @@
-From: Jakub Sitnicki <jkbs@redhat.com>
-Date: Thu, 14 Apr 2016 12:41:59 +0000
-Subject: Re: [PATCHv3 net-next 4/6] sctp: add the sctp_diag.c file
-Message-Id: <87r3e8s6p4.fsf@beetle.home>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 29 Apr 2016 21:33:31 +0000
+Subject: [PATCH 0/2] sctp: Add GSO support
+Message-Id: <cover.1461965035.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1460618169.git.lucien.xin@gmail.com> <cd6bf9c2696f125a74491e1f82b77a30bb1005dd.1460618169.git.lucien.xin@gmail.com> <d3fc80db41935f6b22d9fffc5854de63fb842899.1460618169.git.lucien.xin@gmail.com> <c771f8320e007cd5d1801a820f0cca8f7ed7235c.1460618169.git.lucien.xin@gmail.com> <c48759e983ae5f9cefdd1805025abb7f57299886.1460618169.git.lucien.xin@gmail.com>
-In-Reply-To: <c48759e983ae5f9cefdd1805025abb7f57299886.1460618169.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net, eric.dumazet@gmail.com
+To: netdev@vger.kernel.org
+Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, David Laight <David.Laight@ACULAB.COM>, Alexander Duyck <alexander.duyck@gmail.com>
 
-Hi Xin,
+This patchset adds sctp GSO support.
 
-On Thu, Apr 14, 2016 at 09:35 AM CEST, Xin Long <lucien.xin@gmail.com> wrote:
-> This one will implement all the interface of inet_diag, inet_diag_handler.
-> which includes sctp_diag_dump, sctp_diag_dump_one and sctp_diag_get_info.
->
-> It will work as a module, and register inet_diag_handler when loading.
->
-> v2->v3:
-> - fix the mistake in inet_assoc_attr_size().
->
-> - change inet_diag_msg_laddrs_fill() name to inet_diag_msg_sctpladdrs_fill.
->
-> - change inet_diag_msg_paddrs_fill() name to inet_diag_msg_sctpaddrs_fill.
->
-> - add inet_diag_msg_sctpinfo_fill() to make asoc/ep fill code clearer.
->
-> - add inet_diag_msg_sctpasoc_fill() to make asoc fill code clearer.
->
-> - merge inet_asoc_diag_fill() and inet_ep_diag_fill() to
->   inet_sctp_diag_fill().
->
-> - call sctp_diag_get_info() directly, instead by handler, cause the caller
->   is in the same file with it.
->
-> - call lock_sock in sctp_tsp_dump_one() to make sure we call get sctp info
->   safely.
->
-> - after lock_sock(sk), we should check sk != assoc->base.sk.
->
-> - change mem[SK_MEMINFO_WMEM_ALLOC] to asoc->sndbuf_used for asoc dump when
->   asoc->ep->sndbuf_policy is set. don't use INET_DIAG_MEMINFO attr any more.
->
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> ---
+Performance tests indicates that increases throughput by 10% if using
+bigger chunk sizes, specially if bigger than MTU. For small chunks, it
+doesn't help much if not using heavy firewall rules.
 
-[...]
+For small chunks it will probably be of more use once we get something
+like MSG_MORE as David Laight had suggested.
 
-> diff --git a/net/sctp/sctp_diag.c b/net/sctp/sctp_diag.c
-> new file mode 100644
-> index 0000000..98ecd16
-> --- /dev/null
-> +++ b/net/sctp/sctp_diag.c
-> @@ -0,0 +1,497 @@
+I believe I could address all comments from the RFC attempt.
 
-[...]
+Marcelo Ricardo Leitner (2):
+  skbuff: export skb_gro_receive
+  sctp: Add GSO support
 
-> +#define EXPIRES_IN_MS(tmo)  DIV_ROUND_UP((tmo - jiffies) * 1000, HZ)
-> +	r->idiag_expires > +		EXPIRES_IN_MS(asoc->timeouts[SCTP_EVENT_TIMEOUT_T3_RTX]);
-> +#undef EXPIRES_IN_MS
+ include/linux/netdev_features.h |   7 +-
+ include/linux/netdevice.h       |   1 +
+ include/linux/skbuff.h          |   7 +
+ include/net/sctp/sctp.h         |   4 +
+ include/net/sctp/structs.h      |   2 +
+ net/core/skbuff.c               |  11 +-
+ net/ipv4/af_inet.c              |   1 +
+ net/sctp/Makefile               |   3 +-
+ net/sctp/offload.c              |  98 +++++++++++
+ net/sctp/output.c               | 348 +++++++++++++++++++++++++++-------------
+ net/sctp/protocol.c             |   3 +
+ net/sctp/socket.c               |   2 +
+ 12 files changed, 366 insertions(+), 121 deletions(-)
+ create mode 100644 net/sctp/offload.c
 
-How about using jiffies_to_msecs() here? It's already being used
-elsewhere in net/sctp.
+-- 
+2.5.0
 
-AFAICT EXPIRES_IN_MS macro comes from net/ipv4/inet_diag.c and dates
-back to before jiffies_to_msecs() has been introduced. Perhaps that's
-why it's still used in inet_diag.c. But this is new code.
-
-Thanks,
-Jakub
