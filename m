@@ -1,63 +1,13 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 31 May 2016 18:55:46 +0000
-Subject: [PATCH v2 3/7] sk_buff: allow segmenting based on frag sizes
-Message-Id: <e5c12d2bba1cb7f1c199c04d52e481cdd39107e7.1464718103.git.marcelo.leitner@gmail.com>
+From: =?utf-8?B?5oiR55qE55u45YaM5Zyo?= <shangbao@tzjk.net>
+Date: Mon, 02 May 2016 06:00:38 +0000
+Subject: =?utf-8?B?5oiR55qE55u45YaM5Zyo?=
+Message-Id: <20160502140047037735@tzjk.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1464718103.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1464718103.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Laight <David.Laight@ACULAB.COM>, Vlad Yasevich <vyasevich@gmail.com>, Alexander Duyck <alexander.duyck@gmail.com>, Daniel Borkmann <daniel@iogearbox.net>, Florian Westphal <fw@strlen.de>, Eric Dumazet <eric.dumazet@gmail.com>
+To: linux-sctp@vger.kernel.org
 
-This patch allows segmenting a skb based on its frags sizes instead of
-based on a fixed value.
+5L2g55qE5bCP5aeQ5aa56YKA5L2g5YqgUee+pO+8mjU0NjY0NTU5NSDmiqLnuqLljIXjgIINCg=
 
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Tested-by: Xin Long <lucien.xin@gmail.com>
----
- include/linux/skbuff.h |  5 +++++
- net/core/skbuff.c      | 10 +++++++---
- 2 files changed, 12 insertions(+), 3 deletions(-)
-
-diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
-index c413c588a24f854be9e4df78d8a6872b6b1ff9f3..1f713541cb2fc232cb0e8417232cb9942409c9fc 100644
---- a/include/linux/skbuff.h
-+++ b/include/linux/skbuff.h
-@@ -301,6 +301,11 @@ struct sk_buff;
- #endif
- extern int sysctl_max_skb_frags;
- 
-+/* Set skb_shinfo(skb)->gso_size to this in case you want skb_segment to
-+ * segment using its current segmentation instead.
-+ */
-+#define GSO_BY_FRAGS	0xFFFF
-+
- typedef struct skb_frag_struct skb_frag_t;
- 
- struct skb_frag_struct {
-diff --git a/net/core/skbuff.c b/net/core/skbuff.c
-index 4724bcf9b0cae1cecbe5bc2c04e308bb70b3232a..97c32c75e704af1f31b064e8f1e0475ff1505d67 100644
---- a/net/core/skbuff.c
-+++ b/net/core/skbuff.c
-@@ -3116,9 +3116,13 @@ struct sk_buff *skb_segment(struct sk_buff *head_skb,
- 		int hsize;
- 		int size;
- 
--		len = head_skb->len - offset;
--		if (len > mss)
--			len = mss;
-+		if (unlikely(mss = GSO_BY_FRAGS)) {
-+			len = list_skb->len;
-+		} else {
-+			len = head_skb->len - offset;
-+			if (len > mss)
-+				len = mss;
-+		}
- 
- 		hsize = skb_headlen(head_skb) - offset;
- 		if (hsize < 0)
--- 
-2.5.5
 
