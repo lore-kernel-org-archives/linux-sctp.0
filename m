@@ -1,33 +1,29 @@
 From: David Miller <davem@davemloft.net>
-Date: Tue, 31 May 2016 18:59:34 +0000
-Subject: Re: [PATCHv2 net] sctp: sctp_diag should dump sctp socket type
-Message-Id: <20160531.115934.448180712677695713.davem@davemloft.net>
+Date: Mon, 02 May 2016 01:06:28 +0000
+Subject: Re: [PATCH] sctp: signal sk_data_ready earlier on data chunks reception
+Message-Id: <20160501.210628.858260753518974978.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <56c3ecedbc132e8501fd7cfbe056525155a1f915.1464514933.git.lucien.xin@gmail.com>
-In-Reply-To: <56c3ecedbc132e8501fd7cfbe056525155a1f915.1464514933.git.lucien.xin@gmail.com>
+References: <271eaec3c8fad125a48b5acce192dd1080c26528.1461949899.git.marcelo.leitner@gmail.com>
+In-Reply-To: <271eaec3c8fad125a48b5acce192dd1080c26528.1461949899.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net, phil@nwl.cc
+To: marcelo.leitner@gmail.com
+Cc: netdev@vger.kernel.org, nhorman@tuxdriver.com, vyasevich@gmail.com, linux-sctp@vger.kernel.org
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 29 May 2016 17:42:13 +0800
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 29 Apr 2016 14:17:08 -0300
 
-> Now we cannot distinguish that one sk is a udp or sctp style when
-> we use ss to dump sctp_info. it's necessary to dump it as well.
+> Dave Miller pointed out that fb586f25300f ("sctp: delay calls to
+> sk_data_ready() as much as possible") may insert latency specially if
+> the receiving application is running on another CPU and that it would be
+> better if we signalled as early as possible.
 > 
-> For sctp_diag, ss support is not officially available, thus there
-> are no official users of this yet, so we can add this field in the
-> middle of sctp_info without breaking user API.
+> This patch thus basically inverts the logic on fb586f25300f and signals
+> it as early as possible, similar to what we had before.
 > 
-> v1->v2:
->   - move 'sctpi_s_type' field to the end of struct sctp_info, so
->     that it won't cause incompatibility with applications already
->     built.
->   - add __reserved3 in sctp_info to make sure sctp_info is 8-byte
->     alignment.
-> 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+> Fixes: fb586f25300f ("sctp: delay calls to sk_data_ready() as much as possible")
+> Reported-by: Dave Miller <davem@davemloft.net>
+> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-Applied.
+Applied, thanks Marcelo.
