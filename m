@@ -1,37 +1,49 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 31 May 2016 18:55:45 +0000
-Subject: [PATCH v2 2/7] skbuff: export skb_gro_receive
-Message-Id: <880a6436917d7c8c20314085fa773c04500bb73c.1464718103.git.marcelo.leitner@gmail.com>
+Date: Mon, 09 May 2016 20:53:40 +0000
+Subject: New lksctp-tools release: 1.0.17
+Message-Id: <20160509205340.GA13980@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1464718103.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1464718103.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Laight <David.Laight@ACULAB.COM>, Vlad Yasevich <vyasevich@gmail.com>, Alexander Duyck <alexander.duyck@gmail.com>, Daniel Borkmann <daniel@iogearbox.net>, Florian Westphal <fw@strlen.de>, Eric Dumazet <eric.dumazet@gmail.com>
+To: linux-sctp@vger.kernel.org
 
-sctp GSO requires it and sctp can be compiled as a module, so we need to
-export this function.
+Hello,
 
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Tested-by: Xin Long <lucien.xin@gmail.com>
----
- net/core/skbuff.c | 1 +
- 1 file changed, 1 insertion(+)
+I'd like to announce the new release, 1.0.17, mostly composed of small
+bug fixes and build-time improvements from Yegor Yefremov:
 
-diff --git a/net/core/skbuff.c b/net/core/skbuff.c
-index f2b77e549c03a771909cd9c87c40ec2b7826cd31..4724bcf9b0cae1cecbe5bc2c04e308bb70b3232a 100644
---- a/net/core/skbuff.c
-+++ b/net/core/skbuff.c
-@@ -3438,6 +3438,7 @@ done:
- 	NAPI_GRO_CB(skb)->same_flow = 1;
- 	return 0;
- }
-+EXPORT_SYMBOL_GPL(skb_gro_receive);
- 
- void __init skb_init(void)
- {
--- 
-2.5.5
+Gustavo Zacarias (1):
+      Build: add option to disable tests build
+
+Marcelo Ricardo Leitner (8):
+      sctp_test: fix hostname resolution
+      man: remove sysctl listing from sctp.7
+      libsctputil: fix str fmt for the argument
+      checksctp: fix trivial warnings
+      sctp_test: honor listen backlog
+      Merge pull request #1 from gustavoz/master
+      Add tags to .gitignore
+      Release lksctp-tools-1.0.17
+
+Michele Baldessari (3):
+      Fix recieved->received typos
+      Fix usage help for sctp_test
+      Fix mailing list address
+
+Simon Xu (1):
+      test_1_to_1_accept_close: also expect EACCES when accept on an established socket
+
+Wang Weidong (1):
+      lksctp-tools: make bind_test can do while disable IPV6
+
+Yegor Yefremov (4):
+      libsctp: add pkg-config support
+      Add .gitignore files
+      autoconf: add m4 folder
+      Fix musl build
+
+Thank you to all those who contributed to this release.
+
+  Marcelo
 
