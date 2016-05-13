@@ -1,36 +1,31 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 26 May 2016 05:14:54 +0000
-Subject: Re: [PATCH net] sctp: fix double EPs display in sctp_diag
-Message-Id: <20160525.221454.1093609843174055034.davem@davemloft.net>
+From: Adam Endrodi <adam.endrodi@nokia.com>
+Date: Fri, 13 May 2016 10:35:33 +0000
+Subject: sctp_getpaddrs() on a SHUTDOWN association
+Message-Id: <20160513103533.GH3043@timmy>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <738ddd5de8d4c5fb8a99cee15de3305215e04962.1464203363.git.lucien.xin@gmail.com>
-In-Reply-To: <738ddd5de8d4c5fb8a99cee15de3305215e04962.1464203363.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net, phil@nwl.cc
+To: linux-sctp@vger.kernel.org
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 26 May 2016 03:09:23 +0800
 
-> We have this situation: that EP hash table, contains only the EPs
-> that are listening, while the transports one, has the opposite.
-> We have to traverse both to dump all.
-> 
-> But when we traverse the transports one we will also get EPs that are
-> in the EP hash if they are listening. In this case, the EP is dumped
-> twice.
-> 
-> We will fix it by checking if the endpoint that is in the endpoint
-> hash table contains any ep->asoc in there, as it means we will also
-> find it via transport hash, and thus we can/should skip it, depending
-> on the filters used, like 'ss -l'.
-> 
-> Still, we should NOT skip it if the user is listing only listening
-> endpoints, because then we are not traversing the transport hash.
-> so we have to check idiag_states there also.
-> 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Hi there,
 
-Applied.
+
+I've got a simple case: a multi-homed client connects to a server, then
+disconnects right away.  On the server side we receive the SCTP_COMM_UP
+notification and try to get the client's addresses with sctp_getpaddrs().
+But since the L3 connection has been SHUTDOWN properly the function fails
+with EINVAL.
+
+Unfortunately accept(2) only returns the first address of the client.
+
+I have a 3.13.0-37.64 generic kernel from Ubuntu, but the affected code
+path seems to be the same as in kernel 4.4.
+
+Do you happen to have an idea how to work it around and obtain the client's
+addresses after the associtation has been SHUTDOWN?  I've made the client
+wait a little before closing the connection, but I don't like it.
+
+Thanks,
+adam
