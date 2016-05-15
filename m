@@ -1,59 +1,50 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 31 May 2016 18:55:43 +0000
-Subject: [PATCH v2 0/7] sctp: Add GSO support
-Message-Id: <cover.1464718103.git.marcelo.leitner@gmail.com>
+From: <mehmetkarakaya@duzce.edu.tr>
+Date: Sun, 15 May 2016 10:06:28 +0000
+Subject: 
+Message-Id: <000101d1aec3$b92cd126$c0a80001@comstar.ru>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Laight <David.Laight@ACULAB.COM>, Vlad Yasevich <vyasevich@gmail.com>, Alexander Duyck <alexander.duyck@gmail.com>, Daniel Borkmann <daniel@iogearbox.net>, Florian Westphal <fw@strlen.de>, Eric Dumazet <eric.dumazet@gmail.com>
+To: linux-sctp@vger.kernel.org
 
-This patchset adds sctp GSO support.
 
-Performance tests indicates that increases throughput by 10% if using
-bigger chunk sizes, specially if bigger than MTU. For small chunks, it
-doesn't help much if not using heavy firewall rules.
 
-For small chunks it will probably be of more use once we get something
-like MSG_MORE as David Laight had suggested.
-
-v1->v2:
-Added support for receiving GSO frames on SCTP stack, as requested by
-Dave Miller.
-
-Marcelo Ricardo Leitner (7):
-  loopback: make use of NETIF_F_GSO_SOFTWARE
-  skbuff: export skb_gro_receive
-  sk_buff: allow segmenting based on frag sizes
-  skbuff: introduce skb_gso_validate_mtu
-  sctp: delay as much as possible skb_linearize
-  sctp: Add GSO support
-  sctp: improve debug message to also log curr pkt and new chunk size
-
- drivers/net/loopback.c          |   5 +-
- include/linux/netdev_features.h |   7 +-
- include/linux/netdevice.h       |   1 +
- include/linux/skbuff.h          |   8 +
- include/net/sctp/sctp.h         |   4 +
- include/net/sctp/structs.h      |   5 +
- net/core/ethtool.c              |   1 +
- net/core/skbuff.c               |  42 ++++-
- net/ipv4/af_inet.c              |   1 +
- net/ipv4/ip_forward.c           |   2 +-
- net/ipv4/ip_output.c            |   2 +-
- net/ipv6/ip6_output.c           |   2 +-
- net/mpls/af_mpls.c              |   2 +-
- net/sctp/Makefile               |   3 +-
- net/sctp/input.c                |  57 ++++---
- net/sctp/inqueue.c              |  78 +++++++--
- net/sctp/offload.c              | 106 ++++++++++++
- net/sctp/output.c               | 366 +++++++++++++++++++++++++++-------------
- net/sctp/protocol.c             |   3 +
- net/sctp/socket.c               |   2 +
- 20 files changed, 530 insertions(+), 167 deletions(-)
- create mode 100644 net/sctp/offload.c
-
--- 
-2.5.5
-
+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
+AAAAAQABAFYAAADiBwAAAAA
