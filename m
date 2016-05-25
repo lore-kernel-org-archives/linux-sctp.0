@@ -1,35 +1,51 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 03 May 2016 16:47:45 +0000
-Subject: Re: [PATCH 0/2] sctp: Add GSO support
-Message-Id: <20160503164745.GE5676@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 25 May 2016 19:14:28 +0000
+Subject: [PATCH net] sctp: sctp_diag should dump sctp socket type
+Message-Id: <53ebf63eb6de080418949f52d0d3556af2a371e1.1464203668.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1461965035.git.marcelo.leitner@gmail.com>
- <20160502.191614.608026435064266168.davem@davemloft.net>
- <20160503114918.GD5676@localhost.localdomain>
- <20160503.120915.2184693151751282220.davem@davemloft.net>
-In-Reply-To: <20160503.120915.2184693151751282220.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: netdev@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, David.Laight@ACULAB.COM, alexander.duyck@gmail.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, phil@nwl.cc
 
-On Tue, May 03, 2016 at 12:09:15PM -0400, David Miller wrote:
-> From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> Date: Tue, 3 May 2016 08:49:18 -0300
-> 
-> > So this is just for pure tx path, no forwarding involved.
-> 
-> And if that GSO segment is looped back into the stack via the
-> loopback interface, the packet classifier mirror action, or
-> netfilter?
-> 
-> You cannot just GSO things and then not handle such packets
-> properly on receive.
+Now we cannot distinguish that one sk is a udp or sctp style when
+we use ss to dump sctp_info. it's necessary to dump it as well.
 
-Good point. It will fail if one uses AUTH due to the reason I mentioned
-for GRO. I have to split the GSO packet upon rx too and that should do
-it. Will post a v2 when I have it.
+For sctp_diag, ss support is not officially available, thus there
+are no official users of this yet, so we can add this field in the
+middle of sctp_info without breaking user API.
 
-Thanks,
-Marcelo
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/linux/sctp.h | 1 +
+ net/sctp/socket.c    | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index dacb5e7..3a406af 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -761,6 +761,7 @@ struct sctp_info {
+ 	__u32	sctpi_s_autoclose;
+ 	__u32	sctpi_s_adaptation_ind;
+ 	__u32	sctpi_s_pd_point;
++	__u32	sctpi_s_type;
+ 	__u8	sctpi_s_nodelay;
+ 	__u8	sctpi_s_disable_fragments;
+ 	__u8	sctpi_s_v4mapped;
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 777d032..ebb8e41 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4216,6 +4216,7 @@ int sctp_get_sctp_info(struct sock *sk, struct sctp_association *asoc,
+ 		info->sctpi_s_autoclose = sp->autoclose;
+ 		info->sctpi_s_adaptation_ind = sp->adaptation_ind;
+ 		info->sctpi_s_pd_point = sp->pd_point;
++		info->sctpi_s_type = sp->type;
+ 		info->sctpi_s_nodelay = sp->nodelay;
+ 		info->sctpi_s_disable_fragments = sp->disable_fragments;
+ 		info->sctpi_s_v4mapped = sp->v4mapped;
+-- 
+2.1.0
+
