@@ -1,17 +1,19 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 25 May 2016 20:23:01 +0000
+From: David Miller <davem@davemloft.net>
+Date: Thu, 26 May 2016 05:14:54 +0000
 Subject: Re: [PATCH net] sctp: fix double EPs display in sctp_diag
-Message-Id: <20160525202301.GO7313@localhost.localdomain>
+Message-Id: <20160525.221454.1093609843174055034.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <738ddd5de8d4c5fb8a99cee15de3305215e04962.1464203363.git.lucien.xin@gmail.com>
 In-Reply-To: <738ddd5de8d4c5fb8a99cee15de3305215e04962.1464203363.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, phil@nwl.cc
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net, phil@nwl.cc
 
-On Thu, May 26, 2016 at 03:09:23AM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 26 May 2016 03:09:23 +0800
+
 > We have this situation: that EP hash table, contains only the EPs
 > that are listening, while the transports one, has the opposite.
 > We have to traverse both to dump all.
@@ -31,31 +33,4 @@ On Thu, May 26, 2016 at 03:09:23AM +0800, Xin Long wrote:
 > 
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-> ---
->  net/sctp/sctp_diag.c | 3 +++
->  1 file changed, 3 insertions(+)
-> 
-> diff --git a/net/sctp/sctp_diag.c b/net/sctp/sctp_diag.c
-> index 8e3e769..1ce724b 100644
-> --- a/net/sctp/sctp_diag.c
-> +++ b/net/sctp/sctp_diag.c
-> @@ -356,6 +356,9 @@ static int sctp_ep_dump(struct sctp_endpoint *ep, void *p)
->  	if (cb->args[4] < cb->args[1])
->  		goto next;
->  
-> +	if ((r->idiag_states & ~TCPF_LISTEN) && !list_empty(&ep->asocs))
-> +		goto next;
-> +
->  	if (r->sdiag_family != AF_UNSPEC &&
->  	    sk->sk_family != r->sdiag_family)
->  		goto next;
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Applied.
