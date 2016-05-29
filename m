@@ -1,56 +1,59 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 27 May 2016 16:06:27 +0000
-Subject: Re: [PATCH net] sctp: sctp_diag should dump sctp socket type
-Message-Id: <CADvbK_cucfLqF1_2MEeQN9Ljwx79jbW-0bFVeNWx2xBYU2j1PQ@mail.gmail.com>
+Date: Sun, 29 May 2016 09:42:13 +0000
+Subject: [PATCHv2 net] sctp: sctp_diag should dump sctp socket type
+Message-Id: <56c3ecedbc132e8501fd7cfbe056525155a1f915.1464514933.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <53ebf63eb6de080418949f52d0d3556af2a371e1.1464203668.git.lucien.xin@gmail.com>
-	<1464207719.5939.73.camel@edumazet-glaptop3.roam.corp.google.com>
-In-Reply-To: <1464207719.5939.73.camel@edumazet-glaptop3.roam.corp.google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, Phil Sutter <phil@nwl.cc>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, phil@nwl.cc
 
-On Thu, May 26, 2016 at 4:21 AM, Eric Dumazet <eric.dumazet@gmail.com> wrote:
-> On Thu, 2016-05-26 at 03:14 +0800, Xin Long wrote:
->> Now we cannot distinguish that one sk is a udp or sctp style when
->> we use ss to dump sctp_info. it's necessary to dump it as well.
->>
->> For sctp_diag, ss support is not officially available, thus there
->> are no official users of this yet, so we can add this field in the
->> middle of sctp_info without breaking user API.
->>
->> Signed-off-by: Xin Long <lucien.xin@gmail.com>
->> ---
->>  include/linux/sctp.h | 1 +
->>  net/sctp/socket.c    | 1 +
->>  2 files changed, 2 insertions(+)
->>
->> diff --git a/include/linux/sctp.h b/include/linux/sctp.h
->> index dacb5e7..3a406af 100644
->> --- a/include/linux/sctp.h
->> +++ b/include/linux/sctp.h
->> @@ -761,6 +761,7 @@ struct sctp_info {
->>       __u32   sctpi_s_autoclose;
->>       __u32   sctpi_s_adaptation_ind;
->>       __u32   sctpi_s_pd_point;
->> +     __u32   sctpi_s_type;
->
-> Well, this is also adding a 4-byte padding at the end of the structure.
->
->
-> Basically, because of the 8-byte alignment cause by the __u64 fields,
-> adding a single __u32 adds a padding.
->
-> Don't you have another u32 info you'd like to publish ?
->
-these days, I was trying to find an right u32 one for here, but no good
-one, so I will put a __u32   __reserved3; there.
+Now we cannot distinguish that one sk is a udp or sctp style when
+we use ss to dump sctp_info. it's necessary to dump it as well.
 
-sctp still have some feature haven't yet been implemented, maybe
-after that, we will find a good one. :)
+For sctp_diag, ss support is not officially available, thus there
+are no official users of this yet, so we can add this field in the
+middle of sctp_info without breaking user API.
 
+v1->v2:
+  - move 'sctpi_s_type' field to the end of struct sctp_info, so
+    that it won't cause incompatibility with applications already
+    built.
+  - add __reserved3 in sctp_info to make sure sctp_info is 8-byte
+    alignment.
 
->
->
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/linux/sctp.h | 2 ++
+ net/sctp/socket.c    | 1 +
+ 2 files changed, 3 insertions(+)
+
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index dacb5e7..de1f643 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -765,6 +765,8 @@ struct sctp_info {
+ 	__u8	sctpi_s_disable_fragments;
+ 	__u8	sctpi_s_v4mapped;
+ 	__u8	sctpi_s_frag_interleave;
++	__u32	sctpi_s_type;
++	__u32	__reserved3;
+ };
+ 
+ struct sctp_infox {
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 777d032..67154b8 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4220,6 +4220,7 @@ int sctp_get_sctp_info(struct sock *sk, struct sctp_association *asoc,
+ 		info->sctpi_s_disable_fragments = sp->disable_fragments;
+ 		info->sctpi_s_v4mapped = sp->v4mapped;
+ 		info->sctpi_s_frag_interleave = sp->frag_interleave;
++		info->sctpi_s_type = sp->type;
+ 
+ 		return 0;
+ 	}
+-- 
+2.1.0
+
