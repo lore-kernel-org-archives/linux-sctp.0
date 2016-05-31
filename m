@@ -1,50 +1,38 @@
-From: <mehmetkarakaya@duzce.edu.tr>
-Date: Sun, 15 May 2016 10:06:28 +0000
-Subject: 
-Message-Id: <000101d1aec3$b92cd126$c0a80001@comstar.ru>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 31 May 2016 18:55:50 +0000
+Subject: [PATCH v2 7/7] sctp: improve debug message to also log curr pkt and new chunk size
+Message-Id: <7de2dcb3ca0ba008f2b4b759c24ff2e26c71be13.1464718103.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1464718103.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1464718103.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Laight <David.Laight@ACULAB.COM>, Vlad Yasevich <vyasevich@gmail.com>, Alexander Duyck <alexander.duyck@gmail.com>, Daniel Borkmann <daniel@iogearbox.net>, Florian Westphal <fw@strlen.de>, Eric Dumazet <eric.dumazet@gmail.com>
 
+This is useful for debugging packet sizes.
 
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Tested-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/output.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-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
-AAAAAQABAFYAAADiBwAAAAA
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 60499a69179d255c47da1fa19b73147917a050bf..90d2e125c2f5e0e1ecb33a7eab10772e5b39567c 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -182,7 +182,8 @@ sctp_xmit_t sctp_packet_transmit_chunk(struct sctp_packet *packet,
+ 	sctp_xmit_t retval;
+ 	int error = 0;
+ 
+-	pr_debug("%s: packet:%p chunk:%p\n", __func__, packet, chunk);
++	pr_debug("%s: packet:%p size:%lu chunk:%p size:%d\n", __func__,
++		 packet, packet->size, chunk, chunk->skb ? chunk->skb->len : -1);
+ 
+ 	switch ((retval = (sctp_packet_append_chunk(packet, chunk)))) {
+ 	case SCTP_XMIT_PMTU_FULL:
+-- 
+2.5.5
+
