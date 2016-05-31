@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 30 May 2016 16:44:08 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 31 May 2016 12:35:08 +0000
 Subject: Re: [PATCHv2 net] sctp: sctp_diag should dump sctp socket type
-Message-Id: <20160530164408.GA22693@localhost.localdomain>
+Message-Id: <20160531123508.GA6066@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <56c3ecedbc132e8501fd7cfbe056525155a1f915.1464514933.git.lucien.xin@gmail.com>
 In-Reply-To: <56c3ecedbc132e8501fd7cfbe056525155a1f915.1464514933.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, phil@nwl.cc
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, phil@nwl.cc
 
 On Sun, May 29, 2016 at 05:42:13PM +0800, Xin Long wrote:
 > Now we cannot distinguish that one sk is a udp or sctp style when
@@ -27,9 +27,6 @@ On Sun, May 29, 2016 at 05:42:13PM +0800, Xin Long wrote:
 >     alignment.
 > 
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  include/linux/sctp.h | 2 ++
 >  net/sctp/socket.c    | 1 +
@@ -68,3 +65,5 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
