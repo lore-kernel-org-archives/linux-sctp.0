@@ -1,7 +1,7 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 31 May 2016 18:55:44 +0000
-Subject: [PATCH v2 1/7] loopback: make use of NETIF_F_GSO_SOFTWARE
-Message-Id: <b26a8c8d62ee7eb245517eb097076eb806b064b8.1464718103.git.marcelo.leitner@gmail.com>
+Date: Tue, 31 May 2016 18:55:45 +0000
+Subject: [PATCH v2 2/7] skbuff: export skb_gro_receive
+Message-Id: <880a6436917d7c8c20314085fa773c04500bb73c.1464718103.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1464718103.git.marcelo.leitner@gmail.com>
 In-Reply-To: <cover.1464718103.git.marcelo.leitner@gmail.com>
@@ -11,37 +11,27 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
 Cc: linux-sctp@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Laight <David.Laight@ACULAB.COM>, Vlad Yasevich <vyasevich@gmail.com>, Alexander Duyck <alexander.duyck@gmail.com>, Daniel Borkmann <daniel@iogearbox.net>, Florian Westphal <fw@strlen.de>, Eric Dumazet <eric.dumazet@gmail.com>
 
-NETIF_F_GSO_SOFTWARE was defined to list all GSO software types, so lets
-make use of it in loopback code. Note that veth/vxlan/others already
-uses it.
-
-Within this patch series, this patch causes lo to pick up SCTP GSO feature
-automatically (as it's added to NETIF_F_GSO_SOFTWARE) and thus avoiding
-segmentation if possible.
+sctp GSO requires it and sctp can be compiled as a module, so we need to
+export this function.
 
 Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 Tested-by: Xin Long <lucien.xin@gmail.com>
 ---
- drivers/net/loopback.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+ net/core/skbuff.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/drivers/net/loopback.c b/drivers/net/loopback.c
-index a400288cb37b9bfb6190f1bd7c64d02e97713956..6255973e3dda35fd41464ce51f0f9fb9f0b8364b 100644
---- a/drivers/net/loopback.c
-+++ b/drivers/net/loopback.c
-@@ -169,10 +169,9 @@ static void loopback_setup(struct net_device *dev)
- 	dev->flags		= IFF_LOOPBACK;
- 	dev->priv_flags		|= IFF_LIVE_ADDR_CHANGE | IFF_NO_QUEUE;
- 	netif_keep_dst(dev);
--	dev->hw_features	= NETIF_F_ALL_TSO | NETIF_F_UFO;
-+	dev->hw_features	= NETIF_F_GSO_SOFTWARE;
- 	dev->features 		= NETIF_F_SG | NETIF_F_FRAGLIST
--		| NETIF_F_ALL_TSO
--		| NETIF_F_UFO
-+		| NETIF_F_GSO_SOFTWARE
- 		| NETIF_F_HW_CSUM
- 		| NETIF_F_RXCSUM
- 		| NETIF_F_SCTP_CRC
+diff --git a/net/core/skbuff.c b/net/core/skbuff.c
+index f2b77e549c03a771909cd9c87c40ec2b7826cd31..4724bcf9b0cae1cecbe5bc2c04e308bb70b3232a 100644
+--- a/net/core/skbuff.c
++++ b/net/core/skbuff.c
+@@ -3438,6 +3438,7 @@ done:
+ 	NAPI_GRO_CB(skb)->same_flow = 1;
+ 	return 0;
+ }
++EXPORT_SYMBOL_GPL(skb_gro_receive);
+ 
+ void __init skb_init(void)
+ {
 -- 
 2.5.5
 
