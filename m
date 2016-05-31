@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 31 May 2016 12:35:08 +0000
+From: David Miller <davem@davemloft.net>
+Date: Tue, 31 May 2016 18:59:34 +0000
 Subject: Re: [PATCHv2 net] sctp: sctp_diag should dump sctp socket type
-Message-Id: <20160531123508.GA6066@hmsreliant.think-freely.org>
+Message-Id: <20160531.115934.448180712677695713.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <56c3ecedbc132e8501fd7cfbe056525155a1f915.1464514933.git.lucien.xin@gmail.com>
 In-Reply-To: <56c3ecedbc132e8501fd7cfbe056525155a1f915.1464514933.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, phil@nwl.cc
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net, phil@nwl.cc
 
-On Sun, May 29, 2016 at 05:42:13PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sun, 29 May 2016 17:42:13 +0800
+
 > Now we cannot distinguish that one sk is a udp or sctp style when
 > we use ss to dump sctp_info. it's necessary to dump it as well.
 > 
@@ -27,43 +29,5 @@ On Sun, May 29, 2016 at 05:42:13PM +0800, Xin Long wrote:
 >     alignment.
 > 
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> ---
->  include/linux/sctp.h | 2 ++
->  net/sctp/socket.c    | 1 +
->  2 files changed, 3 insertions(+)
-> 
-> diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-> index dacb5e7..de1f643 100644
-> --- a/include/linux/sctp.h
-> +++ b/include/linux/sctp.h
-> @@ -765,6 +765,8 @@ struct sctp_info {
->  	__u8	sctpi_s_disable_fragments;
->  	__u8	sctpi_s_v4mapped;
->  	__u8	sctpi_s_frag_interleave;
-> +	__u32	sctpi_s_type;
-> +	__u32	__reserved3;
->  };
->  
->  struct sctp_infox {
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 777d032..67154b8 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -4220,6 +4220,7 @@ int sctp_get_sctp_info(struct sock *sk, struct sctp_association *asoc,
->  		info->sctpi_s_disable_fragments = sp->disable_fragments;
->  		info->sctpi_s_v4mapped = sp->v4mapped;
->  		info->sctpi_s_frag_interleave = sp->frag_interleave;
-> +		info->sctpi_s_type = sp->type;
->  
->  		return 0;
->  	}
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
+Applied.
