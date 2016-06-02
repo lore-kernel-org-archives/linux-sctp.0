@@ -1,85 +1,64 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 02 Jun 2016 06:09:23 +0000
-Subject: Re: [PATCH net-next] sctp: sctp should change socket state when shutdown is received
-Message-Id: <CADvbK_e6hNRigHP9WCc-zb5Tg3zWBuxgjuioacR-nWYStvNOAQ@mail.gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Thu, 02 Jun 2016 18:05:37 +0000
+Subject: [PATCH v3 0/7] sctp: Add GSO support
+Message-Id: <cover.1464888549.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <42953bb341d78d8b83dfccebb0beaa9387d8e1af.1464809925.git.lucien.xin@gmail.com>
-	<20160601214032.GB29509@localhost.localdomain>
-In-Reply-To: <20160601214032.GB29509@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem <davem@davemloft.net>, Eric Dumazet <eric.dumazet@gmail.com>
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Laight <David.Laight@ACULAB.COM>, Vlad Yasevich <vyasevich@gmail.com>, Alexander Duyck <alexander.duyck@gmail.com>, Daniel Borkmann <daniel@iogearbox.net>, Florian Westphal <fw@strlen.de>, Eric Dumazet <eric.dumazet@gmail.com>
 
-On Thu, Jun 2, 2016 at 5:40 AM, Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
-> On Thu, Jun 02, 2016 at 03:38:45AM +0800, Xin Long wrote:
->> Now sctp doesn't change socket state upon shutdown reception. It changes
->> just the assoc state, even though it's a TCP-style socket.
->>
->> For some cases, if we really need to check sk->sk_state, it's necessary to
->> fix this issue, at least when we use ss or netstat to dump, we can get a
->> more exact information.
->>
->> As an improvement, we will change sk->sk_state when we change asoc->state
->> to SHUTDOWN_RECEIVED, and also do it in sctp_shutdown to keep consistent with
->> sctp_close.
->>
->> Signed-off-by: Xin Long <lucien.xin@gmail.com>
->> ---
->>  net/sctp/sm_sideeffect.c | 4 +++-
->>  net/sctp/socket.c        | 5 ++++-
->>  2 files changed, 7 insertions(+), 2 deletions(-)
->>
->> diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
->> index aa37122..12d4519 100644
->> --- a/net/sctp/sm_sideeffect.c
->> +++ b/net/sctp/sm_sideeffect.c
->> @@ -806,8 +806,10 @@ static void sctp_cmd_new_state(sctp_cmd_seq_t *cmds,
->>
->>               /* Set the RCV_SHUTDOWN flag when a SHUTDOWN is received. */
->>               if (sctp_state(asoc, SHUTDOWN_RECEIVED) &&
->> -                 sctp_sstate(sk, ESTABLISHED))
->> +                 sctp_sstate(sk, ESTABLISHED)) {
->> +                     sk->sk_state = SCTP_SS_CLOSING;
->>                       sk->sk_shutdown |= RCV_SHUTDOWN;
->> +             }
->>       }
->>
->>       if (sctp_state(asoc, COOKIE_WAIT)) {
->> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
->> index 67154b8..c20199a 100644
->> --- a/net/sctp/socket.c
->> +++ b/net/sctp/socket.c
->> @@ -4193,6 +4193,7 @@ static void sctp_shutdown(struct sock *sk, int how)
->>               return;
->>
->>       if (how & SEND_SHUTDOWN) {
->> +             sk->sk_state = SCTP_SS_CLOSING;
->>               ep = sctp_sk(sk)->ep;
->>               if (!list_empty(&ep->asocs)) {
->>                       asoc = list_entry(ep->asocs.next,
->> @@ -7564,8 +7565,10 @@ static void sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
->>       /* If the association on the newsk is already closed before accept()
->>        * is called, set RCV_SHUTDOWN flag.
->>        */
->> -     if (sctp_state(assoc, CLOSED) && sctp_style(newsk, TCP))
->> +     if (sctp_state(assoc, CLOSED) && sctp_style(newsk, TCP)) {
->> +             newsk->sk_state = SCTP_SS_CLOSING;
->                     ^^^^
->>               newsk->sk_shutdown |= RCV_SHUTDOWN;
->> +     }
->>
->>       newsk->sk_state = SCTP_SS_ESTABLISHED;
->                       ^^^^^
-> This will overwrite the above
-> Otherwise patch looks good to me
-OK , seems no need to change sk_state to  SCTP_SS_CLOSING  in
-sctp_sock_migrate(). :)
+This patchset adds sctp GSO support.
 
->
->>       release_sock(newsk);
->> --
->> 2.1.0
->>
+Performance tests indicates that increases throughput by 10% if using
+bigger chunk sizes, specially if bigger than MTU. For small chunks, it
+doesn't help much if not using heavy firewall rules.
+
+For small chunks it will probably be of more use once we get something
+like MSG_MORE as David Laight had suggested.
+
+overall changes:
+v1->v2:
+Added support for receiving GSO frames on SCTP stack, as requested by
+Dave Miller.
+
+v2->v3:
+Consider sctphdr size in skb_gso_transport_seglen()
+rebased due to 5c7cdf339af5 ("gso: Remove arbitrary checks for
+unsupported GSO")
+
+Marcelo Ricardo Leitner (7):
+  loopback: make use of NETIF_F_GSO_SOFTWARE
+  skbuff: export skb_gro_receive
+  sk_buff: allow segmenting based on frag sizes
+  skbuff: introduce skb_gso_validate_mtu
+  sctp: delay as much as possible skb_linearize
+  sctp: Add GSO support
+  sctp: improve debug message to also log curr pkt and new chunk size
+
+ drivers/net/loopback.c          |   5 +-
+ include/linux/netdev_features.h |   7 +-
+ include/linux/netdevice.h       |   1 +
+ include/linux/skbuff.h          |   8 +
+ include/net/sctp/sctp.h         |   4 +
+ include/net/sctp/structs.h      |   5 +
+ net/core/ethtool.c              |   1 +
+ net/core/skbuff.c               |  45 ++++-
+ net/ipv4/ip_forward.c           |   2 +-
+ net/ipv4/ip_output.c            |   2 +-
+ net/ipv6/ip6_output.c           |   2 +-
+ net/mpls/af_mpls.c              |   2 +-
+ net/sctp/Makefile               |   3 +-
+ net/sctp/input.c                |  57 ++++---
+ net/sctp/inqueue.c              |  78 +++++++--
+ net/sctp/offload.c              |  98 +++++++++++
+ net/sctp/output.c               | 366 +++++++++++++++++++++++++++-------------
+ net/sctp/protocol.c             |   3 +
+ net/sctp/socket.c               |   2 +
+ 19 files changed, 524 insertions(+), 167 deletions(-)
+ create mode 100644 net/sctp/offload.c
+
+-- 
+2.5.5
+
