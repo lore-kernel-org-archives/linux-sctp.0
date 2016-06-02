@@ -1,38 +1,140 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 13 Jun 2016 16:04:28 +0000
-Subject: Re: [lkp] [sctp] d46e416c11: WARNING: CPU: 2 PID: 727 at net/ipv4/af_inet.c:685 inet_accept+0x10d/0x
-Message-Id: <8b8cdc03-da9d-48d0-7c9e-72c72a2235c9@gmail.com>
+Date: Thu, 02 Jun 2016 18:05:41 +0000
+Subject: [PATCH v3 4/7] skbuff: introduce skb_gso_validate_mtu
+Message-Id: <af52b9c59c838f2f0af394c96855261a3f08cef1.1464888549.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20160612015854.GC20879@yexl-desktop>
-In-Reply-To: <20160612015854.GC20879@yexl-desktop>
+References: <cover.1464888549.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1464888549.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: kernel test robot <xiaolong.ye@intel.com>, Xin Long <lucien.xin@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, Johan Hedberg <johan.hedberg@intel.com>, linux-bluetooth@vger.kernel.org, lkp@01.org, ltp@lists.linux.it, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Laight <David.Laight@ACULAB.COM>, Vlad Yasevich <vyasevich@gmail.com>, Alexander Duyck <alexander.duyck@gmail.com>, Daniel Borkmann <daniel@iogearbox.net>, Florian Westphal <fw@strlen.de>, Eric Dumazet <eric.dumazet@gmail.com>
 
-Em 11-06-2016 22:58, kernel test robot escreveu:
->
->
-> FYI, we noticed the following commit:
->
-> https://git.kernel.org/pub/scm/linux/kernel/git/bluetooth/bluetooth-next.git master
-> commit d46e416c11c88ef1deb5c7f19271806a5be597fe ("sctp: sctp should change socket state when shutdown is received")
->
-> in testcase: ltp
-> with following parameters: test=sctp
->
-> on test machine: nhm-white2: 8 threads Nehalem with 4G memory
->
-> caused below changes:
+skb_gso_network_seglen is not enough for checking fragment sizes if
+skb is using GSO_BY_FRAGS as we have to check frag per frag.
 
-Hi,
+This patch introduces skb_gso_validate_mtu, based on the former, which
+will wrap the use case inside it as all calls to skb_gso_network_seglen
+were to validate if it fits on a given TMU, and improve the check.
 
-Xin and I are working on a fix for this. Using SCTP_SS_CLOSING for 
-sctp_sock_migrate() wasn't a good move. That's what is causing this.
-Probably should have just moved to SCTP_SS_CLOSED already as the asoc is 
-already closed.
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Tested-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/linux/skbuff.h |  1 +
+ net/core/skbuff.c      | 31 +++++++++++++++++++++++++++++++
+ net/ipv4/ip_forward.c  |  2 +-
+ net/ipv4/ip_output.c   |  2 +-
+ net/ipv6/ip6_output.c  |  2 +-
+ net/mpls/af_mpls.c     |  2 +-
+ 6 files changed, 36 insertions(+), 4 deletions(-)
 
-Thanks,
-Marcelo
+diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+index 329a0a9ef67115cae03b7c1304de031116384148..aa3f9d7e8d5ca455387efa22d4a9d3a079a56f0c 100644
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -2992,6 +2992,7 @@ void skb_split(struct sk_buff *skb, struct sk_buff *skb1, const u32 len);
+ int skb_shift(struct sk_buff *tgt, struct sk_buff *skb, int shiftlen);
+ void skb_scrub_packet(struct sk_buff *skb, bool xnet);
+ unsigned int skb_gso_transport_seglen(const struct sk_buff *skb);
++bool skb_gso_validate_mtu(const struct sk_buff *skb, unsigned int mtu);
+ struct sk_buff *skb_segment(struct sk_buff *skb, netdev_features_t features);
+ struct sk_buff *skb_vlan_untag(struct sk_buff *skb);
+ int skb_ensure_writable(struct sk_buff *skb, int write_len);
+diff --git a/net/core/skbuff.c b/net/core/skbuff.c
+index 97c32c75e704af1f31b064e8f1e0475ff1505d67..5ca562b56ec39d39e1225d96547e242732518ffe 100644
+--- a/net/core/skbuff.c
++++ b/net/core/skbuff.c
+@@ -4392,6 +4392,37 @@ unsigned int skb_gso_transport_seglen(const struct sk_buff *skb)
+ }
+ EXPORT_SYMBOL_GPL(skb_gso_transport_seglen);
+ 
++/**
++ * skb_gso_validate_mtu - Return in case such skb fits a given MTU
++ *
++ * @skb: GSO skb
++ *
++ * skb_gso_validate_mtu validates if a given skb will fit a wanted MTU
++ * once split.
++ */
++bool skb_gso_validate_mtu(const struct sk_buff *skb, unsigned int mtu)
++{
++	const struct skb_shared_info *shinfo = skb_shinfo(skb);
++	const struct sk_buff *iter;
++	unsigned int hlen;
++
++	hlen = skb_gso_network_seglen(skb);
++
++	if (shinfo->gso_size != GSO_BY_FRAGS)
++		return hlen <= mtu;
++
++	/* Undo this so we can re-use header sizes */
++	hlen -= GSO_BY_FRAGS;
++
++	skb_walk_frags(skb, iter) {
++		if (hlen + skb_headlen(iter) > mtu)
++			return false;
++	}
++
++	return true;
++}
++EXPORT_SYMBOL_GPL(skb_gso_validate_mtu);
++
+ static struct sk_buff *skb_reorder_vlan_header(struct sk_buff *skb)
+ {
+ 	if (skb_cow(skb, skb_headroom(skb)) < 0) {
+diff --git a/net/ipv4/ip_forward.c b/net/ipv4/ip_forward.c
+index cbfb1808fcc490b94dc0bbdab6142acb8fa37815..9f0a7b96646f368021d9cd51bc3f728ba49eed0d 100644
+--- a/net/ipv4/ip_forward.c
++++ b/net/ipv4/ip_forward.c
+@@ -54,7 +54,7 @@ static bool ip_exceeds_mtu(const struct sk_buff *skb, unsigned int mtu)
+ 	if (skb->ignore_df)
+ 		return false;
+ 
+-	if (skb_is_gso(skb) && skb_gso_network_seglen(skb) <= mtu)
++	if (skb_is_gso(skb) && skb_gso_validate_mtu(skb, mtu))
+ 		return false;
+ 
+ 	return true;
+diff --git a/net/ipv4/ip_output.c b/net/ipv4/ip_output.c
+index 124bf0a663283502deb03397343160d493a378b1..cbac493c913ac37b57a97314f9e7099b14b8246c 100644
+--- a/net/ipv4/ip_output.c
++++ b/net/ipv4/ip_output.c
+@@ -225,7 +225,7 @@ static int ip_finish_output_gso(struct net *net, struct sock *sk,
+ 
+ 	/* common case: locally created skb or seglen is <= mtu */
+ 	if (((IPCB(skb)->flags & IPSKB_FORWARDED) = 0) ||
+-	      skb_gso_network_seglen(skb) <= mtu)
++	      skb_gso_validate_mtu(skb, mtu))
+ 		return ip_finish_output2(net, sk, skb);
+ 
+ 	/* Slowpath -  GSO segment length is exceeding the dst MTU.
+diff --git a/net/ipv6/ip6_output.c b/net/ipv6/ip6_output.c
+index cbf127ae7c676650cc626cbf12cd61b6b570ea43..6b2f60a5c1de3063bb65c07b2b77c13f33890af8 100644
+--- a/net/ipv6/ip6_output.c
++++ b/net/ipv6/ip6_output.c
+@@ -368,7 +368,7 @@ static bool ip6_pkt_too_big(const struct sk_buff *skb, unsigned int mtu)
+ 	if (skb->ignore_df)
+ 		return false;
+ 
+-	if (skb_is_gso(skb) && skb_gso_network_seglen(skb) <= mtu)
++	if (skb_is_gso(skb) && skb_gso_validate_mtu(skb, mtu))
+ 		return false;
+ 
+ 	return true;
+diff --git a/net/mpls/af_mpls.c b/net/mpls/af_mpls.c
+index 0b80a7140cc494d8c39bd3efba2423272d1b8844..7a4aa3450dd71039e73516bd711ba7392493eb5e 100644
+--- a/net/mpls/af_mpls.c
++++ b/net/mpls/af_mpls.c
+@@ -91,7 +91,7 @@ bool mpls_pkt_too_big(const struct sk_buff *skb, unsigned int mtu)
+ 	if (skb->len <= mtu)
+ 		return false;
+ 
+-	if (skb_is_gso(skb) && skb_gso_network_seglen(skb) <= mtu)
++	if (skb_is_gso(skb) && skb_gso_validate_mtu(skb, mtu))
+ 		return false;
+ 
+ 	return true;
+-- 
+2.5.5
 
