@@ -1,7 +1,7 @@
-From: marcelo.leitner@gmail.com
-Date: Mon, 06 Jun 2016 20:26:49 +0000
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Mon, 06 Jun 2016 20:42:38 +0000
 Subject: Re: sctp: Add GSO support
-Message-Id: <20160606202649.GE22680@localhost.localdomain>
+Message-Id: <20160606204237.GC32247@mwanda>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20160606201646.GA5425@mwanda>
 In-Reply-To: <20160606201646.GA5425@mwanda>
@@ -10,98 +10,51 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Hi Dan,
+It's fairly tricky to follow actually.  Here is one caller:
 
-On Mon, Jun 06, 2016 at 11:16:46PM +0300, Dan Carpenter wrote:
-> Hello Marcelo Ricardo Leitner,
-> 
-> This is a semi-automatic email about new static checker warnings.
-> 
-> The patch 90017accff61: "sctp: Add GSO support" from Jun 2, 2016, 
-> leads to the following Smatch complaint:
-> 
-> net/sctp/output.c:122 sctp_packet_config()
-> 	 error: we previously assumed 'asoc' could be null (see line 94)
-> 
-> net/sctp/output.c
->     93	
->     94		if (asoc && tp->dst) {
->                     ^^^^
-> New test.
-> 
->     95			struct sock *sk = asoc->base.sk;
->     96	
->     97			rcu_read_lock();
->     98			if (__sk_dst_get(sk) != tp->dst) {
->     99				dst_hold(tp->dst);
->    100				sk_setup_caps(sk, tp->dst);
->    101			}
->    102	
->    103			if (sk_can_gso(sk)) {
->    104				struct net_device *dev = tp->dst->dev;
->    105	
->    106				packet->max_size = dev->gso_max_size;
->    107			} else {
->    108				packet->max_size = asoc->pathmtu;
->    109			}
->    110			rcu_read_unlock();
->    111	
->    112		} else {
->    113			packet->max_size = tp->pathmtu;
->    114		}
->    115	
->    116		if (ecn_capable && sctp_packet_empty(packet)) {
->    117			struct sctp_chunk *chunk;
->    118	
->    119			/* If there a is a prepend chunk stick it on the list before
->    120			 * any other chunks get appended.
->    121			 */
->    122			chunk = sctp_get_ecne_prepend(asoc);
->                                                       ^^^^
-> New unchecked dereference.  It's possible that maybe checking
-> ecn_capable and sctp_packet_empty() implies that "asoc" is non-NULL but
-> it's not obvious from a glance.  Anyway, just let me know if that's the
-> case.
-> 
->    123			if (chunk)
->    124				sctp_packet_append_chunk(packet, chunk);
-> 
+net/sctp/outqueue.c
+   706  static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
+   707  {
+   708          struct sctp_packet *packet;
+   709          struct sctp_packet singleton;
+   710          struct sctp_association *asoc = q->asoc;
+                                         ^^^^^^^^^^^^^^
+asoc is set here.
 
-Thanks for the report.
+   711          __u16 sport = asoc->base.bind_addr.port;
+   712          __u16 dport = asoc->peer.port;
+   713          __u32 vtag = asoc->peer.i.init_tag;
+   714          struct sctp_transport *transport = NULL;
+   715          struct sctp_transport *new_transport;
+   716          struct sctp_chunk *chunk, *tmp;
+   717          sctp_xmit_t status;
 
-It's a false-positive, I think. Is there a way that we can avoid the
-warning without changing the code? I could add a check in there, like
-'if (ecn_capable && asoc && ..' just to clear this but wouldn't like to
-do it.
+[ snip ]
 
-False-positive because ecn_capable cannot be true without an asoc, so
-checking ecn_capable is enough to know that asoc is there too, as in:
+   800  
+   801                  /* Are we switching transports?
+   802                   * Take care of transport locks.
+   803                   */
+   804                  if (new_transport != transport) {
+   805                          transport = new_transport;
+   806                          if (list_empty(&transport->send_ready)) {
+   807                                  list_add_tail(&transport->send_ready,
+   808                                                &transport_list);
+   809                          }
+   810                          packet = &transport->packet;
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+packet is set here.  How do we know that "packect->transport->asoc" and
+"asoc" are the same?  It's complicated.
 
-$ git grep -A 1 sctp_packet_config
-output.c:void sctp_packet_config(struct sctp_packet *packet, __u32 vtag,
-output.c-                       int ecn_capable)
---
-outqueue.c:                     sctp_packet_config(packet, vtag,
-outqueue.c-
-asoc->peer.ecn_capable);
---
-outqueue.c:                     sctp_packet_config(&singleton, vtag, 0);
-outqueue.c-                     sctp_packet_append_chunk(&singleton,
-chunk);
---
-outqueue.c:                     sctp_packet_config(packet, vtag,
-outqueue.c-
-asoc->peer.ecn_capable);
---
-outqueue.c:                             sctp_packet_config(packet, vtag,
-outqueue.c-
-asoc->peer.ecn_capable);
---
-sm_statefuns.c: sctp_packet_config(packet, vtag, 0);
-sm_statefuns.c-
+   811                          sctp_packet_config(packet, vtag,
+   812                                             asoc->peer.ecn_capable);
+   813                  }
 
-and in all these cases, asoc was verified already. Unless the tool can
-do such check across the call stack and I missed something in it..
+Anyway, maybe eventually we'll figure out a way to make it work but even
+just reading it manually is quite complicated....
 
-Regards,
-Marcelo
+For now, just ignore the false postive.
+
+regards,
+dan carpenter
+
