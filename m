@@ -1,93 +1,75 @@
-From: Wasim Baig <wasimbaig@gmail.com>
-Date: Fri, 17 Jun 2016 05:13:06 +0000
-Subject: Re: No COOKIE_ECHO after INIT_ACK
-Message-Id: <CABHdwCrNzQc=GG-bYMcUYCKxED=xP99mTWwzf3-xKC9UxGQvkg@mail.gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 09 Jun 2016 14:48:18 +0000
+Subject: [PATCHv4 net-next] sctp: sctp should change socket state when shutdown is received
+Message-Id: <d964561c0d409848ea5724615c910e6d2ce53557.1465483698.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CABHdwCpNDcpQHUpR6ho+Eh2CUfCbGhEt1dKt2vE9wTfHJv1Gfw@mail.gmail.com>
-In-Reply-To: <CABHdwCpNDcpQHUpR6ho+Eh2CUfCbGhEt1dKt2vE9wTfHJv1Gfw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net, eric.dumazet@gmail.com
 
-Indeed it was the iptables interfering, bypassing that shows a
-complete handshake. Thanks, and I apologize for wasting precious
-cycles.
+Now sctp doesn't change socket state upon shutdown reception. It changes
+just the assoc state, even though it's a TCP-style socket.
 
-root@smsc-01 ~ # tshark -r nflog-sctp.pcap
+For some cases, if we really need to check sk->sk_state, it's necessary to
+fix this issue, at least when we use ss or netstat to dump, we can get a
+more exact information.
 
-|
-tshark: Lua: Error during loading:
+As an improvement, we will change sk->sk_state when we change asoc->state
+to SHUTDOWN_RECEIVED, and also do it in sctp_shutdown to keep consistent
+with sctp_close.
 
-|
- [string "/usr/share/wireshark/init.lua"]:46: dofile has been disabled
-due to running Wireshark as superuser. See
-http://wiki.wireshark.org/C|
-aptureSetup/CapturePrivileges for help in running Wireshark as an
-unprivileged user.
-Running as user "root" and group "root". This could be dangerous.
-  1 0.000000000 10.123.86.248 -> 10.157.120.36 SCTP 116 INIT
-  2 0.000005000 10.157.120.36 -> 10.123.86.248 SCTP 892 INIT_ACK
-  3 0.000006000 10.123.86.248 -> 10.157.120.36 SCTP 828 COOKIE_ECHO
-DATA
-  4 0.000006000 10.157.120.36 -> 10.123.86.248 SCTP 140 COOKIE_ACK
-  5 0.000007000 10.157.120.36 -> 10.123.86.248 SCTP 152 SACK
-  6 0.000007000 10.123.86.248 -> 10.157.120.36 SCTP 100 DATA
-  7 0.998681000 10.123.86.248 -> 10.157.120.36 SCTP 1480 DATA DATA
-DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA
-DATA
- DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA
-DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA
-DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA
-DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA
-  8 0.998684000 10.157.120.36 -> 10.123.86.248 SCTP 152 SACK
-  9 0.998685000 10.123.86.248 -> 10.157.120.36 SCTP 624 DATA DATA DATA
-DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA
-DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA DATA
- 10 0.998685000 10.157.120.36 -> 10.123.86.248 SCTP 152 SACK
- 11 0.998686000 10.123.86.248 -> 10.157.120.36 SCTP 72 SHUTDOWN
- 12 0.998686000 10.157.120.36 -> 10.123.86.248 SCTP 140 SHUTDOWN_ACK
- 13 0.998687000 10.123.86.248 -> 10.157.120.36 SCTP 68 SHUTDOWN_COMPLETE
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/sm_sideeffect.c | 4 +++-
+ net/sctp/socket.c        | 8 ++++++--
+ 2 files changed, 9 insertions(+), 3 deletions(-)
 
-
--wasim
-
-On Fri, Jun 17, 2016 at 9:55 AM, Wasim Baig <wasimbaig@gmail.com> wrote:
-> In trying to establish an association, linux-sctp Debian 8 (libsctp1
-> 1.0.16+dfsg-2) is not responding with COOKIE_ECHO to the INIT_ACK.
->
-> Linux smsc-01 3.16.0-4-amd64 #1 SMP Debian 3.16.7-ckt25-1 (2016-03-06)
-> x86_64 GNU/Linux
->
-> Far end is probably a Huawei STP, but I have to confirm this
-> information with the operator.
->
-> Attached is a PCAP showing the INIT and INIT_ACK (this goes on...)
->
-> sctp_test -H 10.123.86.248 -P 2527 -h 10.157.120.36 -p 2527 -s
-> remote:addr.157.120.36, port%27, family=2
-> local:addr.123.86.248, port%27, family=2
-> seed = 1466138967
->
-> Starting tests...
->         socket(SOCK_SEQPACKET, IPPROTO_SCTP)  ->  sk=3
->         bind(sk=3, [a:10.123.86.248,p:2527])  --  attempt 1/10
-> Client: Sending packets.(1/10)
->         sendmsg(sk=3, assoc=0)    1 bytes.
->           SNDRCV(stream=0 flags=0x1 ppid9959982
->
-> In between is an IPSEC tunnel, could it be the INIT_ACK is not
-> reaching sctp_test? How can I get more debug?
->
-> Would appreciate insight into the matter as we haven't seen this
-> behaviour below.
->
-> Many thanks.
->
-> --
-> wasim h. baig | +92 30 0850 8070 | peace be upon you
-
-
-
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index aa37122..12d4519 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -806,8 +806,10 @@ static void sctp_cmd_new_state(sctp_cmd_seq_t *cmds,
+ 
+ 		/* Set the RCV_SHUTDOWN flag when a SHUTDOWN is received. */
+ 		if (sctp_state(asoc, SHUTDOWN_RECEIVED) &&
+-		    sctp_sstate(sk, ESTABLISHED))
++		    sctp_sstate(sk, ESTABLISHED)) {
++			sk->sk_state = SCTP_SS_CLOSING;
+ 			sk->sk_shutdown |= RCV_SHUTDOWN;
++		}
+ 	}
+ 
+ 	if (sctp_state(asoc, COOKIE_WAIT)) {
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 67154b8..125ddcb 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4193,6 +4193,7 @@ static void sctp_shutdown(struct sock *sk, int how)
+ 		return;
+ 
+ 	if (how & SEND_SHUTDOWN) {
++		sk->sk_state = SCTP_SS_CLOSING;
+ 		ep = sctp_sk(sk)->ep;
+ 		if (!list_empty(&ep->asocs)) {
+ 			asoc = list_entry(ep->asocs.next,
+@@ -7564,10 +7565,13 @@ static void sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
+ 	/* If the association on the newsk is already closed before accept()
+ 	 * is called, set RCV_SHUTDOWN flag.
+ 	 */
+-	if (sctp_state(assoc, CLOSED) && sctp_style(newsk, TCP))
++	if (sctp_state(assoc, CLOSED) && sctp_style(newsk, TCP)) {
++		newsk->sk_state = SCTP_SS_CLOSING;
+ 		newsk->sk_shutdown |= RCV_SHUTDOWN;
++	} else {
++		newsk->sk_state = SCTP_SS_ESTABLISHED;
++	}
+ 
+-	newsk->sk_state = SCTP_SS_ESTABLISHED;
+ 	release_sock(newsk);
+ }
+ 
 -- 
-wasim h. baig | +92 30 0850 8070 | peace be upon you
+2.1.0
+
