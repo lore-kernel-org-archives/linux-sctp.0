@@ -1,17 +1,19 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 10 Jun 2016 02:39:03 +0000
+From: David Miller <davem@davemloft.net>
+Date: Sat, 11 Jun 2016 06:21:45 +0000
 Subject: Re: [PATCHv4 net-next] sctp: sctp should change socket state when shutdown is received
-Message-Id: <20160610023903.GC22693@localhost.localdomain>
+Message-Id: <20160610.232145.1944529062698358389.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <d964561c0d409848ea5724615c910e6d2ce53557.1465483698.git.lucien.xin@gmail.com>
 In-Reply-To: <d964561c0d409848ea5724615c910e6d2ce53557.1465483698.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net, eric.dumazet@gmail.com
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net, eric.dumazet@gmail.com
 
-On Thu, Jun 09, 2016 at 10:48:18PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu,  9 Jun 2016 22:48:18 +0800
+
 > Now sctp doesn't change socket state upon shutdown reception. It changes
 > just the assoc state, even though it's a TCP-style socket.
 > 
@@ -25,62 +27,4 @@ On Thu, Jun 09, 2016 at 10:48:18PM +0800, Xin Long wrote:
 > 
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Acked-by: Marcelo R. Leitner <marcelo.leitner@gmail.com>
-
-> ---
->  net/sctp/sm_sideeffect.c | 4 +++-
->  net/sctp/socket.c        | 8 ++++++--
->  2 files changed, 9 insertions(+), 3 deletions(-)
-> 
-> diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-> index aa37122..12d4519 100644
-> --- a/net/sctp/sm_sideeffect.c
-> +++ b/net/sctp/sm_sideeffect.c
-> @@ -806,8 +806,10 @@ static void sctp_cmd_new_state(sctp_cmd_seq_t *cmds,
->  
->  		/* Set the RCV_SHUTDOWN flag when a SHUTDOWN is received. */
->  		if (sctp_state(asoc, SHUTDOWN_RECEIVED) &&
-> -		    sctp_sstate(sk, ESTABLISHED))
-> +		    sctp_sstate(sk, ESTABLISHED)) {
-> +			sk->sk_state = SCTP_SS_CLOSING;
->  			sk->sk_shutdown |= RCV_SHUTDOWN;
-> +		}
->  	}
->  
->  	if (sctp_state(asoc, COOKIE_WAIT)) {
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 67154b8..125ddcb 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -4193,6 +4193,7 @@ static void sctp_shutdown(struct sock *sk, int how)
->  		return;
->  
->  	if (how & SEND_SHUTDOWN) {
-> +		sk->sk_state = SCTP_SS_CLOSING;
->  		ep = sctp_sk(sk)->ep;
->  		if (!list_empty(&ep->asocs)) {
->  			asoc = list_entry(ep->asocs.next,
-> @@ -7564,10 +7565,13 @@ static void sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
->  	/* If the association on the newsk is already closed before accept()
->  	 * is called, set RCV_SHUTDOWN flag.
->  	 */
-> -	if (sctp_state(assoc, CLOSED) && sctp_style(newsk, TCP))
-> +	if (sctp_state(assoc, CLOSED) && sctp_style(newsk, TCP)) {
-> +		newsk->sk_state = SCTP_SS_CLOSING;
->  		newsk->sk_shutdown |= RCV_SHUTDOWN;
-> +	} else {
-> +		newsk->sk_state = SCTP_SS_ESTABLISHED;
-> +	}
->  
-> -	newsk->sk_state = SCTP_SS_ESTABLISHED;
->  	release_sock(newsk);
->  }
->  
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Applied.
