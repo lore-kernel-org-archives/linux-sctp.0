@@ -1,24 +1,32 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 15 Jun 2016 06:46:00 +0000
-Subject: Re: [PATCH -next] sctp: fix error return code in sctp_init()
-Message-Id: <20160614.234600.2262103276628303309.davem@davemloft.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Thu, 30 Jun 2016 19:18:12 +0000
+Subject: sctp and tail loss recovery
+Message-Id: <0593f8d4-2302-a5c3-62cb-1fe6f1e53005@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1465830506-22752-1-git-send-email-weiyj_lk@163.com>
-In-Reply-To: <1465830506-22752-1-git-send-email-weiyj_lk@163.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: weiyj_lk@163.com
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, yongjun_wei@trendmicro.com.cn, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-From: weiyj_lk@163.com
-Date: Mon, 13 Jun 2016 23:08:26 +0800
+Hi Michael,
 
-> From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
-> 
-> Fix to return a negative error code from the error handling
-> case instead of 0, as done elsewhere in this function.
-> 
-> Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
+Long story short, I'm chasing a performance issue on linux 
+implementation and I think that TLR is the right fix for it. The receive 
+operation is way more expensive than transmit and this causes its buffer 
+to fill up, up to reach 0 window situation. Then, as the RFC allows, 
+sender keeps sending 1 data chunk at a time, as a probe for possible 
+unnoticed window updates due to SACK loss. But if the peer couldn't free 
+any window in time, it will drop that chunk, and will cause a RTO.
 
-Applied.
+I'm not seeing anything in the specs that would prevent this situation 
+other than a TLR would do. Or I missed it?
+
+On TLR, the most updated info I could find, is already (recently) 
+expired and archived: 
+https://datatracker.ietf.org/doc/draft-nielsen-tsvwg-sctp-tlr/
+I could find Karen's email 
+https://www.ietf.org/mail-archive/web/tsvwg/current/msg13703.html
+But then nothing else. Do you know what happened?
+
+Thanks,
+Marcelo
