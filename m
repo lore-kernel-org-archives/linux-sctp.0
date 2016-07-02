@@ -1,28 +1,39 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 25 Jul 2016 18:25:01 +0000
-Subject: Re: [PATCH net-next] sctp: also point GSO head_skb to the sk when it's available
-Message-Id: <20160725.112501.2010684051493485788.davem@davemloft.net>
+From: Michael Tuexen <tuexen@fh-muenster.de>
+Date: Sat, 02 Jul 2016 13:11:55 +0000
+Subject: Re: sctp and tail loss recovery
+Message-Id: <CB096E48-71A5-4DB1-A625-CE6D198C6C49@fh-muenster.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <aa37c8d65d8d304be73f6c237202760978ec124f.1469244494.git.marcelo.leitner@gmail.com>
-In-Reply-To: <aa37c8d65d8d304be73f6c237202760978ec124f.1469244494.git.marcelo.leitner@gmail.com>
+References: <0593f8d4-2302-a5c3-62cb-1fe6f1e53005@gmail.com>
+In-Reply-To: <0593f8d4-2302-a5c3-62cb-1fe6f1e53005@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: marcelo.leitner@gmail.com
-Cc: netdev@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Sat, 23 Jul 2016 00:33:44 -0300
-
-> The head skb for GSO packets won't travel through the inner depths of
-> SCTP stack as it doesn't contain any chunks on it. That means skb->sk
-> doesn't get set and then when sctp_recvmsg() calls
-> sctp_inet6_skb_msgname() on the head_skb it panics, as this last needs
-> to check flags at the socket (sp->v4mapped).
+> On 30 Jun 2016, at 21:18, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com> wrote:
 > 
-> The fix is to initialize skb->sk for th head skb once we are able to do
-> it. That is, when the first chunk is processed.
+> Hi Michael,
 > 
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+> Long story short, I'm chasing a performance issue on linux implementation and I think that TLR is the right fix for it. The receive operation is way more expensive than transmit and this causes its buffer to fill up, up to reach 0 window situation. Then, as the RFC allows, sender keeps sending 1 data chunk at a time, as a probe for possible unnoticed window updates due to SACK loss. But if the peer couldn't free any window in time, it will drop that chunk, and will cause a RTO.
+OK.
 
-Applied.
+So I think there a better handling of SWS might help:
+
+What method of SWS does Linux use on the receiver side? On FreeBSD we announce the a_rwnd as
+is actually is until it is less that a threshold. Then we announce a_rwnd = 1. This slows
+down the sender but still allow the receiver to accept the data. This does avoid an RTO.
+> 
+> I'm not seeing anything in the specs that would prevent this situation other than a TLR would do. Or I missed it?
+I would think that TLR is trying to address the case where a packet at the end of a batch is lost
+due to congestion in the network.
+
+Best regards
+Michael
+> 
+> On TLR, the most updated info I could find, is already (recently) expired and archived: https://datatracker.ietf.org/doc/draft-nielsen-tsvwg-sctp-tlr/
+> I could find Karen's email https://www.ietf.org/mail-archive/web/tsvwg/current/msg13703.html
+> But then nothing else. Do you know what happened?
+> 
+> Thanks,
+> Marcelo
+
