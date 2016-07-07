@@ -1,25 +1,73 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 25 Jul 2016 17:46:38 +0000
-Subject: Re: [PATCH net-next] sctp: support ipv6 nonlocal bind
-Message-Id: <20160725.104638.747513236812194365.davem@davemloft.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Thu, 07 Jul 2016 12:39:29 +0000
+Subject: [PATCH] sctp: fix panic when sending auth chunks
+Message-Id: <433dedb6a14cd5bd59ad2f82579d872b97171727.1467894889.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <b3a6fd04f36bcfc5557d70ba79cddfc9c5d33b3c.1469180331.git.lucien.xin@gmail.com>
-In-Reply-To: <b3a6fd04f36bcfc5557d70ba79cddfc9c5d33b3c.1469180331.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 22 Jul 2016 17:38:51 +0800
+When we introduced GSO support, if using auth the auth chunk was being
+left queued on the packet even after the final segment was generated.
+Later on sctp_transmit_packet it calls sctp_packet_reset, which zeroed
+the packet len while not accounting for this left-over. This caused more
+space to be used the next packet due to the chunk still being queued,
+but space which wasn't allocated as its size wasn't accounted.
 
-> This patch makes sctp support ipv6 nonlocal bind by adding
-> sp->inet.freebind and net->ipv6.sysctl.ip_nonlocal_bind
-> check in sctp_v6_available as what sctp did to support
-> ipv4 nonlocal bind (commit cdac4e077489).
-> 
-> Reported-by: Shijoe George <spanjikk@redhat.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+The fix is to only queue it back when we know that we are going to
+generate another segment.
 
-Applied.
+Fixes: 90017accff61 ("sctp: Add GSO support")
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/output.c | 18 +++++++++++++++---
+ 1 file changed, 15 insertions(+), 3 deletions(-)
+
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 1541a91d6d9de13927951a6215c423ea0ffa13dc..2e9223bb1b3a47386e8164a5a63400899fbf301f 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -582,9 +582,7 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
+ 			 */
+ 			pkt_size -= WORD_ROUND(chunk->skb->len);
+ 
+-			if (chunk = packet->auth && !list_empty(&packet->chunk_list))
+-				list_add(&chunk->list, &packet->chunk_list);
+-			else if (!sctp_chunk_is_data(chunk))
++			if (!sctp_chunk_is_data(chunk) && chunk != packet->auth)
+ 				sctp_chunk_free(chunk);
+ 
+ 			if (!pkt_size)
+@@ -605,6 +603,18 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
+ 						 (struct sctp_auth_chunk *)auth,
+ 						 gfp);
+ 
++		if (packet->auth) {
++			if (!list_empty(&packet->chunk_list)) {
++				/* We will generate more packets, so re-queue
++				 * auth chunk.
++				 */
++				list_add(&chunk->list, &packet->chunk_list);
++			} else {
++				sctp_chunk_free(packet->auth);
++				packet->auth = NULL;
++			}
++		}
++
+ 		if (!gso)
+ 			break;
+ 
+@@ -735,6 +745,8 @@ err:
+ 	}
+ 	goto out;
+ nomem:
++	if (packet->auth && list_empty(&packet->auth->list))
++		sctp_chunk_free(packet->auth);
+ 	err = -ENOMEM;
+ 	goto err;
+ }
+-- 
+2.7.4
+
