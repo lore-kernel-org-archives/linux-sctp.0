@@ -1,38 +1,54 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 26 Jul 2016 00:44:51 +0000
-Subject: Re: [PATCH] net/sctp: terminate rhashtable walk correctly
-Message-Id: <20160725.174451.328776654071356819.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 09 Jul 2016 11:47:39 +0000
+Subject: [PATCH net-next 0/6] sctp: implement rfc7496 in sctp
+Message-Id: <cover.1468064737.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1469259755-18079-1-git-send-email-vegard.nossum@oracle.com>
-In-Reply-To: <1469259755-18079-1-git-send-email-vegard.nossum@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vegard.nossum@oracle.com
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, lucien.xin@gmail.com, herbert@gondor.apana.org.au, stable@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net
 
-From: Vegard Nossum <vegard.nossum@oracle.com>
-Date: Sat, 23 Jul 2016 09:42:35 +0200
+This patchset implements "Additional Policies for the Partially Reliable
+Stream Control Transmission Protocol Extension" described on RFC7496.
 
-> I was seeing a lot of these:
- ...
-> Apparently we always need to call rhashtable_walk_stop(), even when
-> rhashtable_walk_start() fails:
-> 
->  * rhashtable_walk_start - Start a hash table walk
->  * @iter:       Hash table iterator
->  *
->  * Start a hash table walk.  Note that we take the RCU lock in all
->  * cases including when we return an error.  So you must always call
->  * rhashtable_walk_stop to clean up.
-> 
-> otherwise we never call rcu_read_unlock() and we get the splat above.
-> 
-> See-also: 53fa1036 ("sctp: fix some rhashtable functions using in sctp proc/diag")
-> See-also: f2dba9c6 ("rhashtable: Introduce rhashtable_walk_*")
-> Cc: Xin Long <lucien.xin@gmail.com>
-> Cc: Herbert Xu <herbert@gondor.apana.org.au>
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Vegard Nossum <vegard.nossum@oracle.com>
+The Partially Reliable SCTP (PR-SCTP) extension defined in [RFC3758]
+provides a generic method for senders to abandon user messages. The
+decision to abandon a user message is sender side only, and the exact
+condition is called a "PR-SCTP policy". This patchset implements 3
+policies:
 
-Applied and queued up for -stable, thanks.
+ 1. Timed Reliability:  This allows the sender to specify a timeout for
+    a user message after which the SCTP stack abandons the user message.
+
+ 2. Limited Retransmission Policy:  Allows limitation of the number of
+    retransmissions.
+
+ 3. Priority Policy:  Allows removal of lower-priority messages if space
+    for higher-priority messages is needed in the send buffer.
+
+Patch 1-3 add some sockopts in sctp to set/get pr_sctp policy status.
+Patch 4-6 implement these 3 policies one by one.
+
+Xin Long (6):
+  sctp: add SCTP_PR_SUPPORTED on sctp sockopt
+  sctp: add SCTP_DEFAULT_PRINFO into sctp sockopt
+  sctp: add SCTP_PR_ASSOC_STATUS on sctp sockopt
+  sctp: implement prsctp TTL policy
+  sctp: implement prsctp RTX policy
+  sctp: implement prsctp PRIO policy
+
+ include/net/sctp/structs.h |  23 ++++-
+ include/uapi/linux/sctp.h  |  42 ++++++++
+ net/sctp/associola.c       |   1 +
+ net/sctp/chunk.c           |  25 ++++-
+ net/sctp/endpointola.c     |   1 +
+ net/sctp/output.c          |   2 +
+ net/sctp/outqueue.c        |  99 +++++++++++++++++++
+ net/sctp/sm_make_chunk.c   |  27 +++--
+ net/sctp/socket.c          | 240 ++++++++++++++++++++++++++++++++++++++++++++-
+ 9 files changed, 447 insertions(+), 13 deletions(-)
+
+-- 
+2.1.0
+
