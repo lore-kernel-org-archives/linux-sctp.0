@@ -1,73 +1,35 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 07 Jul 2016 12:39:29 +0000
-Subject: [PATCH] sctp: fix panic when sending auth chunks
-Message-Id: <433dedb6a14cd5bd59ad2f82579d872b97171727.1467894889.git.marcelo.leitner@gmail.com>
+From: David Miller <davem@davemloft.net>
+Date: Sat, 09 Jul 2016 04:08:54 +0000
+Subject: Re: [PATCH] sctp: fix panic when sending auth chunks
+Message-Id: <20160709.000854.945698278700890168.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <433dedb6a14cd5bd59ad2f82579d872b97171727.1467894889.git.marcelo.leitner@gmail.com>
+In-Reply-To: <433dedb6a14cd5bd59ad2f82579d872b97171727.1467894889.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
+To: marcelo.leitner@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, nhorman@tuxdriver.com, vyasevich@gmail.com
 
-When we introduced GSO support, if using auth the auth chunk was being
-left queued on the packet even after the final segment was generated.
-Later on sctp_transmit_packet it calls sctp_packet_reset, which zeroed
-the packet len while not accounting for this left-over. This caused more
-space to be used the next packet due to the chunk still being queued,
-but space which wasn't allocated as its size wasn't accounted.
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Thu,  7 Jul 2016 09:39:29 -0300
 
-The fix is to only queue it back when we know that we are going to
-generate another segment.
+> When we introduced GSO support, if using auth the auth chunk was being
+> left queued on the packet even after the final segment was generated.
+> Later on sctp_transmit_packet it calls sctp_packet_reset, which zeroed
+> the packet len while not accounting for this left-over. This caused more
+> space to be used the next packet due to the chunk still being queued,
+> but space which wasn't allocated as its size wasn't accounted.
+> 
+> The fix is to only queue it back when we know that we are going to
+> generate another segment.
+> 
+> Fixes: 90017accff61 ("sctp: Add GSO support")
+> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-Fixes: 90017accff61 ("sctp: Add GSO support")
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
----
- net/sctp/output.c | 18 +++++++++++++++---
- 1 file changed, 15 insertions(+), 3 deletions(-)
+Applied to net-next.
 
-diff --git a/net/sctp/output.c b/net/sctp/output.c
-index 1541a91d6d9de13927951a6215c423ea0ffa13dc..2e9223bb1b3a47386e8164a5a63400899fbf301f 100644
---- a/net/sctp/output.c
-+++ b/net/sctp/output.c
-@@ -582,9 +582,7 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
- 			 */
- 			pkt_size -= WORD_ROUND(chunk->skb->len);
- 
--			if (chunk = packet->auth && !list_empty(&packet->chunk_list))
--				list_add(&chunk->list, &packet->chunk_list);
--			else if (!sctp_chunk_is_data(chunk))
-+			if (!sctp_chunk_is_data(chunk) && chunk != packet->auth)
- 				sctp_chunk_free(chunk);
- 
- 			if (!pkt_size)
-@@ -605,6 +603,18 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
- 						 (struct sctp_auth_chunk *)auth,
- 						 gfp);
- 
-+		if (packet->auth) {
-+			if (!list_empty(&packet->chunk_list)) {
-+				/* We will generate more packets, so re-queue
-+				 * auth chunk.
-+				 */
-+				list_add(&chunk->list, &packet->chunk_list);
-+			} else {
-+				sctp_chunk_free(packet->auth);
-+				packet->auth = NULL;
-+			}
-+		}
-+
- 		if (!gso)
- 			break;
- 
-@@ -735,6 +745,8 @@ err:
- 	}
- 	goto out;
- nomem:
-+	if (packet->auth && list_empty(&packet->auth->list))
-+		sctp_chunk_free(packet->auth);
- 	err = -ENOMEM;
- 	goto err;
- }
--- 
-2.7.4
+Please make the target tree for your patch explicit in future
+submissions.
 
+Thanks.
