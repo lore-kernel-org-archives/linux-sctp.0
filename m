@@ -1,159 +1,136 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 09 Jul 2016 11:47:42 +0000
-Subject: [PATCH net-next 3/6] sctp: add SCTP_PR_ASSOC_STATUS on sctp sockopt
-Message-Id: <63a9a850836134ba72b9377e8b99694d869e3fba.1468064737.git.lucien.xin@gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 13 Jul 2016 18:08:58 +0000
+Subject: [PATCH net-next 4/6] sctp: avoid identifying address family many times for a chunk
+Message-Id: <fbb12a05b430078b0b53ff33ed4a5a557edd3fb6.1468432819.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1468064737.git.lucien.xin@gmail.com>
- <121aa41aceff56b3dda51c41b8f3c4d8662d65b7.1468064737.git.lucien.xin@gmail.com>
- <2b9ceacb55912e29c2d970772d0267e465c33dff.1468064737.git.lucien.xin@gmail.com>
-In-Reply-To: <2b9ceacb55912e29c2d970772d0267e465c33dff.1468064737.git.lucien.xin@gmail.com>
+References: <cover.1468432819.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1468432819.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net
+To: netdev@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
 
-This patch adds SCTP_PR_ASSOC_STATUS to sctp sockopt, which is used
-to dump the prsctp statistics info from the asoc. The prsctp statistics
-includes abandoned_sent/unsent from the asoc. abandoned_sent is the
-count of the packets we drop packets from retransmit/transmited queue,
-and abandoned_unsent is the count of the packets we drop from out_queue
-according to the policy.
+Identifying address family operations during rx path is not something
+expensive but it's ugly to the eye to have it done multiple times,
+specially when we already validated it during initial rx processing.
 
-Note: another option for prsctp statistics dump described in rfc is
-SCTP_PR_STREAM_STATUS, which is used to dump the prsctp statistics
-info from each stream. But by now, linux doesn't yet have per stream
-statistics info, it needs rfc6525 to be implemented. As the prsctp
-statistics for each stream has to be based on per stream statistics,
-we will delay it until rfc6525 is done in linux.
+This patch takes advantage of the now shared sctp_input_cb and make the
+pointer to the operations readily available.
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- include/net/sctp/structs.h |  3 +++
- include/uapi/linux/sctp.h  | 12 +++++++++
- net/sctp/socket.c          | 62 ++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 77 insertions(+)
+ include/net/sctp/structs.h |  1 +
+ net/sctp/input.c           |  1 +
+ net/sctp/inqueue.c         |  1 +
+ net/sctp/sm_make_chunk.c   | 20 ++++----------------
+ net/sctp/sm_statefuns.c    |  7 ++-----
+ 5 files changed, 9 insertions(+), 21 deletions(-)
 
 diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 07115ca..d8e464a 100644
+index f6f201de6fa46b3ca203c00f4970ca408edb6930..ce93c4b10d2620a3ac4c9efe39a86e5d231b51c2 100644
 --- a/include/net/sctp/structs.h
 +++ b/include/net/sctp/structs.h
-@@ -1853,6 +1853,9 @@ struct sctp_association {
- 	     prsctp_enable:1;
- 
- 	struct sctp_priv_assoc_stats stats;
-+
-+	__u64 abandoned_unsent[SCTP_PR_INDEX(MAX) + 1];
-+	__u64 abandoned_sent[SCTP_PR_INDEX(MAX) + 1];
+@@ -1104,6 +1104,7 @@ struct sctp_input_cb {
+ #endif
+ 	} header;
+ 	struct sctp_chunk *chunk;
++	struct sctp_af *af;
  };
+ #define SCTP_INPUT_CB(__skb)	((struct sctp_input_cb *)&((__skb)->cb[0]))
  
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 7a327ff71f08985f6ebb963d5cdc9540b23d0666..30d72f7707b6df5b41679bbfc5e595d5a11130ea 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -140,6 +140,7 @@ int sctp_rcv(struct sk_buff *skb)
+ 	af = sctp_get_af_specific(family);
+ 	if (unlikely(!af))
+ 		goto discard_it;
++	SCTP_INPUT_CB(skb)->af = af;
  
-diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index 984cf2e..d304f4c 100644
---- a/include/uapi/linux/sctp.h
-+++ b/include/uapi/linux/sctp.h
-@@ -114,6 +114,7 @@ typedef __s32 sctp_assoc_t;
- #define SCTP_GET_ASSOC_STATS	112	/* Read only */
- #define SCTP_PR_SUPPORTED	113
- #define SCTP_DEFAULT_PRINFO	114
-+#define SCTP_PR_ASSOC_STATUS	115
+ 	/* Initialize local addresses for lookups. */
+ 	af->from_skb(&src, skb, 1);
+diff --git a/net/sctp/inqueue.c b/net/sctp/inqueue.c
+index 147d975b04559f7858b040b1f04dbc559ef2ec78..8fc773f9b59a8a9ad123dd132cfa5b7f916732b6 100644
+--- a/net/sctp/inqueue.c
++++ b/net/sctp/inqueue.c
+@@ -224,6 +224,7 @@ new_skb:
+ 				*head_cb = SCTP_INPUT_CB(chunk->head_skb);
  
- /* PR-SCTP policies */
- #define SCTP_PR_SCTP_NONE	0x0000
-@@ -926,6 +927,17 @@ struct sctp_paddrthlds {
- 	__u16 spt_pathpfthld;
- };
+ 			cb->chunk = head_cb->chunk;
++			cb->af = head_cb->af;
+ 		}
+ 	}
  
-+/*
-+ * Socket Option for Getting the Association/Stream-Specific PR-SCTP Status
-+ */
-+struct sctp_prstatus {
-+	sctp_assoc_t sprstat_assoc_id;
-+	__u16 sprstat_sid;
-+	__u16 sprstat_policy;
-+	__u64 sprstat_abandoned_unsent;
-+	__u64 sprstat_abandoned_sent;
-+};
-+
- struct sctp_default_prinfo {
- 	sctp_assoc_t pr_assoc_id;
- 	__u32 pr_value;
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index c03fe1b..c3167c4 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -6330,6 +6330,64 @@ out:
- 	return retval;
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 1c96f4740e67397e5f8b7134cffd4d0840220245..8c77b87a8565cb4f82c09cea65557dc9c8d1138f 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -108,14 +108,9 @@ static void sctp_control_set_owner_w(struct sctp_chunk *chunk)
+ /* What was the inbound interface for this chunk? */
+ int sctp_chunk_iif(const struct sctp_chunk *chunk)
+ {
+-	struct sctp_af *af;
+-	int iif = 0;
+-
+-	af = sctp_get_af_specific(ipver2af(ip_hdr(chunk->skb)->version));
+-	if (af)
+-		iif = af->skb_iif(chunk->skb);
++	struct sk_buff *skb = chunk->skb;
+ 
+-	return iif;
++	return SCTP_INPUT_CB(skb)->af->skb_iif(skb);
  }
  
-+static int sctp_getsockopt_pr_assocstatus(struct sock *sk, int len,
-+					  char __user *optval,
-+					  int __user *optlen)
-+{
-+	struct sctp_prstatus params;
-+	struct sctp_association *asoc;
-+	int policy;
-+	int retval = -EINVAL;
+ /* RFC 2960 3.3.2 Initiation (INIT) (1)
+@@ -1600,7 +1595,6 @@ struct sctp_association *sctp_make_temp_asoc(const struct sctp_endpoint *ep,
+ 	struct sctp_association *asoc;
+ 	struct sk_buff *skb;
+ 	sctp_scope_t scope;
+-	struct sctp_af *af;
+ 
+ 	/* Create the bare association.  */
+ 	scope = sctp_scope(sctp_source(chunk));
+@@ -1610,16 +1604,10 @@ struct sctp_association *sctp_make_temp_asoc(const struct sctp_endpoint *ep,
+ 	asoc->temp = 1;
+ 	skb = chunk->skb;
+ 	/* Create an entry for the source address of the packet.  */
+-	af = sctp_get_af_specific(ipver2af(ip_hdr(skb)->version));
+-	if (unlikely(!af))
+-		goto fail;
+-	af->from_skb(&asoc->c.peer_addr, skb, 1);
++	SCTP_INPUT_CB(skb)->af->from_skb(&asoc->c.peer_addr, skb, 1);
 +
-+	if (len < sizeof(params))
-+		goto out;
-+
-+	len = sizeof(params);
-+	if (copy_from_user(&params, optval, len)) {
-+		retval = -EFAULT;
-+		goto out;
-+	}
-+
-+	policy = params.sprstat_policy;
-+	if (policy & ~SCTP_PR_SCTP_MASK)
-+		goto out;
-+
-+	asoc = sctp_id2assoc(sk, params.sprstat_assoc_id);
-+	if (!asoc)
-+		goto out;
-+
-+	if (policy = SCTP_PR_SCTP_NONE) {
-+		params.sprstat_abandoned_unsent = 0;
-+		params.sprstat_abandoned_sent = 0;
-+		for (policy = 0; policy <= SCTP_PR_INDEX(MAX); policy++) {
-+			params.sprstat_abandoned_unsent ++				asoc->abandoned_unsent[policy];
-+			params.sprstat_abandoned_sent ++				asoc->abandoned_sent[policy];
-+		}
-+	} else {
-+		params.sprstat_abandoned_unsent +			asoc->abandoned_unsent[__SCTP_PR_INDEX(policy)];
-+		params.sprstat_abandoned_sent +			asoc->abandoned_sent[__SCTP_PR_INDEX(policy)];
-+	}
-+
-+	if (put_user(len, optlen)) {
-+		retval = -EFAULT;
-+		goto out;
-+	}
-+
-+	if (copy_to_user(optval, &params, len)) {
-+		retval = -EFAULT;
-+		goto out;
-+	}
-+
-+	retval = 0;
-+
-+out:
-+	return retval;
-+}
-+
- static int sctp_getsockopt(struct sock *sk, int level, int optname,
- 			   char __user *optval, int __user *optlen)
- {
-@@ -6490,6 +6548,10 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_getsockopt_default_prinfo(sk, len, optval,
- 							optlen);
- 		break;
-+	case SCTP_PR_ASSOC_STATUS:
-+		retval = sctp_getsockopt_pr_assocstatus(sk, len, optval,
-+							optlen);
-+		break;
- 	default:
- 		retval = -ENOPROTOOPT;
- 		break;
+ nodata:
+ 	return asoc;
+-
+-fail:
+-	sctp_association_free(asoc);
+-	return NULL;
+ }
+ 
+ /* Build a cookie representing asoc.
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 5aabf42065e2fba9388350996310b77c58369395..b7c1f7f3c8388400e51e3fbdbe099bc354559913 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -6119,13 +6119,10 @@ static int sctp_eat_data(const struct sctp_association *asoc,
+ 	 */
+ 
+ 	if (!chunk->ecn_ce_done) {
+-		struct sctp_af *af;
++		struct sctp_af *af = SCTP_INPUT_CB(chunk->skb)->af;
+ 		chunk->ecn_ce_done = 1;
+ 
+-		af = sctp_get_af_specific(
+-			ipver2af(ip_hdr(chunk->skb)->version));
+-
+-		if (af && af->is_ce(sctp_gso_headskb(chunk->skb)) &&
++		if (af->is_ce(sctp_gso_headskb(chunk->skb)) &&
+ 		    asoc->peer.ecn_capable) {
+ 			/* Do real work as sideffect. */
+ 			sctp_add_cmd_sf(commands, SCTP_CMD_ECN_CE,
 -- 
-2.1.0
+2.7.4
 
