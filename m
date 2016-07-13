@@ -1,7 +1,7 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 13 Jul 2016 18:08:56 +0000
-Subject: [PATCH net-next 2/6] sctp: reorder sctp_ulpevent and shrink msg_flags
-Message-Id: <0d9bf4a78caa22f6c7dd84304b5ff3eed7939f1e.1468432819.git.marcelo.leitner@gmail.com>
+Date: Wed, 13 Jul 2016 18:08:55 +0000
+Subject: [PATCH net-next 1/6] sctp: allow others to use sctp_input_cb
+Message-Id: <615beca39da498ba640c767a1b046bce67357bc7.1468432819.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1468432819.git.marcelo.leitner@gmail.com>
 In-Reply-To: <cover.1468432819.git.marcelo.leitner@gmail.com>
@@ -11,65 +11,70 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
 Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org
 
-The next patch needs 8 bytes in there. sctp_ulpevent has a hole due to
-bad alignment; msg_flags is using 4 bytes while it actually uses only 2, so
-we shrink it, and iif member (4 bytes) which can be easily fetched from
-another place once the next patch is there, so we remove it and thus
-creating space for 8 bytes.
+We process input path in other files too and having access to it is
+nice, so move it to a header where it's shared.
 
 Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- include/net/sctp/ulpevent.h | 10 +++++-----
- net/sctp/ulpevent.c         |  4 ++--
- 2 files changed, 7 insertions(+), 7 deletions(-)
+ include/net/sctp/structs.h | 15 +++++++++++++++
+ net/sctp/input.c           | 11 -----------
+ 2 files changed, 15 insertions(+), 11 deletions(-)
 
-diff --git a/include/net/sctp/ulpevent.h b/include/net/sctp/ulpevent.h
-index cccdcfd149736b315554d64c2a556e0ad6496fc8..aa342645dbce446186d55151c3f507cf0e165b44 100644
---- a/include/net/sctp/ulpevent.h
-+++ b/include/net/sctp/ulpevent.h
-@@ -48,15 +48,15 @@
-  */
- struct sctp_ulpevent {
- 	struct sctp_association *asoc;
--	__u16 stream;
--	__u16 ssn;
--	__u16 flags;
-+	unsigned int rmem_len;
- 	__u32 ppid;
- 	__u32 tsn;
- 	__u32 cumtsn;
--	int msg_flags;
- 	int iif;
--	unsigned int rmem_len;
-+	__u16 stream;
-+	__u16 ssn;
-+	__u16 flags;
-+	__u16 msg_flags;
- };
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 8626bdd3249a9283955fe81bc3255be0a18717f9..966c3a40039c12a7c525612594a51312d5de1d2a 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -59,6 +59,7 @@
+ #include <linux/workqueue.h>	/* We need tq_struct.	 */
+ #include <linux/sctp.h>		/* We need sctp* header structs.  */
+ #include <net/sctp/auth.h>	/* We need auth specific structs */
++#include <net/ip.h>		/* For inet_skb_parm */
  
- /* Retrieve the skb this event sits inside of. */
-diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
-index d1e38308f6159c0e4da7db966c16afc6a956b554..706f5bc9f0c3083ab455ec78b963cd609a3a95b5 100644
---- a/net/sctp/ulpevent.c
-+++ b/net/sctp/ulpevent.c
-@@ -51,7 +51,7 @@ static void sctp_ulpevent_release_frag_data(struct sctp_ulpevent *event);
- 
- /* Initialize an ULP event from an given skb.  */
- static void sctp_ulpevent_init(struct sctp_ulpevent *event,
--			       int msg_flags,
-+			       __u16 msg_flags,
- 			       unsigned int len)
- {
- 	memset(event, 0, sizeof(struct sctp_ulpevent));
-@@ -60,7 +60,7 @@ static void sctp_ulpevent_init(struct sctp_ulpevent *event,
+ /* A convenience structure for handling sockaddr structures.
+  * We should wean ourselves off this.
+@@ -1092,6 +1093,20 @@ static inline void sctp_outq_cork(struct sctp_outq *q)
+ 	q->cork = 1;
  }
  
- /* Create a new sctp_ulpevent.  */
--static struct sctp_ulpevent *sctp_ulpevent_new(int size, int msg_flags,
-+static struct sctp_ulpevent *sctp_ulpevent_new(int size, __u16 msg_flags,
- 					       gfp_t gfp)
- {
- 	struct sctp_ulpevent *event;
++/* SCTP skb control block.
++ * sctp_input_cb is currently used on rx and sock rx queue
++ */
++struct sctp_input_cb {
++	union {
++		struct inet_skb_parm	h4;
++#if IS_ENABLED(CONFIG_IPV6)
++		struct inet6_skb_parm	h6;
++#endif
++	} header;
++	struct sctp_chunk *chunk;
++};
++#define SCTP_INPUT_CB(__skb)	((struct sctp_input_cb *)&((__skb)->cb[0]))
++
+ /* These bind address data fields common between endpoints and associations */
+ struct sctp_bind_addr {
+ 
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 6f8e676d285ead987b0a1337beec3b29c34e0a8e..7a327ff71f08985f6ebb963d5cdc9540b23d0666 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -90,17 +90,6 @@ static inline int sctp_rcv_checksum(struct net *net, struct sk_buff *skb)
+ 	return 0;
+ }
+ 
+-struct sctp_input_cb {
+-	union {
+-		struct inet_skb_parm	h4;
+-#if IS_ENABLED(CONFIG_IPV6)
+-		struct inet6_skb_parm	h6;
+-#endif
+-	} header;
+-	struct sctp_chunk *chunk;
+-};
+-#define SCTP_INPUT_CB(__skb)	((struct sctp_input_cb *)&((__skb)->cb[0]))
+-
+ /*
+  * This is the routine which IP calls when receiving an SCTP packet.
+  */
 -- 
 2.7.4
 
