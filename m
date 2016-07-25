@@ -1,115 +1,25 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Sat, 23 Jul 2016 03:32:48 +0000
-Subject: [PATCH net] sctp: fix BH handling on socket backlog
-Message-Id: <a19b6088999a30defbfce748bc178935156a18a3.1469244527.git.marcelo.leitner@gmail.com>
+From: David Miller <davem@davemloft.net>
+Date: Mon, 25 Jul 2016 18:22:53 +0000
+Subject: Re: [PATCH net] sctp: fix BH handling on socket backlog
+Message-Id: <20160725.112253.483808630563071321.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <a19b6088999a30defbfce748bc178935156a18a3.1469244527.git.marcelo.leitner@gmail.com>
+In-Reply-To: <a19b6088999a30defbfce748bc178935156a18a3.1469244527.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: Eric Dumazet <eric.dumazet@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org
+To: marcelo.leitner@gmail.com
+Cc: netdev@vger.kernel.org, eric.dumazet@gmail.com, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org
 
-Now that the backlog processing is called with BH enabled, we have to
-disable BH before taking the socket lock via bh_lock_sock() otherwise
-it may dead lock:
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Sat, 23 Jul 2016 00:32:48 -0300
 
-sctp_backlog_rcv()
-                bh_lock_sock(sk);
+> Now that the backlog processing is called with BH enabled, we have to
+> disable BH before taking the socket lock via bh_lock_sock() otherwise
+> it may dead lock:
+ ...
+> Fixes: 860fbbc343bf ("sctp: prepare for socket backlog behavior change")
+> Cc: Eric Dumazet <eric.dumazet@gmail.com>
+> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-                if (sock_owned_by_user(sk)) {
-                        if (sk_add_backlog(sk, skb, sk->sk_rcvbuf))
-                                sctp_chunk_free(chunk);
-                        else
-                                backloged = 1;
-                } else
-                        sctp_inq_push(inqueue, chunk);
-
-                bh_unlock_sock(sk);
-
-while sctp_inq_push() was disabling/enabling BH, but enabling BH
-triggers pending softirq, which then may try to re-lock the socket in
-sctp_rcv().
-
-[  219.187215]  <IRQ>
-[  219.187217]  [<ffffffff817ca3e0>] _raw_spin_lock+0x20/0x30
-[  219.187223]  [<ffffffffa041888c>] sctp_rcv+0x48c/0xba0 [sctp]
-[  219.187225]  [<ffffffff816e7db2>] ? nf_iterate+0x62/0x80
-[  219.187226]  [<ffffffff816f1b14>] ip_local_deliver_finish+0x94/0x1e0
-[  219.187228]  [<ffffffff816f1e1f>] ip_local_deliver+0x6f/0xf0
-[  219.187229]  [<ffffffff816f1a80>] ? ip_rcv_finish+0x3b0/0x3b0
-[  219.187230]  [<ffffffff816f17a8>] ip_rcv_finish+0xd8/0x3b0
-[  219.187232]  [<ffffffff816f2122>] ip_rcv+0x282/0x3a0
-[  219.187233]  [<ffffffff810d8bb6>] ? update_curr+0x66/0x180
-[  219.187235]  [<ffffffff816abac4>] __netif_receive_skb_core+0x524/0xa90
-[  219.187236]  [<ffffffff810d8e00>] ? update_cfs_shares+0x30/0xf0
-[  219.187237]  [<ffffffff810d557c>] ? __enqueue_entity+0x6c/0x70
-[  219.187239]  [<ffffffff810dc454>] ? enqueue_entity+0x204/0xdf0
-[  219.187240]  [<ffffffff816ac048>] __netif_receive_skb+0x18/0x60
-[  219.187242]  [<ffffffff816ad1ce>] process_backlog+0x9e/0x140
-[  219.187243]  [<ffffffff816ac8ec>] net_rx_action+0x22c/0x370
-[  219.187245]  [<ffffffff817cd352>] __do_softirq+0x112/0x2e7
-[  219.187247]  [<ffffffff817cc3bc>] do_softirq_own_stack+0x1c/0x30
-[  219.187247]  <EOI>
-[  219.187248]  [<ffffffff810aa1c8>] do_softirq.part.14+0x38/0x40
-[  219.187249]  [<ffffffff810aa24d>] __local_bh_enable_ip+0x7d/0x80
-[  219.187254]  [<ffffffffa0408428>] sctp_inq_push+0x68/0x80 [sctp]
-[  219.187258]  [<ffffffffa04190f1>] sctp_backlog_rcv+0x151/0x1c0 [sctp]
-[  219.187260]  [<ffffffff81692b07>] __release_sock+0x87/0xf0
-[  219.187261]  [<ffffffff81692ba0>] release_sock+0x30/0xa0
-[  219.187265]  [<ffffffffa040e46d>] sctp_accept+0x17d/0x210 [sctp]
-[  219.187266]  [<ffffffff810e7510>] ? prepare_to_wait_event+0xf0/0xf0
-[  219.187268]  [<ffffffff8172d52c>] inet_accept+0x3c/0x130
-[  219.187269]  [<ffffffff8168d7a3>] SYSC_accept4+0x103/0x210
-[  219.187271]  [<ffffffff817ca2ba>] ? _raw_spin_unlock_bh+0x1a/0x20
-[  219.187272]  [<ffffffff81692bfc>] ? release_sock+0x8c/0xa0
-[  219.187276]  [<ffffffffa0413e22>] ? sctp_inet_listen+0x62/0x1b0 [sctp]
-[  219.187277]  [<ffffffff8168f2d0>] SyS_accept+0x10/0x20
-
-Fixes: 860fbbc343bf ("sctp: prepare for socket backlog behavior change")
-Cc: Eric Dumazet <eric.dumazet@gmail.com>
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
----
- net/sctp/input.c   | 2 ++
- net/sctp/inqueue.c | 2 --
- 2 files changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/net/sctp/input.c b/net/sctp/input.c
-index 30d72f7707b6df5b41679bbfc5e595d5a11130ea..c182db7d691ff44a52923fb36c9170e49c141c04 100644
---- a/net/sctp/input.c
-+++ b/net/sctp/input.c
-@@ -328,6 +328,7 @@ int sctp_backlog_rcv(struct sock *sk, struct sk_buff *skb)
- 		 */
- 
- 		sk = rcvr->sk;
-+		local_bh_disable();
- 		bh_lock_sock(sk);
- 
- 		if (sock_owned_by_user(sk)) {
-@@ -339,6 +340,7 @@ int sctp_backlog_rcv(struct sock *sk, struct sk_buff *skb)
- 			sctp_inq_push(inqueue, chunk);
- 
- 		bh_unlock_sock(sk);
-+		local_bh_enable();
- 
- 		/* If the chunk was backloged again, don't drop refs */
- 		if (backloged)
-diff --git a/net/sctp/inqueue.c b/net/sctp/inqueue.c
-index 942770675f4cc0efc9686f4e4038450f060f34ae..c30ddb0f31907f57c5ce85b00dbe04260ca1cb2e 100644
---- a/net/sctp/inqueue.c
-+++ b/net/sctp/inqueue.c
-@@ -89,12 +89,10 @@ void sctp_inq_push(struct sctp_inq *q, struct sctp_chunk *chunk)
- 	 * Eventually, we should clean up inqueue to not rely
- 	 * on the BH related data structures.
- 	 */
--	local_bh_disable();
- 	list_add_tail(&chunk->list, &q->in_chunk_list);
- 	if (chunk->asoc)
- 		chunk->asoc->stats.ipackets++;
- 	q->immediate.func(&q->immediate);
--	local_bh_enable();
- }
- 
- /* Peek at the next chunk on the inqeue. */
--- 
-2.7.4
-
+Applied and queued up for -stable, thanks.
