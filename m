@@ -1,50 +1,43 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 11 Jul 2016 20:25:51 +0000
-Subject: Re: [PATCH net-next 0/6] sctp: implement rfc7496 in sctp
-Message-Id: <20160711.132551.463700196393147415.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 30 Jul 2016 06:14:41 +0000
+Subject: [PATCH net] sctp: allow receiving msg when TCP-style sk is in CLOSED state
+Message-Id: <d108342f2f89cfdf7f9abc529a746a032e236b78.1469859281.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1468064737.git.lucien.xin@gmail.com>
-	<20160711161529.GA9950@localhost.localdomain>
-In-Reply-To: <20160711161529.GA9950@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: marcelo.leitner@gmail.com
-Cc: lucien.xin@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, daniel@iogearbox.net
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 11 Jul 2016 13:15:29 -0300
+Commit 141ddefce7c8 ("sctp: change sk state to CLOSED instead of
+CLOSING in sctp_sock_migrate") changed sk state to CLOSED if the
+assoc is closed when sctp_accept clones a new sk.
 
-> On Sat, Jul 09, 2016 at 07:47:39PM +0800, Xin Long wrote:
->> This patchset implements "Additional Policies for the Partially Reliable
->> Stream Control Transmission Protocol Extension" described on RFC7496.
->> 
->> The Partially Reliable SCTP (PR-SCTP) extension defined in [RFC3758]
->> provides a generic method for senders to abandon user messages. The
->> decision to abandon a user message is sender side only, and the exact
->> condition is called a "PR-SCTP policy". This patchset implements 3
->> policies:
->> 
->>  1. Timed Reliability:  This allows the sender to specify a timeout for
->>     a user message after which the SCTP stack abandons the user message.
->> 
->>  2. Limited Retransmission Policy:  Allows limitation of the number of
->>     retransmissions.
->> 
->>  3. Priority Policy:  Allows removal of lower-priority messages if space
->>     for higher-priority messages is needed in the send buffer.
->> 
->> Patch 1-3 add some sockopts in sctp to set/get pr_sctp policy status.
->> Patch 4-6 implement these 3 policies one by one.
->> 
->> Xin Long (6):
->>   sctp: add SCTP_PR_SUPPORTED on sctp sockopt
->>   sctp: add SCTP_DEFAULT_PRINFO into sctp sockopt
->>   sctp: add SCTP_PR_ASSOC_STATUS on sctp sockopt
->>   sctp: implement prsctp TTL policy
->>   sctp: implement prsctp RTX policy
->>   sctp: implement prsctp PRIO policy
-> 
-> Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+If there is still data in sk receive queue, users will not be able
+to read it any more, as sctp_recvmsg returns directly if sk state
+is CLOSED.
 
-Series applied.
+This patch is to add CLOSED state check in sctp_recvmsg to allow
+reading data from TCP-style sk with CLOSED state as what TCP does.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/socket.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 8812e1b..9fc417a 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -2079,7 +2079,7 @@ static int sctp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
+ 	lock_sock(sk);
+ 
+ 	if (sctp_style(sk, TCP) && !sctp_sstate(sk, ESTABLISHED) &&
+-	    !sctp_sstate(sk, CLOSING)) {
++	    !sctp_sstate(sk, CLOSING) && !sctp_sstate(sk, CLOSED)) {
+ 		err = -ENOTCONN;
+ 		goto out;
+ 	}
+-- 
+2.1.0
+
