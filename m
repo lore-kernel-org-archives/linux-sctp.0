@@ -1,63 +1,49 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 02 Jun 2016 18:05:40 +0000
-Subject: [PATCH v3 3/7] sk_buff: allow segmenting based on frag sizes
-Message-Id: <6a625144a5410e00dc4f27a0037622e5fc2a5e0f.1464888549.git.marcelo.leitner@gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 30 Jul 2016 12:00:45 +0000
+Subject: [PATCH net] sctp: change to use TCP_CLOSE_WAIT as SCTP_SS_CLOSING
+Message-Id: <0517133e5f1dee8136f3a1c3bfaac522fe98e599.1469880045.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1464888549.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1464888549.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Laight <David.Laight@ACULAB.COM>, Vlad Yasevich <vyasevich@gmail.com>, Alexander Duyck <alexander.duyck@gmail.com>, Daniel Borkmann <daniel@iogearbox.net>, Florian Westphal <fw@strlen.de>, Eric Dumazet <eric.dumazet@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-This patch allows segmenting a skb based on its frags sizes instead of
-based on a fixed value.
+Prior to this patch, sctp defined TCP_CLOSING as SCTP_SS_CLOSING.
+TCP_CLOSING is such a special sk state in TCP that inet common codes
+even exclude it.
 
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Tested-by: Xin Long <lucien.xin@gmail.com>
+For instance, inet_accept thinks the accept sk's state never be
+TCP_CLOSING, or it will give a WARN_ON. TCP works well with that
+while SCTP may trigger the call trace, as CLOSING state in SCTP
+has different meaning from TCP.
+
+This fix is to change to use TCP_CLOSE_WAIT as SCTP_SS_CLOSING,
+instead of TCP_CLOSING. Some side-effects could be expected,
+regardless of not being used before. inet_accept will accept it
+now.
+
+I did all the func_tests in lksctp-tools and ran sctp codnomicon
+fuzzer tests against this patch, no regression or failure found.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/linux/skbuff.h |  5 +++++
- net/core/skbuff.c      | 10 +++++++---
- 2 files changed, 12 insertions(+), 3 deletions(-)
+ include/net/sctp/constants.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
-index ee38a41274759f279be1c0752a7fab63fac517c8..329a0a9ef67115cae03b7c1304de031116384148 100644
---- a/include/linux/skbuff.h
-+++ b/include/linux/skbuff.h
-@@ -301,6 +301,11 @@ struct sk_buff;
- #endif
- extern int sysctl_max_skb_frags;
+diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
+index 8c337cd..5b847e4 100644
+--- a/include/net/sctp/constants.h
++++ b/include/net/sctp/constants.h
+@@ -214,7 +214,7 @@ typedef enum {
+ 	SCTP_SS_LISTENING      = TCP_LISTEN,
+ 	SCTP_SS_ESTABLISHING   = TCP_SYN_SENT,
+ 	SCTP_SS_ESTABLISHED    = TCP_ESTABLISHED,
+-	SCTP_SS_CLOSING        = TCP_CLOSING,
++	SCTP_SS_CLOSING        = TCP_CLOSE_WAIT,
+ } sctp_sock_state_t;
  
-+/* Set skb_shinfo(skb)->gso_size to this in case you want skb_segment to
-+ * segment using its current segmentation instead.
-+ */
-+#define GSO_BY_FRAGS	0xFFFF
-+
- typedef struct skb_frag_struct skb_frag_t;
- 
- struct skb_frag_struct {
-diff --git a/net/core/skbuff.c b/net/core/skbuff.c
-index 4724bcf9b0cae1cecbe5bc2c04e308bb70b3232a..97c32c75e704af1f31b064e8f1e0475ff1505d67 100644
---- a/net/core/skbuff.c
-+++ b/net/core/skbuff.c
-@@ -3116,9 +3116,13 @@ struct sk_buff *skb_segment(struct sk_buff *head_skb,
- 		int hsize;
- 		int size;
- 
--		len = head_skb->len - offset;
--		if (len > mss)
--			len = mss;
-+		if (unlikely(mss = GSO_BY_FRAGS)) {
-+			len = list_skb->len;
-+		} else {
-+			len = head_skb->len - offset;
-+			if (len > mss)
-+				len = mss;
-+		}
- 
- 		hsize = skb_headlen(head_skb) - offset;
- 		if (hsize < 0)
+ /* These functions map various type to printable names.  */
 -- 
-2.5.5
+2.1.0
 
