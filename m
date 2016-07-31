@@ -1,17 +1,19 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Sat, 30 Jul 2016 13:21:13 +0000
+From: David Miller <davem@davemloft.net>
+Date: Sun, 31 Jul 2016 05:06:52 +0000
 Subject: Re: [PATCH net] sctp: fix the issue sctp requeue auth chunk incorrectly
-Message-Id: <20160730132113.GA2957@localhost.localdomain>
+Message-Id: <20160730.220652.1863192062471461146.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <af1555c524101278be2e5b07ff78a1eaacc0f7bb.1469858315.git.lucien.xin@gmail.com>
 In-Reply-To: <af1555c524101278be2e5b07ff78a1eaacc0f7bb.1469858315.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net
 
-On Sat, Jul 30, 2016 at 01:58:35PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 30 Jul 2016 13:58:35 +0800
+
 > sctp needs to queue auth chunk back when we know that we are going
 > to generate another segment. But commit f1533cce60d1 ("sctp: fix
 > panic when sending auth chunks") requeues the last chunk processed
@@ -25,31 +27,4 @@ On Sat, Jul 30, 2016 at 01:58:35PM +0800, Xin Long wrote:
 > Fixes: f1533cce60d1 ("sctp: fix panic when sending auth chunks")
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-> ---
->  net/sctp/output.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/output.c b/net/sctp/output.c
-> index 7425f6c..1f1682b 100644
-> --- a/net/sctp/output.c
-> +++ b/net/sctp/output.c
-> @@ -610,7 +610,8 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
->  				/* We will generate more packets, so re-queue
->  				 * auth chunk.
->  				 */
-> -				list_add(&chunk->list, &packet->chunk_list);
-> +				list_add(&packet->auth->list,
-> +					 &packet->chunk_list);
->  			} else {
->  				sctp_chunk_free(packet->auth);
->  				packet->auth = NULL;
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Applied.
