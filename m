@@ -1,17 +1,19 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Sat, 30 Jul 2016 13:22:31 +0000
+From: David Miller <davem@davemloft.net>
+Date: Sun, 31 Jul 2016 05:07:03 +0000
 Subject: Re: [PATCH net] sctp: allow delivering notifications after receiving SHUTDOWN
-Message-Id: <20160730132231.GD2957@localhost.localdomain>
+Message-Id: <20160730.220703.417829793602387422.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <b188a1ce183303d7d9cd9fc7ccd5d113c520980e.1469858949.git.lucien.xin@gmail.com>
 In-Reply-To: <b188a1ce183303d7d9cd9fc7ccd5d113c520980e.1469858949.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net
 
-On Sat, Jul 30, 2016 at 02:09:09PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 30 Jul 2016 14:09:09 +0800
+
 > Prior to this patch, once sctp received SHUTDOWN or shutdown with RD,
 > sk->sk_shutdown would be set with RCV_SHUTDOWN, and all events would
 > be dropped in sctp_ulpq_tail_event(). It would cause:
@@ -34,32 +36,4 @@ On Sat, Jul 30, 2016 at 02:09:09PM +0800, Xin Long wrote:
 > 
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-> ---
->  net/sctp/ulpqueue.c | 4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
-> index ec166d2..877e550 100644
-> --- a/net/sctp/ulpqueue.c
-> +++ b/net/sctp/ulpqueue.c
-> @@ -204,7 +204,9 @@ int sctp_ulpq_tail_event(struct sctp_ulpq *ulpq, struct sctp_ulpevent *event)
->  	/* If the socket is just going to throw this away, do not
->  	 * even try to deliver it.
->  	 */
-> -	if (sock_flag(sk, SOCK_DEAD) || (sk->sk_shutdown & RCV_SHUTDOWN))
-> +	if (sk->sk_shutdown & RCV_SHUTDOWN &&
-> +	    (sk->sk_shutdown & SEND_SHUTDOWN ||
-> +	     !sctp_ulpevent_is_notification(event)))
->  		goto out_free;
->  
->  	if (!sctp_ulpevent_is_notification(event)) {
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Applied.
