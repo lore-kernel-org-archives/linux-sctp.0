@@ -1,74 +1,69 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 19 Aug 2016 11:30:21 +0000
-Subject: [PATCH net 1/2] sctp: reduce indent level in sctp_copy_local_addr_list
-Message-Id: <4d3c7b176bc8d5c48807ed60d83793c9d02e3757.1471605833.git.lucien.xin@gmail.com>
+From: Phil Sutter <phil@nwl.cc>
+Date: Thu, 04 Aug 2016 10:11:56 +0000
+Subject: [PATCH v3 2/3] sctp_diag: Fix T3_rtx timer export
+Message-Id: <1470305517-31880-3-git-send-email-phil@nwl.cc>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1471605833.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1471605833.git.lucien.xin@gmail.com>
+References: <1470305517-31880-1-git-send-email-phil@nwl.cc>
+In-Reply-To: <1470305517-31880-1-git-send-email-phil@nwl.cc>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+To: David Miller <davem@davemloft.net>
+Cc: Xin Long <lucien.xin@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-This patch is to reduce indent level by using continue when the addr
-is not allowed, and also drop end_copy by using break.
+The asoc's timer value is not kept in asoc->timeouts array but in it's
+primary transport instead.
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Furthermore, we must export the timer only if it is pending, otherwise
+the value will underrun when stored in an unsigned variable and
+user space will only see a very large timeout value.
+
+Signed-off-by: Phil Sutter <phil@nwl.cc>
 ---
- net/sctp/protocol.c | 37 +++++++++++++++++++------------------
- 1 file changed, 19 insertions(+), 18 deletions(-)
+Changes since v1:
+- Introduce local variable to shorten long lines.
+- Use timer_pending() to decide whether to export the timer value.
+- Export the primary path's value instead of garbage.
+- If not exporting, zero fields to not confuse userspace.
+Changes since v2:
+- Rewrote description, emphasizing on wrong value export
+  rather than exporting conditionally.
+---
+ net/sctp/sctp_diag.c | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
 
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index 7b523e3..da5d82b 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -205,26 +205,27 @@ int sctp_copy_local_addr_list(struct net *net, struct sctp_bind_addr *bp,
- 	list_for_each_entry_rcu(addr, &net->sctp.local_addr_list, list) {
- 		if (!addr->valid)
- 			continue;
--		if (sctp_in_scope(net, &addr->a, scope)) {
--			/* Now that the address is in scope, check to see if
--			 * the address type is really supported by the local
--			 * sock as well as the remote peer.
--			 */
--			if ((((AF_INET = addr->a.sa.sa_family) &&
--			      (copy_flags & SCTP_ADDR4_PEERSUPP))) ||
--			    (((AF_INET6 = addr->a.sa.sa_family) &&
--			      (copy_flags & SCTP_ADDR6_ALLOWED) &&
--			      (copy_flags & SCTP_ADDR6_PEERSUPP)))) {
--				error = sctp_add_bind_addr(bp, &addr->a,
--						    sizeof(addr->a),
--						    SCTP_ADDR_SRC, GFP_ATOMIC);
--				if (error)
--					goto end_copy;
--			}
--		}
-+		if (!sctp_in_scope(net, &addr->a, scope))
-+			continue;
-+
-+		/* Now that the address is in scope, check to see if
-+		 * the address type is really supported by the local
-+		 * sock as well as the remote peer.
-+		 */
-+		if (addr->a.sa.sa_family = AF_INET &&
-+		    !(copy_flags & SCTP_ADDR4_PEERSUPP))
-+			continue;
-+		if (addr->a.sa.sa_family = AF_INET6 &&
-+		    (!(copy_flags & SCTP_ADDR6_ALLOWED) ||
-+		     !(copy_flags & SCTP_ADDR6_PEERSUPP)))
-+			continue;
-+
-+		error = sctp_add_bind_addr(bp, &addr->a, sizeof(addr->a),
-+					   SCTP_ADDR_SRC, GFP_ATOMIC);
-+		if (error)
-+			break;
+diff --git a/net/sctp/sctp_diag.c b/net/sctp/sctp_diag.c
+index f69edcf219e51..f728ef04a7b2d 100644
+--- a/net/sctp/sctp_diag.c
++++ b/net/sctp/sctp_diag.c
+@@ -13,6 +13,7 @@ static void inet_diag_msg_sctpasoc_fill(struct inet_diag_msg *r,
+ {
+ 	union sctp_addr laddr, paddr;
+ 	struct dst_entry *dst;
++	struct timer_list *t3_rtx = &asoc->peer.primary_path->T3_rtx_timer;
+ 
+ 	laddr = list_entry(asoc->base.bind_addr.address_list.next,
+ 			   struct sctp_sockaddr_entry, list)->a;
+@@ -40,10 +41,15 @@ static void inet_diag_msg_sctpasoc_fill(struct inet_diag_msg *r,
  	}
  
--end_copy:
- 	rcu_read_unlock();
- 	return error;
+ 	r->idiag_state = asoc->state;
+-	r->idiag_timer = SCTP_EVENT_TIMEOUT_T3_RTX;
+-	r->idiag_retrans = asoc->rtx_data_chunks;
+-	r->idiag_expires = jiffies_to_msecs(
+-		asoc->timeouts[SCTP_EVENT_TIMEOUT_T3_RTX] - jiffies);
++	if (timer_pending(t3_rtx)) {
++		r->idiag_timer = SCTP_EVENT_TIMEOUT_T3_RTX;
++		r->idiag_retrans = asoc->rtx_data_chunks;
++		r->idiag_expires = jiffies_to_msecs(t3_rtx->expires - jiffies);
++	} else {
++		r->idiag_timer = 0;
++		r->idiag_retrans = 0;
++		r->idiag_expires = 0;
++	}
  }
+ 
+ static int inet_diag_msg_sctpladdrs_fill(struct sk_buff *skb,
 -- 
-2.1.0
+2.8.2
 
