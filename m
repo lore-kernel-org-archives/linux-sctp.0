@@ -1,38 +1,47 @@
-From: Baole Ni <baolex.ni@intel.com>
-Date: Tue, 02 Aug 2016 12:19:26 +0000
-Subject: [PATCH 1135/1285] Replace numeric parameter like 0444 with macro
-Message-Id: <20160802121926.25783-1-baolex.ni@intel.com>
+From: Phil Sutter <phil@nwl.cc>
+Date: Thu, 04 Aug 2016 10:11:57 +0000
+Subject: [PATCH v3 3/3] sctp_diag: Respect ss adding TCPF_CLOSE to idiag_states
+Message-Id: <1470305517-31880-4-git-send-email-phil@nwl.cc>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1470305517-31880-1-git-send-email-phil@nwl.cc>
+In-Reply-To: <1470305517-31880-1-git-send-email-phil@nwl.cc>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vyasevich@gmail.com, nhorman@tuxdriver.com, davem@davemloft.net, kaber@trash.net, kadlec@blackhole.kfki.hu, m.szyprowski@samsung.com, kyungmin.park@samsung.com, k.kozlowski@samsung.com
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, chuansheng.liu@intel.com, baolex.ni@intel.com, aryabinin@virtuozzo.com
+To: David Miller <davem@davemloft.net>
+Cc: Xin Long <lucien.xin@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-I find that the developers often just specified the numeric value
-when calling a macro which is defined with a parameter for access permission.
-As we know, these numeric value for access permission have had the corresponding macro,
-and that using macro can improve the robustness and readability of the code,
-thus, I suggest replacing the numeric parameter with the macro.
+Since 'ss' always adds TCPF_CLOSE to idiag_states flags, sctp_diag can't
+rely upon TCPF_LISTEN flag solely being present when listening sockets
+are requested.
 
-Signed-off-by: Chuansheng Liu <chuansheng.liu@intel.com>
-Signed-off-by: Baole Ni <baolex.ni@intel.com>
+Signed-off-by: Phil Sutter <phil@nwl.cc>
 ---
- net/sctp/protocol.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/sctp/sctp_diag.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index d3d50da..a36f2e2 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -1597,6 +1597,6 @@ MODULE_ALIAS("net-pf-" __stringify(PF_INET) "-proto-132");
- MODULE_ALIAS("net-pf-" __stringify(PF_INET6) "-proto-132");
- MODULE_AUTHOR("Linux Kernel SCTP developers <linux-sctp@vger.kernel.org>");
- MODULE_DESCRIPTION("Support for the SCTP protocol (RFC2960)");
--module_param_named(no_checksums, sctp_checksum_disable, bool, 0644);
-+module_param_named(no_checksums, sctp_checksum_disable, bool, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
- MODULE_PARM_DESC(no_checksums, "Disable checksums computing and verification");
- MODULE_LICENSE("GPL");
+diff --git a/net/sctp/sctp_diag.c b/net/sctp/sctp_diag.c
+index f728ef04a7b2d..bb691538adc8e 100644
+--- a/net/sctp/sctp_diag.c
++++ b/net/sctp/sctp_diag.c
+@@ -356,7 +356,7 @@ static int sctp_ep_dump(struct sctp_endpoint *ep, void *p)
+ 	if (cb->args[4] < cb->args[1])
+ 		goto next;
+ 
+-	if ((r->idiag_states & ~TCPF_LISTEN) && !list_empty(&ep->asocs))
++	if (!(r->idiag_states & TCPF_LISTEN) && !list_empty(&ep->asocs))
+ 		goto next;
+ 
+ 	if (r->sdiag_family != AF_UNSPEC &&
+@@ -471,7 +471,7 @@ skip:
+ 	 * 3 : to mark if we have dumped the ep info of the current asoc
+ 	 * 4 : to work as a temporary variable to traversal list
+ 	 */
+-	if (!(idiag_states & ~TCPF_LISTEN))
++	if (!(idiag_states & ~(TCPF_LISTEN | TCPF_CLOSE)))
+ 		goto done;
+ 	sctp_for_each_transport(sctp_tsp_dump, net, cb->args[2], &commp);
+ done:
 -- 
-2.9.2
+2.8.2
 
