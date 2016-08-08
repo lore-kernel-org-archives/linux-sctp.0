@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 08 Aug 2016 12:22:57 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 08 Aug 2016 13:48:09 +0000
 Subject: Re: [PATCH net] sctp: use event->chunk when it's valid
-Message-Id: <20160808122257.GH2967@localhost.localdomain>
+Message-Id: <20160808134809.GA4319@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <b2a38bf9d9d9b9b10a3243149badd56fbb971c4e.1470550513.git.lucien.xin@gmail.com>
 In-Reply-To: <b2a38bf9d9d9b9b10a3243149badd56fbb971c4e.1470550513.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
 On Sun, Aug 07, 2016 at 02:15:13PM +0800, Xin Long wrote:
 > Commit 52253db924d1 ("sctp: also point GSO head_skb to the sk when
@@ -26,9 +26,6 @@ On Sun, Aug 07, 2016 at 02:15:13PM +0800, Xin Long wrote:
 > 
 > Fixes: 52253db924d1 ("sctp: also point GSO head_skb to the sk when it's available")
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/ulpevent.c | 4 ++--
 >  1 file changed, 2 insertions(+), 2 deletions(-)
@@ -62,3 +59,4 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
