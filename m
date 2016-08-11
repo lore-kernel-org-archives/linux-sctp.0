@@ -1,54 +1,41 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 23 Aug 2016 17:30:49 +0000
-Subject: Re: [PATCH net] sctp: fix overrun in sctp_diag_dump_one()
-Message-Id: <20160823173049.GA11144@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 11 Aug 2016 12:52:58 +0000
+Subject: [PATCH net] sctp: fix a success return may hide an error
+Message-Id: <31f3b581258d0458edcf30f65ef9513bdc41acc1.1470919978.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1471966852-6218-1-git-send-email-lrichard@redhat.com>
-In-Reply-To: <1471966852-6218-1-git-send-email-lrichard@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Lance Richardson <lrichard@redhat.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Xin Long <lucien.xin@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-On Tue, Aug 23, 2016 at 11:40:52AM -0400, Lance Richardson wrote:
-> The function sctp_diag_dump_one() currently performs a memcpy()
-> of 64 bytes from a 16 byte field into another 16 byte field. Fix
-> by using correct size, use sizeof to obtain correct size instead
-> of using a hard-coded constant.
-> 
-> Fixes: 8f840e47f190 ("sctp: add the sctp_diag.c file")
-> Signed-off-by: Lance Richardson <lrichard@redhat.com>
+Now in the end of sctp_outq_flush, sctp calls sctp_packet_transmit
+in a loop. The return of current sctp_packet_transmit always covers
+the prior one's. If the last call of sctp_packet_transmit return a
+success, it may hide the error that returns from the prior call.
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+This patch is to fix this by keeping the old error until the new
+error returns from sctp_packet_transmit. Did TAHI test against this
+fix, no regression is found.
 
-Dave, please consider it to -stable.
-Thanks!
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/outqueue.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> ---
->  net/sctp/sctp_diag.c | 6 ++++--
->  1 file changed, 4 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sctp/sctp_diag.c b/net/sctp/sctp_diag.c
-> index bb69153..f3508aa 100644
-> --- a/net/sctp/sctp_diag.c
-> +++ b/net/sctp/sctp_diag.c
-> @@ -424,11 +424,13 @@ static int sctp_diag_dump_one(struct sk_buff *in_skb,
->  		paddr.v4.sin_family = AF_INET;
->  	} else {
->  		laddr.v6.sin6_port = req->id.idiag_sport;
-> -		memcpy(&laddr.v6.sin6_addr, req->id.idiag_src, 64);
-> +		memcpy(&laddr.v6.sin6_addr, req->id.idiag_src,
-> +		       sizeof(laddr.v6.sin6_addr));
->  		laddr.v6.sin6_family = AF_INET6;
->  
->  		paddr.v6.sin6_port = req->id.idiag_dport;
-> -		memcpy(&paddr.v6.sin6_addr, req->id.idiag_dst, 64);
-> +		memcpy(&paddr.v6.sin6_addr, req->id.idiag_dst,
-> +		       sizeof(paddr.v6.sin6_addr));
->  		paddr.v6.sin6_family = AF_INET6;
->  	}
->  
-> -- 
-> 2.5.5
-> 
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 72e54a4..b97c8ad 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -1193,7 +1193,7 @@ sctp_flush_out:
+ 						      send_ready);
+ 		packet = &t->packet;
+ 		if (!sctp_packet_empty(packet))
+-			error = sctp_packet_transmit(packet, gfp);
++			error = sctp_packet_transmit(packet, gfp) ? : error;
+ 
+ 		/* Clear the burst limited state, if any */
+ 		sctp_transport_burst_reset(t);
+-- 
+2.1.0
+
