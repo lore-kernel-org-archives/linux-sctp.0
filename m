@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 12 Aug 2016 13:38:56 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 12 Aug 2016 14:41:42 +0000
 Subject: Re: [PATCH RESEND] net/sctp: always initialise sctp_ht_iter::start_fail
-Message-Id: <20160812133856.GA8682@hmsreliant.think-freely.org>
+Message-Id: <20160812144142.GB3110@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1470988251-18792-1-git-send-email-vegard.nossum@oracle.com>
 In-Reply-To: <1470988251-18792-1-git-send-email-vegard.nossum@oracle.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Vegard Nossum <vegard.nossum@oracle.com>
-Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, Herbert Xu <herbert@gondor.apana.org.au>, "Eric W. Biederman" <ebiederm@xmission.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, stable@vger.kernel.org
+Cc: davem@davemloft.net, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, Herbert Xu <herbert@gondor.apana.org.au>, "Eric W. Biederman" <ebiederm@xmission.com>, stable@vger.kernel.org
 
 On Fri, Aug 12, 2016 at 09:50:51AM +0200, Vegard Nossum wrote:
 > sctp_transport_seq_start() does not currently clear iter->start_fail on
@@ -62,6 +62,11 @@ On Fri, Aug 12, 2016 at 09:50:51AM +0200, Vegard Nossum wrote:
 > Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > Cc: stable@vger.kernel.org
 > Signed-off-by: Vegard Nossum <vegard.nossum@oracle.com>
+
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+
+Thanks
+
 > ---
 >  net/sctp/proc.c | 1 +
 >  1 file changed, 1 insertion(+)
@@ -86,5 +91,3 @@ On Fri, Aug 12, 2016 at 09:50:51AM +0200, Vegard Nossum wrote:
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-Acked-By: Neil Horman <nhorman@tuxdriver.com>
-
