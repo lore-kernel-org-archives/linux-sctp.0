@@ -1,79 +1,92 @@
-From: "'Marcelo Ricardo Leitner'" <marcelo.leitner@gmail.com>
-Date: Thu, 18 Aug 2016 17:44:23 +0000
-Subject: Re: [PATCH net] sctp: fix a success return may hide an error
-Message-Id: <20160818174423.GG3110@localhost.localdomain>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 16 Aug 2016 22:35:33 +0000
+Subject: [PATCH net] sctp: linearize early if it's not GSO
+Message-Id: <a4bc263e62ced9f5790932f11e7d829c36566808.1471386679.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <31f3b581258d0458edcf30f65ef9513bdc41acc1.1470919978.git.lucien.xin@gmail.com>
- <20160812.211113.1099230839994600349.davem@davemloft.net>
- <CADvbK_dXX=Z8yr_yQPpHe2zst9uFYkMeL9-fHx17ZOCb5-x07A@mail.gmail.com>
- <063D6719AE5E284EB5DD2968C1650D6DB00DFD69@AcuExch.aculab.com>
- <CADvbK_fsH9RAc_r6SaTKYTUJusGcZzPuCXX3zntH7UhFFWq-Cg@mail.gmail.com>
- <063D6719AE5E284EB5DD2968C1650D6DB00E036B@AcuExch.aculab.com>
- <20160816172447.GC3110@localhost.localdomain>
- <063D6719AE5E284EB5DD2968C1650D6DB00E0D2A@AcuExch.aculab.com>
-In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6DB00E0D2A@AcuExch.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@ACULAB.COM>
-Cc: 'Xin Long' <lucien.xin@gmail.com>, David Miller <davem@davemloft.net>, network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Vladislav Yasevich <vyasevich@gmail.com>, "daniel@iogearbox.net" <daniel@iogearbox.net>
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-On Wed, Aug 17, 2016 at 09:01:38AM +0000, David Laight wrote:
-> From: Marcelo Ricardo Leitner
-> > Sent: 16 August 2016 18:25
-> ...
-> > > That doesn't seem a good idea.
-> > > You don't want to abort the association if there is a transient
-> > > memory allocation failure.
-> > > You also can't drop data chunks.
-> > 
-> > From a system-wise POV, this behavior - to free the new asoc in case of
-> > transient memory allocation failure - doesn't seem bad to me.
-> > That's what will have to happen if any allocation before it failed and
-> > also it helps the system to reduce the stress a little bit. I don't see
-> > any inconsistency/problems here because we are not dropping a single
-> > random chunk but instead we are actually refusing to initialize a new
-> > asoc in such conditions.
-> 
-> Failing a new association should be ok, whether purists will like
-> connect() failing ENOMEM is another matter.
-> 
+Because otherwise when crc computation is still needed it's way more
+expensive than on a linear buffer to the point that it affects
+performance.
 
-Good point.
+It's so expensive that netperf test gives a perf output as below:
 
-> > Nevertheless, I agree that letting the application see ENOMEM errors when
-> > the data actually got queued and is being fully handled, as in, it will
-> > be retransmitted later, is not be wise, as the application probably
-> > won't be able to distinguish from ENOMEMs that it should retry or not.
-> 
-> I think an application would be justified in thinking that an ENOMEM return
-> meant that the system call had no effect.
-> 
+Overhead  Shared Object        Symbol
+  69,44%  [kernel]             [k] gf2_matrix_square
+   2,84%  [kernel]             [k] crc32_generic_combine.part.0
+   2,78%  [kernel]             [k] _raw_spin_lock_bh
 
-Yep
+And performance goes from 2Gbit/s to 0.5Gbit/s on this test. Doing the
+linearization before checksumming is enough to restore it.
 
-> For send() even ENOMEM is really wrong, it should be treated as 'flow control'
-> and either block or return EAGAIN/EWOULDBLOCK.
+Fixes: 3acb50c18d8d ("sctp: delay as much as possible skb_linearize")
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
 
-Agreed.
+Please consider this to -stable too as v4.7 performance is affected.
+Thanks
 
-> Getting POLLOUT set is left as an exercise to the reader :-)
-> 
+ net/sctp/input.c   | 11 +++++++----
+ net/sctp/inqueue.c | 13 -------------
+ 2 files changed, 7 insertions(+), 17 deletions(-)
 
-:-)
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index c182db7d691ff44a52923fb36c9170e49c141c04..69444d32ecda6cd1a4924911172feba89c5ae976 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -119,7 +119,13 @@ int sctp_rcv(struct sk_buff *skb)
+ 		       skb_transport_offset(skb))
+ 		goto discard_it;
+ 
+-	if (!pskb_may_pull(skb, sizeof(struct sctphdr)))
++	/* If the packet is fragmented and we need to do crc checking,
++	 * it's better to just linearize it otherwise crc computing
++	 * takes longer.
++	 */
++	if ((!(skb_shinfo(skb)->gso_type & SKB_GSO_SCTP) &&
++	     skb_linearize(skb)) ||
++	    !pskb_may_pull(skb, sizeof(struct sctphdr)))
+ 		goto discard_it;
+ 
+ 	/* Pull up the IP header. */
+@@ -1177,9 +1183,6 @@ static struct sctp_association *__sctp_rcv_lookup_harder(struct net *net,
+ 	if ((skb_shinfo(skb)->gso_type & SKB_GSO_SCTP) = SKB_GSO_SCTP)
+ 		return NULL;
+ 
+-	if (skb_linearize(skb))
+-		return NULL;
+-
+ 	ch = (sctp_chunkhdr_t *) skb->data;
+ 
+ 	/* The code below will attempt to walk the chunk and extract
+diff --git a/net/sctp/inqueue.c b/net/sctp/inqueue.c
+index c30ddb0f31907f57c5ce85b00dbe04260ca1cb2e..6437aa97cfd79f14c633499c2b131389204c435b 100644
+--- a/net/sctp/inqueue.c
++++ b/net/sctp/inqueue.c
+@@ -170,19 +170,6 @@ next_chunk:
+ 
+ 		chunk = list_entry(entry, struct sctp_chunk, list);
+ 
+-		/* Linearize if it's not GSO */
+-		if ((skb_shinfo(chunk->skb)->gso_type & SKB_GSO_SCTP) != SKB_GSO_SCTP &&
+-		    skb_is_nonlinear(chunk->skb)) {
+-			if (skb_linearize(chunk->skb)) {
+-				__SCTP_INC_STATS(dev_net(chunk->skb->dev), SCTP_MIB_IN_PKT_DISCARDS);
+-				sctp_chunk_free(chunk);
+-				goto next_chunk;
+-			}
+-
+-			/* Update sctp_hdr as it probably changed */
+-			chunk->sctp_hdr = sctp_hdr(chunk->skb);
+-		}
+-
+ 		if ((skb_shinfo(chunk->skb)->gso_type & SKB_GSO_SCTP) = SKB_GSO_SCTP) {
+ 			/* GSO-marked skbs but without frags, handle
+ 			 * them normally
+-- 
+2.7.4
 
-> ...
-> > Well, it may be, but we are trying to improve it.  Please continue
-> > discussing the fixes so we can keep improving it. :)
-> 
-> Indeed, we have customers who use sctp (for M3UA).
-> We don't do anything 'complicated', but do end up sending a lot of short
-> data chunks.
-> 
-> 	David
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
