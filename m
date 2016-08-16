@@ -1,39 +1,97 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Tue, 16 Aug 2016 16:01:50 +0000
-Subject: RE: [PATCH net] sctp: fix a success return may hide an error
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6DB00E036B@AcuExch.aculab.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 16 Aug 2016 17:24:47 +0000
+Subject: Re: [PATCH net] sctp: fix a success return may hide an error
+Message-Id: <20160816172447.GC3110@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <31f3b581258d0458edcf30f65ef9513bdc41acc1.1470919978.git.lucien.xin@gmail.com>
  <20160812.211113.1099230839994600349.davem@davemloft.net>
  <CADvbK_dXX=Z8yr_yQPpHe2zst9uFYkMeL9-fHx17ZOCb5-x07A@mail.gmail.com>
  <063D6719AE5E284EB5DD2968C1650D6DB00DFD69@AcuExch.aculab.com>
  <CADvbK_fsH9RAc_r6SaTKYTUJusGcZzPuCXX3zntH7UhFFWq-Cg@mail.gmail.com>
-In-Reply-To: <CADvbK_fsH9RAc_r6SaTKYTUJusGcZzPuCXX3zntH7UhFFWq-Cg@mail.gmail.com>
+ <063D6719AE5E284EB5DD2968C1650D6DB00E036B@AcuExch.aculab.com>
+In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6DB00E036B@AcuExch.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Xin Long' <lucien.xin@gmail.com>
-Cc: David Miller <davem@davemloft.net>, network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vladislav Yasevich <vyasevich@gmail.com>, "daniel@iogearbox.net" <daniel@iogearbox.net>
+To: David Laight <David.Laight@ACULAB.COM>
+Cc: 'Xin Long' <lucien.xin@gmail.com>, David Miller <davem@davemloft.net>, network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Vladislav Yasevich <vyasevich@gmail.com>, "daniel@iogearbox.net" <daniel@iogearbox.net>
 
-RnJvbTogWGluIExvbmcNCj4gU2VudDogMTYgQXVndXN0IDIwMTYgMTI6MzQNCj4NCj4gPj4gQm90
-aCBzY3RwX291dHFfZmx1c2hfcnR4IGFuZCBzY3RwX3BhY2tldF90cmFuc21pdCBjYW4gT05MWQ0K
-PiA+PiByZXR1cm4gb25lIGVycm9yICgtRU5PTUVNKSwgYXMgc2N0cF9vdXRxX2ZsdXNoX3J0eCBh
-bHNvIGNhbGxzDQo+ID4+IHNjdHBfcGFja2V0X3RyYW5zbWl0Lg0KPiA+DQo+ID4gV2hhdCBpcyB0
-aGUgZWZmZWN0IG9mIHRoZSBlcnJvcj8NCj4gPiBJZiBpdCBpcyAnanVzdCcgZXF1aXZhbGVudCB0
-byBhIGxvc3QgZXRoZXJuZXQgcGFja2V0IChhbmQgdGhlIHNrYiAoZXRjKQ0KPiA+IGlzIGZyZWVk
-KSB0aGVuIHRoZSBwcm90b2NvbCB3aWxsIHJlY292ZXIuDQo+ID4gSWYgaXQgaXMgYW55dGhpbmcg
-ZWxzZSB0aGVuIHRoZSBlcnJvciBwYXRoIGlzIHByb2JhYmx5IHdyb25nLg0KPg0KPiBUaGlzIGVy
-ciByZXR1cm5zIGJhY2sgdG8gc2N0cF9zZW5kbXNnLCB0aGVyZSBzY3RwIHdpbGwgYWJvcnQgYXNv
-Yy4NCg0KVGhhdCBkb2Vzbid0IHNlZW0gYSBnb29kIGlkZWEuDQpZb3UgZG9uJ3Qgd2FudCB0byBh
-Ym9ydCB0aGUgYXNzb2NpYXRpb24gaWYgdGhlcmUgaXMgYSB0cmFuc2llbnQNCm1lbW9yeSBhbGxv
-Y2F0aW9uIGZhaWx1cmUuDQpZb3UgYWxzbyBjYW4ndCBkcm9wIGRhdGEgY2h1bmtzLg0KDQo+IGlu
-IHRoaXMgZnVuY3Rpb24sIHNjdHAgdHJpZXMgdG8gZG8gMyB0aGluZ3M6DQo+IDEuIGZsdXNoIHJ0
-eCBxdWV1ZQ0KPiAyLiB0cmFuc21pdCB0aGUgcGFja2V0IG9mIGN1cnJlbnQgdHJhbnNwb3J0DQo+
-IDMuIGZsdXNoIGFsbCB0aGUgdHJhbnNwb3J0cy4NCj4gTm93IHNjdHAgd291bGQgZG8gdGhlbSBv
-bmUgYnkgb25lLCBldmVuIGlmIG9uZSBvZiB0aGVtIHJldHVybnMgZXJyLg0KDQpZb3UgcHJvYmFi
-bHkgbmVlZCB0byBleHBsYWluIHdoYXQgJ2ZsdXNoJyBtZWFucyBoZXJlLg0KSSB0aGluayBpdCBt
-ZWFucyAncHJvY2VzcyBhbmQgc2VuZCcsIGJ1dCBpdCBtaWdodCBtZWFuICdkaXNjYXJkIHRoZQ0K
-Y29udGVudHMgb2YnLg0KDQpMYXN0IHRpbWUgSSBsb29rZWQgYXQgdGhlIHNjdHAgY29kZSBteSBo
-ZWFkIGV4cGxvZGVkLg0KSVNUUiBpdCBpcyBhIG1lc3Mgb2YgdGltaW5nIGVycm9ycyB3YWl0aW5n
-IHRvIGhhcHBlbg0KKGFuZCBJIHdyaXRlIGNvbW1zIHByb3RvY29sIHN0YWNrIGNvZGUgZm9yIGEg
-bGl2aW5nKS4NCg0KCURhdmlkDQoNCg=
+On Tue, Aug 16, 2016 at 04:01:50PM +0000, David Laight wrote:
+> From: Xin Long
+> > Sent: 16 August 2016 12:34
+> >
+> > >> Both sctp_outq_flush_rtx and sctp_packet_transmit can ONLY
+> > >> return one error (-ENOMEM), as sctp_outq_flush_rtx also calls
+> > >> sctp_packet_transmit.
+> > >
+> > > What is the effect of the error?
+> > > If it is 'just' equivalent to a lost ethernet packet (and the skb (etc)
+> > > is freed) then the protocol will recover.
+> > > If it is anything else then the error path is probably wrong.
+> >
+> > This err returns back to sctp_sendmsg, there sctp will abort asoc.
+
+That's not right I think. sctp_sendmsg will only free the asoc if it was
+created to send that specific chunk. And in this case, this change
+should have no effect as it can't have sctp_outq_flush() touching
+several transports in a row.
+
+I'm basing on:
+out_free:
+        if (new_asoc)
+                sctp_association_free(asoc);
+
+and sctp_recvmsg will just fetch, return and clear the error via
+sctp_skb_recv_datagram, but not free it.
+
+Do you see any other place freeing it?
+
+> 
+> That doesn't seem a good idea.
+> You don't want to abort the association if there is a transient
+> memory allocation failure.
+> You also can't drop data chunks.
+
+From a system-wise POV, this behavior - to free the new asoc in case of
+transient memory allocation failure - doesn't seem bad to me.
+That's what will have to happen if any allocation before it failed and
+also it helps the system to reduce the stress a little bit. I don't see
+any inconsistency/problems here because we are not dropping a single
+random chunk but instead we are actually refusing to initialize a new
+asoc in such conditions.
+
+Nevertheless, I agree that letting the application see ENOMEM errors when
+the data actually got queued and is being fully handled, as in, it will
+be retransmitted later, is not be wise, as the application probably
+won't be able to distinguish from ENOMEMs that it should retry or not.
+Here I see a problem, yet it's not due to this specific change, perhaps
+it just got attention because of it. In this situation, we should handle
+ENOMEMs internally if possible so the application can know that if it
+hits an ENOMEM, it's real and it has to retry.
+
+Fixing this inconsistency may very well cause us to let that new asoc to
+live longer, works for me too.
+
+> 
+> > in this function, sctp tries to do 3 things:
+> > 1. flush rtx queue
+> > 2. transmit the packet of current transport
+> > 3. flush all the transports.
+> > Now sctp would do them one by one, even if one of them returns err.
+> 
+> You probably need to explain what 'flush' means here.
+> I think it means 'process and send', but it might mean 'discard the
+> contents of'.
+
+Yes, the first. He probably use the work 'flush' because the function is
+called .._flush_..
+
+> Last time I looked at the sctp code my head exploded.
+> ISTR it is a mess of timing errors waiting to happen
+> (and I write comms protocol stack code for a living).
+
+Well, it may be, but we are trying to improve it.  Please continue
+discussing the fixes so we can keep improving it. :)
+
+  Marcelo
+
