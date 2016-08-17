@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 16 Aug 2016 18:45:31 +0000
-Subject: Re: [PATCH net] sctp: fix a success return may hide an error
-Message-Id: <20160816184531.GE3110@localhost.localdomain>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Wed, 17 Aug 2016 09:01:38 +0000
+Subject: RE: [PATCH net] sctp: fix a success return may hide an error
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6DB00E0D2A@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <31f3b581258d0458edcf30f65ef9513bdc41acc1.1470919978.git.lucien.xin@gmail.com>
  <20160812.211113.1099230839994600349.davem@davemloft.net>
@@ -10,67 +10,51 @@ References: <31f3b581258d0458edcf30f65ef9513bdc41acc1.1470919978.git.lucien.xin@
  <CADvbK_fsH9RAc_r6SaTKYTUJusGcZzPuCXX3zntH7UhFFWq-Cg@mail.gmail.com>
  <063D6719AE5E284EB5DD2968C1650D6DB00E036B@AcuExch.aculab.com>
  <20160816172447.GC3110@localhost.localdomain>
- <CADvbK_eSD9taybqO0VzfQaUE0jtmKMWiSzkHjO2fNpZrU2Fg3Q@mail.gmail.com>
- <20160816183330.GD3110@localhost.localdomain>
-In-Reply-To: <20160816183330.GD3110@localhost.localdomain>
+In-Reply-To: <20160816172447.GC3110@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: David Laight <David.Laight@aculab.com>, David Miller <davem@davemloft.net>, network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Vladislav Yasevich <vyasevich@gmail.com>, "daniel@iogearbox.net" <daniel@iogearbox.net>
+To: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
+Cc: 'Xin Long' <lucien.xin@gmail.com>, David Miller <davem@davemloft.net>, network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Vladislav Yasevich <vyasevich@gmail.com>, "daniel@iogearbox.net" <daniel@iogearbox.net>
 
-On Tue, Aug 16, 2016 at 03:33:30PM -0300, Marcelo Ricardo Leitner wrote:
-> On Wed, Aug 17, 2016 at 02:24:19AM +0800, Xin Long wrote:
-> > >> > This err returns back to sctp_sendmsg, there sctp will abort asoc.
-> > >
-> > > That's not right I think. sctp_sendmsg will only free the asoc if it was
-> > > created to send that specific chunk. And in this case, this change
-> > > should have no effect as it can't have sctp_outq_flush() touching
-> > > several transports in a row.
-> > >
-> > > I'm basing on:
-> > > out_free:
-> > >         if (new_asoc)
-> > >                 sctp_association_free(asoc);
-> > >
-> > > and sctp_recvmsg will just fetch, return and clear the error via
-> > > sctp_skb_recv_datagram, but not free it.
-> > >
-> > > Do you see any other place freeing it?
-> > Sorry, you are right, it free assoc just for new_asoc.
-> > 
-> > >
-> > >>
-> > >> That doesn't seem a good idea.
-> > >> You don't want to abort the association if there is a transient
-> > >> memory allocation failure.
-> > >> You also can't drop data chunks.
-> > >
-> > > From a system-wise POV, this behavior - to free the new asoc in case of
-> > > transient memory allocation failure - doesn't seem bad to me.
-> > > That's what will have to happen if any allocation before it failed and
-> > > also it helps the system to reduce the stress a little bit. I don't see
-> > > any inconsistency/problems here because we are not dropping a single
-> > > random chunk but instead we are actually refusing to initialize a new
-> > > asoc in such conditions.
-> > >
-> > > Nevertheless, I agree that letting the application see ENOMEM errors when
-> > > the data actually got queued and is being fully handled, as in, it will
-> > > be retransmitted later, is not be wise, as the application probably
-> > > won't be able to distinguish from ENOMEMs that it should retry or not.
-> > > Here I see a problem, yet it's not due to this specific change, perhaps
-> > > it just got attention because of it. In this situation, we should handle
-> > > ENOMEMs internally if possible so the application can know that if it
-> > > hits an ENOMEM, it's real and it has to retry.
-> > If  letting the application see ENOMEM errors, and sctp has to drop this
-> > chunk, instead of retransmiting the ENOMEM chunk, but the ENOMEM
-> > chunk may not be the chunk from current msg, as it flush all the queue.
-> > even if users get an ENOMEM error, they may re-send a chunk that is same
-> > with the one that is still in retransmit queue.
+From: Marcelo Ricardo Leitner
+> Sent: 16 August 2016 18:25
+...
+> > That doesn't seem a good idea.
+> > You don't want to abort the association if there is a transient
+> > memory allocation failure.
+> > You also can't drop data chunks.
 > 
-> Yep, one more reason to handle those internally when safe.
+> From a system-wise POV, this behavior - to free the new asoc in case of
+> transient memory allocation failure - doesn't seem bad to me.
+> That's what will have to happen if any allocation before it failed and
+> also it helps the system to reduce the stress a little bit. I don't see
+> any inconsistency/problems here because we are not dropping a single
+> random chunk but instead we are actually refusing to initialize a new
+> asoc in such conditions.
 
-Xin, maybe you can squash this patch and this ENOMEM handling? I'm
-thinking that handling ENOMEM may result in similar situations in other
-places, so we have a common reasoning on them.
+Failing a new association should be ok, whether purists will like
+connect() failing ENOMEM is another matter.
+
+> Nevertheless, I agree that letting the application see ENOMEM errors when
+> the data actually got queued and is being fully handled, as in, it will
+> be retransmitted later, is not be wise, as the application probably
+> won't be able to distinguish from ENOMEMs that it should retry or not.
+
+I think an application would be justified in thinking that an ENOMEM return
+meant that the system call had no effect.
+
+For send() even ENOMEM is really wrong, it should be treated as 'flow control'
+and either block or return EAGAIN/EWOULDBLOCK.
+Getting POLLOUT set is left as an exercise to the reader :-)
+
+...
+> Well, it may be, but we are trying to improve it.  Please continue
+> discussing the fixes so we can keep improving it. :)
+
+Indeed, we have customers who use sctp (for M3UA).
+We don't do anything 'complicated', but do end up sending a lot of short
+data chunks.
+
+	David
 
