@@ -1,183 +1,76 @@
-From: Phil Sutter <phil@nwl.cc>
-Date: Thu, 04 Aug 2016 14:40:21 +0000
-Subject: Re: [PATCH v3 1/3] sctp: Export struct sctp_info to userspace
-Message-Id: <20160804144021.GD8988@orbyte.nwl.cc>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 19 Aug 2016 11:30:22 +0000
+Subject: [PATCH net 2/2] sctp: not copying duplicate addrs to the assoc's bind address list
+Message-Id: <130956b1e880eab780162a795fde156d61d4de0f.1471605833.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1470305517-31880-1-git-send-email-phil@nwl.cc>
- <1470305517-31880-2-git-send-email-phil@nwl.cc>
- <20160804133329.GA11579@hmsreliant.think-freely.org>
-In-Reply-To: <20160804133329.GA11579@hmsreliant.think-freely.org>
+References: <cover.1471605833.git.lucien.xin@gmail.com>
+ <4d3c7b176bc8d5c48807ed60d83793c9d02e3757.1471605833.git.lucien.xin@gmail.com>
+In-Reply-To: <4d3c7b176bc8d5c48807ed60d83793c9d02e3757.1471605833.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: David Miller <davem@davemloft.net>, Xin Long <lucien.xin@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-On Thu, Aug 04, 2016 at 09:33:29AM -0400, Neil Horman wrote:
-> On Thu, Aug 04, 2016 at 12:11:55PM +0200, Phil Sutter wrote:
-> > This is required to correctly interpret INET_DIAG_INFO messages exported
-> > by sctp_diag module.
-> > 
-> > Signed-off-by: Phil Sutter <phil@nwl.cc>
-> > ---
-> >  include/linux/sctp.h      | 64 -----------------------------------------------
-> >  include/uapi/linux/sctp.h | 64 +++++++++++++++++++++++++++++++++++++++++++++++
-> >  2 files changed, 64 insertions(+), 64 deletions(-)
-> > 
-> > diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-> > index de1f64318fc4e..fcb4c36461732 100644
-> > --- a/include/linux/sctp.h
-> > +++ b/include/linux/sctp.h
-> > @@ -705,70 +705,6 @@ typedef struct sctp_auth_chunk {
-> >  	sctp_authhdr_t auth_hdr;
-> >  } __packed sctp_auth_chunk_t;
-> >  
-> > -struct sctp_info {
-> > -	__u32	sctpi_tag;
-> > -	__u32	sctpi_state;
-> > -	__u32	sctpi_rwnd;
-> > -	__u16	sctpi_unackdata;
-> > -	__u16	sctpi_penddata;
-> > -	__u16	sctpi_instrms;
-> > -	__u16	sctpi_outstrms;
-> > -	__u32	sctpi_fragmentation_point;
-> > -	__u32	sctpi_inqueue;
-> > -	__u32	sctpi_outqueue;
-> > -	__u32	sctpi_overall_error;
-> > -	__u32	sctpi_max_burst;
-> > -	__u32	sctpi_maxseg;
-> > -	__u32	sctpi_peer_rwnd;
-> > -	__u32	sctpi_peer_tag;
-> > -	__u8	sctpi_peer_capable;
-> > -	__u8	sctpi_peer_sack;
-> > -	__u16	__reserved1;
-> > -
-> > -	/* assoc status info */
-> > -	__u64	sctpi_isacks;
-> > -	__u64	sctpi_osacks;
-> > -	__u64	sctpi_opackets;
-> > -	__u64	sctpi_ipackets;
-> > -	__u64	sctpi_rtxchunks;
-> > -	__u64	sctpi_outofseqtsns;
-> > -	__u64	sctpi_idupchunks;
-> > -	__u64	sctpi_gapcnt;
-> > -	__u64	sctpi_ouodchunks;
-> > -	__u64	sctpi_iuodchunks;
-> > -	__u64	sctpi_oodchunks;
-> > -	__u64	sctpi_iodchunks;
-> > -	__u64	sctpi_octrlchunks;
-> > -	__u64	sctpi_ictrlchunks;
-> > -
-> > -	/* primary transport info */
-> > -	struct sockaddr_storage	sctpi_p_address;
-> > -	__s32	sctpi_p_state;
-> > -	__u32	sctpi_p_cwnd;
-> > -	__u32	sctpi_p_srtt;
-> > -	__u32	sctpi_p_rto;
-> > -	__u32	sctpi_p_hbinterval;
-> > -	__u32	sctpi_p_pathmaxrxt;
-> > -	__u32	sctpi_p_sackdelay;
-> > -	__u32	sctpi_p_sackfreq;
-> > -	__u32	sctpi_p_ssthresh;
-> > -	__u32	sctpi_p_partial_bytes_acked;
-> > -	__u32	sctpi_p_flight_size;
-> > -	__u16	sctpi_p_error;
-> > -	__u16	__reserved2;
-> > -
-> > -	/* sctp sock info */
-> > -	__u32	sctpi_s_autoclose;
-> > -	__u32	sctpi_s_adaptation_ind;
-> > -	__u32	sctpi_s_pd_point;
-> > -	__u8	sctpi_s_nodelay;
-> > -	__u8	sctpi_s_disable_fragments;
-> > -	__u8	sctpi_s_v4mapped;
-> > -	__u8	sctpi_s_frag_interleave;
-> > -	__u32	sctpi_s_type;
-> > -	__u32	__reserved3;
-> > -};
-> > -
-> >  struct sctp_infox {
-> >  	struct sctp_info *sctpinfo;
-> >  	struct sctp_association *asoc;
-> > diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-> > index d304f4c9792c4..a406adcc0793e 100644
-> > --- a/include/uapi/linux/sctp.h
-> > +++ b/include/uapi/linux/sctp.h
-> > @@ -944,4 +944,68 @@ struct sctp_default_prinfo {
-> >  	__u16 pr_policy;
-> >  };
-> >  
-> > +struct sctp_info {
-> > +	__u32	sctpi_tag;
-> > +	__u32	sctpi_state;
-> > +	__u32	sctpi_rwnd;
-> > +	__u16	sctpi_unackdata;
-> > +	__u16	sctpi_penddata;
-> > +	__u16	sctpi_instrms;
-> > +	__u16	sctpi_outstrms;
-> > +	__u32	sctpi_fragmentation_point;
-> > +	__u32	sctpi_inqueue;
-> > +	__u32	sctpi_outqueue;
-> > +	__u32	sctpi_overall_error;
-> > +	__u32	sctpi_max_burst;
-> > +	__u32	sctpi_maxseg;
-> > +	__u32	sctpi_peer_rwnd;
-> > +	__u32	sctpi_peer_tag;
-> > +	__u8	sctpi_peer_capable;
-> > +	__u8	sctpi_peer_sack;
-> > +	__u16	__reserved1;
-> > +
-> > +	/* assoc status info */
-> > +	__u64	sctpi_isacks;
-> > +	__u64	sctpi_osacks;
-> > +	__u64	sctpi_opackets;
-> > +	__u64	sctpi_ipackets;
-> > +	__u64	sctpi_rtxchunks;
-> > +	__u64	sctpi_outofseqtsns;
-> > +	__u64	sctpi_idupchunks;
-> > +	__u64	sctpi_gapcnt;
-> > +	__u64	sctpi_ouodchunks;
-> > +	__u64	sctpi_iuodchunks;
-> > +	__u64	sctpi_oodchunks;
-> > +	__u64	sctpi_iodchunks;
-> > +	__u64	sctpi_octrlchunks;
-> > +	__u64	sctpi_ictrlchunks;
-> > +
-> > +	/* primary transport info */
-> > +	struct sockaddr_storage	sctpi_p_address;
-> > +	__s32	sctpi_p_state;
-> > +	__u32	sctpi_p_cwnd;
-> > +	__u32	sctpi_p_srtt;
-> > +	__u32	sctpi_p_rto;
-> > +	__u32	sctpi_p_hbinterval;
-> > +	__u32	sctpi_p_pathmaxrxt;
-> > +	__u32	sctpi_p_sackdelay;
-> > +	__u32	sctpi_p_sackfreq;
-> > +	__u32	sctpi_p_ssthresh;
-> > +	__u32	sctpi_p_partial_bytes_acked;
-> > +	__u32	sctpi_p_flight_size;
-> > +	__u16	sctpi_p_error;
-> > +	__u16	__reserved2;
-> > +
-> > +	/* sctp sock info */
-> > +	__u32	sctpi_s_autoclose;
-> > +	__u32	sctpi_s_adaptation_ind;
-> > +	__u32	sctpi_s_pd_point;
-> > +	__u8	sctpi_s_nodelay;
-> > +	__u8	sctpi_s_disable_fragments;
-> > +	__u8	sctpi_s_v4mapped;
-> > +	__u8	sctpi_s_frag_interleave;
-> > +	__u32	sctpi_s_type;
-> > +	__u32	__reserved3;
-> > +};
-> > +
-> If you export these, shouldn't they be converted to the corresponding
-> uint<size>_t variants?
+From: Xin Long <lxin@redhat.com>
 
-As mentioned earlier, uapi headers using the __u* types seems not
-uncommon. Another aspect is consistency, these types are used throughout
-the whole file already, so if I should change them, they all should be
-changed. And assuming uapi/linux/tcp.h being a good example: struct
-tcp_info uses them also.
+sctp.local_addr_list is a global address list that is supposed to include
+all the local addresses. sctp updates this list according to NETDEV_UP/
+NETDEV_DOWN notifications.
 
-Cheers, Phil
+However, if multiple NICs have the same address, the global list will
+have duplicate addresses. Even if for one NIC, promote secondaries in
+__inet_del_ifa can also lead to accumulating duplicate addresses.
+
+When sctp binds address 'ANY' and creates a connection, it copies all
+the addresses from global list into asoc's bind addr list, which makes
+sctp pack the duplicate addresses into INIT/INIT_ACK packets.
+
+This patch is to filter the duplicate addresses when copying the addrs
+from global list in sctp_copy_local_addr_list and unpacking addr_param
+from cookie in sctp_raw_to_bind_addrs to asoc's bind addr list.
+
+Signed-off-by: Xin Long <lxin@redhat.com>
+---
+ net/sctp/bind_addr.c | 3 +++
+ net/sctp/protocol.c  | 3 +++
+ 2 files changed, 6 insertions(+)
+
+diff --git a/net/sctp/bind_addr.c b/net/sctp/bind_addr.c
+index 401c607..1ebc184 100644
+--- a/net/sctp/bind_addr.c
++++ b/net/sctp/bind_addr.c
+@@ -292,6 +292,8 @@ int sctp_raw_to_bind_addrs(struct sctp_bind_addr *bp, __u8 *raw_addr_list,
+ 		}
+ 
+ 		af->from_addr_param(&addr, rawaddr, htons(port), 0);
++		if (sctp_bind_addr_state(bp, &addr) != -1)
++			goto next;
+ 		retval = sctp_add_bind_addr(bp, &addr, sizeof(addr),
+ 					    SCTP_ADDR_SRC, gfp);
+ 		if (retval) {
+@@ -300,6 +302,7 @@ int sctp_raw_to_bind_addrs(struct sctp_bind_addr *bp, __u8 *raw_addr_list,
+ 			break;
+ 		}
+ 
++next:
+ 		len = ntohs(param->length);
+ 		addrs_len -= len;
+ 		raw_addr_list += len;
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index da5d82b..616a942 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -220,6 +220,9 @@ int sctp_copy_local_addr_list(struct net *net, struct sctp_bind_addr *bp,
+ 		     !(copy_flags & SCTP_ADDR6_PEERSUPP)))
+ 			continue;
+ 
++		if (sctp_bind_addr_state(bp, &addr->a) != -1)
++			continue;
++
+ 		error = sctp_add_bind_addr(bp, &addr->a, sizeof(addr->a),
+ 					   SCTP_ADDR_SRC, GFP_ATOMIC);
+ 		if (error)
+-- 
+2.1.0
+
