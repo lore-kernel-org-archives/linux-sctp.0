@@ -1,47 +1,27 @@
-From: Phil Sutter <phil@nwl.cc>
-Date: Thu, 04 Aug 2016 10:11:57 +0000
-Subject: [PATCH v3 3/3] sctp_diag: Respect ss adding TCPF_CLOSE to idiag_states
-Message-Id: <1470305517-31880-4-git-send-email-phil@nwl.cc>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 19 Aug 2016 11:30:20 +0000
+Subject: [PATCH net 0/2] sctp: not copying duplicate addrs to the assoc's bind address list
+Message-Id: <cover.1471605833.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1470305517-31880-1-git-send-email-phil@nwl.cc>
-In-Reply-To: <1470305517-31880-1-git-send-email-phil@nwl.cc>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: Xin Long <lucien.xin@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-Since 'ss' always adds TCPF_CLOSE to idiag_states flags, sctp_diag can't
-rely upon TCPF_LISTEN flag solely being present when listening sockets
-are requested.
+Patch 1/2 is to fix some indent level.
 
-Signed-off-by: Phil Sutter <phil@nwl.cc>
----
- net/sctp/sctp_diag.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Given that we have kernels out there with this issue, patch 2/2 also
+fix sctp_raw_to_bind_addrs.
 
-diff --git a/net/sctp/sctp_diag.c b/net/sctp/sctp_diag.c
-index f728ef04a7b2d..bb691538adc8e 100644
---- a/net/sctp/sctp_diag.c
-+++ b/net/sctp/sctp_diag.c
-@@ -356,7 +356,7 @@ static int sctp_ep_dump(struct sctp_endpoint *ep, void *p)
- 	if (cb->args[4] < cb->args[1])
- 		goto next;
- 
--	if ((r->idiag_states & ~TCPF_LISTEN) && !list_empty(&ep->asocs))
-+	if (!(r->idiag_states & TCPF_LISTEN) && !list_empty(&ep->asocs))
- 		goto next;
- 
- 	if (r->sdiag_family != AF_UNSPEC &&
-@@ -471,7 +471,7 @@ skip:
- 	 * 3 : to mark if we have dumped the ep info of the current asoc
- 	 * 4 : to work as a temporary variable to traversal list
- 	 */
--	if (!(idiag_states & ~TCPF_LISTEN))
-+	if (!(idiag_states & ~(TCPF_LISTEN | TCPF_CLOSE)))
- 		goto done;
- 	sctp_for_each_transport(sctp_tsp_dump, net, cb->args[2], &commp);
- done:
+Xin Long (2):
+  sctp: reduce indent level in sctp_copy_local_addr_list
+  sctp: not copying duplicate addrs to the assoc's bind address list
+
+ net/sctp/bind_addr.c |  3 +++
+ net/sctp/protocol.c  | 40 ++++++++++++++++++++++------------------
+ 2 files changed, 25 insertions(+), 18 deletions(-)
+
 -- 
-2.8.2
+2.1.0
 
