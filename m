@@ -1,57 +1,33 @@
-From: Mikko Rapeli <mikko.rapeli@iki.fi>
-Date: Mon, 22 Aug 2016 18:32:26 +0000
-Subject: [PATCH v05 09/72] sctp.h: use __u8 and __u32 from linux/types.h
-Message-Id: <1471890809-4383-10-git-send-email-mikko.rapeli@iki.fi>
+From: Robert David <clarkraymond377@gmail.com>
+Date: Sun, 21 Aug 2016 06:50:47 +0000
+Subject: Attention Beneficially
+Message-Id: <908285276.426230.1471762247322@mail.yahoo.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1471890809-4383-1-git-send-email-mikko.rapeli@iki.fi>
-In-Reply-To: <1471890809-4383-1-git-send-email-mikko.rapeli@iki.fi>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: linux-kernel@vger.kernel.org
-Cc: Mikko Rapeli <mikko.rapeli@iki.fi>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: linux-sctp@vger.kernel.org
 
-Fixes userspace compilation errors like:
+Attention Beneficially
 
-linux/sctp.h:652:2: error: unknown type name ‘uint32_t’
 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
-Signed-off-by: Mikko Rapeli <mikko.rapeli@iki.fi>
----
- include/uapi/linux/sctp.h | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+WESTERN UNION
 
-diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index a406adc..ab697b3 100644
---- a/include/uapi/linux/sctp.h
-+++ b/include/uapi/linux/sctp.h
-@@ -743,13 +743,13 @@ struct sctp_authkeyid {
-  */
- struct sctp_sack_info {
- 	sctp_assoc_t	sack_assoc_id;
--	uint32_t	sack_delay;
--	uint32_t	sack_freq;
-+	__u32	sack_delay;
-+	__u32	sack_freq;
- };
- 
- struct sctp_assoc_value {
--    sctp_assoc_t            assoc_id;
--    uint32_t                assoc_value;
-+	sctp_assoc_t	assoc_id;
-+	__u32		assoc_value;
- };
- 
- /*
-@@ -819,7 +819,7 @@ struct sctp_status {
- struct sctp_authchunks {
- 	sctp_assoc_t	gauth_assoc_id;
- 	__u32		gauth_number_of_chunks;
--	uint8_t		gauth_chunks[];
-+	__u8		gauth_chunks[];
- };
- 
- /* The broken spelling has been released already in lksctp-tools header,
--- 
-2.8.1
+This is very urgent Our Operation manager has sent your first payment of $5000.00 to you. Here is what we need from you to complete the
+transfer, Your Name, Your Address,A Copy Of Your ID and Your Telephone Number: Noted That Only Fee Request from You Is to
+Reactivate Transfer Files which is Sum Of $65Only, No More Fee again after that.
+Western Union Agent: Mr. Peterson Godwin
+Direct phone line is: + 229 98782817
+E-mail ::(westernunion8087@gmail.com)
 
+Bellow is your first payment for $5000usd sent today in your name.
+Sender Name: Mr. 
+MTCN: 
+Question
+Answer
+Amount Sent: $5000.00
+
+You can use this link to confirm the payment,
+
+Best Regards,
+Mr.Joseph Ezo
