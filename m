@@ -1,45 +1,58 @@
-From: hejianet <hejianet@gmail.com>
-Date: Tue, 30 Aug 2016 08:15:36 +0000
-Subject: Re: [RFC PATCH 1/6] proc: Reduce cache miss in {snmp,netstat}_seq_show
-Message-Id: <0c4f4f45-ec27-d1d3-45f8-a7ed8a4ca667@gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 25 Aug 2016 05:21:49 +0000
+Subject: [PATCH net] veth: sctp: add NETIF_F_SCTP_CRC to device features
+Message-Id: <3b9880c091c96f4e6780b96b4f3e2c4d38dffe42.1472102509.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1472486640-1111-1-git-send-email-hejianet@gmail.com>
- <1472486640-1111-2-git-send-email-hejianet@gmail.com>
- <1472488885.14381.260.camel@edumazet-glaptop3.roam.corp.google.com>
-In-Reply-To: <1472488885.14381.260.camel@edumazet-glaptop3.roam.corp.google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-Hi Eric
+Commit b17c706987fa ("loopback: sctp: add NETIF_F_SCTP_CSUM to device
+features") added NETIF_F_SCTP_CRC to device features for lo device to
+improve the performance of sctp over lo.
 
+This patch is to add NETIF_F_SCTP_CRC to device features for veth to
+improve the performance of sctp over veth.
 
-On 8/30/16 12:41 AM, Eric Dumazet wrote:
-> On Tue, 2016-08-30 at 00:03 +0800, Jia He wrote:
->> This patch exchanges the two loop for collecting the percpu statistics
->> data. This can aggregate the data by going through all the items of each
->> cpu sequentially. In snmp_seq_show, just use one buff copy to dislay the
->> Udp and UdpLite data because they are the same.
-> This is obviously not true.
->
-> On my laptop it seems it handled no UdpLite frames, but got plenty of
-> Udp ones.
->
-> $ grep Udp /proc/net/snmp
-> Udp: InDatagrams NoPorts InErrors OutDatagrams RcvbufErrors SndbufErrors InCsumErrors
-> Udp: 1555889 108318 0 3740780 0 0 0
-> UdpLite: InDatagrams NoPorts InErrors OutDatagrams RcvbufErrors SndbufErrors InCsumErrors
-> UdpLite: 0 0 0 0 0 0 0
-Thanks, you are right. I misunderstand the comments of source codes.
-Will resend it
+Before this patch:
+  ip netns exec cs_client netperf -H 10.167.12.2 -t SCTP_STREAM -- -m 10K
+  Recv   Send    Send
+  Socket Socket  Message  Elapsed
+  Size   Size    Size     Time     Throughput
+  bytes  bytes   bytes    secs.    10^6bits/sec
 
-B.R.
-Jia
->
->
->
-> .
->
+  212992 212992  10240    10.00    1117.16
+
+After this patch:
+  ip netns exec cs_client netperf -H 10.167.12.2 -t SCTP_STREAM -- -m 10K
+  Recv   Send    Send
+  Socket Socket  Message  Elapsed
+  Size   Size    Size     Time     Throughput
+  bytes  bytes   bytes    secs.    10^6bits/sec
+
+  212992 212992  10240    10.20    1415.22
+
+Tested-by: Li Shuang <tjlishuang@yeah.net>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ drivers/net/veth.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/net/veth.c b/drivers/net/veth.c
+index f37a6e6..4bda502 100644
+--- a/drivers/net/veth.c
++++ b/drivers/net/veth.c
+@@ -313,7 +313,7 @@ static const struct net_device_ops veth_netdev_ops = {
+ };
+ 
+ #define VETH_FEATURES (NETIF_F_SG | NETIF_F_FRAGLIST | NETIF_F_HW_CSUM | \
+-		       NETIF_F_RXCSUM | NETIF_F_HIGHDMA | \
++		       NETIF_F_RXCSUM | NETIF_F_SCTP_CRC | NETIF_F_HIGHDMA | \
+ 		       NETIF_F_GSO_SOFTWARE | NETIF_F_GSO_ENCAP_ALL | \
+ 		       NETIF_F_HW_VLAN_CTAG_TX | NETIF_F_HW_VLAN_CTAG_RX | \
+ 		       NETIF_F_HW_VLAN_STAG_TX | NETIF_F_HW_VLAN_STAG_RX )
+-- 
+2.1.0
 
