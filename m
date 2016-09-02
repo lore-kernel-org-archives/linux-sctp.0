@@ -1,7 +1,7 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Fri, 02 Sep 2016 13:22:05 +0000
-Subject: RE: [PATCH net 2/2] sctp: not copying duplicate addrs to the assoc's bind address list
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6DB00EF186@AcuExch.aculab.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 02 Sep 2016 13:46:57 +0000
+Subject: Re: [PATCH net 2/2] sctp: not copying duplicate addrs to the assoc's bind address list
+Message-Id: <20160902134657.GB11159@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1471605833.git.lucien.xin@gmail.com>
  <130956b1e880eab780162a795fde156d61d4de0f.1471605833.git.lucien.xin@gmail.com>
@@ -10,43 +10,75 @@ References: <cover.1471605833.git.lucien.xin@gmail.com>
  <20160822142538.GA10323@hmsreliant.think-freely.org>
  <20160824112338.GB11144@localhost.localdomain>
  <CADvbK_dJbaze7qMsDp-7x0xANsXZX=JfYBNhKOo=2VgbM_ywZg@mail.gmail.com>
-In-Reply-To: <CADvbK_dJbaze7qMsDp-7x0xANsXZX=JfYBNhKOo=2VgbM_ywZg@mail.gmail.com>
+ <063D6719AE5E284EB5DD2968C1650D6DB00EF186@AcuExch.aculab.com>
+In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6DB00EF186@AcuExch.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Xin Long' <lucien.xin@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: Neil Horman <nhorman@tuxdriver.com>, network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, davem <davem@davemloft.net>, Vlad Yasevich <vyasevich@gmail.com>, "daniel@iogearbox.net" <daniel@iogearbox.net>
+To: David Laight <David.Laight@ACULAB.COM>
+Cc: 'Xin Long' <lucien.xin@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, davem <davem@davemloft.net>, Vlad Yasevich <vyasevich@gmail.com>, "daniel@iogearbox.net" <daniel@iogearbox.net>
 
-RnJvbTogT2YgWGluIExvbmcNCj4gU2VudDogMjUgQXVndXN0IDIwMTYgMDU6MDQNCi4uLg0KPiBC
-dXQgSSBzdGlsbCBwcmVmZXIgdGhlIGN1cnJlbnQgcGF0Y2guDQo+IDEuIFRoaXMgaXNzdWUgb25s
-eSBoYXBwZW5zIHdoZW4gc2VydmVyIGJpbmQgJ0FOWScgYWRkcmVzc2VzLg0KPiAgICAgd2UgZG9u
-J3QgbmVlZCB0byBhZGQgYW55IG5ldyBtZW1iZXJzIHRvIHN0cnVjdCBzY3RwX3NvY2thZGRyX2Vu
-dHJ5Lg0KPiAgICAgZXNwZWNpYWxseSBpZiBpdCdzIGEgcmVhbGx5IGNvcm5lciBpc3N1ZSwgIHdl
-IGZpeCB0aGlzIGFzIGFuIGltcHJvdmVtZW50Lg0KPiANCj4gMi4gSXQncyB5ZXQgdHdvIGlzc3Vl
-cyAgaGVyZSwgdGhlIGR1cGxpY2F0ZSBhZGRycyBtYXkgYmUgZnJvbQ0KPiAgICBhKSBkaWZmZXJl
-bnQgbG9jYWwgTklDcy4NCj4gICAgYikgdGhlIHNhbWUgb25lIE5JQy4NCj4gICAgSXQgbWF5IGJl
-IHVuZXhwZWN0YWJsZSB0byBmaWx0ZXIgdGhlbSBpbiBORVRERVZfVVAvRE9XTiBldmVudHMuDQo+
-IA0KPiAzLiBXZSBjaGVjayBpdCBvbmx5IHdoZW4gc2N0cCByZWFsbHkgYmluZHMgaXQsIGp1c3Qg
-bGlrZSBzY3RwX2RvX2JpbmQuDQo+IA0KPiBXaGF0IGRvIHlvdSB0aGluayA/DQoNCkkgd2FudCB0
-byBrbm93IHdoYXQga2luZCBvZiB3ZWVkIHRoZSBTQ1RQIGF1dGhvcnMgd2VyZSBzbW9raW5nIHdo
-ZW4gdGhleQ0KZGVjaWRlZCBpdCB3YXMgYXBwcm9wcmlhdGUgdG8gcHV0IGFsbCBvZiBhIHN5c3Rl
-bXMgSVAgYWRkcmVzc2VzIGluIHRoZQ0KY29va2llIGFuZCBjb29raWUtYWNrIG1lc3NhZ2VzLg0K
-DQpJdCB3b3VsZCBiZSBuaWNlIHRvIGhhdmUgdGhlIGxvY2FsIGFkZHJlc3NlcyBzZWxlY3RlZCBi
-eSB0aGUga2VybmVsIG9uIHRoZQ0KYmFzaXMgb2YgdGhlIHJlbW90ZSBhZGRyZXNzIC0gcmVtb3Zp
-bmcgdGhlIG5lY2Vzc2l0eSBvZiB0aGUgYXBwbGljYXRpb24NCnRvIGtub3cgdGhlIGN1cnJlbnQg
-bmV0d29yayB0b3BvbG9neSAoYW5kIElQIGFkZHJlc3NlcykgaW4gb3JkZXIgdG8gYmluZA0KdG8g
-dGhlIGNvcnJlY3QgbG9jYWwgYWRkcmVzc2VzIGJlZm9yZSBtYWtpbmcgYW4gb3V0d2FyZCBjYWxs
-Lg0KDQpUaGlzIHNvcnQgb2YgcmVxdWlyZXMgdGhhdCBsb2NhbCBhZGRyZXNzZXMgZm9yIGEgY29u
-bmVjdGlvbiBhcmUgbW9yZSBvZiBhDQpwcm9wZXJ0eSBvZiB0aGUgcm91dGluZyB0YWJsZSB0aGFu
-IGFueXRoaW5nIGVsc2UuDQoNCkNvbnNpZGVyIHRoZSBmb2xsb3dpbmcgbmV0d29yazoNCg0KICAg
-IC0tLS0rLS0tLS0tLS0tLS0tLS0tKy0tLS0tLS0tLS0tLS0tLS0tLS0tLS0rLS0tLS0tLS0tDQog
-ICAgICAgIHwgICAgICAgICAgICAgICB8ICAgICAgICAgICAgICAgICAgICAgIHwNCiAgICAgeC54
-LjEuMSAgICAgICAgIHgueC4xLjIgICAgICAgICAgICAgICAgeS55LjEuMg0KICAgIDEwLjEuMS4x
-ICAgICAgICAxMC4xLjEuMiAgICAgICAgICAgICAgIDEwLjEuMS4yDQogICAgICAgIHwgICAgICAg
-ICAgICAgICB8ICAgICAgICAgICAgICAgICAgICAgIHwNCiAgICAtLS0tKy0tLS0tLS0tLS0tLS0t
-LSsgICAgICAgICAgICAgICAgICAgICAgKy0tLS0tLS0tLQ0KDQpBIGNvbm5lY3Rpb24gZnJvbSB4
-LnguMS4xIHRvIHgueC4xLjIgbmVlZHMgdG8gc3BlY2lmeSB0aGUgMTAuMS4xLiogYWRkcmVzc2Vz
-LA0KYnV0IGEgY29ubmVjdGlvbiBmb3IgeC54LjEuMSB0byB5LnkuMS4yIG11c3Qgbm90Lg0KDQpJ
-J20gbm90IGF0IHN1cmUgd2hldGhlciBpdCBpcyBwb3NzaWJsZSB0byBzZXR1cCBsaXN0ZW5lcihz
-KSBvbiB4LnguMS4xDQp0aGF0IGNhbiBhY2NlcHQgY29ubmVjdGlvbnMgZnJvbSBib3RoIHgueC4x
-LjIgYW5kIHkueS4xLjIuDQoNCglEYXZpZA0KDQo
+On Fri, Sep 02, 2016 at 01:22:05PM +0000, David Laight wrote:
+> From: Of Xin Long
+> > Sent: 25 August 2016 05:04
+> ...
+> > But I still prefer the current patch.
+> > 1. This issue only happens when server bind 'ANY' addresses.
+> >     we don't need to add any new members to struct sctp_sockaddr_entry.
+> >     especially if it's a really corner issue,  we fix this as an improvement.
+> > 
+> > 2. It's yet two issues  here, the duplicate addrs may be from
+> >    a) different local NICs.
+> >    b) the same one NIC.
+> >    It may be unexpectable to filter them in NETDEV_UP/DOWN events.
+> > 
+> > 3. We check it only when sctp really binds it, just like sctp_do_bind.
+> > 
+> > What do you think ?
+> 
+> I want to know what kind of weed the SCTP authors were smoking when they
+> decided it was appropriate to put all of a systems IP addresses in the
+> cookie and cookie-ack messages.
+> 
+
+The 'best effort' one I guess :-)
+
+> It would be nice to have the local addresses selected by the kernel on the
+> basis of the remote address - removing the necessity of the application
+> to know the current network topology (and IP addresses) in order to bind
+> to the correct local addresses before making an outward call.
+> 
+> This sort of requires that local addresses for a connection are more of a
+> property of the routing table than anything else.
+> 
+> Consider the following network:
+> 
+>     ----+---------------+----------------------+---------
+>         |               |                      |
+>      x.x.1.1         x.x.1.2                y.y.1.2
+>     10.1.1.1        10.1.1.2               10.1.1.2
+>         |               |                      |
+>     ----+---------------+                      +---------
+> 
+> A connection from x.x.1.1 to x.x.1.2 needs to specify the 10.1.1.* addresses,
+> but a connection for x.x.1.1 to y.y.1.2 must not.
+> 
+
+Exactly. Your example is an exact match with the issue I had last week.
+That 10.1.1.2 of yours, may very well be 192.168.122.1 from libvirt.
+Then the host may attempt to send the packet to itself, and abort the
+association due to that.
+
+I hated this because it took me a big while to find out about it. 
+
+I guess they just didn't predict this situation of duplicated/internal
+addresses. Otherwise, the address is there, reachable or not. It's in
+the best effort situation.
+
+> I'm not at sure whether it is possible to setup listener(s) on x.x.1.1
+> that can accept connections from both x.x.1.2 and y.y.1.2.
+
+You mean without an explicit bind()?
+
+  Marcelo
+
