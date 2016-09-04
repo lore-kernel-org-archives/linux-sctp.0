@@ -1,19 +1,44 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 20 Sep 2016 21:20:21 +0000
-Subject: Re: [PATCH next 2/2] sctp: make use of WORD_TRUNC macro
-Message-Id: <20160920212021.GC9323@localhost.localdomain>
+From: Christophe JAILLET <christophe.jaillet@wanadoo.fr>
+Date: Sun, 04 Sep 2016 09:38:13 +0000
+Subject: [PATCH] sctp: Remove some redundant code
+Message-Id: <1472981893-8608-1-git-send-email-christophe.jaillet@wanadoo.fr>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1474402102.git.marcelo.leitner@gmail.com>
- <44d3d3e5e0be1f4e557893f1dd8bcc38fae009fa.1474402102.git.marcelo.leitner@gmail.com>
-In-Reply-To: <44d3d3e5e0be1f4e557893f1dd8bcc38fae009fa.1474402102.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, David Laight <David.Laight@ACULAB.COM>
+To: marcelo.leitner@gmail.com, vyasevich@gmail.com, nhorman@tuxdriver.com, davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, kernel-janitors@vger.kernel.org, Christophe JAILLET <christophe.jaillet@wanadoo.fr>
 
-On Tue, Sep 20, 2016 at 05:24:20PM -0300, Marcelo Ricardo Leitner wrote:
-> +	max_data = SCTP_TRUNC4(max_data);
+In commit 311b21774f13 ("sctp: simplify sk_receive_queue locking"), a call
+to 'skb_queue_splice_tail_init()' has been made explicit. Previously it was
+hidden in 'sctp_skb_list_tail()'
 
-Will post a v2 to fix the subject.
+Now, the code around it looks redundant. The '_init()' part of
+'skb_queue_splice_tail_init()' should alreday do the same.
+
+Signed-off-by: Christophe JAILLET <christophe.jaillet@wanadoo.fr>
+---
+Un-tested
+---
+ net/sctp/ulpqueue.c | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
+index 877e55066f89..84d0fdaf7de9 100644
+--- a/net/sctp/ulpqueue.c
++++ b/net/sctp/ulpqueue.c
+@@ -140,11 +140,8 @@ int sctp_clear_pd(struct sock *sk, struct sctp_association *asoc)
+ 		 * we can go ahead and clear out the lobby in one shot
+ 		 */
+ 		if (!skb_queue_empty(&sp->pd_lobby)) {
+-			struct list_head *list;
+ 			skb_queue_splice_tail_init(&sp->pd_lobby,
+ 						   &sk->sk_receive_queue);
+-			list = (struct list_head *)&sctp_sk(sk)->pd_lobby;
+-			INIT_LIST_HEAD(list);
+ 			return 1;
+ 		}
+ 	} else {
+-- 
+2.7.4
 
