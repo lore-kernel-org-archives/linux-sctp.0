@@ -1,7 +1,7 @@
 From: marcelo.leitner@gmail.com
-Date: Mon, 05 Sep 2016 12:40:04 +0000
+Date: Mon, 05 Sep 2016 23:48:37 +0000
 Subject: Re: [PATCH] sctp: Remove some redundant code
-Message-Id: <20160905124004.GA27658@localhost.localdomain>
+Message-Id: <20160905234837.GB27658@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1472981893-8608-1-git-send-email-christophe.jaillet@wanadoo.fr>
 In-Reply-To: <1472981893-8608-1-git-send-email-christophe.jaillet@wanadoo.fr>
@@ -18,16 +18,15 @@ On Sun, Sep 04, 2016 at 11:38:13AM +0200, Christophe JAILLET wrote:
 > 
 > Now, the code around it looks redundant. The '_init()' part of
 > 'skb_queue_splice_tail_init()' should alreday do the same.
-
-Nice
-
 > 
 > Signed-off-by: Christophe JAILLET <christophe.jaillet@wanadoo.fr>
 > ---
 > Un-tested
 
-Okay. It seems good to me but I'll give this a run after lunch anyway.
+Tested here with some netperf combinations, seems good.
 Thanks
+
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
 > ---
 >  net/sctp/ulpqueue.c | 3 ---
