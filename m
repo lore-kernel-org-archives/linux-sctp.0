@@ -1,34 +1,220 @@
-From: David Miller <davem@davemloft.net>
-Date: Sat, 10 Sep 2016 02:18:52 +0000
-Subject: Re: [PATCH net] sctp: identify chunks that need to be fragmented at IP level
-Message-Id: <20160909.191852.1305298210334990557.davem@davemloft.net>
+From: Jia He <hejianet@gmail.com>
+Date: Tue, 06 Sep 2016 02:30:04 +0000
+Subject: [RFC PATCH v2 1/6] proc: Reduce cache miss in {snmp,netstat}_seq_show
+Message-Id: <1473129009-20478-2-git-send-email-hejianet@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <d3a35eae75b431862cf96b55dd3a3614a11df8a3.1473328451.git.lucien.xin@gmail.com>
-In-Reply-To: <d3a35eae75b431862cf96b55dd3a3614a11df8a3.1473328451.git.lucien.xin@gmail.com>
+References: <1473129009-20478-1-git-send-email-hejianet@gmail.com>
+In-Reply-To: <1473129009-20478-1-git-send-email-hejianet@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>, Jia He <hejianet@gmail.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu,  8 Sep 2016 17:54:11 +0800
+This patch exchanges the two loop for collecting the percpu statistics
+data. This can aggregate the data by going through all the items of each
+cpu sequentially. Then snmp_seq_show is split into 2 parts to avoid build
+warning "the frame size" larger than 1024.
 
-> From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> 
-> Previously, without GSO, it was easy to identify it: if the chunk didn't
-> fit and there was no data chunk in the packet yet, we could fragment at
-> IP level. So if there was an auth chunk and we were bundling a big data
-> chunk, it would fragment regardless of the size of the auth chunk. This
-> also works for the context of PMTU reductions.
-> 
-> But with GSO, we cannot distinguish such PMTU events anymore, as the
-> packet is allowed to exceed PMTU.
-> 
-> So we need another check: to ensure that the chunk that we are adding,
-> actually fits the current PMTU. If it doesn't, trigger a flush and let
-> it be fragmented at IP level in the next round.
-> 
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Signed-off-by: Jia He <hejianet@gmail.com>
+---
+ net/ipv4/proc.c | 112 ++++++++++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 81 insertions(+), 31 deletions(-)
 
-Applied.
+diff --git a/net/ipv4/proc.c b/net/ipv4/proc.c
+index 9f665b6..f413fdc 100644
+--- a/net/ipv4/proc.c
++++ b/net/ipv4/proc.c
+@@ -46,6 +46,9 @@
+ #include <net/sock.h>
+ #include <net/raw.h>
+ 
++#define MAX(a, b) ((u32)(a) >= (u32)(b) ? (a) : (b))
++#define TCPUDP_MIB_MAX MAX(UDP_MIB_MAX, TCP_MIB_MAX)
++
+ /*
+  *	Report socket allocation statistics [mea@utu.fi]
+  */
+@@ -378,13 +381,15 @@ static void icmp_put(struct seq_file *seq)
+ /*
+  *	Called from the PROCfs module. This outputs /proc/net/snmp.
+  */
+-static int snmp_seq_show(struct seq_file *seq, void *v)
++static int snmp_seq_show_ipstats(struct seq_file *seq, void *v)
+ {
+-	int i;
++	int i, c;
++	u64 buff64[IPSTATS_MIB_MAX];
+ 	struct net *net = seq->private;
+ 
+-	seq_puts(seq, "Ip: Forwarding DefaultTTL");
++	memset(buff64, 0, IPSTATS_MIB_MAX * sizeof(u64));
+ 
++	seq_puts(seq, "Ip: Forwarding DefaultTTL");
+ 	for (i = 0; snmp4_ipstats_list[i].name != NULL; i++)
+ 		seq_printf(seq, " %s", snmp4_ipstats_list[i].name);
+ 
+@@ -393,57 +398,92 @@ static int snmp_seq_show(struct seq_file *seq, void *v)
+ 		   net->ipv4.sysctl_ip_default_ttl);
+ 
+ 	BUILD_BUG_ON(offsetof(struct ipstats_mib, mibs) != 0);
++
++	for_each_possible_cpu(c) {
++		for (i = 0; snmp4_ipstats_list[i].name != NULL; i++)
++			buff64[i] += snmp_get_cpu_field64(
++					net->mib.ip_statistics,
++					c, snmp4_ipstats_list[i].entry,
++					offsetof(struct ipstats_mib, syncp));
++	}
+ 	for (i = 0; snmp4_ipstats_list[i].name != NULL; i++)
+-		seq_printf(seq, " %llu",
+-			   snmp_fold_field64(net->mib.ip_statistics,
+-					     snmp4_ipstats_list[i].entry,
+-					     offsetof(struct ipstats_mib, syncp)));
++		seq_printf(seq, " %llu", buff64[i]);
+ 
+-	icmp_put(seq);	/* RFC 2011 compatibility */
+-	icmpmsg_put(seq);
++	return 0;
++}
++
++static int snmp_seq_show_tcp_udp(struct seq_file *seq, void *v)
++{
++	int i, c;
++	unsigned long buff[TCPUDP_MIB_MAX];
++	struct net *net = seq->private;
++
++	memset(buff, 0, TCPUDP_MIB_MAX * sizeof(unsigned long));
+ 
+ 	seq_puts(seq, "\nTcp:");
+ 	for (i = 0; snmp4_tcp_list[i].name != NULL; i++)
+ 		seq_printf(seq, " %s", snmp4_tcp_list[i].name);
+ 
+ 	seq_puts(seq, "\nTcp:");
++	for_each_possible_cpu(c) {
++		for (i = 0; snmp4_tcp_list[i].name != NULL; i++)
++			buff[i] += snmp_get_cpu_field(net->mib.tcp_statistics,
++						c, snmp4_tcp_list[i].entry);
++	}
++
+ 	for (i = 0; snmp4_tcp_list[i].name != NULL; i++) {
+ 		/* MaxConn field is signed, RFC 2012 */
+ 		if (snmp4_tcp_list[i].entry = TCP_MIB_MAXCONN)
+-			seq_printf(seq, " %ld",
+-				   snmp_fold_field(net->mib.tcp_statistics,
+-						   snmp4_tcp_list[i].entry));
++			seq_printf(seq, " %ld", buff[i]);
+ 		else
+-			seq_printf(seq, " %lu",
+-				   snmp_fold_field(net->mib.tcp_statistics,
+-						   snmp4_tcp_list[i].entry));
++			seq_printf(seq, " %lu", buff[i]);
+ 	}
+ 
++	memset(buff, 0, TCPUDP_MIB_MAX * sizeof(unsigned long));
++
++	for_each_possible_cpu(c) {
++		for (i = 0; snmp4_udp_list[i].name != NULL; i++)
++			buff[i] += snmp_get_cpu_field(net->mib.udp_statistics,
++						c, snmp4_udp_list[i].entry);
++	}
+ 	seq_puts(seq, "\nUdp:");
+ 	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
+ 		seq_printf(seq, " %s", snmp4_udp_list[i].name);
+-
+ 	seq_puts(seq, "\nUdp:");
+ 	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
+-		seq_printf(seq, " %lu",
+-			   snmp_fold_field(net->mib.udp_statistics,
+-					   snmp4_udp_list[i].entry));
++		seq_printf(seq, " %lu", buff[i]);
++
++	memset(buff, 0, TCPUDP_MIB_MAX * sizeof(unsigned long));
+ 
+ 	/* the UDP and UDP-Lite MIBs are the same */
+ 	seq_puts(seq, "\nUdpLite:");
++	for_each_possible_cpu(c) {
++		for (i = 0; snmp4_udp_list[i].name != NULL; i++)
++			buff[i] += snmp_get_cpu_field(net->mib.udplite_statistics,
++						c, snmp4_udp_list[i].entry);
++	}
+ 	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
+ 		seq_printf(seq, " %s", snmp4_udp_list[i].name);
+-
+ 	seq_puts(seq, "\nUdpLite:");
+ 	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
+-		seq_printf(seq, " %lu",
+-			   snmp_fold_field(net->mib.udplite_statistics,
+-					   snmp4_udp_list[i].entry));
++		seq_printf(seq, " %lu", buff[i]);
+ 
+ 	seq_putc(seq, '\n');
+ 	return 0;
+ }
+ 
++static int snmp_seq_show(struct seq_file *seq, void *v)
++{
++	snmp_seq_show_ipstats(seq, v);
++
++	icmp_put(seq);	/* RFC 2011 compatibility */
++	icmpmsg_put(seq);
++
++	snmp_seq_show_tcp_udp(seq, v);
++
++	return 0;
++}
++
+ static int snmp_seq_open(struct inode *inode, struct file *file)
+ {
+ 	return single_open_net(inode, file, snmp_seq_show);
+@@ -464,29 +504,39 @@ static const struct file_operations snmp_seq_fops = {
+  */
+ static int netstat_seq_show(struct seq_file *seq, void *v)
+ {
+-	int i;
++	int i, c;
++	unsigned long buff[LINUX_MIB_MAX];
++	u64 buff64[IPSTATS_MIB_MAX];
+ 	struct net *net = seq->private;
+ 
++	memset(buff, 0, sizeof(unsigned long) * LINUX_MIB_MAX);
++	memset(buff64, 0, sizeof(u64) * IPSTATS_MIB_MAX);
++
+ 	seq_puts(seq, "TcpExt:");
+ 	for (i = 0; snmp4_net_list[i].name != NULL; i++)
+ 		seq_printf(seq, " %s", snmp4_net_list[i].name);
+ 
+ 	seq_puts(seq, "\nTcpExt:");
++	for_each_possible_cpu(c)
++		for (i = 0; snmp4_net_list[i].name != NULL; i++)
++			buff[i] += snmp_get_cpu_field(net->mib.net_statistics,
++						c, snmp4_net_list[i].entry);
+ 	for (i = 0; snmp4_net_list[i].name != NULL; i++)
+-		seq_printf(seq, " %lu",
+-			   snmp_fold_field(net->mib.net_statistics,
+-					   snmp4_net_list[i].entry));
++		seq_printf(seq, " %lu", buff[i]);
+ 
+ 	seq_puts(seq, "\nIpExt:");
+ 	for (i = 0; snmp4_ipextstats_list[i].name != NULL; i++)
+ 		seq_printf(seq, " %s", snmp4_ipextstats_list[i].name);
+ 
+ 	seq_puts(seq, "\nIpExt:");
++	for_each_possible_cpu(c)
++		for (i = 0; snmp4_ipextstats_list[i].name != NULL; i++)
++			buff64[i] += snmp_get_cpu_field64(
++					net->mib.ip_statistics,
++					c, snmp4_ipextstats_list[i].entry,
++					offsetof(struct ipstats_mib, syncp));
+ 	for (i = 0; snmp4_ipextstats_list[i].name != NULL; i++)
+-		seq_printf(seq, " %llu",
+-			   snmp_fold_field64(net->mib.ip_statistics,
+-					     snmp4_ipextstats_list[i].entry,
+-					     offsetof(struct ipstats_mib, syncp)));
++		seq_printf(seq, " %llu", buff64[i]);
+ 
+ 	seq_putc(seq, '\n');
+ 	return 0;
+-- 
+1.8.3.1
+
