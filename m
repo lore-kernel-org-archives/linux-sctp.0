@@ -1,32 +1,52 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 26 Sep 2016 09:47:49 +0000
-Subject: [PATCH net 0/5] sctp: some fixes of prsctp polices
-Message-Id: <cover.1474883200.git.lucien.xin@gmail.com>
+From: Jia He <hejianet@gmail.com>
+Date: Tue, 06 Sep 2016 02:30:06 +0000
+Subject: [RFC PATCH v2 3/6] proc: Reduce cache miss in sctp_snmp_seq_show
+Message-Id: <1473129009-20478-4-git-send-email-hejianet@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1473129009-20478-1-git-send-email-hejianet@gmail.com>
+In-Reply-To: <1473129009-20478-1-git-send-email-hejianet@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>, Jia He <hejianet@gmail.com>
 
-This patchset is to improve some codes about prsctp polices, and also
-to fix some issues.
+This patch exchanges the two loop for collecting the percpu
+statistics data. This can reduce cache misses by going through
+all the items of each cpu sequentially.
 
-Xin Long (5):
-  sctp: move sent_count to the memory hole in sctp_chunk
-  sctp: reuse sent_count to avoid retransmitted chunks for RTT
-    measurements
-  sctp: remove prsctp_param from sctp_chunk
-  sctp: change to check peer prsctp_capable when using prsctp polices
-  sctp: remove the old ttl expires policy
+Signed-off-by: Jia He <hejianet@gmail.com>
+---
+ net/sctp/proc.c | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
 
- include/net/sctp/structs.h | 15 +++------------
- net/sctp/chunk.c           | 31 ++++++++++---------------------
- net/sctp/output.c          |  6 ++----
- net/sctp/outqueue.c        | 16 +++++++---------
- net/sctp/sm_make_chunk.c   | 15 ---------------
- 5 files changed, 22 insertions(+), 61 deletions(-)
-
+diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+index ef8ba77..085fb95 100644
+--- a/net/sctp/proc.c
++++ b/net/sctp/proc.c
+@@ -74,12 +74,19 @@ static const struct snmp_mib sctp_snmp_list[] = {
+ static int sctp_snmp_seq_show(struct seq_file *seq, void *v)
+ {
+ 	struct net *net = seq->private;
+-	int i;
++	int i, c;
++	unsigned long buff[SCTP_MIB_MAX];
+ 
++	memset(buff, 0, sizeof(unsigned long) * SCTP_MIB_MAX);
++
++	for_each_possible_cpu(c)
++		for (i = 0; sctp_snmp_list[i].name != NULL; i++)
++			buff[i] += snmp_get_cpu_field(
++						net->sctp.sctp_statistics,
++						c, sctp_snmp_list[i].entry);
+ 	for (i = 0; sctp_snmp_list[i].name != NULL; i++)
+ 		seq_printf(seq, "%-32s\t%ld\n", sctp_snmp_list[i].name,
+-			   snmp_fold_field(net->sctp.sctp_statistics,
+-				      sctp_snmp_list[i].entry));
++						buff[i]);
+ 
+ 	return 0;
+ }
 -- 
-2.1.0
+1.8.3.1
 
