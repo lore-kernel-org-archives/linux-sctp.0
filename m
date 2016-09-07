@@ -1,7 +1,7 @@
-From: marcelo.leitner@gmail.com
-Date: Mon, 05 Sep 2016 23:48:37 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Wed, 07 Sep 2016 15:19:42 +0000
 Subject: Re: [PATCH] sctp: Remove some redundant code
-Message-Id: <20160905234837.GB27658@localhost.localdomain>
+Message-Id: <20160907151942.GB21945@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1472981893-8608-1-git-send-email-christophe.jaillet@wanadoo.fr>
 In-Reply-To: <1472981893-8608-1-git-send-email-christophe.jaillet@wanadoo.fr>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Christophe JAILLET <christophe.jaillet@wanadoo.fr>
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, davem@davemloft.net, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, kernel-janitors@vger.kernel.org
+Cc: marcelo.leitner@gmail.com, vyasevich@gmail.com, davem@davemloft.net, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, kernel-janitors@vger.kernel.org
 
 On Sun, Sep 04, 2016 at 11:38:13AM +0200, Christophe JAILLET wrote:
 > In commit 311b21774f13 ("sctp: simplify sk_receive_queue locking"), a call
@@ -22,12 +22,6 @@ On Sun, Sep 04, 2016 at 11:38:13AM +0200, Christophe JAILLET wrote:
 > Signed-off-by: Christophe JAILLET <christophe.jaillet@wanadoo.fr>
 > ---
 > Un-tested
-
-Tested here with some netperf combinations, seems good.
-Thanks
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/ulpqueue.c | 3 ---
 >  1 file changed, 3 deletions(-)
@@ -56,3 +50,6 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
+
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
