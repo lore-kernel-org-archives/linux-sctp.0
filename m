@@ -1,62 +1,38 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 28 Sep 2016 10:46:28 +0000
-Subject: [PATCHv2 net 1/5] sctp: move sent_count to the memory hole in sctp_chunk
-Message-Id: <03a642a76d02e8536404aa27561c44e348f3e3a0.1475059350.git.lucien.xin@gmail.com>
+Date: Thu, 08 Sep 2016 09:31:44 +0000
+Subject: [PATCH net 0/6] sctp: fix the transmit err process
+Message-Id: <cover.1473326067.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1475059350.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1475059350.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-Now pahole sctp_chunk, it has 2 memory holes:
-   struct sctp_chunk {
-	struct list_head           list;
-	atomic_t                   refcnt;
-	/* XXX 4 bytes hole, try to pack */
-	...
-	long unsigned int          prsctp_param;
-	int                        sent_count;
-	/* XXX 4 bytes hole, try to pack */
+This patchset is to improve the transmit err process and also fix some
+issues.
 
-This patch is to move up sent_count to fill the 1st one and eliminate
-the 2nd one.
+After this patchset, once the chunks are enqueued successfully, even
+if the chunks fail to send out, no matter because of nodst or nomem,
+no err retruns back to users any more. Instead, they are taken care
+of by retransmit.
 
-It's not just another struct compaction, it also fixes the "netperf-
-Throughput_Mbps -37.2% regression" issue when overloading the CPU.
+Xin Long (6):
+  sctp: remove the unnecessary state check in sctp_outq_tail
+  sctp: do not return the transmit err back to sctp_sendmsg
+  sctp: free msg->chunks when sctp_primitive_SEND return err
+  sctp: save transmit error to sk_err in sctp_outq_flush
+  sctp: make sctp_outq_flush/tail/uncork return void
+  sctp: not return ENOMEM err back in sctp_packet_transmit
 
-Fixes: a6c2f792873a ("sctp: implement prsctp TTL policy")
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- include/net/sctp/structs.h | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ include/net/sctp/structs.h |  5 +--
+ net/sctp/chunk.c           | 13 +++++++
+ net/sctp/output.c          | 50 +++++++++++++-------------
+ net/sctp/outqueue.c        | 89 ++++++++++++++++------------------------------
+ net/sctp/sm_sideeffect.c   | 25 +++++--------
+ net/sctp/socket.c          |  6 ++--
+ 6 files changed, 84 insertions(+), 104 deletions(-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index ce93c4b..4f097f5 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -554,6 +554,9 @@ struct sctp_chunk {
- 
- 	atomic_t refcnt;
- 
-+	/* How many times this chunk have been sent, for prsctp RTX policy */
-+	int sent_count;
-+
- 	/* This is our link to the per-transport transmitted list.  */
- 	struct list_head transmitted_list;
- 
-@@ -610,9 +613,6 @@ struct sctp_chunk {
- 	 */
- 	unsigned long prsctp_param;
- 
--	/* How many times this chunk have been sent, for prsctp RTX policy */
--	int sent_count;
--
- 	/* Which association does this belong to?  */
- 	struct sctp_association *asoc;
- 
 -- 
 2.1.0
 
