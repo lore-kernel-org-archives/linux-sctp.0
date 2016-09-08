@@ -1,44 +1,65 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 20 Sep 2016 21:25:00 +0000
-Subject: [PATCH next 0/2] Rename WORD_TRUNC/ROUND macros and use them
-Message-Id: <cover.1474406484.git.marcelo.leitner@gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 08 Sep 2016 09:54:11 +0000
+Subject: [PATCH net] sctp: identify chunks that need to be fragmented at IP level
+Message-Id: <d3a35eae75b431862cf96b55dd3a3614a11df8a3.1473328451.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1474402102.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1474402102.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, David Laight <David.Laight@ACULAB.COM>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-This patchset aims to rename these macros to a non-confusing name, as
-reported by David Laight and David Miller, and to update all remaining
-places to make use of it, which was 1 last remaining spot.
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-v2:
-- fixed 2nd patch summary
+Previously, without GSO, it was easy to identify it: if the chunk didn't
+fit and there was no data chunk in the packet yet, we could fragment at
+IP level. So if there was an auth chunk and we were bundling a big data
+chunk, it would fragment regardless of the size of the auth chunk. This
+also works for the context of PMTU reductions.
 
-Details on the specific changelogs.
+But with GSO, we cannot distinguish such PMTU events anymore, as the
+packet is allowed to exceed PMTU.
 
-Thanks!
+So we need another check: to ensure that the chunk that we are adding,
+actually fits the current PMTU. If it doesn't, trigger a flush and let
+it be fragmented at IP level in the next round.
 
-Marcelo Ricardo Leitner (2):
-  sctp: rename WORD_TRUNC/ROUND macros
-  sctp: make use of WORD_TRUNC macro
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/output.c | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
 
- include/net/sctp/sctp.h  | 10 +++++-----
- net/netfilter/xt_sctp.c  |  2 +-
- net/sctp/associola.c     |  2 +-
- net/sctp/chunk.c         | 13 +++++++------
- net/sctp/input.c         |  8 ++++----
- net/sctp/inqueue.c       |  2 +-
- net/sctp/output.c        | 12 ++++++------
- net/sctp/sm_make_chunk.c | 26 +++++++++++++-------------
- net/sctp/sm_statefuns.c  |  6 +++---
- net/sctp/transport.c     |  4 ++--
- net/sctp/ulpevent.c      |  4 ++--
- 11 files changed, 45 insertions(+), 44 deletions(-)
-
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 1f1682b..31b7bc3 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -878,7 +878,7 @@ static sctp_xmit_t sctp_packet_will_fit(struct sctp_packet *packet,
+ 					struct sctp_chunk *chunk,
+ 					u16 chunk_len)
+ {
+-	size_t psize, pmtu;
++	size_t psize, pmtu, maxsize;
+ 	sctp_xmit_t retval = SCTP_XMIT_OK;
+ 
+ 	psize = packet->size;
+@@ -906,6 +906,17 @@ static sctp_xmit_t sctp_packet_will_fit(struct sctp_packet *packet,
+ 			goto out;
+ 		}
+ 
++		/* Similarly, if this chunk was built before a PMTU
++		 * reduction, we have to fragment it at IP level now. So
++		 * if the packet already contains something, we need to
++		 * flush.
++		 */
++		maxsize = pmtu - packet->overhead;
++		if (packet->auth)
++			maxsize -= WORD_ROUND(packet->auth->skb->len);
++		if (chunk_len > maxsize)
++			retval = SCTP_XMIT_PMTU_FULL;
++
+ 		/* It is also okay to fragment if the chunk we are
+ 		 * adding is a control chunk, but only if current packet
+ 		 * is not a GSO one otherwise it causes fragmentation of
 -- 
-2.7.4
+2.1.0
 
