@@ -1,101 +1,162 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 13 Sep 2016 18:04:18 +0000
-Subject: [PATCHv2 net 1/6] sctp: remove the unnecessary state check in sctp_outq_tail
-Message-Id: <4f21a8880a3f8e7daed8a53f10649a1d4dfbb12a.1473789537.git.lucien.xin@gmail.com>
+Date: Thu, 08 Sep 2016 09:44:05 +0000
+Subject: [PATCH net 5/6] sctp: make sctp_outq_flush/tail/uncork return void
+Message-Id: <308696adce0a531f00edf4be1fd3aff65234b008.1473327845.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1473789537.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1473789537.git.lucien.xin@gmail.com>
+References: <cover.1473326067.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1473326067.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-Data Chunks are only sent by sctp_primitive_SEND, in which sctp checks
-the asoc's state through statetable before calling sctp_outq_tail. So
-there's no need to check the asoc's state again in sctp_outq_tail.
-
-Besides, sctp_do_sm is protected by lock_sock, even if sending msg is
-interrupted by timer events, the event's processes still need to acquire
-lock_sock first. It means no others CMDs can be enqueue into side effect
-list before CMD_SEND_MSG to change asoc->state, so it's safe to remove it.
-
-This patch is to remove redundant asoc->state check from sctp_outq_tail.
+sctp_outq_flush return value is meaningless now, this patch is
+to make sctp_outq_flush return void, as well as sctp_outq_fail
+and sctp_outq_uncork.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/sctp/outqueue.c | 53 ++++++++++++++---------------------------------------
- 1 file changed, 14 insertions(+), 39 deletions(-)
+ include/net/sctp/structs.h |  4 ++--
+ net/sctp/outqueue.c        | 19 +++++++------------
+ net/sctp/sm_sideeffect.c   |  9 ++++-----
+ 3 files changed, 13 insertions(+), 19 deletions(-)
 
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index f61fb7c..8693dc4 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1077,7 +1077,7 @@ struct sctp_outq {
+ void sctp_outq_init(struct sctp_association *, struct sctp_outq *);
+ void sctp_outq_teardown(struct sctp_outq *);
+ void sctp_outq_free(struct sctp_outq*);
+-int sctp_outq_tail(struct sctp_outq *, struct sctp_chunk *chunk, gfp_t);
++void sctp_outq_tail(struct sctp_outq *, struct sctp_chunk *chunk, gfp_t);
+ int sctp_outq_sack(struct sctp_outq *, struct sctp_chunk *);
+ int sctp_outq_is_empty(const struct sctp_outq *);
+ void sctp_outq_restart(struct sctp_outq *);
+@@ -1085,7 +1085,7 @@ void sctp_outq_restart(struct sctp_outq *);
+ void sctp_retransmit(struct sctp_outq *, struct sctp_transport *,
+ 		     sctp_retransmit_reason_t);
+ void sctp_retransmit_mark(struct sctp_outq *, struct sctp_transport *, __u8);
+-int sctp_outq_uncork(struct sctp_outq *, gfp_t gfp);
++void sctp_outq_uncork(struct sctp_outq *, gfp_t gfp);
+ void sctp_prsctp_prune(struct sctp_association *asoc,
+ 		       struct sctp_sndrcvinfo *sinfo, int msg_len);
+ /* Uncork and flush an outqueue.  */
 diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index 72e54a4..da2418b 100644
+index 0c6210d..f02495e 100644
 --- a/net/sctp/outqueue.c
 +++ b/net/sctp/outqueue.c
-@@ -299,50 +299,25 @@ int sctp_outq_tail(struct sctp_outq *q, struct sctp_chunk *chunk, gfp_t gfp)
- 	 * immediately.
- 	 */
- 	if (sctp_chunk_is_data(chunk)) {
--		/* Is it OK to queue data chunks?  */
--		/* From 9. Termination of Association
--		 *
--		 * When either endpoint performs a shutdown, the
--		 * association on each peer will stop accepting new
--		 * data from its user and only deliver data in queue
--		 * at the time of sending or receiving the SHUTDOWN
--		 * chunk.
--		 */
--		switch (q->asoc->state) {
--		case SCTP_STATE_CLOSED:
--		case SCTP_STATE_SHUTDOWN_PENDING:
--		case SCTP_STATE_SHUTDOWN_SENT:
--		case SCTP_STATE_SHUTDOWN_RECEIVED:
--		case SCTP_STATE_SHUTDOWN_ACK_SENT:
--			/* Cannot send after transport endpoint shutdown */
--			error = -ESHUTDOWN;
--			break;
--
--		default:
--			pr_debug("%s: outqueueing: outq:%p, chunk:%p[%s])\n",
--				 __func__, q, chunk, chunk && chunk->chunk_hdr ?
--				 sctp_cname(SCTP_ST_CHUNK(chunk->chunk_hdr->type)) :
--				 "illegal chunk");
--
--			sctp_chunk_hold(chunk);
--			sctp_outq_tail_data(q, chunk);
--			if (chunk->asoc->prsctp_enable &&
--			    SCTP_PR_PRIO_ENABLED(chunk->sinfo.sinfo_flags))
--				chunk->asoc->sent_cnt_removable++;
--			if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
--				SCTP_INC_STATS(net, SCTP_MIB_OUTUNORDERCHUNKS);
--			else
--				SCTP_INC_STATS(net, SCTP_MIB_OUTORDERCHUNKS);
--			break;
--		}
-+		pr_debug("%s: outqueueing: outq:%p, chunk:%p[%s])\n",
-+			 __func__, q, chunk, chunk && chunk->chunk_hdr ?
-+			 sctp_cname(SCTP_ST_CHUNK(chunk->chunk_hdr->type)) :
-+			 "illegal chunk");
-+
-+		sctp_chunk_hold(chunk);
-+		sctp_outq_tail_data(q, chunk);
-+		if (chunk->asoc->prsctp_enable &&
-+		    SCTP_PR_PRIO_ENABLED(chunk->sinfo.sinfo_flags))
-+			chunk->asoc->sent_cnt_removable++;
-+		if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
-+			SCTP_INC_STATS(net, SCTP_MIB_OUTUNORDERCHUNKS);
-+		else
-+			SCTP_INC_STATS(net, SCTP_MIB_OUTORDERCHUNKS);
- 	} else {
- 		list_add_tail(&chunk->list, &q->control_chunk_list);
- 		SCTP_INC_STATS(net, SCTP_MIB_OUTCTRLCHUNKS);
+@@ -68,7 +68,7 @@ static void sctp_mark_missing(struct sctp_outq *q,
+ 
+ static void sctp_generate_fwdtsn(struct sctp_outq *q, __u32 sack_ctsn);
+ 
+-static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp);
++static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp);
+ 
+ /* Add data to the front of the queue. */
+ static inline void sctp_outq_head_data(struct sctp_outq *q,
+@@ -285,10 +285,9 @@ void sctp_outq_free(struct sctp_outq *q)
+ }
+ 
+ /* Put a new chunk in an sctp_outq.  */
+-int sctp_outq_tail(struct sctp_outq *q, struct sctp_chunk *chunk, gfp_t gfp)
++void sctp_outq_tail(struct sctp_outq *q, struct sctp_chunk *chunk, gfp_t gfp)
+ {
+ 	struct net *net = sock_net(q->asoc->base.sk);
+-	int error = 0;
+ 
+ 	pr_debug("%s: outq:%p, chunk:%p[%s]\n", __func__, q, chunk,
+ 		 chunk && chunk->chunk_hdr ?
+@@ -319,9 +318,7 @@ int sctp_outq_tail(struct sctp_outq *q, struct sctp_chunk *chunk, gfp_t gfp)
  	}
  
--	if (error < 0)
--		return error;
--
  	if (!q->cork)
- 		error = sctp_outq_flush(q, 0, gfp);
+-		error = sctp_outq_flush(q, 0, gfp);
+-
+-	return error;
++		sctp_outq_flush(q, 0, gfp);
+ }
  
+ /* Insert a chunk into the sorted list based on the TSNs.  The retransmit list
+@@ -749,12 +746,12 @@ redo:
+ }
+ 
+ /* Cork the outqueue so queued chunks are really queued. */
+-int sctp_outq_uncork(struct sctp_outq *q, gfp_t gfp)
++void sctp_outq_uncork(struct sctp_outq *q, gfp_t gfp)
+ {
+ 	if (q->cork)
+ 		q->cork = 0;
+ 
+-	return sctp_outq_flush(q, 0, gfp);
++	sctp_outq_flush(q, 0, gfp);
+ }
+ 
+ 
+@@ -767,7 +764,7 @@ int sctp_outq_uncork(struct sctp_outq *q, gfp_t gfp)
+  * locking concerns must be made.  Today we use the sock lock to protect
+  * this function.
+  */
+-static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
++static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
+ {
+ 	struct sctp_packet *packet;
+ 	struct sctp_packet singleton;
+@@ -892,7 +889,7 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
+ 			error = sctp_packet_transmit(&singleton, gfp);
+ 			if (error < 0) {
+ 				asoc->base.sk->sk_err = -error;
+-				return 0;
++				return;
+ 			}
+ 			break;
+ 
+@@ -1176,8 +1173,6 @@ sctp_flush_out:
+ 		/* Clear the burst limited state, if any */
+ 		sctp_transport_burst_reset(t);
+ 	}
+-
+-	return 0;
+ }
+ 
+ /* Update unack_data based on the incoming SACK chunk */
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index cf6e4f0..c345bf1 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -1421,8 +1421,7 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
+ 				local_cork = 1;
+ 			}
+ 			/* Send a chunk to our peer.  */
+-			error = sctp_outq_tail(&asoc->outqueue, cmd->obj.chunk,
+-					       gfp);
++			sctp_outq_tail(&asoc->outqueue, cmd->obj.chunk, gfp);
+ 			break;
+ 
+ 		case SCTP_CMD_SEND_PKT:
+@@ -1676,7 +1675,7 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
+ 		case SCTP_CMD_FORCE_PRIM_RETRAN:
+ 			t = asoc->peer.retran_path;
+ 			asoc->peer.retran_path = asoc->peer.primary_path;
+-			error = sctp_outq_uncork(&asoc->outqueue, gfp);
++			sctp_outq_uncork(&asoc->outqueue, gfp);
+ 			local_cork = 0;
+ 			asoc->peer.retran_path = t;
+ 			break;
+@@ -1733,9 +1732,9 @@ out:
+ 	 */
+ 	if (asoc && SCTP_EVENT_T_CHUNK = event_type && chunk) {
+ 		if (chunk->end_of_packet || chunk->singleton)
+-			error = sctp_outq_uncork(&asoc->outqueue, gfp);
++			sctp_outq_uncork(&asoc->outqueue, gfp);
+ 	} else if (local_cork)
+-		error = sctp_outq_uncork(&asoc->outqueue, gfp);
++		sctp_outq_uncork(&asoc->outqueue, gfp);
+ 
+ 	if (sp->data_ready_signalled)
+ 		sp->data_ready_signalled = 0;
 -- 
 2.1.0
 
