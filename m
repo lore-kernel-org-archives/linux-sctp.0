@@ -1,61 +1,60 @@
 From: Jia He <hejianet@gmail.com>
-Date: Mon, 26 Sep 2016 08:09:09 +0000
-Subject: [PATCH v4 1/7] net:snmp: Introduce generic interfaces for snmp_get_cpu_field{,64}
-Message-Id: <1474877355-12920-2-git-send-email-hejianet@gmail.com>
+Date: Fri, 09 Sep 2016 06:34:01 +0000
+Subject: [RFC PATCH v3 6/7] ipv6: Remove useless parameter in __snmp6_fill_statsdev
+Message-Id: <1473402842-1987-7-git-send-email-hejianet@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1474877355-12920-1-git-send-email-hejianet@gmail.com>
-In-Reply-To: <1474877355-12920-1-git-send-email-hejianet@gmail.com>
+References: <1473402842-1987-1-git-send-email-hejianet@gmail.com>
+In-Reply-To: <1473402842-1987-1-git-send-email-hejianet@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
 Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>, marcelo.leitner@gmail.com, Jia He <hejianet@gmail.com>
 
-This is to introduce the generic interfaces for snmp_get_cpu_field{,64}.
-It exchanges the two for-loops for collecting the percpu statistics data.
-This can aggregate the data by going through all the items of each cpu
-sequentially.
+The parameter items(always ICMP6_MIB_MAX) is useless for __snmp6_fill_statsdev.
 
 Signed-off-by: Jia He <hejianet@gmail.com>
-Suggested-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- include/net/ip.h | 23 +++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
+ net/ipv6/addrconf.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/include/net/ip.h b/include/net/ip.h
-index 9742b92..bc43c0f 100644
---- a/include/net/ip.h
-+++ b/include/net/ip.h
-@@ -219,6 +219,29 @@ static inline u64 snmp_fold_field64(void __percpu *mib, int offt, size_t syncp_o
+diff --git a/net/ipv6/addrconf.c b/net/ipv6/addrconf.c
+index f418d2e..e170554 100644
+--- a/net/ipv6/addrconf.c
++++ b/net/ipv6/addrconf.c
+@@ -4952,18 +4952,18 @@ static inline size_t inet6_if_nlmsg_size(void)
  }
- #endif
  
-+#define snmp_get_cpu_field64_batch(buff64, stats_list, mib_statistic, offset) \
-+{ \
-+	int i, c; \
-+	for_each_possible_cpu(c) { \
-+		for (i = 0; stats_list[i].name; i++) \
-+			buff64[i] += snmp_get_cpu_field64( \
-+					mib_statistic, \
-+					c, stats_list[i].entry, \
-+					offset); \
-+	} \
-+}
-+
-+#define snmp_get_cpu_field_batch(buff, stats_list, mib_statistic) \
-+{ \
-+	int i, c; \
-+	for_each_possible_cpu(c) { \
-+		for (i = 0; stats_list[i].name; i++) \
-+			buff[i] += snmp_get_cpu_field( \
-+						mib_statistic, \
-+						c, stats_list[i].entry); \
-+	} \
-+}
-+
- void inet_get_local_port_range(struct net *net, int *low, int *high);
+ static inline void __snmp6_fill_statsdev(u64 *stats, atomic_long_t *mib,
+-				      int items, int bytes)
++					int bytes)
+ {
+ 	int i;
+-	int pad = bytes - sizeof(u64) * items;
++	int pad = bytes - sizeof(u64) * ICMP6_MIB_MAX;
+ 	BUG_ON(pad < 0);
  
- #ifdef CONFIG_SYSCTL
+ 	/* Use put_unaligned() because stats may not be aligned for u64. */
+-	put_unaligned(items, &stats[0]);
+-	for (i = 1; i < items; i++)
++	put_unaligned(ICMP6_MIB_MAX, &stats[0]);
++	for (i = 1; i < ICMP6_MIB_MAX; i++)
+ 		put_unaligned(atomic_long_read(&mib[i]), &stats[i]);
+ 
+-	memset(&stats[items], 0, pad);
++	memset(&stats[ICMP6_MIB_MAX], 0, pad);
+ }
+ 
+ static inline void __snmp6_fill_stats64(u64 *stats, void __percpu *mib,
+@@ -4996,7 +4996,7 @@ static void snmp6_fill_stats(u64 *stats, struct inet6_dev *idev, int attrtype,
+ 				     offsetof(struct ipstats_mib, syncp));
+ 		break;
+ 	case IFLA_INET6_ICMP6STATS:
+-		__snmp6_fill_statsdev(stats, idev->stats.icmpv6dev->mibs, ICMP6_MIB_MAX, bytes);
++		__snmp6_fill_statsdev(stats, idev->stats.icmpv6dev->mibs, bytes);
+ 		break;
+ 	}
+ }
 -- 
-2.5.5
+1.8.3.1
 
