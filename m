@@ -1,89 +1,166 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 28 Sep 2016 10:46:29 +0000
-Subject: [PATCHv2 net 2/5] sctp: reuse sent_count to avoid retransmitted chunks for RTT measurements
-Message-Id: <ca37ab66bfd8b97078ff8e3645bc7c1e909396e8.1475059350.git.lucien.xin@gmail.com>
+Date: Tue, 13 Sep 2016 18:04:22 +0000
+Subject: [PATCHv2 net 5/6] sctp: make sctp_outq_flush/tail/uncork return void
+Message-Id: <6599cec72f3ff913d3b99e60d5f2014df26915de.1473789537.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1475059350.git.lucien.xin@gmail.com>
- <03a642a76d02e8536404aa27561c44e348f3e3a0.1475059350.git.lucien.xin@gmail.com>
-In-Reply-To: <03a642a76d02e8536404aa27561c44e348f3e3a0.1475059350.git.lucien.xin@gmail.com>
+References: <cover.1473789537.git.lucien.xin@gmail.com>
+ <4f21a8880a3f8e7daed8a53f10649a1d4dfbb12a.1473789537.git.lucien.xin@gmail.com>
+ <10622d6256e2c49fa7ec555dec3bd35b47a50b2b.1473789537.git.lucien.xin@gmail.com>
+ <6b43f456f94dfcaeabc8071806f0609fed59a595.1473789537.git.lucien.xin@gmail.com>
+ <f4f0d53e93368c69f55df9f4aba4da2148fcca7e.1473789537.git.lucien.xin@gmail.com>
+In-Reply-To: <f4f0d53e93368c69f55df9f4aba4da2148fcca7e.1473789537.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-Now sctp uses chunk->resent to record if a chunk is retransmitted, for
-RTT measurements with retransmitted DATA chunks. chunk->sent_count was
-introduced to record how many times one chunk has been sent for prsctp
-RTX policy before. We actually can know if one chunk is retransmitted
-by checking chunk->sent_count is greater than 1.
-
-This patch is to remove resent from sctp_chunk and reuse sent_count
-to avoid retransmitted chunks for RTT measurements.
+sctp_outq_flush return value is meaningless now, this patch is
+to make sctp_outq_flush return void, as well as sctp_outq_fail
+and sctp_outq_uncork.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/structs.h | 2 +-
- net/sctp/output.c          | 3 ++-
- net/sctp/outqueue.c        | 4 +---
- 3 files changed, 4 insertions(+), 5 deletions(-)
+ include/net/sctp/structs.h |  4 ++--
+ net/sctp/outqueue.c        | 19 +++++++------------
+ net/sctp/sm_sideeffect.c   |  9 ++++-----
+ 3 files changed, 13 insertions(+), 19 deletions(-)
 
 diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 4f097f5..7b937d7 100644
+index f61fb7c..8693dc4 100644
 --- a/include/net/sctp/structs.h
 +++ b/include/net/sctp/structs.h
-@@ -647,7 +647,6 @@ struct sctp_chunk {
- #define SCTP_NEED_FRTX 0x1
- #define SCTP_DONT_FRTX 0x2
- 	__u16	rtt_in_progress:1,	/* This chunk used for RTT calc? */
--		resent:1,		/* Has this chunk ever been resent. */
- 		has_tsn:1,		/* Does this chunk have a TSN yet? */
- 		has_ssn:1,		/* Does this chunk have a SSN yet? */
- 		singleton:1,		/* Only chunk in the packet? */
-@@ -662,6 +661,7 @@ struct sctp_chunk {
- 		fast_retransmit:2;	/* Is this chunk fast retransmitted? */
- };
- 
-+#define sctp_chunk_retransmitted(chunk)	(chunk->sent_count > 1)
- void sctp_chunk_hold(struct sctp_chunk *);
- void sctp_chunk_put(struct sctp_chunk *);
- int sctp_user_addto_chunk(struct sctp_chunk *chunk, int len,
-diff --git a/net/sctp/output.c b/net/sctp/output.c
-index 31b7bc3..db01620 100644
---- a/net/sctp/output.c
-+++ b/net/sctp/output.c
-@@ -547,7 +547,8 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
- 				 * for a given destination transport address.
- 				 */
- 
--				if (!chunk->resent && !tp->rto_pending) {
-+				if (!sctp_chunk_retransmitted(chunk) &&
-+				    !tp->rto_pending) {
- 					chunk->rtt_in_progress = 1;
- 					tp->rto_pending = 1;
- 				}
+@@ -1077,7 +1077,7 @@ struct sctp_outq {
+ void sctp_outq_init(struct sctp_association *, struct sctp_outq *);
+ void sctp_outq_teardown(struct sctp_outq *);
+ void sctp_outq_free(struct sctp_outq*);
+-int sctp_outq_tail(struct sctp_outq *, struct sctp_chunk *chunk, gfp_t);
++void sctp_outq_tail(struct sctp_outq *, struct sctp_chunk *chunk, gfp_t);
+ int sctp_outq_sack(struct sctp_outq *, struct sctp_chunk *);
+ int sctp_outq_is_empty(const struct sctp_outq *);
+ void sctp_outq_restart(struct sctp_outq *);
+@@ -1085,7 +1085,7 @@ void sctp_outq_restart(struct sctp_outq *);
+ void sctp_retransmit(struct sctp_outq *, struct sctp_transport *,
+ 		     sctp_retransmit_reason_t);
+ void sctp_retransmit_mark(struct sctp_outq *, struct sctp_transport *, __u8);
+-int sctp_outq_uncork(struct sctp_outq *, gfp_t gfp);
++void sctp_outq_uncork(struct sctp_outq *, gfp_t gfp);
+ void sctp_prsctp_prune(struct sctp_association *asoc,
+ 		       struct sctp_sndrcvinfo *sinfo, int msg_len);
+ /* Uncork and flush an outqueue.  */
 diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index 72e54a4..c0fe0b5 100644
+index 052a479..8c3f446 100644
 --- a/net/sctp/outqueue.c
 +++ b/net/sctp/outqueue.c
-@@ -536,8 +536,6 @@ void sctp_retransmit_mark(struct sctp_outq *q,
- 				transport->rto_pending = 0;
- 			}
+@@ -68,7 +68,7 @@ static void sctp_mark_missing(struct sctp_outq *q,
  
--			chunk->resent = 1;
+ static void sctp_generate_fwdtsn(struct sctp_outq *q, __u32 sack_ctsn);
+ 
+-static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp);
++static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp);
+ 
+ /* Add data to the front of the queue. */
+ static inline void sctp_outq_head_data(struct sctp_outq *q,
+@@ -285,10 +285,9 @@ void sctp_outq_free(struct sctp_outq *q)
+ }
+ 
+ /* Put a new chunk in an sctp_outq.  */
+-int sctp_outq_tail(struct sctp_outq *q, struct sctp_chunk *chunk, gfp_t gfp)
++void sctp_outq_tail(struct sctp_outq *q, struct sctp_chunk *chunk, gfp_t gfp)
+ {
+ 	struct net *net = sock_net(q->asoc->base.sk);
+-	int error = 0;
+ 
+ 	pr_debug("%s: outq:%p, chunk:%p[%s]\n", __func__, q, chunk,
+ 		 chunk && chunk->chunk_hdr ?
+@@ -318,9 +317,7 @@ int sctp_outq_tail(struct sctp_outq *q, struct sctp_chunk *chunk, gfp_t gfp)
+ 	}
+ 
+ 	if (!q->cork)
+-		error = sctp_outq_flush(q, 0, gfp);
 -
- 			/* Move the chunk to the retransmit queue. The chunks
- 			 * on the retransmit queue are always kept in order.
- 			 */
-@@ -1467,7 +1465,7 @@ static void sctp_check_transmitted(struct sctp_outq *q,
- 				 * instance).
- 				 */
- 				if (!tchunk->tsn_gap_acked &&
--				    !tchunk->resent &&
-+				    !sctp_chunk_retransmitted(tchunk) &&
- 				    tchunk->rtt_in_progress) {
- 					tchunk->rtt_in_progress = 0;
- 					rtt = jiffies - tchunk->sent_at;
+-	return error;
++		sctp_outq_flush(q, 0, gfp);
+ }
+ 
+ /* Insert a chunk into the sorted list based on the TSNs.  The retransmit list
+@@ -748,12 +745,12 @@ redo:
+ }
+ 
+ /* Cork the outqueue so queued chunks are really queued. */
+-int sctp_outq_uncork(struct sctp_outq *q, gfp_t gfp)
++void sctp_outq_uncork(struct sctp_outq *q, gfp_t gfp)
+ {
+ 	if (q->cork)
+ 		q->cork = 0;
+ 
+-	return sctp_outq_flush(q, 0, gfp);
++	sctp_outq_flush(q, 0, gfp);
+ }
+ 
+ 
+@@ -766,7 +763,7 @@ int sctp_outq_uncork(struct sctp_outq *q, gfp_t gfp)
+  * locking concerns must be made.  Today we use the sock lock to protect
+  * this function.
+  */
+-static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
++static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
+ {
+ 	struct sctp_packet *packet;
+ 	struct sctp_packet singleton;
+@@ -891,7 +888,7 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
+ 			error = sctp_packet_transmit(&singleton, gfp);
+ 			if (error < 0) {
+ 				asoc->base.sk->sk_err = -error;
+-				return 0;
++				return;
+ 			}
+ 			break;
+ 
+@@ -1175,8 +1172,6 @@ sctp_flush_out:
+ 		/* Clear the burst limited state, if any */
+ 		sctp_transport_burst_reset(t);
+ 	}
+-
+-	return 0;
+ }
+ 
+ /* Update unack_data based on the incoming SACK chunk */
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index cf6e4f0..c345bf1 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -1421,8 +1421,7 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
+ 				local_cork = 1;
+ 			}
+ 			/* Send a chunk to our peer.  */
+-			error = sctp_outq_tail(&asoc->outqueue, cmd->obj.chunk,
+-					       gfp);
++			sctp_outq_tail(&asoc->outqueue, cmd->obj.chunk, gfp);
+ 			break;
+ 
+ 		case SCTP_CMD_SEND_PKT:
+@@ -1676,7 +1675,7 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
+ 		case SCTP_CMD_FORCE_PRIM_RETRAN:
+ 			t = asoc->peer.retran_path;
+ 			asoc->peer.retran_path = asoc->peer.primary_path;
+-			error = sctp_outq_uncork(&asoc->outqueue, gfp);
++			sctp_outq_uncork(&asoc->outqueue, gfp);
+ 			local_cork = 0;
+ 			asoc->peer.retran_path = t;
+ 			break;
+@@ -1733,9 +1732,9 @@ out:
+ 	 */
+ 	if (asoc && SCTP_EVENT_T_CHUNK = event_type && chunk) {
+ 		if (chunk->end_of_packet || chunk->singleton)
+-			error = sctp_outq_uncork(&asoc->outqueue, gfp);
++			sctp_outq_uncork(&asoc->outqueue, gfp);
+ 	} else if (local_cork)
+-		error = sctp_outq_uncork(&asoc->outqueue, gfp);
++		sctp_outq_uncork(&asoc->outqueue, gfp);
+ 
+ 	if (sp->data_ready_signalled)
+ 		sp->data_ready_signalled = 0;
 -- 
 2.1.0
 
