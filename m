@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 12 Sep 2016 19:48:38 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 13 Sep 2016 11:57:22 +0000
 Subject: Re: [PATCH net 1/6] sctp: remove the unnecessary state check in sctp_outq_tail
-Message-Id: <20160912194838.GE17689@localhost.localdomain>
+Message-Id: <20160913115722.GA4501@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1473326067.git.lucien.xin@gmail.com>
  <1718155e984f63995d1be9b053c58aa1a645718e.1473326067.git.lucien.xin@gmail.com>
@@ -16,9 +16,15 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: Neil Horman <nhorman@tuxdriver.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
 On Sat, Sep 10, 2016 at 12:03:53AM +0800, Xin Long wrote:
+> > I don't know, I still don't feel safe about it.  I agree the socket lock keeps
+> > the state from changing during a single transmission, which makes the use case
+> > you are focused on correct.
+> ok, :-)
+> 
+> >
 > > That said, have you considered the retransmit case?  That is to say, if you
 > > queue and flush the outq, and some packets fail delivery, and in the time
 > > between the intial send and the expiration of the RTX timer (during which the
@@ -47,11 +53,16 @@ On Sat, Sep 10, 2016 at 12:03:53AM +0800, Xin Long wrote:
 > already actually.
 > 
 > so the code in sctp_outq_tail is redundant actually.
+> 
+> 
+> 
+> 
+> >
+> > Neil
+> >
+> 
 
-I also don't see an issue with this patch, btw.
+Ok, you've convinced me, thanks for taking the time to go through it
 
-Xin, you may want to add more/such details to the changelog, specially
-about the timer versus primitive handling.
-
-  Marcelo
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
