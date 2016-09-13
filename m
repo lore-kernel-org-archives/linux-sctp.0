@@ -1,130 +1,75 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 28 Sep 2016 10:46:32 +0000
-Subject: [PATCHv2 net 5/5] sctp: remove the old ttl expires policy
-Message-Id: <6cfcc552275974d6c37eee9b3d032377f8de54a1.1475059350.git.lucien.xin@gmail.com>
+Date: Tue, 13 Sep 2016 18:04:19 +0000
+Subject: [PATCHv2 net 2/6] sctp: do not return the transmit err back to sctp_sendmsg
+Message-Id: <10622d6256e2c49fa7ec555dec3bd35b47a50b2b.1473789537.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1475059350.git.lucien.xin@gmail.com>
- <03a642a76d02e8536404aa27561c44e348f3e3a0.1475059350.git.lucien.xin@gmail.com>
- <ca37ab66bfd8b97078ff8e3645bc7c1e909396e8.1475059350.git.lucien.xin@gmail.com>
- <da30a54fd8b6674e6cf6f013a3633d59aaeea020.1475059350.git.lucien.xin@gmail.com>
- <7a83f44a517780fd7bc60caa49479fbc7e606936.1475059350.git.lucien.xin@gmail.com>
-In-Reply-To: <7a83f44a517780fd7bc60caa49479fbc7e606936.1475059350.git.lucien.xin@gmail.com>
+References: <cover.1473789537.git.lucien.xin@gmail.com>
+ <4f21a8880a3f8e7daed8a53f10649a1d4dfbb12a.1473789537.git.lucien.xin@gmail.com>
+In-Reply-To: <4f21a8880a3f8e7daed8a53f10649a1d4dfbb12a.1473789537.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-The prsctp polices include ttl expires policy already, we should remove
-the old ttl expires codes, and just adjust the new polices' codes to be
-compatible with the old one for users.
+Once a chunk is enqueued successfully, sctp queues can take care of it.
+Even if it is failed to transmit (like because of nomem), it should be
+put into retransmit queue.
 
-This patch is to remove all the old expires codes, and if prsctp polices
-are not set, it will still set msg's expires_at and check the expires in
-sctp_check_abandoned.
+If sctp report this error to users, it confuses them, they may resend
+that msg, but actually in kernel sctp stack is in charge of retransmit
+it already.
 
-Note that asoc->prsctp_enable is set by default, so users can't feel any
-difference even if they use the old expires api in userspace.
+Besides, this error probably is not from the failure of transmitting
+current msg, but transmitting or retransmitting another msg's chunks,
+as sctp_outq_flush just tries to send out all transports' chunks.
 
+This patch is to make sctp_cmd_send_msg return avoid, and not return the
+transmit err back to sctp_sendmsg
+
+Fixes: 8b570dc9f7b6 ("sctp: only drop the reference on the datamsg after sending a msg")
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/structs.h |  1 -
- net/sctp/chunk.c           | 32 ++++++++------------------------
- net/sctp/output.c          |  3 ---
- 3 files changed, 8 insertions(+), 28 deletions(-)
+ net/sctp/sm_sideeffect.c | 16 +++++-----------
+ 1 file changed, 5 insertions(+), 11 deletions(-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 49a4d37..2463354 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -530,7 +530,6 @@ struct sctp_datamsg {
- 	/* Did the messenge fail to send? */
- 	int send_error;
- 	u8 send_failed:1,
--	   can_abandon:1,   /* can chunks from this message can be abandoned. */
- 	   can_delay;	    /* should this message be Nagle delayed */
- };
- 
-diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
-index 0a3dbec..8d366fc 100644
---- a/net/sctp/chunk.c
-+++ b/net/sctp/chunk.c
-@@ -52,7 +52,6 @@ static void sctp_datamsg_init(struct sctp_datamsg *msg)
- 	atomic_set(&msg->refcnt, 1);
- 	msg->send_failed = 0;
- 	msg->send_error = 0;
--	msg->can_abandon = 0;
- 	msg->can_delay = 1;
- 	msg->expires_at = 0;
- 	INIT_LIST_HEAD(&msg->chunks);
-@@ -169,20 +168,11 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
- 	/* Note: Calculate this outside of the loop, so that all fragments
- 	 * have the same expiration.
- 	 */
--	if (sinfo->sinfo_timetolive) {
--		/* sinfo_timetolive is in milliseconds */
-+	if (asoc->peer.prsctp_capable && sinfo->sinfo_timetolive &&
-+	    (SCTP_PR_TTL_ENABLED(sinfo->sinfo_flags) ||
-+	     !SCTP_PR_POLICY(sinfo->sinfo_flags)))
- 		msg->expires_at = jiffies +
- 				    msecs_to_jiffies(sinfo->sinfo_timetolive);
--		msg->can_abandon = 1;
--
--		pr_debug("%s: msg:%p expires_at:%ld jiffies:%ld\n", __func__,
--			 msg, msg->expires_at, jiffies);
--	}
--
--	if (asoc->peer.prsctp_capable &&
--	    SCTP_PR_TTL_ENABLED(sinfo->sinfo_flags))
--		msg->expires_at -			jiffies + msecs_to_jiffies(sinfo->sinfo_timetolive);
- 
- 	/* This is the biggest possible DATA chunk that can fit into
- 	 * the packet
-@@ -340,18 +330,8 @@ errout:
- /* Check whether this message has expired. */
- int sctp_chunk_abandoned(struct sctp_chunk *chunk)
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 12d4519..cf6e4f0 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -1020,19 +1020,13 @@ static void sctp_cmd_t1_timer_update(struct sctp_association *asoc,
+  * This way the whole message is queued up and bundling if
+  * encouraged for small fragments.
+  */
+-static int sctp_cmd_send_msg(struct sctp_association *asoc,
+-				struct sctp_datamsg *msg, gfp_t gfp)
++static void sctp_cmd_send_msg(struct sctp_association *asoc,
++			      struct sctp_datamsg *msg, gfp_t gfp)
  {
--	if (!chunk->asoc->peer.prsctp_capable ||
--	    !SCTP_PR_POLICY(chunk->sinfo.sinfo_flags)) {
--		struct sctp_datamsg *msg = chunk->msg;
+ 	struct sctp_chunk *chunk;
+-	int error = 0;
 -
--		if (!msg->can_abandon)
--			return 0;
--
--		if (time_after(jiffies, msg->expires_at))
--			return 1;
--
-+	if (!chunk->asoc->peer.prsctp_capable)
- 		return 0;
+-	list_for_each_entry(chunk, &msg->chunks, frag_list) {
+-		error = sctp_outq_tail(&asoc->outqueue, chunk, gfp);
+-		if (error)
+-			break;
 -	}
  
- 	if (SCTP_PR_TTL_ENABLED(chunk->sinfo.sinfo_flags) &&
- 	    time_after(jiffies, chunk->msg->expires_at)) {
-@@ -364,6 +344,10 @@ int sctp_chunk_abandoned(struct sctp_chunk *chunk)
- 		   chunk->sent_count > chunk->sinfo.sinfo_timetolive) {
- 		chunk->asoc->abandoned_sent[SCTP_PR_INDEX(RTX)]++;
- 		return 1;
-+	} else if (!SCTP_PR_POLICY(chunk->sinfo.sinfo_flags) &&
-+		   chunk->msg->expires_at &&
-+		   time_after(jiffies, chunk->msg->expires_at)) {
-+		return 1;
- 	}
- 	/* PRIO policy is processed by sendmsg, not here */
- 
-diff --git a/net/sctp/output.c b/net/sctp/output.c
-index db01620..a5b8dad 100644
---- a/net/sctp/output.c
-+++ b/net/sctp/output.c
-@@ -868,9 +868,6 @@ static void sctp_packet_append_data(struct sctp_packet *packet,
- 		rwnd = 0;
- 
- 	asoc->peer.rwnd = rwnd;
--	/* Has been accepted for transmission. */
--	if (!asoc->peer.prsctp_capable)
--		chunk->msg->can_abandon = 0;
- 	sctp_chunk_assign_tsn(chunk);
- 	sctp_chunk_assign_ssn(chunk);
+-	return error;
++	list_for_each_entry(chunk, &msg->chunks, frag_list)
++		sctp_outq_tail(&asoc->outqueue, chunk, gfp);
  }
+ 
+ 
+@@ -1709,7 +1703,7 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
+ 				sctp_outq_cork(&asoc->outqueue);
+ 				local_cork = 1;
+ 			}
+-			error = sctp_cmd_send_msg(asoc, cmd->obj.msg, gfp);
++			sctp_cmd_send_msg(asoc, cmd->obj.msg, gfp);
+ 			break;
+ 		case SCTP_CMD_SEND_NEXT_ASCONF:
+ 			sctp_cmd_send_asconf(asoc);
 -- 
 2.1.0
 
