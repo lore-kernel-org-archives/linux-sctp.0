@@ -1,17 +1,19 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 12 Sep 2016 18:45:04 +0000
+From: David Miller <davem@davemloft.net>
+Date: Tue, 13 Sep 2016 15:45:35 +0000
 Subject: Re: [PATCHv2 net] sctp: hold the transport before using it in sctp_hash_cmp
-Message-Id: <20160912184504.GA17689@localhost.localdomain>
+Message-Id: <20160913.114535.186471066793791952.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <8e671aa0baca387f230bf8f6fc5ecbbb091866f6.1473520283.git.lucien.xin@gmail.com>
 In-Reply-To: <8e671aa0baca387f230bf8f6fc5ecbbb091866f6.1473520283.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net
 
-On Sat, Sep 10, 2016 at 11:11:23PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 10 Sep 2016 23:11:23 +0800
+
 > Since commit 4f0087812648 ("sctp: apply rhashtable api to send/recv
 > path"), sctp uses transport rhashtable with .obj_cmpfn sctp_hash_cmp,
 > in which it compares the members of the transport with the rhashtable
@@ -34,70 +36,4 @@ On Sat, Sep 10, 2016 at 11:11:23PM +0800, Xin Long wrote:
 > Fixes: 4f0087812648 ("sctp: apply rhashtable api to send/recv path")
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Note that we cannot defer the free of the asoc too because that cause
-issues with port re-use (issue already hit and fixed in the past), as
-the port would be still in use during the RCU grace period.
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-> ---
->  net/sctp/input.c | 27 +++++++++++++++++----------
->  1 file changed, 17 insertions(+), 10 deletions(-)
-> 
-> diff --git a/net/sctp/input.c b/net/sctp/input.c
-> index 69444d3..1555fb8 100644
-> --- a/net/sctp/input.c
-> +++ b/net/sctp/input.c
-> @@ -796,27 +796,34 @@ struct sctp_hash_cmp_arg {
->  static inline int sctp_hash_cmp(struct rhashtable_compare_arg *arg,
->  				const void *ptr)
->  {
-> +	struct sctp_transport *t = (struct sctp_transport *)ptr;
->  	const struct sctp_hash_cmp_arg *x = arg->key;
-> -	const struct sctp_transport *t = ptr;
-> -	struct sctp_association *asoc = t->asoc;
-> -	const struct net *net = x->net;
-> +	struct sctp_association *asoc;
-> +	int err = 1;
->  
->  	if (!sctp_cmp_addr_exact(&t->ipaddr, x->paddr))
-> -		return 1;
-> -	if (!net_eq(sock_net(asoc->base.sk), net))
-> -		return 1;
-> +		return err;
-> +	if (!sctp_transport_hold(t))
-> +		return err;
-> +
-> +	asoc = t->asoc;
-> +	if (!net_eq(sock_net(asoc->base.sk), x->net))
-> +		goto out;
->  	if (x->ep) {
->  		if (x->ep != asoc->ep)
-> -			return 1;
-> +			goto out;
->  	} else {
->  		if (x->laddr->v4.sin_port != htons(asoc->base.bind_addr.port))
-> -			return 1;
-> +			goto out;
->  		if (!sctp_bind_addr_match(&asoc->base.bind_addr,
->  					  x->laddr, sctp_sk(asoc->base.sk)))
-> -			return 1;
-> +			goto out;
->  	}
->  
-> -	return 0;
-> +	err = 0;
-> +out:
-> +	sctp_transport_put(t);
-> +	return err;
->  }
->  
->  static inline u32 sctp_hash_obj(const void *data, u32 len, u32 seed)
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Applied and queued up for -stable.
