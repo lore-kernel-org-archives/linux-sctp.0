@@ -1,49 +1,101 @@
-From: Jia He <hejianet@gmail.com>
-Date: Fri, 30 Sep 2016 03:29:02 +0000
-Subject: [PATCH v6 5/7] proc: Reduce cache miss in xfrm_statistics_seq_show
-Message-Id: <1475206144-23228-6-git-send-email-hejianet@gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 13 Sep 2016 18:04:18 +0000
+Subject: [PATCHv2 net 1/6] sctp: remove the unnecessary state check in sctp_outq_tail
+Message-Id: <4f21a8880a3f8e7daed8a53f10649a1d4dfbb12a.1473789537.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1475206144-23228-1-git-send-email-hejianet@gmail.com>
-In-Reply-To: <1475206144-23228-1-git-send-email-hejianet@gmail.com>
+References: <cover.1473789537.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1473789537.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>, marcelo.leitner@gmail.com, Jia He <hejianet@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-This is to use the generic interfaces snmp_get_cpu_field{,64}_batch to
-aggregate the data by going through all the items of each cpu sequentially.
+Data Chunks are only sent by sctp_primitive_SEND, in which sctp checks
+the asoc's state through statetable before calling sctp_outq_tail. So
+there's no need to check the asoc's state again in sctp_outq_tail.
 
-Signed-off-by: Jia He <hejianet@gmail.com>
+Besides, sctp_do_sm is protected by lock_sock, even if sending msg is
+interrupted by timer events, the event's processes still need to acquire
+lock_sock first. It means no others CMDs can be enqueue into side effect
+list before CMD_SEND_MSG to change asoc->state, so it's safe to remove it.
+
+This patch is to remove redundant asoc->state check from sctp_outq_tail.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/xfrm/xfrm_proc.c | 10 ++++++++--
- 1 file changed, 8 insertions(+), 2 deletions(-)
+ net/sctp/outqueue.c | 53 ++++++++++++++---------------------------------------
+ 1 file changed, 14 insertions(+), 39 deletions(-)
 
-diff --git a/net/xfrm/xfrm_proc.c b/net/xfrm/xfrm_proc.c
-index 9c4fbd8..ba2b539 100644
---- a/net/xfrm/xfrm_proc.c
-+++ b/net/xfrm/xfrm_proc.c
-@@ -50,12 +50,18 @@ static const struct snmp_mib xfrm_mib_list[] = {
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 72e54a4..da2418b 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -299,50 +299,25 @@ int sctp_outq_tail(struct sctp_outq *q, struct sctp_chunk *chunk, gfp_t gfp)
+ 	 * immediately.
+ 	 */
+ 	if (sctp_chunk_is_data(chunk)) {
+-		/* Is it OK to queue data chunks?  */
+-		/* From 9. Termination of Association
+-		 *
+-		 * When either endpoint performs a shutdown, the
+-		 * association on each peer will stop accepting new
+-		 * data from its user and only deliver data in queue
+-		 * at the time of sending or receiving the SHUTDOWN
+-		 * chunk.
+-		 */
+-		switch (q->asoc->state) {
+-		case SCTP_STATE_CLOSED:
+-		case SCTP_STATE_SHUTDOWN_PENDING:
+-		case SCTP_STATE_SHUTDOWN_SENT:
+-		case SCTP_STATE_SHUTDOWN_RECEIVED:
+-		case SCTP_STATE_SHUTDOWN_ACK_SENT:
+-			/* Cannot send after transport endpoint shutdown */
+-			error = -ESHUTDOWN;
+-			break;
+-
+-		default:
+-			pr_debug("%s: outqueueing: outq:%p, chunk:%p[%s])\n",
+-				 __func__, q, chunk, chunk && chunk->chunk_hdr ?
+-				 sctp_cname(SCTP_ST_CHUNK(chunk->chunk_hdr->type)) :
+-				 "illegal chunk");
+-
+-			sctp_chunk_hold(chunk);
+-			sctp_outq_tail_data(q, chunk);
+-			if (chunk->asoc->prsctp_enable &&
+-			    SCTP_PR_PRIO_ENABLED(chunk->sinfo.sinfo_flags))
+-				chunk->asoc->sent_cnt_removable++;
+-			if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
+-				SCTP_INC_STATS(net, SCTP_MIB_OUTUNORDERCHUNKS);
+-			else
+-				SCTP_INC_STATS(net, SCTP_MIB_OUTORDERCHUNKS);
+-			break;
+-		}
++		pr_debug("%s: outqueueing: outq:%p, chunk:%p[%s])\n",
++			 __func__, q, chunk, chunk && chunk->chunk_hdr ?
++			 sctp_cname(SCTP_ST_CHUNK(chunk->chunk_hdr->type)) :
++			 "illegal chunk");
++
++		sctp_chunk_hold(chunk);
++		sctp_outq_tail_data(q, chunk);
++		if (chunk->asoc->prsctp_enable &&
++		    SCTP_PR_PRIO_ENABLED(chunk->sinfo.sinfo_flags))
++			chunk->asoc->sent_cnt_removable++;
++		if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
++			SCTP_INC_STATS(net, SCTP_MIB_OUTUNORDERCHUNKS);
++		else
++			SCTP_INC_STATS(net, SCTP_MIB_OUTORDERCHUNKS);
+ 	} else {
+ 		list_add_tail(&chunk->list, &q->control_chunk_list);
+ 		SCTP_INC_STATS(net, SCTP_MIB_OUTCTRLCHUNKS);
+ 	}
  
- static int xfrm_statistics_seq_show(struct seq_file *seq, void *v)
- {
-+	unsigned long buff[LINUX_MIB_XFRMMAX];
- 	struct net *net = seq->private;
- 	int i;
-+
-+	memset(buff, 0, sizeof(unsigned long) * LINUX_MIB_XFRMMAX);
-+
-+	snmp_get_cpu_field_batch(buff, xfrm_mib_list,
-+				 net->mib.xfrm_statistics);
- 	for (i = 0; xfrm_mib_list[i].name; i++)
- 		seq_printf(seq, "%-24s\t%lu\n", xfrm_mib_list[i].name,
--			   snmp_fold_field(net->mib.xfrm_statistics,
--					   xfrm_mib_list[i].entry));
-+						buff[i]);
-+
- 	return 0;
- }
+-	if (error < 0)
+-		return error;
+-
+ 	if (!q->cork)
+ 		error = sctp_outq_flush(q, 0, gfp);
  
 -- 
-2.5.5
+2.1.0
 
