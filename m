@@ -1,31 +1,42 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 19 Sep 2016 02:03:08 +0000
-Subject: Re: [PATCHv2 net 0/6] sctp: fix the transmit err process
-Message-Id: <20160918.220308.1356173755824789782.davem@davemloft.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Thu, 15 Sep 2016 18:02:38 +0000
+Subject: [PATCH net] sctp: fix SSN comparision
+Message-Id: <9f22e4725d836feda1b2c2483303adb30838216f.1473962178.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1473789537.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1473789537.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 14 Sep 2016 02:04:17 +0800
+This function actually operates on u32 yet its paramteres were declared
+as u16, causing integer truncation upon calling.
 
-> This patchset is to improve the transmit err process and also fix some
-> issues.
-> 
-> After this patchset, once the chunks are enqueued successfully, even
-> if the chunks fail to send out, no matter because of nodst or nomem,
-> no err retruns back to users any more. Instead, they are taken care
-> of by retransmit.
-> 
-> v1->v2:
->   - add more details to the changelog in patch 1/6
->   - add Fixes: tag in patch 2/6, 3/6
->   - also revert 69b5777f2e57 in patch 3/6
+Note in patch context that ADDIP_SERIAL_SIGN_BIT is already 32 bits.
 
-Since SCTP's behavior has been like this for a long time I've applied
-this series to net-next, thanks.
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+
+This issue exists since before git import, so I can't put a Fixes tag.
+Also, that said, probably not worth queueing it to stable.
+Thanks
+
+ include/net/sctp/sm.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index efc01743b9d641bf6b16a37780ee0df34b4ec698..bafe2a0ab9085f24e17038516c55c00cfddd02f4 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -382,7 +382,7 @@ enum {
+ 	ADDIP_SERIAL_SIGN_BIT = (1<<31)
+ };
+ 
+-static inline int ADDIP_SERIAL_gte(__u16 s, __u16 t)
++static inline int ADDIP_SERIAL_gte(__u32 s, __u32 t)
+ {
+ 	return ((s) = (t)) || (((t) - (s)) & ADDIP_SERIAL_SIGN_BIT);
+ }
+-- 
+2.7.4
+
