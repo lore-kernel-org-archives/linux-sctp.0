@@ -1,212 +1,177 @@
-From: Jia He <hejianet@gmail.com>
-Date: Tue, 06 Sep 2016 02:30:09 +0000
-Subject: [RFC PATCH v2 6/6] net: Suppress the "Comparison to NULL could be written" warning
-Message-Id: <1473129009-20478-7-git-send-email-hejianet@gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 20 Sep 2016 21:19:14 +0000
+Subject: [PATCH next 2/2] sctp: improve how SSN, TSN and ASCONF serial are compared
+Message-Id: <d0edc340057c3f9fa84b622c26c2d42a8309245e.1474405559.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1473129009-20478-1-git-send-email-hejianet@gmail.com>
-In-Reply-To: <1473129009-20478-1-git-send-email-hejianet@gmail.com>
+References: <cover.1474405559.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1474405559.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>, Jia He <hejianet@gmail.com>
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, David Laight <David.Laight@ACULAB.COM>
 
-This is to suppress the checkpatch.pl warning "Comparison to NULL
-could be written". No functional changes here.
+Make it similar to time_before() macros:
+- easier to understand
+- make use of typecheck() to avoid working on unexpected variable types
+  (made the issue on previous patch visible)
+- for _[lg]te versions, slighly faster, as the compiler used to generate
+  a sequence of cmp/je/cmp/js instructions and now it's sub/test/jle
+  (for _lte):
 
-Signed-off-by: Jia He <hejianet@gmail.com>
+Before, for sctp_outq_sack:
+	if (primary->cacc.changeover_active) {
+    1f01:	80 b9 84 02 00 00 00 	cmpb   $0x0,0x284(%rcx)
+    1f08:	74 6e                	je     1f78 <sctp_outq_sack+0xe8>
+		u8 clear_cycling = 0;
+
+		if (TSN_lte(primary->cacc.next_tsn_at_change, sack_ctsn)) {
+    1f0a:	8b 81 80 02 00 00    	mov    0x280(%rcx),%eax
+	return ((s) - (t)) & TSN_SIGN_BIT;
+}
+
+static inline int TSN_lte(__u32 s, __u32 t)
+{
+	return ((s) = (t)) || (((s) - (t)) & TSN_SIGN_BIT);
+    1f10:	8b 7d bc             	mov    -0x44(%rbp),%edi
+    1f13:	39 c7                	cmp    %eax,%edi
+    1f15:	74 25                	je     1f3c <sctp_outq_sack+0xac>
+    1f17:	39 f8                	cmp    %edi,%eax
+    1f19:	78 21                	js     1f3c <sctp_outq_sack+0xac>
+			primary->cacc.changeover_active = 0;
+
+After:
+	if (primary->cacc.changeover_active) {
+    1ee7:	80 b9 84 02 00 00 00 	cmpb   $0x0,0x284(%rcx)
+    1eee:	74 73                	je     1f63 <sctp_outq_sack+0xf3>
+		u8 clear_cycling = 0;
+
+		if (TSN_lte(primary->cacc.next_tsn_at_change, sack_ctsn)) {
+    1ef0:	8b 81 80 02 00 00    	mov    0x280(%rcx),%eax
+    1ef6:	2b 45 b4             	sub    -0x4c(%rbp),%eax
+    1ef9:	85 c0                	test   %eax,%eax
+    1efb:	7e 26                	jle    1f23 <sctp_outq_sack+0xb3>
+			primary->cacc.changeover_active = 0;
+
+*_lt() generated pretty much the same code.
+Tested with gcc (GCC) 6.1.1 20160621.
+
+This patch also removes SSN_lte as it is not used and cleanups some
+comments.
+
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- net/ipv4/proc.c      | 44 ++++++++++++++++++++++----------------------
- net/sctp/proc.c      |  4 ++--
- net/xfrm/xfrm_proc.c |  4 ++--
- 3 files changed, 26 insertions(+), 26 deletions(-)
+ include/net/sctp/sm.h | 94 ++++++++++-----------------------------------------
+ 1 file changed, 18 insertions(+), 76 deletions(-)
 
-diff --git a/net/ipv4/proc.c b/net/ipv4/proc.c
-index f413fdc..bf0bb22 100644
---- a/net/ipv4/proc.c
-+++ b/net/ipv4/proc.c
-@@ -358,22 +358,22 @@ static void icmp_put(struct seq_file *seq)
- 	atomic_long_t *ptr = net->mib.icmpmsg_statistics->mibs;
- 
- 	seq_puts(seq, "\nIcmp: InMsgs InErrors InCsumErrors");
--	for (i = 0; icmpmibmap[i].name != NULL; i++)
-+	for (i = 0; icmpmibmap[i].name; i++)
- 		seq_printf(seq, " In%s", icmpmibmap[i].name);
- 	seq_puts(seq, " OutMsgs OutErrors");
--	for (i = 0; icmpmibmap[i].name != NULL; i++)
-+	for (i = 0; icmpmibmap[i].name; i++)
- 		seq_printf(seq, " Out%s", icmpmibmap[i].name);
- 	seq_printf(seq, "\nIcmp: %lu %lu %lu",
- 		snmp_fold_field(net->mib.icmp_statistics, ICMP_MIB_INMSGS),
- 		snmp_fold_field(net->mib.icmp_statistics, ICMP_MIB_INERRORS),
- 		snmp_fold_field(net->mib.icmp_statistics, ICMP_MIB_CSUMERRORS));
--	for (i = 0; icmpmibmap[i].name != NULL; i++)
-+	for (i = 0; icmpmibmap[i].name; i++)
- 		seq_printf(seq, " %lu",
- 			   atomic_long_read(ptr + icmpmibmap[i].index));
- 	seq_printf(seq, " %lu %lu",
- 		snmp_fold_field(net->mib.icmp_statistics, ICMP_MIB_OUTMSGS),
- 		snmp_fold_field(net->mib.icmp_statistics, ICMP_MIB_OUTERRORS));
--	for (i = 0; icmpmibmap[i].name != NULL; i++)
-+	for (i = 0; icmpmibmap[i].name; i++)
- 		seq_printf(seq, " %lu",
- 			   atomic_long_read(ptr + (icmpmibmap[i].index | 0x100)));
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index bafe2a0ab9085f24e17038516c55c00cfddd02f4..ca6c971dd74aede829d4512ddf71006520c78f47 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -307,85 +307,27 @@ static inline __u16 sctp_data_size(struct sctp_chunk *chunk)
  }
-@@ -390,7 +390,7 @@ static int snmp_seq_show_ipstats(struct seq_file *seq, void *v)
- 	memset(buff64, 0, IPSTATS_MIB_MAX * sizeof(u64));
  
- 	seq_puts(seq, "Ip: Forwarding DefaultTTL");
--	for (i = 0; snmp4_ipstats_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_ipstats_list[i].name; i++)
- 		seq_printf(seq, " %s", snmp4_ipstats_list[i].name);
+ /* Compare two TSNs */
++#define TSN_lt(a,b)	\
++	(typecheck(__u32, a) && \
++	 typecheck(__u32, b) && \
++	 ((__s32)((a) - (b)) < 0))
  
- 	seq_printf(seq, "\nIp: %d %d",
-@@ -400,13 +400,13 @@ static int snmp_seq_show_ipstats(struct seq_file *seq, void *v)
- 	BUILD_BUG_ON(offsetof(struct ipstats_mib, mibs) != 0);
+-/* RFC 1982 - Serial Number Arithmetic
+- *
+- * 2. Comparison
+- *  Then, s1 is said to be equal to s2 if and only if i1 is equal to i2,
+- *  in all other cases, s1 is not equal to s2.
+- *
+- * s1 is said to be less than s2 if, and only if, s1 is not equal to s2,
+- * and
+- *
+- *      (i1 < i2 and i2 - i1 < 2^(SERIAL_BITS - 1)) or
+- *      (i1 > i2 and i1 - i2 > 2^(SERIAL_BITS - 1))
+- *
+- * s1 is said to be greater than s2 if, and only if, s1 is not equal to
+- * s2, and
+- *
+- *      (i1 < i2 and i2 - i1 > 2^(SERIAL_BITS - 1)) or
+- *      (i1 > i2 and i1 - i2 < 2^(SERIAL_BITS - 1))
+- */
+-
+-/*
+- * RFC 2960
+- *  1.6 Serial Number Arithmetic
+- *
+- * Comparisons and arithmetic on TSNs in this document SHOULD use Serial
+- * Number Arithmetic as defined in [RFC1982] where SERIAL_BITS = 32.
+- */
+-
+-enum {
+-	TSN_SIGN_BIT = (1<<31)
+-};
+-
+-static inline int TSN_lt(__u32 s, __u32 t)
+-{
+-	return ((s) - (t)) & TSN_SIGN_BIT;
+-}
+-
+-static inline int TSN_lte(__u32 s, __u32 t)
+-{
+-	return ((s) = (t)) || (((s) - (t)) & TSN_SIGN_BIT);
+-}
++#define TSN_lte(a,b)	\
++	(typecheck(__u32, a) && \
++	 typecheck(__u32, b) && \
++	 ((__s32)((a) - (b)) <= 0))
  
- 	for_each_possible_cpu(c) {
--		for (i = 0; snmp4_ipstats_list[i].name != NULL; i++)
-+		for (i = 0; snmp4_ipstats_list[i].name; i++)
- 			buff64[i] += snmp_get_cpu_field64(
- 					net->mib.ip_statistics,
- 					c, snmp4_ipstats_list[i].entry,
- 					offsetof(struct ipstats_mib, syncp));
- 	}
--	for (i = 0; snmp4_ipstats_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_ipstats_list[i].name; i++)
- 		seq_printf(seq, " %llu", buff64[i]);
+ /* Compare two SSNs */
+-
+-/*
+- * RFC 2960
+- *  1.6 Serial Number Arithmetic
+- *
+- * Comparisons and arithmetic on Stream Sequence Numbers in this document
+- * SHOULD use Serial Number Arithmetic as defined in [RFC1982] where
+- * SERIAL_BITS = 16.
+- */
+-enum {
+-	SSN_SIGN_BIT = (1<<15)
+-};
+-
+-static inline int SSN_lt(__u16 s, __u16 t)
+-{
+-	return ((s) - (t)) & SSN_SIGN_BIT;
+-}
+-
+-static inline int SSN_lte(__u16 s, __u16 t)
+-{
+-	return ((s) = (t)) || (((s) - (t)) & SSN_SIGN_BIT);
+-}
+-
+-/*
+- * ADDIP 3.1.1
+- * The valid range of Serial Number is from 0 to 4294967295 (2**32 - 1). Serial
+- * Numbers wrap back to 0 after reaching 4294967295.
+- */
+-enum {
+-	ADDIP_SERIAL_SIGN_BIT = (1<<31)
+-};
+-
+-static inline int ADDIP_SERIAL_gte(__u32 s, __u32 t)
+-{
+-	return ((s) = (t)) || (((t) - (s)) & ADDIP_SERIAL_SIGN_BIT);
+-}
++#define SSN_lt(a,b)		\
++	(typecheck(__u16, a) && \
++	 typecheck(__u16, b) && \
++	 ((__s16)((a) - (b)) < 0))
++
++/* ADDIP 3.1.1 */
++#define ADDIP_SERIAL_gte(a,b)	\
++	(typecheck(__u32, a) && \
++	 typecheck(__u32, b) && \
++	 ((__s32)((b) - (a)) <= 0))
  
- 	return 0;
-@@ -421,17 +421,17 @@ static int snmp_seq_show_tcp_udp(struct seq_file *seq, void *v)
- 	memset(buff, 0, TCPUDP_MIB_MAX * sizeof(unsigned long));
- 
- 	seq_puts(seq, "\nTcp:");
--	for (i = 0; snmp4_tcp_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_tcp_list[i].name; i++)
- 		seq_printf(seq, " %s", snmp4_tcp_list[i].name);
- 
- 	seq_puts(seq, "\nTcp:");
- 	for_each_possible_cpu(c) {
--		for (i = 0; snmp4_tcp_list[i].name != NULL; i++)
-+		for (i = 0; snmp4_tcp_list[i].name; i++)
- 			buff[i] += snmp_get_cpu_field(net->mib.tcp_statistics,
- 						c, snmp4_tcp_list[i].entry);
- 	}
- 
--	for (i = 0; snmp4_tcp_list[i].name != NULL; i++) {
-+	for (i = 0; snmp4_tcp_list[i].name; i++) {
- 		/* MaxConn field is signed, RFC 2012 */
- 		if (snmp4_tcp_list[i].entry = TCP_MIB_MAXCONN)
- 			seq_printf(seq, " %ld", buff[i]);
-@@ -442,15 +442,15 @@ static int snmp_seq_show_tcp_udp(struct seq_file *seq, void *v)
- 	memset(buff, 0, TCPUDP_MIB_MAX * sizeof(unsigned long));
- 
- 	for_each_possible_cpu(c) {
--		for (i = 0; snmp4_udp_list[i].name != NULL; i++)
-+		for (i = 0; snmp4_udp_list[i].name; i++)
- 			buff[i] += snmp_get_cpu_field(net->mib.udp_statistics,
- 						c, snmp4_udp_list[i].entry);
- 	}
- 	seq_puts(seq, "\nUdp:");
--	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_udp_list[i].name; i++)
- 		seq_printf(seq, " %s", snmp4_udp_list[i].name);
- 	seq_puts(seq, "\nUdp:");
--	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_udp_list[i].name; i++)
- 		seq_printf(seq, " %lu", buff[i]);
- 
- 	memset(buff, 0, TCPUDP_MIB_MAX * sizeof(unsigned long));
-@@ -458,14 +458,14 @@ static int snmp_seq_show_tcp_udp(struct seq_file *seq, void *v)
- 	/* the UDP and UDP-Lite MIBs are the same */
- 	seq_puts(seq, "\nUdpLite:");
- 	for_each_possible_cpu(c) {
--		for (i = 0; snmp4_udp_list[i].name != NULL; i++)
-+		for (i = 0; snmp4_udp_list[i].name; i++)
- 			buff[i] += snmp_get_cpu_field(net->mib.udplite_statistics,
- 						c, snmp4_udp_list[i].entry);
- 	}
--	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_udp_list[i].name; i++)
- 		seq_printf(seq, " %s", snmp4_udp_list[i].name);
- 	seq_puts(seq, "\nUdpLite:");
--	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_udp_list[i].name; i++)
- 		seq_printf(seq, " %lu", buff[i]);
- 
- 	seq_putc(seq, '\n');
-@@ -513,29 +513,29 @@ static int netstat_seq_show(struct seq_file *seq, void *v)
- 	memset(buff64, 0, sizeof(u64) * IPSTATS_MIB_MAX);
- 
- 	seq_puts(seq, "TcpExt:");
--	for (i = 0; snmp4_net_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_net_list[i].name; i++)
- 		seq_printf(seq, " %s", snmp4_net_list[i].name);
- 
- 	seq_puts(seq, "\nTcpExt:");
- 	for_each_possible_cpu(c)
--		for (i = 0; snmp4_net_list[i].name != NULL; i++)
-+		for (i = 0; snmp4_net_list[i].name; i++)
- 			buff[i] += snmp_get_cpu_field(net->mib.net_statistics,
- 						c, snmp4_net_list[i].entry);
--	for (i = 0; snmp4_net_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_net_list[i].name; i++)
- 		seq_printf(seq, " %lu", buff[i]);
- 
- 	seq_puts(seq, "\nIpExt:");
--	for (i = 0; snmp4_ipextstats_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_ipextstats_list[i].name; i++)
- 		seq_printf(seq, " %s", snmp4_ipextstats_list[i].name);
- 
- 	seq_puts(seq, "\nIpExt:");
- 	for_each_possible_cpu(c)
--		for (i = 0; snmp4_ipextstats_list[i].name != NULL; i++)
-+		for (i = 0; snmp4_ipextstats_list[i].name; i++)
- 			buff64[i] += snmp_get_cpu_field64(
- 					net->mib.ip_statistics,
- 					c, snmp4_ipextstats_list[i].entry,
- 					offsetof(struct ipstats_mib, syncp));
--	for (i = 0; snmp4_ipextstats_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_ipextstats_list[i].name; i++)
- 		seq_printf(seq, " %llu", buff64[i]);
- 
- 	seq_putc(seq, '\n');
-diff --git a/net/sctp/proc.c b/net/sctp/proc.c
-index 085fb95..816a5e8 100644
---- a/net/sctp/proc.c
-+++ b/net/sctp/proc.c
-@@ -80,11 +80,11 @@ static int sctp_snmp_seq_show(struct seq_file *seq, void *v)
- 	memset(buff, 0, sizeof(unsigned long) * SCTP_MIB_MAX);
- 
- 	for_each_possible_cpu(c)
--		for (i = 0; sctp_snmp_list[i].name != NULL; i++)
-+		for (i = 0; sctp_snmp_list[i].name; i++)
- 			buff[i] += snmp_get_cpu_field(
- 						net->sctp.sctp_statistics,
- 						c, sctp_snmp_list[i].entry);
--	for (i = 0; sctp_snmp_list[i].name != NULL; i++)
-+	for (i = 0; sctp_snmp_list[i].name; i++)
- 		seq_printf(seq, "%-32s\t%ld\n", sctp_snmp_list[i].name,
- 						buff[i]);
- 
-diff --git a/net/xfrm/xfrm_proc.c b/net/xfrm/xfrm_proc.c
-index c9df546..2f1da2d 100644
---- a/net/xfrm/xfrm_proc.c
-+++ b/net/xfrm/xfrm_proc.c
-@@ -57,11 +57,11 @@ static int xfrm_statistics_seq_show(struct seq_file *seq, void *v)
- 	memset(buff, 0, sizeof(unsigned long) * LINUX_MIB_XFRMMAX);
- 
- 	for_each_possible_cpu(c)
--		for (i = 0; xfrm_mib_list[i].name != NULL; i++)
-+		for (i = 0; xfrm_mib_list[i].name; i++)
- 			buff[i] += snmp_get_cpu_field(
- 						net->mib.xfrm_statistics,
- 						c, xfrm_mib_list[i].entry);
--	for (i = 0; xfrm_mib_list[i].name != NULL; i++)
-+	for (i = 0; xfrm_mib_list[i].name; i++)
- 		seq_printf(seq, "%-24s\t%lu\n", xfrm_mib_list[i].name,
- 						buff[i]);
- 
+ /* Check VTAG of the packet matches the sender's own tag. */
+ static inline int
 -- 
-1.8.3.1
+2.7.4
 
