@@ -1,8 +1,10 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 20 Sep 2016 20:24:18 +0000
+Date: Tue, 20 Sep 2016 21:25:00 +0000
 Subject: [PATCH next 0/2] Rename WORD_TRUNC/ROUND macros and use them
-Message-Id: <cover.1474402102.git.marcelo.leitner@gmail.com>
+Message-Id: <cover.1474406484.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1474402102.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1474402102.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -12,6 +14,9 @@ Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevi
 This patchset aims to rename these macros to a non-confusing name, as
 reported by David Laight and David Miller, and to update all remaining
 places to make use of it, which was 1 last remaining spot.
+
+v2:
+- fixed 2nd patch summary
 
 Details on the specific changelogs.
 
