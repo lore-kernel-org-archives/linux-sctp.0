@@ -1,39 +1,28 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 13 Sep 2016 15:45:35 +0000
-Subject: Re: [PATCHv2 net] sctp: hold the transport before using it in sctp_hash_cmp
-Message-Id: <20160913.114535.186471066793791952.davem@davemloft.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 20 Sep 2016 21:19:12 +0000
+Subject: [PATCH next 0/2] improvements to SSN and TSN handling
+Message-Id: <cover.1474405559.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <8e671aa0baca387f230bf8f6fc5ecbbb091866f6.1473520283.git.lucien.xin@gmail.com>
-In-Reply-To: <8e671aa0baca387f230bf8f6fc5ecbbb091866f6.1473520283.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, David Laight <David.Laight@ACULAB.COM>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 10 Sep 2016 23:11:23 +0800
+First patch fixes a potential issue made visible by the second one
+noticed by David Laight and is a preparation for the next one.
 
-> Since commit 4f0087812648 ("sctp: apply rhashtable api to send/recv
-> path"), sctp uses transport rhashtable with .obj_cmpfn sctp_hash_cmp,
-> in which it compares the members of the transport with the rhashtable
-> args to check if it's the right transport.
-> 
-> But sctp uses the transport without holding it in sctp_hash_cmp, it can
-> cause a use-after-free panic. As after it gets transport from hashtable,
-> another CPU may close the sk and free the asoc. In sctp_association_free,
-> it frees all the transports, meanwhile, the assoc's refcnt may be reduced
-> to 0, assoc can be destroyed by sctp_association_destroy.
-> 
-> So after that, transport->assoc is actually an unavailable memory address
-> in sctp_hash_cmp. Although sctp_hash_cmp is under rcu_read_lock, it still
-> can not avoid this, as assoc is not freed by RCU.
-> 
-> This patch is to hold the transport before checking it's members with
-> sctp_transport_hold, in which it checks the refcnt first, holds it if
-> it's not 0.
-> 
-> Fixes: 4f0087812648 ("sctp: apply rhashtable api to send/recv path")
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+The second patch changes how SSN, TSN and ASCONF serials are compared so
+they can use typecheck() and are more like time_before() macro.
 
-Applied and queued up for -stable.
+Marcelo Ricardo Leitner (2):
+  sctp: fix the handling of SACK Gap Ack blocks
+  sctp: improve how SSN, TSN and ASCONF serial are compared
+
+ include/net/sctp/sm.h | 94 ++++++++++-----------------------------------------
+ net/sctp/outqueue.c   | 11 +++---
+ 2 files changed, 24 insertions(+), 81 deletions(-)
+
+-- 
+2.7.4
+
