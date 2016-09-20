@@ -1,28 +1,39 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 19 Sep 2016 05:34:34 +0000
-Subject: Re: [PATCH resend] sctp: Remove some redundant code
-Message-Id: <20160919.013434.1910609314182367829.davem@davemloft.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 20 Sep 2016 20:24:18 +0000
+Subject: [PATCH next 0/2] Rename WORD_TRUNC/ROUND macros and use them
+Message-Id: <cover.1474402102.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1474059935-17343-1-git-send-email-christophe.jaillet@wanadoo.fr>
-In-Reply-To: <1474059935-17343-1-git-send-email-christophe.jaillet@wanadoo.fr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: christophe.jaillet@wanadoo.fr
-Cc: marcelo.leitner@gmail.com, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, kernel-janitors@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, David Laight <David.Laight@ACULAB.COM>
 
-From: Christophe JAILLET <christophe.jaillet@wanadoo.fr>
-Date: Fri, 16 Sep 2016 23:05:35 +0200
+This patchset aims to rename these macros to a non-confusing name, as
+reported by David Laight and David Miller, and to update all remaining
+places to make use of it, which was 1 last remaining spot.
 
-> In commit 311b21774f13 ("sctp: simplify sk_receive_queue locking"), a call
-> to 'skb_queue_splice_tail_init()' has been made explicit. Previously it was
-> hidden in 'sctp_skb_list_tail()'
-> 
-> Now, the code around it looks redundant. The '_init()' part of
-> 'skb_queue_splice_tail_init()' should already do the same.
-> 
-> Signed-off-by: Christophe JAILLET <christophe.jaillet@wanadoo.fr>
-> Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Details on the specific changelogs.
 
-Applied to net-next.
+Thanks!
+
+Marcelo Ricardo Leitner (2):
+  sctp: rename WORD_TRUNC/ROUND macros
+  sctp: make use of WORD_TRUNC macro
+
+ include/net/sctp/sctp.h  | 10 +++++-----
+ net/netfilter/xt_sctp.c  |  2 +-
+ net/sctp/associola.c     |  2 +-
+ net/sctp/chunk.c         | 13 +++++++------
+ net/sctp/input.c         |  8 ++++----
+ net/sctp/inqueue.c       |  2 +-
+ net/sctp/output.c        | 12 ++++++------
+ net/sctp/sm_make_chunk.c | 26 +++++++++++++-------------
+ net/sctp/sm_statefuns.c  |  6 +++---
+ net/sctp/transport.c     |  4 ++--
+ net/sctp/ulpevent.c      |  4 ++--
+ 11 files changed, 45 insertions(+), 44 deletions(-)
+
+-- 
+2.7.4
+
