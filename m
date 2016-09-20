@@ -1,10 +1,10 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 21 Sep 2016 11:45:56 +0000
-Subject: [PATCH next v3 2/2] sctp: make use of SCTP_TRUNC4 macro
-Message-Id: <f5d391430199633c90ba8d67f6647a627b7543f6.1474457954.git.marcelo.leitner@gmail.com>
+Date: Tue, 20 Sep 2016 21:25:02 +0000
+Subject: [PATCH next v2 2/2] sctp: make use of SCTP_TRUNC4 macro
+Message-Id: <44d3d3e5e0be1f4e557893f1dd8bcc38fae009fa.1474406485.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1474457954.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1474457954.git.marcelo.leitner@gmail.com>
+References: <cover.1474406484.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1474406484.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -26,7 +26,7 @@ v2: updated patch summary
  1 file changed, 4 insertions(+), 3 deletions(-)
 
 diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
-index 76eae828ec891076bc2360bf0ee89c3b650ef986..8afe2e90d003b9e1bbf233fd4e2fde0538ac65f6 100644
+index 86be257c9881a9bf404a1be010fdcd1c55c8b89a..b0089989473eee65b257a11f29c353f39fe3c602 100644
 --- a/net/sctp/chunk.c
 +++ b/net/sctp/chunk.c
 @@ -195,9 +195,10 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
