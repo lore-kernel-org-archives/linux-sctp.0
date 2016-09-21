@@ -1,32 +1,26 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 30 Sep 2016 06:09:18 +0000
-Subject: Re: [PATCH net] sctp: fix the issue sctp_diag uses lock_sock in rcu_read_lock
-Message-Id: <20160930.020918.1265470401276676920.davem@davemloft.net>
+From: Sun Paul <paulrbk@gmail.com>
+Date: Wed, 21 Sep 2016 13:44:30 +0000
+Subject: Address already in use problem
+Message-Id: <CAFXGft+39Ed=6MDu6E9twGfhRu1yw4b=E5C8QNMQ-trxXVx08Q@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <bd1a86ba935ffa02392b6c1271e7c06433967856.1475088944.git.lucien.xin@gmail.com>
-In-Reply-To: <bd1a86ba935ffa02392b6c1271e7c06433967856.1475088944.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net
+To: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 29 Sep 2016 02:55:44 +0800
+Hi
 
-> When sctp dumps all the ep->assocs, it needs to lock_sock first,
-> but now it locks sock in rcu_read_lock, and lock_sock may sleep,
-> which would break rcu_read_lock.
-> 
-> This patch is to get and hold one sock when traversing the list.
-> After that and get out of rcu_read_lock, lock and dump it. Then
-> it will traverse the list again to get the next one until all
-> sctp socks are dumped.
-> 
-> For sctp_diag_dump_one, it fixes this issue by holding asoc and
-> moving cb() out of rcu_read_lock in sctp_transport_lookup_process.
-> 
-> Fixes: 8f840e47f190 ("sctp: add the sctp_diag.c file")
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+we have an SCTP application running in JAVA. and we found that there
+is a problem when we as a client trying to connect to a remote IP
+address.
 
-Applied and queued up for -stable, thanks.
+If the remote IP address is not accessible, our application will keep
+retrying to connect using a self-defined local port address, says
+51001,
+
+We found that after sometimes, says 2 hrs, this port 51001 is never
+able to bind to us again. even we tried to restart the application.
+
+Is there anyone know how we can resolve this?
+
+-RBK
