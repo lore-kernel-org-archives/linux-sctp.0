@@ -1,25 +1,44 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 27 Sep 2016 09:54:07 +0000
-Subject: Re: [PATCH net 2/5] sctp: reuse sent_count to avoid retransmitted chunks for RTT measurements
-Message-Id: <CADvbK_fFkn1PcRnRg2PJnCEnhLfojSHp+LCKCWWwxM_xi-fJfQ@mail.gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 21 Sep 2016 11:45:54 +0000
+Subject: [PATCH next v3 0/2] Rename WORD_TRUNC/ROUND macros and use them
+Message-Id: <cover.1474457954.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1474883200.git.lucien.xin@gmail.com> <e8146a7075544ccb2631117f507cfd51e20b4cde.1474883200.git.lucien.xin@gmail.com>
- <20160926131300.GA6812@hmsreliant.think-freely.org>
-In-Reply-To: <20160926131300.GA6812@hmsreliant.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, David Laight <David.Laight@ACULAB.COM>
 
->
-> Maybe wrap this in a macro?  i.e.:
-> #define chunk_retransmitted(chunk) (chunk->sent_count > 1)
->
-> For readability?
->
-That's a nice suggestion.
-chunk->sent_count = 1 is confusing there for reading.
-will improve it in v2.
+This patchset aims to rename these macros to a non-confusing name, as
+reported by David Laight and David Miller, and to update all remaining
+places to make use of it, which was 1 last remaining spot.
 
-Thanks.
+v3:
+- Name it SCTP_PAD4 instead of SCTP_ALIGN4, as suggested by David Laight
+v2:
+- fixed 2nd patch summary
+
+Details on the specific changelogs.
+
+Thanks!
+
+Marcelo Ricardo Leitner (2):
+  sctp: rename WORD_TRUNC/ROUND macros
+  sctp: make use of WORD_TRUNC macro
+
+ include/net/sctp/sctp.h  | 10 +++++-----
+ net/netfilter/xt_sctp.c  |  2 +-
+ net/sctp/associola.c     |  2 +-
+ net/sctp/chunk.c         | 13 +++++++------
+ net/sctp/input.c         |  8 ++++----
+ net/sctp/inqueue.c       |  2 +-
+ net/sctp/output.c        | 12 ++++++------
+ net/sctp/sm_make_chunk.c | 28 ++++++++++++++--------------
+ net/sctp/sm_statefuns.c  |  6 +++---
+ net/sctp/transport.c     |  4 ++--
+ net/sctp/ulpevent.c      |  4 ++--
+ 11 files changed, 46 insertions(+), 45 deletions(-)
+
+-- 
+2.7.4
+
