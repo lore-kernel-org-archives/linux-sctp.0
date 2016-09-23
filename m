@@ -1,28 +1,23 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 20 Sep 2016 21:19:12 +0000
-Subject: [PATCH next 0/2] improvements to SSN and TSN handling
-Message-Id: <cover.1474405559.git.marcelo.leitner@gmail.com>
+From: David Miller <davem@davemloft.net>
+Date: Fri, 23 Sep 2016 10:55:41 +0000
+Subject: Re: [PATCH next 0/2] improvements to SSN and TSN handling
+Message-Id: <20160923.065541.716099111392174272.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1474405559.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1474405559.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, David Laight <David.Laight@ACULAB.COM>
+To: marcelo.leitner@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, nhorman@tuxdriver.com, vyasevich@gmail.com, David.Laight@ACULAB.COM
 
-First patch fixes a potential issue made visible by the second one
-noticed by David Laight and is a preparation for the next one.
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 20 Sep 2016 18:19:12 -0300
 
-The second patch changes how SSN, TSN and ASCONF serials are compared so
-they can use typecheck() and are more like time_before() macro.
+> First patch fixes a potential issue made visible by the second one
+> noticed by David Laight and is a preparation for the next one.
+> 
+> The second patch changes how SSN, TSN and ASCONF serials are compared so
+> they can use typecheck() and are more like time_before() macro.
 
-Marcelo Ricardo Leitner (2):
-  sctp: fix the handling of SACK Gap Ack blocks
-  sctp: improve how SSN, TSN and ASCONF serial are compared
-
- include/net/sctp/sm.h | 94 ++++++++++-----------------------------------------
- net/sctp/outqueue.c   | 11 +++---
- 2 files changed, 24 insertions(+), 81 deletions(-)
-
--- 
-2.7.4
-
+Series applied, thanks.
