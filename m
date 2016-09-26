@@ -1,136 +1,155 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 08 Sep 2016 09:44:42 +0000
-Subject: [PATCH net 6/6] sctp: not return ENOMEM err back in sctp_packet_transmit
-Message-Id: <043339a98393a5b320e63dc59cf4a5182f5f19cc.1473327882.git.lucien.xin@gmail.com>
+From: Jia He <hejianet@gmail.com>
+Date: Mon, 26 Sep 2016 08:09:15 +0000
+Subject: [PATCH v4 7/7] net: Suppress the "Comparison to NULL could be written" warnings
+Message-Id: <1474877355-12920-8-git-send-email-hejianet@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1473326067.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1473326067.git.lucien.xin@gmail.com>
+References: <1474877355-12920-1-git-send-email-hejianet@gmail.com>
+In-Reply-To: <1474877355-12920-1-git-send-email-hejianet@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>, marcelo.leitner@gmail.com, Jia He <hejianet@gmail.com>
 
-As David and Marcelo's suggestion, ENOMEM err shouldn't return back to
-user in transmit path. Instead, sctp's retransmit would take care of
-the chunks that fail to send because of ENOMEM.
+This is to suppress the checkpatch.pl warning "Comparison to NULL
+could be written". No functional changes here.
 
-This patch is only to do some release job when alloc_skb fails, not to
-return ENOMEM back any more.
-
-Besides, it also cleans up sctp_packet_transmit's err path, and fixes
-some issues in err path:
-
- - It didn't free the head skb in nomem: path.
- - No need to check nskb in no_route: path.
- - It should goto err: path if alloc_skb fails for head.
- - Not all the NOMEMs should free nskb.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Jia He <hejianet@gmail.com>
 ---
- net/sctp/output.c | 47 ++++++++++++++++++++++-------------------------
- 1 file changed, 22 insertions(+), 25 deletions(-)
+ net/ipv4/proc.c | 32 ++++++++++++++++----------------
+ net/sctp/proc.c |  2 +-
+ 2 files changed, 17 insertions(+), 17 deletions(-)
 
-diff --git a/net/sctp/output.c b/net/sctp/output.c
-index 1934933..8f490ff 100644
---- a/net/sctp/output.c
-+++ b/net/sctp/output.c
-@@ -442,14 +442,14 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
- 			 * time. Application may notice this error.
- 			 */
- 			pr_err_once("Trying to GSO but underlying device doesn't support it.");
--			goto nomem;
-+			goto err;
- 		}
- 	} else {
- 		pkt_size = packet->size;
- 	}
- 	head = alloc_skb(pkt_size + MAX_HEADER, gfp);
- 	if (!head)
--		goto nomem;
-+		goto err;
- 	if (gso) {
- 		NAPI_GRO_CB(head)->last = head;
- 		skb_shinfo(head)->gso_type = sk->sk_gso_type;
-@@ -470,8 +470,12 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
- 		}
- 	}
- 	dst = dst_clone(tp->dst);
--	if (!dst)
--		goto no_route;
-+	if (!dst) {
-+		if (asoc)
-+			IP_INC_STATS(sock_net(asoc->base.sk),
-+				     IPSTATS_MIB_OUTNOROUTES);
-+		goto nodst;
-+	}
- 	skb_dst_set(head, dst);
+diff --git a/net/ipv4/proc.c b/net/ipv4/proc.c
+index cb04589..1ccd1b2 100644
+--- a/net/ipv4/proc.c
++++ b/net/ipv4/proc.c
+@@ -357,22 +357,22 @@ static void icmp_put(struct seq_file *seq)
+ 	atomic_long_t *ptr = net->mib.icmpmsg_statistics->mibs;
  
- 	/* Build the SCTP header.  */
-@@ -622,8 +626,10 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
- 		if (!gso)
- 			break;
- 
--		if (skb_gro_receive(&head, nskb))
-+		if (skb_gro_receive(&head, nskb)) {
-+			kfree_skb(nskb);
- 			goto nomem;
-+		}
- 		nskb = NULL;
- 		if (WARN_ON_ONCE(skb_shinfo(head)->gso_segs > 				 sk->sk_gso_max_segs))
-@@ -717,18 +723,13 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
- 	}
- 	head->ignore_df = packet->ipfragok;
- 	tp->af_specific->sctp_xmit(head, tp);
-+	goto out;
- 
--out:
--	sctp_packet_reset(packet);
--	return err;
--no_route:
--	kfree_skb(head);
--	if (nskb != head)
--		kfree_skb(nskb);
--
--	if (asoc)
--		IP_INC_STATS(sock_net(asoc->base.sk), IPSTATS_MIB_OUTNOROUTES);
-+nomem:
-+	if (packet->auth && list_empty(&packet->auth->list))
-+		sctp_chunk_free(packet->auth);
- 
-+nodst:
- 	/* FIXME: Returning the 'err' will effect all the associations
- 	 * associated with a socket, although only one of the paths of the
- 	 * association is unreachable.
-@@ -737,22 +738,18 @@ no_route:
- 	 * required.
- 	 */
- 	 /* err = -EHOSTUNREACH; */
--err:
--	/* Control chunks are unreliable so just drop them.  DATA chunks
--	 * will get resent or dropped later.
--	 */
-+	kfree_skb(head);
- 
-+err:
- 	list_for_each_entry_safe(chunk, tmp, &packet->chunk_list, list) {
- 		list_del_init(&chunk->list);
- 		if (!sctp_chunk_is_data(chunk))
- 			sctp_chunk_free(chunk);
- 	}
--	goto out;
--nomem:
--	if (packet->auth && list_empty(&packet->auth->list))
--		sctp_chunk_free(packet->auth);
--	err = -ENOMEM;
--	goto err;
-+
-+out:
-+	sctp_packet_reset(packet);
-+	return err;
+ 	seq_puts(seq, "\nIcmp: InMsgs InErrors InCsumErrors");
+-	for (i = 0; icmpmibmap[i].name != NULL; i++)
++	for (i = 0; icmpmibmap[i].name; i++)
+ 		seq_printf(seq, " In%s", icmpmibmap[i].name);
+ 	seq_puts(seq, " OutMsgs OutErrors");
+-	for (i = 0; icmpmibmap[i].name != NULL; i++)
++	for (i = 0; icmpmibmap[i].name; i++)
+ 		seq_printf(seq, " Out%s", icmpmibmap[i].name);
+ 	seq_printf(seq, "\nIcmp: %lu %lu %lu",
+ 		snmp_fold_field(net->mib.icmp_statistics, ICMP_MIB_INMSGS),
+ 		snmp_fold_field(net->mib.icmp_statistics, ICMP_MIB_INERRORS),
+ 		snmp_fold_field(net->mib.icmp_statistics, ICMP_MIB_CSUMERRORS));
+-	for (i = 0; icmpmibmap[i].name != NULL; i++)
++	for (i = 0; icmpmibmap[i].name; i++)
+ 		seq_printf(seq, " %lu",
+ 			   atomic_long_read(ptr + icmpmibmap[i].index));
+ 	seq_printf(seq, " %lu %lu",
+ 		snmp_fold_field(net->mib.icmp_statistics, ICMP_MIB_OUTMSGS),
+ 		snmp_fold_field(net->mib.icmp_statistics, ICMP_MIB_OUTERRORS));
+-	for (i = 0; icmpmibmap[i].name != NULL; i++)
++	for (i = 0; icmpmibmap[i].name; i++)
+ 		seq_printf(seq, " %lu",
+ 			   atomic_long_read(ptr + (icmpmibmap[i].index | 0x100)));
  }
+@@ -389,7 +389,7 @@ static int snmp_seq_show_ipstats(struct seq_file *seq, void *v)
+ 	memset(buff64, 0, IPSTATS_MIB_MAX * sizeof(u64));
  
- /********************************************************************
+ 	seq_puts(seq, "Ip: Forwarding DefaultTTL");
+-	for (i = 0; snmp4_ipstats_list[i].name != NULL; i++)
++	for (i = 0; snmp4_ipstats_list[i].name; i++)
+ 		seq_printf(seq, " %s", snmp4_ipstats_list[i].name);
+ 
+ 	seq_printf(seq, "\nIp: %d %d",
+@@ -400,7 +400,7 @@ static int snmp_seq_show_ipstats(struct seq_file *seq, void *v)
+ 	snmp_get_cpu_field64_batch(buff64, snmp4_ipstats_list,
+ 				   net->mib.ip_statistics,
+ 				   offsetof(struct ipstats_mib, syncp));
+-	for (i = 0; snmp4_ipstats_list[i].name != NULL; i++)
++	for (i = 0; snmp4_ipstats_list[i].name; i++)
+ 		seq_printf(seq, " %llu", buff64[i]);
+ 
+ 	return 0;
+@@ -415,13 +415,13 @@ static int snmp_seq_show_tcp_udp(struct seq_file *seq, void *v)
+ 	memset(buff, 0, TCPUDP_MIB_MAX * sizeof(unsigned long));
+ 
+ 	seq_puts(seq, "\nTcp:");
+-	for (i = 0; snmp4_tcp_list[i].name != NULL; i++)
++	for (i = 0; snmp4_tcp_list[i].name; i++)
+ 		seq_printf(seq, " %s", snmp4_tcp_list[i].name);
+ 
+ 	seq_puts(seq, "\nTcp:");
+ 	snmp_get_cpu_field_batch(buff, snmp4_tcp_list,
+ 				 net->mib.tcp_statistics);
+-	for (i = 0; snmp4_tcp_list[i].name != NULL; i++) {
++	for (i = 0; snmp4_tcp_list[i].name; i++) {
+ 		/* MaxConn field is signed, RFC 2012 */
+ 		if (snmp4_tcp_list[i].entry = TCP_MIB_MAXCONN)
+ 			seq_printf(seq, " %ld", buff[i]);
+@@ -434,10 +434,10 @@ static int snmp_seq_show_tcp_udp(struct seq_file *seq, void *v)
+ 	snmp_get_cpu_field_batch(buff, snmp4_udp_list,
+ 				 net->mib.udp_statistics);
+ 	seq_puts(seq, "\nUdp:");
+-	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
++	for (i = 0; snmp4_udp_list[i].name; i++)
+ 		seq_printf(seq, " %s", snmp4_udp_list[i].name);
+ 	seq_puts(seq, "\nUdp:");
+-	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
++	for (i = 0; snmp4_udp_list[i].name; i++)
+ 		seq_printf(seq, " %lu", buff[i]);
+ 
+ 	memset(buff, 0, TCPUDP_MIB_MAX * sizeof(unsigned long));
+@@ -446,10 +446,10 @@ static int snmp_seq_show_tcp_udp(struct seq_file *seq, void *v)
+ 	seq_puts(seq, "\nUdpLite:");
+ 	snmp_get_cpu_field_batch(buff, snmp4_udp_list,
+ 				 net->mib.udplite_statistics);
+-	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
++	for (i = 0; snmp4_udp_list[i].name; i++)
+ 		seq_printf(seq, " %s", snmp4_udp_list[i].name);
+ 	seq_puts(seq, "\nUdpLite:");
+-	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
++	for (i = 0; snmp4_udp_list[i].name; i++)
+ 		seq_printf(seq, " %lu", buff[i]);
+ 
+ 	seq_putc(seq, '\n');
+@@ -492,21 +492,21 @@ static int netstat_seq_show(struct seq_file *seq, void *v)
+ 	struct net *net = seq->private;
+ 
+ 	seq_puts(seq, "TcpExt:");
+-	for (i = 0; snmp4_net_list[i].name != NULL; i++)
++	for (i = 0; snmp4_net_list[i].name; i++)
+ 		seq_printf(seq, " %s", snmp4_net_list[i].name);
+ 
+ 	seq_puts(seq, "\nTcpExt:");
+-	for (i = 0; snmp4_net_list[i].name != NULL; i++)
++	for (i = 0; snmp4_net_list[i].name; i++)
+ 		seq_printf(seq, " %lu",
+ 			   snmp_fold_field(net->mib.net_statistics,
+ 					   snmp4_net_list[i].entry));
+ 
+ 	seq_puts(seq, "\nIpExt:");
+-	for (i = 0; snmp4_ipextstats_list[i].name != NULL; i++)
++	for (i = 0; snmp4_ipextstats_list[i].name; i++)
+ 		seq_printf(seq, " %s", snmp4_ipextstats_list[i].name);
+ 
+ 	seq_puts(seq, "\nIpExt:");
+-	for (i = 0; snmp4_ipextstats_list[i].name != NULL; i++)
++	for (i = 0; snmp4_ipextstats_list[i].name; i++)
+ 		seq_printf(seq, " %llu",
+ 			   snmp_fold_field64(net->mib.ip_statistics,
+ 					     snmp4_ipextstats_list[i].entry,
+diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+index 0487c01..f596407 100644
+--- a/net/sctp/proc.c
++++ b/net/sctp/proc.c
+@@ -81,7 +81,7 @@ static int sctp_snmp_seq_show(struct seq_file *seq, void *v)
+ 
+ 	snmp_get_cpu_field_batch(buff, sctp_snmp_list,
+ 				 net->sctp.sctp_statistics);
+-	for (i = 0; sctp_snmp_list[i].name != NULL; i++)
++	for (i = 0; sctp_snmp_list[i].name; i++)
+ 		seq_printf(seq, "%-32s\t%ld\n", sctp_snmp_list[i].name,
+ 						buff[i]);
+ 
 -- 
-2.1.0
+2.5.5
 
