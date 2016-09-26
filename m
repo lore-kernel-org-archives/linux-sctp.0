@@ -1,50 +1,62 @@
-From: Jia He <hejianet@gmail.com>
-Date: Wed, 28 Sep 2016 06:22:26 +0000
-Subject: [PATCH v5 5/7] proc: Reduce cache miss in xfrm_statistics_seq_show
-Message-Id: <1475043748-18161-6-git-send-email-hejianet@gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 26 Sep 2016 09:47:50 +0000
+Subject: [PATCH net 1/5] sctp: move sent_count to the memory hole in sctp_chunk
+Message-Id: <03a642a76d02e8536404aa27561c44e348f3e3a0.1474883200.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1475043748-18161-1-git-send-email-hejianet@gmail.com>
-In-Reply-To: <1475043748-18161-1-git-send-email-hejianet@gmail.com>
+References: <cover.1474883200.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1474883200.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>, marcelo.leitner@gmail.com, Jia He <hejianet@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-This is to use the generic interfaces snmp_get_cpu_field{,64}_batch to
-aggregate the data by going through all the items of each cpu sequentially.
+Now pahole sctp_chunk, it has 2 memory holes:
+   struct sctp_chunk {
+	struct list_head           list;
+	atomic_t                   refcnt;
+	/* XXX 4 bytes hole, try to pack */
+	...
+	long unsigned int          prsctp_param;
+	int                        sent_count;
+	/* XXX 4 bytes hole, try to pack */
 
-Signed-off-by: Jia He <hejianet@gmail.com>
+This patch is to move up sent_count to fill the 1st one and eliminate
+the 2nd one.
+
+It's not just another struct compaction, it also fixes the "netperf-
+Throughput_Mbps -37.2% regression" issue when overloading the CPU.
+
+Fixes: a6c2f792873a ("sctp: implement prsctp TTL policy")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/xfrm/xfrm_proc.c | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
+ include/net/sctp/structs.h | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/net/xfrm/xfrm_proc.c b/net/xfrm/xfrm_proc.c
-index 9c4fbd8..dc0cea6 100644
---- a/net/xfrm/xfrm_proc.c
-+++ b/net/xfrm/xfrm_proc.c
-@@ -50,12 +50,18 @@ static const struct snmp_mib xfrm_mib_list[] = {
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index ce93c4b..4f097f5 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -554,6 +554,9 @@ struct sctp_chunk {
  
- static int xfrm_statistics_seq_show(struct seq_file *seq, void *v)
- {
--	struct net *net = seq->private;
- 	int i;
-+	struct net *net = seq->private;
-+	unsigned long buff[LINUX_MIB_XFRMMAX];
+ 	atomic_t refcnt;
+ 
++	/* How many times this chunk have been sent, for prsctp RTX policy */
++	int sent_count;
 +
-+	memset(buff, 0, sizeof(unsigned long) * LINUX_MIB_XFRMMAX);
-+
-+	snmp_get_cpu_field_batch(buff, xfrm_mib_list,
-+				 net->mib.xfrm_statistics);
- 	for (i = 0; xfrm_mib_list[i].name; i++)
- 		seq_printf(seq, "%-24s\t%lu\n", xfrm_mib_list[i].name,
--			   snmp_fold_field(net->mib.xfrm_statistics,
--					   xfrm_mib_list[i].entry));
-+						buff[i]);
-+
- 	return 0;
- }
+ 	/* This is our link to the per-transport transmitted list.  */
+ 	struct list_head transmitted_list;
+ 
+@@ -610,9 +613,6 @@ struct sctp_chunk {
+ 	 */
+ 	unsigned long prsctp_param;
+ 
+-	/* How many times this chunk have been sent, for prsctp RTX policy */
+-	int sent_count;
+-
+ 	/* Which association does this belong to?  */
+ 	struct sctp_association *asoc;
  
 -- 
-2.5.5
+2.1.0
 
