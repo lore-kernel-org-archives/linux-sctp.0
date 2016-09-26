@@ -1,33 +1,155 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 21 Sep 2016 11:04:05 +0000
-Subject: Re: [PATCH next 1/2] sctp: rename WORD_TRUNC/ROUND macros
-Message-Id: <6b400c34-88a1-dd11-aa0c-0812a8736f24@gmail.com>
+From: Jia He <hejianet@gmail.com>
+Date: Mon, 26 Sep 2016 08:09:10 +0000
+Subject: [PATCH v4 2/7] proc: Reduce cache miss in snmp_seq_show
+Message-Id: <1474877355-12920-3-git-send-email-hejianet@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1474402102.git.marcelo.leitner@gmail.com>
- <29722e8df218640ef977cb125c77613a5225f6d3.1474402102.git.marcelo.leitner@gmail.com>
- <063D6719AE5E284EB5DD2968C1650D6DB0105BA5@AcuExch.aculab.com>
-In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6DB0105BA5@AcuExch.aculab.com>
+References: <1474877355-12920-1-git-send-email-hejianet@gmail.com>
+In-Reply-To: <1474877355-12920-1-git-send-email-hejianet@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@ACULAB.COM>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, vyasevich@gmail.com, David Miller <davem@davemloft.net>
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>, marcelo.leitner@gmail.com, Jia He <hejianet@gmail.com>
 
-Em 21-09-2016 07:18, David Laight escreveu:
-> From: Marcelo Ricardo Leitner
->> Sent: 20 September 2016 21:24
->> To something more meaningful these days, specially because this is
->> working on packet headers or lengths and which are not tied to any CPU
->> arch but to the protocol itself.
->>
->> So, WORD_TRUNC becomes SCTP_TRUNC4 and WORD_ROUND becomes SCTP_ALIGN4.
-> ...
->>  /* Round an int up to the next multiple of 4.  */
->> -#define WORD_ROUND(s) (((s)+3)&~3)
->> +#define SCTP_ALIGN4(s) (((s)+3)&~3)
->
-> SCTP_PAD4() might be a better name.
+This is to use the generic interface snmp_get_cpu_field{,64}_batch to
+aggregate the data by going through all the items of each cpu sequentially.
+Then snmp_seq_show is split into 2 parts to avoid build warning "the frame
+size" larger than 1024.
 
-Right. Will post a v3 with it. Thanks
+Signed-off-by: Jia He <hejianet@gmail.com>
+---
+ net/ipv4/proc.c | 68 ++++++++++++++++++++++++++++++++++++++-------------------
+ 1 file changed, 46 insertions(+), 22 deletions(-)
 
-   Marcelo
+diff --git a/net/ipv4/proc.c b/net/ipv4/proc.c
+index 9f665b6..cb04589 100644
+--- a/net/ipv4/proc.c
++++ b/net/ipv4/proc.c
+@@ -46,6 +46,8 @@
+ #include <net/sock.h>
+ #include <net/raw.h>
+ 
++#define TCPUDP_MIB_MAX max_t(u32, UDP_MIB_MAX, TCP_MIB_MAX)
++
+ /*
+  *	Report socket allocation statistics [mea@utu.fi]
+  */
+@@ -378,13 +380,15 @@ static void icmp_put(struct seq_file *seq)
+ /*
+  *	Called from the PROCfs module. This outputs /proc/net/snmp.
+  */
+-static int snmp_seq_show(struct seq_file *seq, void *v)
++static int snmp_seq_show_ipstats(struct seq_file *seq, void *v)
+ {
+ 	int i;
++	u64 buff64[IPSTATS_MIB_MAX];
+ 	struct net *net = seq->private;
+ 
+-	seq_puts(seq, "Ip: Forwarding DefaultTTL");
++	memset(buff64, 0, IPSTATS_MIB_MAX * sizeof(u64));
+ 
++	seq_puts(seq, "Ip: Forwarding DefaultTTL");
+ 	for (i = 0; snmp4_ipstats_list[i].name != NULL; i++)
+ 		seq_printf(seq, " %s", snmp4_ipstats_list[i].name);
+ 
+@@ -393,57 +397,77 @@ static int snmp_seq_show(struct seq_file *seq, void *v)
+ 		   net->ipv4.sysctl_ip_default_ttl);
+ 
+ 	BUILD_BUG_ON(offsetof(struct ipstats_mib, mibs) != 0);
++	snmp_get_cpu_field64_batch(buff64, snmp4_ipstats_list,
++				   net->mib.ip_statistics,
++				   offsetof(struct ipstats_mib, syncp));
+ 	for (i = 0; snmp4_ipstats_list[i].name != NULL; i++)
+-		seq_printf(seq, " %llu",
+-			   snmp_fold_field64(net->mib.ip_statistics,
+-					     snmp4_ipstats_list[i].entry,
+-					     offsetof(struct ipstats_mib, syncp)));
++		seq_printf(seq, " %llu", buff64[i]);
+ 
+-	icmp_put(seq);	/* RFC 2011 compatibility */
+-	icmpmsg_put(seq);
++	return 0;
++}
++
++static int snmp_seq_show_tcp_udp(struct seq_file *seq, void *v)
++{
++	int i;
++	unsigned long buff[TCPUDP_MIB_MAX];
++	struct net *net = seq->private;
++
++	memset(buff, 0, TCPUDP_MIB_MAX * sizeof(unsigned long));
+ 
+ 	seq_puts(seq, "\nTcp:");
+ 	for (i = 0; snmp4_tcp_list[i].name != NULL; i++)
+ 		seq_printf(seq, " %s", snmp4_tcp_list[i].name);
+ 
+ 	seq_puts(seq, "\nTcp:");
++	snmp_get_cpu_field_batch(buff, snmp4_tcp_list,
++				 net->mib.tcp_statistics);
+ 	for (i = 0; snmp4_tcp_list[i].name != NULL; i++) {
+ 		/* MaxConn field is signed, RFC 2012 */
+ 		if (snmp4_tcp_list[i].entry = TCP_MIB_MAXCONN)
+-			seq_printf(seq, " %ld",
+-				   snmp_fold_field(net->mib.tcp_statistics,
+-						   snmp4_tcp_list[i].entry));
++			seq_printf(seq, " %ld", buff[i]);
+ 		else
+-			seq_printf(seq, " %lu",
+-				   snmp_fold_field(net->mib.tcp_statistics,
+-						   snmp4_tcp_list[i].entry));
++			seq_printf(seq, " %lu", buff[i]);
+ 	}
+ 
++	memset(buff, 0, TCPUDP_MIB_MAX * sizeof(unsigned long));
++
++	snmp_get_cpu_field_batch(buff, snmp4_udp_list,
++				 net->mib.udp_statistics);
+ 	seq_puts(seq, "\nUdp:");
+ 	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
+ 		seq_printf(seq, " %s", snmp4_udp_list[i].name);
+-
+ 	seq_puts(seq, "\nUdp:");
+ 	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
+-		seq_printf(seq, " %lu",
+-			   snmp_fold_field(net->mib.udp_statistics,
+-					   snmp4_udp_list[i].entry));
++		seq_printf(seq, " %lu", buff[i]);
++
++	memset(buff, 0, TCPUDP_MIB_MAX * sizeof(unsigned long));
+ 
+ 	/* the UDP and UDP-Lite MIBs are the same */
+ 	seq_puts(seq, "\nUdpLite:");
++	snmp_get_cpu_field_batch(buff, snmp4_udp_list,
++				 net->mib.udplite_statistics);
+ 	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
+ 		seq_printf(seq, " %s", snmp4_udp_list[i].name);
+-
+ 	seq_puts(seq, "\nUdpLite:");
+ 	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
+-		seq_printf(seq, " %lu",
+-			   snmp_fold_field(net->mib.udplite_statistics,
+-					   snmp4_udp_list[i].entry));
++		seq_printf(seq, " %lu", buff[i]);
+ 
+ 	seq_putc(seq, '\n');
+ 	return 0;
+ }
+ 
++static int snmp_seq_show(struct seq_file *seq, void *v)
++{
++	snmp_seq_show_ipstats(seq, v);
++
++	icmp_put(seq);	/* RFC 2011 compatibility */
++	icmpmsg_put(seq);
++
++	snmp_seq_show_tcp_udp(seq, v);
++
++	return 0;
++}
++
+ static int snmp_seq_open(struct inode *inode, struct file *file)
+ {
+ 	return single_open_net(inode, file, snmp_seq_show);
+-- 
+2.5.5
+
