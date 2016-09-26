@@ -1,155 +1,143 @@
-From: Jia He <hejianet@gmail.com>
-Date: Mon, 26 Sep 2016 08:09:15 +0000
-Subject: [PATCH v4 7/7] net: Suppress the "Comparison to NULL could be written" warnings
-Message-Id: <1474877355-12920-8-git-send-email-hejianet@gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 26 Sep 2016 09:47:52 +0000
+Subject: [PATCH net 3/5] sctp: remove prsctp_param from sctp_chunk
+Message-Id: <3864349cd18927ae8a2bea3e6f520d69dc436218.1474883200.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1474877355-12920-1-git-send-email-hejianet@gmail.com>
-In-Reply-To: <1474877355-12920-1-git-send-email-hejianet@gmail.com>
+References: <cover.1474883200.git.lucien.xin@gmail.com>
+ <03a642a76d02e8536404aa27561c44e348f3e3a0.1474883200.git.lucien.xin@gmail.com>
+ <e8146a7075544ccb2631117f507cfd51e20b4cde.1474883200.git.lucien.xin@gmail.com>
+In-Reply-To: <e8146a7075544ccb2631117f507cfd51e20b4cde.1474883200.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>, marcelo.leitner@gmail.com, Jia He <hejianet@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-This is to suppress the checkpatch.pl warning "Comparison to NULL
-could be written". No functional changes here.
+Now sctp uses chunk->prsctp_param to save the prsctp param for all the
+prsctp polices, we didn't need to introduce prsctp_param to sctp_chunk.
+We can just use chunk->sinfo.sinfo_timetolive for RTX and BUF polices,
+and reuse msg->expires_at for TTL policy, as the prsctp polices and old
+expires policy are mutual exclusive.
 
-Signed-off-by: Jia He <hejianet@gmail.com>
+This patch is to remove prsctp_param from sctp_chunk, and reuse msg's
+expires_at for TTL and chunk's sinfo.sinfo_timetolive for RTX and BUF
+polices.
+
+Note that sctp can't use chunk's sinfo.sinfo_timetolive for TTL policy,
+as it needs a u64 variables to save the expires_at time.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/ipv4/proc.c | 32 ++++++++++++++++----------------
- net/sctp/proc.c |  2 +-
- 2 files changed, 17 insertions(+), 17 deletions(-)
+ include/net/sctp/structs.h |  7 -------
+ net/sctp/chunk.c           |  9 +++++++--
+ net/sctp/outqueue.c        |  4 ++--
+ net/sctp/sm_make_chunk.c   | 15 ---------------
+ 4 files changed, 9 insertions(+), 26 deletions(-)
 
-diff --git a/net/ipv4/proc.c b/net/ipv4/proc.c
-index cb04589..1ccd1b2 100644
---- a/net/ipv4/proc.c
-+++ b/net/ipv4/proc.c
-@@ -357,22 +357,22 @@ static void icmp_put(struct seq_file *seq)
- 	atomic_long_t *ptr = net->mib.icmpmsg_statistics->mibs;
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 81a5faa..ed74ba0 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -606,13 +606,6 @@ struct sctp_chunk {
+ 	/* This needs to be recoverable for SCTP_SEND_FAILED events. */
+ 	struct sctp_sndrcvinfo sinfo;
  
- 	seq_puts(seq, "\nIcmp: InMsgs InErrors InCsumErrors");
--	for (i = 0; icmpmibmap[i].name != NULL; i++)
-+	for (i = 0; icmpmibmap[i].name; i++)
- 		seq_printf(seq, " In%s", icmpmibmap[i].name);
- 	seq_puts(seq, " OutMsgs OutErrors");
--	for (i = 0; icmpmibmap[i].name != NULL; i++)
-+	for (i = 0; icmpmibmap[i].name; i++)
- 		seq_printf(seq, " Out%s", icmpmibmap[i].name);
- 	seq_printf(seq, "\nIcmp: %lu %lu %lu",
- 		snmp_fold_field(net->mib.icmp_statistics, ICMP_MIB_INMSGS),
- 		snmp_fold_field(net->mib.icmp_statistics, ICMP_MIB_INERRORS),
- 		snmp_fold_field(net->mib.icmp_statistics, ICMP_MIB_CSUMERRORS));
--	for (i = 0; icmpmibmap[i].name != NULL; i++)
-+	for (i = 0; icmpmibmap[i].name; i++)
- 		seq_printf(seq, " %lu",
- 			   atomic_long_read(ptr + icmpmibmap[i].index));
- 	seq_printf(seq, " %lu %lu",
- 		snmp_fold_field(net->mib.icmp_statistics, ICMP_MIB_OUTMSGS),
- 		snmp_fold_field(net->mib.icmp_statistics, ICMP_MIB_OUTERRORS));
--	for (i = 0; icmpmibmap[i].name != NULL; i++)
-+	for (i = 0; icmpmibmap[i].name; i++)
- 		seq_printf(seq, " %lu",
- 			   atomic_long_read(ptr + (icmpmibmap[i].index | 0x100)));
+-	/* We use this field to record param for prsctp policies,
+-	 * for TTL policy, it is the time_to_drop of this chunk,
+-	 * for RTX policy, it is the max_sent_count of this chunk,
+-	 * for PRIO policy, it is the priority of this chunk.
+-	 */
+-	unsigned long prsctp_param;
+-
+ 	/* Which association does this belong to?  */
+ 	struct sctp_association *asoc;
+ 
+diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
+index a55e547..14990e2 100644
+--- a/net/sctp/chunk.c
++++ b/net/sctp/chunk.c
+@@ -179,6 +179,11 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
+ 			 msg, msg->expires_at, jiffies);
+ 	}
+ 
++	if (asoc->prsctp_enable &&
++	    SCTP_PR_TTL_ENABLED(sinfo->sinfo_flags))
++		msg->expires_at +			jiffies + msecs_to_jiffies(sinfo->sinfo_timetolive);
++
+ 	/* This is the biggest possible DATA chunk that can fit into
+ 	 * the packet
+ 	 */
+@@ -349,14 +354,14 @@ int sctp_chunk_abandoned(struct sctp_chunk *chunk)
+ 	}
+ 
+ 	if (SCTP_PR_TTL_ENABLED(chunk->sinfo.sinfo_flags) &&
+-	    time_after(jiffies, chunk->prsctp_param)) {
++	    time_after(jiffies, chunk->msg->expires_at)) {
+ 		if (chunk->sent_count)
+ 			chunk->asoc->abandoned_sent[SCTP_PR_INDEX(TTL)]++;
+ 		else
+ 			chunk->asoc->abandoned_unsent[SCTP_PR_INDEX(TTL)]++;
+ 		return 1;
+ 	} else if (SCTP_PR_RTX_ENABLED(chunk->sinfo.sinfo_flags) &&
+-		   chunk->sent_count > chunk->prsctp_param) {
++		   chunk->sent_count > chunk->sinfo.sinfo_timetolive) {
+ 		chunk->asoc->abandoned_sent[SCTP_PR_INDEX(RTX)]++;
+ 		return 1;
+ 	}
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 2a629fa..df6bb59 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -383,7 +383,7 @@ static int sctp_prsctp_prune_sent(struct sctp_association *asoc,
+ 
+ 	list_for_each_entry_safe(chk, temp, queue, transmitted_list) {
+ 		if (!SCTP_PR_PRIO_ENABLED(chk->sinfo.sinfo_flags) ||
+-		    chk->prsctp_param <= sinfo->sinfo_timetolive)
++		    chk->sinfo.sinfo_timetolive <= sinfo->sinfo_timetolive)
+ 			continue;
+ 
+ 		list_del_init(&chk->transmitted_list);
+@@ -418,7 +418,7 @@ static int sctp_prsctp_prune_unsent(struct sctp_association *asoc,
+ 
+ 	list_for_each_entry_safe(chk, temp, queue, list) {
+ 		if (!SCTP_PR_PRIO_ENABLED(chk->sinfo.sinfo_flags) ||
+-		    chk->prsctp_param <= sinfo->sinfo_timetolive)
++		    chk->sinfo.sinfo_timetolive <= sinfo->sinfo_timetolive)
+ 			continue;
+ 
+ 		list_del_init(&chk->list);
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 8c77b87..46ffecc 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -706,20 +706,6 @@ nodata:
+ 	return retval;
  }
-@@ -389,7 +389,7 @@ static int snmp_seq_show_ipstats(struct seq_file *seq, void *v)
- 	memset(buff64, 0, IPSTATS_MIB_MAX * sizeof(u64));
  
- 	seq_puts(seq, "Ip: Forwarding DefaultTTL");
--	for (i = 0; snmp4_ipstats_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_ipstats_list[i].name; i++)
- 		seq_printf(seq, " %s", snmp4_ipstats_list[i].name);
+-static void sctp_set_prsctp_policy(struct sctp_chunk *chunk,
+-				   const struct sctp_sndrcvinfo *sinfo)
+-{
+-	if (!chunk->asoc->prsctp_enable)
+-		return;
+-
+-	if (SCTP_PR_TTL_ENABLED(sinfo->sinfo_flags))
+-		chunk->prsctp_param -			jiffies + msecs_to_jiffies(sinfo->sinfo_timetolive);
+-	else if (SCTP_PR_RTX_ENABLED(sinfo->sinfo_flags) ||
+-		 SCTP_PR_PRIO_ENABLED(sinfo->sinfo_flags))
+-		chunk->prsctp_param = sinfo->sinfo_timetolive;
+-}
+-
+ /* Make a DATA chunk for the given association from the provided
+  * parameters.  However, do not populate the data payload.
+  */
+@@ -753,7 +739,6 @@ struct sctp_chunk *sctp_make_datafrag_empty(struct sctp_association *asoc,
  
- 	seq_printf(seq, "\nIp: %d %d",
-@@ -400,7 +400,7 @@ static int snmp_seq_show_ipstats(struct seq_file *seq, void *v)
- 	snmp_get_cpu_field64_batch(buff64, snmp4_ipstats_list,
- 				   net->mib.ip_statistics,
- 				   offsetof(struct ipstats_mib, syncp));
--	for (i = 0; snmp4_ipstats_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_ipstats_list[i].name; i++)
- 		seq_printf(seq, " %llu", buff64[i]);
+ 	retval->subh.data_hdr = sctp_addto_chunk(retval, sizeof(dp), &dp);
+ 	memcpy(&retval->sinfo, sinfo, sizeof(struct sctp_sndrcvinfo));
+-	sctp_set_prsctp_policy(retval, sinfo);
  
- 	return 0;
-@@ -415,13 +415,13 @@ static int snmp_seq_show_tcp_udp(struct seq_file *seq, void *v)
- 	memset(buff, 0, TCPUDP_MIB_MAX * sizeof(unsigned long));
- 
- 	seq_puts(seq, "\nTcp:");
--	for (i = 0; snmp4_tcp_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_tcp_list[i].name; i++)
- 		seq_printf(seq, " %s", snmp4_tcp_list[i].name);
- 
- 	seq_puts(seq, "\nTcp:");
- 	snmp_get_cpu_field_batch(buff, snmp4_tcp_list,
- 				 net->mib.tcp_statistics);
--	for (i = 0; snmp4_tcp_list[i].name != NULL; i++) {
-+	for (i = 0; snmp4_tcp_list[i].name; i++) {
- 		/* MaxConn field is signed, RFC 2012 */
- 		if (snmp4_tcp_list[i].entry = TCP_MIB_MAXCONN)
- 			seq_printf(seq, " %ld", buff[i]);
-@@ -434,10 +434,10 @@ static int snmp_seq_show_tcp_udp(struct seq_file *seq, void *v)
- 	snmp_get_cpu_field_batch(buff, snmp4_udp_list,
- 				 net->mib.udp_statistics);
- 	seq_puts(seq, "\nUdp:");
--	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_udp_list[i].name; i++)
- 		seq_printf(seq, " %s", snmp4_udp_list[i].name);
- 	seq_puts(seq, "\nUdp:");
--	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_udp_list[i].name; i++)
- 		seq_printf(seq, " %lu", buff[i]);
- 
- 	memset(buff, 0, TCPUDP_MIB_MAX * sizeof(unsigned long));
-@@ -446,10 +446,10 @@ static int snmp_seq_show_tcp_udp(struct seq_file *seq, void *v)
- 	seq_puts(seq, "\nUdpLite:");
- 	snmp_get_cpu_field_batch(buff, snmp4_udp_list,
- 				 net->mib.udplite_statistics);
--	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_udp_list[i].name; i++)
- 		seq_printf(seq, " %s", snmp4_udp_list[i].name);
- 	seq_puts(seq, "\nUdpLite:");
--	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_udp_list[i].name; i++)
- 		seq_printf(seq, " %lu", buff[i]);
- 
- 	seq_putc(seq, '\n');
-@@ -492,21 +492,21 @@ static int netstat_seq_show(struct seq_file *seq, void *v)
- 	struct net *net = seq->private;
- 
- 	seq_puts(seq, "TcpExt:");
--	for (i = 0; snmp4_net_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_net_list[i].name; i++)
- 		seq_printf(seq, " %s", snmp4_net_list[i].name);
- 
- 	seq_puts(seq, "\nTcpExt:");
--	for (i = 0; snmp4_net_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_net_list[i].name; i++)
- 		seq_printf(seq, " %lu",
- 			   snmp_fold_field(net->mib.net_statistics,
- 					   snmp4_net_list[i].entry));
- 
- 	seq_puts(seq, "\nIpExt:");
--	for (i = 0; snmp4_ipextstats_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_ipextstats_list[i].name; i++)
- 		seq_printf(seq, " %s", snmp4_ipextstats_list[i].name);
- 
- 	seq_puts(seq, "\nIpExt:");
--	for (i = 0; snmp4_ipextstats_list[i].name != NULL; i++)
-+	for (i = 0; snmp4_ipextstats_list[i].name; i++)
- 		seq_printf(seq, " %llu",
- 			   snmp_fold_field64(net->mib.ip_statistics,
- 					     snmp4_ipextstats_list[i].entry,
-diff --git a/net/sctp/proc.c b/net/sctp/proc.c
-index 0487c01..f596407 100644
---- a/net/sctp/proc.c
-+++ b/net/sctp/proc.c
-@@ -81,7 +81,7 @@ static int sctp_snmp_seq_show(struct seq_file *seq, void *v)
- 
- 	snmp_get_cpu_field_batch(buff, sctp_snmp_list,
- 				 net->sctp.sctp_statistics);
--	for (i = 0; sctp_snmp_list[i].name != NULL; i++)
-+	for (i = 0; sctp_snmp_list[i].name; i++)
- 		seq_printf(seq, "%-32s\t%ld\n", sctp_snmp_list[i].name,
- 						buff[i]);
- 
+ nodata:
+ 	return retval;
 -- 
-2.5.5
+2.1.0
 
