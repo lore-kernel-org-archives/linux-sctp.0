@@ -1,62 +1,46 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 26 Sep 2016 09:47:50 +0000
-Subject: [PATCH net 1/5] sctp: move sent_count to the memory hole in sctp_chunk
-Message-Id: <03a642a76d02e8536404aa27561c44e348f3e3a0.1474883200.git.lucien.xin@gmail.com>
+From: Jia He <hejianet@gmail.com>
+Date: Mon, 26 Sep 2016 08:09:12 +0000
+Subject: [PATCH v4 4/7] proc: Reduce cache miss in sctp_snmp_seq_show
+Message-Id: <1474877355-12920-5-git-send-email-hejianet@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1474883200.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1474883200.git.lucien.xin@gmail.com>
+References: <1474877355-12920-1-git-send-email-hejianet@gmail.com>
+In-Reply-To: <1474877355-12920-1-git-send-email-hejianet@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>, marcelo.leitner@gmail.com, Jia He <hejianet@gmail.com>
 
-Now pahole sctp_chunk, it has 2 memory holes:
-   struct sctp_chunk {
-	struct list_head           list;
-	atomic_t                   refcnt;
-	/* XXX 4 bytes hole, try to pack */
-	...
-	long unsigned int          prsctp_param;
-	int                        sent_count;
-	/* XXX 4 bytes hole, try to pack */
+This is to use the generic interface snmp_get_cpu_field{,64}_batch to
+aggregate the data by going through all the items of each cpu sequentially.
 
-This patch is to move up sent_count to fill the 1st one and eliminate
-the 2nd one.
-
-It's not just another struct compaction, it also fixes the "netperf-
-Throughput_Mbps -37.2% regression" issue when overloading the CPU.
-
-Fixes: a6c2f792873a ("sctp: implement prsctp TTL policy")
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Jia He <hejianet@gmail.com>
 ---
- include/net/sctp/structs.h | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ net/sctp/proc.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index ce93c4b..4f097f5 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -554,6 +554,9 @@ struct sctp_chunk {
+diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+index ef8ba77..0487c01 100644
+--- a/net/sctp/proc.c
++++ b/net/sctp/proc.c
+@@ -75,11 +75,15 @@ static int sctp_snmp_seq_show(struct seq_file *seq, void *v)
+ {
+ 	struct net *net = seq->private;
+ 	int i;
++	unsigned long buff[SCTP_MIB_MAX];
  
- 	atomic_t refcnt;
- 
-+	/* How many times this chunk have been sent, for prsctp RTX policy */
-+	int sent_count;
++	memset(buff, 0, sizeof(unsigned long) * SCTP_MIB_MAX);
 +
- 	/* This is our link to the per-transport transmitted list.  */
- 	struct list_head transmitted_list;
++	snmp_get_cpu_field_batch(buff, sctp_snmp_list,
++				 net->sctp.sctp_statistics);
+ 	for (i = 0; sctp_snmp_list[i].name != NULL; i++)
+ 		seq_printf(seq, "%-32s\t%ld\n", sctp_snmp_list[i].name,
+-			   snmp_fold_field(net->sctp.sctp_statistics,
+-				      sctp_snmp_list[i].entry));
++						buff[i]);
  
-@@ -610,9 +613,6 @@ struct sctp_chunk {
- 	 */
- 	unsigned long prsctp_param;
- 
--	/* How many times this chunk have been sent, for prsctp RTX policy */
--	int sent_count;
--
- 	/* Which association does this belong to?  */
- 	struct sctp_association *asoc;
- 
+ 	return 0;
+ }
 -- 
-2.1.0
+2.5.5
 
