@@ -1,55 +1,36 @@
-From: hejianet <hejianet@gmail.com>
-Date: Wed, 07 Sep 2016 02:30:59 +0000
-Subject: Re: [RFC PATCH v2 0/6] Reduce cache miss for snmp_fold_field
-Message-Id: <beb30504-7c22-482d-330a-469ad3232e8e@gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 28 Sep 2016 10:46:27 +0000
+Subject: [PATCHv2 net 0/5] sctp: some fixes of prsctp polices
+Message-Id: <cover.1475059350.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1473129009-20478-1-git-send-email-hejianet@gmail.com>
- <20160906124413.GC27658@localhost.localdomain>
-In-Reply-To: <20160906124413.GC27658@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-Hi Marcelo
+This patchset is to improve some codes about prsctp polices, and also
+to fix some issues.
 
-Thanks for the suggestion
+v1->v2:
+  - wrap the check of chunk->sent_count in a macro:
+    sctp_chunk_retransmitted in patch 2/5.
 
-Will consider that
+Xin Long (5):
+  sctp: move sent_count to the memory hole in sctp_chunk
+  sctp: reuse sent_count to avoid retransmitted chunks for RTT
+    measurements
+  sctp: remove prsctp_param from sctp_chunk
+  sctp: change to check peer prsctp_capable when using prsctp polices
+  sctp: remove the old ttl expires policy
 
-B.R.
+ include/net/sctp/structs.h | 16 ++++------------
+ net/sctp/chunk.c           | 31 ++++++++++---------------------
+ net/sctp/output.c          |  6 ++----
+ net/sctp/outqueue.c        | 16 +++++++---------
+ net/sctp/sm_make_chunk.c   | 15 ---------------
+ 5 files changed, 23 insertions(+), 61 deletions(-)
 
-Jia
-
-
-On 9/6/16 8:44 PM, Marcelo Ricardo Leitner wrote:
-> On Tue, Sep 06, 2016 at 10:30:03AM +0800, Jia He wrote:
-> ...
->> v2:
->> - 1/6 fix bug in udplite statistics.
->> - 1/6 snmp_seq_show is split into 2 parts
->>
->> Jia He (6):
->>    proc: Reduce cache miss in {snmp,netstat}_seq_show
->>    proc: Reduce cache miss in snmp6_seq_show
->>    proc: Reduce cache miss in sctp_snmp_seq_show
->>    proc: Reduce cache miss in xfrm_statistics_seq_show
->>    ipv6: Remove useless parameter in __snmp6_fill_statsdev
->>    net: Suppress the "Comparison to NULL could be written" warning
-> Hi Jia,
->
-> Did you try to come up with a generic interface for this, like
-> snmp_fold_fields64() (note the fieldS) or snmp_fold_field64_batch() ?
->
-> Sounds like we have the same code in several places and seems they all
-> operate very similarly. They have a percpu table, an identified max, a
-> destination buffer..
->
-> If this is possible, this would reduce the possibility of hiccups in a
-> particular code.
->
->    Marcelo
->
->
+-- 
+2.1.0
 
