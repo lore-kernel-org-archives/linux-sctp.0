@@ -1,143 +1,47 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 28 Sep 2016 10:46:30 +0000
-Subject: [PATCHv2 net 3/5] sctp: remove prsctp_param from sctp_chunk
-Message-Id: <da30a54fd8b6674e6cf6f013a3633d59aaeea020.1475059350.git.lucien.xin@gmail.com>
+From: Edward Cree <ecree@solarflare.com>
+Date: Wed, 28 Sep 2016 15:58:22 +0000
+Subject: Local variable ordering (was Re: [PATCH v5 0/7] Reduce cache miss for snmp_fold_field)
+Message-Id: <5734f230-eafa-45a1-9635-98721f872b38@solarflare.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1475059350.git.lucien.xin@gmail.com>
- <03a642a76d02e8536404aa27561c44e348f3e3a0.1475059350.git.lucien.xin@gmail.com>
- <ca37ab66bfd8b97078ff8e3645bc7c1e909396e8.1475059350.git.lucien.xin@gmail.com>
-In-Reply-To: <ca37ab66bfd8b97078ff8e3645bc7c1e909396e8.1475059350.git.lucien.xin@gmail.com>
+References: <1475043748-18161-1-git-send-email-hejianet@gmail.com>
+ <20160928.050817.110671274247345232.davem@davemloft.net>
+ <c44daa11-dc57-84fa-35cc-40ee0fe293f3@gmail.com>
+In-Reply-To: <c44daa11-dc57-84fa-35cc-40ee0fe293f3@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+To: hejianet <hejianet@gmail.com>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, kuznet@ms2.inr.ac.ru, jmorris@namei.org, yoshfuji@linux-ipv6.org, kaber@trash.net, vyasevich@gmail.com, nhorman@tuxdriver.com, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, marcelo.leitner@gmail.com
 
-Now sctp uses chunk->prsctp_param to save the prsctp param for all the
-prsctp polices, we didn't need to introduce prsctp_param to sctp_chunk.
-We can just use chunk->sinfo.sinfo_timetolive for RTX and BUF polices,
-and reuse msg->expires_at for TTL policy, as the prsctp polices and old
-expires policy are mutual exclusive.
+On 28/09/16 14:45, hejianet wrote:
+>
+>
+> On 9/28/16 5:08 PM, David Miller wrote:
+>> From: Jia He <hejianet@gmail.com>
+>> Date: Wed, 28 Sep 2016 14:22:21 +0800
+>>
+>>> v5:
+>>> - order local variables from longest to shortest line
+>> I still see many cases where this problem still exists.  Please
+>> do not resubmit this patch series until you fix all of them.
+>>
+>> Patch #2:
+>>
+>> -static int snmp_seq_show(struct seq_file *seq, void *v)
+>> +static int snmp_seq_show_ipstats(struct seq_file *seq, void *v)
+>>   {
+>>       int i;
+>> +    u64 buff64[IPSTATS_MIB_MAX];
+>>       struct net *net = seq->private;
+>>
+>> The order should be "net" then "buff64" then "i".
+> Sorry for my bad eyesight and quick hand :(
+> B.R.
+> Jia
+A few months back I wrote a script to help find these:
+https://github.com/ecree-solarflare/xmastree
+It can check a source file or a patch.
+Posting in the hope that people will find it useful.
 
-This patch is to remove prsctp_param from sctp_chunk, and reuse msg's
-expires_at for TTL and chunk's sinfo.sinfo_timetolive for RTX and BUF
-polices.
-
-Note that sctp can't use chunk's sinfo.sinfo_timetolive for TTL policy,
-as it needs a u64 variables to save the expires_at time.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- include/net/sctp/structs.h |  7 -------
- net/sctp/chunk.c           |  9 +++++++--
- net/sctp/outqueue.c        |  4 ++--
- net/sctp/sm_make_chunk.c   | 15 ---------------
- 4 files changed, 9 insertions(+), 26 deletions(-)
-
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 7b937d7..49a4d37 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -606,13 +606,6 @@ struct sctp_chunk {
- 	/* This needs to be recoverable for SCTP_SEND_FAILED events. */
- 	struct sctp_sndrcvinfo sinfo;
- 
--	/* We use this field to record param for prsctp policies,
--	 * for TTL policy, it is the time_to_drop of this chunk,
--	 * for RTX policy, it is the max_sent_count of this chunk,
--	 * for PRIO policy, it is the priority of this chunk.
--	 */
--	unsigned long prsctp_param;
--
- 	/* Which association does this belong to?  */
- 	struct sctp_association *asoc;
- 
-diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
-index a55e547..14990e2 100644
---- a/net/sctp/chunk.c
-+++ b/net/sctp/chunk.c
-@@ -179,6 +179,11 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
- 			 msg, msg->expires_at, jiffies);
- 	}
- 
-+	if (asoc->prsctp_enable &&
-+	    SCTP_PR_TTL_ENABLED(sinfo->sinfo_flags))
-+		msg->expires_at +			jiffies + msecs_to_jiffies(sinfo->sinfo_timetolive);
-+
- 	/* This is the biggest possible DATA chunk that can fit into
- 	 * the packet
- 	 */
-@@ -349,14 +354,14 @@ int sctp_chunk_abandoned(struct sctp_chunk *chunk)
- 	}
- 
- 	if (SCTP_PR_TTL_ENABLED(chunk->sinfo.sinfo_flags) &&
--	    time_after(jiffies, chunk->prsctp_param)) {
-+	    time_after(jiffies, chunk->msg->expires_at)) {
- 		if (chunk->sent_count)
- 			chunk->asoc->abandoned_sent[SCTP_PR_INDEX(TTL)]++;
- 		else
- 			chunk->asoc->abandoned_unsent[SCTP_PR_INDEX(TTL)]++;
- 		return 1;
- 	} else if (SCTP_PR_RTX_ENABLED(chunk->sinfo.sinfo_flags) &&
--		   chunk->sent_count > chunk->prsctp_param) {
-+		   chunk->sent_count > chunk->sinfo.sinfo_timetolive) {
- 		chunk->asoc->abandoned_sent[SCTP_PR_INDEX(RTX)]++;
- 		return 1;
- 	}
-diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index c0fe0b5..17b6fcd 100644
---- a/net/sctp/outqueue.c
-+++ b/net/sctp/outqueue.c
-@@ -383,7 +383,7 @@ static int sctp_prsctp_prune_sent(struct sctp_association *asoc,
- 
- 	list_for_each_entry_safe(chk, temp, queue, transmitted_list) {
- 		if (!SCTP_PR_PRIO_ENABLED(chk->sinfo.sinfo_flags) ||
--		    chk->prsctp_param <= sinfo->sinfo_timetolive)
-+		    chk->sinfo.sinfo_timetolive <= sinfo->sinfo_timetolive)
- 			continue;
- 
- 		list_del_init(&chk->transmitted_list);
-@@ -418,7 +418,7 @@ static int sctp_prsctp_prune_unsent(struct sctp_association *asoc,
- 
- 	list_for_each_entry_safe(chk, temp, queue, list) {
- 		if (!SCTP_PR_PRIO_ENABLED(chk->sinfo.sinfo_flags) ||
--		    chk->prsctp_param <= sinfo->sinfo_timetolive)
-+		    chk->sinfo.sinfo_timetolive <= sinfo->sinfo_timetolive)
- 			continue;
- 
- 		list_del_init(&chk->list);
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 8c77b87..46ffecc 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -706,20 +706,6 @@ nodata:
- 	return retval;
- }
- 
--static void sctp_set_prsctp_policy(struct sctp_chunk *chunk,
--				   const struct sctp_sndrcvinfo *sinfo)
--{
--	if (!chunk->asoc->prsctp_enable)
--		return;
--
--	if (SCTP_PR_TTL_ENABLED(sinfo->sinfo_flags))
--		chunk->prsctp_param -			jiffies + msecs_to_jiffies(sinfo->sinfo_timetolive);
--	else if (SCTP_PR_RTX_ENABLED(sinfo->sinfo_flags) ||
--		 SCTP_PR_PRIO_ENABLED(sinfo->sinfo_flags))
--		chunk->prsctp_param = sinfo->sinfo_timetolive;
--}
--
- /* Make a DATA chunk for the given association from the provided
-  * parameters.  However, do not populate the data payload.
-  */
-@@ -753,7 +739,6 @@ struct sctp_chunk *sctp_make_datafrag_empty(struct sctp_association *asoc,
- 
- 	retval->subh.data_hdr = sctp_addto_chunk(retval, sizeof(dp), &dp);
- 	memcpy(&retval->sinfo, sinfo, sizeof(struct sctp_sndrcvinfo));
--	sctp_set_prsctp_policy(retval, sinfo);
- 
- nodata:
- 	return retval;
--- 
-2.1.0
-
+-Ed
+The information contained in this message is confidential and is intended for the addressee(s) only. If you have received this message in error, please notify the sender immediately and delete the message. Unless you are an addressee (or authorized to receive for an addressee), you may not use, copy or disclose to anyone this message or any information contained in this message. The unauthorized use, disclosure, copying or alteration of this message is strictly prohibited.
