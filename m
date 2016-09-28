@@ -1,75 +1,83 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 13 Sep 2016 18:04:19 +0000
-Subject: [PATCHv2 net 2/6] sctp: do not return the transmit err back to sctp_sendmsg
-Message-Id: <10622d6256e2c49fa7ec555dec3bd35b47a50b2b.1473789537.git.lucien.xin@gmail.com>
+From: Jia He <hejianet@gmail.com>
+Date: Wed, 28 Sep 2016 06:22:24 +0000
+Subject: [PATCH v5 3/7] proc: Reduce cache miss in snmp6_seq_show
+Message-Id: <1475043748-18161-4-git-send-email-hejianet@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1473789537.git.lucien.xin@gmail.com>
- <4f21a8880a3f8e7daed8a53f10649a1d4dfbb12a.1473789537.git.lucien.xin@gmail.com>
-In-Reply-To: <4f21a8880a3f8e7daed8a53f10649a1d4dfbb12a.1473789537.git.lucien.xin@gmail.com>
+References: <1475043748-18161-1-git-send-email-hejianet@gmail.com>
+In-Reply-To: <1475043748-18161-1-git-send-email-hejianet@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>, marcelo.leitner@gmail.com, Jia He <hejianet@gmail.com>
 
-Once a chunk is enqueued successfully, sctp queues can take care of it.
-Even if it is failed to transmit (like because of nomem), it should be
-put into retransmit queue.
+This is to use the generic interfaces snmp_get_cpu_field{,64}_batch to
+aggregate the data by going through all the items of each cpu sequentially.
 
-If sctp report this error to users, it confuses them, they may resend
-that msg, but actually in kernel sctp stack is in charge of retransmit
-it already.
-
-Besides, this error probably is not from the failure of transmitting
-current msg, but transmitting or retransmitting another msg's chunks,
-as sctp_outq_flush just tries to send out all transports' chunks.
-
-This patch is to make sctp_cmd_send_msg return avoid, and not return the
-transmit err back to sctp_sendmsg
-
-Fixes: 8b570dc9f7b6 ("sctp: only drop the reference on the datamsg after sending a msg")
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Jia He <hejianet@gmail.com>
 ---
- net/sctp/sm_sideeffect.c | 16 +++++-----------
- 1 file changed, 5 insertions(+), 11 deletions(-)
+ net/ipv6/proc.c | 32 +++++++++++++++++++++++---------
+ 1 file changed, 23 insertions(+), 9 deletions(-)
 
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index 12d4519..cf6e4f0 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -1020,19 +1020,13 @@ static void sctp_cmd_t1_timer_update(struct sctp_association *asoc,
-  * This way the whole message is queued up and bundling if
-  * encouraged for small fragments.
-  */
--static int sctp_cmd_send_msg(struct sctp_association *asoc,
--				struct sctp_datamsg *msg, gfp_t gfp)
-+static void sctp_cmd_send_msg(struct sctp_association *asoc,
-+			      struct sctp_datamsg *msg, gfp_t gfp)
- {
- 	struct sctp_chunk *chunk;
--	int error = 0;
--
--	list_for_each_entry(chunk, &msg->chunks, frag_list) {
--		error = sctp_outq_tail(&asoc->outqueue, chunk, gfp);
--		if (error)
--			break;
--	}
+diff --git a/net/ipv6/proc.c b/net/ipv6/proc.c
+index 679253d0..e047701 100644
+--- a/net/ipv6/proc.c
++++ b/net/ipv6/proc.c
+@@ -30,6 +30,11 @@
+ #include <net/transp_v6.h>
+ #include <net/ipv6.h>
  
--	return error;
-+	list_for_each_entry(chunk, &msg->chunks, frag_list)
-+		sctp_outq_tail(&asoc->outqueue, chunk, gfp);
++#define MAX4(a, b, c, d) \
++	max_t(u32, max_t(u32, a, b), max_t(u32, c, d))
++#define SNMP_MIB_MAX MAX4(UDP_MIB_MAX, TCP_MIB_MAX, \
++			IPSTATS_MIB_MAX, ICMP_MIB_MAX)
++
+ static int sockstat6_seq_show(struct seq_file *seq, void *v)
+ {
+ 	struct net *net = seq->private;
+@@ -192,13 +197,19 @@ static void snmp6_seq_show_item(struct seq_file *seq, void __percpu *pcpumib,
+ 				const struct snmp_mib *itemlist)
+ {
+ 	int i;
+-	unsigned long val;
+-
+-	for (i = 0; itemlist[i].name; i++) {
+-		val = pcpumib ?
+-			snmp_fold_field(pcpumib, itemlist[i].entry) :
+-			atomic_long_read(smib + itemlist[i].entry);
+-		seq_printf(seq, "%-32s\t%lu\n", itemlist[i].name, val);
++	unsigned long buff[SNMP_MIB_MAX];
++
++	if (pcpumib) {
++		memset(buff, 0, sizeof(unsigned long) * SNMP_MIB_MAX);
++
++		snmp_get_cpu_field_batch(buff, itemlist, pcpumib);
++		for (i = 0; itemlist[i].name; i++)
++			seq_printf(seq, "%-32s\t%lu\n",
++				   itemlist[i].name, buff[i]);
++	} else {
++		for (i = 0; itemlist[i].name; i++)
++			seq_printf(seq, "%-32s\t%lu\n", itemlist[i].name,
++				   atomic_long_read(smib + itemlist[i].entry));
+ 	}
  }
  
+@@ -206,10 +217,13 @@ static void snmp6_seq_show_item64(struct seq_file *seq, void __percpu *mib,
+ 				  const struct snmp_mib *itemlist, size_t syncpoff)
+ {
+ 	int i;
++	u64 buff64[SNMP_MIB_MAX];
++
++	memset(buff64, 0, sizeof(unsigned long) * SNMP_MIB_MAX);
  
-@@ -1709,7 +1703,7 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
- 				sctp_outq_cork(&asoc->outqueue);
- 				local_cork = 1;
- 			}
--			error = sctp_cmd_send_msg(asoc, cmd->obj.msg, gfp);
-+			sctp_cmd_send_msg(asoc, cmd->obj.msg, gfp);
- 			break;
- 		case SCTP_CMD_SEND_NEXT_ASCONF:
- 			sctp_cmd_send_asconf(asoc);
++	snmp_get_cpu_field64_batch(buff64, itemlist, mib, syncpoff);
+ 	for (i = 0; itemlist[i].name; i++)
+-		seq_printf(seq, "%-32s\t%llu\n", itemlist[i].name,
+-			   snmp_fold_field64(mib, itemlist[i].entry, syncpoff));
++		seq_printf(seq, "%-32s\t%llu\n", itemlist[i].name, buff64[i]);
+ }
+ 
+ static int snmp6_seq_show(struct seq_file *seq, void *v)
 -- 
-2.1.0
+2.5.5
 
