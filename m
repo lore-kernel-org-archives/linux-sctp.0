@@ -1,60 +1,62 @@
-From: Jia He <hejianet@gmail.com>
-Date: Wed, 28 Sep 2016 06:22:27 +0000
-Subject: [PATCH v5 6/7] ipv6: Remove useless parameter in __snmp6_fill_statsdev
-Message-Id: <1475043748-18161-7-git-send-email-hejianet@gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 28 Sep 2016 18:37:26 +0000
+Subject: [PATCHv3 net 1/3] sctp: move sent_count to the memory hole in sctp_chunk
+Message-Id: <03a642a76d02e8536404aa27561c44e348f3e3a0.1475087147.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1475043748-18161-1-git-send-email-hejianet@gmail.com>
-In-Reply-To: <1475043748-18161-1-git-send-email-hejianet@gmail.com>
+References: <cover.1475087147.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1475087147.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>, marcelo.leitner@gmail.com, Jia He <hejianet@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-The parameter items(always ICMP6_MIB_MAX) is useless for __snmp6_fill_statsdev.
+Now pahole sctp_chunk, it has 2 memory holes:
+   struct sctp_chunk {
+	struct list_head           list;
+	atomic_t                   refcnt;
+	/* XXX 4 bytes hole, try to pack */
+	...
+	long unsigned int          prsctp_param;
+	int                        sent_count;
+	/* XXX 4 bytes hole, try to pack */
 
-Signed-off-by: Jia He <hejianet@gmail.com>
+This patch is to move up sent_count to fill the 1st one and eliminate
+the 2nd one.
+
+It's not just another struct compaction, it also fixes the "netperf-
+Throughput_Mbps -37.2% regression" issue when overloading the CPU.
+
+Fixes: a6c2f792873a ("sctp: implement prsctp TTL policy")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/ipv6/addrconf.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ include/net/sctp/structs.h | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/net/ipv6/addrconf.c b/net/ipv6/addrconf.c
-index 2f1f5d4..35d4baa 100644
---- a/net/ipv6/addrconf.c
-+++ b/net/ipv6/addrconf.c
-@@ -4961,18 +4961,18 @@ static inline size_t inet6_if_nlmsg_size(void)
- }
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index ce93c4b..4f097f5 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -554,6 +554,9 @@ struct sctp_chunk {
  
- static inline void __snmp6_fill_statsdev(u64 *stats, atomic_long_t *mib,
--				      int items, int bytes)
-+					int bytes)
- {
- 	int i;
--	int pad = bytes - sizeof(u64) * items;
-+	int pad = bytes - sizeof(u64) * ICMP6_MIB_MAX;
- 	BUG_ON(pad < 0);
+ 	atomic_t refcnt;
  
- 	/* Use put_unaligned() because stats may not be aligned for u64. */
--	put_unaligned(items, &stats[0]);
--	for (i = 1; i < items; i++)
-+	put_unaligned(ICMP6_MIB_MAX, &stats[0]);
-+	for (i = 1; i < ICMP6_MIB_MAX; i++)
- 		put_unaligned(atomic_long_read(&mib[i]), &stats[i]);
++	/* How many times this chunk have been sent, for prsctp RTX policy */
++	int sent_count;
++
+ 	/* This is our link to the per-transport transmitted list.  */
+ 	struct list_head transmitted_list;
  
--	memset(&stats[items], 0, pad);
-+	memset(&stats[ICMP6_MIB_MAX], 0, pad);
- }
+@@ -610,9 +613,6 @@ struct sctp_chunk {
+ 	 */
+ 	unsigned long prsctp_param;
  
- static inline void __snmp6_fill_stats64(u64 *stats, void __percpu *mib,
-@@ -5005,7 +5005,7 @@ static void snmp6_fill_stats(u64 *stats, struct inet6_dev *idev, int attrtype,
- 				     offsetof(struct ipstats_mib, syncp));
- 		break;
- 	case IFLA_INET6_ICMP6STATS:
--		__snmp6_fill_statsdev(stats, idev->stats.icmpv6dev->mibs, ICMP6_MIB_MAX, bytes);
-+		__snmp6_fill_statsdev(stats, idev->stats.icmpv6dev->mibs, bytes);
- 		break;
- 	}
- }
+-	/* How many times this chunk have been sent, for prsctp RTX policy */
+-	int sent_count;
+-
+ 	/* Which association does this belong to?  */
+ 	struct sctp_association *asoc;
+ 
 -- 
-2.5.5
+2.1.0
 
