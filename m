@@ -1,33 +1,33 @@
-From: Robert David <clarkraymond377@gmail.com>
-Date: Sun, 21 Aug 2016 06:50:47 +0000
-Subject: Attention Beneficially
-Message-Id: <908285276.426230.1471762247322@mail.yahoo.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 28 Sep 2016 18:37:25 +0000
+Subject: [PATCHv3 net 0/3] sctp: a bunch of fixes for prsctp polices
+Message-Id: <cover.1475087147.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-Attention Beneficially
+This patchset is to fix 2 issues for prsctp polices:
 
+  1. patch 1 and 2 fix "netperf-Throughput_Mbps -37.2% regression" issue
+     when overloading the CPU.
 
-WESTERN UNION
+  2. patch 3 fix "prsctp polices should check both sides' prsctp_capable,
+     instead of only local side".
 
-This is very urgent Our Operation manager has sent your first payment of $5000.00 to you. Here is what we need from you to complete the
-transfer, Your Name, Your Address,A Copy Of Your ID and Your Telephone Number: Noted That Only Fee Request from You Is to
-Reactivate Transfer Files which is Sum Of $65Only, No More Fee again after that.
-Western Union Agent: Mr. Peterson Godwin
-Direct phone line is: + 229 98782817
-E-mail ::(westernunion8087@gmail.com)
+Xin Long (3):
+  sctp: move sent_count to the memory hole in sctp_chunk
+  sctp: remove prsctp_param from sctp_chunk
+  sctp: change to check peer prsctp_capable when using prsctp polices
 
-Bellow is your first payment for $5000usd sent today in your name.
-Sender Name: Mr. 
-MTCN: 
-Question
-Answer
-Amount Sent: $5000.00
+ include/net/sctp/structs.h | 13 +++----------
+ net/sctp/chunk.c           | 11 ++++++++---
+ net/sctp/outqueue.c        | 12 ++++++------
+ net/sctp/sm_make_chunk.c   | 15 ---------------
+ 4 files changed, 17 insertions(+), 34 deletions(-)
 
-You can use this link to confirm the payment,
+-- 
+2.1.0
 
-Best Regards,
-Mr.Joseph Ezo
