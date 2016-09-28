@@ -1,23 +1,171 @@
-From: David Miller <davem@davemloft.net>
-Date: Sun, 11 Sep 2016 04:19:28 +0000
-Subject: Re: [PATCH 0/8] net: use IS_ENABLED() instead of checking for built-in or module
-Message-Id: <20160910.211928.1782362547702903708.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 28 Sep 2016 18:55:44 +0000
+Subject: [PATCH net] sctp: fix the issue sctp_diag uses lock_sock in rcu_read_lock
+Message-Id: <bd1a86ba935ffa02392b6c1271e7c06433967856.1475088944.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1473425000-9782-1-git-send-email-javier@osg.samsung.com>
-In-Reply-To: <1473425000-9782-1-git-send-email-javier@osg.samsung.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: javier@osg.samsung.com
-Cc: linux-kernel@vger.kernel.org, kuznet@ms2.inr.ac.ru, nikolay@cumulusnetworks.com, jchapman@katalix.com, aduyck@mirantis.com, vyasevich@gmail.com, fw@strlen.de, acme@ghostprotocols.net, yoshfuji@linux-ipv6.org, daniel@iogearbox.net, stephen@networkplumber.org, tom@herbertland.com, linux-sctp@vger.kernel.org, a@unstable.cc, jhs@mojatatu.com, herbert@gondor.apana.org.au, mugunthanvnm@ti.com, steffen.klassert@secunet.com, edumazet@google.com, felipe.balbi@linux.intel.com, netdev@vger.kernel.org, jiri@mellanox.com, nhorman@tuxdriver.com, jarod@redhat.com, kaber@trash.net, pabeni@redhat.com, jmorris@namei.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-From: Javier Martinez Canillas <javier@osg.samsung.com>
-Date: Fri,  9 Sep 2016 08:43:12 -0400
+When sctp dumps all the ep->assocs, it needs to lock_sock first,
+but now it locks sock in rcu_read_lock, and lock_sock may sleep,
+which would break rcu_read_lock.
 
-> This trivial series replace the open coding to check for a Kconfig symbol
-> being built-in or module, with IS_ENABLED() macro that does exactly that.
-> 
-> Using the macro makes the code more readable by helping abstract away some
-> of the Kconfig built-in and module enable details.
+This patch is to get and hold one sock when traversing the list.
+After that and get out of rcu_read_lock, lock and dump it. Then
+it will traverse the list again to get the next one until all
+sctp socks are dumped.
 
-Series applied, thanks.
+For sctp_diag_dump_one, it fixes this issue by holding asoc and
+moving cb() out of rcu_read_lock in sctp_transport_lookup_process.
+
+Fixes: 8f840e47f190 ("sctp: add the sctp_diag.c file")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/sctp_diag.c | 58 ++++++++++++++++++++++++++++++++++++----------------
+ net/sctp/socket.c    | 10 ++++++---
+ 2 files changed, 47 insertions(+), 21 deletions(-)
+
+diff --git a/net/sctp/sctp_diag.c b/net/sctp/sctp_diag.c
+index f3508aa..cef0cee 100644
+--- a/net/sctp/sctp_diag.c
++++ b/net/sctp/sctp_diag.c
+@@ -272,28 +272,17 @@ out:
+ 	return err;
+ }
+ 
+-static int sctp_tsp_dump(struct sctp_transport *tsp, void *p)
++static int sctp_sock_dump(struct sock *sk, void *p)
+ {
+-	struct sctp_endpoint *ep = tsp->asoc->ep;
++	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
+ 	struct sctp_comm_param *commp = p;
+-	struct sock *sk = ep->base.sk;
+ 	struct sk_buff *skb = commp->skb;
+ 	struct netlink_callback *cb = commp->cb;
+ 	const struct inet_diag_req_v2 *r = commp->r;
+-	struct sctp_association *assoc -		list_entry(ep->asocs.next, struct sctp_association, asocs);
++	struct sctp_association *assoc;
+ 	int err = 0;
+ 
+-	/* find the ep only once through the transports by this condition */
+-	if (tsp->asoc != assoc)
+-		goto out;
+-
+-	if (r->sdiag_family != AF_UNSPEC && sk->sk_family != r->sdiag_family)
+-		goto out;
+-
+ 	lock_sock(sk);
+-	if (sk != assoc->base.sk)
+-		goto release;
+ 	list_for_each_entry(assoc, &ep->asocs, asocs) {
+ 		if (cb->args[4] < cb->args[1])
+ 			goto next;
+@@ -312,7 +301,7 @@ static int sctp_tsp_dump(struct sctp_transport *tsp, void *p)
+ 					cb->nlh->nlmsg_seq,
+ 					NLM_F_MULTI, cb->nlh) < 0) {
+ 			cb->args[3] = 1;
+-			err = 2;
++			err = 1;
+ 			goto release;
+ 		}
+ 		cb->args[3] = 1;
+@@ -321,7 +310,7 @@ static int sctp_tsp_dump(struct sctp_transport *tsp, void *p)
+ 					sk_user_ns(NETLINK_CB(cb->skb).sk),
+ 					NETLINK_CB(cb->skb).portid,
+ 					cb->nlh->nlmsg_seq, 0, cb->nlh) < 0) {
+-			err = 2;
++			err = 1;
+ 			goto release;
+ 		}
+ next:
+@@ -333,10 +322,35 @@ next:
+ 	cb->args[4] = 0;
+ release:
+ 	release_sock(sk);
++	sock_put(sk);
+ 	return err;
++}
++
++static int sctp_get_sock(struct sctp_transport *tsp, void *p)
++{
++	struct sctp_endpoint *ep = tsp->asoc->ep;
++	struct sctp_comm_param *commp = p;
++	struct sock *sk = ep->base.sk;
++	struct netlink_callback *cb = commp->cb;
++	const struct inet_diag_req_v2 *r = commp->r;
++	struct sctp_association *assoc +		list_entry(ep->asocs.next, struct sctp_association, asocs);
++
++	/* find the ep only once through the transports by this condition */
++	if (tsp->asoc != assoc)
++		goto out;
++
++	if (r->sdiag_family != AF_UNSPEC && sk->sk_family != r->sdiag_family)
++		goto out;
++
++	sock_hold(sk);
++	cb->args[5] = (long)sk;
++
++	return 1;
++
+ out:
+ 	cb->args[2]++;
+-	return err;
++	return 0;
+ }
+ 
+ static int sctp_ep_dump(struct sctp_endpoint *ep, void *p)
+@@ -472,10 +486,18 @@ skip:
+ 	 * 2 : to record the transport pos of this time's traversal
+ 	 * 3 : to mark if we have dumped the ep info of the current asoc
+ 	 * 4 : to work as a temporary variable to traversal list
++	 * 5 : to save the sk we get from travelsing the tsp list.
+ 	 */
+ 	if (!(idiag_states & ~(TCPF_LISTEN | TCPF_CLOSE)))
+ 		goto done;
+-	sctp_for_each_transport(sctp_tsp_dump, net, cb->args[2], &commp);
++
++next:
++	cb->args[5] = 0;
++	sctp_for_each_transport(sctp_get_sock, net, cb->args[2], &commp);
++
++	if (cb->args[5] && !sctp_sock_dump((struct sock *)cb->args[5], &commp))
++		goto next;
++
+ done:
+ 	cb->args[1] = cb->args[4];
+ 	cb->args[4] = 0;
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 9fc417a..8ed2d99 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4469,17 +4469,21 @@ int sctp_transport_lookup_process(int (*cb)(struct sctp_transport *, void *),
+ 				  const union sctp_addr *paddr, void *p)
+ {
+ 	struct sctp_transport *transport;
+-	int err = 0;
++	int err = -ENOENT;
+ 
+ 	rcu_read_lock();
+ 	transport = sctp_addrs_lookup_transport(net, laddr, paddr);
+ 	if (!transport || !sctp_transport_hold(transport))
+ 		goto out;
+-	err = cb(transport, p);
++
++	sctp_association_hold(transport->asoc);
+ 	sctp_transport_put(transport);
+ 
+-out:
+ 	rcu_read_unlock();
++	err = cb(transport, p);
++	sctp_association_put(transport->asoc);
++
++out:
+ 	return err;
+ }
+ EXPORT_SYMBOL_GPL(sctp_transport_lookup_process);
+-- 
+2.1.0
+
