@@ -1,83 +1,95 @@
-From: Jia He <hejianet@gmail.com>
-Date: Mon, 26 Sep 2016 08:09:11 +0000
-Subject: [PATCH v4 3/7] proc: Reduce cache miss in snmp6_seq_show
-Message-Id: <1474877355-12920-4-git-send-email-hejianet@gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 28 Sep 2016 10:46:31 +0000
+Subject: [PATCHv2 net 4/5] sctp: change to check peer prsctp_capable when using prsctp polices
+Message-Id: <7a83f44a517780fd7bc60caa49479fbc7e606936.1475059350.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1474877355-12920-1-git-send-email-hejianet@gmail.com>
-In-Reply-To: <1474877355-12920-1-git-send-email-hejianet@gmail.com>
+References: <cover.1475059350.git.lucien.xin@gmail.com>
+ <03a642a76d02e8536404aa27561c44e348f3e3a0.1475059350.git.lucien.xin@gmail.com>
+ <ca37ab66bfd8b97078ff8e3645bc7c1e909396e8.1475059350.git.lucien.xin@gmail.com>
+ <da30a54fd8b6674e6cf6f013a3633d59aaeea020.1475059350.git.lucien.xin@gmail.com>
+In-Reply-To: <da30a54fd8b6674e6cf6f013a3633d59aaeea020.1475059350.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>, marcelo.leitner@gmail.com, Jia He <hejianet@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-This is to use the generic interface snmp_get_cpu_field{,64}_batch to
-aggregate the data by going through all the items of each cpu sequentially.
+Now before using prsctp polices, sctp uses asoc->prsctp_enable to
+check if prsctp is enabled. However asoc->prsctp_enable is set only
+means local host support prsctp, sctp should not abandon packet if
+peer host doesn't enable prsctp.
 
-Signed-off-by: Jia He <hejianet@gmail.com>
+So this patch is to use asoc->peer.prsctp_capable to check if prsctp
+is enabled on both side, instead of asoc->prsctp_enable, as asoc's
+peer.prsctp_capable is set only when local and peer both enable prsctp.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/ipv6/proc.c | 32 +++++++++++++++++++++++---------
- 1 file changed, 23 insertions(+), 9 deletions(-)
+ net/sctp/chunk.c    | 4 ++--
+ net/sctp/outqueue.c | 8 ++++----
+ 2 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/net/ipv6/proc.c b/net/ipv6/proc.c
-index 679253d0..e047701 100644
---- a/net/ipv6/proc.c
-+++ b/net/ipv6/proc.c
-@@ -30,6 +30,11 @@
- #include <net/transp_v6.h>
- #include <net/ipv6.h>
- 
-+#define MAX4(a, b, c, d) \
-+	max_t(u32, max_t(u32, a, b), max_t(u32, c, d))
-+#define SNMP_MIB_MAX MAX4(UDP_MIB_MAX, TCP_MIB_MAX, \
-+			IPSTATS_MIB_MAX, ICMP_MIB_MAX)
-+
- static int sockstat6_seq_show(struct seq_file *seq, void *v)
- {
- 	struct net *net = seq->private;
-@@ -192,13 +197,19 @@ static void snmp6_seq_show_item(struct seq_file *seq, void __percpu *pcpumib,
- 				const struct snmp_mib *itemlist)
- {
- 	int i;
--	unsigned long val;
--
--	for (i = 0; itemlist[i].name; i++) {
--		val = pcpumib ?
--			snmp_fold_field(pcpumib, itemlist[i].entry) :
--			atomic_long_read(smib + itemlist[i].entry);
--		seq_printf(seq, "%-32s\t%lu\n", itemlist[i].name, val);
-+	unsigned long buff[SNMP_MIB_MAX];
-+
-+	if (pcpumib) {
-+		memset(buff, 0, sizeof(unsigned long) * SNMP_MIB_MAX);
-+
-+		snmp_get_cpu_field_batch(buff, itemlist, pcpumib);
-+		for (i = 0; itemlist[i].name; i++)
-+			seq_printf(seq, "%-32s\t%lu\n",
-+				   itemlist[i].name, buff[i]);
-+	} else {
-+		for (i = 0; itemlist[i].name; i++)
-+			seq_printf(seq, "%-32s\t%lu\n", itemlist[i].name,
-+				   atomic_long_read(smib + itemlist[i].entry));
+diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
+index 14990e2..0a3dbec 100644
+--- a/net/sctp/chunk.c
++++ b/net/sctp/chunk.c
+@@ -179,7 +179,7 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
+ 			 msg, msg->expires_at, jiffies);
  	}
- }
  
-@@ -206,10 +217,13 @@ static void snmp6_seq_show_item64(struct seq_file *seq, void __percpu *mib,
- 				  const struct snmp_mib *itemlist, size_t syncpoff)
+-	if (asoc->prsctp_enable &&
++	if (asoc->peer.prsctp_capable &&
+ 	    SCTP_PR_TTL_ENABLED(sinfo->sinfo_flags))
+ 		msg->expires_at  			jiffies + msecs_to_jiffies(sinfo->sinfo_timetolive);
+@@ -340,7 +340,7 @@ errout:
+ /* Check whether this message has expired. */
+ int sctp_chunk_abandoned(struct sctp_chunk *chunk)
  {
- 	int i;
-+	u64 buff64[SNMP_MIB_MAX];
-+
-+	memset(buff64, 0, sizeof(unsigned long) * SNMP_MIB_MAX);
+-	if (!chunk->asoc->prsctp_enable ||
++	if (!chunk->asoc->peer.prsctp_capable ||
+ 	    !SCTP_PR_POLICY(chunk->sinfo.sinfo_flags)) {
+ 		struct sctp_datamsg *msg = chunk->msg;
  
-+	snmp_get_cpu_field64_batch(buff64, itemlist, mib, syncpoff);
- 	for (i = 0; itemlist[i].name; i++)
--		seq_printf(seq, "%-32s\t%llu\n", itemlist[i].name,
--			   snmp_fold_field64(mib, itemlist[i].entry, syncpoff));
-+		seq_printf(seq, "%-32s\t%llu\n", itemlist[i].name, buff64[i]);
- }
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 17b6fcd..70d45c3e 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -326,7 +326,7 @@ int sctp_outq_tail(struct sctp_outq *q, struct sctp_chunk *chunk, gfp_t gfp)
  
- static int snmp6_seq_show(struct seq_file *seq, void *v)
+ 			sctp_chunk_hold(chunk);
+ 			sctp_outq_tail_data(q, chunk);
+-			if (chunk->asoc->prsctp_enable &&
++			if (chunk->asoc->peer.prsctp_capable &&
+ 			    SCTP_PR_PRIO_ENABLED(chunk->sinfo.sinfo_flags))
+ 				chunk->asoc->sent_cnt_removable++;
+ 			if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
+@@ -442,7 +442,7 @@ void sctp_prsctp_prune(struct sctp_association *asoc,
+ {
+ 	struct sctp_transport *transport;
+ 
+-	if (!asoc->prsctp_enable || !asoc->sent_cnt_removable)
++	if (!asoc->peer.prsctp_capable || !asoc->sent_cnt_removable)
+ 		return;
+ 
+ 	msg_len = sctp_prsctp_prune_sent(asoc, sinfo,
+@@ -1053,7 +1053,7 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
+ 
+ 				/* Mark as failed send. */
+ 				sctp_chunk_fail(chunk, SCTP_ERROR_INV_STRM);
+-				if (asoc->prsctp_enable &&
++				if (asoc->peer.prsctp_capable &&
+ 				    SCTP_PR_PRIO_ENABLED(chunk->sinfo.sinfo_flags))
+ 					asoc->sent_cnt_removable--;
+ 				sctp_chunk_free(chunk);
+@@ -1345,7 +1345,7 @@ int sctp_outq_sack(struct sctp_outq *q, struct sctp_chunk *chunk)
+ 		tsn = ntohl(tchunk->subh.data_hdr->tsn);
+ 		if (TSN_lte(tsn, ctsn)) {
+ 			list_del_init(&tchunk->transmitted_list);
+-			if (asoc->prsctp_enable &&
++			if (asoc->peer.prsctp_capable &&
+ 			    SCTP_PR_PRIO_ENABLED(chunk->sinfo.sinfo_flags))
+ 				asoc->sent_cnt_removable--;
+ 			sctp_chunk_free(tchunk);
 -- 
-2.5.5
+2.1.0
 
