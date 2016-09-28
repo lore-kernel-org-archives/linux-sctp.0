@@ -1,14 +1,14 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 26 Sep 2016 09:47:54 +0000
-Subject: [PATCH net 5/5] sctp: remove the old ttl expires policy
-Message-Id: <b6511ba03dd9ceb47c45164c2312fe700cb97cbe.1474883200.git.lucien.xin@gmail.com>
+Date: Wed, 28 Sep 2016 10:46:32 +0000
+Subject: [PATCHv2 net 5/5] sctp: remove the old ttl expires policy
+Message-Id: <6cfcc552275974d6c37eee9b3d032377f8de54a1.1475059350.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1474883200.git.lucien.xin@gmail.com>
- <03a642a76d02e8536404aa27561c44e348f3e3a0.1474883200.git.lucien.xin@gmail.com>
- <e8146a7075544ccb2631117f507cfd51e20b4cde.1474883200.git.lucien.xin@gmail.com>
- <3864349cd18927ae8a2bea3e6f520d69dc436218.1474883200.git.lucien.xin@gmail.com>
- <c43f63d2ef47b55661072738b23736b5de3792e2.1474883200.git.lucien.xin@gmail.com>
-In-Reply-To: <c43f63d2ef47b55661072738b23736b5de3792e2.1474883200.git.lucien.xin@gmail.com>
+References: <cover.1475059350.git.lucien.xin@gmail.com>
+ <03a642a76d02e8536404aa27561c44e348f3e3a0.1475059350.git.lucien.xin@gmail.com>
+ <ca37ab66bfd8b97078ff8e3645bc7c1e909396e8.1475059350.git.lucien.xin@gmail.com>
+ <da30a54fd8b6674e6cf6f013a3633d59aaeea020.1475059350.git.lucien.xin@gmail.com>
+ <7a83f44a517780fd7bc60caa49479fbc7e606936.1475059350.git.lucien.xin@gmail.com>
+In-Reply-To: <7a83f44a517780fd7bc60caa49479fbc7e606936.1475059350.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -34,7 +34,7 @@ Signed-off-by: Xin Long <lucien.xin@gmail.com>
  3 files changed, 8 insertions(+), 28 deletions(-)
 
 diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index ed74ba0..a4a18f1 100644
+index 49a4d37..2463354 100644
 --- a/include/net/sctp/structs.h
 +++ b/include/net/sctp/structs.h
 @@ -530,7 +530,6 @@ struct sctp_datamsg {
@@ -112,7 +112,7 @@ index 0a3dbec..8d366fc 100644
  	/* PRIO policy is processed by sendmsg, not here */
  
 diff --git a/net/sctp/output.c b/net/sctp/output.c
-index 483d2ed..e50079d 100644
+index db01620..a5b8dad 100644
 --- a/net/sctp/output.c
 +++ b/net/sctp/output.c
 @@ -868,9 +868,6 @@ static void sctp_packet_append_data(struct sctp_packet *packet,
