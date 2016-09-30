@@ -1,47 +1,48 @@
-From: Edward Cree <ecree@solarflare.com>
-Date: Wed, 28 Sep 2016 15:58:22 +0000
-Subject: Local variable ordering (was Re: [PATCH v5 0/7] Reduce cache miss for snmp_fold_field)
-Message-Id: <5734f230-eafa-45a1-9635-98721f872b38@solarflare.com>
+From: Jia He <hejianet@gmail.com>
+Date: Fri, 30 Sep 2016 03:29:01 +0000
+Subject: [PATCH v6 4/7] proc: Reduce cache miss in sctp_snmp_seq_show
+Message-Id: <1475206144-23228-5-git-send-email-hejianet@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1475043748-18161-1-git-send-email-hejianet@gmail.com>
- <20160928.050817.110671274247345232.davem@davemloft.net>
- <c44daa11-dc57-84fa-35cc-40ee0fe293f3@gmail.com>
-In-Reply-To: <c44daa11-dc57-84fa-35cc-40ee0fe293f3@gmail.com>
+References: <1475206144-23228-1-git-send-email-hejianet@gmail.com>
+In-Reply-To: <1475206144-23228-1-git-send-email-hejianet@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: hejianet <hejianet@gmail.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, kuznet@ms2.inr.ac.ru, jmorris@namei.org, yoshfuji@linux-ipv6.org, kaber@trash.net, vyasevich@gmail.com, nhorman@tuxdriver.com, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, marcelo.leitner@gmail.com
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>, marcelo.leitner@gmail.com, Jia He <hejianet@gmail.com>
 
-On 28/09/16 14:45, hejianet wrote:
->
->
-> On 9/28/16 5:08 PM, David Miller wrote:
->> From: Jia He <hejianet@gmail.com>
->> Date: Wed, 28 Sep 2016 14:22:21 +0800
->>
->>> v5:
->>> - order local variables from longest to shortest line
->> I still see many cases where this problem still exists.  Please
->> do not resubmit this patch series until you fix all of them.
->>
->> Patch #2:
->>
->> -static int snmp_seq_show(struct seq_file *seq, void *v)
->> +static int snmp_seq_show_ipstats(struct seq_file *seq, void *v)
->>   {
->>       int i;
->> +    u64 buff64[IPSTATS_MIB_MAX];
->>       struct net *net = seq->private;
->>
->> The order should be "net" then "buff64" then "i".
-> Sorry for my bad eyesight and quick hand :(
-> B.R.
-> Jia
-A few months back I wrote a script to help find these:
-https://github.com/ecree-solarflare/xmastree
-It can check a source file or a patch.
-Posting in the hope that people will find it useful.
+This is to use the generic interfaces snmp_get_cpu_field{,64}_batch to
+aggregate the data by going through all the items of each cpu sequentially.
 
--Ed
-The information contained in this message is confidential and is intended for the addressee(s) only. If you have received this message in error, please notify the sender immediately and delete the message. Unless you are an addressee (or authorized to receive for an addressee), you may not use, copy or disclose to anyone this message or any information contained in this message. The unauthorized use, disclosure, copying or alteration of this message is strictly prohibited.
+Signed-off-by: Jia He <hejianet@gmail.com>
+---
+ net/sctp/proc.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+index ef8ba77..09e16c2 100644
+--- a/net/sctp/proc.c
++++ b/net/sctp/proc.c
+@@ -73,13 +73,17 @@ static const struct snmp_mib sctp_snmp_list[] = {
+ /* Display sctp snmp mib statistics(/proc/net/sctp/snmp). */
+ static int sctp_snmp_seq_show(struct seq_file *seq, void *v)
+ {
++	unsigned long buff[SCTP_MIB_MAX];
+ 	struct net *net = seq->private;
+ 	int i;
+ 
++	memset(buff, 0, sizeof(unsigned long) * SCTP_MIB_MAX);
++
++	snmp_get_cpu_field_batch(buff, sctp_snmp_list,
++				 net->sctp.sctp_statistics);
+ 	for (i = 0; sctp_snmp_list[i].name != NULL; i++)
+ 		seq_printf(seq, "%-32s\t%ld\n", sctp_snmp_list[i].name,
+-			   snmp_fold_field(net->sctp.sctp_statistics,
+-				      sctp_snmp_list[i].entry));
++						buff[i]);
+ 
+ 	return 0;
+ }
+-- 
+2.5.5
+
