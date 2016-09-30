@@ -1,166 +1,61 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 13 Sep 2016 18:04:22 +0000
-Subject: [PATCHv2 net 5/6] sctp: make sctp_outq_flush/tail/uncork return void
-Message-Id: <6599cec72f3ff913d3b99e60d5f2014df26915de.1473789537.git.lucien.xin@gmail.com>
+From: Jia He <hejianet@gmail.com>
+Date: Fri, 30 Sep 2016 03:28:58 +0000
+Subject: [PATCH v6 1/7] net:snmp: Introduce generic interfaces for snmp_get_cpu_field{,64}
+Message-Id: <1475206144-23228-2-git-send-email-hejianet@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1473789537.git.lucien.xin@gmail.com>
- <4f21a8880a3f8e7daed8a53f10649a1d4dfbb12a.1473789537.git.lucien.xin@gmail.com>
- <10622d6256e2c49fa7ec555dec3bd35b47a50b2b.1473789537.git.lucien.xin@gmail.com>
- <6b43f456f94dfcaeabc8071806f0609fed59a595.1473789537.git.lucien.xin@gmail.com>
- <f4f0d53e93368c69f55df9f4aba4da2148fcca7e.1473789537.git.lucien.xin@gmail.com>
-In-Reply-To: <f4f0d53e93368c69f55df9f4aba4da2148fcca7e.1473789537.git.lucien.xin@gmail.com>
+References: <1475206144-23228-1-git-send-email-hejianet@gmail.com>
+In-Reply-To: <1475206144-23228-1-git-send-email-hejianet@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>, marcelo.leitner@gmail.com, Jia He <hejianet@gmail.com>
 
-sctp_outq_flush return value is meaningless now, this patch is
-to make sctp_outq_flush return void, as well as sctp_outq_fail
-and sctp_outq_uncork.
+This is to introduce the generic interfaces for snmp_get_cpu_field{,64}.
+It exchanges the two for-loops for collecting the percpu statistics data.
+This can aggregate the data by going through all the items of each cpu
+sequentially.
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Jia He <hejianet@gmail.com>
+Suggested-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- include/net/sctp/structs.h |  4 ++--
- net/sctp/outqueue.c        | 19 +++++++------------
- net/sctp/sm_sideeffect.c   |  9 ++++-----
- 3 files changed, 13 insertions(+), 19 deletions(-)
+ include/net/ip.h | 23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index f61fb7c..8693dc4 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -1077,7 +1077,7 @@ struct sctp_outq {
- void sctp_outq_init(struct sctp_association *, struct sctp_outq *);
- void sctp_outq_teardown(struct sctp_outq *);
- void sctp_outq_free(struct sctp_outq*);
--int sctp_outq_tail(struct sctp_outq *, struct sctp_chunk *chunk, gfp_t);
-+void sctp_outq_tail(struct sctp_outq *, struct sctp_chunk *chunk, gfp_t);
- int sctp_outq_sack(struct sctp_outq *, struct sctp_chunk *);
- int sctp_outq_is_empty(const struct sctp_outq *);
- void sctp_outq_restart(struct sctp_outq *);
-@@ -1085,7 +1085,7 @@ void sctp_outq_restart(struct sctp_outq *);
- void sctp_retransmit(struct sctp_outq *, struct sctp_transport *,
- 		     sctp_retransmit_reason_t);
- void sctp_retransmit_mark(struct sctp_outq *, struct sctp_transport *, __u8);
--int sctp_outq_uncork(struct sctp_outq *, gfp_t gfp);
-+void sctp_outq_uncork(struct sctp_outq *, gfp_t gfp);
- void sctp_prsctp_prune(struct sctp_association *asoc,
- 		       struct sctp_sndrcvinfo *sinfo, int msg_len);
- /* Uncork and flush an outqueue.  */
-diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index 052a479..8c3f446 100644
---- a/net/sctp/outqueue.c
-+++ b/net/sctp/outqueue.c
-@@ -68,7 +68,7 @@ static void sctp_mark_missing(struct sctp_outq *q,
- 
- static void sctp_generate_fwdtsn(struct sctp_outq *q, __u32 sack_ctsn);
- 
--static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp);
-+static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp);
- 
- /* Add data to the front of the queue. */
- static inline void sctp_outq_head_data(struct sctp_outq *q,
-@@ -285,10 +285,9 @@ void sctp_outq_free(struct sctp_outq *q)
+diff --git a/include/net/ip.h b/include/net/ip.h
+index 9742b92..bc43c0f 100644
+--- a/include/net/ip.h
++++ b/include/net/ip.h
+@@ -219,6 +219,29 @@ static inline u64 snmp_fold_field64(void __percpu *mib, int offt, size_t syncp_o
  }
+ #endif
  
- /* Put a new chunk in an sctp_outq.  */
--int sctp_outq_tail(struct sctp_outq *q, struct sctp_chunk *chunk, gfp_t gfp)
-+void sctp_outq_tail(struct sctp_outq *q, struct sctp_chunk *chunk, gfp_t gfp)
- {
- 	struct net *net = sock_net(q->asoc->base.sk);
--	int error = 0;
++#define snmp_get_cpu_field64_batch(buff64, stats_list, mib_statistic, offset) \
++{ \
++	int i, c; \
++	for_each_possible_cpu(c) { \
++		for (i = 0; stats_list[i].name; i++) \
++			buff64[i] += snmp_get_cpu_field64( \
++					mib_statistic, \
++					c, stats_list[i].entry, \
++					offset); \
++	} \
++}
++
++#define snmp_get_cpu_field_batch(buff, stats_list, mib_statistic) \
++{ \
++	int i, c; \
++	for_each_possible_cpu(c) { \
++		for (i = 0; stats_list[i].name; i++) \
++			buff[i] += snmp_get_cpu_field( \
++						mib_statistic, \
++						c, stats_list[i].entry); \
++	} \
++}
++
+ void inet_get_local_port_range(struct net *net, int *low, int *high);
  
- 	pr_debug("%s: outq:%p, chunk:%p[%s]\n", __func__, q, chunk,
- 		 chunk && chunk->chunk_hdr ?
-@@ -318,9 +317,7 @@ int sctp_outq_tail(struct sctp_outq *q, struct sctp_chunk *chunk, gfp_t gfp)
- 	}
- 
- 	if (!q->cork)
--		error = sctp_outq_flush(q, 0, gfp);
--
--	return error;
-+		sctp_outq_flush(q, 0, gfp);
- }
- 
- /* Insert a chunk into the sorted list based on the TSNs.  The retransmit list
-@@ -748,12 +745,12 @@ redo:
- }
- 
- /* Cork the outqueue so queued chunks are really queued. */
--int sctp_outq_uncork(struct sctp_outq *q, gfp_t gfp)
-+void sctp_outq_uncork(struct sctp_outq *q, gfp_t gfp)
- {
- 	if (q->cork)
- 		q->cork = 0;
- 
--	return sctp_outq_flush(q, 0, gfp);
-+	sctp_outq_flush(q, 0, gfp);
- }
- 
- 
-@@ -766,7 +763,7 @@ int sctp_outq_uncork(struct sctp_outq *q, gfp_t gfp)
-  * locking concerns must be made.  Today we use the sock lock to protect
-  * this function.
-  */
--static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
-+static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- {
- 	struct sctp_packet *packet;
- 	struct sctp_packet singleton;
-@@ -891,7 +888,7 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 			error = sctp_packet_transmit(&singleton, gfp);
- 			if (error < 0) {
- 				asoc->base.sk->sk_err = -error;
--				return 0;
-+				return;
- 			}
- 			break;
- 
-@@ -1175,8 +1172,6 @@ sctp_flush_out:
- 		/* Clear the burst limited state, if any */
- 		sctp_transport_burst_reset(t);
- 	}
--
--	return 0;
- }
- 
- /* Update unack_data based on the incoming SACK chunk */
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index cf6e4f0..c345bf1 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -1421,8 +1421,7 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
- 				local_cork = 1;
- 			}
- 			/* Send a chunk to our peer.  */
--			error = sctp_outq_tail(&asoc->outqueue, cmd->obj.chunk,
--					       gfp);
-+			sctp_outq_tail(&asoc->outqueue, cmd->obj.chunk, gfp);
- 			break;
- 
- 		case SCTP_CMD_SEND_PKT:
-@@ -1676,7 +1675,7 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
- 		case SCTP_CMD_FORCE_PRIM_RETRAN:
- 			t = asoc->peer.retran_path;
- 			asoc->peer.retran_path = asoc->peer.primary_path;
--			error = sctp_outq_uncork(&asoc->outqueue, gfp);
-+			sctp_outq_uncork(&asoc->outqueue, gfp);
- 			local_cork = 0;
- 			asoc->peer.retran_path = t;
- 			break;
-@@ -1733,9 +1732,9 @@ out:
- 	 */
- 	if (asoc && SCTP_EVENT_T_CHUNK = event_type && chunk) {
- 		if (chunk->end_of_packet || chunk->singleton)
--			error = sctp_outq_uncork(&asoc->outqueue, gfp);
-+			sctp_outq_uncork(&asoc->outqueue, gfp);
- 	} else if (local_cork)
--		error = sctp_outq_uncork(&asoc->outqueue, gfp);
-+		sctp_outq_uncork(&asoc->outqueue, gfp);
- 
- 	if (sp->data_ready_signalled)
- 		sp->data_ready_signalled = 0;
+ #ifdef CONFIG_SYSCTL
 -- 
-2.1.0
+2.5.5
 
