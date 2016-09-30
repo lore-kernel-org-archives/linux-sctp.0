@@ -1,95 +1,60 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 28 Sep 2016 10:46:31 +0000
-Subject: [PATCHv2 net 4/5] sctp: change to check peer prsctp_capable when using prsctp polices
-Message-Id: <7a83f44a517780fd7bc60caa49479fbc7e606936.1475059350.git.lucien.xin@gmail.com>
+From: Jia He <hejianet@gmail.com>
+Date: Fri, 30 Sep 2016 03:29:03 +0000
+Subject: [PATCH v6 6/7] ipv6: Remove useless parameter in __snmp6_fill_statsdev
+Message-Id: <1475206144-23228-7-git-send-email-hejianet@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1475059350.git.lucien.xin@gmail.com>
- <03a642a76d02e8536404aa27561c44e348f3e3a0.1475059350.git.lucien.xin@gmail.com>
- <ca37ab66bfd8b97078ff8e3645bc7c1e909396e8.1475059350.git.lucien.xin@gmail.com>
- <da30a54fd8b6674e6cf6f013a3633d59aaeea020.1475059350.git.lucien.xin@gmail.com>
-In-Reply-To: <da30a54fd8b6674e6cf6f013a3633d59aaeea020.1475059350.git.lucien.xin@gmail.com>
+References: <1475206144-23228-1-git-send-email-hejianet@gmail.com>
+In-Reply-To: <1475206144-23228-1-git-send-email-hejianet@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>, marcelo.leitner@gmail.com, Jia He <hejianet@gmail.com>
 
-Now before using prsctp polices, sctp uses asoc->prsctp_enable to
-check if prsctp is enabled. However asoc->prsctp_enable is set only
-means local host support prsctp, sctp should not abandon packet if
-peer host doesn't enable prsctp.
+The parameter items(is always ICMP6_MIB_MAX) is useless for __snmp6_fill_statsdev
 
-So this patch is to use asoc->peer.prsctp_capable to check if prsctp
-is enabled on both side, instead of asoc->prsctp_enable, as asoc's
-peer.prsctp_capable is set only when local and peer both enable prsctp.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Jia He <hejianet@gmail.com>
 ---
- net/sctp/chunk.c    | 4 ++--
- net/sctp/outqueue.c | 8 ++++----
- 2 files changed, 6 insertions(+), 6 deletions(-)
+ net/ipv6/addrconf.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
-index 14990e2..0a3dbec 100644
---- a/net/sctp/chunk.c
-+++ b/net/sctp/chunk.c
-@@ -179,7 +179,7 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
- 			 msg, msg->expires_at, jiffies);
+diff --git a/net/ipv6/addrconf.c b/net/ipv6/addrconf.c
+index 2f1f5d4..35d4baa 100644
+--- a/net/ipv6/addrconf.c
++++ b/net/ipv6/addrconf.c
+@@ -4961,18 +4961,18 @@ static inline size_t inet6_if_nlmsg_size(void)
+ }
+ 
+ static inline void __snmp6_fill_statsdev(u64 *stats, atomic_long_t *mib,
+-				      int items, int bytes)
++					int bytes)
+ {
+ 	int i;
+-	int pad = bytes - sizeof(u64) * items;
++	int pad = bytes - sizeof(u64) * ICMP6_MIB_MAX;
+ 	BUG_ON(pad < 0);
+ 
+ 	/* Use put_unaligned() because stats may not be aligned for u64. */
+-	put_unaligned(items, &stats[0]);
+-	for (i = 1; i < items; i++)
++	put_unaligned(ICMP6_MIB_MAX, &stats[0]);
++	for (i = 1; i < ICMP6_MIB_MAX; i++)
+ 		put_unaligned(atomic_long_read(&mib[i]), &stats[i]);
+ 
+-	memset(&stats[items], 0, pad);
++	memset(&stats[ICMP6_MIB_MAX], 0, pad);
+ }
+ 
+ static inline void __snmp6_fill_stats64(u64 *stats, void __percpu *mib,
+@@ -5005,7 +5005,7 @@ static void snmp6_fill_stats(u64 *stats, struct inet6_dev *idev, int attrtype,
+ 				     offsetof(struct ipstats_mib, syncp));
+ 		break;
+ 	case IFLA_INET6_ICMP6STATS:
+-		__snmp6_fill_statsdev(stats, idev->stats.icmpv6dev->mibs, ICMP6_MIB_MAX, bytes);
++		__snmp6_fill_statsdev(stats, idev->stats.icmpv6dev->mibs, bytes);
+ 		break;
  	}
- 
--	if (asoc->prsctp_enable &&
-+	if (asoc->peer.prsctp_capable &&
- 	    SCTP_PR_TTL_ENABLED(sinfo->sinfo_flags))
- 		msg->expires_at  			jiffies + msecs_to_jiffies(sinfo->sinfo_timetolive);
-@@ -340,7 +340,7 @@ errout:
- /* Check whether this message has expired. */
- int sctp_chunk_abandoned(struct sctp_chunk *chunk)
- {
--	if (!chunk->asoc->prsctp_enable ||
-+	if (!chunk->asoc->peer.prsctp_capable ||
- 	    !SCTP_PR_POLICY(chunk->sinfo.sinfo_flags)) {
- 		struct sctp_datamsg *msg = chunk->msg;
- 
-diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index 17b6fcd..70d45c3e 100644
---- a/net/sctp/outqueue.c
-+++ b/net/sctp/outqueue.c
-@@ -326,7 +326,7 @@ int sctp_outq_tail(struct sctp_outq *q, struct sctp_chunk *chunk, gfp_t gfp)
- 
- 			sctp_chunk_hold(chunk);
- 			sctp_outq_tail_data(q, chunk);
--			if (chunk->asoc->prsctp_enable &&
-+			if (chunk->asoc->peer.prsctp_capable &&
- 			    SCTP_PR_PRIO_ENABLED(chunk->sinfo.sinfo_flags))
- 				chunk->asoc->sent_cnt_removable++;
- 			if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
-@@ -442,7 +442,7 @@ void sctp_prsctp_prune(struct sctp_association *asoc,
- {
- 	struct sctp_transport *transport;
- 
--	if (!asoc->prsctp_enable || !asoc->sent_cnt_removable)
-+	if (!asoc->peer.prsctp_capable || !asoc->sent_cnt_removable)
- 		return;
- 
- 	msg_len = sctp_prsctp_prune_sent(asoc, sinfo,
-@@ -1053,7 +1053,7 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 
- 				/* Mark as failed send. */
- 				sctp_chunk_fail(chunk, SCTP_ERROR_INV_STRM);
--				if (asoc->prsctp_enable &&
-+				if (asoc->peer.prsctp_capable &&
- 				    SCTP_PR_PRIO_ENABLED(chunk->sinfo.sinfo_flags))
- 					asoc->sent_cnt_removable--;
- 				sctp_chunk_free(chunk);
-@@ -1345,7 +1345,7 @@ int sctp_outq_sack(struct sctp_outq *q, struct sctp_chunk *chunk)
- 		tsn = ntohl(tchunk->subh.data_hdr->tsn);
- 		if (TSN_lte(tsn, ctsn)) {
- 			list_del_init(&tchunk->transmitted_list);
--			if (asoc->prsctp_enable &&
-+			if (asoc->peer.prsctp_capable &&
- 			    SCTP_PR_PRIO_ENABLED(chunk->sinfo.sinfo_flags))
- 				asoc->sent_cnt_removable--;
- 			sctp_chunk_free(tchunk);
+ }
 -- 
-2.1.0
+2.5.5
 
