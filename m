@@ -1,24 +1,128 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 13 Sep 2016 17:58:03 +0000
-Subject: Re: [PATCH net 1/6] sctp: remove the unnecessary state check in sctp_outq_tail
-Message-Id: <CADvbK_cwbn9zkUrzBUHnx6COy2y5wrbhhxy2tZaRzRNmdJCStA@mail.gmail.com>
+From: Jia He <hejianet@gmail.com>
+Date: Fri, 30 Sep 2016 03:28:57 +0000
+Subject: [PATCH v6 0/7] Reduce cache miss for snmp_fold_field
+Message-Id: <1475206144-23228-1-git-send-email-hejianet@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1473326067.git.lucien.xin@gmail.com> <1718155e984f63995d1be9b053c58aa1a645718e.1473326067.git.lucien.xin@gmail.com>
- <20160908142701.GC16608@hmsreliant.think-freely.org> <CADvbK_dxTYrPPFJT5UPZErZLbW9y9oRm+VWbQXxhruwV6UgOZA@mail.gmail.com>
- <20160908192319.GD16608@hmsreliant.think-freely.org> <CADvbK_ddvZ4855B1PPLYVY2JV1okKzYXCpv-quNMBXp0Qb5Otw@mail.gmail.com>
- <20160909142841.GB15908@hmsreliant.think-freely.org> <CADvbK_f-09NvfeCbeaZZF8+LuMASTYnrh+02RvTz5UR-huiR3g@mail.gmail.com>
- <20160912194838.GE17689@localhost.localdomain>
-In-Reply-To: <20160912194838.GE17689@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: Neil Horman <nhorman@tuxdriver.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>, marcelo.leitner@gmail.com, Jia He <hejianet@gmail.com>
 
->
-> I also don't see an issue with this patch, btw.
->
-> Xin, you may want to add more/such details to the changelog, specially
-> about the timer versus primitive handling.
->
-OK, I will post v2 of this patchset.
+In a PowerPc server with large cpu number(160), besides commit
+a3a773726c9f ("net: Optimize snmp stat aggregation by walking all
+the percpu data at once"), I watched several other snmp_fold_field
+callsites which would cause high cache miss rate.
+
+test source code:
+========
+My simple test case, which read from the procfs items endlessly:
+/***********************************************************/
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#define LINELEN  2560
+int main(int argc, char **argv)
+{
+        int i;
+        int fd = -1 ;
+        int rdsize = 0;
+        char buf[LINELEN+1];
+
+        buf[LINELEN] = 0;
+        memset(buf,0,LINELEN);
+
+        if(1 >= argc) {
+                printf("file name empty\n");
+                return -1;
+        }
+
+        fd = open(argv[1], O_RDWR, 0644);
+        if(0 > fd){
+                printf("open error\n");
+                return -2;
+        }
+
+        for(i=0;i<0xffffffff;i++) {
+                while(0 < (rdsize = read(fd,buf,LINELEN))){
+                        //nothing here
+                }
+
+                lseek(fd, 0, SEEK_SET);
+        }
+
+        close(fd);
+        return 0;
+}
+/**********************************************************/
+
+compile and run:
+========
+gcc test.c -o test
+
+perf stat -d -e cache-misses ./test /proc/net/snmp
+perf stat -d -e cache-misses ./test /proc/net/snmp6
+perf stat -d -e cache-misses ./test /proc/net/sctp/snmp
+perf stat -d -e cache-misses ./test /proc/net/xfrm_stat
+
+before the patch set:
+==========
+ Performance counter stats for 'system wide':
+
+         355911097      cache-misses                                                 [40.08%]
+        2356829300      L1-dcache-loads                                              [60.04%]
+         355642645      L1-dcache-load-misses     #   15.09% of all L1-dcache hits   [60.02%]
+         346544541      LLC-loads                                                    [59.97%]
+            389763      LLC-load-misses           #    0.11% of all LL-cache hits    [40.02%]
+
+       6.245162638 seconds time elapsed
+
+After the patch set:
+========= Performance counter stats for 'system wide':
+
+         194992476      cache-misses                                                 [40.03%]
+        6718051877      L1-dcache-loads                                              [60.07%]
+         194871921      L1-dcache-load-misses     #    2.90% of all L1-dcache hits   [60.11%]
+         187632232      LLC-loads                                                    [60.04%]
+            464466      LLC-load-misses           #    0.25% of all LL-cache hits    [39.89%]
+
+       6.868422769 seconds time elapsed
+The cache-miss rate can be reduced from 15% to 2.9%
+
+changelog
+====v6:
+- correct v5 
+v5:
+- order local variables from longest to shortest line
+v4:
+- move memset into one block of if statement in snmp6_seq_show_item
+- remove the changes in netstat_seq_show considerred the stack usage is too large
+v3:
+- introduce generic interface (suggested by Marcelo Ricardo Leitner)
+- use max_t instead of self defined macro (suggested by David Miller)
+v2:
+- fix bug in udplite statistics.
+- snmp_seq_show is split into 2 parts
+
+Jia He (7):
+  net:snmp: Introduce generic interfaces for snmp_get_cpu_field{,64}
+  proc: Reduce cache miss in snmp_seq_show
+  proc: Reduce cache miss in snmp6_seq_show
+  proc: Reduce cache miss in sctp_snmp_seq_show
+  proc: Reduce cache miss in xfrm_statistics_seq_show
+  ipv6: Remove useless parameter in __snmp6_fill_statsdev
+  net: Suppress the "Comparison to NULL could be written" warnings
+
+ include/net/ip.h     |  23 ++++++++++++
+ net/ipv4/proc.c      | 102 +++++++++++++++++++++++++++++++--------------------
+ net/ipv6/addrconf.c  |  12 +++---
+ net/ipv6/proc.c      |  30 +++++++++++----
+ net/sctp/proc.c      |  10 +++--
+ net/xfrm/xfrm_proc.c |  10 ++++-
+ 6 files changed, 129 insertions(+), 58 deletions(-)
+
+-- 
+2.5.5
+
