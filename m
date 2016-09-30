@@ -1,62 +1,156 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 28 Sep 2016 18:37:26 +0000
-Subject: [PATCHv3 net 1/3] sctp: move sent_count to the memory hole in sctp_chunk
-Message-Id: <03a642a76d02e8536404aa27561c44e348f3e3a0.1475087147.git.lucien.xin@gmail.com>
+From: Jia He <hejianet@gmail.com>
+Date: Fri, 30 Sep 2016 03:28:59 +0000
+Subject: [PATCH v6 2/7] proc: Reduce cache miss in snmp_seq_show
+Message-Id: <1475206144-23228-3-git-send-email-hejianet@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1475087147.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1475087147.git.lucien.xin@gmail.com>
+References: <1475206144-23228-1-git-send-email-hejianet@gmail.com>
+In-Reply-To: <1475206144-23228-1-git-send-email-hejianet@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, James Morris <jmorris@namei.org>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Patrick McHardy <kaber@trash.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, Herbert Xu <herbert@gondor.apana.org.au>, marcelo.leitner@gmail.com, Jia He <hejianet@gmail.com>
 
-Now pahole sctp_chunk, it has 2 memory holes:
-   struct sctp_chunk {
-	struct list_head           list;
-	atomic_t                   refcnt;
-	/* XXX 4 bytes hole, try to pack */
-	...
-	long unsigned int          prsctp_param;
-	int                        sent_count;
-	/* XXX 4 bytes hole, try to pack */
+This is to use the generic interfaces snmp_get_cpu_field{,64}_batch to
+aggregate the data by going through all the items of each cpu sequentially.
+Then snmp_seq_show is split into 2 parts to avoid build warning "the frame
+size" larger than 1024.
 
-This patch is to move up sent_count to fill the 1st one and eliminate
-the 2nd one.
-
-It's not just another struct compaction, it also fixes the "netperf-
-Throughput_Mbps -37.2% regression" issue when overloading the CPU.
-
-Fixes: a6c2f792873a ("sctp: implement prsctp TTL policy")
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Jia He <hejianet@gmail.com>
 ---
- include/net/sctp/structs.h | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ net/ipv4/proc.c | 70 ++++++++++++++++++++++++++++++++++++++-------------------
+ 1 file changed, 47 insertions(+), 23 deletions(-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index ce93c4b..4f097f5 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -554,6 +554,9 @@ struct sctp_chunk {
+diff --git a/net/ipv4/proc.c b/net/ipv4/proc.c
+index 9f665b6..9d7a39a 100644
+--- a/net/ipv4/proc.c
++++ b/net/ipv4/proc.c
+@@ -46,6 +46,8 @@
+ #include <net/sock.h>
+ #include <net/raw.h>
  
- 	atomic_t refcnt;
- 
-+	/* How many times this chunk have been sent, for prsctp RTX policy */
-+	int sent_count;
++#define TCPUDP_MIB_MAX max_t(u32, UDP_MIB_MAX, TCP_MIB_MAX)
 +
- 	/* This is our link to the per-transport transmitted list.  */
- 	struct list_head transmitted_list;
+ /*
+  *	Report socket allocation statistics [mea@utu.fi]
+  */
+@@ -378,13 +380,15 @@ static void icmp_put(struct seq_file *seq)
+ /*
+  *	Called from the PROCfs module. This outputs /proc/net/snmp.
+  */
+-static int snmp_seq_show(struct seq_file *seq, void *v)
++static int snmp_seq_show_ipstats(struct seq_file *seq, void *v)
+ {
+-	int i;
+ 	struct net *net = seq->private;
++	u64 buff64[IPSTATS_MIB_MAX];
++	int i;
  
-@@ -610,9 +613,6 @@ struct sctp_chunk {
- 	 */
- 	unsigned long prsctp_param;
+-	seq_puts(seq, "Ip: Forwarding DefaultTTL");
++	memset(buff64, 0, IPSTATS_MIB_MAX * sizeof(u64));
  
--	/* How many times this chunk have been sent, for prsctp RTX policy */
--	int sent_count;
++	seq_puts(seq, "Ip: Forwarding DefaultTTL");
+ 	for (i = 0; snmp4_ipstats_list[i].name != NULL; i++)
+ 		seq_printf(seq, " %s", snmp4_ipstats_list[i].name);
+ 
+@@ -393,57 +397,77 @@ static int snmp_seq_show(struct seq_file *seq, void *v)
+ 		   net->ipv4.sysctl_ip_default_ttl);
+ 
+ 	BUILD_BUG_ON(offsetof(struct ipstats_mib, mibs) != 0);
++	snmp_get_cpu_field64_batch(buff64, snmp4_ipstats_list,
++				   net->mib.ip_statistics,
++				   offsetof(struct ipstats_mib, syncp));
+ 	for (i = 0; snmp4_ipstats_list[i].name != NULL; i++)
+-		seq_printf(seq, " %llu",
+-			   snmp_fold_field64(net->mib.ip_statistics,
+-					     snmp4_ipstats_list[i].entry,
+-					     offsetof(struct ipstats_mib, syncp)));
++		seq_printf(seq, " %llu", buff64[i]);
+ 
+-	icmp_put(seq);	/* RFC 2011 compatibility */
+-	icmpmsg_put(seq);
++	return 0;
++}
++
++static int snmp_seq_show_tcp_udp(struct seq_file *seq, void *v)
++{
++	unsigned long buff[TCPUDP_MIB_MAX];
++	struct net *net = seq->private;
++	int i;
++
++	memset(buff, 0, TCPUDP_MIB_MAX * sizeof(unsigned long));
+ 
+ 	seq_puts(seq, "\nTcp:");
+ 	for (i = 0; snmp4_tcp_list[i].name != NULL; i++)
+ 		seq_printf(seq, " %s", snmp4_tcp_list[i].name);
+ 
+ 	seq_puts(seq, "\nTcp:");
++	snmp_get_cpu_field_batch(buff, snmp4_tcp_list,
++				 net->mib.tcp_statistics);
+ 	for (i = 0; snmp4_tcp_list[i].name != NULL; i++) {
+ 		/* MaxConn field is signed, RFC 2012 */
+ 		if (snmp4_tcp_list[i].entry = TCP_MIB_MAXCONN)
+-			seq_printf(seq, " %ld",
+-				   snmp_fold_field(net->mib.tcp_statistics,
+-						   snmp4_tcp_list[i].entry));
++			seq_printf(seq, " %ld", buff[i]);
+ 		else
+-			seq_printf(seq, " %lu",
+-				   snmp_fold_field(net->mib.tcp_statistics,
+-						   snmp4_tcp_list[i].entry));
++			seq_printf(seq, " %lu", buff[i]);
+ 	}
+ 
++	memset(buff, 0, TCPUDP_MIB_MAX * sizeof(unsigned long));
++
++	snmp_get_cpu_field_batch(buff, snmp4_udp_list,
++				 net->mib.udp_statistics);
+ 	seq_puts(seq, "\nUdp:");
+ 	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
+ 		seq_printf(seq, " %s", snmp4_udp_list[i].name);
 -
- 	/* Which association does this belong to?  */
- 	struct sctp_association *asoc;
+ 	seq_puts(seq, "\nUdp:");
+ 	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
+-		seq_printf(seq, " %lu",
+-			   snmp_fold_field(net->mib.udp_statistics,
+-					   snmp4_udp_list[i].entry));
++		seq_printf(seq, " %lu", buff[i]);
++
++	memset(buff, 0, TCPUDP_MIB_MAX * sizeof(unsigned long));
  
+ 	/* the UDP and UDP-Lite MIBs are the same */
+ 	seq_puts(seq, "\nUdpLite:");
++	snmp_get_cpu_field_batch(buff, snmp4_udp_list,
++				 net->mib.udplite_statistics);
+ 	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
+ 		seq_printf(seq, " %s", snmp4_udp_list[i].name);
+-
+ 	seq_puts(seq, "\nUdpLite:");
+ 	for (i = 0; snmp4_udp_list[i].name != NULL; i++)
+-		seq_printf(seq, " %lu",
+-			   snmp_fold_field(net->mib.udplite_statistics,
+-					   snmp4_udp_list[i].entry));
++		seq_printf(seq, " %lu", buff[i]);
+ 
+ 	seq_putc(seq, '\n');
+ 	return 0;
+ }
+ 
++static int snmp_seq_show(struct seq_file *seq, void *v)
++{
++	snmp_seq_show_ipstats(seq, v);
++
++	icmp_put(seq);	/* RFC 2011 compatibility */
++	icmpmsg_put(seq);
++
++	snmp_seq_show_tcp_udp(seq, v);
++
++	return 0;
++}
++
+ static int snmp_seq_open(struct inode *inode, struct file *file)
+ {
+ 	return single_open_net(inode, file, snmp_seq_show);
 -- 
-2.1.0
+2.5.5
 
