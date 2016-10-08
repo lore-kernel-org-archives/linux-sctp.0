@@ -1,57 +1,86 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 28 Oct 2016 19:25:29 +0000
-Subject: Re: [PATCH net 1/3] sctp: hold transport instead of assoc in sctp_diag
-Message-Id: <20161028192529.GB4193@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 08 Oct 2016 03:36:05 +0000
+Subject: [PATCH net-next] sctp: reuse sent_count to avoid retransmitted chunks for RTT measurements
+Message-Id: <b68194a4735a1ea5a652c13540df5d68e3c4b305.1475897765.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1477649076.git.lucien.xin@gmail.com>
- <a58ed3a60643e38876a12ed9193e60f7b38cba4d.1477649076.git.lucien.xin@gmail.com>
-In-Reply-To: <a58ed3a60643e38876a12ed9193e60f7b38cba4d.1477649076.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net, davem@davemloft.net
 
-On Fri, Oct 28, 2016 at 06:10:52PM +0800, Xin Long wrote:
-> In sctp_transport_lookup_process(), Commit 1cceda784980 ("sctp: fix
-> the issue sctp_diag uses lock_sock in rcu_read_lock") moved cb() out
-> of rcu lock, but it put transport and hold assoc instead, and ignore
-> that cb() still uses transport. It may cause a use-after-free issue.
-> 
-> This patch is to hold transport instead of assoc there.
-> 
-> Fixes: 1cceda784980 ("sctp: fix the issue sctp_diag uses lock_sock in rcu_read_lock")
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Now sctp uses chunk->resent to record if a chunk is retransmitted, for
+RTT measurements with retransmitted DATA chunks. chunk->sent_count was
+introduced to record how many times one chunk has been sent for prsctp
+RTX policy before. We actually can know if one chunk is retransmitted
+by checking chunk->sent_count is greater than 1.
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+This patch is to remove resent from sctp_chunk and reuse sent_count
+to avoid retransmitted chunks for RTT measurements.
 
-> ---
->  net/sctp/socket.c | 5 +----
->  1 file changed, 1 insertion(+), 4 deletions(-)
-> 
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 9fbb6fe..71b75f9 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -4480,12 +4480,9 @@ int sctp_transport_lookup_process(int (*cb)(struct sctp_transport *, void *),
->  	if (!transport || !sctp_transport_hold(transport))
->  		goto out;
->  
-> -	sctp_association_hold(transport->asoc);
-> -	sctp_transport_put(transport);
-> -
->  	rcu_read_unlock();
->  	err = cb(transport, p);
-> -	sctp_association_put(transport->asoc);
-> +	sctp_transport_put(transport);
->  
->  out:
->  	return err;
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/structs.h | 2 +-
+ net/sctp/output.c          | 3 ++-
+ net/sctp/outqueue.c        | 4 +---
+ 3 files changed, 4 insertions(+), 5 deletions(-)
+
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 11c3bf2..27a933e 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -641,7 +641,6 @@ struct sctp_chunk {
+ #define SCTP_NEED_FRTX 0x1
+ #define SCTP_DONT_FRTX 0x2
+ 	__u16	rtt_in_progress:1,	/* This chunk used for RTT calc? */
+-		resent:1,		/* Has this chunk ever been resent. */
+ 		has_tsn:1,		/* Does this chunk have a TSN yet? */
+ 		has_ssn:1,		/* Does this chunk have a SSN yet? */
+ 		singleton:1,		/* Only chunk in the packet? */
+@@ -656,6 +655,7 @@ struct sctp_chunk {
+ 		fast_retransmit:2;	/* Is this chunk fast retransmitted? */
+ };
+ 
++#define sctp_chunk_retransmitted(chunk)	(chunk->sent_count > 1)
+ void sctp_chunk_hold(struct sctp_chunk *);
+ void sctp_chunk_put(struct sctp_chunk *);
+ int sctp_user_addto_chunk(struct sctp_chunk *chunk, int len,
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 2a5c189..84f66d5 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -552,7 +552,8 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
+ 				 * for a given destination transport address.
+ 				 */
+ 
+-				if (!chunk->resent && !tp->rto_pending) {
++				if (!sctp_chunk_retransmitted(chunk) &&
++				    !tp->rto_pending) {
+ 					chunk->rtt_in_progress = 1;
+ 					tp->rto_pending = 1;
+ 				}
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 5825853..e540826 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -507,8 +507,6 @@ void sctp_retransmit_mark(struct sctp_outq *q,
+ 				transport->rto_pending = 0;
+ 			}
+ 
+-			chunk->resent = 1;
+-
+ 			/* Move the chunk to the retransmit queue. The chunks
+ 			 * on the retransmit queue are always kept in order.
+ 			 */
+@@ -1439,7 +1437,7 @@ static void sctp_check_transmitted(struct sctp_outq *q,
+ 				 * instance).
+ 				 */
+ 				if (!tchunk->tsn_gap_acked &&
+-				    !tchunk->resent &&
++				    !sctp_chunk_retransmitted(tchunk) &&
+ 				    tchunk->rtt_in_progress) {
+ 					tchunk->rtt_in_progress = 0;
+ 					rtt = jiffies - tchunk->sent_at;
+-- 
+2.1.0
+
