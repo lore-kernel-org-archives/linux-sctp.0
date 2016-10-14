@@ -1,135 +1,72 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 13 Sep 2016 18:04:21 +0000
-Subject: [PATCHv2 net 4/6] sctp: save transmit error to sk_err in sctp_outq_flush
-Message-Id: <f4f0d53e93368c69f55df9f4aba4da2148fcca7e.1473789537.git.lucien.xin@gmail.com>
+Date: Fri, 14 Oct 2016 11:13:47 +0000
+Subject: Re: net/sctp: BUG: KASAN: stack-out-of-bounds in memcmp
+Message-Id: <CADvbK_emewigJ3pcxy5W4h5UdcA1LtTmFz4Zkqtit6An9OaYpg@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1473789537.git.lucien.xin@gmail.com>
- <4f21a8880a3f8e7daed8a53f10649a1d4dfbb12a.1473789537.git.lucien.xin@gmail.com>
- <10622d6256e2c49fa7ec555dec3bd35b47a50b2b.1473789537.git.lucien.xin@gmail.com>
- <6b43f456f94dfcaeabc8071806f0609fed59a595.1473789537.git.lucien.xin@gmail.com>
-In-Reply-To: <6b43f456f94dfcaeabc8071806f0609fed59a595.1473789537.git.lucien.xin@gmail.com>
+References: <6843fbba-a11c-8bc4-495a-294dc7fdcc35@gmail.com>
+In-Reply-To: <6843fbba-a11c-8bc4-495a-294dc7fdcc35@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+To: Baozeng Ding <sploving1@gmail.com>
+Cc: Vladislav Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, network dev <netdev@vger.kernel.org>
 
-Every time when sctp calls sctp_outq_flush, it sends out the chunks of
-control queue, retransmit queue and data queue. Even if some trunks are
-failed to transmit, it still has to flush all the transports, as it's
-the only chance to clean that transmit_list.
-
-So the latest transmit error here should be returned back. This transmit
-error is an internal error of sctp stack.
-
-I checked all the places where it uses the transmit error (the return
-value of sctp_outq_flush), most of them are actually just save it to
-sk_err.
-
-Except for sctp_assoc/endpoint_bh_rcv, they will drop the chunk if
-it's failed to send a REPLY, which is actually incorrect, as we can't
-be sure the error that sctp_outq_flush returns is from sending that
-REPLY.
-
-So it's meaningless for sctp_outq_flush to return error back.
-
-This patch is to save transmit error to sk_err in sctp_outq_flush, the
-new error can update the old value. Eventually, sctp_wait_for_* would
-check for it.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- net/sctp/output.c   |  3 ++-
- net/sctp/outqueue.c | 21 ++++++++++++---------
- 2 files changed, 14 insertions(+), 10 deletions(-)
-
-diff --git a/net/sctp/output.c b/net/sctp/output.c
-index 31b7bc3..f2597a9 100644
---- a/net/sctp/output.c
-+++ b/net/sctp/output.c
-@@ -180,7 +180,6 @@ sctp_xmit_t sctp_packet_transmit_chunk(struct sctp_packet *packet,
- 				       int one_packet, gfp_t gfp)
- {
- 	sctp_xmit_t retval;
--	int error = 0;
- 
- 	pr_debug("%s: packet:%p size:%Zu chunk:%p size:%d\n", __func__,
- 		 packet, packet->size, chunk, chunk->skb ? chunk->skb->len : -1);
-@@ -188,6 +187,8 @@ sctp_xmit_t sctp_packet_transmit_chunk(struct sctp_packet *packet,
- 	switch ((retval = (sctp_packet_append_chunk(packet, chunk)))) {
- 	case SCTP_XMIT_PMTU_FULL:
- 		if (!packet->has_cookie_echo) {
-+			int error = 0;
-+
- 			error = sctp_packet_transmit(packet, gfp);
- 			if (error < 0)
- 				chunk->skb->sk->sk_err = -error;
-diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index 6c109b0..052a479 100644
---- a/net/sctp/outqueue.c
-+++ b/net/sctp/outqueue.c
-@@ -533,7 +533,6 @@ void sctp_retransmit(struct sctp_outq *q, struct sctp_transport *transport,
- 		     sctp_retransmit_reason_t reason)
- {
- 	struct net *net = sock_net(q->asoc->base.sk);
--	int error = 0;
- 
- 	switch (reason) {
- 	case SCTP_RTXR_T3_RTX:
-@@ -577,10 +576,7 @@ void sctp_retransmit(struct sctp_outq *q, struct sctp_transport *transport,
- 	 * will be flushed at the end.
- 	 */
- 	if (reason != SCTP_RTXR_FAST_RTX)
--		error = sctp_outq_flush(q, /* rtx_timeout */ 1, GFP_ATOMIC);
--
--	if (error)
--		q->asoc->base.sk->sk_err = -error;
-+		sctp_outq_flush(q, /* rtx_timeout */ 1, GFP_ATOMIC);
- }
- 
- /*
-@@ -893,8 +889,10 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 			sctp_packet_config(&singleton, vtag, 0);
- 			sctp_packet_append_chunk(&singleton, chunk);
- 			error = sctp_packet_transmit(&singleton, gfp);
--			if (error < 0)
--				return error;
-+			if (error < 0) {
-+				asoc->base.sk->sk_err = -error;
-+				return 0;
-+			}
- 			break;
- 
- 		case SCTP_CID_ABORT:
-@@ -992,6 +990,8 @@ static int sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 		retran:
- 			error = sctp_outq_flush_rtx(q, packet,
- 						    rtx_timeout, &start_timer);
-+			if (error < 0)
-+				asoc->base.sk->sk_err = -error;
- 
- 			if (start_timer) {
- 				sctp_transport_reset_t3_rtx(transport);
-@@ -1166,14 +1166,17 @@ sctp_flush_out:
- 						      struct sctp_transport,
- 						      send_ready);
- 		packet = &t->packet;
--		if (!sctp_packet_empty(packet))
-+		if (!sctp_packet_empty(packet)) {
- 			error = sctp_packet_transmit(packet, gfp);
-+			if (error < 0)
-+				asoc->base.sk->sk_err = -error;
-+		}
- 
- 		/* Clear the burst limited state, if any */
- 		sctp_transport_burst_reset(t);
- 	}
- 
--	return error;
-+	return 0;
- }
- 
- /* Update unack_data based on the incoming SACK chunk */
--- 
-2.1.0
-
+On Sat, Aug 20, 2016 at 3:51 PM, Baozeng Ding <sploving1@gmail.com> wrote:
+> Hello all,
+> The following program triggers  stack-out-of-bounds in memcmp. The kernel version is 4.8.0-rc1+ (on Aug 13 commit 118253a593bd1c57de2d1193df1ccffe1abe745b). Thanks.
+...
+>
+> #define _GNU_SOURCE
+> #include <unistd.h>
+> #include <stdint.h>
+> #include <sys/socket.h>
+> #include <sys/mman.h>
+> #include <linux/in.h>
+> #include <fcntl.h>
+> #include <string.h>
+> #include <stdio.h>
+>
+> int main()
+> {
+>         int fd;
+>         mmap((void *)0x20000000ul, 0xff2000ul, 0x3ul, 0x32ul, -1, 0x0ul);
+>         fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
+>         memcpy((void*)0x20f82f80, "\x0a\x00\xab\x12\x72\xd4\x19\x9a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x85\xda\x00\xa0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 128);
+>         bind(fd, (struct sockaddr*)0x20f82f80ul, 0x80ul);
+>         *(uint64_t*)0x202e1fc8 = (uint64_t)0x20f77f80;
+>         *(uint32_t*)0x202e1fd0 = (uint32_t)0x80;
+>         *(uint64_t*)0x202e1fd8 = (uint64_t)0x20f7dfe0;
+>         *(uint64_t*)0x202e1fe0 = (uint64_t)0x2;
+>         *(uint64_t*)0x202e1fe8 = (uint64_t)0x20f77000;
+>         *(uint64_t*)0x202e1ff0 = (uint64_t)0x3;
+>         *(uint32_t*)0x202e1ff8 = (uint32_t)0x80;
+>         memcpy((void*)0x20f77f80, "\x0a\x00\xab\x12\xb0\xb3\x20\x7b\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\xc2\xc2\x0b\xb2\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 128);
+>         *(uint64_t*)0x20f7dfe0 = (uint64_t)0x20f77fc5;
+>         *(uint64_t*)0x20f7dfe8 = (uint64_t)0x3b;
+>         *(uint64_t*)0x20f7dff0 = (uint64_t)0x20f77fac;
+>         *(uint64_t*)0x20f7dff8 = (uint64_t)0x54;
+>         memcpy((void*)0x20f77fc5, "\xa5\x7d\xf3\xc4\xfe\xd3\xfd\x44\x63\x00\x8c\x1e\x4c\x2e\x8d\x8d\x9a\x9c\x9c\x9d\x5b\x7c\xe1\x06\xf7\x15\x16\xed\x68\xd1\xfc\xf4\xa4\x3a\xe4\x69\x51\x16\x74\xf4\x1a\xcf\x0e\x99\xc3\xa3\x87\xe7\x81\x6c\x10\x78\x75\x17\x69\x9d\x11\x0c\xc7", 59);
+>         memcpy((void*)0x20f77fac, "\x86\x08\x89\x3c\xf3\x58\xea\xe7\x64\x6a\xfb\xb5\xe8\xdd\x5f\x69\xa5\xd4\xdc\xd9\xe7\x71\x95\x07\x78\x7b\x21\xda\x43\x9c\x62\x4d\xca\x64\xb5\x6e\x96\x55\xe9\x58\x76\x66\x1d\xb9\x7b\xe6\x20\xc1\xa9\xed\x70\xc1\x2b\x7c\x86\x8c\xba\x28\xb3\x2c\xb9\x64\xb7\x84\x65\x0d\x7f\xa6\x98\x6f\x49\xcb\x35\xad\x5a\xdf\x13\x75\x99\x57\x7e\xbb\x38\x89", 84);
+>         *(uint64_t*)0x20f77000 = (uint64_t)0x15;
+>         *(uint32_t*)0x20f77008 = (uint32_t)0x1;
+>         *(uint32_t*)0x20f7700c = (uint32_t)0xfffffffffffffffe;
+>         *(uint8_t*)0x20f77010 = (uint8_t)0xbb;
+>         *(uint8_t*)0x20f77011 = (uint8_t)0x2;
+>         *(uint8_t*)0x20f77012 = (uint8_t)0x5;
+>         *(uint8_t*)0x20f77013 = (uint8_t)0x2;
+>         *(uint8_t*)0x20f77014 = (uint8_t)0x80000000;
+>         *(uint64_t*)0x20f77015 = (uint64_t)0x10;
+>         *(uint32_t*)0x20f7701d = (uint32_t)0xffff;
+>         *(uint32_t*)0x20f77021 = (uint32_t)0x1;
+>         *(uint64_t*)0x20f77025 = (uint64_t)0x13;
+>         *(uint32_t*)0x20f7702d = (uint32_t)0x6;
+>         *(uint32_t*)0x20f77031 = (uint32_t)0xfffffffffffffe00;
+>         *(uint8_t*)0x20f77035 = (uint8_t)0x80000000;
+>         *(uint8_t*)0x20f77036 = (uint8_t)0xfffffffffffffff8;
+>         sendmmsg(fd, (struct mmsghdr *)0x202e1fc8ul, 0x1ul, 0x1ul);
+>         return 0;
+> }
+>
+Hi, Baozeng, I couldn't reproduce this issue with this script,
+even in 118253a593bd1c57de2d1193df1ccffe1abe745b
+do I need to do some extra config for this ?
