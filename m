@@ -1,200 +1,82 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 28 Oct 2016 19:57:50 +0000
-Subject: Re: [PATCH net 3/3] sctp: hold transport instead of assoc when lookup assoc in rx path
-Message-Id: <20161028195750.GD4193@localhost.localdomain>
+From: Jiri Slaby <jslaby@suse.cz>
+Date: Fri, 21 Oct 2016 12:13:24 +0000
+Subject: [PATCH] net: sctp, forbid negative length
+Message-Id: <20161021121324.13942-1-jslaby@suse.cz>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1477649076.git.lucien.xin@gmail.com>
- <e97fc745a330a6be78b13e1f499381f9d1647b40.1477649076.git.lucien.xin@gmail.com>
-In-Reply-To: <e97fc745a330a6be78b13e1f499381f9d1647b40.1477649076.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+To: Vlad Yasevich <vyasevich@gmail.com>
+Cc: linux-kernel@vger.kernel.org, Jiri Slaby <jslaby@suse.cz>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On Fri, Oct 28, 2016 at 06:10:54PM +0800, Xin Long wrote:
-> Prior to this patch, in rx path, before calling lock_sock, it needed to
-> hold assoc when got it by __sctp_lookup_association, in case other place
-> would free/put assoc.
-> 
-> But in __sctp_lookup_association, it lookup and hold transport, then got
-> assoc by transport->assoc, then hold assoc and put transport. It means
-> it didn't hold transport, yet it was returned and later on directly
-> assigned to chunk->transport.
-> 
-> Without the protection of sock lock, the transport may be freed/put by
-> other places, which would cause a use-after-free issue.
-> 
-> This patch is to fix this issue by holding transport instead of assoc.
-> As holding transport can make sure to access assoc is also safe, and
-> actually it looks up assoc by searching transport rhashtable, to hold
-> transport here makes more sense.
-> 
-> Note that the function will be renamed later on on another patch.
-> 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Most of getsockopt handlers in net/sctp/socket.c check len against
+sizeof some structure like:
+        if (len < sizeof(int))
+                return -EINVAL;
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+On the first look, the check seems to be correct. But since len is int
+and sizeof returns size_t, int gets promoted to unsigned size_t too. So
+the test returns false for negative lengths. Yes, (-1 < sizeof(long)) is
+false.
 
-> ---
->  include/net/sctp/sctp.h |  2 +-
->  net/sctp/input.c        | 32 ++++++++++++++++----------------
->  net/sctp/ipv6.c         |  2 +-
->  3 files changed, 18 insertions(+), 18 deletions(-)
-> 
-> diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-> index 87a7f42..31acc3f 100644
-> --- a/include/net/sctp/sctp.h
-> +++ b/include/net/sctp/sctp.h
-> @@ -152,7 +152,7 @@ void sctp_unhash_endpoint(struct sctp_endpoint *);
->  struct sock *sctp_err_lookup(struct net *net, int family, struct sk_buff *,
->  			     struct sctphdr *, struct sctp_association **,
->  			     struct sctp_transport **);
-> -void sctp_err_finish(struct sock *, struct sctp_association *);
-> +void sctp_err_finish(struct sock *, struct sctp_transport *);
->  void sctp_icmp_frag_needed(struct sock *, struct sctp_association *,
->  			   struct sctp_transport *t, __u32 pmtu);
->  void sctp_icmp_redirect(struct sock *, struct sctp_transport *,
-> diff --git a/net/sctp/input.c b/net/sctp/input.c
-> index 8e0bc58..a01a56e 100644
-> --- a/net/sctp/input.c
-> +++ b/net/sctp/input.c
-> @@ -181,9 +181,10 @@ int sctp_rcv(struct sk_buff *skb)
->  	 * bound to another interface, via SO_BINDTODEVICE, treat it as OOTB
->  	 */
->  	if (sk->sk_bound_dev_if && (sk->sk_bound_dev_if != af->skb_iif(skb))) {
-> -		if (asoc) {
-> -			sctp_association_put(asoc);
-> +		if (transport) {
-> +			sctp_transport_put(transport);
->  			asoc = NULL;
-> +			transport = NULL;
->  		} else {
->  			sctp_endpoint_put(ep);
->  			ep = NULL;
-> @@ -269,8 +270,8 @@ int sctp_rcv(struct sk_buff *skb)
->  	bh_unlock_sock(sk);
->  
->  	/* Release the asoc/ep ref we took in the lookup calls. */
-> -	if (asoc)
-> -		sctp_association_put(asoc);
-> +	if (transport)
-> +		sctp_transport_put(transport);
->  	else
->  		sctp_endpoint_put(ep);
->  
-> @@ -283,8 +284,8 @@ int sctp_rcv(struct sk_buff *skb)
->  
->  discard_release:
->  	/* Release the asoc/ep ref we took in the lookup calls. */
-> -	if (asoc)
-> -		sctp_association_put(asoc);
-> +	if (transport)
-> +		sctp_transport_put(transport);
->  	else
->  		sctp_endpoint_put(ep);
->  
-> @@ -300,6 +301,7 @@ int sctp_backlog_rcv(struct sock *sk, struct sk_buff *skb)
->  {
->  	struct sctp_chunk *chunk = SCTP_INPUT_CB(skb)->chunk;
->  	struct sctp_inq *inqueue = &chunk->rcvr->inqueue;
-> +	struct sctp_transport *t = chunk->transport;
->  	struct sctp_ep_common *rcvr = NULL;
->  	int backloged = 0;
->  
-> @@ -351,7 +353,7 @@ int sctp_backlog_rcv(struct sock *sk, struct sk_buff *skb)
->  done:
->  	/* Release the refs we took in sctp_add_backlog */
->  	if (SCTP_EP_TYPE_ASSOCIATION = rcvr->type)
-> -		sctp_association_put(sctp_assoc(rcvr));
-> +		sctp_transport_put(t);
->  	else if (SCTP_EP_TYPE_SOCKET = rcvr->type)
->  		sctp_endpoint_put(sctp_ep(rcvr));
->  	else
-> @@ -363,6 +365,7 @@ int sctp_backlog_rcv(struct sock *sk, struct sk_buff *skb)
->  static int sctp_add_backlog(struct sock *sk, struct sk_buff *skb)
->  {
->  	struct sctp_chunk *chunk = SCTP_INPUT_CB(skb)->chunk;
-> +	struct sctp_transport *t = chunk->transport;
->  	struct sctp_ep_common *rcvr = chunk->rcvr;
->  	int ret;
->  
-> @@ -373,7 +376,7 @@ static int sctp_add_backlog(struct sock *sk, struct sk_buff *skb)
->  		 * from us
->  		 */
->  		if (SCTP_EP_TYPE_ASSOCIATION = rcvr->type)
-> -			sctp_association_hold(sctp_assoc(rcvr));
-> +			sctp_transport_hold(t);
->  		else if (SCTP_EP_TYPE_SOCKET = rcvr->type)
->  			sctp_endpoint_hold(sctp_ep(rcvr));
->  		else
-> @@ -537,15 +540,15 @@ struct sock *sctp_err_lookup(struct net *net, int family, struct sk_buff *skb,
->  	return sk;
->  
->  out:
-> -	sctp_association_put(asoc);
-> +	sctp_transport_put(transport);
->  	return NULL;
->  }
->  
->  /* Common cleanup code for icmp/icmpv6 error handler. */
-> -void sctp_err_finish(struct sock *sk, struct sctp_association *asoc)
-> +void sctp_err_finish(struct sock *sk, struct sctp_transport *t)
->  {
->  	bh_unlock_sock(sk);
-> -	sctp_association_put(asoc);
-> +	sctp_transport_put(t);
->  }
->  
->  /*
-> @@ -641,7 +644,7 @@ void sctp_v4_err(struct sk_buff *skb, __u32 info)
->  	}
->  
->  out_unlock:
-> -	sctp_err_finish(sk, asoc);
-> +	sctp_err_finish(sk, transport);
->  }
->  
->  /*
-> @@ -952,11 +955,8 @@ static struct sctp_association *__sctp_lookup_association(
->  		goto out;
->  
->  	asoc = t->asoc;
-> -	sctp_association_hold(asoc);
->  	*pt = t;
->  
-> -	sctp_transport_put(t);
-> -
->  out:
->  	return asoc;
->  }
-> @@ -986,7 +986,7 @@ int sctp_has_association(struct net *net,
->  	struct sctp_transport *transport;
->  
->  	if ((asoc = sctp_lookup_association(net, laddr, paddr, &transport))) {
-> -		sctp_association_put(asoc);
-> +		sctp_transport_put(transport);
->  		return 1;
->  	}
->  
-> diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-> index f473779..176af30 100644
-> --- a/net/sctp/ipv6.c
-> +++ b/net/sctp/ipv6.c
-> @@ -198,7 +198,7 @@ static void sctp_v6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
->  	}
->  
->  out_unlock:
-> -	sctp_err_finish(sk, asoc);
-> +	sctp_err_finish(sk, transport);
->  out:
->  	if (likely(idev != NULL))
->  		in6_dev_put(idev);
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Fix this in sctp by explicitly checking len < 0 before any getsockopt
+handler is called.
+
+Note that sctp_getsockopt_events already handled the negative case.
+Since we added the < 0 check elsewhere, this one can be removed.
+
+If not checked, this is the result:
+UBSAN: Undefined behaviour in ../mm/page_alloc.c:2722:19
+shift exponent 52 is too large for 32-bit type 'int'
+CPU: 1 PID: 24535 Comm: syz-executor Not tainted 4.8.1-0-syzkaller #1
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.9.1-0-gb3ef39f-prebuilt.qemu-project.org 04/01/2014
+ 0000000000000000 ffff88006d99f2a8 ffffffffb2f7bdea 0000000041b58ab3
+ ffffffffb4363c14 ffffffffb2f7bcde ffff88006d99f2d0 ffff88006d99f270
+ 0000000000000000 0000000000000000 0000000000000034 ffffffffb5096422
+Call Trace:
+ [<ffffffffb3051498>] ? __ubsan_handle_shift_out_of_bounds+0x29c/0x300
+...
+ [<ffffffffb273f0e4>] ? kmalloc_order+0x24/0x90
+ [<ffffffffb27416a4>] ? kmalloc_order_trace+0x24/0x220
+ [<ffffffffb2819a30>] ? __kmalloc+0x330/0x540
+ [<ffffffffc18c25f4>] ? sctp_getsockopt_local_addrs+0x174/0xca0 [sctp]
+ [<ffffffffc18d2bcd>] ? sctp_getsockopt+0x10d/0x1b0 [sctp]
+ [<ffffffffb37c1219>] ? sock_common_getsockopt+0xb9/0x150
+ [<ffffffffb37be2f5>] ? SyS_getsockopt+0x1a5/0x270
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org
+---
+ net/sctp/socket.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index fb02c7033307..9fbb6feb8c27 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4687,7 +4687,7 @@ static int sctp_getsockopt_disable_fragments(struct sock *sk, int len,
+ static int sctp_getsockopt_events(struct sock *sk, int len, char __user *optval,
+ 				  int __user *optlen)
+ {
+-	if (len <= 0)
++	if (len = 0)
+ 		return -EINVAL;
+ 	if (len > sizeof(struct sctp_event_subscribe))
+ 		len = sizeof(struct sctp_event_subscribe);
+@@ -6430,6 +6430,9 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 	if (get_user(len, optlen))
+ 		return -EFAULT;
+ 
++	if (len < 0)
++		return -EINVAL;
++
+ 	lock_sock(sk);
+ 
+ 	switch (optname) {
+-- 
+2.10.1
+
