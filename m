@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 21 Oct 2016 12:39:27 +0000
+From: David Miller <davem@davemloft.net>
+Date: Sun, 23 Oct 2016 21:44:05 +0000
 Subject: Re: [PATCH] net: sctp, forbid negative length
-Message-Id: <20161021123927.GA25597@hmsreliant.think-freely.org>
+Message-Id: <20161023.174405.1335530959467229046.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20161021121324.13942-1-jslaby@suse.cz>
 In-Reply-To: <20161021121324.13942-1-jslaby@suse.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Jiri Slaby <jslaby@suse.cz>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, linux-kernel@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: jslaby@suse.cz
+Cc: vyasevich@gmail.com, linux-kernel@vger.kernel.org, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On Fri, Oct 21, 2016 at 02:13:24PM +0200, Jiri Slaby wrote:
+From: Jiri Slaby <jslaby@suse.cz>
+Date: Fri, 21 Oct 2016 14:13:24 +0200
+
 > Most of getsockopt handlers in net/sctp/socket.c check len against
 > sizeof some structure like:
 >         if (len < sizeof(int))
@@ -29,60 +31,7 @@ On Fri, Oct 21, 2016 at 02:13:24PM +0200, Jiri Slaby wrote:
 > Since we added the < 0 check elsewhere, this one can be removed.
 > 
 > If not checked, this is the result:
-> UBSAN: Undefined behaviour in ../mm/page_alloc.c:2722:19
-> shift exponent 52 is too large for 32-bit type 'int'
-> CPU: 1 PID: 24535 Comm: syz-executor Not tainted 4.8.1-0-syzkaller #1
-> Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.9.1-0-gb3ef39f-prebuilt.qemu-project.org 04/01/2014
->  0000000000000000 ffff88006d99f2a8 ffffffffb2f7bdea 0000000041b58ab3
->  ffffffffb4363c14 ffffffffb2f7bcde ffff88006d99f2d0 ffff88006d99f270
->  0000000000000000 0000000000000000 0000000000000034 ffffffffb5096422
-> Call Trace:
->  [<ffffffffb3051498>] ? __ubsan_handle_shift_out_of_bounds+0x29c/0x300
-> ...
->  [<ffffffffb273f0e4>] ? kmalloc_order+0x24/0x90
->  [<ffffffffb27416a4>] ? kmalloc_order_trace+0x24/0x220
->  [<ffffffffb2819a30>] ? __kmalloc+0x330/0x540
->  [<ffffffffc18c25f4>] ? sctp_getsockopt_local_addrs+0x174/0xca0 [sctp]
->  [<ffffffffc18d2bcd>] ? sctp_getsockopt+0x10d/0x1b0 [sctp]
->  [<ffffffffb37c1219>] ? sock_common_getsockopt+0xb9/0x150
->  [<ffffffffb37be2f5>] ? SyS_getsockopt+0x1a5/0x270
-> 
+...
 > Signed-off-by: Jiri Slaby <jslaby@suse.cz>
-> Cc: Vlad Yasevich <vyasevich@gmail.com>
-> Cc: Neil Horman <nhorman@tuxdriver.com>
-> Cc: "David S. Miller" <davem@davemloft.net>
-> Cc: linux-sctp@vger.kernel.org
-> Cc: netdev@vger.kernel.org
-> ---
->  net/sctp/socket.c | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index fb02c7033307..9fbb6feb8c27 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -4687,7 +4687,7 @@ static int sctp_getsockopt_disable_fragments(struct sock *sk, int len,
->  static int sctp_getsockopt_events(struct sock *sk, int len, char __user *optval,
->  				  int __user *optlen)
->  {
-> -	if (len <= 0)
-> +	if (len = 0)
->  		return -EINVAL;
->  	if (len > sizeof(struct sctp_event_subscribe))
->  		len = sizeof(struct sctp_event_subscribe);
-> @@ -6430,6 +6430,9 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
->  	if (get_user(len, optlen))
->  		return -EFAULT;
->  
-> +	if (len < 0)
-> +		return -EINVAL;
-> +
->  	lock_sock(sk);
->  
->  	switch (optname) {
-> -- 
-> 2.10.1
-> 
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
+Applied and queued up for -stable, thanks.
