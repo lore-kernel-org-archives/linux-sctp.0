@@ -1,86 +1,61 @@
-From: Baozeng Ding <sploving1@gmail.com>
-Date: Sat, 15 Oct 2016 08:28:44 +0000
-Subject: Re: net/sctp: BUG: KASAN: stack-out-of-bounds in memcmp
-Message-Id: <cd16b62f-228a-e3de-f68e-6db39e97da0b@gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sun, 23 Oct 2016 17:01:09 +0000
+Subject: [PATCH net] sctp: fix the panic caused by route update
+Message-Id: <a0659fd9a23fc95fe9a586be4b57c8032c8a6060.1477242069.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <6843fbba-a11c-8bc4-495a-294dc7fdcc35@gmail.com>
- <CADvbK_emewigJ3pcxy5W4h5UdcA1LtTmFz4Zkqtit6An9OaYpg@mail.gmail.com>
-In-Reply-To: <CADvbK_emewigJ3pcxy5W4h5UdcA1LtTmFz4Zkqtit6An9OaYpg@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: Vladislav Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, network dev <netdev@vger.kernel.org>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-Hello Xin Long,
+Commit 7303a1475008 ("sctp: identify chunks that need to be fragmented
+at IP level") made the chunk be fragmented at IP level in the next round
+if it's size exceed PMTU.
 
-On 2016/10/14 19:13, Xin Long wrote:
-> On Sat, Aug 20, 2016 at 3:51 PM, Baozeng Ding <sploving1@gmail.com> wrote:
->> Hello all,
->> The following program triggers  stack-out-of-bounds in memcmp. The kernel version is 4.8.0-rc1+ (on Aug 13 commit 118253a593bd1c57de2d1193df1ccffe1abe745b). Thanks.
-> ...
->>
->> #define _GNU_SOURCE
->> #include <unistd.h>
->> #include <stdint.h>
->> #include <sys/socket.h>
->> #include <sys/mman.h>
->> #include <linux/in.h>
->> #include <fcntl.h>
->> #include <string.h>
->> #include <stdio.h>
->>
->> int main()
->> {
->>         int fd;
->>         mmap((void *)0x20000000ul, 0xff2000ul, 0x3ul, 0x32ul, -1, 0x0ul);
->>         fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
->>         memcpy((void*)0x20f82f80, "\x0a\x00\xab\x12\x72\xd4\x19\x9a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x85\xda\x00\xa0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 128);
->>         bind(fd, (struct sockaddr*)0x20f82f80ul, 0x80ul);
->>         *(uint64_t*)0x202e1fc8 = (uint64_t)0x20f77f80;
->>         *(uint32_t*)0x202e1fd0 = (uint32_t)0x80;
->>         *(uint64_t*)0x202e1fd8 = (uint64_t)0x20f7dfe0;
->>         *(uint64_t*)0x202e1fe0 = (uint64_t)0x2;
->>         *(uint64_t*)0x202e1fe8 = (uint64_t)0x20f77000;
->>         *(uint64_t*)0x202e1ff0 = (uint64_t)0x3;
->>         *(uint32_t*)0x202e1ff8 = (uint32_t)0x80;
->>         memcpy((void*)0x20f77f80, "\x0a\x00\xab\x12\xb0\xb3\x20\x7b\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\xc2\xc2\x0b\xb2\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 128);
->>         *(uint64_t*)0x20f7dfe0 = (uint64_t)0x20f77fc5;
->>         *(uint64_t*)0x20f7dfe8 = (uint64_t)0x3b;
->>         *(uint64_t*)0x20f7dff0 = (uint64_t)0x20f77fac;
->>         *(uint64_t*)0x20f7dff8 = (uint64_t)0x54;
->>         memcpy((void*)0x20f77fc5, "\xa5\x7d\xf3\xc4\xfe\xd3\xfd\x44\x63\x00\x8c\x1e\x4c\x2e\x8d\x8d\x9a\x9c\x9c\x9d\x5b\x7c\xe1\x06\xf7\x15\x16\xed\x68\xd1\xfc\xf4\xa4\x3a\xe4\x69\x51\x16\x74\xf4\x1a\xcf\x0e\x99\xc3\xa3\x87\xe7\x81\x6c\x10\x78\x75\x17\x69\x9d\x11\x0c\xc7", 59);
->>         memcpy((void*)0x20f77fac, "\x86\x08\x89\x3c\xf3\x58\xea\xe7\x64\x6a\xfb\xb5\xe8\xdd\x5f\x69\xa5\xd4\xdc\xd9\xe7\x71\x95\x07\x78\x7b\x21\xda\x43\x9c\x62\x4d\xca\x64\xb5\x6e\x96\x55\xe9\x58\x76\x66\x1d\xb9\x7b\xe6\x20\xc1\xa9\xed\x70\xc1\x2b\x7c\x86\x8c\xba\x28\xb3\x2c\xb9\x64\xb7\x84\x65\x0d\x7f\xa6\x98\x6f\x49\xcb\x35\xad\x5a\xdf\x13\x75\x99\x57\x7e\xbb\x38\x89", 84);
->>         *(uint64_t*)0x20f77000 = (uint64_t)0x15;
->>         *(uint32_t*)0x20f77008 = (uint32_t)0x1;
->>         *(uint32_t*)0x20f7700c = (uint32_t)0xfffffffffffffffe;
->>         *(uint8_t*)0x20f77010 = (uint8_t)0xbb;
->>         *(uint8_t*)0x20f77011 = (uint8_t)0x2;
->>         *(uint8_t*)0x20f77012 = (uint8_t)0x5;
->>         *(uint8_t*)0x20f77013 = (uint8_t)0x2;
->>         *(uint8_t*)0x20f77014 = (uint8_t)0x80000000;
->>         *(uint64_t*)0x20f77015 = (uint64_t)0x10;
->>         *(uint32_t*)0x20f7701d = (uint32_t)0xffff;
->>         *(uint32_t*)0x20f77021 = (uint32_t)0x1;
->>         *(uint64_t*)0x20f77025 = (uint64_t)0x13;
->>         *(uint32_t*)0x20f7702d = (uint32_t)0x6;
->>         *(uint32_t*)0x20f77031 = (uint32_t)0xfffffffffffffe00;
->>         *(uint8_t*)0x20f77035 = (uint8_t)0x80000000;
->>         *(uint8_t*)0x20f77036 = (uint8_t)0xfffffffffffffff8;
->>         sendmmsg(fd, (struct mmsghdr *)0x202e1fc8ul, 0x1ul, 0x1ul);
->>         return 0;
->> }
->>
-> Hi, Baozeng, I couldn't reproduce this issue with this script,
-> even in 118253a593bd1c57de2d1193df1ccffe1abe745b
-> do I need to do some extra config for this ?
-> 
-You need config KASAN.
-CONFIG_HAVE_ARCH_KASAN=y
-CONFIG_KASAN=y
-CONFIG_KASAN_INLINE=y
-CONFIG_KASAN_SHADOW_OFFSET=0xdffffc0000000000
+But there still is another case, PMTU can be updated if transport's dst
+expires and transport's pmtu_pending is set in sctp_packet_transmit. If
+the new PMTU is less than the chunk, the same issue with that commit can
+be triggered.
 
-I justed tested with b67be92feb486f800d80d72c67fd87b47b79b18e(Octor 12),
-it sitll exits. If you still cannot reproduce it, i will send the .config to you privately. Thanks.
+So we should drop this packet and let it retransmit in another round
+where it would be fragmented at IP level.
+
+This patch is to fix it by checking the chunk size after PMTU may be
+updated and dropping this packet if it's size exceed PMTU.
+
+Fixes: 90017accff61 ("sctp: Add GSO support")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/output.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 2a5c189..6cb0df8 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -418,6 +418,7 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
+ 	__u8 has_data = 0;
+ 	int gso = 0;
+ 	int pktcount = 0;
++	int auth_len = 0;
+ 	struct dst_entry *dst;
+ 	unsigned char *auth = NULL;	/* pointer to auth in skb data */
+ 
+@@ -510,7 +511,12 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
+ 			list_for_each_entry(chunk, &packet->chunk_list, list) {
+ 				int padded = SCTP_PAD4(chunk->skb->len);
+ 
+-				if (pkt_size + padded > tp->pathmtu)
++				if (chunk = packet->auth)
++					auth_len = padded;
++				else if (auth_len + padded + packet->overhead >
++					 tp->pathmtu)
++					goto nomem;
++				else if (pkt_size + padded > tp->pathmtu)
+ 					break;
+ 				pkt_size += padded;
+ 			}
+-- 
+2.1.0
 
