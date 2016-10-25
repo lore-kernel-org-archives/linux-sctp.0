@@ -1,55 +1,64 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 24 Oct 2016 19:44:22 +0000
+From: Andrey Konovalov <andreyknvl@google.com>
+Date: Tue, 25 Oct 2016 12:23:48 +0000
 Subject: Re: net/sctp: slab-out-of-bounds in sctp_sf_ootb
-Message-Id: <20161024194422.GF2958@localhost.localdomain>
+Message-Id: <CAAeHK+wSgHkk+pkTr+fp1jhA6XgaD+LoCmzAUWcdJKed=4A_PA@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CAAeHK+xqO0gVjOMMLUksUF7oaQgzE+vr5cdUJa1Oa0r89FM7eQ@mail.gmail.com>
-In-Reply-To: <CAAeHK+xqO0gVjOMMLUksUF7oaQgzE+vr5cdUJa1Oa0r89FM7eQ@mail.gmail.com>
+ <20161024194422.GF2958@localhost.localdomain>
+In-Reply-To: <20161024194422.GF2958@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Andrey Konovalov <andreyknvl@google.com>
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, syzkaller <syzkaller@googlegroups.com>, Kostya Serebryany <kcc@google.com>, Alexander Potapenko <glider@google.com>, Eric Dumazet <edumazet@google.com>, Dmitry Vyukov <dvyukov@google.com>
 
-Hi Andrey,
+Hi Marcelo,
 
-On Mon, Oct 24, 2016 at 05:30:04PM +0200, Andrey Konovalov wrote:
-> The problem is that sctp_walk_errors walks the chunk before its length
-> is checked for overflow.
+I can confirm that your patch fixes the issue for me.
 
-Exactly. The check is done too late, for the 2nd and subsequent chunks
-only.
-Please try the following patch, thanks. Note: not even compile tested.
+Tested-by: Andrey Konovalov <andreyknvl@google.com>
 
----8<---
-
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 026e3bca4a94..8ec20a64a3f8 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -3422,6 +3422,12 @@ sctp_disposition_t sctp_sf_ootb(struct net *net,
- 			return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
- 						  commands);
- 
-+		/* Report violation if chunk len overflows */
-+		ch_end = ((__u8 *)ch) + SCTP_PAD4(ntohs(ch->length));
-+		if (ch_end > skb_tail_pointer(skb))
-+			return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
-+						  commands);
-+
- 		/* Now that we know we at least have a chunk header,
- 		 * do things that are type appropriate.
- 		 */
-@@ -3453,12 +3459,6 @@ sctp_disposition_t sctp_sf_ootb(struct net *net,
- 			}
- 		}
- 
--		/* Report violation if chunk len overflows */
--		ch_end = ((__u8 *)ch) + SCTP_PAD4(ntohs(ch->length));
--		if (ch_end > skb_tail_pointer(skb))
--			return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
--						  commands);
--
- 		ch = (sctp_chunkhdr_t *) ch_end;
- 	} while (ch_end < skb_tail_pointer(skb));
- 
+On Mon, Oct 24, 2016 at 9:44 PM, Marcelo Ricardo Leitner
+<marcelo.leitner@gmail.com> wrote:
+> Hi Andrey,
+>
+> On Mon, Oct 24, 2016 at 05:30:04PM +0200, Andrey Konovalov wrote:
+>> The problem is that sctp_walk_errors walks the chunk before its length
+>> is checked for overflow.
+>
+> Exactly. The check is done too late, for the 2nd and subsequent chunks
+> only.
+> Please try the following patch, thanks. Note: not even compile tested.
+>
+> ---8<---
+>
+> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+> index 026e3bca4a94..8ec20a64a3f8 100644
+> --- a/net/sctp/sm_statefuns.c
+> +++ b/net/sctp/sm_statefuns.c
+> @@ -3422,6 +3422,12 @@ sctp_disposition_t sctp_sf_ootb(struct net *net,
+>                         return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
+>                                                   commands);
+>
+> +               /* Report violation if chunk len overflows */
+> +               ch_end = ((__u8 *)ch) + SCTP_PAD4(ntohs(ch->length));
+> +               if (ch_end > skb_tail_pointer(skb))
+> +                       return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
+> +                                                 commands);
+> +
+>                 /* Now that we know we at least have a chunk header,
+>                  * do things that are type appropriate.
+>                  */
+> @@ -3453,12 +3459,6 @@ sctp_disposition_t sctp_sf_ootb(struct net *net,
+>                         }
+>                 }
+>
+> -               /* Report violation if chunk len overflows */
+> -               ch_end = ((__u8 *)ch) + SCTP_PAD4(ntohs(ch->length));
+> -               if (ch_end > skb_tail_pointer(skb))
+> -                       return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
+> -                                                 commands);
+> -
+>                 ch = (sctp_chunkhdr_t *) ch_end;
+>         } while (ch_end < skb_tail_pointer(skb));
+>
