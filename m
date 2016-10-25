@@ -1,61 +1,63 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 31 Oct 2016 20:14:45 +0000
-Subject: Re: [PATCHv2 net 2/3] sctp: return back transport in __sctp_rcv_init_lookup
-Message-Id: <20161031201445.GD8514@localhost.localdomain>
+Date: Tue, 25 Oct 2016 16:27:39 +0000
+Subject: [PATCH net] sctp: validate chunk len before actually using it
+Message-Id: <06d1d4f21f959784823d7c7e31c3ea7e7360cb99.1477410525.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1477916928.git.lucien.xin@gmail.com>
- <8d72a86988a2c16c74c45c52dafbf2bbbe9c3b4d.1477916928.git.lucien.xin@gmail.com>
-In-Reply-To: <8d72a86988a2c16c74c45c52dafbf2bbbe9c3b4d.1477916928.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+To: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, syzkaller@googlegroups.com, kcc@google.com, glider@google.com, edumazet@google.com, dvyukov@google.com, andreyknvl@google.com, marcelo.leitner@gmail.com
 
-On Mon, Oct 31, 2016 at 08:32:32PM +0800, Xin Long wrote:
-> Prior to this patch, it used a local variable to save the transport that is
-> looked up by __sctp_lookup_association(), and didn't return it back. But in
-> sctp_rcv, it is used to initialize chunk->transport. So when hitting this,
-> even if it found the transport, it was still initializing chunk->transport
-> with null instead.
-> 
-> This patch is to return the transport back through transport pointer
-> that is from __sctp_rcv_lookup_harder().
-> 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Andrey Konovalov reported that KASAN detected that SCTP was using a slab
+beyond the boundaries. It was caused because when handling out of the
+blue packets in function sctp_sf_ootb() it was checking the chunk len
+only after already processing the first chunk, validating only for the
+2nd and subsequent ones.
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+The fix is to just move the check upwards so it's also validated for the
+1st chunk.
 
-> ---
->  net/sctp/input.c | 3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
-> 
-> diff --git a/net/sctp/input.c b/net/sctp/input.c
-> index a2ea1d1..8e0bc58 100644
-> --- a/net/sctp/input.c
-> +++ b/net/sctp/input.c
-> @@ -1021,7 +1021,6 @@ static struct sctp_association *__sctp_rcv_init_lookup(struct net *net,
->  	struct sctphdr *sh = sctp_hdr(skb);
->  	union sctp_params params;
->  	sctp_init_chunk_t *init;
-> -	struct sctp_transport *transport;
->  	struct sctp_af *af;
->  
->  	/*
-> @@ -1052,7 +1051,7 @@ static struct sctp_association *__sctp_rcv_init_lookup(struct net *net,
->  
->  		af->from_addr_param(paddr, params.addr, sh->source, 0);
->  
-> -		asoc = __sctp_lookup_association(net, laddr, paddr, &transport);
-> +		asoc = __sctp_lookup_association(net, laddr, paddr, transportp);
->  		if (asoc)
->  			return asoc;
->  	}
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Reported-by: Andrey Konovalov <andreyknvl@google.com>
+Tested-by: Andrey Konovalov <andreyknvl@google.com>
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+
+Hi. Please consider this to -stable too. Thanks
+
+ net/sctp/sm_statefuns.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 026e3bca4a94bd34b418d5e6947f7182c1512358..8ec20a64a3f8055a0c3576627c5ec5dad7e99ca8 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -3422,6 +3422,12 @@ sctp_disposition_t sctp_sf_ootb(struct net *net,
+ 			return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
+ 						  commands);
+ 
++		/* Report violation if chunk len overflows */
++		ch_end = ((__u8 *)ch) + SCTP_PAD4(ntohs(ch->length));
++		if (ch_end > skb_tail_pointer(skb))
++			return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
++						  commands);
++
+ 		/* Now that we know we at least have a chunk header,
+ 		 * do things that are type appropriate.
+ 		 */
+@@ -3453,12 +3459,6 @@ sctp_disposition_t sctp_sf_ootb(struct net *net,
+ 			}
+ 		}
+ 
+-		/* Report violation if chunk len overflows */
+-		ch_end = ((__u8 *)ch) + SCTP_PAD4(ntohs(ch->length));
+-		if (ch_end > skb_tail_pointer(skb))
+-			return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
+-						  commands);
+-
+ 		ch = (sctp_chunkhdr_t *) ch_end;
+ 	} while (ch_end < skb_tail_pointer(skb));
+ 
+-- 
+2.7.4
+
