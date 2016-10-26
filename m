@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 24 Oct 2016 14:05:11 +0000
+From: David Miller <davem@davemloft.net>
+Date: Wed, 26 Oct 2016 21:32:48 +0000
 Subject: Re: [PATCH net] sctp: fix the panic caused by route update
-Message-Id: <20161024140511.GA23714@hmsreliant.think-freely.org>
+Message-Id: <20161026.173248.247683142442678932.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <a0659fd9a23fc95fe9a586be4b57c8032c8a6060.1477242069.git.lucien.xin@gmail.com>
 In-Reply-To: <a0659fd9a23fc95fe9a586be4b57c8032c8a6060.1477242069.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com, daniel@iogearbox.net
 
-On Mon, Oct 24, 2016 at 01:01:09AM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 24 Oct 2016 01:01:09 +0800
+
 > Commit 7303a1475008 ("sctp: identify chunks that need to be fragmented
 > at IP level") made the chunk be fragmented at IP level in the next round
 > if it's size exceed PMTU.
@@ -29,43 +31,5 @@ On Mon, Oct 24, 2016 at 01:01:09AM +0800, Xin Long wrote:
 > 
 > Fixes: 90017accff61 ("sctp: Add GSO support")
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> ---
->  net/sctp/output.c | 8 +++++++-
->  1 file changed, 7 insertions(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/output.c b/net/sctp/output.c
-> index 2a5c189..6cb0df8 100644
-> --- a/net/sctp/output.c
-> +++ b/net/sctp/output.c
-> @@ -418,6 +418,7 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
->  	__u8 has_data = 0;
->  	int gso = 0;
->  	int pktcount = 0;
-> +	int auth_len = 0;
->  	struct dst_entry *dst;
->  	unsigned char *auth = NULL;	/* pointer to auth in skb data */
->  
-> @@ -510,7 +511,12 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
->  			list_for_each_entry(chunk, &packet->chunk_list, list) {
->  				int padded = SCTP_PAD4(chunk->skb->len);
->  
-> -				if (pkt_size + padded > tp->pathmtu)
-> +				if (chunk = packet->auth)
-> +					auth_len = padded;
-> +				else if (auth_len + padded + packet->overhead >
-> +					 tp->pathmtu)
-> +					goto nomem;
-> +				else if (pkt_size + padded > tp->pathmtu)
->  					break;
->  				pkt_size += padded;
->  			}
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Acked-by: Neil Horman <nhorman@txudriver.com>
 
+Applied, and queued up for -stable, thanks!
