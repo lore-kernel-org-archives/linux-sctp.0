@@ -1,42 +1,47 @@
-From: Jamal Hadi Salim <jhs@mojatatu.com>
-Date: Tue, 25 Oct 2016 11:04:02 +0000
-Subject: Re: send/sendmsg ENOMEM errors WAS(Re: [PATCH net 6/6] sctp: not return ENOMEM err back in sctp_pack
-Message-Id: <7aa1de3e-19c4-91bd-c0d6-a61f32fa6876@mojatatu.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 28 Oct 2016 10:10:52 +0000
+Subject: [PATCH net 1/3] sctp: hold transport instead of assoc in sctp_diag
+Message-Id: <a58ed3a60643e38876a12ed9193e60f7b38cba4d.1477649076.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <c15cc225-608d-5268-d179-6a997c3cad62@mojatatu.com>
- <daecd6b5-47cf-c5de-90f5-445e0038dfce@mojatatu.com>
- <CADvbK_ci-aaX6-mgXTgR0mJm9ww7+48DmXH+m5R+-0PyMDH16g@mail.gmail.com>
- <2fa21505-59c2-fb8b-6e89-11fccc953d25@mojatatu.com>
- <CADvbK_cvYhCfzuJCcoUC3+Ghv+VYLoyRGo0mt9UccjYpSBYD0g@mail.gmail.com>
- <369b7b2c-d1fb-5dd2-30b9-4f54400aa770@mojatatu.com>
- <CADvbK_eEaZBDXfY6D5dqRq3WRSgxvcHUxbq6JPnSrZ6Zpkghrw@mail.gmail.com>
- <20161025103416.GG2958@localhost.localdomain>
-In-Reply-To: <20161025103416.GG2958@localhost.localdomain>
+References: <cover.1477649076.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1477649076.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: Xin Long <lucien.xin@gmail.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, Vlad Yasevich <vyasevic@redhat.com>, Daniel Borkmann <daniel@iogearbox.net>, David Miller <davem@davemloft.net>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Michael Tuexen <Michael.Tuexen@lurchi.franken.de>, Eric Dumazet <edumazet@google.com>, Brenda Butler <bjb@mojatatu.com>, gabor@mojatatu.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-On 16-10-25 06:34 AM, Marcelo Ricardo Leitner wrote:
-> On Tue, Oct 25, 2016 at 05:05:41PM +0800, Xin Long wrote:
->>>> in case [1], user can't see the ENOMEM, ENOMEM is more like
+In sctp_transport_lookup_process(), Commit 1cceda784980 ("sctp: fix
+the issue sctp_diag uses lock_sock in rcu_read_lock") moved cb() out
+of rcu lock, but it put transport and hold assoc instead, and ignore
+that cb() still uses transport. It may cause a use-after-free issue.
 
->
-> Thing is, it may lead to duplicate messages in Application layer, as the
-> msg that was errored out may have been actually queued and later
-> retransmitted.
->
-> That's why I said the recovery steps from this depends on the
-> application on top of SCTP, if it can handle such duplicate messages or
-> not.
+This patch is to hold transport instead of assoc there.
 
-Yes, I was worried about duplicate messages.
-Which is a bug on SCTP implementation on Linux, unfortunately. IOW,
-transport should take care of duplicates - not the app.
-i.e any app change is a workaround which will be  unnecessary in newer
-kernels.
+Fixes: 1cceda784980 ("sctp: fix the issue sctp_diag uses lock_sock in rcu_read_lock")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/socket.c | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
 
-cheers,
-jamal
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 9fbb6fe..71b75f9 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4480,12 +4480,9 @@ int sctp_transport_lookup_process(int (*cb)(struct sctp_transport *, void *),
+ 	if (!transport || !sctp_transport_hold(transport))
+ 		goto out;
+ 
+-	sctp_association_hold(transport->asoc);
+-	sctp_transport_put(transport);
+-
+ 	rcu_read_unlock();
+ 	err = cb(transport, p);
+-	sctp_association_put(transport->asoc);
++	sctp_transport_put(transport);
+ 
+ out:
+ 	return err;
+-- 
+2.1.0
 
