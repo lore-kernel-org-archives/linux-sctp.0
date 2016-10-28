@@ -1,37 +1,52 @@
-From: David Miller <davem@davemloft.net>
-Date: Sun, 23 Oct 2016 21:44:05 +0000
-Subject: Re: [PATCH] net: sctp, forbid negative length
-Message-Id: <20161023.174405.1335530959467229046.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 28 Oct 2016 10:10:53 +0000
+Subject: [PATCH net 2/3] sctp: return back transport in __sctp_rcv_init_lookup
+Message-Id: <5ebf537ea021af594ca1b2538d28a3080d5c3ee7.1477649076.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20161021121324.13942-1-jslaby@suse.cz>
-In-Reply-To: <20161021121324.13942-1-jslaby@suse.cz>
+References: <cover.1477649076.git.lucien.xin@gmail.com>
+ <a58ed3a60643e38876a12ed9193e60f7b38cba4d.1477649076.git.lucien.xin@gmail.com>
+In-Reply-To: <a58ed3a60643e38876a12ed9193e60f7b38cba4d.1477649076.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: jslaby@suse.cz
-Cc: vyasevich@gmail.com, linux-kernel@vger.kernel.org, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-From: Jiri Slaby <jslaby@suse.cz>
-Date: Fri, 21 Oct 2016 14:13:24 +0200
+Prior to this patch, it used a local variable to save the transport that is
+looked up by __sctp_lookup_association(), and didn't return it back. But in
+sctp_rcv, it is used to initialize chunk->transport. So when hitting this
+code, it was initializing chunk->transport with some random stack value
+instead.
 
-> Most of getsockopt handlers in net/sctp/socket.c check len against
-> sizeof some structure like:
->         if (len < sizeof(int))
->                 return -EINVAL;
-> 
-> On the first look, the check seems to be correct. But since len is int
-> and sizeof returns size_t, int gets promoted to unsigned size_t too. So
-> the test returns false for negative lengths. Yes, (-1 < sizeof(long)) is
-> false.
-> 
-> Fix this in sctp by explicitly checking len < 0 before any getsockopt
-> handler is called.
-> 
-> Note that sctp_getsockopt_events already handled the negative case.
-> Since we added the < 0 check elsewhere, this one can be removed.
-> 
-> If not checked, this is the result:
-...
-> Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+This patch is to return the transport back through transport pointer
+that is from __sctp_rcv_lookup_harder().
 
-Applied and queued up for -stable, thanks.
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/input.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index a2ea1d1..8e0bc58 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -1021,7 +1021,6 @@ static struct sctp_association *__sctp_rcv_init_lookup(struct net *net,
+ 	struct sctphdr *sh = sctp_hdr(skb);
+ 	union sctp_params params;
+ 	sctp_init_chunk_t *init;
+-	struct sctp_transport *transport;
+ 	struct sctp_af *af;
+ 
+ 	/*
+@@ -1052,7 +1051,7 @@ static struct sctp_association *__sctp_rcv_init_lookup(struct net *net,
+ 
+ 		af->from_addr_param(paddr, params.addr, sh->source, 0);
+ 
+-		asoc = __sctp_lookup_association(net, laddr, paddr, &transport);
++		asoc = __sctp_lookup_association(net, laddr, paddr, transportp);
+ 		if (asoc)
+ 			return asoc;
+ 	}
+-- 
+2.1.0
+
