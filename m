@@ -1,16 +1,30 @@
-From: =?utf-8?B?5pat6KOC5Yi25L2c?= <zhaopin@dgtis.com>
-Date: Mon, 31 Oct 2016 09:01:16 +0000
-Subject: =?utf-8?B?5Y+MMTHpooTllK7kuJPlnLrlt7Lnu4/lvIDlkK/vvIHkvY7oh7PkupTmipjvvIzlj4zljYHkuIA=?= =?utf-8?B?5
-Message-Id: <366EE62D34A977956C83E084D55CF9B2@aga.sbntf>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 28 Oct 2016 10:10:51 +0000
+Subject: [PATCH net 0/3]  sctp: a bunch of fixes by holding transport
+Message-Id: <cover.1477649076.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
 
-ICAgICAgICAgICAgICAgIOWPjDEx5rW36YeP5aW96LSn5o+Q5YmN5pud5YWJDQoNCuaPkOWJjeaf
-peeci+WPjDEx5aW96LSn77yM5oqi5YWI5pS26JeP77yM5Y+MMTHlvZPlpKnnq4vljbPkuIvljZXv
-vIzpgb/lhY3mjpLpmJ/ku5jmrL7vvIzkuI3mraLmmK/kupTmipjvvIENCg0K55S16ISR55So5oi3
-5YWl5Y+j77yaaHR0cDovL3MuY2xpY2sudGFvYmFvLmNvbS8wRFBVV1B4DQrmiYvmnLrnlKjmiLfl
-haXlj6PvvJpodHRwOi8vcy5jbGljay50YW9iYW8uY29tL1hRbFVXUHg
+There are several places where it holds assoc after getting transport by
+searching from transport rhashtable, it may cause use-after- free issue.
+
+This patchset is to fix them by holding transport instead.
+
+Xin Long (3):
+  sctp: hold transport instead of assoc in sctp_diag
+  sctp: return back transport in __sctp_rcv_init_lookup
+  sctp: hold transport instead of assoc when lookup assoc in rx path
+
+ include/net/sctp/sctp.h |  2 +-
+ net/sctp/input.c        | 35 +++++++++++++++++------------------
+ net/sctp/ipv6.c         |  2 +-
+ net/sctp/socket.c       |  5 +----
+ 4 files changed, 20 insertions(+), 24 deletions(-)
+
+-- 
+2.1.0
 
