@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 26 Oct 2016 13:23:52 +0000
+From: David Miller <davem@davemloft.net>
+Date: Sat, 29 Oct 2016 15:57:35 +0000
 Subject: Re: [PATCH net] sctp: validate chunk len before actually using it
-Message-Id: <20161026132352.GA23626@hmsreliant.think-freely.org>
+Message-Id: <20161029.115735.1305731447719654765.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <06d1d4f21f959784823d7c7e31c3ea7e7360cb99.1477410525.git.marcelo.leitner@gmail.com>
 In-Reply-To: <06d1d4f21f959784823d7c7e31c3ea7e7360cb99.1477410525.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, syzkaller@googlegroups.com, kcc@google.com, glider@google.com, edumazet@google.com, dvyukov@google.com, andreyknvl@google.com
+To: marcelo.leitner@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, nhorman@tuxdriver.com, vyasevich@gmail.com, syzkaller@googlegroups.com, kcc@google.com, glider@google.com, edumazet@google.com, dvyukov@google.com, andreyknvl@google.com
 
-On Tue, Oct 25, 2016 at 02:27:39PM -0200, Marcelo Ricardo Leitner wrote:
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 25 Oct 2016 14:27:39 -0200
+
 > Andrey Konovalov reported that KASAN detected that SCTP was using a slab
 > beyond the boundaries. It was caused because when handling out of the
 > blue packets in function sctp_sf_ootb() it was checking the chunk len
@@ -27,47 +29,5 @@ On Tue, Oct 25, 2016 at 02:27:39PM -0200, Marcelo Ricardo Leitner wrote:
 > ---
 > 
 > Hi. Please consider this to -stable too. Thanks
-> 
->  net/sctp/sm_statefuns.c | 12 ++++++------
->  1 file changed, 6 insertions(+), 6 deletions(-)
-> 
-> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-> index 026e3bca4a94bd34b418d5e6947f7182c1512358..8ec20a64a3f8055a0c3576627c5ec5dad7e99ca8 100644
-> --- a/net/sctp/sm_statefuns.c
-> +++ b/net/sctp/sm_statefuns.c
-> @@ -3422,6 +3422,12 @@ sctp_disposition_t sctp_sf_ootb(struct net *net,
->  			return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
->  						  commands);
->  
-> +		/* Report violation if chunk len overflows */
-> +		ch_end = ((__u8 *)ch) + SCTP_PAD4(ntohs(ch->length));
-> +		if (ch_end > skb_tail_pointer(skb))
-> +			return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
-> +						  commands);
-> +
->  		/* Now that we know we at least have a chunk header,
->  		 * do things that are type appropriate.
->  		 */
-> @@ -3453,12 +3459,6 @@ sctp_disposition_t sctp_sf_ootb(struct net *net,
->  			}
->  		}
->  
-> -		/* Report violation if chunk len overflows */
-> -		ch_end = ((__u8 *)ch) + SCTP_PAD4(ntohs(ch->length));
-> -		if (ch_end > skb_tail_pointer(skb))
-> -			return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
-> -						  commands);
-> -
->  		ch = (sctp_chunkhdr_t *) ch_end;
->  	} while (ch_end < skb_tail_pointer(skb));
->  
-> -- 
-> 2.7.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
+Applied and queued up for -stable, thanks!
