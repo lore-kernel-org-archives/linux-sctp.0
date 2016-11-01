@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 01 Nov 2016 17:35:50 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 01 Nov 2016 18:01:21 +0000
 Subject: Re: [PATCH net-next] sctp: clean up sctp_packet_transmit
-Message-Id: <20161101173550.GF8514@localhost.localdomain>
+Message-Id: <20161101180121.GB10666@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <407056b761e77ecbd43603a17099bb9309a9a8ac.1477932581.git.lucien.xin@gmail.com>
 In-Reply-To: <407056b761e77ecbd43603a17099bb9309a9a8ac.1477932581.git.lucien.xin@gmail.com>
@@ -9,23 +9,17 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
 On Tue, Nov 01, 2016 at 12:49:41AM +0800, Xin Long wrote:
 > After adding sctp gso, sctp_packet_transmit is a quite big function now.
 > 
 > This patch is to extract the codes for packing packet to sctp_packet_pack
 > from sctp_packet_transmit, and add some comments, simplify the err path by
-
-you also purge lots of comments from there too, but I don't miss them.
-
 > freeing auth chunk when freeing packet chunk_list in out path and freeing
 > head skb early if it fails to pack packet.
 > 
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/output.c | 435 ++++++++++++++++++++----------------------------------
 >  1 file changed, 158 insertions(+), 277 deletions(-)
@@ -555,4 +549,6 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+>
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+ 
