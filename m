@@ -1,34 +1,40 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 14 Nov 2016 21:23:49 +0000
-Subject: Re: [PATCH net] sctp: change sk state only when it has assocs in sctp_shutdown
-Message-Id: <20161114.162349.1179710065617941826.davem@davemloft.net>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 01 Nov 2016 13:32:34 +0000
+Subject: Re: [PATCHv2 net 0/3] sctp: a bunch of fixes by holding transport
+Message-Id: <20161101133234.GA10666@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <d260f8b59f52d7ef00b83a554fc19d4aa91766a2.1479044677.git.lucien.xin@gmail.com>
-In-Reply-To: <d260f8b59f52d7ef00b83a554fc19d4aa91766a2.1479044677.git.lucien.xin@gmail.com>
+References: <cover.1477916928.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1477916928.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, vyasevich@gmail.com, andreyknvl@google.com
+To: Xin Long <lucien.xin@gmail.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 13 Nov 2016 21:44:37 +0800
+On Mon, Oct 31, 2016 at 08:32:30PM +0800, Xin Long wrote:
+> There are several places where it holds assoc after getting transport by
+> searching from transport rhashtable, it may cause use-after-free issue.
+> 
+> This patchset is to fix them by holding transport instead.
+> 
+> v1->v2:
+>   Fix the changelog of patch 2/3
+> 
+> Xin Long (3):
+>   sctp: hold transport instead of assoc in sctp_diag
+>   sctp: return back transport in __sctp_rcv_init_lookup
+>   sctp: hold transport instead of assoc when lookup assoc in rx path
+> 
+>  include/net/sctp/sctp.h |  2 +-
+>  net/sctp/input.c        | 35 +++++++++++++++++------------------
+>  net/sctp/ipv6.c         |  2 +-
+>  net/sctp/socket.c       |  5 +----
+>  4 files changed, 20 insertions(+), 24 deletions(-)
+> 
+> -- 
+> 2.1.0
+> 
+> 
+series
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
-> Now when users shutdown a sock with SEND_SHUTDOWN in sctp, even if
-> this sock has no connection (assoc), sk state would be changed to
-> SCTP_SS_CLOSING, which is not as we expect.
-> 
-> Besides, after that if users try to listen on this sock, kernel
-> could even panic when it dereference sctp_sk(sk)->bind_hash in
-> sctp_inet_listen, as bind_hash is null when sock has no assoc.
-> 
-> This patch is to move sk state change after checking sk assocs
-> is not empty, and also merge these two if() conditions and reduce
-> indent level.
-> 
-> Fixes: d46e416c11c8 ("sctp: sctp should change socket state when shutdown is received")
-> Reported-by: Andrey Konovalov <andreyknvl@google.com>
-> Tested-by: Andrey Konovalov <andreyknvl@google.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Applied and queued up for -stable, thanks.
