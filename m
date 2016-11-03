@@ -1,116 +1,40 @@
 From: Andrey Konovalov <andreyknvl@google.com>
-Date: Wed, 02 Nov 2016 22:42:07 +0000
+Date: Thu, 03 Nov 2016 17:11:01 +0000
 Subject: Re: net/sctp: use-after-free in __sctp_connect
-Message-Id: <CAAeHK+xaBVcZp7PfH-tYWaxs6rCiaNAivZj4xZLcawFShi6C1Q@mail.gmail.com>
-MIME-Version: 1
-Content-Type: multipart/mixed; boundary="001a114021eca994e305405926d2"
+Message-Id: <CAAeHK+xxcV8XV1Pc2_eBrQWTDSp3ooc1LLX81jhCTCvk7hhaVg@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CAAeHK+wX8yxVTpmg-Ps7MKTD-x_HS3GgpzX6yfGh51cQE0oPjA@mail.gmail.com>
- <20161019165754.GD2958@localhost.localdomain>
-In-Reply-To: <20161019165754.GD2958@localhost.localdomain>
+ <20161019165754.GD2958@localhost.localdomain> <CAAeHK+xaBVcZp7PfH-tYWaxs6rCiaNAivZj4xZLcawFShi6C1Q@mail.gmail.com>
+In-Reply-To: <CAAeHK+xaBVcZp7PfH-tYWaxs6rCiaNAivZj4xZLcawFShi6C1Q@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, syzkaller <syzkaller@googlegroups.com>, Kostya Serebryany <kcc@google.com>, Alexander Potapenko <glider@google.com>, Eric Dumazet <edumazet@google.com>, Dmitry Vyukov <dvyukov@google.com>
 
---001a114021eca994e305405926d2
-Content-Type: text/plain; charset=UTF-8
-
-On Wed, Oct 19, 2016 at 6:57 PM, Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
-> On Wed, Oct 19, 2016 at 02:25:24PM +0200, Andrey Konovalov wrote:
->> Hi,
+On Wed, Nov 2, 2016 at 11:42 PM, Andrey Konovalov <andreyknvl@google.com> wrote:
+> On Wed, Oct 19, 2016 at 6:57 PM, Marcelo Ricardo Leitner
+> <marcelo.leitner@gmail.com> wrote:
+>> On Wed, Oct 19, 2016 at 02:25:24PM +0200, Andrey Konovalov wrote:
+>>> Hi,
+>>>
+>>> I've got the following error report while running the syzkaller fuzzer:
+>>>
+>>> =================================
+>>> BUG: KASAN: use-after-free in __sctp_connect+0xabe/0xbf0 at addr
+>>> ffff88006b1dc610
 >>
->> I've got the following error report while running the syzkaller fuzzer:
->>
->> ==================================================================
->> BUG: KASAN: use-after-free in __sctp_connect+0xabe/0xbf0 at addr
->> ffff88006b1dc610
->
-> Seems this is the same that Dmitry Vyukov had reported back in Jan 13th.
-> So far I couldn't identify the reason.
-> "Good" to know it's still there, thanks for reporting it.
+>> Seems this is the same that Dmitry Vyukov had reported back in Jan 13th.
+>> So far I couldn't identify the reason.
+>> "Good" to know it's still there, thanks for reporting it.
 
 Hi Marcelo,
 
-I've attached a reproducer that might help to figure out the reason.
-
-It triggers the UAF for me in ~10 seconds of running as:
-$ gcc -lpthread sctp-connect-uaf-poc.c
-$ while true; do ./a.out; done
-
-You need to have KASAN enabled.
-
->
-
---001a114021eca994e305405926d2
-Content-Type: application/octet-stream; name="sctp-connect-uaf-poc.c"
-Content-Disposition: attachment; filename="sctp-connect-uaf-poc.c"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_iv1icy6s0
-
-Ly8gYXV0b2dlbmVyYXRlZCBieSBzeXprYWxsZXIgKGh0dHA6Ly9naXRodWIuY29tL2dvb2dsZS9z
-eXprYWxsZXIpCgojaWZuZGVmIF9fTlJfc29ja2V0CiNkZWZpbmUgX19OUl9zb2NrZXQgNDEKI2Vu
-ZGlmCiNpZm5kZWYgX19OUl9zZXRzb2Nrb3B0CiNkZWZpbmUgX19OUl9zZXRzb2Nrb3B0IDU0CiNl
-bmRpZgojaWZuZGVmIF9fTlJfbW1hcAojZGVmaW5lIF9fTlJfbW1hcCA5CiNlbmRpZgojaWZuZGVm
-IF9fTlJfc2h1dGRvd24KI2RlZmluZSBfX05SX3NodXRkb3duIDQ4CiNlbmRpZgoKI2luY2x1ZGUg
-PHN5cy9pb2N0bC5oPgojaW5jbHVkZSA8c3lzL3NvY2tldC5oPgojaW5jbHVkZSA8c3lzL3N0YXQu
-aD4KI2luY2x1ZGUgPHN5cy9zeXNjYWxsLmg+CiNpbmNsdWRlIDxzeXMvdHlwZXMuaD4KCiNpbmNs
-dWRlIDxlcnJuby5oPgojaW5jbHVkZSA8ZXJyb3IuaD4KI2luY2x1ZGUgPGZjbnRsLmg+CiNpbmNs
-dWRlIDxwdGhyZWFkLmg+CiNpbmNsdWRlIDxzZXRqbXAuaD4KI2luY2x1ZGUgPHNpZ25hbC5oPgoj
-aW5jbHVkZSA8c3RkZGVmLmg+CiNpbmNsdWRlIDxzdGRpbnQuaD4KI2luY2x1ZGUgPHN0ZGlvLmg+
-CiNpbmNsdWRlIDxzdGRsaWIuaD4KI2luY2x1ZGUgPHN0cmluZy5oPgojaW5jbHVkZSA8dW5pc3Rk
-Lmg+CgpfX3RocmVhZCBpbnQgc2tpcF9zZWd2OwpfX3RocmVhZCBqbXBfYnVmIHNlZ3ZfZW52OwoK
-c3RhdGljIHZvaWQgc2Vndl9oYW5kbGVyKGludCBzaWcsIHNpZ2luZm9fdCogaW5mbywgdm9pZCog
-dWN0eCkKewogIGlmIChfX2F0b21pY19sb2FkX24oJnNraXBfc2VndiwgX19BVE9NSUNfUkVMQVhF
-RCkpCiAgICBfbG9uZ2ptcChzZWd2X2VudiwgMSk7CiAgZXhpdChzaWcpOwp9CgpzdGF0aWMgdm9p
-ZCBpbnN0YWxsX3NlZ3ZfaGFuZGxlcigpCnsKICBzdHJ1Y3Qgc2lnYWN0aW9uIHNhOwogIG1lbXNl
-dCgmc2EsIDAsIHNpemVvZihzYSkpOwogIHNhLnNhX3NpZ2FjdGlvbiA9IHNlZ3ZfaGFuZGxlcjsK
-ICBzYS5zYV9mbGFncyA9IFNBX05PREVGRVIgfCBTQV9TSUdJTkZPOwogIHNpZ2FjdGlvbihTSUdT
-RUdWLCAmc2EsIE5VTEwpOwogIHNpZ2FjdGlvbihTSUdCVVMsICZzYSwgTlVMTCk7Cn0KCiNkZWZp
-bmUgTk9ORkFJTElORyguLi4pICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgXAogIHsgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgIFwKICAgIF9fYXRvbWljX2ZldGNoX2FkZCgmc2tpcF9z
-ZWd2LCAxLCBfX0FUT01JQ19TRVFfQ1NUKTsgICAgICAgICAgICAgICBcCiAgICBpZiAoX3NldGpt
-cChzZWd2X2VudikgPT0gMCkgeyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-XAogICAgICBfX1ZBX0FSR1NfXzsgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgIFwKICAgIH0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBcCiAgICBfX2F0b21pY19mZXRjaF9zdWIo
-JnNraXBfc2VndiwgMSwgX19BVE9NSUNfU0VRX0NTVCk7ICAgICAgICAgICAgICAgXAogIH0KCnN0
-YXRpYyB1aW50cHRyX3QgZXhlY3V0ZV9zeXNjYWxsKGludCBuciwgdWludHB0cl90IGEwLCB1aW50
-cHRyX3QgYTEsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHVpbnRwdHJfdCBhMiwg
-dWludHB0cl90IGEzLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB1aW50cHRyX3Qg
-YTQsIHVpbnRwdHJfdCBhNSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgdWludHB0
-cl90IGE2LCB1aW50cHRyX3QgYTcsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHVp
-bnRwdHJfdCBhOCkKewogIHN3aXRjaCAobnIpIHsKICBkZWZhdWx0OgogICAgcmV0dXJuIHN5c2Nh
-bGwobnIsIGEwLCBhMSwgYTIsIGEzLCBhNCwgYTUpOwogIH0KfQoKbG9uZyByWzE0XTsKdm9pZCog
-dGhyKHZvaWQqIGFyZykKewogIHN3aXRjaCAoKGxvbmcpYXJnKSB7CiAgY2FzZSAwOgogICAgclsw
-XSA9CiAgICAgICAgZXhlY3V0ZV9zeXNjYWxsKF9fTlJfbW1hcCwgMHgyMDAwMDAwMHVsLCAweDMz
-MjAwMHVsLCAweDN1bCwKICAgICAgICAgICAgICAgICAgICAgICAgMHgzMnVsLCAweGZmZmZmZmZm
-ZmZmZmZmZmZ1bCwgMHgwdWwsIDAsIDAsIDApOwogICAgYnJlYWs7CiAgY2FzZSAxOgogICAgclsx
-XSA9IGV4ZWN1dGVfc3lzY2FsbChfX05SX3NvY2tldCwgMHgydWwsIDB4MXVsLCAweDB1bCwgMCwg
-MCwgMCwgMCwKICAgICAgICAgICAgICAgICAgICAgICAgICAgMCwgMCk7CiAgICBicmVhazsKICBj
-YXNlIDI6CiAgICByWzJdID0gZXhlY3V0ZV9zeXNjYWxsKF9fTlJfc29ja2V0LCAweGF1bCwgMHgx
-dWwsIDB4ODR1bCwgMCwgMCwgMCwKICAgICAgICAgICAgICAgICAgICAgICAgICAgMCwgMCwgMCk7
-CiAgICBicmVhazsKICBjYXNlIDM6CiAgICByWzNdID0gZXhlY3V0ZV9zeXNjYWxsKF9fTlJfc2h1
-dGRvd24sIHJbMl0sIDB4MHVsLCAwLCAwLCAwLCAwLCAwLCAwLAogICAgICAgICAgICAgICAgICAg
-ICAgICAgICAwKTsKICAgIGJyZWFrOwogIGNhc2UgNDoKICAgIE5PTkZBSUxJTkcoKih1aW50MTZf
-dCopMHgyMDAwOGZlNCA9ICh1aW50MTZfdCkweGEpOwogICAgTk9ORkFJTElORygqKHVpbnQxNl90
-KikweDIwMDA4ZmU2ID0gKHVpbnQxNl90KTB4NDI0Mik7CiAgICBOT05GQUlMSU5HKCoodWludDMy
-X3QqKTB4MjAwMDhmZTggPSAodWludDMyX3QpMHgxZGRiKTsKICAgIE5PTkZBSUxJTkcoKih1aW50
-MzJfdCopMHgyMDAwOGZlYyA9ICh1aW50MzJfdCkweDUpOwogICAgTk9ORkFJTElORygqKHVpbnQz
-Ml90KikweDIwMDA4ZmYwID0gKHVpbnQzMl90KTB4ZmZmZik7CiAgICBOT05GQUlMSU5HKCoodWlu
-dDMyX3QqKTB4MjAwMDhmZjQgPSAodWludDMyX3QpMHg3KTsKICAgIE5PTkZBSUxJTkcoKih1aW50
-MzJfdCopMHgyMDAwOGZmOCA9ICh1aW50MzJfdCkweDApOwogICAgTk9ORkFJTElORygqKHVpbnQz
-Ml90KikweDIwMDA4ZmZjID0gKHVpbnQzMl90KTB4ZmZmZmZmZmZmZmZmZmYyMyk7CiAgICByWzEy
-XSA9IGV4ZWN1dGVfc3lzY2FsbChfX05SX3NldHNvY2tvcHQsIHJbMl0sIDB4ODR1bCwgMHg2ZXVs
-LAogICAgICAgICAgICAgICAgICAgICAgICAgICAgMHgyMDAwOGZlNHVsLCAweDFjdWwsIDAsIDAs
-IDAsIDApOwogICAgYnJlYWs7CiAgY2FzZSA1OgogICAgclsxM10gPSBleGVjdXRlX3N5c2NhbGwo
-X19OUl9zaHV0ZG93biwgclsyXSwgMHgxdWwsIDAsIDAsIDAsIDAsIDAsCiAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAwLCAwKTsKICAgIGJyZWFrOwogIH0KICByZXR1cm4gMDsKfQoKaW50IG1h
-aW4oKQp7CiAgbG9uZyBpOwogIHB0aHJlYWRfdCB0aFsxMl07CgogIGluc3RhbGxfc2Vndl9oYW5k
-bGVyKCk7CiAgbWVtc2V0KHIsIC0xLCBzaXplb2YocikpOwogIHNyYW5kKGdldHBpZCgpKTsKICBm
-b3IgKGkgPSAwOyBpIDwgNjsgaSsrKSB7CiAgICBwdGhyZWFkX2NyZWF0ZSgmdGhbaV0sIDAsIHRo
-ciwgKHZvaWQqKWkpOwogICAgdXNsZWVwKDEwMDAwKTsKICB9CiAgZm9yIChpID0gMDsgaSA8IDY7
-IGkrKykgewogICAgcHRocmVhZF9jcmVhdGUoJnRoWzYgKyBpXSwgMCwgdGhyLCAodm9pZCopaSk7
-CiAgICBpZiAocmFuZCgpICUgMikKICAgICAgdXNsZWVwKHJhbmQoKSAlIDEwMDAwKTsKICB9CiAg
-dXNsZWVwKDEwMDAwMCk7CiAgcmV0dXJuIDA7Cn0K
---001a114021eca994e305405926d2--
+So I've looked at the code.
+As far as I understand, the problem is a race condition between
+setsockopt(SCTP_SOCKOPT_CONNECTX) and shutdown on an sctp socket.
+setsockopt() calls sctp_wait_for_connect(), which exits the for loop
+on the sk->sk_shutdown & RCV_SHUTDOWN if clause, and then frees asoc
+with sctp_association_put() and returns err = 0.
+Then __sctp_connect() checks that err = 0 and reads asoc->assoc_id
+from the freed asoc.
