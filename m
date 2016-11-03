@@ -1,40 +1,59 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Sun, 27 Nov 2016 14:55:47 +0000
-Subject: Re: Adding SCTP_SENDALL support
-Message-Id: <20161127145547.GA18462@neilslaptop.think-freely.org>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Thu, 03 Nov 2016 19:03:41 +0000
+Subject: [PATCH net] sctp: assign assoc_id earlier in __sctp_connect
+Message-Id: <9df38dcd0323ad92386eb6851a60dc128dd00b4e.1478199530.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <87vavii953.fsf@shlevy-laptop.i-did-not-set--mail-host-address--so-tickle-me>
-In-Reply-To: <87vavii953.fsf@shlevy-laptop.i-did-not-set--mail-host-address--so-tickle-me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, syzkaller@googlegroups.com, kcc@google.com, glider@google.com, edumazet@google.com, dvyukov@google.com, andreyknvl@google.com
 
-On Mon, Nov 21, 2016 at 01:22:56AM +0800, Xin Long wrote:
-> On Sun, Nov 20, 2016 at 9:16 PM, Shea Levy <shea@shealevy.com> wrote:
-> > Hi all,
-> >
-> > I'd like to add SCTP_SENDALL support to the kernel and lksctp-tools to
-> > port a FreeBSD project to Linux. Does anyone have pointers on where to
-> > get started or who to talk to about this? Is there any reason it's not
-> > already implemented besides just no one doing the work yet?
-> SCTP_SENDALL is also an api from rfc6458, I think it's just not yet
-> done in Linux.
-> 
-+1, its just not had a motivated developer to do the work.  Truthfully you can
-emulate it pretty easily in an application with a for loop, so its likely not
-been high priority.
+sctp_wait_for_connect() currently already holds the asoc to keep it
+alive during the sleep, in case another thread release it. But Andrey
+Konovalov and Dmitry Vyukov reported an use-after-free in such
+situation.
 
-> I guess you have to do some adjustments in sctp_sendmsg, considering
-> there is no sctp_iterator_work unlike in BSD.
-> 
-Yeah, but not much, just issue a PRIMITIVE_SEND on each association if the
-SENDALL flag is set I would think
+Problem is that __sctp_connect() doesn't get a ref on the asoc and will
+do a read on the asoc after calling sctp_wait_for_connect(), but by then
+another thread may have closed it and the _put on sctp_wait_for_connect
+will actually release it, causing the use-after-free.
 
-> I don't think we need to add some things in lkscp-tools to support this,
-> as long as we update uapi sctp.h in our system.
-> 
-Agreed, if you add the flag to the proper uapi header, that should be it.
+Fix is, instead of doing the read after waiting for the connect, do it
+before so, and avoid this issue as the socket is still locked by then.
+There should be no issue on returning the asoc id in case of failure as
+the application shouldn't trust on that number in such situations
+anyway.
 
-Neil
-> 
+This issue doesn't exist in sctp_sendmsg() path.
+
+Reported-by: Dmitry Vyukov <dvyukov@google.com>
+Reported-by: Andrey Konovalov <andreyknvl@google.com>
+Tested-by: Andrey Konovalov <andreyknvl@google.com>
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/socket.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 6cdc61c21438aa9b6dbdad93e70759071a4d6789..be1d9bb98230c9d77f676949db773b2dacd801a4 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1214,9 +1214,12 @@ static int __sctp_connect(struct sock *sk,
+ 
+ 	timeo = sock_sndtimeo(sk, f_flags & O_NONBLOCK);
+ 
+-	err = sctp_wait_for_connect(asoc, &timeo);
+-	if ((err = 0 || err = -EINPROGRESS) && assoc_id)
++	if (assoc_id)
+ 		*assoc_id = asoc->assoc_id;
++	err = sctp_wait_for_connect(asoc, &timeo);
++	/* Note: the asoc may be freed after the return of
++	 * sctp_wait_for_connect.
++	 */
+ 
+ 	/* Don't free association on exit. */
+ 	asoc = NULL;
+-- 
+2.7.4
+
