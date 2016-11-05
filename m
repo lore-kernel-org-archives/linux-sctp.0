@@ -1,30 +1,22 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 28 Oct 2016 10:10:51 +0000
-Subject: [PATCH net 0/3]  sctp: a bunch of fixes by holding transport
-Message-Id: <cover.1477649076.git.lucien.xin@gmail.com>
+From: "Jonathan T. Leighton" <jtleight@udel.edu>
+Date: Sat, 05 Nov 2016 15:07:41 +0000
+Subject: Does getaddrinfo() need to be rebuilt for SCTP support?
+Message-Id: <4fc71aa8-655a-de2d-bec2-93fa63f00a17@udel.edu>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, daniel@iogearbox.net
+To: linux-sctp@vger.kernel.org
 
-There are several places where it holds assoc after getting transport by
-searching from transport rhashtable, it may cause use-after- free issue.
+I've run into some behavior of getaddrinfo() that I think may be 
+incorrect. When getaddrinfo() is called with a numeric service argument 
+(as opposed to a name), it returns a list of addrinfo structures for 
+each protocol that it knows about, without referencing the /etc/services 
+database. After installing lksctp I expected this list to include 
+IPPROTO_SCTP, but it doesn't. It looks to me like getaddrinfo() is 
+actually only returning addrinfo structures for all the protocols that 
+is knew about when it was built. Is this the correct behavior? Do I need 
+to rebuild glibc? Thanks for any help.
 
-This patchset is to fix them by holding transport instead.
-
-Xin Long (3):
-  sctp: hold transport instead of assoc in sctp_diag
-  sctp: return back transport in __sctp_rcv_init_lookup
-  sctp: hold transport instead of assoc when lookup assoc in rx path
-
- include/net/sctp/sctp.h |  2 +-
- net/sctp/input.c        | 35 +++++++++++++++++------------------
- net/sctp/ipv6.c         |  2 +-
- net/sctp/socket.c       |  5 +----
- 4 files changed, 20 insertions(+), 24 deletions(-)
-
--- 
-2.1.0
+- Jon
 
