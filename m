@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 04 Nov 2016 13:28:53 +0000
+From: David Miller <davem@davemloft.net>
+Date: Mon, 07 Nov 2016 18:19:25 +0000
 Subject: Re: [PATCH net] sctp: assign assoc_id earlier in __sctp_connect
-Message-Id: <20161104132852.GB13691@hmsreliant.think-freely.org>
+Message-Id: <20161107.131925.1448895624986454134.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <9df38dcd0323ad92386eb6851a60dc128dd00b4e.1478199530.git.marcelo.leitner@gmail.com>
 In-Reply-To: <9df38dcd0323ad92386eb6851a60dc128dd00b4e.1478199530.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, syzkaller@googlegroups.com, kcc@google.com, glider@google.com, edumazet@google.com, dvyukov@google.com, andreyknvl@google.com
+To: marcelo.leitner@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, syzkaller@googlegroups.com, kcc@google.com, glider@google.com, edumazet@google.com, dvyukov@google.com, andreyknvl@google.com
 
-On Thu, Nov 03, 2016 at 05:03:41PM -0200, Marcelo Ricardo Leitner wrote:
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Thu,  3 Nov 2016 17:03:41 -0200
+
 > sctp_wait_for_connect() currently already holds the asoc to keep it
 > alive during the sleep, in case another thread release it. But Andrey
 > Konovalov and Dmitry Vyukov reported an use-after-free in such
@@ -34,32 +36,5 @@ On Thu, Nov 03, 2016 at 05:03:41PM -0200, Marcelo Ricardo Leitner wrote:
 > Reported-by: Andrey Konovalov <andreyknvl@google.com>
 > Tested-by: Andrey Konovalov <andreyknvl@google.com>
 > Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> ---
->  net/sctp/socket.c | 7 +++++--
->  1 file changed, 5 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 6cdc61c21438aa9b6dbdad93e70759071a4d6789..be1d9bb98230c9d77f676949db773b2dacd801a4 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -1214,9 +1214,12 @@ static int __sctp_connect(struct sock *sk,
->  
->  	timeo = sock_sndtimeo(sk, f_flags & O_NONBLOCK);
->  
-> -	err = sctp_wait_for_connect(asoc, &timeo);
-> -	if ((err = 0 || err = -EINPROGRESS) && assoc_id)
-> +	if (assoc_id)
->  		*assoc_id = asoc->assoc_id;
-> +	err = sctp_wait_for_connect(asoc, &timeo);
-> +	/* Note: the asoc may be freed after the return of
-> +	 * sctp_wait_for_connect.
-> +	 */
->  
->  	/* Don't free association on exit. */
->  	asoc = NULL;
-> -- 
-> 2.7.4
-> 
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
+Applied and queued up for -stable, thanks.
