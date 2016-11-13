@@ -1,135 +1,65 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 20 Nov 2016 14:48:42 +0000
-Subject: Re: net/sctp: BUG: KASAN: stack-out-of-bounds in memcmp
-Message-Id: <CADvbK_fLYSau7N_aw=z5-Ws8q1Q_sN7EqCXOVzRapuYrYWYLhA@mail.gmail.com>
+Date: Sun, 13 Nov 2016 13:44:37 +0000
+Subject: [PATCH net] sctp: change sk state only when it has assocs in sctp_shutdown
+Message-Id: <d260f8b59f52d7ef00b83a554fc19d4aa91766a2.1479044677.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <6843fbba-a11c-8bc4-495a-294dc7fdcc35@gmail.com>
- <CADvbK_emewigJ3pcxy5W4h5UdcA1LtTmFz4Zkqtit6An9OaYpg@mail.gmail.com>
- <cd16b62f-228a-e3de-f68e-6db39e97da0b@gmail.com> <CADvbK_ebJHcvvBFcnn0sfhabPe20BTB3A5ny95MZq_uN4MibTw@mail.gmail.com>
- <57cbb177-3e1a-0f27-062b-597db8232888@gmail.com>
-In-Reply-To: <57cbb177-3e1a-0f27-062b-597db8232888@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Baozeng Ding <sploving1@gmail.com>
-Cc: Vladislav Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, network dev <netdev@vger.kernel.org>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, andreyknvl@google.com
 
-On Sat, Nov 12, 2016 at 6:12 PM, Baozeng Ding <sploving1@gmail.com> wrote:
->
->
-> On 2016/11/10 13:48, Xin Long wrote:
->> On Sat, Oct 15, 2016 at 4:28 PM, Baozeng Ding <sploving1@gmail.com> wrote:
->>> Hello Xin Long,
->>>
->>> On 2016/10/14 19:13, Xin Long wrote:
->>>> On Sat, Aug 20, 2016 at 3:51 PM, Baozeng Ding <sploving1@gmail.com> wrote:
->>>>> Hello all,
->>>>> The following program triggers  stack-out-of-bounds in memcmp. The kernel version is 4.8.0-rc1+ (on Aug 13 commit 118253a593bd1c57de2d1193df1ccffe1abe745b). Thanks.
->>>> ...
->>>>>
->>>>> #define _GNU_SOURCE
->>>>> #include <unistd.h>
->>>>> #include <stdint.h>
->>>>> #include <sys/socket.h>
->>>>> #include <sys/mman.h>
->>>>> #include <linux/in.h>
->>>>> #include <fcntl.h>
->>>>> #include <string.h>
->>>>> #include <stdio.h>
->>>>>
->>>>> int main()
->>>>> {
->>>>>         int fd;
->>>>>         mmap((void *)0x20000000ul, 0xff2000ul, 0x3ul, 0x32ul, -1, 0x0ul);
->>>>>         fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
->>>>>         memcpy((void*)0x20f82f80, "\x0a\x00\xab\x12\x72\xd4\x19\x9a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x85\xda\x00\xa0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 128);
->>>>>         bind(fd, (struct sockaddr*)0x20f82f80ul, 0x80ul);
->>>>>         *(uint64_t*)0x202e1fc8 = (uint64_t)0x20f77f80;
->>>>>         *(uint32_t*)0x202e1fd0 = (uint32_t)0x80;
->>>>>         *(uint64_t*)0x202e1fd8 = (uint64_t)0x20f7dfe0;
->>>>>         *(uint64_t*)0x202e1fe0 = (uint64_t)0x2;
->>>>>         *(uint64_t*)0x202e1fe8 = (uint64_t)0x20f77000;
->>>>>         *(uint64_t*)0x202e1ff0 = (uint64_t)0x3;
->>>>>         *(uint32_t*)0x202e1ff8 = (uint32_t)0x80;
->>>>>         memcpy((void*)0x20f77f80, "\x0a\x00\xab\x12\xb0\xb3\x20\x7b\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\xc2\xc2\x0b\xb2\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00", 128);
->>>>>         *(uint64_t*)0x20f7dfe0 = (uint64_t)0x20f77fc5;
->>>>>         *(uint64_t*)0x20f7dfe8 = (uint64_t)0x3b;
->>>>>         *(uint64_t*)0x20f7dff0 = (uint64_t)0x20f77fac;
->>>>>         *(uint64_t*)0x20f7dff8 = (uint64_t)0x54;
->>>>>         memcpy((void*)0x20f77fc5, "\xa5\x7d\xf3\xc4\xfe\xd3\xfd\x44\x63\x00\x8c\x1e\x4c\x2e\x8d\x8d\x9a\x9c\x9c\x9d\x5b\x7c\xe1\x06\xf7\x15\x16\xed\x68\xd1\xfc\xf4\xa4\x3a\xe4\x69\x51\x16\x74\xf4\x1a\xcf\x0e\x99\xc3\xa3\x87\xe7\x81\x6c\x10\x78\x75\x17\x69\x9d\x11\x0c\xc7", 59);
->>>>>         memcpy((void*)0x20f77fac, "\x86\x08\x89\x3c\xf3\x58\xea\xe7\x64\x6a\xfb\xb5\xe8\xdd\x5f\x69\xa5\xd4\xdc\xd9\xe7\x71\x95\x07\x78\x7b\x21\xda\x43\x9c\x62\x4d\xca\x64\xb5\x6e\x96\x55\xe9\x58\x76\x66\x1d\xb9\x7b\xe6\x20\xc1\xa9\xed\x70\xc1\x2b\x7c\x86\x8c\xba\x28\xb3\x2c\xb9\x64\xb7\x84\x65\x0d\x7f\xa6\x98\x6f\x49\xcb\x35\xad\x5a\xdf\x13\x75\x99\x57\x7e\xbb\x38\x89", 84);
->>>>>         *(uint64_t*)0x20f77000 = (uint64_t)0x15;
->>>>>         *(uint32_t*)0x20f77008 = (uint32_t)0x1;
->>>>>         *(uint32_t*)0x20f7700c = (uint32_t)0xfffffffffffffffe;
->>>>>         *(uint8_t*)0x20f77010 = (uint8_t)0xbb;
->>>>>         *(uint8_t*)0x20f77011 = (uint8_t)0x2;
->>>>>         *(uint8_t*)0x20f77012 = (uint8_t)0x5;
->>>>>         *(uint8_t*)0x20f77013 = (uint8_t)0x2;
->>>>>         *(uint8_t*)0x20f77014 = (uint8_t)0x80000000;
->>>>>         *(uint64_t*)0x20f77015 = (uint64_t)0x10;
->>>>>         *(uint32_t*)0x20f7701d = (uint32_t)0xffff;
->>>>>         *(uint32_t*)0x20f77021 = (uint32_t)0x1;
->>>>>         *(uint64_t*)0x20f77025 = (uint64_t)0x13;
->>>>>         *(uint32_t*)0x20f7702d = (uint32_t)0x6;
->>>>>         *(uint32_t*)0x20f77031 = (uint32_t)0xfffffffffffffe00;
->>>>>         *(uint8_t*)0x20f77035 = (uint8_t)0x80000000;
->>>>>         *(uint8_t*)0x20f77036 = (uint8_t)0xfffffffffffffff8;
->>>>>         sendmmsg(fd, (struct mmsghdr *)0x202e1fc8ul, 0x1ul, 0x1ul);
->>>>>         return 0;
->>>>> }
->>>>>
->>>> Hi, Baozeng, I couldn't reproduce this issue with this script,
->>>> even in 118253a593bd1c57de2d1193df1ccffe1abe745b
->>>> do I need to do some extra config for this ?
->>>>
->>> You need config KASAN.
->>> CONFIG_HAVE_ARCH_KASAN=y
->>> CONFIG_KASAN=y
->>> CONFIG_KASAN_INLINE=y
->>> CONFIG_KASAN_SHADOW_OFFSET=0xdffffc0000000000
->>>
->>> I justed tested with b67be92feb486f800d80d72c67fd87b47b79b18e(Octor 12),
->>> it sitll exits. If you still cannot reproduce it, i will send the .config to you privately. Thanks.
->>>
->>
->> Hi Baozeng, sorry for so late. but this issue is always on my radar.
->>
->> I still couldnot reproduce it, even on
->> b67be92feb486f800d80d72c67fd87b47b79b18e in any of
->> git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
->> git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
->> git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git
->>
->> with:
->> CONFIG_KASAN_SHADOW_OFFSET=0xdffffc0000000000
->> CONFIG_HAVE_ARCH_KASAN=y
->> CONFIG_KASAN=y
->> # CONFIG_KASAN_OUTLINE is not set
->> CONFIG_KASAN_INLINE=y
->> # CONFIG_TEST_KASAN is not set
->> ...
->> attachment is my .config from linux.git
->>
->> I also tried with your .config, but in my box, it could only build 105
->> .ko instead of 2000+. I don't think it works.
->>
-> I used qemu to run the it:
-> qemu-system-x86_64 -m 1024 -net nic -net user,host=10.0.2.10,hostfwd=tcp::16059-:22 -display none -serial stdio -no-reboot -enable-kvm -numa node,nodeid=0,cpus=0-1 -numa node,nodeid=1,cpus=2-3 -smp sockets=2,cores=2,threads=1 -usb -usbdevice mouse -usbdevice tablet -soundhw all -hda ./wheezy.img -snapshot -kernel ./bzImage -append console=ttyS0 vsyscall=native rodata=n oops=panic panic_on_warn=1 panic=-1 ftrace_dump_on_oops=orig_cpu earlyprintk=serial slub_debug=UZ root=/dev/sda
+Now when users shutdown a sock with SEND_SHUTDOWN in sctp, even if
+this sock has no connection (assoc), sk state would be changed to
+SCTP_SS_CLOSING, which is not as we expect.
 
-Couldn't reproduce it in my box.
-My qemu start script is almost same with yours, other than I used
-initramfs. not sure how you generated .config and started it without
-initramfs. I guess the issue is caused by lack of some driver in your
-kernel.
+Besides, after that if users try to listen on this sock, kernel
+could even panic when it dereference sctp_sk(sk)->bind_hash in
+sctp_inet_listen, as bind_hash is null when sock has no assoc.
 
-qemu-system-x86_64 -m 8192 -net nic -net
-user,host=10.0.2.10,hostfwd=tcp::16059-:22 -display none -serial stdio
--no-reboot -enable-kvm -numa node,nodeid=0,cpus=0-1 -numa
-node,nodeid=1,cpus=2-3 -smp sockets=2,cores=2,threads=1 -usb
--usbdevice mouse -usbdevice tablet \
--hda /home/img/fedora.qcow2 \
--kernel /home/img/vmlinuz-4.9.0-rc5.tests \
--initrd /home/img/initramfs-4.9.0-rc5.tests.img \
--append "console=ttyS0 vsyscall=native rodata=n oops=panic
-panic_on_warn=1 panic=-1 ftrace_dump_on_oops=orig_cpu
-earlyprintk=serial slub_debug=UZ root=/dev/sda1"
+This patch is to move sk state change after checking sk assocs
+is not empty, and also merge these two if() conditions and reduce
+indent level.
+
+Fixes: d46e416c11c8 ("sctp: sctp should change socket state when shutdown is received")
+Reported-by: Andrey Konovalov <andreyknvl@google.com>
+Tested-by: Andrey Konovalov <andreyknvl@google.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/socket.c | 15 +++++++--------
+ 1 file changed, 7 insertions(+), 8 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index faa48ff..f23ad91 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4285,19 +4285,18 @@ static void sctp_shutdown(struct sock *sk, int how)
+ {
+ 	struct net *net = sock_net(sk);
+ 	struct sctp_endpoint *ep;
+-	struct sctp_association *asoc;
+ 
+ 	if (!sctp_style(sk, TCP))
+ 		return;
+ 
+-	if (how & SEND_SHUTDOWN) {
++	ep = sctp_sk(sk)->ep;
++	if (how & SEND_SHUTDOWN && !list_empty(&ep->asocs)) {
++		struct sctp_association *asoc;
++
+ 		sk->sk_state = SCTP_SS_CLOSING;
+-		ep = sctp_sk(sk)->ep;
+-		if (!list_empty(&ep->asocs)) {
+-			asoc = list_entry(ep->asocs.next,
+-					  struct sctp_association, asocs);
+-			sctp_primitive_SHUTDOWN(net, asoc, NULL);
+-		}
++		asoc = list_entry(ep->asocs.next,
++				  struct sctp_association, asocs);
++		sctp_primitive_SHUTDOWN(net, asoc, NULL);
+ 	}
+ }
+ 
+-- 
+2.1.0
+
