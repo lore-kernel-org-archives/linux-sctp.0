@@ -1,17 +1,17 @@
 From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Date: Sun, 13 Nov 2016 11:27:38 +0000
-Subject: [PATCH 4.8 24/35] net: sctp, forbid negative length
-Message-Id: <20161113112421.823737999@linuxfoundation.org>
+Date: Sun, 13 Nov 2016 11:24:55 +0000
+Subject: [PATCH 4.4 23/34] net: sctp, forbid negative length
+Message-Id: <20161113112401.092233684@linuxfoundation.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20161113112420.863033770@linuxfoundation.org>
-In-Reply-To: <20161113112420.863033770@linuxfoundation.org>
+References: <20161113112400.008903838@linuxfoundation.org>
+In-Reply-To: <20161113112400.008903838@linuxfoundation.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-kernel@vger.kernel.org
 Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, stable@vger.kernel.org, Jiri Slaby <jslaby@suse.cz>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-4.8-stable review patch.  If anyone has any objections, please let me know.
+4.4-stable review patch.  If anyone has any objections, please let me know.
 
 ------------------
 
@@ -70,7 +70,7 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -4683,7 +4683,7 @@ static int sctp_getsockopt_disable_fragm
+@@ -4371,7 +4371,7 @@ static int sctp_getsockopt_disable_fragm
  static int sctp_getsockopt_events(struct sock *sk, int len, char __user *optval,
  				  int __user *optlen)
  {
@@ -79,7 +79,7 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
  		return -EINVAL;
  	if (len > sizeof(struct sctp_event_subscribe))
  		len = sizeof(struct sctp_event_subscribe);
-@@ -6426,6 +6426,9 @@ static int sctp_getsockopt(struct sock *
+@@ -5972,6 +5972,9 @@ static int sctp_getsockopt(struct sock *
  	if (get_user(len, optlen))
  		return -EFAULT;
  
