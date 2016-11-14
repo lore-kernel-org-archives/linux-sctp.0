@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 14 Nov 2016 15:52:21 +0000
+From: David Miller <davem@davemloft.net>
+Date: Mon, 14 Nov 2016 21:23:49 +0000
 Subject: Re: [PATCH net] sctp: change sk state only when it has assocs in sctp_shutdown
-Message-Id: <20161114155221.GB15570@hmsreliant.think-freely.org>
+Message-Id: <20161114.162349.1179710065617941826.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <d260f8b59f52d7ef00b83a554fc19d4aa91766a2.1479044677.git.lucien.xin@gmail.com>
 In-Reply-To: <d260f8b59f52d7ef00b83a554fc19d4aa91766a2.1479044677.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, andreyknvl@google.com
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, vyasevich@gmail.com, andreyknvl@google.com
 
-On Sun, Nov 13, 2016 at 09:44:37PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sun, 13 Nov 2016 21:44:37 +0800
+
 > Now when users shutdown a sock with SEND_SHUTDOWN in sctp, even if
 > this sock has no connection (assoc), sk state would be changed to
 > SCTP_SS_CLOSING, which is not as we expect.
@@ -28,48 +30,5 @@ On Sun, Nov 13, 2016 at 09:44:37PM +0800, Xin Long wrote:
 > Reported-by: Andrey Konovalov <andreyknvl@google.com>
 > Tested-by: Andrey Konovalov <andreyknvl@google.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> ---
->  net/sctp/socket.c | 15 +++++++--------
->  1 file changed, 7 insertions(+), 8 deletions(-)
-> 
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index faa48ff..f23ad91 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -4285,19 +4285,18 @@ static void sctp_shutdown(struct sock *sk, int how)
->  {
->  	struct net *net = sock_net(sk);
->  	struct sctp_endpoint *ep;
-> -	struct sctp_association *asoc;
->  
->  	if (!sctp_style(sk, TCP))
->  		return;
->  
-> -	if (how & SEND_SHUTDOWN) {
-> +	ep = sctp_sk(sk)->ep;
-> +	if (how & SEND_SHUTDOWN && !list_empty(&ep->asocs)) {
-> +		struct sctp_association *asoc;
-> +
->  		sk->sk_state = SCTP_SS_CLOSING;
-> -		ep = sctp_sk(sk)->ep;
-> -		if (!list_empty(&ep->asocs)) {
-> -			asoc = list_entry(ep->asocs.next,
-> -					  struct sctp_association, asocs);
-> -			sctp_primitive_SHUTDOWN(net, asoc, NULL);
-> -		}
-> +		asoc = list_entry(ep->asocs.next,
-> +				  struct sctp_association, asocs);
-> +		sctp_primitive_SHUTDOWN(net, asoc, NULL);
->  	}
->  }
->  
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
+Applied and queued up for -stable, thanks.
