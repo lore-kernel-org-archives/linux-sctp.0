@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 14 Nov 2016 10:32:40 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 14 Nov 2016 15:52:21 +0000
 Subject: Re: [PATCH net] sctp: change sk state only when it has assocs in sctp_shutdown
-Message-Id: <20161114103240.GA24936@localhost.localdomain>
+Message-Id: <20161114155221.GB15570@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <d260f8b59f52d7ef00b83a554fc19d4aa91766a2.1479044677.git.lucien.xin@gmail.com>
 In-Reply-To: <d260f8b59f52d7ef00b83a554fc19d4aa91766a2.1479044677.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, andreyknvl@google.com
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, andreyknvl@google.com
 
 On Sun, Nov 13, 2016 at 09:44:37PM +0800, Xin Long wrote:
 > Now when users shutdown a sock with SEND_SHUTDOWN in sctp, even if
@@ -28,9 +28,6 @@ On Sun, Nov 13, 2016 at 09:44:37PM +0800, Xin Long wrote:
 > Reported-by: Andrey Konovalov <andreyknvl@google.com>
 > Tested-by: Andrey Konovalov <andreyknvl@google.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/socket.c | 15 +++++++--------
 >  1 file changed, 7 insertions(+), 8 deletions(-)
@@ -74,3 +71,5 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
