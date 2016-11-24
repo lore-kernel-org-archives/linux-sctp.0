@@ -1,75 +1,93 @@
-From: Richard Haines <richard_c_haines@btinternet.com>
-Date: Tue, 22 Nov 2016 15:35:36 +0000
-Subject: Re: github issue trackers
-Message-Id: <1479828936.4919.2.camel@btinternet.com>
+From: Jiri Slaby <jslaby@suse.cz>
+Date: Thu, 24 Nov 2016 09:17:59 +0000
+Subject: [patch added to 3.12-stable] net: sctp, forbid negative length
+Message-Id: <20161124091800.14160-11-jslaby@suse.cz>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <74821043-5051-f05b-9ef8-e34af08f7a54@tycho.nsa.gov>
- <1479487762.13487.6.camel@btinternet.com>
- <b54fe273-01bf-e128-0dcc-5fb764f865f8@tycho.nsa.gov>
-In-Reply-To: <b54fe273-01bf-e128-0dcc-5fb764f865f8@tycho.nsa.gov>
+References: <20161124091800.14160-1-jslaby@suse.cz>
+In-Reply-To: <20161124091800.14160-1-jslaby@suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: Stephen Smalley <sds@tycho.nsa.gov>, SELinux-NSA <SELinux@tycho.nsa.gov>, linux-sctp@vger.kernel.org, Paul Moore <paul@paul-moore.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: stable@vger.kernel.org
+Cc: Jiri Slaby <jslaby@suse.cz>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On Fri, 2016-11-18 at 12:02 -0500, Stephen Smalley wrote:
-> On 11/18/2016 11:49 AM, Richard Haines wrote:
-> > 
-> > On Fri, 2016-11-18 at 10:30 -0500, Stephen Smalley wrote:
-> > > 
-> > > Hi,
-> > > 
-> > > I've populated the github issue trackers for the selinux
-> > > (userspace)
-> > > and
-> > > selinux-kernel github projects, see:
-> > > https://github.com/SELinuxProject/selinux/issues
-> > > and
-> > > https://github.com/SELinuxProject/selinux-kernel/issues
-> > > 
-> > > The old ToDo wiki pages are being migrated over, although I would
-> > > like
-> > > to drop items that are either a) already in progress, b)
-> > > vague/ill-defined, or c) unlikely to be done.  Going forward,
-> > > we'll
-> > > just
-> > > use the issue trackers for all new items.
-> > > 
-> > > Feel free to identify additional issues that I may have missed,
-> > > but
-> > > please try to keep them well-defined and feasible.
-> > 
-> > Just thought I would update you regarding the status of the RFC
-> > SCTP
-> > kernel patches I sent a few years ago that are referenced at:
-> > https://github.com/SELinuxProject/selinux-kernel/issues/5
-> > 
-> > I have been keeping these updated and fixing problems as I find
-> > them,
-> > however I have not resubmitted. If there is interest I'm happy to
-> > submit again and see how far I can get. If anyone is interested
-> > I keep a set of patches at:
-> > http://arctic.selinuxproject.org/~rhaines/selinux-sctp
-> > 
-> > For the gory details read:
-> > http://arctic.selinuxproject.org/~rhaines/selinux-sctp/readme.txt
-> 
-> Thanks, I'd certainly like to see them upstreamed.  Were there
-> specific
-> objections or just a lack of response?
+This patch has been added to the 3.12 stable tree. If you have any
+objections, please let us know.
 
-It was really lack of response so I thought I would wait until
-someone had a real requirement. Paul gave me some feedback on the
-patches and I incorporated all except the "special accept()/child
-socket labeling trick" (see comments at 
-http://marc.info/?l=selinux&m1801137004870&w=2), mainly because
-I was not sure if required or not.
-Also needed feedback from sctp maintainers particularly regarding
-the placing of security hooks in sm_statefuns.c (see the drawing in
-SELinux-sctp.txt)
+=======
+[ Upstream commit a4b8e71b05c27bae6bad3bdecddbc6b68a3ad8cf ]
 
-What I can do is rebuild and test on latest Fedora 25 then submit
-again as a new RFC patch and see how it goes.
+Most of getsockopt handlers in net/sctp/socket.c check len against
+sizeof some structure like:
+        if (len < sizeof(int))
+                return -EINVAL;
 
-> 
-> 
+On the first look, the check seems to be correct. But since len is int
+and sizeof returns size_t, int gets promoted to unsigned size_t too. So
+the test returns false for negative lengths. Yes, (-1 < sizeof(long)) is
+false.
+
+Fix this in sctp by explicitly checking len < 0 before any getsockopt
+handler is called.
+
+Note that sctp_getsockopt_events already handled the negative case.
+Since we added the < 0 check elsewhere, this one can be removed.
+
+If not checked, this is the result:
+UBSAN: Undefined behaviour in ../mm/page_alloc.c:2722:19
+shift exponent 52 is too large for 32-bit type 'int'
+CPU: 1 PID: 24535 Comm: syz-executor Not tainted 4.8.1-0-syzkaller #1
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.9.1-0-gb3ef39f-prebuilt.qemu-project.org 04/01/2014
+ 0000000000000000 ffff88006d99f2a8 ffffffffb2f7bdea 0000000041b58ab3
+ ffffffffb4363c14 ffffffffb2f7bcde ffff88006d99f2d0 ffff88006d99f270
+ 0000000000000000 0000000000000000 0000000000000034 ffffffffb5096422
+Call Trace:
+ [<ffffffffb3051498>] ? __ubsan_handle_shift_out_of_bounds+0x29c/0x300
+...
+ [<ffffffffb273f0e4>] ? kmalloc_order+0x24/0x90
+ [<ffffffffb27416a4>] ? kmalloc_order_trace+0x24/0x220
+ [<ffffffffb2819a30>] ? __kmalloc+0x330/0x540
+ [<ffffffffc18c25f4>] ? sctp_getsockopt_local_addrs+0x174/0xca0 [sctp]
+ [<ffffffffc18d2bcd>] ? sctp_getsockopt+0x10d/0x1b0 [sctp]
+ [<ffffffffb37c1219>] ? sock_common_getsockopt+0xb9/0x150
+ [<ffffffffb37be2f5>] ? SyS_getsockopt+0x1a5/0x270
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ net/sctp/socket.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index ead3a8adca08..98cd6606f4a4 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4247,7 +4247,7 @@ static int sctp_getsockopt_disable_fragments(struct sock *sk, int len,
+ static int sctp_getsockopt_events(struct sock *sk, int len, char __user *optval,
+ 				  int __user *optlen)
+ {
+-	if (len <= 0)
++	if (len = 0)
+ 		return -EINVAL;
+ 	if (len > sizeof(struct sctp_event_subscribe))
+ 		len = sizeof(struct sctp_event_subscribe);
+@@ -5758,6 +5758,9 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 	if (get_user(len, optlen))
+ 		return -EFAULT;
+ 
++	if (len < 0)
++		return -EINVAL;
++
+ 	sctp_lock_sock(sk);
+ 
+ 	switch (optname) {
+-- 
+2.10.2
+
