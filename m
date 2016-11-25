@@ -1,130 +1,92 @@
-From: <linux1@telus.net>
-Date: Mon, 14 Nov 2016 05:05:39 +0000
-Subject: 20124 linux-sctp
-Message-Id: <147909993962.6105.9061424027762708234@younet.com.br>
+From: Jiri Slaby <jslaby@suse.cz>
+Date: Fri, 25 Nov 2016 08:30:06 +0000
+Subject: [PATCH 3.12 093/127] net: sctp, forbid negative length
+Message-Id: <701a77ec87e209dba3514fb80cfb3e147b9aa56c.1480062521.git.jslaby@suse.cz>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <f668f2eee98250a2073a4beafdb7f6d1e21c528e.1480062521.git.jslaby@suse.cz>
+In-Reply-To: <f668f2eee98250a2073a4beafdb7f6d1e21c528e.1480062521.git.jslaby@suse.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: stable@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, Jiri Slaby <jslaby@suse.cz>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-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
-AAEAWwAAABsaAAAAAA=
+3.12-stable review patch.  If anyone has any objections, please let me know.
+
+=======
+[ Upstream commit a4b8e71b05c27bae6bad3bdecddbc6b68a3ad8cf ]
+
+Most of getsockopt handlers in net/sctp/socket.c check len against
+sizeof some structure like:
+        if (len < sizeof(int))
+                return -EINVAL;
+
+On the first look, the check seems to be correct. But since len is int
+and sizeof returns size_t, int gets promoted to unsigned size_t too. So
+the test returns false for negative lengths. Yes, (-1 < sizeof(long)) is
+false.
+
+Fix this in sctp by explicitly checking len < 0 before any getsockopt
+handler is called.
+
+Note that sctp_getsockopt_events already handled the negative case.
+Since we added the < 0 check elsewhere, this one can be removed.
+
+If not checked, this is the result:
+UBSAN: Undefined behaviour in ../mm/page_alloc.c:2722:19
+shift exponent 52 is too large for 32-bit type 'int'
+CPU: 1 PID: 24535 Comm: syz-executor Not tainted 4.8.1-0-syzkaller #1
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.9.1-0-gb3ef39f-prebuilt.qemu-project.org 04/01/2014
+ 0000000000000000 ffff88006d99f2a8 ffffffffb2f7bdea 0000000041b58ab3
+ ffffffffb4363c14 ffffffffb2f7bcde ffff88006d99f2d0 ffff88006d99f270
+ 0000000000000000 0000000000000000 0000000000000034 ffffffffb5096422
+Call Trace:
+ [<ffffffffb3051498>] ? __ubsan_handle_shift_out_of_bounds+0x29c/0x300
+...
+ [<ffffffffb273f0e4>] ? kmalloc_order+0x24/0x90
+ [<ffffffffb27416a4>] ? kmalloc_order_trace+0x24/0x220
+ [<ffffffffb2819a30>] ? __kmalloc+0x330/0x540
+ [<ffffffffc18c25f4>] ? sctp_getsockopt_local_addrs+0x174/0xca0 [sctp]
+ [<ffffffffc18d2bcd>] ? sctp_getsockopt+0x10d/0x1b0 [sctp]
+ [<ffffffffb37c1219>] ? sock_common_getsockopt+0xb9/0x150
+ [<ffffffffb37be2f5>] ? SyS_getsockopt+0x1a5/0x270
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+---
+ net/sctp/socket.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index ead3a8adca08..98cd6606f4a4 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4247,7 +4247,7 @@ static int sctp_getsockopt_disable_fragments(struct sock *sk, int len,
+ static int sctp_getsockopt_events(struct sock *sk, int len, char __user *optval,
+ 				  int __user *optlen)
+ {
+-	if (len <= 0)
++	if (len = 0)
+ 		return -EINVAL;
+ 	if (len > sizeof(struct sctp_event_subscribe))
+ 		len = sizeof(struct sctp_event_subscribe);
+@@ -5758,6 +5758,9 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 	if (get_user(len, optlen))
+ 		return -EFAULT;
+ 
++	if (len < 0)
++		return -EINVAL;
++
+ 	sctp_lock_sock(sk);
+ 
+ 	switch (optname) {
+-- 
+2.10.2
+
