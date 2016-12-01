@@ -1,37 +1,60 @@
-From: David Miller <davem@davemloft.net>
-Date: Sat, 17 Dec 2016 16:25:12 +0000
-Subject: Re: [PATCH net] sctp: sctp_epaddr_lookup_transport should be protected by rcu_read_lock
-Message-Id: <20161217.112512.1659218665787719927.davem@davemloft.net>
+From: tsoi andrew <tsoiandrew@gmail.com>
+Date: Thu, 01 Dec 2016 07:04:07 +0000
+Subject: Re: multihoming client question
+Message-Id: <CAJ0j_Bb42iLOekbXDTcuVsLYU6_vZzqfhFy2ixpx_tyQE=VuJg@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <eb70a1f54c102c728a5572f1aa2842940fc3f5a5.1481814055.git.lucien.xin@gmail.com>
-In-Reply-To: <eb70a1f54c102c728a5572f1aa2842940fc3f5a5.1481814055.git.lucien.xin@gmail.com>
+References: <CAJ0j_BYFOO+szALYGoFryCcpOrRoYjrgPOx_VVcUvOtSUX31Uw@mail.gmail.com>
+In-Reply-To: <CAJ0j_BYFOO+szALYGoFryCcpOrRoYjrgPOx_VVcUvOtSUX31Uw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, dvyukov@google.com
+To: linux-sctp@vger.kernel.org
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 15 Dec 2016 23:00:55 +0800
+Dear Sir,
 
-> Since commit 7fda702f9315 ("sctp: use new rhlist interface on sctp transport
-> rhashtable"), sctp has changed to use rhlist_lookup to look up transport, but
-> rhlist_lookup doesn't call rcu_read_lock inside, unlike rhashtable_lookup_fast.
-> 
-> It is called in sctp_epaddr_lookup_transport and sctp_addrs_lookup_transport.
-> sctp_addrs_lookup_transport is always in the protection of rcu_read_lock(),
-> as __sctp_lookup_association is called in rx path or sctp_lookup_association
-> which are in the protection of rcu_read_lock() already.
-> 
-> But sctp_epaddr_lookup_transport is called by sctp_endpoint_lookup_assoc, it
-> doesn't call rcu_read_lock, which may cause "suspicious rcu_dereference_check
-> usage' in __rhashtable_lookup.
-> 
-> This patch is to fix it by adding rcu_read_lock in sctp_endpoint_lookup_assoc
-> before calling sctp_epaddr_lookup_transport.
-> 
-> Fixes: 7fda702f9315 ("sctp: use new rhlist interface on sctp transport rhashtable")
-> Reported-by: Dmitry Vyukov <dvyukov@google.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+The connection is broken so that no data is sending at this moment.
+While testing failover(force no heartbeat ack replied from the IP X),
+I find that IP A try to send the heartbeat to IP Y but no heartbeat
+ack finally.  Can lksctp client try to send heartbeat from IP B to IP
+Y?     As only connection between IP B and IP Y is valid at that time.
 
-Applied.
+Regards,
+Andrew
+
+On Wed, Nov 30, 2016 at 7:39 PM, Xin Long <lucien.xin@gmail.com> wrote:
+> On Wed, Nov 30, 2016 at 6:48 PM, tsoi andrew <tsoiandrew@gmail.com> wrote:
+>> Dear Sir,
+>>
+>> It is found that IP X haven't replied heartbeat Ack to IP A but our
+>> client will not try another path B->Y.  Would you advise how B->Y path
+>> can be enable?
+> how about data sending, can it be sacked normally ?
+>
+> asking that, as transport error_count would be cleared in
+> sctp_check_transmitted():
+>
+>                         /* 8.2. When an outstanding TSN is acknowledged,
+>                          * the endpoint shall clear the error counter of
+>                          * the destination transport address to which the
+>                          * DATA chunk was last sent.
+>                          * The association's overall error counter is
+>                          * also cleared.
+>                          */
+>                         transport->error_count = 0;
+>                         transport->asoc->overall_error_count = 0;
+>
+>
+>>
+>> lksctp client IP info:
+>> Primary IP: A
+>> Secondary IP: B
+>>
+>> Server primary IP: X
+>> Server secondary IP: Y
+>>
+>> Regards,
+>> Andrew
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
