@@ -1,58 +1,52 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 19 Dec 2016 12:35:02 +0000
-Subject: Re: [PATCH net 2/2] sctp: not copying duplicate addrs to the assoc's bind address list
-Message-Id: <20161219123502.GA19620@hmsreliant.think-freely.org>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 15 Dec 2016 15:05:52 +0000
+Subject: [PATCH net] sctp: sctp_transport_lookup_process should rcu_read_unlock when transport is null
+Message-Id: <3d4f0205d5b5c64d372dffb37602f48e4a173612.1481814352.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1471605833.git.lucien.xin@gmail.com>
- <130956b1e880eab780162a795fde156d61d4de0f.1471605833.git.lucien.xin@gmail.com>
- <20160819175007.GB3578@hmsreliant.think-freely.org>
- <CADvbK_do3kQSotq7-PbvoCBBSwOBBdZtx=rR+Q2XX3_bhV4_0w@mail.gmail.com>
- <20160822142538.GA10323@hmsreliant.think-freely.org>
- <CADvbK_ce8EGH5zyvBnOqQX+D5_zj9KTWS=2HbR0BfJ2s-dvWAw@mail.gmail.com>
- <20160824103854.GA13154@hmsreliant.think-freely.org>
- <CADvbK_fH-Va3t4EfTktH-pRV-ht-W0N0SW_pBh90mHj8ZW+kYA@mail.gmail.com>
-In-Reply-To: <CADvbK_fH-Va3t4EfTktH-pRV-ht-W0N0SW_pBh90mHj8ZW+kYA@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, Daniel Borkmann <daniel@iogearbox.net>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Sat, Dec 17, 2016 at 05:56:51PM +0800, Xin Long wrote:
-> On Wed, Aug 24, 2016 at 6:38 PM, Neil Horman <nhorman@tuxdriver.com> wrote:
-> > On Wed, Aug 24, 2016 at 01:14:27PM +0800, Xin Long wrote:
-> >> >> > Ah, I see what you're doing.  Ok, this makes some sense, at least on the receive
-> >> >> > side, when you get a cookie unpacked and modify the remote peers address list,
-> >> >> > it makes sense to check for duplicates.  On the local side however, I would,
-> >> >> > instead of checking it when the list gets copied, I'd check it when the master
-> >> >> > list gets updated (in the NETDEV_UP event notifier for the local address list,
-> >> >>
-> >> >> I was thinking about to check it in the NETDEV_UP, yes it can make the
-> >> >> master list has no duplicated addresses.  But what if two same addresses
-> >> >> events come, and they come from different NICs (though I can't point  out
-> >> >> the valid use case), then we filter there.
-> >> >>
-> >> > That I think would be a bug in the protocol code.  For the ipv4 case, all
-> >> > addresses are owned by the system and the same addresses added to multiple
-> >> > interfaces should not be allowed.  The same is true of ipv6 case.  The only
-> >> > exception there is a link local address and that should still be unique within
-> >> > the context of an address/dev tuple.
-> >> >
-> >> understand, just sounds a little harsh. :-)
-> >>
-> >> For now, does it make sense to you to just leave as the master list
-> >> is, and check
-> >> the duplicate address when sctp is really binding them ?
-> >>
-> > I would think so, yes.
-> 
-> Hi, Neil,
-> 
-> About this patch, I think we are on the page, right ?
-> 
-Yes, I think we are.
-Neil
+Prior to this patch, sctp_transport_lookup_process didn't rcu_read_unlock
+when it failed to find a transport by sctp_addrs_lookup_transport.
 
-> If yes, I will repost v2, but other than improving some changelog,
-> no other change compare to v1. Do you agree ?
-> 
+This patch is to fix it by moving up rcu_read_unlock right before checking
+transport and also to remove the out path.
+
+Fixes: 1cceda784980 ("sctp: fix the issue sctp_diag uses lock_sock in rcu_read_lock")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/socket.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index d5f4b4a..318c678 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4472,18 +4472,17 @@ int sctp_transport_lookup_process(int (*cb)(struct sctp_transport *, void *),
+ 				  const union sctp_addr *paddr, void *p)
+ {
+ 	struct sctp_transport *transport;
+-	int err = -ENOENT;
++	int err;
+ 
+ 	rcu_read_lock();
+ 	transport = sctp_addrs_lookup_transport(net, laddr, paddr);
++	rcu_read_unlock();
+ 	if (!transport)
+-		goto out;
++		return -ENOENT;
+ 
+-	rcu_read_unlock();
+ 	err = cb(transport, p);
+ 	sctp_transport_put(transport);
+ 
+-out:
+ 	return err;
+ }
+ EXPORT_SYMBOL_GPL(sctp_transport_lookup_process);
+-- 
+2.1.0
+
