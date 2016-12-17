@@ -1,17 +1,19 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 15 Dec 2016 16:43:23 +0000
+From: David Miller <davem@davemloft.net>
+Date: Sat, 17 Dec 2016 16:25:12 +0000
 Subject: Re: [PATCH net] sctp: sctp_epaddr_lookup_transport should be protected by rcu_read_lock
-Message-Id: <20161215164323.GB4731@localhost.localdomain>
+Message-Id: <20161217.112512.1659218665787719927.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <eb70a1f54c102c728a5572f1aa2842940fc3f5a5.1481814055.git.lucien.xin@gmail.com>
 In-Reply-To: <eb70a1f54c102c728a5572f1aa2842940fc3f5a5.1481814055.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>, Dmitry Vyukov <dvyukov@google.com>
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, dvyukov@google.com
 
-On Thu, Dec 15, 2016 at 11:00:55PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 15 Dec 2016 23:00:55 +0800
+
 > Since commit 7fda702f9315 ("sctp: use new rhlist interface on sctp transport
 > rhashtable"), sctp has changed to use rhlist_lookup to look up transport, but
 > rhlist_lookup doesn't call rcu_read_lock inside, unlike rhashtable_lookup_fast.
@@ -32,40 +34,4 @@ On Thu, Dec 15, 2016 at 11:00:55PM +0800, Xin Long wrote:
 > Reported-by: Dmitry Vyukov <dvyukov@google.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-> ---
->  net/sctp/endpointola.c | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
-> index 1f03065..410ddc1 100644
-> --- a/net/sctp/endpointola.c
-> +++ b/net/sctp/endpointola.c
-> @@ -331,7 +331,9 @@ struct sctp_association *sctp_endpoint_lookup_assoc(
->  	 * on this endpoint.
->  	 */
->  	if (!ep->base.bind_addr.port)
-> -		goto out;
-> +		return NULL;
-> +
-> +	rcu_read_lock();
->  	t = sctp_epaddr_lookup_transport(ep, paddr);
->  	if (!t)
->  		goto out;
-> @@ -339,6 +341,7 @@ struct sctp_association *sctp_endpoint_lookup_assoc(
->  	*transport = t;
->  	asoc = t->asoc;
->  out:
-> +	rcu_read_unlock();
->  	return asoc;
->  }
->  
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Applied.
