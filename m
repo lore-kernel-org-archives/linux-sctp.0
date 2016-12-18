@@ -1,212 +1,230 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 21 Dec 2016 16:09:01 +0000
-Subject: Re: [RFC PATCH 1/1] kernel: Add SELinux SCTP protocol support
-Message-Id: <20161221160901.GH4731@localhost.localdomain>
+From: Julian Anastasov <ja@ssi.bg>
+Date: Sun, 18 Dec 2016 20:56:34 +0000
+Subject: [PATCH RFC net-next 5/7] net: add confirm_neigh method to dst_ops
+Message-Id: <1482094596-26046-6-git-send-email-ja@ssi.bg>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20161214133959.3078-1-richard_c_haines@btinternet.com>
-In-Reply-To: <20161214133959.3078-1-richard_c_haines@btinternet.com>
+References: <1482094596-26046-1-git-send-email-ja@ssi.bg>
+In-Reply-To: <1482094596-26046-1-git-send-email-ja@ssi.bg>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Richard Haines <richard_c_haines@btinternet.com>
-Cc: selinux@tycho.nsa.gov, linux-sctp@vger.kernel.org, linux-security-module@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, YueHaibing <yuehaibing@huawei.com>
 
-On Wed, Dec 14, 2016 at 01:39:59PM +0000, Richard Haines wrote:
-> +SCTP Socket Option Permissions
-> +===============> +The permissions consist of: "bindx_add" "bindx_rem" "connectx" "set_addr" and
-> +"set_params" that are validated on setsockopt(2) calls, and "peeloff" that is
-> +validated on getsockopt(2) calls.
-> +
-> +SCTP_SOCKOPT_BINDX_ADD - Allows additional bind addresses to be
-> +                         associated after (optionally) calling bind(2)
-> +                         if given the "bind_add" permission.
-> +
-> +SCTP_SOCKOPT_CONNECTX  - Allows the allocation of multiple
-> +                         addresses for reaching a multi-homed peer
-> +                         if given the "connectx" permission.
-> +
-> +  Together they are used to form SCTP associations with information being
-> +  passed over the link to inform the peer of any changes. As these two options
-> +  can support multiple addresses, each address is checked via
-> +  selinux_socket_bind() or selinux_socket_connect() to determine whether they
-> +  have the correct permissions:
-> +    bindx_add: bind, name_bind, node_bind + node SID + port SID via the
-> +               (portcon sctp port ctx) policy statement.
-> +    connectx:  connect, name_connect + port SID via the
-> +               (portcon sctp port ctx) policy statement.
-> +
-> +SCTP_SOCKOPT_BINDX_REM - Allows additional bind addresses to be removed
-> +                         if given the "bind_rem" permission.
-> +
-> +SCTP_PEER_ADDR_PARAMS - Alter heartbeats and address max retransmissions.
-> +SCTP_PEER_ADDR_THLDS  - Alter the thresholds.
-> +SCTP_ASSOCINFO        - Alter association and endpoint parameters.
-> + These require the "set_params" permission.
-> +
-> +SCTP_PRIMARY_ADDR          - Set local primary address.
-> +SCTP_SET_PEER_PRIMARY_ADDR - Request peer sets address as association primary.
-> + These require the "set_addr" permission.
-> +
-> +SCTP_SOCKOPT_PEELOFF - Branch off an association into a new socket that
-> +will be a one-to-one style socket. As SELinux already handles the creation
-> +of new sockets, only the "peeloff" permission is checked.
+Add confirm_neigh method to dst_ops and use it from IPv4 and IPv6
+to lookup and confirm the neighbour. Its usage via the new helper
+dst_confirm_neigh() should be restricted to MSG_PROBE users for
+performance reasons.
 
-...
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+---
+ include/net/arp.h      | 16 ++++++++++++++++
+ include/net/dst.h      |  7 +++++++
+ include/net/dst_ops.h  |  2 ++
+ include/net/ndisc.h    | 17 +++++++++++++++++
+ net/ipv4/route.c       | 19 +++++++++++++++++++
+ net/ipv6/route.c       | 16 ++++++++++++++++
+ net/xfrm/xfrm_policy.c | 16 ++++++++++++++++
+ 7 files changed, 93 insertions(+)
 
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 7b0e059..ff4f1a8 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -1009,6 +1009,12 @@ static int sctp_setsockopt_bindx(struct sock *sk,
->  	/* Do the work. */
->  	switch (op) {
->  	case SCTP_BINDX_ADD_ADDR:
-> +		/* Allow security module to validate bindx addresses. */
-> +		err = security_sk_setsockopt(sk, SOL_SCTP,
-> +					     SCTP_SOCKOPT_BINDX_ADD,
-> +					     (char *)kaddrs, addrs_size);
-
-Here, kaddrs is about the addresses that we are going to bind to.
-
-> +		if (err)
-> +			goto out;
->  		err = sctp_bindx_add(sk, kaddrs, addrcnt);
->  		if (err)
->  			goto out;
-> @@ -1329,9 +1335,17 @@ static int __sctp_setsockopt_connectx(struct sock *sk,
->  	if (__copy_from_user(kaddrs, addrs, addrs_size)) {
->  		err = -EFAULT;
->  	} else {
-> +		/* Allow security module to validate connectx addresses. */
-> +		err = security_sk_setsockopt(sk, SOL_SCTP,
-> +					     SCTP_SOCKOPT_CONNECTX,
-> +					    (char *)kaddrs, addrs_size);
-
-Here, kaddrs is about the remote addresses that we are connecting to.
-Not sure how feasible this is for SELinux, to maintain a list of allowed
-peers. But this being right, I think we are missing the hooks at ASCONF
-handling side.
-
-One SCTP peer can start/stop binding to another IP in runtime using
-ASCONF chunks. So considering that peer A here validated that it can
-associate to be peer B, if B is using ASCONF to inform A that it's now
-also binding on address X, A should validate so before ACKing it.
-
-This validation would be around sctp_process_asconf_param. Not sure you
-can hook it on selinux_sctp_setsockopt too as it would be similar to the
-validation done for CONNECT.
-
-Richard, the other point we talked offline, was for validating that peer
-A can actually request to add address X, that would be ok, yes.
-
-Thanks,
-  Marcelo
-
-> +		if (err)
-> +			goto out_free;
-> +
->  		err = __sctp_connect(sk, kaddrs, addrs_size, assoc_id);
->  	}
->  
-> +out_free:
->  	kfree(kaddrs);
->  
->  	return err;
-
-
-
-> +int selinux_sctp_setsockopt(struct sock *sk, int level, int optname,
-> +					    char *optval, int optlen)
-> +{
-> +	int err, addrlen;
-> +	void *addr_buf;
-> +	struct sockaddr *address;
-> +	struct socket *sock;
-> +	int walk_size = 0;
-> +
-> +	if (level != SOL_SCTP || level != IPPROTO_SCTP)
-> +		return 0;
-> +
-> +	switch (optname) {
-> +	case SCTP_SOCKOPT_BINDX_ADD:
-> +	case SCTP_SOCKOPT_CONNECTX:
-> +		/* Note that for SCTP_SOCKOPT_BINDX_ADD and
-> +		 * SCTP_SOCKOPT_CONNECTX the sctp kernel code has already
-> +		 * copied the optval to kernel space. See net/sctp/socket.c
-> +		 * security_sk_setsockopt() calls.
-> +		 */
-> +		err = sock_has_perm(current, sk,
-> +			    (optname = SCTP_SOCKOPT_BINDX_ADD ?
-> +			     SCTP_SOCKET__BINDX_ADD :
-> +			     SCTP_SOCKET__CONNECTX));
-> +		if (err)
-> +			return err;
-> +
-> +		sock = sk->sk_socket;
-> +		addr_buf = optval;
-> +		/* Process list - may contain IPv4 or IPv6 addr's */
-> +		while (walk_size < optlen) {
-> +			address = addr_buf;
-> +
-> +			switch (address->sa_family) {
-> +			case PF_INET:
-> +				addrlen = sizeof(struct sockaddr_in);
-> +				break;
-> +			case PF_INET6:
-> +				addrlen = sizeof(struct sockaddr_in6);
-> +				break;
-> +			default:
-> +				return -EINVAL;
-> +			}
-> +
-> +			err = -EINVAL;
-> +			if (optname = SCTP_SOCKOPT_BINDX_ADD) {
-> +				err = selinux_socket_bind(sock,
-> +					    address, addrlen);
-> +			} else if (optname = SCTP_SOCKOPT_CONNECTX) {
-> +				err = selinux_socket_connect(sock,
-> +					    address, addrlen);
-> +			}
-> +			if (err)
-> +				return err;
-> +
-> +			addr_buf += addrlen;
-> +			walk_size += addrlen;
-> +		}
-> +		break;
-> +
-> +	case SCTP_SOCKOPT_BINDX_REM:
-> +		/* The addresses have been checked as they were
-> +		 * added, so just see if allowed to be removed.
-> +		 */
-> +		err = sock_has_perm(current, sk, SCTP_SOCKET__BINDX_REM);
-> +		if (err)
-> +			return err;
-> +		break;
-> +
-> +	/* Set heartbeats and address max retransmissions. */
-> +	case SCTP_PEER_ADDR_PARAMS:
-> +	/* Set thresholds. */
-> +	case SCTP_PEER_ADDR_THLDS:
-> +	/* Set association and endpoint parameters */
-> +	case SCTP_ASSOCINFO:
-> +		err = sock_has_perm(current, sk, SCTP_SOCKET__SET_PARAMS);
-> +		if (err)
-> +			return err;
-> +		break;
-> +
-> +	/* Set local primary address. */
-> +	case SCTP_PRIMARY_ADDR:
-> +	/* Request peer sets address as association primary. */
-> +	case SCTP_SET_PEER_PRIMARY_ADDR:
-> +		err = sock_has_perm(current, sk, SCTP_SOCKET__SET_ADDR);
-> +		if (err)
-> +			return err;
-> +		break;
-> +	}
-> +
-> +	return 0;
-> +}
-
-
+diff --git a/include/net/arp.h b/include/net/arp.h
+index 5e0f891..65619a2 100644
+--- a/include/net/arp.h
++++ b/include/net/arp.h
+@@ -35,6 +35,22 @@ static inline struct neighbour *__ipv4_neigh_lookup(struct net_device *dev, u32
+ 	return n;
+ }
+ 
++static inline void __ipv4_confirm_neigh(struct net_device *dev, u32 key)
++{
++	struct neighbour *n;
++
++	rcu_read_lock_bh();
++	n = __ipv4_neigh_lookup_noref(dev, key);
++	if (n) {
++		unsigned long now = jiffies;
++
++		/* avoid dirtying neighbour */
++		if (n->confirmed != now)
++			n->confirmed = now;
++	}
++	rcu_read_unlock_bh();
++}
++
+ void arp_init(void);
+ int arp_ioctl(struct net *net, unsigned int cmd, void __user *arg);
+ void arp_send(int type, int ptype, __be32 dest_ip,
+diff --git a/include/net/dst.h b/include/net/dst.h
+index 6835d22..3a3b34b 100644
+--- a/include/net/dst.h
++++ b/include/net/dst.h
+@@ -477,6 +477,13 @@ static inline struct neighbour *dst_neigh_lookup_skb(const struct dst_entry *dst
+ 	return IS_ERR(n) ? NULL : n;
+ }
+ 
++static inline void dst_confirm_neigh(const struct dst_entry *dst,
++				     const void *daddr)
++{
++	if (dst->ops->confirm_neigh)
++		dst->ops->confirm_neigh(dst, daddr);
++}
++
+ static inline void dst_link_failure(struct sk_buff *skb)
+ {
+ 	struct dst_entry *dst = skb_dst(skb);
+diff --git a/include/net/dst_ops.h b/include/net/dst_ops.h
+index a0d443c..fc1bdb4 100644
+--- a/include/net/dst_ops.h
++++ b/include/net/dst_ops.h
+@@ -33,6 +33,8 @@ struct dst_ops {
+ 	struct neighbour *	(*neigh_lookup)(const struct dst_entry *dst,
+ 						struct sk_buff *skb,
+ 						const void *daddr);
++	void			(*confirm_neigh)(const struct dst_entry *dst,
++						const void *daddr);
+ 
+ 	struct kmem_cache	*kmem_cachep;
+ 
+diff --git a/include/net/ndisc.h b/include/net/ndisc.h
+index d562a2f..8a02146 100644
+--- a/include/net/ndisc.h
++++ b/include/net/ndisc.h
+@@ -391,6 +391,23 @@ static inline struct neighbour *__ipv6_neigh_lookup(struct net_device *dev, cons
+ 	return n;
+ }
+ 
++static inline void __ipv6_confirm_neigh(struct net_device *dev,
++					const void *pkey)
++{
++	struct neighbour *n;
++
++	rcu_read_lock_bh();
++	n = __ipv6_neigh_lookup_noref(dev, pkey);
++	if (n) {
++		unsigned long now = jiffies;
++
++		/* avoid dirtying neighbour */
++		if (n->confirmed != now)
++			n->confirmed = now;
++	}
++	rcu_read_unlock_bh();
++}
++
+ int ndisc_init(void);
+ int ndisc_late_init(void);
+ 
+diff --git a/net/ipv4/route.c b/net/ipv4/route.c
+index fa5c037..682ff24 100644
+--- a/net/ipv4/route.c
++++ b/net/ipv4/route.c
+@@ -154,6 +154,7 @@ static u32 *ipv4_cow_metrics(struct dst_entry *dst, unsigned long old)
+ static struct neighbour *ipv4_neigh_lookup(const struct dst_entry *dst,
+ 					   struct sk_buff *skb,
+ 					   const void *daddr);
++static void ipv4_confirm_neigh(const struct dst_entry *dst, const void *daddr);
+ 
+ static struct dst_ops ipv4_dst_ops = {
+ 	.family =		AF_INET,
+@@ -168,6 +169,7 @@ static struct neighbour *ipv4_neigh_lookup(const struct dst_entry *dst,
+ 	.redirect =		ip_do_redirect,
+ 	.local_out =		__ip_local_out,
+ 	.neigh_lookup =		ipv4_neigh_lookup,
++	.confirm_neigh =	ipv4_confirm_neigh,
+ };
+ 
+ #define ECN_OR_COST(class)	TC_PRIO_##class
+@@ -461,6 +463,23 @@ static struct neighbour *ipv4_neigh_lookup(const struct dst_entry *dst,
+ 	return neigh_create(&arp_tbl, pkey, dev);
+ }
+ 
++static void ipv4_confirm_neigh(const struct dst_entry *dst, const void *daddr)
++{
++	struct net_device *dev = dst->dev;
++	const __be32 *pkey = daddr;
++	const struct rtable *rt;
++
++	rt = (const struct rtable *)dst;
++	if (rt->rt_gateway)
++		pkey = (const __be32 *)&rt->rt_gateway;
++	else if (!daddr ||
++		 (rt->rt_flags &
++		  (RTCF_MULTICAST | RTCF_BROADCAST | RTCF_LOCAL)))
++		return;
++
++	__ipv4_confirm_neigh(dev, *(__force u32 *)pkey);
++}
++
+ #define IP_IDENTS_SZ 2048u
+ 
+ static atomic_t *ip_idents __read_mostly;
+diff --git a/net/ipv6/route.c b/net/ipv6/route.c
+index 890acac..4056d0e 100644
+--- a/net/ipv6/route.c
++++ b/net/ipv6/route.c
+@@ -217,6 +217,21 @@ static struct neighbour *ip6_neigh_lookup(const struct dst_entry *dst,
+ 	return neigh_create(&nd_tbl, daddr, dst->dev);
+ }
+ 
++static void ip6_confirm_neigh(const struct dst_entry *dst, const void *daddr)
++{
++	struct net_device *dev = dst->dev;
++	struct rt6_info *rt = (struct rt6_info *)dst;
++
++	daddr = choose_neigh_daddr(rt, NULL, daddr);
++	if (!daddr)
++		return;
++	if (dev->flags & (IFF_NOARP | IFF_LOOPBACK))
++		return;
++	if (ipv6_addr_is_multicast((const struct in6_addr *)daddr))
++		return;
++	__ipv6_confirm_neigh(dev, daddr);
++}
++
+ static struct dst_ops ip6_dst_ops_template = {
+ 	.family			=	AF_INET6,
+ 	.gc			=	ip6_dst_gc,
+@@ -233,6 +248,7 @@ static struct neighbour *ip6_neigh_lookup(const struct dst_entry *dst,
+ 	.redirect		=	rt6_do_redirect,
+ 	.local_out		=	__ip6_local_out,
+ 	.neigh_lookup		=	ip6_neigh_lookup,
++	.confirm_neigh		=	ip6_confirm_neigh,
+ };
+ 
+ static unsigned int ip6_blackhole_mtu(const struct dst_entry *dst)
+diff --git a/net/xfrm/xfrm_policy.c b/net/xfrm/xfrm_policy.c
+index 177e208..c010ee0 100644
+--- a/net/xfrm/xfrm_policy.c
++++ b/net/xfrm/xfrm_policy.c
+@@ -2856,6 +2856,20 @@ static struct neighbour *xfrm_neigh_lookup(const struct dst_entry *dst,
+ 	return dst->path->ops->neigh_lookup(dst, skb, daddr);
+ }
+ 
++static void xfrm_confirm_neigh(const struct dst_entry *dst, const void *daddr)
++{
++	const struct dst_entry *path = dst->path;
++
++	if (path = dst) {
++		dst->ops->confirm_neigh(dst, daddr);
++	} else {
++		/* daddr can be from different family and we need the
++		 * tunnel address. How to get it?
++		 */
++		path->ops->confirm_neigh(path, NULL);
++	}
++}
++
+ int xfrm_policy_register_afinfo(struct xfrm_policy_afinfo *afinfo)
+ {
+ 	int err = 0;
+@@ -2882,6 +2896,8 @@ int xfrm_policy_register_afinfo(struct xfrm_policy_afinfo *afinfo)
+ 			dst_ops->link_failure = xfrm_link_failure;
+ 		if (likely(dst_ops->neigh_lookup = NULL))
+ 			dst_ops->neigh_lookup = xfrm_neigh_lookup;
++		if (likely(!dst_ops->confirm_neigh))
++			dst_ops->confirm_neigh = xfrm_confirm_neigh;
+ 		if (likely(afinfo->garbage_collect = NULL))
+ 			afinfo->garbage_collect = xfrm_garbage_collect_deferred;
+ 		rcu_assign_pointer(xfrm_policy_afinfo[afinfo->family], afinfo);
+-- 
+1.9.3
 
