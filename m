@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 20 Dec 2016 11:29:05 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Wed, 21 Dec 2016 14:16:24 +0000
 Subject: Re: [PATCHv2 net 1/2] sctp: reduce indent level in sctp_copy_local_addr_list
-Message-Id: <20161220112905.GE4731@localhost.localdomain>
+Message-Id: <20161221141624.GC23197@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1482212764.git.lucien.xin@gmail.com>
  <b4d6428c565955e9e81e3b4623a6458e7567e593.1482212764.git.lucien.xin@gmail.com>
@@ -10,16 +10,13 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
 On Tue, Dec 20, 2016 at 01:49:49PM +0800, Xin Long wrote:
 > This patch is to reduce indent level by using continue when the addr
 > is not allowed, and also drop end_copy by using break.
 > 
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/protocol.c | 37 +++++++++++++++++++------------------
 >  1 file changed, 19 insertions(+), 18 deletions(-)
@@ -82,3 +79,6 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
+Series
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
