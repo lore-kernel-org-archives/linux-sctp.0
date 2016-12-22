@@ -1,26 +1,56 @@
-From: David Miller <davem@davemloft.net>
-Date: Sat, 17 Dec 2016 16:25:21 +0000
-Subject: Re: [PATCH net] sctp: sctp_transport_lookup_process should rcu_read_unlock when transport is null
-Message-Id: <20161217.112521.863936916212574024.davem@davemloft.net>
+From: amar padmanabhan <amarpad@gmail.com>
+Date: Thu, 22 Dec 2016 07:11:46 +0000
+Subject: Lingering associations on the server side after process dies
+Message-Id: <CAPOWuK_mteeYoZyK6QGb6NK=-Rgs9djFUUoh+LGPH7J7zETzOQ@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <3d4f0205d5b5c64d372dffb37602f48e4a173612.1481814352.git.lucien.xin@gmail.com>
-In-Reply-To: <3d4f0205d5b5c64d372dffb37602f48e4a173612.1481814352.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: linux-sctp@vger.kernel.org
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 15 Dec 2016 23:05:52 +0800
+I am trying to figure out an issue where after a process crash
+associations are lingering.
 
-> Prior to this patch, sctp_transport_lookup_process didn't rcu_read_unlock
-> when it failed to find a transport by sctp_addrs_lookup_transport.
-> 
-> This patch is to fix it by moving up rcu_read_unlock right before checking
-> transport and also to remove the out path.
-> 
-> Fixes: 1cceda784980 ("sctp: fix the issue sctp_diag uses lock_sock in rcu_read_lock")
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+On the server:
+vagrant@magma-dev:~/build/oai_sgw$ sudo cat /proc/net/sctp/assocs
+ ASSOC     SOCK   STY SST ST HBKT ASSOC-ID TX_QUEUE RX_QUEUE UID INODE
+LPORT RPORT LADDRS <-> RADDRS HBINT INS OUTS MAXRT T1X T2X RTXC wmema
+wmemq sndbuf rcvbuf
+ffff8800b58c7000 ffff8800da4d0bc0 2   1   3  0       9        0
+0       0     0 36412 36412  192.168.60.142 <-> *192.168.60.141
+7500     3     8   10    0    7        0        1        0   212992
+212992
 
-Applied and queued up for -stable, thanks.
+sudo lsof | grep ffff8800da4d0bc0
+
+after the application server restarts the client retries with INIT and
+COOKIE_ECHO and the server replies back with INIT_ACK and COOKIE_ACK
+without any notification to the application server and any subsequent
+request from the client is not seen on the server.
+
+Some pointers would be useful
+1. Why can't I see the socket in lsof.
+2. How do I shutdown the existing association, so the server can
+rebuild the state on the associations, and restart cleanly.
+
+vagrant@magma-dev:~/build/oai_sgw$ uname -a
+Linux magma-dev 4.7.4-040704-generic #201609150330 SMP Thu Sep 15
+07:32:22 UTC 2016 x86_64 GNU/Linux
+
+vagrant@magma-dev:~/build/oai_sgw$ sudo modinfo sctp
+filename:       /lib/modules/4.7.4-040704-generic/kernel/net/sctp/sctp.ko
+license:        GPL
+description:    Support for the SCTP protocol (RFC2960)
+author:         Linux Kernel SCTP developers <linux-sctp@vger.kernel.org>
+alias:          net-pf-10-proto-132
+alias:          net-pf-2-proto-132
+depends:        libcrc32c
+intree:         Y
+vermagic:       4.7.4-040704-generic SMP mod_unload modversions
+parm:           no_checksums:Disable checksums computing and verification (bool)
+
+The code can be found here:
+https://gitlab.eurecom.fr/oai/openair-cn/blob/develop/SRC/SCTP/sctp_primitives_server.c#L352
+
+Thanks
+Amar
