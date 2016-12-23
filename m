@@ -1,84 +1,101 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 21 Dec 2016 14:16:24 +0000
-Subject: Re: [PATCHv2 net 1/2] sctp: reduce indent level in sctp_copy_local_addr_list
-Message-Id: <20161221141624.GC23197@hmsreliant.think-freely.org>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 23 Dec 2016 16:29:37 +0000
+Subject: [PATCH net] sctp: fix recovering from 0 win with small data chunks
+Message-Id: <d9025eef1b2be8e7097fd4a5db73b4f5c0f5418b.1482510289.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1482212764.git.lucien.xin@gmail.com>
- <b4d6428c565955e9e81e3b4623a6458e7567e593.1482212764.git.lucien.xin@gmail.com>
-In-Reply-To: <b4d6428c565955e9e81e3b4623a6458e7567e593.1482212764.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-On Tue, Dec 20, 2016 at 01:49:49PM +0800, Xin Long wrote:
-> This patch is to reduce indent level by using continue when the addr
-> is not allowed, and also drop end_copy by using break.
-> 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> ---
->  net/sctp/protocol.c | 37 +++++++++++++++++++------------------
->  1 file changed, 19 insertions(+), 18 deletions(-)
-> 
-> diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-> index 7b523e3..da5d82b 100644
-> --- a/net/sctp/protocol.c
-> +++ b/net/sctp/protocol.c
-> @@ -205,26 +205,27 @@ int sctp_copy_local_addr_list(struct net *net, struct sctp_bind_addr *bp,
->  	list_for_each_entry_rcu(addr, &net->sctp.local_addr_list, list) {
->  		if (!addr->valid)
->  			continue;
-> -		if (sctp_in_scope(net, &addr->a, scope)) {
-> -			/* Now that the address is in scope, check to see if
-> -			 * the address type is really supported by the local
-> -			 * sock as well as the remote peer.
-> -			 */
-> -			if ((((AF_INET = addr->a.sa.sa_family) &&
-> -			      (copy_flags & SCTP_ADDR4_PEERSUPP))) ||
-> -			    (((AF_INET6 = addr->a.sa.sa_family) &&
-> -			      (copy_flags & SCTP_ADDR6_ALLOWED) &&
-> -			      (copy_flags & SCTP_ADDR6_PEERSUPP)))) {
-> -				error = sctp_add_bind_addr(bp, &addr->a,
-> -						    sizeof(addr->a),
-> -						    SCTP_ADDR_SRC, GFP_ATOMIC);
-> -				if (error)
-> -					goto end_copy;
-> -			}
-> -		}
-> +		if (!sctp_in_scope(net, &addr->a, scope))
-> +			continue;
-> +
-> +		/* Now that the address is in scope, check to see if
-> +		 * the address type is really supported by the local
-> +		 * sock as well as the remote peer.
-> +		 */
-> +		if (addr->a.sa.sa_family = AF_INET &&
-> +		    !(copy_flags & SCTP_ADDR4_PEERSUPP))
-> +			continue;
-> +		if (addr->a.sa.sa_family = AF_INET6 &&
-> +		    (!(copy_flags & SCTP_ADDR6_ALLOWED) ||
-> +		     !(copy_flags & SCTP_ADDR6_PEERSUPP)))
-> +			continue;
-> +
-> +		error = sctp_add_bind_addr(bp, &addr->a, sizeof(addr->a),
-> +					   SCTP_ADDR_SRC, GFP_ATOMIC);
-> +		if (error)
-> +			break;
->  	}
->  
-> -end_copy:
->  	rcu_read_unlock();
->  	return error;
->  }
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Series
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Currently if SCTP closes the receive window with window pressure, mostly
+caused by excessive skb overhead on payload/overheads ratio, SCTP will
+close the window abruptly while saving the delta on rwnd_press. It will
+start recovering rwnd as the chunks are consumed by the application and
+the rwnd_press will be only recovered after rwnd reach the same value as
+of rwnd_press, mostly to prevent silly window syndrome.
+
+Thing is, this is very inefficient with small data chunks, as with those
+it will never reach back that value, and thus it will never recover from
+such pressure. This means that we will not issue window updates when
+recovering from 0 window and will rely on a sender retransmit to notice
+it.
+
+The fix here is to remove such threshold, as no value is good enough: it
+depends on the (avg) chunk sizes being used.
+
+Test with netperf -t SCTP_STREAM -- -m 1, and trigger 0 window by
+sending SIGSTOP to netserver, sleep 1.2, and SIGCONT.
+Rate limited to 845kbps, for visibility. Capture done at netserver side.
+
+Previously:
+01.500751 IP B.48277 > A.36925: sctp (1) [SACK] [cum ack 632372996] [a_rwnd 99153] [
+01.500752 IP A.36925 > B.48277: sctp (1) [DATA] (B)(E) [TSN: 632372997] [SID: 0] [SS
+01.517471 IP A.36925 > B.48277: sctp (1) [DATA] (B)(E) [TSN: 632373010] [SID: 0] [SS
+01.517483 IP B.48277 > A.36925: sctp (1) [SACK] [cum ack 632373009] [a_rwnd 0] [#gap
+01.517485 IP A.36925 > B.48277: sctp (1) [DATA] (B)(E) [TSN: 632373083] [SID: 0] [SS
+01.517488 IP B.48277 > A.36925: sctp (1) [SACK] [cum ack 632373009] [a_rwnd 0] [#gap
+01.534168 IP A.36925 > B.48277: sctp (1) [DATA] (B)(E) [TSN: 632373096] [SID: 0] [SS
+01.534180 IP B.48277 > A.36925: sctp (1) [SACK] [cum ack 632373009] [a_rwnd 0] [#gap
+01.534181 IP A.36925 > B.48277: sctp (1) [DATA] (B)(E) [TSN: 632373169] [SID: 0] [SS
+01.534185 IP B.48277 > A.36925: sctp (1) [SACK] [cum ack 632373009] [a_rwnd 0] [#gap
+02.525978 IP A.36925 > B.48277: sctp (1) [DATA] (B)(E) [TSN: 632373010] [SID: 0] [SS
+02.526021 IP B.48277 > A.36925: sctp (1) [SACK] [cum ack 632373009] [a_rwnd 0] [#gap
+  (window update missed)
+04.573807 IP A.36925 > B.48277: sctp (1) [DATA] (B)(E) [TSN: 632373010] [SID: 0] [SS
+04.779370 IP B.48277 > A.36925: sctp (1) [SACK] [cum ack 632373082] [a_rwnd 859] [#g
+04.789162 IP A.36925 > B.48277: sctp (1) [DATA] (B)(E) [TSN: 632373083] [SID: 0] [SS
+04.789323 IP A.36925 > B.48277: sctp (1) [DATA] (B)(E) [TSN: 632373156] [SID: 0] [SS
+04.789372 IP B.48277 > A.36925: sctp (1) [SACK] [cum ack 632373228] [a_rwnd 786] [#g
+
+After:
+02.568957 IP B.50536 > A.55173: sctp (1) [SACK] [cum ack 2490098728] [a_rwnd 99153]
+02.568961 IP A.55173 > B.50536: sctp (1) [DATA] (B)(E) [TSN: 2490098729] [SID: 0] [S
+02.585631 IP A.55173 > B.50536: sctp (1) [DATA] (B)(E) [TSN: 2490098742] [SID: 0] [S
+02.585666 IP B.50536 > A.55173: sctp (1) [SACK] [cum ack 2490098741] [a_rwnd 0] [#ga
+02.585671 IP A.55173 > B.50536: sctp (1) [DATA] (B)(E) [TSN: 2490098815] [SID: 0] [S
+02.585683 IP B.50536 > A.55173: sctp (1) [SACK] [cum ack 2490098741] [a_rwnd 0] [#ga
+02.602330 IP A.55173 > B.50536: sctp (1) [DATA] (B)(E) [TSN: 2490098828] [SID: 0] [S
+02.602359 IP B.50536 > A.55173: sctp (1) [SACK] [cum ack 2490098741] [a_rwnd 0] [#ga
+02.602363 IP A.55173 > B.50536: sctp (1) [DATA] (B)(E) [TSN: 2490098901] [SID: 0] [S
+02.602372 IP B.50536 > A.55173: sctp (1) [SACK] [cum ack 2490098741] [a_rwnd 0] [#ga
+03.600788 IP A.55173 > B.50536: sctp (1) [DATA] (B)(E) [TSN: 2490098742] [SID: 0] [S
+03.600830 IP B.50536 > A.55173: sctp (1) [SACK] [cum ack 2490098741] [a_rwnd 0] [#ga
+03.619455 IP B.50536 > A.55173: sctp (1) [SACK] [cum ack 2490098741] [a_rwnd 13508]
+03.619479 IP B.50536 > A.55173: sctp (1) [SACK] [cum ack 2490098741] [a_rwnd 27017]
+03.619497 IP B.50536 > A.55173: sctp (1) [SACK] [cum ack 2490098741] [a_rwnd 40526]
+03.619516 IP B.50536 > A.55173: sctp (1) [SACK] [cum ack 2490098741] [a_rwnd 54035]
+03.619533 IP B.50536 > A.55173: sctp (1) [SACK] [cum ack 2490098741] [a_rwnd 67544]
+03.619552 IP B.50536 > A.55173: sctp (1) [SACK] [cum ack 2490098741] [a_rwnd 81053]
+03.619570 IP B.50536 > A.55173: sctp (1) [SACK] [cum ack 2490098741] [a_rwnd 94562]
+  (following data transmission triggered by window updates above)
+03.633504 IP A.55173 > B.50536: sctp (1) [DATA] (B)(E) [TSN: 2490098742] [SID: 0] [S
+03.836445 IP B.50536 > A.55173: sctp (1) [SACK] [cum ack 2490098814] [a_rwnd 100000]
+03.843125 IP A.55173 > B.50536: sctp (1) [DATA] (B)(E) [TSN: 2490098815] [SID: 0] [S
+03.843285 IP A.55173 > B.50536: sctp (1) [DATA] (B)(E) [TSN: 2490098888] [SID: 0] [S
+03.843345 IP B.50536 > A.55173: sctp (1) [SACK] [cum ack 2490098960] [a_rwnd 99894]
+03.856546 IP A.55173 > B.50536: sctp (1) [DATA] (B)(E) [TSN: 2490098961] [SID: 0] [S
+03.866450 IP A.55173 > B.50536: sctp (1) [DATA] (B)(E) [TSN: 2490099011] [SID: 0] [S
+
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/associola.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 56ddcfaeb4f64235b54b0daa915fabf0cc0170a9..d3cc30c25c41091c2bf18022506dff4145d29944 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1471,7 +1471,7 @@ void sctp_assoc_rwnd_increase(struct sctp_association *asoc, unsigned int len)
+ 	 * threshold.  The idea is to recover slowly, but up
+ 	 * to the initial advertised window.
+ 	 */
+-	if (asoc->rwnd_press && asoc->rwnd >= asoc->rwnd_press) {
++	if (asoc->rwnd_press) {
+ 		int change = min(asoc->pathmtu, asoc->rwnd_press);
+ 		asoc->rwnd += change;
+ 		asoc->rwnd_press -= change;
+-- 
+2.9.3
 
