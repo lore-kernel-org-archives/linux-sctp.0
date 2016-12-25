@@ -1,56 +1,63 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 27 Dec 2016 17:08:32 +0000
-Subject: [PATCH net-next 5/5] sctp: sctp_chunk_length_valid should return bool
-Message-Id: <18f39f6552364b0859a859cc2538d40cfe49a3cd.1482857832.git.marcelo.leitner@gmail.com>
+From: <nbrettb@sagamoremtg.com>
+Date: Sun, 25 Dec 2016 07:19:07 +0000
+Subject: 
+Message-Id: <148265034725.25181.4026291748746335587@cambrium.nl>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1482857832.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1482857832.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+To: linux-sctp@vger.kernel.org
 
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
----
- net/sctp/sm_statefuns.c | 15 +++++++--------
- 1 file changed, 7 insertions(+), 8 deletions(-)
-
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 9a223d5b2314ff166be0446462c33219b7eec1b9..3382ef254e7b41ae4723f2e72e5aca30d46a4a8e 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -160,23 +160,22 @@ static sctp_disposition_t __sctp_sf_do_9_1_abort(struct net *net,
- /* Small helper function that checks if the chunk length
-  * is of the appropriate length.  The 'required_length' argument
-  * is set to be the size of a specific chunk we are testing.
-- * Return Values:  1 = Valid length
-- * 		   0 = Invalid length
-+ * Return Values:  true  = Valid length
-+ * 		   false = Invalid length
-  *
-  */
--static inline int
--sctp_chunk_length_valid(struct sctp_chunk *chunk,
--			   __u16 required_length)
-+static inline bool
-+sctp_chunk_length_valid(struct sctp_chunk *chunk, __u16 required_length)
- {
- 	__u16 chunk_length = ntohs(chunk->chunk_hdr->length);
- 
- 	/* Previously already marked? */
- 	if (unlikely(chunk->pdiscard))
--		return 0;
-+		return false;
- 	if (unlikely(chunk_length < required_length))
--		return 0;
-+		return false;
- 
--	return 1;
-+	return true;
- }
- 
- /**********************************************************
--- 
-2.9.3
-
+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
