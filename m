@@ -1,7 +1,7 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 27 Dec 2016 17:08:28 +0000
-Subject: [PATCH net-next 1/5] sctp: reduce indent level at sctp_sf_tabort_8_4_8
-Message-Id: <889763e8337c9ee206957270dd55cc222d64664f.1482857832.git.marcelo.leitner@gmail.com>
+Date: Tue, 27 Dec 2016 17:08:32 +0000
+Subject: [PATCH net-next 5/5] sctp: sctp_chunk_length_valid should return bool
+Message-Id: <18f39f6552364b0859a859cc2538d40cfe49a3cd.1482857832.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1482857832.git.marcelo.leitner@gmail.com>
 In-Reply-To: <cover.1482857832.git.marcelo.leitner@gmail.com>
@@ -13,71 +13,44 @@ Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman
 
 Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- net/sctp/sm_statefuns.c | 44 +++++++++++++++++++++-----------------------
- 1 file changed, 21 insertions(+), 23 deletions(-)
+ net/sctp/sm_statefuns.c | 15 +++++++--------
+ 1 file changed, 7 insertions(+), 8 deletions(-)
 
 diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 8ec20a64a3f8055a0c3576627c5ec5dad7e99ca8..32587b1f84e729221965e270607fea7ef93a7430 100644
+index 9a223d5b2314ff166be0446462c33219b7eec1b9..3382ef254e7b41ae4723f2e72e5aca30d46a4a8e 100644
 --- a/net/sctp/sm_statefuns.c
 +++ b/net/sctp/sm_statefuns.c
-@@ -3237,36 +3237,34 @@ static sctp_disposition_t sctp_sf_tabort_8_4_8(struct net *net,
- 	struct sctp_chunk *abort;
+@@ -160,23 +160,22 @@ static sctp_disposition_t __sctp_sf_do_9_1_abort(struct net *net,
+ /* Small helper function that checks if the chunk length
+  * is of the appropriate length.  The 'required_length' argument
+  * is set to be the size of a specific chunk we are testing.
+- * Return Values:  1 = Valid length
+- * 		   0 = Invalid length
++ * Return Values:  true  = Valid length
++ * 		   false = Invalid length
+  *
+  */
+-static inline int
+-sctp_chunk_length_valid(struct sctp_chunk *chunk,
+-			   __u16 required_length)
++static inline bool
++sctp_chunk_length_valid(struct sctp_chunk *chunk, __u16 required_length)
+ {
+ 	__u16 chunk_length = ntohs(chunk->chunk_hdr->length);
  
- 	packet = sctp_ootb_pkt_new(net, asoc, chunk);
-+	if (!packet)
-+		return SCTP_DISPOSITION_NOMEM;
+ 	/* Previously already marked? */
+ 	if (unlikely(chunk->pdiscard))
+-		return 0;
++		return false;
+ 	if (unlikely(chunk_length < required_length))
+-		return 0;
++		return false;
  
--	if (packet) {
--		/* Make an ABORT. The T bit will be set if the asoc
--		 * is NULL.
--		 */
--		abort = sctp_make_abort(asoc, chunk, 0);
--		if (!abort) {
--			sctp_ootb_pkt_free(packet);
--			return SCTP_DISPOSITION_NOMEM;
--		}
-+	/* Make an ABORT. The T bit will be set if the asoc
-+	 * is NULL.
-+	 */
-+	abort = sctp_make_abort(asoc, chunk, 0);
-+	if (!abort) {
-+		sctp_ootb_pkt_free(packet);
-+		return SCTP_DISPOSITION_NOMEM;
-+	}
- 
--		/* Reflect vtag if T-Bit is set */
--		if (sctp_test_T_bit(abort))
--			packet->vtag = ntohl(chunk->sctp_hdr->vtag);
-+	/* Reflect vtag if T-Bit is set */
-+	if (sctp_test_T_bit(abort))
-+		packet->vtag = ntohl(chunk->sctp_hdr->vtag);
- 
--		/* Set the skb to the belonging sock for accounting.  */
--		abort->skb->sk = ep->base.sk;
-+	/* Set the skb to the belonging sock for accounting.  */
-+	abort->skb->sk = ep->base.sk;
- 
--		sctp_packet_append_chunk(packet, abort);
-+	sctp_packet_append_chunk(packet, abort);
- 
--		sctp_add_cmd_sf(commands, SCTP_CMD_SEND_PKT,
--				SCTP_PACKET(packet));
--
--		SCTP_INC_STATS(net, SCTP_MIB_OUTCTRLCHUNKS);
-+	sctp_add_cmd_sf(commands, SCTP_CMD_SEND_PKT,
-+			SCTP_PACKET(packet));
- 
--		sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
--		return SCTP_DISPOSITION_CONSUME;
--	}
-+	SCTP_INC_STATS(net, SCTP_MIB_OUTCTRLCHUNKS);
- 
--	return SCTP_DISPOSITION_NOMEM;
-+	sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
-+	return SCTP_DISPOSITION_CONSUME;
+-	return 1;
++	return true;
  }
  
- /*
+ /**********************************************************
 -- 
 2.9.3
 
