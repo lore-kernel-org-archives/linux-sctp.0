@@ -1,63 +1,93 @@
-From: <nbrettb@sagamoremtg.com>
-Date: Sun, 25 Dec 2016 07:19:07 +0000
-Subject: 
-Message-Id: <148265034725.25181.4026291748746335587@cambrium.nl>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 27 Dec 2016 17:08:30 +0000
+Subject: [PATCH net-next 3/5] sctp: simplify addr copy
+Message-Id: <dd32e257f5edc5395e3bc6eb3ed4999c822aaefa.1482857832.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1482857832.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1482857832.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-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
+Make it a bit easier to read.
+
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/ipv6.c     | 16 +++++++---------
+ net/sctp/protocol.c | 18 +++++++-----------
+ 2 files changed, 14 insertions(+), 20 deletions(-)
+
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 176af3080a2b8f8ffc56b55f3ccb13a169e195fe..434167ac0c8e89078b0bac80f0a81da92be37e07 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -412,22 +412,20 @@ static void sctp_v6_copy_addrlist(struct list_head *addrlist,
+ static void sctp_v6_from_skb(union sctp_addr *addr, struct sk_buff *skb,
+ 			     int is_saddr)
+ {
+-	__be16 *port;
+-	struct sctphdr *sh;
++	/* Always called on head skb, so this is safe */
++	struct sctphdr *sh = sctp_hdr(skb);
++	struct sockaddr_in6 *sa = &addr->v6;
+ 
+-	port = &addr->v6.sin6_port;
+ 	addr->v6.sin6_family = AF_INET6;
+ 	addr->v6.sin6_flowinfo = 0; /* FIXME */
+ 	addr->v6.sin6_scope_id = ((struct inet6_skb_parm *)skb->cb)->iif;
+ 
+-	/* Always called on head skb, so this is safe */
+-	sh = sctp_hdr(skb);
+ 	if (is_saddr) {
+-		*port  = sh->source;
+-		addr->v6.sin6_addr = ipv6_hdr(skb)->saddr;
++		sa->sin6_port = sh->source;
++		sa->sin6_addr = ipv6_hdr(skb)->saddr;
+ 	} else {
+-		*port = sh->dest;
+-		addr->v6.sin6_addr = ipv6_hdr(skb)->daddr;
++		sa->sin6_port = sh->dest;
++		sa->sin6_addr = ipv6_hdr(skb)->daddr;
+ 	}
+ }
+ 
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index ad40fa153878f354a367b5cefa2ccd4322463eb2..fe6c62607e99961b5b3bf524b6f6f46d4be3251d 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -237,23 +237,19 @@ int sctp_copy_local_addr_list(struct net *net, struct sctp_bind_addr *bp,
+ static void sctp_v4_from_skb(union sctp_addr *addr, struct sk_buff *skb,
+ 			     int is_saddr)
+ {
+-	void *from;
+-	__be16 *port;
+-	struct sctphdr *sh;
++	/* Always called on head skb, so this is safe */
++	struct sctphdr *sh = sctp_hdr(skb);
++	struct sockaddr_in *sa = &addr->v4;
+ 
+-	port = &addr->v4.sin_port;
+ 	addr->v4.sin_family = AF_INET;
+ 
+-	/* Always called on head skb, so this is safe */
+-	sh = sctp_hdr(skb);
+ 	if (is_saddr) {
+-		*port  = sh->source;
+-		from = &ip_hdr(skb)->saddr;
++		sa->sin_port = sh->source;
++		sa->sin_addr.s_addr = ip_hdr(skb)->saddr;
+ 	} else {
+-		*port = sh->dest;
+-		from = &ip_hdr(skb)->daddr;
++		sa->sin_port = sh->dest;
++		sa->sin_addr.s_addr = ip_hdr(skb)->daddr;
+ 	}
+-	memcpy(&addr->v4.sin_addr.s_addr, from, sizeof(struct in_addr));
+ }
+ 
+ /* Initialize an sctp_addr from a socket. */
+-- 
+2.9.3
+
