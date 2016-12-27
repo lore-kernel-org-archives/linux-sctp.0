@@ -1,25 +1,30 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 21 Dec 2016 14:04:45 +0000
-Subject: Re: multihoming client question
-Message-Id: <20161221140444.GG4731@localhost.localdomain>
+Date: Tue, 27 Dec 2016 17:08:27 +0000
+Subject: [PATCH net-next 0/5] SCTP cleanups
+Message-Id: <cover.1482857832.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAJ0j_BYFOO+szALYGoFryCcpOrRoYjrgPOx_VVcUvOtSUX31Uw@mail.gmail.com>
-In-Reply-To: <CAJ0j_BYFOO+szALYGoFryCcpOrRoYjrgPOx_VVcUvOtSUX31Uw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Wed, Dec 21, 2016 at 05:10:22PM +0800, tsoi andrew wrote:
-> Dear Sir,
-> 
-> Would you provide the link for download the new library? I only find
-> version 1.0.17 in http://lksctp.sourceforge.net/.
+Some cleanups/simplifications I've been collecting.
 
-1.0.17 is the latest release we have.
-You can a devel copy (may not be stable) via git,
-https://github.com/sctp/lksctp-tools
-but that's not going to help with this problem. The change Xin mentioned
-is on kernel level only.
+Marcelo Ricardo Leitner (5):
+  sctp: reduce indent level at sctp_sf_tabort_8_4_8
+  sctp: reduce indent level in sctp_sf_shut_8_4_5
+  sctp: simplify addr copy
+  sctp: remove return value from sctp_packet_init/config
+  sctp: sctp_chunk_length_valid should return bool
 
-  Marcelo
+ include/net/sctp/structs.h |   7 ++-
+ net/sctp/ipv6.c            |  16 +++---
+ net/sctp/output.c          |  14 ++----
+ net/sctp/protocol.c        |  18 +++----
+ net/sctp/sm_statefuns.c    | 122 ++++++++++++++++++++++-----------------------
+ 5 files changed, 81 insertions(+), 96 deletions(-)
+
+-- 
+2.9.3
+
