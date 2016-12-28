@@ -1,55 +1,22 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 28 Dec 2016 11:51:56 +0000
-Subject: [PATCH net-next] sctp: add pr_debug for tracking asocs not found
-Message-Id: <2e7482596bbf75efb56e313e33179f9e1c0e6996.1482924698.git.marcelo.leitner@gmail.com>
+From: David Miller <davem@davemloft.net>
+Date: Wed, 28 Dec 2016 19:26:43 +0000
+Subject: Re: [PATCH net-next] sctp: add pr_debug for tracking asocs not found
+Message-Id: <20161228.142643.301838823990974094.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <2e7482596bbf75efb56e313e33179f9e1c0e6996.1482924698.git.marcelo.leitner@gmail.com>
+In-Reply-To: <2e7482596bbf75efb56e313e33179f9e1c0e6996.1482924698.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>
+To: marcelo.leitner@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, lucien.xin@gmail.com
 
-This pr_debug may help identify why the system is generating some
-Aborts. It's not something a sysadmin would be expected to use.
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 28 Dec 2016 09:51:56 -0200
 
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
----
- net/sctp/input.c | 17 +++++++++++++++--
- 1 file changed, 15 insertions(+), 2 deletions(-)
+> This pr_debug may help identify why the system is generating some
+> Aborts. It's not something a sysadmin would be expected to use.
+> 
+> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-diff --git a/net/sctp/input.c b/net/sctp/input.c
-index 458e506ef84bae3c53c239d6cf89a9349faafb11..704ad19c1565fe5d8a8aad8e73be124f4c21e0f1 100644
---- a/net/sctp/input.c
-+++ b/net/sctp/input.c
-@@ -1229,13 +1229,26 @@ static struct sctp_association *__sctp_rcv_lookup(struct net *net,
- 	struct sctp_association *asoc;
- 
- 	asoc = __sctp_lookup_association(net, laddr, paddr, transportp);
-+	if (asoc)
-+		goto out;
- 
- 	/* Further lookup for INIT/INIT-ACK packets.
- 	 * SCTP Implementors Guide, 2.18 Handling of address
- 	 * parameters within the INIT or INIT-ACK.
- 	 */
--	if (!asoc)
--		asoc = __sctp_rcv_lookup_harder(net, skb, laddr, transportp);
-+	asoc = __sctp_rcv_lookup_harder(net, skb, laddr, transportp);
-+	if (asoc)
-+		goto out;
- 
-+	if (paddr->sa.sa_family = AF_INET)
-+		pr_debug("sctp: asoc not found for src:%pI4:%d dst:%pI4:%d\n",
-+			 &laddr->v4.sin_addr, ntohs(laddr->v4.sin_port),
-+			 &paddr->v4.sin_addr, ntohs(paddr->v4.sin_port));
-+	else
-+		pr_debug("sctp: asoc not found for src:%pI6:%d dst:%pI6:%d\n",
-+			 &laddr->v6.sin6_addr, ntohs(laddr->v6.sin6_port),
-+			 &paddr->v6.sin6_addr, ntohs(paddr->v6.sin6_port));
-+
-+out:
- 	return asoc;
- }
--- 
-2.9.3
-
+Applied.
