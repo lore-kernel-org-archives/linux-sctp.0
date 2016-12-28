@@ -1,112 +1,99 @@
-From: Julian Anastasov <ja@ssi.bg>
-Date: Sun, 18 Dec 2016 20:56:33 +0000
-Subject: [PATCH RFC net-next 4/7] tcp: replace dst_confirm with sk_dst_confirm
-Message-Id: <1482094596-26046-5-git-send-email-ja@ssi.bg>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 28 Dec 2016 11:26:32 +0000
+Subject: [PATCH RESEND net-next 2/5] sctp: reduce indent level in sctp_sf_shut_8_4_5
+Message-Id: <516c622c83445125697aa64f6c28c6538a09a37d.1482924092.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1482094596-26046-1-git-send-email-ja@ssi.bg>
-In-Reply-To: <1482094596-26046-1-git-send-email-ja@ssi.bg>
+References: <cover.1482924092.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1482924092.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, YueHaibing <yuehaibing@huawei.com>
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-When same struct dst_entry can be used for many different
-neighbours we can not use it for pending confirmations.
-Use the new sk_dst_confirm() helper to propagate the
-indication from received packets to sock_confirm_neigh().
-
-Reported-by: YueHaibing <yuehaibing@huawei.com>
-Fixes: 5110effee8fd ("net: Do delayed neigh confirmation.")
-Fixes: f2bb4bedf35d ("ipv4: Cache output routes in fib_info nexthops.")
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- net/ipv4/tcp_input.c   | 12 +++---------
- net/ipv4/tcp_metrics.c |  7 ++-----
- net/ipv4/tcp_output.c  |  2 ++
- 3 files changed, 7 insertions(+), 14 deletions(-)
+ net/sctp/sm_statefuns.c | 58 ++++++++++++++++++++++++-------------------------
+ 1 file changed, 28 insertions(+), 30 deletions(-)
 
-diff --git a/net/ipv4/tcp_input.c b/net/ipv4/tcp_input.c
-index 6c79075..005c428 100644
---- a/net/ipv4/tcp_input.c
-+++ b/net/ipv4/tcp_input.c
-@@ -3698,11 +3698,8 @@ static int tcp_ack(struct sock *sk, const struct sk_buff *skb, int flag)
- 	if (tp->tlp_high_seq)
- 		tcp_process_tlp_ack(sk, ack, flag);
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 32587b1f84e729221965e270607fea7ef93a7430..a95915ef9dbabad30f6171f77b26feab61752f36 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -3501,45 +3501,43 @@ static sctp_disposition_t sctp_sf_shut_8_4_5(struct net *net,
+ 	struct sctp_chunk *shut;
  
--	if ((flag & FLAG_FORWARD_PROGRESS) || !(flag & FLAG_NOT_DUP)) {
--		struct dst_entry *dst = __sk_dst_get(sk);
--		if (dst)
--			dst_confirm(dst);
+ 	packet = sctp_ootb_pkt_new(net, asoc, chunk);
++	if (!packet)
++		return SCTP_DISPOSITION_NOMEM;
+ 
+-	if (packet) {
+-		/* Make an SHUTDOWN_COMPLETE.
+-		 * The T bit will be set if the asoc is NULL.
+-		 */
+-		shut = sctp_make_shutdown_complete(asoc, chunk);
+-		if (!shut) {
+-			sctp_ootb_pkt_free(packet);
+-			return SCTP_DISPOSITION_NOMEM;
+-		}
+-
+-		/* Reflect vtag if T-Bit is set */
+-		if (sctp_test_T_bit(shut))
+-			packet->vtag = ntohl(chunk->sctp_hdr->vtag);
++	/* Make an SHUTDOWN_COMPLETE.
++	 * The T bit will be set if the asoc is NULL.
++	 */
++	shut = sctp_make_shutdown_complete(asoc, chunk);
++	if (!shut) {
++		sctp_ootb_pkt_free(packet);
++		return SCTP_DISPOSITION_NOMEM;
++	}
+ 
+-		/* Set the skb to the belonging sock for accounting.  */
+-		shut->skb->sk = ep->base.sk;
++	/* Reflect vtag if T-Bit is set */
++	if (sctp_test_T_bit(shut))
++		packet->vtag = ntohl(chunk->sctp_hdr->vtag);
+ 
+-		sctp_packet_append_chunk(packet, shut);
++	/* Set the skb to the belonging sock for accounting.  */
++	shut->skb->sk = ep->base.sk;
+ 
+-		sctp_add_cmd_sf(commands, SCTP_CMD_SEND_PKT,
+-				SCTP_PACKET(packet));
++	sctp_packet_append_chunk(packet, shut);
+ 
+-		SCTP_INC_STATS(net, SCTP_MIB_OUTCTRLCHUNKS);
++	sctp_add_cmd_sf(commands, SCTP_CMD_SEND_PKT,
++			SCTP_PACKET(packet));
+ 
+-		/* If the chunk length is invalid, we don't want to process
+-		 * the reset of the packet.
+-		 */
+-		if (!sctp_chunk_length_valid(chunk, sizeof(sctp_chunkhdr_t)))
+-			return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
++	SCTP_INC_STATS(net, SCTP_MIB_OUTCTRLCHUNKS);
+ 
+-		/* We need to discard the rest of the packet to prevent
+-		 * potential bomming attacks from additional bundled chunks.
+-		 * This is documented in SCTP Threats ID.
+-		 */
++	/* If the chunk length is invalid, we don't want to process
++	 * the reset of the packet.
++	 */
++	if (!sctp_chunk_length_valid(chunk, sizeof(sctp_chunkhdr_t)))
+ 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
 -	}
-+	if ((flag & FLAG_FORWARD_PROGRESS) || !(flag & FLAG_NOT_DUP))
-+		sk_dst_confirm(sk);
  
- 	if (icsk->icsk_pending = ICSK_TIME_RETRANS)
- 		tcp_schedule_loss_probe(sk);
-@@ -6022,7 +6019,6 @@ int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb)
- 		break;
+-	return SCTP_DISPOSITION_NOMEM;
++	/* We need to discard the rest of the packet to prevent
++	 * potential bomming attacks from additional bundled chunks.
++	 * This is documented in SCTP Threats ID.
++	 */
++	return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+ }
  
- 	case TCP_FIN_WAIT1: {
--		struct dst_entry *dst;
- 		int tmo;
- 
- 		/* If we enter the TCP_FIN_WAIT1 state and we are a
-@@ -6049,9 +6045,7 @@ int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb)
- 		tcp_set_state(sk, TCP_FIN_WAIT2);
- 		sk->sk_shutdown |= SEND_SHUTDOWN;
- 
--		dst = __sk_dst_get(sk);
--		if (dst)
--			dst_confirm(dst);
-+		sk_dst_confirm(sk);
- 
- 		if (!sock_flag(sk, SOCK_DEAD)) {
- 			/* Wake up lingering close() */
-diff --git a/net/ipv4/tcp_metrics.c b/net/ipv4/tcp_metrics.c
-index d46f4d5..1b335d6 100644
---- a/net/ipv4/tcp_metrics.c
-+++ b/net/ipv4/tcp_metrics.c
-@@ -375,12 +375,10 @@ void tcp_update_metrics(struct sock *sk)
- 	u32 val;
- 	int m;
- 
-+	sk_dst_confirm(sk);
- 	if (sysctl_tcp_nometrics_save || !dst)
- 		return;
- 
--	if (dst->flags & DST_HOST)
--		dst_confirm(dst);
--
- 	rcu_read_lock();
- 	if (icsk->icsk_backoff || !tp->srtt_us) {
- 		/* This session failed to estimate rtt. Why?
-@@ -493,11 +491,10 @@ void tcp_init_metrics(struct sock *sk)
- 	struct tcp_metrics_block *tm;
- 	u32 val, crtt = 0; /* cached RTT scaled by 8 */
- 
-+	sk_dst_confirm(sk);
- 	if (!dst)
- 		goto reset;
- 
--	dst_confirm(dst);
--
- 	rcu_read_lock();
- 	tm = tcp_get_metrics(sk, dst, true);
- 	if (!tm) {
-diff --git a/net/ipv4/tcp_output.c b/net/ipv4/tcp_output.c
-index b45101f..dc01f35 100644
---- a/net/ipv4/tcp_output.c
-+++ b/net/ipv4/tcp_output.c
-@@ -974,6 +974,8 @@ static int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
- 	skb_set_hash_from_sk(skb, sk);
- 	atomic_add(skb->truesize, &sk->sk_wmem_alloc);
- 
-+	skb->dst_pending_confirm = sk->sk_dst_pending_confirm;
-+
- 	/* Build TCP header and checksum it. */
- 	th = (struct tcphdr *)skb->data;
- 	th->source		= inet->inet_sport;
+ /*
 -- 
-1.9.3
+2.9.3
 
