@@ -1,118 +1,93 @@
-From: Julian Anastasov <ja@ssi.bg>
-Date: Sun, 18 Dec 2016 20:56:30 +0000
-Subject: [PATCH RFC net-next 1/7] sock: add sk_dst_pending_confirm flag
-Message-Id: <1482094596-26046-2-git-send-email-ja@ssi.bg>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 28 Dec 2016 11:26:33 +0000
+Subject: [PATCH RESEND net-next 3/5] sctp: simplify addr copy
+Message-Id: <dd32e257f5edc5395e3bc6eb3ed4999c822aaefa.1482924092.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1482094596-26046-1-git-send-email-ja@ssi.bg>
-In-Reply-To: <1482094596-26046-1-git-send-email-ja@ssi.bg>
+References: <cover.1482924092.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1482924092.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, YueHaibing <yuehaibing@huawei.com>
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-Add new sock flag to allow sockets to confirm neighbour.
-When same struct dst_entry can be used for many different
-neighbours we can not use it for pending confirmations.
-As not all call paths lock the socket use full word for
-the flag.
+Make it a bit easier to read.
 
-Add sk_dst_confirm as replacement for dst_confirm when
-called for received packets.
-
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- include/net/sock.h | 14 +++++++++++++-
- net/core/sock.c    |  2 ++
- 2 files changed, 15 insertions(+), 1 deletion(-)
+ net/sctp/ipv6.c     | 16 +++++++---------
+ net/sctp/protocol.c | 18 +++++++-----------
+ 2 files changed, 14 insertions(+), 20 deletions(-)
 
-diff --git a/include/net/sock.h b/include/net/sock.h
-index 282d065..e83bb01 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -239,6 +239,7 @@ struct sock_common {
-   *	@sk_wq: sock wait queue and async head
-   *	@sk_rx_dst: receive input route used by early demux
-   *	@sk_dst_cache: destination cache
-+  *	@sk_dst_pending_confirm: need to confirm neighbour
-   *	@sk_policy: flow policy
-   *	@sk_receive_queue: incoming packets
-   *	@sk_wmem_alloc: transmit queue bytes committed
-@@ -381,7 +382,7 @@ struct sock {
- #endif
- 	struct dst_entry	*sk_rx_dst;
- 	struct dst_entry __rcu	*sk_dst_cache;
--	atomic_t		sk_omem_alloc;
-+	int			sk_dst_pending_confirm;
- 	int			sk_sndbuf;
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 176af3080a2b8f8ffc56b55f3ccb13a169e195fe..434167ac0c8e89078b0bac80f0a81da92be37e07 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -412,22 +412,20 @@ static void sctp_v6_copy_addrlist(struct list_head *addrlist,
+ static void sctp_v6_from_skb(union sctp_addr *addr, struct sk_buff *skb,
+ 			     int is_saddr)
+ {
+-	__be16 *port;
+-	struct sctphdr *sh;
++	/* Always called on head skb, so this is safe */
++	struct sctphdr *sh = sctp_hdr(skb);
++	struct sockaddr_in6 *sa = &addr->v6;
  
- 	/* === cache line for TX === */
-@@ -405,6 +406,8 @@ struct sock {
- 	unsigned int		sk_gso_max_size;
- 	gfp_t			sk_allocation;
- 	__u32			sk_txhash;
-+	atomic_t		sk_omem_alloc;
-+	/* Note: 32bit hole on 64bit arches */
+-	port = &addr->v6.sin6_port;
+ 	addr->v6.sin6_family = AF_INET6;
+ 	addr->v6.sin6_flowinfo = 0; /* FIXME */
+ 	addr->v6.sin6_scope_id = ((struct inet6_skb_parm *)skb->cb)->iif;
  
- 	/*
- 	 * Because of non atomicity rules, all
-@@ -1761,6 +1764,7 @@ static inline void dst_negative_advice(struct sock *sk)
- 		if (ndst != dst) {
- 			rcu_assign_pointer(sk->sk_dst_cache, ndst);
- 			sk_tx_queue_clear(sk);
-+			sk->sk_dst_pending_confirm = 0;
- 		}
+-	/* Always called on head skb, so this is safe */
+-	sh = sctp_hdr(skb);
+ 	if (is_saddr) {
+-		*port  = sh->source;
+-		addr->v6.sin6_addr = ipv6_hdr(skb)->saddr;
++		sa->sin6_port = sh->source;
++		sa->sin6_addr = ipv6_hdr(skb)->saddr;
+ 	} else {
+-		*port = sh->dest;
+-		addr->v6.sin6_addr = ipv6_hdr(skb)->daddr;
++		sa->sin6_port = sh->dest;
++		sa->sin6_addr = ipv6_hdr(skb)->daddr;
  	}
  }
-@@ -1771,6 +1775,7 @@ static inline void dst_negative_advice(struct sock *sk)
- 	struct dst_entry *old_dst;
  
- 	sk_tx_queue_clear(sk);
-+	sk->sk_dst_pending_confirm = 0;
- 	/*
- 	 * This can be called while sk is owned by the caller only,
- 	 * with no state that can be checked in a rcu_dereference_check() cond
-@@ -1786,6 +1791,7 @@ static inline void dst_negative_advice(struct sock *sk)
- 	struct dst_entry *old_dst;
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index ad40fa153878f354a367b5cefa2ccd4322463eb2..fe6c62607e99961b5b3bf524b6f6f46d4be3251d 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -237,23 +237,19 @@ int sctp_copy_local_addr_list(struct net *net, struct sctp_bind_addr *bp,
+ static void sctp_v4_from_skb(union sctp_addr *addr, struct sk_buff *skb,
+ 			     int is_saddr)
+ {
+-	void *from;
+-	__be16 *port;
+-	struct sctphdr *sh;
++	/* Always called on head skb, so this is safe */
++	struct sctphdr *sh = sctp_hdr(skb);
++	struct sockaddr_in *sa = &addr->v4;
  
- 	sk_tx_queue_clear(sk);
-+	sk->sk_dst_pending_confirm = 0;
- 	old_dst = xchg((__force struct dst_entry **)&sk->sk_dst_cache, dst);
- 	dst_release(old_dst);
+-	port = &addr->v4.sin_port;
+ 	addr->v4.sin_family = AF_INET;
+ 
+-	/* Always called on head skb, so this is safe */
+-	sh = sctp_hdr(skb);
+ 	if (is_saddr) {
+-		*port  = sh->source;
+-		from = &ip_hdr(skb)->saddr;
++		sa->sin_port = sh->source;
++		sa->sin_addr.s_addr = ip_hdr(skb)->saddr;
+ 	} else {
+-		*port = sh->dest;
+-		from = &ip_hdr(skb)->daddr;
++		sa->sin_port = sh->dest;
++		sa->sin_addr.s_addr = ip_hdr(skb)->daddr;
+ 	}
+-	memcpy(&addr->v4.sin_addr.s_addr, from, sizeof(struct in_addr));
  }
-@@ -1806,6 +1812,12 @@ static inline void dst_negative_advice(struct sock *sk)
  
- struct dst_entry *sk_dst_check(struct sock *sk, u32 cookie);
- 
-+static inline void sk_dst_confirm(struct sock *sk)
-+{
-+	if (!sk->sk_dst_pending_confirm)
-+		sk->sk_dst_pending_confirm = 1;
-+}
-+
- bool sk_mc_loop(struct sock *sk);
- 
- static inline bool sk_can_gso(const struct sock *sk)
-diff --git a/net/core/sock.c b/net/core/sock.c
-index 9fa46b9..8af5296 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -502,6 +502,7 @@ struct dst_entry *__sk_dst_check(struct sock *sk, u32 cookie)
- 
- 	if (dst && dst->obsolete && dst->ops->check(dst, cookie) = NULL) {
- 		sk_tx_queue_clear(sk);
-+		sk->sk_dst_pending_confirm = 0;
- 		RCU_INIT_POINTER(sk->sk_dst_cache, NULL);
- 		dst_release(dst);
- 		return NULL;
-@@ -1522,6 +1523,7 @@ struct sock *sk_clone_lock(const struct sock *sk, const gfp_t priority)
- 				af_family_clock_key_strings[newsk->sk_family]);
- 
- 		newsk->sk_dst_cache	= NULL;
-+		newsk->sk_dst_pending_confirm = 0;
- 		newsk->sk_wmem_queued	= 0;
- 		newsk->sk_forward_alloc = 0;
- 		atomic_set(&newsk->sk_drops, 0);
+ /* Initialize an sctp_addr from a socket. */
 -- 
-1.9.3
+2.9.3
 
