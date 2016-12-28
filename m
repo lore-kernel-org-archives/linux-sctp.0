@@ -1,87 +1,56 @@
-From: Julian Anastasov <ja@ssi.bg>
-Date: Sun, 18 Dec 2016 20:56:36 +0000
-Subject: [PATCH RFC net-next 7/7] net: pending_confirm is not used anymore
-Message-Id: <1482094596-26046-8-git-send-email-ja@ssi.bg>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 28 Dec 2016 11:26:35 +0000
+Subject: [PATCH RESEND net-next 5/5] sctp: sctp_chunk_length_valid should return bool
+Message-Id: <11191de6d1bbf1548f1dc7aa1d1eb0ff469e6998.1482924092.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1482094596-26046-1-git-send-email-ja@ssi.bg>
-In-Reply-To: <1482094596-26046-1-git-send-email-ja@ssi.bg>
+References: <cover.1482924092.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1482924092.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, YueHaibing <yuehaibing@huawei.com>
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-When same struct dst_entry can be used for many different
-neighbours we can not use it for pending confirmations.
-As last step, we can remove the pending_confirm flag.
-
-Reported-by: YueHaibing <yuehaibing@huawei.com>
-Fixes: 5110effee8fd ("net: Do delayed neigh confirmation.")
-Fixes: f2bb4bedf35d ("ipv4: Cache output routes in fib_info nexthops.")
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- include/net/dst.h | 14 ++------------
- net/core/dst.c    |  1 -
- 2 files changed, 2 insertions(+), 13 deletions(-)
+ net/sctp/sm_statefuns.c | 15 +++++++--------
+ 1 file changed, 7 insertions(+), 8 deletions(-)
 
-diff --git a/include/net/dst.h b/include/net/dst.h
-index 3a3b34b..84a1043 100644
---- a/include/net/dst.h
-+++ b/include/net/dst.h
-@@ -59,8 +59,6 @@ struct dst_entry {
- #define DST_XFRM_QUEUE		0x0100
- #define DST_METADATA		0x0200
- 
--	unsigned short		pending_confirm;
--
- 	short			error;
- 
- 	/* A non-zero value of dst->obsolete forces by-hand validation
-@@ -78,6 +76,8 @@ struct dst_entry {
- #define DST_OBSOLETE_KILL	-2
- 	unsigned short		header_len;	/* more space at head required */
- 	unsigned short		trailer_len;	/* space to reserve at tail */
-+	unsigned short		__pad3;
-+
- #ifdef CONFIG_IP_ROUTE_CLASSID
- 	__u32			tclassid;
- #else
-@@ -440,7 +440,6 @@ static inline void dst_rcu_free(struct rcu_head *head)
- 
- static inline void dst_confirm(struct dst_entry *dst)
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 9a223d5b2314ff166be0446462c33219b7eec1b9..3382ef254e7b41ae4723f2e72e5aca30d46a4a8e 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -160,23 +160,22 @@ static sctp_disposition_t __sctp_sf_do_9_1_abort(struct net *net,
+ /* Small helper function that checks if the chunk length
+  * is of the appropriate length.  The 'required_length' argument
+  * is set to be the size of a specific chunk we are testing.
+- * Return Values:  1 = Valid length
+- * 		   0 = Invalid length
++ * Return Values:  true  = Valid length
++ * 		   false = Invalid length
+  *
+  */
+-static inline int
+-sctp_chunk_length_valid(struct sctp_chunk *chunk,
+-			   __u16 required_length)
++static inline bool
++sctp_chunk_length_valid(struct sctp_chunk *chunk, __u16 required_length)
  {
--	dst->pending_confirm = 1;
+ 	__u16 chunk_length = ntohs(chunk->chunk_hdr->length);
+ 
+ 	/* Previously already marked? */
+ 	if (unlikely(chunk->pdiscard))
+-		return 0;
++		return false;
+ 	if (unlikely(chunk_length < required_length))
+-		return 0;
++		return false;
+ 
+-	return 1;
++	return true;
  }
  
- static inline int dst_neigh_output(struct dst_entry *dst, struct neighbour *n,
-@@ -448,15 +447,6 @@ static inline int dst_neigh_output(struct dst_entry *dst, struct neighbour *n,
- {
- 	const struct hh_cache *hh;
- 
--	if (dst->pending_confirm) {
--		unsigned long now = jiffies;
--
--		dst->pending_confirm = 0;
--		/* avoid dirtying neighbour */
--		if (n->confirmed != now)
--			n->confirmed = now;
--	}
--
- 	hh = &n->hh;
- 	if ((n->nud_state & NUD_CONNECTED) && hh->hh_len)
- 		return neigh_hh_output(hh, skb);
-diff --git a/net/core/dst.c b/net/core/dst.c
-index b5cbbe0..960e503 100644
---- a/net/core/dst.c
-+++ b/net/core/dst.c
-@@ -190,7 +190,6 @@ void dst_init(struct dst_entry *dst, struct dst_ops *ops,
- 	dst->__use = 0;
- 	dst->lastuse = jiffies;
- 	dst->flags = flags;
--	dst->pending_confirm = 0;
- 	dst->next = NULL;
- 	if (!(flags & DST_NOCOUNT))
- 		dst_entries_add(ops, 1);
+ /**********************************************************
 -- 
-1.9.3
+2.9.3
 
