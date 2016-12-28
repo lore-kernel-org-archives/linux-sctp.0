@@ -1,48 +1,55 @@
-From: Julian Anastasov <ja@ssi.bg>
-Date: Mon, 19 Dec 2016 20:37:50 +0000
-Subject: Re: [PATCH RFC net-next 2/7] net: add dst_pending_confirm flag to skbuff
-Message-Id: <alpine.LFD.2.11.1612192203480.3105@ja.home.ssi.bg>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 28 Dec 2016 11:51:56 +0000
+Subject: [PATCH net-next] sctp: add pr_debug for tracking asocs not found
+Message-Id: <2e7482596bbf75efb56e313e33179f9e1c0e6996.1482924698.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1482094596-26046-1-git-send-email-ja@ssi.bg>  <1482094596-26046-3-git-send-email-ja@ssi.bg> <1482164252.1521.7.camel@edumazet-glaptop3.roam.corp.google.com>
-In-Reply-To: <1482164252.1521.7.camel@edumazet-glaptop3.roam.corp.google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, YueHaibing <yuehaibing@huawei.com>
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>
 
+This pr_debug may help identify why the system is generating some
+Aborts. It's not something a sysadmin would be expected to use.
 
-	Hello,
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/input.c | 17 +++++++++++++++--
+ 1 file changed, 15 insertions(+), 2 deletions(-)
 
-On Mon, 19 Dec 2016, Eric Dumazet wrote:
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 458e506ef84bae3c53c239d6cf89a9349faafb11..704ad19c1565fe5d8a8aad8e73be124f4c21e0f1 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -1229,13 +1229,26 @@ static struct sctp_association *__sctp_rcv_lookup(struct net *net,
+ 	struct sctp_association *asoc;
+ 
+ 	asoc = __sctp_lookup_association(net, laddr, paddr, transportp);
++	if (asoc)
++		goto out;
+ 
+ 	/* Further lookup for INIT/INIT-ACK packets.
+ 	 * SCTP Implementors Guide, 2.18 Handling of address
+ 	 * parameters within the INIT or INIT-ACK.
+ 	 */
+-	if (!asoc)
+-		asoc = __sctp_rcv_lookup_harder(net, skb, laddr, transportp);
++	asoc = __sctp_rcv_lookup_harder(net, skb, laddr, transportp);
++	if (asoc)
++		goto out;
+ 
++	if (paddr->sa.sa_family = AF_INET)
++		pr_debug("sctp: asoc not found for src:%pI4:%d dst:%pI4:%d\n",
++			 &laddr->v4.sin_addr, ntohs(laddr->v4.sin_port),
++			 &paddr->v4.sin_addr, ntohs(paddr->v4.sin_port));
++	else
++		pr_debug("sctp: asoc not found for src:%pI6:%d dst:%pI6:%d\n",
++			 &laddr->v6.sin6_addr, ntohs(laddr->v6.sin6_port),
++			 &paddr->v6.sin6_addr, ntohs(paddr->v6.sin6_port));
++
++out:
+ 	return asoc;
+ }
+-- 
+2.9.3
 
-> I am still digesting this awesome patch series ;)
-
-	Thanks. I don't feel quite comfortable with some
-of the changes (mostly XFRM, dst_confirm usage in CXGB) and
-I hope the discussion can provide adequate solution.
-
-> Not sure why you used an unlikely() here. TCP for example would hit this
-> path quite often.
-
-	I was not sure, may be because ACKs can come with lower
-rate than the sent packets. Also because non-TCP rarely uses
-MSG_CONFIRM. If you still think it is better without unlikely,
-I'll remove it.
-
-> So considering sk_dst_pending_confirm might be dirtied quite often,
-> 
-> I am not sure why you placed it in the cache line that contains
-> sk_rx_dst (in 1st patch)
-
-	I saw your recent changes and was worried if the
-sk_dst_confirm() calling on RX can cause unwanted dirtying of
-additional cache line. My preliminary analyze pointed
-sk_omem_alloc as good candidate for moving to next cache
-line. I know how critical is to properly place the new flags,
-so I really need recommendations about this.
-
-Regards
-
---
-Julian Anastasov <ja@ssi.bg>
