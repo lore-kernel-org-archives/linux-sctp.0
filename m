@@ -1,21 +1,31 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 27 Dec 2016 17:28:44 +0000
-Subject: Re: [PATCH net-next 0/5] SCTP cleanups
-Message-Id: <20161227.122844.1684780104231808613.davem@davemloft.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 28 Dec 2016 11:26:30 +0000
+Subject: [PATCH RESEND net-next 0/5] SCTP cleanups
+Message-Id: <cover.1482924092.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1482857832.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1482857832.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: marcelo.leitner@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 27 Dec 2016 15:08:27 -0200
+Some cleanups/simplifications I've been collecting.
+Resending now with net-next open.
 
-> Some cleanups/simplifications I've been collecting.
+Marcelo Ricardo Leitner (5):
+  sctp: reduce indent level at sctp_sf_tabort_8_4_8
+  sctp: reduce indent level in sctp_sf_shut_8_4_5
+  sctp: simplify addr copy
+  sctp: remove return value from sctp_packet_init/config
+  sctp: sctp_chunk_length_valid should return bool
 
-Please resubmit these when I open the net-next tree back up.
+ include/net/sctp/structs.h |   7 ++-
+ net/sctp/ipv6.c            |  16 +++---
+ net/sctp/output.c          |  14 ++----
+ net/sctp/protocol.c        |  18 +++----
+ net/sctp/sm_statefuns.c    | 122 ++++++++++++++++++++++-----------------------
+ 5 files changed, 81 insertions(+), 96 deletions(-)
 
-Thank you.
+-- 
+2.9.3
+
