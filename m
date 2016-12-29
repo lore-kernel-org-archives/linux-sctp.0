@@ -1,19 +1,17 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 23 Dec 2016 19:01:59 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Thu, 29 Dec 2016 15:42:45 +0000
 Subject: Re: [PATCH net] sctp: do not loose window information if in rwnd_over
-Message-Id: <20161223.140159.2291080991092269291.davem@davemloft.net>
+Message-Id: <20161229154245.GA31194@neilslaptop.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <14d1eef1c9da4fcebc53d428a59ecaefab439b2c.1482510284.git.marcelo.leitner@gmail.com>
 In-Reply-To: <14d1eef1c9da4fcebc53d428a59ecaefab439b2c.1482510284.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: marcelo.leitner@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, nhorman@tuxdriver.com, vyasevich@gmail.com
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>
 
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 23 Dec 2016 14:29:02 -0200
-
+On Fri, Dec 23, 2016 at 02:29:02PM -0200, Marcelo Ricardo Leitner wrote:
 > It's possible that we receive a packet that is larger than current
 > window. If it's the first packet in this way, it will cause it to
 > increase rwnd_over. Then, if we receive another data chunk (specially as
@@ -48,5 +46,26 @@ Date: Fri, 23 Dec 2016 14:29:02 -0200
 > rwnd decreased by 1 to (0, 1, 114221)
 > 
 > Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+> ---
+>  net/sctp/associola.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+> index 68428e1f71810fbe65b7f86c750c3ad61f0266ec..56ddcfaeb4f64235b54b0daa915fabf0cc0170a9 100644
+> --- a/net/sctp/associola.c
+> +++ b/net/sctp/associola.c
+> @@ -1539,7 +1539,7 @@ void sctp_assoc_rwnd_decrease(struct sctp_association *asoc, unsigned int len)
+>  			asoc->rwnd = 0;
+>  		}
+>  	} else {
+> -		asoc->rwnd_over = len - asoc->rwnd;
+> +		asoc->rwnd_over += len - asoc->rwnd;
+>  		asoc->rwnd = 0;
+>  	}
+>  
+> -- 
+> 2.9.3
+> 
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
-Applied.
