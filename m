@@ -1,109 +1,166 @@
-From: Julian Anastasov <ja@ssi.bg>
-Date: Sat, 28 Jan 2017 14:26:12 +0000
-Subject: [PATCHv2 RFC net-next 1/7] sock: add sk_dst_pending_confirm flag
-Message-Id: <1485613578-19973-2-git-send-email-ja@ssi.bg>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sun, 01 Jan 2017 11:20:24 +0000
+Subject: [PATCH net-next 07/27] sctp: add rfc6525 section 4.4
+Message-Id: <58860816816d6d51b062235fd54dae6540a4797a.1483269426.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1485613578-19973-1-git-send-email-ja@ssi.bg>
-In-Reply-To: <1485613578-19973-1-git-send-email-ja@ssi.bg>
+References: <cover.1483269426.git.lucien.xin@gmail.com>
+ <684ad8ddd79f23844883dede4c34360ce744dfc3.1483269426.git.lucien.xin@gmail.com>
+ <c752879a5af358c08da949b391416452f1322c43.1483269426.git.lucien.xin@gmail.com>
+ <be8a2770ddc2381266050c9f168add9802b90a49.1483269426.git.lucien.xin@gmail.com>
+ <fc046afdda34c9b262ce57400c4256b14fd1a0fb.1483269426.git.lucien.xin@gmail.com>
+ <d4f1b2a4fa19457e9867b0a1f84764a7a509459a.1483269426.git.lucien.xin@gmail.com>
+ <31abc54d31ef0714322f137bff43458014d7c276.1483269426.git.lucien.xin@gmail.com>
+In-Reply-To: <31abc54d31ef0714322f137bff43458014d7c276.1483269426.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, YueHaibing <yuehaibing@huawei.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-Add new sock flag to allow sockets to confirm neighbour.
-When same struct dst_entry can be used for many different
-neighbours we can not use it for pending confirmations.
-As not all call paths lock the socket use full word for
-the flag.
+This patch is to define Re-configuration Response Parameter described
+in section 4.4. As optional fields are only for SSN/TSN Reset Request
+Parameter, it uses another function to make that.
 
-Add sk_dst_confirm as replacement for dst_confirm when
-called for received packets.
-
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sock.h | 12 ++++++++++++
- net/core/sock.c    |  2 ++
- 2 files changed, 14 insertions(+)
+ include/linux/sctp.h     | 24 ++++++++++++++++
+ include/net/sctp/sm.h    |  7 +++++
+ net/sctp/sm_make_chunk.c | 74 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 105 insertions(+)
 
-diff --git a/include/net/sock.h b/include/net/sock.h
-index 7144750..e113786 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -240,6 +240,7 @@ struct sock_common {
-   *	@sk_wq: sock wait queue and async head
-   *	@sk_rx_dst: receive input route used by early demux
-   *	@sk_dst_cache: destination cache
-+  *	@sk_dst_pending_confirm: need to confirm neighbour
-   *	@sk_policy: flow policy
-   *	@sk_receive_queue: incoming packets
-   *	@sk_wmem_alloc: transmit queue bytes committed
-@@ -393,6 +394,8 @@ struct sock {
- 	struct sk_buff_head	sk_write_queue;
- 	__s32			sk_peek_off;
- 	int			sk_write_pending;
-+	__u32			sk_dst_pending_confirm;
-+	/* Note: 32bit hole on 64bit arches */
- 	long			sk_sndtimeo;
- 	struct timer_list	sk_timer;
- 	__u32			sk_priority;
-@@ -1764,6 +1767,7 @@ static inline void dst_negative_advice(struct sock *sk)
- 		if (ndst != dst) {
- 			rcu_assign_pointer(sk->sk_dst_cache, ndst);
- 			sk_tx_queue_clear(sk);
-+			sk->sk_dst_pending_confirm = 0;
- 		}
- 	}
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index cc4c74d..c4fcc7d 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -747,4 +747,28 @@ struct sctp_strreset_tsnreq {
+ 	__u32 request_seq;
+ } __packed;
+ 
++enum {
++	SCTP_STRRESET_NOTHING_TO_DO	= 0x00,
++	SCTP_STRRESET_PERFORMED		= 0x01,
++	SCTP_STRRESET_DENIED		= 0x02,
++	SCTP_STRRESET_ERR_WRONG_SSN	= 0x03,
++	SCTP_STRRESET_ERR_IN_PROGRESS	= 0x04,
++	SCTP_STRRESET_ERR_BAD_SEQNO	= 0x05,
++	SCTP_STRRESET_IN_PROGRESS	= 0x06,
++};
++
++struct sctp_strreset_resp {
++	sctp_paramhdr_t param_hdr;
++	__u32 response_seq;
++	__u32 result;
++} __packed;
++
++struct sctp_strreset_resptsn {
++	sctp_paramhdr_t param_hdr;
++	__u32 response_seq;
++	__u32 result;
++	__u32 senders_next_tsn;
++	__u32 receivers_next_tsn;
++} __packed;
++
+ #endif /* __LINUX_SCTP_H__ */
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index c658700..013d69f 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -265,6 +265,13 @@ struct sctp_chunk *sctp_make_strreset_req(
+ 				bool out, bool in);
+ struct sctp_chunk *sctp_make_strreset_tsnreq(
+ 				const struct sctp_association *asoc);
++struct sctp_chunk *sctp_make_strreset_resp(
++				const struct sctp_association *asoc,
++				__u32 result, __u32 sn);
++struct sctp_chunk *sctp_make_strreset_tsnresp(
++				struct sctp_association *asoc,
++				__u32 result, __u32 sn,
++				__u32 sender_tsn, __u32 receiver_tsn);
+ void sctp_chunk_assign_tsn(struct sctp_chunk *);
+ void sctp_chunk_assign_ssn(struct sctp_chunk *);
+ 
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 4b29965..e779a0f 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -3684,3 +3684,77 @@ struct sctp_chunk *sctp_make_strreset_tsnreq(
+ 
+ 	return retval;
  }
-@@ -1774,6 +1778,7 @@ static inline void dst_negative_advice(struct sock *sk)
- 	struct dst_entry *old_dst;
- 
- 	sk_tx_queue_clear(sk);
-+	sk->sk_dst_pending_confirm = 0;
- 	/*
- 	 * This can be called while sk is owned by the caller only,
- 	 * with no state that can be checked in a rcu_dereference_check() cond
-@@ -1789,6 +1794,7 @@ static inline void dst_negative_advice(struct sock *sk)
- 	struct dst_entry *old_dst;
- 
- 	sk_tx_queue_clear(sk);
-+	sk->sk_dst_pending_confirm = 0;
- 	old_dst = xchg((__force struct dst_entry **)&sk->sk_dst_cache, dst);
- 	dst_release(old_dst);
- }
-@@ -1809,6 +1815,12 @@ static inline void dst_negative_advice(struct sock *sk)
- 
- struct dst_entry *sk_dst_check(struct sock *sk, u32 cookie);
- 
-+static inline void sk_dst_confirm(struct sock *sk)
++
++/* RE-CONFIG 4.4 (RESP)
++ *   0                   1                   2                   3
++ *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |     Parameter Type = 16       |      Parameter Length         |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |         Re-configuration Response Sequence Number             |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |                            Result                             |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ */
++struct sctp_chunk *sctp_make_strreset_resp(
++				const struct sctp_association *asoc,
++				__u32 result, __u32 sn)
 +{
-+	if (!sk->sk_dst_pending_confirm)
-+		sk->sk_dst_pending_confirm = 1;
++	struct sctp_strreset_resp resp;
++	__u16 length = sizeof(resp);
++	struct sctp_chunk *retval;
++
++	retval = sctp_make_reconf(asoc, length);
++	if (!retval)
++		return NULL;
++
++	resp.param_hdr.type = SCTP_PARAM_RESET_RESPONSE;
++	resp.param_hdr.length = htons(length);
++	resp.response_seq = htonl(sn);
++	resp.result = htonl(result);
++
++	sctp_addto_chunk(retval, sizeof(resp), &resp);
++
++	return retval;
 +}
 +
- bool sk_mc_loop(struct sock *sk);
- 
- static inline bool sk_can_gso(const struct sock *sk)
-diff --git a/net/core/sock.c b/net/core/sock.c
-index 8b35debf..b743565 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -502,6 +502,7 @@ struct dst_entry *__sk_dst_check(struct sock *sk, u32 cookie)
- 
- 	if (dst && dst->obsolete && dst->ops->check(dst, cookie) = NULL) {
- 		sk_tx_queue_clear(sk);
-+		sk->sk_dst_pending_confirm = 0;
- 		RCU_INIT_POINTER(sk->sk_dst_cache, NULL);
- 		dst_release(dst);
- 		return NULL;
-@@ -1519,6 +1520,7 @@ struct sock *sk_clone_lock(const struct sock *sk, const gfp_t priority)
- 				af_family_clock_key_strings[newsk->sk_family]);
- 
- 		newsk->sk_dst_cache	= NULL;
-+		newsk->sk_dst_pending_confirm = 0;
- 		newsk->sk_wmem_queued	= 0;
- 		newsk->sk_forward_alloc = 0;
- 		atomic_set(&newsk->sk_drops, 0);
++/* RE-CONFIG 4.4 OPTIONAL (TSNRESP)
++ *   0                   1                   2                   3
++ *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |     Parameter Type = 16       |      Parameter Length         |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |         Re-configuration Response Sequence Number             |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |                            Result                             |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |                   Sender's Next TSN (optional)                |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |                  Receiver's Next TSN (optional)               |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ */
++struct sctp_chunk *sctp_make_strreset_tsnresp(
++					struct sctp_association *asoc,
++					__u32 result, __u32 sn,
++					__u32 sender_tsn, __u32 receiver_tsn)
++{
++	struct sctp_strreset_resptsn tsnresp;
++	__u16 length = sizeof(tsnresp);
++	struct sctp_chunk *retval;
++
++	retval = sctp_make_reconf(asoc, length);
++	if (!retval)
++		return NULL;
++
++	tsnresp.param_hdr.type = SCTP_PARAM_RESET_RESPONSE;
++	tsnresp.param_hdr.length = htons(length);
++
++	tsnresp.response_seq = htonl(sn);
++	tsnresp.result = htonl(result);
++	tsnresp.senders_next_tsn = htonl(sender_tsn);
++	tsnresp.receivers_next_tsn = htonl(receiver_tsn);
++
++	sctp_addto_chunk(retval, sizeof(tsnresp), &tsnresp);
++
++	return retval;
++}
 -- 
-1.9.3
+2.1.0
 
