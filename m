@@ -1,92 +1,118 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 07 Jan 2017 09:43:00 +0000
-Subject: [PATCHv2 net-next 3/5] sctp: add support for generating stream reconf ssn/tsn reset request chunk
-Message-Id: <01d610742b62da93ccd79581e407b0aec7bc488c.1483781759.git.lucien.xin@gmail.com>
+Date: Sun, 01 Jan 2017 11:20:44 +0000
+Subject: [PATCH net-next 27/27] sctp: add reconf chunk event
+Message-Id: <b765925613f97c4734d1ecff726bf6eaf0d93280.1483269426.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1483781759.git.lucien.xin@gmail.com>
- <f1875fdb7c77e5f7a7fe33a1e1d2554da24901bb.1483781759.git.lucien.xin@gmail.com>
- <d218ad72dbbffebe5926c86c2e7dd04eddbd905d.1483781759.git.lucien.xin@gmail.com>
-In-Reply-To: <d218ad72dbbffebe5926c86c2e7dd04eddbd905d.1483781759.git.lucien.xin@gmail.com>
+References: <cover.1483269426.git.lucien.xin@gmail.com>
+ <684ad8ddd79f23844883dede4c34360ce744dfc3.1483269426.git.lucien.xin@gmail.com>
+ <c752879a5af358c08da949b391416452f1322c43.1483269426.git.lucien.xin@gmail.com>
+ <be8a2770ddc2381266050c9f168add9802b90a49.1483269426.git.lucien.xin@gmail.com>
+ <fc046afdda34c9b262ce57400c4256b14fd1a0fb.1483269426.git.lucien.xin@gmail.com>
+ <d4f1b2a4fa19457e9867b0a1f84764a7a509459a.1483269426.git.lucien.xin@gmail.com>
+ <31abc54d31ef0714322f137bff43458014d7c276.1483269426.git.lucien.xin@gmail.com>
+ <58860816816d6d51b062235fd54dae6540a4797a.1483269426.git.lucien.xin@gmail.com>
+ <229608faf7af54c0bf908694ca8349205bbf6eab.1483269426.git.lucien.xin@gmail.com>
+ <c4f16844620cd3a2aa76596df9eaadf1505fc8e6.1483269426.git.lucien.xin@gmail.com>
+ <1d0b270084289945c4b42ae36d0556648a3f9b64.1483269426.git.lucien.xin@gmail.com>
+ <1e4560205cff3c10868d5614b62a3db14e87ccf0.1483269426.git.lucien.xin@gmail.com>
+ <91b9171cc57c0f322d103dfbbcce1b9706800805.1483269426.git.lucien.xin@gmail.com>
+ <d5fb0969ea5d055dea5bdc257569530b6d2fc7c2.1483269426.git.lucien.xin@gmail.com>
+ <6a74f5a3ac408f20816a8c79edd6b9922ed3b573.1483269426.git.lucien.xin@gmail.com>
+ <ef7d01cf1d5826e694a08303ee0b36c00201c666.1483269426.git.lucien.xin@gmail.com>
+ <86b68f131d286ee20781cb04ce9d09d477aa5232.1483269426.git.lucien.xin@gmail.com>
+ <1e8e248c38fd3874cf80c4b88e4699c8a617066d.1483269426.git.lucien.xin@gmail.com>
+ <3a60ce82edef82f329fe2cc4ac83e9ca21831d8b.1483269426.git.lucien.xin@gmail.com>
+ <9be4c65c6bac7df0dbf51328af92727e5606dc5c.1483269426.git.lucien.xin@gmail.com>
+ <b5eb3a199dded2efe517b19b5cac6ae498a6c0c8.1483269426.git.lucien.xin@gmail.com>
+ <c59df697bb54348de10f8418a23e9d14bce30135.1483269426.git.lucien.xin@gmail.com>
+ <470b9f2b5248e0c1870c501f262a1887be66509b.1483269426.git.lucien.xin@gmail.com>
+ <105630d2f9a54de9c3ce49988452d2b111c71b3d.1483269426.git.lucien.xin@gmail.com>
+ <19ee2333d24194c0a4b3e724a1a738873ca27445.1483269426.git.lucien.xin@gmail.com>
+ <880e62cecc950ad9b5dad09ae581e5e6f92ecf46.1483269426.git.lucien.xin@gmail.com>
+ <24997940f9c6ca9d4cbb8ce72741fdddcfe4ebc1.1483269426.git.lucien.xin@gmail.com>
+In-Reply-To: <24997940f9c6ca9d4cbb8ce72741fdddcfe4ebc1.1483269426.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to define SSN/TSN Reset Request Parameter described
-in rfc6525 section 4.3.
+This patch is to add reconf chunk event based on the sctp event
+frame, after which, the reconf chunk process would be activated.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/linux/sctp.h     |  5 +++++
- include/net/sctp/sm.h    |  2 ++
- net/sctp/sm_make_chunk.c | 29 +++++++++++++++++++++++++++++
- 3 files changed, 36 insertions(+)
+ include/net/sctp/constants.h |  3 +++
+ net/sctp/sm_statetable.c     | 30 ++++++++++++++++++++++++++++++
+ 2 files changed, 33 insertions(+)
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index d5da19c..cc4c74d 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -742,4 +742,9 @@ struct sctp_strreset_inreq {
- 	__u16 list_of_streams[0];
- } __packed;
+diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
+index 3567c97..b07a745 100644
+--- a/include/net/sctp/constants.h
++++ b/include/net/sctp/constants.h
+@@ -60,11 +60,14 @@ enum { SCTP_DEFAULT_INSTREAMS = SCTP_MAX_STREAM };
  
-+struct sctp_strreset_tsnreq {
-+	sctp_paramhdr_t param_hdr;
-+	__u32 request_seq;
-+} __packed;
+ #define SCTP_NUM_PRSCTP_CHUNK_TYPES	1
+ 
++#define SCTP_NUM_RECONF_CHUNK_TYPES	1
 +
- #endif /* __LINUX_SCTP_H__ */
-diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index 3462cb0..c658700 100644
---- a/include/net/sctp/sm.h
-+++ b/include/net/sctp/sm.h
-@@ -263,6 +263,8 @@ struct sctp_chunk *sctp_make_strreset_req(
- 				const struct sctp_association *asoc,
- 				__u16 stream_num, __u16 *stream_list,
- 				bool out, bool in);
-+struct sctp_chunk *sctp_make_strreset_tsnreq(
-+				const struct sctp_association *asoc);
- void sctp_chunk_assign_tsn(struct sctp_chunk *);
- void sctp_chunk_assign_ssn(struct sctp_chunk *);
+ #define SCTP_NUM_AUTH_CHUNK_TYPES	1
  
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 172385c..f1d8f07 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -3647,3 +3647,32 @@ struct sctp_chunk *sctp_make_strreset_req(
+ #define SCTP_NUM_CHUNK_TYPES		(SCTP_NUM_BASE_CHUNK_TYPES + \
+ 					 SCTP_NUM_ADDIP_CHUNK_TYPES +\
+ 					 SCTP_NUM_PRSCTP_CHUNK_TYPES +\
++					 SCTP_NUM_RECONF_CHUNK_TYPES +\
+ 					 SCTP_NUM_AUTH_CHUNK_TYPES)
  
- 	return retval;
- }
+ /* These are the different flavours of event.  */
+diff --git a/net/sctp/sm_statetable.c b/net/sctp/sm_statetable.c
+index b5438b4..419b18e 100644
+--- a/net/sctp/sm_statetable.c
++++ b/net/sctp/sm_statetable.c
+@@ -482,6 +482,32 @@ static const sctp_sm_table_entry_t prsctp_chunk_event_table[SCTP_NUM_PRSCTP_CHUN
+ 	TYPE_SCTP_FWD_TSN,
+ }; /*state_fn_t prsctp_chunk_event_table[][] */
+ 
++#define TYPE_SCTP_RECONF { \
++	/* SCTP_STATE_CLOSED */ \
++	TYPE_SCTP_FUNC(sctp_sf_discard_chunk), \
++	/* SCTP_STATE_COOKIE_WAIT */ \
++	TYPE_SCTP_FUNC(sctp_sf_discard_chunk), \
++	/* SCTP_STATE_COOKIE_ECHOED */ \
++	TYPE_SCTP_FUNC(sctp_sf_discard_chunk), \
++	/* SCTP_STATE_ESTABLISHED */ \
++	TYPE_SCTP_FUNC(sctp_sf_do_reconf), \
++	/* SCTP_STATE_SHUTDOWN_PENDING */ \
++	TYPE_SCTP_FUNC(sctp_sf_do_reconf), \
++	/* SCTP_STATE_SHUTDOWN_SENT */ \
++	TYPE_SCTP_FUNC(sctp_sf_discard_chunk), \
++	/* SCTP_STATE_SHUTDOWN_RECEIVED */ \
++	TYPE_SCTP_FUNC(sctp_sf_discard_chunk), \
++	/* SCTP_STATE_SHUTDOWN_ACK_SENT */ \
++	TYPE_SCTP_FUNC(sctp_sf_discard_chunk), \
++} /* TYPE_SCTP_RECONF */
 +
-+/* RE-CONFIG 4.3 (SSN/TSN RESET ALL)
-+ *   0                   1                   2                   3
-+ *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-+ *  |     Parameter Type = 15       |      Parameter Length = 8     |
-+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-+ *  |         Re-configuration Request Sequence Number              |
-+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++/* The primary index for this table is the chunk type.
++ * The secondary index for this table is the state.
 + */
-+struct sctp_chunk *sctp_make_strreset_tsnreq(
-+				const struct sctp_association *asoc)
-+{
-+	struct sctp_strreset_tsnreq tsnreq;
-+	__u16 length = sizeof(tsnreq);
-+	struct sctp_chunk *retval;
++static const sctp_sm_table_entry_t reconf_chunk_event_table[SCTP_NUM_RECONF_CHUNK_TYPES][SCTP_STATE_NUM_STATES] = {
++	TYPE_SCTP_RECONF,
++}; /*state_fn_t reconf_chunk_event_table[][] */
 +
-+	retval = sctp_make_reconf(asoc, length);
-+	if (!retval)
-+		return NULL;
+ #define TYPE_SCTP_AUTH { \
+ 	/* SCTP_STATE_CLOSED */ \
+ 	TYPE_SCTP_FUNC(sctp_sf_ootb), \
+@@ -964,6 +990,10 @@ static const sctp_sm_table_entry_t *sctp_chunk_event_lookup(struct net *net,
+ 			return &addip_chunk_event_table[1][state];
+ 	}
+ 
++	if (net->sctp.reconf_enable)
++		if (cid = SCTP_CID_RECONF)
++			return &reconf_chunk_event_table[0][state];
 +
-+	tsnreq.param_hdr.type = SCTP_PARAM_RESET_TSN_REQUEST;
-+	tsnreq.param_hdr.length = htons(length);
-+	tsnreq.request_seq = htonl(asoc->strreset_outseq);
-+
-+	sctp_addto_chunk(retval, sizeof(tsnreq), &tsnreq);
-+
-+	return retval;
-+}
+ 	if (net->sctp.auth_enable) {
+ 		if (cid = SCTP_CID_AUTH)
+ 			return &auth_chunk_event_table[0][state];
 -- 
 2.1.0
 
