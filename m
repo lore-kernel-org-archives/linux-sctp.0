@@ -1,158 +1,144 @@
-From: Julian Anastasov <ja@ssi.bg>
-Date: Tue, 31 Jan 2017 21:57:00 +0000
-Subject: [PATCHv3 net-next 0/7] net: dst_confirm replacement
-Message-Id: <1485899827-5212-1-git-send-email-ja@ssi.bg>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sun, 01 Jan 2017 11:20:36 +0000
+Subject: [PATCH net-next 19/27] sctp: add rfc6525 section 6.1.3
+Message-Id: <9be4c65c6bac7df0dbf51328af92727e5606dc5c.1483269426.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1483269426.git.lucien.xin@gmail.com>
+ <684ad8ddd79f23844883dede4c34360ce744dfc3.1483269426.git.lucien.xin@gmail.com>
+ <c752879a5af358c08da949b391416452f1322c43.1483269426.git.lucien.xin@gmail.com>
+ <be8a2770ddc2381266050c9f168add9802b90a49.1483269426.git.lucien.xin@gmail.com>
+ <fc046afdda34c9b262ce57400c4256b14fd1a0fb.1483269426.git.lucien.xin@gmail.com>
+ <d4f1b2a4fa19457e9867b0a1f84764a7a509459a.1483269426.git.lucien.xin@gmail.com>
+ <31abc54d31ef0714322f137bff43458014d7c276.1483269426.git.lucien.xin@gmail.com>
+ <58860816816d6d51b062235fd54dae6540a4797a.1483269426.git.lucien.xin@gmail.com>
+ <229608faf7af54c0bf908694ca8349205bbf6eab.1483269426.git.lucien.xin@gmail.com>
+ <c4f16844620cd3a2aa76596df9eaadf1505fc8e6.1483269426.git.lucien.xin@gmail.com>
+ <1d0b270084289945c4b42ae36d0556648a3f9b64.1483269426.git.lucien.xin@gmail.com>
+ <1e4560205cff3c10868d5614b62a3db14e87ccf0.1483269426.git.lucien.xin@gmail.com>
+ <91b9171cc57c0f322d103dfbbcce1b9706800805.1483269426.git.lucien.xin@gmail.com>
+ <d5fb0969ea5d055dea5bdc257569530b6d2fc7c2.1483269426.git.lucien.xin@gmail.com>
+ <6a74f5a3ac408f20816a8c79edd6b9922ed3b573.1483269426.git.lucien.xin@gmail.com>
+ <ef7d01cf1d5826e694a08303ee0b36c00201c666.1483269426.git.lucien.xin@gmail.com>
+ <86b68f131d286ee20781cb04ce9d09d477aa5232.1483269426.git.lucien.xin@gmail.com>
+ <1e8e248c38fd3874cf80c4b88e4699c8a617066d.1483269426.git.lucien.xin@gmail.com>
+ <3a60ce82edef82f329fe2cc4ac83e9ca21831d8b.1483269426.git.lucien.xin@gmail.com>
+In-Reply-To: <3a60ce82edef82f329fe2cc4ac83e9ca21831d8b.1483269426.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, linux-rdma@vger.kernel.org, YueHaibing <yuehaibing@huawei.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-	This patchset addresses the problem of neighbour
-confirmation where received replies from one nexthop
-can cause confirmation of different nexthop when using
-the same dst. Thanks to YueHaibing <yuehaibing@huawei.com>
-for tracking the dst->pending_confirm problem.
+This patch is to add Stream Change Event described in section 6.1.3.
 
-	Sockets can obtain cached output route. Such
-routes can be to known nexthop (rt_gateway=IP) or to be
-used simultaneously for different nexthop IPs by different
-subnet prefixes (nh->nh_scope = RT_SCOPE_HOST, rt_gateway=0).
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/ulpevent.h |  4 ++++
+ include/uapi/linux/sctp.h   | 15 +++++++++++++++
+ net/sctp/ulpevent.c         | 28 ++++++++++++++++++++++++++++
+ 3 files changed, 47 insertions(+)
 
-	At first look, there are more problems:
-
-- dst_confirm() sets flag on dst and not on dst->path,
-as result, indication is lost when XFRM is used
-
-- DNAT can change the nexthop, so the really used nexthop is
-not confirmed
-
-	So, the following solution is to avoid using
-dst->pending_confirm.
-
-	The current dst_confirm() usage is as follows:
-
-Protocols confirming dst on received packets:
-- TCP (1 dst per socket)
-- SCTP (1 dst per transport)
-- CXGB*
-
-Protocols supporting sendmsg with MSG_CONFIRM [ | MSG_PROBE ] to
-confirm neighbour:
-- UDP IPv4/IPv6
-- ICMPv4 PING
-- RAW IPv4/IPv6
-- L2TP/IPv6
-
-MSG_CONFIRM for other purposes (fix not needed):
-- CAN
-
-Sending without locking the socket:
-- UDP (when no cork)
-- RAW (when hdrincl=1)
-
-Redirects from old to new GW:
-- rt6_do_redirect
-
-
-	The patchset includes the following changes:
-
-1. sock: add sk_dst_pending_confirm flag
-
-- used only by TCP with patch 4 to remember the received
-indication in sk->sk_dst_pending_confirm
-
-2. net: add dst_pending_confirm flag to skbuff
-
-- skb->dst_pending_confirm will be used by all protocols
-in following patches, via skb_{set,get}_dst_pending_confirm
-
-3. sctp: add dst_pending_confirm flag
-
-- SCTP uses per-transport dsts and can not use
-sk->sk_dst_pending_confirm like TCP
-
-4. tcp: replace dst_confirm with sk_dst_confirm
-
-5. net: add confirm_neigh method to dst_ops
-
-- IPv4 and IPv6 provision for slow neigh lookups for MSG_PROBE users.
-I decided to use neigh lookup only for this case because on
-MSG_PROBE the skb may pass MTU checks but it does not reach
-the neigh confirmation code. This patch will be used from patch 6.
-
-- xfrm_confirm_neigh: support is incomplete here, only routes with
-known nexthops (gateway) are supported because the tunnel address
-is slow to obtain. Or there is solution to this problem?
-
-6. net: use dst_confirm_neigh for UDP, RAW, ICMP, L2TP
-
-- dst_confirm conversion for UDP, RAW, ICMP and L2TP/IPv6
-
-- these protocols use MSG_CONFIRM propagated by ip*_append_data
-to skb->dst_pending_confirm. sk->sk_dst_pending_confirm is not
-used because some sending paths do not lock the socket. For
-MSG_PROBE we use the slow lookup (dst_confirm_neigh).
-
-- there are also 2 cases that need the slow lookup:
-__ip6_rt_update_pmtu and rt6_do_redirect. I hope
-&ipv6_hdr(skb)->saddr is the correct nexthop address to use here.
-
-7. net: pending_confirm is not used anymore
-
-- I failed to understand the CXGB* code, I see dst_confirm()
-calls but I'm not sure dst_neigh_output() was called. For now
-I just removed the dst->pending_confirm flag and left all
-dst_confirm() calls there. Any better idea?
-
-- Now may be old function neigh_output() should be restored
-instead of dst_neigh_output?
-
-
-Julian Anastasov (7):
-  sock: add sk_dst_pending_confirm flag
-  net: add dst_pending_confirm flag to skbuff
-  sctp: add dst_pending_confirm flag
-  tcp: replace dst_confirm with sk_dst_confirm
-  net: add confirm_neigh method to dst_ops
-  net: use dst_confirm_neigh for UDP, RAW, ICMP, L2TP
-  net: pending_confirm is not used anymore
-
- drivers/net/vrf.c          |  5 ++++-
- include/linux/skbuff.h     | 12 ++++++++++++
- include/net/arp.h          | 16 ++++++++++++++++
- include/net/dst.h          | 21 +++++++++------------
- include/net/dst_ops.h      |  2 ++
- include/net/ndisc.h        | 17 +++++++++++++++++
- include/net/sctp/sctp.h    |  6 ++----
- include/net/sctp/structs.h |  4 ++++
- include/net/sock.h         | 26 ++++++++++++++++++++++++++
- net/core/dst.c             |  1 -
- net/core/sock.c            |  2 ++
- net/ipv4/ip_output.c       | 11 ++++++++++-
- net/ipv4/ping.c            |  3 ++-
- net/ipv4/raw.c             |  6 +++++-
- net/ipv4/route.c           | 19 +++++++++++++++++++
- net/ipv4/tcp_input.c       | 12 +++---------
- net/ipv4/tcp_metrics.c     |  7 ++-----
- net/ipv4/tcp_output.c      |  2 ++
- net/ipv4/udp.c             |  3 ++-
- net/ipv6/ip6_output.c      |  7 +++++++
- net/ipv6/raw.c             |  6 +++++-
- net/ipv6/route.c           | 43 ++++++++++++++++++++++++++++++-------------
- net/ipv6/udp.c             |  3 ++-
- net/l2tp/l2tp_ip6.c        |  3 ++-
- net/sctp/associola.c       |  3 +--
- net/sctp/output.c          | 10 +++++++++-
- net/sctp/outqueue.c        |  2 +-
- net/sctp/sm_make_chunk.c   |  6 ++----
- net/sctp/sm_sideeffect.c   |  2 +-
- net/sctp/socket.c          |  4 ++--
- net/sctp/transport.c       | 17 ++++++++++++++++-
- net/xfrm/xfrm_policy.c     | 16 ++++++++++++++++
- 32 files changed, 233 insertions(+), 64 deletions(-)
-
+diff --git a/include/net/sctp/ulpevent.h b/include/net/sctp/ulpevent.h
+index 2ab7ed4..1060494 100644
+--- a/include/net/sctp/ulpevent.h
++++ b/include/net/sctp/ulpevent.h
+@@ -136,6 +136,10 @@ struct sctp_ulpevent *sctp_ulpevent_make_assoc_reset_event(
+ 	const struct sctp_association *asoc, __u16 flags,
+ 	 __u32 local_tsn, __u32 remote_tsn, gfp_t gfp);
+ 
++struct sctp_ulpevent *sctp_ulpevent_make_stream_change_event(
++	const struct sctp_association *asoc, __u16 flags,
++	__u32 strchange_instrms, __u32 strchange_outstrms, gfp_t gfp);
++
+ void sctp_ulpevent_read_sndrcvinfo(const struct sctp_ulpevent *event,
+ 				   struct msghdr *);
+ void sctp_ulpevent_read_rcvinfo(const struct sctp_ulpevent *event,
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index 9da165a..90a8e2c 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -514,6 +514,17 @@ struct sctp_assoc_reset_event {
+ 	uint32_t assocreset_remote_tsn;
+ };
+ 
++#define SCTP_ASSOC_CHANGE_DENIED	0x0004
++#define SCTP_ASSOC_CHANGE_FAILED	0x0008
++struct sctp_stream_change_event {
++	uint16_t strchange_type;
++	uint16_t strchange_flags;
++	uint32_t strchange_length;
++	sctp_assoc_t strchange_assoc_id;
++	uint16_t strchange_instrms;
++	uint16_t strchange_outstrms;
++};
++
+ /*
+  * Described in Section 7.3
+  *   Ancillary Data and Notification Interest Options
+@@ -531,6 +542,7 @@ struct sctp_event_subscribe {
+ 	uint8_t sctp_sender_dry_event;
+ 	uint8_t sctp_stream_reset_event;
+ 	uint8_t sctp_assoc_reset_event;
++	uint8_t sctp_stream_change_event;
+ };
+ 
+ /*
+@@ -557,6 +569,7 @@ union sctp_notification {
+ 	struct sctp_sender_dry_event sn_sender_dry_event;
+ 	struct sctp_stream_reset_event sn_strreset_event;
+ 	struct sctp_assoc_reset_event sn_assocreset_event;
++	struct sctp_stream_change_event sn_strchange_event;
+ };
+ 
+ /* Section 5.3.1
+@@ -588,6 +601,8 @@ enum sctp_sn_type {
+ #define SCTP_STREAM_RESET_EVENT		SCTP_STREAM_RESET_EVENT
+ 	SCTP_ASSOC_RESET_EVENT,
+ #define SCTP_ASSOC_RESET_EVENT		SCTP_ASSOC_RESET_EVENT
++	SCTP_STREAM_CHANGE_EVENT,
++#define SCTP_STREAM_CHANGE_EVENT	SCTP_STREAM_CHANGE_EVENT
+ };
+ 
+ /* Notification error codes used to fill up the error fields in some
+diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
+index 5492cd7..c56460f 100644
+--- a/net/sctp/ulpevent.c
++++ b/net/sctp/ulpevent.c
+@@ -912,6 +912,34 @@ struct sctp_ulpevent *sctp_ulpevent_make_assoc_reset_event(
+ 	return event;
+ }
+ 
++struct sctp_ulpevent *sctp_ulpevent_make_stream_change_event(
++	const struct sctp_association *asoc, __u16 flags,
++	__u32 strchange_instrms, __u32 strchange_outstrms, gfp_t gfp)
++{
++	struct sctp_stream_change_event *schange;
++	struct sctp_ulpevent *event;
++	struct sk_buff *skb;
++
++	event = sctp_ulpevent_new(sizeof(struct sctp_stream_change_event),
++				  MSG_NOTIFICATION, gfp);
++	if (!event)
++		return NULL;
++
++	skb = sctp_event2skb(event);
++	schange = (struct sctp_stream_change_event *)
++		skb_put(skb, sizeof(struct sctp_stream_change_event));
++
++	schange->strchange_type = SCTP_STREAM_CHANGE_EVENT;
++	schange->strchange_flags = flags;
++	schange->strchange_length = sizeof(struct sctp_stream_change_event);
++	sctp_ulpevent_set_owner(event, asoc);
++	schange->strchange_assoc_id = sctp_assoc2id(asoc);
++	schange->strchange_instrms = strchange_instrms;
++	schange->strchange_outstrms = strchange_outstrms;
++
++	return event;
++}
++
+ /* Return the notification type, assuming this is a notification
+  * event.
+  */
 -- 
-1.9.3
+2.1.0
 
