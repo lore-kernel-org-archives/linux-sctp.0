@@ -1,146 +1,148 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 19 Jan 2017 17:38:49 +0000
-Subject: Re: Fragmented ordered user messages with inconsistent stream sequence numbers are accepted and deli
-Message-Id: <CADvbK_dde95hkZo1Vvo-TFmL9YZWZ9mJJyS2YxpYgeJXrvxZBw@mail.gmail.com>
+Date: Sun, 01 Jan 2017 11:20:39 +0000
+Subject: [PATCH net-next 22/27] sctp: add rfc6525 section 5.2.4
+Message-Id: <470b9f2b5248e0c1870c501f262a1887be66509b.1483269426.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20170117131311.GF6494@aomx-netbook>
-In-Reply-To: <20170117131311.GF6494@aomx-netbook>
+References: <cover.1483269426.git.lucien.xin@gmail.com>
+ <684ad8ddd79f23844883dede4c34360ce744dfc3.1483269426.git.lucien.xin@gmail.com>
+ <c752879a5af358c08da949b391416452f1322c43.1483269426.git.lucien.xin@gmail.com>
+ <be8a2770ddc2381266050c9f168add9802b90a49.1483269426.git.lucien.xin@gmail.com>
+ <fc046afdda34c9b262ce57400c4256b14fd1a0fb.1483269426.git.lucien.xin@gmail.com>
+ <d4f1b2a4fa19457e9867b0a1f84764a7a509459a.1483269426.git.lucien.xin@gmail.com>
+ <31abc54d31ef0714322f137bff43458014d7c276.1483269426.git.lucien.xin@gmail.com>
+ <58860816816d6d51b062235fd54dae6540a4797a.1483269426.git.lucien.xin@gmail.com>
+ <229608faf7af54c0bf908694ca8349205bbf6eab.1483269426.git.lucien.xin@gmail.com>
+ <c4f16844620cd3a2aa76596df9eaadf1505fc8e6.1483269426.git.lucien.xin@gmail.com>
+ <1d0b270084289945c4b42ae36d0556648a3f9b64.1483269426.git.lucien.xin@gmail.com>
+ <1e4560205cff3c10868d5614b62a3db14e87ccf0.1483269426.git.lucien.xin@gmail.com>
+ <91b9171cc57c0f322d103dfbbcce1b9706800805.1483269426.git.lucien.xin@gmail.com>
+ <d5fb0969ea5d055dea5bdc257569530b6d2fc7c2.1483269426.git.lucien.xin@gmail.com>
+ <6a74f5a3ac408f20816a8c79edd6b9922ed3b573.1483269426.git.lucien.xin@gmail.com>
+ <ef7d01cf1d5826e694a08303ee0b36c00201c666.1483269426.git.lucien.xin@gmail.com>
+ <86b68f131d286ee20781cb04ce9d09d477aa5232.1483269426.git.lucien.xin@gmail.com>
+ <1e8e248c38fd3874cf80c4b88e4699c8a617066d.1483269426.git.lucien.xin@gmail.com>
+ <3a60ce82edef82f329fe2cc4ac83e9ca21831d8b.1483269426.git.lucien.xin@gmail.com>
+ <9be4c65c6bac7df0dbf51328af92727e5606dc5c.1483269426.git.lucien.xin@gmail.com>
+ <b5eb3a199dded2efe517b19b5cac6ae498a6c0c8.1483269426.git.lucien.xin@gmail.com>
+ <c59df697bb54348de10f8418a23e9d14bce30135.1483269426.git.lucien.xin@gmail.com>
+In-Reply-To: <c59df697bb54348de10f8418a23e9d14bce30135.1483269426.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-On Thu, Jan 19, 2017 at 5:49 AM, Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
-> On Wed, Jan 18, 2017 at 03:08:14PM +0800, Xin Long wrote:
->> On Wed, Jan 18, 2017 at 3:15 AM, Xin Long <lucien.xin@gmail.com> wrote:
->> > On Wed, Jan 18, 2017 at 2:57 AM, Julian Cordes <julian.cordes@gmail.com> wrote:
->> >> 2017-01-17 19:49 GMT+01:00 Xin Long <lucien.xin@gmail.com>:
->> >>> On Tue, Jan 17, 2017 at 9:13 PM, Julian Cordes <julian.cordes@gmail.com> wrote:
->> >>>> When fragmented ordered user messages are sent to the linux kernel user
->> >>>> messages with inconsistent stream sequence numbers are accepted and
->> >>>> delivered to the application. Take for example an look at the following test case:
->> >>>> https://github.com/nplab/PR_SCTP_Testsuite/blob/master/forward-tsn/error-cases/packet-loss/ordered/ordered-packet-loss-2.pkt
->> >>>>
->> >>>> Here I first inject two DATA-Chunks with sid/ssn 1/1, 2/1 into the
->> >>>> kernel with packetdrill:
->> >>>> line 67: +0.0 < sctp: DATA[flgs=E, len16, tsn=2, sid=1, ssn=1,
->> >>>> ppid=0]
->> >>>> line 69: +0.1 < sctp: DATA[flgs=E, len16, tsn=4, sid=2, ssn=1,
->> >>>> ppid=0]
->> >>>>
->> >>>> After 0.1 seconds i then inject an FORWARD-TSN with cum_tsn=2 bundled
->> >>>> with an DATA-Chunk that looks like this:
->> >>>> DATA[flgs=B, len16, tsn=3, sid=2, ssn=0, ppid=0]
->> >>>>
->> >>>> This "looks" like the first segment of the user message where already a
->> >>>> fragment (tsn=4) was received. But the ssn-values are  not consistent.
->> >>>> The DATA-Chunk with tsn=3 has ssn=0 and the ssn=1 therefore they should
->> >>>> be ignored by the IUT and not be delivered to the userland application when
->> >>>> calling sctp_recvmsg. Unfortunatly the linux kernel implementation does
->> >>>> currently deliver these inconsistent user messages.
->> >>> sorry, I may misunderstand you.
->> >>>
->> >>> after FORWARD-TSN, "DATA[flgs=E, len16, tsn=2, sid=1, ssn=1"
->> >>> should be received, then only "sctp: DATA[flgs=E, len16, tsn=4,
->> >>> sid=2, ssn=1" is in the queue, then "DATA[flgs=B, len16, tsn=3,
->> >>> sid=2, ssn=0, ppid=0]" is processed, these two chunks (tsn=3 and
->> >>> tsn=4) should be recvmsg, as their sid are the same and ssn are
->> >>> consistent (ssn=0 and ssn=1).
->> >>> and your sctp_recvmsg is after above, so it should be right.
->> >>>
->> >>> did I miss something?
->> >>>
->> >>>
->> >> Shouldnt the ssn be 0 for both DATA-Chunks with sid=2, because they
->> >> consistent to the same first fragmented user message of stream with
->> >> sid=2?
->> > ahh, got you now, will look into it tomorrow,  thanks.
->> >
->> linux sctp now doesn't yet support "interleave", it believes the chunks /
->> fragmenteds from the same msg have continuous / consistent TSNs.
->> That's why it can ignore the ssn and only care about tsn and flag
->> when reasm fragmenteds.
->
-> Interleaving is a feature, but what is happening here is that we are not
-> validating the ssn in this case, and it allows an attacker to corrupt
-> the messages once necessary knowledge is obtained (such as knowing
-> vtag).
->
-> line 67: +0.0 < sctp: DATA[flgs=E, len16, tsn=2, sid=1, ssn=1, ppid=0]
-> line 69: +0.1 < sctp: DATA[flgs=E, len16, tsn=4, sid=2, ssn=1, ppid=0]
-> After 0.1 seconds i then inject an FORWARD-TSN with cum_tsn=2 bundled
-> with an DATA-Chunk that looks like this:
-> DATA[flgs=B, len16, tsn=3, sid=2, ssn=0, ppid=0]
->
-> Simplifying, looks like:
->                                          v----------.
-> DATA[flgs=B, len16, tsn=3, sid=2, ssn=0, ppid=0] |
-> DATA[flgs=E, len16, tsn=4, sid=2, ssn=1, ppid=0] |
->                                          ^----------+-- doesn't match
->
-> https://tools.ietf.org/html/rfc4960#section-6.9
->    2)  The transmitter MUST then assign, in sequence, a separate TSN to
->        each of the DATA chunks in the series.  The transmitter assigns
->        the same SSN to each of the DATA chunks. ....
->
-> A draft, just to illustrate an initial fix for this:
-> diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
-> index aa3624d50278..273abcf631ef 100644
-> --- a/net/sctp/ulpqueue.c
-> +++ b/net/sctp/ulpqueue.c
-> @@ -419,6 +419,7 @@ static struct sctp_ulpevent *sctp_ulpq_retrieve_reassembled(struct sctp_ulpq *ul
->         size_t pd_len = 0;
->         struct sctp_association *asoc;
->         u32 pd_point;
-> +       u16 cssn;
->
->         /* Initialized to 0 just to avoid compiler warning message.  Will
->          * never be used with this value. It is referenced only after it
-> @@ -461,10 +462,12 @@ static struct sctp_ulpevent *sctp_ulpq_retrieve_reassembled(struct sctp_ulpq *ul
->
->                         first_frag = pos;
->                         next_tsn = ctsn + 1;
-> +                       cssn = cevent->ssn;
->                         break;
->
->                 case SCTP_DATA_MIDDLE_FRAG:
-> -                       if ((first_frag) && (ctsn = next_tsn)) {
-> +                       if (first_frag && ctsn = next_tsn &&
-> +                           cssn = cevent->ssn) {
->                                 next_tsn++;
->                                 if (pd_first) {
->                                     pd_last = pos;
-> @@ -475,7 +478,8 @@ static struct sctp_ulpevent *sctp_ulpq_retrieve_reassembled(struct sctp_ulpq *ul
->                         break;
->
->                 case SCTP_DATA_LAST_FRAG:
-> -                       if (first_frag && (ctsn = next_tsn))
-> +                       if (first_frag && ctsn = next_tsn &&
-> +                           cssn = cevent->ssn)
->                                 goto found;
->                         else
->                                 first_frag = NULL;
->
-> Though the real fix is more complicated than this because in such case
-> the fragments have to be discarded and this is not going to happen with
-> the above.
-I agree with that it should be discarded.
+This patch is to implement Receiver-Side Procedures for the SSN/TSN
+Reset Request Parameter described in section 6.2.4.
 
-also because only with the fix above, when the correct chunk comes,
-it will report DUP, instead of delivering to ULP, as it has the same tsn
-with the abnormal chunk.
+The process is kinda complicate, it's wonth having comments from
+section 6.2.4 in the codes.
 
->
->>
->> we will improve it when implementing "interleave" soon, thanks for reporting.
->>
->> >>>>
->> >>>> There are many test-cases that all reproduce this
->> >>>> issue. Just take a look at the README at
->> >>>> https://github.com/nplab/PR_SCTP_Testsuite/tree/master/forward-tsn/error-cases/packet-loss/ordered.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/sm.h |  4 +++
+ net/sctp/stream.c     | 76 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 80 insertions(+)
+
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index 180d017..e1b2509 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -289,6 +289,10 @@ struct sctp_chunk *sctp_process_strreset_inreq(
+ 				struct sctp_association *asoc,
+ 				union sctp_params param,
+ 				struct sctp_ulpevent **evp);
++struct sctp_chunk *sctp_process_strreset_tsnreq(
++				struct sctp_association *asoc,
++				union sctp_params param,
++				struct sctp_ulpevent **evp);
+ 
+ /* Prototypes for statetable processing. */
+ 
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 3053d06..fce4317 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -207,3 +207,79 @@ struct sctp_chunk *sctp_process_strreset_inreq(
+ 
+ 	return chunk;
+ }
++
++struct sctp_chunk *sctp_process_strreset_tsnreq(
++				struct sctp_association *asoc,
++				union sctp_params param,
++				struct sctp_ulpevent **evp)
++{
++	struct sctp_strreset_tsnreq *tsnreq = param.v;
++	__u32 request_seq, initial_tsn, max_tsn_seen;
++	__u32 result = SCTP_STRRESET_DENIED;
++	__u16 i;
++
++	request_seq = ntohl(tsnreq->request_seq);
++	if (request_seq > asoc->strreset_inseq) {
++		result = SCTP_STRRESET_ERR_BAD_SEQNO;
++		goto out;
++	} else if (request_seq = asoc->strreset_inseq) {
++		asoc->strreset_inseq++;
++	}
++
++	if (!(asoc->strreset_enable & SCTP_ENABLE_RESET_ASSOC_REQ))
++		goto out;
++
++	if (asoc->strreset_outstanding) {
++		result = SCTP_STRRESET_ERR_IN_PROGRESS;
++		goto out;
++	}
++
++	/* G3: The same processing as though a SACK chunk with no gap report
++	 *     and a cumulative TSN ACK of the Sender's Next TSN minus 1 were
++	 *     received MUST be performed.
++	 */
++	max_tsn_seen = sctp_tsnmap_get_max_tsn_seen(&asoc->peer.tsn_map);
++	sctp_ulpq_reasm_flushtsn(&asoc->ulpq, max_tsn_seen);
++	sctp_ulpq_abort_pd(&asoc->ulpq, GFP_ATOMIC);
++
++	/* G1: Compute an appropriate value for the Receiver's Next TSN -- the
++	 *     TSN that the peer should use to send the next DATA chunk.  The
++	 *     value SHOULD be the smallest TSN not acknowledged by the
++	 *     receiver of the request plus 2^31.
++	 */
++	initial_tsn = sctp_tsnmap_get_ctsn(&asoc->peer.tsn_map) + (1 << 31);
++	sctp_tsnmap_init(&asoc->peer.tsn_map, SCTP_TSN_MAP_INITIAL,
++			 initial_tsn, GFP_ATOMIC);
++
++	/* G4: The same processing as though a FWD-TSN chunk (as defined in
++	 *     [RFC3758]) with all streams affected and a new cumulative TSN
++	 *     ACK of the Receiver's Next TSN minus 1 were received MUST be
++	 *     performed.
++	 */
++	sctp_outq_free(&asoc->outqueue);
++
++	/* G2: Compute an appropriate value for the local endpoint's next TSN,
++	 *     i.e., the next TSN assigned by the receiver of the SSN/TSN reset
++	 *     chunk.  The value SHOULD be the highest TSN sent by the receiver
++	 *     of the request plus 1.
++	 */
++	asoc->ctsn_ack_point = asoc->next_tsn - 1;
++	asoc->adv_peer_ack_point = asoc->ctsn_ack_point;
++
++	/* G5:  The next expected and outgoing SSNs MUST be reset to 0 for all
++	 *      incoming and outgoing streams.
++	 */
++	for (i = 0; i < asoc->streamoutcnt; i++)
++		asoc->streamout[i].ssn = 0;
++	for (i = 0; i < asoc->streamincnt; i++)
++		asoc->streamin[i].ssn = 0;
++
++	result = SCTP_STRRESET_PERFORMED;
++
++	*evp = sctp_ulpevent_make_assoc_reset_event(asoc,
++		0, initial_tsn, asoc->next_tsn, GFP_ATOMIC);
++
++out:
++	return sctp_make_strreset_tsnresp(asoc, result, request_seq,
++					  asoc->next_tsn, initial_tsn);
++}
+-- 
+2.1.0
+
