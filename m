@@ -1,263 +1,266 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 01 Jan 2017 11:20:43 +0000
-Subject: [PATCH net-next 26/27] sctp: add sctp reconf chunk process
-Message-Id: <24997940f9c6ca9d4cbb8ce72741fdddcfe4ebc1.1483269426.git.lucien.xin@gmail.com>
+Date: Sun, 01 Jan 2017 11:20:20 +0000
+Subject: [PATCH net-next 03/27] sctp: remove asoc ssnmap and ssnmap.c
+Message-Id: <be8a2770ddc2381266050c9f168add9802b90a49.1483269426.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1483269426.git.lucien.xin@gmail.com>
  <684ad8ddd79f23844883dede4c34360ce744dfc3.1483269426.git.lucien.xin@gmail.com>
  <c752879a5af358c08da949b391416452f1322c43.1483269426.git.lucien.xin@gmail.com>
- <be8a2770ddc2381266050c9f168add9802b90a49.1483269426.git.lucien.xin@gmail.com>
- <fc046afdda34c9b262ce57400c4256b14fd1a0fb.1483269426.git.lucien.xin@gmail.com>
- <d4f1b2a4fa19457e9867b0a1f84764a7a509459a.1483269426.git.lucien.xin@gmail.com>
- <31abc54d31ef0714322f137bff43458014d7c276.1483269426.git.lucien.xin@gmail.com>
- <58860816816d6d51b062235fd54dae6540a4797a.1483269426.git.lucien.xin@gmail.com>
- <229608faf7af54c0bf908694ca8349205bbf6eab.1483269426.git.lucien.xin@gmail.com>
- <c4f16844620cd3a2aa76596df9eaadf1505fc8e6.1483269426.git.lucien.xin@gmail.com>
- <1d0b270084289945c4b42ae36d0556648a3f9b64.1483269426.git.lucien.xin@gmail.com>
- <1e4560205cff3c10868d5614b62a3db14e87ccf0.1483269426.git.lucien.xin@gmail.com>
- <91b9171cc57c0f322d103dfbbcce1b9706800805.1483269426.git.lucien.xin@gmail.com>
- <d5fb0969ea5d055dea5bdc257569530b6d2fc7c2.1483269426.git.lucien.xin@gmail.com>
- <6a74f5a3ac408f20816a8c79edd6b9922ed3b573.1483269426.git.lucien.xin@gmail.com>
- <ef7d01cf1d5826e694a08303ee0b36c00201c666.1483269426.git.lucien.xin@gmail.com>
- <86b68f131d286ee20781cb04ce9d09d477aa5232.1483269426.git.lucien.xin@gmail.com>
- <1e8e248c38fd3874cf80c4b88e4699c8a617066d.1483269426.git.lucien.xin@gmail.com>
- <3a60ce82edef82f329fe2cc4ac83e9ca21831d8b.1483269426.git.lucien.xin@gmail.com>
- <9be4c65c6bac7df0dbf51328af92727e5606dc5c.1483269426.git.lucien.xin@gmail.com>
- <b5eb3a199dded2efe517b19b5cac6ae498a6c0c8.1483269426.git.lucien.xin@gmail.com>
- <c59df697bb54348de10f8418a23e9d14bce30135.1483269426.git.lucien.xin@gmail.com>
- <470b9f2b5248e0c1870c501f262a1887be66509b.1483269426.git.lucien.xin@gmail.com>
- <105630d2f9a54de9c3ce49988452d2b111c71b3d.1483269426.git.lucien.xin@gmail.com>
- <19ee2333d24194c0a4b3e724a1a738873ca27445.1483269426.git.lucien.xin@gmail.com>
- <880e62cecc950ad9b5dad09ae581e5e6f92ecf46.1483269426.git.lucien.xin@gmail.com>
-In-Reply-To: <880e62cecc950ad9b5dad09ae581e5e6f92ecf46.1483269426.git.lucien.xin@gmail.com>
+In-Reply-To: <c752879a5af358c08da949b391416452f1322c43.1483269426.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to add a function to process the incoming reconf chunk,
-in which it verifies the chunk, and traverses the param and process
-it with the right function one by one.
-
-sctp_sf_do_reconf would be the process function of reconf chunk event.
-
-Note that to support multi-params in response chunk, it also adds a
-function sctp_merge_reconf_chunk to merge two reconf chunk into one.
+Since asoc stream arrays has replaced ssnmap, ssnmap is not used any
+more, this patch is to remove asoc ssnmap and ssnmap.c.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/sm.h    |  8 +++++
- net/sctp/sm_make_chunk.c | 94 ++++++++++++++++++++++++++++++++++++++++++++++++
- net/sctp/sm_statefuns.c  | 68 +++++++++++++++++++++++++++++++++++
- 3 files changed, 170 insertions(+)
+ include/net/sctp/sctp.h    |   1 -
+ include/net/sctp/structs.h |  33 ------------
+ net/sctp/Makefile          |   3 +-
+ net/sctp/objcnt.c          |   2 -
+ net/sctp/ssnmap.c          | 125 ---------------------------------------------
+ 5 files changed, 1 insertion(+), 163 deletions(-)
+ delete mode 100644 net/sctp/ssnmap.c
 
-diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index 7c2f956..17984eb 100644
---- a/include/net/sctp/sm.h
-+++ b/include/net/sctp/sm.h
-@@ -135,6 +135,7 @@ sctp_state_fn_t sctp_sf_do_8_5_1_E_sa;
- sctp_state_fn_t sctp_sf_cookie_echoed_err;
- sctp_state_fn_t sctp_sf_do_asconf;
- sctp_state_fn_t sctp_sf_do_asconf_ack;
-+sctp_state_fn_t sctp_sf_do_reconf;
- sctp_state_fn_t sctp_sf_do_9_2_reshutack;
- sctp_state_fn_t sctp_sf_eat_fwd_tsn;
- sctp_state_fn_t sctp_sf_eat_fwd_tsn_fast;
-@@ -277,6 +278,13 @@ struct sctp_chunk *sctp_make_strreset_tsnresp(
- struct sctp_chunk *sctp_make_strreset_addstrm(
- 				const struct sctp_association *asoc,
- 				__u16 out, __u16 in);
-+struct sctp_chunk *sctp_merge_reconf_chunk(
-+				struct sctp_association *asoc,
-+				struct sctp_chunk *last,
-+				struct sctp_chunk *reply);
-+bool sctp_verify_reconf(const struct sctp_association *asoc,
-+			struct sctp_chunk *chunk,
-+			struct sctp_paramhdr **errp);
- void sctp_chunk_assign_tsn(struct sctp_chunk *);
- void sctp_chunk_assign_ssn(struct sctp_chunk *);
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index d8833a8..598d938 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -283,7 +283,6 @@ extern atomic_t sctp_dbg_objcnt_chunk;
+ extern atomic_t sctp_dbg_objcnt_bind_addr;
+ extern atomic_t sctp_dbg_objcnt_bind_bucket;
+ extern atomic_t sctp_dbg_objcnt_addr;
+-extern atomic_t sctp_dbg_objcnt_ssnmap;
+ extern atomic_t sctp_dbg_objcnt_datamsg;
+ extern atomic_t sctp_dbg_objcnt_keys;
  
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index f1efba6..74c3fee 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -3819,3 +3819,97 @@ struct sctp_chunk *sctp_make_strreset_addstrm(
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index f81c321..9075d61 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -82,7 +82,6 @@ struct sctp_outq;
+ struct sctp_bind_addr;
+ struct sctp_ulpq;
+ struct sctp_ep_common;
+-struct sctp_ssnmap;
+ struct crypto_shash;
  
- 	return retval;
- }
-+
-+struct sctp_chunk *sctp_merge_reconf_chunk(
-+				struct sctp_association *asoc,
-+				struct sctp_chunk *last,
-+				struct sctp_chunk *reply)
-+{
-+	struct sctp_chunk *retval = NULL;
-+	__u16 lsize, rsize;
-+
-+	if (!reply)
-+		return last;
-+
-+	rsize = ntohs(reply->param_hdr.p->length);
-+	lsize = ntohs(last->param_hdr.p->length);
-+
-+	retval = sctp_make_reconf(asoc, lsize + rsize);
-+	if (!retval)
-+		goto out;
-+
-+	sctp_addto_chunk(retval, lsize, last->param_hdr.v);
-+	sctp_addto_chunk(retval, rsize, reply->param_hdr.v);
-+
-+out:
-+	if (asoc->strreset_chunk) {
-+		sctp_chunk_put(asoc->strreset_chunk);
-+		asoc->strreset_chunk = retval;
-+		if (asoc->strreset_chunk)
-+			sctp_chunk_hold(asoc->strreset_chunk);
-+	}
-+
-+	sctp_chunk_free(reply);
-+	sctp_chunk_free(last);
-+
-+	return retval;
-+}
-+
-+bool sctp_verify_reconf(const struct sctp_association *asoc,
-+			struct sctp_chunk *chunk,
-+			struct sctp_paramhdr **errp)
-+{
-+	struct sctp_reconf_chunk *hdr;
-+	union sctp_params param;
-+	__u16 last = 0, cnt = 0;
-+
-+	hdr = (struct sctp_reconf_chunk *)chunk->chunk_hdr;
-+	sctp_walk_params(param, hdr, params) {
-+		__u16 length = ntohs(param.p->length);
-+
-+		*errp = param.p;
-+		if (cnt++ > 2)
-+			return false;
-+		switch (param.p->type) {
-+		case SCTP_PARAM_RESET_OUT_REQUEST:
-+			if (length < sizeof(struct sctp_strreset_outreq) ||
-+			    (last && last != SCTP_PARAM_RESET_RESPONSE &&
-+			     last != SCTP_PARAM_RESET_IN_REQUEST))
-+				return false;
-+			break;
-+		case SCTP_PARAM_RESET_IN_REQUEST:
-+			if (length < sizeof(struct sctp_strreset_inreq) ||
-+			    (last && last != SCTP_PARAM_RESET_OUT_REQUEST))
-+				return false;
-+			break;
-+		case SCTP_PARAM_RESET_RESPONSE:
-+			if ((length != sizeof(struct sctp_strreset_resp) &&
-+			     length != sizeof(struct sctp_strreset_resptsn)) ||
-+			    (last && last != SCTP_PARAM_RESET_RESPONSE &&
-+			     last != SCTP_PARAM_RESET_OUT_REQUEST))
-+				return false;
-+			break;
-+		case SCTP_PARAM_RESET_TSN_REQUEST:
-+			if (length !+			    sizeof(struct sctp_strreset_tsnreq) || last)
-+				return false;
-+			break;
-+		case SCTP_PARAM_RESET_ADD_IN_STREAMS:
-+			if (length != sizeof(struct sctp_strreset_addstrm) ||
-+			    (last && last != SCTP_PARAM_RESET_ADD_OUT_STREAMS))
-+				return false;
-+			break;
-+		case SCTP_PARAM_RESET_ADD_OUT_STREAMS:
-+			if (length != sizeof(struct sctp_strreset_addstrm) ||
-+			    (last && last != SCTP_PARAM_RESET_ADD_IN_STREAMS))
-+				return false;
-+			break;
-+		default:
-+			return false;
-+		}
-+
-+		last = param.p->type;
-+	}
-+
-+	return true;
-+}
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index c06b134..4b05bd5 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -3834,6 +3834,74 @@ sctp_disposition_t sctp_sf_do_asconf_ack(struct net *net,
- 	return SCTP_DISPOSITION_DISCARD;
- }
  
-+/* RE-CONFIG Section 5.2 Upon reception of an RECONF Chunk.  */
-+sctp_disposition_t sctp_sf_do_reconf(struct net *net,
-+				     const struct sctp_endpoint *ep,
-+				     const struct sctp_association *asoc,
-+				     const sctp_subtype_t type, void *arg,
-+				     sctp_cmd_seq_t *commands)
-+{
-+	struct sctp_paramhdr *err_param = NULL;
-+	struct sctp_chunk *reply = NULL;
-+	struct sctp_chunk *last = NULL;
-+	struct sctp_chunk *chunk = arg;
-+	struct sctp_reconf_chunk *hdr;
-+	union sctp_params param;
-+
-+	if (!sctp_vtag_verify(chunk, asoc)) {
-+		sctp_add_cmd_sf(commands, SCTP_CMD_REPORT_BAD_TAG,
-+				SCTP_NULL());
-+		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
-+	}
-+
-+	/* Make sure that the RECONF chunk has a valid length.  */
-+	if (!sctp_chunk_length_valid(chunk, sizeof(*hdr)))
-+		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
-+						  commands);
-+
-+	if (!sctp_verify_reconf(asoc, chunk, &err_param))
-+		return sctp_sf_violation_paramlen(net, ep, asoc, type, arg,
-+						  (void *)err_param, commands);
-+
-+	hdr = (struct sctp_reconf_chunk *)chunk->chunk_hdr;
-+	sctp_walk_params(param, hdr, params) {
-+		struct sctp_ulpevent *ev = NULL;
-+
-+		if (param.p->type = SCTP_PARAM_RESET_OUT_REQUEST)
-+			reply = sctp_process_strreset_outreq(
-+				(struct sctp_association *)asoc, param, &ev);
-+		else if (param.p->type = SCTP_PARAM_RESET_IN_REQUEST)
-+			reply = sctp_process_strreset_inreq(
-+				(struct sctp_association *)asoc, param, &ev);
-+		else if (param.p->type = SCTP_PARAM_RESET_TSN_REQUEST)
-+			reply = sctp_process_strreset_tsnreq(
-+				(struct sctp_association *)asoc, param, &ev);
-+		else if (param.p->type = SCTP_PARAM_RESET_ADD_OUT_STREAMS)
-+			reply = sctp_process_strreset_addstrm_out(
-+				(struct sctp_association *)asoc, param, &ev);
-+		else if (param.p->type = SCTP_PARAM_RESET_ADD_IN_STREAMS)
-+			reply = sctp_process_strreset_addstrm_in(
-+				(struct sctp_association *)asoc, param, &ev);
-+		else if (param.p->type = SCTP_PARAM_RESET_RESPONSE)
-+			reply = sctp_process_strreset_resp(
-+				(struct sctp_association *)asoc, param, &ev);
-+
-+		if (ev)
-+			sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP,
-+					SCTP_ULPEVENT(ev));
-+
-+		if (last)
-+			reply = sctp_merge_reconf_chunk(
-+				(struct sctp_association *)asoc, last, reply);
-+		last = reply;
-+	}
-+
-+	if (reply)
-+		sctp_add_cmd_sf(commands, SCTP_CMD_REPLY, SCTP_CHUNK(reply));
-+
-+	return SCTP_DISPOSITION_CONSUME;
-+}
-+
- /*
-  * PR-SCTP Section 3.6 Receiver Side Implementation of PR-SCTP
-  *
+@@ -377,35 +376,6 @@ typedef struct sctp_sender_hb_info {
+ 	__u64 hb_nonce;
+ } __packed sctp_sender_hb_info_t;
+ 
+-/*
+- *  RFC 2960 1.3.2 Sequenced Delivery within Streams
+- *
+- *  The term "stream" is used in SCTP to refer to a sequence of user
+- *  messages that are to be delivered to the upper-layer protocol in
+- *  order with respect to other messages within the same stream.  This is
+- *  in contrast to its usage in TCP, where it refers to a sequence of
+- *  bytes (in this document a byte is assumed to be eight bits).
+- *  ...
+- *
+- *  This is the structure we use to track both our outbound and inbound
+- *  SSN, or Stream Sequence Numbers.
+- */
+-
+-struct sctp_stream {
+-	__u16 *ssn;
+-	unsigned int len;
+-};
+-
+-struct sctp_ssnmap {
+-	struct sctp_stream in;
+-	struct sctp_stream out;
+-};
+-
+-struct sctp_ssnmap *sctp_ssnmap_new(__u16 in, __u16 out,
+-				    gfp_t gfp);
+-void sctp_ssnmap_free(struct sctp_ssnmap *map);
+-void sctp_ssnmap_clear(struct sctp_ssnmap *map);
+-
+ /* What is the current SSN number for this stream? */
+ #define sctp_ssn_peek(asoc, type, sid) \
+ 	((asoc)->stream##type[sid].ssn)
+@@ -1751,9 +1721,6 @@ struct sctp_association {
+ 	/* Default receive parameters */
+ 	__u32 default_rcv_context;
+ 
+-	/* This tracks outbound ssn for a given stream.	 */
+-	struct sctp_ssnmap *ssnmap;
+-
+ 	/* All outbound chunks go through this structure.  */
+ 	struct sctp_outq outqueue;
+ 
+diff --git a/net/sctp/Makefile b/net/sctp/Makefile
+index 6c4f749..48bfc74 100644
+--- a/net/sctp/Makefile
++++ b/net/sctp/Makefile
+@@ -11,8 +11,7 @@ sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
+ 	  transport.o chunk.o sm_make_chunk.o ulpevent.o \
+ 	  inqueue.o outqueue.o ulpqueue.o \
+ 	  tsnmap.o bind_addr.o socket.o primitive.o \
+-	  output.o input.o debug.o ssnmap.o auth.o \
+-	  offload.o
++	  output.o input.o debug.o auth.o offload.o
+ 
+ sctp_probe-y := probe.o
+ 
+diff --git a/net/sctp/objcnt.c b/net/sctp/objcnt.c
+index 40e7fac..105ac33 100644
+--- a/net/sctp/objcnt.c
++++ b/net/sctp/objcnt.c
+@@ -51,7 +51,6 @@ SCTP_DBG_OBJCNT(bind_addr);
+ SCTP_DBG_OBJCNT(bind_bucket);
+ SCTP_DBG_OBJCNT(chunk);
+ SCTP_DBG_OBJCNT(addr);
+-SCTP_DBG_OBJCNT(ssnmap);
+ SCTP_DBG_OBJCNT(datamsg);
+ SCTP_DBG_OBJCNT(keys);
+ 
+@@ -67,7 +66,6 @@ static sctp_dbg_objcnt_entry_t sctp_dbg_objcnt[] = {
+ 	SCTP_DBG_OBJCNT_ENTRY(bind_addr),
+ 	SCTP_DBG_OBJCNT_ENTRY(bind_bucket),
+ 	SCTP_DBG_OBJCNT_ENTRY(addr),
+-	SCTP_DBG_OBJCNT_ENTRY(ssnmap),
+ 	SCTP_DBG_OBJCNT_ENTRY(datamsg),
+ 	SCTP_DBG_OBJCNT_ENTRY(keys),
+ };
+diff --git a/net/sctp/ssnmap.c b/net/sctp/ssnmap.c
+deleted file mode 100644
+index b9c8521..0000000
+--- a/net/sctp/ssnmap.c
++++ /dev/null
+@@ -1,125 +0,0 @@
+-/* SCTP kernel implementation
+- * Copyright (c) 2003 International Business Machines, Corp.
+- *
+- * This file is part of the SCTP kernel implementation
+- *
+- * These functions manipulate sctp SSN tracker.
+- *
+- * This SCTP implementation is free software;
+- * you can redistribute it and/or modify it under the terms of
+- * the GNU General Public License as published by
+- * the Free Software Foundation; either version 2, or (at your option)
+- * any later version.
+- *
+- * This SCTP implementation is distributed in the hope that it
+- * will be useful, but WITHOUT ANY WARRANTY; without even the implied
+- *                 ************************
+- * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+- * See the GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with GNU CC; see the file COPYING.  If not, see
+- * <http://www.gnu.org/licenses/>.
+- *
+- * Please send any bug reports or fixes you make to the
+- * email address(es):
+- *    lksctp developers <linux-sctp@vger.kernel.org>
+- *
+- * Written or modified by:
+- *    Jon Grimm             <jgrimm@us.ibm.com>
+- */
+-
+-#include <linux/types.h>
+-#include <linux/slab.h>
+-#include <net/sctp/sctp.h>
+-#include <net/sctp/sm.h>
+-
+-static struct sctp_ssnmap *sctp_ssnmap_init(struct sctp_ssnmap *map, __u16 in,
+-					    __u16 out);
+-
+-/* Storage size needed for map includes 2 headers and then the
+- * specific needs of in or out streams.
+- */
+-static inline size_t sctp_ssnmap_size(__u16 in, __u16 out)
+-{
+-	return sizeof(struct sctp_ssnmap) + (in + out) * sizeof(__u16);
+-}
+-
+-
+-/* Create a new sctp_ssnmap.
+- * Allocate room to store at least 'len' contiguous TSNs.
+- */
+-struct sctp_ssnmap *sctp_ssnmap_new(__u16 in, __u16 out,
+-				    gfp_t gfp)
+-{
+-	struct sctp_ssnmap *retval;
+-	int size;
+-
+-	size = sctp_ssnmap_size(in, out);
+-	if (size <= KMALLOC_MAX_SIZE)
+-		retval = kmalloc(size, gfp);
+-	else
+-		retval = (struct sctp_ssnmap *)
+-			  __get_free_pages(gfp, get_order(size));
+-	if (!retval)
+-		goto fail;
+-
+-	if (!sctp_ssnmap_init(retval, in, out))
+-		goto fail_map;
+-
+-	SCTP_DBG_OBJCNT_INC(ssnmap);
+-
+-	return retval;
+-
+-fail_map:
+-	if (size <= KMALLOC_MAX_SIZE)
+-		kfree(retval);
+-	else
+-		free_pages((unsigned long)retval, get_order(size));
+-fail:
+-	return NULL;
+-}
+-
+-
+-/* Initialize a block of memory as a ssnmap.  */
+-static struct sctp_ssnmap *sctp_ssnmap_init(struct sctp_ssnmap *map, __u16 in,
+-					    __u16 out)
+-{
+-	memset(map, 0x00, sctp_ssnmap_size(in, out));
+-
+-	/* Start 'in' stream just after the map header. */
+-	map->in.ssn = (__u16 *)&map[1];
+-	map->in.len = in;
+-
+-	/* Start 'out' stream just after 'in'. */
+-	map->out.ssn = &map->in.ssn[in];
+-	map->out.len = out;
+-
+-	return map;
+-}
+-
+-/* Clear out the ssnmap streams.  */
+-void sctp_ssnmap_clear(struct sctp_ssnmap *map)
+-{
+-	size_t size;
+-
+-	size = (map->in.len + map->out.len) * sizeof(__u16);
+-	memset(map->in.ssn, 0x00, size);
+-}
+-
+-/* Dispose of a ssnmap.  */
+-void sctp_ssnmap_free(struct sctp_ssnmap *map)
+-{
+-	int size;
+-
+-	if (unlikely(!map))
+-		return;
+-
+-	size = sctp_ssnmap_size(map->in.len, map->out.len);
+-	if (size <= KMALLOC_MAX_SIZE)
+-		kfree(map);
+-	else
+-		free_pages((unsigned long)map, get_order(size));
+-
+-	SCTP_DBG_OBJCNT_DEC(ssnmap);
+-}
 -- 
 2.1.0
 
