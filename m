@@ -1,63 +1,130 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 13 Jan 2017 19:15:34 +0000
-Subject: [PATCHv3 net-next 0/7] sctp: add sender-side procedures for stream reconf ssn reset request chunk
-Message-Id: <cover.1484334002.git.lucien.xin@gmail.com>
+Date: Sun, 01 Jan 2017 11:20:38 +0000
+Subject: [PATCH net-next 21/27] sctp: add rfc6525 section 5.2.3
+Message-Id: <c59df697bb54348de10f8418a23e9d14bce30135.1483269426.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1483269426.git.lucien.xin@gmail.com>
+ <684ad8ddd79f23844883dede4c34360ce744dfc3.1483269426.git.lucien.xin@gmail.com>
+ <c752879a5af358c08da949b391416452f1322c43.1483269426.git.lucien.xin@gmail.com>
+ <be8a2770ddc2381266050c9f168add9802b90a49.1483269426.git.lucien.xin@gmail.com>
+ <fc046afdda34c9b262ce57400c4256b14fd1a0fb.1483269426.git.lucien.xin@gmail.com>
+ <d4f1b2a4fa19457e9867b0a1f84764a7a509459a.1483269426.git.lucien.xin@gmail.com>
+ <31abc54d31ef0714322f137bff43458014d7c276.1483269426.git.lucien.xin@gmail.com>
+ <58860816816d6d51b062235fd54dae6540a4797a.1483269426.git.lucien.xin@gmail.com>
+ <229608faf7af54c0bf908694ca8349205bbf6eab.1483269426.git.lucien.xin@gmail.com>
+ <c4f16844620cd3a2aa76596df9eaadf1505fc8e6.1483269426.git.lucien.xin@gmail.com>
+ <1d0b270084289945c4b42ae36d0556648a3f9b64.1483269426.git.lucien.xin@gmail.com>
+ <1e4560205cff3c10868d5614b62a3db14e87ccf0.1483269426.git.lucien.xin@gmail.com>
+ <91b9171cc57c0f322d103dfbbcce1b9706800805.1483269426.git.lucien.xin@gmail.com>
+ <d5fb0969ea5d055dea5bdc257569530b6d2fc7c2.1483269426.git.lucien.xin@gmail.com>
+ <6a74f5a3ac408f20816a8c79edd6b9922ed3b573.1483269426.git.lucien.xin@gmail.com>
+ <ef7d01cf1d5826e694a08303ee0b36c00201c666.1483269426.git.lucien.xin@gmail.com>
+ <86b68f131d286ee20781cb04ce9d09d477aa5232.1483269426.git.lucien.xin@gmail.com>
+ <1e8e248c38fd3874cf80c4b88e4699c8a617066d.1483269426.git.lucien.xin@gmail.com>
+ <3a60ce82edef82f329fe2cc4ac83e9ca21831d8b.1483269426.git.lucien.xin@gmail.com>
+ <9be4c65c6bac7df0dbf51328af92727e5606dc5c.1483269426.git.lucien.xin@gmail.com>
+ <b5eb3a199dded2efe517b19b5cac6ae498a6c0c8.1483269426.git.lucien.xin@gmail.com>
+In-Reply-To: <b5eb3a199dded2efe517b19b5cac6ae498a6c0c8.1483269426.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-Patch 7/7 is to implement sender-side procedures for the Outgoing
-and Incoming SSN Reset Request Parameter described in rfc6525
-section 5.1.2 and 5.1.3
+This patch is to implement Receiver-Side Procedures for the Incoming
+SSN Reset Request Parameter described in section 5.2.3.
 
-Patches 1-6/7 are ahead of it to define some apis and asoc members
-for it.
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/sm.h |  4 ++++
+ net/sctp/stream.c     | 63 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 67 insertions(+)
 
-Note that with this patchset, asoc->reconf_enable has no chance yet to
-be set, until the patch "sctp: add get and set sockopt for reconf_enable"
-is applied in the future. As we can not just enable it when sctp is not
-capable of processing reconf chunk yet.
-
-v1->v2:
-  - put these into a smaller group.
-  - rename some temporary variables in the codes.
-  - rename the titles of the commits and improve some changelogs.
-v2->v3:
-  - re-split the patchset and make sure it has no dead codes for review.
-
-Xin Long (7):
-  sctp: add a common helper function to generate stream reconf chunk
-  sctp: add support for generating stream reconf ssn reset request chunk
-  sctp: add stream reconf timer
-  sctp: add stream reconf primitive
-  sctp: add reconf_enable in asoc ep and netns
-  sctp: add sockopt SCTP_ENABLE_STREAM_RESET
-  sctp: implement sender-side procedures for SSN Reset Request Parameter
-
- include/linux/sctp.h         |  32 ++++++++++
- include/net/netns/sctp.h     |   3 +
- include/net/sctp/constants.h |   4 +-
- include/net/sctp/sctp.h      |   8 +++
- include/net/sctp/sm.h        |   8 ++-
- include/net/sctp/structs.h   |  21 ++++++-
- include/uapi/linux/sctp.h    |  18 ++++++
- net/sctp/associola.c         |  12 ++++
- net/sctp/endpointola.c       |   1 +
- net/sctp/outqueue.c          |  33 +++++++----
- net/sctp/primitive.c         |   3 +
- net/sctp/protocol.c          |   3 +
- net/sctp/sm_make_chunk.c     | 136 +++++++++++++++++++++++++++++++++++++++++++
- net/sctp/sm_sideeffect.c     |  32 ++++++++++
- net/sctp/sm_statefuns.c      |  41 +++++++++++++
- net/sctp/sm_statetable.c     |  40 +++++++++++++
- net/sctp/socket.c            | 113 +++++++++++++++++++++++++++++++++++
- net/sctp/stream.c            |  79 +++++++++++++++++++++++++
- net/sctp/transport.c         |  17 +++++-
- 19 files changed, 588 insertions(+), 16 deletions(-)
-
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index 1833215..180d017 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -285,6 +285,10 @@ struct sctp_chunk *sctp_process_strreset_outreq(
+ 				struct sctp_association *asoc,
+ 				union sctp_params param,
+ 				struct sctp_ulpevent **evp);
++struct sctp_chunk *sctp_process_strreset_inreq(
++				struct sctp_association *asoc,
++				union sctp_params param,
++				struct sctp_ulpevent **evp);
+ 
+ /* Prototypes for statetable processing. */
+ 
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 1d5b795..3053d06 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -144,3 +144,66 @@ struct sctp_chunk *sctp_process_strreset_outreq(
+ out:
+ 	return sctp_make_strreset_resp(asoc, result, request_seq);
+ }
++
++struct sctp_chunk *sctp_process_strreset_inreq(
++				struct sctp_association *asoc,
++				union sctp_params param,
++				struct sctp_ulpevent **evp)
++{
++	struct sctp_strreset_inreq *inreq = param.v;
++	__u32 result = SCTP_STRRESET_DENIED;
++	struct sctp_chunk *chunk = NULL;
++	__u16 i, nums, *str_p;
++	__u32 request_seq;
++
++	request_seq = ntohl(inreq->request_seq);
++	if (request_seq > asoc->strreset_inseq) {
++		result = SCTP_STRRESET_ERR_BAD_SEQNO;
++		goto out;
++	} else if (request_seq = asoc->strreset_inseq) {
++		asoc->strreset_inseq++;
++	}
++
++	if (!(asoc->strreset_enable & SCTP_ENABLE_RESET_STREAM_REQ))
++		goto out;
++
++	if (asoc->strreset_outstanding) {
++		result = SCTP_STRRESET_ERR_IN_PROGRESS;
++		goto out;
++	}
++
++	nums = (ntohs(param.p->length) - sizeof(*inreq)) / 2;
++	str_p = inreq->list_of_streams;
++	for (i = 0; i < nums; i++) {
++		str_p[i] = ntohs(str_p[i]);
++		if (str_p[i] >= asoc->streamoutcnt) {
++			result = SCTP_STRRESET_ERR_WRONG_SSN;
++			goto out;
++		}
++	}
++
++	chunk = sctp_make_strreset_req(asoc, nums, str_p, 1, 0);
++	if (!chunk)
++		goto out;
++
++	if (nums)
++		for (i = 0; i < nums; i++)
++			asoc->streamout[str_p[i]].state +						   SCTP_STREAM_CLOSED;
++	else
++		for (i = 0; i < asoc->streamoutcnt; i++)
++			asoc->streamout[i].state = SCTP_STREAM_CLOSED;
++
++	asoc->strreset_chunk = chunk;
++	asoc->strreset_outstanding = 1;
++	sctp_chunk_hold(asoc->strreset_chunk);
++
++	*evp = sctp_ulpevent_make_stream_reset_event(asoc,
++		SCTP_STREAM_RESET_INCOMING_SSN, nums, str_p, GFP_ATOMIC);
++
++out:
++	if (!chunk)
++		chunk =  sctp_make_strreset_resp(asoc, result, request_seq);
++
++	return chunk;
++}
 -- 
 2.1.0
 
