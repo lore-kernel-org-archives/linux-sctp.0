@@ -1,165 +1,150 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 13 Jan 2017 19:15:39 +0000
-Subject: [PATCHv3 net-next 5/7] sctp: add reconf_enable in asoc ep and netns
-Message-Id: <1277c93e5816c40893ceb6441b7c8151de48bf31.1484334002.git.lucien.xin@gmail.com>
+Date: Sun, 01 Jan 2017 11:20:18 +0000
+Subject: [PATCH net-next 01/27] sctp: add stream arrays in asoc
+Message-Id: <684ad8ddd79f23844883dede4c34360ce744dfc3.1483269426.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1484334002.git.lucien.xin@gmail.com>
- <5f8a7d818b5db99f2ff2a791a451b311c09fad7f.1484334002.git.lucien.xin@gmail.com>
- <6c991b81f4a92cec3da773bae9b19e878e810c88.1484334002.git.lucien.xin@gmail.com>
- <c0d647fad638de6623db1d1277f63dd4a52d28c4.1484334002.git.lucien.xin@gmail.com>
- <05371aa8e63a160f467f3463749431dadcd30a8b.1484334002.git.lucien.xin@gmail.com>
-In-Reply-To: <05371aa8e63a160f467f3463749431dadcd30a8b.1484334002.git.lucien.xin@gmail.com>
+References: <cover.1483269426.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1483269426.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to add reconf_enable field in all of asoc ep and netns
-to indicate if they support stream reset.
+This patch is to add streamout and streamin arrays in asoc, initialize
+them in sctp_process_init and free them in sctp_association_free.
 
-When initializing, asoc reconf_enable get the default value from ep
-reconf_enable which is from netns netns reconf_enable by default.
-
-It is also to add reconf_capable in asoc peer part to know if peer
-supports reconf_enable, the value is set if ext params have reconf
-chunk support when processing init chunk, just as rfc6525 section
-5.1.1 demands.
+Stream arrays are used to replace ssnmap to save more stream things in
+the next patch.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/netns/sctp.h   |  3 +++
- include/net/sctp/structs.h |  7 +++++--
- net/sctp/associola.c       |  1 +
- net/sctp/endpointola.c     |  1 +
- net/sctp/protocol.c        |  3 +++
- net/sctp/sm_make_chunk.c   | 15 +++++++++++++++
- 6 files changed, 28 insertions(+), 2 deletions(-)
+ include/net/sctp/structs.h | 18 ++++++++++++++++++
+ net/sctp/associola.c       | 19 +++++++++++++++++++
+ net/sctp/sm_make_chunk.c   | 17 ++++++++++++++++-
+ 3 files changed, 53 insertions(+), 1 deletion(-)
 
-diff --git a/include/net/netns/sctp.h b/include/net/netns/sctp.h
-index c501d67..b7871d0 100644
---- a/include/net/netns/sctp.h
-+++ b/include/net/netns/sctp.h
-@@ -118,6 +118,9 @@ struct netns_sctp {
- 	/* Flag to indicate if PR-SCTP is enabled. */
- 	int prsctp_enable;
- 
-+	/* Flag to indicate if PR-CONFIG is enabled. */
-+	int reconf_enable;
-+
- 	/* Flag to idicate if SCTP-AUTH is enabled */
- 	int auth_enable;
- 
 diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 463b4d6..ee037ef 100644
+index 87d56cc..549f17d 100644
 --- a/include/net/sctp/structs.h
 +++ b/include/net/sctp/structs.h
-@@ -1255,7 +1255,8 @@ struct sctp_endpoint {
- 	struct list_head endpoint_shared_keys;
- 	__u16 active_key_id;
- 	__u8  auth_enable:1,
--	      prsctp_enable:1;
-+	      prsctp_enable:1,
-+	      reconf_enable:1;
+@@ -1331,6 +1331,18 @@ struct sctp_inithdr_host {
+ 	__u32 initial_tsn;
  };
  
- /* Recover the outter endpoint structure. */
-@@ -1508,6 +1509,7 @@ struct sctp_association {
- 			hostname_address:1, /* Peer understands DNS addresses? */
- 			asconf_capable:1,   /* Does peer support ADDIP? */
- 			prsctp_capable:1,   /* Can peer do PR-SCTP? */
-+			reconf_capable:1,   /* Can peer do RE-CONFIG? */
- 			auth_capable:1;     /* Is peer doing SCTP-AUTH? */
- 
- 		/* sack_needed : This flag indicates if the next received
-@@ -1867,7 +1869,8 @@ struct sctp_association {
- 
- 	__u8 need_ecne:1,	/* Need to send an ECNE Chunk? */
++struct sctp_stream_out {
++	__u16	ssn;
++	__u8	state;
++};
++
++struct sctp_stream_in {
++	__u16	ssn;
++};
++
++#define SCTP_STREAM_CLOSED		0x00
++#define SCTP_STREAM_OPEN		0x01
++
+ /* SCTP_GET_ASSOC_STATS counters */
+ struct sctp_priv_assoc_stats {
+ 	/* Maximum observed rto in the association during subsequent
+@@ -1879,6 +1891,12 @@ struct sctp_association {
  	     temp:1,		/* Is it a temporary association? */
--	     prsctp_enable:1;
-+	     prsctp_enable:1,
-+	     reconf_enable:1;
+ 	     prsctp_enable:1;
  
- 	__u32 strreset_outseq; /* Update after receiving response */
- 	__u32 strreset_inseq; /* Update after receiving request */
++	/* stream arrays */
++	struct sctp_stream_out *streamout;
++	struct sctp_stream_in *streamin;
++	__u16 streamoutcnt;
++	__u16 streamincnt;
++
+ 	struct sctp_priv_assoc_stats stats;
+ 
+ 	int sent_cnt_removable;
 diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index fc33540..68b99ad 100644
+index d3cc30c..290ec4d 100644
 --- a/net/sctp/associola.c
 +++ b/net/sctp/associola.c
-@@ -270,6 +270,7 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
+@@ -361,6 +361,10 @@ void sctp_association_free(struct sctp_association *asoc)
+ 	/* Free ssnmap storage. */
+ 	sctp_ssnmap_free(asoc->ssnmap);
  
- 	asoc->active_key_id = ep->active_key_id;
- 	asoc->prsctp_enable = ep->prsctp_enable;
-+	asoc->reconf_enable = ep->reconf_enable;
- 
- 	/* Save the hmacs and chunks list into this association */
- 	if (ep->auth_hmacs_list)
-diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
-index 410ddc1..8c58923 100644
---- a/net/sctp/endpointola.c
-+++ b/net/sctp/endpointola.c
-@@ -164,6 +164,7 @@ static struct sctp_endpoint *sctp_endpoint_init(struct sctp_endpoint *ep,
- 	ep->auth_hmacs_list = auth_hmacs;
- 	ep->auth_chunk_list = auth_chunks;
- 	ep->prsctp_enable = net->sctp.prsctp_enable;
-+	ep->reconf_enable = net->sctp.reconf_enable;
- 
- 	return ep;
- 
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index f9c3c37..8227bbb 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -1258,6 +1258,9 @@ static int __net_init sctp_defaults_init(struct net *net)
- 	/* Enable PR-SCTP by default. */
- 	net->sctp.prsctp_enable = 1;
- 
-+	/* Disable RECONF by default. */
-+	net->sctp.reconf_enable = 0;
++	/* Free stream information. */
++	kfree(asoc->streamout);
++	kfree(asoc->streamin);
 +
- 	/* Disable AUTH by default. */
- 	net->sctp.auth_enable = 0;
+ 	/* Clean up the bound address list. */
+ 	sctp_bind_addr_free(&asoc->base.bind_addr);
  
+@@ -1130,6 +1134,8 @@ void sctp_assoc_update(struct sctp_association *asoc,
+ 	 * has been discarded and needs retransmission.
+ 	 */
+ 	if (asoc->state >= SCTP_STATE_ESTABLISHED) {
++		int i;
++
+ 		asoc->next_tsn = new->next_tsn;
+ 		asoc->ctsn_ack_point = new->ctsn_ack_point;
+ 		asoc->adv_peer_ack_point = new->adv_peer_ack_point;
+@@ -1139,6 +1145,12 @@ void sctp_assoc_update(struct sctp_association *asoc,
+ 		 */
+ 		sctp_ssnmap_clear(asoc->ssnmap);
+ 
++		for (i = 0; i < asoc->streamoutcnt; i++)
++			asoc->streamout[i].ssn = 0;
++
++		for (i = 0; i < asoc->streamincnt; i++)
++			asoc->streamin[i].ssn = 0;
++
+ 		/* Flush the ULP reassembly and ordered queue.
+ 		 * Any data there will now be stale and will
+ 		 * cause problems.
+@@ -1168,6 +1180,13 @@ void sctp_assoc_update(struct sctp_association *asoc,
+ 			new->ssnmap = NULL;
+ 		}
+ 
++		if (!asoc->streamin && !asoc->streamout) {
++			asoc->streamout = new->streamout;
++			asoc->streamin = new->streamin;
++			new->streamout = NULL;
++			new->streamin = NULL;
++		}
++
+ 		if (!asoc->assoc_id) {
+ 			/* get a new association id since we don't have one
+ 			 * yet.
 diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 172385c..c4a0a9c 100644
+index 9e9690b..eeadeef 100644
 --- a/net/sctp/sm_make_chunk.c
 +++ b/net/sctp/sm_make_chunk.c
-@@ -270,6 +270,11 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
- 		num_ext += 2;
- 	}
- 
-+	if (asoc->reconf_enable) {
-+		extensions[num_ext] = SCTP_CID_RECONF;
-+		num_ext += 1;
-+	}
+@@ -2442,13 +2442,28 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
+ 	 * association.
+ 	 */
+ 	if (!asoc->temp) {
+-		int error;
++		int error, i;
 +
- 	if (sp->adaptation_ind)
- 		chunksize += sizeof(aiparam);
++		asoc->streamoutcnt = asoc->c.sinit_num_ostreams;
++		asoc->streamincnt = asoc->c.sinit_max_instreams;
  
-@@ -434,6 +439,11 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
- 		num_ext += 2;
- 	}
+ 		asoc->ssnmap = sctp_ssnmap_new(asoc->c.sinit_max_instreams,
+ 					       asoc->c.sinit_num_ostreams, gfp);
+ 		if (!asoc->ssnmap)
+ 			goto clean_up;
  
-+	if (asoc->peer.reconf_capable) {
-+		extensions[num_ext] = SCTP_CID_RECONF;
-+		num_ext += 1;
-+	}
++		asoc->streamout = kcalloc(asoc->streamoutcnt,
++					  sizeof(*asoc->streamout), gfp);
++		if (!asoc->streamout)
++			goto clean_up;
++		for (i = 0; i < asoc->streamoutcnt; i++)
++			asoc->streamout[i].state = SCTP_STREAM_OPEN;
 +
- 	if (sp->adaptation_ind)
- 		chunksize += sizeof(aiparam);
- 
-@@ -2012,6 +2022,11 @@ static void sctp_process_ext_param(struct sctp_association *asoc,
- 
- 	for (i = 0; i < num_ext; i++) {
- 		switch (param.ext->chunks[i]) {
-+		case SCTP_CID_RECONF:
-+			if (asoc->reconf_enable &&
-+			    !asoc->peer.reconf_capable)
-+				asoc->peer.reconf_capable = 1;
-+			break;
- 		case SCTP_CID_FWD_TSN:
- 			if (asoc->prsctp_enable && !asoc->peer.prsctp_capable)
- 				asoc->peer.prsctp_capable = 1;
++		asoc->streamin = kcalloc(asoc->streamincnt,
++					 sizeof(*asoc->streamin), gfp);
++		if (!asoc->streamin)
++			goto clean_up;
++
+ 		error = sctp_assoc_set_id(asoc, gfp);
+ 		if (error)
+ 			goto clean_up;
 -- 
 2.1.0
 
