@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 06 Jan 2017 11:43:54 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Fri, 06 Jan 2017 12:37:11 +0000
 Subject: Re: Problem on SCTP
-Message-Id: <20170106114354.GB3771@localhost.localdomain>
+Message-Id: <20170106123711.GA15139@hmsreliant.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CAFXGft+weUFodkkiY=kgHMX+t4fECQhB+PKg2dBKxCBeU7w7MA@mail.gmail.com>
 In-Reply-To: <CAFXGft+weUFodkkiY=kgHMX+t4fECQhB+PKg2dBKxCBeU7w7MA@mail.gmail.com>
@@ -10,8 +10,6 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Sun Paul <paulrbk@gmail.com>
 Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
-
-Hi,
 
 On Fri, Jan 06, 2017 at 05:34:47PM +0800, Sun Paul wrote:
 > Hi
@@ -28,13 +26,6 @@ On Fri, Jan 06, 2017 at 05:34:47PM +0800, Sun Paul wrote:
 > idea on this?
 > 
 > if I connect the client directly to the SCTP server, it do not have any issue.
-
-This seems to be a routing issue then, specially if you're using
-rp_filter. Make sure the server can reach that foreign address the
-client uses.
-
-  Marcelo
-
 > 
 > help pls
 > 
@@ -44,3 +35,9 @@ client uses.
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
+
+Start with a tcpdump on the client and the server and attempt a connection,
+check to see if the INIT and INIT-ACK chunks are arriving appropriately.
+
+Neil
+
