@@ -1,26 +1,23 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 01 Jan 2017 11:20:22 +0000
-Subject: [PATCH net-next 05/27] sctp: add rfc6525 section 4.1-4.2
-Message-Id: <d4f1b2a4fa19457e9867b0a1f84764a7a509459a.1483269426.git.lucien.xin@gmail.com>
+Date: Sat, 07 Jan 2017 09:42:59 +0000
+Subject: [PATCHv2 net-next 2/5] sctp: add support for generating stream reconf ssn reset request chunk
+Message-Id: <d218ad72dbbffebe5926c86c2e7dd04eddbd905d.1483781759.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1483269426.git.lucien.xin@gmail.com>
- <684ad8ddd79f23844883dede4c34360ce744dfc3.1483269426.git.lucien.xin@gmail.com>
- <c752879a5af358c08da949b391416452f1322c43.1483269426.git.lucien.xin@gmail.com>
- <be8a2770ddc2381266050c9f168add9802b90a49.1483269426.git.lucien.xin@gmail.com>
- <fc046afdda34c9b262ce57400c4256b14fd1a0fb.1483269426.git.lucien.xin@gmail.com>
-In-Reply-To: <fc046afdda34c9b262ce57400c4256b14fd1a0fb.1483269426.git.lucien.xin@gmail.com>
+References: <cover.1483781759.git.lucien.xin@gmail.com>
+ <f1875fdb7c77e5f7a7fe33a1e1d2554da24901bb.1483781759.git.lucien.xin@gmail.com>
+In-Reply-To: <f1875fdb7c77e5f7a7fe33a1e1d2554da24901bb.1483781759.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
 This patch is to add asoc strreset_outseq and strreset_inseq for
 saving the reconf request sequence, initialize them when create
 assoc and process init, and also to define Incoming and Outgoing
-SSN Reset Request Parameter described in section 4.1 and 4.2, As
-they can be in one same chunk as section 3.1-3 describes, it makes
-them in one function.
+SSN Reset Request Parameter described in rfc6525 section 4.1 and
+4.2, As they can be in one same chunk as section rfc6525 3.1-3
+describes, it makes them in one function.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
@@ -90,12 +87,12 @@ index ca6c971..3462cb0 100644
  void sctp_chunk_assign_ssn(struct sctp_chunk *);
  
 diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 9075d61..09616f1 100644
+index 4741ec2..3dc983e 100644
 --- a/include/net/sctp/structs.h
 +++ b/include/net/sctp/structs.h
-@@ -1857,6 +1857,9 @@ struct sctp_association {
- 	__u16 streamoutcnt;
- 	__u16 streamincnt;
+@@ -1865,6 +1865,9 @@ struct sctp_association {
+ 	     temp:1,		/* Is it a temporary association? */
+ 	     prsctp_enable:1;
  
 +	__u32 strreset_outseq; /* Update after receiving response */
 +	__u32 strreset_inseq; /* Update after receiving request */
@@ -104,7 +101,7 @@ index 9075d61..09616f1 100644
  
  	int sent_cnt_removable;
 diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index ea03270..74949da 100644
+index 36294f7..42ece6f 100644
 --- a/net/sctp/associola.c
 +++ b/net/sctp/associola.c
 @@ -207,6 +207,7 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
@@ -116,10 +113,10 @@ index ea03270..74949da 100644
  	INIT_LIST_HEAD(&asoc->addip_chunk_list);
  	INIT_LIST_HEAD(&asoc->asconf_ack_list);
 diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 258d55a..6420714 100644
+index fd58097..172385c 100644
 --- a/net/sctp/sm_make_chunk.c
 +++ b/net/sctp/sm_make_chunk.c
-@@ -1842,6 +1842,7 @@ struct sctp_association *sctp_unpack_cookie(
+@@ -1844,6 +1844,7 @@ struct sctp_association *sctp_unpack_cookie(
  	retval->next_tsn = retval->c.initial_tsn;
  	retval->ctsn_ack_point = retval->next_tsn - 1;
  	retval->addip_serial = retval->c.initial_tsn;
@@ -127,7 +124,7 @@ index 258d55a..6420714 100644
  	retval->adv_peer_ack_point = retval->ctsn_ack_point;
  	retval->peer.prsctp_capable = retval->c.prsctp_capable;
  	retval->peer.adaptation_ind = retval->c.adaptation_ind;
-@@ -2385,6 +2386,8 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
+@@ -2387,6 +2388,8 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
  	asoc->peer.i.initial_tsn  		ntohl(peer_init->init_hdr.initial_tsn);
  
 +	asoc->strreset_inseq = asoc->peer.i.initial_tsn;
@@ -135,7 +132,7 @@ index 258d55a..6420714 100644
  	/* Apply the upper bounds for output streams based on peer's
  	 * number of inbound streams.
  	 */
-@@ -3567,3 +3570,88 @@ static struct sctp_chunk *sctp_make_reconf(
+@@ -3559,3 +3562,88 @@ static struct sctp_chunk *sctp_make_reconf(
  
  	return retval;
  }
@@ -180,43 +177,43 @@ index 258d55a..6420714 100644
 +				bool out, bool in)
 +{
 +	struct sctp_strreset_outreq outreq;
-+	__u16 stream_size = stream_num * 2;
++	__u16 stream_len = stream_num * 2;
 +	struct sctp_strreset_inreq inreq;
 +	struct sctp_chunk *retval;
-+	__u16 osize, isize, i;
++	__u16 outlen, inlen, i;
 +
-+	osize = (sizeof(outreq) + stream_size) * out;
-+	isize = (sizeof(inreq) + stream_size) * in;
++	outlen = (sizeof(outreq) + stream_len) * out;
++	inlen = (sizeof(inreq) + stream_len) * in;
 +
-+	retval = sctp_make_reconf(asoc, osize + isize);
++	retval = sctp_make_reconf(asoc, outlen + inlen);
 +	if (!retval)
 +		return NULL;
 +
 +	for (i = 0; i < stream_num; i++)
 +		stream_list[i] = htons(stream_list[i]);
 +
-+	if (osize) {
++	if (outlen) {
 +		outreq.param_hdr.type = SCTP_PARAM_RESET_OUT_REQUEST;
-+		outreq.param_hdr.length = htons(osize);
++		outreq.param_hdr.length = htons(outlen);
 +		outreq.request_seq = htonl(asoc->strreset_outseq);
 +		outreq.response_seq = htonl(asoc->strreset_inseq - 1);
 +		outreq.send_reset_at_tsn = htonl(asoc->next_tsn - 1);
 +
 +		sctp_addto_chunk(retval, sizeof(outreq), &outreq);
 +
-+		if (stream_size)
-+			sctp_addto_chunk(retval, stream_size, stream_list);
++		if (stream_len)
++			sctp_addto_chunk(retval, stream_len, stream_list);
 +	}
 +
-+	if (isize) {
++	if (inlen) {
 +		inreq.param_hdr.type = SCTP_PARAM_RESET_IN_REQUEST;
-+		inreq.param_hdr.length = htons(isize);
++		inreq.param_hdr.length = htons(inlen);
 +		inreq.request_seq = htonl(asoc->strreset_outseq + out);
 +
 +		sctp_addto_chunk(retval, sizeof(inreq), &inreq);
 +
-+		if (stream_size)
-+			sctp_addto_chunk(retval, stream_size, stream_list);
++		if (stream_len)
++			sctp_addto_chunk(retval, stream_len, stream_list);
 +	}
 +
 +	for (i = 0; i < stream_num; i++)
