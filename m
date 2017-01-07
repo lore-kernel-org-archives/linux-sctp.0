@@ -1,23 +1,38 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 11 Jan 2017 15:01:21 +0000
-Subject: Re: [PATCH] sctp: Fix spelling mistake: "Atempt" -> "Attempt"
-Message-Id: <20170111.100121.1446206121833835839.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 07 Jan 2017 09:42:57 +0000
+Subject: [PATCHv2 net-next 0/5] sctp: add support for generating stream reconf chunks
+Message-Id: <cover.1483781759.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20170110225306.14880-1-colin.king@canonical.com>
-In-Reply-To: <20170110225306.14880-1-colin.king@canonical.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: colin.king@canonical.com
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-From: Colin King <colin.king@canonical.com>
-Date: Tue, 10 Jan 2017 22:53:06 +0000
+This patchset is to add some functions to generate stream reconf chunks,
+described in RFC6525 Section 3 and Section 4.
 
-> From: Colin Ian King <colin.king@canonical.com>
-> 
-> Trivial fix to spelling mistake in WARN_ONCE message
-> 
-> Signed-off-by: Colin Ian King <colin.king@canonical.com>
+v1->v2:
+  - put these into a smaller group.
+  - rename some temporary variables in the codes.
+  - rename the titles of the commits and improve some changelogs.
 
-Applied, thanks.
+Xin Long (5):
+  sctp: add a common helper function to generate stream reconf chunk
+  sctp: add support for generating stream reconf ssn reset request chunk
+  sctp: add support for generating stream reconf ssn/tsn reset request
+    chunk
+  sctp: add support for generating stream reconf response chunk
+  sctp: add support for generating stream reconf add streams request
+    chunk
+
+ include/linux/sctp.h       |  68 ++++++++++++
+ include/net/sctp/sm.h      |  17 ++-
+ include/net/sctp/structs.h |   3 +
+ net/sctp/associola.c       |   1 +
+ net/sctp/sm_make_chunk.c   | 270 +++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 358 insertions(+), 1 deletion(-)
+
+-- 
+2.1.0
+
