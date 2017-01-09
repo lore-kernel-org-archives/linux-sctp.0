@@ -1,69 +1,35 @@
-From: Sun Paul <paulrbk@gmail.com>
-Date: Mon, 09 Jan 2017 02:30:23 +0000
-Subject: Re: Problem on SCTP
-Message-Id: <CAFXGftKPb-2jBKx7Eh_iDuFdmyD86SCfdSUvQtKNGrOwC1Jwgg@mail.gmail.com>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Mon, 09 Jan 2017 09:51:47 +0000
+Subject: RE: Problem on SCTP
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6DB025A97E@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CAFXGft+weUFodkkiY=kgHMX+t4fECQhB+PKg2dBKxCBeU7w7MA@mail.gmail.com>
- <20170106123711.GA15139@hmsreliant.think-freely.org> <CAFXGftLc1Oi9yN-J2UdQxN4MALDhEHieZdGp5JCkOp6Ar+r4Qg@mail.gmail.com>
+ <20170106123711.GA15139@hmsreliant.think-freely.org>
+ <CAFXGftLc1Oi9yN-J2UdQxN4MALDhEHieZdGp5JCkOp6Ar+r4Qg@mail.gmail.com>
 In-Reply-To: <CAFXGftLc1Oi9yN-J2UdQxN4MALDhEHieZdGp5JCkOp6Ar+r4Qg@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
+To: 'Sun Paul' <paulrbk@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 
-OK. I actually verified the connectivity using SSH to port 22. it
-works. so I do not have any idea why it has problem on SCTP.
-
-need more help on this.  is there anyway to enable debug? the version
-that I am using is lksctp-tools-1.0.10-7
-
-
-
-On Mon, Jan 9, 2017 at 10:08 AM, Sun Paul <paulrbk@gmail.com> wrote:
-> Hi
->
-> the INIT chunk arrive on the SERVER, but then no response. the
-> application that using in SERVER is the same as the other test.
->
-> I noticed one thing in Ethernet frame of the incoming packet on the
-> SERVER compared to the one captured from the client is the LG bit on
-> the source address.
->
-> The LG bit is set to 0 on the request packet received in the
-> SERVER,but it is 0 from the one originated on the client. willl it be
-> the root cause?
->
->
->
-> On Fri, Jan 6, 2017 at 8:37 PM, Neil Horman <nhorman@tuxdriver.com> wrote:
->> On Fri, Jan 06, 2017 at 05:34:47PM +0800, Sun Paul wrote:
->>> Hi
->>>
->>> I am setting up a lab where the SCTP traffics from  client is passing
->>> through a linux router before reaching to the SCTP server running
->>> LKSCTP.
->>>
->>> The linux router did not change the source address of the client, so
->>> when it arrived to the SCTP server, the source address is the oriingal
->>> one.
->>>
->>> however, I found that there is no response from the SCTP server, any
->>> idea on this?
->>>
->>> if I connect the client directly to the SCTP server, it do not have any issue.
->>>
->>> help pls
->>>
->>> rbk
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->>
->> Start with a tcpdump on the client and the server and attempt a connection,
->> check to see if the INIT and INIT-ACK chunks are arriving appropriately.
->>
->> Neil
->>
+RnJvbTogU3VuIFBhdWwNCj4gU2VudDogMDkgSmFudWFyeSAyMDE3IDAyOjA4DQoNCj4gPj4gSSBh
+bSBzZXR0aW5nIHVwIGEgbGFiIHdoZXJlIHRoZSBTQ1RQIHRyYWZmaWNzIGZyb20gIGNsaWVudCBp
+cyBwYXNzaW5nDQo+ID4+IHRocm91Z2ggYSBsaW51eCByb3V0ZXIgYmVmb3JlIHJlYWNoaW5nIHRv
+IHRoZSBTQ1RQIHNlcnZlciBydW5uaW5nDQo+ID4+IExLU0NUUC4NCj4gPj4NCj4gPj4gVGhlIGxp
+bnV4IHJvdXRlciBkaWQgbm90IGNoYW5nZSB0aGUgc291cmNlIGFkZHJlc3Mgb2YgdGhlIGNsaWVu
+dCwgc28NCj4gPj4gd2hlbiBpdCBhcnJpdmVkIHRvIHRoZSBTQ1RQIHNlcnZlciwgdGhlIHNvdXJj
+ZSBhZGRyZXNzIGlzIHRoZSBvcmlpbmdhbA0KPiA+PiBvbmUuDQo+DQo+IHRoZSBJTklUIGNodW5r
+IGFycml2ZSBvbiB0aGUgU0VSVkVSLCBidXQgdGhlbiBubyByZXNwb25zZS4gdGhlDQo+IGFwcGxp
+Y2F0aW9uIHRoYXQgdXNpbmcgaW4gU0VSVkVSIGlzIHRoZSBzYW1lIGFzIHRoZSBvdGhlciB0ZXN0
+Lg0KPiANCj4gSSBub3RpY2VkIG9uZSB0aGluZyBpbiBFdGhlcm5ldCBmcmFtZSBvZiB0aGUgaW5j
+b21pbmcgcGFja2V0IG9uIHRoZQ0KPiBTRVJWRVIgY29tcGFyZWQgdG8gdGhlIG9uZSBjYXB0dXJl
+ZCBmcm9tIHRoZSBjbGllbnQgaXMgdGhlIExHIGJpdCBvbg0KPiB0aGUgc291cmNlIGFkZHJlc3Mu
+DQo+IA0KPiBUaGUgTEcgYml0IGlzIHNldCB0byAwIG9uIHRoZSByZXF1ZXN0IHBhY2tldCByZWNl
+aXZlZCBpbiB0aGUNCj4gU0VSVkVSLGJ1dCBpdCBpcyAwIGZyb20gdGhlIG9uZSBvcmlnaW5hdGVk
+IG9uIHRoZSBjbGllbnQuIHdpbGxsIGl0IGJlDQo+IHRoZSByb290IGNhdXNlPw0KDQpXaGljaCBh
+ZGRyZXNzZXMgYXJlIHlvdSB0YWxraW5nIGFib3V0LCBhbmQgd2hhdCBkbyB5b3UgbWVhbiBieSB0
+aGUgTEcgYml0Pw0KDQpJcyB5b3VyIGxpbnV4ICdyb3V0ZXInIGp1c3Qgcm91dGluZyAoaWUgSVAg
+Zm9yd2FyZGluZykgb3IgaXMgaXQgZG9pbmcgTkFUPw0KSWYgaXQgaXMgY2hhbmdpbmcgdGhlIElQ
+IGFkZHJlc3NlcyB0aGVuIHRoZSBhZGRyZXNzZXMgaW5zaWRlIHNvbWUgU0NUUA0KY2h1bmtzIGFs
+c28gbmVlZCBjaGFuZ2luZy4NCg0KCURhdmlkDQoNCg=
