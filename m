@@ -1,53 +1,30 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 09 Jan 2017 12:43:25 +0000
+From: David Miller <davem@davemloft.net>
+Date: Mon, 09 Jan 2017 15:53:01 +0000
 Subject: Re: [PATCHv2 net-next 0/5] sctp: add support for generating stream reconf chunks
-Message-Id: <20170109124325.GB20973@hmswarspite.think-freely.org>
+Message-Id: <20170109.105301.469495957021068521.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1483781759.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1483781759.git.lucien.xin@gmail.com>
+        <20170109124325.GB20973@hmswarspite.think-freely.org>
+In-Reply-To: <20170109124325.GB20973@hmswarspite.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
+To: nhorman@tuxdriver.com
+Cc: lucien.xin@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com
 
-On Sat, Jan 07, 2017 at 05:42:57PM +0800, Xin Long wrote:
-> This patchset is to add some functions to generate stream reconf chunks,
-> described in RFC6525 Section 3 and Section 4.
-> 
-> v1->v2:
->   - put these into a smaller group.
->   - rename some temporary variables in the codes.
->   - rename the titles of the commits and improve some changelogs.
-> 
-> Xin Long (5):
->   sctp: add a common helper function to generate stream reconf chunk
->   sctp: add support for generating stream reconf ssn reset request chunk
->   sctp: add support for generating stream reconf ssn/tsn reset request
->     chunk
->   sctp: add support for generating stream reconf response chunk
->   sctp: add support for generating stream reconf add streams request
->     chunk
-> 
->  include/linux/sctp.h       |  68 ++++++++++++
->  include/net/sctp/sm.h      |  17 ++-
->  include/net/sctp/structs.h |   3 +
->  net/sctp/associola.c       |   1 +
->  net/sctp/sm_make_chunk.c   | 270 +++++++++++++++++++++++++++++++++++++++++++++
->  5 files changed, 358 insertions(+), 1 deletion(-)
-> 
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 9 Jan 2017 07:43:25 -0500
 
-These all look reasonably good, but it seems before we accept them,
-there should be an additional patch that actually makes use of the code.
-I presume that is forthcomming?
+> These all look reasonably good, but it seems before we accept them,
+> there should be an additional patch that actually makes use of the code.
+> I presume that is forthcomming?
 
-Neil
+This all comes from my asking that the original huge set of patches be
+split up.
 
+People always just rush this kind of work and never think about laying
+out the resubmission properly.
+
+One should always only submit new interfaces along with an actual use
+because only with a use can we properly review whether the new
+interface is good or not.
