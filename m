@@ -1,89 +1,48 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 24 Jan 2017 13:11:18 +0000
-Subject: Re: [PATCHv5 net-next 0/5] sctp: add sender-side procedures for stream reconf asoc reset and add str
-Message-Id: <20170124131118.GI3781@localhost.localdomain>
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Mon, 09 Jan 2017 13:30:07 +0000
+Subject: question about "acpi, nfit: validate ars_status output buffer size"
+Message-Id: <20170109133007.GA952@elgon.mountain>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1484993773.git.lucien.xin@gmail.com>
- <20170123184217.GB3781@localhost.localdomain>
-In-Reply-To: <20170123184217.GB3781@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
+To: linux-sctp@vger.kernel.org
 
-On Mon, Jan 23, 2017 at 04:42:17PM -0200, Marcelo Ricardo Leitner wrote:
-> On Sat, Jan 21, 2017 at 06:24:21PM +0800, Xin Long wrote:
-> > Patch 3/5 is to implement sender-side procedures for the SSN/TSN Reset
-> > Request Parameter described in rfc6525 section 5.1.4, patch 2/5 is
-> > ahead of it to define a function to make the request chunk for it.
-> > 
-> > Patch 5/5 is to implement sender-side procedures for the Add Incoming
-> > and Outgoing Streams Request Parameter Request Parameter described in
-> > rfc6525 section 5.1.5 and 5.1.6, patch 4/5 is ahead of it to define a
-> > function to make the request chunk for it.
-> > 
-> > Patch 1/5 is a fix to recover streams states when it fails to send
-> > request.
-> > 
-> > v1->v2:
-> >   - put these into a smaller group.
-> >   - rename some temporary variables in the codes.
-> >   - rename the titles of the commits and improve some changelogs.
-> > v2->v3:
-> >   - re-split the patchset and make sure it has no dead codes for review.
-> >   - move some codes into stream.c from socket.c.
-> > v3->v4:
-> >   - add one more patch to fix a send reset stream request issue.
-> >   - doing actual work only when request is sent successfully.
-> >   - reduce some indents in sctp_send_add_streams.
-> > v4->v5:
-> >   - close streams before sending request and recover them when sending
-> >     fails in patch 1/5 and patch 3/5
-> 
-> To make it clear, the notes on v3 patchset also apply to this one, which
-> are:
-> - usage of krealloc()
-> - the removal of __packed attribute
+Hi Dan,
 
-- the int change too.
+It's really hard to understand commit 82aa37cf0986 ("acpi, nfit:
+validate ars_status output buffer size") from Dec 6, 2016.
 
-> 
-> So there should be a v6 of it soon.
-> 
-> Thanks
-> 
-> > 
-> > Xin Long (5):
-> >   sctp: streams should be recovered when it fails to send request.
-> >   sctp: add support for generating stream reconf ssn/tsn reset request
-> >     chunk
-> >   sctp: implement sender-side procedures for SSN/TSN Reset Request
-> >     Parameter
-> >   sctp: add support for generating stream reconf add incoming/outgoing
-> >     streams request chunk
-> >   sctp: implement sender-side procedures for Add Incoming/Outgoing
-> >     Streams Request Parameter
-> > 
-> >  include/linux/sctp.h      |  12 ++++
-> >  include/net/sctp/sctp.h   |   3 +
-> >  include/net/sctp/sm.h     |   5 ++
-> >  include/uapi/linux/sctp.h |   8 +++
-> >  net/sctp/sm_make_chunk.c  |  75 +++++++++++++++++++++++++
-> >  net/sctp/socket.c         |  58 +++++++++++++++++++
-> >  net/sctp/stream.c         | 138 +++++++++++++++++++++++++++++++++++++++++++++-
-> >  7 files changed, 298 insertions(+), 1 deletion(-)
-> > 
-> > -- 
-> > 2.1.0
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+drivers/acpi/nfit/core.c
+   139                  /* No ARS performed for the current boot */
+   140                  if (status = NFIT_ARS_STATUS_NONE)
+   141                          return -EAGAIN;
+   142  
+   143                  /*
+   144                   * ARS interrupted, either we overflowed or some other
+   145                   * agent wants the scan to stop.  If we didn't overflow
+   146                   * then just continue with the returned results.
+   147                   */
+   148                  if (status = NFIT_ARS_STATUS_INTR) {
+   149                          if (ars_status->out_length >= 40 && (ars_status->flags
+   150                                                  & NFIT_ARS_F_OVERFLOW))
+
+When I read the commit message, it implies that we're being more strict
+about what we process but actually this is && instead of || so we're
+being less strict.
+
+The commit message doesn't really describe the user visible effects of
+this bug.  I'm not an expert on ACPI and I have grepped the source but
+can't figure it out.
+
+Also this isn't aligned the normal way.  It should be:
+
+				if (ars_status->out_length >= 40 &&
+				    (ars_status->flags & NFIT_ARS_F_OVERFLOW))
+
+   151                                  return -ENOSPC;
+   152                          return 0;
+   153                  }
+
+regards,
+dan carpenter
