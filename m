@@ -1,27 +1,33 @@
 From: Sun Paul <paulrbk@gmail.com>
-Date: Mon, 09 Jan 2017 02:06:14 +0000
+Date: Mon, 09 Jan 2017 02:08:03 +0000
 Subject: Re: Problem on SCTP
-Message-Id: <CAFXGftK6n52Lu69uDu4TwPrrkP=ZTppTiGxYRxfWVx-SVhQR8A@mail.gmail.com>
+Message-Id: <CAFXGftLc1Oi9yN-J2UdQxN4MALDhEHieZdGp5JCkOp6Ar+r4Qg@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CAFXGft+weUFodkkiY=kgHMX+t4fECQhB+PKg2dBKxCBeU7w7MA@mail.gmail.com>
- <20170106114354.GB3771@localhost.localdomain>
-In-Reply-To: <20170106114354.GB3771@localhost.localdomain>
+ <20170106123711.GA15139@hmsreliant.think-freely.org>
+In-Reply-To: <20170106123711.GA15139@hmsreliant.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: Neil Horman <nhorman@tuxdriver.com>
 Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
 
 Hi
 
-I actually have set the rp_filter to 2 already but still the same.
+the INIT chunk arrive on the SERVER, but then no response. the
+application that using in SERVER is the same as the other test.
+
+I noticed one thing in Ethernet frame of the incoming packet on the
+SERVER compared to the one captured from the client is the LG bit on
+the source address.
+
+The LG bit is set to 0 on the request packet received in the
+SERVER,but it is 0 from the one originated on the client. willl it be
+the root cause?
 
 
 
-On Fri, Jan 6, 2017 at 7:43 PM, Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
-> Hi,
->
+On Fri, Jan 6, 2017 at 8:37 PM, Neil Horman <nhorman@tuxdriver.com> wrote:
 > On Fri, Jan 06, 2017 at 05:34:47PM +0800, Sun Paul wrote:
 >> Hi
 >>
@@ -37,13 +43,6 @@ On Fri, Jan 6, 2017 at 7:43 PM, Marcelo Ricardo Leitner
 >> idea on this?
 >>
 >> if I connect the client directly to the SCTP server, it do not have any issue.
->
-> This seems to be a routing issue then, specially if you're using
-> rp_filter. Make sure the server can reach that foreign address the
-> client uses.
->
->   Marcelo
->
 >>
 >> help pls
 >>
@@ -53,3 +52,9 @@ On Fri, Jan 6, 2017 at 7:43 PM, Marcelo Ricardo Leitner
 >> the body of a message to majordomo@vger.kernel.org
 >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 >>
+>
+> Start with a tcpdump on the client and the server and attempt a connection,
+> check to see if the INIT and INIT-ACK chunks are arriving appropriately.
+>
+> Neil
+>
