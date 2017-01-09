@@ -1,34 +1,22 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 09 Jan 2017 18:27:09 +0000
+From: David Miller <davem@davemloft.net>
+Date: Mon, 09 Jan 2017 18:53:39 +0000
 Subject: Re: [PATCHv2 net-next 0/5] sctp: add support for generating stream reconf chunks
-Message-Id: <CADvbK_dE74bAoTNo9gLczLuj71w3WMcPJ56tCFGJ=XjTMtTgRw@mail.gmail.com>
+Message-Id: <20170109.135339.178893015974621816.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1483781759.git.lucien.xin@gmail.com> <20170109124325.GB20973@hmswarspite.think-freely.org>
- <20170109.105301.469495957021068521.davem@davemloft.net>
-In-Reply-To: <20170109.105301.469495957021068521.davem@davemloft.net>
+References: <20170109124325.GB20973@hmswarspite.think-freely.org>
+        <20170109.105301.469495957021068521.davem@davemloft.net>
+        <CADvbK_dE74bAoTNo9gLczLuj71w3WMcPJ56tCFGJ=XjTMtTgRw@mail.gmail.com>
+In-Reply-To: <CADvbK_dE74bAoTNo9gLczLuj71w3WMcPJ56tCFGJ=XjTMtTgRw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: Neil Horman <nhorman@tuxdriver.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>
+To: lucien.xin@gmail.com
+Cc: nhorman@tuxdriver.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, vyasevich@gmail.com
 
-On Mon, Jan 9, 2017 at 11:53 PM, David Miller <davem@davemloft.net> wrote:
-> From: Neil Horman <nhorman@tuxdriver.com>
-> Date: Mon, 9 Jan 2017 07:43:25 -0500
->
->> These all look reasonably good, but it seems before we accept them,
->> there should be an additional patch that actually makes use of the code.
->> I presume that is forthcomming?
->
-> This all comes from my asking that the original huge set of patches be
-> split up.
->
-> People always just rush this kind of work and never think about laying
-> out the resubmission properly.
->
-> One should always only submit new interfaces along with an actual use
-> because only with a use can we properly review whether the new
-> interface is good or not.
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 10 Jan 2017 02:27:09 +0800
 
-I was trying to keep the same order with rfc, but it seems not a good
-idea, will resplit, thanks.
+> I was trying to keep the same order with rfc, but it seems not a good
+> idea, will resplit, thanks.
+
+Thank you.
