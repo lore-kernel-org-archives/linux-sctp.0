@@ -1,39 +1,36 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 18 Jan 2017 19:55:28 +0000
-Subject: Re: [PATCHv4 net-next 0/6] sctp: add sender-side procedures for stream reconf ssn reset request chun
-Message-Id: <20170118.145528.656758298004770748.davem@davemloft.net>
+From: tsoi andrew <tsoiandrew@gmail.com>
+Date: Wed, 11 Jan 2017 10:24:13 +0000
+Subject: Re: multihoming client question
+Message-Id: <CAJ0j_BZO5nq=z0vB2UEvzs85PjRqDnu=Ne=rbT6=-OQzCUHg=w@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1484670664.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1484670664.git.lucien.xin@gmail.com>
+References: <CAJ0j_BYFOO+szALYGoFryCcpOrRoYjrgPOx_VVcUvOtSUX31Uw@mail.gmail.com>
+In-Reply-To: <CAJ0j_BYFOO+szALYGoFryCcpOrRoYjrgPOx_VVcUvOtSUX31Uw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, vyasevich@gmail.com
+To: linux-sctp@vger.kernel.org
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 18 Jan 2017 00:44:41 +0800
+Dear Sir,
 
-> Patch 6/6 is to implement sender-side procedures for the Outgoing
-> and Incoming SSN Reset Request Parameter described in rfc6525
-> section 5.1.2 and 5.1.3
-> 
-> Patches 1-5/6 are ahead of it to define some apis and asoc members
-> for it.
-> 
-> Note that with this patchset, asoc->reconf_enable has no chance yet to
-> be set, until the patch "sctp: add get and set sockopt for reconf_enable"
-> is applied in the future. As we can not just enable it when sctp is not
-> capable of processing reconf chunk yet.
-> 
-> v1->v2:
->   - put these into a smaller group.
->   - rename some temporary variables in the codes.
->   - rename the titles of the commits and improve some changelogs.
-> v2->v3:
->   - re-split the patchset and make sure it has no dead codes for review.
-> v3->v4:
->   - move sctp_make_reconf() into patch 1/6 to avoid kbuild warning.
->   - drop unused struct sctp_strreset_req.
+We have used iproute2 to set the route but lksctp client still choose
+the path from IP A to IP Y.
+It is still under our investigation.  Any hints for me?
 
-Series applied, thank you.
+Regards,
+Andrew
+
+On Wed, Dec 21, 2016 at 10:04 PM, Marcelo Ricardo Leitner
+<marcelo.leitner@gmail.com> wrote:
+> On Wed, Dec 21, 2016 at 05:10:22PM +0800, tsoi andrew wrote:
+>> Dear Sir,
+>>
+>> Would you provide the link for download the new library? I only find
+>> version 1.0.17 in http://lksctp.sourceforge.net/.
+>
+> 1.0.17 is the latest release we have.
+> You can a devel copy (may not be stable) via git,
+> https://github.com/sctp/lksctp-tools
+> but that's not going to help with this problem. The change Xin mentioned
+> is on kernel level only.
+>
+>   Marcelo
