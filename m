@@ -1,7 +1,7 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Thu, 12 Jan 2017 09:51:00 +0000
-Subject: RE: Problem on SCTP
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6DB025F9FD@AcuExch.aculab.com>
+From: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
+Date: Thu, 12 Jan 2017 10:53:17 +0000
+Subject: Re: Problem on SCTP
+Message-Id: <4163FC71-3A20-4484-8CDC-FA22D4FA72CF@lurchi.franken.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20170106123711.GA15139@hmsreliant.think-freely.org>
  <CAFXGftLc1Oi9yN-J2UdQxN4MALDhEHieZdGp5JCkOp6Ar+r4Qg@mail.gmail.com>
@@ -15,19 +15,42 @@ References: <20170106123711.GA15139@hmsreliant.think-freely.org>
  <CAFXGft+XA_r+R2hxJU2qYvFJbS+avQ7TTOQ50xkTXm8q8KpDtg@mail.gmail.com>
  <20170111125708.GA1518@hmswarspite.think-freely.org>
  <CAFXGftLSFgPpxD6Oak8h1Y5y11-zXWLj0v4ziMFkjX8eZ4ZJgA@mail.gmail.com>
-In-Reply-To: <CAFXGftLSFgPpxD6Oak8h1Y5y11-zXWLj0v4ziMFkjX8eZ4ZJgA@mail.gmail.com>
+ <063D6719AE5E284EB5DD2968C1650D6DB025F9FD@AcuExch.aculab.com>
+In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6DB025F9FD@AcuExch.aculab.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: 'Sun Paul' <paulrbk@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
-Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: David Laight <David.Laight@ACULAB.COM>
+Cc: Sun Paul <paulrbk@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 
-RnJvbTogU3VuIFBhdWwgW21haWx0bzpwYXVscmJrQGdtYWlsLmNvbV0NCj4gU2VudDogMTIgSmFu
-dWFyeSAyMDE3IDA5OjMxDQo+IExldCBtZSBjbGVhciB0aGUgdW5kZXJzdGFuZGluZy4gYmVsb3cg
-aXMgdGhlIGZsb3cuDQo+IA0KPiAxLiBDbGllbnQgc2VuZHMgdG8gTGludXggUm91dGVyOiAxOTIu
-MTY4LjIwNi44MyAtPiAxOTIuMTY4LjIwNi41NiwNCj4gMi4gTGludXggcm91dGVyIHNlbmRzIHRv
-IFNFUlZFUiB3aGVyZSB0aGUgc291cmNlIElQIGlzIHVuY2hhbmdlZDoNCj4gMTkyLjE2OC4yMDYu
-ODMgLT4gMTkyLjE2OC4yMDYuNjYNCj4gDQo+IE15IHF1ZXN0aW9uIGhlcmUgaXMgd2h5IFNFUlZF
-UiBjYW5ub3QgcmVzcG9uc2UgdGhpcyBJTklUIGNodW5rPw0KDQpQcm9iYWJseSBiZWNhdXNlIHRo
-ZSBJUCBhZGRyZXNzZXMgZW1iZWRkZWQgaW4gdGhlIFNDVFAgcGFja2V0DQpkb24ndCBtYXRjaCB0
-aGUgb25lcyBpbiB0aGUgSVAgaGVhZGVyLg0KDQoJRGF2aWQNCg0K
+> On 12 Jan 2017, at 10:51, David Laight <David.Laight@ACULAB.COM> wrote:
+> 
+> From: Sun Paul [mailto:paulrbk@gmail.com]
+>> Sent: 12 January 2017 09:31
+>> Let me clear the understanding. below is the flow.
+>> 
+>> 1. Client sends to Linux Router: 192.168.206.83 -> 192.168.206.56,
+>> 2. Linux router sends to SERVER where the source IP is unchanged:
+>> 192.168.206.83 -> 192.168.206.66
+>> 
+>> My question here is why SERVER cannot response this INIT chunk?
+> 
+> Probably because the IP addresses embedded in the SCTP packet
+> don't match the ones in the IP header.
+I don't know if it matters on the linux implementation, but it shouldn't.
+An SCTP endpoint should consider the source address of the packet containing
+the INIT chunk and all the addresses listed in the INIT chunk as valid peer
+addresses.
+
+Could we get a .pcap file of the packet containing the INIT chunk captured
+at the server? I would expect an INIT-ACK or and ABORT. If that is not sent,
+the checksum was wrong or some kind of packet filtering is active on the
+server...
+
+Best regards
+Michael
+> 
+> 	David
+> 
+> N§ēæėrļyúčØbēXŽķĮ§vØ^)Þš{.nĮ+·Ĩ{ąąËi{ayšĘÚë,j­ĒfĢĒ·hāzđŪwĨĒļĒ·Ķj:+vĻwčjØmķĸūŦęįzZ+ųÝĒj"ú!
+
