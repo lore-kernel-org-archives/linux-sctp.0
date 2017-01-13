@@ -1,118 +1,208 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 01 Jan 2017 11:20:44 +0000
-Subject: [PATCH net-next 27/27] sctp: add reconf chunk event
-Message-Id: <b765925613f97c4734d1ecff726bf6eaf0d93280.1483269426.git.lucien.xin@gmail.com>
+Date: Fri, 13 Jan 2017 19:15:40 +0000
+Subject: [PATCHv3 net-next 6/7] sctp: add sockopt SCTP_ENABLE_STREAM_RESET
+Message-Id: <d2cae903bc3512af1ff9a993b156e3d08973af87.1484334002.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1483269426.git.lucien.xin@gmail.com>
- <684ad8ddd79f23844883dede4c34360ce744dfc3.1483269426.git.lucien.xin@gmail.com>
- <c752879a5af358c08da949b391416452f1322c43.1483269426.git.lucien.xin@gmail.com>
- <be8a2770ddc2381266050c9f168add9802b90a49.1483269426.git.lucien.xin@gmail.com>
- <fc046afdda34c9b262ce57400c4256b14fd1a0fb.1483269426.git.lucien.xin@gmail.com>
- <d4f1b2a4fa19457e9867b0a1f84764a7a509459a.1483269426.git.lucien.xin@gmail.com>
- <31abc54d31ef0714322f137bff43458014d7c276.1483269426.git.lucien.xin@gmail.com>
- <58860816816d6d51b062235fd54dae6540a4797a.1483269426.git.lucien.xin@gmail.com>
- <229608faf7af54c0bf908694ca8349205bbf6eab.1483269426.git.lucien.xin@gmail.com>
- <c4f16844620cd3a2aa76596df9eaadf1505fc8e6.1483269426.git.lucien.xin@gmail.com>
- <1d0b270084289945c4b42ae36d0556648a3f9b64.1483269426.git.lucien.xin@gmail.com>
- <1e4560205cff3c10868d5614b62a3db14e87ccf0.1483269426.git.lucien.xin@gmail.com>
- <91b9171cc57c0f322d103dfbbcce1b9706800805.1483269426.git.lucien.xin@gmail.com>
- <d5fb0969ea5d055dea5bdc257569530b6d2fc7c2.1483269426.git.lucien.xin@gmail.com>
- <6a74f5a3ac408f20816a8c79edd6b9922ed3b573.1483269426.git.lucien.xin@gmail.com>
- <ef7d01cf1d5826e694a08303ee0b36c00201c666.1483269426.git.lucien.xin@gmail.com>
- <86b68f131d286ee20781cb04ce9d09d477aa5232.1483269426.git.lucien.xin@gmail.com>
- <1e8e248c38fd3874cf80c4b88e4699c8a617066d.1483269426.git.lucien.xin@gmail.com>
- <3a60ce82edef82f329fe2cc4ac83e9ca21831d8b.1483269426.git.lucien.xin@gmail.com>
- <9be4c65c6bac7df0dbf51328af92727e5606dc5c.1483269426.git.lucien.xin@gmail.com>
- <b5eb3a199dded2efe517b19b5cac6ae498a6c0c8.1483269426.git.lucien.xin@gmail.com>
- <c59df697bb54348de10f8418a23e9d14bce30135.1483269426.git.lucien.xin@gmail.com>
- <470b9f2b5248e0c1870c501f262a1887be66509b.1483269426.git.lucien.xin@gmail.com>
- <105630d2f9a54de9c3ce49988452d2b111c71b3d.1483269426.git.lucien.xin@gmail.com>
- <19ee2333d24194c0a4b3e724a1a738873ca27445.1483269426.git.lucien.xin@gmail.com>
- <880e62cecc950ad9b5dad09ae581e5e6f92ecf46.1483269426.git.lucien.xin@gmail.com>
- <24997940f9c6ca9d4cbb8ce72741fdddcfe4ebc1.1483269426.git.lucien.xin@gmail.com>
-In-Reply-To: <24997940f9c6ca9d4cbb8ce72741fdddcfe4ebc1.1483269426.git.lucien.xin@gmail.com>
+References: <cover.1484334002.git.lucien.xin@gmail.com>
+ <5f8a7d818b5db99f2ff2a791a451b311c09fad7f.1484334002.git.lucien.xin@gmail.com>
+ <6c991b81f4a92cec3da773bae9b19e878e810c88.1484334002.git.lucien.xin@gmail.com>
+ <c0d647fad638de6623db1d1277f63dd4a52d28c4.1484334002.git.lucien.xin@gmail.com>
+ <05371aa8e63a160f467f3463749431dadcd30a8b.1484334002.git.lucien.xin@gmail.com>
+ <1277c93e5816c40893ceb6441b7c8151de48bf31.1484334002.git.lucien.xin@gmail.com>
+In-Reply-To: <1277c93e5816c40893ceb6441b7c8151de48bf31.1484334002.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-This patch is to add reconf chunk event based on the sctp event
-frame, after which, the reconf chunk process would be activated.
+This patch is to add sockopt SCTP_ENABLE_STREAM_RESET to get/set
+strreset_enable to indicate which reconf request type it supports,
+which is described in rfc6525 section 6.3.1.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/constants.h |  3 +++
- net/sctp/sm_statetable.c     | 30 ++++++++++++++++++++++++++++++
- 2 files changed, 33 insertions(+)
+ include/net/sctp/structs.h |  4 +++
+ include/uapi/linux/sctp.h  |  7 ++++
+ net/sctp/associola.c       |  1 +
+ net/sctp/socket.c          | 84 ++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 96 insertions(+)
 
-diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
-index 3567c97..b07a745 100644
---- a/include/net/sctp/constants.h
-+++ b/include/net/sctp/constants.h
-@@ -60,11 +60,14 @@ enum { SCTP_DEFAULT_INSTREAMS = SCTP_MAX_STREAM };
- 
- #define SCTP_NUM_PRSCTP_CHUNK_TYPES	1
- 
-+#define SCTP_NUM_RECONF_CHUNK_TYPES	1
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index ee037ef..d99b76e 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1257,6 +1257,8 @@ struct sctp_endpoint {
+ 	__u8  auth_enable:1,
+ 	      prsctp_enable:1,
+ 	      reconf_enable:1;
 +
- #define SCTP_NUM_AUTH_CHUNK_TYPES	1
++	__u8  strreset_enable;
+ };
  
- #define SCTP_NUM_CHUNK_TYPES		(SCTP_NUM_BASE_CHUNK_TYPES + \
- 					 SCTP_NUM_ADDIP_CHUNK_TYPES +\
- 					 SCTP_NUM_PRSCTP_CHUNK_TYPES +\
-+					 SCTP_NUM_RECONF_CHUNK_TYPES +\
- 					 SCTP_NUM_AUTH_CHUNK_TYPES)
+ /* Recover the outter endpoint structure. */
+@@ -1872,6 +1874,8 @@ struct sctp_association {
+ 	     prsctp_enable:1,
+ 	     reconf_enable:1;
  
- /* These are the different flavours of event.  */
-diff --git a/net/sctp/sm_statetable.c b/net/sctp/sm_statetable.c
-index b5438b4..419b18e 100644
---- a/net/sctp/sm_statetable.c
-+++ b/net/sctp/sm_statetable.c
-@@ -482,6 +482,32 @@ static const sctp_sm_table_entry_t prsctp_chunk_event_table[SCTP_NUM_PRSCTP_CHUN
- 	TYPE_SCTP_FWD_TSN,
- }; /*state_fn_t prsctp_chunk_event_table[][] */
- 
-+#define TYPE_SCTP_RECONF { \
-+	/* SCTP_STATE_CLOSED */ \
-+	TYPE_SCTP_FUNC(sctp_sf_discard_chunk), \
-+	/* SCTP_STATE_COOKIE_WAIT */ \
-+	TYPE_SCTP_FUNC(sctp_sf_discard_chunk), \
-+	/* SCTP_STATE_COOKIE_ECHOED */ \
-+	TYPE_SCTP_FUNC(sctp_sf_discard_chunk), \
-+	/* SCTP_STATE_ESTABLISHED */ \
-+	TYPE_SCTP_FUNC(sctp_sf_do_reconf), \
-+	/* SCTP_STATE_SHUTDOWN_PENDING */ \
-+	TYPE_SCTP_FUNC(sctp_sf_do_reconf), \
-+	/* SCTP_STATE_SHUTDOWN_SENT */ \
-+	TYPE_SCTP_FUNC(sctp_sf_discard_chunk), \
-+	/* SCTP_STATE_SHUTDOWN_RECEIVED */ \
-+	TYPE_SCTP_FUNC(sctp_sf_discard_chunk), \
-+	/* SCTP_STATE_SHUTDOWN_ACK_SENT */ \
-+	TYPE_SCTP_FUNC(sctp_sf_discard_chunk), \
-+} /* TYPE_SCTP_RECONF */
++	__u8 strreset_enable;
 +
-+/* The primary index for this table is the chunk type.
-+ * The secondary index for this table is the state.
-+ */
-+static const sctp_sm_table_entry_t reconf_chunk_event_table[SCTP_NUM_RECONF_CHUNK_TYPES][SCTP_STATE_NUM_STATES] = {
-+	TYPE_SCTP_RECONF,
-+}; /*state_fn_t reconf_chunk_event_table[][] */
-+
- #define TYPE_SCTP_AUTH { \
- 	/* SCTP_STATE_CLOSED */ \
- 	TYPE_SCTP_FUNC(sctp_sf_ootb), \
-@@ -964,6 +990,10 @@ static const sctp_sm_table_entry_t *sctp_chunk_event_lookup(struct net *net,
- 			return &addip_chunk_event_table[1][state];
- 	}
+ 	__u32 strreset_outseq; /* Update after receiving response */
+ 	__u32 strreset_inseq; /* Update after receiving request */
  
-+	if (net->sctp.reconf_enable)
-+		if (cid = SCTP_CID_RECONF)
-+			return &reconf_chunk_event_table[0][state];
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index a406adc..867be0f 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -115,6 +115,7 @@ typedef __s32 sctp_assoc_t;
+ #define SCTP_PR_SUPPORTED	113
+ #define SCTP_DEFAULT_PRINFO	114
+ #define SCTP_PR_ASSOC_STATUS	115
++#define SCTP_ENABLE_STREAM_RESET	118
+ 
+ /* PR-SCTP policies */
+ #define SCTP_PR_SCTP_NONE	0x0000
+@@ -138,6 +139,12 @@ typedef __s32 sctp_assoc_t;
+ #define SCTP_PR_RTX_ENABLED(x)	(SCTP_PR_POLICY(x) = SCTP_PR_SCTP_RTX)
+ #define SCTP_PR_PRIO_ENABLED(x)	(SCTP_PR_POLICY(x) = SCTP_PR_SCTP_PRIO)
+ 
++/* For enable stream reset */
++#define SCTP_ENABLE_RESET_STREAM_REQ	0x01
++#define SCTP_ENABLE_RESET_ASSOC_REQ	0x02
++#define SCTP_ENABLE_CHANGE_ASSOC_REQ	0x04
++#define SCTP_ENABLE_STRRESET_MASK	0x07
 +
- 	if (net->sctp.auth_enable) {
- 		if (cid = SCTP_CID_AUTH)
- 			return &auth_chunk_event_table[0][state];
+ /* These are bit fields for msghdr->msg_flags.  See section 5.1.  */
+ /* On user space Linux, these live in <bits/socket.h> as an enum.  */
+ enum sctp_msg_flags {
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 68b99ad..e50dc6d 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -271,6 +271,7 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
+ 	asoc->active_key_id = ep->active_key_id;
+ 	asoc->prsctp_enable = ep->prsctp_enable;
+ 	asoc->reconf_enable = ep->reconf_enable;
++	asoc->strreset_enable = ep->strreset_enable;
+ 
+ 	/* Save the hmacs and chunks list into this association */
+ 	if (ep->auth_hmacs_list)
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 318c678..ae07db4 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3751,6 +3751,42 @@ static int sctp_setsockopt_default_prinfo(struct sock *sk,
+ 	return retval;
+ }
+ 
++static int sctp_setsockopt_enable_strreset(struct sock *sk,
++					   char __user *optval,
++					   unsigned int optlen)
++{
++	struct sctp_assoc_value params;
++	struct sctp_association *asoc;
++	int retval = -EINVAL;
++
++	if (optlen != sizeof(params))
++		goto out;
++
++	if (copy_from_user(&params, optval, optlen)) {
++		retval = -EFAULT;
++		goto out;
++	}
++
++	if (params.assoc_value & (~SCTP_ENABLE_STRRESET_MASK))
++		goto out;
++
++	asoc = sctp_id2assoc(sk, params.assoc_id);
++	if (asoc) {
++		asoc->strreset_enable = params.assoc_value;
++	} else if (!params.assoc_id) {
++		struct sctp_sock *sp = sctp_sk(sk);
++
++		sp->ep->strreset_enable = params.assoc_value;
++	} else {
++		goto out;
++	}
++
++	retval = 0;
++
++out:
++	return retval;
++}
++
+ /* API 6.2 setsockopt(), getsockopt()
+  *
+  * Applications use setsockopt() and getsockopt() to set or retrieve
+@@ -3917,6 +3953,9 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 	case SCTP_DEFAULT_PRINFO:
+ 		retval = sctp_setsockopt_default_prinfo(sk, optval, optlen);
+ 		break;
++	case SCTP_ENABLE_STREAM_RESET:
++		retval = sctp_setsockopt_enable_strreset(sk, optval, optlen);
++		break;
+ 	default:
+ 		retval = -ENOPROTOOPT;
+ 		break;
+@@ -6401,6 +6440,47 @@ static int sctp_getsockopt_pr_assocstatus(struct sock *sk, int len,
+ 	return retval;
+ }
+ 
++static int sctp_getsockopt_enable_strreset(struct sock *sk, int len,
++					   char __user *optval,
++					   int __user *optlen)
++{
++	struct sctp_assoc_value params;
++	struct sctp_association *asoc;
++	int retval = -EFAULT;
++
++	if (len < sizeof(params)) {
++		retval = -EINVAL;
++		goto out;
++	}
++
++	len = sizeof(params);
++	if (copy_from_user(&params, optval, len))
++		goto out;
++
++	asoc = sctp_id2assoc(sk, params.assoc_id);
++	if (asoc) {
++		params.assoc_value = asoc->strreset_enable;
++	} else if (!params.assoc_id) {
++		struct sctp_sock *sp = sctp_sk(sk);
++
++		params.assoc_value = sp->ep->strreset_enable;
++	} else {
++		retval = -EINVAL;
++		goto out;
++	}
++
++	if (put_user(len, optlen))
++		goto out;
++
++	if (copy_to_user(optval, &params, len))
++		goto out;
++
++	retval = 0;
++
++out:
++	return retval;
++}
++
+ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 			   char __user *optval, int __user *optlen)
+ {
+@@ -6568,6 +6648,10 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_getsockopt_pr_assocstatus(sk, len, optval,
+ 							optlen);
+ 		break;
++	case SCTP_ENABLE_STREAM_RESET:
++		retval = sctp_getsockopt_enable_strreset(sk, len, optval,
++							 optlen);
++		break;
+ 	default:
+ 		retval = -ENOPROTOOPT;
+ 		break;
 -- 
 2.1.0
 
