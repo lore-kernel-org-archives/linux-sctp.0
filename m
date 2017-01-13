@@ -1,115 +1,63 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 21 Jan 2017 10:24:25 +0000
-Subject: [PATCHv5 net-next 4/5] sctp: add support for generating stream reconf add incoming/outgoing streams 
-Message-Id: <d26ba8015dc77c9f1c1d438927e2d1fef13ceebb.1484993773.git.lucien.xin@gmail.com>
+Date: Fri, 13 Jan 2017 19:15:34 +0000
+Subject: [PATCHv3 net-next 0/7] sctp: add sender-side procedures for stream reconf ssn reset request chunk
+Message-Id: <cover.1484334002.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1484993773.git.lucien.xin@gmail.com>
- <9f2a54d764987dc6509e2322e3c0d93f819ebdb5.1484993773.git.lucien.xin@gmail.com>
- <c58c4f7a998d27557a916d83b0b6b84e76fa9642.1484993773.git.lucien.xin@gmail.com>
- <761fd1e1226c7e35a93443546e3d1ddf0edcced4.1484993773.git.lucien.xin@gmail.com>
-In-Reply-To: <761fd1e1226c7e35a93443546e3d1ddf0edcced4.1484993773.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-This patch is to define Add Incoming/Outgoing Streams Request
-Parameter described in rfc6525 section 4.5 and 4.6. They can
-be in one same chunk trunk as rfc6525 section 3.1-7 describes,
-so make them in one function.
+Patch 7/7 is to implement sender-side procedures for the Outgoing
+and Incoming SSN Reset Request Parameter described in rfc6525
+section 5.1.2 and 5.1.3
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- include/linux/sctp.h     |  7 +++++++
- include/net/sctp/sm.h    |  3 +++
- net/sctp/sm_make_chunk.c | 46 ++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 56 insertions(+)
+Patches 1-6/7 are ahead of it to define some apis and asoc members
+for it.
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index 95b8ed3..f1f494f 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -742,4 +742,11 @@ struct sctp_strreset_tsnreq {
- 	__u32 request_seq;
- } __packed;
- 
-+struct sctp_strreset_addstrm {
-+	sctp_paramhdr_t param_hdr;
-+	__u32 request_seq;
-+	__u16 number_of_streams;
-+	__u16 reserved;
-+} __packed;
-+
- #endif /* __LINUX_SCTP_H__ */
-diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index ac37c17..3675fde 100644
---- a/include/net/sctp/sm.h
-+++ b/include/net/sctp/sm.h
-@@ -267,6 +267,9 @@ struct sctp_chunk *sctp_make_strreset_req(
- 				bool out, bool in);
- struct sctp_chunk *sctp_make_strreset_tsnreq(
- 				const struct sctp_association *asoc);
-+struct sctp_chunk *sctp_make_strreset_addstrm(
-+				const struct sctp_association *asoc,
-+				__u16 out, __u16 in);
- void sctp_chunk_assign_tsn(struct sctp_chunk *);
- void sctp_chunk_assign_ssn(struct sctp_chunk *);
- 
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 801450c..a44546d 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -3689,3 +3689,49 @@ struct sctp_chunk *sctp_make_strreset_tsnreq(
- 
- 	return retval;
- }
-+
-+/* RE-CONFIG 4.5/4.6 (ADD STREAM)
-+ *   0                   1                   2                   3
-+ *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-+ *  |     Parameter Type = 17       |      Parameter Length = 12    |
-+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-+ *  |          Re-configuration Request Sequence Number             |
-+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-+ *  |      Number of new streams    |         Reserved              |
-+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-+ */
-+struct sctp_chunk *sctp_make_strreset_addstrm(
-+				const struct sctp_association *asoc,
-+				__u16 out, __u16 in)
-+{
-+	struct sctp_strreset_addstrm addstrm;
-+	__u16 size = sizeof(addstrm);
-+	struct sctp_chunk *retval;
-+
-+	retval = sctp_make_reconf(asoc, (!!out + !!in) * size);
-+	if (!retval)
-+		return NULL;
-+
-+	if (out) {
-+		addstrm.param_hdr.type = SCTP_PARAM_RESET_ADD_OUT_STREAMS;
-+		addstrm.param_hdr.length = htons(size);
-+		addstrm.number_of_streams = htons(out);
-+		addstrm.request_seq = htonl(asoc->strreset_outseq);
-+		addstrm.reserved = 0;
-+
-+		sctp_addto_chunk(retval, size, &addstrm);
-+	}
-+
-+	if (in) {
-+		addstrm.param_hdr.type = SCTP_PARAM_RESET_ADD_IN_STREAMS;
-+		addstrm.param_hdr.length = htons(size);
-+		addstrm.number_of_streams = htons(in);
-+		addstrm.request_seq = htonl(asoc->strreset_outseq + !!out);
-+		addstrm.reserved = 0;
-+
-+		sctp_addto_chunk(retval, size, &addstrm);
-+	}
-+
-+	return retval;
-+}
+Note that with this patchset, asoc->reconf_enable has no chance yet to
+be set, until the patch "sctp: add get and set sockopt for reconf_enable"
+is applied in the future. As we can not just enable it when sctp is not
+capable of processing reconf chunk yet.
+
+v1->v2:
+  - put these into a smaller group.
+  - rename some temporary variables in the codes.
+  - rename the titles of the commits and improve some changelogs.
+v2->v3:
+  - re-split the patchset and make sure it has no dead codes for review.
+
+Xin Long (7):
+  sctp: add a common helper function to generate stream reconf chunk
+  sctp: add support for generating stream reconf ssn reset request chunk
+  sctp: add stream reconf timer
+  sctp: add stream reconf primitive
+  sctp: add reconf_enable in asoc ep and netns
+  sctp: add sockopt SCTP_ENABLE_STREAM_RESET
+  sctp: implement sender-side procedures for SSN Reset Request Parameter
+
+ include/linux/sctp.h         |  32 ++++++++++
+ include/net/netns/sctp.h     |   3 +
+ include/net/sctp/constants.h |   4 +-
+ include/net/sctp/sctp.h      |   8 +++
+ include/net/sctp/sm.h        |   8 ++-
+ include/net/sctp/structs.h   |  21 ++++++-
+ include/uapi/linux/sctp.h    |  18 ++++++
+ net/sctp/associola.c         |  12 ++++
+ net/sctp/endpointola.c       |   1 +
+ net/sctp/outqueue.c          |  33 +++++++----
+ net/sctp/primitive.c         |   3 +
+ net/sctp/protocol.c          |   3 +
+ net/sctp/sm_make_chunk.c     | 136 +++++++++++++++++++++++++++++++++++++++++++
+ net/sctp/sm_sideeffect.c     |  32 ++++++++++
+ net/sctp/sm_statefuns.c      |  41 +++++++++++++
+ net/sctp/sm_statetable.c     |  40 +++++++++++++
+ net/sctp/socket.c            | 113 +++++++++++++++++++++++++++++++++++
+ net/sctp/stream.c            |  79 +++++++++++++++++++++++++
+ net/sctp/transport.c         |  17 +++++-
+ 19 files changed, 588 insertions(+), 16 deletions(-)
+
 -- 
 2.1.0
 
