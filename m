@@ -1,35 +1,42 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Tue, 24 Jan 2017 16:35:20 +0000
-Subject: RE: [RFC PATCH net-next 2/5] net: split skb_checksum_help
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6DB026CEA4@AcuExch.aculab.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 13 Jan 2017 20:31:15 +0000
+Subject: [PATCH net-next] sctp: remove useless code from sctp_apply_peer_addr_params
+Message-Id: <99bc9f227c4c857d2bb258391231231d46c1899d.1484336556.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1485177252.git.dcaratti@redhat.com>
- <532e1db70b6c40f1b1e5c60b5b51be9f3437a30b.1485177252.git.dcaratti@redhat.com>
- <CALx6S37E=OEkRego_u=oDuUgQUn9-NZLpupvbN_dge1rqF92CQ@mail.gmail.com>
-In-Reply-To: <CALx6S37E=OEkRego_u=oDuUgQUn9-NZLpupvbN_dge1rqF92CQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Tom Herbert' <tom@herbertland.com>, Davide Caratti <dcaratti@redhat.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Linux Kernel Network Developers <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-RnJvbTogVG9tIEhlcmJlcnQNCj4gU2VudDogMjMgSmFudWFyeSAyMDE3IDIxOjAwDQouLg0KPiBz
-a2JfY2hlY2tzdW1faGVscCBpcyBzcGVjaWZpYyB0byB0aGUgSW50ZXJuZXQgY2hlY2tzdW0uIEZv
-ciBpbnN0YW5jZSwNCj4gQ0hFQ0tTVU1fQ09NUExFVEUgY2FuIF9vbmx5XyByZWZlciB0byBJbnRl
-cm5ldCBjaGVja3N1bSBjYWxjdWxhdGlvbg0KPiBub3RoaW5nIGVsc2Ugd2lsbCB3b3JrLiBDaGVj
-a3N1bXMgYW5kIENSQ3MgYXJlIHZlcnkgZGlmZmVyZW50IHRoaW5ncw0KPiB3aXRoIHZlcnkgZGlm
-ZmVyZW50IHByb2Nlc3NpbmcuIFRoZXkgYXJlIG5vdCBpbnRlcmNoYW5nZWFibGUsIGhhdmUNCj4g
-dmVyeSBkaWZmZXJlbnQgcHJvcGVydGllcywgYW5kIGhlbmNlIGl0IGlzIGEgbWlzdGFrZSB0byB0
-cnkgdG8gc2hvZQ0KPiBob3JuIHRoaW5ncyBzbyB0aGF0IHRoZXkgdXNlIGEgY29tbW9uIGluZnJh
-c3RydWN0dXJlLg0KPiANCj4gSXQgbWlnaHQgbWFrZSBzZW5zZSB0byBjcmVhdGUgc29tZSBDUkMg
-aGVscGVyIGZ1bmN0aW9ucywgYnV0IGxhc3QgdGltZQ0KPiBJIGNoZWNrZWQgdGhlcmUgYXJlIHNv
-IGZldyB1c2VycyBvZiBDUkMgaW4gc2tidWZzIEknbSBub3QgZXZlbiBzdXJlDQo+IHRoYXQgd291
-bGQgbWFrZSBzZW5zZS4NCg0KSSBjYW4gaW1hZ2luZSBob3JyaWQgdGhpbmdzIGhhcHBlbmluZyBp
-ZiBzb21lb25lIHRyaWVzIHRvIGVuY2Fwc3VsYXRlDQpTQ1RQL0lQIGluIFVEUCAob3Igd29yc2Ug
-VURQL0lQIGluIFNDVFApLg0KDQpGb3IgVURQIGluIFVEUCBJIHN1c3BlY3QgdGhhdCBDSEVDS1NV
-TV9DT01QTEVURSBvbiBhbiBpbm5lciBVRFAgcGFja2V0DQphbGxvd3MgdGhlIG91dGVyIGNoZWNr
-c3VtIGJlIGNhbGN1bGF0ZWQgYnkgaWdub3JpbmcgdGhlIGlubmVyIHBhY2tldA0KKHNpbmNlIGl0
-IHN1bXMgdG8gemVybykuDQpUaGlzIGp1c3QgaXNuJ3QgdHJ1ZSBpZiBTQ1RQIGlzIGludm9sdmVk
-Lg0KVGhlcmUgYXJlIHRyaWNrcyB0byBnZW5lcmF0ZSBhIGNyYyBvZiBhIGxvbmdlciBwYWNrZXQs
-IGJ1dCB0aGV5J2Qgb25seQ0Kd29yayBmb3IgU0NUUCBpbiBTQ1RQLg0KDQpGb3Igbm9uLWVuY2Fw
-c3VsYXRlZCBwYWNrZXRzIGl0IGlzIGEgZGlmZmVyZW50IG1hdHRlci4NCg0KCURhdmlkDQoNCg=
+sctp_frag_point() doesn't store anything, and thus just calling it
+cannot do anything useful.
+
+sctp_apply_peer_addr_params is only called by
+sctp_setsockopt_peer_addr_params. When operating on an asoc,
+sctp_setsockopt_peer_addr_params will call sctp_apply_peer_addr_params
+once for the asoc, and then once for each transport this asoc has,
+meaning that the frag_point will be recomputed when updating the
+transports and calling it when updating the asoc is not necessary.
+IOW, no action is needed here and we can remove this call.
+
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/socket.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 318c6786d6539a301ac7b76d82a49a1af3818d10..635e0341269330187c78ba93a35689f5c5d6be02 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -2430,7 +2430,6 @@ static int sctp_apply_peer_addr_params(struct sctp_paddrparams *params,
+ 			sctp_assoc_sync_pmtu(sctp_opt2sk(sp), asoc);
+ 		} else if (asoc) {
+ 			asoc->pathmtu = params->spp_pathmtu;
+-			sctp_frag_point(asoc, params->spp_pathmtu);
+ 		} else {
+ 			sp->pathmtu = params->spp_pathmtu;
+ 		}
+-- 
+2.9.3
+
