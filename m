@@ -1,73 +1,42 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 01 Jan 2017 13:23:44 +0000
-Subject: Re: [PATCH net-next 20/27] sctp: add rfc6525 section 5.2.2
-Message-Id: <CADvbK_cO9bs+wDkwtpxutjbySv8xhQwRYWeNaKir_-dok0yW-g@mail.gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 13 Jan 2017 20:27:32 +0000
+Subject: [PATCH net-next] sctp: remove dead code from sctp_apply_peer_addr_params
+Message-Id: <99bc9f227c4c857d2bb25839a6a8341d46c1899d.1484336556.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <b5eb3a199dded2efe517b19b5cac6ae498a6c0c8.1483269426.git.lucien.xin@gmail.com>
- <201701011927.G3TLoJx9%fengguang.wu@intel.com>
-In-Reply-To: <201701011927.G3TLoJx9%fengguang.wu@intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: kbuild test robot <lkp@intel.com>
-Cc: kbuild-all@01.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem <davem@davemloft.net>
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Sun, Jan 1, 2017 at 8:02 PM, kbuild test robot <lkp@intel.com> wrote:
-> Hi Xin,
->
-> [auto build test WARNING on net-next/master]
->
-> url:    https://github.com/0day-ci/linux/commits/Xin-Long/sctp-implement-rfc6525-sctp-stream-reconf/20170101-192844
-> config: x86_64-randconfig-x015-201701 (attached as .config)
-> compiler: gcc-6 (Debian 6.2.0-3) 6.2.0 20160901
-> reproduce:
->         # save the attached .config to linux build tree
->         make ARCH=x86_64
->
-> Note: it may well be a FALSE warning. FWIW you are at least aware of it now.
-> http://gcc.gnu.org/wiki/Better_Uninitialized_Warnings
->
-> All warnings (new ones prefixed by >>):
->
->    net/sctp/stream.c: In function 'sctp_process_strreset_outreq':
->>> net/sctp/stream.c:140:9: warning: 'str_p' may be used uninitialized in this function [-Wmaybe-uninitialized]
->      *evp = sctp_ulpevent_make_stream_reset_event(asoc,
->             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
->       flags | SCTP_STREAM_RESET_OUTGOING_SSN, nums, str_p,
->       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
->       GFP_ATOMIC);
->       ~~~~~~~~~~~
->
-This warning is actually safe, as only when nums is NULL, str_p is
-uninitialized, and in sctp_ulpevent_make_stream_reset_event(), if nums
-is null, str_p wouldn't be really used.
+sctp_frag_point() doesn't store anything, and thus just calling it
+cannot do anything useful.
 
-> vim +/str_p +140 net/sctp/stream.c
->
->    124                          if (str_p[i] >= asoc->streamincnt) {
->    125                                  result = SCTP_STRRESET_ERR_WRONG_SSN;
->    126                                  goto out;
->    127                          }
->    128                  }
->    129
->    130                  str_p = outreq->list_of_streams;
->    131                  for (i = 0; i < nums; i++, str_p++)
->    132                          asoc->streamin[*str_p].ssn = 0;
->    133          } else {
->    134                  for (i = 0; i < asoc->streamincnt; i++)
->    135                          asoc->streamin[i].ssn = 0;
->    136          }
->    137
->    138          result = SCTP_STRRESET_PERFORMED;
->    139
->  > 140          *evp = sctp_ulpevent_make_stream_reset_event(asoc,
->    141                  flags | SCTP_STREAM_RESET_OUTGOING_SSN, nums, str_p,
->    142                  GFP_ATOMIC);
->    143
->    144  out:
->    145          return sctp_make_strreset_resp(asoc, result, request_seq);
->    146  }
->
-> ---
-> 0-DAY kernel test infrastructure                Open Source Technology Center
-> https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
+sctp_apply_peer_addr_params is only called by
+sctp_setsockopt_peer_addr_params. When operating on an asoc,
+sctp_setsockopt_peer_addr_params will call sctp_apply_peer_addr_params
+once for the asoc, and then once for each transport this asoc has,
+meaning that the frag_point will be recomputed when updating the
+transports and calling it when updating the asoc is not necessary.
+IOW, no action is needed here and we can remove this call.
+
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/socket.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 318c6786d6539a301ac7b76d82a49a1af3818d10..635e0341269330187c78ba93a35689f5c5d6be02 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -2430,7 +2430,6 @@ static int sctp_apply_peer_addr_params(struct sctp_paddrparams *params,
+ 			sctp_assoc_sync_pmtu(sctp_opt2sk(sp), asoc);
+ 		} else if (asoc) {
+ 			asoc->pathmtu = params->spp_pathmtu;
+-			sctp_frag_point(asoc, params->spp_pathmtu);
+ 		} else {
+ 			sp->pathmtu = params->spp_pathmtu;
+ 		}
+-- 
+2.9.3
+
