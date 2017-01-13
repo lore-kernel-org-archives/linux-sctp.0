@@ -1,7 +1,7 @@
 From: Sun Paul <paulrbk@gmail.com>
-Date: Fri, 13 Jan 2017 03:27:47 +0000
+Date: Fri, 13 Jan 2017 03:29:42 +0000
 Subject: Re: Problem on SCTP
-Message-Id: <CAFXGftKrj_NzsqJhM+m0op-H7275-YeRcR+WjzxO_daGxQeLsA@mail.gmail.com>
+Message-Id: <CAFXGftLn8Kc9svJJRRmUiHxN_5_O0se2srw996BbPSVTbDP0fA@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20170106123711.GA15139@hmsreliant.think-freely.org>
  <CAFXGftLc1Oi9yN-J2UdQxN4MALDhEHieZdGp5JCkOp6Ar+r4Qg@mail.gmail.com>
@@ -20,7 +20,7 @@ Content-Transfer-Encoding: 8bit
 To: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
 Cc: David Laight <David.Laight@aculab.com>, Neil Horman <nhorman@tuxdriver.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 
-Packet to SERVER (from router to SERVER)[ Source IP: 192.168.206.83,
+Packet to SERVER (From router to SERVER)  [ Source IP: 192.168.206.83,
 Destination IP: 192.168.206.66. the IPv4 address parameter is
 192.168.206.83 and 192.168.1.83 ]
 ================
@@ -90,6 +90,49 @@ Port: 3868 (3868)
     Verification tag: 0x00000000
     [Assocation index: 0]
     Checksum: 0xa9a86d3f (not verified)
+
+    INIT chunk (Outbound streams: 3000, inbound streams: 3000)
+        Chunk type: INIT (1)
+            0... .... = Bit: Stop processing of the packet
+            .0.. .... = Bit: Do not report
+        Chunk flags: 0x00
+        Chunk length: 52
+        Initiate tag: 0xe79f40cb
+        Advertised receiver window credit (a_rwnd): 62464
+        Number of outbound streams: 3000
+        Number of inbound streams: 3000
+        Initial TSN: 176990880
+        IPv4 address parameter (Address: 192.168.206.83)
+            Parameter type: IPv4 address (0x0005)
+                0... .... .... .... = Bit: Stop processing of chunk
+                .0.. .... .... .... = Bit: Do not report
+            Parameter length: 8
+            IP Version 4 address: 192.168.206.83
+        IPv4 address parameter (Address: 192.168.1.83)
+            Parameter type: IPv4 address (0x0005)
+                0... .... .... .... = Bit: Stop processing of chunk
+                .0.. .... .... .... = Bit: Do not report
+            Parameter length: 8
+            IP Version 4 address: 192.168.1.83
+        Supported address types parameter (Supported types: IPv6, IPv4)
+            Parameter type: Supported address types (0x000c)
+                0... .... .... .... = Bit: Stop processing of chunk
+                .0.. .... .... .... = Bit: Do not report
+            Parameter length: 8
+            Supported address type: IPv6 address (6)
+            Supported address type: IPv4 address (5)
+        ECN parameter
+            Parameter type: ECN (0x8000)
+                1... .... .... .... = Bit: Skip parameter and continue
+processing of the chunk
+                .0.. .... .... .... = Bit: Do not report
+            Parameter length: 4
+        Forward TSN supported parameter
+            Parameter type: Forward TSN supported (0xc000)
+                1... .... .... .... = Bit: Skip parameter and continue
+processing of the chunk
+                .1.. .... .... .... = Bit: Do report
+            Parameter length: 4
 
 On Fri, Jan 13, 2017 at 11:27 AM, Sun Paul <paulrbk@gmail.com> wrote:
 > Hi All
