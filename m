@@ -1,111 +1,80 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 19 Jan 2017 17:53:14 +0000
-Subject: Re: Issue with Forward-TSN-Chunks containing high cum_tsn
-Message-Id: <CADvbK_cnF3rfLJ1WKeix83e4yG7FxcfTG5qsAKKM9-3ojFq=2A@mail.gmail.com>
+From: Dmitry Vyukov <dvyukov@google.com>
+Date: Sun, 15 Jan 2017 17:29:59 +0000
+Subject: sctp: kernel memory overwrite attempt detected in sctp_getsockopt_assoc_stats
+Message-Id: <CACT4Y+ZDPa+spEh6P_ip9=hsNfeZ8KJfwJu5jTrPKVkGJUaZSg@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20170117130752.GB6494@aomx-netbook>
-In-Reply-To: <20170117130752.GB6494@aomx-netbook>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="windows-1252"
-Content-Transfer-Encoding: quoted-printable
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Vladislav Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, Kees Cook <keescook@google.com>
+Cc: syzkaller <syzkaller@googlegroups.com>
 
-On Thu, Jan 19, 2017 at 2:02 AM, Michael Tuexen
-<Michael.Tuexen@lurchi.franken.de> wrote:
-> On 18 Jan 2017, at 16:47, Xin Long <lucien.xin@gmail.com> wrote:
->>
->> On Wed, Jan 18, 2017 at 10:53 PM, Michael Tuexen
->> <Michael.Tuexen@lurchi.franken.de> wrote:
->>>> On 18 Jan 2017, at 07:01, Xin Long <lucien.xin@gmail.com> wrote:
->>>>
->>>> On Wed, Jan 18, 2017 at 12:38 AM, Marcelo Ricardo Leitner
->>>> <marcelo.leitner@gmail.com> wrote:
->>>>> On Tue, Jan 17, 2017 at 02:07:52PM +0100, Julian Cordes wrote:
->>>>>> When a FORWARD-TSN-Chunk with a relative high cum-tsn-value is injec=
-ted
->>>>>> then the linux kernel ignores this valid FORWARD-TSN-Chunk.
->>>>>> It should instead send an SACK-Chunk where the cum_tsn is equal to t=
-he
->>>>>> cum_tsn specified in the FORWARD-TSN.
->>>>>
->>>>> You mean, with the cum_tsn specified on the *injected* FORWARD-TSN.
->>>>> Is that so?
->>>> from the test  script
->>>> +0.0 < sctp: FORWARD_TSN[cum_tsn=99999, ids=3D[{1, 1}]]
->>>> I think so.
->>>>
->>>> But 99999 is so high relative to the base_tsn of tsnmap,
->>>> it overflowed tsnmap, such a big gap is disallowed in linux
->>>> sctp. it has to drop this packet.
->>>>
->>>>       /* Verify that we can hold this TSN and that it will not
->>>>        * overlfow our map
->>>>        */
->>>>       if (!TSN_lt(tsn, map->base_tsn + SCTP_TSN_MAP_SIZE))
->>>>               return -1;
->>>>
->>>> Hi, Julian, maybe you can improve your script by using a lower
->>>> value for linux.
->>> but this would mean that Linux only supports the peer skipping some sma=
-ll number of TSN's.
->>> Isn't this a limitation of the implementation?
->> not really, there is map->base_tsn, it will grow when the tsn has been s=
-acked.
->> like tsn=8000 and below 8000  have been sacked, map->base_tsn could be
->> 8000, then the map range would be 8000 ~ 8000 + SCTP_TSN_MAP_SIZE.
->>
->> But the test case sent tsn=3D1, then try to skip tsn=99999, that's reall=
-y not
->> a normal case.
->>
->> and to set SCTP_TSN_MAP_SIZE@96 for reasons:
->>
->> /* Guess at how big to make the TSN mapping array.
->> * We guarantee that we can handle at least this big a gap between the
->> * cumulative ACK and the highest TSN.  In practice, we can often
->> * handle up to twice this value.
->> *
->> * NEVER make this more than 32767 (2^15-1).  The Gap Ack Blocks in a
->> * SACK (see  section 3.3.4) are only 16 bits, so 2*SCTP_TSN_MAP_SIZE
->> * must be less than 65535 (2^16 - 1), or we will have overflow
->> * problems creating SACK's.
->> */
->> #define SCTP_TSN_MAP_INITIAL BITS_PER_LONG
->> #define SCTP_TSN_MAP_INCREMENT SCTP_TSN_MAP_INITIAL
->> #define SCTP_TSN_MAP_SIZE 4096
-> That seems OK for dealing with a data transfer not using PR-SCTP. It is f=
-ine
-> to drop the packet since the peer will retransmit lower TSNs. However, in=
- the
-> case of PR-SCTP it is perfectly valid that the peer drops up to 2**31-1 T=
-SNs...
-> At least this is my understanding of the protocol...
-got you, we will think about it, thanks :)
+Hello,
 
->
-> Best regards
-> Michael
->>
->>>
->>> Best regards
->>> Michael
->>>>
->>>>>
->>>>>>
->>>>>> Testscript available at:
->>>>>> https://github.com/nplab/PR_SCTP_Testsuite/blob/master/forward-tsn/r=
-eceiver-side-implementation/receiver-side-implementation-11.pkt
->>>>>
->>>>>
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-sctp"=
- in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-sctp" =
-in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->
+I've enabled CONFIG_HARDENED_USERCOPY_PAGESPAN on syzkaller fuzzer and
+now I am seeing lots of:
+
+usercopy: kernel memory overwrite attempt detected to ffff8801a74f6f10
+(<spans multiple pages>) (256 bytes)
+
+kernel BUG at mm/usercopy.c:75!
+invalid opcode: 0000 [#1] SMP KASAN
+Dumping ftrace buffer:
+   (ftrace buffer empty)
+Modules linked in:
+CPU: 1 PID: 15686 Comm: syz-executor3 Not tainted 4.9.0 #1
+Hardware name: Google Google Compute Engine/Google Compute Engine,
+BIOS Google 01/01/2011
+task: ffff8801c89b2500 task.stack: ffff8801a74f0000
+RIP: 0010:[<ffffffff81a1b041>]  [<ffffffff81a1b041>] report_usercopy
+mm/usercopy.c:67 [inline]
+RIP: 0010:[<ffffffff81a1b041>]  [<ffffffff81a1b041>]
+__check_object_size+0x2d1/0x9ec mm/usercopy.c:278
+RSP: 0018:ffff8801a74f6cd0  EFLAGS: 00010286
+RAX: 000000000000006b RBX: ffffffff84500120 RCX: 0000000000000000
+RDX: 000000000000006b RSI: ffffffff815a7791 RDI: ffffed0034e9ed8c
+RBP: ffff8801a74f6e48 R08: 0000000000000001 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000001 R12: ffff8801a74f6f10
+R13: 0000000000000100 R14: ffffffff845000e0 R15: ffff8801a74f700f
+FS:  00007f80918de700(0000) GS:ffff8801dc100000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000000020058ffc CR3: 00000001cc1cc000 CR4: 00000000001406e0
+Stack:
+ ffffffff8598fcc8 0000000000000000 000077ff80000000 ffffea0005c99608
+ ffffffff844fff40 ffffffff844fff40 0000000041b58ab3 ffffffff84ae0fa0
+ ffffffff81a1ad70 ffff8801c89b2500 dead000000000100 ffffffff814d4425
+Call Trace:
+ [<ffffffff83e4ece9>] check_object_size include/linux/thread_info.h:129 [inline]
+ [<ffffffff83e4ece9>] copy_from_user arch/x86/include/asm/uaccess.h:692 [inline]
+ [<ffffffff83e4ece9>] sctp_getsockopt_assoc_stats+0x169/0xa10
+net/sctp/socket.c:6182
+ [<ffffffff83e5cc52>] sctp_getsockopt+0x1af2/0x66a0 net/sctp/socket.c:6556
+ [<ffffffff834f92c5>] sock_common_getsockopt+0x95/0xd0 net/core/sock.c:2649
+ [<ffffffff834f4910>] SYSC_getsockopt net/socket.c:1788 [inline]
+ [<ffffffff834f4910>] SyS_getsockopt+0x240/0x380 net/socket.c:1770
+ [<ffffffff81009798>] do_syscall_64+0x2e8/0x930 arch/x86/entry/common.c:280
+ [<ffffffff84370a49>] entry_SYSCALL64_slow_path+0x25/0x25
+Code: b0 fe ff ff e8 e1 25 ce ff 48 8b 85 b0 fe ff ff 4d 89 e9 4c 89
+e1 4c 89 f2 48 89 de 48 c7 c7 a0 01 50 84 49 89 c0 e8 51 d9 e0 ff <0f>
+0b e8 b8 25 ce ff 4c 89 f2 4c 89 ee 4c 89 e7 e8 6a 1b fc ff
+RIP  [<ffffffff81a1b041>] report_usercopy mm/usercopy.c:67 [inline]
+RIP  [<ffffffff81a1b041>] __check_object_size+0x2d1/0x9ec mm/usercopy.c:278
+ RSP <ffff8801a74f6cd0>
+---[ end trace 5e438996b2c0b35d ]---
+
+
+I am not sure why check_object_size flags this an a bug,
+copy_from_user copies into a stack object:
+
+static int sctp_getsockopt_assoc_stats(struct sock *sk, int len,
+                                       char __user *optval,
+                                       int __user *optlen)
+{
+        struct sctp_assoc_stats sas;
+        len = min_t(size_t, len, sizeof(sas));
+        if (copy_from_user(&sas, optval, len))
+                return -EFAULT;
+
+Kees, can this be a false positive?
+
+On commit f4d3935e4f4884ba80561db5549394afb8eef8f7.
