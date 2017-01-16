@@ -1,58 +1,39 @@
-From: Dmitry Vyukov <dvyukov@google.com>
-Date: Mon, 16 Jan 2017 14:03:43 +0000
-Subject: Re: sctp: kernel memory overwrite attempt detected in sctp_getsockopt_assoc_stats
-Message-Id: <CACT4Y+aoRnZyPYM=Bz3RLWhK+MYrQJBZ22TijJd=fzHp9KG+9A@mail.gmail.com>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Mon, 16 Jan 2017 14:50:48 +0000
+Subject: RE: sctp: kernel memory overwrite attempt detected in sctp_getsockopt_assoc_stats
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6DB0264AD2@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CACT4Y+ZDPa+spEh6P_ip9=hsNfeZ8KJfwJu5jTrPKVkGJUaZSg@mail.gmail.com>
- <20170115203515.GA6274@neilslaptop.think-freely.org> <CACT4Y+Zp4cruuKtf7fkSeLFbYLzTOD79Y2c+cCrHx-pbEXC_6A@mail.gmail.com>
+ <20170115203515.GA6274@neilslaptop.think-freely.org>
+ <CACT4Y+Zp4cruuKtf7fkSeLFbYLzTOD79Y2c+cCrHx-pbEXC_6A@mail.gmail.com>
  <20170116135743.GC30105@hmswarspite.think-freely.org>
-In-Reply-To: <20170116135743.GC30105@hmswarspite.think-freely.org>
+ <CACT4Y+aoRnZyPYM=Bz3RLWhK+MYrQJBZ22TijJd=fzHp9KG+9A@mail.gmail.com>
+In-Reply-To: <CACT4Y+aoRnZyPYM=Bz3RLWhK+MYrQJBZ22TijJd=fzHp9KG+9A@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: Vladislav Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, Kees Cook <keescook@google.com>, syzkaller <syzkaller@googlegroups.com>
+To: 'Dmitry Vyukov' <dvyukov@google.com>, Neil Horman <nhorman@tuxdriver.com>
+Cc: Vladislav Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, Kees Cook <keescook@google.com>, syzkaller <syzkaller@googlegroups.com>
 
-On Mon, Jan 16, 2017 at 2:57 PM, Neil Horman <nhorman@tuxdriver.com> wrote:
-> On Mon, Jan 16, 2017 at 08:11:40AM +0100, Dmitry Vyukov wrote:
->> On Sun, Jan 15, 2017 at 9:35 PM, Neil Horman <nhorman@tuxdriver.com> wrote:
->> > On Sun, Jan 15, 2017 at 06:29:59PM +0100, Dmitry Vyukov wrote:
->> >> Hello,
->> >>
->> >> I've enabled CONFIG_HARDENED_USERCOPY_PAGESPAN on syzkaller fuzzer and
->> >> now I am seeing lots of:
->> >>
->> > If I'm not mistaken, its because thats specifically what that option does.  From
->> > the Kconfig:
->> > onfig HARDENED_USERCOPY_PAGESPAN
->> >         bool "Refuse to copy allocations that span multiple pages"
->> >         depends on HARDENED_USERCOPY
->> >         depends on EXPERT
->> >         help
->> >           When a multi-page allocation is done without __GFP_COMP,
->> >           hardened usercopy will reject attempts to copy it. There are,
->> >           however, several cases of this in the kernel that have not all
->> >           been removed. This config is intended to be used only while
->> >           trying to find such users.
->> >
->> > So, if the fuzzer does a setsockopt and the data it passes crosses a page
->> > boundary, it seems like this will get triggered.  Based on the fact that its
->> > only used to find users that do this, it seems like not the sort of thing that
->> > you want enabled while running a fuzzer that might do it arbitrarily.
->>
->>
->> The code also takes into account compound pages. As far as I
->> understand the intention of the check is to effectively find
->> out-of-bounds copies (e.g. goes beyond the current heap allocation). I
->> would expect that stacks are allocated as compound pages and don't
->> trigger this check. I don't see it is firing in other similar places.
->>
-> Honestly, I'm not overly familiar with stack page allocation, at least not so
-> far as compound vs. single page allocation is concerned.  I suppose the question
-> your really asking here is: Have you found a case in which the syscall fuzzer
-> has forced the allocation of an insecure non-compound page on the stack, or is
-> this a false positive warning.  I can't provide the answer to that.
-
-
-Yes. I added Kees, author of CONFIG_HARDENED_USERCOPY_PAGESPAN, to To line.
-Kees, is this a false positive?
+RnJvbTogRG1pdHJ5IFZ5dWtvdg0KPiBTZW50OiAxNiBKYW51YXJ5IDIwMTcgMTQ6MDQNCj4gPj4g
+Pj4gSSd2ZSBlbmFibGVkIENPTkZJR19IQVJERU5FRF9VU0VSQ09QWV9QQUdFU1BBTiBvbiBzeXpr
+YWxsZXIgZnV6emVyIGFuZA0KLi4uDQo+ID4+IFRoZSBjb2RlIGFsc28gdGFrZXMgaW50byBhY2Nv
+dW50IGNvbXBvdW5kIHBhZ2VzLiBBcyBmYXIgYXMgSQ0KPiA+PiB1bmRlcnN0YW5kIHRoZSBpbnRl
+bnRpb24gb2YgdGhlIGNoZWNrIGlzIHRvIGVmZmVjdGl2ZWx5IGZpbmQNCj4gPj4gb3V0LW9mLWJv
+dW5kcyBjb3BpZXMgKGUuZy4gZ29lcyBiZXlvbmQgdGhlIGN1cnJlbnQgaGVhcCBhbGxvY2F0aW9u
+KS4gSQ0KPiA+PiB3b3VsZCBleHBlY3QgdGhhdCBzdGFja3MgYXJlIGFsbG9jYXRlZCBhcyBjb21w
+b3VuZCBwYWdlcyBhbmQgZG9uJ3QNCj4gPj4gdHJpZ2dlciB0aGlzIGNoZWNrLiBJIGRvbid0IHNl
+ZSBpdCBpcyBmaXJpbmcgaW4gb3RoZXIgc2ltaWxhciBwbGFjZXMuDQo+ID4+DQo+ID4gSG9uZXN0
+bHksIEknbSBub3Qgb3Zlcmx5IGZhbWlsaWFyIHdpdGggc3RhY2sgcGFnZSBhbGxvY2F0aW9uLCBh
+dCBsZWFzdCBub3Qgc28NCj4gPiBmYXIgYXMgY29tcG91bmQgdnMuIHNpbmdsZSBwYWdlIGFsbG9j
+YXRpb24gaXMgY29uY2VybmVkLiAgSSBzdXBwb3NlIHRoZSBxdWVzdGlvbg0KPiA+IHlvdXIgcmVh
+bGx5IGFza2luZyBoZXJlIGlzOiBIYXZlIHlvdSBmb3VuZCBhIGNhc2UgaW4gd2hpY2ggdGhlIHN5
+c2NhbGwgZnV6emVyDQo+ID4gaGFzIGZvcmNlZCB0aGUgYWxsb2NhdGlvbiBvZiBhbiBpbnNlY3Vy
+ZSBub24tY29tcG91bmQgcGFnZSBvbiB0aGUgc3RhY2ssIG9yIGlzDQo+ID4gdGhpcyBhIGZhbHNl
+IHBvc2l0aXZlIHdhcm5pbmcuICBJIGNhbid0IHByb3ZpZGUgdGhlIGFuc3dlciB0byB0aGF0Lg0K
+PiANCj4gWWVzLiBJIGFkZGVkIEtlZXMsIGF1dGhvciBvZiBDT05GSUdfSEFSREVORURfVVNFUkNP
+UFlfUEFHRVNQQU4sIHRvIFRvIGxpbmUuDQo+IEtlZXMsIGlzIHRoaXMgYSBmYWxzZSBwb3NpdGl2
+ZT8NCg0KSSdkIGd1ZXNzIHRoYXQgdGhlIGtlcm5lbCBzdGFjayBpcyAoc29tZWhvdykgYWxsb2Nh
+dGVkIHBhZ2UgYnkgcGFnZQ0KcmF0aGVyIHRoYW4gYnkgYSBzaW5nbGUgbXVsdGktcGFnZSBhbGxv
+Y2F0ZS4NCk9yIG1heWJlIHZtYWxsb2MoKSBpc24ndCBzZXR0aW5nIHRoZSByZXF1aXJlZCBmbGFn
+Pz8NCg0KCURhdmlkDQoNCg=
