@@ -1,54 +1,44 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 13 Jan 2017 20:30:24 +0000
-Subject: Re: [PATCH net-next] sctp: remove dead code from sctp_apply_peer_addr_params
-Message-Id: <20170113203024.GF3781@localhost.localdomain>
+From: Julian Cordes <julian.cordes@gmail.com>
+Date: Tue, 17 Jan 2017 13:08:52 +0000
+Subject: Suboptimal handling of packets containing FORWARD-TSN and DATA chunks
+Message-Id: <20170117130852.GC6494@aomx-netbook>
+MIME-Version: 1
+Content-Type: multipart/mixed; boundary="oTHb8nViIGeoXxdp"
 List-Id: <linux-sctp.vger.kernel.org>
-References: <99bc9f227c4c857d2bb25839a6a8341d46c1899d.1484336556.git.marcelo.leitner@gmail.com>
-In-Reply-To: <99bc9f227c4c857d2bb25839a6a8341d46c1899d.1484336556.git.marcelo.leitner@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+To: linux-sctp@vger.kernel.org
 
-On Fri, Jan 13, 2017 at 06:27:32PM -0200, Marcelo Ricardo Leitner wrote:
-> sctp_frag_point() doesn't store anything, and thus just calling it
-> cannot do anything useful.
 
-Please ignore this one. Will post another one with
-s/dead code/useless code/ , as the code not really dead..
+--oTHb8nViIGeoXxdp
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-> 
-> sctp_apply_peer_addr_params is only called by
-> sctp_setsockopt_peer_addr_params. When operating on an asoc,
-> sctp_setsockopt_peer_addr_params will call sctp_apply_peer_addr_params
-> once for the asoc, and then once for each transport this asoc has,
-> meaning that the frag_point will be recomputed when updating the
-> transports and calling it when updating the asoc is not necessary.
-> IOW, no action is needed here and we can remove this call.
-> 
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> ---
->  net/sctp/socket.c | 1 -
->  1 file changed, 1 deletion(-)
-> 
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 318c6786d6539a301ac7b76d82a49a1af3818d10..635e0341269330187c78ba93a35689f5c5d6be02 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -2430,7 +2430,6 @@ static int sctp_apply_peer_addr_params(struct sctp_paddrparams *params,
->  			sctp_assoc_sync_pmtu(sctp_opt2sk(sp), asoc);
->  		} else if (asoc) {
->  			asoc->pathmtu = params->spp_pathmtu;
-> -			sctp_frag_point(asoc, params->spp_pathmtu);
->  		} else {
->  			sp->pathmtu = params->spp_pathmtu;
->  		}
-> -- 
-> 2.9.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+WWhenever receiving packets containing FORWARD-TSN chunks bundled with a
+DATA-Chunk the linux kernel sends currently two SACK-Chunks.
+This is suboptimal, because after processing both received chunks, it
+could send one SACK-Chunk.
+
+ Testscripts available at:
+ - https://github.com/nplab/PR_SCTP_Testsuite/blob/master/forward-tsn/receiver-side-implementation/packet-loss/ordered/ordered-packet-loss-5.pkt
+ - https://github.com/nplab/PR_SCTP_Testsuite/blob/master/forward-tsn/receiver-side-implementation/packet-loss/ordered/ordered-packet-loss-12.pkt
+ - https://github.com/nplab/PR_SCTP_Testsuite/blob/master/forward-tsn/receiver-side-implementation/packet-loss/ordered/ordered-packet-loss-13.pkt
+ - https://github.com/nplab/PR_SCTP_Testsuite/blob/master/forward-tsn/receiver-side-implementation/packet-loss/unordered/unordered-packet-loss-2.pkt
+ - https://github.com/nplab/PR_SCTP_Testsuite/blob/master/forward-tsn/receiver-side-implementation/packet-loss/unordered/unordered-packet-loss-5.pkt
+ - https://github.com/nplab/PR_SCTP_Testsuite/blob/master/forward-tsn/receiver-side-implementation/packet-loss/unordered/unordered-packet-loss-12.pkt
+
+
+--oTHb8nViIGeoXxdp
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQEcBAEBAgAGBQJYfhdkAAoJEAvjb6G8Rb/j85cH/0oCV7vQjKxhxZD4dvECTRsi
+9Kj6few3yf64/6idVi1WCP/Dvhu6S6bntvwqk+LnQZ/lAMnchGb5ovuFOdmUSduW
+PclpjbQRz0JqOzvcNb39w9YpttSdLYCX5jD77PWa9kXk7LMWEy83srz2cBFvYqdR
+UZE+vFmsyRRviiPhKk28eofZD0otxJfbCpiSBYw9FvAvGzLyGzO5/ERz49mI5nYT
+7NYQF692IDYMnYb+Vmai2eblKgyaWbAhA3G9m7wcp5P7912YXYVZNY0Emm51UCDg
+eHxVflMk+GIFXjPqczQj6yQ0ZbUfrgct6fWcd9NkH3XeAXbkQ/5q7IHFlv0smU0=
+=pvKc
+-----END PGP SIGNATURE-----
+
+--oTHb8nViIGeoXxdp--
