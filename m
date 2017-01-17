@@ -1,44 +1,51 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 09 Jan 2017 19:04:24 +0000
-Subject: Re: [PATCHv2 net-next 0/5] sctp: add support for generating stream reconf chunks
-Message-Id: <20170109190424.GE3781@localhost.localdomain>
+From: Julian Cordes <julian.cordes@gmail.com>
+Date: Tue, 17 Jan 2017 13:06:48 +0000
+Subject: Issues on handshake with PR-SCTP
+Message-Id: <20170117130648.GA6494@aomx-netbook>
+MIME-Version: 1
+Content-Type: multipart/mixed; boundary="azLHFNyN32YCQGCU"
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1483781759.git.lucien.xin@gmail.com>
- <20170109124325.GB20973@hmswarspite.think-freely.org>
- <20170109.105301.469495957021068521.davem@davemloft.net>
- <CADvbK_dE74bAoTNo9gLczLuj71w3WMcPJ56tCFGJ=XjTMtTgRw@mail.gmail.com>
-In-Reply-To: <CADvbK_dE74bAoTNo9gLczLuj71w3WMcPJ56tCFGJ=XjTMtTgRw@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: David Miller <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>
+To: linux-sctp@vger.kernel.org
 
-On Tue, Jan 10, 2017 at 02:27:09AM +0800, Xin Long wrote:
-> On Mon, Jan 9, 2017 at 11:53 PM, David Miller <davem@davemloft.net> wrote:
-> > From: Neil Horman <nhorman@tuxdriver.com>
-> > Date: Mon, 9 Jan 2017 07:43:25 -0500
-> >
-> >> These all look reasonably good, but it seems before we accept them,
-> >> there should be an additional patch that actually makes use of the code.
-> >> I presume that is forthcomming?
-> >
-> > This all comes from my asking that the original huge set of patches be
-> > split up.
-> >
-> > People always just rush this kind of work and never think about laying
-> > out the resubmission properly.
-> >
-> > One should always only submit new interfaces along with an actual use
-> > because only with a use can we properly review whether the new
-> > interface is good or not.
-> 
-> I was trying to keep the same order with rfc, but it seems not a good
-> idea, will resplit, thanks.
 
-Not sure how much it can help but one idea it to split it into requester
-and requested sides. Do the first patches/patchsets to make Linux able
-to accept/handle requests, and then to issue requests.
+--azLHFNyN32YCQGCU
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-  Marcelo
+When one side of an association does not support PR-SCTP and does not
+announce the support with the FORWARD-TSN-Supported- Parameter in the
+INIT-Chunk or INIT-ACK chunk during the handshake there are two issues:
 
+If the peer does not include the FORWARD-TSN-Supported-Parameter in the
+INIT-Chunk and later sends an FORWARD-TSN-Chunk, then the linux kernel
+does not respond with an ERROR-Chunk like defined in https://tools.ietf.org/html/rfc3758#section-3.3.1.
+It instead silently discards the FORWARD-TSN-Chunk.
+
+Testscript available at:
+https://github.com/nplab/PR_SCTP_Testsuite/blob/master/forward-tsn/handshake-with-forward-tsn/handshake-with-forward-tsn-4.pkt
+
+If the peer does not include the FORWARD-TSN-Supported-Parameter in the
+INIT-ACK-Chunk but sends later an FORWARD-TSN-Chunk, then the behaviour
+is different. The Forward-TSN-Chunk is processed and an SACK-Chunk is sent
+by the linux kernel. This should also be an ERROR-Chunk, because the peer
+has not announced support for PR-SCTP.
+
+Testscript available at:
+https://github.com/nplab/PR_SCTP_Testsuite/blob/master/forward-tsn/handshake-with-forward-tsn/handshake-with-forward-tsn-5.pkt
+
+--azLHFNyN32YCQGCU
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQEcBAEBAgAGBQJYfhblAAoJEAvjb6G8Rb/jsecIAIzzGgwJsA7mmpo3+e64y6q8
+2Zbv7WjLePVCbOxGtMZYG0InI9MqiT3zRZqtG7cdIGKRCyznbzM1bBd3WaTk78ch
+pSs8A3fNnE8YY6YC1mYQySf/e6yv6qhIYMvJD9t23uOAIysc/FeMDZBy0TpzWr+N
+F1uaQEaAMZO2jakIle0BM0EjzpvAuAFl7UbHF16xqXbZuFS8AS/HYnGzgOPYzJZV
+zTp2jk/45h9vNG0X8cS/7hR4cYtF5PkJWfGHgsiDk5YpnbBHeSt2qJABnuIYd5tw
+ZTuRdoTRkSloK8s98HlJn25fxocDEr4Ms8OE70uTkjp3ttmwT+RSvEofSA94wLA=
+=Jggz
+-----END PGP SIGNATURE-----
+
+--azLHFNyN32YCQGCU--
