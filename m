@@ -1,119 +1,149 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 01 Jan 2017 11:20:25 +0000
-Subject: [PATCH net-next 08/27] sctp: add rfc6525 section 4.5-4.6
-Message-Id: <229608faf7af54c0bf908694ca8349205bbf6eab.1483269426.git.lucien.xin@gmail.com>
+Date: Tue, 17 Jan 2017 16:44:44 +0000
+Subject: [PATCHv4 net-next 3/6] sctp: add stream reconf primitive
+Message-Id: <9c7e8c3427aa17874b192a06175800c333a54438.1484670664.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1483269426.git.lucien.xin@gmail.com>
- <684ad8ddd79f23844883dede4c34360ce744dfc3.1483269426.git.lucien.xin@gmail.com>
- <c752879a5af358c08da949b391416452f1322c43.1483269426.git.lucien.xin@gmail.com>
- <be8a2770ddc2381266050c9f168add9802b90a49.1483269426.git.lucien.xin@gmail.com>
- <fc046afdda34c9b262ce57400c4256b14fd1a0fb.1483269426.git.lucien.xin@gmail.com>
- <d4f1b2a4fa19457e9867b0a1f84764a7a509459a.1483269426.git.lucien.xin@gmail.com>
- <31abc54d31ef0714322f137bff43458014d7c276.1483269426.git.lucien.xin@gmail.com>
- <58860816816d6d51b062235fd54dae6540a4797a.1483269426.git.lucien.xin@gmail.com>
-In-Reply-To: <58860816816d6d51b062235fd54dae6540a4797a.1483269426.git.lucien.xin@gmail.com>
+References: <cover.1484670664.git.lucien.xin@gmail.com>
+ <eff824eb34c55a83e35334597e6d510a5dde3ce6.1484670664.git.lucien.xin@gmail.com>
+ <1a1ff083ca37b6de6bacf038ae5d0367f0112edd.1484670664.git.lucien.xin@gmail.com>
+In-Reply-To: <1a1ff083ca37b6de6bacf038ae5d0367f0112edd.1484670664.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-This patch is to define Add Incoming/Outgoing Streams Request
-Parameter described in section 4.5 and 4.6. They can be in one
-same chunk trunk as section 3.1-7 describes, so make them in
-one function.
+This patch is to add a primitive based on sctp primitive frame for
+sending stream reconf request. It works as the other primitives,
+and create a SCTP_CMD_REPLY command to send the request chunk out.
+
+sctp_primitive_RECONF would be the api to send a reconf request
+chunk.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/linux/sctp.h     |  7 +++++++
- include/net/sctp/sm.h    |  3 +++
- net/sctp/sm_make_chunk.c | 46 ++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 56 insertions(+)
+ include/net/sctp/constants.h |  3 ++-
+ include/net/sctp/sctp.h      |  2 ++
+ include/net/sctp/sm.h        |  1 +
+ net/sctp/primitive.c         |  3 +++
+ net/sctp/sm_statefuns.c      | 13 +++++++++++++
+ net/sctp/sm_statetable.c     | 20 ++++++++++++++++++++
+ 6 files changed, 41 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index c4fcc7d..3a9f234 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -771,4 +771,11 @@ struct sctp_strreset_resptsn {
- 	__u32 receivers_next_tsn;
- } __packed;
+diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
+index 8307c86..3567c97 100644
+--- a/include/net/sctp/constants.h
++++ b/include/net/sctp/constants.h
+@@ -114,9 +114,10 @@ typedef enum {
+ 	SCTP_PRIMITIVE_SEND,
+ 	SCTP_PRIMITIVE_REQUESTHEARTBEAT,
+ 	SCTP_PRIMITIVE_ASCONF,
++	SCTP_PRIMITIVE_RECONF,
+ } sctp_event_primitive_t;
  
-+struct sctp_strreset_addstrm {
-+	sctp_paramhdr_t param_hdr;
-+	__u32 request_seq;
-+	__u16 number_of_streams;
-+	__u16 reserved;
-+} __packed;
-+
- #endif /* __LINUX_SCTP_H__ */
+-#define SCTP_EVENT_PRIMITIVE_MAX	SCTP_PRIMITIVE_ASCONF
++#define SCTP_EVENT_PRIMITIVE_MAX	SCTP_PRIMITIVE_RECONF
+ #define SCTP_NUM_PRIMITIVE_TYPES	(SCTP_EVENT_PRIMITIVE_MAX + 1)
+ 
+ /* We define here a utility type for manipulating subtypes.
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 598d938..bc0e049 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -141,6 +141,8 @@ int sctp_primitive_ABORT(struct net *, struct sctp_association *, void *arg);
+ int sctp_primitive_SEND(struct net *, struct sctp_association *, void *arg);
+ int sctp_primitive_REQUESTHEARTBEAT(struct net *, struct sctp_association *, void *arg);
+ int sctp_primitive_ASCONF(struct net *, struct sctp_association *, void *arg);
++int sctp_primitive_RECONF(struct net *net, struct sctp_association *asoc,
++			  void *arg);
+ 
+ /*
+  * sctp/input.c
 diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index 013d69f..35986d0 100644
+index d2d9e28..430ed13 100644
 --- a/include/net/sctp/sm.h
 +++ b/include/net/sctp/sm.h
-@@ -272,6 +272,9 @@ struct sctp_chunk *sctp_make_strreset_tsnresp(
- 				struct sctp_association *asoc,
- 				__u32 result, __u32 sn,
- 				__u32 sender_tsn, __u32 receiver_tsn);
-+struct sctp_chunk *sctp_make_strreset_addstrm(
-+				const struct sctp_association *asoc,
-+				__u16 out, __u16 in);
- void sctp_chunk_assign_tsn(struct sctp_chunk *);
- void sctp_chunk_assign_ssn(struct sctp_chunk *);
+@@ -157,6 +157,7 @@ sctp_state_fn_t sctp_sf_error_shutdown;
+ sctp_state_fn_t sctp_sf_ignore_primitive;
+ sctp_state_fn_t sctp_sf_do_prm_requestheartbeat;
+ sctp_state_fn_t sctp_sf_do_prm_asconf;
++sctp_state_fn_t sctp_sf_do_prm_reconf;
  
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index e779a0f..102e816 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -3758,3 +3758,49 @@ struct sctp_chunk *sctp_make_strreset_tsnresp(
+ /* Prototypes for other event state functions.  */
+ sctp_state_fn_t sctp_sf_do_no_pending_tsn;
+diff --git a/net/sctp/primitive.c b/net/sctp/primitive.c
+index ab8d9f9..f0553a0 100644
+--- a/net/sctp/primitive.c
++++ b/net/sctp/primitive.c
+@@ -211,3 +211,6 @@ DECLARE_PRIMITIVE(REQUESTHEARTBEAT);
+ */
  
- 	return retval;
+ DECLARE_PRIMITIVE(ASCONF);
++
++/* RE-CONFIG 5.1 */
++DECLARE_PRIMITIVE(RECONF);
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 2ae186a..782e579 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -5185,6 +5185,19 @@ sctp_disposition_t sctp_sf_do_prm_asconf(struct net *net,
+ 	return SCTP_DISPOSITION_CONSUME;
  }
-+
-+/* RE-CONFIG 4.5/4.6 (ADD STREAM)
-+ *   0                   1                   2                   3
-+ *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-+ *  |     Parameter Type = 17       |      Parameter Length = 12    |
-+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-+ *  |          Re-configuration Request Sequence Number             |
-+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-+ *  |      Number of new streams    |         Reserved              |
-+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-+ */
-+struct sctp_chunk *sctp_make_strreset_addstrm(
-+				const struct sctp_association *asoc,
-+				__u16 out, __u16 in)
+ 
++/* RE-CONFIG Section 5.1 RECONF Chunk Procedures */
++sctp_disposition_t sctp_sf_do_prm_reconf(struct net *net,
++					 const struct sctp_endpoint *ep,
++					 const struct sctp_association *asoc,
++					 const sctp_subtype_t type,
++					 void *arg, sctp_cmd_seq_t *commands)
 +{
-+	struct sctp_strreset_addstrm addstrm;
-+	__u16 size = sizeof(addstrm);
-+	struct sctp_chunk *retval;
++	struct sctp_chunk *chunk = arg;
 +
-+	retval = sctp_make_reconf(asoc, (!!out + !!in) * size);
-+	if (!retval)
-+		return NULL;
-+
-+	if (out) {
-+		addstrm.param_hdr.type = SCTP_PARAM_RESET_ADD_OUT_STREAMS;
-+		addstrm.param_hdr.length = htons(size);
-+		addstrm.number_of_streams = htons(out);
-+		addstrm.request_seq = htonl(asoc->strreset_outseq);
-+		addstrm.reserved = 0;
-+
-+		sctp_addto_chunk(retval, size, &addstrm);
-+	}
-+
-+	if (in) {
-+		addstrm.param_hdr.type = SCTP_PARAM_RESET_ADD_IN_STREAMS;
-+		addstrm.param_hdr.length = htons(size);
-+		addstrm.number_of_streams = htons(in);
-+		addstrm.request_seq = htonl(asoc->strreset_outseq + !!out);
-+		addstrm.reserved = 0;
-+
-+		sctp_addto_chunk(retval, size, &addstrm);
-+	}
-+
-+	return retval;
++	sctp_add_cmd_sf(commands, SCTP_CMD_REPLY, SCTP_CHUNK(chunk));
++	return SCTP_DISPOSITION_CONSUME;
 +}
++
+ /*
+  * Ignore the primitive event
+  *
+diff --git a/net/sctp/sm_statetable.c b/net/sctp/sm_statetable.c
+index 3da521a..b5438b4 100644
+--- a/net/sctp/sm_statetable.c
++++ b/net/sctp/sm_statetable.c
+@@ -643,6 +643,25 @@ chunk_event_table_unknown[SCTP_STATE_NUM_STATES] = {
+ 	TYPE_SCTP_FUNC(sctp_sf_error_shutdown), \
+ } /* TYPE_SCTP_PRIMITIVE_ASCONF */
+ 
++#define TYPE_SCTP_PRIMITIVE_RECONF { \
++	/* SCTP_STATE_CLOSED */ \
++	TYPE_SCTP_FUNC(sctp_sf_error_closed), \
++	/* SCTP_STATE_COOKIE_WAIT */ \
++	TYPE_SCTP_FUNC(sctp_sf_error_closed), \
++	/* SCTP_STATE_COOKIE_ECHOED */ \
++	TYPE_SCTP_FUNC(sctp_sf_error_closed), \
++	/* SCTP_STATE_ESTABLISHED */ \
++	TYPE_SCTP_FUNC(sctp_sf_do_prm_reconf), \
++	/* SCTP_STATE_SHUTDOWN_PENDING */ \
++	TYPE_SCTP_FUNC(sctp_sf_do_prm_reconf), \
++	/* SCTP_STATE_SHUTDOWN_SENT */ \
++	TYPE_SCTP_FUNC(sctp_sf_do_prm_reconf), \
++	/* SCTP_STATE_SHUTDOWN_RECEIVED */ \
++	TYPE_SCTP_FUNC(sctp_sf_do_prm_reconf), \
++	/* SCTP_STATE_SHUTDOWN_ACK_SENT */ \
++	TYPE_SCTP_FUNC(sctp_sf_error_shutdown), \
++} /* TYPE_SCTP_PRIMITIVE_RECONF */
++
+ /* The primary index for this table is the primitive type.
+  * The secondary index for this table is the state.
+  */
+@@ -653,6 +672,7 @@ static const sctp_sm_table_entry_t primitive_event_table[SCTP_NUM_PRIMITIVE_TYPE
+ 	TYPE_SCTP_PRIMITIVE_SEND,
+ 	TYPE_SCTP_PRIMITIVE_REQUESTHEARTBEAT,
+ 	TYPE_SCTP_PRIMITIVE_ASCONF,
++	TYPE_SCTP_PRIMITIVE_RECONF,
+ };
+ 
+ #define TYPE_SCTP_OTHER_NO_PENDING_TSN  { \
 -- 
 2.1.0
 
