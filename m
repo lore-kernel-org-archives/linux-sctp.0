@@ -1,147 +1,266 @@
-From: Julian Anastasov <ja@ssi.bg>
-Date: Tue, 31 Jan 2017 21:57:02 +0000
-Subject: [PATCHv3 net-next 2/7] net: add dst_pending_confirm flag to skbuff
-Message-Id: <1485899827-5212-3-git-send-email-ja@ssi.bg>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 17 Jan 2017 16:44:42 +0000
+Subject: [PATCHv4 net-next 1/6] sctp: add support for generating stream reconf ssn reset request chunk
+Message-Id: <eff824eb34c55a83e35334597e6d510a5dde3ce6.1484670664.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1485899827-5212-1-git-send-email-ja@ssi.bg>
-In-Reply-To: <1485899827-5212-1-git-send-email-ja@ssi.bg>
+References: <cover.1484670664.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1484670664.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, linux-rdma@vger.kernel.org, YueHaibing <yuehaibing@huawei.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-Add new skbuff flag to allow protocols to confirm neighbour.
-When same struct dst_entry can be used for many different
-neighbours we can not use it for pending confirmations.
+This patch is to add asoc strreset_outseq and strreset_inseq for
+saving the reconf request sequence, initialize them when create
+assoc and process init, and also to define Incoming and Outgoing
+SSN Reset Request Parameter described in rfc6525 section 4.1 and
+4.2, As they can be in one same chunk as section rfc6525 3.1-3
+describes, it makes them in one function.
 
-Add sock_confirm_neigh() helper to confirm the neighbour and
-use it for IPv4, IPv6 and VRF before dst_neigh_output.
-
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Acked-by: Eric Dumazet <edumazet@google.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- drivers/net/vrf.c      |  5 ++++-
- include/linux/skbuff.h | 12 ++++++++++++
- include/net/sock.h     | 14 ++++++++++++++
- net/ipv4/ip_output.c   |  5 ++++-
- net/ipv6/ip6_output.c  |  1 +
- 5 files changed, 35 insertions(+), 2 deletions(-)
+ include/linux/sctp.h       |  27 ++++++++++
+ include/net/sctp/sm.h      |   5 +-
+ include/net/sctp/structs.h |   3 ++
+ net/sctp/associola.c       |   1 +
+ net/sctp/sm_make_chunk.c   | 121 +++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 156 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/net/vrf.c b/drivers/net/vrf.c
-index 264fc15..630eafd 100644
---- a/drivers/net/vrf.c
-+++ b/drivers/net/vrf.c
-@@ -378,6 +378,7 @@ static int vrf_finish_output6(struct net *net, struct sock *sk,
- 	if (unlikely(!neigh))
- 		neigh = __neigh_create(&nd_tbl, nexthop, dst->dev, false);
- 	if (!IS_ERR(neigh)) {
-+		sock_confirm_neigh(skb, neigh);
- 		ret = dst_neigh_output(dst, neigh, skb);
- 		rcu_read_unlock_bh();
- 		return ret;
-@@ -574,8 +575,10 @@ static int vrf_finish_output(struct net *net, struct sock *sk, struct sk_buff *s
- 	neigh = __ipv4_neigh_lookup_noref(dev, nexthop);
- 	if (unlikely(!neigh))
- 		neigh = __neigh_create(&arp_tbl, &nexthop, dev, false);
--	if (!IS_ERR(neigh))
-+	if (!IS_ERR(neigh)) {
-+		sock_confirm_neigh(skb, neigh);
- 		ret = dst_neigh_output(dst, neigh, skb);
-+	}
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index fcb4c36..a9e7906 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -108,6 +108,7 @@ typedef enum {
+ 	/* Use hex, as defined in ADDIP sec. 3.1 */
+ 	SCTP_CID_ASCONF			= 0xC1,
+ 	SCTP_CID_ASCONF_ACK		= 0x80,
++	SCTP_CID_RECONF			= 0x82,
+ } sctp_cid_t; /* enum */
  
- 	rcu_read_unlock_bh();
- err:
-diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
-index 6f63b7e..3ac3c3b 100644
---- a/include/linux/skbuff.h
-+++ b/include/linux/skbuff.h
-@@ -613,6 +613,7 @@ static inline bool skb_mstamp_after(const struct skb_mstamp *t1,
-  *	@wifi_acked_valid: wifi_acked was set
-  *	@wifi_acked: whether frame was acked on wifi or not
-  *	@no_fcs:  Request NIC to treat last 4 bytes as Ethernet FCS
-+ *	@dst_pending_confirm: need to confirm neighbour
-   *	@napi_id: id of the NAPI struct this skb came from
-  *	@secmark: security marking
-  *	@mark: Generic packet mark
-@@ -743,6 +744,7 @@ struct sk_buff {
- 	__u8			csum_level:2;
- 	__u8			csum_bad:1;
  
-+	__u8			dst_pending_confirm:1;
- #ifdef CONFIG_IPV6_NDISC_NODETYPE
- 	__u8			ndisc_nodetype:2;
- #endif
-@@ -3694,6 +3696,16 @@ static inline bool skb_rx_queue_recorded(const struct sk_buff *skb)
- 	return skb->queue_mapping != 0;
+@@ -199,6 +200,13 @@ typedef enum {
+ 	SCTP_PARAM_SUCCESS_REPORT	= cpu_to_be16(0xc005),
+ 	SCTP_PARAM_ADAPTATION_LAYER_IND = cpu_to_be16(0xc006),
+ 
++	/* RE-CONFIG. Section 4 */
++	SCTP_PARAM_RESET_OUT_REQUEST		= cpu_to_be16(0x000d),
++	SCTP_PARAM_RESET_IN_REQUEST		= cpu_to_be16(0x000e),
++	SCTP_PARAM_RESET_TSN_REQUEST		= cpu_to_be16(0x000f),
++	SCTP_PARAM_RESET_RESPONSE		= cpu_to_be16(0x0010),
++	SCTP_PARAM_RESET_ADD_OUT_STREAMS	= cpu_to_be16(0x0011),
++	SCTP_PARAM_RESET_ADD_IN_STREAMS		= cpu_to_be16(0x0012),
+ } sctp_param_t; /* enum */
+ 
+ 
+@@ -710,4 +718,23 @@ struct sctp_infox {
+ 	struct sctp_association *asoc;
+ };
+ 
++struct sctp_reconf_chunk {
++	sctp_chunkhdr_t chunk_hdr;
++	__u8 params[0];
++} __packed;
++
++struct sctp_strreset_outreq {
++	sctp_paramhdr_t param_hdr;
++	__u32 request_seq;
++	__u32 response_seq;
++	__u32 send_reset_at_tsn;
++	__u16 list_of_streams[0];
++} __packed;
++
++struct sctp_strreset_inreq {
++	sctp_paramhdr_t param_hdr;
++	__u32 request_seq;
++	__u16 list_of_streams[0];
++} __packed;
++
+ #endif /* __LINUX_SCTP_H__ */
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index ca6c971..3462cb0 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -259,7 +259,10 @@ struct sctp_chunk *sctp_make_fwdtsn(const struct sctp_association *asoc,
+ 				    __u32 new_cum_tsn, size_t nstreams,
+ 				    struct sctp_fwdtsn_skip *skiplist);
+ struct sctp_chunk *sctp_make_auth(const struct sctp_association *asoc);
+-
++struct sctp_chunk *sctp_make_strreset_req(
++				const struct sctp_association *asoc,
++				__u16 stream_num, __u16 *stream_list,
++				bool out, bool in);
+ void sctp_chunk_assign_tsn(struct sctp_chunk *);
+ void sctp_chunk_assign_ssn(struct sctp_chunk *);
+ 
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 4741ec2..3dc983e 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1865,6 +1865,9 @@ struct sctp_association {
+ 	     temp:1,		/* Is it a temporary association? */
+ 	     prsctp_enable:1;
+ 
++	__u32 strreset_outseq; /* Update after receiving response */
++	__u32 strreset_inseq; /* Update after receiving request */
++
+ 	struct sctp_priv_assoc_stats stats;
+ 
+ 	int sent_cnt_removable;
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 36294f7..42ece6f 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -207,6 +207,7 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
+ 	 * association to the same value as the initial TSN.
+ 	 */
+ 	asoc->addip_serial = asoc->c.initial_tsn;
++	asoc->strreset_outseq = asoc->c.initial_tsn;
+ 
+ 	INIT_LIST_HEAD(&asoc->addip_chunk_list);
+ 	INIT_LIST_HEAD(&asoc->asconf_ack_list);
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index a15d824..172385c 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -1844,6 +1844,7 @@ struct sctp_association *sctp_unpack_cookie(
+ 	retval->next_tsn = retval->c.initial_tsn;
+ 	retval->ctsn_ack_point = retval->next_tsn - 1;
+ 	retval->addip_serial = retval->c.initial_tsn;
++	retval->strreset_outseq = retval->c.initial_tsn;
+ 	retval->adv_peer_ack_point = retval->ctsn_ack_point;
+ 	retval->peer.prsctp_capable = retval->c.prsctp_capable;
+ 	retval->peer.adaptation_ind = retval->c.adaptation_ind;
+@@ -2387,6 +2388,8 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
+ 	asoc->peer.i.initial_tsn  		ntohl(peer_init->init_hdr.initial_tsn);
+ 
++	asoc->strreset_inseq = asoc->peer.i.initial_tsn;
++
+ 	/* Apply the upper bounds for output streams based on peer's
+ 	 * number of inbound streams.
+ 	 */
+@@ -3526,3 +3529,121 @@ struct sctp_chunk *sctp_make_fwdtsn(const struct sctp_association *asoc,
+ 
+ 	return retval;
  }
- 
-+static inline void skb_set_dst_pending_confirm(struct sk_buff *skb, u32 val)
++
++/* RE-CONFIG 3.1 (RE-CONFIG chunk)
++ *   0                   1                   2                   3
++ *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  | Type = 130    |  Chunk Flags  |      Chunk Length             |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  \                                                               \
++ *  /                  Re-configuration Parameter                   /
++ *  \                                                               \
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  \                                                               \
++ *  /             Re-configuration Parameter (optional)             /
++ *  \                                                               \
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ */
++static struct sctp_chunk *sctp_make_reconf(
++				const struct sctp_association *asoc,
++				int length)
 +{
-+	skb->dst_pending_confirm = val;
++	struct sctp_reconf_chunk *reconf;
++	struct sctp_chunk *retval;
++
++	retval = sctp_make_control(asoc, SCTP_CID_RECONF, 0, length,
++				   GFP_ATOMIC);
++	if (!retval)
++		return NULL;
++
++	reconf = (struct sctp_reconf_chunk *)retval->chunk_hdr;
++	retval->param_hdr.v = reconf->params;
++
++	return retval;
 +}
 +
-+static inline bool skb_get_dst_pending_confirm(const struct sk_buff *skb)
++/* RE-CONFIG 4.1 (STREAM OUT RESET)
++ *   0                   1                   2                   3
++ *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |     Parameter Type = 13       | Parameter Length = 16 + 2 * N |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |           Re-configuration Request Sequence Number            |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |           Re-configuration Response Sequence Number           |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |                Sender's Last Assigned TSN                     |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |  Stream Number 1 (optional)   |    Stream Number 2 (optional) |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  /                            ......                             /
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |  Stream Number N-1 (optional) |    Stream Number N (optional) |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *
++ * RE-CONFIG 4.2 (STREAM IN RESET)
++ *   0                   1                   2                   3
++ *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |     Parameter Type = 14       |  Parameter Length = 8 + 2 * N |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |          Re-configuration Request Sequence Number             |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |  Stream Number 1 (optional)   |    Stream Number 2 (optional) |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  /                            ......                             /
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |  Stream Number N-1 (optional) |    Stream Number N (optional) |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ */
++struct sctp_chunk *sctp_make_strreset_req(
++				const struct sctp_association *asoc,
++				__u16 stream_num, __u16 *stream_list,
++				bool out, bool in)
 +{
-+	return skb->dst_pending_confirm != 0;
-+}
++	struct sctp_strreset_outreq outreq;
++	__u16 stream_len = stream_num * 2;
++	struct sctp_strreset_inreq inreq;
++	struct sctp_chunk *retval;
++	__u16 outlen, inlen, i;
 +
- static inline struct sec_path *skb_sec_path(struct sk_buff *skb)
- {
- #ifdef CONFIG_XFRM
-diff --git a/include/net/sock.h b/include/net/sock.h
-index e113786..1bc821e 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -1821,6 +1821,20 @@ static inline void sk_dst_confirm(struct sock *sk)
- 		sk->sk_dst_pending_confirm = 1;
- }
- 
-+static inline void sock_confirm_neigh(struct sk_buff *skb, struct neighbour *n)
-+{
-+	if (skb_get_dst_pending_confirm(skb)) {
-+		struct sock *sk = skb->sk;
-+		unsigned long now = jiffies;
++	outlen = (sizeof(outreq) + stream_len) * out;
++	inlen = (sizeof(inreq) + stream_len) * in;
 +
-+		/* avoid dirtying neighbour */
-+		if (n->confirmed != now)
-+			n->confirmed = now;
-+		if (sk && sk->sk_dst_pending_confirm)
-+			sk->sk_dst_pending_confirm = 0;
++	retval = sctp_make_reconf(asoc, outlen + inlen);
++	if (!retval)
++		return NULL;
++
++	for (i = 0; i < stream_num; i++)
++		stream_list[i] = htons(stream_list[i]);
++
++	if (outlen) {
++		outreq.param_hdr.type = SCTP_PARAM_RESET_OUT_REQUEST;
++		outreq.param_hdr.length = htons(outlen);
++		outreq.request_seq = htonl(asoc->strreset_outseq);
++		outreq.response_seq = htonl(asoc->strreset_inseq - 1);
++		outreq.send_reset_at_tsn = htonl(asoc->next_tsn - 1);
++
++		sctp_addto_chunk(retval, sizeof(outreq), &outreq);
++
++		if (stream_len)
++			sctp_addto_chunk(retval, stream_len, stream_list);
 +	}
++
++	if (inlen) {
++		inreq.param_hdr.type = SCTP_PARAM_RESET_IN_REQUEST;
++		inreq.param_hdr.length = htons(inlen);
++		inreq.request_seq = htonl(asoc->strreset_outseq + out);
++
++		sctp_addto_chunk(retval, sizeof(inreq), &inreq);
++
++		if (stream_len)
++			sctp_addto_chunk(retval, stream_len, stream_list);
++	}
++
++	for (i = 0; i < stream_num; i++)
++		stream_list[i] = ntohs(stream_list[i]);
++
++	return retval;
 +}
-+
- bool sk_mc_loop(struct sock *sk);
- 
- static inline bool sk_can_gso(const struct sock *sk)
-diff --git a/net/ipv4/ip_output.c b/net/ipv4/ip_output.c
-index fac275c4..27f1db7 100644
---- a/net/ipv4/ip_output.c
-+++ b/net/ipv4/ip_output.c
-@@ -222,7 +222,10 @@ static int ip_finish_output2(struct net *net, struct sock *sk, struct sk_buff *s
- 	if (unlikely(!neigh))
- 		neigh = __neigh_create(&arp_tbl, &nexthop, dev, false);
- 	if (!IS_ERR(neigh)) {
--		int res = dst_neigh_output(dst, neigh, skb);
-+		int res;
-+
-+		sock_confirm_neigh(skb, neigh);
-+		res = dst_neigh_output(dst, neigh, skb);
- 
- 		rcu_read_unlock_bh();
- 		return res;
-diff --git a/net/ipv6/ip6_output.c b/net/ipv6/ip6_output.c
-index 38122d0..7d90cab 100644
---- a/net/ipv6/ip6_output.c
-+++ b/net/ipv6/ip6_output.c
-@@ -119,6 +119,7 @@ static int ip6_finish_output2(struct net *net, struct sock *sk, struct sk_buff *
- 	if (unlikely(!neigh))
- 		neigh = __neigh_create(&nd_tbl, nexthop, dst->dev, false);
- 	if (!IS_ERR(neigh)) {
-+		sock_confirm_neigh(skb, neigh);
- 		ret = dst_neigh_output(dst, neigh, skb);
- 		rcu_read_unlock_bh();
- 		return ret;
 -- 
-1.9.3
+2.1.0
 
