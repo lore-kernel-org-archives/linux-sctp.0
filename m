@@ -1,274 +1,164 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 01 Jan 2017 11:20:19 +0000
-Subject: [PATCH net-next 02/27] sctp: replace ssnmap with asoc stream arrays
-Message-Id: <c752879a5af358c08da949b391416452f1322c43.1483269426.git.lucien.xin@gmail.com>
+Date: Tue, 17 Jan 2017 16:44:45 +0000
+Subject: [PATCHv4 net-next 4/6] sctp: add reconf_enable in asoc ep and netns
+Message-Id: <d016227bd6d957ee304bb9a7454a7e378801c6cf.1484670664.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1483269426.git.lucien.xin@gmail.com>
- <684ad8ddd79f23844883dede4c34360ce744dfc3.1483269426.git.lucien.xin@gmail.com>
-In-Reply-To: <684ad8ddd79f23844883dede4c34360ce744dfc3.1483269426.git.lucien.xin@gmail.com>
+References: <cover.1484670664.git.lucien.xin@gmail.com>
+ <eff824eb34c55a83e35334597e6d510a5dde3ce6.1484670664.git.lucien.xin@gmail.com>
+ <1a1ff083ca37b6de6bacf038ae5d0367f0112edd.1484670664.git.lucien.xin@gmail.com>
+ <9c7e8c3427aa17874b192a06175800c333a54438.1484670664.git.lucien.xin@gmail.com>
+In-Reply-To: <9c7e8c3427aa17874b192a06175800c333a54438.1484670664.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-Stream arrays are used to save per stream information, which includes
-ssn for each stream already.
+This patch is to add reconf_enable field in all of asoc ep and netns
+to indicate if they support stream reset.
 
-This patch is to replace ssnmap with asoc stream arrays.
+When initializing, asoc reconf_enable get the default value from ep
+reconf_enable which is from netns netns reconf_enable by default.
+
+It is also to add reconf_capable in asoc peer part to know if peer
+supports reconf_enable, the value is set if ext params have reconf
+chunk support when processing init chunk, just as rfc6525 section
+5.1.1 demands.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/structs.h | 19 ++++++-------------
- net/sctp/associola.c       | 10 ----------
- net/sctp/sm_make_chunk.c   | 11 ++---------
- net/sctp/sm_statefuns.c    |  3 +--
- net/sctp/ulpqueue.c        | 33 +++++++++++----------------------
- 5 files changed, 20 insertions(+), 56 deletions(-)
+ include/net/netns/sctp.h   |  3 +++
+ include/net/sctp/structs.h |  7 +++++--
+ net/sctp/associola.c       |  1 +
+ net/sctp/endpointola.c     |  1 +
+ net/sctp/protocol.c        |  3 +++
+ net/sctp/sm_make_chunk.c   | 15 +++++++++++++++
+ 6 files changed, 28 insertions(+), 2 deletions(-)
 
+diff --git a/include/net/netns/sctp.h b/include/net/netns/sctp.h
+index c501d67..b7871d0 100644
+--- a/include/net/netns/sctp.h
++++ b/include/net/netns/sctp.h
+@@ -118,6 +118,9 @@ struct netns_sctp {
+ 	/* Flag to indicate if PR-SCTP is enabled. */
+ 	int prsctp_enable;
+ 
++	/* Flag to indicate if PR-CONFIG is enabled. */
++	int reconf_enable;
++
+ 	/* Flag to idicate if SCTP-AUTH is enabled */
+ 	int auth_enable;
+ 
 diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 549f17d..f81c321 100644
+index 463b4d6..ee037ef 100644
 --- a/include/net/sctp/structs.h
 +++ b/include/net/sctp/structs.h
-@@ -407,23 +407,16 @@ void sctp_ssnmap_free(struct sctp_ssnmap *map);
- void sctp_ssnmap_clear(struct sctp_ssnmap *map);
+@@ -1255,7 +1255,8 @@ struct sctp_endpoint {
+ 	struct list_head endpoint_shared_keys;
+ 	__u16 active_key_id;
+ 	__u8  auth_enable:1,
+-	      prsctp_enable:1;
++	      prsctp_enable:1,
++	      reconf_enable:1;
+ };
  
- /* What is the current SSN number for this stream? */
--static inline __u16 sctp_ssn_peek(struct sctp_stream *stream, __u16 id)
--{
--	return stream->ssn[id];
--}
-+#define sctp_ssn_peek(asoc, type, sid) \
-+	((asoc)->stream##type[sid].ssn)
+ /* Recover the outter endpoint structure. */
+@@ -1508,6 +1509,7 @@ struct sctp_association {
+ 			hostname_address:1, /* Peer understands DNS addresses? */
+ 			asconf_capable:1,   /* Does peer support ADDIP? */
+ 			prsctp_capable:1,   /* Can peer do PR-SCTP? */
++			reconf_capable:1,   /* Can peer do RE-CONFIG? */
+ 			auth_capable:1;     /* Is peer doing SCTP-AUTH? */
  
- /* Return the next SSN number for this stream.	*/
--static inline __u16 sctp_ssn_next(struct sctp_stream *stream, __u16 id)
--{
--	return stream->ssn[id]++;
--}
-+#define sctp_ssn_next(asoc, type, sid) \
-+	((asoc)->stream##type[sid].ssn++)
+ 		/* sack_needed : This flag indicates if the next received
+@@ -1867,7 +1869,8 @@ struct sctp_association {
  
- /* Skip over this ssn and all below. */
--static inline void sctp_ssn_skip(struct sctp_stream *stream, __u16 id, 
--				 __u16 ssn)
--{
--	stream->ssn[id] = ssn+1;
--}
-+#define sctp_ssn_skip(asoc, type, sid, ssn) \
-+	((asoc)->stream##type[sid].ssn = ssn + 1)
-               
- /*
-  * Pointers to address related SCTP functions.
+ 	__u8 need_ecne:1,	/* Need to send an ECNE Chunk? */
+ 	     temp:1,		/* Is it a temporary association? */
+-	     prsctp_enable:1;
++	     prsctp_enable:1,
++	     reconf_enable:1;
+ 
+ 	__u32 strreset_outseq; /* Update after receiving response */
+ 	__u32 strreset_inseq; /* Update after receiving request */
 diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index 290ec4d..ea03270 100644
+index fc33540..68b99ad 100644
 --- a/net/sctp/associola.c
 +++ b/net/sctp/associola.c
-@@ -358,9 +358,6 @@ void sctp_association_free(struct sctp_association *asoc)
+@@ -270,6 +270,7 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
  
- 	sctp_tsnmap_free(&asoc->peer.tsn_map);
+ 	asoc->active_key_id = ep->active_key_id;
+ 	asoc->prsctp_enable = ep->prsctp_enable;
++	asoc->reconf_enable = ep->reconf_enable;
  
--	/* Free ssnmap storage. */
--	sctp_ssnmap_free(asoc->ssnmap);
--
- 	/* Free stream information. */
- 	kfree(asoc->streamout);
- 	kfree(asoc->streamin);
-@@ -1143,8 +1140,6 @@ void sctp_assoc_update(struct sctp_association *asoc,
- 		/* Reinitialize SSN for both local streams
- 		 * and peer's streams.
- 		 */
--		sctp_ssnmap_clear(asoc->ssnmap);
--
- 		for (i = 0; i < asoc->streamoutcnt; i++)
- 			asoc->streamout[i].ssn = 0;
+ 	/* Save the hmacs and chunks list into this association */
+ 	if (ep->auth_hmacs_list)
+diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
+index 410ddc1..8c58923 100644
+--- a/net/sctp/endpointola.c
++++ b/net/sctp/endpointola.c
+@@ -164,6 +164,7 @@ static struct sctp_endpoint *sctp_endpoint_init(struct sctp_endpoint *ep,
+ 	ep->auth_hmacs_list = auth_hmacs;
+ 	ep->auth_chunk_list = auth_chunks;
+ 	ep->prsctp_enable = net->sctp.prsctp_enable;
++	ep->reconf_enable = net->sctp.reconf_enable;
  
-@@ -1174,11 +1169,6 @@ void sctp_assoc_update(struct sctp_association *asoc,
+ 	return ep;
  
- 		asoc->ctsn_ack_point = asoc->next_tsn - 1;
- 		asoc->adv_peer_ack_point = asoc->ctsn_ack_point;
--		if (!asoc->ssnmap) {
--			/* Move the ssnmap. */
--			asoc->ssnmap = new->ssnmap;
--			new->ssnmap = NULL;
--		}
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index f9c3c37..8227bbb 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -1258,6 +1258,9 @@ static int __net_init sctp_defaults_init(struct net *net)
+ 	/* Enable PR-SCTP by default. */
+ 	net->sctp.prsctp_enable = 1;
  
- 		if (!asoc->streamin && !asoc->streamout) {
- 			asoc->streamout = new->streamout;
++	/* Disable RECONF by default. */
++	net->sctp.reconf_enable = 0;
++
+ 	/* Disable AUTH by default. */
+ 	net->sctp.auth_enable = 0;
+ 
 diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index eeadeef..78cbd1b 100644
+index 172385c..c4a0a9c 100644
 --- a/net/sctp/sm_make_chunk.c
 +++ b/net/sctp/sm_make_chunk.c
-@@ -1527,7 +1527,6 @@ void sctp_chunk_assign_ssn(struct sctp_chunk *chunk)
- {
- 	struct sctp_datamsg *msg;
- 	struct sctp_chunk *lchunk;
--	struct sctp_stream *stream;
- 	__u16 ssn;
- 	__u16 sid;
- 
-@@ -1536,7 +1535,6 @@ void sctp_chunk_assign_ssn(struct sctp_chunk *chunk)
- 
- 	/* All fragments will be on the same stream */
- 	sid = ntohs(chunk->subh.data_hdr->stream);
--	stream = &chunk->asoc->ssnmap->out;
- 
- 	/* Now assign the sequence number to the entire message.
- 	 * All fragments must have the same stream sequence number.
-@@ -1547,9 +1545,9 @@ void sctp_chunk_assign_ssn(struct sctp_chunk *chunk)
- 			ssn = 0;
- 		} else {
- 			if (lchunk->chunk_hdr->flags & SCTP_DATA_LAST_FRAG)
--				ssn = sctp_ssn_next(stream, sid);
-+				ssn = sctp_ssn_next(chunk->asoc, out, sid);
- 			else
--				ssn = sctp_ssn_peek(stream, sid);
-+				ssn = sctp_ssn_peek(chunk->asoc, out, sid);
- 		}
- 
- 		lchunk->subh.data_hdr->ssn = htons(ssn);
-@@ -2447,11 +2445,6 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
- 		asoc->streamoutcnt = asoc->c.sinit_num_ostreams;
- 		asoc->streamincnt = asoc->c.sinit_max_instreams;
- 
--		asoc->ssnmap = sctp_ssnmap_new(asoc->c.sinit_max_instreams,
--					       asoc->c.sinit_num_ostreams, gfp);
--		if (!asoc->ssnmap)
--			goto clean_up;
--
- 		asoc->streamout = kcalloc(asoc->streamoutcnt,
- 					  sizeof(*asoc->streamout), gfp);
- 		if (!asoc->streamout)
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 3382ef2..8a130a7 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -6274,9 +6274,8 @@ static int sctp_eat_data(const struct sctp_association *asoc,
- 	 * and is invalid.
- 	 */
- 	ssn = ntohs(data_hdr->ssn);
--	if (ordered && SSN_lt(ssn, sctp_ssn_peek(&asoc->ssnmap->in, sid))) {
-+	if (ordered && SSN_lt(ssn, sctp_ssn_peek(asoc, in, sid)))
- 		return SCTP_IERROR_PROTO_VIOLATION;
--	}
- 
- 	/* Send the data up to the user.  Note:  Schedule  the
- 	 * SCTP_CMD_CHUNK_ULP cmd before the SCTP_CMD_GEN_SACK, as the SACK
-diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
-index 84d0fda..0d8bf26 100644
---- a/net/sctp/ulpqueue.c
-+++ b/net/sctp/ulpqueue.c
-@@ -760,11 +760,9 @@ static void sctp_ulpq_retrieve_ordered(struct sctp_ulpq *ulpq,
- 	struct sk_buff_head *event_list;
- 	struct sk_buff *pos, *tmp;
- 	struct sctp_ulpevent *cevent;
--	struct sctp_stream *in;
- 	__u16 sid, csid, cssn;
- 
- 	sid = event->stream;
--	in  = &ulpq->asoc->ssnmap->in;
- 
- 	event_list = (struct sk_buff_head *) sctp_event2skb(event)->prev;
- 
-@@ -782,11 +780,11 @@ static void sctp_ulpq_retrieve_ordered(struct sctp_ulpq *ulpq,
- 		if (csid < sid)
- 			continue;
- 
--		if (cssn != sctp_ssn_peek(in, sid))
-+		if (cssn != sctp_ssn_peek(ulpq->asoc, in, sid))
- 			break;
- 
--		/* Found it, so mark in the ssnmap. */
--		sctp_ssn_next(in, sid);
-+		/* Found it, so mark in stream array. */
-+		sctp_ssn_next(ulpq->asoc, in, sid);
- 
- 		__skb_unlink(pos, &ulpq->lobby);
- 
-@@ -849,7 +847,6 @@ static struct sctp_ulpevent *sctp_ulpq_order(struct sctp_ulpq *ulpq,
- 					     struct sctp_ulpevent *event)
- {
- 	__u16 sid, ssn;
--	struct sctp_stream *in;
- 
- 	/* Check if this message needs ordering.  */
- 	if (SCTP_DATA_UNORDERED & event->msg_flags)
-@@ -858,10 +855,9 @@ static struct sctp_ulpevent *sctp_ulpq_order(struct sctp_ulpq *ulpq,
- 	/* Note: The stream ID must be verified before this routine.  */
- 	sid = event->stream;
- 	ssn = event->ssn;
--	in  = &ulpq->asoc->ssnmap->in;
- 
- 	/* Is this the expected SSN for this stream ID?  */
--	if (ssn != sctp_ssn_peek(in, sid)) {
-+	if (ssn != sctp_ssn_peek(ulpq->asoc, in, sid)) {
- 		/* We've received something out of order, so find where it
- 		 * needs to be placed.  We order by stream and then by SSN.
- 		 */
-@@ -870,7 +866,7 @@ static struct sctp_ulpevent *sctp_ulpq_order(struct sctp_ulpq *ulpq,
+@@ -270,6 +270,11 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
+ 		num_ext += 2;
  	}
  
- 	/* Mark that the next chunk has been found.  */
--	sctp_ssn_next(in, sid);
-+	sctp_ssn_next(ulpq->asoc, in, sid);
++	if (asoc->reconf_enable) {
++		extensions[num_ext] = SCTP_CID_RECONF;
++		num_ext += 1;
++	}
++
+ 	if (sp->adaptation_ind)
+ 		chunksize += sizeof(aiparam);
  
- 	/* Go find any other chunks that were waiting for
- 	 * ordering.
-@@ -888,13 +884,10 @@ static void sctp_ulpq_reap_ordered(struct sctp_ulpq *ulpq, __u16 sid)
- 	struct sk_buff *pos, *tmp;
- 	struct sctp_ulpevent *cevent;
- 	struct sctp_ulpevent *event;
--	struct sctp_stream *in;
- 	struct sk_buff_head temp;
- 	struct sk_buff_head *lobby = &ulpq->lobby;
- 	__u16 csid, cssn;
+@@ -434,6 +439,11 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
+ 		num_ext += 2;
+ 	}
  
--	in  = &ulpq->asoc->ssnmap->in;
--
- 	/* We are holding the chunks by stream, by SSN.  */
- 	skb_queue_head_init(&temp);
- 	event = NULL;
-@@ -912,7 +905,7 @@ static void sctp_ulpq_reap_ordered(struct sctp_ulpq *ulpq, __u16 sid)
- 			continue;
++	if (asoc->peer.reconf_capable) {
++		extensions[num_ext] = SCTP_CID_RECONF;
++		num_ext += 1;
++	}
++
+ 	if (sp->adaptation_ind)
+ 		chunksize += sizeof(aiparam);
  
- 		/* see if this ssn has been marked by skipping */
--		if (!SSN_lt(cssn, sctp_ssn_peek(in, csid)))
-+		if (!SSN_lt(cssn, sctp_ssn_peek(ulpq->asoc, in, csid)))
- 			break;
+@@ -2012,6 +2022,11 @@ static void sctp_process_ext_param(struct sctp_association *asoc,
  
- 		__skb_unlink(pos, lobby);
-@@ -932,8 +925,9 @@ static void sctp_ulpq_reap_ordered(struct sctp_ulpq *ulpq, __u16 sid)
- 		csid = cevent->stream;
- 		cssn = cevent->ssn;
- 
--		if (csid = sid && cssn = sctp_ssn_peek(in, csid)) {
--			sctp_ssn_next(in, csid);
-+		if (csid = sid &&
-+		    cssn = sctp_ssn_peek(ulpq->asoc, in, csid)) {
-+			sctp_ssn_next(ulpq->asoc, in, csid);
- 			__skb_unlink(pos, lobby);
- 			__skb_queue_tail(&temp, pos);
- 			event = sctp_skb2event(pos);
-@@ -955,17 +949,12 @@ static void sctp_ulpq_reap_ordered(struct sctp_ulpq *ulpq, __u16 sid)
-  */
- void sctp_ulpq_skip(struct sctp_ulpq *ulpq, __u16 sid, __u16 ssn)
- {
--	struct sctp_stream *in;
--
--	/* Note: The stream ID must be verified before this routine.  */
--	in  = &ulpq->asoc->ssnmap->in;
--
- 	/* Is this an old SSN?  If so ignore. */
--	if (SSN_lt(ssn, sctp_ssn_peek(in, sid)))
-+	if (SSN_lt(ssn, sctp_ssn_peek(ulpq->asoc, in, sid)))
- 		return;
- 
- 	/* Mark that we are no longer expecting this SSN or lower. */
--	sctp_ssn_skip(in, sid, ssn);
-+	sctp_ssn_skip(ulpq->asoc, in, sid, ssn);
- 
- 	/* Go find any other chunks that were waiting for
- 	 * ordering and deliver them if needed.
+ 	for (i = 0; i < num_ext; i++) {
+ 		switch (param.ext->chunks[i]) {
++		case SCTP_CID_RECONF:
++			if (asoc->reconf_enable &&
++			    !asoc->peer.reconf_capable)
++				asoc->peer.reconf_capable = 1;
++			break;
+ 		case SCTP_CID_FWD_TSN:
+ 			if (asoc->prsctp_enable && !asoc->peer.prsctp_capable)
+ 				asoc->peer.prsctp_capable = 1;
 -- 
 2.1.0
 
