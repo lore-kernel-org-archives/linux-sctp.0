@@ -1,15 +1,14 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 13 Jan 2017 19:15:40 +0000
-Subject: [PATCHv3 net-next 6/7] sctp: add sockopt SCTP_ENABLE_STREAM_RESET
-Message-Id: <d2cae903bc3512af1ff9a993b156e3d08973af87.1484334002.git.lucien.xin@gmail.com>
+Date: Tue, 17 Jan 2017 16:44:46 +0000
+Subject: [PATCHv4 net-next 5/6] sctp: add sockopt SCTP_ENABLE_STREAM_RESET
+Message-Id: <21082127c66a2576338a860a092231ae3c5cd94a.1484670664.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1484334002.git.lucien.xin@gmail.com>
- <5f8a7d818b5db99f2ff2a791a451b311c09fad7f.1484334002.git.lucien.xin@gmail.com>
- <6c991b81f4a92cec3da773bae9b19e878e810c88.1484334002.git.lucien.xin@gmail.com>
- <c0d647fad638de6623db1d1277f63dd4a52d28c4.1484334002.git.lucien.xin@gmail.com>
- <05371aa8e63a160f467f3463749431dadcd30a8b.1484334002.git.lucien.xin@gmail.com>
- <1277c93e5816c40893ceb6441b7c8151de48bf31.1484334002.git.lucien.xin@gmail.com>
-In-Reply-To: <1277c93e5816c40893ceb6441b7c8151de48bf31.1484334002.git.lucien.xin@gmail.com>
+References: <cover.1484670664.git.lucien.xin@gmail.com>
+ <eff824eb34c55a83e35334597e6d510a5dde3ce6.1484670664.git.lucien.xin@gmail.com>
+ <1a1ff083ca37b6de6bacf038ae5d0367f0112edd.1484670664.git.lucien.xin@gmail.com>
+ <9c7e8c3427aa17874b192a06175800c333a54438.1484670664.git.lucien.xin@gmail.com>
+ <d016227bd6d957ee304bb9a7454a7e378801c6cf.1484670664.git.lucien.xin@gmail.com>
+In-Reply-To: <d016227bd6d957ee304bb9a7454a7e378801c6cf.1484670664.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
