@@ -1,7 +1,7 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 19 Jan 2017 21:47:51 +0000
+Date: Thu, 19 Jan 2017 22:15:34 +0000
 Subject: Re: [PATCHv3 net-next 4/4] sctp: implement sender-side procedures for Add Incoming/Outgoing Streams 
-Message-Id: <20170119214750.GM3781@localhost.localdomain>
+Message-Id: <20170119221534.GO3781@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1484845510.git.lucien.xin@gmail.com>
  <daa150a23548dda0a2fd513c622773f0ff9b2df3.1484845510.git.lucien.xin@gmail.com>
@@ -143,9 +143,6 @@ On Fri, Jan 20, 2017 at 01:19:14AM +0800, Xin Long wrote:
 > +	in  = params->sas_instrms;
 > +
 > +	if (!out && !in)
-
-[@]
-
 > +		goto out;
 > +
 > +	if (out) {
@@ -154,11 +151,6 @@ On Fri, Jan 20, 2017 at 01:19:14AM +0800, Xin Long wrote:
 > +		/* Check for overflow, can't use nums here */
 > +		if (stream->outcnt + out > SCTP_MAX_STREAM)
 > +			goto out;
-
-You should do these overflow checks before doing actual work,
-preferreably at [@] mark above.
-Here it's fine, but when [*] below run, it may be too late.
-
 > +
 > +		/* Use ksize to check if stream array really needs to realloc */
 > +		if (ksize(stream->out) / sizeof(*stream->out) < nums) {
@@ -186,9 +178,6 @@ Here it's fine, but when [*] below run, it may be too late.
 > +
 > +		if (stream->incnt + in > SCTP_MAX_STREAM)
 > +			goto out;
-
-[*]
-
 > +
 > +		if (ksize(stream->in) / sizeof(*stream->in) < nums) {
 > +			struct sctp_stream_in *streamin;
@@ -224,6 +213,12 @@ Here it's fine, but when [*] below run, it may be too late.
 > +	if (retval) {
 > +		sctp_chunk_put(asoc->strreset_chunk);
 > +		asoc->strreset_chunk = NULL;
+
+Similar comment on recovery steps here. If we are assuming we failed to
+send the request, we should also revert the changes above.
+The memory reallocation seems fine as the streams defaults to closed,
+but shouldn't incnt and outcnt be reset?
+
 > +	}
 > +
 > +out:
