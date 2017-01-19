@@ -1,74 +1,50 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 20 Jan 2017 18:00:35 +0000
-Subject: [PATCHv4 net-next 1/5] sctp: streams should be closed when stream reset request is sent successfully
-Message-Id: <162aa3d0e82a2224ea08f2adc8bf4c0eb99b5cac.1484934853.git.lucien.xin@gmail.com>
+Date: Thu, 19 Jan 2017 17:19:10 +0000
+Subject: [PATCHv3 net-next 0/4] sctp: add sender-side procedures for stream reconf asoc reset and add streams
+Message-Id: <cover.1484845510.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1484934853.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1484934853.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-Now when sending stream reset request, it closes the streams to
-block further xmit of data until this request is completed, then
-calls sctp_send_reconf to send the chunk.
+Patch 2/4 is to implement sender-side procedures for the SSN/TSN Reset
+Request Parameter described in rfc6525 section 5.1.4, patch 1/4 is
+ahead of it to define a function to make the request chunk for it.
 
-But if sctp_send_reconf returns err, which means the request chunk
-would not be queued and sent, so the asoc will get stuck, streams
-are closed and no packet was even queued.
+Patch 4/4 is to implement sender-side procedures for the Add Incoming
+and Outgoing Streams Request Parameter Request Parameter described in
+rfc6525 section 5.1.5 and 5.1.6, patch 3/4 is ahead of it to define a
+function to make the request chunk for it.
 
-This patch is to fix it by closing streams only when request is sent
-successfully, it is also to fix a return value.
+v1->v2:
+  - put these into a smaller group.
+  - rename some temporary variables in the codes.
+  - rename the titles of the commits and improve some changelogs.
+v2->v3:
+  - re-split the patchset and make sure it has no dead codes for review.
+  - move some codes into stream.c from socket.c.
 
-Fixes: 7f9d68ac944e ("sctp: implement sender-side procedures for SSN Reset Request Parameter")
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- net/sctp/stream.c | 22 +++++++++++++---------
- 1 file changed, 13 insertions(+), 9 deletions(-)
+Xin Long (4):
+  sctp: add support for generating stream reconf ssn/tsn reset request
+    chunk
+  sctp: implement sender-side procedures for SSN/TSN Reset Request
+    Parameter
+  sctp: add support for generating stream reconf add incoming/outgoing
+    streams request chunk
+  sctp: implement sender-side procedures for Add Incoming/Outgoing
+    Streams Request Parameter
 
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index 13d5e07..53c67d6 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -136,8 +136,20 @@ int sctp_send_reset_streams(struct sctp_association *asoc,
- 				goto out;
- 
- 	chunk = sctp_make_strreset_req(asoc, str_nums, str_list, out, in);
--	if (!chunk)
-+	if (!chunk) {
-+		retval = -ENOMEM;
- 		goto out;
-+	}
-+
-+	asoc->strreset_chunk = chunk;
-+	sctp_chunk_hold(asoc->strreset_chunk);
-+
-+	retval = sctp_send_reconf(asoc, chunk);
-+	if (retval) {
-+		sctp_chunk_put(asoc->strreset_chunk);
-+		asoc->strreset_chunk = NULL;
-+		goto out;
-+	}
- 
- 	if (out) {
- 		if (str_nums)
-@@ -150,14 +162,6 @@ int sctp_send_reset_streams(struct sctp_association *asoc,
- 	}
- 
- 	asoc->strreset_outstanding = out + in;
--	asoc->strreset_chunk = chunk;
--	sctp_chunk_hold(asoc->strreset_chunk);
--
--	retval = sctp_send_reconf(asoc, chunk);
--	if (retval) {
--		sctp_chunk_put(asoc->strreset_chunk);
--		asoc->strreset_chunk = NULL;
--	}
- 
- out:
- 	return retval;
+ include/linux/sctp.h      |  12 +++++
+ include/net/sctp/sctp.h   |   3 ++
+ include/net/sctp/sm.h     |   5 ++
+ include/uapi/linux/sctp.h |   8 +++
+ net/sctp/sm_make_chunk.c  |  75 ++++++++++++++++++++++++++
+ net/sctp/socket.c         |  58 ++++++++++++++++++++
+ net/sctp/stream.c         | 132 ++++++++++++++++++++++++++++++++++++++++++++++
+ 7 files changed, 293 insertions(+)
+
 -- 
 2.1.0
 
