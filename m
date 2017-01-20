@@ -1,71 +1,40 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 20 Jan 2017 13:58:45 +0000
+From: David Miller <davem@davemloft.net>
+Date: Fri, 20 Jan 2017 16:31:17 +0000
 Subject: Re: [PATCH][V2] net: sctp: fix array overrun read on sctp_timer_tbl
-Message-Id: <20170120135845.GT3781@localhost.localdomain>
+Message-Id: <20170120.113117.1592305434267734738.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20170120134542.21104-1-colin.king@canonical.com>
 In-Reply-To: <20170120134542.21104-1-colin.king@canonical.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Colin King <colin.king@canonical.com>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S . Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: colin.king@canonical.com
+Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On Fri, Jan 20, 2017 at 01:45:42PM +0000, Colin King wrote:
-> From: Colin Ian King <colin.king@canonical.com>
-> 
-> Table sctp_timer_tbl is missing a TIMEOUT_RECONF string so
-> add this in. Also compare timeout with the size of the array
-> sctp_timer_tbl rather than SCTP_EVENT_TIMEOUT_MAX.  Also add
-> a build time check that SCTP_EVENT_TIMEOUT_MAX is correct
-> so we don't ever get this kind of mismatch between the table
-> and SCTP_EVENT_TIMEOUT_MAX in the future.
-> 
-> Kudos to Marcel Ricardo Leitner for spotting the missing string
-> and suggesting the build time sanity check.
-> 
-> Fixes CoverityScan CID#1397639 ("Out-of-bounds read")
-> 
-> Signed-off-by: Colin Ian King <colin.king@canonical.com>
-
-Not sure I can add the Fixes tag for you here, but:
-Fixes: 7b9438de0cd4 ("sctp: add stream reconf timer")
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-Thanks
-
-> ---
->  net/sctp/debug.c | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/debug.c b/net/sctp/debug.c
-> index 95d7b15..2e47eb2 100644
-> --- a/net/sctp/debug.c
-> +++ b/net/sctp/debug.c
-> @@ -159,6 +159,7 @@ static const char *const sctp_timer_tbl[] = {
->  	"TIMEOUT_T4_RTO",
->  	"TIMEOUT_T5_SHUTDOWN_GUARD",
->  	"TIMEOUT_HEARTBEAT",
-> +	"TIMEOUT_RECONF",
->  	"TIMEOUT_SACK",
->  	"TIMEOUT_AUTOCLOSE",
->  };
-> @@ -166,7 +167,9 @@ static const char *const sctp_timer_tbl[] = {
->  /* Lookup timer debug name. */
->  const char *sctp_tname(const sctp_subtype_t id)
->  {
-> -	if (id.timeout <= SCTP_EVENT_TIMEOUT_MAX)
-> +	BUILD_BUG_ON(SCTP_EVENT_TIMEOUT_MAX + 1 != ARRAY_SIZE(sctp_timer_tbl));
-> +
-> +	if (id.timeout < ARRAY_SIZE(sctp_timer_tbl))
->  		return sctp_timer_tbl[id.timeout];
->  	return "unknown_timer";
->  }
-> -- 
-> 2.10.2
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+RnJvbTogQ29saW4gS2luZyA8Y29saW4ua2luZ0BjYW5vbmljYWwuY29tPg0KRGF0ZTogRnJpLCAy
+MCBKYW4gMjAxNyAxMzo0NTo0MiArMDAwMA0KDQo+IEZyb206IENvbGluIElhbiBLaW5nIDxjb2xp
+bi5raW5nQGNhbm9uaWNhbC5jb20+DQo+IA0KPiBUYWJsZSBzY3RwX3RpbWVyX3RibCBpcyBtaXNz
+aW5nIGEgVElNRU9VVF9SRUNPTkYgc3RyaW5nIHNvDQo+IGFkZCB0aGlzIGluLiBBbHNvIGNvbXBh
+cmUgdGltZW91dCB3aXRoIHRoZSBzaXplIG9mIHRoZSBhcnJheQ0KPiBzY3RwX3RpbWVyX3RibCBy
+YXRoZXIgdGhhbiBTQ1RQX0VWRU5UX1RJTUVPVVRfTUFYLiAgQWxzbyBhZGQNCj4gYSBidWlsZCB0
+aW1lIGNoZWNrIHRoYXQgU0NUUF9FVkVOVF9USU1FT1VUX01BWCBpcyBjb3JyZWN0DQo+IHNvIHdl
+IGRvbid0IGV2ZXIgZ2V0IHRoaXMga2luZCBvZiBtaXNtYXRjaCBiZXR3ZWVuIHRoZSB0YWJsZQ0K
+PiBhbmQgU0NUUF9FVkVOVF9USU1FT1VUX01BWCBpbiB0aGUgZnV0dXJlLg0KPiANCj4gS3Vkb3Mg
+dG8gTWFyY2VsIFJpY2FyZG8gTGVpdG5lciBmb3Igc3BvdHRpbmcgdGhlIG1pc3Npbmcgc3RyaW5n
+DQo+IGFuZCBzdWdnZXN0aW5nIHRoZSBidWlsZCB0aW1lIHNhbml0eSBjaGVjay4NCj4gDQo+IEZp
+eGVzIENvdmVyaXR5U2NhbiBDSUQjMTM5NzYzOSAoIk91dC1vZi1ib3VuZHMgcmVhZCIpDQo+IA0K
+PiBTaWduZWQtb2ZmLWJ5OiBDb2xpbiBJYW4gS2luZyA8Y29saW4ua2luZ0BjYW5vbmljYWwuY29t
+Pg0KDQpXZWxsLCBteSBiYWQuLi4gSSByZXZlcnRlZCBWMSwgdGhhdCdzIGZpbmUuDQoNCkJ1dCB0
+aGlzIHBhdGNoIGRvZXNuJ3QgZXZlbiBjb21waWxlLg0KDQpJbiBmaWxlIGluY2x1ZGVkIGZyb20g
+Li9pbmNsdWRlL3VhcGkvbGludXgvc3RkZGVmLmg6MTowLA0KICAgICAgICAgICAgICAgICBmcm9t
+IC4vaW5jbHVkZS9saW51eC9zdGRkZWYuaDo0LA0KICAgICAgICAgICAgICAgICBmcm9tIC4vaW5j
+bHVkZS91YXBpL2xpbnV4L3Bvc2l4X3R5cGVzLmg6NCwNCiAgICAgICAgICAgICAgICAgZnJvbSAu
+L2luY2x1ZGUvdWFwaS9saW51eC90eXBlcy5oOjEzLA0KICAgICAgICAgICAgICAgICBmcm9tIC4v
+aW5jbHVkZS9saW51eC90eXBlcy5oOjUsDQogICAgICAgICAgICAgICAgIGZyb20gLi9pbmNsdWRl
+L25ldC9zY3RwL3NjdHAuaDo1OCwNCiAgICAgICAgICAgICAgICAgZnJvbSBuZXQvc2N0cC9kZWJ1
+Zy5jOjQxOg0KbmV0L3NjdHAvZGVidWcuYzogSW4gZnVuY3Rpb24goXNjdHBfdG5hbWWiOg0KLi9p
+bmNsdWRlL2xpbnV4L2NvbXBpbGVyLmg6NTE4OjM4OiBlcnJvcjogY2FsbCB0byChX19jb21waWxl
+dGltZV9hc3NlcnRfMTcwoiBkZWNsYXJlZCB3aXRoIGF0dHJpYnV0ZSBlcnJvcjogQlVJTERfQlVH
+X09OIGZhaWxlZDogU0NUUF9FVkVOVF9USU1FT1VUX01BWCArIDEgIT0gQVJSQVlfU0laRShzY3Rw
+X3RpbWVyX3RibCkNCiAgX2NvbXBpbGV0aW1lX2Fzc2VydChjb25kaXRpb24sIG1zZywgX19jb21w
+aWxldGltZV9hc3NlcnRfLCBfX0xJTkVfXykNCg=
