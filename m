@@ -1,25 +1,41 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Sun, 29 Jan 2017 14:39:43 +0000
-Subject: Re: A PMTU auto-discovery error for large SCTP packets
-Message-Id: <20170129143943.GL3781@localhost.localdomain>
+From: Colin King <colin.king@canonical.com>
+Date: Fri, 20 Jan 2017 13:01:57 +0000
+Subject: [PATCH] net: sctp: fix array overrun read on sctp_timer_tbl
+Message-Id: <20170120130157.20034-1-colin.king@canonical.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <07B7943445653648AD9B4DBB916BB48F1C265220@cnshjmbx01>
-In-Reply-To: <07B7943445653648AD9B4DBB916BB48F1C265220@cnshjmbx01>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: YUAN Jia <Jia.Yuan@alcatel-sbell.com.cn>
-Cc: "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>, 'network dev' <netdev@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S . Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
 
-On Wed, Jan 25, 2017 at 06:40:10AM +0000, YUAN Jia wrote:
-...
-> I think that ‘sctp_manip_pkt’ should also behave like this. Isn’t it?
+From: Colin Ian King <colin.king@canonical.com>
 
-I believe so, yes.
-Will you send a patch?
+The comparison on the timeout can lead to an array overrun
+read on sctp_timer_tbl because of an off-by-one error. Fix
+this by using < instead of <= and also compare to the array
+size rather than SCTP_EVENT_TIMEOUT_MAX.
 
-Btw, your host did have a MTU bigger than 1500, right? I'm just curious
-on why such big packet was generated in the first place.
+Fixes CoverityScan CID#1397639 ("Out-of-bounds read")
 
-  Marcelo
+Signed-off-by: Colin Ian King <colin.king@canonical.com>
+---
+ net/sctp/debug.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sctp/debug.c b/net/sctp/debug.c
+index 95d7b15..e371a0d 100644
+--- a/net/sctp/debug.c
++++ b/net/sctp/debug.c
+@@ -166,7 +166,7 @@ static const char *const sctp_timer_tbl[] = {
+ /* Lookup timer debug name. */
+ const char *sctp_tname(const sctp_subtype_t id)
+ {
+-	if (id.timeout <= SCTP_EVENT_TIMEOUT_MAX)
++	if (id.timeout < ARRAY_SIZE(sctp_timer_tbl))
+ 		return sctp_timer_tbl[id.timeout];
+ 	return "unknown_timer";
+ }
+-- 
+2.10.2
 
