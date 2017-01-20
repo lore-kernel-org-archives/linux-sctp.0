@@ -1,150 +1,74 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 13 Jan 2017 19:15:38 +0000
-Subject: [PATCHv3 net-next 4/7] sctp: add stream reconf primitive
-Message-Id: <05371aa8e63a160f467f3463749431dadcd30a8b.1484334002.git.lucien.xin@gmail.com>
+Date: Fri, 20 Jan 2017 18:00:35 +0000
+Subject: [PATCHv4 net-next 1/5] sctp: streams should be closed when stream reset request is sent successfully
+Message-Id: <162aa3d0e82a2224ea08f2adc8bf4c0eb99b5cac.1484934853.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1484334002.git.lucien.xin@gmail.com>
- <5f8a7d818b5db99f2ff2a791a451b311c09fad7f.1484334002.git.lucien.xin@gmail.com>
- <6c991b81f4a92cec3da773bae9b19e878e810c88.1484334002.git.lucien.xin@gmail.com>
- <c0d647fad638de6623db1d1277f63dd4a52d28c4.1484334002.git.lucien.xin@gmail.com>
-In-Reply-To: <c0d647fad638de6623db1d1277f63dd4a52d28c4.1484334002.git.lucien.xin@gmail.com>
+References: <cover.1484934853.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1484934853.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-This patch is to add a primitive based on sctp primitive frame for
-sending stream reconf request. It works as the other primitives,
-and create a SCTP_CMD_REPLY command to send the request chunk out.
+Now when sending stream reset request, it closes the streams to
+block further xmit of data until this request is completed, then
+calls sctp_send_reconf to send the chunk.
 
-sctp_primitive_RECONF would be the api to send a reconf request
-chunk.
+But if sctp_send_reconf returns err, which means the request chunk
+would not be queued and sent, so the asoc will get stuck, streams
+are closed and no packet was even queued.
 
+This patch is to fix it by closing streams only when request is sent
+successfully, it is also to fix a return value.
+
+Fixes: 7f9d68ac944e ("sctp: implement sender-side procedures for SSN Reset Request Parameter")
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/constants.h |  3 ++-
- include/net/sctp/sctp.h      |  2 ++
- include/net/sctp/sm.h        |  1 +
- net/sctp/primitive.c         |  3 +++
- net/sctp/sm_statefuns.c      | 13 +++++++++++++
- net/sctp/sm_statetable.c     | 20 ++++++++++++++++++++
- 6 files changed, 41 insertions(+), 1 deletion(-)
+ net/sctp/stream.c | 22 +++++++++++++---------
+ 1 file changed, 13 insertions(+), 9 deletions(-)
 
-diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
-index 8307c86..3567c97 100644
---- a/include/net/sctp/constants.h
-+++ b/include/net/sctp/constants.h
-@@ -114,9 +114,10 @@ typedef enum {
- 	SCTP_PRIMITIVE_SEND,
- 	SCTP_PRIMITIVE_REQUESTHEARTBEAT,
- 	SCTP_PRIMITIVE_ASCONF,
-+	SCTP_PRIMITIVE_RECONF,
- } sctp_event_primitive_t;
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 13d5e07..53c67d6 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -136,8 +136,20 @@ int sctp_send_reset_streams(struct sctp_association *asoc,
+ 				goto out;
  
--#define SCTP_EVENT_PRIMITIVE_MAX	SCTP_PRIMITIVE_ASCONF
-+#define SCTP_EVENT_PRIMITIVE_MAX	SCTP_PRIMITIVE_RECONF
- #define SCTP_NUM_PRIMITIVE_TYPES	(SCTP_EVENT_PRIMITIVE_MAX + 1)
- 
- /* We define here a utility type for manipulating subtypes.
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index 598d938..bc0e049 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -141,6 +141,8 @@ int sctp_primitive_ABORT(struct net *, struct sctp_association *, void *arg);
- int sctp_primitive_SEND(struct net *, struct sctp_association *, void *arg);
- int sctp_primitive_REQUESTHEARTBEAT(struct net *, struct sctp_association *, void *arg);
- int sctp_primitive_ASCONF(struct net *, struct sctp_association *, void *arg);
-+int sctp_primitive_RECONF(struct net *net, struct sctp_association *asoc,
-+			  void *arg);
- 
- /*
-  * sctp/input.c
-diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index d2d9e28..430ed13 100644
---- a/include/net/sctp/sm.h
-+++ b/include/net/sctp/sm.h
-@@ -157,6 +157,7 @@ sctp_state_fn_t sctp_sf_error_shutdown;
- sctp_state_fn_t sctp_sf_ignore_primitive;
- sctp_state_fn_t sctp_sf_do_prm_requestheartbeat;
- sctp_state_fn_t sctp_sf_do_prm_asconf;
-+sctp_state_fn_t sctp_sf_do_prm_reconf;
- 
- /* Prototypes for other event state functions.  */
- sctp_state_fn_t sctp_sf_do_no_pending_tsn;
-diff --git a/net/sctp/primitive.c b/net/sctp/primitive.c
-index ab8d9f9..f0553a0 100644
---- a/net/sctp/primitive.c
-+++ b/net/sctp/primitive.c
-@@ -211,3 +211,6 @@ DECLARE_PRIMITIVE(REQUESTHEARTBEAT);
- */
- 
- DECLARE_PRIMITIVE(ASCONF);
+ 	chunk = sctp_make_strreset_req(asoc, str_nums, str_list, out, in);
+-	if (!chunk)
++	if (!chunk) {
++		retval = -ENOMEM;
+ 		goto out;
++	}
 +
-+/* RE-CONFIG 5.1 */
-+DECLARE_PRIMITIVE(RECONF);
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 2ae186a..782e579 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -5185,6 +5185,19 @@ sctp_disposition_t sctp_sf_do_prm_asconf(struct net *net,
- 	return SCTP_DISPOSITION_CONSUME;
- }
- 
-+/* RE-CONFIG Section 5.1 RECONF Chunk Procedures */
-+sctp_disposition_t sctp_sf_do_prm_reconf(struct net *net,
-+					 const struct sctp_endpoint *ep,
-+					 const struct sctp_association *asoc,
-+					 const sctp_subtype_t type,
-+					 void *arg, sctp_cmd_seq_t *commands)
-+{
-+	struct sctp_chunk *chunk = arg;
++	asoc->strreset_chunk = chunk;
++	sctp_chunk_hold(asoc->strreset_chunk);
 +
-+	sctp_add_cmd_sf(commands, SCTP_CMD_REPLY, SCTP_CHUNK(chunk));
-+	return SCTP_DISPOSITION_CONSUME;
-+}
-+
- /*
-  * Ignore the primitive event
-  *
-diff --git a/net/sctp/sm_statetable.c b/net/sctp/sm_statetable.c
-index 3da521a..b5438b4 100644
---- a/net/sctp/sm_statetable.c
-+++ b/net/sctp/sm_statetable.c
-@@ -643,6 +643,25 @@ chunk_event_table_unknown[SCTP_STATE_NUM_STATES] = {
- 	TYPE_SCTP_FUNC(sctp_sf_error_shutdown), \
- } /* TYPE_SCTP_PRIMITIVE_ASCONF */
++	retval = sctp_send_reconf(asoc, chunk);
++	if (retval) {
++		sctp_chunk_put(asoc->strreset_chunk);
++		asoc->strreset_chunk = NULL;
++		goto out;
++	}
  
-+#define TYPE_SCTP_PRIMITIVE_RECONF { \
-+	/* SCTP_STATE_CLOSED */ \
-+	TYPE_SCTP_FUNC(sctp_sf_error_closed), \
-+	/* SCTP_STATE_COOKIE_WAIT */ \
-+	TYPE_SCTP_FUNC(sctp_sf_error_closed), \
-+	/* SCTP_STATE_COOKIE_ECHOED */ \
-+	TYPE_SCTP_FUNC(sctp_sf_error_closed), \
-+	/* SCTP_STATE_ESTABLISHED */ \
-+	TYPE_SCTP_FUNC(sctp_sf_do_prm_reconf), \
-+	/* SCTP_STATE_SHUTDOWN_PENDING */ \
-+	TYPE_SCTP_FUNC(sctp_sf_do_prm_reconf), \
-+	/* SCTP_STATE_SHUTDOWN_SENT */ \
-+	TYPE_SCTP_FUNC(sctp_sf_do_prm_reconf), \
-+	/* SCTP_STATE_SHUTDOWN_RECEIVED */ \
-+	TYPE_SCTP_FUNC(sctp_sf_do_prm_reconf), \
-+	/* SCTP_STATE_SHUTDOWN_ACK_SENT */ \
-+	TYPE_SCTP_FUNC(sctp_sf_error_shutdown), \
-+} /* TYPE_SCTP_PRIMITIVE_RECONF */
-+
- /* The primary index for this table is the primitive type.
-  * The secondary index for this table is the state.
-  */
-@@ -653,6 +672,7 @@ static const sctp_sm_table_entry_t primitive_event_table[SCTP_NUM_PRIMITIVE_TYPE
- 	TYPE_SCTP_PRIMITIVE_SEND,
- 	TYPE_SCTP_PRIMITIVE_REQUESTHEARTBEAT,
- 	TYPE_SCTP_PRIMITIVE_ASCONF,
-+	TYPE_SCTP_PRIMITIVE_RECONF,
- };
+ 	if (out) {
+ 		if (str_nums)
+@@ -150,14 +162,6 @@ int sctp_send_reset_streams(struct sctp_association *asoc,
+ 	}
  
- #define TYPE_SCTP_OTHER_NO_PENDING_TSN  { \
+ 	asoc->strreset_outstanding = out + in;
+-	asoc->strreset_chunk = chunk;
+-	sctp_chunk_hold(asoc->strreset_chunk);
+-
+-	retval = sctp_send_reconf(asoc, chunk);
+-	if (retval) {
+-		sctp_chunk_put(asoc->strreset_chunk);
+-		asoc->strreset_chunk = NULL;
+-	}
+ 
+ out:
+ 	return retval;
 -- 
 2.1.0
 
