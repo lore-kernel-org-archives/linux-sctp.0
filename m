@@ -1,125 +1,90 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 01 Jan 2017 11:20:40 +0000
-Subject: [PATCH net-next 23/27] sctp: add rfc6525 section 5.2.5
-Message-Id: <105630d2f9a54de9c3ce49988452d2b111c71b3d.1483269426.git.lucien.xin@gmail.com>
+Date: Fri, 20 Jan 2017 18:00:36 +0000
+Subject: [PATCHv4 net-next 2/5] sctp: add support for generating stream reconf ssn/tsn reset request chunk
+Message-Id: <94a2321ec900105a1e4822a2489dd4fd20a37ca4.1484934853.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1483269426.git.lucien.xin@gmail.com>
- <684ad8ddd79f23844883dede4c34360ce744dfc3.1483269426.git.lucien.xin@gmail.com>
- <c752879a5af358c08da949b391416452f1322c43.1483269426.git.lucien.xin@gmail.com>
- <be8a2770ddc2381266050c9f168add9802b90a49.1483269426.git.lucien.xin@gmail.com>
- <fc046afdda34c9b262ce57400c4256b14fd1a0fb.1483269426.git.lucien.xin@gmail.com>
- <d4f1b2a4fa19457e9867b0a1f84764a7a509459a.1483269426.git.lucien.xin@gmail.com>
- <31abc54d31ef0714322f137bff43458014d7c276.1483269426.git.lucien.xin@gmail.com>
- <58860816816d6d51b062235fd54dae6540a4797a.1483269426.git.lucien.xin@gmail.com>
- <229608faf7af54c0bf908694ca8349205bbf6eab.1483269426.git.lucien.xin@gmail.com>
- <c4f16844620cd3a2aa76596df9eaadf1505fc8e6.1483269426.git.lucien.xin@gmail.com>
- <1d0b270084289945c4b42ae36d0556648a3f9b64.1483269426.git.lucien.xin@gmail.com>
- <1e4560205cff3c10868d5614b62a3db14e87ccf0.1483269426.git.lucien.xin@gmail.com>
- <91b9171cc57c0f322d103dfbbcce1b9706800805.1483269426.git.lucien.xin@gmail.com>
- <d5fb0969ea5d055dea5bdc257569530b6d2fc7c2.1483269426.git.lucien.xin@gmail.com>
- <6a74f5a3ac408f20816a8c79edd6b9922ed3b573.1483269426.git.lucien.xin@gmail.com>
- <ef7d01cf1d5826e694a08303ee0b36c00201c666.1483269426.git.lucien.xin@gmail.com>
- <86b68f131d286ee20781cb04ce9d09d477aa5232.1483269426.git.lucien.xin@gmail.com>
- <1e8e248c38fd3874cf80c4b88e4699c8a617066d.1483269426.git.lucien.xin@gmail.com>
- <3a60ce82edef82f329fe2cc4ac83e9ca21831d8b.1483269426.git.lucien.xin@gmail.com>
- <9be4c65c6bac7df0dbf51328af92727e5606dc5c.1483269426.git.lucien.xin@gmail.com>
- <b5eb3a199dded2efe517b19b5cac6ae498a6c0c8.1483269426.git.lucien.xin@gmail.com>
- <c59df697bb54348de10f8418a23e9d14bce30135.1483269426.git.lucien.xin@gmail.com>
- <470b9f2b5248e0c1870c501f262a1887be66509b.1483269426.git.lucien.xin@gmail.com>
-In-Reply-To: <470b9f2b5248e0c1870c501f262a1887be66509b.1483269426.git.lucien.xin@gmail.com>
+References: <cover.1484934853.git.lucien.xin@gmail.com>
+ <162aa3d0e82a2224ea08f2adc8bf4c0eb99b5cac.1484934853.git.lucien.xin@gmail.com>
+In-Reply-To: <162aa3d0e82a2224ea08f2adc8bf4c0eb99b5cac.1484934853.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-This patch is to add Receiver-Side Procedures for the Add Outgoing
-Streams Request Parameter described in section 5.2.5.
+This patch is to define SSN/TSN Reset Request Parameter described
+in rfc6525 section 4.3.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/sm.h |  4 ++++
- net/sctp/stream.c     | 56 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 60 insertions(+)
+ include/linux/sctp.h     |  5 +++++
+ include/net/sctp/sm.h    |  2 ++
+ net/sctp/sm_make_chunk.c | 29 +++++++++++++++++++++++++++++
+ 3 files changed, 36 insertions(+)
 
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index a9e7906..95b8ed3 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -737,4 +737,9 @@ struct sctp_strreset_inreq {
+ 	__u16 list_of_streams[0];
+ } __packed;
+ 
++struct sctp_strreset_tsnreq {
++	sctp_paramhdr_t param_hdr;
++	__u32 request_seq;
++} __packed;
++
+ #endif /* __LINUX_SCTP_H__ */
 diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index e1b2509..5624b52 100644
+index 430ed13..ac37c17 100644
 --- a/include/net/sctp/sm.h
 +++ b/include/net/sctp/sm.h
-@@ -293,6 +293,10 @@ struct sctp_chunk *sctp_process_strreset_tsnreq(
- 				struct sctp_association *asoc,
- 				union sctp_params param,
- 				struct sctp_ulpevent **evp);
-+struct sctp_chunk *sctp_process_strreset_addstrm_out(
-+				struct sctp_association *asoc,
-+				union sctp_params param,
-+				struct sctp_ulpevent **evp);
+@@ -265,6 +265,8 @@ struct sctp_chunk *sctp_make_strreset_req(
+ 				const struct sctp_association *asoc,
+ 				__u16 stream_num, __u16 *stream_list,
+ 				bool out, bool in);
++struct sctp_chunk *sctp_make_strreset_tsnreq(
++				const struct sctp_association *asoc);
+ void sctp_chunk_assign_tsn(struct sctp_chunk *);
+ void sctp_chunk_assign_ssn(struct sctp_chunk *);
  
- /* Prototypes for statetable processing. */
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index ad3445b..801450c 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -3660,3 +3660,32 @@ struct sctp_chunk *sctp_make_strreset_req(
  
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index fce4317..b51a037 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -283,3 +283,59 @@ struct sctp_chunk *sctp_process_strreset_tsnreq(
- 	return sctp_make_strreset_tsnresp(asoc, result, request_seq,
- 					  asoc->next_tsn, initial_tsn);
+ 	return retval;
  }
 +
-+struct sctp_chunk *sctp_process_strreset_addstrm_out(
-+				struct sctp_association *asoc,
-+				union sctp_params param,
-+				struct sctp_ulpevent **evp)
++/* RE-CONFIG 4.3 (SSN/TSN RESET ALL)
++ *   0                   1                   2                   3
++ *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |     Parameter Type = 15       |      Parameter Length = 8     |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |         Re-configuration Request Sequence Number              |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ */
++struct sctp_chunk *sctp_make_strreset_tsnreq(
++				const struct sctp_association *asoc)
 +{
-+	struct sctp_strreset_addstrm *addstrm = param.v;
-+	__u32 result = SCTP_STRRESET_DENIED;
-+	__u32 request_seq;
-+	__u16 nums;
++	struct sctp_strreset_tsnreq tsnreq;
++	__u16 length = sizeof(tsnreq);
++	struct sctp_chunk *retval;
 +
-+	request_seq = ntohl(addstrm->request_seq);
-+	if (request_seq > asoc->strreset_inseq) {
-+		result = SCTP_STRRESET_ERR_BAD_SEQNO;
-+		goto out;
-+	} else if (request_seq = asoc->strreset_inseq) {
-+		asoc->strreset_inseq++;
-+	}
++	retval = sctp_make_reconf(asoc, length);
++	if (!retval)
++		return NULL;
 +
-+	if (!(asoc->strreset_enable & SCTP_ENABLE_CHANGE_ASSOC_REQ))
-+		goto out;
++	tsnreq.param_hdr.type = SCTP_PARAM_RESET_TSN_REQUEST;
++	tsnreq.param_hdr.length = htons(length);
++	tsnreq.request_seq = htonl(asoc->strreset_outseq);
 +
-+	if (asoc->strreset_outstanding) {
-+		result = SCTP_STRRESET_ERR_IN_PROGRESS;
-+		goto out;
-+	}
++	sctp_addto_chunk(retval, sizeof(tsnreq), &tsnreq);
 +
-+	nums = ntohs(addstrm->number_of_streams);
-+	if (!nums || nums + asoc->streamincnt > SCTP_MAX_STREAM)
-+		goto out;
-+
-+	nums = nums + asoc->streamincnt;
-+	if (ksize(asoc->streamin) / sizeof(*asoc->streamin) < nums) {
-+		struct sctp_stream_in *streamin;
-+
-+		streamin = kcalloc(nums, sizeof(*streamin), GFP_ATOMIC);
-+		if (!streamin)
-+			goto out;
-+
-+		memcpy(streamin, asoc->streamin,
-+		       sizeof(*streamin) * asoc->streamincnt);
-+
-+		kfree(asoc->streamin);
-+		asoc->streamin = streamin;
-+	}
-+
-+	asoc->streamincnt = nums;
-+
-+	result = SCTP_STRRESET_PERFORMED;
-+
-+	*evp = sctp_ulpevent_make_stream_change_event(asoc,
-+		0, ntohs(addstrm->number_of_streams), 0, GFP_ATOMIC);
-+
-+out:
-+	return sctp_make_strreset_resp(asoc, result, request_seq);
++	return retval;
 +}
 -- 
 2.1.0
