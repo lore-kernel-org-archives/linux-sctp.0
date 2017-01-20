@@ -1,104 +1,115 @@
-From: Davide Caratti <dcaratti@redhat.com>
-Date: Mon, 23 Jan 2017 16:52:44 +0000
-Subject: [RFC PATCH net-next 3/5] net: introduce skb_sctp_csum_help
-Message-Id: <654992ae00322bc26ab0065d0249a36d446bce97.1485177252.git.dcaratti@redhat.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 20 Jan 2017 18:00:38 +0000
+Subject: [PATCHv4 net-next 4/5] sctp: add support for generating stream reconf add incoming/outgoing streams 
+Message-Id: <6de1d6c151813c84f3dcb56dbb45bf533a43fc90.1484934853.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1485177252.git.dcaratti@redhat.com>
-In-Reply-To: <cover.1485177252.git.dcaratti@redhat.com>
+References: <cover.1484934853.git.lucien.xin@gmail.com>
+ <162aa3d0e82a2224ea08f2adc8bf4c0eb99b5cac.1484934853.git.lucien.xin@gmail.com>
+ <94a2321ec900105a1e4822a2489dd4fd20a37ca4.1484934853.git.lucien.xin@gmail.com>
+ <ae54d06e442d8fba6a5983fb81fb4c8ae4bee3ef.1484934853.git.lucien.xin@gmail.com>
+In-Reply-To: <ae54d06e442d8fba6a5983fb81fb4c8ae4bee3ef.1484934853.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-skb_sctp_csum_help is like skb_checksum_help, but it is designed for
-checksumming SCTP packets using crc32c (see RFC3309), provided that
-sctp.ko has been loaded before. In case sctp.ko is not loaded, invoking
-skb_sctp_csum_help() on a skb results in the following printout:
+This patch is to define Add Incoming/Outgoing Streams Request
+Parameter described in rfc6525 section 4.5 and 4.6. They can
+be in one same chunk trunk as rfc6525 section 3.1-7 describes,
+so make them in one function.
 
-sk_buff: attempt to compute crc32c without sctp.ko
-
-Reviewed-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Signed-off-by: Davide Caratti <dcaratti@redhat.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/linux/netdevice.h |  1 +
- include/linux/skbuff.h    |  3 ++-
- net/core/dev.c            | 29 +++++++++++++++++++++++++++++
- 3 files changed, 32 insertions(+), 1 deletion(-)
+ include/linux/sctp.h     |  7 +++++++
+ include/net/sctp/sm.h    |  3 +++
+ net/sctp/sm_make_chunk.c | 46 ++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 56 insertions(+)
 
-diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index 3868c32..9d72824 100644
---- a/include/linux/netdevice.h
-+++ b/include/linux/netdevice.h
-@@ -3902,6 +3902,7 @@ void netdev_rss_key_fill(void *buffer, size_t len);
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index 95b8ed3..f1f494f 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -742,4 +742,11 @@ struct sctp_strreset_tsnreq {
+ 	__u32 request_seq;
+ } __packed;
  
- int dev_get_nest_level(struct net_device *dev);
- int skb_checksum_help(struct sk_buff *skb);
-+int skb_sctp_csum_help(struct sk_buff *skb);
- struct sk_buff *__skb_gso_segment(struct sk_buff *skb,
- 				  netdev_features_t features, bool tx_path);
- struct sk_buff *skb_mac_gso_segment(struct sk_buff *skb,
-diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
-index 44fc804..91b4e22 100644
---- a/include/linux/skbuff.h
-+++ b/include/linux/skbuff.h
-@@ -192,7 +192,8 @@
-  *     accordingly. Note the there is no indication in the skbuff that the
-  *     CHECKSUM_PARTIAL refers to an SCTP checksum, a driver that supports
-  *     both IP checksum offload and SCTP CRC offload must verify which offload
-- *     is configured for a packet presumably by inspecting packet headers.
-+ *     is configured for a packet presumably by inspecting packet headers; in
-+ *     case, skb_sctp_csum_help is provided to compute CRC on SCTP packets.
-  *
-  *   NETIF_F_FCOE_CRC - This feature indicates that a device is capable of
-  *     offloading the FCOE CRC in a packet. To perform this offload the stack
-diff --git a/net/core/dev.c b/net/core/dev.c
-index 6742160..45cee84 100644
---- a/net/core/dev.c
-+++ b/net/core/dev.c
-@@ -2554,6 +2554,29 @@ static int skb_rfc1624_csum(struct sk_buff *skb, int offset)
- 	return ret;
++struct sctp_strreset_addstrm {
++	sctp_paramhdr_t param_hdr;
++	__u32 request_seq;
++	__u16 number_of_streams;
++	__u16 reserved;
++} __packed;
++
+ #endif /* __LINUX_SCTP_H__ */
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index ac37c17..3675fde 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -267,6 +267,9 @@ struct sctp_chunk *sctp_make_strreset_req(
+ 				bool out, bool in);
+ struct sctp_chunk *sctp_make_strreset_tsnreq(
+ 				const struct sctp_association *asoc);
++struct sctp_chunk *sctp_make_strreset_addstrm(
++				const struct sctp_association *asoc,
++				__u16 out, __u16 in);
+ void sctp_chunk_assign_tsn(struct sctp_chunk *);
+ void sctp_chunk_assign_ssn(struct sctp_chunk *);
+ 
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 801450c..a44546d 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -3689,3 +3689,49 @@ struct sctp_chunk *sctp_make_strreset_tsnreq(
+ 
+ 	return retval;
  }
- 
-+/* compute 32-bit RFC3309 checksum and store it at skb->data + offset */
-+static int skb_rfc3309_csum(struct sk_buff *skb, int offset)
++
++/* RE-CONFIG 4.5/4.6 (ADD STREAM)
++ *   0                   1                   2                   3
++ *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |     Parameter Type = 17       |      Parameter Length = 12    |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |          Re-configuration Request Sequence Number             |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |      Number of new streams    |         Reserved              |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ */
++struct sctp_chunk *sctp_make_strreset_addstrm(
++				const struct sctp_association *asoc,
++				__u16 out, __u16 in)
 +{
-+	__le32 crc32c_csum;
-+	int ret = 0;
++	struct sctp_strreset_addstrm addstrm;
++	__u16 size = sizeof(addstrm);
++	struct sctp_chunk *retval;
 +
-+	crc32c_csum = cpu_to_le32(~__skb_checksum(skb, offset,
-+						  skb->len - offset, ~(__u32)0,
-+						  sctp_csum_stub));
-+	offset += skb->csum_offset;
-+	BUG_ON((offset + sizeof(__le32)) > skb_headlen(skb));
++	retval = sctp_make_reconf(asoc, (!!out + !!in) * size);
++	if (!retval)
++		return NULL;
 +
-+	if (skb_cloned(skb) &&
-+	    !skb_clone_writable(skb, offset + sizeof(__le32))) {
-+		ret = pskb_expand_head(skb, 0, 0, GFP_ATOMIC);
-+		if (ret)
-+			goto out;
++	if (out) {
++		addstrm.param_hdr.type = SCTP_PARAM_RESET_ADD_OUT_STREAMS;
++		addstrm.param_hdr.length = htons(size);
++		addstrm.number_of_streams = htons(out);
++		addstrm.request_seq = htonl(asoc->strreset_outseq);
++		addstrm.reserved = 0;
++
++		sctp_addto_chunk(retval, size, &addstrm);
 +	}
-+	*(__le32 *)(skb->data + offset) = crc32c_csum;
-+out:
-+	return ret;
-+}
 +
- /* Invalidate hardware checksum when packet is to be mangled, and
-  * complete checksum manually on outgoing path.
-  *    @skb - buffer that needs checksum
-@@ -2599,6 +2622,12 @@ int skb_checksum_help(struct sk_buff *skb)
- }
- EXPORT_SYMBOL(skb_checksum_help);
- 
-+int skb_sctp_csum_help(struct sk_buff *skb)
-+{
-+	return __skb_checksum_help(skb, skb_rfc3309_csum);
-+}
-+EXPORT_SYMBOL(skb_sctp_csum_help);
++	if (in) {
++		addstrm.param_hdr.type = SCTP_PARAM_RESET_ADD_IN_STREAMS;
++		addstrm.param_hdr.length = htons(size);
++		addstrm.number_of_streams = htons(in);
++		addstrm.request_seq = htonl(asoc->strreset_outseq + !!out);
++		addstrm.reserved = 0;
 +
- __be16 skb_network_protocol(struct sk_buff *skb, int *depth)
- {
- 	__be16 type = skb->protocol;
++		sctp_addto_chunk(retval, size, &addstrm);
++	}
++
++	return retval;
++}
 -- 
-2.7.4
+2.1.0
 
