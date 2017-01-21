@@ -1,63 +1,151 @@
-From: YueHaibing <yuehaibing@huawei.com>
-Date: Fri, 20 Jan 2017 03:39:25 +0000
-Subject: Re: [PATCH RFC net-next 2/7] net: add dst_pending_confirm flag to skbuff
-Message-Id: <11f3e6c9-5eec-8275-3323-0c1de91f8c23@huawei.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 21 Jan 2017 10:24:24 +0000
+Subject: [PATCHv5 net-next 3/5] sctp: implement sender-side procedures for SSN/TSN Reset Request Parameter
+Message-Id: <761fd1e1226c7e35a93443546e3d1ddf0edcced4.1484993773.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1482094596-26046-1-git-send-email-ja@ssi.bg>
- <1482094596-26046-3-git-send-email-ja@ssi.bg>
- <1482164252.1521.7.camel@edumazet-glaptop3.roam.corp.google.com>
- <alpine.LFD.2.11.1612192203480.3105@ja.home.ssi.bg>
-In-Reply-To: <alpine.LFD.2.11.1612192203480.3105@ja.home.ssi.bg>
+References: <cover.1484993773.git.lucien.xin@gmail.com>
+ <9f2a54d764987dc6509e2322e3c0d93f819ebdb5.1484993773.git.lucien.xin@gmail.com>
+ <c58c4f7a998d27557a916d83b0b6b84e76fa9642.1484993773.git.lucien.xin@gmail.com>
+In-Reply-To: <c58c4f7a998d27557a916d83b0b6b84e76fa9642.1484993773.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Julian Anastasov <ja@ssi.bg>
-Cc: Eric Dumazet <eric.dumazet@gmail.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
+This patch is to implement Sender-Side Procedures for the SSN/TSN
+Reset Request Parameter descibed in rfc6525 section 5.1.4.
 
-On 2016/12/20 4:37, Julian Anastasov wrote:
-> 
-> 	Hello,
-> 
-> On Mon, 19 Dec 2016, Eric Dumazet wrote:
-> 
->> I am still digesting this awesome patch series ;)
-> 
-> 	Thanks. I don't feel quite comfortable with some
-> of the changes (mostly XFRM, dst_confirm usage in CXGB) and
-> I hope the discussion can provide adequate solution.
-> 
->> Not sure why you used an unlikely() here. TCP for example would hit this
->> path quite often.
-> 
-> 	I was not sure, may be because ACKs can come with lower
-> rate than the sent packets. Also because non-TCP rarely uses
-> MSG_CONFIRM. If you still think it is better without unlikely,
-> I'll remove it.
-> 
->> So considering sk_dst_pending_confirm might be dirtied quite often,further 
->>
->> I am not sure why you placed it in the cache line that contains
->> sk_rx_dst (in 1st patch)
-> 
-> 	I saw your recent changes and was worried if the
-> sk_dst_confirm() calling on RX can cause unwanted dirtying of
-> additional cache line. My preliminary analyze pointed
-> sk_omem_alloc as good candidate for moving to next cache
-> line. I know how critical is to properly place the new flags,
-> so I really need recommendations about this.
-> 
-> Regards
-> 
-> --
-> Julian Anastasov <ja@ssi.bg>
-> 
-> .
-> 
+It is also to add sockopt SCTP_RESET_ASSOC in rfc6525 section 6.3.3
+for users.
 
-Sorry for so late reply.
-I have test your new patch, It works well in my scene.
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/sctp.h   |  1 +
+ include/uapi/linux/sctp.h |  1 +
+ net/sctp/socket.c         | 29 +++++++++++++++++++++++++++++
+ net/sctp/stream.c         | 40 ++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 71 insertions(+)
 
-Everybody,Is there any further comment about this awesome patch series?
-
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 3cfd365b..b93820f 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -198,6 +198,7 @@ int sctp_offload_init(void);
+  */
+ int sctp_send_reset_streams(struct sctp_association *asoc,
+ 			    struct sctp_reset_streams *params);
++int sctp_send_reset_assoc(struct sctp_association *asoc);
+ 
+ /*
+  * Module global variables
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index 03c27ce..c0bd8c3 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -117,6 +117,7 @@ typedef __s32 sctp_assoc_t;
+ #define SCTP_PR_ASSOC_STATUS	115
+ #define SCTP_ENABLE_STREAM_RESET	118
+ #define SCTP_RESET_STREAMS	119
++#define SCTP_RESET_ASSOC	120
+ 
+ /* PR-SCTP policies */
+ #define SCTP_PR_SCTP_NONE	0x0000
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index bee4dd3..2c5c9ca 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3812,6 +3812,32 @@ static int sctp_setsockopt_reset_streams(struct sock *sk,
+ 	return retval;
+ }
+ 
++static int sctp_setsockopt_reset_assoc(struct sock *sk,
++				       char __user *optval,
++				       unsigned int optlen)
++{
++	struct sctp_association *asoc;
++	sctp_assoc_t associd;
++	int retval = -EINVAL;
++
++	if (optlen != sizeof(associd))
++		goto out;
++
++	if (copy_from_user(&associd, optval, optlen)) {
++		retval = -EFAULT;
++		goto out;
++	}
++
++	asoc = sctp_id2assoc(sk, associd);
++	if (!asoc)
++		goto out;
++
++	retval = sctp_send_reset_assoc(asoc);
++
++out:
++	return retval;
++}
++
+ /* API 6.2 setsockopt(), getsockopt()
+  *
+  * Applications use setsockopt() and getsockopt() to set or retrieve
+@@ -3984,6 +4010,9 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 	case SCTP_RESET_STREAMS:
+ 		retval = sctp_setsockopt_reset_streams(sk, optval, optlen);
+ 		break;
++	case SCTP_RESET_ASSOC:
++		retval = sctp_setsockopt_reset_assoc(sk, optval, optlen);
++		break;
+ 	default:
+ 		retval = -ENOPROTOOPT;
+ 		break;
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 6a686e3..53e49fc 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -177,3 +177,43 @@ int sctp_send_reset_streams(struct sctp_association *asoc,
+ out:
+ 	return retval;
+ }
++
++int sctp_send_reset_assoc(struct sctp_association *asoc)
++{
++	struct sctp_chunk *chunk = NULL;
++	int retval;
++	__u16 i;
++
++	if (!asoc->peer.reconf_capable ||
++	    !(asoc->strreset_enable & SCTP_ENABLE_RESET_ASSOC_REQ))
++		return -ENOPROTOOPT;
++
++	if (asoc->strreset_outstanding)
++		return -EINPROGRESS;
++
++	chunk = sctp_make_strreset_tsnreq(asoc);
++	if (!chunk)
++		return -ENOMEM;
++
++	/* Block further xmit of data until this request is completed */
++	for (i = 0; i < asoc->stream->outcnt; i++)
++		asoc->stream->out[i].state = SCTP_STREAM_CLOSED;
++
++	asoc->strreset_chunk = chunk;
++	sctp_chunk_hold(asoc->strreset_chunk);
++
++	retval = sctp_send_reconf(asoc, chunk);
++	if (retval) {
++		sctp_chunk_put(asoc->strreset_chunk);
++		asoc->strreset_chunk = NULL;
++
++		for (i = 0; i < asoc->stream->outcnt; i++)
++			asoc->stream->out[i].state = SCTP_STREAM_OPEN;
++
++		return retval;
++	}
++
++	asoc->strreset_outstanding = 1;
++
++	return 0;
++}
+-- 
+2.1.0
 
