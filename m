@@ -1,129 +1,206 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 01 Jan 2017 11:20:41 +0000
-Subject: [PATCH net-next 24/27] sctp: add rfc6525 section 5.2.6
-Message-Id: <19ee2333d24194c0a4b3e724a1a738873ca27445.1483269426.git.lucien.xin@gmail.com>
+Date: Sat, 21 Jan 2017 10:24:26 +0000
+Subject: [PATCHv5 net-next 5/5] sctp: implement sender-side procedures for Add Incoming/Outgoing Streams Requ
+Message-Id: <afca01b99417f215cf21aa39a3519d160b0de2e9.1484993773.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1483269426.git.lucien.xin@gmail.com>
- <684ad8ddd79f23844883dede4c34360ce744dfc3.1483269426.git.lucien.xin@gmail.com>
- <c752879a5af358c08da949b391416452f1322c43.1483269426.git.lucien.xin@gmail.com>
- <be8a2770ddc2381266050c9f168add9802b90a49.1483269426.git.lucien.xin@gmail.com>
- <fc046afdda34c9b262ce57400c4256b14fd1a0fb.1483269426.git.lucien.xin@gmail.com>
- <d4f1b2a4fa19457e9867b0a1f84764a7a509459a.1483269426.git.lucien.xin@gmail.com>
- <31abc54d31ef0714322f137bff43458014d7c276.1483269426.git.lucien.xin@gmail.com>
- <58860816816d6d51b062235fd54dae6540a4797a.1483269426.git.lucien.xin@gmail.com>
- <229608faf7af54c0bf908694ca8349205bbf6eab.1483269426.git.lucien.xin@gmail.com>
- <c4f16844620cd3a2aa76596df9eaadf1505fc8e6.1483269426.git.lucien.xin@gmail.com>
- <1d0b270084289945c4b42ae36d0556648a3f9b64.1483269426.git.lucien.xin@gmail.com>
- <1e4560205cff3c10868d5614b62a3db14e87ccf0.1483269426.git.lucien.xin@gmail.com>
- <91b9171cc57c0f322d103dfbbcce1b9706800805.1483269426.git.lucien.xin@gmail.com>
- <d5fb0969ea5d055dea5bdc257569530b6d2fc7c2.1483269426.git.lucien.xin@gmail.com>
- <6a74f5a3ac408f20816a8c79edd6b9922ed3b573.1483269426.git.lucien.xin@gmail.com>
- <ef7d01cf1d5826e694a08303ee0b36c00201c666.1483269426.git.lucien.xin@gmail.com>
- <86b68f131d286ee20781cb04ce9d09d477aa5232.1483269426.git.lucien.xin@gmail.com>
- <1e8e248c38fd3874cf80c4b88e4699c8a617066d.1483269426.git.lucien.xin@gmail.com>
- <3a60ce82edef82f329fe2cc4ac83e9ca21831d8b.1483269426.git.lucien.xin@gmail.com>
- <9be4c65c6bac7df0dbf51328af92727e5606dc5c.1483269426.git.lucien.xin@gmail.com>
- <b5eb3a199dded2efe517b19b5cac6ae498a6c0c8.1483269426.git.lucien.xin@gmail.com>
- <c59df697bb54348de10f8418a23e9d14bce30135.1483269426.git.lucien.xin@gmail.com>
- <470b9f2b5248e0c1870c501f262a1887be66509b.1483269426.git.lucien.xin@gmail.com>
- <105630d2f9a54de9c3ce49988452d2b111c71b3d.1483269426.git.lucien.xin@gmail.com>
-In-Reply-To: <105630d2f9a54de9c3ce49988452d2b111c71b3d.1483269426.git.lucien.xin@gmail.com>
+References: <cover.1484993773.git.lucien.xin@gmail.com>
+ <9f2a54d764987dc6509e2322e3c0d93f819ebdb5.1484993773.git.lucien.xin@gmail.com>
+ <c58c4f7a998d27557a916d83b0b6b84e76fa9642.1484993773.git.lucien.xin@gmail.com>
+ <761fd1e1226c7e35a93443546e3d1ddf0edcced4.1484993773.git.lucien.xin@gmail.com>
+ <d26ba8015dc77c9f1c1d438927e2d1fef13ceebb.1484993773.git.lucien.xin@gmail.com>
+In-Reply-To: <d26ba8015dc77c9f1c1d438927e2d1fef13ceebb.1484993773.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-This patch is to implement Receiver-Side Procedures for the Add Incoming
-Streams Request Parameter described in section 5.2.6.
+This patch is to implement Sender-Side Procedures for the Add
+Outgoing and Incoming Streams Request Parameter described in
+rfc6525 section 5.1.5-5.1.6.
+
+It is also to add sockopt SCTP_ADD_STREAMS in rfc6525 section
+6.3.4 for users.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/sm.h |  4 ++++
- net/sctp/stream.c     | 59 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 63 insertions(+)
+ include/net/sctp/sctp.h   |  2 ++
+ include/uapi/linux/sctp.h |  7 ++++
+ net/sctp/socket.c         | 29 +++++++++++++++++
+ net/sctp/stream.c         | 81 +++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 119 insertions(+)
 
-diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index 5624b52..b8ca767 100644
---- a/include/net/sctp/sm.h
-+++ b/include/net/sctp/sm.h
-@@ -297,6 +297,10 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
- 				struct sctp_association *asoc,
- 				union sctp_params param,
- 				struct sctp_ulpevent **evp);
-+struct sctp_chunk *sctp_process_strreset_addstrm_in(
-+				struct sctp_association *asoc,
-+				union sctp_params param,
-+				struct sctp_ulpevent **evp);
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index b93820f..68ee1a6 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -199,6 +199,8 @@ int sctp_offload_init(void);
+ int sctp_send_reset_streams(struct sctp_association *asoc,
+ 			    struct sctp_reset_streams *params);
+ int sctp_send_reset_assoc(struct sctp_association *asoc);
++int sctp_send_add_streams(struct sctp_association *asoc,
++			  struct sctp_add_streams *params);
  
- /* Prototypes for statetable processing. */
+ /*
+  * Module global variables
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index c0bd8c3..a91a9cc 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -118,6 +118,7 @@ typedef __s32 sctp_assoc_t;
+ #define SCTP_ENABLE_STREAM_RESET	118
+ #define SCTP_RESET_STREAMS	119
+ #define SCTP_RESET_ASSOC	120
++#define SCTP_ADD_STREAMS	121
  
+ /* PR-SCTP policies */
+ #define SCTP_PR_SCTP_NONE	0x0000
+@@ -1027,4 +1028,10 @@ struct sctp_reset_streams {
+ 	uint16_t srs_stream_list[];	/* list if srs_num_streams is not 0 */
+ };
+ 
++struct sctp_add_streams {
++	sctp_assoc_t sas_assoc_id;
++	uint16_t sas_instrms;
++	uint16_t sas_outstrms;
++};
++
+ #endif /* _UAPI_SCTP_H */
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 2c5c9ca..ae0a99e 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3838,6 +3838,32 @@ static int sctp_setsockopt_reset_assoc(struct sock *sk,
+ 	return retval;
+ }
+ 
++static int sctp_setsockopt_add_streams(struct sock *sk,
++				       char __user *optval,
++				       unsigned int optlen)
++{
++	struct sctp_association *asoc;
++	struct sctp_add_streams params;
++	int retval = -EINVAL;
++
++	if (optlen != sizeof(params))
++		goto out;
++
++	if (copy_from_user(&params, optval, optlen)) {
++		retval = -EFAULT;
++		goto out;
++	}
++
++	asoc = sctp_id2assoc(sk, params.sas_assoc_id);
++	if (!asoc)
++		goto out;
++
++	retval = sctp_send_add_streams(asoc, &params);
++
++out:
++	return retval;
++}
++
+ /* API 6.2 setsockopt(), getsockopt()
+  *
+  * Applications use setsockopt() and getsockopt() to set or retrieve
+@@ -4013,6 +4039,9 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 	case SCTP_RESET_ASSOC:
+ 		retval = sctp_setsockopt_reset_assoc(sk, optval, optlen);
+ 		break;
++	case SCTP_ADD_STREAMS:
++		retval = sctp_setsockopt_add_streams(sk, optval, optlen);
++		break;
+ 	default:
+ 		retval = -ENOPROTOOPT;
+ 		break;
 diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index b51a037..a2b248b 100644
+index 53e49fc..7d467f0 100644
 --- a/net/sctp/stream.c
 +++ b/net/sctp/stream.c
-@@ -339,3 +339,62 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
- out:
- 	return sctp_make_strreset_resp(asoc, result, request_seq);
+@@ -217,3 +217,84 @@ int sctp_send_reset_assoc(struct sctp_association *asoc)
+ 
+ 	return 0;
  }
 +
-+struct sctp_chunk *sctp_process_strreset_addstrm_in(
-+				struct sctp_association *asoc,
-+				union sctp_params param,
-+				struct sctp_ulpevent **evp)
++int sctp_send_add_streams(struct sctp_association *asoc,
++			  struct sctp_add_streams *params)
 +{
-+	struct sctp_strreset_addstrm *addstrm = param.v;
-+	__u32 result = SCTP_STRRESET_DENIED;
-+	__u32 request_seq;
-+	__u16 i, nums;
++	struct sctp_stream *stream = asoc->stream;
++	struct sctp_chunk *chunk = NULL;
++	int retval = -ENOMEM;
++	__u16 out, in, nums;
 +
-+	request_seq = ntohl(addstrm->request_seq);
-+	if (request_seq > asoc->strreset_inseq) {
-+		result = SCTP_STRRESET_ERR_BAD_SEQNO;
++	if (!asoc->peer.reconf_capable ||
++	    !(asoc->strreset_enable & SCTP_ENABLE_CHANGE_ASSOC_REQ)) {
++		retval = -ENOPROTOOPT;
 +		goto out;
-+	} else if (request_seq = asoc->strreset_inseq) {
-+		asoc->strreset_inseq++;
 +	}
-+
-+	if (!(asoc->strreset_enable & SCTP_ENABLE_CHANGE_ASSOC_REQ))
-+		goto out;
 +
 +	if (asoc->strreset_outstanding) {
-+		result = SCTP_STRRESET_ERR_IN_PROGRESS;
++		retval = -EINPROGRESS;
 +		goto out;
 +	}
 +
-+	nums = ntohs(addstrm->number_of_streams);
-+	if (!nums || nums + asoc->streamoutcnt > SCTP_MAX_STREAM)
++	out = params->sas_outstrms;
++	in  = params->sas_instrms;
++	if (stream->outcnt + out > SCTP_MAX_STREAM ||
++	    stream->incnt + in > SCTP_MAX_STREAM || (!out && !in)) {
++		retval = -EINVAL;
 +		goto out;
++	}
 +
-+	nums = nums + asoc->streamoutcnt;
-+	if (ksize(asoc->streamout) / sizeof(*asoc->streamout) < nums) {
++	nums = stream->outcnt + out;
++	/* Use ksize to check if stream array really needs to realloc */
++	if (out && ksize(stream->out) < nums * sizeof(*stream->out)) {
 +		struct sctp_stream_out *streamout;
 +
-+		streamout = kcalloc(nums, sizeof(*streamout), GFP_ATOMIC);
++		streamout = kcalloc(nums, sizeof(*streamout), GFP_KERNEL);
 +		if (!streamout)
 +			goto out;
 +
-+		memcpy(streamout, asoc->streamout,
-+		       sizeof(*streamout) * asoc->streamoutcnt);
++		memcpy(streamout, stream->out,
++		       sizeof(*streamout) * stream->outcnt);
 +
-+		kfree(asoc->streamout);
-+		asoc->streamout = streamout;
++		kfree(stream->out);
++		stream->out = streamout;
 +	}
 +
-+	for (i = asoc->streamoutcnt; i < nums; i++)
-+		asoc->streamout[i].state = SCTP_STREAM_OPEN;
++	nums = stream->incnt + in;
++	if (in && ksize(stream->in) < nums * sizeof(*stream->in)) {
++		struct sctp_stream_in *streamin;
 +
-+	asoc->streamoutcnt = nums;
++		streamin = kcalloc(nums, sizeof(*streamin), GFP_KERNEL);
++		if (!streamin)
++			goto out;
 +
-+	result = SCTP_STRRESET_PERFORMED;
++		memcpy(streamin, stream->in,
++		       sizeof(*streamin) * stream->incnt);
 +
-+	*evp = sctp_ulpevent_make_stream_change_event(asoc,
-+		0, 0, ntohs(addstrm->number_of_streams), GFP_ATOMIC);
++		kfree(stream->in);
++		stream->in = streamin;
++	}
++
++	chunk = sctp_make_strreset_addstrm(asoc, out, in);
++	if (!chunk)
++		goto out;
++
++	asoc->strreset_chunk = chunk;
++	sctp_chunk_hold(asoc->strreset_chunk);
++
++	retval = sctp_send_reconf(asoc, chunk);
++	if (retval) {
++		sctp_chunk_put(asoc->strreset_chunk);
++		asoc->strreset_chunk = NULL;
++		goto out;
++	}
++
++	stream->incnt += in;
++	stream->outcnt += out;
++
++	asoc->strreset_outstanding = !!out + !!in;
 +
 +out:
-+	return sctp_make_strreset_resp(asoc, result, request_seq);
++	return retval;
 +}
 -- 
 2.1.0
