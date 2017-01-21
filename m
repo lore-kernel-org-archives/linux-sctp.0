@@ -1,41 +1,61 @@
-From: David Miller <davem@davemloft.net>
-Date: Sat, 07 Jan 2017 02:07:41 +0000
-Subject: Re: [PATCHv3 net-next] sctp: prepare asoc stream for stream reconf
-Message-Id: <20170106.210741.1161324031407112453.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 21 Jan 2017 10:24:21 +0000
+Subject: [PATCHv5 net-next 0/5] sctp: add sender-side procedures for stream reconf asoc reset and add streams
+Message-Id: <cover.1484993773.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <efd6462731ca0b18a3039f9537dda61e0ed72430.1483712313.git.lucien.xin@gmail.com>
-In-Reply-To: <efd6462731ca0b18a3039f9537dda61e0ed72430.1483712313.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, vyasevich@gmail.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri,  6 Jan 2017 22:18:33 +0800
+Patch 3/5 is to implement sender-side procedures for the SSN/TSN Reset
+Request Parameter described in rfc6525 section 5.1.4, patch 2/5 is
+ahead of it to define a function to make the request chunk for it.
 
-> sctp stream reconf, described in RFC 6525, needs a structure to
-> save per stream information in assoc, like stream state.
-> 
-> In the future, sctp stream scheduler also needs it to save some
-> stream scheduler params and queues.
-> 
-> This patchset is to prepare the stream array in assoc for stream
-> reconf. It defines sctp_stream that includes stream arrays inside
-> to replace ssnmap.
-> 
-> Note that we use different structures for IN and OUT streams, as
-> the members in per OUT stream will get more and more different
-> from per IN stream.
-> 
-> v1->v2:
->   - put these patches into a smaller group.
-> v2->v3:
->   - define sctp_stream to contain stream arrays, and create stream.c
->     to put stream-related functions.
->   - merge 3 patches into 1, as new sctp_stream has the same name
->     with before.
-> 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Patch 5/5 is to implement sender-side procedures for the Add Incoming
+and Outgoing Streams Request Parameter Request Parameter described in
+rfc6525 section 5.1.5 and 5.1.6, patch 4/5 is ahead of it to define a
+function to make the request chunk for it.
 
-Applied, thanks.
+Patch 1/5 is a fix to recover streams states when it fails to send
+request.
+
+v1->v2:
+  - put these into a smaller group.
+  - rename some temporary variables in the codes.
+  - rename the titles of the commits and improve some changelogs.
+v2->v3:
+  - re-split the patchset and make sure it has no dead codes for review.
+  - move some codes into stream.c from socket.c.
+v3->v4:
+  - add one more patch to fix a send reset stream request issue.
+  - doing actual work only when request is sent successfully.
+  - reduce some indents in sctp_send_add_streams.
+v4->v5:
+  - close streams before sending request and recover them when sending
+    fails in patch 1/5 and patch 3/5
+
+Xin Long (5):
+  sctp: streams should be recovered when it fails to send request.
+  sctp: add support for generating stream reconf ssn/tsn reset request
+    chunk
+  sctp: implement sender-side procedures for SSN/TSN Reset Request
+    Parameter
+  sctp: add support for generating stream reconf add incoming/outgoing
+    streams request chunk
+  sctp: implement sender-side procedures for Add Incoming/Outgoing
+    Streams Request Parameter
+
+ include/linux/sctp.h      |  12 ++++
+ include/net/sctp/sctp.h   |   3 +
+ include/net/sctp/sm.h     |   5 ++
+ include/uapi/linux/sctp.h |   8 +++
+ net/sctp/sm_make_chunk.c  |  75 +++++++++++++++++++++++++
+ net/sctp/socket.c         |  58 +++++++++++++++++++
+ net/sctp/stream.c         | 138 +++++++++++++++++++++++++++++++++++++++++++++-
+ 7 files changed, 298 insertions(+), 1 deletion(-)
+
+-- 
+2.1.0
+
