@@ -1,30 +1,104 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 20 Jan 2017 16:52:37 +0000
-Subject: Re: [PATCH][V2] net: sctp: fix array overrun read on sctp_timer_tbl
-Message-Id: <20170120.115237.842023646146863523.davem@davemloft.net>
+From: Davide Caratti <dcaratti@redhat.com>
+Date: Mon, 23 Jan 2017 16:52:43 +0000
+Subject: [RFC PATCH net-next 2/5] net: split skb_checksum_help
+Message-Id: <532e1db70b6c40f1b1e5c60b5b51be9f3437a30b.1485177252.git.dcaratti@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20170120134542.21104-1-colin.king@canonical.com>
-        <20170120.113117.1592305434267734738.davem@davemloft.net>
-        <20170120164820.GA669@localhost.localdomain>
-In-Reply-To: <20170120164820.GA669@localhost.localdomain>
+References: <cover.1485177252.git.dcaratti@redhat.com>
+In-Reply-To: <cover.1485177252.git.dcaratti@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: marcelo.leitner@gmail.com
-Cc: colin.king@canonical.com, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 20 Jan 2017 14:48:20 -0200
+skb_checksum_help is designed to compute the Internet Checksum only. To
+avoid duplicating code when other checksumming algorithms (e.g. crc32c)
+are used, separate common part from RFC1624-specific part.
 
-> Seems you applied it on net tree, but commit that introduced the issue
-> (7b9438de0cd4) is still only on net-next.
+Reviewed-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Signed-off-by: Davide Caratti <dcaratti@redhat.com>
+---
+ net/core/dev.c | 51 +++++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 35 insertions(+), 16 deletions(-)
 
-That explains everything.
+diff --git a/net/core/dev.c b/net/core/dev.c
+index ad5959e..6742160 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -2532,13 +2532,36 @@ static void skb_warn_bad_offload(const struct sk_buff *skb)
+ 	     skb_shinfo(skb)->gso_type, skb->ip_summed);
+ }
+ 
+-/*
+- * Invalidate hardware checksum when packet is to be mangled, and
++/* compute 16-bit RFC1624 checksum and store it at skb->data + offset */
++static int skb_rfc1624_csum(struct sk_buff *skb, int offset)
++{
++	__wsum csum;
++	int ret = 0;
++
++	csum = skb_checksum(skb, offset, skb->len - offset, 0);
++
++	offset += skb->csum_offset;
++	BUG_ON(offset + sizeof(__sum16) > skb_headlen(skb));
++
++	if (skb_cloned(skb) &&
++	    !skb_clone_writable(skb, offset + sizeof(__sum16))) {
++		ret = pskb_expand_head(skb, 0, 0, GFP_ATOMIC);
++		if (ret)
++			goto out;
++	}
++	*(__sum16 *)(skb->data + offset) = csum_fold(csum) ?: CSUM_MANGLED_0;
++out:
++	return ret;
++}
++
++/* Invalidate hardware checksum when packet is to be mangled, and
+  * complete checksum manually on outgoing path.
++ *    @skb - buffer that needs checksum
++ *    @csum_algo(skb, offset) - function used to compute the checksum
+  */
+-int skb_checksum_help(struct sk_buff *skb)
++static int __skb_checksum_help(struct sk_buff *skb,
++			       int (*csum_algo)(struct sk_buff *, int))
+ {
+-	__wsum csum;
+ 	int ret = 0, offset;
+ 
+ 	if (skb->ip_summed = CHECKSUM_COMPLETE)
+@@ -2560,24 +2583,20 @@ int skb_checksum_help(struct sk_buff *skb)
+ 
+ 	offset = skb_checksum_start_offset(skb);
+ 	BUG_ON(offset >= skb_headlen(skb));
+-	csum = skb_checksum(skb, offset, skb->len - offset, 0);
+-
+-	offset += skb->csum_offset;
+-	BUG_ON(offset + sizeof(__sum16) > skb_headlen(skb));
+-
+-	if (skb_cloned(skb) &&
+-	    !skb_clone_writable(skb, offset + sizeof(__sum16))) {
+-		ret = pskb_expand_head(skb, 0, 0, GFP_ATOMIC);
+-		if (ret)
+-			goto out;
+-	}
+ 
+-	*(__sum16 *)(skb->data + offset) = csum_fold(csum) ?: CSUM_MANGLED_0;
++	ret = csum_algo(skb, offset);
++	if (ret)
++		goto out;
+ out_set_summed:
+ 	skb->ip_summed = CHECKSUM_NONE;
+ out:
+ 	return ret;
+ }
++
++int skb_checksum_help(struct sk_buff *skb)
++{
++	return __skb_checksum_help(skb, skb_rfc1624_csum);
++}
+ EXPORT_SYMBOL(skb_checksum_help);
+ 
+ __be16 skb_network_protocol(struct sk_buff *skb, int *depth)
+-- 
+2.7.4
 
-> I build-tested it here before acking, it worked, on top of
-> 4567d686f5c6d955e57a3afa1741944c1e7f4033.
-> 
-> Colin, please respin the patch.. add the Fixes tag, fix the missing 'o'
-> in my name on the changelog :-) and tag the patch as net-next tree too.
-
-Indeed, thanks.
