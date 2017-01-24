@@ -1,57 +1,47 @@
-From: Kees Cook <keescook@google.com>
-Date: Tue, 17 Jan 2017 17:19:04 +0000
-Subject: Re: sctp: kernel memory overwrite attempt detected in sctp_getsockopt_assoc_stats
-Message-Id: <CAGXu5jJoRbjDLydW--20ZA4bh_17ZyMx02tr=RhjWwhSkXpocQ@mail.gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 24 Jan 2017 06:05:16 +0000
+Subject: [PATCH net] sctp: sctp gso should set feature with NETIF_F_SG when calling skb_segment
+Message-Id: <7b4d081c051650e706ffda360fdfbd4baaa1a317.1485237916.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CACT4Y+ZDPa+spEh6P_ip9=hsNfeZ8KJfwJu5jTrPKVkGJUaZSg@mail.gmail.com>
- <20170115203515.GA6274@neilslaptop.think-freely.org> <CACT4Y+Zp4cruuKtf7fkSeLFbYLzTOD79Y2c+cCrHx-pbEXC_6A@mail.gmail.com>
- <20170116135743.GC30105@hmswarspite.think-freely.org> <CACT4Y+aoRnZyPYM=Bz3RLWhK+MYrQJBZ22TijJd=fzHp9KG+9A@mail.gmail.com>
- <063D6719AE5E284EB5DD2968C1650D6DB0264AD2@AcuExch.aculab.com> <CACT4Y+bK3nvWoGJcZs5k1Lr3Rbn7ZxBCvNscs9Ty=7ZJEF37kQ@mail.gmail.com>
-In-Reply-To: <CACT4Y+bK3nvWoGJcZs5k1Lr3Rbn7ZxBCvNscs9Ty=7ZJEF37kQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Dmitry Vyukov <dvyukov@google.com>
-Cc: David Laight <David.Laight@aculab.com>, Neil Horman <nhorman@tuxdriver.com>, Vladislav Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, syzkaller <syzkaller@googlegroups.com>, Rik van Riel <riel@redhat.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Mon, Jan 16, 2017 at 6:56 AM, Dmitry Vyukov <dvyukov@google.com> wrote:
-> On Mon, Jan 16, 2017 at 3:50 PM, David Laight <David.Laight@aculab.com> wrote:
->> From: Dmitry Vyukov
->>> Sent: 16 January 2017 14:04
->>> >> >> I've enabled CONFIG_HARDENED_USERCOPY_PAGESPAN on syzkaller fuzzer and
->> ...
->>> >> The code also takes into account compound pages. As far as I
->>> >> understand the intention of the check is to effectively find
->>> >> out-of-bounds copies (e.g. goes beyond the current heap allocation). I
->>> >> would expect that stacks are allocated as compound pages and don't
->>> >> trigger this check. I don't see it is firing in other similar places.
->>> >>
->>> > Honestly, I'm not overly familiar with stack page allocation, at least not so
->>> > far as compound vs. single page allocation is concerned.  I suppose the question
->>> > your really asking here is: Have you found a case in which the syscall fuzzer
->>> > has forced the allocation of an insecure non-compound page on the stack, or is
->>> > this a false positive warning.  I can't provide the answer to that.
->>>
->>> Yes. I added Kees, author of CONFIG_HARDENED_USERCOPY_PAGESPAN, to To line.
->>> Kees, is this a false positive?
->>
->> I'd guess that the kernel stack is (somehow) allocated page by page
->> rather than by a single multi-page allocate.
->> Or maybe vmalloc() isn't setting the required flag??
->
->
-> Just in case, I don't have CONFIG_VMAP_STACK selected.
-> If it is a generic issue, then CONFIG_HARDENED_USERCOPY_PAGESPAN looks
-> considerably broken as there are tons of copies onto stack. I don't
-> see what's special in this particular case.
+Now sctp gso puts segments into skb's frag_list, then processes these
+segments in skb_segment. But skb_segment handles them only when gs is
+enabled, as it's in the same branch with skb's frags.
 
-There have been so many false positives on this option, even though it
-is known not to be quite right, that I'll probably just remove it
-entirely. It clearly needs much more work before it'll be useful, so
-there's no reason to leave it in the kernel to confuse people. :)
+Although almost all the NICs support sg other than some old ones, but
+since commit 1e16aa3ddf86 ("net: gso: use feature flag argument in all
+protocol gso handlers"), features &= skb->dev->hw_enc_features, and
+xfrm_output_gso call skb_segment with features = 0, which means sctp
+gso would call skb_segment with sg = 0, and skb_segment would not work
+as expected.
 
--Kees
+This patch is to fix it by setting features param with NETIF_F_SG when
+calling skb_segment so that it can go the right branch to process the
+skb's frag_list.
 
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/offload.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sctp/offload.c b/net/sctp/offload.c
+index 7e869d0..4f5a2b5 100644
+--- a/net/sctp/offload.c
++++ b/net/sctp/offload.c
+@@ -68,7 +68,7 @@ static struct sk_buff *sctp_gso_segment(struct sk_buff *skb,
+ 		goto out;
+ 	}
+ 
+-	segs = skb_segment(skb, features | NETIF_F_HW_CSUM);
++	segs = skb_segment(skb, features | NETIF_F_HW_CSUM | NETIF_F_SG);
+ 	if (IS_ERR(segs))
+ 		goto out;
+ 
 -- 
-Kees Cook
-Nexus Security
+2.1.0
+
