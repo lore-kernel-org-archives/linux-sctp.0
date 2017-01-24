@@ -1,28 +1,57 @@
-From: Julian Anastasov <ja@ssi.bg>
-Date: Sat, 21 Jan 2017 15:38:15 +0000
-Subject: Re: [PATCH RFC net-next 2/7] net: add dst_pending_confirm flag to skbuff
-Message-Id: <alpine.LFD.2.11.1701211736170.2281@ja.home.ssi.bg>
+From: Colin King <colin.king@canonical.com>
+Date: Tue, 24 Jan 2017 09:25:54 +0000
+Subject: [PATCH][V3][net-next] net: sctp: fix array overrun read on sctp_timer_tbl
+Message-Id: <20170124092554.27019-1-colin.king@canonical.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1482094596-26046-1-git-send-email-ja@ssi.bg> <1482094596-26046-3-git-send-email-ja@ssi.bg> <1482164252.1521.7.camel@edumazet-glaptop3.roam.corp.google.com> <alpine.LFD.2.11.1612192203480.3105@ja.home.ssi.bg>
- <11f3e6c9-5eec-8275-3323-0c1de91f8c23@huawei.com>
-In-Reply-To: <11f3e6c9-5eec-8275-3323-0c1de91f8c23@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: YueHaibing <yuehaibing@huawei.com>
-Cc: Eric Dumazet <eric.dumazet@gmail.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S . Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
 
+From: Colin Ian King <colin.king@canonical.com>
 
-	Hello,
+Table sctp_timer_tbl is missing a TIMEOUT_RECONF string so
+add this in. Also compare timeout with the size of the array
+sctp_timer_tbl rather than SCTP_EVENT_TIMEOUT_MAX.  Also add
+a build time check that SCTP_EVENT_TIMEOUT_MAX is correct
+so we don't ever get this kind of mismatch between the table
+and SCTP_EVENT_TIMEOUT_MAX in the future.
 
-On Fri, 20 Jan 2017, YueHaibing wrote:
+Kudos to Marcelo Ricardo Leitner for spotting the missing string
+and suggesting the build time sanity check.
 
-> Sorry for so late reply.
-> I have test your new patch, It works well in my scene.
+Fixes CoverityScan CID#1397639 ("Out-of-bounds read")
 
-	Thanks! I'll prepare 2nd version in the following days...
+Fixes: 7b9438de0cd4 ("sctp: add stream reconf timer")
+Signed-off-by: Colin Ian King <colin.king@canonical.com>
+---
+ net/sctp/debug.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-Regards
+diff --git a/net/sctp/debug.c b/net/sctp/debug.c
+index 95d7b15..2e47eb2 100644
+--- a/net/sctp/debug.c
++++ b/net/sctp/debug.c
+@@ -159,6 +159,7 @@ static const char *const sctp_timer_tbl[] = {
+ 	"TIMEOUT_T4_RTO",
+ 	"TIMEOUT_T5_SHUTDOWN_GUARD",
+ 	"TIMEOUT_HEARTBEAT",
++	"TIMEOUT_RECONF",
+ 	"TIMEOUT_SACK",
+ 	"TIMEOUT_AUTOCLOSE",
+ };
+@@ -166,7 +167,9 @@ static const char *const sctp_timer_tbl[] = {
+ /* Lookup timer debug name. */
+ const char *sctp_tname(const sctp_subtype_t id)
+ {
+-	if (id.timeout <= SCTP_EVENT_TIMEOUT_MAX)
++	BUILD_BUG_ON(SCTP_EVENT_TIMEOUT_MAX + 1 != ARRAY_SIZE(sctp_timer_tbl));
++
++	if (id.timeout < ARRAY_SIZE(sctp_timer_tbl))
+ 		return sctp_timer_tbl[id.timeout];
+ 	return "unknown_timer";
+ }
+-- 
+2.10.2
 
---
-Julian Anastasov <ja@ssi.bg>
