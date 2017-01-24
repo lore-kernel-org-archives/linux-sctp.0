@@ -1,28 +1,29 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 20 Jan 2017 16:26:26 +0000
-Subject: Re: [PATCH] net: sctp: fix array overrun read on sctp_timer_tbl
-Message-Id: <20170120.112626.159194842548687734.davem@davemloft.net>
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Tue, 24 Jan 2017 09:05:40 +0000
+Subject: [patch net-next] sctp: fix some debug output
+Message-Id: <20170124090540.GA27652@mwanda>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20170120130157.20034-1-colin.king@canonical.com>
-In-Reply-To: <20170120130157.20034-1-colin.king@canonical.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: colin.king@canonical.com
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, kernel-janitors@vger.kernel.org
 
-From: Colin King <colin.king@canonical.com>
-Date: Fri, 20 Jan 2017 13:01:57 +0000
+We added SCTP_EVENT_TIMEOUT_RECONF but we didn't update this array so
+it causes an off-by-one read overflow.
 
-> From: Colin Ian King <colin.king@canonical.com>
-> 
-> The comparison on the timeout can lead to an array overrun
-> read on sctp_timer_tbl because of an off-by-one error. Fix
-> this by using < instead of <= and also compare to the array
-> size rather than SCTP_EVENT_TIMEOUT_MAX.
-> 
-> Fixes CoverityScan CID#1397639 ("Out-of-bounds read")
-> 
-> Signed-off-by: Colin Ian King <colin.king@canonical.com>
+Fixes: 7b9438de0cd4 ("sctp: add stream reconf timer")
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
 
-Applied.
+diff --git a/net/sctp/debug.c b/net/sctp/debug.c
+index 95d7b15dad21..c5f4ed5242ac 100644
+--- a/net/sctp/debug.c
++++ b/net/sctp/debug.c
+@@ -159,6 +159,7 @@ static const char *const sctp_timer_tbl[] = {
+ 	"TIMEOUT_T4_RTO",
+ 	"TIMEOUT_T5_SHUTDOWN_GUARD",
+ 	"TIMEOUT_HEARTBEAT",
++	"TIMEOUT_RECONF",
+ 	"TIMEOUT_SACK",
+ 	"TIMEOUT_AUTOCLOSE",
+ };
