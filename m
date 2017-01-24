@@ -1,34 +1,47 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 16 Jan 2017 18:52:57 +0000
-Subject: Re: [PATCH net-next] sctp: remove useless code from sctp_apply_peer_addr_params
-Message-Id: <20170116.135257.361979191382843875.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 24 Jan 2017 06:01:53 +0000
+Subject: [PATCH net] sctp: sctp_addr_id2transport should verify the addr before looking up assoc
+Message-Id: <2ba9d3e0b3aa05baa3791811c92248126d233c67.1485237713.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <99bc9f227c4c857d2bb258391231231d46c1899d.1484336556.git.marcelo.leitner@gmail.com>
-In-Reply-To: <99bc9f227c4c857d2bb258391231231d46c1899d.1484336556.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: marcelo.leitner@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 13 Jan 2017 18:31:15 -0200
+sctp_addr_id2transport is a function for sockopt to look up assoc by
+address. As the address is from userspace, it can be a v4-mapped v6
+address. But in sctp protocol stack, it always handles a v4-mapped
+v6 address as a v4 address. So it's necessary to convert it to a v4
+address before looking up assoc by address.
 
-> sctp_frag_point() doesn't store anything, and thus just calling it
-> cannot do anything useful.
-> 
-> sctp_apply_peer_addr_params is only called by
-> sctp_setsockopt_peer_addr_params. When operating on an asoc,
-> sctp_setsockopt_peer_addr_params will call sctp_apply_peer_addr_params
-> once for the asoc, and then once for each transport this asoc has,
-> meaning that the frag_point will be recomputed when updating the
-> transports and calling it when updating the asoc is not necessary.
-> IOW, no action is needed here and we can remove this call.
-> 
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+This patch is to fix it by calling sctp_verify_addr in which it can do
+this conversion before calling sctp_endpoint_lookup_assoc, just like
+what sctp_sendmsg and __sctp_connect do for the address from users.
 
-Applied, but please put "[PATCH net-next v2]" or some other indication
-in your Subject line so that new revisions of a patch are easily
-discernable.
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/socket.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-Thanks.
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 318c678..37eeab7 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -235,8 +235,12 @@ static struct sctp_transport *sctp_addr_id2transport(struct sock *sk,
+ 					      sctp_assoc_t id)
+ {
+ 	struct sctp_association *addr_asoc = NULL, *id_asoc = NULL;
+-	struct sctp_transport *transport;
++	struct sctp_af *af = sctp_get_af_specific(addr->ss_family);
+ 	union sctp_addr *laddr = (union sctp_addr *)addr;
++	struct sctp_transport *transport;
++
++	if (sctp_verify_addr(sk, laddr, af->sockaddr_len))
++		return NULL;
+ 
+ 	addr_asoc = sctp_endpoint_lookup_assoc(sctp_sk(sk)->ep,
+ 					       laddr,
+-- 
+2.1.0
+
