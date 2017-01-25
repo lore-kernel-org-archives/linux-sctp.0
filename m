@@ -1,231 +1,140 @@
-From: Julian Anastasov <ja@ssi.bg>
-Date: Tue, 31 Jan 2017 21:57:05 +0000
-Subject: [PATCHv3 net-next 5/7] net: add confirm_neigh method to dst_ops
-Message-Id: <1485899827-5212-6-git-send-email-ja@ssi.bg>
+From: YUAN Jia <Jia.Yuan@alcatel-sbell.com.cn>
+Date: Wed, 25 Jan 2017 06:40:10 +0000
+Subject: A PMTU auto-discovery error for large SCTP packets
+Message-Id: <07B7943445653648AD9B4DBB916BB48F1C265220@cnshjmbx01>
+MIME-Version: 1
+Content-Type: multipart/mixed; boundary="_003_07B7943445653648AD9B4DBB916BB48F1C265220cnshjmbx01_"
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1485899827-5212-1-git-send-email-ja@ssi.bg>
-In-Reply-To: <1485899827-5212-1-git-send-email-ja@ssi.bg>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, linux-rdma@vger.kernel.org, YueHaibing <yuehaibing@huawei.com>
+To: "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>, 'network dev' <netdev@vger.kernel.org>
 
-Add confirm_neigh method to dst_ops and use it from IPv4 and IPv6
-to lookup and confirm the neighbour. Its usage via the new helper
-dst_confirm_neigh() should be restricted to MSG_PROBE users for
-performance reasons.
+--_003_07B7943445653648AD9B4DBB916BB48F1C265220cnshjmbx01_
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
 
-Signed-off-by: Julian Anastasov <ja@ssi.bg>
-Acked-by: Eric Dumazet <edumazet@google.com>
----
- include/net/arp.h      | 16 ++++++++++++++++
- include/net/dst.h      |  7 +++++++
- include/net/dst_ops.h  |  2 ++
- include/net/ndisc.h    | 17 +++++++++++++++++
- net/ipv4/route.c       | 19 +++++++++++++++++++
- net/ipv6/route.c       | 16 ++++++++++++++++
- net/xfrm/xfrm_policy.c | 16 ++++++++++++++++
- 7 files changed, 93 insertions(+)
+SGkgQWxsLA0KDQpSZWNlbnRseSwgSSBtZXQgYSBwcm9ibGVtIG9mIFNDVFAgYXNzb2NpYXRpb24g
+YnJva2VuIHdoaWNoIHdhcyByZXN1bHRlZCBmcm9tIGxhcmdlIFNDVFAgcGFja2V0cyBhcyBhdHRh
+Y2hlZCBpbiB0aGlzIG1haWwuDQpCZWNhdXNlIHRoZSAxc3QgcGFja2V04oCZcyBsZW5ndGggaXMg
+MTYyNiB0aGF0IGV4Y2VlZHMgdGhlIG5leHQgaG9w4oCZcyBNVFUgb2YgMTUwMCwgYW4gSUNNUCBw
+YWNrZXQgb2YgY29kZSA0IChGcmFnbWVudGF0aW9uIG5lZWRlZCkgcmVmbGVjdHMgYmFjayBhbmQg
+Y2FycmllcyB0aGUgY29ycmVjdCBNVFUgdmFsdWUgMTUwMC4gSG93ZXZlciwgdGhlIG1lY2hhbmlz
+bSBvZiBhdXRvLWFkanVzdGluZyBQTVRVIGRvZXNu4oCZdCB3b3JrLiBIYXZpbmcgZGVidWdnZWQg
+dGhlIGtlcm5lbCwgSSBmaW5kIHRoZSBJQ01QIHBhY2tldCBpcyBkcm9wcGVkIGF0IGEgcHJlLXJv
+dXRpbmcgbmV0IGZpbHRlciBjYWxsZWQg4oCYbmZ0X2NoYWluX25hdF9pcHY04oCZIGR1ZSB0byDi
+gJhDT05GSUdfTkZUX0NIQUlOX05BVF9JUFY04oCZIGJlaW5nIGVuYWJsZWQuIEJlbG93IGlzIHRo
+ZSBjYWxsaW5nIHNlcXVlbmNlOg0KUEFUSDE6IMKgwqDCoMKgTkZfSU5FVF9QUkVfUk9VVElORyDi
+hpIgbmZ0X25hdF9pcHY0X2luIOKGkiBuZl9uYXRfaXB2NF9pbiDihpIgbmZfbmF0X2lwdjRfZm4g
+4oaSIG5mX25hdF9pY21wX3JlcGx5X3RyYW5zbGF0aW9uIOKGkiBuZl9uYXRfaXB2NF9tYW5pcF9w
+a3QNClBBVEgyOiDCoMKgwqDCoE5GX0lORVRfUFJFX1JPVVRJTkcg4oaSIG5mdF9uYXRfaXB2NF9p
+biDihpIgbmZfbmF0X2lwdjRfaW4g4oaSIG5mX25hdF9pcHY0X2ZuIOKGkiBuZl9uYXRfcGFja2V0
+IOKGkiBsM3Byb3RvLT5tYW5pcF9wa3QobmZfbmF0X2lwdjRfbWFuaXBfcGt0KQ0KQ09NTU9OOsKg
+IG5mX25hdF9pcHY0X21hbmlwX3BrdCDihpIgbDRwcm90by0+bWFuaXBfcGt0KHNjdHBfbWFuaXBf
+cGt0KSDihpIgc2tiX21ha2Vfd3JpdGFibGUNCg0KVG8gcmVhY2ggdGhlIGZpbmFsIGZ1bmN0aW9u
+IOKAmHNrYl9tYWtlX3dyaXRhYmxl4oCZIGluIHRoaXMgY2FsbGluZyBjaGFpbiwgdGhlIElDTVAg
+cGFja2V0IGFuZCB2YXJpb3VzIGhlYWRlciBwb2ludGVycyBjYW4gYmUgZGVwaWN0ZWQgYXMgYmVs
+b3c6DQpNQUMobDIpICsgW1ZMQU4obDIpXSArIElQKGwzKSArIElDTVAobDQpICsgeyBwYXlsb2Fk
+IOKHkiBJUCArIFNDVFAgfcKgwqDCoMKgwqDCoMKgwqDCoMKgwqAgQW5kIHRoZSBpbnB1dCBwYXJh
+bWV0ZXIg4oCYaGRyb2Zm4oCZIG5vdyBlcXVhbHMgdG8gdGhlIGxlbmd0aCBmcm9tIOKAmHNrYi0+
+ZGF0YeKAmSB0byB0aGUgU0NUUCBoZWFkZXIgaW4gdGhlIElDTVAgcGF5bG9hZC4NClNvLCB0aGUg
+c3RhdGVtZW50IOKAmHNrYl9tYWtlX3dyaXRhYmxlKHNrYiwgaGRyb2ZmICsgc2l6ZW9mKCpoZHIp
+KeKAmSBhc3N1bWVzIHRoYXQgdGhlIFNDVFAgaGVhZGVyIGlzIGludGFjdCBhbmQgd2hvbGUuIEhv
+d2V2ZXIsIGNlcnRhaW4gbmV0d29yayBlbGVtZW50cyAocm91dGVzLCBnYXRld2F5cywgb3Igc29t
+ZXRoaW5nIGxpa2UgdGhhdCkgcHJvYmFibHkgc2VuZCBJQ01QIG9ubHkgY29udGFpbmluZyBleHRy
+YSA4IGJ5dGVzICg2NCBiaXRzKSBhZnRlciB0aGUgSVAgaGVhZGVyIG9mIG9yaWdpbmFsIHBhY2tl
+dC4gSnVzdCBhcyB0aGUgYXR0YWNobWVudCBzaG93biwgdGhlIElDTVAgb25seSBjb250YWluZWQg
+dGhlIHNvdXJjZSBwb3J0LCBkZXN0aW5hdGlvbiBwb3J0IGFuZCBTQ1RQIHZlcmlmaWNhdGlvbiB0
+YWcgb2YgdGhlIHBhcnRpYWwgKDggYnl0ZXMpIFNDVFAgaGVhZGVyIGluIHRoZSBwcmV2aW91cyBT
+Q1RQIHBhY2tldC4gU3VjaCB0aGUgY2FzZSBjYW4gbWFrZSDigJhza2JfbWFrZV93cml0YWJsZeKA
+mSByZXR1cm4gZmFsc2UuIEFuZCB0aGVuLCB0aGUgSUNNUCBwYWNrZXQgd2lsbCBiZSBkcm9wcGVk
+LiBGaW5hbGx5LCB0aGUgdXBwZXIgbGF5ZXLigJlzIOKAmGVycl9oYW5kbGVy4oCZIHdvdWxkIG5v
+dCBiZSB0cmlnZ2VyZWQgdG8gbm90aWZ5IFNDVFAgZm9yIHVwZGF0aW5nIHRoZSBQTVRVLg0KDQpJ
+IGNvbXBhcmUgaXQgd2l0aCBob3cgdGhlIFRDUCBwcm90b2NvbCBpcyBoYW5kbGVkLiBJbiB0aGUg
+ZmlsZSDigJhuZXQvbmV0ZmlsdGVyL25mX25hdF9wcm90b190Y3AuY+KAmSwgdGhlcmXigJlzIGFs
+c28gYSBzaW1pbGFyIGZ1bmN0aW9uIGNhbGxlZCDigJh0Y3BfbWFuaXBfcGt04oCZLCBhbmQgYSBw
+YXJhZ3JhcGggb2YgY29tbWVuY2UgZGVzY3JpYmluZyBhcyBiZWxvdzoNCiAgICAgaW50IGhkcnNp
+emUgPSA4OyAvKiBUQ1AgY29ubmVjdGlvbiB0cmFja2luZyBndWFyYW50ZWVzIHRoaXMgbXVjaCAq
+Lw0KICAgICANCsKgwqDCoCAvKiB0aGlzIGNvdWxkIGJlIGEgaW5uZXIgaGVhZGVyIHJldHVybmVk
+IGluIGljbXAgcGFja2V0OyBpbiBzdWNoDQrCoMKgwqDCoMKgwqAgY2FzZXMgd2UgY2Fubm90IHVw
+ZGF0ZSB0aGUgY2hlY2tzdW0gZmllbGQgc2luY2UgaXQgaXMgb3V0c2lkZSBvZg0KwqDCoMKgwqDC
+oMKgIHRoZSA4IGJ5dGVzIG9mIHRyYW5zcG9ydCBsYXllciBoZWFkZXJzIHdlIGFyZSBndWFyYW50
+ZWVkICovDQrCoMKgwqAgaWYgKHNrYi0+bGVuID49IGhkcm9mZiArIHNpemVvZihzdHJ1Y3QgdGNw
+aGRyKSkNCsKgwqDCoMKgwqDCoMKgIGhkcnNpemUgPSBzaXplb2Yoc3RydWN0IHRjcGhkcik7DQoN
+CsKgwqDCoCBpZiAoIXNrYl9tYWtlX3dyaXRhYmxlKHNrYiwgaGRyb2ZmICsgaGRyc2l6ZSkpDQrC
+oMKgwqDCoMKgwqDCoCByZXR1cm4gZmFsc2U7DQrigKbigKbigKbigKbigKbigKbigKbigKbigKYg
+YW5kIGxhdGVyIOKApuKApuKApuKApuKApuKApuKApuKApuKApuKApg0KwqDCoMKgIGlmIChoZHJz
+aXplIDwgc2l6ZW9mKCpoZHIpKQ0KwqDCoMKgwqDCoMKgwqAgcmV0dXJuIHRydWU7DQoNCkkgdGhp
+bmsgdGhhdCDigJhzY3RwX21hbmlwX3BrdOKAmSBzaG91bGQgYWxzbyBiZWhhdmUgbGlrZSB0aGlz
+LiBJc27igJl0IGl0Pw0KDQpCZXN0IHJlZ2FyZHMsDQpSaWNoYXJkDQoNCg==
 
-diff --git a/include/net/arp.h b/include/net/arp.h
-index 5e0f891..65619a2 100644
---- a/include/net/arp.h
-+++ b/include/net/arp.h
-@@ -35,6 +35,22 @@ static inline struct neighbour *__ipv4_neigh_lookup(struct net_device *dev, u32
- 	return n;
- }
- 
-+static inline void __ipv4_confirm_neigh(struct net_device *dev, u32 key)
-+{
-+	struct neighbour *n;
-+
-+	rcu_read_lock_bh();
-+	n = __ipv4_neigh_lookup_noref(dev, key);
-+	if (n) {
-+		unsigned long now = jiffies;
-+
-+		/* avoid dirtying neighbour */
-+		if (n->confirmed != now)
-+			n->confirmed = now;
-+	}
-+	rcu_read_unlock_bh();
-+}
-+
- void arp_init(void);
- int arp_ioctl(struct net *net, unsigned int cmd, void __user *arg);
- void arp_send(int type, int ptype, __be32 dest_ip,
-diff --git a/include/net/dst.h b/include/net/dst.h
-index 6835d22..3a3b34b 100644
---- a/include/net/dst.h
-+++ b/include/net/dst.h
-@@ -477,6 +477,13 @@ static inline struct neighbour *dst_neigh_lookup_skb(const struct dst_entry *dst
- 	return IS_ERR(n) ? NULL : n;
- }
- 
-+static inline void dst_confirm_neigh(const struct dst_entry *dst,
-+				     const void *daddr)
-+{
-+	if (dst->ops->confirm_neigh)
-+		dst->ops->confirm_neigh(dst, daddr);
-+}
-+
- static inline void dst_link_failure(struct sk_buff *skb)
- {
- 	struct dst_entry *dst = skb_dst(skb);
-diff --git a/include/net/dst_ops.h b/include/net/dst_ops.h
-index 8a2b66d..c84b328 100644
---- a/include/net/dst_ops.h
-+++ b/include/net/dst_ops.h
-@@ -33,6 +33,8 @@ struct dst_ops {
- 	struct neighbour *	(*neigh_lookup)(const struct dst_entry *dst,
- 						struct sk_buff *skb,
- 						const void *daddr);
-+	void			(*confirm_neigh)(const struct dst_entry *dst,
-+						 const void *daddr);
- 
- 	struct kmem_cache	*kmem_cachep;
- 
-diff --git a/include/net/ndisc.h b/include/net/ndisc.h
-index d562a2f..8a02146 100644
---- a/include/net/ndisc.h
-+++ b/include/net/ndisc.h
-@@ -391,6 +391,23 @@ static inline struct neighbour *__ipv6_neigh_lookup(struct net_device *dev, cons
- 	return n;
- }
- 
-+static inline void __ipv6_confirm_neigh(struct net_device *dev,
-+					const void *pkey)
-+{
-+	struct neighbour *n;
-+
-+	rcu_read_lock_bh();
-+	n = __ipv6_neigh_lookup_noref(dev, pkey);
-+	if (n) {
-+		unsigned long now = jiffies;
-+
-+		/* avoid dirtying neighbour */
-+		if (n->confirmed != now)
-+			n->confirmed = now;
-+	}
-+	rcu_read_unlock_bh();
-+}
-+
- int ndisc_init(void);
- int ndisc_late_init(void);
- 
-diff --git a/net/ipv4/route.c b/net/ipv4/route.c
-index 4b7c231..cb494a5 100644
---- a/net/ipv4/route.c
-+++ b/net/ipv4/route.c
-@@ -154,6 +154,7 @@ static u32 *ipv4_cow_metrics(struct dst_entry *dst, unsigned long old)
- static struct neighbour *ipv4_neigh_lookup(const struct dst_entry *dst,
- 					   struct sk_buff *skb,
- 					   const void *daddr);
-+static void ipv4_confirm_neigh(const struct dst_entry *dst, const void *daddr);
- 
- static struct dst_ops ipv4_dst_ops = {
- 	.family =		AF_INET,
-@@ -168,6 +169,7 @@ static struct neighbour *ipv4_neigh_lookup(const struct dst_entry *dst,
- 	.redirect =		ip_do_redirect,
- 	.local_out =		__ip_local_out,
- 	.neigh_lookup =		ipv4_neigh_lookup,
-+	.confirm_neigh =	ipv4_confirm_neigh,
- };
- 
- #define ECN_OR_COST(class)	TC_PRIO_##class
-@@ -461,6 +463,23 @@ static struct neighbour *ipv4_neigh_lookup(const struct dst_entry *dst,
- 	return neigh_create(&arp_tbl, pkey, dev);
- }
- 
-+static void ipv4_confirm_neigh(const struct dst_entry *dst, const void *daddr)
-+{
-+	struct net_device *dev = dst->dev;
-+	const __be32 *pkey = daddr;
-+	const struct rtable *rt;
-+
-+	rt = (const struct rtable *)dst;
-+	if (rt->rt_gateway)
-+		pkey = (const __be32 *)&rt->rt_gateway;
-+	else if (!daddr ||
-+		 (rt->rt_flags &
-+		  (RTCF_MULTICAST | RTCF_BROADCAST | RTCF_LOCAL)))
-+		return;
-+
-+	__ipv4_confirm_neigh(dev, *(__force u32 *)pkey);
-+}
-+
- #define IP_IDENTS_SZ 2048u
- 
- static atomic_t *ip_idents __read_mostly;
-diff --git a/net/ipv6/route.c b/net/ipv6/route.c
-index 4b1f0f9..c876940 100644
---- a/net/ipv6/route.c
-+++ b/net/ipv6/route.c
-@@ -217,6 +217,21 @@ static struct neighbour *ip6_neigh_lookup(const struct dst_entry *dst,
- 	return neigh_create(&nd_tbl, daddr, dst->dev);
- }
- 
-+static void ip6_confirm_neigh(const struct dst_entry *dst, const void *daddr)
-+{
-+	struct net_device *dev = dst->dev;
-+	struct rt6_info *rt = (struct rt6_info *)dst;
-+
-+	daddr = choose_neigh_daddr(rt, NULL, daddr);
-+	if (!daddr)
-+		return;
-+	if (dev->flags & (IFF_NOARP | IFF_LOOPBACK))
-+		return;
-+	if (ipv6_addr_is_multicast((const struct in6_addr *)daddr))
-+		return;
-+	__ipv6_confirm_neigh(dev, daddr);
-+}
-+
- static struct dst_ops ip6_dst_ops_template = {
- 	.family			=	AF_INET6,
- 	.gc			=	ip6_dst_gc,
-@@ -233,6 +248,7 @@ static struct neighbour *ip6_neigh_lookup(const struct dst_entry *dst,
- 	.redirect		=	rt6_do_redirect,
- 	.local_out		=	__ip6_local_out,
- 	.neigh_lookup		=	ip6_neigh_lookup,
-+	.confirm_neigh		=	ip6_confirm_neigh,
- };
- 
- static unsigned int ip6_blackhole_mtu(const struct dst_entry *dst)
-diff --git a/net/xfrm/xfrm_policy.c b/net/xfrm/xfrm_policy.c
-index 177e208..c010ee0 100644
---- a/net/xfrm/xfrm_policy.c
-+++ b/net/xfrm/xfrm_policy.c
-@@ -2856,6 +2856,20 @@ static struct neighbour *xfrm_neigh_lookup(const struct dst_entry *dst,
- 	return dst->path->ops->neigh_lookup(dst, skb, daddr);
- }
- 
-+static void xfrm_confirm_neigh(const struct dst_entry *dst, const void *daddr)
-+{
-+	const struct dst_entry *path = dst->path;
-+
-+	if (path = dst) {
-+		dst->ops->confirm_neigh(dst, daddr);
-+	} else {
-+		/* daddr can be from different family and we need the
-+		 * tunnel address. How to get it?
-+		 */
-+		path->ops->confirm_neigh(path, NULL);
-+	}
-+}
-+
- int xfrm_policy_register_afinfo(struct xfrm_policy_afinfo *afinfo)
- {
- 	int err = 0;
-@@ -2882,6 +2896,8 @@ int xfrm_policy_register_afinfo(struct xfrm_policy_afinfo *afinfo)
- 			dst_ops->link_failure = xfrm_link_failure;
- 		if (likely(dst_ops->neigh_lookup = NULL))
- 			dst_ops->neigh_lookup = xfrm_neigh_lookup;
-+		if (likely(!dst_ops->confirm_neigh))
-+			dst_ops->confirm_neigh = xfrm_confirm_neigh;
- 		if (likely(afinfo->garbage_collect = NULL))
- 			afinfo->garbage_collect = xfrm_garbage_collect_deferred;
- 		rcu_assign_pointer(xfrm_policy_afinfo[afinfo->family], afinfo);
--- 
-1.9.3
+--_003_07B7943445653648AD9B4DBB916BB48F1C265220cnshjmbx01_
+Content-Type: application/octet-stream; name="icmp_pmtu.pcap"
+Content-Description: icmp_pmtu.pcap
+Content-Disposition: attachment; filename="icmp_pmtu.pcap"; size=1902;
+	creation-date="Tue, 24 Jan 2017 08:28:36 GMT";
+	modification-date="Tue, 24 Jan 2017 08:28:36 GMT"
+Content-Transfer-Encoding: base64
 
+1MOyoQIABAAAAAAAAAAAANAHAAABAAAATbxTWISLCwBaBgAAWgYAAAAAXgABoVSmGVedsQgARbgG
+TAAAQABAhBNtCklQggoPuy+ORo48Mp9TsCgqhNQAAgYsyNouDQABEVMAAAASAAAAhlwAAAcAAAAF
+wArApgMACAADQAf2AAEAAQAAAkACAgAABAANAAL4EAAUvUAC+BCU4QBPQAEAAGgAhiOGIUCF8Q8w
+hHfNmAEwjZMMHAAwIQkZTiyAw4lUJj5On///lf/p///5X/6f//+V/+n///lf/p///5X/6f//+V/+
+n///lf/p///5X/6f//+V/+n///lf/p///5X/6f//+V/+n///lf/p///5X/6f//+V/+n///lf/p//
+/5X/6f//+V/+n///lf/p///5X/10P/oaIMAIyFPBBlOlSXH4LGAAAAAH1AacAABNAwgAEADbAAQA
+NMABAAxgAEADHAAQAMAABAAwwAEADBAAQAMQABAA0gAEADZAAQAOcABAAywAEADQAAQAMwABAAXA
+gAcoACAB0AAIAHMAAgAL4QAWUIGEAAgA7YACAhBABWwgYQACADpgAICEEAFTCBhAAIAOOAAgIQQA
+UcIGEAAgA4wACAhBABRggYQACADhAAICEEAHCAAQEAIAKEEDAAAQAMIABIB2wAEBGCACthAxgAEA
+HbAAQEAIAK2EDAAAQAV8IGmAAgA6YACAjBABUwgYwACADpgAICAEAFTCBgAAIAOOAAgIwQAUcIGM
+AAgA4wACAjBABxgAEBACACjBAwAAEADGAASAccABAQAgAo4QMAABAA5wAEgDlAASAOgABIC2wAEB
+GCAhBACWwgYwACAhBACWwgIwQMIABAC2wAEBCCAgBACWwgYQACAgBACWwgIQQMAABAC0wAEBGCAh
+BACUwgYwACAhBACUwgIwQMIABAC0wAEBCCAgBACUwgYQACAgBACUwgIQQMAABACxwAEBGCAhBACR
+wgYwACAhBACRwgIwQMIABACxwAEBCCAgBACRwgYQACAgBACRwgIQQMAABABxgAEhCCACjBIwgAEA
+HGAAQEIJAKMEDCAASAtMABARggIAQAlMIGMAAgIAQAlMICMEDAAAQJtP///K//T///yv/0///8r/
+9P///K//T///yv/0///8r/9P///K//T///yv/0///8r/9P///K//T///yv/0///8r/9P///K//T/
+//yv/0///8r/9P///K//T///yv/0///8r/9P///K//T///yv/0///8r/9P///K//T///yv/0///8
+r/9P///K//T///yv/0///8r/9P///K//T///yv/0///8r/9P///K//T///yv/0///8r/9P///K//
+T///yv/0///8r/9P///K//T///yv/0///8r/9P///K//T///yv/0///8r/9P///K//T///yv/0//
+/8r/9P///K//T///yv/0///8r/9P///K//T///yv/0///8r/9P///K//T///yv/0///8r/9P///K
+//T///yv/0///8r/9P///K//T///yv/0///8r/9P///K//T///yv/0///8r/9P///K//T///yv/0
+///8r/9P///K//T///yv/0///8r/9P///K//T///yv/0///8r/9P///K//T///yv/0///8r/9P//
+/K//T///yv/0///8r/4ASAABnNAAABDw8fx/Dw4Q8PDw6HhyHh4ci8Xi8Oj8ACHh4eP4/j+HhwMk
+QBowgAAXRAADOQyqtUGpVaoikgwRIABgAEQ4QnHPveaa7ZcoTjn3vNNdsvUJxz73mmu2XaE4597z
+TXbLc9AgvMEKw49eeht5prtl7QrDj156G3mmu2WwQ7yQ76Q72Q73q0wAAhpJa0iANmD4EKNHmUKV
+OzbuX8ubPo2CETMDV1imYBQEz2UjO4gAkvKAFaAAAAyAOkACgFFQsgImVnkLgQ8WAR6AxBNAXwCN
+CEAsgAAEC4wcIDRQEdoQyYetgnfZIRg4HCd9khGLgB9RN4TvskIORE3QAmABQBgF/ymhDDxZPBF4
+UHDgACEoWYIPgtfoARmAoAwBEIO7X+AACQQAZvQht+IDI4TAAKAm8A+iQ9BsBTgBEAIEAGgFaLVV
+ICgXgAHt0NfUGCIyAIVvJh/BFL1AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJG1FL
+1AYAAAAAAAAAAAAAAE28U1ibiwsAhgAAAIYAAAAAAF4AAaFUphlXnbEIAEW4AHgAAEAAQIQZQQpJ
+UIIKD7svjkaOPDKfU7AEuZcVAAEAVcjaLg4AARFTAAAAEgAAAAAAAAAAAAAAAAAAAAAAAAAAACxl
+gAAATkACRQAAAvgQFL1AUQgC+BANvxARgAAEAAAAp0ACACwAAvgQFL1AUAAADQAAAE28U1i8sgsA
+RgAAAEYAAABUphlXnbEAAQIDBAUIAEW4ADgAAAAA+AFr3lH9qWYKSVCCAwRUTQAABdxFuAZMAABA
+ADuEGG0KSVCCCg+7L45Gjjwyn1Ow
+
+--_003_07B7943445653648AD9B4DBB916BB48F1C265220cnshjmbx01_
+Content-Type: application/octet-stream; name="icmp_pmtu.rar"
+Content-Description: icmp_pmtu.rar
+Content-Disposition: attachment; filename="icmp_pmtu.rar"; size=1098;
+	creation-date="Wed, 25 Jan 2017 06:22:57 GMT";
+	modification-date="Wed, 25 Jan 2017 06:22:57 GMT"
+Content-Transfer-Encoding: base64
+
+UmFyIRoHADvQcwgADQAAAAAAAAC2hXSAkjcA+AMAAG4HAAACskb46pKDOEodNRIAIAAAAGljbXBf
+cG10dS5wY2FwAAHADACwSgA45xgl0+wAlyy0oYOih2nlIPOdL41VYchPX+Z4Kzdsuq3wULjvGftL
+5Tr5eHALi8+PMm5loRGrYF2S0vbSwOqLcYk1pyRnz0kg7yuvGTg24B1fdhnHX8AwH4wsMR5g04L8
+rHr5951UrsLZVhR7Q1r+SBb0sxqsy5KX9F0eeNIWrqm2m+3iAJsQUsaRuQJiO6H6oOpmgto/MWQ5
+2f4PQlxtCf99Z/mbq0OzGw28CAB6scpvRvKqEeuXILKKEOXtspm2Y+xgVDT16ggCLQIaEgB/dnC1
+6zoXzfPgRu5kaXIT904CuDiRjzxjDPWt1wcoTX85vkxoKHZt+H9y28+IsBmc9qpS7A5bqwuxD43e
+2mht6rYcZMKwo71ArChX2WTU0pAjJxIvfS+LPAtRoW3h4gEqD4O9NkVKqPpGMVfPv/EKS37j2f7U
+fMFdTNypXKjdGccDZZAVaT+5CC4Szgz8C8slptQGCUzgI4iITEZ+uQwK4sKYAvhdUCYYLwFzwGpj
+i4P3zzQxfS9F8LAC2gODoIAyKujfUnwYMqPca/Fs+vJsFyeR/Td0nQsgAfkiC8PRHk8vn294q9mE
+2O4wu64SP3RJ9M49r9+lfEI+s4hRg7lWgvOtQSQ2reebta12kq8XW3+BvgGOuD2kP3wtQwpVY0OK
+4osTzZbfFGl+Jv1cF6IkaoOUQuZ51rVuNyDz88GlTvKDsQDf7To8dd4zBJ7sylDwaB0WPDHi4uTJ
+RCluP+vMjdWs4PlWRqtas0p/n22v6Q6+lQppSB2Q4LFntpFl4RpCVqaQIzdfmnvkeSTWDmFCWpMp
+s7FntzhMHDLTM5EJTSihFO/gNxanUXqftHrN/JYKSgYABX38cuvYnqZaBlPOVKXsrf7L0gpU3M9k
+Swl9GQE1cE0l6eXWgw7+eNyQYy02hA1Dt4LFU5sFrVgHwEspeHQhbo+tazHsgVHo2iW6dfJHXuJ4
+os548EBeowBuXEd1CtGB60YSDdK+kX6vsl/W+lRnJRAGi9T/sXpCd5avZm+lZ0HJNndN3xJNS/3M
+3i3eBiDf0sIOWhpYsKNG2zSBumV1TagtxegjsE0ljrUccjtuWGcgQynvzkw/P/v4/+woy4zR8lPC
+czDkH9dJ0aTqNR16bsp0wcb2BfQUbmf4cP1qWbfB9zV/vh6PFOaHN2MSK18y4zfIUzj+/dVUVF+U
+N8AaFG3wor6GKHmF71INQfEhx+/YZ37OUpvukjvh3F1hoZ7tKpj0y3UhcUEi8W6Y5iPZpfbY6WSV
+454fxnpZJFUNSWW8hdUmZW3o+rF5nLLeb55/NmMAiAEZ1BlumOUs6vQ2AQ9eRKJ0qX9jqddomH8A
+AL+IZ/ap/9TEPXsAQAcA
+
+--_003_07B7943445653648AD9B4DBB916BB48F1C265220cnshjmbx01_--
