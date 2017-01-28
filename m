@@ -1,166 +1,109 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 01 Jan 2017 11:20:34 +0000
-Subject: [PATCH net-next 17/27] sctp: add rfc6525 section 6.1.1
-Message-Id: <1e8e248c38fd3874cf80c4b88e4699c8a617066d.1483269426.git.lucien.xin@gmail.com>
+From: Julian Anastasov <ja@ssi.bg>
+Date: Sat, 28 Jan 2017 14:26:12 +0000
+Subject: [PATCHv2 RFC net-next 1/7] sock: add sk_dst_pending_confirm flag
+Message-Id: <1485613578-19973-2-git-send-email-ja@ssi.bg>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1483269426.git.lucien.xin@gmail.com>
- <684ad8ddd79f23844883dede4c34360ce744dfc3.1483269426.git.lucien.xin@gmail.com>
- <c752879a5af358c08da949b391416452f1322c43.1483269426.git.lucien.xin@gmail.com>
- <be8a2770ddc2381266050c9f168add9802b90a49.1483269426.git.lucien.xin@gmail.com>
- <fc046afdda34c9b262ce57400c4256b14fd1a0fb.1483269426.git.lucien.xin@gmail.com>
- <d4f1b2a4fa19457e9867b0a1f84764a7a509459a.1483269426.git.lucien.xin@gmail.com>
- <31abc54d31ef0714322f137bff43458014d7c276.1483269426.git.lucien.xin@gmail.com>
- <58860816816d6d51b062235fd54dae6540a4797a.1483269426.git.lucien.xin@gmail.com>
- <229608faf7af54c0bf908694ca8349205bbf6eab.1483269426.git.lucien.xin@gmail.com>
- <c4f16844620cd3a2aa76596df9eaadf1505fc8e6.1483269426.git.lucien.xin@gmail.com>
- <1d0b270084289945c4b42ae36d0556648a3f9b64.1483269426.git.lucien.xin@gmail.com>
- <1e4560205cff3c10868d5614b62a3db14e87ccf0.1483269426.git.lucien.xin@gmail.com>
- <91b9171cc57c0f322d103dfbbcce1b9706800805.1483269426.git.lucien.xin@gmail.com>
- <d5fb0969ea5d055dea5bdc257569530b6d2fc7c2.1483269426.git.lucien.xin@gmail.com>
- <6a74f5a3ac408f20816a8c79edd6b9922ed3b573.1483269426.git.lucien.xin@gmail.com>
- <ef7d01cf1d5826e694a08303ee0b36c00201c666.1483269426.git.lucien.xin@gmail.com>
- <86b68f131d286ee20781cb04ce9d09d477aa5232.1483269426.git.lucien.xin@gmail.com>
-In-Reply-To: <86b68f131d286ee20781cb04ce9d09d477aa5232.1483269426.git.lucien.xin@gmail.com>
+References: <1485613578-19973-1-git-send-email-ja@ssi.bg>
+In-Reply-To: <1485613578-19973-1-git-send-email-ja@ssi.bg>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, YueHaibing <yuehaibing@huawei.com>
 
-This patch is to add Stream Reset Event described in section 6.1.1.
+Add new sock flag to allow sockets to confirm neighbour.
+When same struct dst_entry can be used for many different
+neighbours we can not use it for pending confirmations.
+As not all call paths lock the socket use full word for
+the flag.
 
-It's added earlier here so that the codes for other sections could
-invoked them.
+Add sk_dst_confirm as replacement for dst_confirm when
+called for received packets.
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- include/net/sctp/ulpevent.h |  4 ++++
- include/uapi/linux/sctp.h   | 36 ++++++++++++++++++++++++++----------
- net/sctp/ulpevent.c         | 30 ++++++++++++++++++++++++++++++
- 3 files changed, 60 insertions(+), 10 deletions(-)
+ include/net/sock.h | 12 ++++++++++++
+ net/core/sock.c    |  2 ++
+ 2 files changed, 14 insertions(+)
 
-diff --git a/include/net/sctp/ulpevent.h b/include/net/sctp/ulpevent.h
-index 2c098cd..324b596 100644
---- a/include/net/sctp/ulpevent.h
-+++ b/include/net/sctp/ulpevent.h
-@@ -128,6 +128,10 @@ struct sctp_ulpevent *sctp_ulpevent_make_authkey(
- struct sctp_ulpevent *sctp_ulpevent_make_sender_dry_event(
- 	const struct sctp_association *asoc, gfp_t gfp);
- 
-+struct sctp_ulpevent *sctp_ulpevent_make_stream_reset_event(
-+	const struct sctp_association *asoc, __u16 flags,
-+	__u16 stream_num, __u16 *stream_list, gfp_t gfp);
-+
- void sctp_ulpevent_read_sndrcvinfo(const struct sctp_ulpevent *event,
- 				   struct msghdr *);
- void sctp_ulpevent_read_rcvinfo(const struct sctp_ulpevent *event,
-diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index 4401a40..97b8a96 100644
---- a/include/uapi/linux/sctp.h
-+++ b/include/uapi/linux/sctp.h
-@@ -491,21 +491,34 @@ struct sctp_sender_dry_event {
- 	sctp_assoc_t sender_dry_assoc_id;
- };
- 
-+#define SCTP_STREAM_RESET_INCOMING_SSN	0x0001
-+#define SCTP_STREAM_RESET_OUTGOING_SSN	0x0002
-+#define SCTP_STREAM_RESET_DENIED	0x0004
-+#define SCTP_STREAM_RESET_FAILED	0x0008
-+struct sctp_stream_reset_event {
-+	uint16_t strreset_type;
-+	uint16_t strreset_flags;
-+	uint32_t strreset_length;
-+	sctp_assoc_t strreset_assoc_id;
-+	uint16_t strreset_stream_list[];
-+};
-+
- /*
-  * Described in Section 7.3
-  *   Ancillary Data and Notification Interest Options
-  */
- struct sctp_event_subscribe {
--	__u8 sctp_data_io_event;
--	__u8 sctp_association_event;
--	__u8 sctp_address_event;
--	__u8 sctp_send_failure_event;
--	__u8 sctp_peer_error_event;
--	__u8 sctp_shutdown_event;
--	__u8 sctp_partial_delivery_event;
--	__u8 sctp_adaptation_layer_event;
--	__u8 sctp_authentication_event;
--	__u8 sctp_sender_dry_event;
-+	uint8_t sctp_data_io_event;
-+	uint8_t sctp_association_event;
-+	uint8_t sctp_address_event;
-+	uint8_t sctp_send_failure_event;
-+	uint8_t sctp_peer_error_event;
-+	uint8_t sctp_shutdown_event;
-+	uint8_t sctp_partial_delivery_event;
-+	uint8_t sctp_adaptation_layer_event;
-+	uint8_t sctp_authentication_event;
-+	uint8_t sctp_sender_dry_event;
-+	uint8_t sctp_stream_reset_event;
- };
- 
- /*
-@@ -530,6 +543,7 @@ union sctp_notification {
- 	struct sctp_pdapi_event sn_pdapi_event;
- 	struct sctp_authkey_event sn_authkey_event;
- 	struct sctp_sender_dry_event sn_sender_dry_event;
-+	struct sctp_stream_reset_event sn_strreset_event;
- };
- 
- /* Section 5.3.1
-@@ -557,6 +571,8 @@ enum sctp_sn_type {
- #define SCTP_AUTHENTICATION_INDICATION	SCTP_AUTHENTICATION_EVENT
- 	SCTP_SENDER_DRY_EVENT,
- #define SCTP_SENDER_DRY_EVENT		SCTP_SENDER_DRY_EVENT
-+	SCTP_STREAM_RESET_EVENT,
-+#define SCTP_STREAM_RESET_EVENT		SCTP_STREAM_RESET_EVENT
- };
- 
- /* Notification error codes used to fill up the error fields in some
-diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
-index bea0005..490d573 100644
---- a/net/sctp/ulpevent.c
-+++ b/net/sctp/ulpevent.c
-@@ -854,6 +854,36 @@ struct sctp_ulpevent *sctp_ulpevent_make_sender_dry_event(
- 	return event;
+diff --git a/include/net/sock.h b/include/net/sock.h
+index 7144750..e113786 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -240,6 +240,7 @@ struct sock_common {
+   *	@sk_wq: sock wait queue and async head
+   *	@sk_rx_dst: receive input route used by early demux
+   *	@sk_dst_cache: destination cache
++  *	@sk_dst_pending_confirm: need to confirm neighbour
+   *	@sk_policy: flow policy
+   *	@sk_receive_queue: incoming packets
+   *	@sk_wmem_alloc: transmit queue bytes committed
+@@ -393,6 +394,8 @@ struct sock {
+ 	struct sk_buff_head	sk_write_queue;
+ 	__s32			sk_peek_off;
+ 	int			sk_write_pending;
++	__u32			sk_dst_pending_confirm;
++	/* Note: 32bit hole on 64bit arches */
+ 	long			sk_sndtimeo;
+ 	struct timer_list	sk_timer;
+ 	__u32			sk_priority;
+@@ -1764,6 +1767,7 @@ static inline void dst_negative_advice(struct sock *sk)
+ 		if (ndst != dst) {
+ 			rcu_assign_pointer(sk->sk_dst_cache, ndst);
+ 			sk_tx_queue_clear(sk);
++			sk->sk_dst_pending_confirm = 0;
+ 		}
+ 	}
  }
+@@ -1774,6 +1778,7 @@ static inline void dst_negative_advice(struct sock *sk)
+ 	struct dst_entry *old_dst;
  
-+struct sctp_ulpevent *sctp_ulpevent_make_stream_reset_event(
-+	const struct sctp_association *asoc, __u16 flags, __u16 stream_num,
-+	__u16 *stream_list, gfp_t gfp)
+ 	sk_tx_queue_clear(sk);
++	sk->sk_dst_pending_confirm = 0;
+ 	/*
+ 	 * This can be called while sk is owned by the caller only,
+ 	 * with no state that can be checked in a rcu_dereference_check() cond
+@@ -1789,6 +1794,7 @@ static inline void dst_negative_advice(struct sock *sk)
+ 	struct dst_entry *old_dst;
+ 
+ 	sk_tx_queue_clear(sk);
++	sk->sk_dst_pending_confirm = 0;
+ 	old_dst = xchg((__force struct dst_entry **)&sk->sk_dst_cache, dst);
+ 	dst_release(old_dst);
+ }
+@@ -1809,6 +1815,12 @@ static inline void dst_negative_advice(struct sock *sk)
+ 
+ struct dst_entry *sk_dst_check(struct sock *sk, u32 cookie);
+ 
++static inline void sk_dst_confirm(struct sock *sk)
 +{
-+	struct sctp_stream_reset_event *sreset;
-+	struct sctp_ulpevent *event;
-+	struct sk_buff *skb;
-+
-+	event = sctp_ulpevent_new(sizeof(struct sctp_stream_reset_event) +
-+				  2 * stream_num, MSG_NOTIFICATION, gfp);
-+	if (!event)
-+		return NULL;
-+
-+	skb = sctp_event2skb(event);
-+	sreset = (struct sctp_stream_reset_event *)skb_put(skb,
-+		sizeof(struct sctp_stream_reset_event) + 2 * stream_num);
-+
-+	sreset->strreset_type = SCTP_STREAM_RESET_EVENT;
-+	sreset->strreset_flags = flags;
-+	sreset->strreset_length = sizeof(struct sctp_stream_reset_event);
-+	sctp_ulpevent_set_owner(event, asoc);
-+	sreset->strreset_assoc_id = sctp_assoc2id(asoc);
-+
-+	if (stream_num)
-+		memcpy(sreset->strreset_stream_list, stream_list,
-+		       2 * stream_num);
-+
-+	return event;
++	if (!sk->sk_dst_pending_confirm)
++		sk->sk_dst_pending_confirm = 1;
 +}
 +
- /* Return the notification type, assuming this is a notification
-  * event.
-  */
+ bool sk_mc_loop(struct sock *sk);
+ 
+ static inline bool sk_can_gso(const struct sock *sk)
+diff --git a/net/core/sock.c b/net/core/sock.c
+index 8b35debf..b743565 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -502,6 +502,7 @@ struct dst_entry *__sk_dst_check(struct sock *sk, u32 cookie)
+ 
+ 	if (dst && dst->obsolete && dst->ops->check(dst, cookie) = NULL) {
+ 		sk_tx_queue_clear(sk);
++		sk->sk_dst_pending_confirm = 0;
+ 		RCU_INIT_POINTER(sk->sk_dst_cache, NULL);
+ 		dst_release(dst);
+ 		return NULL;
+@@ -1519,6 +1520,7 @@ struct sock *sk_clone_lock(const struct sock *sk, const gfp_t priority)
+ 				af_family_clock_key_strings[newsk->sk_family]);
+ 
+ 		newsk->sk_dst_cache	= NULL;
++		newsk->sk_dst_pending_confirm = 0;
+ 		newsk->sk_wmem_queued	= 0;
+ 		newsk->sk_forward_alloc = 0;
+ 		atomic_set(&newsk->sk_drops, 0);
 -- 
-2.1.0
+1.9.3
 
