@@ -1,239 +1,254 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 01 Jan 2017 11:20:42 +0000
-Subject: [PATCH net-next 25/27] sctp: add rfc6525 section 5.2.7
-Message-Id: <880e62cecc950ad9b5dad09ae581e5e6f92ecf46.1483269426.git.lucien.xin@gmail.com>
+From: Julian Anastasov <ja@ssi.bg>
+Date: Sat, 28 Jan 2017 14:26:17 +0000
+Subject: [PATCHv2 RFC net-next 6/7] net: use dst_confirm_neigh for UDP, RAW, ICMP, L2TP
+Message-Id: <1485613578-19973-7-git-send-email-ja@ssi.bg>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1483269426.git.lucien.xin@gmail.com>
- <684ad8ddd79f23844883dede4c34360ce744dfc3.1483269426.git.lucien.xin@gmail.com>
- <c752879a5af358c08da949b391416452f1322c43.1483269426.git.lucien.xin@gmail.com>
- <be8a2770ddc2381266050c9f168add9802b90a49.1483269426.git.lucien.xin@gmail.com>
- <fc046afdda34c9b262ce57400c4256b14fd1a0fb.1483269426.git.lucien.xin@gmail.com>
- <d4f1b2a4fa19457e9867b0a1f84764a7a509459a.1483269426.git.lucien.xin@gmail.com>
- <31abc54d31ef0714322f137bff43458014d7c276.1483269426.git.lucien.xin@gmail.com>
- <58860816816d6d51b062235fd54dae6540a4797a.1483269426.git.lucien.xin@gmail.com>
- <229608faf7af54c0bf908694ca8349205bbf6eab.1483269426.git.lucien.xin@gmail.com>
- <c4f16844620cd3a2aa76596df9eaadf1505fc8e6.1483269426.git.lucien.xin@gmail.com>
- <1d0b270084289945c4b42ae36d0556648a3f9b64.1483269426.git.lucien.xin@gmail.com>
- <1e4560205cff3c10868d5614b62a3db14e87ccf0.1483269426.git.lucien.xin@gmail.com>
- <91b9171cc57c0f322d103dfbbcce1b9706800805.1483269426.git.lucien.xin@gmail.com>
- <d5fb0969ea5d055dea5bdc257569530b6d2fc7c2.1483269426.git.lucien.xin@gmail.com>
- <6a74f5a3ac408f20816a8c79edd6b9922ed3b573.1483269426.git.lucien.xin@gmail.com>
- <ef7d01cf1d5826e694a08303ee0b36c00201c666.1483269426.git.lucien.xin@gmail.com>
- <86b68f131d286ee20781cb04ce9d09d477aa5232.1483269426.git.lucien.xin@gmail.com>
- <1e8e248c38fd3874cf80c4b88e4699c8a617066d.1483269426.git.lucien.xin@gmail.com>
- <3a60ce82edef82f329fe2cc4ac83e9ca21831d8b.1483269426.git.lucien.xin@gmail.com>
- <9be4c65c6bac7df0dbf51328af92727e5606dc5c.1483269426.git.lucien.xin@gmail.com>
- <b5eb3a199dded2efe517b19b5cac6ae498a6c0c8.1483269426.git.lucien.xin@gmail.com>
- <c59df697bb54348de10f8418a23e9d14bce30135.1483269426.git.lucien.xin@gmail.com>
- <470b9f2b5248e0c1870c501f262a1887be66509b.1483269426.git.lucien.xin@gmail.com>
- <105630d2f9a54de9c3ce49988452d2b111c71b3d.1483269426.git.lucien.xin@gmail.com>
- <19ee2333d24194c0a4b3e724a1a738873ca27445.1483269426.git.lucien.xin@gmail.com>
-In-Reply-To: <19ee2333d24194c0a4b3e724a1a738873ca27445.1483269426.git.lucien.xin@gmail.com>
+References: <1485613578-19973-1-git-send-email-ja@ssi.bg>
+In-Reply-To: <1485613578-19973-1-git-send-email-ja@ssi.bg>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, YueHaibing <yuehaibing@huawei.com>
 
-This patch is to implement Receiver-Side Procedures for the
-Re-configuration Response Parameter in section 5.2.7.
+When same struct dst_entry can be used for many different
+neighbours we can not use it for pending confirmations.
 
-sctp_process_strreset_resp would process the response for any
-kind of reconf request, and the stream reconf is applied only
-when the response result is success.
+The datagram protocols can use MSG_CONFIRM to confirm the
+neighbour. When used with MSG_PROBE we do not reach the
+code where neighbour is confirmed, so we have to do the
+same slow lookup by using the dst_confirm_neigh() helper.
+When MSG_PROBE is not used, ip_append_data/ip6_append_data
+will set the skb flag dst_pending_confirm.
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Reported-by: YueHaibing <yuehaibing@huawei.com>
+Fixes: 5110effee8fd ("net: Do delayed neigh confirmation.")
+Fixes: f2bb4bedf35d ("ipv4: Cache output routes in fib_info nexthops.")
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
 ---
- include/net/sctp/sm.h |   4 ++
- net/sctp/stream.c     | 163 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 167 insertions(+)
+ net/ipv4/ip_output.c  |  6 ++++++
+ net/ipv4/ping.c       |  3 ++-
+ net/ipv4/raw.c        |  6 +++++-
+ net/ipv4/udp.c        |  3 ++-
+ net/ipv6/ip6_output.c |  6 ++++++
+ net/ipv6/raw.c        |  6 +++++-
+ net/ipv6/route.c      | 27 ++++++++++++++-------------
+ net/ipv6/udp.c        |  3 ++-
+ net/l2tp/l2tp_ip6.c   |  3 ++-
+ 9 files changed, 44 insertions(+), 19 deletions(-)
 
-diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index b8ca767..7c2f956 100644
---- a/include/net/sctp/sm.h
-+++ b/include/net/sctp/sm.h
-@@ -301,6 +301,10 @@ struct sctp_chunk *sctp_process_strreset_addstrm_in(
- 				struct sctp_association *asoc,
- 				union sctp_params param,
- 				struct sctp_ulpevent **evp);
-+struct sctp_chunk *sctp_process_strreset_resp(
-+				struct sctp_association *asoc,
-+				union sctp_params param,
-+				struct sctp_ulpevent **evp);
+diff --git a/net/ipv4/ip_output.c b/net/ipv4/ip_output.c
+index 27f1db7..ff0fcaa 100644
+--- a/net/ipv4/ip_output.c
++++ b/net/ipv4/ip_output.c
+@@ -889,6 +889,9 @@ static inline int ip_ufo_append_data(struct sock *sk,
  
- /* Prototypes for statetable processing. */
+ 		skb->csum = 0;
  
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index a2b248b..ae64de2 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -398,3 +398,166 @@ struct sctp_chunk *sctp_process_strreset_addstrm_in(
- out:
- 	return sctp_make_strreset_resp(asoc, result, request_seq);
- }
++		if (flags & MSG_CONFIRM)
++			skb_set_dst_pending_confirm(skb, 1);
 +
-+struct sctp_chunk *sctp_process_strreset_resp(
-+				struct sctp_association *asoc,
-+				union sctp_params param,
-+				struct sctp_ulpevent **evp)
-+{
-+	struct sctp_strreset_resp *resp = param.v;
-+	struct sctp_strreset_req *req;
-+	struct sctp_transport *t;
-+	__u16 i, nums, flags = 0;
-+	__u32 result;
+ 		__skb_queue_tail(queue, skb);
+ 	} else if (skb_is_gso(skb)) {
+ 		goto append;
+@@ -1089,6 +1092,9 @@ static int __ip_append_data(struct sock *sk,
+ 			exthdrlen = 0;
+ 			csummode = CHECKSUM_NONE;
+ 
++			if ((flags & MSG_CONFIRM) && !skb_prev)
++				skb_set_dst_pending_confirm(skb, 1);
 +
-+	req = sctp_chunk_lookup_strreset_param(
-+				asoc, ntohl(resp->response_seq));
-+	if (!req)
-+		return NULL;
+ 			/*
+ 			 * Put the packet on the pending queue.
+ 			 */
+diff --git a/net/ipv4/ping.c b/net/ipv4/ping.c
+index 592db6a..6ee792d 100644
+--- a/net/ipv4/ping.c
++++ b/net/ipv4/ping.c
+@@ -848,7 +848,8 @@ static int ping_v4_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
+ 	return err;
+ 
+ do_confirm:
+-	dst_confirm(&rt->dst);
++	if (msg->msg_flags & MSG_PROBE)
++		dst_confirm_neigh(&rt->dst, &fl4.daddr);
+ 	if (!(msg->msg_flags & MSG_PROBE) || len)
+ 		goto back_from_confirm;
+ 	err = 0;
+diff --git a/net/ipv4/raw.c b/net/ipv4/raw.c
+index 4e49e5c..8119e1f 100644
+--- a/net/ipv4/raw.c
++++ b/net/ipv4/raw.c
+@@ -383,6 +383,9 @@ static int raw_send_hdrinc(struct sock *sk, struct flowi4 *fl4,
+ 
+ 	sock_tx_timestamp(sk, sockc->tsflags, &skb_shinfo(skb)->tx_flags);
+ 
++	if (flags & MSG_CONFIRM)
++		skb_set_dst_pending_confirm(skb, 1);
 +
-+	result = ntohl(resp->result);
-+	if (result != SCTP_STRRESET_PERFORMED) {
-+		/* if in progress, do nothing but retransmit */
-+		if (result = SCTP_STRRESET_IN_PROGRESS)
-+			return NULL;
-+		else if (result = SCTP_STRRESET_DENIED)
-+			flags = SCTP_STREAM_RESET_DENIED;
-+		else
-+			flags = SCTP_STREAM_RESET_FAILED;
+ 	skb->transport_header = skb->network_header;
+ 	err = -EFAULT;
+ 	if (memcpy_from_msg(iph, msg, length))
+@@ -666,7 +669,8 @@ static int raw_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
+ 	return len;
+ 
+ do_confirm:
+-	dst_confirm(&rt->dst);
++	if (msg->msg_flags & MSG_PROBE)
++		dst_confirm_neigh(&rt->dst, &fl4.daddr);
+ 	if (!(msg->msg_flags & MSG_PROBE) || len)
+ 		goto back_from_confirm;
+ 	err = 0;
+diff --git a/net/ipv4/udp.c b/net/ipv4/udp.c
+index d6dddcf..4bdb358 100644
+--- a/net/ipv4/udp.c
++++ b/net/ipv4/udp.c
+@@ -1088,7 +1088,8 @@ int udp_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
+ 	return err;
+ 
+ do_confirm:
+-	dst_confirm(&rt->dst);
++	if (msg->msg_flags & MSG_PROBE)
++		dst_confirm_neigh(&rt->dst, &fl4->daddr);
+ 	if (!(msg->msg_flags&MSG_PROBE) || len)
+ 		goto back_from_confirm;
+ 	err = 0;
+diff --git a/net/ipv6/ip6_output.c b/net/ipv6/ip6_output.c
+index 7d90cab..5d944c1 100644
+--- a/net/ipv6/ip6_output.c
++++ b/net/ipv6/ip6_output.c
+@@ -1145,6 +1145,9 @@ static inline int ip6_ufo_append_data(struct sock *sk,
+ 		skb->protocol = htons(ETH_P_IPV6);
+ 		skb->csum = 0;
+ 
++		if (flags & MSG_CONFIRM)
++			skb_set_dst_pending_confirm(skb, 1);
++
+ 		__skb_queue_tail(queue, skb);
+ 	} else if (skb_is_gso(skb)) {
+ 		goto append;
+@@ -1517,6 +1520,9 @@ static int __ip6_append_data(struct sock *sk,
+ 			exthdrlen = 0;
+ 			dst_exthdrlen = 0;
+ 
++			if ((flags & MSG_CONFIRM) && !skb_prev)
++				skb_set_dst_pending_confirm(skb, 1);
++
+ 			/*
+ 			 * Put the packet on the pending queue
+ 			 */
+diff --git a/net/ipv6/raw.c b/net/ipv6/raw.c
+index ea89073..f174e76 100644
+--- a/net/ipv6/raw.c
++++ b/net/ipv6/raw.c
+@@ -654,6 +654,9 @@ static int rawv6_send_hdrinc(struct sock *sk, struct msghdr *msg, int length,
+ 
+ 	skb->ip_summed = CHECKSUM_NONE;
+ 
++	if (flags & MSG_CONFIRM)
++		skb_set_dst_pending_confirm(skb, 1);
++
+ 	skb->transport_header = skb->network_header;
+ 	err = memcpy_from_msg(iph, msg, length);
+ 	if (err)
+@@ -934,7 +937,8 @@ static int rawv6_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
+ 	txopt_put(opt_to_free);
+ 	return err < 0 ? err : len;
+ do_confirm:
+-	dst_confirm(dst);
++	if (msg->msg_flags & MSG_PROBE)
++		dst_confirm_neigh(dst, &fl6.daddr);
+ 	if (!(msg->msg_flags & MSG_PROBE) || len)
+ 		goto back_from_confirm;
+ 	err = 0;
+diff --git a/net/ipv6/route.c b/net/ipv6/route.c
+index c876940..15e45a6 100644
+--- a/net/ipv6/route.c
++++ b/net/ipv6/route.c
+@@ -1375,6 +1375,7 @@ static bool rt6_cache_allowed_for_pmtu(const struct rt6_info *rt)
+ static void __ip6_rt_update_pmtu(struct dst_entry *dst, const struct sock *sk,
+ 				 const struct ipv6hdr *iph, u32 mtu)
+ {
++	const struct in6_addr *daddr, *saddr;
+ 	struct rt6_info *rt6 = (struct rt6_info *)dst;
+ 
+ 	if (rt6->rt6i_flags & RTF_LOCAL)
+@@ -1383,26 +1384,26 @@ static void __ip6_rt_update_pmtu(struct dst_entry *dst, const struct sock *sk,
+ 	if (dst_metric_locked(dst, RTAX_MTU))
+ 		return;
+ 
+-	dst_confirm(dst);
++	if (iph) {
++		daddr = &iph->daddr;
++		saddr = &iph->saddr;
++	} else if (sk) {
++		daddr = &sk->sk_v6_daddr;
++		saddr = &inet6_sk(sk)->saddr;
++	} else {
++		daddr = NULL;
++		saddr = NULL;
 +	}
-+
-+	if (req->param_hdr.type = SCTP_PARAM_RESET_OUT_REQUEST) {
-+		struct sctp_strreset_outreq *outreq;
-+		__u16 *str_p = NULL;
-+
-+		outreq = (struct sctp_strreset_outreq *)req;
-+		nums = (ntohs(outreq->param_hdr.length) - sizeof(*outreq)) / 2;
-+
-+		if (nums) {
-+			str_p = outreq->list_of_streams;
-+			for (i = 0; i < nums; i++)
-+				str_p[i] = ntohs(str_p[i]);
-+		}
-+
-+		if (result = SCTP_STRRESET_PERFORMED) {
-+			if (nums) {
-+				str_p = outreq->list_of_streams;
-+				for (i = 0; i < nums; i++, str_p++)
-+					asoc->streamout[*str_p].ssn = 0;
-+			} else {
-+				for (i = 0; i < asoc->streamoutcnt; i++)
-+					asoc->streamout[i].ssn = 0;
-+			}
-+
-+			flags = SCTP_STREAM_RESET_OUTGOING_SSN;
-+		}
-+
-+		for (i = 0; i < asoc->streamoutcnt; i++)
-+			asoc->streamout[i].state = SCTP_STREAM_OPEN;
-+
-+		*evp = sctp_ulpevent_make_stream_reset_event(asoc, flags,
-+			nums, str_p, GFP_ATOMIC);
-+	} else if (req->param_hdr.type = SCTP_PARAM_RESET_IN_REQUEST) {
-+		struct sctp_strreset_inreq *inreq;
-+		__u16 *str_p = NULL;
-+
-+		/* if the result is performed, it's impossible for inreq */
-+		if (result = SCTP_STRRESET_PERFORMED)
-+			return NULL;
-+
-+		inreq = (struct sctp_strreset_inreq *)req;
-+		nums = (ntohs(inreq->param_hdr.length) - sizeof(*inreq)) / 2;
-+
-+		if (nums) {
-+			str_p = inreq->list_of_streams;
-+			for (i = 0; i < nums; i++)
-+				str_p[i] = ntohs(str_p[i]);
-+		}
-+
-+		str_p = inreq->list_of_streams;
-+		*evp = sctp_ulpevent_make_stream_reset_event(asoc, flags,
-+			nums, str_p, GFP_ATOMIC);
-+	} else if (req->param_hdr.type = SCTP_PARAM_RESET_TSN_REQUEST) {
-+		struct sctp_strreset_resptsn *resptsn;
-+		__u32 stsn, rtsn;
-+
-+		/* check for resptsn, as sctp_verify_reconf didn't do it*/
-+		if (ntohs(param.p->length) != sizeof(*resptsn))
-+			return NULL;
-+
-+		resptsn = (struct sctp_strreset_resptsn *)resp;
-+		stsn = ntohl(resptsn->senders_next_tsn);
-+		rtsn = ntohl(resptsn->receivers_next_tsn);
-+
-+		if (result = SCTP_STRRESET_PERFORMED) {
-+			__u32 mtsn = sctp_tsnmap_get_max_tsn_seen(
-+						&asoc->peer.tsn_map);
-+
-+			sctp_ulpq_reasm_flushtsn(&asoc->ulpq, mtsn);
-+			sctp_ulpq_abort_pd(&asoc->ulpq, GFP_ATOMIC);
-+
-+			sctp_tsnmap_init(&asoc->peer.tsn_map,
-+					 SCTP_TSN_MAP_INITIAL,
-+					 stsn, GFP_ATOMIC);
-+
-+			sctp_outq_free(&asoc->outqueue);
-+
-+			asoc->next_tsn = rtsn;
-+			asoc->ctsn_ack_point = asoc->next_tsn - 1;
-+			asoc->adv_peer_ack_point = asoc->ctsn_ack_point;
-+
-+			for (i = 0; i < asoc->streamoutcnt; i++)
-+				asoc->streamout[i].ssn = 0;
-+			for (i = 0; i < asoc->streamincnt; i++)
-+				asoc->streamin[i].ssn = 0;
-+		}
-+
-+		for (i = 0; i < asoc->streamoutcnt; i++)
-+			asoc->streamout[i].state = SCTP_STREAM_OPEN;
-+
-+		*evp = sctp_ulpevent_make_assoc_reset_event(asoc, flags,
-+			stsn, rtsn, GFP_ATOMIC);
-+	} else if (req->param_hdr.type = SCTP_PARAM_RESET_ADD_OUT_STREAMS) {
-+		struct sctp_strreset_addstrm *addstrm;
-+		__u16 number;
-+
-+		addstrm = (struct sctp_strreset_addstrm *)req;
-+		nums = ntohs(addstrm->number_of_streams);
-+		number = asoc->streamoutcnt - nums;
-+
-+		if (result = SCTP_STRRESET_PERFORMED)
-+			for (i = number; i < asoc->streamoutcnt; i++)
-+				asoc->streamout[i].state = SCTP_STREAM_OPEN;
-+		else
-+			asoc->streamoutcnt = number;
-+
-+		*evp = sctp_ulpevent_make_stream_change_event(asoc, flags,
-+			0, nums, GFP_ATOMIC);
-+	} else if (req->param_hdr.type = SCTP_PARAM_RESET_ADD_IN_STREAMS) {
-+		struct sctp_strreset_addstrm *addstrm;
-+
-+		addstrm = (struct sctp_strreset_addstrm *)req;
-+		nums = ntohs(addstrm->number_of_streams);
-+
-+		if (result != SCTP_STRRESET_PERFORMED)
-+			asoc->streamincnt = asoc->streamincnt - nums;
-+
-+		*evp = sctp_ulpevent_make_stream_change_event(asoc, flags,
-+			nums, 0, GFP_ATOMIC);
-+	}
-+
-+	asoc->strreset_outstanding--;
-+	asoc->strreset_outseq++;
-+
-+	/* remove everything for this reconf request */
-+	if (!asoc->strreset_outstanding) {
-+		t = asoc->strreset_chunk->transport;
-+		if (del_timer(&t->reconf_timer))
-+			sctp_transport_put(t);
-+
-+		sctp_chunk_put(asoc->strreset_chunk);
-+		asoc->strreset_chunk = NULL;
-+	}
-+
-+	return NULL;
-+}
++	dst_confirm_neigh(dst, daddr);
+ 	mtu = max_t(u32, mtu, IPV6_MIN_MTU);
+ 	if (mtu >= dst_mtu(dst))
+ 		return;
+ 
+ 	if (!rt6_cache_allowed_for_pmtu(rt6)) {
+ 		rt6_do_update_pmtu(rt6, mtu);
+-	} else {
+-		const struct in6_addr *daddr, *saddr;
++	} else if (daddr) {
+ 		struct rt6_info *nrt6;
+ 
+-		if (iph) {
+-			daddr = &iph->daddr;
+-			saddr = &iph->saddr;
+-		} else if (sk) {
+-			daddr = &sk->sk_v6_daddr;
+-			saddr = &inet6_sk(sk)->saddr;
+-		} else {
+-			return;
+-		}
+ 		nrt6 = ip6_rt_cache_alloc(rt6, daddr, saddr);
+ 		if (nrt6) {
+ 			rt6_do_update_pmtu(nrt6, mtu);
+@@ -2274,7 +2275,7 @@ static void rt6_do_redirect(struct dst_entry *dst, struct sock *sk, struct sk_bu
+ 	 * Look, redirects are sent only in response to data packets,
+ 	 * so that this nexthop apparently is reachable. --ANK
+ 	 */
+-	dst_confirm(&rt->dst);
++	dst_confirm_neigh(&rt->dst, &ipv6_hdr(skb)->saddr);
+ 
+ 	neigh = __neigh_lookup(&nd_tbl, &msg->target, skb->dev, 1);
+ 	if (!neigh)
+diff --git a/net/ipv6/udp.c b/net/ipv6/udp.c
+index 05d6932..9402f7a 100644
+--- a/net/ipv6/udp.c
++++ b/net/ipv6/udp.c
+@@ -1295,7 +1295,8 @@ int udpv6_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
+ 	return err;
+ 
+ do_confirm:
+-	dst_confirm(dst);
++	if (msg->msg_flags & MSG_PROBE)
++		dst_confirm_neigh(dst, &fl6.daddr);
+ 	if (!(msg->msg_flags&MSG_PROBE) || len)
+ 		goto back_from_confirm;
+ 	err = 0;
+diff --git a/net/l2tp/l2tp_ip6.c b/net/l2tp/l2tp_ip6.c
+index 4b06eb4..734798a 100644
+--- a/net/l2tp/l2tp_ip6.c
++++ b/net/l2tp/l2tp_ip6.c
+@@ -658,7 +658,8 @@ static int l2tp_ip6_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
+ 	return err < 0 ? err : len;
+ 
+ do_confirm:
+-	dst_confirm(dst);
++	if (msg->msg_flags & MSG_PROBE)
++		dst_confirm_neigh(dst, &fl6.daddr);
+ 	if (!(msg->msg_flags & MSG_PROBE) || len)
+ 		goto back_from_confirm;
+ 	err = 0;
 -- 
-2.1.0
+1.9.3
 
