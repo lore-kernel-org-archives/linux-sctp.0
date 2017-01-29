@@ -1,172 +1,95 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 20 Jan 2017 08:21:36 +0000
-Subject: Re: [PATCHv3 net-next 2/4] sctp: implement sender-side procedures for SSN/TSN Reset Request Paramete
-Message-Id: <CADvbK_eTkXHSEzKYdSdWup4iav0W616041T6xMAXc0hM3+5Wrg@mail.gmail.com>
+From: Alexander Popov <alex.popov@linux.com>
+Date: Sun, 29 Jan 2017 00:35:31 +0000
+Subject: BUG at net/sctp/socket.c:7425
+Message-Id: <48766e1c-99c9-3a88-0fec-998bf4db9a3a@linux.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1484845510.git.lucien.xin@gmail.com> <a44bc2b9cf8d12598d3e7962e1edf0f5da738af4.1484845510.git.lucien.xin@gmail.com>
- <20170119220206.GN3781@localhost.localdomain>
-In-Reply-To: <20170119220206.GN3781@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem <davem@davemloft.net>
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, syzkaller <syzkaller@googlegroups.com>
 
-On Fri, Jan 20, 2017 at 6:02 AM, Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
-> On Fri, Jan 20, 2017 at 01:19:12AM +0800, Xin Long wrote:
->> This patch is to implement Sender-Side Procedures for the SSN/TSN
->> Reset Request Parameter descibed in rfc6525 section 5.1.4.
->>
->> It is also to add sockopt SCTP_RESET_ASSOC in rfc6525 section 6.3.3
->> for users.
->>
->> Signed-off-by: Xin Long <lucien.xin@gmail.com>
->> ---
->>  include/net/sctp/sctp.h   |  1 +
->>  include/uapi/linux/sctp.h |  1 +
->>  net/sctp/socket.c         | 29 +++++++++++++++++++++++++++++
->>  net/sctp/stream.c         | 33 +++++++++++++++++++++++++++++++++
->>  4 files changed, 64 insertions(+)
->>
->> diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
->> index 3cfd365b..b93820f 100644
->> --- a/include/net/sctp/sctp.h
->> +++ b/include/net/sctp/sctp.h
->> @@ -198,6 +198,7 @@ int sctp_offload_init(void);
->>   */
->>  int sctp_send_reset_streams(struct sctp_association *asoc,
->>                           struct sctp_reset_streams *params);
->> +int sctp_send_reset_assoc(struct sctp_association *asoc);
->>
->>  /*
->>   * Module global variables
->> diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
->> index 03c27ce..c0bd8c3 100644
->> --- a/include/uapi/linux/sctp.h
->> +++ b/include/uapi/linux/sctp.h
->> @@ -117,6 +117,7 @@ typedef __s32 sctp_assoc_t;
->>  #define SCTP_PR_ASSOC_STATUS 115
->>  #define SCTP_ENABLE_STREAM_RESET     118
->>  #define SCTP_RESET_STREAMS   119
->> +#define SCTP_RESET_ASSOC     120
->>
->>  /* PR-SCTP policies */
->>  #define SCTP_PR_SCTP_NONE    0x0000
->> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
->> index bee4dd3..2c5c9ca 100644
->> --- a/net/sctp/socket.c
->> +++ b/net/sctp/socket.c
->> @@ -3812,6 +3812,32 @@ static int sctp_setsockopt_reset_streams(struct sock *sk,
->>       return retval;
->>  }
->>
->> +static int sctp_setsockopt_reset_assoc(struct sock *sk,
->> +                                    char __user *optval,
->> +                                    unsigned int optlen)
->> +{
->> +     struct sctp_association *asoc;
->> +     sctp_assoc_t associd;
->> +     int retval = -EINVAL;
->> +
->> +     if (optlen != sizeof(associd))
->> +             goto out;
->> +
->> +     if (copy_from_user(&associd, optval, optlen)) {
->> +             retval = -EFAULT;
->> +             goto out;
->> +     }
->> +
->> +     asoc = sctp_id2assoc(sk, associd);
->> +     if (!asoc)
->> +             goto out;
->> +
->> +     retval = sctp_send_reset_assoc(asoc);
->> +
->> +out:
->> +     return retval;
->> +}
->> +
->>  /* API 6.2 setsockopt(), getsockopt()
->>   *
->>   * Applications use setsockopt() and getsockopt() to set or retrieve
->> @@ -3984,6 +4010,9 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
->>       case SCTP_RESET_STREAMS:
->>               retval = sctp_setsockopt_reset_streams(sk, optval, optlen);
->>               break;
->> +     case SCTP_RESET_ASSOC:
->> +             retval = sctp_setsockopt_reset_assoc(sk, optval, optlen);
->> +             break;
->>       default:
->>               retval = -ENOPROTOOPT;
->>               break;
->> diff --git a/net/sctp/stream.c b/net/sctp/stream.c
->> index 13d5e07..b368191 100644
->> --- a/net/sctp/stream.c
->> +++ b/net/sctp/stream.c
->> @@ -162,3 +162,36 @@ int sctp_send_reset_streams(struct sctp_association *asoc,
->>  out:
->>       return retval;
->>  }
->> +
->> +int sctp_send_reset_assoc(struct sctp_association *asoc)
->> +{
->> +     struct sctp_chunk *chunk = NULL;
->> +     int retval;
->> +     __u16 i;
->> +
->> +     if (!asoc->peer.reconf_capable ||
->> +         !(asoc->strreset_enable & SCTP_ENABLE_RESET_ASSOC_REQ))
->> +             return -ENOPROTOOPT;
->> +
->> +     if (asoc->strreset_outstanding)
->> +             return -EINPROGRESS;
->> +
->> +     chunk = sctp_make_strreset_tsnreq(asoc);
->> +     if (!chunk)
->> +             return -ENOMEM;
->> +
->
-> Please add a comment here explaining that the for below is to block
-> further xmit of data until this request is completed.
-sure.
+Hello,
 
->
->> +     for (i = 0; i < asoc->stream->outcnt; i++)
->> +             asoc->stream->out[i].state = SCTP_STREAM_CLOSED;
->> +
->> +     asoc->strreset_outstanding = 1;
->> +     asoc->strreset_chunk = chunk;
->> +     sctp_chunk_hold(asoc->strreset_chunk);
->> +
->> +     retval = sctp_send_reconf(asoc, chunk);
->> +     if (retval) {
->> +             sctp_chunk_put(asoc->strreset_chunk);
->> +             asoc->strreset_chunk = NULL;
->
-> If this happens, the asoc will get stuck, as strreset_outstanding is
-> marked as 1, all streams are closed and no packet was even queued
-> (I'm assuming so as you're dropping the reference on it).
-you're right, I'm planning to move:
->> +     for (i = 0; i < asoc->stream->outcnt; i++)
->> +             asoc->stream->out[i].state = SCTP_STREAM_CLOSED;
->> +
->> +     asoc->strreset_outstanding = 1;
+I'm running the syzkaller fuzzer for v4.10-rc4 (0aa0313f9d576affd7747cc3f179feb097d28990)
+and have such a crash in sctp code:
 
-right after this check. so that it will do it only when
-the reconf chunk is sent out.
+[   38.423932] ------------[ cut here ]------------
+[   38.424298] kernel BUG at net/sctp/socket.c:7425!
+[   38.424583] invalid opcode: 0000 [#1] SMP KASAN
+[   38.424839] Dumping ftrace buffer:
+[   38.425031]    (ftrace buffer empty)
+[   38.425232] Modules linked in: sctp libcrc32c snd_hda_codec_generic snd_hda_intel
+snd_hda_codec snd_hda_core snd_intel8x0 snd_ens1370 snd_ac97_codec gameport snd_rawmidi
+snd_hwdep snd_seq_device ac97_bus snd_pcm hid_generic joydev usbmouse snd_timer psmouse
+usbhid e1000 snd hid parport_pc i2c_piix4 soundcore serio_raw parport input_leds pcspkr
+floppy evbug mac_hid
+[   38.427058] CPU: 0 PID: 1930 Comm: syz-executor12 Not tainted 4.10.0-rc4+ #2
+[   38.427457] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS
+Ubuntu-1.8.2-1ubuntu1 04/01/2014
+[   38.427999] task: ffff88006945ca00 task.stack: ffff880053e40000
+[   38.428364] RIP: 0010:sctp_sendmsg+0x29b3/0x3030 [sctp]
+[   38.428719] RSP: 0018:ffff880053e478f8 EFLAGS: 00010297
+[   38.429062] RAX: ffff88006945ca00 RBX: ffff880048d148c0 RCX: 0000000000000000
+[   38.429636] RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff88006d022c88
+[   38.430051] RBP: ffff880053e47b70 R08: 0000000000000560 R09: ffff88007ffda680
+[   38.430473] R10: 000000000000000a R11: 1ffffd400032be05 R12: dffffc0000000000
+[   38.430915] R13: ffff880048d148c0 R14: 0000000000000000 R15: ffff880059ad9160
+[   38.431390] FS:  00007f984a645700(0000) GS:ffff88006d000000(0000) knlGS:0000000000000000
+[   38.431979] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[   38.432405] CR2: 0000000020005fe0 CR3: 000000006400a000 CR4: 00000000000006f0
+[   38.432827] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+[   38.433253] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+[   38.433765] Call Trace:
+[   38.433938]  ? sctp_id2assoc+0x330/0x330 [sctp]
+[   38.434245]  ? wake_atomic_t_function+0x2b0/0x2b0
+[   38.434545]  inet_sendmsg+0x128/0x3a0
+[   38.434758]  ? inet_recvmsg+0x420/0x420
+[   38.434983]  sock_sendmsg+0xcf/0x110
+[   38.435192]  sock_write_iter+0x222/0x3c0
+[   38.435421]  ? sock_sendmsg+0x110/0x110
+[   38.435644]  ? iov_iter_init+0xaf/0x1d0
+[   38.435867]  __vfs_write+0x3cb/0x640
+[   38.436075]  ? do_iter_readv_writev+0x4c0/0x4c0
+[   38.436338]  ? apparmor_file_permission+0x27/0x30
+[   38.436618]  ? rw_verify_area+0xea/0x2b0
+[   38.436853]  vfs_write+0x175/0x4e0
+[   38.437053]  SyS_write+0xd8/0x1b0
+[   38.437283]  ? SyS_read+0x1b0/0x1b0
+[   38.437522]  entry_SYSCALL_64_fastpath+0x1e/0xad
+[   38.437820] RIP: 0033:0x44f869
+[   38.438013] RSP: 002b:00007f984a644b58 EFLAGS: 00000212 ORIG_RAX: 0000000000000001
+[   38.438464] RAX: ffffffffffffffda RBX: 00007f984a645700 RCX: 000000000044f869
+[   38.438886] RDX: 0000000000000018 RSI: 0000000020ac4fe8 RDI: 0000000000000004
+[   38.439305] RBP: 00007ffe1d7be490 R08: 0000000000000000 R09: 0000000000000000
+[   38.439712] R10: 0000000000000000 R11: 0000000000000212 R12: 0000000000000000
+[   38.440145] R13: 00007ffe1d7be40f R14: 00007f984a6459c0 R15: 0000000000000000
+[   38.440563] Code: c7 c7 10 1a 5c a0 e8 4d fb 76 e1 c6 44 24 68 01 e9 a2 f2 ff ff e8 be
+34 e1 e0 8b 9c 24 98 00 00 00 e9 06 fd ff ff e8 ad 34 e1 e0 <0f> 0b e8 a6 34 e1 e0 4c 8b
+4c 24 78 4c 8b 44 24 68 4c 89 f9 48
+[   38.441881] RIP: sctp_sendmsg+0x29b3/0x3030 [sctp] RSP: ffff880053e478f8
+[   38.442341] ---[ end trace c704b04c884389c0 ]---
+[   38.442634] Kernel panic - not syncing: Fatal exception
+[   38.443084] Dumping ftrace buffer:
+[   38.443335]    (ftrace buffer empty)
+[   38.443590] Kernel Offset: disabled
 
->
->
->> +     }
->> +
->> +     return retval;
->> +}
->> --
->> 2.1.0
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+
+Unfortunately, I didn't manage to get a C program reproducing the crash (looks like race).
+However, I stably hit it on my setup - so I can help fixing the issue.
+
+The crash happens here:
+	/* Let another process have a go.  Since we are going
+	 * to sleep anyway.
+	 */
+	release_sock(sk);
+	current_timeo = schedule_timeout(current_timeo);
+>	BUG_ON(sk != asoc->base.sk);
+	lock_sock(sk);
+
+I've added some debugging output and see, that the original value of asoc->base.sk is
+changed to the address of another struct sock, which appeared in sctp_endpoint_init()
+shortly before the crash.
+
+Hope for some assistance.
+Best regards,
+Alexander
