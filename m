@@ -1,49 +1,32 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 30 Jan 2017 15:13:39 +0000
+From: Julian Anastasov <ja@ssi.bg>
+Date: Tue, 31 Jan 2017 21:53:17 +0000
 Subject: Re: [PATCHv2 RFC net-next 0/7] net: dst_confirm replacement
-Message-Id: <20170130.101339.2050288140097606206.davem@davemloft.net>
+Message-Id: <alpine.LFD.2.11.1701312350110.2064@ja.home.ssi.bg>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1485613578-19973-1-git-send-email-ja@ssi.bg>
-In-Reply-To: <1485613578-19973-1-git-send-email-ja@ssi.bg>
+References: <1485613578-19973-1-git-send-email-ja@ssi.bg> <20170130.101339.2050288140097606206.davem@davemloft.net>
+In-Reply-To: <20170130.101339.2050288140097606206.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: ja@ssi.bg
+To: David Miller <davem@davemloft.net>
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, yuehaibing@huawei.com
 
-From: Julian Anastasov <ja@ssi.bg>
-Date: Sat, 28 Jan 2017 16:26:11 +0200
 
-> 	This patchset addresses the problem of neighbour
-> confirmation where received replies from one nexthop
-> can cause confirmation of different nexthop when using
-> the same dst. Thanks to YueHaibing <yuehaibing@huawei.com>
-> for tracking the dst->pending_confirm problem.
-> 
-> 	Sockets can obtain cached output route. Such
-> routes can be to known nexthop (rt_gateway=IP) or to be
-> used simultaneously for different nexthop IPs by different
-> subnet prefixes (nh->nh_scope = RT_SCOPE_HOST, rt_gateway=0).
-> 
-> 	At first look, there are more problems:
-> 
-> - dst_confirm() sets flag on dst and not on dst->path,
-> as result, indication is lost when XFRM is used
-> 
-> - DNAT can change the nexthop, so the really used nexthop is
-> not confirmed
-> 
-> 	So, the following solution is to avoid using
-> dst->pending_confirm.
+	Hello,
 
-For the most part this series looks good to me, nice work.
+On Mon, 30 Jan 2017, David Miller wrote:
 
-> - I failed to understand the CXGB* code, I see dst_confirm()
-> calls but I'm not sure dst_neigh_output() was called. For now
-> I just removed the dst->pending_confirm flag and left all
-> dst_confirm() calls there. Any better idea?
+> From: Julian Anastasov <ja@ssi.bg>
+> > 
+> > 	So, the following solution is to avoid using
+> > dst->pending_confirm.
+> 
+> For the most part this series looks good to me, nice work.
 
-It is trying to manage the dst and neigh state for TCP connections
-managed by it's offload engine.  So you will not therefore see any
-actual packet output for the sessions it is performing confirmation
-for.
+	OK, I'm posting v3 after removing the RFC tag from v2,
+I just added the Acked-by tags.
+
+Regards
+
+--
+Julian Anastasov <ja@ssi.bg>
