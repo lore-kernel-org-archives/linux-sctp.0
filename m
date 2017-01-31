@@ -1,54 +1,115 @@
-From: Davide Caratti <dcaratti@redhat.com>
-Date: Mon, 23 Jan 2017 16:52:46 +0000
-Subject: [RFC PATCH net-next 5/5] Documentation: add description of skb_sctp_csum_help
-Message-Id: <52ee0cbecd0541d52e837d8c2836b44b3dd647d4.1485177252.git.dcaratti@redhat.com>
+From: Julian Anastasov <ja@ssi.bg>
+Date: Tue, 31 Jan 2017 21:57:04 +0000
+Subject: [PATCHv3 net-next 4/7] tcp: replace dst_confirm with sk_dst_confirm
+Message-Id: <1485899827-5212-5-git-send-email-ja@ssi.bg>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1485177252.git.dcaratti@redhat.com>
-In-Reply-To: <cover.1485177252.git.dcaratti@redhat.com>
+References: <1485899827-5212-1-git-send-email-ja@ssi.bg>
+In-Reply-To: <1485899827-5212-1-git-send-email-ja@ssi.bg>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: David Miller <davem@davemloft.net>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, linux-rdma@vger.kernel.org, YueHaibing <yuehaibing@huawei.com>
 
-Add description of skb_sctp_csum_help in networking/checksum-offload.txt;
-while at it, remove reference to skb_csum_off_chk* functions, since they
-are not present anymore in Linux since commit cf53b1da73bd ('Revert "net:
-Add driver helper functions to determine checksum"').
+When same struct dst_entry can be used for many different
+neighbours we can not use it for pending confirmations.
+Use the new sk_dst_confirm() helper to propagate the
+indication from received packets to sock_confirm_neigh().
 
-Reviewed-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Signed-off-by: Davide Caratti <dcaratti@redhat.com>
+Reported-by: YueHaibing <yuehaibing@huawei.com>
+Reported-by: YueHaibing <yuehaibing@huawei.com>
+Fixes: 5110effee8fd ("net: Do delayed neigh confirmation.")
+Fixes: f2bb4bedf35d ("ipv4: Cache output routes in fib_info nexthops.")
+Tested-by: YueHaibing <yuehaibing@huawei.com>
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Acked-by: Eric Dumazet <edumazet@google.com>
 ---
- Documentation/networking/checksum-offloads.txt | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+ net/ipv4/tcp_input.c   | 12 +++---------
+ net/ipv4/tcp_metrics.c |  7 ++-----
+ net/ipv4/tcp_output.c  |  2 ++
+ 3 files changed, 7 insertions(+), 14 deletions(-)
 
-diff --git a/Documentation/networking/checksum-offloads.txt b/Documentation/networking/checksum-offloads.txt
-index 56e3686..cb7a7e5 100644
---- a/Documentation/networking/checksum-offloads.txt
-+++ b/Documentation/networking/checksum-offloads.txt
-@@ -49,9 +49,9 @@ A driver declares its offload capabilities in netdev->hw_features; see
-  and csum_offset given in the SKB; if it tries to deduce these itself in
-  hardware (as some NICs do) the driver should check that the values in the
-  SKB match those which the hardware will deduce, and if not, fall back to
-- checksumming in software instead (with skb_checksum_help or one of the
-- skb_csum_off_chk* functions as mentioned in include/linux/skbuff.h).  This
-- is a pain, but that's what you get when hardware tries to be clever.
-+ checksumming in software instead (with skb_checksum_help or
-+ skb_sctp_csum_help functions as mentioned in include/linux/skbuff.h).
-+ This is a pain, but that's what you get when hardware tries to be clever.
+diff --git a/net/ipv4/tcp_input.c b/net/ipv4/tcp_input.c
+index 3de6eba..b3e88bb 100644
+--- a/net/ipv4/tcp_input.c
++++ b/net/ipv4/tcp_input.c
+@@ -3644,11 +3644,8 @@ static int tcp_ack(struct sock *sk, const struct sk_buff *skb, int flag)
+ 	if (tp->tlp_high_seq)
+ 		tcp_process_tlp_ack(sk, ack, flag);
  
- The stack should, for the most part, assume that checksum offload is
-  supported by the underlying device.  The only place that should check is
-@@ -60,7 +60,8 @@ The stack should, for the most part, assume that checksum offload is
-  may include other offloads besides TX Checksum Offload) and, if they are
-  not supported or enabled on the device (determined by netdev->features),
-  performs the corresponding offload in software.  In the case of TX
-- Checksum Offload, that means calling skb_checksum_help(skb).
-+ Checksum Offload, that means calling skb_sctp_csum_help(skb) for SCTP
-+ packets, and skb_checksum_help(skb) for other packets.
+-	if ((flag & FLAG_FORWARD_PROGRESS) || !(flag & FLAG_NOT_DUP)) {
+-		struct dst_entry *dst = __sk_dst_get(sk);
+-		if (dst)
+-			dst_confirm(dst);
+-	}
++	if ((flag & FLAG_FORWARD_PROGRESS) || !(flag & FLAG_NOT_DUP))
++		sk_dst_confirm(sk);
  
+ 	if (icsk->icsk_pending = ICSK_TIME_RETRANS)
+ 		tcp_schedule_loss_probe(sk);
+@@ -5995,7 +5992,6 @@ int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb)
+ 		break;
  
- LCO: Local Checksum Offload
+ 	case TCP_FIN_WAIT1: {
+-		struct dst_entry *dst;
+ 		int tmo;
+ 
+ 		/* If we enter the TCP_FIN_WAIT1 state and we are a
+@@ -6022,9 +6018,7 @@ int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb)
+ 		tcp_set_state(sk, TCP_FIN_WAIT2);
+ 		sk->sk_shutdown |= SEND_SHUTDOWN;
+ 
+-		dst = __sk_dst_get(sk);
+-		if (dst)
+-			dst_confirm(dst);
++		sk_dst_confirm(sk);
+ 
+ 		if (!sock_flag(sk, SOCK_DEAD)) {
+ 			/* Wake up lingering close() */
+diff --git a/net/ipv4/tcp_metrics.c b/net/ipv4/tcp_metrics.c
+index b9ed0d5..0f46e5f 100644
+--- a/net/ipv4/tcp_metrics.c
++++ b/net/ipv4/tcp_metrics.c
+@@ -375,12 +375,10 @@ void tcp_update_metrics(struct sock *sk)
+ 	u32 val;
+ 	int m;
+ 
++	sk_dst_confirm(sk);
+ 	if (sysctl_tcp_nometrics_save || !dst)
+ 		return;
+ 
+-	if (dst->flags & DST_HOST)
+-		dst_confirm(dst);
+-
+ 	rcu_read_lock();
+ 	if (icsk->icsk_backoff || !tp->srtt_us) {
+ 		/* This session failed to estimate rtt. Why?
+@@ -493,11 +491,10 @@ void tcp_init_metrics(struct sock *sk)
+ 	struct tcp_metrics_block *tm;
+ 	u32 val, crtt = 0; /* cached RTT scaled by 8 */
+ 
++	sk_dst_confirm(sk);
+ 	if (!dst)
+ 		goto reset;
+ 
+-	dst_confirm(dst);
+-
+ 	rcu_read_lock();
+ 	tm = tcp_get_metrics(sk, dst, true);
+ 	if (!tm) {
+diff --git a/net/ipv4/tcp_output.c b/net/ipv4/tcp_output.c
+index 671c695..c1f8a59 100644
+--- a/net/ipv4/tcp_output.c
++++ b/net/ipv4/tcp_output.c
+@@ -973,6 +973,8 @@ static int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
+ 	skb_set_hash_from_sk(skb, sk);
+ 	atomic_add(skb->truesize, &sk->sk_wmem_alloc);
+ 
++	skb_set_dst_pending_confirm(skb, sk->sk_dst_pending_confirm);
++
+ 	/* Build TCP header and checksum it. */
+ 	th = (struct tcphdr *)skb->data;
+ 	th->source		= inet->inet_sport;
 -- 
-2.7.4
+1.9.3
 
