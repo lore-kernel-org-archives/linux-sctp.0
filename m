@@ -1,43 +1,88 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 03 Jan 2017 05:59:45 +0000
-Subject: [PATCHv2 net-next 0/3] sctp: prepare asoc stream for stream reconf
-Message-Id: <cover.1483422833.git.lucien.xin@gmail.com>
+From: Julian Anastasov <ja@ssi.bg>
+Date: Tue, 31 Jan 2017 21:57:07 +0000
+Subject: [PATCHv3 net-next 7/7] net: pending_confirm is not used anymore
+Message-Id: <1485899827-5212-8-git-send-email-ja@ssi.bg>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1485899827-5212-1-git-send-email-ja@ssi.bg>
+In-Reply-To: <1485899827-5212-1-git-send-email-ja@ssi.bg>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
+To: David Miller <davem@davemloft.net>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, linux-rdma@vger.kernel.org, YueHaibing <yuehaibing@huawei.com>
 
-sctp stream reconf, described in RFC 6525, needs a structure to
-save per stream information in assoc, like stream state.
+When same struct dst_entry can be used for many different
+neighbours we can not use it for pending confirmations.
+As last step, we can remove the pending_confirm flag.
 
-In the future, sctp stream scheduler also needs it to save some
-stream scheduler params and queues.
+Reported-by: YueHaibing <yuehaibing@huawei.com>
+Fixes: 5110effee8fd ("net: Do delayed neigh confirmation.")
+Fixes: f2bb4bedf35d ("ipv4: Cache output routes in fib_info nexthops.")
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Acked-by: Eric Dumazet <edumazet@google.com>
+---
+ include/net/dst.h | 14 ++------------
+ net/core/dst.c    |  1 -
+ 2 files changed, 2 insertions(+), 13 deletions(-)
 
-This patchset is to prepare the stream array in assoc for stream
-reconf.
-
-v1->v2:
-  put these patches into a smaller group.
-
-Xin Long (3):
-  sctp: add stream arrays in asoc
-  sctp: replace ssnmap with asoc stream arrays
-  sctp: remove asoc ssnmap and ssnmap.c
-
- include/net/sctp/sctp.h    |   1 -
- include/net/sctp/structs.h |  70 +++++++++----------------
- net/sctp/Makefile          |   3 +-
- net/sctp/associola.c       |  23 ++++++---
- net/sctp/objcnt.c          |   2 -
- net/sctp/sm_make_chunk.c   |  24 ++++++---
- net/sctp/sm_statefuns.c    |   3 +-
- net/sctp/ssnmap.c          | 125 ---------------------------------------------
- net/sctp/ulpqueue.c        |  33 ++++--------
- 9 files changed, 69 insertions(+), 215 deletions(-)
- delete mode 100644 net/sctp/ssnmap.c
-
+diff --git a/include/net/dst.h b/include/net/dst.h
+index 3a3b34b..84a1043 100644
+--- a/include/net/dst.h
++++ b/include/net/dst.h
+@@ -59,8 +59,6 @@ struct dst_entry {
+ #define DST_XFRM_QUEUE		0x0100
+ #define DST_METADATA		0x0200
+ 
+-	unsigned short		pending_confirm;
+-
+ 	short			error;
+ 
+ 	/* A non-zero value of dst->obsolete forces by-hand validation
+@@ -78,6 +76,8 @@ struct dst_entry {
+ #define DST_OBSOLETE_KILL	-2
+ 	unsigned short		header_len;	/* more space at head required */
+ 	unsigned short		trailer_len;	/* space to reserve at tail */
++	unsigned short		__pad3;
++
+ #ifdef CONFIG_IP_ROUTE_CLASSID
+ 	__u32			tclassid;
+ #else
+@@ -440,7 +440,6 @@ static inline void dst_rcu_free(struct rcu_head *head)
+ 
+ static inline void dst_confirm(struct dst_entry *dst)
+ {
+-	dst->pending_confirm = 1;
+ }
+ 
+ static inline int dst_neigh_output(struct dst_entry *dst, struct neighbour *n,
+@@ -448,15 +447,6 @@ static inline int dst_neigh_output(struct dst_entry *dst, struct neighbour *n,
+ {
+ 	const struct hh_cache *hh;
+ 
+-	if (dst->pending_confirm) {
+-		unsigned long now = jiffies;
+-
+-		dst->pending_confirm = 0;
+-		/* avoid dirtying neighbour */
+-		if (n->confirmed != now)
+-			n->confirmed = now;
+-	}
+-
+ 	hh = &n->hh;
+ 	if ((n->nud_state & NUD_CONNECTED) && hh->hh_len)
+ 		return neigh_hh_output(hh, skb);
+diff --git a/net/core/dst.c b/net/core/dst.c
+index b5cbbe0..960e503 100644
+--- a/net/core/dst.c
++++ b/net/core/dst.c
+@@ -190,7 +190,6 @@ void dst_init(struct dst_entry *dst, struct dst_ops *ops,
+ 	dst->__use = 0;
+ 	dst->lastuse = jiffies;
+ 	dst->flags = flags;
+-	dst->pending_confirm = 0;
+ 	dst->next = NULL;
+ 	if (!(flags & DST_NOCOUNT))
+ 		dst_entries_add(ops, 1);
 -- 
-2.1.0
+1.9.3
 
