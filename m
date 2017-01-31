@@ -1,215 +1,147 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 01 Jan 2017 11:20:30 +0000
-Subject: [PATCH net-next 13/27] sctp: add rfc6525 section 6.3.1
-Message-Id: <d5fb0969ea5d055dea5bdc257569530b6d2fc7c2.1483269426.git.lucien.xin@gmail.com>
+From: Julian Anastasov <ja@ssi.bg>
+Date: Tue, 31 Jan 2017 21:57:02 +0000
+Subject: [PATCHv3 net-next 2/7] net: add dst_pending_confirm flag to skbuff
+Message-Id: <1485899827-5212-3-git-send-email-ja@ssi.bg>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1483269426.git.lucien.xin@gmail.com>
- <684ad8ddd79f23844883dede4c34360ce744dfc3.1483269426.git.lucien.xin@gmail.com>
- <c752879a5af358c08da949b391416452f1322c43.1483269426.git.lucien.xin@gmail.com>
- <be8a2770ddc2381266050c9f168add9802b90a49.1483269426.git.lucien.xin@gmail.com>
- <fc046afdda34c9b262ce57400c4256b14fd1a0fb.1483269426.git.lucien.xin@gmail.com>
- <d4f1b2a4fa19457e9867b0a1f84764a7a509459a.1483269426.git.lucien.xin@gmail.com>
- <31abc54d31ef0714322f137bff43458014d7c276.1483269426.git.lucien.xin@gmail.com>
- <58860816816d6d51b062235fd54dae6540a4797a.1483269426.git.lucien.xin@gmail.com>
- <229608faf7af54c0bf908694ca8349205bbf6eab.1483269426.git.lucien.xin@gmail.com>
- <c4f16844620cd3a2aa76596df9eaadf1505fc8e6.1483269426.git.lucien.xin@gmail.com>
- <1d0b270084289945c4b42ae36d0556648a3f9b64.1483269426.git.lucien.xin@gmail.com>
- <1e4560205cff3c10868d5614b62a3db14e87ccf0.1483269426.git.lucien.xin@gmail.com>
- <91b9171cc57c0f322d103dfbbcce1b9706800805.1483269426.git.lucien.xin@gmail.com>
-In-Reply-To: <91b9171cc57c0f322d103dfbbcce1b9706800805.1483269426.git.lucien.xin@gmail.com>
+References: <1485899827-5212-1-git-send-email-ja@ssi.bg>
+In-Reply-To: <1485899827-5212-1-git-send-email-ja@ssi.bg>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: David Miller <davem@davemloft.net>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, linux-rdma@vger.kernel.org, YueHaibing <yuehaibing@huawei.com>
 
-This patch is to add sockopt SCTP_ENABLE_STREAM_RESET to set
-strreset_enable to indicate which reconf request type it supports,
-which is described in section 6.3.1.
+Add new skbuff flag to allow protocols to confirm neighbour.
+When same struct dst_entry can be used for many different
+neighbours we can not use it for pending confirmations.
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Add sock_confirm_neigh() helper to confirm the neighbour and
+use it for IPv4, IPv6 and VRF before dst_neigh_output.
+
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Acked-by: Eric Dumazet <edumazet@google.com>
 ---
- include/net/sctp/structs.h |  4 +++
- include/uapi/linux/sctp.h  |  7 ++++
- net/sctp/associola.c       |  1 +
- net/sctp/socket.c          | 84 ++++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 96 insertions(+)
+ drivers/net/vrf.c      |  5 ++++-
+ include/linux/skbuff.h | 12 ++++++++++++
+ include/net/sock.h     | 14 ++++++++++++++
+ net/ipv4/ip_output.c   |  5 ++++-
+ net/ipv6/ip6_output.c  |  1 +
+ 5 files changed, 35 insertions(+), 2 deletions(-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 7c46398..56282a3 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -1253,6 +1253,8 @@ struct sctp_endpoint {
- 	__u8  auth_enable:1,
- 	      prsctp_enable:1,
- 	      reconf_enable:1;
-+
-+	__u8  strreset_enable;
- };
+diff --git a/drivers/net/vrf.c b/drivers/net/vrf.c
+index 264fc15..630eafd 100644
+--- a/drivers/net/vrf.c
++++ b/drivers/net/vrf.c
+@@ -378,6 +378,7 @@ static int vrf_finish_output6(struct net *net, struct sock *sk,
+ 	if (unlikely(!neigh))
+ 		neigh = __neigh_create(&nd_tbl, nexthop, dst->dev, false);
+ 	if (!IS_ERR(neigh)) {
++		sock_confirm_neigh(skb, neigh);
+ 		ret = dst_neigh_output(dst, neigh, skb);
+ 		rcu_read_unlock_bh();
+ 		return ret;
+@@ -574,8 +575,10 @@ static int vrf_finish_output(struct net *net, struct sock *sk, struct sk_buff *s
+ 	neigh = __ipv4_neigh_lookup_noref(dev, nexthop);
+ 	if (unlikely(!neigh))
+ 		neigh = __neigh_create(&arp_tbl, &nexthop, dev, false);
+-	if (!IS_ERR(neigh))
++	if (!IS_ERR(neigh)) {
++		sock_confirm_neigh(skb, neigh);
+ 		ret = dst_neigh_output(dst, neigh, skb);
++	}
  
- /* Recover the outter endpoint structure. */
-@@ -1858,6 +1860,8 @@ struct sctp_association {
- 	     prsctp_enable:1,
- 	     reconf_enable:1;
+ 	rcu_read_unlock_bh();
+ err:
+diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+index 6f63b7e..3ac3c3b 100644
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -613,6 +613,7 @@ static inline bool skb_mstamp_after(const struct skb_mstamp *t1,
+  *	@wifi_acked_valid: wifi_acked was set
+  *	@wifi_acked: whether frame was acked on wifi or not
+  *	@no_fcs:  Request NIC to treat last 4 bytes as Ethernet FCS
++ *	@dst_pending_confirm: need to confirm neighbour
+   *	@napi_id: id of the NAPI struct this skb came from
+  *	@secmark: security marking
+  *	@mark: Generic packet mark
+@@ -743,6 +744,7 @@ struct sk_buff {
+ 	__u8			csum_level:2;
+ 	__u8			csum_bad:1;
  
-+	__u8 strreset_enable;
-+
- 	/* stream arrays */
- 	struct sctp_stream_out *streamout;
- 	struct sctp_stream_in *streamin;
-diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index 4d3b621..950d76a 100644
---- a/include/uapi/linux/sctp.h
-+++ b/include/uapi/linux/sctp.h
-@@ -116,6 +116,7 @@ typedef __s32 sctp_assoc_t;
- #define SCTP_DEFAULT_PRINFO	114
- #define SCTP_PR_ASSOC_STATUS	115
- #define SCTP_RECONFIG_SUPPORTED	117
-+#define SCTP_ENABLE_STREAM_RESET	118
- 
- /* PR-SCTP policies */
- #define SCTP_PR_SCTP_NONE	0x0000
-@@ -139,6 +140,12 @@ typedef __s32 sctp_assoc_t;
- #define SCTP_PR_RTX_ENABLED(x)	(SCTP_PR_POLICY(x) = SCTP_PR_SCTP_RTX)
- #define SCTP_PR_PRIO_ENABLED(x)	(SCTP_PR_POLICY(x) = SCTP_PR_SCTP_PRIO)
- 
-+/* For enable stream reset */
-+#define SCTP_ENABLE_RESET_STREAM_REQ	0x01
-+#define SCTP_ENABLE_RESET_ASSOC_REQ	0x02
-+#define SCTP_ENABLE_CHANGE_ASSOC_REQ	0x04
-+#define SCTP_ENABLE_STRRESET_MASK	0x07
-+
- /* These are bit fields for msghdr->msg_flags.  See section 5.1.  */
- /* On user space Linux, these live in <bits/socket.h> as an enum.  */
- enum sctp_msg_flags {
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index ab43cb6..44b8690 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -271,6 +271,7 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
- 	asoc->active_key_id = ep->active_key_id;
- 	asoc->prsctp_enable = ep->prsctp_enable;
- 	asoc->reconf_enable = ep->reconf_enable;
-+	asoc->strreset_enable = ep->strreset_enable;
- 
- 	/* Save the hmacs and chunks list into this association */
- 	if (ep->auth_hmacs_list)
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index e946bc2..3cae585 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3784,6 +3784,42 @@ static int sctp_setsockopt_reconfig_supported(struct sock *sk,
- 	return retval;
++	__u8			dst_pending_confirm:1;
+ #ifdef CONFIG_IPV6_NDISC_NODETYPE
+ 	__u8			ndisc_nodetype:2;
+ #endif
+@@ -3694,6 +3696,16 @@ static inline bool skb_rx_queue_recorded(const struct sk_buff *skb)
+ 	return skb->queue_mapping != 0;
  }
  
-+static int sctp_setsockopt_enable_strreset(struct sock *sk,
-+					   char __user *optval,
-+					   unsigned int optlen)
++static inline void skb_set_dst_pending_confirm(struct sk_buff *skb, u32 val)
 +{
-+	struct sctp_assoc_value params;
-+	struct sctp_association *asoc;
-+	int retval = -EINVAL;
-+
-+	if (optlen != sizeof(params))
-+		goto out;
-+
-+	if (copy_from_user(&params, optval, optlen)) {
-+		retval = -EFAULT;
-+		goto out;
-+	}
-+
-+	if (params.assoc_value & (~SCTP_ENABLE_STRRESET_MASK))
-+		goto out;
-+
-+	asoc = sctp_id2assoc(sk, params.assoc_id);
-+	if (asoc) {
-+		asoc->strreset_enable = params.assoc_value;
-+	} else if (!params.assoc_id) {
-+		struct sctp_sock *sp = sctp_sk(sk);
-+
-+		sp->ep->strreset_enable = params.assoc_value;
-+	} else {
-+		goto out;
-+	}
-+
-+	retval = 0;
-+
-+out:
-+	return retval;
++	skb->dst_pending_confirm = val;
 +}
 +
- /* API 6.2 setsockopt(), getsockopt()
-  *
-  * Applications use setsockopt() and getsockopt() to set or retrieve
-@@ -3953,6 +3989,9 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 	case SCTP_RECONFIG_SUPPORTED:
- 		retval = sctp_setsockopt_reconfig_supported(sk, optval, optlen);
- 		break;
-+	case SCTP_ENABLE_STREAM_RESET:
-+		retval = sctp_setsockopt_enable_strreset(sk, optval, optlen);
-+		break;
- 	default:
- 		retval = -ENOPROTOOPT;
- 		break;
-@@ -6478,6 +6517,47 @@ static int sctp_getsockopt_reconfig_supported(struct sock *sk, int len,
- 	return retval;
- }
- 
-+static int sctp_getsockopt_enable_strreset(struct sock *sk, int len,
-+					   char __user *optval,
-+					   int __user *optlen)
++static inline bool skb_get_dst_pending_confirm(const struct sk_buff *skb)
 +{
-+	struct sctp_assoc_value params;
-+	struct sctp_association *asoc;
-+	int retval = -EFAULT;
-+
-+	if (len < sizeof(params)) {
-+		retval = -EINVAL;
-+		goto out;
-+	}
-+
-+	len = sizeof(params);
-+	if (copy_from_user(&params, optval, len))
-+		goto out;
-+
-+	asoc = sctp_id2assoc(sk, params.assoc_id);
-+	if (asoc) {
-+		params.assoc_value = asoc->strreset_enable;
-+	} else if (!params.assoc_id) {
-+		struct sctp_sock *sp = sctp_sk(sk);
-+
-+		params.assoc_value = sp->ep->strreset_enable;
-+	} else {
-+		retval = -EINVAL;
-+		goto out;
-+	}
-+
-+	if (put_user(len, optlen))
-+		goto out;
-+
-+	if (copy_to_user(optval, &params, len))
-+		goto out;
-+
-+	retval = 0;
-+
-+out:
-+	return retval;
++	return skb->dst_pending_confirm != 0;
 +}
 +
- static int sctp_getsockopt(struct sock *sk, int level, int optname,
- 			   char __user *optval, int __user *optlen)
+ static inline struct sec_path *skb_sec_path(struct sk_buff *skb)
  {
-@@ -6649,6 +6729,10 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_getsockopt_reconfig_supported(sk, len, optval,
- 							    optlen);
- 		break;
-+	case SCTP_ENABLE_STREAM_RESET:
-+		retval = sctp_getsockopt_enable_strreset(sk, len, optval,
-+							 optlen);
-+		break;
- 	default:
- 		retval = -ENOPROTOOPT;
- 		break;
+ #ifdef CONFIG_XFRM
+diff --git a/include/net/sock.h b/include/net/sock.h
+index e113786..1bc821e 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -1821,6 +1821,20 @@ static inline void sk_dst_confirm(struct sock *sk)
+ 		sk->sk_dst_pending_confirm = 1;
+ }
+ 
++static inline void sock_confirm_neigh(struct sk_buff *skb, struct neighbour *n)
++{
++	if (skb_get_dst_pending_confirm(skb)) {
++		struct sock *sk = skb->sk;
++		unsigned long now = jiffies;
++
++		/* avoid dirtying neighbour */
++		if (n->confirmed != now)
++			n->confirmed = now;
++		if (sk && sk->sk_dst_pending_confirm)
++			sk->sk_dst_pending_confirm = 0;
++	}
++}
++
+ bool sk_mc_loop(struct sock *sk);
+ 
+ static inline bool sk_can_gso(const struct sock *sk)
+diff --git a/net/ipv4/ip_output.c b/net/ipv4/ip_output.c
+index fac275c4..27f1db7 100644
+--- a/net/ipv4/ip_output.c
++++ b/net/ipv4/ip_output.c
+@@ -222,7 +222,10 @@ static int ip_finish_output2(struct net *net, struct sock *sk, struct sk_buff *s
+ 	if (unlikely(!neigh))
+ 		neigh = __neigh_create(&arp_tbl, &nexthop, dev, false);
+ 	if (!IS_ERR(neigh)) {
+-		int res = dst_neigh_output(dst, neigh, skb);
++		int res;
++
++		sock_confirm_neigh(skb, neigh);
++		res = dst_neigh_output(dst, neigh, skb);
+ 
+ 		rcu_read_unlock_bh();
+ 		return res;
+diff --git a/net/ipv6/ip6_output.c b/net/ipv6/ip6_output.c
+index 38122d0..7d90cab 100644
+--- a/net/ipv6/ip6_output.c
++++ b/net/ipv6/ip6_output.c
+@@ -119,6 +119,7 @@ static int ip6_finish_output2(struct net *net, struct sock *sk, struct sk_buff *
+ 	if (unlikely(!neigh))
+ 		neigh = __neigh_create(&nd_tbl, nexthop, dst->dev, false);
+ 	if (!IS_ERR(neigh)) {
++		sock_confirm_neigh(skb, neigh);
+ 		ret = dst_neigh_output(dst, neigh, skb);
+ 		rcu_read_unlock_bh();
+ 		return ret;
 -- 
-2.1.0
+1.9.3
 
