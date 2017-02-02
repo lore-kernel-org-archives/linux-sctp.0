@@ -1,110 +1,190 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 09 Feb 2017 07:56:08 +0000
-Subject: Re: [PATCHv6 net-next 3/6] sctp: add support for generating stream reconf ssn/tsn reset request chun
-Message-Id: <CADvbK_eLpWWcsOQdX12U=T3T9_VRP1Tms9hnkfxODSGvPo8QXA@mail.gmail.com>
+From: Davide Caratti <dcaratti@redhat.com>
+Date: Thu, 02 Feb 2017 15:07:23 +0000
+Subject: Re: [RFC PATCH net-next 2/5] net: split skb_checksum_help
+Message-Id: <1486048043.2556.4.camel@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1486573727.git.lucien.xin@gmail.com> <376d8794b81d7c5efe02b588ca381b88ed5f05ad.1486573728.git.lucien.xin@gmail.com>
- <20170208215734.GJ3414@localhost.localdomain>
-In-Reply-To: <20170208215734.GJ3414@localhost.localdomain>
+References: <cover.1485177252.git.dcaratti@redhat.com>
+         <532e1db70b6c40f1b1e5c60b5b51be9f3437a30b.1485177252.git.dcaratti@redhat.com>
+         <CALx6S37E=OEkRego_u=oDuUgQUn9-NZLpupvbN_dge1rqF92CQ@mail.gmail.com>
+         <063D6719AE5E284EB5DD2968C1650D6DB026CEA4@AcuExch.aculab.com>
+In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6DB026CEA4@AcuExch.aculab.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem <davem@davemloft.net>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: David Laight <David.Laight@ACULAB.COM>, 'Tom Herbert' <tom@herbertland.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Linux Kernel Network Developers <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-On Thu, Feb 9, 2017 at 5:57 AM, Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
-> On Thu, Feb 09, 2017 at 01:18:17AM +0800, Xin Long wrote:
->> This patch is to define SSN/TSN Reset Request Parameter described
->> in rfc6525 section 4.3.
->>
->> It's also to drop some unnecessary __packed in include/linux/sctp.h.
->
-> Oups, extra line in the changelog here.
-I've moved the "drop __packed" to patch 1/6, this line should have
-been removed.
-Hi, David, can you remove this line when applying ?
+hello Tom and David,
 
-Thanks.
+thank you for the attention.
 
->
->>
->> Signed-off-by: Xin Long <lucien.xin@gmail.com>
->> ---
->>  include/linux/sctp.h     |  5 +++++
->>  include/net/sctp/sm.h    |  2 ++
->>  net/sctp/sm_make_chunk.c | 29 +++++++++++++++++++++++++++++
->>  3 files changed, 36 insertions(+)
->>
->> diff --git a/include/linux/sctp.h b/include/linux/sctp.h
->> index d74fca3..71c0d41 100644
->> --- a/include/linux/sctp.h
->> +++ b/include/linux/sctp.h
->> @@ -737,4 +737,9 @@ struct sctp_strreset_inreq {
->>       __u16 list_of_streams[0];
->>  };
->>
->> +struct sctp_strreset_tsnreq {
->> +     sctp_paramhdr_t param_hdr;
->> +     __u32 request_seq;
->> +};
->> +
->>  #endif /* __LINUX_SCTP_H__ */
->> diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
->> index 430ed13..ac37c17 100644
->> --- a/include/net/sctp/sm.h
->> +++ b/include/net/sctp/sm.h
->> @@ -265,6 +265,8 @@ struct sctp_chunk *sctp_make_strreset_req(
->>                               const struct sctp_association *asoc,
->>                               __u16 stream_num, __u16 *stream_list,
->>                               bool out, bool in);
->> +struct sctp_chunk *sctp_make_strreset_tsnreq(
->> +                             const struct sctp_association *asoc);
->>  void sctp_chunk_assign_tsn(struct sctp_chunk *);
->>  void sctp_chunk_assign_ssn(struct sctp_chunk *);
->>
->> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
->> index c7d3249..749842a 100644
->> --- a/net/sctp/sm_make_chunk.c
->> +++ b/net/sctp/sm_make_chunk.c
->> @@ -3658,3 +3658,32 @@ struct sctp_chunk *sctp_make_strreset_req(
->>
->>       return retval;
->>  }
->> +
->> +/* RE-CONFIG 4.3 (SSN/TSN RESET ALL)
->> + *   0                   1                   2                   3
->> + *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
->> + *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
->> + *  |     Parameter Type = 15       |      Parameter Length = 8     |
->> + *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
->> + *  |         Re-configuration Request Sequence Number              |
->> + *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
->> + */
->> +struct sctp_chunk *sctp_make_strreset_tsnreq(
->> +                             const struct sctp_association *asoc)
->> +{
->> +     struct sctp_strreset_tsnreq tsnreq;
->> +     __u16 length = sizeof(tsnreq);
->> +     struct sctp_chunk *retval;
->> +
->> +     retval = sctp_make_reconf(asoc, length);
->> +     if (!retval)
->> +             return NULL;
->> +
->> +     tsnreq.param_hdr.type = SCTP_PARAM_RESET_TSN_REQUEST;
->> +     tsnreq.param_hdr.length = htons(length);
->> +     tsnreq.request_seq = htonl(asoc->strreset_outseq);
->> +
->> +     sctp_addto_chunk(retval, sizeof(tsnreq), &tsnreq);
->> +
->> +     return retval;
->> +}
->> --
->> 2.1.0
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+> From: Tom Herbert
+> > 
+> > Sent: 23 January 2017 21:00
+> ..
+> > 
+> > skb_checksum_help is specific to the Internet checksum. For instance,
+> > CHECKSUM_COMPLETE can _only_ refer to Internet checksum calculation
+> > nothing else will work. Checksums and CRCs are very different things
+> > with very different processing. They are not interchangeable, have
+> > very different properties, and hence it is a mistake to try to shoe
+> > horn things so that they use a common infrastructure.
+> > 
+
+true, we don't need to test CHECKSUM_COMPLETE on skbs carrying SCTP.
+So maybe we can simply replace patches 2/5 and 3/5 with the smaller one at
+the bottom of this message.
+
+> > It might make sense to create some CRC helper functions, but last time
+> > I checked there are so few users of CRC in skbufs I'm not even sure
+> > that would make sense.
+
+This is exactly the cause of issues I see with SCTP. These packets can be
+wrongly checksummed using skb_checksum_help, or simply not checksummed at
+all; and in both cases, the packet goes out from the NIC with wrong L4
+checksum.
+
+For example: there are scenarios, even the trivial one below, where skb
+carrying SCTP packets are wrongly checksummed, because the originating
+socket read NETIF_F_SCTP_CRC bit in the underlying device features.
+Then, after the kernel forwards the skb, the final transmission
+happens on another device where CRC offload is not available: this
+typically leads to bad checksums on transmitted SCTP packets.
+
+
+
+namespace 1 |                   namespace 2
+            |
+            |                      br0
+            |         +------- Linux bridge -------+
+            |         |                            |
+            |         V                            V
+vethA <-----------> vethB                        eth0
+            |
+            |
+
+when a socket bound to vethA in namespace 1 generates an INIT packet,
+it's not checksummed since veth devices have NETIF_F_SCTP_CRC set [1].
+Then, after vethB receives the packet in namespace 2, linux bridge
+forwards it to eth0, and (depending on eth0 driver code), it will be
+transmitted with wrong CRC32c or simply dropped.
+
+On Tue, 2017-01-24 at 16:35 +0000, David Laight wrote:
+> 
+> I can imagine horrid things happening if someone tries to encapsulate
+> SCTP/IP in UDP (or worse UDP/IP in SCTP).
+> 
+> For UDP in UDP I suspect that CHECKSUM_COMPLETE on an inner UDP packet
+> allows the outer checksum be calculated by ignoring the inner packet
+> (since it sums to zero).
+> This just isn't true if SCTP is involved.
+> There are tricks to generate a crc of a longer packet, but they'd only
+> work for SCTP in SCTP.
+> 
+> For non-encapsulated packets it is a different matter.
+
+If we limit the scope to skbs having ip_summed equal to CHECKSUM_PARTIAL,
+like it's done in patch 4, we only need checksumming the packet starting
+from csum_start to its end, and copy the computed value to csum_offset.
+The difficult thing is discriminating skbs that need CRC32c, namely SCTP,
+from the rest of the traffic (that will likely be checksummed by
+skb_checksum_help).
+
+Currently, the only way to fix wrong CRCs in the scenario above is to
+configure tc filter with "csum" action on eth0 egress, to compensate the
+missing capability of eth0 driver to deal with SCTP packets having
+ip_summed equal to CHECKSUM_PARTIAL [2].
+
+Patch 4 in the series is an attempt to solve the issue, both for
+encapsulated and non-encapsulated skbs, calling skb_csum_hwoffload_help()
+inside validate_xmit_skb. In order to look for unchecksummed SCTP packets,
+I took inspiration from a Linux-4.4 commit (6ae23ad36253 "net: Add driver
+helper functions ...) to implement skb_csum_hwoffload_help, then I called
+it in validate_xmit_skb() to fix situations that can't be recovered by the
+NIC driver (it's the case where NETIF_F_CSUM_MASK bits are all zero).
+
+Today most NICs can provide at least HW offload for Internet Checksum:
+that's why I'm a bit doubtful if it's ok to spend extra CPU cycles in
+validate_xmit_skb() to ensure correct CRC in some scenarios. 
+Since this issue affects some (not all) NICs, maybe it's better to drop
+patch 4, or part of it, and provide a fix for individual drivers that
+don't currently handle non-checksummed SCTP packets. But to do that, we
+need at least patch 1 and the small code below.
+
+------------------- 8< --------------------------
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -200,7 +200,8 @@
+  *     accordingly. Note the there is no indication in the skbuff that the
+  *     CHECKSUM_PARTIAL refers to an FCOE checksum, a driver that supports
+  *     both IP checksum offload and FCOE CRC offload must verify which offload
+- *     is configured for a packet presumably by inspecting packet headers.
++ *     is configured for a packet presumably by inspecting packet headers; in
++ *     case, skb_sctp_csum_help is provided to compute CRC on SCTP packets.
+  *
+  * E. Checksumming on output with GSO.
+  *
+diff --git a/net/core/dev.c b/net/core/dev.c
+index ad5959e..fa9be6d 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -2580,6 +2580,42 @@ int skb_checksum_help(struct sk_buff *skb)
+ }
+ EXPORT_SYMBOL(skb_checksum_help);
+ 
++int skb_sctp_csum_help(struct sk_buff *skb)
++{
++	__le32 crc32c_csum;
++	int ret = 0, offset;
++
++	if (skb->ip_summed != CHECKSUM_PARTIAL)
++		goto out;
++	if (unlikely(skb_is_gso(skb)))
++		goto out;
++	if (skb_has_shared_frag(skb)) {
++		ret = __skb_linearize(skb);
++		if (ret)
++			goto out;
++	}
++
++	offset = skb_checksum_start_offset(skb);
++	crc32c_csum = cpu_to_le32(~__skb_checksum(skb, offset,
++				  skb->len - offset, ~(__u32)0,
++				  sctp_csum_stub));
++
++	offset += offsetof(struct sctphdr, checksum);
++	BUG_ON(offset >= skb_headlen(skb));
++
++	if (skb_cloned(skb) &&
++	    !skb_clone_writable(skb, offset + sizeof(__le32))) {
++		ret = pskb_expand_head(skb, 0, 0, GFP_ATOMIC);
++		if (ret)
++			goto out;
++	}
++	*(__le32 *)(skb->data + offset) = crc32c_csum;
++	skb->ip_summed = CHECKSUM_NONE;
++out:
++	return ret;
++}
++EXPORT_SYMBOL(skb_sctp_csum_help);
++
+ __be16 skb_network_protocol(struct sk_buff *skb, int *depth)
+ {
+ 	__be16 type = skb->protocol;
+-- 
+2.7.4
+------------------- >8 --------------------------
+
+Thank you again for paying attention to this, and I would appreciate if
+you share your opinion.
+
+Notes:
+
+[1] see commit c80fafbbb59e ("veth: sctp: add NETIF_F_SCTP_CRC to device
+features")
+[2] see commit c008b33f3ef ("net/sched: act_csum: compute crc32c on SCTP
+packets").  We could also turn off NETIF_F_SCTP_CRC bit from vethA, but
+this would generate useless crc32c calculations if the SCTP server is not
+outside the physical node (e.g. it is bound to br0), leading to a
+throughput degradation.
+
