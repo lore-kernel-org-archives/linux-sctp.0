@@ -1,130 +1,91 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 17 Feb 2017 04:45:38 +0000
-Subject: [PATCHv2 net-next 2/7] sctp: add support for generating stream ssn reset event notification
-Message-Id: <3ee883ca4dd0ef75baa9ca5bfd9642d28160c10b.1487306585.git.lucien.xin@gmail.com>
+From: Willy Tarreau <w@1wt.eu>
+Date: Sun, 05 Feb 2017 19:21:19 +0000
+Subject: [PATCH 3.10 257/319] net: sctp, forbid negative length
+Message-Id: <1486322541-8206-158-git-send-email-w@1wt.eu>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1487306585.git.lucien.xin@gmail.com>
- <f01759c2f5ab1be572d95480d6d4e7e94431d2b8.1487306585.git.lucien.xin@gmail.com>
-In-Reply-To: <f01759c2f5ab1be572d95480d6d4e7e94431d2b8.1487306585.git.lucien.xin@gmail.com>
+References: <1486322541-8206-1-git-send-email-w@1wt.eu>
+In-Reply-To: <1486322541-8206-1-git-send-email-w@1wt.eu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
+To: linux-kernel@vger.kernel.org, stable@vger.kernel.org, linux@roeck-us.net
+Cc: Jiri Slaby <jslaby@suse.cz>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Willy Tarreau <w@1wt.eu>
 
-This patch is to add Stream Reset Event described in rfc6525
-section 6.1.1.
+From: Jiri Slaby <jslaby@suse.cz>
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+commit a4b8e71b05c27bae6bad3bdecddbc6b68a3ad8cf upstream.
+
+Most of getsockopt handlers in net/sctp/socket.c check len against
+sizeof some structure like:
+        if (len < sizeof(int))
+                return -EINVAL;
+
+On the first look, the check seems to be correct. But since len is int
+and sizeof returns size_t, int gets promoted to unsigned size_t too. So
+the test returns false for negative lengths. Yes, (-1 < sizeof(long)) is
+false.
+
+Fix this in sctp by explicitly checking len < 0 before any getsockopt
+handler is called.
+
+Note that sctp_getsockopt_events already handled the negative case.
+Since we added the < 0 check elsewhere, this one can be removed.
+
+If not checked, this is the result:
+UBSAN: Undefined behaviour in ../mm/page_alloc.c:2722:19
+shift exponent 52 is too large for 32-bit type 'int'
+CPU: 1 PID: 24535 Comm: syz-executor Not tainted 4.8.1-0-syzkaller #1
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.9.1-0-gb3ef39f-prebuilt.qemu-project.org 04/01/2014
+ 0000000000000000 ffff88006d99f2a8 ffffffffb2f7bdea 0000000041b58ab3
+ ffffffffb4363c14 ffffffffb2f7bcde ffff88006d99f2d0 ffff88006d99f270
+ 0000000000000000 0000000000000000 0000000000000034 ffffffffb5096422
+Call Trace:
+ [<ffffffffb3051498>] ? __ubsan_handle_shift_out_of_bounds+0x29c/0x300
+...
+ [<ffffffffb273f0e4>] ? kmalloc_order+0x24/0x90
+ [<ffffffffb27416a4>] ? kmalloc_order_trace+0x24/0x220
+ [<ffffffffb2819a30>] ? __kmalloc+0x330/0x540
+ [<ffffffffc18c25f4>] ? sctp_getsockopt_local_addrs+0x174/0xca0 [sctp]
+ [<ffffffffc18d2bcd>] ? sctp_getsockopt+0x10d/0x1b0 [sctp]
+ [<ffffffffb37c1219>] ? sock_common_getsockopt+0xb9/0x150
+ [<ffffffffb37be2f5>] ? SyS_getsockopt+0x1a5/0x270
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Willy Tarreau <w@1wt.eu>
 ---
- include/net/sctp/ulpevent.h |  4 ++++
- include/uapi/linux/sctp.h   | 16 ++++++++++++++++
- net/sctp/ulpevent.c         | 29 +++++++++++++++++++++++++++++
- 3 files changed, 49 insertions(+)
+ net/sctp/socket.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/include/net/sctp/ulpevent.h b/include/net/sctp/ulpevent.h
-index 2c098cd..324b596 100644
---- a/include/net/sctp/ulpevent.h
-+++ b/include/net/sctp/ulpevent.h
-@@ -128,6 +128,10 @@ struct sctp_ulpevent *sctp_ulpevent_make_authkey(
- struct sctp_ulpevent *sctp_ulpevent_make_sender_dry_event(
- 	const struct sctp_association *asoc, gfp_t gfp);
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index bdc3fb6..86e7352 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4259,7 +4259,7 @@ static int sctp_getsockopt_disable_fragments(struct sock *sk, int len,
+ static int sctp_getsockopt_events(struct sock *sk, int len, char __user *optval,
+ 				  int __user *optlen)
+ {
+-	if (len <= 0)
++	if (len = 0)
+ 		return -EINVAL;
+ 	if (len > sizeof(struct sctp_event_subscribe))
+ 		len = sizeof(struct sctp_event_subscribe);
+@@ -5770,6 +5770,9 @@ SCTP_STATIC int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 	if (get_user(len, optlen))
+ 		return -EFAULT;
  
-+struct sctp_ulpevent *sctp_ulpevent_make_stream_reset_event(
-+	const struct sctp_association *asoc, __u16 flags,
-+	__u16 stream_num, __u16 *stream_list, gfp_t gfp);
++	if (len < 0)
++		return -EINVAL;
 +
- void sctp_ulpevent_read_sndrcvinfo(const struct sctp_ulpevent *event,
- 				   struct msghdr *);
- void sctp_ulpevent_read_rcvinfo(const struct sctp_ulpevent *event,
-diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index a91a9cc..d3ae381 100644
---- a/include/uapi/linux/sctp.h
-+++ b/include/uapi/linux/sctp.h
-@@ -490,6 +490,18 @@ struct sctp_sender_dry_event {
- 	sctp_assoc_t sender_dry_assoc_id;
- };
+ 	sctp_lock_sock(sk);
  
-+#define SCTP_STREAM_RESET_INCOMING_SSN	0x0001
-+#define SCTP_STREAM_RESET_OUTGOING_SSN	0x0002
-+#define SCTP_STREAM_RESET_DENIED	0x0004
-+#define SCTP_STREAM_RESET_FAILED	0x0008
-+struct sctp_stream_reset_event {
-+	__u16 strreset_type;
-+	__u16 strreset_flags;
-+	__u32 strreset_length;
-+	sctp_assoc_t strreset_assoc_id;
-+	__u16 strreset_stream_list[];
-+};
-+
- /*
-  * Described in Section 7.3
-  *   Ancillary Data and Notification Interest Options
-@@ -505,6 +517,7 @@ struct sctp_event_subscribe {
- 	__u8 sctp_adaptation_layer_event;
- 	__u8 sctp_authentication_event;
- 	__u8 sctp_sender_dry_event;
-+	__u8 sctp_stream_reset_event;
- };
- 
- /*
-@@ -529,6 +542,7 @@ union sctp_notification {
- 	struct sctp_pdapi_event sn_pdapi_event;
- 	struct sctp_authkey_event sn_authkey_event;
- 	struct sctp_sender_dry_event sn_sender_dry_event;
-+	struct sctp_stream_reset_event sn_strreset_event;
- };
- 
- /* Section 5.3.1
-@@ -556,6 +570,8 @@ enum sctp_sn_type {
- #define SCTP_AUTHENTICATION_INDICATION	SCTP_AUTHENTICATION_EVENT
- 	SCTP_SENDER_DRY_EVENT,
- #define SCTP_SENDER_DRY_EVENT		SCTP_SENDER_DRY_EVENT
-+	SCTP_STREAM_RESET_EVENT,
-+#define SCTP_STREAM_RESET_EVENT		SCTP_STREAM_RESET_EVENT
- };
- 
- /* Notification error codes used to fill up the error fields in some
-diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
-index bea0005..c8881bc5 100644
---- a/net/sctp/ulpevent.c
-+++ b/net/sctp/ulpevent.c
-@@ -854,6 +854,35 @@ struct sctp_ulpevent *sctp_ulpevent_make_sender_dry_event(
- 	return event;
- }
- 
-+struct sctp_ulpevent *sctp_ulpevent_make_stream_reset_event(
-+	const struct sctp_association *asoc, __u16 flags, __u16 stream_num,
-+	__u16 *stream_list, gfp_t gfp)
-+{
-+	struct sctp_stream_reset_event *sreset;
-+	struct sctp_ulpevent *event;
-+	struct sk_buff *skb;
-+	int length, i;
-+
-+	length = sizeof(struct sctp_stream_reset_event) + 2 * stream_num;
-+	event = sctp_ulpevent_new(length, MSG_NOTIFICATION, gfp);
-+	if (!event)
-+		return NULL;
-+
-+	skb = sctp_event2skb(event);
-+	sreset = (struct sctp_stream_reset_event *)skb_put(skb, length);
-+
-+	sreset->strreset_type = SCTP_STREAM_RESET_EVENT;
-+	sreset->strreset_flags = flags;
-+	sreset->strreset_length = length;
-+	sctp_ulpevent_set_owner(event, asoc);
-+	sreset->strreset_assoc_id = sctp_assoc2id(asoc);
-+
-+	for (i = 0; i < stream_num; i++)
-+		sreset->strreset_stream_list[i] = ntohs(stream_list[i]);
-+
-+	return event;
-+}
-+
- /* Return the notification type, assuming this is a notification
-  * event.
-  */
+ 	switch (optname) {
 -- 
-2.1.0
+2.8.0.rc2.1.gbe9624a
 
