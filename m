@@ -1,209 +1,271 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 09 Feb 2017 11:24:11 +0000
-Subject: Re: [PATCHv6 net-next 6/6] sctp: implement sender-side procedures for Add Incoming/Outgoing Streams 
-Message-Id: <20170209112411.GM3414@localhost.localdomain>
+From: Richard Haines <richard_c_haines@btinternet.com>
+Date: Mon, 06 Feb 2017 14:30:08 +0000
+Subject: Re: [RFC PATCH 1/1] kernel: Add SELinux SCTP protocol support
+Message-Id: <1486391408.2529.1.camel@btinternet.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1486573727.git.lucien.xin@gmail.com>
- <12e8878a56e37cae2a9c65ee1f548b7c8dff6b78.1486573728.git.lucien.xin@gmail.com>
-In-Reply-To: <12e8878a56e37cae2a9c65ee1f548b7c8dff6b78.1486573728.git.lucien.xin@gmail.com>
+References: <20161214133959.3078-1-richard_c_haines@btinternet.com>
+ <20161221160901.GH4731@localhost.localdomain>
+In-Reply-To: <20161221160901.GH4731@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: selinux@tycho.nsa.gov, linux-sctp@vger.kernel.org, linux-security-module@vger.kernel.org
 
-On Thu, Feb 09, 2017 at 01:18:20AM +0800, Xin Long wrote:
-> This patch is to implement Sender-Side Procedures for the Add
-> Outgoing and Incoming Streams Request Parameter described in
-> rfc6525 section 5.1.5-5.1.6.
+On Wed, 2016-12-21 at 14:09 -0200, Marcelo Ricardo Leitner wrote:
+> On Wed, Dec 14, 2016 at 01:39:59PM +0000, Richard Haines wrote:
+> > +SCTP Socket Option Permissions
+> > +===============> > +The permissions consist of: "bindx_add" "bindx_rem" "connectx"
+> > "set_addr" and
+> > +"set_params" that are validated on setsockopt(2) calls, and
+> > "peeloff" that is
+> > +validated on getsockopt(2) calls.
+> > +
+> > +SCTP_SOCKOPT_BINDX_ADD - Allows additional bind addresses to be
+> > +                         associated after (optionally) calling
+> > bind(2)
+> > +                         if given the "bind_add" permission.
+> > +
+> > +SCTP_SOCKOPT_CONNECTX  - Allows the allocation of multiple
+> > +                         addresses for reaching a multi-homed peer
+> > +                         if given the "connectx" permission.
+> > +
+> > +  Together they are used to form SCTP associations with
+> > information being
+> > +  passed over the link to inform the peer of any changes. As these
+> > two options
+> > +  can support multiple addresses, each address is checked via
+> > +  selinux_socket_bind() or selinux_socket_connect() to determine
+> > whether they
+> > +  have the correct permissions:
+> > +    bindx_add: bind, name_bind, node_bind + node SID + port SID
+> > via the
+> > +               (portcon sctp port ctx) policy statement.
+> > +    connectx:  connect, name_connect + port SID via the
+> > +               (portcon sctp port ctx) policy statement.
+> > +
+> > +SCTP_SOCKOPT_BINDX_REM - Allows additional bind addresses to be
+> > removed
+> > +                         if given the "bind_rem" permission.
+> > +
+> > +SCTP_PEER_ADDR_PARAMS - Alter heartbeats and address max
+> > retransmissions.
+> > +SCTP_PEER_ADDR_THLDS  - Alter the thresholds.
+> > +SCTP_ASSOCINFO        - Alter association and endpoint parameters.
+> > + These require the "set_params" permission.
+> > +
+> > +SCTP_PRIMARY_ADDR          - Set local primary address.
+> > +SCTP_SET_PEER_PRIMARY_ADDR - Request peer sets address as
+> > association primary.
+> > + These require the "set_addr" permission.
+> > +
+> > +SCTP_SOCKOPT_PEELOFF - Branch off an association into a new socket
+> > that
+> > +will be a one-to-one style socket. As SELinux already handles the
+> > creation
+> > +of new sockets, only the "peeloff" permission is checked.
 > 
-> It is also to add sockopt SCTP_ADD_STREAMS in rfc6525 section
-> 6.3.4 for users.
+> ...
 > 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+> > diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+> > index 7b0e059..ff4f1a8 100644
+> > --- a/net/sctp/socket.c
+> > +++ b/net/sctp/socket.c
+> > @@ -1009,6 +1009,12 @@ static int sctp_setsockopt_bindx(struct sock
+> > *sk,
+> >  	/* Do the work. */
+> >  	switch (op) {
+> >  	case SCTP_BINDX_ADD_ADDR:
+> > +		/* Allow security module to validate bindx
+> > addresses. */
+> > +		err = security_sk_setsockopt(sk, SOL_SCTP,
+> > +					     SCTP_SOCKOPT_BINDX_AD
+> > D,
+> > +					     (char *)kaddrs,
+> > addrs_size);
+> 
+> Here, kaddrs is about the addresses that we are going to bind to.
+> 
+> > +		if (err)
+> > +			goto out;
+> >  		err = sctp_bindx_add(sk, kaddrs, addrcnt);
+> >  		if (err)
+> >  			goto out;
+> > @@ -1329,9 +1335,17 @@ static int __sctp_setsockopt_connectx(struct
+> > sock *sk,
+> >  	if (__copy_from_user(kaddrs, addrs, addrs_size)) {
+> >  		err = -EFAULT;
+> >  	} else {
+> > +		/* Allow security module to validate connectx
+> > addresses. */
+> > +		err = security_sk_setsockopt(sk, SOL_SCTP,
+> > +					     SCTP_SOCKOPT_CONNECTX
+> > ,
+> > +					    (char *)kaddrs,
+> > addrs_size);
+> 
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Sorry for the delay but I now think I've resolved all but one of the
+SCTP issues with tests to check them. The only area I'm having trouble
+with is labeling TCP-style child sockets but hope to resolve.
 
-> ---
->  include/net/sctp/sctp.h   |  2 ++
->  include/uapi/linux/sctp.h |  7 +++++
->  net/sctp/socket.c         | 29 ++++++++++++++++++
->  net/sctp/stream.c         | 77 +++++++++++++++++++++++++++++++++++++++++++++++
->  4 files changed, 115 insertions(+)
+> Here, kaddrs is about the remote addresses that we are connecting to.
+> Not sure how feasible this is for SELinux, to maintain a list of
+> allowed
+> peers. 
+SELinux does not maintain lists, however it can check whether the
+addresses/ports are allowed or not (which is what I do for binds,
+connects etc.).
+
+> But this being right, I think we are missing the hooks at ASCONF
+> handling side.
+> One SCTP peer can start/stop binding to another IP in runtime using
+> ASCONF chunks. So considering that peer A here validated that it can
+> associate to be peer B, if B is using ASCONF to inform A that it's
+> now
+> also binding on address X, A should validate so before ACKing it.
 > 
-> diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-> index b60ca14..6dfc553 100644
-> --- a/include/net/sctp/sctp.h
-> +++ b/include/net/sctp/sctp.h
-> @@ -199,6 +199,8 @@ int sctp_offload_init(void);
->  int sctp_send_reset_streams(struct sctp_association *asoc,
->  			    struct sctp_reset_streams *params);
->  int sctp_send_reset_assoc(struct sctp_association *asoc);
-> +int sctp_send_add_streams(struct sctp_association *asoc,
-> +			  struct sctp_add_streams *params);
->  
->  /*
->   * Module global variables
-> diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-> index c0bd8c3..a91a9cc 100644
-> --- a/include/uapi/linux/sctp.h
-> +++ b/include/uapi/linux/sctp.h
-> @@ -118,6 +118,7 @@ typedef __s32 sctp_assoc_t;
->  #define SCTP_ENABLE_STREAM_RESET	118
->  #define SCTP_RESET_STREAMS	119
->  #define SCTP_RESET_ASSOC	120
-> +#define SCTP_ADD_STREAMS	121
->  
->  /* PR-SCTP policies */
->  #define SCTP_PR_SCTP_NONE	0x0000
-> @@ -1027,4 +1028,10 @@ struct sctp_reset_streams {
->  	uint16_t srs_stream_list[];	/* list if srs_num_streams is not 0 */
->  };
->  
-> +struct sctp_add_streams {
-> +	sctp_assoc_t sas_assoc_id;
-> +	uint16_t sas_instrms;
-> +	uint16_t sas_outstrms;
-> +};
-> +
->  #endif /* _UAPI_SCTP_H */
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 45a7c41..75f35ce 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -3844,6 +3844,32 @@ static int sctp_setsockopt_reset_assoc(struct sock *sk,
->  	return retval;
->  }
->  
-> +static int sctp_setsockopt_add_streams(struct sock *sk,
-> +				       char __user *optval,
-> +				       unsigned int optlen)
-> +{
-> +	struct sctp_association *asoc;
-> +	struct sctp_add_streams params;
-> +	int retval = -EINVAL;
-> +
-> +	if (optlen != sizeof(params))
-> +		goto out;
-> +
-> +	if (copy_from_user(&params, optval, optlen)) {
-> +		retval = -EFAULT;
-> +		goto out;
-> +	}
-> +
-> +	asoc = sctp_id2assoc(sk, params.sas_assoc_id);
-> +	if (!asoc)
-> +		goto out;
-> +
-> +	retval = sctp_send_add_streams(asoc, &params);
-> +
-> +out:
-> +	return retval;
-> +}
-> +
->  /* API 6.2 setsockopt(), getsockopt()
->   *
->   * Applications use setsockopt() and getsockopt() to set or retrieve
-> @@ -4019,6 +4045,9 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
->  	case SCTP_RESET_ASSOC:
->  		retval = sctp_setsockopt_reset_assoc(sk, optval, optlen);
->  		break;
-> +	case SCTP_ADD_STREAMS:
-> +		retval = sctp_setsockopt_add_streams(sk, optval, optlen);
-> +		break;
->  	default:
->  		retval = -ENOPROTOOPT;
->  		break;
-> diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-> index 53e49fc..eb02490 100644
-> --- a/net/sctp/stream.c
-> +++ b/net/sctp/stream.c
-> @@ -217,3 +217,80 @@ int sctp_send_reset_assoc(struct sctp_association *asoc)
->  
->  	return 0;
->  }
-> +
-> +int sctp_send_add_streams(struct sctp_association *asoc,
-> +			  struct sctp_add_streams *params)
-> +{
-> +	struct sctp_stream *stream = asoc->stream;
-> +	struct sctp_chunk *chunk = NULL;
-> +	int retval = -ENOMEM;
-> +	__u32 outcnt, incnt;
-> +	__u16 out, in;
-> +
-> +	if (!asoc->peer.reconf_capable ||
-> +	    !(asoc->strreset_enable & SCTP_ENABLE_CHANGE_ASSOC_REQ)) {
-> +		retval = -ENOPROTOOPT;
-> +		goto out;
-> +	}
-> +
-> +	if (asoc->strreset_outstanding) {
-> +		retval = -EINPROGRESS;
-> +		goto out;
-> +	}
-> +
-> +	out = params->sas_outstrms;
-> +	in  = params->sas_instrms;
-> +	outcnt = stream->outcnt + out;
-> +	incnt = stream->incnt + in;
-> +	if (outcnt > SCTP_MAX_STREAM || incnt > SCTP_MAX_STREAM ||
-> +	    (!out && !in)) {
-> +		retval = -EINVAL;
-> +		goto out;
-> +	}
-> +
-> +	if (out) {
-> +		struct sctp_stream_out *streamout;
-> +
-> +		streamout = krealloc(stream->out, outcnt * sizeof(*streamout),
-> +				     GFP_KERNEL);
-> +		if (!streamout)
-> +			goto out;
-> +
-> +		memset(streamout + stream->outcnt, 0, out * sizeof(*streamout));
-> +		stream->out = streamout;
-> +	}
-> +
-> +	if (in) {
-> +		struct sctp_stream_in *streamin;
-> +
-> +		streamin = krealloc(stream->in, incnt * sizeof(*streamin),
-> +				    GFP_KERNEL);
-> +		if (!streamin)
-> +			goto out;
-> +
-> +		memset(streamin + stream->incnt, 0, in * sizeof(*streamin));
-> +		stream->in = streamin;
-> +	}
-> +
-> +	chunk = sctp_make_strreset_addstrm(asoc, out, in);
-> +	if (!chunk)
-> +		goto out;
-> +
-> +	asoc->strreset_chunk = chunk;
-> +	sctp_chunk_hold(asoc->strreset_chunk);
-> +
-> +	retval = sctp_send_reconf(asoc, chunk);
-> +	if (retval) {
-> +		sctp_chunk_put(asoc->strreset_chunk);
-> +		asoc->strreset_chunk = NULL;
-> +		goto out;
-> +	}
-> +
-> +	stream->incnt = incnt;
-> +	stream->outcnt = outcnt;
-> +
-> +	asoc->strreset_outstanding = !!out + !!in;
-> +
-> +out:
-> +	return retval;
-> +}
-> -- 
-> 2.1.0
+> This validation would be around sctp_process_asconf_param. Not sure
+> you
+> can hook it on selinux_sctp_setsockopt too as it would be similar to
+> the
+> validation done for CONNECT.
+
+I now have this working after hooking into sctp_process_asconf_param
+and checking permissions on address/port as required. Also have tests
+as part of the selinux-testsuite.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Richard, the other point we talked offline, was for validating that
+> peer
+> A can actually request to add address X, that would be ok, yes.
+> 
+
+This was regarding handling ASCONF requests on receiver the side. Yes
+this does seem to be resolved.
+
+I hope to send out an updated patch in a few weeks so hopefully these
+can be verified.
+
+> Thanks,
+>   Marcelo
+> 
+> > +		if (err)
+> > +			goto out_free;
+> > +
+> >  		err = __sctp_connect(sk, kaddrs, addrs_size,
+> > assoc_id);
+> >  	}
+> >  
+> > +out_free:
+> >  	kfree(kaddrs);
+> >  
+> >  	return err;
+> 
+> 
+> 
+> > +int selinux_sctp_setsockopt(struct sock *sk, int level, int
+> > optname,
+> > +					    char *optval, int
+> > optlen)
+> > +{
+> > +	int err, addrlen;
+> > +	void *addr_buf;
+> > +	struct sockaddr *address;
+> > +	struct socket *sock;
+> > +	int walk_size = 0;
+> > +
+> > +	if (level != SOL_SCTP || level != IPPROTO_SCTP)
+> > +		return 0;
+> > +
+> > +	switch (optname) {
+> > +	case SCTP_SOCKOPT_BINDX_ADD:
+> > +	case SCTP_SOCKOPT_CONNECTX:
+> > +		/* Note that for SCTP_SOCKOPT_BINDX_ADD and
+> > +		 * SCTP_SOCKOPT_CONNECTX the sctp kernel code has
+> > already
+> > +		 * copied the optval to kernel space. See
+> > net/sctp/socket.c
+> > +		 * security_sk_setsockopt() calls.
+> > +		 */
+> > +		err = sock_has_perm(current, sk,
+> > +			    (optname = SCTP_SOCKOPT_BINDX_ADD ?
+> > +			     SCTP_SOCKET__BINDX_ADD :
+> > +			     SCTP_SOCKET__CONNECTX));
+> > +		if (err)
+> > +			return err;
+> > +
+> > +		sock = sk->sk_socket;
+> > +		addr_buf = optval;
+> > +		/* Process list - may contain IPv4 or IPv6 addr's
+> > */
+> > +		while (walk_size < optlen) {
+> > +			address = addr_buf;
+> > +
+> > +			switch (address->sa_family) {
+> > +			case PF_INET:
+> > +				addrlen = sizeof(struct
+> > sockaddr_in);
+> > +				break;
+> > +			case PF_INET6:
+> > +				addrlen = sizeof(struct
+> > sockaddr_in6);
+> > +				break;
+> > +			default:
+> > +				return -EINVAL;
+> > +			}
+> > +
+> > +			err = -EINVAL;
+> > +			if (optname = SCTP_SOCKOPT_BINDX_ADD) {
+> > +				err = selinux_socket_bind(sock,
+> > +					    address, addrlen);
+> > +			} else if (optname =
+> > SCTP_SOCKOPT_CONNECTX) {
+> > +				err = selinux_socket_connect(sock,
+> > +					    address, addrlen);
+> > +			}
+> > +			if (err)
+> > +				return err;
+> > +
+> > +			addr_buf += addrlen;
+> > +			walk_size += addrlen;
+> > +		}
+> > +		break;
+> > +
+> > +	case SCTP_SOCKOPT_BINDX_REM:
+> > +		/* The addresses have been checked as they were
+> > +		 * added, so just see if allowed to be removed.
+> > +		 */
+> > +		err = sock_has_perm(current, sk,
+> > SCTP_SOCKET__BINDX_REM);
+> > +		if (err)
+> > +			return err;
+> > +		break;
+> > +
+> > +	/* Set heartbeats and address max retransmissions. */
+> > +	case SCTP_PEER_ADDR_PARAMS:
+> > +	/* Set thresholds. */
+> > +	case SCTP_PEER_ADDR_THLDS:
+> > +	/* Set association and endpoint parameters */
+> > +	case SCTP_ASSOCINFO:
+> > +		err = sock_has_perm(current, sk,
+> > SCTP_SOCKET__SET_PARAMS);
+> > +		if (err)
+> > +			return err;
+> > +		break;
+> > +
+> > +	/* Set local primary address. */
+> > +	case SCTP_PRIMARY_ADDR:
+> > +	/* Request peer sets address as association primary. */
+> > +	case SCTP_SET_PEER_PRIMARY_ADDR:
+> > +		err = sock_has_perm(current, sk,
+> > SCTP_SOCKET__SET_ADDR);
+> > +		if (err)
+> > +			return err;
+> > +		break;
+> > +	}
+> > +
+> > +	return 0;
+> > +}
+> 
+> 
 > 
