@@ -1,31 +1,45 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 09 Feb 2017 22:02:08 +0000
-Subject: Re: [PATCHv4 net-next 0/7] net: dst_confirm replacement
-Message-Id: <20170209.170208.999235350231796696.davem@davemloft.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Mon, 06 Feb 2017 20:10:31 +0000
+Subject: [PATCH net] sctp: avoid BUG_ON on sctp_wait_for_sndbuf
+Message-Id: <90df61dca0e882ccc175bcec200b341b171b7406.1486411622.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1486415657-14714-1-git-send-email-ja@ssi.bg>
-        <20170207.131134.567606043153504044.davem@davemloft.net>
-        <alpine.LFD.2.11.1702082245270.2608@ja.home.ssi.bg>
-In-Reply-To: <alpine.LFD.2.11.1702082245270.2608-c1lBKlETG9EWAawoAK+ZAw@public.gmane.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: ja-FgGsKACvmQM@public.gmane.org
-Cc: netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org, steffen.klassert-opNxpl+3fjRBDgjK7y7TUQ@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, yuehaibing-hv44wF8Li93QT0dZR+AlfA@public.gmane.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Alexander Popov <alex.popov@linux.com>
 
-From: Julian Anastasov <ja@ssi.bg>
-Date: Wed, 8 Feb 2017 23:05:36 +0200 (EET)
+Alexander Popov reported that an application may trigger a BUG_ON in
+sctp_wait_for_sndbuf if the socket tx buffer is full, a thread is
+waiting on it to queue more data and meanwhile another thread peels off
+the association being used by the first thread.
 
-> On Tue, 7 Feb 2017, David Miller wrote:
-> 
->> > - Now may be old function neigh_output() should be restored
->> > instead of dst_neigh_output?
->> 
->> Please elaborate.
-> 
-> 	As dst_neigh_output does not use the dst arg anymore,
-> my idea was to rename dst_neigh_output to neigh_output, i.e.
-> just like it was before commit 5110effee8fd ("net: Do delayed neigh 
-> confirmation."
+This patch replaces the BUG_ON call with a proper error handling. It
+will return -EPIPE to the original sendmsg call, similarly to what would
+have been done if the association wasn't found in the first place.
 
-This sounds like a great idea.
+Acked-by: Alexander Popov <alex.popov@linux.com>
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+Please consider this to -stable. Thanks
+
+ net/sctp/socket.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 37eeab7899fc235a56bd2f4ccdb3e6c338a8d48e..e214d2e7e9a30c02847daf354668c42eeaffd0d6 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -7426,7 +7426,8 @@ static int sctp_wait_for_sndbuf(struct sctp_association *asoc, long *timeo_p,
+ 		 */
+ 		release_sock(sk);
+ 		current_timeo = schedule_timeout(current_timeo);
+-		BUG_ON(sk != asoc->base.sk);
++		if (sk != asoc->base.sk)
++			goto do_error;
+ 		lock_sock(sk);
+ 
+ 		*timeo_p = current_timeo;
+-- 
+2.9.3
+
