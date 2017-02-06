@@ -1,70 +1,147 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 21 Feb 2017 19:54:31 +0000
-Subject: Re: [PATCH 4.4 14/20] sctp: avoid BUG_ON on sctp_wait_for_sndbuf
-Message-Id: <CAFSqH7zB7CkVXqZZO8_WWhhtmhN5wtBxkrwcPrSgDXJ4CUeWSQ@mail.gmail.com>
+From: Julian Anastasov <ja@ssi.bg>
+Date: Mon, 06 Feb 2017 21:14:12 +0000
+Subject: [PATCHv4 net-next 2/7] net: add dst_pending_confirm flag to skbuff
+Message-Id: <1486415657-14714-3-git-send-email-ja@ssi.bg>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20170216175259.514980415@linuxfoundation.org> <20170216175300.120096888@linuxfoundation.org>
- <1487693324.2885.17.camel@decadent.org.uk> <210C5D26-C634-41E0-B744-1A7FA2AC157D@gmail.com>
-In-Reply-To: <210C5D26-C634-41E0-B744-1A7FA2AC157D@gmail.com>
+References: <1486415657-14714-1-git-send-email-ja@ssi.bg>
+In-Reply-To: <1486415657-14714-1-git-send-email-ja@ssi.bg>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Ben Hutchings <ben@decadent.org.uk>, Alexander Popov <alex.popov@linux.com>, Xin Long <lucien.xin@gmail.com>
-Cc: stable@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, linux-rdma@vger.kernel.org, YueHaibing <yuehaibing@huawei.com>
 
-On Tue, Feb 21, 2017 at 1:56 PM, Marcelo <marcelo.leitner@gmail.com> wrote:
->
->
-> Em 21 de fevereiro de 2017 13:08:44 BRT, Ben Hutchings <ben@decadent.org.uk> escreveu:
->>On Thu, 2017-02-16 at 09:53 -0800, Greg Kroah-Hartman wrote:
->>> 4.4-stable review patch.  If anyone has any objections, please let me
->>know.
->>>
->>> ------------------
->>>
->>> From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
->>>
->>>
->>> [ Upstream commit 2dcab598484185dea7ec22219c76dcdd59e3cb90 ]
->>[...]
->>> --- a/net/sctp/socket.c
->>> +++ b/net/sctp/socket.c
->>> @@ -6960,7 +6960,8 @@ static int sctp_wait_for_sndbuf(struct s
->>>               */
->>>              release_sock(sk);
->>>              current_timeo = schedule_timeout(current_timeo);
->>> -            BUG_ON(sk != asoc->base.sk);
->>> +            if (sk != asoc->base.sk)
->>> +                    goto do_error;
->>
->>This function normally returns with sk still locked, but in this case
->>it returns with sk unlocked.  Perhaps this check should be moved after
->>the lock_sock(sk)?
->>
->
-> Looks like so. Will check more in a few. Thanks Ben
+Add new skbuff flag to allow protocols to confirm neighbour.
+When same struct dst_entry can be used for many different
+neighbours we can not use it for pending confirmations.
 
-Yes, we need to move the check to after the lock_sock(sk) call.
+Add sock_confirm_neigh() helper to confirm the neighbour and
+use it for IPv4, IPv6 and VRF before dst_neigh_output.
 
-There is also another problem: consider a thread A sending a packet to
-a new asoc (which creates a new asoc during sctp_sendsmg), and while
-waiting for more sndbuf space, it gets peeled off by another thread.
-This would cause a double-free of the asoc as sctp_sendmsg() will free
-this asoc thinking it errored out but it actually now belongs to
-another thread.
+Signed-off-by: Julian Anastasov <ja@ssi.bg>
+Acked-by: Eric Dumazet <edumazet@google.com>
+---
+ drivers/net/vrf.c      |  5 ++++-
+ include/linux/skbuff.h | 12 ++++++++++++
+ include/net/sock.h     | 14 ++++++++++++++
+ net/ipv4/ip_output.c   |  5 ++++-
+ net/ipv6/ip6_output.c  |  1 +
+ 5 files changed, 35 insertions(+), 2 deletions(-)
 
-Testing both patches now, should be ready by tomorrow.
+diff --git a/drivers/net/vrf.c b/drivers/net/vrf.c
+index 264fc15..630eafd 100644
+--- a/drivers/net/vrf.c
++++ b/drivers/net/vrf.c
+@@ -378,6 +378,7 @@ static int vrf_finish_output6(struct net *net, struct sock *sk,
+ 	if (unlikely(!neigh))
+ 		neigh = __neigh_create(&nd_tbl, nexthop, dst->dev, false);
+ 	if (!IS_ERR(neigh)) {
++		sock_confirm_neigh(skb, neigh);
+ 		ret = dst_neigh_output(dst, neigh, skb);
+ 		rcu_read_unlock_bh();
+ 		return ret;
+@@ -574,8 +575,10 @@ static int vrf_finish_output(struct net *net, struct sock *sk, struct sk_buff *s
+ 	neigh = __ipv4_neigh_lookup_noref(dev, nexthop);
+ 	if (unlikely(!neigh))
+ 		neigh = __neigh_create(&arp_tbl, &nexthop, dev, false);
+-	if (!IS_ERR(neigh))
++	if (!IS_ERR(neigh)) {
++		sock_confirm_neigh(skb, neigh);
+ 		ret = dst_neigh_output(dst, neigh, skb);
++	}
+ 
+ 	rcu_read_unlock_bh();
+ err:
+diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+index c6a78e1..f1adddc 100644
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -612,6 +612,7 @@ static inline bool skb_mstamp_after(const struct skb_mstamp *t1,
+  *	@wifi_acked_valid: wifi_acked was set
+  *	@wifi_acked: whether frame was acked on wifi or not
+  *	@no_fcs:  Request NIC to treat last 4 bytes as Ethernet FCS
++ *	@dst_pending_confirm: need to confirm neighbour
+   *	@napi_id: id of the NAPI struct this skb came from
+  *	@secmark: security marking
+  *	@mark: Generic packet mark
+@@ -741,6 +742,7 @@ struct sk_buff {
+ 	__u8			csum_level:2;
+ 	__u8			csum_bad:1;
+ 
++	__u8			dst_pending_confirm:1;
+ #ifdef CONFIG_IPV6_NDISC_NODETYPE
+ 	__u8			ndisc_nodetype:2;
+ #endif
+@@ -3698,6 +3700,16 @@ static inline bool skb_rx_queue_recorded(const struct sk_buff *skb)
+ 	return skb->queue_mapping != 0;
+ }
+ 
++static inline void skb_set_dst_pending_confirm(struct sk_buff *skb, u32 val)
++{
++	skb->dst_pending_confirm = val;
++}
++
++static inline bool skb_get_dst_pending_confirm(const struct sk_buff *skb)
++{
++	return skb->dst_pending_confirm != 0;
++}
++
+ static inline struct sec_path *skb_sec_path(struct sk_buff *skb)
+ {
+ #ifdef CONFIG_XFRM
+diff --git a/include/net/sock.h b/include/net/sock.h
+index 85d856b..6f83e78 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -1821,6 +1821,20 @@ static inline void sk_dst_confirm(struct sock *sk)
+ 		sk->sk_dst_pending_confirm = 1;
+ }
+ 
++static inline void sock_confirm_neigh(struct sk_buff *skb, struct neighbour *n)
++{
++	if (skb_get_dst_pending_confirm(skb)) {
++		struct sock *sk = skb->sk;
++		unsigned long now = jiffies;
++
++		/* avoid dirtying neighbour */
++		if (n->confirmed != now)
++			n->confirmed = now;
++		if (sk && sk->sk_dst_pending_confirm)
++			sk->sk_dst_pending_confirm = 0;
++	}
++}
++
+ bool sk_mc_loop(struct sock *sk);
+ 
+ static inline bool sk_can_gso(const struct sock *sk)
+diff --git a/net/ipv4/ip_output.c b/net/ipv4/ip_output.c
+index b67719f..c9fc32f 100644
+--- a/net/ipv4/ip_output.c
++++ b/net/ipv4/ip_output.c
+@@ -222,7 +222,10 @@ static int ip_finish_output2(struct net *net, struct sock *sk, struct sk_buff *s
+ 	if (unlikely(!neigh))
+ 		neigh = __neigh_create(&arp_tbl, &nexthop, dev, false);
+ 	if (!IS_ERR(neigh)) {
+-		int res = dst_neigh_output(dst, neigh, skb);
++		int res;
++
++		sock_confirm_neigh(skb, neigh);
++		res = dst_neigh_output(dst, neigh, skb);
+ 
+ 		rcu_read_unlock_bh();
+ 		return res;
+diff --git a/net/ipv6/ip6_output.c b/net/ipv6/ip6_output.c
+index b6a94ff..14d99fb 100644
+--- a/net/ipv6/ip6_output.c
++++ b/net/ipv6/ip6_output.c
+@@ -119,6 +119,7 @@ static int ip6_finish_output2(struct net *net, struct sock *sk, struct sk_buff *
+ 	if (unlikely(!neigh))
+ 		neigh = __neigh_create(&nd_tbl, nexthop, dst->dev, false);
+ 	if (!IS_ERR(neigh)) {
++		sock_confirm_neigh(skb, neigh);
+ 		ret = dst_neigh_output(dst, neigh, skb);
+ 		rcu_read_unlock_bh();
+ 		return ret;
+-- 
+1.9.3
 
-  Marcelo
-
->
->>Ben.
->>
->>>              lock_sock(sk);
->>>
->>>              *timeo_p = current_timeo;
->>>
->>>
->
-> --
-> Enviado de meu dispositivo Android com K-9 mail. Desculpe-me pela brevidade.
