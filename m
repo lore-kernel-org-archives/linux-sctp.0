@@ -1,50 +1,64 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 07 Feb 2017 19:21:21 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 07 Feb 2017 19:45:09 +0000
 Subject: Re: [PATCH net-next] sctp: avoid list_del_init if it's freeing the memory right away
-Message-Id: <20170207.142121.1027174926882132252.davem@davemloft.net>
+Message-Id: <20170207194508.GD3414@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <e1b3b9b24f39ee82a3131a39a0413231ba54bc7c.1486494022.git.marcelo.leitner@gmail.com>
-In-Reply-To: <e1b3b9b24f39ee82a3131a39a0413231ba54bc7c.1486494022.git.marcelo.leitner@gmail.com>
+ <20170207.142121.1027174926882132252.davem@davemloft.net>
+In-Reply-To: <20170207.142121.1027174926882132252.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: marcelo.leitner@gmail.com
+To: David Miller <davem@davemloft.net>
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com
 
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue,  7 Feb 2017 17:03:21 -0200
-
-> There is no reason to use list_del_init() in these places as we are
-> going to free/destroy the memory in a few lines below.
+On Tue, Feb 07, 2017 at 02:21:21PM -0500, David Miller wrote:
+> From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+> Date: Tue,  7 Feb 2017 17:03:21 -0200
 > 
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> ---
->  net/sctp/associola.c     | 14 ++++----------
->  net/sctp/auth.c          |  8 ++------
->  net/sctp/chunk.c         |  4 ++--
->  net/sctp/outqueue.c      | 14 +++++++-------
->  net/sctp/sm_make_chunk.c |  3 +--
->  5 files changed, 16 insertions(+), 27 deletions(-)
+> > There is no reason to use list_del_init() in these places as we are
+> > going to free/destroy the memory in a few lines below.
+> > 
+> > Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+> > ---
+> >  net/sctp/associola.c     | 14 ++++----------
+> >  net/sctp/auth.c          |  8 ++------
+> >  net/sctp/chunk.c         |  4 ++--
+> >  net/sctp/outqueue.c      | 14 +++++++-------
+> >  net/sctp/sm_make_chunk.c |  3 +--
+> >  5 files changed, 16 insertions(+), 27 deletions(-)
+> > 
+> > diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+> > index e50dc6d7543fd6acfa7442f3a9ee575203c7718d..7eb9dacfa53a438b20a34319cf01c6c9a591f0c3 100644
+> > --- a/net/sctp/associola.c
+> > +++ b/net/sctp/associola.c
+> > @@ -1638,25 +1638,19 @@ int sctp_assoc_set_id(struct sctp_association *asoc, gfp_t gfp)
+> >  static void sctp_assoc_free_asconf_queue(struct sctp_association *asoc)
+> >  {
+> >  	struct sctp_chunk *asconf;
+> > -	struct sctp_chunk *tmp;
+> >  
+> > -	list_for_each_entry_safe(asconf, tmp, &asoc->addip_chunk_list, list) {
+> > -		list_del_init(&asconf->list);
+> > +	list_for_each_entry(asconf, &asoc->addip_chunk_list, list)
+> >  		sctp_chunk_free(asconf);
+> > -	}
+> >  }
 > 
-> diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-> index e50dc6d7543fd6acfa7442f3a9ee575203c7718d..7eb9dacfa53a438b20a34319cf01c6c9a591f0c3 100644
-> --- a/net/sctp/associola.c
-> +++ b/net/sctp/associola.c
-> @@ -1638,25 +1638,19 @@ int sctp_assoc_set_id(struct sctp_association *asoc, gfp_t gfp)
->  static void sctp_assoc_free_asconf_queue(struct sctp_association *asoc)
->  {
->  	struct sctp_chunk *asconf;
-> -	struct sctp_chunk *tmp;
->  
-> -	list_for_each_entry_safe(asconf, tmp, &asoc->addip_chunk_list, list) {
-> -		list_del_init(&asconf->list);
-> +	list_for_each_entry(asconf, &asoc->addip_chunk_list, list)
->  		sctp_chunk_free(asconf);
-> -	}
->  }
+> This leave freed memory on the asoc->addip_chunk_list, in fact why aren't you seeing
 
-This leave freed memory on the asoc->addip_chunk_list, in fact why aren't you seeing
-the BUG_ON() in sctp_chunk_destroy() get triggered?  If you elide the list_del() here
-then the "list_empty(&chunk->list)" check there will not be true.
+This should be alright, because here we are purging the entire list and
+the asoc will also be free right after.
 
-I don't think this transformation here is legal at all.
+> the BUG_ON() in sctp_chunk_destroy() get triggered?  If you elide the list_del() here
+> then the "list_empty(&chunk->list)" check there will not be true.
+> 
+
+Good question. I have to double check this, but you're probably right.
+
+> I don't think this transformation here is legal at all.
+
+I removed the BUG_ON check on sctp_auth_shkey_free() for the same
+reason, not sure why not for sctp_chunk_destroy().
+
+  Marcelo
