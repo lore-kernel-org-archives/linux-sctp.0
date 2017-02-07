@@ -1,157 +1,45 @@
-From: Julian Anastasov <ja@ssi.bg>
-Date: Mon, 06 Feb 2017 21:14:10 +0000
-Subject: [PATCHv4 net-next 0/7] net: dst_confirm replacement
-Message-Id: <1486415657-14714-1-git-send-email-ja@ssi.bg>
+From: David Miller <davem@davemloft.net>
+Date: Tue, 07 Feb 2017 18:11:34 +0000
+Subject: Re: [PATCHv4 net-next 0/7] net: dst_confirm replacement
+Message-Id: <20170207.131134.567606043153504044.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1486415657-14714-1-git-send-email-ja@ssi.bg>
+In-Reply-To: <1486415657-14714-1-git-send-email-ja@ssi.bg>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Steffen Klassert <steffen.klassert@secunet.com>, linux-rdma@vger.kernel.org, YueHaibing <yuehaibing@huawei.com>
+To: ja@ssi.bg
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, nhorman@tuxdriver.com, steffen.klassert@secunet.com, linux-rdma@vger.kernel.org, yuehaibing@huawei.com
 
-	This patchset addresses the problem of neighbour
-confirmation where received replies from one nexthop
-can cause confirmation of different nexthop when using
-the same dst. Thanks to YueHaibing <yuehaibing@huawei.com>
-for tracking the dst->pending_confirm problem.
+From: Julian Anastasov <ja@ssi.bg>
+Date: Mon,  6 Feb 2017 23:14:10 +0200
 
-	Sockets can obtain cached output route. Such
-routes can be to known nexthop (rt_gateway=IP) or to be
-used simultaneously for different nexthop IPs by different
-subnet prefixes (nh->nh_scope = RT_SCOPE_HOST, rt_gateway=0).
+> 	This patchset addresses the problem of neighbour
+> confirmation where received replies from one nexthop
+> can cause confirmation of different nexthop when using
+> the same dst. Thanks to YueHaibing <yuehaibing@huawei.com>
+> for tracking the dst->pending_confirm problem.
 
-	At first look, there are more problems:
+This looks good enough to apply to net-next, so I have done
+so.  Thanks Julian!
 
-- dst_confirm() sets flag on dst and not on dst->path,
-as result, indication is lost when XFRM is used
+> - I failed to understand the CXGB* code, I see dst_confirm()
+> calls but I'm not sure dst_neigh_output() was called. For now
+> I just removed the dst->pending_confirm flag and left all
+> dst_confirm() calls there. Any better idea?
 
-- DNAT can change the nexthop, so the really used nexthop is
-not confirmed
+As I said, it is trying to confirm neighbours based upon traffic
+occurring in the chips TCP offload stack.  The 'cm' in "iwch_cm.c"
+means "connection manager".
 
-	So, the following solution is to avoid using
-dst->pending_confirm.
+We can probably get to the neigh that will end up being used
+since there should be a flow key somewhere that we can use to
+determine the nexthop address for neigh lookup.
 
-	The current dst_confirm() usage is as follows:
+> - Now may be old function neigh_output() should be restored
+> instead of dst_neigh_output?
 
-Protocols confirming dst on received packets:
-- TCP (1 dst per socket)
-- SCTP (1 dst per transport)
-- CXGB*
+Please elaborate.
 
-Protocols supporting sendmsg with MSG_CONFIRM [ | MSG_PROBE ] to
-confirm neighbour:
-- UDP IPv4/IPv6
-- ICMPv4 PING
-- RAW IPv4/IPv6
-- L2TP/IPv6
-
-MSG_CONFIRM for other purposes (fix not needed):
-- CAN
-
-Sending without locking the socket:
-- UDP (when no cork)
-- RAW (when hdrincl=1)
-
-Redirects from old to new GW:
-- rt6_do_redirect
-
-
-	The patchset includes the following changes:
-
-1. sock: add sk_dst_pending_confirm flag
-
-- used only by TCP with patch 4 to remember the received
-indication in sk->sk_dst_pending_confirm
-
-2. net: add dst_pending_confirm flag to skbuff
-
-- skb->dst_pending_confirm will be used by all protocols
-in following patches, via skb_{set,get}_dst_pending_confirm
-
-3. sctp: add dst_pending_confirm flag
-
-- SCTP uses per-transport dsts and can not use
-sk->sk_dst_pending_confirm like TCP
-
-4. tcp: replace dst_confirm with sk_dst_confirm
-
-5. net: add confirm_neigh method to dst_ops
-
-- IPv4 and IPv6 provision for slow neigh lookups for MSG_PROBE users.
-I decided to use neigh lookup only for this case because on
-MSG_PROBE the skb may pass MTU checks but it does not reach
-the neigh confirmation code. This patch will be used from patch 6.
-
-- xfrm_confirm_neigh: we use the last tunnel address, if present.
-When there are only transports, the original dest address is used.
-
-6. net: use dst_confirm_neigh for UDP, RAW, ICMP, L2TP
-
-- dst_confirm conversion for UDP, RAW, ICMP and L2TP/IPv6
-
-- these protocols use MSG_CONFIRM propagated by ip*_append_data
-to skb->dst_pending_confirm. sk->sk_dst_pending_confirm is not
-used because some sending paths do not lock the socket. For
-MSG_PROBE we use the slow lookup (dst_confirm_neigh).
-
-- there are also 2 cases that need the slow lookup:
-__ip6_rt_update_pmtu and rt6_do_redirect. I hope
-&ipv6_hdr(skb)->saddr is the correct nexthop address to use here.
-
-7. net: pending_confirm is not used anymore
-
-- I failed to understand the CXGB* code, I see dst_confirm()
-calls but I'm not sure dst_neigh_output() was called. For now
-I just removed the dst->pending_confirm flag and left all
-dst_confirm() calls there. Any better idea?
-
-- Now may be old function neigh_output() should be restored
-instead of dst_neigh_output?
-
-
-Julian Anastasov (7):
-  sock: add sk_dst_pending_confirm flag
-  net: add dst_pending_confirm flag to skbuff
-  sctp: add dst_pending_confirm flag
-  tcp: replace dst_confirm with sk_dst_confirm
-  net: add confirm_neigh method to dst_ops
-  net: use dst_confirm_neigh for UDP, RAW, ICMP, L2TP
-  net: pending_confirm is not used anymore
-
- drivers/net/vrf.c          |  5 ++++-
- include/linux/skbuff.h     | 12 ++++++++++++
- include/net/arp.h          | 16 ++++++++++++++++
- include/net/dst.h          | 21 +++++++++------------
- include/net/dst_ops.h      |  2 ++
- include/net/ndisc.h        | 17 +++++++++++++++++
- include/net/sctp/sctp.h    |  6 ++----
- include/net/sctp/structs.h |  4 ++++
- include/net/sock.h         | 26 ++++++++++++++++++++++++++
- net/core/dst.c             |  1 -
- net/core/sock.c            |  2 ++
- net/ipv4/ip_output.c       | 11 ++++++++++-
- net/ipv4/ping.c            |  3 ++-
- net/ipv4/raw.c             |  6 +++++-
- net/ipv4/route.c           | 19 +++++++++++++++++++
- net/ipv4/tcp_input.c       | 12 +++---------
- net/ipv4/tcp_metrics.c     |  7 ++-----
- net/ipv4/tcp_output.c      |  2 ++
- net/ipv4/udp.c             |  3 ++-
- net/ipv6/ip6_output.c      |  7 +++++++
- net/ipv6/raw.c             |  6 +++++-
- net/ipv6/route.c           | 43 ++++++++++++++++++++++++++++++-------------
- net/ipv6/udp.c             |  3 ++-
- net/l2tp/l2tp_ip6.c        |  3 ++-
- net/sctp/associola.c       |  3 +--
- net/sctp/output.c          | 10 +++++++++-
- net/sctp/outqueue.c        |  2 +-
- net/sctp/sm_make_chunk.c   |  6 ++----
- net/sctp/sm_sideeffect.c   |  2 +-
- net/sctp/socket.c          |  4 ++--
- net/sctp/transport.c       | 17 ++++++++++++++++-
- net/xfrm/xfrm_policy.c     | 19 +++++++++++++++++++
- 32 files changed, 236 insertions(+), 64 deletions(-)
-
--- 
-1.9.3
+Thanks.
 
