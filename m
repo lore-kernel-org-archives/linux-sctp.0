@@ -1,134 +1,204 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 22 Feb 2017 09:20:19 +0000
-Subject: Re: multihoming client question
-Message-Id: <CADvbK_e8C938eBvvOtS0+WCeYzmvo43h6K8wQbbby8Z5WMV_BQ@mail.gmail.com>
+Date: Wed, 08 Feb 2017 17:18:20 +0000
+Subject: [PATCHv6 net-next 6/6] sctp: implement sender-side procedures for Add Incoming/Outgoing Streams Requ
+Message-Id: <12e8878a56e37cae2a9c65ee1f548b7c8dff6b78.1486573728.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAJ0j_BYFOO+szALYGoFryCcpOrRoYjrgPOx_VVcUvOtSUX31Uw@mail.gmail.com>
-In-Reply-To: <CAJ0j_BYFOO+szALYGoFryCcpOrRoYjrgPOx_VVcUvOtSUX31Uw@mail.gmail.com>
+References: <cover.1486573727.git.lucien.xin@gmail.com>
+ <5f2d5aa54716217f68f724e4165289bd964b8755.1486573728.git.lucien.xin@gmail.com>
+ <3d1180fcc5c72dea7d6cb7c7fafae4c4a7782cb3.1486573728.git.lucien.xin@gmail.com>
+ <376d8794b81d7c5efe02b588ca381b88ed5f05ad.1486573728.git.lucien.xin@gmail.com>
+ <7095f88e0d93a7189df08fec56b3db89deb0397c.1486573728.git.lucien.xin@gmail.com>
+ <2664f74a3821c493b1b8beea4bc5c4077e994243.1486573728.git.lucien.xin@gmail.com>
+In-Reply-To: <2664f74a3821c493b1b8beea4bc5c4077e994243.1486573728.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-On Wed, Feb 22, 2017 at 3:33 PM, Tim Tam <wctamtim2016@gmail.com> wrote:
-> Dear Marcelo,
->
-> As we want to setup a 2 way mutihome, we setup a Vlan config to divide 2 IP
-> subnet (172.28.129.56, 172.28.129.184) and the iproute2 config as below.
-> Therefore, it suppose the connection only allow 172.28.129.56 <----->
-> 10.82.24.26, 172.28.129.184 <-----> 10.82.24.153
-> However, during our test, it found the heatbeat send from server
-> 10.82.24.153 ---> 172.28.129.184 but the heartbeat_ack always reply with
-> other interface 172.28.129.56 ----> 10.82.24.153. we didn't setup any
-> routing for this,  why the library always reply the ack with another
-> interface?
-> thanks
->
-> iproute2:
->
->
-> 32722:  from 172.28.129.184 to 10.82.24.153 lookup SCTP20
-> 32723:  from 172.28.129.56 to 10.82.24.26 lookup SCTP19
->
-> [root@lqsgwtest ~]# ip route show table SCTP19
-> default via 172.28.129.1 dev em3
-shouldn't it be "default via 172.28.129.1 dev em3.6" ?
+This patch is to implement Sender-Side Procedures for the Add
+Outgoing and Incoming Streams Request Parameter described in
+rfc6525 section 5.1.5-5.1.6.
 
-> [root@lqsgwtest ~]# ip route show table SCTP20
-> default via 172.28.129.129 dev em2
-"default via 172.28.129.129 dev em2.5" ?
+It is also to add sockopt SCTP_ADD_STREAMS in rfc6525 section
+6.3.4 for users.
 
->
->
->
-> interface:
->
-> em2.5     Link encap:Ethernet  HWaddr 78:2B:CB:35:6D:52
->           inet addr:172.28.129.184  Bcast:172.28.129.255
-> Mask:255.255.255.128
->           inet6 addr: fe80::7a2b:cbff:fe35:6d52/64 Scope:Link
->           UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
->           RX packets:0 errors:0 dropped:0 overruns:0 frame:0
->           TX packets:6 errors:0 dropped:0 overruns:0 carrier:0
->           collisions:0 txqueuelen:0
->           RX bytes:0 (0.0 b)  TX bytes:468 (468.0 b)
->
->
->
-> em3.6     Link encap:Ethernet  HWaddr 78:2B:CB:35:6D:54
->           inet addr:172.28.129.56  Bcast:172.28.129.127
-> Mask:255.255.255.128
->           inet6 addr: fe80::7a2b:cbff:fe35:6d54/64 Scope:Link
->           UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
->           RX packets:0 errors:0 dropped:0 overruns:0 frame:0
->           TX packets:6 errors:0 dropped:0 overruns:0 carrier:0
->           collisions:0 txqueuelen:0
->           RX bytes:0 (0.0 b)  TX bytes:468 (468.0 b)
->
-> netstat route:
->
-> 10.82.24.26     172.28.129.1    255.255.255.255 UGH       0 0          0 em3
-> 10.82.24.153    172.28.129.129  255.255.255.255 UGH       0 0          0 em2
-> 172.28.129.128  0.0.0.0         255.255.255.128 U         0 0          0
-> em2.5
-> 172.28.129.0    0.0.0.0         255.255.255.128 U         0 0          0
-> em3.6
->
->
-> Regards,
-> Tim Tam
->
-> On Tue, Feb 21, 2017 at 4:51 PM, tsoi andrew <tsoiandrew@gmail.com> wrote:
->>
->> Dear Sir,
->>
->> My partner TIm will help to provide information.
->>
->> Hi Tim,
->>
->> Please help to provide information.
->>
->> Regards,
->> Andrew
->>
->>
->> ---------- Forwarded message ----------
->> From: Xin Long <lucien.xin@gmail.com>
->> Date: Wed, Jan 11, 2017 at 9:19 PM
->> Subject: Re: multihoming client question
->> To: tsoi andrew <tsoiandrew@gmail.com>
->> Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
->> linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>
->>
->>
->> On Wed, Jan 11, 2017 at 6:24 PM, tsoi andrew <tsoiandrew@gmail.com> wrote:
->> > Dear Sir,
->> >
->> > We have used iproute2 to set the route but lksctp client still choose
->> > the path from IP A to IP Y.
->> > It is still under our investigation.  Any hints for me?
->> can you send your route entries, the NICs' names and their addresses,
->> peer's addresses?
->>
->> >
->> > Regards,
->> > Andrew
->> >
->> > On Wed, Dec 21, 2016 at 10:04 PM, Marcelo Ricardo Leitner
->> > <marcelo.leitner@gmail.com> wrote:
->> >> On Wed, Dec 21, 2016 at 05:10:22PM +0800, tsoi andrew wrote:
->> >>> Dear Sir,
->> >>>
->> >>> Would you provide the link for download the new library? I only find
->> >>> version 1.0.17 in http://lksctp.sourceforge.net/.
->> >>
->> >> 1.0.17 is the latest release we have.
->> >> You can a devel copy (may not be stable) via git,
->> >> https://github.com/sctp/lksctp-tools
->> >> but that's not going to help with this problem. The change Xin
->> >> mentioned
->> >> is on kernel level only.
->> >>
->> >>   Marcelo
->
->
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/sctp.h   |  2 ++
+ include/uapi/linux/sctp.h |  7 +++++
+ net/sctp/socket.c         | 29 ++++++++++++++++++
+ net/sctp/stream.c         | 77 +++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 115 insertions(+)
+
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index b60ca14..6dfc553 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -199,6 +199,8 @@ int sctp_offload_init(void);
+ int sctp_send_reset_streams(struct sctp_association *asoc,
+ 			    struct sctp_reset_streams *params);
+ int sctp_send_reset_assoc(struct sctp_association *asoc);
++int sctp_send_add_streams(struct sctp_association *asoc,
++			  struct sctp_add_streams *params);
+ 
+ /*
+  * Module global variables
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index c0bd8c3..a91a9cc 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -118,6 +118,7 @@ typedef __s32 sctp_assoc_t;
+ #define SCTP_ENABLE_STREAM_RESET	118
+ #define SCTP_RESET_STREAMS	119
+ #define SCTP_RESET_ASSOC	120
++#define SCTP_ADD_STREAMS	121
+ 
+ /* PR-SCTP policies */
+ #define SCTP_PR_SCTP_NONE	0x0000
+@@ -1027,4 +1028,10 @@ struct sctp_reset_streams {
+ 	uint16_t srs_stream_list[];	/* list if srs_num_streams is not 0 */
+ };
+ 
++struct sctp_add_streams {
++	sctp_assoc_t sas_assoc_id;
++	uint16_t sas_instrms;
++	uint16_t sas_outstrms;
++};
++
+ #endif /* _UAPI_SCTP_H */
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 45a7c41..75f35ce 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3844,6 +3844,32 @@ static int sctp_setsockopt_reset_assoc(struct sock *sk,
+ 	return retval;
+ }
+ 
++static int sctp_setsockopt_add_streams(struct sock *sk,
++				       char __user *optval,
++				       unsigned int optlen)
++{
++	struct sctp_association *asoc;
++	struct sctp_add_streams params;
++	int retval = -EINVAL;
++
++	if (optlen != sizeof(params))
++		goto out;
++
++	if (copy_from_user(&params, optval, optlen)) {
++		retval = -EFAULT;
++		goto out;
++	}
++
++	asoc = sctp_id2assoc(sk, params.sas_assoc_id);
++	if (!asoc)
++		goto out;
++
++	retval = sctp_send_add_streams(asoc, &params);
++
++out:
++	return retval;
++}
++
+ /* API 6.2 setsockopt(), getsockopt()
+  *
+  * Applications use setsockopt() and getsockopt() to set or retrieve
+@@ -4019,6 +4045,9 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 	case SCTP_RESET_ASSOC:
+ 		retval = sctp_setsockopt_reset_assoc(sk, optval, optlen);
+ 		break;
++	case SCTP_ADD_STREAMS:
++		retval = sctp_setsockopt_add_streams(sk, optval, optlen);
++		break;
+ 	default:
+ 		retval = -ENOPROTOOPT;
+ 		break;
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 53e49fc..eb02490 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -217,3 +217,80 @@ int sctp_send_reset_assoc(struct sctp_association *asoc)
+ 
+ 	return 0;
+ }
++
++int sctp_send_add_streams(struct sctp_association *asoc,
++			  struct sctp_add_streams *params)
++{
++	struct sctp_stream *stream = asoc->stream;
++	struct sctp_chunk *chunk = NULL;
++	int retval = -ENOMEM;
++	__u32 outcnt, incnt;
++	__u16 out, in;
++
++	if (!asoc->peer.reconf_capable ||
++	    !(asoc->strreset_enable & SCTP_ENABLE_CHANGE_ASSOC_REQ)) {
++		retval = -ENOPROTOOPT;
++		goto out;
++	}
++
++	if (asoc->strreset_outstanding) {
++		retval = -EINPROGRESS;
++		goto out;
++	}
++
++	out = params->sas_outstrms;
++	in  = params->sas_instrms;
++	outcnt = stream->outcnt + out;
++	incnt = stream->incnt + in;
++	if (outcnt > SCTP_MAX_STREAM || incnt > SCTP_MAX_STREAM ||
++	    (!out && !in)) {
++		retval = -EINVAL;
++		goto out;
++	}
++
++	if (out) {
++		struct sctp_stream_out *streamout;
++
++		streamout = krealloc(stream->out, outcnt * sizeof(*streamout),
++				     GFP_KERNEL);
++		if (!streamout)
++			goto out;
++
++		memset(streamout + stream->outcnt, 0, out * sizeof(*streamout));
++		stream->out = streamout;
++	}
++
++	if (in) {
++		struct sctp_stream_in *streamin;
++
++		streamin = krealloc(stream->in, incnt * sizeof(*streamin),
++				    GFP_KERNEL);
++		if (!streamin)
++			goto out;
++
++		memset(streamin + stream->incnt, 0, in * sizeof(*streamin));
++		stream->in = streamin;
++	}
++
++	chunk = sctp_make_strreset_addstrm(asoc, out, in);
++	if (!chunk)
++		goto out;
++
++	asoc->strreset_chunk = chunk;
++	sctp_chunk_hold(asoc->strreset_chunk);
++
++	retval = sctp_send_reconf(asoc, chunk);
++	if (retval) {
++		sctp_chunk_put(asoc->strreset_chunk);
++		asoc->strreset_chunk = NULL;
++		goto out;
++	}
++
++	stream->incnt = incnt;
++	stream->outcnt = outcnt;
++
++	asoc->strreset_outstanding = !!out + !!in;
++
++out:
++	return retval;
++}
+-- 
+2.1.0
+
