@@ -1,31 +1,116 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 07 Feb 2017 17:55:54 +0000
-Subject: Re: [PATCH net] sctp: avoid BUG_ON on sctp_wait_for_sndbuf
-Message-Id: <20170207.125554.925905416124561370.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 08 Feb 2017 17:18:19 +0000
+Subject: [PATCHv6 net-next 5/6] sctp: add support for generating stream reconf add incoming/outgoing streams 
+Message-Id: <2664f74a3821c493b1b8beea4bc5c4077e994243.1486573728.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <90df61dca0e882ccc175bcec200b341b171b7406.1486411622.git.marcelo.leitner@gmail.com>
-In-Reply-To: <90df61dca0e882ccc175bcec200b341b171b7406.1486411622.git.marcelo.leitner@gmail.com>
+References: <cover.1486573727.git.lucien.xin@gmail.com>
+ <5f2d5aa54716217f68f724e4165289bd964b8755.1486573728.git.lucien.xin@gmail.com>
+ <3d1180fcc5c72dea7d6cb7c7fafae4c4a7782cb3.1486573728.git.lucien.xin@gmail.com>
+ <376d8794b81d7c5efe02b588ca381b88ed5f05ad.1486573728.git.lucien.xin@gmail.com>
+ <7095f88e0d93a7189df08fec56b3db89deb0397c.1486573728.git.lucien.xin@gmail.com>
+In-Reply-To: <7095f88e0d93a7189df08fec56b3db89deb0397c.1486573728.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: marcelo.leitner@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, alex.popov@linux.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon,  6 Feb 2017 18:10:31 -0200
+This patch is to define Add Incoming/Outgoing Streams Request
+Parameter described in rfc6525 section 4.5 and 4.6. They can
+be in one same chunk trunk as rfc6525 section 3.1-7 describes,
+so make them in one function.
 
-> Alexander Popov reported that an application may trigger a BUG_ON in
-> sctp_wait_for_sndbuf if the socket tx buffer is full, a thread is
-> waiting on it to queue more data and meanwhile another thread peels off
-> the association being used by the first thread.
-> 
-> This patch replaces the BUG_ON call with a proper error handling. It
-> will return -EPIPE to the original sendmsg call, similarly to what would
-> have been done if the association wasn't found in the first place.
-> 
-> Acked-by: Alexander Popov <alex.popov@linux.com>
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> ---
-> Please consider this to -stable. Thanks
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/linux/sctp.h     |  7 +++++++
+ include/net/sctp/sm.h    |  3 +++
+ net/sctp/sm_make_chunk.c | 46 ++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 56 insertions(+)
 
-Applied and queued up for -stable, thanks a lot.
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index 71c0d41..b055788 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -742,4 +742,11 @@ struct sctp_strreset_tsnreq {
+ 	__u32 request_seq;
+ };
+ 
++struct sctp_strreset_addstrm {
++	sctp_paramhdr_t param_hdr;
++	__u32 request_seq;
++	__u16 number_of_streams;
++	__u16 reserved;
++};
++
+ #endif /* __LINUX_SCTP_H__ */
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index ac37c17..3675fde 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -267,6 +267,9 @@ struct sctp_chunk *sctp_make_strreset_req(
+ 				bool out, bool in);
+ struct sctp_chunk *sctp_make_strreset_tsnreq(
+ 				const struct sctp_association *asoc);
++struct sctp_chunk *sctp_make_strreset_addstrm(
++				const struct sctp_association *asoc,
++				__u16 out, __u16 in);
+ void sctp_chunk_assign_tsn(struct sctp_chunk *);
+ void sctp_chunk_assign_ssn(struct sctp_chunk *);
+ 
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 749842a..7f8dbf2 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -3687,3 +3687,49 @@ struct sctp_chunk *sctp_make_strreset_tsnreq(
+ 
+ 	return retval;
+ }
++
++/* RE-CONFIG 4.5/4.6 (ADD STREAM)
++ *   0                   1                   2                   3
++ *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |     Parameter Type = 17       |      Parameter Length = 12    |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |          Re-configuration Request Sequence Number             |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ *  |      Number of new streams    |         Reserved              |
++ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ */
++struct sctp_chunk *sctp_make_strreset_addstrm(
++				const struct sctp_association *asoc,
++				__u16 out, __u16 in)
++{
++	struct sctp_strreset_addstrm addstrm;
++	__u16 size = sizeof(addstrm);
++	struct sctp_chunk *retval;
++
++	retval = sctp_make_reconf(asoc, (!!out + !!in) * size);
++	if (!retval)
++		return NULL;
++
++	if (out) {
++		addstrm.param_hdr.type = SCTP_PARAM_RESET_ADD_OUT_STREAMS;
++		addstrm.param_hdr.length = htons(size);
++		addstrm.number_of_streams = htons(out);
++		addstrm.request_seq = htonl(asoc->strreset_outseq);
++		addstrm.reserved = 0;
++
++		sctp_addto_chunk(retval, size, &addstrm);
++	}
++
++	if (in) {
++		addstrm.param_hdr.type = SCTP_PARAM_RESET_ADD_IN_STREAMS;
++		addstrm.param_hdr.length = htons(size);
++		addstrm.number_of_streams = htons(in);
++		addstrm.request_seq = htonl(asoc->strreset_outseq + !!out);
++		addstrm.reserved = 0;
++
++		sctp_addto_chunk(retval, size, &addstrm);
++	}
++
++	return retval;
++}
+-- 
+2.1.0
+
