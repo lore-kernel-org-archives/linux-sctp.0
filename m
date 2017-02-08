@@ -1,46 +1,55 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 24 Feb 2017 16:11:14 +0000
-Subject: Re: [PATCH net] sctp: deny peeloff operation on asocs with threads sleeping on it
-Message-Id: <20170224.111114.542899448539607425.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 08 Feb 2017 17:18:15 +0000
+Subject: [PATCHv6 net-next 1/6] sctp: drop unnecessary __packed from some stream reconf structures
+Message-Id: <5f2d5aa54716217f68f724e4165289bd964b8755.1486573728.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <e3adb3f22270407764cfbeb1adb7e4c95cf42cbb.1487800862.git.marcelo.leitner@gmail.com>
-In-Reply-To: <e3adb3f22270407764cfbeb1adb7e4c95cf42cbb.1487800862.git.marcelo.leitner@gmail.com>
+References: <cover.1486573727.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1486573727.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: marcelo.leitner@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, lucien.xin@gmail.com, alex.popov@linux.com, ben@decadent.org.uk
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 23 Feb 2017 09:31:18 -0300
+commit 85c727b59483 ("sctp: drop __packed from almost all SCTP structures")
+has removed __packed from almost all SCTP structures. But there still are
+three structures where it should be dropped.
 
-> commit 2dcab5984841 ("sctp: avoid BUG_ON on sctp_wait_for_sndbuf")
-> attempted to avoid a BUG_ON call when the association being used for a
-> sendmsg() is blocked waiting for more sndbuf and another thread did a
-> peeloff operation on such asoc, moving it to another socket.
-> 
-> As Ben Hutchings noticed, then in such case it would return without
-> locking back the socket and would cause two unlocks in a row.
-> 
-> Further analysis also revealed that it could allow a double free if the
-> application managed to peeloff the asoc that is created during the
-> sendmsg call, because then sctp_sendmsg() would try to free the asoc
-> that was created only for that call.
-> 
-> This patch takes another approach. It will deny the peeloff operation
-> if there is a thread sleeping on the asoc, so this situation doesn't
-> exist anymore. This avoids the issues described above and also honors
-> the syscalls that are already being handled (it can be multiple sendmsg
-> calls).
-> 
-> Joint work with Xin Long.
-> 
-> Fixes: 2dcab5984841 ("sctp: avoid BUG_ON on sctp_wait_for_sndbuf")
-> Cc: Alexander Popov <alex.popov@linux.com>
-> Cc: Ben Hutchings <ben@decadent.org.uk>
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> ---
-> Hi, please consider this one for -stable too. Thanks
+This patch is to remove it from some stream reconf structures.
 
-Applied and queued up for -stable, thanks.
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/linux/sctp.h | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index 2408c68..d74fca3 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -721,7 +721,7 @@ struct sctp_infox {
+ struct sctp_reconf_chunk {
+ 	sctp_chunkhdr_t chunk_hdr;
+ 	__u8 params[0];
+-} __packed;
++};
+ 
+ struct sctp_strreset_outreq {
+ 	sctp_paramhdr_t param_hdr;
+@@ -729,12 +729,12 @@ struct sctp_strreset_outreq {
+ 	__u32 response_seq;
+ 	__u32 send_reset_at_tsn;
+ 	__u16 list_of_streams[0];
+-} __packed;
++};
+ 
+ struct sctp_strreset_inreq {
+ 	sctp_paramhdr_t param_hdr;
+ 	__u32 request_seq;
+ 	__u16 list_of_streams[0];
+-} __packed;
++};
+ 
+ #endif /* __LINUX_SCTP_H__ */
+-- 
+2.1.0
+
