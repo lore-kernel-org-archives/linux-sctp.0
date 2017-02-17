@@ -1,51 +1,81 @@
-From: Davide Caratti <dcaratti@redhat.com>
-Date: Tue, 28 Feb 2017 10:31:11 +0000
-Subject: Re: [RFC PATCH net-next 2/5] net: split skb_checksum_help
-Message-Id: <1488277871.3248.34.camel@redhat.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 17 Feb 2017 08:35:24 +0000
+Subject: [PATCH net] sctp: check duplicate node before inserting a new transport
+Message-Id: <ba2afff1b2cf9e0026a23dde02d207583efa3d83.1487320524.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1485177252.git.dcaratti@redhat.com>
-         <532e1db70b6c40f1b1e5c60b5b51be9f3437a30b.1485177252.git.dcaratti@redhat.com>
-         <CALx6S37E=OEkRego_u=oDuUgQUn9-NZLpupvbN_dge1rqF92CQ@mail.gmail.com>
-         <063D6719AE5E284EB5DD2968C1650D6DB026CEA4@AcuExch.aculab.com>
-         <1486048043.2556.4.camel@redhat.com>
-         <CALx6S34KvvLYo_wrnX-da5ok3Z4pcdyJxiLi63iHzno9j9L4Fg@mail.gmail.com>
-         <1488202783.2713.67.camel@redhat.com>
-         <CALx6S36bZ_tZrXxBj9fNActemMDKYJzA5K1vK9jVED9z9+FwBg@mail.gmail.com>
-In-Reply-To: <CALx6S36bZ_tZrXxBj9fNActemMDKYJzA5K1vK9jVED9z9+FwBg@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: Tom Herbert <tom@herbertland.com>
-Cc: David Laight <David.Laight@aculab.com>, "David S. Miller" <davem@davemloft.net>, Linux Kernel Network Developers <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-On Mon, 2017-02-27 at 07:11 -0800, Tom Herbert wrote:
-> CHECKSUM_PARTIAL is the preferred mechanism on the transmit path this
-> defers defers the checksum computation as long as possible.
-> Unfortunately, if SCTP is encapsulated in UDP we will probably need to
-> run the SCTP CRC on the host which will be done with your changes to
-> skb_checksum_help.
+sctp has changed to use rhlist for transport rhashtable since commit
+7fda702f9315 ("sctp: use new rhlist interface on sctp transport
+rhashtable").
 
-right. Tunnel devices have NETIF_F_SCTP_CRC bit cleared and
-NETIF_F_HW_CSUM bit set: so, in this case csum_not_inet can help
-recovering non-GSO SCTP packets having ip_summed equal to
-CHECKSUM_PARTIAL.
+But rhltable_insert_key doesn't check the duplicate node when inserting
+a node, unlike rhashtable_lookup_insert_key. It may cause duplicate
+assoc/transport in rhashtable. like:
 
-> > I'm not sure if setting CHECKSUM_UNNECESSARY fits my case, because this=
- would
-> > implicitly skip RX validation when using devices like veth or loopback.
-> >
-> CHECKSUM_UNNECESSARY can be used in the transmit path (really the
-> forwarding path), however this I think this must imply that the
-> checksum in the packet must be correct. Please see my post about
-> drivers that are mistakingly using CHECKSUM_UNNECESSARY with LRO since
-> the checksum in the packet sent into the stack is not correct.
+ client (addr A, B)                 server (addr X, Y)
+    connect to X           INIT (1)
+                        ------------>
+    connect to Y           INIT (2)
+                        ------------>
+                         INIT_ACK (1)
+                        <------------
+                         INIT_ACK (2)
+                        <------------
 
-Ok, now I'm more convinced to use CHECKSUM_NONE :-)
+After sending INIT (2), one transport will be created and hashed into
+rhashtable. But when receiving INIT_ACK (1) and processing the address
+params, another transport will be created and hashed into rhashtable
+with the same addr Y and EP as the last transport. This will confuse
+the assoc/transport's lookup.
 
-thank you for the attention!
-regards
---
-davide
-=C2=A0
+This patch is to fix it by returning err if any duplicate node exists
+before inserting it.
 
+Fixes: 7fda702f9315 ("sctp: use new rhlist interface on sctp transport rhashtable")
+Reported-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/input.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 458e506..f65245b 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -872,6 +872,8 @@ void sctp_transport_hashtable_destroy(void)
+ 
+ int sctp_hash_transport(struct sctp_transport *t)
+ {
++	struct sctp_transport *transport;
++	struct rhlist_head *tmp, *list;
+ 	struct sctp_hash_cmp_arg arg;
+ 	int err;
+ 
+@@ -882,8 +884,19 @@ int sctp_hash_transport(struct sctp_transport *t)
+ 	arg.paddr = &t->ipaddr;
+ 	arg.lport = htons(t->asoc->base.bind_addr.port);
+ 
++	list = rhltable_lookup(&sctp_transport_hashtable, &arg,
++			       sctp_hash_params);
++
++	rhl_for_each_entry_rcu(transport, tmp, list, node)
++		if (transport->asoc->ep = t->asoc->ep) {
++			err = -EEXIST;
++			goto out;
++		}
++
+ 	err = rhltable_insert_key(&sctp_transport_hashtable, &arg,
+ 				  &t->node, sctp_hash_params);
++
++out:
+ 	if (err)
+ 		pr_err_once("insert transport fail, errno %d\n", err);
+ 
+-- 
+2.1.0
 
