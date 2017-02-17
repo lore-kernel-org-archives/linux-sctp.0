@@ -1,104 +1,110 @@
-From: Davide Caratti <dcaratti@redhat.com>
-Date: Tue, 28 Feb 2017 10:32:48 +0000
-Subject: [PATCH RFC net-next v2 4/4] Documentation: update notes on checksum offloading
-Message-Id: <6be6b03bc09e4c15a9fd3c05847b22d4d3debff9.1488199633.git.dcaratti@redhat.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 17 Feb 2017 04:45:42 +0000
+Subject: [PATCHv2 net-next 6/7] sctp: add reconf chunk process
+Message-Id: <c226e65af5c013263d702ee4ee3fb1a7c6cac32f.1487306585.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1488202783.2713.67.camel@redhat.com>
-In-Reply-To: <1488202783.2713.67.camel@redhat.com>
+References: <cover.1487306585.git.lucien.xin@gmail.com>
+ <f01759c2f5ab1be572d95480d6d4e7e94431d2b8.1487306585.git.lucien.xin@gmail.com>
+ <3ee883ca4dd0ef75baa9ca5bfd9642d28160c10b.1487306585.git.lucien.xin@gmail.com>
+ <07abdfdccbb39c94418b7a7887e82c5c12adf0c7.1487306585.git.lucien.xin@gmail.com>
+ <3b70615422bf6d43013332d4b37c70160a0c1d32.1487306585.git.lucien.xin@gmail.com>
+ <c90e5eac92a42c0d9ab69f7362fc6debf5512bad.1487306585.git.lucien.xin@gmail.com>
+In-Reply-To: <c90e5eac92a42c0d9ab69f7362fc6debf5512bad.1487306585.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@ACULAB.COM>, Tom Herbert <tom@herbertland.com>
-Cc: "David S . Miller" <davem@davemloft.net>, Linux Kernel Network Developers <netdev@vger.kernel.org>, "linux-sctp @ vger . kernel . org" <linux-sctp@vger.kernel.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-Add description of skb_sctp_csum_help in networking/checksum-offload.txt,
-and document its usage in combination with skb->csum_not_inet. While at
-it, remove reference to skb_csum_off_chk* functions, since they have been
-removed from Linux source tree since commit cf53b1da73bd ("Revert "net:
-Add driver helper functions to determine checksum""), and add missing
-explaination of CHECKSUM_UNNECESSARY for FCOE protocol.
+This patch is to add a function to process the incoming reconf chunk,
+in which it verifies the chunk, and traverses the param and process
+it with the right function one by one.
 
-Signed-off-by: Davide Caratti <dcaratti@redhat.com>
+sctp_sf_do_reconf would be the process function of reconf chunk event.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- Documentation/networking/checksum-offloads.txt |  7 ++++---
- include/linux/skbuff.h                         | 25 ++++++++++++-------------
- 2 files changed, 16 insertions(+), 16 deletions(-)
+ include/net/sctp/sm.h   |  1 +
+ net/sctp/sm_statefuns.c | 54 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 55 insertions(+)
 
-diff --git a/Documentation/networking/checksum-offloads.txt b/Documentation/networking/checksum-offloads.txt
-index 56e3686..81534e9 100644
---- a/Documentation/networking/checksum-offloads.txt
-+++ b/Documentation/networking/checksum-offloads.txt
-@@ -49,8 +49,8 @@ A driver declares its offload capabilities in netdev->hw_features; see
-  and csum_offset given in the SKB; if it tries to deduce these itself in
-  hardware (as some NICs do) the driver should check that the values in the
-  SKB match those which the hardware will deduce, and if not, fall back to
-- checksumming in software instead (with skb_checksum_help or one of the
-- skb_csum_off_chk* functions as mentioned in include/linux/skbuff.h).  This
-+ checksumming in software instead (with skb_checksum_help or
-+ skb_sctp_csum_help functions as mentioned in include/linux/skbuff.h). This
-  is a pain, but that's what you get when hardware tries to be clever.
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index ca9fbfb..b6f682e 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -135,6 +135,7 @@ sctp_state_fn_t sctp_sf_do_8_5_1_E_sa;
+ sctp_state_fn_t sctp_sf_cookie_echoed_err;
+ sctp_state_fn_t sctp_sf_do_asconf;
+ sctp_state_fn_t sctp_sf_do_asconf_ack;
++sctp_state_fn_t sctp_sf_do_reconf;
+ sctp_state_fn_t sctp_sf_do_9_2_reshutack;
+ sctp_state_fn_t sctp_sf_eat_fwd_tsn;
+ sctp_state_fn_t sctp_sf_eat_fwd_tsn_fast;
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index d8798dd..e03bb1a 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -3834,6 +3834,60 @@ sctp_disposition_t sctp_sf_do_asconf_ack(struct net *net,
+ 	return SCTP_DISPOSITION_DISCARD;
+ }
  
- The stack should, for the most part, assume that checksum offload is
-@@ -60,7 +60,8 @@ The stack should, for the most part, assume that checksum offload is
-  may include other offloads besides TX Checksum Offload) and, if they are
-  not supported or enabled on the device (determined by netdev->features),
-  performs the corresponding offload in software.  In the case of TX
-- Checksum Offload, that means calling skb_checksum_help(skb).
-+ Checksum Offload, that means calling skb_sctp_csum_help(skb) for SCTP
-+ packets, and skb_checksum_help(skb) for other packets.
- 
- 
- LCO: Local Checksum Offload
-diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
-index 236b7d9..12d3625 100644
---- a/include/linux/skbuff.h
-+++ b/include/linux/skbuff.h
-@@ -108,6 +108,7 @@
-  *       may perform further validation in this case.
-  *     GRE: only if the checksum is present in the header.
-  *     SCTP: indicates the CRC in SCTP header has been validated.
-+ *     FCOE: indicates the CRC in FC frame has been validated.
++/* RE-CONFIG Section 5.2 Upon reception of an RECONF Chunk. */
++sctp_disposition_t sctp_sf_do_reconf(struct net *net,
++				     const struct sctp_endpoint *ep,
++				     const struct sctp_association *asoc,
++				     const sctp_subtype_t type, void *arg,
++				     sctp_cmd_seq_t *commands)
++{
++	struct sctp_paramhdr *err_param = NULL;
++	struct sctp_chunk *chunk = arg;
++	struct sctp_reconf_chunk *hdr;
++	union sctp_params param;
++
++	if (!sctp_vtag_verify(chunk, asoc)) {
++		sctp_add_cmd_sf(commands, SCTP_CMD_REPORT_BAD_TAG,
++				SCTP_NULL());
++		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
++	}
++
++	/* Make sure that the RECONF chunk has a valid length.  */
++	if (!sctp_chunk_length_valid(chunk, sizeof(*hdr)))
++		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
++						  commands);
++
++	if (!sctp_verify_reconf(asoc, chunk, &err_param))
++		return sctp_sf_violation_paramlen(net, ep, asoc, type, arg,
++						  (void *)err_param, commands);
++
++	hdr = (struct sctp_reconf_chunk *)chunk->chunk_hdr;
++	sctp_walk_params(param, hdr, params) {
++		struct sctp_chunk *reply = NULL;
++		struct sctp_ulpevent *ev = NULL;
++
++		if (param.p->type = SCTP_PARAM_RESET_OUT_REQUEST)
++			reply = sctp_process_strreset_outreq(
++				(struct sctp_association *)asoc, param, &ev);
++		else if (param.p->type = SCTP_PARAM_RESET_IN_REQUEST)
++			reply = sctp_process_strreset_inreq(
++				(struct sctp_association *)asoc, param, &ev);
++		/* More handles for other types will be added here, by now it
++		 * just ignores other types.
++		 */
++
++		if (ev)
++			sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP,
++					SCTP_ULPEVENT(ev));
++
++		if (reply)
++			sctp_add_cmd_sf(commands, SCTP_CMD_REPLY,
++					SCTP_CHUNK(reply));
++	}
++
++	return SCTP_DISPOSITION_CONSUME;
++}
++
+ /*
+  * PR-SCTP Section 3.6 Receiver Side Implementation of PR-SCTP
   *
-  *   skb->csum_level indicates the number of consecutive checksums found in
-  *   the packet minus one that have been verified as CHECKSUM_UNNECESSARY.
-@@ -161,14 +162,13 @@
-  *
-  *   NETIF_F_IP_CSUM and NETIF_F_IPV6_CSUM are being deprecated in favor of
-  *   NETIF_F_HW_CSUM. New devices should use NETIF_F_HW_CSUM to indicate
-- *   checksum offload capability. If a	device has limited checksum capabilities
-- *   (for instance can only perform NETIF_F_IP_CSUM or NETIF_F_IPV6_CSUM as
-- *   described above) a helper function can be called to resolve
-- *   CHECKSUM_PARTIAL. The helper functions are skb_csum_off_chk*. The helper
-- *   function takes a spec argument that describes the protocol layer that is
-- *   supported for checksum offload and can be called for each packet. If a
-- *   packet does not match the specification for offload, skb_checksum_help
-- *   is called to resolve the checksum.
-+ *   checksum offload capability. If a device has limited checksum capabilities
-+ *   (for instance it can't perform NETIF_F_IP_CSUM or NETIF_F_IPV6_CSUM as
-+ *   described above) a helper function (namely skb_csum_hwoffload_help) can
-+ *   be called to resolve CHECKSUM_PARTIAL. This function uses netdev_features_t
-+ *   to have the Internet Checksum computed by HW, in case any feature belonging
-+ *   to NETIF_F_CSUM_MASK is set, or by software using skb_checksum_help().
-+ *   See also Section D.
-  *
-  * CHECKSUM_NONE:
-  *
-@@ -189,11 +189,10 @@
-  *   NETIF_F_SCTP_CRC - This feature indicates that a device is capable of
-  *     offloading the SCTP CRC in a packet. To perform this offload the stack
-  *     will set ip_summed to CHECKSUM_PARTIAL and set csum_start and csum_offset
-- *     accordingly. Note the there is no indication in the skbuff that the
-- *     CHECKSUM_PARTIAL refers to an SCTP checksum, a driver that supports
-- *     both IP checksum offload and SCTP CRC offload must verify which offload
-- *     is configured for a packet presumably by inspecting packet headers; in
-- *     case, skb_sctp_csum_help is provided to compute CRC on SCTP packets.
-+ *     accordingly. skb->csum_not_inet is an indication in the skbuff that the
-+ *     CHECKSUM_PARTIAL refers to an SCTP checksum: a driver can use it to
-+ *     decide whether skb_checksum_help() or skb_sctp_csum_help() have to be
-+ *     called on a sk_buff having ip_summed set to CHECKSUM_PARTIAL.
-  *
-  *   NETIF_F_FCOE_CRC - This feature indicates that a device is capable of
-  *     offloading the FCOE CRC in a packet. To perform this offload the stack
 -- 
-2.7.4
+2.1.0
 
