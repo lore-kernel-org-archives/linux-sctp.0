@@ -1,31 +1,28 @@
-From: David Miller <davem@davemloft.net>
-Date: Sun, 19 Feb 2017 23:18:23 +0000
-Subject: Re: [PATCHv2 net-next 0/7] sctp: add receiver-side procedures for stream reconf ssn reset request ch
-Message-Id: <20170219.181823.4704280210611555.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 18 Feb 2017 17:52:44 +0000
+Subject: [PATCH net-next 0/2] sctp: support MSG_MORE flag when sending msg
+Message-Id: <cover.1487440272.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1487306585.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1487306585.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, vyasevich@gmail.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net, David Laight <david.laight@aculab.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 17 Feb 2017 12:45:36 +0800
+This patch is to add support for MSG_MORE on sctp. Patch 1/2 is an
+improvement ahead of patch 2/2 to solve the close block problem
+mentioned in https://patchwork.ozlabs.org/patch/372404/.
 
-> Patch 3/7 and 4/7 are to implement receiver-side procedures for the
-> Outgoing and Incoming SSN Reset Request Parameter described in rfc6525
-> section 5.2.2 and 5.2.3
-> 
-> Patch 1/7 and 2/7 are ahead of them to define some apis.
-> 
-> Patch 5/7-7/7 are to add the process of reconf chunk event in rx path.
-> 
-> Note that with this patchset, asoc->reconf_enable has no chance yet to
-> be set, until the patch "sctp: add get and set sockopt for reconf_enable"
-> is applied in the future. As we can not just enable it when sctp is not
-> capable of processing reconf chunk yet.
- ...
+Xin Long (2):
+  sctp: flush out queue once assoc state falls into SHUTDOWN_PENDING
+  sctp: add support for MSG_MORE
 
-Series applied, thanks.
+ include/net/sctp/structs.h | 1 +
+ net/sctp/output.c          | 9 +++------
+ net/sctp/sm_sideeffect.c   | 4 ++++
+ net/sctp/socket.c          | 1 +
+ 4 files changed, 9 insertions(+), 6 deletions(-)
+
+-- 
+2.1.0
+
