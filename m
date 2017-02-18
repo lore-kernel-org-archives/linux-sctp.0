@@ -1,24 +1,92 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 06 Feb 2017 16:57:29 +0000
-Subject: Re: [PATCH net-next] sctp: process fwd tsn chunk only when prsctp is enabled
-Message-Id: <20170206.115729.1722855528495817146.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 18 Feb 2017 17:52:46 +0000
+Subject: [PATCH net-next 2/2] sctp: add support for MSG_MORE
+Message-Id: <d6f2835b0bd655a563896e86648cbd9b4e01374e.1487440272.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <16dcae6a3bff4b7e4c6d37bfa7dba217d5ca34b7.1486114626.git.lucien.xin@gmail.com>
-In-Reply-To: <16dcae6a3bff4b7e4c6d37bfa7dba217d5ca34b7.1486114626.git.lucien.xin@gmail.com>
+References: <cover.1487440272.git.lucien.xin@gmail.com>
+ <1830885841c7bdd55510396300092f669896f2b0.1487440272.git.lucien.xin@gmail.com>
+In-Reply-To: <1830885841c7bdd55510396300092f669896f2b0.1487440272.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, vyasevich@gmail.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net, David Laight <david.laight@aculab.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri,  3 Feb 2017 17:37:06 +0800
+This patch is to add support for MSG_MORE on sctp.
 
-> This patch is to check if asoc->peer.prsctp_capable is set before
-> processing fwd tsn chunk, if not, it will return an ERROR to the
-> peer, just as rfc3758 section 3.3.1 demands.
-> 
-> Reported-by: Julian Cordes <julian.cordes@gmail.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+It adds force_delay in sctp_datamsg to save MSG_MORE, and sets it after
+creating datamsg according to the send flag. sctp_packet_can_append_data
+then uses it to decide if the chunks of this msg will be sent at once or
+delay it.
 
-Applied.
+Note that unlike [1], this patch saves MSG_MORE in datamsg, instead of
+in assoc. As sctp enqueues the chunks first, then dequeue them one by
+one. If it's saved in assoc,the current msg's send flag (MSG_MORE) may
+affect other chunks' bundling.
+
+Since last patch, sctp flush out queue once assoc state falls into
+SHUTDOWN_PENDING, the close block problem mentioned in [1] has been
+solved as well.
+
+[1] https://patchwork.ozlabs.org/patch/372404/
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/structs.h | 1 +
+ net/sctp/output.c          | 9 +++------
+ net/sctp/socket.c          | 1 +
+ 3 files changed, 5 insertions(+), 6 deletions(-)
+
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 387c802..a244db5 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -497,6 +497,7 @@ struct sctp_datamsg {
+ 	/* Did the messenge fail to send? */
+ 	int send_error;
+ 	u8 send_failed:1,
++	   force_delay:1,
+ 	   can_delay;	    /* should this message be Nagle delayed */
+ };
+ 
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 814eac0..85406d5 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -704,18 +704,15 @@ static sctp_xmit_t sctp_packet_can_append_data(struct sctp_packet *packet,
+ 	 * unacknowledged.
+ 	 */
+ 
+-	if (sctp_sk(asoc->base.sk)->nodelay)
+-		/* Nagle disabled */
++	if ((sctp_sk(asoc->base.sk)->nodelay || inflight = 0) &&
++	    !chunk->msg->force_delay)
++		/* Nothing unacked */
+ 		return SCTP_XMIT_OK;
+ 
+ 	if (!sctp_packet_empty(packet))
+ 		/* Append to packet */
+ 		return SCTP_XMIT_OK;
+ 
+-	if (inflight = 0)
+-		/* Nothing unacked */
+-		return SCTP_XMIT_OK;
+-
+ 	if (!sctp_state(asoc, ESTABLISHED))
+ 		return SCTP_XMIT_OK;
+ 
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 75f35ce..b532148 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1964,6 +1964,7 @@ static int sctp_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
+ 		err = PTR_ERR(datamsg);
+ 		goto out_free;
+ 	}
++	datamsg->force_delay = !!(msg->msg_flags & MSG_MORE);
+ 
+ 	/* Now send the (possibly) fragmented message. */
+ 	list_for_each_entry(chunk, &datamsg->chunks, frag_list) {
+-- 
+2.1.0
+
