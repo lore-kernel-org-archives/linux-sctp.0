@@ -1,47 +1,48 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 18 Feb 2017 15:47:38 +0000
+From: David Miller <davem@davemloft.net>
+Date: Sun, 19 Feb 2017 23:19:49 +0000
 Subject: Re: [PATCH net] sctp: check duplicate node before inserting a new transport
-Message-Id: <CADvbK_dvJoEvmx1PvemxUS1090J1o=Gx3COPK7rdHT4Z1z27UQ@mail.gmail.com>
+Message-Id: <20170219.181949.2029549204792959633.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <ba2afff1b2cf9e0026a23dde02d207583efa3d83.1487320524.git.lucien.xin@gmail.com>
- <20170217.151907.1987368624831286456.davem@davemloft.net>
-In-Reply-To: <20170217.151907.1987368624831286456.davem@davemloft.net>
+In-Reply-To: <ba2afff1b2cf9e0026a23dde02d207583efa3d83.1487320524.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, vyasevich@gmail.com
 
-On Sat, Feb 18, 2017 at 4:19 AM, David Miller <davem@davemloft.net> wrote:
-> From: Xin Long <lucien.xin@gmail.com>
-> Date: Fri, 17 Feb 2017 16:35:24 +0800
->
->
->> +     list = rhltable_lookup(&sctp_transport_hashtable, &arg,
->> +                            sctp_hash_params);
->> +
->> +     rhl_for_each_entry_rcu(transport, tmp, list, node)
->> +             if (transport->asoc->ep = t->asoc->ep) {
->> +                     err = -EEXIST;
->> +                     goto out;
->> +             }
->> +
->>       err = rhltable_insert_key(&sctp_transport_hashtable, &arg,
->>                                 &t->node, sctp_hash_params);
->> +
->> +out:
->
-> Well, what if another thread of control inserts a matching transport
-> after you've checked the list but before rhltable_insert_key() does
-> it's work?
->
-> What write side lock is being held to protect the table from
-> modifications here?
-sock lock.
-...
-sctp_assoc_add_peer()
-  sctp_hash_transport()
-     rhltable_insert_key()
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 17 Feb 2017 16:35:24 +0800
 
-all the places where it call  sctp_assoc_add_peer() are proctected by
-lock_sock(). it's a big lock, no need to worry about race issues here.
+> sctp has changed to use rhlist for transport rhashtable since commit
+> 7fda702f9315 ("sctp: use new rhlist interface on sctp transport
+> rhashtable").
+> 
+> But rhltable_insert_key doesn't check the duplicate node when inserting
+> a node, unlike rhashtable_lookup_insert_key. It may cause duplicate
+> assoc/transport in rhashtable. like:
+> 
+>  client (addr A, B)                 server (addr X, Y)
+>     connect to X           INIT (1)
+>                         ------------>
+>     connect to Y           INIT (2)
+>                         ------------>
+>                          INIT_ACK (1)
+>                         <------------
+>                          INIT_ACK (2)
+>                         <------------
+> 
+> After sending INIT (2), one transport will be created and hashed into
+> rhashtable. But when receiving INIT_ACK (1) and processing the address
+> params, another transport will be created and hashed into rhashtable
+> with the same addr Y and EP as the last transport. This will confuse
+> the assoc/transport's lookup.
+> 
+> This patch is to fix it by returning err if any duplicate node exists
+> before inserting it.
+> 
+> Fixes: 7fda702f9315 ("sctp: use new rhlist interface on sctp transport rhashtable")
+> Reported-by: Fabio M. Di Nitto <fdinitto@redhat.com>
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+
+Applied.
