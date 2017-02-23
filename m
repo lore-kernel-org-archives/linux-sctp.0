@@ -1,69 +1,113 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Thu, 23 Feb 2017 16:04:10 +0000
-Subject: RE: [PATCH net-next 2/2] sctp: add support for MSG_MORE
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6DCFE6E5BB@AcuExch.aculab.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Thu, 23 Feb 2017 17:40:21 +0000
+Subject: Re: [PATCH net-next 2/2] sctp: add support for MSG_MORE
+Message-Id: <20170223174021.GO3414@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1487440272.git.lucien.xin@gmail.com>
  <d6f2835b0bd655a563896e86648cbd9b4e01374e.1487440272.git.lucien.xin@gmail.com>
  <063D6719AE5E284EB5DD2968C1650D6DCFE6C9B9@AcuExch.aculab.com>
  <CADvbK_dDgFc78dBCpTkNxM3kU-GAYbh6CCGTtO=r9ZeNyb2X0A@mail.gmail.com>
-In-Reply-To: <CADvbK_dDgFc78dBCpTkNxM3kU-GAYbh6CCGTtO=r9ZeNyb2X0A@mail.gmail.com>
+ <063D6719AE5E284EB5DD2968C1650D6DCFE6E5BB@AcuExch.aculab.com>
+In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6DCFE6E5BB@AcuExch.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Xin Long' <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, "davem@davemloft.net" <davem@davemloft.net>
+To: David Laight <David.Laight@ACULAB.COM>
+Cc: 'Xin Long' <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, "davem@davemloft.net" <davem@davemloft.net>
 
-RnJvbTogWGluIExvbmcNCj4gU2VudDogMjMgRmVicnVhcnkgMjAxNyAwMzo0Ng0KPiBPbiBUdWUs
-IEZlYiAyMSwgMjAxNyBhdCAxMDoyNyBQTSwgRGF2aWQgTGFpZ2h0IDxEYXZpZC5MYWlnaHRAYWN1
-bGFiLmNvbT4gd3JvdGU6DQo+ID4gRnJvbTogWGluIExvbmcNCj4gPj4gU2VudDogMTggRmVicnVh
-cnkgMjAxNyAxNzo1Mw0KPiA+PiBUaGlzIHBhdGNoIGlzIHRvIGFkZCBzdXBwb3J0IGZvciBNU0df
-TU9SRSBvbiBzY3RwLg0KPiA+Pg0KPiA+PiBJdCBhZGRzIGZvcmNlX2RlbGF5IGluIHNjdHBfZGF0
-YW1zZyB0byBzYXZlIE1TR19NT1JFLCBhbmQgc2V0cyBpdCBhZnRlcg0KPiA+PiBjcmVhdGluZyBk
-YXRhbXNnIGFjY29yZGluZyB0byB0aGUgc2VuZCBmbGFnLiBzY3RwX3BhY2tldF9jYW5fYXBwZW5k
-X2RhdGENCj4gPj4gdGhlbiB1c2VzIGl0IHRvIGRlY2lkZSBpZiB0aGUgY2h1bmtzIG9mIHRoaXMg
-bXNnIHdpbGwgYmUgc2VudCBhdCBvbmNlIG9yDQo+ID4+IGRlbGF5IGl0Lg0KPiA+Pg0KPiA+PiBO
-b3RlIHRoYXQgdW5saWtlIFsxXSwgdGhpcyBwYXRjaCBzYXZlcyBNU0dfTU9SRSBpbiBkYXRhbXNn
-LCBpbnN0ZWFkIG9mDQo+ID4+IGluIGFzc29jLiBBcyBzY3RwIGVucXVldWVzIHRoZSBjaHVua3Mg
-Zmlyc3QsIHRoZW4gZGVxdWV1ZSB0aGVtIG9uZSBieQ0KPiA+PiBvbmUuIElmIGl0J3Mgc2F2ZWQg
-aW4gYXNzb2MsdGhlIGN1cnJlbnQgbXNnJ3Mgc2VuZCBmbGFnIChNU0dfTU9SRSkgbWF5DQo+ID4+
-IGFmZmVjdCBvdGhlciBjaHVua3MnIGJ1bmRsaW5nLg0KPiA+DQo+ID4gSSB0aG91Z2h0IGFib3V0
-IHRoYXQgYW5kIGRlY2lkZWQgdGhhdCB0aGUgTVNHX01PUkUgZmxhZyBvbiB0aGUgbGFzdCBkYXRh
-DQo+ID4gY2h1bmsgd2FzIHRoZSBvbmx5IG9uZSB0aGF0IG1hdHRlcmVkLg0KPiA+IEluZGVlZCBs
-b29raW5nIGF0IGFueSBvdGhlcnMgaXMgYnJva2VuLg0KPiA+DQo+ID4gQ29uc2lkZXIgd2hhdCBo
-YXBwZW5zIGlmIHlvdSBoYXZlIHR3byBzbWFsbCBjaHVua3MgcXVldWVkLCB0aGUgZmlyc3QNCj4g
-PiB3aXRoIE1TR19NT1JFIHNldCwgdGhlIHNlY29uZCB3aXRoIGl0IGNsZWFyLg0KPiA+DQo+ID4g
-SSB0aGluayB0aGF0IHNjdHBfb3V0cV9mbHVzaCgpIHdpbGwgbG9vayBhdCB0aGUgZmlyc3QgY2h1
-bmsgYW5kIGRlY2lkZSBpdA0KPiA+IGRvZXNuJ3QgbmVlZCB0byBkbyBhbnl0aGluZyBiZWNhdXNl
-IHNjdHBfcGFja2V0X3RyYW5zbWl0X2NodW5rKCkNCj4gPiByZXR1cm5zIFNDVFBfWE1JVF9ERUxB
-WS4NCj4gPiBUaGUgZGF0YSBjaHVuayB3aXRoIE1TR19NT1JFIGNsZWFyIHdvbid0IGV2ZW4gYmUg
-bG9va2VkIGF0Lg0KPiA+IFNvIHRoZSBkYXRhIHdpbGwgbmV2ZXIgYmUgc2VudC4NCg0KPiBJdCdz
-IG5vdCB0aGF0IGJhZCBhcyB5b3UgdGhvdWdodCwgaW4gc2N0cF9wYWNrZXRfY2FuX2FwcGVuZF9k
-YXRhKCk6DQo+IHdoZW4gaW5mbGlnaHQgPT0gMCB8fCBzY3RwX3NrKGFzb2MtPmJhc2Uuc2spLT5u
-b2RlbGF5LCB0aGUgY2h1bmtzDQo+IHdvdWxkIGJlIHN0aWxsIHNlbnQgb3V0Lg0KDQpPbmUgb2Yg
-dXMgaXNuJ3QgdW5kZXJzdGFuZGluZyB0aGUgb3RoZXIgOi0pDQoNCklJUkMgc2N0cF9wYWNrZXRf
-Y2FuX2FwcGVuZF9kYXRhKCkgaXMgY2FsbGVkIGZvciB0aGUgZmlyc3QgcXVldWVkDQpkYXRhIGNo
-dW5rIGluIG9yZGVyIHRvIGRlY2lkZSB3aGV0aGVyIHRvIGdlbmVyYXRlIGEgbWVzc2FnZSB0aGF0
-DQpjb25zaXN0cyBvbmx5IG9mIGRhdGEgY2h1bmtzLg0KSWYgaXQgcmV0dXJucyBTQ1RQX1hNSVRf
-T0sgdGhlbiBhIG1lc3NhZ2UgaXMgYnVpbHQgY29sbGVjdGluZyB0aGUNCnJlc3Qgb2YgdGhlIHF1
-ZXVlZCBkYXRhIGNodW5rcyAodW50aWwgdGhlIHdpbmRvdyBmaWxscykuDQoNClNvIGlmIEkgc2Vu
-ZCBhIG1lc3NhZ2Ugd2l0aCBNU0dfTU9SRSBzZXQgKG9uIGFuIGlkbGUgY29ubmVjdGlvbikNClND
-VFBfWE1JVF9ERUxBWSBpcyByZXR1cm5lZCBhbmQgYSBtZXNzYWdlIGlzbid0IHNlbnQuDQoNCkkg
-bm93IHNlbmQgYSBzZWNvbmQgc21hbGwgbWVzc2FnZSwgdGhpcyB0aW1lIHdpdGggTVNHX01PUkUg
-Y2xlYXIuDQpUaGUgbWVzc2FnZSBpcyBxdWV1ZWQsIHRoZW4gdGhlIGNvZGUgbG9va3MgdG8gc2Vl
-IGlmIGl0IGNhbiBzZW5kIGFueXRoaW5nLg0KDQpzY3RwX3BhY2tldF9jYW5fYXBwZW5kX2RhdGEo
-KSBpcyBjYWxsZWQgZm9yIHRoZSBmaXJzdCBxdWV1ZWQgY2h1bmsuDQpTaW5jZSBpdCBoYXMgZm9y
-Y2VfZGVsYXkgc2V0IFNDVFBfWE1JVF9ERUxBWSBpcyByZXR1cm5lZCBhbmQgbm8NCm1lc3NhZ2Ug
-aXMgYnVpbHQuDQpUaGUgc2Vjb25kIG1lc3NhZ2UgaXNuJ3QgZXZlbiBsb29rZWQgYXQuDQoNCj4g
-V2hhdCBNU0dfTU9SRSBmbGFnIGFjdHVhbGx5IGRvZXMgaXMgaWdub3JlIGluZmxpZ2h0ID09IDAg
-YW5kDQo+IHNjdHBfc2soYXNvYy0+YmFzZS5zayktPm5vZGVsYXkgdG8gZGVsYXkgdGhlIGNodW5r
-cywgYnV0IHN0aWxsDQo+IGl0IGhhcyB0byByZXNwZWN0IHRoZSBvcmlnaW5hbCBsb2dpYyAobGlr
-ZSAhY2h1bmstPm1zZy0+Y2FuX2RlbGF5DQo+IHx8ICFzY3RwX3BhY2tldF9lbXB0eShwYWNrZXQp
-IHx8IC4uLikNCj4gDQo+IFRvIGRlbGF5IHRoZSBjaHVua3Mgd2l0aCBNU0dfTU9SRSBzZXQgZXZl
-biB3aGVuIGluZmxpZ2h0IGlzIDANCj4gaXQgZXNwZWNpYWxseSBpbXBvcnRhbnQgaGVyZSBmb3Ig
-dXNlcnMuDQoNCkknbSBub3QgdG9vIHdvcnJpZWQgYWJvdXQgdGhhdC4NClNlbmRpbmcgdGhlIGZp
-cnN0IG1lc3NhZ2Ugd2FzIGEgY2hlYXAgd2F5IHRvIGVuc3VyZSBzb21ldGhpbmcgZ290DQpzZW50
-IGlmIHRoZSBhcHBsaWNhdGlvbiBsaWVkIGFuZCBkaWRuJ3Qgc2VuZCBhIHN1YnNlcXVlbnQgbWVz
-c2FnZS4NCg0KVGhlIGNoYW5nZSBoYXMgaGl0IExpbnVzJ3MgdHJlZSwgSSdsbCBzaG91bGQgYmUg
-YWJsZSB0byB0ZXN0IHRoYXQNCmFuZCBjb25maXJtIHdoYXQgSSB0aGluayBpcyBnb2luZyBvbi4N
-Cg0KCURhdmlkDQoNCg=
+On Thu, Feb 23, 2017 at 04:04:10PM +0000, David Laight wrote:
+> From: Xin Long
+> > Sent: 23 February 2017 03:46
+> > On Tue, Feb 21, 2017 at 10:27 PM, David Laight <David.Laight@aculab.com> wrote:
+> > > From: Xin Long
+> > >> Sent: 18 February 2017 17:53
+> > >> This patch is to add support for MSG_MORE on sctp.
+> > >>
+> > >> It adds force_delay in sctp_datamsg to save MSG_MORE, and sets it after
+> > >> creating datamsg according to the send flag. sctp_packet_can_append_data
+> > >> then uses it to decide if the chunks of this msg will be sent at once or
+> > >> delay it.
+> > >>
+> > >> Note that unlike [1], this patch saves MSG_MORE in datamsg, instead of
+> > >> in assoc. As sctp enqueues the chunks first, then dequeue them one by
+> > >> one. If it's saved in assoc,the current msg's send flag (MSG_MORE) may
+> > >> affect other chunks' bundling.
+> > >
+> > > I thought about that and decided that the MSG_MORE flag on the last data
+> > > chunk was the only one that mattered.
+> > > Indeed looking at any others is broken.
+> > >
+> > > Consider what happens if you have two small chunks queued, the first
+> > > with MSG_MORE set, the second with it clear.
+> > >
+> > > I think that sctp_outq_flush() will look at the first chunk and decide it
+> > > doesn't need to do anything because sctp_packet_transmit_chunk()
+> > > returns SCTP_XMIT_DELAY.
+> > > The data chunk with MSG_MORE clear won't even be looked at.
+> > > So the data will never be sent.
+> 
+> > It's not that bad as you thought, in sctp_packet_can_append_data():
+> > when inflight = 0 || sctp_sk(asoc->base.sk)->nodelay, the chunks
+> > would be still sent out.
+> 
+> One of us isn't understanding the other :-)
+> 
+> IIRC sctp_packet_can_append_data() is called for the first queued
+> data chunk in order to decide whether to generate a message that
+
+Perhaps here lies the source of the confusion?
+sctp_packet_can_append_data() is called for all queued data chunks, and
+not just the first one.
+
+sctp_outq_flush
+  (retransmissions here, omitted for simplicity)
+  /* Finally, transmit new packets.  */
+  while ((chunk = sctp_outq_dequeue_data(q)) != NULL) {
+    sctp_packet_transmit_chunk
+      sctp_packet_append_chunk
+        sctp_packet_can_append_data
+        __sctp_packet_append_chunk
+
+So chunks are checked one by one.
+
+> consists only of data chunks.
+
+That's not really its purpose. It's to check if it can append a data
+chunk to the packet being prepared, while respecting asoc state, cwnd,
+etc.
+
+HTH!
+
+  Marcelo
+
+> If it returns SCTP_XMIT_OK then a message is built collecting the
+> rest of the queued data chunks (until the window fills).
+> 
+> So if I send a message with MSG_MORE set (on an idle connection)
+> SCTP_XMIT_DELAY is returned and a message isn't sent.
+> 
+> I now send a second small message, this time with MSG_MORE clear.
+> The message is queued, then the code looks to see if it can send anything.
+> 
+> sctp_packet_can_append_data() is called for the first queued chunk.
+> Since it has force_delay set SCTP_XMIT_DELAY is returned and no
+> message is built.
+> The second message isn't even looked at.
+> 
+> > What MSG_MORE flag actually does is ignore inflight = 0 and
+> > sctp_sk(asoc->base.sk)->nodelay to delay the chunks, but still
+> > it has to respect the original logic (like !chunk->msg->can_delay
+> > || !sctp_packet_empty(packet) || ...)
+> > 
+> > To delay the chunks with MSG_MORE set even when inflight is 0
+> > it especially important here for users.
+> 
+> I'm not too worried about that.
+> Sending the first message was a cheap way to ensure something got
+> sent if the application lied and didn't send a subsequent message.
+> 
+> The change has hit Linus's tree, I'll should be able to test that
+> and confirm what I think is going on.
+> 
+> 	David
+> 
