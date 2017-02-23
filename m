@@ -1,45 +1,72 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Mon, 27 Feb 2017 10:48:30 +0000
-Subject: RE: [PATCH net-next 2/2] sctp: add support for MSG_MORE
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6DCFE70E65@AcuExch.aculab.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Thu, 23 Feb 2017 12:31:18 +0000
+Subject: [PATCH net] sctp: deny peeloff operation on asocs with threads sleeping on it
+Message-Id: <e3adb3f22270407764cfbeb1adb7e4c95cf42cbb.1487800862.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1487440272.git.lucien.xin@gmail.com>
- <d6f2835b0bd655a563896e86648cbd9b4e01374e.1487440272.git.lucien.xin@gmail.com>
- <063D6719AE5E284EB5DD2968C1650D6DCFE6C9B9@AcuExch.aculab.com>
- <CADvbK_dDgFc78dBCpTkNxM3kU-GAYbh6CCGTtO=r9ZeNyb2X0A@mail.gmail.com>
- <063D6719AE5E284EB5DD2968C1650D6DCFE6E5BB@AcuExch.aculab.com>
- <CADvbK_d9dyL0PFPrAyNqFT_URNdq75NPdQe8tqQkFO4aCg2DdA@mail.gmail.com>
- <063D6719AE5E284EB5DD2968C1650D6DCFE6EDE0@AcuExch.aculab.com>
- <CADvbK_eauYUyUWMAn8Zkpk5hNnK-GDNO+3NCeuA-y=Y7SFnv5A@mail.gmail.com>
- <CADvbK_fS9bOzoRsY-TBKMUkJJZJ5NuouBcSt1=79kJVTAHc=UQ@mail.gmail.com>
-In-Reply-To: <CADvbK_fS9bOzoRsY-TBKMUkJJZJ5NuouBcSt1=79kJVTAHc=UQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Xin Long' <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, "davem@davemloft.net" <davem@davemloft.net>
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>, Alexander Popov <alex.popov@linux.com>, Ben Hutchings <ben@decadent.org.uk>
 
-RnJvbTogWGluIExvbmcNCj4gU2VudDogMjcgRmVicnVhcnkgMjAxNyAwNDo0OQ0KLi4uDQo+ID4g
-d2hhdCBJJ20gd29ycmllZCBhYm91dCBpcyBpZiB0aGUgbXNnX21vcmUgaXMgc2F2ZWQgaW4gYXNz
-b2M6DQo+ID4gICAgICBjaGs0W2NsZWFyXSAtPiBjaGszIFtjbGVhcl0gLT4gY2hrMiBbY2xlYXJd
-IC0+IGNoazEgW2NsZWFyXQ0KPiA+IHRoZW4gd2hlbiB5b3Ugc2VuZCBhIHNtYWxsIGNoa0Egd2l0
-aCBNU0dfTU9SRSwNCj4gPiB0aGUgcXVldWUgd2lsbCBiZSBsaWtlOg0KPiA+ICAgICAgY2hrQSBb
-c2V0XSAtPiBjaGs0W3NldF0gLT4gY2hrMyBbc2V0XSAtPiBjaGsyIFtzZXRdIC0+IGNoazEgW3Nl
-dF0NCj4gPiBiZWNhdXNlIG1zZ19tb3JlIGlzIHNhdmVkIGluIGFzc29jLCBldmVyeSBjaHVuayBj
-YW4gbG9vayBhdCBpdC4NCj4gPiBjaGsxIC0gY2hrNCBhcmUgYmlnIGVub3VnaCB0byBiZSBwYWNr
-ZWQgaW50byBhIHBhY2tldCwgdGhleSB3ZXJlDQo+ID4gbm90IHNlbnQgbGFzdCB0aW1lIGJlY2F1
-c2UgYSBsb3Qgb2YgY2h1bmtzIGFyZSBpbiB0aGUgcmV0cmFuc21pdA0KPiA+IHF1ZXVlLg0KDQpP
-ciBqdXN0IHdhaXRpbmcgZm9yIHRyYW5zbWl0IHdpbmRvdyBzcGFjZS4NCg0KPiA+IEJ1dCBub3cg
-ZXZlbiBpZiByZXRyYW5zbWl0IHF1ZXVlIGlzIG51bGwsIGNoazEtY2hrNCBhcmUgc3RpbGwgYmxv
-Y2tlZC4NCj4gPg0KPiA+IGNhbiB5b3UgYWNjZXB0IHRoYXQgY2hrQSBtYXkgYmxvY2sgdGhlIG9s
-ZCBjaHVua3MgPw0KPiBldmVuIGFsc28gYmxvY2sgdGhlIHJldHJhbnNtaXQgY2h1bmtzLg0KDQpJ
-IGRvbid0IHNlZSBhIHByb2JsZW0sIHRoZSBhcHBsaWNhdGlvbiBpcyBhYm91dCB0byBzZW5kIGFu
-b3RoZXIgY2h1bmsuDQpJdCBpcyBsaWtlbHkgdGhhdCB0aGUgd2hvbGUgbG90IHdpbGwgZ28gaW4g
-b25lIHBhY2tldC4NCg0KSWYgdGhlIGNvbm5lY3Rpb24gaXMgZmxvdyBjb250cm9sbGVkIG9mZiAo
-ZXZlbiBpZiBkdWUgdG8gcGFja2V0IGxvc3MpDQp0aGUgbWlub3IgZGVsYXkgd2FpdGluZyBmb3Ig
-dGhlIGFwcGxpY2F0aW9uIHdvbid0IG1ha2UgYW55IHJlYWwgZGlmZmVyZW5jZS4NCkluZGVlZCBy
-ZWR1Y2luZyB0aGUgbnVtYmVyIG9mIGV0aGVybmV0IGZyYW1lcyBtYXkgaGVscCBpbmNyZWFzZQ0K
-b3ZlcmFsbCB0aHJvdWdocHV0Lg0KDQpEb2VzIGEgcmVxdWVzdCBmb3IgY2h1bmtzIHRvIGJlIHJl
-dHJhbnNtaXR0ZWQgZm9yY2UgYSByZXNwb25zZSBwYWNrZXQgYmUgYnVpbHQ/DQpJZiBzbyBpdCB3
-aWxsIHBpY2sgdXAgYWxsIHRoZSBxdWV1ZWQgZGF0YSBjaHVua3MgcmVnYXJkbGVzcyBvZiBhbnkg
-c2F2ZWQNCk1TR19NT1JFIGJpdHMuDQoNCglEYXZpZA0KDQoNCg=
+commit 2dcab5984841 ("sctp: avoid BUG_ON on sctp_wait_for_sndbuf")
+attempted to avoid a BUG_ON call when the association being used for a
+sendmsg() is blocked waiting for more sndbuf and another thread did a
+peeloff operation on such asoc, moving it to another socket.
+
+As Ben Hutchings noticed, then in such case it would return without
+locking back the socket and would cause two unlocks in a row.
+
+Further analysis also revealed that it could allow a double free if the
+application managed to peeloff the asoc that is created during the
+sendmsg call, because then sctp_sendmsg() would try to free the asoc
+that was created only for that call.
+
+This patch takes another approach. It will deny the peeloff operation
+if there is a thread sleeping on the asoc, so this situation doesn't
+exist anymore. This avoids the issues described above and also honors
+the syscalls that are already being handled (it can be multiple sendmsg
+calls).
+
+Joint work with Xin Long.
+
+Fixes: 2dcab5984841 ("sctp: avoid BUG_ON on sctp_wait_for_sndbuf")
+Cc: Alexander Popov <alex.popov@linux.com>
+Cc: Ben Hutchings <ben@decadent.org.uk>
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+Hi, please consider this one for -stable too. Thanks
+
+ net/sctp/socket.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 1b5d669e30292a57ed57dd920d81be2a57f97b22..d04a8b66098c8a574642b026bff990ac64c21468 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4734,6 +4734,12 @@ int sctp_do_peeloff(struct sock *sk, sctp_assoc_t id, struct socket **sockp)
+ 	if (!asoc)
+ 		return -EINVAL;
+ 
++	/* If there is a thread waiting on more sndbuf space for
++	 * sending on this asoc, it cannot be peeled.
++	 */
++	if (waitqueue_active(&asoc->wait))
++		return -EBUSY;
++
+ 	/* An association cannot be branched off from an already peeled-off
+ 	 * socket, nor is this supported for tcp style sockets.
+ 	 */
+@@ -7426,8 +7432,6 @@ static int sctp_wait_for_sndbuf(struct sctp_association *asoc, long *timeo_p,
+ 		 */
+ 		release_sock(sk);
+ 		current_timeo = schedule_timeout(current_timeo);
+-		if (sk != asoc->base.sk)
+-			goto do_error;
+ 		lock_sock(sk);
+ 
+ 		*timeo_p = current_timeo;
+-- 
+2.9.3
+
