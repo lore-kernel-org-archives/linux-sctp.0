@@ -1,122 +1,61 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 24 Feb 2017 06:43:58 +0000
-Subject: Re: [PATCH net-next 2/2] sctp: add support for MSG_MORE
-Message-Id: <CADvbK_d9dyL0PFPrAyNqFT_URNdq75NPdQe8tqQkFO4aCg2DdA@mail.gmail.com>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Fri, 24 Feb 2017 10:14:09 +0000
+Subject: RE: [PATCH net-next 2/2] sctp: add support for MSG_MORE
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6DCFE6EDE0@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1487440272.git.lucien.xin@gmail.com> <d6f2835b0bd655a563896e86648cbd9b4e01374e.1487440272.git.lucien.xin@gmail.com>
+References: <cover.1487440272.git.lucien.xin@gmail.com>
+ <d6f2835b0bd655a563896e86648cbd9b4e01374e.1487440272.git.lucien.xin@gmail.com>
  <063D6719AE5E284EB5DD2968C1650D6DCFE6C9B9@AcuExch.aculab.com>
- <CADvbK_dDgFc78dBCpTkNxM3kU-GAYbh6CCGTtO=r9ZeNyb2X0A@mail.gmail.com> <063D6719AE5E284EB5DD2968C1650D6DCFE6E5BB@AcuExch.aculab.com>
-In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6DCFE6E5BB@AcuExch.aculab.com>
+ <CADvbK_dDgFc78dBCpTkNxM3kU-GAYbh6CCGTtO=r9ZeNyb2X0A@mail.gmail.com>
+ <063D6719AE5E284EB5DD2968C1650D6DCFE6E5BB@AcuExch.aculab.com>
+ <CADvbK_d9dyL0PFPrAyNqFT_URNdq75NPdQe8tqQkFO4aCg2DdA@mail.gmail.com>
+In-Reply-To: <CADvbK_d9dyL0PFPrAyNqFT_URNdq75NPdQe8tqQkFO4aCg2DdA@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@aculab.com>
+To: 'Xin Long' <lucien.xin@gmail.com>
 Cc: network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, "davem@davemloft.net" <davem@davemloft.net>
 
-On Fri, Feb 24, 2017 at 12:04 AM, David Laight <David.Laight@aculab.com> wrote:
-> From: Xin Long
->> Sent: 23 February 2017 03:46
->> On Tue, Feb 21, 2017 at 10:27 PM, David Laight <David.Laight@aculab.com> wrote:
->> > From: Xin Long
->> >> Sent: 18 February 2017 17:53
->> >> This patch is to add support for MSG_MORE on sctp.
->> >>
->> >> It adds force_delay in sctp_datamsg to save MSG_MORE, and sets it after
->> >> creating datamsg according to the send flag. sctp_packet_can_append_data
->> >> then uses it to decide if the chunks of this msg will be sent at once or
->> >> delay it.
->> >>
->> >> Note that unlike [1], this patch saves MSG_MORE in datamsg, instead of
->> >> in assoc. As sctp enqueues the chunks first, then dequeue them one by
->> >> one. If it's saved in assoc,the current msg's send flag (MSG_MORE) may
->> >> affect other chunks' bundling.
->> >
->> > I thought about that and decided that the MSG_MORE flag on the last data
->> > chunk was the only one that mattered.
->> > Indeed looking at any others is broken.
->> >
->> > Consider what happens if you have two small chunks queued, the first
->> > with MSG_MORE set, the second with it clear.
->> >
->> > I think that sctp_outq_flush() will look at the first chunk and decide it
->> > doesn't need to do anything because sctp_packet_transmit_chunk()
->> > returns SCTP_XMIT_DELAY.
->> > The data chunk with MSG_MORE clear won't even be looked at.
->> > So the data will never be sent.
->
->> It's not that bad as you thought, in sctp_packet_can_append_data():
->> when inflight = 0 || sctp_sk(asoc->base.sk)->nodelay, the chunks
->> would be still sent out.
->
-> One of us isn't understanding the other :-)
->
-> IIRC sctp_packet_can_append_data() is called for the first queued
-> data chunk in order to decide whether to generate a message that
-> consists only of data chunks.
-> If it returns SCTP_XMIT_OK then a message is built collecting the
-> rest of the queued data chunks (until the window fills).
->
-> So if I send a message with MSG_MORE set (on an idle connection)
-> SCTP_XMIT_DELAY is returned and a message isn't sent.
->
-> I now send a second small message, this time with MSG_MORE clear.
-> The message is queued, then the code looks to see if it can send anything.
->
-> sctp_packet_can_append_data() is called for the first queued chunk.
-> Since it has force_delay set SCTP_XMIT_DELAY is returned and no
-> message is built.
-> The second message isn't even looked at.
-You're right. I can see the problem now.
-
-What I expected is it should work like:
-
-1, send 3 small chunks with MSG_MORE set, the queue is:
-  chk3 [set] -> chk2 [set] -> chk1 [set]
-2. send 1 more chunk with MSG_MORE clear, the queue is:
-  chk4[clear] -> chk3 [clear] -> chk2 [clear] -> chk1 [clear]
-3. then if user send more small chunks with MSG_MORE set,
-the queue is like:
-  chkB[set] -> chkA[set] -> chk4[clear] -> chk3 [clear] -> chk2
-[clear] -> chk1 [clear]
-so that the new small chunks' flag will not affect the other chunks bundling.
-
-is it ok to you to work like that ?
-if yes, I propose the fix for this issue is:
-
-@@ -303,6 +303,17 @@ void sctp_outq_tail(struct sctp_outq *q, struct
-sctp_chunk *chunk, gfp_t gfp)
-                         sctp_cname(SCTP_ST_CHUNK(chunk->chunk_hdr->type)) :
-                         "illegal chunk");
-
-+               if (q->has_delay && !chunk->msg->force_delay) {
-+                       struct sctp_chunk *chk;
-+
-+                       list_for_each_entry(chk, &q->out_chunk_list, list) {
-+                               if (!chk->msg->force_delay)
-+                                       break;
-+                               chk->msg->force_delay = 0;
-+                       }
-+               }
-+               q->has_delay = chunk->msg->force_delay;
-+
-
-Thanks.
-
->
->> What MSG_MORE flag actually does is ignore inflight = 0 and
->> sctp_sk(asoc->base.sk)->nodelay to delay the chunks, but still
->> it has to respect the original logic (like !chunk->msg->can_delay
->> || !sctp_packet_empty(packet) || ...)
->>
->> To delay the chunks with MSG_MORE set even when inflight is 0
->> it especially important here for users.
->
-> I'm not too worried about that.
-> Sending the first message was a cheap way to ensure something got
-> sent if the application lied and didn't send a subsequent message.
->
-> The change has hit Linus's tree, I'll should be able to test that
-> and confirm what I think is going on.
->
->         David
->
+RnJvbTogWGluIExvbmcNCj4gU2VudDogMjQgRmVicnVhcnkgMjAxNyAwNjo0NA0KLi4uDQo+ID4g
+SUlSQyBzY3RwX3BhY2tldF9jYW5fYXBwZW5kX2RhdGEoKSBpcyBjYWxsZWQgZm9yIHRoZSBmaXJz
+dCBxdWV1ZWQNCj4gPiBkYXRhIGNodW5rIGluIG9yZGVyIHRvIGRlY2lkZSB3aGV0aGVyIHRvIGdl
+bmVyYXRlIGEgbWVzc2FnZSB0aGF0DQo+ID4gY29uc2lzdHMgb25seSBvZiBkYXRhIGNodW5rcy4N
+Cj4gPiBJZiBpdCByZXR1cm5zIFNDVFBfWE1JVF9PSyB0aGVuIGEgbWVzc2FnZSBpcyBidWlsdCBj
+b2xsZWN0aW5nIHRoZQ0KPiA+IHJlc3Qgb2YgdGhlIHF1ZXVlZCBkYXRhIGNodW5rcyAodW50aWwg
+dGhlIHdpbmRvdyBmaWxscykuDQo+ID4NCj4gPiBTbyBpZiBJIHNlbmQgYSBtZXNzYWdlIHdpdGgg
+TVNHX01PUkUgc2V0IChvbiBhbiBpZGxlIGNvbm5lY3Rpb24pDQo+ID4gU0NUUF9YTUlUX0RFTEFZ
+IGlzIHJldHVybmVkIGFuZCBhIG1lc3NhZ2UgaXNuJ3Qgc2VudC4NCj4gPg0KPiA+IEkgbm93IHNl
+bmQgYSBzZWNvbmQgc21hbGwgbWVzc2FnZSwgdGhpcyB0aW1lIHdpdGggTVNHX01PUkUgY2xlYXIu
+DQo+ID4gVGhlIG1lc3NhZ2UgaXMgcXVldWVkLCB0aGVuIHRoZSBjb2RlIGxvb2tzIHRvIHNlZSBp
+ZiBpdCBjYW4gc2VuZCBhbnl0aGluZy4NCj4gPg0KPiA+IHNjdHBfcGFja2V0X2Nhbl9hcHBlbmRf
+ZGF0YSgpIGlzIGNhbGxlZCBmb3IgdGhlIGZpcnN0IHF1ZXVlZCBjaHVuay4NCj4gPiBTaW5jZSBp
+dCBoYXMgZm9yY2VfZGVsYXkgc2V0IFNDVFBfWE1JVF9ERUxBWSBpcyByZXR1cm5lZCBhbmQgbm8N
+Cj4gPiBtZXNzYWdlIGlzIGJ1aWx0Lg0KPiA+IFRoZSBzZWNvbmQgbWVzc2FnZSBpc24ndCBldmVu
+IGxvb2tlZCBhdC4NCj4gWW91J3JlIHJpZ2h0LiBJIGNhbiBzZWUgdGhlIHByb2JsZW0gbm93Lg0K
+PiANCj4gV2hhdCBJIGV4cGVjdGVkIGlzIGl0IHNob3VsZCB3b3JrIGxpa2U6DQo+IA0KPiAxLCBz
+ZW5kIDMgc21hbGwgY2h1bmtzIHdpdGggTVNHX01PUkUgc2V0LCB0aGUgcXVldWUgaXM6DQo+ICAg
+Y2hrMyBbc2V0XSAtPiBjaGsyIFtzZXRdIC0+IGNoazEgW3NldF0NCg0KU3RyYW5nZSB3YXkgdG8g
+d3JpdGUgYSBxdWV1ZSEgY2hrMSBwb2ludHMgdG8gY2hrMiA6LSkNCg0KPiAyLiBzZW5kIDEgbW9y
+ZSBjaHVuayB3aXRoIE1TR19NT1JFIGNsZWFyLCB0aGUgcXVldWUgaXM6DQo+ICAgY2hrNFtjbGVh
+cl0gLT4gY2hrMyBbY2xlYXJdIC0+IGNoazIgW2NsZWFyXSAtPiBjaGsxIFtjbGVhcl0NCg0KSSBk
+b24ndCB0aGluayBwcm9jZXNzaW5nIHRoZSBlbnRpcmUgcXVldWUgaXMgYSBnb29kIGlkZWEuDQpC
+b3RoIGZyb20gZXhlY3V0aW9uIHRpbWUgYW5kIHRoZSBlZmZlY3RzIG9uIHRoZSBkYXRhIGNhY2hl
+Lg0KVGhlIFNDVFAgY29kZSBpcyBob3JyaWQgZW5vdWdoIGFzIGl0IGlzLg0KDQo+IDMuIHRoZW4g
+aWYgdXNlciBzZW5kIG1vcmUgc21hbGwgY2h1bmtzIHdpdGggTVNHX01PUkUgc2V0LA0KPiB0aGUg
+cXVldWUgaXMgbGlrZToNCj4gICBjaGtCW3NldF0gLT4gY2hrQVtzZXRdIC0+IGNoazRbY2xlYXJd
+IC0+IGNoazMgW2NsZWFyXSAtPiBjaGsyIFtjbGVhcl0gLT4gY2hrMSBbY2xlYXJdDQo+IHNvIHRo
+YXQgdGhlIG5ldyBzbWFsbCBjaHVua3MnIGZsYWcgd2lsbCBub3QgYWZmZWN0IHRoZSBvdGhlciBj
+aHVua3MgYnVuZGxpbmcuDQoNClRoYXQgaXNuJ3QgcmVhbGx5IG5lY2Vzc2FyeS4NClRoZSB1c2Vy
+IGNhbid0IGV4cGVjdCB0byBoYXZlIGFic29sdXRlIGNvbnRyb2wgb3ZlciB3aGljaCBjaHVua3Mg
+Z2V0IGJ1bmRsZWQNCnRvZ2V0aGVyLg0KSWYgdGhlIGFib3ZlIGNodW5rcyBzdGlsbCBhcmVuJ3Qg
+YmlnIGVub3VnaCB0byBmaWxsIGEgZnJhbWUgdGhlIGNvZGUgbWlnaHQNCmFzIHdlbGwgd2FpdCBm
+b3IgdGhlIG5leHQgY2h1bmsgaW5zdGVhZCBvZiBidWlsZGluZyBhIHBhY2tldCB0aGF0IGNvbnRh
+aW5zDQpjaGsxIHRocm91Z2ggdG8gY2hrQi4NCg0KUmVtZW1iZXIgeW91J2xsIG9ubHkgZ2V0IGEg
+cXVldWVkIGNodW5rIHdpdGggTVNHX01PUkUgY2xlYXIgaWYgZGF0YSBjYW4ndCBiZSBzZW50Lg0K
+QXMgc29vbiBhcyBkYXRhIGNhbiBiZSBzZW50LCBpZiB0aGUgZmlyc3QgY2h1bmsgaGFzIE1TR19N
+T1JFIGNsZWFyIGFsbCBvZiB0aGUNCnF1ZXVlZCBjaHVua3Mgd2lsbCBiZSBzZW50Lg0KDQpTbyBp
+bW1lZGlhdGVseSBhZnRlciB5b3VyICgzKSB0aGUgYXBwbGljYXRpb24gaXMgZXhwZWN0ZWQgdG8g
+c2VuZCBhIGNodW5rDQp3aXRoIE1TR19NT1JFIGNsZWFyIC0gYXQgdGhhdCBwb2ludCBhbGwgdGhl
+IHF1ZXVlZCBjaHVua3MgY2FuIGJlIHNlbnQgaW4NCmEgc2luZ2xlIHBhY2tldC4NCg0KU28ganVz
+dCBzYXZlIHRoZSBsYXN0IE1TR19NT1JFIG9uIHRoZSBhc3NvY2lhdGlvbiBhcyBJIGRpZC4NCg0K
+CURhdmlkDQo
