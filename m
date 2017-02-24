@@ -1,109 +1,57 @@
-From: Alexander Duyck <alexander.duyck@gmail.com>
-Date: Tue, 28 Feb 2017 22:46:20 +0000
-Subject: Re: [PATCH RFC net-next v2 1/4] skbuff: add stub to help computing crc32c on SCTP packets
-Message-Id: <CAKgT0Udbs_=vanS+oF8ePXTNjEfsq9y==bhtQ-5Cxb-g+iO4bg@mail.gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 24 Feb 2017 07:18:46 +0000
+Subject: [PATCH net] sctp: set sin_port for addr param when checking duplicate address
+Message-Id: <a46d62002d14e8ff4a25d647600bb3d038c2c772.1487920726.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1488202783.2713.67.camel@redhat.com> <56fcd0848eae2b0693797e09500892659323546c.1488199633.git.dcaratti@redhat.com>
-In-Reply-To: <56fcd0848eae2b0693797e09500892659323546c.1488199633.git.dcaratti@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Davide Caratti <dcaratti@redhat.com>
-Cc: David Laight <David.Laight@aculab.com>, Tom Herbert <tom@herbertland.com>, "David S . Miller" <davem@davemloft.net>, Linux Kernel Network Developers <netdev@vger.kernel.org>, "linux-sctp @ vger . kernel . org" <linux-sctp@vger.kernel.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-On Tue, Feb 28, 2017 at 2:32 AM, Davide Caratti <dcaratti@redhat.com> wrote:
-> sctp_compute_checksum requires crc32c symbol (provided by libcrc32c), so
-> it can't be used in net core. Like it has been done previously with other
-> symbols (e.g. ipv6_dst_lookup), introduce a stub struct skb_checksum_ops
-> to allow computation of SCTP checksum in net core after sctp.ko (and thus
-> libcrc32c) has been loaded.
+Commit b8607805dd15 ("sctp: not copying duplicate addrs to the assoc's
+bind address list") tried to check for duplicate address before copying
+to asoc's bind_addr list from global addr list.
 
-At a minimum the name really needs to change.  SCTP does not do
-checksums.  It does a CRC, and a CRC is a very different thing.  The
-fact that somebody decided that offloading a CRC could use the same
-framework is very unfortunate, and your patch descriptions in this
-whole set are calling out a CRC as checksums which it is not.
+But all the addrs' sin_ports in global addr list are 0 while the addrs'
+sin_ports are bp->port in asoc's bind_addr list. It means even if it's
+a duplicate address, af->cmp_addr will still return 0 as the their
+sin_ports are different.
 
-I don't want to see anything "checksum" or "csum" related in the
-naming when it comes to dealing with SCTP unless we absolutely have to
-have it.  So any function names or structures with sctp in the name
-should call out "crc32" or "crc", please don't use checksum.
+This patch is to fix it by setting the sin_port for addr param with
+bp->port before comparing the addrs.
 
-> Reviewed-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> Signed-off-by: Davide Caratti <dcaratti@redhat.com>
-> ---
->  include/linux/skbuff.h |  2 ++
->  net/core/skbuff.c      | 20 ++++++++++++++++++++
->  net/sctp/offload.c     |  7 +++++++
->  3 files changed, 29 insertions(+)
->
-> diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
-> index 69ccd26..cab9a32 100644
-> --- a/include/linux/skbuff.h
-> +++ b/include/linux/skbuff.h
-> @@ -3125,6 +3125,8 @@ struct skb_checksum_ops {
->         __wsum (*combine)(__wsum csum, __wsum csum2, int offset, int len);
->  };
->
-> +extern const struct skb_checksum_ops *sctp_csum_stub __read_mostly;
-> +
->  __wsum __skb_checksum(const struct sk_buff *skb, int offset, int len,
->                       __wsum csum, const struct skb_checksum_ops *ops);
->  __wsum skb_checksum(const struct sk_buff *skb, int offset, int len,
-> diff --git a/net/core/skbuff.c b/net/core/skbuff.c
-> index f355795..64fd8fd 100644
-> --- a/net/core/skbuff.c
-> +++ b/net/core/skbuff.c
-> @@ -2242,6 +2242,26 @@ __wsum skb_copy_and_csum_bits(const struct sk_buff *skb, int offset,
->  }
->  EXPORT_SYMBOL(skb_copy_and_csum_bits);
->
-> +static __wsum warn_sctp_csum_update(const void *buff, int len, __wsum sum)
-> +{
-> +       net_warn_ratelimited("attempt to compute crc32c without sctp.ko\n");
-> +       return 0;
-> +}
-> +
-> +static __wsum warn_sctp_csum_combine(__wsum csum, __wsum csum2,
-> +                                    int offset, int len)
-> +{
-> +       net_warn_ratelimited("attempt to compute crc32c without sctp.ko\n");
-> +       return 0;
-> +}
-> +
-> +const struct skb_checksum_ops *sctp_csum_stub __read_mostly > +       &(struct skb_checksum_ops) {
-> +       .update  = warn_sctp_csum_update,
-> +       .combine = warn_sctp_csum_combine,
-> +};
-> +EXPORT_SYMBOL(sctp_csum_stub);
-> +
->   /**
->   *     skb_zerocopy_headlen - Calculate headroom needed for skb_zerocopy()
->   *     @from: source buffer
-> diff --git a/net/sctp/offload.c b/net/sctp/offload.c
-> index 4f5a2b5..e9c3db0 100644
-> --- a/net/sctp/offload.c
-> +++ b/net/sctp/offload.c
-> @@ -98,6 +98,12 @@ static const struct net_offload sctp6_offload = {
->         },
->  };
->
-> +static const struct skb_checksum_ops *sctp_csum_ops __read_mostly > +       &(struct skb_checksum_ops) {
-> +       .update  = sctp_csum_update,
-> +       .combine = sctp_csum_combine,
-> +};
-> +
->  int __init sctp_offload_init(void)
->  {
->         int ret;
-> @@ -110,6 +116,7 @@ int __init sctp_offload_init(void)
->         if (ret)
->                 goto ipv4;
->
-> +       sctp_csum_stub = sctp_csum_ops;
->         return ret;
->
->  ipv4:
-> --
-> 2.7.4
->
+Fixes: b8607805dd15 ("sctp: not copying duplicate addrs to the assoc's bind address list")
+Reported-by: Wei Chen <weichen@redhat.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/protocol.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 8227bbb..1b6d457 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -199,6 +199,7 @@ int sctp_copy_local_addr_list(struct net *net, struct sctp_bind_addr *bp,
+ 			      sctp_scope_t scope, gfp_t gfp, int copy_flags)
+ {
+ 	struct sctp_sockaddr_entry *addr;
++	union sctp_addr laddr;
+ 	int error = 0;
+ 
+ 	rcu_read_lock();
+@@ -220,7 +221,10 @@ int sctp_copy_local_addr_list(struct net *net, struct sctp_bind_addr *bp,
+ 		     !(copy_flags & SCTP_ADDR6_PEERSUPP)))
+ 			continue;
+ 
+-		if (sctp_bind_addr_state(bp, &addr->a) != -1)
++		laddr = addr->a;
++		/* also works for setting ipv6 address port */
++		laddr.v4.sin_port = htons(bp->port);
++		if (sctp_bind_addr_state(bp, &laddr) != -1)
+ 			continue;
+ 
+ 		error = sctp_add_bind_addr(bp, &addr->a, sizeof(addr->a),
+-- 
+2.1.0
+
