@@ -1,61 +1,106 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Fri, 24 Feb 2017 10:14:09 +0000
-Subject: RE: [PATCH net-next 2/2] sctp: add support for MSG_MORE
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6DCFE6EDE0@AcuExch.aculab.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 25 Feb 2017 08:41:34 +0000
+Subject: Re: [PATCH net-next 2/2] sctp: add support for MSG_MORE
+Message-Id: <CADvbK_eauYUyUWMAn8Zkpk5hNnK-GDNO+3NCeuA-y=Y7SFnv5A@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1487440272.git.lucien.xin@gmail.com>
- <d6f2835b0bd655a563896e86648cbd9b4e01374e.1487440272.git.lucien.xin@gmail.com>
+References: <cover.1487440272.git.lucien.xin@gmail.com> <d6f2835b0bd655a563896e86648cbd9b4e01374e.1487440272.git.lucien.xin@gmail.com>
  <063D6719AE5E284EB5DD2968C1650D6DCFE6C9B9@AcuExch.aculab.com>
  <CADvbK_dDgFc78dBCpTkNxM3kU-GAYbh6CCGTtO=r9ZeNyb2X0A@mail.gmail.com>
  <063D6719AE5E284EB5DD2968C1650D6DCFE6E5BB@AcuExch.aculab.com>
- <CADvbK_d9dyL0PFPrAyNqFT_URNdq75NPdQe8tqQkFO4aCg2DdA@mail.gmail.com>
-In-Reply-To: <CADvbK_d9dyL0PFPrAyNqFT_URNdq75NPdQe8tqQkFO4aCg2DdA@mail.gmail.com>
+ <CADvbK_d9dyL0PFPrAyNqFT_URNdq75NPdQe8tqQkFO4aCg2DdA@mail.gmail.com> <063D6719AE5E284EB5DD2968C1650D6DCFE6EDE0@AcuExch.aculab.com>
+In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6DCFE6EDE0@AcuExch.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Xin Long' <lucien.xin@gmail.com>
+To: David Laight <David.Laight@aculab.com>
 Cc: network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, "davem@davemloft.net" <davem@davemloft.net>
 
-RnJvbTogWGluIExvbmcNCj4gU2VudDogMjQgRmVicnVhcnkgMjAxNyAwNjo0NA0KLi4uDQo+ID4g
-SUlSQyBzY3RwX3BhY2tldF9jYW5fYXBwZW5kX2RhdGEoKSBpcyBjYWxsZWQgZm9yIHRoZSBmaXJz
-dCBxdWV1ZWQNCj4gPiBkYXRhIGNodW5rIGluIG9yZGVyIHRvIGRlY2lkZSB3aGV0aGVyIHRvIGdl
-bmVyYXRlIGEgbWVzc2FnZSB0aGF0DQo+ID4gY29uc2lzdHMgb25seSBvZiBkYXRhIGNodW5rcy4N
-Cj4gPiBJZiBpdCByZXR1cm5zIFNDVFBfWE1JVF9PSyB0aGVuIGEgbWVzc2FnZSBpcyBidWlsdCBj
-b2xsZWN0aW5nIHRoZQ0KPiA+IHJlc3Qgb2YgdGhlIHF1ZXVlZCBkYXRhIGNodW5rcyAodW50aWwg
-dGhlIHdpbmRvdyBmaWxscykuDQo+ID4NCj4gPiBTbyBpZiBJIHNlbmQgYSBtZXNzYWdlIHdpdGgg
-TVNHX01PUkUgc2V0IChvbiBhbiBpZGxlIGNvbm5lY3Rpb24pDQo+ID4gU0NUUF9YTUlUX0RFTEFZ
-IGlzIHJldHVybmVkIGFuZCBhIG1lc3NhZ2UgaXNuJ3Qgc2VudC4NCj4gPg0KPiA+IEkgbm93IHNl
-bmQgYSBzZWNvbmQgc21hbGwgbWVzc2FnZSwgdGhpcyB0aW1lIHdpdGggTVNHX01PUkUgY2xlYXIu
-DQo+ID4gVGhlIG1lc3NhZ2UgaXMgcXVldWVkLCB0aGVuIHRoZSBjb2RlIGxvb2tzIHRvIHNlZSBp
-ZiBpdCBjYW4gc2VuZCBhbnl0aGluZy4NCj4gPg0KPiA+IHNjdHBfcGFja2V0X2Nhbl9hcHBlbmRf
-ZGF0YSgpIGlzIGNhbGxlZCBmb3IgdGhlIGZpcnN0IHF1ZXVlZCBjaHVuay4NCj4gPiBTaW5jZSBp
-dCBoYXMgZm9yY2VfZGVsYXkgc2V0IFNDVFBfWE1JVF9ERUxBWSBpcyByZXR1cm5lZCBhbmQgbm8N
-Cj4gPiBtZXNzYWdlIGlzIGJ1aWx0Lg0KPiA+IFRoZSBzZWNvbmQgbWVzc2FnZSBpc24ndCBldmVu
-IGxvb2tlZCBhdC4NCj4gWW91J3JlIHJpZ2h0LiBJIGNhbiBzZWUgdGhlIHByb2JsZW0gbm93Lg0K
-PiANCj4gV2hhdCBJIGV4cGVjdGVkIGlzIGl0IHNob3VsZCB3b3JrIGxpa2U6DQo+IA0KPiAxLCBz
-ZW5kIDMgc21hbGwgY2h1bmtzIHdpdGggTVNHX01PUkUgc2V0LCB0aGUgcXVldWUgaXM6DQo+ICAg
-Y2hrMyBbc2V0XSAtPiBjaGsyIFtzZXRdIC0+IGNoazEgW3NldF0NCg0KU3RyYW5nZSB3YXkgdG8g
-d3JpdGUgYSBxdWV1ZSEgY2hrMSBwb2ludHMgdG8gY2hrMiA6LSkNCg0KPiAyLiBzZW5kIDEgbW9y
-ZSBjaHVuayB3aXRoIE1TR19NT1JFIGNsZWFyLCB0aGUgcXVldWUgaXM6DQo+ICAgY2hrNFtjbGVh
-cl0gLT4gY2hrMyBbY2xlYXJdIC0+IGNoazIgW2NsZWFyXSAtPiBjaGsxIFtjbGVhcl0NCg0KSSBk
-b24ndCB0aGluayBwcm9jZXNzaW5nIHRoZSBlbnRpcmUgcXVldWUgaXMgYSBnb29kIGlkZWEuDQpC
-b3RoIGZyb20gZXhlY3V0aW9uIHRpbWUgYW5kIHRoZSBlZmZlY3RzIG9uIHRoZSBkYXRhIGNhY2hl
-Lg0KVGhlIFNDVFAgY29kZSBpcyBob3JyaWQgZW5vdWdoIGFzIGl0IGlzLg0KDQo+IDMuIHRoZW4g
-aWYgdXNlciBzZW5kIG1vcmUgc21hbGwgY2h1bmtzIHdpdGggTVNHX01PUkUgc2V0LA0KPiB0aGUg
-cXVldWUgaXMgbGlrZToNCj4gICBjaGtCW3NldF0gLT4gY2hrQVtzZXRdIC0+IGNoazRbY2xlYXJd
-IC0+IGNoazMgW2NsZWFyXSAtPiBjaGsyIFtjbGVhcl0gLT4gY2hrMSBbY2xlYXJdDQo+IHNvIHRo
-YXQgdGhlIG5ldyBzbWFsbCBjaHVua3MnIGZsYWcgd2lsbCBub3QgYWZmZWN0IHRoZSBvdGhlciBj
-aHVua3MgYnVuZGxpbmcuDQoNClRoYXQgaXNuJ3QgcmVhbGx5IG5lY2Vzc2FyeS4NClRoZSB1c2Vy
-IGNhbid0IGV4cGVjdCB0byBoYXZlIGFic29sdXRlIGNvbnRyb2wgb3ZlciB3aGljaCBjaHVua3Mg
-Z2V0IGJ1bmRsZWQNCnRvZ2V0aGVyLg0KSWYgdGhlIGFib3ZlIGNodW5rcyBzdGlsbCBhcmVuJ3Qg
-YmlnIGVub3VnaCB0byBmaWxsIGEgZnJhbWUgdGhlIGNvZGUgbWlnaHQNCmFzIHdlbGwgd2FpdCBm
-b3IgdGhlIG5leHQgY2h1bmsgaW5zdGVhZCBvZiBidWlsZGluZyBhIHBhY2tldCB0aGF0IGNvbnRh
-aW5zDQpjaGsxIHRocm91Z2ggdG8gY2hrQi4NCg0KUmVtZW1iZXIgeW91J2xsIG9ubHkgZ2V0IGEg
-cXVldWVkIGNodW5rIHdpdGggTVNHX01PUkUgY2xlYXIgaWYgZGF0YSBjYW4ndCBiZSBzZW50Lg0K
-QXMgc29vbiBhcyBkYXRhIGNhbiBiZSBzZW50LCBpZiB0aGUgZmlyc3QgY2h1bmsgaGFzIE1TR19N
-T1JFIGNsZWFyIGFsbCBvZiB0aGUNCnF1ZXVlZCBjaHVua3Mgd2lsbCBiZSBzZW50Lg0KDQpTbyBp
-bW1lZGlhdGVseSBhZnRlciB5b3VyICgzKSB0aGUgYXBwbGljYXRpb24gaXMgZXhwZWN0ZWQgdG8g
-c2VuZCBhIGNodW5rDQp3aXRoIE1TR19NT1JFIGNsZWFyIC0gYXQgdGhhdCBwb2ludCBhbGwgdGhl
-IHF1ZXVlZCBjaHVua3MgY2FuIGJlIHNlbnQgaW4NCmEgc2luZ2xlIHBhY2tldC4NCg0KU28ganVz
-dCBzYXZlIHRoZSBsYXN0IE1TR19NT1JFIG9uIHRoZSBhc3NvY2lhdGlvbiBhcyBJIGRpZC4NCg0K
-CURhdmlkDQo
+On Fri, Feb 24, 2017 at 6:14 PM, David Laight <David.Laight@aculab.com> wrote:
+>
+> From: Xin Long
+> > Sent: 24 February 2017 06:44
+> ...
+> > > IIRC sctp_packet_can_append_data() is called for the first queued
+> > > data chunk in order to decide whether to generate a message that
+> > > consists only of data chunks.
+> > > If it returns SCTP_XMIT_OK then a message is built collecting the
+> > > rest of the queued data chunks (until the window fills).
+> > >
+> > > So if I send a message with MSG_MORE set (on an idle connection)
+> > > SCTP_XMIT_DELAY is returned and a message isn't sent.
+> > >
+> > > I now send a second small message, this time with MSG_MORE clear.
+> > > The message is queued, then the code looks to see if it can send anything.
+> > >
+> > > sctp_packet_can_append_data() is called for the first queued chunk.
+> > > Since it has force_delay set SCTP_XMIT_DELAY is returned and no
+> > > message is built.
+> > > The second message isn't even looked at.
+> > You're right. I can see the problem now.
+> >
+> > What I expected is it should work like:
+> >
+> > 1, send 3 small chunks with MSG_MORE set, the queue is:
+> >   chk3 [set] -> chk2 [set] -> chk1 [set]
+>
+> Strange way to write a queue! chk1 points to chk2 :-)
+haha, just  a model.
+
+>
+> > 2. send 1 more chunk with MSG_MORE clear, the queue is:
+> >   chk4[clear] -> chk3 [clear] -> chk2 [clear] -> chk1 [clear]
+>
+> I don't think processing the entire queue is a good idea.
+> Both from execution time and the effects on the data cache.
+> The SCTP code is horrid enough as it is.
+you check the codes in last email, it's not processing the entire queue.
+
+1). only when queue has delay chunk inside by checking queue->has_delay
+    and current chunk has msg_more flag.
+
+2). will break on the first chunk with clear in the queue.
+
+but yes, in 2), extra work has to be done than before, but not much.
+
+>
+> > 3. then if user send more small chunks with MSG_MORE set,
+> > the queue is like:
+> >   chkB[set] -> chkA[set] -> chk4[clear] -> chk3 [clear] -> chk2 [clear] -> chk1 [clear]
+> > so that the new small chunks' flag will not affect the other chunks bundling.
+>
+> That isn't really necessary.
+> The user can't expect to have absolute control over which chunks get bundled
+> together.
+> If the above chunks still aren't big enough to fill a frame the code might
+> as well wait for the next chunk instead of building a packet that contains
+> chk1 through to chkB.
+>
+> Remember you'll only get a queued chunk with MSG_MORE clear if data can't be sent.
+> As soon as data can be sent, if the first chunk has MSG_MORE clear all of the
+> queued chunks will be sent.
+>
+> So immediately after your (3) the application is expected to send a chunk
+> with MSG_MORE clear - at that point all the queued chunks can be sent in
+> a single packet.
+understand this.
+
+what I'm worried about is if the msg_more is saved in assoc:
+     chk4[clear] -> chk3 [clear] -> chk2 [clear] -> chk1 [clear]
+then when you send a small chkA with MSG_MORE,
+the queue will be like:
+     chkA [set] -> chk4[set] -> chk3 [set] -> chk2 [set] -> chk1 [set]
+because msg_more is saved in assoc, every chunk can look at it.
+chk1 - chk4 are big enough to be packed into a packet, they were
+not sent last time because a lot of chunks are in the retransmit
+queue.
+
+But now even if retransmit queue is null, chk1-chk4 are still blocked.
+
+can you accept that chkA may block the old chunks ?
+
+>
+> So just save the last MSG_MORE on the association as I did.
+I will think about it, thanks.
+
+>
+>         David
