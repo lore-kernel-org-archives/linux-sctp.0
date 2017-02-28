@@ -1,33 +1,114 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 27 Feb 2017 02:25:05 +0000
-Subject: Re: [PATCH net] sctp: set sin_port for addr param when checking duplicate address
-Message-Id: <20170226.212505.1113255842286618172.davem@davemloft.net>
+From: Davide Caratti <dcaratti@redhat.com>
+Date: Tue, 28 Feb 2017 10:32:46 +0000
+Subject: [PATCH RFC net-next v2 2/4] net: introduce skb_sctp_csum_help
+Message-Id: <139092e2e728bd3fba48f32d5e10b1bf47be86d6.1488199633.git.dcaratti@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <a46d62002d14e8ff4a25d647600bb3d038c2c772.1487920726.git.lucien.xin@gmail.com>
-In-Reply-To: <a46d62002d14e8ff4a25d647600bb3d038c2c772.1487920726.git.lucien.xin@gmail.com>
+References: <1488202783.2713.67.camel@redhat.com>
+In-Reply-To: <1488202783.2713.67.camel@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, vyasevich@gmail.com
+To: David Laight <David.Laight@ACULAB.COM>, Tom Herbert <tom@herbertland.com>
+Cc: "David S . Miller" <davem@davemloft.net>, Linux Kernel Network Developers <netdev@vger.kernel.org>, "linux-sctp @ vger . kernel . org" <linux-sctp@vger.kernel.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 24 Feb 2017 15:18:46 +0800
+skb_sctp_csum_help is like skb_checksum_help, but it is designed for
+checksumming SCTP packets using crc32c (see RFC3309), provided that
+sctp.ko has been loaded before. In case sctp.ko is not loaded, invoking
+skb_sctp_csum_help on a skb results in the following printout:
 
-> Commit b8607805dd15 ("sctp: not copying duplicate addrs to the assoc's
-> bind address list") tried to check for duplicate address before copying
-> to asoc's bind_addr list from global addr list.
-> 
-> But all the addrs' sin_ports in global addr list are 0 while the addrs'
-> sin_ports are bp->port in asoc's bind_addr list. It means even if it's
-> a duplicate address, af->cmp_addr will still return 0 as the their
-> sin_ports are different.
-> 
-> This patch is to fix it by setting the sin_port for addr param with
-> bp->port before comparing the addrs.
-> 
-> Fixes: b8607805dd15 ("sctp: not copying duplicate addrs to the assoc's bind address list")
-> Reported-by: Wei Chen <weichen@redhat.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+sk_buff: attempt to compute crc32c without sctp.ko
 
-Applied and queued up for -stable, thanks.
+Signed-off-by: Davide Caratti <dcaratti@redhat.com>
+---
+ include/linux/netdevice.h |  1 +
+ include/linux/skbuff.h    |  3 ++-
+ net/core/dev.c            | 40 ++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 43 insertions(+), 1 deletion(-)
+
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+index f40f0ab..8c34735 100644
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -3918,6 +3918,7 @@ void netdev_rss_key_fill(void *buffer, size_t len);
+ 
+ int dev_get_nest_level(struct net_device *dev);
+ int skb_checksum_help(struct sk_buff *skb);
++int skb_sctp_csum_help(struct sk_buff *skb);
+ struct sk_buff *__skb_gso_segment(struct sk_buff *skb,
+ 				  netdev_features_t features, bool tx_path);
+ struct sk_buff *skb_mac_gso_segment(struct sk_buff *skb,
+diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+index cab9a32..0671131 100644
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -192,7 +192,8 @@
+  *     accordingly. Note the there is no indication in the skbuff that the
+  *     CHECKSUM_PARTIAL refers to an SCTP checksum, a driver that supports
+  *     both IP checksum offload and SCTP CRC offload must verify which offload
+- *     is configured for a packet presumably by inspecting packet headers.
++ *     is configured for a packet presumably by inspecting packet headers; in
++ *     case, skb_sctp_csum_help is provided to compute CRC on SCTP packets.
+  *
+  *   NETIF_F_FCOE_CRC - This feature indicates that a device is capable of
+  *     offloading the FCOE CRC in a packet. To perform this offload the stack
+diff --git a/net/core/dev.c b/net/core/dev.c
+index 05d19c6..b9fb843 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -140,6 +140,7 @@
+ #include <linux/hrtimer.h>
+ #include <linux/netfilter_ingress.h>
+ #include <linux/crash_dump.h>
++#include <linux/sctp.h>
+ 
+ #include "net-sysfs.h"
+ 
+@@ -2578,6 +2579,45 @@ int skb_checksum_help(struct sk_buff *skb)
+ }
+ EXPORT_SYMBOL(skb_checksum_help);
+ 
++int skb_sctp_csum_help(struct sk_buff *skb)
++{
++	__le32 crc32c_csum;
++	int ret = 0, offset;
++
++	if (skb->ip_summed != CHECKSUM_PARTIAL)
++		goto out;
++
++	if (unlikely(skb_is_gso(skb)))
++		goto out;
++
++	/* Before computing a checksum, we should make sure no frag could
++	 * be modified by an external entity : checksum could be wrong.
++	 */
++	if (unlikely(skb_has_shared_frag(skb))) {
++		ret = __skb_linearize(skb);
++		if (ret)
++			goto out;
++	}
++
++	offset = skb_checksum_start_offset(skb);
++	crc32c_csum = cpu_to_le32(~__skb_checksum(skb, offset,
++						  skb->len - offset, ~(__u32)0,
++						  sctp_csum_stub));
++	offset += offsetof(struct sctphdr, checksum);
++	BUG_ON(offset >= skb_headlen(skb));
++
++	if (skb_cloned(skb) &&
++	    !skb_clone_writable(skb, offset + sizeof(__le32))) {
++		ret = pskb_expand_head(skb, 0, 0, GFP_ATOMIC);
++		if (ret)
++			goto out;
++	}
++	*(__le32 *)(skb->data + offset) = crc32c_csum;
++	skb->ip_summed = CHECKSUM_NONE;
++out:
++	return ret;
++}
++
+ __be16 skb_network_protocol(struct sk_buff *skb, int *depth)
+ {
+ 	__be16 type = skb->protocol;
+-- 
+2.7.4
+
