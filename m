@@ -1,70 +1,129 @@
-From: Dave Jones <davej@codemonkey.org.uk>
-Date: Tue, 14 Mar 2017 16:20:06 +0000
-Subject: Re: [4.10+] sctp lockdep trace
-Message-Id: <20170314162006.bg2wttwr45haxwok@codemonkey.org.uk>
+From: Tom Herbert <tom@herbertland.com>
+Date: Wed, 01 Mar 2017 03:17:55 +0000
+Subject: Re: [PATCH RFC net-next v2 1/4] skbuff: add stub to help computing crc32c on SCTP packets
+Message-Id: <CALx6S36oXDyrm=4Bi-EdKgCBYYHuHENCoFz8GMBm6RmGCCep6g@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20170224222110.csrufaq73lq3twy2@codemonkey.org.uk>
- <20170313201045.GA23552@localhost.localdomain>
- <20170313201156.GA23553@localhost.localdomain>
- <CADvbK_fr5dis-X8znOtjDFqFrDWcK+RcDD8rz=oNidrJJ1h0+A@mail.gmail.com>
-In-Reply-To: <CADvbK_fr5dis-X8znOtjDFqFrDWcK+RcDD8rz=oNidrJJ1h0+A@mail.gmail.com>
+References: <1488202783.2713.67.camel@redhat.com> <56fcd0848eae2b0693797e09500892659323546c.1488199633.git.dcaratti@redhat.com>
+ <CAKgT0Udbs_=vanS+oF8ePXTNjEfsq9y==bhtQ-5Cxb-g+iO4bg@mail.gmail.com>
+In-Reply-To: <CAKgT0Udbs_=vanS+oF8ePXTNjEfsq9y==bhtQ-5Cxb-g+iO4bg@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+To: Alexander Duyck <alexander.duyck@gmail.com>
+Cc: Davide Caratti <dcaratti@redhat.com>, David Laight <David.Laight@aculab.com>, "David S . Miller" <davem@davemloft.net>, Linux Kernel Network Developers <netdev@vger.kernel.org>, "linux-sctp @ vger . kernel . org" <linux-sctp@vger.kernel.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-On Tue, Mar 14, 2017 at 11:35:33AM +0800, Xin Long wrote:
- > >> > [  245.416594]  (
- > >> > [  245.424928] sk_lock-AF_INET
- > >> > [  245.433279] ){+.+.+.}
- > >> > [  245.441889] , at: [<ffffffffa0302fd0>] sctp_sendmsg+0x330/0xfe0 [sctp]
- > >> > [  245.450167]
- > >> >                stack backtrace:
- > >> > [  245.466352] CPU: 3 PID: 1781 Comm: trinity-c30 Not tainted 4.10.0-think+ #7
- > >> > [  245.482894] Call Trace:
- > >> > [  245.491096]  dump_stack+0x68/0x93
- > >> > [  245.499314]  lockdep_rcu_suspicious+0xce/0xf0
- > >> > [  245.507610]  sctp_hash_transport+0x6c0/0x7e0 [sctp]
- > >> > [  245.515972]  ? sctp_endpoint_bh_rcv+0x171/0x290 [sctp]
- > >> > [  245.524366]  sctp_assoc_add_peer+0x290/0x3c0 [sctp]
- > >> > [  245.532736]  sctp_sendmsg+0x8f7/0xfe0 [sctp]
- > >> > [  245.541040]  ? rw_copy_check_uvector+0x8e/0x190
- > >> > [  245.549402]  ? import_iovec+0x3a/0xe0
- > >> > [  245.557679]  inet_sendmsg+0x49/0x1e0
- > >> > [  245.565887]  ___sys_sendmsg+0x2d4/0x300
- > >> > [  245.574092]  ? debug_smp_processor_id+0x17/0x20
- > >> > [  245.582342]  ? debug_smp_processor_id+0x17/0x20
- > >> > [  245.590508]  ? get_lock_stats+0x19/0x50
- > >> > [  245.598641]  __sys_sendmsg+0x54/0x90
- > >> > [  245.606745]  SyS_sendmsg+0x12/0x20
- > >> > [  245.614784]  do_syscall_64+0x66/0x1d0
- > >> > [  245.622828]  entry_SYSCALL64_slow_path+0x25/0x25
- > >> > [  245.630894] RIP: 0033:0x7fe095fcb0f9
- > >> > [  245.638962] RSP: 002b:00007ffc5601b1d8 EFLAGS: 00000246
- > >> > [  245.647071]  ORIG_RAX: 000000000000002e
- > >> > [  245.655186] RAX: ffffffffffffffda RBX: 000000000000002e RCX: 00007fe095fcb0f9
- > >> > [  245.663435] RDX: 0000000000000080 RSI: 00005592de12ddc0 RDI: 000000000000012d
- > >> > [  245.671776] RBP: 00007fe0965c8000 R08: 000000000000c000 R09: 00000000000000dc
- > >> > [  245.680111] R10: 0003021200000088 R11: 0000000000000246 R12: 0000000000000002
- > >> > [  245.688460] R13: 00007fe0965c8048 R14: 00007fe0966a1ad8 R15: 00007fe0965c8000
- > >> >
- > >>
- > >> Cc'ing Xin and linux-sctp@ mailing list.
- > >
- > > Seems the same as Andrey Konovalov had reported?
- > >
- > I would think so, this patch has fixed it:
- > 
- > commit 5179b26694c92373275e4933f5d0ff32d585c675
- > Author: Xin Long <lucien.xin@gmail.com>
- > Date:   Tue Feb 28 12:41:29 2017 +0800
- > 
- >     sctp: call rcu_read_lock before checking for duplicate transport nodes
- > 
- > not sure which commit your tests are based on, Dave, can you
- > check if this fix has been in your test kernel?
+On Tue, Feb 28, 2017 at 2:46 PM, Alexander Duyck
+<alexander.duyck@gmail.com> wrote:
+> On Tue, Feb 28, 2017 at 2:32 AM, Davide Caratti <dcaratti@redhat.com> wrote:
+>> sctp_compute_checksum requires crc32c symbol (provided by libcrc32c), so
+>> it can't be used in net core. Like it has been done previously with other
+>> symbols (e.g. ipv6_dst_lookup), introduce a stub struct skb_checksum_ops
+>> to allow computation of SCTP checksum in net core after sctp.ko (and thus
+>> libcrc32c) has been loaded.
+>
+> At a minimum the name really needs to change.  SCTP does not do
+> checksums.  It does a CRC, and a CRC is a very different thing.  The
+> fact that somebody decided that offloading a CRC could use the same
+> framework is very unfortunate, and your patch descriptions in this
+> whole set are calling out a CRC as checksums which it is not.
+>
+> I don't want to see anything "checksum" or "csum" related in the
+> naming when it comes to dealing with SCTP unless we absolutely have to
+> have it.  So any function names or structures with sctp in the name
+> should call out "crc32" or "crc", please don't use checksum.
+>
+Alexander,
 
-Haven't seen this in a while. Let's call it fixed.
+I agree that internal functions to sctp should not refer to checksum,
+but I think we need to take care to be consistent with any external
+API (even if somebody made a mistake defining it this way :-) ). As
+you know the checksum interface must be very precisely defined, there
+is no leeway for ambiguity. Many places in the stack use csum and
+CHECKSUM_* to refer to the API not the actual algorithm, others don't
+(e.g. CHECKSUM_UNNECESSARY can apply to SCTP checksum,
+CHECKSUM_COMPLETE must be an Internet checksum).
 
-	Dave
+For instance, in that light skb_sctp_csum_help is appropriately named
+I think because this is being called from skb_csum_help and refers to
+the interface to resolve a checksum.
+
+Tom
+
+>> Reviewed-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+>> Signed-off-by: Davide Caratti <dcaratti@redhat.com>
+>> ---
+>>  include/linux/skbuff.h |  2 ++
+>>  net/core/skbuff.c      | 20 ++++++++++++++++++++
+>>  net/sctp/offload.c     |  7 +++++++
+>>  3 files changed, 29 insertions(+)
+>>
+>> diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+>> index 69ccd26..cab9a32 100644
+>> --- a/include/linux/skbuff.h
+>> +++ b/include/linux/skbuff.h
+>> @@ -3125,6 +3125,8 @@ struct skb_checksum_ops {
+>>         __wsum (*combine)(__wsum csum, __wsum csum2, int offset, int len);
+>>  };
+>>
+>> +extern const struct skb_checksum_ops *sctp_csum_stub __read_mostly;
+>> +
+>>  __wsum __skb_checksum(const struct sk_buff *skb, int offset, int len,
+>>                       __wsum csum, const struct skb_checksum_ops *ops);
+>>  __wsum skb_checksum(const struct sk_buff *skb, int offset, int len,
+>> diff --git a/net/core/skbuff.c b/net/core/skbuff.c
+>> index f355795..64fd8fd 100644
+>> --- a/net/core/skbuff.c
+>> +++ b/net/core/skbuff.c
+>> @@ -2242,6 +2242,26 @@ __wsum skb_copy_and_csum_bits(const struct sk_buff *skb, int offset,
+>>  }
+>>  EXPORT_SYMBOL(skb_copy_and_csum_bits);
+>>
+>> +static __wsum warn_sctp_csum_update(const void *buff, int len, __wsum sum)
+>> +{
+>> +       net_warn_ratelimited("attempt to compute crc32c without sctp.ko\n");
+>> +       return 0;
+>> +}
+>> +
+>> +static __wsum warn_sctp_csum_combine(__wsum csum, __wsum csum2,
+>> +                                    int offset, int len)
+>> +{
+>> +       net_warn_ratelimited("attempt to compute crc32c without sctp.ko\n");
+>> +       return 0;
+>> +}
+>> +
+>> +const struct skb_checksum_ops *sctp_csum_stub __read_mostly >> +       &(struct skb_checksum_ops) {
+>> +       .update  = warn_sctp_csum_update,
+>> +       .combine = warn_sctp_csum_combine,
+>> +};
+>> +EXPORT_SYMBOL(sctp_csum_stub);
+>> +
+>>   /**
+>>   *     skb_zerocopy_headlen - Calculate headroom needed for skb_zerocopy()
+>>   *     @from: source buffer
+>> diff --git a/net/sctp/offload.c b/net/sctp/offload.c
+>> index 4f5a2b5..e9c3db0 100644
+>> --- a/net/sctp/offload.c
+>> +++ b/net/sctp/offload.c
+>> @@ -98,6 +98,12 @@ static const struct net_offload sctp6_offload = {
+>>         },
+>>  };
+>>
+>> +static const struct skb_checksum_ops *sctp_csum_ops __read_mostly >> +       &(struct skb_checksum_ops) {
+>> +       .update  = sctp_csum_update,
+>> +       .combine = sctp_csum_combine,
+>> +};
+>> +
+>>  int __init sctp_offload_init(void)
+>>  {
+>>         int ret;
+>> @@ -110,6 +116,7 @@ int __init sctp_offload_init(void)
+>>         if (ret)
+>>                 goto ipv4;
+>>
+>> +       sctp_csum_stub = sctp_csum_ops;
+>>         return ret;
+>>
+>>  ipv4:
+>> --
+>> 2.7.4
+>>
