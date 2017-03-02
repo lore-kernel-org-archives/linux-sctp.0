@@ -1,294 +1,286 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 01 Mar 2017 06:43:44 +0000
-Subject: Re: Problem on SCTP
-Message-Id: <CADvbK_fLJxdPaGZbojK+EFwff3hRKnYCex03PwJC7trBsBZjoA@mail.gmail.com>
+From: Stephen Smalley <sds@tycho.nsa.gov>
+Date: Thu, 02 Mar 2017 20:45:40 +0000
+Subject: Re: [RFC v2 PATCH 2/2] kernel: Add SELinux SCTP protocol support
+Message-Id: <1488487540.19896.108.camel@tycho.nsa.gov>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20170106123711.GA15139@hmsreliant.think-freely.org>
- <CAFXGftLc1Oi9yN-J2UdQxN4MALDhEHieZdGp5JCkOp6Ar+r4Qg@mail.gmail.com>
- <063D6719AE5E284EB5DD2968C1650D6DB025A97E@AcuExch.aculab.com>
- <CAFXGftJkR75OjWOKZhF_jgv_W1ysFky-msMj1asCU5MQMFE43w@mail.gmail.com>
- <20170109122408.GA20973@hmswarspite.think-freely.org> <CAFXGftLY1ywdRj79RMHW57oLa9_HNEEcUYRAiM=zs6YHHGVFzw@mail.gmail.com>
- <20170109191823.GC20973@hmswarspite.think-freely.org> <CAFXGft+C9Wf0Xgq0n-cw+ffeq-maDWoP=6dUV0c=zt80ugZLJQ@mail.gmail.com>
- <20170110143351.GA10195@hmswarspite.think-freely.org> <CAFXGft+XA_r+R2hxJU2qYvFJbS+avQ7TTOQ50xkTXm8q8KpDtg@mail.gmail.com>
- <20170111125708.GA1518@hmswarspite.think-freely.org> <CAFXGftLSFgPpxD6Oak8h1Y5y11-zXWLj0v4ziMFkjX8eZ4ZJgA@mail.gmail.com>
- <063D6719AE5E284EB5DD2968C1650D6DB025F9FD@AcuExch.aculab.com>
- <4163FC71-3A20-4484-8CDC-FA22D4FA72CF@lurchi.franken.de> <CAFXGftJe=ooG8sQR+NmMcVMNthvu6qtaH9YBPBFJMM+Ax-4UOA@mail.gmail.com>
- <CAFXGftLn8Kc9svJJRRmUiHxN_5_O0se2srw996BbPSVTbDP0fA@mail.gmail.com>
- <15C09FCB-B635-4144-84FA-E699A9C684CA@lurchi.franken.de> <10F99ED9-3820-4D7B-8AB8-B520741247C5@lurchi.franken.de>
- <CAFXGftJjt_oQk67YeZntvLKSgT-SmM01b0mTdRLLChyyw7OBqg@mail.gmail.com>
- <CADvbK_cmR4eS_SStfaT5fOBc0KSdXUW=QaFWcg8xK3jvZQoKAQ@mail.gmail.com>
- <CAFXGftJa=KZyV5Kr3GNaRUe4zBrvj9Ymk7UdRAbmFTY_zqYwDw@mail.gmail.com>
- <CADvbK_e2WDqTdL21kfqjr2x-4Kbef2Zjh60BxG7za=5JOF6OKQ@mail.gmail.com>
- <CAFXGft+f8AsMQe-MtkKoaCmGazbBR09nP6SiOj9__k13c-23YQ@mail.gmail.com>
- <CADvbK_fWrt=b0fOK92d9nVBMQim+3124UVn_0H2b5AHjFiayXA@mail.gmail.com>
- <CAFXGft+E7s_=YO5aSdHt5vT7rJqV6BK8eNQEapeY0bK-pApFPQ@mail.gmail.com>
- <CADvbK_f0EGaaYcbnBw33sy7j3zueTdEdctxGQ+MxeQz3WrDnNQ@mail.gmail.com>
- <CAFXGftK4S-6wUzv=mL4NyONExH+-s2dNyF-noFLEyVzbF0cPkg@mail.gmail.com>
- <CADvbK_cH1zGzYCFcuCM9SoXMk8bLwndyY7YW4+x=JsOjmYet9g@mail.gmail.com> <CAFXGftLvx=XeWXhQY8CquCNesXkpG37Htsh8UPqeZE=T0cx5Bg@mail.gmail.com>
-In-Reply-To: <CAFXGftLvx=XeWXhQY8CquCNesXkpG37Htsh8UPqeZE=T0cx5Bg@mail.gmail.com>
+References: <20170222170359.5433-1-richard_c_haines@btinternet.com>
+In-Reply-To: <20170222170359.5433-1-richard_c_haines@btinternet.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Sun Paul <paulrbk@gmail.com>
-Cc: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>, David Laight <David.Laight@aculab.com>, Neil Horman <nhorman@tuxdriver.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: Richard Haines <richard_c_haines@btinternet.com>, selinux@tycho.nsa.gov, linux-sctp@vger.kernel.org, linux-security-module@vger.kernel.org
 
-On Wed, Mar 1, 2017 at 12:15 PM, Sun Paul <paulrbk@gmail.com> wrote:
-> Hi Xin
->
-> I have used  3.10.0-514.6.2.el7.x86_64 on Centos7 and tessted. the
-> same issue still occur.
->
-> any idea?
->
-what I can only see is :
-03:32:37.928679 IP 10.165.250.22.3868 > 192.168.2.13.40001: sctp (1) [HB REQ]
-03:32:37.928717 IP 192.168.2.14.3868 > 192.168.2.13.40001: sctp (1) [HB REQ]
-03:32:37.929247 IP 192.168.2.13.40001 > 192.168.2.14.3868: sctp (1) [ABORT]
+On Wed, 2017-02-22 at 17:03 +0000, Richard Haines wrote:
+> Add SELinux support for the SCTP protocol. The SELinux-sctp.txt
+> document
+> describes how the patch has been implemented.
+> 
+> Patches to assist the testing of this kernel patch are:
+> 1) Support new SCTP portcon statement used by SCTP tests in the
+> selinux-testsuite [1].
+> 2) Add SCTP tests to the selinux-testsuite [2].
+> 
+> Built and tested on Fedora 25 with linux-4.9.9 kernel.
 
-this ABORT might be caused by no assoc.
+Need to re-base and test on a suitable upstream tree (maybe security
+next or selinux next).  Since the extended socket class policy
+capability has been merged, you can leverage it and drop the duplicated
+portions.
 
-can you show more details about your env ?
-1. the iptables rule for nat in router (# iptables -L -t nat)
+> 
+> [1] http://arctic.selinuxproject.org/~rhaines/selinux-sctp/selinux-Ad
+> d-support-for-the-SCTP-portcon-keyword.patch
+> [2] http://arctic.selinuxproject.org/~rhaines/selinux-sctp/selinux-
+> testsuite-Add-SCTP-test-support.patch
 
-2. the asocs info in client (# cat /proc/net/sctp/assocs)
+I wouldn't include URLs for these userspace patches in the patch
+description or in-tree documentation; you can note them in your cover
+letter posting as an aid to testing but they shouldn't be part of the
+permanent history since they will presumably be upstreamed too.
 
-3. more packet you captured, like 4-shake and some packets
-    right before these 3 packets.
+> 
+> Signed-off-by: Richard Haines <richard_c_haines@btinternet.com>
+> ---
+>  Documentation/security/SELinux-sctp.txt | 178
+> ++++++++++++++++++++++++++
+>  include/net/sctp/structs.h              |   7 ++
+>  net/sctp/sm_make_chunk.c                |  12 ++
+>  net/sctp/sm_statefuns.c                 |  20 +++
+>  net/sctp/socket.c                       |  42 ++++++-
 
-4. conntrack info in router (# cat /proc/net/nf_conntrack)
+I'd either move the net/sctp changes into the first patch that defines
+the LSM hooks or move them into their own separate patch between these
+two patches.
 
+>  security/selinux/hooks.c                | 213
+> ++++++++++++++++++++++++++++++--
+>  security/selinux/include/classmap.h     |   3 +
+>  7 files changed, 466 insertions(+), 9 deletions(-)
+>  create mode 100644 Documentation/security/SELinux-sctp.txt
+> 
+> diff --git a/Documentation/security/SELinux-sctp.txt
+> b/Documentation/security/SELinux-sctp.txt
+> new file mode 100644
+> index 0000000..ada666f
+> --- /dev/null
+> +++ b/Documentation/security/SELinux-sctp.txt
+> @@ -0,0 +1,178 @@
+> +                               SCTP SELinux Support
+> +                              ===========
+> +
+> +Testing - selinux-testsuite
+> +==============
+> +There is a patch available that adds SCTP/SELinux tests to the
+> +selinux-testsuite. This is available from:
+> +
+> +http://arctic.selinuxproject.org/~rhaines/selinux-sctp/selinux-tests
+> uite-Add-SCTP-test-support.patch
+> +
+> +These tests require libsepol to support the new sctp portcon
+> statement.
+> +A patch is available from:
+> +
+> +http://arctic.selinuxproject.org/~rhaines/selinux-sctp/selinux-Add-
+> support-for-the-SCTP-portcon-keyword.patch
 
-> On Mon, Feb 27, 2017 at 11:06 PM, Xin Long <lucien.xin@gmail.com> wrote:
->> On Mon, Feb 27, 2017 at 5:01 PM, Sun Paul <paulrbk@gmail.com> wrote:
->>> Hi, can I confirm that the problem is on the Linux router itself or on
->>> both server and client?
->>>
->> try with a new kernel in router, like build and install a upstream
->> kernel on your route machine.
->>
->> git://git.kernel.org/pub/scm/linux/kernel/git/davem/net.git
->>
->> https://kernelnewbies.org/KernelBuild :
->> part "Setting up your kernel configuration" and
->> part "Building the kernel"
->>
->>> On Thu, Feb 23, 2017 at 2:07 PM, Xin Long <lucien.xin@gmail.com> wrote:
->>>> On Thu, Feb 23, 2017 at 1:30 PM, Sun Paul <paulrbk@gmail.com> wrote:
->>>>> does this fixed in RHEL7?
->>>> yes, I think so.
->>>>
->>>>>
->>>>> On Wed, Feb 22, 2017 at 11:03 AM, Xin Long <lucien.xin@gmail.com> wrote:
->>>>>> On Wed, Feb 22, 2017 at 10:29 AM, Sun Paul <paulrbk@gmail.com> wrote:
->>>>>>> Hi Xin
->>>>>>>
->>>>>>> do you mean we need to patch the kernel?
->>>>>> Yups, pls comment on that bz if it's really needed for your env.
->>>>>> A z-stream kernel may be available for that issue soon.
->>>>>>
->>>>>> Thanks.
->>>>>>
->>>>>>>
->>>>>>>
->>>>>>>
->>>>>>> On Wed, Feb 22, 2017 at 10:00 AM, Xin Long <lucien.xin@gmail.com> wrote:
->>>>>>>> On Wed, Feb 22, 2017 at 9:12 AM, Sun Paul <paulrbk@gmail.com> wrote:
->>>>>>>>> Hi
->>>>>>>>>
->>>>>>>>> the router is actually is a linux running on RHEL6.8
->>>>>>>>> (2.6.32-642.4.2.el6.x86_64). it uses iptables to do SNAT aand DNAT
->>>>>>>>> forward.
->>>>>>>> https://bugzilla.redhat.com/show_bug.cgi?id12038
->>>>>>>>
->>>>>>>> sctp_manip_pkt->sctp_compute_cksum:
->>>>>>>>     struct sctphdr *sh = sctp_hdr(sub);
->>>>>>>>
->>>>>>>> But in rhel6, skb->transport_header is not yet set at that time.
->>>>>>>> This patch should be backported into rhel6.
->>>>>>>>
->>>>>>>> commit 21d1196a35f5686c4323e42a62fdb4b23b0ab4a3
->>>>>>>> Author: Eric Dumazet <edumazet@google.com>
->>>>>>>> Date:   Mon Jul 15 20:03:19 2013 -0700
->>>>>>>>
->>>>>>>>     ipv4: set transport header earlier
->>>>>>>>
->>>>>>>>
->>>>>>>>>
->>>>>>>>> On Tue, Feb 21, 2017 at 11:53 PM, Xin Long <lucien.xin@gmail.com> wrote:
->>>>>>>>>> On Tue, Feb 21, 2017 at 12:26 PM, Sun Paul <paulrbk@gmail.com> wrote:
->>>>>>>>>>> Hi,
->>>>>>>>>>>
->>>>>>>>>>> sorry to get back late, the platform is running on KVM. and this
->>>>>>>>>>> problem is resolved by moving to VMware environment, however,  a new
->>>>>>>>>>> problem is coming out, we noticed that the HB REQ is being ABORT from
->>>>>>>>>>> client.
->>>>>>>>>>>
->>>>>>>>>>>
->>>>>>>>>>> 03:32:35.233572 IP 10.165.250.22.3868 > 192.168.2.13.40001: sctp (1)
->>>>>>>>>>> [HB REQ] (from server to sctp router)
->>>>>>>>>>> 03:32:35.233603 IP 192.168.2.14.3868 > 192.168.2.13.40001: sctp (1)
->>>>>>>>>>> [HB REQ] (from sctp router to client)
->>>>>>>>>>> 03:32:35.233852 IP 192.168.2.13.40001 > 192.168.2.14.3868: sctp (1)
->>>>>>>>>>> [ABORT] (from client to sctp router)
->>>>>>>>>>>
->>>>>>>>>>> 03:32:37.928679 IP 10.165.250.22.3868 > 192.168.2.13.40001: sctp (1) [HB REQ]
->>>>>>>>>>> 03:32:37.928717 IP 192.168.2.14.3868 > 192.168.2.13.40001: sctp (1) [HB REQ]
->>>>>>>>>>> 03:32:37.929247 IP 192.168.2.13.40001 > 192.168.2.14.3868: sctp (1) [ABORT]
->>>>>>>>>>>
->>>>>>>>>>> For the above packet flow, 10.165.250.22 is the server and
->>>>>>>>>>> 192.168.2.13 is the client, the server 10.165.250.22 sends HB REQ to
->>>>>>>>>>> client 192.168.2.13 through 192.168.2.14 (the SCTP router), and the
->>>>>>>>>>> SCTP router change the src address before forward the HB REQ to the
->>>>>>>>>>> client.
->>>>>>>>>>>
->>>>>>>>>>> But somehow the client is ABORT the HB REQ, any idea? is it related to
->>>>>>>>>>> the HEARTBEAT information? or the checksum again>?
->>>>>>>>>> The incorrect checksum won't cause ABORT, but the abnormal HB REQ
->>>>>>>>>> could be, if HB information was modified when calculating the checksum
->>>>>>>>>> on router, the ABORT may be caused in client process.
->>>>>>>>>>
->>>>>>>>>> is your SCTP router linux ? if yes, what's the kernel version ?
->>>>>>>>>>
->>>>>>>>>>>
->>>>>>>>>>> On Fri, Jan 13, 2017 at 9:19 PM, Michael Tuexen
->>>>>>>>>>> <Michael.Tuexen@lurchi.franken.de> wrote:
->>>>>>>>>>>>> On 13 Jan 2017, at 10:43, Michael Tuexen <Michael.Tuexen@lurchi.franken.de> wrote:
->>>>>>>>>>>>>
->>>>>>>>>>>>> Your router does NOT change any field in the SCTP packet, but the
->>>>>>>>>>>>> SCTP checksum was modified from
->>>>>>>>>>>>>   Checksum: 0xbaea49e5 (not verified)
->>>>>>>>>>>>> to
->>>>>>>>>>>>>   Checksum: 0xa9a86d3f (not verified)
->>>>>>>>>>>>> At least one of these is wrong. Read the tracefiles in wireshark and
->>>>>>>>>>>>> enable checksum validation and wireshark will tell you which one is
->>>>>>>>>>>>> correct. (That is why I asked for .pcap file instead of a .txt).
->>>>>>>>>>>>>
->>>>>>>>>>>>> My guess is that the initial checksum is correct and your box middlebox
->>>>>>>>>>>>> not only changes the destination address and ttl field and header
->>>>>>>>>>>>> checksum in the IP-header (which is expected) but also incorrectly the
->>>>>>>>>>>>> SCTP checksum. Since no field in the SCTP packet has changed, the checksum
->>>>>>>>>>>>> must be the same.
->>>>>>>>>>>> At the server have a look at the SNMP counters:
->>>>>>>>>>>> cat /proc/net/sctp/snmp
->>>>>>>>>>>> You should find a line staring with
->>>>>>>>>>>> SctpChecksumErrors
->>>>>>>>>>>> If the number reported there is positive, the node received packets
->>>>>>>>>>>> with checksum errors.
->>>>>>>>>>>>
->>>>>>>>>>>> Best regards
->>>>>>>>>>>> Michael
->>>>>>>>>>>>>
->>>>>>>>>>>>> Best regards
->>>>>>>>>>>>> Michael
->>>>>>>>>>>>>> On 13 Jan 2017, at 04:29, Sun Paul <paulrbk@gmail.com> wrote:
->>>>>>>>>>>>>>
->>>>>>>>>>>>>> Frame 2: 98 bytes on wire (784 bits), 98 bytes captured (784 bits)
->>>>>>>>>>>>>>   Encapsulation type: Ethernet (1)
->>>>>>>>>>>>>>   Arrival Time: Jan  6, 2017 16:52:49.662321000 Malay Peninsula Standard Time
->>>>>>>>>>>>>>   [Time shift for this packet: 0.000000000 seconds]
->>>>>>>>>>>>>>   Epoch Time: 1483692769.662321000 seconds
->>>>>>>>>>>>>>   [Time delta from previous captured frame: 0.000179000 seconds]
->>>>>>>>>>>>>>   [Time delta from previous displayed frame: 0.000179000 seconds]
->>>>>>>>>>>>>>   [Time since reference or first frame: 0.000179000 seconds]
->>>>>>>>>>>>>>   Frame Number: 2
->>>>>>>>>>>>>>   Frame Length: 98 bytes (784 bits)
->>>>>>>>>>>>>>   Capture Length: 98 bytes (784 bits)
->>>>>>>>>>>>>>   [Frame is marked: False]
->>>>>>>>>>>>>>   [Frame is ignored: False]
->>>>>>>>>>>>>>   [Protocols in frame: eth:ethertype:ip:sctp]
->>>>>>>>>>>>>> Ethernet II, Src: Vmware_81:41:6b (00:50:56:81:41:6b), Dst:
->>>>>>>>>>>>>> Vmware_81:a6:a3 (00:50:56:81:a6:a3)
->>>>>>>>>>>>>>   Destination: Vmware_81:a6:a3 (00:50:56:81:a6:a3)
->>>>>>>>>>>>>>       Address: Vmware_81:a6:a3 (00:50:56:81:a6:a3)
->>>>>>>>>>>>>>       .... ..0. .... .... .... .... = LG bit: Globally unique
->>>>>>>>>>>>>> address (factory default)
->>>>>>>>>>>>>>       .... ...0 .... .... .... .... = IG bit: Individual address (unicast)
->>>>>>>>>>>>>>   Source: Vmware_81:41:6b (00:50:56:81:41:6b)
->>>>>>>>>>>>>>       Address: Vmware_81:41:6b (00:50:56:81:41:6b)
->>>>>>>>>>>>>>       .... ..0. .... .... .... .... = LG bit: Globally unique
->>>>>>>>>>>>>> address (factory default)
->>>>>>>>>>>>>>       .... ...0 .... .... .... .... = IG bit: Individual address (unicast)
->>>>>>>>>>>>>>   Type: IPv4 (0x0800)
->>>>>>>>>>>>>> Internet Protocol Version 4, Src: 192.168.206.83, Dst: 192.168.206.66
->>>>>>>>>>>>>>   0100 .... = Version: 4
->>>>>>>>>>>>>>   .... 0101 = Header Length: 20 bytes (5)
->>>>>>>>>>>>>>   Differentiated Services Field: 0x02 (DSCP: CS0, ECN: ECT(0))
->>>>>>>>>>>>>>       0000 00.. = Differentiated Services Codepoint: Default (0)
->>>>>>>>>>>>>>       .... ..10 = Explicit Congestion Notification: ECN-Capable
->>>>>>>>>>>>>> Transport codepoint '10' (2)
->>>>>>>>>>>>>>   Total Length: 84
->>>>>>>>>>>>>>   Identification: 0x0000 (0)
->>>>>>>>>>>>>>   Flags: 0x02 (Don't Fragment)
->>>>>>>>>>>>>>       0... .... = Reserved bit: Not set
->>>>>>>>>>>>>>       .1.. .... = Don't fragment: Set
->>>>>>>>>>>>>>       ..0. .... = More fragments: Not set
->>>>>>>>>>>>>>   Fragment offset: 0
->>>>>>>>>>>>>>   Time to live: 63
->>>>>>>>>>>>>>   Protocol: SCTP (132)
->>>>>>>>>>>>>>   Header checksum: 0x1d3d [validation disabled]
->>>>>>>>>>>>>>       [Good: False]
->>>>>>>>>>>>>>       [Bad: False]
->>>>>>>>>>>>>>   Source: 192.168.206.83
->>>>>>>>>>>>>>   Destination: 192.168.206.66
->>>>>>>>>>>>>>   [Source GeoIP: Unknown]
->>>>>>>>>>>>>>   [Destination GeoIP: Unknown]
->>>>>>>>>>>>>> Stream Control Transmission Protocol, Src Port: 50001 (50001), Dst
->>>>>>>>>>>>>> Port: 3868 (3868)
->>>>>>>>>>>>>>   Source port: 50001
->>>>>>>>>>>>>>   Destination port: 3868
->>>>>>>>>>>>>>   Verification tag: 0x00000000
->>>>>>>>>>>>>>   [Assocation index: 0]
->>>>>>>>>>>>>>   Checksum: 0xa9a86d3f (not verified)
->>>>>>>>>>>>>>
->>>>>>>>>>>>>>   INIT chunk (Outbound streams: 3000, inbound streams: 3000)
->>>>>>>>>>>>>>       Chunk type: INIT (1)
->>>>>>>>>>>>>>           0... .... = Bit: Stop processing of the packet
->>>>>>>>>>>>>>           .0.. .... = Bit: Do not report
->>>>>>>>>>>>>>       Chunk flags: 0x00
->>>>>>>>>>>>>>       Chunk length: 52
->>>>>>>>>>>>>>       Initiate tag: 0xe79f40cb
->>>>>>>>>>>>>>       Advertised receiver window credit (a_rwnd): 62464
->>>>>>>>>>>>>>       Number of outbound streams: 3000
->>>>>>>>>>>>>>       Number of inbound streams: 3000
->>>>>>>>>>>>>>       Initial TSN: 176990880
->>>>>>>>>>>>>>       IPv4 address parameter (Address: 192.168.206.83)
->>>>>>>>>>>>>>           Parameter type: IPv4 address (0x0005)
->>>>>>>>>>>>>>               0... .... .... .... = Bit: Stop processing of chunk
->>>>>>>>>>>>>>               .0.. .... .... .... = Bit: Do not report
->>>>>>>>>>>>>>           Parameter length: 8
->>>>>>>>>>>>>>           IP Version 4 address: 192.168.206.83
->>>>>>>>>>>>>>       IPv4 address parameter (Address: 192.168.1.83)
->>>>>>>>>>>>>>           Parameter type: IPv4 address (0x0005)
->>>>>>>>>>>>>>               0... .... .... .... = Bit: Stop processing of chunk
->>>>>>>>>>>>>>               .0.. .... .... .... = Bit: Do not report
->>>>>>>>>>>>>>           Parameter length: 8
->>>>>>>>>>>>>>           IP Version 4 address: 192.168.1.83
->>>>>>>>>>>>>>       Supported address types parameter (Supported types: IPv6, IPv4)
->>>>>>>>>>>>>>           Parameter type: Supported address types (0x000c)
->>>>>>>>>>>>>>               0... .... .... .... = Bit: Stop processing of chunk
->>>>>>>>>>>>>>               .0.. .... .... .... = Bit: Do not report
->>>>>>>>>>>>>>           Parameter length: 8
->>>>>>>>>>>>>>           Supported address type: IPv6 address (6)
->>>>>>>>>>>>>>           Supported address type: IPv4 address (5)
->>>>>>>>>>>>>>       ECN parameter
->>>>>>>>>>>>>>           Parameter type: ECN (0x8000)
->>>>>>>>>>>>>>               1... .... .... .... = Bit: Skip parameter and continue
->>>>>>>>>>>>>> processing of the chunk
->>>>>>>>>>>>>>               .0.. .... .... .... = Bit: Do not report
->>>>>>>>>>>>>>           Parameter length: 4
->>>>>>>>>>>>>>       Forward TSN supported parameter
->>>>>>>>>>>>>>           Parameter type: Forward TSN supported (0xc000)
->>>>>>>>>>>>>>               1... .... .... .... = Bit: Skip parameter and continue
->>>>>>>>>>>>>> processing of the chunk
->>>>>>>>>>>>>>               .1.. .... .... .... = Bit: Do report
->>>>>>>>>>>>>>           Parameter length: 4
->>>>>>>>>>>>>
->>>>>>>>>>>>> --
->>>>>>>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->>>>>>>>>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>>>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>>>>>>>>
->>>>>>>>>>> --
->>>>>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->>>>>>>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Ditto here; I wouldn't include these patch URLs in the in-tree
+documentation since the patches should get upstreamed.
+
+> +
+> +Before running these tests, read the selinux-testsuite/README.sctp
+> as it is
+> +also possible to run the lksctp-tools/src/func_tests that are
+> available from:
+> +
+> +https://github.com/sctp/lksctp-tools
+> +
+> +
+> +Security Hooks
+> +=======> +
+> +The Documentation/security/LSM-sctp.txt document describes how the
+> following
+> +sctp security hooks are utilised:
+> +    security_sctp_assoc_request()
+> +    security_sctp_accept_conn()
+> +    security_sctp_sk_clone()
+> +    security_sctp_addr_list()
+> +
+> +
+> +Policy Statements
+> +=========
+> +A new object class "sctp_socket" has been introduced with the
+> following SCTP
+> +specific permissions: association bindx_add connectx
+> +
+> +The permissions are explained in the sections below.
+> +
+> +Kernel policy language
+> +-----------------------
+> +class sctp_socket
+> +class sctp_socket inherits socket { node_bind name_connect
+> association
+> +                                    bindx_add connectx }
+> +
+> +CIL policy language
+> +--------------------
+> +(classcommon sctp_socket socket)
+> +(class sctp_socket (node_bind name_connect association bindx_add
+> connectx))
+> +(classorder (unordered sctp_socket))
+> +
+> +If the SELinux userspace tools have been updated, then the portcon
+> statement
+> +may be used as shown in the following example:
+> +    (portcon sctp (1024 1035) (system_u object_r sctp_port_t ((s0)
+> (s0))))
+
+Not a strong objection, but not sure if CIL documentation belongs in
+the kernel tree.
+
+<snip>
+> +
+> +SCTP Peer Labeling and Permission Checks
+> +====================> +An SCTP socket will only have one peer label assigned to it. This
+> will be
+> +assigned during the establishment of the first association. Once the
+> peer
+> +label has been assigned, the "association" permission will be
+> checked as
+> +follows:
+> +
+> +       allow socket_t peer_t : sctp_socket { association };
+> +
+> +This allows policy to decide whether to allow or deny associations
+> from peers,
+> +as there can be multiple associations on a single socket. These
+> associations
+> +could come from any of the policy allowed peers, however it could be
+> that
+> +these are required by other services but sctp associations are not
+> allowed
+> +from all of them.
+
+I'm still confused by this check.  We should already be performing a
+peer recv check between the socket label and the peer label, so we
+don't need to duplicate that check.  What would make sense would be
+some kind of permission check between the peer label from the first
+association, which is the one you save and return to userspace for
+SO_PEERSEC, and the peer label of any subsequent associations
+established on the socket.  That would allow policy to prohibit or
+restrict mixing of associations with different peer labels on the same
+socket (since effectively that permits impersonation of another peer
+label to userspace components).  But instead you are always checking
+between the socket label and the saved peer label from the first
+association.  So you'll just keep repeating the same permission check
+for every association.
+
+> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+> index 7f4387f..c0be892 100644
+> --- a/security/selinux/hooks.c
+> +++ b/security/selinux/hooks.c
+<snip>
+> @@ -4827,6 +4879,149 @@ static void selinux_sock_graft(struct sock
+> *sk, struct socket *parent)
+>  	sksec->sclass = isec->sclass;
+>  }
+>  
+> +static int selinux_sctp_assoc_request(struct sock *sk, struct
+> sk_buff *skb)
+> +{
+> +	struct sk_security_struct *sksec = sk->sk_security;
+> +	struct common_audit_data ad;
+> +	struct lsm_network_audit net = {0,};
+> +	u8 peerlbl_active;
+> +	int err;
+> +
+> +	peerlbl_active = selinux_peerlbl_enabled();
+> +
+> +	if (sksec->peer_sid = SECINITSID_UNLABELED &&
+> peerlbl_active) {
+> +		/* Here because this is the first association on
+> this
+> +		 * socket that is always unlabeled, therefore set
+> +		 * sksec->peer_sid to new peer ctx. For further info
+> see:
+> +		 * Documentation/security/SELinux-sctp.txt
+> +		 */
+> +		err = selinux_skb_peerlbl_sid(skb, sk->sk_family,
+> +					      &sksec->peer_sid);
+> +		if (err)
+> +			return err;
+> +	}
+> +
+> +	ad.type = LSM_AUDIT_DATA_NET;
+> +	ad.u.net = &net;
+> +	ad.u.net->sk = sk;
+> +
+> +	err = avc_has_perm(sksec->sid, sksec->peer_sid, sksec-
+> >sclass,
+> +			   SCTP_SOCKET__ASSOCIATION, &ad);
+
+As above, you'll end up performing the same permission check repeatedly
+here for every association, even when the association itself would have
+a different peer label.  And this permission check seems to be no
+different than the peer recv check (same SID arguments).  What would
+make sense is something like:
+
+	u32 peer_sid = SECINITSID_UNLABELED;
+	if (peerlbl_active) {
+		err = selinux_skb_peerlbl_sid(skb, sk->sk_family, &peer_sid);
+		if (err)
+			return err;
+	}
+	if (sksec->peer_sid = SECINITSID_UNLABELED)
+		sksec->peer_sid = peer_sid;
+	else if (sksec->peer_sid != peer_sid) {
+		err = avc_has_perm(sksec->peer_sid, peer_sid, sksec->sclass,
+				SCTP_SOCKET_ASSOCIATION, &ad);
+		if (err)
+			return err;
+	}
+	return 0;
+
+This would allow preventing multiple associations with different peer
+labels, or controlling their inter-relationships.  You don't need a
+socket-peer check here; that is already covered by the peer recv check.
+		
+> +	return err;
+> +}
+> +
+> +static int selinux_sctp_accept_conn(struct sctp_endpoint *ep,
+> +				    struct sk_buff *skb)
+> +{
+> +	struct sk_security_struct *sksec = ep->base.sk->sk_security;
+> +	int err;
+> +	u32 connsid;
+> +	u32 peersid;
+> +
+> +	/* Have COOKIE ECHO so compute the MLS component for the
+> connection
+> +	 * and store the information in ep. This will only be used
+> by
+> +	 * TCP/peeloff connections as they cause a new socket to be
+> generated.
+
+Not sure why you say TCP above.  And won't this be true of accept()'d
+sockets too in addition to peeloff ones?
+
+> +	 * selinux_sctp_sk_clone() will then plug this into the new
+> socket
+> +	 * as described in Documentation/security/LSM-sctp.txt
+> +	 */
+> +	err = selinux_skb_peerlbl_sid(skb, ep->base.sk->sk_family,
+> &peersid);
+> +	if (err)
+> +		return err;
+> +
+> +	err = selinux_conn_sid(sksec->sid, peersid, &connsid);
+> +	if (err)
+> +		return err;
+> +
+> +	ep->secid = connsid;
+> +	ep->peer_secid = peersid;
+> +
+> +	return 0;
+> +}
+> +
