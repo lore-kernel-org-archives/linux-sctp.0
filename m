@@ -1,84 +1,132 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Fri, 03 Mar 2017 16:31:22 +0000
-Subject: RE: [PATCH net] sctp: change to save MSG_MORE flag into assoc
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6DCFE7443F@AcuExch.aculab.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 03 Mar 2017 17:57:50 +0000
+Subject: Re: [PATCH net] sctp: change to save MSG_MORE flag into assoc
+Message-Id: <CADvbK_eBvFkR65ACq1JLgsAnK3TFjD_kKg8KaBtzzgu86-KYWw@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <ba64767f352e56cfe694af89445fe155cd431cd0.1488522235.git.lucien.xin@gmail.com>
  <063D6719AE5E284EB5DD2968C1650D6DCFE74179@AcuExch.aculab.com>
- <CADvbK_cBjR_LXZd1t-7jjkDkfhChJCbDCwPhMqvwJ+vp2UfJOw@mail.gmail.com>
-In-Reply-To: <CADvbK_cBjR_LXZd1t-7jjkDkfhChJCbDCwPhMqvwJ+vp2UfJOw@mail.gmail.com>
+ <CADvbK_cBjR_LXZd1t-7jjkDkfhChJCbDCwPhMqvwJ+vp2UfJOw@mail.gmail.com> <063D6719AE5E284EB5DD2968C1650D6DCFE7443F@AcuExch.aculab.com>
+In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6DCFE7443F@AcuExch.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Xin Long' <lucien.xin@gmail.com>
+To: David Laight <David.Laight@aculab.com>
 Cc: network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "davem@davemloft.net" <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-RnJvbTogWGluIExvbmcNCj4gU2VudDogMDMgTWFyY2ggMjAxNyAxNTo0Mw0KLi4uDQo+ID4gSXQg
-aXMgbXVjaCBtb3JlIGltcG9ydGFudCB0byBnZXQgTVNHX01PUkUgd29ya2luZyAncHJvcGVybHkn
-IGZvciBTQ1RQDQo+ID4gdGhhbiBmb3IgVENQLiBGb3IgVENQIGFuIGFwcGxpY2F0aW9uIGNhbiBh
-bHdheXMgdXNlIGEgbG9uZyBzZW5kLg0KDQo+ICJsb25nIHNlbmQiID8sIHlvdSBtZWFuIGJpZ2dl
-ciBkYXRhLCBvciBrZWVwaW5nIHNlbmRpbmc/DQo+IEkgZGlkbid0IGdldCB0aGUgZGlmZmVyZW5j
-ZSBiZXR3ZWVuIFNDVFAgYW5kIFRDUCwgdGhleQ0KPiBhcmUgc2ltaWxhciB3aGVuIHNlbmRpbmcg
-ZGF0YS4NCg0KV2l0aCB0Y3AgYW4gYXBwbGljYXRpb24gY2FuIGFsd2F5cyByZXBsYWNlIHR3byBz
-ZW5kKCkvd3JpdGUoKQ0KY2FsbHMgd2l0aCBhIHNpbmdsZSBjYWxsIHRvIHdyaXRldigpLg0KRm9y
-IHNjdHAgdHdvIHNlbmQoKSBjYWxscyBtdXN0IGJlIG1hZGUgaW4gb3JkZXIgdG8gZ2VuZXJhdGUg
-dHdvDQpkYXRhIGNodW5rcy4NClNvIGl0IGlzIG11Y2ggZWFzaWVyIGZvciBhIHRjcCBhcHBsaWNh
-dGlvbiB0byBnZW5lcmF0ZSAnZnVsbCcNCmV0aGVybmV0IHBhY2tldHMuIA0KDQo+IA0KPiA+DQo+
-ID4gLi4uDQo+ID4+IEBAIC0xOTgyLDYgKzE5ODIsNyBAQCBzdGF0aWMgaW50IHNjdHBfc2VuZG1z
-ZyhzdHJ1Y3Qgc29jayAqc2ssIHN0cnVjdCBtc2doZHIgKm1zZywgc2l6ZV90IG1zZ19sZW4pDQo+
-ID4+ICAgICAgICAqIGJyZWFrcy4NCj4gPj4gICAgICAgICovDQo+ID4+ICAgICAgIGVyciA9IHNj
-dHBfcHJpbWl0aXZlX1NFTkQobmV0LCBhc29jLCBkYXRhbXNnKTsNCj4gPj4gKyAgICAgYXNvYy0+
-Zm9yY2VfZGVsYXkgPSAwOw0KPiA+PiAgICAgICAvKiBEaWQgdGhlIGxvd2VyIGxheWVyIGFjY2Vw
-dCB0aGUgY2h1bms/ICovDQo+ID4+ICAgICAgIGlmIChlcnIpIHsNCj4gPj4gICAgICAgICAgICAg
-ICBzY3RwX2RhdGFtc2dfZnJlZShkYXRhbXNnKTsNCj4gPg0KPiA+IEkgZG9uJ3QgdGhpbmsgdGhp
-cyBpcyByaWdodCAtIG9yIG5lZWRlZC4NCj4gPiBZb3Ugb25seSBnZXQgdG8gdGhlIGFib3ZlIGlm
-IHNvbWUgdGVzdCBoYXMgZGVjaWRlZCB0byBzZW5kIGRhdGEgY2h1bmtzLg0KPiA+IFNvIGl0IGp1
-c3QgbWVhbnMgdGhhdCB0aGUgTkVYVCB0aW1lIHNvbWVvbmUgdHJpZXMgdG8gc2VuZCBkYXRhIGFs
-bCB0aGUNCj4gPiBxdWV1ZWQgZGF0YSBnZXRzIHNlbnQuDQoNCj4gdGhlIE5FWFQgdGltZSBzb21l
-b25lIHRyaWVzIHRvIHNlbmQgZGF0YSB3aXRoICJNU0dfTU9SRSBjbGVhciIsDQo+IHllcywgYnV0
-IHdpdGggIk1TR19NT1JFIHNldCIsIGl0IHdpbGwgc3RpbGwgZGVsYXkuDQo+IA0KPiA+IEknbSBn
-dWVzc2luZyB0aGF0IHRoZSB3aG9sZSB0aGluZyBnZXRzIGNhbGxlZCBpbiBhIGxvb3AgKGRlZmlu
-aXRlbHkgbmVlZGVkDQo+ID4gZm9yIHZlcnkgbG9uZyBkYXRhIGNodW5rcywgb3IgYWZ0ZXIgdGhl
-IHdpbmRvdyBpcyBvcGVuZWQpLg0KDQo+IHllcywgaWYgdXNlcnMga2VlcCBzZW5kaW5nIGRhdGEg
-Y2h1bmtzIHdpdGggTVNHX01PUkUgc2V0LCBubw0KPiBkYXRhIHdpdGggIk1TR19NT1JFIGNsZWFy
-IiBnYXAuDQo+IA0KPiA+IE5vdyBpZiBhbiBhcHBsaWNhdGlvbiBzZW5kcyBhIGxvdCBvZiAoc2F5
-KSAxMDAgYnl0ZSBjaHVua3Mgd2l0aCBNU0dfTU9SRQ0KPiA+IHNldCBpdCB3b3VsZCBleHBlY3Qg
-dG8gc2VlIGEgbG90IG9mIGZ1bGwgZXRoZXJuZXQgZnJhbWVzIGJlIHNlbnQuDQoNCj4gcmlnaHQu
-DQoNCj4gPiBXaXRoIHRoZSBhYm92ZSBhIGZyYW1lIHdpbGwgYmUgc2VudCAoY29udGFpbmluZyBh
-bGwgYnV0IDEgY2h1bmspIHdoZW4gdGhlDQo+ID4gYW1vdW50IG9mIHF1ZXVlZCBkYXRhIGJlY29t
-ZXMgdG9vIGxhcmdlIGZvciBhbiBldGhlcm5ldCBmcmFtZSwgYW5kIGltbWVkaWF0ZWx5DQo+ID4g
-Zm9sbG93ZWQgYnkgYSBzZWNvbmQgZXRoZXJuZXQgZnJhbWUgd2l0aCAxIGNodW5rIGluIGl0Lg0K
-DQo+ICJmb2xsb3dlZCBieSBhIHNlY29uZCBldGhlcm5ldCBmcmFtZSB3aXRoIDEgY2h1bmsgaW4g
-aXQuIiwgSSB0aGluayB0aGlzJ3MNCj4gd2hhdCB5b3UncmUgcmVhbGx5IHdvcnJpZWQgYWJvdXQs
-IHJpZ2h0ID8NCj4gQnV0IHNjdHAgZmx1c2ggZGF0YSBxdWV1ZSBOT1QgbGlrZSB3aGF0IHlvdSB0
-aGluaywgaXQncyBub3Qga2VlcCB0cmF2ZXJzaW5nDQo+IHRoZSBxdWV1ZSB1bnRpbGwgdGhlIHF1
-ZXVlIGlzIGVtcHR5Lg0KPiBvbmNlIGEgcGFja2V0IHdpdGggY2h1bmtzIGluIG9uZSBldGhlcm5l
-dCBmcmFtZSBpcyBzZW50LCBzY3RwX291dHFfZmx1c2gNCj4gd2lsbCByZXR1cm4uIGl0IHdpbGwg
-cGFjayBjaHVua3MgYW5kIHNlbmQgdGhlIG5leHQgcGFja2V0IGFnYWluIHVudGlsbCBzb21lDQo+
-IG90aGVyICdldmVudCcgdHJpZ2dlcnMgaXQsIGxpa2UgcmV0cmFuc21pc3Npb24gb3IgZGF0YSBy
-ZWNlaXZlZCBmcm9tIHBlZXIuDQo+IEkgZG9uJ3QgdGhpbmsgdGhpcyBpcyBhIHByb2JsZW0uDQoN
-CkVybS4uLi4gdGhhdCBjYW4ndCB3b3JrLg0KSSB0aGluayB0aGVyZSBpcyBjb2RlIHRvIGNvbnZl
-cnQgYSBsYXJnZSB1c2VyIHNlbmQgaW50byBtdWx0aXBsZSBkYXRhIGNodW5rcy4NClNvIGlmIHRo
-ZSB1c2VyIGRvZXMgYSA0ayAoc2F5KSBzZW5kIHNldmVyYWwgbGFyZ2UgY2h1bmtzIGdldCBxdWV1
-ZWQuDQpUaGVzZSB3b3VsZCBuZWVkIHRvIGFsbCBiZSBzZW50IGF0IG9uY2UuDQoNClNpbWlsYXJs
-eSB3aGVuIHRoZSB0cmFuc21pdCB3aW5kb3cgaXMgcmVjZWl2ZWQuDQpTbyBzb21ld2hlcmUgdGhl
-cmUgb3VnaHQgdG8gYmUgYSBsb29wIHRoYXQgd2lsbCBzZW5kIG1vcmUgdGhhbiBvbmUgcGFja2V0
-Lg0KDQo+ID4gTm93IGl0IG1pZ2h0IGJlIHRoYXQgdGhlIGZsYWcgbmVlZHMgY2xlYXJpbmcgd2hl
-biByZXRyYW5zbWlzc2lvbnMgYXJlIHF1ZXVlZC4NCj4gPiBPVE9IIHRoZXkgbWlnaHQgZ2V0IHNl
-bnQgZm9yIG90aGVyIHJlYXNvbnMuDQoNCj4gQmVmb3JlIHdlIHJlYWxseSBvdmVydGhvdWdodCBh
-Ym91dCBNU0dfTU9SRSwgbm8gbmVlZCB0byBjYXJlIGFib3V0DQo+IHJldHJhbnNtaXNzaW9ucywg
-ZGVmaW5lIE1TR19NT1JFLCBpbiBteSBvcGluaW9uLCBpdCB3b3JrcyBtb3JlIGZvcg0KPiAqaW5m
-bGlnaHQgaXMgMCosIGlmIGl0J3Mgbm90IDAsIHdlIHNob3VsZG4ndCBzdG9wIG90aGVyIHBsYWNl
-cyBmbHVzaGluZyB0aGVtLg0KDQpFaD8gYW5kIHdoZW4gbmFnbGUgZGlzYWJsZWQuDQpJZiAnaW5m
-bGlnaHQnIGlzbid0IDAgdGhlbiBtb3N0IHBhdGhzIGRvbid0IGZsdXNoIGRhdGEuDQoNCj4gV2Ug
-Y2Fubm90IGxldCBhc29jJ3MgbW9yZV9tb3JlIGZsYWcgd29yayBhcyBnbG9iYWwsIGl0IHdpbGwg
-YmxvY2sgZWxzZXdoZXJlDQo+IHNlbmRpbmcgZGF0YSBjaHVua3MsIG5vdCBvbmx5IHNjdHBfc2Vu
-ZG1zZy4NCg0KSWYgdGhlIGNvbm5lY3Rpb24gd2FzIGZsb3cgY29udHJvbGxlZCBvZmYsIGFuZCBt
-b3JlICdjcmVkaXQnIGFycml2ZXMgYW5kIHRoZXJlDQppcyBsZXNzIHRoYXQgYW4gZXRoZXJuZXQg
-ZnJhbWUncyB3b3J0aCBvZiBkYXRhIHBlbmRpbmcsIGFuZCB0aGUgbGFzdCBzZW5kDQpzYWlkICdN
-U0dfTU9SRScgdGhlcmUgaXMgbm8gcG9pbnQgc2VuZGluZyBhbnl0aGluZyB1bnRpbCB0aGUgYXBw
-bGljYXRpb24NCmRvZXMgYSBzZW5kIHdpdGggTVNHX01PUkUgY2xlYXIuDQoNCkknbSBub3Qgc3Vy
-ZSB3aGF0IGNhdXNlcyBhIHJldHJhbnNtaXNzaW9uIHRvIHNlbmQgZGF0YSwgSSBzdXNwZWN0IHRo
-YXQgJ2luZmxpZ2h0Jw0KY2FuIGVhc2lseSBiZSBub24temVybyBhdCB0aGF0IHRpbWUuDQpMaWtl
-bHkgc29tZXRoaW5nIGNhdXNlcyBhIHBhY2tldCBiZSBnZW5lcmF0ZWQgLSB3aGljaCB0aGVuIGNv
-bGxlY3RzIHRoZSBkYXRhIGNodW5rcy4NCg0KCURhdmlkDQoNCg0K
+On Sat, Mar 4, 2017 at 12:31 AM, David Laight <David.Laight@aculab.com> wrote:
+> From: Xin Long
+>> Sent: 03 March 2017 15:43
+> ...
+>> > It is much more important to get MSG_MORE working 'properly' for SCTP
+>> > than for TCP. For TCP an application can always use a long send.
+>
+>> "long send" ?, you mean bigger data, or keeping sending?
+>> I didn't get the difference between SCTP and TCP, they
+>> are similar when sending data.
+>
+> With tcp an application can always replace two send()/write()
+> calls with a single call to writev().
+> For sctp two send() calls must be made in order to generate two
+> data chunks.
+> So it is much easier for a tcp application to generate 'full'
+> ethernet packets.
+okay, it should not be a important reason, and sctp might also support
+it one day. :-)
+
+>
+>>
+>> >
+>> > ...
+>> >> @@ -1982,6 +1982,7 @@ static int sctp_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
+>> >>        * breaks.
+>> >>        */
+>> >>       err = sctp_primitive_SEND(net, asoc, datamsg);
+>> >> +     asoc->force_delay = 0;
+>> >>       /* Did the lower layer accept the chunk? */
+>> >>       if (err) {
+>> >>               sctp_datamsg_free(datamsg);
+>> >
+>> > I don't think this is right - or needed.
+>> > You only get to the above if some test has decided to send data chunks.
+>> > So it just means that the NEXT time someone tries to send data all the
+>> > queued data gets sent.
+>
+>> the NEXT time someone tries to send data with "MSG_MORE clear",
+>> yes, but with "MSG_MORE set", it will still delay.
+>>
+>> > I'm guessing that the whole thing gets called in a loop (definitely needed
+>> > for very long data chunks, or after the window is opened).
+>
+>> yes, if users keep sending data chunks with MSG_MORE set, no
+>> data with "MSG_MORE clear" gap.
+>>
+>> > Now if an application sends a lot of (say) 100 byte chunks with MSG_MORE
+>> > set it would expect to see a lot of full ethernet frames be sent.
+>
+>> right.
+>
+>> > With the above a frame will be sent (containing all but 1 chunk) when the
+>> > amount of queued data becomes too large for an ethernet frame, and immediately
+>> > followed by a second ethernet frame with 1 chunk in it.
+>
+>> "followed by a second ethernet frame with 1 chunk in it.", I think this's
+>> what you're really worried about, right ?
+>> But sctp flush data queue NOT like what you think, it's not keep traversing
+>> the queue untill the queue is empty.
+>> once a packet with chunks in one ethernet frame is sent, sctp_outq_flush
+>> will return. it will pack chunks and send the next packet again untill some
+>> other 'event' triggers it, like retransmission or data received from peer.
+>> I don't think this is a problem.
+>
+> Erm.... that can't work.
+> I think there is code to convert a large user send into multiple data chunks.
+> So if the user does a 4k (say) send several large chunks get queued.
+> These would need to all be sent at once.
+>
+> Similarly when the transmit window is received.
+> So somewhere there ought to be a loop that will send more than one packet.
+As far as I can see, no loop like you said, mostly, the incoming
+chunk (like SACK) from peer will trigger the next flush out.
+I can try to trace the path in kernel for sure tomorrow.
+
+>
+>> > Now it might be that the flag needs clearing when retransmissions are queued.
+>> > OTOH they might get sent for other reasons.
+>
+>> Before we really overthought about MSG_MORE, no need to care about
+>> retransmissions, define MSG_MORE, in my opinion, it works more for
+>> *inflight is 0*, if it's not 0, we shouldn't stop other places flushing them.
+>
+> Eh? and when nagle disabled.
+> If 'inflight' isn't 0 then most paths don't flush data.
+I knew, but MSG_MORE is different thing, it should only try to work for the
+current and following data.
+
+>
+>> We cannot let asoc's more_more flag work as global, it will block elsewhere
+>> sending data chunks, not only sctp_sendmsg.
+>
+> If the connection was flow controlled off, and more 'credit' arrives and there
+> is less that an ethernet frame's worth of data pending, and the last send
+> said 'MSG_MORE' there is no point sending anything until the application
+> does a send with MSG_MORE clear.
+got you, I think you have different understanding about MSG_MORE
+while this patch just try to make it work like TCP's msg_more, but what
+you mentioned here is the same as TCP thing, seems you also want
+to improve TCP's MSG_MORE :-)
+
+>
+> I'm not sure what causes a retransmission to send data, I suspect that 'inflight'
+> can easily be non-zero at that time.
+The thing that causes a retransmission to send data is that both tx and
+rtx send data through sctp_outq_flush, in which it will try to send rtx queue,
+then rx queue.
+
+yes, once a packet is sent out and not yet be SACKed, "inflight" will not be
+zero, so when retransmiting, "inflight" must be non-zero.
+
+> Likely something causes a packet be generated - which then collects the data chunks.
+>
+>         David
+>
+>
