@@ -1,190 +1,127 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 10 Mar 2017 04:11:09 +0000
-Subject: [PATCHv2 net-next 4/7] sctp: implement receiver-side procedures for the Add Outgoing Streams Request
-Message-Id: <f73e5ede81d0eeccdf955eb7d77eadcda5166c9e.1489118815.git.lucien.xin@gmail.com>
+Date: Fri, 10 Mar 2017 04:11:06 +0000
+Subject: [PATCHv2 net-next 1/7] sctp: add support for generating assoc reset event notification
+Message-Id: <7bf94990cf77044e0286adc2f393af4c9010213c.1489118815.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1489118815.git.lucien.xin@gmail.com>
- <7bf94990cf77044e0286adc2f393af4c9010213c.1489118815.git.lucien.xin@gmail.com>
- <f224235b4621ea3a182e959873f6fe0ba78e5416.1489118815.git.lucien.xin@gmail.com>
- <70b0da1e9de612702d0ddcdeab67e56b6d11fd78.1489118815.git.lucien.xin@gmail.com>
-In-Reply-To: <70b0da1e9de612702d0ddcdeab67e56b6d11fd78.1489118815.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1489118815.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-This patch is to add Receiver-Side Procedures for the Add Outgoing
-Streams Request Parameter described in section 5.2.5.
-
-It is also to improve sctp_chunk_lookup_strreset_param, so that it
-can be used for processing addstrm_out request.
+This patch is to add Association Reset Event described in rfc6525
+section 6.1.2.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/sm.h   |  4 +++
- net/sctp/sm_statefuns.c |  3 ++
- net/sctp/stream.c       | 89 +++++++++++++++++++++++++++++++++++++++++++------
- 3 files changed, 86 insertions(+), 10 deletions(-)
+ include/net/sctp/ulpevent.h |  4 ++++
+ include/uapi/linux/sctp.h   | 15 +++++++++++++++
+ net/sctp/ulpevent.c         | 28 ++++++++++++++++++++++++++++
+ 3 files changed, 47 insertions(+)
 
-diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index 2629d66..93ae50b 100644
---- a/include/net/sctp/sm.h
-+++ b/include/net/sctp/sm.h
-@@ -297,6 +297,10 @@ struct sctp_chunk *sctp_process_strreset_tsnreq(
- 				struct sctp_association *asoc,
- 				union sctp_params param,
- 				struct sctp_ulpevent **evp);
-+struct sctp_chunk *sctp_process_strreset_addstrm_out(
-+				struct sctp_association *asoc,
-+				union sctp_params param,
-+				struct sctp_ulpevent **evp);
+diff --git a/include/net/sctp/ulpevent.h b/include/net/sctp/ulpevent.h
+index 324b596..2ab7ed4 100644
+--- a/include/net/sctp/ulpevent.h
++++ b/include/net/sctp/ulpevent.h
+@@ -132,6 +132,10 @@ struct sctp_ulpevent *sctp_ulpevent_make_stream_reset_event(
+ 	const struct sctp_association *asoc, __u16 flags,
+ 	__u16 stream_num, __u16 *stream_list, gfp_t gfp);
  
- /* Prototypes for statetable processing. */
++struct sctp_ulpevent *sctp_ulpevent_make_assoc_reset_event(
++	const struct sctp_association *asoc, __u16 flags,
++	 __u32 local_tsn, __u32 remote_tsn, gfp_t gfp);
++
+ void sctp_ulpevent_read_sndrcvinfo(const struct sctp_ulpevent *event,
+ 				   struct msghdr *);
+ void sctp_ulpevent_read_rcvinfo(const struct sctp_ulpevent *event,
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index d3ae381..7735829 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -502,6 +502,17 @@ struct sctp_stream_reset_event {
+ 	__u16 strreset_stream_list[];
+ };
  
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 6982064..881122b 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -3875,6 +3875,9 @@ sctp_disposition_t sctp_sf_do_reconf(struct net *net,
- 		else if (param.p->type = SCTP_PARAM_RESET_TSN_REQUEST)
- 			reply = sctp_process_strreset_tsnreq(
- 				(struct sctp_association *)asoc, param, &ev);
-+		else if (param.p->type = SCTP_PARAM_RESET_ADD_OUT_STREAMS)
-+			reply = sctp_process_strreset_addstrm_out(
-+				(struct sctp_association *)asoc, param, &ev);
- 		/* More handles for other types will be added here, by now it
- 		 * just ignores other types.
- 		 */
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index 7e993b0..df2794d 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -303,13 +303,14 @@ int sctp_send_add_streams(struct sctp_association *asoc,
++#define SCTP_ASSOC_RESET_DENIED		0x0004
++#define SCTP_ASSOC_RESET_FAILED		0x0008
++struct sctp_assoc_reset_event {
++	__u16 assocreset_type;
++	__u16 assocreset_flags;
++	__u32 assocreset_length;
++	sctp_assoc_t assocreset_assoc_id;
++	__u32 assocreset_local_tsn;
++	__u32 assocreset_remote_tsn;
++};
++
+ /*
+  * Described in Section 7.3
+  *   Ancillary Data and Notification Interest Options
+@@ -518,6 +529,7 @@ struct sctp_event_subscribe {
+ 	__u8 sctp_authentication_event;
+ 	__u8 sctp_sender_dry_event;
+ 	__u8 sctp_stream_reset_event;
++	__u8 sctp_assoc_reset_event;
+ };
+ 
+ /*
+@@ -543,6 +555,7 @@ union sctp_notification {
+ 	struct sctp_authkey_event sn_authkey_event;
+ 	struct sctp_sender_dry_event sn_sender_dry_event;
+ 	struct sctp_stream_reset_event sn_strreset_event;
++	struct sctp_assoc_reset_event sn_assocreset_event;
+ };
+ 
+ /* Section 5.3.1
+@@ -572,6 +585,8 @@ enum sctp_sn_type {
+ #define SCTP_SENDER_DRY_EVENT		SCTP_SENDER_DRY_EVENT
+ 	SCTP_STREAM_RESET_EVENT,
+ #define SCTP_STREAM_RESET_EVENT		SCTP_STREAM_RESET_EVENT
++	SCTP_ASSOC_RESET_EVENT,
++#define SCTP_ASSOC_RESET_EVENT		SCTP_ASSOC_RESET_EVENT
+ };
+ 
+ /* Notification error codes used to fill up the error fields in some
+diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
+index c8881bc5..420d7f3 100644
+--- a/net/sctp/ulpevent.c
++++ b/net/sctp/ulpevent.c
+@@ -883,6 +883,34 @@ struct sctp_ulpevent *sctp_ulpevent_make_stream_reset_event(
+ 	return event;
  }
  
- static sctp_paramhdr_t *sctp_chunk_lookup_strreset_param(
--			struct sctp_association *asoc, __u32 resp_seq)
-+			struct sctp_association *asoc, __u32 resp_seq,
-+			__be16 type)
- {
- 	struct sctp_chunk *chunk = asoc->strreset_chunk;
- 	struct sctp_reconf_chunk *hdr;
- 	union sctp_params param;
- 
--	if (ntohl(resp_seq) != asoc->strreset_outseq || !chunk)
-+	if (!chunk)
- 		return NULL;
- 
- 	hdr = (struct sctp_reconf_chunk *)chunk->chunk_hdr;
-@@ -320,7 +321,8 @@ static sctp_paramhdr_t *sctp_chunk_lookup_strreset_param(
- 		 */
- 		struct sctp_strreset_tsnreq *req = param.v;
- 
--		if (req->request_seq = resp_seq)
-+		if ((!resp_seq || req->request_seq = resp_seq) &&
-+		    (!type || type = req->param_hdr.type))
- 			return param.v;
- 	}
- 
-@@ -361,13 +363,9 @@ struct sctp_chunk *sctp_process_strreset_outreq(
- 		goto out;
- 
- 	if (asoc->strreset_chunk) {
--		sctp_paramhdr_t *param_hdr;
--		struct sctp_transport *t;
--
--		param_hdr = sctp_chunk_lookup_strreset_param(
--					asoc, outreq->response_seq);
--		if (!param_hdr || param_hdr->type !-					SCTP_PARAM_RESET_IN_REQUEST) {
-+		if (!sctp_chunk_lookup_strreset_param(
-+				asoc, outreq->response_seq,
-+				SCTP_PARAM_RESET_IN_REQUEST)) {
- 			/* same process with outstanding isn't 0 */
- 			result = SCTP_STRRESET_ERR_IN_PROGRESS;
- 			goto out;
-@@ -377,6 +375,8 @@ struct sctp_chunk *sctp_process_strreset_outreq(
- 		asoc->strreset_outseq++;
- 
- 		if (!asoc->strreset_outstanding) {
-+			struct sctp_transport *t;
-+
- 			t = asoc->strreset_chunk->transport;
- 			if (del_timer(&t->reconf_timer))
- 				sctp_transport_put(t);
-@@ -556,3 +556,72 @@ struct sctp_chunk *sctp_process_strreset_tsnreq(
- 	return sctp_make_strreset_tsnresp(asoc, result, request_seq,
- 					  next_tsn, init_tsn);
- }
-+
-+struct sctp_chunk *sctp_process_strreset_addstrm_out(
-+				struct sctp_association *asoc,
-+				union sctp_params param,
-+				struct sctp_ulpevent **evp)
++struct sctp_ulpevent *sctp_ulpevent_make_assoc_reset_event(
++	const struct sctp_association *asoc, __u16 flags, __u32 local_tsn,
++	__u32 remote_tsn, gfp_t gfp)
 +{
-+	struct sctp_strreset_addstrm *addstrm = param.v;
-+	struct sctp_stream *stream = asoc->stream;
-+	__u32 result = SCTP_STRRESET_DENIED;
-+	struct sctp_stream_in *streamin;
-+	__u32 request_seq, incnt;
-+	__u16 in;
++	struct sctp_assoc_reset_event *areset;
++	struct sctp_ulpevent *event;
++	struct sk_buff *skb;
 +
-+	request_seq = ntohl(addstrm->request_seq);
-+	if (request_seq > asoc->strreset_inseq) {
-+		result = SCTP_STRRESET_ERR_BAD_SEQNO;
-+		goto out;
-+	} else if (request_seq = asoc->strreset_inseq) {
-+		asoc->strreset_inseq++;
-+	}
++	event = sctp_ulpevent_new(sizeof(struct sctp_assoc_reset_event),
++				  MSG_NOTIFICATION, gfp);
++	if (!event)
++		return NULL;
 +
-+	if (!(asoc->strreset_enable & SCTP_ENABLE_CHANGE_ASSOC_REQ))
-+		goto out;
++	skb = sctp_event2skb(event);
++	areset = (struct sctp_assoc_reset_event *)
++		skb_put(skb, sizeof(struct sctp_assoc_reset_event));
 +
-+	if (asoc->strreset_chunk) {
-+		if (!sctp_chunk_lookup_strreset_param(
-+			asoc, 0, SCTP_PARAM_RESET_ADD_IN_STREAMS)) {
-+			/* same process with outstanding isn't 0 */
-+			result = SCTP_STRRESET_ERR_IN_PROGRESS;
-+			goto out;
-+		}
++	areset->assocreset_type = SCTP_ASSOC_RESET_EVENT;
++	areset->assocreset_flags = flags;
++	areset->assocreset_length = sizeof(struct sctp_assoc_reset_event);
++	sctp_ulpevent_set_owner(event, asoc);
++	areset->assocreset_assoc_id = sctp_assoc2id(asoc);
++	areset->assocreset_local_tsn = local_tsn;
++	areset->assocreset_remote_tsn = remote_tsn;
 +
-+		asoc->strreset_outstanding--;
-+		asoc->strreset_outseq++;
-+
-+		if (!asoc->strreset_outstanding) {
-+			struct sctp_transport *t;
-+
-+			t = asoc->strreset_chunk->transport;
-+			if (del_timer(&t->reconf_timer))
-+				sctp_transport_put(t);
-+
-+			sctp_chunk_put(asoc->strreset_chunk);
-+			asoc->strreset_chunk = NULL;
-+		}
-+	}
-+
-+	in = ntohs(addstrm->number_of_streams);
-+	incnt = stream->incnt + in;
-+	if (!in || incnt > SCTP_MAX_STREAM)
-+		goto out;
-+
-+	streamin = krealloc(stream->in, incnt * sizeof(*streamin),
-+			    GFP_ATOMIC);
-+	if (!streamin)
-+		goto out;
-+
-+	memset(streamin + stream->incnt, 0, in * sizeof(*streamin));
-+	stream->in = streamin;
-+	stream->incnt = incnt;
-+
-+	result = SCTP_STRRESET_PERFORMED;
-+
-+	*evp = sctp_ulpevent_make_stream_change_event(asoc,
-+		0, ntohs(addstrm->number_of_streams), 0, GFP_ATOMIC);
-+
-+out:
-+	return sctp_make_strreset_resp(asoc, result, request_seq);
++	return event;
 +}
++
+ /* Return the notification type, assuming this is a notification
+  * event.
+  */
 -- 
 2.1.0
 
