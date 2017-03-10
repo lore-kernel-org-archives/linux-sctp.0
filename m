@@ -1,93 +1,229 @@
-From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Fri, 17 Mar 2017 12:10:31 +0000
-Subject: [PATCH 08/23] net, rds: convert rds_incoming.i_refcount from atomic_t to refcount_t
-Message-Id: <1489752646-8749-9-git-send-email-elena.reshetova@intel.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 10 Mar 2017 04:11:11 +0000
+Subject: [PATCHv2 net-next 6/7] sctp: implement receiver-side procedures for the Reconf Response Parameter
+Message-Id: <6be290927b01181a7dc18ebef5c0a0f5de62fd82.1489118815.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
-In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
+References: <cover.1489118815.git.lucien.xin@gmail.com>
+ <7bf94990cf77044e0286adc2f393af4c9010213c.1489118815.git.lucien.xin@gmail.com>
+ <f224235b4621ea3a182e959873f6fe0ba78e5416.1489118815.git.lucien.xin@gmail.com>
+ <70b0da1e9de612702d0ddcdeab67e56b6d11fd78.1489118815.git.lucien.xin@gmail.com>
+ <f73e5ede81d0eeccdf955eb7d77eadcda5166c9e.1489118815.git.lucien.xin@gmail.com>
+ <7def0879be34d7e8a8bc1f11cc62ae8570bfcf26.1489118815.git.lucien.xin@gmail.com>
+In-Reply-To: <7def0879be34d7e8a8bc1f11cc62ae8570bfcf26.1489118815.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, davem@davemloft.net, linux-x25@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-hams@vger.kernel.org, linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, ralf@linux-mips.org, peterz@infradead.org, keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-refcount_t type and corresponding API should be
-used instead of atomic_t when the variable is used as
-a reference counter. This allows to avoid accidental
-refcounter overflows that might lead to use-after-free
-situations.
+This patch is to implement Receiver-Side Procedures for the
+Re-configuration Response Parameter in rfc6525 section 5.2.7.
 
-Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
-Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
-Signed-off-by: Kees Cook <keescook@chromium.org>
-Signed-off-by: David Windsor <dwindsor@gmail.com>
+sctp_process_strreset_resp would process the response for any
+kind of reconf request, and the stream reconf is applied only
+when the response result is success.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/rds/rds.h  |  3 ++-
- net/rds/recv.c | 12 ++++++------
- 2 files changed, 8 insertions(+), 7 deletions(-)
+ include/net/sctp/sm.h   |   4 ++
+ net/sctp/sm_statefuns.c |   6 +-
+ net/sctp/stream.c       | 154 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 161 insertions(+), 3 deletions(-)
 
-diff --git a/net/rds/rds.h b/net/rds/rds.h
-index 966d2ee..d8070c7 100644
---- a/net/rds/rds.h
-+++ b/net/rds/rds.h
-@@ -8,6 +8,7 @@
- #include <linux/mutex.h>
- #include <linux/rds.h>
- #include <linux/rhashtable.h>
-+#include <linux/refcount.h>
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index e0d9825..47113f2 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -305,6 +305,10 @@ struct sctp_chunk *sctp_process_strreset_addstrm_in(
+ 				struct sctp_association *asoc,
+ 				union sctp_params param,
+ 				struct sctp_ulpevent **evp);
++struct sctp_chunk *sctp_process_strreset_resp(
++				struct sctp_association *asoc,
++				union sctp_params param,
++				struct sctp_ulpevent **evp);
  
- #include "info.h"
+ /* Prototypes for statetable processing. */
  
-@@ -260,7 +261,7 @@ struct rds_ext_header_rdma_dest {
- #define	RDS_MSG_RX_CMSG		3
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index a8687a7..ab1374f 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -3881,9 +3881,9 @@ sctp_disposition_t sctp_sf_do_reconf(struct net *net,
+ 		else if (param.p->type = SCTP_PARAM_RESET_ADD_IN_STREAMS)
+ 			reply = sctp_process_strreset_addstrm_in(
+ 				(struct sctp_association *)asoc, param, &ev);
+-		/* More handles for other types will be added here, by now it
+-		 * just ignores other types.
+-		 */
++		else if (param.p->type = SCTP_PARAM_RESET_RESPONSE)
++			reply = sctp_process_strreset_resp(
++				(struct sctp_association *)asoc, param, &ev);
  
- struct rds_incoming {
--	atomic_t		i_refcount;
-+	refcount_t		i_refcount;
- 	struct list_head	i_item;
- 	struct rds_connection	*i_conn;
- 	struct rds_conn_path	*i_conn_path;
-diff --git a/net/rds/recv.c b/net/rds/recv.c
-index 8b7e7b7..7d5e35e 100644
---- a/net/rds/recv.c
-+++ b/net/rds/recv.c
-@@ -45,7 +45,7 @@ void rds_inc_init(struct rds_incoming *inc, struct rds_connection *conn,
- {
- 	int i;
+ 		if (ev)
+ 			sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP,
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 1c925db..961d0a1 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -675,3 +675,157 @@ struct sctp_chunk *sctp_process_strreset_addstrm_in(
  
--	atomic_set(&inc->i_refcount, 1);
-+	refcount_set(&inc->i_refcount, 1);
- 	INIT_LIST_HEAD(&inc->i_item);
- 	inc->i_conn = conn;
- 	inc->i_saddr = saddr;
-@@ -61,7 +61,7 @@ EXPORT_SYMBOL_GPL(rds_inc_init);
- void rds_inc_path_init(struct rds_incoming *inc, struct rds_conn_path *cp,
- 		       __be32 saddr)
- {
--	atomic_set(&inc->i_refcount, 1);
-+	refcount_set(&inc->i_refcount, 1);
- 	INIT_LIST_HEAD(&inc->i_item);
- 	inc->i_conn = cp->cp_conn;
- 	inc->i_conn_path = cp;
-@@ -74,14 +74,14 @@ EXPORT_SYMBOL_GPL(rds_inc_path_init);
- 
- static void rds_inc_addref(struct rds_incoming *inc)
- {
--	rdsdebug("addref inc %p ref %d\n", inc, atomic_read(&inc->i_refcount));
--	atomic_inc(&inc->i_refcount);
-+	rdsdebug("addref inc %p ref %d\n", inc, refcount_read(&inc->i_refcount));
-+	refcount_inc(&inc->i_refcount);
+ 	return chunk;
  }
- 
- void rds_inc_put(struct rds_incoming *inc)
- {
--	rdsdebug("put inc %p ref %d\n", inc, atomic_read(&inc->i_refcount));
--	if (atomic_dec_and_test(&inc->i_refcount)) {
-+	rdsdebug("put inc %p ref %d\n", inc, refcount_read(&inc->i_refcount));
-+	if (refcount_dec_and_test(&inc->i_refcount)) {
- 		BUG_ON(!list_empty(&inc->i_item));
- 
- 		inc->i_conn->c_trans->inc_free(inc);
++
++struct sctp_chunk *sctp_process_strreset_resp(
++				struct sctp_association *asoc,
++				union sctp_params param,
++				struct sctp_ulpevent **evp)
++{
++	struct sctp_strreset_resp *resp = param.v;
++	struct sctp_stream *stream = asoc->stream;
++	struct sctp_transport *t;
++	__u16 i, nums, flags = 0;
++	sctp_paramhdr_t *req;
++	__u32 result;
++
++	req = sctp_chunk_lookup_strreset_param(asoc, resp->response_seq, 0);
++	if (!req)
++		return NULL;
++
++	result = ntohl(resp->result);
++	if (result != SCTP_STRRESET_PERFORMED) {
++		/* if in progress, do nothing but retransmit */
++		if (result = SCTP_STRRESET_IN_PROGRESS)
++			return NULL;
++		else if (result = SCTP_STRRESET_DENIED)
++			flags = SCTP_STREAM_RESET_DENIED;
++		else
++			flags = SCTP_STREAM_RESET_FAILED;
++	}
++
++	if (req->type = SCTP_PARAM_RESET_OUT_REQUEST) {
++		struct sctp_strreset_outreq *outreq;
++		__u16 *str_p = NULL;
++
++		outreq = (struct sctp_strreset_outreq *)req;
++		nums = (ntohs(outreq->param_hdr.length) - sizeof(*outreq)) / 2;
++
++		if (result = SCTP_STRRESET_PERFORMED) {
++			if (nums) {
++				str_p = outreq->list_of_streams;
++				for (i = 0; i < nums; i++)
++					stream->out[ntohs(str_p[i])].ssn = 0;
++			} else {
++				for (i = 0; i < stream->outcnt; i++)
++					stream->out[i].ssn = 0;
++			}
++
++			flags = SCTP_STREAM_RESET_OUTGOING_SSN;
++		}
++
++		for (i = 0; i < stream->outcnt; i++)
++			stream->out[i].state = SCTP_STREAM_OPEN;
++
++		*evp = sctp_ulpevent_make_stream_reset_event(asoc, flags,
++			nums, str_p, GFP_ATOMIC);
++	} else if (req->type = SCTP_PARAM_RESET_IN_REQUEST) {
++		struct sctp_strreset_inreq *inreq;
++		__u16 *str_p = NULL;
++
++		/* if the result is performed, it's impossible for inreq */
++		if (result = SCTP_STRRESET_PERFORMED)
++			return NULL;
++
++		inreq = (struct sctp_strreset_inreq *)req;
++		nums = (ntohs(inreq->param_hdr.length) - sizeof(*inreq)) / 2;
++
++		str_p = inreq->list_of_streams;
++		*evp = sctp_ulpevent_make_stream_reset_event(asoc, flags,
++			nums, str_p, GFP_ATOMIC);
++	} else if (req->type = SCTP_PARAM_RESET_TSN_REQUEST) {
++		struct sctp_strreset_resptsn *resptsn;
++		__u32 stsn, rtsn;
++
++		/* check for resptsn, as sctp_verify_reconf didn't do it*/
++		if (ntohs(param.p->length) != sizeof(*resptsn))
++			return NULL;
++
++		resptsn = (struct sctp_strreset_resptsn *)resp;
++		stsn = ntohl(resptsn->senders_next_tsn);
++		rtsn = ntohl(resptsn->receivers_next_tsn);
++
++		if (result = SCTP_STRRESET_PERFORMED) {
++			__u32 mtsn = sctp_tsnmap_get_max_tsn_seen(
++						&asoc->peer.tsn_map);
++
++			sctp_ulpq_reasm_flushtsn(&asoc->ulpq, mtsn);
++			sctp_ulpq_abort_pd(&asoc->ulpq, GFP_ATOMIC);
++
++			sctp_tsnmap_init(&asoc->peer.tsn_map,
++					 SCTP_TSN_MAP_INITIAL,
++					 stsn, GFP_ATOMIC);
++
++			sctp_outq_free(&asoc->outqueue);
++
++			asoc->next_tsn = rtsn;
++			asoc->ctsn_ack_point = asoc->next_tsn - 1;
++			asoc->adv_peer_ack_point = asoc->ctsn_ack_point;
++
++			for (i = 0; i < stream->outcnt; i++)
++				stream->out[i].ssn = 0;
++			for (i = 0; i < stream->incnt; i++)
++				stream->in[i].ssn = 0;
++		}
++
++		for (i = 0; i < stream->outcnt; i++)
++			stream->out[i].state = SCTP_STREAM_OPEN;
++
++		*evp = sctp_ulpevent_make_assoc_reset_event(asoc, flags,
++			stsn, rtsn, GFP_ATOMIC);
++	} else if (req->type = SCTP_PARAM_RESET_ADD_OUT_STREAMS) {
++		struct sctp_strreset_addstrm *addstrm;
++		__u16 number;
++
++		addstrm = (struct sctp_strreset_addstrm *)req;
++		nums = ntohs(addstrm->number_of_streams);
++		number = stream->outcnt - nums;
++
++		if (result = SCTP_STRRESET_PERFORMED)
++			for (i = number; i < stream->outcnt; i++)
++				stream->out[i].state = SCTP_STREAM_OPEN;
++		else
++			stream->outcnt = number;
++
++		*evp = sctp_ulpevent_make_stream_change_event(asoc, flags,
++			0, nums, GFP_ATOMIC);
++	} else if (req->type = SCTP_PARAM_RESET_ADD_IN_STREAMS) {
++		struct sctp_strreset_addstrm *addstrm;
++
++		/* if the result is performed, it's impossible for addstrm in
++		 * request.
++		 */
++		if (result = SCTP_STRRESET_PERFORMED)
++			return NULL;
++
++		addstrm = (struct sctp_strreset_addstrm *)req;
++		nums = ntohs(addstrm->number_of_streams);
++
++		*evp = sctp_ulpevent_make_stream_change_event(asoc, flags,
++			nums, 0, GFP_ATOMIC);
++	}
++
++	asoc->strreset_outstanding--;
++	asoc->strreset_outseq++;
++
++	/* remove everything for this reconf request */
++	if (!asoc->strreset_outstanding) {
++		t = asoc->strreset_chunk->transport;
++		if (del_timer(&t->reconf_timer))
++			sctp_transport_put(t);
++
++		sctp_chunk_put(asoc->strreset_chunk);
++		asoc->strreset_chunk = NULL;
++	}
++
++	return NULL;
++}
 -- 
-2.7.4
+2.1.0
 
