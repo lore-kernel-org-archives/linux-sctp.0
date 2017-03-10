@@ -1,129 +1,152 @@
-From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Fri, 17 Mar 2017 12:10:26 +0000
-Subject: [PATCH 03/23] net, sunrpc: convert gss_upcall_msg.count from atomic_t to refcount_t
-Message-Id: <1489752646-8749-4-git-send-email-elena.reshetova@intel.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 10 Mar 2017 04:11:10 +0000
+Subject: [PATCHv2 net-next 5/7] sctp: implement receiver-side procedures for the Add Incoming Streams Request
+Message-Id: <7def0879be34d7e8a8bc1f11cc62ae8570bfcf26.1489118815.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
-In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
+References: <cover.1489118815.git.lucien.xin@gmail.com>
+ <7bf94990cf77044e0286adc2f393af4c9010213c.1489118815.git.lucien.xin@gmail.com>
+ <f224235b4621ea3a182e959873f6fe0ba78e5416.1489118815.git.lucien.xin@gmail.com>
+ <70b0da1e9de612702d0ddcdeab67e56b6d11fd78.1489118815.git.lucien.xin@gmail.com>
+ <f73e5ede81d0eeccdf955eb7d77eadcda5166c9e.1489118815.git.lucien.xin@gmail.com>
+In-Reply-To: <f73e5ede81d0eeccdf955eb7d77eadcda5166c9e.1489118815.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, davem@davemloft.net, linux-x25@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-hams@vger.kernel.org, linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, ralf@linux-mips.org, peterz@infradead.org, keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-refcount_t type and corresponding API should be
-used instead of atomic_t when the variable is used as
-a reference counter. This allows to avoid accidental
-refcounter overflows that might lead to use-after-free
-situations.
+This patch is to implement Receiver-Side Procedures for the Add Incoming
+Streams Request Parameter described in rfc6525 section 5.2.6.
 
-Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
-Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
-Signed-off-by: Kees Cook <keescook@chromium.org>
-Signed-off-by: David Windsor <dwindsor@gmail.com>
+It is also to fix that it shouldn't have add streams when sending addstrm
+in request, as the process in peer will handle it by sending a addstrm out
+request back.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/sunrpc/auth_gss/auth_gss.c | 22 +++++++++++-----------
- 1 file changed, 11 insertions(+), 11 deletions(-)
+ include/net/sctp/sm.h   |  4 +++
+ net/sctp/sm_statefuns.c |  3 ++
+ net/sctp/stream.c       | 74 +++++++++++++++++++++++++++++++++++++++++--------
+ 3 files changed, 69 insertions(+), 12 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 72f129c..e7c941a 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -287,7 +287,7 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
- #define UPCALL_BUF_LEN 128
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index 93ae50b..e0d9825 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -301,6 +301,10 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
+ 				struct sctp_association *asoc,
+ 				union sctp_params param,
+ 				struct sctp_ulpevent **evp);
++struct sctp_chunk *sctp_process_strreset_addstrm_in(
++				struct sctp_association *asoc,
++				union sctp_params param,
++				struct sctp_ulpevent **evp);
  
- struct gss_upcall_msg {
--	atomic_t count;
-+	refcount_t count;
- 	kuid_t	uid;
- 	struct rpc_pipe_msg msg;
- 	struct list_head list;
-@@ -328,7 +328,7 @@ static void
- gss_release_msg(struct gss_upcall_msg *gss_msg)
- {
- 	struct net *net = gss_msg->auth->net;
--	if (!atomic_dec_and_test(&gss_msg->count))
-+	if (!refcount_dec_and_test(&gss_msg->count))
- 		return;
- 	put_pipe_version(net);
- 	BUG_ON(!list_empty(&gss_msg->list));
-@@ -348,7 +348,7 @@ __gss_find_upcall(struct rpc_pipe *pipe, kuid_t uid, const struct gss_auth *auth
- 			continue;
- 		if (auth && pos->auth->service != auth->service)
- 			continue;
--		atomic_inc(&pos->count);
-+		refcount_inc(&pos->count);
- 		dprintk("RPC:       %s found msg %p\n", __func__, pos);
- 		return pos;
+ /* Prototypes for statetable processing. */
+ 
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 881122b..a8687a7 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -3878,6 +3878,9 @@ sctp_disposition_t sctp_sf_do_reconf(struct net *net,
+ 		else if (param.p->type = SCTP_PARAM_RESET_ADD_OUT_STREAMS)
+ 			reply = sctp_process_strreset_addstrm_out(
+ 				(struct sctp_association *)asoc, param, &ev);
++		else if (param.p->type = SCTP_PARAM_RESET_ADD_IN_STREAMS)
++			reply = sctp_process_strreset_addstrm_in(
++				(struct sctp_association *)asoc, param, &ev);
+ 		/* More handles for other types will be added here, by now it
+ 		 * just ignores other types.
+ 		 */
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index df2794d..1c925db 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -267,18 +267,6 @@ int sctp_send_add_streams(struct sctp_association *asoc,
+ 		stream->out = streamout;
  	}
-@@ -369,7 +369,7 @@ gss_add_msg(struct gss_upcall_msg *gss_msg)
- 	spin_lock(&pipe->lock);
- 	old = __gss_find_upcall(pipe, gss_msg->uid, gss_msg->auth);
- 	if (old = NULL) {
--		atomic_inc(&gss_msg->count);
-+		refcount_inc(&gss_msg->count);
- 		list_add(&gss_msg->list, &pipe->in_downcall);
- 	} else
- 		gss_msg = old;
-@@ -383,7 +383,7 @@ __gss_unhash_msg(struct gss_upcall_msg *gss_msg)
- 	list_del_init(&gss_msg->list);
- 	rpc_wake_up_status(&gss_msg->rpc_waitqueue, gss_msg->msg.errno);
- 	wake_up_all(&gss_msg->waitqueue);
--	atomic_dec(&gss_msg->count);
-+	WARN_ON(refcount_dec_and_test(&gss_msg->count));
- }
  
- static void
-@@ -506,7 +506,7 @@ gss_alloc_msg(struct gss_auth *gss_auth,
- 	INIT_LIST_HEAD(&gss_msg->list);
- 	rpc_init_wait_queue(&gss_msg->rpc_waitqueue, "RPCSEC_GSS upcall waitq");
- 	init_waitqueue_head(&gss_msg->waitqueue);
--	atomic_set(&gss_msg->count, 1);
-+	refcount_set(&gss_msg->count, 1);
- 	gss_msg->uid = uid;
- 	gss_msg->auth = gss_auth;
- 	switch (vers) {
-@@ -542,11 +542,11 @@ gss_setup_upcall(struct gss_auth *gss_auth, struct rpc_cred *cred)
- 	gss_msg = gss_add_msg(gss_new);
- 	if (gss_msg = gss_new) {
- 		int res;
--		atomic_inc(&gss_msg->count);
-+		refcount_inc(&gss_msg->count);
- 		res = rpc_queue_upcall(gss_new->pipe, &gss_new->msg);
- 		if (res) {
- 			gss_unhash_msg(gss_new);
--			atomic_dec(&gss_msg->count);
-+			refcount_dec(&gss_msg->count);
- 			gss_release_msg(gss_new);
- 			gss_msg = ERR_PTR(res);
- 		}
-@@ -595,7 +595,7 @@ gss_refresh_upcall(struct rpc_task *task)
- 		task->tk_timeout = 0;
- 		gss_cred->gc_upcall = gss_msg;
- 		/* gss_upcall_callback will release the reference to gss_upcall_msg */
--		atomic_inc(&gss_msg->count);
-+		refcount_inc(&gss_msg->count);
- 		rpc_sleep_on(&gss_msg->rpc_waitqueue, task, gss_upcall_callback);
- 	} else {
- 		gss_handle_downcall_result(gss_cred, gss_msg);
-@@ -815,7 +815,7 @@ gss_pipe_release(struct inode *inode)
- 		if (!list_empty(&gss_msg->msg.list))
- 			continue;
- 		gss_msg->msg.errno = -EPIPE;
--		atomic_inc(&gss_msg->count);
-+		refcount_inc(&gss_msg->count);
- 		__gss_unhash_msg(gss_msg);
- 		spin_unlock(&pipe->lock);
- 		gss_release_msg(gss_msg);
-@@ -834,7 +834,7 @@ gss_pipe_destroy_msg(struct rpc_pipe_msg *msg)
- 	if (msg->errno < 0) {
- 		dprintk("RPC:       %s releasing msg %p\n",
- 			__func__, gss_msg);
--		atomic_inc(&gss_msg->count);
-+		refcount_inc(&gss_msg->count);
- 		gss_unhash_msg(gss_msg);
- 		if (msg->errno = -ETIMEDOUT)
- 			warn_gssd();
+-	if (in) {
+-		struct sctp_stream_in *streamin;
+-
+-		streamin = krealloc(stream->in, incnt * sizeof(*streamin),
+-				    GFP_KERNEL);
+-		if (!streamin)
+-			goto out;
+-
+-		memset(streamin + stream->incnt, 0, in * sizeof(*streamin));
+-		stream->in = streamin;
+-	}
+-
+ 	chunk = sctp_make_strreset_addstrm(asoc, out, in);
+ 	if (!chunk)
+ 		goto out;
+@@ -625,3 +613,65 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
+ out:
+ 	return sctp_make_strreset_resp(asoc, result, request_seq);
+ }
++
++struct sctp_chunk *sctp_process_strreset_addstrm_in(
++				struct sctp_association *asoc,
++				union sctp_params param,
++				struct sctp_ulpevent **evp)
++{
++	struct sctp_strreset_addstrm *addstrm = param.v;
++	struct sctp_stream *stream = asoc->stream;
++	__u32 result = SCTP_STRRESET_DENIED;
++	struct sctp_stream_out *streamout;
++	struct sctp_chunk *chunk = NULL;
++	__u32 request_seq, outcnt;
++	__u16 out;
++
++	request_seq = ntohl(addstrm->request_seq);
++	if (request_seq > asoc->strreset_inseq) {
++		result = SCTP_STRRESET_ERR_BAD_SEQNO;
++		goto out;
++	} else if (request_seq = asoc->strreset_inseq) {
++		asoc->strreset_inseq++;
++	}
++
++	if (!(asoc->strreset_enable & SCTP_ENABLE_CHANGE_ASSOC_REQ))
++		goto out;
++
++	if (asoc->strreset_outstanding) {
++		result = SCTP_STRRESET_ERR_IN_PROGRESS;
++		goto out;
++	}
++
++	out = ntohs(addstrm->number_of_streams);
++	outcnt = stream->outcnt + out;
++	if (!out || outcnt > SCTP_MAX_STREAM)
++		goto out;
++
++	streamout = krealloc(stream->out, outcnt * sizeof(*streamout),
++			     GFP_ATOMIC);
++	if (!streamout)
++		goto out;
++
++	memset(streamout + stream->outcnt, 0, out * sizeof(*streamout));
++	stream->out = streamout;
++
++	chunk = sctp_make_strreset_addstrm(asoc, out, 0);
++	if (!chunk)
++		goto out;
++
++	asoc->strreset_chunk = chunk;
++	asoc->strreset_outstanding = 1;
++	sctp_chunk_hold(asoc->strreset_chunk);
++
++	stream->outcnt = outcnt;
++
++	*evp = sctp_ulpevent_make_stream_change_event(asoc,
++		0, 0, ntohs(addstrm->number_of_streams), GFP_ATOMIC);
++
++out:
++	if (!chunk)
++		chunk = sctp_make_strreset_resp(asoc, result, request_seq);
++
++	return chunk;
++}
 -- 
-2.7.4
+2.1.0
 
