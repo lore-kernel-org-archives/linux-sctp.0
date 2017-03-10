@@ -1,109 +1,146 @@
-From: Richard Haines <richard_c_haines@btinternet.com>
-Date: Wed, 22 Mar 2017 10:22:47 +0000
-Subject: Re: [RFC v2 PATCH 2/2] kernel: Add SELinux SCTP protocol support
-Message-Id: <1490178167.27019.8.camel@btinternet.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 10 Mar 2017 04:11:07 +0000
+Subject: [PATCHv2 net-next 2/7] sctp: implement receiver-side procedures for the SSN/TSN Reset Request Parame
+Message-Id: <f224235b4621ea3a182e959873f6fe0ba78e5416.1489118815.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20170222170359.5433-1-richard_c_haines@btinternet.com>
-	<1488487540.19896.108.camel@tycho.nsa.gov>
-	<20170320172336.GC23553@localhost.localdomain>
-In-Reply-To: <20170320172336.GC23553@localhost.localdomain>
+References: <cover.1489118815.git.lucien.xin@gmail.com>
+ <7bf94990cf77044e0286adc2f393af4c9010213c.1489118815.git.lucien.xin@gmail.com>
+In-Reply-To: <7bf94990cf77044e0286adc2f393af4c9010213c.1489118815.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: linux-security-module@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-On Mon, 2017-03-20 at 14:23 -0300, Marcelo Ricardo Leitner wrote:
-> On Thu, Mar 02, 2017 at 03:45:40PM -0500, Stephen Smalley wrote:
-> > On Wed, 2017-02-22 at 17:03 +0000, Richard Haines wrote:
-> 
-> <snip>
-> 
-> > > +	return err;
-> > > +}
-> > > +
-> > > +static int selinux_sctp_accept_conn(struct sctp_endpoint *ep,
-> > > +				    struct sk_buff *skb)
-> > > +{
-> > > +	struct sk_security_struct *sksec = ep->base.sk-
-> > > >sk_security;
-> > > +	int err;
-> > > +	u32 connsid;
-> > > +	u32 peersid;
-> > > +
-> > > +	/* Have COOKIE ECHO so compute the MLS component for the
-> > > connection
-> > > +	 * and store the information in ep. This will only be
-> > > used
-> > > by
-> > > +	 * TCP/peeloff connections as they cause a new socket to
-> > > be
-> > > generated.
-> > 
-> > Not sure why you say TCP above.  And won't this be true of
-> > accept()'d
-> 
-> Probably just a typo, should be SCTP instead.
-Yes so changed to "This will only be used by SCTP TCP type sockets
-and peeled off connections".
+This patch is to implement Receiver-Side Procedures for the SSN/TSN
+Reset Request Parameter described in rfc6525 section 6.2.4.
 
-> 
-> > sockets too in addition to peeloff ones?
-> 
-> Speaking of accept() path, I think we have an issue there with this
-> patch, because it's doing:
-> @@ -7683,8 +7717,6 @@ void sctp_copy_sock(struct sock *newsk, struct
-> sock *sk,
-> -       security_sk_clone(sk, newsk);
-> @@ -7829,6 +7862,11 @@ static void sctp_sock_migrate(struct sock
-> *oldsk,
-> struct
-> +       security_sctp_sk_clone(oldep, oldsk, newsk);
-> 
-> But sctp_copy_sock() is called from places other than
-> sctp_sock_migrate, mainly:
-> net/sctp/ipv6.c:        sctp_copy_sock(newsk, sk, asoc);
-> net/sctp/protocol.c:    sctp_copy_sock(newsk, sk, asoc);
-> Which are on the accept() path.
-> 
-> Ideally it's better to keep the call to security_sctp_sk_clone in
-> sctp_copy_sock() to get those covered too.
+The process is kind of complicate, it's wonth having some comments
+from section 6.2.4 in the codes.
 
-Thanks for pointing this out, I'll fix in next patch set.
-> 
->   Marcelo
-> 
-> > 
-> > > +	 * selinux_sctp_sk_clone() will then plug this into the
-> > > new
-> > > socket
-> > > +	 * as described in Documentation/security/LSM-sctp.txt
-> > > +	 */
-> > > +	err = selinux_skb_peerlbl_sid(skb, ep->base.sk-
-> > > >sk_family,
-> > > &peersid);
-> > > +	if (err)
-> > > +		return err;
-> > > +
-> > > +	err = selinux_conn_sid(sksec->sid, peersid, &connsid);
-> > > +	if (err)
-> > > +		return err;
-> > > +
-> > > +	ep->secid = connsid;
-> > > +	ep->peer_secid = peersid;
-> > > +
-> > > +	return 0;
-> > > +}
-> > > +
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-
-> > sctp" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" 
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/sm.h   |  4 +++
+ net/sctp/sm_statefuns.c |  3 ++
+ net/sctp/stream.c       | 79 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 86 insertions(+)
+
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index b6f682e..2629d66 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -293,6 +293,10 @@ struct sctp_chunk *sctp_process_strreset_inreq(
+ 				struct sctp_association *asoc,
+ 				union sctp_params param,
+ 				struct sctp_ulpevent **evp);
++struct sctp_chunk *sctp_process_strreset_tsnreq(
++				struct sctp_association *asoc,
++				union sctp_params param,
++				struct sctp_ulpevent **evp);
+ 
+ /* Prototypes for statetable processing. */
+ 
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index e03bb1a..6982064 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -3872,6 +3872,9 @@ sctp_disposition_t sctp_sf_do_reconf(struct net *net,
+ 		else if (param.p->type = SCTP_PARAM_RESET_IN_REQUEST)
+ 			reply = sctp_process_strreset_inreq(
+ 				(struct sctp_association *)asoc, param, &ev);
++		else if (param.p->type = SCTP_PARAM_RESET_TSN_REQUEST)
++			reply = sctp_process_strreset_tsnreq(
++				(struct sctp_association *)asoc, param, &ev);
+ 		/* More handles for other types will be added here, by now it
+ 		 * just ignores other types.
+ 		 */
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 1c6cc04..7e993b0 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -477,3 +477,82 @@ struct sctp_chunk *sctp_process_strreset_inreq(
+ 
+ 	return chunk;
+ }
++
++struct sctp_chunk *sctp_process_strreset_tsnreq(
++				struct sctp_association *asoc,
++				union sctp_params param,
++				struct sctp_ulpevent **evp)
++{
++	__u32 init_tsn = 0, next_tsn = 0, max_tsn_seen;
++	struct sctp_strreset_tsnreq *tsnreq = param.v;
++	struct sctp_stream *stream = asoc->stream;
++	__u32 result = SCTP_STRRESET_DENIED;
++	__u32 request_seq;
++	__u16 i;
++
++	request_seq = ntohl(tsnreq->request_seq);
++	if (request_seq > asoc->strreset_inseq) {
++		result = SCTP_STRRESET_ERR_BAD_SEQNO;
++		goto out;
++	} else if (request_seq = asoc->strreset_inseq) {
++		asoc->strreset_inseq++;
++	}
++
++	if (!(asoc->strreset_enable & SCTP_ENABLE_RESET_ASSOC_REQ))
++		goto out;
++
++	if (asoc->strreset_outstanding) {
++		result = SCTP_STRRESET_ERR_IN_PROGRESS;
++		goto out;
++	}
++
++	/* G3: The same processing as though a SACK chunk with no gap report
++	 *     and a cumulative TSN ACK of the Sender's Next TSN minus 1 were
++	 *     received MUST be performed.
++	 */
++	max_tsn_seen = sctp_tsnmap_get_max_tsn_seen(&asoc->peer.tsn_map);
++	sctp_ulpq_reasm_flushtsn(&asoc->ulpq, max_tsn_seen);
++	sctp_ulpq_abort_pd(&asoc->ulpq, GFP_ATOMIC);
++
++	/* G1: Compute an appropriate value for the Receiver's Next TSN -- the
++	 *     TSN that the peer should use to send the next DATA chunk.  The
++	 *     value SHOULD be the smallest TSN not acknowledged by the
++	 *     receiver of the request plus 2^31.
++	 */
++	init_tsn = sctp_tsnmap_get_ctsn(&asoc->peer.tsn_map) + (1 << 31);
++	sctp_tsnmap_init(&asoc->peer.tsn_map, SCTP_TSN_MAP_INITIAL,
++			 init_tsn, GFP_ATOMIC);
++
++	/* G4: The same processing as though a FWD-TSN chunk (as defined in
++	 *     [RFC3758]) with all streams affected and a new cumulative TSN
++	 *     ACK of the Receiver's Next TSN minus 1 were received MUST be
++	 *     performed.
++	 */
++	sctp_outq_free(&asoc->outqueue);
++
++	/* G2: Compute an appropriate value for the local endpoint's next TSN,
++	 *     i.e., the next TSN assigned by the receiver of the SSN/TSN reset
++	 *     chunk.  The value SHOULD be the highest TSN sent by the receiver
++	 *     of the request plus 1.
++	 */
++	next_tsn = asoc->next_tsn;
++	asoc->ctsn_ack_point = next_tsn - 1;
++	asoc->adv_peer_ack_point = asoc->ctsn_ack_point;
++
++	/* G5:  The next expected and outgoing SSNs MUST be reset to 0 for all
++	 *      incoming and outgoing streams.
++	 */
++	for (i = 0; i < stream->outcnt; i++)
++		stream->out[i].ssn = 0;
++	for (i = 0; i < stream->incnt; i++)
++		stream->in[i].ssn = 0;
++
++	result = SCTP_STRRESET_PERFORMED;
++
++	*evp = sctp_ulpevent_make_assoc_reset_event(asoc, 0, init_tsn,
++						    next_tsn, GFP_ATOMIC);
++
++out:
++	return sctp_make_strreset_tsnresp(asoc, result, request_seq,
++					  next_tsn, init_tsn);
++}
+-- 
+2.1.0
+
