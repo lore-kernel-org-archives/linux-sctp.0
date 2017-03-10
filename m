@@ -1,91 +1,129 @@
-From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Fri, 17 Mar 2017 12:10:23 +0000
-Subject: [PATCH 00/23] various networking refcount conversions, part 2
-Message-Id: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 10 Mar 2017 04:11:08 +0000
+Subject: [PATCHv2 net-next 3/7] sctp: add support for generating add stream change event notification
+Message-Id: <70b0da1e9de612702d0ddcdeab67e56b6d11fd78.1489118815.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1489118815.git.lucien.xin@gmail.com>
+ <7bf94990cf77044e0286adc2f393af4c9010213c.1489118815.git.lucien.xin@gmail.com>
+ <f224235b4621ea3a182e959873f6fe0ba78e5416.1489118815.git.lucien.xin@gmail.com>
+In-Reply-To: <f224235b4621ea3a182e959873f6fe0ba78e5416.1489118815.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org, linux-x25-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org, linux-hams-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, sage-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org, steffen.klassert-opNxpl+3fjRBDgjK7y7TUQ@public.gmane.org, herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org, santosh.shilimkar-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, jreuter-K7Hl1MveuGQ@public.gmane.org, ralf-6z/3iImG2C8G8FEW9MqTrA@public.gmane.org, peterz-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, keescook-F7+t8E8rja9g9hUCZPvPmw@public.gmane.org, Elena Reshetova <elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-This series, for the rest of network subsystem components, replaces atomic_t reference
-counters with the new refcount_t type and API (see include/linux/refcount.h).
-By doing this we prevent intentional or accidental
-underflows or overflows that can led to use-after-free vulnerabilities.
+This patch is to add Stream Change Event described in rfc6525
+section 6.1.3.
 
-The patches are fully independent and can be cherry-picked separately.
-Since we convert all kernel subsystems in the same fashion, resulting
-in about 300 patches, we have to group them for sending at least in some
-fashion to be manageable. Please excuse the long cc list.
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/ulpevent.h |  4 ++++
+ include/uapi/linux/sctp.h   | 15 +++++++++++++++
+ net/sctp/ulpevent.c         | 28 ++++++++++++++++++++++++++++
+ 3 files changed, 47 insertions(+)
 
-If there are no objections to the patches, please merge them via respective trees.
-
-Elena Reshetova (23):
-  net, sunrpc: convert rpc_cred.cr_count from atomic_t to refcount_t
-  net, sunrpc: convert gss_cl_ctx.count from atomic_t to refcount_t
-  net, sunrpc: convert gss_upcall_msg.count from atomic_t to refcount_t
-  net, ceph: convert ceph_snap_context.nref from atomic_t to refcount_t
-  net, ceph: convert ceph_osd.o_ref from atomic_t to refcount_t
-  net, ceph: convert ceph_pagelist.refcnt from atomic_t to refcount_t
-  net, rds: convert rds_ib_device.refcount from atomic_t to refcount_t
-  net, rds: convert rds_incoming.i_refcount from atomic_t to refcount_t
-  net, rds: convert rds_mr.r_refcount from atomic_t to refcount_t
-  net, rds: convert rds_message.m_refcount from atomic_t to refcount_t
-  net, x25: convert x25_route.refcnt from atomic_t to refcount_t
-  net, x25: convert x25_neigh.refcnt from atomic_t to refcount_t
-  net, xfrm: convert xfrm_state.refcnt from atomic_t to refcount_t
-  net, xfrm: convert xfrm_policy.refcnt from atomic_t to refcount_t
-  net, xfrm: convert sec_path.refcnt from atomic_t to refcount_t
-  net, sctp: convert sctp_auth_bytes.refcnt from atomic_t to refcount_t
-  net, sctp: convert sctp_datamsg.refcnt from atomic_t to refcount_t
-  net, sctp: convert sctp_chunk.refcnt from atomic_t to refcount_t
-  net, sctp: convert sctp_transport.refcnt from atomic_t to refcount_t
-  net, sctp: convert sctp_ep_common.refcnt from atomic_t to refcount_t
-  net, ax25: convert ax25_uid_assoc.refcount from atomic_t to refcount_t
-  net, ax25: convert ax25_route.refcount from atomic_t to refcount_t
-  net, ax25: convert ax25_cb.refcount from atomic_t to refcount_t
-
- fs/ceph/mds_client.c            |  2 +-
- include/linux/ceph/libceph.h    |  3 ++-
- include/linux/ceph/osd_client.h |  3 ++-
- include/linux/ceph/pagelist.h   |  6 +++---
- include/linux/sunrpc/auth.h     |  8 ++++----
- include/linux/sunrpc/auth_gss.h |  3 ++-
- include/net/ax25.h              | 20 ++++++++++----------
- include/net/sctp/auth.h         |  5 +++--
- include/net/sctp/structs.h      |  8 ++++----
- include/net/x25.h               | 13 +++++++------
- include/net/xfrm.h              | 21 +++++++++++----------
- net/ax25/af_ax25.c              |  2 +-
- net/ax25/ax25_route.c           |  2 +-
- net/ax25/ax25_uid.c             |  2 +-
- net/ceph/osd_client.c           | 16 ++++++++--------
- net/ceph/pagelist.c             |  2 +-
- net/ceph/snapshot.c             |  6 +++---
- net/key/af_key.c                |  2 +-
- net/rds/ib.c                    | 12 ++++++------
- net/rds/ib.h                    |  2 +-
- net/rds/ib_rdma.c               |  4 ++--
- net/rds/message.c               | 12 ++++++------
- net/rds/rdma.c                  | 10 +++++-----
- net/rds/rds.h                   |  9 +++++----
- net/rds/recv.c                  | 12 ++++++------
- net/sctp/associola.c            |  6 +++---
- net/sctp/auth.c                 |  4 ++--
- net/sctp/chunk.c                |  6 +++---
- net/sctp/endpointola.c          |  6 +++---
- net/sctp/sm_make_chunk.c        |  6 +++---
- net/sctp/transport.c            |  8 ++++----
- net/sunrpc/auth.c               | 12 ++++++------
- net/sunrpc/auth_gss/auth_gss.c  | 28 ++++++++++++++--------------
- net/x25/x25_link.c              |  2 +-
- net/x25/x25_route.c             |  2 +-
- net/xfrm/xfrm_input.c           |  4 ++--
- net/xfrm/xfrm_policy.c          |  4 ++--
- net/xfrm/xfrm_state.c           |  4 ++--
- 38 files changed, 142 insertions(+), 135 deletions(-)
-
+diff --git a/include/net/sctp/ulpevent.h b/include/net/sctp/ulpevent.h
+index 2ab7ed4..1060494 100644
+--- a/include/net/sctp/ulpevent.h
++++ b/include/net/sctp/ulpevent.h
+@@ -136,6 +136,10 @@ struct sctp_ulpevent *sctp_ulpevent_make_assoc_reset_event(
+ 	const struct sctp_association *asoc, __u16 flags,
+ 	 __u32 local_tsn, __u32 remote_tsn, gfp_t gfp);
+ 
++struct sctp_ulpevent *sctp_ulpevent_make_stream_change_event(
++	const struct sctp_association *asoc, __u16 flags,
++	__u32 strchange_instrms, __u32 strchange_outstrms, gfp_t gfp);
++
+ void sctp_ulpevent_read_sndrcvinfo(const struct sctp_ulpevent *event,
+ 				   struct msghdr *);
+ void sctp_ulpevent_read_rcvinfo(const struct sctp_ulpevent *event,
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index 7735829..fd652e6 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -513,6 +513,17 @@ struct sctp_assoc_reset_event {
+ 	__u32 assocreset_remote_tsn;
+ };
+ 
++#define SCTP_ASSOC_CHANGE_DENIED	0x0004
++#define SCTP_ASSOC_CHANGE_FAILED	0x0008
++struct sctp_stream_change_event {
++	__u16 strchange_type;
++	__u16 strchange_flags;
++	__u32 strchange_length;
++	sctp_assoc_t strchange_assoc_id;
++	__u16 strchange_instrms;
++	__u16 strchange_outstrms;
++};
++
+ /*
+  * Described in Section 7.3
+  *   Ancillary Data and Notification Interest Options
+@@ -530,6 +541,7 @@ struct sctp_event_subscribe {
+ 	__u8 sctp_sender_dry_event;
+ 	__u8 sctp_stream_reset_event;
+ 	__u8 sctp_assoc_reset_event;
++	__u8 sctp_stream_change_event;
+ };
+ 
+ /*
+@@ -556,6 +568,7 @@ union sctp_notification {
+ 	struct sctp_sender_dry_event sn_sender_dry_event;
+ 	struct sctp_stream_reset_event sn_strreset_event;
+ 	struct sctp_assoc_reset_event sn_assocreset_event;
++	struct sctp_stream_change_event sn_strchange_event;
+ };
+ 
+ /* Section 5.3.1
+@@ -587,6 +600,8 @@ enum sctp_sn_type {
+ #define SCTP_STREAM_RESET_EVENT		SCTP_STREAM_RESET_EVENT
+ 	SCTP_ASSOC_RESET_EVENT,
+ #define SCTP_ASSOC_RESET_EVENT		SCTP_ASSOC_RESET_EVENT
++	SCTP_STREAM_CHANGE_EVENT,
++#define SCTP_STREAM_CHANGE_EVENT	SCTP_STREAM_CHANGE_EVENT
+ };
+ 
+ /* Notification error codes used to fill up the error fields in some
+diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
+index 420d7f3..ec2b3e0 100644
+--- a/net/sctp/ulpevent.c
++++ b/net/sctp/ulpevent.c
+@@ -911,6 +911,34 @@ struct sctp_ulpevent *sctp_ulpevent_make_assoc_reset_event(
+ 	return event;
+ }
+ 
++struct sctp_ulpevent *sctp_ulpevent_make_stream_change_event(
++	const struct sctp_association *asoc, __u16 flags,
++	__u32 strchange_instrms, __u32 strchange_outstrms, gfp_t gfp)
++{
++	struct sctp_stream_change_event *schange;
++	struct sctp_ulpevent *event;
++	struct sk_buff *skb;
++
++	event = sctp_ulpevent_new(sizeof(struct sctp_stream_change_event),
++				  MSG_NOTIFICATION, gfp);
++	if (!event)
++		return NULL;
++
++	skb = sctp_event2skb(event);
++	schange = (struct sctp_stream_change_event *)
++		skb_put(skb, sizeof(struct sctp_stream_change_event));
++
++	schange->strchange_type = SCTP_STREAM_CHANGE_EVENT;
++	schange->strchange_flags = flags;
++	schange->strchange_length = sizeof(struct sctp_stream_change_event);
++	sctp_ulpevent_set_owner(event, asoc);
++	schange->strchange_assoc_id = sctp_assoc2id(asoc);
++	schange->strchange_instrms = strchange_instrms;
++	schange->strchange_outstrms = strchange_outstrms;
++
++	return event;
++}
++
+ /* Return the notification type, assuming this is a notification
+  * event.
+  */
 -- 
-2.7.4
+2.1.0
 
