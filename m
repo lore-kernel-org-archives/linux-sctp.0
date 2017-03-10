@@ -1,97 +1,190 @@
-From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Fri, 17 Mar 2017 12:10:37 +0000
-Subject: [PATCH 14/23] net, xfrm: convert xfrm_policy.refcnt from atomic_t to refcount_t
-Message-Id: <1489752646-8749-15-git-send-email-elena.reshetova@intel.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 10 Mar 2017 04:11:09 +0000
+Subject: [PATCHv2 net-next 4/7] sctp: implement receiver-side procedures for the Add Outgoing Streams Request
+Message-Id: <f73e5ede81d0eeccdf955eb7d77eadcda5166c9e.1489118815.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
-In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+References: <cover.1489118815.git.lucien.xin@gmail.com>
+ <7bf94990cf77044e0286adc2f393af4c9010213c.1489118815.git.lucien.xin@gmail.com>
+ <f224235b4621ea3a182e959873f6fe0ba78e5416.1489118815.git.lucien.xin@gmail.com>
+ <70b0da1e9de612702d0ddcdeab67e56b6d11fd78.1489118815.git.lucien.xin@gmail.com>
+In-Reply-To: <70b0da1e9de612702d0ddcdeab67e56b6d11fd78.1489118815.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org, linux-x25-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org, linux-hams-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, sage-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org, steffen.klassert-opNxpl+3fjRBDgjK7y7TUQ@public.gmane.org, herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org, santosh.shilimkar-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, jreuter-K7Hl1MveuGQ@public.gmane.org, ralf-6z/3iImG2C8G8FEW9MqTrA@public.gmane.org, peterz-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, keescook-F7+t8E8rja9g9hUCZPvPmw@public.gmane.org, Elena Reshetova <elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, Hans Liljestrand <ishkamiel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, David Windsor <dwindsor-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
 
-refcount_t type and corresponding API should be
-used instead of atomic_t when the variable is used as
-a reference counter. This allows to avoid accidental
-refcounter overflows that might lead to use-after-free
-situations.
+This patch is to add Receiver-Side Procedures for the Add Outgoing
+Streams Request Parameter described in section 5.2.5.
 
-Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
-Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
-Signed-off-by: Kees Cook <keescook@chromium.org>
-Signed-off-by: David Windsor <dwindsor@gmail.com>
+It is also to improve sctp_chunk_lookup_strreset_param, so that it
+can be used for processing addstrm_out request.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/xfrm.h     | 6 +++---
- net/key/af_key.c       | 2 +-
- net/xfrm/xfrm_policy.c | 4 ++--
- 3 files changed, 6 insertions(+), 6 deletions(-)
+ include/net/sctp/sm.h   |  4 +++
+ net/sctp/sm_statefuns.c |  3 ++
+ net/sctp/stream.c       | 89 +++++++++++++++++++++++++++++++++++++++++++------
+ 3 files changed, 86 insertions(+), 10 deletions(-)
 
-diff --git a/include/net/xfrm.h b/include/net/xfrm.h
-index 163cda5..be30846 100644
---- a/include/net/xfrm.h
-+++ b/include/net/xfrm.h
-@@ -525,7 +525,7 @@ struct xfrm_policy {
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index 2629d66..93ae50b 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -297,6 +297,10 @@ struct sctp_chunk *sctp_process_strreset_tsnreq(
+ 				struct sctp_association *asoc,
+ 				union sctp_params param,
+ 				struct sctp_ulpevent **evp);
++struct sctp_chunk *sctp_process_strreset_addstrm_out(
++				struct sctp_association *asoc,
++				union sctp_params param,
++				struct sctp_ulpevent **evp);
  
- 	/* This lock only affects elements except for entry. */
- 	rwlock_t		lock;
--	atomic_t		refcnt;
-+	refcount_t		refcnt;
- 	struct timer_list	timer;
+ /* Prototypes for statetable processing. */
  
- 	struct flow_cache_object flo;
-@@ -781,14 +781,14 @@ static inline void xfrm_audit_state_icvfail(struct xfrm_state *x,
- static inline void xfrm_pol_hold(struct xfrm_policy *policy)
- {
- 	if (likely(policy != NULL))
--		atomic_inc(&policy->refcnt);
-+		refcount_inc(&policy->refcnt);
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 6982064..881122b 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -3875,6 +3875,9 @@ sctp_disposition_t sctp_sf_do_reconf(struct net *net,
+ 		else if (param.p->type = SCTP_PARAM_RESET_TSN_REQUEST)
+ 			reply = sctp_process_strreset_tsnreq(
+ 				(struct sctp_association *)asoc, param, &ev);
++		else if (param.p->type = SCTP_PARAM_RESET_ADD_OUT_STREAMS)
++			reply = sctp_process_strreset_addstrm_out(
++				(struct sctp_association *)asoc, param, &ev);
+ 		/* More handles for other types will be added here, by now it
+ 		 * just ignores other types.
+ 		 */
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 7e993b0..df2794d 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -303,13 +303,14 @@ int sctp_send_add_streams(struct sctp_association *asoc,
  }
  
- void xfrm_policy_destroy(struct xfrm_policy *policy);
- 
- static inline void xfrm_pol_put(struct xfrm_policy *policy)
+ static sctp_paramhdr_t *sctp_chunk_lookup_strreset_param(
+-			struct sctp_association *asoc, __u32 resp_seq)
++			struct sctp_association *asoc, __u32 resp_seq,
++			__be16 type)
  {
--	if (atomic_dec_and_test(&policy->refcnt))
-+	if (refcount_dec_and_test(&policy->refcnt))
- 		xfrm_policy_destroy(policy);
- }
+ 	struct sctp_chunk *chunk = asoc->strreset_chunk;
+ 	struct sctp_reconf_chunk *hdr;
+ 	union sctp_params param;
  
-diff --git a/net/key/af_key.c b/net/key/af_key.c
-index c6252ed..d3611af 100644
---- a/net/key/af_key.c
-+++ b/net/key/af_key.c
-@@ -2152,7 +2152,7 @@ static int pfkey_xfrm_policy2msg(struct sk_buff *skb, const struct xfrm_policy *
+-	if (ntohl(resp_seq) != asoc->strreset_outseq || !chunk)
++	if (!chunk)
+ 		return NULL;
+ 
+ 	hdr = (struct sctp_reconf_chunk *)chunk->chunk_hdr;
+@@ -320,7 +321,8 @@ static sctp_paramhdr_t *sctp_chunk_lookup_strreset_param(
+ 		 */
+ 		struct sctp_strreset_tsnreq *req = param.v;
+ 
+-		if (req->request_seq = resp_seq)
++		if ((!resp_seq || req->request_seq = resp_seq) &&
++		    (!type || type = req->param_hdr.type))
+ 			return param.v;
  	}
  
- 	hdr->sadb_msg_len = size / sizeof(uint64_t);
--	hdr->sadb_msg_reserved = atomic_read(&xp->refcnt);
-+	hdr->sadb_msg_reserved = refcount_read(&xp->refcnt);
+@@ -361,13 +363,9 @@ struct sctp_chunk *sctp_process_strreset_outreq(
+ 		goto out;
  
- 	return 0;
+ 	if (asoc->strreset_chunk) {
+-		sctp_paramhdr_t *param_hdr;
+-		struct sctp_transport *t;
+-
+-		param_hdr = sctp_chunk_lookup_strreset_param(
+-					asoc, outreq->response_seq);
+-		if (!param_hdr || param_hdr->type !-					SCTP_PARAM_RESET_IN_REQUEST) {
++		if (!sctp_chunk_lookup_strreset_param(
++				asoc, outreq->response_seq,
++				SCTP_PARAM_RESET_IN_REQUEST)) {
+ 			/* same process with outstanding isn't 0 */
+ 			result = SCTP_STRRESET_ERR_IN_PROGRESS;
+ 			goto out;
+@@ -377,6 +375,8 @@ struct sctp_chunk *sctp_process_strreset_outreq(
+ 		asoc->strreset_outseq++;
+ 
+ 		if (!asoc->strreset_outstanding) {
++			struct sctp_transport *t;
++
+ 			t = asoc->strreset_chunk->transport;
+ 			if (del_timer(&t->reconf_timer))
+ 				sctp_transport_put(t);
+@@ -556,3 +556,72 @@ struct sctp_chunk *sctp_process_strreset_tsnreq(
+ 	return sctp_make_strreset_tsnresp(asoc, result, request_seq,
+ 					  next_tsn, init_tsn);
  }
-diff --git a/net/xfrm/xfrm_policy.c b/net/xfrm/xfrm_policy.c
-index 236cbbc..91cf3e7 100644
---- a/net/xfrm/xfrm_policy.c
-+++ b/net/xfrm/xfrm_policy.c
-@@ -62,7 +62,7 @@ static struct xfrm_policy *__xfrm_policy_unlink(struct xfrm_policy *pol,
- 
- static inline bool xfrm_pol_hold_rcu(struct xfrm_policy *policy)
- {
--	return atomic_inc_not_zero(&policy->refcnt);
-+	return refcount_inc_not_zero(&policy->refcnt);
- }
- 
- static inline bool
-@@ -292,7 +292,7 @@ struct xfrm_policy *xfrm_policy_alloc(struct net *net, gfp_t gfp)
- 		INIT_HLIST_NODE(&policy->bydst);
- 		INIT_HLIST_NODE(&policy->byidx);
- 		rwlock_init(&policy->lock);
--		atomic_set(&policy->refcnt, 1);
-+		refcount_set(&policy->refcnt, 1);
- 		skb_queue_head_init(&policy->polq.hold_queue);
- 		setup_timer(&policy->timer, xfrm_policy_timer,
- 				(unsigned long)policy);
++
++struct sctp_chunk *sctp_process_strreset_addstrm_out(
++				struct sctp_association *asoc,
++				union sctp_params param,
++				struct sctp_ulpevent **evp)
++{
++	struct sctp_strreset_addstrm *addstrm = param.v;
++	struct sctp_stream *stream = asoc->stream;
++	__u32 result = SCTP_STRRESET_DENIED;
++	struct sctp_stream_in *streamin;
++	__u32 request_seq, incnt;
++	__u16 in;
++
++	request_seq = ntohl(addstrm->request_seq);
++	if (request_seq > asoc->strreset_inseq) {
++		result = SCTP_STRRESET_ERR_BAD_SEQNO;
++		goto out;
++	} else if (request_seq = asoc->strreset_inseq) {
++		asoc->strreset_inseq++;
++	}
++
++	if (!(asoc->strreset_enable & SCTP_ENABLE_CHANGE_ASSOC_REQ))
++		goto out;
++
++	if (asoc->strreset_chunk) {
++		if (!sctp_chunk_lookup_strreset_param(
++			asoc, 0, SCTP_PARAM_RESET_ADD_IN_STREAMS)) {
++			/* same process with outstanding isn't 0 */
++			result = SCTP_STRRESET_ERR_IN_PROGRESS;
++			goto out;
++		}
++
++		asoc->strreset_outstanding--;
++		asoc->strreset_outseq++;
++
++		if (!asoc->strreset_outstanding) {
++			struct sctp_transport *t;
++
++			t = asoc->strreset_chunk->transport;
++			if (del_timer(&t->reconf_timer))
++				sctp_transport_put(t);
++
++			sctp_chunk_put(asoc->strreset_chunk);
++			asoc->strreset_chunk = NULL;
++		}
++	}
++
++	in = ntohs(addstrm->number_of_streams);
++	incnt = stream->incnt + in;
++	if (!in || incnt > SCTP_MAX_STREAM)
++		goto out;
++
++	streamin = krealloc(stream->in, incnt * sizeof(*streamin),
++			    GFP_ATOMIC);
++	if (!streamin)
++		goto out;
++
++	memset(streamin + stream->incnt, 0, in * sizeof(*streamin));
++	stream->in = streamin;
++	stream->incnt = incnt;
++
++	result = SCTP_STRRESET_PERFORMED;
++
++	*evp = sctp_ulpevent_make_stream_change_event(asoc,
++		0, ntohs(addstrm->number_of_streams), 0, GFP_ATOMIC);
++
++out:
++	return sctp_make_strreset_resp(asoc, result, request_seq);
++}
 -- 
-2.7.4
+2.1.0
 
