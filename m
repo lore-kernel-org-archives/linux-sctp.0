@@ -1,81 +1,91 @@
-From: <deitilde@inbox.lv>
-Date: Sat, 11 Mar 2017 18:04:28 +0000
-Subject: 40467 linux-sctp
-Message-Id: <148925546844.3115.7737868411254390612@hinet.net>
+From: Ben Hutchings <ben@decadent.org.uk>
+Date: Fri, 10 Mar 2017 11:46:10 +0000
+Subject: [PATCH 3.2 167/199] net: sctp, forbid negative length
+Message-Id: <lsq.1489146370.889744033@decadent.org.uk>
 List-Id: <linux-sctp.vger.kernel.org>
+In-Reply-To: <lsq.1489146368.630732676@decadent.org.uk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc: akpm@linux-foundation.org, netdev@vger.kernel.org, Jiri Slaby <jslaby@suse.cz>, linux-sctp@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-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
-UwAAADcPAAAAAA=
+3.2.87-rc1 review patch.  If anyone has any objections, please let me know.
+
+------------------
+
+From: Jiri Slaby <jslaby@suse.cz>
+
+[ Upstream commit a4b8e71b05c27bae6bad3bdecddbc6b68a3ad8cf ]
+
+Most of getsockopt handlers in net/sctp/socket.c check len against
+sizeof some structure like:
+        if (len < sizeof(int))
+                return -EINVAL;
+
+On the first look, the check seems to be correct. But since len is int
+and sizeof returns size_t, int gets promoted to unsigned size_t too. So
+the test returns false for negative lengths. Yes, (-1 < sizeof(long)) is
+false.
+
+Fix this in sctp by explicitly checking len < 0 before any getsockopt
+handler is called.
+
+Note that sctp_getsockopt_events already handled the negative case.
+Since we added the < 0 check elsewhere, this one can be removed.
+
+If not checked, this is the result:
+UBSAN: Undefined behaviour in ../mm/page_alloc.c:2722:19
+shift exponent 52 is too large for 32-bit type 'int'
+CPU: 1 PID: 24535 Comm: syz-executor Not tainted 4.8.1-0-syzkaller #1
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.9.1-0-gb3ef39f-prebuilt.qemu-project.org 04/01/2014
+ 0000000000000000 ffff88006d99f2a8 ffffffffb2f7bdea 0000000041b58ab3
+ ffffffffb4363c14 ffffffffb2f7bcde ffff88006d99f2d0 ffff88006d99f270
+ 0000000000000000 0000000000000000 0000000000000034 ffffffffb5096422
+Call Trace:
+ [<ffffffffb3051498>] ? __ubsan_handle_shift_out_of_bounds+0x29c/0x300
+...
+ [<ffffffffb273f0e4>] ? kmalloc_order+0x24/0x90
+ [<ffffffffb27416a4>] ? kmalloc_order_trace+0x24/0x220
+ [<ffffffffb2819a30>] ? __kmalloc+0x330/0x540
+ [<ffffffffc18c25f4>] ? sctp_getsockopt_local_addrs+0x174/0xca0 [sctp]
+ [<ffffffffc18d2bcd>] ? sctp_getsockopt+0x10d/0x1b0 [sctp]
+ [<ffffffffb37c1219>] ? sock_common_getsockopt+0xb9/0x150
+ [<ffffffffb37be2f5>] ? SyS_getsockopt+0x1a5/0x270
+
+Signed-off-by: Jiri Slaby <jslaby@suse.cz>
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+[bwh: Backported to 3.2: adjust context]
+Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
+---
+ net/sctp/socket.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4193,7 +4193,7 @@ static int sctp_getsockopt_disable_fragm
+ static int sctp_getsockopt_events(struct sock *sk, int len, char __user *optval,
+ 				  int __user *optlen)
+ {
+-	if (len <= 0)
++	if (len = 0)
+ 		return -EINVAL;
+ 	if (len > sizeof(struct sctp_event_subscribe))
+ 		len = sizeof(struct sctp_event_subscribe);
+@@ -5586,6 +5586,9 @@ SCTP_STATIC int sctp_getsockopt(struct s
+ 	if (get_user(len, optlen))
+ 		return -EFAULT;
+ 
++	if (len < 0)
++		return -EINVAL;
++
+ 	sctp_lock_sock(sk);
+ 
+ 	switch (optname) {
+
