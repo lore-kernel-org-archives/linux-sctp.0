@@ -1,81 +1,81 @@
-From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Fri, 17 Mar 2017 12:10:33 +0000
-Subject: [PATCH 10/23] net, rds: convert rds_message.m_refcount from atomic_t to refcount_t
-Message-Id: <1489752646-8749-11-git-send-email-elena.reshetova@intel.com>
+From: <deitilde@inbox.lv>
+Date: Sat, 11 Mar 2017 18:04:28 +0000
+Subject: 40467 linux-sctp
+Message-Id: <148925546844.3115.7737868411254390612@hinet.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
-In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org, linux-x25-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org, linux-hams-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, sage-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org, steffen.klassert-opNxpl+3fjRBDgjK7y7TUQ@public.gmane.org, herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org, santosh.shilimkar-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, jreuter-K7Hl1MveuGQ@public.gmane.org, ralf-6z/3iImG2C8G8FEW9MqTrA@public.gmane.org, peterz-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, keescook-F7+t8E8rja9g9hUCZPvPmw@public.gmane.org, Elena Reshetova <elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, Hans Liljestrand <ishkamiel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, David Windsor <dwindsor-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+To: linux-sctp@vger.kernel.org
 
-refcount_t type and corresponding API should be
-used instead of atomic_t when the variable is used as
-a reference counter. This allows to avoid accidental
-refcounter overflows that might lead to use-after-free
-situations.
-
-Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
-Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
-Signed-off-by: Kees Cook <keescook@chromium.org>
-Signed-off-by: David Windsor <dwindsor@gmail.com>
----
- net/rds/message.c | 12 ++++++------
- net/rds/rds.h     |  2 +-
- 2 files changed, 7 insertions(+), 7 deletions(-)
-
-diff --git a/net/rds/message.c b/net/rds/message.c
-index 49bfb51..4318cc9 100644
---- a/net/rds/message.c
-+++ b/net/rds/message.c
-@@ -48,8 +48,8 @@ static unsigned int	rds_exthdr_size[__RDS_EXTHDR_MAX] = {
- 
- void rds_message_addref(struct rds_message *rm)
- {
--	rdsdebug("addref rm %p ref %d\n", rm, atomic_read(&rm->m_refcount));
--	atomic_inc(&rm->m_refcount);
-+	rdsdebug("addref rm %p ref %d\n", rm, refcount_read(&rm->m_refcount));
-+	refcount_inc(&rm->m_refcount);
- }
- EXPORT_SYMBOL_GPL(rds_message_addref);
- 
-@@ -83,9 +83,9 @@ static void rds_message_purge(struct rds_message *rm)
- 
- void rds_message_put(struct rds_message *rm)
- {
--	rdsdebug("put rm %p ref %d\n", rm, atomic_read(&rm->m_refcount));
--	WARN(!atomic_read(&rm->m_refcount), "danger refcount zero on %p\n", rm);
--	if (atomic_dec_and_test(&rm->m_refcount)) {
-+	rdsdebug("put rm %p ref %d\n", rm, refcount_read(&rm->m_refcount));
-+	WARN(!refcount_read(&rm->m_refcount), "danger refcount zero on %p\n", rm);
-+	if (refcount_dec_and_test(&rm->m_refcount)) {
- 		BUG_ON(!list_empty(&rm->m_sock_item));
- 		BUG_ON(!list_empty(&rm->m_conn_item));
- 		rds_message_purge(rm);
-@@ -206,7 +206,7 @@ struct rds_message *rds_message_alloc(unsigned int extra_len, gfp_t gfp)
- 	rm->m_used_sgs = 0;
- 	rm->m_total_sgs = extra_len / sizeof(struct scatterlist);
- 
--	atomic_set(&rm->m_refcount, 1);
-+	refcount_set(&rm->m_refcount, 1);
- 	INIT_LIST_HEAD(&rm->m_sock_item);
- 	INIT_LIST_HEAD(&rm->m_conn_item);
- 	spin_lock_init(&rm->m_rs_lock);
-diff --git a/net/rds/rds.h b/net/rds/rds.h
-index 7487597..8c205ff 100644
---- a/net/rds/rds.h
-+++ b/net/rds/rds.h
-@@ -355,7 +355,7 @@ static inline u32 rds_rdma_cookie_offset(rds_rdma_cookie_t cookie)
- #define RDS_MSG_FLUSH		8
- 
- struct rds_message {
--	atomic_t		m_refcount;
-+	refcount_t		m_refcount;
- 	struct list_head	m_sock_item;
- 	struct list_head	m_conn_item;
- 	struct rds_incoming	m_inc;
--- 
-2.7.4
-
+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
+UwAAADcPAAAAAA=
