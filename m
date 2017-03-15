@@ -1,68 +1,79 @@
-From: Dmitry Vyukov <dvyukov@google.com>
-Date: Fri, 10 Mar 2017 20:04:27 +0000
+From: Cong Wang <xiyou.wangcong@gmail.com>
+Date: Wed, 15 Mar 2017 04:52:15 +0000
 Subject: Re: net/sctp: recursive locking in sctp_do_peeloff
-Message-Id: <CACT4Y+b1Uu9nGqX=LdJ_nEWxbeCswMOsSpvnW=OLdDKYC5EjDw@mail.gmail.com>
+Message-Id: <CAM_iQpUEWDVHx5+VBB4=r=y_vVbXq32a2QfqY=OU5ri-yyJPaA@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CACT4Y+ZHGC6VNJUANgSdZnCfLQrRKtsQ-Dbn6goHScj=pq7xog@mail.gmail.com>
- <CAFSqH7xrmH2Bgq3Xckgb3mkj7j1qkApemEYOq3jbQEtj+TTEpQ@mail.gmail.com>
-In-Reply-To: <CAFSqH7xrmH2Bgq3Xckgb3mkj7j1qkApemEYOq3jbQEtj+TTEpQ@mail.gmail.com>
+ <CAFSqH7xrmH2Bgq3Xckgb3mkj7j1qkApemEYOq3jbQEtj+TTEpQ@mail.gmail.com> <CACT4Y+b1Uu9nGqX=LdJ_nEWxbeCswMOsSpvnW=OLdDKYC5EjDw@mail.gmail.com>
+In-Reply-To: <CACT4Y+b1Uu9nGqX=LdJ_nEWxbeCswMOsSpvnW=OLdDKYC5EjDw@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: Vladislav Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, Eric Dumazet <edumazet@google.com>, syzkaller <syzkaller@googlegroups.com>, Cong Wang <xiyou.wangcong@gmail.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Dmitry Vyukov <dvyukov@google.com>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vladislav Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, Eric Dumazet <edumazet@google.com>, syzkaller <syzkaller@googlegroups.com>
 
-On Fri, Mar 10, 2017 at 8:46 PM, Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
-> On Fri, Mar 10, 2017 at 4:11 PM, Dmitry Vyukov <dvyukov@google.com> wrote:
->> Hello,
+On Fri, Mar 10, 2017 at 12:04 PM, Dmitry Vyukov <dvyukov@google.com> wrote:
+> On Fri, Mar 10, 2017 at 8:46 PM, Marcelo Ricardo Leitner
+> <marcelo.leitner@gmail.com> wrote:
+>> On Fri, Mar 10, 2017 at 4:11 PM, Dmitry Vyukov <dvyukov@google.com> wrote:
+>>> Hello,
+>>>
+>>> I've got the following recursive locking report while running
+>>> syzkaller fuzzer on net-next/9c28286b1b4b9bce6e35dd4c8a1265f03802a89a:
+>>>
+>>> [ INFO: possible recursive locking detected ]
+>>> 4.10.0+ #14 Not tainted
+>>> ---------------------------------------------
+>>> syz-executor3/5560 is trying to acquire lock:
+>>>  (sk_lock-AF_INET6){+.+.+.}, at: [<ffffffff8401ebcd>] lock_sock
+>>> include/net/sock.h:1460 [inline]
+>>>  (sk_lock-AF_INET6){+.+.+.}, at: [<ffffffff8401ebcd>]
+>>> sctp_close+0xcd/0x9d0 net/sctp/socket.c:1497
+>>>
+>>> but task is already holding lock:
+>>>  (sk_lock-AF_INET6){+.+.+.}, at: [<ffffffff84038110>] lock_sock
+>>> include/net/sock.h:1460 [inline]
+>>>  (sk_lock-AF_INET6){+.+.+.}, at: [<ffffffff84038110>]
+>>> sctp_getsockopt+0x450/0x67e0 net/sctp/socket.c:6611
+>>>
+>>> other info that might help us debug this:
+>>>  Possible unsafe locking scenario:
+>>>
+>>>        CPU0
+>>>        ----
+>>>   lock(sk_lock-AF_INET6);
+>>>   lock(sk_lock-AF_INET6);
+>>>
+>>>  *** DEADLOCK ***
+>>>
+>>>  May be due to missing lock nesting notation
 >>
->> I've got the following recursive locking report while running
->> syzkaller fuzzer on net-next/9c28286b1b4b9bce6e35dd4c8a1265f03802a89a:
->>
->> [ INFO: possible recursive locking detected ]
->> 4.10.0+ #14 Not tainted
->> ---------------------------------------------
->> syz-executor3/5560 is trying to acquire lock:
->>  (sk_lock-AF_INET6){+.+.+.}, at: [<ffffffff8401ebcd>] lock_sock
->> include/net/sock.h:1460 [inline]
->>  (sk_lock-AF_INET6){+.+.+.}, at: [<ffffffff8401ebcd>]
->> sctp_close+0xcd/0x9d0 net/sctp/socket.c:1497
->>
->> but task is already holding lock:
->>  (sk_lock-AF_INET6){+.+.+.}, at: [<ffffffff84038110>] lock_sock
->> include/net/sock.h:1460 [inline]
->>  (sk_lock-AF_INET6){+.+.+.}, at: [<ffffffff84038110>]
->> sctp_getsockopt+0x450/0x67e0 net/sctp/socket.c:6611
->>
->> other info that might help us debug this:
->>  Possible unsafe locking scenario:
->>
->>        CPU0
->>        ----
->>   lock(sk_lock-AF_INET6);
->>   lock(sk_lock-AF_INET6);
->>
->>  *** DEADLOCK ***
->>
->>  May be due to missing lock nesting notation
+>> Pretty much the case, I suppose. The lock held by sctp_getsockopt() is
+>> on one socket, while the other lock that sctp_close() is getting later
+>> is on the newly created (which failed) socket during peeloff
+>> operation.
 >
-> Pretty much the case, I suppose. The lock held by sctp_getsockopt() is
-> on one socket, while the other lock that sctp_close() is getting later
-> is on the newly created (which failed) socket during peeloff
-> operation.
+>
+> Does this mean that never-ever lock 2 sockets at a time except for
+> this case? If so, it probably suggests that this case should not do it
+> either.
+>
 
+Yeah, actually for the error path we don't even need to lock sock
+since it is newly allocated and no one else could see it yet.
 
-Does this mean that never-ever lock 2 sockets at a time except for
-this case? If so, it probably suggests that this case should not do it
-either.
+Instead of checking for the status of the sock, I believe the following
+one-line fix should do the trick too. Can you give it a try?
 
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 0f378ea..4de62d4 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1494,7 +1494,7 @@ static void sctp_close(struct sock *sk, long timeout)
 
-> I don=C2=B4t know how to fix this nesting notation in this situation, but
-> any idea why sock_create failed? Seems security_socket_post_create()
-> failed in there, so sock_release was called with sock->ops still
-> valid.
+        pr_debug("%s: sk:%p, timeout:%ld\n", __func__, sk, timeout);
 
-No idea. The fuzzer frequently creates low memory conditions, but
-there are no alloc failures messages in the log (maybe some allocation
-used NOWARN?).
+-       lock_sock(sk);
++       lock_sock_nested(sk, SINGLE_DEPTH_NESTING);
+        sk->sk_shutdown = SHUTDOWN_MASK;
+        sk->sk_state = SCTP_SS_CLOSING;
