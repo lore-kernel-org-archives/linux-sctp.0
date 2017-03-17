@@ -1,207 +1,123 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 31 Mar 2017 18:08:13 +0000
-Subject: Re: [PATCH net-next] sctp: add SCTP_PR_STREAM_STATUS sockopt for prsctp
-Message-Id: <20170331180813.GC5879@localhost.localdomain>
+From: Elena Reshetova <elena.reshetova@intel.com>
+Date: Fri, 17 Mar 2017 12:10:24 +0000
+Subject: [PATCH 01/23] net, sunrpc: convert rpc_cred.cr_count from atomic_t to refcount_t
+Message-Id: <1489752646-8749-2-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <683bd49225abe18aa3cbd285bacb6a514a2d06b2.1490955249.git.lucien.xin@gmail.com>
-In-Reply-To: <683bd49225abe18aa3cbd285bacb6a514a2d06b2.1490955249.git.lucien.xin@gmail.com>
+References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
+In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, davem@davemloft.net, linux-x25@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-hams@vger.kernel.org, linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, ralf@linux-mips.org, peterz@infradead.org, keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
 
-On Fri, Mar 31, 2017 at 06:14:09PM +0800, Xin Long wrote:
-> Before when implementing sctp prsctp, SCTP_PR_STREAM_STATUS wasn't
-> added, as it needs to save abandoned_(un)sent for every stream.
-> 
-> After sctp stream reconf is added in sctp, assoc has structure
-> sctp_stream_out to save per stream info.
-> 
-> This patch is to add SCTP_PR_STREAM_STATUS by putting the prsctp
-> per stream statistics into sctp_stream_out.
-> 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> ---
->  include/net/sctp/structs.h |  2 ++
->  include/uapi/linux/sctp.h  |  1 +
->  net/sctp/chunk.c           | 14 +++++++++--
->  net/sctp/outqueue.c        | 10 ++++++++
->  net/sctp/socket.c          | 59 ++++++++++++++++++++++++++++++++++++++++++++++
->  5 files changed, 84 insertions(+), 2 deletions(-)
-> 
-> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-> index 592dece..3e61a54 100644
-> --- a/include/net/sctp/structs.h
-> +++ b/include/net/sctp/structs.h
-> @@ -1315,6 +1315,8 @@ struct sctp_inithdr_host {
->  struct sctp_stream_out {
->  	__u16	ssn;
->  	__u8	state;
-> +	__u64	abandoned_unsent[SCTP_PR_INDEX(MAX) + 1];
-> +	__u64	abandoned_sent[SCTP_PR_INDEX(MAX) + 1];
->  };
->  
->  struct sctp_stream_in {
-> diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-> index 7212870..ced9d8b 100644
-> --- a/include/uapi/linux/sctp.h
-> +++ b/include/uapi/linux/sctp.h
-> @@ -115,6 +115,7 @@ typedef __s32 sctp_assoc_t;
->  #define SCTP_PR_SUPPORTED	113
->  #define SCTP_DEFAULT_PRINFO	114
->  #define SCTP_PR_ASSOC_STATUS	115
-> +#define SCTP_PR_STREAM_STATUS	116
->  #define SCTP_RECONFIG_SUPPORTED	117
->  #define SCTP_ENABLE_STREAM_RESET	118
->  #define SCTP_RESET_STREAMS	119
-> diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
-> index e3621cb..697721a 100644
-> --- a/net/sctp/chunk.c
-> +++ b/net/sctp/chunk.c
-> @@ -306,14 +306,24 @@ int sctp_chunk_abandoned(struct sctp_chunk *chunk)
->  
->  	if (SCTP_PR_TTL_ENABLED(chunk->sinfo.sinfo_flags) &&
->  	    time_after(jiffies, chunk->msg->expires_at)) {
-> -		if (chunk->sent_count)
-> +		struct sctp_stream_out *streamout > +			&chunk->asoc->stream->out[chunk->sinfo.sinfo_stream];
-> +
-> +		if (chunk->sent_count) {
->  			chunk->asoc->abandoned_sent[SCTP_PR_INDEX(TTL)]++;
-> -		else
-> +			streamout->abandoned_sent[SCTP_PR_INDEX(TTL)]++;
-> +		} else {
->  			chunk->asoc->abandoned_unsent[SCTP_PR_INDEX(TTL)]++;
-> +			streamout->abandoned_unsent[SCTP_PR_INDEX(TTL)]++;
-> +		}
->  		return 1;
->  	} else if (SCTP_PR_RTX_ENABLED(chunk->sinfo.sinfo_flags) &&
->  		   chunk->sent_count > chunk->sinfo.sinfo_timetolive) {
-> +		struct sctp_stream_out *streamout > +			&chunk->asoc->stream->out[chunk->sinfo.sinfo_stream];
-> +
->  		chunk->asoc->abandoned_sent[SCTP_PR_INDEX(RTX)]++;
-> +		streamout->abandoned_sent[SCTP_PR_INDEX(RTX)]++;
->  		return 1;
->  	} else if (!SCTP_PR_POLICY(chunk->sinfo.sinfo_flags) &&
->  		   chunk->msg->expires_at &&
-> diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-> index 025ccff..3f78d7f 100644
-> --- a/net/sctp/outqueue.c
-> +++ b/net/sctp/outqueue.c
-> @@ -353,6 +353,8 @@ static int sctp_prsctp_prune_sent(struct sctp_association *asoc,
->  	struct sctp_chunk *chk, *temp;
->  
->  	list_for_each_entry_safe(chk, temp, queue, transmitted_list) {
-> +		struct sctp_stream_out *streamout;
-> +
->  		if (!SCTP_PR_PRIO_ENABLED(chk->sinfo.sinfo_flags) ||
->  		    chk->sinfo.sinfo_timetolive <= sinfo->sinfo_timetolive)
->  			continue;
-> @@ -361,8 +363,10 @@ static int sctp_prsctp_prune_sent(struct sctp_association *asoc,
->  		sctp_insert_list(&asoc->outqueue.abandoned,
->  				 &chk->transmitted_list);
->  
-> +		streamout = &asoc->stream->out[chk->sinfo.sinfo_stream];
->  		asoc->sent_cnt_removable--;
->  		asoc->abandoned_sent[SCTP_PR_INDEX(PRIO)]++;
-> +		streamout->abandoned_sent[SCTP_PR_INDEX(PRIO)]++;
->  
->  		if (!chk->tsn_gap_acked) {
->  			if (chk->transport)
-> @@ -396,6 +400,12 @@ static int sctp_prsctp_prune_unsent(struct sctp_association *asoc,
->  		q->out_qlen -= chk->skb->len;
->  		asoc->sent_cnt_removable--;
->  		asoc->abandoned_unsent[SCTP_PR_INDEX(PRIO)]++;
-> +		if (chk->sinfo.sinfo_stream < asoc->stream->outcnt) {
-> +			struct sctp_stream_out *streamout > +				&asoc->stream->out[chk->sinfo.sinfo_stream];
-> +
-> +			streamout->abandoned_unsent[SCTP_PR_INDEX(PRIO)]++;
-> +		}
->  
->  		msg_len -= SCTP_DATA_SNDSIZE(chk) +
->  			   sizeof(struct sk_buff) +
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index ccc08fc..8c0b528 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -6576,6 +6576,61 @@ static int sctp_getsockopt_pr_assocstatus(struct sock *sk, int len,
->  	return retval;
->  }
->  
-> +static int sctp_getsockopt_pr_streamstatus(struct sock *sk, int len,
-> +					   char __user *optval,
-> +					  int __user *optlen)
-    You're missing an space here     -----^
+refcount_t type and corresponding API should be
+used instead of atomic_t when the variable is used as
+a reference counter. This allows to avoid accidental
+refcounter overflows that might lead to use-after-free
+situations.
 
-otherwise it lgtm
+Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
+Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
+Signed-off-by: Kees Cook <keescook@chromium.org>
+Signed-off-by: David Windsor <dwindsor@gmail.com>
+---
+ include/linux/sunrpc/auth.h |  8 ++++----
+ net/sunrpc/auth.c           | 12 ++++++------
+ 2 files changed, 10 insertions(+), 10 deletions(-)
 
-> +{
-> +	struct sctp_stream_out *streamout;
-> +	struct sctp_association *asoc;
-> +	struct sctp_prstatus params;
-> +	int retval = -EINVAL;
-> +	int policy;
-> +
-> +	if (len < sizeof(params))
-> +		goto out;
-> +
-> +	len = sizeof(params);
-> +	if (copy_from_user(&params, optval, len)) {
-> +		retval = -EFAULT;
-> +		goto out;
-> +	}
-> +
-> +	policy = params.sprstat_policy;
-> +	if (policy & ~SCTP_PR_SCTP_MASK)
-> +		goto out;
-> +
-> +	asoc = sctp_id2assoc(sk, params.sprstat_assoc_id);
-> +	if (!asoc || params.sprstat_sid >= asoc->stream->outcnt)
-> +		goto out;
-> +
-> +	streamout = &asoc->stream->out[params.sprstat_sid];
-> +	if (policy = SCTP_PR_SCTP_NONE) {
-> +		params.sprstat_abandoned_unsent = 0;
-> +		params.sprstat_abandoned_sent = 0;
-> +		for (policy = 0; policy <= SCTP_PR_INDEX(MAX); policy++) {
-> +			params.sprstat_abandoned_unsent +> +				streamout->abandoned_unsent[policy];
-> +			params.sprstat_abandoned_sent +> +				streamout->abandoned_sent[policy];
-> +		}
-> +	} else {
-> +		params.sprstat_abandoned_unsent > +			streamout->abandoned_unsent[__SCTP_PR_INDEX(policy)];
-> +		params.sprstat_abandoned_sent > +			streamout->abandoned_sent[__SCTP_PR_INDEX(policy)];
-> +	}
-> +
-> +	if (put_user(len, optlen) || copy_to_user(optval, &params, len)) {
-> +		retval = -EFAULT;
-> +		goto out;
-> +	}
-> +
-> +	retval = 0;
-> +
-> +out:
-> +	return retval;
-> +}
-> +
->  static int sctp_getsockopt_reconfig_supported(struct sock *sk, int len,
->  					      char __user *optval,
->  					      int __user *optlen)
-> @@ -6825,6 +6880,10 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
->  		retval = sctp_getsockopt_pr_assocstatus(sk, len, optval,
->  							optlen);
->  		break;
-> +	case SCTP_PR_STREAM_STATUS:
-> +		retval = sctp_getsockopt_pr_streamstatus(sk, len, optval,
-> +							 optlen);
-> +		break;
->  	case SCTP_RECONFIG_SUPPORTED:
->  		retval = sctp_getsockopt_reconfig_supported(sk, len, optval,
->  							    optlen);
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index b1bc62b..bd36e0b 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -15,7 +15,7 @@
+ #include <linux/sunrpc/msg_prot.h>
+ #include <linux/sunrpc/xdr.h>
+ 
+-#include <linux/atomic.h>
++#include <linux/refcount.h>
+ #include <linux/rcupdate.h>
+ #include <linux/uidgid.h>
+ #include <linux/utsname.h>
+@@ -68,7 +68,7 @@ struct rpc_cred {
+ #endif
+ 	unsigned long		cr_expire;	/* when to gc */
+ 	unsigned long		cr_flags;	/* various flags */
+-	atomic_t		cr_count;	/* ref count */
++	refcount_t		cr_count;	/* ref count */
+ 
+ 	kuid_t			cr_uid;
+ 
+@@ -209,7 +209,7 @@ static inline
+ struct rpc_cred *	get_rpccred(struct rpc_cred *cred)
+ {
+ 	if (cred != NULL)
+-		atomic_inc(&cred->cr_count);
++		refcount_inc(&cred->cr_count);
+ 	return cred;
+ }
+ 
+@@ -226,7 +226,7 @@ struct rpc_cred *	get_rpccred(struct rpc_cred *cred)
+ static inline struct rpc_cred *
+ get_rpccred_rcu(struct rpc_cred *cred)
+ {
+-	if (atomic_inc_not_zero(&cred->cr_count))
++	if (refcount_inc_not_zero(&cred->cr_count))
+ 		return cred;
+ 	return NULL;
+ }
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index 2bff63a..b6439b9 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -310,7 +310,7 @@ rpcauth_unhash_cred(struct rpc_cred *cred)
+ 
+ 	cache_lock = &cred->cr_auth->au_credcache->lock;
+ 	spin_lock(cache_lock);
+-	ret = atomic_read(&cred->cr_count) = 0;
++	ret = refcount_read(&cred->cr_count) = 0;
+ 	if (ret)
+ 		rpcauth_unhash_cred_locked(cred);
+ 	spin_unlock(cache_lock);
+@@ -470,12 +470,12 @@ rpcauth_prune_expired(struct list_head *free, int nr_to_scan)
+ 		list_del_init(&cred->cr_lru);
+ 		number_cred_unused--;
+ 		freed++;
+-		if (atomic_read(&cred->cr_count) != 0)
++		if (refcount_read(&cred->cr_count) != 0)
+ 			continue;
+ 
+ 		cache_lock = &cred->cr_auth->au_credcache->lock;
+ 		spin_lock(cache_lock);
+-		if (atomic_read(&cred->cr_count) = 0) {
++		if (refcount_read(&cred->cr_count) = 0) {
+ 			get_rpccred(cred);
+ 			list_add_tail(&cred->cr_lru, free);
+ 			rpcauth_unhash_cred_locked(cred);
+@@ -642,7 +642,7 @@ rpcauth_init_cred(struct rpc_cred *cred, const struct auth_cred *acred,
+ {
+ 	INIT_HLIST_NODE(&cred->cr_hash);
+ 	INIT_LIST_HEAD(&cred->cr_lru);
+-	atomic_set(&cred->cr_count, 1);
++	refcount_set(&cred->cr_count, 1);
+ 	cred->cr_auth = auth;
+ 	cred->cr_ops = ops;
+ 	cred->cr_expire = jiffies;
+@@ -715,12 +715,12 @@ put_rpccred(struct rpc_cred *cred)
+ 		return;
+ 	/* Fast path for unhashed credentials */
+ 	if (test_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags) = 0) {
+-		if (atomic_dec_and_test(&cred->cr_count))
++		if (refcount_dec_and_test(&cred->cr_count))
+ 			cred->cr_ops->crdestroy(cred);
+ 		return;
+ 	}
+ 
+-	if (!atomic_dec_and_lock(&cred->cr_count, &rpc_credcache_lock))
++	if (!refcount_dec_and_lock(&cred->cr_count, &rpc_credcache_lock))
+ 		return;
+ 	if (!list_empty(&cred->cr_lru)) {
+ 		number_cred_unused--;
+-- 
+2.7.4
+
