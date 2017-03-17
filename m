@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Fri, 17 Mar 2017 12:10:46 +0000
-Subject: [PATCH 23/23] net, ax25: convert ax25_cb.refcount from atomic_t to refcount_t
-Message-Id: <1489752646-8749-24-git-send-email-elena.reshetova@intel.com>
+Date: Fri, 17 Mar 2017 12:10:30 +0000
+Subject: [PATCH 07/23] net, rds: convert rds_ib_device.refcount from atomic_t to refcount_t
+Message-Id: <1489752646-8749-8-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
@@ -22,50 +22,92 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/ax25.h | 6 +++---
- net/ax25/af_ax25.c | 2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ net/rds/ib.c      | 12 ++++++------
+ net/rds/ib.h      |  2 +-
+ net/rds/ib_rdma.c |  4 ++--
+ 3 files changed, 9 insertions(+), 9 deletions(-)
 
-diff --git a/include/net/ax25.h b/include/net/ax25.h
-index e3467ba..c4a0cf6 100644
---- a/include/net/ax25.h
-+++ b/include/net/ax25.h
-@@ -244,7 +244,7 @@ typedef struct ax25_cb {
- 	unsigned char		window;
- 	struct timer_list	timer, dtimer;
- 	struct sock		*sk;		/* Backlink to socket */
+diff --git a/net/rds/ib.c b/net/rds/ib.c
+index 91fe46f..bb19cda 100644
+--- a/net/rds/ib.c
++++ b/net/rds/ib.c
+@@ -118,8 +118,8 @@ static void rds_ib_dev_free(struct work_struct *work)
+ 
+ void rds_ib_dev_put(struct rds_ib_device *rds_ibdev)
+ {
+-	BUG_ON(atomic_read(&rds_ibdev->refcount) <= 0);
+-	if (atomic_dec_and_test(&rds_ibdev->refcount))
++	BUG_ON(refcount_read(&rds_ibdev->refcount) = 0);
++	if (refcount_dec_and_test(&rds_ibdev->refcount))
+ 		queue_work(rds_wq, &rds_ibdev->free_work);
+ }
+ 
+@@ -137,7 +137,7 @@ static void rds_ib_add_one(struct ib_device *device)
+ 		return;
+ 
+ 	spin_lock_init(&rds_ibdev->spinlock);
+-	atomic_set(&rds_ibdev->refcount, 1);
++	refcount_set(&rds_ibdev->refcount, 1);
+ 	INIT_WORK(&rds_ibdev->free_work, rds_ib_dev_free);
+ 
+ 	rds_ibdev->max_wrs = device->attrs.max_qp_wr;
+@@ -205,10 +205,10 @@ static void rds_ib_add_one(struct ib_device *device)
+ 	down_write(&rds_ib_devices_lock);
+ 	list_add_tail_rcu(&rds_ibdev->list, &rds_ib_devices);
+ 	up_write(&rds_ib_devices_lock);
+-	atomic_inc(&rds_ibdev->refcount);
++	refcount_inc(&rds_ibdev->refcount);
+ 
+ 	ib_set_client_data(device, &rds_ib_client, rds_ibdev);
+-	atomic_inc(&rds_ibdev->refcount);
++	refcount_inc(&rds_ibdev->refcount);
+ 
+ 	rds_ib_nodev_connect();
+ 
+@@ -239,7 +239,7 @@ struct rds_ib_device *rds_ib_get_client_data(struct ib_device *device)
+ 	rcu_read_lock();
+ 	rds_ibdev = ib_get_client_data(device, &rds_ib_client);
+ 	if (rds_ibdev)
+-		atomic_inc(&rds_ibdev->refcount);
++		refcount_inc(&rds_ibdev->refcount);
+ 	rcu_read_unlock();
+ 	return rds_ibdev;
+ }
+diff --git a/net/rds/ib.h b/net/rds/ib.h
+index ec55062..bf48224 100644
+--- a/net/rds/ib.h
++++ b/net/rds/ib.h
+@@ -230,7 +230,7 @@ struct rds_ib_device {
+ 	unsigned int		max_initiator_depth;
+ 	unsigned int		max_responder_resources;
+ 	spinlock_t		spinlock;	/* protect the above */
 -	atomic_t		refcount;
 +	refcount_t		refcount;
- } ax25_cb;
+ 	struct work_struct	free_work;
+ 	int			*vector_load;
+ };
+diff --git a/net/rds/ib_rdma.c b/net/rds/ib_rdma.c
+index 977f698..9a3c54e 100644
+--- a/net/rds/ib_rdma.c
++++ b/net/rds/ib_rdma.c
+@@ -52,7 +52,7 @@ static struct rds_ib_device *rds_ib_get_device(__be32 ipaddr)
+ 	list_for_each_entry_rcu(rds_ibdev, &rds_ib_devices, list) {
+ 		list_for_each_entry_rcu(i_ipaddr, &rds_ibdev->ipaddr_list, list) {
+ 			if (i_ipaddr->ipaddr = ipaddr) {
+-				atomic_inc(&rds_ibdev->refcount);
++				refcount_inc(&rds_ibdev->refcount);
+ 				rcu_read_unlock();
+ 				return rds_ibdev;
+ 			}
+@@ -134,7 +134,7 @@ void rds_ib_add_conn(struct rds_ib_device *rds_ibdev, struct rds_connection *con
+ 	spin_unlock_irq(&ib_nodev_conns_lock);
  
- struct ax25_sock {
-@@ -266,11 +266,11 @@ static inline struct ax25_cb *sk_to_ax25(const struct sock *sk)
- 	hlist_for_each_entry(__ax25, list, ax25_node)
+ 	ic->rds_ibdev = rds_ibdev;
+-	atomic_inc(&rds_ibdev->refcount);
++	refcount_inc(&rds_ibdev->refcount);
+ }
  
- #define ax25_cb_hold(__ax25) \
--	atomic_inc(&((__ax25)->refcount))
-+	refcount_inc(&((__ax25)->refcount))
- 
- static __inline__ void ax25_cb_put(ax25_cb *ax25)
- {
--	if (atomic_dec_and_test(&ax25->refcount)) {
-+	if (refcount_dec_and_test(&ax25->refcount)) {
- 		kfree(ax25->digipeat);
- 		kfree(ax25);
- 	}
-diff --git a/net/ax25/af_ax25.c b/net/ax25/af_ax25.c
-index 90fcf5f..163e81f 100644
---- a/net/ax25/af_ax25.c
-+++ b/net/ax25/af_ax25.c
-@@ -510,7 +510,7 @@ ax25_cb *ax25_create_cb(void)
- 	if ((ax25 = kzalloc(sizeof(*ax25), GFP_ATOMIC)) = NULL)
- 		return NULL;
- 
--	atomic_set(&ax25->refcount, 1);
-+	refcount_set(&ax25->refcount, 1);
- 
- 	skb_queue_head_init(&ax25->write_queue);
- 	skb_queue_head_init(&ax25->frag_queue);
+ void rds_ib_remove_conn(struct rds_ib_device *rds_ibdev, struct rds_connection *conn)
 -- 
 2.7.4
 
