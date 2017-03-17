@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Fri, 17 Mar 2017 12:10:42 +0000
-Subject: [PATCH 19/23] net, sctp: convert sctp_transport.refcnt from atomic_t to refcount_t
-Message-Id: <1489752646-8749-20-git-send-email-elena.reshetova@intel.com>
+Date: Fri, 17 Mar 2017 12:10:36 +0000
+Subject: [PATCH 13/23] net, xfrm: convert xfrm_state.refcnt from atomic_t to refcount_t
+Message-Id: <1489752646-8749-14-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
@@ -22,63 +22,75 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/sctp/structs.h | 2 +-
- net/sctp/transport.c       | 8 ++++----
- 2 files changed, 5 insertions(+), 5 deletions(-)
+ include/net/xfrm.h    | 9 +++++----
+ net/xfrm/xfrm_state.c | 4 ++--
+ 2 files changed, 7 insertions(+), 6 deletions(-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 7ee0c26..ac3184e 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -731,7 +731,7 @@ struct sctp_transport {
- 	struct rhlist_head node;
+diff --git a/include/net/xfrm.h b/include/net/xfrm.h
+index 14d82bf..163cda5 100644
+--- a/include/net/xfrm.h
++++ b/include/net/xfrm.h
+@@ -13,6 +13,7 @@
+ #include <linux/mutex.h>
+ #include <linux/audit.h>
+ #include <linux/slab.h>
++#include <linux/refcount.h>
  
- 	/* Reference counting. */
--	atomic_t refcnt;
-+	refcount_t refcnt;
- 		/* RTO-Pending : A flag used to track if one of the DATA
- 		 *		chunks sent to this address is currently being
- 		 *		used to compute a RTT. If this flag is 0,
-diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-index 3379668..45a5774 100644
---- a/net/sctp/transport.c
-+++ b/net/sctp/transport.c
-@@ -99,7 +99,7 @@ static struct sctp_transport *sctp_transport_init(struct net *net,
- 	/* Initialize the 64-bit random nonce sent with heartbeat. */
- 	get_random_bytes(&peer->hb_nonce, sizeof(peer->hb_nonce));
+ #include <net/sock.h>
+ #include <net/dst.h>
+@@ -130,7 +131,7 @@ struct xfrm_state {
+ 	struct hlist_node	bysrc;
+ 	struct hlist_node	byspi;
  
--	atomic_set(&peer->refcnt, 1);
-+	refcount_set(&peer->refcnt, 1);
+-	atomic_t		refcnt;
++	refcount_t		refcnt;
+ 	spinlock_t		lock;
  
- 	return peer;
- }
-@@ -172,7 +172,7 @@ static void sctp_transport_destroy_rcu(struct rcu_head *head)
-  */
- static void sctp_transport_destroy(struct sctp_transport *transport)
+ 	struct xfrm_id		id;
+@@ -802,18 +803,18 @@ void __xfrm_state_destroy(struct xfrm_state *);
+ 
+ static inline void __xfrm_state_put(struct xfrm_state *x)
  {
--	if (unlikely(atomic_read(&transport->refcnt))) {
-+	if (unlikely(refcount_read(&transport->refcnt))) {
- 		WARN(1, "Attempt to destroy undead transport %p!\n", transport);
- 		return;
- 	}
-@@ -316,7 +316,7 @@ void sctp_transport_route(struct sctp_transport *transport,
- /* Hold a reference to a transport.  */
- int sctp_transport_hold(struct sctp_transport *transport)
- {
--	return atomic_add_unless(&transport->refcnt, 1, 0);
-+	return refcount_inc_not_zero(&transport->refcnt);
+-	atomic_dec(&x->refcnt);
++	refcount_dec(&x->refcnt);
  }
  
- /* Release a reference to a transport and clean up
-@@ -324,7 +324,7 @@ int sctp_transport_hold(struct sctp_transport *transport)
-  */
- void sctp_transport_put(struct sctp_transport *transport)
+ static inline void xfrm_state_put(struct xfrm_state *x)
  {
--	if (atomic_dec_and_test(&transport->refcnt))
-+	if (refcount_dec_and_test(&transport->refcnt))
- 		sctp_transport_destroy(transport);
+-	if (atomic_dec_and_test(&x->refcnt))
++	if (refcount_dec_and_test(&x->refcnt))
+ 		__xfrm_state_destroy(x);
  }
  
+ static inline void xfrm_state_hold(struct xfrm_state *x)
+ {
+-	atomic_inc(&x->refcnt);
++	refcount_inc(&x->refcnt);
+ }
+ 
+ static inline bool addr_match(const void *token1, const void *token2,
+diff --git a/net/xfrm/xfrm_state.c b/net/xfrm/xfrm_state.c
+index 5a597db..a91109f 100644
+--- a/net/xfrm/xfrm_state.c
++++ b/net/xfrm/xfrm_state.c
+@@ -48,7 +48,7 @@ static HLIST_HEAD(xfrm_state_gc_list);
+ 
+ static inline bool xfrm_state_hold_rcu(struct xfrm_state __rcu *x)
+ {
+-	return atomic_inc_not_zero(&x->refcnt);
++	return refcount_inc_not_zero(&x->refcnt);
+ }
+ 
+ static inline unsigned int xfrm_dst_hash(struct net *net,
+@@ -486,7 +486,7 @@ struct xfrm_state *xfrm_state_alloc(struct net *net)
+ 
+ 	if (x) {
+ 		write_pnet(&x->xs_net, net);
+-		atomic_set(&x->refcnt, 1);
++		refcount_set(&x->refcnt, 1);
+ 		atomic_set(&x->tunnel_users, 0);
+ 		INIT_LIST_HEAD(&x->km.all);
+ 		INIT_HLIST_NODE(&x->bydst);
 -- 
 2.7.4
 
