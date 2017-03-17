@@ -1,76 +1,84 @@
-From: <jginzberg@clsphila.org>
-Date: Sat, 11 Mar 2017 23:10:14 +0000
-Subject: 60567 linux-sctp
-Message-Id: <148927381405.3115.16485680128739791335@brasiltelecom.net.br>
+From: Elena Reshetova <elena.reshetova@intel.com>
+Date: Fri, 17 Mar 2017 12:10:38 +0000
+Subject: [PATCH 15/23] net, xfrm: convert sec_path.refcnt from atomic_t to refcount_t
+Message-Id: <1489752646-8749-16-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
+In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, davem@davemloft.net, linux-x25@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-hams@vger.kernel.org, linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, ralf@linux-mips.org, peterz@infradead.org, keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
 
-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
-AAAA
+refcount_t type and corresponding API should be
+used instead of atomic_t when the variable is used as
+a reference counter. This allows to avoid accidental
+refcounter overflows that might lead to use-after-free
+situations.
+
+Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
+Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
+Signed-off-by: Kees Cook <keescook@chromium.org>
+Signed-off-by: David Windsor <dwindsor@gmail.com>
+---
+ include/net/xfrm.h    | 6 +++---
+ net/xfrm/xfrm_input.c | 4 ++--
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/include/net/xfrm.h b/include/net/xfrm.h
+index be30846..35d1cca 100644
+--- a/include/net/xfrm.h
++++ b/include/net/xfrm.h
+@@ -1005,7 +1005,7 @@ struct xfrm_offload {
+ };
+ 
+ struct sec_path {
+-	atomic_t		refcnt;
++	refcount_t		refcnt;
+ 	int			len;
+ 	int			olen;
+ 
+@@ -1026,7 +1026,7 @@ static inline struct sec_path *
+ secpath_get(struct sec_path *sp)
+ {
+ 	if (sp)
+-		atomic_inc(&sp->refcnt);
++		refcount_inc(&sp->refcnt);
+ 	return sp;
+ }
+ 
+@@ -1035,7 +1035,7 @@ void __secpath_destroy(struct sec_path *sp);
+ static inline void
+ secpath_put(struct sec_path *sp)
+ {
+-	if (sp && atomic_dec_and_test(&sp->refcnt))
++	if (sp && refcount_dec_and_test(&sp->refcnt))
+ 		__secpath_destroy(sp);
+ }
+ 
+diff --git a/net/xfrm/xfrm_input.c b/net/xfrm/xfrm_input.c
+index 46bdb4f..203ba90 100644
+--- a/net/xfrm/xfrm_input.c
++++ b/net/xfrm/xfrm_input.c
+@@ -114,7 +114,7 @@ struct sec_path *secpath_dup(struct sec_path *src)
+ 		for (i = 0; i < sp->len; i++)
+ 			xfrm_state_hold(sp->xvec[i]);
+ 	}
+-	atomic_set(&sp->refcnt, 1);
++	refcount_set(&sp->refcnt, 1);
+ 	return sp;
+ }
+ EXPORT_SYMBOL(secpath_dup);
+@@ -124,7 +124,7 @@ int secpath_set(struct sk_buff *skb)
+ 	struct sec_path *sp;
+ 
+ 	/* Allocate new secpath or COW existing one. */
+-	if (!skb->sp || atomic_read(&skb->sp->refcnt) != 1) {
++	if (!skb->sp || refcount_read(&skb->sp->refcnt) != 1) {
+ 		sp = secpath_dup(skb->sp);
+ 		if (!sp)
+ 			return -ENOMEM;
+-- 
+2.7.4
+
