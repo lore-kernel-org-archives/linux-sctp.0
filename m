@@ -1,123 +1,46 @@
-From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Fri, 17 Mar 2017 12:10:24 +0000
-Subject: [PATCH 01/23] net, sunrpc: convert rpc_cred.cr_count from atomic_t to refcount_t
-Message-Id: <1489752646-8749-2-git-send-email-elena.reshetova@intel.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+Date: Fri, 17 Mar 2017 12:50:12 +0000
+Subject: Re: [PATCH 01/23] net, sunrpc: convert rpc_cred.cr_count from atomic_t to refcount_t
+Message-Id: <1489755011.6453.1.camel@primarydata.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
-In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
+         <1489752646-8749-2-git-send-email-elena.reshetova@intel.com>
+In-Reply-To: <1489752646-8749-2-git-send-email-elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, davem@davemloft.net, linux-x25@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-hams@vger.kernel.org, linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, ralf@linux-mips.org, peterz@infradead.org, keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
+To: "elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org" <elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, "netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: "linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, "peterz-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org" <peterz-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, "ralf-6z/3iImG2C8G8FEW9MqTrA@public.gmane.org" <ralf-6z/3iImG2C8G8FEW9MqTrA@public.gmane.org>, "linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, "ishkamiel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org" <ishkamiel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, "bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>, "steffen.klassert-opNxpl+3fjRBDgjK7y7TUQ@public.gmane.org" <steffen.klassert-opNxpl+3fjRBDgjK7y7TUQ@public.gmane.org>, "nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org" <nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org>, "linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, "jreuter-K7Hl1MveuGQ@public.gmane.org" <jreuter-K7Hl1MveuGQ@public.gmane.org>, "santosh.shilimkar-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org" <santosh.shilimkar-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>, "linux-hams-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-hams-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, "jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org" <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>, "dwindsor-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org" <dwindsor-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, "keescook-F7+t8E8rja9g9hUCZPvPmw@public.gmane.org" <keescook-F7+t8E8rja9g9hUCZPvPmw@public.gmane.org>
 
-refcount_t type and corresponding API should be
-used instead of atomic_t when the variable is used as
-a reference counter. This allows to avoid accidental
-refcounter overflows that might lead to use-after-free
-situations.
-
-Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
-Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
-Signed-off-by: Kees Cook <keescook@chromium.org>
-Signed-off-by: David Windsor <dwindsor@gmail.com>
----
- include/linux/sunrpc/auth.h |  8 ++++----
- net/sunrpc/auth.c           | 12 ++++++------
- 2 files changed, 10 insertions(+), 10 deletions(-)
-
-diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index b1bc62b..bd36e0b 100644
---- a/include/linux/sunrpc/auth.h
-+++ b/include/linux/sunrpc/auth.h
-@@ -15,7 +15,7 @@
- #include <linux/sunrpc/msg_prot.h>
- #include <linux/sunrpc/xdr.h>
- 
--#include <linux/atomic.h>
-+#include <linux/refcount.h>
- #include <linux/rcupdate.h>
- #include <linux/uidgid.h>
- #include <linux/utsname.h>
-@@ -68,7 +68,7 @@ struct rpc_cred {
- #endif
- 	unsigned long		cr_expire;	/* when to gc */
- 	unsigned long		cr_flags;	/* various flags */
--	atomic_t		cr_count;	/* ref count */
-+	refcount_t		cr_count;	/* ref count */
- 
- 	kuid_t			cr_uid;
- 
-@@ -209,7 +209,7 @@ static inline
- struct rpc_cred *	get_rpccred(struct rpc_cred *cred)
- {
- 	if (cred != NULL)
--		atomic_inc(&cred->cr_count);
-+		refcount_inc(&cred->cr_count);
- 	return cred;
- }
- 
-@@ -226,7 +226,7 @@ struct rpc_cred *	get_rpccred(struct rpc_cred *cred)
- static inline struct rpc_cred *
- get_rpccred_rcu(struct rpc_cred *cred)
- {
--	if (atomic_inc_not_zero(&cred->cr_count))
-+	if (refcount_inc_not_zero(&cred->cr_count))
- 		return cred;
- 	return NULL;
- }
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index 2bff63a..b6439b9 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -310,7 +310,7 @@ rpcauth_unhash_cred(struct rpc_cred *cred)
- 
- 	cache_lock = &cred->cr_auth->au_credcache->lock;
- 	spin_lock(cache_lock);
--	ret = atomic_read(&cred->cr_count) = 0;
-+	ret = refcount_read(&cred->cr_count) = 0;
- 	if (ret)
- 		rpcauth_unhash_cred_locked(cred);
- 	spin_unlock(cache_lock);
-@@ -470,12 +470,12 @@ rpcauth_prune_expired(struct list_head *free, int nr_to_scan)
- 		list_del_init(&cred->cr_lru);
- 		number_cred_unused--;
- 		freed++;
--		if (atomic_read(&cred->cr_count) != 0)
-+		if (refcount_read(&cred->cr_count) != 0)
- 			continue;
- 
- 		cache_lock = &cred->cr_auth->au_credcache->lock;
- 		spin_lock(cache_lock);
--		if (atomic_read(&cred->cr_count) = 0) {
-+		if (refcount_read(&cred->cr_count) = 0) {
- 			get_rpccred(cred);
- 			list_add_tail(&cred->cr_lru, free);
- 			rpcauth_unhash_cred_locked(cred);
-@@ -642,7 +642,7 @@ rpcauth_init_cred(struct rpc_cred *cred, const struct auth_cred *acred,
- {
- 	INIT_HLIST_NODE(&cred->cr_hash);
- 	INIT_LIST_HEAD(&cred->cr_lru);
--	atomic_set(&cred->cr_count, 1);
-+	refcount_set(&cred->cr_count, 1);
- 	cred->cr_auth = auth;
- 	cred->cr_ops = ops;
- 	cred->cr_expire = jiffies;
-@@ -715,12 +715,12 @@ put_rpccred(struct rpc_cred *cred)
- 		return;
- 	/* Fast path for unhashed credentials */
- 	if (test_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags) = 0) {
--		if (atomic_dec_and_test(&cred->cr_count))
-+		if (refcount_dec_and_test(&cred->cr_count))
- 			cred->cr_ops->crdestroy(cred);
- 		return;
- 	}
- 
--	if (!atomic_dec_and_lock(&cred->cr_count, &rpc_credcache_lock))
-+	if (!refcount_dec_and_lock(&cred->cr_count, &rpc_credcache_lock))
- 		return;
- 	if (!list_empty(&cred->cr_lru)) {
- 		number_cred_unused--;
--- 
-2.7.4
+T24gRnJpLCAyMDE3LTAzLTE3IGF0IDE0OjEwICswMjAwLCBFbGVuYSBSZXNoZXRvdmEgd3JvdGU6
+DQo+IHJlZmNvdW50X3QgdHlwZSBhbmQgY29ycmVzcG9uZGluZyBBUEkgc2hvdWxkIGJlDQo+IHVz
+ZWQgaW5zdGVhZCBvZiBhdG9taWNfdCB3aGVuIHRoZSB2YXJpYWJsZSBpcyB1c2VkIGFzDQo+IGEg
+cmVmZXJlbmNlIGNvdW50ZXIuIFRoaXMgYWxsb3dzIHRvIGF2b2lkIGFjY2lkZW50YWwNCj4gcmVm
+Y291bnRlciBvdmVyZmxvd3MgdGhhdCBtaWdodCBsZWFkIHRvIHVzZS1hZnRlci1mcmVlDQo+IHNp
+dHVhdGlvbnMuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBFbGVuYSBSZXNoZXRvdmEgPGVsZW5hLnJl
+c2hldG92YUBpbnRlbC5jb20+DQo+IFNpZ25lZC1vZmYtYnk6IEhhbnMgTGlsamVzdHJhbmQgPGlz
+aGthbWllbEBnbWFpbC5jb20+DQo+IFNpZ25lZC1vZmYtYnk6IEtlZXMgQ29vayA8a2Vlc2Nvb2tA
+Y2hyb21pdW0ub3JnPg0KPiBTaWduZWQtb2ZmLWJ5OiBEYXZpZCBXaW5kc29yIDxkd2luZHNvckBn
+bWFpbC5jb20+DQo+IC0tLQ0KPiDCoGluY2x1ZGUvbGludXgvc3VucnBjL2F1dGguaCB8wqDCoDgg
+KysrKy0tLS0NCj4gwqBuZXQvc3VucnBjL2F1dGguY8KgwqDCoMKgwqDCoMKgwqDCoMKgwqB8IDEy
+ICsrKysrKy0tLS0tLQ0KPiDCoDIgZmlsZXMgY2hhbmdlZCwgMTAgaW5zZXJ0aW9ucygrKSwgMTAg
+ZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvaW5jbHVkZS9saW51eC9zdW5ycGMvYXV0
+aC5oDQo+IGIvaW5jbHVkZS9saW51eC9zdW5ycGMvYXV0aC5oDQo+IGluZGV4IGIxYmM2MmIuLmJk
+MzZlMGIgMTAwNjQ0DQo+IC0tLSBhL2luY2x1ZGUvbGludXgvc3VucnBjL2F1dGguaA0KPiArKysg
+Yi9pbmNsdWRlL2xpbnV4L3N1bnJwYy9hdXRoLmgNCj4gQEAgLTE1LDcgKzE1LDcgQEANCj4gwqAj
+aW5jbHVkZSA8bGludXgvc3VucnBjL21zZ19wcm90Lmg+DQo+IMKgI2luY2x1ZGUgPGxpbnV4L3N1
+bnJwYy94ZHIuaD4NCj4gwqANCj4gLSNpbmNsdWRlIDxsaW51eC9hdG9taWMuaD4NCj4gKyNpbmNs
+dWRlIDxsaW51eC9yZWZjb3VudC5oPg0KPiDCoCNpbmNsdWRlIDxsaW51eC9yY3VwZGF0ZS5oPg0K
+PiDCoCNpbmNsdWRlIDxsaW51eC91aWRnaWQuaD4NCj4gwqAjaW5jbHVkZSA8bGludXgvdXRzbmFt
+ZS5oPg0KPiBAQCAtNjgsNyArNjgsNyBAQCBzdHJ1Y3QgcnBjX2NyZWQgew0KPiDCoCNlbmRpZg0K
+PiDCoAl1bnNpZ25lZCBsb25nCQljcl9leHBpcmU7CS8qIHdoZW4gdG8gZ2MNCj4gKi8NCj4gwqAJ
+dW5zaWduZWQgbG9uZwkJY3JfZmxhZ3M7CS8qIHZhcmlvdXMNCj4gZmxhZ3MgKi8NCj4gLQlhdG9t
+aWNfdAkJY3JfY291bnQ7CS8qIHJlZiBjb3VudCAqLw0KPiArCXJlZmNvdW50X3QJCWNyX2NvdW50
+OwkvKiByZWYgY291bnQgKi8NCj4gDQoNCk5BQ0suIFRoYXQncyBnb2luZyB0byBiZSBoaXR0aW5n
+IFdBUk5fT05DRSghcmVmY291bnRfaW5jX25vdF96ZXJvKHIpLA0KInJlZmNvdW50X3Q6IGluY3Jl
+bWVudCBvbiAwOyB1c2UtYWZ0ZXItZnJlZS5cbiIpIGxpa2UgdGhlcmUncyBubw0KdG9tb3Jyb3cu
+Li4NCg0KUGxlYXNlIHN0b3Agd2l0aCB0aGVzZSBhdXRvbWF0ZWQgY29udmVyc2lvbnMuIFRoZXkg
+YXJlIGdvaW5nIHRvIGNhdXNlIGENCmxvdCBtb3JlIGJ1Z3MgdGhhbiB0aGV5IGZpeC4NCg0KLS0g
+DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURh
+dGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg=
 
