@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Fri, 17 Mar 2017 12:10:39 +0000
-Subject: [PATCH 16/23] net, sctp: convert sctp_auth_bytes.refcnt from atomic_t to refcount_t
-Message-Id: <1489752646-8749-17-git-send-email-elena.reshetova@intel.com>
+Date: Fri, 17 Mar 2017 12:10:35 +0000
+Subject: [PATCH 12/23] net, x25: convert x25_neigh.refcnt from atomic_t to refcount_t
+Message-Id: <1489752646-8749-13-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
@@ -22,62 +22,51 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/sctp/auth.h | 5 +++--
- net/sctp/auth.c         | 4 ++--
- 2 files changed, 5 insertions(+), 4 deletions(-)
+ include/net/x25.h  | 6 +++---
+ net/x25/x25_link.c | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/sctp/auth.h b/include/net/sctp/auth.h
-index 9b9fb12..328fccc 100644
---- a/include/net/sctp/auth.h
-+++ b/include/net/sctp/auth.h
-@@ -31,6 +31,7 @@
- #define __sctp_auth_h__
- 
- #include <linux/list.h>
-+#include <linux/refcount.h>
- 
- struct sctp_endpoint;
- struct sctp_association;
-@@ -53,7 +54,7 @@ struct sctp_hmac {
-  * over SCTP-AUTH
-  */
- struct sctp_auth_bytes {
--	atomic_t refcnt;
-+	refcount_t refcnt;
- 	__u32 len;
- 	__u8  data[];
+diff --git a/include/net/x25.h b/include/net/x25.h
+index 83a6d31..265756c 100644
+--- a/include/net/x25.h
++++ b/include/net/x25.h
+@@ -142,7 +142,7 @@ struct x25_neigh {
+ 	unsigned long		t20;
+ 	struct timer_list	t20timer;
+ 	unsigned long		global_facil_mask;
+-	atomic_t		refcnt;
++	refcount_t		refcnt;
  };
-@@ -76,7 +77,7 @@ static inline void sctp_auth_key_hold(struct sctp_auth_bytes *key)
- 	if (!key)
- 		return;
  
--	atomic_inc(&key->refcnt);
-+	refcount_inc(&key->refcnt);
+ struct x25_sock {
+@@ -243,12 +243,12 @@ void x25_link_free(void);
+ /* x25_neigh.c */
+ static __inline__ void x25_neigh_hold(struct x25_neigh *nb)
+ {
+-	atomic_inc(&nb->refcnt);
++	refcount_inc(&nb->refcnt);
  }
  
- void sctp_auth_key_put(struct sctp_auth_bytes *key);
-diff --git a/net/sctp/auth.c b/net/sctp/auth.c
-index f99d485..b6c98fe 100644
---- a/net/sctp/auth.c
-+++ b/net/sctp/auth.c
-@@ -63,7 +63,7 @@ void sctp_auth_key_put(struct sctp_auth_bytes *key)
- 	if (!key)
- 		return;
+ static __inline__ void x25_neigh_put(struct x25_neigh *nb)
+ {
+-	if (atomic_dec_and_test(&nb->refcnt))
++	if (refcount_dec_and_test(&nb->refcnt))
+ 		kfree(nb);
+ }
  
--	if (atomic_dec_and_test(&key->refcnt)) {
-+	if (refcount_dec_and_test(&key->refcnt)) {
- 		kzfree(key);
- 		SCTP_DBG_OBJCNT_DEC(keys);
- 	}
-@@ -84,7 +84,7 @@ static struct sctp_auth_bytes *sctp_auth_create_key(__u32 key_len, gfp_t gfp)
- 		return NULL;
+diff --git a/net/x25/x25_link.c b/net/x25/x25_link.c
+index bcaa180..e0cd04d 100644
+--- a/net/x25/x25_link.c
++++ b/net/x25/x25_link.c
+@@ -266,7 +266,7 @@ void x25_link_device_up(struct net_device *dev)
+ 				       X25_MASK_PACKET_SIZE |
+ 				       X25_MASK_WINDOW_SIZE;
+ 	nb->t20      = sysctl_x25_restart_request_timeout;
+-	atomic_set(&nb->refcnt, 1);
++	refcount_set(&nb->refcnt, 1);
  
- 	key->len = key_len;
--	atomic_set(&key->refcnt, 1);
-+	refcount_set(&key->refcnt, 1);
- 	SCTP_DBG_OBJCNT_INC(keys);
- 
- 	return key;
+ 	write_lock_bh(&x25_neigh_list_lock);
+ 	list_add(&nb->node, &x25_neigh_list);
 -- 
 2.7.4
 
