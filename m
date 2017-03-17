@@ -1,152 +1,107 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 10 Mar 2017 04:11:10 +0000
-Subject: [PATCHv2 net-next 5/7] sctp: implement receiver-side procedures for the Add Incoming Streams Request
-Message-Id: <7def0879be34d7e8a8bc1f11cc62ae8570bfcf26.1489118815.git.lucien.xin@gmail.com>
+From: Elena Reshetova <elena.reshetova@intel.com>
+Date: Fri, 17 Mar 2017 12:10:43 +0000
+Subject: [PATCH 20/23] net, sctp: convert sctp_ep_common.refcnt from atomic_t to refcount_t
+Message-Id: <1489752646-8749-21-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1489118815.git.lucien.xin@gmail.com>
- <7bf94990cf77044e0286adc2f393af4c9010213c.1489118815.git.lucien.xin@gmail.com>
- <f224235b4621ea3a182e959873f6fe0ba78e5416.1489118815.git.lucien.xin@gmail.com>
- <70b0da1e9de612702d0ddcdeab67e56b6d11fd78.1489118815.git.lucien.xin@gmail.com>
- <f73e5ede81d0eeccdf955eb7d77eadcda5166c9e.1489118815.git.lucien.xin@gmail.com>
-In-Reply-To: <f73e5ede81d0eeccdf955eb7d77eadcda5166c9e.1489118815.git.lucien.xin@gmail.com>
+References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
+In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, davem@davemloft.net, linux-x25@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-hams@vger.kernel.org, linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, ralf@linux-mips.org, peterz@infradead.org, keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
 
-This patch is to implement Receiver-Side Procedures for the Add Incoming
-Streams Request Parameter described in rfc6525 section 5.2.6.
+refcount_t type and corresponding API should be
+used instead of atomic_t when the variable is used as
+a reference counter. This allows to avoid accidental
+refcounter overflows that might lead to use-after-free
+situations.
 
-It is also to fix that it shouldn't have add streams when sending addstrm
-in request, as the process in peer will handle it by sending a addstrm out
-request back.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
+Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
+Signed-off-by: Kees Cook <keescook@chromium.org>
+Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/sctp/sm.h   |  4 +++
- net/sctp/sm_statefuns.c |  3 ++
- net/sctp/stream.c       | 74 +++++++++++++++++++++++++++++++++++++++++--------
- 3 files changed, 69 insertions(+), 12 deletions(-)
+ include/net/sctp/structs.h | 2 +-
+ net/sctp/associola.c       | 6 +++---
+ net/sctp/endpointola.c     | 6 +++---
+ 3 files changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index 93ae50b..e0d9825 100644
---- a/include/net/sctp/sm.h
-+++ b/include/net/sctp/sm.h
-@@ -301,6 +301,10 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
- 				struct sctp_association *asoc,
- 				union sctp_params param,
- 				struct sctp_ulpevent **evp);
-+struct sctp_chunk *sctp_process_strreset_addstrm_in(
-+				struct sctp_association *asoc,
-+				union sctp_params param,
-+				struct sctp_ulpevent **evp);
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index ac3184e..7a9ce11 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1170,7 +1170,7 @@ struct sctp_ep_common {
+ 	 *   refcnt   - Reference count access to this object.
+ 	 *   dead     - Do not attempt to use this object.
+ 	 */
+-	atomic_t    refcnt;
++	refcount_t    refcnt;
+ 	bool	    dead;
  
- /* Prototypes for statetable processing. */
+ 	/* What socket does this endpoint belong to?  */
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 2a6835b..e5b60b5 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -89,7 +89,7 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
+ 	asoc->base.type = SCTP_EP_TYPE_ASSOCIATION;
  
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 881122b..a8687a7 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -3878,6 +3878,9 @@ sctp_disposition_t sctp_sf_do_reconf(struct net *net,
- 		else if (param.p->type = SCTP_PARAM_RESET_ADD_OUT_STREAMS)
- 			reply = sctp_process_strreset_addstrm_out(
- 				(struct sctp_association *)asoc, param, &ev);
-+		else if (param.p->type = SCTP_PARAM_RESET_ADD_IN_STREAMS)
-+			reply = sctp_process_strreset_addstrm_in(
-+				(struct sctp_association *)asoc, param, &ev);
- 		/* More handles for other types will be added here, by now it
- 		 * just ignores other types.
- 		 */
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index df2794d..1c925db 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -267,18 +267,6 @@ int sctp_send_add_streams(struct sctp_association *asoc,
- 		stream->out = streamout;
- 	}
+ 	/* Initialize the object handling fields.  */
+-	atomic_set(&asoc->base.refcnt, 1);
++	refcount_set(&asoc->base.refcnt, 1);
  
--	if (in) {
--		struct sctp_stream_in *streamin;
--
--		streamin = krealloc(stream->in, incnt * sizeof(*streamin),
--				    GFP_KERNEL);
--		if (!streamin)
--			goto out;
--
--		memset(streamin + stream->incnt, 0, in * sizeof(*streamin));
--		stream->in = streamin;
--	}
--
- 	chunk = sctp_make_strreset_addstrm(asoc, out, in);
- 	if (!chunk)
- 		goto out;
-@@ -625,3 +613,65 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
- out:
- 	return sctp_make_strreset_resp(asoc, result, request_seq);
+ 	/* Initialize the bind addr area.  */
+ 	sctp_bind_addr_init(&asoc->base.bind_addr, ep->base.bind_addr.port);
+@@ -869,7 +869,7 @@ void sctp_assoc_control_transport(struct sctp_association *asoc,
+ /* Hold a reference to an association. */
+ void sctp_association_hold(struct sctp_association *asoc)
+ {
+-	atomic_inc(&asoc->base.refcnt);
++	refcount_inc(&asoc->base.refcnt);
  }
-+
-+struct sctp_chunk *sctp_process_strreset_addstrm_in(
-+				struct sctp_association *asoc,
-+				union sctp_params param,
-+				struct sctp_ulpevent **evp)
-+{
-+	struct sctp_strreset_addstrm *addstrm = param.v;
-+	struct sctp_stream *stream = asoc->stream;
-+	__u32 result = SCTP_STRRESET_DENIED;
-+	struct sctp_stream_out *streamout;
-+	struct sctp_chunk *chunk = NULL;
-+	__u32 request_seq, outcnt;
-+	__u16 out;
-+
-+	request_seq = ntohl(addstrm->request_seq);
-+	if (request_seq > asoc->strreset_inseq) {
-+		result = SCTP_STRRESET_ERR_BAD_SEQNO;
-+		goto out;
-+	} else if (request_seq = asoc->strreset_inseq) {
-+		asoc->strreset_inseq++;
-+	}
-+
-+	if (!(asoc->strreset_enable & SCTP_ENABLE_CHANGE_ASSOC_REQ))
-+		goto out;
-+
-+	if (asoc->strreset_outstanding) {
-+		result = SCTP_STRRESET_ERR_IN_PROGRESS;
-+		goto out;
-+	}
-+
-+	out = ntohs(addstrm->number_of_streams);
-+	outcnt = stream->outcnt + out;
-+	if (!out || outcnt > SCTP_MAX_STREAM)
-+		goto out;
-+
-+	streamout = krealloc(stream->out, outcnt * sizeof(*streamout),
-+			     GFP_ATOMIC);
-+	if (!streamout)
-+		goto out;
-+
-+	memset(streamout + stream->outcnt, 0, out * sizeof(*streamout));
-+	stream->out = streamout;
-+
-+	chunk = sctp_make_strreset_addstrm(asoc, out, 0);
-+	if (!chunk)
-+		goto out;
-+
-+	asoc->strreset_chunk = chunk;
-+	asoc->strreset_outstanding = 1;
-+	sctp_chunk_hold(asoc->strreset_chunk);
-+
-+	stream->outcnt = outcnt;
-+
-+	*evp = sctp_ulpevent_make_stream_change_event(asoc,
-+		0, 0, ntohs(addstrm->number_of_streams), GFP_ATOMIC);
-+
-+out:
-+	if (!chunk)
-+		chunk = sctp_make_strreset_resp(asoc, result, request_seq);
-+
-+	return chunk;
-+}
+ 
+ /* Release a reference to an association and cleanup
+@@ -877,7 +877,7 @@ void sctp_association_hold(struct sctp_association *asoc)
+  */
+ void sctp_association_put(struct sctp_association *asoc)
+ {
+-	if (atomic_dec_and_test(&asoc->base.refcnt))
++	if (refcount_dec_and_test(&asoc->base.refcnt))
+ 		sctp_association_destroy(asoc);
+ }
+ 
+diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
+index 8c58923..9189a9f 100644
+--- a/net/sctp/endpointola.c
++++ b/net/sctp/endpointola.c
+@@ -113,7 +113,7 @@ static struct sctp_endpoint *sctp_endpoint_init(struct sctp_endpoint *ep,
+ 	ep->base.type = SCTP_EP_TYPE_SOCKET;
+ 
+ 	/* Initialize the basic object fields. */
+-	atomic_set(&ep->base.refcnt, 1);
++	refcount_set(&ep->base.refcnt, 1);
+ 	ep->base.dead = false;
+ 
+ 	/* Create an input queue.  */
+@@ -285,7 +285,7 @@ static void sctp_endpoint_destroy(struct sctp_endpoint *ep)
+ /* Hold a reference to an endpoint. */
+ void sctp_endpoint_hold(struct sctp_endpoint *ep)
+ {
+-	atomic_inc(&ep->base.refcnt);
++	refcount_inc(&ep->base.refcnt);
+ }
+ 
+ /* Release a reference to an endpoint and clean up if there are
+@@ -293,7 +293,7 @@ void sctp_endpoint_hold(struct sctp_endpoint *ep)
+  */
+ void sctp_endpoint_put(struct sctp_endpoint *ep)
+ {
+-	if (atomic_dec_and_test(&ep->base.refcnt))
++	if (refcount_dec_and_test(&ep->base.refcnt))
+ 		sctp_endpoint_destroy(ep);
+ }
+ 
 -- 
-2.1.0
+2.7.4
 
