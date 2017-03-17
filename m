@@ -1,229 +1,71 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 10 Mar 2017 04:11:11 +0000
-Subject: [PATCHv2 net-next 6/7] sctp: implement receiver-side procedures for the Reconf Response Parameter
-Message-Id: <6be290927b01181a7dc18ebef5c0a0f5de62fd82.1489118815.git.lucien.xin@gmail.com>
+From: Elena Reshetova <elena.reshetova@intel.com>
+Date: Fri, 17 Mar 2017 12:10:46 +0000
+Subject: [PATCH 23/23] net, ax25: convert ax25_cb.refcount from atomic_t to refcount_t
+Message-Id: <1489752646-8749-24-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1489118815.git.lucien.xin@gmail.com>
- <7bf94990cf77044e0286adc2f393af4c9010213c.1489118815.git.lucien.xin@gmail.com>
- <f224235b4621ea3a182e959873f6fe0ba78e5416.1489118815.git.lucien.xin@gmail.com>
- <70b0da1e9de612702d0ddcdeab67e56b6d11fd78.1489118815.git.lucien.xin@gmail.com>
- <f73e5ede81d0eeccdf955eb7d77eadcda5166c9e.1489118815.git.lucien.xin@gmail.com>
- <7def0879be34d7e8a8bc1f11cc62ae8570bfcf26.1489118815.git.lucien.xin@gmail.com>
-In-Reply-To: <7def0879be34d7e8a8bc1f11cc62ae8570bfcf26.1489118815.git.lucien.xin@gmail.com>
+References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
+In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, davem@davemloft.net, linux-x25@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-hams@vger.kernel.org, linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, ralf@linux-mips.org, peterz@infradead.org, keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
 
-This patch is to implement Receiver-Side Procedures for the
-Re-configuration Response Parameter in rfc6525 section 5.2.7.
+refcount_t type and corresponding API should be
+used instead of atomic_t when the variable is used as
+a reference counter. This allows to avoid accidental
+refcounter overflows that might lead to use-after-free
+situations.
 
-sctp_process_strreset_resp would process the response for any
-kind of reconf request, and the stream reconf is applied only
-when the response result is success.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
+Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
+Signed-off-by: Kees Cook <keescook@chromium.org>
+Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/sctp/sm.h   |   4 ++
- net/sctp/sm_statefuns.c |   6 +-
- net/sctp/stream.c       | 154 ++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 161 insertions(+), 3 deletions(-)
+ include/net/ax25.h | 6 +++---
+ net/ax25/af_ax25.c | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index e0d9825..47113f2 100644
---- a/include/net/sctp/sm.h
-+++ b/include/net/sctp/sm.h
-@@ -305,6 +305,10 @@ struct sctp_chunk *sctp_process_strreset_addstrm_in(
- 				struct sctp_association *asoc,
- 				union sctp_params param,
- 				struct sctp_ulpevent **evp);
-+struct sctp_chunk *sctp_process_strreset_resp(
-+				struct sctp_association *asoc,
-+				union sctp_params param,
-+				struct sctp_ulpevent **evp);
+diff --git a/include/net/ax25.h b/include/net/ax25.h
+index e3467ba..c4a0cf6 100644
+--- a/include/net/ax25.h
++++ b/include/net/ax25.h
+@@ -244,7 +244,7 @@ typedef struct ax25_cb {
+ 	unsigned char		window;
+ 	struct timer_list	timer, dtimer;
+ 	struct sock		*sk;		/* Backlink to socket */
+-	atomic_t		refcount;
++	refcount_t		refcount;
+ } ax25_cb;
  
- /* Prototypes for statetable processing. */
+ struct ax25_sock {
+@@ -266,11 +266,11 @@ static inline struct ax25_cb *sk_to_ax25(const struct sock *sk)
+ 	hlist_for_each_entry(__ax25, list, ax25_node)
  
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index a8687a7..ab1374f 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -3881,9 +3881,9 @@ sctp_disposition_t sctp_sf_do_reconf(struct net *net,
- 		else if (param.p->type = SCTP_PARAM_RESET_ADD_IN_STREAMS)
- 			reply = sctp_process_strreset_addstrm_in(
- 				(struct sctp_association *)asoc, param, &ev);
--		/* More handles for other types will be added here, by now it
--		 * just ignores other types.
--		 */
-+		else if (param.p->type = SCTP_PARAM_RESET_RESPONSE)
-+			reply = sctp_process_strreset_resp(
-+				(struct sctp_association *)asoc, param, &ev);
+ #define ax25_cb_hold(__ax25) \
+-	atomic_inc(&((__ax25)->refcount))
++	refcount_inc(&((__ax25)->refcount))
  
- 		if (ev)
- 			sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP,
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index 1c925db..961d0a1 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -675,3 +675,157 @@ struct sctp_chunk *sctp_process_strreset_addstrm_in(
+ static __inline__ void ax25_cb_put(ax25_cb *ax25)
+ {
+-	if (atomic_dec_and_test(&ax25->refcount)) {
++	if (refcount_dec_and_test(&ax25->refcount)) {
+ 		kfree(ax25->digipeat);
+ 		kfree(ax25);
+ 	}
+diff --git a/net/ax25/af_ax25.c b/net/ax25/af_ax25.c
+index 90fcf5f..163e81f 100644
+--- a/net/ax25/af_ax25.c
++++ b/net/ax25/af_ax25.c
+@@ -510,7 +510,7 @@ ax25_cb *ax25_create_cb(void)
+ 	if ((ax25 = kzalloc(sizeof(*ax25), GFP_ATOMIC)) = NULL)
+ 		return NULL;
  
- 	return chunk;
- }
-+
-+struct sctp_chunk *sctp_process_strreset_resp(
-+				struct sctp_association *asoc,
-+				union sctp_params param,
-+				struct sctp_ulpevent **evp)
-+{
-+	struct sctp_strreset_resp *resp = param.v;
-+	struct sctp_stream *stream = asoc->stream;
-+	struct sctp_transport *t;
-+	__u16 i, nums, flags = 0;
-+	sctp_paramhdr_t *req;
-+	__u32 result;
-+
-+	req = sctp_chunk_lookup_strreset_param(asoc, resp->response_seq, 0);
-+	if (!req)
-+		return NULL;
-+
-+	result = ntohl(resp->result);
-+	if (result != SCTP_STRRESET_PERFORMED) {
-+		/* if in progress, do nothing but retransmit */
-+		if (result = SCTP_STRRESET_IN_PROGRESS)
-+			return NULL;
-+		else if (result = SCTP_STRRESET_DENIED)
-+			flags = SCTP_STREAM_RESET_DENIED;
-+		else
-+			flags = SCTP_STREAM_RESET_FAILED;
-+	}
-+
-+	if (req->type = SCTP_PARAM_RESET_OUT_REQUEST) {
-+		struct sctp_strreset_outreq *outreq;
-+		__u16 *str_p = NULL;
-+
-+		outreq = (struct sctp_strreset_outreq *)req;
-+		nums = (ntohs(outreq->param_hdr.length) - sizeof(*outreq)) / 2;
-+
-+		if (result = SCTP_STRRESET_PERFORMED) {
-+			if (nums) {
-+				str_p = outreq->list_of_streams;
-+				for (i = 0; i < nums; i++)
-+					stream->out[ntohs(str_p[i])].ssn = 0;
-+			} else {
-+				for (i = 0; i < stream->outcnt; i++)
-+					stream->out[i].ssn = 0;
-+			}
-+
-+			flags = SCTP_STREAM_RESET_OUTGOING_SSN;
-+		}
-+
-+		for (i = 0; i < stream->outcnt; i++)
-+			stream->out[i].state = SCTP_STREAM_OPEN;
-+
-+		*evp = sctp_ulpevent_make_stream_reset_event(asoc, flags,
-+			nums, str_p, GFP_ATOMIC);
-+	} else if (req->type = SCTP_PARAM_RESET_IN_REQUEST) {
-+		struct sctp_strreset_inreq *inreq;
-+		__u16 *str_p = NULL;
-+
-+		/* if the result is performed, it's impossible for inreq */
-+		if (result = SCTP_STRRESET_PERFORMED)
-+			return NULL;
-+
-+		inreq = (struct sctp_strreset_inreq *)req;
-+		nums = (ntohs(inreq->param_hdr.length) - sizeof(*inreq)) / 2;
-+
-+		str_p = inreq->list_of_streams;
-+		*evp = sctp_ulpevent_make_stream_reset_event(asoc, flags,
-+			nums, str_p, GFP_ATOMIC);
-+	} else if (req->type = SCTP_PARAM_RESET_TSN_REQUEST) {
-+		struct sctp_strreset_resptsn *resptsn;
-+		__u32 stsn, rtsn;
-+
-+		/* check for resptsn, as sctp_verify_reconf didn't do it*/
-+		if (ntohs(param.p->length) != sizeof(*resptsn))
-+			return NULL;
-+
-+		resptsn = (struct sctp_strreset_resptsn *)resp;
-+		stsn = ntohl(resptsn->senders_next_tsn);
-+		rtsn = ntohl(resptsn->receivers_next_tsn);
-+
-+		if (result = SCTP_STRRESET_PERFORMED) {
-+			__u32 mtsn = sctp_tsnmap_get_max_tsn_seen(
-+						&asoc->peer.tsn_map);
-+
-+			sctp_ulpq_reasm_flushtsn(&asoc->ulpq, mtsn);
-+			sctp_ulpq_abort_pd(&asoc->ulpq, GFP_ATOMIC);
-+
-+			sctp_tsnmap_init(&asoc->peer.tsn_map,
-+					 SCTP_TSN_MAP_INITIAL,
-+					 stsn, GFP_ATOMIC);
-+
-+			sctp_outq_free(&asoc->outqueue);
-+
-+			asoc->next_tsn = rtsn;
-+			asoc->ctsn_ack_point = asoc->next_tsn - 1;
-+			asoc->adv_peer_ack_point = asoc->ctsn_ack_point;
-+
-+			for (i = 0; i < stream->outcnt; i++)
-+				stream->out[i].ssn = 0;
-+			for (i = 0; i < stream->incnt; i++)
-+				stream->in[i].ssn = 0;
-+		}
-+
-+		for (i = 0; i < stream->outcnt; i++)
-+			stream->out[i].state = SCTP_STREAM_OPEN;
-+
-+		*evp = sctp_ulpevent_make_assoc_reset_event(asoc, flags,
-+			stsn, rtsn, GFP_ATOMIC);
-+	} else if (req->type = SCTP_PARAM_RESET_ADD_OUT_STREAMS) {
-+		struct sctp_strreset_addstrm *addstrm;
-+		__u16 number;
-+
-+		addstrm = (struct sctp_strreset_addstrm *)req;
-+		nums = ntohs(addstrm->number_of_streams);
-+		number = stream->outcnt - nums;
-+
-+		if (result = SCTP_STRRESET_PERFORMED)
-+			for (i = number; i < stream->outcnt; i++)
-+				stream->out[i].state = SCTP_STREAM_OPEN;
-+		else
-+			stream->outcnt = number;
-+
-+		*evp = sctp_ulpevent_make_stream_change_event(asoc, flags,
-+			0, nums, GFP_ATOMIC);
-+	} else if (req->type = SCTP_PARAM_RESET_ADD_IN_STREAMS) {
-+		struct sctp_strreset_addstrm *addstrm;
-+
-+		/* if the result is performed, it's impossible for addstrm in
-+		 * request.
-+		 */
-+		if (result = SCTP_STRRESET_PERFORMED)
-+			return NULL;
-+
-+		addstrm = (struct sctp_strreset_addstrm *)req;
-+		nums = ntohs(addstrm->number_of_streams);
-+
-+		*evp = sctp_ulpevent_make_stream_change_event(asoc, flags,
-+			nums, 0, GFP_ATOMIC);
-+	}
-+
-+	asoc->strreset_outstanding--;
-+	asoc->strreset_outseq++;
-+
-+	/* remove everything for this reconf request */
-+	if (!asoc->strreset_outstanding) {
-+		t = asoc->strreset_chunk->transport;
-+		if (del_timer(&t->reconf_timer))
-+			sctp_transport_put(t);
-+
-+		sctp_chunk_put(asoc->strreset_chunk);
-+		asoc->strreset_chunk = NULL;
-+	}
-+
-+	return NULL;
-+}
+-	atomic_set(&ax25->refcount, 1);
++	refcount_set(&ax25->refcount, 1);
+ 
+ 	skb_queue_head_init(&ax25->write_queue);
+ 	skb_queue_head_init(&ax25->frag_queue);
 -- 
-2.1.0
+2.7.4
 
