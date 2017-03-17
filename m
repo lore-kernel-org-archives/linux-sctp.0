@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Fri, 17 Mar 2017 12:10:41 +0000
-Subject: [PATCH 18/23] net, sctp: convert sctp_chunk.refcnt from atomic_t to refcount_t
-Message-Id: <1489752646-8749-19-git-send-email-elena.reshetova@intel.com>
+Date: Fri, 17 Mar 2017 12:10:45 +0000
+Subject: [PATCH 22/23] net, ax25: convert ax25_route.refcount from atomic_t to refcount_t
+Message-Id: <1489752646-8749-23-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
@@ -22,52 +22,53 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/sctp/structs.h | 2 +-
- net/sctp/sm_make_chunk.c   | 6 +++---
+ include/net/ax25.h    | 6 +++---
+ net/ax25/ax25_route.c | 2 +-
  2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 106e1d3..7ee0c26 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -520,7 +520,7 @@ int sctp_chunk_abandoned(struct sctp_chunk *);
- struct sctp_chunk {
- 	struct list_head list;
+diff --git a/include/net/ax25.h b/include/net/ax25.h
+index edd82f0..e3467ba 100644
+--- a/include/net/ax25.h
++++ b/include/net/ax25.h
+@@ -185,7 +185,7 @@ typedef struct {
  
--	atomic_t refcnt;
-+	refcount_t refcnt;
+ typedef struct ax25_route {
+ 	struct ax25_route	*next;
+-	atomic_t		refcount;
++	refcount_t		refcount;
+ 	ax25_address		callsign;
+ 	struct net_device	*dev;
+ 	ax25_digi		*digipeat;
+@@ -194,14 +194,14 @@ typedef struct ax25_route {
  
- 	/* How many times this chunk have been sent, for prsctp RTX policy */
- 	int sent_count;
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 969a30c..a54add6 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -1346,7 +1346,7 @@ struct sctp_chunk *sctp_chunkify(struct sk_buff *skb,
- 	INIT_LIST_HEAD(&retval->transmitted_list);
- 	INIT_LIST_HEAD(&retval->frag_list);
- 	SCTP_DBG_OBJCNT_INC(chunk);
--	atomic_set(&retval->refcnt, 1);
-+	refcount_set(&retval->refcnt, 1);
- 
- nodata:
- 	return retval;
-@@ -1459,13 +1459,13 @@ void sctp_chunk_free(struct sctp_chunk *chunk)
- /* Grab a reference to the chunk. */
- void sctp_chunk_hold(struct sctp_chunk *ch)
+ static inline void ax25_hold_route(ax25_route *ax25_rt)
  {
--	atomic_inc(&ch->refcnt);
-+	refcount_inc(&ch->refcnt);
+-	atomic_inc(&ax25_rt->refcount);
++	refcount_inc(&ax25_rt->refcount);
  }
  
- /* Release a reference to the chunk. */
- void sctp_chunk_put(struct sctp_chunk *ch)
+ void __ax25_put_route(ax25_route *ax25_rt);
+ 
+ static inline void ax25_put_route(ax25_route *ax25_rt)
  {
--	if (atomic_dec_and_test(&ch->refcnt))
-+	if (refcount_dec_and_test(&ch->refcnt))
- 		sctp_chunk_destroy(ch);
+-	if (atomic_dec_and_test(&ax25_rt->refcount))
++	if (refcount_dec_and_test(&ax25_rt->refcount))
+ 		__ax25_put_route(ax25_rt);
  }
  
+diff --git a/net/ax25/ax25_route.c b/net/ax25/ax25_route.c
+index e1fda27..0446b89 100644
+--- a/net/ax25/ax25_route.c
++++ b/net/ax25/ax25_route.c
+@@ -114,7 +114,7 @@ static int __must_check ax25_rt_add(struct ax25_routes_struct *route)
+ 		return -ENOMEM;
+ 	}
+ 
+-	atomic_set(&ax25_rt->refcount, 1);
++	refcount_set(&ax25_rt->refcount, 1);
+ 	ax25_rt->callsign     = route->dest_addr;
+ 	ax25_rt->dev          = ax25_dev->dev;
+ 	ax25_rt->digipeat     = NULL;
 -- 
 2.7.4
 
