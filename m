@@ -1,25 +1,89 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 22 Mar 2017 17:58:03 +0000
-Subject: Re: [PATCH net] sctp: declare struct sctp_stream before using it
-Message-Id: <20170322.105803.1230372240078516082.davem@davemloft.net>
+From: Elena Reshetova <elena.reshetova@intel.com>
+Date: Fri, 17 Mar 2017 12:10:29 +0000
+Subject: [PATCH 06/23] net, ceph: convert ceph_pagelist.refcnt from atomic_t to refcount_t
+Message-Id: <1489752646-8749-7-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1a16b414118d0876373774654d86e2a2a936b9d1.1490003187.git.lucien.xin@gmail.com>
-In-Reply-To: <1a16b414118d0876373774654d86e2a2a936b9d1.1490003187.git.lucien.xin@gmail.com>
+References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
+In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, davem@davemloft.net, linux-x25@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-hams@vger.kernel.org, linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, ralf@linux-mips.org, peterz@infradead.org, keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 20 Mar 2017 17:46:27 +0800
+refcount_t type and corresponding API should be
+used instead of atomic_t when the variable is used as
+a reference counter. This allows to avoid accidental
+refcounter overflows that might lead to use-after-free
+situations.
 
-> sctp_stream_free uses struct sctp_stream as a param, but struct sctp_stream
-> is defined after it's declaration.
-> 
-> This patch is to declare struct sctp_stream before sctp_stream_free.
-> 
-> Fixes: a83863174a61 ("sctp: prepare asoc stream for stream reconf")
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
+Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
+Signed-off-by: Kees Cook <keescook@chromium.org>
+Signed-off-by: David Windsor <dwindsor@gmail.com>
+---
+ fs/ceph/mds_client.c          | 2 +-
+ include/linux/ceph/pagelist.h | 6 +++---
+ net/ceph/pagelist.c           | 2 +-
+ 3 files changed, 5 insertions(+), 5 deletions(-)
 
-Applied.
+diff --git a/fs/ceph/mds_client.c b/fs/ceph/mds_client.c
+index c681762..7b38e6c 100644
+--- a/fs/ceph/mds_client.c
++++ b/fs/ceph/mds_client.c
+@@ -1991,7 +1991,7 @@ static struct ceph_msg *create_request_message(struct ceph_mds_client *mdsc,
+ 
+ 	if (req->r_pagelist) {
+ 		struct ceph_pagelist *pagelist = req->r_pagelist;
+-		atomic_inc(&pagelist->refcnt);
++		refcount_inc(&pagelist->refcnt);
+ 		ceph_msg_data_add_pagelist(msg, pagelist);
+ 		msg->hdr.data_len = cpu_to_le32(pagelist->length);
+ 	} else {
+diff --git a/include/linux/ceph/pagelist.h b/include/linux/ceph/pagelist.h
+index 13d71fe..75a7db2 100644
+--- a/include/linux/ceph/pagelist.h
++++ b/include/linux/ceph/pagelist.h
+@@ -2,7 +2,7 @@
+ #define __FS_CEPH_PAGELIST_H
+ 
+ #include <asm/byteorder.h>
+-#include <linux/atomic.h>
++#include <linux/refcount.h>
+ #include <linux/list.h>
+ #include <linux/types.h>
+ 
+@@ -13,7 +13,7 @@ struct ceph_pagelist {
+ 	size_t room;
+ 	struct list_head free_list;
+ 	size_t num_pages_free;
+-	atomic_t refcnt;
++	refcount_t refcnt;
+ };
+ 
+ struct ceph_pagelist_cursor {
+@@ -30,7 +30,7 @@ static inline void ceph_pagelist_init(struct ceph_pagelist *pl)
+ 	pl->room = 0;
+ 	INIT_LIST_HEAD(&pl->free_list);
+ 	pl->num_pages_free = 0;
+-	atomic_set(&pl->refcnt, 1);
++	refcount_set(&pl->refcnt, 1);
+ }
+ 
+ extern void ceph_pagelist_release(struct ceph_pagelist *pl);
+diff --git a/net/ceph/pagelist.c b/net/ceph/pagelist.c
+index 6864007..ce09f73 100644
+--- a/net/ceph/pagelist.c
++++ b/net/ceph/pagelist.c
+@@ -16,7 +16,7 @@ static void ceph_pagelist_unmap_tail(struct ceph_pagelist *pl)
+ 
+ void ceph_pagelist_release(struct ceph_pagelist *pl)
+ {
+-	if (!atomic_dec_and_test(&pl->refcnt))
++	if (!refcount_dec_and_test(&pl->refcnt))
+ 		return;
+ 	ceph_pagelist_unmap_tail(pl);
+ 	while (!list_empty(&pl->head)) {
+-- 
+2.7.4
+
