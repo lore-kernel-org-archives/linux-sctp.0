@@ -1,129 +1,93 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 10 Mar 2017 04:11:08 +0000
-Subject: [PATCHv2 net-next 3/7] sctp: add support for generating add stream change event notification
-Message-Id: <70b0da1e9de612702d0ddcdeab67e56b6d11fd78.1489118815.git.lucien.xin@gmail.com>
+From: Elena Reshetova <elena.reshetova@intel.com>
+Date: Fri, 17 Mar 2017 12:10:31 +0000
+Subject: [PATCH 08/23] net, rds: convert rds_incoming.i_refcount from atomic_t to refcount_t
+Message-Id: <1489752646-8749-9-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1489118815.git.lucien.xin@gmail.com>
- <7bf94990cf77044e0286adc2f393af4c9010213c.1489118815.git.lucien.xin@gmail.com>
- <f224235b4621ea3a182e959873f6fe0ba78e5416.1489118815.git.lucien.xin@gmail.com>
-In-Reply-To: <f224235b4621ea3a182e959873f6fe0ba78e5416.1489118815.git.lucien.xin@gmail.com>
+References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
+In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem@davemloft.net
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, davem@davemloft.net, linux-x25@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-hams@vger.kernel.org, linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, ralf@linux-mips.org, peterz@infradead.org, keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
 
-This patch is to add Stream Change Event described in rfc6525
-section 6.1.3.
+refcount_t type and corresponding API should be
+used instead of atomic_t when the variable is used as
+a reference counter. This allows to avoid accidental
+refcounter overflows that might lead to use-after-free
+situations.
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
+Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
+Signed-off-by: Kees Cook <keescook@chromium.org>
+Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/sctp/ulpevent.h |  4 ++++
- include/uapi/linux/sctp.h   | 15 +++++++++++++++
- net/sctp/ulpevent.c         | 28 ++++++++++++++++++++++++++++
- 3 files changed, 47 insertions(+)
+ net/rds/rds.h  |  3 ++-
+ net/rds/recv.c | 12 ++++++------
+ 2 files changed, 8 insertions(+), 7 deletions(-)
 
-diff --git a/include/net/sctp/ulpevent.h b/include/net/sctp/ulpevent.h
-index 2ab7ed4..1060494 100644
---- a/include/net/sctp/ulpevent.h
-+++ b/include/net/sctp/ulpevent.h
-@@ -136,6 +136,10 @@ struct sctp_ulpevent *sctp_ulpevent_make_assoc_reset_event(
- 	const struct sctp_association *asoc, __u16 flags,
- 	 __u32 local_tsn, __u32 remote_tsn, gfp_t gfp);
+diff --git a/net/rds/rds.h b/net/rds/rds.h
+index 966d2ee..d8070c7 100644
+--- a/net/rds/rds.h
++++ b/net/rds/rds.h
+@@ -8,6 +8,7 @@
+ #include <linux/mutex.h>
+ #include <linux/rds.h>
+ #include <linux/rhashtable.h>
++#include <linux/refcount.h>
  
-+struct sctp_ulpevent *sctp_ulpevent_make_stream_change_event(
-+	const struct sctp_association *asoc, __u16 flags,
-+	__u32 strchange_instrms, __u32 strchange_outstrms, gfp_t gfp);
-+
- void sctp_ulpevent_read_sndrcvinfo(const struct sctp_ulpevent *event,
- 				   struct msghdr *);
- void sctp_ulpevent_read_rcvinfo(const struct sctp_ulpevent *event,
-diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index 7735829..fd652e6 100644
---- a/include/uapi/linux/sctp.h
-+++ b/include/uapi/linux/sctp.h
-@@ -513,6 +513,17 @@ struct sctp_assoc_reset_event {
- 	__u32 assocreset_remote_tsn;
- };
+ #include "info.h"
  
-+#define SCTP_ASSOC_CHANGE_DENIED	0x0004
-+#define SCTP_ASSOC_CHANGE_FAILED	0x0008
-+struct sctp_stream_change_event {
-+	__u16 strchange_type;
-+	__u16 strchange_flags;
-+	__u32 strchange_length;
-+	sctp_assoc_t strchange_assoc_id;
-+	__u16 strchange_instrms;
-+	__u16 strchange_outstrms;
-+};
-+
- /*
-  * Described in Section 7.3
-  *   Ancillary Data and Notification Interest Options
-@@ -530,6 +541,7 @@ struct sctp_event_subscribe {
- 	__u8 sctp_sender_dry_event;
- 	__u8 sctp_stream_reset_event;
- 	__u8 sctp_assoc_reset_event;
-+	__u8 sctp_stream_change_event;
- };
+@@ -260,7 +261,7 @@ struct rds_ext_header_rdma_dest {
+ #define	RDS_MSG_RX_CMSG		3
  
- /*
-@@ -556,6 +568,7 @@ union sctp_notification {
- 	struct sctp_sender_dry_event sn_sender_dry_event;
- 	struct sctp_stream_reset_event sn_strreset_event;
- 	struct sctp_assoc_reset_event sn_assocreset_event;
-+	struct sctp_stream_change_event sn_strchange_event;
- };
+ struct rds_incoming {
+-	atomic_t		i_refcount;
++	refcount_t		i_refcount;
+ 	struct list_head	i_item;
+ 	struct rds_connection	*i_conn;
+ 	struct rds_conn_path	*i_conn_path;
+diff --git a/net/rds/recv.c b/net/rds/recv.c
+index 8b7e7b7..7d5e35e 100644
+--- a/net/rds/recv.c
++++ b/net/rds/recv.c
+@@ -45,7 +45,7 @@ void rds_inc_init(struct rds_incoming *inc, struct rds_connection *conn,
+ {
+ 	int i;
  
- /* Section 5.3.1
-@@ -587,6 +600,8 @@ enum sctp_sn_type {
- #define SCTP_STREAM_RESET_EVENT		SCTP_STREAM_RESET_EVENT
- 	SCTP_ASSOC_RESET_EVENT,
- #define SCTP_ASSOC_RESET_EVENT		SCTP_ASSOC_RESET_EVENT
-+	SCTP_STREAM_CHANGE_EVENT,
-+#define SCTP_STREAM_CHANGE_EVENT	SCTP_STREAM_CHANGE_EVENT
- };
+-	atomic_set(&inc->i_refcount, 1);
++	refcount_set(&inc->i_refcount, 1);
+ 	INIT_LIST_HEAD(&inc->i_item);
+ 	inc->i_conn = conn;
+ 	inc->i_saddr = saddr;
+@@ -61,7 +61,7 @@ EXPORT_SYMBOL_GPL(rds_inc_init);
+ void rds_inc_path_init(struct rds_incoming *inc, struct rds_conn_path *cp,
+ 		       __be32 saddr)
+ {
+-	atomic_set(&inc->i_refcount, 1);
++	refcount_set(&inc->i_refcount, 1);
+ 	INIT_LIST_HEAD(&inc->i_item);
+ 	inc->i_conn = cp->cp_conn;
+ 	inc->i_conn_path = cp;
+@@ -74,14 +74,14 @@ EXPORT_SYMBOL_GPL(rds_inc_path_init);
  
- /* Notification error codes used to fill up the error fields in some
-diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
-index 420d7f3..ec2b3e0 100644
---- a/net/sctp/ulpevent.c
-+++ b/net/sctp/ulpevent.c
-@@ -911,6 +911,34 @@ struct sctp_ulpevent *sctp_ulpevent_make_assoc_reset_event(
- 	return event;
+ static void rds_inc_addref(struct rds_incoming *inc)
+ {
+-	rdsdebug("addref inc %p ref %d\n", inc, atomic_read(&inc->i_refcount));
+-	atomic_inc(&inc->i_refcount);
++	rdsdebug("addref inc %p ref %d\n", inc, refcount_read(&inc->i_refcount));
++	refcount_inc(&inc->i_refcount);
  }
  
-+struct sctp_ulpevent *sctp_ulpevent_make_stream_change_event(
-+	const struct sctp_association *asoc, __u16 flags,
-+	__u32 strchange_instrms, __u32 strchange_outstrms, gfp_t gfp)
-+{
-+	struct sctp_stream_change_event *schange;
-+	struct sctp_ulpevent *event;
-+	struct sk_buff *skb;
-+
-+	event = sctp_ulpevent_new(sizeof(struct sctp_stream_change_event),
-+				  MSG_NOTIFICATION, gfp);
-+	if (!event)
-+		return NULL;
-+
-+	skb = sctp_event2skb(event);
-+	schange = (struct sctp_stream_change_event *)
-+		skb_put(skb, sizeof(struct sctp_stream_change_event));
-+
-+	schange->strchange_type = SCTP_STREAM_CHANGE_EVENT;
-+	schange->strchange_flags = flags;
-+	schange->strchange_length = sizeof(struct sctp_stream_change_event);
-+	sctp_ulpevent_set_owner(event, asoc);
-+	schange->strchange_assoc_id = sctp_assoc2id(asoc);
-+	schange->strchange_instrms = strchange_instrms;
-+	schange->strchange_outstrms = strchange_outstrms;
-+
-+	return event;
-+}
-+
- /* Return the notification type, assuming this is a notification
-  * event.
-  */
+ void rds_inc_put(struct rds_incoming *inc)
+ {
+-	rdsdebug("put inc %p ref %d\n", inc, atomic_read(&inc->i_refcount));
+-	if (atomic_dec_and_test(&inc->i_refcount)) {
++	rdsdebug("put inc %p ref %d\n", inc, refcount_read(&inc->i_refcount));
++	if (refcount_dec_and_test(&inc->i_refcount)) {
+ 		BUG_ON(!list_empty(&inc->i_item));
+ 
+ 		inc->i_conn->c_trans->inc_free(inc);
 -- 
-2.1.0
+2.7.4
 
