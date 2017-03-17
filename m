@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Fri, 17 Mar 2017 12:10:34 +0000
-Subject: [PATCH 11/23] net, x25: convert x25_route.refcnt from atomic_t to refcount_t
-Message-Id: <1489752646-8749-12-git-send-email-elena.reshetova@intel.com>
+Date: Fri, 17 Mar 2017 12:10:25 +0000
+Subject: [PATCH 02/23] net, sunrpc: convert gss_cl_ctx.count from atomic_t to refcount_t
+Message-Id: <1489752646-8749-3-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
@@ -22,59 +22,61 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/x25.h   | 7 ++++---
- net/x25/x25_route.c | 2 +-
+ include/linux/sunrpc/auth_gss.h | 3 ++-
+ net/sunrpc/auth_gss/auth_gss.c  | 6 +++---
  2 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/x25.h b/include/net/x25.h
-index c383aa4..83a6d31 100644
---- a/include/net/x25.h
-+++ b/include/net/x25.h
-@@ -11,6 +11,7 @@
- #define _X25_H 
- #include <linux/x25.h>
- #include <linux/slab.h>
+diff --git a/include/linux/sunrpc/auth_gss.h b/include/linux/sunrpc/auth_gss.h
+index 36eebc4..cebdf87 100644
+--- a/include/linux/sunrpc/auth_gss.h
++++ b/include/linux/sunrpc/auth_gss.h
+@@ -13,6 +13,7 @@
+ #define _LINUX_SUNRPC_AUTH_GSS_H
+ 
+ #ifdef __KERNEL__
 +#include <linux/refcount.h>
- #include <net/sock.h>
+ #include <linux/sunrpc/auth.h>
+ #include <linux/sunrpc/svc.h>
+ #include <linux/sunrpc/gss_api.h>
+@@ -65,7 +66,7 @@ struct rpc_gss_init_res {
+  * the wire when communicating with a server. */
  
- #define	X25_ADDR_LEN			16
-@@ -129,7 +130,7 @@ struct x25_route {
- 	struct x25_address	address;
- 	unsigned int		sigdigits;
- 	struct net_device	*dev;
--	atomic_t		refcnt;
-+	refcount_t		refcnt;
- };
- 
- struct x25_neigh {
-@@ -265,12 +266,12 @@ void x25_route_free(void);
- 
- static __inline__ void x25_route_hold(struct x25_route *rt)
+ struct gss_cl_ctx {
+-	atomic_t		count;
++	refcount_t		count;
+ 	enum rpc_gss_proc	gc_proc;
+ 	u32			gc_seq;
+ 	spinlock_t		gc_seq_lock;
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 4f16953..72f129c 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -117,14 +117,14 @@ static const struct rpc_pipe_ops gss_upcall_ops_v1;
+ static inline struct gss_cl_ctx *
+ gss_get_ctx(struct gss_cl_ctx *ctx)
  {
--	atomic_inc(&rt->refcnt);
-+	refcount_inc(&rt->refcnt);
+-	atomic_inc(&ctx->count);
++	refcount_inc(&ctx->count);
+ 	return ctx;
  }
  
- static __inline__ void x25_route_put(struct x25_route *rt)
+ static inline void
+ gss_put_ctx(struct gss_cl_ctx *ctx)
  {
--	if (atomic_dec_and_test(&rt->refcnt))
-+	if (refcount_dec_and_test(&rt->refcnt))
- 		kfree(rt);
+-	if (atomic_dec_and_test(&ctx->count))
++	if (refcount_dec_and_test(&ctx->count))
+ 		gss_free_ctx(ctx);
  }
  
-diff --git a/net/x25/x25_route.c b/net/x25/x25_route.c
-index 277c8d2..b85b889 100644
---- a/net/x25/x25_route.c
-+++ b/net/x25/x25_route.c
-@@ -55,7 +55,7 @@ static int x25_add_route(struct x25_address *address, unsigned int sigdigits,
- 
- 	rt->sigdigits = sigdigits;
- 	rt->dev       = dev;
--	atomic_set(&rt->refcnt, 1);
-+	refcount_set(&rt->refcnt, 1);
- 
- 	list_add(&rt->node, &x25_route_list);
- 	rc = 0;
+@@ -200,7 +200,7 @@ gss_alloc_context(void)
+ 		ctx->gc_proc = RPC_GSS_PROC_DATA;
+ 		ctx->gc_seq = 1;	/* NetApp 6.4R1 doesn't accept seq. no. 0 */
+ 		spin_lock_init(&ctx->gc_seq_lock);
+-		atomic_set(&ctx->count,1);
++		refcount_set(&ctx->count,1);
+ 	}
+ 	return ctx;
+ }
 -- 
 2.7.4
 
