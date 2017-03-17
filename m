@@ -1,90 +1,73 @@
-From: Ben Hutchings <ben@decadent.org.uk>
-Date: Fri, 10 Mar 2017 11:46:23 +0000
-Subject: [PATCH 3.16 330/370] net: sctp, forbid negative length
-Message-Id: <lsq.1489146383.348099986@decadent.org.uk>
+From: Elena Reshetova <elena.reshetova@intel.com>
+Date: Fri, 17 Mar 2017 12:10:41 +0000
+Subject: [PATCH 18/23] net, sctp: convert sctp_chunk.refcnt from atomic_t to refcount_t
+Message-Id: <1489752646-8749-19-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
-In-Reply-To: <lsq.1489146380.780052105@decadent.org.uk>
+References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
+In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: akpm@linux-foundation.org, "David S. Miller" <davem@davemloft.net>, Vlad Yasevich <vyasevich@gmail.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Jiri Slaby <jslaby@suse.cz>
+To: netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org, linux-x25-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org, linux-hams-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, sage-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org, steffen.klassert-opNxpl+3fjRBDgjK7y7TUQ@public.gmane.org, herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org, santosh.shilimkar-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, jreuter-K7Hl1MveuGQ@public.gmane.org, ralf-6z/3iImG2C8G8FEW9MqTrA@public.gmane.org, peterz-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, keescook-F7+t8E8rja9g9hUCZPvPmw@public.gmane.org, Elena Reshetova <elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, Hans Liljestrand <ishkamiel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, David Windsor <dwindsor-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
 
-3.16.42-rc1 review patch.  If anyone has any objections, please let me know.
+refcount_t type and corresponding API should be
+used instead of atomic_t when the variable is used as
+a reference counter. This allows to avoid accidental
+refcounter overflows that might lead to use-after-free
+situations.
 
-------------------
-
-From: Jiri Slaby <jslaby@suse.cz>
-
-[ Upstream commit a4b8e71b05c27bae6bad3bdecddbc6b68a3ad8cf ]
-
-Most of getsockopt handlers in net/sctp/socket.c check len against
-sizeof some structure like:
-        if (len < sizeof(int))
-                return -EINVAL;
-
-On the first look, the check seems to be correct. But since len is int
-and sizeof returns size_t, int gets promoted to unsigned size_t too. So
-the test returns false for negative lengths. Yes, (-1 < sizeof(long)) is
-false.
-
-Fix this in sctp by explicitly checking len < 0 before any getsockopt
-handler is called.
-
-Note that sctp_getsockopt_events already handled the negative case.
-Since we added the < 0 check elsewhere, this one can be removed.
-
-If not checked, this is the result:
-UBSAN: Undefined behaviour in ../mm/page_alloc.c:2722:19
-shift exponent 52 is too large for 32-bit type 'int'
-CPU: 1 PID: 24535 Comm: syz-executor Not tainted 4.8.1-0-syzkaller #1
-Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.9.1-0-gb3ef39f-prebuilt.qemu-project.org 04/01/2014
- 0000000000000000 ffff88006d99f2a8 ffffffffb2f7bdea 0000000041b58ab3
- ffffffffb4363c14 ffffffffb2f7bcde ffff88006d99f2d0 ffff88006d99f270
- 0000000000000000 0000000000000000 0000000000000034 ffffffffb5096422
-Call Trace:
- [<ffffffffb3051498>] ? __ubsan_handle_shift_out_of_bounds+0x29c/0x300
-...
- [<ffffffffb273f0e4>] ? kmalloc_order+0x24/0x90
- [<ffffffffb27416a4>] ? kmalloc_order_trace+0x24/0x220
- [<ffffffffb2819a30>] ? __kmalloc+0x330/0x540
- [<ffffffffc18c25f4>] ? sctp_getsockopt_local_addrs+0x174/0xca0 [sctp]
- [<ffffffffc18d2bcd>] ? sctp_getsockopt+0x10d/0x1b0 [sctp]
- [<ffffffffb37c1219>] ? sock_common_getsockopt+0xb9/0x150
- [<ffffffffb37be2f5>] ? SyS_getsockopt+0x1a5/0x270
-
-Signed-off-by: Jiri Slaby <jslaby@suse.cz>
-Cc: Vlad Yasevich <vyasevich@gmail.com>
-Cc: Neil Horman <nhorman@tuxdriver.com>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: linux-sctp@vger.kernel.org
-Cc: netdev@vger.kernel.org
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
-Signed-off-by: David S. Miller <davem@davemloft.net>
-Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
+Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
+Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
+Signed-off-by: Kees Cook <keescook@chromium.org>
+Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- net/sctp/socket.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ include/net/sctp/structs.h | 2 +-
+ net/sctp/sm_make_chunk.c   | 6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -4280,7 +4280,7 @@ static int sctp_getsockopt_disable_fragm
- static int sctp_getsockopt_events(struct sock *sk, int len, char __user *optval,
- 				  int __user *optlen)
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 106e1d3..7ee0c26 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -520,7 +520,7 @@ int sctp_chunk_abandoned(struct sctp_chunk *);
+ struct sctp_chunk {
+ 	struct list_head list;
+ 
+-	atomic_t refcnt;
++	refcount_t refcnt;
+ 
+ 	/* How many times this chunk have been sent, for prsctp RTX policy */
+ 	int sent_count;
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 969a30c..a54add6 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -1346,7 +1346,7 @@ struct sctp_chunk *sctp_chunkify(struct sk_buff *skb,
+ 	INIT_LIST_HEAD(&retval->transmitted_list);
+ 	INIT_LIST_HEAD(&retval->frag_list);
+ 	SCTP_DBG_OBJCNT_INC(chunk);
+-	atomic_set(&retval->refcnt, 1);
++	refcount_set(&retval->refcnt, 1);
+ 
+ nodata:
+ 	return retval;
+@@ -1459,13 +1459,13 @@ void sctp_chunk_free(struct sctp_chunk *chunk)
+ /* Grab a reference to the chunk. */
+ void sctp_chunk_hold(struct sctp_chunk *ch)
  {
--	if (len <= 0)
-+	if (len = 0)
- 		return -EINVAL;
- 	if (len > sizeof(struct sctp_event_subscribe))
- 		len = sizeof(struct sctp_event_subscribe);
-@@ -5801,6 +5801,9 @@ static int sctp_getsockopt(struct sock *
- 	if (get_user(len, optlen))
- 		return -EFAULT;
+-	atomic_inc(&ch->refcnt);
++	refcount_inc(&ch->refcnt);
+ }
  
-+	if (len < 0)
-+		return -EINVAL;
-+
- 	lock_sock(sk);
+ /* Release a reference to the chunk. */
+ void sctp_chunk_put(struct sctp_chunk *ch)
+ {
+-	if (atomic_dec_and_test(&ch->refcnt))
++	if (refcount_dec_and_test(&ch->refcnt))
+ 		sctp_chunk_destroy(ch);
+ }
  
- 	switch (optname) {
+-- 
+2.7.4
 
