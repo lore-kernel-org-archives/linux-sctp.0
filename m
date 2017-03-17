@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Fri, 17 Mar 2017 12:10:43 +0000
-Subject: [PATCH 20/23] net, sctp: convert sctp_ep_common.refcnt from atomic_t to refcount_t
-Message-Id: <1489752646-8749-21-git-send-email-elena.reshetova@intel.com>
+Date: Fri, 17 Mar 2017 12:10:40 +0000
+Subject: [PATCH 17/23] net, sctp: convert sctp_datamsg.refcnt from atomic_t to refcount_t
+Message-Id: <1489752646-8749-18-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
@@ -23,83 +23,49 @@ Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
  include/net/sctp/structs.h | 2 +-
- net/sctp/associola.c       | 6 +++---
- net/sctp/endpointola.c     | 6 +++---
- 3 files changed, 7 insertions(+), 7 deletions(-)
+ net/sctp/chunk.c           | 6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index ac3184e..7a9ce11 100644
+index a244db5..106e1d3 100644
 --- a/include/net/sctp/structs.h
 +++ b/include/net/sctp/structs.h
-@@ -1170,7 +1170,7 @@ struct sctp_ep_common {
- 	 *   refcnt   - Reference count access to this object.
- 	 *   dead     - Do not attempt to use this object.
- 	 */
--	atomic_t    refcnt;
-+	refcount_t    refcnt;
- 	bool	    dead;
- 
- 	/* What socket does this endpoint belong to?  */
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index 2a6835b..e5b60b5 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -89,7 +89,7 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
- 	asoc->base.type = SCTP_EP_TYPE_ASSOCIATION;
- 
- 	/* Initialize the object handling fields.  */
--	atomic_set(&asoc->base.refcnt, 1);
-+	refcount_set(&asoc->base.refcnt, 1);
- 
- 	/* Initialize the bind addr area.  */
- 	sctp_bind_addr_init(&asoc->base.bind_addr, ep->base.bind_addr.port);
-@@ -869,7 +869,7 @@ void sctp_assoc_control_transport(struct sctp_association *asoc,
- /* Hold a reference to an association. */
- void sctp_association_hold(struct sctp_association *asoc)
+@@ -491,7 +491,7 @@ struct sctp_datamsg {
+ 	/* Chunks waiting to be submitted to lower layer. */
+ 	struct list_head chunks;
+ 	/* Reference counting. */
+-	atomic_t refcnt;
++	refcount_t refcnt;
+ 	/* When is this message no longer interesting to the peer? */
+ 	unsigned long expires_at;
+ 	/* Did the messenge fail to send? */
+diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
+index e3621cb..30c73ce 100644
+--- a/net/sctp/chunk.c
++++ b/net/sctp/chunk.c
+@@ -49,7 +49,7 @@
+ /* Initialize datamsg from memory. */
+ static void sctp_datamsg_init(struct sctp_datamsg *msg)
  {
--	atomic_inc(&asoc->base.refcnt);
-+	refcount_inc(&asoc->base.refcnt);
+-	atomic_set(&msg->refcnt, 1);
++	refcount_set(&msg->refcnt, 1);
+ 	msg->send_failed = 0;
+ 	msg->send_error = 0;
+ 	msg->can_delay = 1;
+@@ -136,13 +136,13 @@ static void sctp_datamsg_destroy(struct sctp_datamsg *msg)
+ /* Hold a reference. */
+ static void sctp_datamsg_hold(struct sctp_datamsg *msg)
+ {
+-	atomic_inc(&msg->refcnt);
++	refcount_inc(&msg->refcnt);
  }
  
- /* Release a reference to an association and cleanup
-@@ -877,7 +877,7 @@ void sctp_association_hold(struct sctp_association *asoc)
-  */
- void sctp_association_put(struct sctp_association *asoc)
+ /* Release a reference. */
+ void sctp_datamsg_put(struct sctp_datamsg *msg)
  {
--	if (atomic_dec_and_test(&asoc->base.refcnt))
-+	if (refcount_dec_and_test(&asoc->base.refcnt))
- 		sctp_association_destroy(asoc);
- }
- 
-diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
-index 8c58923..9189a9f 100644
---- a/net/sctp/endpointola.c
-+++ b/net/sctp/endpointola.c
-@@ -113,7 +113,7 @@ static struct sctp_endpoint *sctp_endpoint_init(struct sctp_endpoint *ep,
- 	ep->base.type = SCTP_EP_TYPE_SOCKET;
- 
- 	/* Initialize the basic object fields. */
--	atomic_set(&ep->base.refcnt, 1);
-+	refcount_set(&ep->base.refcnt, 1);
- 	ep->base.dead = false;
- 
- 	/* Create an input queue.  */
-@@ -285,7 +285,7 @@ static void sctp_endpoint_destroy(struct sctp_endpoint *ep)
- /* Hold a reference to an endpoint. */
- void sctp_endpoint_hold(struct sctp_endpoint *ep)
- {
--	atomic_inc(&ep->base.refcnt);
-+	refcount_inc(&ep->base.refcnt);
- }
- 
- /* Release a reference to an endpoint and clean up if there are
-@@ -293,7 +293,7 @@ void sctp_endpoint_hold(struct sctp_endpoint *ep)
-  */
- void sctp_endpoint_put(struct sctp_endpoint *ep)
- {
--	if (atomic_dec_and_test(&ep->base.refcnt))
-+	if (refcount_dec_and_test(&ep->base.refcnt))
- 		sctp_endpoint_destroy(ep);
+-	if (atomic_dec_and_test(&msg->refcnt))
++	if (refcount_dec_and_test(&msg->refcnt))
+ 		sctp_datamsg_destroy(msg);
  }
  
 -- 
