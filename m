@@ -1,84 +1,83 @@
-From: Jeff Layton <jlayton@poochiereds.net>
-Date: Fri, 17 Mar 2017 13:02:16 +0000
+From: Trond Myklebust <trondmy@primarydata.com>
+Date: Fri, 17 Mar 2017 14:28:37 +0000
 Subject: Re: [PATCH 01/23] net, sunrpc: convert rpc_cred.cr_count from atomic_t to refcount_t
-Message-Id: <1489755736.2810.10.camel@poochiereds.net>
+Message-Id: <1489760913.8441.1.camel@primarydata.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
          <1489752646-8749-2-git-send-email-elena.reshetova@intel.com>
          <1489755011.6453.1.camel@primarydata.com>
-In-Reply-To: <1489755011.6453.1.camel@primarydata.com>
+         <1489755736.2810.10.camel@poochiereds.net>
+In-Reply-To: <1489755736.2810.10.camel-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: Trond Myklebust <trondmy@primarydata.com>, "elena.reshetova@intel.com" <elena.reshetova@intel.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "peterz@infradead.org" <peterz@infradead.org>, "ralf@linux-mips.org" <ralf@linux-mips.org>, "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>, "ishkamiel@gmail.com" <ishkamiel@gmail.com>, "bfields@fieldses.org" <bfields@fieldses.org>, "steffen.klassert@secunet.com" <steffen.klassert@secunet.com>, "nhorman@tuxdriver.com" <nhorman@tuxdriver.com>, "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>, "jreuter@yaina.de" <jreuter@yaina.de>, "santosh.shilimkar@oracle.com" <santosh.shilimkar@oracle.com>, "linux-hams@vger.kernel.org" <linux-hams@vger.kernel.org>, "dwindsor@gmail.com" <dwindsor@gmail.com>, "keescook@chromium.org" <keescook@chromium.org>, "zyan@redhat.com" <zyan@redhat.com>, sage@redha
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: "elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org" <elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, "netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, "jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org" <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>
+Cc: "herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org" <herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org>, "linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, "peterz-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org" <peterz-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, "ralf-6z/3iImG2C8G8FEW9MqTrA@public.gmane.org" <ralf-6z/3iImG2C8G8FEW9MqTrA@public.gmane.org>, "linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, "ishkamiel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org" <ishkamiel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, "bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>, "steffen.klassert-opNxpl+3fjRBDgjK7y7TUQ@public.gmane.org" <steffen.klassert-opNxpl+3fjRBDgjK7y7TUQ@public.gmane.org>, "nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org" <nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org>, "linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, "jreuter-K7Hl1MveuGQ@public.gmane.org" <jreuter-K7Hl1MveuGQ@public.gmane.org>, "keescook-F7+t8E8rja9g9hUCZPvPmw@public.gmane.org" <keescook-F7+t8E8rja9g9hUCZPvPmw@public.gmane.org>, "linux-hams-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-hams-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, "dwindsor-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org" <dwindsor-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, "zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org" <zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, sage@redhat.
 
-On Fri, 2017-03-17 at 12:50 +0000, Trond Myklebust wrote:
-> On Fri, 2017-03-17 at 14:10 +0200, Elena Reshetova wrote:
-> > refcount_t type and corresponding API should be
-> > used instead of atomic_t when the variable is used as
-> > a reference counter. This allows to avoid accidental
-> > refcounter overflows that might lead to use-after-free
-> > situations.
-> > 
-> > Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
-> > Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
-> > Signed-off-by: Kees Cook <keescook@chromium.org>
-> > Signed-off-by: David Windsor <dwindsor@gmail.com>
-> > ---
-> >  include/linux/sunrpc/auth.h |  8 ++++----
-> >  net/sunrpc/auth.c           | 12 ++++++------
-> >  2 files changed, 10 insertions(+), 10 deletions(-)
-> > 
-> > diff --git a/include/linux/sunrpc/auth.h
-> > b/include/linux/sunrpc/auth.h
-> > index b1bc62b..bd36e0b 100644
-> > --- a/include/linux/sunrpc/auth.h
-> > +++ b/include/linux/sunrpc/auth.h
-> > @@ -15,7 +15,7 @@
-> >  #include <linux/sunrpc/msg_prot.h>
-> >  #include <linux/sunrpc/xdr.h>
-> >  
-> > -#include <linux/atomic.h>
-> > +#include <linux/refcount.h>
-> >  #include <linux/rcupdate.h>
-> >  #include <linux/uidgid.h>
-> >  #include <linux/utsname.h>
-> > @@ -68,7 +68,7 @@ struct rpc_cred {
-> >  #endif
-> >  	unsigned long		cr_expire;	/* when to gc
-> > */
-> >  	unsigned long		cr_flags;	/* various
-> > flags */
-> > -	atomic_t		cr_count;	/* ref count */
-> > +	refcount_t		cr_count;	/* ref count */
-> > 
-> 
-> NACK. That's going to be hitting WARN_ONCE(!refcount_inc_not_zero(r),
-> "refcount_t: increment on 0; use-after-free.\n") like there's no
-> tomorrow...
-> 
-> Please stop with these automated conversions. They are going to cause a
-> lot more bugs than they fix.
-> 
+T24gRnJpLCAyMDE3LTAzLTE3IGF0IDA5OjAyIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+T24gRnJpLCAyMDE3LTAzLTE3IGF0IDEyOjUwICswMDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+ID4gT24gRnJpLCAyMDE3LTAzLTE3IGF0IDE0OjEwICswMjAwLCBFbGVuYSBSZXNoZXRvdmEg
+d3JvdGU6DQo+ID4gPiByZWZjb3VudF90IHR5cGUgYW5kIGNvcnJlc3BvbmRpbmcgQVBJIHNob3Vs
+ZCBiZQ0KPiA+ID4gdXNlZCBpbnN0ZWFkIG9mIGF0b21pY190IHdoZW4gdGhlIHZhcmlhYmxlIGlz
+IHVzZWQgYXMNCj4gPiA+IGEgcmVmZXJlbmNlIGNvdW50ZXIuIFRoaXMgYWxsb3dzIHRvIGF2b2lk
+IGFjY2lkZW50YWwNCj4gPiA+IHJlZmNvdW50ZXIgb3ZlcmZsb3dzIHRoYXQgbWlnaHQgbGVhZCB0
+byB1c2UtYWZ0ZXItZnJlZQ0KPiA+ID4gc2l0dWF0aW9ucy4NCj4gPiA+IA0KPiA+ID4gU2lnbmVk
+LW9mZi1ieTogRWxlbmEgUmVzaGV0b3ZhIDxlbGVuYS5yZXNoZXRvdmFAaW50ZWwuY29tPg0KPiA+
+ID4gU2lnbmVkLW9mZi1ieTogSGFucyBMaWxqZXN0cmFuZCA8aXNoa2FtaWVsQGdtYWlsLmNvbT4N
+Cj4gPiA+IFNpZ25lZC1vZmYtYnk6IEtlZXMgQ29vayA8a2Vlc2Nvb2tAY2hyb21pdW0ub3JnPg0K
+PiA+ID4gU2lnbmVkLW9mZi1ieTogRGF2aWQgV2luZHNvciA8ZHdpbmRzb3JAZ21haWwuY29tPg0K
+PiA+ID4gLS0tDQo+ID4gPiDCoGluY2x1ZGUvbGludXgvc3VucnBjL2F1dGguaCB8wqDCoDggKysr
+Ky0tLS0NCj4gPiA+IMKgbmV0L3N1bnJwYy9hdXRoLmPCoMKgwqDCoMKgwqDCoMKgwqDCoMKgfCAx
+MiArKysrKystLS0tLS0NCj4gPiA+IMKgMiBmaWxlcyBjaGFuZ2VkLCAxMCBpbnNlcnRpb25zKCsp
+LCAxMCBkZWxldGlvbnMoLSkNCj4gPiA+IA0KPiA+ID4gZGlmZiAtLWdpdCBhL2luY2x1ZGUvbGlu
+dXgvc3VucnBjL2F1dGguaA0KPiA+ID4gYi9pbmNsdWRlL2xpbnV4L3N1bnJwYy9hdXRoLmgNCj4g
+PiA+IGluZGV4IGIxYmM2MmIuLmJkMzZlMGIgMTAwNjQ0DQo+ID4gPiAtLS0gYS9pbmNsdWRlL2xp
+bnV4L3N1bnJwYy9hdXRoLmgNCj4gPiA+ICsrKyBiL2luY2x1ZGUvbGludXgvc3VucnBjL2F1dGgu
+aA0KPiA+ID4gQEAgLTE1LDcgKzE1LDcgQEANCj4gPiA+IMKgI2luY2x1ZGUgPGxpbnV4L3N1bnJw
+Yy9tc2dfcHJvdC5oPg0KPiA+ID4gwqAjaW5jbHVkZSA8bGludXgvc3VucnBjL3hkci5oPg0KPiA+
+ID4gwqANCj4gPiA+IC0jaW5jbHVkZSA8bGludXgvYXRvbWljLmg+DQo+ID4gPiArI2luY2x1ZGUg
+PGxpbnV4L3JlZmNvdW50Lmg+DQo+ID4gPiDCoCNpbmNsdWRlIDxsaW51eC9yY3VwZGF0ZS5oPg0K
+PiA+ID4gwqAjaW5jbHVkZSA8bGludXgvdWlkZ2lkLmg+DQo+ID4gPiDCoCNpbmNsdWRlIDxsaW51
+eC91dHNuYW1lLmg+DQo+ID4gPiBAQCAtNjgsNyArNjgsNyBAQCBzdHJ1Y3QgcnBjX2NyZWQgew0K
+PiA+ID4gwqAjZW5kaWYNCj4gPiA+IMKgCXVuc2lnbmVkIGxvbmcJCWNyX2V4cGlyZTsJLyogd2hl
+bg0KPiA+ID4gdG8gZ2MNCj4gPiA+ICovDQo+ID4gPiDCoAl1bnNpZ25lZCBsb25nCQljcl9mbGFn
+czsJLyogdmFyaW91cw0KPiA+ID4gZmxhZ3MgKi8NCj4gPiA+IC0JYXRvbWljX3QJCWNyX2NvdW50
+OwkvKiByZWYgY291bnQgKi8NCj4gPiA+ICsJcmVmY291bnRfdAkJY3JfY291bnQ7CS8qIHJlZiBj
+b3VudA0KPiA+ID4gKi8NCj4gPiA+IA0KPiA+IA0KPiA+IE5BQ0suIFRoYXQncyBnb2luZyB0byBi
+ZSBoaXR0aW5nDQo+ID4gV0FSTl9PTkNFKCFyZWZjb3VudF9pbmNfbm90X3plcm8ociksDQo+ID4g
+InJlZmNvdW50X3Q6IGluY3JlbWVudCBvbiAwOyB1c2UtYWZ0ZXItZnJlZS5cbiIpIGxpa2UgdGhl
+cmUncyBubw0KPiA+IHRvbW9ycm93Li4uDQo+ID4gDQo+ID4gUGxlYXNlIHN0b3Agd2l0aCB0aGVz
+ZSBhdXRvbWF0ZWQgY29udmVyc2lvbnMuIFRoZXkgYXJlIGdvaW5nIHRvDQo+ID4gY2F1c2UgYQ0K
+PiA+IGxvdCBtb3JlIGJ1Z3MgdGhhbiB0aGV5IGZpeC4NCj4gPiANCj4gDQo+IEFncmVlZC4gVGhl
+c2UgcGF0Y2hzZXRzIGFyZSB0b3VjaGluZyBwbGFjZXMgd2hlcmUgd2UndmUgYWxyZWFkeQ0KPiBi
+YW5nZWQNCj4gb3V0IG1vc3Qgb2YgdGhlIHJlZmNvdW50aW5nIGJ1Z3MuIEknbSBhZ2FpbnN0IGRv
+aW5nIGxhcmdlIHNjYWxlDQo+IGNvbnZlcnNpb25zIGxpa2UgdGhpcyB3aXRob3V0IGEgZGFtbmVk
+IGdvb2QgcmVhc29uLg0KPiANCj4gSSB0aGluayBpdCBtYXkgYmUgYmVzdCB0byBkbyB0aGlzIHNv
+cnQgb2YgdGhpbmcgaW4gYSBtb3JlIHBpZWNlbWVhbA0KPiBmYXNoaW9uLiBQaWNrIGEgc3Vic3lz
+dGVtIG9yIHR3byBhbmQgZG8gdGhlIGNvbnZlcnNpb25zIHRoZXJlIHRvDQo+IHByb3ZlDQo+IHRo
+YXQgdGhleSdyZSBiZXR0ZXIgdGhhbiB3aGF0IHdlIGhhdmUuIElmIHRoZSBzdWJzeXN0ZW0gYWxy
+ZWFkeSBoYXMNCj4gcHJvYmxlbXMgd2l0aCBpdHMgcmVmY291bnRpbmcsIHRoZW4gc28gbXVjaCB0
+aGUgYmV0dGVyLiBQb2ludCB0byBidWdzDQo+IHRoYXQgdGhpcyBuZXcgaW5mcmFzdHJ1Y3R1cmUg
+aGVscGVkIGZpbmQuDQo+IA0KPiBFbmNvdXJhZ2UgcGVvcGxlIHRvIGFkb3B0IHlvdXIgbmV3IGlu
+ZnJhc3RydWN0dXJlIGFzIG5ldyByZWZjb3VudGVkDQo+IG9iamVjdHMgYXJlIGludHJvZHVjZWQg
+aW50byB0aGUga2VybmVsLiBZb3UgbWlnaHQgZXZlbiBjb25zaWRlciBhIExXTg0KPiBhcnRpY2xl
+IGFib3V0IHRoaXMuDQo+IA0KPiBFdmVudHVhbGx5IHdlJ2xsIGdldCBhcm91bmQgdG8gY2hhbmdp
+bmcgZXhpc3RpbmcgY29kZSB0byB1c2UgaXQsIG9uY2UNCj4gdGhlcmUgaXMgYSBzdWZmaWNpZW50
+IGFkdmFudGFnZSB0byBkb2luZyBzby4gTW9zdCBsaWtlbHkgd2hlbiB3ZSdyZQ0KPiByZXdvcmtp
+bmcgdGhlIGNvZGUgZm9yIG90aGVyIHJlYXNvbnMsIG9yIHdoZW4gd2UncmUgY2hhc2luZyBzb21l
+DQo+IGhvcnJpZA0KPiByZWZjb3VudGluZyBidWcgYW5kIHRoaW5rIHRoYXQgdGhpcyBtaWdodCBo
+ZWxwIGZpbmQgaXQuDQoNClRoZSBtYWluIGlzc3VlIGlzIHRoYXQgdGhpcyAicmVmY291bnRfdCIg
+aW1wbGVtZW50YXRpb24gYXBwZWFycyB0byBiZQ0KYXNzdW1pbmcgdGhhdCB0aGVyZSBpcyBvbmUg
+YW5kIG9ubHkgb25lIG1vZGVsIGZvciByZWZjb3VudHMgKHRoZSBvbmUNCndoZXJlIGEgdmFsdWUg
+b2YgIjAiIG1lYW5zICJmcmVlIG1lIGltbWVkaWF0ZWx5IikuDQoNClRoZSBrZXJuZWwgaGFzIGEg
+cGxldGhvcmEgb2Ygb2JqZWN0IGNhY2hpbmcgaW1wbGVtZW50YXRpb25zIHdoZXJlIHRoaXMNCmlz
+IHNpbXBseSBub3QgdGhlIGNhc2U7IHRoZSBkY2FjaGUgaXMgYSBwcmltZSBleGFtcGxlLCBhbmQg
+dGhpcyBjYWNoZQ0KaXMgYW5vdGhlci4gSW4gYm90aCB0aGVzZSBpbXBsZW1lbnRhdGlvbiwgdGhl
+IGF0b21pY190IHZhcmlhYmxlIGlzDQpiZWluZyB1c2VkIG1vcmUgYXMgYSBzZW1hcGhvcmUtc3R5
+bGUgbG9jayB0aGF0IHByZXZlbnRzIGZyZWVpbmcgb2YgdGhlDQpvYmplY3Qgd2hpbGUgaXQgaXMg
+aW4gYWN0aXZlIHVzZSBhcyBvcHBvc2VkIHRvIGJlaW5nIGZyZWVhYmxlLCBidXQNCmNhY2hlZC4g
+VGhpcyBpcyB3aHkgdGhlc2UgYXV0b21hdGVkIGNvbnZlcnNpb25zIGFyZSBhIG51aXNhbmNlIGFu
+ZCBhDQpzb3VyY2Ugb2YgYnVncy4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBj
+bGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0
+YS5jb20NCg=
 
-Agreed. These patchsets are touching places where we've already banged
-out most of the refcounting bugs. I'm against doing large scale
-conversions like this without a damned good reason.
-
-I think it may be best to do this sort of thing in a more piecemeal
-fashion. Pick a subsystem or two and do the conversions there to prove
-that they're better than what we have. If the subsystem already has
-problems with its refcounting, then so much the better. Point to bugs
-that this new infrastructure helped find.
-
-Encourage people to adopt your new infrastructure as new refcounted
-objects are introduced into the kernel. You might even consider a LWN
-article about this.
-
-Eventually we'll get around to changing existing code to use it, once
-there is a sufficient advantage to doing so. Most likely when we're
-reworking the code for other reasons, or when we're chasing some horrid
-refcounting bug and think that this might help find it.
--- 
-Jeff Layton <jlayton@poochiereds.net>
