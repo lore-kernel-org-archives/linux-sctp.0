@@ -1,15 +1,15 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Fri, 17 Mar 2017 12:10:38 +0000
-Subject: [PATCH 15/23] net, xfrm: convert sec_path.refcnt from atomic_t to refcount_t
-Message-Id: <1489752646-8749-16-git-send-email-elena.reshetova@intel.com>
+Date: Fri, 17 Mar 2017 12:10:44 +0000
+Subject: [PATCH 21/23] net, ax25: convert ax25_uid_assoc.refcount from atomic_t to refcount_t
+Message-Id: <1489752646-8749-22-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
-In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
+In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, davem@davemloft.net, linux-x25@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-hams@vger.kernel.org, linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, ralf@linux-mips.org, peterz@infradead.org, keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
+To: netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org, linux-x25-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org, linux-hams-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, sage-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org, steffen.klassert-opNxpl+3fjRBDgjK7y7TUQ@public.gmane.org, herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org, santosh.shilimkar-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, jreuter-K7Hl1MveuGQ@public.gmane.org, ralf-6z/3iImG2C8G8FEW9MqTrA@public.gmane.org, peterz-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, keescook-F7+t8E8rja9g9hUCZPvPmw@public.gmane.org, Elena Reshetova <elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, Hans Liljestrand <ishkamiel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, David Windsor <dwindsor-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
 
 refcount_t type and corresponding API should be
 used instead of atomic_t when the variable is used as
@@ -22,63 +22,59 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/xfrm.h    | 6 +++---
- net/xfrm/xfrm_input.c | 4 ++--
+ include/net/ax25.h  | 8 ++++----
+ net/ax25/ax25_uid.c | 2 +-
  2 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/include/net/xfrm.h b/include/net/xfrm.h
-index be30846..35d1cca 100644
---- a/include/net/xfrm.h
-+++ b/include/net/xfrm.h
-@@ -1005,7 +1005,7 @@ struct xfrm_offload {
- };
+diff --git a/include/net/ax25.h b/include/net/ax25.h
+index e602f81..edd82f0 100644
+--- a/include/net/ax25.h
++++ b/include/net/ax25.h
+@@ -11,7 +11,7 @@
+ #include <linux/timer.h>
+ #include <linux/list.h>
+ #include <linux/slab.h>
+-#include <linux/atomic.h>
++#include <linux/refcount.h>
+ #include <net/neighbour.h>
+ #include <net/sock.h>
  
- struct sec_path {
--	atomic_t		refcnt;
-+	refcount_t		refcnt;
- 	int			len;
- 	int			olen;
+@@ -158,7 +158,7 @@ enum {
  
-@@ -1026,7 +1026,7 @@ static inline struct sec_path *
- secpath_get(struct sec_path *sp)
+ typedef struct ax25_uid_assoc {
+ 	struct hlist_node	uid_node;
+-	atomic_t		refcount;
++	refcount_t		refcount;
+ 	kuid_t			uid;
+ 	ax25_address		call;
+ } ax25_uid_assoc;
+@@ -167,11 +167,11 @@ typedef struct ax25_uid_assoc {
+ 	hlist_for_each_entry(__ax25, list, uid_node)
+ 
+ #define ax25_uid_hold(ax25) \
+-	atomic_inc(&((ax25)->refcount))
++	refcount_inc(&((ax25)->refcount))
+ 
+ static inline void ax25_uid_put(ax25_uid_assoc *assoc)
  {
- 	if (sp)
--		atomic_inc(&sp->refcnt);
-+		refcount_inc(&sp->refcnt);
- 	return sp;
- }
- 
-@@ -1035,7 +1035,7 @@ void __secpath_destroy(struct sec_path *sp);
- static inline void
- secpath_put(struct sec_path *sp)
- {
--	if (sp && atomic_dec_and_test(&sp->refcnt))
-+	if (sp && refcount_dec_and_test(&sp->refcnt))
- 		__secpath_destroy(sp);
- }
- 
-diff --git a/net/xfrm/xfrm_input.c b/net/xfrm/xfrm_input.c
-index 46bdb4f..203ba90 100644
---- a/net/xfrm/xfrm_input.c
-+++ b/net/xfrm/xfrm_input.c
-@@ -114,7 +114,7 @@ struct sec_path *secpath_dup(struct sec_path *src)
- 		for (i = 0; i < sp->len; i++)
- 			xfrm_state_hold(sp->xvec[i]);
+-	if (atomic_dec_and_test(&assoc->refcount)) {
++	if (refcount_dec_and_test(&assoc->refcount)) {
+ 		kfree(assoc);
  	}
--	atomic_set(&sp->refcnt, 1);
-+	refcount_set(&sp->refcnt, 1);
- 	return sp;
  }
- EXPORT_SYMBOL(secpath_dup);
-@@ -124,7 +124,7 @@ int secpath_set(struct sk_buff *skb)
- 	struct sec_path *sp;
- 
- 	/* Allocate new secpath or COW existing one. */
--	if (!skb->sp || atomic_read(&skb->sp->refcnt) != 1) {
-+	if (!skb->sp || refcount_read(&skb->sp->refcnt) != 1) {
- 		sp = secpath_dup(skb->sp);
- 		if (!sp)
+diff --git a/net/ax25/ax25_uid.c b/net/ax25/ax25_uid.c
+index 0403b0d..83b035f 100644
+--- a/net/ax25/ax25_uid.c
++++ b/net/ax25/ax25_uid.c
+@@ -107,7 +107,7 @@ int ax25_uid_ioctl(int cmd, struct sockaddr_ax25 *sax)
+ 		if ((ax25_uid = kmalloc(sizeof(*ax25_uid), GFP_KERNEL)) = NULL)
  			return -ENOMEM;
+ 
+-		atomic_set(&ax25_uid->refcount, 1);
++		refcount_set(&ax25_uid->refcount, 1);
+ 		ax25_uid->uid  = sax25_kuid;
+ 		ax25_uid->call = sax->sax25_call;
+ 
 -- 
 2.7.4
 
