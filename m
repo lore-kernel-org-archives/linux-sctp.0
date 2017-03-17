@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Fri, 17 Mar 2017 12:10:36 +0000
-Subject: [PATCH 13/23] net, xfrm: convert xfrm_state.refcnt from atomic_t to refcount_t
-Message-Id: <1489752646-8749-14-git-send-email-elena.reshetova@intel.com>
+Date: Fri, 17 Mar 2017 12:10:33 +0000
+Subject: [PATCH 10/23] net, rds: convert rds_message.m_refcount from atomic_t to refcount_t
+Message-Id: <1489752646-8749-11-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
@@ -22,75 +22,60 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/xfrm.h    | 9 +++++----
- net/xfrm/xfrm_state.c | 4 ++--
- 2 files changed, 7 insertions(+), 6 deletions(-)
+ net/rds/message.c | 12 ++++++------
+ net/rds/rds.h     |  2 +-
+ 2 files changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/include/net/xfrm.h b/include/net/xfrm.h
-index 14d82bf..163cda5 100644
---- a/include/net/xfrm.h
-+++ b/include/net/xfrm.h
-@@ -13,6 +13,7 @@
- #include <linux/mutex.h>
- #include <linux/audit.h>
- #include <linux/slab.h>
-+#include <linux/refcount.h>
+diff --git a/net/rds/message.c b/net/rds/message.c
+index 49bfb51..4318cc9 100644
+--- a/net/rds/message.c
++++ b/net/rds/message.c
+@@ -48,8 +48,8 @@ static unsigned int	rds_exthdr_size[__RDS_EXTHDR_MAX] = {
  
- #include <net/sock.h>
- #include <net/dst.h>
-@@ -130,7 +131,7 @@ struct xfrm_state {
- 	struct hlist_node	bysrc;
- 	struct hlist_node	byspi;
- 
--	atomic_t		refcnt;
-+	refcount_t		refcnt;
- 	spinlock_t		lock;
- 
- 	struct xfrm_id		id;
-@@ -802,18 +803,18 @@ void __xfrm_state_destroy(struct xfrm_state *);
- 
- static inline void __xfrm_state_put(struct xfrm_state *x)
+ void rds_message_addref(struct rds_message *rm)
  {
--	atomic_dec(&x->refcnt);
-+	refcount_dec(&x->refcnt);
+-	rdsdebug("addref rm %p ref %d\n", rm, atomic_read(&rm->m_refcount));
+-	atomic_inc(&rm->m_refcount);
++	rdsdebug("addref rm %p ref %d\n", rm, refcount_read(&rm->m_refcount));
++	refcount_inc(&rm->m_refcount);
  }
+ EXPORT_SYMBOL_GPL(rds_message_addref);
  
- static inline void xfrm_state_put(struct xfrm_state *x)
+@@ -83,9 +83,9 @@ static void rds_message_purge(struct rds_message *rm)
+ 
+ void rds_message_put(struct rds_message *rm)
  {
--	if (atomic_dec_and_test(&x->refcnt))
-+	if (refcount_dec_and_test(&x->refcnt))
- 		__xfrm_state_destroy(x);
- }
+-	rdsdebug("put rm %p ref %d\n", rm, atomic_read(&rm->m_refcount));
+-	WARN(!atomic_read(&rm->m_refcount), "danger refcount zero on %p\n", rm);
+-	if (atomic_dec_and_test(&rm->m_refcount)) {
++	rdsdebug("put rm %p ref %d\n", rm, refcount_read(&rm->m_refcount));
++	WARN(!refcount_read(&rm->m_refcount), "danger refcount zero on %p\n", rm);
++	if (refcount_dec_and_test(&rm->m_refcount)) {
+ 		BUG_ON(!list_empty(&rm->m_sock_item));
+ 		BUG_ON(!list_empty(&rm->m_conn_item));
+ 		rds_message_purge(rm);
+@@ -206,7 +206,7 @@ struct rds_message *rds_message_alloc(unsigned int extra_len, gfp_t gfp)
+ 	rm->m_used_sgs = 0;
+ 	rm->m_total_sgs = extra_len / sizeof(struct scatterlist);
  
- static inline void xfrm_state_hold(struct xfrm_state *x)
- {
--	atomic_inc(&x->refcnt);
-+	refcount_inc(&x->refcnt);
- }
+-	atomic_set(&rm->m_refcount, 1);
++	refcount_set(&rm->m_refcount, 1);
+ 	INIT_LIST_HEAD(&rm->m_sock_item);
+ 	INIT_LIST_HEAD(&rm->m_conn_item);
+ 	spin_lock_init(&rm->m_rs_lock);
+diff --git a/net/rds/rds.h b/net/rds/rds.h
+index 7487597..8c205ff 100644
+--- a/net/rds/rds.h
++++ b/net/rds/rds.h
+@@ -355,7 +355,7 @@ static inline u32 rds_rdma_cookie_offset(rds_rdma_cookie_t cookie)
+ #define RDS_MSG_FLUSH		8
  
- static inline bool addr_match(const void *token1, const void *token2,
-diff --git a/net/xfrm/xfrm_state.c b/net/xfrm/xfrm_state.c
-index 5a597db..a91109f 100644
---- a/net/xfrm/xfrm_state.c
-+++ b/net/xfrm/xfrm_state.c
-@@ -48,7 +48,7 @@ static HLIST_HEAD(xfrm_state_gc_list);
- 
- static inline bool xfrm_state_hold_rcu(struct xfrm_state __rcu *x)
- {
--	return atomic_inc_not_zero(&x->refcnt);
-+	return refcount_inc_not_zero(&x->refcnt);
- }
- 
- static inline unsigned int xfrm_dst_hash(struct net *net,
-@@ -486,7 +486,7 @@ struct xfrm_state *xfrm_state_alloc(struct net *net)
- 
- 	if (x) {
- 		write_pnet(&x->xs_net, net);
--		atomic_set(&x->refcnt, 1);
-+		refcount_set(&x->refcnt, 1);
- 		atomic_set(&x->tunnel_users, 0);
- 		INIT_LIST_HEAD(&x->km.all);
- 		INIT_HLIST_NODE(&x->bydst);
+ struct rds_message {
+-	atomic_t		m_refcount;
++	refcount_t		m_refcount;
+ 	struct list_head	m_sock_item;
+ 	struct list_head	m_conn_item;
+ 	struct rds_incoming	m_inc;
 -- 
 2.7.4
 
