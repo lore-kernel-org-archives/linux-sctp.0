@@ -1,80 +1,91 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Fri, 17 Mar 2017 12:10:44 +0000
-Subject: [PATCH 21/23] net, ax25: convert ax25_uid_assoc.refcount from atomic_t to refcount_t
-Message-Id: <1489752646-8749-22-git-send-email-elena.reshetova@intel.com>
+Date: Fri, 17 Mar 2017 12:10:23 +0000
+Subject: [PATCH 00/23] various networking refcount conversions, part 2
+Message-Id: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
-In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org, linux-x25-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org, linux-hams-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, sage-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org, steffen.klassert-opNxpl+3fjRBDgjK7y7TUQ@public.gmane.org, herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org, santosh.shilimkar-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, jreuter-K7Hl1MveuGQ@public.gmane.org, ralf-6z/3iImG2C8G8FEW9MqTrA@public.gmane.org, peterz-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, keescook-F7+t8E8rja9g9hUCZPvPmw@public.gmane.org, Elena Reshetova <elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, Hans Liljestrand <ishkamiel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, David Windsor <dwindsor-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org, linux-x25-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org, linux-hams-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, sage-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org, steffen.klassert-opNxpl+3fjRBDgjK7y7TUQ@public.gmane.org, herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org, santosh.shilimkar-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, jreuter-K7Hl1MveuGQ@public.gmane.org, ralf-6z/3iImG2C8G8FEW9MqTrA@public.gmane.org, peterz-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, keescook-F7+t8E8rja9g9hUCZPvPmw@public.gmane.org, Elena Reshetova <elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
 
-refcount_t type and corresponding API should be
-used instead of atomic_t when the variable is used as
-a reference counter. This allows to avoid accidental
-refcounter overflows that might lead to use-after-free
-situations.
+This series, for the rest of network subsystem components, replaces atomic_t reference
+counters with the new refcount_t type and API (see include/linux/refcount.h).
+By doing this we prevent intentional or accidental
+underflows or overflows that can led to use-after-free vulnerabilities.
 
-Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
-Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
-Signed-off-by: Kees Cook <keescook@chromium.org>
-Signed-off-by: David Windsor <dwindsor@gmail.com>
----
- include/net/ax25.h  | 8 ++++----
- net/ax25/ax25_uid.c | 2 +-
- 2 files changed, 5 insertions(+), 5 deletions(-)
+The patches are fully independent and can be cherry-picked separately.
+Since we convert all kernel subsystems in the same fashion, resulting
+in about 300 patches, we have to group them for sending at least in some
+fashion to be manageable. Please excuse the long cc list.
 
-diff --git a/include/net/ax25.h b/include/net/ax25.h
-index e602f81..edd82f0 100644
---- a/include/net/ax25.h
-+++ b/include/net/ax25.h
-@@ -11,7 +11,7 @@
- #include <linux/timer.h>
- #include <linux/list.h>
- #include <linux/slab.h>
--#include <linux/atomic.h>
-+#include <linux/refcount.h>
- #include <net/neighbour.h>
- #include <net/sock.h>
- 
-@@ -158,7 +158,7 @@ enum {
- 
- typedef struct ax25_uid_assoc {
- 	struct hlist_node	uid_node;
--	atomic_t		refcount;
-+	refcount_t		refcount;
- 	kuid_t			uid;
- 	ax25_address		call;
- } ax25_uid_assoc;
-@@ -167,11 +167,11 @@ typedef struct ax25_uid_assoc {
- 	hlist_for_each_entry(__ax25, list, uid_node)
- 
- #define ax25_uid_hold(ax25) \
--	atomic_inc(&((ax25)->refcount))
-+	refcount_inc(&((ax25)->refcount))
- 
- static inline void ax25_uid_put(ax25_uid_assoc *assoc)
- {
--	if (atomic_dec_and_test(&assoc->refcount)) {
-+	if (refcount_dec_and_test(&assoc->refcount)) {
- 		kfree(assoc);
- 	}
- }
-diff --git a/net/ax25/ax25_uid.c b/net/ax25/ax25_uid.c
-index 0403b0d..83b035f 100644
---- a/net/ax25/ax25_uid.c
-+++ b/net/ax25/ax25_uid.c
-@@ -107,7 +107,7 @@ int ax25_uid_ioctl(int cmd, struct sockaddr_ax25 *sax)
- 		if ((ax25_uid = kmalloc(sizeof(*ax25_uid), GFP_KERNEL)) = NULL)
- 			return -ENOMEM;
- 
--		atomic_set(&ax25_uid->refcount, 1);
-+		refcount_set(&ax25_uid->refcount, 1);
- 		ax25_uid->uid  = sax25_kuid;
- 		ax25_uid->call = sax->sax25_call;
- 
+If there are no objections to the patches, please merge them via respective trees.
+
+Elena Reshetova (23):
+  net, sunrpc: convert rpc_cred.cr_count from atomic_t to refcount_t
+  net, sunrpc: convert gss_cl_ctx.count from atomic_t to refcount_t
+  net, sunrpc: convert gss_upcall_msg.count from atomic_t to refcount_t
+  net, ceph: convert ceph_snap_context.nref from atomic_t to refcount_t
+  net, ceph: convert ceph_osd.o_ref from atomic_t to refcount_t
+  net, ceph: convert ceph_pagelist.refcnt from atomic_t to refcount_t
+  net, rds: convert rds_ib_device.refcount from atomic_t to refcount_t
+  net, rds: convert rds_incoming.i_refcount from atomic_t to refcount_t
+  net, rds: convert rds_mr.r_refcount from atomic_t to refcount_t
+  net, rds: convert rds_message.m_refcount from atomic_t to refcount_t
+  net, x25: convert x25_route.refcnt from atomic_t to refcount_t
+  net, x25: convert x25_neigh.refcnt from atomic_t to refcount_t
+  net, xfrm: convert xfrm_state.refcnt from atomic_t to refcount_t
+  net, xfrm: convert xfrm_policy.refcnt from atomic_t to refcount_t
+  net, xfrm: convert sec_path.refcnt from atomic_t to refcount_t
+  net, sctp: convert sctp_auth_bytes.refcnt from atomic_t to refcount_t
+  net, sctp: convert sctp_datamsg.refcnt from atomic_t to refcount_t
+  net, sctp: convert sctp_chunk.refcnt from atomic_t to refcount_t
+  net, sctp: convert sctp_transport.refcnt from atomic_t to refcount_t
+  net, sctp: convert sctp_ep_common.refcnt from atomic_t to refcount_t
+  net, ax25: convert ax25_uid_assoc.refcount from atomic_t to refcount_t
+  net, ax25: convert ax25_route.refcount from atomic_t to refcount_t
+  net, ax25: convert ax25_cb.refcount from atomic_t to refcount_t
+
+ fs/ceph/mds_client.c            |  2 +-
+ include/linux/ceph/libceph.h    |  3 ++-
+ include/linux/ceph/osd_client.h |  3 ++-
+ include/linux/ceph/pagelist.h   |  6 +++---
+ include/linux/sunrpc/auth.h     |  8 ++++----
+ include/linux/sunrpc/auth_gss.h |  3 ++-
+ include/net/ax25.h              | 20 ++++++++++----------
+ include/net/sctp/auth.h         |  5 +++--
+ include/net/sctp/structs.h      |  8 ++++----
+ include/net/x25.h               | 13 +++++++------
+ include/net/xfrm.h              | 21 +++++++++++----------
+ net/ax25/af_ax25.c              |  2 +-
+ net/ax25/ax25_route.c           |  2 +-
+ net/ax25/ax25_uid.c             |  2 +-
+ net/ceph/osd_client.c           | 16 ++++++++--------
+ net/ceph/pagelist.c             |  2 +-
+ net/ceph/snapshot.c             |  6 +++---
+ net/key/af_key.c                |  2 +-
+ net/rds/ib.c                    | 12 ++++++------
+ net/rds/ib.h                    |  2 +-
+ net/rds/ib_rdma.c               |  4 ++--
+ net/rds/message.c               | 12 ++++++------
+ net/rds/rdma.c                  | 10 +++++-----
+ net/rds/rds.h                   |  9 +++++----
+ net/rds/recv.c                  | 12 ++++++------
+ net/sctp/associola.c            |  6 +++---
+ net/sctp/auth.c                 |  4 ++--
+ net/sctp/chunk.c                |  6 +++---
+ net/sctp/endpointola.c          |  6 +++---
+ net/sctp/sm_make_chunk.c        |  6 +++---
+ net/sctp/transport.c            |  8 ++++----
+ net/sunrpc/auth.c               | 12 ++++++------
+ net/sunrpc/auth_gss/auth_gss.c  | 28 ++++++++++++++--------------
+ net/x25/x25_link.c              |  2 +-
+ net/x25/x25_route.c             |  2 +-
+ net/xfrm/xfrm_input.c           |  4 ++--
+ net/xfrm/xfrm_policy.c          |  4 ++--
+ net/xfrm/xfrm_state.c           |  4 ++--
+ 38 files changed, 142 insertions(+), 135 deletions(-)
+
 -- 
 2.7.4
 
