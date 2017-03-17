@@ -1,15 +1,15 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Fri, 17 Mar 2017 12:10:40 +0000
-Subject: [PATCH 17/23] net, sctp: convert sctp_datamsg.refcnt from atomic_t to refcount_t
-Message-Id: <1489752646-8749-18-git-send-email-elena.reshetova@intel.com>
+Date: Fri, 17 Mar 2017 12:10:42 +0000
+Subject: [PATCH 19/23] net, sctp: convert sctp_transport.refcnt from atomic_t to refcount_t
+Message-Id: <1489752646-8749-20-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
-In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
+In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, davem@davemloft.net, linux-x25@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-hams@vger.kernel.org, linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, ralf@linux-mips.org, peterz@infradead.org, keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
+To: netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org, linux-x25-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org, linux-hams-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, sage-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org, steffen.klassert-opNxpl+3fjRBDgjK7y7TUQ@public.gmane.org, herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org, santosh.shilimkar-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, jreuter-K7Hl1MveuGQ@public.gmane.org, ralf-6z/3iImG2C8G8FEW9MqTrA@public.gmane.org, peterz-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, keescook-F7+t8E8rja9g9hUCZPvPmw@public.gmane.org, Elena Reshetova <elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, Hans Liljestrand <ishkamiel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, David Windsor <dwindsor-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
 
 refcount_t type and corresponding API should be
 used instead of atomic_t when the variable is used as
@@ -23,49 +23,60 @@ Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
  include/net/sctp/structs.h | 2 +-
- net/sctp/chunk.c           | 6 +++---
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ net/sctp/transport.c       | 8 ++++----
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
 diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index a244db5..106e1d3 100644
+index 7ee0c26..ac3184e 100644
 --- a/include/net/sctp/structs.h
 +++ b/include/net/sctp/structs.h
-@@ -491,7 +491,7 @@ struct sctp_datamsg {
- 	/* Chunks waiting to be submitted to lower layer. */
- 	struct list_head chunks;
+@@ -731,7 +731,7 @@ struct sctp_transport {
+ 	struct rhlist_head node;
+ 
  	/* Reference counting. */
 -	atomic_t refcnt;
 +	refcount_t refcnt;
- 	/* When is this message no longer interesting to the peer? */
- 	unsigned long expires_at;
- 	/* Did the messenge fail to send? */
-diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
-index e3621cb..30c73ce 100644
---- a/net/sctp/chunk.c
-+++ b/net/sctp/chunk.c
-@@ -49,7 +49,7 @@
- /* Initialize datamsg from memory. */
- static void sctp_datamsg_init(struct sctp_datamsg *msg)
+ 		/* RTO-Pending : A flag used to track if one of the DATA
+ 		 *		chunks sent to this address is currently being
+ 		 *		used to compute a RTT. If this flag is 0,
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index 3379668..45a5774 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -99,7 +99,7 @@ static struct sctp_transport *sctp_transport_init(struct net *net,
+ 	/* Initialize the 64-bit random nonce sent with heartbeat. */
+ 	get_random_bytes(&peer->hb_nonce, sizeof(peer->hb_nonce));
+ 
+-	atomic_set(&peer->refcnt, 1);
++	refcount_set(&peer->refcnt, 1);
+ 
+ 	return peer;
+ }
+@@ -172,7 +172,7 @@ static void sctp_transport_destroy_rcu(struct rcu_head *head)
+  */
+ static void sctp_transport_destroy(struct sctp_transport *transport)
  {
--	atomic_set(&msg->refcnt, 1);
-+	refcount_set(&msg->refcnt, 1);
- 	msg->send_failed = 0;
- 	msg->send_error = 0;
- 	msg->can_delay = 1;
-@@ -136,13 +136,13 @@ static void sctp_datamsg_destroy(struct sctp_datamsg *msg)
- /* Hold a reference. */
- static void sctp_datamsg_hold(struct sctp_datamsg *msg)
+-	if (unlikely(atomic_read(&transport->refcnt))) {
++	if (unlikely(refcount_read(&transport->refcnt))) {
+ 		WARN(1, "Attempt to destroy undead transport %p!\n", transport);
+ 		return;
+ 	}
+@@ -316,7 +316,7 @@ void sctp_transport_route(struct sctp_transport *transport,
+ /* Hold a reference to a transport.  */
+ int sctp_transport_hold(struct sctp_transport *transport)
  {
--	atomic_inc(&msg->refcnt);
-+	refcount_inc(&msg->refcnt);
+-	return atomic_add_unless(&transport->refcnt, 1, 0);
++	return refcount_inc_not_zero(&transport->refcnt);
  }
  
- /* Release a reference. */
- void sctp_datamsg_put(struct sctp_datamsg *msg)
+ /* Release a reference to a transport and clean up
+@@ -324,7 +324,7 @@ int sctp_transport_hold(struct sctp_transport *transport)
+  */
+ void sctp_transport_put(struct sctp_transport *transport)
  {
--	if (atomic_dec_and_test(&msg->refcnt))
-+	if (refcount_dec_and_test(&msg->refcnt))
- 		sctp_datamsg_destroy(msg);
+-	if (atomic_dec_and_test(&transport->refcnt))
++	if (refcount_dec_and_test(&transport->refcnt))
+ 		sctp_transport_destroy(transport);
  }
  
 -- 
