@@ -1,23 +1,44 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 22 Mar 2017 01:32:48 +0000
-Subject: Re: [PATCH net] sctp: out_qlen should be updated when pruning unsent queue
-Message-Id: <20170321.183248.1571202262140371999.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 18 Mar 2017 11:27:23 +0000
+Subject: [PATCH net] sctp: define dst_pending_confirm as a bit in sctp_transport
+Message-Id: <b4390881b14adce583817529e5d58599acb5a8ee.1489836443.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <16cb6e6d2ef47481123bc3ff1b99e8abf5334d14.1489838639.git.lucien.xin@gmail.com>
-In-Reply-To: <16cb6e6d2ef47481123bc3ff1b99e8abf5334d14.1489838639.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, vyasevich@gmail.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, ja@ssi.bg
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 18 Mar 2017 20:03:59 +0800
+As tp->dst_pending_confirm's value can only be set 0 or 1, this
+patch is to change to define it as a bit instead of __u32.
 
-> This patch is to fix the issue that sctp_prsctp_prune_sent forgot
-> to update q->out_qlen when removing a chunk from unsent queue.
-> 
-> Fixes: 8dbdf1f5b09c ("sctp: implement prsctp PRIO policy")
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/structs.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-Applied, thanks.
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 07a0b12..4f64519 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -753,6 +753,8 @@ struct sctp_transport {
+ 		/* Is the Path MTU update pending on this tranport */
+ 		pmtu_pending:1,
+ 
++		dst_pending_confirm:1,	/* need to confirm neighbour */
++
+ 		/* Has this transport moved the ctsn since we last sacked */
+ 		sack_generation:1;
+ 	u32 dst_cookie;
+@@ -806,8 +808,6 @@ struct sctp_transport {
+ 
+ 	__u32 burst_limited;	/* Holds old cwnd when max.burst is applied */
+ 
+-	__u32 dst_pending_confirm;	/* need to confirm neighbour */
+-
+ 	/* Destination */
+ 	struct dst_entry *dst;
+ 	/* Source address. */
+-- 
+2.1.0
+
