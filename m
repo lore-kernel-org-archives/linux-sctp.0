@@ -1,38 +1,60 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Thu, 23 Mar 2017 16:11:12 +0000
-Subject: RE: SCTP MSG_MORE code
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6DCFFB6448@AcuExch.aculab.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 18 Mar 2017 12:03:59 +0000
+Subject: [PATCH net] sctp: out_qlen should be updated when pruning unsent queue
+Message-Id: <16cb6e6d2ef47481123bc3ff1b99e8abf5334d14.1489838639.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <063D6719AE5E284EB5DD2968C1650D6DCFFB5839@AcuExch.aculab.com>
- <CADvbK_ffK4Cw6FmwDUw-hDJBANqWpxrCMMzFQ5ikb7jD_tSdkQ@mail.gmail.com>
-In-Reply-To: <CADvbK_ffK4Cw6FmwDUw-hDJBANqWpxrCMMzFQ5ikb7jD_tSdkQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Xin Long' <lucien.xin@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
-Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-RnJvbTogWGluIExvbmcNCj4gU2VudDogMjEgTWFyY2ggMjAxNyAwNjowMQ0KPiBPbiBUdWUsIE1h
-ciAyMSwgMjAxNyBhdCAxOjQ5IEFNLCBEYXZpZCBMYWlnaHQgPERhdmlkLkxhaWdodEBhY3VsYWIu
-Y29tPiB3cm90ZToNCj4gPiBTb21ldGhpbmcgbmVlZHMgdG8gYmUgZG9uZSB3aXRoIFNDVFAgTVNH
-X01PUkUgYmVmb3JlIHRoZSBlbmQgb2YgdGhlIHJjIGN5Y2xlLg0KPiA+IFRoZSBjdXJyZW50IGNv
-ZGUgaXMgZGVmaW5pdGVseSBicm9rZW4uDQo+IGFncmVlZC4NCj4gDQo+ID4NCj4gPiBJIG9iamVj
-dGVkIHRvIHRoZSBsYXN0ICdmaXgnIHBhdGNoIGJlY2F1c2UgaXQgY2xlYXJzIHRoZSBmbGFnIGlz
-IGEgcGxhY2Ugd2hlcmUNCj4gPiBJIGRvbid0IHRoaW5rIGl0IGlzIG5lY2Vzc2FyeSB0byBkbyBz
-byAtIHNvIGNvdWxkIGdlbmVyYXRlIGV4dHJhIGV0aGVybmV0IGZyYW1lcy4NCj4gPg0KPiBTb3Jy
-eSwgY2FuIHlvdSBkb3VibGUgY2hlY2sgdGhlIGxhc3QgJ2ZpeCcgcGF0Y2ggPw0KPiBJIGNvdWxk
-IG5vdCBnZXQgJ2dlbmVyYXRlIGV4dHJhIGV0aGVybmV0IGZyYW1lcycuDQoNCkl0IHdvdWxkIHJl
-cXVpcmUgdGhlIGNvbm5lY3Rpb24gYmUgJ2Zsb3cgY29udHJvbGxlZCcgYW5kL29yIGhhdmUNCnJl
-dHJhbnNtaXNzaW9ucy4NCk90aGVyd2lzZSAnZGF0YSBjaHVuayBvbmx5JyBldGhlcm5ldCBmcmFt
-ZXMgYXJlIG9ubHkgZ2VuZXJhdGVkIGluIHJlc3BvbnNlDQp0byBzZW5kKCkgc28gd291bGQgYWx3
-YXlzIHNlZSB0aGUgdmFsdWUgZnJvbSB0aGUgbGFzdCBzZW5kKCkuDQoNCj4gaWYgd2Uga2VlcCBz
-ZW5kaW5nIGRhdGEgd2l0aCAiTVNHX01PUkUiLCBhZnRlciBvbmUgZXRoZXJuZXQgZnJhbWUNCj4g
-aXMgc2VudCwgImZvbGxvd2VkIGJ5IGEgc2Vjb25kIGV0aGVybmV0IGZyYW1lIHdpdGggMSBjaHVu
-ayBpbiBpdCIgd2lsbCBOT1QNCj4gaGFwcGVuLCBhcyBpbiB0aGlzIGxvb3AgdGhlIGFzb2MncyBt
-c2dfbW9yZSBmbGFnIGlzIHN0aWxsIHNldCwgYW5kIHRoaXMgZmx1c2gNCj4gaXMgY2FsbGVkIGJ5
-IHNjdHBfc2VuZG1zZyh0aGUgZnVuY3Rpb24gbXNnX21vcmUgc2hvdWxkIGNhcmUgbW9yZSkuDQo+
-IA0KPiANCj4gSWYgeW91ciBwb2ludCBhYm91dCAiZ2VuZXJhdGUgZXh0cmEgZXRoZXJuZXQgZnJh
-bWVzIiAgaXMgcmlnaHQsIHN1cmUsIEkgd2lsbA0KPiBjaGFuZ2UgdGhlIHdheSB0byBmaXggdGhh
-dC4gYnV0IGJlZm9yZSB0aGlzLCBwbHMgY2hlY2sgaXQgYWdhaW4sIGFwcHJlY2lhdGUgaXQuDQoN
-Ckkgd29uJ3QgYmUgYWJsZSB0byB0ZXN0IHRoaXMgaW4gdGhlIHNob3J0IHRlcm0uDQoNCglEYXZp
-ZA0KDQo
+This patch is to fix the issue that sctp_prsctp_prune_sent forgot
+to update q->out_qlen when removing a chunk from unsent queue.
+
+Fixes: 8dbdf1f5b09c ("sctp: implement prsctp PRIO policy")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/outqueue.c | 11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
+
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index db352e5..025ccff 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -382,17 +382,18 @@ static int sctp_prsctp_prune_sent(struct sctp_association *asoc,
+ }
+ 
+ static int sctp_prsctp_prune_unsent(struct sctp_association *asoc,
+-				    struct sctp_sndrcvinfo *sinfo,
+-				    struct list_head *queue, int msg_len)
++				    struct sctp_sndrcvinfo *sinfo, int msg_len)
+ {
++	struct sctp_outq *q = &asoc->outqueue;
+ 	struct sctp_chunk *chk, *temp;
+ 
+-	list_for_each_entry_safe(chk, temp, queue, list) {
++	list_for_each_entry_safe(chk, temp, &q->out_chunk_list, list) {
+ 		if (!SCTP_PR_PRIO_ENABLED(chk->sinfo.sinfo_flags) ||
+ 		    chk->sinfo.sinfo_timetolive <= sinfo->sinfo_timetolive)
+ 			continue;
+ 
+ 		list_del_init(&chk->list);
++		q->out_qlen -= chk->skb->len;
+ 		asoc->sent_cnt_removable--;
+ 		asoc->abandoned_unsent[SCTP_PR_INDEX(PRIO)]++;
+ 
+@@ -431,9 +432,7 @@ void sctp_prsctp_prune(struct sctp_association *asoc,
+ 			return;
+ 	}
+ 
+-	sctp_prsctp_prune_unsent(asoc, sinfo,
+-				 &asoc->outqueue.out_chunk_list,
+-				 msg_len);
++	sctp_prsctp_prune_unsent(asoc, sinfo, msg_len);
+ }
+ 
+ /* Mark all the eligible packets on a transport for retransmission.  */
+-- 
+2.1.0
+
