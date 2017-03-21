@@ -1,233 +1,116 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 27 Mar 2017 15:50:15 +0000
-Subject: Re: [PATCHv2 net-next 2/7] sctp: implement receiver-side procedures for the SSN/TSN Reset Request Pa
-Message-Id: <CADvbK_cEQEbFt8crpqFhd5UvFWh+irhxDZ+s8XkKqQiswZZC3w@mail.gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 21 Mar 2017 22:04:05 +0000
+Subject: Re: [PATCH net-next 2/2] sctp: add support for MSG_MORE
+Message-Id: <20170321220405.GF23553@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1489118815.git.lucien.xin@gmail.com> <f224235b4621ea3a182e959873f6fe0ba78e5416.1489118815.git.lucien.xin@gmail.com>
- <20170320180457.GD23553@localhost.localdomain> <CADvbK_cqZDTDg8xOAwSqdq+L8G85uDyeSoeqfP6PBAbzhZUOhA@mail.gmail.com>
- <20170324235105.GI23553@localhost.localdomain> <CADvbK_c5HsfBfA6GPaiHd1GRGRK5GnMY-3GCCGoZJMmHJsVYXg@mail.gmail.com>
- <20170327141619.GJ23553@localhost.localdomain>
-In-Reply-To: <20170327141619.GJ23553@localhost.localdomain>
+References: <cover.1487440272.git.lucien.xin@gmail.com>
+ <d6f2835b0bd655a563896e86648cbd9b4e01374e.1487440272.git.lucien.xin@gmail.com>
+ <063D6719AE5E284EB5DD2968C1650D6DCFE6C9B9@AcuExch.aculab.com>
+ <CADvbK_dDgFc78dBCpTkNxM3kU-GAYbh6CCGTtO=r9ZeNyb2X0A@mail.gmail.com>
+ <063D6719AE5E284EB5DD2968C1650D6DCFE6E5BB@AcuExch.aculab.com>
+ <CADvbK_d9dyL0PFPrAyNqFT_URNdq75NPdQe8tqQkFO4aCg2DdA@mail.gmail.com>
+ <063D6719AE5E284EB5DD2968C1650D6DCFE6EDE0@AcuExch.aculab.com>
+In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6DCFE6EDE0@AcuExch.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, davem <davem@davemloft.net>
+To: David Laight <David.Laight@ACULAB.COM>
+Cc: 'Xin Long' <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, "davem@davemloft.net" <davem@davemloft.net>
 
-On Mon, Mar 27, 2017 at 10:16 PM, Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
-> On Mon, Mar 27, 2017 at 12:48:31PM +0800, Xin Long wrote:
->> On Sat, Mar 25, 2017 at 7:52 AM, Marcelo Ricardo Leitner
->> <marcelo.leitner@gmail.com> wrote:
->> > On Tue, Mar 21, 2017 at 01:44:32PM +0800, Xin Long wrote:
->> >> On Tue, Mar 21, 2017 at 2:04 AM, Marcelo Ricardo Leitner
->> >> <marcelo.leitner@gmail.com> wrote:
->> >> > On Fri, Mar 10, 2017 at 12:11:07PM +0800, Xin Long wrote:
->> >> >> This patch is to implement Receiver-Side Procedures for the SSN/TSN
->> >> >> Reset Request Parameter described in rfc6525 section 6.2.4.
->> >> >>
->> >> >> The process is kind of complicate, it's wonth having some comments
->> >> >> from section 6.2.4 in the codes.
->> >> >>
->> >> >> Signed-off-by: Xin Long <lucien.xin@gmail.com>
->> >> >> ---
->> >> >>  include/net/sctp/sm.h   |  4 +++
->> >> >>  net/sctp/sm_statefuns.c |  3 ++
->> >> >>  net/sctp/stream.c       | 79 +++++++++++++++++++++++++++++++++++++++++++++++++
->> >> >>  3 files changed, 86 insertions(+)
->> >> >>
->> >> >> diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
->> >> >> index b6f682e..2629d66 100644
->> >> >> --- a/include/net/sctp/sm.h
->> >> >> +++ b/include/net/sctp/sm.h
->> >> >> @@ -293,6 +293,10 @@ struct sctp_chunk *sctp_process_strreset_inreq(
->> >> >>                               struct sctp_association *asoc,
->> >> >>                               union sctp_params param,
->> >> >>                               struct sctp_ulpevent **evp);
->> >> >> +struct sctp_chunk *sctp_process_strreset_tsnreq(
->> >> >> +                             struct sctp_association *asoc,
->> >> >> +                             union sctp_params param,
->> >> >> +                             struct sctp_ulpevent **evp);
->> >> >>
->> >> >>  /* Prototypes for statetable processing. */
->> >> >>
->> >> >> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
->> >> >> index e03bb1a..6982064 100644
->> >> >> --- a/net/sctp/sm_statefuns.c
->> >> >> +++ b/net/sctp/sm_statefuns.c
->> >> >> @@ -3872,6 +3872,9 @@ sctp_disposition_t sctp_sf_do_reconf(struct net *net,
->> >> >>               else if (param.p->type = SCTP_PARAM_RESET_IN_REQUEST)
->> >> >>                       reply = sctp_process_strreset_inreq(
->> >> >>                               (struct sctp_association *)asoc, param, &ev);
->> >> >> +             else if (param.p->type = SCTP_PARAM_RESET_TSN_REQUEST)
->> >> >> +                     reply = sctp_process_strreset_tsnreq(
->> >> >> +                             (struct sctp_association *)asoc, param, &ev);
->> >> >>               /* More handles for other types will be added here, by now it
->> >> >>                * just ignores other types.
->> >> >>                */
->> >> >> diff --git a/net/sctp/stream.c b/net/sctp/stream.c
->> >> >> index 1c6cc04..7e993b0 100644
->> >> >> --- a/net/sctp/stream.c
->> >> >> +++ b/net/sctp/stream.c
->> >> >> @@ -477,3 +477,82 @@ struct sctp_chunk *sctp_process_strreset_inreq(
->> >> >>
->> >> >>       return chunk;
->> >> >>  }
->> >> >> +
->> >> >> +struct sctp_chunk *sctp_process_strreset_tsnreq(
->> >> >> +                             struct sctp_association *asoc,
->> >> >> +                             union sctp_params param,
->> >> >> +                             struct sctp_ulpevent **evp)
->> >> >> +{
->> >> >> +     __u32 init_tsn = 0, next_tsn = 0, max_tsn_seen;
->> >> >> +     struct sctp_strreset_tsnreq *tsnreq = param.v;
->> >> >> +     struct sctp_stream *stream = asoc->stream;
->> >> >> +     __u32 result = SCTP_STRRESET_DENIED;
->> >> >> +     __u32 request_seq;
->> >> >> +     __u16 i;
->> >> >> +
->> >> >> +     request_seq = ntohl(tsnreq->request_seq);
->> >> >> +     if (request_seq > asoc->strreset_inseq) {
->> >> >> +             result = SCTP_STRRESET_ERR_BAD_SEQNO;
->> >> >> +             goto out;
->> >> >> +     } else if (request_seq = asoc->strreset_inseq) {
->> >> >> +             asoc->strreset_inseq++;
->> >> >> +     }
->> >> >
->> >> > I guess I already asked this, but.. why request_seq <
->> >> > asoc->strreset_inseq is allowed?
->> >> we can not just ignore or response with ERR.
->> >> rfc6525#section-5.2.1:
->> >>
->> >>    ... If the received RE-CONFIG chunk contains at least
->> >>    one request and based on the analysis of the Re-configuration Request
->> >>    Sequence Numbers this is the last received RE-CONFIG chunk (i.e., a
->> >                                   ^^^^^^^^^^^^^
->> >>    retransmission), the same RE-CONFIG chunk MUST to be sent back in
->> >>    response, as it was earlier.
->> >
->> > That means we should only re-process that *last* reconf request, and not
->> > just any old one. My understanding is that we need something like:
->> > +     } else if (request_seq < asoc->strreset_inseq-1) {
->> > +             result = SCTP_STRRESET_ERR_BAD_SEQNO;
->> > +             goto out;
->> > +     }
->> >
->> > And then this makes it evident that we have to handle request_seq as
->> > serial numbers (like TSNs are handled).
->> Got you.
->>
->> Here is actually also a replay attack. If a duplicate request happens:
->
-> Yep.
->
->>
->> In  sender side, If the request is not yet acked, it will just process the
->> response as usual. If It's acked already, It will drop the duplicate
->> response as no matched asoc->strreset_chunk any more. It's safe.
->>
->> But in receiver side. It will process stream/asoc again when receiving
->> a duplicate request. If receiver side has processed some data chunks
->> and tsn/ssn have been increased before this.  we shouldn't process
->> this request, but only send back a response with the original result.
->> The problem is that we didn't save the result of last request.
->
-> Sender will stop sending DATA while the reset is happening. We probably
-> can use the "first DATA" as a trigger to then free the response chunk in
-> receiver, or the next request (as it can't have 2 requests at the same,
-> issuing the 2nd one means it got the ack for the previous one),
-> whichever happens first.
-for the next request, just check (request_seq = asoc->strreset_inseq-1)
-as you said above.
+Hi,
 
-as for the "first DATA", maybe check (the right instreams' ssn = 0)
-(this issue not only exists on this patch (resetassoc),
- but also on addstrm/resetstream).
+On Fri, Feb 24, 2017 at 10:14:09AM +0000, David Laight wrote:
+> From: Xin Long
+> > Sent: 24 February 2017 06:44
+> ...
+> > > IIRC sctp_packet_can_append_data() is called for the first queued
+> > > data chunk in order to decide whether to generate a message that
+> > > consists only of data chunks.
+> > > If it returns SCTP_XMIT_OK then a message is built collecting the
+> > > rest of the queued data chunks (until the window fills).
+> > >
+> > > So if I send a message with MSG_MORE set (on an idle connection)
+> > > SCTP_XMIT_DELAY is returned and a message isn't sent.
+> > >
+> > > I now send a second small message, this time with MSG_MORE clear.
+> > > The message is queued, then the code looks to see if it can send anything.
+> > >
+> > > sctp_packet_can_append_data() is called for the first queued chunk.
+> > > Since it has force_delay set SCTP_XMIT_DELAY is returned and no
+> > > message is built.
+> > > The second message isn't even looked at.
+> > You're right. I can see the problem now.
+> > 
+> > What I expected is it should work like:
+> > 
+> > 1, send 3 small chunks with MSG_MORE set, the queue is:
+> >   chk3 [set] -> chk2 [set] -> chk1 [set]
+> 
+> Strange way to write a queue! chk1 points to chk2 :-)
 
-Thanks.
+Strictly speaking, it's actually both together, as it's a double-linked
+list. :-)
 
->
->>
->>
->> >
->> >
->> >>
->> >>
->> >> >
->> >> >> +
->> >> >> +     if (!(asoc->strreset_enable & SCTP_ENABLE_RESET_ASSOC_REQ))
->> >> >> +             goto out;
->> >> >> +
->> >> >> +     if (asoc->strreset_outstanding) {
->> >> >> +             result = SCTP_STRRESET_ERR_IN_PROGRESS;
->> >> >> +             goto out;
->> >> >> +     }
->> >> >> +
->> >> >> +     /* G3: The same processing as though a SACK chunk with no gap report
->> >> >> +      *     and a cumulative TSN ACK of the Sender's Next TSN minus 1 were
->> >> >> +      *     received MUST be performed.
->> >> >> +      */
->> >> >> +     max_tsn_seen = sctp_tsnmap_get_max_tsn_seen(&asoc->peer.tsn_map);
->> >> >> +     sctp_ulpq_reasm_flushtsn(&asoc->ulpq, max_tsn_seen);
->> >> >> +     sctp_ulpq_abort_pd(&asoc->ulpq, GFP_ATOMIC);
->> >> >> +
->> >> >> +     /* G1: Compute an appropriate value for the Receiver's Next TSN -- the
->> >> >> +      *     TSN that the peer should use to send the next DATA chunk.  The
->> >> >> +      *     value SHOULD be the smallest TSN not acknowledged by the
->> >> >> +      *     receiver of the request plus 2^31.
->> >> >> +      */
->> >> >> +     init_tsn = sctp_tsnmap_get_ctsn(&asoc->peer.tsn_map) + (1 << 31);
->> >> >> +     sctp_tsnmap_init(&asoc->peer.tsn_map, SCTP_TSN_MAP_INITIAL,
->> >> >> +                      init_tsn, GFP_ATOMIC);
->> >> >> +
->> >> >> +     /* G4: The same processing as though a FWD-TSN chunk (as defined in
->> >> >> +      *     [RFC3758]) with all streams affected and a new cumulative TSN
->> >> >> +      *     ACK of the Receiver's Next TSN minus 1 were received MUST be
->> >> >> +      *     performed.
->> >> >> +      */
->> >> >> +     sctp_outq_free(&asoc->outqueue);
->> >> >> +
->> >> >> +     /* G2: Compute an appropriate value for the local endpoint's next TSN,
->> >> >> +      *     i.e., the next TSN assigned by the receiver of the SSN/TSN reset
->> >> >> +      *     chunk.  The value SHOULD be the highest TSN sent by the receiver
->> >> >> +      *     of the request plus 1.
->> >> >> +      */
->> >> >> +     next_tsn = asoc->next_tsn;
->> >> >> +     asoc->ctsn_ack_point = next_tsn - 1;
->> >> >> +     asoc->adv_peer_ack_point = asoc->ctsn_ack_point;
->> >> >> +
->> >> >> +     /* G5:  The next expected and outgoing SSNs MUST be reset to 0 for all
->> >> >> +      *      incoming and outgoing streams.
->> >> >> +      */
->> >> >> +     for (i = 0; i < stream->outcnt; i++)
->> >> >> +             stream->out[i].ssn = 0;
->> >> >> +     for (i = 0; i < stream->incnt; i++)
->> >> >> +             stream->in[i].ssn = 0;
->> >> >> +
->> >> >> +     result = SCTP_STRRESET_PERFORMED;
->> >> >> +
->> >> >> +     *evp = sctp_ulpevent_make_assoc_reset_event(asoc, 0, init_tsn,
->> >> >> +                                                 next_tsn, GFP_ATOMIC);
->> >> >> +
->> >> >> +out:
->> >> >> +     return sctp_make_strreset_tsnresp(asoc, result, request_seq,
->> >> >> +                                       next_tsn, init_tsn);
->> >> >> +}
->> >> >> --
->> >> >> 2.1.0
->> >> >>
->> >> >> --
->> >> >> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> >> >> the body of a message to majordomo@vger.kernel.org
->> >> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> >> >>
->> >> --
->> >> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> >> the body of a message to majordomo@vger.kernel.org
->> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> >>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+> 
+> > 2. send 1 more chunk with MSG_MORE clear, the queue is:
+> >   chk4[clear] -> chk3 [clear] -> chk2 [clear] -> chk1 [clear]
+> 
+> I don't think processing the entire queue is a good idea.
+> Both from execution time and the effects on the data cache.
+
+It won't be processing the entire queue if not needed, and it will only
+process it on the last sendmsg() call. As the list is double-linked, it
+can walk backwards as necessary and stop just at the right point.  So
+this doesn't imply on any quadratic or exponential factor here, but
+linear and only if/when finishing the MSG_MORE block.
+
+If the application is not using MSG_MORE, impact is zero.
+
+> The SCTP code is horrid enough as it is.
+> 
+> > 3. then if user send more small chunks with MSG_MORE set,
+> > the queue is like:
+> >   chkB[set] -> chkA[set] -> chk4[clear] -> chk3 [clear] -> chk2 [clear] -> chk1 [clear]
+> > so that the new small chunks' flag will not affect the other chunks bundling.
+> 
+> That isn't really necessary.
+> The user can't expect to have absolute control over which chunks get bundled
+> together.
+
+So...?
+I mean, I'm okay with that but that doesn't explain why we can't do as
+Xin proposed on previous email here.
+
+> If the above chunks still aren't big enough to fill a frame the code might
+> as well wait for the next chunk instead of building a packet that contains
+> chk1 through to chkB.
+
+Our expectations are the same and that's what the proposed solution also
+achieves, no?
+
+> 
+> Remember you'll only get a queued chunk with MSG_MORE clear if data can't be sent.
+> As soon as data can be sent, if the first chunk has MSG_MORE clear all of the
+> queued chunks will be sent.
+
+With the fix proposed by Xin, this would be more like: ... all of the
+_non-held_ chunks will be sent.
+After all, application asked to hold them, for whatever reason it had.
+
+> 
+> So immediately after your (3) the application is expected to send a chunk
+> with MSG_MORE clear - at that point all the queued chunks can be sent in
+> a single packet.
+
+Yes. Isn't that the idea?
+
+> 
+> So just save the last MSG_MORE on the association as I did.
+
+I don't see the reason to change that. Your reply seem to reject the
+idea but I cannot get the reason why. The solution proposed is more
+complex, yes, allows more control, yes, but those aren't real issues
+here.
+
+  Marcelo
+
