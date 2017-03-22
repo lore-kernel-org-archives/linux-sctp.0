@@ -1,71 +1,23 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 20 Mar 2017 18:43:11 +0000
+From: David Miller <davem@davemloft.net>
+Date: Wed, 22 Mar 2017 01:32:48 +0000
 Subject: Re: [PATCH net] sctp: out_qlen should be updated when pruning unsent queue
-Message-Id: <20170320184311.GE23553@localhost.localdomain>
+Message-Id: <20170321.183248.1571202262140371999.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <16cb6e6d2ef47481123bc3ff1b99e8abf5334d14.1489838639.git.lucien.xin@gmail.com>
 In-Reply-To: <16cb6e6d2ef47481123bc3ff1b99e8abf5334d14.1489838639.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, vyasevich@gmail.com
 
-On Sat, Mar 18, 2017 at 08:03:59PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 18 Mar 2017 20:03:59 +0800
+
 > This patch is to fix the issue that sctp_prsctp_prune_sent forgot
 > to update q->out_qlen when removing a chunk from unsent queue.
 > 
 > Fixes: 8dbdf1f5b09c ("sctp: implement prsctp PRIO policy")
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-> ---
->  net/sctp/outqueue.c | 11 +++++------
->  1 file changed, 5 insertions(+), 6 deletions(-)
-> 
-> diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-> index db352e5..025ccff 100644
-> --- a/net/sctp/outqueue.c
-> +++ b/net/sctp/outqueue.c
-> @@ -382,17 +382,18 @@ static int sctp_prsctp_prune_sent(struct sctp_association *asoc,
->  }
->  
->  static int sctp_prsctp_prune_unsent(struct sctp_association *asoc,
-> -				    struct sctp_sndrcvinfo *sinfo,
-> -				    struct list_head *queue, int msg_len)
-> +				    struct sctp_sndrcvinfo *sinfo, int msg_len)
->  {
-> +	struct sctp_outq *q = &asoc->outqueue;
->  	struct sctp_chunk *chk, *temp;
->  
-> -	list_for_each_entry_safe(chk, temp, queue, list) {
-> +	list_for_each_entry_safe(chk, temp, &q->out_chunk_list, list) {
->  		if (!SCTP_PR_PRIO_ENABLED(chk->sinfo.sinfo_flags) ||
->  		    chk->sinfo.sinfo_timetolive <= sinfo->sinfo_timetolive)
->  			continue;
->  
->  		list_del_init(&chk->list);
-> +		q->out_qlen -= chk->skb->len;
->  		asoc->sent_cnt_removable--;
->  		asoc->abandoned_unsent[SCTP_PR_INDEX(PRIO)]++;
->  
-> @@ -431,9 +432,7 @@ void sctp_prsctp_prune(struct sctp_association *asoc,
->  			return;
->  	}
->  
-> -	sctp_prsctp_prune_unsent(asoc, sinfo,
-> -				 &asoc->outqueue.out_chunk_list,
-> -				 msg_len);
-> +	sctp_prsctp_prune_unsent(asoc, sinfo, msg_len);
->  }
->  
->  /* Mark all the eligible packets on a transport for retransmission.  */
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Applied, thanks.
