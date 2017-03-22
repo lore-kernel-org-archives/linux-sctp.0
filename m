@@ -1,66 +1,69 @@
-From: Cong Wang <xiyou.wangcong@gmail.com>
-Date: Wed, 15 Mar 2017 18:19:38 +0000
+From: Dmitry Vyukov <dvyukov@google.com>
+Date: Wed, 22 Mar 2017 12:29:22 +0000
 Subject: Re: net/sctp: recursive locking in sctp_do_peeloff
-Message-Id: <CAM_iQpVY3QOdvCOsinJ=v2CF1M0c+XV2o80ec=qDyithuqeACw@mail.gmail.com>
+Message-Id: <CACT4Y+aEpJ0mtiKofQTnYNyj3DcqS=7AXbHZxGvyEbJvEqxLiQ@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CACT4Y+ZHGC6VNJUANgSdZnCfLQrRKtsQ-Dbn6goHScj=pq7xog@mail.gmail.com>
  <CAFSqH7xrmH2Bgq3Xckgb3mkj7j1qkApemEYOq3jbQEtj+TTEpQ@mail.gmail.com>
  <CACT4Y+b1Uu9nGqX=LdJ_nEWxbeCswMOsSpvnW=OLdDKYC5EjDw@mail.gmail.com>
- <CAM_iQpUEWDVHx5+VBB4=r=y_vVbXq32a2QfqY=OU5ri-yyJPaA@mail.gmail.com> <20170315125247.GB23553@localhost.localdomain>
-In-Reply-To: <20170315125247.GB23553@localhost.localdomain>
+ <CAM_iQpUEWDVHx5+VBB4=r=y_vVbXq32a2QfqY=OU5ri-yyJPaA@mail.gmail.com>
+ <20170315125247.GB23553@localhost.localdomain> <CAM_iQpVY3QOdvCOsinJ=v2CF1M0c+XV2o80ec=qDyithuqeACw@mail.gmail.com>
+In-Reply-To: <CAM_iQpVY3QOdvCOsinJ=v2CF1M0c+XV2o80ec=qDyithuqeACw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: Dmitry Vyukov <dvyukov@google.com>, Vladislav Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, Eric Dumazet <edumazet@google.com>, syzkaller <syzkaller@googlegroups.com>
+To: Cong Wang <xiyou.wangcong@gmail.com>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vladislav Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, Eric Dumazet <edumazet@google.com>, syzkaller <syzkaller@googlegroups.com>
 
-On Wed, Mar 15, 2017 at 5:52 AM, Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
-> On Tue, Mar 14, 2017 at 09:52:15PM -0700, Cong Wang wrote:
->> Instead of checking for the status of the sock, I believe the following
->> one-line fix should do the trick too. Can you give it a try?
+On Wed, Mar 15, 2017 at 7:19 PM, Cong Wang <xiyou.wangcong@gmail.com> wrote:
+> On Wed, Mar 15, 2017 at 5:52 AM, Marcelo Ricardo Leitner
+> <marcelo.leitner@gmail.com> wrote:
+>> On Tue, Mar 14, 2017 at 09:52:15PM -0700, Cong Wang wrote:
+>>> Instead of checking for the status of the sock, I believe the following
+>>> one-line fix should do the trick too. Can you give it a try?
+>>>
+>>> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+>>> index 0f378ea..4de62d4 100644
+>>> --- a/net/sctp/socket.c
+>>> +++ b/net/sctp/socket.c
+>>> @@ -1494,7 +1494,7 @@ static void sctp_close(struct sock *sk, long timeout)
+>>>
+>>>         pr_debug("%s: sk:%p, timeout:%ld\n", __func__, sk, timeout);
+>>>
+>>> -       lock_sock(sk);
+>>> +       lock_sock_nested(sk, SINGLE_DEPTH_NESTING);
+>>>         sk->sk_shutdown = SHUTDOWN_MASK;
+>>>         sk->sk_state = SCTP_SS_CLOSING;
 >>
+>> I refrained on doing this just because it will change the lock signature
+>> for the first level too, as sctp_close() can be called directly, and
+>> might avoid some other lockdep detections.
+>
+> I knew, but for the first level it is fine to use a different class,
+> it is merely to make lockdep happy. There is no real deadlock here
+> since they are two different socks anyway.
+>
+>>
+>> Then you probably also need:
 >> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
->> index 0f378ea..4de62d4 100644
+>> index 465a9c8464f9..02506b4406d2 100644
 >> --- a/net/sctp/socket.c
 >> +++ b/net/sctp/socket.c
->> @@ -1494,7 +1494,7 @@ static void sctp_close(struct sock *sk, long timeout)
+>> @@ -1543,7 +1543,7 @@ static void sctp_close(struct sock *sk, long timeout)
+>>          * held and that should be grabbed before socket lock.
+>>          */
+>>         spin_lock_bh(&net->sctp.addr_wq_lock);
+>> -       bh_lock_sock(sk);
+>> +       bh_lock_sock_nested(sk);
 >>
->>         pr_debug("%s: sk:%p, timeout:%ld\n", __func__, sk, timeout);
+>>         /* Hold the sock, since sk_common_release() will put sock_put()
+>>          * and we have just a little more cleanup.
 >>
->> -       lock_sock(sk);
->> +       lock_sock_nested(sk, SINGLE_DEPTH_NESTING);
->>         sk->sk_shutdown = SHUTDOWN_MASK;
->>         sk->sk_state = SCTP_SS_CLOSING;
+>> because sctp_close will re-lock the socket a little later (for backlog
+>> processing).
+>>
 >
-> I refrained on doing this just because it will change the lock signature
-> for the first level too, as sctp_close() can be called directly, and
-> might avoid some other lockdep detections.
+> Ah, of course I missed the re-lock. Dmitry, please add this piece too.
 
-I knew, but for the first level it is fine to use a different class,
-it is merely to make lockdep happy. There is no real deadlock here
-since they are two different socks anyway.
 
->
-> Then you probably also need:
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 465a9c8464f9..02506b4406d2 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -1543,7 +1543,7 @@ static void sctp_close(struct sock *sk, long timeout)
->          * held and that should be grabbed before socket lock.
->          */
->         spin_lock_bh(&net->sctp.addr_wq_lock);
-> -       bh_lock_sock(sk);
-> +       bh_lock_sock_nested(sk);
->
->         /* Hold the sock, since sk_common_release() will put sock_put()
->          * and we have just a little more cleanup.
->
-> because sctp_close will re-lock the socket a little later (for backlog
-> processing).
->
-
-Ah, of course I missed the re-lock. Dmitry, please add this piece too.
-
-Thanks.
+applied
