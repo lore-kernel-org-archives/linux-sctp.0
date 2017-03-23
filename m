@@ -1,40 +1,38 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 21 Mar 2017 06:01:07 +0000
-Subject: Re: SCTP MSG_MORE code
-Message-Id: <CADvbK_ffK4Cw6FmwDUw-hDJBANqWpxrCMMzFQ5ikb7jD_tSdkQ@mail.gmail.com>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Thu, 23 Mar 2017 16:11:12 +0000
+Subject: RE: SCTP MSG_MORE code
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6DCFFB6448@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <063D6719AE5E284EB5DD2968C1650D6DCFFB5839@AcuExch.aculab.com>
-In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6DCFFB5839@AcuExch.aculab.com>
+ <CADvbK_ffK4Cw6FmwDUw-hDJBANqWpxrCMMzFQ5ikb7jD_tSdkQ@mail.gmail.com>
+In-Reply-To: <CADvbK_ffK4Cw6FmwDUw-hDJBANqWpxrCMMzFQ5ikb7jD_tSdkQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@aculab.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+To: 'Xin Long' <lucien.xin@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
 
-On Tue, Mar 21, 2017 at 1:49 AM, David Laight <David.Laight@aculab.com> wrote:
-> Something needs to be done with SCTP MSG_MORE before the end of the rc cycle.
-> The current code is definitely broken.
-agreed.
-
->
-> I objected to the last 'fix' patch because it clears the flag is a place where
-> I don't think it is necessary to do so - so could generate extra ethernet frames.
->
-Sorry, can you double check the last 'fix' patch ?
-I could not get 'generate extra ethernet frames'.
-
-if we keep sending data with "MSG_MORE", after one ethernet frame
-is sent, "followed by a second ethernet frame with 1 chunk in it" will NOT
-happen, as in this loop the asoc's msg_more flag is still set, and this flush
-is called by sctp_sendmsg(the function msg_more should care more).
-
-
-If your point about "generate extra ethernet frames"  is right, sure, I will
-change the way to fix that. but before this, pls check it again, appreciate it.
-
->         David
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+RnJvbTogWGluIExvbmcNCj4gU2VudDogMjEgTWFyY2ggMjAxNyAwNjowMQ0KPiBPbiBUdWUsIE1h
+ciAyMSwgMjAxNyBhdCAxOjQ5IEFNLCBEYXZpZCBMYWlnaHQgPERhdmlkLkxhaWdodEBhY3VsYWIu
+Y29tPiB3cm90ZToNCj4gPiBTb21ldGhpbmcgbmVlZHMgdG8gYmUgZG9uZSB3aXRoIFNDVFAgTVNH
+X01PUkUgYmVmb3JlIHRoZSBlbmQgb2YgdGhlIHJjIGN5Y2xlLg0KPiA+IFRoZSBjdXJyZW50IGNv
+ZGUgaXMgZGVmaW5pdGVseSBicm9rZW4uDQo+IGFncmVlZC4NCj4gDQo+ID4NCj4gPiBJIG9iamVj
+dGVkIHRvIHRoZSBsYXN0ICdmaXgnIHBhdGNoIGJlY2F1c2UgaXQgY2xlYXJzIHRoZSBmbGFnIGlz
+IGEgcGxhY2Ugd2hlcmUNCj4gPiBJIGRvbid0IHRoaW5rIGl0IGlzIG5lY2Vzc2FyeSB0byBkbyBz
+byAtIHNvIGNvdWxkIGdlbmVyYXRlIGV4dHJhIGV0aGVybmV0IGZyYW1lcy4NCj4gPg0KPiBTb3Jy
+eSwgY2FuIHlvdSBkb3VibGUgY2hlY2sgdGhlIGxhc3QgJ2ZpeCcgcGF0Y2ggPw0KPiBJIGNvdWxk
+IG5vdCBnZXQgJ2dlbmVyYXRlIGV4dHJhIGV0aGVybmV0IGZyYW1lcycuDQoNCkl0IHdvdWxkIHJl
+cXVpcmUgdGhlIGNvbm5lY3Rpb24gYmUgJ2Zsb3cgY29udHJvbGxlZCcgYW5kL29yIGhhdmUNCnJl
+dHJhbnNtaXNzaW9ucy4NCk90aGVyd2lzZSAnZGF0YSBjaHVuayBvbmx5JyBldGhlcm5ldCBmcmFt
+ZXMgYXJlIG9ubHkgZ2VuZXJhdGVkIGluIHJlc3BvbnNlDQp0byBzZW5kKCkgc28gd291bGQgYWx3
+YXlzIHNlZSB0aGUgdmFsdWUgZnJvbSB0aGUgbGFzdCBzZW5kKCkuDQoNCj4gaWYgd2Uga2VlcCBz
+ZW5kaW5nIGRhdGEgd2l0aCAiTVNHX01PUkUiLCBhZnRlciBvbmUgZXRoZXJuZXQgZnJhbWUNCj4g
+aXMgc2VudCwgImZvbGxvd2VkIGJ5IGEgc2Vjb25kIGV0aGVybmV0IGZyYW1lIHdpdGggMSBjaHVu
+ayBpbiBpdCIgd2lsbCBOT1QNCj4gaGFwcGVuLCBhcyBpbiB0aGlzIGxvb3AgdGhlIGFzb2MncyBt
+c2dfbW9yZSBmbGFnIGlzIHN0aWxsIHNldCwgYW5kIHRoaXMgZmx1c2gNCj4gaXMgY2FsbGVkIGJ5
+IHNjdHBfc2VuZG1zZyh0aGUgZnVuY3Rpb24gbXNnX21vcmUgc2hvdWxkIGNhcmUgbW9yZSkuDQo+
+IA0KPiANCj4gSWYgeW91ciBwb2ludCBhYm91dCAiZ2VuZXJhdGUgZXh0cmEgZXRoZXJuZXQgZnJh
+bWVzIiAgaXMgcmlnaHQsIHN1cmUsIEkgd2lsbA0KPiBjaGFuZ2UgdGhlIHdheSB0byBmaXggdGhh
+dC4gYnV0IGJlZm9yZSB0aGlzLCBwbHMgY2hlY2sgaXQgYWdhaW4sIGFwcHJlY2lhdGUgaXQuDQoN
+Ckkgd29uJ3QgYmUgYWJsZSB0byB0ZXN0IHRoaXMgaW4gdGhlIHNob3J0IHRlcm0uDQoNCglEYXZp
+ZA0KDQo
