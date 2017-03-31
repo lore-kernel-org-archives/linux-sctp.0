@@ -1,105 +1,195 @@
-From: Ilya Dryomov <idryomov@gmail.com>
-Date: Fri, 24 Mar 2017 13:49:24 +0000
-Subject: Re: [PATCH 05/23] net, ceph: convert ceph_osd.o_ref from atomic_t to refcount_t
-Message-Id: <CAOi1vP8ajXGamJ_Et93sfAq4xr46sSuse8cP320j-aqnwrSqKg@mail.gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 31 Mar 2017 10:14:09 +0000
+Subject: [PATCH net-next] sctp: add SCTP_PR_STREAM_STATUS sockopt for prsctp
+Message-Id: <683bd49225abe18aa3cbd285bacb6a514a2d06b2.1490955249.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com> <1489752646-8749-6-git-send-email-elena.reshetova@intel.com>
-In-Reply-To: <1489752646-8749-6-git-send-email-elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Elena Reshetova <elena.reshetova-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Cc: netdev <netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, "linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, linux-x25-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org, linux-hams-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Ceph Development <ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, "Yan, Zheng" <zyan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Sage Weil <sage-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, Jeff Layton <jlayton-vpEMnDpepFuMZCB2o+C8xQ@public.gmane.org>, steffen.klassert-opNxpl+3fjRBDgjK7y7TUQ@public.gmane.org, Herbert Xu <herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org>, santosh.shilimkar-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, jreuter-K7Hl1MveuGQ@public.gmane.org, ralf-6z/3iImG2C8G8FEW9MqTrA@public.gmane.org, peterz-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, Kees Cook <keescook-F7+t8E8rja9g9hUCZPvPmw@public.gmane.org>, Hans Liljestrand <ishkamiel-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, David Windsor <dwindsor-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-On Fri, Mar 17, 2017 at 1:10 PM, Elena Reshetova
-<elena.reshetova@intel.com> wrote:
-> refcount_t type and corresponding API should be
-> used instead of atomic_t when the variable is used as
-> a reference counter. This allows to avoid accidental
-> refcounter overflows that might lead to use-after-free
-> situations.
->
-> Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
-> Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
-> Signed-off-by: Kees Cook <keescook@chromium.org>
-> Signed-off-by: David Windsor <dwindsor@gmail.com>
-> ---
->  include/linux/ceph/osd_client.h |  3 ++-
->  net/ceph/osd_client.c           | 16 ++++++++--------
->  2 files changed, 10 insertions(+), 9 deletions(-)
->
-> diff --git a/include/linux/ceph/osd_client.h b/include/linux/ceph/osd_client.h
-> index 2ea0c28..5ce0cd6 100644
-> --- a/include/linux/ceph/osd_client.h
-> +++ b/include/linux/ceph/osd_client.h
-> @@ -5,6 +5,7 @@
->  #include <linux/kref.h>
->  #include <linux/mempool.h>
->  #include <linux/rbtree.h>
-> +#include <linux/refcount.h>
->
->  #include <linux/ceph/types.h>
->  #include <linux/ceph/osdmap.h>
-> @@ -27,7 +28,7 @@ typedef void (*ceph_osdc_callback_t)(struct ceph_osd_request *);
->
->  /* a given osd we're communicating with */
->  struct ceph_osd {
-> -       atomic_t o_ref;
-> +       refcount_t o_ref;
->         struct ceph_osd_client *o_osdc;
->         int o_osd;
->         int o_incarnation;
-> diff --git a/net/ceph/osd_client.c b/net/ceph/osd_client.c
-> index b65bbf9..99a51f0 100644
-> --- a/net/ceph/osd_client.c
-> +++ b/net/ceph/osd_client.c
-> @@ -1005,7 +1005,7 @@ static bool osd_registered(struct ceph_osd *osd)
->   */
->  static void osd_init(struct ceph_osd *osd)
->  {
-> -       atomic_set(&osd->o_ref, 1);
-> +       refcount_set(&osd->o_ref, 1);
->         RB_CLEAR_NODE(&osd->o_node);
->         osd->o_requests = RB_ROOT;
->         osd->o_linger_requests = RB_ROOT;
-> @@ -1050,9 +1050,9 @@ static struct ceph_osd *create_osd(struct ceph_osd_client *osdc, int onum)
->
->  static struct ceph_osd *get_osd(struct ceph_osd *osd)
->  {
-> -       if (atomic_inc_not_zero(&osd->o_ref)) {
-> -               dout("get_osd %p %d -> %d\n", osd, atomic_read(&osd->o_ref)-1,
-> -                    atomic_read(&osd->o_ref));
-> +       if (refcount_inc_not_zero(&osd->o_ref)) {
-> +               dout("get_osd %p %d -> %d\n", osd, refcount_read(&osd->o_ref)-1,
-> +                    refcount_read(&osd->o_ref));
->                 return osd;
->         } else {
->                 dout("get_osd %p FAIL\n", osd);
-> @@ -1062,9 +1062,9 @@ static struct ceph_osd *get_osd(struct ceph_osd *osd)
->
->  static void put_osd(struct ceph_osd *osd)
->  {
-> -       dout("put_osd %p %d -> %d\n", osd, atomic_read(&osd->o_ref),
-> -            atomic_read(&osd->o_ref) - 1);
-> -       if (atomic_dec_and_test(&osd->o_ref)) {
-> +       dout("put_osd %p %d -> %d\n", osd, refcount_read(&osd->o_ref),
-> +            refcount_read(&osd->o_ref) - 1);
-> +       if (refcount_dec_and_test(&osd->o_ref)) {
->                 osd_cleanup(osd);
->                 kfree(osd);
->         }
-> @@ -4092,7 +4092,7 @@ void ceph_osdc_stop(struct ceph_osd_client *osdc)
->                 close_osd(osd);
->         }
->         up_write(&osdc->lock);
-> -       WARN_ON(atomic_read(&osdc->homeless_osd.o_ref) != 1);
-> +       WARN_ON(refcount_read(&osdc->homeless_osd.o_ref) != 1);
->         osd_cleanup(&osdc->homeless_osd);
->
->         WARN_ON(!list_empty(&osdc->osd_lru));
+Before when implementing sctp prsctp, SCTP_PR_STREAM_STATUS wasn't
+added, as it needs to save abandoned_(un)sent for every stream.
 
-Applied.
+After sctp stream reconf is added in sctp, assoc has structure
+sctp_stream_out to save per stream info.
 
-Thanks,
+This patch is to add SCTP_PR_STREAM_STATUS by putting the prsctp
+per stream statistics into sctp_stream_out.
 
-                Ilya
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/structs.h |  2 ++
+ include/uapi/linux/sctp.h  |  1 +
+ net/sctp/chunk.c           | 14 +++++++++--
+ net/sctp/outqueue.c        | 10 ++++++++
+ net/sctp/socket.c          | 59 ++++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 84 insertions(+), 2 deletions(-)
+
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 592dece..3e61a54 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1315,6 +1315,8 @@ struct sctp_inithdr_host {
+ struct sctp_stream_out {
+ 	__u16	ssn;
+ 	__u8	state;
++	__u64	abandoned_unsent[SCTP_PR_INDEX(MAX) + 1];
++	__u64	abandoned_sent[SCTP_PR_INDEX(MAX) + 1];
+ };
+ 
+ struct sctp_stream_in {
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index 7212870..ced9d8b 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -115,6 +115,7 @@ typedef __s32 sctp_assoc_t;
+ #define SCTP_PR_SUPPORTED	113
+ #define SCTP_DEFAULT_PRINFO	114
+ #define SCTP_PR_ASSOC_STATUS	115
++#define SCTP_PR_STREAM_STATUS	116
+ #define SCTP_RECONFIG_SUPPORTED	117
+ #define SCTP_ENABLE_STREAM_RESET	118
+ #define SCTP_RESET_STREAMS	119
+diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
+index e3621cb..697721a 100644
+--- a/net/sctp/chunk.c
++++ b/net/sctp/chunk.c
+@@ -306,14 +306,24 @@ int sctp_chunk_abandoned(struct sctp_chunk *chunk)
+ 
+ 	if (SCTP_PR_TTL_ENABLED(chunk->sinfo.sinfo_flags) &&
+ 	    time_after(jiffies, chunk->msg->expires_at)) {
+-		if (chunk->sent_count)
++		struct sctp_stream_out *streamout +			&chunk->asoc->stream->out[chunk->sinfo.sinfo_stream];
++
++		if (chunk->sent_count) {
+ 			chunk->asoc->abandoned_sent[SCTP_PR_INDEX(TTL)]++;
+-		else
++			streamout->abandoned_sent[SCTP_PR_INDEX(TTL)]++;
++		} else {
+ 			chunk->asoc->abandoned_unsent[SCTP_PR_INDEX(TTL)]++;
++			streamout->abandoned_unsent[SCTP_PR_INDEX(TTL)]++;
++		}
+ 		return 1;
+ 	} else if (SCTP_PR_RTX_ENABLED(chunk->sinfo.sinfo_flags) &&
+ 		   chunk->sent_count > chunk->sinfo.sinfo_timetolive) {
++		struct sctp_stream_out *streamout +			&chunk->asoc->stream->out[chunk->sinfo.sinfo_stream];
++
+ 		chunk->asoc->abandoned_sent[SCTP_PR_INDEX(RTX)]++;
++		streamout->abandoned_sent[SCTP_PR_INDEX(RTX)]++;
+ 		return 1;
+ 	} else if (!SCTP_PR_POLICY(chunk->sinfo.sinfo_flags) &&
+ 		   chunk->msg->expires_at &&
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 025ccff..3f78d7f 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -353,6 +353,8 @@ static int sctp_prsctp_prune_sent(struct sctp_association *asoc,
+ 	struct sctp_chunk *chk, *temp;
+ 
+ 	list_for_each_entry_safe(chk, temp, queue, transmitted_list) {
++		struct sctp_stream_out *streamout;
++
+ 		if (!SCTP_PR_PRIO_ENABLED(chk->sinfo.sinfo_flags) ||
+ 		    chk->sinfo.sinfo_timetolive <= sinfo->sinfo_timetolive)
+ 			continue;
+@@ -361,8 +363,10 @@ static int sctp_prsctp_prune_sent(struct sctp_association *asoc,
+ 		sctp_insert_list(&asoc->outqueue.abandoned,
+ 				 &chk->transmitted_list);
+ 
++		streamout = &asoc->stream->out[chk->sinfo.sinfo_stream];
+ 		asoc->sent_cnt_removable--;
+ 		asoc->abandoned_sent[SCTP_PR_INDEX(PRIO)]++;
++		streamout->abandoned_sent[SCTP_PR_INDEX(PRIO)]++;
+ 
+ 		if (!chk->tsn_gap_acked) {
+ 			if (chk->transport)
+@@ -396,6 +400,12 @@ static int sctp_prsctp_prune_unsent(struct sctp_association *asoc,
+ 		q->out_qlen -= chk->skb->len;
+ 		asoc->sent_cnt_removable--;
+ 		asoc->abandoned_unsent[SCTP_PR_INDEX(PRIO)]++;
++		if (chk->sinfo.sinfo_stream < asoc->stream->outcnt) {
++			struct sctp_stream_out *streamout +				&asoc->stream->out[chk->sinfo.sinfo_stream];
++
++			streamout->abandoned_unsent[SCTP_PR_INDEX(PRIO)]++;
++		}
+ 
+ 		msg_len -= SCTP_DATA_SNDSIZE(chk) +
+ 			   sizeof(struct sk_buff) +
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index ccc08fc..8c0b528 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -6576,6 +6576,61 @@ static int sctp_getsockopt_pr_assocstatus(struct sock *sk, int len,
+ 	return retval;
+ }
+ 
++static int sctp_getsockopt_pr_streamstatus(struct sock *sk, int len,
++					   char __user *optval,
++					  int __user *optlen)
++{
++	struct sctp_stream_out *streamout;
++	struct sctp_association *asoc;
++	struct sctp_prstatus params;
++	int retval = -EINVAL;
++	int policy;
++
++	if (len < sizeof(params))
++		goto out;
++
++	len = sizeof(params);
++	if (copy_from_user(&params, optval, len)) {
++		retval = -EFAULT;
++		goto out;
++	}
++
++	policy = params.sprstat_policy;
++	if (policy & ~SCTP_PR_SCTP_MASK)
++		goto out;
++
++	asoc = sctp_id2assoc(sk, params.sprstat_assoc_id);
++	if (!asoc || params.sprstat_sid >= asoc->stream->outcnt)
++		goto out;
++
++	streamout = &asoc->stream->out[params.sprstat_sid];
++	if (policy = SCTP_PR_SCTP_NONE) {
++		params.sprstat_abandoned_unsent = 0;
++		params.sprstat_abandoned_sent = 0;
++		for (policy = 0; policy <= SCTP_PR_INDEX(MAX); policy++) {
++			params.sprstat_abandoned_unsent ++				streamout->abandoned_unsent[policy];
++			params.sprstat_abandoned_sent ++				streamout->abandoned_sent[policy];
++		}
++	} else {
++		params.sprstat_abandoned_unsent +			streamout->abandoned_unsent[__SCTP_PR_INDEX(policy)];
++		params.sprstat_abandoned_sent +			streamout->abandoned_sent[__SCTP_PR_INDEX(policy)];
++	}
++
++	if (put_user(len, optlen) || copy_to_user(optval, &params, len)) {
++		retval = -EFAULT;
++		goto out;
++	}
++
++	retval = 0;
++
++out:
++	return retval;
++}
++
+ static int sctp_getsockopt_reconfig_supported(struct sock *sk, int len,
+ 					      char __user *optval,
+ 					      int __user *optlen)
+@@ -6825,6 +6880,10 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_getsockopt_pr_assocstatus(sk, len, optval,
+ 							optlen);
+ 		break;
++	case SCTP_PR_STREAM_STATUS:
++		retval = sctp_getsockopt_pr_streamstatus(sk, len, optval,
++							 optlen);
++		break;
+ 	case SCTP_RECONFIG_SUPPORTED:
+ 		retval = sctp_getsockopt_reconfig_supported(sk, len, optval,
+ 							    optlen);
+-- 
+2.1.0
+
