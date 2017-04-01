@@ -1,102 +1,166 @@
-From: Davide Caratti <dcaratti@redhat.com>
-Date: Thu, 13 Apr 2017 10:36:34 +0000
-Subject: Re: [PATCH RFC net-next v3 4/7] net: use skb->csum_algo to identify packets needing crc32c
-Message-Id: <cover.1492077747.git.dcaratti@redhat.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 01 Apr 2017 09:15:59 +0000
+Subject: [PATCH net] sctp: check for dst and pathmtu update in sctp_packet_config
+Message-Id: <7d69e45b3cc8f84658e04ab07288a9fe09254e12.1491038159.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CALx6S36rem=OuN_At6qYA=se5cpuYM1N2R8efoaszvo8b8Tz5A@mail.gmail.com>
-In-Reply-To: <CALx6S36rem=OuN_At6qYA=se5cpuYM1N2R8efoaszvo8b8Tz5A@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Tom Herbert <tom@herbertland.com>, Alexander Duyck <alexander.duyck@gmail.com>, David Laight <David.Laight@aculab.com>, "David S . Miller" <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-thank you,
+This patch is to move sctp_transport_dst_check into sctp_packet_config
+from sctp_packet_transmit and add pathmtu check in sctp_packet_config.
 
-On Fri, 2017-04-07 at 08:43 -0700, Tom Herbert wrote:
-> Maybe just call it csum_not_ip then. Then just do "if
-> (unlikely(skb->csum_not_ip)) ..."
+With this fix, sctp can update dst or pathmtu before appending chunks,
+which can void dropping packets in sctp_packet_transmit when dst is
+obsolete or dst's mtu is changed.
 
-OK, I will rename the bit, avoid the enum and use the 'unlikely'. Up to now,
-this series uses the bit for SCTP only and leaves unmodified behavior of
-offloaded FCoE frames: please let me know if you disagree on that.
+This patch is also to improve some other codes in sctp_packet_config.
+It updates packet max_size with gso_max_size, checks for dst and
+pathmtu, and appends ecne chunk only when packet is empty and asoc
+is not NULL.
 
-On Fri, 2017-04-07 at 08:43 -0700, Tom Herbert wrote:
-> On Fri, Apr 7, 2017 at 10:29 AM, Davide Caratti <dcaratti@redhat.com> wrote:
-> > In my understanding, csum_algo needs to be set to INTERNET_CHECKSUM after the
-> > CRC32c is computed. Otherwise, after subsequent operation on the skb (e.g. it
-> > is encapsulated in a UDP frame), there is the possibility for skb->ip_summed
-> > to become CHECKSUM_PARTIAL again. So, to ensure that skb_checksum_help() and
-> > not skb_crc32c_help() will be called, csum_algo must be 0.
+It makes sctp flush work better, as we only need to set up them once
+for one flush schedule. It's also safe, since asoc is NULL only when
+the packet is created by sctp_ootb_pkt_new in which it just gets the
+new dst, no need to do more things for it other than set packet with
+transport's pathmtu.
 
-> ip_summed should no longer be CHECKSUM_PARTIAL with CRC32c is computed.
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/sctp.h | 17 ++++++++++---
+ net/sctp/output.c       | 67 ++++++++++++++++++++++++++-----------------------
+ 2 files changed, 50 insertions(+), 34 deletions(-)
 
-Even though it's uncommon, skb->ip_summed can become CHECKSUM_PARTIAL again
-after the CRC32c is computed and CHECKSUM_NONE is set: for example, when a
-veth and a vxlan with UDP checksums are enslaved to the same bridge, and the
-NIC below vxlan has no checksumming capabilities. Here, validate_xmit_skb is
-called three times on the same skb (see perf output at the bottom): 
-
-* before transmission on the veth: here ip_summed is CHECKSUM_PARTIAL, but
-the device supports CRC32c offload so the skb is (correctly) untouched.
-
-* before vxlan encapsulation: here ip_summed is CHECKSUM_PARTIAL,
-skb->csum_not_inet is 1 and NETIF_F_SCTP_CRC is not set. Here,
-skb_csum_hwoffload_help() correctly fills the CRC32c and assigns ip_summed
-to CHECKSUM_NONE.
-
-* before transmission on the NIC: ip_summed is CHECKSUM_PARTIAL again (because
-udp_set_csum changed csum_start and csum_offset to point to the tunnel
-UDP header). No bit in NETIF_F_HW_CSUM is set: if skb->csum_not_inet is still 1,
-the helper (wrongly) computes CRC32c again, thus corrupting the outer UDP
-transport header. On the contrary, if skb->csum_not_inet is 0, skb_checksum_help()
-correctly resolves CHECKSUM_PARTIAL.
-
-To avoid this problem, skb->csum_not_inet must be assigned to 0 every time
-the CHECKSUM_PARTIAL is resolved on skb carrying SCTP packets.
-
-> > To minimize the impact of the patch, I substituted all assignments of skb->ip_summed,
-> > done by SCTP-related code, with calls to skb_set_crc32c_ipsummed(). The alternative is
-> > to explicitly set csum_algo to 0 (INTERNET_CHECKSUM) in SCTP-related code. Do you agree?
-
-> No, like I said the only case where this new bit is relevant is when
-> CHECKSUM_PARTIAL for a CRC is being done. When it's set for offloading
-> sctp crc it must be set. When CRC is resolved, in the helper for
-> instance, it must be cleared. If these rules are properly followed
-> then the bit will be zero in all other cases without needing any
-> additional work or conditionals.
-
-At a minimum, this csum_not_inet bit needs to be cleared in three places:
-1) in skb_crc32c_csum_help, to fix scenarios like veth->bridge->vxlan->NIC above.
-2) in sctp_gso_make_checksum, a SCTP GSO packet is segmented and CRC32c is written
-on each segment. skb->ip_summed transitions from CHECKSUM_PARTIAL to CHECKSUM_NONE.
-3) in act_csum, because TC action mangling the packet are called before 
-validate_xmit_skb().
-
-It is not necessary to do it in netfilter NAT (even it is harmless), because
-SCTP packets having CHECKSUM_PARTIAL are not resolved (since commit 3189a290f98d
-"netfilter: nat: skip checksum on offload SCTP packets"). And it should be not
-needed in IPVS code, because ip_summed is set to CHECKSUM_UNNECESSARY, so skb
-is not going to be checksummed anymore.
-
-thank you in advance for the feedback!
-regards,
---
-davide 
-
-
-scenario:
-
-vethA --> vethB --> bridge --> vxlan encaps --> NIC
-
-# ./perf probe -k vmlinux  --add \
- "skb_csum_hwoffload_help csum_offset=skb->csum_offset ip_summed=skb->ip_summed:b2@7/32 skb=skb"
-# ./perf record -e probe:skb_csum_hwoffload_help -aR -- ./scenario-vxlan.sh 
-
-# ./perf script
-<....>
-ncat  7577 [000] 22056.548907: probe:skb_csum_hwoffload_help: (ffffffff8162a6f0) csum_offset=8 ip_summed=1 skb=0xffff880106f6bd00
-ncat  7577 [000] 22056.548915: probe:skb_csum_hwoffload_help: (ffffffff8162a6f0) csum_offset=8 ip_summed=1 skb=0xffff880106f6bd00
-ncat  7577 [000] 22056.548917: probe:skb_csum_hwoffload_help: (ffffffff8162a6f0) csum_offset=6 ip_summed=1 skb=0xffff880106f6bd00
-<....>
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 1f71ee5..d75caa7 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -596,12 +596,23 @@ static inline void sctp_v4_map_v6(union sctp_addr *addr)
+  */
+ static inline struct dst_entry *sctp_transport_dst_check(struct sctp_transport *t)
+ {
+-	if (t->dst && (!dst_check(t->dst, t->dst_cookie) ||
+-		       t->pathmtu != max_t(size_t, SCTP_TRUNC4(dst_mtu(t->dst)),
+-					   SCTP_DEFAULT_MINSEGMENT)))
++	if (t->dst && !dst_check(t->dst, t->dst_cookie))
+ 		sctp_transport_dst_release(t);
+ 
+ 	return t->dst;
+ }
+ 
++static inline bool sctp_transport_pmtu_check(struct sctp_transport *t)
++{
++	__u32 pmtu = max_t(size_t, SCTP_TRUNC4(dst_mtu(t->dst)),
++			   SCTP_DEFAULT_MINSEGMENT);
++
++	if (t->pathmtu = pmtu)
++		return true;
++
++	t->pathmtu = pmtu;
++
++	return false;
++}
++
+ #endif /* __net_sctp_h__ */
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 73fd178..ec4d50a 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -86,43 +86,53 @@ void sctp_packet_config(struct sctp_packet *packet, __u32 vtag,
+ {
+ 	struct sctp_transport *tp = packet->transport;
+ 	struct sctp_association *asoc = tp->asoc;
++	struct sock *sk;
+ 
+ 	pr_debug("%s: packet:%p vtag:0x%x\n", __func__, packet, vtag);
+-
+ 	packet->vtag = vtag;
+ 
+-	if (asoc && tp->dst) {
+-		struct sock *sk = asoc->base.sk;
+-
+-		rcu_read_lock();
+-		if (__sk_dst_get(sk) != tp->dst) {
+-			dst_hold(tp->dst);
+-			sk_setup_caps(sk, tp->dst);
+-		}
+-
+-		if (sk_can_gso(sk)) {
+-			struct net_device *dev = tp->dst->dev;
++	/* do the following jobs only once for a flush schedule */
++	if (!sctp_packet_empty(packet))
++		return;
+ 
+-			packet->max_size = dev->gso_max_size;
+-		} else {
+-			packet->max_size = asoc->pathmtu;
+-		}
+-		rcu_read_unlock();
++	/* set packet max_size with pathmtu */
++	packet->max_size = tp->pathmtu;
++	if (!asoc)
++		return;
+ 
+-	} else {
+-		packet->max_size = tp->pathmtu;
++	/* update dst or transport pathmtu if in need */
++	sk = asoc->base.sk;
++	if (!sctp_transport_dst_check(tp)) {
++		sctp_transport_route(tp, NULL, sctp_sk(sk));
++		if (asoc->param_flags & SPP_PMTUD_ENABLE)
++			sctp_assoc_sync_pmtu(sk, asoc);
++	} else if (!sctp_transport_pmtu_check(tp)) {
++		if (asoc->param_flags & SPP_PMTUD_ENABLE)
++			sctp_assoc_sync_pmtu(sk, asoc);
+ 	}
+ 
+-	if (ecn_capable && sctp_packet_empty(packet)) {
+-		struct sctp_chunk *chunk;
++	/* If there a is a prepend chunk stick it on the list before
++	 * any other chunks get appended.
++	 */
++	if (ecn_capable) {
++		struct sctp_chunk *chunk = sctp_get_ecne_prepend(asoc);
+ 
+-		/* If there a is a prepend chunk stick it on the list before
+-		 * any other chunks get appended.
+-		 */
+-		chunk = sctp_get_ecne_prepend(asoc);
+ 		if (chunk)
+ 			sctp_packet_append_chunk(packet, chunk);
+ 	}
++
++	if (!tp->dst)
++		return;
++
++	/* set packet max_size with gso_max_size if gso is enabled*/
++	rcu_read_lock();
++	if (__sk_dst_get(sk) != tp->dst) {
++		dst_hold(tp->dst);
++		sk_setup_caps(sk, tp->dst);
++	}
++	packet->max_size = sk_can_gso(sk) ? tp->dst->dev->gso_max_size
++					  : asoc->pathmtu;
++	rcu_read_unlock();
+ }
+ 
+ /* Initialize the packet structure. */
+@@ -582,12 +592,7 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
+ 	sh->vtag = htonl(packet->vtag);
+ 	sh->checksum = 0;
+ 
+-	/* update dst if in need */
+-	if (!sctp_transport_dst_check(tp)) {
+-		sctp_transport_route(tp, NULL, sctp_sk(sk));
+-		if (asoc && asoc->param_flags & SPP_PMTUD_ENABLE)
+-			sctp_assoc_sync_pmtu(sk, asoc);
+-	}
++	/* drop packet if no dst */
+ 	dst = dst_clone(tp->dst);
+ 	if (!dst) {
+ 		IP_INC_STATS(sock_net(sk), IPSTATS_MIB_OUTNOROUTES);
+-- 
+2.1.0
 
