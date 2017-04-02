@@ -1,10 +1,10 @@
 From: David Miller <davem@davemloft.net>
-Date: Mon, 03 Apr 2017 21:53:01 +0000
-Subject: Re: [PATCHv2 net-next] sctp: add SCTP_PR_STREAM_STATUS sockopt for prsctp
-Message-Id: <20170403.145301.1291800992412083707.davem@davemloft.net>
+Date: Sun, 02 Apr 2017 03:12:45 +0000
+Subject: Re: [PATCH net] sctp: use right in and out stream cnt
+Message-Id: <20170401.201245.1804602376522322384.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <0618a2ca7e92ebdfc0953c38da2f727b8b270090.1491037666.git.lucien.xin@gmail.com>
-In-Reply-To: <0618a2ca7e92ebdfc0953c38da2f727b8b270090.1491037666.git.lucien.xin@gmail.com>
+References: <046f41fee71d352458eccf900bcef54e24cb8aa8.1490954248.git.lucien.xin@gmail.com>
+In-Reply-To: <046f41fee71d352458eccf900bcef54e24cb8aa8.1490954248.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -12,20 +12,14 @@ To: lucien.xin@gmail.com
 Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sat,  1 Apr 2017 17:07:46 +0800
+Date: Fri, 31 Mar 2017 17:57:28 +0800
 
-> Before when implementing sctp prsctp, SCTP_PR_STREAM_STATUS wasn't
-> added, as it needs to save abandoned_(un)sent for every stream.
+> Since sctp reconf was added in sctp, the real cnt of in/out stream
+> have not been c.sinit_max_instreams and c.sinit_num_ostreams any
+> more.
 > 
-> After sctp stream reconf is added in sctp, assoc has structure
-> sctp_stream_out to save per stream info.
-> 
-> This patch is to add SCTP_PR_STREAM_STATUS by putting the prsctp
-> per stream statistics into sctp_stream_out.
-> 
-> v1->v2:
->   fix an indent issue.
+> This patch is to replace them with stream->in/outcnt.
 > 
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Applied.
+Applied, thanks.
