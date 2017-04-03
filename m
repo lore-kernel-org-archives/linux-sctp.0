@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Sat, 01 Apr 2017 13:35:32 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 03 Apr 2017 11:32:12 +0000
 Subject: Re: [PATCH net] sctp: check for dst and pathmtu update in sctp_packet_config
-Message-Id: <20170401133532.GF5879@localhost.localdomain>
+Message-Id: <20170403113212.GA21041@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <7d69e45b3cc8f84658e04ab07288a9fe09254e12.1491038159.git.lucien.xin@gmail.com>
 In-Reply-To: <7d69e45b3cc8f84658e04ab07288a9fe09254e12.1491038159.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
 On Sat, Apr 01, 2017 at 05:15:59PM +0800, Xin Long wrote:
 > This patch is to move sctp_transport_dst_check into sctp_packet_config
@@ -31,11 +31,6 @@ On Sat, Apr 01, 2017 at 05:15:59PM +0800, Xin Long wrote:
 > transport's pathmtu.
 > 
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-Thanks Xin.
-
 > ---
 >  include/net/sctp/sctp.h | 17 ++++++++++---
 >  net/sctp/output.c       | 67 ++++++++++++++++++++++++++-----------------------
@@ -172,8 +167,6 @@ Thanks Xin.
 > -- 
 > 2.1.0
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
