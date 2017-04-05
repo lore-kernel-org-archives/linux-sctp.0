@@ -1,87 +1,57 @@
-From: Andrey Konovalov <andreyknvl@google.com>
-Date: Wed, 05 Apr 2017 14:03:43 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 05 Apr 2017 14:22:05 +0000
 Subject: Re: net/sctp: list double add warning in sctp_endpoint_add_asoc
-Message-Id: <CAAeHK+xsVmNYZ2V+WKdeSMuCeseu=FVXOFVimz+uWT2enZGtvw@mail.gmail.com>
+Message-Id: <20170405142205.GD911@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CAAeHK+zwbeT=jBRRSf2KYXWM=eUZAEe5QHvKPYGG5qWh6A0JGQ@mail.gmail.com>
  <CADvbK_f1FEGRnucuMkQT6RKm0G1tKcfHyj=-GqxgzQ4iQoBLCg@mail.gmail.com>
- <20170404211454.GA911@localhost.localdomain> <CADvbK_dgD65mygqkGuA85ShBnHrD3y4u_P=XoREyEn7y0J4_+A@mail.gmail.com>
- <20170405124415.GC911@localhost.localdomain>
-In-Reply-To: <20170405124415.GC911@localhost.localdomain>
+ <20170404211454.GA911@localhost.localdomain>
+ <CAAeHK+xQxcQB92NK5-xBtd2rWQRGWPv29G5jePva2c2sTg248Q@mail.gmail.com>
+In-Reply-To: <CAAeHK+xQxcQB92NK5-xBtd2rWQRGWPv29G5jePva2c2sTg248Q@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: Andrey Konovalov <andreyknvl@google.com>
 Cc: Xin Long <lucien.xin@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, Dmitry Vyukov <dvyukov@google.com>, Eric Dumazet <edumazet@google.com>, Kostya Serebryany <kcc@google.com>, syzkaller <syzkaller@googlegroups.com>
 
-On Wed, Apr 5, 2017 at 2:44 PM, Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
-> On Wed, Apr 05, 2017 at 06:48:45PM +0800, Xin Long wrote:
->> On Wed, Apr 5, 2017 at 5:14 AM, Marcelo Ricardo Leitner
->> <marcelo.leitner@gmail.com> wrote:
->> > On Wed, Apr 05, 2017 at 01:29:19AM +0800, Xin Long wrote:
->> >> On Tue, Apr 4, 2017 at 9:28 PM, Andrey Konovalov <andreyknvl@google.com> wrote:
->> >> > Hi,
->> >> >
->> >> > I've got the following error report while fuzzing the kernel with syzkaller.
->> >> >
->> >> > On commit a71c9a1c779f2499fb2afc0553e543f18aff6edf (4.11-rc5).
->> >> >
->> >> > A reproducer and .config are attached.
->> >> The script is pretty hard to reproduce the issue in my env.
->> >
->> > I didn't try running it but I also found the reproducer very complicated
->> > to follow. Do you have any plans on having some PoC optimizer, so we can
->> > have a more readable code?
->> > strace is handy for filtering the noise, yes, but sometimes it doesn't
->> > cut it.
->> I got the script now:
->> 1. create sk
->> 2. set sk->sndbuf = x
->> 3. sendmsg with size s1 (s1 < x)
->> 4. sendmsg with size s2 (s1+s2 > x)
->> 5. sendmsg with size s3 (wspace < 0), wait sndbuf, schedule out.
->> 6. listen sk (abnormal operation on sctp client)
->> 7. accept sk.
->>
->> In step 6, sk->sk_state = listening, then step 7 could get the first asoc
->> from ep->asoc_list and alloc a new sk2, attach the asoc to sk2.
->>
->> after a while, sendmsg schedule in, but asoc->sk is sk2, !=sk.
->> the same issue we fix for peeloff on commit dfcb9f4f99f1 ("sctp: deny
->> peeloff operation on asocs with threads sleeping on it") happens.
->
-> Yes. That explains why the asoc isn't dead by when sendmsg comes back,
-> and avoid that dead check.
->
->>
->> But we should not fix it by the same way as for peeloff. the real reason
->> causes this issue is on step 6, it should disallow listen on the established sk.
->
-> Agreed.
->
->>
->> The following fix should work for this, just similar with what
->> inet_listen() did.
->>
->> @@ -7174,6 +7175,9 @@ int sctp_inet_listen(struct socket *sock, int backlog)
->>         if (sock->state != SS_UNCONNECTED)
->>                 goto out;
->>
->> +       if (!sctp_sstate(sk, LISTENING) && !sctp_sstate(sk,CLOSED))
->> +               goto out;
->> +
+On Wed, Apr 05, 2017 at 04:02:44PM +0200, Andrey Konovalov wrote:
+> On Tue, Apr 4, 2017 at 11:14 PM, Marcelo Ricardo Leitner
+> <marcelo.leitner@gmail.com> wrote:
+> > On Wed, Apr 05, 2017 at 01:29:19AM +0800, Xin Long wrote:
+> >> On Tue, Apr 4, 2017 at 9:28 PM, Andrey Konovalov <andreyknvl@google.com> wrote:
+> >> > Hi,
+> >> >
+> >> > I've got the following error report while fuzzing the kernel with syzkaller.
+> >> >
+> >> > On commit a71c9a1c779f2499fb2afc0553e543f18aff6edf (4.11-rc5).
+> >> >
+> >> > A reproducer and .config are attached.
+> >> The script is pretty hard to reproduce the issue in my env.
+> >
+> > I didn't try running it but I also found the reproducer very complicated
+> > to follow. Do you have any plans on having some PoC optimizer, so we can
+> > have a more readable code?
+> > strace is handy for filtering the noise, yes, but sometimes it doesn't
+> > cut it.
+> 
+> We do have some plans (like to remote all those unnecessary helper
+> functions), but it's probably not going to become much better.
+> 
+> You mostly only need to look at the thr() function to understand
+> what's going on.
 
-This fixes the report.
+Okay.
 
-Tested-by: Andrey Konovalov <andreyknvl@google.com>
+> 
+> What I sometimes do is run each of the switch cases under strace
+> separately to understand what each of them do.
+> 
+> I've also attached a program in syzkaller format.
+> You can take a look at it, if you find it useful, I can start
+> attaching them for subsequent reports.
 
-Thanks!
+Comparing it to thr() they look very close, at least for this one.
+But when you cannot extract a reproducer, it will certainly help.
 
->>
->> what do you think ?
->
-> Yes, agreed.
-> Thanks!
->
->   Marcelo
+Thanks,
+Marcelo
