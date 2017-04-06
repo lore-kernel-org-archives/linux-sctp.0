@@ -1,113 +1,42 @@
-From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Fri, 17 Mar 2017 12:10:30 +0000
-Subject: [PATCH 07/23] net, rds: convert rds_ib_device.refcount from atomic_t to refcount_t
-Message-Id: <1489752646-8749-8-git-send-email-elena.reshetova@intel.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 06 Apr 2017 05:10:52 +0000
+Subject: [PATCH net] sctp: listen on the sock only when it's state is listening or closed
+Message-Id: <19f73778f8e27b05ee9aa25ece57db6b0e73d197.1491455452.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
-In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, davem@davemloft.net, linux-x25@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-hams@vger.kernel.org, linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, ralf@linux-mips.org, peterz@infradead.org, keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, andreyknvl@google.com
 
-refcount_t type and corresponding API should be
-used instead of atomic_t when the variable is used as
-a reference counter. This allows to avoid accidental
-refcounter overflows that might lead to use-after-free
-situations.
+Now sctp doesn't check sock's state before listening on it. It could
+even cause changing a sock with any state to become a listening sock
+when doing sctp_listen.
 
-Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
-Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
-Signed-off-by: Kees Cook <keescook@chromium.org>
-Signed-off-by: David Windsor <dwindsor@gmail.com>
+This patch is to fix it by checking sock's state in sctp_listen, so
+that it will listen on the sock with right state.
+
+Reported-by: Andrey Konovalov <andreyknvl@google.com>
+Tested-by: Andrey Konovalov <andreyknvl@google.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/rds/ib.c      | 12 ++++++------
- net/rds/ib.h      |  2 +-
- net/rds/ib_rdma.c |  4 ++--
- 3 files changed, 9 insertions(+), 9 deletions(-)
+ net/sctp/socket.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/net/rds/ib.c b/net/rds/ib.c
-index 91fe46f..bb19cda 100644
---- a/net/rds/ib.c
-+++ b/net/rds/ib.c
-@@ -118,8 +118,8 @@ static void rds_ib_dev_free(struct work_struct *work)
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index c1401f4..d9d4c92 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -7034,6 +7034,9 @@ int sctp_inet_listen(struct socket *sock, int backlog)
+ 	if (sock->state != SS_UNCONNECTED)
+ 		goto out;
  
- void rds_ib_dev_put(struct rds_ib_device *rds_ibdev)
- {
--	BUG_ON(atomic_read(&rds_ibdev->refcount) <= 0);
--	if (atomic_dec_and_test(&rds_ibdev->refcount))
-+	BUG_ON(refcount_read(&rds_ibdev->refcount) = 0);
-+	if (refcount_dec_and_test(&rds_ibdev->refcount))
- 		queue_work(rds_wq, &rds_ibdev->free_work);
- }
- 
-@@ -137,7 +137,7 @@ static void rds_ib_add_one(struct ib_device *device)
- 		return;
- 
- 	spin_lock_init(&rds_ibdev->spinlock);
--	atomic_set(&rds_ibdev->refcount, 1);
-+	refcount_set(&rds_ibdev->refcount, 1);
- 	INIT_WORK(&rds_ibdev->free_work, rds_ib_dev_free);
- 
- 	rds_ibdev->max_wrs = device->attrs.max_qp_wr;
-@@ -205,10 +205,10 @@ static void rds_ib_add_one(struct ib_device *device)
- 	down_write(&rds_ib_devices_lock);
- 	list_add_tail_rcu(&rds_ibdev->list, &rds_ib_devices);
- 	up_write(&rds_ib_devices_lock);
--	atomic_inc(&rds_ibdev->refcount);
-+	refcount_inc(&rds_ibdev->refcount);
- 
- 	ib_set_client_data(device, &rds_ib_client, rds_ibdev);
--	atomic_inc(&rds_ibdev->refcount);
-+	refcount_inc(&rds_ibdev->refcount);
- 
- 	rds_ib_nodev_connect();
- 
-@@ -239,7 +239,7 @@ struct rds_ib_device *rds_ib_get_client_data(struct ib_device *device)
- 	rcu_read_lock();
- 	rds_ibdev = ib_get_client_data(device, &rds_ib_client);
- 	if (rds_ibdev)
--		atomic_inc(&rds_ibdev->refcount);
-+		refcount_inc(&rds_ibdev->refcount);
- 	rcu_read_unlock();
- 	return rds_ibdev;
- }
-diff --git a/net/rds/ib.h b/net/rds/ib.h
-index ec55062..bf48224 100644
---- a/net/rds/ib.h
-+++ b/net/rds/ib.h
-@@ -230,7 +230,7 @@ struct rds_ib_device {
- 	unsigned int		max_initiator_depth;
- 	unsigned int		max_responder_resources;
- 	spinlock_t		spinlock;	/* protect the above */
--	atomic_t		refcount;
-+	refcount_t		refcount;
- 	struct work_struct	free_work;
- 	int			*vector_load;
- };
-diff --git a/net/rds/ib_rdma.c b/net/rds/ib_rdma.c
-index 977f698..9a3c54e 100644
---- a/net/rds/ib_rdma.c
-+++ b/net/rds/ib_rdma.c
-@@ -52,7 +52,7 @@ static struct rds_ib_device *rds_ib_get_device(__be32 ipaddr)
- 	list_for_each_entry_rcu(rds_ibdev, &rds_ib_devices, list) {
- 		list_for_each_entry_rcu(i_ipaddr, &rds_ibdev->ipaddr_list, list) {
- 			if (i_ipaddr->ipaddr = ipaddr) {
--				atomic_inc(&rds_ibdev->refcount);
-+				refcount_inc(&rds_ibdev->refcount);
- 				rcu_read_unlock();
- 				return rds_ibdev;
- 			}
-@@ -134,7 +134,7 @@ void rds_ib_add_conn(struct rds_ib_device *rds_ibdev, struct rds_connection *con
- 	spin_unlock_irq(&ib_nodev_conns_lock);
- 
- 	ic->rds_ibdev = rds_ibdev;
--	atomic_inc(&rds_ibdev->refcount);
-+	refcount_inc(&rds_ibdev->refcount);
- }
- 
- void rds_ib_remove_conn(struct rds_ib_device *rds_ibdev, struct rds_connection *conn)
++	if (!sctp_sstate(sk, LISTENING) && !sctp_sstate(sk, CLOSED))
++		goto out;
++
+ 	/* If backlog is zero, disable listening. */
+ 	if (!backlog) {
+ 		if (sctp_sstate(sk, CLOSED))
 -- 
-2.7.4
+2.1.0
 
