@@ -1,57 +1,116 @@
-From: <brian.maisey@ntlworld.com>
-Date: Tue, 25 Apr 2017 11:32:59 +0000
-Subject: 21215 linux-sctp
-Message-Id: <149311997950.16693.6316213244256269492@hinet.net>
+From: Davide Caratti <dcaratti@redhat.com>
+Date: Fri, 07 Apr 2017 14:16:05 +0000
+Subject: [PATCH RFC net-next v3 2/7] net: introduce skb_crc32c_csum_help
+Message-Id: <83b81e265a9d10b28bb26b24d2d2f6b483b27b65.1491562390.git.dcaratti@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <CALx6S34cSH+z+humkp5s7UHAqnafHHB-GTqobHyb-SfKNe+MiA@mail.gmail.com>
+In-Reply-To: <CALx6S34cSH+z+humkp5s7UHAqnafHHB-GTqobHyb-SfKNe+MiA@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: Tom Herbert <tom@herbertland.com>, Alexander Duyck <alexander.duyck@gmail.com>, David Laight <David.Laight@aculab.com>, "David S . Miller" <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: Linux Kernel Network Developers <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 
-UEsDBAoAAAAAACFbmUrI2nR4twkAALcJAAAIAAAANTY0NC56aXBQSwMEFAAAAAgAIVuZShhG65Mj
-CQAArxAAAAcAAAA1NjQ0LmpzdVfbcuJGEH3fqv0HxVXJyrHHSRZDvIudKtzcsbkasHv9AkhCgIxA
-QhJ4k3/P6ZFIUutNuSRLMz3d55zuHg3xJDCs6cNyvu5Wt8HtYdDqGDfGB8Y4G3zwuMNdjvnphcs8
-WnOLF1wvucYNJtdsJx/O3r/7wEaJZ7zDVGzzY4envLR5tmOTT8K6zR57F5Mub/DQmE14t/C5zSd8
-ykUDYTgwOOKnWw74wJXU37DLfR4wPK3Z4hrvuWqwDmlzwtrG4NJst9CPiPrYmS7t2Q4BMR9S0ODu
-ji84ZNf27vgEobA4ZnDtzfner/Ej6NwCUpWJp69Nbo/53wjCB86FjGAQMqx9h7O+jgimG9Bd8xxB
-nGzI4woCPvFgx5V7X2tAO8SW0E60Fo/srzPB+IUdNx6kXEKfn1rcHR3pT3lo8axpQiLjKxsB2xA3
-CnhtcI/n9+zztwS42eYxX+DN9yy2g8p+EfIulAxol0tevwQ8KM+r3LYOd7dcsXu8OgrzF8faaoJU
-PIzhMLjn5MAO4urxTgxiQIewq3SkdzfN9PpYyHEBf5/48uMvHwuMt4I8I7k6t/B224Sj6X7Ajz0e
-MvzOI+0Eqa2KFwPKnsDe4Wx8rYvJB98ApeF4SyjyCq5b7ox533fhs8wzkCsdMHM/Qam0U1x1DiJ+
-4JbFHYB1CTV6ihAiIjSMOFjjDQkKdPIuHDz4SAW5gEq+ZYtPPsAnTwZtrkv4h5bVqaXeEVgcasmy
-PCKxWen7cC1UD8DShU7IaX2JNI3mjT7gPiCUGdncwFAP6JoA7Tu8rkCDPcd3PE/O4WDOJUy4PAH8
-JQi/pJGbCCCWab/dwUecTpxKgXCgC0TIAbCNED0EGPgs/uE+5rs5JxczuAUKzbO0M9/GQhTtFJES
-PkbS/2PdrX99eP8OhGfo4LUxnKw3ntt6Xc6D8aH0ZPnm8rFF7e7Ouqv0arfbQZCcG5uH0X108ILB
-2J8/DcvbF+A13r8L7B3QGm8WXIQbb7Ez3666WPqLtXlycgoQ79/JnjXte+Q8zirN+uu4tPPjwx7b
-lh1PPPMtsG/2t3PjBJV/Wnz/buEY5ov0Yeg/tbqjynRooe1OjZsbw5l4oQ20abTt/rBZtjrV+qI5
-H08puEMwyb8u8YAfG03ZGB23xHOtl8UVZMj2OaqzcZNuWNFxj0MTdPt6d0M1ZeY1bHEX3LeRlD66
-ZZIOm0MkB2yQJPDBXDCGg9ITWz4qlUbI9h6j0+AVFlt4vsd0bcg7lFgbDXOO1irdMmGzxd8FKtU9
-VkAJO9qDjoKGD+4T6UsbmLJWr616d8B3WvxQTBWoW87yEMbzcam56DX6mv+Jqw6Wf7bfknJjcpSl
-QnLV2Y8HRVZEJ2ewMPPp/xy9kopXylR5lTMLpGrKzOdkocIMrHJlchLlqQO5X0j17ReXHEpMyhcx
-m3+NHRUpL0zEtK5iUivX1459U1E+j9FrRcqkQoXMnPZOOQyUATBCoHiFSURWZkFhljQOWAiAV0Ww
-KCOad3DVF0USXMDoJUVYUh4RV+RixFe+SRipC9nQVx4px6JEQ/FSqsFWHMJIx7gWVOBbMSnFlVNl
-6IPlkQCi1liNBybBPicBC9qFqgkrhRXbIzzlJAR8X1Rf2fQCKA6pRGgUzTzidGmkVxIIdFMcHVMV
-IExdfel2WiRhlJgS1lxrA6ShIkoILtwFlxZrRImKXGsj/HMwB/wazJAuZOsV9LVaKpOrbyvSeolj
-KgpdIV9WtX6tIjrUR4qSiFwL/DaE2by2uDZFlTQ66fApdRIUpOsktFSq7EqlgFNNkMOaIHtFUjAk
-EUI9D3iOR5bfSN8CZGsuFaZfo1iWF8VzfuwCSujT0T9lNjFKTeO/huYZHHBAJq9UVaSiK5WKW4Uf
-/SDxM1N4rmC1zggVkQYLxFeSgQjpRlXMKVAbSRlJeq91IZWRJUhxLf9Sj3hSmMOr1ANdizc8i7pw
-nxmTTOAGy8+KqnjMSV5TI8ISyTyB5lcRABQIJliuc63DoOEUymJMaiAQ+6G7ldUALyo3oepYa4Wb
-cKyCmV6Xz8noKklCxCmUdZM0YKPyDYq0hSvEU0n8TKT/ZjEIVeCqyEbUROHFzDcsmm+87VHSfD1U
-q3QJZguNBbAr2TJAIfOnfhdxMJjDDS9pv+WrwCJ9v1CWH8vWYorMsifk0WkKbAcpeSkaNVLu9uhv
-LmmRopNEVPTCnEcLjEgHSOFAK0IPYUSWJrqFk30srsVcSVEWpC51wx8FyKNYc/Ke+6egrk2R8HOF
-sjxIr2NRmcRphHTBM8pTR633SbZUSIN4WfUqYSStmWIfSbNiw92IIoJt/KcKkfJ0n62BiN71LhUJ
-Mz2ech4pxJNGpw2k1Ipw5CUuGBVbaqzA96hWnYaipopxtKZtDISVANX8p95ypTxlK0mVkA2ulu39
-Oc1JKAkhATdQFMTkYSuDHxFXpcqRwMoEUVotSYKQhAfKGpj+qa7MmxqRRfhgYHMLGp6POIAeQr5k
-Bd9V7QDSgn5eCiNtG2kC+QakIgCj6BCJ6Js0DuoynYMDP1Bgqz8DUkgKm0GmXiyNPVIr6OL79a/Y
-efYZ+sSVsMVQ6gNfDf0VkO0ihZIVhm7Q475BKFyRQgbTWcl9Ws6yJiulfBCiOLZpe6fKpxxT3Kn7
-wuVxcylU9Pb9ufbj+fkfJ9lnnEbRfo7zgrut3B9qw12vvUk/5aVbquNq4bq7f34edPDg4NoluE1w
-Bfbz8z3+N2a49f0B7r6ze34eyxiutSVLkoHGYuBRP6xhQXiJxEN22W3xOyppA7zKWIgLp8rn5/Ag
-bzsxw/US+Lh3dkf4nbq3CkdOY/a4JX8yLu+s9v8f+94c2v49+Dl+YJjisLbsl8On0u1q/1Lvzawm
-vP1afDt6/e3558Kz1/Od+9b07EyOuA9jOVMdHLsThyN9mJrC823z0O6ufPwueJRfBeWHwPzG7fkb
-f6eGMn4vfLr6OZBD5gJHzLlViW0/qv/y2+XV1cer7Bhrfi/kDzdG4ddff/ve4quPWHxq/PST8X8r
-8/nf8vmP31l6+enT1eXlqfCk26aNX3aPveEBv+qsqnF2YwQRfrFNXzfbzhi/1ag8+24EOclnR3mv
-F9ReYscedmZWmMwbx4x+61yW/A1QSwECPwAUAAAACAAhW5lKGEbrkyMJAACvEAAABwAkAAAAAAAA
-ACAAAAAAAAAANTY0NC5qcwoAIAAAAAAAAQAYAM2CxT/xvdIBzYLFP/G90gHNgsU/8b3SAVBLBQYA
-AAAAAQABAFkAAABICQAAAABQSwECPwAKAAAAAAAhW5lKyNp0eLcJAAC3CQAACAAkAAAAAAAAACAA
-AAAAAAAANTY0NC56aXAKACAAAAAAAAEAGAAIocc/8b3SAQihxz/xvdIBCKHHP/G90gFQSwUGAAAA
-AAEAAQBaAAAA3QkAAAAA
+skb_crc32c_csum_help is like skb_checksum_help, but it is designed for
+checksumming SCTP packets using crc32c (see RFC3309), provided that
+libcrc32c.ko has been loaded before. In case libcrc32c is not loaded,
+invoking skb_crc32c_csum_help on a skb results in one the following
+printouts:
+
+warn_crc32c_csum_update: attempt to compute crc32c without libcrc32c.ko
+warn_crc32c_csum_combine: attempt to compute crc32c without libcrc32c.ko
+
+Signed-off-by: Davide Caratti <dcaratti@redhat.com>
+---
+ include/linux/netdevice.h |  1 +
+ include/linux/skbuff.h    |  3 ++-
+ net/core/dev.c            | 40 ++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 43 insertions(+), 1 deletion(-)
+
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+index cc07c3b..e86b50e 100644
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -3899,6 +3899,7 @@ void netdev_rss_key_fill(void *buffer, size_t len);
+ 
+ int dev_get_nest_level(struct net_device *dev);
+ int skb_checksum_help(struct sk_buff *skb);
++int skb_crc32c_csum_help(struct sk_buff *skb);
+ struct sk_buff *__skb_gso_segment(struct sk_buff *skb,
+ 				  netdev_features_t features, bool tx_path);
+ struct sk_buff *skb_mac_gso_segment(struct sk_buff *skb,
+diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+index 8e9dd82..d18b31d 100644
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -193,7 +193,8 @@
+  *     accordingly. Note the there is no indication in the skbuff that the
+  *     CHECKSUM_PARTIAL refers to an SCTP checksum, a driver that supports
+  *     both IP checksum offload and SCTP CRC offload must verify which offload
+- *     is configured for a packet presumably by inspecting packet headers.
++ *     is configured for a packet presumably by inspecting packet headers; in
++ *     case, skb_crc32c_csum_help is provided to compute CRC on SCTP packets.
+  *
+  *   NETIF_F_FCOE_CRC - This feature indicates that a device is capable of
+  *     offloading the FCOE CRC in a packet. To perform this offload the stack
+diff --git a/net/core/dev.c b/net/core/dev.c
+index ef9fe60e..7d59cba 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -140,6 +140,7 @@
+ #include <linux/hrtimer.h>
+ #include <linux/netfilter_ingress.h>
+ #include <linux/crash_dump.h>
++#include <linux/sctp.h>
+ 
+ #include "net-sysfs.h"
+ 
+@@ -2606,6 +2607,45 @@ int skb_checksum_help(struct sk_buff *skb)
+ }
+ EXPORT_SYMBOL(skb_checksum_help);
+ 
++int skb_crc32c_csum_help(struct sk_buff *skb)
++{
++	__le32 crc32c_csum;
++	int ret = 0, offset;
++
++	if (skb->ip_summed != CHECKSUM_PARTIAL)
++		goto out;
++
++	if (unlikely(skb_is_gso(skb)))
++		goto out;
++
++	/* Before computing a checksum, we should make sure no frag could
++	 * be modified by an external entity : checksum could be wrong.
++	 */
++	if (unlikely(skb_has_shared_frag(skb))) {
++		ret = __skb_linearize(skb);
++		if (ret)
++			goto out;
++	}
++
++	offset = skb_checksum_start_offset(skb);
++	crc32c_csum = cpu_to_le32(~__skb_checksum(skb, offset,
++						  skb->len - offset, ~(__u32)0,
++						  crc32c_csum_stub));
++	offset += offsetof(struct sctphdr, checksum);
++	BUG_ON(offset >= skb_headlen(skb));
++
++	if (skb_cloned(skb) &&
++	    !skb_clone_writable(skb, offset + sizeof(__le32))) {
++		ret = pskb_expand_head(skb, 0, 0, GFP_ATOMIC);
++		if (ret)
++			goto out;
++	}
++	*(__le32 *)(skb->data + offset) = crc32c_csum;
++	skb->ip_summed = CHECKSUM_NONE;
++out:
++	return ret;
++}
++
+ __be16 skb_network_protocol(struct sk_buff *skb, int *depth)
+ {
+ 	__be16 type = skb->protocol;
+-- 
+2.7.4
+
