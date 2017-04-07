@@ -1,143 +1,51 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 15 Apr 2017 14:00:27 +0000
-Subject: [PATCH net-next 1/3] sctp: process duplicated strreset out and addstrm out requests correctly
-Message-Id: <a636da822b3db12479ce67e3976f43e2bc998517.1492264734.git.lucien.xin@gmail.com>
+From: Davide Caratti <dcaratti@redhat.com>
+Date: Fri, 07 Apr 2017 14:16:10 +0000
+Subject: [PATCH RFC net-next v3 7/7] sk_buff.h: improve description of CHECKSUM_{COMPLETE,UNNECESSARY}
+Message-Id: <da7a4ff2d2a191448031c0c7dc3da461399c1ac0.1491562390.git.dcaratti@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1492264734.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1492264734.git.lucien.xin@gmail.com>
+References: <CALx6S34cSH+z+humkp5s7UHAqnafHHB-GTqobHyb-SfKNe+MiA@mail.gmail.com>
+In-Reply-To: <CALx6S34cSH+z+humkp5s7UHAqnafHHB-GTqobHyb-SfKNe+MiA@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: Tom Herbert <tom@herbertland.com>, Alexander Duyck <alexander.duyck@gmail.com>, David Laight <David.Laight@aculab.com>, "David S . Miller" <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: Linux Kernel Network Developers <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 
-Now sctp stream reconf will process a request again even if it's seqno is
-less than asoc->strreset_inseq.
+Add FCoE to the list of protocols that can set CHECKSUM_UNNECESSARY; add a
+note to CHECKSUM_COMPLETE section to specify that it does not apply to SCTP
+and FCoE protocols.
 
-If one request has been done successfully and some data chunks have been
-accepted and then a duplicated strreset out request comes, the streamin's
-ssn will be cleared. It will cause that stream will never receive chunks
-any more because of unsynchronized ssn. It allows a replay attack.
-
-A similar issue also exists when processing addstrm out requests. It will
-cause more extra streams being added.
-
-This patch is to fix it by saving the last 2 results into asoc. When a
-duplicated strreset out or addstrm out request is received, reply it with
-bad seqno if it's seqno < asoc->strreset_inseq - 2, and reply it with the
-result saved in asoc if it's seqno >= asoc->strreset_inseq - 2.
-
-Note that it saves last 2 results instead of only last 1 result, because
-two requests can be sent together in one chunk.
-
-And note that when receiving a duplicated request, the receiver side will
-still reply it even if the peer has received the response. It's safe, As
-the response will be dropped by the peer.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Suggested-by: Tom Herbert <tom@herbertland.com>
+Signed-off-by: Davide Caratti <dcaratti@redhat.com>
 ---
- include/net/sctp/structs.h |  1 +
- net/sctp/stream.c          | 39 +++++++++++++++++++++++++++++----------
- 2 files changed, 30 insertions(+), 10 deletions(-)
+ include/linux/skbuff.h | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index b751399..a8b38e1 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -1889,6 +1889,7 @@ struct sctp_association {
- 
- 	__u32 strreset_outseq; /* Update after receiving response */
- 	__u32 strreset_inseq; /* Update after receiving request */
-+	__u32 strreset_result[2]; /* save the results of last 2 responses */
- 
- 	struct sctp_chunk *strreset_chunk; /* save request chunk */
- 
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index 4ec3679..6cab7c3 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -344,6 +344,13 @@ static sctp_paramhdr_t *sctp_chunk_lookup_strreset_param(
- 	return NULL;
- }
- 
-+static void sctp_update_strreset_result(struct sctp_association *asoc,
-+					__u32 result)
-+{
-+	asoc->strreset_result[1] = asoc->strreset_result[0];
-+	asoc->strreset_result[0] = result;
-+}
-+
- struct sctp_chunk *sctp_process_strreset_outreq(
- 				struct sctp_association *asoc,
- 				union sctp_params param,
-@@ -360,15 +367,19 @@ struct sctp_chunk *sctp_process_strreset_outreq(
- 	if (ntohl(outreq->send_reset_at_tsn) >
- 	    sctp_tsnmap_get_ctsn(&asoc->peer.tsn_map)) {
- 		result = SCTP_STRRESET_IN_PROGRESS;
--		goto out;
-+		goto err;
- 	}
- 
--	if (request_seq > asoc->strreset_inseq) {
-+	if (TSN_lt(asoc->strreset_inseq, request_seq) ||
-+	    TSN_lt(request_seq, asoc->strreset_inseq - 2)) {
- 		result = SCTP_STRRESET_ERR_BAD_SEQNO;
--		goto out;
--	} else if (request_seq = asoc->strreset_inseq) {
--		asoc->strreset_inseq++;
-+		goto err;
-+	} else if (TSN_lt(request_seq, asoc->strreset_inseq)) {
-+		i = asoc->strreset_inseq - request_seq - 1;
-+		result = asoc->strreset_result[i];
-+		goto err;
- 	}
-+	asoc->strreset_inseq++;
- 
- 	/* Check strreset_enable after inseq inc, as sender cannot tell
- 	 * the peer doesn't enable strreset after receiving response with
-@@ -427,6 +438,8 @@ struct sctp_chunk *sctp_process_strreset_outreq(
- 		GFP_ATOMIC);
- 
- out:
-+	sctp_update_strreset_result(asoc, result);
-+err:
- 	return sctp_make_strreset_resp(asoc, result, request_seq);
- }
- 
-@@ -582,15 +595,19 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
- 	__u32 result = SCTP_STRRESET_DENIED;
- 	struct sctp_stream_in *streamin;
- 	__u32 request_seq, incnt;
--	__u16 in;
-+	__u16 in, i;
- 
- 	request_seq = ntohl(addstrm->request_seq);
--	if (request_seq > asoc->strreset_inseq) {
-+	if (TSN_lt(asoc->strreset_inseq, request_seq) ||
-+	    TSN_lt(request_seq, asoc->strreset_inseq - 2)) {
- 		result = SCTP_STRRESET_ERR_BAD_SEQNO;
--		goto out;
--	} else if (request_seq = asoc->strreset_inseq) {
--		asoc->strreset_inseq++;
-+		goto err;
-+	} else if (TSN_lt(request_seq, asoc->strreset_inseq)) {
-+		i = asoc->strreset_inseq - request_seq - 1;
-+		result = asoc->strreset_result[i];
-+		goto err;
- 	}
-+	asoc->strreset_inseq++;
- 
- 	if (!(asoc->strreset_enable & SCTP_ENABLE_CHANGE_ASSOC_REQ))
- 		goto out;
-@@ -638,6 +655,8 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
- 		0, ntohs(addstrm->number_of_streams), 0, GFP_ATOMIC);
- 
- out:
-+	sctp_update_strreset_result(asoc, result);
-+err:
- 	return sctp_make_strreset_resp(asoc, result, request_seq);
- }
- 
+diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+index 4d2a6ec..1a639e8 100644
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -109,6 +109,7 @@
+  *       may perform further validation in this case.
+  *     GRE: only if the checksum is present in the header.
+  *     SCTP: indicates the CRC in SCTP header has been validated.
++ *     FCOE: indicates the CRC in FC frame has been validated.
+  *
+  *   skb->csum_level indicates the number of consecutive checksums found in
+  *   the packet minus one that have been verified as CHECKSUM_UNNECESSARY.
+@@ -126,8 +127,10 @@
+  *   packet as seen by netif_rx() and fills out in skb->csum. Meaning, the
+  *   hardware doesn't need to parse L3/L4 headers to implement this.
+  *
+- *   Note: Even if device supports only some protocols, but is able to produce
+- *   skb->csum, it MUST use CHECKSUM_COMPLETE, not CHECKSUM_UNNECESSARY.
++ *   Notes:
++ *   - Even if device supports only some protocols, but is able to produce
++ *     skb->csum, it MUST use CHECKSUM_COMPLETE, not CHECKSUM_UNNECESSARY.
++ *   - CHECKSUM_COMPLETE is not applicable to SCTP and FCoE protocols.
+  *
+  * CHECKSUM_PARTIAL:
+  *
 -- 
-2.1.0
+2.7.4
 
