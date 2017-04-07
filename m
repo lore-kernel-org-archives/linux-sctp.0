@@ -1,94 +1,52 @@
-From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Date: Sun, 16 Apr 2017 10:48:56 +0000
-Subject: [PATCH 3.18 043/145] [PATCH 093/760] net: sctp, forbid negative length
-Message-Id: <20170416080202.784111731@linuxfoundation.org>
+From: Davide Caratti <dcaratti@redhat.com>
+Date: Fri, 07 Apr 2017 14:16:03 +0000
+Subject: [PATCH RFC net-next v3 0/7] improve CRC32c in the forwarding path
+Message-Id: <cover.1491562390.git.dcaratti@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20170416080200.205458595@linuxfoundation.org>
-In-Reply-To: <20170416080200.205458595@linuxfoundation.org>
+References: <CALx6S34cSH+z+humkp5s7UHAqnafHHB-GTqobHyb-SfKNe+MiA@mail.gmail.com>
+In-Reply-To: <CALx6S34cSH+z+humkp5s7UHAqnafHHB-GTqobHyb-SfKNe+MiA@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-kernel@vger.kernel.org
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, stable@vger.kernel.org, Jiri Slaby <jslaby@suse.cz>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: Tom Herbert <tom@herbertland.com>, Alexander Duyck <alexander.duyck@gmail.com>, David Laight <David.Laight@aculab.com>, "David S . Miller" <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: Linux Kernel Network Developers <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 
-3.18-stable review patch.  If anyone has any objections, please let me know.
+On Tue, 2017-03-07 at 10:06 -0800, Alexander Duyck wrote:
+> You might even take this one step
+> further.  You could convert crc32_csum into a 1 bit enum for now.
+> Basically you would use 0 for 1's compliement csum, and 1 to represent
+> a crc32c csum.  Then if we end up having to add another bit for
+> something like FCoE in the future it would give us 4 possible checksum
+> types instead of just giving us 1 with a bit mask.
 
-------------------
 
-From: Jiri Slaby <jslaby@suse.cz>
+On Sat, 2017-03-18 at 15:35 -0700, Tom Herbert wrote:
+> Just create a non_ip_csum bit in skbuff.
+> csum_bad can replaced with this I think. If the bit is set then more
+> work can be done to differentiate between alternative checksums.
 
+hello Alexander and Tom,
 
-[ Upstream commit a4b8e71b05c27bae6bad3bdecddbc6b68a3ad8cf ]
+I refreshed the series including your suggestions.
+Some followups are still possible:
 
-Most of getsockopt handlers in net/sctp/socket.c check len against
-sizeof some structure like:
-        if (len < sizeof(int))
-                return -EINVAL;
+* drivers that parse the packet header to correctly resolve CHECKSUM_PARTIAL
+(e.g. ixgbe_tx_csum()) can benefit from skb->csum_algo savng some CPU cycles
+(e.g. avoiding calling ip_hdr(skb)->protocol or ixgbe_ipv6_csum_is_sctp(skb)).
 
-On the first look, the check seems to be correct. But since len is int
-and sizeof returns size_t, int gets promoted to unsigned size_t too. So
-the test returns false for negative lengths. Yes, (-1 < sizeof(long)) is
-false.
+* drivers that call skb_checksum_help() to resolve CHECKSUM_PARTIAL can
+call skb_crc32c_csum_help (or skb_csum_hwoffload_help(skb, 0)) to avoid
+wrong CRC on SCTP packets.
 
-Fix this in sctp by explicitly checking len < 0 before any getsockopt
-handler is called.
+thank you in advance for looking at this!
+regards,
+--
+davide
 
-Note that sctp_getsockopt_events already handled the negative case.
-Since we added the < 0 check elsewhere, this one can be removed.
-
-If not checked, this is the result:
-UBSAN: Undefined behaviour in ../mm/page_alloc.c:2722:19
-shift exponent 52 is too large for 32-bit type 'int'
-CPU: 1 PID: 24535 Comm: syz-executor Not tainted 4.8.1-0-syzkaller #1
-Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.9.1-0-gb3ef39f-prebuilt.qemu-project.org 04/01/2014
- 0000000000000000 ffff88006d99f2a8 ffffffffb2f7bdea 0000000041b58ab3
- ffffffffb4363c14 ffffffffb2f7bcde ffff88006d99f2d0 ffff88006d99f270
- 0000000000000000 0000000000000000 0000000000000034 ffffffffb5096422
-Call Trace:
- [<ffffffffb3051498>] ? __ubsan_handle_shift_out_of_bounds+0x29c/0x300
-...
- [<ffffffffb273f0e4>] ? kmalloc_order+0x24/0x90
- [<ffffffffb27416a4>] ? kmalloc_order_trace+0x24/0x220
- [<ffffffffb2819a30>] ? __kmalloc+0x330/0x540
- [<ffffffffc18c25f4>] ? sctp_getsockopt_local_addrs+0x174/0xca0 [sctp]
- [<ffffffffc18d2bcd>] ? sctp_getsockopt+0x10d/0x1b0 [sctp]
- [<ffffffffb37c1219>] ? sock_common_getsockopt+0xb9/0x150
- [<ffffffffb37be2f5>] ? SyS_getsockopt+0x1a5/0x270
-
-Signed-off-by: Jiri Slaby <jslaby@suse.cz>
-Cc: Vlad Yasevich <vyasevich@gmail.com>
-Cc: Neil Horman <nhorman@tuxdriver.com>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: linux-sctp@vger.kernel.org
-Cc: netdev@vger.kernel.org
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
-Signed-off-by: David S. Miller <davem@davemloft.net>
-Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
----
- net/sctp/socket.c |    5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
-
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -4385,7 +4385,7 @@ static int sctp_getsockopt_disable_fragm
- static int sctp_getsockopt_events(struct sock *sk, int len, char __user *optval,
- 				  int __user *optlen)
- {
--	if (len <= 0)
-+	if (len = 0)
- 		return -EINVAL;
- 	if (len > sizeof(struct sctp_event_subscribe))
- 		len = sizeof(struct sctp_event_subscribe);
-@@ -5981,6 +5981,9 @@ static int sctp_getsockopt(struct sock *
- 	if (get_user(len, optlen))
- 		return -EFAULT;
- 
-+	if (len < 0)
-+		return -EINVAL;
-+
- 	lock_sock(sk);
- 
- 	switch (optname) {
-
+v3:
+ * review documentation
+ * include a fix for corrupted SCTP packets in openvswitch datapath
+ * skb->crc32c_csum renamed in skb->csum_algo and converted to enum
+ * deprecate skb->csum_bad to free one bit in struct sk_buff
+ * use 'CRC32c csum' terminology everywhere
 
