@@ -1,152 +1,102 @@
-From: Tom Herbert <tom@herbertland.com>
-Date: Fri, 07 Apr 2017 18:11:11 +0000
+From: Davide Caratti <dcaratti@redhat.com>
+Date: Thu, 13 Apr 2017 10:36:34 +0000
 Subject: Re: [PATCH RFC net-next v3 4/7] net: use skb->csum_algo to identify packets needing crc32c
-Message-Id: <CALx6S36rem=OuN_At6qYA=se5cpuYM1N2R8efoaszvo8b8Tz5A@mail.gmail.com>
+Message-Id: <cover.1492077747.git.dcaratti@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1491562390.git.dcaratti@redhat.com> <CALx6S34cSH+z+humkp5s7UHAqnafHHB-GTqobHyb-SfKNe+MiA@mail.gmail.com>
- <1b776a2f30504c01cbad6a9230840dd0e79ffc0c.1491562390.git.dcaratti@redhat.com>
- <CALx6S34DdGZo7e1e37UCtpZ48jgdvHJ5nR=keyGFq3O3-b2_YQ@mail.gmail.com> <1491586160.2505.87.camel@redhat.com>
-In-Reply-To: <1491586160.2505.87.camel@redhat.com>
+References: <CALx6S36rem=OuN_At6qYA=se5cpuYM1N2R8efoaszvo8b8Tz5A@mail.gmail.com>
+In-Reply-To: <CALx6S36rem=OuN_At6qYA=se5cpuYM1N2R8efoaszvo8b8Tz5A@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Davide Caratti <dcaratti@redhat.com>
-Cc: Alexander Duyck <alexander.duyck@gmail.com>, David Laight <David.Laight@aculab.com>, "David S . Miller" <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Linux Kernel Network Developers <netdev@vger.kernel.org>, "linux-sctp @ vger . kernel . org" <linux-sctp@vger.kernel.org>
+To: Tom Herbert <tom@herbertland.com>, Alexander Duyck <alexander.duyck@gmail.com>, David Laight <David.Laight@aculab.com>, "David S . Miller" <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Fri, Apr 7, 2017 at 10:29 AM, Davide Caratti <dcaratti@redhat.com> wrote:
-> hello Tom,
->
-> On Fri, 2017-04-07 at 08:43 -0700, Tom Herbert wrote:
->> On Fri, Apr 7, 2017 at 7:16 AM, Davide Caratti <dcaratti@redhat.com> wrote:
->> > @@ -742,8 +744,10 @@ struct sk_buff {
->> >         __u8                    csum_valid:1;
->> >         __u8                    csum_complete_sw:1;
->> >         __u8                    csum_level:2;
->> > -       __u8                    __unused:1; /* one bit hole */
->> > -
->> > +       enum {
->> > +               INTERNET_CHECKSUM = 0,
->> > +               CRC32C_CHECKSUM,
->> > +       }                       csum_algo:1;
->>
->> I am worried this opens the door to a new open ended functionality
->> that will be rarely used in practice. Checksum offload is pervasive,
->> CRC offload is still a very narrow use case.
->
-> thank you for the prompt response. I thought there was a silent
-> agreement on that - Alexander proposed usage of an enum bitfield to be
-> ready for FCoE (and I'm not against it, unless I have to find a second
-> free bit in struct sk_buff :-) ). But maybe I'm misunderstanding your
-> concern: is it the  name of the variable, (csum_algo instead of
-> crc32c_csum), or the usage of enum bitfield (or both?) ?
->
-> On Fri, 2017-04-07 at 08:43 -0700, Tom Herbert wrote:
->> Adding yet more
->> CRC/checksum variants will need more bits. It may be sufficient for
->> now just to make this a single bit which indicates "ones' checksum" or
->> indicates "other". In this case of "other" we need some analysis so
->> determine which checksum it is, this might be something that flow
->> dissector could support.
->
-> ... which is my intent: by the way, from my perspective, we don't need more than 1 bit
-> to extend the functionality. While reviewing my code, I was also considering
-> extending the witdth of skb->ip_summed from 2 to 3 bit, so that it was possible
-> to
->
-Maybe just call it csum_not_ip then. Then just do "if
-(unlikely(skb->csum_not_ip)) ..."
+thank you,
 
-> #define
->
-> CRC32C_PARTIAL <- for SCTP
-> CRC_PARTIAL <- for FCoE
-> CHECKSUM_PARTIAL <- for everything else
->
-> It's conceptually the same thing, and the free bit is used more
-> efficiently. But then I would need to check all places where
-> CHECKSUM_PARTIAL is used in assignments and test: so, I told myself it's
-> not worth doing it until somebody requests to extend this functionality to
-> FCoE.
->
-I've thought about extending ip_summed before with something like
-csum_invalid. I think it opens up a can of worms since ip_summed is
-being used in so many places already and the semantics of each value
-have to be extremely well defined for the whole system (this is one
-place where we can't tolerate any ambiguity at all and it everything
-needs to be clearly documented).
+On Fri, 2017-04-07 at 08:43 -0700, Tom Herbert wrote:
+> Maybe just call it csum_not_ip then. Then just do "if
+> (unlikely(skb->csum_not_ip)) ..."
 
->> > @@ -3129,6 +3133,14 @@ struct skb_checksum_ops {
->> >
->> >  extern const struct skb_checksum_ops *crc32c_csum_stub __read_mostly;
->> >
->> > +static inline void skb_set_crc32c_ipsummed(struct sk_buff *skb,
->> > +                                          const u8 ip_summed)
->> > +{
->> > +       skb->csum_algo = ip_summed = CHECKSUM_PARTIAL ? CRC32C_CHECKSUM :
->> > +               INTERNET_CHECKSUM;
->> > +       skb->ip_summed = ip_summed;
->>
->> This seems odd to me. skb->csum_algo and skb->ip_summed always end up
->> having the same value.
->
-> this is accidentally true for CHEKSUM_NONE and CHECKSUM_PARTIAL, and only
-> if skb carries a SCTP packet. This was my intent:
->
-> ip_summed  (2 bit)                     | csum_algo     (1 bit)
-> ---------------------------------------+-------------------
-> CHEKSUM_NONE = 0                       | INTERNET_CHECKSUM = 0
-> CHECKSUM_PARTIAL = 1                   | CRC32C_CHECKSUM = 1
-> CHECKSUM_COMPLETE = 2 (not applicable) | INTERNET_CHECKSUM = 0 (don't care)
-> CHECKSUM_UNNECESSARY = 3               | INTERNET_CHECKSUM = 0
->
-> I can do this in a more explicit way, changing the prototype to
->
-> static inline void skb_set_crc32c_ipsummed(struct sk_buff *skb,
->                                            const u8 ip_summed,
->                                            const u8 csum_algo)
->
-> (with the advantage of saving a test on the value of ip_summed).
-> Find in the comment below the reason why I'm clearing csum_algo every time
-> the SCTP CRC32c is computed.
->
->> > --- a/net/netfilter/ipvs/ip_vs_proto_sctp.c
->> > +++ b/net/netfilter/ipvs/ip_vs_proto_sctp.c
->> > @@ -81,7 +81,7 @@ static void sctp_nat_csum(struct sk_buff *skb, sctp_sctphdr_t *sctph,
->> >                           unsigned int sctphoff)
->> >  {
->> >         sctph->checksum = sctp_compute_cksum(skb, sctphoff);
->> > -       skb->ip_summed = CHECKSUM_UNNECESSARY;
->> > +       skb_set_crc32c_ipsummed(skb, CHECKSUM_UNNECESSARY);
->>
->> The old code is better. CHECKSUM_UNNECESSARY already applies to non IP
->> checksums. There is nothing special about crc32 in this regard and
->> skb->csum_algo should only be valid when skb->ip_summed =
->> CHECKSUM_PARTIAL so no need to set it here. This point should also be
->> in documentation.
->
-> In my understanding, csum_algo needs to be set to INTERNET_CHECKSUM after the
-> CRC32c is computed. Otherwise, after subsequent operation on the skb (e.g. it
-> is encapsulated in a UDP frame), there is the possibility for skb->ip_summed
-> to become CHECKSUM_PARTIAL again. So, to ensure that skb_checksum_help() and
-> not skb_crc32c_help() will be called, csum_algo must be 0.
->
-ip_summed should no longer be CHECKSUM_PARTIAL with CRC32c is computed.
+OK, I will rename the bit, avoid the enum and use the 'unlikely'. Up to now,
+this series uses the bit for SCTP only and leaves unmodified behavior of
+offloaded FCoE frames: please let me know if you disagree on that.
 
-> To minimize the impact of the patch, I substituted all assignments of skb->ip_summed,
-> done by SCTP-related code, with calls to skb_set_crc32c_ipsummed(). The alternative is
-> to explicitly set csum_algo to 0 (INTERNET_CHECKSUM) in SCTP-related code. Do you agree?
->
-No, like I said the only case where this new bit is relevant is when
-CHECKSUM_PARTIAL for a CRC is being done. When it's set for offloading
-sctp crc it must be set. When CRC is resolved, in the helper for
-instance, it must be cleared. If these rules are properly followed
-then the bit will be zero in all other cases without needing any
-additional work or conditionals.
+On Fri, 2017-04-07 at 08:43 -0700, Tom Herbert wrote:
+> On Fri, Apr 7, 2017 at 10:29 AM, Davide Caratti <dcaratti@redhat.com> wrote:
+> > In my understanding, csum_algo needs to be set to INTERNET_CHECKSUM after the
+> > CRC32c is computed. Otherwise, after subsequent operation on the skb (e.g. it
+> > is encapsulated in a UDP frame), there is the possibility for skb->ip_summed
+> > to become CHECKSUM_PARTIAL again. So, to ensure that skb_checksum_help() and
+> > not skb_crc32c_help() will be called, csum_algo must be 0.
 
-Tom
+> ip_summed should no longer be CHECKSUM_PARTIAL with CRC32c is computed.
 
-> thank you in advance,
-> regards
-> --
-> davide
->
+Even though it's uncommon, skb->ip_summed can become CHECKSUM_PARTIAL again
+after the CRC32c is computed and CHECKSUM_NONE is set: for example, when a
+veth and a vxlan with UDP checksums are enslaved to the same bridge, and the
+NIC below vxlan has no checksumming capabilities. Here, validate_xmit_skb is
+called three times on the same skb (see perf output at the bottom): 
+
+* before transmission on the veth: here ip_summed is CHECKSUM_PARTIAL, but
+the device supports CRC32c offload so the skb is (correctly) untouched.
+
+* before vxlan encapsulation: here ip_summed is CHECKSUM_PARTIAL,
+skb->csum_not_inet is 1 and NETIF_F_SCTP_CRC is not set. Here,
+skb_csum_hwoffload_help() correctly fills the CRC32c and assigns ip_summed
+to CHECKSUM_NONE.
+
+* before transmission on the NIC: ip_summed is CHECKSUM_PARTIAL again (because
+udp_set_csum changed csum_start and csum_offset to point to the tunnel
+UDP header). No bit in NETIF_F_HW_CSUM is set: if skb->csum_not_inet is still 1,
+the helper (wrongly) computes CRC32c again, thus corrupting the outer UDP
+transport header. On the contrary, if skb->csum_not_inet is 0, skb_checksum_help()
+correctly resolves CHECKSUM_PARTIAL.
+
+To avoid this problem, skb->csum_not_inet must be assigned to 0 every time
+the CHECKSUM_PARTIAL is resolved on skb carrying SCTP packets.
+
+> > To minimize the impact of the patch, I substituted all assignments of skb->ip_summed,
+> > done by SCTP-related code, with calls to skb_set_crc32c_ipsummed(). The alternative is
+> > to explicitly set csum_algo to 0 (INTERNET_CHECKSUM) in SCTP-related code. Do you agree?
+
+> No, like I said the only case where this new bit is relevant is when
+> CHECKSUM_PARTIAL for a CRC is being done. When it's set for offloading
+> sctp crc it must be set. When CRC is resolved, in the helper for
+> instance, it must be cleared. If these rules are properly followed
+> then the bit will be zero in all other cases without needing any
+> additional work or conditionals.
+
+At a minimum, this csum_not_inet bit needs to be cleared in three places:
+1) in skb_crc32c_csum_help, to fix scenarios like veth->bridge->vxlan->NIC above.
+2) in sctp_gso_make_checksum, a SCTP GSO packet is segmented and CRC32c is written
+on each segment. skb->ip_summed transitions from CHECKSUM_PARTIAL to CHECKSUM_NONE.
+3) in act_csum, because TC action mangling the packet are called before 
+validate_xmit_skb().
+
+It is not necessary to do it in netfilter NAT (even it is harmless), because
+SCTP packets having CHECKSUM_PARTIAL are not resolved (since commit 3189a290f98d
+"netfilter: nat: skip checksum on offload SCTP packets"). And it should be not
+needed in IPVS code, because ip_summed is set to CHECKSUM_UNNECESSARY, so skb
+is not going to be checksummed anymore.
+
+thank you in advance for the feedback!
+regards,
+--
+davide 
+
+
+scenario:
+
+vethA --> vethB --> bridge --> vxlan encaps --> NIC
+
+# ./perf probe -k vmlinux  --add \
+ "skb_csum_hwoffload_help csum_offset=skb->csum_offset ip_summed=skb->ip_summed:b2@7/32 skb=skb"
+# ./perf record -e probe:skb_csum_hwoffload_help -aR -- ./scenario-vxlan.sh 
+
+# ./perf script
+<....>
+ncat  7577 [000] 22056.548907: probe:skb_csum_hwoffload_help: (ffffffff8162a6f0) csum_offset=8 ip_summed=1 skb=0xffff880106f6bd00
+ncat  7577 [000] 22056.548915: probe:skb_csum_hwoffload_help: (ffffffff8162a6f0) csum_offset=8 ip_summed=1 skb=0xffff880106f6bd00
+ncat  7577 [000] 22056.548917: probe:skb_csum_hwoffload_help: (ffffffff8162a6f0) csum_offset=6 ip_summed=1 skb=0xffff880106f6bd00
+<....>
+
