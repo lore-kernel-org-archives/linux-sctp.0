@@ -1,37 +1,30 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 03 Apr 2017 22:01:30 +0000
-Subject: Re: [PATCH net] sctp: check for dst and pathmtu update in sctp_packet_config
-Message-Id: <20170403.150130.1161020461020101697.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 15 Apr 2017 14:00:26 +0000
+Subject: [PATCH net-next 0/3] sctp: add proper process for duplicated stream reconf requests
+Message-Id: <cover.1492264734.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <7d69e45b3cc8f84658e04ab07288a9fe09254e12.1491038159.git.lucien.xin@gmail.com>
-In-Reply-To: <7d69e45b3cc8f84658e04ab07288a9fe09254e12.1491038159.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sat,  1 Apr 2017 17:15:59 +0800
+Now sctp stream reconf will process a request again even if it's seqno
+is less than asoc->strreset_inseq. It may cause a replay attack.
 
-> This patch is to move sctp_transport_dst_check into sctp_packet_config
-> from sctp_packet_transmit and add pathmtu check in sctp_packet_config.
-> 
-> With this fix, sctp can update dst or pathmtu before appending chunks,
-> which can void dropping packets in sctp_packet_transmit when dst is
-> obsolete or dst's mtu is changed.
-> 
-> This patch is also to improve some other codes in sctp_packet_config.
-> It updates packet max_size with gso_max_size, checks for dst and
-> pathmtu, and appends ecne chunk only when packet is empty and asoc
-> is not NULL.
-> 
-> It makes sctp flush work better, as we only need to set up them once
-> for one flush schedule. It's also safe, since asoc is NULL only when
-> the packet is created by sctp_ootb_pkt_new in which it just gets the
-> new dst, no need to do more things for it other than set packet with
-> transport's pathmtu.
-> 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+This patchset is to avoid it by add proper process for all duplicated
+stream reconf requests.
 
-Applied, thanks Xin.
+Xin Long (3):
+  sctp: process duplicated strreset out and addstrm out requests
+    correctly
+  sctp: process duplicated strreset in and addstrm in requests correctly
+  sctp: process duplicated strreset asoc request correctly
+
+ include/net/sctp/structs.h |  1 +
+ net/sctp/stream.c          | 96 +++++++++++++++++++++++++++++++++++-----------
+ 2 files changed, 74 insertions(+), 23 deletions(-)
+
+-- 
+2.1.0
+
