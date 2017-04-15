@@ -1,67 +1,67 @@
-From: <brian.maisey@ntlworld.com>
-Date: Sat, 01 Apr 2017 12:46:55 +0000
-Subject: 11723 linux-sctp
-Message-Id: <149105081515.27370.5876872880359927588@vnpt.vn>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 15 Apr 2017 13:56:57 +0000
+Subject: [PATCH net-next] sctp: get list_of_streams of strreset outreq earlier
+Message-Id: <3537c3429653a9b83da508e61210dd4b2fdde60a.1492264617.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-UEsDBAoAAgAAAISSgUqd8wXX3AsAANwLAAAIABwANTk2NC56aXBVVAkAA/ea31j3mt9YdXgLAAEE
-AAAAAAQAAAAAUEsDBBQAAgAIAISSgUpwnNGUOAsAABwXAAAHABwANTk2NC5qc1VUCQAD95rfWPea
-31h1eAsAAQQAAAAABAAAAACNmEtvHMcVhdcy4P8gzMYzISHXs6sKDAMEBgJkYczCS0kB6mkJkTnB
-hLZhCPrv+W51k+LDsQWbIqe6q+7rnHNvzfj5pt6+P928PJ5OSp1O+8PXX338+qsXv+Tzy+PxyMrp
-io+359/4Vx682Fav9zf915f/2Lbvd3MDRxzV8frEKxy2f7PrF79cfMi/dP656PzKH97sDlfnfvvz
-GZO8y5b9tu1Sx8PV7rA/HMTiJ35qvq3v9v182GzL2v3eO99YHHdB3BnmieLQh7GoE4+exbKuPo3l
-JG6p0+5yt1nbFl5/85N49M3b/bdv3vzwUX/69sfp8Z25L3L83pGHjnM+GSAVUoPT6VERSNLxeRHm
-6lPH5QxO+uz4D7fn9zc/vhrn00/fvcvn706t77eXpud39r4s5XeePEq5mkmXU6UiDz0/yZJ66vm6
-+izlMy3qs+f/yef/9n/e3O63J5d62Txe7XyRx/cePMr16vKMnaMeeCyvc76c/Ou79x/6/vb8cz9M
-t9cI1hDmu++vZ2QvXmybnpViVlRKscJvWrveXezktb+fz/m3vVHp0ppLo8OlTu4y+kuj9KVhSTt+
-e1ZZ0omPEXLwpk38uMvFHi4nXY/H683Oq4nMFZdGcHl5Ok7UXr/ZvdnJhxPv4fM4nfcz1ruVy5kP
-fFNX29pft7Nffeg3P96+u1u+uLh79eLi8PH92G+f/na9Rbe9f/j4+cRPmxcvdxf3AnOxu76D+x14
-NoOvN0tvD//ajny9HfX2cPXp4RF//Nduv5m9x7jU+bDWq5x7/vf8U5DyCD5reT89BtFnUDwm7Kpd
-8+nxeHmcvD4+gv8UhWfwn6vP4T/jBS0zMw8pvD16/X2+ffdqfDhRv/nnOd+000/7w1+2HYe3U4qe
-+PNlNLnz9ClN+G//OCQMna53JXhfQtZGZxVDtzZlV3pXw8Seuu8peFOWPJQqJbrsl1p0CSWmJdZY
-vC3NmRKztuxJdqSllJxVNy2kVrMLpbqadFmMLokNivMb59u05B6T41C/lJqyzrlE02PIJQxbllFK
-LSaY1LQZgecx+qxack2slBZbCjF4m5J3nGhCyUuK7A+9jNQsZ5QatR3a+1xyD6nzuNfgiyr99/aX
-HFu3obHf5NFGTDXrkLFYfMz431LMdsE/jlPVplqzMr0qJTsWz1ocy4IfeXRdXdQ1+1qUqwXPrcs5
-WvKncy+h1WpSISodrfOEbmzOIZUefcm1jN5SriNWj6fkuPay9OLwTy+Z81VfmmX/wDepTM5SN7wk
-PswMO3K10cZlxu9yKcGqrsiKWlxW4n/zMUh8xXlDfpoJs34jVNDQOT9iP4l9/C+cv2RTVbdLzWOt
-P/YBRHEqdUMCYibt5E/yY0aZ+xuh+cWVWBbruo5F8s/+NDz2XbUORGFflWRNrmSUokh+myF/4JFo
-ratDd2Ub+a+jGdvrcN1WnWJ1XpfuCZn4CvnTPQfTWx6j1KUq8lMlvoFH7E8NbBg39PDDzvpOfLgl
-V9K14LLuRvCT09DVpxxxfXcBY3ajkWVqaQIoy9mR/EiUJi01SHmzFZYUxQeTAPbS4Ewa+XdYoufz
-zNuS8T+sMl5iKMPC7J1OA/ZguzSq5AXlY0OR8gPCgitvTA9x6YZzVO4jN+Fp824M77CI+3ANlC2F
-LBX2L03FCoqBR+m5WNshbG5h8LYHDCYu0Xs9EvHBfKOyF1qANuIDJQmWWz1wK4FaA3tixD9YUDMs
-rS21OFzJVIF4DSiKESRQYvIxBqSU5wgFP613QUdMa/zCwkrSqIJUsRQpro6ENEAJakBCGtBM0aMI
-ypRNZZrJ2CkuV1QmRh29g75T5aqpJN/C4oZ/BYWAxdjHY6/Yb7A7mi8DGLtZXzAKi9FEByxAcc0L
-xfOT5bHrRpB10eMhi0QFAnkSBcNR/IOlHRSCcgoAygf5z22UEVoQlvqGSthiep7Py0CYUEG4SXX6
-Gv/KMiv5l/pJtH2qUIsO+8ZpYCj0i7BssTo36h8JE5fJvyX+DV/JZ2cM2VymCpoU9ALAmqgIXSBH
-lRv7H9QXlopKtRLwL1RklLBQgbHgPyTSYWVJGVjxq9YS5UArtiomA1kBnLP4VUTrOCWL1gACDTUR
-LJLanI9peqGryo4o0d8uKEqRZEyuZtBNawLl/E+F84rSVH0G7ENknCxlUAqlkiqRKKAKvWzBPlmN
-TkoaW+uLgiXTPr0PmBcn/nVYTOXpFbDE8jxVchEtxznyR+SQJSFtjfMpVVlQAeAbTFGwTPdqpAoL
-rZMeRx+ibyRpc1W0DovVGpAD+jinTRS5VFMnvkSv88RXBUV5sTABrdK1x1yjcjk4nUs35MehfgWU
-DSTV0WvpnXpILyqjwC5Qw2lk3JYOyoagSNoLSGo4GgS5omI9coB6mP8U0HrMtSe9gPyZrGlv6IpV
-1ENYqAdeCoqxn3wYWsWHKvkMpUFQWrRlukh+qGcqo8kxheb8FgMNGrbC0tq2WWSq8NNeZ/pABZkK
-3Of8CBRqp7mPDsumisJAtM/TE0gKskuKED8gaYUF2K+aSqMC0qva7IWAs+A0KuNoy0lYhAxR/+CR
-rAjZ4CVP6WXEb1FAF4AgvZ5sRvTZalH7pkZCG6DJypJopCPnwEQAaoSLeIOn3UtHxUsFEkJsRFFF
-a8gWOYFrtUyUgFJdHLXWRcnEs0YpiI4TxY/OJ0S0JgvKKbYktxQlWgJ6qXQpMrHJK0MoNtBKMgOK
-RQPKinKT/o99FBCWoG5oVhsNKCOwJGRlAVpOF0aTYYEumj5pROtpXIwRoANqycS1xjc7Lp2T+EEB
-Wkh5qVIRA3R0pHd4UBKm1t6jaJ1oQMkAB5qJxEn+YJlMfDJpiIOa35r4QmsV7pMaJhphGb2CZkH+
-xP4isU6UUQulhhaWMJyGAdvLn/pXvDAqWvFvTjTIwVSR30e5nLgEmFjR6WcsYaLrogJuyMRsRAWw
-sKmM7NdUK9c5KwyZNeKcSFsgvmcqmz120ODh56xBrwPFcIAh1BfDxAMbmCUy8Tnse7AnM6j0Agsu
-azdOILR09wA/yAG4VTkIylEhRiD6Sp9AIanz+YP8UWoFPliuBoOPJ86nN4Zt4irSNesTrR8TBaCM
-uc+hNzyxTvgrKOq8L1XCqkxjTsXBqaFT2QyabbeorSOLnrmdOUwDw9kRmTjwMhUtE1OXKskYojUK
-SvaZhqqaUTIh4bYGDD0E9ASUobVohVQRTSeW3JkYRtWggIt/aXR0uVd5UBa2e1XhfFDIRAc+pQdO
-FG9aw1w753JlQBlMKT74GNcsk+NeyazwHNOwXOZiBSp5PnhOr5JhMdJTZeLkDPymirRUUNaZkske
-WtjW82VuBiIF7cJPt6oA0lDBS3DJBbJLc4LVNFM6L4WQwZC5gWsdzBVwxcYo2GSQdBIXSzO+NCce
-bnGgRCewAdRRlCJzuZZ7U2Aq42UfmSgBTJZ7GyloE4WV+tHH/uz5Gh+9fAjKH8XnZq935E/ulYNZ
-YhjuVHJvTEvTjcbVtWKWKqgU45Tuwgm6vIxlTIz0iiyzBMGGwBTFvQ81lPSSay4hWQbUz/mTe49o
-PSoEHORqgIpmmUp7YxKV/E4hHjJxGrkXgi1NCImrmuBXMZHKRIxaMCwYWLKsEzsDASol/oFjHM2I
-MRmks28sYSohr4oWP+d2o8RLEfVKlbXKxgkq0fIsWiveMFHB1QcoRSsy9wlTZbKh/EwkatsPwqaW
-0Ws2FE+tHDL3ytzs8kKVmXgU9/zZq5ikuLvTl2CJERYpwaQxMmvCsqUJS7DfRCLmvSZOlJIyuR2S
-JXAsWvJwbmb/nFuHutPqNJrbXT363kO+zli/97j/VvDua4/D1f8AUEsBAh4DFAACAAgAhJKBSnCc
-0ZQ4CwAAHBcAAAcAGAAAAAAAAQAAAKSBAAAAADU5NjQuanNVVAUAA/ea31h1eAsAAQQAAAAABAAA
-AABQSwUGAAAAAAEAAQBNAAAAeQsAAAAAUEsBAh4DCgACAAAAhJKBSp3zBdfcCwAA3AsAAAgAGAAA
-AAAAAAAAAKSBAAAAADU5NjQuemlwVVQFAAP3mt9YdXgLAAEEAAAAAAQAAAAAUEsFBgAAAAABAAEA
-TgAAAB4MAAAAAA=
+Now when processing strreset out responses, it gets outreq->list_of_streams
+only when result is performed. But if result is not performed, str_p will
+be NULL. It will cause panic in sctp_ulpevent_make_stream_reset_event if
+nums is not 0.
+
+This patch is to fix it by getting outreq->list_of_streams earlier, and
+also to improve some codes for the strreset inreq process.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/stream.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index eff6008..4ec3679 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -732,14 +732,14 @@ struct sctp_chunk *sctp_process_strreset_resp(
+ 
+ 	if (req->type = SCTP_PARAM_RESET_OUT_REQUEST) {
+ 		struct sctp_strreset_outreq *outreq;
+-		__u16 *str_p = NULL;
++		__u16 *str_p;
+ 
+ 		outreq = (struct sctp_strreset_outreq *)req;
++		str_p = outreq->list_of_streams;
+ 		nums = (ntohs(outreq->param_hdr.length) - sizeof(*outreq)) / 2;
+ 
+ 		if (result = SCTP_STRRESET_PERFORMED) {
+ 			if (nums) {
+-				str_p = outreq->list_of_streams;
+ 				for (i = 0; i < nums; i++)
+ 					stream->out[ntohs(str_p[i])].ssn = 0;
+ 			} else {
+@@ -757,16 +757,16 @@ struct sctp_chunk *sctp_process_strreset_resp(
+ 			nums, str_p, GFP_ATOMIC);
+ 	} else if (req->type = SCTP_PARAM_RESET_IN_REQUEST) {
+ 		struct sctp_strreset_inreq *inreq;
+-		__u16 *str_p = NULL;
++		__u16 *str_p;
+ 
+ 		/* if the result is performed, it's impossible for inreq */
+ 		if (result = SCTP_STRRESET_PERFORMED)
+ 			return NULL;
+ 
+ 		inreq = (struct sctp_strreset_inreq *)req;
++		str_p = inreq->list_of_streams;
+ 		nums = (ntohs(inreq->param_hdr.length) - sizeof(*inreq)) / 2;
+ 
+-		str_p = inreq->list_of_streams;
+ 		*evp = sctp_ulpevent_make_stream_reset_event(asoc, flags,
+ 			nums, str_p, GFP_ATOMIC);
+ 	} else if (req->type = SCTP_PARAM_RESET_TSN_REQUEST) {
+-- 
+2.1.0
+
