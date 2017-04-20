@@ -1,212 +1,116 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 01 Apr 2017 09:07:03 +0000
-Subject: Re: [PATCH net-next] sctp: add SCTP_PR_STREAM_STATUS sockopt for prsctp
-Message-Id: <CADvbK_dLcuW8q_wQosKf0pB8PHV1XQ45L77zHCuMvak1PyQJPg@mail.gmail.com>
+From: Davide Caratti <dcaratti@redhat.com>
+Date: Thu, 20 Apr 2017 13:38:08 +0000
+Subject: [PATCH RFC net-next v4 2/7] net: introduce skb_crc32c_csum_help
+Message-Id: <2d4895be40590b624bed89df38ea64e560aa2f10.1492692976.git.dcaratti@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <683bd49225abe18aa3cbd285bacb6a514a2d06b2.1490955249.git.lucien.xin@gmail.com>
- <20170331180813.GC5879@localhost.localdomain>
-In-Reply-To: <20170331180813.GC5879@localhost.localdomain>
+References: <CALx6S36rem=OuN_At6qYA=se5cpuYM1N2R8efoaszvo8b8Tz5A@mail.gmail.com>
+In-Reply-To: <CALx6S36rem=OuN_At6qYA=se5cpuYM1N2R8efoaszvo8b8Tz5A@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem <davem@davemloft.net>
+To: Tom Herbert <tom@herbertland.com>, Alexander Duyck <alexander.duyck@gmail.com>, David Laight <David.Laight@aculab.com>
+Cc: "David S . Miller" <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-On Sat, Apr 1, 2017 at 2:08 AM, Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
-> On Fri, Mar 31, 2017 at 06:14:09PM +0800, Xin Long wrote:
->> Before when implementing sctp prsctp, SCTP_PR_STREAM_STATUS wasn't
->> added, as it needs to save abandoned_(un)sent for every stream.
->>
->> After sctp stream reconf is added in sctp, assoc has structure
->> sctp_stream_out to save per stream info.
->>
->> This patch is to add SCTP_PR_STREAM_STATUS by putting the prsctp
->> per stream statistics into sctp_stream_out.
->>
->> Signed-off-by: Xin Long <lucien.xin@gmail.com>
->> ---
->>  include/net/sctp/structs.h |  2 ++
->>  include/uapi/linux/sctp.h  |  1 +
->>  net/sctp/chunk.c           | 14 +++++++++--
->>  net/sctp/outqueue.c        | 10 ++++++++
->>  net/sctp/socket.c          | 59 ++++++++++++++++++++++++++++++++++++++++++++++
->>  5 files changed, 84 insertions(+), 2 deletions(-)
->>
->> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
->> index 592dece..3e61a54 100644
->> --- a/include/net/sctp/structs.h
->> +++ b/include/net/sctp/structs.h
->> @@ -1315,6 +1315,8 @@ struct sctp_inithdr_host {
->>  struct sctp_stream_out {
->>       __u16   ssn;
->>       __u8    state;
->> +     __u64   abandoned_unsent[SCTP_PR_INDEX(MAX) + 1];
->> +     __u64   abandoned_sent[SCTP_PR_INDEX(MAX) + 1];
->>  };
->>
->>  struct sctp_stream_in {
->> diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
->> index 7212870..ced9d8b 100644
->> --- a/include/uapi/linux/sctp.h
->> +++ b/include/uapi/linux/sctp.h
->> @@ -115,6 +115,7 @@ typedef __s32 sctp_assoc_t;
->>  #define SCTP_PR_SUPPORTED    113
->>  #define SCTP_DEFAULT_PRINFO  114
->>  #define SCTP_PR_ASSOC_STATUS 115
->> +#define SCTP_PR_STREAM_STATUS        116
->>  #define SCTP_RECONFIG_SUPPORTED      117
->>  #define SCTP_ENABLE_STREAM_RESET     118
->>  #define SCTP_RESET_STREAMS   119
->> diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
->> index e3621cb..697721a 100644
->> --- a/net/sctp/chunk.c
->> +++ b/net/sctp/chunk.c
->> @@ -306,14 +306,24 @@ int sctp_chunk_abandoned(struct sctp_chunk *chunk)
->>
->>       if (SCTP_PR_TTL_ENABLED(chunk->sinfo.sinfo_flags) &&
->>           time_after(jiffies, chunk->msg->expires_at)) {
->> -             if (chunk->sent_count)
->> +             struct sctp_stream_out *streamout >> +                     &chunk->asoc->stream->out[chunk->sinfo.sinfo_stream];
->> +
->> +             if (chunk->sent_count) {
->>                       chunk->asoc->abandoned_sent[SCTP_PR_INDEX(TTL)]++;
->> -             else
->> +                     streamout->abandoned_sent[SCTP_PR_INDEX(TTL)]++;
->> +             } else {
->>                       chunk->asoc->abandoned_unsent[SCTP_PR_INDEX(TTL)]++;
->> +                     streamout->abandoned_unsent[SCTP_PR_INDEX(TTL)]++;
->> +             }
->>               return 1;
->>       } else if (SCTP_PR_RTX_ENABLED(chunk->sinfo.sinfo_flags) &&
->>                  chunk->sent_count > chunk->sinfo.sinfo_timetolive) {
->> +             struct sctp_stream_out *streamout >> +                     &chunk->asoc->stream->out[chunk->sinfo.sinfo_stream];
->> +
->>               chunk->asoc->abandoned_sent[SCTP_PR_INDEX(RTX)]++;
->> +             streamout->abandoned_sent[SCTP_PR_INDEX(RTX)]++;
->>               return 1;
->>       } else if (!SCTP_PR_POLICY(chunk->sinfo.sinfo_flags) &&
->>                  chunk->msg->expires_at &&
->> diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
->> index 025ccff..3f78d7f 100644
->> --- a/net/sctp/outqueue.c
->> +++ b/net/sctp/outqueue.c
->> @@ -353,6 +353,8 @@ static int sctp_prsctp_prune_sent(struct sctp_association *asoc,
->>       struct sctp_chunk *chk, *temp;
->>
->>       list_for_each_entry_safe(chk, temp, queue, transmitted_list) {
->> +             struct sctp_stream_out *streamout;
->> +
->>               if (!SCTP_PR_PRIO_ENABLED(chk->sinfo.sinfo_flags) ||
->>                   chk->sinfo.sinfo_timetolive <= sinfo->sinfo_timetolive)
->>                       continue;
->> @@ -361,8 +363,10 @@ static int sctp_prsctp_prune_sent(struct sctp_association *asoc,
->>               sctp_insert_list(&asoc->outqueue.abandoned,
->>                                &chk->transmitted_list);
->>
->> +             streamout = &asoc->stream->out[chk->sinfo.sinfo_stream];
->>               asoc->sent_cnt_removable--;
->>               asoc->abandoned_sent[SCTP_PR_INDEX(PRIO)]++;
->> +             streamout->abandoned_sent[SCTP_PR_INDEX(PRIO)]++;
->>
->>               if (!chk->tsn_gap_acked) {
->>                       if (chk->transport)
->> @@ -396,6 +400,12 @@ static int sctp_prsctp_prune_unsent(struct sctp_association *asoc,
->>               q->out_qlen -= chk->skb->len;
->>               asoc->sent_cnt_removable--;
->>               asoc->abandoned_unsent[SCTP_PR_INDEX(PRIO)]++;
->> +             if (chk->sinfo.sinfo_stream < asoc->stream->outcnt) {
->> +                     struct sctp_stream_out *streamout >> +                             &asoc->stream->out[chk->sinfo.sinfo_stream];
->> +
->> +                     streamout->abandoned_unsent[SCTP_PR_INDEX(PRIO)]++;
->> +             }
->>
->>               msg_len -= SCTP_DATA_SNDSIZE(chk) +
->>                          sizeof(struct sk_buff) +
->> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
->> index ccc08fc..8c0b528 100644
->> --- a/net/sctp/socket.c
->> +++ b/net/sctp/socket.c
->> @@ -6576,6 +6576,61 @@ static int sctp_getsockopt_pr_assocstatus(struct sock *sk, int len,
->>       return retval;
->>  }
->>
->> +static int sctp_getsockopt_pr_streamstatus(struct sock *sk, int len,
->> +                                        char __user *optval,
->> +                                       int __user *optlen)
->     You're missing an space here     -----^
-right, will post v2, thanks.
+skb_crc32c_csum_help is like skb_checksum_help, but it is designed for
+checksumming SCTP packets using crc32c (see RFC3309), provided that
+libcrc32c.ko has been loaded before. In case libcrc32c is not loaded,
+invoking skb_crc32c_csum_help on a skb results in one the following
+printouts:
 
->
-> otherwise it lgtm
->
->> +{
->> +     struct sctp_stream_out *streamout;
->> +     struct sctp_association *asoc;
->> +     struct sctp_prstatus params;
->> +     int retval = -EINVAL;
->> +     int policy;
->> +
->> +     if (len < sizeof(params))
->> +             goto out;
->> +
->> +     len = sizeof(params);
->> +     if (copy_from_user(&params, optval, len)) {
->> +             retval = -EFAULT;
->> +             goto out;
->> +     }
->> +
->> +     policy = params.sprstat_policy;
->> +     if (policy & ~SCTP_PR_SCTP_MASK)
->> +             goto out;
->> +
->> +     asoc = sctp_id2assoc(sk, params.sprstat_assoc_id);
->> +     if (!asoc || params.sprstat_sid >= asoc->stream->outcnt)
->> +             goto out;
->> +
->> +     streamout = &asoc->stream->out[params.sprstat_sid];
->> +     if (policy = SCTP_PR_SCTP_NONE) {
->> +             params.sprstat_abandoned_unsent = 0;
->> +             params.sprstat_abandoned_sent = 0;
->> +             for (policy = 0; policy <= SCTP_PR_INDEX(MAX); policy++) {
->> +                     params.sprstat_abandoned_unsent +>> +                             streamout->abandoned_unsent[policy];
->> +                     params.sprstat_abandoned_sent +>> +                             streamout->abandoned_sent[policy];
->> +             }
->> +     } else {
->> +             params.sprstat_abandoned_unsent >> +                     streamout->abandoned_unsent[__SCTP_PR_INDEX(policy)];
->> +             params.sprstat_abandoned_sent >> +                     streamout->abandoned_sent[__SCTP_PR_INDEX(policy)];
->> +     }
->> +
->> +     if (put_user(len, optlen) || copy_to_user(optval, &params, len)) {
->> +             retval = -EFAULT;
->> +             goto out;
->> +     }
->> +
->> +     retval = 0;
->> +
->> +out:
->> +     return retval;
->> +}
->> +
->>  static int sctp_getsockopt_reconfig_supported(struct sock *sk, int len,
->>                                             char __user *optval,
->>                                             int __user *optlen)
->> @@ -6825,6 +6880,10 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
->>               retval = sctp_getsockopt_pr_assocstatus(sk, len, optval,
->>                                                       optlen);
->>               break;
->> +     case SCTP_PR_STREAM_STATUS:
->> +             retval = sctp_getsockopt_pr_streamstatus(sk, len, optval,
->> +                                                      optlen);
->> +             break;
->>       case SCTP_RECONFIG_SUPPORTED:
->>               retval = sctp_getsockopt_reconfig_supported(sk, len, optval,
->>                                                           optlen);
->> --
->> 2.1.0
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+warn_crc32c_csum_update: attempt to compute crc32c without libcrc32c.ko
+warn_crc32c_csum_combine: attempt to compute crc32c without libcrc32c.ko
+
+Signed-off-by: Davide Caratti <dcaratti@redhat.com>
+---
+ include/linux/netdevice.h |  1 +
+ include/linux/skbuff.h    |  3 ++-
+ net/core/dev.c            | 40 ++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 43 insertions(+), 1 deletion(-)
+
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+index b0aa089..bf84a67 100644
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -3898,6 +3898,7 @@ void netdev_rss_key_fill(void *buffer, size_t len);
+ 
+ int dev_get_nest_level(struct net_device *dev);
+ int skb_checksum_help(struct sk_buff *skb);
++int skb_crc32c_csum_help(struct sk_buff *skb);
+ struct sk_buff *__skb_gso_segment(struct sk_buff *skb,
+ 				  netdev_features_t features, bool tx_path);
+ struct sk_buff *skb_mac_gso_segment(struct sk_buff *skb,
+diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+index ba3ae21..ec4551b 100644
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -193,7 +193,8 @@
+  *     accordingly. Note the there is no indication in the skbuff that the
+  *     CHECKSUM_PARTIAL refers to an SCTP checksum, a driver that supports
+  *     both IP checksum offload and SCTP CRC offload must verify which offload
+- *     is configured for a packet presumably by inspecting packet headers.
++ *     is configured for a packet presumably by inspecting packet headers; in
++ *     case, skb_crc32c_csum_help is provided to compute CRC on SCTP packets.
+  *
+  *   NETIF_F_FCOE_CRC - This feature indicates that a device is capable of
+  *     offloading the FCOE CRC in a packet. To perform this offload the stack
+diff --git a/net/core/dev.c b/net/core/dev.c
+index 5d33e2b..c7aec95 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -140,6 +140,7 @@
+ #include <linux/hrtimer.h>
+ #include <linux/netfilter_ingress.h>
+ #include <linux/crash_dump.h>
++#include <linux/sctp.h>
+ 
+ #include "net-sysfs.h"
+ 
+@@ -2606,6 +2607,45 @@ int skb_checksum_help(struct sk_buff *skb)
+ }
+ EXPORT_SYMBOL(skb_checksum_help);
+ 
++int skb_crc32c_csum_help(struct sk_buff *skb)
++{
++	__le32 crc32c_csum;
++	int ret = 0, offset;
++
++	if (skb->ip_summed != CHECKSUM_PARTIAL)
++		goto out;
++
++	if (unlikely(skb_is_gso(skb)))
++		goto out;
++
++	/* Before computing a checksum, we should make sure no frag could
++	 * be modified by an external entity : checksum could be wrong.
++	 */
++	if (unlikely(skb_has_shared_frag(skb))) {
++		ret = __skb_linearize(skb);
++		if (ret)
++			goto out;
++	}
++
++	offset = skb_checksum_start_offset(skb);
++	crc32c_csum = cpu_to_le32(~__skb_checksum(skb, offset,
++						  skb->len - offset, ~(__u32)0,
++						  crc32c_csum_stub));
++	offset += offsetof(struct sctphdr, checksum);
++	BUG_ON(offset >= skb_headlen(skb));
++
++	if (skb_cloned(skb) &&
++	    !skb_clone_writable(skb, offset + sizeof(__le32))) {
++		ret = pskb_expand_head(skb, 0, 0, GFP_ATOMIC);
++		if (ret)
++			goto out;
++	}
++	*(__le32 *)(skb->data + offset) = crc32c_csum;
++	skb->ip_summed = CHECKSUM_NONE;
++out:
++	return ret;
++}
++
+ __be16 skb_network_protocol(struct sk_buff *skb, int *depth)
+ {
+ 	__be16 type = skb->protocol;
+-- 
+2.7.4
+
