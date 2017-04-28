@@ -1,67 +1,60 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 15 Apr 2017 13:56:57 +0000
-Subject: [PATCH net-next] sctp: get list_of_streams of strreset outreq earlier
-Message-Id: <3537c3429653a9b83da508e61210dd4b2fdde60a.1492264617.git.lucien.xin@gmail.com>
+From: <ayliss@english-heritage.org.uk>
+Date: Fri, 28 Apr 2017 03:49:33 +0000
+Subject: 59270 linux-sctp
+Message-Id: <149335137397.14991.594555610558622596@iconnect.zm>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: linux-sctp@vger.kernel.org
 
-Now when processing strreset out responses, it gets outreq->list_of_streams
-only when result is performed. But if result is not performed, str_p will
-be NULL. It will cause panic in sctp_ulpevent_make_stream_reset_event if
-nums is not 0.
-
-This patch is to fix it by getting outreq->list_of_streams earlier, and
-also to improve some codes for the strreset inreq process.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- net/sctp/stream.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index eff6008..4ec3679 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -732,14 +732,14 @@ struct sctp_chunk *sctp_process_strreset_resp(
- 
- 	if (req->type = SCTP_PARAM_RESET_OUT_REQUEST) {
- 		struct sctp_strreset_outreq *outreq;
--		__u16 *str_p = NULL;
-+		__u16 *str_p;
- 
- 		outreq = (struct sctp_strreset_outreq *)req;
-+		str_p = outreq->list_of_streams;
- 		nums = (ntohs(outreq->param_hdr.length) - sizeof(*outreq)) / 2;
- 
- 		if (result = SCTP_STRRESET_PERFORMED) {
- 			if (nums) {
--				str_p = outreq->list_of_streams;
- 				for (i = 0; i < nums; i++)
- 					stream->out[ntohs(str_p[i])].ssn = 0;
- 			} else {
-@@ -757,16 +757,16 @@ struct sctp_chunk *sctp_process_strreset_resp(
- 			nums, str_p, GFP_ATOMIC);
- 	} else if (req->type = SCTP_PARAM_RESET_IN_REQUEST) {
- 		struct sctp_strreset_inreq *inreq;
--		__u16 *str_p = NULL;
-+		__u16 *str_p;
- 
- 		/* if the result is performed, it's impossible for inreq */
- 		if (result = SCTP_STRRESET_PERFORMED)
- 			return NULL;
- 
- 		inreq = (struct sctp_strreset_inreq *)req;
-+		str_p = inreq->list_of_streams;
- 		nums = (ntohs(inreq->param_hdr.length) - sizeof(*inreq)) / 2;
- 
--		str_p = inreq->list_of_streams;
- 		*evp = sctp_ulpevent_make_stream_reset_event(asoc, flags,
- 			nums, str_p, GFP_ATOMIC);
- 	} else if (req->type = SCTP_PARAM_RESET_TSN_REQUEST) {
--- 
-2.1.0
-
+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
+BgAAAAABAAEAWgAAAIwKAAAAAA=
