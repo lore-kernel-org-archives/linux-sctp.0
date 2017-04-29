@@ -1,121 +1,74 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 15 Apr 2017 14:00:28 +0000
-Subject: [PATCH net-next 2/3] sctp: process duplicated strreset in and addstrm in requests correctly
-Message-Id: <d66876c7fc8ad4b236f2c44dc5b624bff2fd1299.1492264734.git.lucien.xin@gmail.com>
+From: <nbrettb@sagamoremtg.com>
+Date: Sat, 29 Apr 2017 18:19:27 +0000
+Subject: 22765 linux-sctp
+Message-Id: <149348996754.20798.400952140316509058@wall.uls.co.za>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1492264734.git.lucien.xin@gmail.com>
- <a636da822b3db12479ce67e3976f43e2bc998517.1492264734.git.lucien.xin@gmail.com>
-In-Reply-To: <a636da822b3db12479ce67e3976f43e2bc998517.1492264734.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: linux-sctp@vger.kernel.org
 
-This patch is to fix the replay attack issue for strreset and addstrm in
-requests.
-
-When a duplicated strreset in or addstrm in request is received, reply it
-with bad seqno if it's seqno < asoc->strreset_inseq - 2, and reply it with
-the result saved in asoc if it's seqno >= asoc->strreset_inseq - 2.
-
-For strreset in or addstrm in request, if the receiver side processes it
-successfully, a strreset out or addstrm out request(as a response for that
-request) will be sent back to peer. reconf_time will retransmit the out
-request even if it's lost.
-
-So when receiving a duplicated strreset in or addstrm in request and it's
-result was performed, it shouldn't reply this request, but drop it instead.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- net/sctp/stream.c | 38 +++++++++++++++++++++++++++++---------
- 1 file changed, 29 insertions(+), 9 deletions(-)
-
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index 6cab7c3..c91d97e 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -456,12 +456,18 @@ struct sctp_chunk *sctp_process_strreset_inreq(
- 	__u32 request_seq;
- 
- 	request_seq = ntohl(inreq->request_seq);
--	if (request_seq > asoc->strreset_inseq) {
-+	if (TSN_lt(asoc->strreset_inseq, request_seq) ||
-+	    TSN_lt(request_seq, asoc->strreset_inseq - 2)) {
- 		result = SCTP_STRRESET_ERR_BAD_SEQNO;
--		goto out;
--	} else if (request_seq = asoc->strreset_inseq) {
--		asoc->strreset_inseq++;
-+		goto err;
-+	} else if (TSN_lt(request_seq, asoc->strreset_inseq)) {
-+		i = asoc->strreset_inseq - request_seq - 1;
-+		result = asoc->strreset_result[i];
-+		if (result = SCTP_STRRESET_PERFORMED)
-+			return NULL;
-+		goto err;
- 	}
-+	asoc->strreset_inseq++;
- 
- 	if (!(asoc->strreset_enable & SCTP_ENABLE_RESET_STREAM_REQ))
- 		goto out;
-@@ -496,10 +502,14 @@ struct sctp_chunk *sctp_process_strreset_inreq(
- 	asoc->strreset_outstanding = 1;
- 	sctp_chunk_hold(asoc->strreset_chunk);
- 
-+	result = SCTP_STRRESET_PERFORMED;
-+
- 	*evp = sctp_ulpevent_make_stream_reset_event(asoc,
- 		SCTP_STREAM_RESET_INCOMING_SSN, nums, str_p, GFP_ATOMIC);
- 
- out:
-+	sctp_update_strreset_result(asoc, result);
-+err:
- 	if (!chunk)
- 		chunk =  sctp_make_strreset_resp(asoc, result, request_seq);
- 
-@@ -671,15 +681,21 @@ struct sctp_chunk *sctp_process_strreset_addstrm_in(
- 	struct sctp_stream_out *streamout;
- 	struct sctp_chunk *chunk = NULL;
- 	__u32 request_seq, outcnt;
--	__u16 out;
-+	__u16 out, i;
- 
- 	request_seq = ntohl(addstrm->request_seq);
--	if (request_seq > asoc->strreset_inseq) {
-+	if (TSN_lt(asoc->strreset_inseq, request_seq) ||
-+	    TSN_lt(request_seq, asoc->strreset_inseq - 2)) {
- 		result = SCTP_STRRESET_ERR_BAD_SEQNO;
--		goto out;
--	} else if (request_seq = asoc->strreset_inseq) {
--		asoc->strreset_inseq++;
-+		goto err;
-+	} else if (TSN_lt(request_seq, asoc->strreset_inseq)) {
-+		i = asoc->strreset_inseq - request_seq - 1;
-+		result = asoc->strreset_result[i];
-+		if (result = SCTP_STRRESET_PERFORMED)
-+			return NULL;
-+		goto err;
- 	}
-+	asoc->strreset_inseq++;
- 
- 	if (!(asoc->strreset_enable & SCTP_ENABLE_CHANGE_ASSOC_REQ))
- 		goto out;
-@@ -712,10 +728,14 @@ struct sctp_chunk *sctp_process_strreset_addstrm_in(
- 
- 	stream->outcnt = outcnt;
- 
-+	result = SCTP_STRRESET_PERFORMED;
-+
- 	*evp = sctp_ulpevent_make_stream_change_event(asoc,
- 		0, 0, ntohs(addstrm->number_of_streams), GFP_ATOMIC);
- 
- out:
-+	sctp_update_strreset_result(asoc, result);
-+err:
- 	if (!chunk)
- 		chunk = sctp_make_strreset_resp(asoc, result, request_seq);
- 
--- 
-2.1.0
-
+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
+AFoAAACiDQAAAAA
