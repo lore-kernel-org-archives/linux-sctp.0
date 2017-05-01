@@ -1,95 +1,75 @@
-From: <kasweetness@yahoo.com_>
-Date: Sun, 14 May 2017 21:38:07 +0000
-Subject: 27644 linux-sctp
-Message-Id: <149479788708.31457.3910890178132082499@interra.ru>
+From: SF Markus Elfring <elfring@users.sourceforge.net>
+Date: Mon, 01 May 2017 13:33:29 +0000
+Subject: [PATCH 3/3] sctp: Replace four seq_printf() calls by seq_puts()
+Message-Id: <e1c75816-be5a-2ddb-101e-4abf08e140f1@users.sourceforge.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <ea9206ca-2a2f-095e-d764-3f819610d5e8@users.sourceforge.net>
+In-Reply-To: <ea9206ca-2a2f-095e-d764-3f819610d5e8@users.sourceforge.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
+Cc: LKML <linux-kernel@vger.kernel.org>, kernel-janitors@vger.kernel.org
 
-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
-AEoSAAAAAA=
+From: Markus Elfring <elfring@users.sourceforge.net>
+Date: Mon, 1 May 2017 14:54:18 +0200
+
+Strings which did not contain data format specifications should be put
+into a sequence. Thus use the corresponding function "seq_puts".
+
+This issue was detected by using the Coccinelle software.
+
+Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
+---
+ net/sctp/proc.c | 16 +++++++---------
+ 1 file changed, 7 insertions(+), 9 deletions(-)
+
+diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+index 458087681490..a9dc4538db44 100644
+--- a/net/sctp/proc.c
++++ b/net/sctp/proc.c
+@@ -184,7 +184,8 @@ static void *sctp_eps_seq_start(struct seq_file *seq, loff_t *pos)
+ 		*pos = 0;
+ 
+ 	if (*pos = 0)
+-		seq_printf(seq, " ENDPT     SOCK   STY SST HBKT LPORT   UID INODE LADDRS\n");
++		seq_puts(seq,
++			 " ENDPT     SOCK   STY SST HBKT LPORT   UID INODE LADDRS\n");
+ 
+ 	return (void *)pos;
+ }
+@@ -326,11 +327,8 @@ static int sctp_assocs_seq_show(struct seq_file *seq, void *v)
+ 	struct sock *sk;
+ 
+ 	if (v = SEQ_START_TOKEN) {
+-		seq_printf(seq, " ASSOC     SOCK   STY SST ST HBKT "
+-				"ASSOC-ID TX_QUEUE RX_QUEUE UID INODE LPORT "
+-				"RPORT LADDRS <-> RADDRS "
+-				"HBINT INS OUTS MAXRT T1X T2X RTXC "
+-				"wmema wmemq sndbuf rcvbuf\n");
++		seq_puts(seq,
++			 " ASSOC     SOCK   STY SST ST HBKT ASSOC-ID TX_QUEUE RX_QUEUE UID INODE LPORT RPORT LADDRS <-> RADDRS HBINT INS OUTS MAXRT T1X T2X RTXC wmema wmemq sndbuf rcvbuf\n");
+ 		return 0;
+ 	}
+ 
+@@ -357,5 +355,5 @@ static int sctp_assocs_seq_show(struct seq_file *seq, void *v)
+ 	sctp_seq_dump_local_addrs(seq, epb);
+-	seq_printf(seq, "<-> ");
++	seq_puts(seq, "<-> ");
+ 	sctp_seq_dump_remote_addrs(seq, assoc);
+ 	seq_printf(seq, "\t%8lu %5d %5d %4d %4d %4d %8d "
+ 		   "%8d %8d %8d %8d",
+@@ -419,8 +417,8 @@ static int sctp_remaddr_seq_show(struct seq_file *seq, void *v)
+ 	struct sctp_transport *transport, *tsp;
+ 
+ 	if (v = SEQ_START_TOKEN) {
+-		seq_printf(seq, "ADDR ASSOC_ID HB_ACT RTO MAX_PATH_RTX "
+-				"REM_ADDR_RTX START STATE\n");
++		seq_puts(seq,
++			 "ADDR ASSOC_ID HB_ACT RTO MAX_PATH_RTX REM_ADDR_RTX START STATE\n");
+ 		return 0;
+ 	}
+ 
+-- 
+2.12.2
+
