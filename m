@@ -1,123 +1,36 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 12 May 2017 06:39:52 +0000
-Subject: [PATCH net] sctp: fix src address selection if using secondary addresses for ipv6
-Message-Id: <7bbcf970cdc9eca6de6132a942d8c46eb7e138c0.1494571192.git.lucien.xin@gmail.com>
+From: David Miller <davem@davemloft.net>
+Date: Fri, 12 May 2017 14:51:52 +0000
+Subject: Re: [PATCH net] sctp: fix src address selection if using secondary addresses for ipv6
+Message-Id: <20170512.105152.1598182497069259027.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <7bbcf970cdc9eca6de6132a942d8c46eb7e138c0.1494571192.git.lucien.xin@gmail.com>
+In-Reply-To: <7bbcf970cdc9eca6de6132a942d8c46eb7e138c0.1494571192.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
-Commit 0ca50d12fe46 ("sctp: fix src address selection if using secondary
-addresses") has fixed a src address selection issue when using secondary
-addresses for ipv4.
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 12 May 2017 14:39:52 +0800
 
-Now sctp ipv6 also has the similar issue. When using a secondary address,
-sctp_v6_get_dst tries to choose the saddr which has the most same bits
-with the daddr by sctp_v6_addr_match_len. It may make some cases not work
-as expected.
+> Commit 0ca50d12fe46 ("sctp: fix src address selection if using secondary
+> addresses") has fixed a src address selection issue when using secondary
+> addresses for ipv4.
+> 
+> Now sctp ipv6 also has the similar issue. When using a secondary address,
+> sctp_v6_get_dst tries to choose the saddr which has the most same bits
+> with the daddr by sctp_v6_addr_match_len. It may make some cases not work
+> as expected.
+ ...
+> This patch is to fix it with the same way as Marcelo's fix for sctp ipv4.
+> As no ip_dev_find for ipv6, this patch is to use ipv6_chk_addr to check
+> if the saddr is in a dev instead.
+> 
+> Note that for backwards compatibility, it will still do the addr_match_len
+> check here when no optimal is found.
+> 
+> Reported-by: Patrick Talbert <ptalbert@redhat.com>
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-hostA:
-  [1] fd21:356b:459a:cf10::11 (eth1)
-  [2] fd21:356b:459a:cf20::11 (eth2)
-
-hostB:
-  [a] fd21:356b:459a:cf30::2  (eth1)
-  [b] fd21:356b:459a:cf40::2  (eth2)
-
-route from hostA to hostB:
-  fd21:356b:459a:cf30::/64 dev eth1  metric 1024  mtu 1500
-
-The expected path should be:
-  fd21:356b:459a:cf10::11 <-> fd21:356b:459a:cf30::2
-But addr[2] matches addr[a] more bits than addr[1] does, according to
-sctp_v6_addr_match_len. It causes the path to be:
-  fd21:356b:459a:cf20::11 <-> fd21:356b:459a:cf30::2
-
-This patch is to fix it with the same way as Marcelo's fix for sctp ipv4.
-As no ip_dev_find for ipv6, this patch is to use ipv6_chk_addr to check
-if the saddr is in a dev instead.
-
-Note that for backwards compatibility, it will still do the addr_match_len
-check here when no optimal is found.
-
-Reported-by: Patrick Talbert <ptalbert@redhat.com>
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- net/sctp/ipv6.c | 46 +++++++++++++++++++++++++++++-----------------
- 1 file changed, 29 insertions(+), 17 deletions(-)
-
-diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-index 961ee59..142b70e 100644
---- a/net/sctp/ipv6.c
-+++ b/net/sctp/ipv6.c
-@@ -240,12 +240,10 @@ static void sctp_v6_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
- 	struct sctp_bind_addr *bp;
- 	struct ipv6_pinfo *np = inet6_sk(sk);
- 	struct sctp_sockaddr_entry *laddr;
--	union sctp_addr *baddr = NULL;
- 	union sctp_addr *daddr = &t->ipaddr;
- 	union sctp_addr dst_saddr;
- 	struct in6_addr *final_p, final;
- 	__u8 matchlen = 0;
--	__u8 bmatchlen;
- 	sctp_scope_t scope;
- 
- 	memset(fl6, 0, sizeof(struct flowi6));
-@@ -312,23 +310,37 @@ static void sctp_v6_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
- 	 */
- 	rcu_read_lock();
- 	list_for_each_entry_rcu(laddr, &bp->address_list, list) {
--		if (!laddr->valid)
-+		struct dst_entry *bdst;
-+		__u8 bmatchlen;
-+
-+		if (!laddr->valid ||
-+		    laddr->state != SCTP_ADDR_SRC ||
-+		    laddr->a.sa.sa_family != AF_INET6 ||
-+		    scope > sctp_scope(&laddr->a))
- 			continue;
--		if ((laddr->state = SCTP_ADDR_SRC) &&
--		    (laddr->a.sa.sa_family = AF_INET6) &&
--		    (scope <= sctp_scope(&laddr->a))) {
--			bmatchlen = sctp_v6_addr_match_len(daddr, &laddr->a);
--			if (!baddr || (matchlen < bmatchlen)) {
--				baddr = &laddr->a;
--				matchlen = bmatchlen;
--			}
--		}
--	}
--	if (baddr) {
--		fl6->saddr = baddr->v6.sin6_addr;
--		fl6->fl6_sport = baddr->v6.sin6_port;
-+
-+		fl6->saddr = laddr->a.v6.sin6_addr;
-+		fl6->fl6_sport = laddr->a.v6.sin6_port;
- 		final_p = fl6_update_dst(fl6, rcu_dereference(np->opt), &final);
--		dst = ip6_dst_lookup_flow(sk, fl6, final_p);
-+		bdst = ip6_dst_lookup_flow(sk, fl6, final_p);
-+
-+		if (!IS_ERR(bdst) &&
-+		    ipv6_chk_addr(dev_net(bdst->dev),
-+				  &laddr->a.v6.sin6_addr, bdst->dev, 1)) {
-+			if (!IS_ERR_OR_NULL(dst))
-+				dst_release(dst);
-+			dst = bdst;
-+			break;
-+		}
-+
-+		bmatchlen = sctp_v6_addr_match_len(daddr, &laddr->a);
-+		if (matchlen > bmatchlen)
-+			continue;
-+
-+		if (!IS_ERR_OR_NULL(dst))
-+			dst_release(dst);
-+		dst = bdst;
-+		matchlen = bmatchlen;
- 	}
- 	rcu_read_unlock();
- 
--- 
-2.1.0
-
+Applied and queued up for -stable, thank you.
