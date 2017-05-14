@@ -1,137 +1,95 @@
-From: Davide Caratti <dcaratti@redhat.com>
-Date: Tue, 16 May 2017 09:20:43 +0000
-Subject: [PATCH net-next 5/7] net: more accurate checksumming in validate_xmit_skb()
-Message-Id: <f1d24a72fc09366a2a64ff4055556a0623047225.1494883280.git.dcaratti@redhat.com>
+From: <kasweetness@yahoo.com_>
+Date: Sun, 14 May 2017 21:38:07 +0000
+Subject: 27644 linux-sctp
+Message-Id: <149479788708.31457.3910890178132082499@interra.ru>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-skb_csum_hwoffload_help() uses netdev features and skb->csum_not_inet to
-determine if skb needs software computation of Internet Checksum or crc32c
-(or nothing, if this computation can be done by the hardware). Use it in
-place of skb_checksum_help() in validate_xmit_skb() to avoid corruption
-of non-GSO SCTP packets having skb->ip_summed equal to CHECKSUM_PARTIAL.
-
-While at it, remove references to skb_csum_off_chk* functions, since they
-are not present anymore in Linux  _ see commit cf53b1da73bd ("Revert
- "net: Add driver helper functions to determine checksum offloadability"").
-
-Signed-off-by: Davide Caratti <dcaratti@redhat.com>
----
- Documentation/networking/checksum-offloads.txt | 11 +++++++----
- include/linux/netdevice.h                      |  3 +++
- include/linux/skbuff.h                         | 13 +++++--------
- net/core/dev.c                                 | 14 ++++++++++++--
- 4 files changed, 27 insertions(+), 14 deletions(-)
-
-diff --git a/Documentation/networking/checksum-offloads.txt b/Documentation/networking/checksum-offloads.txt
-index 56e3686..d52d191 100644
---- a/Documentation/networking/checksum-offloads.txt
-+++ b/Documentation/networking/checksum-offloads.txt
-@@ -35,6 +35,9 @@ This interface only allows a single checksum to be offloaded.  Where
-  encapsulation is used, the packet may have multiple checksum fields in
-  different header layers, and the rest will have to be handled by another
-  mechanism such as LCO or RCO.
-+CRC32c can also be offloaded using this interface, by means of filling
-+ skb->csum_start and skb->csum_offset as described above, and setting
-+ skb->csum_not_inet: see skbuff.h comment (section 'D') for more details.
- No offloading of the IP header checksum is performed; it is always done in
-  software.  This is OK because when we build the IP header, we obviously
-  have it in cache, so summing it isn't expensive.  It's also rather short.
-@@ -49,9 +52,9 @@ A driver declares its offload capabilities in netdev->hw_features; see
-  and csum_offset given in the SKB; if it tries to deduce these itself in
-  hardware (as some NICs do) the driver should check that the values in the
-  SKB match those which the hardware will deduce, and if not, fall back to
-- checksumming in software instead (with skb_checksum_help or one of the
-- skb_csum_off_chk* functions as mentioned in include/linux/skbuff.h).  This
-- is a pain, but that's what you get when hardware tries to be clever.
-+ checksumming in software instead (with skb_csum_hwoffload_help() or one of
-+ the skb_checksum_help() / skb_crc32c_csum_help functions, as mentioned in
-+ include/linux/skbuff.h).
- 
- The stack should, for the most part, assume that checksum offload is
-  supported by the underlying device.  The only place that should check is
-@@ -60,7 +63,7 @@ The stack should, for the most part, assume that checksum offload is
-  may include other offloads besides TX Checksum Offload) and, if they are
-  not supported or enabled on the device (determined by netdev->features),
-  performs the corresponding offload in software.  In the case of TX
-- Checksum Offload, that means calling skb_checksum_help(skb).
-+ Checksum Offload, that means calling skb_csum_hwoffload_help(skb, features).
- 
- 
- LCO: Local Checksum Offload
-diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index f168edb..3e454f2 100644
---- a/include/linux/netdevice.h
-+++ b/include/linux/netdevice.h
-@@ -3926,6 +3926,9 @@ void netdev_rss_key_fill(void *buffer, size_t len);
- int dev_get_nest_level(struct net_device *dev);
- int skb_checksum_help(struct sk_buff *skb);
- int skb_crc32c_csum_help(struct sk_buff *skb);
-+int skb_csum_hwoffload_help(struct sk_buff *skb,
-+			    const netdev_features_t features);
-+
- struct sk_buff *__skb_gso_segment(struct sk_buff *skb,
- 				  netdev_features_t features, bool tx_path);
- struct sk_buff *skb_mac_gso_segment(struct sk_buff *skb,
-diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
-index 2fefd92..fe109fa 100644
---- a/include/linux/skbuff.h
-+++ b/include/linux/skbuff.h
-@@ -162,14 +162,11 @@
-  *
-  *   NETIF_F_IP_CSUM and NETIF_F_IPV6_CSUM are being deprecated in favor of
-  *   NETIF_F_HW_CSUM. New devices should use NETIF_F_HW_CSUM to indicate
-- *   checksum offload capability. If a	device has limited checksum capabilities
-- *   (for instance can only perform NETIF_F_IP_CSUM or NETIF_F_IPV6_CSUM as
-- *   described above) a helper function can be called to resolve
-- *   CHECKSUM_PARTIAL. The helper functions are skb_csum_off_chk*. The helper
-- *   function takes a spec argument that describes the protocol layer that is
-- *   supported for checksum offload and can be called for each packet. If a
-- *   packet does not match the specification for offload, skb_checksum_help
-- *   is called to resolve the checksum.
-+ *   checksum offload capability.
-+ *   skb_csum_hwoffload_help() can be called to resolve CHECKSUM_PARTIAL based
-+ *   on network device checksumming capabilities: if a packet does not match
-+ *   them, skb_checksum_help or skb_crc32c_help (depending on the value of
-+ *   csum_not_inet, see item D.) is called to resolve the checksum.
-  *
-  * CHECKSUM_NONE:
-  *
-diff --git a/net/core/dev.c b/net/core/dev.c
-index 2cedb0f..242c055 100644
---- a/net/core/dev.c
-+++ b/net/core/dev.c
-@@ -2994,6 +2994,17 @@ static struct sk_buff *validate_xmit_vlan(struct sk_buff *skb,
- 	return skb;
- }
- 
-+int skb_csum_hwoffload_help(struct sk_buff *skb,
-+			    const netdev_features_t features)
-+{
-+	if (unlikely(skb->csum_not_inet))
-+		return !!(features & NETIF_F_SCTP_CRC) ? 0 :
-+			skb_crc32c_csum_help(skb);
-+
-+	return !!(features & NETIF_F_CSUM_MASK) ? 0 : skb_checksum_help(skb);
-+}
-+EXPORT_SYMBOL(skb_csum_hwoffload_help);
-+
- static struct sk_buff *validate_xmit_skb(struct sk_buff *skb, struct net_device *dev)
- {
- 	netdev_features_t features;
-@@ -3032,8 +3043,7 @@ static struct sk_buff *validate_xmit_skb(struct sk_buff *skb, struct net_device
- 			else
- 				skb_set_transport_header(skb,
- 							 skb_checksum_start_offset(skb));
--			if (!(features & NETIF_F_CSUM_MASK) &&
--			    skb_checksum_help(skb))
-+			if (skb_csum_hwoffload_help(skb, features))
- 				goto out_kfree_skb;
- 		}
- 	}
--- 
-2.7.4
-
+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
+AEoSAAAAAA=
