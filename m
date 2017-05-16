@@ -1,60 +1,52 @@
-From: <brian.maisey@ntlworld.com>
-Date: Wed, 03 May 2017 15:53:42 +0000
-Subject: 37406 linux-sctp
-Message-Id: <149382682290.27002.197635123727234552@hinet.net>
+From: Davide Caratti <dcaratti@redhat.com>
+Date: Tue, 16 May 2017 16:27:51 +0000
+Subject: [PATCH net-next v2 7/7] sk_buff.h: improve description of CHECKSUM_{COMPLETE,UNNECESSARY}
+Message-Id: <b44a70a3e512f0121f52dbf9683bf2d25f7e1941.1494946940.git.dcaratti@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1494946940.git.dcaratti@redhat.com>
+In-Reply-To: <cover.1494946940.git.dcaratti@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Cc: Alexander Duyck <alexander.duyck@gmail.com>, Tom Herbert <tom@herbertland.com>, David Laight <David.Laight@ACULAB.COM>, "David S. Miller" <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-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
+Add FCoE to the list of protocols that can set CHECKSUM_UNNECESSARY; add a
+note to CHECKSUM_COMPLETE section to specify that it does not apply to SCTP
+and FCoE protocols.
+
+Suggested-by: Tom Herbert <tom@herbertland.com>
+Signed-off-by: Davide Caratti <dcaratti@redhat.com>
+Acked-by: Tom Herbert <tom@herbertland.com>
+---
+ include/linux/skbuff.h | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+index fe109fa..5a082db 100644
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -109,6 +109,7 @@
+  *       may perform further validation in this case.
+  *     GRE: only if the checksum is present in the header.
+  *     SCTP: indicates the CRC in SCTP header has been validated.
++ *     FCOE: indicates the CRC in FC frame has been validated.
+  *
+  *   skb->csum_level indicates the number of consecutive checksums found in
+  *   the packet minus one that have been verified as CHECKSUM_UNNECESSARY.
+@@ -126,8 +127,10 @@
+  *   packet as seen by netif_rx() and fills out in skb->csum. Meaning, the
+  *   hardware doesn't need to parse L3/L4 headers to implement this.
+  *
+- *   Note: Even if device supports only some protocols, but is able to produce
+- *   skb->csum, it MUST use CHECKSUM_COMPLETE, not CHECKSUM_UNNECESSARY.
++ *   Notes:
++ *   - Even if device supports only some protocols, but is able to produce
++ *     skb->csum, it MUST use CHECKSUM_COMPLETE, not CHECKSUM_UNNECESSARY.
++ *   - CHECKSUM_COMPLETE is not applicable to SCTP and FCoE protocols.
+  *
+  * CHECKSUM_PARTIAL:
+  *
+-- 
+2.7.4
+
