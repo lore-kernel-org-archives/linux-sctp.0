@@ -1,49 +1,35 @@
 From: Davide Caratti <dcaratti@redhat.com>
-Date: Tue, 16 May 2017 09:20:45 +0000
-Subject: [PATCH net-next 7/7] sk_buff.h: improve description of CHECKSUM_{COMPLETE,UNNECESSARY}
-Message-Id: <b44a70a3e512f0121f52dbf9683bf2d25f7e1941.1494883280.git.dcaratti@redhat.com>
+Date: Tue, 16 May 2017 09:20:44 +0000
+Subject: [PATCH net-next 6/7] openvswitch: more accurate checksumming in queue_userspace_packet()
+Message-Id: <9946093f33c2d425d58a82f8625fbe610e0c4802.1494883280.git.dcaratti@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Add FCoE to the list of protocols that can set CHECKSUM_UNNECESSARY; add a
-note to CHECKSUM_COMPLETE section to specify that it does not apply to SCTP
-and FCoE protocols.
+if skb carries an SCTP packet and ip_summed is CHECKSUM_PARTIAL, it needs
+CRC32c in place of Internet Checksum: use skb_csum_hwoffload_help to avoid
+corrupting such packets while queueing them towards userspace.
 
-Suggested-by: Tom Herbert <tom@herbertland.com>
 Signed-off-by: Davide Caratti <dcaratti@redhat.com>
-Acked-by: Tom Herbert <tom@herbertland.com>
 ---
- include/linux/skbuff.h | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ net/openvswitch/datapath.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
-index fe109fa..5a082db 100644
---- a/include/linux/skbuff.h
-+++ b/include/linux/skbuff.h
-@@ -109,6 +109,7 @@
-  *       may perform further validation in this case.
-  *     GRE: only if the checksum is present in the header.
-  *     SCTP: indicates the CRC in SCTP header has been validated.
-+ *     FCOE: indicates the CRC in FC frame has been validated.
-  *
-  *   skb->csum_level indicates the number of consecutive checksums found in
-  *   the packet minus one that have been verified as CHECKSUM_UNNECESSARY.
-@@ -126,8 +127,10 @@
-  *   packet as seen by netif_rx() and fills out in skb->csum. Meaning, the
-  *   hardware doesn't need to parse L3/L4 headers to implement this.
-  *
-- *   Note: Even if device supports only some protocols, but is able to produce
-- *   skb->csum, it MUST use CHECKSUM_COMPLETE, not CHECKSUM_UNNECESSARY.
-+ *   Notes:
-+ *   - Even if device supports only some protocols, but is able to produce
-+ *     skb->csum, it MUST use CHECKSUM_COMPLETE, not CHECKSUM_UNNECESSARY.
-+ *   - CHECKSUM_COMPLETE is not applicable to SCTP and FCoE protocols.
-  *
-  * CHECKSUM_PARTIAL:
-  *
+diff --git a/net/openvswitch/datapath.c b/net/openvswitch/datapath.c
+index 7b17da9..9ddc9f8 100644
+--- a/net/openvswitch/datapath.c
++++ b/net/openvswitch/datapath.c
+@@ -453,7 +453,7 @@ static int queue_userspace_packet(struct datapath *dp, struct sk_buff *skb,
+ 
+ 	/* Complete checksum if needed */
+ 	if (skb->ip_summed = CHECKSUM_PARTIAL &&
+-	    (err = skb_checksum_help(skb)))
++	    (err = skb_csum_hwoffload_help(skb, 0)))
+ 		goto out;
+ 
+ 	/* Older versions of OVS user space enforce alignment of the last
 -- 
 2.7.4
 
