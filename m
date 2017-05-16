@@ -1,15 +1,12 @@
 From: Davide Caratti <dcaratti@redhat.com>
-Date: Thu, 18 May 2017 13:44:38 +0000
-Subject: [PATCH net-next v3 2/7] net: introduce skb_crc32c_csum_help
-Message-Id: <9ff09cf012d39dbd9245e1f39d502ffc63801567.1495112301.git.dcaratti@redhat.com>
+Date: Tue, 16 May 2017 09:20:40 +0000
+Subject: [PATCH net-next 2/7] net: introduce skb_crc32c_csum_help
+Message-Id: <89a4a12afa9a6d981c35f0fc187de34f50213bcf.1494883280.git.dcaratti@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1495112301.git.dcaratti@redhat.com>
-In-Reply-To: <cover.1495112301.git.dcaratti@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
-Cc: Alexander Duyck <alexander.duyck@gmail.com>, Tom Herbert <tom@herbertland.com>, David Laight <David.Laight@ACULAB.COM>, "David S. Miller" <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: linux-sctp@vger.kernel.org
 
 skb_crc32c_csum_help is like skb_checksum_help, but it is designed for
 checksumming SCTP packets using crc32c (see RFC3309), provided that
@@ -28,10 +25,10 @@ Signed-off-by: Davide Caratti <dcaratti@redhat.com>
  3 files changed, 44 insertions(+), 1 deletion(-)
 
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index 3f39d27..442650b 100644
+index 9c23bd2..8e771f1 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
-@@ -3931,6 +3931,7 @@ void netdev_rss_key_fill(void *buffer, size_t len);
+@@ -3927,6 +3927,7 @@ void netdev_rss_key_fill(void *buffer, size_t len);
  
  int dev_get_nest_level(struct net_device *dev);
  int skb_checksum_help(struct sk_buff *skb);
@@ -40,7 +37,7 @@ index 3f39d27..442650b 100644
  				  netdev_features_t features, bool tx_path);
  struct sk_buff *skb_mac_gso_segment(struct sk_buff *skb,
 diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
-index b1f46a0..62d6296 100644
+index 884a197..f3cfaaf 100644
 --- a/include/linux/skbuff.h
 +++ b/include/linux/skbuff.h
 @@ -193,7 +193,8 @@
@@ -54,10 +51,10 @@ index b1f46a0..62d6296 100644
   *   NETIF_F_FCOE_CRC - This feature indicates that a device is capable of
   *     offloading the FCOE CRC in a packet. To perform this offload the stack
 diff --git a/net/core/dev.c b/net/core/dev.c
-index acd594c..8356d5f 100644
+index d07aa5f..702ed50 100644
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -143,6 +143,7 @@
+@@ -141,6 +141,7 @@
  #include <linux/hrtimer.h>
  #include <linux/netfilter_ingress.h>
  #include <linux/crash_dump.h>
@@ -65,7 +62,7 @@ index acd594c..8356d5f 100644
  
  #include "net-sysfs.h"
  
-@@ -2612,6 +2613,46 @@ int skb_checksum_help(struct sk_buff *skb)
+@@ -2610,6 +2611,46 @@ int skb_checksum_help(struct sk_buff *skb)
  }
  EXPORT_SYMBOL(skb_checksum_help);
  
