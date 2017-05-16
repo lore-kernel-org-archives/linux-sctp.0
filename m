@@ -1,15 +1,12 @@
 From: Davide Caratti <dcaratti@redhat.com>
-Date: Tue, 16 May 2017 16:27:47 +0000
-Subject: [PATCH net-next v2 3/7] sk_buff: remove support for csum_bad in sk_buff
-Message-Id: <7a4c2076f525ac3ad247a5da0425d1388089d8f2.1494946940.git.dcaratti@redhat.com>
+Date: Tue, 16 May 2017 09:20:41 +0000
+Subject: [PATCH net-next 3/7] sk_buff: remove support for csum_bad in sk_buff
+Message-Id: <7a4c2076f525ac3ad247a5da0425d1388089d8f2.1494883280.git.dcaratti@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1494946940.git.dcaratti@redhat.com>
-In-Reply-To: <cover.1494946940.git.dcaratti@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
-Cc: Alexander Duyck <alexander.duyck@gmail.com>, Tom Herbert <tom@herbertland.com>, David Laight <David.Laight@ACULAB.COM>, "David S. Miller" <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: linux-sctp@vger.kernel.org
 
 This bit was introduced with commit 5a21232983aa ("net: Support for
 csum_bad in skbuff") to reduce the stack workload when processing RX
