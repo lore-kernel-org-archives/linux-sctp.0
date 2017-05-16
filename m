@@ -1,67 +1,180 @@
-From: <jginzberg@clsphila.org>
-Date: Wed, 03 May 2017 22:24:20 +0000
-Subject: 40528 linux-sctp
-Message-Id: <149385026030.8650.13861931161728782699@hinet.net>
+From: Davide Caratti <dcaratti@redhat.com>
+Date: Tue, 16 May 2017 16:27:47 +0000
+Subject: [PATCH net-next v2 3/7] sk_buff: remove support for csum_bad in sk_buff
+Message-Id: <7a4c2076f525ac3ad247a5da0425d1388089d8f2.1494946940.git.dcaratti@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1494946940.git.dcaratti@redhat.com>
+In-Reply-To: <cover.1494946940.git.dcaratti@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Cc: Alexander Duyck <alexander.duyck@gmail.com>, Tom Herbert <tom@herbertland.com>, David Laight <David.Laight@ACULAB.COM>, "David S. Miller" <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-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
+This bit was introduced with commit 5a21232983aa ("net: Support for
+csum_bad in skbuff") to reduce the stack workload when processing RX
+packets carrying a wrong Internet Checksum. Up to now, only one driver and
+GRO core are setting it.
+
+Suggested-by: Tom Herbert <tom@herbertland.com>
+Signed-off-by: Davide Caratti <dcaratti@redhat.com>
+---
+ drivers/net/ethernet/aquantia/atlantic/aq_ring.c |  2 +-
+ include/linux/netdevice.h                        |  4 +---
+ include/linux/skbuff.h                           | 23 ++---------------------
+ net/bridge/netfilter/nft_reject_bridge.c         |  5 +----
+ net/core/dev.c                                   |  3 ---
+ net/ipv4/netfilter/nf_reject_ipv4.c              |  2 +-
+ net/ipv6/netfilter/nf_reject_ipv6.c              |  3 ---
+ 7 files changed, 6 insertions(+), 36 deletions(-)
+
+diff --git a/drivers/net/ethernet/aquantia/atlantic/aq_ring.c b/drivers/net/ethernet/aquantia/atlantic/aq_ring.c
+index 3a8a4aa..9a08179 100644
+--- a/drivers/net/ethernet/aquantia/atlantic/aq_ring.c
++++ b/drivers/net/ethernet/aquantia/atlantic/aq_ring.c
+@@ -223,7 +223,7 @@ int aq_ring_rx_clean(struct aq_ring_s *self, int *work_done, int budget)
+ 		skb->protocol = eth_type_trans(skb, ndev);
+ 		if (unlikely(buff->is_cso_err)) {
+ 			++self->stats.rx.errors;
+-			__skb_mark_checksum_bad(skb);
++			skb->ip_summed = CHECKSUM_NONE;
+ 		} else {
+ 			if (buff->is_ip_cso) {
+ 				__skb_incr_checksum_unnecessary(skb);
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+index 8e771f1..f168edb 100644
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -2573,9 +2573,7 @@ static inline void skb_gro_incr_csum_unnecessary(struct sk_buff *skb)
+ 	if (__skb_gro_checksum_validate_needed(skb, zero_okay, check))	\
+ 		__ret = __skb_gro_checksum_validate_complete(skb,	\
+ 				compute_pseudo(skb, proto));		\
+-	if (__ret)							\
+-		__skb_mark_checksum_bad(skb);				\
+-	else								\
++	if (!__ret)							\
+ 		skb_gro_incr_csum_unnecessary(skb);			\
+ 	__ret;								\
+ })
+diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+index f3cfaaf..f98e3a6 100644
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -745,7 +745,7 @@ struct sk_buff {
+ 	__u8			csum_valid:1;
+ 	__u8			csum_complete_sw:1;
+ 	__u8			csum_level:2;
+-	__u8			csum_bad:1;
++	__u8			__csum_bad_unused:1; /* one bit hole */
+ 
+ 	__u8			dst_pending_confirm:1;
+ #ifdef CONFIG_IPV6_NDISC_NODETYPE
+@@ -3389,21 +3389,6 @@ static inline void __skb_incr_checksum_unnecessary(struct sk_buff *skb)
+ 	}
+ }
+ 
+-static inline void __skb_mark_checksum_bad(struct sk_buff *skb)
+-{
+-	/* Mark current checksum as bad (typically called from GRO
+-	 * path). In the case that ip_summed is CHECKSUM_NONE
+-	 * this must be the first checksum encountered in the packet.
+-	 * When ip_summed is CHECKSUM_UNNECESSARY, this is the first
+-	 * checksum after the last one validated. For UDP, a zero
+-	 * checksum can not be marked as bad.
+-	 */
+-
+-	if (skb->ip_summed = CHECKSUM_NONE ||
+-	    skb->ip_summed = CHECKSUM_UNNECESSARY)
+-		skb->csum_bad = 1;
+-}
+-
+ /* Check if we need to perform checksum complete validation.
+  *
+  * Returns true if checksum complete is needed, false otherwise
+@@ -3457,9 +3442,6 @@ static inline __sum16 __skb_checksum_validate_complete(struct sk_buff *skb,
+ 			skb->csum_valid = 1;
+ 			return 0;
+ 		}
+-	} else if (skb->csum_bad) {
+-		/* ip_summed = CHECKSUM_NONE in this case */
+-		return (__force __sum16)1;
+ 	}
+ 
+ 	skb->csum = psum;
+@@ -3519,8 +3501,7 @@ static inline __wsum null_compute_pseudo(struct sk_buff *skb, int proto)
+ 
+ static inline bool __skb_checksum_convert_check(struct sk_buff *skb)
+ {
+-	return (skb->ip_summed = CHECKSUM_NONE &&
+-		skb->csum_valid && !skb->csum_bad);
++	return (skb->ip_summed = CHECKSUM_NONE && skb->csum_valid);
+ }
+ 
+ static inline void __skb_checksum_convert(struct sk_buff *skb,
+diff --git a/net/bridge/netfilter/nft_reject_bridge.c b/net/bridge/netfilter/nft_reject_bridge.c
+index 346ef6b..c16dd3a 100644
+--- a/net/bridge/netfilter/nft_reject_bridge.c
++++ b/net/bridge/netfilter/nft_reject_bridge.c
+@@ -111,7 +111,7 @@ static void nft_reject_br_send_v4_unreach(struct net *net,
+ 	__wsum csum;
+ 	u8 proto;
+ 
+-	if (oldskb->csum_bad || !nft_bridge_iphdr_validate(oldskb))
++	if (!nft_bridge_iphdr_validate(oldskb))
+ 		return;
+ 
+ 	/* IP header checks: fragment. */
+@@ -226,9 +226,6 @@ static bool reject6_br_csum_ok(struct sk_buff *skb, int hook)
+ 	__be16 fo;
+ 	u8 proto = ip6h->nexthdr;
+ 
+-	if (skb->csum_bad)
+-		return false;
+-
+ 	if (skb_csum_unnecessary(skb))
+ 		return true;
+ 
+diff --git a/net/core/dev.c b/net/core/dev.c
+index 702ed50..1b9575c 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -4676,9 +4676,6 @@ static enum gro_result dev_gro_receive(struct napi_struct *napi, struct sk_buff
+ 	if (netif_elide_gro(skb->dev))
+ 		goto normal;
+ 
+-	if (skb->csum_bad)
+-		goto normal;
+-
+ 	gro_list_prepare(napi, skb);
+ 
+ 	rcu_read_lock();
+diff --git a/net/ipv4/netfilter/nf_reject_ipv4.c b/net/ipv4/netfilter/nf_reject_ipv4.c
+index 7cd8d0d..6f8d9e5 100644
+--- a/net/ipv4/netfilter/nf_reject_ipv4.c
++++ b/net/ipv4/netfilter/nf_reject_ipv4.c
+@@ -172,7 +172,7 @@ void nf_send_unreach(struct sk_buff *skb_in, int code, int hook)
+ 	struct iphdr *iph = ip_hdr(skb_in);
+ 	u8 proto;
+ 
+-	if (skb_in->csum_bad || iph->frag_off & htons(IP_OFFSET))
++	if (iph->frag_off & htons(IP_OFFSET))
+ 		return;
+ 
+ 	if (skb_csum_unnecessary(skb_in)) {
+diff --git a/net/ipv6/netfilter/nf_reject_ipv6.c b/net/ipv6/netfilter/nf_reject_ipv6.c
+index eedee5d..f63b18e 100644
+--- a/net/ipv6/netfilter/nf_reject_ipv6.c
++++ b/net/ipv6/netfilter/nf_reject_ipv6.c
+@@ -220,9 +220,6 @@ static bool reject6_csum_ok(struct sk_buff *skb, int hook)
+ 	__be16 fo;
+ 	u8 proto;
+ 
+-	if (skb->csum_bad)
+-		return false;
+-
+ 	if (skb_csum_unnecessary(skb))
+ 		return true;
+ 
+-- 
+2.7.4
+
