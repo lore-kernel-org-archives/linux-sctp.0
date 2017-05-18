@@ -1,34 +1,88 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 02 May 2017 13:15:10 +0000
-Subject: Re: [PATCH 0/3] net-SCTP: Fine-tuning for six function implementations
-Message-Id: <20170502131510.GA20565@hmswarspite.think-freely.org>
+From: Davide Caratti <dcaratti@redhat.com>
+Date: Thu, 18 May 2017 13:44:36 +0000
+Subject: [PATCH net-next v3 0/7] fix CRC32c in the forwarding path
+Message-Id: <cover.1495112301.git.dcaratti@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <ea9206ca-2a2f-095e-d764-3f819610d5e8@users.sourceforge.net>
-In-Reply-To: <ea9206ca-2a2f-095e-d764-3f819610d5e8@users.sourceforge.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: SF Markus Elfring <elfring@users.sourceforge.net>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Vlad Yasevich <vyasevich@gmail.com>, LKML <linux-kernel@vger.kernel.org>, kernel-janitors@vger.kernel.org
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Cc: Alexander Duyck <alexander.duyck@gmail.com>, Tom Herbert <tom@herbertland.com>, David Laight <David.Laight@ACULAB.COM>, "David S. Miller" <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-On Mon, May 01, 2017 at 03:30:25PM +0200, SF Markus Elfring wrote:
-> From: Markus Elfring <elfring@users.sourceforge.net>
-> Date: Mon, 1 May 2017 15:25:05 +0200
-> 
-> A few update suggestions were taken into account
-> from static source code analysis.
-> 
-> Markus Elfring (3):
->   Replace six seq_printf() calls by seq_putc()
->   Combine two seq_printf() calls into one call in sctp_remaddr_seq_show()
->   Replace four seq_printf() calls by seq_puts()
-> 
->  net/sctp/proc.c | 39 ++++++++++++++++-----------------------
->  1 file changed, 16 insertions(+), 23 deletions(-)
-> 
-> -- 
-> 2.12.2
-> 
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Current kernel allows offloading CRC32c computation when SCTP packets
+are generated, setting skb->ip_summed to CHECKSUM_PARTIAL, if the
+underlying device features have NETIF_F_SCTP_CRC set. However, after these
+packets are forwarded, they may land on a device where CRC32c offloading is
+not available: as a consequence, transmission is done with wrong CRC32c.
+It's not possible to use sctp_compte_cksum() in the forwarding path
+and in most drivers, because it needs symbols exported by libcrc32c module.
+
+Patch 1 and 2 of this series try to solve this problem, introducing a new
+helper function, namely skb_crc32c_csum_help(), that can be used to resolve
+CHECKSUM_PARTIAL when crc32c is needed instead of Internet Checksum.
+
+Currently, we need to parse the packet headers to understand what algorithm
+is needed to resolve CHECKSUM_PARTIAL. We can speedup things by storing
+this information in the skb metadata, and use it to call an appropriate
+helper (skb_checksum_help or skb_crc32c_csum_help), or leave the packet
+unmodified when the NIC is able to offload the checksum computation.
+
+Patch 3 deprecates skb->csum_bad to free one bit in skb metadata; patch 4
+introduces skb->csum_not_inet, providing skb with an indication on the
+algorithm needed to resolve CHECKSUM_PARTIAL.
+Patch 5 and 6 fix the kernel forwarding path and openvswitch datapath,
+where skb_checksum_help was unconditionally called to resolve CHECKSUM_PARTIAL,
+thus generating wrong CRC32c in forwarded SCTP packets.
+Finally, patch 7 updates documentation to provide a better description of
+possible values of skb->ip_summed.
+
+Some further work is still possible:
+* drivers that parse the packet header to correctly resolve CHECKSUM_PARTIAL
+(e.g. ixgbe_tx_csum()) can benefit from testing skb->csum_not_inet to avoid
+calling ip_hdr(skb)->protocol or ixgbe_ipv6_csum_is_sctp(skb).
+
+* drivers that call skb_checksum_help() to resolve CHECKSUM_PARTIAL can
+call skb_csum_hwoffload_help to avoid corrupting SCTP packets.
+
+
+Changes v2->v3: 
+- patch 1/7: more standard declaration of stub variables
+
+Changes v1->v2:
+- none
+
+Changes RFCv4->v1:
+- patch 2/7: use WARN_ON_ONCE() instead of BUG_ON(), and avoid computing
+CRC32c on the error path.
+- patch 3/7: don't invert tests on the values of same_flow and
+NAPI_GRO_CB(skb)->flush in dev_gro_receive(), it's useless and it breaks
+GRO functionality as reported by kernel test robot.
+
+
+Davide Caratti (7):
+  skbuff: add stub to help computing crc32c on SCTP packets
+  net: introduce skb_crc32c_csum_help
+  sk_buff: remove support for csum_bad in sk_buff
+  net: use skb->csum_not_inet to identify packets needing crc32c
+  net: more accurate checksumming in validate_xmit_skb()
+  openvswitch: more accurate checksumming in queue_userspace_packet()
+  sk_buff.h: improve description of CHECKSUM_{COMPLETE,UNNECESSARY}
+
+ Documentation/networking/checksum-offloads.txt   | 11 +++--
+ drivers/net/ethernet/aquantia/atlantic/aq_ring.c |  2 +-
+ include/linux/netdevice.h                        |  8 ++--
+ include/linux/skbuff.h                           | 58 +++++++++--------------
+ net/bridge/netfilter/nft_reject_bridge.c         |  5 +-
+ net/core/dev.c                                   | 59 ++++++++++++++++++++++--
+ net/core/skbuff.c                                | 26 +++++++++++
+ net/ipv4/netfilter/nf_reject_ipv4.c              |  2 +-
+ net/ipv6/netfilter/nf_reject_ipv6.c              |  3 --
+ net/openvswitch/datapath.c                       |  2 +-
+ net/sched/act_csum.c                             |  1 +
+ net/sctp/offload.c                               |  7 +++
+ net/sctp/output.c                                |  1 +
+ 13 files changed, 127 insertions(+), 58 deletions(-)
+
+-- 
+2.7.4
 
