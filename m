@@ -1,61 +1,140 @@
-From: <brian.maisey@ntlworld.com>
-Date: Sat, 20 May 2017 14:55:43 +0000
-Subject: 
-Message-Id: <149529214344.31455.10295709035641518121@permonline.ru>
+From: Davide Caratti <dcaratti@redhat.com>
+Date: Thu, 18 May 2017 13:44:41 +0000
+Subject: [PATCH net-next v3 5/7] net: more accurate checksumming in validate_xmit_skb()
+Message-Id: <8f7ed9126057d1003b8cc06f8ab74b54f9f6a783.1495112302.git.dcaratti@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1495112301.git.dcaratti@redhat.com>
+In-Reply-To: <cover.1495112301.git.dcaratti@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Cc: Alexander Duyck <alexander.duyck@gmail.com>, Tom Herbert <tom@herbertland.com>, David Laight <David.Laight@ACULAB.COM>, "David S. Miller" <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-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
+skb_csum_hwoffload_help() uses netdev features and skb->csum_not_inet to
+determine if skb needs software computation of Internet Checksum or crc32c
+(or nothing, if this computation can be done by the hardware). Use it in
+place of skb_checksum_help() in validate_xmit_skb() to avoid corruption
+of non-GSO SCTP packets having skb->ip_summed equal to CHECKSUM_PARTIAL.
+
+While at it, remove references to skb_csum_off_chk* functions, since they
+are not present anymore in Linux  _ see commit cf53b1da73bd ("Revert
+ "net: Add driver helper functions to determine checksum offloadability"").
+
+Signed-off-by: Davide Caratti <dcaratti@redhat.com>
+---
+ Documentation/networking/checksum-offloads.txt | 11 +++++++----
+ include/linux/netdevice.h                      |  3 +++
+ include/linux/skbuff.h                         | 13 +++++--------
+ net/core/dev.c                                 | 14 ++++++++++++--
+ 4 files changed, 27 insertions(+), 14 deletions(-)
+
+diff --git a/Documentation/networking/checksum-offloads.txt b/Documentation/networking/checksum-offloads.txt
+index 56e3686..d52d191 100644
+--- a/Documentation/networking/checksum-offloads.txt
++++ b/Documentation/networking/checksum-offloads.txt
+@@ -35,6 +35,9 @@ This interface only allows a single checksum to be offloaded.  Where
+  encapsulation is used, the packet may have multiple checksum fields in
+  different header layers, and the rest will have to be handled by another
+  mechanism such as LCO or RCO.
++CRC32c can also be offloaded using this interface, by means of filling
++ skb->csum_start and skb->csum_offset as described above, and setting
++ skb->csum_not_inet: see skbuff.h comment (section 'D') for more details.
+ No offloading of the IP header checksum is performed; it is always done in
+  software.  This is OK because when we build the IP header, we obviously
+  have it in cache, so summing it isn't expensive.  It's also rather short.
+@@ -49,9 +52,9 @@ A driver declares its offload capabilities in netdev->hw_features; see
+  and csum_offset given in the SKB; if it tries to deduce these itself in
+  hardware (as some NICs do) the driver should check that the values in the
+  SKB match those which the hardware will deduce, and if not, fall back to
+- checksumming in software instead (with skb_checksum_help or one of the
+- skb_csum_off_chk* functions as mentioned in include/linux/skbuff.h).  This
+- is a pain, but that's what you get when hardware tries to be clever.
++ checksumming in software instead (with skb_csum_hwoffload_help() or one of
++ the skb_checksum_help() / skb_crc32c_csum_help functions, as mentioned in
++ include/linux/skbuff.h).
+ 
+ The stack should, for the most part, assume that checksum offload is
+  supported by the underlying device.  The only place that should check is
+@@ -60,7 +63,7 @@ The stack should, for the most part, assume that checksum offload is
+  may include other offloads besides TX Checksum Offload) and, if they are
+  not supported or enabled on the device (determined by netdev->features),
+  performs the corresponding offload in software.  In the case of TX
+- Checksum Offload, that means calling skb_checksum_help(skb).
++ Checksum Offload, that means calling skb_csum_hwoffload_help(skb, features).
+ 
+ 
+ LCO: Local Checksum Offload
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+index 970a255..4980f83 100644
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -3930,6 +3930,9 @@ void netdev_rss_key_fill(void *buffer, size_t len);
+ int dev_get_nest_level(struct net_device *dev);
+ int skb_checksum_help(struct sk_buff *skb);
+ int skb_crc32c_csum_help(struct sk_buff *skb);
++int skb_csum_hwoffload_help(struct sk_buff *skb,
++			    const netdev_features_t features);
++
+ struct sk_buff *__skb_gso_segment(struct sk_buff *skb,
+ 				  netdev_features_t features, bool tx_path);
+ struct sk_buff *skb_mac_gso_segment(struct sk_buff *skb,
+diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+index a43d208..43d7ca07 100644
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -162,14 +162,11 @@
+  *
+  *   NETIF_F_IP_CSUM and NETIF_F_IPV6_CSUM are being deprecated in favor of
+  *   NETIF_F_HW_CSUM. New devices should use NETIF_F_HW_CSUM to indicate
+- *   checksum offload capability. If a	device has limited checksum capabilities
+- *   (for instance can only perform NETIF_F_IP_CSUM or NETIF_F_IPV6_CSUM as
+- *   described above) a helper function can be called to resolve
+- *   CHECKSUM_PARTIAL. The helper functions are skb_csum_off_chk*. The helper
+- *   function takes a spec argument that describes the protocol layer that is
+- *   supported for checksum offload and can be called for each packet. If a
+- *   packet does not match the specification for offload, skb_checksum_help
+- *   is called to resolve the checksum.
++ *   checksum offload capability.
++ *   skb_csum_hwoffload_help() can be called to resolve CHECKSUM_PARTIAL based
++ *   on network device checksumming capabilities: if a packet does not match
++ *   them, skb_checksum_help or skb_crc32c_help (depending on the value of
++ *   csum_not_inet, see item D.) is called to resolve the checksum.
+  *
+  * CHECKSUM_NONE:
+  *
+diff --git a/net/core/dev.c b/net/core/dev.c
+index 71107d1..bb136f7 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -2996,6 +2996,17 @@ static struct sk_buff *validate_xmit_vlan(struct sk_buff *skb,
+ 	return skb;
+ }
+ 
++int skb_csum_hwoffload_help(struct sk_buff *skb,
++			    const netdev_features_t features)
++{
++	if (unlikely(skb->csum_not_inet))
++		return !!(features & NETIF_F_SCTP_CRC) ? 0 :
++			skb_crc32c_csum_help(skb);
++
++	return !!(features & NETIF_F_CSUM_MASK) ? 0 : skb_checksum_help(skb);
++}
++EXPORT_SYMBOL(skb_csum_hwoffload_help);
++
+ static struct sk_buff *validate_xmit_skb(struct sk_buff *skb, struct net_device *dev)
+ {
+ 	netdev_features_t features;
+@@ -3034,8 +3045,7 @@ static struct sk_buff *validate_xmit_skb(struct sk_buff *skb, struct net_device
+ 			else
+ 				skb_set_transport_header(skb,
+ 							 skb_checksum_start_offset(skb));
+-			if (!(features & NETIF_F_CSUM_MASK) &&
+-			    skb_checksum_help(skb))
++			if (skb_csum_hwoffload_help(skb, features))
+ 				goto out_kfree_skb;
+ 		}
+ 	}
+-- 
+2.7.4
+
