@@ -1,12 +1,15 @@
 From: Davide Caratti <dcaratti@redhat.com>
-Date: Tue, 16 May 2017 09:20:41 +0000
-Subject: [PATCH net-next 3/7] sk_buff: remove support for csum_bad in sk_buff
-Message-Id: <7a4c2076f525ac3ad247a5da0425d1388089d8f2.1494883280.git.dcaratti@redhat.com>
+Date: Thu, 18 May 2017 13:44:39 +0000
+Subject: [PATCH net-next v3 3/7] sk_buff: remove support for csum_bad in sk_buff
+Message-Id: <1054ff2d2d41c8f985cf4e64438c09d00f7d3a35.1495112302.git.dcaratti@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1495112301.git.dcaratti@redhat.com>
+In-Reply-To: <cover.1495112301.git.dcaratti@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Cc: Alexander Duyck <alexander.duyck@gmail.com>, Tom Herbert <tom@herbertland.com>, David Laight <David.Laight@ACULAB.COM>, "David S. Miller" <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
 This bit was introduced with commit 5a21232983aa ("net: Support for
 csum_bad in skbuff") to reduce the stack workload when processing RX
@@ -39,7 +42,7 @@ index 3a8a4aa..9a08179 100644
  			if (buff->is_ip_cso) {
  				__skb_incr_checksum_unnecessary(skb);
 diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
-index 8e771f1..f168edb 100644
+index 442650b..970a255 100644
 --- a/include/linux/netdevice.h
 +++ b/include/linux/netdevice.h
 @@ -2573,9 +2573,7 @@ static inline void skb_gro_incr_csum_unnecessary(struct sk_buff *skb)
@@ -54,10 +57,10 @@ index 8e771f1..f168edb 100644
  	__ret;								\
  })
 diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
-index f3cfaaf..f98e3a6 100644
+index 62d6296..c38f890 100644
 --- a/include/linux/skbuff.h
 +++ b/include/linux/skbuff.h
-@@ -745,7 +745,7 @@ struct sk_buff {
+@@ -685,7 +685,7 @@ struct sk_buff {
  	__u8			csum_valid:1;
  	__u8			csum_complete_sw:1;
  	__u8			csum_level:2;
@@ -66,7 +69,7 @@ index f3cfaaf..f98e3a6 100644
  
  	__u8			dst_pending_confirm:1;
  #ifdef CONFIG_IPV6_NDISC_NODETYPE
-@@ -3389,21 +3389,6 @@ static inline void __skb_incr_checksum_unnecessary(struct sk_buff *skb)
+@@ -3336,21 +3336,6 @@ static inline void __skb_incr_checksum_unnecessary(struct sk_buff *skb)
  	}
  }
  
@@ -88,7 +91,7 @@ index f3cfaaf..f98e3a6 100644
  /* Check if we need to perform checksum complete validation.
   *
   * Returns true if checksum complete is needed, false otherwise
-@@ -3457,9 +3442,6 @@ static inline __sum16 __skb_checksum_validate_complete(struct sk_buff *skb,
+@@ -3404,9 +3389,6 @@ static inline __sum16 __skb_checksum_validate_complete(struct sk_buff *skb,
  			skb->csum_valid = 1;
  			return 0;
  		}
@@ -98,7 +101,7 @@ index f3cfaaf..f98e3a6 100644
  	}
  
  	skb->csum = psum;
-@@ -3519,8 +3501,7 @@ static inline __wsum null_compute_pseudo(struct sk_buff *skb, int proto)
+@@ -3466,8 +3448,7 @@ static inline __wsum null_compute_pseudo(struct sk_buff *skb, int proto)
  
  static inline bool __skb_checksum_convert_check(struct sk_buff *skb)
  {
@@ -132,10 +135,10 @@ index 346ef6b..c16dd3a 100644
  		return true;
  
 diff --git a/net/core/dev.c b/net/core/dev.c
-index 702ed50..1b9575c 100644
+index 8356d5f..f0281ff 100644
 --- a/net/core/dev.c
 +++ b/net/core/dev.c
-@@ -4676,9 +4676,6 @@ static enum gro_result dev_gro_receive(struct napi_struct *napi, struct sk_buff
+@@ -4678,9 +4678,6 @@ static enum gro_result dev_gro_receive(struct napi_struct *napi, struct sk_buff
  	if (netif_elide_gro(skb->dev))
  		goto normal;
  
