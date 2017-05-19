@@ -1,45 +1,119 @@
-From: Vlad Yasevich <vyasevic@redhat.com>
-Date: Mon, 22 May 2017 21:00:36 +0000
-Subject: Re: [PATCH 4/5] sctp: Improve a size determination in sctp_inetaddr_event()
-Message-Id: <90582e7d-1e22-cf23-2f51-6630ab1b9bf4@redhat.com>
+From: Davide Caratti <dcaratti@redhat.com>
+Date: Fri, 19 May 2017 15:34:46 +0000
+Subject: [PATCH net] sctp: fix ICMP processing if skb is non-linear
+Message-Id: <cb2535a6a40a84684f26d7c7d26788cc3f8a2010.1495207495.git.dcaratti@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <2845df67-d35d-536a-0a53-b2eb83fe1ba5@users.sourceforge.net>
- <a96c883f-0495-ad8c-e3a4-c80f27b76ed2@users.sourceforge.net>
-In-Reply-To: <a96c883f-0495-ad8c-e3a4-c80f27b76ed2@users.sourceforge.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: SF Markus Elfring <elfring@users.sourceforge.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
-Cc: LKML <linux-kernel@vger.kernel.org>, kernel-janitors@vger.kernel.org
+To: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+Cc: "David S. Miller" <davem@davemloft.net>, Xin Long <lucien.xin@gmail.com>
 
-On 05/22/2017 12:40 PM, SF Markus Elfring wrote:
-> From: Markus Elfring <elfring@users.sourceforge.net>
-> Date: Mon, 22 May 2017 18:08:24 +0200
-> 
-> Replace the specification of a data structure by a pointer dereference
-> as the parameter for the operator "sizeof" to make the corresponding size
-> determination a bit safer according to the Linux coding style convention.
-> 
-> Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
-> ---
->  net/sctp/protocol.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-> index 64756c42cec9..057479b7bd72 100644
-> --- a/net/sctp/protocol.c
-> +++ b/net/sctp/protocol.c
-> @@ -784,7 +784,7 @@ static int sctp_inetaddr_event(struct notifier_block *this, unsigned long ev,
->  
->  	switch (ev) {
->  	case NETDEV_UP:
-> -		addr = kmalloc(sizeof(struct sctp_sockaddr_entry), GFP_ATOMIC);
-> +		addr = kmalloc(sizeof(*addr), GFP_ATOMIC);
->  		if (addr) {
->  			addr->a.v4.sin_family = AF_INET;
->  			addr->a.v4.sin_port = 0;
-> 
+when the ICMP packet is carried by a paged skb, sctp_err_lookup() may fail
+validation even if the payload contents match an open socket: as a
+consequence, sometimes ICMPs are wrongly ignored. Use skb_header_pointer()
+to retrieve encapsulated SCTP headers, to ensure that ICMP payloads are
+validated correctly, also when skbs are non-linear.
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+Signed-off-by: Davide Caratti <dcaratti@redhat.com>
+---
+ include/net/sctp/sctp.h |  2 +-
+ net/sctp/input.c        | 29 +++++++++++++++++++----------
+ net/sctp/ipv6.c         |  2 +-
+ 3 files changed, 21 insertions(+), 12 deletions(-)
 
--vlad
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 069582e..1b8c16b 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -152,7 +152,7 @@ void sctp_v4_err(struct sk_buff *skb, u32 info);
+ void sctp_hash_endpoint(struct sctp_endpoint *);
+ void sctp_unhash_endpoint(struct sctp_endpoint *);
+ struct sock *sctp_err_lookup(struct net *net, int family, struct sk_buff *,
+-			     struct sctphdr *, struct sctp_association **,
++			     struct sctp_association **,
+ 			     struct sctp_transport **);
+ void sctp_err_finish(struct sock *, struct sctp_transport *);
+ void sctp_icmp_frag_needed(struct sock *, struct sctp_association *,
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 0e06a27..7f3f983 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -469,19 +469,19 @@ void sctp_icmp_proto_unreachable(struct sock *sk,
+ 
+ /* Common lookup code for icmp/icmpv6 error handler. */
+ struct sock *sctp_err_lookup(struct net *net, int family, struct sk_buff *skb,
+-			     struct sctphdr *sctphdr,
+ 			     struct sctp_association **app,
+ 			     struct sctp_transport **tpp)
+ {
++	struct sctp_init_chunk _chunkhdr, *chunkhdr;
++	struct sctphdr _sctphdr, *sctphdr;
+ 	union sctp_addr saddr;
+ 	union sctp_addr daddr;
+ 	struct sctp_af *af;
+ 	struct sock *sk = NULL;
+ 	struct sctp_association *asoc;
+ 	struct sctp_transport *transport = NULL;
+-	struct sctp_init_chunk *chunkhdr;
+-	__u32 vtag = ntohl(sctphdr->vtag);
+-	int len = skb->len - ((void *)sctphdr - (void *)skb->data);
++	int offset;
++	__u32 vtag;
+ 
+ 	*app = NULL; *tpp = NULL;
+ 
+@@ -515,14 +515,23 @@ struct sock *sctp_err_lookup(struct net *net, int family, struct sk_buff *skb,
+ 	 * or the chunk type or the Initiate Tag does not match, silently
+ 	 * discard the packet.
+ 	 */
++	offset = skb_transport_offset(skb);
++	sctphdr = skb_header_pointer(skb, offset, sizeof(_sctphdr), &_sctphdr);
++	if (unlikely(!sctphdr))
++		goto out;
++
++	vtag = ntohl(sctphdr->vtag);
+ 	if (vtag = 0) {
+-		chunkhdr = (void *)sctphdr + sizeof(struct sctphdr);
+-		if (len < sizeof(struct sctphdr) + sizeof(sctp_chunkhdr_t)
+-			  + sizeof(__be32) ||
++		offset += sizeof(_sctphdr);
++		/* chunk header + first 4 octects of init header */
++		chunkhdr = skb_header_pointer(skb, offset,
++					      sizeof(struct sctp_chunkhdr) +
++					      sizeof(__be32), &_chunkhdr);
++		if (!chunkhdr ||
+ 		    chunkhdr->chunk_hdr.type != SCTP_CID_INIT ||
+-		    ntohl(chunkhdr->init_hdr.init_tag) != asoc->c.my_vtag) {
++		    ntohl(chunkhdr->init_hdr.init_tag) != asoc->c.my_vtag)
+ 			goto out;
+-		}
++
+ 	} else if (vtag != asoc->c.peer_vtag) {
+ 		goto out;
+ 	}
+@@ -585,7 +594,7 @@ void sctp_v4_err(struct sk_buff *skb, __u32 info)
+ 	savesctp = skb->transport_header;
+ 	skb_reset_network_header(skb);
+ 	skb_set_transport_header(skb, ihlen);
+-	sk = sctp_err_lookup(net, AF_INET, skb, sctp_hdr(skb), &asoc, &transport);
++	sk = sctp_err_lookup(net, AF_INET, skb, &asoc, &transport);
+ 	/* Put back, the original values. */
+ 	skb->network_header = saveip;
+ 	skb->transport_header = savesctp;
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 142b70e..d72c8d5 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -157,7 +157,7 @@ static void sctp_v6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
+ 	savesctp = skb->transport_header;
+ 	skb_reset_network_header(skb);
+ 	skb_set_transport_header(skb, offset);
+-	sk = sctp_err_lookup(net, AF_INET6, skb, sctp_hdr(skb), &asoc, &transport);
++	sk = sctp_err_lookup(net, AF_INET6, skb, &asoc, &transport);
+ 	/* Put back, the original pointers. */
+ 	skb->network_header   = saveip;
+ 	skb->transport_header = savesctp;
+-- 
+2.7.4
+
