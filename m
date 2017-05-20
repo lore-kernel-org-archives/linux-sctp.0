@@ -1,98 +1,61 @@
-From: Davide Caratti <dcaratti@redhat.com>
-Date: Tue, 16 May 2017 09:20:39 +0000
-Subject: [PATCH net-next 1/7] skbuff: add stub to help computing crc32c on SCTP packets
-Message-Id: <970ffbc429b9297c3038f12f4b9cad1afbdbc375.1494883280.git.dcaratti@redhat.com>
+From: <brian.maisey@ntlworld.com>
+Date: Sat, 20 May 2017 14:55:43 +0000
+Subject: 
+Message-Id: <149529214344.31455.10295709035641518121@permonline.ru>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-sctp_compute_checksum requires crc32c symbol (provided by libcrc32c), so
-it can't be used in net core. Like it has been done previously with other
-symbols (e.g. ipv6_dst_lookup), introduce a stub struct skb_checksum_ops
-to allow computation of crc32c checksum in net core after sctp.ko (and thus
-libcrc32c) has been loaded.
-
-Reviewed-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Signed-off-by: Davide Caratti <dcaratti@redhat.com>
----
- include/linux/skbuff.h |  2 ++
- net/core/skbuff.c      | 24 ++++++++++++++++++++++++
- net/sctp/offload.c     |  7 +++++++
- 3 files changed, 33 insertions(+)
-
-diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
-index a098d95..884a197 100644
---- a/include/linux/skbuff.h
-+++ b/include/linux/skbuff.h
-@@ -3129,6 +3129,8 @@ struct skb_checksum_ops {
- 	__wsum (*combine)(__wsum csum, __wsum csum2, int offset, int len);
- };
- 
-+extern const struct skb_checksum_ops *crc32c_csum_stub __read_mostly;
-+
- __wsum __skb_checksum(const struct sk_buff *skb, int offset, int len,
- 		      __wsum csum, const struct skb_checksum_ops *ops);
- __wsum skb_checksum(const struct sk_buff *skb, int offset, int len,
-diff --git a/net/core/skbuff.c b/net/core/skbuff.c
-index 346d3e8..12e3cb7 100644
---- a/net/core/skbuff.c
-+++ b/net/core/skbuff.c
-@@ -2243,6 +2243,30 @@ __wsum skb_copy_and_csum_bits(const struct sk_buff *skb, int offset,
- }
- EXPORT_SYMBOL(skb_copy_and_csum_bits);
- 
-+static __wsum warn_crc32c_csum_update(const void *buff, int len, __wsum sum)
-+{
-+	net_warn_ratelimited(
-+		"%s: attempt to compute crc32c without libcrc32c.ko\n",
-+		__func__);
-+	return 0;
-+}
-+
-+static __wsum warn_crc32c_csum_combine(__wsum csum, __wsum csum2,
-+				       int offset, int len)
-+{
-+	net_warn_ratelimited(
-+		"%s: attempt to compute crc32c without libcrc32c.ko\n",
-+		__func__);
-+	return 0;
-+}
-+
-+const struct skb_checksum_ops *crc32c_csum_stub __read_mostly +	&(struct skb_checksum_ops) {
-+	.update  = warn_crc32c_csum_update,
-+	.combine = warn_crc32c_csum_combine,
-+};
-+EXPORT_SYMBOL(crc32c_csum_stub);
-+
-  /**
-  *	skb_zerocopy_headlen - Calculate headroom needed for skb_zerocopy()
-  *	@from: source buffer
-diff --git a/net/sctp/offload.c b/net/sctp/offload.c
-index 4f5a2b5..378f462 100644
---- a/net/sctp/offload.c
-+++ b/net/sctp/offload.c
-@@ -98,6 +98,12 @@ static const struct net_offload sctp6_offload = {
- 	},
- };
- 
-+static const struct skb_checksum_ops *crc32c_csum_ops __read_mostly +	&(struct skb_checksum_ops) {
-+	.update  = sctp_csum_update,
-+	.combine = sctp_csum_combine,
-+};
-+
- int __init sctp_offload_init(void)
- {
- 	int ret;
-@@ -110,6 +116,7 @@ int __init sctp_offload_init(void)
- 	if (ret)
- 		goto ipv4;
- 
-+	crc32c_csum_stub = crc32c_csum_ops;
- 	return ret;
- 
- ipv4:
--- 
-2.7.4
-
+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
