@@ -1,122 +1,61 @@
-From: Davide Caratti <dcaratti@redhat.com>
-Date: Tue, 16 May 2017 16:27:48 +0000
-Subject: [PATCH net-next v2 4/7] net: use skb->csum_not_inet to identify packets needing crc32c
-Message-Id: <cda53e69808627734b75a349e8ff42f76fb282d8.1494946940.git.dcaratti@redhat.com>
+From: <ayliss@english-heritage.org.uk>
+Date: Sat, 20 May 2017 15:58:28 +0000
+Subject: 64103
+Message-Id: <149529590864.26768.16454277472975726405@wateen.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1494946940.git.dcaratti@redhat.com>
-In-Reply-To: <cover.1494946940.git.dcaratti@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
-Cc: Alexander Duyck <alexander.duyck@gmail.com>, Tom Herbert <tom@herbertland.com>, David Laight <David.Laight@ACULAB.COM>, "David S. Miller" <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: linux-sctp@vger.kernel.org
 
-skb->csum_not_inet carries the indication on which algorithm is needed to
-compute checksum on skb in the transmit path, when skb->ip_summed is equal
-to CHECKSUM_PARTIAL. If skb carries a SCTP packet and crc32c hasn't been
-yet written in L4 header, skb->csum_not_inet is assigned to 1; otherwise,
-assume Internet Checksum is needed and thus set skb->csum_not_inet to 0.
-
-Suggested-by: Tom Herbert <tom@herbertland.com>
-Signed-off-by: Davide Caratti <dcaratti@redhat.com>
-Acked-by: Tom Herbert <tom@herbertland.com>
----
- include/linux/skbuff.h | 16 +++++++++-------
- net/core/dev.c         |  1 +
- net/sched/act_csum.c   |  1 +
- net/sctp/offload.c     |  1 +
- net/sctp/output.c      |  1 +
- 5 files changed, 13 insertions(+), 7 deletions(-)
-
-diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
-index f98e3a6..2fefd92 100644
---- a/include/linux/skbuff.h
-+++ b/include/linux/skbuff.h
-@@ -189,12 +189,13 @@
-  *
-  *   NETIF_F_SCTP_CRC - This feature indicates that a device is capable of
-  *     offloading the SCTP CRC in a packet. To perform this offload the stack
-- *     will set ip_summed to CHECKSUM_PARTIAL and set csum_start and csum_offset
-- *     accordingly. Note the there is no indication in the skbuff that the
-- *     CHECKSUM_PARTIAL refers to an SCTP checksum, a driver that supports
-- *     both IP checksum offload and SCTP CRC offload must verify which offload
-- *     is configured for a packet presumably by inspecting packet headers; in
-- *     case, skb_crc32c_csum_help is provided to compute CRC on SCTP packets.
-+ *     will set set csum_start and csum_offset accordingly, set ip_summed to
-+ *     CHECKSUM_PARTIAL and set csum_not_inet to 1, to provide an indication in
-+ *     the skbuff that the CHECKSUM_PARTIAL refers to CRC32c.
-+ *     A driver that supports both IP checksum offload and SCTP CRC32c offload
-+ *     must verify which offload is configured for a packet by testing the
-+ *     value of skb->csum_not_inet; skb_crc32c_csum_help is provided to resolve
-+ *     CHECKSUM_PARTIAL on skbs where csum_not_inet is set to 1.
-  *
-  *   NETIF_F_FCOE_CRC - This feature indicates that a device is capable of
-  *     offloading the FCOE CRC in a packet. To perform this offload the stack
-@@ -617,6 +618,7 @@ static inline bool skb_mstamp_after(const struct skb_mstamp *t1,
-  *	@wifi_acked_valid: wifi_acked was set
-  *	@wifi_acked: whether frame was acked on wifi or not
-  *	@no_fcs:  Request NIC to treat last 4 bytes as Ethernet FCS
-+ *	@csum_not_inet: use CRC32c to resolve CHECKSUM_PARTIAL
-  *	@dst_pending_confirm: need to confirm neighbour
-   *	@napi_id: id of the NAPI struct this skb came from
-  *	@secmark: security marking
-@@ -745,7 +747,7 @@ struct sk_buff {
- 	__u8			csum_valid:1;
- 	__u8			csum_complete_sw:1;
- 	__u8			csum_level:2;
--	__u8			__csum_bad_unused:1; /* one bit hole */
-+	__u8			csum_not_inet:1;
- 
- 	__u8			dst_pending_confirm:1;
- #ifdef CONFIG_IPV6_NDISC_NODETYPE
-diff --git a/net/core/dev.c b/net/core/dev.c
-index 1b9575c..2cedb0f 100644
---- a/net/core/dev.c
-+++ b/net/core/dev.c
-@@ -2647,6 +2647,7 @@ int skb_crc32c_csum_help(struct sk_buff *skb)
- 						  crc32c_csum_stub));
- 	*(__le32 *)(skb->data + offset) = crc32c_csum;
- 	skb->ip_summed = CHECKSUM_NONE;
-+	skb->csum_not_inet = 0;
- out:
- 	return ret;
- }
-diff --git a/net/sched/act_csum.c b/net/sched/act_csum.c
-index ab6fdbd..3317a2f 100644
---- a/net/sched/act_csum.c
-+++ b/net/sched/act_csum.c
-@@ -350,6 +350,7 @@ static int tcf_csum_sctp(struct sk_buff *skb, unsigned int ihl,
- 	sctph->checksum = sctp_compute_cksum(skb,
- 					     skb_network_offset(skb) + ihl);
- 	skb->ip_summed = CHECKSUM_NONE;
-+	skb->csum_not_inet = 0;
- 
- 	return 1;
- }
-diff --git a/net/sctp/offload.c b/net/sctp/offload.c
-index 378f462..ef156ac 100644
---- a/net/sctp/offload.c
-+++ b/net/sctp/offload.c
-@@ -35,6 +35,7 @@
- static __le32 sctp_gso_make_checksum(struct sk_buff *skb)
- {
- 	skb->ip_summed = CHECKSUM_NONE;
-+	skb->csum_not_inet = 0;
- 	return sctp_compute_cksum(skb, skb_transport_offset(skb));
- }
- 
-diff --git a/net/sctp/output.c b/net/sctp/output.c
-index 1409a87..e2edf2e 100644
---- a/net/sctp/output.c
-+++ b/net/sctp/output.c
-@@ -538,6 +538,7 @@ static int sctp_packet_pack(struct sctp_packet *packet,
- 	} else {
- chksum:
- 		head->ip_summed = CHECKSUM_PARTIAL;
-+		head->csum_not_inet = 1;
- 		head->csum_start = skb_transport_header(head) - head->head;
- 		head->csum_offset = offsetof(struct sctphdr, checksum);
- 	}
--- 
-2.7.4
-
+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
+56keytIBUEsFBgAAAAABAAEAVgAAANIKAAAAAA=
