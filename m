@@ -1,36 +1,46 @@
-From: Josh Poimboeuf <jpoimboe@redhat.com>
-Date: Thu, 04 May 2017 16:11:29 +0000
-Subject: Re: [PATCH] x86/asm: Don't use rbp as temp register in csum_partial_copy_generic()
-Message-Id: <20170504161129.syz46qyxge3nupki@treble>
+From: SF Markus Elfring <elfring@users.sourceforge.net>
+Date: Mon, 22 May 2017 16:37:19 +0000
+Subject: [PATCH 1/5] sctp: Use kmalloc_array() in sctp_init()
+Message-Id: <24442429-99f7-7d83-5f56-f84776a81880@users.sourceforge.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4b03a961efda5ec9bfe46b7b9c9ad72d1efad343.1493909486.git.jpoimboe@redhat.com>
- <063D6719AE5E284EB5DD2968C1650D6DCFFE581C@AcuExch.aculab.com>
-In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6DCFFE581C@AcuExch.aculab.com>
+References: <2845df67-d35d-536a-0a53-b2eb83fe1ba5@users.sourceforge.net>
+In-Reply-To: <2845df67-d35d-536a-0a53-b2eb83fe1ba5@users.sourceforge.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@ACULAB.COM>
-Cc: "x86@kernel.org" <x86@kernel.org>, Andrey Konovalov <andreyknvl@google.com>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S . Miller" <davem@davemloft.net>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, netdev <netdev@vger.kernel.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Dmitry Vyukov <dvyukov@google.com>, Kostya Serebryany <kcc@google.com>, syzkaller <syzkaller@googlegroups.com>, Eric Dumazet <edumazet@google.com>, Cong Wang <xiyou.wangcong@gmail.com>
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
+Cc: LKML <linux-kernel@vger.kernel.org>, kernel-janitors@vger.kernel.org
 
-On Thu, May 04, 2017 at 03:56:49PM +0000, David Laight wrote:
-> From: Josh Poimboeuf
-> > Sent: 04 May 2017 15:52
-> > Andrey Konovalov reported the following warning while fuzzing the kernel
-> > with syzkaller:
-> > 
-> >   WARNING: kernel stack regs at ffff8800686869f8 in a.out:4933 has bad 'bp' value c3fc855a10167ec0
-> > 
-> > The unwinder dump revealed that rbp had a bad value when an interrupt
-> > occurred in csum_partial_copy_generic().
-> > 
-> > That function saves rbp on the stack and then overwrites it, using it as
-> > a scratch register.  That's problematic because it breaks stack traces
-> > if an interrupt occurs in the middle of the function.
-> 
-> Does gcc guarantee not to use bp as a scratch register in leaf functions?
+From: Markus Elfring <elfring@users.sourceforge.net>
+Date: Mon, 22 May 2017 17:20:11 +0200
 
-At least in practice, gcc doesn't touch rbp in leaf functions.  (I don't
-know about guarantees.)
+* A multiplication for the size determination of a memory allocation
+  indicated that an array data structure should be processed.
+  Thus use the corresponding function "kmalloc_array".
 
+  This issue was detected by using the Coccinelle software.
+
+* Replace the specification of a data structure by a pointer dereference
+  to make the corresponding size determination a bit safer according to
+  the Linux coding style convention.
+
+Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
+---
+ net/sctp/protocol.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 989a900383b5..2b1a6215bd2f 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -1442,6 +1442,6 @@ static __init int sctp_init(void)
+ 
+ 	/* Allocate and initialize the endpoint hash table.  */
+ 	sctp_ep_hashsize = 64;
+-	sctp_ep_hashtable -		kmalloc(64 * sizeof(struct sctp_hashbucket), GFP_KERNEL);
++	sctp_ep_hashtable = kmalloc_array(64, sizeof(*sctp_ep_hashtable),
++					  GFP_KERNEL);
+ 	if (!sctp_ep_hashtable) {
 -- 
-Josh
+2.13.0
+
