@@ -1,90 +1,41 @@
-From: Vlad Yasevich <vyasevic@redhat.com>
-Date: Tue, 23 May 2017 16:27:14 +0000
-Subject: Re: [PATCH net 2/2] sctp: set new_asoc temp when processing dupcookie
-Message-Id: <5d3e02c6-2f29-1875-0048-e08e56e2e126@redhat.com>
+From: SF Markus Elfring <elfring@users.sourceforge.net>
+Date: Mon, 22 May 2017 16:40:37 +0000
+Subject: [PATCH 4/5] sctp: Improve a size determination in sctp_inetaddr_event()
+Message-Id: <a96c883f-0495-ad8c-e3a4-c80f27b76ed2@users.sourceforge.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1495517205.git.lucien.xin@gmail.com>
- <132661a3448bf87e944c07860305d979bc4d5518.1495517205.git.lucien.xin@gmail.com>
- <dc8c3388836508aea0d4c834fd33a1fff9085532.1495517205.git.lucien.xin@gmail.com>
-In-Reply-To: <dc8c3388836508aea0d4c834fd33a1fff9085532.1495517205.git.lucien.xin@gmail.com>
+References: <2845df67-d35d-536a-0a53-b2eb83fe1ba5@users.sourceforge.net>
+In-Reply-To: <2845df67-d35d-536a-0a53-b2eb83fe1ba5@users.sourceforge.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
+Cc: LKML <linux-kernel@vger.kernel.org>, kernel-janitors@vger.kernel.org
 
-On 05/23/2017 01:28 AM, Xin Long wrote:
-> After sctp changed to use transport hashtable, a transport would be
-> added into global hashtable when adding the peer to an asoc, then
-> the asoc can be got by searching the transport in the hashtbale.
-> 
-> The problem is when processing dupcookie in sctp_sf_do_5_2_4_dupcook,
-> a new asoc would be created. A peer with the same addr and port as
-> the one in the old asoc might be added into the new asoc, but fail
-> to be added into the hashtable, as they also belong to the same sk.
-> 
-> It causes that sctp's dupcookie processing can not really work.
-> 
-> Since the new asoc will be freed after copying it's information to
-> the old asoc, it's more like a temp asoc. So this patch is to fix
-> it by setting it as a temp asoc to avoid adding it's any transport
-> into the hashtable and also avoid allocing assoc_id.
-> 
-> An extra thing it has to do is to also alloc stream info for any
-> temp asoc, as sctp dupcookie process needs it to update old asoc.
-> But I don't think it would hurt something, as a temp asoc would
-> always be freed after finishing processing cookie echo packet.
-> 
-> Reported-by: Jianwen Ji <jiji@redhat.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+From: Markus Elfring <elfring@users.sourceforge.net>
+Date: Mon, 22 May 2017 18:08:24 +0200
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+Replace the specification of a data structure by a pointer dereference
+as the parameter for the operator "sizeof" to make the corresponding size
+determination a bit safer according to the Linux coding style convention.
 
--vlad
+Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
+---
+ net/sctp/protocol.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> ---
->  net/sctp/sm_make_chunk.c | 13 ++++---------
->  net/sctp/sm_statefuns.c  |  3 +++
->  2 files changed, 7 insertions(+), 9 deletions(-)
-> 
-> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> index 8a08f13..92e332e 100644
-> --- a/net/sctp/sm_make_chunk.c
-> +++ b/net/sctp/sm_make_chunk.c
-> @@ -2454,16 +2454,11 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
->  	 * stream sequence number shall be set to 0.
->  	 */
->  
-> -	/* Allocate storage for the negotiated streams if it is not a temporary
-> -	 * association.
-> -	 */
-> -	if (!asoc->temp) {
-> -		if (sctp_stream_init(asoc, gfp))
-> -			goto clean_up;
-> +	if (sctp_stream_init(asoc, gfp))
-> +		goto clean_up;
->  
-> -		if (sctp_assoc_set_id(asoc, gfp))
-> -			goto clean_up;
-> -	}
-> +	if (!asoc->temp && sctp_assoc_set_id(asoc, gfp))
-> +		goto clean_up;
->  
->  	/* ADDIP Section 4.1 ASCONF Chunk Procedures
->  	 *
-> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-> index 4f5e6cf..f863b55 100644
-> --- a/net/sctp/sm_statefuns.c
-> +++ b/net/sctp/sm_statefuns.c
-> @@ -2088,6 +2088,9 @@ sctp_disposition_t sctp_sf_do_5_2_4_dupcook(struct net *net,
->  		}
->  	}
->  
-> +	/* Set temp so that it won't be added into hashtable */
-> +	new_asoc->temp = 1;
-> +
->  	/* Compare the tie_tag in cookie with the verification tag of
->  	 * current association.
->  	 */
-> 
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 64756c42cec9..057479b7bd72 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -784,7 +784,7 @@ static int sctp_inetaddr_event(struct notifier_block *this, unsigned long ev,
+ 
+ 	switch (ev) {
+ 	case NETDEV_UP:
+-		addr = kmalloc(sizeof(struct sctp_sockaddr_entry), GFP_ATOMIC);
++		addr = kmalloc(sizeof(*addr), GFP_ATOMIC);
+ 		if (addr) {
+ 			addr->a.v4.sin_family = AF_INET;
+ 			addr->a.v4.sin_port = 0;
+-- 
+2.13.0
 
