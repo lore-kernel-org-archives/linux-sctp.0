@@ -1,51 +1,39 @@
-From: Vlad Yasevich <vyasevic@redhat.com>
-Date: Tue, 23 May 2017 16:26:46 +0000
-Subject: Re: [PATCH net 1/2] sctp: fix stream update when processing dupcookie
-Message-Id: <3f0e02fb-322c-8949-c7c2-0f6b7582baa5@redhat.com>
+From: SF Markus Elfring <elfring@users.sourceforge.net>
+Date: Mon, 22 May 2017 16:39:29 +0000
+Subject: [PATCH 3/5] sctp: Fix a typo in a comment line in sctp_init()
+Message-Id: <9dca8ae4-fd7f-d1de-af7b-87b92bf6411a@users.sourceforge.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1495517205.git.lucien.xin@gmail.com>
- <132661a3448bf87e944c07860305d979bc4d5518.1495517205.git.lucien.xin@gmail.com>
-In-Reply-To: <132661a3448bf87e944c07860305d979bc4d5518.1495517205.git.lucien.xin@gmail.com>
+References: <2845df67-d35d-536a-0a53-b2eb83fe1ba5@users.sourceforge.net>
+In-Reply-To: <2845df67-d35d-536a-0a53-b2eb83fe1ba5@users.sourceforge.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
+Cc: LKML <linux-kernel@vger.kernel.org>, kernel-janitors@vger.kernel.org
 
-On 05/23/2017 01:28 AM, Xin Long wrote:
-> Since commit 3dbcc105d556 ("sctp: alloc stream info when initializing
-> asoc"), stream and stream.out info are always alloced when creating
-> an asoc.
-> 
-> So it's not correct to check !asoc->stream before updating stream
-> info when processing dupcookie, but would be better to check asoc
-> state instead.
-> 
-> Fixes: 3dbcc105d556 ("sctp: alloc stream info when initializing asoc")
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+From: Markus Elfring <elfring@users.sourceforge.net>
+Date: Mon, 22 May 2017 17:43:44 +0200
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+Add a missing character in this description.
 
--vlad
+Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
+---
+ net/sctp/protocol.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> ---
->  net/sctp/associola.c | 4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-> index a9708da..9523828 100644
-> --- a/net/sctp/associola.c
-> +++ b/net/sctp/associola.c
-> @@ -1176,7 +1176,9 @@ void sctp_assoc_update(struct sctp_association *asoc,
->  
->  		asoc->ctsn_ack_point = asoc->next_tsn - 1;
->  		asoc->adv_peer_ack_point = asoc->ctsn_ack_point;
-> -		if (!asoc->stream) {
-> +
-> +		if (sctp_state(asoc, COOKIE_WAIT)) {
-> +			sctp_stream_free(asoc->stream);
->  			asoc->stream = new->stream;
->  			new->stream = NULL;
->  		}
-> 
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 5e7c8a344770..64756c42cec9 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -1454,7 +1454,7 @@ static __init int sctp_init(void)
+ 	}
+ 
+ 	/* Allocate and initialize the SCTP port hash table.
+-	 * Note that order is initalized to start at the max sized
++	 * Note that order is initialized to start at the max sized
+ 	 * table we want to support.  If we can't get that many pages
+ 	 * reduce the order and try again
+ 	 */
+-- 
+2.13.0
 
