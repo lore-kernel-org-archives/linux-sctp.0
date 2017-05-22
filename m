@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 22 May 2017 19:53:09 +0000
+From: Vlad Yasevich <vyasevic@redhat.com>
+Date: Mon, 22 May 2017 21:00:59 +0000
 Subject: Re: [PATCH 5/5] sctp: Adjust one function call together with a variable assignment
-Message-Id: <20170522195308.GG4642@localhost.localdomain>
+Message-Id: <44ba1b0c-8987-8710-a9eb-f13ad31bd966@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <2845df67-d35d-536a-0a53-b2eb83fe1ba5@users.sourceforge.net>
  <197333e8-b528-ef34-bd16-01e415acdf52@users.sourceforge.net>
@@ -9,10 +9,10 @@ In-Reply-To: <197333e8-b528-ef34-bd16-01e415acdf52@users.sourceforge.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: SF Markus Elfring <elfring@users.sourceforge.net>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, LKML <linux-kernel@vger.kernel.org>, kernel-janitors@vger.kernel.org
+To: SF Markus Elfring <elfring@users.sourceforge.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
+Cc: LKML <linux-kernel@vger.kernel.org>, kernel-janitors@vger.kernel.org
 
-On Mon, May 22, 2017 at 06:41:45PM +0200, SF Markus Elfring wrote:
+On 05/22/2017 12:41 PM, SF Markus Elfring wrote:
 > From: Markus Elfring <elfring@users.sourceforge.net>
 > Date: Mon, 22 May 2017 18:15:12 +0200
 > 
@@ -23,9 +23,6 @@ On Mon, May 22, 2017 at 06:41:45PM +0200, SF Markus Elfring wrote:
 > Thus fix the affected source code place.
 > 
 > Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/protocol.c | 3 ++-
 >  1 file changed, 2 insertions(+), 1 deletion(-)
@@ -44,11 +41,8 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 >  		rcu_read_unlock();
 >  		return;
 >  	}
-> -- 
-> 2.13.0
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
+Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+
+-vlad
