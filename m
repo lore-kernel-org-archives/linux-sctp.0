@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 22 May 2017 19:52:11 +0000
+From: Vlad Yasevich <vyasevic@redhat.com>
+Date: Mon, 22 May 2017 20:59:43 +0000
 Subject: Re: [PATCH 2/5] sctp: Delete an error message for a failed memory allocation in sctp_init()
-Message-Id: <20170522195210.GD4642@localhost.localdomain>
+Message-Id: <0937b8d5-bf8c-81c5-af58-0c7a629b7932@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <2845df67-d35d-536a-0a53-b2eb83fe1ba5@users.sourceforge.net>
  <7db0cb49-109b-88a6-532f-c591cc8ffa85@users.sourceforge.net>
@@ -9,10 +9,10 @@ In-Reply-To: <7db0cb49-109b-88a6-532f-c591cc8ffa85@users.sourceforge.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: SF Markus Elfring <elfring@users.sourceforge.net>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, LKML <linux-kernel@vger.kernel.org>, kernel-janitors@vger.kernel.org
+To: SF Markus Elfring <elfring@users.sourceforge.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
+Cc: LKML <linux-kernel@vger.kernel.org>, kernel-janitors@vger.kernel.org
 
-On Mon, May 22, 2017 at 06:38:21PM +0200, SF Markus Elfring wrote:
+On 05/22/2017 12:38 PM, SF Markus Elfring wrote:
 > From: Markus Elfring <elfring@users.sourceforge.net>
 > Date: Mon, 22 May 2017 17:28:14 +0200
 > 
@@ -22,9 +22,6 @@ On Mon, May 22, 2017 at 06:38:21PM +0200, SF Markus Elfring wrote:
 > 
 > Link: http://events.linuxfoundation.org/sites/events/files/slides/LCJ16-Refactor_Strings-WSang_0.pdf
 > Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/protocol.c | 1 -
 >  1 file changed, 1 deletion(-)
@@ -39,11 +36,12 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 >  		status = -ENOMEM;
 >  		goto err_ehash_alloc;
 >  	}
-> -- 
-> 2.13.0
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
+Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+
+At the time this was written, it was patterned after TCP.  Since then TCP changed
+significantly.  We can surely clean-up the pr_err() here and possibly update the
+code as well later.
+
+-vlad
