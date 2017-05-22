@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 22 May 2017 19:51:44 +0000
+From: Vlad Yasevich <vyasevic@redhat.com>
+Date: Mon, 22 May 2017 20:57:58 +0000
 Subject: Re: [PATCH 1/5] sctp: Use kmalloc_array() in sctp_init()
-Message-Id: <20170522195144.GC4642@localhost.localdomain>
+Message-Id: <c473dc8e-3b13-871a-9b0e-657dd84fd851@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <2845df67-d35d-536a-0a53-b2eb83fe1ba5@users.sourceforge.net>
  <24442429-99f7-7d83-5f56-f84776a81880@users.sourceforge.net>
@@ -9,10 +9,10 @@ In-Reply-To: <24442429-99f7-7d83-5f56-f84776a81880@users.sourceforge.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: SF Markus Elfring <elfring@users.sourceforge.net>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, LKML <linux-kernel@vger.kernel.org>, kernel-janitors@vger.kernel.org
+To: SF Markus Elfring <elfring@users.sourceforge.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
+Cc: LKML <linux-kernel@vger.kernel.org>, kernel-janitors@vger.kernel.org
 
-On Mon, May 22, 2017 at 06:37:19PM +0200, SF Markus Elfring wrote:
+On 05/22/2017 12:37 PM, SF Markus Elfring wrote:
 > From: Markus Elfring <elfring@users.sourceforge.net>
 > Date: Mon, 22 May 2017 17:20:11 +0200
 > 
@@ -28,7 +28,9 @@ On Mon, May 22, 2017 at 06:37:19PM +0200, SF Markus Elfring wrote:
 > 
 > Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+
+-vlad
 
 > ---
 >  net/sctp/protocol.c | 4 ++--
@@ -46,11 +48,5 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > +	sctp_ep_hashtable = kmalloc_array(64, sizeof(*sctp_ep_hashtable),
 > +					  GFP_KERNEL);
 >  	if (!sctp_ep_hashtable) {
-> -- 
-> 2.13.0
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
