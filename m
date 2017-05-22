@@ -1,45 +1,39 @@
-From: Davide Caratti <dcaratti@redhat.com>
-Date: Mon, 22 May 2017 16:09:16 +0000
-Subject: Re: [PATCH net] sctp: fix ICMP processing if skb is non-linear
-Message-Id: <1495469356.5672.6.camel@redhat.com>
+From: SF Markus Elfring <elfring@users.sourceforge.net>
+Date: Mon, 22 May 2017 16:38:21 +0000
+Subject: [PATCH 2/5] sctp: Delete an error message for a failed memory allocation in sctp_init()
+Message-Id: <7db0cb49-109b-88a6-532f-c591cc8ffa85@users.sourceforge.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cb2535a6a40a84684f26d7c7d26788cc3f8a2010.1495207495.git.dcaratti@redhat.com>
-         <CADvbK_c81ju-D6h4TLm5_Lxvkaiw69Lt9TXR3Z_8gOJpQdXpXQ@mail.gmail.com>
-In-Reply-To: <CADvbK_c81ju-D6h4TLm5_Lxvkaiw69Lt9TXR3Z_8gOJpQdXpXQ@mail.gmail.com>
+References: <2845df67-d35d-536a-0a53-b2eb83fe1ba5@users.sourceforge.net>
+In-Reply-To: <2845df67-d35d-536a-0a53-b2eb83fe1ba5@users.sourceforge.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, "David S. Miller" <davem@davemloft.net>
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
+Cc: LKML <linux-kernel@vger.kernel.org>, kernel-janitors@vger.kernel.org
 
-hello Xin Long,
-On Sat, 2017-05-20 at 02:40 +0800, Xin Long wrote:
-> On Fri, May 19, 2017 at 11:34 PM, Davide Caratti <dcaratti@redhat.com> wrote:
-> > @@ -515,14 +515,23 @@ struct sock *sctp_err_lookup(struct net *net, int family, struct sk_buff *skb,
-> >          * or the chunk type or the Initiate Tag does not match, silently
-> >          * discard the packet.
-> >          */
-> > +       offset = skb_transport_offset(skb);
-> > +       sctphdr = skb_header_pointer(skb, offset, sizeof(_sctphdr), &_sctphdr);
-> > +       if (unlikely(!sctphdr))
-> > +               goto out;
-> > +
-> > +       vtag = ntohl(sctphdr->vtag);
-> >         if (vtag = 0) {
-> > -               chunkhdr = (void *)sctphdr + sizeof(struct sctphdr);
-> > -               if (len < sizeof(struct sctphdr) + sizeof(sctp_chunkhdr_t)
-> > -                         + sizeof(__be32) ||
-> > +               offset += sizeof(_sctphdr);
-> 
-> will be nice to delete this line, and use
-> > +               /* chunk header + first 4 octects of init header */
-> > +               chunkhdr = skb_header_pointer(skb, offset,
-> 
-> chunkhdr = skb_header_pointer(skb, offset + sizeof(_sctphdr), ;)
-> wdyt?
+From: Markus Elfring <elfring@users.sourceforge.net>
+Date: Mon, 22 May 2017 17:28:14 +0200
 
-that's right, 'offset' does not need the re-assignment: I will post the v2
-soon. Thanks!
+Omit an extra message for a memory allocation failure in this function.
 
---
-davide
+This issue was detected by using the Coccinelle software.
+
+Link: http://events.linuxfoundation.org/sites/events/files/slides/LCJ16-Refactor_Strings-WSang_0.pdf
+Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
+---
+ net/sctp/protocol.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 2b1a6215bd2f..5e7c8a344770 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -1447,5 +1447,4 @@ static __init int sctp_init(void)
+ 	if (!sctp_ep_hashtable) {
+-		pr_err("Failed endpoint_hash alloc\n");
+ 		status = -ENOMEM;
+ 		goto err_ehash_alloc;
+ 	}
+-- 
+2.13.0
+
