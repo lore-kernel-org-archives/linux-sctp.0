@@ -1,18 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 23 May 2017 11:26:48 +0000
+From: Vlad Yasevich <vyasevic@redhat.com>
+Date: Tue, 23 May 2017 16:27:14 +0000
 Subject: Re: [PATCH net 2/2] sctp: set new_asoc temp when processing dupcookie
-Message-Id: <20170523112648.GB11795@hmswarspite.think-freely.org>
+Message-Id: <5d3e02c6-2f29-1875-0048-e08e56e2e126@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1495517205.git.lucien.xin@gmail.com>
+ <132661a3448bf87e944c07860305d979bc4d5518.1495517205.git.lucien.xin@gmail.com>
  <dc8c3388836508aea0d4c834fd33a1fff9085532.1495517205.git.lucien.xin@gmail.com>
 In-Reply-To: <dc8c3388836508aea0d4c834fd33a1fff9085532.1495517205.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Tue, May 23, 2017 at 01:28:55PM +0800, Xin Long wrote:
+On 05/23/2017 01:28 AM, Xin Long wrote:
 > After sctp changed to use transport hashtable, a transport would be
 > added into global hashtable when adding the peer to an asoc, then
 > the asoc can be got by searching the transport in the hashtbale.
@@ -36,6 +37,11 @@ On Tue, May 23, 2017 at 01:28:55PM +0800, Xin Long wrote:
 > 
 > Reported-by: Jianwen Ji <jiji@redhat.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
+
+Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+
+-vlad
+
 > ---
 >  net/sctp/sm_make_chunk.c | 13 ++++---------
 >  net/sctp/sm_statefuns.c  |  3 +++
@@ -80,8 +86,5 @@ On Tue, May 23, 2017 at 01:28:55PM +0800, Xin Long wrote:
 >  	/* Compare the tie_tag in cookie with the verification tag of
 >  	 * current association.
 >  	 */
-> -- 
-> 2.1.0
 > 
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
