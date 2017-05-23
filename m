@@ -1,43 +1,27 @@
-From: Vlad Yasevich <vyasevic@redhat.com>
-Date: Mon, 22 May 2017 21:00:13 +0000
-Subject: Re: [PATCH 3/5] sctp: Fix a typo in a comment line in sctp_init()
-Message-Id: <3f5bbba7-4731-ab21-1f10-9fa7e9d9701e@redhat.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 23 May 2017 05:28:53 +0000
+Subject: [PATCH net 0/2] sctp: a bunch of fixes for processing dupcookie
+Message-Id: <cover.1495517205.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <2845df67-d35d-536a-0a53-b2eb83fe1ba5@users.sourceforge.net>
- <9dca8ae4-fd7f-d1de-af7b-87b92bf6411a@users.sourceforge.net>
-In-Reply-To: <9dca8ae4-fd7f-d1de-af7b-87b92bf6411a@users.sourceforge.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: SF Markus Elfring <elfring@users.sourceforge.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
-Cc: LKML <linux-kernel@vger.kernel.org>, kernel-janitors@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On 05/22/2017 12:39 PM, SF Markus Elfring wrote:
-> From: Markus Elfring <elfring@users.sourceforge.net>
-> Date: Mon, 22 May 2017 17:43:44 +0200
-> 
-> Add a missing character in this description.
-> 
-> Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
-> ---
->  net/sctp/protocol.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-> index 5e7c8a344770..64756c42cec9 100644
-> --- a/net/sctp/protocol.c
-> +++ b/net/sctp/protocol.c
-> @@ -1454,7 +1454,7 @@ static __init int sctp_init(void)
->  	}
->  
->  	/* Allocate and initialize the SCTP port hash table.
-> -	 * Note that order is initalized to start at the max sized
-> +	 * Note that order is initialized to start at the max sized
->  	 * table we want to support.  If we can't get that many pages
->  	 * reduce the order and try again
->  	 */
-> 
+After introducing transport hashtable and per stream info into sctp,
+some regressions were caused when processing dupcookie, this patchset
+is to fix them.
 
-Acked-by: Vlad Yasevich <vyasevich@gmail.com.
+Xin Long (2):
+  sctp: fix stream update when processing dupcookie
+  sctp: set new_asoc temp when processing dupcookie
 
--vlad
+ net/sctp/associola.c     |  4 +++-
+ net/sctp/sm_make_chunk.c | 13 ++++---------
+ net/sctp/sm_statefuns.c  |  3 +++
+ 3 files changed, 10 insertions(+), 10 deletions(-)
+
+-- 
+2.1.0
+
