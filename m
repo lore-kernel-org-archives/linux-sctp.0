@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 23 May 2017 11:26:20 +0000
+From: Vlad Yasevich <vyasevic@redhat.com>
+Date: Tue, 23 May 2017 16:26:46 +0000
 Subject: Re: [PATCH net 1/2] sctp: fix stream update when processing dupcookie
-Message-Id: <20170523112620.GA11795@hmswarspite.think-freely.org>
+Message-Id: <3f0e02fb-322c-8949-c7c2-0f6b7582baa5@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1495517205.git.lucien.xin@gmail.com>
  <132661a3448bf87e944c07860305d979bc4d5518.1495517205.git.lucien.xin@gmail.com>
@@ -9,10 +9,10 @@ In-Reply-To: <132661a3448bf87e944c07860305d979bc4d5518.1495517205.git.lucien.xin
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Tue, May 23, 2017 at 01:28:54PM +0800, Xin Long wrote:
+On 05/23/2017 01:28 AM, Xin Long wrote:
 > Since commit 3dbcc105d556 ("sctp: alloc stream info when initializing
 > asoc"), stream and stream.out info are always alloced when creating
 > an asoc.
@@ -23,6 +23,11 @@ On Tue, May 23, 2017 at 01:28:54PM +0800, Xin Long wrote:
 > 
 > Fixes: 3dbcc105d556 ("sctp: alloc stream info when initializing asoc")
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
+
+Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+
+-vlad
+
 > ---
 >  net/sctp/associola.c | 4 +++-
 >  1 file changed, 3 insertions(+), 1 deletion(-)
@@ -42,9 +47,5 @@ On Tue, May 23, 2017 at 01:28:54PM +0800, Xin Long wrote:
 >  			asoc->stream = new->stream;
 >  			new->stream = NULL;
 >  		}
-> -- 
-> 2.1.0
 > 
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
