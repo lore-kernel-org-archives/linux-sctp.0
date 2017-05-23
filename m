@@ -1,60 +1,84 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 17 May 2017 16:08:03 +0000
-Subject: Re: [PATCH net-next v2 1/7] skbuff: add stub to help computing crc32c on SCTP packets
-Message-Id: <20170517.120803.1777244523172583336.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 23 May 2017 05:28:55 +0000
+Subject: [PATCH net 2/2] sctp: set new_asoc temp when processing dupcookie
+Message-Id: <dc8c3388836508aea0d4c834fd33a1fff9085532.1495517205.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1494946940.git.dcaratti@redhat.com>
-        <970ffbc429b9297c3038f12f4b9cad1afbdbc375.1494946940.git.dcaratti@redhat.com>
-In-Reply-To: <970ffbc429b9297c3038f12f4b9cad1afbdbc375.1494946940.git.dcaratti@redhat.com>
+References: <cover.1495517205.git.lucien.xin@gmail.com>
+ <132661a3448bf87e944c07860305d979bc4d5518.1495517205.git.lucien.xin@gmail.com>
+In-Reply-To: <132661a3448bf87e944c07860305d979bc4d5518.1495517205.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dcaratti@redhat.com
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, alexander.duyck@gmail.com, tom@herbertland.com, David.Laight@ACULAB.COM, marcelo.leitner@gmail.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-From: Davide Caratti <dcaratti@redhat.com>
-Date: Tue, 16 May 2017 18:27:45 +0200
+After sctp changed to use transport hashtable, a transport would be
+added into global hashtable when adding the peer to an asoc, then
+the asoc can be got by searching the transport in the hashtbale.
 
-> @@ -2243,6 +2243,30 @@ __wsum skb_copy_and_csum_bits(const struct sk_buff *skb, int offset,
->  }
->  EXPORT_SYMBOL(skb_copy_and_csum_bits);
->  
-> +static __wsum warn_crc32c_csum_update(const void *buff, int len, __wsum sum)
-> +{
-> +	net_warn_ratelimited(
-> +		"%s: attempt to compute crc32c without libcrc32c.ko\n",
-> +		__func__);
-> +	return 0;
-> +}
-> +
-> +static __wsum warn_crc32c_csum_combine(__wsum csum, __wsum csum2,
-> +				       int offset, int len)
-> +{
-> +	net_warn_ratelimited(
-> +		"%s: attempt to compute crc32c without libcrc32c.ko\n",
-> +		__func__);
-> +	return 0;
-> +}
-> +
-> +const struct skb_checksum_ops *crc32c_csum_stub __read_mostly > +	&(struct skb_checksum_ops) {
-> +	.update  = warn_crc32c_csum_update,
-> +	.combine = warn_crc32c_csum_combine,
-> +};
-> +EXPORT_SYMBOL(crc32c_csum_stub);
+The problem is when processing dupcookie in sctp_sf_do_5_2_4_dupcook,
+a new asoc would be created. A peer with the same addr and port as
+the one in the old asoc might be added into the new asoc, but fail
+to be added into the hashtable, as they also belong to the same sk.
 
-Please, if you are going to do this, declare things in a more
-traditional and canonical way:
+It causes that sctp's dupcookie processing can not really work.
 
-static const struct skb_checksum_ops default_crc32c_ops = {
-	.update  = warn_crc32c_csum_update,
-	.combine = warn_crc32c_csum_combine,
-};
+Since the new asoc will be freed after copying it's information to
+the old asoc, it's more like a temp asoc. So this patch is to fix
+it by setting it as a temp asoc to avoid adding it's any transport
+into the hashtable and also avoid allocing assoc_id.
 
-const struct skb_checksum_ops *crc32c_csum_stub __read_mostly 	&default_crc32c_ops;
+An extra thing it has to do is to also alloc stream info for any
+temp asoc, as sctp dupcookie process needs it to update old asoc.
+But I don't think it would hurt something, as a temp asoc would
+always be freed after finishing processing cookie echo packet.
 
-> +static const struct skb_checksum_ops *crc32c_csum_ops __read_mostly > +	&(struct skb_checksum_ops) {
-> +	.update  = sctp_csum_update,
-> +	.combine = sctp_csum_combine,
-> +};
+Reported-by: Jianwen Ji <jiji@redhat.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/sm_make_chunk.c | 13 ++++---------
+ net/sctp/sm_statefuns.c  |  3 +++
+ 2 files changed, 7 insertions(+), 9 deletions(-)
 
-Likewise.
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 8a08f13..92e332e 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2454,16 +2454,11 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
+ 	 * stream sequence number shall be set to 0.
+ 	 */
+ 
+-	/* Allocate storage for the negotiated streams if it is not a temporary
+-	 * association.
+-	 */
+-	if (!asoc->temp) {
+-		if (sctp_stream_init(asoc, gfp))
+-			goto clean_up;
++	if (sctp_stream_init(asoc, gfp))
++		goto clean_up;
+ 
+-		if (sctp_assoc_set_id(asoc, gfp))
+-			goto clean_up;
+-	}
++	if (!asoc->temp && sctp_assoc_set_id(asoc, gfp))
++		goto clean_up;
+ 
+ 	/* ADDIP Section 4.1 ASCONF Chunk Procedures
+ 	 *
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 4f5e6cf..f863b55 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -2088,6 +2088,9 @@ sctp_disposition_t sctp_sf_do_5_2_4_dupcook(struct net *net,
+ 		}
+ 	}
+ 
++	/* Set temp so that it won't be added into hashtable */
++	new_asoc->temp = 1;
++
+ 	/* Compare the tie_tag in cookie with the verification tag of
+ 	 * current association.
+ 	 */
+-- 
+2.1.0
+
