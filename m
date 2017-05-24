@@ -1,27 +1,21 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 23 May 2017 05:28:53 +0000
-Subject: [PATCH net 0/2] sctp: a bunch of fixes for processing dupcookie
-Message-Id: <cover.1495517205.git.lucien.xin@gmail.com>
+From: David Miller <davem@davemloft.net>
+Date: Wed, 24 May 2017 19:22:57 +0000
+Subject: Re: [PATCH net 0/2] sctp: a bunch of fixes for processing dupcookie
+Message-Id: <20170524.152257.2090892064722032542.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1495517205.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1495517205.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
-After introducing transport hashtable and per stream info into sctp,
-some regressions were caused when processing dupcookie, this patchset
-is to fix them.
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 23 May 2017 13:28:53 +0800
 
-Xin Long (2):
-  sctp: fix stream update when processing dupcookie
-  sctp: set new_asoc temp when processing dupcookie
+> After introducing transport hashtable and per stream info into sctp,
+> some regressions were caused when processing dupcookie, this patchset
+> is to fix them.
 
- net/sctp/associola.c     |  4 +++-
- net/sctp/sm_make_chunk.c | 13 ++++---------
- net/sctp/sm_statefuns.c  |  3 +++
- 3 files changed, 10 insertions(+), 10 deletions(-)
-
--- 
-2.1.0
-
+Series applied, thanks.
