@@ -1,17 +1,17 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 25 May 2017 17:29:29 +0000
+From: Vlad Yasevich <vyasevic@redhat.com>
+Date: Thu, 25 May 2017 17:58:34 +0000
 Subject: Re: [PATCH net v2] sctp: fix ICMP processing if skb is non-linear
-Message-Id: <20170525172929.GA29312@localhost.localdomain>
+Message-Id: <8eee2583-488f-9f90-2323-2dd19f26acbf@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <d0cd7c2e4b9329ec23e48aed94bf2fbf94554f44.1495730857.git.dcaratti@redhat.com>
 In-Reply-To: <d0cd7c2e4b9329ec23e48aed94bf2fbf94554f44.1495730857.git.dcaratti@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Davide Caratti <dcaratti@redhat.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, "David S . Miller" <davem@davemloft.net>
+To: Davide Caratti <dcaratti@redhat.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+Cc: Xin Long <lucien.xin@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S . Miller" <davem@davemloft.net>
 
-On Thu, May 25, 2017 at 07:14:56PM +0200, Davide Caratti wrote:
+On 05/25/2017 01:14 PM, Davide Caratti wrote:
 > sometimes ICMP replies to INIT chunks are ignored by the client, even if
 > the encapsulated SCTP headers match an open socket. This happens when the
 > ICMP packet is carried by a paged skb: use skb_header_pointer() to read
@@ -25,8 +25,10 @@ On Thu, May 25, 2017 at 07:14:56PM +0200, Davide Caratti wrote:
 > 
 > Signed-off-by: Davide Caratti <dcaratti@redhat.com>
 
-LGTM
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Acked-by: Vlad Yasevich <vyasevich@gmail.com>
+
+-vlad
+
 
 > ---
 >  net/sctp/input.c | 16 +++++++++-------
@@ -75,11 +77,5 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 >  	} else if (vtag != asoc->c.peer_vtag) {
 >  		goto out;
 >  	}
-> -- 
-> 2.9.4
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
