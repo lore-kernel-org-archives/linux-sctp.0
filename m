@@ -1,38 +1,33 @@
-From: Davide Caratti <dcaratti@redhat.com>
-Date: Tue, 16 May 2017 16:27:50 +0000
-Subject: [PATCH net-next v2 6/7] openvswitch: more accurate checksumming in queue_userspace_packet()
-Message-Id: <9946093f33c2d425d58a82f8625fbe610e0c4802.1494946940.git.dcaratti@redhat.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 31 May 2017 08:36:30 +0000
+Subject: [PATCH net-next 0/2] sctp: improve asoc streams management
+Message-Id: <cover.1496219741.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1494946940.git.dcaratti@redhat.com>
-In-Reply-To: <cover.1494946940.git.dcaratti@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
-Cc: Alexander Duyck <alexander.duyck@gmail.com>, Tom Herbert <tom@herbertland.com>, David Laight <David.Laight@ACULAB.COM>, "David S. Miller" <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-if skb carries an SCTP packet and ip_summed is CHECKSUM_PARTIAL, it needs
-CRC32c in place of Internet Checksum: use skb_csum_hwoffload_help to avoid
-corrupting such packets while queueing them towards userspace.
+This patchset changes to define asoc->stream as an object, and also
+improve some codes to make it more clearly.
 
-Signed-off-by: Davide Caratti <dcaratti@redhat.com>
----
- net/openvswitch/datapath.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Xin Long (2):
+  sctp: define the member stream as an object instead of pointer in asoc
+  sctp: merge sctp_stream_new and sctp_stream_init
 
-diff --git a/net/openvswitch/datapath.c b/net/openvswitch/datapath.c
-index 7b17da9..9ddc9f8 100644
---- a/net/openvswitch/datapath.c
-+++ b/net/openvswitch/datapath.c
-@@ -453,7 +453,7 @@ static int queue_userspace_packet(struct datapath *dp, struct sk_buff *skb,
- 
- 	/* Complete checksum if needed */
- 	if (skb->ip_summed = CHECKSUM_PARTIAL &&
--	    (err = skb_checksum_help(skb)))
-+	    (err = skb_csum_hwoffload_help(skb, 0)))
- 		goto out;
- 
- 	/* Older versions of OVS user space enforce alignment of the last
+ include/net/sctp/structs.h |  7 ++--
+ net/sctp/associola.c       | 16 ++++----
+ net/sctp/chunk.c           |  4 +-
+ net/sctp/outqueue.c        | 10 ++---
+ net/sctp/proc.c            |  4 +-
+ net/sctp/sm_make_chunk.c   |  5 ++-
+ net/sctp/sm_statefuns.c    |  8 ++--
+ net/sctp/socket.c          | 14 +++----
+ net/sctp/stream.c          | 93 ++++++++++++++++++++--------------------------
+ net/sctp/ulpqueue.c        |  8 ++--
+ 10 files changed, 78 insertions(+), 91 deletions(-)
+
 -- 
-2.7.4
+2.1.0
 
