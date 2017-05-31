@@ -1,35 +1,138 @@
-From: Davide Caratti <dcaratti@redhat.com>
-Date: Tue, 16 May 2017 09:20:44 +0000
-Subject: [PATCH net-next 6/7] openvswitch: more accurate checksumming in queue_userspace_packet()
-Message-Id: <9946093f33c2d425d58a82f8625fbe610e0c4802.1494883280.git.dcaratti@redhat.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 31 May 2017 08:36:32 +0000
+Subject: [PATCH net-next 2/2] sctp: merge sctp_stream_new and sctp_stream_init
+Message-Id: <cb70ccffc2556fbe7025295de6c529ab006187e2.1496219741.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1496219741.git.lucien.xin@gmail.com>
+ <a10f4c7eb03629c4b2316e2096895b8a99f4c1cf.1496219741.git.lucien.xin@gmail.com>
+In-Reply-To: <a10f4c7eb03629c4b2316e2096895b8a99f4c1cf.1496219741.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-if skb carries an SCTP packet and ip_summed is CHECKSUM_PARTIAL, it needs
-CRC32c in place of Internet Checksum: use skb_csum_hwoffload_help to avoid
-corrupting such packets while queueing them towards userspace.
+Since last patch, sctp doesn't need to alloc memory for asoc->stream any
+more. sctp_stream_new and sctp_stream_init both are used to alloc memory
+for stream.in or stream.out, and their names are also confusing.
 
-Signed-off-by: Davide Caratti <dcaratti@redhat.com>
+This patch is to merge them into sctp_stream_init, and only pass stream
+and streamcnt parameters into it, instead of the whole asoc.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/openvswitch/datapath.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ include/net/sctp/structs.h |  4 ++--
+ net/sctp/associola.c       |  3 ++-
+ net/sctp/sm_make_chunk.c   |  3 ++-
+ net/sctp/stream.c          | 33 +++++++++++----------------------
+ 4 files changed, 17 insertions(+), 26 deletions(-)
 
-diff --git a/net/openvswitch/datapath.c b/net/openvswitch/datapath.c
-index 7b17da9..9ddc9f8 100644
---- a/net/openvswitch/datapath.c
-+++ b/net/openvswitch/datapath.c
-@@ -453,7 +453,7 @@ static int queue_userspace_packet(struct datapath *dp, struct sk_buff *skb,
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index c8dbf41..5051317 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -377,8 +377,8 @@ typedef struct sctp_sender_hb_info {
+ 	__u64 hb_nonce;
+ } sctp_sender_hb_info_t;
  
- 	/* Complete checksum if needed */
- 	if (skb->ip_summed = CHECKSUM_PARTIAL &&
--	    (err = skb_checksum_help(skb)))
-+	    (err = skb_csum_hwoffload_help(skb, 0)))
- 		goto out;
+-int sctp_stream_new(struct sctp_association *asoc, gfp_t gfp);
+-int sctp_stream_init(struct sctp_association *asoc, gfp_t gfp);
++int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
++		     gfp_t gfp);
+ void sctp_stream_free(struct sctp_stream *stream);
+ void sctp_stream_clear(struct sctp_stream *stream);
+ void sctp_stream_update(struct sctp_stream *stream, struct sctp_stream *new);
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 6625b15..288c5e0 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -246,7 +246,8 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
+ 	if (!sctp_ulpq_init(&asoc->ulpq, asoc))
+ 		goto fail_init;
  
- 	/* Older versions of OVS user space enforce alignment of the last
+-	if (sctp_stream_new(asoc, gfp))
++	if (sctp_stream_init(&asoc->stream, asoc->c.sinit_num_ostreams,
++			     0, gfp))
+ 		goto fail_init;
+ 
+ 	/* Assume that peer would support both address types unless we are
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 2441814..bd439ed 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2454,7 +2454,8 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
+ 	 * stream sequence number shall be set to 0.
+ 	 */
+ 
+-	if (sctp_stream_init(asoc, gfp))
++	if (sctp_stream_init(&asoc->stream, asoc->c.sinit_num_ostreams,
++			     asoc->c.sinit_max_instreams, gfp))
+ 		goto clean_up;
+ 
+ 	if (!asoc->temp && sctp_assoc_set_id(asoc, gfp))
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index af6b498..82e6d40 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -35,47 +35,36 @@
+ #include <net/sctp/sctp.h>
+ #include <net/sctp/sm.h>
+ 
+-int sctp_stream_new(struct sctp_association *asoc, gfp_t gfp)
++int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
++		     gfp_t gfp)
+ {
+-	struct sctp_stream *stream = &asoc->stream;
+-	int i;
+-
+-	stream->outcnt = asoc->c.sinit_num_ostreams;
+-	stream->out = kcalloc(stream->outcnt, sizeof(*stream->out), gfp);
+-	if (!stream->out)
+-		return -ENOMEM;
+-
+-	for (i = 0; i < stream->outcnt; i++)
+-		stream->out[i].state = SCTP_STREAM_OPEN;
+-
+-	return 0;
+-}
+-
+-int sctp_stream_init(struct sctp_association *asoc, gfp_t gfp)
+-{
+-	struct sctp_stream *stream = &asoc->stream;
+ 	int i;
+ 
+ 	/* Initial stream->out size may be very big, so free it and alloc
+ 	 * a new one with new outcnt to save memory.
+ 	 */
+ 	kfree(stream->out);
+-	stream->outcnt = asoc->c.sinit_num_ostreams;
+-	stream->out = kcalloc(stream->outcnt, sizeof(*stream->out), gfp);
++
++	stream->out = kcalloc(outcnt, sizeof(*stream->out), gfp);
+ 	if (!stream->out)
+ 		return -ENOMEM;
+ 
++	stream->outcnt = outcnt;
+ 	for (i = 0; i < stream->outcnt; i++)
+ 		stream->out[i].state = SCTP_STREAM_OPEN;
+ 
+-	stream->incnt = asoc->c.sinit_max_instreams;
+-	stream->in = kcalloc(stream->incnt, sizeof(*stream->in), gfp);
++	if (!incnt)
++		return 0;
++
++	stream->in = kcalloc(incnt, sizeof(*stream->in), gfp);
+ 	if (!stream->in) {
+ 		kfree(stream->out);
+ 		stream->out = NULL;
+ 		return -ENOMEM;
+ 	}
+ 
++	stream->incnt = incnt;
++
+ 	return 0;
+ }
+ 
 -- 
-2.7.4
+2.1.0
 
