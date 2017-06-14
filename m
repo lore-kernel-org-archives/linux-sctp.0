@@ -1,46 +1,59 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 20 Jun 2017 19:33:07 +0000
-Subject: Re: [PATCH net-next] sctp: uncork the old asoc before changing to the new one
-Message-Id: <20170620.153307.400521275017001944.davem@davemloft.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 14 Jun 2017 19:08:59 +0000
+Subject: [PATCH net] sctp: fix spinfo_srtt to be in msecs and not jiffies
+Message-Id: <ed45c6f580535de366377e20af519ecff5bdf28d.1497466458.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <99205651b831cf7fd7b847f9b5c904fbf57ce416.1497945715.git.lucien.xin@gmail.com>
-In-Reply-To: <99205651b831cf7fd7b847f9b5c904fbf57ce416.1497945715.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: netdev@vger.kernel.org
+Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 20 Jun 2017 16:01:55 +0800
+RFC 6458 (SCTP Sockets API) Section 8.2.2.  Peer Address Information
+(SCTP_GET_PEER_ADDR_INFO) defines that spinfo_srtt is in miliseconds,
+yet we were using it in jiffies.
 
-> local_cork is used to decide if it should uncork asoc outq after processing
-> some cmds, and it is set when replying or sending msgs. local_cork should
-> always have the same value with current asoc q->cork in some way.
-> 
-> The thing is when changing to a new asoc by cmd SET_ASOC, local_cork may
-> not be consistent with the current asoc any more. The cmd seqs can be:
-> 
->   SCTP_CMD_UPDATE_ASSOC (asoc)
->   SCTP_CMD_REPLY (asoc)
->   SCTP_CMD_SET_ASOC (new_asoc)
->   SCTP_CMD_DELETE_TCB (new_asoc)
->   SCTP_CMD_SET_ASOC (asoc)
->   SCTP_CMD_REPLY (asoc)
-> 
-> The 1st REPLY makes OLD asoc q->cork and local_cork both are 1, and the cmd
-> DELETE_TCB clears NEW asoc q->cork and local_cork. After asoc goes back to
-> OLD asoc, q->cork is still 1 while local_cork is 0. The 2nd REPLY will not
-> set local_cork because q->cork is already set and it can't be uncorked and
-> sent out because of this.
-> 
-> To keep local_cork consistent with the current asoc q->cork, this patch is
-> to uncork the old asoc if local_cork is set before changing to the new one.
-> 
-> Note that the above cmd seqs will be used in the next patch when updating
-> asoc and handling errors in it.
-> 
-> Suggested-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Fix it by converting before assigning, similarly to RTO.
 
-Applied.
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+I hope this is not considered UAPI breakage. This is exported via
+getsockopt() calls.
+
+ net/sctp/socket.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 5f58dd03e3ace38b9c4babbe2d92f0a3f98a4b68..e51eacbf9ec8248661e41c5c12578b6b8b75487d 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4542,7 +4542,7 @@ int sctp_get_sctp_info(struct sock *sk, struct sctp_association *asoc,
+ 	       sizeof(struct sockaddr_storage));
+ 	info->sctpi_p_state = prim->state;
+ 	info->sctpi_p_cwnd = prim->cwnd;
+-	info->sctpi_p_srtt = prim->srtt;
++	info->sctpi_p_srtt = jiffies_to_msecs(prim->srtt);
+ 	info->sctpi_p_rto = jiffies_to_msecs(prim->rto);
+ 	info->sctpi_p_hbinterval = prim->hbinterval;
+ 	info->sctpi_p_pathmaxrxt = prim->pathmaxrxt;
+@@ -4738,7 +4738,7 @@ static int sctp_getsockopt_sctp_status(struct sock *sk, int len,
+ 		(union sctp_addr *)&status.sstat_primary.spinfo_address);
+ 	status.sstat_primary.spinfo_state = transport->state;
+ 	status.sstat_primary.spinfo_cwnd = transport->cwnd;
+-	status.sstat_primary.spinfo_srtt = transport->srtt;
++	status.sstat_primary.spinfo_srtt = jiffies_to_msecs(transport->srtt);
+ 	status.sstat_primary.spinfo_rto = jiffies_to_msecs(transport->rto);
+ 	status.sstat_primary.spinfo_mtu = transport->pathmtu;
+ 
+@@ -4798,7 +4798,7 @@ static int sctp_getsockopt_peer_addr_info(struct sock *sk, int len,
+ 	pinfo.spinfo_assoc_id = sctp_assoc2id(transport->asoc);
+ 	pinfo.spinfo_state = transport->state;
+ 	pinfo.spinfo_cwnd = transport->cwnd;
+-	pinfo.spinfo_srtt = transport->srtt;
++	pinfo.spinfo_srtt = jiffies_to_msecs(transport->srtt);
+ 	pinfo.spinfo_rto = jiffies_to_msecs(transport->rto);
+ 	pinfo.spinfo_mtu = transport->pathmtu;
+ 
+-- 
+2.9.4
+
