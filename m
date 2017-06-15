@@ -1,204 +1,50 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 30 Jun 2017 17:32:57 +0000
-Subject: [PATCH v3] sctp: Add peeloff-flags socket option
-Message-Id: <20170630173257.18990-1-nhorman@tuxdriver.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 15 Jun 2017 09:49:08 +0000
+Subject: [PATCH net] sctp: return next obj by passing pos + 1 into sctp_transport_get_idx
+Message-Id: <a129be6693b882bac11ace44d659ceb1c1cc4f79.1497520148.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20170629181340.12423-1-nhorman@tuxdriver.com>
-In-Reply-To: <20170629181340.12423-1-nhorman@tuxdriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
-Cc: netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, "David S. Miller" <davem@davemloft.net>, Andreas Steinmetz <ast@domdv.de>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-Based on a request raised on the sctp devel list, there is a need to
-augment the sctp_peeloff operation while specifying the O_CLOEXEC and
-O_NONBLOCK flags (simmilar to the socket syscall).  Since modifying the
-SCTP_SOCKOPT_PEELOFF socket option would break user space ABI for existing
-programs, this patch creates a new socket option
-SCTP_SOCKOPT_PEELOFF_FLAGS, which accepts a third flags parameter to
-allow atomic assignment of the socket descriptor flags.
+In sctp_for_each_transport, pos is used to save how many objs it has
+dumped. Now it gets the last obj by sctp_transport_get_idx, then gets
+the next obj by sctp_transport_get_next.
 
-Tested successfully by myself and the requestor
+The issue is that in the meanwhile if some objs in transport hashtable
+are removed and the objs nums are less than pos, sctp_transport_get_idx
+would return NULL and hti.walker.tbl is NULL as well. At this moment
+it should stop hti, instead of continue getting the next obj. Or it
+would cause a NULL pointer dereference in sctp_transport_get_next.
 
-Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-CC: Vlad Yasevich <vyasevich@gmail.com>
-CC: "David S. Miller" <davem@davemloft.net>
-CC: Andreas Steinmetz <ast@domdv.de>
-CC: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+This patch is to pass pos + 1 into sctp_transport_get_idx to get the
+next obj directly, even if pos > objs nums, it would return NULL and
+stop hti.
 
+Fixes: 626d16f50f39 ("sctp: export some apis or variables for sctp_diag and reuse some for proc")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
-Change notes:
+ net/sctp/socket.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-v2)
-
-* Per Marcellos comments, move to use of get_unused_fd_flags() and
-clean up code to independently set CLOEXEC
-
-* clean up a stray tab
-
-v3)
-
-* Clean up some long lines
----
- include/uapi/linux/sctp.h |  6 ++++
- net/sctp/socket.c         | 87 +++++++++++++++++++++++++++++++++++++++--------
- 2 files changed, 78 insertions(+), 15 deletions(-)
-
-diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index ced9d8b..6217ff8 100644
---- a/include/uapi/linux/sctp.h
-+++ b/include/uapi/linux/sctp.h
-@@ -121,6 +121,7 @@ typedef __s32 sctp_assoc_t;
- #define SCTP_RESET_STREAMS	119
- #define SCTP_RESET_ASSOC	120
- #define SCTP_ADD_STREAMS	121
-+#define SCTP_SOCKOPT_PEELOFF_FLAGS 122
- 
- /* PR-SCTP policies */
- #define SCTP_PR_SCTP_NONE	0x0000
-@@ -978,6 +979,11 @@ typedef struct {
- 	int sd;
- } sctp_peeloff_arg_t;
- 
-+typedef struct {
-+	sctp_peeloff_arg_t p_arg;
-+	unsigned flags;
-+} sctp_peeloff_flags_arg_t;
-+
- /*
-  *  Peer Address Thresholds socket option
-  */
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 7b6e20e..72de049 100644
+index 30aa0a5..3a8318e 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -4933,11 +4933,47 @@ int sctp_do_peeloff(struct sock *sk, sctp_assoc_t id, struct socket **sockp)
- }
- EXPORT_SYMBOL(sctp_do_peeloff);
+@@ -4666,9 +4666,8 @@ int sctp_for_each_transport(int (*cb)(struct sctp_transport *, void *),
+ 	if (err)
+ 		return err;
  
-+static int sctp_getsockopt_peeloff_common(struct sock *sk, sctp_peeloff_arg_t *peeloff,
-+					  struct file **newfile, unsigned flags)
-+{
-+	struct socket *newsock;
-+	int retval;
-+
-+	retval = sctp_do_peeloff(sk, peeloff->associd, &newsock);
-+	if (retval < 0)
-+		goto out;
-+
-+	/* Map the socket to an unused fd that can be returned to the user.  */
-+	retval = get_unused_fd_flags(flags & SOCK_CLOEXEC);
-+	if (retval < 0) {
-+		sock_release(newsock);
-+		goto out;
-+	}
-+
-+	*newfile = sock_alloc_file(newsock, 0, NULL);
-+	if (IS_ERR(*newfile)) {
-+		put_unused_fd(retval);
-+		sock_release(newsock);
-+		retval = PTR_ERR(*newfile);
-+		*newfile = NULL;
-+		return retval;
-+	}
-+
-+	pr_debug("%s: sk:%p, newsk:%p, sd:%d\n", __func__, sk, newsock->sk,
-+		 retval);
-+
-+	peeloff->sd = retval;
-+
-+	if (flags & SOCK_NONBLOCK)
-+		(*newfile)->f_flags |= O_NONBLOCK;
-+out:
-+	return retval;
-+}
-+
- static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval, int __user *optlen)
- {
- 	sctp_peeloff_arg_t peeloff;
--	struct socket *newsock;
--	struct file *newfile;
-+	struct file *newfile = NULL;
- 	int retval = 0;
+-	sctp_transport_get_idx(net, &hti, pos);
+-	obj = sctp_transport_get_next(net, &hti);
+-	for (; obj && !IS_ERR(obj); obj = sctp_transport_get_next(net, &hti)) {
++	obj = sctp_transport_get_idx(net, &hti, pos + 1);
++	for (; !IS_ERR_OR_NULL(obj); obj = sctp_transport_get_next(net, &hti)) {
+ 		struct sctp_transport *transport = obj;
  
- 	if (len < sizeof(sctp_peeloff_arg_t))
-@@ -4946,26 +4982,44 @@ static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval
- 	if (copy_from_user(&peeloff, optval, len))
- 		return -EFAULT;
- 
--	retval = sctp_do_peeloff(sk, peeloff.associd, &newsock);
-+	retval = sctp_getsockopt_peeloff_common(sk, &peeloff, &newfile, 0);
- 	if (retval < 0)
- 		goto out;
- 
--	/* Map the socket to an unused fd that can be returned to the user.  */
--	retval = get_unused_fd_flags(0);
--	if (retval < 0) {
--		sock_release(newsock);
--		goto out;
-+	/* Return the fd mapped to the new socket.  */
-+	if (put_user(len, optlen)) {
-+		fput(newfile);
-+		put_unused_fd(retval);
-+		return -EFAULT;
- 	}
- 
--	newfile = sock_alloc_file(newsock, 0, NULL);
--	if (IS_ERR(newfile)) {
-+	if (copy_to_user(optval, &peeloff, len)) {
-+		fput(newfile);
- 		put_unused_fd(retval);
--		sock_release(newsock);
--		return PTR_ERR(newfile);
-+		return -EFAULT;
- 	}
-+	fd_install(retval, newfile);
-+out:
-+	return retval;
-+}
- 
--	pr_debug("%s: sk:%p, newsk:%p, sd:%d\n", __func__, sk, newsock->sk,
--		 retval);
-+static int sctp_getsockopt_peeloff_flags(struct sock *sk, int len,
-+					 char __user *optval, int __user *optlen)
-+{
-+	sctp_peeloff_flags_arg_t peeloff;
-+	struct file *newfile = NULL;
-+	int retval = 0;
-+
-+	if (len < sizeof(sctp_peeloff_flags_arg_t))
-+		return -EINVAL;
-+	len = sizeof(sctp_peeloff_flags_arg_t);
-+	if (copy_from_user(&peeloff, optval, len))
-+		return -EFAULT;
-+
-+	retval = sctp_getsockopt_peeloff_common(sk, &peeloff.p_arg,
-+						&newfile, peeloff.flags);
-+	if (retval < 0)
-+		goto out;
- 
- 	/* Return the fd mapped to the new socket.  */
- 	if (put_user(len, optlen)) {
-@@ -4973,7 +5027,7 @@ static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval
- 		put_unused_fd(retval);
- 		return -EFAULT;
- 	}
--	peeloff.sd = retval;
-+
- 	if (copy_to_user(optval, &peeloff, len)) {
- 		fput(newfile);
- 		put_unused_fd(retval);
-@@ -6758,6 +6812,9 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
- 	case SCTP_SOCKOPT_PEELOFF:
- 		retval = sctp_getsockopt_peeloff(sk, len, optval, optlen);
- 		break;
-+	case SCTP_SOCKOPT_PEELOFF_FLAGS:
-+		retval = sctp_getsockopt_peeloff_flags(sk, len, optval, optlen);
-+		break;
- 	case SCTP_PEER_ADDR_PARAMS:
- 		retval = sctp_getsockopt_peer_addr_params(sk, len, optval,
- 							  optlen);
+ 		if (!sctp_transport_hold(transport))
 -- 
-2.9.4
+2.1.0
 
