@@ -1,210 +1,149 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 30 Jun 2017 16:29:57 +0000
-Subject: Re: [PATCH v2] sctp: Add peeloff-flags socket option
-Message-Id: <20170630162957.GM18138@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 20 Jun 2017 08:05:11 +0000
+Subject: [PATCH net-next] sctp: handle errors when updating asoc
+Message-Id: <a6aa86ed657155e13c72c246b79cf297159a8765.1497945911.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20170629181340.12423-1-nhorman@tuxdriver.com>
- <20170630153554.22901-1-nhorman@tuxdriver.com>
-In-Reply-To: <20170630153554.22901-1-nhorman@tuxdriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, "David S. Miller" <davem@davemloft.net>, Andreas Steinmetz <ast@domdv.de>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-On Fri, Jun 30, 2017 at 11:35:54AM -0400, Neil Horman wrote:
-> Based on a request raised on the sctp devel list, there is a need to
-> augment the sctp_peeloff operation while specifying the O_CLOEXEC and
-> O_NONBLOCK flags (simmilar to the socket syscall).  Since modifying the
-> SCTP_SOCKOPT_PEELOFF socket option would break user space ABI for existing
-> programs, this patch creates a new socket option
-> SCTP_SOCKOPT_PEELOFF_FLAGS, which accepts a third flags parameter to
-> allow atomic assignment of the socket descriptor flags.
-> 
-> Tested successfully by myself and the requestor
-> 
-> Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-> CC: Vlad Yasevich <vyasevich@gmail.com>
-> CC: "David S. Miller" <davem@davemloft.net>
-> CC: Andreas Steinmetz <ast@domdv.de>
-> CC: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> 
-> ---
-> Change notes:
-> 
-> v2)
-> 
-> * Per Marcellos comments, move to use of get_unused_fd_flags() and
-> clean up code to independently set CLOEXEC
-> 
-> * clean up a stray tab
-> ---
->  include/uapi/linux/sctp.h |  6 ++++
->  net/sctp/socket.c         | 84 ++++++++++++++++++++++++++++++++++++++---------
->  2 files changed, 75 insertions(+), 15 deletions(-)
-> 
-> diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-> index ced9d8b..6217ff8 100644
-> --- a/include/uapi/linux/sctp.h
-> +++ b/include/uapi/linux/sctp.h
-> @@ -121,6 +121,7 @@ typedef __s32 sctp_assoc_t;
->  #define SCTP_RESET_STREAMS	119
->  #define SCTP_RESET_ASSOC	120
->  #define SCTP_ADD_STREAMS	121
-> +#define SCTP_SOCKOPT_PEELOFF_FLAGS 122
->  
->  /* PR-SCTP policies */
->  #define SCTP_PR_SCTP_NONE	0x0000
-> @@ -978,6 +979,11 @@ typedef struct {
->  	int sd;
->  } sctp_peeloff_arg_t;
->  
-> +typedef struct {
-> +	sctp_peeloff_arg_t p_arg;
-> +	unsigned flags;
-> +} sctp_peeloff_flags_arg_t;
-> +
->  /*
->   *  Peer Address Thresholds socket option
->   */
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 7b6e20e..3cc5309 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -4933,11 +4933,46 @@ int sctp_do_peeloff(struct sock *sk, sctp_assoc_t id, struct socket **sockp)
->  }
->  EXPORT_SYMBOL(sctp_do_peeloff);
->  
-> +static int sctp_getsockopt_peeloff_common(struct sock *sk, sctp_peeloff_arg_t *peeloff, struct file **newfile, unsigned flags)
-> +{
-> +	struct socket *newsock;
-> +	int retval;
-> +
-> +	retval = sctp_do_peeloff(sk, peeloff->associd, &newsock);
-> +	if (retval < 0)
-> +		goto out;
-> +
-> +	/* Map the socket to an unused fd that can be returned to the user.  */
-> +	retval = get_unused_fd_flags(flags & SOCK_CLOEXEC);
-> +	if (retval < 0) {
-> +		sock_release(newsock);
-> +		goto out;
-> +	}
-> +
-> +	*newfile = sock_alloc_file(newsock, 0, NULL);
-> +	if (IS_ERR(*newfile)) {
-> +		put_unused_fd(retval);
-> +		sock_release(newsock);
-> +		retval = PTR_ERR(*newfile);
-> +		*newfile = NULL;
-> +		return retval;
-> +	}
-> +
-> +	pr_debug("%s: sk:%p, newsk:%p, sd:%d\n", __func__, sk, newsock->sk,
-> +		 retval);
-> +
-> +	peeloff->sd = retval;
-> +
-> +	if (flags & SOCK_NONBLOCK)
-> +		(*newfile)->f_flags |= O_NONBLOCK;
-> +out:
-> +	return retval;
-> +}
-> +
->  static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval, int __user *optlen)
->  {
->  	sctp_peeloff_arg_t peeloff;
-> -	struct socket *newsock;
-> -	struct file *newfile;
-> +	struct file *newfile = NULL;
->  	int retval = 0;
->  
->  	if (len < sizeof(sctp_peeloff_arg_t))
-> @@ -4946,26 +4981,42 @@ static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval
->  	if (copy_from_user(&peeloff, optval, len))
->  		return -EFAULT;
->  
-> -	retval = sctp_do_peeloff(sk, peeloff.associd, &newsock);
-> +	retval = sctp_getsockopt_peeloff_common(sk, &peeloff, &newfile, 0);
->  	if (retval < 0)
->  		goto out;
->  
-> -	/* Map the socket to an unused fd that can be returned to the user.  */
-> -	retval = get_unused_fd_flags(0);
-> -	if (retval < 0) {
-> -		sock_release(newsock);
-> -		goto out;
-> +	/* Return the fd mapped to the new socket.  */
-> +	if (put_user(len, optlen)) {
-> +		fput(newfile);
-> +		put_unused_fd(retval);
-> +		return -EFAULT;
->  	}
->  
-> -	newfile = sock_alloc_file(newsock, 0, NULL);
-> -	if (IS_ERR(newfile)) {
-> +	if (copy_to_user(optval, &peeloff, len)) {
-> +		fput(newfile);
->  		put_unused_fd(retval);
-> -		sock_release(newsock);
-> -		return PTR_ERR(newfile);
-> +		return -EFAULT;
->  	}
-> +	fd_install(retval, newfile);
-> +out:
-> +	return retval;
-> +}
->  
-> -	pr_debug("%s: sk:%p, newsk:%p, sd:%d\n", __func__, sk, newsock->sk,
-> -		 retval);
-> +static int sctp_getsockopt_peeloff_flags(struct sock *sk, int len, char __user *optval, int __user *optlen)
-> +{
-> +	sctp_peeloff_flags_arg_t peeloff;
-> +	struct file *newfile = NULL;
-> +	int retval = 0;
-> +
-> +	if (len < sizeof(sctp_peeloff_flags_arg_t))
-> +		return -EINVAL;
-> +	len = sizeof(sctp_peeloff_flags_arg_t);
-> +	if (copy_from_user(&peeloff, optval, len))
-> +		return -EFAULT;
-> +
-> +	retval = sctp_getsockopt_peeloff_common(sk, &peeloff.p_arg, &newfile, peeloff.flags);
+It's a bad thing not to handle errors when updating asoc. The memory
+allocation failure in any of the functions called in sctp_assoc_update()
+would cause sctp to work unexpectedly.
 
-That is a long line, would be nice to break it. It fits quite well if
-broken before newfile parameter.
+This patch is to fix it by aborting the asoc and reporting the error when
+any of these functions fails.
 
-  Marcelo
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/structs.h |  4 ++--
+ net/sctp/associola.c       | 25 ++++++++++++++-----------
+ net/sctp/sm_sideeffect.c   | 24 +++++++++++++++++++++++-
+ 3 files changed, 39 insertions(+), 14 deletions(-)
 
-> +	if (retval < 0)
-> +		goto out;
->  
->  	/* Return the fd mapped to the new socket.  */
->  	if (put_user(len, optlen)) {
-> @@ -4973,7 +5024,7 @@ static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval
->  		put_unused_fd(retval);
->  		return -EFAULT;
->  	}
-> -	peeloff.sd = retval;
-> +
->  	if (copy_to_user(optval, &peeloff, len)) {
->  		fput(newfile);
->  		put_unused_fd(retval);
-> @@ -6758,6 +6809,9 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
->  	case SCTP_SOCKOPT_PEELOFF:
->  		retval = sctp_getsockopt_peeloff(sk, len, optval, optlen);
->  		break;
-> +	case SCTP_SOCKOPT_PEELOFF_FLAGS:
-> +		retval = sctp_getsockopt_peeloff_flags(sk, len, optval, optlen);
-> +		break;
->  	case SCTP_PEER_ADDR_PARAMS:
->  		retval = sctp_getsockopt_peer_addr_params(sk, len, optval,
->  							  optlen);
-> -- 
-> 2.9.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 5051317..e26763b 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1953,8 +1953,8 @@ struct sctp_transport *sctp_assoc_is_match(struct sctp_association *,
+ 					   const union sctp_addr *,
+ 					   const union sctp_addr *);
+ void sctp_assoc_migrate(struct sctp_association *, struct sock *);
+-void sctp_assoc_update(struct sctp_association *old,
+-		       struct sctp_association *new);
++int sctp_assoc_update(struct sctp_association *old,
++		      struct sctp_association *new);
+ 
+ __u32 sctp_association_get_next_tsn(struct sctp_association *);
+ 
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 72b07dd..757be41 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1112,8 +1112,8 @@ void sctp_assoc_migrate(struct sctp_association *assoc, struct sock *newsk)
+ }
+ 
+ /* Update an association (possibly from unexpected COOKIE-ECHO processing).  */
+-void sctp_assoc_update(struct sctp_association *asoc,
+-		       struct sctp_association *new)
++int sctp_assoc_update(struct sctp_association *asoc,
++		      struct sctp_association *new)
+ {
+ 	struct sctp_transport *trans;
+ 	struct list_head *pos, *temp;
+@@ -1124,8 +1124,10 @@ void sctp_assoc_update(struct sctp_association *asoc,
+ 	asoc->peer.sack_needed = new->peer.sack_needed;
+ 	asoc->peer.auth_capable = new->peer.auth_capable;
+ 	asoc->peer.i = new->peer.i;
+-	sctp_tsnmap_init(&asoc->peer.tsn_map, SCTP_TSN_MAP_INITIAL,
+-			 asoc->peer.i.initial_tsn, GFP_ATOMIC);
++
++	if (!sctp_tsnmap_init(&asoc->peer.tsn_map, SCTP_TSN_MAP_INITIAL,
++			      asoc->peer.i.initial_tsn, GFP_ATOMIC))
++		return -ENOMEM;
+ 
+ 	/* Remove any peer addresses not present in the new association. */
+ 	list_for_each_safe(pos, temp, &asoc->peer.transport_addr_list) {
+@@ -1169,11 +1171,11 @@ void sctp_assoc_update(struct sctp_association *asoc,
+ 	} else {
+ 		/* Add any peer addresses from the new association. */
+ 		list_for_each_entry(trans, &new->peer.transport_addr_list,
+-				transports) {
+-			if (!sctp_assoc_lookup_paddr(asoc, &trans->ipaddr))
+-				sctp_assoc_add_peer(asoc, &trans->ipaddr,
+-						    GFP_ATOMIC, trans->state);
+-		}
++				    transports)
++			if (!sctp_assoc_lookup_paddr(asoc, &trans->ipaddr) &&
++			    !sctp_assoc_add_peer(asoc, &trans->ipaddr,
++						 GFP_ATOMIC, trans->state))
++				return -ENOMEM;
+ 
+ 		asoc->ctsn_ack_point = asoc->next_tsn - 1;
+ 		asoc->adv_peer_ack_point = asoc->ctsn_ack_point;
+@@ -1182,7 +1184,8 @@ void sctp_assoc_update(struct sctp_association *asoc,
+ 			sctp_stream_update(&asoc->stream, &new->stream);
+ 
+ 		/* get a new assoc id if we don't have one yet. */
+-		sctp_assoc_set_id(asoc, GFP_ATOMIC);
++		if (sctp_assoc_set_id(asoc, GFP_ATOMIC))
++			return -ENOMEM;
+ 	}
+ 
+ 	/* SCTP-AUTH: Save the peer parameters from the new associations
+@@ -1200,7 +1203,7 @@ void sctp_assoc_update(struct sctp_association *asoc,
+ 	asoc->peer.peer_hmacs = new->peer.peer_hmacs;
+ 	new->peer.peer_hmacs = NULL;
+ 
+-	sctp_auth_asoc_init_active_key(asoc, GFP_ATOMIC);
++	return sctp_auth_asoc_init_active_key(asoc, GFP_ATOMIC);
+ }
+ 
+ /* Update the retran path for sending a retransmitted packet.
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 7623566..dfe1fcb 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -818,6 +818,28 @@ static void sctp_cmd_setup_t2(sctp_cmd_seq_t *cmds,
+ 	asoc->timeouts[SCTP_EVENT_TIMEOUT_T2_SHUTDOWN] = t->rto;
+ }
+ 
++static void sctp_cmd_assoc_update(sctp_cmd_seq_t *cmds,
++				  struct sctp_association *asoc,
++				  struct sctp_association *new)
++{
++	struct net *net = sock_net(asoc->base.sk);
++	struct sctp_chunk *abort;
++
++	if (!sctp_assoc_update(asoc, new))
++		return;
++
++	abort = sctp_make_abort(asoc, NULL, sizeof(sctp_errhdr_t));
++	if (abort) {
++		sctp_init_cause(abort, SCTP_ERROR_RSRC_LOW, 0);
++		sctp_add_cmd_sf(cmds, SCTP_CMD_REPLY, SCTP_CHUNK(abort));
++	}
++	sctp_add_cmd_sf(cmds, SCTP_CMD_SET_SK_ERR, SCTP_ERROR(ECONNABORTED));
++	sctp_add_cmd_sf(cmds, SCTP_CMD_ASSOC_FAILED,
++			SCTP_PERR(SCTP_ERROR_RSRC_LOW));
++	SCTP_INC_STATS(net, SCTP_MIB_ABORTEDS);
++	SCTP_DEC_STATS(net, SCTP_MIB_CURRESTAB);
++}
++
+ /* Helper function to change the state of an association. */
+ static void sctp_cmd_new_state(sctp_cmd_seq_t *cmds,
+ 			       struct sctp_association *asoc,
+@@ -1294,7 +1316,7 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
+ 			break;
+ 
+ 		case SCTP_CMD_UPDATE_ASSOC:
+-		       sctp_assoc_update(asoc, cmd->obj.asoc);
++		       sctp_cmd_assoc_update(commands, asoc, cmd->obj.asoc);
+ 		       break;
+ 
+ 		case SCTP_CMD_PURGE_OUTQUEUE:
+-- 
+2.1.0
+
