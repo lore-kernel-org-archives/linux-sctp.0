@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 20 Jun 2017 13:21:38 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 20 Jun 2017 15:44:55 +0000
 Subject: Re: [PATCH net-next] sctp: handle errors when updating asoc
-Message-Id: <20170620132138.GA10596@hmswarspite.think-freely.org>
+Message-Id: <20170620154454.GC18138@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <a6aa86ed657155e13c72c246b79cf297159a8765.1497945911.git.lucien.xin@gmail.com>
 In-Reply-To: <a6aa86ed657155e13c72c246b79cf297159a8765.1497945911.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, davem@davemloft.net
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
 On Tue, Jun 20, 2017 at 04:05:11PM +0800, Xin Long wrote:
 > It's a bad thing not to handle errors when updating asoc. The memory
@@ -20,6 +20,9 @@ On Tue, Jun 20, 2017 at 04:05:11PM +0800, Xin Long wrote:
 > any of these functions fails.
 > 
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
+
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+
 > ---
 >  include/net/sctp/structs.h |  4 ++--
 >  net/sctp/associola.c       | 25 ++++++++++++++-----------
@@ -155,5 +158,3 @@ On Tue, Jun 20, 2017 at 04:05:11PM +0800, Xin Long wrote:
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
-
