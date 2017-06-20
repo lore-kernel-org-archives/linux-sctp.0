@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 20 Jun 2017 19:01:22 +0000
+From: David Miller <davem@davemloft.net>
+Date: Tue, 20 Jun 2017 19:33:07 +0000
 Subject: Re: [PATCH net-next] sctp: uncork the old asoc before changing to the new one
-Message-Id: <20170620190122.GE10596@hmswarspite.think-freely.org>
+Message-Id: <20170620.153307.400521275017001944.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <99205651b831cf7fd7b847f9b5c904fbf57ce416.1497945715.git.lucien.xin@gmail.com>
 In-Reply-To: <99205651b831cf7fd7b847f9b5c904fbf57ce416.1497945715.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, davem@davemloft.net
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
-On Tue, Jun 20, 2017 at 04:01:55PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 20 Jun 2017 16:01:55 +0800
+
 > local_cork is used to decide if it should uncork asoc outq after processing
 > some cmds, and it is set when replying or sending msgs. local_cork should
 > always have the same value with current asoc q->cork in some way.
@@ -40,32 +42,5 @@ On Tue, Jun 20, 2017 at 04:01:55PM +0800, Xin Long wrote:
 > 
 > Suggested-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> ---
->  net/sctp/sm_sideeffect.c | 4 ++++
->  1 file changed, 4 insertions(+)
-> 
-> diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-> index 25384fa..7623566 100644
-> --- a/net/sctp/sm_sideeffect.c
-> +++ b/net/sctp/sm_sideeffect.c
-> @@ -1748,6 +1748,10 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
->  			break;
->  
->  		case SCTP_CMD_SET_ASOC:
-> +			if (asoc && local_cork) {
-> +				sctp_outq_uncork(&asoc->outqueue, gfp);
-> +				local_cork = 0;
-> +			}
->  			asoc = cmd->obj.asoc;
->  			break;
->  
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
+Applied.
