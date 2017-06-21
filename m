@@ -1,119 +1,50 @@
-From: Davide Caratti <dcaratti@redhat.com>
-Date: Tue, 16 May 2017 09:20:42 +0000
-Subject: [PATCH net-next 4/7] net: use skb->csum_not_inet to identify packets needing crc32c
-Message-Id: <cda53e69808627734b75a349e8ff42f76fb282d8.1494883280.git.dcaratti@redhat.com>
+From: Denys Vlasenko <dvlasenk@redhat.com>
+Date: Wed, 21 Jun 2017 17:03:27 +0000
+Subject: [PATCH v2] net/sctp/ulpevent.c: Deinline sctp_ulpevent_set_owner, save 1616 bytes
+Message-Id: <20170621170327.4873-1-dvlasenk@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: linux-kernel@vger.kernel.org
+Cc: Denys Vlasenko <dvlasenk@redhat.com>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-skb->csum_not_inet carries the indication on which algorithm is needed to
-compute checksum on skb in the transmit path, when skb->ip_summed is equal
-to CHECKSUM_PARTIAL. If skb carries a SCTP packet and crc32c hasn't been
-yet written in L4 header, skb->csum_not_inet is assigned to 1; otherwise,
-assume Internet Checksum is needed and thus set skb->csum_not_inet to 0.
+This function compiles to 147 bytes of machine code. 13 callsites.
 
-Suggested-by: Tom Herbert <tom@herbertland.com>
-Signed-off-by: Davide Caratti <dcaratti@redhat.com>
-Acked-by: Tom Herbert <tom@herbertland.com>
+I'm no expert on SCTP events, but quick reading of SCTP docs tells me that
+SCTP events are not happening on every packet.
+They are ASSOC_CHANGE, PEER_ADDR_CHANGE, REMOTE_ERROR and such.
+Does not look performance critical.
+
+Signed-off-by: Denys Vlasenko <dvlasenk@redhat.com>
+CC: Vlad Yasevich <vyasevich@gmail.com>
+CC: Neil Horman <nhorman@tuxdriver.com>
+CC: David Miller <davem@davemloft.net>
+CC: linux-sctp@vger.kernel.org
+CC: netdev@vger.kernel.org
+CC: linux-kernel@vger.kernel.org
 ---
- include/linux/skbuff.h | 16 +++++++++-------
- net/core/dev.c         |  1 +
- net/sched/act_csum.c   |  1 +
- net/sctp/offload.c     |  1 +
- net/sctp/output.c      |  1 +
- 5 files changed, 13 insertions(+), 7 deletions(-)
+Changed since v1:
+* reindented function argument list
 
-diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
-index f98e3a6..2fefd92 100644
---- a/include/linux/skbuff.h
-+++ b/include/linux/skbuff.h
-@@ -189,12 +189,13 @@
-  *
-  *   NETIF_F_SCTP_CRC - This feature indicates that a device is capable of
-  *     offloading the SCTP CRC in a packet. To perform this offload the stack
-- *     will set ip_summed to CHECKSUM_PARTIAL and set csum_start and csum_offset
-- *     accordingly. Note the there is no indication in the skbuff that the
-- *     CHECKSUM_PARTIAL refers to an SCTP checksum, a driver that supports
-- *     both IP checksum offload and SCTP CRC offload must verify which offload
-- *     is configured for a packet presumably by inspecting packet headers; in
-- *     case, skb_crc32c_csum_help is provided to compute CRC on SCTP packets.
-+ *     will set set csum_start and csum_offset accordingly, set ip_summed to
-+ *     CHECKSUM_PARTIAL and set csum_not_inet to 1, to provide an indication in
-+ *     the skbuff that the CHECKSUM_PARTIAL refers to CRC32c.
-+ *     A driver that supports both IP checksum offload and SCTP CRC32c offload
-+ *     must verify which offload is configured for a packet by testing the
-+ *     value of skb->csum_not_inet; skb_crc32c_csum_help is provided to resolve
-+ *     CHECKSUM_PARTIAL on skbs where csum_not_inet is set to 1.
-  *
-  *   NETIF_F_FCOE_CRC - This feature indicates that a device is capable of
-  *     offloading the FCOE CRC in a packet. To perform this offload the stack
-@@ -617,6 +618,7 @@ static inline bool skb_mstamp_after(const struct skb_mstamp *t1,
-  *	@wifi_acked_valid: wifi_acked was set
-  *	@wifi_acked: whether frame was acked on wifi or not
-  *	@no_fcs:  Request NIC to treat last 4 bytes as Ethernet FCS
-+ *	@csum_not_inet: use CRC32c to resolve CHECKSUM_PARTIAL
-  *	@dst_pending_confirm: need to confirm neighbour
-   *	@napi_id: id of the NAPI struct this skb came from
-  *	@secmark: security marking
-@@ -745,7 +747,7 @@ struct sk_buff {
- 	__u8			csum_valid:1;
- 	__u8			csum_complete_sw:1;
- 	__u8			csum_level:2;
--	__u8			__csum_bad_unused:1; /* one bit hole */
-+	__u8			csum_not_inet:1;
- 
- 	__u8			dst_pending_confirm:1;
- #ifdef CONFIG_IPV6_NDISC_NODETYPE
-diff --git a/net/core/dev.c b/net/core/dev.c
-index 1b9575c..2cedb0f 100644
---- a/net/core/dev.c
-+++ b/net/core/dev.c
-@@ -2647,6 +2647,7 @@ int skb_crc32c_csum_help(struct sk_buff *skb)
- 						  crc32c_csum_stub));
- 	*(__le32 *)(skb->data + offset) = crc32c_csum;
- 	skb->ip_summed = CHECKSUM_NONE;
-+	skb->csum_not_inet = 0;
- out:
- 	return ret;
- }
-diff --git a/net/sched/act_csum.c b/net/sched/act_csum.c
-index ab6fdbd..3317a2f 100644
---- a/net/sched/act_csum.c
-+++ b/net/sched/act_csum.c
-@@ -350,6 +350,7 @@ static int tcf_csum_sctp(struct sk_buff *skb, unsigned int ihl,
- 	sctph->checksum = sctp_compute_cksum(skb,
- 					     skb_network_offset(skb) + ihl);
- 	skb->ip_summed = CHECKSUM_NONE;
-+	skb->csum_not_inet = 0;
- 
- 	return 1;
- }
-diff --git a/net/sctp/offload.c b/net/sctp/offload.c
-index 378f462..ef156ac 100644
---- a/net/sctp/offload.c
-+++ b/net/sctp/offload.c
-@@ -35,6 +35,7 @@
- static __le32 sctp_gso_make_checksum(struct sk_buff *skb)
+ net/sctp/ulpevent.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
+index ec2b3e0..bc3f495 100644
+--- a/net/sctp/ulpevent.c
++++ b/net/sctp/ulpevent.c
+@@ -88,8 +88,8 @@ int sctp_ulpevent_is_notification(const struct sctp_ulpevent *event)
+ /* Hold the association in case the msg_name needs read out of
+  * the association.
+  */
+-static inline void sctp_ulpevent_set_owner(struct sctp_ulpevent *event,
+-					   const struct sctp_association *asoc)
++static void sctp_ulpevent_set_owner(struct sctp_ulpevent *event,
++				    const struct sctp_association *asoc)
  {
- 	skb->ip_summed = CHECKSUM_NONE;
-+	skb->csum_not_inet = 0;
- 	return sctp_compute_cksum(skb, skb_transport_offset(skb));
- }
- 
-diff --git a/net/sctp/output.c b/net/sctp/output.c
-index 1409a87..e2edf2e 100644
---- a/net/sctp/output.c
-+++ b/net/sctp/output.c
-@@ -538,6 +538,7 @@ static int sctp_packet_pack(struct sctp_packet *packet,
- 	} else {
- chksum:
- 		head->ip_summed = CHECKSUM_PARTIAL;
-+		head->csum_not_inet = 1;
- 		head->csum_start = skb_transport_header(head) - head->head;
- 		head->csum_offset = offsetof(struct sctphdr, checksum);
- 	}
+ 	struct sctp_chunk *chunk = event->chunk;
+ 	struct sk_buff *skb;
 -- 
-2.7.4
+1.8.3.1
 
