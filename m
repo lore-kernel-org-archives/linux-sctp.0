@@ -1,48 +1,45 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 30 Jun 2017 03:52:18 +0000
-Subject: [PATCH net-next 07/11] sctp: remove the typedef sctp_param_action_t
-Message-Id: <81c68360c17817528e46216d9d48168b35e44434.1498794482.git.lucien.xin@gmail.com>
+From: Denys Vlasenko <dvlasenk@redhat.com>
+Date: Wed, 21 Jun 2017 16:28:09 +0000
+Subject: [PATCH] net/sctp/ulpevent.c: Deinline sctp_ulpevent_set_owner, save 1616 bytes
+Message-Id: <20170621162809.4305-1-dvlasenk@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1498794481.git.lucien.xin@gmail.com>
- <d99d14fbe257b7d7b290296646772c6df35a36c8.1498794482.git.lucien.xin@gmail.com>
- <9b26ac600c9c3f9426b370ecd69261c25d220b2b.1498794482.git.lucien.xin@gmail.com>
- <d522a5f819078da037df984f9fa1897b0cf57433.1498794482.git.lucien.xin@gmail.com>
- <bd4d24bbff8ff402d30c8a148f6ea4332beb5005.1498794482.git.lucien.xin@gmail.com>
- <2ae031641ce87e8fa77af7d3ea31b163f6c25f3d.1498794482.git.lucien.xin@gmail.com>
- <794094c6a1a0fdbf5374c983b2558e1316a51fd4.1498794482.git.lucien.xin@gmail.com>
-In-Reply-To: <794094c6a1a0fdbf5374c983b2558e1316a51fd4.1498794482.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: linux-kernel@vger.kernel.org
+Cc: Denys Vlasenko <dvlasenk@redhat.com>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Remove this typedef, there is even no places using it.
+This function compiles to 147 bytes of machine code. 13 callsites.
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+I'm no expert on SCTP events, but quick reading of SCTP docs tells me that
+SCTP events are not happening on every packet.
+They are ASSOC_CHANGE, PEER_ADDR_CHANGE, REMOTE_ERROR and such.
+Does not look performance critical.
+
+Signed-off-by: Denys Vlasenko <dvlasenk@redhat.com>
+CC: Vlad Yasevich <vyasevich@gmail.com>
+CC: Neil Horman <nhorman@tuxdriver.com>
+CC: David Miller <davem@davemloft.net>
+CC: linux-sctp@vger.kernel.org
+CC: netdev@vger.kernel.org
+CC: linux-kernel@vger.kernel.org
 ---
- include/linux/sctp.h | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ net/sctp/ulpevent.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index 5eecc0f..d5c0dda 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -216,12 +216,12 @@ enum sctp_param {
-  *  not recognize the Parameter Type.
-  *
+diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
+index ec2b3e0..049aa5a 100644
+--- a/net/sctp/ulpevent.c
++++ b/net/sctp/ulpevent.c
+@@ -88,7 +88,7 @@ int sctp_ulpevent_is_notification(const struct sctp_ulpevent *event)
+ /* Hold the association in case the msg_name needs read out of
+  * the association.
   */
--typedef enum {
-+enum {
- 	SCTP_PARAM_ACTION_DISCARD     = cpu_to_be16(0x0000),
- 	SCTP_PARAM_ACTION_DISCARD_ERR = cpu_to_be16(0x4000),
- 	SCTP_PARAM_ACTION_SKIP        = cpu_to_be16(0x8000),
- 	SCTP_PARAM_ACTION_SKIP_ERR    = cpu_to_be16(0xc000),
--} sctp_param_action_t;
-+};
- 
- enum { SCTP_PARAM_ACTION_MASK = cpu_to_be16(0xc000), };
- 
+-static inline void sctp_ulpevent_set_owner(struct sctp_ulpevent *event,
++static void sctp_ulpevent_set_owner(struct sctp_ulpevent *event,
+ 					   const struct sctp_association *asoc)
+ {
+ 	struct sctp_chunk *chunk = event->chunk;
 -- 
-2.1.0
+1.8.3.1
 
