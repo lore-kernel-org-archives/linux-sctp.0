@@ -1,58 +1,48 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 21 Jun 2017 16:57:35 +0000
+From: Joe Perches <joe@perches.com>
+Date: Wed, 21 Jun 2017 19:19:10 +0000
 Subject: Re: [PATCH] net/sctp/ulpevent.c: Deinline sctp_ulpevent_set_owner, save 1616 bytes
-Message-Id: <20170621165734.GF18138@localhost.localdomain>
+Message-Id: <1498072750.3337.4.camel@perches.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20170621162809.4305-1-dvlasenk@redhat.com>
 In-Reply-To: <20170621162809.4305-1-dvlasenk@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Denys Vlasenko <dvlasenk@redhat.com>
-Cc: linux-kernel@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: Denys Vlasenko <dvlasenk@redhat.com>, linux-kernel@vger.kernel.org
+Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On Wed, Jun 21, 2017 at 06:28:09PM +0200, Denys Vlasenko wrote:
+On Wed, 2017-06-21 at 18:28 +0200, Denys Vlasenko wrote:
 > This function compiles to 147 bytes of machine code. 13 callsites.
-> 
+>=20
 > I'm no expert on SCTP events, but quick reading of SCTP docs tells me that
 > SCTP events are not happening on every packet.
 > They are ASSOC_CHANGE, PEER_ADDR_CHANGE, REMOTE_ERROR and such.
 > Does not look performance critical.
-> 
-> Signed-off-by: Denys Vlasenko <dvlasenk@redhat.com>
-> CC: Vlad Yasevich <vyasevich@gmail.com>
-> CC: Neil Horman <nhorman@tuxdriver.com>
-> CC: David Miller <davem@davemloft.net>
-> CC: linux-sctp@vger.kernel.org
-> CC: netdev@vger.kernel.org
-> CC: linux-kernel@vger.kernel.org
-> ---
->  net/sctp/ulpevent.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
+
+Thanks.
+
+But:
+
 > diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
-> index ec2b3e0..049aa5a 100644
-> --- a/net/sctp/ulpevent.c
-> +++ b/net/sctp/ulpevent.c
-> @@ -88,7 +88,7 @@ int sctp_ulpevent_is_notification(const struct sctp_ulpevent *event)
+[]
+> @@ -88,7 +88,7 @@ int sctp_ulpevent_is_notification(const struct sctp_ulp=
+event *event)
 >  /* Hold the association in case the msg_name needs read out of
 >   * the association.
 >   */
 > -static inline void sctp_ulpevent_set_owner(struct sctp_ulpevent *event,
 > +static void sctp_ulpevent_set_owner(struct sctp_ulpevent *event,
 >  					   const struct sctp_association *asoc)
-
-Please fix the alignment here  --------^
-the const should start after the '(' column, as it was before the patch.
-Thanks
-
 >  {
->  	struct sctp_chunk *chunk = event->chunk;
-> -- 
-> 1.8.3.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+>  	struct sctp_chunk *chunk =3D event->chunk;
+
+This now misaligns the next line after the inline removal.
+
+Can you please run your patches through checkpatch?
+
+$ ./scripts/checkpatch.pl -
+CHECK: Alignment should match open parenthesis
+#86: FILE: net/sctp/ulpevent.c:92:
++static void sctp_ulpevent_set_owner(struct sctp_ulpevent *event,
+=A0					=A0=A0=A0const struct sctp_association *asoc)
+
