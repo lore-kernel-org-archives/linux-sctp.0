@@ -1,70 +1,88 @@
-From: <brian.maisey@ntlworld.com>
-Date: Mon, 26 Jun 2017 14:14:52 +0000
-Subject: 
-Message-Id: <149848649219.4332.11627955231093796520@goodline.info>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 23 Jun 2017 22:59:35 +0000
+Subject: [PATCH net-next 3/4] sctp: adjust cwnd increase in Congestion Avoidance phase
+Message-Id: <bdfc1166a147438676c789fd2578a0b319cffc90.1498251459.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1498251459.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1498251459.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-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
-AA=
+RFC4960 Errata 3.26 identified that at the same time RFC4960 states that
+cwnd should never grow more than 1*MTU per RTT, Section 7.2.2 was
+underspecified and as described could allow increasing cwnd more than
+that.
+
+This patch updates it so partial_bytes_acked is maxed to cwnd if
+flight_size doesn't reach cwnd, protecting it from such case.
+
+See-also: https://tools.ietf.org/html/draft-ietf-tsvwg-rfc4960-errata-01#section-3.26
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/transport.c | 26 ++++++++++++++++++--------
+ 1 file changed, 18 insertions(+), 8 deletions(-)
+
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index 9d3589451a967a31ee241a5138a58f2f81a2f2a1..e3ebf04ddbd092a1ba04962c8fbe85a58588771a 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -405,13 +405,6 @@ void sctp_transport_raise_cwnd(struct sctp_transport *transport,
+ 	    TSN_lte(asoc->fast_recovery_exit, sack_ctsn))
+ 		asoc->fast_recovery = 0;
+ 
+-	/* The appropriate cwnd increase algorithm is performed if, and only
+-	 * if the congestion window is being fully utilized.
+-	 * Note that RFC4960 Errata 3.22 removed the other condition.
+-	 */
+-	if (flight_size < cwnd)
+-		return;
+-
+ 	ssthresh = transport->ssthresh;
+ 	pba = transport->partial_bytes_acked;
+ 	pmtu = transport->asoc->pathmtu;
+@@ -434,6 +427,14 @@ void sctp_transport_raise_cwnd(struct sctp_transport *transport,
+ 		if (asoc->fast_recovery)
+ 			return;
+ 
++		/* The appropriate cwnd increase algorithm is performed
++		 * if, and only if the congestion window is being fully
++		 * utilized.  Note that RFC4960 Errata 3.22 removed the
++		 * other condition on ctsn moving.
++		 */
++		if (flight_size < cwnd)
++			return;
++
+ 		if (bytes_acked > pmtu)
+ 			cwnd += pmtu;
+ 		else
+@@ -451,6 +452,13 @@ void sctp_transport_raise_cwnd(struct sctp_transport *transport,
+ 		 * acknowledged by the new Cumulative TSN Ack and by Gap
+ 		 * Ack Blocks. (updated by RFC4960 Errata 3.22)
+ 		 *
++		 * When partial_bytes_acked is greater than cwnd and
++		 * before the arrival of the SACK the sender had less
++		 * bytes of data outstanding than cwnd (i.e., before
++		 * arrival of the SACK, flightsize was less than cwnd),
++		 * reset partial_bytes_acked to cwnd. (RFC 4960 Errata
++		 * 3.26)
++		 *
+ 		 * When partial_bytes_acked is equal to or greater than
+ 		 * cwnd and before the arrival of the SACK the sender
+ 		 * had cwnd or more bytes of data outstanding (i.e.,
+@@ -460,7 +468,9 @@ void sctp_transport_raise_cwnd(struct sctp_transport *transport,
+ 		 * increased by MTU. (RFC 4960 Errata 3.12)
+ 		 */
+ 		pba += bytes_acked;
+-		if (pba >= cwnd) {
++		if (pba > cwnd && flight_size < cwnd)
++			pba = cwnd;
++		if (pba >= cwnd && flight_size >= cwnd) {
+ 			pba = pba - cwnd;
+ 			cwnd += pmtu;
+ 		}
+-- 
+2.9.4
+
