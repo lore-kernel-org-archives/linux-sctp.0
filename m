@@ -1,34 +1,48 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 15 Jun 2017 18:41:04 +0000
-Subject: Re: [PATCH net] sctp: return next obj by passing pos + 1 into sctp_transport_get_idx
-Message-Id: <20170615.144104.2153172737322445562.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 30 Jun 2017 03:52:18 +0000
+Subject: [PATCH net-next 07/11] sctp: remove the typedef sctp_param_action_t
+Message-Id: <81c68360c17817528e46216d9d48168b35e44434.1498794482.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <a129be6693b882bac11ace44d659ceb1c1cc4f79.1497520148.git.lucien.xin@gmail.com>
-In-Reply-To: <a129be6693b882bac11ace44d659ceb1c1cc4f79.1497520148.git.lucien.xin@gmail.com>
+References: <cover.1498794481.git.lucien.xin@gmail.com>
+ <d99d14fbe257b7d7b290296646772c6df35a36c8.1498794482.git.lucien.xin@gmail.com>
+ <9b26ac600c9c3f9426b370ecd69261c25d220b2b.1498794482.git.lucien.xin@gmail.com>
+ <d522a5f819078da037df984f9fa1897b0cf57433.1498794482.git.lucien.xin@gmail.com>
+ <bd4d24bbff8ff402d30c8a148f6ea4332beb5005.1498794482.git.lucien.xin@gmail.com>
+ <2ae031641ce87e8fa77af7d3ea31b163f6c25f3d.1498794482.git.lucien.xin@gmail.com>
+ <794094c6a1a0fdbf5374c983b2558e1316a51fd4.1498794482.git.lucien.xin@gmail.com>
+In-Reply-To: <794094c6a1a0fdbf5374c983b2558e1316a51fd4.1498794482.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 15 Jun 2017 17:49:08 +0800
+Remove this typedef, there is even no places using it.
 
-> In sctp_for_each_transport, pos is used to save how many objs it has
-> dumped. Now it gets the last obj by sctp_transport_get_idx, then gets
-> the next obj by sctp_transport_get_next.
-> 
-> The issue is that in the meanwhile if some objs in transport hashtable
-> are removed and the objs nums are less than pos, sctp_transport_get_idx
-> would return NULL and hti.walker.tbl is NULL as well. At this moment
-> it should stop hti, instead of continue getting the next obj. Or it
-> would cause a NULL pointer dereference in sctp_transport_get_next.
-> 
-> This patch is to pass pos + 1 into sctp_transport_get_idx to get the
-> next obj directly, even if pos > objs nums, it would return NULL and
-> stop hti.
-> 
-> Fixes: 626d16f50f39 ("sctp: export some apis or variables for sctp_diag and reuse some for proc")
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/linux/sctp.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-Applied and queued up for -stable, thanks.
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index 5eecc0f..d5c0dda 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -216,12 +216,12 @@ enum sctp_param {
+  *  not recognize the Parameter Type.
+  *
+  */
+-typedef enum {
++enum {
+ 	SCTP_PARAM_ACTION_DISCARD     = cpu_to_be16(0x0000),
+ 	SCTP_PARAM_ACTION_DISCARD_ERR = cpu_to_be16(0x4000),
+ 	SCTP_PARAM_ACTION_SKIP        = cpu_to_be16(0x8000),
+ 	SCTP_PARAM_ACTION_SKIP_ERR    = cpu_to_be16(0xc000),
+-} sctp_param_action_t;
++};
+ 
+ enum { SCTP_PARAM_ACTION_MASK = cpu_to_be16(0xc000), };
+ 
+-- 
+2.1.0
+
