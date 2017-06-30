@@ -1,30 +1,204 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 15 Jun 2017 16:15:57 +0000
-Subject: Re: [PATCH net] sctp: fix spinfo_srtt to be in msecs and not jiffies
-Message-Id: <20170615.121557.573870132240215519.davem@davemloft.net>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Fri, 30 Jun 2017 17:32:57 +0000
+Subject: [PATCH v3] sctp: Add peeloff-flags socket option
+Message-Id: <20170630173257.18990-1-nhorman@tuxdriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <ed45c6f580535de366377e20af519ecff5bdf28d.1497466458.git.marcelo.leitner@gmail.com>
-In-Reply-To: <ed45c6f580535de366377e20af519ecff5bdf28d.1497466458.git.marcelo.leitner@gmail.com>
+References: <20170629181340.12423-1-nhorman@tuxdriver.com>
+In-Reply-To: <20170629181340.12423-1-nhorman@tuxdriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: marcelo.leitner@gmail.com
-Cc: netdev@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, "David S. Miller" <davem@davemloft.net>, Andreas Steinmetz <ast@domdv.de>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 14 Jun 2017 16:08:59 -0300
+Based on a request raised on the sctp devel list, there is a need to
+augment the sctp_peeloff operation while specifying the O_CLOEXEC and
+O_NONBLOCK flags (simmilar to the socket syscall).  Since modifying the
+SCTP_SOCKOPT_PEELOFF socket option would break user space ABI for existing
+programs, this patch creates a new socket option
+SCTP_SOCKOPT_PEELOFF_FLAGS, which accepts a third flags parameter to
+allow atomic assignment of the socket descriptor flags.
 
-> RFC 6458 (SCTP Sockets API) Section 8.2.2.  Peer Address Information
-> (SCTP_GET_PEER_ADDR_INFO) defines that spinfo_srtt is in miliseconds,
-> yet we were using it in jiffies.
-> 
-> Fix it by converting before assigning, similarly to RTO.
-> 
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> ---
-> I hope this is not considered UAPI breakage. This is exported via
-> getsockopt() calls.
+Tested successfully by myself and the requestor
 
-Unfortunately it is UAPI breakage, it is too late to change this now.
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+CC: Vlad Yasevich <vyasevich@gmail.com>
+CC: "David S. Miller" <davem@davemloft.net>
+CC: Andreas Steinmetz <ast@domdv.de>
+CC: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-SOrry.
+---
+Change notes:
+
+v2)
+
+* Per Marcellos comments, move to use of get_unused_fd_flags() and
+clean up code to independently set CLOEXEC
+
+* clean up a stray tab
+
+v3)
+
+* Clean up some long lines
+---
+ include/uapi/linux/sctp.h |  6 ++++
+ net/sctp/socket.c         | 87 +++++++++++++++++++++++++++++++++++++++--------
+ 2 files changed, 78 insertions(+), 15 deletions(-)
+
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index ced9d8b..6217ff8 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -121,6 +121,7 @@ typedef __s32 sctp_assoc_t;
+ #define SCTP_RESET_STREAMS	119
+ #define SCTP_RESET_ASSOC	120
+ #define SCTP_ADD_STREAMS	121
++#define SCTP_SOCKOPT_PEELOFF_FLAGS 122
+ 
+ /* PR-SCTP policies */
+ #define SCTP_PR_SCTP_NONE	0x0000
+@@ -978,6 +979,11 @@ typedef struct {
+ 	int sd;
+ } sctp_peeloff_arg_t;
+ 
++typedef struct {
++	sctp_peeloff_arg_t p_arg;
++	unsigned flags;
++} sctp_peeloff_flags_arg_t;
++
+ /*
+  *  Peer Address Thresholds socket option
+  */
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 7b6e20e..72de049 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4933,11 +4933,47 @@ int sctp_do_peeloff(struct sock *sk, sctp_assoc_t id, struct socket **sockp)
+ }
+ EXPORT_SYMBOL(sctp_do_peeloff);
+ 
++static int sctp_getsockopt_peeloff_common(struct sock *sk, sctp_peeloff_arg_t *peeloff,
++					  struct file **newfile, unsigned flags)
++{
++	struct socket *newsock;
++	int retval;
++
++	retval = sctp_do_peeloff(sk, peeloff->associd, &newsock);
++	if (retval < 0)
++		goto out;
++
++	/* Map the socket to an unused fd that can be returned to the user.  */
++	retval = get_unused_fd_flags(flags & SOCK_CLOEXEC);
++	if (retval < 0) {
++		sock_release(newsock);
++		goto out;
++	}
++
++	*newfile = sock_alloc_file(newsock, 0, NULL);
++	if (IS_ERR(*newfile)) {
++		put_unused_fd(retval);
++		sock_release(newsock);
++		retval = PTR_ERR(*newfile);
++		*newfile = NULL;
++		return retval;
++	}
++
++	pr_debug("%s: sk:%p, newsk:%p, sd:%d\n", __func__, sk, newsock->sk,
++		 retval);
++
++	peeloff->sd = retval;
++
++	if (flags & SOCK_NONBLOCK)
++		(*newfile)->f_flags |= O_NONBLOCK;
++out:
++	return retval;
++}
++
+ static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval, int __user *optlen)
+ {
+ 	sctp_peeloff_arg_t peeloff;
+-	struct socket *newsock;
+-	struct file *newfile;
++	struct file *newfile = NULL;
+ 	int retval = 0;
+ 
+ 	if (len < sizeof(sctp_peeloff_arg_t))
+@@ -4946,26 +4982,44 @@ static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval
+ 	if (copy_from_user(&peeloff, optval, len))
+ 		return -EFAULT;
+ 
+-	retval = sctp_do_peeloff(sk, peeloff.associd, &newsock);
++	retval = sctp_getsockopt_peeloff_common(sk, &peeloff, &newfile, 0);
+ 	if (retval < 0)
+ 		goto out;
+ 
+-	/* Map the socket to an unused fd that can be returned to the user.  */
+-	retval = get_unused_fd_flags(0);
+-	if (retval < 0) {
+-		sock_release(newsock);
+-		goto out;
++	/* Return the fd mapped to the new socket.  */
++	if (put_user(len, optlen)) {
++		fput(newfile);
++		put_unused_fd(retval);
++		return -EFAULT;
+ 	}
+ 
+-	newfile = sock_alloc_file(newsock, 0, NULL);
+-	if (IS_ERR(newfile)) {
++	if (copy_to_user(optval, &peeloff, len)) {
++		fput(newfile);
+ 		put_unused_fd(retval);
+-		sock_release(newsock);
+-		return PTR_ERR(newfile);
++		return -EFAULT;
+ 	}
++	fd_install(retval, newfile);
++out:
++	return retval;
++}
+ 
+-	pr_debug("%s: sk:%p, newsk:%p, sd:%d\n", __func__, sk, newsock->sk,
+-		 retval);
++static int sctp_getsockopt_peeloff_flags(struct sock *sk, int len,
++					 char __user *optval, int __user *optlen)
++{
++	sctp_peeloff_flags_arg_t peeloff;
++	struct file *newfile = NULL;
++	int retval = 0;
++
++	if (len < sizeof(sctp_peeloff_flags_arg_t))
++		return -EINVAL;
++	len = sizeof(sctp_peeloff_flags_arg_t);
++	if (copy_from_user(&peeloff, optval, len))
++		return -EFAULT;
++
++	retval = sctp_getsockopt_peeloff_common(sk, &peeloff.p_arg,
++						&newfile, peeloff.flags);
++	if (retval < 0)
++		goto out;
+ 
+ 	/* Return the fd mapped to the new socket.  */
+ 	if (put_user(len, optlen)) {
+@@ -4973,7 +5027,7 @@ static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval
+ 		put_unused_fd(retval);
+ 		return -EFAULT;
+ 	}
+-	peeloff.sd = retval;
++
+ 	if (copy_to_user(optval, &peeloff, len)) {
+ 		fput(newfile);
+ 		put_unused_fd(retval);
+@@ -6758,6 +6812,9 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 	case SCTP_SOCKOPT_PEELOFF:
+ 		retval = sctp_getsockopt_peeloff(sk, len, optval, optlen);
+ 		break;
++	case SCTP_SOCKOPT_PEELOFF_FLAGS:
++		retval = sctp_getsockopt_peeloff_flags(sk, len, optval, optlen);
++		break;
+ 	case SCTP_PEER_ADDR_PARAMS:
+ 		retval = sctp_getsockopt_peer_addr_params(sk, len, optval,
+ 							  optlen);
+-- 
+2.9.4
+
