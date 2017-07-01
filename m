@@ -1,96 +1,216 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 25 Jul 2017 02:34:24 +0000
-Subject: Re: [PATCH] sctp: fully initialize the IPv6 address in sctp_v6_to_addr()
-Message-Id: <CADvbK_eO038ggAxwodUy=ATHy5=q5j5XW2n66qdziK-uQpWHdg@mail.gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Sat, 01 Jul 2017 17:29:19 +0000
+Subject: Re: [PATCH v3] sctp: Add peeloff-flags socket option
+Message-Id: <20170701172919.GQ18138@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20170718145557.89616-1-glider@google.com> <CAG_fn=WPJb7k+nErwyvwvY54etVvvGmrDDnpvGqVkDMv5foJmA@mail.gmail.com>
- <CADvbK_fD5H_FmCQX=p5eyN2261BerqR7=1_-LqdehS8o_M9Agg@mail.gmail.com> <CAG_fn=Xg-No_CbMYoqiW8_2LOzUjs2oyXGkczyNPr0QWFxg_5Q@mail.gmail.com>
-In-Reply-To: <CAG_fn=Xg-No_CbMYoqiW8_2LOzUjs2oyXGkczyNPr0QWFxg_5Q@mail.gmail.com>
+References: <20170629181340.12423-1-nhorman@tuxdriver.com>
+ <20170630173257.18990-1-nhorman@tuxdriver.com>
+In-Reply-To: <20170630173257.18990-1-nhorman@tuxdriver.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: Alexander Potapenko <glider@google.com>
-Cc: Dmitriy Vyukov <dvyukov@google.com>, Kostya Serebryany <kcc@google.com>, Eric Dumazet <edumazet@google.com>, David Miller <davem@davemloft.net>, Vladislav Yasevich <vyasevich@gmail.com>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Neil Horman <nhorman@tuxdriver.com>
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, "David S. Miller" <davem@davemloft.net>, Andreas Steinmetz <ast@domdv.de>
 
-On Tue, Jul 25, 2017 at 4:27 AM, Alexander Potapenko <glider@google.com> wrote:
-> On Wed, Jul 19, 2017 at 2:58 AM, Xin Long <lucien.xin@gmail.com> wrote:
->> On Wed, Jul 19, 2017 at 3:02 AM, Alexander Potapenko <glider@google.com> wrote:
->>> On Tue, Jul 18, 2017 at 4:55 PM, Alexander Potapenko <glider@google.com> wrote:
->>>> KMSAN reported use of uninitialized sctp_addr->v4.sin_addr.s_addr and
->>>> sctp_addr->v6.sin6_scope_id in sctp_v6_cmp_addr() (see below).
->>>> Make sure all fields of an IPv6 address are initialized, which
->>>> guarantees that the IPv4 fields are also initialized.
->>> I'm assuming here that the IPv4 address is known to overlap with the
->>> IPv6 one and doesn't need separate initialization.
->>>
->>
->> Ok, addr->v6.sin6_scope_id = 0 will fix the call trace you posted here.
-> Sorry for the delay, I somehow missed your question.
->> addr->v6.sin6_flowinfo = 0 is to fix uninitialized
->> sctp_addr->v4.sin_addr.s_addr,
->> I couldn't see how this happens, can you also post the call trace for
->> v4.sin_addr.s_addr ?
-> Here it is:
-This one is still sctp_addr->v6.sin6_scope_id stuff.
-'addr->v6.sin6_flowinfo = 0' is not actually necessay here, since
-the two addr's family both are AF_INET6 and sctp_v6_cmp_addr()
-doesn't use it in this path.
+On Fri, Jun 30, 2017 at 01:32:57PM -0400, Neil Horman wrote:
+> Based on a request raised on the sctp devel list, there is a need to
+> augment the sctp_peeloff operation while specifying the O_CLOEXEC and
+> O_NONBLOCK flags (simmilar to the socket syscall).  Since modifying the
+> SCTP_SOCKOPT_PEELOFF socket option would break user space ABI for existing
+> programs, this patch creates a new socket option
+> SCTP_SOCKOPT_PEELOFF_FLAGS, which accepts a third flags parameter to
+> allow atomic assignment of the socket descriptor flags.
+> 
+> Tested successfully by myself and the requestor
+> 
+> Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+> CC: Vlad Yasevich <vyasevich@gmail.com>
+> CC: "David S. Miller" <davem@davemloft.net>
+> CC: Andreas Steinmetz <ast@domdv.de>
+> CC: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-But  it's fine, It may be good to initialize all members here.
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-Reviewed-by: Xin Long <lucien.xin@gmail.com>
+Thanks!
 
->
-> ==================================================================
-> BUG: KMSAN: use of uninitialized memory in
-> sctp_v6_cmp_addr+0x8d4/0x9f0 net/sctp/ipv6.c:535
-> CPU: 2 PID: 17306 Comm: syz-executor1 Not tainted 4.11.0-rc5+ #2944
-> Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs 01/01/2011
-> Call Trace:
->  dump_stack+0x172/0x1c0 lib/dump_stack.c:42
->  is_logbuf_locked mm/kmsan/kmsan.c:59 [inline]
->  kmsan_report+0x12a/0x180 mm/kmsan/kmsan.c:938
->  native_save_fl arch/x86/include/asm/irqflags.h:18 [inline]
->  arch_local_save_flags arch/x86/include/asm/irqflags.h:72 [inline]
->  arch_local_irq_save arch/x86/include/asm/irqflags.h:113 [inline]
->  __msan_warning_32+0x61/0xb0 mm/kmsan/kmsan_instr.c:467
->  sctp_v6_cmp_addr+0x8d4/0x9f0 net/sctp/ipv6.c:535
->  sctp_v6_get_dst+0x8c7/0x1630 net/sctp/ipv6.c:297
->  sctp_transport_route+0x101/0x570 net/sctp/transport.c:292
->  sctp_assoc_add_peer+0x66d/0x16f0 net/sctp/associola.c:651
->  sctp_sendmsg+0x35a5/0x4f90 net/sctp/socket.c:1871
->  inet_sendmsg+0x498/0x670 net/ipv4/af_inet.c:762
->  sock_sendmsg_nosec net/socket.c:633 [inline]
->  sock_sendmsg net/socket.c:643 [inline]
->  SYSC_sendto+0x608/0x710 net/socket.c:1696
->  SyS_sendto+0x8a/0xb0 net/socket.c:1664
->  entry_SYSCALL_64_fastpath+0x13/0x94
-> RIP: 0033:0x44b479
-> RSP: 002b:00007f28a5bb2c08 EFLAGS: 00000286 ORIG_RAX: 000000000000002c
-> RAX: ffffffffffffffda RBX: 0000000020000000 RCX: 000000000044b479
-> RDX: 0000000000000001 RSI: 0000000020036000 RDI: 0000000000000005
-> RBP: 0000000000708000 R08: 00000000206e4000 R09: 000000000000001c
-> R10: 0000000000000000 R11: 0000000000000286 R12: 00000000ffffffff
-> R13: 0000000000003760 R14: 00000000006e5820 R15: 0000000000ff9000
-> origin description: ----dst_saddr@sctp_v6_get_dst
-> local variable created at:
->  sctp_v6_get_dst+0x91/0x1630 net/sctp/ipv6.c:236
->  sctp_transport_route+0x101/0x570 net/sctp/transport.c:292
-> ==================================================================
->
->
->> Thanks
->
->
->
+> 
+> ---
+> Change notes:
+> 
+> v2)
+> 
+> * Per Marcellos comments, move to use of get_unused_fd_flags() and
+> clean up code to independently set CLOEXEC
+> 
+> * clean up a stray tab
+> 
+> v3)
+> 
+> * Clean up some long lines
+> ---
+>  include/uapi/linux/sctp.h |  6 ++++
+>  net/sctp/socket.c         | 87 +++++++++++++++++++++++++++++++++++++++--------
+>  2 files changed, 78 insertions(+), 15 deletions(-)
+> 
+> diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+> index ced9d8b..6217ff8 100644
+> --- a/include/uapi/linux/sctp.h
+> +++ b/include/uapi/linux/sctp.h
+> @@ -121,6 +121,7 @@ typedef __s32 sctp_assoc_t;
+>  #define SCTP_RESET_STREAMS	119
+>  #define SCTP_RESET_ASSOC	120
+>  #define SCTP_ADD_STREAMS	121
+> +#define SCTP_SOCKOPT_PEELOFF_FLAGS 122
+>  
+>  /* PR-SCTP policies */
+>  #define SCTP_PR_SCTP_NONE	0x0000
+> @@ -978,6 +979,11 @@ typedef struct {
+>  	int sd;
+>  } sctp_peeloff_arg_t;
+>  
+> +typedef struct {
+> +	sctp_peeloff_arg_t p_arg;
+> +	unsigned flags;
+> +} sctp_peeloff_flags_arg_t;
+> +
+>  /*
+>   *  Peer Address Thresholds socket option
+>   */
+> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+> index 7b6e20e..72de049 100644
+> --- a/net/sctp/socket.c
+> +++ b/net/sctp/socket.c
+> @@ -4933,11 +4933,47 @@ int sctp_do_peeloff(struct sock *sk, sctp_assoc_t id, struct socket **sockp)
+>  }
+>  EXPORT_SYMBOL(sctp_do_peeloff);
+>  
+> +static int sctp_getsockopt_peeloff_common(struct sock *sk, sctp_peeloff_arg_t *peeloff,
+> +					  struct file **newfile, unsigned flags)
+> +{
+> +	struct socket *newsock;
+> +	int retval;
+> +
+> +	retval = sctp_do_peeloff(sk, peeloff->associd, &newsock);
+> +	if (retval < 0)
+> +		goto out;
+> +
+> +	/* Map the socket to an unused fd that can be returned to the user.  */
+> +	retval = get_unused_fd_flags(flags & SOCK_CLOEXEC);
+> +	if (retval < 0) {
+> +		sock_release(newsock);
+> +		goto out;
+> +	}
+> +
+> +	*newfile = sock_alloc_file(newsock, 0, NULL);
+> +	if (IS_ERR(*newfile)) {
+> +		put_unused_fd(retval);
+> +		sock_release(newsock);
+> +		retval = PTR_ERR(*newfile);
+> +		*newfile = NULL;
+> +		return retval;
+> +	}
+> +
+> +	pr_debug("%s: sk:%p, newsk:%p, sd:%d\n", __func__, sk, newsock->sk,
+> +		 retval);
+> +
+> +	peeloff->sd = retval;
+> +
+> +	if (flags & SOCK_NONBLOCK)
+> +		(*newfile)->f_flags |= O_NONBLOCK;
+> +out:
+> +	return retval;
+> +}
+> +
+>  static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval, int __user *optlen)
+>  {
+>  	sctp_peeloff_arg_t peeloff;
+> -	struct socket *newsock;
+> -	struct file *newfile;
+> +	struct file *newfile = NULL;
+>  	int retval = 0;
+>  
+>  	if (len < sizeof(sctp_peeloff_arg_t))
+> @@ -4946,26 +4982,44 @@ static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval
+>  	if (copy_from_user(&peeloff, optval, len))
+>  		return -EFAULT;
+>  
+> -	retval = sctp_do_peeloff(sk, peeloff.associd, &newsock);
+> +	retval = sctp_getsockopt_peeloff_common(sk, &peeloff, &newfile, 0);
+>  	if (retval < 0)
+>  		goto out;
+>  
+> -	/* Map the socket to an unused fd that can be returned to the user.  */
+> -	retval = get_unused_fd_flags(0);
+> -	if (retval < 0) {
+> -		sock_release(newsock);
+> -		goto out;
+> +	/* Return the fd mapped to the new socket.  */
+> +	if (put_user(len, optlen)) {
+> +		fput(newfile);
+> +		put_unused_fd(retval);
+> +		return -EFAULT;
+>  	}
+>  
+> -	newfile = sock_alloc_file(newsock, 0, NULL);
+> -	if (IS_ERR(newfile)) {
+> +	if (copy_to_user(optval, &peeloff, len)) {
+> +		fput(newfile);
+>  		put_unused_fd(retval);
+> -		sock_release(newsock);
+> -		return PTR_ERR(newfile);
+> +		return -EFAULT;
+>  	}
+> +	fd_install(retval, newfile);
+> +out:
+> +	return retval;
+> +}
+>  
+> -	pr_debug("%s: sk:%p, newsk:%p, sd:%d\n", __func__, sk, newsock->sk,
+> -		 retval);
+> +static int sctp_getsockopt_peeloff_flags(struct sock *sk, int len,
+> +					 char __user *optval, int __user *optlen)
+> +{
+> +	sctp_peeloff_flags_arg_t peeloff;
+> +	struct file *newfile = NULL;
+> +	int retval = 0;
+> +
+> +	if (len < sizeof(sctp_peeloff_flags_arg_t))
+> +		return -EINVAL;
+> +	len = sizeof(sctp_peeloff_flags_arg_t);
+> +	if (copy_from_user(&peeloff, optval, len))
+> +		return -EFAULT;
+> +
+> +	retval = sctp_getsockopt_peeloff_common(sk, &peeloff.p_arg,
+> +						&newfile, peeloff.flags);
+> +	if (retval < 0)
+> +		goto out;
+>  
+>  	/* Return the fd mapped to the new socket.  */
+>  	if (put_user(len, optlen)) {
+> @@ -4973,7 +5027,7 @@ static int sctp_getsockopt_peeloff(struct sock *sk, int len, char __user *optval
+>  		put_unused_fd(retval);
+>  		return -EFAULT;
+>  	}
+> -	peeloff.sd = retval;
+> +
+>  	if (copy_to_user(optval, &peeloff, len)) {
+>  		fput(newfile);
+>  		put_unused_fd(retval);
+> @@ -6758,6 +6812,9 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+>  	case SCTP_SOCKOPT_PEELOFF:
+>  		retval = sctp_getsockopt_peeloff(sk, len, optval, optlen);
+>  		break;
+> +	case SCTP_SOCKOPT_PEELOFF_FLAGS:
+> +		retval = sctp_getsockopt_peeloff_flags(sk, len, optval, optlen);
+> +		break;
+>  	case SCTP_PEER_ADDR_PARAMS:
+>  		retval = sctp_getsockopt_peer_addr_params(sk, len, optval,
+>  							  optlen);
+> -- 
+> 2.9.4
+> 
 > --
-> Alexander Potapenko
-> Software Engineer
->
-> Google Germany GmbH
-> Erika-Mann-Straße, 33
-> 80636 München
->
-> Geschäftsführer: Matthew Scott Sucherman, Paul Terence Manicle
-> Registergericht und -nummer: Hamburg, HRB 86891
-> Sitz der Gesellschaft: Hamburg
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
