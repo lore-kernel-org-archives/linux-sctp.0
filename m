@@ -1,53 +1,170 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 23 Jul 2017 01:34:29 +0000
-Subject: [PATCH net-next 04/11] sctp: remove the typedef sctp_gap_ack_block_t
-Message-Id: <303fa591073b161b9434fa7f81a8d9d119954359.1500773578.git.lucien.xin@gmail.com>
+From: Neil Horman <nhorman@hmswarspite.think-freely.org>
+Date: Mon, 03 Jul 2017 20:13:30 +0000
+Subject: [PATCH v2] lksctp-tools: Add sctp_peeloff_flags function
+Message-Id: <20170703201330.29691-1-nhorman@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1500773578.git.lucien.xin@gmail.com>
- <daa1cc9a380f5a1eb37b3d30fd64942d310fe81d.1500773578.git.lucien.xin@gmail.com>
- <78a33af4a9d7ef7116637943dbd0ae1403d20114.1500773578.git.lucien.xin@gmail.com>
- <54eca4d5d79aae83b386754b4613edc388521d54.1500773578.git.lucien.xin@gmail.com>
-In-Reply-To: <54eca4d5d79aae83b386754b4613edc388521d54.1500773578.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: linux-sctp@vger.kernel.org
 
-This patch is to remove the typedef sctp_gap_ack_block_t, and
-replace with struct sctp_gap_ack_block in the places where it's
-using this typedef.
+From: Neil Horman <nhorman@tuxdriver.com>
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+With the addition of the SCTP_SOCKOPT_PEELOFF_FLAGS socket option for
+linux, this patch adds a library function to support its use.  For non
+linux systems, when the call is used with a 0 flag set, the behavior
+will be identical to sctp_peeloff, and with a non-zero flag set for
+non-linux operating systems, a runtime error will be returned.
+
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+CC: Vlad Yasevich <vyasevic@redhat.com>
+CC: Daniel Borkmann <dborkman@redhat.com>
+
 ---
- include/linux/sctp.h | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+Change Notes
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index c323b3e..b84b8e8 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -363,16 +363,16 @@ struct sctp_unrecognized_param {
-  *  subsequences of DATA chunks as represented by their TSNs.
-  */
+v2)
+	* Cleaned up man page documentation
+	* Consolodated if (flags) check
+---
+ man/sctp_peeloff.3         | 16 ++++++++++++++++
+ src/include/netinet/sctp.h |  6 ++++++
+ src/lib/peeloff.c          | 45 +++++++++++++++++++++++++++++++--------------
+ 3 files changed, 53 insertions(+), 14 deletions(-)
+
+diff --git a/man/sctp_peeloff.3 b/man/sctp_peeloff.3
+index 7cbde5d..6ad2cfd 100644
+--- a/man/sctp_peeloff.3
++++ b/man/sctp_peeloff.3
+@@ -15,6 +15,7 @@ sctp_peeloff \- Branch off an association into a separate socket.
+ .B #include <netinet/sctp.h>
+ .sp
+ .BI "int sctp_peeloff(int " sd ", sctp_assoc_t " assoc_id );
++.BI "int sctp_peeloff_flags(int " sd ", sctp_assoc_t " assoc_id ", unsigned " flags );
+ .fi
+ .SH DESCRIPTION
+ .B sctp_peeloff
+@@ -28,6 +29,18 @@ This is particularly desirable when, for instance, the application wishes to
+ have a number of sporadic message senders/receivers remain under the original
+ one-to-many style socket, but branch off those assocations carrying high volume
+ data traffic into their own separate socket descriptors.
++
++.B sctp_peeloff_flags
++is a variant of sctp_peeloff, in which flags describing the behavior of
++the newly peeled off socket can be specified.  Currently the supported flags
++are:
++.TP
++.B SOCK_NONBLOCK
++Specifies that the new socket should not block on io operations.
++.TP
++.B SOCK_CLOEXEC
++Specifies that the new socket should be closed when the owning process calls
++exec.
+ .SH "RETURN VALUE"
+ On success, the new socket descriptor representing the branched-off asociation is returned.
+ On error, \-1 is returned, and
+@@ -44,6 +57,9 @@ The assoc id passed is invalid or if the socket is a one-to-one style socket.
+ .TP
+ .B ENOTSOCK
+ Argument is a descriptor for a file, not a socket.
++.SH NOTES
++.TP
++sctp_peeloff_flags is a linux specific variant of sctp_peeloff.  While it will compile on other systems, its use will result in an error return.  Portable code should use sctp_peeloff.
+ .SH "SEE ALSO"
+ .BR sctp (7)
+ .BR sctp_bindx (3),
+diff --git a/src/include/netinet/sctp.h b/src/include/netinet/sctp.h
+index 47571cd..560ca33 100644
+--- a/src/include/netinet/sctp.h
++++ b/src/include/netinet/sctp.h
+@@ -111,6 +111,7 @@ typedef __s32 sctp_assoc_t;
  
--typedef struct sctp_gap_ack_block {
-+struct sctp_gap_ack_block {
- 	__be16 start;
- 	__be16 end;
--} sctp_gap_ack_block_t;
-+};
+ /* SCTP socket option used to read per endpoint association statistics. */
+ #define SCTP_GET_ASSOC_STATS    112      /* Read only */
++#define SCTP_SOCKOPT_PEELOFF_FLAGS 122
  
- typedef __be32 sctp_dup_tsn_t;
+ /*
+  * 5.2.1 SCTP Initiation Structure (SCTP_INIT)
+@@ -802,6 +803,10 @@ typedef struct {
+ 	int sd;
+ } sctp_peeloff_arg_t;
  
- typedef union {
--	sctp_gap_ack_block_t	gab;
--        sctp_dup_tsn_t		dup;
-+	struct sctp_gap_ack_block gab;
-+	sctp_dup_tsn_t dup;
- } sctp_sack_variable_t;
++typedef struct {
++	sctp_peeloff_arg_t p_arg;
++	unsigned flags;
++} sctp_peeloff_flags_arg_t;
  
- typedef struct sctp_sackhdr {
+ int sctp_bindx(int sd, struct sockaddr *addrs, int addrcnt, int flags);
+ 
+@@ -809,6 +814,7 @@ int sctp_connectx(int sd, struct sockaddr *addrs, int addrcnt,
+ 		  sctp_assoc_t *id);
+ 
+ int sctp_peeloff(int sd, sctp_assoc_t assoc_id);
++int sctp_peeloff_flags(int sd, sctp_assoc_t assoc_id, unsigned flags);
+ 
+ /* Prototype for the library function sctp_opt_info defined in
+  * API 7. Socket Options.
+diff --git a/src/lib/peeloff.c b/src/lib/peeloff.c
+index a870050..edd75a0 100644
+--- a/src/lib/peeloff.c
++++ b/src/lib/peeloff.c
+@@ -23,25 +23,42 @@
+ #include <netinet/sctp.h> /* SCTP_SOCKOPT_BINDX_* */
+ #include <errno.h>
+ 
+-/* Branch off an association into a seperate socket.  This is a new SCTP API
+- * described in the section 8.2 of the Sockets API Extensions for SCTP. 
+- * This is implemented using the getsockopt() interface.
+- */  
+ int
+-sctp_peeloff(int fd, sctp_assoc_t associd)
++sctp_peeloff_flags(int fd, sctp_assoc_t associd, unsigned flags)
+ {
+-	sctp_peeloff_arg_t peeloff;
+-	socklen_t peeloff_size = sizeof(peeloff);
++	sctp_peeloff_flags_arg_t peeloff;
++	socklen_t peeloff_size;
+ 	int err;
+ 
+-	peeloff.associd = associd;
+-	peeloff.sd = 0;
+-	err = getsockopt(fd, SOL_SCTP, SCTP_SOCKOPT_PEELOFF, &peeloff, 
+-			 &peeloff_size); 
+-	if (err < 0) {
+-		return err;
++	peeloff.p_arg.associd = associd;
++	peeloff.p_arg.sd = 0;
++	peeloff.flags = flags;
++
++
++	if (flags) {
++		peeloff_size = sizeof(sctp_peeloff_flags_arg_t);
++		err = getsockopt(fd, SOL_SCTP, SCTP_SOCKOPT_PEELOFF_FLAGS, &peeloff,
++				 &peeloff_size);
++	} else {
++		peeloff_size = sizeof(sctp_peeloff_arg_t);
++		err = getsockopt(fd, SOL_SCTP, SCTP_SOCKOPT_PEELOFF, &peeloff.p_arg,
++				 &peeloff_size);
+ 	}
+ 
+-	return peeloff.sd;
++	if (err < 0)
++		return err;
++
++	return peeloff.p_arg.sd;
+ 
+ } /* sctp_peeloff() */
++
++/* Branch off an association into a seperate socket.  This is a new SCTP API
++ * described in the section 8.2 of the Sockets API Extensions for SCTP. 
++ * This is implemented using the getsockopt() interface.
++ */
++int
++sctp_peeloff(int fd, sctp_assoc_t associd)
++{
++	return sctp_peeloff_flags(fd, associd, 0);
++}
++
 -- 
-2.1.0
+2.9.4
 
