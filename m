@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:52:59 +0000
-Subject: [PATCH 04/36] net, vxlan: convert vxlan_sock.refcnt from atomic_t to refcount_t
-Message-Id: <1499172811-16271-5-git-send-email-elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:53:13 +0000
+Subject: [PATCH 18/36] net, sunrpc: convert gss_cl_ctx.count from atomic_t to refcount_t
+Message-Id: <1499172811-16271-19-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
@@ -22,68 +22,61 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- drivers/net/vxlan.c | 10 +++++-----
- include/net/vxlan.h |  2 +-
- 2 files changed, 6 insertions(+), 6 deletions(-)
+ include/linux/sunrpc/auth_gss.h | 3 ++-
+ net/sunrpc/auth_gss/auth_gss.c  | 6 +++---
+ 2 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/net/vxlan.c b/drivers/net/vxlan.c
-index b04e103..96aa7e6 100644
---- a/drivers/net/vxlan.c
-+++ b/drivers/net/vxlan.c
-@@ -1034,11 +1034,11 @@ static bool vxlan_group_used(struct vxlan_net *vn, struct vxlan_dev *dev)
- 	/* The vxlan_sock is only used by dev, leaving group has
- 	 * no effect on other vxlan devices.
- 	 */
--	if (family = AF_INET && sock4 && atomic_read(&sock4->refcnt) = 1)
-+	if (family = AF_INET && sock4 && refcount_read(&sock4->refcnt) = 1)
- 		return false;
- #if IS_ENABLED(CONFIG_IPV6)
- 	sock6 = rtnl_dereference(dev->vn6_sock);
--	if (family = AF_INET6 && sock6 && atomic_read(&sock6->refcnt) = 1)
-+	if (family = AF_INET6 && sock6 && refcount_read(&sock6->refcnt) = 1)
- 		return false;
- #endif
+diff --git a/include/linux/sunrpc/auth_gss.h b/include/linux/sunrpc/auth_gss.h
+index 36eebc4..cebdf87 100644
+--- a/include/linux/sunrpc/auth_gss.h
++++ b/include/linux/sunrpc/auth_gss.h
+@@ -13,6 +13,7 @@
+ #define _LINUX_SUNRPC_AUTH_GSS_H
  
-@@ -1075,7 +1075,7 @@ static bool __vxlan_sock_release_prep(struct vxlan_sock *vs)
+ #ifdef __KERNEL__
++#include <linux/refcount.h>
+ #include <linux/sunrpc/auth.h>
+ #include <linux/sunrpc/svc.h>
+ #include <linux/sunrpc/gss_api.h>
+@@ -65,7 +66,7 @@ struct rpc_gss_init_res {
+  * the wire when communicating with a server. */
  
- 	if (!vs)
- 		return false;
--	if (!atomic_dec_and_test(&vs->refcnt))
-+	if (!refcount_dec_and_test(&vs->refcnt))
- 		return false;
+ struct gss_cl_ctx {
+-	atomic_t		count;
++	refcount_t		count;
+ 	enum rpc_gss_proc	gc_proc;
+ 	u32			gc_seq;
+ 	spinlock_t		gc_seq_lock;
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 4f16953..72f129c 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -117,14 +117,14 @@ static const struct rpc_pipe_ops gss_upcall_ops_v1;
+ static inline struct gss_cl_ctx *
+ gss_get_ctx(struct gss_cl_ctx *ctx)
+ {
+-	atomic_inc(&ctx->count);
++	refcount_inc(&ctx->count);
+ 	return ctx;
+ }
  
- 	vn = net_generic(sock_net(vs->sock->sk), vxlan_net_id);
-@@ -2825,7 +2825,7 @@ static struct vxlan_sock *vxlan_socket_create(struct net *net, bool ipv6,
+ static inline void
+ gss_put_ctx(struct gss_cl_ctx *ctx)
+ {
+-	if (atomic_dec_and_test(&ctx->count))
++	if (refcount_dec_and_test(&ctx->count))
+ 		gss_free_ctx(ctx);
+ }
+ 
+@@ -200,7 +200,7 @@ gss_alloc_context(void)
+ 		ctx->gc_proc = RPC_GSS_PROC_DATA;
+ 		ctx->gc_seq = 1;	/* NetApp 6.4R1 doesn't accept seq. no. 0 */
+ 		spin_lock_init(&ctx->gc_seq_lock);
+-		atomic_set(&ctx->count,1);
++		refcount_set(&ctx->count,1);
  	}
- 
- 	vs->sock = sock;
--	atomic_set(&vs->refcnt, 1);
-+	refcount_set(&vs->refcnt, 1);
- 	vs->flags = (flags & VXLAN_F_RCV_FLAGS);
- 
- 	spin_lock(&vn->sock_lock);
-@@ -2860,7 +2860,7 @@ static int __vxlan_sock_add(struct vxlan_dev *vxlan, bool ipv6)
- 		spin_lock(&vn->sock_lock);
- 		vs = vxlan_find_sock(vxlan->net, ipv6 ? AF_INET6 : AF_INET,
- 				     vxlan->cfg.dst_port, vxlan->cfg.flags);
--		if (vs && !atomic_add_unless(&vs->refcnt, 1, 0)) {
-+		if (vs && !refcount_inc_not_zero(&vs->refcnt)) {
- 			spin_unlock(&vn->sock_lock);
- 			return -EBUSY;
- 		}
-diff --git a/include/net/vxlan.h b/include/net/vxlan.h
-index 326e849..3f430e3 100644
---- a/include/net/vxlan.h
-+++ b/include/net/vxlan.h
-@@ -183,7 +183,7 @@ struct vxlan_sock {
- 	struct hlist_node hlist;
- 	struct socket	 *sock;
- 	struct hlist_head vni_list[VNI_HASH_SIZE];
--	atomic_t	  refcnt;
-+	refcount_t	  refcnt;
- 	u32		  flags;
- };
- 
+ 	return ctx;
+ }
 -- 
 2.7.4
 
