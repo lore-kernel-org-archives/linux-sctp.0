@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:53:10 +0000
-Subject: [PATCH 15/36] net, ipx: convert ipx_route.refcnt from atomic_t to refcount_t
-Message-Id: <1499172811-16271-16-git-send-email-elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:53:26 +0000
+Subject: [PATCH 31/36] net, sctp: convert sctp_chunk.refcnt from atomic_t to refcount_t
+Message-Id: <1499172811-16271-32-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
@@ -22,51 +22,52 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/ipx.h   | 6 +++---
- net/ipx/ipx_route.c | 2 +-
+ include/net/sctp/structs.h | 2 +-
+ net/sctp/sm_make_chunk.c   | 6 +++---
  2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/ipx.h b/include/net/ipx.h
-index 2de1281..af32b97 100644
---- a/include/net/ipx.h
-+++ b/include/net/ipx.h
-@@ -81,7 +81,7 @@ struct ipx_route {
- 	unsigned char		ir_routed;
- 	unsigned char		ir_router_node[IPX_NODE_LEN];
- 	struct list_head	node; /* node in ipx_routes list */
--	atomic_t		refcnt;
-+	refcount_t		refcnt;
- };
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 4d7c855..0dfc5c1 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -524,7 +524,7 @@ int sctp_chunk_abandoned(struct sctp_chunk *);
+ struct sctp_chunk {
+ 	struct list_head list;
  
- struct ipx_cb {
-@@ -164,12 +164,12 @@ static __inline__ void ipxitf_put(struct ipx_interface *intrfc)
+-	atomic_t refcnt;
++	refcount_t refcnt;
  
- static __inline__ void ipxrtr_hold(struct ipx_route *rt)
+ 	/* How many times this chunk have been sent, for prsctp RTX policy */
+ 	int sent_count;
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 3af4dd0..4e16b02 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -1345,7 +1345,7 @@ struct sctp_chunk *sctp_chunkify(struct sk_buff *skb,
+ 	INIT_LIST_HEAD(&retval->transmitted_list);
+ 	INIT_LIST_HEAD(&retval->frag_list);
+ 	SCTP_DBG_OBJCNT_INC(chunk);
+-	atomic_set(&retval->refcnt, 1);
++	refcount_set(&retval->refcnt, 1);
+ 
+ nodata:
+ 	return retval;
+@@ -1458,13 +1458,13 @@ void sctp_chunk_free(struct sctp_chunk *chunk)
+ /* Grab a reference to the chunk. */
+ void sctp_chunk_hold(struct sctp_chunk *ch)
  {
--	        atomic_inc(&rt->refcnt);
-+	        refcount_inc(&rt->refcnt);
+-	atomic_inc(&ch->refcnt);
++	refcount_inc(&ch->refcnt);
  }
  
- static __inline__ void ipxrtr_put(struct ipx_route *rt)
+ /* Release a reference to the chunk. */
+ void sctp_chunk_put(struct sctp_chunk *ch)
  {
--	        if (atomic_dec_and_test(&rt->refcnt))
-+	        if (refcount_dec_and_test(&rt->refcnt))
- 			                kfree(rt);
+-	if (atomic_dec_and_test(&ch->refcnt))
++	if (refcount_dec_and_test(&ch->refcnt))
+ 		sctp_chunk_destroy(ch);
  }
- #endif /* _NET_INET_IPX_H_ */
-diff --git a/net/ipx/ipx_route.c b/net/ipx/ipx_route.c
-index 3e2a32a..b5d9144 100644
---- a/net/ipx/ipx_route.c
-+++ b/net/ipx/ipx_route.c
-@@ -59,7 +59,7 @@ int ipxrtr_add_route(__be32 network, struct ipx_interface *intrfc,
- 		if (!rt)
- 			goto out;
  
--		atomic_set(&rt->refcnt, 1);
-+		refcount_set(&rt->refcnt, 1);
- 		ipxrtr_hold(rt);
- 		write_lock_bh(&ipx_routes_lock);
- 		list_add(&rt->node, &ipx_routes);
 -- 
 2.7.4
 
