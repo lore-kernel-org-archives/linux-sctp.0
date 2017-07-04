@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:53:21 +0000
-Subject: [PATCH 26/36] net, xfrm: convert xfrm_state.refcnt from atomic_t to refcount_t
-Message-Id: <1499172811-16271-27-git-send-email-elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:53:07 +0000
+Subject: [PATCH 12/36] net, sched: convert Qdisc.refcnt from atomic_t to refcount_t
+Message-Id: <1499172811-16271-13-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
@@ -22,75 +22,112 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/xfrm.h    | 9 +++++----
- net/xfrm/xfrm_state.c | 4 ++--
- 2 files changed, 7 insertions(+), 6 deletions(-)
+ include/net/sch_generic.h | 3 ++-
+ net/sched/sch_api.c       | 8 ++++----
+ net/sched/sch_generic.c   | 8 ++++----
+ 3 files changed, 10 insertions(+), 9 deletions(-)
 
-diff --git a/include/net/xfrm.h b/include/net/xfrm.h
-index 01fa357..f5272a2 100644
---- a/include/net/xfrm.h
-+++ b/include/net/xfrm.h
-@@ -13,6 +13,7 @@
- #include <linux/mutex.h>
- #include <linux/audit.h>
- #include <linux/slab.h>
+diff --git a/include/net/sch_generic.h b/include/net/sch_generic.h
+index 3688501..1c123e2 100644
+--- a/include/net/sch_generic.h
++++ b/include/net/sch_generic.h
+@@ -9,6 +9,7 @@
+ #include <linux/percpu.h>
+ #include <linux/dynamic_queue_limits.h>
+ #include <linux/list.h>
 +#include <linux/refcount.h>
+ #include <net/gen_stats.h>
+ #include <net/rtnetlink.h>
  
- #include <net/sock.h>
- #include <net/dst.h>
-@@ -137,7 +138,7 @@ struct xfrm_state {
- 	struct hlist_node	bysrc;
- 	struct hlist_node	byspi;
- 
+@@ -95,7 +96,7 @@ struct Qdisc {
+ 	struct sk_buff		*skb_bad_txq;
+ 	struct rcu_head		rcu_head;
+ 	int			padded;
 -	atomic_t		refcnt;
 +	refcount_t		refcnt;
- 	spinlock_t		lock;
  
- 	struct xfrm_id		id;
-@@ -837,18 +838,18 @@ void __xfrm_state_destroy(struct xfrm_state *);
+ 	spinlock_t		busylock ____cacheline_aligned_in_smp;
+ };
+diff --git a/net/sched/sch_api.c b/net/sched/sch_api.c
+index 43b94c7..bd24a55 100644
+--- a/net/sched/sch_api.c
++++ b/net/sched/sch_api.c
+@@ -839,7 +839,7 @@ static int qdisc_graft(struct net_device *dev, struct Qdisc *parent,
  
- static inline void __xfrm_state_put(struct xfrm_state *x)
- {
--	atomic_dec(&x->refcnt);
-+	refcount_dec(&x->refcnt);
- }
+ 			old = dev_graft_qdisc(dev_queue, new);
+ 			if (new && i > 0)
+-				atomic_inc(&new->refcnt);
++				refcount_inc(&new->refcnt);
  
- static inline void xfrm_state_put(struct xfrm_state *x)
- {
--	if (atomic_dec_and_test(&x->refcnt))
-+	if (refcount_dec_and_test(&x->refcnt))
- 		__xfrm_state_destroy(x);
- }
+ 			if (!ingress)
+ 				qdisc_destroy(old);
+@@ -850,7 +850,7 @@ static int qdisc_graft(struct net_device *dev, struct Qdisc *parent,
+ 			notify_and_destroy(net, skb, n, classid,
+ 					   dev->qdisc, new);
+ 			if (new && !new->ops->attach)
+-				atomic_inc(&new->refcnt);
++				refcount_inc(&new->refcnt);
+ 			dev->qdisc = new ? : &noop_qdisc;
  
- static inline void xfrm_state_hold(struct xfrm_state *x)
- {
--	atomic_inc(&x->refcnt);
-+	refcount_inc(&x->refcnt);
- }
+ 			if (new && new->ops->attach)
+@@ -1259,7 +1259,7 @@ static int tc_modify_qdisc(struct sk_buff *skb, struct nlmsghdr *n,
+ 				if (q = p ||
+ 				    (p && check_loop(q, p, 0)))
+ 					return -ELOOP;
+-				atomic_inc(&q->refcnt);
++				refcount_inc(&q->refcnt);
+ 				goto graft;
+ 			} else {
+ 				if (!q)
+@@ -1374,7 +1374,7 @@ static int tc_fill_qdisc(struct sk_buff *skb, struct Qdisc *q, u32 clid,
+ 	tcm->tcm_ifindex = qdisc_dev(q)->ifindex;
+ 	tcm->tcm_parent = clid;
+ 	tcm->tcm_handle = q->handle;
+-	tcm->tcm_info = atomic_read(&q->refcnt);
++	tcm->tcm_info = refcount_read(&q->refcnt);
+ 	if (nla_put_string(skb, TCA_KIND, q->ops->id))
+ 		goto nla_put_failure;
+ 	if (q->ops->dump && q->ops->dump(q, skb) < 0)
+diff --git a/net/sched/sch_generic.c b/net/sched/sch_generic.c
+index 52a2c55..57ba406 100644
+--- a/net/sched/sch_generic.c
++++ b/net/sched/sch_generic.c
+@@ -633,7 +633,7 @@ struct Qdisc *qdisc_alloc(struct netdev_queue *dev_queue,
+ 	sch->dequeue = ops->dequeue;
+ 	sch->dev_queue = dev_queue;
+ 	dev_hold(dev);
+-	atomic_set(&sch->refcnt, 1);
++	refcount_set(&sch->refcnt, 1);
  
- static inline bool addr_match(const void *token1, const void *token2,
-diff --git a/net/xfrm/xfrm_state.c b/net/xfrm/xfrm_state.c
-index 4a28f66..6c0956d 100644
---- a/net/xfrm/xfrm_state.c
-+++ b/net/xfrm/xfrm_state.c
-@@ -48,7 +48,7 @@ static HLIST_HEAD(xfrm_state_gc_list);
+ 	return sch;
+ errout:
+@@ -701,7 +701,7 @@ void qdisc_destroy(struct Qdisc *qdisc)
+ 	const struct Qdisc_ops  *ops = qdisc->ops;
  
- static inline bool xfrm_state_hold_rcu(struct xfrm_state __rcu *x)
- {
--	return atomic_inc_not_zero(&x->refcnt);
-+	return refcount_inc_not_zero(&x->refcnt);
- }
+ 	if (qdisc->flags & TCQ_F_BUILTIN ||
+-	    !atomic_dec_and_test(&qdisc->refcnt))
++	    !refcount_dec_and_test(&qdisc->refcnt))
+ 		return;
  
- static inline unsigned int xfrm_dst_hash(struct net *net,
-@@ -558,7 +558,7 @@ struct xfrm_state *xfrm_state_alloc(struct net *net)
+ #ifdef CONFIG_NET_SCHED
+@@ -739,7 +739,7 @@ struct Qdisc *dev_graft_qdisc(struct netdev_queue *dev_queue,
+ 	spin_lock_bh(root_lock);
  
- 	if (x) {
- 		write_pnet(&x->xs_net, net);
--		atomic_set(&x->refcnt, 1);
-+		refcount_set(&x->refcnt, 1);
- 		atomic_set(&x->tunnel_users, 0);
- 		INIT_LIST_HEAD(&x->km.all);
- 		INIT_HLIST_NODE(&x->bydst);
+ 	/* Prune old scheduler */
+-	if (oqdisc && atomic_read(&oqdisc->refcnt) <= 1)
++	if (oqdisc && refcount_read(&oqdisc->refcnt) <= 1)
+ 		qdisc_reset(oqdisc);
+ 
+ 	/* ... and graft new one */
+@@ -785,7 +785,7 @@ static void attach_default_qdiscs(struct net_device *dev)
+ 	    dev->priv_flags & IFF_NO_QUEUE) {
+ 		netdev_for_each_tx_queue(dev, attach_one_default_qdisc, NULL);
+ 		dev->qdisc = txq->qdisc_sleeping;
+-		atomic_inc(&dev->qdisc->refcnt);
++		refcount_inc(&dev->qdisc->refcnt);
+ 	} else {
+ 		qdisc = qdisc_create_dflt(txq, &mq_qdisc_ops, TC_H_ROOT);
+ 		if (qdisc) {
 -- 
 2.7.4
 
