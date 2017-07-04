@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:53:13 +0000
-Subject: [PATCH 18/36] net, sunrpc: convert gss_cl_ctx.count from atomic_t to refcount_t
-Message-Id: <1499172811-16271-19-git-send-email-elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:52:57 +0000
+Subject: [PATCH 02/36] net, l2tp: convert l2tp_tunnel.ref_count from atomic_t to refcount_t
+Message-Id: <1499172811-16271-3-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
@@ -22,61 +22,131 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/linux/sunrpc/auth_gss.h | 3 ++-
- net/sunrpc/auth_gss/auth_gss.c  | 6 +++---
- 2 files changed, 5 insertions(+), 4 deletions(-)
+ net/l2tp/l2tp_core.c    | 14 +++++++-------
+ net/l2tp/l2tp_core.h    |  3 ++-
+ net/l2tp/l2tp_debugfs.c |  4 ++--
+ net/l2tp/l2tp_ppp.c     |  2 +-
+ 4 files changed, 12 insertions(+), 11 deletions(-)
 
-diff --git a/include/linux/sunrpc/auth_gss.h b/include/linux/sunrpc/auth_gss.h
-index 36eebc4..cebdf87 100644
---- a/include/linux/sunrpc/auth_gss.h
-+++ b/include/linux/sunrpc/auth_gss.h
-@@ -13,6 +13,7 @@
- #define _LINUX_SUNRPC_AUTH_GSS_H
+diff --git a/net/l2tp/l2tp_core.c b/net/l2tp/l2tp_core.c
+index fa03425..203c4aa 100644
+--- a/net/l2tp/l2tp_core.c
++++ b/net/l2tp/l2tp_core.c
+@@ -132,12 +132,12 @@ static inline struct l2tp_net *l2tp_pernet(const struct net *net)
+  */
+ static inline void l2tp_tunnel_inc_refcount_1(struct l2tp_tunnel *tunnel)
+ {
+-	atomic_inc(&tunnel->ref_count);
++	refcount_inc(&tunnel->ref_count);
+ }
  
- #ifdef __KERNEL__
+ static inline void l2tp_tunnel_dec_refcount_1(struct l2tp_tunnel *tunnel)
+ {
+-	if (atomic_dec_and_test(&tunnel->ref_count))
++	if (refcount_dec_and_test(&tunnel->ref_count))
+ 		l2tp_tunnel_free(tunnel);
+ }
+ #ifdef L2TP_REFCNT_DEBUG
+@@ -145,14 +145,14 @@ static inline void l2tp_tunnel_dec_refcount_1(struct l2tp_tunnel *tunnel)
+ do {									\
+ 	pr_debug("l2tp_tunnel_inc_refcount: %s:%d %s: cnt=%d\n",	\
+ 		 __func__, __LINE__, (_t)->name,			\
+-		 atomic_read(&_t->ref_count));				\
++		 refcount_read(&_t->ref_count));			\
+ 	l2tp_tunnel_inc_refcount_1(_t);					\
+ } while (0)
+ #define l2tp_tunnel_dec_refcount(_t)					\
+ do {									\
+ 	pr_debug("l2tp_tunnel_dec_refcount: %s:%d %s: cnt=%d\n",	\
+ 		 __func__, __LINE__, (_t)->name,			\
+-		 atomic_read(&_t->ref_count));				\
++		 refcount_read(&_t->ref_count));			\
+ 	l2tp_tunnel_dec_refcount_1(_t);					\
+ } while (0)
+ #else
+@@ -1353,7 +1353,7 @@ static void l2tp_udp_encap_destroy(struct sock *sk)
+  */
+ static void l2tp_tunnel_free(struct l2tp_tunnel *tunnel)
+ {
+-	BUG_ON(atomic_read(&tunnel->ref_count) != 0);
++	BUG_ON(refcount_read(&tunnel->ref_count) != 0);
+ 	BUG_ON(tunnel->sock != NULL);
+ 	l2tp_info(tunnel, L2TP_MSG_CONTROL, "%s: free...\n", tunnel->name);
+ 	kfree_rcu(tunnel, rcu);
+@@ -1667,7 +1667,7 @@ int l2tp_tunnel_create(struct net *net, int fd, int version, u32 tunnel_id, u32
+ 	/* Bump the reference count. The tunnel context is deleted
+ 	 * only when this drops to zero. Must be done before list insertion
+ 	 */
+-	l2tp_tunnel_inc_refcount(tunnel);
++	refcount_set(&tunnel->ref_count, 1);
+ 	spin_lock_bh(&pn->l2tp_tunnel_list_lock);
+ 	list_add_rcu(&tunnel->list, &pn->l2tp_tunnel_list);
+ 	spin_unlock_bh(&pn->l2tp_tunnel_list_lock);
+@@ -1706,7 +1706,7 @@ void l2tp_session_free(struct l2tp_session *session)
+ {
+ 	struct l2tp_tunnel *tunnel = session->tunnel;
+ 
+-	BUG_ON(atomic_read(&session->ref_count) != 0);
++	BUG_ON(refcount_read(&session->ref_count) != 0);
+ 
+ 	if (tunnel) {
+ 		BUG_ON(tunnel->magic != L2TP_TUNNEL_MAGIC);
+diff --git a/net/l2tp/l2tp_core.h b/net/l2tp/l2tp_core.h
+index eec5ad2..da58fad 100644
+--- a/net/l2tp/l2tp_core.h
++++ b/net/l2tp/l2tp_core.h
+@@ -7,6 +7,7 @@
+  * it under the terms of the GNU General Public License version 2 as
+  * published by the Free Software Foundation.
+  */
 +#include <linux/refcount.h>
- #include <linux/sunrpc/auth.h>
- #include <linux/sunrpc/svc.h>
- #include <linux/sunrpc/gss_api.h>
-@@ -65,7 +66,7 @@ struct rpc_gss_init_res {
-  * the wire when communicating with a server. */
  
- struct gss_cl_ctx {
--	atomic_t		count;
-+	refcount_t		count;
- 	enum rpc_gss_proc	gc_proc;
- 	u32			gc_seq;
- 	spinlock_t		gc_seq_lock;
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 4f16953..72f129c 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -117,14 +117,14 @@ static const struct rpc_pipe_ops gss_upcall_ops_v1;
- static inline struct gss_cl_ctx *
- gss_get_ctx(struct gss_cl_ctx *ctx)
- {
--	atomic_inc(&ctx->count);
-+	refcount_inc(&ctx->count);
- 	return ctx;
- }
+ #ifndef _L2TP_CORE_H_
+ #define _L2TP_CORE_H_
+@@ -177,7 +178,7 @@ struct l2tp_tunnel {
+ 	struct list_head	list;		/* Keep a list of all tunnels */
+ 	struct net		*l2tp_net;	/* the net we belong to */
  
- static inline void
- gss_put_ctx(struct gss_cl_ctx *ctx)
- {
--	if (atomic_dec_and_test(&ctx->count))
-+	if (refcount_dec_and_test(&ctx->count))
- 		gss_free_ctx(ctx);
- }
- 
-@@ -200,7 +200,7 @@ gss_alloc_context(void)
- 		ctx->gc_proc = RPC_GSS_PROC_DATA;
- 		ctx->gc_seq = 1;	/* NetApp 6.4R1 doesn't accept seq. no. 0 */
- 		spin_lock_init(&ctx->gc_seq_lock);
--		atomic_set(&ctx->count,1);
-+		refcount_set(&ctx->count,1);
- 	}
- 	return ctx;
- }
+-	atomic_t		ref_count;
++	refcount_t		ref_count;
+ #ifdef CONFIG_DEBUG_FS
+ 	void (*show)(struct seq_file *m, void *arg);
+ #endif
+diff --git a/net/l2tp/l2tp_debugfs.c b/net/l2tp/l2tp_debugfs.c
+index 98a005d..53bae54 100644
+--- a/net/l2tp/l2tp_debugfs.c
++++ b/net/l2tp/l2tp_debugfs.c
+@@ -145,7 +145,7 @@ static void l2tp_dfs_seq_tunnel_show(struct seq_file *m, void *v)
+ 		   "");
+ 	seq_printf(m, " %d sessions, refcnt %d/%d\n", session_count,
+ 		   tunnel->sock ? refcount_read(&tunnel->sock->sk_refcnt) : 0,
+-		   atomic_read(&tunnel->ref_count));
++		   refcount_read(&tunnel->ref_count));
+ 	seq_printf(m, " %08x rx %ld/%ld/%ld rx %ld/%ld/%ld\n",
+ 		   tunnel->debug,
+ 		   atomic_long_read(&tunnel->stats.tx_packets),
+@@ -170,7 +170,7 @@ static void l2tp_dfs_seq_session_show(struct seq_file *m, void *v)
+ 		   "");
+ 	if (session->send_seq || session->recv_seq)
+ 		seq_printf(m, "   nr %hu, ns %hu\n", session->nr, session->ns);
+-	seq_printf(m, "   refcnt %d\n", atomic_read(&session->ref_count));
++	seq_printf(m, "   refcnt %d\n", refcount_read(&session->ref_count));
+ 	seq_printf(m, "   config %d/%d/%c/%c/%s/%s %08x %u\n",
+ 		   session->mtu, session->mru,
+ 		   session->recv_seq ? 'R' : '-',
+diff --git a/net/l2tp/l2tp_ppp.c b/net/l2tp/l2tp_ppp.c
+index 32ea0f3..f0edb72 100644
+--- a/net/l2tp/l2tp_ppp.c
++++ b/net/l2tp/l2tp_ppp.c
+@@ -1616,7 +1616,7 @@ static void pppol2tp_seq_tunnel_show(struct seq_file *m, void *v)
+ 	seq_printf(m, "\nTUNNEL '%s', %c %d\n",
+ 		   tunnel->name,
+ 		   (tunnel = tunnel->sock->sk_user_data) ? 'Y' : 'N',
+-		   atomic_read(&tunnel->ref_count) - 1);
++		   refcount_read(&tunnel->ref_count) - 1);
+ 	seq_printf(m, " %08x %ld/%ld/%ld %ld/%ld/%ld\n",
+ 		   tunnel->debug,
+ 		   atomic_long_read(&tunnel->stats.tx_packets),
 -- 
 2.7.4
 
