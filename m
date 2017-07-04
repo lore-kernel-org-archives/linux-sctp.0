@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:53:00 +0000
-Subject: [PATCH 05/36] net, decnet: convert dn_fib_info.fib_clntref from atomic_t to refcount_t
-Message-Id: <1499172811-16271-6-git-send-email-elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:53:30 +0000
+Subject: [PATCH 35/36] net, ax25: convert ax25_route.refcount from atomic_t to refcount_t
+Message-Id: <1499172811-16271-36-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
@@ -22,71 +22,53 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/dn_fib.h | 5 +++--
- net/decnet/dn_fib.c  | 6 +++---
- 2 files changed, 6 insertions(+), 5 deletions(-)
+ include/net/ax25.h    | 6 +++---
+ net/ax25/ax25_route.c | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/dn_fib.h b/include/net/dn_fib.h
-index f2ca135..81210a8 100644
---- a/include/net/dn_fib.h
-+++ b/include/net/dn_fib.h
-@@ -2,6 +2,7 @@
- #define _NET_DN_FIB_H
+diff --git a/include/net/ax25.h b/include/net/ax25.h
+index edd82f0..e3467ba 100644
+--- a/include/net/ax25.h
++++ b/include/net/ax25.h
+@@ -185,7 +185,7 @@ typedef struct {
  
- #include <linux/netlink.h>
-+#include <linux/refcount.h>
+ typedef struct ax25_route {
+ 	struct ax25_route	*next;
+-	atomic_t		refcount;
++	refcount_t		refcount;
+ 	ax25_address		callsign;
+ 	struct net_device	*dev;
+ 	ax25_digi		*digipeat;
+@@ -194,14 +194,14 @@ typedef struct ax25_route {
  
- extern const struct nla_policy rtm_dn_policy[];
- 
-@@ -28,7 +29,7 @@ struct dn_fib_info {
- 	struct dn_fib_info	*fib_next;
- 	struct dn_fib_info	*fib_prev;
- 	int 			fib_treeref;
--	atomic_t		fib_clntref;
-+	refcount_t		fib_clntref;
- 	int			fib_dead;
- 	unsigned int		fib_flags;
- 	int			fib_protocol;
-@@ -130,7 +131,7 @@ void dn_fib_free_info(struct dn_fib_info *fi);
- 
- static inline void dn_fib_info_put(struct dn_fib_info *fi)
+ static inline void ax25_hold_route(ax25_route *ax25_rt)
  {
--	if (atomic_dec_and_test(&fi->fib_clntref))
-+	if (refcount_dec_and_test(&fi->fib_clntref))
- 		dn_fib_free_info(fi);
+-	atomic_inc(&ax25_rt->refcount);
++	refcount_inc(&ax25_rt->refcount);
  }
  
-diff --git a/net/decnet/dn_fib.c b/net/decnet/dn_fib.c
-index f9058eb..f9f6fb3 100644
---- a/net/decnet/dn_fib.c
-+++ b/net/decnet/dn_fib.c
-@@ -389,7 +389,7 @@ struct dn_fib_info *dn_fib_create_info(const struct rtmsg *r, struct nlattr *att
+ void __ax25_put_route(ax25_route *ax25_rt);
+ 
+ static inline void ax25_put_route(ax25_route *ax25_rt)
+ {
+-	if (atomic_dec_and_test(&ax25_rt->refcount))
++	if (refcount_dec_and_test(&ax25_rt->refcount))
+ 		__ax25_put_route(ax25_rt);
+ }
+ 
+diff --git a/net/ax25/ax25_route.c b/net/ax25/ax25_route.c
+index e1fda27..0446b89 100644
+--- a/net/ax25/ax25_route.c
++++ b/net/ax25/ax25_route.c
+@@ -114,7 +114,7 @@ static int __must_check ax25_rt_add(struct ax25_routes_struct *route)
+ 		return -ENOMEM;
  	}
  
- 	fi->fib_treeref++;
--	atomic_inc(&fi->fib_clntref);
-+	refcount_set(&fi->fib_clntref, 1);
- 	spin_lock(&dn_fib_info_lock);
- 	fi->fib_next = dn_fib_info_list;
- 	fi->fib_prev = NULL;
-@@ -425,7 +425,7 @@ int dn_fib_semantic_match(int type, struct dn_fib_info *fi, const struct flowidn
- 		switch (type) {
- 		case RTN_NAT:
- 			DN_FIB_RES_RESET(*res);
--			atomic_inc(&fi->fib_clntref);
-+			refcount_inc(&fi->fib_clntref);
- 			return 0;
- 		case RTN_UNICAST:
- 		case RTN_LOCAL:
-@@ -438,7 +438,7 @@ int dn_fib_semantic_match(int type, struct dn_fib_info *fi, const struct flowidn
- 			}
- 			if (nhsel < fi->fib_nhs) {
- 				res->nh_sel = nhsel;
--				atomic_inc(&fi->fib_clntref);
-+				refcount_inc(&fi->fib_clntref);
- 				return 0;
- 			}
- 			endfor_nexthops(fi);
+-	atomic_set(&ax25_rt->refcount, 1);
++	refcount_set(&ax25_rt->refcount, 1);
+ 	ax25_rt->callsign     = route->dest_addr;
+ 	ax25_rt->dev          = ax25_dev->dev;
+ 	ax25_rt->digipeat     = NULL;
 -- 
 2.7.4
 
