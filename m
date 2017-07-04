@@ -1,118 +1,95 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 17 Jul 2017 03:29:56 +0000
-Subject: [PATCHv2 net-next 08/11] sctp: remove the typedef sctp_supported_ext_param_t
-Message-Id: <2d6a7b26e6b2766ed9fd0d86d8ac390e12762b02.1500261974.git.lucien.xin@gmail.com>
+From: Elena Reshetova <elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:53:01 +0000
+Subject: [PATCH 06/36] net, atm: convert atm_dev.refcnt from atomic_t to refcount_t
+Message-Id: <1499172811-16271-7-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1500261974.git.lucien.xin@gmail.com>
- <cadd1baef89e215244af82032957ccde1189bcc8.1500261974.git.lucien.xin@gmail.com>
- <0add39ae0879e3b332bafc24aa6ccdb6b0d5c85a.1500261974.git.lucien.xin@gmail.com>
- <c8cdb622f7de0edc639936e3fa15a262e92cfa66.1500261974.git.lucien.xin@gmail.com>
- <7faff4d9e2bef97652b742006c0165641ad84504.1500261974.git.lucien.xin@gmail.com>
- <6c3cea13894a96c24fb2e84fc0fab8363cb4b70f.1500261974.git.lucien.xin@gmail.com>
- <ec19ee88ce40e1e11b7bef6c84c1372dfebd5704.1500261974.git.lucien.xin@gmail.com>
- <3dda87d79e20cdb2487fc3baa3ffad883bb3a7fb.1500261974.git.lucien.xin@gmail.com>
-In-Reply-To: <3dda87d79e20cdb2487fc3baa3ffad883bb3a7fb.1500261974.git.lucien.xin@gmail.com>
+References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
+In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, davem@davemloft.net, jmorris@namei.org, kaber@trash.net, yoshfuji@linux-ipv6.org, kuznet@ms2.inr.ac.ru, 3chas3@gmail.com, ralf@linux-mips.org, stephen@networkplumber.org, jchapman@katalix.com, jhs@mojatatu.com, bridge@lists.linux-foundation.org, linux-hams@vger.kernel.org, linux-x25@vger.kernel.org, peterz@infradead.org, keescook@chromium.org, linux-rdma@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-nfs@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
 
-This patch is to remove the typedef sctp_supported_ext_param_t, and
-replace with struct sctp_supported_ext_param in the places where it's
-using this typedef.
+refcount_t type and corresponding API should be
+used instead of atomic_t when the variable is used as
+a reference counter. This allows to avoid accidental
+refcounter overflows that might lead to use-after-free
+situations.
 
-It is also to use sizeof(variable) instead of sizeof(type).
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
+Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
+Signed-off-by: Kees Cook <keescook@chromium.org>
+Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/linux/sctp.h     |  4 ++--
- net/sctp/sm_make_chunk.c | 22 ++++++++--------------
- 2 files changed, 10 insertions(+), 16 deletions(-)
+ include/linux/atmdev.h | 7 ++++---
+ net/atm/proc.c         | 2 +-
+ net/atm/resources.c    | 2 +-
+ 3 files changed, 6 insertions(+), 5 deletions(-)
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index 72b8787..7624568 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -309,10 +309,10 @@ struct sctp_adaptation_ind_param {
- };
+diff --git a/include/linux/atmdev.h b/include/linux/atmdev.h
+index 4d97a89..0ec9bdb 100644
+--- a/include/linux/atmdev.h
++++ b/include/linux/atmdev.h
+@@ -11,6 +11,7 @@
+ #include <linux/uio.h>
+ #include <net/sock.h>
+ #include <linux/atomic.h>
++#include <linux/refcount.h>
+ #include <uapi/linux/atmdev.h>
  
- /* ADDIP Section 4.2.7 Supported Extensions Parameter */
--typedef struct sctp_supported_ext_param {
-+struct sctp_supported_ext_param {
- 	struct sctp_paramhdr param_hdr;
- 	__u8 chunks[0];
--} sctp_supported_ext_param_t;
-+};
+ #ifdef CONFIG_PROC_FS
+@@ -158,7 +159,7 @@ struct atm_dev {
+ 	struct k_atm_dev_stats stats;	/* statistics */
+ 	char		signal;		/* signal status (ATM_PHY_SIG_*) */
+ 	int		link_rate;	/* link rate (default: OC3) */
+-	atomic_t	refcnt;		/* reference count */
++	refcount_t	refcnt;		/* reference count */
+ 	spinlock_t	lock;		/* protect internal members */
+ #ifdef CONFIG_PROC_FS
+ 	struct proc_dir_entry *proc_entry; /* proc entry */
+@@ -261,13 +262,13 @@ static inline int atm_may_send(struct atm_vcc *vcc,unsigned int size)
  
- /* AUTH Section 3.1 Random */
- typedef struct sctp_random_param {
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index d5f82c2..06dc351 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -226,7 +226,7 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
- 	struct sctp_supported_addrs_param sat;
- 	__be16 types[2];
- 	struct sctp_adaptation_ind_param aiparam;
--	sctp_supported_ext_param_t ext_param;
-+	struct sctp_supported_ext_param ext_param;
- 	int num_ext = 0;
- 	__u8 extensions[3];
- 	struct sctp_paramhdr *auth_chunks = NULL,
-@@ -305,8 +305,7 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
+ static inline void atm_dev_hold(struct atm_dev *dev)
+ {
+-	atomic_inc(&dev->refcnt);
++	refcount_inc(&dev->refcnt);
+ }
  
- 	/* If we have any extensions to report, account for that */
- 	if (num_ext)
--		chunksize += SCTP_PAD4(sizeof(sctp_supported_ext_param_t) +
--				       num_ext);
-+		chunksize += SCTP_PAD4(sizeof(ext_param) + num_ext);
  
- 	/* RFC 2960 3.3.2 Initiation (INIT) (1)
- 	 *
-@@ -348,10 +347,8 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
- 	 */
- 	if (num_ext) {
- 		ext_param.param_hdr.type = SCTP_PARAM_SUPPORTED_EXT;
--		ext_param.param_hdr.length -			    htons(sizeof(sctp_supported_ext_param_t) + num_ext);
--		sctp_addto_chunk(retval, sizeof(sctp_supported_ext_param_t),
--				&ext_param);
-+		ext_param.param_hdr.length = htons(sizeof(ext_param) + num_ext);
-+		sctp_addto_chunk(retval, sizeof(ext_param), &ext_param);
- 		sctp_addto_param(retval, num_ext, extensions);
- 	}
+ static inline void atm_dev_put(struct atm_dev *dev)
+ {
+-	if (atomic_dec_and_test(&dev->refcnt)) {
++	if (refcount_dec_and_test(&dev->refcnt)) {
+ 		BUG_ON(!test_bit(ATM_DF_REMOVED, &dev->flags));
+ 		if (dev->ops->dev_close)
+ 			dev->ops->dev_close(dev);
+diff --git a/net/atm/proc.c b/net/atm/proc.c
+index 27c9c01..4caca2a 100644
+--- a/net/atm/proc.c
++++ b/net/atm/proc.c
+@@ -61,7 +61,7 @@ static void atm_dev_info(struct seq_file *seq, const struct atm_dev *dev)
+ 	add_stats(seq, "0", &dev->stats.aal0);
+ 	seq_puts(seq, "  ");
+ 	add_stats(seq, "5", &dev->stats.aal5);
+-	seq_printf(seq, "\t[%d]", atomic_read(&dev->refcnt));
++	seq_printf(seq, "\t[%d]", refcount_read(&dev->refcnt));
+ 	seq_putc(seq, '\n');
+ }
  
-@@ -394,7 +391,7 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
- 	int cookie_len;
- 	size_t chunksize;
- 	struct sctp_adaptation_ind_param aiparam;
--	sctp_supported_ext_param_t ext_param;
-+	struct sctp_supported_ext_param ext_param;
- 	int num_ext = 0;
- 	__u8 extensions[3];
- 	struct sctp_paramhdr *auth_chunks = NULL,
-@@ -468,8 +465,7 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
- 	}
+diff --git a/net/atm/resources.c b/net/atm/resources.c
+index 0447d5d..9182447 100644
+--- a/net/atm/resources.c
++++ b/net/atm/resources.c
+@@ -109,7 +109,7 @@ struct atm_dev *atm_dev_register(const char *type, struct device *parent,
+ 	else
+ 		memset(&dev->flags, 0, sizeof(dev->flags));
+ 	memset(&dev->stats, 0, sizeof(dev->stats));
+-	atomic_set(&dev->refcnt, 1);
++	refcount_set(&dev->refcnt, 1);
  
- 	if (num_ext)
--		chunksize += SCTP_PAD4(sizeof(sctp_supported_ext_param_t) +
--				       num_ext);
-+		chunksize += SCTP_PAD4(sizeof(ext_param) + num_ext);
- 
- 	/* Now allocate and fill out the chunk.  */
- 	retval = sctp_make_control(asoc, SCTP_CID_INIT_ACK, 0, chunksize, gfp);
-@@ -495,10 +491,8 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
- 		sctp_addto_chunk(retval, sizeof(ecap_param), &ecap_param);
- 	if (num_ext) {
- 		ext_param.param_hdr.type = SCTP_PARAM_SUPPORTED_EXT;
--		ext_param.param_hdr.length -			    htons(sizeof(sctp_supported_ext_param_t) + num_ext);
--		sctp_addto_chunk(retval, sizeof(sctp_supported_ext_param_t),
--				 &ext_param);
-+		ext_param.param_hdr.length = htons(sizeof(ext_param) + num_ext);
-+		sctp_addto_chunk(retval, sizeof(ext_param), &ext_param);
- 		sctp_addto_param(retval, num_ext, extensions);
- 	}
- 	if (asoc->peer.prsctp_capable)
+ 	if (atm_proc_dev_register(dev) < 0) {
+ 		pr_err("atm_proc_dev_register failed for dev %s\n", type);
 -- 
-2.1.0
+2.7.4
 
