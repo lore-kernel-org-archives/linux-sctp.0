@@ -1,71 +1,84 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 17 Jul 2017 03:29:50 +0000
-Subject: [PATCHv2 net-next 02/11] sctp: remove the typedef sctp_ipv6addr_param_t
-Message-Id: <0add39ae0879e3b332bafc24aa6ccdb6b0d5c85a.1500261974.git.lucien.xin@gmail.com>
+From: Elena Reshetova <elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:53:27 +0000
+Subject: [PATCH 32/36] net, sctp: convert sctp_transport.refcnt from atomic_t to refcount_t
+Message-Id: <1499172811-16271-33-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1500261974.git.lucien.xin@gmail.com>
- <cadd1baef89e215244af82032957ccde1189bcc8.1500261974.git.lucien.xin@gmail.com>
-In-Reply-To: <cadd1baef89e215244af82032957ccde1189bcc8.1500261974.git.lucien.xin@gmail.com>
+References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
+In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, davem@davemloft.net, jmorris@namei.org, kaber@trash.net, yoshfuji@linux-ipv6.org, kuznet@ms2.inr.ac.ru, 3chas3@gmail.com, ralf@linux-mips.org, stephen@networkplumber.org, jchapman@katalix.com, jhs@mojatatu.com, bridge@lists.linux-foundation.org, linux-hams@vger.kernel.org, linux-x25@vger.kernel.org, peterz@infradead.org, keescook@chromium.org, linux-rdma@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-nfs@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
 
-This patch is to remove the typedef sctp_ipv6addr_param_t, and replace
-with struct sctp_ipv6addr_param in the places where it's using this
-typedef.
+refcount_t type and corresponding API should be
+used instead of atomic_t when the variable is used as
+a reference counter. This allows to avoid accidental
+refcounter overflows that might lead to use-after-free
+situations.
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
+Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
+Signed-off-by: Kees Cook <keescook@chromium.org>
+Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/linux/sctp.h     | 4 ++--
- net/sctp/ipv6.c          | 2 +-
- net/sctp/sm_make_chunk.c | 2 +-
- 3 files changed, 4 insertions(+), 4 deletions(-)
+ include/net/sctp/structs.h | 2 +-
+ net/sctp/transport.c       | 8 ++++----
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index e42095d..6b45c8a 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -279,10 +279,10 @@ struct sctp_ipv4addr_param {
- };
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 0dfc5c1..6a0d372 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -735,7 +735,7 @@ struct sctp_transport {
+ 	struct rhlist_head node;
  
- /* Section 3.3.2.1. IPv6 Address Parameter (6) */
--typedef struct sctp_ipv6addr_param {
-+struct sctp_ipv6addr_param {
- 	struct sctp_paramhdr param_hdr;
- 	struct in6_addr addr;
--} sctp_ipv6addr_param_t;
-+};
+ 	/* Reference counting. */
+-	atomic_t refcnt;
++	refcount_t refcnt;
+ 		/* RTO-Pending : A flag used to track if one of the DATA
+ 		 *		chunks sent to this address is currently being
+ 		 *		used to compute a RTT. If this flag is 0,
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index 7cdd6bc..80a97c8 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -99,7 +99,7 @@ static struct sctp_transport *sctp_transport_init(struct net *net,
+ 	/* Initialize the 64-bit random nonce sent with heartbeat. */
+ 	get_random_bytes(&peer->hb_nonce, sizeof(peer->hb_nonce));
  
- /* Section 3.3.2.1 Cookie Preservative (9) */
- typedef struct sctp_cookie_preserve_param {
-diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-index 2a186b20..107d7c9 100644
---- a/net/sctp/ipv6.c
-+++ b/net/sctp/ipv6.c
-@@ -497,7 +497,7 @@ static void sctp_v6_from_addr_param(union sctp_addr *addr,
- static int sctp_v6_to_addr_param(const union sctp_addr *addr,
- 				 union sctp_addr_param *param)
+-	atomic_set(&peer->refcnt, 1);
++	refcount_set(&peer->refcnt, 1);
+ 
+ 	return peer;
+ }
+@@ -172,7 +172,7 @@ static void sctp_transport_destroy_rcu(struct rcu_head *head)
+  */
+ static void sctp_transport_destroy(struct sctp_transport *transport)
  {
--	int length = sizeof(sctp_ipv6addr_param_t);
-+	int length = sizeof(struct sctp_ipv6addr_param);
+-	if (unlikely(atomic_read(&transport->refcnt))) {
++	if (unlikely(refcount_read(&transport->refcnt))) {
+ 		WARN(1, "Attempt to destroy undead transport %p!\n", transport);
+ 		return;
+ 	}
+@@ -311,7 +311,7 @@ void sctp_transport_route(struct sctp_transport *transport,
+ /* Hold a reference to a transport.  */
+ int sctp_transport_hold(struct sctp_transport *transport)
+ {
+-	return atomic_add_unless(&transport->refcnt, 1, 0);
++	return refcount_inc_not_zero(&transport->refcnt);
+ }
  
- 	param->v6.param_hdr.type = SCTP_PARAM_IPV6_ADDRESS;
- 	param->v6.param_hdr.length = htons(length);
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 0dc64da..e5be305 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -3163,7 +3163,7 @@ bool sctp_verify_asconf(const struct sctp_association *asoc,
- 			addr_param_seen = true;
- 			break;
- 		case SCTP_PARAM_IPV6_ADDRESS:
--			if (length != sizeof(sctp_ipv6addr_param_t))
-+			if (length != sizeof(struct sctp_ipv6addr_param))
- 				return false;
- 			if (param.v != addip->addip_hdr.params)
- 				return false;
+ /* Release a reference to a transport and clean up
+@@ -319,7 +319,7 @@ int sctp_transport_hold(struct sctp_transport *transport)
+  */
+ void sctp_transport_put(struct sctp_transport *transport)
+ {
+-	if (atomic_dec_and_test(&transport->refcnt))
++	if (refcount_dec_and_test(&transport->refcnt))
+ 		sctp_transport_destroy(transport);
+ }
+ 
 -- 
-2.1.0
+2.7.4
 
