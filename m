@@ -1,60 +1,97 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 17 Jul 2017 03:29:53 +0000
-Subject: [PATCHv2 net-next 05/11] sctp: remove the typedef sctp_supported_addrs_param_t
-Message-Id: <6c3cea13894a96c24fb2e84fc0fab8363cb4b70f.1500261974.git.lucien.xin@gmail.com>
+From: Elena Reshetova <elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:53:22 +0000
+Subject: [PATCH 27/36] net, xfrm: convert xfrm_policy.refcnt from atomic_t to refcount_t
+Message-Id: <1499172811-16271-28-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1500261974.git.lucien.xin@gmail.com>
- <cadd1baef89e215244af82032957ccde1189bcc8.1500261974.git.lucien.xin@gmail.com>
- <0add39ae0879e3b332bafc24aa6ccdb6b0d5c85a.1500261974.git.lucien.xin@gmail.com>
- <c8cdb622f7de0edc639936e3fa15a262e92cfa66.1500261974.git.lucien.xin@gmail.com>
- <7faff4d9e2bef97652b742006c0165641ad84504.1500261974.git.lucien.xin@gmail.com>
-In-Reply-To: <7faff4d9e2bef97652b742006c0165641ad84504.1500261974.git.lucien.xin@gmail.com>
+References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
+In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, davem@davemloft.net, jmorris@namei.org, kaber@trash.net, yoshfuji@linux-ipv6.org, kuznet@ms2.inr.ac.ru, 3chas3@gmail.com, ralf@linux-mips.org, stephen@networkplumber.org, jchapman@katalix.com, jhs@mojatatu.com, bridge@lists.linux-foundation.org, linux-hams@vger.kernel.org, linux-x25@vger.kernel.org, peterz@infradead.org, keescook@chromium.org, linux-rdma@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-nfs@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
 
-This patch is to remove the typedef sctp_supported_addrs_param_t, and
-replace with struct sctp_supported_addrs_param in the places where it's
-using this typedef.
+refcount_t type and corresponding API should be
+used instead of atomic_t when the variable is used as
+a reference counter. This allows to avoid accidental
+refcounter overflows that might lead to use-after-free
+situations.
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
+Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
+Signed-off-by: Kees Cook <keescook@chromium.org>
+Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/linux/sctp.h     | 4 ++--
- net/sctp/sm_make_chunk.c | 2 +-
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ include/net/xfrm.h     | 6 +++---
+ net/key/af_key.c       | 2 +-
+ net/xfrm/xfrm_policy.c | 4 ++--
+ 3 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index c43e906..3ca3ab7 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -297,10 +297,10 @@ struct sctp_hostname_param {
- };
+diff --git a/include/net/xfrm.h b/include/net/xfrm.h
+index f5272a2..e1bd1de 100644
+--- a/include/net/xfrm.h
++++ b/include/net/xfrm.h
+@@ -560,7 +560,7 @@ struct xfrm_policy {
  
- /* Section 3.3.2.1 Supported Address Types (12) */
--typedef struct sctp_supported_addrs_param {
-+struct sctp_supported_addrs_param {
- 	struct sctp_paramhdr param_hdr;
- 	__be16 types[0];
--} sctp_supported_addrs_param_t;
-+};
+ 	/* This lock only affects elements except for entry. */
+ 	rwlock_t		lock;
+-	atomic_t		refcnt;
++	refcount_t		refcnt;
+ 	struct timer_list	timer;
  
- /* Appendix A. ECN Capable (32768) */
- typedef struct sctp_ecn_capable_param {
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index e5be305..fb06d4f 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -223,7 +223,7 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
- 	struct sctp_chunk *retval = NULL;
- 	int num_types, addrs_len = 0;
- 	struct sctp_sock *sp;
--	sctp_supported_addrs_param_t sat;
-+	struct sctp_supported_addrs_param sat;
- 	__be16 types[2];
- 	sctp_adaptation_ind_param_t aiparam;
- 	sctp_supported_ext_param_t ext_param;
+ 	struct flow_cache_object flo;
+@@ -816,14 +816,14 @@ static inline void xfrm_audit_state_icvfail(struct xfrm_state *x,
+ static inline void xfrm_pol_hold(struct xfrm_policy *policy)
+ {
+ 	if (likely(policy != NULL))
+-		atomic_inc(&policy->refcnt);
++		refcount_inc(&policy->refcnt);
+ }
+ 
+ void xfrm_policy_destroy(struct xfrm_policy *policy);
+ 
+ static inline void xfrm_pol_put(struct xfrm_policy *policy)
+ {
+-	if (atomic_dec_and_test(&policy->refcnt))
++	if (refcount_dec_and_test(&policy->refcnt))
+ 		xfrm_policy_destroy(policy);
+ }
+ 
+diff --git a/net/key/af_key.c b/net/key/af_key.c
+index edcf1d0..ca9d3ae 100644
+--- a/net/key/af_key.c
++++ b/net/key/af_key.c
+@@ -2177,7 +2177,7 @@ static int pfkey_xfrm_policy2msg(struct sk_buff *skb, const struct xfrm_policy *
+ 	}
+ 
+ 	hdr->sadb_msg_len = size / sizeof(uint64_t);
+-	hdr->sadb_msg_reserved = atomic_read(&xp->refcnt);
++	hdr->sadb_msg_reserved = refcount_read(&xp->refcnt);
+ 
+ 	return 0;
+ }
+diff --git a/net/xfrm/xfrm_policy.c b/net/xfrm/xfrm_policy.c
+index 4706df6..ff61d85 100644
+--- a/net/xfrm/xfrm_policy.c
++++ b/net/xfrm/xfrm_policy.c
+@@ -62,7 +62,7 @@ static struct xfrm_policy *__xfrm_policy_unlink(struct xfrm_policy *pol,
+ 
+ static inline bool xfrm_pol_hold_rcu(struct xfrm_policy *policy)
+ {
+-	return atomic_inc_not_zero(&policy->refcnt);
++	return refcount_inc_not_zero(&policy->refcnt);
+ }
+ 
+ static inline bool
+@@ -292,7 +292,7 @@ struct xfrm_policy *xfrm_policy_alloc(struct net *net, gfp_t gfp)
+ 		INIT_HLIST_NODE(&policy->bydst);
+ 		INIT_HLIST_NODE(&policy->byidx);
+ 		rwlock_init(&policy->lock);
+-		atomic_set(&policy->refcnt, 1);
++		refcount_set(&policy->refcnt, 1);
+ 		skb_queue_head_init(&policy->polq.hold_queue);
+ 		setup_timer(&policy->timer, xfrm_policy_timer,
+ 				(unsigned long)policy);
 -- 
-2.1.0
+2.7.4
 
