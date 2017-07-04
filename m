@@ -1,107 +1,88 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 17 Jul 2017 03:29:59 +0000
-Subject: [PATCHv2 net-next 11/11] sctp: remove the typedef sctp_hmac_algo_param_t
-Message-Id: <d1fd31b9587d5bf729ad95b524b89872ee5a1f5d.1500261974.git.lucien.xin@gmail.com>
+From: Elena Reshetova <elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:53:11 +0000
+Subject: [PATCH 16/36] net, netrom: convert nr_neigh.refcount from atomic_t to refcount_t
+Message-Id: <1499172811-16271-17-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1500261974.git.lucien.xin@gmail.com>
- <cadd1baef89e215244af82032957ccde1189bcc8.1500261974.git.lucien.xin@gmail.com>
- <0add39ae0879e3b332bafc24aa6ccdb6b0d5c85a.1500261974.git.lucien.xin@gmail.com>
- <c8cdb622f7de0edc639936e3fa15a262e92cfa66.1500261974.git.lucien.xin@gmail.com>
- <7faff4d9e2bef97652b742006c0165641ad84504.1500261974.git.lucien.xin@gmail.com>
- <6c3cea13894a96c24fb2e84fc0fab8363cb4b70f.1500261974.git.lucien.xin@gmail.com>
- <ec19ee88ce40e1e11b7bef6c84c1372dfebd5704.1500261974.git.lucien.xin@gmail.com>
- <3dda87d79e20cdb2487fc3baa3ffad883bb3a7fb.1500261974.git.lucien.xin@gmail.com>
- <2d6a7b26e6b2766ed9fd0d86d8ac390e12762b02.1500261974.git.lucien.xin@gmail.com>
- <febcd28f69981f971e95de45041e834692e0f03e.1500261974.git.lucien.xin@gmail.com>
- <9bb0e27cbd338aa6ec71a07d19cad692edabe80b.1500261974.git.lucien.xin@gmail.com>
-In-Reply-To: <9bb0e27cbd338aa6ec71a07d19cad692edabe80b.1500261974.git.lucien.xin@gmail.com>
+References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
+In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, davem@davemloft.net, jmorris@namei.org, kaber@trash.net, yoshfuji@linux-ipv6.org, kuznet@ms2.inr.ac.ru, 3chas3@gmail.com, ralf@linux-mips.org, stephen@networkplumber.org, jchapman@katalix.com, jhs@mojatatu.com, bridge@lists.linux-foundation.org, linux-hams@vger.kernel.org, linux-x25@vger.kernel.org, peterz@infradead.org, keescook@chromium.org, linux-rdma@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-nfs@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
 
-This patch is to remove the typedef sctp_hmac_algo_param_t, and
-replace with struct sctp_hmac_algo_param in the places where it's
-using this typedef.
+refcount_t type and corresponding API should be
+used instead of atomic_t when the variable is used as
+a reference counter. This allows to avoid accidental
+refcounter overflows that might lead to use-after-free
+situations.
 
-It is also to use sizeof(variable) instead of sizeof(type).
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
+Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
+Signed-off-by: Kees Cook <keescook@chromium.org>
+Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/linux/sctp.h       | 4 ++--
- include/net/sctp/structs.h | 2 +-
- net/sctp/auth.c            | 4 ++--
- net/sctp/endpointola.c     | 4 ++--
- 4 files changed, 7 insertions(+), 7 deletions(-)
+ include/net/netrom.h  | 7 ++++---
+ net/netrom/nr_route.c | 4 ++--
+ 2 files changed, 6 insertions(+), 5 deletions(-)
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index b52def9..913474d 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -327,10 +327,10 @@ struct sctp_chunks_param {
+diff --git a/include/net/netrom.h b/include/net/netrom.h
+index 110350a..cecb4fd 100644
+--- a/include/net/netrom.h
++++ b/include/net/netrom.h
+@@ -11,6 +11,7 @@
+ #include <linux/list.h>
+ #include <linux/slab.h>
+ #include <net/sock.h>
++#include <linux/refcount.h>
+ 
+ #define	NR_NETWORK_LEN			15
+ #define	NR_TRANSPORT_LEN		5
+@@ -93,7 +94,7 @@ struct nr_neigh {
+ 	unsigned short		count;
+ 	unsigned int		number;
+ 	unsigned char		failed;
+-	atomic_t		refcount;
++	refcount_t		refcount;
  };
  
- /* AUTH Section 3.3 HMAC Algorithm */
--typedef struct sctp_hmac_algo_param {
-+struct sctp_hmac_algo_param {
- 	struct sctp_paramhdr param_hdr;
- 	__be16 hmac_ids[0];
--} sctp_hmac_algo_param_t;
-+};
- 
- /* RFC 2960.  Section 3.3.3 Initiation Acknowledgement (INIT ACK) (2):
-  *   The INIT ACK chunk is used to acknowledge the initiation of an SCTP
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 8042e63..66cd763 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -1558,7 +1558,7 @@ struct sctp_association {
- 		 */
- 		struct sctp_random_param *peer_random;
- 		struct sctp_chunks_param *peer_chunks;
--		sctp_hmac_algo_param_t *peer_hmacs;
-+		struct sctp_hmac_algo_param *peer_hmacs;
- 	} peer;
- 
- 	/* State       : A state variable indicating what state the
-diff --git a/net/sctp/auth.c b/net/sctp/auth.c
-index 367994d..00667c5 100644
---- a/net/sctp/auth.c
-+++ b/net/sctp/auth.c
-@@ -187,7 +187,7 @@ static int sctp_auth_compare_vectors(struct sctp_auth_bytes *vector1,
- static struct sctp_auth_bytes *sctp_auth_make_key_vector(
- 			struct sctp_random_param *random,
- 			struct sctp_chunks_param *chunks,
--			sctp_hmac_algo_param_t *hmacs,
-+			struct sctp_hmac_algo_param *hmacs,
- 			gfp_t gfp)
- {
- 	struct sctp_auth_bytes *new;
-@@ -228,7 +228,7 @@ static struct sctp_auth_bytes *sctp_auth_make_local_vector(
- 	return sctp_auth_make_key_vector(
- 			(struct sctp_random_param *)asoc->c.auth_random,
- 			(struct sctp_chunks_param *)asoc->c.auth_chunks,
--			(sctp_hmac_algo_param_t *)asoc->c.auth_hmacs, gfp);
-+			(struct sctp_hmac_algo_param *)asoc->c.auth_hmacs, gfp);
+ struct nr_route {
+@@ -128,11 +129,11 @@ static __inline__ void nr_node_put(struct nr_node *nr_node)
  }
  
- /* Make a key vector based on peer's parameters */
-diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
-index 35bf5af..3d506b2 100644
---- a/net/sctp/endpointola.c
-+++ b/net/sctp/endpointola.c
-@@ -73,8 +73,8 @@ static struct sctp_endpoint *sctp_endpoint_init(struct sctp_endpoint *ep,
- 		 * variables.  There are arrays that we encode directly
- 		 * into parameters to make the rest of the operations easier.
- 		 */
--		auth_hmacs = kzalloc(sizeof(sctp_hmac_algo_param_t) +
--				sizeof(__u16) * SCTP_AUTH_NUM_HMACS, gfp);
-+		auth_hmacs = kzalloc(sizeof(*auth_hmacs) +
-+				     sizeof(__u16) * SCTP_AUTH_NUM_HMACS, gfp);
- 		if (!auth_hmacs)
- 			goto nomem;
+ #define nr_neigh_hold(__nr_neigh) \
+-	atomic_inc(&((__nr_neigh)->refcount))
++	refcount_inc(&((__nr_neigh)->refcount))
  
+ static __inline__ void nr_neigh_put(struct nr_neigh *nr_neigh)
+ {
+-	if (atomic_dec_and_test(&nr_neigh->refcount)) {
++	if (refcount_dec_and_test(&nr_neigh->refcount)) {
+ 		if (nr_neigh->ax25)
+ 			ax25_cb_put(nr_neigh->ax25);
+ 		kfree(nr_neigh->digipeat);
+diff --git a/net/netrom/nr_route.c b/net/netrom/nr_route.c
+index d72a4f1..6b72970 100644
+--- a/net/netrom/nr_route.c
++++ b/net/netrom/nr_route.c
+@@ -149,7 +149,7 @@ static int __must_check nr_add_node(ax25_address *nr, const char *mnemonic,
+ 		nr_neigh->count    = 0;
+ 		nr_neigh->number   = nr_neigh_no++;
+ 		nr_neigh->failed   = 0;
+-		atomic_set(&nr_neigh->refcount, 1);
++		refcount_set(&nr_neigh->refcount, 1);
+ 
+ 		if (ax25_digi != NULL && ax25_digi->ndigi > 0) {
+ 			nr_neigh->digipeat = kmemdup(ax25_digi,
+@@ -431,7 +431,7 @@ static int __must_check nr_add_neigh(ax25_address *callsign,
+ 	nr_neigh->count    = 0;
+ 	nr_neigh->number   = nr_neigh_no++;
+ 	nr_neigh->failed   = 0;
+-	atomic_set(&nr_neigh->refcount, 1);
++	refcount_set(&nr_neigh->refcount, 1);
+ 
+ 	if (ax25_digi != NULL && ax25_digi->ndigi > 0) {
+ 		nr_neigh->digipeat = kmemdup(ax25_digi, sizeof(*ax25_digi),
 -- 
-2.1.0
+2.7.4
 
