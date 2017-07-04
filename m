@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:53:18 +0000
-Subject: [PATCH 23/36] net, rds: convert rds_message.m_refcount from atomic_t to refcount_t
-Message-Id: <1499172811-16271-24-git-send-email-elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:53:14 +0000
+Subject: [PATCH 19/36] net, sunrpc: convert gss_upcall_msg.count from atomic_t to refcount_t
+Message-Id: <1499172811-16271-20-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
@@ -22,60 +22,108 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- net/rds/message.c | 12 ++++++------
- net/rds/rds.h     |  2 +-
- 2 files changed, 7 insertions(+), 7 deletions(-)
+ net/sunrpc/auth_gss/auth_gss.c | 22 +++++++++++-----------
+ 1 file changed, 11 insertions(+), 11 deletions(-)
 
-diff --git a/net/rds/message.c b/net/rds/message.c
-index 49bfb51..4318cc9 100644
---- a/net/rds/message.c
-+++ b/net/rds/message.c
-@@ -48,8 +48,8 @@ static unsigned int	rds_exthdr_size[__RDS_EXTHDR_MAX] = {
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 72f129c..9463af4 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -287,7 +287,7 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
+ #define UPCALL_BUF_LEN 128
  
- void rds_message_addref(struct rds_message *rm)
+ struct gss_upcall_msg {
+-	atomic_t count;
++	refcount_t count;
+ 	kuid_t	uid;
+ 	struct rpc_pipe_msg msg;
+ 	struct list_head list;
+@@ -328,7 +328,7 @@ static void
+ gss_release_msg(struct gss_upcall_msg *gss_msg)
  {
--	rdsdebug("addref rm %p ref %d\n", rm, atomic_read(&rm->m_refcount));
--	atomic_inc(&rm->m_refcount);
-+	rdsdebug("addref rm %p ref %d\n", rm, refcount_read(&rm->m_refcount));
-+	refcount_inc(&rm->m_refcount);
+ 	struct net *net = gss_msg->auth->net;
+-	if (!atomic_dec_and_test(&gss_msg->count))
++	if (!refcount_dec_and_test(&gss_msg->count))
+ 		return;
+ 	put_pipe_version(net);
+ 	BUG_ON(!list_empty(&gss_msg->list));
+@@ -348,7 +348,7 @@ __gss_find_upcall(struct rpc_pipe *pipe, kuid_t uid, const struct gss_auth *auth
+ 			continue;
+ 		if (auth && pos->auth->service != auth->service)
+ 			continue;
+-		atomic_inc(&pos->count);
++		refcount_inc(&pos->count);
+ 		dprintk("RPC:       %s found msg %p\n", __func__, pos);
+ 		return pos;
+ 	}
+@@ -369,7 +369,7 @@ gss_add_msg(struct gss_upcall_msg *gss_msg)
+ 	spin_lock(&pipe->lock);
+ 	old = __gss_find_upcall(pipe, gss_msg->uid, gss_msg->auth);
+ 	if (old = NULL) {
+-		atomic_inc(&gss_msg->count);
++		refcount_inc(&gss_msg->count);
+ 		list_add(&gss_msg->list, &pipe->in_downcall);
+ 	} else
+ 		gss_msg = old;
+@@ -383,7 +383,7 @@ __gss_unhash_msg(struct gss_upcall_msg *gss_msg)
+ 	list_del_init(&gss_msg->list);
+ 	rpc_wake_up_status(&gss_msg->rpc_waitqueue, gss_msg->msg.errno);
+ 	wake_up_all(&gss_msg->waitqueue);
+-	atomic_dec(&gss_msg->count);
++	refcount_dec(&gss_msg->count);
  }
- EXPORT_SYMBOL_GPL(rds_message_addref);
  
-@@ -83,9 +83,9 @@ static void rds_message_purge(struct rds_message *rm)
- 
- void rds_message_put(struct rds_message *rm)
- {
--	rdsdebug("put rm %p ref %d\n", rm, atomic_read(&rm->m_refcount));
--	WARN(!atomic_read(&rm->m_refcount), "danger refcount zero on %p\n", rm);
--	if (atomic_dec_and_test(&rm->m_refcount)) {
-+	rdsdebug("put rm %p ref %d\n", rm, refcount_read(&rm->m_refcount));
-+	WARN(!refcount_read(&rm->m_refcount), "danger refcount zero on %p\n", rm);
-+	if (refcount_dec_and_test(&rm->m_refcount)) {
- 		BUG_ON(!list_empty(&rm->m_sock_item));
- 		BUG_ON(!list_empty(&rm->m_conn_item));
- 		rds_message_purge(rm);
-@@ -206,7 +206,7 @@ struct rds_message *rds_message_alloc(unsigned int extra_len, gfp_t gfp)
- 	rm->m_used_sgs = 0;
- 	rm->m_total_sgs = extra_len / sizeof(struct scatterlist);
- 
--	atomic_set(&rm->m_refcount, 1);
-+	refcount_set(&rm->m_refcount, 1);
- 	INIT_LIST_HEAD(&rm->m_sock_item);
- 	INIT_LIST_HEAD(&rm->m_conn_item);
- 	spin_lock_init(&rm->m_rs_lock);
-diff --git a/net/rds/rds.h b/net/rds/rds.h
-index ea72d6e..516bcc8 100644
---- a/net/rds/rds.h
-+++ b/net/rds/rds.h
-@@ -356,7 +356,7 @@ static inline u32 rds_rdma_cookie_offset(rds_rdma_cookie_t cookie)
- #define RDS_MSG_FLUSH		8
- 
- struct rds_message {
--	atomic_t		m_refcount;
-+	refcount_t		m_refcount;
- 	struct list_head	m_sock_item;
- 	struct list_head	m_conn_item;
- 	struct rds_incoming	m_inc;
+ static void
+@@ -506,7 +506,7 @@ gss_alloc_msg(struct gss_auth *gss_auth,
+ 	INIT_LIST_HEAD(&gss_msg->list);
+ 	rpc_init_wait_queue(&gss_msg->rpc_waitqueue, "RPCSEC_GSS upcall waitq");
+ 	init_waitqueue_head(&gss_msg->waitqueue);
+-	atomic_set(&gss_msg->count, 1);
++	refcount_set(&gss_msg->count, 1);
+ 	gss_msg->uid = uid;
+ 	gss_msg->auth = gss_auth;
+ 	switch (vers) {
+@@ -542,11 +542,11 @@ gss_setup_upcall(struct gss_auth *gss_auth, struct rpc_cred *cred)
+ 	gss_msg = gss_add_msg(gss_new);
+ 	if (gss_msg = gss_new) {
+ 		int res;
+-		atomic_inc(&gss_msg->count);
++		refcount_inc(&gss_msg->count);
+ 		res = rpc_queue_upcall(gss_new->pipe, &gss_new->msg);
+ 		if (res) {
+ 			gss_unhash_msg(gss_new);
+-			atomic_dec(&gss_msg->count);
++			refcount_dec(&gss_msg->count);
+ 			gss_release_msg(gss_new);
+ 			gss_msg = ERR_PTR(res);
+ 		}
+@@ -595,7 +595,7 @@ gss_refresh_upcall(struct rpc_task *task)
+ 		task->tk_timeout = 0;
+ 		gss_cred->gc_upcall = gss_msg;
+ 		/* gss_upcall_callback will release the reference to gss_upcall_msg */
+-		atomic_inc(&gss_msg->count);
++		refcount_inc(&gss_msg->count);
+ 		rpc_sleep_on(&gss_msg->rpc_waitqueue, task, gss_upcall_callback);
+ 	} else {
+ 		gss_handle_downcall_result(gss_cred, gss_msg);
+@@ -815,7 +815,7 @@ gss_pipe_release(struct inode *inode)
+ 		if (!list_empty(&gss_msg->msg.list))
+ 			continue;
+ 		gss_msg->msg.errno = -EPIPE;
+-		atomic_inc(&gss_msg->count);
++		refcount_inc(&gss_msg->count);
+ 		__gss_unhash_msg(gss_msg);
+ 		spin_unlock(&pipe->lock);
+ 		gss_release_msg(gss_msg);
+@@ -834,7 +834,7 @@ gss_pipe_destroy_msg(struct rpc_pipe_msg *msg)
+ 	if (msg->errno < 0) {
+ 		dprintk("RPC:       %s releasing msg %p\n",
+ 			__func__, gss_msg);
+-		atomic_inc(&gss_msg->count);
++		refcount_inc(&gss_msg->count);
+ 		gss_unhash_msg(gss_msg);
+ 		if (msg->errno = -ETIMEDOUT)
+ 			warn_gssd();
 -- 
 2.7.4
 
