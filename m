@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:53:27 +0000
-Subject: [PATCH 32/36] net, sctp: convert sctp_transport.refcnt from atomic_t to refcount_t
-Message-Id: <1499172811-16271-33-git-send-email-elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:53:18 +0000
+Subject: [PATCH 23/36] net, rds: convert rds_message.m_refcount from atomic_t to refcount_t
+Message-Id: <1499172811-16271-24-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
@@ -22,63 +22,60 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/sctp/structs.h | 2 +-
- net/sctp/transport.c       | 8 ++++----
- 2 files changed, 5 insertions(+), 5 deletions(-)
+ net/rds/message.c | 12 ++++++------
+ net/rds/rds.h     |  2 +-
+ 2 files changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 0dfc5c1..6a0d372 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -735,7 +735,7 @@ struct sctp_transport {
- 	struct rhlist_head node;
+diff --git a/net/rds/message.c b/net/rds/message.c
+index 49bfb51..4318cc9 100644
+--- a/net/rds/message.c
++++ b/net/rds/message.c
+@@ -48,8 +48,8 @@ static unsigned int	rds_exthdr_size[__RDS_EXTHDR_MAX] = {
  
- 	/* Reference counting. */
--	atomic_t refcnt;
-+	refcount_t refcnt;
- 		/* RTO-Pending : A flag used to track if one of the DATA
- 		 *		chunks sent to this address is currently being
- 		 *		used to compute a RTT. If this flag is 0,
-diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-index 7cdd6bc..80a97c8 100644
---- a/net/sctp/transport.c
-+++ b/net/sctp/transport.c
-@@ -99,7 +99,7 @@ static struct sctp_transport *sctp_transport_init(struct net *net,
- 	/* Initialize the 64-bit random nonce sent with heartbeat. */
- 	get_random_bytes(&peer->hb_nonce, sizeof(peer->hb_nonce));
- 
--	atomic_set(&peer->refcnt, 1);
-+	refcount_set(&peer->refcnt, 1);
- 
- 	return peer;
- }
-@@ -172,7 +172,7 @@ static void sctp_transport_destroy_rcu(struct rcu_head *head)
-  */
- static void sctp_transport_destroy(struct sctp_transport *transport)
+ void rds_message_addref(struct rds_message *rm)
  {
--	if (unlikely(atomic_read(&transport->refcnt))) {
-+	if (unlikely(refcount_read(&transport->refcnt))) {
- 		WARN(1, "Attempt to destroy undead transport %p!\n", transport);
- 		return;
- 	}
-@@ -311,7 +311,7 @@ void sctp_transport_route(struct sctp_transport *transport,
- /* Hold a reference to a transport.  */
- int sctp_transport_hold(struct sctp_transport *transport)
- {
--	return atomic_add_unless(&transport->refcnt, 1, 0);
-+	return refcount_inc_not_zero(&transport->refcnt);
+-	rdsdebug("addref rm %p ref %d\n", rm, atomic_read(&rm->m_refcount));
+-	atomic_inc(&rm->m_refcount);
++	rdsdebug("addref rm %p ref %d\n", rm, refcount_read(&rm->m_refcount));
++	refcount_inc(&rm->m_refcount);
  }
+ EXPORT_SYMBOL_GPL(rds_message_addref);
  
- /* Release a reference to a transport and clean up
-@@ -319,7 +319,7 @@ int sctp_transport_hold(struct sctp_transport *transport)
-  */
- void sctp_transport_put(struct sctp_transport *transport)
+@@ -83,9 +83,9 @@ static void rds_message_purge(struct rds_message *rm)
+ 
+ void rds_message_put(struct rds_message *rm)
  {
--	if (atomic_dec_and_test(&transport->refcnt))
-+	if (refcount_dec_and_test(&transport->refcnt))
- 		sctp_transport_destroy(transport);
- }
+-	rdsdebug("put rm %p ref %d\n", rm, atomic_read(&rm->m_refcount));
+-	WARN(!atomic_read(&rm->m_refcount), "danger refcount zero on %p\n", rm);
+-	if (atomic_dec_and_test(&rm->m_refcount)) {
++	rdsdebug("put rm %p ref %d\n", rm, refcount_read(&rm->m_refcount));
++	WARN(!refcount_read(&rm->m_refcount), "danger refcount zero on %p\n", rm);
++	if (refcount_dec_and_test(&rm->m_refcount)) {
+ 		BUG_ON(!list_empty(&rm->m_sock_item));
+ 		BUG_ON(!list_empty(&rm->m_conn_item));
+ 		rds_message_purge(rm);
+@@ -206,7 +206,7 @@ struct rds_message *rds_message_alloc(unsigned int extra_len, gfp_t gfp)
+ 	rm->m_used_sgs = 0;
+ 	rm->m_total_sgs = extra_len / sizeof(struct scatterlist);
  
+-	atomic_set(&rm->m_refcount, 1);
++	refcount_set(&rm->m_refcount, 1);
+ 	INIT_LIST_HEAD(&rm->m_sock_item);
+ 	INIT_LIST_HEAD(&rm->m_conn_item);
+ 	spin_lock_init(&rm->m_rs_lock);
+diff --git a/net/rds/rds.h b/net/rds/rds.h
+index ea72d6e..516bcc8 100644
+--- a/net/rds/rds.h
++++ b/net/rds/rds.h
+@@ -356,7 +356,7 @@ static inline u32 rds_rdma_cookie_offset(rds_rdma_cookie_t cookie)
+ #define RDS_MSG_FLUSH		8
+ 
+ struct rds_message {
+-	atomic_t		m_refcount;
++	refcount_t		m_refcount;
+ 	struct list_head	m_sock_item;
+ 	struct list_head	m_conn_item;
+ 	struct rds_incoming	m_inc;
 -- 
 2.7.4
 
