@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:53:31 +0000
-Subject: [PATCH 36/36] net, ax25: convert ax25_cb.refcount from atomic_t to refcount_t
-Message-Id: <1499172811-16271-37-git-send-email-elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:53:25 +0000
+Subject: [PATCH 30/36] net, sctp: convert sctp_datamsg.refcnt from atomic_t to refcount_t
+Message-Id: <1499172811-16271-31-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
@@ -22,50 +22,52 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/ax25.h | 6 +++---
- net/ax25/af_ax25.c | 2 +-
+ include/net/sctp/structs.h | 2 +-
+ net/sctp/chunk.c           | 6 +++---
  2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/ax25.h b/include/net/ax25.h
-index e3467ba..c4a0cf6 100644
---- a/include/net/ax25.h
-+++ b/include/net/ax25.h
-@@ -244,7 +244,7 @@ typedef struct ax25_cb {
- 	unsigned char		window;
- 	struct timer_list	timer, dtimer;
- 	struct sock		*sk;		/* Backlink to socket */
--	atomic_t		refcount;
-+	refcount_t		refcount;
- } ax25_cb;
- 
- struct ax25_sock {
-@@ -266,11 +266,11 @@ static inline struct ax25_cb *sk_to_ax25(const struct sock *sk)
- 	hlist_for_each_entry(__ax25, list, ax25_node)
- 
- #define ax25_cb_hold(__ax25) \
--	atomic_inc(&((__ax25)->refcount))
-+	refcount_inc(&((__ax25)->refcount))
- 
- static __inline__ void ax25_cb_put(ax25_cb *ax25)
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 07c11fe..4d7c855 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -496,7 +496,7 @@ struct sctp_datamsg {
+ 	/* Chunks waiting to be submitted to lower layer. */
+ 	struct list_head chunks;
+ 	/* Reference counting. */
+-	atomic_t refcnt;
++	refcount_t refcnt;
+ 	/* When is this message no longer interesting to the peer? */
+ 	unsigned long expires_at;
+ 	/* Did the messenge fail to send? */
+diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
+index 81466f6..1323d41 100644
+--- a/net/sctp/chunk.c
++++ b/net/sctp/chunk.c
+@@ -49,7 +49,7 @@
+ /* Initialize datamsg from memory. */
+ static void sctp_datamsg_init(struct sctp_datamsg *msg)
  {
--	if (atomic_dec_and_test(&ax25->refcount)) {
-+	if (refcount_dec_and_test(&ax25->refcount)) {
- 		kfree(ax25->digipeat);
- 		kfree(ax25);
- 	}
-diff --git a/net/ax25/af_ax25.c b/net/ax25/af_ax25.c
-index 0c92ba0..f3f9d18 100644
---- a/net/ax25/af_ax25.c
-+++ b/net/ax25/af_ax25.c
-@@ -510,7 +510,7 @@ ax25_cb *ax25_create_cb(void)
- 	if ((ax25 = kzalloc(sizeof(*ax25), GFP_ATOMIC)) = NULL)
- 		return NULL;
+-	atomic_set(&msg->refcnt, 1);
++	refcount_set(&msg->refcnt, 1);
+ 	msg->send_failed = 0;
+ 	msg->send_error = 0;
+ 	msg->can_delay = 1;
+@@ -136,13 +136,13 @@ static void sctp_datamsg_destroy(struct sctp_datamsg *msg)
+ /* Hold a reference. */
+ static void sctp_datamsg_hold(struct sctp_datamsg *msg)
+ {
+-	atomic_inc(&msg->refcnt);
++	refcount_inc(&msg->refcnt);
+ }
  
--	atomic_set(&ax25->refcount, 1);
-+	refcount_set(&ax25->refcount, 1);
+ /* Release a reference. */
+ void sctp_datamsg_put(struct sctp_datamsg *msg)
+ {
+-	if (atomic_dec_and_test(&msg->refcnt))
++	if (refcount_dec_and_test(&msg->refcnt))
+ 		sctp_datamsg_destroy(msg);
+ }
  
- 	skb_queue_head_init(&ax25->write_queue);
- 	skb_queue_head_init(&ax25->frag_queue);
 -- 
 2.7.4
 
