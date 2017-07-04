@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:53:23 +0000
-Subject: [PATCH 28/36] net, xfrm: convert sec_path.refcnt from atomic_t to refcount_t
-Message-Id: <1499172811-16271-29-git-send-email-elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:52:56 +0000
+Subject: [PATCH 01/36] net, llc: convert llc_sap.refcnt from atomic_t to refcount_t
+Message-Id: <1499172811-16271-2-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
@@ -22,63 +22,53 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/xfrm.h    | 6 +++---
- net/xfrm/xfrm_input.c | 4 ++--
- 2 files changed, 5 insertions(+), 5 deletions(-)
+ include/net/llc.h  | 6 +++---
+ net/llc/llc_core.c | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/xfrm.h b/include/net/xfrm.h
-index e1bd1de..c0916ab 100644
---- a/include/net/xfrm.h
-+++ b/include/net/xfrm.h
-@@ -1030,7 +1030,7 @@ struct xfrm_offload {
- };
- 
- struct sec_path {
--	atomic_t		refcnt;
-+	refcount_t		refcnt;
- 	int			len;
- 	int			olen;
- 
-@@ -1051,7 +1051,7 @@ static inline struct sec_path *
- secpath_get(struct sec_path *sp)
+diff --git a/include/net/llc.h b/include/net/llc.h
+index e8e61d4..dc35f25 100644
+--- a/include/net/llc.h
++++ b/include/net/llc.h
+@@ -55,7 +55,7 @@ struct llc_sap {
+ 	unsigned char	 state;
+ 	unsigned char	 p_bit;
+ 	unsigned char	 f_bit;
+-	atomic_t         refcnt;
++	refcount_t		 refcnt;
+ 	int		 (*rcv_func)(struct sk_buff *skb,
+ 				     struct net_device *dev,
+ 				     struct packet_type *pt,
+@@ -113,14 +113,14 @@ struct llc_sap *llc_sap_open(unsigned char lsap,
+ 					struct net_device *orig_dev));
+ static inline void llc_sap_hold(struct llc_sap *sap)
  {
- 	if (sp)
--		atomic_inc(&sp->refcnt);
-+		refcount_inc(&sp->refcnt);
- 	return sp;
+-	atomic_inc(&sap->refcnt);
++	refcount_inc(&sap->refcnt);
  }
  
-@@ -1060,7 +1060,7 @@ void __secpath_destroy(struct sec_path *sp);
- static inline void
- secpath_put(struct sec_path *sp)
+ void llc_sap_close(struct llc_sap *sap);
+ 
+ static inline void llc_sap_put(struct llc_sap *sap)
  {
--	if (sp && atomic_dec_and_test(&sp->refcnt))
-+	if (sp && refcount_dec_and_test(&sp->refcnt))
- 		__secpath_destroy(sp);
+-	if (atomic_dec_and_test(&sap->refcnt))
++	if (refcount_dec_and_test(&sap->refcnt))
+ 		llc_sap_close(sap);
  }
  
-diff --git a/net/xfrm/xfrm_input.c b/net/xfrm/xfrm_input.c
-index 9de4b1d..923205e 100644
---- a/net/xfrm/xfrm_input.c
-+++ b/net/xfrm/xfrm_input.c
-@@ -116,7 +116,7 @@ struct sec_path *secpath_dup(struct sec_path *src)
- 		for (i = 0; i < sp->len; i++)
- 			xfrm_state_hold(sp->xvec[i]);
+diff --git a/net/llc/llc_core.c b/net/llc/llc_core.c
+index 842851c..8904126 100644
+--- a/net/llc/llc_core.c
++++ b/net/llc/llc_core.c
+@@ -41,7 +41,7 @@ static struct llc_sap *llc_sap_alloc(void)
+ 		spin_lock_init(&sap->sk_lock);
+ 		for (i = 0; i < LLC_SK_LADDR_HASH_ENTRIES; i++)
+ 			INIT_HLIST_NULLS_HEAD(&sap->sk_laddr_hash[i], i);
+-		atomic_set(&sap->refcnt, 1);
++		refcount_set(&sap->refcnt, 1);
  	}
--	atomic_set(&sp->refcnt, 1);
-+	refcount_set(&sp->refcnt, 1);
- 	return sp;
+ 	return sap;
  }
- EXPORT_SYMBOL(secpath_dup);
-@@ -126,7 +126,7 @@ int secpath_set(struct sk_buff *skb)
- 	struct sec_path *sp;
- 
- 	/* Allocate new secpath or COW existing one. */
--	if (!skb->sp || atomic_read(&skb->sp->refcnt) != 1) {
-+	if (!skb->sp || refcount_read(&skb->sp->refcnt) != 1) {
- 		sp = secpath_dup(skb->sp);
- 		if (!sp)
- 			return -ENOMEM;
 -- 
 2.7.4
 
