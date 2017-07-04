@@ -1,106 +1,89 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 17 Jul 2017 03:29:58 +0000
-Subject: [PATCHv2 net-next 10/11] sctp: remove the typedef sctp_chunks_param_t
-Message-Id: <9bb0e27cbd338aa6ec71a07d19cad692edabe80b.1500261974.git.lucien.xin@gmail.com>
+From: Elena Reshetova <elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:52:59 +0000
+Subject: [PATCH 04/36] net, vxlan: convert vxlan_sock.refcnt from atomic_t to refcount_t
+Message-Id: <1499172811-16271-5-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1500261974.git.lucien.xin@gmail.com>
- <cadd1baef89e215244af82032957ccde1189bcc8.1500261974.git.lucien.xin@gmail.com>
- <0add39ae0879e3b332bafc24aa6ccdb6b0d5c85a.1500261974.git.lucien.xin@gmail.com>
- <c8cdb622f7de0edc639936e3fa15a262e92cfa66.1500261974.git.lucien.xin@gmail.com>
- <7faff4d9e2bef97652b742006c0165641ad84504.1500261974.git.lucien.xin@gmail.com>
- <6c3cea13894a96c24fb2e84fc0fab8363cb4b70f.1500261974.git.lucien.xin@gmail.com>
- <ec19ee88ce40e1e11b7bef6c84c1372dfebd5704.1500261974.git.lucien.xin@gmail.com>
- <3dda87d79e20cdb2487fc3baa3ffad883bb3a7fb.1500261974.git.lucien.xin@gmail.com>
- <2d6a7b26e6b2766ed9fd0d86d8ac390e12762b02.1500261974.git.lucien.xin@gmail.com>
- <febcd28f69981f971e95de45041e834692e0f03e.1500261974.git.lucien.xin@gmail.com>
-In-Reply-To: <febcd28f69981f971e95de45041e834692e0f03e.1500261974.git.lucien.xin@gmail.com>
+References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
+In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, davem@davemloft.net, jmorris@namei.org, kaber@trash.net, yoshfuji@linux-ipv6.org, kuznet@ms2.inr.ac.ru, 3chas3@gmail.com, ralf@linux-mips.org, stephen@networkplumber.org, jchapman@katalix.com, jhs@mojatatu.com, bridge@lists.linux-foundation.org, linux-hams@vger.kernel.org, linux-x25@vger.kernel.org, peterz@infradead.org, keescook@chromium.org, linux-rdma@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-nfs@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
 
-This patch is to remove the typedef sctp_chunks_param_t, and
-replace with struct sctp_chunks_param in the places where it's
-using this typedef.
+refcount_t type and corresponding API should be
+used instead of atomic_t when the variable is used as
+a reference counter. This allows to avoid accidental
+refcounter overflows that might lead to use-after-free
+situations.
 
-It is also to use sizeof(variable) instead of sizeof(type).
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
+Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
+Signed-off-by: Kees Cook <keescook@chromium.org>
+Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/linux/sctp.h       | 4 ++--
- include/net/sctp/structs.h | 2 +-
- net/sctp/auth.c            | 4 ++--
- net/sctp/endpointola.c     | 4 ++--
- 4 files changed, 7 insertions(+), 7 deletions(-)
+ drivers/net/vxlan.c | 10 +++++-----
+ include/net/vxlan.h |  2 +-
+ 2 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index 9b1aa39..b52def9 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -321,10 +321,10 @@ struct sctp_random_param {
+diff --git a/drivers/net/vxlan.c b/drivers/net/vxlan.c
+index b04e103..96aa7e6 100644
+--- a/drivers/net/vxlan.c
++++ b/drivers/net/vxlan.c
+@@ -1034,11 +1034,11 @@ static bool vxlan_group_used(struct vxlan_net *vn, struct vxlan_dev *dev)
+ 	/* The vxlan_sock is only used by dev, leaving group has
+ 	 * no effect on other vxlan devices.
+ 	 */
+-	if (family = AF_INET && sock4 && atomic_read(&sock4->refcnt) = 1)
++	if (family = AF_INET && sock4 && refcount_read(&sock4->refcnt) = 1)
+ 		return false;
+ #if IS_ENABLED(CONFIG_IPV6)
+ 	sock6 = rtnl_dereference(dev->vn6_sock);
+-	if (family = AF_INET6 && sock6 && atomic_read(&sock6->refcnt) = 1)
++	if (family = AF_INET6 && sock6 && refcount_read(&sock6->refcnt) = 1)
+ 		return false;
+ #endif
+ 
+@@ -1075,7 +1075,7 @@ static bool __vxlan_sock_release_prep(struct vxlan_sock *vs)
+ 
+ 	if (!vs)
+ 		return false;
+-	if (!atomic_dec_and_test(&vs->refcnt))
++	if (!refcount_dec_and_test(&vs->refcnt))
+ 		return false;
+ 
+ 	vn = net_generic(sock_net(vs->sock->sk), vxlan_net_id);
+@@ -2825,7 +2825,7 @@ static struct vxlan_sock *vxlan_socket_create(struct net *net, bool ipv6,
+ 	}
+ 
+ 	vs->sock = sock;
+-	atomic_set(&vs->refcnt, 1);
++	refcount_set(&vs->refcnt, 1);
+ 	vs->flags = (flags & VXLAN_F_RCV_FLAGS);
+ 
+ 	spin_lock(&vn->sock_lock);
+@@ -2860,7 +2860,7 @@ static int __vxlan_sock_add(struct vxlan_dev *vxlan, bool ipv6)
+ 		spin_lock(&vn->sock_lock);
+ 		vs = vxlan_find_sock(vxlan->net, ipv6 ? AF_INET6 : AF_INET,
+ 				     vxlan->cfg.dst_port, vxlan->cfg.flags);
+-		if (vs && !atomic_add_unless(&vs->refcnt, 1, 0)) {
++		if (vs && !refcount_inc_not_zero(&vs->refcnt)) {
+ 			spin_unlock(&vn->sock_lock);
+ 			return -EBUSY;
+ 		}
+diff --git a/include/net/vxlan.h b/include/net/vxlan.h
+index 326e849..3f430e3 100644
+--- a/include/net/vxlan.h
++++ b/include/net/vxlan.h
+@@ -183,7 +183,7 @@ struct vxlan_sock {
+ 	struct hlist_node hlist;
+ 	struct socket	 *sock;
+ 	struct hlist_head vni_list[VNI_HASH_SIZE];
+-	atomic_t	  refcnt;
++	refcount_t	  refcnt;
+ 	u32		  flags;
  };
  
- /* AUTH Section 3.2 Chunk List */
--typedef struct sctp_chunks_param {
-+struct sctp_chunks_param {
- 	struct sctp_paramhdr param_hdr;
- 	__u8 chunks[0];
--} sctp_chunks_param_t;
-+};
- 
- /* AUTH Section 3.3 HMAC Algorithm */
- typedef struct sctp_hmac_algo_param {
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index f22c079..8042e63 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -1557,7 +1557,7 @@ struct sctp_association {
- 		 * cookie and these are just pointers to those locations
- 		 */
- 		struct sctp_random_param *peer_random;
--		sctp_chunks_param_t *peer_chunks;
-+		struct sctp_chunks_param *peer_chunks;
- 		sctp_hmac_algo_param_t *peer_hmacs;
- 	} peer;
- 
-diff --git a/net/sctp/auth.c b/net/sctp/auth.c
-index 0d9c63e..367994d 100644
---- a/net/sctp/auth.c
-+++ b/net/sctp/auth.c
-@@ -186,7 +186,7 @@ static int sctp_auth_compare_vectors(struct sctp_auth_bytes *vector1,
-  */
- static struct sctp_auth_bytes *sctp_auth_make_key_vector(
- 			struct sctp_random_param *random,
--			sctp_chunks_param_t *chunks,
-+			struct sctp_chunks_param *chunks,
- 			sctp_hmac_algo_param_t *hmacs,
- 			gfp_t gfp)
- {
-@@ -227,7 +227,7 @@ static struct sctp_auth_bytes *sctp_auth_make_local_vector(
- {
- 	return sctp_auth_make_key_vector(
- 			(struct sctp_random_param *)asoc->c.auth_random,
--			(sctp_chunks_param_t *)asoc->c.auth_chunks,
-+			(struct sctp_chunks_param *)asoc->c.auth_chunks,
- 			(sctp_hmac_algo_param_t *)asoc->c.auth_hmacs, gfp);
- }
- 
-diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
-index 0e86f98..35bf5af 100644
---- a/net/sctp/endpointola.c
-+++ b/net/sctp/endpointola.c
-@@ -78,8 +78,8 @@ static struct sctp_endpoint *sctp_endpoint_init(struct sctp_endpoint *ep,
- 		if (!auth_hmacs)
- 			goto nomem;
- 
--		auth_chunks = kzalloc(sizeof(sctp_chunks_param_t) +
--					SCTP_NUM_CHUNK_TYPES, gfp);
-+		auth_chunks = kzalloc(sizeof(*auth_chunks) +
-+				      SCTP_NUM_CHUNK_TYPES, gfp);
- 		if (!auth_chunks)
- 			goto nomem;
- 
 -- 
-2.1.0
+2.7.4
 
