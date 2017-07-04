@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:53:17 +0000
-Subject: [PATCH 22/36] net, rds: convert rds_mr.r_refcount from atomic_t to refcount_t
-Message-Id: <1499172811-16271-23-git-send-email-elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:53:23 +0000
+Subject: [PATCH 28/36] net, xfrm: convert sec_path.refcnt from atomic_t to refcount_t
+Message-Id: <1499172811-16271-29-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
@@ -22,81 +22,63 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- net/rds/rdma.c | 10 +++++-----
- net/rds/rds.h  |  4 ++--
- 2 files changed, 7 insertions(+), 7 deletions(-)
+ include/net/xfrm.h    | 6 +++---
+ net/xfrm/xfrm_input.c | 4 ++--
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/net/rds/rdma.c b/net/rds/rdma.c
-index f06fac4..8886f15 100644
---- a/net/rds/rdma.c
-+++ b/net/rds/rdma.c
-@@ -84,7 +84,7 @@ static struct rds_mr *rds_mr_tree_walk(struct rb_root *root, u64 key,
- 	if (insert) {
- 		rb_link_node(&insert->r_rb_node, parent, p);
- 		rb_insert_color(&insert->r_rb_node, root);
--		atomic_inc(&insert->r_refcount);
-+		refcount_inc(&insert->r_refcount);
- 	}
- 	return NULL;
- }
-@@ -99,7 +99,7 @@ static void rds_destroy_mr(struct rds_mr *mr)
- 	unsigned long flags;
+diff --git a/include/net/xfrm.h b/include/net/xfrm.h
+index e1bd1de..c0916ab 100644
+--- a/include/net/xfrm.h
++++ b/include/net/xfrm.h
+@@ -1030,7 +1030,7 @@ struct xfrm_offload {
+ };
  
- 	rdsdebug("RDS: destroy mr key is %x refcnt %u\n",
--			mr->r_key, atomic_read(&mr->r_refcount));
-+			mr->r_key, refcount_read(&mr->r_refcount));
+ struct sec_path {
+-	atomic_t		refcnt;
++	refcount_t		refcnt;
+ 	int			len;
+ 	int			olen;
  
- 	if (test_and_set_bit(RDS_MR_DEAD, &mr->r_state))
- 		return;
-@@ -223,7 +223,7 @@ static int __rds_rdma_map(struct rds_sock *rs, struct rds_get_mr_args *args,
- 		goto out;
- 	}
- 
--	atomic_set(&mr->r_refcount, 1);
-+	refcount_set(&mr->r_refcount, 1);
- 	RB_CLEAR_NODE(&mr->r_rb_node);
- 	mr->r_trans = rs->rs_transport;
- 	mr->r_sock = rs;
-@@ -307,7 +307,7 @@ static int __rds_rdma_map(struct rds_sock *rs, struct rds_get_mr_args *args,
- 
- 	rdsdebug("RDS: get_mr key is %x\n", mr->r_key);
- 	if (mr_ret) {
--		atomic_inc(&mr->r_refcount);
-+		refcount_inc(&mr->r_refcount);
- 		*mr_ret = mr;
- 	}
- 
-@@ -756,7 +756,7 @@ int rds_cmsg_rdma_dest(struct rds_sock *rs, struct rds_message *rm,
- 	if (!mr)
- 		err = -EINVAL;	/* invalid r_key */
- 	else
--		atomic_inc(&mr->r_refcount);
-+		refcount_inc(&mr->r_refcount);
- 	spin_unlock_irqrestore(&rs->rs_rdma_lock, flags);
- 
- 	if (mr) {
-diff --git a/net/rds/rds.h b/net/rds/rds.h
-index 35ceaa2..ea72d6e 100644
---- a/net/rds/rds.h
-+++ b/net/rds/rds.h
-@@ -277,7 +277,7 @@ struct rds_incoming {
- 
- struct rds_mr {
- 	struct rb_node		r_rb_node;
--	atomic_t		r_refcount;
-+	refcount_t		r_refcount;
- 	u32			r_key;
- 
- 	/* A copy of the creation flags */
-@@ -857,7 +857,7 @@ int rds_cmsg_atomic(struct rds_sock *rs, struct rds_message *rm,
- void __rds_put_mr_final(struct rds_mr *mr);
- static inline void rds_mr_put(struct rds_mr *mr)
+@@ -1051,7 +1051,7 @@ static inline struct sec_path *
+ secpath_get(struct sec_path *sp)
  {
--	if (atomic_dec_and_test(&mr->r_refcount))
-+	if (refcount_dec_and_test(&mr->r_refcount))
- 		__rds_put_mr_final(mr);
+ 	if (sp)
+-		atomic_inc(&sp->refcnt);
++		refcount_inc(&sp->refcnt);
+ 	return sp;
  }
  
+@@ -1060,7 +1060,7 @@ void __secpath_destroy(struct sec_path *sp);
+ static inline void
+ secpath_put(struct sec_path *sp)
+ {
+-	if (sp && atomic_dec_and_test(&sp->refcnt))
++	if (sp && refcount_dec_and_test(&sp->refcnt))
+ 		__secpath_destroy(sp);
+ }
+ 
+diff --git a/net/xfrm/xfrm_input.c b/net/xfrm/xfrm_input.c
+index 9de4b1d..923205e 100644
+--- a/net/xfrm/xfrm_input.c
++++ b/net/xfrm/xfrm_input.c
+@@ -116,7 +116,7 @@ struct sec_path *secpath_dup(struct sec_path *src)
+ 		for (i = 0; i < sp->len; i++)
+ 			xfrm_state_hold(sp->xvec[i]);
+ 	}
+-	atomic_set(&sp->refcnt, 1);
++	refcount_set(&sp->refcnt, 1);
+ 	return sp;
+ }
+ EXPORT_SYMBOL(secpath_dup);
+@@ -126,7 +126,7 @@ int secpath_set(struct sk_buff *skb)
+ 	struct sec_path *sp;
+ 
+ 	/* Allocate new secpath or COW existing one. */
+-	if (!skb->sp || atomic_read(&skb->sp->refcnt) != 1) {
++	if (!skb->sp || refcount_read(&skb->sp->refcnt) != 1) {
+ 		sp = secpath_dup(skb->sp);
+ 		if (!sp)
+ 			return -ENOMEM;
 -- 
 2.7.4
 
