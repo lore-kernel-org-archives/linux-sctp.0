@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:53:16 +0000
-Subject: [PATCH 21/36] net, rds: convert rds_incoming.i_refcount from atomic_t to refcount_t
-Message-Id: <1499172811-16271-22-git-send-email-elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:53:31 +0000
+Subject: [PATCH 36/36] net, ax25: convert ax25_cb.refcount from atomic_t to refcount_t
+Message-Id: <1499172811-16271-37-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
@@ -22,72 +22,50 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- net/rds/rds.h  |  3 ++-
- net/rds/recv.c | 12 ++++++------
- 2 files changed, 8 insertions(+), 7 deletions(-)
+ include/net/ax25.h | 6 +++---
+ net/ax25/af_ax25.c | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/net/rds/rds.h b/net/rds/rds.h
-index 4a25db7..35ceaa2 100644
---- a/net/rds/rds.h
-+++ b/net/rds/rds.h
-@@ -8,6 +8,7 @@
- #include <linux/mutex.h>
- #include <linux/rds.h>
- #include <linux/rhashtable.h>
-+#include <linux/refcount.h>
+diff --git a/include/net/ax25.h b/include/net/ax25.h
+index e3467ba..c4a0cf6 100644
+--- a/include/net/ax25.h
++++ b/include/net/ax25.h
+@@ -244,7 +244,7 @@ typedef struct ax25_cb {
+ 	unsigned char		window;
+ 	struct timer_list	timer, dtimer;
+ 	struct sock		*sk;		/* Backlink to socket */
+-	atomic_t		refcount;
++	refcount_t		refcount;
+ } ax25_cb;
  
- #include "info.h"
+ struct ax25_sock {
+@@ -266,11 +266,11 @@ static inline struct ax25_cb *sk_to_ax25(const struct sock *sk)
+ 	hlist_for_each_entry(__ax25, list, ax25_node)
  
-@@ -261,7 +262,7 @@ struct rds_ext_header_rdma_dest {
- #define	RDS_MSG_RX_CMSG		3
+ #define ax25_cb_hold(__ax25) \
+-	atomic_inc(&((__ax25)->refcount))
++	refcount_inc(&((__ax25)->refcount))
  
- struct rds_incoming {
--	atomic_t		i_refcount;
-+	refcount_t		i_refcount;
- 	struct list_head	i_item;
- 	struct rds_connection	*i_conn;
- 	struct rds_conn_path	*i_conn_path;
-diff --git a/net/rds/recv.c b/net/rds/recv.c
-index 373a6aa1..b25bcfe 100644
---- a/net/rds/recv.c
-+++ b/net/rds/recv.c
-@@ -45,7 +45,7 @@ void rds_inc_init(struct rds_incoming *inc, struct rds_connection *conn,
+ static __inline__ void ax25_cb_put(ax25_cb *ax25)
  {
- 	int i;
+-	if (atomic_dec_and_test(&ax25->refcount)) {
++	if (refcount_dec_and_test(&ax25->refcount)) {
+ 		kfree(ax25->digipeat);
+ 		kfree(ax25);
+ 	}
+diff --git a/net/ax25/af_ax25.c b/net/ax25/af_ax25.c
+index 0c92ba0..f3f9d18 100644
+--- a/net/ax25/af_ax25.c
++++ b/net/ax25/af_ax25.c
+@@ -510,7 +510,7 @@ ax25_cb *ax25_create_cb(void)
+ 	if ((ax25 = kzalloc(sizeof(*ax25), GFP_ATOMIC)) = NULL)
+ 		return NULL;
  
--	atomic_set(&inc->i_refcount, 1);
-+	refcount_set(&inc->i_refcount, 1);
- 	INIT_LIST_HEAD(&inc->i_item);
- 	inc->i_conn = conn;
- 	inc->i_saddr = saddr;
-@@ -61,7 +61,7 @@ EXPORT_SYMBOL_GPL(rds_inc_init);
- void rds_inc_path_init(struct rds_incoming *inc, struct rds_conn_path *cp,
- 		       __be32 saddr)
- {
--	atomic_set(&inc->i_refcount, 1);
-+	refcount_set(&inc->i_refcount, 1);
- 	INIT_LIST_HEAD(&inc->i_item);
- 	inc->i_conn = cp->cp_conn;
- 	inc->i_conn_path = cp;
-@@ -74,14 +74,14 @@ EXPORT_SYMBOL_GPL(rds_inc_path_init);
+-	atomic_set(&ax25->refcount, 1);
++	refcount_set(&ax25->refcount, 1);
  
- static void rds_inc_addref(struct rds_incoming *inc)
- {
--	rdsdebug("addref inc %p ref %d\n", inc, atomic_read(&inc->i_refcount));
--	atomic_inc(&inc->i_refcount);
-+	rdsdebug("addref inc %p ref %d\n", inc, refcount_read(&inc->i_refcount));
-+	refcount_inc(&inc->i_refcount);
- }
- 
- void rds_inc_put(struct rds_incoming *inc)
- {
--	rdsdebug("put inc %p ref %d\n", inc, atomic_read(&inc->i_refcount));
--	if (atomic_dec_and_test(&inc->i_refcount)) {
-+	rdsdebug("put inc %p ref %d\n", inc, refcount_read(&inc->i_refcount));
-+	if (refcount_dec_and_test(&inc->i_refcount)) {
- 		BUG_ON(!list_empty(&inc->i_item));
- 
- 		inc->i_conn->c_trans->inc_free(inc);
+ 	skb_queue_head_init(&ax25->write_queue);
+ 	skb_queue_head_init(&ax25->frag_queue);
 -- 
 2.7.4
 
