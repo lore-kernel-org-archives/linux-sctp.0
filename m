@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:53:01 +0000
-Subject: [PATCH 06/36] net, atm: convert atm_dev.refcnt from atomic_t to refcount_t
-Message-Id: <1499172811-16271-7-git-send-email-elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:53:24 +0000
+Subject: [PATCH 29/36] net, sctp: convert sctp_auth_bytes.refcnt from atomic_t to refcount_t
+Message-Id: <1499172811-16271-30-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
@@ -22,74 +22,62 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/linux/atmdev.h | 7 ++++---
- net/atm/proc.c         | 2 +-
- net/atm/resources.c    | 2 +-
- 3 files changed, 6 insertions(+), 5 deletions(-)
+ include/net/sctp/auth.h | 5 +++--
+ net/sctp/auth.c         | 4 ++--
+ 2 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/atmdev.h b/include/linux/atmdev.h
-index 4d97a89..0ec9bdb 100644
---- a/include/linux/atmdev.h
-+++ b/include/linux/atmdev.h
-@@ -11,6 +11,7 @@
- #include <linux/uio.h>
- #include <net/sock.h>
- #include <linux/atomic.h>
+diff --git a/include/net/sctp/auth.h b/include/net/sctp/auth.h
+index 171244b..e5c57d0 100644
+--- a/include/net/sctp/auth.h
++++ b/include/net/sctp/auth.h
+@@ -31,6 +31,7 @@
+ #define __sctp_auth_h__
+ 
+ #include <linux/list.h>
 +#include <linux/refcount.h>
- #include <uapi/linux/atmdev.h>
  
- #ifdef CONFIG_PROC_FS
-@@ -158,7 +159,7 @@ struct atm_dev {
- 	struct k_atm_dev_stats stats;	/* statistics */
- 	char		signal;		/* signal status (ATM_PHY_SIG_*) */
- 	int		link_rate;	/* link rate (default: OC3) */
--	atomic_t	refcnt;		/* reference count */
-+	refcount_t	refcnt;		/* reference count */
- 	spinlock_t	lock;		/* protect internal members */
- #ifdef CONFIG_PROC_FS
- 	struct proc_dir_entry *proc_entry; /* proc entry */
-@@ -261,13 +262,13 @@ static inline int atm_may_send(struct atm_vcc *vcc,unsigned int size)
+ struct sctp_endpoint;
+ struct sctp_association;
+@@ -53,7 +54,7 @@ struct sctp_hmac {
+  * over SCTP-AUTH
+  */
+ struct sctp_auth_bytes {
+-	atomic_t refcnt;
++	refcount_t refcnt;
+ 	__u32 len;
+ 	__u8  data[];
+ };
+@@ -76,7 +77,7 @@ static inline void sctp_auth_key_hold(struct sctp_auth_bytes *key)
+ 	if (!key)
+ 		return;
  
- static inline void atm_dev_hold(struct atm_dev *dev)
- {
--	atomic_inc(&dev->refcnt);
-+	refcount_inc(&dev->refcnt);
+-	atomic_inc(&key->refcnt);
++	refcount_inc(&key->refcnt);
  }
  
+ void sctp_auth_key_put(struct sctp_auth_bytes *key);
+diff --git a/net/sctp/auth.c b/net/sctp/auth.c
+index 8ffa598..e001b01 100644
+--- a/net/sctp/auth.c
++++ b/net/sctp/auth.c
+@@ -63,7 +63,7 @@ void sctp_auth_key_put(struct sctp_auth_bytes *key)
+ 	if (!key)
+ 		return;
  
- static inline void atm_dev_put(struct atm_dev *dev)
- {
--	if (atomic_dec_and_test(&dev->refcnt)) {
-+	if (refcount_dec_and_test(&dev->refcnt)) {
- 		BUG_ON(!test_bit(ATM_DF_REMOVED, &dev->flags));
- 		if (dev->ops->dev_close)
- 			dev->ops->dev_close(dev);
-diff --git a/net/atm/proc.c b/net/atm/proc.c
-index 27c9c01..4caca2a 100644
---- a/net/atm/proc.c
-+++ b/net/atm/proc.c
-@@ -61,7 +61,7 @@ static void atm_dev_info(struct seq_file *seq, const struct atm_dev *dev)
- 	add_stats(seq, "0", &dev->stats.aal0);
- 	seq_puts(seq, "  ");
- 	add_stats(seq, "5", &dev->stats.aal5);
--	seq_printf(seq, "\t[%d]", atomic_read(&dev->refcnt));
-+	seq_printf(seq, "\t[%d]", refcount_read(&dev->refcnt));
- 	seq_putc(seq, '\n');
- }
+-	if (atomic_dec_and_test(&key->refcnt)) {
++	if (refcount_dec_and_test(&key->refcnt)) {
+ 		kzfree(key);
+ 		SCTP_DBG_OBJCNT_DEC(keys);
+ 	}
+@@ -84,7 +84,7 @@ static struct sctp_auth_bytes *sctp_auth_create_key(__u32 key_len, gfp_t gfp)
+ 		return NULL;
  
-diff --git a/net/atm/resources.c b/net/atm/resources.c
-index 0447d5d..9182447 100644
---- a/net/atm/resources.c
-+++ b/net/atm/resources.c
-@@ -109,7 +109,7 @@ struct atm_dev *atm_dev_register(const char *type, struct device *parent,
- 	else
- 		memset(&dev->flags, 0, sizeof(dev->flags));
- 	memset(&dev->stats, 0, sizeof(dev->stats));
--	atomic_set(&dev->refcnt, 1);
-+	refcount_set(&dev->refcnt, 1);
+ 	key->len = key_len;
+-	atomic_set(&key->refcnt, 1);
++	refcount_set(&key->refcnt, 1);
+ 	SCTP_DBG_OBJCNT_INC(keys);
  
- 	if (atm_proc_dev_register(dev) < 0) {
- 		pr_err("atm_proc_dev_register failed for dev %s\n", type);
+ 	return key;
 -- 
 2.7.4
 
