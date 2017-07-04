@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:53:30 +0000
-Subject: [PATCH 35/36] net, ax25: convert ax25_route.refcount from atomic_t to refcount_t
-Message-Id: <1499172811-16271-36-git-send-email-elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:53:05 +0000
+Subject: [PATCH 10/36] net, bridge: convert net_bridge_vlan.refcnt from atomic_t to refcount_t
+Message-Id: <1499172811-16271-11-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
@@ -22,53 +22,71 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/ax25.h    | 6 +++---
- net/ax25/ax25_route.c | 2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ net/bridge/br_private.h | 3 ++-
+ net/bridge/br_vlan.c    | 8 ++++----
+ 2 files changed, 6 insertions(+), 5 deletions(-)
 
-diff --git a/include/net/ax25.h b/include/net/ax25.h
-index edd82f0..e3467ba 100644
---- a/include/net/ax25.h
-+++ b/include/net/ax25.h
-@@ -185,7 +185,7 @@ typedef struct {
+diff --git a/net/bridge/br_private.h b/net/bridge/br_private.h
+index c18682f..fd9ee73 100644
+--- a/net/bridge/br_private.h
++++ b/net/bridge/br_private.h
+@@ -21,6 +21,7 @@
+ #include <net/ip6_fib.h>
+ #include <linux/if_vlan.h>
+ #include <linux/rhashtable.h>
++#include <linux/refcount.h>
  
- typedef struct ax25_route {
- 	struct ax25_route	*next;
--	atomic_t		refcount;
-+	refcount_t		refcount;
- 	ax25_address		callsign;
- 	struct net_device	*dev;
- 	ax25_digi		*digipeat;
-@@ -194,14 +194,14 @@ typedef struct ax25_route {
+ #define BR_HASH_BITS 8
+ #define BR_HASH_SIZE (1 << BR_HASH_BITS)
+@@ -127,7 +128,7 @@ struct net_bridge_vlan {
+ 		struct net_bridge_port	*port;
+ 	};
+ 	union {
+-		atomic_t		refcnt;
++		refcount_t		refcnt;
+ 		struct net_bridge_vlan	*brvlan;
+ 	};
  
- static inline void ax25_hold_route(ax25_route *ax25_rt)
- {
--	atomic_inc(&ax25_rt->refcount);
-+	refcount_inc(&ax25_rt->refcount);
- }
- 
- void __ax25_put_route(ax25_route *ax25_rt);
- 
- static inline void ax25_put_route(ax25_route *ax25_rt)
- {
--	if (atomic_dec_and_test(&ax25_rt->refcount))
-+	if (refcount_dec_and_test(&ax25_rt->refcount))
- 		__ax25_put_route(ax25_rt);
- }
- 
-diff --git a/net/ax25/ax25_route.c b/net/ax25/ax25_route.c
-index e1fda27..0446b89 100644
---- a/net/ax25/ax25_route.c
-+++ b/net/ax25/ax25_route.c
-@@ -114,7 +114,7 @@ static int __must_check ax25_rt_add(struct ax25_routes_struct *route)
- 		return -ENOMEM;
+diff --git a/net/bridge/br_vlan.c b/net/bridge/br_vlan.c
+index 26a1a56..233a300 100644
+--- a/net/bridge/br_vlan.c
++++ b/net/bridge/br_vlan.c
+@@ -158,7 +158,7 @@ static struct net_bridge_vlan *br_vlan_get_master(struct net_bridge *br, u16 vid
+ 		if (WARN_ON(!masterv))
+ 			return NULL;
  	}
+-	atomic_inc(&masterv->refcnt);
++	refcount_inc(&masterv->refcnt);
  
--	atomic_set(&ax25_rt->refcount, 1);
-+	refcount_set(&ax25_rt->refcount, 1);
- 	ax25_rt->callsign     = route->dest_addr;
- 	ax25_rt->dev          = ax25_dev->dev;
- 	ax25_rt->digipeat     = NULL;
+ 	return masterv;
+ }
+@@ -182,7 +182,7 @@ static void br_vlan_put_master(struct net_bridge_vlan *masterv)
+ 		return;
+ 
+ 	vg = br_vlan_group(masterv->br);
+-	if (atomic_dec_and_test(&masterv->refcnt)) {
++	if (refcount_dec_and_test(&masterv->refcnt)) {
+ 		rhashtable_remove_fast(&vg->vlan_hash,
+ 				       &masterv->vnode, br_vlan_rht_params);
+ 		__vlan_del_list(masterv);
+@@ -573,7 +573,7 @@ int br_vlan_add(struct net_bridge *br, u16 vid, u16 flags)
+ 				br_err(br, "failed insert local address into bridge forwarding table\n");
+ 				return ret;
+ 			}
+-			atomic_inc(&vlan->refcnt);
++			refcount_inc(&vlan->refcnt);
+ 			vlan->flags |= BRIDGE_VLAN_INFO_BRENTRY;
+ 			vg->num_vlans++;
+ 		}
+@@ -595,7 +595,7 @@ int br_vlan_add(struct net_bridge *br, u16 vid, u16 flags)
+ 	vlan->flags &= ~BRIDGE_VLAN_INFO_PVID;
+ 	vlan->br = br;
+ 	if (flags & BRIDGE_VLAN_INFO_BRENTRY)
+-		atomic_set(&vlan->refcnt, 1);
++		refcount_set(&vlan->refcnt, 1);
+ 	ret = __vlan_add(vlan, flags);
+ 	if (ret) {
+ 		free_percpu(vlan->stats);
 -- 
 2.7.4
 
