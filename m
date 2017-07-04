@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:53:24 +0000
-Subject: [PATCH 29/36] net, sctp: convert sctp_auth_bytes.refcnt from atomic_t to refcount_t
-Message-Id: <1499172811-16271-30-git-send-email-elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:53:08 +0000
+Subject: [PATCH 13/36] net, lapb: convert lapb_cb.refcnt from atomic_t to refcount_t
+Message-Id: <1499172811-16271-14-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
@@ -22,62 +22,59 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/sctp/auth.h | 5 +++--
- net/sctp/auth.c         | 4 ++--
+ include/net/lapb.h    | 3 ++-
+ net/lapb/lapb_iface.c | 6 +++---
  2 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/sctp/auth.h b/include/net/sctp/auth.h
-index 171244b..e5c57d0 100644
---- a/include/net/sctp/auth.h
-+++ b/include/net/sctp/auth.h
-@@ -31,6 +31,7 @@
- #define __sctp_auth_h__
- 
- #include <linux/list.h>
+diff --git a/include/net/lapb.h b/include/net/lapb.h
+index 9510f87..85e7737 100644
+--- a/include/net/lapb.h
++++ b/include/net/lapb.h
+@@ -1,6 +1,7 @@
+ #ifndef _LAPB_H
+ #define _LAPB_H 
+ #include <linux/lapb.h>
 +#include <linux/refcount.h>
  
- struct sctp_endpoint;
- struct sctp_association;
-@@ -53,7 +54,7 @@ struct sctp_hmac {
-  * over SCTP-AUTH
-  */
- struct sctp_auth_bytes {
--	atomic_t refcnt;
-+	refcount_t refcnt;
- 	__u32 len;
- 	__u8  data[];
- };
-@@ -76,7 +77,7 @@ static inline void sctp_auth_key_hold(struct sctp_auth_bytes *key)
- 	if (!key)
- 		return;
+ #define	LAPB_HEADER_LEN	20		/* LAPB over Ethernet + a bit more */
  
--	atomic_inc(&key->refcnt);
-+	refcount_inc(&key->refcnt);
+@@ -101,7 +102,7 @@ struct lapb_cb {
+ 	struct lapb_frame	frmr_data;
+ 	unsigned char		frmr_type;
+ 
+-	atomic_t		refcnt;
++	refcount_t		refcnt;
+ };
+ 
+ /* lapb_iface.c */
+diff --git a/net/lapb/lapb_iface.c b/net/lapb/lapb_iface.c
+index b50b64a..e15314e 100644
+--- a/net/lapb/lapb_iface.c
++++ b/net/lapb/lapb_iface.c
+@@ -54,12 +54,12 @@ static void lapb_free_cb(struct lapb_cb *lapb)
+ 
+ static __inline__ void lapb_hold(struct lapb_cb *lapb)
+ {
+-	atomic_inc(&lapb->refcnt);
++	refcount_inc(&lapb->refcnt);
  }
  
- void sctp_auth_key_put(struct sctp_auth_bytes *key);
-diff --git a/net/sctp/auth.c b/net/sctp/auth.c
-index 8ffa598..e001b01 100644
---- a/net/sctp/auth.c
-+++ b/net/sctp/auth.c
-@@ -63,7 +63,7 @@ void sctp_auth_key_put(struct sctp_auth_bytes *key)
- 	if (!key)
- 		return;
+ static __inline__ void lapb_put(struct lapb_cb *lapb)
+ {
+-	if (atomic_dec_and_test(&lapb->refcnt))
++	if (refcount_dec_and_test(&lapb->refcnt))
+ 		lapb_free_cb(lapb);
+ }
  
--	if (atomic_dec_and_test(&key->refcnt)) {
-+	if (refcount_dec_and_test(&key->refcnt)) {
- 		kzfree(key);
- 		SCTP_DBG_OBJCNT_DEC(keys);
- 	}
-@@ -84,7 +84,7 @@ static struct sctp_auth_bytes *sctp_auth_create_key(__u32 key_len, gfp_t gfp)
- 		return NULL;
- 
- 	key->len = key_len;
--	atomic_set(&key->refcnt, 1);
-+	refcount_set(&key->refcnt, 1);
- 	SCTP_DBG_OBJCNT_INC(keys);
- 
- 	return key;
+@@ -136,7 +136,7 @@ static struct lapb_cb *lapb_create_cb(void)
+ 	lapb->mode    = LAPB_DEFAULT_MODE;
+ 	lapb->window  = LAPB_DEFAULT_WINDOW;
+ 	lapb->state   = LAPB_STATE_0;
+-	atomic_set(&lapb->refcnt, 1);
++	refcount_set(&lapb->refcnt, 1);
+ out:
+ 	return lapb;
+ }
 -- 
 2.7.4
 
