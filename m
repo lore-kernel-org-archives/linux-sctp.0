@@ -1,7 +1,7 @@
 From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:53:15 +0000
-Subject: [PATCH 20/36] net, rds: convert rds_ib_device.refcount from atomic_t to refcount_t
-Message-Id: <1499172811-16271-21-git-send-email-elena.reshetova@intel.com>
+Date: Tue, 04 Jul 2017 12:53:28 +0000
+Subject: [PATCH 33/36] net, sctp: convert sctp_ep_common.refcnt from atomic_t to refcount_t
+Message-Id: <1499172811-16271-34-git-send-email-elena.reshetova@intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
@@ -22,92 +22,86 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- net/rds/ib.c      | 12 ++++++------
- net/rds/ib.h      |  2 +-
- net/rds/ib_rdma.c |  4 ++--
- 3 files changed, 9 insertions(+), 9 deletions(-)
+ include/net/sctp/structs.h | 2 +-
+ net/sctp/associola.c       | 6 +++---
+ net/sctp/endpointola.c     | 6 +++---
+ 3 files changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/net/rds/ib.c b/net/rds/ib.c
-index 7a64c8d..a0954ac 100644
---- a/net/rds/ib.c
-+++ b/net/rds/ib.c
-@@ -118,8 +118,8 @@ static void rds_ib_dev_free(struct work_struct *work)
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 6a0d372..5ab29af 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1174,7 +1174,7 @@ struct sctp_ep_common {
+ 	 *   refcnt   - Reference count access to this object.
+ 	 *   dead     - Do not attempt to use this object.
+ 	 */
+-	atomic_t    refcnt;
++	refcount_t    refcnt;
+ 	bool	    dead;
  
- void rds_ib_dev_put(struct rds_ib_device *rds_ibdev)
+ 	/* What socket does this endpoint belong to?  */
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index fa4f530..40ec836 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -88,7 +88,7 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
+ 	asoc->base.type = SCTP_EP_TYPE_ASSOCIATION;
+ 
+ 	/* Initialize the object handling fields.  */
+-	atomic_set(&asoc->base.refcnt, 1);
++	refcount_set(&asoc->base.refcnt, 1);
+ 
+ 	/* Initialize the bind addr area.  */
+ 	sctp_bind_addr_init(&asoc->base.bind_addr, ep->base.bind_addr.port);
+@@ -873,7 +873,7 @@ void sctp_assoc_control_transport(struct sctp_association *asoc,
+ /* Hold a reference to an association. */
+ void sctp_association_hold(struct sctp_association *asoc)
  {
--	BUG_ON(atomic_read(&rds_ibdev->refcount) <= 0);
--	if (atomic_dec_and_test(&rds_ibdev->refcount))
-+	BUG_ON(refcount_read(&rds_ibdev->refcount) = 0);
-+	if (refcount_dec_and_test(&rds_ibdev->refcount))
- 		queue_work(rds_wq, &rds_ibdev->free_work);
+-	atomic_inc(&asoc->base.refcnt);
++	refcount_inc(&asoc->base.refcnt);
  }
  
-@@ -137,7 +137,7 @@ static void rds_ib_add_one(struct ib_device *device)
- 		return;
- 
- 	spin_lock_init(&rds_ibdev->spinlock);
--	atomic_set(&rds_ibdev->refcount, 1);
-+	refcount_set(&rds_ibdev->refcount, 1);
- 	INIT_WORK(&rds_ibdev->free_work, rds_ib_dev_free);
- 
- 	rds_ibdev->max_wrs = device->attrs.max_qp_wr;
-@@ -205,10 +205,10 @@ static void rds_ib_add_one(struct ib_device *device)
- 	down_write(&rds_ib_devices_lock);
- 	list_add_tail_rcu(&rds_ibdev->list, &rds_ib_devices);
- 	up_write(&rds_ib_devices_lock);
--	atomic_inc(&rds_ibdev->refcount);
-+	refcount_inc(&rds_ibdev->refcount);
- 
- 	ib_set_client_data(device, &rds_ib_client, rds_ibdev);
--	atomic_inc(&rds_ibdev->refcount);
-+	refcount_inc(&rds_ibdev->refcount);
- 
- 	rds_ib_nodev_connect();
- 
-@@ -239,7 +239,7 @@ struct rds_ib_device *rds_ib_get_client_data(struct ib_device *device)
- 	rcu_read_lock();
- 	rds_ibdev = ib_get_client_data(device, &rds_ib_client);
- 	if (rds_ibdev)
--		atomic_inc(&rds_ibdev->refcount);
-+		refcount_inc(&rds_ibdev->refcount);
- 	rcu_read_unlock();
- 	return rds_ibdev;
- }
-diff --git a/net/rds/ib.h b/net/rds/ib.h
-index ec55062..bf48224 100644
---- a/net/rds/ib.h
-+++ b/net/rds/ib.h
-@@ -230,7 +230,7 @@ struct rds_ib_device {
- 	unsigned int		max_initiator_depth;
- 	unsigned int		max_responder_resources;
- 	spinlock_t		spinlock;	/* protect the above */
--	atomic_t		refcount;
-+	refcount_t		refcount;
- 	struct work_struct	free_work;
- 	int			*vector_load;
- };
-diff --git a/net/rds/ib_rdma.c b/net/rds/ib_rdma.c
-index 977f698..9a3c54e 100644
---- a/net/rds/ib_rdma.c
-+++ b/net/rds/ib_rdma.c
-@@ -52,7 +52,7 @@ static struct rds_ib_device *rds_ib_get_device(__be32 ipaddr)
- 	list_for_each_entry_rcu(rds_ibdev, &rds_ib_devices, list) {
- 		list_for_each_entry_rcu(i_ipaddr, &rds_ibdev->ipaddr_list, list) {
- 			if (i_ipaddr->ipaddr = ipaddr) {
--				atomic_inc(&rds_ibdev->refcount);
-+				refcount_inc(&rds_ibdev->refcount);
- 				rcu_read_unlock();
- 				return rds_ibdev;
- 			}
-@@ -134,7 +134,7 @@ void rds_ib_add_conn(struct rds_ib_device *rds_ibdev, struct rds_connection *con
- 	spin_unlock_irq(&ib_nodev_conns_lock);
- 
- 	ic->rds_ibdev = rds_ibdev;
--	atomic_inc(&rds_ibdev->refcount);
-+	refcount_inc(&rds_ibdev->refcount);
+ /* Release a reference to an association and cleanup
+@@ -881,7 +881,7 @@ void sctp_association_hold(struct sctp_association *asoc)
+  */
+ void sctp_association_put(struct sctp_association *asoc)
+ {
+-	if (atomic_dec_and_test(&asoc->base.refcnt))
++	if (refcount_dec_and_test(&asoc->base.refcnt))
+ 		sctp_association_destroy(asoc);
  }
  
- void rds_ib_remove_conn(struct rds_ib_device *rds_ibdev, struct rds_connection *conn)
+diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
+index efbc318..0e86f98 100644
+--- a/net/sctp/endpointola.c
++++ b/net/sctp/endpointola.c
+@@ -114,7 +114,7 @@ static struct sctp_endpoint *sctp_endpoint_init(struct sctp_endpoint *ep,
+ 	ep->base.type = SCTP_EP_TYPE_SOCKET;
+ 
+ 	/* Initialize the basic object fields. */
+-	atomic_set(&ep->base.refcnt, 1);
++	refcount_set(&ep->base.refcnt, 1);
+ 	ep->base.dead = false;
+ 
+ 	/* Create an input queue.  */
+@@ -285,7 +285,7 @@ static void sctp_endpoint_destroy(struct sctp_endpoint *ep)
+ /* Hold a reference to an endpoint. */
+ void sctp_endpoint_hold(struct sctp_endpoint *ep)
+ {
+-	atomic_inc(&ep->base.refcnt);
++	refcount_inc(&ep->base.refcnt);
+ }
+ 
+ /* Release a reference to an endpoint and clean up if there are
+@@ -293,7 +293,7 @@ void sctp_endpoint_hold(struct sctp_endpoint *ep)
+  */
+ void sctp_endpoint_put(struct sctp_endpoint *ep)
+ {
+-	if (atomic_dec_and_test(&ep->base.refcnt))
++	if (refcount_dec_and_test(&ep->base.refcnt))
+ 		sctp_endpoint_destroy(ep);
+ }
+ 
 -- 
 2.7.4
 
