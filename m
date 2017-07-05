@@ -1,68 +1,71 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 23 Jul 2017 01:34:34 +0000
-Subject: [PATCH net-next 09/11] sctp: remove the typedef sctp_heartbeathdr_t
-Message-Id: <5de5ee9134309f0111da5edd768faf7aaff1c9fc.1500773578.git.lucien.xin@gmail.com>
+Date: Wed, 05 Jul 2017 00:32:20 +0000
+Subject: [PATCH net-next 02/11] sctp: remove the typedef sctp_ipv6addr_param_t
+Message-Id: <77fa3a776118873a7e5d8203dd59011995b0e865.1499214692.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1500773578.git.lucien.xin@gmail.com>
- <daa1cc9a380f5a1eb37b3d30fd64942d310fe81d.1500773578.git.lucien.xin@gmail.com>
- <78a33af4a9d7ef7116637943dbd0ae1403d20114.1500773578.git.lucien.xin@gmail.com>
- <54eca4d5d79aae83b386754b4613edc388521d54.1500773578.git.lucien.xin@gmail.com>
- <303fa591073b161b9434fa7f81a8d9d119954359.1500773578.git.lucien.xin@gmail.com>
- <42fb936def0c9ef0522d2e3809c9c07dccb6974f.1500773578.git.lucien.xin@gmail.com>
- <94b6f03745317ab5c57639f2155a5e1503b4dfb3.1500773578.git.lucien.xin@gmail.com>
- <734295f5625300a5328c19e255dfbbf7d393e48f.1500773578.git.lucien.xin@gmail.com>
- <b38e31f3ac26b5aa2f8a6522b002846a03a70118.1500773578.git.lucien.xin@gmail.com>
-In-Reply-To: <b38e31f3ac26b5aa2f8a6522b002846a03a70118.1500773578.git.lucien.xin@gmail.com>
+References: <cover.1499214692.git.lucien.xin@gmail.com>
+ <6ba452f31d10acdc95f3cf679ecab15833f7843c.1499214692.git.lucien.xin@gmail.com>
+In-Reply-To: <6ba452f31d10acdc95f3cf679ecab15833f7843c.1499214692.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to remove the typedef sctp_heartbeathdr_t, and
-replace with struct sctp_heartbeathdr in the places where it's
-using this typedef.
+This patch is to remove the typedef sctp_ipv6addr_param_t, and replace
+with struct sctp_ipv6addr_param in the places where it's using this
+typedef.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/linux/sctp.h    | 6 +++---
- net/sctp/sm_statefuns.c | 2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ include/linux/sctp.h     | 4 ++--
+ net/sctp/ipv6.c          | 2 +-
+ net/sctp/sm_make_chunk.c | 2 +-
+ 3 files changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index 48f6560..6e26b86 100644
+index e42095d..6b45c8a 100644
 --- a/include/linux/sctp.h
 +++ b/include/linux/sctp.h
-@@ -394,13 +394,13 @@ struct sctp_sack_chunk {
-  *  the present association.
-  */
+@@ -279,10 +279,10 @@ struct sctp_ipv4addr_param {
+ };
  
--typedef struct sctp_heartbeathdr {
-+struct sctp_heartbeathdr {
- 	struct sctp_paramhdr info;
--} sctp_heartbeathdr_t;
+ /* Section 3.3.2.1. IPv6 Address Parameter (6) */
+-typedef struct sctp_ipv6addr_param {
++struct sctp_ipv6addr_param {
+ 	struct sctp_paramhdr param_hdr;
+ 	struct in6_addr addr;
+-} sctp_ipv6addr_param_t;
 +};
  
- typedef struct sctp_heartbeat_chunk {
- 	struct sctp_chunkhdr chunk_hdr;
--	sctp_heartbeathdr_t hb_hdr;
-+	struct sctp_heartbeathdr hb_hdr;
- } sctp_heartbeat_chunk_t;
+ /* Section 3.3.2.1 Cookie Preservative (9) */
+ typedef struct sctp_cookie_preserve_param {
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index f5b45b8..5304532 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -495,7 +495,7 @@ static void sctp_v6_from_addr_param(union sctp_addr *addr,
+ static int sctp_v6_to_addr_param(const union sctp_addr *addr,
+ 				 union sctp_addr_param *param)
+ {
+-	int length = sizeof(sctp_ipv6addr_param_t);
++	int length = sizeof(struct sctp_ipv6addr_param);
  
- 
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 08ebe8c..32ac90b 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -1096,7 +1096,7 @@ sctp_disposition_t sctp_sf_beat_8_3(struct net *net,
- 	 * respond with a HEARTBEAT ACK that contains the Heartbeat
- 	 * Information field copied from the received HEARTBEAT chunk.
- 	 */
--	chunk->subh.hb_hdr = (sctp_heartbeathdr_t *)chunk->skb->data;
-+	chunk->subh.hb_hdr = (struct sctp_heartbeathdr *)chunk->skb->data;
- 	param_hdr = (struct sctp_paramhdr *)chunk->subh.hb_hdr;
- 	paylen = ntohs(chunk->chunk_hdr->length) - sizeof(struct sctp_chunkhdr);
- 
+ 	param->v6.param_hdr.type = SCTP_PARAM_IPV6_ADDRESS;
+ 	param->v6.param_hdr.length = htons(length);
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 0dc64da..e5be305 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -3163,7 +3163,7 @@ bool sctp_verify_asconf(const struct sctp_association *asoc,
+ 			addr_param_seen = true;
+ 			break;
+ 		case SCTP_PARAM_IPV6_ADDRESS:
+-			if (length != sizeof(sctp_ipv6addr_param_t))
++			if (length != sizeof(struct sctp_ipv6addr_param))
+ 				return false;
+ 			if (param.v != addip->addip_hdr.params)
+ 				return false;
 -- 
 2.1.0
 
