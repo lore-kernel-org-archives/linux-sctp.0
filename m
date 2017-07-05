@@ -1,89 +1,71 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 23 Jul 2017 01:34:27 +0000
-Subject: [PATCH net-next 02/11] sctp: remove the typedef sctp_cookie_param_t
-Message-Id: <78a33af4a9d7ef7116637943dbd0ae1403d20114.1500773578.git.lucien.xin@gmail.com>
+Date: Wed, 05 Jul 2017 00:32:19 +0000
+Subject: [PATCH net-next 01/11] sctp: remove the typedef sctp_ipv4addr_param_t
+Message-Id: <6ba452f31d10acdc95f3cf679ecab15833f7843c.1499214692.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1500773578.git.lucien.xin@gmail.com>
- <daa1cc9a380f5a1eb37b3d30fd64942d310fe81d.1500773578.git.lucien.xin@gmail.com>
-In-Reply-To: <daa1cc9a380f5a1eb37b3d30fd64942d310fe81d.1500773578.git.lucien.xin@gmail.com>
+References: <cover.1499214692.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1499214692.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to remove the typedef sctp_cookie_param_t, and
-replace with struct sctp_cookie_param in the places where it's
-using this typedef.
+This patch is to remove the typedef sctp_ipv4addr_param_t, and replace
+with struct sctp_ipv4addr_param in the places where it's using this
+typedef.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/linux/sctp.h     |  4 ++--
- net/sctp/sm_make_chunk.c | 18 ++++++++++--------
- 2 files changed, 12 insertions(+), 10 deletions(-)
+ include/linux/sctp.h     | 6 +++---
+ net/sctp/protocol.c      | 2 +-
+ net/sctp/sm_make_chunk.c | 2 +-
+ 3 files changed, 5 insertions(+), 5 deletions(-)
 
 diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index 05c2099..9e77abd 100644
+index 99e8664..e42095d 100644
 --- a/include/linux/sctp.h
 +++ b/include/linux/sctp.h
-@@ -342,10 +342,10 @@ struct sctp_initack_chunk {
- };
+@@ -273,10 +273,10 @@ struct sctp_init_chunk {
  
- /* Section 3.3.3.1 State Cookie (7) */
--typedef struct sctp_cookie_param {
-+struct sctp_cookie_param {
- 	struct sctp_paramhdr p;
- 	__u8 body[0];
--} sctp_cookie_param_t;
+ 
+ /* Section 3.3.2.1. IPv4 Address Parameter (5) */
+-typedef struct sctp_ipv4addr_param {
++struct sctp_ipv4addr_param {
+ 	struct sctp_paramhdr param_hdr;
+-	struct in_addr  addr;
+-} sctp_ipv4addr_param_t;
++	struct in_addr addr;
 +};
  
- /* Section 3.3.3.1 Unrecognized Parameters (8) */
- typedef struct sctp_unrecognized_param {
+ /* Section 3.3.2.1. IPv6 Address Parameter (6) */
+ typedef struct sctp_ipv6addr_param {
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 989a900..852556d 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -292,7 +292,7 @@ static void sctp_v4_from_addr_param(union sctp_addr *addr,
+ static int sctp_v4_to_addr_param(const union sctp_addr *addr,
+ 				 union sctp_addr_param *param)
+ {
+-	int length = sizeof(sctp_ipv4addr_param_t);
++	int length = sizeof(struct sctp_ipv4addr_param);
+ 
+ 	param->v4.param_hdr.type = SCTP_PARAM_IPV4_ADDRESS;
+ 	param->v4.param_hdr.length = htons(length);
 diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 0b36e96..163004e 100644
+index 4e16b02..0dc64da 100644
 --- a/net/sctp/sm_make_chunk.c
 +++ b/net/sctp/sm_make_chunk.c
-@@ -69,7 +69,8 @@ static struct sctp_chunk *sctp_make_data(const struct sctp_association *asoc,
- static struct sctp_chunk *_sctp_make_chunk(const struct sctp_association *asoc,
- 					   __u8 type, __u8 flags, int paylen,
- 					   gfp_t gfp);
--static sctp_cookie_param_t *sctp_pack_cookie(const struct sctp_endpoint *ep,
-+static struct sctp_cookie_param *sctp_pack_cookie(
-+					const struct sctp_endpoint *ep,
- 					const struct sctp_association *asoc,
- 					const struct sctp_chunk *init_chunk,
- 					int *cookie_len,
-@@ -387,7 +388,7 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
- 	union sctp_params addrs;
- 	struct sctp_sock *sp;
- 	int addrs_len;
--	sctp_cookie_param_t *cookie;
-+	struct sctp_cookie_param *cookie;
- 	int cookie_len;
- 	size_t chunksize;
- 	struct sctp_adaptation_ind_param aiparam;
-@@ -1595,14 +1596,15 @@ struct sctp_association *sctp_make_temp_asoc(const struct sctp_endpoint *ep,
- /* Build a cookie representing asoc.
-  * This INCLUDES the param header needed to put the cookie in the INIT ACK.
-  */
--static sctp_cookie_param_t *sctp_pack_cookie(const struct sctp_endpoint *ep,
--				      const struct sctp_association *asoc,
--				      const struct sctp_chunk *init_chunk,
--				      int *cookie_len,
--				      const __u8 *raw_addrs, int addrs_len)
-+static struct sctp_cookie_param *sctp_pack_cookie(
-+					const struct sctp_endpoint *ep,
-+					const struct sctp_association *asoc,
-+					const struct sctp_chunk *init_chunk,
-+					int *cookie_len,
-+					const __u8 *raw_addrs, int addrs_len)
- {
--	sctp_cookie_param_t *retval;
- 	struct sctp_signed_cookie *cookie;
-+	struct sctp_cookie_param *retval;
- 	int headersize, bodysize;
- 
- 	/* Header size is static data prior to the actual cookie, including
+@@ -3153,7 +3153,7 @@ bool sctp_verify_asconf(const struct sctp_association *asoc,
+ 		case SCTP_PARAM_ERR_CAUSE:
+ 			break;
+ 		case SCTP_PARAM_IPV4_ADDRESS:
+-			if (length != sizeof(sctp_ipv4addr_param_t))
++			if (length != sizeof(struct sctp_ipv4addr_param))
+ 				return false;
+ 			/* ensure there is only one addr param and it's in the
+ 			 * beginning of addip_hdr params, or we reject it.
 -- 
 2.1.0
 
