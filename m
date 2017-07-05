@@ -1,30 +1,71 @@
-From: David Miller <davem@davemloft.net>
-Date: Sat, 01 Jul 2017 22:26:31 +0000
-Subject: Re: [PATCH v3] sctp: Add peeloff-flags socket option
-Message-Id: <20170701.152631.693482856748972097.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 05 Jul 2017 00:32:25 +0000
+Subject: [PATCH net-next 07/11] sctp: remove the typedef sctp_adaptation_ind_param_t
+Message-Id: <afa9a191289fea55e077dcb4ad0bc34f7daee1b9.1499214692.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20170629181340.12423-1-nhorman@tuxdriver.com>
-        <20170630173257.18990-1-nhorman@tuxdriver.com>
-In-Reply-To: <20170630173257.18990-1-nhorman@tuxdriver.com>
+References: <cover.1499214692.git.lucien.xin@gmail.com>
+ <6ba452f31d10acdc95f3cf679ecab15833f7843c.1499214692.git.lucien.xin@gmail.com>
+ <77fa3a776118873a7e5d8203dd59011995b0e865.1499214692.git.lucien.xin@gmail.com>
+ <090c24ed353f37a2bbce41ecc5feec6fc8cffa8b.1499214692.git.lucien.xin@gmail.com>
+ <8d2e6145478bb4d24185d4ffd5547c7058f0dca9.1499214692.git.lucien.xin@gmail.com>
+ <951d998920ecfe28f690739cd311bca3060751ff.1499214692.git.lucien.xin@gmail.com>
+ <f094b5d16ed0f3b6fa255462bf957a104584f220.1499214692.git.lucien.xin@gmail.com>
+In-Reply-To: <f094b5d16ed0f3b6fa255462bf957a104584f220.1499214692.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: nhorman@tuxdriver.com
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, vyasevich@gmail.com, ast@domdv.de, marcelo.leitner@gmail.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 30 Jun 2017 13:32:57 -0400
+This patch is to remove the typedef sctp_adaptation_ind_param_t, and
+replace with struct sctp_adaptation_ind_param in the places where it's
+using this typedef.
 
-> Based on a request raised on the sctp devel list, there is a need to
-> augment the sctp_peeloff operation while specifying the O_CLOEXEC and
-> O_NONBLOCK flags (simmilar to the socket syscall).  Since modifying the
-> SCTP_SOCKOPT_PEELOFF socket option would break user space ABI for existing
-> programs, this patch creates a new socket option
-> SCTP_SOCKOPT_PEELOFF_FLAGS, which accepts a third flags parameter to
-> allow atomic assignment of the socket descriptor flags.
-> 
-> Tested successfully by myself and the requestor
-> 
-> Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/linux/sctp.h     | 4 ++--
+ net/sctp/sm_make_chunk.c | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-Applied to net-next, thanks Neil.
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index 7552482..72b8787 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -303,10 +303,10 @@ struct sctp_supported_addrs_param {
+ };
+ 
+ /* ADDIP Section 3.2.6 Adaptation Layer Indication */
+-typedef struct sctp_adaptation_ind_param {
++struct sctp_adaptation_ind_param {
+ 	struct sctp_paramhdr param_hdr;
+ 	__be32 adaptation_ind;
+-} sctp_adaptation_ind_param_t;
++};
+ 
+ /* ADDIP Section 4.2.7 Supported Extensions Parameter */
+ typedef struct sctp_supported_ext_param {
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index fb06d4f..d5f82c2 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -225,7 +225,7 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
+ 	struct sctp_sock *sp;
+ 	struct sctp_supported_addrs_param sat;
+ 	__be16 types[2];
+-	sctp_adaptation_ind_param_t aiparam;
++	struct sctp_adaptation_ind_param aiparam;
+ 	sctp_supported_ext_param_t ext_param;
+ 	int num_ext = 0;
+ 	__u8 extensions[3];
+@@ -393,7 +393,7 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
+ 	sctp_cookie_param_t *cookie;
+ 	int cookie_len;
+ 	size_t chunksize;
+-	sctp_adaptation_ind_param_t aiparam;
++	struct sctp_adaptation_ind_param aiparam;
+ 	sctp_supported_ext_param_t ext_param;
+ 	int num_ext = 0;
+ 	__u8 extensions[3];
+-- 
+2.1.0
+
