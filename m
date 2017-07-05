@@ -1,74 +1,44 @@
-From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:52:56 +0000
-Subject: [PATCH 01/36] net, llc: convert llc_sap.refcnt from atomic_t to refcount_t
-Message-Id: <1499172811-16271-2-git-send-email-elena.reshetova@intel.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 05 Jul 2017 00:32:24 +0000
+Subject: [PATCH net-next 06/11] sctp: remove struct sctp_ecn_capable_param
+Message-Id: <f094b5d16ed0f3b6fa255462bf957a104584f220.1499214692.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
-In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
+References: <cover.1499214692.git.lucien.xin@gmail.com>
+ <6ba452f31d10acdc95f3cf679ecab15833f7843c.1499214692.git.lucien.xin@gmail.com>
+ <77fa3a776118873a7e5d8203dd59011995b0e865.1499214692.git.lucien.xin@gmail.com>
+ <090c24ed353f37a2bbce41ecc5feec6fc8cffa8b.1499214692.git.lucien.xin@gmail.com>
+ <8d2e6145478bb4d24185d4ffd5547c7058f0dca9.1499214692.git.lucien.xin@gmail.com>
+ <951d998920ecfe28f690739cd311bca3060751ff.1499214692.git.lucien.xin@gmail.com>
+In-Reply-To: <951d998920ecfe28f690739cd311bca3060751ff.1499214692.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, davem@davemloft.net, jmorris@namei.org, kaber@trash.net, yoshfuji@linux-ipv6.org, kuznet@ms2.inr.ac.ru, 3chas3@gmail.com, ralf@linux-mips.org, stephen@networkplumber.org, jchapman@katalix.com, jhs@mojatatu.com, bridge@lists.linux-foundation.org, linux-hams@vger.kernel.org, linux-x25@vger.kernel.org, peterz@infradead.org, keescook@chromium.org, linux-rdma@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-nfs@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-refcount_t type and corresponding API should be
-used instead of atomic_t when the variable is used as
-a reference counter. This allows to avoid accidental
-refcounter overflows that might lead to use-after-free
-situations.
+Remove it, there is even no places using it.
 
-Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
-Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
-Signed-off-by: Kees Cook <keescook@chromium.org>
-Signed-off-by: David Windsor <dwindsor@gmail.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/llc.h  | 6 +++---
- net/llc/llc_core.c | 2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ include/linux/sctp.h | 5 -----
+ 1 file changed, 5 deletions(-)
 
-diff --git a/include/net/llc.h b/include/net/llc.h
-index e8e61d4..dc35f25 100644
---- a/include/net/llc.h
-+++ b/include/net/llc.h
-@@ -55,7 +55,7 @@ struct llc_sap {
- 	unsigned char	 state;
- 	unsigned char	 p_bit;
- 	unsigned char	 f_bit;
--	atomic_t         refcnt;
-+	refcount_t		 refcnt;
- 	int		 (*rcv_func)(struct sk_buff *skb,
- 				     struct net_device *dev,
- 				     struct packet_type *pt,
-@@ -113,14 +113,14 @@ struct llc_sap *llc_sap_open(unsigned char lsap,
- 					struct net_device *orig_dev));
- static inline void llc_sap_hold(struct llc_sap *sap)
- {
--	atomic_inc(&sap->refcnt);
-+	refcount_inc(&sap->refcnt);
- }
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index 3ca3ab7..7552482 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -302,11 +302,6 @@ struct sctp_supported_addrs_param {
+ 	__be16 types[0];
+ };
  
- void llc_sap_close(struct llc_sap *sap);
- 
- static inline void llc_sap_put(struct llc_sap *sap)
- {
--	if (atomic_dec_and_test(&sap->refcnt))
-+	if (refcount_dec_and_test(&sap->refcnt))
- 		llc_sap_close(sap);
- }
- 
-diff --git a/net/llc/llc_core.c b/net/llc/llc_core.c
-index 842851c..8904126 100644
---- a/net/llc/llc_core.c
-+++ b/net/llc/llc_core.c
-@@ -41,7 +41,7 @@ static struct llc_sap *llc_sap_alloc(void)
- 		spin_lock_init(&sap->sk_lock);
- 		for (i = 0; i < LLC_SK_LADDR_HASH_ENTRIES; i++)
- 			INIT_HLIST_NULLS_HEAD(&sap->sk_laddr_hash[i], i);
--		atomic_set(&sap->refcnt, 1);
-+		refcount_set(&sap->refcnt, 1);
- 	}
- 	return sap;
- }
+-/* Appendix A. ECN Capable (32768) */
+-typedef struct sctp_ecn_capable_param {
+-	struct sctp_paramhdr param_hdr;
+-} sctp_ecn_capable_param_t;
+-
+ /* ADDIP Section 3.2.6 Adaptation Layer Indication */
+ typedef struct sctp_adaptation_ind_param {
+ 	struct sctp_paramhdr param_hdr;
 -- 
-2.7.4
+2.1.0
 
