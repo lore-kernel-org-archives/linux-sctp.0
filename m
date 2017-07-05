@@ -1,26 +1,48 @@
-From: David Miller <davem@davemloft.net>
-Date: Sat, 01 Jul 2017 16:09:00 +0000
-Subject: Re: [PATCH net-next 00/11] sctp: remove typedefs from structures part 1
-Message-Id: <20170701.090900.1231795762851084102.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 05 Jul 2017 00:32:18 +0000
+Subject: [PATCH net-next 00/11] sctp: remove typedefs from structures part 2
+Message-Id: <cover.1499214692.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1498794481.git.lucien.xin@gmail.com>
 In-Reply-To: <cover.1498794481.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 30 Jun 2017 11:52:11 +0800
+As we know, typedef is suggested not to use in kernel, even checkpatch.pl
+also gives warnings about it. Now sctp is using it for many structures.
 
-> As we know, typedef is suggested not to use in kernel, even checkpatch.pl
-> also gives warnings about it. Now sctp is using it for many structures.
-> 
-> All this kind of typedef's using should be removed. As the 1st part, this
-> patchset is to remove it for 11 basic structures in linux/sctp.h. It is
-> also to fix some indents.
-> 
-> No any code's logic is changed in these patches, only cleaning up.
+All this kind of typedef's using should be removed. This patchset is the
+part 2 to remove it for another 11 basic structures.
 
-Series applied, thanks.
+Just as the part 1, No any code's logic would be changed in these patches,
+only cleaning up.
+
+Xin Long (11):
+  sctp: remove the typedef sctp_ipv4addr_param_t
+  sctp: remove the typedef sctp_ipv6addr_param_t
+  sctp: remove the typedef sctp_cookie_preserve_param_t
+  sctp: remove the typedef sctp_hostname_param_t
+  sctp: remove the typedef sctp_supported_addrs_param_t
+  sctp: remove struct sctp_ecn_capable_param
+  sctp: remove the typedef sctp_adaptation_ind_param_t
+  sctp: remove the typedef sctp_supported_ext_param_t
+  sctp: remove the typedef sctp_random_param_t
+  sctp: remove the typedef sctp_chunks_param_t
+  sctp: remove the typedef sctp_hmac_algo_param_t
+
+ include/linux/sctp.h       | 49 +++++++++++++++++++++-------------------------
+ include/net/sctp/structs.h |  6 +++---
+ net/sctp/auth.c            | 13 ++++++------
+ net/sctp/endpointola.c     |  8 ++++----
+ net/sctp/ipv6.c            |  2 +-
+ net/sctp/protocol.c        |  2 +-
+ net/sctp/sm_make_chunk.c   | 32 ++++++++++++------------------
+ net/sctp/sm_statefuns.c    | 11 +++++------
+ 8 files changed, 55 insertions(+), 68 deletions(-)
+
+-- 
+2.1.0
+
