@@ -1,66 +1,60 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 23 Jul 2017 01:34:35 +0000
-Subject: [PATCH net-next 10/11] sctp: remove the typedef sctp_heartbeat_chunk_t
-Message-Id: <cff8b94db487caa09014f0de9e94e28a13a9e43d.1500773578.git.lucien.xin@gmail.com>
+Date: Wed, 05 Jul 2017 00:32:23 +0000
+Subject: [PATCH net-next 05/11] sctp: remove the typedef sctp_supported_addrs_param_t
+Message-Id: <951d998920ecfe28f690739cd311bca3060751ff.1499214692.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1500773578.git.lucien.xin@gmail.com>
- <daa1cc9a380f5a1eb37b3d30fd64942d310fe81d.1500773578.git.lucien.xin@gmail.com>
- <78a33af4a9d7ef7116637943dbd0ae1403d20114.1500773578.git.lucien.xin@gmail.com>
- <54eca4d5d79aae83b386754b4613edc388521d54.1500773578.git.lucien.xin@gmail.com>
- <303fa591073b161b9434fa7f81a8d9d119954359.1500773578.git.lucien.xin@gmail.com>
- <42fb936def0c9ef0522d2e3809c9c07dccb6974f.1500773578.git.lucien.xin@gmail.com>
- <94b6f03745317ab5c57639f2155a5e1503b4dfb3.1500773578.git.lucien.xin@gmail.com>
- <734295f5625300a5328c19e255dfbbf7d393e48f.1500773578.git.lucien.xin@gmail.com>
- <b38e31f3ac26b5aa2f8a6522b002846a03a70118.1500773578.git.lucien.xin@gmail.com>
- <5de5ee9134309f0111da5edd768faf7aaff1c9fc.1500773578.git.lucien.xin@gmail.com>
-In-Reply-To: <5de5ee9134309f0111da5edd768faf7aaff1c9fc.1500773578.git.lucien.xin@gmail.com>
+References: <cover.1499214692.git.lucien.xin@gmail.com>
+ <6ba452f31d10acdc95f3cf679ecab15833f7843c.1499214692.git.lucien.xin@gmail.com>
+ <77fa3a776118873a7e5d8203dd59011995b0e865.1499214692.git.lucien.xin@gmail.com>
+ <090c24ed353f37a2bbce41ecc5feec6fc8cffa8b.1499214692.git.lucien.xin@gmail.com>
+ <8d2e6145478bb4d24185d4ffd5547c7058f0dca9.1499214692.git.lucien.xin@gmail.com>
+In-Reply-To: <8d2e6145478bb4d24185d4ffd5547c7058f0dca9.1499214692.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to remove the typedef sctp_heartbeat_chunk_t, and
-replace with struct sctp_heartbeat_chunk in the places where it's
+This patch is to remove the typedef sctp_supported_addrs_param_t, and
+replace with struct sctp_supported_addrs_param in the places where it's
 using this typedef.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/linux/sctp.h    | 4 ++--
- net/sctp/sm_statefuns.c | 3 ++-
- 2 files changed, 4 insertions(+), 3 deletions(-)
+ include/linux/sctp.h     | 4 ++--
+ net/sctp/sm_make_chunk.c | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index 6e26b86..bfda7c6 100644
+index c43e906..3ca3ab7 100644
 --- a/include/linux/sctp.h
 +++ b/include/linux/sctp.h
-@@ -398,10 +398,10 @@ struct sctp_heartbeathdr {
- 	struct sctp_paramhdr info;
+@@ -297,10 +297,10 @@ struct sctp_hostname_param {
  };
  
--typedef struct sctp_heartbeat_chunk {
-+struct sctp_heartbeat_chunk {
- 	struct sctp_chunkhdr chunk_hdr;
- 	struct sctp_heartbeathdr hb_hdr;
--} sctp_heartbeat_chunk_t;
+ /* Section 3.3.2.1 Supported Address Types (12) */
+-typedef struct sctp_supported_addrs_param {
++struct sctp_supported_addrs_param {
+ 	struct sctp_paramhdr param_hdr;
+ 	__be16 types[0];
+-} sctp_supported_addrs_param_t;
 +};
  
- 
- /* For the abort and shutdown ACK we must carry the init tag in the
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 32ac90b..7bbee08 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -1088,7 +1088,8 @@ sctp_disposition_t sctp_sf_beat_8_3(struct net *net,
- 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
- 
- 	/* Make sure that the HEARTBEAT chunk has a valid length. */
--	if (!sctp_chunk_length_valid(chunk, sizeof(sctp_heartbeat_chunk_t)))
-+	if (!sctp_chunk_length_valid(chunk,
-+				     sizeof(struct sctp_heartbeat_chunk)))
- 		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
- 						  commands);
- 
+ /* Appendix A. ECN Capable (32768) */
+ typedef struct sctp_ecn_capable_param {
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index e5be305..fb06d4f 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -223,7 +223,7 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
+ 	struct sctp_chunk *retval = NULL;
+ 	int num_types, addrs_len = 0;
+ 	struct sctp_sock *sp;
+-	sctp_supported_addrs_param_t sat;
++	struct sctp_supported_addrs_param sat;
+ 	__be16 types[2];
+ 	sctp_adaptation_ind_param_t aiparam;
+ 	sctp_supported_ext_param_t ext_param;
 -- 
 2.1.0
 
