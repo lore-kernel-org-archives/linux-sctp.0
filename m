@@ -1,32 +1,43 @@
-From: Marcelo <marcelo.leitner@gmail.com>
-Date: Fri, 07 Jul 2017 23:03:19 +0000
-Subject: Re: ABORT after COOKIE_ECHO
-Message-Id: <20170707230319.GT18138@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 05 Jul 2017 00:32:22 +0000
+Subject: [PATCH net-next 04/11] sctp: remove the typedef sctp_hostname_param_t
+Message-Id: <8d2e6145478bb4d24185d4ffd5547c7058f0dca9.1499214692.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAFXGft+WBxm+7JK1imsP=M_go60WWHSsOurJPr=3=FZzWDShqg@mail.gmail.com>
-In-Reply-To: <CAFXGft+WBxm+7JK1imsP=M_go60WWHSsOurJPr=3=FZzWDShqg@mail.gmail.com>
+References: <cover.1499214692.git.lucien.xin@gmail.com>
+ <6ba452f31d10acdc95f3cf679ecab15833f7843c.1499214692.git.lucien.xin@gmail.com>
+ <77fa3a776118873a7e5d8203dd59011995b0e865.1499214692.git.lucien.xin@gmail.com>
+ <090c24ed353f37a2bbce41ecc5feec6fc8cffa8b.1499214692.git.lucien.xin@gmail.com>
+In-Reply-To: <090c24ed353f37a2bbce41ecc5feec6fc8cffa8b.1499214692.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-On Fri, Jul 07, 2017 at 11:23:02PM +1200, Xin Long wrote:
-> On Mon, Jul 3, 2017 at 7:12 PM, Sun Paul <paulrbk@gmail.com> wrote:
-> > also, how to determine it is OOTB packet?
-> can you use systemtap on the host sending abort chunk ?
-> 
-> # stap --all-modules -v -e 'probe
-> module("sctp").function("sctp_make_abort").call{print_backtrace();println("");}'
-> 
-> So that we can see how the abort chunk is caused.
+Remove this typedef, there is even no places using it.
 
-Or the perf version:
-# perf probe -m sctp -a sctp_make_abort
-# perf record -e probe:sctp_make_abort -agR -- <command>
-  (note the extra -g if compared to what the 1st command outputted)
-# perf script
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/linux/sctp.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-<command> should be either your reproducer or an sleep X that covers the
-event.
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index d8f9d8f..c43e906 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -291,10 +291,10 @@ struct sctp_cookie_preserve_param {
+ };
+ 
+ /* Section 3.3.2.1 Host Name Address (11) */
+-typedef struct sctp_hostname_param {
++struct sctp_hostname_param {
+ 	struct sctp_paramhdr param_hdr;
+ 	uint8_t hostname[0];
+-} sctp_hostname_param_t;
++};
+ 
+ /* Section 3.3.2.1 Supported Address Types (12) */
+ typedef struct sctp_supported_addrs_param {
+-- 
+2.1.0
 
-  Marcelo
