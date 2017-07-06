@@ -1,93 +1,41 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 23 Jul 2017 01:34:32 +0000
-Subject: [PATCH net-next 07/11] sctp: remove the typedef sctp_sackhdr_t
-Message-Id: <734295f5625300a5328c19e255dfbbf7d393e48f.1500773578.git.lucien.xin@gmail.com>
+From: Zheng Li <lizheng043@gmail.com>
+Date: Thu, 06 Jul 2017 07:00:09 +0000
+Subject: [PATCH] sctp: set the value of flowi6_oif to sk_bound_dev_if to make sctp_v6_get_dst to find the cor
+Message-Id: <1499324409-12489-1-git-send-email-lizheng043@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1500773578.git.lucien.xin@gmail.com>
- <daa1cc9a380f5a1eb37b3d30fd64942d310fe81d.1500773578.git.lucien.xin@gmail.com>
- <78a33af4a9d7ef7116637943dbd0ae1403d20114.1500773578.git.lucien.xin@gmail.com>
- <54eca4d5d79aae83b386754b4613edc388521d54.1500773578.git.lucien.xin@gmail.com>
- <303fa591073b161b9434fa7f81a8d9d119954359.1500773578.git.lucien.xin@gmail.com>
- <42fb936def0c9ef0522d2e3809c9c07dccb6974f.1500773578.git.lucien.xin@gmail.com>
- <94b6f03745317ab5c57639f2155a5e1503b4dfb3.1500773578.git.lucien.xin@gmail.com>
-In-Reply-To: <94b6f03745317ab5c57639f2155a5e1503b4dfb3.1500773578.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, davem@davemloft.net, jmorris@namei.org
+Cc: james.z.li@ericsson.com, allen.y.zhao@ericsson.com, feng.qiu@ericsson.com
 
-This patch is to remove the typedef sctp_sackhdr_t, and replace
-with struct sctp_sackhdr in the places where it's using this
-typedef.
+From: Zheng Li <james.z.li@ericsson.com>
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+if there are several same route entries with different outgoing net device,
+application's socket specifies the oif through setsockopt with
+SO_BINDTODEVICE, sctpv6 should choose the route entry whose outgoing net
+device is the oif which was specified by socket, set the value of
+flowi6_oif to sk->sk_bound_dev_if to make sctp_v6_get_dst to find the
+correct route entry.
+
+Signed-off-by: Zheng Li <james.z.li@ericsson.com>
 ---
- include/linux/sctp.h       | 6 +++---
- include/net/sctp/command.h | 4 ++--
- net/sctp/sm_statefuns.c    | 2 +-
- 3 files changed, 6 insertions(+), 6 deletions(-)
+ net/sctp/ipv6.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index 8df6ac5..a2e4312 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -373,17 +373,17 @@ union sctp_sack_variable {
- 	__be32 dup;
- };
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index f5b45b8..2a186b20 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -252,6 +252,8 @@ static void sctp_v6_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
+ 	fl6->flowi6_proto = IPPROTO_SCTP;
+ 	if (ipv6_addr_type(&daddr->v6.sin6_addr) & IPV6_ADDR_LINKLOCAL)
+ 		fl6->flowi6_oif = daddr->v6.sin6_scope_id;
++	else if (asoc)
++		fl6->flowi6_oif = asoc->base.sk->sk_bound_dev_if;
  
--typedef struct sctp_sackhdr {
-+struct sctp_sackhdr {
- 	__be32 cum_tsn_ack;
- 	__be32 a_rwnd;
- 	__be16 num_gap_ack_blocks;
- 	__be16 num_dup_tsns;
- 	union sctp_sack_variable variable[0];
--} sctp_sackhdr_t;
-+};
+ 	pr_debug("%s: dst=%pI6 ", __func__, &fl6->daddr);
  
- typedef struct sctp_sack_chunk {
- 	struct sctp_chunkhdr chunk_hdr;
--	sctp_sackhdr_t sack_hdr;
-+	struct sctp_sackhdr sack_hdr;
- } sctp_sack_chunk_t;
- 
- 
-diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
-index d4679e7..1d5f6ff 100644
---- a/include/net/sctp/command.h
-+++ b/include/net/sctp/command.h
-@@ -135,7 +135,7 @@ typedef union {
- 	struct sctp_init_chunk *init;
- 	struct sctp_ulpevent *ulpevent;
- 	struct sctp_packet *packet;
--	sctp_sackhdr_t *sackh;
-+	struct sctp_sackhdr *sackh;
- 	struct sctp_datamsg *msg;
- } sctp_arg_t;
- 
-@@ -176,7 +176,7 @@ SCTP_ARG_CONSTRUCTOR(BA,	struct sctp_bind_addr *, bp)
- SCTP_ARG_CONSTRUCTOR(PEER_INIT,	struct sctp_init_chunk *, init)
- SCTP_ARG_CONSTRUCTOR(ULPEVENT,  struct sctp_ulpevent *, ulpevent)
- SCTP_ARG_CONSTRUCTOR(PACKET,	struct sctp_packet *, packet)
--SCTP_ARG_CONSTRUCTOR(SACKH,	sctp_sackhdr_t *, sackh)
-+SCTP_ARG_CONSTRUCTOR(SACKH,	struct sctp_sackhdr *, sackh)
- SCTP_ARG_CONSTRUCTOR(DATAMSG,	struct sctp_datamsg *, msg)
- 
- static inline sctp_arg_t SCTP_FORCE(void)
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 7f85239..c09dfe6 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -3187,7 +3187,7 @@ sctp_disposition_t sctp_sf_eat_sack_6_2(struct net *net,
- 					sctp_cmd_seq_t *commands)
- {
- 	struct sctp_chunk *chunk = arg;
--	sctp_sackhdr_t *sackh;
-+	struct sctp_sackhdr *sackh;
- 	__u32 ctsn;
- 
- 	if (!sctp_vtag_verify(chunk, asoc))
 -- 
-2.1.0
+2.7.4
 
