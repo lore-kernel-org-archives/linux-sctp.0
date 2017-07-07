@@ -1,7 +1,7 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 07 Jul 2017 11:23:02 +0000
+From: Marcelo <marcelo.leitner@gmail.com>
+Date: Fri, 07 Jul 2017 23:03:19 +0000
 Subject: Re: ABORT after COOKIE_ECHO
-Message-Id: <CADvbK_d5d3O_PGqTsiKLvX6rtto0GA9Cv-Xop5hOtCPpqyE0Ng@mail.gmail.com>
+Message-Id: <20170707230319.GT18138@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CAFXGft+WBxm+7JK1imsP=M_go60WWHSsOurJPr=3=FZzWDShqg@mail.gmail.com>
 In-Reply-To: <CAFXGft+WBxm+7JK1imsP=M_go60WWHSsOurJPr=3=FZzWDShqg@mail.gmail.com>
@@ -10,135 +10,23 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On Mon, Jul 3, 2017 at 7:12 PM, Sun Paul <paulrbk@gmail.com> wrote:
-> also, how to determine it is OOTB packet?
-can you use systemtap on the host sending abort chunk ?
+On Fri, Jul 07, 2017 at 11:23:02PM +1200, Xin Long wrote:
+> On Mon, Jul 3, 2017 at 7:12 PM, Sun Paul <paulrbk@gmail.com> wrote:
+> > also, how to determine it is OOTB packet?
+> can you use systemtap on the host sending abort chunk ?
+> 
+> # stap --all-modules -v -e 'probe
+> module("sctp").function("sctp_make_abort").call{print_backtrace();println("");}'
+> 
+> So that we can see how the abort chunk is caused.
 
-# stap --all-modules -v -e 'probe
-module("sctp").function("sctp_make_abort").call{print_backtrace();println("");}'
+Or the perf version:
+# perf probe -m sctp -a sctp_make_abort
+# perf record -e probe:sctp_make_abort -agR -- <command>
+  (note the extra -g if compared to what the 1st command outputted)
+# perf script
 
-So that we can see how the abort chunk is caused.
+<command> should be either your reproducer or an sleep X that covers the
+event.
 
->
-> On Mon, Jul 3, 2017 at 10:56 AM, Sun Paul <paulrbk@gmail.com> wrote:
->> we found lots of entries when issue netstat command. seems the OS IP
->> stack level have issue.  anyone faced this before?
->>
->> sctp    1540      0 192.168.220.115:3868        172.10.116.169:3868
->>     LISTEN
->>                     192.168.220.123             172.10.116.170
->> sctp    1540      0 192.168.220.115:3868        172.10.116.173:3868
->>     LISTEN
->>                     192.168.220.123             172.10.116.174
->> sctp    1540      0 192.168.220.115:3868        172.10.116.169:3868
->>     LISTEN
->>                     192.168.220.123             172.10.116.170
->> sctp    1540      0 192.168.220.115:3868        172.10.116.173:3868
->>     LISTEN
->>                     192.168.220.123             172.10.116.174
->> sctp    1540      0 192.168.220.115:3868        172.10.116.169:3868
->>     LISTEN
->>                     192.168.220.123             172.10.116.170
->> sctp    1540      0 192.168.220.115:3868        172.10.116.173:3868
->>     LISTEN
->>                     192.168.220.123             172.10.116.174
->> sctp    1540      0 192.168.220.115:3868        172.10.116.169:3868
->>     LISTEN
->>                     192.168.220.123             172.10.116.170
->> sctp    1540      0 192.168.220.115:3868        172.10.116.173:3868
->>     LISTEN
->>                     192.168.220.123             172.10.116.174
->> sctp    1540      0 192.168.220.115:3868        172.10.116.169:3868
->>     LISTEN
->>                     192.168.220.123             172.10.116.170
->> sctp    1540      0 192.168.220.115:3868        172.10.116.173:3868
->>     LISTEN
->>                     192.168.220.123             172.10.116.174
->> sctp    1540      0 192.168.220.115:3868        172.10.116.173:3868
->>     LISTEN
->>                     192.168.220.123             172.10.116.174
->> sctp    1540      0 192.168.220.115:3868        172.10.116.173:3868
->>     LISTEN
->>                     192.168.220.123             172.10.116.174
->>
->> On Sun, Jul 2, 2017 at 1:47 AM, Marcelo <marcelo.leitner@gmail.com> wrote:
->>> Means out of the blue below.
->>> Your stats are interesting, you have expired cookies and also bad checksum.
->>>
->>>
->>> Em 1 de julho de 2017 14:29:56 BRT, Sun Paul <paulrbk@gmail.com> escreveu:
->>>>OOTB means?
->>>>
->>>>and below figure is the /proc/net/sctp/snmp, any idea
->>>>
->>>>$ cat  /proc/net/sctp/snmp
->>>>SctpCurrEstab                   0
->>>>SctpActiveEstabs                 26061
->>>>SctpPassiveEstabs               204235
->>>>SctpAborteds                     811874
->>>>SctpShutdowns                   196524
->>>>SctpOutOfBlues                   19104636
->>>>SctpChecksumErrors               3070
->>>>SctpOutCtrlChunks               3515894374
->>>>SctpOutOrderChunks               43687436
->>>>SctpOutUnorderChunks             5244253158
->>>>SctpInCtrlChunks                 3820268182
->>>>SctpInOrderChunks               2553760409
->>>>SctpInUnorderChunks             2741444705
->>>>SctpFragUsrMsgs                 197031085
->>>>SctpReasmUsrMsgs                 207379860
->>>>SctpOutSCTPPacks                 6407590023
->>>>SctpInSCTPPacks                 6719200223
->>>>SctpT1InitExpireds               18041179
->>>>SctpT1CookieExpireds             365
->>>>SctpT2ShutdownExpireds           486
->>>>SctpT3RtxExpireds               4543012
->>>>SctpT4RtoExpireds               0
->>>>SctpT5ShutdownGuardExpireds     2
->>>>SctpDelaySackExpireds           2595840671
->>>>SctpAutocloseExpireds           0
->>>>SctpT3Retransmits               4527700
->>>>SctpPmtudRetransmits             3341
->>>>SctpFastRetransmits             4155577
->>>>SctpInPktSoftirq                 6711421746
->>>>SctpInPktBacklog                 7744553
->>>>SctpInPktDiscards               19253619
->>>>SctpInDataChunkDiscards         4248038
->>>>
->>>>On Sun, Jul 2, 2017 at 1:11 AM, Marcelo Ricardo Leitner
->>>><marcelo.leitner@gmail.com> wrote:
->>>>> Hi,
->>>>>
->>>>> On Sun, Jul 02, 2017 at 01:02:36AM +0800, Sun Paul wrote:
->>>>>> Hi
->>>>>>
->>>>>> we have a setup that running normal, however, we found that some of
->>>>>> the conenctions are not able to establish and we (server) send ABORT
->>>>>> right after receiving COOKIE_ECHO.
->>>>>>
->>>>>> any idea?
->>>>>
->>>>> Several reasons.. if it's not triggering a duplicate cookie
->>>>processing,
->>>>> it's being processed on sctp_sf_do_5_1D_ce(). Have a look at it to
->>>>have
->>>>> a better idea. Two reasons that stands out are somehow the cookie was
->>>>> interpreted as an OOTB packet or the tcp-style listening socket got
->>>>its
->>>>> backlog full.
->>>>>
->>>>> It can also be due to an out of memory situation, which is not often
->>>>the
->>>>> case.
->>>>>
->>>>> OOTB packets are accounted for in netstat -s or /proc/net/sctp/snmp.
->>>>>
->>>>>   Marcelo
->>>>>
->>>
->>> --
->>> Enviado de meu dispositivo Android com K-9 mail. Desculpe-me pela brevidade.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+  Marcelo
