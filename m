@@ -1,102 +1,54 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 23 Jul 2017 01:34:28 +0000
-Subject: [PATCH net-next 03/11] sctp: remove the typedef sctp_unrecognized_param_t
-Message-Id: <54eca4d5d79aae83b386754b4613edc388521d54.1500773578.git.lucien.xin@gmail.com>
+Date: Fri, 14 Jul 2017 14:07:33 +0000
+Subject: [PATCH net] sctp: fix an array overflow when all ext chunks are set
+Message-Id: <3e78f6040b834ee9221cd2ebf539324499a8bb4f.1500041253.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1500773578.git.lucien.xin@gmail.com>
- <daa1cc9a380f5a1eb37b3d30fd64942d310fe81d.1500773578.git.lucien.xin@gmail.com>
- <78a33af4a9d7ef7116637943dbd0ae1403d20114.1500773578.git.lucien.xin@gmail.com>
-In-Reply-To: <78a33af4a9d7ef7116637943dbd0ae1403d20114.1500773578.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-This patch is to remove the typedef sctp_unrecognized_param_t, and
-replace with struct sctp_unrecognized_param in the places where it's
-using this typedef.
+Marcelo noticed an array overflow caused by commit c28445c3cb07
+("sctp: add reconf_enable in asoc ep and netns"), in which sctp
+would add SCTP_CID_RECONF into extensions when reconf_enable is
+set in sctp_make_init and sctp_make_init_ack.
 
-It is also to fix some indents in sctp_sf_do_unexpected_init() and
-sctp_sf_do_5_1B_init().
+Then now when all ext chunks are set, 4 ext chunk ids can be put
+into extensions array while extensions array size is 3. It would
+cause a kernel panic because of this overflow.
 
+This patch is to fix it by defining extensions array size is 4 in
+both sctp_make_init and sctp_make_init_ack.
+
+Fixes: c28445c3cb07 ("sctp: add reconf_enable in asoc ep and netns")
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/linux/sctp.h    |  4 ++--
- net/sctp/sm_statefuns.c | 18 +++++++-----------
- 2 files changed, 9 insertions(+), 13 deletions(-)
+ net/sctp/sm_make_chunk.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index 9e77abd..c323b3e 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -348,10 +348,10 @@ struct sctp_cookie_param {
- };
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 4e16b02..6110447 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -228,7 +228,7 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
+ 	sctp_adaptation_ind_param_t aiparam;
+ 	sctp_supported_ext_param_t ext_param;
+ 	int num_ext = 0;
+-	__u8 extensions[3];
++	__u8 extensions[4];
+ 	struct sctp_paramhdr *auth_chunks = NULL,
+ 			*auth_hmacs = NULL;
  
- /* Section 3.3.3.1 Unrecognized Parameters (8) */
--typedef struct sctp_unrecognized_param {
-+struct sctp_unrecognized_param {
- 	struct sctp_paramhdr param_hdr;
- 	struct sctp_paramhdr unrecognized;
--} sctp_unrecognized_param_t;
-+};
- 
- 
- 
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 6568fc3..7f85239 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -306,12 +306,10 @@ sctp_disposition_t sctp_sf_do_5_1B_init(struct net *net,
- 					void *arg,
- 					sctp_cmd_seq_t *commands)
- {
--	struct sctp_chunk *chunk = arg;
--	struct sctp_chunk *repl;
-+	struct sctp_chunk *chunk = arg, *repl, *err_chunk;
-+	struct sctp_unrecognized_param *unk_param;
- 	struct sctp_association *new_asoc;
--	struct sctp_chunk *err_chunk;
- 	struct sctp_packet *packet;
--	sctp_unrecognized_param_t *unk_param;
- 	int len;
- 
- 	/* 6.10 Bundling
-@@ -435,7 +433,7 @@ sctp_disposition_t sctp_sf_do_5_1B_init(struct net *net,
- 		 * construct the parameters in INIT ACK by copying the
- 		 * ERROR causes over.
- 		 */
--		unk_param = (sctp_unrecognized_param_t *)
-+		unk_param = (struct sctp_unrecognized_param *)
- 			    ((__u8 *)(err_chunk->chunk_hdr) +
- 			    sizeof(struct sctp_chunkhdr));
- 		/* Replace the cause code with the "Unrecognized parameter"
-@@ -1419,13 +1417,11 @@ static sctp_disposition_t sctp_sf_do_unexpected_init(
- 	const sctp_subtype_t type,
- 	void *arg, sctp_cmd_seq_t *commands)
- {
--	sctp_disposition_t retval;
--	struct sctp_chunk *chunk = arg;
--	struct sctp_chunk *repl;
-+	struct sctp_chunk *chunk = arg, *repl, *err_chunk;
-+	struct sctp_unrecognized_param *unk_param;
- 	struct sctp_association *new_asoc;
--	struct sctp_chunk *err_chunk;
- 	struct sctp_packet *packet;
--	sctp_unrecognized_param_t *unk_param;
-+	sctp_disposition_t retval;
- 	int len;
- 
- 	/* 6.10 Bundling
-@@ -1555,7 +1551,7 @@ static sctp_disposition_t sctp_sf_do_unexpected_init(
- 		 * construct the parameters in INIT ACK by copying the
- 		 * ERROR causes over.
- 		 */
--		unk_param = (sctp_unrecognized_param_t *)
-+		unk_param = (struct sctp_unrecognized_param *)
- 			    ((__u8 *)(err_chunk->chunk_hdr) +
- 			    sizeof(struct sctp_chunkhdr));
- 		/* Replace the cause code with the "Unrecognized parameter"
+@@ -396,7 +396,7 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
+ 	sctp_adaptation_ind_param_t aiparam;
+ 	sctp_supported_ext_param_t ext_param;
+ 	int num_ext = 0;
+-	__u8 extensions[3];
++	__u8 extensions[4];
+ 	struct sctp_paramhdr *auth_chunks = NULL,
+ 			*auth_hmacs = NULL,
+ 			*auth_random = NULL;
 -- 
 2.1.0
 
