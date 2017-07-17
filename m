@@ -1,107 +1,71 @@
-From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:53:28 +0000
-Subject: [PATCH 33/36] net, sctp: convert sctp_ep_common.refcnt from atomic_t to refcount_t
-Message-Id: <1499172811-16271-34-git-send-email-elena.reshetova@intel.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 17 Jul 2017 03:29:49 +0000
+Subject: [PATCHv2 net-next 01/11] sctp: remove the typedef sctp_ipv4addr_param_t
+Message-Id: <cadd1baef89e215244af82032957ccde1189bcc8.1500261974.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
-In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
+References: <cover.1500261974.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1500261974.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, davem@davemloft.net, jmorris@namei.org, kaber@trash.net, yoshfuji@linux-ipv6.org, kuznet@ms2.inr.ac.ru, 3chas3@gmail.com, ralf@linux-mips.org, stephen@networkplumber.org, jchapman@katalix.com, jhs@mojatatu.com, bridge@lists.linux-foundation.org, linux-hams@vger.kernel.org, linux-x25@vger.kernel.org, peterz@infradead.org, keescook@chromium.org, linux-rdma@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-nfs@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-refcount_t type and corresponding API should be
-used instead of atomic_t when the variable is used as
-a reference counter. This allows to avoid accidental
-refcounter overflows that might lead to use-after-free
-situations.
+This patch is to remove the typedef sctp_ipv4addr_param_t, and replace
+with struct sctp_ipv4addr_param in the places where it's using this
+typedef.
 
-Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
-Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
-Signed-off-by: Kees Cook <keescook@chromium.org>
-Signed-off-by: David Windsor <dwindsor@gmail.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/structs.h | 2 +-
- net/sctp/associola.c       | 6 +++---
- net/sctp/endpointola.c     | 6 +++---
- 3 files changed, 7 insertions(+), 7 deletions(-)
+ include/linux/sctp.h     | 6 +++---
+ net/sctp/protocol.c      | 2 +-
+ net/sctp/sm_make_chunk.c | 2 +-
+ 3 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 6a0d372..5ab29af 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -1174,7 +1174,7 @@ struct sctp_ep_common {
- 	 *   refcnt   - Reference count access to this object.
- 	 *   dead     - Do not attempt to use this object.
- 	 */
--	atomic_t    refcnt;
-+	refcount_t    refcnt;
- 	bool	    dead;
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index 99e8664..e42095d 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -273,10 +273,10 @@ struct sctp_init_chunk {
  
- 	/* What socket does this endpoint belong to?  */
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index fa4f530..40ec836 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -88,7 +88,7 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
- 	asoc->base.type = SCTP_EP_TYPE_ASSOCIATION;
  
- 	/* Initialize the object handling fields.  */
--	atomic_set(&asoc->base.refcnt, 1);
-+	refcount_set(&asoc->base.refcnt, 1);
+ /* Section 3.3.2.1. IPv4 Address Parameter (5) */
+-typedef struct sctp_ipv4addr_param {
++struct sctp_ipv4addr_param {
+ 	struct sctp_paramhdr param_hdr;
+-	struct in_addr  addr;
+-} sctp_ipv4addr_param_t;
++	struct in_addr addr;
++};
  
- 	/* Initialize the bind addr area.  */
- 	sctp_bind_addr_init(&asoc->base.bind_addr, ep->base.bind_addr.port);
-@@ -873,7 +873,7 @@ void sctp_assoc_control_transport(struct sctp_association *asoc,
- /* Hold a reference to an association. */
- void sctp_association_hold(struct sctp_association *asoc)
+ /* Section 3.3.2.1. IPv6 Address Parameter (6) */
+ typedef struct sctp_ipv6addr_param {
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 989a900..852556d 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -292,7 +292,7 @@ static void sctp_v4_from_addr_param(union sctp_addr *addr,
+ static int sctp_v4_to_addr_param(const union sctp_addr *addr,
+ 				 union sctp_addr_param *param)
  {
--	atomic_inc(&asoc->base.refcnt);
-+	refcount_inc(&asoc->base.refcnt);
- }
+-	int length = sizeof(sctp_ipv4addr_param_t);
++	int length = sizeof(struct sctp_ipv4addr_param);
  
- /* Release a reference to an association and cleanup
-@@ -881,7 +881,7 @@ void sctp_association_hold(struct sctp_association *asoc)
-  */
- void sctp_association_put(struct sctp_association *asoc)
- {
--	if (atomic_dec_and_test(&asoc->base.refcnt))
-+	if (refcount_dec_and_test(&asoc->base.refcnt))
- 		sctp_association_destroy(asoc);
- }
- 
-diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
-index efbc318..0e86f98 100644
---- a/net/sctp/endpointola.c
-+++ b/net/sctp/endpointola.c
-@@ -114,7 +114,7 @@ static struct sctp_endpoint *sctp_endpoint_init(struct sctp_endpoint *ep,
- 	ep->base.type = SCTP_EP_TYPE_SOCKET;
- 
- 	/* Initialize the basic object fields. */
--	atomic_set(&ep->base.refcnt, 1);
-+	refcount_set(&ep->base.refcnt, 1);
- 	ep->base.dead = false;
- 
- 	/* Create an input queue.  */
-@@ -285,7 +285,7 @@ static void sctp_endpoint_destroy(struct sctp_endpoint *ep)
- /* Hold a reference to an endpoint. */
- void sctp_endpoint_hold(struct sctp_endpoint *ep)
- {
--	atomic_inc(&ep->base.refcnt);
-+	refcount_inc(&ep->base.refcnt);
- }
- 
- /* Release a reference to an endpoint and clean up if there are
-@@ -293,7 +293,7 @@ void sctp_endpoint_hold(struct sctp_endpoint *ep)
-  */
- void sctp_endpoint_put(struct sctp_endpoint *ep)
- {
--	if (atomic_dec_and_test(&ep->base.refcnt))
-+	if (refcount_dec_and_test(&ep->base.refcnt))
- 		sctp_endpoint_destroy(ep);
- }
- 
+ 	param->v4.param_hdr.type = SCTP_PARAM_IPV4_ADDRESS;
+ 	param->v4.param_hdr.length = htons(length);
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 4e16b02..0dc64da 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -3153,7 +3153,7 @@ bool sctp_verify_asconf(const struct sctp_association *asoc,
+ 		case SCTP_PARAM_ERR_CAUSE:
+ 			break;
+ 		case SCTP_PARAM_IPV4_ADDRESS:
+-			if (length != sizeof(sctp_ipv4addr_param_t))
++			if (length != sizeof(struct sctp_ipv4addr_param))
+ 				return false;
+ 			/* ensure there is only one addr param and it's in the
+ 			 * beginning of addip_hdr params, or we reject it.
 -- 
-2.7.4
+2.1.0
 
