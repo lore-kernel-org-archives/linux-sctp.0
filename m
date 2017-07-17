@@ -1,80 +1,71 @@
-From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:53:08 +0000
-Subject: [PATCH 13/36] net, lapb: convert lapb_cb.refcnt from atomic_t to refcount_t
-Message-Id: <1499172811-16271-14-git-send-email-elena.reshetova@intel.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 17 Jul 2017 03:29:55 +0000
+Subject: [PATCHv2 net-next 07/11] sctp: remove the typedef sctp_adaptation_ind_param_t
+Message-Id: <3dda87d79e20cdb2487fc3baa3ffad883bb3a7fb.1500261974.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
-In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
+References: <cover.1500261974.git.lucien.xin@gmail.com>
+ <cadd1baef89e215244af82032957ccde1189bcc8.1500261974.git.lucien.xin@gmail.com>
+ <0add39ae0879e3b332bafc24aa6ccdb6b0d5c85a.1500261974.git.lucien.xin@gmail.com>
+ <c8cdb622f7de0edc639936e3fa15a262e92cfa66.1500261974.git.lucien.xin@gmail.com>
+ <7faff4d9e2bef97652b742006c0165641ad84504.1500261974.git.lucien.xin@gmail.com>
+ <6c3cea13894a96c24fb2e84fc0fab8363cb4b70f.1500261974.git.lucien.xin@gmail.com>
+ <ec19ee88ce40e1e11b7bef6c84c1372dfebd5704.1500261974.git.lucien.xin@gmail.com>
+In-Reply-To: <ec19ee88ce40e1e11b7bef6c84c1372dfebd5704.1500261974.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, davem@davemloft.net, jmorris@namei.org, kaber@trash.net, yoshfuji@linux-ipv6.org, kuznet@ms2.inr.ac.ru, 3chas3@gmail.com, ralf@linux-mips.org, stephen@networkplumber.org, jchapman@katalix.com, jhs@mojatatu.com, bridge@lists.linux-foundation.org, linux-hams@vger.kernel.org, linux-x25@vger.kernel.org, peterz@infradead.org, keescook@chromium.org, linux-rdma@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-nfs@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-refcount_t type and corresponding API should be
-used instead of atomic_t when the variable is used as
-a reference counter. This allows to avoid accidental
-refcounter overflows that might lead to use-after-free
-situations.
+This patch is to remove the typedef sctp_adaptation_ind_param_t, and
+replace with struct sctp_adaptation_ind_param in the places where it's
+using this typedef.
 
-Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
-Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
-Signed-off-by: Kees Cook <keescook@chromium.org>
-Signed-off-by: David Windsor <dwindsor@gmail.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/lapb.h    | 3 ++-
- net/lapb/lapb_iface.c | 6 +++---
- 2 files changed, 5 insertions(+), 4 deletions(-)
+ include/linux/sctp.h     | 4 ++--
+ net/sctp/sm_make_chunk.c | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/lapb.h b/include/net/lapb.h
-index 9510f87..85e7737 100644
---- a/include/net/lapb.h
-+++ b/include/net/lapb.h
-@@ -1,6 +1,7 @@
- #ifndef _LAPB_H
- #define _LAPB_H 
- #include <linux/lapb.h>
-+#include <linux/refcount.h>
- 
- #define	LAPB_HEADER_LEN	20		/* LAPB over Ethernet + a bit more */
- 
-@@ -101,7 +102,7 @@ struct lapb_cb {
- 	struct lapb_frame	frmr_data;
- 	unsigned char		frmr_type;
- 
--	atomic_t		refcnt;
-+	refcount_t		refcnt;
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index 7552482..72b8787 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -303,10 +303,10 @@ struct sctp_supported_addrs_param {
  };
  
- /* lapb_iface.c */
-diff --git a/net/lapb/lapb_iface.c b/net/lapb/lapb_iface.c
-index b50b64a..e15314e 100644
---- a/net/lapb/lapb_iface.c
-+++ b/net/lapb/lapb_iface.c
-@@ -54,12 +54,12 @@ static void lapb_free_cb(struct lapb_cb *lapb)
+ /* ADDIP Section 3.2.6 Adaptation Layer Indication */
+-typedef struct sctp_adaptation_ind_param {
++struct sctp_adaptation_ind_param {
+ 	struct sctp_paramhdr param_hdr;
+ 	__be32 adaptation_ind;
+-} sctp_adaptation_ind_param_t;
++};
  
- static __inline__ void lapb_hold(struct lapb_cb *lapb)
- {
--	atomic_inc(&lapb->refcnt);
-+	refcount_inc(&lapb->refcnt);
- }
- 
- static __inline__ void lapb_put(struct lapb_cb *lapb)
- {
--	if (atomic_dec_and_test(&lapb->refcnt))
-+	if (refcount_dec_and_test(&lapb->refcnt))
- 		lapb_free_cb(lapb);
- }
- 
-@@ -136,7 +136,7 @@ static struct lapb_cb *lapb_create_cb(void)
- 	lapb->mode    = LAPB_DEFAULT_MODE;
- 	lapb->window  = LAPB_DEFAULT_WINDOW;
- 	lapb->state   = LAPB_STATE_0;
--	atomic_set(&lapb->refcnt, 1);
-+	refcount_set(&lapb->refcnt, 1);
- out:
- 	return lapb;
- }
+ /* ADDIP Section 4.2.7 Supported Extensions Parameter */
+ typedef struct sctp_supported_ext_param {
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index fb06d4f..d5f82c2 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -225,7 +225,7 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
+ 	struct sctp_sock *sp;
+ 	struct sctp_supported_addrs_param sat;
+ 	__be16 types[2];
+-	sctp_adaptation_ind_param_t aiparam;
++	struct sctp_adaptation_ind_param aiparam;
+ 	sctp_supported_ext_param_t ext_param;
+ 	int num_ext = 0;
+ 	__u8 extensions[3];
+@@ -393,7 +393,7 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
+ 	sctp_cookie_param_t *cookie;
+ 	int cookie_len;
+ 	size_t chunksize;
+-	sctp_adaptation_ind_param_t aiparam;
++	struct sctp_adaptation_ind_param aiparam;
+ 	sctp_supported_ext_param_t ext_param;
+ 	int num_ext = 0;
+ 	__u8 extensions[3];
 -- 
-2.7.4
+2.1.0
 
