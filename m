@@ -1,86 +1,89 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 23 Jul 2017 01:34:33 +0000
-Subject: [PATCH net-next 08/11] sctp: remove the typedef sctp_sack_chunk_t
-Message-Id: <b38e31f3ac26b5aa2f8a6522b002846a03a70118.1500773578.git.lucien.xin@gmail.com>
+From: "BOITEUX, Frederic" <fboiteux@prosodie.com>
+Date: Mon, 17 Jul 2017 17:27:16 +0000
+Subject: help about a lockup in sctp module
+Message-Id: <AM4PR0202MB28024E8574F1D64AA9B8F0F4B2A00@AM4PR0202MB2802.eurprd02.prod.outlook.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1500773578.git.lucien.xin@gmail.com>
- <daa1cc9a380f5a1eb37b3d30fd64942d310fe81d.1500773578.git.lucien.xin@gmail.com>
- <78a33af4a9d7ef7116637943dbd0ae1403d20114.1500773578.git.lucien.xin@gmail.com>
- <54eca4d5d79aae83b386754b4613edc388521d54.1500773578.git.lucien.xin@gmail.com>
- <303fa591073b161b9434fa7f81a8d9d119954359.1500773578.git.lucien.xin@gmail.com>
- <42fb936def0c9ef0522d2e3809c9c07dccb6974f.1500773578.git.lucien.xin@gmail.com>
- <94b6f03745317ab5c57639f2155a5e1503b4dfb3.1500773578.git.lucien.xin@gmail.com>
- <734295f5625300a5328c19e255dfbbf7d393e48f.1500773578.git.lucien.xin@gmail.com>
-In-Reply-To: <734295f5625300a5328c19e255dfbbf7d393e48f.1500773578.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: linux-sctp@vger.kernel.org
 
-This patch is to remove the typedef sctp_sack_chunk_t, and
-replace with struct sctp_sack_chunk in the places where it's
-using this typedef.
+   Hello,
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- include/linux/sctp.h    | 4 ++--
- net/sctp/chunk.c        | 2 +-
- net/sctp/sm_statefuns.c | 4 ++--
- 3 files changed, 5 insertions(+), 5 deletions(-)
+  I have a problem concerning sctp i would like to submit you :=A0on a Debi=
+an 8.0 server with 3.16.0 Linux kernel,  using SCTP , we observe a soft loc=
+kup in sctp_assoc_update_retran_path :
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index a2e4312..48f6560 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -381,10 +381,10 @@ struct sctp_sackhdr {
- 	union sctp_sack_variable variable[0];
- };
- 
--typedef struct sctp_sack_chunk {
-+struct sctp_sack_chunk {
- 	struct sctp_chunkhdr chunk_hdr;
- 	struct sctp_sackhdr sack_hdr;
--} sctp_sack_chunk_t;
-+};
- 
- 
- /* RFC 2960.  Section 3.3.5 Heartbeat Request (HEARTBEAT) (4):
-diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
-index 1323d41..681b181 100644
---- a/net/sctp/chunk.c
-+++ b/net/sctp/chunk.c
-@@ -221,7 +221,7 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
- 	    asoc->outqueue.out_qlen = 0 &&
- 	    list_empty(&asoc->outqueue.retransmit) &&
- 	    msg_len > max_data)
--		first_len -= SCTP_PAD4(sizeof(sctp_sack_chunk_t));
-+		first_len -= SCTP_PAD4(sizeof(struct sctp_sack_chunk));
- 
- 	/* Encourage Cookie-ECHO bundling. */
- 	if (asoc->state < SCTP_STATE_COOKIE_ECHOED)
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index c09dfe6..08ebe8c 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -3194,7 +3194,7 @@ sctp_disposition_t sctp_sf_eat_sack_6_2(struct net *net,
- 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
- 
- 	/* Make sure that the SACK chunk has a valid length. */
--	if (!sctp_chunk_length_valid(chunk, sizeof(sctp_sack_chunk_t)))
-+	if (!sctp_chunk_length_valid(chunk, sizeof(struct sctp_sack_chunk)))
- 		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
- 						  commands);
- 
-@@ -4515,7 +4515,7 @@ static sctp_disposition_t sctp_sf_abort_violation(
-  * Handle a protocol violation when the chunk length is invalid.
-  * "Invalid" length is identified as smaller than the minimal length a
-  * given chunk can be.  For example, a SACK chunk has invalid length
-- * if its length is set to be smaller than the size of sctp_sack_chunk_t.
-+ * if its length is set to be smaller than the size of struct sctp_sack_chunk.
-  *
-  * We inform the other end by sending an ABORT with a Protocol Violation
-  * error code.
--- 
-2.1.0
+[ 724.633312] BUG: soft lockup - CPU#0 stuck for 22s! [swapper/0:0]
+[ 724.633345] Modules linked in: hmac nfsd auth_rpcgss oid_registry nfs_acl=
+ nfs lockd fscache sunrpc vmw_vsock_vmci_transport vsock vmwgfx ttm drm_kms=
+_helper drm vmw_balloon coretemp ppdev evdev i2c_piix4 serio_raw pcspkr crc=
+32_pclmul i2c_core aesni_intel aes_x86_64 lrw gf128mul glue_helper ablk_hel=
+per cryptd vmw_vmci battery parport_pc parport shpchp processor thermal_sys=
+ ac button sctp libcrc32c crc32c_generic loop kkcore(O) autofs4 ext4 crc16 =
+mbcache jbd2 dm_mod sr_mod cdrom sg ata_generic sd_mod crc_t10dif crct10dif=
+_generic crct10dif_pclmul crct10dif_common crc32c_intel psmouse ata_piix li=
+bata vmw_pvscsi scsi_mod vmxnet3
+[ 724.633376] CPU: 0 PID: 0 Comm: swapper/0 Tainted: G O 3.16.0-4-amd64 #1 =
+Debian 3.16.39-1+deb8u2
+[ 724.633377] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Des=
+ktop Reference Platform, BIOS 6.00 09/21/2015
+[ 724.633379] task: ffffffff8181a460 ti: ffffffff81800000 task.ti: ffffffff=
+81800000
+[ 724.633380] RIP: 0010:[<ffffffffa01d1c96>] [<ffffffffa01d1c96>] sctp_asso=
+c_update_retran_path+0x56/0xc0 [sctp] <<=3D=3D
+[ 724.633388] RSP: 0018:ffff88023fc03c68 EFLAGS: 00000293
+[ 724.633389] RAX: ffff8800ba2ae400 RBX: 0000000000000000 RCX: 00000094d316=
+0b1c
+[ 724.633390] RDX: 0000000000000001 RSI: ffff8800ba2ae400 RDI: ffff8800ba2a=
+e400
+[ 724.633391] RBP: ffff8800bb14c128 R08: ffffffff81610640 R09: 000000000000=
+0001
+[ 724.633391] R10: 0000000000000003 R11: 0000000000000010 R12: ffff88023fc0=
+3bd8
+
+It's similar to Redhat bug (https://access.redhat.com/solutions/2039183) bu=
+t our kernel already have the fix for this problem. We hadn't the latest De=
+bian kernel version, but carefully looking at its changelog, we don't see p=
+otential fix available.=20
+
+As in the Redhat bug report, we also use SCTP with multiple  multi-homed en=
+dpoints, and are facing this bug during transient global network failure.
+
+In the sctp_assoc_update_retran_path(), we noted this loop :
+
+        /* Iterate from retran_path's successor back to retran_path. */
+        for (trans =3D list_next_entry(trans, transports); 1;
+             trans =3D list_next_entry(trans, transports)) {
+                /* Manually skip the head element. */
+                if (&trans->transports =3D &asoc->peer.transport_addr_list)
+                        continue;
+                if (trans->state =3D SCTP_UNCONFIRMED)
+                        continue;
+                trans_next =3D sctp_trans_elect_best(trans, trans_next);
+                /* Active is good enough for immediate return. */
+                if (trans_next->state =3D SCTP_ACTIVE)
+                        break;
+                /* We've reached the end, time to update path. */
+                if (trans =3D asoc->peer.retran_path)
+                        break;
+        }
+
+We wonder if the lockup could occur if an association have multiple distant=
+ peers, all in UNCONFIRMED state ? Because in this case, the 'continue' sta=
+tement prevent to reach the last test which break the loop, no ?
+
+We can't at now reproduce the problem in a deterministic way, limiting debu=
+g, but we would appreciate a lot your expert point of view about this probl=
+em.
+
+     With regards,
+	Fr=E9d=E9ric Boiteux.
+
+This message contains information that may be privileged or confidential an=
+d is the property of the Capgemini Group. It is intended only for the perso=
+n to whom it is addressed. If you are not the intended recipient, you are n=
+ot authorized to read, print, retain, copy, disseminate, distribute, or use=
+ this message or any part thereof. If you receive this message in error, pl=
+ease notify the sender immediately and delete all copies of this message.
 
