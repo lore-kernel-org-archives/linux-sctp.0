@@ -1,63 +1,60 @@
-From: "Reshetova, Elena" <elena.reshetova@intel.com>
-Date: Wed, 05 Jul 2017 09:03:06 +0000
-Subject: RE: [PATCH 00/36] v2 net subsystem misc refcounter conversions
-Message-Id: <2236FBA76BA1254E88B949DDB74E612B6FF20D45@IRSMSX102.ger.corp.intel.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 17 Jul 2017 03:29:53 +0000
+Subject: [PATCHv2 net-next 05/11] sctp: remove the typedef sctp_supported_addrs_param_t
+Message-Id: <6c3cea13894a96c24fb2e84fc0fab8363cb4b70f.1500261974.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
- <20170704.230040.195111189904913382.davem@davemloft.net>
-In-Reply-To: <20170704.230040.195111189904913382.davem@davemloft.net>
+References: <cover.1500261974.git.lucien.xin@gmail.com>
+ <cadd1baef89e215244af82032957ccde1189bcc8.1500261974.git.lucien.xin@gmail.com>
+ <0add39ae0879e3b332bafc24aa6ccdb6b0d5c85a.1500261974.git.lucien.xin@gmail.com>
+ <c8cdb622f7de0edc639936e3fa15a262e92cfa66.1500261974.git.lucien.xin@gmail.com>
+ <7faff4d9e2bef97652b742006c0165641ad84504.1500261974.git.lucien.xin@gmail.com>
+In-Reply-To: <7faff4d9e2bef97652b742006c0165641ad84504.1500261974.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "linux-decnet-user@lists.sourceforge.net" <linux-decnet-user@lists.sourceforge.net>, "jmorris@namei.org" <jmorris@namei.org>, "kaber@trash.net" <kaber@trash.net>, "yoshfuji@linux-ipv6.org" <yoshfuji@linux-ipv6.org>, "kuznet@ms2.inr.ac.ru" <kuznet@ms2.inr.ac.ru>, "3chas3@gmail.com" <3chas3@gmail.com>, "ralf@linux-mips.org" <ralf@linux-mips.org>, "stephen@networkplumber.org" <stephen@networkplumber.org>, "jchapman@katalix.com" <jchapman@katalix.com>, "jhs@mojatatu.com" <jhs@mojatatu.com>, "bridge@lists.linux-foundation.org" <bridge@lists.linux-foundation.org>, "linux-hams@vger.kernel.org" <linux-hams@vger.kernel.org>, "linux-x25@vger.kernel.org" <linux-x25@vger.kernel.org>, "peterz@infradead.org" <peterz@infradead.org>, "keescook@chromium.org" <keescook@chromium.org>, "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "vyasevich@gmail.com" <vyasevich@gmail.com>, "nhorman@tuxdriver.com" <nhorman@tuxdriver.com>, "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>, "zyan@redhat.com" <zyan@redhat.com>, "sage@redhat.com" <sage@redhat.com>, "bfields@fieldses.org" <bfields@fieldses.org>, "jlayton@poochiereds.net" <jlayton@poochiereds.net>, "steffen.klassert@secunet.com" <steffen.klassert@secunet.com>, "herbert@gondor.apana.org.au" <herbert@gondor.apana.org.au>, "santosh.shilimkar@oracle.com" <santosh.shilimkar@oracle.com>, "jreuter@yaina.de" <jreuter@yaina.de>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
+This patch is to remove the typedef sctp_supported_addrs_param_t, and
+replace with struct sctp_supported_addrs_param in the places where it's
+using this typedef.
 
-> From: Elena Reshetova <elena.reshetova@intel.com>
-> Date: Tue,  4 Jul 2017 15:52:55 +0300
-> 
-> > Changes in v2:
-> >  * rebase on top of net-next
-> >  * currently by default refcount_t = atomic_t (*) and uses all
-> >    atomic standard operations unless CONFIG_REFCOUNT_FULL is enabled.
-> >    This is a compromise for the systems that are critical on
-> >    performance (such as net) and cannot accept even slight delay
-> >    on the refcounter operations.
-> >
-> > This series, for various misc network components, replaces atomic_t reference
-> > counters with the new refcount_t type and API (see include/linux/refcount.h).
-> > By doing this we prevent intentional or accidental
-> > underflows or overflows that can led to use-after-free vulnerabilities.
-> > These are the last networking-related conversions with the exception of
-> > network drivers (to be send separately).
-> >
-> > Please excuse the long patch set, but seems like breaking it up
-> > won't save that much on CC list and most of the changes are
-> > trivial.
-> >
-> > The patches are fully independent and can be cherry-picked separately.
-> > In order to try with refcount functionality enabled in run-time,
-> > CONFIG_REFCOUNT_FULL must be enabled.
-> >
-> > NOTE: automatic kernel builder for some reason doesn't like all my
-> > network branches and regularly times out the builds on these branches.
-> > Suggestion for "waiting a day for a good coverage" doesn't work, as
-> > we have seen with generic network conversions. So please wait for the
-> > full report from kernel test rebot before merging further up.
-> > This has been compile-tested in 116 configs, but 71 timed out (including
-> > all s390-related configs again). I am trying to see if they can fix
-> > build coverage for me in meanwhile.
-> >
-> > * The respective change is currently merged into -next as
-> >   "locking/refcount: Create unchecked atomic_t implementation".
-> 
-> Series applied, that's enough for this cycle, please.
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/linux/sctp.h     | 4 ++--
+ net/sctp/sm_make_chunk.c | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-Thank you very much David! I really appreciate you taking so many of these conversions in
-one go! I will stop for now :) 
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index c43e906..3ca3ab7 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -297,10 +297,10 @@ struct sctp_hostname_param {
+ };
+ 
+ /* Section 3.3.2.1 Supported Address Types (12) */
+-typedef struct sctp_supported_addrs_param {
++struct sctp_supported_addrs_param {
+ 	struct sctp_paramhdr param_hdr;
+ 	__be16 types[0];
+-} sctp_supported_addrs_param_t;
++};
+ 
+ /* Appendix A. ECN Capable (32768) */
+ typedef struct sctp_ecn_capable_param {
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index e5be305..fb06d4f 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -223,7 +223,7 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
+ 	struct sctp_chunk *retval = NULL;
+ 	int num_types, addrs_len = 0;
+ 	struct sctp_sock *sp;
+-	sctp_supported_addrs_param_t sat;
++	struct sctp_supported_addrs_param sat;
+ 	__be16 types[2];
+ 	sctp_adaptation_ind_param_t aiparam;
+ 	sctp_supported_ext_param_t ext_param;
+-- 
+2.1.0
 
-With regards to net, I only have networking drivers left (16 patches in total), but I can submit them in the
-next round. Will go bug other subsystem maintainers next :) 
-
-Best Regards,
-Elena.
