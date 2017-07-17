@@ -1,84 +1,49 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 23 Jul 2017 01:34:26 +0000
-Subject: [PATCH net-next 01/11] sctp: remove the typedef sctp_initack_chunk_t
-Message-Id: <daa1cc9a380f5a1eb37b3d30fd64942d310fe81d.1500773578.git.lucien.xin@gmail.com>
+Date: Mon, 17 Jul 2017 03:29:48 +0000
+Subject: [PATCHv2 net-next 00/11] sctp: remove typedefs from structures part 2
+Message-Id: <cover.1500261974.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1500773578.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1500773578.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to remove the typedef sctp_initack_chunk_t, and
-replace with struct sctp_initack_chunk in the places where it's
-using this typedef.
+As we know, typedef is suggested not to use in kernel, even checkpatch.pl
+also gives warnings about it. Now sctp is using it for many structures.
 
-It is also to use sizeof(variable) instead of sizeof(type).
+All this kind of typedef's using should be removed. This patchset is the
+part 2 to remove it for another 11 basic structures.
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- include/linux/sctp.h    |  5 ++++-
- net/sctp/sm_statefuns.c | 13 ++++++-------
- 2 files changed, 10 insertions(+), 8 deletions(-)
+Just as the part 1, No any code's logic would be changed in these patches,
+only cleaning up.
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index 913474d..05c2099 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -336,7 +336,10 @@ struct sctp_hmac_algo_param {
-  *   The INIT ACK chunk is used to acknowledge the initiation of an SCTP
-  *   association.
-  */
--typedef struct sctp_init_chunk sctp_initack_chunk_t;
-+struct sctp_initack_chunk {
-+	struct sctp_chunkhdr chunk_hdr;
-+	struct sctp_inithdr init_hdr;
-+};
- 
- /* Section 3.3.3.1 State Cookie (7) */
- typedef struct sctp_cookie_param {
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index ae4c48c..6568fc3 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -518,7 +518,7 @@ sctp_disposition_t sctp_sf_do_5_1C_ack(struct net *net,
- 		return sctp_sf_violation_chunk(net, ep, asoc, type, arg, commands);
- 
- 	/* Make sure that the INIT-ACK chunk has a valid length */
--	if (!sctp_chunk_length_valid(chunk, sizeof(sctp_initack_chunk_t)))
-+	if (!sctp_chunk_length_valid(chunk, sizeof(struct sctp_initack_chunk)))
- 		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
- 						  commands);
- 	/* Grab the INIT header.  */
-@@ -4453,11 +4453,10 @@ static sctp_disposition_t sctp_sf_abort_violation(
- 		/* Treat INIT-ACK as a special case during COOKIE-WAIT. */
- 		if (chunk->chunk_hdr->type = SCTP_CID_INIT_ACK &&
- 		    !asoc->peer.i.init_tag) {
--			sctp_initack_chunk_t *initack;
-+			struct sctp_initack_chunk *initack;
- 
--			initack = (sctp_initack_chunk_t *)chunk->chunk_hdr;
--			if (!sctp_chunk_length_valid(chunk,
--						     sizeof(sctp_initack_chunk_t)))
-+			initack = (struct sctp_initack_chunk *)chunk->chunk_hdr;
-+			if (!sctp_chunk_length_valid(chunk, sizeof(*initack)))
- 				abort->chunk_hdr->flags |= SCTP_CHUNK_FLAG_T;
- 			else {
- 				unsigned int inittag;
-@@ -6106,9 +6105,9 @@ static struct sctp_packet *sctp_ootb_pkt_new(struct net *net,
- 		switch (chunk->chunk_hdr->type) {
- 		case SCTP_CID_INIT_ACK:
- 		{
--			sctp_initack_chunk_t *initack;
-+			struct sctp_initack_chunk *initack;
- 
--			initack = (sctp_initack_chunk_t *)chunk->chunk_hdr;
-+			initack = (struct sctp_initack_chunk *)chunk->chunk_hdr;
- 			vtag = ntohl(initack->init_hdr.init_tag);
- 			break;
- 		}
+Note that v1->v2, nothing changed, just because net-next were closed when
+posting v1.
+
+Xin Long (11):
+  sctp: remove the typedef sctp_ipv4addr_param_t
+  sctp: remove the typedef sctp_ipv6addr_param_t
+  sctp: remove the typedef sctp_cookie_preserve_param_t
+  sctp: remove the typedef sctp_hostname_param_t
+  sctp: remove the typedef sctp_supported_addrs_param_t
+  sctp: remove struct sctp_ecn_capable_param
+  sctp: remove the typedef sctp_adaptation_ind_param_t
+  sctp: remove the typedef sctp_supported_ext_param_t
+  sctp: remove the typedef sctp_random_param_t
+  sctp: remove the typedef sctp_chunks_param_t
+  sctp: remove the typedef sctp_hmac_algo_param_t
+
+ include/linux/sctp.h       | 49 +++++++++++++++++++++-------------------------
+ include/net/sctp/structs.h |  6 +++---
+ net/sctp/auth.c            | 13 ++++++------
+ net/sctp/endpointola.c     |  8 ++++----
+ net/sctp/ipv6.c            |  2 +-
+ net/sctp/protocol.c        |  2 +-
+ net/sctp/sm_make_chunk.c   | 32 ++++++++++++------------------
+ net/sctp/sm_statefuns.c    | 11 +++++------
+ 8 files changed, 55 insertions(+), 68 deletions(-)
+
 -- 
 2.1.0
 
