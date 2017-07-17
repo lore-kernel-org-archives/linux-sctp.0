@@ -1,111 +1,92 @@
-From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:53:06 +0000
-Subject: [PATCH 11/36] net, calipso: convert calipso_doi.refcount from atomic_t to refcount_t
-Message-Id: <1499172811-16271-12-git-send-email-elena.reshetova@intel.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 17 Jul 2017 03:29:57 +0000
+Subject: [PATCHv2 net-next 09/11] sctp: remove the typedef sctp_random_param_t
+Message-Id: <febcd28f69981f971e95de45041e834692e0f03e.1500261974.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
-In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
+References: <cover.1500261974.git.lucien.xin@gmail.com>
+ <cadd1baef89e215244af82032957ccde1189bcc8.1500261974.git.lucien.xin@gmail.com>
+ <0add39ae0879e3b332bafc24aa6ccdb6b0d5c85a.1500261974.git.lucien.xin@gmail.com>
+ <c8cdb622f7de0edc639936e3fa15a262e92cfa66.1500261974.git.lucien.xin@gmail.com>
+ <7faff4d9e2bef97652b742006c0165641ad84504.1500261974.git.lucien.xin@gmail.com>
+ <6c3cea13894a96c24fb2e84fc0fab8363cb4b70f.1500261974.git.lucien.xin@gmail.com>
+ <ec19ee88ce40e1e11b7bef6c84c1372dfebd5704.1500261974.git.lucien.xin@gmail.com>
+ <3dda87d79e20cdb2487fc3baa3ffad883bb3a7fb.1500261974.git.lucien.xin@gmail.com>
+ <2d6a7b26e6b2766ed9fd0d86d8ac390e12762b02.1500261974.git.lucien.xin@gmail.com>
+In-Reply-To: <2d6a7b26e6b2766ed9fd0d86d8ac390e12762b02.1500261974.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, davem@davemloft.net, jmorris@namei.org, kaber@trash.net, yoshfuji@linux-ipv6.org, kuznet@ms2.inr.ac.ru, 3chas3@gmail.com, ralf@linux-mips.org, stephen@networkplumber.org, jchapman@katalix.com, jhs@mojatatu.com, bridge@lists.linux-foundation.org, linux-hams@vger.kernel.org, linux-x25@vger.kernel.org, peterz@infradead.org, keescook@chromium.org, linux-rdma@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-nfs@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-refcount_t type and corresponding API should be
-used instead of atomic_t when the variable is used as
-a reference counter. This allows to avoid accidental
-refcounter overflows that might lead to use-after-free
-situations.
+This patch is to remove the typedef sctp_random_param_t, and
+replace with struct sctp_random_param in the places where it's
+using this typedef.
 
-Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
-Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
-Signed-off-by: Kees Cook <keescook@chromium.org>
-Signed-off-by: David Windsor <dwindsor@gmail.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/calipso.h |  4 ++--
- net/ipv6/calipso.c    | 12 ++++++------
- 2 files changed, 8 insertions(+), 8 deletions(-)
+ include/linux/sctp.h       | 4 ++--
+ include/net/sctp/structs.h | 2 +-
+ net/sctp/auth.c            | 9 ++++-----
+ 3 files changed, 7 insertions(+), 8 deletions(-)
 
-diff --git a/include/net/calipso.h b/include/net/calipso.h
-index b1b30cd..5f95b11 100644
---- a/include/net/calipso.h
-+++ b/include/net/calipso.h
-@@ -38,7 +38,7 @@
- #include <linux/skbuff.h>
- #include <net/netlabel.h>
- #include <net/request_sock.h>
--#include <linux/atomic.h>
-+#include <linux/refcount.h>
- #include <asm/unaligned.h>
- 
- /* known doi values */
-@@ -57,7 +57,7 @@ struct calipso_doi {
- 	u32 doi;
- 	u32 type;
- 
--	atomic_t refcount;
-+	refcount_t refcount;
- 	struct list_head list;
- 	struct rcu_head rcu;
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index 7624568..9b1aa39 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -315,10 +315,10 @@ struct sctp_supported_ext_param {
  };
-diff --git a/net/ipv6/calipso.c b/net/ipv6/calipso.c
-index 4406752..1323b96 100644
---- a/net/ipv6/calipso.c
-+++ b/net/ipv6/calipso.c
-@@ -338,7 +338,7 @@ static struct calipso_doi *calipso_doi_search(u32 doi)
- 	struct calipso_doi *iter;
  
- 	list_for_each_entry_rcu(iter, &calipso_doi_list, list)
--		if (iter->doi = doi && atomic_read(&iter->refcount))
-+		if (iter->doi = doi && refcount_read(&iter->refcount))
- 			return iter;
- 	return NULL;
+ /* AUTH Section 3.1 Random */
+-typedef struct sctp_random_param {
++struct sctp_random_param {
+ 	struct sctp_paramhdr param_hdr;
+ 	__u8 random_val[0];
+-} sctp_random_param_t;
++};
+ 
+ /* AUTH Section 3.2 Chunk List */
+ typedef struct sctp_chunks_param {
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 5ab29af..f22c079 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1556,7 +1556,7 @@ struct sctp_association {
+ 		 * and authenticated chunk list.  All that is part of the
+ 		 * cookie and these are just pointers to those locations
+ 		 */
+-		sctp_random_param_t *peer_random;
++		struct sctp_random_param *peer_random;
+ 		sctp_chunks_param_t *peer_chunks;
+ 		sctp_hmac_algo_param_t *peer_hmacs;
+ 	} peer;
+diff --git a/net/sctp/auth.c b/net/sctp/auth.c
+index e001b01..0d9c63e 100644
+--- a/net/sctp/auth.c
++++ b/net/sctp/auth.c
+@@ -185,7 +185,7 @@ static int sctp_auth_compare_vectors(struct sctp_auth_bytes *vector1,
+  *    are called the two key vectors.
+  */
+ static struct sctp_auth_bytes *sctp_auth_make_key_vector(
+-			sctp_random_param_t *random,
++			struct sctp_random_param *random,
+ 			sctp_chunks_param_t *chunks,
+ 			sctp_hmac_algo_param_t *hmacs,
+ 			gfp_t gfp)
+@@ -226,10 +226,9 @@ static struct sctp_auth_bytes *sctp_auth_make_local_vector(
+ 				    gfp_t gfp)
+ {
+ 	return sctp_auth_make_key_vector(
+-				    (sctp_random_param_t *)asoc->c.auth_random,
+-				    (sctp_chunks_param_t *)asoc->c.auth_chunks,
+-				    (sctp_hmac_algo_param_t *)asoc->c.auth_hmacs,
+-				    gfp);
++			(struct sctp_random_param *)asoc->c.auth_random,
++			(sctp_chunks_param_t *)asoc->c.auth_chunks,
++			(sctp_hmac_algo_param_t *)asoc->c.auth_hmacs, gfp);
  }
-@@ -370,7 +370,7 @@ static int calipso_doi_add(struct calipso_doi *doi_def,
- 	if (doi_def->doi = CALIPSO_DOI_UNKNOWN)
- 		goto doi_add_return;
  
--	atomic_set(&doi_def->refcount, 1);
-+	refcount_set(&doi_def->refcount, 1);
- 
- 	spin_lock(&calipso_doi_list_lock);
- 	if (calipso_doi_search(doi_def->doi)) {
-@@ -458,7 +458,7 @@ static int calipso_doi_remove(u32 doi, struct netlbl_audit *audit_info)
- 		ret_val = -ENOENT;
- 		goto doi_remove_return;
- 	}
--	if (!atomic_dec_and_test(&doi_def->refcount)) {
-+	if (!refcount_dec_and_test(&doi_def->refcount)) {
- 		spin_unlock(&calipso_doi_list_lock);
- 		ret_val = -EBUSY;
- 		goto doi_remove_return;
-@@ -499,7 +499,7 @@ static struct calipso_doi *calipso_doi_getdef(u32 doi)
- 	doi_def = calipso_doi_search(doi);
- 	if (!doi_def)
- 		goto doi_getdef_return;
--	if (!atomic_inc_not_zero(&doi_def->refcount))
-+	if (!refcount_inc_not_zero(&doi_def->refcount))
- 		doi_def = NULL;
- 
- doi_getdef_return:
-@@ -520,7 +520,7 @@ static void calipso_doi_putdef(struct calipso_doi *doi_def)
- 	if (!doi_def)
- 		return;
- 
--	if (!atomic_dec_and_test(&doi_def->refcount))
-+	if (!refcount_dec_and_test(&doi_def->refcount))
- 		return;
- 	spin_lock(&calipso_doi_list_lock);
- 	list_del_rcu(&doi_def->list);
-@@ -553,7 +553,7 @@ static int calipso_doi_walk(u32 *skip_cnt,
- 
- 	rcu_read_lock();
- 	list_for_each_entry_rcu(iter_doi, &calipso_doi_list, list)
--		if (atomic_read(&iter_doi->refcount) > 0) {
-+		if (refcount_read(&iter_doi->refcount) > 0) {
- 			if (doi_cnt++ < *skip_cnt)
- 				continue;
- 			ret_val = callback(iter_doi, cb_arg);
+ /* Make a key vector based on peer's parameters */
 -- 
-2.7.4
+2.1.0
 
