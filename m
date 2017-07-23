@@ -1,43 +1,53 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 05 Jul 2017 00:32:22 +0000
-Subject: [PATCH net-next 04/11] sctp: remove the typedef sctp_hostname_param_t
-Message-Id: <8d2e6145478bb4d24185d4ffd5547c7058f0dca9.1499214692.git.lucien.xin@gmail.com>
+Date: Sun, 23 Jul 2017 01:34:29 +0000
+Subject: [PATCH net-next 04/11] sctp: remove the typedef sctp_gap_ack_block_t
+Message-Id: <303fa591073b161b9434fa7f81a8d9d119954359.1500773578.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1499214692.git.lucien.xin@gmail.com>
- <6ba452f31d10acdc95f3cf679ecab15833f7843c.1499214692.git.lucien.xin@gmail.com>
- <77fa3a776118873a7e5d8203dd59011995b0e865.1499214692.git.lucien.xin@gmail.com>
- <090c24ed353f37a2bbce41ecc5feec6fc8cffa8b.1499214692.git.lucien.xin@gmail.com>
-In-Reply-To: <090c24ed353f37a2bbce41ecc5feec6fc8cffa8b.1499214692.git.lucien.xin@gmail.com>
+References: <cover.1500773578.git.lucien.xin@gmail.com>
+ <daa1cc9a380f5a1eb37b3d30fd64942d310fe81d.1500773578.git.lucien.xin@gmail.com>
+ <78a33af4a9d7ef7116637943dbd0ae1403d20114.1500773578.git.lucien.xin@gmail.com>
+ <54eca4d5d79aae83b386754b4613edc388521d54.1500773578.git.lucien.xin@gmail.com>
+In-Reply-To: <54eca4d5d79aae83b386754b4613edc388521d54.1500773578.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-Remove this typedef, there is even no places using it.
+This patch is to remove the typedef sctp_gap_ack_block_t, and
+replace with struct sctp_gap_ack_block in the places where it's
+using this typedef.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/linux/sctp.h | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ include/linux/sctp.h | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index d8f9d8f..c43e906 100644
+index c323b3e..b84b8e8 100644
 --- a/include/linux/sctp.h
 +++ b/include/linux/sctp.h
-@@ -291,10 +291,10 @@ struct sctp_cookie_preserve_param {
- };
+@@ -363,16 +363,16 @@ struct sctp_unrecognized_param {
+  *  subsequences of DATA chunks as represented by their TSNs.
+  */
  
- /* Section 3.3.2.1 Host Name Address (11) */
--typedef struct sctp_hostname_param {
-+struct sctp_hostname_param {
- 	struct sctp_paramhdr param_hdr;
- 	uint8_t hostname[0];
--} sctp_hostname_param_t;
+-typedef struct sctp_gap_ack_block {
++struct sctp_gap_ack_block {
+ 	__be16 start;
+ 	__be16 end;
+-} sctp_gap_ack_block_t;
 +};
  
- /* Section 3.3.2.1 Supported Address Types (12) */
- typedef struct sctp_supported_addrs_param {
+ typedef __be32 sctp_dup_tsn_t;
+ 
+ typedef union {
+-	sctp_gap_ack_block_t	gab;
+-        sctp_dup_tsn_t		dup;
++	struct sctp_gap_ack_block gab;
++	sctp_dup_tsn_t dup;
+ } sctp_sack_variable_t;
+ 
+ typedef struct sctp_sackhdr {
 -- 
 2.1.0
 
