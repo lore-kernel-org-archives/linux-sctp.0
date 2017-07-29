@@ -1,72 +1,59 @@
-From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue, 04 Jul 2017 12:53:02 +0000
-Subject: [PATCH 07/36] net, atm: convert lec_arp_table.usage from atomic_t to refcount_t
-Message-Id: <1499172811-16271-8-git-send-email-elena.reshetova@intel.com>
+From: <deitilde@inbox.lv>
+Date: Sat, 29 Jul 2017 10:03:56 +0000
+Subject: 
+Message-Id: <150132263616.2160.12135443477838627850@hinet.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
-In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, davem@davemloft.net, jmorris@namei.org, kaber@trash.net, yoshfuji@linux-ipv6.org, kuznet@ms2.inr.ac.ru, 3chas3@gmail.com, ralf@linux-mips.org, stephen@networkplumber.org, jchapman@katalix.com, jhs@mojatatu.com, bridge@lists.linux-foundation.org, linux-hams@vger.kernel.org, linux-x25@vger.kernel.org, peterz@infradead.org, keescook@chromium.org, linux-rdma@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-nfs@vger.kernel.org, zyan@redhat.com, sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net, steffen.klassert@secunet.com, herbert@gondor.apana.org.au, santosh.shilimkar@oracle.com, jreuter@yaina.de, Elena Reshetova <elena.reshetova@intel.com>, Hans Liljestrand <ishkamiel@gmail.com>, David Windsor <dwindsor@gmail.com>
+To: linux-sctp@vger.kernel.org
 
-refcount_t type and corresponding API should be
-used instead of atomic_t when the variable is used as
-a reference counter. This allows to avoid accidental
-refcounter overflows that might lead to use-after-free
-situations.
-
-Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
-Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
-Signed-off-by: Kees Cook <keescook@chromium.org>
-Signed-off-by: David Windsor <dwindsor@gmail.com>
----
- net/atm/lec.c      | 6 +++---
- net/atm/lec_arpc.h | 2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/net/atm/lec.c b/net/atm/lec.c
-index 7554571..093fe87 100644
---- a/net/atm/lec.c
-+++ b/net/atm/lec.c
-@@ -101,12 +101,12 @@ static void lec_vcc_close(struct lec_priv *priv, struct atm_vcc *vcc);
- /* must be done under lec_arp_lock */
- static inline void lec_arp_hold(struct lec_arp_table *entry)
- {
--	atomic_inc(&entry->usage);
-+	refcount_inc(&entry->usage);
- }
- 
- static inline void lec_arp_put(struct lec_arp_table *entry)
- {
--	if (atomic_dec_and_test(&entry->usage))
-+	if (refcount_dec_and_test(&entry->usage))
- 		kfree(entry);
- }
- 
-@@ -1564,7 +1564,7 @@ static struct lec_arp_table *make_entry(struct lec_priv *priv,
- 	to_return->last_used = jiffies;
- 	to_return->priv = priv;
- 	skb_queue_head_init(&to_return->tx_wait);
--	atomic_set(&to_return->usage, 1);
-+	refcount_set(&to_return->usage, 1);
- 	return to_return;
- }
- 
-diff --git a/net/atm/lec_arpc.h b/net/atm/lec_arpc.h
-index ec67435..d923f53 100644
---- a/net/atm/lec_arpc.h
-+++ b/net/atm/lec_arpc.h
-@@ -47,7 +47,7 @@ struct lec_arp_table {
- 					 * the length of the tlvs array
- 					 */
- 	struct sk_buff_head tx_wait;	/* wait queue for outgoing packets */
--	atomic_t usage;			/* usage count */
-+	refcount_t usage;		/* usage count */
- };
- 
- /*
--- 
-2.7.4
-
+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
