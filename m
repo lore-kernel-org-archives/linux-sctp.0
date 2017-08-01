@@ -1,88 +1,42 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 08 Aug 2017 02:35:37 +0000
-Subject: Re: [PATCH net] sctp: use __GFP_NOWARN for sctpw.fifo allocation
-Message-Id: <CADvbK_e75GgunhX-sjdN93rhH4iUnBpUpmAexVCTeCX4=pxHcA@mail.gmail.com>
+From: "Franklin Marmon" <marmon@hydeco.com>
+Date: Tue, 01 Aug 2017 19:43:47 +0000
+Subject: address already in use on previously used (but currently unused) IP:PORT combinations in sctp_bindx(
+Message-Id: <0bbe01d30afe$80ce96f0$826bc4d0$@hydeco.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <53b360387db05bf31db481234e7070e4a7ba6a25.1501936269.git.lucien.xin@gmail.com>
- <20170805170859.GA7613@localhost.localdomain> <CADvbK_f_q-gJHey9oUZUrxyGSYXasMVj0kqvhEkzDUPsGDzeng@mail.gmail.com>
- <20170806233927.GB7613@localhost.localdomain>
-In-Reply-To: <20170806233927.GB7613@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>
+To: linux-sctp@vger.kernel.org
 
-On Mon, Aug 7, 2017 at 11:39 AM, Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
-> On Sun, Aug 06, 2017 at 06:14:39PM +1200, Xin Long wrote:
->> On Sun, Aug 6, 2017 at 5:08 AM, Marcelo Ricardo Leitner
->> <marcelo.leitner@gmail.com> wrote:
->> > On Sat, Aug 05, 2017 at 08:31:09PM +0800, Xin Long wrote:
->> >> Chen Wei found a kernel call trace when modprobe sctp_probe with
->> >> bufsize set with a huge value.
->> >>
->> >> It's because in sctpprobe_init when alloc memory for sctpw.fifo,
->> >> the size is got from userspace. If it is too large, kernel will
->> >> fail and give a warning.
->> >
->> > Yes but sctp_probe can only be loaded by an admin and it would happen
->> > only during modprobe. It's different from the commit mentioned below, on
->> > which any user could trigger it.
->> yeah, in this way it's different, I think generally it's acceptable to have
->> this kinda warning call trace by admin.
->>
->> But it could get the feedback from the return value and the warning
->> call trace seems not useful. sometimes users may be confused
->
-> users or admins?
-admins.
->
->> with this call trace. So it may be better not to dump the warning ?
->>
->> Or you think it can be helpful if we leave it here ?
->
-> I'm afraid we may be exagerating here. There are several other ways that
-> an admin can trigger scary warnings, this one is no special. I'd rather
-> leave this one to the mm defaults instead.
-OK, I'm all for that.
->
->>
->> >
->> >>
->> >> As there will be a fallback allocation later, this patch is just
->> >> to fail silently and return ret, just as commit 0ccc22f425e5
->> >> ("sit: use __GFP_NOWARN for user controlled allocation") did.
->> >>
->> >> Reported-by: Chen Wei <weichen@redhat.com>
->> >> Signed-off-by: Xin Long <lucien.xin@gmail.com>
->> >> ---
->> >>  net/sctp/probe.c | 2 +-
->> >>  1 file changed, 1 insertion(+), 1 deletion(-)
->> >>
->> >> diff --git a/net/sctp/probe.c b/net/sctp/probe.c
->> >> index 6cc2152..5bf3164 100644
->> >> --- a/net/sctp/probe.c
->> >> +++ b/net/sctp/probe.c
->> >> @@ -210,7 +210,7 @@ static __init int sctpprobe_init(void)
->> >>
->> >>       init_waitqueue_head(&sctpw.wait);
->> >>       spin_lock_init(&sctpw.lock);
->> >> -     if (kfifo_alloc(&sctpw.fifo, bufsize, GFP_KERNEL))
->> >> +     if (kfifo_alloc(&sctpw.fifo, bufsize, GFP_KERNEL | __GFP_NOWARN))
->> >>               return ret;
->> >>
->> >>       if (!proc_create(procname, S_IRUSR, init_net.proc_net,
->> >> --
->> >> 2.1.0
->> >>
->> >> --
->> >> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> >> the body of a message to majordomo@vger.kernel.org
->> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> >>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+Hello,
+
+I'm having trouble with sctp_bindx() reporting address already in use when
+attempting to bind sockets. The IP:PORT combinations are not open, do not
+show up in /proc/net/sctp/assocs, netstat, ss, or lsof. The IP:PORTs were
+bound in a previous instance of the client application however that
+application itself has been killed and restarted. It is as if the kernel
+believes the IP:PORT pair is in use when, as far as I can tell, it isn't. If
+I change the ports used in my addresses to ports I have not used previously
+the bind succeeds without issue. Any suggestions on how I can tell what is
+holding the ports open, or how to reset the sctp port table in the kernel?
+
+Lksctp-tools verison: 1.0.16
+Kernel version: 4.4.6
+IP-Family: IPv4
+Number of addresses passed to sctp_bindx(): normally 2, have tested with
+each address individually
+
+frm
+
+
+Franklin Marmon
+The Hyde Company
+331 East Broadway
+Missoula, MT 59801
+
+Office: 406.541.4777
+Cell: 406.493.2460
+http://www.hydeco.com
+marmon@hydeco.com
+
+
