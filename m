@@ -1,88 +1,64 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 11 Aug 2017 02:23:51 +0000
-Subject: [PATCH net-next 07/14] sctp: remove the typedef sctp_cmd_t
-Message-Id: <d9ac131331781f85d2662c4c15692344260bb1b6.1502417340.git.lucien.xin@gmail.com>
+Date: Thu, 03 Aug 2017 07:42:13 +0000
+Subject: [PATCH net-next 05/14] sctp: remove the typedef sctp_error_t
+Message-Id: <91fc6fd265b6623a2244f17a9e5581962a2183d0.1501745729.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1502417340.git.lucien.xin@gmail.com>
- <e15322cc52e110730f2bcb77973222b687717369.1502417340.git.lucien.xin@gmail.com>
- <67dec3f4936413e5bf596dc0ce9be0b9aa15a444.1502417340.git.lucien.xin@gmail.com>
- <5031dc5f40135c4ede57452bc61a1b29dfc76d89.1502417340.git.lucien.xin@gmail.com>
- <58f1f86286c91cf55e9d6eb9395e59e9f1fd4519.1502417340.git.lucien.xin@gmail.com>
- <77692e0783b8134d97fd4c15e37cf0b6e4fa643e.1502417340.git.lucien.xin@gmail.com>
- <bec27150caf5435011467a5488247f853f782409.1502417340.git.lucien.xin@gmail.com>
-In-Reply-To: <bec27150caf5435011467a5488247f853f782409.1502417340.git.lucien.xin@gmail.com>
+References: <cover.1501745729.git.lucien.xin@gmail.com>
+ <8149f8b0a190eb047abfe48a7fa79ba74e4e4544.1501745729.git.lucien.xin@gmail.com>
+ <457c0c30e478f1ead75d3606e17519ca23daddfc.1501745729.git.lucien.xin@gmail.com>
+ <ef0bf503017711311e9fc167c4b5bfd9de885d04.1501745729.git.lucien.xin@gmail.com>
+ <61746e2a2efa75634ab632cf264ad902aa3f9685.1501745729.git.lucien.xin@gmail.com>
+In-Reply-To: <61746e2a2efa75634ab632cf264ad902aa3f9685.1501745729.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to remove the typedef sctp_cmd_t, and
-replace with enum sctp_cmd in the places where it's
-using this typedef.
+This patch is to remove the typedef sctp_error_t, and replace
+with enum sctp_error in the places where it's using this typedef.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/command.h | 14 +++++++-------
- net/sctp/sm_sideeffect.c   |  2 +-
- 2 files changed, 8 insertions(+), 8 deletions(-)
+ include/linux/sctp.h    | 4 ++--
+ net/sctp/sm_statefuns.c | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
-index 376cb78..4e9e589 100644
---- a/include/net/sctp/command.h
-+++ b/include/net/sctp/command.h
-@@ -196,15 +196,15 @@ static inline sctp_arg_t SCTP_NULL(void)
- 	return retval;
- }
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index 07c12e9..c74ea93 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -457,7 +457,7 @@ struct sctp_operr_chunk {
+  *      9              No User Data
+  *     10              Cookie Received While Shutting Down
+  */
+-typedef enum {
++enum sctp_error {
  
--typedef struct {
-+struct sctp_cmd {
- 	sctp_arg_t obj;
- 	sctp_verb_t verb;
--} sctp_cmd_t;
+ 	SCTP_ERROR_NO_ERROR	   = cpu_to_be16(0x00),
+ 	SCTP_ERROR_INV_STRM	   = cpu_to_be16(0x01),
+@@ -512,7 +512,7 @@ typedef enum {
+ 	 * 0x0105          Unsupported HMAC Identifier
+ 	 */
+ 	 SCTP_ERROR_UNSUP_HMAC	= cpu_to_be16(0x0105)
+-} sctp_error_t;
 +};
  
- typedef struct {
--	sctp_cmd_t cmds[SCTP_MAX_NUM_COMMANDS];
--	sctp_cmd_t *last_used_slot;
--	sctp_cmd_t *next_cmd;
-+	struct sctp_cmd cmds[SCTP_MAX_NUM_COMMANDS];
-+	struct sctp_cmd *last_used_slot;
-+	struct sctp_cmd *next_cmd;
- } sctp_cmd_seq_t;
  
  
-@@ -228,7 +228,7 @@ static inline int sctp_init_cmd_seq(sctp_cmd_seq_t *seq)
- static inline void sctp_add_cmd_sf(sctp_cmd_seq_t *seq, sctp_verb_t verb,
- 				   sctp_arg_t obj)
- {
--	sctp_cmd_t *cmd = seq->last_used_slot - 1;
-+	struct sctp_cmd *cmd = seq->last_used_slot - 1;
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 3b121d2..1d12499 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -528,7 +528,7 @@ sctp_disposition_t sctp_sf_do_5_1C_ack(struct net *net,
+ 			      (struct sctp_init_chunk *)chunk->chunk_hdr, chunk,
+ 			      &err_chunk)) {
  
- 	BUG_ON(cmd < seq->cmds);
+-		sctp_error_t error = SCTP_ERROR_NO_RESOURCE;
++		enum sctp_error error = SCTP_ERROR_NO_RESOURCE;
  
-@@ -240,7 +240,7 @@ static inline void sctp_add_cmd_sf(sctp_cmd_seq_t *seq, sctp_verb_t verb,
- /* Return the next command structure in an sctp_cmd_seq.
-  * Return NULL at the end of the sequence.
-  */
--static inline sctp_cmd_t *sctp_next_cmd(sctp_cmd_seq_t *seq)
-+static inline struct sctp_cmd *sctp_next_cmd(sctp_cmd_seq_t *seq)
- {
- 	if (seq->next_cmd <= seq->last_used_slot)
- 		return NULL;
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index 5e8e418..0cb3d5a 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -1277,7 +1277,7 @@ static int sctp_cmd_interpreter(enum sctp_event event_type,
- 	struct sctp_sock *sp = sctp_sk(sk);
- 	int error = 0;
- 	int force;
--	sctp_cmd_t *cmd;
-+	struct sctp_cmd *cmd;
- 	struct sctp_chunk *new_obj;
- 	struct sctp_chunk *chunk = NULL;
- 	struct sctp_packet *packet;
+ 		/* This chunk contains fatal error. It is to be discarded.
+ 		 * Send an ABORT, with causes.  If there are no causes,
 -- 
 2.1.0
 
