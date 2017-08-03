@@ -1,33 +1,48 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Mon, 21 Aug 2017 08:40:24 +0000
-Subject: RE: SOCK_STREAM and EPOLLET
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6DD005C678@AcuExch.aculab.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 03 Aug 2017 07:42:17 +0000
+Subject: [PATCH net-next 09/14] sctp: remove the typedef sctp_cwr_chunk_t
+Message-Id: <4117cc15ad262c164f9725e4dee1f9d0b13dd992.1501745729.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1ae8a030-75d2-7cd0-8feb-8556e66833fd@simon.arlott.org.uk>
-In-Reply-To: <1ae8a030-75d2-7cd0-8feb-8556e66833fd@simon.arlott.org.uk>
+References: <cover.1501745729.git.lucien.xin@gmail.com>
+ <8149f8b0a190eb047abfe48a7fa79ba74e4e4544.1501745729.git.lucien.xin@gmail.com>
+ <457c0c30e478f1ead75d3606e17519ca23daddfc.1501745729.git.lucien.xin@gmail.com>
+ <ef0bf503017711311e9fc167c4b5bfd9de885d04.1501745729.git.lucien.xin@gmail.com>
+ <61746e2a2efa75634ab632cf264ad902aa3f9685.1501745729.git.lucien.xin@gmail.com>
+ <91fc6fd265b6623a2244f17a9e5581962a2183d0.1501745729.git.lucien.xin@gmail.com>
+ <bc49ca93eba1ba96461674afe5fadc441f8d288a.1501745729.git.lucien.xin@gmail.com>
+ <a5a3e5ce57d84377d2426a010f92d2afb5ca346d.1501745729.git.lucien.xin@gmail.com>
+ <cd4fd6410dd3ee98ea8462b2b9eb8af3b39d536a.1501745729.git.lucien.xin@gmail.com>
+In-Reply-To: <cd4fd6410dd3ee98ea8462b2b9eb8af3b39d536a.1501745729.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-RnJvbTogU2ltb24gQXJsb3R0DQo+IFNlbnQ6IDIwIEF1Z3VzdCAyMDE3IDE3OjM3DQo+IEFjY29y
-ZGluZyB0byBlcG9sbCg3KToNCj4gICAgICAgIFE5ICBEbyBJIG5lZWQgdG8gY29udGludW91c2x5
-IHJlYWQvd3JpdGUgYSBmaWxlIGRlc2NyaXB0b3IgdW50aWwNCj4gICAgICAgICAgICBFQUdBSU4g
-d2hlbiB1c2luZyB0aGUgRVBPTExFVCBmbGFnIChlZGdlLXRyaWdnZXJlZCBiZWhhdmlvcikgPw0K
-PiANCj4gICAgICAgIEE5ICBGb3IgIHN0cmVhbS1vcmllbnRlZCBmaWxlcyAoZS5nLiwgcGlwZSwg
-RklGTywgc3RyZWFtIHNvY2tldCksDQo+ICAgICAgICAgICAgdGhlIGNvbmRpdGlvbiB0aGF0IHRo
-ZSByZWFkL3dyaXRlIEkvTyBzcGFjZSBpcyBleGhhdXN0ZWQgY2FuDQo+ICAgICAgICAgICAgYWxz
-byBiZSBkZXRlY3RlZCBieSBjaGVja2luZyB0aGUgYW1vdW50IG9mIGRhdGEgcmVhZCBmcm9tIC8N
-Cj4gICAgICAgICAgICB3cml0dGVuIHRvIHRoZSB0YXJnZXQgZmlsZSBkZXNjcmlwdG9yLg0KPiAN
-Cj4gSG93ZXZlciwgaWYgdGhlIHJlbW90ZSBlbmQgb2YgYSBzb2NrZXQoUEZfSU5FVDYsIFNPQ0tf
-U1RSRUFNLA0KPiBJUFBST1RPX1NDVFApIGlzIG1ha2luZyBtdWx0aXBsZSBzZW5kKCkgY2FsbHMg
-d2l0aCAxIGJ5dGUgb2YgZGF0YSAoYW5kDQo+IGhhcyBOT0RFTEFZIGVuYWJsZWQpLCB0aGVuIGEg
-cmVjdigpIGNhbGwgb25seSByZXR1cm5zIDEgYnl0ZSBvZiBkYXRhIGF0DQo+IGEgdGltZSBldmVu
-IGlmIHRoZXJlIGlzIG1vcmUgZGF0YSBhdmFpbGFibGUuDQo+IA0KPiBJJ2QgZXhwZWN0IGEgc3Ry
-ZWFtIHNvY2tldCB0byByZXR1cm4gYWxsIHRoZSBhdmFpbGFibGUgZGF0YS4gRWl0aGVyIHRoZQ0K
-PiBiZWhhdmlvdXIgb2YgcmVjdigpIGlzIHdyb25nIG9yIHRoZSBhZHZpY2UgaW4gZXBvbGwoNykg
-aXMgaW5jb3JyZWN0IGZvcg0KPiBTQ1RQIHNvY2tldHMuDQoNClNDVFAgaXMgbWVzc2FnZSBvcmll
-bnRlZCwgZWFjaCBzZW5kKCkgZ2VuZXJhdGVzIGEgc2VwYXJhdGUgbWVzc2FnZSBhbmQNCmVhY2gg
-cmVjdigpIHJldHVybnMgYSBzaW5nbGUgbWVzc2FnZS4NCk5ET0RFTEFZIGlzbid0IHJlbGV2YW50
-LiBJZiB5b3UgZG8gMTAwIHNlbmQoKSB5b3UnbGwgbmVlZCAxMDAgcmVjdigpLg0KDQoJRGF2aWQN
-Cg0K
+Remove this typedef including the struct, there is even no places
+using it.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/linux/sctp.h | 5 -----
+ 1 file changed, 5 deletions(-)
+
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index 3c8c418..2a97639 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -535,11 +535,6 @@ struct sctp_cwrhdr {
+ 	__be32 lowest_tsn;
+ };
+ 
+-typedef struct sctp_cwr_chunk {
+-	struct sctp_chunkhdr chunk_hdr;
+-	struct sctp_cwrhdr cwr_hdr;
+-} sctp_cwr_chunk_t;
+-
+ /* PR-SCTP
+  * 3.2 Forward Cumulative TSN Chunk Definition (FORWARD TSN)
+  *
+-- 
+2.1.0
+
