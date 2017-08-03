@@ -1,134 +1,115 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 11 Aug 2017 02:23:46 +0000
-Subject: [PATCH net-next 02/14] sctp: remove the typedef sctp_sender_hb_info_t
-Message-Id: <67dec3f4936413e5bf596dc0ce9be0b9aa15a444.1502417340.git.lucien.xin@gmail.com>
+Date: Thu, 03 Aug 2017 07:42:09 +0000
+Subject: [PATCH net-next 01/14] sctp: remove the typedef sctp_shutdownhdr_t
+Message-Id: <8149f8b0a190eb047abfe48a7fa79ba74e4e4544.1501745729.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1502417340.git.lucien.xin@gmail.com>
- <e15322cc52e110730f2bcb77973222b687717369.1502417340.git.lucien.xin@gmail.com>
-In-Reply-To: <e15322cc52e110730f2bcb77973222b687717369.1502417340.git.lucien.xin@gmail.com>
+References: <cover.1501745729.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1501745729.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to remove the typedef sctp_sender_hb_info_t, and
-replace with struct sctp_sender_hb_info in the places where it's
+This patch is to remove the typedef sctp_shutdownhdr_t, and
+replace with struct sctp_shutdownhdr in the places where it's
 using this typedef.
 
 It is also to use sizeof(variable) instead of sizeof(type).
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/structs.h |  4 ++--
- net/sctp/sm_make_chunk.c   |  6 +++---
- net/sctp/sm_sideeffect.c   |  4 ++--
- net/sctp/sm_statefuns.c    | 12 +++++-------
- 4 files changed, 12 insertions(+), 14 deletions(-)
+ include/linux/sctp.h     |  6 +++---
+ net/sctp/sm_make_chunk.c |  4 ++--
+ net/sctp/sm_statefuns.c  | 10 +++++-----
+ 3 files changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 73e9509..60033a2 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -371,12 +371,12 @@ union sctp_params {
-  *    chunk is sent and the destination transport address to which this
-  *    HEARTBEAT is sent (see Section 8.3).
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index ba00716..7a586ba 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -416,13 +416,13 @@ struct sctp_abort_chunk {
+ /* For the graceful shutdown we must carry the tag (in common header)
+  * and the highest consecutive acking value.
   */
--typedef struct sctp_sender_hb_info {
-+struct sctp_sender_hb_info {
- 	struct sctp_paramhdr param_hdr;
- 	union sctp_addr daddr;
- 	unsigned long sent_at;
- 	__u64 hb_nonce;
--} sctp_sender_hb_info_t;
+-typedef struct sctp_shutdownhdr {
++struct sctp_shutdownhdr {
+ 	__be32 cum_tsn_ack;
+-} sctp_shutdownhdr_t;
 +};
  
- int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
- 		     gfp_t gfp);
+ struct sctp_shutdown_chunk_t {
+ 	struct sctp_chunkhdr chunk_hdr;
+-	sctp_shutdownhdr_t shutdown_hdr;
++	struct sctp_shutdownhdr shutdown_hdr;
+ };
+ 
+ /* RFC 2960.  Section 3.3.10 Operation Error (ERROR) (9) */
 diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 3a8fb1d..51de638 100644
+index 163004e..8f1c6b6 100644
 --- a/net/sctp/sm_make_chunk.c
 +++ b/net/sctp/sm_make_chunk.c
-@@ -1142,10 +1142,10 @@ struct sctp_chunk *sctp_make_violation_max_retrans(
- 
- /* Make a HEARTBEAT chunk.  */
- struct sctp_chunk *sctp_make_heartbeat(const struct sctp_association *asoc,
--				  const struct sctp_transport *transport)
-+				       const struct sctp_transport *transport)
+@@ -857,15 +857,15 @@ struct sctp_chunk *sctp_make_sack(const struct sctp_association *asoc)
+ struct sctp_chunk *sctp_make_shutdown(const struct sctp_association *asoc,
+ 				      const struct sctp_chunk *chunk)
  {
-+	struct sctp_sender_hb_info hbinfo;
++	struct sctp_shutdownhdr shut;
  	struct sctp_chunk *retval;
--	sctp_sender_hb_info_t hbinfo;
+-	sctp_shutdownhdr_t shut;
+ 	__u32 ctsn;
  
- 	retval = sctp_make_control(asoc, SCTP_CID_HEARTBEAT, 0,
- 				   sizeof(hbinfo), GFP_ATOMIC);
-@@ -1154,7 +1154,7 @@ struct sctp_chunk *sctp_make_heartbeat(const struct sctp_association *asoc,
+ 	ctsn = sctp_tsnmap_get_ctsn(&asoc->peer.tsn_map);
+ 	shut.cum_tsn_ack = htonl(ctsn);
+ 
+ 	retval = sctp_make_control(asoc, SCTP_CID_SHUTDOWN, 0,
+-				   sizeof(sctp_shutdownhdr_t), GFP_ATOMIC);
++				   sizeof(shut), GFP_ATOMIC);
+ 	if (!retval)
  		goto nodata;
  
- 	hbinfo.param_hdr.type = SCTP_PARAM_HEARTBEAT_INFO;
--	hbinfo.param_hdr.length = htons(sizeof(sctp_sender_hb_info_t));
-+	hbinfo.param_hdr.length = htons(sizeof(hbinfo));
- 	hbinfo.daddr = transport->ipaddr;
- 	hbinfo.sent_at = jiffies;
- 	hbinfo.hb_nonce = transport->hb_nonce;
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index 4a12d29..5e8e418 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -714,7 +714,7 @@ static void sctp_cmd_transport_on(sctp_cmd_seq_t *cmds,
- 				  struct sctp_transport *t,
- 				  struct sctp_chunk *chunk)
- {
--	sctp_sender_hb_info_t *hbinfo;
-+	struct sctp_sender_hb_info *hbinfo;
- 	int was_unconfirmed = 0;
- 
- 	/* 8.3 Upon the receipt of the HEARTBEAT ACK, the sender of the
-@@ -768,7 +768,7 @@ static void sctp_cmd_transport_on(sctp_cmd_seq_t *cmds,
- 	if (t->rto_pending = 0)
- 		t->rto_pending = 1;
- 
--	hbinfo = (sctp_sender_hb_info_t *) chunk->skb->data;
-+	hbinfo = (struct sctp_sender_hb_info *)chunk->skb->data;
- 	sctp_transport_update_rto(t, (jiffies - hbinfo->sent_at));
- 
- 	/* Update the heartbeat timer.  */
 diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index ac6aaa0..af93419 100644
+index dc0c2c4..5b95e2d 100644
 --- a/net/sctp/sm_statefuns.c
 +++ b/net/sctp/sm_statefuns.c
-@@ -1155,27 +1155,25 @@ sctp_disposition_t sctp_sf_backbeat_8_3(struct net *net,
- 					void *arg,
- 					sctp_cmd_seq_t *commands)
+@@ -2656,8 +2656,8 @@ sctp_disposition_t sctp_sf_do_9_2_shutdown(struct net *net,
+ 					   sctp_cmd_seq_t *commands)
  {
-+	struct sctp_sender_hb_info *hbinfo;
  	struct sctp_chunk *chunk = arg;
--	union sctp_addr from_addr;
- 	struct sctp_transport *link;
--	sctp_sender_hb_info_t *hbinfo;
- 	unsigned long max_interval;
-+	union sctp_addr from_addr;
+-	sctp_shutdownhdr_t *sdh;
+ 	sctp_disposition_t disposition;
++	struct sctp_shutdownhdr *sdh;
+ 	struct sctp_ulpevent *ev;
+ 	__u32 ctsn;
+ 
+@@ -2671,8 +2671,8 @@ sctp_disposition_t sctp_sf_do_9_2_shutdown(struct net *net,
+ 						  commands);
+ 
+ 	/* Convert the elaborate header.  */
+-	sdh = (sctp_shutdownhdr_t *)chunk->skb->data;
+-	skb_pull(chunk->skb, sizeof(sctp_shutdownhdr_t));
++	sdh = (struct sctp_shutdownhdr *)chunk->skb->data;
++	skb_pull(chunk->skb, sizeof(*sdh));
+ 	chunk->subh.shutdown_hdr = sdh;
+ 	ctsn = ntohl(sdh->cum_tsn_ack);
+ 
+@@ -2746,7 +2746,7 @@ sctp_disposition_t sctp_sf_do_9_2_shut_ctsn(struct net *net,
+ 					   sctp_cmd_seq_t *commands)
+ {
+ 	struct sctp_chunk *chunk = arg;
+-	sctp_shutdownhdr_t *sdh;
++	struct sctp_shutdownhdr *sdh;
+ 	__u32 ctsn;
  
  	if (!sctp_vtag_verify(chunk, asoc))
- 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
- 
- 	/* Make sure that the HEARTBEAT-ACK chunk has a valid length.  */
- 	if (!sctp_chunk_length_valid(chunk, sizeof(struct sctp_chunkhdr) +
--					    sizeof(sctp_sender_hb_info_t)))
-+					    sizeof(*hbinfo)))
+@@ -2758,7 +2758,7 @@ sctp_disposition_t sctp_sf_do_9_2_shut_ctsn(struct net *net,
  		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
  						  commands);
  
--	hbinfo = (sctp_sender_hb_info_t *) chunk->skb->data;
-+	hbinfo = (struct sctp_sender_hb_info *)chunk->skb->data;
- 	/* Make sure that the length of the parameter is what we expect */
--	if (ntohs(hbinfo->param_hdr.length) !-				    sizeof(sctp_sender_hb_info_t)) {
-+	if (ntohs(hbinfo->param_hdr.length) != sizeof(*hbinfo))
- 		return SCTP_DISPOSITION_DISCARD;
--	}
+-	sdh = (sctp_shutdownhdr_t *)chunk->skb->data;
++	sdh = (struct sctp_shutdownhdr *)chunk->skb->data;
+ 	ctsn = ntohl(sdh->cum_tsn_ack);
  
- 	from_addr = hbinfo->daddr;
- 	link = sctp_assoc_lookup_paddr(asoc, &from_addr);
+ 	if (TSN_lt(ctsn, asoc->ctsn_ack_point)) {
 -- 
 2.1.0
 
