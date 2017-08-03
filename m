@@ -1,132 +1,97 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 11 Aug 2017 02:23:53 +0000
-Subject: [PATCH net-next 09/14] sctp: remove the typedef sctp_arg_t
-Message-Id: <8a912c943fa40c635ac0dba8726c7e744031a446.1502417340.git.lucien.xin@gmail.com>
+Date: Thu, 03 Aug 2017 07:42:14 +0000
+Subject: [PATCH net-next 06/14] sctp: remove the typedef sctp_ecnehdr_t
+Message-Id: <bc49ca93eba1ba96461674afe5fadc441f8d288a.1501745729.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1502417340.git.lucien.xin@gmail.com>
- <e15322cc52e110730f2bcb77973222b687717369.1502417340.git.lucien.xin@gmail.com>
- <67dec3f4936413e5bf596dc0ce9be0b9aa15a444.1502417340.git.lucien.xin@gmail.com>
- <5031dc5f40135c4ede57452bc61a1b29dfc76d89.1502417340.git.lucien.xin@gmail.com>
- <58f1f86286c91cf55e9d6eb9395e59e9f1fd4519.1502417340.git.lucien.xin@gmail.com>
- <77692e0783b8134d97fd4c15e37cf0b6e4fa643e.1502417340.git.lucien.xin@gmail.com>
- <bec27150caf5435011467a5488247f853f782409.1502417340.git.lucien.xin@gmail.com>
- <d9ac131331781f85d2662c4c15692344260bb1b6.1502417340.git.lucien.xin@gmail.com>
- <d69e6a88f9cbdc68f0f3ef9c2afd89ccc64f955b.1502417340.git.lucien.xin@gmail.com>
-In-Reply-To: <d69e6a88f9cbdc68f0f3ef9c2afd89ccc64f955b.1502417340.git.lucien.xin@gmail.com>
+References: <cover.1501745729.git.lucien.xin@gmail.com>
+ <8149f8b0a190eb047abfe48a7fa79ba74e4e4544.1501745729.git.lucien.xin@gmail.com>
+ <457c0c30e478f1ead75d3606e17519ca23daddfc.1501745729.git.lucien.xin@gmail.com>
+ <ef0bf503017711311e9fc167c4b5bfd9de885d04.1501745729.git.lucien.xin@gmail.com>
+ <61746e2a2efa75634ab632cf264ad902aa3f9685.1501745729.git.lucien.xin@gmail.com>
+ <91fc6fd265b6623a2244f17a9e5581962a2183d0.1501745729.git.lucien.xin@gmail.com>
+In-Reply-To: <91fc6fd265b6623a2244f17a9e5581962a2183d0.1501745729.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to remove the typedef sctp_arg_t, and
-replace with union sctp_arg in the places where it's
+This patch is to remove the typedef sctp_ecnehdr_t, and
+replace with struct sctp_ecnehdr in the places where it's
 using this typedef.
+
+It is also to use sizeof(variable) instead of sizeof(type).
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/command.h | 26 +++++++++++++-------------
- net/sctp/sm_statefuns.c    |  2 +-
- 2 files changed, 14 insertions(+), 14 deletions(-)
+ include/linux/sctp.h     | 6 +++---
+ net/sctp/sm_make_chunk.c | 4 ++--
+ net/sctp/sm_statefuns.c  | 6 +++---
+ 3 files changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
-index cbf6798..f5fc425 100644
---- a/include/net/sctp/command.h
-+++ b/include/net/sctp/command.h
-@@ -117,7 +117,7 @@ typedef enum {
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index c74ea93..5ea739b 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -519,13 +519,13 @@ enum sctp_error {
+ /* RFC 2960.  Appendix A.  Explicit Congestion Notification.
+  *   Explicit Congestion Notification Echo (ECNE) (12)
   */
- #define SCTP_MAX_NUM_COMMANDS 20
- 
--typedef union {
-+union sctp_arg {
- 	void *zero_all;	/* Set to NULL to clear the entire union */
- 	__s32 i32;
- 	__u32 u32;
-@@ -137,24 +137,24 @@ typedef union {
- 	struct sctp_packet *packet;
- 	struct sctp_sackhdr *sackh;
- 	struct sctp_datamsg *msg;
--} sctp_arg_t;
+-typedef struct sctp_ecnehdr {
++struct sctp_ecnehdr {
+ 	__be32 lowest_tsn;
+-} sctp_ecnehdr_t;
 +};
  
- /* We are simulating ML type constructors here.
-  *
-  * SCTP_ARG_CONSTRUCTOR(NAME, TYPE, ELT) builds a function called
-  * SCTP_NAME() which takes an argument of type TYPE and returns an
-- * sctp_arg_t.  It does this by inserting the sole argument into the
-- * ELT union element of a local sctp_arg_t.
-+ * union sctp_arg.  It does this by inserting the sole argument into
-+ * the ELT union element of a local union sctp_arg.
-  *
-  * E.g., SCTP_ARG_CONSTRUCTOR(I32, __s32, i32) builds SCTP_I32(arg),
-- * which takes an __s32 and returns a sctp_arg_t containing the
-+ * which takes an __s32 and returns a union sctp_arg containing the
-  * __s32.  So, after foo = SCTP_I32(arg), foo.i32 = arg.
-  */
+ typedef struct sctp_ecne_chunk {
+ 	struct sctp_chunkhdr chunk_hdr;
+-	sctp_ecnehdr_t ence_hdr;
++	struct sctp_ecnehdr ence_hdr;
+ } sctp_ecne_chunk_t;
  
- #define SCTP_ARG_CONSTRUCTOR(name, type, elt) \
--static inline sctp_arg_t	\
-+static inline union sctp_arg	\
- SCTP_## name (type arg)		\
--{ sctp_arg_t retval;\
-+{ union sctp_arg retval;\
-   retval.zero_all = NULL;\
-   retval.elt = arg;\
-   return retval;\
-@@ -179,25 +179,25 @@ SCTP_ARG_CONSTRUCTOR(PACKET,	struct sctp_packet *, packet)
- SCTP_ARG_CONSTRUCTOR(SACKH,	struct sctp_sackhdr *, sackh)
- SCTP_ARG_CONSTRUCTOR(DATAMSG,	struct sctp_datamsg *, msg)
- 
--static inline sctp_arg_t SCTP_FORCE(void)
-+static inline union sctp_arg SCTP_FORCE(void)
+ /* RFC 2960.  Appendix A.  Explicit Congestion Notification.
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 0b2298b..1c7cc6a 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -697,11 +697,11 @@ struct sctp_chunk *sctp_make_ecne(const struct sctp_association *asoc,
+ 			     const __u32 lowest_tsn)
  {
- 	return SCTP_I32(1);
- }
+ 	struct sctp_chunk *retval;
+-	sctp_ecnehdr_t ecne;
++	struct sctp_ecnehdr ecne;
  
--static inline sctp_arg_t SCTP_NOFORCE(void)
-+static inline union sctp_arg SCTP_NOFORCE(void)
- {
- 	return SCTP_I32(0);
- }
- 
--static inline sctp_arg_t SCTP_NULL(void)
-+static inline union sctp_arg SCTP_NULL(void)
- {
--	sctp_arg_t retval;
-+	union sctp_arg retval;
- 	retval.zero_all = NULL;
- 	return retval;
- }
- 
- struct sctp_cmd {
--	sctp_arg_t obj;
-+	union sctp_arg obj;
- 	sctp_verb_t verb;
- };
- 
-@@ -226,7 +226,7 @@ static inline int sctp_init_cmd_seq(struct sctp_cmd_seq *seq)
-  * to wrap data which goes in the obj argument.
-  */
- static inline void sctp_add_cmd_sf(struct sctp_cmd_seq *seq, sctp_verb_t verb,
--				   sctp_arg_t obj)
-+				   union sctp_arg obj)
- {
- 	struct sctp_cmd *cmd = seq->last_used_slot - 1;
- 
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 93b6f42..3394c4d 100644
+ 	ecne.lowest_tsn = htonl(lowest_tsn);
+ 	retval = sctp_make_control(asoc, SCTP_CID_ECN_ECNE, 0,
+-				   sizeof(sctp_ecnehdr_t), GFP_ATOMIC);
++				   sizeof(ecne), GFP_ATOMIC);
+ 	if (!retval)
+ 		goto nodata;
+ 	retval->subh.ecne_hdr diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 1d12499..de3e5bf 100644
 --- a/net/sctp/sm_statefuns.c
 +++ b/net/sctp/sm_statefuns.c
-@@ -2975,8 +2975,8 @@ sctp_disposition_t sctp_sf_eat_data_6_2(struct net *net,
- 					void *arg,
- 					struct sctp_cmd_seq *commands)
+@@ -2918,8 +2918,8 @@ sctp_disposition_t sctp_sf_do_ecne(struct net *net,
+ 				   void *arg,
+ 				   sctp_cmd_seq_t *commands)
  {
-+	union sctp_arg force = SCTP_NOFORCE();
+-	sctp_ecnehdr_t *ecne;
  	struct sctp_chunk *chunk = arg;
--	sctp_arg_t force = SCTP_NOFORCE();
- 	int error;
++	struct sctp_ecnehdr *ecne;
  
- 	if (!sctp_vtag_verify(chunk, asoc)) {
+ 	if (!sctp_vtag_verify(chunk, asoc))
+ 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+@@ -2928,8 +2928,8 @@ sctp_disposition_t sctp_sf_do_ecne(struct net *net,
+ 		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
+ 						  commands);
+ 
+-	ecne = (sctp_ecnehdr_t *) chunk->skb->data;
+-	skb_pull(chunk->skb, sizeof(sctp_ecnehdr_t));
++	ecne = (struct sctp_ecnehdr *)chunk->skb->data;
++	skb_pull(chunk->skb, sizeof(*ecne));
+ 
+ 	/* If this is a newer ECNE than the last CWR packet we sent out */
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_ECN_ECNE,
 -- 
 2.1.0
 
