@@ -1,49 +1,50 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 24 Aug 2017 05:35:10 +0000
-Subject: Re: [PATCH net] sctp: Avoid out-of-bounds reads from address storage
-Message-Id: <20170823.223510.265877259463283617.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 03 Aug 2017 07:42:08 +0000
+Subject: [PATCH net-next 00/14] sctp: remove typedefs from structures part 4
+Message-Id: <cover.1501745729.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <7763d91bcf14744e49f09fc4bec0fb22c097774f.1502384055.git.sbrivio@redhat.com>
-In-Reply-To: <7763d91bcf14744e49f09fc4bec0fb22c097774f.1502384055.git.sbrivio@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: sbrivio@redhat.com
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, stable@vger.kernel.org, lucien.xin@gmail.com, vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-From: Stefano Brivio <sbrivio@redhat.com>
-Date: Wed, 23 Aug 2017 13:27:13 +0200
+As we know, typedef is suggested not to use in kernel, even checkpatch.pl
+also gives warnings about it. Now sctp is using it for many structures.
 
-> inet_diag_msg_sctp{,l}addr_fill() and sctp_get_sctp_info() copy
-> sizeof(sockaddr_storage) bytes to fill in sockaddr structs used
-> to export diagnostic information to userspace.
-> 
-> However, the memory allocated to store sockaddr information is
-> smaller than that and depends on the address family, so we leak
-> up to 100 uninitialized bytes to userspace. Just use the size of
-> the source structs instead, in all the three cases this is what
-> userspace expects. Zero out the remaining memory.
-> 
-> Unused bytes (i.e. when IPv4 addresses are used) in source
-> structs sctp_sockaddr_entry and sctp_transport are already
-> cleared by sctp_add_bind_addr() and sctp_transport_new(),
-> respectively.
-> 
-> Noticed while testing KASAN-enabled kernel with 'ss':
- ...
-> This fixes CVE-2017-7558.
-> 
-> References: https://bugzilla.redhat.com/show_bug.cgi?id80266
-> Fixes: 8f840e47f190 ("sctp: add the sctp_diag.c file")
-> Cc: <stable@vger.kernel.org> # 4.7+
-> Cc: Xin Long <lucien.xin@gmail.com>
-> Cc: Vlad Yasevich <vyasevich@gmail.com>
-> Cc: Neil Horman <nhorman@tuxdriver.com>
-> Signed-off-by: Stefano Brivio <sbrivio@redhat.com>
+All this kind of typedef's using should be removed. This patchset is the
+part 4 to remove it for another 14 basic structures from linux/sctp.h.
+After this patchset, all typedefs are cleaned in linux/sctp.h.
 
-Applied and queued up for -stable.
+Just as the part 1-3, No any code's logic would be changed in these patches,
+only cleaning up.
 
-Do not put "stable@kernel..." into networking patch submissions.
-For networking, I handle the stable submissions by hand myself.
+Xin Long (14):
+  sctp: remove the typedef sctp_shutdownhdr_t
+  sctp: fix the name of struct sctp_shutdown_chunk_t
+  sctp: remove the typedef sctp_errhdr_t
+  sctp: remove the typedef sctp_operr_chunk_t
+  sctp: remove the typedef sctp_error_t
+  sctp: remove the typedef sctp_ecnehdr_t
+  sctp: remove the typedef sctp_ecne_chunk_t
+  sctp: remove the typedef sctp_cwrhdr_t
+  sctp: remove the typedef sctp_cwr_chunk_t
+  sctp: remove the typedef sctp_addip_param_t
+  sctp: remove the typedef sctp_addiphdr_t
+  sctp: remove the typedef sctp_addip_chunk_t
+  sctp: remove the typedef sctp_authhdr_t
+  sctp: remove the typedef sctp_auth_chunk_t
 
-Thank you.
+ include/linux/sctp.h     |  69 +++++++++++++--------------
+ include/net/sctp/sctp.h  |   8 ++--
+ net/sctp/chunk.c         |   2 +-
+ net/sctp/input.c         |   2 +-
+ net/sctp/sm_make_chunk.c | 119 ++++++++++++++++++++++++-----------------------
+ net/sctp/sm_sideeffect.c |   2 +-
+ net/sctp/sm_statefuns.c  | 107 ++++++++++++++++++++++--------------------
+ net/sctp/ulpevent.c      |  10 ++--
+ 8 files changed, 162 insertions(+), 157 deletions(-)
+
+-- 
+2.1.0
+
