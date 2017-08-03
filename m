@@ -1,53 +1,71 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 11 Aug 2017 02:23:47 +0000
-Subject: [PATCH net-next 03/14] sctp: remove the typedef sctp_endpoint_type_t
-Message-Id: <5031dc5f40135c4ede57452bc61a1b29dfc76d89.1502417340.git.lucien.xin@gmail.com>
+Date: Thu, 03 Aug 2017 07:42:15 +0000
+Subject: [PATCH net-next 07/14] sctp: remove the typedef sctp_ecne_chunk_t
+Message-Id: <a5a3e5ce57d84377d2426a010f92d2afb5ca346d.1501745729.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1502417340.git.lucien.xin@gmail.com>
- <e15322cc52e110730f2bcb77973222b687717369.1502417340.git.lucien.xin@gmail.com>
- <67dec3f4936413e5bf596dc0ce9be0b9aa15a444.1502417340.git.lucien.xin@gmail.com>
-In-Reply-To: <67dec3f4936413e5bf596dc0ce9be0b9aa15a444.1502417340.git.lucien.xin@gmail.com>
+References: <cover.1501745729.git.lucien.xin@gmail.com>
+ <8149f8b0a190eb047abfe48a7fa79ba74e4e4544.1501745729.git.lucien.xin@gmail.com>
+ <457c0c30e478f1ead75d3606e17519ca23daddfc.1501745729.git.lucien.xin@gmail.com>
+ <ef0bf503017711311e9fc167c4b5bfd9de885d04.1501745729.git.lucien.xin@gmail.com>
+ <61746e2a2efa75634ab632cf264ad902aa3f9685.1501745729.git.lucien.xin@gmail.com>
+ <91fc6fd265b6623a2244f17a9e5581962a2183d0.1501745729.git.lucien.xin@gmail.com>
+ <bc49ca93eba1ba96461674afe5fadc441f8d288a.1501745729.git.lucien.xin@gmail.com>
+In-Reply-To: <bc49ca93eba1ba96461674afe5fadc441f8d288a.1501745729.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to remove the typedef sctp_endpoint_type_t, and
-replace with enum sctp_endpoint_type in the places where it's
+This patch is to remove the typedef sctp_ecne_chunk_t, and
+replace with struct sctp_ecne_chunk in the places where it's
 using this typedef.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/structs.h | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ include/linux/sctp.h    | 4 ++--
+ net/sctp/sm_statefuns.c | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 60033a2..937187f 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -1142,10 +1142,10 @@ int sctp_is_ep_boundall(struct sock *sk);
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index 5ea739b..026bbdf 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -523,10 +523,10 @@ struct sctp_ecnehdr {
+ 	__be32 lowest_tsn;
+ };
  
- 
- /* What type of endpoint?  */
--typedef enum {
-+enum sctp_endpoint_type {
- 	SCTP_EP_TYPE_SOCKET,
- 	SCTP_EP_TYPE_ASSOCIATION,
--} sctp_endpoint_type_t;
+-typedef struct sctp_ecne_chunk {
++struct sctp_ecne_chunk {
+ 	struct sctp_chunkhdr chunk_hdr;
+ 	struct sctp_ecnehdr ence_hdr;
+-} sctp_ecne_chunk_t;
 +};
  
- /*
-  * A common base class to bridge the implmentation view of a
-@@ -1169,7 +1169,7 @@ struct sctp_ep_common {
- 	int hashent;
+ /* RFC 2960.  Appendix A.  Explicit Congestion Notification.
+  *   Congestion Window Reduced (CWR) (13)
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index de3e5bf..286dce1 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -2869,7 +2869,7 @@ sctp_disposition_t sctp_sf_do_ecn_cwr(struct net *net,
+ 	if (!sctp_vtag_verify(chunk, asoc))
+ 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
  
- 	/* Runtime type information.  What kind of endpoint is this? */
--	sctp_endpoint_type_t type;
-+	enum sctp_endpoint_type type;
+-	if (!sctp_chunk_length_valid(chunk, sizeof(sctp_ecne_chunk_t)))
++	if (!sctp_chunk_length_valid(chunk, sizeof(struct sctp_ecne_chunk)))
+ 		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
+ 						  commands);
  
- 	/* Some fields to help us manage this object.
- 	 *   refcnt   - Reference count access to this object.
+@@ -2924,7 +2924,7 @@ sctp_disposition_t sctp_sf_do_ecne(struct net *net,
+ 	if (!sctp_vtag_verify(chunk, asoc))
+ 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+ 
+-	if (!sctp_chunk_length_valid(chunk, sizeof(sctp_ecne_chunk_t)))
++	if (!sctp_chunk_length_valid(chunk, sizeof(struct sctp_ecne_chunk)))
+ 		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
+ 						  commands);
+ 
 -- 
 2.1.0
 
