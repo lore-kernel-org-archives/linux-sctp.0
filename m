@@ -1,64 +1,80 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 03 Aug 2017 07:42:13 +0000
-Subject: [PATCH net-next 05/14] sctp: remove the typedef sctp_error_t
-Message-Id: <91fc6fd265b6623a2244f17a9e5581962a2183d0.1501745729.git.lucien.xin@gmail.com>
+Date: Sat, 05 Aug 2017 11:59:55 +0000
+Subject: [PATCH net-next 05/14] sctp: remove the typedef sctp_transport_cmd_t
+Message-Id: <9049d5fd9299328397722053f090a66d97de8451.1501934087.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1501745729.git.lucien.xin@gmail.com>
- <8149f8b0a190eb047abfe48a7fa79ba74e4e4544.1501745729.git.lucien.xin@gmail.com>
- <457c0c30e478f1ead75d3606e17519ca23daddfc.1501745729.git.lucien.xin@gmail.com>
- <ef0bf503017711311e9fc167c4b5bfd9de885d04.1501745729.git.lucien.xin@gmail.com>
- <61746e2a2efa75634ab632cf264ad902aa3f9685.1501745729.git.lucien.xin@gmail.com>
-In-Reply-To: <61746e2a2efa75634ab632cf264ad902aa3f9685.1501745729.git.lucien.xin@gmail.com>
+References: <cover.1501934086.git.lucien.xin@gmail.com>
+ <88e505f76dd927887d8cdcc7de2b82595237aa85.1501934087.git.lucien.xin@gmail.com>
+ <7ceee2b1bf33403b8ecb04c9c30354f71dd2198a.1501934087.git.lucien.xin@gmail.com>
+ <09ffe75e4e16f00b61b682261e2a4b05fa76e814.1501934087.git.lucien.xin@gmail.com>
+ <f8669af1f44d19322287665b8f7d97e0e2a4dc46.1501934087.git.lucien.xin@gmail.com>
+In-Reply-To: <f8669af1f44d19322287665b8f7d97e0e2a4dc46.1501934087.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to remove the typedef sctp_error_t, and replace
-with enum sctp_error in the places where it's using this typedef.
+This patch is to remove the typedef sctp_transport_cmd_t, and
+replace with enum sctp_transport_cmd in the places where it's
+using this typedef.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/linux/sctp.h    | 4 ++--
- net/sctp/sm_statefuns.c | 2 +-
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ include/net/sctp/constants.h | 4 ++--
+ include/net/sctp/structs.h   | 7 ++++---
+ net/sctp/associola.c         | 2 +-
+ 3 files changed, 7 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index 07c12e9..c74ea93 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -457,7 +457,7 @@ struct sctp_operr_chunk {
-  *      9              No User Data
-  *     10              Cookie Received While Shutting Down
-  */
--typedef enum {
-+enum sctp_error {
+diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
+index 0503bb7..8ce6d32 100644
+--- a/include/net/sctp/constants.h
++++ b/include/net/sctp/constants.h
+@@ -320,11 +320,11 @@ typedef enum {
+ } sctp_xmit_t;
  
- 	SCTP_ERROR_NO_ERROR	   = cpu_to_be16(0x00),
- 	SCTP_ERROR_INV_STRM	   = cpu_to_be16(0x01),
-@@ -512,7 +512,7 @@ typedef enum {
- 	 * 0x0105          Unsupported HMAC Identifier
- 	 */
- 	 SCTP_ERROR_UNSUP_HMAC	= cpu_to_be16(0x0105)
--} sctp_error_t;
+ /* These are the commands for manipulating transports.  */
+-typedef enum {
++enum sctp_transport_cmd {
+ 	SCTP_TRANSPORT_UP,
+ 	SCTP_TRANSPORT_DOWN,
+ 	SCTP_TRANSPORT_PF,
+-} sctp_transport_cmd_t;
 +};
  
- 
- 
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 3b121d2..1d12499 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -528,7 +528,7 @@ sctp_disposition_t sctp_sf_do_5_1C_ack(struct net *net,
- 			      (struct sctp_init_chunk *)chunk->chunk_hdr, chunk,
- 			      &err_chunk)) {
- 
--		sctp_error_t error = SCTP_ERROR_NO_RESOURCE;
-+		enum sctp_error error = SCTP_ERROR_NO_RESOURCE;
- 
- 		/* This chunk contains fatal error. It is to be discarded.
- 		 * Send an ABORT, with causes.  If there are no causes,
+ /* These are the address scopes defined mainly for IPv4 addresses
+  * based on draft of SCTP IPv4 scoping <draft-stewart-tsvwg-sctp-ipv4-00.txt>.
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index d771d41..d098d1c 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1947,9 +1947,10 @@ void sctp_assoc_del_peer(struct sctp_association *asoc,
+ 			 const union sctp_addr *addr);
+ void sctp_assoc_rm_peer(struct sctp_association *asoc,
+ 			 struct sctp_transport *peer);
+-void sctp_assoc_control_transport(struct sctp_association *,
+-				  struct sctp_transport *,
+-				  sctp_transport_cmd_t, sctp_sn_error_t);
++void sctp_assoc_control_transport(struct sctp_association *asoc,
++				  struct sctp_transport *transport,
++				  enum sctp_transport_cmd command,
++				  sctp_sn_error_t error);
+ struct sctp_transport *sctp_assoc_lookup_tsn(struct sctp_association *, __u32);
+ struct sctp_transport *sctp_assoc_is_match(struct sctp_association *,
+ 					   struct net *,
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 4c1f1bb..b53efed 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -796,7 +796,7 @@ void sctp_assoc_del_nonprimary_peers(struct sctp_association *asoc,
+  */
+ void sctp_assoc_control_transport(struct sctp_association *asoc,
+ 				  struct sctp_transport *transport,
+-				  sctp_transport_cmd_t command,
++				  enum sctp_transport_cmd command,
+ 				  sctp_sn_error_t error)
+ {
+ 	struct sctp_ulpevent *event;
 -- 
 2.1.0
 
