@@ -1,88 +1,184 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 03 Aug 2017 07:42:21 +0000
-Subject: [PATCH net-next 13/14] sctp: remove the typedef sctp_authhdr_t
-Message-Id: <99eaf082a43fa5cd141ad9e25b9a7de3f33d69b7.1501745729.git.lucien.xin@gmail.com>
+Date: Sat, 05 Aug 2017 12:00:03 +0000
+Subject: [PATCH net-next 13/14] sctp: remove the typedef sctp_event_t
+Message-Id: <b02005a06e5caefc27759eac596575ed220231d5.1501934087.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1501745729.git.lucien.xin@gmail.com>
- <8149f8b0a190eb047abfe48a7fa79ba74e4e4544.1501745729.git.lucien.xin@gmail.com>
- <457c0c30e478f1ead75d3606e17519ca23daddfc.1501745729.git.lucien.xin@gmail.com>
- <ef0bf503017711311e9fc167c4b5bfd9de885d04.1501745729.git.lucien.xin@gmail.com>
- <61746e2a2efa75634ab632cf264ad902aa3f9685.1501745729.git.lucien.xin@gmail.com>
- <91fc6fd265b6623a2244f17a9e5581962a2183d0.1501745729.git.lucien.xin@gmail.com>
- <bc49ca93eba1ba96461674afe5fadc441f8d288a.1501745729.git.lucien.xin@gmail.com>
- <a5a3e5ce57d84377d2426a010f92d2afb5ca346d.1501745729.git.lucien.xin@gmail.com>
- <cd4fd6410dd3ee98ea8462b2b9eb8af3b39d536a.1501745729.git.lucien.xin@gmail.com>
- <4117cc15ad262c164f9725e4dee1f9d0b13dd992.1501745729.git.lucien.xin@gmail.com>
- <9ee006c5a40a15372502d1e2458b8f9f568ceb2e.1501745729.git.lucien.xin@gmail.com>
- <5374e7c1ae3374fc375f56b48893aa5c3c0208bf.1501745729.git.lucien.xin@gmail.com>
- <9e2aee0b88d26c3a5c041864d46fb0ebde965e11.1501745729.git.lucien.xin@gmail.com>
-In-Reply-To: <9e2aee0b88d26c3a5c041864d46fb0ebde965e11.1501745729.git.lucien.xin@gmail.com>
+References: <cover.1501934086.git.lucien.xin@gmail.com>
+ <88e505f76dd927887d8cdcc7de2b82595237aa85.1501934087.git.lucien.xin@gmail.com>
+ <7ceee2b1bf33403b8ecb04c9c30354f71dd2198a.1501934087.git.lucien.xin@gmail.com>
+ <09ffe75e4e16f00b61b682261e2a4b05fa76e814.1501934087.git.lucien.xin@gmail.com>
+ <f8669af1f44d19322287665b8f7d97e0e2a4dc46.1501934087.git.lucien.xin@gmail.com>
+ <9049d5fd9299328397722053f090a66d97de8451.1501934087.git.lucien.xin@gmail.com>
+ <e92ab93f0d646a935384c74848671fc56956c754.1501934087.git.lucien.xin@gmail.com>
+ <a26ddefe25442293b3e1020ce56f859125a93412.1501934087.git.lucien.xin@gmail.com>
+ <1bd9e98627fc627a28f90ad587e941845b91b108.1501934087.git.lucien.xin@gmail.com>
+ <6f17de8a0a6d21445de859c4073b235e9c5d2163.1501934087.git.lucien.xin@gmail.com>
+ <d2af679ab5fa9b939e37f7b8ac51097c70280f2d.1501934087.git.lucien.xin@gmail.com>
+ <d526b6acfb360ee28fbf70f198b6cce67a9f1c35.1501934087.git.lucien.xin@gmail.com>
+ <e28909498a887e760a615c6ff5ab04153621bfab.1501934087.git.lucien.xin@gmail.com>
+In-Reply-To: <e28909498a887e760a615c6ff5ab04153621bfab.1501934087.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to remove the typedef sctp_authhdr_t, and
-replace with struct sctp_authhdr in the places where it's
+This patch is to remove the typedef sctp_event_t, and
+replace with enum sctp_event in the places where it's
 using this typedef.
-
-It is also to use sizeof(variable) instead of sizeof(type).
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/linux/sctp.h     | 6 +++---
- net/sctp/sm_make_chunk.c | 8 ++++----
- 2 files changed, 7 insertions(+), 7 deletions(-)
+ include/net/sctp/constants.h |  6 ++----
+ include/net/sctp/sm.h        | 12 +++++-------
+ net/sctp/primitive.c         |  2 +-
+ net/sctp/sm_sideeffect.c     | 20 +++++++++-----------
+ net/sctp/sm_statetable.c     |  2 +-
+ 5 files changed, 18 insertions(+), 24 deletions(-)
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index e7b439e..b7603f5 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -693,15 +693,15 @@ struct sctp_addip_chunk {
-  *   HMAC: n bytes (unsigned integer) This hold the result of the HMAC
-  *      calculation.
-  */
--typedef struct sctp_authhdr {
-+struct sctp_authhdr {
- 	__be16 shkey_id;
- 	__be16 hmac_id;
- 	__u8   hmac[0];
--} sctp_authhdr_t;
+diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
+index fb931f0..3181e0f 100644
+--- a/include/net/sctp/constants.h
++++ b/include/net/sctp/constants.h
+@@ -71,14 +71,12 @@ enum { SCTP_DEFAULT_INSTREAMS = SCTP_MAX_STREAM };
+ 					 SCTP_NUM_AUTH_CHUNK_TYPES)
+ 
+ /* These are the different flavours of event.  */
+-typedef enum {
+-
++enum sctp_event {
+ 	SCTP_EVENT_T_CHUNK = 1,
+ 	SCTP_EVENT_T_TIMEOUT,
+ 	SCTP_EVENT_T_OTHER,
+ 	SCTP_EVENT_T_PRIMITIVE
+-
+-} sctp_event_t;
 +};
  
- typedef struct sctp_auth_chunk {
- 	struct sctp_chunkhdr chunk_hdr;
--	sctp_authhdr_t auth_hdr;
-+	struct sctp_authhdr auth_hdr;
- } sctp_auth_chunk_t;
+ /* As a convenience for the state machine, we append SCTP_EVENT_* and
+  * SCTP_ULP_* to the list of possible chunks.
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index 281e8d1..96f54cf 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -176,7 +176,7 @@ sctp_state_fn_t sctp_sf_autoclose_timer_expire;
+ /* Prototypes for utility support functions.  */
+ __u8 sctp_get_chunk_type(struct sctp_chunk *chunk);
+ const sctp_sm_table_entry_t *sctp_sm_lookup_event(struct net *net,
+-						  sctp_event_t event_type,
++						  enum sctp_event event_type,
+ 						  enum sctp_state state,
+ 						  sctp_subtype_t event_subtype);
+ int sctp_chunk_iif(const struct sctp_chunk *);
+@@ -312,12 +312,10 @@ struct sctp_chunk *sctp_process_strreset_resp(
  
- struct sctp_infox {
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index ae54c6e..d17e8d1 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -1282,16 +1282,16 @@ struct sctp_chunk *sctp_make_auth(const struct sctp_association *asoc)
- 		return NULL;
+ /* Prototypes for statetable processing. */
  
- 	retval = sctp_make_control(asoc, SCTP_CID_AUTH, 0,
--			hmac_desc->hmac_len + sizeof(sctp_authhdr_t),
--			GFP_ATOMIC);
-+				   hmac_desc->hmac_len + sizeof(auth_hdr),
-+				   GFP_ATOMIC);
- 	if (!retval)
- 		return NULL;
+-int sctp_do_sm(struct net *net, sctp_event_t event_type, sctp_subtype_t subtype,
+-	       enum sctp_state state,
+-               struct sctp_endpoint *,
+-               struct sctp_association *asoc,
+-               void *event_arg,
+-	       gfp_t gfp);
++int sctp_do_sm(struct net *net, enum sctp_event event_type,
++	       sctp_subtype_t subtype, enum sctp_state state,
++	       struct sctp_endpoint *ep, struct sctp_association *asoc,
++	       void *event_arg, gfp_t gfp);
  
- 	auth_hdr.hmac_id = htons(hmac_desc->hmac_id);
- 	auth_hdr.shkey_id = htons(asoc->active_key_id);
+ /* 2nd level prototypes */
+ void sctp_generate_t3_rtx_event(unsigned long peer);
+diff --git a/net/sctp/primitive.c b/net/sctp/primitive.c
+index 1fb5b9b..c914166 100644
+--- a/net/sctp/primitive.c
++++ b/net/sctp/primitive.c
+@@ -53,7 +53,7 @@
+ int sctp_primitive_ ## name(struct net *net, struct sctp_association *asoc, \
+ 			    void *arg) { \
+ 	int error = 0; \
+-	sctp_event_t event_type; sctp_subtype_t subtype; \
++	enum sctp_event event_type; sctp_subtype_t subtype; \
+ 	enum sctp_state state; \
+ 	struct sctp_endpoint *ep; \
+ 	\
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 11a3448..b545c76 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -51,7 +51,7 @@
+ #include <net/sctp/sctp.h>
+ #include <net/sctp/sm.h>
  
--	retval->subh.auth_hdr = sctp_addto_chunk(retval, sizeof(sctp_authhdr_t),
--						&auth_hdr);
-+	retval->subh.auth_hdr = sctp_addto_chunk(retval, sizeof(auth_hdr),
-+						 &auth_hdr);
+-static int sctp_cmd_interpreter(sctp_event_t event_type,
++static int sctp_cmd_interpreter(enum sctp_event event_type,
+ 				sctp_subtype_t subtype,
+ 				enum sctp_state state,
+ 				struct sctp_endpoint *ep,
+@@ -60,7 +60,7 @@ static int sctp_cmd_interpreter(sctp_event_t event_type,
+ 				sctp_disposition_t status,
+ 				sctp_cmd_seq_t *commands,
+ 				gfp_t gfp);
+-static int sctp_side_effects(sctp_event_t event_type, sctp_subtype_t subtype,
++static int sctp_side_effects(enum sctp_event event_type, sctp_subtype_t subtype,
+ 			     enum sctp_state state,
+ 			     struct sctp_endpoint *ep,
+ 			     struct sctp_association **asoc,
+@@ -602,7 +602,7 @@ static void sctp_cmd_init_failed(sctp_cmd_seq_t *commands,
+ /* Worker routine to handle SCTP_CMD_ASSOC_FAILED.  */
+ static void sctp_cmd_assoc_failed(sctp_cmd_seq_t *commands,
+ 				  struct sctp_association *asoc,
+-				  sctp_event_t event_type,
++				  enum sctp_event event_type,
+ 				  sctp_subtype_t subtype,
+ 				  struct sctp_chunk *chunk,
+ 				  unsigned int error)
+@@ -1139,12 +1139,10 @@ static void sctp_cmd_send_asconf(struct sctp_association *asoc)
+  * If you want to understand all of lksctp, this is a
+  * good place to start.
+  */
+-int sctp_do_sm(struct net *net, sctp_event_t event_type, sctp_subtype_t subtype,
+-	       enum sctp_state state,
+-	       struct sctp_endpoint *ep,
+-	       struct sctp_association *asoc,
+-	       void *event_arg,
+-	       gfp_t gfp)
++int sctp_do_sm(struct net *net, enum sctp_event event_type,
++	       sctp_subtype_t subtype, enum sctp_state state,
++	       struct sctp_endpoint *ep, struct sctp_association *asoc,
++	       void *event_arg, gfp_t gfp)
+ {
+ 	sctp_cmd_seq_t commands;
+ 	const sctp_sm_table_entry_t *state_fn;
+@@ -1178,7 +1176,7 @@ int sctp_do_sm(struct net *net, sctp_event_t event_type, sctp_subtype_t subtype,
+ /*****************************************************************
+  * This the master state function side effect processing function.
+  *****************************************************************/
+-static int sctp_side_effects(sctp_event_t event_type, sctp_subtype_t subtype,
++static int sctp_side_effects(enum sctp_event event_type, sctp_subtype_t subtype,
+ 			     enum sctp_state state,
+ 			     struct sctp_endpoint *ep,
+ 			     struct sctp_association **asoc,
+@@ -1263,7 +1261,7 @@ static int sctp_side_effects(sctp_event_t event_type, sctp_subtype_t subtype,
+  ********************************************************************/
  
- 	hmac = skb_put_zero(retval->skb, hmac_desc->hmac_len);
+ /* This is the side-effect interpreter.  */
+-static int sctp_cmd_interpreter(sctp_event_t event_type,
++static int sctp_cmd_interpreter(enum sctp_event event_type,
+ 				sctp_subtype_t subtype,
+ 				enum sctp_state state,
+ 				struct sctp_endpoint *ep,
+diff --git a/net/sctp/sm_statetable.c b/net/sctp/sm_statetable.c
+index f46c11b..f7cdb70 100644
+--- a/net/sctp/sm_statetable.c
++++ b/net/sctp/sm_statetable.c
+@@ -78,7 +78,7 @@ static const sctp_sm_table_entry_t bug = {
+ })
  
+ const sctp_sm_table_entry_t *sctp_sm_lookup_event(struct net *net,
+-						  sctp_event_t event_type,
++						  enum sctp_event event_type,
+ 						  enum sctp_state state,
+ 						  sctp_subtype_t event_subtype)
+ {
 -- 
 2.1.0
 
