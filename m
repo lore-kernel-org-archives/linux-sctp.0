@@ -1,100 +1,160 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 03 Aug 2017 07:42:16 +0000
-Subject: [PATCH net-next 08/14] sctp: remove the typedef sctp_cwrhdr_t
-Message-Id: <cd4fd6410dd3ee98ea8462b2b9eb8af3b39d536a.1501745729.git.lucien.xin@gmail.com>
+Date: Sat, 05 Aug 2017 11:59:58 +0000
+Subject: [PATCH net-next 08/14] sctp: remove the typedef sctp_ierror_t
+Message-Id: <1bd9e98627fc627a28f90ad587e941845b91b108.1501934087.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1501745729.git.lucien.xin@gmail.com>
- <8149f8b0a190eb047abfe48a7fa79ba74e4e4544.1501745729.git.lucien.xin@gmail.com>
- <457c0c30e478f1ead75d3606e17519ca23daddfc.1501745729.git.lucien.xin@gmail.com>
- <ef0bf503017711311e9fc167c4b5bfd9de885d04.1501745729.git.lucien.xin@gmail.com>
- <61746e2a2efa75634ab632cf264ad902aa3f9685.1501745729.git.lucien.xin@gmail.com>
- <91fc6fd265b6623a2244f17a9e5581962a2183d0.1501745729.git.lucien.xin@gmail.com>
- <bc49ca93eba1ba96461674afe5fadc441f8d288a.1501745729.git.lucien.xin@gmail.com>
- <a5a3e5ce57d84377d2426a010f92d2afb5ca346d.1501745729.git.lucien.xin@gmail.com>
-In-Reply-To: <a5a3e5ce57d84377d2426a010f92d2afb5ca346d.1501745729.git.lucien.xin@gmail.com>
+References: <cover.1501934086.git.lucien.xin@gmail.com>
+ <88e505f76dd927887d8cdcc7de2b82595237aa85.1501934087.git.lucien.xin@gmail.com>
+ <7ceee2b1bf33403b8ecb04c9c30354f71dd2198a.1501934087.git.lucien.xin@gmail.com>
+ <09ffe75e4e16f00b61b682261e2a4b05fa76e814.1501934087.git.lucien.xin@gmail.com>
+ <f8669af1f44d19322287665b8f7d97e0e2a4dc46.1501934087.git.lucien.xin@gmail.com>
+ <9049d5fd9299328397722053f090a66d97de8451.1501934087.git.lucien.xin@gmail.com>
+ <e92ab93f0d646a935384c74848671fc56956c754.1501934087.git.lucien.xin@gmail.com>
+ <a26ddefe25442293b3e1020ce56f859125a93412.1501934087.git.lucien.xin@gmail.com>
+In-Reply-To: <a26ddefe25442293b3e1020ce56f859125a93412.1501934087.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to remove the typedef sctp_cwrhdr_t, and
-replace with struct sctp_cwrhdr in the places where it's
+This patch is to remove the typedef sctp_ierror_t, and
+replace with enum sctp_ierror in the places where it's
 using this typedef.
-
-It is also to use sizeof(variable) instead of sizeof(type).
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/linux/sctp.h     | 6 +++---
- net/sctp/sm_make_chunk.c | 4 ++--
- net/sctp/sm_statefuns.c  | 6 +++---
- 3 files changed, 8 insertions(+), 8 deletions(-)
+ include/net/sctp/constants.h |  5 ++---
+ net/sctp/sm_make_chunk.c     | 23 ++++++++++++-----------
+ net/sctp/sm_statefuns.c      | 28 +++++++++++++++-------------
+ 3 files changed, 29 insertions(+), 27 deletions(-)
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index 026bbdf..3c8c418 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -531,13 +531,13 @@ struct sctp_ecne_chunk {
- /* RFC 2960.  Appendix A.  Explicit Congestion Notification.
-  *   Congestion Window Reduced (CWR) (13)
-  */
--typedef struct sctp_cwrhdr {
-+struct sctp_cwrhdr {
- 	__be32 lowest_tsn;
--} sctp_cwrhdr_t;
+diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
+index 311b2e3..9a69465 100644
+--- a/include/net/sctp/constants.h
++++ b/include/net/sctp/constants.h
+@@ -155,8 +155,7 @@ SCTP_SUBTYPE_CONSTRUCTOR(PRIMITIVE,	sctp_event_primitive_t,	primitive)
+ 				- sizeof(struct sctp_data_chunk)))
+ 
+ /* Internal error codes */
+-typedef enum {
+-
++enum sctp_ierror {
+ 	SCTP_IERROR_NO_ERROR	        = 0,
+ 	SCTP_IERROR_BASE		= 1000,
+ 	SCTP_IERROR_NO_COOKIE,
+@@ -177,7 +176,7 @@ typedef enum {
+ 	SCTP_IERROR_PROTO_VIOLATION,
+ 	SCTP_IERROR_ERROR,
+ 	SCTP_IERROR_ABORT,
+-} sctp_ierror_t;
 +};
  
- typedef struct sctp_cwr_chunk {
- 	struct sctp_chunkhdr chunk_hdr;
--	sctp_cwrhdr_t cwr_hdr;
-+	struct sctp_cwrhdr cwr_hdr;
- } sctp_cwr_chunk_t;
  
- /* PR-SCTP
+ 
 diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 1c7cc6a..e8e5065 100644
+index a034d84..3a8fb1d 100644
 --- a/net/sctp/sm_make_chunk.c
 +++ b/net/sctp/sm_make_chunk.c
-@@ -663,11 +663,11 @@ struct sctp_chunk *sctp_make_cwr(const struct sctp_association *asoc,
- 			    const struct sctp_chunk *chunk)
+@@ -2065,10 +2065,11 @@ static void sctp_process_ext_param(struct sctp_association *asoc,
+  * 	SCTP_IERROR_ERROR    - stop and report an error.
+  * 	SCTP_IERROR_NOMEME   - out of memory.
+  */
+-static sctp_ierror_t sctp_process_unk_param(const struct sctp_association *asoc,
+-					    union sctp_params param,
+-					    struct sctp_chunk *chunk,
+-					    struct sctp_chunk **errp)
++static enum sctp_ierror sctp_process_unk_param(
++					const struct sctp_association *asoc,
++					union sctp_params param,
++					struct sctp_chunk *chunk,
++					struct sctp_chunk **errp)
  {
- 	struct sctp_chunk *retval;
--	sctp_cwrhdr_t cwr;
-+	struct sctp_cwrhdr cwr;
+ 	int retval = SCTP_IERROR_NO_ERROR;
  
- 	cwr.lowest_tsn = htonl(lowest_tsn);
- 	retval = sctp_make_control(asoc, SCTP_CID_ECN_CWR, 0,
--				   sizeof(sctp_cwrhdr_t), GFP_ATOMIC);
-+				   sizeof(cwr), GFP_ATOMIC);
- 
- 	if (!retval)
- 		goto nodata;
+@@ -2117,13 +2118,13 @@ static sctp_ierror_t sctp_process_unk_param(const struct sctp_association *asoc,
+  *	SCTP_IERROR_ERROR - stop processing, trigger an ERROR
+  * 	SCTP_IERROR_NO_ERROR - continue with the chunk
+  */
+-static sctp_ierror_t sctp_verify_param(struct net *net,
+-					const struct sctp_endpoint *ep,
+-					const struct sctp_association *asoc,
+-					union sctp_params param,
+-					enum sctp_cid cid,
+-					struct sctp_chunk *chunk,
+-					struct sctp_chunk **err_chunk)
++static enum sctp_ierror sctp_verify_param(struct net *net,
++					  const struct sctp_endpoint *ep,
++					  const struct sctp_association *asoc,
++					  union sctp_params param,
++					  enum sctp_cid cid,
++					  struct sctp_chunk *chunk,
++					  struct sctp_chunk **err_chunk)
+ {
+ 	struct sctp_hmac_algo_param *hmacs;
+ 	int retval = SCTP_IERROR_NO_ERROR;
 diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 286dce1..e13c83f 100644
+index 8af90a5..5381697 100644
 --- a/net/sctp/sm_statefuns.c
 +++ b/net/sctp/sm_statefuns.c
-@@ -2862,8 +2862,8 @@ sctp_disposition_t sctp_sf_do_ecn_cwr(struct net *net,
- 				      void *arg,
- 				      sctp_cmd_seq_t *commands)
+@@ -144,11 +144,12 @@ static sctp_disposition_t sctp_sf_violation_chunk(
+ 				     void *arg,
+ 				     sctp_cmd_seq_t *commands);
+ 
+-static sctp_ierror_t sctp_sf_authenticate(struct net *net,
+-				    const struct sctp_endpoint *ep,
+-				    const struct sctp_association *asoc,
+-				    const sctp_subtype_t type,
+-				    struct sctp_chunk *chunk);
++static enum sctp_ierror sctp_sf_authenticate(
++				struct net *net,
++				const struct sctp_endpoint *ep,
++				const struct sctp_association *asoc,
++				const sctp_subtype_t type,
++				struct sctp_chunk *chunk);
+ 
+ static sctp_disposition_t __sctp_sf_do_9_1_abort(struct net *net,
+ 					const struct sctp_endpoint *ep,
+@@ -756,7 +757,7 @@ sctp_disposition_t sctp_sf_do_5_1D_ce(struct net *net,
+ 	 */
+ 	if (chunk->auth_chunk) {
+ 		struct sctp_chunk auth;
+-		sctp_ierror_t ret;
++		enum sctp_ierror ret;
+ 
+ 		/* Make sure that we and the peer are AUTH capable */
+ 		if (!net->sctp.auth_enable || !new_asoc->peer.auth_capable) {
+@@ -4077,11 +4078,12 @@ sctp_disposition_t sctp_sf_eat_fwd_tsn_fast(
+  *
+  * The return value is the disposition of the chunk.
+  */
+-static sctp_ierror_t sctp_sf_authenticate(struct net *net,
+-				    const struct sctp_endpoint *ep,
+-				    const struct sctp_association *asoc,
+-				    const sctp_subtype_t type,
+-				    struct sctp_chunk *chunk)
++static enum sctp_ierror sctp_sf_authenticate(
++				struct net *net,
++				const struct sctp_endpoint *ep,
++				const struct sctp_association *asoc,
++				const sctp_subtype_t type,
++				struct sctp_chunk *chunk)
  {
--	sctp_cwrhdr_t *cwr;
+ 	struct sctp_authhdr *auth_hdr;
+ 	struct sctp_hmac *hmac;
+@@ -4159,10 +4161,10 @@ sctp_disposition_t sctp_sf_eat_auth(struct net *net,
+ 				    void *arg,
+ 				    sctp_cmd_seq_t *commands)
+ {
+-	struct sctp_authhdr *auth_hdr;
  	struct sctp_chunk *chunk = arg;
-+	struct sctp_cwrhdr *cwr;
- 	u32 lowest_tsn;
++	struct sctp_authhdr *auth_hdr;
+ 	struct sctp_chunk *err_chunk;
+-	sctp_ierror_t error;
++	enum sctp_ierror error;
  
- 	if (!sctp_vtag_verify(chunk, asoc))
-@@ -2873,8 +2873,8 @@ sctp_disposition_t sctp_sf_do_ecn_cwr(struct net *net,
- 		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
- 						  commands);
- 
--	cwr = (sctp_cwrhdr_t *) chunk->skb->data;
--	skb_pull(chunk->skb, sizeof(sctp_cwrhdr_t));
-+	cwr = (struct sctp_cwrhdr *)chunk->skb->data;
-+	skb_pull(chunk->skb, sizeof(*cwr));
- 
- 	lowest_tsn = ntohl(cwr->lowest_tsn);
- 
+ 	/* Make sure that the peer has AUTH capable */
+ 	if (!asoc->peer.auth_capable)
 -- 
 2.1.0
 
