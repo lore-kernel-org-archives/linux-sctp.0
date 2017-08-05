@@ -1,115 +1,73 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 03 Aug 2017 07:42:09 +0000
-Subject: [PATCH net-next 01/14] sctp: remove the typedef sctp_shutdownhdr_t
-Message-Id: <8149f8b0a190eb047abfe48a7fa79ba74e4e4544.1501745729.git.lucien.xin@gmail.com>
+Date: Sat, 05 Aug 2017 11:59:51 +0000
+Subject: [PATCH net-next 01/14] sctp: remove the typedef sctp_lower_cwnd_t
+Message-Id: <88e505f76dd927887d8cdcc7de2b82595237aa85.1501934087.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1501745729.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1501745729.git.lucien.xin@gmail.com>
+References: <cover.1501934086.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1501934086.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to remove the typedef sctp_shutdownhdr_t, and
-replace with struct sctp_shutdownhdr in the places where it's
+This patch is to remove the typedef sctp_lower_cwnd_t, and
+replace with enum sctp_lower_cwnd in the places where it's
 using this typedef.
-
-It is also to use sizeof(variable) instead of sizeof(type).
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/linux/sctp.h     |  6 +++---
- net/sctp/sm_make_chunk.c |  4 ++--
- net/sctp/sm_statefuns.c  | 10 +++++-----
- 3 files changed, 10 insertions(+), 10 deletions(-)
+ include/net/sctp/constants.h | 4 ++--
+ include/net/sctp/structs.h   | 3 ++-
+ net/sctp/transport.c         | 2 +-
+ 3 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index ba00716..7a586ba 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -416,13 +416,13 @@ struct sctp_abort_chunk {
- /* For the graceful shutdown we must carry the tag (in common header)
-  * and the highest consecutive acking value.
-  */
--typedef struct sctp_shutdownhdr {
-+struct sctp_shutdownhdr {
- 	__be32 cum_tsn_ack;
--} sctp_shutdownhdr_t;
+diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
+index 9b18044..761064e 100644
+--- a/include/net/sctp/constants.h
++++ b/include/net/sctp/constants.h
+@@ -378,12 +378,12 @@ typedef enum {
+ } sctp_retransmit_reason_t;
+ 
+ /* Reasons to lower cwnd. */
+-typedef enum {
++enum sctp_lower_cwnd {
+ 	SCTP_LOWER_CWND_T3_RTX,
+ 	SCTP_LOWER_CWND_FAST_RTX,
+ 	SCTP_LOWER_CWND_ECNE,
+ 	SCTP_LOWER_CWND_INACTIVE,
+-} sctp_lower_cwnd_t;
 +};
  
- struct sctp_shutdown_chunk_t {
- 	struct sctp_chunkhdr chunk_hdr;
--	sctp_shutdownhdr_t shutdown_hdr;
-+	struct sctp_shutdownhdr shutdown_hdr;
- };
  
- /* RFC 2960.  Section 3.3.10 Operation Error (ERROR) (9) */
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 163004e..8f1c6b6 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -857,15 +857,15 @@ struct sctp_chunk *sctp_make_sack(const struct sctp_association *asoc)
- struct sctp_chunk *sctp_make_shutdown(const struct sctp_association *asoc,
- 				      const struct sctp_chunk *chunk)
+ /* SCTP-AUTH Necessary constants */
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 66cd763..53802d8 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -950,7 +950,8 @@ int sctp_transport_hold(struct sctp_transport *);
+ void sctp_transport_put(struct sctp_transport *);
+ void sctp_transport_update_rto(struct sctp_transport *, __u32);
+ void sctp_transport_raise_cwnd(struct sctp_transport *, __u32, __u32);
+-void sctp_transport_lower_cwnd(struct sctp_transport *, sctp_lower_cwnd_t);
++void sctp_transport_lower_cwnd(struct sctp_transport *t,
++			       enum sctp_lower_cwnd reason);
+ void sctp_transport_burst_limited(struct sctp_transport *);
+ void sctp_transport_burst_reset(struct sctp_transport *);
+ unsigned long sctp_transport_timeout(struct sctp_transport *);
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index 80a97c8..2d9bd37 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -490,7 +490,7 @@ void sctp_transport_raise_cwnd(struct sctp_transport *transport,
+  * detected.
+  */
+ void sctp_transport_lower_cwnd(struct sctp_transport *transport,
+-			       sctp_lower_cwnd_t reason)
++			       enum sctp_lower_cwnd reason)
  {
-+	struct sctp_shutdownhdr shut;
- 	struct sctp_chunk *retval;
--	sctp_shutdownhdr_t shut;
- 	__u32 ctsn;
+ 	struct sctp_association *asoc = transport->asoc;
  
- 	ctsn = sctp_tsnmap_get_ctsn(&asoc->peer.tsn_map);
- 	shut.cum_tsn_ack = htonl(ctsn);
- 
- 	retval = sctp_make_control(asoc, SCTP_CID_SHUTDOWN, 0,
--				   sizeof(sctp_shutdownhdr_t), GFP_ATOMIC);
-+				   sizeof(shut), GFP_ATOMIC);
- 	if (!retval)
- 		goto nodata;
- 
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index dc0c2c4..5b95e2d 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -2656,8 +2656,8 @@ sctp_disposition_t sctp_sf_do_9_2_shutdown(struct net *net,
- 					   sctp_cmd_seq_t *commands)
- {
- 	struct sctp_chunk *chunk = arg;
--	sctp_shutdownhdr_t *sdh;
- 	sctp_disposition_t disposition;
-+	struct sctp_shutdownhdr *sdh;
- 	struct sctp_ulpevent *ev;
- 	__u32 ctsn;
- 
-@@ -2671,8 +2671,8 @@ sctp_disposition_t sctp_sf_do_9_2_shutdown(struct net *net,
- 						  commands);
- 
- 	/* Convert the elaborate header.  */
--	sdh = (sctp_shutdownhdr_t *)chunk->skb->data;
--	skb_pull(chunk->skb, sizeof(sctp_shutdownhdr_t));
-+	sdh = (struct sctp_shutdownhdr *)chunk->skb->data;
-+	skb_pull(chunk->skb, sizeof(*sdh));
- 	chunk->subh.shutdown_hdr = sdh;
- 	ctsn = ntohl(sdh->cum_tsn_ack);
- 
-@@ -2746,7 +2746,7 @@ sctp_disposition_t sctp_sf_do_9_2_shut_ctsn(struct net *net,
- 					   sctp_cmd_seq_t *commands)
- {
- 	struct sctp_chunk *chunk = arg;
--	sctp_shutdownhdr_t *sdh;
-+	struct sctp_shutdownhdr *sdh;
- 	__u32 ctsn;
- 
- 	if (!sctp_vtag_verify(chunk, asoc))
-@@ -2758,7 +2758,7 @@ sctp_disposition_t sctp_sf_do_9_2_shut_ctsn(struct net *net,
- 		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
- 						  commands);
- 
--	sdh = (sctp_shutdownhdr_t *)chunk->skb->data;
-+	sdh = (struct sctp_shutdownhdr *)chunk->skb->data;
- 	ctsn = ntohl(sdh->cum_tsn_ack);
- 
- 	if (TSN_lt(ctsn, asoc->ctsn_ack_point)) {
 -- 
 2.1.0
 
