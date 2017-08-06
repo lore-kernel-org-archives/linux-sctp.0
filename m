@@ -1,52 +1,81 @@
-From: Kees Cook <keescook@chromium.org>
-Date: Mon, 28 Aug 2017 21:35:03 +0000
-Subject: [PATCH v2 22/30] sctp: Copy struct sctp_sock.autoclose to userspace using put_user()
-Message-Id: <1503956111-36652-23-git-send-email-keescook@chromium.org>
+From: Mikko Rapeli <mikko.rapeli@iki.fi>
+Date: Sun, 06 Aug 2017 16:44:08 +0000
+Subject: [PATCH v06 17/36] uapi linux/sctp.h: use __u8, __u16 and __u32 from linux/types.h
+Message-Id: <20170806164428.2273-18-mikko.rapeli@iki.fi>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1503956111-36652-1-git-send-email-keescook@chromium.org>
-In-Reply-To: <1503956111-36652-1-git-send-email-keescook@chromium.org>
+References: <20170806164428.2273-1-mikko.rapeli@iki.fi>
+In-Reply-To: <20170806164428.2273-1-mikko.rapeli@iki.fi>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: linux-kernel@vger.kernel.org
-Cc: Kees Cook <keescook@chromium.org>, David Windsor <dave@nullcore.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-mm@kvack.org, kernel-hardening@lists.openwall.com
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: linux-kernel@vger.kernel.org, linux-api@vger.kernel.org
+Cc: Mikko Rapeli <mikko.rapeli@iki.fi>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Xin Long <lucien.xin@gmail.com>, Phil Sutter <phil@nwl.cc>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org
 
-From: David Windsor <dave@nullcore.net>
+Fixes userspace compilation errors like:
 
-The autoclose field can be copied with put_user(), so there is no need to
-use copy_to_user(). In both cases, hardened usercopy is being bypassed
-since the size is constant, and not open to runtime manipulation.
+linux/sctp.h:652:2: error: unknown type name ‘uint32_t’
 
-This patch is verbatim from Brad Spengler/PaX Team's PAX_USERCOPY
-whitelisting code in the last public patch of grsecurity/PaX based on my
-understanding of the code. Changes or omissions from the original code are
-mine and don't reflect the original grsecurity/PaX code.
-
-Signed-off-by: David Windsor <dave@nullcore.net>
-[kees: adjust commit log]
-Cc: Vlad Yasevich <vyasevich@gmail.com>
-Cc: Neil Horman <nhorman@tuxdriver.com>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: linux-sctp@vger.kernel.org
-Cc: netdev@vger.kernel.org
-Signed-off-by: Kees Cook <keescook@chromium.org>
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Signed-off-by: Mikko Rapeli <mikko.rapeli@iki.fi>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: Xin Long <lucien.xin@gmail.com>
+Cc: Phil Sutter <phil@nwl.cc>
 ---
- net/sctp/socket.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ include/uapi/linux/sctp.h | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index c8784cb216e4..a29e41e19d64 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -4882,7 +4882,7 @@ static int sctp_getsockopt_autoclose(struct sock *sk, int len, char __user *optv
- 	len = sizeof(int);
- 	if (put_user(len, optlen))
- 		return -EFAULT;
--	if (copy_to_user(optval, &sctp_sk(sk)->autoclose, sizeof(int)))
-+	if (put_user(sctp_sk(sk)->autoclose, (int __user *)optval))
- 		return -EFAULT;
- 	return 0;
- }
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index 6217ff8500a1..d8b83fd56572 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -805,13 +805,13 @@ struct sctp_authkeyid {
+  */
+ struct sctp_sack_info {
+ 	sctp_assoc_t	sack_assoc_id;
+-	uint32_t	sack_delay;
+-	uint32_t	sack_freq;
++	__u32	sack_delay;
++	__u32	sack_freq;
+ };
+ 
+ struct sctp_assoc_value {
+-    sctp_assoc_t            assoc_id;
+-    uint32_t                assoc_value;
++	sctp_assoc_t	assoc_id;
++	__u32		assoc_value;
+ };
+ 
+ /*
+@@ -881,7 +881,7 @@ struct sctp_status {
+ struct sctp_authchunks {
+ 	sctp_assoc_t	gauth_assoc_id;
+ 	__u32		gauth_number_of_chunks;
+-	uint8_t		gauth_chunks[];
++	__u8		gauth_chunks[];
+ };
+ 
+ /* The broken spelling has been released already in lksctp-tools header,
+@@ -1077,15 +1077,15 @@ struct sctp_info {
+ 
+ struct sctp_reset_streams {
+ 	sctp_assoc_t srs_assoc_id;
+-	uint16_t srs_flags;
+-	uint16_t srs_number_streams;	/* 0 = ALL */
+-	uint16_t srs_stream_list[];	/* list if srs_num_streams is not 0 */
++	__u16 srs_flags;
++	__u16 srs_number_streams;	/* 0 = ALL */
++	__u16 srs_stream_list[];	/* list if srs_num_streams is not 0 */
+ };
+ 
+ struct sctp_add_streams {
+ 	sctp_assoc_t sas_assoc_id;
+-	uint16_t sas_instrms;
+-	uint16_t sas_outstrms;
++	__u16 sas_instrms;
++	__u16 sas_outstrms;
+ };
+ 
+ #endif /* _UAPI_SCTP_H */
 -- 
-2.7.4
+2.13.3
 
