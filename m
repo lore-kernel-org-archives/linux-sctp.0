@@ -1,26 +1,26 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 18 Aug 2017 23:01:46 +0000
-Subject: Re: [PATCH v3] sctp: fully initialize the IPv6 address in sctp_v6_to_addr()
-Message-Id: <20170818.160146.1416785715146952456.davem@davemloft.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 08 Aug 2017 18:47:40 +0000
+Subject: Re: [PATCH] sctp: fully initialize the IPv6 address in sctp_v6_to_addr()
+Message-Id: <20170808184740.GC7613@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20170816181640.40170-1-glider@google.com>
-In-Reply-To: <20170816181640.40170-1-glider@google.com>
+References: <20170718145557.89616-1-glider@google.com>
+In-Reply-To: <20170718145557.89616-1-glider@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: glider@google.com
-Cc: dvyukov@google.com, kcc@google.com, edumazet@google.com, marcelo.leitner@gmail.com, lucien.xin@gmail.com, vyasevich@gmail.com, hideaki.yoshifuji@miraclelinux.com, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: Alexander Potapenko <glider@google.com>
+Cc: dvyukov@google.com, kcc@google.com, edumazet@google.com, davem@davemloft.net, vyasevich@gmail.com, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org
 
-From: Alexander Potapenko <glider@google.com>
-Date: Wed, 16 Aug 2017 20:16:40 +0200
-
+On Tue, Jul 18, 2017 at 04:55:57PM +0200, Alexander Potapenko wrote:
 > KMSAN reported use of uninitialized sctp_addr->v4.sin_addr.s_addr and
 > sctp_addr->v6.sin6_scope_id in sctp_v6_cmp_addr() (see below).
 > Make sure all fields of an IPv6 address are initialized, which
 > guarantees that the IPv4 fields are also initialized.
- ...
-> Signed-off-by: Alexander Potapenko <glider@google.com>
-> Reviewed-by: Xin Long <lucien.xin@gmail.com>
-> Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-Applied and queued up for -stable, thanks.
+Hi Alexander,
+
+You missed to email netdev@ and thus Dave is unable to see this patch in
+patchwork. Please resend it, including netdev@.
+
+Thanks,
+Marcelo
