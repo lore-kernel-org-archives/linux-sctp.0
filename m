@@ -1,74 +1,97 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 05 Aug 2017 11:59:56 +0000
-Subject: [PATCH net-next 06/14] sctp: remove the typedef sctp_sock_state_t
-Message-Id: <e92ab93f0d646a935384c74848671fc56956c754.1501934087.git.lucien.xin@gmail.com>
+Date: Fri, 11 Aug 2017 02:23:50 +0000
+Subject: [PATCH net-next 06/14] sctp: remove the typedef sctp_socket_type_t
+Message-Id: <bec27150caf5435011467a5488247f853f782409.1502417340.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1501934086.git.lucien.xin@gmail.com>
- <88e505f76dd927887d8cdcc7de2b82595237aa85.1501934087.git.lucien.xin@gmail.com>
- <7ceee2b1bf33403b8ecb04c9c30354f71dd2198a.1501934087.git.lucien.xin@gmail.com>
- <09ffe75e4e16f00b61b682261e2a4b05fa76e814.1501934087.git.lucien.xin@gmail.com>
- <f8669af1f44d19322287665b8f7d97e0e2a4dc46.1501934087.git.lucien.xin@gmail.com>
- <9049d5fd9299328397722053f090a66d97de8451.1501934087.git.lucien.xin@gmail.com>
-In-Reply-To: <9049d5fd9299328397722053f090a66d97de8451.1501934087.git.lucien.xin@gmail.com>
+References: <cover.1502417340.git.lucien.xin@gmail.com>
+ <e15322cc52e110730f2bcb77973222b687717369.1502417340.git.lucien.xin@gmail.com>
+ <67dec3f4936413e5bf596dc0ce9be0b9aa15a444.1502417340.git.lucien.xin@gmail.com>
+ <5031dc5f40135c4ede57452bc61a1b29dfc76d89.1502417340.git.lucien.xin@gmail.com>
+ <58f1f86286c91cf55e9d6eb9395e59e9f1fd4519.1502417340.git.lucien.xin@gmail.com>
+ <77692e0783b8134d97fd4c15e37cf0b6e4fa643e.1502417340.git.lucien.xin@gmail.com>
+In-Reply-To: <77692e0783b8134d97fd4c15e37cf0b6e4fa643e.1502417340.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to remove the typedef sctp_sock_state_t, and
-replace with enum sctp_sock_state in the places where it's
+This patch is to remove the typedef sctp_socket_type_t, and
+replace with enum sctp_socket_type in the places where it's
 using this typedef.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/constants.h | 6 +++---
- include/net/sctp/sctp.h      | 3 ++-
- 2 files changed, 5 insertions(+), 4 deletions(-)
+ include/net/sctp/sctp.h    | 3 ++-
+ include/net/sctp/structs.h | 6 +++---
+ net/sctp/socket.c          | 7 ++++---
+ 3 files changed, 9 insertions(+), 7 deletions(-)
 
-diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
-index 8ce6d32..049868e 100644
---- a/include/net/sctp/constants.h
-+++ b/include/net/sctp/constants.h
-@@ -42,7 +42,7 @@
- 
- #include <linux/sctp.h>
- #include <linux/ipv6.h> /* For ipv6hdr. */
--#include <net/tcp_states.h>  /* For TCP states used in sctp_sock_state_t */
-+#include <net/tcp_states.h>  /* For TCP states used in enum sctp_sock_state */
- 
- /* Value used for stream negotiation. */
- enum { SCTP_MAX_STREAM = 0xffff };
-@@ -214,13 +214,13 @@ typedef enum {
-  * - A socket in SCTP_SS_ESTABLISHED state indicates that it has a single 
-  *   association.
-  */
--typedef enum {
-+enum sctp_sock_state {
- 	SCTP_SS_CLOSED         = TCP_CLOSE,
- 	SCTP_SS_LISTENING      = TCP_LISTEN,
- 	SCTP_SS_ESTABLISHING   = TCP_SYN_SENT,
- 	SCTP_SS_ESTABLISHED    = TCP_ESTABLISHED,
- 	SCTP_SS_CLOSING        = TCP_CLOSE_WAIT,
--} sctp_sock_state_t;
-+};
- 
- /* These functions map various type to printable names.  */
- const char *sctp_cname(const sctp_subtype_t);	/* chunk types */
 diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index ca66b03..0022bc7 100644
+index 24ff793..06b4f51 100644
 --- a/include/net/sctp/sctp.h
 +++ b/include/net/sctp/sctp.h
-@@ -565,7 +565,8 @@ static inline int __sctp_state(const struct sctp_association *asoc,
+@@ -550,7 +550,8 @@ static inline int sctp_ep_hashfn(struct net *net, __u16 lport)
  
- /* Is the socket in this state? */
- #define sctp_sstate(sk, state) __sctp_sstate((sk), (SCTP_SS_##state))
--static inline int __sctp_sstate(const struct sock *sk, sctp_sock_state_t state)
-+static inline int __sctp_sstate(const struct sock *sk,
-+				enum sctp_sock_state state)
+ /* Is a socket of this style? */
+ #define sctp_style(sk, style) __sctp_style((sk), (SCTP_SOCKET_##style))
+-static inline int __sctp_style(const struct sock *sk, sctp_socket_type_t style)
++static inline int __sctp_style(const struct sock *sk,
++			       enum sctp_socket_type style)
  {
- 	return sk->sk_state = state;
+ 	return sctp_sk(sk)->type = style;
  }
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index b6d75b3..0477945 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -150,18 +150,18 @@ extern struct sctp_globals {
+ #define sctp_checksum_disable		(sctp_globals.checksum_disable)
+ 
+ /* SCTP Socket type: UDP or TCP style. */
+-typedef enum {
++enum sctp_socket_type {
+ 	SCTP_SOCKET_UDP = 0,
+ 	SCTP_SOCKET_UDP_HIGH_BANDWIDTH,
+ 	SCTP_SOCKET_TCP
+-} sctp_socket_type_t;
++};
+ 
+ /* Per socket SCTP information. */
+ struct sctp_sock {
+ 	/* inet_sock has to be the first member of sctp_sock */
+ 	struct inet_sock inet;
+ 	/* What kind of a socket is this? */
+-	sctp_socket_type_t type;
++	enum sctp_socket_type type;
+ 
+ 	/* PF_ family specific functions.  */
+ 	struct sctp_pf *pf;
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 0181906..c01af72 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -100,8 +100,9 @@ static int sctp_send_asconf(struct sctp_association *asoc,
+ 			    struct sctp_chunk *chunk);
+ static int sctp_do_bind(struct sock *, union sctp_addr *, int);
+ static int sctp_autobind(struct sock *sk);
+-static void sctp_sock_migrate(struct sock *, struct sock *,
+-			      struct sctp_association *, sctp_socket_type_t);
++static void sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
++			      struct sctp_association *assoc,
++			      enum sctp_socket_type type);
+ 
+ static unsigned long sctp_memory_pressure;
+ static atomic_long_t sctp_memory_allocated;
+@@ -8086,7 +8087,7 @@ static inline void sctp_copy_descendant(struct sock *sk_to,
+  */
+ static void sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
+ 			      struct sctp_association *assoc,
+-			      sctp_socket_type_t type)
++			      enum sctp_socket_type type)
+ {
+ 	struct sctp_sock *oldsp = sctp_sk(oldsk);
+ 	struct sctp_sock *newsp = sctp_sk(newsk);
 -- 
 2.1.0
 
