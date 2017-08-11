@@ -1,74 +1,90 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 05 Aug 2017 12:00:00 +0000
-Subject: [PATCH net-next 10/14] sctp: remove the typedef sctp_event_primitive_t
-Message-Id: <d2af679ab5fa9b939e37f7b8ac51097c70280f2d.1501934087.git.lucien.xin@gmail.com>
+Date: Fri, 11 Aug 2017 02:23:54 +0000
+Subject: [PATCH net-next 10/14] sctp: remove the typedef sctp_verb_t
+Message-Id: <712be5d964dee4d7918781d7399ad564f2309259.1502417340.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1501934086.git.lucien.xin@gmail.com>
- <88e505f76dd927887d8cdcc7de2b82595237aa85.1501934087.git.lucien.xin@gmail.com>
- <7ceee2b1bf33403b8ecb04c9c30354f71dd2198a.1501934087.git.lucien.xin@gmail.com>
- <09ffe75e4e16f00b61b682261e2a4b05fa76e814.1501934087.git.lucien.xin@gmail.com>
- <f8669af1f44d19322287665b8f7d97e0e2a4dc46.1501934087.git.lucien.xin@gmail.com>
- <9049d5fd9299328397722053f090a66d97de8451.1501934087.git.lucien.xin@gmail.com>
- <e92ab93f0d646a935384c74848671fc56956c754.1501934087.git.lucien.xin@gmail.com>
- <a26ddefe25442293b3e1020ce56f859125a93412.1501934087.git.lucien.xin@gmail.com>
- <1bd9e98627fc627a28f90ad587e941845b91b108.1501934087.git.lucien.xin@gmail.com>
- <6f17de8a0a6d21445de859c4073b235e9c5d2163.1501934087.git.lucien.xin@gmail.com>
-In-Reply-To: <6f17de8a0a6d21445de859c4073b235e9c5d2163.1501934087.git.lucien.xin@gmail.com>
+References: <cover.1502417340.git.lucien.xin@gmail.com>
+ <e15322cc52e110730f2bcb77973222b687717369.1502417340.git.lucien.xin@gmail.com>
+ <67dec3f4936413e5bf596dc0ce9be0b9aa15a444.1502417340.git.lucien.xin@gmail.com>
+ <5031dc5f40135c4ede57452bc61a1b29dfc76d89.1502417340.git.lucien.xin@gmail.com>
+ <58f1f86286c91cf55e9d6eb9395e59e9f1fd4519.1502417340.git.lucien.xin@gmail.com>
+ <77692e0783b8134d97fd4c15e37cf0b6e4fa643e.1502417340.git.lucien.xin@gmail.com>
+ <bec27150caf5435011467a5488247f853f782409.1502417340.git.lucien.xin@gmail.com>
+ <d9ac131331781f85d2662c4c15692344260bb1b6.1502417340.git.lucien.xin@gmail.com>
+ <d69e6a88f9cbdc68f0f3ef9c2afd89ccc64f955b.1502417340.git.lucien.xin@gmail.com>
+ <8a912c943fa40c635ac0dba8726c7e744031a446.1502417340.git.lucien.xin@gmail.com>
+In-Reply-To: <8a912c943fa40c635ac0dba8726c7e744031a446.1502417340.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to remove the typedef sctp_event_primitive_t, and
-replace with enum sctp_event_primitive in the places where it's
+This patch is to remove the typedef sctp_verb_t, and
+replace with enum sctp_verb in the places where it's
 using this typedef.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/constants.h | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ include/net/sctp/command.h | 10 +++++-----
+ net/sctp/sm_statefuns.c    |  2 +-
+ 2 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
-index db9f40b..162ee95 100644
---- a/include/net/sctp/constants.h
-+++ b/include/net/sctp/constants.h
-@@ -110,7 +110,7 @@ typedef enum {
- #define SCTP_NUM_OTHER_TYPES		(SCTP_EVENT_OTHER_MAX + 1)
+diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
+index f5fc425..b55c6a4 100644
+--- a/include/net/sctp/command.h
++++ b/include/net/sctp/command.h
+@@ -40,7 +40,7 @@
+ #include <net/sctp/structs.h>
  
- /* These are primitive requests from the ULP.  */
+ 
 -typedef enum {
-+enum sctp_event_primitive {
- 	SCTP_PRIMITIVE_ASSOCIATE = 0,
- 	SCTP_PRIMITIVE_SHUTDOWN,
- 	SCTP_PRIMITIVE_ABORT,
-@@ -118,7 +118,7 @@ typedef enum {
- 	SCTP_PRIMITIVE_REQUESTHEARTBEAT,
- 	SCTP_PRIMITIVE_ASCONF,
- 	SCTP_PRIMITIVE_RECONF,
--} sctp_event_primitive_t;
++enum sctp_verb {
+ 	SCTP_CMD_NOP = 0,	/* Do nothing. */
+ 	SCTP_CMD_NEW_ASOC,	/* Register a new association.  */
+ 	SCTP_CMD_DELETE_TCB,	/* Delete the current association. */
+@@ -108,7 +108,7 @@ typedef enum {
+ 	SCTP_CMD_PURGE_ASCONF_QUEUE, /* Purge all asconf queues.*/
+ 	SCTP_CMD_SET_ASOC,	 /* Restore association context */
+ 	SCTP_CMD_LAST
+-} sctp_verb_t;
 +};
  
- #define SCTP_EVENT_PRIMITIVE_MAX	SCTP_PRIMITIVE_RECONF
- #define SCTP_NUM_PRIMITIVE_TYPES	(SCTP_EVENT_PRIMITIVE_MAX + 1)
-@@ -133,7 +133,7 @@ typedef union {
- 	enum sctp_cid chunk;
- 	sctp_event_timeout_t timeout;
- 	sctp_event_other_t other;
--	sctp_event_primitive_t primitive;
-+	enum sctp_event_primitive primitive;
- } sctp_subtype_t;
+ /* How many commands can you put in an struct sctp_cmd_seq?
+  * This is a rather arbitrary number, ideally derived from a careful
+@@ -198,7 +198,7 @@ static inline union sctp_arg SCTP_NULL(void)
  
- #define SCTP_SUBTYPE_CONSTRUCTOR(_name, _type, _elt) \
-@@ -144,7 +144,7 @@ SCTP_ST_## _name (_type _arg)		\
- SCTP_SUBTYPE_CONSTRUCTOR(CHUNK,		enum sctp_cid,		chunk)
- SCTP_SUBTYPE_CONSTRUCTOR(TIMEOUT,	sctp_event_timeout_t,	timeout)
- SCTP_SUBTYPE_CONSTRUCTOR(OTHER,		sctp_event_other_t,	other)
--SCTP_SUBTYPE_CONSTRUCTOR(PRIMITIVE,	sctp_event_primitive_t,	primitive)
-+SCTP_SUBTYPE_CONSTRUCTOR(PRIMITIVE,	enum sctp_event_primitive, primitive)
+ struct sctp_cmd {
+ 	union sctp_arg obj;
+-	sctp_verb_t verb;
++	enum sctp_verb verb;
+ };
  
+ struct sctp_cmd_seq {
+@@ -225,8 +225,8 @@ static inline int sctp_init_cmd_seq(struct sctp_cmd_seq *seq)
+  * Use the SCTP_* constructors defined by SCTP_ARG_CONSTRUCTOR() above
+  * to wrap data which goes in the obj argument.
+  */
+-static inline void sctp_add_cmd_sf(struct sctp_cmd_seq *seq, sctp_verb_t verb,
+-				   union sctp_arg obj)
++static inline void sctp_add_cmd_sf(struct sctp_cmd_seq *seq,
++				   enum sctp_verb verb, union sctp_arg obj)
+ {
+ 	struct sctp_cmd *cmd = seq->last_used_slot - 1;
  
- #define sctp_chunk_is_data(a) (a->chunk_hdr->type = SCTP_CID_DATA)
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 3394c4d..adc1dde 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -6205,7 +6205,7 @@ static int sctp_eat_data(const struct sctp_association *asoc,
+ 	struct sctp_datahdr *data_hdr;
+ 	struct sctp_chunk *err;
+ 	size_t datalen;
+-	sctp_verb_t deliver;
++	enum sctp_verb deliver;
+ 	int tmp;
+ 	__u32 tsn;
+ 	struct sctp_tsnmap *map = (struct sctp_tsnmap *)&asoc->peer.tsn_map;
 -- 
 2.1.0
 
