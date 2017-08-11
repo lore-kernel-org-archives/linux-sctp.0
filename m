@@ -1,70 +1,50 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 05 Aug 2017 12:00:01 +0000
-Subject: [PATCH net-next 11/14] sctp: remove the typedef sctp_event_other_t
-Message-Id: <d526b6acfb360ee28fbf70f198b6cce67a9f1c35.1501934087.git.lucien.xin@gmail.com>
+Date: Fri, 11 Aug 2017 02:23:55 +0000
+Subject: [PATCH net-next 11/14] sctp: remove the unused typedef sctp_sm_command_t
+Message-Id: <6ff85867e2eb2776e2dbec9a0140911dcaec3e18.1502417340.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1501934086.git.lucien.xin@gmail.com>
- <88e505f76dd927887d8cdcc7de2b82595237aa85.1501934087.git.lucien.xin@gmail.com>
- <7ceee2b1bf33403b8ecb04c9c30354f71dd2198a.1501934087.git.lucien.xin@gmail.com>
- <09ffe75e4e16f00b61b682261e2a4b05fa76e814.1501934087.git.lucien.xin@gmail.com>
- <f8669af1f44d19322287665b8f7d97e0e2a4dc46.1501934087.git.lucien.xin@gmail.com>
- <9049d5fd9299328397722053f090a66d97de8451.1501934087.git.lucien.xin@gmail.com>
- <e92ab93f0d646a935384c74848671fc56956c754.1501934087.git.lucien.xin@gmail.com>
- <a26ddefe25442293b3e1020ce56f859125a93412.1501934087.git.lucien.xin@gmail.com>
- <1bd9e98627fc627a28f90ad587e941845b91b108.1501934087.git.lucien.xin@gmail.com>
- <6f17de8a0a6d21445de859c4073b235e9c5d2163.1501934087.git.lucien.xin@gmail.com>
- <d2af679ab5fa9b939e37f7b8ac51097c70280f2d.1501934087.git.lucien.xin@gmail.com>
-In-Reply-To: <d2af679ab5fa9b939e37f7b8ac51097c70280f2d.1501934087.git.lucien.xin@gmail.com>
+References: <cover.1502417340.git.lucien.xin@gmail.com>
+ <e15322cc52e110730f2bcb77973222b687717369.1502417340.git.lucien.xin@gmail.com>
+ <67dec3f4936413e5bf596dc0ce9be0b9aa15a444.1502417340.git.lucien.xin@gmail.com>
+ <5031dc5f40135c4ede57452bc61a1b29dfc76d89.1502417340.git.lucien.xin@gmail.com>
+ <58f1f86286c91cf55e9d6eb9395e59e9f1fd4519.1502417340.git.lucien.xin@gmail.com>
+ <77692e0783b8134d97fd4c15e37cf0b6e4fa643e.1502417340.git.lucien.xin@gmail.com>
+ <bec27150caf5435011467a5488247f853f782409.1502417340.git.lucien.xin@gmail.com>
+ <d9ac131331781f85d2662c4c15692344260bb1b6.1502417340.git.lucien.xin@gmail.com>
+ <d69e6a88f9cbdc68f0f3ef9c2afd89ccc64f955b.1502417340.git.lucien.xin@gmail.com>
+ <8a912c943fa40c635ac0dba8726c7e744031a446.1502417340.git.lucien.xin@gmail.com>
+ <712be5d964dee4d7918781d7399ad564f2309259.1502417340.git.lucien.xin@gmail.com>
+In-Reply-To: <712be5d964dee4d7918781d7399ad564f2309259.1502417340.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to remove the typedef sctp_event_other_t, and
-replace with enum sctp_event_other in the places where it's
-using this typedef.
+Remove this typedef including the struct, there is even no places
+using it.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/constants.h | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ include/net/sctp/sm.h | 5 -----
+ 1 file changed, 5 deletions(-)
 
-diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
-index 162ee95..fd8a80e 100644
---- a/include/net/sctp/constants.h
-+++ b/include/net/sctp/constants.h
-@@ -101,10 +101,10 @@ typedef enum {
- #define SCTP_EVENT_TIMEOUT_MAX		SCTP_EVENT_TIMEOUT_AUTOCLOSE
- #define SCTP_NUM_TIMEOUT_TYPES		(SCTP_EVENT_TIMEOUT_MAX + 1)
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index 9af64b9..3ca75a6 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -65,11 +65,6 @@ typedef enum {
+ 	SCTP_DISPOSITION_BUG,		 /* This is a bug.  */
+ } sctp_disposition_t;
  
--typedef enum {
-+enum sctp_event_other {
- 	SCTP_EVENT_NO_PENDING_TSN = 0,
- 	SCTP_EVENT_ICMP_PROTO_UNREACH,
--} sctp_event_other_t;
-+};
- 
- #define SCTP_EVENT_OTHER_MAX		SCTP_EVENT_ICMP_PROTO_UNREACH
- #define SCTP_NUM_OTHER_TYPES		(SCTP_EVENT_OTHER_MAX + 1)
-@@ -132,7 +132,7 @@ enum sctp_event_primitive {
- typedef union {
- 	enum sctp_cid chunk;
- 	sctp_event_timeout_t timeout;
--	sctp_event_other_t other;
-+	enum sctp_event_other other;
- 	enum sctp_event_primitive primitive;
- } sctp_subtype_t;
- 
-@@ -143,7 +143,7 @@ SCTP_ST_## _name (_type _arg)		\
- 
- SCTP_SUBTYPE_CONSTRUCTOR(CHUNK,		enum sctp_cid,		chunk)
- SCTP_SUBTYPE_CONSTRUCTOR(TIMEOUT,	sctp_event_timeout_t,	timeout)
--SCTP_SUBTYPE_CONSTRUCTOR(OTHER,		sctp_event_other_t,	other)
-+SCTP_SUBTYPE_CONSTRUCTOR(OTHER,		enum sctp_event_other,	other)
- SCTP_SUBTYPE_CONSTRUCTOR(PRIMITIVE,	enum sctp_event_primitive, primitive)
- 
- 
+-typedef struct {
+-	int name;
+-	int action;
+-} sctp_sm_command_t;
+-
+ typedef sctp_disposition_t (sctp_state_fn_t) (struct net *,
+ 					      const struct sctp_endpoint *,
+ 					      const struct sctp_association *,
 -- 
 2.1.0
 
