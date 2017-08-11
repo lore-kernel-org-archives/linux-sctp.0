@@ -1,26 +1,60 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 07 Aug 2017 04:33:56 +0000
-Subject: Re: [PATCH net-next 00/14] sctp: remove typedefs from structures part 5
-Message-Id: <20170806.213356.1004665749442304915.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 11 Aug 2017 02:23:44 +0000
+Subject: [PATCH net-next 00/14] sctp: remove typedefs from structures part 6
+Message-Id: <cover.1502417340.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1501934086.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1501934086.git.lucien.xin@gmail.com>
+References: <cover.1501745729.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1501745729.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sat,  5 Aug 2017 19:59:50 +0800
+As we know, typedef is suggested not to use in kernel, even checkpatch.pl
+also gives warnings about it. Now sctp is using it for many structures.
 
-> As we know, typedef is suggested not to use in kernel, even checkpatch.pl
-> also gives warnings about it. Now sctp is using it for many structures.
-> 
-> All this kind of typedef's using should be removed. This patchset is the
-> part 5 to remove all typedefs in include/net/sctp/constants.h.
-> 
-> Just as the part 1-4, No any code's logic would be changed in these patches,
-> only cleaning up.
+All this kind of typedef's using should be removed. This patchset is the
+part 6 to remove all typedefs in include/net/sctp/structs.h, command.h
+and sm.h.
 
-Series applied, thank you.
+Just as the part 1-5, No any code's logic would be changed in these patches,
+only cleaning up.
+
+Note that this is the last part for this typedef cleaning up. after this
+patchset, no more inappropriate typedefs in sctp. It's also to tidy some
+codes when removing them, like fixing many indents, reodering some local
+params, especially in the last 2 patches.
+
+Xin Long (14):
+  sctp: remove the unused typedef sctp_packet_phandler_t
+  sctp: remove the typedef sctp_sender_hb_info_t
+  sctp: remove the typedef sctp_endpoint_type_t
+  sctp: remove the typedef sctp_cmsgs_t
+  sctp: remove the typedef sctp_dbg_objcnt_entry_t
+  sctp: remove the typedef sctp_socket_type_t
+  sctp: remove the typedef sctp_cmd_t
+  sctp: remove the typedef sctp_cmd_seq_t
+  sctp: remove the typedef sctp_arg_t
+  sctp: remove the typedef sctp_verb_t
+  sctp: remove the unused typedef sctp_sm_command_t
+  sctp: remove the typedef sctp_sm_table_entry_t
+  sctp: remove the typedef sctp_disposition_t
+  sctp: fix some indents in sm_make_chunk.c
+
+ include/net/sctp/command.h |   58 +-
+ include/net/sctp/sctp.h    |    3 +-
+ include/net/sctp/sm.h      |  188 +++---
+ include/net/sctp/structs.h |   26 +-
+ net/sctp/objcnt.c          |    2 +-
+ net/sctp/probe.c           |   13 +-
+ net/sctp/sm_make_chunk.c   |  354 ++++++------
+ net/sctp/sm_sideeffect.c   |  106 ++--
+ net/sctp/sm_statefuns.c    | 1368 +++++++++++++++++++++++---------------------
+ net/sctp/sm_statetable.c   |   42 +-
+ net/sctp/socket.c          |   16 +-
+ 11 files changed, 1104 insertions(+), 1072 deletions(-)
+
+-- 
+2.1.0
+
