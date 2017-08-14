@@ -1,1003 +1,194 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 11 Aug 2017 02:23:58 +0000
-Subject: [PATCH net-next 14/14] sctp: fix some indents in sm_make_chunk.c
-Message-Id: <6bebf259376b7dafb8782425de369b7a83ffb57f.1502417340.git.lucien.xin@gmail.com>
+From: <linwoodrvsales@xplornet.com>
+Date: Mon, 14 Aug 2017 14:57:33 +0000
+Subject: 
+Message-Id: <150272265309.18510.2526007237223223906@vnpt.vn>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1502417340.git.lucien.xin@gmail.com>
- <e15322cc52e110730f2bcb77973222b687717369.1502417340.git.lucien.xin@gmail.com>
- <67dec3f4936413e5bf596dc0ce9be0b9aa15a444.1502417340.git.lucien.xin@gmail.com>
- <5031dc5f40135c4ede57452bc61a1b29dfc76d89.1502417340.git.lucien.xin@gmail.com>
- <58f1f86286c91cf55e9d6eb9395e59e9f1fd4519.1502417340.git.lucien.xin@gmail.com>
- <77692e0783b8134d97fd4c15e37cf0b6e4fa643e.1502417340.git.lucien.xin@gmail.com>
- <bec27150caf5435011467a5488247f853f782409.1502417340.git.lucien.xin@gmail.com>
- <d9ac131331781f85d2662c4c15692344260bb1b6.1502417340.git.lucien.xin@gmail.com>
- <d69e6a88f9cbdc68f0f3ef9c2afd89ccc64f955b.1502417340.git.lucien.xin@gmail.com>
- <8a912c943fa40c635ac0dba8726c7e744031a446.1502417340.git.lucien.xin@gmail.com>
- <712be5d964dee4d7918781d7399ad564f2309259.1502417340.git.lucien.xin@gmail.com>
- <6ff85867e2eb2776e2dbec9a0140911dcaec3e18.1502417340.git.lucien.xin@gmail.com>
- <55bc9dd4073fded0138ef8074f092fb7ba148356.1502417340.git.lucien.xin@gmail.com>
- <aba19eb36546ed6eaacf4efc264f1e1b209d7a7e.1502417340.git.lucien.xin@gmail.com>
-In-Reply-To: <aba19eb36546ed6eaacf4efc264f1e1b209d7a7e.1502417340.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: linux-sctp@vger.kernel.org
 
-There are some bad indents of functions' defination in sm_make_chunk.c.
-They have been there since beginning, it was probably caused by that
-the typedef sctp_chunk_t was replaced with struct sctp_chunk.
-
-So it's the best time to fix them in this patchset, it's also to fix
-some bad indents in other functions' defination in sm_make_chunk.c.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- include/net/sctp/sm.h    | 158 ++++++++++-----------
- net/sctp/sm_make_chunk.c | 348 +++++++++++++++++++++++------------------------
- 2 files changed, 249 insertions(+), 257 deletions(-)
-
-diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index 33077f3..2db3d3a 100644
---- a/include/net/sctp/sm.h
-+++ b/include/net/sctp/sm.h
-@@ -184,68 +184,69 @@ __u32 sctp_generate_verification_tag(void);
- void sctp_populate_tie_tags(__u8 *cookie, __u32 curTag, __u32 hisTag);
- 
- /* Prototypes for chunk-building functions.  */
--struct sctp_chunk *sctp_make_init(const struct sctp_association *,
--			     const struct sctp_bind_addr *,
--			     gfp_t gfp, int vparam_len);
--struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *,
--				 const struct sctp_chunk *,
--				 const gfp_t gfp,
--				 const int unkparam_len);
--struct sctp_chunk *sctp_make_cookie_echo(const struct sctp_association *,
--				    const struct sctp_chunk *);
--struct sctp_chunk *sctp_make_cookie_ack(const struct sctp_association *,
--				   const struct sctp_chunk *);
--struct sctp_chunk *sctp_make_cwr(const struct sctp_association *,
-+struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
-+				  const struct sctp_bind_addr *bp,
-+				  gfp_t gfp, int vparam_len);
-+struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
-+				      const struct sctp_chunk *chunk,
-+				      const gfp_t gfp, const int unkparam_len);
-+struct sctp_chunk *sctp_make_cookie_echo(const struct sctp_association *asoc,
-+					 const struct sctp_chunk *chunk);
-+struct sctp_chunk *sctp_make_cookie_ack(const struct sctp_association *asoc,
-+					const struct sctp_chunk *chunk);
-+struct sctp_chunk *sctp_make_cwr(const struct sctp_association *asoc,
- 				 const __u32 lowest_tsn,
--				 const struct sctp_chunk *);
--struct sctp_chunk * sctp_make_datafrag_empty(struct sctp_association *,
--					const struct sctp_sndrcvinfo *sinfo,
--					int len, const __u8 flags,
--					__u16 ssn, gfp_t gfp);
--struct sctp_chunk *sctp_make_ecne(const struct sctp_association *,
--				  const __u32);
--struct sctp_chunk *sctp_make_sack(const struct sctp_association *);
-+				 const struct sctp_chunk *chunk);
-+struct sctp_chunk *sctp_make_datafrag_empty(struct sctp_association *asoc,
-+					    const struct sctp_sndrcvinfo *sinfo,
-+					    int len, const __u8 flags,
-+					    __u16 ssn, gfp_t gfp);
-+struct sctp_chunk *sctp_make_ecne(const struct sctp_association *asoc,
-+				  const __u32 lowest_tsn);
-+struct sctp_chunk *sctp_make_sack(const struct sctp_association *asoc);
- struct sctp_chunk *sctp_make_shutdown(const struct sctp_association *asoc,
- 				      const struct sctp_chunk *chunk);
- struct sctp_chunk *sctp_make_shutdown_ack(const struct sctp_association *asoc,
--					  const struct sctp_chunk *);
--struct sctp_chunk *sctp_make_shutdown_complete(const struct sctp_association *,
--					  const struct sctp_chunk *);
--void sctp_init_cause(struct sctp_chunk *, __be16 cause, size_t);
--struct sctp_chunk *sctp_make_abort(const struct sctp_association *,
--			      const struct sctp_chunk *,
--			      const size_t hint);
--struct sctp_chunk *sctp_make_abort_no_data(const struct sctp_association *,
--				      const struct sctp_chunk *,
--				      __u32 tsn);
--struct sctp_chunk *sctp_make_abort_user(const struct sctp_association *,
--					struct msghdr *, size_t msg_len);
--struct sctp_chunk *sctp_make_abort_violation(const struct sctp_association *,
--				   const struct sctp_chunk *,
--				   const __u8 *,
--				   const size_t );
--struct sctp_chunk *sctp_make_violation_paramlen(const struct sctp_association *,
--				   const struct sctp_chunk *,
--				   struct sctp_paramhdr *);
--struct sctp_chunk *sctp_make_violation_max_retrans(const struct sctp_association *,
--						   const struct sctp_chunk *);
--struct sctp_chunk *sctp_make_heartbeat(const struct sctp_association *,
--				  const struct sctp_transport *);
--struct sctp_chunk *sctp_make_heartbeat_ack(const struct sctp_association *,
--				      const struct sctp_chunk *,
--				      const void *payload,
--				      const size_t paylen);
--struct sctp_chunk *sctp_make_op_error(const struct sctp_association *,
--				 const struct sctp_chunk *chunk,
--				 __be16 cause_code,
--				 const void *payload,
--				 size_t paylen,
--				 size_t reserve_tail);
--
--struct sctp_chunk *sctp_make_asconf_update_ip(struct sctp_association *,
--					      union sctp_addr *,
--					      struct sockaddr *,
--					      int, __be16);
-+					  const struct sctp_chunk *chunk);
-+struct sctp_chunk *sctp_make_shutdown_complete(
-+					const struct sctp_association *asoc,
-+					const struct sctp_chunk *chunk);
-+void sctp_init_cause(struct sctp_chunk *chunk, __be16 cause, size_t paylen);
-+struct sctp_chunk *sctp_make_abort(const struct sctp_association *asoc,
-+				   const struct sctp_chunk *chunk,
-+				   const size_t hint);
-+struct sctp_chunk *sctp_make_abort_no_data(const struct sctp_association *asoc,
-+					   const struct sctp_chunk *chunk,
-+					   __u32 tsn);
-+struct sctp_chunk *sctp_make_abort_user(const struct sctp_association *asoc,
-+					struct msghdr *msg, size_t msg_len);
-+struct sctp_chunk *sctp_make_abort_violation(
-+					const struct sctp_association *asoc,
-+					const struct sctp_chunk *chunk,
-+					const __u8 *payload,
-+					const size_t paylen);
-+struct sctp_chunk *sctp_make_violation_paramlen(
-+					const struct sctp_association *asoc,
-+					const struct sctp_chunk *chunk,
-+					struct sctp_paramhdr *param);
-+struct sctp_chunk *sctp_make_violation_max_retrans(
-+					const struct sctp_association *asoc,
-+					const struct sctp_chunk *chunk);
-+struct sctp_chunk *sctp_make_heartbeat(const struct sctp_association *asoc,
-+				       const struct sctp_transport *transport);
-+struct sctp_chunk *sctp_make_heartbeat_ack(const struct sctp_association *asoc,
-+					   const struct sctp_chunk *chunk,
-+					   const void *payload,
-+					   const size_t paylen);
-+struct sctp_chunk *sctp_make_op_error(const struct sctp_association *asoc,
-+				      const struct sctp_chunk *chunk,
-+				      __be16 cause_code, const void *payload,
-+				      size_t paylen, size_t reserve_tail);
-+
-+struct sctp_chunk *sctp_make_asconf_update_ip(struct sctp_association *asoc,
-+					      union sctp_addr *laddr,
-+					      struct sockaddr *addrs,
-+					      int addrcnt, __be16 flags);
- struct sctp_chunk *sctp_make_asconf_set_prim(struct sctp_association *asoc,
- 					     union sctp_addr *addr);
- bool sctp_verify_asconf(const struct sctp_association *asoc,
-@@ -259,27 +260,25 @@ struct sctp_chunk *sctp_make_fwdtsn(const struct sctp_association *asoc,
- 				    __u32 new_cum_tsn, size_t nstreams,
- 				    struct sctp_fwdtsn_skip *skiplist);
- struct sctp_chunk *sctp_make_auth(const struct sctp_association *asoc);
--struct sctp_chunk *sctp_make_strreset_req(
--				const struct sctp_association *asoc,
--				__u16 stream_num, __u16 *stream_list,
--				bool out, bool in);
-+struct sctp_chunk *sctp_make_strreset_req(const struct sctp_association *asoc,
-+					  __u16 stream_num, __u16 *stream_list,
-+					  bool out, bool in);
- struct sctp_chunk *sctp_make_strreset_tsnreq(
--				const struct sctp_association *asoc);
-+					const struct sctp_association *asoc);
- struct sctp_chunk *sctp_make_strreset_addstrm(
--				const struct sctp_association *asoc,
--				__u16 out, __u16 in);
--struct sctp_chunk *sctp_make_strreset_resp(
--				const struct sctp_association *asoc,
--				__u32 result, __u32 sn);
--struct sctp_chunk *sctp_make_strreset_tsnresp(
--				struct sctp_association *asoc,
--				__u32 result, __u32 sn,
--				__u32 sender_tsn, __u32 receiver_tsn);
-+					const struct sctp_association *asoc,
-+					__u16 out, __u16 in);
-+struct sctp_chunk *sctp_make_strreset_resp(const struct sctp_association *asoc,
-+					   __u32 result, __u32 sn);
-+struct sctp_chunk *sctp_make_strreset_tsnresp(struct sctp_association *asoc,
-+					      __u32 result, __u32 sn,
-+					      __u32 sender_tsn,
-+					      __u32 receiver_tsn);
- bool sctp_verify_reconf(const struct sctp_association *asoc,
- 			struct sctp_chunk *chunk,
- 			struct sctp_paramhdr **errp);
--void sctp_chunk_assign_tsn(struct sctp_chunk *);
--void sctp_chunk_assign_ssn(struct sctp_chunk *);
-+void sctp_chunk_assign_tsn(struct sctp_chunk *chunk);
-+void sctp_chunk_assign_ssn(struct sctp_chunk *chunk);
- 
- /* Prototypes for stream-processing functions.  */
- struct sctp_chunk *sctp_process_strreset_outreq(
-@@ -322,11 +321,12 @@ void sctp_generate_proto_unreach_event(unsigned long peer);
- 
- void sctp_ootb_pkt_free(struct sctp_packet *packet);
- 
--struct sctp_association *sctp_unpack_cookie(const struct sctp_endpoint *ep,
--				       const struct sctp_association *asoc,
--				       struct sctp_chunk *chunk,
--				       gfp_t gfp, int *err,
--				       struct sctp_chunk **err_chk_p);
-+struct sctp_association *sctp_unpack_cookie(
-+					const struct sctp_endpoint *ep,
-+					const struct sctp_association *asoc,
-+					struct sctp_chunk *chunk,
-+					gfp_t gfp, int *err,
-+					struct sctp_chunk **err_chk_p);
- 
- /* 3rd level prototypes */
- __u32 sctp_generate_tag(const struct sctp_endpoint *ep);
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 51de638..ca8f196 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -132,8 +132,8 @@ static const struct sctp_paramhdr prsctp_param = {
-  * provided chunk, as most cause codes will be embedded inside an
-  * abort chunk.
-  */
--void  sctp_init_cause(struct sctp_chunk *chunk, __be16 cause_code,
--		      size_t paylen)
-+void sctp_init_cause(struct sctp_chunk *chunk, __be16 cause_code,
-+		     size_t paylen)
- {
- 	struct sctp_errhdr err;
- 	__u16 len;
-@@ -151,7 +151,7 @@ void  sctp_init_cause(struct sctp_chunk *chunk, __be16 cause_code,
-  * if there isn't enough space in the op error chunk
-  */
- static int sctp_init_cause_fixed(struct sctp_chunk *chunk, __be16 cause_code,
--		      size_t paylen)
-+				 size_t paylen)
- {
- 	struct sctp_errhdr err;
- 	__u16 len;
-@@ -213,32 +213,31 @@ static int sctp_init_cause_fixed(struct sctp_chunk *chunk, __be16 cause_code,
-  * Supported Address Types (Note 4)    Optional    12
-  */
- struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
--			     const struct sctp_bind_addr *bp,
--			     gfp_t gfp, int vparam_len)
-+				  const struct sctp_bind_addr *bp,
-+				  gfp_t gfp, int vparam_len)
- {
- 	struct net *net = sock_net(asoc->base.sk);
-+	struct sctp_supported_ext_param ext_param;
-+	struct sctp_adaptation_ind_param aiparam;
-+	struct sctp_paramhdr *auth_chunks = NULL;
-+	struct sctp_paramhdr *auth_hmacs = NULL;
-+	struct sctp_supported_addrs_param sat;
- 	struct sctp_endpoint *ep = asoc->ep;
--	struct sctp_inithdr init;
--	union sctp_params addrs;
--	size_t chunksize;
- 	struct sctp_chunk *retval = NULL;
- 	int num_types, addrs_len = 0;
-+	struct sctp_inithdr init;
-+	union sctp_params addrs;
- 	struct sctp_sock *sp;
--	struct sctp_supported_addrs_param sat;
-+	__u8 extensions[4];
-+	size_t chunksize;
- 	__be16 types[2];
--	struct sctp_adaptation_ind_param aiparam;
--	struct sctp_supported_ext_param ext_param;
- 	int num_ext = 0;
--	__u8 extensions[4];
--	struct sctp_paramhdr *auth_chunks = NULL,
--			*auth_hmacs = NULL;
- 
- 	/* RFC 2960 3.3.2 Initiation (INIT) (1)
- 	 *
- 	 * Note 1: The INIT chunks can contain multiple addresses that
- 	 * can be IPv4 and/or IPv6 in any combination.
- 	 */
--	retval = NULL;
- 
- 	/* Convert the provided bind address list to raw format. */
- 	addrs = sctp_bind_addrs_to_raw(bp, &addrs_len, gfp);
-@@ -380,26 +379,24 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
- }
- 
- struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
--				 const struct sctp_chunk *chunk,
--				 gfp_t gfp, int unkparam_len)
-+				      const struct sctp_chunk *chunk,
-+				      gfp_t gfp, int unkparam_len)
- {
-+	struct sctp_supported_ext_param ext_param;
-+	struct sctp_adaptation_ind_param aiparam;
-+	struct sctp_paramhdr *auth_chunks = NULL;
-+	struct sctp_paramhdr *auth_random = NULL;
-+	struct sctp_paramhdr *auth_hmacs = NULL;
-+	struct sctp_chunk *retval = NULL;
-+	struct sctp_cookie_param *cookie;
- 	struct sctp_inithdr initack;
--	struct sctp_chunk *retval;
- 	union sctp_params addrs;
- 	struct sctp_sock *sp;
--	int addrs_len;
--	struct sctp_cookie_param *cookie;
--	int cookie_len;
-+	__u8 extensions[4];
- 	size_t chunksize;
--	struct sctp_adaptation_ind_param aiparam;
--	struct sctp_supported_ext_param ext_param;
- 	int num_ext = 0;
--	__u8 extensions[4];
--	struct sctp_paramhdr *auth_chunks = NULL,
--			*auth_hmacs = NULL,
--			*auth_random = NULL;
--
--	retval = NULL;
-+	int cookie_len;
-+	int addrs_len;
- 
- 	/* Note: there may be no addresses to embed. */
- 	addrs = sctp_bind_addrs_to_raw(&asoc->base.bind_addr, &addrs_len, gfp);
-@@ -562,11 +559,11 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
-  *   to insure interoperability.
-  */
- struct sctp_chunk *sctp_make_cookie_echo(const struct sctp_association *asoc,
--				    const struct sctp_chunk *chunk)
-+					 const struct sctp_chunk *chunk)
- {
- 	struct sctp_chunk *retval;
--	void *cookie;
- 	int cookie_len;
-+	void *cookie;
- 
- 	cookie = asoc->peer.cookie;
- 	cookie_len = asoc->peer.cookie_len;
-@@ -614,7 +611,7 @@ struct sctp_chunk *sctp_make_cookie_echo(const struct sctp_association *asoc,
-  *   Set to zero on transmit and ignored on receipt.
-  */
- struct sctp_chunk *sctp_make_cookie_ack(const struct sctp_association *asoc,
--				   const struct sctp_chunk *chunk)
-+					const struct sctp_chunk *chunk)
- {
- 	struct sctp_chunk *retval;
- 
-@@ -659,8 +656,8 @@ struct sctp_chunk *sctp_make_cookie_ack(const struct sctp_association *asoc,
-  *     Note: The CWR is considered a Control chunk.
-  */
- struct sctp_chunk *sctp_make_cwr(const struct sctp_association *asoc,
--			    const __u32 lowest_tsn,
--			    const struct sctp_chunk *chunk)
-+				 const __u32 lowest_tsn,
-+				 const struct sctp_chunk *chunk)
- {
- 	struct sctp_chunk *retval;
- 	struct sctp_cwrhdr cwr;
-@@ -694,7 +691,7 @@ struct sctp_chunk *sctp_make_cwr(const struct sctp_association *asoc,
- 
- /* Make an ECNE chunk.  This is a congestion experienced report.  */
- struct sctp_chunk *sctp_make_ecne(const struct sctp_association *asoc,
--			     const __u32 lowest_tsn)
-+				  const __u32 lowest_tsn)
- {
- 	struct sctp_chunk *retval;
- 	struct sctp_ecnehdr ecne;
-@@ -715,9 +712,9 @@ struct sctp_chunk *sctp_make_ecne(const struct sctp_association *asoc,
-  * parameters.  However, do not populate the data payload.
-  */
- struct sctp_chunk *sctp_make_datafrag_empty(struct sctp_association *asoc,
--				       const struct sctp_sndrcvinfo *sinfo,
--				       int data_len, __u8 flags, __u16 ssn,
--				       gfp_t gfp)
-+					    const struct sctp_sndrcvinfo *sinfo,
-+					    int data_len, __u8 flags, __u16 ssn,
-+					    gfp_t gfp)
- {
- 	struct sctp_chunk *retval;
- 	struct sctp_datahdr dp;
-@@ -755,15 +752,15 @@ struct sctp_chunk *sctp_make_datafrag_empty(struct sctp_association *asoc,
-  */
- struct sctp_chunk *sctp_make_sack(const struct sctp_association *asoc)
- {
--	struct sctp_chunk *retval;
--	struct sctp_sackhdr sack;
--	int len;
--	__u32 ctsn;
--	__u16 num_gabs, num_dup_tsns;
--	struct sctp_association *aptr = (struct sctp_association *)asoc;
- 	struct sctp_tsnmap *map = (struct sctp_tsnmap *)&asoc->peer.tsn_map;
-+	struct sctp_association *aptr = (struct sctp_association *)asoc;
- 	struct sctp_gap_ack_block gabs[SCTP_MAX_GABS];
-+	__u16 num_gabs, num_dup_tsns;
- 	struct sctp_transport *trans;
-+	struct sctp_chunk *retval;
-+	struct sctp_sackhdr sack;
-+	__u32 ctsn;
-+	int len;
- 
- 	memset(gabs, 0, sizeof(gabs));
- 	ctsn = sctp_tsnmap_get_ctsn(map);
-@@ -879,7 +876,7 @@ struct sctp_chunk *sctp_make_shutdown(const struct sctp_association *asoc,
- }
- 
- struct sctp_chunk *sctp_make_shutdown_ack(const struct sctp_association *asoc,
--				     const struct sctp_chunk *chunk)
-+					  const struct sctp_chunk *chunk)
- {
- 	struct sctp_chunk *retval;
- 
-@@ -902,8 +899,8 @@ struct sctp_chunk *sctp_make_shutdown_ack(const struct sctp_association *asoc,
- }
- 
- struct sctp_chunk *sctp_make_shutdown_complete(
--	const struct sctp_association *asoc,
--	const struct sctp_chunk *chunk)
-+					const struct sctp_association *asoc,
-+					const struct sctp_chunk *chunk)
- {
- 	struct sctp_chunk *retval;
- 	__u8 flags = 0;
-@@ -936,8 +933,8 @@ struct sctp_chunk *sctp_make_shutdown_complete(
-  * association, except when responding to an INIT (sctpimpguide 2.41).
-  */
- struct sctp_chunk *sctp_make_abort(const struct sctp_association *asoc,
--			      const struct sctp_chunk *chunk,
--			      const size_t hint)
-+				   const struct sctp_chunk *chunk,
-+				   const size_t hint)
- {
- 	struct sctp_chunk *retval;
- 	__u8 flags = 0;
-@@ -973,8 +970,9 @@ struct sctp_chunk *sctp_make_abort(const struct sctp_association *asoc,
- 
- /* Helper to create ABORT with a NO_USER_DATA error.  */
- struct sctp_chunk *sctp_make_abort_no_data(
--	const struct sctp_association *asoc,
--	const struct sctp_chunk *chunk, __u32 tsn)
-+					const struct sctp_association *asoc,
-+					const struct sctp_chunk *chunk,
-+					__u32 tsn)
- {
- 	struct sctp_chunk *retval;
- 	__be32 payload;
-@@ -1054,8 +1052,8 @@ struct sctp_chunk *sctp_make_abort_user(const struct sctp_association *asoc,
- static void *sctp_addto_param(struct sctp_chunk *chunk, int len,
- 			      const void *data)
- {
--	void *target;
- 	int chunklen = ntohs(chunk->chunk_hdr->length);
-+	void *target;
- 
- 	target = skb_put(chunk->skb, len);
- 
-@@ -1073,10 +1071,10 @@ static void *sctp_addto_param(struct sctp_chunk *chunk, int len,
- 
- /* Make an ABORT chunk with a PROTOCOL VIOLATION cause code. */
- struct sctp_chunk *sctp_make_abort_violation(
--	const struct sctp_association *asoc,
--	const struct sctp_chunk *chunk,
--	const __u8   *payload,
--	const size_t paylen)
-+					const struct sctp_association *asoc,
-+					const struct sctp_chunk *chunk,
-+					const __u8 *payload,
-+					const size_t paylen)
- {
- 	struct sctp_chunk  *retval;
- 	struct sctp_paramhdr phdr;
-@@ -1099,14 +1097,14 @@ struct sctp_chunk *sctp_make_abort_violation(
- }
- 
- struct sctp_chunk *sctp_make_violation_paramlen(
--	const struct sctp_association *asoc,
--	const struct sctp_chunk *chunk,
--	struct sctp_paramhdr *param)
-+					const struct sctp_association *asoc,
-+					const struct sctp_chunk *chunk,
-+					struct sctp_paramhdr *param)
- {
--	struct sctp_chunk *retval;
- 	static const char error[] = "The following parameter had invalid length:";
- 	size_t payload_len = sizeof(error) + sizeof(struct sctp_errhdr) +
- 			     sizeof(*param);
-+	struct sctp_chunk *retval;
- 
- 	retval = sctp_make_abort(asoc, chunk, payload_len);
- 	if (!retval)
-@@ -1122,12 +1120,12 @@ struct sctp_chunk *sctp_make_violation_paramlen(
- }
- 
- struct sctp_chunk *sctp_make_violation_max_retrans(
--	const struct sctp_association *asoc,
--	const struct sctp_chunk *chunk)
-+					const struct sctp_association *asoc,
-+					const struct sctp_chunk *chunk)
- {
--	struct sctp_chunk *retval;
- 	static const char error[] = "Association exceeded its max_retans count";
- 	size_t payload_len = sizeof(error) + sizeof(struct sctp_errhdr);
-+	struct sctp_chunk *retval;
- 
- 	retval = sctp_make_abort(asoc, chunk, payload_len);
- 	if (!retval)
-@@ -1171,8 +1169,9 @@ struct sctp_chunk *sctp_make_heartbeat(const struct sctp_association *asoc,
- }
- 
- struct sctp_chunk *sctp_make_heartbeat_ack(const struct sctp_association *asoc,
--				      const struct sctp_chunk *chunk,
--				      const void *payload, const size_t paylen)
-+					   const struct sctp_chunk *chunk,
-+					   const void *payload,
-+					   const size_t paylen)
- {
- 	struct sctp_chunk *retval;
- 
-@@ -1203,9 +1202,9 @@ struct sctp_chunk *sctp_make_heartbeat_ack(const struct sctp_association *asoc,
-  * This routine can be used for containing multiple causes in the chunk.
-  */
- static struct sctp_chunk *sctp_make_op_error_space(
--	const struct sctp_association *asoc,
--	const struct sctp_chunk *chunk,
--	size_t size)
-+					const struct sctp_association *asoc,
-+					const struct sctp_chunk *chunk,
-+					size_t size)
- {
- 	struct sctp_chunk *retval;
- 
-@@ -1237,8 +1236,8 @@ static struct sctp_chunk *sctp_make_op_error_space(
-  * to report all the errors, if the incoming chunk is large
-  */
- static inline struct sctp_chunk *sctp_make_op_error_fixed(
--	const struct sctp_association *asoc,
--	const struct sctp_chunk *chunk)
-+					const struct sctp_association *asoc,
-+					const struct sctp_chunk *chunk)
- {
- 	size_t size = asoc ? asoc->pathmtu : 0;
- 
-@@ -1250,9 +1249,9 @@ static inline struct sctp_chunk *sctp_make_op_error_fixed(
- 
- /* Create an Operation Error chunk.  */
- struct sctp_chunk *sctp_make_op_error(const struct sctp_association *asoc,
--				 const struct sctp_chunk *chunk,
--				 __be16 cause_code, const void *payload,
--				 size_t paylen, size_t reserve_tail)
-+				      const struct sctp_chunk *chunk,
-+				      __be16 cause_code, const void *payload,
-+				      size_t paylen, size_t reserve_tail)
- {
- 	struct sctp_chunk *retval;
- 
-@@ -1271,9 +1270,9 @@ struct sctp_chunk *sctp_make_op_error(const struct sctp_association *asoc,
- 
- struct sctp_chunk *sctp_make_auth(const struct sctp_association *asoc)
- {
--	struct sctp_chunk *retval;
--	struct sctp_hmac *hmac_desc;
- 	struct sctp_authhdr auth_hdr;
-+	struct sctp_hmac *hmac_desc;
-+	struct sctp_chunk *retval;
- 	__u8 *hmac;
- 
- 	/* Get the first hmac that the peer told us to use */
-@@ -1319,8 +1318,8 @@ struct sctp_chunk *sctp_make_auth(const struct sctp_association *asoc)
-  *
-  */
- struct sctp_chunk *sctp_chunkify(struct sk_buff *skb,
--			    const struct sctp_association *asoc,
--			    struct sock *sk, gfp_t gfp)
-+				 const struct sctp_association *asoc,
-+				 struct sock *sk, gfp_t gfp)
- {
- 	struct sctp_chunk *retval;
- 
-@@ -1372,11 +1371,11 @@ const union sctp_addr *sctp_source(const struct sctp_chunk *chunk)
-  * arguments, reserving enough space for a 'paylen' byte payload.
-  */
- static struct sctp_chunk *_sctp_make_chunk(const struct sctp_association *asoc,
--					    __u8 type, __u8 flags, int paylen,
--					    gfp_t gfp)
-+					   __u8 type, __u8 flags, int paylen,
-+					   gfp_t gfp)
- {
--	struct sctp_chunk *retval;
- 	struct sctp_chunkhdr *chunk_hdr;
-+	struct sctp_chunk *retval;
- 	struct sk_buff *skb;
- 	struct sock *sk;
- 
-@@ -1470,9 +1469,9 @@ void sctp_chunk_put(struct sctp_chunk *ch)
-  */
- void *sctp_addto_chunk(struct sctp_chunk *chunk, int len, const void *data)
- {
--	void *target;
- 	int chunklen = ntohs(chunk->chunk_hdr->length);
- 	int padlen = SCTP_PAD4(chunklen) - chunklen;
-+	void *target;
- 
- 	skb_put_zero(chunk->skb, padlen);
- 	target = skb_put_data(chunk->skb, data, len);
-@@ -1525,11 +1524,10 @@ int sctp_user_addto_chunk(struct sctp_chunk *chunk, int len,
-  */
- void sctp_chunk_assign_ssn(struct sctp_chunk *chunk)
- {
--	struct sctp_datamsg *msg;
--	struct sctp_chunk *lchunk;
- 	struct sctp_stream *stream;
--	__u16 ssn;
--	__u16 sid;
-+	struct sctp_chunk *lchunk;
-+	struct sctp_datamsg *msg;
-+	__u16 ssn, sid;
- 
- 	if (chunk->has_ssn)
- 		return;
-@@ -1574,8 +1572,8 @@ void sctp_chunk_assign_tsn(struct sctp_chunk *chunk)
- 
- /* Create a CLOSED association to use with an incoming packet.  */
- struct sctp_association *sctp_make_temp_asoc(const struct sctp_endpoint *ep,
--					struct sctp_chunk *chunk,
--					gfp_t gfp)
-+					     struct sctp_chunk *chunk,
-+					     gfp_t gfp)
- {
- 	struct sctp_association *asoc;
- 	enum sctp_scope scope;
-@@ -1602,8 +1600,8 @@ static struct sctp_cookie_param *sctp_pack_cookie(
- 					const struct sctp_endpoint *ep,
- 					const struct sctp_association *asoc,
- 					const struct sctp_chunk *init_chunk,
--					int *cookie_len,
--					const __u8 *raw_addrs, int addrs_len)
-+					int *cookie_len, const __u8 *raw_addrs,
-+					int addrs_len)
- {
- 	struct sctp_signed_cookie *cookie;
- 	struct sctp_cookie_param *retval;
-@@ -1690,19 +1688,19 @@ static struct sctp_cookie_param *sctp_pack_cookie(
- 
- /* Unpack the cookie from COOKIE ECHO chunk, recreating the association.  */
- struct sctp_association *sctp_unpack_cookie(
--	const struct sctp_endpoint *ep,
--	const struct sctp_association *asoc,
--	struct sctp_chunk *chunk, gfp_t gfp,
--	int *error, struct sctp_chunk **errp)
-+					const struct sctp_endpoint *ep,
-+					const struct sctp_association *asoc,
-+					struct sctp_chunk *chunk, gfp_t gfp,
-+					int *error, struct sctp_chunk **errp)
- {
- 	struct sctp_association *retval = NULL;
-+	int headersize, bodysize, fixed_size;
- 	struct sctp_signed_cookie *cookie;
-+	struct sk_buff *skb = chunk->skb;
- 	struct sctp_cookie *bear_cookie;
--	int headersize, bodysize, fixed_size;
- 	__u8 *digest = ep->digest;
--	unsigned int len;
- 	enum sctp_scope scope;
--	struct sk_buff *skb = chunk->skb;
-+	unsigned int len;
- 	ktime_t kt;
- 
- 	/* Header size is static data prior to the actual cookie, including
-@@ -1974,8 +1972,8 @@ static int sctp_process_hn_param(const struct sctp_association *asoc,
- static int sctp_verify_ext_param(struct net *net, union sctp_params param)
- {
- 	__u16 num_ext = ntohs(param.p->length) - sizeof(struct sctp_paramhdr);
--	int have_auth = 0;
- 	int have_asconf = 0;
-+	int have_auth = 0;
- 	int i;
- 
- 	for (i = 0; i < num_ext; i++) {
-@@ -2005,10 +2003,10 @@ static int sctp_verify_ext_param(struct net *net, union sctp_params param)
- }
- 
- static void sctp_process_ext_param(struct sctp_association *asoc,
--				    union sctp_params param)
-+				   union sctp_params param)
- {
--	struct net *net = sock_net(asoc->base.sk);
- 	__u16 num_ext = ntohs(param.p->length) - sizeof(struct sctp_paramhdr);
-+	struct net *net = sock_net(asoc->base.sk);
- 	int i;
- 
- 	for (i = 0; i < num_ext; i++) {
-@@ -2309,13 +2307,13 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
- 		      struct sctp_init_chunk *peer_init, gfp_t gfp)
- {
- 	struct net *net = sock_net(asoc->base.sk);
--	union sctp_params param;
- 	struct sctp_transport *transport;
- 	struct list_head *pos, *temp;
--	struct sctp_af *af;
-+	union sctp_params param;
- 	union sctp_addr addr;
--	char *cookie;
-+	struct sctp_af *af;
- 	int src_match = 0;
-+	char *cookie;
- 
- 	/* We must include the address that the INIT packet came from.
- 	 * This is the only address that matters for an INIT packet.
-@@ -2499,16 +2497,15 @@ static int sctp_process_param(struct sctp_association *asoc,
- 			      gfp_t gfp)
- {
- 	struct net *net = sock_net(asoc->base.sk);
--	union sctp_addr addr;
--	int i;
--	__u16 sat;
--	int retval = 1;
--	enum sctp_scope scope;
--	u32 stale;
--	struct sctp_af *af;
-+	struct sctp_endpoint *ep = asoc->ep;
- 	union sctp_addr_param *addr_param;
- 	struct sctp_transport *t;
--	struct sctp_endpoint *ep = asoc->ep;
-+	enum sctp_scope scope;
-+	union sctp_addr addr;
-+	struct sctp_af *af;
-+	int retval = 1, i;
-+	u32 stale;
-+	__u16 sat;
- 
- 	/* We maintain all INIT parameters in network byte order all the
- 	 * time.  This allows us to not worry about whether the parameters
-@@ -2806,22 +2803,20 @@ static struct sctp_chunk *sctp_make_asconf(struct sctp_association *asoc,
-  *
-  */
- struct sctp_chunk *sctp_make_asconf_update_ip(struct sctp_association *asoc,
--					      union sctp_addr	      *laddr,
--					      struct sockaddr	      *addrs,
--					      int		      addrcnt,
--					      __be16		      flags)
-+					      union sctp_addr *laddr,
-+					      struct sockaddr *addrs,
-+					      int addrcnt, __be16 flags)
- {
-+	union sctp_addr_param addr_param;
- 	struct sctp_addip_param	param;
--	struct sctp_chunk	*retval;
--	union sctp_addr_param	addr_param;
--	union sctp_addr		*addr;
--	void			*addr_buf;
--	struct sctp_af		*af;
--	int			paramlen = sizeof(param);
--	int			addr_param_len = 0;
--	int 			totallen = 0;
--	int 			i;
--	int			del_pickup = 0;
-+	int paramlen = sizeof(param);
-+	struct sctp_chunk *retval;
-+	int addr_param_len = 0;
-+	union sctp_addr *addr;
-+	int totallen = 0, i;
-+	int del_pickup = 0;
-+	struct sctp_af *af;
-+	void *addr_buf;
- 
- 	/* Get total length of all the address parameters. */
- 	addr_buf = addrs;
-@@ -2897,12 +2892,12 @@ struct sctp_chunk *sctp_make_asconf_update_ip(struct sctp_association *asoc,
- struct sctp_chunk *sctp_make_asconf_set_prim(struct sctp_association *asoc,
- 					     union sctp_addr *addr)
- {
-+	struct sctp_af *af = sctp_get_af_specific(addr->v4.sin_family);
-+	union sctp_addr_param addrparam;
- 	struct sctp_addip_param	param;
--	struct sctp_chunk 	*retval;
--	int 			len = sizeof(param);
--	union sctp_addr_param	addrparam;
--	int			addrlen;
--	struct sctp_af		*af = sctp_get_af_specific(addr->v4.sin_family);
-+	struct sctp_chunk *retval;
-+	int len = sizeof(param);
-+	int addrlen;
- 
- 	addrlen = af->to_addr_param(addr, &addrparam);
- 	if (!addrlen)
-@@ -2946,9 +2941,9 @@ struct sctp_chunk *sctp_make_asconf_set_prim(struct sctp_association *asoc,
- static struct sctp_chunk *sctp_make_asconf_ack(const struct sctp_association *asoc,
- 					       __u32 serial, int vparam_len)
- {
--	struct sctp_addiphdr	asconf;
--	struct sctp_chunk	*retval;
--	int			length = sizeof(asconf) + vparam_len;
-+	struct sctp_addiphdr asconf;
-+	struct sctp_chunk *retval;
-+	int length = sizeof(asconf) + vparam_len;
- 
- 	/* Create the chunk.  */
- 	retval = sctp_make_control(asoc, SCTP_CID_ASCONF_ACK, 0, length,
-@@ -2970,10 +2965,10 @@ static void sctp_add_asconf_response(struct sctp_chunk *chunk, __be32 crr_id,
- 				     struct sctp_addip_param *asconf_param)
- {
- 	struct sctp_addip_param ack_param;
--	struct sctp_errhdr	err_param;
--	int			asconf_param_len = 0;
--	int			err_param_len = 0;
--	__be16			response_type;
-+	struct sctp_errhdr err_param;
-+	int asconf_param_len = 0;
-+	int err_param_len = 0;
-+	__be16 response_type;
- 
- 	if (SCTP_ERROR_NO_ERROR = err_code) {
- 		response_type = SCTP_PARAM_SUCCESS_REPORT;
-@@ -3011,10 +3006,10 @@ static __be16 sctp_process_asconf_param(struct sctp_association *asoc,
- 					struct sctp_chunk *asconf,
- 					struct sctp_addip_param *asconf_param)
- {
-+	union sctp_addr_param *addr_param;
- 	struct sctp_transport *peer;
--	struct sctp_af *af;
- 	union sctp_addr	addr;
--	union sctp_addr_param *addr_param;
-+	struct sctp_af *af;
- 
- 	addr_param = (void *)asconf_param + sizeof(*asconf_param);
- 
-@@ -3142,8 +3137,8 @@ bool sctp_verify_asconf(const struct sctp_association *asoc,
- 			struct sctp_paramhdr **errp)
- {
- 	struct sctp_addip_chunk *addip;
--	union sctp_params param;
- 	bool addr_param_seen = false;
-+	union sctp_params param;
- 
- 	addip = (struct sctp_addip_chunk *)chunk->chunk_hdr;
- 	sctp_walk_params(param, addip, addip_hdr.params) {
-@@ -3209,16 +3204,15 @@ bool sctp_verify_asconf(const struct sctp_association *asoc,
- struct sctp_chunk *sctp_process_asconf(struct sctp_association *asoc,
- 				       struct sctp_chunk *asconf)
- {
-+	union sctp_addr_param *addr_param;
- 	struct sctp_addip_chunk *addip;
-+	struct sctp_chunk *asconf_ack;
- 	bool all_param_pass = true;
-+	struct sctp_addiphdr *hdr;
-+	int length = 0, chunk_len;
- 	union sctp_params param;
--	struct sctp_addiphdr	*hdr;
--	union sctp_addr_param	*addr_param;
--	struct sctp_chunk	*asconf_ack;
--	__be16	err_code;
--	int	length = 0;
--	int	chunk_len;
--	__u32	serial;
-+	__be16 err_code;
-+	__u32 serial;
- 
- 	addip = (struct sctp_addip_chunk *)asconf->chunk_hdr;
- 	chunk_len = ntohs(asconf->chunk_hdr->length) -
-@@ -3295,12 +3289,12 @@ struct sctp_chunk *sctp_process_asconf(struct sctp_association *asoc,
- static void sctp_asconf_param_success(struct sctp_association *asoc,
- 				      struct sctp_addip_param *asconf_param)
- {
--	struct sctp_af *af;
--	union sctp_addr	addr;
- 	struct sctp_bind_addr *bp = &asoc->base.bind_addr;
- 	union sctp_addr_param *addr_param;
--	struct sctp_transport *transport;
- 	struct sctp_sockaddr_entry *saddr;
-+	struct sctp_transport *transport;
-+	union sctp_addr	addr;
-+	struct sctp_af *af;
- 
- 	addr_param = (void *)asconf_param + sizeof(*asconf_param);
- 
-@@ -3357,10 +3351,10 @@ static __be16 sctp_get_asconf_response(struct sctp_chunk *asconf_ack,
- 				       int no_err)
- {
- 	struct sctp_addip_param	*asconf_ack_param;
--	struct sctp_errhdr	*err_param;
--	int			length;
--	int			asconf_ack_len;
--	__be16			err_code;
-+	struct sctp_errhdr *err_param;
-+	int asconf_ack_len;
-+	__be16 err_code;
-+	int length;
- 
- 	if (no_err)
- 		err_code = SCTP_ERROR_NO_ERROR;
-@@ -3409,15 +3403,15 @@ static __be16 sctp_get_asconf_response(struct sctp_chunk *asconf_ack,
- int sctp_process_asconf_ack(struct sctp_association *asoc,
- 			    struct sctp_chunk *asconf_ack)
- {
--	struct sctp_chunk	*asconf = asoc->addip_last_asconf;
--	union sctp_addr_param	*addr_param;
--	struct sctp_addip_param	*asconf_param;
--	int	length = 0;
--	int	asconf_len = asconf->skb->len;
--	int	all_param_pass = 0;
--	int	no_err = 1;
--	int	retval = 0;
--	__be16	err_code = SCTP_ERROR_NO_ERROR;
-+	struct sctp_chunk *asconf = asoc->addip_last_asconf;
-+	struct sctp_addip_param *asconf_param;
-+	__be16 err_code = SCTP_ERROR_NO_ERROR;
-+	union sctp_addr_param *addr_param;
-+	int asconf_len = asconf->skb->len;
-+	int all_param_pass = 0;
-+	int length = 0;
-+	int no_err = 1;
-+	int retval = 0;
- 
- 	/* Skip the chunkhdr and addiphdr from the last asconf sent and store
- 	 * a pointer to address parameter.
-@@ -3544,9 +3538,8 @@ struct sctp_chunk *sctp_make_fwdtsn(const struct sctp_association *asoc,
-  *  \                                                               \
-  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  */
--static struct sctp_chunk *sctp_make_reconf(
--				const struct sctp_association *asoc,
--				int length)
-+static struct sctp_chunk *sctp_make_reconf(const struct sctp_association *asoc,
-+					   int length)
- {
- 	struct sctp_reconf_chunk *reconf;
- 	struct sctp_chunk *retval;
-@@ -3597,9 +3590,9 @@ static struct sctp_chunk *sctp_make_reconf(
-  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  */
- struct sctp_chunk *sctp_make_strreset_req(
--				const struct sctp_association *asoc,
--				__u16 stream_num, __u16 *stream_list,
--				bool out, bool in)
-+					const struct sctp_association *asoc,
-+					__u16 stream_num, __u16 *stream_list,
-+					bool out, bool in)
- {
- 	struct sctp_strreset_outreq outreq;
- 	__u16 stream_len = stream_num * 2;
-@@ -3651,7 +3644,7 @@ struct sctp_chunk *sctp_make_strreset_req(
-  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  */
- struct sctp_chunk *sctp_make_strreset_tsnreq(
--				const struct sctp_association *asoc)
-+					const struct sctp_association *asoc)
- {
- 	struct sctp_strreset_tsnreq tsnreq;
- 	__u16 length = sizeof(tsnreq);
-@@ -3682,8 +3675,8 @@ struct sctp_chunk *sctp_make_strreset_tsnreq(
-  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  */
- struct sctp_chunk *sctp_make_strreset_addstrm(
--				const struct sctp_association *asoc,
--				__u16 out, __u16 in)
-+					const struct sctp_association *asoc,
-+					__u16 out, __u16 in)
- {
- 	struct sctp_strreset_addstrm addstrm;
- 	__u16 size = sizeof(addstrm);
-@@ -3727,9 +3720,8 @@ struct sctp_chunk *sctp_make_strreset_addstrm(
-  *  |                            Result                             |
-  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  */
--struct sctp_chunk *sctp_make_strreset_resp(
--				const struct sctp_association *asoc,
--				__u32 result, __u32 sn)
-+struct sctp_chunk *sctp_make_strreset_resp(const struct sctp_association *asoc,
-+					   __u32 result, __u32 sn)
- {
- 	struct sctp_strreset_resp resp;
- 	__u16 length = sizeof(resp);
-@@ -3764,10 +3756,10 @@ struct sctp_chunk *sctp_make_strreset_resp(
-  *  |                  Receiver's Next TSN (optional)               |
-  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  */
--struct sctp_chunk *sctp_make_strreset_tsnresp(
--					struct sctp_association *asoc,
--					__u32 result, __u32 sn,
--					__u32 sender_tsn, __u32 receiver_tsn)
-+struct sctp_chunk *sctp_make_strreset_tsnresp(struct sctp_association *asoc,
-+					      __u32 result, __u32 sn,
-+					      __u32 sender_tsn,
-+					      __u32 receiver_tsn)
- {
- 	struct sctp_strreset_resptsn tsnresp;
- 	__u16 length = sizeof(tsnresp);
--- 
-2.1.0
-
+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
+AAAAWCgAAAAA
