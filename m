@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 14 Aug 2017 23:07:08 +0000
+From: =?UTF-8?B?5ZCJ6Jek6Iux5piO?= <hideaki.yoshifuji@miraclelinux.com>
+Date: Tue, 15 Aug 2017 01:43:59 +0000
 Subject: Re: [PATCH v2] sctp: fully initialize the IPv6 address in sctp_v6_to_addr()
-Message-Id: <20170814230708.GA18688@localhost.localdomain>
+Message-Id: <CAPA1RqDzSs3LogN+z69Ba2yoE6=jniobC-tEGd3TTh3z=39qxg@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20170814184304.82747-1-glider@google.com>
 In-Reply-To: <20170814184304.82747-1-glider@google.com>
@@ -9,14 +9,16 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Alexander Potapenko <glider@google.com>
-Cc: dvyukov@google.com, kcc@google.com, edumazet@google.com, lucien.xin@gmail.com, vyasevich@gmail.com, davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Cc: dvyukov@google.com, kcc@google.com, edumazet@google.com, marcelo.leitner@gmail.com, lucien.xin@gmail.com, vyasevich@gmail.com, David Miller <davem@davemloft.net>, Linux Kernel Mailing List <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, network dev <netdev@vger.kernel.org>, =?UTF-8?B?5ZCJ6Jek6Iux5piO?= <hideaki.yoshifuji@miraclelinux.com>, YOSHIFUJI Hideaki <yoshfuji@linux-ipv6.org>
 
-On Mon, Aug 14, 2017 at 08:43:04PM +0200, Alexander Potapenko wrote:
+Hi,
+
+2017-08-15 3:43 GMT+09:00 Alexander Potapenko <glider@google.com>:
 > KMSAN reported use of uninitialized sctp_addr->v4.sin_addr.s_addr and
 > sctp_addr->v6.sin6_scope_id in sctp_v6_cmp_addr() (see below).
 > Make sure all fields of an IPv6 address are initialized, which
 > guarantees that the IPv4 fields are also initialized.
-> 
+>
 > =================================
 >  BUG: KMSAN: use of uninitialized memory in sctp_v6_cmp_addr+0x8d4/0x9f0
 >  net/sctp/ipv6.c:517
@@ -94,36 +96,33 @@ On Mon, Aug 14, 2017 at 08:43:04PM +0200, Alexander Potapenko wrote:
 >   sctp_v6_get_dst+0x91/0x1630 net/sctp/ipv6.c:241
 >   sctp_transport_route+0x101/0x570 net/sctp/transport.c:292
 > =================================
-> 
+>
 > Signed-off-by: Alexander Potapenko <glider@google.com>
 > Reviewed-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 > v2 is identical to v1, resending per request by Marcelo Ricardo Leitner.
 > ---
 >  net/sctp/ipv6.c | 2 ++
 >  1 file changed, 2 insertions(+)
-> 
+>
 > diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
 > index 2a186b201ad2..a15d691829c6 100644
 > --- a/net/sctp/ipv6.c
 > +++ b/net/sctp/ipv6.c
 > @@ -513,6 +513,8 @@ static void sctp_v6_to_addr(union sctp_addr *addr, struct in6_addr *saddr,
->  	addr->sa.sa_family = AF_INET6;
->  	addr->v6.sin6_port = port;
->  	addr->v6.sin6_addr = *saddr;
-> +	addr->v6.sin6_flowinfo = 0;
-> +	addr->v6.sin6_scope_id = 0;
+>         addr->sa.sa_family = AF_INET6;
+>         addr->v6.sin6_port = port;
+>         addr->v6.sin6_addr = *saddr;
+> +       addr->v6.sin6_flowinfo = 0;
+> +       addr->v6.sin6_scope_id = 0;
+
+Please set flowinfo between port and addr.
+
+--yoshfuji
+
 >  }
->  
+>
 >  /* Compare addresses exactly.
-> -- 
-> 2.14.0.434.g98096fd7a8-goog
-> 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+> 2.14.0.434.g98096fd7a8-goog
+>
