@@ -1,220 +1,121 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 11 Aug 2017 02:23:56 +0000
-Subject: [PATCH net-next 12/14] sctp: remove the typedef sctp_sm_table_entry_t
-Message-Id: <55bc9dd4073fded0138ef8074f092fb7ba148356.1502417340.git.lucien.xin@gmail.com>
+From: Alexander Potapenko <glider@google.com>
+Date: Wed, 16 Aug 2017 18:16:40 +0000
+Subject: [PATCH v3] sctp: fully initialize the IPv6 address in sctp_v6_to_addr()
+Message-Id: <20170816181640.40170-1-glider@google.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1502417340.git.lucien.xin@gmail.com>
- <e15322cc52e110730f2bcb77973222b687717369.1502417340.git.lucien.xin@gmail.com>
- <67dec3f4936413e5bf596dc0ce9be0b9aa15a444.1502417340.git.lucien.xin@gmail.com>
- <5031dc5f40135c4ede57452bc61a1b29dfc76d89.1502417340.git.lucien.xin@gmail.com>
- <58f1f86286c91cf55e9d6eb9395e59e9f1fd4519.1502417340.git.lucien.xin@gmail.com>
- <77692e0783b8134d97fd4c15e37cf0b6e4fa643e.1502417340.git.lucien.xin@gmail.com>
- <bec27150caf5435011467a5488247f853f782409.1502417340.git.lucien.xin@gmail.com>
- <d9ac131331781f85d2662c4c15692344260bb1b6.1502417340.git.lucien.xin@gmail.com>
- <d69e6a88f9cbdc68f0f3ef9c2afd89ccc64f955b.1502417340.git.lucien.xin@gmail.com>
- <8a912c943fa40c635ac0dba8726c7e744031a446.1502417340.git.lucien.xin@gmail.com>
- <712be5d964dee4d7918781d7399ad564f2309259.1502417340.git.lucien.xin@gmail.com>
- <6ff85867e2eb2776e2dbec9a0140911dcaec3e18.1502417340.git.lucien.xin@gmail.com>
-In-Reply-To: <6ff85867e2eb2776e2dbec9a0140911dcaec3e18.1502417340.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: dvyukov@google.com, kcc@google.com, edumazet@google.com, marcelo.leitner@gmail.com, lucien.xin@gmail.com, vyasevich@gmail.com, davem@davemloft.net, hideaki.yoshifuji@miraclelinux.com
+Cc: linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-This patch is to remove the typedef sctp_sm_table_entry_t, and
-replace with struct sctp_sm_table_entry in the places where it's
-using this typedef.
+KMSAN reported use of uninitialized sctp_addr->v4.sin_addr.s_addr and
+sctp_addr->v6.sin6_scope_id in sctp_v6_cmp_addr() (see below).
+Make sure all fields of an IPv6 address are initialized, which
+guarantees that the IPv4 fields are also initialized.
 
-It is also to fix some indents.
+=================================
+ BUG: KMSAN: use of uninitialized memory in sctp_v6_cmp_addr+0x8d4/0x9f0
+ net/sctp/ipv6.c:517
+ CPU: 2 PID: 31056 Comm: syz-executor1 Not tainted 4.11.0-rc5+ #2944
+ Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs
+ 01/01/2011
+ Call Trace:
+  dump_stack+0x172/0x1c0 lib/dump_stack.c:42
+  is_logbuf_locked mm/kmsan/kmsan.c:59 [inline]
+  kmsan_report+0x12a/0x180 mm/kmsan/kmsan.c:938
+  native_save_fl arch/x86/include/asm/irqflags.h:18 [inline]
+  arch_local_save_flags arch/x86/include/asm/irqflags.h:72 [inline]
+  arch_local_irq_save arch/x86/include/asm/irqflags.h:113 [inline]
+  __msan_warning_32+0x61/0xb0 mm/kmsan/kmsan_instr.c:467
+  sctp_v6_cmp_addr+0x8d4/0x9f0 net/sctp/ipv6.c:517
+  sctp_v6_get_dst+0x8c7/0x1630 net/sctp/ipv6.c:290
+  sctp_transport_route+0x101/0x570 net/sctp/transport.c:292
+  sctp_assoc_add_peer+0x66d/0x16f0 net/sctp/associola.c:651
+  sctp_sendmsg+0x35a5/0x4f90 net/sctp/socket.c:1871
+  inet_sendmsg+0x498/0x670 net/ipv4/af_inet.c:762
+  sock_sendmsg_nosec net/socket.c:633 [inline]
+  sock_sendmsg net/socket.c:643 [inline]
+  SYSC_sendto+0x608/0x710 net/socket.c:1696
+  SyS_sendto+0x8a/0xb0 net/socket.c:1664
+  entry_SYSCALL_64_fastpath+0x13/0x94
+ RIP: 0033:0x44b479
+ RSP: 002b:00007f6213f21c08 EFLAGS: 00000286 ORIG_RAX: 000000000000002c
+ RAX: ffffffffffffffda RBX: 0000000020000000 RCX: 000000000044b479
+ RDX: 0000000000000041 RSI: 0000000020edd000 RDI: 0000000000000006
+ RBP: 00000000007080a8 R08: 0000000020b85fe4 R09: 000000000000001c
+ R10: 0000000000040005 R11: 0000000000000286 R12: 00000000ffffffff
+ R13: 0000000000003760 R14: 00000000006e5820 R15: 0000000000ff8000
+ origin description: ----dst_saddr@sctp_v6_get_dst
+ local variable created at:
+  sk_fullsock include/net/sock.h:2321 [inline]
+  inet6_sk include/linux/ipv6.h:309 [inline]
+  sctp_v6_get_dst+0x91/0x1630 net/sctp/ipv6.c:241
+  sctp_transport_route+0x101/0x570 net/sctp/transport.c:292
+=================================
+ BUG: KMSAN: use of uninitialized memory in sctp_v6_cmp_addr+0x8d4/0x9f0
+ net/sctp/ipv6.c:517
+ CPU: 2 PID: 31056 Comm: syz-executor1 Not tainted 4.11.0-rc5+ #2944
+ Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS Bochs
+ 01/01/2011
+ Call Trace:
+  dump_stack+0x172/0x1c0 lib/dump_stack.c:42
+  is_logbuf_locked mm/kmsan/kmsan.c:59 [inline]
+  kmsan_report+0x12a/0x180 mm/kmsan/kmsan.c:938
+  native_save_fl arch/x86/include/asm/irqflags.h:18 [inline]
+  arch_local_save_flags arch/x86/include/asm/irqflags.h:72 [inline]
+  arch_local_irq_save arch/x86/include/asm/irqflags.h:113 [inline]
+  __msan_warning_32+0x61/0xb0 mm/kmsan/kmsan_instr.c:467
+  sctp_v6_cmp_addr+0x8d4/0x9f0 net/sctp/ipv6.c:517
+  sctp_v6_get_dst+0x8c7/0x1630 net/sctp/ipv6.c:290
+  sctp_transport_route+0x101/0x570 net/sctp/transport.c:292
+  sctp_assoc_add_peer+0x66d/0x16f0 net/sctp/associola.c:651
+  sctp_sendmsg+0x35a5/0x4f90 net/sctp/socket.c:1871
+  inet_sendmsg+0x498/0x670 net/ipv4/af_inet.c:762
+  sock_sendmsg_nosec net/socket.c:633 [inline]
+  sock_sendmsg net/socket.c:643 [inline]
+  SYSC_sendto+0x608/0x710 net/socket.c:1696
+  SyS_sendto+0x8a/0xb0 net/socket.c:1664
+  entry_SYSCALL_64_fastpath+0x13/0x94
+ RIP: 0033:0x44b479
+ RSP: 002b:00007f6213f21c08 EFLAGS: 00000286 ORIG_RAX: 000000000000002c
+ RAX: ffffffffffffffda RBX: 0000000020000000 RCX: 000000000044b479
+ RDX: 0000000000000041 RSI: 0000000020edd000 RDI: 0000000000000006
+ RBP: 00000000007080a8 R08: 0000000020b85fe4 R09: 000000000000001c
+ R10: 0000000000040005 R11: 0000000000000286 R12: 00000000ffffffff
+ R13: 0000000000003760 R14: 00000000006e5820 R15: 0000000000ff8000
+ origin description: ----dst_saddr@sctp_v6_get_dst
+ local variable created at:
+  sk_fullsock include/net/sock.h:2321 [inline]
+  inet6_sk include/linux/ipv6.h:309 [inline]
+  sctp_v6_get_dst+0x91/0x1630 net/sctp/ipv6.c:241
+  sctp_transport_route+0x101/0x570 net/sctp/transport.c:292
+=================================
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Alexander Potapenko <glider@google.com>
+Reviewed-by: Xin Long <lucien.xin@gmail.com>
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- include/net/sctp/sm.h    |  6 +++---
- net/sctp/sm_sideeffect.c |  2 +-
- net/sctp/sm_statetable.c | 42 +++++++++++++++++++++++++-----------------
- 3 files changed, 29 insertions(+), 21 deletions(-)
+v3: set flowinfo between port and addr to ease code review.
+v2 is identical to v1, resending per request by Marcelo Ricardo Leitner.
+---
+ net/sctp/ipv6.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index 3ca75a6..7ad2402 100644
---- a/include/net/sctp/sm.h
-+++ b/include/net/sctp/sm.h
-@@ -72,10 +72,10 @@ typedef sctp_disposition_t (sctp_state_fn_t) (struct net *,
- 					      void *arg,
- 					      struct sctp_cmd_seq *);
- typedef void (sctp_timer_event_t) (unsigned long);
--typedef struct {
-+struct sctp_sm_table_entry {
- 	sctp_state_fn_t *fn;
- 	const char *name;
--} sctp_sm_table_entry_t;
-+};
- 
- /* A naming convention of "sctp_sf_xxx" applies to all the state functions
-  * currently in use.
-@@ -170,7 +170,7 @@ sctp_state_fn_t sctp_sf_autoclose_timer_expire;
- 
- /* Prototypes for utility support functions.  */
- __u8 sctp_get_chunk_type(struct sctp_chunk *chunk);
--const sctp_sm_table_entry_t *sctp_sm_lookup_event(
-+const struct sctp_sm_table_entry *sctp_sm_lookup_event(
- 					struct net *net,
- 					enum sctp_event event_type,
- 					enum sctp_state state,
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index 6dd5934..2bc1204 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -1146,7 +1146,7 @@ int sctp_do_sm(struct net *net, enum sctp_event event_type,
- 	       void *event_arg, gfp_t gfp)
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 2a186b201ad2..a4b6ffb61495 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -512,7 +512,9 @@ static void sctp_v6_to_addr(union sctp_addr *addr, struct in6_addr *saddr,
  {
- 	struct sctp_cmd_seq commands;
--	const sctp_sm_table_entry_t *state_fn;
-+	const struct sctp_sm_table_entry *state_fn;
- 	sctp_disposition_t status;
- 	int error = 0;
- 	typedef const char *(printfn_t)(union sctp_subtype);
-diff --git a/net/sctp/sm_statetable.c b/net/sctp/sm_statetable.c
-index d437f38..79b6bee 100644
---- a/net/sctp/sm_statetable.c
-+++ b/net/sctp/sm_statetable.c
-@@ -45,27 +45,27 @@
- #include <net/sctp/sctp.h>
- #include <net/sctp/sm.h>
- 
--static const sctp_sm_table_entry_t
-+static const struct sctp_sm_table_entry
- primitive_event_table[SCTP_NUM_PRIMITIVE_TYPES][SCTP_STATE_NUM_STATES];
--static const sctp_sm_table_entry_t
-+static const struct sctp_sm_table_entry
- other_event_table[SCTP_NUM_OTHER_TYPES][SCTP_STATE_NUM_STATES];
--static const sctp_sm_table_entry_t
-+static const struct sctp_sm_table_entry
- timeout_event_table[SCTP_NUM_TIMEOUT_TYPES][SCTP_STATE_NUM_STATES];
- 
--static const sctp_sm_table_entry_t *sctp_chunk_event_lookup(
-+static const struct sctp_sm_table_entry *sctp_chunk_event_lookup(
- 						struct net *net,
- 						enum sctp_cid cid,
- 						enum sctp_state state);
- 
- 
--static const sctp_sm_table_entry_t bug = {
-+static const struct sctp_sm_table_entry bug = {
- 	.fn = sctp_sf_bug,
- 	.name = "sctp_sf_bug"
- };
- 
- #define DO_LOOKUP(_max, _type, _table)					\
- ({									\
--	const sctp_sm_table_entry_t *rtn;				\
-+	const struct sctp_sm_table_entry *rtn;				\
- 									\
- 	if ((event_subtype._type > (_max))) {				\
- 		pr_warn("table %p possible attack: event %d exceeds max %d\n", \
-@@ -77,7 +77,7 @@ static const sctp_sm_table_entry_t bug = {
- 	rtn;								\
- })
- 
--const sctp_sm_table_entry_t *sctp_sm_lookup_event(
-+const struct sctp_sm_table_entry *sctp_sm_lookup_event(
- 					struct net *net,
- 					enum sctp_event event_type,
- 					enum sctp_state state,
-@@ -394,7 +394,8 @@ const sctp_sm_table_entry_t *sctp_sm_lookup_event(
-  *
-  * For base protocol (RFC 2960).
-  */
--static const sctp_sm_table_entry_t chunk_event_table[SCTP_NUM_BASE_CHUNK_TYPES][SCTP_STATE_NUM_STATES] = {
-+static const struct sctp_sm_table_entry
-+chunk_event_table[SCTP_NUM_BASE_CHUNK_TYPES][SCTP_STATE_NUM_STATES] = {
- 	TYPE_SCTP_DATA,
- 	TYPE_SCTP_INIT,
- 	TYPE_SCTP_INIT_ACK,
-@@ -453,7 +454,8 @@ static const sctp_sm_table_entry_t chunk_event_table[SCTP_NUM_BASE_CHUNK_TYPES][
- /* The primary index for this table is the chunk type.
-  * The secondary index for this table is the state.
-  */
--static const sctp_sm_table_entry_t addip_chunk_event_table[SCTP_NUM_ADDIP_CHUNK_TYPES][SCTP_STATE_NUM_STATES] = {
-+static const struct sctp_sm_table_entry
-+addip_chunk_event_table[SCTP_NUM_ADDIP_CHUNK_TYPES][SCTP_STATE_NUM_STATES] = {
- 	TYPE_SCTP_ASCONF,
- 	TYPE_SCTP_ASCONF_ACK,
- }; /*state_fn_t addip_chunk_event_table[][] */
-@@ -480,7 +482,8 @@ static const sctp_sm_table_entry_t addip_chunk_event_table[SCTP_NUM_ADDIP_CHUNK_
- /* The primary index for this table is the chunk type.
-  * The secondary index for this table is the state.
-  */
--static const sctp_sm_table_entry_t prsctp_chunk_event_table[SCTP_NUM_PRSCTP_CHUNK_TYPES][SCTP_STATE_NUM_STATES] = {
-+static const struct sctp_sm_table_entry
-+prsctp_chunk_event_table[SCTP_NUM_PRSCTP_CHUNK_TYPES][SCTP_STATE_NUM_STATES] = {
- 	TYPE_SCTP_FWD_TSN,
- }; /*state_fn_t prsctp_chunk_event_table[][] */
- 
-@@ -506,7 +509,8 @@ static const sctp_sm_table_entry_t prsctp_chunk_event_table[SCTP_NUM_PRSCTP_CHUN
- /* The primary index for this table is the chunk type.
-  * The secondary index for this table is the state.
-  */
--static const sctp_sm_table_entry_t reconf_chunk_event_table[SCTP_NUM_RECONF_CHUNK_TYPES][SCTP_STATE_NUM_STATES] = {
-+static const struct sctp_sm_table_entry
-+reconf_chunk_event_table[SCTP_NUM_RECONF_CHUNK_TYPES][SCTP_STATE_NUM_STATES] = {
- 	TYPE_SCTP_RECONF,
- }; /*state_fn_t reconf_chunk_event_table[][] */
- 
-@@ -532,11 +536,12 @@ static const sctp_sm_table_entry_t reconf_chunk_event_table[SCTP_NUM_RECONF_CHUN
- /* The primary index for this table is the chunk type.
-  * The secondary index for this table is the state.
-  */
--static const sctp_sm_table_entry_t auth_chunk_event_table[SCTP_NUM_AUTH_CHUNK_TYPES][SCTP_STATE_NUM_STATES] = {
-+static const struct sctp_sm_table_entry
-+auth_chunk_event_table[SCTP_NUM_AUTH_CHUNK_TYPES][SCTP_STATE_NUM_STATES] = {
- 	TYPE_SCTP_AUTH,
- }; /*state_fn_t auth_chunk_event_table[][] */
- 
--static const sctp_sm_table_entry_t
-+static const struct sctp_sm_table_entry
- chunk_event_table_unknown[SCTP_STATE_NUM_STATES] = {
- 	/* SCTP_STATE_CLOSED */
- 	TYPE_SCTP_FUNC(sctp_sf_ootb),
-@@ -693,7 +698,8 @@ chunk_event_table_unknown[SCTP_STATE_NUM_STATES] = {
- /* The primary index for this table is the primitive type.
-  * The secondary index for this table is the state.
-  */
--static const sctp_sm_table_entry_t primitive_event_table[SCTP_NUM_PRIMITIVE_TYPES][SCTP_STATE_NUM_STATES] = {
-+static const struct sctp_sm_table_entry
-+primitive_event_table[SCTP_NUM_PRIMITIVE_TYPES][SCTP_STATE_NUM_STATES] = {
- 	TYPE_SCTP_PRIMITIVE_ASSOCIATE,
- 	TYPE_SCTP_PRIMITIVE_SHUTDOWN,
- 	TYPE_SCTP_PRIMITIVE_ABORT,
-@@ -741,7 +747,8 @@ static const sctp_sm_table_entry_t primitive_event_table[SCTP_NUM_PRIMITIVE_TYPE
- 	TYPE_SCTP_FUNC(sctp_sf_ignore_other), \
+ 	addr->sa.sa_family = AF_INET6;
+ 	addr->v6.sin6_port = port;
++	addr->v6.sin6_flowinfo = 0;
+ 	addr->v6.sin6_addr = *saddr;
++	addr->v6.sin6_scope_id = 0;
  }
  
--static const sctp_sm_table_entry_t other_event_table[SCTP_NUM_OTHER_TYPES][SCTP_STATE_NUM_STATES] = {
-+static const struct sctp_sm_table_entry
-+other_event_table[SCTP_NUM_OTHER_TYPES][SCTP_STATE_NUM_STATES] = {
- 	TYPE_SCTP_OTHER_NO_PENDING_TSN,
- 	TYPE_SCTP_OTHER_ICMP_PROTO_UNREACH,
- };
-@@ -955,7 +962,8 @@ static const sctp_sm_table_entry_t other_event_table[SCTP_NUM_OTHER_TYPES][SCTP_
- 	TYPE_SCTP_FUNC(sctp_sf_timer_ignore), \
- }
- 
--static const sctp_sm_table_entry_t timeout_event_table[SCTP_NUM_TIMEOUT_TYPES][SCTP_STATE_NUM_STATES] = {
-+static const struct sctp_sm_table_entry
-+timeout_event_table[SCTP_NUM_TIMEOUT_TYPES][SCTP_STATE_NUM_STATES] = {
- 	TYPE_SCTP_EVENT_TIMEOUT_NONE,
- 	TYPE_SCTP_EVENT_TIMEOUT_T1_COOKIE,
- 	TYPE_SCTP_EVENT_TIMEOUT_T1_INIT,
-@@ -969,7 +977,7 @@ static const sctp_sm_table_entry_t timeout_event_table[SCTP_NUM_TIMEOUT_TYPES][S
- 	TYPE_SCTP_EVENT_TIMEOUT_AUTOCLOSE,
- };
- 
--static const sctp_sm_table_entry_t *sctp_chunk_event_lookup(
-+static const struct sctp_sm_table_entry *sctp_chunk_event_lookup(
- 						struct net *net,
- 						enum sctp_cid cid,
- 						enum sctp_state state)
+ /* Compare addresses exactly.
 -- 
-2.1.0
+2.14.1.480.gb18f417b89-goog
 
