@@ -1,30 +1,33 @@
-From: Simon Arlott <simon@fire.lp0.eu>
-Date: Sun, 20 Aug 2017 16:36:53 +0000
-Subject: SOCK_STREAM and EPOLLET
-Message-Id: <1ae8a030-75d2-7cd0-8feb-8556e66833fd@simon.arlott.org.uk>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Mon, 21 Aug 2017 08:40:24 +0000
+Subject: RE: SOCK_STREAM and EPOLLET
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6DD005C678@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1ae8a030-75d2-7cd0-8feb-8556e66833fd@simon.arlott.org.uk>
+In-Reply-To: <1ae8a030-75d2-7cd0-8feb-8556e66833fd@simon.arlott.org.uk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-According to epoll(7):
-       Q9  Do I need to continuously read/write a file descriptor until
-           EAGAIN when using the EPOLLET flag (edge-triggered behavior) ?
-
-       A9  For  stream-oriented files (e.g., pipe, FIFO, stream socket),
-           the condition that the read/write I/O space is exhausted can
-           also be detected by checking the amount of data read from /
-           written to the target file descriptor.
-
-However, if the remote end of a socket(PF_INET6, SOCK_STREAM,
-IPPROTO_SCTP) is making multiple send() calls with 1 byte of data (and
-has NODELAY enabled), then a recv() call only returns 1 byte of data at
-a time even if there is more data available.
-
-I'd expect a stream socket to return all the available data. Either the
-behaviour of recv() is wrong or the advice in epoll(7) is incorrect for
-SCTP sockets.
-
--- 
-Simon Arlott
+RnJvbTogU2ltb24gQXJsb3R0DQo+IFNlbnQ6IDIwIEF1Z3VzdCAyMDE3IDE3OjM3DQo+IEFjY29y
+ZGluZyB0byBlcG9sbCg3KToNCj4gICAgICAgIFE5ICBEbyBJIG5lZWQgdG8gY29udGludW91c2x5
+IHJlYWQvd3JpdGUgYSBmaWxlIGRlc2NyaXB0b3IgdW50aWwNCj4gICAgICAgICAgICBFQUdBSU4g
+d2hlbiB1c2luZyB0aGUgRVBPTExFVCBmbGFnIChlZGdlLXRyaWdnZXJlZCBiZWhhdmlvcikgPw0K
+PiANCj4gICAgICAgIEE5ICBGb3IgIHN0cmVhbS1vcmllbnRlZCBmaWxlcyAoZS5nLiwgcGlwZSwg
+RklGTywgc3RyZWFtIHNvY2tldCksDQo+ICAgICAgICAgICAgdGhlIGNvbmRpdGlvbiB0aGF0IHRo
+ZSByZWFkL3dyaXRlIEkvTyBzcGFjZSBpcyBleGhhdXN0ZWQgY2FuDQo+ICAgICAgICAgICAgYWxz
+byBiZSBkZXRlY3RlZCBieSBjaGVja2luZyB0aGUgYW1vdW50IG9mIGRhdGEgcmVhZCBmcm9tIC8N
+Cj4gICAgICAgICAgICB3cml0dGVuIHRvIHRoZSB0YXJnZXQgZmlsZSBkZXNjcmlwdG9yLg0KPiAN
+Cj4gSG93ZXZlciwgaWYgdGhlIHJlbW90ZSBlbmQgb2YgYSBzb2NrZXQoUEZfSU5FVDYsIFNPQ0tf
+U1RSRUFNLA0KPiBJUFBST1RPX1NDVFApIGlzIG1ha2luZyBtdWx0aXBsZSBzZW5kKCkgY2FsbHMg
+d2l0aCAxIGJ5dGUgb2YgZGF0YSAoYW5kDQo+IGhhcyBOT0RFTEFZIGVuYWJsZWQpLCB0aGVuIGEg
+cmVjdigpIGNhbGwgb25seSByZXR1cm5zIDEgYnl0ZSBvZiBkYXRhIGF0DQo+IGEgdGltZSBldmVu
+IGlmIHRoZXJlIGlzIG1vcmUgZGF0YSBhdmFpbGFibGUuDQo+IA0KPiBJJ2QgZXhwZWN0IGEgc3Ry
+ZWFtIHNvY2tldCB0byByZXR1cm4gYWxsIHRoZSBhdmFpbGFibGUgZGF0YS4gRWl0aGVyIHRoZQ0K
+PiBiZWhhdmlvdXIgb2YgcmVjdigpIGlzIHdyb25nIG9yIHRoZSBhZHZpY2UgaW4gZXBvbGwoNykg
+aXMgaW5jb3JyZWN0IGZvcg0KPiBTQ1RQIHNvY2tldHMuDQoNClNDVFAgaXMgbWVzc2FnZSBvcmll
+bnRlZCwgZWFjaCBzZW5kKCkgZ2VuZXJhdGVzIGEgc2VwYXJhdGUgbWVzc2FnZSBhbmQNCmVhY2gg
+cmVjdigpIHJldHVybnMgYSBzaW5nbGUgbWVzc2FnZS4NCk5ET0RFTEFZIGlzbid0IHJlbGV2YW50
+LiBJZiB5b3UgZG8gMTAwIHNlbmQoKSB5b3UnbGwgbmVlZCAxMDAgcmVjdigpLg0KDQoJRGF2aWQN
+Cg0K
