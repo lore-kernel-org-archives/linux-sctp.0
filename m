@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 23 Aug 2017 17:12:16 +0000
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 24 Aug 2017 02:02:32 +0000
 Subject: Re: [PATCH net] sctp: Avoid out-of-bounds reads from address storage
-Message-Id: <20170823171216.GF18688@localhost.localdomain>
+Message-Id: <CADvbK_dk-hzMU5WLKvUicXJFr648VC7i_6QZ1eaR-Mti8vfx4Q@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <7763d91bcf14744e49f09fc4bec0fb22c097774f.1502384055.git.sbrivio@redhat.com>
 In-Reply-To: <7763d91bcf14744e49f09fc4bec0fb22c097774f.1502384055.git.sbrivio@redhat.com>
@@ -9,26 +9,26 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Stefano Brivio <sbrivio@redhat.com>
-Cc: "David S . Miller" <davem@davemloft.net>, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, stable@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org
+Cc: "David S . Miller" <davem@davemloft.net>, network dev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, stable@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org
 
-On Wed, Aug 23, 2017 at 01:27:13PM +0200, Stefano Brivio wrote:
+On Wed, Aug 23, 2017 at 11:27 PM, Stefano Brivio <sbrivio@redhat.com> wrote:
 > inet_diag_msg_sctp{,l}addr_fill() and sctp_get_sctp_info() copy
 > sizeof(sockaddr_storage) bytes to fill in sockaddr structs used
 > to export diagnostic information to userspace.
-> 
+>
 > However, the memory allocated to store sockaddr information is
 > smaller than that and depends on the address family, so we leak
 > up to 100 uninitialized bytes to userspace. Just use the size of
 > the source structs instead, in all the three cases this is what
 > userspace expects. Zero out the remaining memory.
-> 
+>
 > Unused bytes (i.e. when IPv4 addresses are used) in source
 > structs sctp_sockaddr_entry and sctp_transport are already
 > cleared by sctp_add_bind_addr() and sctp_transport_new(),
 > respectively.
-> 
+>
 > Noticed while testing KASAN-enabled kernel with 'ss':
-> 
+>
 > [ 2326.885243] BUG: KASAN: slab-out-of-bounds in inet_sctp_diag_fill+0x42c/0x6c0 [sctp_diag] at addr ffff881be8779800
 > [ 2326.896800] Read of size 128 by task ss/9527
 > [ 2326.901564] CPU: 0 PID: 9527 Comm: ss Not tainted 4.11.0-22.el7a.x86_64 #1
@@ -138,9 +138,9 @@ On Wed, Aug 23, 2017 at 01:27:13PM +0200, Stefano Brivio wrote:
 > [ 2327.401792]  ffff881be8779880: fc fc fc fc fb fb fb fb fb fb fb fb fc fc fc fc
 > [ 2327.409850]  ffff881be8779900: 00 00 00 00 00 04 fc fc fc fc fc fc 00 00 00 00
 > [ 2327.417907] =================================
-> 
+>
 > This fixes CVE-2017-7558.
-> 
+>
 > References: https://bugzilla.redhat.com/show_bug.cgi?id80266
 > Fixes: 8f840e47f190 ("sctp: add the sctp_diag.c file")
 > Cc: <stable@vger.kernel.org> # 4.7+
@@ -149,58 +149,52 @@ On Wed, Aug 23, 2017 at 01:27:13PM +0200, Stefano Brivio wrote:
 > Cc: Neil Horman <nhorman@tuxdriver.com>
 > Signed-off-by: Stefano Brivio <sbrivio@redhat.com>
 
-Thanks Stefano.
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Reviewed-by: Xin Long <lucien.xin@gmail.com>
 
 > ---
 >  net/sctp/sctp_diag.c | 7 +++++--
 >  net/sctp/socket.c    | 3 +--
 >  2 files changed, 6 insertions(+), 4 deletions(-)
-> 
+>
 > diff --git a/net/sctp/sctp_diag.c b/net/sctp/sctp_diag.c
 > index 9a647214a91e..e99518e79b52 100644
 > --- a/net/sctp/sctp_diag.c
 > +++ b/net/sctp/sctp_diag.c
 > @@ -70,7 +70,8 @@ static int inet_diag_msg_sctpladdrs_fill(struct sk_buff *skb,
->  
->  	info = nla_data(attr);
->  	list_for_each_entry_rcu(laddr, address_list, list) {
-> -		memcpy(info, &laddr->a, addrlen);
-> +		memcpy(info, &laddr->a, sizeof(laddr->a));
-> +		memset(info + sizeof(laddr->a), 0, addrlen - sizeof(laddr->a));
->  		info += addrlen;
->  	}
->  
+>
+>         info = nla_data(attr);
+>         list_for_each_entry_rcu(laddr, address_list, list) {
+> -               memcpy(info, &laddr->a, addrlen);
+> +               memcpy(info, &laddr->a, sizeof(laddr->a));
+> +               memset(info + sizeof(laddr->a), 0, addrlen - sizeof(laddr->a));
+>                 info += addrlen;
+>         }
+>
 > @@ -93,7 +94,9 @@ static int inet_diag_msg_sctpaddrs_fill(struct sk_buff *skb,
->  	info = nla_data(attr);
->  	list_for_each_entry(from, &asoc->peer.transport_addr_list,
->  			    transports) {
-> -		memcpy(info, &from->ipaddr, addrlen);
-> +		memcpy(info, &from->ipaddr, sizeof(from->ipaddr));
-> +		memset(info + sizeof(from->ipaddr), 0,
-> +		       addrlen - sizeof(from->ipaddr));
->  		info += addrlen;
->  	}
->  
+>         info = nla_data(attr);
+>         list_for_each_entry(from, &asoc->peer.transport_addr_list,
+>                             transports) {
+> -               memcpy(info, &from->ipaddr, addrlen);
+> +               memcpy(info, &from->ipaddr, sizeof(from->ipaddr));
+> +               memset(info + sizeof(from->ipaddr), 0,
+> +                      addrlen - sizeof(from->ipaddr));
+>                 info += addrlen;
+>         }
+>
 > diff --git a/net/sctp/socket.c b/net/sctp/socket.c
 > index 1db478e34520..8d760863bc41 100644
 > --- a/net/sctp/socket.c
 > +++ b/net/sctp/socket.c
 > @@ -4538,8 +4538,7 @@ int sctp_get_sctp_info(struct sock *sk, struct sctp_association *asoc,
->  	info->sctpi_ictrlchunks = asoc->stats.ictrlchunks;
->  
->  	prim = asoc->peer.primary_path;
-> -	memcpy(&info->sctpi_p_address, &prim->ipaddr,
-> -	       sizeof(struct sockaddr_storage));
-> +	memcpy(&info->sctpi_p_address, &prim->ipaddr, sizeof(prim->ipaddr));
->  	info->sctpi_p_state = prim->state;
->  	info->sctpi_p_cwnd = prim->cwnd;
->  	info->sctpi_p_srtt = prim->srtt;
-> -- 
-> 2.9.4
-> 
+>         info->sctpi_ictrlchunks = asoc->stats.ictrlchunks;
+>
+>         prim = asoc->peer.primary_path;
+> -       memcpy(&info->sctpi_p_address, &prim->ipaddr,
+> -              sizeof(struct sockaddr_storage));
+> +       memcpy(&info->sctpi_p_address, &prim->ipaddr, sizeof(prim->ipaddr));
+>         info->sctpi_p_state = prim->state;
+>         info->sctpi_p_cwnd = prim->cwnd;
+>         info->sctpi_p_srtt = prim->srtt;
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+> 2.9.4
+>
