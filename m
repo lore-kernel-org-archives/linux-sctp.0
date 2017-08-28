@@ -1,50 +1,100 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 11 Aug 2017 02:23:55 +0000
-Subject: [PATCH net-next 11/14] sctp: remove the unused typedef sctp_sm_command_t
-Message-Id: <6ff85867e2eb2776e2dbec9a0140911dcaec3e18.1502417340.git.lucien.xin@gmail.com>
+From: Kees Cook <keescook@chromium.org>
+Date: Mon, 28 Aug 2017 21:35:02 +0000
+Subject: [PATCH v2 21/30] sctp: Define usercopy region in SCTP proto slab cache
+Message-Id: <1503956111-36652-22-git-send-email-keescook@chromium.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1502417340.git.lucien.xin@gmail.com>
- <e15322cc52e110730f2bcb77973222b687717369.1502417340.git.lucien.xin@gmail.com>
- <67dec3f4936413e5bf596dc0ce9be0b9aa15a444.1502417340.git.lucien.xin@gmail.com>
- <5031dc5f40135c4ede57452bc61a1b29dfc76d89.1502417340.git.lucien.xin@gmail.com>
- <58f1f86286c91cf55e9d6eb9395e59e9f1fd4519.1502417340.git.lucien.xin@gmail.com>
- <77692e0783b8134d97fd4c15e37cf0b6e4fa643e.1502417340.git.lucien.xin@gmail.com>
- <bec27150caf5435011467a5488247f853f782409.1502417340.git.lucien.xin@gmail.com>
- <d9ac131331781f85d2662c4c15692344260bb1b6.1502417340.git.lucien.xin@gmail.com>
- <d69e6a88f9cbdc68f0f3ef9c2afd89ccc64f955b.1502417340.git.lucien.xin@gmail.com>
- <8a912c943fa40c635ac0dba8726c7e744031a446.1502417340.git.lucien.xin@gmail.com>
- <712be5d964dee4d7918781d7399ad564f2309259.1502417340.git.lucien.xin@gmail.com>
-In-Reply-To: <712be5d964dee4d7918781d7399ad564f2309259.1502417340.git.lucien.xin@gmail.com>
+References: <1503956111-36652-1-git-send-email-keescook@chromium.org>
+In-Reply-To: <1503956111-36652-1-git-send-email-keescook@chromium.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: linux-kernel@vger.kernel.org
+Cc: Kees Cook <keescook@chromium.org>, David Windsor <dave@nullcore.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-mm@kvack.org, kernel-hardening@lists.openwall.com
 
-Remove this typedef including the struct, there is even no places
-using it.
+From: David Windsor <dave@nullcore.net>
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+The SCTP socket event notification subscription information need to be
+copied to/from userspace. In support of usercopy hardening, this patch
+defines a region in the struct proto slab cache in which userspace copy
+operations are allowed. Additionally moves the usercopy fields to be
+adjacent for the region to cover both.
+
+example usage trace:
+
+    net/sctp/socket.c:
+        sctp_getsockopt_events(...):
+            ...
+            copy_to_user(..., &sctp_sk(sk)->subscribe, len)
+
+        sctp_setsockopt_events(...):
+            ...
+            copy_from_user(&sctp_sk(sk)->subscribe, ..., optlen)
+
+        sctp_getsockopt_initmsg(...):
+            ...
+            copy_to_user(..., &sctp_sk(sk)->initmsg, len)
+
+This region is known as the slab cache's usercopy region. Slab caches can
+now check that each copy operation involving cache-managed memory falls
+entirely within the slab's usercopy region.
+
+This patch is modified from Brad Spengler/PaX Team's PAX_USERCOPY
+whitelisting code in the last public patch of grsecurity/PaX based on my
+understanding of the code. Changes or omissions from the original code are
+mine and don't reflect the original grsecurity/PaX code.
+
+Signed-off-by: David Windsor <dave@nullcore.net>
+[kees: split from network patch, move struct member adjacent, provide usage]
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org
+Signed-off-by: Kees Cook <keescook@chromium.org>
 ---
- include/net/sctp/sm.h | 5 -----
- 1 file changed, 5 deletions(-)
+ include/net/sctp/structs.h | 9 +++++++--
+ net/sctp/socket.c          | 4 ++++
+ 2 files changed, 11 insertions(+), 2 deletions(-)
 
-diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index 9af64b9..3ca75a6 100644
---- a/include/net/sctp/sm.h
-+++ b/include/net/sctp/sm.h
-@@ -65,11 +65,6 @@ typedef enum {
- 	SCTP_DISPOSITION_BUG,		 /* This is a bug.  */
- } sctp_disposition_t;
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 5ab29af8ca8a..f1d7810e200e 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -202,12 +202,17 @@ struct sctp_sock {
+ 	/* Flags controlling Heartbeat, SACK delay, and Path MTU Discovery. */
+ 	__u32 param_flags;
  
--typedef struct {
--	int name;
--	int action;
--} sctp_sm_command_t;
--
- typedef sctp_disposition_t (sctp_state_fn_t) (struct net *,
- 					      const struct sctp_endpoint *,
- 					      const struct sctp_association *,
+-	struct sctp_initmsg initmsg;
+ 	struct sctp_rtoinfo rtoinfo;
+ 	struct sctp_paddrparams paddrparam;
+-	struct sctp_event_subscribe subscribe;
+ 	struct sctp_assocparams assocparams;
+ 
++	/*
++	 * These two structures must be grouped together for the usercopy
++	 * whitelist region.
++	 */
++	struct sctp_event_subscribe subscribe;
++	struct sctp_initmsg initmsg;
++
+ 	int user_frag;
+ 
+ 	__u32 autoclose;
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 1db478e34520..c8784cb216e4 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -8235,6 +8235,10 @@ struct proto sctp_prot = {
+ 	.unhash      =	sctp_unhash,
+ 	.get_port    =	sctp_get_port,
+ 	.obj_size    =  sizeof(struct sctp_sock),
++	.useroffset  =  offsetof(struct sctp_sock, subscribe),
++	.usersize    =  offsetof(struct sctp_sock, initmsg) -
++				offsetof(struct sctp_sock, subscribe) +
++				sizeof_field(struct sctp_sock, initmsg),
+ 	.sysctl_mem  =  sysctl_sctp_mem,
+ 	.sysctl_rmem =  sysctl_sctp_rmem,
+ 	.sysctl_wmem =  sysctl_sctp_wmem,
 -- 
-2.1.0
+2.7.4
 
