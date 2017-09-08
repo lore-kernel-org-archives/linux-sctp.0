@@ -1,26 +1,34 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 13 Sep 2017 16:25:22 +0000
-Subject: Re: [PATCH net] sctp: potential read out of bounds in sctp_ulpevent_type_enabled()
-Message-Id: <20170913.092522.934509429497822082.davem@davemloft.net>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Fri, 08 Sep 2017 09:03:31 +0000
+Subject: Multiple connections from the same source address.
+Message-Id: <063D6719AE5E284EB5DD2968C1650D6DD0071271@AcuExch.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20170913092028.idzvduj7ran4li6b@mwanda>
-In-Reply-To: <20170913092028.idzvduj7ran4li6b@mwanda>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dan.carpenter@oracle.com
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, kernel-janitors@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-From: Dan Carpenter <dan.carpenter@oracle.com>
-Date: Wed, 13 Sep 2017 12:20:28 +0300
+Can anyone think how to create multiple outgoing connections
+from the same subset of local IP addresses and the same port?
 
-> @@ -154,7 +154,11 @@ static inline int sctp_ulpevent_type_enabled(__u16 sn_type,
->  					     struct sctp_event_subscribe *mask)
->  {
->  	char *amask = (char *) mask;
-> -	return amask[sn_type - SCTP_SN_TYPE_BASE];
-> +	int offset = sn_type - SCTP_SN_TYPE_BASE;
+We bind() to the first IP address and port, then use
+SCTP_SOCKOPT_BINDX_ADD to add the second IP address.
+But even with IP_REUASADDR set you can't repeat that on
+a second socket.
 
-Please use reverse-christmas-tree local variable ordering.
+It is possible to bind a second socket by reversing the
+order of the IP addresses (this might be deemed to be a bug!)
 
-Thank you.
+If you bind to IN_ADDR_ANY then a second socket can be bound
+to the same port once the outgoing connection has been made
+(and the actual local address assigned).
+This works for TCP, but for SCTP you almost always need to
+constrain the local addresses advertised on the connection.
+
+Ideas?
+
+I've not tried binding to IN_ADDR_ANY and using bindx to
+add all the addresses.
+
+	David
+
