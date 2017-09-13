@@ -1,56 +1,46 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 29 Sep 2017 17:10:29 +0000
-Subject: Re: [PATCH net-next 09/10] sctp: introduce priority based stream scheduler
-Message-Id: <20170929171029.GB19750@localhost.localdomain>
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Wed, 13 Sep 2017 09:20:28 +0000
+Subject: [PATCH net] sctp: potential read out of bounds in sctp_ulpevent_type_enabled()
+Message-Id: <20170913092028.idzvduj7ran4li6b@mwanda>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1506536044.git.marcelo.leitner@gmail.com>
- <2220047f36cd5018571ef4f87c252dde3a5a8263.1506536044.git.marcelo.leitner@gmail.com>
- <20170929165458.GB19460@hmswarspite.think-freely.org>
-In-Reply-To: <20170929165458.GB19460@hmswarspite.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>, David Laight <David.Laight@ACULAB.COM>
+To: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, kernel-janitors@vger.kernel.org
 
-On Fri, Sep 29, 2017 at 12:54:58PM -0400, Neil Horman wrote:
-> On Thu, Sep 28, 2017 at 05:25:22PM -0300, Marcelo Ricardo Leitner wrote:
-> > This patch introduces RFC Draft ndata section 3.4 Priority Based
-> > Scheduler (SCTP_SS_PRIO).
-> > 
-> > It works by having a struct sctp_stream_priority for each priority
-> > configured. This struct is then enlisted on a queue ordered per priority
-> > if, and only if, there is a stream with data queued, so that dequeueing
-> > is very straightforward: either finish current datamsg or simply dequeue
-> > from the highest priority queued, which is the next stream pointed, and
-> > that's it.
-> > 
-> > If there are multiple streams assigned with the same priority and with
-> > data queued, it will do round robin amongst them while respecting
-> > datamsgs boundaries (when not using idata chunks), to be reasonably
-> > fair.
-> > 
-> > We intentionally don't maintain a list of priorities nor a list of all
-> > streams with the same priority to save memory. The first would mean at
-> > least 2 other pointers per priority (which, for 1000 priorities, that
-> > can mean 16kB) and the second would also mean 2 other pointers but per
-> > stream. As SCTP supports up to 65535 streams on a given asoc, that's
-> > 1MB. This impacts when giving a priority to some stream, as we have to
-> > find out if the new priority is already being used and if we can free
-> > the old one, and also when tearing down.
-> > 
-> > The new fields in struct sctp_stream_out_ext and sctp_stream are added
-> > under a union because that memory is to be shared with other schedulers.
-> > It could be defined as an opaque area like skb->cb, but that would make
-> > the list handling a nightmare.
-> > 
-> > See-also: https://tools.ietf.org/html/draft-ietf-tsvwg-sctp-ndata-13
-> > Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> I presume here that it will be up to the application to rate limit its own
-> throughput so as to prevent starvation of lower priority streams within an
-> association?
+This code causes a static checker warning because Smatch doesn't trust
+anything that comes from skb->data.  I've reviewed this code and I do
+think skb->data can be controlled by the user here.
 
-That's my expection as well. If it cannot manage its own throughput,
-then it should use another scheduler.
+The sctp_event_subscribe struct has 13 __u8 fields and we want to see
+if ours is non-zero.  sn_type can be any value in the 0-USHRT_MAX range.
+We're subtracting SCTP_SN_TYPE_BASE which is 1 << 15 so we could read
+either before the start of the struct or after the end.
 
-  Marcelo
+This is a very old bug and it's surprising that it would go undetected
+for so long but my theory is that it just doesn't have a big impact so
+it would be hard to notice.
+
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+---
+I'm not terribly familiar with sctp and this is a static checker fix.
+Please review it carefully.
+
+diff --git a/include/net/sctp/ulpevent.h b/include/net/sctp/ulpevent.h
+index 1060494ac230..e6873176bea7 100644
+--- a/include/net/sctp/ulpevent.h
++++ b/include/net/sctp/ulpevent.h
+@@ -154,7 +154,11 @@ static inline int sctp_ulpevent_type_enabled(__u16 sn_type,
+ 					     struct sctp_event_subscribe *mask)
+ {
+ 	char *amask = (char *) mask;
+-	return amask[sn_type - SCTP_SN_TYPE_BASE];
++	int offset = sn_type - SCTP_SN_TYPE_BASE;
++
++	if (offset >= sizeof(struct sctp_event_subscribe))
++		return 0;
++	return amask[offset];
+ }
+ 
+ /* Given an event subscription, is this event enabled? */
