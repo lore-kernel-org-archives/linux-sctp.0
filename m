@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 15 Sep 2017 12:57:27 +0000
+From: David Miller <davem@davemloft.net>
+Date: Fri, 15 Sep 2017 21:48:44 +0000
 Subject: Re: [PATCH net] sctp: fix an use-after-free issue in sctp_sock_dump
-Message-Id: <20170915125727.GA6031@hmswarspite.think-freely.org>
+Message-Id: <20170915.144844.2163359752292953670.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <9de7bef8f4f8c0f369361118f6d2daee5d188467.1505444541.git.lucien.xin@gmail.com>
 In-Reply-To: <9de7bef8f4f8c0f369361118f6d2daee5d188467.1505444541.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, pabeni@redhat.com
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, pabeni@redhat.com
 
-On Fri, Sep 15, 2017 at 11:02:21AM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 15 Sep 2017 11:02:21 +0800
+
 > Commit 86fdb3448cc1 ("sctp: ensure ep is not destroyed before doing the
 > dump") tried to fix an use-after-free issue by checking !sctp_sk(sk)->ep
 > with holding sock and sock lock.
@@ -40,11 +42,5 @@ On Fri, Sep 15, 2017 at 11:02:21AM +0800, Xin Long wrote:
 > Fixes: 86fdb3448cc1 ("sctp: ensure ep is not destroyed before doing the dump")
 > Reported-by: Paolo Abeni <pabeni@redhat.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> ---
->  include/net/sctp/sctp.h |  3 ++-
->  net/sctp/sctp_diag.c    | 32 +++++++++-----------------------
->  net/sctp/socket.c       | 40 +++++++++++++++++++++++++---------------
->  3 files changed, 36 insertions(+), 39 deletions(-)
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
+Applied.
