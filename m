@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 15 Sep 2017 12:55:33 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Fri, 15 Sep 2017 12:59:52 +0000
 Subject: Re: [PATCH net] sctp: do not mark sk dumped when inet_sctp_diag_fill returns err
-Message-Id: <20170915125533.GD4529@localhost.localdomain>
+Message-Id: <20170915125952.GB6031@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <c5398945d4e80ed8b8497675dd0449763fec4eec.1505444568.git.lucien.xin@gmail.com>
 In-Reply-To: <c5398945d4e80ed8b8497675dd0449763fec4eec.1505444568.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
 On Fri, Sep 15, 2017 at 11:02:48AM +0800, Xin Long wrote:
 > sctp_diag would not actually dump out sk/asoc if inet_sctp_diag_fill
@@ -24,30 +24,9 @@ On Fri, Sep 15, 2017 at 11:02:48AM +0800, Xin Long wrote:
 > 
 > Fixes: 8f840e47f190 ("sctp: add the sctp_diag.c file")
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/sctp_diag.c | 1 -
 >  1 file changed, 1 deletion(-)
 > 
-> diff --git a/net/sctp/sctp_diag.c b/net/sctp/sctp_diag.c
-> index 7008a99..22ed01a 100644
-> --- a/net/sctp/sctp_diag.c
-> +++ b/net/sctp/sctp_diag.c
-> @@ -309,7 +309,6 @@ static int sctp_sock_dump(struct sctp_transport *tsp, void *p)
->  					cb->nlh->nlmsg_seq,
->  					NLM_F_MULTI, cb->nlh,
->  					commp->net_admin) < 0) {
-> -			cb->args[3] = 1;
->  			err = 1;
->  			goto release;
->  		}
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
