@@ -1,160 +1,52 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 28 Sep 2017 20:25:21 +0000
-Subject: [PATCH net-next 08/10] sctp: add sockopt to get/set stream scheduler parameters
-Message-Id: <3fb07e1fbc36620c1ed3820fda34a3e5ce1856c2.1506536044.git.marcelo.leitner@gmail.com>
+From: Kees Cook <keescook@chromium.org>
+Date: Wed, 20 Sep 2017 20:45:28 +0000
+Subject: [PATCH v3 22/31] sctp: Copy struct sctp_sock.autoclose to userspace using put_user()
+Message-Id: <1505940337-79069-23-git-send-email-keescook@chromium.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1506536044.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1506536044.git.marcelo.leitner@gmail.com>
+References: <1505940337-79069-1-git-send-email-keescook@chromium.org>
+In-Reply-To: <1505940337-79069-1-git-send-email-keescook@chromium.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>, David Laight <David.Laight@ACULAB.COM>
+To: linux-kernel@vger.kernel.org
+Cc: Kees Cook <keescook@chromium.org>, David Windsor <dave@nullcore.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-fsdevel@vger.kernel.org, linux-mm@kvack.org, kernel-hardening@lists.openwall.com
 
-As defined per RFC Draft ndata Section 4.3.3, named as
-SCTP_STREAM_SCHEDULER_VALUE.
+From: David Windsor <dave@nullcore.net>
 
-See-also: https://tools.ietf.org/html/draft-ietf-tsvwg-sctp-ndata-13
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+The autoclose field can be copied with put_user(), so there is no need to
+use copy_to_user(). In both cases, hardened usercopy is being bypassed
+since the size is constant, and not open to runtime manipulation.
+
+This patch is verbatim from Brad Spengler/PaX Team's PAX_USERCOPY
+whitelisting code in the last public patch of grsecurity/PaX based on my
+understanding of the code. Changes or omissions from the original code are
+mine and don't reflect the original grsecurity/PaX code.
+
+Signed-off-by: David Windsor <dave@nullcore.net>
+[kees: adjust commit log]
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org
+Signed-off-by: Kees Cook <keescook@chromium.org>
 ---
- include/uapi/linux/sctp.h |  7 +++++
- net/sctp/socket.c         | 77 +++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 84 insertions(+)
+ net/sctp/socket.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index 0050f10087d224bad87c8c54ad318003381aee12..00ac417d2c4f8468ea2aad32e59806be5c5aa08d 100644
---- a/include/uapi/linux/sctp.h
-+++ b/include/uapi/linux/sctp.h
-@@ -123,6 +123,7 @@ typedef __s32 sctp_assoc_t;
- #define SCTP_ADD_STREAMS	121
- #define SCTP_SOCKOPT_PEELOFF_FLAGS 122
- #define SCTP_STREAM_SCHEDULER	123
-+#define SCTP_STREAM_SCHEDULER_VALUE	124
- 
- /* PR-SCTP policies */
- #define SCTP_PR_SCTP_NONE	0x0000
-@@ -815,6 +816,12 @@ struct sctp_assoc_value {
-     uint32_t                assoc_value;
- };
- 
-+struct sctp_stream_value {
-+	sctp_assoc_t assoc_id;
-+	uint16_t stream_id;
-+	uint16_t stream_value;
-+};
-+
- /*
-  * 7.2.2 Peer Address Information
-  *
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index ae35dbf2810f78c71ce77115ffe4b0e27a672abc..88c28421ec151e83665efcbcbd8a6403b122205a 100644
+index aa4f86d64545..e070c0934638 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -3945,6 +3945,34 @@ static int sctp_setsockopt_scheduler(struct sock *sk,
- 	return retval;
+@@ -4893,7 +4893,7 @@ static int sctp_getsockopt_autoclose(struct sock *sk, int len, char __user *optv
+ 	len = sizeof(int);
+ 	if (put_user(len, optlen))
+ 		return -EFAULT;
+-	if (copy_to_user(optval, &sctp_sk(sk)->autoclose, sizeof(int)))
++	if (put_user(sctp_sk(sk)->autoclose, (int __user *)optval))
+ 		return -EFAULT;
+ 	return 0;
  }
- 
-+static int sctp_setsockopt_scheduler_value(struct sock *sk,
-+					   char __user *optval,
-+					   unsigned int optlen)
-+{
-+	struct sctp_association *asoc;
-+	struct sctp_stream_value params;
-+	int retval = -EINVAL;
-+
-+	if (optlen < sizeof(params))
-+		goto out;
-+
-+	optlen = sizeof(params);
-+	if (copy_from_user(&params, optval, optlen)) {
-+		retval = -EFAULT;
-+		goto out;
-+	}
-+
-+	asoc = sctp_id2assoc(sk, params.assoc_id);
-+	if (!asoc)
-+		goto out;
-+
-+	retval = sctp_sched_set_value(asoc, params.stream_id,
-+				      params.stream_value, GFP_KERNEL);
-+
-+out:
-+	return retval;
-+}
-+
- /* API 6.2 setsockopt(), getsockopt()
-  *
-  * Applications use setsockopt() and getsockopt() to set or retrieve
-@@ -4129,6 +4157,9 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 	case SCTP_STREAM_SCHEDULER:
- 		retval = sctp_setsockopt_scheduler(sk, optval, optlen);
- 		break;
-+	case SCTP_STREAM_SCHEDULER_VALUE:
-+		retval = sctp_setsockopt_scheduler_value(sk, optval, optlen);
-+		break;
- 	default:
- 		retval = -ENOPROTOOPT;
- 		break;
-@@ -6864,6 +6895,48 @@ static int sctp_getsockopt_scheduler(struct sock *sk, int len,
- 	return retval;
- }
- 
-+static int sctp_getsockopt_scheduler_value(struct sock *sk, int len,
-+					   char __user *optval,
-+					   int __user *optlen)
-+{
-+	struct sctp_stream_value params;
-+	struct sctp_association *asoc;
-+	int retval = -EFAULT;
-+
-+	if (len < sizeof(params)) {
-+		retval = -EINVAL;
-+		goto out;
-+	}
-+
-+	len = sizeof(params);
-+	if (copy_from_user(&params, optval, len))
-+		goto out;
-+
-+	asoc = sctp_id2assoc(sk, params.assoc_id);
-+	if (!asoc) {
-+		retval = -EINVAL;
-+		goto out;
-+	}
-+
-+	retval = sctp_sched_get_value(asoc, params.stream_id,
-+				      &params.stream_value);
-+	if (retval)
-+		goto out;
-+
-+	if (put_user(len, optlen)) {
-+		retval = -EFAULT;
-+		goto out;
-+	}
-+
-+	if (copy_to_user(optval, &params, len)) {
-+		retval = -EFAULT;
-+		goto out;
-+	}
-+
-+out:
-+	return retval;
-+}
-+
- static int sctp_getsockopt(struct sock *sk, int level, int optname,
- 			   char __user *optval, int __user *optlen)
- {
-@@ -7050,6 +7123,10 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_getsockopt_scheduler(sk, len, optval,
- 						   optlen);
- 		break;
-+	case SCTP_STREAM_SCHEDULER_VALUE:
-+		retval = sctp_getsockopt_scheduler_value(sk, len, optval,
-+							 optlen);
-+		break;
- 	default:
- 		retval = -ENOPROTOOPT;
- 		break;
 -- 
-2.13.5
+2.7.4
 
