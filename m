@@ -1,7 +1,7 @@
 From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 22 Sep 2017 11:33:48 +0000
+Date: Fri, 22 Sep 2017 20:06:25 +0000
 Subject: Re: PMTU discovery behaviour
-Message-Id: <20170922113348.GA24088@hmswarspite.think-freely.org>
+Message-Id: <20170922200625.GB24088@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CAH9vUQuf9u=isRf5r4e-Eh+qtP=G170=a-kmCLCLFYBFJGcJKQ@mail.gmail.com>
 In-Reply-To: <CAH9vUQuf9u=isRf5r4e-Eh+qtP=G170=a-kmCLCLFYBFJGcJKQ@mail.gmail.com>
@@ -171,12 +171,6 @@ On Fri, Sep 22, 2017 at 12:05:30PM +0300, Peter Salin wrote:
 > 
 > I would have expected the second ICMP to not be needed as I thought
 > both assocs are on the same transport.
-Oh, I'm sorry, that may be where the conflict is here.  Each association creates
-its own transport objects, even if they share endpoint addresses.  Given that
-the transport object holds its own unique dst entry, which is where the pmtu
-value is derived from, each association needs to go through the pmtu scaling
-process.  Perhaps this is where the confusion lies?
-
 > 
 > I have now attached traces for both tests so that you can compare them
 > side-by-side and see what I am after here. I have run each test twice
@@ -209,8 +203,424 @@ process.  Perhaps this is where the confusion lies?
 > the behaviour is so different between these two cases, so I hope we
 > can find some explanation for that.
 > 
-Ok, I'll take a look at these later today and compare.
 
+So, theres two things I think we need to explore:
+
+1) The possibillity that both behaviors are correct.  Every time a packet is
+generated on the outq (which is asychronous from the sending of the packet), we
+update the pmtu from the route table.  Its possible that, depending on the exact
+timing that a packet might be allocated to bundle chunks into based on the route
+prior to the mtu route metric getting updated, leading to two icmp packets
+getting generated in response.  Put another way, the output of an oversized
+frame may be dependent on the exact timing of the arrival of the first icmp
+message and the decision to transmit the large data chunk on an association.  I
+need to look more to confirm this though.  The establishment of a new
+association to an unknown address may be affecting such timing.
+
+2) In frame 18 of test_1.pcap, there is a FORWARD_TSN chunk, which is very odd,
+because it is on association 1.  Thats odd because as far as I know, FORWARD_TSN
+chunks are only generated after data has been sent (which is expected, since its
+meant to help pr-sctp skip tsns that are considered lost).  The 1 exception to
+that, is that a forward_tsn may be generated in response to a SACK chunk (which
+still assumes data has been sent).  This is all interesting because frame 17 in
+that trace is in fact a SACK chunk, but it was sent on association 0, which
+seems very wrong.  Need to look into this more too.
 Neil
+
+> BR,
+> -Peter
+> >
+> >> BR,
+> >> -Peter
+> >> >
+> >> >> >> ------ ver_linux output ------
+> >> >> >> Linux esalipe-test 4.4.0-93-generic #116-Ubuntu SMP Fri Aug 11
+> >> >> >> 21:17:51 UTC 2017 x86_64 x86_64 x86_64 GNU/Linux
+> >> >> >>
+> >> >> >> GNU C                   5.4.0
+> >> >> >> GNU Make                4.1
+> >> >> >> Binutils                2.26.1
+> >> >> >> Util-linux              2.27.1
+> >> >> >> Mount                   2.27.1
+> >> >> >> Module-init-tools       22
+> >> >> >> E2fsprogs               1.42.13
+> >> >> >> Xfsprogs                4.3.0
+> >> >> >> Linux C Library         2.23
+> >> >> >> Dynamic linker (ldd)    2.23
+> >> >> >> Linux C++ Library       6.0.21
+> >> >> >> Procps                  3.3.10
+> >> >> >> Net-tools               1.60
+> >> >> >> Kbd                     1.15.5
+> >> >> >> Console-tools           1.15.5
+> >> >> >> Sh-utils                8.25
+> >> >> >> Udev                    229
+> >> >> >> Modules Loaded          ablk_helper aes_x86_64 aesni_intel
+> >> >> >> async_memcpy async_pq async_raid6_recov async_tx async_xor autofs4
+> >> >> >> binfmt_misc btrfs  crc32_pclmul crct10dif_pclmul cryptd floppy
+> >> >> >> gf128mul ghash_clmul ni_intel glue_helper hid hid_generic ib_addr
+> >> >> >> ib_cm ib_core ib_iser ib_mad ib_sa input_leds irqbypass iscsi_tcp
+> >> >> >> iw_cm joydev kvm kvm_intel libcrc32c libiscsi libiscsi_tcp linear lrw
+> >> >> >> multipath parport parport_pc ppdev psmouse raid0 raid1 raid10 raid456
+> >> >> >> raid6_pq rdma_cm scsi_transport_iscsi sctp serio_raw usbhid xor
+> >> >> >
+> >> >> >>
+> >> >> >> #include <cstring>
+> >> >> >> #include <ctime>
+> >> >> >> #include <iomanip>
+> >> >> >> #include <iostream>
+> >> >> >>
+> >> >> >> #include <errno.h>
+> >> >> >> #include <unistd.h>
+> >> >> >> #include <arpa/inet.h>
+> >> >> >> #include <net/if.h>
+> >> >> >> #include <netinet/in.h>
+> >> >> >> #include <netinet/sctp.h>
+> >> >> >> #include <sys/ioctl.h>
+> >> >> >> #include <sys/socket.h>
+> >> >> >>
+> >> >> >> using namespace std;
+> >> >> >>
+> >> >> >> static const int ERROR_BUFLEN = 64;
+> >> >> >> static const char* SCTP_INTERFACE_NAME = "ens4";
+> >> >> >>
+> >> >> >> static string data100 = "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789";
+> >> >> >> static string data1000 = "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789"
+> >> >> >>   "01234567890123456789012345678901234567890123456789";
+> >> >> >>
+> >> >> >> void printError(const string& msg, const string& funcName) {
+> >> >> >>   char errorMessage[ERROR_BUFLEN] {};
+> >> >> >>   char* errMsg = ::strerror_r(errno, errorMessage,
+> >> >> >>                             sizeof(errorMessage));
+> >> >> >>
+> >> >> >>   cerr << "::" << funcName << ": " << msg << ": " << errMsg << endl;
+> >> >> >> }
+> >> >> >>
+> >> >> >> int createSocket() {
+> >> >> >>   int sockFd = socket (AF_INET,
+> >> >> >>                      SOCK_SEQPACKET,
+> >> >> >>                      IPPROTO_SCTP);
+> >> >> >>   if (sockFd = -1) {
+> >> >> >>     printError("Creation of socket failed", __FUNCTION__);
+> >> >> >>     return -1;
+> >> >> >>   }
+> >> >> >>
+> >> >> >>   // Enable address reuse
+> >> >> >>   int enable = 1;
+> >> >> >>   int err = setsockopt(sockFd,
+> >> >> >>                      SOL_SOCKET,
+> >> >> >>                      SO_REUSEADDR,
+> >> >> >>                      &enable,
+> >> >> >>                      sizeof(enable));
+> >> >> >>
+> >> >> >>   if (err) {
+> >> >> >>     printError("Error setting socket option SO_REUSEADDR", __FUNCTION__);
+> >> >> >>     close(sockFd);
+> >> >> >>     return -1;
+> >> >> >>   }
+> >> >> >>
+> >> >> >>   // Configure SCTP
+> >> >> >>   sctp_initmsg initmsg{};
+> >> >> >>   initmsg.sinit_num_ostreams = 3;
+> >> >> >>   initmsg.sinit_max_instreams = 3;
+> >> >> >>   initmsg.sinit_max_attempts = 2;
+> >> >> >>   initmsg.sinit_max_init_timeo = 0;
+> >> >> >>
+> >> >> >>   err = setsockopt(sockFd,
+> >> >> >>                  IPPROTO_SCTP,
+> >> >> >>                  SCTP_INITMSG,
+> >> >> >>                  &initmsg,
+> >> >> >>                  sizeof(initmsg));
+> >> >> >>
+> >> >> >>   if (err) {
+> >> >> >>     printError("Configuring SCTP socket failed", __FUNCTION__);
+> >> >> >>     close(sockFd);
+> >> >> >>     return -1;
+> >> >> >>   }
+> >> >> >>
+> >> >> >>   struct sctp_paddrparams paddr_params{};
+> >> >> >>   memset(&paddr_params, 0, sizeof(paddr_params));
+> >> >> >>   socklen_t size_of_sctp_paddr_params = sizeof(paddr_params);
+> >> >> >>   paddr_params.spp_flags = SPP_HB_ENABLE | SPP_PMTUD_ENABLE | SPP_SACKDELAY_ENABLE;
+> >> >> >>
+> >> >> >>   err = setsockopt(sockFd,
+> >> >> >>                  IPPROTO_SCTP,
+> >> >> >>                  SCTP_PEER_ADDR_PARAMS,
+> >> >> >>                  &paddr_params,
+> >> >> >>                  size_of_sctp_paddr_params);
+> >> >> >>
+> >> >> >>   if (err) {
+> >> >> >>     printError("Configuring SCTP params failed", __FUNCTION__);
+> >> >> >>     close(sockFd);
+> >> >> >>     return -1;
+> >> >> >>   }
+> >> >> >>
+> >> >> >>   return sockFd;
+> >> >> >> }
+> >> >> >>
+> >> >> >> bool bindSocket(const int sockFd, const int localPort) {
+> >> >> >>   // Get IP of ethernet interface
+> >> >> >>   string localAddress = "";
+> >> >> >>   ifreq ifr{};
+> >> >> >>   ifr.ifr_addr.sa_family = AF_INET;
+> >> >> >>   strncpy(ifr.ifr_name, SCTP_INTERFACE_NAME, IFNAMSIZ - 1);
+> >> >> >>   const int ioctlStatus = ioctl(sockFd,
+> >> >> >>                               SIOCGIFADDR,
+> >> >> >>                               &ifr);
+> >> >> >>
+> >> >> >>   if (ioctlStatus = -1) {
+> >> >> >>     printError("Failed to get local address", __FUNCTION__);
+> >> >> >>     return false;
+> >> >> >>   }
+> >> >> >>
+> >> >> >>   char ipAddrBuffer[INET_ADDRSTRLEN] {};
+> >> >> >>   inet_ntop(AF_INET,
+> >> >> >>           &reinterpret_cast<sockaddr_in*>(&(ifr.ifr_addr))->sin_addr,
+> >> >> >>           ipAddrBuffer,
+> >> >> >>           sizeof(ipAddrBuffer));
+> >> >> >>
+> >> >> >>   localAddress.assign(ipAddrBuffer);
+> >> >> >>
+> >> >> >>   // Bind to found ip address
+> >> >> >>   sockaddr_in serv_addr{};
+> >> >> >>   serv_addr.sin_family = AF_INET;
+> >> >> >>   inet_pton(AF_INET,
+> >> >> >>           localAddress.c_str(),
+> >> >> >>           &serv_addr.sin_addr);
+> >> >> >>   serv_addr.sin_port = htons(localPort);
+> >> >> >>
+> >> >> >>   if (bind(sockFd,
+> >> >> >>          reinterpret_cast<sockaddr*>(&serv_addr),
+> >> >> >>          sizeof(serv_addr))) {
+> >> >> >>     printError("Failed to bind socket to local address", __FUNCTION__);
+> >> >> >>     localAddress.clear();
+> >> >> >>     close(sockFd);
+> >> >> >>     return false;
+> >> >> >>   }
+> >> >> >>
+> >> >> >>   cout << "Local endpoint succussfully bound to local address: " << localAddress << endl;
+> >> >> >>
+> >> >> >>   return true;
+> >> >> >> }
+> >> >> >>
+> >> >> >> bool openAssociation(const int sockFd,
+> >> >> >>                    const string &remoteAddress,
+> >> >> >>                    std::uint16_t remotePort) {
+> >> >> >>
+> >> >> >>   sockaddr_in address{};
+> >> >> >>   address.sin_family = AF_INET;
+> >> >> >>   inet_pton(AF_INET, remoteAddress.c_str(), &address.sin_addr);
+> >> >> >>   address.sin_port = htons(remotePort);
+> >> >> >>
+> >> >> >>   int connectError = connect(sockFd,
+> >> >> >>                            reinterpret_cast<sockaddr *>(&address),
+> >> >> >>                            sizeof(address));
+> >> >> >>   if (connectError) {
+> >> >> >>     printError("Error connecting association", __FUNCTION__);
+> >> >> >>     return false;
+> >> >> >>   }
+> >> >> >>
+> >> >> >>   cout << "Association connected to address: " << remoteAddress << ":" << remotePort << endl;
+> >> >> >>   return true;
+> >> >> >> }
+> >> >> >>
+> >> >> >> void sendReq(const int sockFd,
+> >> >> >>            const string& remoteAddress,
+> >> >> >>            const uint16_t remotePort,
+> >> >> >>            const std::string& data)
+> >> >> >> {
+> >> >> >>
+> >> >> >>   struct sockaddr_in remoteAddr {};
+> >> >> >>   remoteAddr.sin_family = AF_INET;
+> >> >> >>   remoteAddr.sin_port = htons(remotePort);
+> >> >> >>
+> >> >> >>   uint32_t payloadProtId = 7;
+> >> >> >>   uint16_t streamId = 0;
+> >> >> >>   uint32_t dataLength = data.size();
+> >> >> >>   sockaddr* servaddr = reinterpret_cast<sockaddr*>(&remoteAddr);
+> >> >> >>   inet_pton(AF_INET, remoteAddress.c_str(), &remoteAddr.sin_addr);
+> >> >> >>
+> >> >> >>   const std::string ipaddr > >> >> >>     inet_ntoa(reinterpret_cast<sockaddr_in*>(servaddr)->sin_addr);
+> >> >> >>
+> >> >> >>   cout << "Sending SCTP req to " << remoteAddress << ":" << remotePort;
+> >> >> >>   cout << ", len=" << dataLength << endl;
+> >> >> >>
+> >> >> >>   const int bytesSent = sctp_sendmsg(sockFd,
+> >> >> >>                                    data.c_str(),
+> >> >> >>                                    (size_t)dataLength,
+> >> >> >>                                    servaddr,
+> >> >> >>                                    sizeof(sockaddr_in),
+> >> >> >>                                    htonl(payloadProtId),
+> >> >> >>                                    SCTP_ADDR_OVER,
+> >> >> >>                                    streamId,
+> >> >> >>                                    200,
+> >> >> >>                                    0);
+> >> >> >>
+> >> >> >>   if (bytesSent = -1) {
+> >> >> >>     printError("SCTP send failed", __FUNCTION__);
+> >> >> >>   }
+> >> >> >>
+> >> >> >>   return;
+> >> >> >> }
+> >> >> >>
+> >> >> >> sctp_assoc_t getSocketAssociationId(const int sockFd,
+> >> >> >>                                   const string &remoteIpAddress,
+> >> >> >>                                   std::uint16_t remotePort)
+> >> >> >>
+> >> >> >> {
+> >> >> >>   sockaddr_in socket_address_in{};
+> >> >> >>
+> >> >> >>   socket_address_in.sin_family = AF_INET;
+> >> >> >>   socket_address_in.sin_port = htons(remotePort);
+> >> >> >>   inet_pton(AF_INET, remoteIpAddress.c_str(), &socket_address_in.sin_addr);
+> >> >> >>
+> >> >> >>   struct sockaddr *socket_address = reinterpret_cast<sockaddr*>(&socket_address_in);
+> >> >> >>   socklen_t salen = sizeof(&socket_address);
+> >> >> >>
+> >> >> >>   struct sctp_paddrinfo peer_address_info{};
+> >> >> >>   socklen_t size_of_sctp_paddrinfo = sizeof peer_address_info;
+> >> >> >>   std::memcpy(&peer_address_info.spinfo_address, socket_address, salen);
+> >> >> >>
+> >> >> >>   const int sctpOptInfoError = sctp_opt_info(sockFd,
+> >> >> >>                                            0,
+> >> >> >>                                            SCTP_GET_PEER_ADDR_INFO,
+> >> >> >>                                            &peer_address_info,
+> >> >> >>                                            &size_of_sctp_paddrinfo);
+> >> >> >>
+> >> >> >>   if (sctpOptInfoError) {
+> >> >> >>     printError("Failed to get association id", __FUNCTION__);
+> >> >> >>   }
+> >> >> >>
+> >> >> >>   return peer_address_info.spinfo_assoc_id;
+> >> >> >> }
+> >> >> >>
+> >> >> >> std::uint32_t getAssociationPathMtu(const int sockFd,
+> >> >> >>                                   const string &remoteIpAddress,
+> >> >> >>                                   const std::uint16_t remotePort) {
+> >> >> >>   sockaddr_in socket_address_in{};
+> >> >> >>
+> >> >> >>   socket_address_in.sin_family = AF_INET;
+> >> >> >>   socket_address_in.sin_port = htons(remotePort);
+> >> >> >>   inet_pton(AF_INET, remoteIpAddress.c_str(), &socket_address_in.sin_addr);
+> >> >> >>
+> >> >> >>   struct sockaddr *socket_address = reinterpret_cast<sockaddr*>(&socket_address_in);
+> >> >> >>   socklen_t salen = sizeof(&socket_address);
+> >> >> >>
+> >> >> >>   struct sctp_paddrinfo peer_address_info{};
+> >> >> >>   socklen_t size_of_sctp_paddrinfo = sizeof(peer_address_info);
+> >> >> >>   std::memcpy(&peer_address_info.spinfo_address, socket_address, salen);
+> >> >> >>
+> >> >> >>   sctp_assoc_t sctpAssociationId = getSocketAssociationId(sockFd, remoteIpAddress, remotePort);
+> >> >> >>
+> >> >> >>   const int sctpOptInfoError = sctp_opt_info(sockFd, sctpAssociationId,
+> >> >> >>                                            SCTP_GET_PEER_ADDR_INFO,
+> >> >> >>                                            &peer_address_info, &size_of_sctp_paddrinfo);
+> >> >> >>   if (sctpOptInfoError) {
+> >> >> >>     printError("Failed to get pmtu", __FUNCTION__);
+> >> >> >>   }
+> >> >> >>
+> >> >> >>   auto t = std::time(nullptr);
+> >> >> >>   auto tm = *std::localtime(&t);
+> >> >> >>   std::cout << std::put_time(&tm, "%H:%M:%S ") << remoteIpAddress << ":" << remotePort;
+> >> >> >>   cout << " currently has a PMTU of " << peer_address_info.spinfo_mtu << endl;
+> >> >> >>
+> >> >> >>   return peer_address_info.spinfo_mtu;
+> >> >> >> }
+> >> >> >>
+> >> >> >> void test1(const string& data) {
+> >> >> >>   int localPort = 2944;
+> >> >> >>   string remoteIp1 = "10.0.0.3";
+> >> >> >>   uint16_t remotePort1 = 8001;
+> >> >> >>   uint16_t remotePort2 = 8002;
+> >> >> >>
+> >> >> >>   int sockFd = createSocket();
+> >> >> >>   bindSocket(sockFd, localPort);
+> >> >> >>
+> >> >> >>   cout << "### Test 1: 2 assocs" << endl;
+> >> >> >>
+> >> >> >>   openAssociation(sockFd, remoteIp1, remotePort1);
+> >> >> >>   openAssociation(sockFd, remoteIp1, remotePort2);
+> >> >> >>
+> >> >> >>   getAssociationPathMtu(sockFd, remoteIp1, remotePort1);
+> >> >> >>   getAssociationPathMtu(sockFd, remoteIp1, remotePort2);
+> >> >> >>
+> >> >> >>   sendReq(sockFd, remoteIp1, remotePort1, data);
+> >> >> >>   for (int i = 0; i < 10; i++) {
+> >> >> >>     sleep(10);
+> >> >> >>     getAssociationPathMtu(sockFd, remoteIp1, remotePort1);
+> >> >> >>     getAssociationPathMtu(sockFd, remoteIp1, remotePort2);
+> >> >> >>   }
+> >> >> >> }
+> >> >> >>
+> >> >> >> void test2(const string& data) {
+> >> >> >>   int localPort = 2944;
+> >> >> >>   string remoteIp1 = "10.0.0.3";
+> >> >> >>   uint16_t remotePort1 = 8001;
+> >> >> >>   uint16_t remotePort2 = 8002;
+> >> >> >>   string remoteIpFake = "10.52.96.204";
+> >> >> >>   uint16_t remotePortFake = 3239;
+> >> >> >>
+> >> >> >>   int sockFd = createSocket();
+> >> >> >>   bindSocket(sockFd, localPort);
+> >> >> >>
+> >> >> >>   cout << "### Test 2: 2 assocs + 1 unreachable assoc" << endl;
+> >> >> >>
+> >> >> >>   openAssociation(sockFd, remoteIp1, remotePort1);
+> >> >> >>   openAssociation(sockFd, remoteIp1, remotePort2);
+> >> >> >>   openAssociation(sockFd, remoteIpFake, remotePortFake);
+> >> >> >>
+> >> >> >>   getAssociationPathMtu(sockFd, remoteIp1, remotePort1);
+> >> >> >>   getAssociationPathMtu(sockFd, remoteIp1, remotePort2);
+> >> >> >>
+> >> >> >>   sendReq(sockFd, remoteIp1, remotePort1, data);
+> >> >> >>   for (int i = 0; i < 10; i++) {
+> >> >> >>     sleep(10);
+> >> >> >>     getAssociationPathMtu(sockFd, remoteIp1, remotePort1);
+> >> >> >>     getAssociationPathMtu(sockFd, remoteIp1, remotePort2);
+> >> >> >>   }
+> >> >> >> }
+> >> >> >>
+> >> >> >>
+> >> >> >> int main(int argc, char** argv) {
+> >> >> >>   string testNr = "1";
+> >> >> >>   string& testData = data1000;
+> >> >> >>   if (argc >= 2) {
+> >> >> >>     testNr = argv[1];
+> >> >> >>   }
+> >> >> >>   if (argc >= 3) {
+> >> >> >>     testData = data100;
+> >> >> >>   }
+> >> >> >>
+> >> >> >>   if (testNr = "1") {
+> >> >> >>     test1(testData);
+> >> >> >>   } else {
+> >> >> >>     test2(testData);
+> >> >> >>   }
+> >> >> >>
+> >> >> >>   return 0;
+> >> >> >> }
+> >> >> >
+> >> >
+> >> >
+> >
+> >
 
 
