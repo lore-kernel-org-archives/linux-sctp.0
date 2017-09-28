@@ -1,30 +1,63 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 15 Sep 2017 21:51:34 +0000
-Subject: Re: [PATCH net] sctp: do not mark sk dumped when inet_sctp_diag_fill returns err
-Message-Id: <20170915.145134.235758682095715785.davem@davemloft.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Thu, 28 Sep 2017 20:25:13 +0000
+Subject: [PATCH net-next 00/10] Introduce SCTP Stream Schedulers
+Message-Id: <cover.1506536044.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <c5398945d4e80ed8b8497675dd0449763fec4eec.1505444568.git.lucien.xin@gmail.com>
-In-Reply-To: <c5398945d4e80ed8b8497675dd0449763fec4eec.1505444568.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>, David Laight <David.Laight@ACULAB.COM>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 15 Sep 2017 11:02:48 +0800
+This patchset introduces the SCTP Stream Schedulers are defined by
+https://tools.ietf.org/html/draft-ietf-tsvwg-sctp-ndata-13
 
-> sctp_diag would not actually dump out sk/asoc if inet_sctp_diag_fill
-> returns err, in which case it shouldn't mark sk dumped by setting
-> cb->args[3] as 1 in sctp_sock_dump().
-> 
-> Otherwise, it could cause some asocs to have no parent's sk dumped
-> in 'ss --sctp'.
-> 
-> So this patch is to not set cb->args[3] when inet_sctp_diag_fill()
-> returns err in sctp_sock_dump().
-> 
-> Fixes: 8f840e47f190 ("sctp: add the sctp_diag.c file")
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+It provides 3 schedulers at the moment: FCFS, Priority and Round Robin.
+The other 3, Round Robin per packet, Fair Capacity and Weighted Fair
+Capacity will be added later. More specifically, WFQ is required by
+WebRTC Datachannels.
 
-Applied.
+The draft also defines the idata chunk, allowing a usermsg to be
+interrupted by another piece of idata from another stream. This patchset
+*doesn't* include it. It will be posted later by Xin Long.  Its
+integration with this patchset is very simple and it basically only
+requires a tweak in sctp_sched_dequeue_done(), to ignore datamsg
+boundaries.
+
+The first 5 patches are a preparation for the next ones. The most
+relevant patches are the 4th and 6th ones. More details are available on
+each patch.
+
+Marcelo Ricardo Leitner (10):
+  sctp: silence warns on sctp_stream_init allocations
+  sctp: factor out stream->out allocation
+  sctp: factor out stream->in allocation
+  sctp: introduce struct sctp_stream_out_ext
+  sctp: introduce sctp_chunk_stream_no
+  sctp: introduce stream scheduler foundations
+  sctp: add sockopt to get/set stream scheduler
+  sctp: add sockopt to get/set stream scheduler parameters
+  sctp: introduce priority based stream scheduler
+  sctp: introduce round robin stream scheduler
+
+ include/net/sctp/stream_sched.h |  72 +++++++++
+ include/net/sctp/structs.h      |  63 +++++++-
+ include/uapi/linux/sctp.h       |  16 ++
+ net/sctp/Makefile               |   3 +-
+ net/sctp/chunk.c                |   6 +-
+ net/sctp/outqueue.c             |  63 ++++----
+ net/sctp/sm_sideeffect.c        |   3 +
+ net/sctp/socket.c               | 179 ++++++++++++++++++++-
+ net/sctp/stream.c               | 196 +++++++++++++++++++----
+ net/sctp/stream_sched.c         | 275 +++++++++++++++++++++++++++++++
+ net/sctp/stream_sched_prio.c    | 347 ++++++++++++++++++++++++++++++++++++++++
+ net/sctp/stream_sched_rr.c      | 201 +++++++++++++++++++++++
+ 12 files changed, 1347 insertions(+), 77 deletions(-)
+ create mode 100644 include/net/sctp/stream_sched.h
+ create mode 100644 net/sctp/stream_sched.c
+ create mode 100644 net/sctp/stream_sched_prio.c
+ create mode 100644 net/sctp/stream_sched_rr.c
+
+-- 
+2.13.5
+
