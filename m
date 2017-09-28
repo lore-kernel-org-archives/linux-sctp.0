@@ -1,85 +1,152 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 03 Aug 2017 07:42:10 +0000
-Subject: [PATCH net-next 02/14] sctp: fix the name of struct sctp_shutdown_chunk_t
-Message-Id: <457c0c30e478f1ead75d3606e17519ca23daddfc.1501745729.git.lucien.xin@gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Thu, 28 Sep 2017 20:25:20 +0000
+Subject: [PATCH net-next 07/10] sctp: add sockopt to get/set stream scheduler
+Message-Id: <a68151caa1cb95d9bc5dd483637fe5368589723f.1506536044.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1501745729.git.lucien.xin@gmail.com>
- <8149f8b0a190eb047abfe48a7fa79ba74e4e4544.1501745729.git.lucien.xin@gmail.com>
-In-Reply-To: <8149f8b0a190eb047abfe48a7fa79ba74e4e4544.1501745729.git.lucien.xin@gmail.com>
+References: <cover.1506536044.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1506536044.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>, David Laight <David.Laight@ACULAB.COM>
 
-This patch is to fix the name of struct sctp_shutdown_chunk_t
-, replace with struct sctp_initack_chunk in the places where
-it's using it.
+As defined per RFC Draft ndata Section 4.3.2, named as
+SCTP_STREAM_SCHEDULER.
 
-It is also to fix some indent problem.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+See-also: https://tools.ietf.org/html/draft-ietf-tsvwg-sctp-ndata-13
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- include/linux/sctp.h    |  2 +-
- net/sctp/sm_statefuns.c | 16 ++++++++--------
- 2 files changed, 9 insertions(+), 9 deletions(-)
+ include/uapi/linux/sctp.h |  1 +
+ net/sctp/socket.c         | 75 +++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 76 insertions(+)
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index 7a586ba..553020c 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -420,7 +420,7 @@ struct sctp_shutdownhdr {
- 	__be32 cum_tsn_ack;
- };
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index 4487e7625ddbd48be1868a8292a807ecd0a314bc..0050f10087d224bad87c8c54ad318003381aee12 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -122,6 +122,7 @@ typedef __s32 sctp_assoc_t;
+ #define SCTP_RESET_ASSOC	120
+ #define SCTP_ADD_STREAMS	121
+ #define SCTP_SOCKOPT_PEELOFF_FLAGS 122
++#define SCTP_STREAM_SCHEDULER	123
  
--struct sctp_shutdown_chunk_t {
-+struct sctp_shutdown_chunk {
- 	struct sctp_chunkhdr chunk_hdr;
- 	struct sctp_shutdownhdr shutdown_hdr;
- };
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 5b95e2d..d4d8fab 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -2665,8 +2665,7 @@ sctp_disposition_t sctp_sf_do_9_2_shutdown(struct net *net,
- 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+ /* PR-SCTP policies */
+ #define SCTP_PR_SCTP_NONE	0x0000
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index d207734326b085e60625e4333f74221481114892..ae35dbf2810f78c71ce77115ffe4b0e27a672abc 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -79,6 +79,7 @@
+ #include <net/sock.h>
+ #include <net/sctp/sctp.h>
+ #include <net/sctp/sm.h>
++#include <net/sctp/stream_sched.h>
  
- 	/* Make sure that the SHUTDOWN chunk has a valid length. */
--	if (!sctp_chunk_length_valid(chunk,
--				      sizeof(struct sctp_shutdown_chunk_t)))
-+	if (!sctp_chunk_length_valid(chunk, sizeof(struct sctp_shutdown_chunk)))
- 		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
- 						  commands);
+ /* Forward declarations for internal helper functions. */
+ static int sctp_writeable(struct sock *sk);
+@@ -3914,6 +3915,36 @@ static int sctp_setsockopt_add_streams(struct sock *sk,
+ 	return retval;
+ }
  
-@@ -2753,8 +2752,7 @@ sctp_disposition_t sctp_sf_do_9_2_shut_ctsn(struct net *net,
- 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
++static int sctp_setsockopt_scheduler(struct sock *sk,
++				     char __user *optval,
++				     unsigned int optlen)
++{
++	struct sctp_association *asoc;
++	struct sctp_assoc_value params;
++	int retval = -EINVAL;
++
++	if (optlen < sizeof(params))
++		goto out;
++
++	optlen = sizeof(params);
++	if (copy_from_user(&params, optval, optlen)) {
++		retval = -EFAULT;
++		goto out;
++	}
++
++	if (params.assoc_value > SCTP_SS_MAX)
++		goto out;
++
++	asoc = sctp_id2assoc(sk, params.assoc_id);
++	if (!asoc)
++		goto out;
++
++	retval = sctp_sched_set_sched(asoc, params.assoc_value);
++
++out:
++	return retval;
++}
++
+ /* API 6.2 setsockopt(), getsockopt()
+  *
+  * Applications use setsockopt() and getsockopt() to set or retrieve
+@@ -4095,6 +4126,9 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 	case SCTP_ADD_STREAMS:
+ 		retval = sctp_setsockopt_add_streams(sk, optval, optlen);
+ 		break;
++	case SCTP_STREAM_SCHEDULER:
++		retval = sctp_setsockopt_scheduler(sk, optval, optlen);
++		break;
+ 	default:
+ 		retval = -ENOPROTOOPT;
+ 		break;
+@@ -6793,6 +6827,43 @@ static int sctp_getsockopt_enable_strreset(struct sock *sk, int len,
+ 	return retval;
+ }
  
- 	/* Make sure that the SHUTDOWN chunk has a valid length. */
--	if (!sctp_chunk_length_valid(chunk,
--				      sizeof(struct sctp_shutdown_chunk_t)))
-+	if (!sctp_chunk_length_valid(chunk, sizeof(struct sctp_shutdown_chunk)))
- 		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
- 						  commands);
- 
-@@ -5419,12 +5417,14 @@ sctp_disposition_t sctp_sf_do_9_2_shutdown_ack(
- 	 */
- 	if (chunk) {
- 		if (!sctp_vtag_verify(chunk, asoc))
--			return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
-+			return sctp_sf_pdiscard(net, ep, asoc, type, arg,
-+						commands);
- 
- 		/* Make sure that the SHUTDOWN chunk has a valid length. */
--		if (!sctp_chunk_length_valid(chunk, sizeof(struct sctp_shutdown_chunk_t)))
--			return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
--							  commands);
-+		if (!sctp_chunk_length_valid(
-+				chunk, sizeof(struct sctp_shutdown_chunk)))
-+			return sctp_sf_violation_chunklen(net, ep, asoc, type,
-+							  arg, commands);
- 	}
- 
- 	/* If it has no more outstanding DATA chunks, the SHUTDOWN receiver
++static int sctp_getsockopt_scheduler(struct sock *sk, int len,
++				     char __user *optval,
++				     int __user *optlen)
++{
++	struct sctp_assoc_value params;
++	struct sctp_association *asoc;
++	int retval = -EFAULT;
++
++	if (len < sizeof(params)) {
++		retval = -EINVAL;
++		goto out;
++	}
++
++	len = sizeof(params);
++	if (copy_from_user(&params, optval, len))
++		goto out;
++
++	asoc = sctp_id2assoc(sk, params.assoc_id);
++	if (!asoc) {
++		retval = -EINVAL;
++		goto out;
++	}
++
++	params.assoc_value = sctp_sched_get_sched(asoc);
++
++	if (put_user(len, optlen))
++		goto out;
++
++	if (copy_to_user(optval, &params, len))
++		goto out;
++
++	retval = 0;
++
++out:
++	return retval;
++}
++
+ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 			   char __user *optval, int __user *optlen)
+ {
+@@ -6975,6 +7046,10 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_getsockopt_enable_strreset(sk, len, optval,
+ 							 optlen);
+ 		break;
++	case SCTP_STREAM_SCHEDULER:
++		retval = sctp_getsockopt_scheduler(sk, len, optval,
++						   optlen);
++		break;
+ 	default:
+ 		retval = -ENOPROTOOPT;
+ 		break;
 -- 
-2.1.0
+2.13.5
 
