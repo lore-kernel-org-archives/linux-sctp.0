@@ -1,46 +1,93 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 15 Sep 2017 21:48:44 +0000
-Subject: Re: [PATCH net] sctp: fix an use-after-free issue in sctp_sock_dump
-Message-Id: <20170915.144844.2163359752292953670.davem@davemloft.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Thu, 28 Sep 2017 20:25:16 +0000
+Subject: [PATCH net-next 03/10] sctp: factor out stream->in allocation
+Message-Id: <a2d837095740147003164fe573794c140001ec71.1506536044.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <9de7bef8f4f8c0f369361118f6d2daee5d188467.1505444541.git.lucien.xin@gmail.com>
-In-Reply-To: <9de7bef8f4f8c0f369361118f6d2daee5d188467.1505444541.git.lucien.xin@gmail.com>
+References: <cover.1506536044.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1506536044.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, pabeni@redhat.com
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>, David Laight <David.Laight@ACULAB.COM>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 15 Sep 2017 11:02:21 +0800
+Same idea as previous patch.
 
-> Commit 86fdb3448cc1 ("sctp: ensure ep is not destroyed before doing the
-> dump") tried to fix an use-after-free issue by checking !sctp_sk(sk)->ep
-> with holding sock and sock lock.
-> 
-> But Paolo noticed that endpoint could be destroyed in sctp_rcv without
-> sock lock protection. It means the use-after-free issue still could be
-> triggered when sctp_rcv put and destroy ep after sctp_sock_dump checks
-> !ep, although it's pretty hard to reproduce.
-> 
-> I could reproduce it by mdelay in sctp_rcv while msleep in sctp_close
-> and sctp_sock_dump long time.
-> 
-> This patch is to add another param cb_done to sctp_for_each_transport
-> and dump ep->assocs with holding tsp after jumping out of transport's
-> traversal in it to avoid this issue.
-> 
-> It can also improve sctp diag dump to make it run faster, as no need
-> to save sk into cb->args[5] and keep calling sctp_for_each_transport
-> any more.
-> 
-> This patch is also to use int * instead of int for the pos argument
-> in sctp_for_each_transport, which could make postion increment only
-> in sctp_for_each_transport and no need to keep changing cb->args[2]
-> in sctp_sock_filter and sctp_sock_dump any more.
-> 
-> Fixes: 86fdb3448cc1 ("sctp: ensure ep is not destroyed before doing the dump")
-> Reported-by: Paolo Abeni <pabeni@redhat.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/stream.c | 36 ++++++++++++++++++++++++++++--------
+ 1 file changed, 28 insertions(+), 8 deletions(-)
 
-Applied.
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 6d0e997d301f89e165367106c02e82f8a6c3a877..952437d656cc71ad1c133a736c539eff9a8d80c2 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -59,6 +59,31 @@ static int sctp_stream_alloc_out(struct sctp_stream *stream, __u16 outcnt,
+ 	return 0;
+ }
+ 
++static int sctp_stream_alloc_in(struct sctp_stream *stream, __u16 incnt,
++				gfp_t gfp)
++{
++	struct sctp_stream_in *in;
++
++	in = kmalloc_array(incnt, sizeof(*stream->in), gfp);
++
++	if (!in)
++		return -ENOMEM;
++
++	if (stream->in) {
++		memcpy(in, stream->in, min(incnt, stream->incnt) *
++				       sizeof(*in));
++		kfree(stream->in);
++	}
++
++	if (incnt > stream->incnt)
++		memset(in + stream->incnt, 0,
++		       (incnt - stream->incnt) * sizeof(*in));
++
++	stream->in = in;
++
++	return 0;
++}
++
+ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
+ 		     gfp_t gfp)
+ {
+@@ -84,8 +109,8 @@ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
+ 	if (!incnt)
+ 		return 0;
+ 
+-	stream->in = kcalloc(incnt, sizeof(*stream->in), gfp);
+-	if (!stream->in) {
++	i = sctp_stream_alloc_in(stream, incnt, gfp);
++	if (i) {
+ 		kfree(stream->out);
+ 		stream->out = NULL;
+ 		return -ENOMEM;
+@@ -623,7 +648,6 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
+ 	struct sctp_strreset_addstrm *addstrm = param.v;
+ 	struct sctp_stream *stream = &asoc->stream;
+ 	__u32 result = SCTP_STRRESET_DENIED;
+-	struct sctp_stream_in *streamin;
+ 	__u32 request_seq, incnt;
+ 	__u16 in, i;
+ 
+@@ -670,13 +694,9 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
+ 	if (!in || incnt > SCTP_MAX_STREAM)
+ 		goto out;
+ 
+-	streamin = krealloc(stream->in, incnt * sizeof(*streamin),
+-			    GFP_ATOMIC);
+-	if (!streamin)
++	if (sctp_stream_alloc_in(stream, incnt, GFP_ATOMIC))
+ 		goto out;
+ 
+-	memset(streamin + stream->incnt, 0, in * sizeof(*streamin));
+-	stream->in = streamin;
+ 	stream->incnt = incnt;
+ 
+ 	result = SCTP_STRRESET_PERFORMED;
+-- 
+2.13.5
+
