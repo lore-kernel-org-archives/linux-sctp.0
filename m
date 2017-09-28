@@ -1,100 +1,58 @@
-From: Kees Cook <keescook@chromium.org>
-Date: Wed, 20 Sep 2017 20:45:27 +0000
-Subject: [PATCH v3 21/31] sctp: Define usercopy region in SCTP proto slab cache
-Message-Id: <1505940337-79069-22-git-send-email-keescook@chromium.org>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Thu, 28 Sep 2017 20:25:14 +0000
+Subject: [PATCH net-next 01/10] sctp: silence warns on sctp_stream_init allocations
+Message-Id: <78853a7e413d1900fb410d73d064558fa09f221d.1506536044.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1505940337-79069-1-git-send-email-keescook@chromium.org>
-In-Reply-To: <1505940337-79069-1-git-send-email-keescook@chromium.org>
+References: <cover.1506536044.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1506536044.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-kernel@vger.kernel.org
-Cc: Kees Cook <keescook@chromium.org>, David Windsor <dave@nullcore.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-fsdevel@vger.kernel.org, linux-mm@kvack.org, kernel-hardening@lists.openwall.com
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>, David Laight <David.Laight@ACULAB.COM>
 
-From: David Windsor <dave@nullcore.net>
+As SCTP supports up to 65535 streams, that can lead to very large
+allocations in sctp_stream_init(). As Xin Long noticed, systems with
+small amounts of memory are more prone to not have enough memory and
+dump warnings on dmesg initiated by user actions. Thus, silence them.
 
-The SCTP socket event notification subscription information need to be
-copied to/from userspace. In support of usercopy hardening, this patch
-defines a region in the struct proto slab cache in which userspace copy
-operations are allowed. Additionally moves the usercopy fields to be
-adjacent for the region to cover both.
+Also, if the reallocation of stream->out is not necessary, skip it and
+keep the memory we already have.
 
-example usage trace:
-
-    net/sctp/socket.c:
-        sctp_getsockopt_events(...):
-            ...
-            copy_to_user(..., &sctp_sk(sk)->subscribe, len)
-
-        sctp_setsockopt_events(...):
-            ...
-            copy_from_user(&sctp_sk(sk)->subscribe, ..., optlen)
-
-        sctp_getsockopt_initmsg(...):
-            ...
-            copy_to_user(..., &sctp_sk(sk)->initmsg, len)
-
-This region is known as the slab cache's usercopy region. Slab caches can
-now check that each copy operation involving cache-managed memory falls
-entirely within the slab's usercopy region.
-
-This patch is modified from Brad Spengler/PaX Team's PAX_USERCOPY
-whitelisting code in the last public patch of grsecurity/PaX based on my
-understanding of the code. Changes or omissions from the original code are
-mine and don't reflect the original grsecurity/PaX code.
-
-Signed-off-by: David Windsor <dave@nullcore.net>
-[kees: split from network patch, move struct member adjacent, provide usage]
-Cc: Vlad Yasevich <vyasevich@gmail.com>
-Cc: Neil Horman <nhorman@tuxdriver.com>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: linux-sctp@vger.kernel.org
-Cc: netdev@vger.kernel.org
-Signed-off-by: Kees Cook <keescook@chromium.org>
+Reported-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- include/net/sctp/structs.h | 9 +++++++--
- net/sctp/socket.c          | 4 ++++
- 2 files changed, 11 insertions(+), 2 deletions(-)
+ net/sctp/stream.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 0477945de1a3..f2da107983d9 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -202,12 +202,17 @@ struct sctp_sock {
- 	/* Flags controlling Heartbeat, SACK delay, and Path MTU Discovery. */
- 	__u32 param_flags;
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 63ea1550371493ec8863627c7a43f46a22f4a4c9..1afa9555808390d5fc736727422d9700a3855613 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -40,9 +40,14 @@ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
+ {
+ 	int i;
  
--	struct sctp_initmsg initmsg;
- 	struct sctp_rtoinfo rtoinfo;
- 	struct sctp_paddrparams paddrparam;
--	struct sctp_event_subscribe subscribe;
- 	struct sctp_assocparams assocparams;
- 
-+	/*
-+	 * These two structures must be grouped together for the usercopy
-+	 * whitelist region.
-+	 */
-+	struct sctp_event_subscribe subscribe;
-+	struct sctp_initmsg initmsg;
++	gfp |= __GFP_NOWARN;
 +
- 	int user_frag;
+ 	/* Initial stream->out size may be very big, so free it and alloc
+-	 * a new one with new outcnt to save memory.
++	 * a new one with new outcnt to save memory if needed.
+ 	 */
++	if (outcnt = stream->outcnt)
++		goto in;
++
+ 	kfree(stream->out);
  
- 	__u32 autoclose;
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index d4730ada7f32..aa4f86d64545 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -8246,6 +8246,10 @@ struct proto sctp_prot = {
- 	.unhash      =	sctp_unhash,
- 	.get_port    =	sctp_get_port,
- 	.obj_size    =  sizeof(struct sctp_sock),
-+	.useroffset  =  offsetof(struct sctp_sock, subscribe),
-+	.usersize    =  offsetof(struct sctp_sock, initmsg) -
-+				offsetof(struct sctp_sock, subscribe) +
-+				sizeof_field(struct sctp_sock, initmsg),
- 	.sysctl_mem  =  sysctl_sctp_mem,
- 	.sysctl_rmem =  sysctl_sctp_rmem,
- 	.sysctl_wmem =  sysctl_sctp_wmem,
+ 	stream->out = kcalloc(outcnt, sizeof(*stream->out), gfp);
+@@ -53,6 +58,7 @@ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
+ 	for (i = 0; i < stream->outcnt; i++)
+ 		stream->out[i].state = SCTP_STREAM_OPEN;
+ 
++in:
+ 	if (!incnt)
+ 		return 0;
+ 
 -- 
-2.7.4
+2.13.5
 
