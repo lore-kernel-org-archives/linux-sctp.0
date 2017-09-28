@@ -1,7 +1,7 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 28 Sep 2017 20:25:15 +0000
-Subject: [PATCH net-next 02/10] sctp: factor out stream->out allocation
-Message-Id: <748029b2fcfd8abae1c8e671ea488f578e960bc6.1506536044.git.marcelo.leitner@gmail.com>
+Date: Thu, 28 Sep 2017 20:25:18 +0000
+Subject: [PATCH net-next 05/10] sctp: introduce sctp_chunk_stream_no
+Message-Id: <0dd42e7d58493629797cdf69528090c8e5852b27.1506536044.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1506536044.git.marcelo.leitner@gmail.com>
 In-Reply-To: <cover.1506536044.git.marcelo.leitner@gmail.com>
@@ -11,111 +11,29 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
 Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>, David Laight <David.Laight@ACULAB.COM>
 
-There is 1 place allocating it and 2 other reallocating. Move such
-procedures to a common function.
+Add a helper to fetch the stream number from a given chunk.
 
 Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- net/sctp/stream.c | 52 ++++++++++++++++++++++++++++++++--------------------
- 1 file changed, 32 insertions(+), 20 deletions(-)
+ include/net/sctp/structs.h | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index 1afa9555808390d5fc736727422d9700a3855613..6d0e997d301f89e165367106c02e82f8a6c3a877 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -35,6 +35,30 @@
- #include <net/sctp/sctp.h>
- #include <net/sctp/sm.h>
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 9b2b30b3ba4dfd10c24c3e06ed80779180a06baf..c48f7999fe9b80c5b5e41910a3608059b94140a7 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -642,6 +642,11 @@ void sctp_init_addrs(struct sctp_chunk *, union sctp_addr *,
+ 		     union sctp_addr *);
+ const union sctp_addr *sctp_source(const struct sctp_chunk *chunk);
  
-+static int sctp_stream_alloc_out(struct sctp_stream *stream, __u16 outcnt,
-+				 gfp_t gfp)
++static inline __u16 sctp_chunk_stream_no(struct sctp_chunk *ch)
 +{
-+	struct sctp_stream_out *out;
-+
-+	out = kmalloc_array(outcnt, sizeof(*out), gfp);
-+	if (!out)
-+		return -ENOMEM;
-+
-+	if (stream->out) {
-+		memcpy(out, stream->out, min(outcnt, stream->outcnt) *
-+					 sizeof(*out));
-+		kfree(stream->out);
-+	}
-+
-+	if (outcnt > stream->outcnt)
-+		memset(out + stream->outcnt, 0,
-+		       (outcnt - stream->outcnt) * sizeof(*out));
-+
-+	stream->out = out;
-+
-+	return 0;
++	return ntohs(ch->subh.data_hdr->stream);
 +}
 +
- int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
- 		     gfp_t gfp)
- {
-@@ -48,11 +72,9 @@ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
- 	if (outcnt = stream->outcnt)
- 		goto in;
- 
--	kfree(stream->out);
--
--	stream->out = kcalloc(outcnt, sizeof(*stream->out), gfp);
--	if (!stream->out)
--		return -ENOMEM;
-+	i = sctp_stream_alloc_out(stream, outcnt, gfp);
-+	if (i)
-+		return i;
- 
- 	stream->outcnt = outcnt;
- 	for (i = 0; i < stream->outcnt; i++)
-@@ -276,15 +298,9 @@ int sctp_send_add_streams(struct sctp_association *asoc,
- 	}
- 
- 	if (out) {
--		struct sctp_stream_out *streamout;
--
--		streamout = krealloc(stream->out, outcnt * sizeof(*streamout),
--				     GFP_KERNEL);
--		if (!streamout)
-+		retval = sctp_stream_alloc_out(stream, outcnt, GFP_KERNEL);
-+		if (retval)
- 			goto out;
--
--		memset(streamout + stream->outcnt, 0, out * sizeof(*streamout));
--		stream->out = streamout;
- 	}
- 
- 	chunk = sctp_make_strreset_addstrm(asoc, out, in);
-@@ -682,10 +698,10 @@ struct sctp_chunk *sctp_process_strreset_addstrm_in(
- 	struct sctp_strreset_addstrm *addstrm = param.v;
- 	struct sctp_stream *stream = &asoc->stream;
- 	__u32 result = SCTP_STRRESET_DENIED;
--	struct sctp_stream_out *streamout;
- 	struct sctp_chunk *chunk = NULL;
- 	__u32 request_seq, outcnt;
- 	__u16 out, i;
-+	int ret;
- 
- 	request_seq = ntohl(addstrm->request_seq);
- 	if (TSN_lt(asoc->strreset_inseq, request_seq) ||
-@@ -714,14 +730,10 @@ struct sctp_chunk *sctp_process_strreset_addstrm_in(
- 	if (!out || outcnt > SCTP_MAX_STREAM)
- 		goto out;
- 
--	streamout = krealloc(stream->out, outcnt * sizeof(*streamout),
--			     GFP_ATOMIC);
--	if (!streamout)
-+	ret = sctp_stream_alloc_out(stream, outcnt, GFP_ATOMIC);
-+	if (ret)
- 		goto out;
- 
--	memset(streamout + stream->outcnt, 0, out * sizeof(*streamout));
--	stream->out = streamout;
--
- 	chunk = sctp_make_strreset_addstrm(asoc, out, 0);
- 	if (!chunk)
- 		goto out;
+ enum {
+ 	SCTP_ADDR_NEW,		/* new address added to assoc/ep */
+ 	SCTP_ADDR_SRC,		/* address can be used as source */
 -- 
 2.13.5
 
