@@ -1,28 +1,45 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 25 Oct 2017 03:02:41 +0000
-Subject: Re: [PATCH] net: sctp: Convert timers to use timer_setup()
-Message-Id: <20171025.120241.829185567247781597.davem@davemloft.net>
+From: Jia-Ju Bai <baijiaju1990@163.com>
+Date: Tue, 03 Oct 2017 02:22:44 +0000
+Subject: [PATCH] Fix a sleep-in-atomic bug in shash_setkey_unaligned
+Message-Id: <1506997364-26541-1-git-send-email-baijiaju1990@163.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20171024084531.GA23722@beast>
-In-Reply-To: <20171024084531.GA23722@beast>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: keescook@chromium.org
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: davem@davemloft.net, herbert@gondor.apana.org.au, nhorman@tuxdriver.com, vyasevich@gmail.com, luto@kernel.org, kvalo@codeaurora.org
+Cc: linux-crypto@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, linux-wireless@vger.kernel.org, Jia-Ju Bai <baijiaju1990@163.com>
 
-From: Kees Cook <keescook@chromium.org>
-Date: Tue, 24 Oct 2017 01:45:31 -0700
+For the same reason, the orinoco driver may sleep in interrupt handler, 
+and the function call path is:
+orinoco_rx_isr_tasklet
+  orinoco_rx
+    orinoco_mic
+      crypto_shash_setkey
+        shash_setkey_unaligned
+          kmalloc(GFP_KERNEL)
 
-> In preparation for unconditionally passing the struct timer_list pointer to
-> all timer callbacks, switch to using the new timer_setup() and from_timer()
-> to pass the timer pointer explicitly.
-> 
-> Cc: Vlad Yasevich <vyasevich@gmail.com>
-> Cc: Neil Horman <nhorman@tuxdriver.com>
-> Cc: "David S. Miller" <davem@davemloft.net>
-> Cc: linux-sctp@vger.kernel.org
-> Cc: netdev@vger.kernel.org
-> Signed-off-by: Kees Cook <keescook@chromium.org>
+To fix it, GFP_KERNEL is replaced with GFP_ATOMIC.
+This bug is found by my static analysis tool and my code review.
 
-Applied.
+Signed-off-by: Jia-Ju Bai <baijiaju1990@163.com>
+---
+ crypto/shash.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/crypto/shash.c b/crypto/shash.c
+index 5e31c8d..8fcecc6 100644
+--- a/crypto/shash.c
++++ b/crypto/shash.c
+@@ -41,7 +41,7 @@ static int shash_setkey_unaligned(struct crypto_shash *tfm, const u8 *key,
+ 	int err;
+ 
+ 	absize = keylen + (alignmask & ~(crypto_tfm_ctx_alignment() - 1));
+-	buffer = kmalloc(absize, GFP_KERNEL);
++	buffer = kmalloc(absize, GFP_ATOMIC);
+ 	if (!buffer)
+ 		return -ENOMEM;
+ 
+-- 
+1.7.9.5
+
+
