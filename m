@@ -1,60 +1,56 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 31 Oct 2017 17:26:44 +0000
-Subject: Re: [RFC PATCH 0/5] Add SELinux SCTP protocol support
-Message-Id: <20171031172644.GF3675@localhost.localdomain>
+From: Jia-Ju Bai <baijiaju1990@163.com>
+Date: Tue, 03 Oct 2017 02:25:22 +0000
+Subject: [PATCH V2] Fix a sleep-in-atomic bug in shash_setkey_unaligned
+Message-Id: <1506997522-26684-1-git-send-email-baijiaju1990@163.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20171017135359.4010-1-richard_c_haines@btinternet.com>
-In-Reply-To: <20171017135359.4010-1-richard_c_haines@btinternet.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-security-module@vger.kernel.org
+To: davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org, herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org, nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org, vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org, kvalo-sgV2jX0FEOL9JmXXK+q4OQ@public.gmane.org
+Cc: linux-crypto-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-wireless-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Jia-Ju Bai <baijiaju1990-9Onoh4P/yGk@public.gmane.org>
 
-On Tue, Oct 17, 2017 at 02:53:59PM +0100, Richard Haines wrote:
-> This patch set adds SELinux support to SCTP and incorporates all the
-> comments received from my previous attemps (thanks to all who responded).
-> There are also other changes mainly supporting ip options so that CIPSO
-> and CALIPSO work over SCTP.
-> 
-> The kernel patches have been built on Fedora 26 with kernel 4.13.4 plus the
-> following userspace patches to enable testing:
-> 
-> 1) Updates to libsepol 2.7 to support the sctp portcon statement.
->    The patch is available from:
->          http://arctic.selinuxproject.org/~rhaines/selinux-sctp/
->          selinux-Add-support-for-the-SCTP-portcon-keyword.patch
-> 
-> 2) Updates to the SELinux Test Suite adding SCTP tests. Please read the
->    selinux-testsuite/README.sctp for details. The patch is available from:
->          http://arctic.selinuxproject.org/~rhaines/selinux-sctp/
->          selinux-testsuite-Add-SCTP-test-support.patch
-> 
-> 3) Updates to lksctp-tools that show SELinux info in sctp_darn and
->    sctp_test. It also contains a minor patch for test_1_to_1_connect.c
->    as when CIPSO/CALIPSO configured, NetLabel returns a different error
->    code for illegal addresses in test 5. The patch is available from:
->          http://arctic.selinuxproject.org/~rhaines/selinux-sctp/
->          lksctp-tools-Add-SELinux-support-to-sctp_test-and-sc.patch
-> 
-> All SCTP lksctp-tools/src/func_tests run correctly in enforcing mode.
-> 
-> All SCTP regression tests "./sctp-tests run" run correctly in enforcing
-> mode. These tests are obtained from: https://github.com/sctp/sctp-tests
-> 
-> The selinux-testsuite patch also adds remote tests (that need some manual
-> configuration). These are useful for testing CIPSO/CALIPSO over a network
-> with a number of categories to produce large ip option fields with various
-> message sizes forcing fragmentation etc..
-> 
-> 
-> Richard Haines (5):
->   security: Add support for SCTP security hooks
->   sctp: Add ip option support
->   sctp: Add LSM hooks
->   netlabel: Add SCTP support
->   selinux: Add SCTP support
+The SCTP program may sleep under a spinlock, and the function call path is:
+sctp_generate_t3_rtx_event (acquire the spinlock)
+  sctp_do_sm
+    sctp_side_effects
+      sctp_cmd_interpreter
+        sctp_make_init_ack
+          sctp_pack_cookie
+            crypto_shash_setkey
+              shash_setkey_unaligned
+                kmalloc(GFP_KERNEL)
 
-Other than the notes I just sent, patchset LGTM.
+For the same reason, the orinoco driver may sleep in interrupt handler, 
+and the function call path is:
+orinoco_rx_isr_tasklet
+  orinoco_rx
+    orinoco_mic
+      crypto_shash_setkey
+        shash_setkey_unaligned
+          kmalloc(GFP_KERNEL)
 
-Thanks,
-Marcelo
+To fix it, GFP_KERNEL is replaced with GFP_ATOMIC.
+This bug is found by my static analysis tool and my code review.
+
+Signed-off-by: Jia-Ju Bai <baijiaju1990@163.com>
+---
+ crypto/shash.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/crypto/shash.c b/crypto/shash.c
+index 5e31c8d..8fcecc6 100644
+--- a/crypto/shash.c
++++ b/crypto/shash.c
+@@ -41,7 +41,7 @@ static int shash_setkey_unaligned(struct crypto_shash *tfm, const u8 *key,
+ 	int err;
+ 
+ 	absize = keylen + (alignmask & ~(crypto_tfm_ctx_alignment() - 1));
+-	buffer = kmalloc(absize, GFP_KERNEL);
++	buffer = kmalloc(absize, GFP_ATOMIC);
+ 	if (!buffer)
+ 		return -ENOMEM;
+ 
+-- 
+1.7.9.5
+
+
