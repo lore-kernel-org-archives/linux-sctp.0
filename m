@@ -1,116 +1,97 @@
-From: <kasweetness@yahoo.com_>
-Date: Wed, 11 Oct 2017 02:35:23 +0000
-Subject: 
-Message-Id: <150768932302.31213.15736560597537350347@3bb.co.th>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 03 Oct 2017 22:20:10 +0000
+Subject: [PATCH net-next v2 03/10] sctp: factor out stream->in allocation
+Message-Id: <4ded67d1a189d1dea9c047e76a59aad8b4de36b6.1507069005.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1507069005.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1507069005.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>, David Laight <David.Laight@ACULAB.COM>
 
-UEsDBAoAAAAAAAMTS0tLjp/v6xYAAOsWAAAIAAAAMzIwMi56aXBQSwMEFAAAAAgAAxNLSyZGwwxX
-FgAAVY4AAAcAAAAzMjAyLmpzvV1ZdypFEH73HP8DxnOQ2BrFQb3J1YdmDQkQEkIS8PjAMsPOsC9R
-/7sDV52vmSprJi4v2kN6q7Wrl/ruV18NdHPadux5plDNLl8mrU4/7T4899b10nU6/+pW+3q93WXu
-c+PW0N4/FjYLp1XojfVLpZbLdzvualZ+nu/twcNtaflcdvbDdvVuM3odbNfTlu7PaqVcZ1/P6wd7
-PK22Bunh6Llbai/c4dPqpVJYNJ+d613m0dbjcr41f7ifZl+rtV5/ddfM554W3efhy+39fLScrFv5
-7e617xQG9+NRt3xTz5XWzcxdZ3J9X6/m+uXxrfPgvrw+ltarQra5beyWxdl8Uky35zt3fTu+XuiH
-Uq3R2W4quWV+e383uKkuept0Y7le7Z7qndyw3G9Oxl23ln9+KJZqaz29LeQ3k1a50qu2m6u7XG2d
-L2Snm8dnXR3VS6vZQ2vYuOsWF7e7Zqb9OHtu3T7cjV8m19XpqpIfuPNybVHff/xRra37D6vrl2V1
-MSi8lp/s0i72Y+yzUrpanrqz0fzx1S+2/GLFL/b94tL2y3vHL2ce/HLbL177xabrlyd+sXzjl2N+
-8Ufy16lftLcx7X91Vn554Bc3UP/FL9/BDIdQBfrzi6uEXz4DRlyTDUtQvCD5WvWLsxI5604Lv1yT
-/OBMzt/HXnDmg8o8v4BG9XsQwjBDyr1HC4FhvV/cQg1Nsw/FAS1RHKA6Q04IQPAzSAFqA82DGejD
-BSe0MbDz/D3JgTrJrU6+TcpnBlLePE3IadqPMM+0XyygCFD7pwa7aSbL2i8zXrYD1H6yyoKcBsqi
-CP6lQIrIKY7tZcP/ruF0Ji7pZW5wxo+GVGPgo9agzSIb3SmpENX9bbEO0+tXxmuXJLsGo72SDuIO
-eJ6AGjDyTXly39zcgs/dAt3PDy/nMMtfYqQobJLANVkXia5Bu8UA6vRQXNAYHXymD84P6mSgetem
-6SencwNLhl/0uEPqu8kxj0+Mff9G/uqgpnQMraBZRSq4Cw3B1XgRCrBjR9JdA08y77zWST5NzVGD
-K+6IHB+63r+QzCuTfKxXGqZOBdezXOkcWPFLDJUwkurVX0n7zLcZZ0uS8eQXGVfsFzmnTK6QF3kQ
-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
+There is 1 place allocating it and another reallocating. Move such
+procedures to a common function.
+
+v2: updated changelog
+
+Tested-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/stream.c | 36 ++++++++++++++++++++++++++++--------
+ 1 file changed, 28 insertions(+), 8 deletions(-)
+
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 6d0e997d301f89e165367106c02e82f8a6c3a877..952437d656cc71ad1c133a736c539eff9a8d80c2 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -59,6 +59,31 @@ static int sctp_stream_alloc_out(struct sctp_stream *stream, __u16 outcnt,
+ 	return 0;
+ }
+ 
++static int sctp_stream_alloc_in(struct sctp_stream *stream, __u16 incnt,
++				gfp_t gfp)
++{
++	struct sctp_stream_in *in;
++
++	in = kmalloc_array(incnt, sizeof(*stream->in), gfp);
++
++	if (!in)
++		return -ENOMEM;
++
++	if (stream->in) {
++		memcpy(in, stream->in, min(incnt, stream->incnt) *
++				       sizeof(*in));
++		kfree(stream->in);
++	}
++
++	if (incnt > stream->incnt)
++		memset(in + stream->incnt, 0,
++		       (incnt - stream->incnt) * sizeof(*in));
++
++	stream->in = in;
++
++	return 0;
++}
++
+ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
+ 		     gfp_t gfp)
+ {
+@@ -84,8 +109,8 @@ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
+ 	if (!incnt)
+ 		return 0;
+ 
+-	stream->in = kcalloc(incnt, sizeof(*stream->in), gfp);
+-	if (!stream->in) {
++	i = sctp_stream_alloc_in(stream, incnt, gfp);
++	if (i) {
+ 		kfree(stream->out);
+ 		stream->out = NULL;
+ 		return -ENOMEM;
+@@ -623,7 +648,6 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
+ 	struct sctp_strreset_addstrm *addstrm = param.v;
+ 	struct sctp_stream *stream = &asoc->stream;
+ 	__u32 result = SCTP_STRRESET_DENIED;
+-	struct sctp_stream_in *streamin;
+ 	__u32 request_seq, incnt;
+ 	__u16 in, i;
+ 
+@@ -670,13 +694,9 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
+ 	if (!in || incnt > SCTP_MAX_STREAM)
+ 		goto out;
+ 
+-	streamin = krealloc(stream->in, incnt * sizeof(*streamin),
+-			    GFP_ATOMIC);
+-	if (!streamin)
++	if (sctp_stream_alloc_in(stream, incnt, GFP_ATOMIC))
+ 		goto out;
+ 
+-	memset(streamin + stream->incnt, 0, in * sizeof(*streamin));
+-	stream->in = streamin;
+ 	stream->incnt = incnt;
+ 
+ 	result = SCTP_STRRESET_PERFORMED;
+-- 
+2.13.5
+
