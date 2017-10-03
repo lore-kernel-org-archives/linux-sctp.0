@@ -1,7 +1,7 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 03 Oct 2017 22:20:10 +0000
-Subject: [PATCH net-next v2 03/10] sctp: factor out stream->in allocation
-Message-Id: <4ded67d1a189d1dea9c047e76a59aad8b4de36b6.1507069005.git.marcelo.leitner@gmail.com>
+Date: Tue, 03 Oct 2017 22:20:15 +0000
+Subject: [PATCH net-next v2 08/10] sctp: add sockopt to get/set stream scheduler parameters
+Message-Id: <4c3518e2562de45167797f98f78d29521cf7b7af.1507069005.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1507069005.git.marcelo.leitner@gmail.com>
 In-Reply-To: <cover.1507069005.git.marcelo.leitner@gmail.com>
@@ -11,87 +11,151 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
 Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>, David Laight <David.Laight@ACULAB.COM>
 
-There is 1 place allocating it and another reallocating. Move such
-procedures to a common function.
+As defined per RFC Draft ndata Section 4.3.3, named as
+SCTP_STREAM_SCHEDULER_VALUE.
 
-v2: updated changelog
-
+See-also: https://tools.ietf.org/html/draft-ietf-tsvwg-sctp-ndata-13
 Tested-by: Xin Long <lucien.xin@gmail.com>
 Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- net/sctp/stream.c | 36 ++++++++++++++++++++++++++++--------
- 1 file changed, 28 insertions(+), 8 deletions(-)
+ include/uapi/linux/sctp.h |  7 +++++
+ net/sctp/socket.c         | 77 +++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 84 insertions(+)
 
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index 6d0e997d301f89e165367106c02e82f8a6c3a877..952437d656cc71ad1c133a736c539eff9a8d80c2 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -59,6 +59,31 @@ static int sctp_stream_alloc_out(struct sctp_stream *stream, __u16 outcnt,
- 	return 0;
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index 0050f10087d224bad87c8c54ad318003381aee12..00ac417d2c4f8468ea2aad32e59806be5c5aa08d 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -123,6 +123,7 @@ typedef __s32 sctp_assoc_t;
+ #define SCTP_ADD_STREAMS	121
+ #define SCTP_SOCKOPT_PEELOFF_FLAGS 122
+ #define SCTP_STREAM_SCHEDULER	123
++#define SCTP_STREAM_SCHEDULER_VALUE	124
+ 
+ /* PR-SCTP policies */
+ #define SCTP_PR_SCTP_NONE	0x0000
+@@ -815,6 +816,12 @@ struct sctp_assoc_value {
+     uint32_t                assoc_value;
+ };
+ 
++struct sctp_stream_value {
++	sctp_assoc_t assoc_id;
++	uint16_t stream_id;
++	uint16_t stream_value;
++};
++
+ /*
+  * 7.2.2 Peer Address Information
+  *
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index ae35dbf2810f78c71ce77115ffe4b0e27a672abc..88c28421ec151e83665efcbcbd8a6403b122205a 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3945,6 +3945,34 @@ static int sctp_setsockopt_scheduler(struct sock *sk,
+ 	return retval;
  }
  
-+static int sctp_stream_alloc_in(struct sctp_stream *stream, __u16 incnt,
-+				gfp_t gfp)
++static int sctp_setsockopt_scheduler_value(struct sock *sk,
++					   char __user *optval,
++					   unsigned int optlen)
 +{
-+	struct sctp_stream_in *in;
++	struct sctp_association *asoc;
++	struct sctp_stream_value params;
++	int retval = -EINVAL;
 +
-+	in = kmalloc_array(incnt, sizeof(*stream->in), gfp);
++	if (optlen < sizeof(params))
++		goto out;
 +
-+	if (!in)
-+		return -ENOMEM;
-+
-+	if (stream->in) {
-+		memcpy(in, stream->in, min(incnt, stream->incnt) *
-+				       sizeof(*in));
-+		kfree(stream->in);
++	optlen = sizeof(params);
++	if (copy_from_user(&params, optval, optlen)) {
++		retval = -EFAULT;
++		goto out;
 +	}
 +
-+	if (incnt > stream->incnt)
-+		memset(in + stream->incnt, 0,
-+		       (incnt - stream->incnt) * sizeof(*in));
++	asoc = sctp_id2assoc(sk, params.assoc_id);
++	if (!asoc)
++		goto out;
 +
-+	stream->in = in;
++	retval = sctp_sched_set_value(asoc, params.stream_id,
++				      params.stream_value, GFP_KERNEL);
 +
-+	return 0;
++out:
++	return retval;
 +}
 +
- int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
- 		     gfp_t gfp)
+ /* API 6.2 setsockopt(), getsockopt()
+  *
+  * Applications use setsockopt() and getsockopt() to set or retrieve
+@@ -4129,6 +4157,9 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 	case SCTP_STREAM_SCHEDULER:
+ 		retval = sctp_setsockopt_scheduler(sk, optval, optlen);
+ 		break;
++	case SCTP_STREAM_SCHEDULER_VALUE:
++		retval = sctp_setsockopt_scheduler_value(sk, optval, optlen);
++		break;
+ 	default:
+ 		retval = -ENOPROTOOPT;
+ 		break;
+@@ -6864,6 +6895,48 @@ static int sctp_getsockopt_scheduler(struct sock *sk, int len,
+ 	return retval;
+ }
+ 
++static int sctp_getsockopt_scheduler_value(struct sock *sk, int len,
++					   char __user *optval,
++					   int __user *optlen)
++{
++	struct sctp_stream_value params;
++	struct sctp_association *asoc;
++	int retval = -EFAULT;
++
++	if (len < sizeof(params)) {
++		retval = -EINVAL;
++		goto out;
++	}
++
++	len = sizeof(params);
++	if (copy_from_user(&params, optval, len))
++		goto out;
++
++	asoc = sctp_id2assoc(sk, params.assoc_id);
++	if (!asoc) {
++		retval = -EINVAL;
++		goto out;
++	}
++
++	retval = sctp_sched_get_value(asoc, params.stream_id,
++				      &params.stream_value);
++	if (retval)
++		goto out;
++
++	if (put_user(len, optlen)) {
++		retval = -EFAULT;
++		goto out;
++	}
++
++	if (copy_to_user(optval, &params, len)) {
++		retval = -EFAULT;
++		goto out;
++	}
++
++out:
++	return retval;
++}
++
+ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 			   char __user *optval, int __user *optlen)
  {
-@@ -84,8 +109,8 @@ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
- 	if (!incnt)
- 		return 0;
- 
--	stream->in = kcalloc(incnt, sizeof(*stream->in), gfp);
--	if (!stream->in) {
-+	i = sctp_stream_alloc_in(stream, incnt, gfp);
-+	if (i) {
- 		kfree(stream->out);
- 		stream->out = NULL;
- 		return -ENOMEM;
-@@ -623,7 +648,6 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
- 	struct sctp_strreset_addstrm *addstrm = param.v;
- 	struct sctp_stream *stream = &asoc->stream;
- 	__u32 result = SCTP_STRRESET_DENIED;
--	struct sctp_stream_in *streamin;
- 	__u32 request_seq, incnt;
- 	__u16 in, i;
- 
-@@ -670,13 +694,9 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
- 	if (!in || incnt > SCTP_MAX_STREAM)
- 		goto out;
- 
--	streamin = krealloc(stream->in, incnt * sizeof(*streamin),
--			    GFP_ATOMIC);
--	if (!streamin)
-+	if (sctp_stream_alloc_in(stream, incnt, GFP_ATOMIC))
- 		goto out;
- 
--	memset(streamin + stream->incnt, 0, in * sizeof(*streamin));
--	stream->in = streamin;
- 	stream->incnt = incnt;
- 
- 	result = SCTP_STRRESET_PERFORMED;
+@@ -7050,6 +7123,10 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_getsockopt_scheduler(sk, len, optval,
+ 						   optlen);
+ 		break;
++	case SCTP_STREAM_SCHEDULER_VALUE:
++		retval = sctp_getsockopt_scheduler_value(sk, len, optval,
++							 optlen);
++		break;
+ 	default:
+ 		retval = -ENOPROTOOPT;
+ 		break;
 -- 
 2.13.5
 
