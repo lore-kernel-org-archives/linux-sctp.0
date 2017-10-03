@@ -1,90 +1,214 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 28 Oct 2017 11:43:55 +0000
-Subject: [PATCH net 2/4] sctp: fix some type cast warnings introduced by transport rhashtable
-Message-Id: <ddda2f5b5825a379793ac6f2ffff4c7ab9aa64e5.1509190967.git.lucien.xin@gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 03 Oct 2017 22:20:11 +0000
+Subject: [PATCH net-next v2 04/10] sctp: introduce struct sctp_stream_out_ext
+Message-Id: <facb6da82fddbaf8ceec5dd4d0a7a59b14375991.1507069005.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1509190967.git.lucien.xin@gmail.com>
- <d85747d7d1af0972a00b8d4594a84f2afe97aac8.1509190967.git.lucien.xin@gmail.com>
-In-Reply-To: <d85747d7d1af0972a00b8d4594a84f2afe97aac8.1509190967.git.lucien.xin@gmail.com>
+References: <cover.1507069005.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1507069005.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Eric Dumazet <edumazet@google.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>, David Laight <David.Laight@ACULAB.COM>
 
-These warnings were found by running 'make C=2 M=net/sctp/'.
+With the stream schedulers, sctp_stream_out will become too big to be
+allocated by kmalloc and as we need to allocate with BH disabled, we
+cannot use __vmalloc in sctp_stream_init().
 
-They are introduced by not aware of Endian for the port when
-coding transport rhashtable patches.
+This patch moves out the stats from sctp_stream_out to
+sctp_stream_out_ext, which will be allocated only when the application
+tries to sendmsg something on it.
 
-Fixes: 7fda702f9315 ("sctp: use new rhlist interface on sctp transport rhashtable")
-Reported-by: Eric Dumazet <edumazet@google.com>
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Just the introduction of sctp_stream_out_ext would already fix the issue
+described above by splitting the allocation in two. Moving the stats
+to it also reduces the pressure on the allocator as we will ask for less
+memory atomically when creating the socket and we will use GFP_KERNEL
+later.
+
+Then, for stream schedulers, we will just use sctp_stream_out_ext.
+
+Tested-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- net/sctp/input.c | 22 +++++++++++-----------
- 1 file changed, 11 insertions(+), 11 deletions(-)
+ include/net/sctp/structs.h | 10 ++++++++--
+ net/sctp/chunk.c           |  6 +++---
+ net/sctp/outqueue.c        |  4 ++--
+ net/sctp/socket.c          | 27 +++++++++++++++++++++------
+ net/sctp/stream.c          | 16 ++++++++++++++++
+ 5 files changed, 50 insertions(+), 13 deletions(-)
 
-diff --git a/net/sctp/input.c b/net/sctp/input.c
-index 34f10e7..621b5ca 100644
---- a/net/sctp/input.c
-+++ b/net/sctp/input.c
-@@ -794,7 +794,7 @@ static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(struct net *net,
- struct sctp_hash_cmp_arg {
- 	const union sctp_addr	*paddr;
- 	const struct net	*net;
--	u16			lport;
-+	__be16			lport;
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 0477945de1a3cf5c27348e99d9a30e02c491d1de..9b2b30b3ba4dfd10c24c3e06ed80779180a06baf 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -84,6 +84,7 @@ struct sctp_ulpq;
+ struct sctp_ep_common;
+ struct crypto_shash;
+ struct sctp_stream;
++struct sctp_stream_out;
+ 
+ 
+ #include <net/sctp/tsnmap.h>
+@@ -380,6 +381,7 @@ struct sctp_sender_hb_info {
+ 
+ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
+ 		     gfp_t gfp);
++int sctp_stream_init_ext(struct sctp_stream *stream, __u16 sid);
+ void sctp_stream_free(struct sctp_stream *stream);
+ void sctp_stream_clear(struct sctp_stream *stream);
+ void sctp_stream_update(struct sctp_stream *stream, struct sctp_stream *new);
+@@ -1315,11 +1317,15 @@ struct sctp_inithdr_host {
+ 	__u32 initial_tsn;
  };
  
- static inline int sctp_hash_cmp(struct rhashtable_compare_arg *arg,
-@@ -820,37 +820,37 @@ static inline int sctp_hash_cmp(struct rhashtable_compare_arg *arg,
- 	return err;
- }
++struct sctp_stream_out_ext {
++	__u64 abandoned_unsent[SCTP_PR_INDEX(MAX) + 1];
++	__u64 abandoned_sent[SCTP_PR_INDEX(MAX) + 1];
++};
++
+ struct sctp_stream_out {
+ 	__u16	ssn;
+ 	__u8	state;
+-	__u64	abandoned_unsent[SCTP_PR_INDEX(MAX) + 1];
+-	__u64	abandoned_sent[SCTP_PR_INDEX(MAX) + 1];
++	struct sctp_stream_out_ext *ext;
+ };
  
--static inline u32 sctp_hash_obj(const void *data, u32 len, u32 seed)
-+static inline __u32 sctp_hash_obj(const void *data, u32 len, u32 seed)
+ struct sctp_stream_in {
+diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
+index 3afac275ee82dbec825dd71378dffe69a53718a7..7b261afc47b9d709fdd780a93aaba874f35d79be 100644
+--- a/net/sctp/chunk.c
++++ b/net/sctp/chunk.c
+@@ -311,10 +311,10 @@ int sctp_chunk_abandoned(struct sctp_chunk *chunk)
+ 
+ 		if (chunk->sent_count) {
+ 			chunk->asoc->abandoned_sent[SCTP_PR_INDEX(TTL)]++;
+-			streamout->abandoned_sent[SCTP_PR_INDEX(TTL)]++;
++			streamout->ext->abandoned_sent[SCTP_PR_INDEX(TTL)]++;
+ 		} else {
+ 			chunk->asoc->abandoned_unsent[SCTP_PR_INDEX(TTL)]++;
+-			streamout->abandoned_unsent[SCTP_PR_INDEX(TTL)]++;
++			streamout->ext->abandoned_unsent[SCTP_PR_INDEX(TTL)]++;
+ 		}
+ 		return 1;
+ 	} else if (SCTP_PR_RTX_ENABLED(chunk->sinfo.sinfo_flags) &&
+@@ -323,7 +323,7 @@ int sctp_chunk_abandoned(struct sctp_chunk *chunk)
+ 			&chunk->asoc->stream.out[chunk->sinfo.sinfo_stream];
+ 
+ 		chunk->asoc->abandoned_sent[SCTP_PR_INDEX(RTX)]++;
+-		streamout->abandoned_sent[SCTP_PR_INDEX(RTX)]++;
++		streamout->ext->abandoned_sent[SCTP_PR_INDEX(RTX)]++;
+ 		return 1;
+ 	} else if (!SCTP_PR_POLICY(chunk->sinfo.sinfo_flags) &&
+ 		   chunk->msg->expires_at &&
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 2966ff400755fe93e3658e09d3bb44b9d7d19d2e..746b07b7937d8730824b9e09917d947aa7863ec6 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -366,7 +366,7 @@ static int sctp_prsctp_prune_sent(struct sctp_association *asoc,
+ 		streamout = &asoc->stream.out[chk->sinfo.sinfo_stream];
+ 		asoc->sent_cnt_removable--;
+ 		asoc->abandoned_sent[SCTP_PR_INDEX(PRIO)]++;
+-		streamout->abandoned_sent[SCTP_PR_INDEX(PRIO)]++;
++		streamout->ext->abandoned_sent[SCTP_PR_INDEX(PRIO)]++;
+ 
+ 		if (!chk->tsn_gap_acked) {
+ 			if (chk->transport)
+@@ -404,7 +404,7 @@ static int sctp_prsctp_prune_unsent(struct sctp_association *asoc,
+ 			struct sctp_stream_out *streamout  				&asoc->stream.out[chk->sinfo.sinfo_stream];
+ 
+-			streamout->abandoned_unsent[SCTP_PR_INDEX(PRIO)]++;
++			streamout->ext->abandoned_unsent[SCTP_PR_INDEX(PRIO)]++;
+ 		}
+ 
+ 		msg_len -= SCTP_DATA_SNDSIZE(chk) +
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index d4730ada7f3233367be7a0e3bb10e286a25602c8..d207734326b085e60625e4333f74221481114892 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1927,6 +1927,13 @@ static int sctp_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
+ 		goto out_free;
+ 	}
+ 
++	/* Allocate sctp_stream_out_ext if not already done */
++	if (unlikely(!asoc->stream.out[sinfo->sinfo_stream].ext)) {
++		err = sctp_stream_init_ext(&asoc->stream, sinfo->sinfo_stream);
++		if (err)
++			goto out_free;
++	}
++
+ 	if (sctp_wspace(asoc) < msg_len)
+ 		sctp_prsctp_prune(asoc, sinfo, msg_len - sctp_wspace(asoc));
+ 
+@@ -6645,7 +6652,7 @@ static int sctp_getsockopt_pr_streamstatus(struct sock *sk, int len,
+ 					   char __user *optval,
+ 					   int __user *optlen)
  {
- 	const struct sctp_transport *t = data;
- 	const union sctp_addr *paddr = &t->ipaddr;
- 	const struct net *net = sock_net(t->asoc->base.sk);
--	u16 lport = htons(t->asoc->base.bind_addr.port);
--	u32 addr;
-+	__be16 lport = htons(t->asoc->base.bind_addr.port);
-+	__u32 addr;
+-	struct sctp_stream_out *streamout;
++	struct sctp_stream_out_ext *streamoute;
+ 	struct sctp_association *asoc;
+ 	struct sctp_prstatus params;
+ 	int retval = -EINVAL;
+@@ -6668,21 +6675,29 @@ static int sctp_getsockopt_pr_streamstatus(struct sock *sk, int len,
+ 	if (!asoc || params.sprstat_sid >= asoc->stream.outcnt)
+ 		goto out;
  
- 	if (paddr->sa.sa_family = AF_INET6)
- 		addr = jhash(&paddr->v6.sin6_addr, 16, seed);
- 	else
--		addr = paddr->v4.sin_addr.s_addr;
-+		addr = (__force __u32)paddr->v4.sin_addr.s_addr;
+-	streamout = &asoc->stream.out[params.sprstat_sid];
++	streamoute = asoc->stream.out[params.sprstat_sid].ext;
++	if (!streamoute) {
++		/* Not allocated yet, means all stats are 0 */
++		params.sprstat_abandoned_unsent = 0;
++		params.sprstat_abandoned_sent = 0;
++		retval = 0;
++		goto out;
++	}
++
+ 	if (policy = SCTP_PR_SCTP_NONE) {
+ 		params.sprstat_abandoned_unsent = 0;
+ 		params.sprstat_abandoned_sent = 0;
+ 		for (policy = 0; policy <= SCTP_PR_INDEX(MAX); policy++) {
+ 			params.sprstat_abandoned_unsent +-				streamout->abandoned_unsent[policy];
++				streamoute->abandoned_unsent[policy];
+ 			params.sprstat_abandoned_sent +-				streamout->abandoned_sent[policy];
++				streamoute->abandoned_sent[policy];
+ 		}
+ 	} else {
+ 		params.sprstat_abandoned_unsent -			streamout->abandoned_unsent[__SCTP_PR_INDEX(policy)];
++			streamoute->abandoned_unsent[__SCTP_PR_INDEX(policy)];
+ 		params.sprstat_abandoned_sent -			streamout->abandoned_sent[__SCTP_PR_INDEX(policy)];
++			streamoute->abandoned_sent[__SCTP_PR_INDEX(policy)];
+ 	}
  
--	return  jhash_3words(addr, ((__u32)paddr->v4.sin_port) << 16 |
-+	return  jhash_3words(addr, ((__force __u32)paddr->v4.sin_port) << 16 |
- 			     (__force __u32)lport, net_hash_mix(net), seed);
+ 	if (put_user(len, optlen) || copy_to_user(optval, &params, len)) {
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 952437d656cc71ad1c133a736c539eff9a8d80c2..055ca25bbc91bf932db8048c72a1b11cc2214942 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -121,8 +121,24 @@ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
+ 	return 0;
  }
  
--static inline u32 sctp_hash_key(const void *data, u32 len, u32 seed)
-+static inline __u32 sctp_hash_key(const void *data, u32 len, u32 seed)
++int sctp_stream_init_ext(struct sctp_stream *stream, __u16 sid)
++{
++	struct sctp_stream_out_ext *soute;
++
++	soute = kzalloc(sizeof(*soute), GFP_KERNEL);
++	if (!soute)
++		return -ENOMEM;
++	stream->out[sid].ext = soute;
++
++	return 0;
++}
++
+ void sctp_stream_free(struct sctp_stream *stream)
  {
- 	const struct sctp_hash_cmp_arg *x = data;
- 	const union sctp_addr *paddr = x->paddr;
- 	const struct net *net = x->net;
--	u16 lport = x->lport;
--	u32 addr;
-+	__be16 lport = x->lport;
-+	__u32 addr;
- 
- 	if (paddr->sa.sa_family = AF_INET6)
- 		addr = jhash(&paddr->v6.sin6_addr, 16, seed);
- 	else
--		addr = paddr->v4.sin_addr.s_addr;
-+		addr = (__force __u32)paddr->v4.sin_addr.s_addr;
- 
--	return  jhash_3words(addr, ((__u32)paddr->v4.sin_port) << 16 |
-+	return  jhash_3words(addr, ((__force __u32)paddr->v4.sin_port) << 16 |
- 			     (__force __u32)lport, net_hash_mix(net), seed);
++	int i;
++
++	for (i = 0; i < stream->outcnt; i++)
++		kfree(stream->out[i].ext);
+ 	kfree(stream->out);
+ 	kfree(stream->in);
  }
- 
 -- 
-2.1.0
+2.13.5
 
