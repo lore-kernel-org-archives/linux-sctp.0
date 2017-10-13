@@ -1,231 +1,339 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Fri, 13 Oct 2017 15:56:16 +0000
-Subject: RE: Kernel Performance Tuning for High Volume SCTP traffic
-Message-Id: <063D6719AE5E284EB5DD2968C1650D6DD0094F48@AcuExch.aculab.com>
+From: Traiano Welcome <traiano@gmail.com>
+Date: Fri, 13 Oct 2017 16:03:54 +0000
+Subject: Re: Kernel Performance Tuning for High Volume SCTP traffic
+Message-Id: <CAFKCRVLTA8Vrz-36rxfUtOf8Zc9mSPZteAgdyeETsqSa-XsOcQ@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CAFKCRVL-e03Cn35-Vvtb8+NSAz3Tk2Hje_Hg5K9HfqgokEBPgg@mail.gmail.com>
-In-Reply-To: <CAFKCRVL-e03Cn35-Vvtb8+NSAz3Tk2Hje_Hg5K9HfqgokEBPgg@mail.gmail.com>
+ <063D6719AE5E284EB5DD2968C1650D6DD0094F48@AcuExch.aculab.com>
+In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6DD0094F48@AcuExch.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Traiano Welcome' <traiano@gmail.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+To: David Laight <David.Laight@aculab.com>
+Cc: "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
 
-RnJvbTogVHJhaWFubyBXZWxjb21lDQoNCihjb3BpZWQgdG8gbmV0ZGV2KQ0KPiBTZW50OiAxMyBP
-Y3RvYmVyIDIwMTcgMDc6MTYNCj4gVG86IGxpbnV4LXNjdHBAdmdlci5rZXJuZWwub3JnDQo+IFN1
-YmplY3Q6IEtlcm5lbCBQZXJmb3JtYW5jZSBUdW5pbmcgZm9yIEhpZ2ggVm9sdW1lIFNDVFAgdHJh
-ZmZpYw0KPiANCj4gSGkgTGlzdA0KPiANCj4gSSdtIHJ1bm5pbmcgYSBsaW51eCBzZXJ2ZXIgcHJv
-Y2Vzc2luZyBoaWdoIHZvbHVtZXMgb2YgU0NUUCB0cmFmZmljIGFuZA0KPiBhbSBzZWVpbmcgbGFy
-Z2UgbnVtYmVycyBvZiBwYWNrZXQgb3ZlcnJ1bnMgKGlmY29uZmlnIG91dHB1dCkuDQoNCkknZCBn
-dWVzcyB0aGF0IG92ZXJydW5zIGluZGljYXRlIHRoYXQgdGhlIGV0aGVybmV0IE1BQyBpcyBmYWls
-aW5nIHRvDQpjb3B5IHRoZSByZWNlaXZlIGZyYW1lcyBpbnRvIGtlcm5lbCBtZW1vcnkuDQpJdCBp
-cyBwcm9iYWJseSBydW5uaW5nIG91dCBvZiByZWNlaXZlIGJ1ZmZlcnMsIGJ1dCBtaWdodCBiZQ0K
-c3VmZmVyaW5nIGZyb20gYSBsYWNrIG9mIGJ1cyBiYW5kd2lkdGguDQpNQUMgZHJpdmVycyB1c3Vh
-bGx5IGRpc2NhcmQgcmVjZWl2ZSBmcmFtZXMgaWYgdGhleSBjYW4ndCBnZXQNCmEgcmVwbGFjZW1l
-bnQgYnVmZmVyIC0gc28geW91IHNob3VsZG4ndCBydW4gb3V0IG9mIHJ4IGJ1ZmZlcnMuDQoNClRo
-aXMgbWVhbnMgdGhlIGVycm9ycyBhcmUgcHJvYmFibHkgYmVsb3cgU0NUUCAtIHNvIGNoYW5naW5n
-IFNDVFAgcGFyYW1ldGVycw0KaXMgdW5saWtlbHkgdG8gaGVscC4NCg0KSSdkIG1ha2Ugc3VyZSBh
-bnkgcmVjZWl2ZSBpbnRlcnJ1cHQgY29hbGVzY2luZy9taXRpZ2F0aW9uIGlzIHR1cm5lZCBvZmYu
-DQoNCglEYXZpZA0KIA0KDQo+IEkgdGhpbmsgYSBsYXJnZSBhbW91bnQgb2YgcGVyZm9ybWFuY2Ug
-dHVuaW5nIGNhbiBwcm9iYWJseSBiZSBkb25lIHRvDQo+IGltcHJvdmUgdGhlIGxpbnV4IGtlcm5l
-bCdzIFNDVFAgaGFuZGxpbmcgcGVyZm9ybWFuY2UsIGJ1dCB0aGVyZSBzZWVtDQo+IHRvIGJlIG5v
-IGd1aWRlcyBvbiB0aGlzIGF2YWlsYWJsZS4gQ291bGQgYW55b25lIGFkdmlzZSBvbiB0aGlzPw0K
-PiANCj4gDQo+IEhlcmUgYXJlIG15IGN1cnJlbnQgc2V0dGluZ3MsIGFuZCBiZWxvdywgc29tZSBz
-dGF0czoNCj4gDQo+IA0KPiAtLS0tLQ0KPiBuZXQuc2N0cC5hZGRpcF9lbmFibGUgPSAwDQo+IG5l
-dC5zY3RwLmFkZGlwX25vYXV0aF9lbmFibGUgPSAwDQo+IG5ldC5zY3RwLmFkZHJfc2NvcGVfcG9s
-aWN5ID0gMQ0KPiBuZXQuc2N0cC5hc3NvY2lhdGlvbl9tYXhfcmV0cmFucyA9IDEwDQo+IG5ldC5z
-Y3RwLmF1dGhfZW5hYmxlID0gMA0KPiBuZXQuc2N0cC5jb29raWVfaG1hY19hbGcgPSBzaGExDQo+
-IG5ldC5zY3RwLmNvb2tpZV9wcmVzZXJ2ZV9lbmFibGUgPSAxDQo+IG5ldC5zY3RwLmRlZmF1bHRf
-YXV0b19hc2NvbmYgPSAwDQo+IG5ldC5zY3RwLmhiX2ludGVydmFsID0gMzAwMDANCj4gbmV0LnNj
-dHAubWF4X2F1dG9jbG9zZSA9IDg1ODk5MzQNCj4gbmV0LnNjdHAubWF4X2J1cnN0ID0gNDANCj4g
-bmV0LnNjdHAubWF4X2luaXRfcmV0cmFuc21pdHMgPSA4DQo+IG5ldC5zY3RwLnBhdGhfbWF4X3Jl
-dHJhbnMgPSA1DQo+IG5ldC5zY3RwLnBmX2VuYWJsZSA9IDENCj4gbmV0LnNjdHAucGZfcmV0cmFu
-cyA9IDANCj4gbmV0LnNjdHAucHJzY3RwX2VuYWJsZSA9IDENCj4gbmV0LnNjdHAucmN2YnVmX3Bv
-bGljeSA9IDANCj4gbmV0LnNjdHAucnRvX2FscGhhX2V4cF9kaXZpc29yID0gMw0KPiBuZXQuc2N0
-cC5ydG9fYmV0YV9leHBfZGl2aXNvciA9IDINCj4gbmV0LnNjdHAucnRvX2luaXRpYWwgPSAzMDAw
-DQo+IG5ldC5zY3RwLnJ0b19tYXggPSA2MDAwMA0KPiBuZXQuc2N0cC5ydG9fbWluID0gMTAwMA0K
-PiBuZXQuc2N0cC5yd25kX3VwZGF0ZV9zaGlmdCA9IDQNCj4gbmV0LnNjdHAuc2Fja190aW1lb3V0
-ID0gNTANCj4gbmV0LnNjdHAuc2N0cF9tZW0gPSA2MTczMzA0MCA4MjMxMDczMCAxMjM0NjYwODAN
-Cj4gbmV0LnNjdHAuc2N0cF9ybWVtID0gNDA5NjAgODY1NTAwMCA0MTk0MzA0MA0KPiBuZXQuc2N0
-cC5zY3RwX3dtZW0gPSA0MDk2MCA4NjU1MDAwIDQxOTQzMDQwDQo+IG5ldC5zY3RwLnNuZGJ1Zl9w
-b2xpY3kgPSAwDQo+IG5ldC5zY3RwLnZhbGlkX2Nvb2tpZV9saWZlID0gNjAwMDANCj4gLS0tLS0N
-Cj4gDQo+IA0KPiBJJ20gc2VlaW5nIGEgaGlnaCByYXRlIG9mIHBhY2tldCBlcnJvcnMgKGFsbW9z
-dCBhbGwgb3ZlcnJ1bnMpIG9uIGJvdGgNCj4gMTBnYiBOSUNzIGF0dGFjaGVkIHRvIG15IGxpbnV4
-IHNlcnZlci4NCj4gDQo+IFRoZSBzeXN0ZW0gaXMgaGFuZGxpbmcgaGlnaCB2b2x1bWVzIG9mIG5l
-dHdvcmsgdHJhZmZpYywgc28gdGhpcyBpcw0KPiBsaWtlbHkgYSBsaW51eCBrZXJuZWwgdHVuaW5n
-IHByb2JsZW0uDQo+IA0KPiBBbGwgdGhlIG5vcm1hbCB0dW5pbmcgcGFyYW1ldGVycyBJJ3ZlIHRy
-aWVkIHRodXMgZmFyIHNlZW1zIHRvIGJlDQo+IGhhdmluZyBsaXR0bGUgZWZmZWN0IGFuZCBJJ20g
-c3RpbGwgc2VlaW5nIGhpZ2ggdm9sdW1lcyBvZiBwYWNrZXQNCj4gb3ZlcnJ1bnMuDQo+IA0KPiBB
-bnkgcG9pbnRlcnMgb24gb3RoZXIgdGhpbmdzIEkgY291bGQgdHJ5IHRvIGdldCB0aGUgc3lzdGVt
-IGhhbmRsaW5nDQo+IFNDVFAgcGFja2V0cyBlZmZpY2llbnRseSB3b3VsZCBiZSBtdWNoIGFwcHJl
-Y2lhdGVkIQ0KPiANCj4gLS0tLS0NCj4gOn4jIGlmY29uZmlnIGVuczRmMQ0KPiANCj4gZW5zNGYx
-ICAgIExpbmsgZW5jYXA6RXRoZXJuZXQgIEhXYWRkciA1YzpiOTowMTpkZTowZDo0Yw0KPiAgICAg
-ICAgICAgVVAgQlJPQURDQVNUIFJVTk5JTkcgUFJPTUlTQyBNVUxUSUNBU1QgIE1UVTo5MDAwICBN
-ZXRyaWM6MQ0KPiAgICAgICAgICAgUlggcGFja2V0czoyMjMxMzUxNDE2MiBlcnJvcnM6MTc1OTgy
-NDEzMTYgZHJvcHBlZDo2OA0KPiBvdmVycnVuczoxNzU5ODI0MTMxNiBmcmFtZTowDQo+ICAgICAg
-ICAgICBUWCBwYWNrZXRzOjAgZXJyb3JzOjAgZHJvcHBlZDowIG92ZXJydW5zOjAgY2Fycmllcjow
-DQo+ICAgICAgICAgICBjb2xsaXNpb25zOjAgdHhxdWV1ZWxlbjoxMDAwDQo+ICAgICAgICAgICBS
-WCBieXRlczozMTc2NzQ4MDg5NDIxOSAoMzEuNyBUQikgIFRYIGJ5dGVzOjAgKDAuMCBCKQ0KPiAg
-ICAgICAgICAgSW50ZXJydXB0OjE3IE1lbW9yeTpjOTgwMDAwMC1jOWZmZmZmZg0KPiAtLS0tLQ0K
-PiANCj4gU3lzdGVtIGRldGFpbHM6DQo+IA0KPiBPUyAgICAgICAgOiBVYnVudHUgTGludXggKDQu
-MTEuMC0xNC1nZW5lcmljICMyMH4xNi4wNC4xLVVidW50dSBTTVAgeDg2XzY0ICkNCj4gQ1BVIENv
-cmVzIDogNzINCj4gTklDIE1vZGVsIDogTmV0WHRyZW1lIElJIEJDTTU3ODEwIDEwIEdpZ2FiaXQg
-RXRoZXJuZXQNCj4gUkFNICAgICAgIDogMjQwIEdpQg0KPiANCj4gTklDIHNhbXBsZSBzdGF0cyBz
-aG93aW5nIHBhY2tldCBlcnJvciByYXRlOg0KPiANCj4gLS0tLQ0KPiANCj4gZm9yIGkgaW4gYHNl
-cSAxIDEwYDtkbyBlY2hvICIkaSkgYGRhdGVgIiAtICQoaWZjb25maWcgZW5zNGYwfCBlZ3JlcA0K
-PiAiUlgifCBlZ3JlcCBvdmVycnVucztzbGVlcCA1KTtkb25lDQo+IA0KPiAxKSBUaHUgT2N0IDEy
-IDE5OjUwOjQwIFNHVCAyMDE3IC0gUlggcGFja2V0czo4MzY0MDY1ODMwDQo+IGVycm9yczoyNTk0
-NTA3NzE4IGRyb3BwZWQ6MjE1IG92ZXJydW5zOjI1OTQ1MDc3MTggZnJhbWU6MA0KPiAyKSBUaHUg
-T2N0IDEyIDE5OjUwOjQ1IFNHVCAyMDE3IC0gUlggcGFja2V0czo4MzY1MzM2MDYwDQo+IGVycm9y
-czoyNTk2NjYyNjcyIGRyb3BwZWQ6MjE1IG92ZXJydW5zOjI1OTY2NjI2NzIgZnJhbWU6MA0KPiAz
-KSBUaHUgT2N0IDEyIDE5OjUwOjUwIFNHVCAyMDE3IC0gUlggcGFja2V0czo4MzY2NjAyMDg3DQo+
-IGVycm9yczoyNTk4ODQwOTU5IGRyb3BwZWQ6MjE1IG92ZXJydW5zOjI1OTg4NDA5NTkgZnJhbWU6
-MA0KPiA0KSBUaHUgT2N0IDEyIDE5OjUwOjU1IFNHVCAyMDE3IC0gUlggcGFja2V0czo4MzY3ODgx
-MjcxDQo+IGVycm9yczoyNjAwOTg5MjI5IGRyb3BwZWQ6MjE1IG92ZXJydW5zOjI2MDA5ODkyMjkg
-ZnJhbWU6MA0KPiA1KSBUaHUgT2N0IDEyIDE5OjUxOjAxIFNHVCAyMDE3IC0gUlggcGFja2V0czo4
-MzY5MTQ3NTM2DQo+IGVycm9yczoyNjAzMTU3MDMwIGRyb3BwZWQ6MjE1IG92ZXJydW5zOjI2MDMx
-NTcwMzBmcmFtZTowDQo+IDYpIFRodSBPY3QgMTIgMTk6NTE6MDYgU0dUIDIwMTcgLSBSWCBwYWNr
-ZXRzOjgzNzAxNDk1NjcNCj4gZXJyb3JzOjI2MDQ5MDQxODMgZHJvcHBlZDoyMTUgb3ZlcnJ1bnM6
-MjYwNDkwNDE4M2ZyYW1lOjANCj4gNykgVGh1IE9jdCAxMiAxOTo1MToxMSBTR1QgMjAxNyAtIFJY
-IHBhY2tldHM6ODM3MTI5ODAxOA0KPiBlcnJvcnM6MjYwNzE4MzkzOSBkcm9wcGVkOjIxNSBvdmVy
-cnVuczoyNjA3MTgzOTM5ZnJhbWU6MA0KPiA4KSBUaHUgT2N0IDEyIDE5OjUxOjE2IFNHVCAyMDE3
-IC0gUlggcGFja2V0czo4MzcyNDU1NTg3DQo+IGVycm9yczoyNjA5NDExMTg2IGRyb3BwZWQ6MjE1
-IG92ZXJydW5zOjI2MDk0MTExODZmcmFtZTowDQo+IDkpIFRodSBPY3QgMTIgMTk6NTE6MjEgU0dU
-IDIwMTcgLSBSWCBwYWNrZXRzOjgzNzM1ODUxMDINCj4gZXJyb3JzOjI2MTE2ODA1OTcgZHJvcHBl
-ZDoyMTUgb3ZlcnJ1bnM6MjYxMTY4MDU5NyBmcmFtZTowDQo+IDEwKSBUaHUgT2N0IDEyIDE5OjUx
-OjI2IFNHVCAyMDE3IC0gUlggcGFja2V0czo4Mzc0Njc4NTA4DQo+IGVycm9yczoyNjE0MDUzMDAw
-IGRyb3BwZWQ6MjE1IG92ZXJydW5zOjI2MTQwNTMwMDAgZnJhbWU6MA0KPiANCj4gLS0tLQ0KPiAN
-Cj4gSG93ZXZlciwgY2hlY2tpbmcgKHdpdGggdGMpIHNob3dzIG5vIHJpbmcgYnVmZmVyIG92ZXJy
-dW5zIG9uIE5JQzoNCj4gDQo+IC0tLS0NCj4gDQo+IHRjIC1zIHFkaXNjIHNob3cgZGV2IGVuczRm
-MHxlZ3JlcCBkcm9wDQo+IA0KPiBTZW50IDAgYnl0ZXMgMCBwa3QgKGRyb3BwZWQgMCwgb3Zlcmxp
-bWl0cyAwIHJlcXVldWVzIDApDQo+IFNlbnQgMCBieXRlcyAwIHBrdCAoZHJvcHBlZCAwLCBvdmVy
-bGltaXRzIDAgcmVxdWV1ZXMgMCkNCj4gU2VudCAwIGJ5dGVzIDAgcGt0IChkcm9wcGVkIDAsIG92
-ZXJsaW1pdHMgMCByZXF1ZXVlcyAwKQ0KPiBTZW50IDAgYnl0ZXMgMCBwa3QgKGRyb3BwZWQgMCwg
-b3ZlcmxpbWl0cyAwIHJlcXVldWVzIDApDQo+IFNlbnQgMCBieXRlcyAwIHBrdCAoZHJvcHBlZCAw
-LCBvdmVybGltaXRzIDAgcmVxdWV1ZXMgMCkNCj4gU2VudCAwIGJ5dGVzIDAgcGt0IChkcm9wcGVk
-IDAsIG92ZXJsaW1pdHMgMCByZXF1ZXVlcyAwKQ0KPiBTZW50IDAgYnl0ZXMgMCBwa3QgKGRyb3Bw
-ZWQgMCwgb3ZlcmxpbWl0cyAwIHJlcXVldWVzIDApDQo+IFNlbnQgMCBieXRlcyAwIHBrdCAoZHJv
-cHBlZCAwLCBvdmVybGltaXRzIDAgcmVxdWV1ZXMgMCkNCj4gU2VudCAwIGJ5dGVzIDAgcGt0IChk
-cm9wcGVkIDAsIG92ZXJsaW1pdHMgMCByZXF1ZXVlcyAwKQ0KPiBTZW50IDAgYnl0ZXMgMCBwa3Qg
-KGRyb3BwZWQgMCwgb3ZlcmxpbWl0cyAwIHJlcXVldWVzIDApDQo+IFNlbnQgMCBieXRlcyAwIHBr
-dCAoZHJvcHBlZCAwLCBvdmVybGltaXRzIDAgcmVxdWV1ZXMgMCkNCj4gU2VudCAwIGJ5dGVzIDAg
-cGt0IChkcm9wcGVkIDAsIG92ZXJsaW1pdHMgMCByZXF1ZXVlcyAwKQ0KPiBTZW50IDAgYnl0ZXMg
-MCBwa3QgKGRyb3BwZWQgMCwgb3ZlcmxpbWl0cyAwIHJlcXVldWVzIDApDQo+IFNlbnQgMCBieXRl
-cyAwIHBrdCAoZHJvcHBlZCAwLCBvdmVybGltaXRzIDAgcmVxdWV1ZXMgMCkNCj4gU2VudCAwIGJ5
-dGVzIDAgcGt0IChkcm9wcGVkIDAsIG92ZXJsaW1pdHMgMCByZXF1ZXVlcyAwKQ0KPiBTZW50IDAg
-Ynl0ZXMgMCBwa3QgKGRyb3BwZWQgMCwgb3ZlcmxpbWl0cyAwIHJlcXVldWVzIDApDQo+IFNlbnQg
-MCBieXRlcyAwIHBrdCAoZHJvcHBlZCAwLCBvdmVybGltaXRzIDAgcmVxdWV1ZXMgMCkNCj4gU2Vu
-dCAwIGJ5dGVzIDAgcGt0IChkcm9wcGVkIDAsIG92ZXJsaW1pdHMgMCByZXF1ZXVlcyAwKQ0KPiBT
-ZW50IDAgYnl0ZXMgMCBwa3QgKGRyb3BwZWQgMCwgb3ZlcmxpbWl0cyAwIHJlcXVldWVzIDApDQo+
-IFNlbnQgMCBieXRlcyAwIHBrdCAoZHJvcHBlZCAwLCBvdmVybGltaXRzIDAgcmVxdWV1ZXMgMCkN
-Cj4gU2VudCAwIGJ5dGVzIDAgcGt0IChkcm9wcGVkIDAsIG92ZXJsaW1pdHMgMCByZXF1ZXVlcyAw
-KQ0KPiBTZW50IDAgYnl0ZXMgMCBwa3QgKGRyb3BwZWQgMCwgb3ZlcmxpbWl0cyAwIHJlcXVldWVz
-IDApDQo+IFNlbnQgMCBieXRlcyAwIHBrdCAoZHJvcHBlZCAwLCBvdmVybGltaXRzIDAgcmVxdWV1
-ZXMgMCkNCj4gU2VudCAwIGJ5dGVzIDAgcGt0IChkcm9wcGVkIDAsIG92ZXJsaW1pdHMgMCByZXF1
-ZXVlcyAwKQ0KPiBTZW50IDAgYnl0ZXMgMCBwa3QgKGRyb3BwZWQgMCwgb3ZlcmxpbWl0cyAwIHJl
-cXVldWVzIDApDQo+IA0KPiAtLS0tLQ0KPiANCj4gQ2hlY2tpbmcgdGNwIHJldHJhbnNtaXRzLCB0
-aGUgcmF0ZSBpcyBsb3c6DQo+IA0KPiAtLS0tLQ0KPiANCj4gZm9yIGkgaW4gYHNlcSAxIDEwYDtk
-byBlY2hvICJgZGF0ZWAiIC0gJChuZXRzdGF0IC1zIHwgZ3JlcCAtaQ0KPiByZXRyYW5zbWl0ZWQ7
-c2xlZXAgMik7ZG9uZQ0KPiANCj4gVGh1IE9jdCAxMiAyMDowNDoyOSBTR1QgMjAxNyAtIDEwNjMz
-IHNlZ21lbnRzIHJldHJhbnNtaXRlZA0KPiBUaHUgT2N0IDEyIDIwOjA0OjMxIFNHVCAyMDE3IC0g
-MTA2MzQgc2VnbWVudHMgcmV0cmFuc21pdGVkDQo+IFRodSBPY3QgMTIgMjA6MDQ6MzMgU0dUIDIw
-MTcgLSAxMDYzNiBzZWdtZW50cyByZXRyYW5zbWl0ZWQNCj4gVGh1IE9jdCAxMiAyMDowNDozNSBT
-R1QgMjAxNyAtIDEwNjM2IHNlZ21lbnRzIHJldHJhbnNtaXRlZA0KPiBUaHUgT2N0IDEyIDIwOjA0
-OjM3IFNHVCAyMDE3IC0gMTA2Mzggc2VnbWVudHMgcmV0cmFuc21pdGVkDQo+IFRodSBPY3QgMTIg
-MjA6MDQ6MzkgU0dUIDIwMTcgLSAxMDYzOSBzZWdtZW50cyByZXRyYW5zbWl0ZWQNCj4gVGh1IE9j
-dCAxMiAyMDowNDo0MSBTR1QgMjAxNyAtIDEwNjQwIHNlZ21lbnRzIHJldHJhbnNtaXRlZA0KPiBU
-aHUgT2N0IDEyIDIwOjA0OjQzIFNHVCAyMDE3IC0gMTA2NDAgc2VnbWVudHMgcmV0cmFuc21pdGVk
-DQo+IFRodSBPY3QgMTIgMjA6MDQ6NDUgU0dUIDIwMTcgLSAxMDY0MyBzZWdtZW50cyByZXRyYW5z
-bWl0ZWQNCj4gDQo+IC0tLS0tLQ0KPiANCj4gV2hhdCBJJ3ZlIHRyaWVkIHNvIGZhcjoNCj4gDQo+
-IC0gVHVuaW5nIHRoZSBOSUMgcGFyYW1ldGVycyAocGFja2V0IGNvYWxlc2NlLCBvZmZsb2FkaW5n
-LCB1cHBpbmcgTklDDQo+IHJpbmcgYnVmZmVycyBldGMgLi4uKToNCj4gDQo+IGV0aHRvb2wgLUwg
-ZW5zNGYwIGNvbWJpbmVkIDMwDQo+IGV0aHRvb2wgLUsgZW5zNGYwIGdzbyBvbiByeCBvbiB0eCBv
-biBzZyBvbiB0c28gb24NCj4gZXRodG9vbCAtQyBlbnM0ZjAgcngtdXNlY3MgOTYNCj4gZXRodG9v
-bCAtQyBlbnM0ZjAgYWRhcHRpdmUtcnggb24NCj4gZXRodG9vbCAtRyBlbnM0ZjAgcnggNDA3OCB0
-eCA0MDc4DQo+IA0KPiAtIHN5c2N0bCB0dW5hYmxlcyBmb3IgdGhlIGtlcm5lbCAobWFpbmx5IGlu
-Y3JlYXNpbmcga2VybmVsIHRjcCBidWZmZXJzKToNCj4gDQo+IC0tLQ0KPiANCj4gc3lzY3RsIC13
-IG5ldC5pcHY0LnRjcF9sb3dfbGF0ZW5jeT0xDQo+IHN5c2N0bCAtdyBuZXQuaXB2NC50Y3BfbWF4
-X3N5bl9iYWNrbG9nPTE2Mzg0DQo+IHN5c2N0bCAtdyBuZXQuY29yZS5vcHRtZW1fbWF4PTIwNDgw
-MDAwDQo+IHN5c2N0bCAtdyBuZXQuY29yZS5uZXRkZXZfbWF4X2JhY2tsb2c9NTAwMDAwMA0KPiBz
-eXNjdGwgLXcgbmV0LmlwdjQudGNwX3JtZW09IjY1NTM2IDE3NDc2MDAgODM4ODYwODAiDQo+IHN5
-c2N0bCAtdyBuZXQuY29yZS5zb21heGNvbm49MTI4MA0KPiBzeXNjdGwgLXcga2VybmVsLnNjaGVk
-X21pbl9ncmFudWxhcml0eV9ucz0xMDAwMDAwMA0KPiBzeXNjdGwgLXcga2VybmVsLnNjaGVkX3dh
-a2V1cF9ncmFudWxhcml0eV9ucz0xNTAwMDAwMA0KPiBzeXNjdGwgLXcgbmV0LmlwdjQudGNwX3dt
-ZW09IjY1NTM2IDE3NDc2MDAgODM4ODYwODAiDQo+IHN5c2N0bCAtdyBuZXQuY29yZS53bWVtX21h
-eD0yMTQ3NDgzNjQ3DQo+IHN5c2N0bCAtdyBuZXQuY29yZS53bWVtX2RlZmF1bHQ9MjE0NzQ4MzY0
-Nw0KPiBzeXNjdGwgLXcgbmV0LmNvcmUucm1lbV9tYXg9MjE0NzQ4MzY0Nw0KPiBzeXNjdGwgLXcg
-bmV0LmNvcmUucm1lbV9kZWZhdWx0PTIxNDc0ODM2NDcNCj4gc3lzY3RsIC13IG5ldC5pcHY0LnRj
-cF9jb25nZXN0aW9uX2NvbnRyb2w9Y3ViaWMNCj4gc3lzY3RsIC13IG5ldC5pcHY0LnRjcF9ybWVt
-PSIxNjM4NDAgMzQ5NTIwMCAyNjg3NTQ1NjAiDQo+IHN5c2N0bCAtdyBuZXQuaXB2NC50Y3Bfd21l
-bT0iMTYzODQwIDM0OTUyMDAgMjY4NzU0NTYwIg0KPiBzeXNjdGwgLXcgbmV0LmlwdjQudWRwX3Jt
-ZW1fbWluPSIxNjM4NDAgMzQ5NTIwMCAyNjg3NTQ1NjAiDQo+IHN5c2N0bCAtdyBuZXQuaXB2NC51
-ZHBfd21lbV9taW49IjE2Mzg0MCAzNDk1MjAwIDI2ODc1NDU2MCINCj4gc3lzY3RsIC13IG5ldC5p
-cHY0LnRjcF9tZW09IjI2ODc1NDU2MCAyNjg3NTQ1NjAgMjY4NzU0NTYwIg0KPiBzeXNjdGwgLXcg
-bmV0LmlwdjQudWRwX21lbT0iMjY4NzU0NTYwIDI2ODc1NDU2MCAyNjg3NTQ1NjAiDQo+IHN5c2N0
-bCAtdyBuZXQuaXB2NC50Y3BfbXR1X3Byb2Jpbmc9MQ0KPiBzeXNjdGwgLXcgbmV0LmlwdjQudGNw
-X3Nsb3dfc3RhcnRfYWZ0ZXJfaWRsZT0wDQo+IA0KPiANCj4gUmVzdWx0cyBhZnRlciB0aGlzIChh
-cHBhcmVudGx5IG5vdCBtdWNoKToNCj4gDQo+IA0KPiAtLS0tDQo+IA0KPiA6fiMgZm9yIGkgaW4g
-YHNlcSAxIDEwYDtkbyBlY2hvICIkaSkgYGRhdGVgIiAtICQoaWZjb25maWcgZW5zNGYxfA0KPiBl
-Z3JlcCAiUlgifCBlZ3JlcCBvdmVycnVucztzbGVlcCA1KTtkb25lDQo+IA0KPiAxKSBUaHUgT2N0
-IDEyIDIwOjQyOjU2IFNHVCAyMDE3IC0gUlggcGFja2V0czoxNjI2MDYxNzExMw0KPiBlcnJvcnM6
-MTA5NjQ4NjU4MzYgZHJvcHBlZDo2OCBvdmVycnVuczoxMDk2NDg2NTgzNiBmcmFtZTowDQo+IDIp
-IFRodSBPY3QgMTIgMjA6NDM6MDEgU0dUIDIwMTcgLSBSWCBwYWNrZXRzOjE2MjYzMjY4NjA4DQo+
-IGVycm9yczoxMDk2OTU4OTg0NyBkcm9wcGVkOjY4IG92ZXJydW5zOjEwOTY5NTg5ODQ3IGZyYW1l
-OjANCj4gMykgVGh1IE9jdCAxMiAyMDo0MzowNiBTR1QgMjAxNyAtIFJYIHBhY2tldHM6MTYyNjU4
-Njk2OTMNCj4gZXJyb3JzOjEwOTc0NDg5NjM5IGRyb3BwZWQ6Njggb3ZlcnJ1bnM6MTA5NzQ0ODk2
-MzkgZnJhbWU6MA0KPiA0KSBUaHUgT2N0IDEyIDIwOjQzOjExIFNHVCAyMDE3IC0gUlggcGFja2V0
-czoxNjI2ODQ4NzA3OA0KPiBlcnJvcnM6MTA5NzkzMjMwNzAgZHJvcHBlZDo2OCBvdmVycnVuczox
-MDk3OTMyMzA3MCBmcmFtZTowDQo+IDUpIFRodSBPY3QgMTIgMjA6NDM6MTYgU0dUIDIwMTcgLSBS
-WCBwYWNrZXRzOjE2MjcxMDk4NTAxDQo+IGVycm9yczoxMDk4NDE5MzM0OSBkcm9wcGVkOjY4IG92
-ZXJydW5zOjEwOTg0MTkzMzQ5IGZyYW1lOjANCj4gNikgVGh1IE9jdCAxMiAyMDo0MzoyMSBTR1Qg
-MjAxNyAtIFJYIHBhY2tldHM6MTYyNzM4MDQwMDQNCj4gZXJyb3JzOjEwOTg4ODU3NjIyIGRyb3Bw
-ZWQ6Njggb3ZlcnJ1bnM6MTA5ODg4NTc2MjIgZnJhbWU6MA0KPiA3KSBUaHUgT2N0IDEyIDIwOjQz
-OjI2IFNHVCAyMDE3IC0gUlggcGFja2V0czoxNjI3NjQ5MzQ3MA0KPiBlcnJvcnM6MTA5OTMzNDAy
-MTEgZHJvcHBlZDo2OCBvdmVycnVuczoxMDk5MzM0MDIxMSBmcmFtZTowDQo+IDgpIFRodSBPY3Qg
-MTIgMjA6NDM6MzEgU0dUIDIwMTcgLSBSWCBwYWNrZXRzOjE2Mjc4NjEyMDkwDQo+IGVycm9yczox
-MDk5NzE1MjQzNiBkcm9wcGVkOjY4IG92ZXJydW5zOjEwOTk3MTUyNDM2IGZyYW1lOjANCj4gOSkg
-VGh1IE9jdCAxMiAyMDo0MzozNiBTR1QgMjAxNyAtIFJYIHBhY2tldHM6MTYyODEyNTM3MjcNCj4g
-ZXJyb3JzOjExMDAxODM0NTc5IGRyb3BwZWQ6Njggb3ZlcnJ1bnM6MTEwMDE4MzQ1NzkgZnJhbWU6
-MA0KPiAxMCkgVGh1IE9jdCAxMiAyMDo0Mzo0MSBTR1QgMjAxNyAtIFJYIHBhY2tldHM6MTYyODM5
-NzI2MjINCj4gZXJyb3JzOjExMDA2Mzc0Mjc3IGRyb3BwZWQ6Njggb3ZlcnJ1bnM6MTEwMDYzNzQy
-NzcgZnJhbWU6MA0KPiANCj4gLS0tLQ0KPiANCj4gRnJlYWsgdGhlIENQVSBmb3IgYmV0dGVyIHBl
-cmZvcm1hbmNlOg0KPiANCj4gY3B1ZnJlcS1zZXQgLXIgLWcgcGVyZm9ybWFuY2UNCj4gDQo+IFJl
-c3VsdHMgKG5vdGhpbmcgc2lnbmlmaWNhbnQpOg0KPiANCj4gLS0tLQ0KPiANCj4gOn4jIGZvciBp
-IGluIGBzZXEgMSAxMGA7ZG8gZWNobyAiJGkpIGBkYXRlYCIgLSAkKGlmY29uZmlnIGVuczRmMXwN
-Cj4gZWdyZXAgIlJYInwgZWdyZXAgb3ZlcnJ1bnM7c2xlZXAgNSk7ZG9uZQ0KPiANCj4gMSkgVGh1
-IE9jdCAxMiAyMTo1MzowNyBTR1QgMjAxNyAtIFJYIHBhY2tldHM6MTg1MDY0OTI3ODgNCj4gZXJy
-b3JzOjE0NjIyNjM5NDI2IGRyb3BwZWQ6Njggb3ZlcnJ1bnM6MTQ2MjI2Mzk0MjYgZnJhbWU6MA0K
-PiAyKSBUaHUgT2N0IDEyIDIxOjUzOjEyIFNHVCAyMDE3IC0gUlggcGFja2V0czoxODUwOTMxNDU4
-MQ0KPiBlcnJvcnM6MTQ2MjY3NTA2NDEgZHJvcHBlZDo2OCBvdmVycnVuczoxNDYyNjc1MDY0MSBm
-cmFtZTowDQo+IDMpIFRodSBPY3QgMTIgMjE6NTM6MTcgU0dUIDIwMTcgLSBSWCBwYWNrZXRzOjE4
-NTExNDg1NDU4DQo+IGVycm9yczoxNDYzMDI2ODg1OSBkcm9wcGVkOjY4IG92ZXJydW5zOjE0NjMw
-MjY4ODU5IGZyYW1lOjANCj4gNCkgVGh1IE9jdCAxMiAyMTo1MzoyMiBTR1QgMjAxNyAtIFJYIHBh
-Y2tldHM6MTg1MTQyMjM1NjINCj4gZXJyb3JzOjE0NjM0NTQ3ODQ1IGRyb3BwZWQ6Njggb3ZlcnJ1
-bnM6MTQ2MzQ1NDc4NDUgZnJhbWU6MA0KPiA1KSBUaHUgT2N0IDEyIDIxOjUzOjI3IFNHVCAyMDE3
-IC0gUlggcGFja2V0czoxODUxNjkyNjU3OA0KPiBlcnJvcnM6MTQ2Mzg3NDUxNDMgZHJvcHBlZDo2
-OCBvdmVycnVuczoxNDYzODc0NTE0MyBmcmFtZTowDQo+IDYpIFRodSBPY3QgMTIgMjE6NTM6MzIg
-U0dUIDIwMTcgLSBSWCBwYWNrZXRzOjE4NTE5NjA1NDEyDQo+IGVycm9yczoxNDY0MjkyOTAyMSBk
-cm9wcGVkOjY4IG92ZXJydW5zOjE0NjQyOTI5MDIxIGZyYW1lOjANCj4gNykgVGh1IE9jdCAxMiAy
-MTo1MzozNyBTR1QgMjAxNyAtIFJYIHBhY2tldHM6MTg1MjI1MjM1NjANCj4gZXJyb3JzOjE0NjQ3
-MTA4OTgyIGRyb3BwZWQ6Njggb3ZlcnJ1bnM6MTQ2NDcxMDg5ODIgZnJhbWU6MA0KPiA4KSBUaHUg
-T2N0IDEyIDIxOjUzOjQyIFNHVCAyMDE3IC0gUlggcGFja2V0czoxODUyNTE4NTg2OQ0KPiBlcnJv
-cnM6MTQ2NTE1NzcyODYgZHJvcHBlZDo2OCBvdmVycnVuczoxNDY1MTU3NzI4NiBmcmFtZTowDQo+
-IDkpIFRodSBPY3QgMTIgMjE6NTM6NDcgU0dUIDIwMTcgLSBSWCBwYWNrZXRzOjE4NTI3OTQ3MjY2
-DQo+IGVycm9yczoxNDY1NTk2MTg0NyBkcm9wcGVkOjY4IG92ZXJydW5zOjE0NjU1OTYxODQ3IGZy
-YW1lOjANCj4gMTApIFRodSBPY3QgMTIgMjE6NTM6NTIgU0dUIDIwMTcgLSBSWCBwYWNrZXRzOjE4
-NTMwNzAzMjg4DQo+IGVycm9yczoxNDY1OTk4ODM5OCBkcm9wcGVkOjY4IG92ZXJydW5zOjE0NjU5
-OTg4Mzk4IGZyYW1lOjANCj4gDQo+IC0tLS0NCj4gDQo+IFJlc3VsdHMgdXNpbmcgc2FyOg0KPiAN
-Cj4gLS0tLQ0KPiANCj4gOn4jIHNhciAtbiBFREVWIDUgM3wgZWdyZXAgIihlbnM0ZjF8SUZBQ0Up
-Ig0KPiANCj4gMTE6MTc6NDMgUE0gICAgIElGQUNFICAgcnhlcnIvcyAgIHR4ZXJyL3MgICAgY29s
-bC9zICByeGRyb3Avcw0KPiB0eGRyb3AvcyAgdHhjYXJyL3MgIHJ4ZnJhbS9zICByeGZpZm8vcyAg
-dHhmaWZvL3MNCj4gMTE6MTc6NDggUE0gICAgZW5zNGYxIDM2MDgwOS40MCAgICAgIDAuMDAgICAg
-ICAwLjAwICAgICAgMC4wMA0KPiAwLjAwICAgICAgMC4wMCAgICAgIDAuMDAgMzYwODA5LjQwICAg
-ICAgMC4wMA0KPiAxMToxNzo1MyBQTSAgICBlbnM0ZjEgMzgyNTAwLjQwICAgICAgMC4wMCAgICAg
-IDAuMDAgICAgICAwLjAwDQo+IDAuMDAgICAgICAwLjAwICAgICAgMC4wMCAzODI1MDAuNDAgICAg
-ICAwLjAwDQo+IDExOjE3OjU4IFBNICAgIGVuczRmMSAzNTM3MTcuMDAgICAgICAwLjAwICAgICAg
-MC4wMCAgICAgIDAuMDANCj4gMC4wMCAgICAgIDAuMDAgICAgICAwLjAwIDM1MzcxNy4wMCAgICAg
-IDAuMDANCj4gQXZlcmFnZTogICAgICAgZW5zNGYxIDM2NTY3NS42MCAgICAgIDAuMDAgICAgICAw
-LjAwICAgICAgMC4wMA0KPiAwLjAwICAgICAgMC4wMCAgICAgIDAuMDAgMzY1Njc1LjYwICAgICAg
-MC4wMA0KPiANCj4gLS0tLQ0KPiAtLQ0KPiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDog
-c2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtc2N0cCIgaW4NCj4gdGhlIGJvZHkgb2Yg
-YSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gTW9yZSBtYWpvcmRvbW8g
-aW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo
+Hi David
+
+On Fri, Oct 13, 2017 at 11:56 PM, David Laight <David.Laight@aculab.com> wrote:
+> From: Traiano Welcome
+>
+> (copied to netdev)
+>> Sent: 13 October 2017 07:16
+>> To: linux-sctp@vger.kernel.org
+>> Subject: Kernel Performance Tuning for High Volume SCTP traffic
+>>
+>> Hi List
+>>
+>> I'm running a linux server processing high volumes of SCTP traffic and
+>> am seeing large numbers of packet overruns (ifconfig output).
+>
+> I'd guess that overruns indicate that the ethernet MAC is failing to
+> copy the receive frames into kernel memory.
+> It is probably running out of receive buffers, but might be
+> suffering from a lack of bus bandwidth.
+> MAC drivers usually discard receive frames if they can't get
+> a replacement buffer - so you shouldn't run out of rx buffers.
+>
+> This means the errors are probably below SCTP - so changing SCTP parameters
+> is unlikely to help.
+>
+
+
+Does this mean that tuning UDP performance could help ? Or do you mean
+hardware (NIC) performance could be the issue?
+
+
+
+> I'd make sure any receive interrupt coalescing/mitigation is turned off.
+>
+
+I'll try that.
+
+
+
+>         David
+>
+>
+>> I think a large amount of performance tuning can probably be done to
+>> improve the linux kernel's SCTP handling performance, but there seem
+>> to be no guides on this available. Could anyone advise on this?
+>>
+>>
+>> Here are my current settings, and below, some stats:
+>>
+>>
+>> -----
+>> net.sctp.addip_enable = 0
+>> net.sctp.addip_noauth_enable = 0
+>> net.sctp.addr_scope_policy = 1
+>> net.sctp.association_max_retrans = 10
+>> net.sctp.auth_enable = 0
+>> net.sctp.cookie_hmac_alg = sha1
+>> net.sctp.cookie_preserve_enable = 1
+>> net.sctp.default_auto_asconf = 0
+>> net.sctp.hb_interval = 30000
+>> net.sctp.max_autoclose = 8589934
+>> net.sctp.max_burst = 40
+>> net.sctp.max_init_retransmits = 8
+>> net.sctp.path_max_retrans = 5
+>> net.sctp.pf_enable = 1
+>> net.sctp.pf_retrans = 0
+>> net.sctp.prsctp_enable = 1
+>> net.sctp.rcvbuf_policy = 0
+>> net.sctp.rto_alpha_exp_divisor = 3
+>> net.sctp.rto_beta_exp_divisor = 2
+>> net.sctp.rto_initial = 3000
+>> net.sctp.rto_max = 60000
+>> net.sctp.rto_min = 1000
+>> net.sctp.rwnd_update_shift = 4
+>> net.sctp.sack_timeout = 50
+>> net.sctp.sctp_mem = 61733040 82310730 123466080
+>> net.sctp.sctp_rmem = 40960 8655000 41943040
+>> net.sctp.sctp_wmem = 40960 8655000 41943040
+>> net.sctp.sndbuf_policy = 0
+>> net.sctp.valid_cookie_life = 60000
+>> -----
+>>
+>>
+>> I'm seeing a high rate of packet errors (almost all overruns) on both
+>> 10gb NICs attached to my linux server.
+>>
+>> The system is handling high volumes of network traffic, so this is
+>> likely a linux kernel tuning problem.
+>>
+>> All the normal tuning parameters I've tried thus far seems to be
+>> having little effect and I'm still seeing high volumes of packet
+>> overruns.
+>>
+>> Any pointers on other things I could try to get the system handling
+>> SCTP packets efficiently would be much appreciated!
+>>
+>> -----
+>> :~# ifconfig ens4f1
+>>
+>> ens4f1    Link encap:Ethernet  HWaddr 5c:b9:01:de:0d:4c
+>>           UP BROADCAST RUNNING PROMISC MULTICAST  MTU:9000  Metric:1
+>>           RX packets:22313514162 errors:17598241316 dropped:68
+>> overruns:17598241316 frame:0
+>>           TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
+>>           collisions:0 txqueuelen:1000
+>>           RX bytes:31767480894219 (31.7 TB)  TX bytes:0 (0.0 B)
+>>           Interrupt:17 Memory:c9800000-c9ffffff
+>> -----
+>>
+>> System details:
+>>
+>> OS        : Ubuntu Linux (4.11.0-14-generic #20~16.04.1-Ubuntu SMP x86_64 )
+>> CPU Cores : 72
+>> NIC Model : NetXtreme II BCM57810 10 Gigabit Ethernet
+>> RAM       : 240 GiB
+>>
+>> NIC sample stats showing packet error rate:
+>>
+>> ----
+>>
+>> for i in `seq 1 10`;do echo "$i) `date`" - $(ifconfig ens4f0| egrep
+>> "RX"| egrep overruns;sleep 5);done
+>>
+>> 1) Thu Oct 12 19:50:40 SGT 2017 - RX packets:8364065830
+>> errors:2594507718 dropped:215 overruns:2594507718 frame:0
+>> 2) Thu Oct 12 19:50:45 SGT 2017 - RX packets:8365336060
+>> errors:2596662672 dropped:215 overruns:2596662672 frame:0
+>> 3) Thu Oct 12 19:50:50 SGT 2017 - RX packets:8366602087
+>> errors:2598840959 dropped:215 overruns:2598840959 frame:0
+>> 4) Thu Oct 12 19:50:55 SGT 2017 - RX packets:8367881271
+>> errors:2600989229 dropped:215 overruns:2600989229 frame:0
+>> 5) Thu Oct 12 19:51:01 SGT 2017 - RX packets:8369147536
+>> errors:2603157030 dropped:215 overruns:2603157030frame:0
+>> 6) Thu Oct 12 19:51:06 SGT 2017 - RX packets:8370149567
+>> errors:2604904183 dropped:215 overruns:2604904183frame:0
+>> 7) Thu Oct 12 19:51:11 SGT 2017 - RX packets:8371298018
+>> errors:2607183939 dropped:215 overruns:2607183939frame:0
+>> 8) Thu Oct 12 19:51:16 SGT 2017 - RX packets:8372455587
+>> errors:2609411186 dropped:215 overruns:2609411186frame:0
+>> 9) Thu Oct 12 19:51:21 SGT 2017 - RX packets:8373585102
+>> errors:2611680597 dropped:215 overruns:2611680597 frame:0
+>> 10) Thu Oct 12 19:51:26 SGT 2017 - RX packets:8374678508
+>> errors:2614053000 dropped:215 overruns:2614053000 frame:0
+>>
+>> ----
+>>
+>> However, checking (with tc) shows no ring buffer overruns on NIC:
+>>
+>> ----
+>>
+>> tc -s qdisc show dev ens4f0|egrep drop
+>>
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>> Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0)
+>>
+>> -----
+>>
+>> Checking tcp retransmits, the rate is low:
+>>
+>> -----
+>>
+>> for i in `seq 1 10`;do echo "`date`" - $(netstat -s | grep -i
+>> retransmited;sleep 2);done
+>>
+>> Thu Oct 12 20:04:29 SGT 2017 - 10633 segments retransmited
+>> Thu Oct 12 20:04:31 SGT 2017 - 10634 segments retransmited
+>> Thu Oct 12 20:04:33 SGT 2017 - 10636 segments retransmited
+>> Thu Oct 12 20:04:35 SGT 2017 - 10636 segments retransmited
+>> Thu Oct 12 20:04:37 SGT 2017 - 10638 segments retransmited
+>> Thu Oct 12 20:04:39 SGT 2017 - 10639 segments retransmited
+>> Thu Oct 12 20:04:41 SGT 2017 - 10640 segments retransmited
+>> Thu Oct 12 20:04:43 SGT 2017 - 10640 segments retransmited
+>> Thu Oct 12 20:04:45 SGT 2017 - 10643 segments retransmited
+>>
+>> ------
+>>
+>> What I've tried so far:
+>>
+>> - Tuning the NIC parameters (packet coalesce, offloading, upping NIC
+>> ring buffers etc ...):
+>>
+>> ethtool -L ens4f0 combined 30
+>> ethtool -K ens4f0 gso on rx on tx on sg on tso on
+>> ethtool -C ens4f0 rx-usecs 96
+>> ethtool -C ens4f0 adaptive-rx on
+>> ethtool -G ens4f0 rx 4078 tx 4078
+>>
+>> - sysctl tunables for the kernel (mainly increasing kernel tcp buffers):
+>>
+>> ---
+>>
+>> sysctl -w net.ipv4.tcp_low_latency=1
+>> sysctl -w net.ipv4.tcp_max_syn_backlog384
+>> sysctl -w net.core.optmem_max 480000
+>> sysctl -w net.core.netdev_max_backlogP00000
+>> sysctl -w net.ipv4.tcp_rmem="65536 1747600 83886080"
+>> sysctl -w net.core.somaxconn80
+>> sysctl -w kernel.sched_min_granularity_ns000000
+>> sysctl -w kernel.sched_wakeup_granularity_ns000000
+>> sysctl -w net.ipv4.tcp_wmem="65536 1747600 83886080"
+>> sysctl -w net.core.wmem_max!47483647
+>> sysctl -w net.core.wmem_default!47483647
+>> sysctl -w net.core.rmem_max!47483647
+>> sysctl -w net.core.rmem_default!47483647
+>> sysctl -w net.ipv4.tcp_congestion_control=cubic
+>> sysctl -w net.ipv4.tcp_rmem="163840 3495200 268754560"
+>> sysctl -w net.ipv4.tcp_wmem="163840 3495200 268754560"
+>> sysctl -w net.ipv4.udp_rmem_min="163840 3495200 268754560"
+>> sysctl -w net.ipv4.udp_wmem_min="163840 3495200 268754560"
+>> sysctl -w net.ipv4.tcp_mem="268754560 268754560 268754560"
+>> sysctl -w net.ipv4.udp_mem="268754560 268754560 268754560"
+>> sysctl -w net.ipv4.tcp_mtu_probing=1
+>> sysctl -w net.ipv4.tcp_slow_start_after_idle=0
+>>
+>>
+>> Results after this (apparently not much):
+>>
+>>
+>> ----
+>>
+>> :~# for i in `seq 1 10`;do echo "$i) `date`" - $(ifconfig ens4f1|
+>> egrep "RX"| egrep overruns;sleep 5);done
+>>
+>> 1) Thu Oct 12 20:42:56 SGT 2017 - RX packets:16260617113
+>> errors:10964865836 dropped:68 overruns:10964865836 frame:0
+>> 2) Thu Oct 12 20:43:01 SGT 2017 - RX packets:16263268608
+>> errors:10969589847 dropped:68 overruns:10969589847 frame:0
+>> 3) Thu Oct 12 20:43:06 SGT 2017 - RX packets:16265869693
+>> errors:10974489639 dropped:68 overruns:10974489639 frame:0
+>> 4) Thu Oct 12 20:43:11 SGT 2017 - RX packets:16268487078
+>> errors:10979323070 dropped:68 overruns:10979323070 frame:0
+>> 5) Thu Oct 12 20:43:16 SGT 2017 - RX packets:16271098501
+>> errors:10984193349 dropped:68 overruns:10984193349 frame:0
+>> 6) Thu Oct 12 20:43:21 SGT 2017 - RX packets:16273804004
+>> errors:10988857622 dropped:68 overruns:10988857622 frame:0
+>> 7) Thu Oct 12 20:43:26 SGT 2017 - RX packets:16276493470
+>> errors:10993340211 dropped:68 overruns:10993340211 frame:0
+>> 8) Thu Oct 12 20:43:31 SGT 2017 - RX packets:16278612090
+>> errors:10997152436 dropped:68 overruns:10997152436 frame:0
+>> 9) Thu Oct 12 20:43:36 SGT 2017 - RX packets:16281253727
+>> errors:11001834579 dropped:68 overruns:11001834579 frame:0
+>> 10) Thu Oct 12 20:43:41 SGT 2017 - RX packets:16283972622
+>> errors:11006374277 dropped:68 overruns:11006374277 frame:0
+>>
+>> ----
+>>
+>> Freak the CPU for better performance:
+>>
+>> cpufreq-set -r -g performance
+>>
+>> Results (nothing significant):
+>>
+>> ----
+>>
+>> :~# for i in `seq 1 10`;do echo "$i) `date`" - $(ifconfig ens4f1|
+>> egrep "RX"| egrep overruns;sleep 5);done
+>>
+>> 1) Thu Oct 12 21:53:07 SGT 2017 - RX packets:18506492788
+>> errors:14622639426 dropped:68 overruns:14622639426 frame:0
+>> 2) Thu Oct 12 21:53:12 SGT 2017 - RX packets:18509314581
+>> errors:14626750641 dropped:68 overruns:14626750641 frame:0
+>> 3) Thu Oct 12 21:53:17 SGT 2017 - RX packets:18511485458
+>> errors:14630268859 dropped:68 overruns:14630268859 frame:0
+>> 4) Thu Oct 12 21:53:22 SGT 2017 - RX packets:18514223562
+>> errors:14634547845 dropped:68 overruns:14634547845 frame:0
+>> 5) Thu Oct 12 21:53:27 SGT 2017 - RX packets:18516926578
+>> errors:14638745143 dropped:68 overruns:14638745143 frame:0
+>> 6) Thu Oct 12 21:53:32 SGT 2017 - RX packets:18519605412
+>> errors:14642929021 dropped:68 overruns:14642929021 frame:0
+>> 7) Thu Oct 12 21:53:37 SGT 2017 - RX packets:18522523560
+>> errors:14647108982 dropped:68 overruns:14647108982 frame:0
+>> 8) Thu Oct 12 21:53:42 SGT 2017 - RX packets:18525185869
+>> errors:14651577286 dropped:68 overruns:14651577286 frame:0
+>> 9) Thu Oct 12 21:53:47 SGT 2017 - RX packets:18527947266
+>> errors:14655961847 dropped:68 overruns:14655961847 frame:0
+>> 10) Thu Oct 12 21:53:52 SGT 2017 - RX packets:18530703288
+>> errors:14659988398 dropped:68 overruns:14659988398 frame:0
+>>
+>> ----
+>>
+>> Results using sar:
+>>
+>> ----
+>>
+>> :~# sar -n EDEV 5 3| egrep "(ens4f1|IFACE)"
+>>
+>> 11:17:43 PM     IFACE   rxerr/s   txerr/s    coll/s  rxdrop/s
+>> txdrop/s  txcarr/s  rxfram/s  rxfifo/s  txfifo/s
+>> 11:17:48 PM    ens4f1 360809.40      0.00      0.00      0.00
+>> 0.00      0.00      0.00 360809.40      0.00
+>> 11:17:53 PM    ens4f1 382500.40      0.00      0.00      0.00
+>> 0.00      0.00      0.00 382500.40      0.00
+>> 11:17:58 PM    ens4f1 353717.00      0.00      0.00      0.00
+>> 0.00      0.00      0.00 353717.00      0.00
+>> Average:       ens4f1 365675.60      0.00      0.00      0.00
+>> 0.00      0.00      0.00 365675.60      0.00
+>>
+>> ----
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
