@@ -1,58 +1,156 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 28 Sep 2017 20:25:14 +0000
-Subject: [PATCH net-next 01/10] sctp: silence warns on sctp_stream_init allocations
-Message-Id: <78853a7e413d1900fb410d73d064558fa09f221d.1506536044.git.marcelo.leitner@gmail.com>
+From: Richard Haines <richard_c_haines@btinternet.com>
+Date: Tue, 17 Oct 2017 13:58:54 +0000
+Subject: [RFC PATCH 4/5] netlabel: Add SCTP support
+Message-Id: <20171017135854.4343-1-richard_c_haines@btinternet.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1506536044.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1506536044.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>, David Laight <David.Laight@ACULAB.COM>
+To: linux-security-module@vger.kernel.org
 
-As SCTP supports up to 65535 streams, that can lead to very large
-allocations in sctp_stream_init(). As Xin Long noticed, systems with
-small amounts of memory are more prone to not have enough memory and
-dump warnings on dmesg initiated by user actions. Thus, silence them.
+Add support to label SCTP associations and cater for a situation where
+family = PF_INET6 with an ip_hdr(skb)->version = 4.
 
-Also, if the reallocation of stream->out is not necessary, skip it and
-keep the memory we already have.
-
-Reported-by: Xin Long <lucien.xin@gmail.com>
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Signed-off-by: Richard Haines <richard_c_haines@btinternet.com>
 ---
- net/sctp/stream.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+ include/net/netlabel.h            |  3 ++
+ net/netlabel/netlabel_kapi.c      | 80 +++++++++++++++++++++++++++++++++++++++
+ net/netlabel/netlabel_unlabeled.c | 10 +++++
+ 3 files changed, 93 insertions(+)
 
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index 63ea1550371493ec8863627c7a43f46a22f4a4c9..1afa9555808390d5fc736727422d9700a3855613 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -40,9 +40,14 @@ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
- {
- 	int i;
- 
-+	gfp |= __GFP_NOWARN;
+diff --git a/include/net/netlabel.h b/include/net/netlabel.h
+index 72d6435..7348966 100644
+--- a/include/net/netlabel.h
++++ b/include/net/netlabel.h
+@@ -494,6 +494,9 @@ int netlbl_conn_setattr(struct sock *sk,
+ 			const struct netlbl_lsm_secattr *secattr);
+ int netlbl_req_setattr(struct request_sock *req,
+ 		       const struct netlbl_lsm_secattr *secattr);
++int netlbl_sctp_setattr(struct sock *sk,
++			struct sk_buff *skb,
++			const struct netlbl_lsm_secattr *secattr);
+ void netlbl_req_delattr(struct request_sock *req);
+ int netlbl_skbuff_setattr(struct sk_buff *skb,
+ 			  u16 family,
+diff --git a/net/netlabel/netlabel_kapi.c b/net/netlabel/netlabel_kapi.c
+index ea7c670..1c82bbe 100644
+--- a/net/netlabel/netlabel_kapi.c
++++ b/net/netlabel/netlabel_kapi.c
+@@ -1121,6 +1121,7 @@ int netlbl_conn_setattr(struct sock *sk,
+ 	switch (addr->sa_family) {
+ 	case AF_INET:
+ 		addr4 = (struct sockaddr_in *)addr;
 +
- 	/* Initial stream->out size may be very big, so free it and alloc
--	 * a new one with new outcnt to save memory.
-+	 * a new one with new outcnt to save memory if needed.
- 	 */
-+	if (outcnt = stream->outcnt)
-+		goto in;
+ 		entry = netlbl_domhsh_getentry_af4(secattr->domain,
+ 						   addr4->sin_addr.s_addr);
+ 		if (entry = NULL) {
+@@ -1177,6 +1178,85 @@ int netlbl_conn_setattr(struct sock *sk,
+ }
+ 
+ /**
++ * netlbl_sctp_setattr - Label an incoming sctp association socket using
++ * the correct protocol
++ * @sk: the socket to label
++ * @skb: the packet
++ * @secattr: the security attributes
++ *
++ * Description:
++ * Attach the correct label to the given socket using the security attributes
++ * specified in @secattr.  Returns zero on success, negative values on failure.
++ *
++ */
++int netlbl_sctp_setattr(struct sock *sk,
++			struct sk_buff *skb,
++			const struct netlbl_lsm_secattr *secattr)
++{
++	int ret_val = -EINVAL;
++	struct netlbl_dommap_def *entry;
++	struct iphdr *hdr4;
++#if IS_ENABLED(CONFIG_IPV6)
++	struct ipv6hdr *hdr6;
++#endif
 +
- 	kfree(stream->out);
- 
- 	stream->out = kcalloc(outcnt, sizeof(*stream->out), gfp);
-@@ -53,6 +58,7 @@ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
- 	for (i = 0; i < stream->outcnt; i++)
- 		stream->out[i].state = SCTP_STREAM_OPEN;
- 
-+in:
- 	if (!incnt)
- 		return 0;
- 
++	rcu_read_lock();
++	switch (sk->sk_family) {
++	case AF_INET:
++		hdr4 = ip_hdr(skb);
++
++		entry = netlbl_domhsh_getentry_af4(secattr->domain,
++						   hdr4->saddr);
++		if (entry = NULL) {
++			ret_val = -ENOENT;
++			goto sctp_setattr_return;
++		}
++		switch (entry->type) {
++		case NETLBL_NLTYPE_CIPSOV4:
++			ret_val = cipso_v4_sock_setattr(sk, entry->cipso,
++							secattr);
++			break;
++		case NETLBL_NLTYPE_UNLABELED:
++			netlbl_sock_delattr(sk);
++			ret_val = 0;
++			break;
++		default:
++			ret_val = -ENOENT;
++		}
++		break;
++#if IS_ENABLED(CONFIG_IPV6)
++	case AF_INET6:
++		hdr6 = ipv6_hdr(skb);
++		entry = netlbl_domhsh_getentry_af6(secattr->domain,
++						   &hdr6->saddr);
++		if (entry = NULL) {
++			ret_val = -ENOENT;
++			goto sctp_setattr_return;
++		}
++		switch (entry->type) {
++		case NETLBL_NLTYPE_CALIPSO:
++			ret_val = calipso_sock_setattr(sk, entry->calipso,
++						       secattr);
++			break;
++		case NETLBL_NLTYPE_UNLABELED:
++			netlbl_sock_delattr(sk);
++			ret_val = 0;
++			break;
++		default:
++			ret_val = -ENOENT;
++		}
++		break;
++#endif /* IPv6 */
++	default:
++		ret_val = -EPROTONOSUPPORT;
++	}
++
++sctp_setattr_return:
++	rcu_read_unlock();
++	return ret_val;
++}
++
++/**
+  * netlbl_req_setattr - Label a request socket using the correct protocol
+  * @req: the request socket to label
+  * @secattr: the security attributes
+diff --git a/net/netlabel/netlabel_unlabeled.c b/net/netlabel/netlabel_unlabeled.c
+index 22dc1b9..c070dfc 100644
+--- a/net/netlabel/netlabel_unlabeled.c
++++ b/net/netlabel/netlabel_unlabeled.c
+@@ -1472,6 +1472,16 @@ int netlbl_unlabel_getattr(const struct sk_buff *skb,
+ 		iface = rcu_dereference(netlbl_unlhsh_def);
+ 	if (iface = NULL || !iface->valid)
+ 		goto unlabel_getattr_nolabel;
++
++#if IS_ENABLED(CONFIG_IPV6)
++	/* When resolving a fallback label, check the sk_buff version as
++	 * it is possible (e.g. SCTP) to have family = PF_INET6 while
++	 * receiving ip_hdr(skb)->version = 4.
++	 */
++	if (family = PF_INET6 && ip_hdr(skb)->version = 4)
++		family = PF_INET;
++#endif /* IPv6 */
++
+ 	switch (family) {
+ 	case PF_INET: {
+ 		struct iphdr *hdr4;
 -- 
-2.13.5
+2.13.6
 
