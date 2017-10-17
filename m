@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 17 Oct 2017 16:24:58 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 17 Oct 2017 17:33:25 +0000
 Subject: Re: [PATCH net] sctp: do not peel off an assoc from one netns to another one
-Message-Id: <20171017162458.GA5357@localhost.localdomain>
+Message-Id: <20171017173325.GA23530@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <e637d68ce6f4f94dce8cb30c647e672ebb1f0b7b.1508253970.git.lucien.xin@gmail.com>
 In-Reply-To: <e637d68ce6f4f94dce8cb30c647e672ebb1f0b7b.1508253970.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>, chunwang@redhat.com, syzkaller@googlegroups.com
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, chunwang@redhat.com, syzkaller@googlegroups.com
 
 On Tue, Oct 17, 2017 at 11:26:10PM +0800, Xin Long wrote:
 > Now when peeling off an association to the sock in another netns, all
@@ -44,9 +44,6 @@ On Tue, Oct 17, 2017 at 11:26:10PM +0800, Xin Long wrote:
 > 
 > Reported-by: ChunYu Wang <chunwang@redhat.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/socket.c | 4 ++++
 >  1 file changed, 4 insertions(+)
@@ -74,3 +71,4 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
