@@ -1,329 +1,261 @@
 From: Richard Haines <richard_c_haines@btinternet.com>
-Date: Tue, 24 Oct 2017 20:27:51 +0000
-Subject: Re: [RFC PATCH 3/5] sctp: Add LSM hooks
-Message-Id: <1508876871.26687.5.camel@btinternet.com>
+Date: Tue, 17 Oct 2017 13:58:06 +0000
+Subject: [RFC PATCH 2/5] sctp: Add ip option support
+Message-Id: <20171017135806.4244-1-richard_c_haines@btinternet.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20171017135833.4292-1-richard_c_haines@btinternet.com>
-	<CADvbK_d+LKRQHZXn5LMy+4L0Nq+ZEkvHGk=zn3odUr7FrzvkBQ@mail.gmail.com>
-	<20171020111637.GA14713@neilslaptop.think-freely.org>
-	<1508501095.8370.7.camel@btinternet.com>
-	<CADvbK_cLGA4PH_c4FB0eSUAMoV0XgtyA++cTFsGDkb=nvtR68g@mail.gmail.com>
-In-Reply-To: <CADvbK_cLGA4PH_c4FB0eSUAMoV0XgtyA++cTFsGDkb=nvtR68g@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-security-module@vger.kernel.org
 
-On Fri, 2017-10-20 at 21:14 +0800, Xin Long wrote:
-> On Fri, Oct 20, 2017 at 8:04 PM, Richard Haines
-> <richard_c_haines@btinternet.com> wrote:
-> > On Fri, 2017-10-20 at 07:16 -0400, Neil Horman wrote:
-> > > On Wed, Oct 18, 2017 at 11:05:09PM +0800, Xin Long wrote:
-> > > > On Tue, Oct 17, 2017 at 9:58 PM, Richard Haines
-> > > > <richard_c_haines@btinternet.com> wrote:
-> > > > > Add security hooks to allow security modules to exercise
-> > > > > access
-> > > > > control
-> > > > > over SCTP.
-> > > > > 
-> > > > > Signed-off-by: Richard Haines <richard_c_haines@btinternet.co
-> > > > > m>
-> > > > > ---
-> > > > >  include/net/sctp/structs.h | 10 ++++++++
-> > > > >  include/uapi/linux/sctp.h  |  1 +
-> > > > >  net/sctp/sm_make_chunk.c   | 12 +++++++++
-> > > > >  net/sctp/sm_statefuns.c    | 14 ++++++++++-
-> > > > >  net/sctp/socket.c          | 61
-> > > > > +++++++++++++++++++++++++++++++++++++++++++++-
-> > > > >  5 files changed, 96 insertions(+), 2 deletions(-)
-> > > > > 
-> > > > > diff --git a/include/net/sctp/structs.h
-> > > > > b/include/net/sctp/structs.h
-> > > > > index 7767577..6e72e3e 100644
-> > > > > --- a/include/net/sctp/structs.h
-> > > > > +++ b/include/net/sctp/structs.h
-> > > > > @@ -1270,6 +1270,16 @@ struct sctp_endpoint {
-> > > > >               reconf_enable:1;
-> > > > > 
-> > > > >         __u8  strreset_enable;
-> > > > > +
-> > > > > +       /* Security identifiers from incoming (INIT). These
-> > > > > are
-> > > > > set by
-> > > > > +        * security_sctp_assoc_request(). These will only be
-> > > > > used
-> > > > > by
-> > > > > +        * SCTP TCP type sockets and peeled off connections
-> > > > > as
-> > > > > they
-> > > > > +        * cause a new socket to be generated.
-> > > > > security_sctp_sk_clone()
-> > > > > +        * will then plug these into the new socket.
-> > > > > +        */
-> > > > > +
-> > > > > +       u32 secid;
-> > > > > +       u32 peer_secid;
-> > > > >  };
-> > > > > 
-> > > > >  /* Recover the outter endpoint structure. */
-> > > > > diff --git a/include/uapi/linux/sctp.h
-> > > > > b/include/uapi/linux/sctp.h
-> > > > > index 6217ff8..c04812f 100644
-> > > > > --- a/include/uapi/linux/sctp.h
-> > > > > +++ b/include/uapi/linux/sctp.h
-> > > > > @@ -122,6 +122,7 @@ typedef __s32 sctp_assoc_t;
-> > > > >  #define SCTP_RESET_ASSOC       120
-> > > > >  #define SCTP_ADD_STREAMS       121
-> > > > >  #define SCTP_SOCKOPT_PEELOFF_FLAGS 122
-> > > > > +#define SCTP_SENDMSG_CONNECT   123
-> > > > > 
-> > > > >  /* PR-SCTP policies */
-> > > > >  #define SCTP_PR_SCTP_NONE      0x0000
-> > > > > diff --git a/net/sctp/sm_make_chunk.c
-> > > > > b/net/sctp/sm_make_chunk.c
-> > > > > index 6110447..ca4705b 100644
-> > > > > --- a/net/sctp/sm_make_chunk.c
-> > > > > +++ b/net/sctp/sm_make_chunk.c
-> > > > > @@ -3059,6 +3059,12 @@ static __be16
-> > > > > sctp_process_asconf_param(struct sctp_association *asoc,
-> > > > >                 if (af->is_any(&addr))
-> > > > >                         memcpy(&addr, &asconf->source,
-> > > > > sizeof(addr));
-> > > > > 
-> > > > > +               if (security_sctp_bind_connect(asoc->ep-
-> > > > > >base.sk,
-> > > > > +                                              SCTP_PARAM_ADD
-> > > > > _IP,
-> > > > > +                                              (struct
-> > > > > sockaddr
-> > > > > *)&addr,
-> > > > > +                                              af-
-> > > > > >sockaddr_len))
-> > > > > +                       return SCTP_ERROR_REQ_REFUSED;
-> > > > > +
-> > > > >                 /* ADDIP 4.3 D9) If an endpoint receives an
-> > > > > ADD
-> > > > > IP address
-> > > > >                  * request and does not have the local
-> > > > > resources
-> > > > > to add this
-> > > > >                  * new address to the association, it MUST
-> > > > > return
-> > > > > an Error
-> > > > > @@ -3125,6 +3131,12 @@ static __be16
-> > > > > sctp_process_asconf_param(struct sctp_association *asoc,
-> > > > >                 if (af->is_any(&addr))
-> > > > >                         memcpy(&addr.v4, sctp_source(asconf),
-> > > > > sizeof(addr));
-> > > > > 
-> > > > > +               if (security_sctp_bind_connect(asoc->ep-
-> > > > > >base.sk,
-> > > > > +                                              SCTP_PARAM_SET
-> > > > > _PRI
-> > > > > MARY,
-> > > > > +                                              (struct
-> > > > > sockaddr
-> > > > > *)&addr,
-> > > > > +                                              af-
-> > > > > >sockaddr_len))
-> > > > > +                       return SCTP_ERROR_REQ_REFUSED;
-> > > > > +
-> > > > >                 peer = sctp_assoc_lookup_paddr(asoc, &addr);
-> > > > >                 if (!peer)
-> > > > >                         return SCTP_ERROR_DNS_FAILED;
-> > > > > diff --git a/net/sctp/sm_statefuns.c
-> > > > > b/net/sctp/sm_statefuns.c
-> > > > > index b2a74c3..4ba5805 100644
-> > > > > --- a/net/sctp/sm_statefuns.c
-> > > > > +++ b/net/sctp/sm_statefuns.c
-> > > > > @@ -314,6 +314,11 @@ sctp_disposition_t
-> > > > > sctp_sf_do_5_1B_init(struct net *net,
-> > > > >         sctp_unrecognized_param_t *unk_param;
-> > > > >         int len;
-> > > > > 
-> > > > > +       /* Update socket peer label if first association. */
-> > > > > +       if (security_sctp_assoc_request((struct sctp_endpoint
-> > > > > *)ep,
-> > > > > +                                       chunk->skb,
-> > > > > SCTP_CID_INIT))
-> > > > > +               return sctp_sf_pdiscard(net, ep, asoc, type,
-> > > > > arg,
-> > > > > commands);
-> > > > > +
-> > > > >         /* 6.10 Bundling
-> > > > >          * An endpoint MUST NOT bundle INIT, INIT ACK or
-> > > > >          * SHUTDOWN COMPLETE with any other chunks.
-> > > > > @@ -446,7 +451,6 @@ sctp_disposition_t
-> > > > > sctp_sf_do_5_1B_init(struct net *net,
-> > > > >         }
-> > > > > 
-> > > > >         sctp_add_cmd_sf(commands, SCTP_CMD_NEW_ASOC,
-> > > > > SCTP_ASOC(new_asoc));
-> > > > > -
-> > > > >         sctp_add_cmd_sf(commands, SCTP_CMD_REPLY,
-> > > > > SCTP_CHUNK(repl));
-> > > > > 
-> > > > >         /*
-> > > > > @@ -507,6 +511,11 @@ sctp_disposition_t
-> > > > > sctp_sf_do_5_1C_ack(struct net *net,
-> > > > >         struct sctp_chunk *err_chunk;
-> > > > >         struct sctp_packet *packet;
-> > > > > 
-> > > > > +       /* Update socket peer label if first association. */
-> > > > > +       if (security_sctp_assoc_request((struct sctp_endpoint
-> > > > > *)ep,
-> > > > > +                                       chunk->skb,
-> > > > > SCTP_CID_INIT_ACK))
-> > > > > +               return sctp_sf_pdiscard(net, ep, asoc, type,
-> > > > > arg,
-> > > > > commands);
-> > > > > +
-> > > > 
-> > > > Just thinking security_sctp_assoc_request hook should also be
-> > > > in
-> > > > sctp_sf_do_unexpected_init() and sctp_sf_do_5_2_4_dupcook() ?
-> > > 
-> > > I agree, i think if this hook is gating on the creation of a new
-> > > association,
-> > > they should be in all the locations where that happens
-> > > Neil
-> > 
-> > Thanks for the comments. I've just added the hook as requested for
-> > my
-> > next update, however I have not managed to trigger these areas
-> > using
-> > the lksctp-tools tests. Can you suggest any suitable tools for
-> > testing
-> > these scenarios.
-> 
-> It's all a matter of timing:
-> 
-> sctp_sf_do_5_2_2_dupinit():
-> Case A:
-> 
->   Endpoint A                           Endpoint B                ULP
->   (CLOSED)                             (CLOSED)
-> 
->   INIT          ----------------->
-> 
->                 <-----------------      INIT-ACK
-> 
->   COOKIE-ECHO   ----------------->
-> 
->                 <-----------------      COOKIE-ACK
->                                          Communication Up ---------->
->   INIT          ----------------->
->   (Different INIT-TAG)
->                 <-----------------      INIT-ACK
-> 
->   COOKIE-ECHO   ----------------->
-> 
->                 <-----------------      COOKIE-ACK
-> 
->   DATA          ----------------->
-> 
->                 <-----------------      SACK
-> 
-> 
-> sctp_sf_do_5_2_1_siminit():
->  Case B:
-> 
->   Endpoint A                           Endpoint B                ULP
->   (CLOSED)                             (CLOSED)
-> 
->                                                    <--
-> ---    Associate
->                 <-----------------      INIT
-> 
->   INIT          ----------------->
-> 
->                 <-----------------      INIT-ACK
-> 
->   COOKIE-ECHO   ----------------->
-> 
->                 <-----------------      COOKIE-ACK
->                                          Communication Up ---------->
-> 
-> 
-> sctp_sf_do_5_2_4_dupcook():
-> Case D:
-> 
->   Endpoint A                           Endpoint B                ULP
->   (CLOSED)                             (CLOSED)
-> 
->                                                    <--
-> ---    Associate
->   INIT          ----------------->
-> 
->                 <-----------------      INIT-ACK
-> 
->   COOKIE-ECHO   ----------------->
-> 
->                 <-----------------      COOKIE-ACK
->                                          Communication Up ---------->
->   COOKIE-ECHO   ----------------->
-> 
->                 <-----------------      COOKIE-ACK
-> 
-> I think scapy could help with 4-shake stuff:
-> # iptables -A OUTPUT -p sctp -d 192.0.0.2 --chunk-type only abort -o
-> eth1 -j DROP
-> and
-> something like:
->         def start_assoc(self, target, local):
->                 target_host, target_port = target
->                 local_host,  local_port  = local
-> 
->                 # init snd
->                 self._tsn = 2017
->                 self._cnt = 15
-> 
->                 SCTP_HEADER = (IP(dst=target_host, flags="DF") /
-> SCTP(sport=local_port, dport=target_port, tag=0))
->                 INIT = (SCTP_HEADER / SCTPChunkInit(init_tag=1,
-> a_rwnd6496, n_out_streams=self._cnt, n_in_streams=self._cnt,
-> init_tsn=self._tsn,
-> 
-> params=[SCTPParamSupport(types=[64])]))
->                 INIT_ACK = sr1(INIT, timeout=3, verbose=0)
->                 if INIT_ACK = None or not
-> INIT_ACK.haslayer(SCTPChunkInitAck):
->                         return False
-> 
->                 # cookie echo snd
->                 SCTP_HEADER[SCTP].tag > INIT_ACK[SCTPChunkInitAck].init_tag
->                 COOKIE_ECHO = (SCTP_HEADER /
-> SCTPChunkCookieEcho(cookie=INIT_ACK[SCTPChunkParamStateCookie].cookie
-> ))
->                 COOKIE_ACK = sr1(COOKIE_ECHO, timeout=3, verbose=0)
->                 if COOKIE_ACK = None or not
-> COOKIE_ACK.haslayer(SCTPChunkCookieAck):
->                         return False
+Add ip option support to allow LSM security modules to utilise CIPSO/IPv4
+and CALIPSO/IPv6 services.
 
-That looks a bit complicated for me so I found some SCTP Conformance
-Test Tools at: https://github.com/nplab
+Signed-off-by: Richard Haines <richard_c_haines@btinternet.com>
+---
+ include/net/sctp/structs.h |  2 ++
+ net/sctp/chunk.c           |  7 ++++---
+ net/sctp/ipv6.c            | 37 ++++++++++++++++++++++++++++++-------
+ net/sctp/output.c          |  3 ++-
+ net/sctp/protocol.c        | 36 ++++++++++++++++++++++++++++++++++++
+ net/sctp/socket.c          |  5 ++++-
+ 6 files changed, 78 insertions(+), 12 deletions(-)
 
-I added the required hooks as suggested above and then built and ran
-"ETSI-SCTP-Conformance-Testsuite" and "sctp-tests" with the following
-specific tests for the above scenarios according to RFC2960 sections
-5.2.2 and 5.2.4:
-sctp-dm-o-4-8
-sctp-as-o-1-9-1
-sctp-as-o-1-9-2
-sctp-dm-o-4-2-1
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 5ab29af..7767577 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -461,6 +461,7 @@ struct sctp_af {
+ 	void		(*ecn_capable)(struct sock *sk);
+ 	__u16		net_header_len;
+ 	int		sockaddr_len;
++	int		(*ip_options_len)(struct sock *sk);
+ 	sa_family_t	sa_family;
+ 	struct list_head list;
+ };
+@@ -485,6 +486,7 @@ struct sctp_pf {
+ 	int (*addr_to_user)(struct sctp_sock *sk, union sctp_addr *addr);
+ 	void (*to_sk_saddr)(union sctp_addr *, struct sock *sk);
+ 	void (*to_sk_daddr)(union sctp_addr *, struct sock *sk);
++	void (*copy_ip_options)(struct sock *sk, struct sock *newsk);
+ 	struct sctp_af *af;
+ };
+ 
+diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
+index 1323d41..e49e240 100644
+--- a/net/sctp/chunk.c
++++ b/net/sctp/chunk.c
+@@ -153,7 +153,6 @@ static void sctp_datamsg_assign(struct sctp_datamsg *msg, struct sctp_chunk *chu
+ 	chunk->msg = msg;
+ }
+ 
+-
+ /* A data chunk can have a maximum payload of (2^16 - 20).  Break
+  * down any such message into smaller chunks.  Opportunistically, fragment
+  * the chunks down to the current MTU constraints.  We may get refragmented
+@@ -190,7 +189,10 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
+ 	 */
+ 	max_data = asoc->pathmtu -
+ 		   sctp_sk(asoc->base.sk)->pf->af->net_header_len -
+-		   sizeof(struct sctphdr) - sizeof(struct sctp_data_chunk);
++		   sizeof(struct sctphdr) - sizeof(struct sctp_data_chunk) -
++		   sctp_sk(asoc->base.sk)->pf->af->
++		   ip_options_len(asoc->base.sk);
++
+ 	max_data = SCTP_TRUNC4(max_data);
+ 
+ 	/* If the the peer requested that we authenticate DATA chunks
+@@ -210,7 +212,6 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
+ 
+ 	/* Set first_len and then account for possible bundles on first frag */
+ 	first_len = max_data;
+-
+ 	/* Check to see if we have a pending SACK and try to let it be bundled
+ 	 * with this message.  Do this if we don't have any data queued already.
+ 	 * To check that, look at out_qlen and retransmit list.
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index a4b6ffb..49c9011 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -423,6 +423,33 @@ static void sctp_v6_copy_addrlist(struct list_head *addrlist,
+ 	rcu_read_unlock();
+ }
+ 
++/* Copy over any ip options */
++static void sctp_v6_copy_ip_options(struct sock *sk, struct sock *newsk)
++{
++	struct ipv6_pinfo *newnp, *np = inet6_sk(sk);
++	struct ipv6_txoptions *opt;
++
++	newnp = inet6_sk(newsk);
++
++	rcu_read_lock();
++	opt = rcu_dereference(np->opt);
++	if (opt)
++		opt = ipv6_dup_options(newsk, opt);
++	RCU_INIT_POINTER(newnp->opt, opt);
++	rcu_read_unlock();
++}
++
++/* Account for the IP options */
++static int sctp_v6_ip_options_len(struct sock *sk)
++{
++	struct ipv6_pinfo *inet6 = inet6_sk(sk);
++
++	if (inet6->opt)
++		return inet6->opt->opt_flen + inet6->opt->opt_nflen;
++	else
++		return 0;
++}
++
+ /* Initialize a sockaddr_storage from in incoming skb. */
+ static void sctp_v6_from_skb(union sctp_addr *addr, struct sk_buff *skb,
+ 			     int is_saddr)
+@@ -662,7 +689,6 @@ static struct sock *sctp_v6_create_accept_sk(struct sock *sk,
+ 	struct sock *newsk;
+ 	struct ipv6_pinfo *newnp, *np = inet6_sk(sk);
+ 	struct sctp6_sock *newsctp6sk;
+-	struct ipv6_txoptions *opt;
+ 
+ 	newsk = sk_alloc(sock_net(sk), PF_INET6, GFP_KERNEL, sk->sk_prot, kern);
+ 	if (!newsk)
+@@ -685,12 +711,7 @@ static struct sock *sctp_v6_create_accept_sk(struct sock *sk,
+ 	newnp->ipv6_ac_list = NULL;
+ 	newnp->ipv6_fl_list = NULL;
+ 
+-	rcu_read_lock();
+-	opt = rcu_dereference(np->opt);
+-	if (opt)
+-		opt = ipv6_dup_options(newsk, opt);
+-	RCU_INIT_POINTER(newnp->opt, opt);
+-	rcu_read_unlock();
++	sctp_v6_copy_ip_options(sk, newsk);
+ 
+ 	/* Initialize sk's sport, dport, rcv_saddr and daddr for getsockname()
+ 	 * and getpeername().
+@@ -1033,6 +1054,7 @@ static struct sctp_af sctp_af_inet6 = {
+ 	.ecn_capable	   = sctp_v6_ecn_capable,
+ 	.net_header_len	   = sizeof(struct ipv6hdr),
+ 	.sockaddr_len	   = sizeof(struct sockaddr_in6),
++	.ip_options_len	   = sctp_v6_ip_options_len,
+ #ifdef CONFIG_COMPAT
+ 	.compat_setsockopt = compat_ipv6_setsockopt,
+ 	.compat_getsockopt = compat_ipv6_getsockopt,
+@@ -1051,6 +1073,7 @@ static struct sctp_pf sctp_pf_inet6 = {
+ 	.addr_to_user  = sctp_v6_addr_to_user,
+ 	.to_sk_saddr   = sctp_v6_to_sk_saddr,
+ 	.to_sk_daddr   = sctp_v6_to_sk_daddr,
++	.copy_ip_options = sctp_v6_copy_ip_options,
+ 	.af            = &sctp_af_inet6,
+ };
+ 
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 9d85049..85bcd5b 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -151,7 +151,8 @@ void sctp_packet_init(struct sctp_packet *packet,
+ 	INIT_LIST_HEAD(&packet->chunk_list);
+ 	if (asoc) {
+ 		struct sctp_sock *sp = sctp_sk(asoc->base.sk);
+-		overhead = sp->pf->af->net_header_len;
++		overhead = sp->pf->af->net_header_len +
++			   sp->pf->af->ip_options_len(asoc->base.sk);
+ 	} else {
+ 		overhead = sizeof(struct ipv6hdr);
+ 	}
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 989a900..a9e54ac 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -237,6 +237,38 @@ int sctp_copy_local_addr_list(struct net *net, struct sctp_bind_addr *bp,
+ 	return error;
+ }
+ 
++/* Copy over any ip options */
++static void sctp_v4_copy_ip_options(struct sock *sk, struct sock *newsk)
++{
++	struct inet_sock *newinet, *inet = inet_sk(sk);
++	struct ip_options_rcu *inet_opt, *newopt = NULL;
++
++	newinet = inet_sk(newsk);
++
++	rcu_read_lock();
++	inet_opt = rcu_dereference(inet->inet_opt);
++	if (inet_opt) {
++		newopt = sock_kmalloc(newsk, sizeof(*inet_opt) +
++				      inet_opt->opt.optlen, GFP_ATOMIC);
++		if (newopt)
++			memcpy(newopt, inet_opt, sizeof(*inet_opt) +
++			       inet_opt->opt.optlen);
++	}
++	RCU_INIT_POINTER(newinet->inet_opt, newopt);
++	rcu_read_unlock();
++}
++
++/* Account for the IP options */
++static int sctp_v4_ip_options_len(struct sock *sk)
++{
++	struct inet_sock *inet = inet_sk(sk);
++
++	if (inet->inet_opt)
++		return inet->inet_opt->opt.optlen;
++	else
++		return 0;
++}
++
+ /* Initialize a sctp_addr from in incoming skb.  */
+ static void sctp_v4_from_skb(union sctp_addr *addr, struct sk_buff *skb,
+ 			     int is_saddr)
+@@ -590,6 +622,8 @@ static struct sock *sctp_v4_create_accept_sk(struct sock *sk,
+ 	sctp_copy_sock(newsk, sk, asoc);
+ 	sock_reset_flag(newsk, SOCK_ZAPPED);
+ 
++	sctp_v4_copy_ip_options(sk, newsk);
++
+ 	newinet = inet_sk(newsk);
+ 
+ 	newinet->inet_daddr = asoc->peer.primary_addr.v4.sin_addr.s_addr;
+@@ -1008,6 +1042,7 @@ static struct sctp_pf sctp_pf_inet = {
+ 	.addr_to_user  = sctp_v4_addr_to_user,
+ 	.to_sk_saddr   = sctp_v4_to_sk_saddr,
+ 	.to_sk_daddr   = sctp_v4_to_sk_daddr,
++	.copy_ip_options = sctp_v4_copy_ip_options,
+ 	.af            = &sctp_af_inet
+ };
+ 
+@@ -1092,6 +1127,7 @@ static struct sctp_af sctp_af_inet = {
+ 	.ecn_capable	   = sctp_v4_ecn_capable,
+ 	.net_header_len	   = sizeof(struct iphdr),
+ 	.sockaddr_len	   = sizeof(struct sockaddr_in),
++	.ip_options_len	   = sctp_v4_ip_options_len,
+ #ifdef CONFIG_COMPAT
+ 	.compat_setsockopt = compat_ip_setsockopt,
+ 	.compat_getsockopt = compat_ip_getsockopt,
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 8d76086..70355a0 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3124,6 +3124,7 @@ static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned
+ 	if (asoc) {
+ 		if (val = 0) {
+ 			val = asoc->pathmtu;
++			val -= sp->pf->af->ip_options_len(asoc->base.sk);
+ 			val -= sp->pf->af->net_header_len;
+ 			val -= sizeof(struct sctphdr) +
+ 					sizeof(struct sctp_data_chunk);
+@@ -4917,9 +4918,11 @@ int sctp_do_peeloff(struct sock *sk, sctp_assoc_t id, struct socket **sockp)
+ 	sctp_copy_sock(sock->sk, sk, asoc);
+ 
+ 	/* Make peeled-off sockets more like 1-1 accepted sockets.
+-	 * Set the daddr and initialize id to something more random
++	 * Set the daddr and initialize id to something more random and also
++	 * copy over any ip options.
+ 	 */
+ 	sp->pf->to_sk_daddr(&asoc->peer.primary_addr, sk);
++	sp->pf->copy_ip_options(sk, sock->sk);
+ 
+ 	/* Populate the fields of the newsk from the oldsk and migrate the
+ 	 * asoc to the newsk.
+-- 
+2.13.6
 
-They all passed except when running:
-"sctp-tests" runsctptest sctp-as-o-1-9-2 - TIMEOUT
-This is because the SUT needs to reply with a new IP address that
-required a modified test server (I just used a simple sctp server),
-however the ETSI-SCTP-Conformance-Testsuite did pass as I guess that
-provided the required IP address.
-
-Are these tests okay ??
-Does anyone on the list use these conformance tools ???
-
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-
-> security-module" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
