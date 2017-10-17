@@ -1,32 +1,82 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 30 Oct 2017 15:17:39 +0000
-Subject: Re: [PATCH net 4/4] sctp: fix some type cast warnings introduced since very beginning
-Message-Id: <CADvbK_ePXHxu71MZPrHRsDqS0yKtwUv4OGy3u0-caq4UHjBOcA@mail.gmail.com>
+From: Richard Haines <richard_c_haines@btinternet.com>
+Date: Tue, 17 Oct 2017 13:53:59 +0000
+Subject: [RFC PATCH 0/5] Add SELinux SCTP protocol support
+Message-Id: <20171017135359.4010-1-richard_c_haines@btinternet.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1509190967.git.lucien.xin@gmail.com> <40b05aa84d107b434bae3794692ac2da61da65ca.1509190967.git.lucien.xin@gmail.com>
- <063D6719AE5E284EB5DD2968C1650D6DD00A8AA8@AcuExch.aculab.com>
-In-Reply-To: <063D6719AE5E284EB5DD2968C1650D6DD00A8AA8@AcuExch.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@aculab.com>
-Cc: network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "davem@davemloft.net" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
+To: linux-security-module@vger.kernel.org
 
-On Mon, Oct 30, 2017 at 7:12 PM, David Laight <David.Laight@aculab.com> wrote:
-> From: Xin Long
->> Sent: 28 October 2017 12:44
->> These warnings were found by running 'make C=2 M=net/sctp/'.
->> They are there since very beginning.
-> ...
->> -             param.crr_id = i;
->> +             param.crr_id = htonl(i);
-> ...
->
-> Isn't this a bug fix, not just removing a warning??
-It's actually fiine,
-crr_id is just an identifier, and receiver will only pack the same value to the
-asconf_ack chunk, and then sender checks with:
-if (asconf_ack_param->crr_id = asconf_param->crr_id)
-...
+This patch set adds SELinux support to SCTP and incorporates all the
+comments received from my previous attemps (thanks to all who responded).
+There are also other changes mainly supporting ip options so that CIPSO
+and CALIPSO work over SCTP.
 
-So no issue could be caused by this, I didn't count it as a bug.
+The kernel patches have been built on Fedora 26 with kernel 4.13.4 plus the
+following userspace patches to enable testing:
+
+1) Updates to libsepol 2.7 to support the sctp portcon statement.
+   The patch is available from:
+         http://arctic.selinuxproject.org/~rhaines/selinux-sctp/
+         selinux-Add-support-for-the-SCTP-portcon-keyword.patch
+
+2) Updates to the SELinux Test Suite adding SCTP tests. Please read the
+   selinux-testsuite/README.sctp for details. The patch is available from:
+         http://arctic.selinuxproject.org/~rhaines/selinux-sctp/
+         selinux-testsuite-Add-SCTP-test-support.patch
+
+3) Updates to lksctp-tools that show SELinux info in sctp_darn and
+   sctp_test. It also contains a minor patch for test_1_to_1_connect.c
+   as when CIPSO/CALIPSO configured, NetLabel returns a different error
+   code for illegal addresses in test 5. The patch is available from:
+         http://arctic.selinuxproject.org/~rhaines/selinux-sctp/
+         lksctp-tools-Add-SELinux-support-to-sctp_test-and-sc.patch
+
+All SCTP lksctp-tools/src/func_tests run correctly in enforcing mode.
+
+All SCTP regression tests "./sctp-tests run" run correctly in enforcing
+mode. These tests are obtained from: https://github.com/sctp/sctp-tests
+
+The selinux-testsuite patch also adds remote tests (that need some manual
+configuration). These are useful for testing CIPSO/CALIPSO over a network
+with a number of categories to produce large ip option fields with various
+message sizes forcing fragmentation etc..
+
+
+Richard Haines (5):
+  security: Add support for SCTP security hooks
+  sctp: Add ip option support
+  sctp: Add LSM hooks
+  netlabel: Add SCTP support
+  selinux: Add SCTP support
+
+ Documentation/security/LSM-sctp.txt     | 212 +++++++++++++++++++++++++
+ Documentation/security/SELinux-sctp.txt | 108 +++++++++++++
+ include/linux/lsm_hooks.h               |  37 +++++
+ include/linux/security.h                |  27 ++++
+ include/net/netlabel.h                  |   3 +
+ include/net/sctp/structs.h              |  12 ++
+ include/uapi/linux/sctp.h               |   1 +
+ net/netlabel/netlabel_kapi.c            |  80 ++++++++++
+ net/netlabel/netlabel_unlabeled.c       |  10 ++
+ net/sctp/chunk.c                        |   7 +-
+ net/sctp/ipv6.c                         |  37 ++++-
+ net/sctp/output.c                       |   3 +-
+ net/sctp/protocol.c                     |  36 +++++
+ net/sctp/sm_make_chunk.c                |  12 ++
+ net/sctp/sm_statefuns.c                 |  14 +-
+ net/sctp/socket.c                       |  66 +++++++-
+ security/security.c                     |  23 +++
+ security/selinux/hooks.c                | 268 ++++++++++++++++++++++++++++++--
+ security/selinux/include/classmap.h     |   3 +-
+ security/selinux/include/netlabel.h     |   9 +-
+ security/selinux/include/objsec.h       |   5 +
+ security/selinux/netlabel.c             |  52 ++++++-
+ 22 files changed, 993 insertions(+), 32 deletions(-)
+ create mode 100644 Documentation/security/LSM-sctp.txt
+ create mode 100644 Documentation/security/SELinux-sctp.txt
+
+-- 
+2.13.6
+
