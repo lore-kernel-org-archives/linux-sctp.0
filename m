@@ -1,27 +1,50 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 12 Oct 2017 03:18:41 +0000
-Subject: Re: [PATCH][next] sctp: make array sctp_sched_ops static
-Message-Id: <20171011.201841.213739155323701188.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 18 Oct 2017 13:37:49 +0000
+Subject: [PATCH net] sctp: add the missing sock_owned_by_user check in sctp_icmp_redirect
+Message-Id: <7f2a5122d93d4b72115027690e89c0a164097452.1508333869.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20171011101757.18825-1-colin.king@canonical.com>
-In-Reply-To: <20171011101757.18825-1-colin.king@canonical.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: colin.king@canonical.com
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, kernel-janitors@vger.kernel.org, linux-kernel@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Eric Dumazet <edumazet@google.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-From: Colin King <colin.king@canonical.com>
-Date: Wed, 11 Oct 2017 11:17:57 +0100
+Now sctp processes icmp redirect packet in sctp_icmp_redirect where
+it calls sctp_transport_dst_check in which tp->dst can be released.
 
-> From: Colin Ian King <colin.king@canonical.com>
-> 
-> The array sctp_sched_ops  is local to the source and
-> does not need to be in global scope, so make it static.
-> 
-> Cleans up sparse warning:
-> symbol 'sctp_sched_ops' was not declared. Should it be static?
-> 
-> Signed-off-by: Colin Ian King <colin.king@canonical.com>
+The problem is before calling sctp_transport_dst_check, it doesn't
+check sock_owned_by_user, which means tp->dst could be freed while
+a process is accessing it with owning the socket.
 
-Applied.
+An use-after-free issue could be triggered by this.
+
+This patch is to fix it by checking sock_owned_by_user before calling
+sctp_transport_dst_check in sctp_icmp_redirect, so that it would not
+release tp->dst if users still hold sock lock.
+
+Besides, the same issue fixed in commit 45caeaa5ac0b ("dccp/tcp: fix
+routing redirect race") on sctp also needs this check.
+
+Fixes: 55be7a9c6074 ("ipv4: Add redirect support to all protocol icmp error handlers")
+Reported-by: Eric Dumazet <edumazet@google.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/input.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 92a0714..34f10e7 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -421,7 +421,7 @@ void sctp_icmp_redirect(struct sock *sk, struct sctp_transport *t,
+ {
+ 	struct dst_entry *dst;
+ 
+-	if (!t)
++	if (sock_owned_by_user(sk) || !t)
+ 		return;
+ 	dst = sctp_transport_dst_check(t);
+ 	if (dst)
+-- 
+2.1.0
+
