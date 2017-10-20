@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 18 Oct 2017 14:27:25 +0000
+From: David Miller <davem@davemloft.net>
+Date: Fri, 20 Oct 2017 11:54:38 +0000
 Subject: Re: [PATCH net] sctp: add the missing sock_owned_by_user check in sctp_icmp_redirect
-Message-Id: <20171018142725.GA14778@hmswarspite.think-freely.org>
+Message-Id: <20171020.125438.333321434362467027.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <7f2a5122d93d4b72115027690e89c0a164097452.1508333869.git.lucien.xin@gmail.com>
 In-Reply-To: <7f2a5122d93d4b72115027690e89c0a164097452.1508333869.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Eric Dumazet <edumazet@google.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, edumazet@google.com, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
-On Wed, Oct 18, 2017 at 09:37:49PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 18 Oct 2017 21:37:49 +0800
+
 > Now sctp processes icmp redirect packet in sctp_icmp_redirect where
 > it calls sctp_transport_dst_check in which tp->dst can be released.
 > 
@@ -31,25 +33,5 @@ On Wed, Oct 18, 2017 at 09:37:49PM +0800, Xin Long wrote:
 > Fixes: 55be7a9c6074 ("ipv4: Add redirect support to all protocol icmp error handlers")
 > Reported-by: Eric Dumazet <edumazet@google.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> ---
->  net/sctp/input.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/input.c b/net/sctp/input.c
-> index 92a0714..34f10e7 100644
-> --- a/net/sctp/input.c
-> +++ b/net/sctp/input.c
-> @@ -421,7 +421,7 @@ void sctp_icmp_redirect(struct sock *sk, struct sctp_transport *t,
->  {
->  	struct dst_entry *dst;
->  
-> -	if (!t)
-> +	if (sock_owned_by_user(sk) || !t)
->  		return;
->  	dst = sctp_transport_dst_check(t);
->  	if (dst)
-> -- 
-> 2.1.0
-> 
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
+Applied and queued up for -stable.
