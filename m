@@ -1,92 +1,55 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 16 Oct 2017 13:34:56 +0000
-Subject: Re: Kernel Performance Tuning for High Volume SCTP traffic
-Message-Id: <20171016133456.GA19009@hmswarspite.think-freely.org>
+From: Laszlo Toth <laszlth@gmail.com>
+Date: Sat, 21 Oct 2017 21:36:59 +0000
+Subject: [PATCH] sctp: full support for ipv6 ip_nonlocal_bind & IP_FREEBIND
+Message-Id: <20171021213659.GA2778@ubuntu-desk-vm>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAFKCRVL-e03Cn35-Vvtb8+NSAz3Tk2Hje_Hg5K9HfqgokEBPgg@mail.gmail.com>
- <063D6719AE5E284EB5DD2968C1650D6DD0094F48@AcuExch.aculab.com>
- <CAFKCRVLTA8Vrz-36rxfUtOf8Zc9mSPZteAgdyeETsqSa-XsOcQ@mail.gmail.com>
- <063D6719AE5E284EB5DD2968C1650D6DD00950DD@AcuExch.aculab.com>
- <CAFKCRVKScoF+AkBtsgGiFogN3KQP704v8Us9-OABy2BS-w4EVA@mail.gmail.com>
-In-Reply-To: <CAFKCRVKScoF+AkBtsgGiFogN3KQP704v8Us9-OABy2BS-w4EVA@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="windows-1254"
-Content-Transfer-Encoding: base64
-To: Traiano Welcome <traiano@gmail.com>
-Cc: David Laight <David.Laight@aculab.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: linux-sctp@vger.kernel.org
 
-T24gU2F0LCBPY3QgMTQsIDIwMTcgYXQgMTA6Mjk6NTNQTSArMDgwMCwgVHJhaWFubyBXZWxjb21l
-IHdyb3RlOgo+IEkndmUgdXBwZWQgdGhlIHZhbHVlIG9mIHRoZSBmb2xsb3dpbmcgc2N0cCBhbmQg
-dWRwIHJlbGF0ZWQgcGFyYW1ldGVycywKPiBpbiB0aGUgaG9wZSB0aGF0IHRoaXMgd291bGQgaGVs
-cDoKPiAKPiBzeXNjdGwgLXcgbmV0LmNvcmUucm1lbV9tYXiQMDAwMDAwMAo+IHN5c2N0bCAtdyBu
-ZXQuY29yZS53bWVtX21heJAwMDAwMDAwCj4gCj4gc3lzY3RsIC13IG5ldC5zY3RwLnNjdHBfbWVt
-PSIyMTAwMDAwMDAwIDIxMDAwMDAwMDAgMjEwMDAwMDAwMCIKPiBzeXNjdGwgLXcgbmV0LnNjdHAu
-c2N0cF9ybWVtPSIyMTAwMDAwMDAwIDIxMDAwMDAwMDAgMjEwMDAwMDAwMCIKPiBzeXNjdGwgLXcg
-bmV0LnNjdHAuc2N0cF93bWVtPSIyMTAwMDAwMDAwIDIxMDAwMDAwMDAgMjEwMDAwMDAwMCIKPiAK
-PiBzeXNjdGwgLXcgbmV0LmlwdjQudWRwX21lbT0iNTAwMDAwMDAwMCA1MDAwMDAwMDAwIDUwMDAw
-MDAwMDAiCj4gc3lzY3RsIC13IG5ldC5pcHY0LnVkcF9tZW09IjEwMDAwMDAwMDAwIDEwMDAwMDAw
-MDAwIDEwMDAwMDAwMDAwIgo+IAo+IEhvd2V2ZXIsIEknbSBzdGlsbCBzZWVpbmcgcmFwaWRseSBp
-bmNyZW1lbnRpbmcgcnggZGlzY2FyZHMgcmVwb3J0ZWQgb24gdGhlIE5JQzoKPiAKPiA6fiMgZXRo
-dG9vbCAtUyBlbnM0ZjEgfCBlZ3JlcCAtaSByeF9kaXNjYXJkcwo+ICAgICAgWzBdOiByeF9kaXNj
-YXJkczogNjM5MDgwNTQ2Mgo+ICAgICAgWzFdOiByeF9kaXNjYXJkczogNjY1OTMxNTkxOQo+ICAg
-ICAgWzJdOiByeF9kaXNjYXJkczogNjU0MjU3MDAyNgo+ICAgICAgWzNdOiByeF9kaXNjYXJkczog
-NjQzMTUxMzAwOAo+ICAgICAgWzRdOiByeF9kaXNjYXJkczogNjQzNjc3OTA3OAo+ICAgICAgWzVd
-OiByeF9kaXNjYXJkczogNjY2NTg5NzA1MQo+ICAgICAgWzZdOiByeF9kaXNjYXJkczogNjE2Nzk4
-NTU2MAo+ICAgICAgWzddOiByeF9kaXNjYXJkczogMTEzNDAwNjg3ODgKPiAgICAgIHJ4X2Rpc2Nh
-cmRzOiA1NjYzNDkzNDg5Mgo+IApJZiB5b3UncmUgZ2V0dGluZyBkcm9wcyBpbiB0aGUgaGFyZHdh
-cmUgYW5kIG5vdGhpbmcgaW4gdGhlIGhpZ2hlciBsYXllcnMgaXMKb3ZlcmZsb3dpbmcsIHRoZW4g
-eW91ciBwcm9ibGVtIGlzIGxpa2VseSBkdWUgdG8gb25lIG9mIHR3byB0aGluZ3M6CgoxKSBUaGUg
-TklDIGlzIGRpc2NhcmRpbmcgZnJhbWVzIGZvciByZWFzb25zIG9ydGhvZ29uYWwgdG8gcHJvdmlz
-aW9uaW5nLiAgVGhhdCBpcwp0byBzYXkgeW91IGFyZSBnZXR0aW5nIGEgbGFyZ2UgbnVtYmVyIG9m
-IGZyYW1lcyBpbiB0aGF0IGFyZSBiZWluZyBwdXJwb3NlbHkKZGlzY2FyZGVkLiBDaGVjayB0aGUg
-b3RoZXIgc3RhdHMgZm9yIHRoZSBuaWMgaW4gZXRodG9vbCB0byB0cnkgZ2l2ZSB5b3Ugc29tZQph
-ZGRpdGlvbmFsIHZpc2liaWx0eSBvbiB3aGF0IHRoZXNlIGZyYW1lcyBtaWdodCBiZS4KCjIpIFlv
-dSdyZSBub3Qgc2VydmljaW5nIHRoZSBOSUMgZmFzdCBlbm91Z2ggdG8gcHVsbCBmcmFtZXMgb3V0
-IHByaW9yIHRvIGl0cwppbnRlcm5hbCBidWZmZXIgb3ZlcmZsb3dpbmcuICBDaGVjayB0aGUgaW50
-ZXJydXB0IG1pdGlnYXRpb24gYW5kIGZsb3cKZGlyZWN0b3IvbnR1cGxlIHNldHRpbmdzIHRvIG1h
-a2Ugc3VyZSB0aGF0IHlvdSdyZSBzZWVpbmcgcHJvcGVyIHNwcmVhZGluZyBvZgpwYWNrZXRzIHRv
-IHBlci1jcHUgcXVldWVzLCB0aGF0IGludGVycnVwdCBtaXRpZ2F0aW9uIGlzIHByZXZlbnRpbmcg
-dW5kdWUgY3B1CmxvYWQsIGFuZCB0aGF0IGlycWJhbGFuY2UgaXMgcHJvcGVybHkgZGlzdHJpYnV0
-aW5nIHRoYXQgaW50ZXJydXB0IHJhdGUgdG8gYWxsCmNwdXMgaW4gdGhlIHN5c3RlbQoKTmVpbAoK
-PiBEZXNwaXRlIHRoZSBmYWN0IHRoYXQgSSd2ZSBzZXQgdGhlIE5JQyByaW5nIGJ1ZmZlciBvbiB0
-aGUgTmV0ZXh0cmVtZQo+IGludGVyZmFjZSB0byBoZSBtYXhpbXVtOgo+IAo+IDp+IyBldGh0b29s
-IC1nIGVuczRmMAo+IFJpbmcgcGFyYW1ldGVycyBmb3IgZW5zNGYwOgo+IFByZS1zZXQgbWF4aW11
-bXM6Cj4gUlg6ICAgICAgICAgICAgIDQwNzgKPiBSWCBNaW5pOiAgICAgICAgMAo+IFJYIEp1bWJv
-OiAgICAgICAwCj4gVFg6ICAgICAgICAgICAgIDQwNzgKPiBDdXJyZW50IGhhcmR3YXJlIHNldHRp
-bmdzOgo+IFJYOiAgICAgICAgICAgICA0MDc4Cj4gUlggTWluaTogICAgICAgIDAKPiBSWCBKdW1i
-bzogICAgICAgMAo+IFRYOiAgICAgICAgICAgICA0MDc4Cj4gCj4gSSBzZWUgbm8gaXAgZXJyb3Jz
-IGF0IHRoZSBwaHlzaWNhbCBpbnRlcmZhY2U6Cj4gCj4gZXRodG9vbCAtUyBlbnM0ZjAgfCBlZ3Jl
-cCBwaHlfaXBfZXJyX2Rpc2NhcmR8IHRhaWwgLTEKPiAgICAgIHJ4X3BoeV9pcF9lcnJfZGlzY2Fy
-ZHM6IDAKPiAKPiAKPiBDb3VsZCBhbnlvbmUgc3VnZ2VzdCBhbHRlcm5hdGl2ZSBhcHByb2FjaGVz
-IEkgbWlnaHQgdGFrZSB0byBvcHRpbWlzaW5nCj4gdGhlIHN5c3RlbSdzIGhhbmRsaW5nIG9mIFND
-VFAgdHJhZmZpYz8KPiAKPiAKPiAKPiBPbiBTYXQsIE9jdCAxNCwgMjAxNyBhdCAxMjozNSBBTSwg
-RGF2aWQgTGFpZ2h0IDxEYXZpZC5MYWlnaHRAYWN1bGFiLmNvbT4gd3JvdGU6Cj4gPiBGcm9tOiBU
-cmFpYW5vIFdlbGNvbWUKPiA+PiBTZW50OiAxMyBPY3RvYmVyIDIwMTcgMTc6MDQKPiA+PiBPbiBG
-cmksIE9jdCAxMywgMjAxNyBhdCAxMTo1NiBQTSwgRGF2aWQgTGFpZ2h0IDxEYXZpZC5MYWlnaHRA
-YWN1bGFiLmNvbT4gd3JvdGU6Cj4gPj4gPiBGcm9tOiBUcmFpYW5vIFdlbGNvbWUKPiA+PiA+Cj4g
-Pj4gPiAoY29waWVkIHRvIG5ldGRldikKPiA+PiA+PiBTZW50OiAxMyBPY3RvYmVyIDIwMTcgMDc6
-MTYKPiA+PiA+PiBUbzogbGludXgtc2N0cEB2Z2VyLmtlcm5lbC5vcmcKPiA+PiA+PiBTdWJqZWN0
-OiBLZXJuZWwgUGVyZm9ybWFuY2UgVHVuaW5nIGZvciBIaWdoIFZvbHVtZSBTQ1RQIHRyYWZmaWMK
-PiA+PiA+Pgo+ID4+ID4+IEhpIExpc3QKPiA+PiA+Pgo+ID4+ID4+IEknbSBydW5uaW5nIGEgbGlu
-dXggc2VydmVyIHByb2Nlc3NpbmcgaGlnaCB2b2x1bWVzIG9mIFNDVFAgdHJhZmZpYyBhbmQKPiA+
-PiA+PiBhbSBzZWVpbmcgbGFyZ2UgbnVtYmVycyBvZiBwYWNrZXQgb3ZlcnJ1bnMgKGlmY29uZmln
-IG91dHB1dCkuCj4gPj4gPgo+ID4+ID4gSSdkIGd1ZXNzIHRoYXQgb3ZlcnJ1bnMgaW5kaWNhdGUg
-dGhhdCB0aGUgZXRoZXJuZXQgTUFDIGlzIGZhaWxpbmcgdG8KPiA+PiA+IGNvcHkgdGhlIHJlY2Vp
-dmUgZnJhbWVzIGludG8ga2VybmVsIG1lbW9yeS4KPiA+PiA+IEl0IGlzIHByb2JhYmx5IHJ1bm5p
-bmcgb3V0IG9mIHJlY2VpdmUgYnVmZmVycywgYnV0IG1pZ2h0IGJlCj4gPj4gPiBzdWZmZXJpbmcg
-ZnJvbSBhIGxhY2sgb2YgYnVzIGJhbmR3aWR0aC4KPiA+PiA+IE1BQyBkcml2ZXJzIHVzdWFsbHkg
-ZGlzY2FyZCByZWNlaXZlIGZyYW1lcyBpZiB0aGV5IGNhbid0IGdldAo+ID4+ID4gYSByZXBsYWNl
-bWVudCBidWZmZXIgLSBzbyB5b3Ugc2hvdWxkbid0IHJ1biBvdXQgb2YgcnggYnVmZmVycy4KPiA+
-PiA+Cj4gPj4gPiBUaGlzIG1lYW5zIHRoZSBlcnJvcnMgYXJlIHByb2JhYmx5IGJlbG93IFNDVFAg
-LSBzbyBjaGFuZ2luZyBTQ1RQIHBhcmFtZXRlcnMKPiA+PiA+IGlzIHVubGlrZWx5IHRvIGhlbHAu
-Cj4gPj4KPiA+PiBEb2VzIHRoaXMgbWVhbiB0aGF0IHR1bmluZyBVRFAgcGVyZm9ybWFuY2UgY291
-bGQgaGVscCA/IE9yIGRvIHlvdSBtZWFuCj4gPj4gaGFyZHdhcmUgKE5JQykgcGVyZm9ybWFuY2Ug
-Y291bGQgYmUgdGhlIGlzc3VlPwo+ID4KPiA+IEknZCBjZXJ0YWlubHkgY2hlY2sgVURQIHBlcmZv
-cm1hbmNlLgo+ID4KPiA+ICAgICAgICAgRGF2aWQKPiA+Cj4gLS0KPiBUbyB1bnN1YnNjcmliZSBm
-cm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtc2N0cCIgaW4K
-PiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZwo+IE1v
-cmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWlu
-Zm8uaHRtbAo+IAotLQpUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGlu
-ZSAidW5zdWJzY3JpYmUgbGludXgtc2N0cCIgaW4KdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1h
-am9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcKTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3Zn
-ZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1s
+Commit 9b9742022888 ("sctp: support ipv6 nonlocal bind")
+introduced support for the above options as v4 sctp did,
+so patched sctp_v6_available().
+
+In the v4 implementation it's enough, because
+sctp_inet_bind_verify() just returns with sctp_v4_available().
+However sctp_inet6_bind_verify() has an extra check before that
+for link-local scope_id, which won't respect the above options.
+
+Added the checks before calling ipv6_chk_addr(), but
+not before the validation of scope_id.
+
+before (w/ both options):
+ ./v6test fe80::10 sctp
+ bind failed, errno: 99 (Cannot assign requested address)
+ ./v6test fe80::10 tcp
+ bind success, errno: 0 (Success)
+
+after (w/ both options):
+ ./v6test fe80::10 sctp
+ bind success, errno: 0 (Success)
+
+Signed-off-by: Laszlo Toth <laszlth@gmail.com>
+---
+ net/sctp/ipv6.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 51c4887..ca75d2a 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -883,7 +883,9 @@ static int sctp_inet6_bind_verify(struct sctp_sock *opt, union sctp_addr *addr)
+ 			rcu_read_lock();
+ 			dev = dev_get_by_index_rcu(net, addr->v6.sin6_scope_id);
+ 			if (!dev ||
+-			    !ipv6_chk_addr(net, &addr->v6.sin6_addr, dev, 0)) {
++			    !(opt->inet.freebind ||
++			    net->ipv6.sysctl.ip_nonlocal_bind ||
++			    ipv6_chk_addr(net, &addr->v6.sin6_addr, dev, 0))) {
+ 				rcu_read_unlock();
+ 				return 0;
+ 			}
+-- 
+2.7.4
+
