@@ -1,38 +1,61 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 05 Oct 2017 19:07:14 +0000
-Subject: Re: [PATCH V2] Fix a sleep-in-atomic bug in shash_setkey_unaligned
-Message-Id: <20171005190713.GA4326@localhost.localdomain>
+From: Laszlo Toth <laszlth@gmail.com>
+Date: Mon, 23 Oct 2017 17:19:33 +0000
+Subject: [PATCH v2] sctp: full support for ipv6 ip_nonlocal_bind & IP_FREEBIND
+Message-Id: <20171023171933.GA4592@ubuntu-desk-vm>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20171003052643.GB22750@gondor.apana.org.au>
- <20171003224505.GE19750@localhost.localdomain>
- <20171005034054.GB31996@gondor.apana.org.au>
- <20171004.213758.2210486785503998906.davem@davemloft.net>
- <20171005101620.GA1246@gondor.apana.org.au>
- <20171005131631.GA1553@gondor.apana.org.au>
-In-Reply-To: <20171005131631.GA1553@gondor.apana.org.au>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Herbert Xu <herbert@gondor.apana.org.au>
-Cc: David Miller <davem@davemloft.net>, luto@kernel.org, baijiaju1990@163.com, nhorman@tuxdriver.com, vyasevich@gmail.com, kvalo@codeaurora.org, linux-crypto@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, linux-wireless@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org
+Cc: network dev <netdev@vger.kernel.org>, "David S. Miller" <davem@davemloft.net>, Xin Long <lucien.xin@gmail.com>
 
-On Thu, Oct 05, 2017 at 09:16:31PM +0800, Herbert Xu wrote:
-> On Thu, Oct 05, 2017 at 06:16:20PM +0800, Herbert Xu wrote:
-> >
-> > That was my point.  Functions like sctp_pack_cookie shouldn't be
-> > setting the key in the first place.  The setkey should happen at
-> > the point when the key is generated.  That's sctp_endpoint_init
-> > which AFAICS only gets called in GFP_KERNEL context.
-> > 
-> > Or is there a code-path where sctp_endpoint_init is called in
-> > softirq context?
-> 
-> OK, there are indeed code paths where the key is derived in softirq
-> context.  Notably sctp_auth_calculate_hmac.
-> 
-> So I think this patch is the correct fix and I will push it upstream
-> as well as back to stable.
+Commit 9b9742022888 ("sctp: support ipv6 nonlocal bind")
+introduced support for the above options as v4 sctp did,
+so patched sctp_v6_available().
 
-Okay, thanks.
+In the v4 implementation it's enough, because
+sctp_inet_bind_verify() just returns with sctp_v4_available().
+However sctp_inet6_bind_verify() has an extra check before that
+for link-local scope_id, which won't respect the above options.
 
-  Marcelo
+Added the checks before calling ipv6_chk_addr(), but
+not before the validation of scope_id.
+
+before (w/ both options):
+ ./v6test fe80::10 sctp
+ bind failed, errno: 99 (Cannot assign requested address)
+ ./v6test fe80::10 tcp
+ bind success, errno: 0 (Success)
+
+after (w/ both options):
+ ./v6test fe80::10 sctp
+ bind success, errno: 0 (Success)
+
+Signed-off-by: Laszlo Toth <laszlth@gmail.com>
+---
+changed in v2:
+ - fixed indentation
+
+ net/sctp/ipv6.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 51c4887..7fe9e1d1 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -882,8 +882,10 @@ static int sctp_inet6_bind_verify(struct sctp_sock *opt, union sctp_addr *addr)
+ 			net = sock_net(&opt->inet.sk);
+ 			rcu_read_lock();
+ 			dev = dev_get_by_index_rcu(net, addr->v6.sin6_scope_id);
+-			if (!dev ||
+-			    !ipv6_chk_addr(net, &addr->v6.sin6_addr, dev, 0)) {
++			if (!dev || !(opt->inet.freebind ||
++				      net->ipv6.sysctl.ip_nonlocal_bind ||
++				      ipv6_chk_addr(net, &addr->v6.sin6_addr,
++						    dev, 0))) {
+ 				rcu_read_unlock();
+ 				return 0;
+ 			}
+-- 
+2.7.4
+
