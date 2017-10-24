@@ -1,130 +1,279 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 31 Oct 2017 16:41:53 +0000
-Subject: Re: [RFC PATCH 1/5] security: Add support for SCTP security hooks
-Message-Id: <20171031164153.GC3675@localhost.localdomain>
+From: Kees Cook <keescook@chromium.org>
+Date: Tue, 24 Oct 2017 08:45:31 +0000
+Subject: [PATCH] net: sctp: Convert timers to use timer_setup()
+Message-Id: <20171024084531.GA23722@beast>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20171017140247.4604-1-richard_c_haines@btinternet.com>
-In-Reply-To: <20171017140247.4604-1-richard_c_haines@btinternet.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-security-module@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>
+Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On Tue, Oct 17, 2017 at 03:02:47PM +0100, Richard Haines wrote:
-> The SCTP security hooks are explained in:
-> Documentation/security/LSM-sctp.txt
-> 
-> Signed-off-by: Richard Haines <richard_c_haines@btinternet.com>
-> ---
->  Documentation/security/LSM-sctp.txt | 212 ++++++++++++++++++++++++++++++++++++
->  include/linux/lsm_hooks.h           |  37 +++++++
->  include/linux/security.h            |  27 +++++
->  security/security.c                 |  23 ++++
->  4 files changed, 299 insertions(+)
->  create mode 100644 Documentation/security/LSM-sctp.txt
-> 
-> diff --git a/Documentation/security/LSM-sctp.txt b/Documentation/security/LSM-sctp.txt
-> new file mode 100644
-> index 0000000..30fe9b5
-> --- /dev/null
-> +++ b/Documentation/security/LSM-sctp.txt
-> @@ -0,0 +1,212 @@
-> +                               SCTP LSM Support
-> +                              =========
-> +
-> +For security module support, three sctp specific hooks have been implemented:
-> +    security_sctp_assoc_request()
-> +    security_sctp_bind_connect()
-> +    security_sctp_sk_clone()
-> +
-> +Also the following security hook has been utilised:
-> +    security_inet_conn_established()
-> +
-> +The usage of these hooks are described below with the SELinux implementation
-> +described in Documentation/security/SELinux-sctp.txt
-> +
-> +
-> +security_sctp_assoc_request()
-> +------------------------------
-> +This new hook has been added to net/sctp/sm_statefuns.c where it passes the
-> +@ep and @chunk->skb (the association INIT or INIT ACK packet) to the security
-> +module. Returns 0 on success, error on failure.
-> +
-> +    @ep - pointer to sctp endpoint structure.
-> +    @skb - pointer to skbuff of association packet.
-> +    @sctp_cid - set to sctp packet type (SCTP_CID_INIT or SCTP_CID_INIT_ACK).
-> +
-> +The security module performs the following operations:
-> +  1) If this is the first association on @ep->base.sk, then set the peer sid
-> +     to that in @skb. This will ensure there is only one peer sid assigned
-> +     to @ep->base.sk that may support multiple associations.
-> +
-> +  2) If not the first association, validate the @ep->base.sk peer_sid against
-> +     the @skb peer sid to determine whether the association should be allowed
-> +     or denied.
-> +
-> +  3) If @sctp_cid = SCTP_CID_INIT, then set the sctp @ep sid to socket's sid
-> +     (from ep->base.sk) with MLS portion taken from @skb peer sid. This will
-> +     only be used by SCTP TCP style sockets and peeled off connections as they
-> +     cause a new socket to be generated.
-> +
-> +     If IP security options are configured (CIPSO/CALIPSO), then the ip options
-> +     are set on the socket.
-> +
-> +     To support this hook include/net/sctp/structs.h "struct sctp_endpoint"
-> +     has been updated with the following:
-> +
-> +	/* Security identifiers from incoming (INIT). These are set by
-> +	 * security_sctp_assoc_request(). These will only be used by
-> +	 * SCTP TCP type sockets and peeled off connections as they
-> +	 * cause a new socket to be generated. security_sctp_sk_clone()
-> +	 * will then plug these into the new socket.
-> +	 */
-> +	u32 secid;
-> +	u32 peer_secid;
-> +
-> +
-> +security_sctp_bind_connect()
-> +-----------------------------
-> +This new hook has been added to net/sctp/socket.c and net/sctp/sm_make_chunk.c.
-> +It passes one or more ipv4/ipv6 addresses to the security module for
-> +validation based on the @optname that will result in either a bind or connect
-> +service as shown in the permission check tables below.
-> +Returns 0 on success, error on failure.
-> +
-> +    @sk      - Pointer to sock structure.
-> +    @optname - Name of the option to validate.
-> +    @address - One or more ipv4 / ipv6 addresses.
-> +    @addrlen - The total length of address(s). This is calculated on each
-> +               ipv4 or ipv6 address using sizeof(struct sockaddr_in) or
-> +               sizeof(struct sockaddr_in6).
-> +
-> +  ------------------------------------------------------------------
-> +  |                     BIND Type Checks                           |
-> +  |       @optname             |         @address contains         |
-> +  |----------------------------|-----------------------------------|
-> +  | SCTP_SOCKOPT_BINDX_ADD     | One or more ipv4 / ipv6 addresses |
-> +  | SCTP_PRIMARY_ADDR          | Single ipv4 or ipv6 address       |
-> +  | SCTP_SET_PEER_PRIMARY_ADDR | Single ipv4 or ipv6 address       |
-> +  ------------------------------------------------------------------
-> +
-> +  ------------------------------------------------------------------
-> +  |                   CONNECT Type Checks                          |
-> +  |       @optname             |         @address contains         |
-> +  |----------------------------|-----------------------------------|
-> +  | SCTP_SOCKOPT_CONNECTX      | One or more ipv4 / ipv6 addresses |
-> +  | SCTP_PARAM_ADD_IP          | One or more ipv4 / ipv6 addresses |
-> +  | SCTP_SENDMSG_CONNECT       | Single ipv4 or ipv6 address       |
-> +  | SCTP_PARAM_SET_PRIMARY     | Single ipv4 or ipv6 address       |
-> +  ------------------------------------------------------------------
-> +
-> +A summary of the @optname entries is as follows:
-> +
-> +    SCTP_SOCKOPT_BINDX_ADD - Allows additional bind addresses to be
-> +                             associated after (optionally) calling
-> +                             bind(3).
-> +                             sctp_bindx(3) adds a set of bind
-> +	                     addresses on a socket.
+In preparation for unconditionally passing the struct timer_list pointer to
+all timer callbacks, switch to using the new timer_setup() and from_timer()
+to pass the timer pointer explicitly.
 
-Nit, indentation issue above.
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org
+Signed-off-by: Kees Cook <keescook@chromium.org>
+---
+ include/net/sctp/sm.h    | 10 +++---
+ net/sctp/associola.c     |  3 +-
+ net/sctp/protocol.c      |  7 ++--
+ net/sctp/sm_sideeffect.c | 85 +++++++++++++++++++++++++++++-------------------
+ net/sctp/transport.c     | 13 +++-----
+ 5 files changed, 66 insertions(+), 52 deletions(-)
 
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index 2db3d3a9ce1d..13cc4963e905 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -72,7 +72,7 @@ typedef enum sctp_disposition (sctp_state_fn_t) (
+ 					const union sctp_subtype type,
+ 					void *arg,
+ 					struct sctp_cmd_seq *commands);
+-typedef void (sctp_timer_event_t) (unsigned long);
++typedef void (sctp_timer_event_t) (struct timer_list *);
+ struct sctp_sm_table_entry {
+ 	sctp_state_fn_t *fn;
+ 	const char *name;
+@@ -314,10 +314,10 @@ int sctp_do_sm(struct net *net, enum sctp_event event_type,
+ 	       void *event_arg, gfp_t gfp);
+ 
+ /* 2nd level prototypes */
+-void sctp_generate_t3_rtx_event(unsigned long peer);
+-void sctp_generate_heartbeat_event(unsigned long peer);
+-void sctp_generate_reconf_event(unsigned long peer);
+-void sctp_generate_proto_unreach_event(unsigned long peer);
++void sctp_generate_t3_rtx_event(struct timer_list *t);
++void sctp_generate_heartbeat_event(struct timer_list *t);
++void sctp_generate_reconf_event(struct timer_list *t);
++void sctp_generate_proto_unreach_event(struct timer_list *t);
+ 
+ void sctp_ootb_pkt_free(struct sctp_packet *packet);
+ 
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index dfb9651e818b..69394f4d6091 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -149,8 +149,7 @@ static struct sctp_association *sctp_association_init(
+ 
+ 	/* Initializes the timers */
+ 	for (i = SCTP_EVENT_TIMEOUT_NONE; i < SCTP_NUM_TIMEOUT_TYPES; ++i)
+-		setup_timer(&asoc->timers[i], sctp_timer_events[i],
+-				(unsigned long)asoc);
++		timer_setup(&asoc->timers[i], sctp_timer_events[i], 0);
+ 
+ 	/* Pull default initialization values from the sock options.
+ 	 * Note: This assumes that the values have already been
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index fcd80feb293f..f5172c21349b 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -622,9 +622,9 @@ static void sctp_v4_ecn_capable(struct sock *sk)
+ 	INET_ECN_xmit(sk);
+ }
+ 
+-static void sctp_addr_wq_timeout_handler(unsigned long arg)
++static void sctp_addr_wq_timeout_handler(struct timer_list *t)
+ {
+-	struct net *net = (struct net *)arg;
++	struct net *net = from_timer(net, t, sctp.addr_wq_timer);
+ 	struct sctp_sockaddr_entry *addrw, *temp;
+ 	struct sctp_sock *sp;
+ 
+@@ -1304,8 +1304,7 @@ static int __net_init sctp_defaults_init(struct net *net)
+ 	INIT_LIST_HEAD(&net->sctp.auto_asconf_splist);
+ 	spin_lock_init(&net->sctp.addr_wq_lock);
+ 	net->sctp.addr_wq_timer.expires = 0;
+-	setup_timer(&net->sctp.addr_wq_timer, sctp_addr_wq_timeout_handler,
+-		    (unsigned long)net);
++	timer_setup(&net->sctp.addr_wq_timer, sctp_addr_wq_timeout_handler, 0);
+ 
+ 	return 0;
+ 
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 402bfbb888cd..1c2699b424af 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -243,9 +243,10 @@ static int sctp_gen_sack(struct sctp_association *asoc, int force,
+ /* When the T3-RTX timer expires, it calls this function to create the
+  * relevant state machine event.
+  */
+-void sctp_generate_t3_rtx_event(unsigned long peer)
++void sctp_generate_t3_rtx_event(struct timer_list *t)
+ {
+-	struct sctp_transport *transport = (struct sctp_transport *) peer;
++	struct sctp_transport *transport +		from_timer(transport, t, T3_rtx_timer);
+ 	struct sctp_association *asoc = transport->asoc;
+ 	struct sock *sk = asoc->base.sk;
+ 	struct net *net = sock_net(sk);
+@@ -319,50 +320,63 @@ static void sctp_generate_timeout_event(struct sctp_association *asoc,
+ 	sctp_association_put(asoc);
+ }
+ 
+-static void sctp_generate_t1_cookie_event(unsigned long data)
++static void sctp_generate_t1_cookie_event(struct timer_list *t)
+ {
+-	struct sctp_association *asoc = (struct sctp_association *) data;
++	struct sctp_association *asoc +		from_timer(asoc, t, timers[SCTP_EVENT_TIMEOUT_T1_COOKIE]);
++
+ 	sctp_generate_timeout_event(asoc, SCTP_EVENT_TIMEOUT_T1_COOKIE);
+ }
+ 
+-static void sctp_generate_t1_init_event(unsigned long data)
++static void sctp_generate_t1_init_event(struct timer_list *t)
+ {
+-	struct sctp_association *asoc = (struct sctp_association *) data;
++	struct sctp_association *asoc +		from_timer(asoc, t, timers[SCTP_EVENT_TIMEOUT_T1_INIT]);
++
+ 	sctp_generate_timeout_event(asoc, SCTP_EVENT_TIMEOUT_T1_INIT);
+ }
+ 
+-static void sctp_generate_t2_shutdown_event(unsigned long data)
++static void sctp_generate_t2_shutdown_event(struct timer_list *t)
+ {
+-	struct sctp_association *asoc = (struct sctp_association *) data;
++	struct sctp_association *asoc +		from_timer(asoc, t, timers[SCTP_EVENT_TIMEOUT_T2_SHUTDOWN]);
++
+ 	sctp_generate_timeout_event(asoc, SCTP_EVENT_TIMEOUT_T2_SHUTDOWN);
+ }
+ 
+-static void sctp_generate_t4_rto_event(unsigned long data)
++static void sctp_generate_t4_rto_event(struct timer_list *t)
+ {
+-	struct sctp_association *asoc = (struct sctp_association *) data;
++	struct sctp_association *asoc +		from_timer(asoc, t, timers[SCTP_EVENT_TIMEOUT_T4_RTO]);
++
+ 	sctp_generate_timeout_event(asoc, SCTP_EVENT_TIMEOUT_T4_RTO);
+ }
+ 
+-static void sctp_generate_t5_shutdown_guard_event(unsigned long data)
++static void sctp_generate_t5_shutdown_guard_event(struct timer_list *t)
+ {
+-	struct sctp_association *asoc = (struct sctp_association *)data;
++	struct sctp_association *asoc +		from_timer(asoc, t,
++			   timers[SCTP_EVENT_TIMEOUT_T5_SHUTDOWN_GUARD]);
++
+ 	sctp_generate_timeout_event(asoc,
+ 				    SCTP_EVENT_TIMEOUT_T5_SHUTDOWN_GUARD);
+ 
+ } /* sctp_generate_t5_shutdown_guard_event() */
+ 
+-static void sctp_generate_autoclose_event(unsigned long data)
++static void sctp_generate_autoclose_event(struct timer_list *t)
+ {
+-	struct sctp_association *asoc = (struct sctp_association *) data;
++	struct sctp_association *asoc +		from_timer(asoc, t, timers[SCTP_EVENT_TIMEOUT_AUTOCLOSE]);
++
+ 	sctp_generate_timeout_event(asoc, SCTP_EVENT_TIMEOUT_AUTOCLOSE);
+ }
+ 
+ /* Generate a heart beat event.  If the sock is busy, reschedule.   Make
+  * sure that the transport is still valid.
+  */
+-void sctp_generate_heartbeat_event(unsigned long data)
++void sctp_generate_heartbeat_event(struct timer_list *t)
+ {
+-	struct sctp_transport *transport = (struct sctp_transport *) data;
++	struct sctp_transport *transport = from_timer(transport, t, hb_timer);
+ 	struct sctp_association *asoc = transport->asoc;
+ 	struct sock *sk = asoc->base.sk;
+ 	struct net *net = sock_net(sk);
+@@ -405,9 +419,10 @@ void sctp_generate_heartbeat_event(unsigned long data)
+ /* Handle the timeout of the ICMP protocol unreachable timer.  Trigger
+  * the correct state machine transition that will close the association.
+  */
+-void sctp_generate_proto_unreach_event(unsigned long data)
++void sctp_generate_proto_unreach_event(struct timer_list *t)
+ {
+-	struct sctp_transport *transport = (struct sctp_transport *)data;
++	struct sctp_transport *transport +		from_timer(transport, t, proto_unreach_timer);
+ 	struct sctp_association *asoc = transport->asoc;
+ 	struct sock *sk = asoc->base.sk;
+ 	struct net *net = sock_net(sk);
+@@ -439,9 +454,10 @@ void sctp_generate_proto_unreach_event(unsigned long data)
+ }
+ 
+  /* Handle the timeout of the RE-CONFIG timer. */
+-void sctp_generate_reconf_event(unsigned long data)
++void sctp_generate_reconf_event(struct timer_list *t)
+ {
+-	struct sctp_transport *transport = (struct sctp_transport *)data;
++	struct sctp_transport *transport +		from_timer(transport, t, reconf_timer);
+ 	struct sctp_association *asoc = transport->asoc;
+ 	struct sock *sk = asoc->base.sk;
+ 	struct net *net = sock_net(sk);
+@@ -471,24 +487,27 @@ void sctp_generate_reconf_event(unsigned long data)
+ }
+ 
+ /* Inject a SACK Timeout event into the state machine.  */
+-static void sctp_generate_sack_event(unsigned long data)
++static void sctp_generate_sack_event(struct timer_list *t)
+ {
+-	struct sctp_association *asoc = (struct sctp_association *)data;
++	struct sctp_association *asoc +		from_timer(asoc, t, timers[SCTP_EVENT_TIMEOUT_SACK]);
++
+ 	sctp_generate_timeout_event(asoc, SCTP_EVENT_TIMEOUT_SACK);
+ }
+ 
+ sctp_timer_event_t *sctp_timer_events[SCTP_NUM_TIMEOUT_TYPES] = {
+-	NULL,
+-	sctp_generate_t1_cookie_event,
+-	sctp_generate_t1_init_event,
+-	sctp_generate_t2_shutdown_event,
+-	NULL,
+-	sctp_generate_t4_rto_event,
+-	sctp_generate_t5_shutdown_guard_event,
+-	NULL,
+-	NULL,
+-	sctp_generate_sack_event,
+-	sctp_generate_autoclose_event,
++	[SCTP_EVENT_TIMEOUT_NONE] =		NULL,
++	[SCTP_EVENT_TIMEOUT_T1_COOKIE] =	sctp_generate_t1_cookie_event,
++	[SCTP_EVENT_TIMEOUT_T1_INIT] =		sctp_generate_t1_init_event,
++	[SCTP_EVENT_TIMEOUT_T2_SHUTDOWN] =	sctp_generate_t2_shutdown_event,
++	[SCTP_EVENT_TIMEOUT_T3_RTX] =		NULL,
++	[SCTP_EVENT_TIMEOUT_T4_RTO] =		sctp_generate_t4_rto_event,
++	[SCTP_EVENT_TIMEOUT_T5_SHUTDOWN_GUARD] +					sctp_generate_t5_shutdown_guard_event,
++	[SCTP_EVENT_TIMEOUT_HEARTBEAT] =	NULL,
++	[SCTP_EVENT_TIMEOUT_RECONF] =		NULL,
++	[SCTP_EVENT_TIMEOUT_SACK] =		sctp_generate_sack_event,
++	[SCTP_EVENT_TIMEOUT_AUTOCLOSE] =	sctp_generate_autoclose_event,
+ };
+ 
+ 
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index 2d9bd3776bc8..1e5a22430cf5 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -87,14 +87,11 @@ static struct sctp_transport *sctp_transport_init(struct net *net,
+ 	INIT_LIST_HEAD(&peer->send_ready);
+ 	INIT_LIST_HEAD(&peer->transports);
+ 
+-	setup_timer(&peer->T3_rtx_timer, sctp_generate_t3_rtx_event,
+-		    (unsigned long)peer);
+-	setup_timer(&peer->hb_timer, sctp_generate_heartbeat_event,
+-		    (unsigned long)peer);
+-	setup_timer(&peer->reconf_timer, sctp_generate_reconf_event,
+-		    (unsigned long)peer);
+-	setup_timer(&peer->proto_unreach_timer,
+-		    sctp_generate_proto_unreach_event, (unsigned long)peer);
++	timer_setup(&peer->T3_rtx_timer, sctp_generate_t3_rtx_event, 0);
++	timer_setup(&peer->hb_timer, sctp_generate_heartbeat_event, 0);
++	timer_setup(&peer->reconf_timer, sctp_generate_reconf_event, 0);
++	timer_setup(&peer->proto_unreach_timer,
++		    sctp_generate_proto_unreach_event, 0);
+ 
+ 	/* Initialize the 64-bit random nonce sent with heartbeat. */
+ 	get_random_bytes(&peer->hb_nonce, sizeof(peer->hb_nonce));
+-- 
+2.7.4
+
+
+-- 
+Kees Cook
+Pixel Security
