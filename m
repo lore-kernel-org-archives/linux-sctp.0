@@ -1,29 +1,30 @@
-From: Eric Dumazet <eric.dumazet@gmail.com>
-Date: Fri, 27 Oct 2017 09:36:41 +0000
+From: Dmitry Vyukov <dvyukov@google.com>
+Date: Fri, 27 Oct 2017 09:43:17 +0000
 Subject: Re: WARNING in refcount_sub_and_test
-Message-Id: <1509097001.11887.35.camel@edumazet-glaptop3.roam.corp.google.com>
+Message-Id: <CACT4Y+bjFj6-G_WxetFzmWfppjZLOXHk2G2m_XfEZpC3h4k0Tw@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <001a11441d867b940f055c4c0b40@google.com>
-         <CAOm2TWwoJhsT==euSyC0EDCbWXzTVWBBmvbX8HgmdjxvW0wVbw@mail.gmail.com>
-         <CACT4Y+bWsMoMOY6A5f0RLqRBGKwmELCrQUJhxPzkpHasdrn=5A@mail.gmail.com>
-         <CADvbK_eHVY8LvSReDiXmt3qxOWdLgQQ1ugkZi6C3DrskuUoBtg@mail.gmail.com>
-         <CACT4Y+YegVs8c75nJ5caFPiz8wctj_7n-C3F=RC5PVE1R2uDOQ@mail.gmail.com>
-         <CADvbK_dNGc5K1+Ne-JWaLGn1o4EsmEw60GLk92jJ2C3DWuqdpA@mail.gmail.com>
-         <CACT4Y+aEkksuWQ3YPUfjZaSoWq01LxpkkdrLO83s7H50+0Lj5g@mail.gmail.com>
-In-Reply-To: <CACT4Y+aEkksuWQ3YPUfjZaSoWq01LxpkkdrLO83s7H50+0Lj5g@mail.gmail.com>
+References: <001a11441d867b940f055c4c0b40@google.com> <CAOm2TWwoJhsT==euSyC0EDCbWXzTVWBBmvbX8HgmdjxvW0wVbw@mail.gmail.com>
+ <CACT4Y+bWsMoMOY6A5f0RLqRBGKwmELCrQUJhxPzkpHasdrn=5A@mail.gmail.com>
+ <CADvbK_eHVY8LvSReDiXmt3qxOWdLgQQ1ugkZi6C3DrskuUoBtg@mail.gmail.com>
+ <CACT4Y+YegVs8c75nJ5caFPiz8wctj_7n-C3F=RC5PVE1R2uDOQ@mail.gmail.com>
+ <CADvbK_dNGc5K1+Ne-JWaLGn1o4EsmEw60GLk92jJ2C3DWuqdpA@mail.gmail.com>
+ <CACT4Y+aEkksuWQ3YPUfjZaSoWq01LxpkkdrLO83s7H50+0Lj5g@mail.gmail.com> <1509097001.11887.35.camel@edumazet-glaptop3.roam.corp.google.com>
+In-Reply-To: <1509097001.11887.35.camel@edumazet-glaptop3.roam.corp.google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Dmitry Vyukov <dvyukov@google.com>
+To: Eric Dumazet <eric.dumazet@gmail.com>
 Cc: Xin Long <lucien.xin@gmail.com>, ChunYu Wang <chunwang@redhat.com>, syzbot <bot+a004c8dcbae7c160bf1bbd6e6af2e9cf4fa54f84@syzkaller.appspotmail.com>, David Miller <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, netdev <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs@googlegroups.com, Vladislav Yasevich <vyasevich@gmail.com>
 
-On Fri, 2017-10-27 at 08:09 +0200, Dmitry Vyukov wrote:
+On Fri, Oct 27, 2017 at 11:36 AM, Eric Dumazet <eric.dumazet@gmail.com> wrote:
+> On Fri, 2017-10-27 at 08:09 +0200, Dmitry Vyukov wrote:
+>
+>> Yes, I've noticed this one. It seems to happen on a first incoming
+>> network connection (ssh/scp). I have not seen it before.
+>
+> https://git.kernel.org/pub/scm/linux/kernel/git/tip/tip.git/commit/?h=timers/core&idRf737c2da40259ac9962170ce608b6fb1b55ee4
+>
+> ( Google-Bug-Id: 68003409 )
 
-> Yes, I've noticed this one. It seems to happen on a first incoming
-> network connection (ssh/scp). I have not seen it before.
-
-https://git.kernel.org/pub/scm/linux/kernel/git/tip/tip.git/commit/?h=timers/core&idRf737c2da40259ac9962170ce608b6fb1b55ee4
-
-( Google-Bug-Id: 68003409 )
-
-
+Good!
+I've noticed that it does not happen on latest Linus tree, now I know why.
