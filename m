@@ -1,828 +1,249 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 03 Oct 2017 22:20:13 +0000
-Subject: [PATCH net-next v2 06/10] sctp: introduce stream scheduler foundations
-Message-Id: <d5cd5c56b5e604269f6f43447483bcbf3cd8956d.1507069005.git.marcelo.leitner@gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 28 Oct 2017 11:43:54 +0000
+Subject: [PATCH net 1/4] sctp: fix some type cast warnings introduced by stream reconf
+Message-Id: <d85747d7d1af0972a00b8d4594a84f2afe97aac8.1509190967.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1507069005.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1507069005.git.marcelo.leitner@gmail.com>
+References: <cover.1509190967.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1509190967.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>, David Laight <David.Laight@ACULAB.COM>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Eric Dumazet <edumazet@google.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-This patch introduces the hooks necessary to do stream scheduling, as
-per RFC Draft ndata.  It also introduces the first scheduler, which is
-what we do today but now factored out: first come first served (FCFS).
+These warnings were found by running 'make C=2 M=net/sctp/'.
 
-With stream scheduling now we have to track which chunk was enqueued on
-which stream and be able to select another other than the in front of
-the main outqueue. So we introduce a list on sctp_stream_out_ext
-structure for this purpose.
+They are introduced by not aware of Endian when coding stream
+reconf patches.
 
-We reuse sctp_chunk->transmitted_list space for the list above, as the
-chunk cannot belong to the two lists at the same time. By using the
-union in there, we can have distinct names for these moments.
+Since commit c0d8bab6ae51 ("sctp: add get and set sockopt for
+reconf_enable") enabled stream reconf feature for users, the
+Fixes tag below would use it.
 
-sctp_sched_ops are the operations expected to be implemented by each
-scheduler. The dequeueing is a bit particular to this implementation but
-it is to match how we dequeue packets today. We first dequeue and then
-check if it fits the packet and if not, we requeue it at head. Thus why
-we don't have a peek operation but have dequeue_done instead, which is
-called once the chunk can be safely considered as transmitted.
-
-The check removed from sctp_outq_flush is now performed by
-sctp_stream_outq_migrate, which is only called during assoc setup.
-(sctp_sendmsg() also checks for it)
-
-The only operation that is foreseen but not yet added here is a way to
-signalize that a new packet is starting or that the packet is done, for
-round robin scheduler per packet, but is intentionally left to the
-patch that actually implements it.
-
-Support for I-DATA chunks, also described in this RFC, with user message
-interleaving is straightforward as it just requires the schedulers to
-probe for the feature and ignore datamsg boundaries when dequeueing.
-
-See-also: https://tools.ietf.org/html/draft-ietf-tsvwg-sctp-ndata-13
-Tested-by: Xin Long <lucien.xin@gmail.com>
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Fixes: c0d8bab6ae51 ("sctp: add get and set sockopt for reconf_enable")
+Reported-by: Eric Dumazet <edumazet@google.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/stream_sched.h |  72 +++++++++++
- include/net/sctp/structs.h      |  15 ++-
- include/uapi/linux/sctp.h       |   6 +
- net/sctp/Makefile               |   2 +-
- net/sctp/outqueue.c             |  59 +++++----
- net/sctp/sm_sideeffect.c        |   3 +
- net/sctp/stream.c               |  88 +++++++++++--
- net/sctp/stream_sched.c         | 270 ++++++++++++++++++++++++++++++++++++++++
- 8 files changed, 477 insertions(+), 38 deletions(-)
- create mode 100644 include/net/sctp/stream_sched.h
- create mode 100644 net/sctp/stream_sched.c
+ include/linux/sctp.h        | 32 ++++++++++++++++----------------
+ include/net/sctp/sm.h       |  2 +-
+ include/net/sctp/ulpevent.h |  2 +-
+ net/sctp/sm_make_chunk.c    |  5 +++--
+ net/sctp/stream.c           | 26 +++++++++++++++++---------
+ net/sctp/ulpevent.c         |  2 +-
+ 6 files changed, 39 insertions(+), 30 deletions(-)
 
-diff --git a/include/net/sctp/stream_sched.h b/include/net/sctp/stream_sched.h
-new file mode 100644
-index 0000000000000000000000000000000000000000..c676550a4c7dd0ea27ac0e14437d0a2b451ef499
---- /dev/null
-+++ b/include/net/sctp/stream_sched.h
-@@ -0,0 +1,72 @@
-+/* SCTP kernel implementation
-+ * (C) Copyright Red Hat Inc. 2017
-+ *
-+ * These are definitions used by the stream schedulers, defined in RFC
-+ * draft ndata (https://tools.ietf.org/html/draft-ietf-tsvwg-sctp-ndata-11)
-+ *
-+ * This SCTP implementation is free software;
-+ * you can redistribute it and/or modify it under the terms of
-+ * the GNU General Public License as published by
-+ * the Free Software Foundation; either version 2, or (at your option)
-+ * any later version.
-+ *
-+ * This SCTP implementation  is distributed in the hope that it
-+ * will be useful, but WITHOUT ANY WARRANTY; without even the implied
-+ *                 ************************
-+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-+ * See the GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with GNU CC; see the file COPYING.  If not, see
-+ * <http://www.gnu.org/licenses/>.
-+ *
-+ * Please send any bug reports or fixes you make to the
-+ * email addresses:
-+ *    lksctp developers <linux-sctp@vger.kernel.org>
-+ *
-+ * Written or modified by:
-+ *   Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-+ */
-+
-+#ifndef __sctp_stream_sched_h__
-+#define __sctp_stream_sched_h__
-+
-+struct sctp_sched_ops {
-+	/* Property handling for a given stream */
-+	int (*set)(struct sctp_stream *stream, __u16 sid, __u16 value,
-+		   gfp_t gfp);
-+	int (*get)(struct sctp_stream *stream, __u16 sid, __u16 *value);
-+
-+	/* Init the specific scheduler */
-+	int (*init)(struct sctp_stream *stream);
-+	/* Init a stream */
-+	int (*init_sid)(struct sctp_stream *stream, __u16 sid, gfp_t gfp);
-+	/* Frees the entire thing */
-+	void (*free)(struct sctp_stream *stream);
-+
-+	/* Enqueue a chunk */
-+	void (*enqueue)(struct sctp_outq *q, struct sctp_datamsg *msg);
-+	/* Dequeue a chunk */
-+	struct sctp_chunk *(*dequeue)(struct sctp_outq *q);
-+	/* Called only if the chunk fit the packet */
-+	void (*dequeue_done)(struct sctp_outq *q, struct sctp_chunk *chunk);
-+	/* Sched all chunks already enqueued */
-+	void (*sched_all)(struct sctp_stream *steam);
-+	/* Unched all chunks already enqueued */
-+	void (*unsched_all)(struct sctp_stream *steam);
-+};
-+
-+int sctp_sched_set_sched(struct sctp_association *asoc,
-+			 enum sctp_sched_type sched);
-+int sctp_sched_get_sched(struct sctp_association *asoc);
-+int sctp_sched_set_value(struct sctp_association *asoc, __u16 sid,
-+			 __u16 value, gfp_t gfp);
-+int sctp_sched_get_value(struct sctp_association *asoc, __u16 sid,
-+			 __u16 *value);
-+void sctp_sched_dequeue_done(struct sctp_outq *q, struct sctp_chunk *ch);
-+
-+void sctp_sched_dequeue_common(struct sctp_outq *q, struct sctp_chunk *ch);
-+int sctp_sched_init_sid(struct sctp_stream *stream, __u16 sid, gfp_t gfp);
-+struct sctp_sched_ops *sctp_sched_ops_from_stream(struct sctp_stream *stream);
-+
-+#endif /* __sctp_stream_sched_h__ */
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index c48f7999fe9b80c5b5e41910a3608059b94140a7..3c22a30fd71b4ef87419a77cf69b00807a5986bb 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -84,7 +84,6 @@ struct sctp_ulpq;
- struct sctp_ep_common;
- struct crypto_shash;
- struct sctp_stream;
--struct sctp_stream_out;
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index 82b171e..09d7412 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -716,28 +716,28 @@ struct sctp_reconf_chunk {
  
- 
- #include <net/sctp/tsnmap.h>
-@@ -531,8 +530,12 @@ struct sctp_chunk {
- 	/* How many times this chunk have been sent, for prsctp RTX policy */
- 	int sent_count;
- 
--	/* This is our link to the per-transport transmitted list.  */
--	struct list_head transmitted_list;
-+	union {
-+		/* This is our link to the per-transport transmitted list.  */
-+		struct list_head transmitted_list;
-+		/* List in specific stream outq */
-+		struct list_head stream_list;
-+	};
- 
- 	/* This field is used by chunks that hold fragmented data.
- 	 * For the first fragment this is the list that holds the rest of
-@@ -1019,6 +1022,9 @@ struct sctp_outq {
- 	/* Data pending that has never been transmitted.  */
- 	struct list_head out_chunk_list;
- 
-+	/* Stream scheduler being used */
-+	struct sctp_sched_ops *sched;
-+
- 	unsigned int out_qlen;	/* Total length of queued data chunks. */
- 
- 	/* Error of send failed, may used in SCTP_SEND_FAILED event. */
-@@ -1325,6 +1331,7 @@ struct sctp_inithdr_host {
- struct sctp_stream_out_ext {
- 	__u64 abandoned_unsent[SCTP_PR_INDEX(MAX) + 1];
- 	__u64 abandoned_sent[SCTP_PR_INDEX(MAX) + 1];
-+	struct list_head outq; /* chunks enqueued by this stream */
+ struct sctp_strreset_outreq {
+ 	struct sctp_paramhdr param_hdr;
+-	__u32 request_seq;
+-	__u32 response_seq;
+-	__u32 send_reset_at_tsn;
+-	__u16 list_of_streams[0];
++	__be32 request_seq;
++	__be32 response_seq;
++	__be32 send_reset_at_tsn;
++	__be16 list_of_streams[0];
  };
  
- struct sctp_stream_out {
-@@ -1342,6 +1349,8 @@ struct sctp_stream {
- 	struct sctp_stream_in *in;
- 	__u16 outcnt;
- 	__u16 incnt;
-+	/* Current stream being sent, if any */
-+	struct sctp_stream_out *out_curr;
+ struct sctp_strreset_inreq {
+ 	struct sctp_paramhdr param_hdr;
+-	__u32 request_seq;
+-	__u16 list_of_streams[0];
++	__be32 request_seq;
++	__be16 list_of_streams[0];
  };
  
- #define SCTP_STREAM_CLOSED		0x00
-diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index 6217ff8500a1d818fd1002fbd6f81c0c11974665..4487e7625ddbd48be1868a8292a807ecd0a314bc 100644
---- a/include/uapi/linux/sctp.h
-+++ b/include/uapi/linux/sctp.h
-@@ -1088,4 +1088,10 @@ struct sctp_add_streams {
- 	uint16_t sas_outstrms;
+ struct sctp_strreset_tsnreq {
+ 	struct sctp_paramhdr param_hdr;
+-	__u32 request_seq;
++	__be32 request_seq;
  };
  
-+/* SCTP Stream schedulers */
-+enum sctp_sched_type {
-+	SCTP_SS_FCFS,
-+	SCTP_SS_MAX = SCTP_SS_FCFS
-+};
-+
- #endif /* _UAPI_SCTP_H */
-diff --git a/net/sctp/Makefile b/net/sctp/Makefile
-index 70f1b570bab9764d692f1c2e605d76d056cda2cd..0f6e6d1d69fd336b4a99f896851b0120f9a0d1e0 100644
---- a/net/sctp/Makefile
-+++ b/net/sctp/Makefile
-@@ -12,7 +12,7 @@ sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
- 	  inqueue.o outqueue.o ulpqueue.o \
- 	  tsnmap.o bind_addr.o socket.o primitive.o \
- 	  output.o input.o debug.o stream.o auth.o \
--	  offload.o
-+	  offload.o stream_sched.o
+ struct sctp_strreset_addstrm {
+ 	struct sctp_paramhdr param_hdr;
+-	__u32 request_seq;
+-	__u16 number_of_streams;
+-	__u16 reserved;
++	__be32 request_seq;
++	__be16 number_of_streams;
++	__be16 reserved;
+ };
  
- sctp_probe-y := probe.o
+ enum {
+@@ -752,16 +752,16 @@ enum {
  
-diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index 746b07b7937d8730824b9e09917d947aa7863ec6..4db012aa25f7a042f063bc17b56270effebc6cc6 100644
---- a/net/sctp/outqueue.c
-+++ b/net/sctp/outqueue.c
-@@ -50,6 +50,7 @@
+ struct sctp_strreset_resp {
+ 	struct sctp_paramhdr param_hdr;
+-	__u32 response_seq;
+-	__u32 result;
++	__be32 response_seq;
++	__be32 result;
+ };
  
- #include <net/sctp/sctp.h>
- #include <net/sctp/sm.h>
-+#include <net/sctp/stream_sched.h>
+ struct sctp_strreset_resptsn {
+ 	struct sctp_paramhdr param_hdr;
+-	__u32 response_seq;
+-	__u32 result;
+-	__u32 senders_next_tsn;
+-	__u32 receivers_next_tsn;
++	__be32 response_seq;
++	__be32 result;
++	__be32 senders_next_tsn;
++	__be32 receivers_next_tsn;
+ };
  
- /* Declare internal functions here.  */
- static int sctp_acked(struct sctp_sackhdr *sack, __u32 tsn);
-@@ -72,32 +73,38 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp);
+ #endif /* __LINUX_SCTP_H__ */
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index 2db3d3a..88233cf 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -261,7 +261,7 @@ struct sctp_chunk *sctp_make_fwdtsn(const struct sctp_association *asoc,
+ 				    struct sctp_fwdtsn_skip *skiplist);
+ struct sctp_chunk *sctp_make_auth(const struct sctp_association *asoc);
+ struct sctp_chunk *sctp_make_strreset_req(const struct sctp_association *asoc,
+-					  __u16 stream_num, __u16 *stream_list,
++					  __u16 stream_num, __be16 *stream_list,
+ 					  bool out, bool in);
+ struct sctp_chunk *sctp_make_strreset_tsnreq(
+ 					const struct sctp_association *asoc);
+diff --git a/include/net/sctp/ulpevent.h b/include/net/sctp/ulpevent.h
+index b8c86ec..231dc42 100644
+--- a/include/net/sctp/ulpevent.h
++++ b/include/net/sctp/ulpevent.h
+@@ -130,7 +130,7 @@ struct sctp_ulpevent *sctp_ulpevent_make_sender_dry_event(
  
- /* Add data to the front of the queue. */
- static inline void sctp_outq_head_data(struct sctp_outq *q,
--					struct sctp_chunk *ch)
-+				       struct sctp_chunk *ch)
+ struct sctp_ulpevent *sctp_ulpevent_make_stream_reset_event(
+ 	const struct sctp_association *asoc, __u16 flags,
+-	__u16 stream_num, __u16 *stream_list, gfp_t gfp);
++	__u16 stream_num, __be16 *stream_list, gfp_t gfp);
+ 
+ struct sctp_ulpevent *sctp_ulpevent_make_assoc_reset_event(
+ 	const struct sctp_association *asoc, __u16 flags,
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index ca8f196..57c5504 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -3591,7 +3591,7 @@ static struct sctp_chunk *sctp_make_reconf(const struct sctp_association *asoc,
+  */
+ struct sctp_chunk *sctp_make_strreset_req(
+ 					const struct sctp_association *asoc,
+-					__u16 stream_num, __u16 *stream_list,
++					__u16 stream_num, __be16 *stream_list,
+ 					bool out, bool in)
  {
-+	struct sctp_stream_out_ext *oute;
-+	__u16 stream;
-+
- 	list_add(&ch->list, &q->out_chunk_list);
- 	q->out_qlen += ch->skb->len;
-+
-+	stream = sctp_chunk_stream_no(ch);
-+	oute = q->asoc->stream.out[stream].ext;
-+	list_add(&ch->stream_list, &oute->outq);
- }
- 
- /* Take data from the front of the queue. */
- static inline struct sctp_chunk *sctp_outq_dequeue_data(struct sctp_outq *q)
+ 	struct sctp_strreset_outreq outreq;
+@@ -3788,7 +3788,8 @@ bool sctp_verify_reconf(const struct sctp_association *asoc,
  {
--	struct sctp_chunk *ch = NULL;
--
--	if (!list_empty(&q->out_chunk_list)) {
--		struct list_head *entry = q->out_chunk_list.next;
--
--		ch = list_entry(entry, struct sctp_chunk, list);
--		list_del_init(entry);
--		q->out_qlen -= ch->skb->len;
--	}
--	return ch;
-+	return q->sched->dequeue(q);
- }
-+
- /* Add data chunk to the end of the queue. */
- static inline void sctp_outq_tail_data(struct sctp_outq *q,
- 				       struct sctp_chunk *ch)
- {
-+	struct sctp_stream_out_ext *oute;
-+	__u16 stream;
-+
- 	list_add_tail(&ch->list, &q->out_chunk_list);
- 	q->out_qlen += ch->skb->len;
-+
-+	stream = sctp_chunk_stream_no(ch);
-+	oute = q->asoc->stream.out[stream].ext;
-+	list_add_tail(&ch->stream_list, &oute->outq);
- }
+ 	struct sctp_reconf_chunk *hdr;
+ 	union sctp_params param;
+-	__u16 last = 0, cnt = 0;
++	__be16 last = 0;
++	__u16 cnt = 0;
  
- /*
-@@ -207,6 +214,7 @@ void sctp_outq_init(struct sctp_association *asoc, struct sctp_outq *q)
- 	INIT_LIST_HEAD(&q->retransmit);
- 	INIT_LIST_HEAD(&q->sacked);
- 	INIT_LIST_HEAD(&q->abandoned);
-+	sctp_sched_set_sched(asoc, SCTP_SS_FCFS);
- }
- 
- /* Free the outqueue structure and any related pending chunks.
-@@ -258,6 +266,7 @@ static void __sctp_outq_teardown(struct sctp_outq *q)
- 
- 	/* Throw away any leftover data chunks. */
- 	while ((chunk = sctp_outq_dequeue_data(q)) != NULL) {
-+		sctp_sched_dequeue_done(q, chunk);
- 
- 		/* Mark as send failure. */
- 		sctp_chunk_fail(chunk, q->error);
-@@ -391,13 +400,14 @@ static int sctp_prsctp_prune_unsent(struct sctp_association *asoc,
- 	struct sctp_outq *q = &asoc->outqueue;
- 	struct sctp_chunk *chk, *temp;
- 
-+	q->sched->unsched_all(&asoc->stream);
-+
- 	list_for_each_entry_safe(chk, temp, &q->out_chunk_list, list) {
- 		if (!SCTP_PR_PRIO_ENABLED(chk->sinfo.sinfo_flags) ||
- 		    chk->sinfo.sinfo_timetolive <= sinfo->sinfo_timetolive)
- 			continue;
- 
--		list_del_init(&chk->list);
--		q->out_qlen -= chk->skb->len;
-+		sctp_sched_dequeue_common(q, chk);
- 		asoc->sent_cnt_removable--;
- 		asoc->abandoned_unsent[SCTP_PR_INDEX(PRIO)]++;
- 		if (chk->sinfo.sinfo_stream < asoc->stream.outcnt) {
-@@ -415,6 +425,8 @@ static int sctp_prsctp_prune_unsent(struct sctp_association *asoc,
- 			break;
- 	}
- 
-+	q->sched->sched_all(&asoc->stream);
-+
- 	return msg_len;
- }
- 
-@@ -1033,22 +1045,9 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 		while ((chunk = sctp_outq_dequeue_data(q)) != NULL) {
- 			__u32 sid = ntohs(chunk->subh.data_hdr->stream);
- 
--			/* RFC 2960 6.5 Every DATA chunk MUST carry a valid
--			 * stream identifier.
--			 */
--			if (chunk->sinfo.sinfo_stream >= asoc->stream.outcnt) {
--
--				/* Mark as failed send. */
--				sctp_chunk_fail(chunk, SCTP_ERROR_INV_STRM);
--				if (asoc->peer.prsctp_capable &&
--				    SCTP_PR_PRIO_ENABLED(chunk->sinfo.sinfo_flags))
--					asoc->sent_cnt_removable--;
--				sctp_chunk_free(chunk);
--				continue;
--			}
--
- 			/* Has this chunk expired? */
- 			if (sctp_chunk_abandoned(chunk)) {
-+				sctp_sched_dequeue_done(q, chunk);
- 				sctp_chunk_fail(chunk, 0);
- 				sctp_chunk_free(chunk);
- 				continue;
-@@ -1070,6 +1069,7 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 				new_transport = asoc->peer.active_path;
- 			if (new_transport->state = SCTP_UNCONFIRMED) {
- 				WARN_ONCE(1, "Attempt to send packet on unconfirmed path.");
-+				sctp_sched_dequeue_done(q, chunk);
- 				sctp_chunk_fail(chunk, 0);
- 				sctp_chunk_free(chunk);
- 				continue;
-@@ -1133,6 +1133,11 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 				else
- 					asoc->stats.oodchunks++;
- 
-+				/* Only now it's safe to consider this
-+				 * chunk as sent, sched-wise.
-+				 */
-+				sctp_sched_dequeue_done(q, chunk);
-+
- 				break;
- 
- 			default:
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index e6a2974e020e1a4232d94e6c2933eebff5f8acb4..402bfbb888cda53248dd192d3756a2f4db1d2a7f 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -50,6 +50,7 @@
- #include <net/sock.h>
- #include <net/sctp/sctp.h>
- #include <net/sctp/sm.h>
-+#include <net/sctp/stream_sched.h>
- 
- static int sctp_cmd_interpreter(enum sctp_event event_type,
- 				union sctp_subtype subtype,
-@@ -1089,6 +1090,8 @@ static void sctp_cmd_send_msg(struct sctp_association *asoc,
- 
- 	list_for_each_entry(chunk, &msg->chunks, frag_list)
- 		sctp_outq_tail(&asoc->outqueue, chunk, gfp);
-+
-+	asoc->outqueue.sched->enqueue(&asoc->outqueue, msg);
- }
- 
- 
+ 	hdr = (struct sctp_reconf_chunk *)chunk->chunk_hdr;
+ 	sctp_walk_params(param, hdr, params) {
 diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index 055ca25bbc91bf932db8048c72a1b11cc2214942..5ea33a2c453b4272c5c22fa61e8e8bec06001f8b 100644
+index 63ea155..fa8371f 100644
 --- a/net/sctp/stream.c
 +++ b/net/sctp/stream.c
-@@ -32,8 +32,61 @@
-  *    Xin Long <lucien.xin@gmail.com>
-  */
+@@ -118,6 +118,7 @@ int sctp_send_reset_streams(struct sctp_association *asoc,
+ 	__u16 i, str_nums, *str_list;
+ 	struct sctp_chunk *chunk;
+ 	int retval = -EINVAL;
++	__be16 *nstr_list;
+ 	bool out, in;
  
-+#include <linux/list.h>
- #include <net/sctp/sctp.h>
- #include <net/sctp/sm.h>
-+#include <net/sctp/stream_sched.h>
-+
-+/* Migrates chunks from stream queues to new stream queues if needed,
-+ * but not across associations. Also, removes those chunks to streams
-+ * higher than the new max.
-+ */
-+static void sctp_stream_outq_migrate(struct sctp_stream *stream,
-+				     struct sctp_stream *new, __u16 outcnt)
-+{
-+	struct sctp_association *asoc;
-+	struct sctp_chunk *ch, *temp;
-+	struct sctp_outq *outq;
-+	int i;
-+
-+	asoc = container_of(stream, struct sctp_association, stream);
-+	outq = &asoc->outqueue;
-+
-+	list_for_each_entry_safe(ch, temp, &outq->out_chunk_list, list) {
-+		__u16 sid = sctp_chunk_stream_no(ch);
-+
-+		if (sid < outcnt)
-+			continue;
-+
-+		sctp_sched_dequeue_common(outq, ch);
-+		/* No need to call dequeue_done here because
-+		 * the chunks are not scheduled by now.
-+		 */
-+
-+		/* Mark as failed send. */
-+		sctp_chunk_fail(ch, SCTP_ERROR_INV_STRM);
-+		if (asoc->peer.prsctp_capable &&
-+		    SCTP_PR_PRIO_ENABLED(ch->sinfo.sinfo_flags))
-+			asoc->sent_cnt_removable--;
-+
-+		sctp_chunk_free(ch);
-+	}
-+
-+	if (new) {
-+		/* Here we actually move the old ext stuff into the new
-+		 * buffer, because we want to keep it. Then
-+		 * sctp_stream_update will swap ->out pointers.
-+		 */
-+		for (i = 0; i < outcnt; i++) {
-+			kfree(new->out[i].ext);
-+			new->out[i].ext = stream->out[i].ext;
-+			stream->out[i].ext = NULL;
-+		}
-+	}
-+
-+	for (i = outcnt; i < stream->outcnt; i++)
-+		kfree(stream->out[i].ext);
-+}
+ 	if (!asoc->peer.reconf_capable ||
+@@ -148,13 +149,18 @@ int sctp_send_reset_streams(struct sctp_association *asoc,
+ 			if (str_list[i] >= stream->incnt)
+ 				goto out;
  
- static int sctp_stream_alloc_out(struct sctp_stream *stream, __u16 outcnt,
- 				 gfp_t gfp)
-@@ -87,7 +140,8 @@ static int sctp_stream_alloc_in(struct sctp_stream *stream, __u16 incnt,
- int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
- 		     gfp_t gfp)
- {
--	int i;
-+	struct sctp_sched_ops *sched = sctp_sched_ops_from_stream(stream);
-+	int i, ret = 0;
- 
- 	gfp |= __GFP_NOWARN;
- 
-@@ -97,6 +151,11 @@ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
- 	if (outcnt = stream->outcnt)
- 		goto in;
- 
-+	/* Filter out chunks queued on streams that won't exist anymore */
-+	sched->unsched_all(stream);
-+	sctp_stream_outq_migrate(stream, NULL, outcnt);
-+	sched->sched_all(stream);
-+
- 	i = sctp_stream_alloc_out(stream, outcnt, gfp);
- 	if (i)
- 		return i;
-@@ -105,20 +164,27 @@ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
- 	for (i = 0; i < stream->outcnt; i++)
- 		stream->out[i].state = SCTP_STREAM_OPEN;
- 
-+	sched->init(stream);
-+
- in:
- 	if (!incnt)
--		return 0;
++	nstr_list = kcalloc(str_nums, sizeof(__be16), GFP_KERNEL);
++	if (!nstr_list) {
++		retval = -ENOMEM;
 +		goto out;
++	}
++
+ 	for (i = 0; i < str_nums; i++)
+-		str_list[i] = htons(str_list[i]);
++		nstr_list[i] = htons(str_list[i]);
  
- 	i = sctp_stream_alloc_in(stream, incnt, gfp);
- 	if (i) {
--		kfree(stream->out);
--		stream->out = NULL;
--		return -ENOMEM;
-+		ret = -ENOMEM;
-+		goto free;
- 	}
+-	chunk = sctp_make_strreset_req(asoc, str_nums, str_list, out, in);
++	chunk = sctp_make_strreset_req(asoc, str_nums, nstr_list, out, in);
  
- 	stream->incnt = incnt;
-+	goto out;
+-	for (i = 0; i < str_nums; i++)
+-		str_list[i] = ntohs(str_list[i]);
++	kfree(nstr_list);
  
--	return 0;
-+free:
-+	sched->free(stream);
-+	kfree(stream->out);
-+	stream->out = NULL;
-+out:
-+	return ret;
+ 	if (!chunk) {
+ 		retval = -ENOMEM;
+@@ -305,7 +311,7 @@ int sctp_send_add_streams(struct sctp_association *asoc,
  }
  
- int sctp_stream_init_ext(struct sctp_stream *stream, __u16 sid)
-@@ -130,13 +196,15 @@ int sctp_stream_init_ext(struct sctp_stream *stream, __u16 sid)
- 		return -ENOMEM;
- 	stream->out[sid].ext = soute;
- 
--	return 0;
-+	return sctp_sched_init_sid(stream, sid, GFP_KERNEL);
- }
- 
- void sctp_stream_free(struct sctp_stream *stream)
+ static struct sctp_paramhdr *sctp_chunk_lookup_strreset_param(
+-			struct sctp_association *asoc, __u32 resp_seq,
++			struct sctp_association *asoc, __be32 resp_seq,
+ 			__be16 type)
  {
-+	struct sctp_sched_ops *sched = sctp_sched_ops_from_stream(stream);
- 	int i;
- 
-+	sched->free(stream);
- 	for (i = 0; i < stream->outcnt; i++)
- 		kfree(stream->out[i].ext);
- 	kfree(stream->out);
-@@ -156,6 +224,10 @@ void sctp_stream_clear(struct sctp_stream *stream)
- 
- void sctp_stream_update(struct sctp_stream *stream, struct sctp_stream *new)
+ 	struct sctp_chunk *chunk = asoc->strreset_chunk;
+@@ -345,8 +351,9 @@ struct sctp_chunk *sctp_process_strreset_outreq(
  {
-+	struct sctp_sched_ops *sched = sctp_sched_ops_from_stream(stream);
-+
-+	sched->unsched_all(stream);
-+	sctp_stream_outq_migrate(stream, new, new->outcnt);
- 	sctp_stream_free(stream);
+ 	struct sctp_strreset_outreq *outreq = param.v;
+ 	struct sctp_stream *stream = &asoc->stream;
+-	__u16 i, nums, flags = 0, *str_p = NULL;
+ 	__u32 result = SCTP_STRRESET_DENIED;
++	__u16 i, nums, flags = 0;
++	__be16 *str_p = NULL;
+ 	__u32 request_seq;
  
- 	stream->out = new->out;
-@@ -163,6 +235,8 @@ void sctp_stream_update(struct sctp_stream *stream, struct sctp_stream *new)
- 	stream->outcnt = new->outcnt;
- 	stream->incnt  = new->incnt;
+ 	request_seq = ntohl(outreq->request_seq);
+@@ -439,8 +446,9 @@ struct sctp_chunk *sctp_process_strreset_inreq(
+ 	struct sctp_stream *stream = &asoc->stream;
+ 	__u32 result = SCTP_STRRESET_DENIED;
+ 	struct sctp_chunk *chunk = NULL;
+-	__u16 i, nums, *str_p;
+ 	__u32 request_seq;
++	__u16 i, nums;
++	__be16 *str_p;
  
-+	sched->sched_all(stream);
-+
- 	new->out = NULL;
- 	new->in  = NULL;
- }
-diff --git a/net/sctp/stream_sched.c b/net/sctp/stream_sched.c
-new file mode 100644
-index 0000000000000000000000000000000000000000..40a9a9de2b98a56786a4c8585f5ad514be9189af
---- /dev/null
-+++ b/net/sctp/stream_sched.c
-@@ -0,0 +1,270 @@
-+/* SCTP kernel implementation
-+ * (C) Copyright Red Hat Inc. 2017
-+ *
-+ * This file is part of the SCTP kernel implementation
-+ *
-+ * These functions manipulate sctp stream queue/scheduling.
-+ *
-+ * This SCTP implementation is free software;
-+ * you can redistribute it and/or modify it under the terms of
-+ * the GNU General Public License as published by
-+ * the Free Software Foundation; either version 2, or (at your option)
-+ * any later version.
-+ *
-+ * This SCTP implementation is distributed in the hope that it
-+ * will be useful, but WITHOUT ANY WARRANTY; without even the implied
-+ *                 ************************
-+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-+ * See the GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with GNU CC; see the file COPYING.  If not, see
-+ * <http://www.gnu.org/licenses/>.
-+ *
-+ * Please send any bug reports or fixes you make to the
-+ * email addresched(es):
-+ *    lksctp developers <linux-sctp@vger.kernel.org>
-+ *
-+ * Written or modified by:
-+ *    Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-+ */
-+
-+#include <linux/list.h>
-+#include <net/sctp/sctp.h>
-+#include <net/sctp/sm.h>
-+#include <net/sctp/stream_sched.h>
-+
-+/* First Come First Serve (a.k.a. FIFO)
-+ * RFC DRAFT ndata Section 3.1
-+ */
-+static int sctp_sched_fcfs_set(struct sctp_stream *stream, __u16 sid,
-+			       __u16 value, gfp_t gfp)
-+{
-+	return 0;
-+}
-+
-+static int sctp_sched_fcfs_get(struct sctp_stream *stream, __u16 sid,
-+			       __u16 *value)
-+{
-+	*value = 0;
-+	return 0;
-+}
-+
-+static int sctp_sched_fcfs_init(struct sctp_stream *stream)
-+{
-+	return 0;
-+}
-+
-+static int sctp_sched_fcfs_init_sid(struct sctp_stream *stream, __u16 sid,
-+				    gfp_t gfp)
-+{
-+	return 0;
-+}
-+
-+static void sctp_sched_fcfs_free(struct sctp_stream *stream)
-+{
-+}
-+
-+static void sctp_sched_fcfs_enqueue(struct sctp_outq *q,
-+				    struct sctp_datamsg *msg)
-+{
-+}
-+
-+static struct sctp_chunk *sctp_sched_fcfs_dequeue(struct sctp_outq *q)
-+{
-+	struct sctp_stream *stream = &q->asoc->stream;
-+	struct sctp_chunk *ch = NULL;
-+	struct list_head *entry;
-+
-+	if (list_empty(&q->out_chunk_list))
-+		goto out;
-+
-+	if (stream->out_curr) {
-+		ch = list_entry(stream->out_curr->ext->outq.next,
-+				struct sctp_chunk, stream_list);
-+	} else {
-+		entry = q->out_chunk_list.next;
-+		ch = list_entry(entry, struct sctp_chunk, list);
-+	}
-+
-+	sctp_sched_dequeue_common(q, ch);
-+
-+out:
-+	return ch;
-+}
-+
-+static void sctp_sched_fcfs_dequeue_done(struct sctp_outq *q,
-+					 struct sctp_chunk *chunk)
-+{
-+}
-+
-+static void sctp_sched_fcfs_sched_all(struct sctp_stream *stream)
-+{
-+}
-+
-+static void sctp_sched_fcfs_unsched_all(struct sctp_stream *stream)
-+{
-+}
-+
-+static struct sctp_sched_ops sctp_sched_fcfs = {
-+	.set = sctp_sched_fcfs_set,
-+	.get = sctp_sched_fcfs_get,
-+	.init = sctp_sched_fcfs_init,
-+	.init_sid = sctp_sched_fcfs_init_sid,
-+	.free = sctp_sched_fcfs_free,
-+	.enqueue = sctp_sched_fcfs_enqueue,
-+	.dequeue = sctp_sched_fcfs_dequeue,
-+	.dequeue_done = sctp_sched_fcfs_dequeue_done,
-+	.sched_all = sctp_sched_fcfs_sched_all,
-+	.unsched_all = sctp_sched_fcfs_unsched_all,
-+};
-+
-+/* API to other parts of the stack */
-+
-+struct sctp_sched_ops *sctp_sched_ops[] = {
-+	&sctp_sched_fcfs,
-+};
-+
-+int sctp_sched_set_sched(struct sctp_association *asoc,
-+			 enum sctp_sched_type sched)
-+{
-+	struct sctp_sched_ops *n = sctp_sched_ops[sched];
-+	struct sctp_sched_ops *old = asoc->outqueue.sched;
-+	struct sctp_datamsg *msg = NULL;
-+	struct sctp_chunk *ch;
-+	int i, ret = 0;
-+
-+	if (old = n)
-+		return ret;
-+
-+	if (sched > SCTP_SS_MAX)
-+		return -EINVAL;
-+
-+	if (old) {
-+		old->free(&asoc->stream);
-+
-+		/* Give the next scheduler a clean slate. */
-+		for (i = 0; i < asoc->stream.outcnt; i++) {
-+			void *p = asoc->stream.out[i].ext;
-+
-+			if (!p)
-+				continue;
-+
-+			p += offsetofend(struct sctp_stream_out_ext, outq);
-+			memset(p, 0, sizeof(struct sctp_stream_out_ext) -
-+				     offsetofend(struct sctp_stream_out_ext, outq));
-+		}
-+	}
-+
-+	asoc->outqueue.sched = n;
-+	n->init(&asoc->stream);
-+	for (i = 0; i < asoc->stream.outcnt; i++) {
-+		if (!asoc->stream.out[i].ext)
-+			continue;
-+
-+		ret = n->init_sid(&asoc->stream, i, GFP_KERNEL);
-+		if (ret)
-+			goto err;
-+	}
-+
-+	/* We have to requeue all chunks already queued. */
-+	list_for_each_entry(ch, &asoc->outqueue.out_chunk_list, list) {
-+		if (ch->msg = msg)
-+			continue;
-+		msg = ch->msg;
-+		n->enqueue(&asoc->outqueue, msg);
-+	}
-+
-+	return ret;
-+
-+err:
-+	n->free(&asoc->stream);
-+	asoc->outqueue.sched = &sctp_sched_fcfs; /* Always safe */
-+
-+	return ret;
-+}
-+
-+int sctp_sched_get_sched(struct sctp_association *asoc)
-+{
-+	int i;
-+
-+	for (i = 0; i <= SCTP_SS_MAX; i++)
-+		if (asoc->outqueue.sched = sctp_sched_ops[i])
-+			return i;
-+
-+	return 0;
-+}
-+
-+int sctp_sched_set_value(struct sctp_association *asoc, __u16 sid,
-+			 __u16 value, gfp_t gfp)
-+{
-+	if (sid >= asoc->stream.outcnt)
-+		return -EINVAL;
-+
-+	if (!asoc->stream.out[sid].ext) {
-+		int ret;
-+
-+		ret = sctp_stream_init_ext(&asoc->stream, sid);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	return asoc->outqueue.sched->set(&asoc->stream, sid, value, gfp);
-+}
-+
-+int sctp_sched_get_value(struct sctp_association *asoc, __u16 sid,
-+			 __u16 *value)
-+{
-+	if (sid >= asoc->stream.outcnt)
-+		return -EINVAL;
-+
-+	if (!asoc->stream.out[sid].ext)
-+		return 0;
-+
-+	return asoc->outqueue.sched->get(&asoc->stream, sid, value);
-+}
-+
-+void sctp_sched_dequeue_done(struct sctp_outq *q, struct sctp_chunk *ch)
-+{
-+	if (!list_is_last(&ch->frag_list, &ch->msg->chunks)) {
-+		struct sctp_stream_out *sout;
-+		__u16 sid;
-+
-+		/* datamsg is not finish, so save it as current one,
-+		 * in case application switch scheduler or a higher
-+		 * priority stream comes in.
-+		 */
-+		sid = sctp_chunk_stream_no(ch);
-+		sout = &q->asoc->stream.out[sid];
-+		q->asoc->stream.out_curr = sout;
-+		return;
-+	}
-+
-+	q->asoc->stream.out_curr = NULL;
-+	q->sched->dequeue_done(q, ch);
-+}
-+
-+/* Auxiliary functions for the schedulers */
-+void sctp_sched_dequeue_common(struct sctp_outq *q, struct sctp_chunk *ch)
-+{
-+	list_del_init(&ch->list);
-+	list_del_init(&ch->stream_list);
-+	q->out_qlen -= ch->skb->len;
-+}
-+
-+int sctp_sched_init_sid(struct sctp_stream *stream, __u16 sid, gfp_t gfp)
-+{
-+	struct sctp_sched_ops *sched = sctp_sched_ops_from_stream(stream);
-+
-+	INIT_LIST_HEAD(&stream->out[sid].ext->outq);
-+	return sched->init_sid(stream, sid, gfp);
-+}
-+
-+struct sctp_sched_ops *sctp_sched_ops_from_stream(struct sctp_stream *stream)
-+{
-+	struct sctp_association *asoc;
-+
-+	asoc = container_of(stream, struct sctp_association, stream);
-+
-+	return asoc->outqueue.sched;
-+}
+ 	request_seq = ntohl(inreq->request_seq);
+ 	if (TSN_lt(asoc->strreset_inseq, request_seq) ||
+@@ -769,7 +777,7 @@ struct sctp_chunk *sctp_process_strreset_resp(
+ 
+ 	if (req->type = SCTP_PARAM_RESET_OUT_REQUEST) {
+ 		struct sctp_strreset_outreq *outreq;
+-		__u16 *str_p;
++		__be16 *str_p;
+ 
+ 		outreq = (struct sctp_strreset_outreq *)req;
+ 		str_p = outreq->list_of_streams;
+@@ -794,7 +802,7 @@ struct sctp_chunk *sctp_process_strreset_resp(
+ 			nums, str_p, GFP_ATOMIC);
+ 	} else if (req->type = SCTP_PARAM_RESET_IN_REQUEST) {
+ 		struct sctp_strreset_inreq *inreq;
+-		__u16 *str_p;
++		__be16 *str_p;
+ 
+ 		/* if the result is performed, it's impossible for inreq */
+ 		if (result = SCTP_STRRESET_PERFORMED)
+diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
+index 67abc01..5447228 100644
+--- a/net/sctp/ulpevent.c
++++ b/net/sctp/ulpevent.c
+@@ -847,7 +847,7 @@ struct sctp_ulpevent *sctp_ulpevent_make_sender_dry_event(
+ 
+ struct sctp_ulpevent *sctp_ulpevent_make_stream_reset_event(
+ 	const struct sctp_association *asoc, __u16 flags, __u16 stream_num,
+-	__u16 *stream_list, gfp_t gfp)
++	__be16 *stream_list, gfp_t gfp)
+ {
+ 	struct sctp_stream_reset_event *sreset;
+ 	struct sctp_ulpevent *event;
 -- 
-2.13.5
+2.1.0
 
