@@ -1,52 +1,120 @@
-From: David Miller <davem@davemloft.net>
-Date: Sun, 29 Oct 2017 03:07:44 +0000
-Subject: Re: [PATCH net] sctp: reset owner sk for data chunks on out queues when migrating a sock
-Message-Id: <20171029.120744.1870385633519634914.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 28 Oct 2017 11:43:57 +0000
+Subject: [PATCH net 4/4] sctp: fix some type cast warnings introduced since very beginning
+Message-Id: <40b05aa84d107b434bae3794692ac2da61da65ca.1509190967.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <38df739211708b6a1e983809f7e17539111718c7.1509128009.git.lucien.xin@gmail.com>
-In-Reply-To: <38df739211708b6a1e983809f7e17539111718c7.1509128009.git.lucien.xin@gmail.com>
+References: <cover.1509190967.git.lucien.xin@gmail.com>
+ <d85747d7d1af0972a00b8d4594a84f2afe97aac8.1509190967.git.lucien.xin@gmail.com>
+ <ddda2f5b5825a379793ac6f2ffff4c7ab9aa64e5.1509190967.git.lucien.xin@gmail.com>
+ <3d8cee6216e261609ec6307fc17fd6f5d6d28e5f.1509190967.git.lucien.xin@gmail.com>
+In-Reply-To: <3d8cee6216e261609ec6307fc17fd6f5d6d28e5f.1509190967.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, vyasevich@gmail.com, dvyukov@google.com, chunwang@redhat.com, syzkaller@googlegroups.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Eric Dumazet <edumazet@google.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 28 Oct 2017 02:13:29 +0800
+These warnings were found by running 'make C=2 M=net/sctp/'.
+They are there since very beginning.
 
-> Now when migrating sock to another one in sctp_sock_migrate(), it only
-> resets owner sk for the data in receive queues, not the chunks on out
-> queues.
-> 
-> It would cause that data chunks length on the sock is not consistent
-> with sk sk_wmem_alloc. When closing the sock or freeing these chunks,
-> the old sk would never be freed, and the new sock may crash due to
-> the overflow sk_wmem_alloc.
-> 
-> syzbot found this issue with this series:
-> 
->   r0 = socket$inet_sctp()
->   sendto$inet(r0)
->   listen(r0)
->   accept4(r0)
->   close(r0)
-> 
-> Although listen() should have returned error when one TCP-style socket
-> is in connecting (I may fix this one in another patch), it could also
-> be reproduced by peeling off an assoc.
-> 
-> This issue is there since very beginning.
-> 
-> This patch is to reset owner sk for the chunks on out queues so that
-> sk sk_wmem_alloc has correct value after accept one sock or peeloff
-> an assoc to one sock.
-> 
-> Note that when resetting owner sk for chunks on outqueue, it has to
-> sctp_clear_owner_w/skb_orphan chunks before changing assoc->base.sk
-> first and then sctp_set_owner_w them after changing assoc->base.sk,
-> due to that sctp_wfree and it's callees are using assoc->base.sk.
-> 
-> Reported-by: Dmitry Vyukov <dvyukov@google.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Note after this patch, there still one warning left in
+sctp_outq_flush():
+  sctp_chunk_fail(chunk, SCTP_ERROR_INV_STRM)
 
-Applied and queued up for -stable, thank you.
+Since it has been moved to sctp_stream_outq_migrate on net-next,
+to avoid the extra job when merging net-next to net, I will post
+the fix for it after the merging is done.
+
+Reported-by: Eric Dumazet <edumazet@google.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/linux/sctp.h      | 2 +-
+ include/uapi/linux/sctp.h | 2 +-
+ net/sctp/ipv6.c           | 2 +-
+ net/sctp/sm_make_chunk.c  | 4 ++--
+ net/sctp/sm_sideeffect.c  | 4 ++--
+ 5 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index 09d7412..da803df 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -231,7 +231,7 @@ struct sctp_datahdr {
+ 	__be32 tsn;
+ 	__be16 stream;
+ 	__be16 ssn;
+-	__be32 ppid;
++	__u32 ppid;
+ 	__u8  payload[0];
+ };
+ 
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index 6217ff8..84fc291 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -376,7 +376,7 @@ struct sctp_remote_error {
+ 	__u16 sre_type;
+ 	__u16 sre_flags;
+ 	__u32 sre_length;
+-	__u16 sre_error;
++	__be16 sre_error;
+ 	sctp_assoc_t sre_assoc_id;
+ 	__u8 sre_data[0];
+ };
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 7fe9e1d1..a6dfa86 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -738,7 +738,7 @@ static int sctp_v6_skb_iif(const struct sk_buff *skb)
+ /* Was this packet marked by Explicit Congestion Notification? */
+ static int sctp_v6_is_ce(const struct sk_buff *skb)
+ {
+-	return *((__u32 *)(ipv6_hdr(skb))) & htonl(1 << 20);
++	return *((__u32 *)(ipv6_hdr(skb))) & (__force __u32)htonl(1 << 20);
+ }
+ 
+ /* Dump the v6 addr to the seq file. */
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 57c5504..514465b 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2854,7 +2854,7 @@ struct sctp_chunk *sctp_make_asconf_update_ip(struct sctp_association *asoc,
+ 		addr_param_len = af->to_addr_param(addr, &addr_param);
+ 		param.param_hdr.type = flags;
+ 		param.param_hdr.length = htons(paramlen + addr_param_len);
+-		param.crr_id = i;
++		param.crr_id = htonl(i);
+ 
+ 		sctp_addto_chunk(retval, paramlen, &param);
+ 		sctp_addto_chunk(retval, addr_param_len, &addr_param);
+@@ -2867,7 +2867,7 @@ struct sctp_chunk *sctp_make_asconf_update_ip(struct sctp_association *asoc,
+ 		addr_param_len = af->to_addr_param(addr, &addr_param);
+ 		param.param_hdr.type = SCTP_PARAM_DEL_IP;
+ 		param.param_hdr.length = htons(paramlen + addr_param_len);
+-		param.crr_id = i;
++		param.crr_id = htonl(i);
+ 
+ 		sctp_addto_chunk(retval, paramlen, &param);
+ 		sctp_addto_chunk(retval, addr_param_len, &addr_param);
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 8f2762b..e2d9a4b 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -1607,12 +1607,12 @@ static int sctp_cmd_interpreter(enum sctp_event event_type,
+ 			break;
+ 
+ 		case SCTP_CMD_INIT_FAILED:
+-			sctp_cmd_init_failed(commands, asoc, cmd->obj.err);
++			sctp_cmd_init_failed(commands, asoc, cmd->obj.u32);
+ 			break;
+ 
+ 		case SCTP_CMD_ASSOC_FAILED:
+ 			sctp_cmd_assoc_failed(commands, asoc, event_type,
+-					      subtype, chunk, cmd->obj.err);
++					      subtype, chunk, cmd->obj.u32);
+ 			break;
+ 
+ 		case SCTP_CMD_INIT_COUNTER_INC:
+-- 
+2.1.0
+
