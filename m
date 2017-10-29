@@ -1,17 +1,19 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 27 Oct 2017 21:53:37 +0000
+From: David Miller <davem@davemloft.net>
+Date: Sun, 29 Oct 2017 03:07:44 +0000
 Subject: Re: [PATCH net] sctp: reset owner sk for data chunks on out queues when migrating a sock
-Message-Id: <20171027215337.GA3675@localhost.localdomain>
+Message-Id: <20171029.120744.1870385633519634914.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <38df739211708b6a1e983809f7e17539111718c7.1509128009.git.lucien.xin@gmail.com>
 In-Reply-To: <38df739211708b6a1e983809f7e17539111718c7.1509128009.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Dmitry Vyukov <dvyukov@google.com>, chunwang@redhat.com, syzkaller@googlegroups.com
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, vyasevich@gmail.com, dvyukov@google.com, chunwang@redhat.com, syzkaller@googlegroups.com
 
-On Sat, Oct 28, 2017 at 02:13:29AM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 28 Oct 2017 02:13:29 +0800
+
 > Now when migrating sock to another one in sctp_sock_migrate(), it only
 > resets owner sk for the data in receive queues, not the chunks on out
 > queues.
@@ -47,68 +49,4 @@ On Sat, Oct 28, 2017 at 02:13:29AM +0800, Xin Long wrote:
 > Reported-by: Dmitry Vyukov <dvyukov@google.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-> ---
->  net/sctp/socket.c | 32 ++++++++++++++++++++++++++++++++
->  1 file changed, 32 insertions(+)
-> 
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 17841ab..6f45d17 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -170,6 +170,36 @@ static inline void sctp_set_owner_w(struct sctp_chunk *chunk)
->  	sk_mem_charge(sk, chunk->skb->truesize);
->  }
->  
-> +static void sctp_clear_owner_w(struct sctp_chunk *chunk)
-> +{
-> +	skb_orphan(chunk->skb);
-> +}
-> +
-> +static void sctp_for_each_tx_datachunk(struct sctp_association *asoc,
-> +				       void (*cb)(struct sctp_chunk *))
-> +
-> +{
-> +	struct sctp_outq *q = &asoc->outqueue;
-> +	struct sctp_transport *t;
-> +	struct sctp_chunk *chunk;
-> +
-> +	list_for_each_entry(t, &asoc->peer.transport_addr_list, transports)
-> +		list_for_each_entry(chunk, &t->transmitted, transmitted_list)
-> +			cb(chunk);
-> +
-> +	list_for_each_entry(chunk, &q->retransmit, list)
-> +		cb(chunk);
-> +
-> +	list_for_each_entry(chunk, &q->sacked, list)
-> +		cb(chunk);
-> +
-> +	list_for_each_entry(chunk, &q->abandoned, list)
-> +		cb(chunk);
-> +
-> +	list_for_each_entry(chunk, &q->out_chunk_list, list)
-> +		cb(chunk);
-> +}
-> +
->  /* Verify that this is a valid address. */
->  static inline int sctp_verify_addr(struct sock *sk, union sctp_addr *addr,
->  				   int len)
-> @@ -8212,7 +8242,9 @@ static void sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
->  	 * paths won't try to lock it and then oldsk.
->  	 */
->  	lock_sock_nested(newsk, SINGLE_DEPTH_NESTING);
-> +	sctp_for_each_tx_datachunk(assoc, sctp_clear_owner_w);
->  	sctp_assoc_migrate(assoc, newsk);
-> +	sctp_for_each_tx_datachunk(assoc, sctp_set_owner_w);
->  
->  	/* If the association on the newsk is already closed before accept()
->  	 * is called, set RCV_SHUTDOWN flag.
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Applied and queued up for -stable, thank you.
