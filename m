@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 31 Oct 2017 13:33:29 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 31 Oct 2017 17:06:36 +0000
 Subject: Re: [PATCH net-next] sctp: fix error return code in sctp_send_add_streams()
-Message-Id: <20171031133328.GB3675@localhost.localdomain>
+Message-Id: <20171031170636.GA3230@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1509456496-93944-1-git-send-email-weiyongjun1@huawei.com>
 In-Reply-To: <1509456496-93944-1-git-send-email-weiyongjun1@huawei.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Wei Yongjun <weiyongjun1@huawei.com>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Cc: Vlad Yasevich <vyasevich@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
 On Tue, Oct 31, 2017 at 01:28:16PM +0000, Wei Yongjun wrote:
 > Fix to returnerror code -ENOMEM from the sctp_make_strreset_addstrm()
@@ -18,9 +18,6 @@ On Tue, Oct 31, 2017 at 01:28:16PM +0000, Wei Yongjun wrote:
 > 
 > Fixes: e090abd0d81c ("sctp: factor out stream->out allocation")
 > Signed-off-by: Wei Yongjun <weiyongjun1@huawei.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/stream.c | 6 ++++--
 >  1 file changed, 4 insertions(+), 2 deletions(-)
@@ -56,3 +53,5 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
