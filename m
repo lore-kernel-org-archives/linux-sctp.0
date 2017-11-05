@@ -1,173 +1,122 @@
-From: Paul Moore <paul@paul-moore.com>
-Date: Mon, 13 Nov 2017 22:26:56 +0000
-Subject: Re: [RFC PATCH 4/5] netlabel: Add SCTP support
-Message-Id: <CAHC9VhTVY-dk1BO7EosaYS=7h-5UAva8NE_vv0p6e0g_TcaySQ@mail.gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sun, 05 Nov 2017 10:25:28 +0000
+Subject: Re: kernel BUG at net/core/skbuff.c:LINE! (2)
+Message-Id: <CADvbK_ekcKS1Jc4-R7bQ7mSCPKGYOhRu0dtwUM+Bg7HSV0NLUA@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20171017135854.4343-1-richard_c_haines@btinternet.com>
-	<CAHC9VhT1T+ZMreYNa33YVA-drHN=Tg6xQb4nmMWUuX+8OYO9fQ@mail.gmail.com>
-	<1510606217.2636.4.camel@btinternet.com>
-In-Reply-To: <1510606217.2636.4.camel@btinternet.com>
+References: <001a1149c712d56ccc055cc48e37@google.com>
+In-Reply-To: <001a1149c712d56ccc055cc48e37@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-security-module@vger.kernel.org
+To: syzbot <bot+ed0838d0fa4c4f2b528e20286e6dc63effc7c14d@syzkaller.appspotmail.com>
+Cc: davem <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, network dev <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs@googlegroups.com, Vlad Yasevich <vyasevich@gmail.com>
 
-On Mon, Nov 13, 2017 at 3:50 PM, Richard Haines
-<richard_c_haines@btinternet.com> wrote:
-> On Mon, 2017-11-06 at 18:15 -0500, Paul Moore wrote:
->> On Tue, Oct 17, 2017 at 9:58 AM, Richard Haines
->> <richard_c_haines@btinternet.com> wrote:
->> > Add support to label SCTP associations and cater for a situation
->> > where
->> > family = PF_INET6 with an ip_hdr(skb)->version = 4.
->> >
->> > Signed-off-by: Richard Haines <richard_c_haines@btinternet.com>
->> > ---
->> >  include/net/netlabel.h            |  3 ++
->> >  net/netlabel/netlabel_kapi.c      | 80
->> > +++++++++++++++++++++++++++++++++++++++
->> >  net/netlabel/netlabel_unlabeled.c | 10 +++++
->> >  3 files changed, 93 insertions(+)
-
->> >  /**
->> > + * netlbl_sctp_setattr - Label an incoming sctp association socket
->> > using
->> > + * the correct protocol
->> > + * @sk: the socket to label
->> > + * @skb: the packet
->> > + * @secattr: the security attributes
->> > + *
->> > + * Description:
->> > + * Attach the correct label to the given socket using the security
->> > attributes
->> > + * specified in @secattr.  Returns zero on success, negative
->> > values on failure.
->> > + *
->> > + */
->> > +int netlbl_sctp_setattr(struct sock *sk,
->> > +                       struct sk_buff *skb,
->> > +                       const struct netlbl_lsm_secattr *secattr)
->> > +{
->> > +       int ret_val = -EINVAL;
->> > +       struct netlbl_dommap_def *entry;
->> > +       struct iphdr *hdr4;
->> > +#if IS_ENABLED(CONFIG_IPV6)
->> > +       struct ipv6hdr *hdr6;
->> > +#endif
->> > +
->> > +       rcu_read_lock();
->> > +       switch (sk->sk_family) {
->> > +       case AF_INET:
->> > +               hdr4 = ip_hdr(skb);
->> > +
->> > +               entry = netlbl_domhsh_getentry_af4(secattr->domain,
->> > +                                                  hdr4->saddr);
->> > +               if (entry = NULL) {
->> > +                       ret_val = -ENOENT;
->> > +                       goto sctp_setattr_return;
->> > +               }
->> > +               switch (entry->type) {
->> > +               case NETLBL_NLTYPE_CIPSOV4:
->> > +                       ret_val = cipso_v4_sock_setattr(sk, entry-
->> > >cipso,
->> > +                                                       secattr);
->> > +                       break;
->> > +               case NETLBL_NLTYPE_UNLABELED:
->> > +                       netlbl_sock_delattr(sk);
->> > +                       ret_val = 0;
->> > +                       break;
->> > +               default:
->> > +                       ret_val = -ENOENT;
->> > +               }
->> > +               break;
->> > +#if IS_ENABLED(CONFIG_IPV6)
->> > +       case AF_INET6:
->> > +               hdr6 = ipv6_hdr(skb);
->> > +               entry = netlbl_domhsh_getentry_af6(secattr->domain,
->> > +                                                  &hdr6->saddr);
->> > +               if (entry = NULL) {
->> > +                       ret_val = -ENOENT;
->> > +                       goto sctp_setattr_return;
->> > +               }
->> > +               switch (entry->type) {
->> > +               case NETLBL_NLTYPE_CALIPSO:
->> > +                       ret_val = calipso_sock_setattr(sk, entry-
->> > >calipso,
->> > +                                                      secattr);
->> > +                       break;
->> > +               case NETLBL_NLTYPE_UNLABELED:
->> > +                       netlbl_sock_delattr(sk);
->> > +                       ret_val = 0;
->> > +                       break;
->> > +               default:
->> > +                       ret_val = -ENOENT;
->> > +               }
->> > +               break;
->> > +#endif /* IPv6 */
->> > +       default:
->> > +               ret_val = -EPROTONOSUPPORT;
->> > +       }
->> > +
->> > +sctp_setattr_return:
->> > +       rcu_read_unlock();
->> > +       return ret_val;
->> > +}
->>
->> It seems like we should try to leverage the code in
->> netlbl_conn_setattr() a bit more.  I would suggest either tweaking
->> the
->> callers to use a sockaddr struct and netlbl_conn_setattr(), or
->> implement netlbl_sctp_setattr() as a simple wrapper around
->> netlbl_conn_setattr() ... the former seems a bit cleaner, but I
->> suspect patch 5/5 will make it clear which approach is better.
+On Mon, Oct 30, 2017 at 10:36 PM, syzbot
+<bot+ed0838d0fa4c4f2b528e20286e6dc63effc7c14d@syzkaller.appspotmail.com>
+wrote:
+> Hello,
 >
-> I've now modified selinux_netlbl_sctp_assoc_request() to extract the ip
-> address info from skb and add to a sockaddr struct, then call
-> netlbl_conn_setattr(). This removes any specific SCTP code from
-> netlabel_kapi.c
-
-Great, I think that's probably the best option.
-
->> > diff --git a/net/netlabel/netlabel_unlabeled.c
->> > b/net/netlabel/netlabel_unlabeled.c
->> > index 22dc1b9..c070dfc 100644
->> > --- a/net/netlabel/netlabel_unlabeled.c
->> > +++ b/net/netlabel/netlabel_unlabeled.c
->> > @@ -1472,6 +1472,16 @@ int netlbl_unlabel_getattr(const struct
->> > sk_buff *skb,
->> >                 iface = rcu_dereference(netlbl_unlhsh_def);
->> >         if (iface = NULL || !iface->valid)
->> >                 goto unlabel_getattr_nolabel;
->> > +
->> > +#if IS_ENABLED(CONFIG_IPV6)
->> > +       /* When resolving a fallback label, check the sk_buff
->> > version as
->> > +        * it is possible (e.g. SCTP) to have family = PF_INET6
->> > while
->> > +        * receiving ip_hdr(skb)->version = 4.
->> > +        */
->> > +       if (family = PF_INET6 && ip_hdr(skb)->version = 4)
->> > +               family = PF_INET;
->> > +#endif /* IPv6 */
->> > +
->>
->> It seems like this should be pulled out into it's own patch as a fix
->> that extends beyond SCTP, what do you think?
+> syzkaller hit the following crash on
+> c69fe407803d4b554b7397fad9598a04717ac255
+> git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git/master
+> compiler: gcc (GCC) 7.1.1 20170620
+> .config is attached
+> Raw console output is attached.
 >
-> I'll submit this as a separate NetLabel patch today.
+>
+>
+>
+> sctp: [Deprecated]: syz-executor0 (pid 12122) Use of struct sctp_assoc_value
+> in delayed_ack socket option.
+> Use struct sctp_sack_info instead
+> skbuff: skb_over_panic: text:ffffffff848208a3 len:213348 put:213008
+> head:ffff8801c99c2140 data:ffff8801c99c21f8 tail:0x3421c end:0x7ec0
+> dev:<NULL>
+'put:213008' is buggy. we need to check strreset_req chunk, that's the
+only chunk I could see may exceed SCTP_MAX_CHUNK_LEN.
 
-Saw it and ACK'd it, thank you.
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -3603,6 +3603,9 @@ struct sctp_chunk *sctp_make_strreset_req(
+        outlen = (sizeof(outreq) + stream_len) * out;
+        inlen = (sizeof(inreq) + stream_len) * in;
 
-> Thanks for all your comments on the patchset, will probably take a few
-> weeks to respond to them all.
++       if (outlen + inlen > SCTP_MAX_CHUNK_LEN - sizeof(struct sctp_chunkhdr))
++               return NULL;
++
 
-No worries, we've waited some time for someone to implement proper
-SCTP support, a few more weeks isn't going to hurt anyone :)
-
-Also, apologies for some confusion on my part regarding SCTP in my
-latest comments; I've since learned I wasn't thinking about endpoints
-and associations correctly.
-
--- 
-paul moore
-www.paul-moore.com
+> ------------[ cut here ]------------
+> kernel BUG at net/core/skbuff.c:105!
+> invalid opcode: 0000 [#1] SMP KASAN
+> Dumping ftrace buffer:
+>    (ftrace buffer empty)
+> Modules linked in:
+> CPU: 1 PID: 12167 Comm: syz-executor5 Not tainted 4.14.0-rc5+ #100
+> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS
+> Google 01/01/2011
+> task: ffff8801cd7ba3c0 task.stack: ffff8801c1fc0000
+> RIP: 0010:skb_panic+0x15c/0x1f0 net/core/skbuff.c:101
+> RSP: 0018:ffff8801c1fc63a8 EFLAGS: 00010286
+> RAX: 0000000000000092 RBX: ffff8801a91dc680 RCX: 0000000000000000
+> RDX: 0000000000000092 RSI: ffffffff8158d77e RDI: ffffed00383f8c69
+> RBP: ffff8801c1fc6410 R08: 0000000000000000 R09: 1ffff100383f8c17
+> R10: 000000006d0a2354 R11: ffffffff85b2cc98 R12: ffffffff853bcca0
+> R13: ffffffff848208a3 R14: 0000000000034010 R15: ffffffff853bc4e0
+> FS:  00007fbe84337700(0000) GS:ffff8801db300000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 0000000020001f68 CR3: 00000001c9045000 CR4: 00000000001406e0
+> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+> Call Trace:
+>  skb_over_panic net/core/skbuff.c:110 [inline]
+>  skb_put+0x181/0x1c0 net/core/skbuff.c:1699
+>  skb_put_data include/linux/skbuff.h:2047 [inline]
+>  sctp_packet_pack net/sctp/output.c:472 [inline]
+>  sctp_packet_transmit+0x1183/0x3750 net/sctp/output.c:605
+>  sctp_outq_flush+0x1216/0x4050 net/sctp/outqueue.c:1191
+>  sctp_outq_uncork+0x5a/0x70 net/sctp/outqueue.c:772
+>  sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1822 [inline]
+>  sctp_side_effects net/sctp/sm_sideeffect.c:1222 [inline]
+>  sctp_do_sm+0x50e/0x6a30 net/sctp/sm_sideeffect.c:1193
+>  sctp_assoc_bh_rcv+0x283/0x4b0 net/sctp/associola.c:1065
+>  sctp_inq_push+0x23b/0x300 net/sctp/inqueue.c:95
+>  sctp_backlog_rcv+0x177/0xaa0 net/sctp/input.c:350
+>  sk_backlog_rcv include/net/sock.h:912 [inline]
+>  __release_sock+0x124/0x360 net/core/sock.c:2266
+>  release_sock+0xa4/0x2a0 net/core/sock.c:2778
+>  sctp_wait_for_connect+0x346/0x570 net/sctp/socket.c:8099
+>  sctp_sendmsg+0x29fd/0x32b0 net/sctp/socket.c:2009
+>  inet_sendmsg+0x11f/0x5e0 net/ipv4/af_inet.c:763
+>  sock_sendmsg_nosec net/socket.c:633 [inline]
+>  sock_sendmsg+0xca/0x110 net/socket.c:643
+>  SYSC_sendto+0x352/0x5a0 net/socket.c:1750
+>  SyS_sendto+0x40/0x50 net/socket.c:1718
+>  entry_SYSCALL_64_fastpath+0x1f/0xbe
+> RIP: 0033:0x452869
+> RSP: 002b:00007fbe84336be8 EFLAGS: 00000212 ORIG_RAX: 000000000000002c
+> RAX: ffffffffffffffda RBX: 0000000000758020 RCX: 0000000000452869
+> RDX: 0000000000034000 RSI: 0000000020c9bfff RDI: 0000000000000013
+> RBP: 0000000000000000 R08: 0000000020a46000 R09: 000000000000001c
+> R10: 0000000000000000 R11: 0000000000000212 R12: 0000000000000000
+> R13: 0000000000a6f7ff R14: 00007fbe843379c0 R15: 0000000000000000
+> Code: 03 0f b6 04 01 84 c0 74 04 3c 03 7e 20 8b 4b 78 41 57 48 c7 c7 20 c5
+> 3b 85 52 56 4c 89 ea 41 50 4c 89 e6 45 89 f0 e8 b9 19 77 fd <0f> 0b 4c 89 4d
+> b8 4c 89 45 c0 48 89 75 c8 48 89 55 d0 e8 6d 4b
+> RIP: skb_panic+0x15c/0x1f0 net/core/skbuff.c:101 RSP: ffff8801c1fc63a8
+> ---[ end trace 6beb4fe15730f020 ]---
+>
+>
+> ---
+> This bug is generated by a dumb bot. It may contain errors.
+> See https://goo.gl/tpsmEJ for details.
+> Direct all questions to syzkaller@googlegroups.com.
+>
+> syzbot will keep track of this bug report.
+> Once a fix for this bug is committed, please reply to this email with:
+> #syz fix: exact-commit-title
+> To mark this as a duplicate of another syzbot report, please reply with:
+> #syz dup: exact-subject-of-another-report
+> If it's a one-off invalid bug report, please reply with:
+> #syz invalid
+> Note: if the crash happens again, it will cause creation of a new bug
+> report.
