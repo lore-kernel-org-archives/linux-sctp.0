@@ -1,24 +1,35 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 01 Nov 2017 12:26:54 +0000
-Subject: Re: [PATCH net-next] sctp: fix error return code in sctp_send_add_streams()
-Message-Id: <20171101.212654.2226126937177129059.davem@davemloft.net>
+From: Petr Malat <oss@malat.biz>
+Date: Mon, 06 Nov 2017 13:39:56 +0000
+Subject: [PATCH] sctp: Fix len returned by getsockopt(sk, SCTP_GET_LOCAL_ADDRS, opt, &len)
+Message-Id: <20171106133955.GA31556@bordel.klfree.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1509456496-93944-1-git-send-email-weiyongjun1@huawei.com>
-In-Reply-To: <1509456496-93944-1-git-send-email-weiyongjun1@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: weiyongjun1@huawei.com
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-From: Wei Yongjun <weiyongjun1@huawei.com>
-Date: Tue, 31 Oct 2017 13:28:16 +0000
+A call to
+  getsockopt(sk, SCTP_GET_LOCAL_ADDRS, opt, &optlen)
+returns a wrong value in optlen, because it doesn't account struct sctp_getaddrs
+preceding the actual addresses.
 
-> Fix to returnerror code -ENOMEM from the sctp_make_strreset_addstrm()
-> error handling case instead of 0. 'retval' can be overwritten to 0 after
-> call sctp_stream_alloc_out().
-> 
-> Fixes: e090abd0d81c ("sctp: factor out stream->out allocation")
-> Signed-off-by: Wei Yongjun <weiyongjun1@huawei.com>
+Signed-off-by: Petr Malat <petr.malat.ext@nokia.com>
+---
+ net/sctp/socket.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-Applied.
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 6f45d17..9082269 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -5560,6 +5560,7 @@ static int sctp_getsockopt_local_addrs(struct sock *sk, int len,
+ 		err = -EFAULT;
+ 		goto out;
+ 	}
++	bytes_copied += offsetof(struct sctp_getaddrs, addrs);
+ 	if (put_user(bytes_copied, optlen))
+ 		err = -EFAULT;
+ out:
+-- 
+1.7.11.3
+
