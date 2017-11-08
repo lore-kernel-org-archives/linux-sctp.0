@@ -1,276 +1,170 @@
-From: Richard Haines <richard_c_haines@btinternet.com>
-Date: Mon, 27 Nov 2017 19:31:54 +0000
-Subject: [PATCH 3/4] sctp: Add LSM hooks
-Message-Id: <20171127193154.2719-1-richard_c_haines@btinternet.com>
+From: Masami Hiramatsu <mhiramat@kernel.org>
+Date: Wed, 08 Nov 2017 10:00:33 +0000
+Subject: [RFC PATCH -tip 1/6] net: tcp: Add trace events for TCP congestion window tracing
+Message-Id: <151013523339.7294.16732700508720389690.stgit@devbox>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <151013520119.7294.3518752184394738314.stgit@devbox>
+In-Reply-To: <151013520119.7294.3518752184394738314.stgit@devbox>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-security-module@vger.kernel.org
+To: Ingo Molnar <mingo@kernel.org>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
+Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, "David S . Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>
 
-Add security hooks to allow security modules to exercise access control
-over SCTP.
+This adds an event to trace TCP stat variables with
+slightly intrusive trace-event. This uses ftrace/perf
+event log buffer to trace those state, no needs to
+prepare own ring-buffer, nor custom user apps.
 
-Signed-off-by: Richard Haines <richard_c_haines@btinternet.com>
+User can use ftrace to trace this event as below;
+
+  # cd /sys/kernel/debug/tracing
+  # echo 1 > events/tcp/tcp_probe/enable
+  (run workloads)
+  # cat trace
+
+Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
 ---
- include/net/sctp/structs.h | 10 ++++++++
- include/uapi/linux/sctp.h  |  1 +
- net/sctp/sm_make_chunk.c   | 12 +++++++++
- net/sctp/sm_statefuns.c    | 18 ++++++++++++++
- net/sctp/socket.c          | 61 +++++++++++++++++++++++++++++++++++++++++++++-
- 5 files changed, 101 insertions(+), 1 deletion(-)
+ include/trace/events/tcp.h |   96 ++++++++++++++++++++++++++++++++++++++++++++
+ net/core/net-traces.c      |    1 
+ net/ipv4/tcp_input.c       |    4 ++
+ 3 files changed, 101 insertions(+)
+ create mode 100644 include/trace/events/tcp.h
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 7767577..6e72e3e 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -1270,6 +1270,16 @@ struct sctp_endpoint {
- 	      reconf_enable:1;
- 
- 	__u8  strreset_enable;
+diff --git a/include/trace/events/tcp.h b/include/trace/events/tcp.h
+new file mode 100644
+index 000000000000..b8969bbceb38
+--- /dev/null
++++ b/include/trace/events/tcp.h
+@@ -0,0 +1,96 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#undef TRACE_SYSTEM
++#define TRACE_SYSTEM tcp
 +
-+	/* Security identifiers from incoming (INIT). These are set by
-+	 * security_sctp_assoc_request(). These will only be used by
-+	 * SCTP TCP type sockets and peeled off connections as they
-+	 * cause a new socket to be generated. security_sctp_sk_clone()
-+	 * will then plug these into the new socket.
-+	 */
++#if !defined(_TRACE_TCP_H) || defined(TRACE_HEADER_MULTI_READ)
++#define _TRACE_TCP_H
 +
-+	u32 secid;
-+	u32 peer_secid;
- };
- 
- /* Recover the outter endpoint structure. */
-diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index 6217ff8..c04812f 100644
---- a/include/uapi/linux/sctp.h
-+++ b/include/uapi/linux/sctp.h
-@@ -122,6 +122,7 @@ typedef __s32 sctp_assoc_t;
- #define SCTP_RESET_ASSOC	120
- #define SCTP_ADD_STREAMS	121
- #define SCTP_SOCKOPT_PEELOFF_FLAGS 122
-+#define SCTP_SENDMSG_CONNECT	123
- 
- /* PR-SCTP policies */
- #define SCTP_PR_SCTP_NONE	0x0000
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 6110447..ca4705b 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -3059,6 +3059,12 @@ static __be16 sctp_process_asconf_param(struct sctp_association *asoc,
- 		if (af->is_any(&addr))
- 			memcpy(&addr, &asconf->source, sizeof(addr));
- 
-+		if (security_sctp_bind_connect(asoc->ep->base.sk,
-+					       SCTP_PARAM_ADD_IP,
-+					       (struct sockaddr *)&addr,
-+					       af->sockaddr_len))
-+			return SCTP_ERROR_REQ_REFUSED;
++#include <net/tcp.h>
++#include <linux/tcp.h>
++#include <linux/ipv6.h>
++#include <uapi/linux/in.h>
++#include <uapi/linux/in6.h>
++#include <linux/tracepoint.h>
 +
- 		/* ADDIP 4.3 D9) If an endpoint receives an ADD IP address
- 		 * request and does not have the local resources to add this
- 		 * new address to the association, it MUST return an Error
-@@ -3125,6 +3131,12 @@ static __be16 sctp_process_asconf_param(struct sctp_association *asoc,
- 		if (af->is_any(&addr))
- 			memcpy(&addr.v4, sctp_source(asconf), sizeof(addr));
- 
-+		if (security_sctp_bind_connect(asoc->ep->base.sk,
-+					       SCTP_PARAM_SET_PRIMARY,
-+					       (struct sockaddr *)&addr,
-+					       af->sockaddr_len))
-+			return SCTP_ERROR_REQ_REFUSED;
++TRACE_EVENT(tcp_probe,
 +
- 		peer = sctp_assoc_lookup_paddr(asoc, &addr);
- 		if (!peer)
- 			return SCTP_ERROR_DNS_FAILED;
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index b2a74c3..67c6a7d 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -314,6 +314,11 @@ sctp_disposition_t sctp_sf_do_5_1B_init(struct net *net,
- 	sctp_unrecognized_param_t *unk_param;
- 	int len;
- 
-+	/* Update socket peer label if first association. */
-+	if (security_sctp_assoc_request((struct sctp_endpoint *)ep,
-+					chunk->skb))
-+		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
++	TP_PROTO(struct sock *sk, struct sk_buff *skb),
 +
- 	/* 6.10 Bundling
- 	 * An endpoint MUST NOT bundle INIT, INIT ACK or
- 	 * SHUTDOWN COMPLETE with any other chunks.
-@@ -899,6 +904,9 @@ sctp_disposition_t sctp_sf_do_5_1E_ca(struct net *net,
- 	 */
- 	sctp_add_cmd_sf(commands, SCTP_CMD_INIT_COUNTER_RESET, SCTP_NULL());
- 
-+	/* Set peer label for connection. */
-+	security_inet_conn_established(ep->base.sk, chunk->skb);
++	TP_ARGS(sk, skb),
 +
- 	/* RFC 2960 5.1 Normal Establishment of an Association
- 	 *
- 	 * E) Upon reception of the COOKIE ACK, endpoint "A" will move
-@@ -1428,6 +1436,11 @@ static sctp_disposition_t sctp_sf_do_unexpected_init(
- 	sctp_unrecognized_param_t *unk_param;
- 	int len;
- 
-+	/* Update socket peer label if first association. */
-+	if (security_sctp_assoc_request((struct sctp_endpoint *)ep,
-+					chunk->skb))
-+		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
++	TP_STRUCT__entry(
++		/* sockaddr_in6 is always bigger than sockaddr_in */
++		__array(__u8, saddr, sizeof(struct sockaddr_in6))
++		__array(__u8, daddr, sizeof(struct sockaddr_in6))
++		__field(__u16, sport)
++		__field(__u16, dport)
++		__field(__u32, mark)
++		__field(__u16, length)
++		__field(__u32, snd_nxt)
++		__field(__u32, snd_una)
++		__field(__u32, snd_cwnd)
++		__field(__u32, ssthresh)
++		__field(__u32, snd_wnd)
++		__field(__u32, srtt)
++		__field(__u32, rcv_wnd)
++	),
 +
- 	/* 6.10 Bundling
- 	 * An endpoint MUST NOT bundle INIT, INIT ACK or
- 	 * SHUTDOWN COMPLETE with any other chunks.
-@@ -2089,6 +2102,11 @@ sctp_disposition_t sctp_sf_do_5_2_4_dupcook(struct net *net,
- 		}
- 	}
- 
-+	/* Update socket peer label if first association. */
-+	if (security_sctp_assoc_request((struct sctp_endpoint *)ep,
-+					chunk->skb))
-+		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
++	TP_fast_assign(
++		const struct tcp_sock *tp = tcp_sk(sk);
++		const struct inet_sock *inet = inet_sk(sk);
 +
- 	/* Set temp so that it won't be added into hashtable */
- 	new_asoc->temp = 1;
- 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index f2d9c84..3e1db9a 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -1014,6 +1014,12 @@ static int sctp_setsockopt_bindx(struct sock *sk,
- 	/* Do the work. */
- 	switch (op) {
- 	case SCTP_BINDX_ADD_ADDR:
-+		/* Allow security module to validate bindx addresses. */
-+		err = security_sctp_bind_connect(sk, SCTP_SOCKOPT_BINDX_ADD,
-+						 (struct sockaddr *)kaddrs,
-+						 addrs_size);
-+		if (err)
-+			goto out;
- 		err = sctp_bindx_add(sk, kaddrs, addrcnt);
- 		if (err)
- 			goto out;
-@@ -1223,6 +1229,7 @@ static int __sctp_connect(struct sock *sk,
- 
- 	if (assoc_id)
- 		*assoc_id = asoc->assoc_id;
++		memset(__entry->saddr, 0, sizeof(struct sockaddr_in6));
++		memset(__entry->daddr, 0, sizeof(struct sockaddr_in6));
 +
- 	err = sctp_wait_for_connect(asoc, &timeo);
- 	/* Note: the asoc may be freed after the return of
- 	 * sctp_wait_for_connect.
-@@ -1336,9 +1343,17 @@ static int __sctp_setsockopt_connectx(struct sock *sk,
- 	if (__copy_from_user(kaddrs, addrs, addrs_size)) {
- 		err = -EFAULT;
- 	} else {
-+		/* Allow security module to validate connectx addresses. */
-+		err = security_sctp_bind_connect(sk, SCTP_SOCKOPT_CONNECTX,
-+						 (struct sockaddr *)kaddrs,
-+						  addrs_size);
-+		if (err)
-+			goto out_free;
++		if (sk->sk_family = AF_INET) {
++			struct sockaddr_in *v4 = (void *)__entry->saddr;
 +
- 		err = __sctp_connect(sk, kaddrs, addrs_size, assoc_id);
- 	}
- 
-+out_free:
- 	kfree(kaddrs);
- 
- 	return err;
-@@ -1604,6 +1619,7 @@ static int sctp_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
- 	struct sctp_transport *transport, *chunk_tp;
- 	struct sctp_chunk *chunk;
- 	union sctp_addr to;
-+	struct sctp_af *af;
- 	struct sockaddr *msg_name = NULL;
- 	struct sctp_sndrcvinfo default_sinfo;
- 	struct sctp_sndrcvinfo *sinfo;
-@@ -1833,6 +1849,24 @@ static int sctp_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
- 		}
- 
- 		scope = sctp_scope(&to);
++			v4->sin_family = AF_INET;
++			v4->sin_port = inet->inet_sport;
++			v4->sin_addr.s_addr = inet->inet_saddr;
++			v4 = (void *)__entry->daddr;
++			v4->sin_family = AF_INET;
++			v4->sin_port = inet->inet_dport;
++			v4->sin_addr.s_addr = inet->inet_daddr;
++#if IS_ENABLED(CONFIG_IPV6)
++		} else if (sk->sk_family = AF_INET6) {
++			struct sockaddr_in6 *v6 = (void *)__entry->saddr;
 +
-+		/* Label connection socket for first association 1-to-many
-+		 * style for client sequence socket()->sendmsg(). This
-+		 * needs to be done before sctp_assoc_add_peer() as that will
-+		 * set up the initial packet that needs to account for any
-+		 * security ip options (CIPSO/CALIPSO) added to the packet.
-+		 */
-+		af = sctp_get_af_specific(to.sa.sa_family);
-+		if (!af) {
-+			err = -EINVAL;
-+			goto out_unlock;
++			v6->sin6_family = AF_INET6;
++			v6->sin6_port = inet->inet_sport;
++			v6->sin6_addr = inet6_sk(sk)->saddr;
++			v6 = (void *)__entry->daddr;
++			v6->sin6_family = AF_INET6;
++			v6->sin6_port = inet->inet_dport;
++			v6->sin6_addr = sk->sk_v6_daddr;
++#endif
 +		}
-+		err = security_sctp_bind_connect(sk, SCTP_SENDMSG_CONNECT,
-+						 (struct sockaddr *)&to,
-+						 af->sockaddr_len);
-+		if (err < 0)
-+			goto out_unlock;
 +
- 		new_asoc = sctp_association_new(ep, sk, scope, GFP_KERNEL);
- 		if (!new_asoc) {
- 			err = -ENOMEM;
-@@ -2865,6 +2899,8 @@ static int sctp_setsockopt_primary_addr(struct sock *sk, char __user *optval,
- {
- 	struct sctp_prim prim;
- 	struct sctp_transport *trans;
-+	struct sctp_af *af;
-+	int err;
- 
- 	if (optlen != sizeof(struct sctp_prim))
- 		return -EINVAL;
-@@ -2872,6 +2908,17 @@ static int sctp_setsockopt_primary_addr(struct sock *sk, char __user *optval,
- 	if (copy_from_user(&prim, optval, sizeof(struct sctp_prim)))
- 		return -EFAULT;
- 
-+	/* Allow security module to validate address but need address len. */
-+	af = sctp_get_af_specific(prim.ssp_addr.ss_family);
-+	if (!af)
-+		return -EINVAL;
++		/* For filtering use */
++		__entry->sport = ntohs(inet->inet_sport);
++		__entry->dport = ntohs(inet->inet_dport);
++		__entry->mark = skb->mark;
 +
-+	err = security_sctp_bind_connect(sk, SCTP_PRIMARY_ADDR,
-+					 (struct sockaddr *)&prim.ssp_addr,
-+					 af->sockaddr_len);
-+	if (err)
-+		return err;
++		__entry->length = skb->len;
++		__entry->snd_nxt = tp->snd_nxt;
++		__entry->snd_una = tp->snd_una;
++		__entry->snd_cwnd = tp->snd_cwnd;
++		__entry->snd_wnd = tp->snd_wnd;
++		__entry->rcv_wnd = tp->rcv_wnd;
++		__entry->ssthresh = tcp_current_ssthresh(sk);
++		__entry->srtt = tp->srtt_us >> 3;
++	),
 +
- 	trans = sctp_addr_id2transport(sk, &prim.ssp_addr, prim.ssp_assoc_id);
- 	if (!trans)
- 		return -EINVAL;
-@@ -3193,6 +3240,13 @@ static int sctp_setsockopt_peer_primary_addr(struct sock *sk, char __user *optva
- 	if (!sctp_assoc_lookup_laddr(asoc, (union sctp_addr *)&prim.sspp_addr))
- 		return -EADDRNOTAVAIL;
- 
-+	/* Allow security module to validate address. */
-+	err = security_sctp_bind_connect(sk, SCTP_SET_PEER_PRIMARY_ADDR,
-+					 (struct sockaddr *)&prim.sspp_addr,
-+					 af->sockaddr_len);
-+	if (err)
-+		return err;
++	TP_printk("src=%pISpc dest=%pISpc mark=%#x length=%d snd_nxt=%#x "
++		  "snd_una=%#x snd_cwnd=%u ssthresh=%u snd_wnd=%u srtt=%u "
++		  "rcv_wnd=%u",
++		  __entry->saddr, __entry->daddr, __entry->mark,
++		  __entry->length, __entry->snd_nxt, __entry->snd_una,
++		  __entry->snd_cwnd, __entry->ssthresh, __entry->snd_wnd,
++		  __entry->srtt, __entry->rcv_wnd)
++);
 +
- 	/* Create an ASCONF chunk with SET_PRIMARY parameter	*/
- 	chunk = sctp_make_asconf_set_prim(asoc,
- 					  (union sctp_addr *)&prim.sspp_addr);
-@@ -8025,6 +8079,8 @@ void sctp_copy_sock(struct sock *newsk, struct sock *sk,
- {
- 	struct inet_sock *inet = inet_sk(sk);
- 	struct inet_sock *newinet;
-+	struct sctp_sock *sp = sctp_sk(sk);
-+	struct sctp_endpoint *ep = sp->ep;
++#endif /* _TRACE_TCP_H */
++
++/* This part must be outside protection */
++#include <trace/define_trace.h>
+diff --git a/net/core/net-traces.c b/net/core/net-traces.c
+index 71f209542364..2e84d642c03f 100644
+--- a/net/core/net-traces.c
++++ b/net/core/net-traces.c
+@@ -31,6 +31,7 @@
+ #include <trace/events/net.h>
+ #include <trace/events/napi.h>
+ #include <trace/events/sock.h>
++#include <trace/events/tcp.h>
+ #include <trace/events/udp.h>
+ #include <trace/events/fib.h>
+ #include <trace/events/qdisc.h>
+diff --git a/net/ipv4/tcp_input.c b/net/ipv4/tcp_input.c
+index 9a0b3c5ffa46..da8b342b95ce 100644
+--- a/net/ipv4/tcp_input.c
++++ b/net/ipv4/tcp_input.c
+@@ -76,6 +76,7 @@
+ #include <linux/ipsec.h>
+ #include <asm/unaligned.h>
+ #include <linux/errqueue.h>
++#include <trace/events/tcp.h>
  
- 	newsk->sk_type = sk->sk_type;
- 	newsk->sk_bound_dev_if = sk->sk_bound_dev_if;
-@@ -8067,7 +8123,10 @@ void sctp_copy_sock(struct sock *newsk, struct sock *sk,
- 	if (newsk->sk_flags & SK_FLAGS_TIMESTAMP)
- 		net_enable_timestamp();
+ int sysctl_tcp_fack __read_mostly;
+ int sysctl_tcp_max_reordering __read_mostly = 300;
+@@ -5356,6 +5357,9 @@ void tcp_rcv_established(struct sock *sk, struct sk_buff *skb,
+ 	unsigned int len = skb->len;
+ 	struct tcp_sock *tp = tcp_sk(sk);
  
--	security_sk_clone(sk, newsk);
-+	/* Set newsk security attributes from orginal sk and connection
-+	 * security attribute from ep.
-+	 */
-+	security_sctp_sk_clone(ep, sk, newsk);
- }
- 
- static inline void sctp_copy_descendant(struct sock *sk_to,
--- 
-2.14.3
++	/* TCP congestion window tracking */
++	trace_tcp_probe(sk, skb);
++
+ 	tcp_mstamp_refresh(tp);
+ 	if (unlikely(!sk->sk_rx_dst))
+ 		inet_csk(sk)->icsk_af_ops->sk_rx_dst_set(sk, skb);
 
