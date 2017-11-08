@@ -1,7 +1,7 @@
 From: Masami Hiramatsu <mhiramat@kernel.org>
-Date: Wed, 08 Nov 2017 10:00:33 +0000
-Subject: [RFC PATCH -tip 1/6] net: tcp: Add trace events for TCP congestion window tracing
-Message-Id: <151013523339.7294.16732700508720389690.stgit@devbox>
+Date: Wed, 08 Nov 2017 10:01:33 +0000
+Subject: [RFC PATCH -tip 3/6] net: sctp: Add SCTP ACK tracking trace event
+Message-Id: <151013529291.7294.2729970379107437282.stgit@devbox>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <151013520119.7294.3518752184394738314.stgit@devbox>
 In-Reply-To: <151013520119.7294.3518752184394738314.stgit@devbox>
@@ -11,160 +11,158 @@ Content-Transfer-Encoding: 7bit
 To: Ingo Molnar <mingo@kernel.org>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
 Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, "David S . Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>
 
-This adds an event to trace TCP stat variables with
-slightly intrusive trace-event. This uses ftrace/perf
-event log buffer to trace those state, no needs to
-prepare own ring-buffer, nor custom user apps.
+Add SCTP ACK tracking trace event to trace the changes of SCTP
+association state in response to incoming packets.
+It is used for debugging SCTP congestion control algorithms,
+and will replace sctp_probe module.
 
-User can use ftrace to trace this event as below;
+Note that this event a bit tricky. Since this consists of 2
+events (sctp_probe and sctp_probe_path) so you have to enable
+both events as below.
 
   # cd /sys/kernel/debug/tracing
-  # echo 1 > events/tcp/tcp_probe/enable
-  (run workloads)
-  # cat trace
+  # echo 1 > events/sctp/sctp_probe/enable
+  # echo 1 > events/sctp/sctp_probe_path/enable
+
+Or, you can enable all the events under sctp.
+
+  # echo 1 > events/sctp/enable
+
+Since sctp_probe_path event is always invoked from sctp_probe
+event, you can not see any output if you only enable
+sctp_probe_path.
+
 
 Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
 ---
- include/trace/events/tcp.h |   96 ++++++++++++++++++++++++++++++++++++++++++++
- net/core/net-traces.c      |    1 
- net/ipv4/tcp_input.c       |    4 ++
- 3 files changed, 101 insertions(+)
- create mode 100644 include/trace/events/tcp.h
+ include/trace/events/sctp.h |   96 +++++++++++++++++++++++++++++++++++++++++++
+ net/sctp/sm_statefuns.c     |    5 ++
+ 2 files changed, 101 insertions(+)
+ create mode 100644 include/trace/events/sctp.h
 
-diff --git a/include/trace/events/tcp.h b/include/trace/events/tcp.h
+diff --git a/include/trace/events/sctp.h b/include/trace/events/sctp.h
 new file mode 100644
-index 000000000000..b8969bbceb38
+index 000000000000..32c2dc72311e
 --- /dev/null
-+++ b/include/trace/events/tcp.h
++++ b/include/trace/events/sctp.h
 @@ -0,0 +1,96 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +#undef TRACE_SYSTEM
-+#define TRACE_SYSTEM tcp
++#define TRACE_SYSTEM sctp
 +
-+#if !defined(_TRACE_TCP_H) || defined(TRACE_HEADER_MULTI_READ)
-+#define _TRACE_TCP_H
++#if !defined(_TRACE_SCTP_H) || defined(TRACE_HEADER_MULTI_READ)
++#define _TRACE_SCTP_H
 +
-+#include <net/tcp.h>
-+#include <linux/tcp.h>
-+#include <linux/ipv6.h>
-+#include <uapi/linux/in.h>
-+#include <uapi/linux/in6.h>
++#include <net/sctp/structs.h>
 +#include <linux/tracepoint.h>
 +
-+TRACE_EVENT(tcp_probe,
++TRACE_EVENT(sctp_probe_path,
 +
-+	TP_PROTO(struct sock *sk, struct sk_buff *skb),
++	TP_PROTO(struct sctp_transport *sp,
++		 const struct sctp_association *asoc),
 +
-+	TP_ARGS(sk, skb),
++	TP_ARGS(sp, asoc),
 +
 +	TP_STRUCT__entry(
-+		/* sockaddr_in6 is always bigger than sockaddr_in */
-+		__array(__u8, saddr, sizeof(struct sockaddr_in6))
-+		__array(__u8, daddr, sizeof(struct sockaddr_in6))
-+		__field(__u16, sport)
-+		__field(__u16, dport)
-+		__field(__u32, mark)
-+		__field(__u16, length)
-+		__field(__u32, snd_nxt)
-+		__field(__u32, snd_una)
-+		__field(__u32, snd_cwnd)
++		__field(__u64, asoc)
++		__field(__u32, primary)
++		__array(__u8, ipaddr, sizeof(union sctp_addr))
++		__field(__u32, state)
++		__field(__u32, cwnd)
 +		__field(__u32, ssthresh)
-+		__field(__u32, snd_wnd)
-+		__field(__u32, srtt)
-+		__field(__u32, rcv_wnd)
++		__field(__u32, flight_size)
++		__field(__u32, partial_bytes_acked)
++		__field(__u32, pathmtu)
 +	),
 +
 +	TP_fast_assign(
-+		const struct tcp_sock *tp = tcp_sk(sk);
-+		const struct inet_sock *inet = inet_sk(sk);
-+
-+		memset(__entry->saddr, 0, sizeof(struct sockaddr_in6));
-+		memset(__entry->daddr, 0, sizeof(struct sockaddr_in6));
-+
-+		if (sk->sk_family = AF_INET) {
-+			struct sockaddr_in *v4 = (void *)__entry->saddr;
-+
-+			v4->sin_family = AF_INET;
-+			v4->sin_port = inet->inet_sport;
-+			v4->sin_addr.s_addr = inet->inet_saddr;
-+			v4 = (void *)__entry->daddr;
-+			v4->sin_family = AF_INET;
-+			v4->sin_port = inet->inet_dport;
-+			v4->sin_addr.s_addr = inet->inet_daddr;
-+#if IS_ENABLED(CONFIG_IPV6)
-+		} else if (sk->sk_family = AF_INET6) {
-+			struct sockaddr_in6 *v6 = (void *)__entry->saddr;
-+
-+			v6->sin6_family = AF_INET6;
-+			v6->sin6_port = inet->inet_sport;
-+			v6->sin6_addr = inet6_sk(sk)->saddr;
-+			v6 = (void *)__entry->daddr;
-+			v6->sin6_family = AF_INET6;
-+			v6->sin6_port = inet->inet_dport;
-+			v6->sin6_addr = sk->sk_v6_daddr;
-+#endif
-+		}
-+
-+		/* For filtering use */
-+		__entry->sport = ntohs(inet->inet_sport);
-+		__entry->dport = ntohs(inet->inet_dport);
-+		__entry->mark = skb->mark;
-+
-+		__entry->length = skb->len;
-+		__entry->snd_nxt = tp->snd_nxt;
-+		__entry->snd_una = tp->snd_una;
-+		__entry->snd_cwnd = tp->snd_cwnd;
-+		__entry->snd_wnd = tp->snd_wnd;
-+		__entry->rcv_wnd = tp->rcv_wnd;
-+		__entry->ssthresh = tcp_current_ssthresh(sk);
-+		__entry->srtt = tp->srtt_us >> 3;
++		__entry->asoc = (__u64)asoc;
++		__entry->primary = (sp = asoc->peer.primary_path);
++		memcpy(__entry->ipaddr, &sp->ipaddr, sizeof(union sctp_addr));
++		__entry->state = sp->state;
++		__entry->cwnd = sp->cwnd;
++		__entry->ssthresh = sp->ssthresh;
++		__entry->flight_size = sp->flight_size;
++		__entry->partial_bytes_acked = sp->partial_bytes_acked;
++		__entry->pathmtu = sp->pathmtu;
 +	),
 +
-+	TP_printk("src=%pISpc dest=%pISpc mark=%#x length=%d snd_nxt=%#x "
-+		  "snd_una=%#x snd_cwnd=%u ssthresh=%u snd_wnd=%u srtt=%u "
-+		  "rcv_wnd=%u",
-+		  __entry->saddr, __entry->daddr, __entry->mark,
-+		  __entry->length, __entry->snd_nxt, __entry->snd_una,
-+		  __entry->snd_cwnd, __entry->ssthresh, __entry->snd_wnd,
-+		  __entry->srtt, __entry->rcv_wnd)
++	TP_printk("asoc=%#llx%s ipaddr=%pISpc state=%u cwnd=%u ssthresh=%u "
++		  "flight_size=%u partial_bytes_acked=%u pathmtu=%u",
++		  __entry->asoc, __entry->primary ? "(*)" : "",
++		  __entry->ipaddr, __entry->state, __entry->cwnd,
++		  __entry->ssthresh, __entry->flight_size,
++		  __entry->partial_bytes_acked, __entry->pathmtu)
 +);
 +
-+#endif /* _TRACE_TCP_H */
++TRACE_EVENT(sctp_probe,
++
++	TP_PROTO(const struct sctp_endpoint *ep,
++		 const struct sctp_association *asoc,
++		 struct sctp_chunk *chunk),
++
++	TP_ARGS(ep, asoc, chunk),
++
++	TP_STRUCT__entry(
++		__field(__u64, asoc)
++		__field(__u32, mark)
++		__field(__u16, bind_port)
++		__field(__u16, peer_port)
++		__field(__u32, pathmtu)
++		__field(__u32, rwnd)
++		__field(__u16, unack_data)
++	),
++
++	TP_fast_assign(
++		struct sctp_transport *sp;
++		struct sk_buff *skb = chunk->skb;
++
++		__entry->asoc = (__u64)asoc;
++		__entry->mark = skb->mark;
++		__entry->bind_port = ep->base.bind_addr.port;
++		__entry->peer_port = asoc->peer.port;
++		__entry->pathmtu = asoc->pathmtu;
++		__entry->rwnd = asoc->peer.rwnd;
++		__entry->unack_data = asoc->unack_data;
++
++		list_for_each_entry(sp, &asoc->peer.transport_addr_list,
++				    transports) {
++			trace_sctp_probe_path(sp, asoc);
++		}
++	),
++
++	TP_printk("asoc=%#llx mark=%#x bind_port=%d peer_port=%d pathmtu=%d "
++		  "rwnd=%u unack_data=%d",
++		  __entry->asoc, __entry->mark, __entry->bind_port,
++		  __entry->peer_port, __entry->pathmtu, __entry->rwnd,
++		  __entry->unack_data)
++);
++
++#endif /* _TRACE_SCTP_H */
 +
 +/* This part must be outside protection */
 +#include <trace/define_trace.h>
-diff --git a/net/core/net-traces.c b/net/core/net-traces.c
-index 71f209542364..2e84d642c03f 100644
---- a/net/core/net-traces.c
-+++ b/net/core/net-traces.c
-@@ -31,6 +31,7 @@
- #include <trace/events/net.h>
- #include <trace/events/napi.h>
- #include <trace/events/sock.h>
-+#include <trace/events/tcp.h>
- #include <trace/events/udp.h>
- #include <trace/events/fib.h>
- #include <trace/events/qdisc.h>
-diff --git a/net/ipv4/tcp_input.c b/net/ipv4/tcp_input.c
-index 9a0b3c5ffa46..da8b342b95ce 100644
---- a/net/ipv4/tcp_input.c
-+++ b/net/ipv4/tcp_input.c
-@@ -76,6 +76,7 @@
- #include <linux/ipsec.h>
- #include <asm/unaligned.h>
- #include <linux/errqueue.h>
-+#include <trace/events/tcp.h>
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 8f8ccded13e4..c5f92b2cc5c3 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -59,6 +59,9 @@
+ #include <net/sctp/sm.h>
+ #include <net/sctp/structs.h>
  
- int sysctl_tcp_fack __read_mostly;
- int sysctl_tcp_max_reordering __read_mostly = 300;
-@@ -5356,6 +5357,9 @@ void tcp_rcv_established(struct sock *sk, struct sk_buff *skb,
- 	unsigned int len = skb->len;
- 	struct tcp_sock *tp = tcp_sk(sk);
- 
-+	/* TCP congestion window tracking */
-+	trace_tcp_probe(sk, skb);
++#define CREATE_TRACE_POINTS
++#include <trace/events/sctp.h>
 +
- 	tcp_mstamp_refresh(tp);
- 	if (unlikely(!sk->sk_rx_dst))
- 		inet_csk(sk)->icsk_af_ops->sk_rx_dst_set(sk, skb);
+ static struct sctp_packet *sctp_abort_pkt_new(
+ 					struct net *net,
+ 					const struct sctp_endpoint *ep,
+@@ -3219,6 +3222,8 @@ enum sctp_disposition sctp_sf_eat_sack_6_2(struct net *net,
+ 	struct sctp_sackhdr *sackh;
+ 	__u32 ctsn;
+ 
++	trace_sctp_probe(ep, asoc, chunk);
++
+ 	if (!sctp_vtag_verify(chunk, asoc))
+ 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+ 
 
