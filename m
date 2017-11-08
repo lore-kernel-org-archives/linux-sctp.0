@@ -1,101 +1,373 @@
-From: Richard Haines <richard_c_haines@btinternet.com>
-Date: Mon, 27 Nov 2017 19:30:23 +0000
-Subject: [PATCH 0/4] Add SELinux SCTP protocol support
-Message-Id: <20171127193023.2563-1-richard_c_haines@btinternet.com>
+From: Masami Hiramatsu <mhiramat@kernel.org>
+Date: Wed, 08 Nov 2017 10:01:03 +0000
+Subject: [RFC PATCH -tip 2/6] net: tcp: Remove TCP probe module
+Message-Id: <151013526297.7294.5797728381598020882.stgit@devbox>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <151013520119.7294.3518752184394738314.stgit@devbox>
+In-Reply-To: <151013520119.7294.3518752184394738314.stgit@devbox>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-security-module@vger.kernel.org
+To: Ingo Molnar <mingo@kernel.org>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
+Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, "David S . Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>
 
-The kernel patches have been built on Fedora 27 with kernel 4.13.12 plus
-the following userspace patches to enable testing:
+Remove TCP probe module since jprobe has been deprecated.
+That function is now replaced by tcp/tcp_probe trace-event.
+You can use it via ftrace or perftools.
 
-1) Updates to libsepol 2.7 to support the sctp portcon statement.
-   The patch is available from:
-         http://arctic.selinuxproject.org/~rhaines/selinux-sctp/
-         selinux-Add-support-for-the-SCTP-portcon-keyword.patch
+Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
+---
+ net/Kconfig          |   17 ---
+ net/ipv4/Makefile    |    1 
+ net/ipv4/tcp_probe.c |  301 --------------------------------------------------
+ 3 files changed, 319 deletions(-)
+ delete mode 100644 net/ipv4/tcp_probe.c
 
-2) Updates to the SELinux Test Suite adding SCTP tests. Please read the
-   selinux-testsuite/README.sctp for details. The patch is available from:
-         http://arctic.selinuxproject.org/~rhaines/selinux-sctp/
-         selinux-testsuite-Add-SCTP-test-support.patch
-
-3) Updates to lksctp-tools that show SELinux info in sctp_darn and
-   sctp_test. It also contains a minor patch for test_1_to_1_connect.c
-   as when CIPSO/CALIPSO configured, NetLabel returns a different error
-   code for illegal addresses in test 5. The patch is available from:
-         http://arctic.selinuxproject.org/~rhaines/selinux-sctp/
-         lksctp-tools-Add-SELinux-support-to-sctp_test-and-sc.patch
-
-All SCTP lksctp-tools/src/func_tests run correctly in enforcing mode.
-
-All SCTP regression tests "./sctp-tests run" run correctly in enforcing
-mode. These tests are obtained from: https://github.com/sctp/sctp-tests
-
-The selinux-testsuite patch also adds remote tests (that need some manual
-configuration). These are useful for testing CIPSO/CALIPSO over a network
-with a number of categories to produce large ip option fields with various
-message sizes forcing fragmentation etc..
-
-Changes since RFC Patch:
-Removed the NetLabel patch (was [RFC PATCH 4/5] netlabel: Add SCTP support)
-as re-engineered. However this patchset will require the NetLabel
-patch at [1] to fully run the SCTP selinux-testsuite.
-
-PATCH 1/4
-Remove unused parameter from security_sctp_assoc_request().
-Reformat and update LSM-sctp.rst documentation.
-PATCH 2/4
-Add variables and RCU locks as requested in [2] to support IP options.
-PATCH 3/4
-Added security_sctp_assoc_request() hook to sctp_sf_do_unexpected_init()
-and sctp_sf_do_5_2_4_dupcook().
-Removed security_sctp_assoc_request() hook from sctp_sf_do_5_1C_ack() as
-no longer required.
-PATCH 4/4
-Reformat and update SELinux-sctp.rst documentation.
-Remove bindx and connectx permissions.
-Rework selinux_socket_connect() and selinux_netlbl_socket_connect() to
-utilise helpers for code reuse.
-Add spinlock to selinux_sctp_assoc_request().
-Remove unused parameter from security_sctp_assoc_request().
-Use address->sa_family = AF_INET in *_bind and *_connect to ensure
-correct address type.
-Minor cleanups.
-
-[1] https://marc.info/?l=selinux&m1061619115945&w=2
-[2] https://marc.info/?l=selinux&m0962470215797&w=2
-
-Richard Haines (4):
-  security: Add support for SCTP security hooks
-  sctp: Add ip option support
-  sctp: Add LSM hooks
-  selinux: Add SCTP support
-
- Documentation/security/LSM-sctp.rst     | 194 ++++++++++++++++++++++
- Documentation/security/SELinux-sctp.rst | 104 ++++++++++++
- include/linux/lsm_hooks.h               |  35 ++++
- include/linux/security.h                |  25 +++
- include/net/sctp/structs.h              |  12 ++
- include/uapi/linux/sctp.h               |   1 +
- net/sctp/chunk.c                        |  13 +-
- net/sctp/ipv6.c                         |  42 ++++-
- net/sctp/output.c                       |   5 +-
- net/sctp/protocol.c                     |  36 +++++
- net/sctp/sm_make_chunk.c                |  12 ++
- net/sctp/sm_statefuns.c                 |  18 +++
- net/sctp/socket.c                       |  69 +++++++-
- security/security.c                     |  22 +++
- security/selinux/hooks.c                | 278 +++++++++++++++++++++++++++++---
- security/selinux/include/classmap.h     |   2 +-
- security/selinux/include/netlabel.h     |  15 +-
- security/selinux/include/objsec.h       |   4 +
- security/selinux/netlabel.c             | 128 +++++++++++++--
- 19 files changed, 967 insertions(+), 48 deletions(-)
- create mode 100644 Documentation/security/LSM-sctp.rst
- create mode 100644 Documentation/security/SELinux-sctp.rst
-
--- 
-2.14.3
+diff --git a/net/Kconfig b/net/Kconfig
+index 9dba2715919d..efe930db3c08 100644
+--- a/net/Kconfig
++++ b/net/Kconfig
+@@ -336,23 +336,6 @@ config NET_PKTGEN
+ 	  To compile this code as a module, choose M here: the
+ 	  module will be called pktgen.
+ 
+-config NET_TCPPROBE
+-	tristate "TCP connection probing"
+-	depends on INET && PROC_FS && KPROBES
+-	---help---
+-	This module allows for capturing the changes to TCP connection
+-	state in response to incoming packets. It is used for debugging
+-	TCP congestion avoidance modules. If you don't understand
+-	what was just said, you don't need it: say N.
+-
+-	Documentation on how to use TCP connection probing can be found
+-	at:
+-	
+-	  http://www.linuxfoundation.org/collaborate/workgroups/networking/tcpprobe
+-
+-	To compile this code as a module, choose M here: the
+-	module will be called tcp_probe.
+-
+ config NET_DROP_MONITOR
+ 	tristate "Network packet drop alerting service"
+ 	depends on INET && TRACEPOINTS
+diff --git a/net/ipv4/Makefile b/net/ipv4/Makefile
+index c6c8ad1d4b6d..47a0a6649a9d 100644
+--- a/net/ipv4/Makefile
++++ b/net/ipv4/Makefile
+@@ -43,7 +43,6 @@ obj-$(CONFIG_INET_DIAG) += inet_diag.o
+ obj-$(CONFIG_INET_TCP_DIAG) += tcp_diag.o
+ obj-$(CONFIG_INET_UDP_DIAG) += udp_diag.o
+ obj-$(CONFIG_INET_RAW_DIAG) += raw_diag.o
+-obj-$(CONFIG_NET_TCPPROBE) += tcp_probe.o
+ obj-$(CONFIG_TCP_CONG_BBR) += tcp_bbr.o
+ obj-$(CONFIG_TCP_CONG_BIC) += tcp_bic.o
+ obj-$(CONFIG_TCP_CONG_CDG) += tcp_cdg.o
+diff --git a/net/ipv4/tcp_probe.c b/net/ipv4/tcp_probe.c
+deleted file mode 100644
+index 697f4c67b2e3..000000000000
+--- a/net/ipv4/tcp_probe.c
++++ /dev/null
+@@ -1,301 +0,0 @@
+-/*
+- * tcpprobe - Observe the TCP flow with kprobes.
+- *
+- * The idea for this came from Werner Almesberger's umlsim
+- * Copyright (C) 2004, Stephen Hemminger <shemminger@osdl.org>
+- *
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License as published by
+- * the Free Software Foundation; either version 2 of the License.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with this program; if not, write to the Free Software
+- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+- */
+-
+-#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+-
+-#include <linux/kernel.h>
+-#include <linux/kprobes.h>
+-#include <linux/socket.h>
+-#include <linux/tcp.h>
+-#include <linux/slab.h>
+-#include <linux/proc_fs.h>
+-#include <linux/module.h>
+-#include <linux/ktime.h>
+-#include <linux/time.h>
+-#include <net/net_namespace.h>
+-
+-#include <net/tcp.h>
+-
+-MODULE_AUTHOR("Stephen Hemminger <shemminger@linux-foundation.org>");
+-MODULE_DESCRIPTION("TCP cwnd snooper");
+-MODULE_LICENSE("GPL");
+-MODULE_VERSION("1.1");
+-
+-static int port __read_mostly;
+-MODULE_PARM_DESC(port, "Port to match (0=all)");
+-module_param(port, int, 0);
+-
+-static unsigned int bufsize __read_mostly = 4096;
+-MODULE_PARM_DESC(bufsize, "Log buffer size in packets (4096)");
+-module_param(bufsize, uint, 0);
+-
+-static unsigned int fwmark __read_mostly;
+-MODULE_PARM_DESC(fwmark, "skb mark to match (0=no mark)");
+-module_param(fwmark, uint, 0);
+-
+-static int full __read_mostly;
+-MODULE_PARM_DESC(full, "Full log (1=every ack packet received,  0=only cwnd changes)");
+-module_param(full, int, 0);
+-
+-static const char procname[] = "tcpprobe";
+-
+-struct tcp_log {
+-	ktime_t tstamp;
+-	union {
+-		struct sockaddr		raw;
+-		struct sockaddr_in	v4;
+-		struct sockaddr_in6	v6;
+-	}	src, dst;
+-	u16	length;
+-	u32	snd_nxt;
+-	u32	snd_una;
+-	u32	snd_wnd;
+-	u32	rcv_wnd;
+-	u32	snd_cwnd;
+-	u32	ssthresh;
+-	u32	srtt;
+-};
+-
+-static struct {
+-	spinlock_t	lock;
+-	wait_queue_head_t wait;
+-	ktime_t		start;
+-	u32		lastcwnd;
+-
+-	unsigned long	head, tail;
+-	struct tcp_log	*log;
+-} tcp_probe;
+-
+-static inline int tcp_probe_used(void)
+-{
+-	return (tcp_probe.head - tcp_probe.tail) & (bufsize - 1);
+-}
+-
+-static inline int tcp_probe_avail(void)
+-{
+-	return bufsize - tcp_probe_used() - 1;
+-}
+-
+-#define tcp_probe_copy_fl_to_si4(inet, si4, mem)		\
+-	do {							\
+-		si4.sin_family = AF_INET;			\
+-		si4.sin_port = inet->inet_##mem##port;		\
+-		si4.sin_addr.s_addr = inet->inet_##mem##addr;	\
+-	} while (0)						\
+-
+-/*
+- * Hook inserted to be called before each receive packet.
+- * Note: arguments must match tcp_rcv_established()!
+- */
+-static void jtcp_rcv_established(struct sock *sk, struct sk_buff *skb,
+-				 const struct tcphdr *th)
+-{
+-	unsigned int len = skb->len;
+-	const struct tcp_sock *tp = tcp_sk(sk);
+-	const struct inet_sock *inet = inet_sk(sk);
+-
+-	/* Only update if port or skb mark matches */
+-	if (((port = 0 && fwmark = 0) ||
+-	     ntohs(inet->inet_dport) = port ||
+-	     ntohs(inet->inet_sport) = port ||
+-	     (fwmark > 0 && skb->mark = fwmark)) &&
+-	    (full || tp->snd_cwnd != tcp_probe.lastcwnd)) {
+-
+-		spin_lock(&tcp_probe.lock);
+-		/* If log fills, just silently drop */
+-		if (tcp_probe_avail() > 1) {
+-			struct tcp_log *p = tcp_probe.log + tcp_probe.head;
+-
+-			p->tstamp = ktime_get();
+-			switch (sk->sk_family) {
+-			case AF_INET:
+-				tcp_probe_copy_fl_to_si4(inet, p->src.v4, s);
+-				tcp_probe_copy_fl_to_si4(inet, p->dst.v4, d);
+-				break;
+-			case AF_INET6:
+-				memset(&p->src.v6, 0, sizeof(p->src.v6));
+-				memset(&p->dst.v6, 0, sizeof(p->dst.v6));
+-#if IS_ENABLED(CONFIG_IPV6)
+-				p->src.v6.sin6_family = AF_INET6;
+-				p->src.v6.sin6_port = inet->inet_sport;
+-				p->src.v6.sin6_addr = inet6_sk(sk)->saddr;
+-
+-				p->dst.v6.sin6_family = AF_INET6;
+-				p->dst.v6.sin6_port = inet->inet_dport;
+-				p->dst.v6.sin6_addr = sk->sk_v6_daddr;
+-#endif
+-				break;
+-			default:
+-				BUG();
+-			}
+-
+-			p->length = len;
+-			p->snd_nxt = tp->snd_nxt;
+-			p->snd_una = tp->snd_una;
+-			p->snd_cwnd = tp->snd_cwnd;
+-			p->snd_wnd = tp->snd_wnd;
+-			p->rcv_wnd = tp->rcv_wnd;
+-			p->ssthresh = tcp_current_ssthresh(sk);
+-			p->srtt = tp->srtt_us >> 3;
+-
+-			tcp_probe.head = (tcp_probe.head + 1) & (bufsize - 1);
+-		}
+-		tcp_probe.lastcwnd = tp->snd_cwnd;
+-		spin_unlock(&tcp_probe.lock);
+-
+-		wake_up(&tcp_probe.wait);
+-	}
+-
+-	jprobe_return();
+-}
+-
+-static struct jprobe tcp_jprobe = {
+-	.kp = {
+-		.symbol_name	= "tcp_rcv_established",
+-	},
+-	.entry	= jtcp_rcv_established,
+-};
+-
+-static int tcpprobe_open(struct inode *inode, struct file *file)
+-{
+-	/* Reset (empty) log */
+-	spin_lock_bh(&tcp_probe.lock);
+-	tcp_probe.head = tcp_probe.tail = 0;
+-	tcp_probe.start = ktime_get();
+-	spin_unlock_bh(&tcp_probe.lock);
+-
+-	return 0;
+-}
+-
+-static int tcpprobe_sprint(char *tbuf, int n)
+-{
+-	const struct tcp_log *p
+-		= tcp_probe.log + tcp_probe.tail;
+-	struct timespec64 ts
+-		= ktime_to_timespec64(ktime_sub(p->tstamp, tcp_probe.start));
+-
+-	return scnprintf(tbuf, n,
+-			"%lu.%09lu %pISpc %pISpc %d %#x %#x %u %u %u %u %u\n",
+-			(unsigned long)ts.tv_sec,
+-			(unsigned long)ts.tv_nsec,
+-			&p->src, &p->dst, p->length, p->snd_nxt, p->snd_una,
+-			p->snd_cwnd, p->ssthresh, p->snd_wnd, p->srtt, p->rcv_wnd);
+-}
+-
+-static ssize_t tcpprobe_read(struct file *file, char __user *buf,
+-			     size_t len, loff_t *ppos)
+-{
+-	int error = 0;
+-	size_t cnt = 0;
+-
+-	if (!buf)
+-		return -EINVAL;
+-
+-	while (cnt < len) {
+-		char tbuf[256];
+-		int width;
+-
+-		/* Wait for data in buffer */
+-		error = wait_event_interruptible(tcp_probe.wait,
+-						 tcp_probe_used() > 0);
+-		if (error)
+-			break;
+-
+-		spin_lock_bh(&tcp_probe.lock);
+-		if (tcp_probe.head = tcp_probe.tail) {
+-			/* multiple readers race? */
+-			spin_unlock_bh(&tcp_probe.lock);
+-			continue;
+-		}
+-
+-		width = tcpprobe_sprint(tbuf, sizeof(tbuf));
+-
+-		if (cnt + width < len)
+-			tcp_probe.tail = (tcp_probe.tail + 1) & (bufsize - 1);
+-
+-		spin_unlock_bh(&tcp_probe.lock);
+-
+-		/* if record greater than space available
+-		   return partial buffer (so far) */
+-		if (cnt + width >= len)
+-			break;
+-
+-		if (copy_to_user(buf + cnt, tbuf, width))
+-			return -EFAULT;
+-		cnt += width;
+-	}
+-
+-	return cnt = 0 ? error : cnt;
+-}
+-
+-static const struct file_operations tcpprobe_fops = {
+-	.owner	 = THIS_MODULE,
+-	.open	 = tcpprobe_open,
+-	.read    = tcpprobe_read,
+-	.llseek  = noop_llseek,
+-};
+-
+-static __init int tcpprobe_init(void)
+-{
+-	int ret = -ENOMEM;
+-
+-	/* Warning: if the function signature of tcp_rcv_established,
+-	 * has been changed, you also have to change the signature of
+-	 * jtcp_rcv_established, otherwise you end up right here!
+-	 */
+-	BUILD_BUG_ON(__same_type(tcp_rcv_established,
+-				 jtcp_rcv_established) = 0);
+-
+-	init_waitqueue_head(&tcp_probe.wait);
+-	spin_lock_init(&tcp_probe.lock);
+-
+-	if (bufsize = 0)
+-		return -EINVAL;
+-
+-	bufsize = roundup_pow_of_two(bufsize);
+-	tcp_probe.log = kcalloc(bufsize, sizeof(struct tcp_log), GFP_KERNEL);
+-	if (!tcp_probe.log)
+-		goto err0;
+-
+-	if (!proc_create(procname, S_IRUSR, init_net.proc_net, &tcpprobe_fops))
+-		goto err0;
+-
+-	ret = register_jprobe(&tcp_jprobe);
+-	if (ret)
+-		goto err1;
+-
+-	pr_info("probe registered (port=%d/fwmark=%u) bufsize=%u\n",
+-		port, fwmark, bufsize);
+-	return 0;
+- err1:
+-	remove_proc_entry(procname, init_net.proc_net);
+- err0:
+-	kfree(tcp_probe.log);
+-	return ret;
+-}
+-module_init(tcpprobe_init);
+-
+-static __exit void tcpprobe_exit(void)
+-{
+-	remove_proc_entry(procname, init_net.proc_net);
+-	unregister_jprobe(&tcp_jprobe);
+-	kfree(tcp_probe.log);
+-}
+-module_exit(tcpprobe_exit);
 
