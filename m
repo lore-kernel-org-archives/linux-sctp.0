@@ -1,42 +1,81 @@
-From: David Miller <davem@davemloft.net>
-Date: Sat, 18 Nov 2017 01:35:00 +0000
-Subject: Re: [PATCH net] sctp: set frag_point in sctp_setsockopt_maxseg correctly
-Message-Id: <20171118.103500.1903485418923407561.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 13 Nov 2017 04:43:50 +0000
+Subject: [PATCH net] sctp: do not free asoc when it is already dead in sctp_sendmsg
+Message-Id: <dd66b7c05a6e6242192f8af40223447d3db4705f.1510548230.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <676049ead9b85fa71b3ccf99e2bf29d0dc826cab.1510899071.git.lucien.xin@gmail.com>
-In-Reply-To: <676049ead9b85fa71b3ccf99e2bf29d0dc826cab.1510899071.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, syzkaller@googlegroups.com, liuhangbin@gmail.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Dmitry Vyukov <dvyukov@google.com>, syzkaller@googlegroups.com
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 17 Nov 2017 14:11:11 +0800
+Now in sctp_sendmsg sctp_wait_for_sndbuf could schedule out without
+holding sock sk. It means the current asoc can be freed elsewhere,
+like when receiving an abort packet.
 
-> Now in sctp_setsockopt_maxseg user_frag or frag_point can be set with
-> val >= 8 and val <= SCTP_MAX_CHUNK_LEN. But both checks are incorrect.
-> 
-> val >= 8 means frag_point can even be less than SCTP_DEFAULT_MINSEGMENT.
-> Then in sctp_datamsg_from_user(), when it's value is greater than cookie
-> echo len and trying to bundle with cookie echo chunk, the first_len will
-> overflow.
-> 
-> The worse case is when it's value is equal as cookie echo len, first_len
-> becomes 0, it will go into a dead loop for fragment later on. In Hangbin
-> syzkaller testing env, oom was even triggered due to consecutive memory
-> allocation in that loop.
-> 
-> Besides, SCTP_MAX_CHUNK_LEN is the max size of the whole chunk, it should
-> deduct the data header for frag_point or user_frag check.
-> 
-> This patch does a proper check with SCTP_DEFAULT_MINSEGMENT subtracting
-> the sctphdr and datahdr, SCTP_MAX_CHUNK_LEN subtracting datahdr when
-> setting frag_point via sockopt. It also improves sctp_setsockopt_maxseg
-> codes.
-> 
-> Suggested-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> Reported-by: Hangbin Liu <liuhangbin@gmail.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+If the asoc is just created in sctp_sendmsg and sctp_wait_for_sndbuf
+returns err, the asoc will be freed again due to new_asoc is not nil.
+An use-after-free issue would be triggered by this.
 
-Applied.
+This patch is to fix it by setting new_asoc with nil if the asoc is
+already dead when cpu schedules back, so that it will not be freed
+again in sctp_sendmsg.
+
+Reported-by: Dmitry Vyukov <dvyukov@google.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/socket.c | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 6f45d17..f575976 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -83,8 +83,8 @@
+ /* Forward declarations for internal helper functions. */
+ static int sctp_writeable(struct sock *sk);
+ static void sctp_wfree(struct sk_buff *skb);
+-static int sctp_wait_for_sndbuf(struct sctp_association *, long *timeo_p,
+-				size_t msg_len);
++static int sctp_wait_for_sndbuf(struct sctp_association *asoc, long *timeo_p,
++				size_t msg_len, struct sctp_association **new);
+ static int sctp_wait_for_packet(struct sock *sk, int *err, long *timeo_p);
+ static int sctp_wait_for_connect(struct sctp_association *, long *timeo_p);
+ static int sctp_wait_for_accept(struct sock *sk, long timeo);
+@@ -1962,7 +1962,7 @@ static int sctp_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
+ 
+ 	timeo = sock_sndtimeo(sk, msg->msg_flags & MSG_DONTWAIT);
+ 	if (!sctp_wspace(asoc)) {
+-		err = sctp_wait_for_sndbuf(asoc, &timeo, msg_len);
++		err = sctp_wait_for_sndbuf(asoc, &timeo, msg_len, &new_asoc);
+ 		if (err)
+ 			goto out_free;
+ 	}
+@@ -7822,7 +7822,7 @@ void sctp_sock_rfree(struct sk_buff *skb)
+ 
+ /* Helper function to wait for space in the sndbuf.  */
+ static int sctp_wait_for_sndbuf(struct sctp_association *asoc, long *timeo_p,
+-				size_t msg_len)
++				size_t msg_len, struct sctp_association **new)
+ {
+ 	struct sock *sk = asoc->base.sk;
+ 	int err = 0;
+@@ -7839,10 +7839,13 @@ static int sctp_wait_for_sndbuf(struct sctp_association *asoc, long *timeo_p,
+ 	for (;;) {
+ 		prepare_to_wait_exclusive(&asoc->wait, &wait,
+ 					  TASK_INTERRUPTIBLE);
++		if (asoc->base.dead) {
++			*new = NULL;
++			goto do_error;
++		}
+ 		if (!*timeo_p)
+ 			goto do_nonblock;
+-		if (sk->sk_err || asoc->state >= SCTP_STATE_SHUTDOWN_PENDING ||
+-		    asoc->base.dead)
++		if (sk->sk_err || asoc->state >= SCTP_STATE_SHUTDOWN_PENDING)
+ 			goto do_error;
+ 		if (signal_pending(current))
+ 			goto do_interrupted;
+-- 
+2.1.0
+
