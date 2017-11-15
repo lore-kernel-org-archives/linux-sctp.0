@@ -1,104 +1,98 @@
-From: Kefeng Wang <wangkefeng.wang@huawei.com>
-Date: Fri, 17 Nov 2017 02:35:26 +0000
-Subject: Re: [PATCH 7.x ubsan fix 3/6] net: sctp, forbid negative length
-Message-Id: <2d63145e-0106-b1a0-151b-5d9a9233381d@huawei.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 15 Nov 2017 09:00:11 +0000
+Subject: [PATCHv2 net] sctp: check stream reset info len before making reconf chunk
+Message-Id: <49f43731ffc66c5da5eb3ee3e365d12a0e1fe8cb.1510736411.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1510886009-141575-1-git-send-email-wangkefeng.wang@huawei.com>
- <1510886009-141575-4-git-send-email-wangkefeng.wang@huawei.com>
-In-Reply-To: <1510886009-141575-4-git-send-email-wangkefeng.wang@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: kernel.openeuler@huawei.com
-Cc: Jiri Slaby <jslaby@suse.cz>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, syzkaller@googlegroups.com
 
-sorry, please ignore...
+Now when resetting stream, if both in and out flags are set, the info
+len can reach:
+  sizeof(struct sctp_strreset_outreq) + SCTP_MAX_STREAM(65535) +
+  sizeof(struct sctp_strreset_inreq)  + SCTP_MAX_STREAM(65535)
+even without duplicated stream no, this value is far greater than the
+chunk's max size.
 
+_sctp_make_chunk doesn't do any check for this, which would cause the
+skb it allocs is huge, syzbot even reported a crash due to this.
 
-On 2017/11/17 10:33, Kefeng Wang wrote:
-> From: Jiri Slaby <jslaby@suse.cz>
->
-> mainline inclusion
-> from mainline-4.9
-> commit a4b8e71b05c27bae6bad3bdecddbc6b68a3ad8cf
-> category: bugfix
-> bugzilla: 3214
-> DTS: NA
-> CVE: NA
->
-> -------------------------------------------------
->
-> Most of getsockopt handlers in net/sctp/socket.c check len against
-> sizeof some structure like:
->         if (len < sizeof(int))
->                 return -EINVAL;
->
-> On the first look, the check seems to be correct. But since len is int
-> and sizeof returns size_t, int gets promoted to unsigned size_t too. So
-> the test returns false for negative lengths. Yes, (-1 < sizeof(long)) is
-> false.
->
-> Fix this in sctp by explicitly checking len < 0 before any getsockopt
-> handler is called.
->
-> Note that sctp_getsockopt_events already handled the negative case.
-> Since we added the < 0 check elsewhere, this one can be removed.
->
-> If not checked, this is the result:
-> UBSAN: Undefined behaviour in ../mm/page_alloc.c:2722:19
-> shift exponent 52 is too large for 32-bit type 'int'
-> CPU: 1 PID: 24535 Comm: syz-executor Not tainted 4.8.1-0-syzkaller #1
-> Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.9.1-0-gb3ef39f-prebuilt.qemu-project.org 04/01/2014
->  0000000000000000 ffff88006d99f2a8 ffffffffb2f7bdea 0000000041b58ab3
->  ffffffffb4363c14 ffffffffb2f7bcde ffff88006d99f2d0 ffff88006d99f270
->  0000000000000000 0000000000000000 0000000000000034 ffffffffb5096422
-> Call Trace:
->  [<ffffffffb3051498>] ? __ubsan_handle_shift_out_of_bounds+0x29c/0x300
-> ...
->  [<ffffffffb273f0e4>] ? kmalloc_order+0x24/0x90
->  [<ffffffffb27416a4>] ? kmalloc_order_trace+0x24/0x220
->  [<ffffffffb2819a30>] ? __kmalloc+0x330/0x540
->  [<ffffffffc18c25f4>] ? sctp_getsockopt_local_addrs+0x174/0xca0 [sctp]
->  [<ffffffffc18d2bcd>] ? sctp_getsockopt+0x10d/0x1b0 [sctp]
->  [<ffffffffb37c1219>] ? sock_common_getsockopt+0xb9/0x150
->  [<ffffffffb37be2f5>] ? SyS_getsockopt+0x1a5/0x270
->
-> Signed-off-by: Jiri Slaby <jslaby@suse.cz>
-> Cc: Vlad Yasevich <vyasevich@gmail.com>
-> Cc: Neil Horman <nhorman@tuxdriver.com>
-> Cc: "David S. Miller" <davem@davemloft.net>
-> Cc: linux-sctp@vger.kernel.org
-> Cc: netdev@vger.kernel.org
-> Acked-by: Neil Horman <nhorman@tuxdriver.com>
-> Signed-off-by: David S. Miller <davem@davemloft.net>
-> (cherry picked from commit a4b8e71b05c27bae6bad3bdecddbc6b68a3ad8cf)
-> Signed-off-by: Kefeng Wang <wangkefeng.wang@huawei.com>
-> ---
->  net/sctp/socket.c | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
->
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 425a1a3..3a42f98 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -4589,7 +4589,7 @@ static int sctp_getsockopt_disable_fragments(struct sock *sk, int len,
->  static int sctp_getsockopt_events(struct sock *sk, int len, char __user *optval,
->  				  int __user *optlen)
->  {
-> -	if (len <= 0)
-> +	if (len = 0)
->  		return -EINVAL;
->  	if (len > sizeof(struct sctp_event_subscribe))
->  		len = sizeof(struct sctp_event_subscribe);
-> @@ -6252,6 +6252,9 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
->  	if (get_user(len, optlen))
->  		return -EFAULT;
->  
-> +	if (len < 0)
-> +		return -EINVAL;
-> +
->  	lock_sock(sk);
->  
->  	switch (optname) {
+This patch is to check stream reset info len before making reconf
+chunk and return EINVAL if the len exceeds chunk's capacity.
 
+Thanks Marcelo and Neil for making this clear.
+
+v1->v2:
+  - move the check into sctp_send_reset_streams instead.
+
+Fixes: cc16f00f6529 ("sctp: add support for generating stream reconf ssn reset request chunk")
+Reported-by: Dmitry Vyukov <dvyukov@google.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/sm_make_chunk.c |  2 +-
+ net/sctp/stream.c        | 32 ++++++++++++++++++++++++--------
+ 2 files changed, 25 insertions(+), 9 deletions(-)
+
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 514465b..9bf575f 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -3594,8 +3594,8 @@ struct sctp_chunk *sctp_make_strreset_req(
+ 					__u16 stream_num, __be16 *stream_list,
+ 					bool out, bool in)
+ {
++	__u16 stream_len = stream_num * sizeof(__u16);
+ 	struct sctp_strreset_outreq outreq;
+-	__u16 stream_len = stream_num * 2;
+ 	struct sctp_strreset_inreq inreq;
+ 	struct sctp_chunk *retval;
+ 	__u16 outlen, inlen;
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index fa8371f..e443768 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -139,15 +139,31 @@ int sctp_send_reset_streams(struct sctp_association *asoc,
+ 
+ 	str_nums = params->srs_number_streams;
+ 	str_list = params->srs_stream_list;
+-	if (out && str_nums)
+-		for (i = 0; i < str_nums; i++)
+-			if (str_list[i] >= stream->outcnt)
+-				goto out;
++	if (str_nums) {
++		int param_len = 0;
+ 
+-	if (in && str_nums)
+-		for (i = 0; i < str_nums; i++)
+-			if (str_list[i] >= stream->incnt)
+-				goto out;
++		if (out) {
++			for (i = 0; i < str_nums; i++)
++				if (str_list[i] >= stream->outcnt)
++					goto out;
++
++			param_len = str_nums * sizeof(__u16) +
++				    sizeof(struct sctp_strreset_outreq);
++		}
++
++		if (in) {
++			for (i = 0; i < str_nums; i++)
++				if (str_list[i] >= stream->incnt)
++					goto out;
++
++			param_len += str_nums * sizeof(__u16) +
++				     sizeof(struct sctp_strreset_inreq);
++		}
++
++		if (param_len > SCTP_MAX_CHUNK_LEN -
++				sizeof(struct sctp_reconf_chunk))
++			goto out;
++	}
+ 
+ 	nstr_list = kcalloc(str_nums, sizeof(__be16), GFP_KERNEL);
+ 	if (!nstr_list) {
+-- 
+2.1.0
 
