@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 15 Nov 2017 12:45:16 +0000
+From: David Miller <davem@davemloft.net>
+Date: Thu, 16 Nov 2017 01:49:47 +0000
 Subject: Re: [PATCHv2 net] sctp: use the right sk after waking up from wait_buf sleep
-Message-Id: <20171115124516.GC10083@hmswarspite.think-freely.org>
+Message-Id: <20171116.104947.1173420790283087407.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <a9890f37f327c3765a58247636e6586c7439ae62.1510736246.git.lucien.xin@gmail.com>
 In-Reply-To: <a9890f37f327c3765a58247636e6586c7439ae62.1510736246.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
-On Wed, Nov 15, 2017 at 04:57:26PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 15 Nov 2017 16:57:26 +0800
+
 > Commit dfcb9f4f99f1 ("sctp: deny peeloff operation on asocs with threads
 > sleeping on it") fixed the race between peeloff and wait sndbuf by
 > checking waitqueue_active(&asoc->wait) in sctp_do_peeloff().
@@ -35,5 +37,5 @@ On Wed, Nov 15, 2017 at 04:57:26PM +0800, Xin Long wrote:
 > 
 > Suggested-by: Neil Horman <nhorman@tuxdriver.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
+Applied.
