@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 15 Nov 2017 15:35:58 +0000
+From: David Miller <davem@davemloft.net>
+Date: Thu, 16 Nov 2017 01:49:53 +0000
 Subject: Re: [PATCHv2 net] sctp: check stream reset info len before making reconf chunk
-Message-Id: <20171115153558.GD10083@hmswarspite.think-freely.org>
+Message-Id: <20171116.104953.1692018694441103102.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <49f43731ffc66c5da5eb3ee3e365d12a0e1fe8cb.1510736411.git.lucien.xin@gmail.com>
 In-Reply-To: <49f43731ffc66c5da5eb3ee3e365d12a0e1fe8cb.1510736411.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, syzkaller@googlegroups.com
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, syzkaller@googlegroups.com
 
-On Wed, Nov 15, 2017 at 05:00:11PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 15 Nov 2017 17:00:11 +0800
+
 > Now when resetting stream, if both in and out flags are set, the info
 > len can reach:
 >   sizeof(struct sctp_strreset_outreq) + SCTP_MAX_STREAM(65535) +
@@ -33,5 +35,5 @@ On Wed, Nov 15, 2017 at 05:00:11PM +0800, Xin Long wrote:
 > Fixes: cc16f00f6529 ("sctp: add support for generating stream reconf ssn reset request chunk")
 > Reported-by: Dmitry Vyukov <dvyukov@google.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
+Applied.
