@@ -1,93 +1,16 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 21 Nov 2017 20:52:23 +0000
-Subject: Re: Fwd: [tsvwg] WGLC comments request for draft-ietf-tsvwg-rfc4960-errata-04.txt - to end Fri 8th D
-Message-Id: <20171121205223.GA3380@localhost.localdomain>
+From: "Butler, Peter" <pbutler@sonusnet.com>
+Date: Thu, 16 Nov 2017 15:21:55 +0000
+Subject: Multi-homed SCTP with NAT
+Message-Id: <BY2PR03MB409F0A6B2B29B20B0201BCCD62E0@BY2PR03MB409.namprd03.prod.outlook.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <9745D959-662C-40EF-96C6-3A37219D54E5@lurchi.franken.de>
-In-Reply-To: <9745D959-662C-40EF-96C6-3A37219D54E5@lurchi.franken.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Hi Michael,
+Are there any Linux tools/tricks/hacks that would allow us to setup a multi-homed association through a NAT?
 
-Thanks for bringing this to our attention.
+I am aware of the information in the SCTP Applicability Statement (RFC 3257), however the NAT in question does not have an internal Application Layer Gateway (ALG) capable of intelligently translating the additional IP addresses embedded within the INIT and INIT ACK chunks (only the addresses in the IP header are translated).  As such, these additional address do not get translated to addresses that the remote end understands.
 
-I have no comments on it myself. Have used this Errata some time ago
-(we had rwnd/cwnd handling fixes because of the errata), went over it
-again now, LGTM and I don't think we have (major) discrepancies due to
-it.
+Peter Butler
 
-Thanks,
-Marcelo
-
-On Fri, Nov 17, 2017 at 03:00:00PM +0100, Michael Tuexen wrote:
-> Dear all,
->=20
-> I'm working on an internet draft dealing with errata in RFC 4960. This do=
-cument is now
-> in working group last call and can be accessed via
-> https://tools.ietf.org/html/draft-ietf-tsvwg-rfc4960-errata-04
->=20
-> It would be really great if someone with insights in the Linux SCTP stack=
- could review it
-> and provide comments on the IETF mailing list tsvwg@ietf.org.
->=20
-> That plan is to get an Informational RFC which describes the required cha=
-nges to RFC 4960
-> and then base an upcoming RFC4960bis document on this Informational RFC. =
-This is basically
-> the same approach as we took when moving from RFC 2960 to RFC 4960. The e=
-rrata where
-> documented in RFC 4460.
->=20
-> Please let me know if you have any questions.
->=20
-> Thank you very much for your help in advance.
->=20
-> Michael T=FCxen
->=20
-> > Begin forwarded message:
-> >=20
-> > From: Gorry Fairhurst <gorry@erg.abdn.ac.uk>
-> > Subject: [tsvwg] WGLC comments request for draft-ietf-tsvwg-rfc4960-err=
-ata-04.txt - to end Fri 8th Dec 2017
-> > Date: 17. November 2017 at 07:18:35 CET
-> > To: tsvwg@ietf.org
-> > Cc: tsvwg-chairs@ietf.org
-> > Reply-To: gorry@erg.abdn.ac.uk
-> >=20
-> >=20
-> > Dear TSVWG WG,
-> >=20
-> > As we discussed during the TSVWG session today, the draft "RFC 4960 Err=
-ata and Issues", is thought ready for publication and now ready for feedbac=
-k. The latest version of the draft is available here:
-> > https://tools.ietf.org/html/draft-ietf-tsvwg-rfc4960-errata-04
-> >=20
-> > This email starts a 3 week WGLC to allow time for folks to provide feed=
-back, to conclude on Fri 8th Dec 2017. Please send comments indicating the =
-usefulness of the draft, noting issues, or simply asking for clariification=
- to this list (or to the WG Dhairs).
-> >=20
-> > Best Regards,
-> >=20
-> > Gorry, David and Wes
-> > (TSVWG co-Chairs)
-> >=20
-> > The following people have agreed to also submit a review during the WGL=
-C period:
-> > Kacheong
-> > Peter Lei
-> > Irene Rungeler
-> > Qiaobing Xie
-> >=20
-> >=20
-> >=20
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->=20
