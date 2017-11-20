@@ -1,78 +1,117 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 27 Nov 2017 13:36:26 +0000
-Subject: Re: [PATCH net 1/5] sctp: use sizeof(__u16) for each stream number length instead of magic number
-Message-Id: <20171127133626.GH3473@localhost.localdomain>
+From: Franklin Marmon <marmon@hydeco.com>
+Date: Mon, 20 Nov 2017 16:29:13 +0000
+Subject: Re: address already in use on previously used (but currently unused) IP:PORT combinations in sctp_bi
+Message-Id: <bb113a21-3ce7-d7a9-50e2-6fa4ec2a4972@hydeco.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1511614961.git.lucien.xin@gmail.com>
- <feb3ee6070cc0f526210fa36752148c0e0704bcf.1511614961.git.lucien.xin@gmail.com>
-In-Reply-To: <feb3ee6070cc0f526210fa36752148c0e0704bcf.1511614961.git.lucien.xin@gmail.com>
+References: <0bbe01d30afe$80ce96f0$826bc4d0$@hydeco.com>
+In-Reply-To: <0bbe01d30afe$80ce96f0$826bc4d0$@hydeco.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+To: linux-sctp@vger.kernel.org
 
-On Sat, Nov 25, 2017 at 09:05:32PM +0800, Xin Long wrote:
-> Now in stream reconf part there are still some places using magic
-> number 2 for each stream number length. To make it more readable,
-> this patch is to replace them with sizeof(__u16).
-> 
-> Reported-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+I have now experienced this same issue on kernel 4.9.49. An SCTP_SOCKET 
+is open, close() is called and a new socket is created. when 
+sctp_bindx() is called on the new socket the kernel is reporting that 
+the address is already in use. The address continues to show in 
+/proc/net/sctp/assoc as in use, even when the program responsible for 
+the original socket is killed and confirmed removed from the process list.
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+The remote end is continuing to send SCTP heartbeats as well as data 
+packets, the kernel is acknowledging them. It seems as though when the 
+socket's parent process is killed the socket should be removed from the 
+kernel, regardless incoming data, socket options or really anything 
+else. Is this an invalid assumption?
 
-> ---
->  net/sctp/stream.c | 10 ++++++----
->  1 file changed, 6 insertions(+), 4 deletions(-)
-> 
-> diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-> index a11db21..09c797a 100644
-> --- a/net/sctp/stream.c
-> +++ b/net/sctp/stream.c
-> @@ -563,7 +563,7 @@ struct sctp_chunk *sctp_process_strreset_outreq(
->  		flags = SCTP_STREAM_RESET_INCOMING_SSN;
->  	}
->  
-> -	nums = (ntohs(param.p->length) - sizeof(*outreq)) / 2;
-> +	nums = (ntohs(param.p->length) - sizeof(*outreq)) / sizeof(__u16);
->  	if (nums) {
->  		str_p = outreq->list_of_streams;
->  		for (i = 0; i < nums; i++) {
-> @@ -627,7 +627,7 @@ struct sctp_chunk *sctp_process_strreset_inreq(
->  		goto out;
->  	}
->  
-> -	nums = (ntohs(param.p->length) - sizeof(*inreq)) / 2;
-> +	nums = (ntohs(param.p->length) - sizeof(*inreq)) / sizeof(__u16);
->  	str_p = inreq->list_of_streams;
->  	for (i = 0; i < nums; i++) {
->  		if (ntohs(str_p[i]) >= stream->outcnt) {
-> @@ -927,7 +927,8 @@ struct sctp_chunk *sctp_process_strreset_resp(
->  
->  		outreq = (struct sctp_strreset_outreq *)req;
->  		str_p = outreq->list_of_streams;
-> -		nums = (ntohs(outreq->param_hdr.length) - sizeof(*outreq)) / 2;
-> +		nums = (ntohs(outreq->param_hdr.length) - sizeof(*outreq)) /
-> +		       sizeof(__u16);
->  
->  		if (result = SCTP_STRRESET_PERFORMED) {
->  			if (nums) {
-> @@ -956,7 +957,8 @@ struct sctp_chunk *sctp_process_strreset_resp(
->  
->  		inreq = (struct sctp_strreset_inreq *)req;
->  		str_p = inreq->list_of_streams;
-> -		nums = (ntohs(inreq->param_hdr.length) - sizeof(*inreq)) / 2;
-> +		nums = (ntohs(inreq->param_hdr.length) - sizeof(*inreq)) /
-> +		       sizeof(__u16);
->  
->  		*evp = sctp_ulpevent_make_stream_reset_event(asoc, flags,
->  			nums, str_p, GFP_ATOMIC);
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+In the interim I'm going to attempt setting my SO_LINGER to {1, 0} to 
+force close() to send ABORT. I'm not sure what else to try in order to 
+force the remote end to close their side down and hopefully allow the 
+kernel to cleanup the socket after close().
+
+frm
+
+Franklin Marmon
+They Hyde Company
+331 East Broaday, Missoula MT 59801
+Office: 1.406.541.4777
+Mobile: 1.406.493.2460
+http://www.hydeco.com
+
+On 8/2/2017 6:37 PM, Xin Long wrote:
+> On Thu, Aug 3, 2017 at 2:09 AM, Franklin Marmon <marmon@hydeco.com> wrote:
+>> I did have a connection prior to the binding. If I can reproduce I will test against the 4.8.x kernel when I am able. This is a live system and requires coordinate with others.
+> Sorry, it should be 4.9.x
+>
+>> Thank you!
+>>
+>> frm
+>>
+>> Franklin Marmon
+>> The Hyde Company
+>> 331 East Broadway
+>> Missoula, MT 59801
+>>
+>> Office: 406.541.4777
+>> Cell: 406.493.2460
+>> http://www.hydeco.com
+>> marmon@hydeco.com
+>>
+>> -----Original Message-----
+>> From: Xin Long [mailto:lucien.xin@gmail.com]
+>> Sent: Wednesday, August 2, 2017 7:28 AM
+>> To: marmon@hydeco.com
+>> Cc: linux-sctp@vger.kernel.org; smcclain@hydeco.com; jerry@hydeco.com
+>> Subject: Re: address already in use on previously used (but currently unused) IP:PORT combinations in sctp_bindx()
+>>
+>> On Wed, Aug 2, 2017 at 7:43 AM, Franklin Marmon <marmon@hydeco.com> wrote:
+>>> Hello,
+>>>
+>>> I'm having trouble with sctp_bindx() reporting address already in use
+>>> when attempting to bind sockets. The IP:PORT combinations are not
+>>> open, do not show up in /proc/net/sctp/assocs, netstat, ss, or lsof.
+>>> The IP:PORTs were bound in a previous instance of the client
+>>> application however that application itself has been killed and
+>>> restarted. It is as if the kernel believes the IP:PORT pair is in use
+>>> when, as far as I can tell, it isn't. If I change the ports used in my
+>>> addresses to ports I have not used previously the bind succeeds
+>>> without issue. Any suggestions on how I can tell what is holding the ports open, or how to reset the sctp port table in the kernel?
+>>>
+>>> Lksctp-tools verison: 1.0.16
+>>> Kernel version: 4.4.6
+>> Did you have sctp connection and sctp traffic before this binding ?
+>> It maybe an asoc leak in 4.4.y kernel.
+>> If it's reproducable, can you try against this commit(or with 4.8.y kernel)
+>>
+>> commit b61c654f9b3f1a271217e46c893f80565b1f754d
+>> Author: Xin Long <lucien.xin@gmail.com>
+>> Date:   Wed Sep 14 02:04:20 2016 +0800
+>>
+>>      sctp: free msg->chunks when sctp_primitive_SEND return err
+>>
+>>
+>>
+>>
+>>> IP-Family: IPv4
+>>> Number of addresses passed to sctp_bindx(): normally 2, have tested
+>>> with each address individually
+>>>
+>>> frm
+>>>
+>>>
+>>> Franklin Marmon
+>>> The Hyde Company
+>>> 331 East Broadway
+>>> Missoula, MT 59801
+>>>
+>>> Office: 406.541.4777
+>>> Cell: 406.493.2460
+>>> http://www.hydeco.com
+>>> marmon@hydeco.com
+>>>
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-sctp"
+>>> in the body of a message to majordomo@vger.kernel.org More majordomo
+>>> info at  http://vger.kernel.org/majordomo-info.html
+>>
+
