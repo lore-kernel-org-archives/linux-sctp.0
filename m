@@ -1,39 +1,68 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 16 Nov 2017 01:49:53 +0000
-Subject: Re: [PATCHv2 net] sctp: check stream reset info len before making reconf chunk
-Message-Id: <20171116.104953.1692018694441103102.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 25 Nov 2017 13:05:32 +0000
+Subject: [PATCH net 1/5] sctp: use sizeof(__u16) for each stream number length instead of magic number
+Message-Id: <feb3ee6070cc0f526210fa36752148c0e0704bcf.1511614961.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <49f43731ffc66c5da5eb3ee3e365d12a0e1fe8cb.1510736411.git.lucien.xin@gmail.com>
-In-Reply-To: <49f43731ffc66c5da5eb3ee3e365d12a0e1fe8cb.1510736411.git.lucien.xin@gmail.com>
+References: <cover.1511614961.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1511614961.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, syzkaller@googlegroups.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 15 Nov 2017 17:00:11 +0800
+Now in stream reconf part there are still some places using magic
+number 2 for each stream number length. To make it more readable,
+this patch is to replace them with sizeof(__u16).
 
-> Now when resetting stream, if both in and out flags are set, the info
-> len can reach:
->   sizeof(struct sctp_strreset_outreq) + SCTP_MAX_STREAM(65535) +
->   sizeof(struct sctp_strreset_inreq)  + SCTP_MAX_STREAM(65535)
-> even without duplicated stream no, this value is far greater than the
-> chunk's max size.
-> 
-> _sctp_make_chunk doesn't do any check for this, which would cause the
-> skb it allocs is huge, syzbot even reported a crash due to this.
-> 
-> This patch is to check stream reset info len before making reconf
-> chunk and return EINVAL if the len exceeds chunk's capacity.
-> 
-> Thanks Marcelo and Neil for making this clear.
-> 
-> v1->v2:
->   - move the check into sctp_send_reset_streams instead.
-> 
-> Fixes: cc16f00f6529 ("sctp: add support for generating stream reconf ssn reset request chunk")
-> Reported-by: Dmitry Vyukov <dvyukov@google.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Reported-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/stream.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-Applied.
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index a11db21..09c797a 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -563,7 +563,7 @@ struct sctp_chunk *sctp_process_strreset_outreq(
+ 		flags = SCTP_STREAM_RESET_INCOMING_SSN;
+ 	}
+ 
+-	nums = (ntohs(param.p->length) - sizeof(*outreq)) / 2;
++	nums = (ntohs(param.p->length) - sizeof(*outreq)) / sizeof(__u16);
+ 	if (nums) {
+ 		str_p = outreq->list_of_streams;
+ 		for (i = 0; i < nums; i++) {
+@@ -627,7 +627,7 @@ struct sctp_chunk *sctp_process_strreset_inreq(
+ 		goto out;
+ 	}
+ 
+-	nums = (ntohs(param.p->length) - sizeof(*inreq)) / 2;
++	nums = (ntohs(param.p->length) - sizeof(*inreq)) / sizeof(__u16);
+ 	str_p = inreq->list_of_streams;
+ 	for (i = 0; i < nums; i++) {
+ 		if (ntohs(str_p[i]) >= stream->outcnt) {
+@@ -927,7 +927,8 @@ struct sctp_chunk *sctp_process_strreset_resp(
+ 
+ 		outreq = (struct sctp_strreset_outreq *)req;
+ 		str_p = outreq->list_of_streams;
+-		nums = (ntohs(outreq->param_hdr.length) - sizeof(*outreq)) / 2;
++		nums = (ntohs(outreq->param_hdr.length) - sizeof(*outreq)) /
++		       sizeof(__u16);
+ 
+ 		if (result = SCTP_STRRESET_PERFORMED) {
+ 			if (nums) {
+@@ -956,7 +957,8 @@ struct sctp_chunk *sctp_process_strreset_resp(
+ 
+ 		inreq = (struct sctp_strreset_inreq *)req;
+ 		str_p = inreq->list_of_streams;
+-		nums = (ntohs(inreq->param_hdr.length) - sizeof(*inreq)) / 2;
++		nums = (ntohs(inreq->param_hdr.length) - sizeof(*inreq)) /
++		       sizeof(__u16);
+ 
+ 		*evp = sctp_ulpevent_make_stream_reset_event(asoc, flags,
+ 			nums, str_p, GFP_ATOMIC);
+-- 
+2.1.0
+
