@@ -1,70 +1,35 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 27 Nov 2017 12:26:23 +0000
-Subject: Re: [PATCH net 1/3] sctp: only update outstanding_bytes for transmitted queue when doing prsctp_prun
-Message-Id: <20171127122622.GA3473@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 25 Nov 2017 13:18:33 +0000
+Subject: [PATCH net 0/3] a couple of fixes for chunks abandoned in prsctp
+Message-Id: <cover.1511615658.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1511615658.git.lucien.xin@gmail.com>
- <9c96424d052af79cfcefeec8bc53b6b541c1900f.1511615658.git.lucien.xin@gmail.com>
-In-Reply-To: <9c96424d052af79cfcefeec8bc53b6b541c1900f.1511615658.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Sat, Nov 25, 2017 at 09:18:34PM +0800, Xin Long wrote:
-> Now outstanding_bytes is only increased when appending chunks into one
-> packet and sending it at 1st time, while decreased when it is about to
-> move into retransmit queue. It means outstanding_bytes value is already
-> decreased for all chunks in retransmit queue.
-> 
-> However sctp_prsctp_prune_sent is a common function to check the chunks
-> in both transmitted and retransmit queue, it decrease outstanding_bytes
-> when moving a chunk into abandoned queue from either of them.
-> 
-> It could cause outstanding_bytes underflow, as it also decreases it's
-> value for the chunks in retransmit queue.
-> 
-> This patch fixes it by only updating outstanding_bytes for transmitted
-> queue when pruning queues for prsctp prio policy, the same fix is also
-> needed in sctp_check_transmitted.
-> 
-> Fixes: 8dbdf1f5b09c ("sctp: implement prsctp PRIO policy")
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Now when abandoning chunks in prsctp, it doesn't consider for frags in
+one msg, which would cause peer can never receive the whole frags for
+one msg to get them reassembled, these pieces of this msg will stay in
+the reasm queue forever and block the following chunks' receiving.
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+This patchset is to fix them in patch 2 and 3, and also fix another
+issue for prsctp in patch 1.
 
-> ---
->  net/sctp/outqueue.c | 6 ++++--
->  1 file changed, 4 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-> index 4db012a..7029f8b 100644
-> --- a/net/sctp/outqueue.c
-> +++ b/net/sctp/outqueue.c
-> @@ -377,7 +377,8 @@ static int sctp_prsctp_prune_sent(struct sctp_association *asoc,
->  		asoc->abandoned_sent[SCTP_PR_INDEX(PRIO)]++;
->  		streamout->ext->abandoned_sent[SCTP_PR_INDEX(PRIO)]++;
->  
-> -		if (!chk->tsn_gap_acked) {
-> +		if (queue != &asoc->outqueue.retransmit &&
-> +		    !chk->tsn_gap_acked) {
->  			if (chk->transport)
->  				chk->transport->flight_size ->  						sctp_data_size(chk);
-> @@ -1434,7 +1435,8 @@ static void sctp_check_transmitted(struct sctp_outq *q,
->  			/* If this chunk has not been acked, stop
->  			 * considering it as 'outstanding'.
->  			 */
-> -			if (!tchunk->tsn_gap_acked) {
-> +			if (transmitted_queue != &q->retransmit &&
-> +			    !tchunk->tsn_gap_acked) {
->  				if (tchunk->transport)
->  					tchunk->transport->flight_size ->  							sctp_data_size(tchunk);
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Xin Long (3):
+  sctp: only update outstanding_bytes for transmitted queue when doing
+    prsctp_prune
+  sctp: abandon the whole msg if one part of a fragmented message is
+    abandoned
+  sctp: do not abandon the other frags in unsent outq if one msg has
+    outstanding frags
+
+ include/net/sctp/structs.h |  3 ++-
+ net/sctp/chunk.c           | 11 +++++++++++
+ net/sctp/outqueue.c        | 19 +++++++++++++------
+ 3 files changed, 26 insertions(+), 7 deletions(-)
+
+-- 
+2.1.0
+
