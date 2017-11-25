@@ -1,68 +1,66 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 20 Nov 2017 12:29:10 +0000
-Subject: Re: [PATCH net] sctp: report SCTP_ERROR_INV_STRM as cpu endian
-Message-Id: <20171120122910.GO6388@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 25 Nov 2017 13:05:34 +0000
+Subject: [PATCH net 3/5] sctp: only allow the asoc reset when the asoc outq is empty
+Message-Id: <49b01e67e4cc1f8a0be85ffefdee51dad6ae3286.1511614961.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <d4de9314041c0ebb1d1e5f49130b880788a30735.1510899302.git.lucien.xin@gmail.com>
- <20171117150459.GK6388@localhost.localdomain>
- <CADvbK_etQ8rUA-QaihvY34OZ_k+t5JbdGTn4Cm0CW1RGA=4pLg@mail.gmail.com>
-In-Reply-To: <CADvbK_etQ8rUA-QaihvY34OZ_k+t5JbdGTn4Cm0CW1RGA=4pLg@mail.gmail.com>
+References: <cover.1511614961.git.lucien.xin@gmail.com>
+ <feb3ee6070cc0f526210fa36752148c0e0704bcf.1511614961.git.lucien.xin@gmail.com>
+ <a7c048ec66b002ffa49e91e11b8f363232e238c5.1511614961.git.lucien.xin@gmail.com>
+In-Reply-To: <a7c048ec66b002ffa49e91e11b8f363232e238c5.1511614961.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Sun, Nov 19, 2017 at 02:20:04AM +0800, Xin Long wrote:
-> On Fri, Nov 17, 2017 at 11:04 PM, Marcelo Ricardo Leitner
-> <marcelo.leitner@gmail.com> wrote:
-> > On Fri, Nov 17, 2017 at 02:15:02PM +0800, Xin Long wrote:
-> >> rfc6458 demands the send_error in SCTP_SEND_FAILED_EVENT should
-> >> be in cpu endian, while SCTP_ERROR_INV_STRM is in big endian.
-> >>
-> >> This issue is there since very beginning, Eric noticed it by
-> >> running 'make C=2 M=net/sctp/'.
-> >>
-> >> This patch is to convert it before reporting it.
-> >
-> > Unfortunatelly we can't fix this as this will break UAPI. It will
-> > break applications that are currently matching on the current value.
-> yes, you're right, seems all other send_errors also come in big endian now.
-> 
-> what do you think of using:
-> sctp_chunk_fail(ch, (__force __u16)SCTP_ERROR_INV_STRM); or
-> 
-> sctp_chunk_fail(ch, (__force __u32)SCTP_ERROR_INV_STRM);
-> 
-> to avoid this warning ?
+As it says in rfc6525#section5.1.4, before sending the request,
 
-It's good. The last one is more interesting as it matches function
-prototype already.
+   C2:  The sender has either no outstanding TSNs or considers all
+        outstanding TSNs abandoned.
 
-  Marcelo
+Prior to this patch, it tried to consider all outstanding TSNs abandoned
+by dropping all chunks in all outqs with sctp_outq_free (even including
+sacked, retransmit and transmitted queues) when doing this reset, which
+is too aggressive.
 
-> 
-> >
-> >>
-> >> Reported-by: Eric Dumazet <eric.dumazet@gmail.com>
-> >> Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> >> ---
-> >>  net/sctp/stream.c | 2 +-
-> >>  1 file changed, 1 insertion(+), 1 deletion(-)
-> >>
-> >> diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-> >> index a11db21..f86ceee 100644
-> >> --- a/net/sctp/stream.c
-> >> +++ b/net/sctp/stream.c
-> >> @@ -64,7 +64,7 @@ static void sctp_stream_outq_migrate(struct sctp_stream *stream,
-> >>                */
-> >>
-> >>               /* Mark as failed send. */
-> >> -             sctp_chunk_fail(ch, SCTP_ERROR_INV_STRM);
-> >> +             sctp_chunk_fail(ch, be16_to_cpu(SCTP_ERROR_INV_STRM));
-> >>               if (asoc->peer.prsctp_capable &&
-> >>                   SCTP_PR_PRIO_ENABLED(ch->sinfo.sinfo_flags))
-> >>                       asoc->sent_cnt_removable--;
-> >> --
-> >> 2.1.0
-> >>
+To make it work gently, this patch will only allow the asoc reset when
+the sender has no outstanding TSNs by checking if unsent, transmitted
+and retransmit are all empty with sctp_outq_is_empty before sending
+and processing the request.
+
+Fixes: 692787cef651 ("sctp: implement receiver-side procedures for the SSN/TSN Reset Request Parameter")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/stream.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index b209037..f3b7d27 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -406,6 +406,9 @@ int sctp_send_reset_assoc(struct sctp_association *asoc)
+ 	if (asoc->strreset_outstanding)
+ 		return -EINPROGRESS;
+ 
++	if (!sctp_outq_is_empty(&asoc->outqueue))
++		return -EAGAIN;
++
+ 	chunk = sctp_make_strreset_tsnreq(asoc);
+ 	if (!chunk)
+ 		return -ENOMEM;
+@@ -728,6 +731,12 @@ struct sctp_chunk *sctp_process_strreset_tsnreq(
+ 		}
+ 		goto err;
+ 	}
++
++	if (!sctp_outq_is_empty(&asoc->outqueue)) {
++		result = SCTP_STRRESET_IN_PROGRESS;
++		goto err;
++	}
++
+ 	asoc->strreset_inseq++;
+ 
+ 	if (!(asoc->strreset_enable & SCTP_ENABLE_RESET_ASSOC_REQ))
+-- 
+2.1.0
+
