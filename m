@@ -1,105 +1,60 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 27 Nov 2017 13:36:40 +0000
-Subject: Re: [PATCH net 2/5] sctp: only allow the out stream reset when the stream outq is empty
-Message-Id: <20171127133640.GI3473@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 25 Nov 2017 13:18:34 +0000
+Subject: [PATCH net 1/3] sctp: only update outstanding_bytes for transmitted queue when doing prsctp_prune
+Message-Id: <9c96424d052af79cfcefeec8bc53b6b541c1900f.1511615658.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1511614961.git.lucien.xin@gmail.com>
- <a7c048ec66b002ffa49e91e11b8f363232e238c5.1511614961.git.lucien.xin@gmail.com>
-In-Reply-To: <a7c048ec66b002ffa49e91e11b8f363232e238c5.1511614961.git.lucien.xin@gmail.com>
+References: <cover.1511615658.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1511615658.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Sat, Nov 25, 2017 at 09:05:33PM +0800, Xin Long wrote:
-> Now the out stream reset in sctp stream reconf could be done even if
-> the stream outq is not empty. It means that users can not be sure
-> since which msg the new ssn will be used.
-> 
-> To make this more synchronous, it shouldn't allow to do out stream
-> reset until these chunks in unsent outq all are sent out.
-> 
-> This patch checks the corresponding stream outqs when sending and
-> processing the request . If any of them has unsent chunks in outq,
-> it will return -EAGAIN instead or send SCTP_STRRESET_IN_PROGRESS
-> back to the sender.
-> 
-> Fixes: 7f9d68ac944e ("sctp: implement sender-side procedures for SSN Reset Request Parameter")
-> Suggested-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Now outstanding_bytes is only increased when appending chunks into one
+packet and sending it at 1st time, while decreased when it is about to
+move into retransmit queue. It means outstanding_bytes value is already
+decreased for all chunks in retransmit queue.
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+However sctp_prsctp_prune_sent is a common function to check the chunks
+in both transmitted and retransmit queue, it decrease outstanding_bytes
+when moving a chunk into abandoned queue from either of them.
 
-> ---
->  net/sctp/stream.c | 35 +++++++++++++++++++++++++++++++++++
->  1 file changed, 35 insertions(+)
-> 
-> diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-> index 09c797a..b209037 100644
-> --- a/net/sctp/stream.c
-> +++ b/net/sctp/stream.c
-> @@ -254,6 +254,30 @@ static int sctp_send_reconf(struct sctp_association *asoc,
->  	return retval;
->  }
->  
-> +static bool sctp_stream_outq_is_empty(struct sctp_stream *stream,
-> +				      __u16 str_nums, __be16 *str_list)
-> +{
-> +	struct sctp_association *asoc;
-> +	__u16 i;
-> +
-> +	asoc = container_of(stream, struct sctp_association, stream);
-> +	if (!asoc->outqueue.out_qlen)
-> +		return true;
-> +
-> +	if (!str_nums)
-> +		return false;
-> +
-> +	for (i = 0; i < str_nums; i++) {
-> +		__u16 sid = ntohs(str_list[i]);
-> +
-> +		if (stream->out[sid].ext &&
-> +		    !list_empty(&stream->out[sid].ext->outq))
-> +			return false;
-> +	}
-> +
-> +	return true;
-> +}
-> +
->  int sctp_send_reset_streams(struct sctp_association *asoc,
->  			    struct sctp_reset_streams *params)
->  {
-> @@ -317,6 +341,11 @@ int sctp_send_reset_streams(struct sctp_association *asoc,
->  	for (i = 0; i < str_nums; i++)
->  		nstr_list[i] = htons(str_list[i]);
->  
-> +	if (out && !sctp_stream_outq_is_empty(stream, str_nums, nstr_list)) {
-> +		retval = -EAGAIN;
-> +		goto out;
-> +	}
-> +
->  	chunk = sctp_make_strreset_req(asoc, str_nums, nstr_list, out, in);
->  
->  	kfree(nstr_list);
-> @@ -636,6 +665,12 @@ struct sctp_chunk *sctp_process_strreset_inreq(
->  		}
->  	}
->  
-> +	if (!sctp_stream_outq_is_empty(stream, nums, str_p)) {
-> +		result = SCTP_STRRESET_IN_PROGRESS;
-> +		asoc->strreset_inseq--;
-> +		goto err;
-> +	}
-> +
->  	chunk = sctp_make_strreset_req(asoc, nums, str_p, 1, 0);
->  	if (!chunk)
->  		goto out;
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+It could cause outstanding_bytes underflow, as it also decreases it's
+value for the chunks in retransmit queue.
+
+This patch fixes it by only updating outstanding_bytes for transmitted
+queue when pruning queues for prsctp prio policy, the same fix is also
+needed in sctp_check_transmitted.
+
+Fixes: 8dbdf1f5b09c ("sctp: implement prsctp PRIO policy")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/outqueue.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 4db012a..7029f8b 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -377,7 +377,8 @@ static int sctp_prsctp_prune_sent(struct sctp_association *asoc,
+ 		asoc->abandoned_sent[SCTP_PR_INDEX(PRIO)]++;
+ 		streamout->ext->abandoned_sent[SCTP_PR_INDEX(PRIO)]++;
+ 
+-		if (!chk->tsn_gap_acked) {
++		if (queue != &asoc->outqueue.retransmit &&
++		    !chk->tsn_gap_acked) {
+ 			if (chk->transport)
+ 				chk->transport->flight_size - 						sctp_data_size(chk);
+@@ -1434,7 +1435,8 @@ static void sctp_check_transmitted(struct sctp_outq *q,
+ 			/* If this chunk has not been acked, stop
+ 			 * considering it as 'outstanding'.
+ 			 */
+-			if (!tchunk->tsn_gap_acked) {
++			if (transmitted_queue != &q->retransmit &&
++			    !tchunk->tsn_gap_acked) {
+ 				if (tchunk->transport)
+ 					tchunk->transport->flight_size - 							sctp_data_size(tchunk);
+-- 
+2.1.0
+
