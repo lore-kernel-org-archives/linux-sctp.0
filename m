@@ -1,41 +1,34 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 16 Nov 2017 01:49:47 +0000
-Subject: Re: [PATCHv2 net] sctp: use the right sk after waking up from wait_buf sleep
-Message-Id: <20171116.104947.1173420790283087407.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sun, 26 Nov 2017 12:16:05 +0000
+Subject: [PATCH net 0/3] sctp: fix some other sparse errors
+Message-Id: <cover.1511698478.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <a9890f37f327c3765a58247636e6586c7439ae62.1510736246.git.lucien.xin@gmail.com>
-In-Reply-To: <a9890f37f327c3765a58247636e6586c7439ae62.1510736246.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 15 Nov 2017 16:57:26 +0800
+After the last fixes for sparse errors, there are still three sparse
+errors in sctp codes, two of them are type cast, and the other one
+is using extern.
 
-> Commit dfcb9f4f99f1 ("sctp: deny peeloff operation on asocs with threads
-> sleeping on it") fixed the race between peeloff and wait sndbuf by
-> checking waitqueue_active(&asoc->wait) in sctp_do_peeloff().
-> 
-> But it actually doesn't work, as even if waitqueue_active returns false
-> the waiting sndbuf thread may still not yet hold sk lock. After asoc is
-> peeled off, sk is not asoc->base.sk any more, then to hold the old sk
-> lock couldn't make assoc safe to access.
-> 
-> This patch is to fix this by changing to hold the new sk lock if sk is
-> not asoc->base.sk, meanwhile, also set the sk in sctp_sendmsg with the
-> new sk.
-> 
-> With this fix, there is no more race between peeloff and waitbuf, the
-> check 'waitqueue_active' in sctp_do_peeloff can be removed.
-> 
-> Thanks Marcelo and Neil for making this clear.
-> 
-> v1->v2:
->   fix it by changing to lock the new sock instead of adding a flag in asoc.
-> 
-> Suggested-by: Neil Horman <nhorman@tuxdriver.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Xin Long (3):
+  sctp: force SCTP_ERROR_INV_STRM with __u32 when calling
+    sctp_chunk_fail
+  sctp: force the params with right types for sctp csum apis
+  sctp: remove extern from stream sched
 
-Applied.
+ include/net/sctp/checksum.h     | 13 +++++++------
+ include/net/sctp/sctp.h         |  5 +++++
+ include/net/sctp/stream_sched.h |  5 +++++
+ net/sctp/protocol.c             |  1 +
+ net/sctp/stream.c               |  2 +-
+ net/sctp/stream_sched.c         | 25 ++++++++++++++++++-------
+ net/sctp/stream_sched_prio.c    |  7 ++++++-
+ net/sctp/stream_sched_rr.c      |  7 ++++++-
+ 8 files changed, 49 insertions(+), 16 deletions(-)
+
+-- 
+2.1.0
+
