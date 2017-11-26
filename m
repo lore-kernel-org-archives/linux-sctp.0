@@ -1,45 +1,52 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 06 Nov 2017 22:09:22 +0000
-Subject: Re: [PATCH] sctp: Fix len returned by getsockopt(sk, SCTP_GET_LOCAL_ADDRS, opt, &len)
-Message-Id: <20171106220921.GB20024@hmswarspite.think-freely.org>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sun, 26 Nov 2017 12:56:07 +0000
+Subject: [PATCH net] sctp: use right member as the param of list_for_each_entry
+Message-Id: <4c3e5049eae1f90d5b74588fa0e115393a173056.1511700966.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20171106133955.GA31556@bordel.klfree.net>
-In-Reply-To: <20171106133955.GA31556@bordel.klfree.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Mon, Nov 06, 2017 at 02:39:56PM +0100, Petr Malat wrote:
-> A call to
->   getsockopt(sk, SCTP_GET_LOCAL_ADDRS, opt, &optlen)
-> returns a wrong value in optlen, because it doesn't account struct sctp_getaddrs
-> preceding the actual addresses.
-> 
-> Signed-off-by: Petr Malat <petr.malat.ext@nokia.com>
-> ---
->  net/sctp/socket.c | 1 +
->  1 file changed, 1 insertion(+)
-> 
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 6f45d17..9082269 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -5560,6 +5560,7 @@ static int sctp_getsockopt_local_addrs(struct sock *sk, int len,
->  		err = -EFAULT;
->  		goto out;
->  	}
-> +	bytes_copied += offsetof(struct sctp_getaddrs, addrs);
->  	if (put_user(bytes_copied, optlen))
->  		err = -EFAULT;
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Commit d04adf1b3551 ("sctp: reset owner sk for data chunks on out queues
+when migrating a sock") made a mistake that using 'list' as the param of
+list_for_each_entry to traverse the retransmit, sacked and abandoned
+queues, while chunks are using 'transmitted_list' to link into these
+queues.
 
->  out:
-> -- 
-> 1.7.11.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+It could cause NULL dereference panic if there are chunks in any of these
+queues when peeling off one asoc.
+
+So use the chunk member 'transmitted_list' instead in this patch.
+
+Fixes: d04adf1b3551 ("sctp: reset owner sk for data chunks on out queues when migrating a sock")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/socket.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 3204a9b..014847e 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -188,13 +188,13 @@ static void sctp_for_each_tx_datachunk(struct sctp_association *asoc,
+ 		list_for_each_entry(chunk, &t->transmitted, transmitted_list)
+ 			cb(chunk);
+ 
+-	list_for_each_entry(chunk, &q->retransmit, list)
++	list_for_each_entry(chunk, &q->retransmit, transmitted_list)
+ 		cb(chunk);
+ 
+-	list_for_each_entry(chunk, &q->sacked, list)
++	list_for_each_entry(chunk, &q->sacked, transmitted_list)
+ 		cb(chunk);
+ 
+-	list_for_each_entry(chunk, &q->abandoned, list)
++	list_for_each_entry(chunk, &q->abandoned, transmitted_list)
+ 		cb(chunk);
+ 
+ 	list_for_each_entry(chunk, &q->out_chunk_list, list)
+-- 
+2.1.0
+
