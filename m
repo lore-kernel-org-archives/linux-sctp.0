@@ -1,36 +1,37 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 16 Nov 2017 01:49:41 +0000
-Subject: Re: [PATCHv2 net] sctp: do not free asoc when it is already dead in sctp_sendmsg
-Message-Id: <20171116.104941.197762465622211317.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sun, 26 Nov 2017 12:16:06 +0000
+Subject: [PATCH net 1/3] sctp: force SCTP_ERROR_INV_STRM with __u32 when calling sctp_chunk_fail
+Message-Id: <b1daca5283b99f8df5a48749a18e07c8596316d1.1511698478.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <a374f3840d50382fa15a3e8909b38855aa133959.1510736154.git.lucien.xin@gmail.com>
-In-Reply-To: <a374f3840d50382fa15a3e8909b38855aa133959.1510736154.git.lucien.xin@gmail.com>
+References: <cover.1511698478.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1511698478.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, syzkaller@googlegroups.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 15 Nov 2017 16:55:54 +0800
+This patch is to force SCTP_ERROR_INV_STRM with right type to
+fit in sctp_chunk_fail to avoid the sparse error.
 
-> Now in sctp_sendmsg sctp_wait_for_sndbuf could schedule out without
-> holding sock sk. It means the current asoc can be freed elsewhere,
-> like when receiving an abort packet.
-> 
-> If the asoc is just created in sctp_sendmsg and sctp_wait_for_sndbuf
-> returns err, the asoc will be freed again due to new_asoc is not nil.
-> An use-after-free issue would be triggered by this.
-> 
-> This patch is to fix it by setting new_asoc with nil if the asoc is
-> already dead when cpu schedules back, so that it will not be freed
-> again in sctp_sendmsg.
-> 
-> v1->v2:
->   set new_asoc as nil in sctp_sendmsg instead of sctp_wait_for_sndbuf.
-> 
-> Suggested-by: Neil Horman <nhorman@tuxdriver.com>
-> Reported-by: Dmitry Vyukov <dvyukov@google.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/stream.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Applied.
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index a20145b..76ea66b 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -64,7 +64,7 @@ static void sctp_stream_outq_migrate(struct sctp_stream *stream,
+ 		 */
+ 
+ 		/* Mark as failed send. */
+-		sctp_chunk_fail(ch, SCTP_ERROR_INV_STRM);
++		sctp_chunk_fail(ch, (__force __u32)SCTP_ERROR_INV_STRM);
+ 		if (asoc->peer.prsctp_capable &&
+ 		    SCTP_PR_PRIO_ENABLED(ch->sinfo.sinfo_flags))
+ 			asoc->sent_cnt_removable--;
+-- 
+2.1.0
+
