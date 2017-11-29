@@ -1,1019 +1,804 @@
-From: Stephen Smalley <sds@tycho.nsa.gov>
-Date: Tue, 28 Nov 2017 19:59:14 +0000
+From: kbuild test robot <lkp@intel.com>
+Date: Wed, 29 Nov 2017 18:08:38 +0000
 Subject: Re: [PATCH 4/4] selinux: Add SCTP support
-Message-Id: <1511899154.30337.27.camel@tycho.nsa.gov>
+Message-Id: <201711300049.TRR2hqSQ%fengguang.wu@intel.com>
+MIME-Version: 1
+Content-Type: multipart/mixed; boundary="FL5UXtIhxfXey3p5"
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20171127193217.2768-1-richard_c_haines@btinternet.com>
-	<1511897940.30337.25.camel@tycho.nsa.gov>
-In-Reply-To: <1511897940.30337.25.camel@tycho.nsa.gov>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: linux-security-module@vger.kernel.org
+In-Reply-To: <20171127193217.2768-1-richard_c_haines@btinternet.com>
+To: linux-sctp@vger.kernel.org
 
-On Tue, 2017-11-28 at 14:39 -0500, Stephen Smalley wrote:
-> On Mon, 2017-11-27 at 19:32 +0000, Richard Haines wrote:
-> > The SELinux SCTP implementation is explained in:
-> > Documentation/security/SELinux-sctp.rst
-> > 
-> > Signed-off-by: Richard Haines <richard_c_haines@btinternet.com>
-> > ---
-> >  Documentation/security/SELinux-sctp.rst | 104 ++++++++++++
-> >  security/selinux/hooks.c                | 278
-> > +++++++++++++++++++++++++++++---
-> >  security/selinux/include/classmap.h     |   2 +-
-> >  security/selinux/include/netlabel.h     |  15 +-
-> >  security/selinux/include/objsec.h       |   4 +
-> >  security/selinux/netlabel.c             | 128 +++++++++++++--
-> >  6 files changed, 499 insertions(+), 32 deletions(-)
-> >  create mode 100644 Documentation/security/SELinux-sctp.rst
-> > 
-> > diff --git a/Documentation/security/SELinux-sctp.rst
-> > b/Documentation/security/SELinux-sctp.rst
-> > new file mode 100644
-> > index 0000000..f6a9162
-> > --- /dev/null
-> > +++ b/Documentation/security/SELinux-sctp.rst
-> > @@ -0,0 +1,104 @@
-> > +SCTP SELinux Support
-> > +==========> > +
-> > +Security Hooks
-> > +=======> > +
-> > +The ``Documentation/security/LSM-sctp.rst`` document describes how
-> > the
-> > +following sctp security hooks are utilised::
-> > +
-> > +    security_sctp_assoc_request()
-> > +    security_sctp_bind_connect()
-> > +    security_sctp_sk_clone()
-> > +    security_inet_conn_established()
-> > +
-> > +
-> > +Policy Statements
-> > +=========
-> > +The following class and permissions to support SCTP are available
-> > within the
-> > +kernel::
-> > +
-> > +    class sctp_socket inherits socket { node_bind }
-> > +
-> > +whenever the following policy capability is enabled::
-> > +
-> > +    policycap extended_socket_class;
-> > +
-> > +SELinux SCTP support adds the ``name_connect`` permission for
-> > connecting
-> > +to a specific port type and the ``association`` permission that is
-> > explained
-> > +in the section below.
-> > +
-> > +If userspace tools have been updated, SCTP will support the
-> > ``portcon``
-> > +statement as shown in the following example::
-> > +
-> > +    portcon sctp 1024-1036 system_u:object_r:sctp_ports_t:s0
-> > +
-> > +
-> > +SCTP Bind, Connect and ASCONF Chunk Parameter Permission Checks
-> > +================================
-> > +The hook ``security_sctp_bind_connect()`` is called by SCTP to
-> > check
-> > +permissions required for ipv4/ipv6 addresses based on the ``@optna
-> > me
-> > `` as
-> > +follows::
-> > +
-> > +  --------------------------------------------------------------
-> > ----
-> > +  |                   BIND Permission
-> > Checks                       |
-> > +  |       @optname             |         @address
-> > contains         |
-> > +  |----------------------------|--------------------------------
-> > ---|
-> > +  | SCTP_SOCKOPT_BINDX_ADD     | One or more ipv4 / ipv6 addresses
-> > |
-> > +  | SCTP_PRIMARY_ADDR          | Single ipv4 or ipv6
-> > address       |
-> > +  | SCTP_SET_PEER_PRIMARY_ADDR | Single ipv4 or ipv6
-> > address       |
-> > +  --------------------------------------------------------------
-> > ----
-> > +
-> > +  --------------------------------------------------------------
-> > ----
-> > +  |                 CONNECT Permission
-> > Checks                      |
-> > +  |       @optname             |         @address
-> > contains         |
-> > +  |----------------------------|--------------------------------
-> > ---|
-> > +  | SCTP_SOCKOPT_CONNECTX      | One or more ipv4 / ipv6 addresses
-> > |
-> > +  | SCTP_PARAM_ADD_IP          | One or more ipv4 / ipv6 addresses
-> > |
-> > +  | SCTP_SENDMSG_CONNECT       | Single ipv4 or ipv6
-> > address       |
-> > +  | SCTP_PARAM_SET_PRIMARY     | Single ipv4 or ipv6
-> > address       |
-> > +  --------------------------------------------------------------
-> > ----
-> > +
-> > +
-> > +SCTP Peer Labeling
-> > +=========> > +An SCTP socket will only have one peer label assigned to it. This
-> > will be
-> > +assigned during the establishment of the first association. Once
-> > the
-> > peer
-> > +label has been assigned, any new associations will have the
-> > ``association``
-> > +permission validated by checking the socket peer sid against the
-> > received
-> > +packets peer sid to determine whether the association should be
-> > allowed or
-> > +denied.
-> > +
-> > +NOTES:
-> > +   1) If peer labeling is not enabled, then the peer context will
-> > always be
-> > +      ``SECINITSID_UNLABELED`` (``unlabeled_t`` in Reference
-> > Policy).
-> > +
-> > +   2) As SCTP can support more than one transport address per
-> > endpoint
-> > +      (multi-homing) on a single socket, it is possible to
-> > configure
-> > policy
-> > +      and NetLabel to provide different peer labels for each of
-> > these. As the
-> > +      socket peer label is determined by the first associations
-> > transport
-> > +      address, it is recommended that all peer labels are
-> > consistent.
-> > +
-> > +   3) **getpeercon**\(3) may be used by userspace to retrieve the
-> > sockets peer
-> > +      context.
-> > +
-> > +   4) While not SCTP specific, be aware when using NetLabel that
-> > if
-> > a label
-> > +      is assigned to a specific interface, and that interface
-> > 'goes
-> > down',
-> > +      then the NetLabel service will remove the entry. Therefore
-> > ensure that
-> > +      the network startup scripts call **netlabelctl**\(8) to set
-> > the required
-> > +      label (see **netlabel-config**\(8) helper script for
-> > details).
-> > +
-> > +   5) The NetLabel SCTP peer labeling rules apply as discussed in
-> > the following
-> > +      set of posts tagged "netlabel" at: http://www.paul-moore.com
-> > /b
-> > log/t.
-> > +
-> > +   6) CIPSO is only supported for IPv4 addressing:
-> > ``socket(AF_INET,
-> > ...)``
-> > +      CALIPSO is only supported for IPv6 addressing:
-> > ``socket(AF_INET6, ...)``
-> > +
-> > +      Note the following when testing CIPSO/CALIPSO:
-> > +         a) CIPSO will send an ICMP packet if an SCTP packet
-> > cannot
-> > be
-> > +            delivered because of an invalid label.
-> > +         b) CALIPSO does not send an ICMP packet, just silently
-> > discards it.
-> > +
-> > +   7) IPSEC is not supported as RFC 3554 - sctp/ipsec support has
-> > not been
-> > +      implemented in userspace (**racoon**\(8) or
-> > **ipsec_pluto**\(8)),
-> > +      although the kernel supports SCTP/IPSEC.
-> > diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-> > index 0110bb5..7bd5886 100644
-> > --- a/security/selinux/hooks.c
-> > +++ b/security/selinux/hooks.c
-> > @@ -67,6 +67,8 @@
-> >  #include <linux/tcp.h>
-> >  #include <linux/udp.h>
-> >  #include <linux/dccp.h>
-> > +#include <linux/sctp.h>
-> > +#include <net/sctp/structs.h>
-> >  #include <linux/quota.h>
-> >  #include <linux/un.h>		/* for Unix socket types */
-> >  #include <net/af_unix.h>	/* for Unix socket types */
-> > @@ -4136,6 +4138,23 @@ static int selinux_parse_skb_ipv4(struct
-> > sk_buff *skb,
-> >  		break;
-> >  	}
-> >  
-> > +#if IS_ENABLED(CONFIG_IP_SCTP)
-> > +	case IPPROTO_SCTP: {
-> > +		struct sctphdr _sctph, *sh;
-> > +
-> > +		if (ntohs(ih->frag_off) & IP_OFFSET)
-> > +			break;
-> > +
-> > +		offset += ihlen;
-> > +		sh = skb_header_pointer(skb, offset,
-> > sizeof(_sctph),
-> > &_sctph);
-> > +		if (sh = NULL)
-> > +			break;
-> > +
-> > +		ad->u.net->sport = sh->source;
-> > +		ad->u.net->dport = sh->dest;
-> > +		break;
-> > +	}
-> > +#endif
-> >  	default:
-> >  		break;
-> >  	}
-> > @@ -4209,6 +4228,19 @@ static int selinux_parse_skb_ipv6(struct
-> > sk_buff *skb,
-> >  		break;
-> >  	}
-> >  
-> > +#if IS_ENABLED(CONFIG_IP_SCTP)
-> > +	case IPPROTO_SCTP: {
-> > +		struct sctphdr _sctph, *sh;
-> > +
-> > +		sh = skb_header_pointer(skb, offset,
-> > sizeof(_sctph),
-> > &_sctph);
-> > +		if (sh = NULL)
-> > +			break;
-> > +
-> > +		ad->u.net->sport = sh->source;
-> > +		ad->u.net->dport = sh->dest;
-> > +		break;
-> > +	}
-> > +#endif
-> >  	/* includes fragments */
-> >  	default:
-> >  		break;
-> > @@ -4398,6 +4430,10 @@ static int selinux_socket_post_create(struct
-> > socket *sock, int family,
-> >  		sksec = sock->sk->sk_security;
-> >  		sksec->sclass = sclass;
-> >  		sksec->sid = sid;
-> > +		/* Allows detection of the first association on
-> > this
-> > socket */
-> > +		if (sksec->sclass = SECCLASS_SCTP_SOCKET)
-> > +			sksec->sctp_assoc_state > > SCTP_ASSOC_UNSET;
-> 
-> Same comment as before:
-> What prevents this from interleaving with
-> selinux_sctp_assoc_request()
-> accesses to sksec->sctp_assoc_state?  You aren't holding any lock
-> here.
->  What ensures that this executes before selinux_sctp_assoc_request()?
 
-Sorry, maybe I'm wrong. selinux_sctp_assoc_request() can't be called
-until after bind() and listen() have completed?
+--FL5UXtIhxfXey3p5
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-> 
-> > +
-> >  		err = selinux_netlbl_socket_post_create(sock->sk,
-> > family);
-> >  	}
-> >  
-> > @@ -4418,11 +4454,7 @@ static int selinux_socket_bind(struct socket
-> > *sock, struct sockaddr *address, in
-> >  	if (err)
-> >  		goto out;
-> >  
-> > -	/*
-> > -	 * If PF_INET or PF_INET6, check name_bind permission for
-> > the port.
-> > -	 * Multiple address binding for SCTP is not supported yet:
-> > we just
-> > -	 * check the first address now.
-> > -	 */
-> > +	/* If PF_INET or PF_INET6, check name_bind permission for
-> > the port. */
-> >  	family = sk->sk_family;
-> >  	if (family = PF_INET || family = PF_INET6) {
-> >  		char *addrp;
-> > @@ -4434,7 +4466,13 @@ static int selinux_socket_bind(struct socket
-> > *sock, struct sockaddr *address, in
-> >  		unsigned short snum;
-> >  		u32 sid, node_perm;
-> >  
-> > -		if (family = PF_INET) {
-> > +		/*
-> > +		 * sctp_bindx(3) calls via
-> > selinux_sctp_bind_connect()
-> > +		 * that validates multiple binding addresses.
-> > Because of this
-> > +		 * need to check address->sa_family as it is
-> > possible to have
-> > +		 * sk->sk_family = PF_INET6 with addr->sa_family > > AF_INET.
-> > +		 */
-> > +		if (address->sa_family = AF_INET) {
-> >  			if (addrlen < sizeof(struct sockaddr_in))
-> > {
-> >  				err = -EINVAL;
-> >  				goto out;
-> > @@ -4488,6 +4526,10 @@ static int selinux_socket_bind(struct socket
-> > *sock, struct sockaddr *address, in
-> >  			node_perm = DCCP_SOCKET__NODE_BIND;
-> >  			break;
-> >  
-> > +		case SECCLASS_SCTP_SOCKET:
-> > +			node_perm = SCTP_SOCKET__NODE_BIND;
-> > +			break;
-> > +
-> >  		default:
-> >  			node_perm = RAWIP_SOCKET__NODE_BIND;
-> >  			break;
-> > @@ -4502,7 +4544,7 @@ static int selinux_socket_bind(struct socket
-> > *sock, struct sockaddr *address, in
-> >  		ad.u.net->sport = htons(snum);
-> >  		ad.u.net->family = family;
-> >  
-> > -		if (family = PF_INET)
-> > +		if (address->sa_family = AF_INET)
-> >  			ad.u.net->v4info.saddr = addr4-
-> > > sin_addr.s_addr;
-> > 
-> >  		else
-> >  			ad.u.net->v6info.saddr = addr6->sin6_addr;
-> > @@ -4516,7 +4558,11 @@ static int selinux_socket_bind(struct socket
-> > *sock, struct sockaddr *address, in
-> >  	return err;
-> >  }
-> >  
-> > -static int selinux_socket_connect(struct socket *sock, struct
-> > sockaddr *address, int addrlen)
-> > +/* This supports connect(2) and SCTP connect services such as
-> > sctp_connectx(3)
-> > + * and sctp_sendmsg(3) as described in Documentation/security/LSM-
-> > sctp.txt
-> > + */
-> > +static int selinux_socket_connect_helper(struct socket *sock,
-> > +					 struct sockaddr *address,
-> > int addrlen)
-> >  {
-> >  	struct sock *sk = sock->sk;
-> >  	struct sk_security_struct *sksec = sk->sk_security;
-> > @@ -4527,10 +4573,12 @@ static int selinux_socket_connect(struct
-> > socket *sock, struct sockaddr *address,
-> >  		return err;
-> >  
-> >  	/*
-> > -	 * If a TCP or DCCP socket, check name_connect permission
-> > for the port.
-> > +	 * If a TCP, DCCP or SCTP socket, check name_connect
-> > permission
-> > +	 * for the port.
-> >  	 */
-> >  	if (sksec->sclass = SECCLASS_TCP_SOCKET ||
-> > -	    sksec->sclass = SECCLASS_DCCP_SOCKET) {
-> > +	    sksec->sclass = SECCLASS_DCCP_SOCKET ||
-> > +	    sksec->sclass = SECCLASS_SCTP_SOCKET) {
-> >  		struct common_audit_data ad;
-> >  		struct lsm_network_audit net = {0,};
-> >  		struct sockaddr_in *addr4 = NULL;
-> > @@ -4538,7 +4586,12 @@ static int selinux_socket_connect(struct
-> > socket *sock, struct sockaddr *address,
-> >  		unsigned short snum;
-> >  		u32 sid, perm;
-> >  
-> > -		if (sk->sk_family = PF_INET) {
-> > +		/* sctp_connectx(3) calls via
-> > selinux_sctp_bind_connect()
-> > +		 * that validates multiple connect addresses.
-> > Because of this
-> > +		 * need to check address->sa_family as it is
-> > possible to have
-> > +		 * sk->sk_family = PF_INET6 with addr->sa_family > > AF_INET.
-> > +		 */
-> > +		if (address->sa_family = AF_INET) {
-> >  			addr4 = (struct sockaddr_in *)address;
-> >  			if (addrlen < sizeof(struct sockaddr_in))
-> >  				return -EINVAL;
-> > @@ -4552,10 +4605,19 @@ static int selinux_socket_connect(struct
-> > socket *sock, struct sockaddr *address,
-> >  
-> >  		err = sel_netport_sid(sk->sk_protocol, snum,
-> > &sid);
-> >  		if (err)
-> > -			goto out;
-> > +			return err;
-> >  
-> > -		perm = (sksec->sclass = SECCLASS_TCP_SOCKET) ?
-> > -		       TCP_SOCKET__NAME_CONNECT :
-> > DCCP_SOCKET__NAME_CONNECT;
-> > +		switch (sksec->sclass) {
-> > +		case SECCLASS_TCP_SOCKET:
-> > +			perm = TCP_SOCKET__NAME_CONNECT;
-> > +			break;
-> > +		case SECCLASS_DCCP_SOCKET:
-> > +			perm = DCCP_SOCKET__NAME_CONNECT;
-> > +			break;
-> > +		case SECCLASS_SCTP_SOCKET:
-> > +			perm = SCTP_SOCKET__NAME_CONNECT;
-> > +			break;
-> > +		}
-> >  
-> >  		ad.type = LSM_AUDIT_DATA_NET;
-> >  		ad.u.net = &net;
-> > @@ -4563,13 +4625,24 @@ static int selinux_socket_connect(struct
-> > socket *sock, struct sockaddr *address,
-> >  		ad.u.net->family = sk->sk_family;
-> >  		err = avc_has_perm(sksec->sid, sid, sksec->sclass,
-> > perm, &ad);
-> >  		if (err)
-> > -			goto out;
-> > +			return err;
-> >  	}
-> >  
-> > -	err = selinux_netlbl_socket_connect(sk, address);
-> > +	return 0;
-> > +}
-> >  
-> > -out:
-> > -	return err;
-> > +/* Supports connect(2), see comments in
-> > selinux_socket_connect_helper() */
-> > +static int selinux_socket_connect(struct socket *sock,
-> > +				  struct sockaddr *address, int
-> > addrlen)
-> > +{
-> > +	int err;
-> > +	struct sock *sk = sock->sk;
-> > +
-> > +	err = selinux_socket_connect_helper(sock, address,
-> > addrlen);
-> > +	if (err)
-> > +		return err;
-> > +
-> > +	return selinux_netlbl_socket_connect(sk, address);
-> >  }
-> >  
-> >  static int selinux_socket_listen(struct socket *sock, int backlog)
-> > @@ -4832,7 +4905,8 @@ static int
-> > selinux_socket_getpeersec_stream(struct socket *sock, char __user
-> > *op
-> >  	u32 peer_sid = SECSID_NULL;
-> >  
-> >  	if (sksec->sclass = SECCLASS_UNIX_STREAM_SOCKET ||
-> > -	    sksec->sclass = SECCLASS_TCP_SOCKET)
-> > +	    sksec->sclass = SECCLASS_TCP_SOCKET ||
-> > +	    sksec->sclass = SECCLASS_SCTP_SOCKET)
-> >  		peer_sid = sksec->peer_sid;
-> >  	if (peer_sid = SECSID_NULL)
-> >  		return -ENOPROTOOPT;
-> > @@ -4945,6 +5019,169 @@ static void selinux_sock_graft(struct sock
-> > *sk, struct socket *parent)
-> >  	sksec->sclass = isec->sclass;
-> >  }
-> >  
-> > +/* Called whenever SCTP receives an INIT chunk. This happens when
-> > an
-> > incoming
-> > + * connect(2), sctp_connectx(3) or sctp_sendmsg(3) (with no
-> > association
-> > + * already present).
-> > + * The lock is to ensure sksec->sctp_assoc_state.
-> > + */
-> > +static DEFINE_SPINLOCK(assoc_lock);
-> 
-> The lock needs to be taken by all entities accessing sksec-
-> > sctp_assoc_state, and you need to further ensure proper handling if
-> 
-> the ordering is reversed.  Also, the lock should be per-sksec, not
-> global.
-> 
-> > +static int selinux_sctp_assoc_request(struct sctp_endpoint *ep,
-> > +				      struct sk_buff *skb)
-> > +{
-> > +	struct sk_security_struct *sksec = ep->base.sk-
-> > >sk_security;
-> > +	struct common_audit_data ad;
-> > +	struct lsm_network_audit net = {0,};
-> > +	u8 peerlbl_active;
-> > +	u32 peer_sid = SECINITSID_UNLABELED;
-> > +	u32 conn_sid;
-> > +	int err = 0;
-> > +
-> > +	if (!selinux_policycap_extsockclass)
-> > +		return 0;
-> > +
-> > +	spin_lock(&assoc_lock);
+Hi Richard,
 
-So what is this protecting?  And if needed, does it need to be
-spin_lock_bh() instead of just spin_lock()? Can multiple calls to
-selinux_sctp_assoc_request() on the same endpoint be interleaved?
+Thank you for the patch! Yet something to improve:
 
-> > +
-> > +	peerlbl_active = selinux_peerlbl_enabled();
-> > +
-> > +	if (peerlbl_active) {
-> > +		/* This will return peer_sid = SECSID_NULL if
-> > there
-> > are
-> > +		 * no peer labels, see
-> > security_net_peersid_resolve().
-> > +		 */
-> > +		err = selinux_skb_peerlbl_sid(skb, ep->base.sk-
-> > > sk_family,
-> > 
-> > +					      &peer_sid);
-> > +		if (err)
-> > +			goto err;
-> > +
-> > +		if (peer_sid = SECSID_NULL)
-> > +			peer_sid = SECINITSID_UNLABELED;
-> > +	}
-> > +
-> > +	if (sksec->sctp_assoc_state = SCTP_ASSOC_UNSET) {
-> > +		sksec->sctp_assoc_state = SCTP_ASSOC_SET;
-> > +
-> > +		/* Here as first association on socket. As the
-> > peer
-> > SID
-> > +		 * was allowed by peer recv (and the netif/node
-> > checks),
-> > +		 * then it is approved by policy and used as the
-> > primary
-> > +		 * peer SID for getpeercon(3).
-> > +		 */
-> > +		sksec->peer_sid = peer_sid;
-> > +	} else if  (sksec->peer_sid != peer_sid) {
-> > +		/* Other association peer SIDs are checked to
-> > enforce
-> > +		 * consistency among the peer SIDs.
-> > +		 */
-> > +		ad.type = LSM_AUDIT_DATA_NET;
-> > +		ad.u.net = &net;
-> > +		ad.u.net->sk = ep->base.sk;
-> > +		err = avc_has_perm(sksec->peer_sid, peer_sid,
-> > sksec-
-> > > sclass,
-> > 
-> > +				   SCTP_SOCKET__ASSOCIATION, &ad);
-> > +		if (err)
-> > +			goto err;
-> > +	}
-> > +
-> > +	/* Compute the MLS component for the connection and store
-> > +	 * the information in ep. This will be used by SCTP TCP
-> > type
-> > +	 * sockets and peeled off connections as they cause a new
-> > +	 * socket to be generated. selinux_sctp_sk_clone() will
-> > then
-> > +	 * plug this into the new socket.
-> > +	 */
-> > +	err = selinux_conn_sid(sksec->sid, peer_sid, &conn_sid);
-> > +	if (err)
-> > +		goto err;
-> > +
-> > +	ep->secid = conn_sid;
-> > +	ep->peer_secid = peer_sid;
-> > +
-> > +	/* Set any NetLabel labels including CIPSO/CALIPSO
-> > options.
-> > */
-> > +	err = selinux_netlbl_sctp_assoc_request(ep, skb);
-> > +
-> > +err:
-> > +	spin_unlock(&assoc_lock);
-> > +	return err;
-> > +}
-> > +
-> > +/*
-> > + * Check if sctp IPv4/IPv6 addresses are valid for binding or
-> > connecting
-> > + * based on their @optname.
-> > + */
-> > +static int selinux_sctp_bind_connect(struct sock *sk, int optname,
-> > +				     struct sockaddr *address,
-> > +				     int addrlen)
-> > +{
-> > +	int len, err = 0, walk_size = 0;
-> > +	void *addr_buf;
-> > +	struct sockaddr *addr;
-> > +	struct socket *sock;
-> > +
-> > +	if (!selinux_policycap_extsockclass)
-> > +		return 0;
-> > +
-> > +	/* Process one or more addresses that may be IPv4 or IPv6
-> > */
-> > +	sock = sk->sk_socket;
-> > +	addr_buf = address;
-> > +
-> > +	while (walk_size < addrlen) {
-> > +		addr = addr_buf;
-> > +		switch (addr->sa_family) {
-> > +		case AF_INET:
-> > +			len = sizeof(struct sockaddr_in);
-> > +			break;
-> > +		case AF_INET6:
-> > +			len = sizeof(struct sockaddr_in6);
-> > +			break;
-> > +		default:
-> > +			return -EAFNOSUPPORT;
-> > +		}
-> > +
-> > +		err = -EINVAL;
-> > +		switch (optname) {
-> > +		/* Bind checks */
-> > +		case SCTP_PRIMARY_ADDR:
-> > +		case SCTP_SET_PEER_PRIMARY_ADDR:
-> > +		case SCTP_SOCKOPT_BINDX_ADD:
-> > +			err = selinux_socket_bind(sock, addr,
-> > len);
-> > +			break;
-> > +		/* Connect checks */
-> > +		case SCTP_SOCKOPT_CONNECTX:
-> > +		case SCTP_PARAM_SET_PRIMARY:
-> > +		case SCTP_PARAM_ADD_IP:
-> > +		case SCTP_SENDMSG_CONNECT:
-> > +			err = selinux_socket_connect_helper(sock,
-> > addr, len);
-> > +			if (err)
-> > +				return err;
-> > +
-> > +			err > > selinux_netlbl_sctp_socket_connect(sk,
-> > addr);
-> > +			break;
-> > +		}
-> > +
-> > +		if (err)
-> > +			return err;
-> > +
-> > +		addr_buf += len;
-> > +		walk_size += len;
-> > +	}
-> > +
-> > +	return 0;
-> > +}
-> > +
-> > +/* Called whenever a new socket is created by accept(2) or
-> > sctp_peeloff(3). */
-> > +static void selinux_sctp_sk_clone(struct sctp_endpoint *ep, struct
-> > sock *sk,
-> > +				  struct sock *newsk)
-> > +{
-> > +	struct sk_security_struct *sksec = sk->sk_security;
-> > +	struct sk_security_struct *newsksec = newsk->sk_security;
-> > +
-> > +	/* If policy does not support SECCLASS_SCTP_SOCKET then
-> > call
-> > +	 * the non-sctp clone version.
-> > +	 */
-> > +	if (!selinux_policycap_extsockclass)
-> > +		return selinux_sk_clone_security(sk, newsk);
-> > +
-> > +	newsksec->sid = ep->secid;
-> > +	newsksec->peer_sid = ep->peer_secid;
-> > +	newsksec->sclass = sksec->sclass;
-> > +	newsksec->nlbl_state = sksec->nlbl_state;
-> > +}
-> > +
-> >  static int selinux_inet_conn_request(struct sock *sk, struct
-> > sk_buff
-> > *skb,
-> >  				     struct request_sock *req)
-> >  {
-> > @@ -6433,6 +6670,9 @@ static struct security_hook_list
-> > selinux_hooks[] __lsm_ro_after_init = {
-> >  	LSM_HOOK_INIT(sk_clone_security,
-> > selinux_sk_clone_security),
-> >  	LSM_HOOK_INIT(sk_getsecid, selinux_sk_getsecid),
-> >  	LSM_HOOK_INIT(sock_graft, selinux_sock_graft),
-> > +	LSM_HOOK_INIT(sctp_assoc_request,
-> > selinux_sctp_assoc_request),
-> > +	LSM_HOOK_INIT(sctp_sk_clone, selinux_sctp_sk_clone),
-> > +	LSM_HOOK_INIT(sctp_bind_connect,
-> > selinux_sctp_bind_connect),
-> >  	LSM_HOOK_INIT(inet_conn_request,
-> > selinux_inet_conn_request),
-> >  	LSM_HOOK_INIT(inet_csk_clone, selinux_inet_csk_clone),
-> >  	LSM_HOOK_INIT(inet_conn_established,
-> > selinux_inet_conn_established),
-> > diff --git a/security/selinux/include/classmap.h
-> > b/security/selinux/include/classmap.h
-> > index 35ffb29..099065e 100644
-> > --- a/security/selinux/include/classmap.h
-> > +++ b/security/selinux/include/classmap.h
-> > @@ -175,7 +175,7 @@ struct security_class_mapping secclass_map[] > > {
-> >  	  { COMMON_CAP2_PERMS, NULL } },
-> >  	{ "sctp_socket",
-> >  	  { COMMON_SOCK_PERMS,
-> > -	    "node_bind", NULL } },
-> > +	    "node_bind", "name_connect", "association", NULL } },
-> >  	{ "icmp_socket",
-> >  	  { COMMON_SOCK_PERMS,
-> >  	    "node_bind", NULL } },
-> > diff --git a/security/selinux/include/netlabel.h
-> > b/security/selinux/include/netlabel.h
-> > index 75686d5..313c8bd 100644
-> > --- a/security/selinux/include/netlabel.h
-> > +++ b/security/selinux/include/netlabel.h
-> > @@ -33,6 +33,7 @@
-> >  #include <linux/skbuff.h>
-> >  #include <net/sock.h>
-> >  #include <net/request_sock.h>
-> > +#include <net/sctp/structs.h>
-> >  
-> >  #include "avc.h"
-> >  #include "objsec.h"
-> > @@ -53,7 +54,8 @@ int selinux_netlbl_skbuff_getsid(struct sk_buff
-> > *skb,
-> >  int selinux_netlbl_skbuff_setsid(struct sk_buff *skb,
-> >  				 u16 family,
-> >  				 u32 sid);
-> > -
-> > +int selinux_netlbl_sctp_assoc_request(struct sctp_endpoint *ep,
-> > +				     struct sk_buff *skb);
-> >  int selinux_netlbl_inet_conn_request(struct request_sock *req, u16
-> > family);
-> >  void selinux_netlbl_inet_csk_clone(struct sock *sk, u16 family);
-> >  int selinux_netlbl_socket_post_create(struct sock *sk, u16
-> > family);
-> > @@ -65,6 +67,7 @@ int selinux_netlbl_socket_setsockopt(struct
-> > socket
-> > *sock,
-> >  				     int level,
-> >  				     int optname);
-> >  int selinux_netlbl_socket_connect(struct sock *sk, struct sockaddr
-> > *addr);
-> > +int selinux_netlbl_sctp_socket_connect(struct sock *sk, struct
-> > sockaddr *addr);
-> >  
-> >  #else
-> >  static inline void selinux_netlbl_cache_invalidate(void)
-> > @@ -114,6 +117,11 @@ static inline int
-> > selinux_netlbl_conn_setsid(struct sock *sk,
-> >  	return 0;
-> >  }
-> >  
-> > +static inline int selinux_netlbl_sctp_assoc_request(struct
-> > sctp_endpoint *ep,
-> > +						    struct sk_buff
-> > *skb)
-> > +{
-> > +	return 0;
-> > +}
-> >  static inline int selinux_netlbl_inet_conn_request(struct
-> > request_sock *req,
-> >  						   u16 family)
-> >  {
-> > @@ -146,6 +154,11 @@ static inline int
-> > selinux_netlbl_socket_connect(struct sock *sk,
-> >  {
-> >  	return 0;
-> >  }
-> > +static inline int selinux_netlbl_sctp_socket_connect(struct sock
-> > *sk,
-> > +						     struct
-> > sockaddr
-> > *addr)
-> > +{
-> > +	return 0;
-> > +}
-> >  #endif /* CONFIG_NETLABEL */
-> >  
-> >  #endif
-> > diff --git a/security/selinux/include/objsec.h
-> > b/security/selinux/include/objsec.h
-> > index 6ebc61e..e319d5d 100644
-> > --- a/security/selinux/include/objsec.h
-> > +++ b/security/selinux/include/objsec.h
-> > @@ -130,6 +130,10 @@ struct sk_security_struct {
-> >  	u32 sid;			/* SID of this object */
-> >  	u32 peer_sid;			/* SID of peer */
-> >  	u16 sclass;			/* sock security class
-> > */
-> > +	enum {				/* SCTP association
-> > state */
-> > +		SCTP_ASSOC_UNSET = 0,
-> > +		SCTP_ASSOC_SET,
-> > +	} sctp_assoc_state;
-> >  };
-> >  
-> >  struct tun_security_struct {
-> > diff --git a/security/selinux/netlabel.c
-> > b/security/selinux/netlabel.c
-> > index aaba667..ac23f29 100644
-> > --- a/security/selinux/netlabel.c
-> > +++ b/security/selinux/netlabel.c
-> > @@ -250,6 +250,7 @@ int selinux_netlbl_skbuff_setsid(struct sk_buff
-> > *skb,
-> >  	sk = skb_to_full_sk(skb);
-> >  	if (sk != NULL) {
-> >  		struct sk_security_struct *sksec = sk-
-> > >sk_security;
-> > +
-> >  		if (sksec->nlbl_state != NLBL_REQSKB)
-> >  			return 0;
-> >  		secattr = selinux_netlbl_sock_getattr(sk, sid);
-> > @@ -270,6 +271,61 @@ int selinux_netlbl_skbuff_setsid(struct
-> > sk_buff
-> > *skb,
-> >  	return rc;
-> >  }
-> >  
-> > +/**
-> > + * selinux_netlbl_sctp_assoc_request - Label an incoming sctp
-> > association.
-> > + * @ep: incoming association endpoint.
-> > + * @skb: the packet.
-> > + *
-> > + * Description:
-> > + * A new incoming connection is represented by @ep, ......
-> > + * Returns zero on success, negative values on failure.
-> > + *
-> > + */
-> > +int selinux_netlbl_sctp_assoc_request(struct sctp_endpoint *ep,
-> > +				     struct sk_buff *skb)
-> > +{
-> > +	int rc;
-> > +	struct netlbl_lsm_secattr secattr;
-> > +	struct sk_security_struct *sksec = ep->base.sk-
-> > >sk_security;
-> > +	struct sockaddr *addr;
-> > +	struct sockaddr_in addr4;
-> > +#if IS_ENABLED(CONFIG_IPV6)
-> > +	struct sockaddr_in6 addr6;
-> > +#endif
-> > +
-> > +	if (ep->base.sk->sk_family != PF_INET &&
-> > +				ep->base.sk->sk_family !> > PF_INET6)
-> > +		return 0;
-> > +
-> > +	netlbl_secattr_init(&secattr);
-> > +	rc = security_netlbl_sid_to_secattr(ep->secid, &secattr);
-> > +	if (rc != 0)
-> > +		goto assoc_request_return;
-> > +
-> > +	/* Move skb hdr address info to a struct sockaddr and then
-> > call
-> > +	 * netlbl_conn_setattr().
-> > +	 */
-> > +	if (ip_hdr(skb)->version = 4) {
-> > +		addr4.sin_family = AF_INET;
-> > +		addr4.sin_addr.s_addr = ip_hdr(skb)->saddr;
-> > +		addr = (struct sockaddr *)&addr4;
-> > +#if IS_ENABLED(CONFIG_IPV6)
-> > +	} else {
-> > +		addr6.sin6_family = AF_INET6;
-> > +		addr6.sin6_addr = ipv6_hdr(skb)->saddr;
-> > +		addr = (struct sockaddr *)&addr6;
-> > +#endif
-> > +	}
-> > +
-> > +	rc = netlbl_conn_setattr(ep->base.sk, addr, &secattr);
-> > +	if (rc = 0)
-> > +		sksec->nlbl_state = NLBL_LABELED;
-> > +
-> > +assoc_request_return:
-> > +	netlbl_secattr_destroy(&secattr);
-> > +	return rc;
-> > +}
-> > +
-> >  /**
-> >   * selinux_netlbl_inet_conn_request - Label an incoming stream
-> > connection
-> >   * @req: incoming connection request socket
-> > @@ -470,7 +526,8 @@ int selinux_netlbl_socket_setsockopt(struct
-> > socket *sock,
-> >  }
-> >  
-> >  /**
-> > - * selinux_netlbl_socket_connect - Label a client-side socket on
-> > connect
-> > + * selinux_netlbl_socket_connect_helper - Help label a client-side
-> > socket on
-> > + * connect
-> >   * @sk: the socket to label
-> >   * @addr: the destination address
-> >   *
-> > @@ -479,18 +536,13 @@ int selinux_netlbl_socket_setsockopt(struct
-> > socket *sock,
-> >   * Returns zero values on success, negative values on failure.
-> >   *
-> >   */
-> > -int selinux_netlbl_socket_connect(struct sock *sk, struct sockaddr
-> > *addr)
-> > +static int selinux_netlbl_socket_connect_helper(struct sock *sk,
-> > +						struct sockaddr
-> > *addr)
-> >  {
-> >  	int rc;
-> >  	struct sk_security_struct *sksec = sk->sk_security;
-> >  	struct netlbl_lsm_secattr *secattr;
-> >  
-> > -	if (sksec->nlbl_state != NLBL_REQSKB &&
-> > -	    sksec->nlbl_state != NLBL_CONNLABELED)
-> > -		return 0;
-> > -
-> > -	lock_sock(sk);
-> > -
-> >  	/* connected sockets are allowed to disconnect when the
-> > address family
-> >  	 * is set to AF_UNSPEC, if that is what is happening we
-> > want
-> > to reset
-> >  	 * the socket */
-> > @@ -498,18 +550,72 @@ int selinux_netlbl_socket_connect(struct sock
-> > *sk, struct sockaddr *addr)
-> >  		netlbl_sock_delattr(sk);
-> >  		sksec->nlbl_state = NLBL_REQSKB;
-> >  		rc = 0;
-> > -		goto socket_connect_return;
-> > +		return rc;
-> >  	}
-> >  	secattr = selinux_netlbl_sock_genattr(sk);
-> >  	if (secattr = NULL) {
-> >  		rc = -ENOMEM;
-> > -		goto socket_connect_return;
-> > +		return rc;
-> >  	}
-> >  	rc = netlbl_conn_setattr(sk, addr, secattr);
-> >  	if (rc = 0)
-> >  		sksec->nlbl_state = NLBL_CONNLABELED;
-> >  
-> > -socket_connect_return:
-> > +	return rc;
-> > +}
-> > +
-> > +/**
-> > + * selinux_netlbl_socket_connect - Label a client-side socket on
-> > connect
-> > + * @sk: the socket to label
-> > + * @addr: the destination address
-> > + *
-> > + * Description:
-> > + * Attempt to label a connected socket with NetLabel using the
-> > given
-> > address.
-> > + * Returns zero values on success, negative values on failure.
-> > + *
-> > + */
-> > +int selinux_netlbl_socket_connect(struct sock *sk, struct sockaddr
-> > *addr)
-> > +{
-> > +	int rc;
-> > +	struct sk_security_struct *sksec = sk->sk_security;
-> > +
-> > +	if (sksec->nlbl_state != NLBL_REQSKB &&
-> > +	    sksec->nlbl_state != NLBL_CONNLABELED)
-> > +		return 0;
-> > +
-> > +	lock_sock(sk);
-> > +	rc = selinux_netlbl_socket_connect_helper(sk, addr);
-> >  	release_sock(sk);
-> > +
-> > +	return rc;
-> > +}
-> > +
-> > +/**
-> > + * selinux_netlbl_sctp_socket_connect - Label an SCTP client-side
-> > socket on a
-> > + * connect
-> > + * @sk: the socket to label
-> > + * @addr: the destination address
-> > + *
-> > + * Description:
-> > + * Attempt to label a connected socket with NetLabel using the
-> > given
-> > address
-> > + * when called by the SCTP protocol layer. The situations handled
-> > are:
-> > + * sctp_connectx(3), sctp_sendmsg(3), sendmsg(2), whenever a new
-> > IP
-> > address
-> > + * is added or when a new primary address is selected. Note that
-> > an
-> > SCTP
-> > + * connect(2) call happens before the SCTP protocol layer and is
-> > handled via
-> > + * selinux_netlbl_socket_connect()
-> > + * Returns zero values on success, negative values on failure.
-> > + *
-> > + */
-> > +int selinux_netlbl_sctp_socket_connect(struct sock *sk, struct
-> > sockaddr *addr)
-> > +{
-> > +	int rc;
-> > +	struct sk_security_struct *sksec = sk->sk_security;
-> > +
-> > +	if (sksec->nlbl_state != NLBL_REQSKB &&
-> > +	    sksec->nlbl_state != NLBL_CONNLABELED)
-> > +		return 0;
-> > +
-> > +	rc = selinux_netlbl_socket_connect_helper(sk, addr);
-> > +
-> >  	return rc;
-> >  }
+[auto build test ERROR on security/next]
+[cannot apply to net-next/master net/master v4.15-rc1 next-20171129]
+[if your patch is applied to the wrong git tree, please drop us a note to help improve the system]
+
+url:    https://github.com/0day-ci/linux/commits/Richard-Haines/Add-SELinux-SCTP-protocol-support/20171129-222900
+base:   https://git.kernel.org/pub/scm/linux/kernel/git/jmorris/linux-security.git next
+config: x86_64-allyesdebian (attached as .config)
+compiler: gcc-7 (Debian 7.2.0-12) 7.2.1 20171025
+reproduce:
+        # save the attached .config to linux build tree
+        make ARCH=x86_64 
+
+All errors (new ones prefixed by >>):
+
+   security/selinux/hooks.c: In function 'selinux_sctp_sk_clone':
+>> security/selinux/hooks.c:5185:10: error: 'struct sk_security_struct' has no member named 'nlbl_state'
+     newsksec->nlbl_state = sksec->nlbl_state;
+             ^~
+   security/selinux/hooks.c:5185:30: error: 'struct sk_security_struct' has no member named 'nlbl_state'
+     newsksec->nlbl_state = sksec->nlbl_state;
+                                 ^~
+
+vim +5185 security/selinux/hooks.c
+
+  5168	
+  5169	/* Called whenever a new socket is created by accept(2) or sctp_peeloff(3). */
+  5170	static void selinux_sctp_sk_clone(struct sctp_endpoint *ep, struct sock *sk,
+  5171					  struct sock *newsk)
+  5172	{
+  5173		struct sk_security_struct *sksec = sk->sk_security;
+  5174		struct sk_security_struct *newsksec = newsk->sk_security;
+  5175	
+  5176		/* If policy does not support SECCLASS_SCTP_SOCKET then call
+  5177		 * the non-sctp clone version.
+  5178		 */
+  5179		if (!selinux_policycap_extsockclass)
+  5180			return selinux_sk_clone_security(sk, newsk);
+  5181	
+  5182		newsksec->sid = ep->secid;
+  5183		newsksec->peer_sid = ep->peer_secid;
+  5184		newsksec->sclass = sksec->sclass;
+> 5185		newsksec->nlbl_state = sksec->nlbl_state;
+  5186	}
+  5187	
+
+---
+0-DAY kernel test infrastructure                Open Source Technology Center
+https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
+
+--FL5UXtIhxfXey3p5
+Content-Type: application/gzip
+Content-Disposition: attachment; filename=".config.gz"
+Content-Transfer-Encoding: base64
+
+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
+kzGtWd53AgA=
+
+--FL5UXtIhxfXey3p5--
