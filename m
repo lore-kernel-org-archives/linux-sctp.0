@@ -1,283 +1,100 @@
-From: Masami Hiramatsu <mhiramat@kernel.org>
-Date: Fri, 29 Dec 2017 02:48:25 +0000
-Subject: [PATCH net-next v7 6/6] net: dccp: Remove dccpprobe module
-Message-Id: <151451570511.17912.15439408788615637125.stgit@devbox>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 05 Dec 2017 15:15:59 +0000
+Subject: [PATCH net-next 02/12] sctp: add asoc intl_enable negotiation during 4 shakehands
+Message-Id: <590ee9b2ecf13733272f9bb1888c60de1f5f47a4.1512486606.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <151451552014.17912.11834170408829155608.stgit@devbox>
-In-Reply-To: <151451552014.17912.11834170408829155608.stgit@devbox>
+References: <cover.1512486606.git.lucien.xin@gmail.com>
+ <b830faf5987dbed8b1e724f039348e960b8537e3.1512486606.git.lucien.xin@gmail.com>
+In-Reply-To: <b830faf5987dbed8b1e724f039348e960b8537e3.1512486606.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Ingo Molnar <mingo@kernel.org>, "David S . Miller" <davem@davemloft.net>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
-Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-Remove DCCP probe module since jprobe has been deprecated.
-That function is now replaced by dccp/dccp_probe trace-event.
-You can use it via ftrace or perftools.
+asoc intl_enable will be set when local sp strm_interleave is set
+and there's I-DATA chunk in init and init_ack extensions, as says
+in section 2.2.1 of RFC8260.
 
-Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
+asoc intl_enable indicates all data will be sent as I-DATA chunks.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- Changes in v5:
-  - Fix a conflict with previous change in Makefile.
----
- net/dccp/Kconfig  |   17 ----
- net/dccp/Makefile |    2 -
- net/dccp/probe.c  |  203 -----------------------------------------------------
- 3 files changed, 222 deletions(-)
- delete mode 100644 net/dccp/probe.c
+ include/linux/sctp.h     |  3 +++
+ net/sctp/sm_make_chunk.c | 18 ++++++++++++++++--
+ 2 files changed, 19 insertions(+), 2 deletions(-)
 
-diff --git a/net/dccp/Kconfig b/net/dccp/Kconfig
-index 8c0ef71bed2f..b270e84d9c13 100644
---- a/net/dccp/Kconfig
-+++ b/net/dccp/Kconfig
-@@ -39,23 +39,6 @@ config IP_DCCP_DEBUG
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index da803df..6d2bd64 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -102,6 +102,9 @@ enum sctp_cid {
+ 	/* AUTH Extension Section 4.1 */
+ 	SCTP_CID_AUTH			= 0x0F,
  
- 	  Just say N.
++	/* sctp ndata 5.1. I-DATA */
++	SCTP_CID_I_DATA			= 0x40,
++
+ 	/* PR-SCTP Sec 3.2 */
+ 	SCTP_CID_FWD_TSN		= 0xC0,
  
--config NET_DCCPPROBE
--	tristate "DCCP connection probing"
--	depends on PROC_FS && KPROBES
--	---help---
--	This module allows for capturing the changes to DCCP connection
--	state in response to incoming packets. It is used for debugging
--	DCCP congestion avoidance modules. If you don't understand
--	what was just said, you don't need it: say N.
--
--	Documentation on how to use DCCP connection probing can be found
--	at:
--	
--	  http://www.linuxfoundation.org/collaborate/workgroups/networking/dccpprobe
--
--	To compile this code as a module, choose M here: the
--	module will be called dccp_probe.
--
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 9bf575f..da33c85 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -228,7 +228,7 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
+ 	struct sctp_inithdr init;
+ 	union sctp_params addrs;
+ 	struct sctp_sock *sp;
+-	__u8 extensions[4];
++	__u8 extensions[5];
+ 	size_t chunksize;
+ 	__be16 types[2];
+ 	int num_ext = 0;
+@@ -278,6 +278,11 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
+ 	if (sp->adaptation_ind)
+ 		chunksize += sizeof(aiparam);
  
- endmenu
++	if (sp->strm_interleave) {
++		extensions[num_ext] = SCTP_CID_I_DATA;
++		num_ext += 1;
++	}
++
+ 	chunksize += vparam_len;
  
-diff --git a/net/dccp/Makefile b/net/dccp/Makefile
-index 4215f13a63af..5b4ff37bc806 100644
---- a/net/dccp/Makefile
-+++ b/net/dccp/Makefile
-@@ -21,12 +21,10 @@ obj-$(subst y,$(CONFIG_IP_DCCP),$(CONFIG_IPV6)) += dccp_ipv6.o
- dccp_ipv6-y := ipv6.o
+ 	/* Account for AUTH related parameters */
+@@ -392,7 +397,7 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
+ 	struct sctp_inithdr initack;
+ 	union sctp_params addrs;
+ 	struct sctp_sock *sp;
+-	__u8 extensions[4];
++	__u8 extensions[5];
+ 	size_t chunksize;
+ 	int num_ext = 0;
+ 	int cookie_len;
+@@ -442,6 +447,11 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
+ 	if (sp->adaptation_ind)
+ 		chunksize += sizeof(aiparam);
  
- obj-$(CONFIG_INET_DCCP_DIAG) += dccp_diag.o
--obj-$(CONFIG_NET_DCCPPROBE) += dccp_probe.o
- 
- dccp-$(CONFIG_SYSCTL) += sysctl.o
- 
- dccp_diag-y := diag.o
--dccp_probe-y := probe.o
- 
- # build with local directory for trace.h
- CFLAGS_proto.o := -I$(src)
-diff --git a/net/dccp/probe.c b/net/dccp/probe.c
-deleted file mode 100644
-index 3d3fda05b32d..000000000000
---- a/net/dccp/probe.c
-+++ /dev/null
-@@ -1,203 +0,0 @@
--/*
-- * dccp_probe - Observe the DCCP flow with kprobes.
-- *
-- * The idea for this came from Werner Almesberger's umlsim
-- * Copyright (C) 2004, Stephen Hemminger <shemminger@osdl.org>
-- *
-- * Modified for DCCP from Stephen Hemminger's code
-- * Copyright (C) 2006, Ian McDonald <ian.mcdonald@jandi.co.nz>
-- *
-- * This program is free software; you can redistribute it and/or modify
-- * it under the terms of the GNU General Public License as published by
-- * the Free Software Foundation; either version 2 of the License, or
-- * (at your option) any later version.
-- *
-- * This program is distributed in the hope that it will be useful,
-- * but WITHOUT ANY WARRANTY; without even the implied warranty of
-- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-- * GNU General Public License for more details.
-- *
-- * You should have received a copy of the GNU General Public License
-- * along with this program; if not, write to the Free Software
-- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-- */
--
--#include <linux/kernel.h>
--#include <linux/kprobes.h>
--#include <linux/socket.h>
--#include <linux/dccp.h>
--#include <linux/proc_fs.h>
--#include <linux/module.h>
--#include <linux/kfifo.h>
--#include <linux/vmalloc.h>
--#include <linux/time64.h>
--#include <linux/gfp.h>
--#include <net/net_namespace.h>
--
--#include "dccp.h"
--#include "ccid.h"
--#include "ccids/ccid3.h"
--
--static int port;
--
--static int bufsize = 64 * 1024;
--
--static const char procname[] = "dccpprobe";
--
--static struct {
--	struct kfifo	  fifo;
--	spinlock_t	  lock;
--	wait_queue_head_t wait;
--	struct timespec64 tstart;
--} dccpw;
--
--static void printl(const char *fmt, ...)
--{
--	va_list args;
--	int len;
--	struct timespec64 now;
--	char tbuf[256];
--
--	va_start(args, fmt);
--	getnstimeofday64(&now);
--
--	now = timespec64_sub(now, dccpw.tstart);
--
--	len = sprintf(tbuf, "%lu.%06lu ",
--		      (unsigned long) now.tv_sec,
--		      (unsigned long) now.tv_nsec / NSEC_PER_USEC);
--	len += vscnprintf(tbuf+len, sizeof(tbuf)-len, fmt, args);
--	va_end(args);
--
--	kfifo_in_locked(&dccpw.fifo, tbuf, len, &dccpw.lock);
--	wake_up(&dccpw.wait);
--}
--
--static int jdccp_sendmsg(struct sock *sk, struct msghdr *msg, size_t size)
--{
--	const struct inet_sock *inet = inet_sk(sk);
--	struct ccid3_hc_tx_sock *hc = NULL;
--
--	if (ccid_get_current_tx_ccid(dccp_sk(sk)) = DCCPC_CCID3)
--		hc = ccid3_hc_tx_sk(sk);
--
--	if (port = 0 || ntohs(inet->inet_dport) = port ||
--	    ntohs(inet->inet_sport) = port) {
--		if (hc)
--			printl("%pI4:%u %pI4:%u %d %d %d %d %u %llu %llu %d\n",
--			       &inet->inet_saddr, ntohs(inet->inet_sport),
--			       &inet->inet_daddr, ntohs(inet->inet_dport), size,
--			       hc->tx_s, hc->tx_rtt, hc->tx_p,
--			       hc->tx_x_calc, hc->tx_x_recv >> 6,
--			       hc->tx_x >> 6, hc->tx_t_ipi);
--		else
--			printl("%pI4:%u %pI4:%u %d\n",
--			       &inet->inet_saddr, ntohs(inet->inet_sport),
--			       &inet->inet_daddr, ntohs(inet->inet_dport),
--			       size);
--	}
--
--	jprobe_return();
--	return 0;
--}
--
--static struct jprobe dccp_send_probe = {
--	.kp	= {
--		.symbol_name = "dccp_sendmsg",
--	},
--	.entry	= jdccp_sendmsg,
--};
--
--static int dccpprobe_open(struct inode *inode, struct file *file)
--{
--	kfifo_reset(&dccpw.fifo);
--	getnstimeofday64(&dccpw.tstart);
--	return 0;
--}
--
--static ssize_t dccpprobe_read(struct file *file, char __user *buf,
--			      size_t len, loff_t *ppos)
--{
--	int error = 0, cnt = 0;
--	unsigned char *tbuf;
--
--	if (!buf)
--		return -EINVAL;
--
--	if (len = 0)
--		return 0;
--
--	tbuf = vmalloc(len);
--	if (!tbuf)
--		return -ENOMEM;
--
--	error = wait_event_interruptible(dccpw.wait,
--					 kfifo_len(&dccpw.fifo) != 0);
--	if (error)
--		goto out_free;
--
--	cnt = kfifo_out_locked(&dccpw.fifo, tbuf, len, &dccpw.lock);
--	error = copy_to_user(buf, tbuf, cnt) ? -EFAULT : 0;
--
--out_free:
--	vfree(tbuf);
--
--	return error ? error : cnt;
--}
--
--static const struct file_operations dccpprobe_fops = {
--	.owner	 = THIS_MODULE,
--	.open	 = dccpprobe_open,
--	.read    = dccpprobe_read,
--	.llseek  = noop_llseek,
--};
--
--static __init int dccpprobe_init(void)
--{
--	int ret = -ENOMEM;
--
--	init_waitqueue_head(&dccpw.wait);
--	spin_lock_init(&dccpw.lock);
--	if (kfifo_alloc(&dccpw.fifo, bufsize, GFP_KERNEL))
--		return ret;
--	if (!proc_create(procname, S_IRUSR, init_net.proc_net, &dccpprobe_fops))
--		goto err0;
--
--	ret = register_jprobe(&dccp_send_probe);
--	if (ret) {
--		ret = request_module("dccp");
--		if (!ret)
--			ret = register_jprobe(&dccp_send_probe);
--	}
--
--	if (ret)
--		goto err1;
--
--	pr_info("DCCP watch registered (port=%d)\n", port);
--	return 0;
--err1:
--	remove_proc_entry(procname, init_net.proc_net);
--err0:
--	kfifo_free(&dccpw.fifo);
--	return ret;
--}
--module_init(dccpprobe_init);
--
--static __exit void dccpprobe_exit(void)
--{
--	kfifo_free(&dccpw.fifo);
--	remove_proc_entry(procname, init_net.proc_net);
--	unregister_jprobe(&dccp_send_probe);
--
--}
--module_exit(dccpprobe_exit);
--
--MODULE_PARM_DESC(port, "Port to match (0=all)");
--module_param(port, int, 0);
--
--MODULE_PARM_DESC(bufsize, "Log buffer size (default 64k)");
--module_param(bufsize, int, 0);
--
--MODULE_AUTHOR("Ian McDonald <ian.mcdonald@jandi.co.nz>");
--MODULE_DESCRIPTION("DCCP snooper");
--MODULE_LICENSE("GPL");
++	if (asoc->intl_enable) {
++		extensions[num_ext] = SCTP_CID_I_DATA;
++		num_ext += 1;
++	}
++
+ 	if (asoc->peer.auth_capable) {
+ 		auth_random = (struct sctp_paramhdr *)asoc->c.auth_random;
+ 		chunksize += ntohs(auth_random->length);
+@@ -2032,6 +2042,10 @@ static void sctp_process_ext_param(struct sctp_association *asoc,
+ 			if (net->sctp.addip_enable)
+ 				asoc->peer.asconf_capable = 1;
+ 			break;
++		case SCTP_CID_I_DATA:
++			if (sctp_sk(asoc->base.sk)->strm_interleave)
++				asoc->intl_enable = 1;
++			break;
+ 		default:
+ 			break;
+ 		}
+-- 
+2.1.0
 
