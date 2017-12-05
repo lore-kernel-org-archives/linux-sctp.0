@@ -1,373 +1,153 @@
-From: Masami Hiramatsu <mhiramat@kernel.org>
-Date: Fri, 22 Dec 2017 02:06:03 +0000
-Subject: [PATCH net-next v5 2/6] net: tcp: Remove TCP probe module
-Message-Id: <151390836360.13277.16736955312434726.stgit@devbox>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 05 Dec 2017 15:16:05 +0000
+Subject: [PATCH net-next 08/12] sctp: implement enqueue_event for sctp_stream_interleave
+Message-Id: <08ec459b56ee8c72c588bdb2350d5619e3678ae5.1512486606.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <151390830346.13277.15583398024850377955.stgit@devbox>
-In-Reply-To: <151390830346.13277.15583398024850377955.stgit@devbox>
+References: <cover.1512486606.git.lucien.xin@gmail.com>
+ <b830faf5987dbed8b1e724f039348e960b8537e3.1512486606.git.lucien.xin@gmail.com>
+ <590ee9b2ecf13733272f9bb1888c60de1f5f47a4.1512486606.git.lucien.xin@gmail.com>
+ <4facf144fb29f5b161dd665e3326311001812a1c.1512486606.git.lucien.xin@gmail.com>
+ <b8551388363da7b56f7e56132414c1399557a12d.1512486606.git.lucien.xin@gmail.com>
+ <ddf7cc34d5fdbdcbe3e8b4e546799c55edff5ca2.1512486606.git.lucien.xin@gmail.com>
+ <010d0fbcbdcb70224859dc281e622e0fdf6f46c5.1512486606.git.lucien.xin@gmail.com>
+ <7dd410b23c38f41fb8402880185f5e583dabbc04.1512486606.git.lucien.xin@gmail.com>
+In-Reply-To: <7dd410b23c38f41fb8402880185f5e583dabbc04.1512486606.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Ingo Molnar <mingo@kernel.org>, "David S . Miller" <davem@davemloft.net>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
-Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-Remove TCP probe module since jprobe has been deprecated.
-That function is now replaced by tcp/tcp_probe trace-event.
-You can use it via ftrace or perftools.
+enqueue_event is added as a member of sctp_stream_interleave, used to
+enqueue either data, idata or notification events into user socket rx
+queue.
 
-Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
+It replaces sctp_ulpq_tail_event used in the other places with
+enqueue_event.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/Kconfig          |   17 ---
- net/ipv4/Makefile    |    1 
- net/ipv4/tcp_probe.c |  301 --------------------------------------------------
- 3 files changed, 319 deletions(-)
- delete mode 100644 net/ipv4/tcp_probe.c
+ include/net/sctp/stream_interleave.h | 2 ++
+ net/sctp/associola.c                 | 2 +-
+ net/sctp/chunk.c                     | 2 +-
+ net/sctp/sm_sideeffect.c             | 9 +++++----
+ net/sctp/socket.c                    | 2 +-
+ net/sctp/stream_interleave.c         | 2 ++
+ 6 files changed, 12 insertions(+), 7 deletions(-)
 
-diff --git a/net/Kconfig b/net/Kconfig
-index 9dba2715919d..efe930db3c08 100644
---- a/net/Kconfig
-+++ b/net/Kconfig
-@@ -336,23 +336,6 @@ config NET_PKTGEN
- 	  To compile this code as a module, choose M here: the
- 	  module will be called pktgen.
+diff --git a/include/net/sctp/stream_interleave.h b/include/net/sctp/stream_interleave.h
+index 02f60f5..a0f61bc 100644
+--- a/include/net/sctp/stream_interleave.h
++++ b/include/net/sctp/stream_interleave.h
+@@ -41,6 +41,8 @@ struct sctp_stream_interleave {
+ 	bool	(*validate_data)(struct sctp_chunk *chunk);
+ 	int	(*ulpevent_data)(struct sctp_ulpq *ulpq,
+ 				 struct sctp_chunk *chunk, gfp_t gfp);
++	int	(*enqueue_event)(struct sctp_ulpq *ulpq,
++				 struct sctp_ulpevent *event);
+ };
  
--config NET_TCPPROBE
--	tristate "TCP connection probing"
--	depends on INET && PROC_FS && KPROBES
--	---help---
--	This module allows for capturing the changes to TCP connection
--	state in response to incoming packets. It is used for debugging
--	TCP congestion avoidance modules. If you don't understand
--	what was just said, you don't need it: say N.
--
--	Documentation on how to use TCP connection probing can be found
--	at:
--	
--	  http://www.linuxfoundation.org/collaborate/workgroups/networking/tcpprobe
--
--	To compile this code as a module, choose M here: the
--	module will be called tcp_probe.
--
- config NET_DROP_MONITOR
- 	tristate "Network packet drop alerting service"
- 	depends on INET && TRACEPOINTS
-diff --git a/net/ipv4/Makefile b/net/ipv4/Makefile
-index c6c8ad1d4b6d..47a0a6649a9d 100644
---- a/net/ipv4/Makefile
-+++ b/net/ipv4/Makefile
-@@ -43,7 +43,6 @@ obj-$(CONFIG_INET_DIAG) += inet_diag.o
- obj-$(CONFIG_INET_TCP_DIAG) += tcp_diag.o
- obj-$(CONFIG_INET_UDP_DIAG) += udp_diag.o
- obj-$(CONFIG_INET_RAW_DIAG) += raw_diag.o
--obj-$(CONFIG_NET_TCPPROBE) += tcp_probe.o
- obj-$(CONFIG_TCP_CONG_BBR) += tcp_bbr.o
- obj-$(CONFIG_TCP_CONG_BIC) += tcp_bic.o
- obj-$(CONFIG_TCP_CONG_CDG) += tcp_cdg.o
-diff --git a/net/ipv4/tcp_probe.c b/net/ipv4/tcp_probe.c
-deleted file mode 100644
-index 697f4c67b2e3..000000000000
---- a/net/ipv4/tcp_probe.c
-+++ /dev/null
-@@ -1,301 +0,0 @@
--/*
-- * tcpprobe - Observe the TCP flow with kprobes.
-- *
-- * The idea for this came from Werner Almesberger's umlsim
-- * Copyright (C) 2004, Stephen Hemminger <shemminger@osdl.org>
-- *
-- * This program is free software; you can redistribute it and/or modify
-- * it under the terms of the GNU General Public License as published by
-- * the Free Software Foundation; either version 2 of the License.
-- *
-- * This program is distributed in the hope that it will be useful,
-- * but WITHOUT ANY WARRANTY; without even the implied warranty of
-- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-- * GNU General Public License for more details.
-- *
-- * You should have received a copy of the GNU General Public License
-- * along with this program; if not, write to the Free Software
-- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-- */
--
--#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
--
--#include <linux/kernel.h>
--#include <linux/kprobes.h>
--#include <linux/socket.h>
--#include <linux/tcp.h>
--#include <linux/slab.h>
--#include <linux/proc_fs.h>
--#include <linux/module.h>
--#include <linux/ktime.h>
--#include <linux/time.h>
--#include <net/net_namespace.h>
--
--#include <net/tcp.h>
--
--MODULE_AUTHOR("Stephen Hemminger <shemminger@linux-foundation.org>");
--MODULE_DESCRIPTION("TCP cwnd snooper");
--MODULE_LICENSE("GPL");
--MODULE_VERSION("1.1");
--
--static int port __read_mostly;
--MODULE_PARM_DESC(port, "Port to match (0=all)");
--module_param(port, int, 0);
--
--static unsigned int bufsize __read_mostly = 4096;
--MODULE_PARM_DESC(bufsize, "Log buffer size in packets (4096)");
--module_param(bufsize, uint, 0);
--
--static unsigned int fwmark __read_mostly;
--MODULE_PARM_DESC(fwmark, "skb mark to match (0=no mark)");
--module_param(fwmark, uint, 0);
--
--static int full __read_mostly;
--MODULE_PARM_DESC(full, "Full log (1=every ack packet received,  0=only cwnd changes)");
--module_param(full, int, 0);
--
--static const char procname[] = "tcpprobe";
--
--struct tcp_log {
--	ktime_t tstamp;
--	union {
--		struct sockaddr		raw;
--		struct sockaddr_in	v4;
--		struct sockaddr_in6	v6;
--	}	src, dst;
--	u16	length;
--	u32	snd_nxt;
--	u32	snd_una;
--	u32	snd_wnd;
--	u32	rcv_wnd;
--	u32	snd_cwnd;
--	u32	ssthresh;
--	u32	srtt;
--};
--
--static struct {
--	spinlock_t	lock;
--	wait_queue_head_t wait;
--	ktime_t		start;
--	u32		lastcwnd;
--
--	unsigned long	head, tail;
--	struct tcp_log	*log;
--} tcp_probe;
--
--static inline int tcp_probe_used(void)
--{
--	return (tcp_probe.head - tcp_probe.tail) & (bufsize - 1);
--}
--
--static inline int tcp_probe_avail(void)
--{
--	return bufsize - tcp_probe_used() - 1;
--}
--
--#define tcp_probe_copy_fl_to_si4(inet, si4, mem)		\
--	do {							\
--		si4.sin_family = AF_INET;			\
--		si4.sin_port = inet->inet_##mem##port;		\
--		si4.sin_addr.s_addr = inet->inet_##mem##addr;	\
--	} while (0)						\
--
--/*
-- * Hook inserted to be called before each receive packet.
-- * Note: arguments must match tcp_rcv_established()!
-- */
--static void jtcp_rcv_established(struct sock *sk, struct sk_buff *skb,
--				 const struct tcphdr *th)
--{
--	unsigned int len = skb->len;
--	const struct tcp_sock *tp = tcp_sk(sk);
--	const struct inet_sock *inet = inet_sk(sk);
--
--	/* Only update if port or skb mark matches */
--	if (((port = 0 && fwmark = 0) ||
--	     ntohs(inet->inet_dport) = port ||
--	     ntohs(inet->inet_sport) = port ||
--	     (fwmark > 0 && skb->mark = fwmark)) &&
--	    (full || tp->snd_cwnd != tcp_probe.lastcwnd)) {
--
--		spin_lock(&tcp_probe.lock);
--		/* If log fills, just silently drop */
--		if (tcp_probe_avail() > 1) {
--			struct tcp_log *p = tcp_probe.log + tcp_probe.head;
--
--			p->tstamp = ktime_get();
--			switch (sk->sk_family) {
--			case AF_INET:
--				tcp_probe_copy_fl_to_si4(inet, p->src.v4, s);
--				tcp_probe_copy_fl_to_si4(inet, p->dst.v4, d);
--				break;
--			case AF_INET6:
--				memset(&p->src.v6, 0, sizeof(p->src.v6));
--				memset(&p->dst.v6, 0, sizeof(p->dst.v6));
--#if IS_ENABLED(CONFIG_IPV6)
--				p->src.v6.sin6_family = AF_INET6;
--				p->src.v6.sin6_port = inet->inet_sport;
--				p->src.v6.sin6_addr = inet6_sk(sk)->saddr;
--
--				p->dst.v6.sin6_family = AF_INET6;
--				p->dst.v6.sin6_port = inet->inet_dport;
--				p->dst.v6.sin6_addr = sk->sk_v6_daddr;
--#endif
--				break;
--			default:
--				BUG();
--			}
--
--			p->length = len;
--			p->snd_nxt = tp->snd_nxt;
--			p->snd_una = tp->snd_una;
--			p->snd_cwnd = tp->snd_cwnd;
--			p->snd_wnd = tp->snd_wnd;
--			p->rcv_wnd = tp->rcv_wnd;
--			p->ssthresh = tcp_current_ssthresh(sk);
--			p->srtt = tp->srtt_us >> 3;
--
--			tcp_probe.head = (tcp_probe.head + 1) & (bufsize - 1);
--		}
--		tcp_probe.lastcwnd = tp->snd_cwnd;
--		spin_unlock(&tcp_probe.lock);
--
--		wake_up(&tcp_probe.wait);
--	}
--
--	jprobe_return();
--}
--
--static struct jprobe tcp_jprobe = {
--	.kp = {
--		.symbol_name	= "tcp_rcv_established",
--	},
--	.entry	= jtcp_rcv_established,
--};
--
--static int tcpprobe_open(struct inode *inode, struct file *file)
--{
--	/* Reset (empty) log */
--	spin_lock_bh(&tcp_probe.lock);
--	tcp_probe.head = tcp_probe.tail = 0;
--	tcp_probe.start = ktime_get();
--	spin_unlock_bh(&tcp_probe.lock);
--
--	return 0;
--}
--
--static int tcpprobe_sprint(char *tbuf, int n)
--{
--	const struct tcp_log *p
--		= tcp_probe.log + tcp_probe.tail;
--	struct timespec64 ts
--		= ktime_to_timespec64(ktime_sub(p->tstamp, tcp_probe.start));
--
--	return scnprintf(tbuf, n,
--			"%lu.%09lu %pISpc %pISpc %d %#x %#x %u %u %u %u %u\n",
--			(unsigned long)ts.tv_sec,
--			(unsigned long)ts.tv_nsec,
--			&p->src, &p->dst, p->length, p->snd_nxt, p->snd_una,
--			p->snd_cwnd, p->ssthresh, p->snd_wnd, p->srtt, p->rcv_wnd);
--}
--
--static ssize_t tcpprobe_read(struct file *file, char __user *buf,
--			     size_t len, loff_t *ppos)
--{
--	int error = 0;
--	size_t cnt = 0;
--
--	if (!buf)
--		return -EINVAL;
--
--	while (cnt < len) {
--		char tbuf[256];
--		int width;
--
--		/* Wait for data in buffer */
--		error = wait_event_interruptible(tcp_probe.wait,
--						 tcp_probe_used() > 0);
--		if (error)
--			break;
--
--		spin_lock_bh(&tcp_probe.lock);
--		if (tcp_probe.head = tcp_probe.tail) {
--			/* multiple readers race? */
--			spin_unlock_bh(&tcp_probe.lock);
--			continue;
--		}
--
--		width = tcpprobe_sprint(tbuf, sizeof(tbuf));
--
--		if (cnt + width < len)
--			tcp_probe.tail = (tcp_probe.tail + 1) & (bufsize - 1);
--
--		spin_unlock_bh(&tcp_probe.lock);
--
--		/* if record greater than space available
--		   return partial buffer (so far) */
--		if (cnt + width >= len)
--			break;
--
--		if (copy_to_user(buf + cnt, tbuf, width))
--			return -EFAULT;
--		cnt += width;
--	}
--
--	return cnt = 0 ? error : cnt;
--}
--
--static const struct file_operations tcpprobe_fops = {
--	.owner	 = THIS_MODULE,
--	.open	 = tcpprobe_open,
--	.read    = tcpprobe_read,
--	.llseek  = noop_llseek,
--};
--
--static __init int tcpprobe_init(void)
--{
--	int ret = -ENOMEM;
--
--	/* Warning: if the function signature of tcp_rcv_established,
--	 * has been changed, you also have to change the signature of
--	 * jtcp_rcv_established, otherwise you end up right here!
--	 */
--	BUILD_BUG_ON(__same_type(tcp_rcv_established,
--				 jtcp_rcv_established) = 0);
--
--	init_waitqueue_head(&tcp_probe.wait);
--	spin_lock_init(&tcp_probe.lock);
--
--	if (bufsize = 0)
--		return -EINVAL;
--
--	bufsize = roundup_pow_of_two(bufsize);
--	tcp_probe.log = kcalloc(bufsize, sizeof(struct tcp_log), GFP_KERNEL);
--	if (!tcp_probe.log)
--		goto err0;
--
--	if (!proc_create(procname, S_IRUSR, init_net.proc_net, &tcpprobe_fops))
--		goto err0;
--
--	ret = register_jprobe(&tcp_jprobe);
--	if (ret)
--		goto err1;
--
--	pr_info("probe registered (port=%d/fwmark=%u) bufsize=%u\n",
--		port, fwmark, bufsize);
--	return 0;
-- err1:
--	remove_proc_entry(procname, init_net.proc_net);
-- err0:
--	kfree(tcp_probe.log);
--	return ret;
--}
--module_init(tcpprobe_init);
--
--static __exit void tcpprobe_exit(void)
--{
--	remove_proc_entry(procname, init_net.proc_net);
--	unregister_jprobe(&tcp_jprobe);
--	kfree(tcp_probe.log);
--}
--module_exit(tcpprobe_exit);
+ void sctp_stream_interleave_init(struct sctp_stream *stream);
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 69394f4..837806d 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -861,7 +861,7 @@ void sctp_assoc_control_transport(struct sctp_association *asoc,
+ 		event = sctp_ulpevent_make_peer_addr_change(asoc, &addr,
+ 					0, spc_state, error, GFP_ATOMIC);
+ 		if (event)
+-			sctp_ulpq_tail_event(&asoc->ulpq, event);
++			asoc->stream.si->enqueue_event(&asoc->ulpq, event);
+ 	}
+ 
+ 	/* Select new active and retran paths. */
+diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
+index bded6af..6c121c6 100644
+--- a/net/sctp/chunk.c
++++ b/net/sctp/chunk.c
+@@ -123,7 +123,7 @@ static void sctp_datamsg_destroy(struct sctp_datamsg *msg)
+ 			ev = sctp_ulpevent_make_send_failed(asoc, chunk, sent,
+ 							    error, GFP_ATOMIC);
+ 			if (ev)
+-				sctp_ulpq_tail_event(&asoc->ulpq, ev);
++				asoc->stream.si->enqueue_event(&asoc->ulpq, ev);
+ 		}
+ 
+ 		sctp_chunk_put(chunk);
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 9d25efb..f4e5eca 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -972,7 +972,7 @@ static void sctp_cmd_process_operr(struct sctp_cmd_seq *cmds,
+ 		if (!ev)
+ 			return;
+ 
+-		sctp_ulpq_tail_event(&asoc->ulpq, ev);
++		asoc->stream.si->enqueue_event(&asoc->ulpq, ev);
+ 
+ 		switch (err_hdr->cause) {
+ 		case SCTP_ERROR_UNKNOWN_CHUNK:
+@@ -1058,7 +1058,7 @@ static void sctp_cmd_assoc_change(struct sctp_cmd_seq *commands,
+ 					    asoc->c.sinit_max_instreams,
+ 					    NULL, GFP_ATOMIC);
+ 	if (ev)
+-		sctp_ulpq_tail_event(&asoc->ulpq, ev);
++		asoc->stream.si->enqueue_event(&asoc->ulpq, ev);
+ }
+ 
+ /* Helper function to generate an adaptation indication event */
+@@ -1070,7 +1070,7 @@ static void sctp_cmd_adaptation_ind(struct sctp_cmd_seq *commands,
+ 	ev = sctp_ulpevent_make_adaptation_indication(asoc, GFP_ATOMIC);
+ 
+ 	if (ev)
+-		sctp_ulpq_tail_event(&asoc->ulpq, ev);
++		asoc->stream.si->enqueue_event(&asoc->ulpq, ev);
+ }
+ 
+ 
+@@ -1493,7 +1493,8 @@ static int sctp_cmd_interpreter(enum sctp_event event_type,
+ 			pr_debug("%s: sm_sideff: event_up:%p, ulpq:%p\n",
+ 				 __func__, cmd->obj.ulpevent, &asoc->ulpq);
+ 
+-			sctp_ulpq_tail_event(&asoc->ulpq, cmd->obj.ulpevent);
++			asoc->stream.si->enqueue_event(&asoc->ulpq,
++						       cmd->obj.ulpevent);
+ 			break;
+ 
+ 		case SCTP_CMD_REPLY:
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 036f945..fe2cab9 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -2294,7 +2294,7 @@ static int sctp_setsockopt_events(struct sock *sk, char __user *optval,
+ 			if (!event)
+ 				return -ENOMEM;
+ 
+-			sctp_ulpq_tail_event(&asoc->ulpq, event);
++			asoc->stream.si->enqueue_event(&asoc->ulpq, event);
+ 		}
+ 	}
+ 
+diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
+index 8238311..e853972 100644
+--- a/net/sctp/stream_interleave.c
++++ b/net/sctp/stream_interleave.c
+@@ -552,6 +552,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_0 = {
+ 	.assign_number		= sctp_chunk_assign_ssn,
+ 	.validate_data		= sctp_validate_data,
+ 	.ulpevent_data		= sctp_ulpq_tail_data,
++	.enqueue_event		= sctp_ulpq_tail_event,
+ };
+ 
+ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
+@@ -561,6 +562,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
+ 	.assign_number		= sctp_chunk_assign_mid,
+ 	.validate_data		= sctp_validate_idata,
+ 	.ulpevent_data		= sctp_ulpevent_idata,
++	.enqueue_event		= sctp_enqueue_event,
+ };
+ 
+ void sctp_stream_interleave_init(struct sctp_stream *stream)
+-- 
+2.1.0
 
