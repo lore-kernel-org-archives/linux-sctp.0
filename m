@@ -1,159 +1,265 @@
-From: Masami Hiramatsu <mhiramat@kernel.org>
-Date: Wed, 20 Dec 2017 04:16:41 +0000
-Subject: [PATCH net-next v4 5/6] net: dccp: Add DCCP sendmsg trace event
-Message-Id: <151374340100.2497.7426103509676124469.stgit@devbox>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 05 Dec 2017 15:16:03 +0000
+Subject: [PATCH net-next 06/12] sctp: implement validate_data for sctp_stream_interleave
+Message-Id: <010d0fbcbdcb70224859dc281e622e0fdf6f46c5.1512486606.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <151374325126.2497.6934744693865165386.stgit@devbox>
-In-Reply-To: <151374325126.2497.6934744693865165386.stgit@devbox>
+References: <cover.1512486606.git.lucien.xin@gmail.com>
+ <b830faf5987dbed8b1e724f039348e960b8537e3.1512486606.git.lucien.xin@gmail.com>
+ <590ee9b2ecf13733272f9bb1888c60de1f5f47a4.1512486606.git.lucien.xin@gmail.com>
+ <4facf144fb29f5b161dd665e3326311001812a1c.1512486606.git.lucien.xin@gmail.com>
+ <b8551388363da7b56f7e56132414c1399557a12d.1512486606.git.lucien.xin@gmail.com>
+ <ddf7cc34d5fdbdcbe3e8b4e546799c55edff5ca2.1512486606.git.lucien.xin@gmail.com>
+In-Reply-To: <ddf7cc34d5fdbdcbe3e8b4e546799c55edff5ca2.1512486606.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Ingo Molnar <mingo@kernel.org>, "David S . Miller" <davem@davemloft.net>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
-Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-Add DCCP sendmsg trace event (dccp/dccp_probe) for
-replacing dccpprobe. User can trace this event via
-ftrace or perftools.
+validate_data is added as a member of sctp_stream_interleave, used
+to validate ssn/chunk type for data or mid (message id)/chunk type
+for idata, called in sctp_eat_data.
 
-Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
+If this check fails, an abort packet will be sent, as says in
+section 2.2.3 of RFC8260.
+
+It also adds the process for idata in rx path. As Marcelo pointed
+out, there's no need to add event table for idata, but just share
+chunk_event_table with data's. It would drop data chunk for idata
+and drop idata chunk for data by calling validate_data in
+sctp_eat_data.
+
+As last patch did, it also replaces sizeof(struct sctp_data_chunk)
+with sctp_datachk_len for rx path.
+
+After this patch, the idata can be accepted and delivered to ulp
+layer.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/dccp/proto.c |    5 +++
- net/dccp/trace.h |  105 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 110 insertions(+)
- create mode 100644 net/dccp/trace.h
+ include/net/sctp/sm.h                |  6 ++++++
+ include/net/sctp/stream_interleave.h |  1 +
+ include/net/sctp/structs.h           |  6 +++++-
+ net/sctp/sm_statefuns.c              | 21 ++++++++-----------
+ net/sctp/sm_statetable.c             |  3 +++
+ net/sctp/stream_interleave.c         | 39 ++++++++++++++++++++++++++++++++++++
+ 6 files changed, 62 insertions(+), 14 deletions(-)
 
-diff --git a/net/dccp/proto.c b/net/dccp/proto.c
-index 9d43c1f40274..e57b5db495cd 100644
---- a/net/dccp/proto.c
-+++ b/net/dccp/proto.c
-@@ -38,6 +38,9 @@
- #include "dccp.h"
- #include "feat.h"
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index ca1db89..0993b49 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -359,6 +359,12 @@ static inline __u16 sctp_data_size(struct sctp_chunk *chunk)
+ 	 typecheck(__u32, b) && \
+ 	 ((__s32)((a) - (b)) <= 0))
  
-+#define CREATE_TRACE_POINTS
-+#include "trace.h"
++/* Compare two MIDs */
++#define MID_lt(a, b)	\
++	(typecheck(__u32, a) && \
++	 typecheck(__u32, b) && \
++	 ((__s32)((a) - (b)) < 0))
 +
- DEFINE_SNMP_STAT(struct dccp_mib, dccp_statistics) __read_mostly;
+ /* Compare two SSNs */
+ #define SSN_lt(a,b)		\
+ 	(typecheck(__u16, a) && \
+diff --git a/include/net/sctp/stream_interleave.h b/include/net/sctp/stream_interleave.h
+index 99f399e..d8d1b51 100644
+--- a/include/net/sctp/stream_interleave.h
++++ b/include/net/sctp/stream_interleave.h
+@@ -38,6 +38,7 @@ struct sctp_stream_interleave {
+ 					    const struct sctp_sndrcvinfo *sinfo,
+ 					    int len, __u8 flags, gfp_t gfp);
+ 	void	(*assign_number)(struct sctp_chunk *chunk);
++	bool	(*validate_data)(struct sctp_chunk *chunk);
+ };
  
- EXPORT_SYMBOL_GPL(dccp_statistics);
-@@ -761,6 +764,8 @@ int dccp_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
- 	int rc, size;
- 	long timeo;
+ void sctp_stream_interleave_init(struct sctp_stream *stream);
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index bd2249d..348b25e 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1381,7 +1381,11 @@ struct sctp_stream_out {
+ };
  
-+	trace_dccp_probe(sk, len);
-+
- 	if (len > dp->dccps_mss_cache)
- 		return -EMSGSIZE;
+ struct sctp_stream_in {
+-	__u16	ssn;
++	union {
++		__u32 mid;
++		__u16 ssn;
++	};
++	__u32 fsn;
+ };
  
-diff --git a/net/dccp/trace.h b/net/dccp/trace.h
-new file mode 100644
-index 000000000000..aa01321a6c37
---- /dev/null
-+++ b/net/dccp/trace.h
-@@ -0,0 +1,105 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+#undef TRACE_SYSTEM
-+#define TRACE_SYSTEM dccp
+ struct sctp_stream {
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 8f8ccde..c609c54 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -3013,7 +3013,7 @@ enum sctp_disposition sctp_sf_eat_data_6_2(struct net *net,
+ 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+ 	}
+ 
+-	if (!sctp_chunk_length_valid(chunk, sizeof(struct sctp_data_chunk)))
++	if (!sctp_chunk_length_valid(chunk, sctp_datachk_len(&asoc->stream)))
+ 		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
+ 						  commands);
+ 
+@@ -3034,7 +3034,7 @@ enum sctp_disposition sctp_sf_eat_data_6_2(struct net *net,
+ 	case SCTP_IERROR_PROTO_VIOLATION:
+ 		return sctp_sf_abort_violation(net, ep, asoc, chunk, commands,
+ 					       (u8 *)chunk->subh.data_hdr,
+-					       sizeof(struct sctp_datahdr));
++					       sctp_datahdr_len(&asoc->stream));
+ 	default:
+ 		BUG();
+ 	}
+@@ -3133,7 +3133,7 @@ enum sctp_disposition sctp_sf_eat_data_fast_4_4(
+ 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+ 	}
+ 
+-	if (!sctp_chunk_length_valid(chunk, sizeof(struct sctp_data_chunk)))
++	if (!sctp_chunk_length_valid(chunk, sctp_datachk_len(&asoc->stream)))
+ 		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
+ 						  commands);
+ 
+@@ -3150,7 +3150,7 @@ enum sctp_disposition sctp_sf_eat_data_fast_4_4(
+ 	case SCTP_IERROR_PROTO_VIOLATION:
+ 		return sctp_sf_abort_violation(net, ep, asoc, chunk, commands,
+ 					       (u8 *)chunk->subh.data_hdr,
+-					       sizeof(struct sctp_datahdr));
++					       sctp_datahdr_len(&asoc->stream));
+ 	default:
+ 		BUG();
+ 	}
+@@ -6244,14 +6244,12 @@ static int sctp_eat_data(const struct sctp_association *asoc,
+ 	struct sctp_chunk *err;
+ 	enum sctp_verb deliver;
+ 	size_t datalen;
+-	u8 ordered = 0;
+-	u16 ssn, sid;
+ 	__u32 tsn;
+ 	int tmp;
+ 
+ 	data_hdr = (struct sctp_datahdr *)chunk->skb->data;
+ 	chunk->subh.data_hdr = data_hdr;
+-	skb_pull(chunk->skb, sizeof(*data_hdr));
++	skb_pull(chunk->skb, sctp_datahdr_len(&asoc->stream));
+ 
+ 	tsn = ntohl(data_hdr->tsn);
+ 	pr_debug("%s: TSN 0x%x\n", __func__, tsn);
+@@ -6299,7 +6297,7 @@ static int sctp_eat_data(const struct sctp_association *asoc,
+ 	 * Actually, allow a little bit of overflow (up to a MTU).
+ 	 */
+ 	datalen = ntohs(chunk->chunk_hdr->length);
+-	datalen -= sizeof(struct sctp_data_chunk);
++	datalen -= sctp_datachk_len(&asoc->stream);
+ 
+ 	deliver = SCTP_CMD_CHUNK_ULP;
+ 
+@@ -6394,7 +6392,6 @@ static int sctp_eat_data(const struct sctp_association *asoc,
+ 		SCTP_INC_STATS(net, SCTP_MIB_INORDERCHUNKS);
+ 		if (chunk->asoc)
+ 			chunk->asoc->stats.iodchunks++;
+-		ordered = 1;
+ 	}
+ 
+ 	/* RFC 2960 6.5 Stream Identifier and Stream Sequence Number
+@@ -6405,8 +6402,7 @@ static int sctp_eat_data(const struct sctp_association *asoc,
+ 	 * with cause set to "Invalid Stream Identifier" (See Section 3.3.10)
+ 	 * and discard the DATA chunk.
+ 	 */
+-	sid = ntohs(data_hdr->stream);
+-	if (sid >= asoc->stream.incnt) {
++	if (ntohs(data_hdr->stream) >= asoc->stream.incnt) {
+ 		/* Mark tsn as received even though we drop it */
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_REPORT_TSN, SCTP_U32(tsn));
+ 
+@@ -6427,8 +6423,7 @@ static int sctp_eat_data(const struct sctp_association *asoc,
+ 	 * SSN is smaller then the next expected one.  If it is, it wrapped
+ 	 * and is invalid.
+ 	 */
+-	ssn = ntohs(data_hdr->ssn);
+-	if (ordered && SSN_lt(ssn, sctp_ssn_peek(&asoc->stream, in, sid)))
++	if (!asoc->stream.si->validate_data(chunk))
+ 		return SCTP_IERROR_PROTO_VIOLATION;
+ 
+ 	/* Send the data up to the user.  Note:  Schedule  the
+diff --git a/net/sctp/sm_statetable.c b/net/sctp/sm_statetable.c
+index 79b6bee..8c9bb41 100644
+--- a/net/sctp/sm_statetable.c
++++ b/net/sctp/sm_statetable.c
+@@ -985,6 +985,9 @@ static const struct sctp_sm_table_entry *sctp_chunk_event_lookup(
+ 	if (state > SCTP_STATE_MAX)
+ 		return &bug;
+ 
++	if (net->sctp.intl_enable && cid = SCTP_CID_I_DATA)
++		cid = SCTP_CID_DATA;
 +
-+#if !defined(_TRACE_DCCP_H) || defined(TRACE_HEADER_MULTI_READ)
-+#define _TRACE_DCCP_H
+ 	if (cid <= SCTP_CID_BASE_MAX)
+ 		return &chunk_event_table[cid][state];
+ 
+diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
+index 3ac47e7..3d8733b 100644
+--- a/net/sctp/stream_interleave.c
++++ b/net/sctp/stream_interleave.c
+@@ -92,11 +92,49 @@ static void sctp_chunk_assign_mid(struct sctp_chunk *chunk)
+ 	}
+ }
+ 
++static bool sctp_validate_data(struct sctp_chunk *chunk)
++{
++	const struct sctp_stream *stream;
++	__u16 sid, ssn;
 +
-+#include <net/sock.h>
-+#include "dccp.h"
-+#include "ccids/ccid3.h"
-+#include <linux/tracepoint.h>
++	if (chunk->chunk_hdr->type != SCTP_CID_DATA)
++		return false;
 +
-+TRACE_EVENT(dccp_probe,
++	if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
++		return true;
 +
-+	TP_PROTO(struct sock *sk, size_t size),
++	stream = &chunk->asoc->stream;
++	sid = sctp_chunk_stream_no(chunk);
++	ssn = ntohs(chunk->subh.data_hdr->ssn);
 +
-+	TP_ARGS(sk, size),
++	return !SSN_lt(ssn, sctp_ssn_peek(stream, in, sid));
++}
 +
-+	TP_STRUCT__entry(
-+		/* sockaddr_in6 is always bigger than sockaddr_in */
-+		__array(__u8, saddr, sizeof(struct sockaddr_in6))
-+		__array(__u8, daddr, sizeof(struct sockaddr_in6))
-+		__field(__u16, sport)
-+		__field(__u16, dport)
-+		__field(__u16, size)
-+		__field(__u16, tx_s)
-+		__field(__u32, tx_rtt)
-+		__field(__u32, tx_p)
-+		__field(__u32, tx_x_calc)
-+		__field(__u64, tx_x_recv)
-+		__field(__u64, tx_x)
-+		__field(__u32, tx_t_ipi)
-+	),
++static bool sctp_validate_idata(struct sctp_chunk *chunk)
++{
++	struct sctp_stream *stream;
++	__u32 mid;
++	__u16 sid;
 +
-+	TP_fast_assign(
-+		const struct inet_sock *inet = inet_sk(sk);
-+		struct ccid3_hc_tx_sock *hc = NULL;
++	if (chunk->chunk_hdr->type != SCTP_CID_I_DATA)
++		return false;
 +
-+		if (ccid_get_current_tx_ccid(dccp_sk(sk)) = DCCPC_CCID3)
-+			hc = ccid3_hc_tx_sk(sk);
++	if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
++		return true;
 +
-+		memset(__entry->saddr, 0, sizeof(struct sockaddr_in6));
-+		memset(__entry->daddr, 0, sizeof(struct sockaddr_in6));
++	stream = &chunk->asoc->stream;
++	sid = sctp_chunk_stream_no(chunk);
++	mid = ntohl(chunk->subh.idata_hdr->mid);
 +
-+		if (sk->sk_family = AF_INET) {
-+			struct sockaddr_in *v4 = (void *)__entry->saddr;
++	return !MID_lt(mid, sctp_mid_peek(stream, in, sid));
++}
 +
-+			v4->sin_family = AF_INET;
-+			v4->sin_port = inet->inet_sport;
-+			v4->sin_addr.s_addr = inet->inet_saddr;
-+			v4 = (void *)__entry->daddr;
-+			v4->sin_family = AF_INET;
-+			v4->sin_port = inet->inet_dport;
-+			v4->sin_addr.s_addr = inet->inet_daddr;
-+#if IS_ENABLED(CONFIG_IPV6)
-+		} else if (sk->sk_family = AF_INET6) {
-+			struct sockaddr_in6 *v6 = (void *)__entry->saddr;
-+
-+			v6->sin6_family = AF_INET6;
-+			v6->sin6_port = inet->inet_sport;
-+			v6->sin6_addr = inet6_sk(sk)->saddr;
-+			v6 = (void *)__entry->daddr;
-+			v6->sin6_family = AF_INET6;
-+			v6->sin6_port = inet->inet_dport;
-+			v6->sin6_addr = sk->sk_v6_daddr;
-+#endif
-+		}
-+
-+		/* For filtering use */
-+		__entry->sport = ntohs(inet->inet_sport);
-+		__entry->dport = ntohs(inet->inet_dport);
-+
-+		__entry->size = size;
-+		if (hc) {
-+			__entry->tx_s = hc->tx_s;
-+			__entry->tx_rtt = hc->tx_rtt;
-+			__entry->tx_p = hc->tx_p;
-+			__entry->tx_x_calc = hc->tx_x_calc;
-+			__entry->tx_x_recv = hc->tx_x_recv >> 6;
-+			__entry->tx_x = hc->tx_x >> 6;
-+			__entry->tx_t_ipi = hc->tx_t_ipi;
-+		} else {
-+			__entry->tx_s = 0;
-+			memset(&__entry->tx_rtt, 0, (void *)&__entry->tx_t_ipi -
-+			       (void *)&__entry->tx_rtt +
-+			       sizeof(__entry->tx_t_ipi));
-+		}
-+	),
-+
-+	TP_printk("src=%pISpc dest=%pISpc size=%d tx_s=%d tx_rtt=%d "
-+		  "tx_p=%d tx_x_calc=%u tx_x_recv=%llu tx_x=%llu tx_t_ipi=%d",
-+		  __entry->saddr, __entry->daddr, __entry->size,
-+		  __entry->tx_s, __entry->tx_rtt, __entry->tx_p,
-+		  __entry->tx_x_calc, __entry->tx_x_recv, __entry->tx_x,
-+		  __entry->tx_t_ipi)
-+);
-+
-+#endif /* _TRACE_TCP_H */
-+
-+/* This part must be outside protection */
-+#undef TRACE_INCLUDE_PATH
-+#define TRACE_INCLUDE_PATH .
-+#undef TRACE_INCLUDE_FILE
-+#define TRACE_INCLUDE_FILE trace
-+#include <trace/define_trace.h>
+ static struct sctp_stream_interleave sctp_stream_interleave_0 = {
+ 	.data_chunk_len		= sizeof(struct sctp_data_chunk),
+ 	/* DATA process functions */
+ 	.make_datafrag		= sctp_make_datafrag_empty,
+ 	.assign_number		= sctp_chunk_assign_ssn,
++	.validate_data		= sctp_validate_data,
+ };
+ 
+ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
+@@ -104,6 +142,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
+ 	/* I-DATA process functions */
+ 	.make_datafrag		= sctp_make_idatafrag_empty,
+ 	.assign_number		= sctp_chunk_assign_mid,
++	.validate_data		= sctp_validate_idata,
+ };
+ 
+ void sctp_stream_interleave_init(struct sctp_stream *stream)
+-- 
+2.1.0
 
