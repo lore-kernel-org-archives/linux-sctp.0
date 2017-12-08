@@ -1,159 +1,155 @@
-From: Masami Hiramatsu <mhiramat@kernel.org>
-Date: Mon, 18 Dec 2017 08:13:15 +0000
-Subject: [v2 PATCH -tip 5/6] net: dccp: Add DCCP sendmsg trace event
-Message-Id: <151358479502.28850.4464661399413887224.stgit@devbox>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 08 Dec 2017 13:04:05 +0000
+Subject: [PATCHv2 net-next 08/12] sctp: implement enqueue_event for sctp_stream_interleave
+Message-Id: <47320a14e77bc56bcce883b79aebc0509386f9e5.1512738021.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <151358464509.28850.477561174715901317.stgit@devbox>
-In-Reply-To: <151358464509.28850.477561174715901317.stgit@devbox>
+References: <cover.1512738021.git.lucien.xin@gmail.com>
+ <2fef1243f8181062aeb17f7052e5b022ec274a8e.1512738021.git.lucien.xin@gmail.com>
+ <7347f16f5b620ed98fdb5f7ac54db4a70e1fd27e.1512738021.git.lucien.xin@gmail.com>
+ <9a2bf9495313a79f0bbffb8edaaef25269804feb.1512738021.git.lucien.xin@gmail.com>
+ <ed729ca6023dea0812e4caa4d5da3259df375127.1512738021.git.lucien.xin@gmail.com>
+ <be593df99566267deff68ff477d2355dfffada80.1512738021.git.lucien.xin@gmail.com>
+ <083a620b71eb0446997f308372bdbe2d1e0fdc55.1512738021.git.lucien.xin@gmail.com>
+ <9b28c98bbb59126b2be7b81cd4bd16336f99ba69.1512738021.git.lucien.xin@gmail.com>
+In-Reply-To: <9b28c98bbb59126b2be7b81cd4bd16336f99ba69.1512738021.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Ingo Molnar <mingo@kernel.org>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
-Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, "David S . Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-Add DCCP sendmsg trace event (dccp/dccp_probe) for
-replacing dccpprobe. User can trace this event via
-ftrace or perftools.
+enqueue_event is added as a member of sctp_stream_interleave, used to
+enqueue either data, idata or notification events into user socket rx
+queue.
 
-Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
+It replaces sctp_ulpq_tail_event used in the other places with
+enqueue_event.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
 ---
- net/dccp/proto.c |    5 +++
- net/dccp/trace.h |  105 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 110 insertions(+)
- create mode 100644 net/dccp/trace.h
+ include/net/sctp/stream_interleave.h | 2 ++
+ net/sctp/associola.c                 | 2 +-
+ net/sctp/chunk.c                     | 2 +-
+ net/sctp/sm_sideeffect.c             | 9 +++++----
+ net/sctp/socket.c                    | 2 +-
+ net/sctp/stream_interleave.c         | 2 ++
+ 6 files changed, 12 insertions(+), 7 deletions(-)
 
-diff --git a/net/dccp/proto.c b/net/dccp/proto.c
-index 9d43c1f40274..e57b5db495cd 100644
---- a/net/dccp/proto.c
-+++ b/net/dccp/proto.c
-@@ -38,6 +38,9 @@
- #include "dccp.h"
- #include "feat.h"
+diff --git a/include/net/sctp/stream_interleave.h b/include/net/sctp/stream_interleave.h
+index 02f60f5..a0f61bc 100644
+--- a/include/net/sctp/stream_interleave.h
++++ b/include/net/sctp/stream_interleave.h
+@@ -41,6 +41,8 @@ struct sctp_stream_interleave {
+ 	bool	(*validate_data)(struct sctp_chunk *chunk);
+ 	int	(*ulpevent_data)(struct sctp_ulpq *ulpq,
+ 				 struct sctp_chunk *chunk, gfp_t gfp);
++	int	(*enqueue_event)(struct sctp_ulpq *ulpq,
++				 struct sctp_ulpevent *event);
+ };
  
-+#define CREATE_TRACE_POINTS
-+#include "trace.h"
-+
- DEFINE_SNMP_STAT(struct dccp_mib, dccp_statistics) __read_mostly;
+ void sctp_stream_interleave_init(struct sctp_stream *stream);
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 69394f4..837806d 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -861,7 +861,7 @@ void sctp_assoc_control_transport(struct sctp_association *asoc,
+ 		event = sctp_ulpevent_make_peer_addr_change(asoc, &addr,
+ 					0, spc_state, error, GFP_ATOMIC);
+ 		if (event)
+-			sctp_ulpq_tail_event(&asoc->ulpq, event);
++			asoc->stream.si->enqueue_event(&asoc->ulpq, event);
+ 	}
  
- EXPORT_SYMBOL_GPL(dccp_statistics);
-@@ -761,6 +764,8 @@ int dccp_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
- 	int rc, size;
- 	long timeo;
+ 	/* Select new active and retran paths. */
+diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
+index 62adaaa..991a530 100644
+--- a/net/sctp/chunk.c
++++ b/net/sctp/chunk.c
+@@ -124,7 +124,7 @@ static void sctp_datamsg_destroy(struct sctp_datamsg *msg)
+ 			ev = sctp_ulpevent_make_send_failed(asoc, chunk, sent,
+ 							    error, GFP_ATOMIC);
+ 			if (ev)
+-				sctp_ulpq_tail_event(&asoc->ulpq, ev);
++				asoc->stream.si->enqueue_event(&asoc->ulpq, ev);
+ 		}
  
-+	trace_dccp_probe(sk, len);
-+
- 	if (len > dp->dccps_mss_cache)
- 		return -EMSGSIZE;
+ 		sctp_chunk_put(chunk);
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 9d25efb..f4e5eca 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -972,7 +972,7 @@ static void sctp_cmd_process_operr(struct sctp_cmd_seq *cmds,
+ 		if (!ev)
+ 			return;
  
-diff --git a/net/dccp/trace.h b/net/dccp/trace.h
-new file mode 100644
-index 000000000000..aa01321a6c37
---- /dev/null
-+++ b/net/dccp/trace.h
-@@ -0,0 +1,105 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+#undef TRACE_SYSTEM
-+#define TRACE_SYSTEM dccp
-+
-+#if !defined(_TRACE_DCCP_H) || defined(TRACE_HEADER_MULTI_READ)
-+#define _TRACE_DCCP_H
-+
-+#include <net/sock.h>
-+#include "dccp.h"
-+#include "ccids/ccid3.h"
-+#include <linux/tracepoint.h>
-+
-+TRACE_EVENT(dccp_probe,
-+
-+	TP_PROTO(struct sock *sk, size_t size),
-+
-+	TP_ARGS(sk, size),
-+
-+	TP_STRUCT__entry(
-+		/* sockaddr_in6 is always bigger than sockaddr_in */
-+		__array(__u8, saddr, sizeof(struct sockaddr_in6))
-+		__array(__u8, daddr, sizeof(struct sockaddr_in6))
-+		__field(__u16, sport)
-+		__field(__u16, dport)
-+		__field(__u16, size)
-+		__field(__u16, tx_s)
-+		__field(__u32, tx_rtt)
-+		__field(__u32, tx_p)
-+		__field(__u32, tx_x_calc)
-+		__field(__u64, tx_x_recv)
-+		__field(__u64, tx_x)
-+		__field(__u32, tx_t_ipi)
-+	),
-+
-+	TP_fast_assign(
-+		const struct inet_sock *inet = inet_sk(sk);
-+		struct ccid3_hc_tx_sock *hc = NULL;
-+
-+		if (ccid_get_current_tx_ccid(dccp_sk(sk)) = DCCPC_CCID3)
-+			hc = ccid3_hc_tx_sk(sk);
-+
-+		memset(__entry->saddr, 0, sizeof(struct sockaddr_in6));
-+		memset(__entry->daddr, 0, sizeof(struct sockaddr_in6));
-+
-+		if (sk->sk_family = AF_INET) {
-+			struct sockaddr_in *v4 = (void *)__entry->saddr;
-+
-+			v4->sin_family = AF_INET;
-+			v4->sin_port = inet->inet_sport;
-+			v4->sin_addr.s_addr = inet->inet_saddr;
-+			v4 = (void *)__entry->daddr;
-+			v4->sin_family = AF_INET;
-+			v4->sin_port = inet->inet_dport;
-+			v4->sin_addr.s_addr = inet->inet_daddr;
-+#if IS_ENABLED(CONFIG_IPV6)
-+		} else if (sk->sk_family = AF_INET6) {
-+			struct sockaddr_in6 *v6 = (void *)__entry->saddr;
-+
-+			v6->sin6_family = AF_INET6;
-+			v6->sin6_port = inet->inet_sport;
-+			v6->sin6_addr = inet6_sk(sk)->saddr;
-+			v6 = (void *)__entry->daddr;
-+			v6->sin6_family = AF_INET6;
-+			v6->sin6_port = inet->inet_dport;
-+			v6->sin6_addr = sk->sk_v6_daddr;
-+#endif
-+		}
-+
-+		/* For filtering use */
-+		__entry->sport = ntohs(inet->inet_sport);
-+		__entry->dport = ntohs(inet->inet_dport);
-+
-+		__entry->size = size;
-+		if (hc) {
-+			__entry->tx_s = hc->tx_s;
-+			__entry->tx_rtt = hc->tx_rtt;
-+			__entry->tx_p = hc->tx_p;
-+			__entry->tx_x_calc = hc->tx_x_calc;
-+			__entry->tx_x_recv = hc->tx_x_recv >> 6;
-+			__entry->tx_x = hc->tx_x >> 6;
-+			__entry->tx_t_ipi = hc->tx_t_ipi;
-+		} else {
-+			__entry->tx_s = 0;
-+			memset(&__entry->tx_rtt, 0, (void *)&__entry->tx_t_ipi -
-+			       (void *)&__entry->tx_rtt +
-+			       sizeof(__entry->tx_t_ipi));
-+		}
-+	),
-+
-+	TP_printk("src=%pISpc dest=%pISpc size=%d tx_s=%d tx_rtt=%d "
-+		  "tx_p=%d tx_x_calc=%u tx_x_recv=%llu tx_x=%llu tx_t_ipi=%d",
-+		  __entry->saddr, __entry->daddr, __entry->size,
-+		  __entry->tx_s, __entry->tx_rtt, __entry->tx_p,
-+		  __entry->tx_x_calc, __entry->tx_x_recv, __entry->tx_x,
-+		  __entry->tx_t_ipi)
-+);
-+
-+#endif /* _TRACE_TCP_H */
-+
-+/* This part must be outside protection */
-+#undef TRACE_INCLUDE_PATH
-+#define TRACE_INCLUDE_PATH .
-+#undef TRACE_INCLUDE_FILE
-+#define TRACE_INCLUDE_FILE trace
-+#include <trace/define_trace.h>
+-		sctp_ulpq_tail_event(&asoc->ulpq, ev);
++		asoc->stream.si->enqueue_event(&asoc->ulpq, ev);
+ 
+ 		switch (err_hdr->cause) {
+ 		case SCTP_ERROR_UNKNOWN_CHUNK:
+@@ -1058,7 +1058,7 @@ static void sctp_cmd_assoc_change(struct sctp_cmd_seq *commands,
+ 					    asoc->c.sinit_max_instreams,
+ 					    NULL, GFP_ATOMIC);
+ 	if (ev)
+-		sctp_ulpq_tail_event(&asoc->ulpq, ev);
++		asoc->stream.si->enqueue_event(&asoc->ulpq, ev);
+ }
+ 
+ /* Helper function to generate an adaptation indication event */
+@@ -1070,7 +1070,7 @@ static void sctp_cmd_adaptation_ind(struct sctp_cmd_seq *commands,
+ 	ev = sctp_ulpevent_make_adaptation_indication(asoc, GFP_ATOMIC);
+ 
+ 	if (ev)
+-		sctp_ulpq_tail_event(&asoc->ulpq, ev);
++		asoc->stream.si->enqueue_event(&asoc->ulpq, ev);
+ }
+ 
+ 
+@@ -1493,7 +1493,8 @@ static int sctp_cmd_interpreter(enum sctp_event event_type,
+ 			pr_debug("%s: sm_sideff: event_up:%p, ulpq:%p\n",
+ 				 __func__, cmd->obj.ulpevent, &asoc->ulpq);
+ 
+-			sctp_ulpq_tail_event(&asoc->ulpq, cmd->obj.ulpevent);
++			asoc->stream.si->enqueue_event(&asoc->ulpq,
++						       cmd->obj.ulpevent);
+ 			break;
+ 
+ 		case SCTP_CMD_REPLY:
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 036f945..fe2cab9 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -2294,7 +2294,7 @@ static int sctp_setsockopt_events(struct sock *sk, char __user *optval,
+ 			if (!event)
+ 				return -ENOMEM;
+ 
+-			sctp_ulpq_tail_event(&asoc->ulpq, event);
++			asoc->stream.si->enqueue_event(&asoc->ulpq, event);
+ 		}
+ 	}
+ 
+diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
+index 8238311..e853972 100644
+--- a/net/sctp/stream_interleave.c
++++ b/net/sctp/stream_interleave.c
+@@ -552,6 +552,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_0 = {
+ 	.assign_number		= sctp_chunk_assign_ssn,
+ 	.validate_data		= sctp_validate_data,
+ 	.ulpevent_data		= sctp_ulpq_tail_data,
++	.enqueue_event		= sctp_ulpq_tail_event,
+ };
+ 
+ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
+@@ -561,6 +562,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
+ 	.assign_number		= sctp_chunk_assign_mid,
+ 	.validate_data		= sctp_validate_idata,
+ 	.ulpevent_data		= sctp_ulpevent_idata,
++	.enqueue_event		= sctp_enqueue_event,
+ };
+ 
+ void sctp_stream_interleave_init(struct sctp_stream *stream)
+-- 
+2.1.0
 
