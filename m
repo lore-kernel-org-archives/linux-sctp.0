@@ -1,373 +1,620 @@
-From: Masami Hiramatsu <mhiramat@kernel.org>
-Date: Fri, 29 Dec 2017 02:46:21 +0000
-Subject: [PATCH net-next v7 2/6] net: tcp: Remove TCP probe module
-Message-Id: <151451558090.17912.7577124864784112591.stgit@devbox>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 08 Dec 2017 13:04:09 +0000
+Subject: [PATCHv2 net-next 12/12] sctp: add support for the process of unordered idata
+Message-Id: <e345bad61ec68e4133bc6f1930aec1fa54674a75.1512738021.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <151451552014.17912.11834170408829155608.stgit@devbox>
-In-Reply-To: <151451552014.17912.11834170408829155608.stgit@devbox>
+References: <cover.1512738021.git.lucien.xin@gmail.com>
+ <2fef1243f8181062aeb17f7052e5b022ec274a8e.1512738021.git.lucien.xin@gmail.com>
+ <7347f16f5b620ed98fdb5f7ac54db4a70e1fd27e.1512738021.git.lucien.xin@gmail.com>
+ <9a2bf9495313a79f0bbffb8edaaef25269804feb.1512738021.git.lucien.xin@gmail.com>
+ <ed729ca6023dea0812e4caa4d5da3259df375127.1512738021.git.lucien.xin@gmail.com>
+ <be593df99566267deff68ff477d2355dfffada80.1512738021.git.lucien.xin@gmail.com>
+ <083a620b71eb0446997f308372bdbe2d1e0fdc55.1512738021.git.lucien.xin@gmail.com>
+ <9b28c98bbb59126b2be7b81cd4bd16336f99ba69.1512738021.git.lucien.xin@gmail.com>
+ <47320a14e77bc56bcce883b79aebc0509386f9e5.1512738021.git.lucien.xin@gmail.com>
+ <1a253f52ab5310dcad8f518652e50b959043d8b2.1512738021.git.lucien.xin@gmail.com>
+ <0de955e81dc688c578d1b54ab7de5bcda70acfcb.1512738021.git.lucien.xin@gmail.com>
+ <549d6775140d1e976e9cd184a76f7fa64a2bafab.1512738021.git.lucien.xin@gmail.com>
+In-Reply-To: <549d6775140d1e976e9cd184a76f7fa64a2bafab.1512738021.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Ingo Molnar <mingo@kernel.org>, "David S . Miller" <davem@davemloft.net>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
-Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-Remove TCP probe module since jprobe has been deprecated.
-That function is now replaced by tcp/tcp_probe trace-event.
-You can use it via ftrace or perftools.
+Unordered idata process is more complicated than unordered data:
 
-Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
+ - It has to add mid into sctp_stream_out to save the next mid value,
+   which is separated from ordered idata's.
+
+ - To support pd for unordered idata, another mid and pd_mode need to
+   be added to save the message id and pd state in sctp_stream_in.
+
+ - To make  unordered idata reasm easier, it adds a new event queue
+   to save frags for idata.
+
+The patch mostly adds the samilar reasm functions for unordered idata
+as ordered idata's, and also adjusts some other codes on assign_mid,
+abort_pd and ulpevent_data for idata.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
 ---
- net/Kconfig          |   17 ---
- net/ipv4/Makefile    |    1 
- net/ipv4/tcp_probe.c |  301 --------------------------------------------------
- 3 files changed, 319 deletions(-)
- delete mode 100644 net/ipv4/tcp_probe.c
+ include/net/sctp/structs.h   |  14 +-
+ include/net/sctp/ulpqueue.h  |   1 +
+ net/sctp/socket.c            |  23 ++-
+ net/sctp/stream_interleave.c | 377 ++++++++++++++++++++++++++++++++++++++++---
+ net/sctp/ulpqueue.c          |   5 +
+ 5 files changed, 392 insertions(+), 28 deletions(-)
 
-diff --git a/net/Kconfig b/net/Kconfig
-index 9dba2715919d..efe930db3c08 100644
---- a/net/Kconfig
-+++ b/net/Kconfig
-@@ -336,23 +336,6 @@ config NET_PKTGEN
- 	  To compile this code as a module, choose M here: the
- 	  module will be called pktgen.
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 73b315d..8ef638d 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -413,6 +413,14 @@ void sctp_stream_update(struct sctp_stream *stream, struct sctp_stream *new);
  
--config NET_TCPPROBE
--	tristate "TCP connection probing"
--	depends on INET && PROC_FS && KPROBES
--	---help---
--	This module allows for capturing the changes to TCP connection
--	state in response to incoming packets. It is used for debugging
--	TCP congestion avoidance modules. If you don't understand
--	what was just said, you don't need it: say N.
+ #define sctp_stream_in(asoc, sid) (&(asoc)->stream.in[sid])
+ 
++/* What is the current MID_uo number for this stream? */
++#define sctp_mid_uo_peek(stream, type, sid) \
++	((stream)->type[sid].mid_uo)
++
++/* Return the next MID_uo number for this stream.  */
++#define sctp_mid_uo_next(stream, type, sid) \
++	((stream)->type[sid].mid_uo++)
++
+ /*
+  * Pointers to address related SCTP functions.
+  * (i.e. things that depend on the address family.)
+@@ -1379,8 +1387,9 @@ struct sctp_stream_out {
+ 		__u32 mid;
+ 		__u16 ssn;
+ 	};
+-	__u8	state;
++	__u32 mid_uo;
+ 	struct sctp_stream_out_ext *ext;
++	__u8 state;
+ };
+ 
+ struct sctp_stream_in {
+@@ -1388,8 +1397,11 @@ struct sctp_stream_in {
+ 		__u32 mid;
+ 		__u16 ssn;
+ 	};
++	__u32 mid_uo;
+ 	__u32 fsn;
++	__u32 fsn_uo;
+ 	char pd_mode;
++	char pd_mode_uo;
+ };
+ 
+ struct sctp_stream {
+diff --git a/include/net/sctp/ulpqueue.h b/include/net/sctp/ulpqueue.h
+index eb98c71..bb0ecba 100644
+--- a/include/net/sctp/ulpqueue.h
++++ b/include/net/sctp/ulpqueue.h
+@@ -45,6 +45,7 @@ struct sctp_ulpq {
+ 	char pd_mode;
+ 	struct sctp_association *asoc;
+ 	struct sk_buff_head reasm;
++	struct sk_buff_head reasm_uo;
+ 	struct sk_buff_head lobby;
+ };
+ 
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index fe2cab9..db8e7cc 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -201,6 +201,22 @@ static void sctp_for_each_tx_datachunk(struct sctp_association *asoc,
+ 		cb(chunk);
+ }
+ 
++static void sctp_for_each_rx_skb(struct sctp_association *asoc, struct sock *sk,
++				 void (*cb)(struct sk_buff *, struct sock *))
++
++{
++	struct sk_buff *skb, *tmp;
++
++	sctp_skb_for_each(skb, &asoc->ulpq.lobby, tmp)
++		cb(skb, sk);
++
++	sctp_skb_for_each(skb, &asoc->ulpq.reasm, tmp)
++		cb(skb, sk);
++
++	sctp_skb_for_each(skb, &asoc->ulpq.reasm_uo, tmp)
++		cb(skb, sk);
++}
++
+ /* Verify that this is a valid address. */
+ static inline int sctp_verify_addr(struct sock *sk, union sctp_addr *addr,
+ 				   int len)
+@@ -1554,6 +1570,7 @@ static void sctp_close(struct sock *sk, long timeout)
+ 
+ 		if (data_was_unread || !skb_queue_empty(&asoc->ulpq.lobby) ||
+ 		    !skb_queue_empty(&asoc->ulpq.reasm) ||
++		    !skb_queue_empty(&asoc->ulpq.reasm_uo) ||
+ 		    (sock_flag(sk, SOCK_LINGER) && !sk->sk_lingertime)) {
+ 			struct sctp_chunk *chunk;
+ 
+@@ -8507,11 +8524,7 @@ static void sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
+ 
+ 	}
+ 
+-	sctp_skb_for_each(skb, &assoc->ulpq.reasm, tmp)
+-		sctp_skb_set_owner_r_frag(skb, newsk);
 -
--	Documentation on how to use TCP connection probing can be found
--	at:
--	
--	  http://www.linuxfoundation.org/collaborate/workgroups/networking/tcpprobe
--
--	To compile this code as a module, choose M here: the
--	module will be called tcp_probe.
--
- config NET_DROP_MONITOR
- 	tristate "Network packet drop alerting service"
- 	depends on INET && TRACEPOINTS
-diff --git a/net/ipv4/Makefile b/net/ipv4/Makefile
-index c6c8ad1d4b6d..47a0a6649a9d 100644
---- a/net/ipv4/Makefile
-+++ b/net/ipv4/Makefile
-@@ -43,7 +43,6 @@ obj-$(CONFIG_INET_DIAG) += inet_diag.o
- obj-$(CONFIG_INET_TCP_DIAG) += tcp_diag.o
- obj-$(CONFIG_INET_UDP_DIAG) += udp_diag.o
- obj-$(CONFIG_INET_RAW_DIAG) += raw_diag.o
--obj-$(CONFIG_NET_TCPPROBE) += tcp_probe.o
- obj-$(CONFIG_TCP_CONG_BBR) += tcp_bbr.o
- obj-$(CONFIG_TCP_CONG_BIC) += tcp_bic.o
- obj-$(CONFIG_TCP_CONG_CDG) += tcp_cdg.o
-diff --git a/net/ipv4/tcp_probe.c b/net/ipv4/tcp_probe.c
-deleted file mode 100644
-index 697f4c67b2e3..000000000000
---- a/net/ipv4/tcp_probe.c
-+++ /dev/null
-@@ -1,301 +0,0 @@
--/*
-- * tcpprobe - Observe the TCP flow with kprobes.
-- *
-- * The idea for this came from Werner Almesberger's umlsim
-- * Copyright (C) 2004, Stephen Hemminger <shemminger@osdl.org>
-- *
-- * This program is free software; you can redistribute it and/or modify
-- * it under the terms of the GNU General Public License as published by
-- * the Free Software Foundation; either version 2 of the License.
-- *
-- * This program is distributed in the hope that it will be useful,
-- * but WITHOUT ANY WARRANTY; without even the implied warranty of
-- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-- * GNU General Public License for more details.
-- *
-- * You should have received a copy of the GNU General Public License
-- * along with this program; if not, write to the Free Software
-- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-- */
--
--#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
--
--#include <linux/kernel.h>
--#include <linux/kprobes.h>
--#include <linux/socket.h>
--#include <linux/tcp.h>
--#include <linux/slab.h>
--#include <linux/proc_fs.h>
--#include <linux/module.h>
--#include <linux/ktime.h>
--#include <linux/time.h>
--#include <net/net_namespace.h>
--
--#include <net/tcp.h>
--
--MODULE_AUTHOR("Stephen Hemminger <shemminger@linux-foundation.org>");
--MODULE_DESCRIPTION("TCP cwnd snooper");
--MODULE_LICENSE("GPL");
--MODULE_VERSION("1.1");
--
--static int port __read_mostly;
--MODULE_PARM_DESC(port, "Port to match (0=all)");
--module_param(port, int, 0);
--
--static unsigned int bufsize __read_mostly = 4096;
--MODULE_PARM_DESC(bufsize, "Log buffer size in packets (4096)");
--module_param(bufsize, uint, 0);
--
--static unsigned int fwmark __read_mostly;
--MODULE_PARM_DESC(fwmark, "skb mark to match (0=no mark)");
--module_param(fwmark, uint, 0);
--
--static int full __read_mostly;
--MODULE_PARM_DESC(full, "Full log (1=every ack packet received,  0=only cwnd changes)");
--module_param(full, int, 0);
--
--static const char procname[] = "tcpprobe";
--
--struct tcp_log {
--	ktime_t tstamp;
--	union {
--		struct sockaddr		raw;
--		struct sockaddr_in	v4;
--		struct sockaddr_in6	v6;
--	}	src, dst;
--	u16	length;
--	u32	snd_nxt;
--	u32	snd_una;
--	u32	snd_wnd;
--	u32	rcv_wnd;
--	u32	snd_cwnd;
--	u32	ssthresh;
--	u32	srtt;
--};
--
--static struct {
--	spinlock_t	lock;
--	wait_queue_head_t wait;
--	ktime_t		start;
--	u32		lastcwnd;
--
--	unsigned long	head, tail;
--	struct tcp_log	*log;
--} tcp_probe;
--
--static inline int tcp_probe_used(void)
--{
--	return (tcp_probe.head - tcp_probe.tail) & (bufsize - 1);
--}
--
--static inline int tcp_probe_avail(void)
--{
--	return bufsize - tcp_probe_used() - 1;
--}
--
--#define tcp_probe_copy_fl_to_si4(inet, si4, mem)		\
--	do {							\
--		si4.sin_family = AF_INET;			\
--		si4.sin_port = inet->inet_##mem##port;		\
--		si4.sin_addr.s_addr = inet->inet_##mem##addr;	\
--	} while (0)						\
--
--/*
-- * Hook inserted to be called before each receive packet.
-- * Note: arguments must match tcp_rcv_established()!
-- */
--static void jtcp_rcv_established(struct sock *sk, struct sk_buff *skb,
--				 const struct tcphdr *th)
--{
--	unsigned int len = skb->len;
--	const struct tcp_sock *tp = tcp_sk(sk);
--	const struct inet_sock *inet = inet_sk(sk);
--
--	/* Only update if port or skb mark matches */
--	if (((port = 0 && fwmark = 0) ||
--	     ntohs(inet->inet_dport) = port ||
--	     ntohs(inet->inet_sport) = port ||
--	     (fwmark > 0 && skb->mark = fwmark)) &&
--	    (full || tp->snd_cwnd != tcp_probe.lastcwnd)) {
--
--		spin_lock(&tcp_probe.lock);
--		/* If log fills, just silently drop */
--		if (tcp_probe_avail() > 1) {
--			struct tcp_log *p = tcp_probe.log + tcp_probe.head;
--
--			p->tstamp = ktime_get();
--			switch (sk->sk_family) {
--			case AF_INET:
--				tcp_probe_copy_fl_to_si4(inet, p->src.v4, s);
--				tcp_probe_copy_fl_to_si4(inet, p->dst.v4, d);
--				break;
--			case AF_INET6:
--				memset(&p->src.v6, 0, sizeof(p->src.v6));
--				memset(&p->dst.v6, 0, sizeof(p->dst.v6));
--#if IS_ENABLED(CONFIG_IPV6)
--				p->src.v6.sin6_family = AF_INET6;
--				p->src.v6.sin6_port = inet->inet_sport;
--				p->src.v6.sin6_addr = inet6_sk(sk)->saddr;
--
--				p->dst.v6.sin6_family = AF_INET6;
--				p->dst.v6.sin6_port = inet->inet_dport;
--				p->dst.v6.sin6_addr = sk->sk_v6_daddr;
--#endif
--				break;
--			default:
--				BUG();
--			}
--
--			p->length = len;
--			p->snd_nxt = tp->snd_nxt;
--			p->snd_una = tp->snd_una;
--			p->snd_cwnd = tp->snd_cwnd;
--			p->snd_wnd = tp->snd_wnd;
--			p->rcv_wnd = tp->rcv_wnd;
--			p->ssthresh = tcp_current_ssthresh(sk);
--			p->srtt = tp->srtt_us >> 3;
--
--			tcp_probe.head = (tcp_probe.head + 1) & (bufsize - 1);
--		}
--		tcp_probe.lastcwnd = tp->snd_cwnd;
--		spin_unlock(&tcp_probe.lock);
--
--		wake_up(&tcp_probe.wait);
--	}
--
--	jprobe_return();
--}
--
--static struct jprobe tcp_jprobe = {
--	.kp = {
--		.symbol_name	= "tcp_rcv_established",
--	},
--	.entry	= jtcp_rcv_established,
--};
--
--static int tcpprobe_open(struct inode *inode, struct file *file)
--{
--	/* Reset (empty) log */
--	spin_lock_bh(&tcp_probe.lock);
--	tcp_probe.head = tcp_probe.tail = 0;
--	tcp_probe.start = ktime_get();
--	spin_unlock_bh(&tcp_probe.lock);
--
--	return 0;
--}
--
--static int tcpprobe_sprint(char *tbuf, int n)
--{
--	const struct tcp_log *p
--		= tcp_probe.log + tcp_probe.tail;
--	struct timespec64 ts
--		= ktime_to_timespec64(ktime_sub(p->tstamp, tcp_probe.start));
--
--	return scnprintf(tbuf, n,
--			"%lu.%09lu %pISpc %pISpc %d %#x %#x %u %u %u %u %u\n",
--			(unsigned long)ts.tv_sec,
--			(unsigned long)ts.tv_nsec,
--			&p->src, &p->dst, p->length, p->snd_nxt, p->snd_una,
--			p->snd_cwnd, p->ssthresh, p->snd_wnd, p->srtt, p->rcv_wnd);
--}
--
--static ssize_t tcpprobe_read(struct file *file, char __user *buf,
--			     size_t len, loff_t *ppos)
--{
--	int error = 0;
--	size_t cnt = 0;
--
--	if (!buf)
--		return -EINVAL;
--
--	while (cnt < len) {
--		char tbuf[256];
--		int width;
--
--		/* Wait for data in buffer */
--		error = wait_event_interruptible(tcp_probe.wait,
--						 tcp_probe_used() > 0);
--		if (error)
--			break;
--
--		spin_lock_bh(&tcp_probe.lock);
--		if (tcp_probe.head = tcp_probe.tail) {
--			/* multiple readers race? */
--			spin_unlock_bh(&tcp_probe.lock);
+-	sctp_skb_for_each(skb, &assoc->ulpq.lobby, tmp)
+-		sctp_skb_set_owner_r_frag(skb, newsk);
++	sctp_for_each_rx_skb(assoc, newsk, sctp_skb_set_owner_r_frag);
+ 
+ 	/* Set the type of socket to indicate that it is peeled off from the
+ 	 * original UDP-style socket or created with the accept() call on a
+diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
+index d15645e..87b9417 100644
+--- a/net/sctp/stream_interleave.c
++++ b/net/sctp/stream_interleave.c
+@@ -74,12 +74,10 @@ static void sctp_chunk_assign_mid(struct sctp_chunk *chunk)
+ 
+ 	list_for_each_entry(lchunk, &chunk->msg->chunks, frag_list) {
+ 		struct sctp_idatahdr *hdr;
++		__u32 mid;
+ 
+ 		lchunk->has_mid = 1;
+ 
+-		if (lchunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
 -			continue;
--		}
 -
--		width = tcpprobe_sprint(tbuf, sizeof(tbuf));
+ 		hdr = lchunk->subh.idata_hdr;
+ 
+ 		if (lchunk->chunk_hdr->flags & SCTP_DATA_FIRST_FRAG)
+@@ -87,10 +85,16 @@ static void sctp_chunk_assign_mid(struct sctp_chunk *chunk)
+ 		else
+ 			hdr->fsn = htonl(cfsn++);
+ 
+-		if (lchunk->chunk_hdr->flags & SCTP_DATA_LAST_FRAG)
+-			hdr->mid = htonl(sctp_mid_next(stream, out, sid));
+-		else
+-			hdr->mid = htonl(sctp_mid_peek(stream, out, sid));
++		if (lchunk->chunk_hdr->flags & SCTP_DATA_UNORDERED) {
++			mid = lchunk->chunk_hdr->flags & SCTP_DATA_LAST_FRAG ?
++				sctp_mid_uo_next(stream, out, sid) :
++				sctp_mid_uo_peek(stream, out, sid);
++		} else {
++			mid = lchunk->chunk_hdr->flags & SCTP_DATA_LAST_FRAG ?
++				sctp_mid_next(stream, out, sid) :
++				sctp_mid_peek(stream, out, sid);
++		}
++		hdr->mid = htonl(mid);
+ 	}
+ }
+ 
+@@ -449,9 +453,6 @@ static struct sctp_ulpevent *sctp_intl_order(struct sctp_ulpq *ulpq,
+ 	struct sctp_stream *stream;
+ 	__u16 sid;
+ 
+-	if (event->msg_flags & SCTP_DATA_UNORDERED)
+-		return event;
 -
--		if (cnt + width < len)
--			tcp_probe.tail = (tcp_probe.tail + 1) & (bufsize - 1);
--
--		spin_unlock_bh(&tcp_probe.lock);
--
--		/* if record greater than space available
--		   return partial buffer (so far) */
--		if (cnt + width >= len)
--			break;
--
--		if (copy_to_user(buf + cnt, tbuf, width))
--			return -EFAULT;
--		cnt += width;
--	}
--
--	return cnt = 0 ? error : cnt;
--}
--
--static const struct file_operations tcpprobe_fops = {
--	.owner	 = THIS_MODULE,
--	.open	 = tcpprobe_open,
--	.read    = tcpprobe_read,
--	.llseek  = noop_llseek,
--};
--
--static __init int tcpprobe_init(void)
--{
--	int ret = -ENOMEM;
--
--	/* Warning: if the function signature of tcp_rcv_established,
--	 * has been changed, you also have to change the signature of
--	 * jtcp_rcv_established, otherwise you end up right here!
--	 */
--	BUILD_BUG_ON(__same_type(tcp_rcv_established,
--				 jtcp_rcv_established) = 0);
--
--	init_waitqueue_head(&tcp_probe.wait);
--	spin_lock_init(&tcp_probe.lock);
--
--	if (bufsize = 0)
--		return -EINVAL;
--
--	bufsize = roundup_pow_of_two(bufsize);
--	tcp_probe.log = kcalloc(bufsize, sizeof(struct tcp_log), GFP_KERNEL);
--	if (!tcp_probe.log)
--		goto err0;
--
--	if (!proc_create(procname, S_IRUSR, init_net.proc_net, &tcpprobe_fops))
--		goto err0;
--
--	ret = register_jprobe(&tcp_jprobe);
--	if (ret)
--		goto err1;
--
--	pr_info("probe registered (port=%d/fwmark=%u) bufsize=%u\n",
--		port, fwmark, bufsize);
--	return 0;
-- err1:
--	remove_proc_entry(procname, init_net.proc_net);
-- err0:
--	kfree(tcp_probe.log);
--	return ret;
--}
--module_init(tcpprobe_init);
--
--static __exit void tcpprobe_exit(void)
--{
--	remove_proc_entry(procname, init_net.proc_net);
--	unregister_jprobe(&tcp_jprobe);
--	kfree(tcp_probe.log);
--}
--module_exit(tcpprobe_exit);
+ 	stream  = &ulpq->asoc->stream;
+ 	sid = event->stream;
+ 
+@@ -512,6 +513,317 @@ static int sctp_enqueue_event(struct sctp_ulpq *ulpq,
+ 	return 0;
+ }
+ 
++static void sctp_intl_store_reasm_uo(struct sctp_ulpq *ulpq,
++				     struct sctp_ulpevent *event)
++{
++	struct sctp_ulpevent *cevent;
++	struct sk_buff *pos;
++
++	pos = skb_peek_tail(&ulpq->reasm_uo);
++	if (!pos) {
++		__skb_queue_tail(&ulpq->reasm_uo, sctp_event2skb(event));
++		return;
++	}
++
++	cevent = sctp_skb2event(pos);
++
++	if (event->stream = cevent->stream &&
++	    event->mid = cevent->mid &&
++	    (cevent->msg_flags & SCTP_DATA_FIRST_FRAG ||
++	     (!(event->msg_flags & SCTP_DATA_FIRST_FRAG) &&
++	      event->fsn > cevent->fsn))) {
++		__skb_queue_tail(&ulpq->reasm_uo, sctp_event2skb(event));
++		return;
++	}
++
++	if ((event->stream = cevent->stream &&
++	     MID_lt(cevent->mid, event->mid)) ||
++	    event->stream > cevent->stream) {
++		__skb_queue_tail(&ulpq->reasm_uo, sctp_event2skb(event));
++		return;
++	}
++
++	skb_queue_walk(&ulpq->reasm_uo, pos) {
++		cevent = sctp_skb2event(pos);
++
++		if (event->stream < cevent->stream ||
++		    (event->stream = cevent->stream &&
++		     MID_lt(event->mid, cevent->mid)))
++			break;
++
++		if (event->stream = cevent->stream &&
++		    event->mid = cevent->mid &&
++		    !(cevent->msg_flags & SCTP_DATA_FIRST_FRAG) &&
++		    (event->msg_flags & SCTP_DATA_FIRST_FRAG ||
++		     event->fsn < cevent->fsn))
++			break;
++	}
++
++	__skb_queue_before(&ulpq->reasm_uo, pos, sctp_event2skb(event));
++}
++
++static struct sctp_ulpevent *sctp_intl_retrieve_partial_uo(
++						struct sctp_ulpq *ulpq,
++						struct sctp_ulpevent *event)
++{
++	struct sk_buff *first_frag = NULL;
++	struct sk_buff *last_frag = NULL;
++	struct sctp_ulpevent *retval;
++	struct sctp_stream_in *sin;
++	struct sk_buff *pos;
++	__u32 next_fsn = 0;
++	int is_last = 0;
++
++	sin = sctp_stream_in(ulpq->asoc, event->stream);
++
++	skb_queue_walk(&ulpq->reasm_uo, pos) {
++		struct sctp_ulpevent *cevent = sctp_skb2event(pos);
++
++		if (cevent->stream < event->stream)
++			continue;
++		if (cevent->stream > event->stream)
++			break;
++
++		if (MID_lt(cevent->mid, sin->mid_uo))
++			continue;
++		if (MID_lt(sin->mid_uo, cevent->mid))
++			break;
++
++		switch (cevent->msg_flags & SCTP_DATA_FRAG_MASK) {
++		case SCTP_DATA_FIRST_FRAG:
++			goto out;
++		case SCTP_DATA_MIDDLE_FRAG:
++			if (!first_frag) {
++				if (cevent->fsn = sin->fsn_uo) {
++					first_frag = pos;
++					last_frag = pos;
++					next_fsn = cevent->fsn + 1;
++				}
++			} else if (cevent->fsn = next_fsn) {
++				last_frag = pos;
++				next_fsn++;
++			} else {
++				goto out;
++			}
++			break;
++		case SCTP_DATA_LAST_FRAG:
++			if (!first_frag) {
++				if (cevent->fsn = sin->fsn_uo) {
++					first_frag = pos;
++					last_frag = pos;
++					next_fsn = 0;
++					is_last = 1;
++				}
++			} else if (cevent->fsn = next_fsn) {
++				last_frag = pos;
++				next_fsn = 0;
++				is_last = 1;
++			}
++			goto out;
++		default:
++			goto out;
++		}
++	}
++
++out:
++	if (!first_frag)
++		return NULL;
++
++	retval = sctp_make_reassembled_event(sock_net(ulpq->asoc->base.sk),
++					     &ulpq->reasm_uo, first_frag,
++					     last_frag);
++	if (retval) {
++		sin->fsn_uo = next_fsn;
++		if (is_last) {
++			retval->msg_flags |= MSG_EOR;
++			sin->pd_mode_uo = 0;
++		}
++	}
++
++	return retval;
++}
++
++static struct sctp_ulpevent *sctp_intl_retrieve_reassembled_uo(
++						struct sctp_ulpq *ulpq,
++						struct sctp_ulpevent *event)
++{
++	struct sctp_association *asoc = ulpq->asoc;
++	struct sk_buff *pos, *first_frag = NULL;
++	struct sctp_ulpevent *retval = NULL;
++	struct sk_buff *pd_first = NULL;
++	struct sk_buff *pd_last = NULL;
++	struct sctp_stream_in *sin;
++	__u32 next_fsn = 0;
++	__u32 pd_point = 0;
++	__u32 pd_len = 0;
++	__u32 mid = 0;
++
++	sin = sctp_stream_in(ulpq->asoc, event->stream);
++
++	skb_queue_walk(&ulpq->reasm_uo, pos) {
++		struct sctp_ulpevent *cevent = sctp_skb2event(pos);
++
++		if (cevent->stream < event->stream)
++			continue;
++		if (cevent->stream > event->stream)
++			break;
++
++		if (MID_lt(cevent->mid, event->mid))
++			continue;
++		if (MID_lt(event->mid, cevent->mid))
++			break;
++
++		switch (cevent->msg_flags & SCTP_DATA_FRAG_MASK) {
++		case SCTP_DATA_FIRST_FRAG:
++			if (!sin->pd_mode_uo) {
++				sin->mid_uo = cevent->mid;
++				pd_first = pos;
++				pd_last = pos;
++				pd_len = pos->len;
++			}
++
++			first_frag = pos;
++			next_fsn = 0;
++			mid = cevent->mid;
++			break;
++
++		case SCTP_DATA_MIDDLE_FRAG:
++			if (first_frag && cevent->mid = mid &&
++			    cevent->fsn = next_fsn) {
++				next_fsn++;
++				if (pd_first) {
++					pd_last = pos;
++					pd_len += pos->len;
++				}
++			} else {
++				first_frag = NULL;
++			}
++			break;
++
++		case SCTP_DATA_LAST_FRAG:
++			if (first_frag && cevent->mid = mid &&
++			    cevent->fsn = next_fsn)
++				goto found;
++			else
++				first_frag = NULL;
++			break;
++		}
++	}
++
++	if (!pd_first)
++		goto out;
++
++	pd_point = sctp_sk(asoc->base.sk)->pd_point;
++	if (pd_point && pd_point <= pd_len) {
++		retval = sctp_make_reassembled_event(sock_net(asoc->base.sk),
++						     &ulpq->reasm_uo,
++						     pd_first, pd_last);
++		if (retval) {
++			sin->fsn_uo = next_fsn;
++			sin->pd_mode_uo = 1;
++		}
++	}
++	goto out;
++
++found:
++	retval = sctp_make_reassembled_event(sock_net(asoc->base.sk),
++					     &ulpq->reasm_uo,
++					     first_frag, pos);
++	if (retval)
++		retval->msg_flags |= MSG_EOR;
++
++out:
++	return retval;
++}
++
++static struct sctp_ulpevent *sctp_intl_reasm_uo(struct sctp_ulpq *ulpq,
++						struct sctp_ulpevent *event)
++{
++	struct sctp_ulpevent *retval = NULL;
++	struct sctp_stream_in *sin;
++
++	if (SCTP_DATA_NOT_FRAG = (event->msg_flags & SCTP_DATA_FRAG_MASK)) {
++		event->msg_flags |= MSG_EOR;
++		return event;
++	}
++
++	sctp_intl_store_reasm_uo(ulpq, event);
++
++	sin = sctp_stream_in(ulpq->asoc, event->stream);
++	if (sin->pd_mode_uo && event->mid = sin->mid_uo &&
++	    event->fsn = sin->fsn_uo)
++		retval = sctp_intl_retrieve_partial_uo(ulpq, event);
++
++	if (!retval)
++		retval = sctp_intl_retrieve_reassembled_uo(ulpq, event);
++
++	return retval;
++}
++
++static struct sctp_ulpevent *sctp_intl_retrieve_first_uo(struct sctp_ulpq *ulpq)
++{
++	struct sctp_stream_in *csin, *sin = NULL;
++	struct sk_buff *first_frag = NULL;
++	struct sk_buff *last_frag = NULL;
++	struct sctp_ulpevent *retval;
++	struct sk_buff *pos;
++	__u32 next_fsn = 0;
++	__u16 sid = 0;
++
++	skb_queue_walk(&ulpq->reasm_uo, pos) {
++		struct sctp_ulpevent *cevent = sctp_skb2event(pos);
++
++		csin = sctp_stream_in(ulpq->asoc, cevent->stream);
++		if (csin->pd_mode_uo)
++			continue;
++
++		switch (cevent->msg_flags & SCTP_DATA_FRAG_MASK) {
++		case SCTP_DATA_FIRST_FRAG:
++			if (first_frag)
++				goto out;
++			first_frag = pos;
++			last_frag = pos;
++			next_fsn = 0;
++			sin = csin;
++			sid = cevent->stream;
++			sin->mid_uo = cevent->mid;
++			break;
++		case SCTP_DATA_MIDDLE_FRAG:
++			if (!first_frag)
++				break;
++			if (cevent->stream = sid &&
++			    cevent->mid = sin->mid_uo &&
++			    cevent->fsn = next_fsn) {
++				next_fsn++;
++				last_frag = pos;
++			} else {
++				goto out;
++			}
++			break;
++		case SCTP_DATA_LAST_FRAG:
++			if (first_frag)
++				goto out;
++			break;
++		default:
++			break;
++		}
++	}
++
++	if (!first_frag)
++		return NULL;
++
++out:
++	retval = sctp_make_reassembled_event(sock_net(ulpq->asoc->base.sk),
++					     &ulpq->reasm_uo, first_frag,
++					     last_frag);
++	if (retval) {
++		sin->fsn_uo = next_fsn;
++		sin->pd_mode_uo = 1;
++	}
++
++	return retval;
++}
++
+ static int sctp_ulpevent_idata(struct sctp_ulpq *ulpq,
+ 			       struct sctp_chunk *chunk, gfp_t gfp)
+ {
+@@ -529,12 +841,16 @@ static int sctp_ulpevent_idata(struct sctp_ulpq *ulpq,
+ 	else
+ 		event->fsn = ntohl(chunk->subh.idata_hdr->fsn);
+ 
+-	event = sctp_intl_reasm(ulpq, event);
+-	if (event && event->msg_flags & MSG_EOR) {
+-		skb_queue_head_init(&temp);
+-		__skb_queue_tail(&temp, sctp_event2skb(event));
++	if (!(event->msg_flags & SCTP_DATA_UNORDERED)) {
++		event = sctp_intl_reasm(ulpq, event);
++		if (event && event->msg_flags & MSG_EOR) {
++			skb_queue_head_init(&temp);
++			__skb_queue_tail(&temp, sctp_event2skb(event));
+ 
+-		event = sctp_intl_order(ulpq, event);
++			event = sctp_intl_order(ulpq, event);
++		}
++	} else {
++		event = sctp_intl_reasm_uo(ulpq, event);
+ 	}
+ 
+ 	if (event) {
+@@ -614,14 +930,21 @@ static void sctp_intl_start_pd(struct sctp_ulpq *ulpq, gfp_t gfp)
+ {
+ 	struct sctp_ulpevent *event;
+ 
+-	if (skb_queue_empty(&ulpq->reasm))
+-		return;
++	if (!skb_queue_empty(&ulpq->reasm)) {
++		do {
++			event = sctp_intl_retrieve_first(ulpq);
++			if (event)
++				sctp_enqueue_event(ulpq, event);
++		} while (event);
++	}
+ 
+-	do {
+-		event = sctp_intl_retrieve_first(ulpq);
+-		if (event)
+-			sctp_enqueue_event(ulpq, event);
+-	} while (event);
++	if (!skb_queue_empty(&ulpq->reasm_uo)) {
++		do {
++			event = sctp_intl_retrieve_first_uo(ulpq);
++			if (event)
++				sctp_enqueue_event(ulpq, event);
++		} while (event);
++	}
+ }
+ 
+ static void sctp_renege_events(struct sctp_ulpq *ulpq, struct sctp_chunk *chunk,
+@@ -643,6 +966,9 @@ static void sctp_renege_events(struct sctp_ulpq *ulpq, struct sctp_chunk *chunk,
+ 		if (freed < needed)
+ 			freed += sctp_ulpq_renege_list(ulpq, &ulpq->reasm,
+ 						       needed);
++		if (freed < needed)
++			freed += sctp_ulpq_renege_list(ulpq, &ulpq->reasm_uo,
++						       needed);
+ 	}
+ 
+ 	if (chunk && freed >= needed)
+@@ -734,6 +1060,13 @@ static void sctp_intl_abort_pd(struct sctp_ulpq *ulpq, gfp_t gfp)
+ 		struct sctp_stream_in *sin = &stream->in[sid];
+ 		__u32 mid;
+ 
++		if (sin->pd_mode_uo) {
++			sin->pd_mode_uo = 0;
++
++			mid = sin->mid_uo;
++			sctp_intl_stream_abort_pd(ulpq, sid, mid, 0x1, gfp);
++		}
++
+ 		if (sin->pd_mode) {
+ 			sin->pd_mode = 0;
+ 
+diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
+index dd53daa..97fae53 100644
+--- a/net/sctp/ulpqueue.c
++++ b/net/sctp/ulpqueue.c
+@@ -60,6 +60,7 @@ struct sctp_ulpq *sctp_ulpq_init(struct sctp_ulpq *ulpq,
+ 
+ 	ulpq->asoc = asoc;
+ 	skb_queue_head_init(&ulpq->reasm);
++	skb_queue_head_init(&ulpq->reasm_uo);
+ 	skb_queue_head_init(&ulpq->lobby);
+ 	ulpq->pd_mode  = 0;
+ 
+@@ -83,6 +84,10 @@ void sctp_ulpq_flush(struct sctp_ulpq *ulpq)
+ 		sctp_ulpevent_free(event);
+ 	}
+ 
++	while ((skb = __skb_dequeue(&ulpq->reasm_uo)) != NULL) {
++		event = sctp_skb2event(skb);
++		sctp_ulpevent_free(event);
++	}
+ }
+ 
+ /* Dispose of a ulpqueue.  */
+-- 
+2.1.0
 
