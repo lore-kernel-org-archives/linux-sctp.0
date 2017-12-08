@@ -1,61 +1,100 @@
-From: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
-Date: Fri, 08 Dec 2017 20:37:43 +0000
-Subject: Re: [PATCHv2 net-next 04/12] sctp: implement make_datafrag for sctp_stream_interleave
-Message-Id: <20171208203743.GG3328@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 08 Dec 2017 13:03:57 +0000
+Subject: [PATCHv2 net-next 00/12] sctp: Implement Stream Interleave: The I-DATA Chunk Supporting User Message
+Message-Id: <cover.1512738021.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1512738021.git.lucien.xin@gmail.com>
- <ed729ca6023dea0812e4caa4d5da3259df375127.1512738021.git.lucien.xin@gmail.com>
- <2ca21c61e82a44daa29226eac54a4950@AcuMS.aculab.com>
- <20171208145630.GE3328@localhost.localdomain>
- <20171208153734.GB6955@hmswarspite.think-freely.org>
- <20171208160001.GF3328@localhost.localdomain>
- <e3256db09d434461acb5861b30ef6f65@AcuMS.aculab.com>
- <20171208160856.GC6955@hmswarspite.think-freely.org>
-In-Reply-To: <20171208160856.GC6955@hmswarspite.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: David Laight <David.Laight@ACULAB.COM>, 'Xin Long' <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "davem@davemloft.net" <davem@davemloft.net>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-On Fri, Dec 08, 2017 at 11:08:56AM -0500, Neil Horman wrote:
-> On Fri, Dec 08, 2017 at 04:04:58PM +0000, David Laight wrote:
-> > From: Marcelo Ricardo Leitner
-> > > Sent: 08 December 2017 16:00
-> > ...
-> > > > Is it worth replacing the si struct with an index/enum value, and indexing an
-> > > > array of method pointer structs?  That would save you at least one dereference.
-> > > 
-> > > Hmmm, maybe, yes. It would be like
-> > > sctp_stream_interleave[asoc->stream.si].make_datafrag(...)
-> > 
-> > If you only expect 2 choices then an if () is likely
-> > to produce better code that the above.
-> > 
-> > The actual implementation can be hidden inside a #define
-> > or static inline function.
-> > 
-> Thats the real question though, will we expect more than two interleaving
-> strategies?  Currently its a boolean operation so the answer seems like yes, but
-> is there a possiblity of a biased interleaving, or other worthwhile algorithm?
+Stream Interleave would be Implemented in two Parts:
 
-For the chunk format, I don't think so. It would require another RFC
-update.
-For other possibilities on having a 3rd choice in there, I also don't
-think so. Stream scheduling is handled apart from it and rx buffer
-stuff is being covered by it now, don't see how we could have a 3rd
-option without another chunk format.
+   1. The I-DATA Chunk Supporting User Message Interleaving
+   2. Interaction with Other SCTP Extensions
 
-But that said, I don't think the macro or even inline wrappers are as
-clear as the struct with function pointers here and in some cases it
-even won't avoid the second deref. I wouldn't like to compromise code
-readability and OO because of 1 fetch, specially considering that this
-will be barely noticeable.
+Overview in section 1.1 of RFC8260 for Part 1:
 
-Neil's idea on using the array of structs and indexing on it is nice.
-Saves a deref and keeps the abstractions without inserting too much
-noise on it. Plus, it also allows replacing the struct pointer in
-sctp_stream with a bit. If then placed before the union in there, we
-can save up to the whole pointer. Looks like a good compromise to me.
+   This document describes a new chunk carrying payload data called
+   I-DATA.  This chunk incorporates the properties of the current SCTP
+   DATA chunk, all the flags and fields except the Stream Sequence
+   Number (SSN), and also adds two new fields in its chunk header -- the
+   Fragment Sequence Number (FSN) and the Message Identifier (MID).  The
+   FSN is only used for reassembling all fragments that have the same
+   MID and the same ordering property.  The TSN is only used for the
+   reliable transfer in combination with Selective Acknowledgment (SACK)
+   chunks.
 
-  Marcelo
+   In addition, the MID is also used for ensuring ordered delivery
+   instead of using the stream sequence number (the I-DATA chunk omits
+   an SSN).
+
+As the 1st part of Stream Interleave Implementation, this patchset adds
+an ops framework named sctp_stream_interleave with a bunch of stuff that
+does lots of things needed somewhere.
+
+Then it defines sctp_stream_interleave_0 to work for normal DATA chunks
+and sctp_stream_interleave_1 for I-DATA chunks.
+
+With these functions, hundreds of if-else checks for the different process
+on I-DATA chunks would be avoided. Besides, very few codes could be shared
+in these two function sets.
+
+In this patchset, it adds some basic variables, structures and socket
+options firstly, then implement these functions one by one to add the
+procedures for ordered idata gradually, at last adjusts some codes to
+make them work for unordered idata.
+
+To make it safe to be implemented and also not break the normal data
+chunk process, this feature can't be enabled to use until all stream
+interleave codes are completely accomplished.
+
+v1 -> v2:
+  - fixed a checkpatch warning that a blank line was missed.
+  - avoided a kbuild warning reported from gcc-4.9.
+
+Xin Long (12):
+  sctp: add stream interleave enable members and sockopt
+  sctp: add asoc intl_enable negotiation during 4 shakehands
+  sctp: add basic structures and make chunk function for idata
+  sctp: implement make_datafrag for sctp_stream_interleave
+  sctp: implement assign_number for sctp_stream_interleave
+  sctp: implement validate_data for sctp_stream_interleave
+  sctp: implement ulpevent_data for sctp_stream_interleave
+  sctp: implement enqueue_event for sctp_stream_interleave
+  sctp: implement renege_events for sctp_stream_interleave
+  sctp: implement start_pd for sctp_stream_interleave
+  sctp: implement abort_pd for sctp_stream_interleave
+  sctp: add support for the process of unordered idata
+
+ include/linux/sctp.h                 |   20 +
+ include/net/netns/sctp.h             |    5 +-
+ include/net/sctp/constants.h         |    9 +-
+ include/net/sctp/sctp.h              |    4 +-
+ include/net/sctp/sm.h                |   15 +-
+ include/net/sctp/stream_interleave.h |   54 ++
+ include/net/sctp/structs.h           |   56 +-
+ include/net/sctp/ulpevent.h          |   23 +-
+ include/net/sctp/ulpqueue.h          |   10 +-
+ include/uapi/linux/sctp.h            |    3 +
+ net/sctp/Makefile                    |    2 +-
+ net/sctp/associola.c                 |    2 +-
+ net/sctp/chunk.c                     |    8 +-
+ net/sctp/output.c                    |    5 +-
+ net/sctp/sm_make_chunk.c             |   45 +-
+ net/sctp/sm_sideeffect.c             |   23 +-
+ net/sctp/sm_statefuns.c              |   21 +-
+ net/sctp/sm_statetable.c             |    3 +
+ net/sctp/socket.c                    |  130 +++-
+ net/sctp/stream.c                    |    1 +
+ net/sctp/stream_interleave.c         | 1118 ++++++++++++++++++++++++++++++++++
+ net/sctp/ulpevent.c                  |   15 +-
+ net/sctp/ulpqueue.c                  |   23 +-
+ 23 files changed, 1501 insertions(+), 94 deletions(-)
+ create mode 100644 include/net/sctp/stream_interleave.h
+ create mode 100644 net/sctp/stream_interleave.c
+
+-- 
+2.1.0
+
