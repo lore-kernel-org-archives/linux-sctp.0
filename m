@@ -1,266 +1,217 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 08 Dec 2017 13:04:08 +0000
-Subject: [PATCHv2 net-next 11/12] sctp: implement abort_pd for sctp_stream_interleave
-Message-Id: <549d6775140d1e976e9cd184a76f7fa64a2bafab.1512738021.git.lucien.xin@gmail.com>
+Date: Fri, 08 Dec 2017 13:03:58 +0000
+Subject: [PATCHv2 net-next 01/12] sctp: add stream interleave enable members and sockopt
+Message-Id: <2fef1243f8181062aeb17f7052e5b022ec274a8e.1512738021.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1512738021.git.lucien.xin@gmail.com>
- <2fef1243f8181062aeb17f7052e5b022ec274a8e.1512738021.git.lucien.xin@gmail.com>
- <7347f16f5b620ed98fdb5f7ac54db4a70e1fd27e.1512738021.git.lucien.xin@gmail.com>
- <9a2bf9495313a79f0bbffb8edaaef25269804feb.1512738021.git.lucien.xin@gmail.com>
- <ed729ca6023dea0812e4caa4d5da3259df375127.1512738021.git.lucien.xin@gmail.com>
- <be593df99566267deff68ff477d2355dfffada80.1512738021.git.lucien.xin@gmail.com>
- <083a620b71eb0446997f308372bdbe2d1e0fdc55.1512738021.git.lucien.xin@gmail.com>
- <9b28c98bbb59126b2be7b81cd4bd16336f99ba69.1512738021.git.lucien.xin@gmail.com>
- <47320a14e77bc56bcce883b79aebc0509386f9e5.1512738021.git.lucien.xin@gmail.com>
- <1a253f52ab5310dcad8f518652e50b959043d8b2.1512738021.git.lucien.xin@gmail.com>
- <0de955e81dc688c578d1b54ab7de5bcda70acfcb.1512738021.git.lucien.xin@gmail.com>
-In-Reply-To: <0de955e81dc688c578d1b54ab7de5bcda70acfcb.1512738021.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1512738021.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-abort_pd is added as a member of sctp_stream_interleave, used to abort
-partial delivery for data or idata, called in sctp_cmd_assoc_failed.
+This patch adds intl_enable in asoc and netns, and strm_interleave in
+sctp_sock to indicate if stream interleave is enabled and supported.
 
-Since stream interleave allows to do partial delivery for each stream
-at the same time, sctp_intl_abort_pd for idata would be very different
-from the old function sctp_ulpq_abort_pd for data.
+netns intl_enable would be set via procfs, but that is not added yet
+until all stream interleave codes are completely implemented; asoc
+intl_enable will be set when doing 4-shakehands.
 
-Note that sctp_ulpevent_make_pdapi will support per stream in this
-patch by adding pdapi_stream and pdapi_seq in sctp_pdapi_event, as
-described in section 6.1.7 of RFC6458.
+sp strm_interleave can be set by sockopt SCTP_INTERLEAVING_SUPPORTED
+which is also added in this patch. This socket option is defined in
+section 4.3.1 of RFC8260.
+
+Note that strm_interleave can only be set by sockopt when both netns
+intl_enable and sp frag_interleave are set.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 Acked-by: Neil Horman <nhorman@tuxdriver.com>
 ---
- include/net/sctp/stream_interleave.h |  1 +
- include/net/sctp/ulpevent.h          |  3 +-
- include/uapi/linux/sctp.h            |  2 +
- net/sctp/sm_sideeffect.c             |  2 +-
- net/sctp/stream_interleave.c         | 99 ++++++++++++++++++++++++++++++++++++
- net/sctp/ulpevent.c                  |  9 ++--
- net/sctp/ulpqueue.c                  |  2 +-
- 7 files changed, 112 insertions(+), 6 deletions(-)
+ include/net/netns/sctp.h   |  5 ++-
+ include/net/sctp/structs.h |  2 ++
+ include/uapi/linux/sctp.h  |  1 +
+ net/sctp/socket.c          | 88 +++++++++++++++++++++++++++++++++++++++++++++-
+ 4 files changed, 94 insertions(+), 2 deletions(-)
 
-diff --git a/include/net/sctp/stream_interleave.h b/include/net/sctp/stream_interleave.h
-index 317d9b3..501b2be 100644
---- a/include/net/sctp/stream_interleave.h
-+++ b/include/net/sctp/stream_interleave.h
-@@ -46,6 +46,7 @@ struct sctp_stream_interleave {
- 	void	(*renege_events)(struct sctp_ulpq *ulpq,
- 				 struct sctp_chunk *chunk, gfp_t gfp);
- 	void	(*start_pd)(struct sctp_ulpq *ulpq, gfp_t gfp);
-+	void	(*abort_pd)(struct sctp_ulpq *ulpq, gfp_t gfp);
- };
+diff --git a/include/net/netns/sctp.h b/include/net/netns/sctp.h
+index ebc8132..0db7fb3 100644
+--- a/include/net/netns/sctp.h
++++ b/include/net/netns/sctp.h
+@@ -122,9 +122,12 @@ struct netns_sctp {
+ 	/* Flag to indicate if PR-CONFIG is enabled. */
+ 	int reconf_enable;
  
- void sctp_stream_interleave_init(struct sctp_stream *stream);
-diff --git a/include/net/sctp/ulpevent.h b/include/net/sctp/ulpevent.h
-index ce4f2aa..51b4e06 100644
---- a/include/net/sctp/ulpevent.h
-+++ b/include/net/sctp/ulpevent.h
-@@ -122,7 +122,8 @@ struct sctp_ulpevent *sctp_ulpevent_make_shutdown_event(
+-	/* Flag to idicate if SCTP-AUTH is enabled */
++	/* Flag to indicate if SCTP-AUTH is enabled */
+ 	int auth_enable;
  
- struct sctp_ulpevent *sctp_ulpevent_make_pdapi(
- 	const struct sctp_association *asoc,
--	__u32 indication, gfp_t gfp);
-+	__u32 indication, __u32 sid, __u32 seq,
-+	__u32 flags, gfp_t gfp);
++	/* Flag to indicate if stream interleave is enabled */
++	int intl_enable;
++
+ 	/*
+ 	 * Policy to control SCTP IPv4 address scoping
+ 	 * 0   - Disable IPv4 address scoping
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 2f8f93d..7030cbe 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -217,6 +217,7 @@ struct sctp_sock {
+ 		disable_fragments:1,
+ 		v4mapped:1,
+ 		frag_interleave:1,
++		strm_interleave:1,
+ 		recvrcvinfo:1,
+ 		recvnxtinfo:1,
+ 		data_ready_signalled:1;
+@@ -1940,6 +1941,7 @@ struct sctp_association {
+ 	__u8 need_ecne:1,	/* Need to send an ECNE Chunk? */
+ 	     temp:1,		/* Is it a temporary association? */
+ 	     force_delay:1,
++	     intl_enable:1,
+ 	     prsctp_enable:1,
+ 	     reconf_enable:1;
  
- struct sctp_ulpevent *sctp_ulpevent_make_adaptation_indication(
- 	const struct sctp_association *asoc, gfp_t gfp);
 diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index 6ed934c..4c4db14 100644
+index d9adab3..6ed934c 100644
 --- a/include/uapi/linux/sctp.h
 +++ b/include/uapi/linux/sctp.h
-@@ -460,6 +460,8 @@ struct sctp_pdapi_event {
- 	__u32 pdapi_length;
- 	__u32 pdapi_indication;
- 	sctp_assoc_t pdapi_assoc_id;
-+	__u32 pdapi_stream;
-+	__u32 pdapi_seq;
- };
+@@ -125,6 +125,7 @@ typedef __s32 sctp_assoc_t;
+ #define SCTP_SOCKOPT_PEELOFF_FLAGS 122
+ #define SCTP_STREAM_SCHEDULER	123
+ #define SCTP_STREAM_SCHEDULER_VALUE	124
++#define SCTP_INTERLEAVING_SUPPORTED	125
  
- enum { SCTP_PARTIAL_DELIVERY_ABORTED=0, };
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index 3671054..8adde71 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -632,7 +632,7 @@ static void sctp_cmd_assoc_failed(struct sctp_cmd_seq *commands,
- 	struct sctp_chunk *abort;
+ /* PR-SCTP policies */
+ #define SCTP_PR_SCTP_NONE	0x0000
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 014847e..8c33463 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3350,7 +3350,10 @@ static int sctp_setsockopt_fragment_interleave(struct sock *sk,
+ 	if (get_user(val, (int __user *)optval))
+ 		return -EFAULT;
  
- 	/* Cancel any partial delivery in progress. */
--	sctp_ulpq_abort_pd(&asoc->ulpq, GFP_ATOMIC);
-+	asoc->stream.si->abort_pd(&asoc->ulpq, GFP_ATOMIC);
+-	sctp_sk(sk)->frag_interleave = (val = 0) ? 0 : 1;
++	sctp_sk(sk)->frag_interleave = !!val;
++
++	if (!sctp_sk(sk)->frag_interleave)
++		sctp_sk(sk)->strm_interleave = 0;
  
- 	if (event_type = SCTP_EVENT_T_CHUNK && subtype.chunk = SCTP_CID_ABORT)
- 		event = sctp_ulpevent_make_assoc_change(asoc, 0, SCTP_COMM_LOST,
-diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
-index 4dce8d3..d15645e 100644
---- a/net/sctp/stream_interleave.c
-+++ b/net/sctp/stream_interleave.c
-@@ -652,6 +652,103 @@ static void sctp_renege_events(struct sctp_ulpq *ulpq, struct sctp_chunk *chunk,
- 	sk_mem_reclaim(asoc->base.sk);
+ 	return 0;
+ }
+@@ -4019,6 +4022,40 @@ static int sctp_setsockopt_scheduler_value(struct sock *sk,
+ 	return retval;
  }
  
-+static void sctp_intl_stream_abort_pd(struct sctp_ulpq *ulpq, __u16 sid,
-+				      __u32 mid, __u16 flags, gfp_t gfp)
++static int sctp_setsockopt_interleaving_supported(struct sock *sk,
++						  char __user *optval,
++						  unsigned int optlen)
 +{
-+	struct sock *sk = ulpq->asoc->base.sk;
-+	struct sctp_ulpevent *ev = NULL;
++	struct sctp_sock *sp = sctp_sk(sk);
++	struct net *net = sock_net(sk);
++	struct sctp_assoc_value params;
++	int retval = -EINVAL;
 +
-+	if (!sctp_ulpevent_type_enabled(SCTP_PARTIAL_DELIVERY_EVENT,
-+					&sctp_sk(sk)->subscribe))
-+		return;
++	if (optlen < sizeof(params))
++		goto out;
 +
-+	ev = sctp_ulpevent_make_pdapi(ulpq->asoc, SCTP_PARTIAL_DELIVERY_ABORTED,
-+				      sid, mid, flags, gfp);
-+	if (ev) {
-+		__skb_queue_tail(&sk->sk_receive_queue, sctp_event2skb(ev));
-+
-+		if (!sctp_sk(sk)->data_ready_signalled) {
-+			sctp_sk(sk)->data_ready_signalled = 1;
-+			sk->sk_data_ready(sk);
-+		}
++	optlen = sizeof(params);
++	if (copy_from_user(&params, optval, optlen)) {
++		retval = -EFAULT;
++		goto out;
 +	}
++
++	if (params.assoc_id)
++		goto out;
++
++	if (!net->sctp.intl_enable || !sp->frag_interleave) {
++		retval = -EPERM;
++		goto out;
++	}
++
++	sp->strm_interleave = !!params.assoc_value;
++
++	retval = 0;
++
++out:
++	return retval;
 +}
 +
-+static void sctp_intl_reap_ordered(struct sctp_ulpq *ulpq, __u16 sid)
-+{
-+	struct sctp_stream *stream = &ulpq->asoc->stream;
-+	struct sctp_ulpevent *cevent, *event = NULL;
-+	struct sk_buff_head *lobby = &ulpq->lobby;
-+	struct sk_buff *pos, *tmp;
-+	struct sk_buff_head temp;
-+	__u16 csid;
-+	__u32 cmid;
-+
-+	skb_queue_head_init(&temp);
-+	sctp_skb_for_each(pos, lobby, tmp) {
-+		cevent = (struct sctp_ulpevent *)pos->cb;
-+		csid = cevent->stream;
-+		cmid = cevent->mid;
-+
-+		if (csid > sid)
-+			break;
-+
-+		if (csid < sid)
-+			continue;
-+
-+		if (!MID_lt(cmid, sctp_mid_peek(stream, in, csid)))
-+			break;
-+
-+		__skb_unlink(pos, lobby);
-+		if (!event)
-+			event = sctp_skb2event(pos);
-+
-+		__skb_queue_tail(&temp, pos);
-+	}
-+
-+	if (!event && pos != (struct sk_buff *)lobby) {
-+		cevent = (struct sctp_ulpevent *)pos->cb;
-+		csid = cevent->stream;
-+		cmid = cevent->mid;
-+
-+		if (csid = sid && cmid = sctp_mid_peek(stream, in, csid)) {
-+			sctp_mid_next(stream, in, csid);
-+			__skb_unlink(pos, lobby);
-+			__skb_queue_tail(&temp, pos);
-+			event = sctp_skb2event(pos);
-+		}
-+	}
-+
-+	if (event) {
-+		sctp_intl_retrieve_ordered(ulpq, event);
-+		sctp_enqueue_event(ulpq, event);
-+	}
-+}
-+
-+static void sctp_intl_abort_pd(struct sctp_ulpq *ulpq, gfp_t gfp)
-+{
-+	struct sctp_stream *stream = &ulpq->asoc->stream;
-+	__u16 sid;
-+
-+	for (sid = 0; sid < stream->incnt; sid++) {
-+		struct sctp_stream_in *sin = &stream->in[sid];
-+		__u32 mid;
-+
-+		if (sin->pd_mode) {
-+			sin->pd_mode = 0;
-+
-+			mid = sin->mid;
-+			sctp_intl_stream_abort_pd(ulpq, sid, mid, 0, gfp);
-+			sctp_mid_skip(stream, in, sid, mid);
-+
-+			sctp_intl_reap_ordered(ulpq, sid);
-+		}
-+	}
-+
-+	/* intl abort pd happens only when all data needs to be cleaned */
-+	sctp_ulpq_flush(ulpq);
-+}
-+
- static struct sctp_stream_interleave sctp_stream_interleave_0 = {
- 	.data_chunk_len		= sizeof(struct sctp_data_chunk),
- 	/* DATA process functions */
-@@ -662,6 +759,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_0 = {
- 	.enqueue_event		= sctp_ulpq_tail_event,
- 	.renege_events		= sctp_ulpq_renege,
- 	.start_pd		= sctp_ulpq_partial_delivery,
-+	.abort_pd		= sctp_ulpq_abort_pd,
- };
+ /* API 6.2 setsockopt(), getsockopt()
+  *
+  * Applications use setsockopt() and getsockopt() to set or retrieve
+@@ -4206,6 +4243,10 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 	case SCTP_STREAM_SCHEDULER_VALUE:
+ 		retval = sctp_setsockopt_scheduler_value(sk, optval, optlen);
+ 		break;
++	case SCTP_INTERLEAVING_SUPPORTED:
++		retval = sctp_setsockopt_interleaving_supported(sk, optval,
++								optlen);
++		break;
+ 	default:
+ 		retval = -ENOPROTOOPT;
+ 		break;
+@@ -6981,6 +7022,47 @@ static int sctp_getsockopt_scheduler_value(struct sock *sk, int len,
+ 	return retval;
+ }
  
- static struct sctp_stream_interleave sctp_stream_interleave_1 = {
-@@ -674,6 +772,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
- 	.enqueue_event		= sctp_enqueue_event,
- 	.renege_events		= sctp_renege_events,
- 	.start_pd		= sctp_intl_start_pd,
-+	.abort_pd		= sctp_intl_abort_pd,
- };
- 
- void sctp_stream_interleave_init(struct sctp_stream *stream)
-diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
-index d3218f3..84207ad 100644
---- a/net/sctp/ulpevent.c
-+++ b/net/sctp/ulpevent.c
-@@ -730,8 +730,9 @@ struct sctp_ulpevent *sctp_ulpevent_make_rcvmsg(struct sctp_association *asoc,
-  *   various events.
-  */
- struct sctp_ulpevent *sctp_ulpevent_make_pdapi(
--	const struct sctp_association *asoc, __u32 indication,
--	gfp_t gfp)
-+					const struct sctp_association *asoc,
-+					__u32 indication, __u32 sid, __u32 seq,
-+					__u32 flags, gfp_t gfp)
++static int sctp_getsockopt_interleaving_supported(struct sock *sk, int len,
++						  char __user *optval,
++						  int __user *optlen)
++{
++	struct sctp_assoc_value params;
++	struct sctp_association *asoc;
++	int retval = -EFAULT;
++
++	if (len < sizeof(params)) {
++		retval = -EINVAL;
++		goto out;
++	}
++
++	len = sizeof(params);
++	if (copy_from_user(&params, optval, len))
++		goto out;
++
++	asoc = sctp_id2assoc(sk, params.assoc_id);
++	if (asoc) {
++		params.assoc_value = asoc->intl_enable;
++	} else if (!params.assoc_id) {
++		struct sctp_sock *sp = sctp_sk(sk);
++
++		params.assoc_value = sp->strm_interleave;
++	} else {
++		retval = -EINVAL;
++		goto out;
++	}
++
++	if (put_user(len, optlen))
++		goto out;
++
++	if (copy_to_user(optval, &params, len))
++		goto out;
++
++	retval = 0;
++
++out:
++	return retval;
++}
++
+ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 			   char __user *optval, int __user *optlen)
  {
- 	struct sctp_ulpevent *event;
- 	struct sctp_pdapi_event *pd;
-@@ -752,7 +753,9 @@ struct sctp_ulpevent *sctp_ulpevent_make_pdapi(
- 	 *   Currently unused.
- 	 */
- 	pd->pdapi_type = SCTP_PARTIAL_DELIVERY_EVENT;
--	pd->pdapi_flags = 0;
-+	pd->pdapi_flags = flags;
-+	pd->pdapi_stream = sid;
-+	pd->pdapi_seq = seq;
- 
- 	/* pdapi_length: 32 bits (unsigned integer)
- 	 *
-diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
-index 76ec514..dd53daa 100644
---- a/net/sctp/ulpqueue.c
-+++ b/net/sctp/ulpqueue.c
-@@ -1144,7 +1144,7 @@ void sctp_ulpq_abort_pd(struct sctp_ulpq *ulpq, gfp_t gfp)
- 				       &sctp_sk(sk)->subscribe))
- 		ev = sctp_ulpevent_make_pdapi(ulpq->asoc,
- 					      SCTP_PARTIAL_DELIVERY_ABORTED,
--					      gfp);
-+					      0, 0, 0, gfp);
- 	if (ev)
- 		__skb_queue_tail(&sk->sk_receive_queue, sctp_event2skb(ev));
- 
+@@ -7171,6 +7253,10 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_getsockopt_scheduler_value(sk, len, optval,
+ 							 optlen);
+ 		break;
++	case SCTP_INTERLEAVING_SUPPORTED:
++		retval = sctp_getsockopt_interleaving_supported(sk, len, optval,
++								optlen);
++		break;
+ 	default:
+ 		retval = -ENOPROTOOPT;
+ 		break;
 -- 
 2.1.0
 
