@@ -1,215 +1,239 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 12 Dec 2017 09:25:53 +0000
-Subject: [PATCH net-next 2/8] sctp: implement generate_ftsn for sctp_stream_interleave
-Message-Id: <dbe7bd0f6197086a6a4b4d28f0d63ee1073414e8.1513070662.git.lucien.xin@gmail.com>
+Date: Fri, 08 Dec 2017 13:04:06 +0000
+Subject: [PATCHv2 net-next 09/12] sctp: implement renege_events for sctp_stream_interleave
+Message-Id: <1a253f52ab5310dcad8f518652e50b959043d8b2.1512738021.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1513070662.git.lucien.xin@gmail.com>
- <9b8315277069d021d8a6b581b7304af624a45c61.1513070662.git.lucien.xin@gmail.com>
-In-Reply-To: <9b8315277069d021d8a6b581b7304af624a45c61.1513070662.git.lucien.xin@gmail.com>
+References: <cover.1512738021.git.lucien.xin@gmail.com>
+ <2fef1243f8181062aeb17f7052e5b022ec274a8e.1512738021.git.lucien.xin@gmail.com>
+ <7347f16f5b620ed98fdb5f7ac54db4a70e1fd27e.1512738021.git.lucien.xin@gmail.com>
+ <9a2bf9495313a79f0bbffb8edaaef25269804feb.1512738021.git.lucien.xin@gmail.com>
+ <ed729ca6023dea0812e4caa4d5da3259df375127.1512738021.git.lucien.xin@gmail.com>
+ <be593df99566267deff68ff477d2355dfffada80.1512738021.git.lucien.xin@gmail.com>
+ <083a620b71eb0446997f308372bdbe2d1e0fdc55.1512738021.git.lucien.xin@gmail.com>
+ <9b28c98bbb59126b2be7b81cd4bd16336f99ba69.1512738021.git.lucien.xin@gmail.com>
+ <47320a14e77bc56bcce883b79aebc0509386f9e5.1512738021.git.lucien.xin@gmail.com>
+In-Reply-To: <47320a14e77bc56bcce883b79aebc0509386f9e5.1512738021.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-generate_ftsn is added as a member of sctp_stream_interleave, used to
-create fwdtsn or ifwdtsn chunk according to abandoned chunks, called
-in sctp_retransmit and sctp_outq_sack.
+renege_events is added as a member of sctp_stream_interleave, used to
+renege some old data or idata in reasm or lobby queue properly to free
+some memory for the new data when there's memory stress.
 
-sctp_generate_iftsn works for ifwdtsn, and sctp_generate_fwdtsn is
-still used for making fwdtsn.
+It defines sctp_renege_events for idata, and leaves sctp_ulpq_renege
+as it is for data.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
 ---
- include/net/sctp/stream_interleave.h |  2 +
- include/net/sctp/structs.h           |  1 +
- net/sctp/outqueue.c                  | 12 +++---
- net/sctp/stream_interleave.c         | 75 ++++++++++++++++++++++++++++++++++++
- 4 files changed, 84 insertions(+), 6 deletions(-)
+ include/net/sctp/stream_interleave.h |   2 +
+ include/net/sctp/ulpqueue.h          |   9 +--
+ net/sctp/sm_sideeffect.c             |   5 +-
+ net/sctp/stream_interleave.c         | 109 +++++++++++++++++++++++++++++++++++
+ net/sctp/ulpqueue.c                  |   4 +-
+ 5 files changed, 119 insertions(+), 10 deletions(-)
 
 diff --git a/include/net/sctp/stream_interleave.h b/include/net/sctp/stream_interleave.h
-index 501b2be..66267db 100644
+index a0f61bc..16a71cb 100644
 --- a/include/net/sctp/stream_interleave.h
 +++ b/include/net/sctp/stream_interleave.h
-@@ -47,6 +47,8 @@ struct sctp_stream_interleave {
+@@ -43,6 +43,8 @@ struct sctp_stream_interleave {
  				 struct sctp_chunk *chunk, gfp_t gfp);
- 	void	(*start_pd)(struct sctp_ulpq *ulpq, gfp_t gfp);
- 	void	(*abort_pd)(struct sctp_ulpq *ulpq, gfp_t gfp);
-+	/* (I-)FORWARD-TSN process */
-+	void	(*generate_ftsn)(struct sctp_outq *q, __u32 ctsn);
+ 	int	(*enqueue_event)(struct sctp_ulpq *ulpq,
+ 				 struct sctp_ulpevent *event);
++	void	(*renege_events)(struct sctp_ulpq *ulpq,
++				 struct sctp_chunk *chunk, gfp_t gfp);
  };
  
  void sctp_stream_interleave_init(struct sctp_stream *stream);
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index a5c3cf4..b7720d6 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -1100,6 +1100,7 @@ void sctp_retransmit_mark(struct sctp_outq *, struct sctp_transport *, __u8);
- void sctp_outq_uncork(struct sctp_outq *, gfp_t gfp);
- void sctp_prsctp_prune(struct sctp_association *asoc,
- 		       struct sctp_sndrcvinfo *sinfo, int msg_len);
-+void sctp_generate_fwdtsn(struct sctp_outq *q, __u32 sack_ctsn);
- /* Uncork and flush an outqueue.  */
- static inline void sctp_outq_cork(struct sctp_outq *q)
- {
-diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index 7d67fee..af9b5eb 100644
---- a/net/sctp/outqueue.c
-+++ b/net/sctp/outqueue.c
-@@ -67,8 +67,6 @@ static void sctp_mark_missing(struct sctp_outq *q,
- 			      __u32 highest_new_tsn,
- 			      int count_of_newacks);
+diff --git a/include/net/sctp/ulpqueue.h b/include/net/sctp/ulpqueue.h
+index e0dce07..eb98c71 100644
+--- a/include/net/sctp/ulpqueue.h
++++ b/include/net/sctp/ulpqueue.h
+@@ -76,11 +76,8 @@ int sctp_clear_pd(struct sock *sk, struct sctp_association *asoc);
+ void sctp_ulpq_skip(struct sctp_ulpq *ulpq, __u16 sid, __u16 ssn);
  
--static void sctp_generate_fwdtsn(struct sctp_outq *q, __u32 sack_ctsn);
+ void sctp_ulpq_reasm_flushtsn(struct sctp_ulpq *, __u32);
+-#endif /* __sctp_ulpqueue_h__ */
 -
- static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp);
+-
+-
+-
+-
  
- /* Add data to the front of the queue. */
-@@ -591,7 +589,7 @@ void sctp_retransmit(struct sctp_outq *q, struct sctp_transport *transport,
- 	 * following the procedures outlined in C1 - C5.
- 	 */
- 	if (reason = SCTP_RTXR_T3_RTX)
--		sctp_generate_fwdtsn(q, q->asoc->ctsn_ack_point);
-+		q->asoc->stream.si->generate_ftsn(q, q->asoc->ctsn_ack_point);
++__u16 sctp_ulpq_renege_list(struct sctp_ulpq *ulpq,
++			    struct sk_buff_head *list, __u16 needed);
  
- 	/* Flush the queues only on timeout, since fast_rtx is only
- 	 * triggered during sack processing and the queue
-@@ -942,6 +940,7 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 		case SCTP_CID_ECN_ECNE:
- 		case SCTP_CID_ASCONF:
- 		case SCTP_CID_FWD_TSN:
-+		case SCTP_CID_I_FWD_TSN:
- 		case SCTP_CID_RECONF:
- 			status = sctp_packet_transmit_chunk(packet, chunk,
- 							    one_packet, gfp);
-@@ -956,7 +955,8 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 			 * sender MUST assure that at least one T3-rtx
- 			 * timer is running.
- 			 */
--			if (chunk->chunk_hdr->type = SCTP_CID_FWD_TSN) {
-+			if (chunk->chunk_hdr->type = SCTP_CID_FWD_TSN ||
-+			    chunk->chunk_hdr->type = SCTP_CID_I_FWD_TSN) {
- 				sctp_transport_reset_t3_rtx(transport);
- 				transport->last_time_sent = jiffies;
- 			}
-@@ -1372,7 +1372,7 @@ int sctp_outq_sack(struct sctp_outq *q, struct sctp_chunk *chunk)
++#endif /* __sctp_ulpqueue_h__ */
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index f4e5eca..2bec17a 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -1735,8 +1735,9 @@ static int sctp_cmd_interpreter(enum sctp_event event_type,
+ 			break;
  
- 	asoc->peer.rwnd = sack_a_rwnd;
+ 		case SCTP_CMD_RENEGE:
+-			sctp_ulpq_renege(&asoc->ulpq, cmd->obj.chunk,
+-					 GFP_ATOMIC);
++			asoc->stream.si->renege_events(&asoc->ulpq,
++						       cmd->obj.chunk,
++						       GFP_ATOMIC);
+ 			break;
  
--	sctp_generate_fwdtsn(q, sack_ctsn);
-+	asoc->stream.si->generate_ftsn(q, sack_ctsn);
- 
- 	pr_debug("%s: sack cumulative tsn ack:0x%x\n", __func__, sack_ctsn);
- 	pr_debug("%s: cumulative tsn ack of assoc:%p is 0x%x, "
-@@ -1795,7 +1795,7 @@ static inline int sctp_get_skip_pos(struct sctp_fwdtsn_skip *skiplist,
- }
- 
- /* Create and add a fwdtsn chunk to the outq's control queue if needed. */
--static void sctp_generate_fwdtsn(struct sctp_outq *q, __u32 ctsn)
-+void sctp_generate_fwdtsn(struct sctp_outq *q, __u32 ctsn)
- {
- 	struct sctp_association *asoc = q->asoc;
- 	struct sctp_chunk *ftsn_chunk = NULL;
+ 		case SCTP_CMD_SETUP_T4:
 diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
-index 87b9417..2ead372 100644
+index e853972..d62ad5c 100644
 --- a/net/sctp/stream_interleave.c
 +++ b/net/sctp/stream_interleave.c
-@@ -1082,6 +1082,77 @@ static void sctp_intl_abort_pd(struct sctp_ulpq *ulpq, gfp_t gfp)
- 	sctp_ulpq_flush(ulpq);
+@@ -545,6 +545,113 @@ static int sctp_ulpevent_idata(struct sctp_ulpq *ulpq,
+ 	return event_eor;
  }
  
-+static inline int sctp_get_skip_pos(struct sctp_ifwdtsn_skip *skiplist,
-+				    int nskips, __be16 stream, __u8 flags)
++static struct sctp_ulpevent *sctp_intl_retrieve_first(struct sctp_ulpq *ulpq)
 +{
-+	int i;
++	struct sctp_stream_in *csin, *sin = NULL;
++	struct sk_buff *first_frag = NULL;
++	struct sk_buff *last_frag = NULL;
++	struct sctp_ulpevent *retval;
++	struct sk_buff *pos;
++	__u32 next_fsn = 0;
++	__u16 sid = 0;
 +
-+	for (i = 0; i < nskips; i++)
-+		if (skiplist[i].stream = stream &&
-+		    skiplist[i].flags = flags)
-+			return i;
++	skb_queue_walk(&ulpq->reasm, pos) {
++		struct sctp_ulpevent *cevent = sctp_skb2event(pos);
 +
-+	return i;
-+}
++		csin = sctp_stream_in(ulpq->asoc, cevent->stream);
++		if (csin->pd_mode)
++			continue;
 +
-+#define SCTP_FTSN_U_BIT	0x1
-+static void sctp_generate_iftsn(struct sctp_outq *q, __u32 ctsn)
-+{
-+	struct sctp_ifwdtsn_skip ftsn_skip_arr[10];
-+	struct sctp_association *asoc = q->asoc;
-+	struct sctp_chunk *ftsn_chunk = NULL;
-+	struct list_head *lchunk, *temp;
-+	int nskips = 0, skip_pos;
-+	struct sctp_chunk *chunk;
-+	__u32 tsn;
-+
-+	if (!asoc->peer.prsctp_capable)
-+		return;
-+
-+	if (TSN_lt(asoc->adv_peer_ack_point, ctsn))
-+		asoc->adv_peer_ack_point = ctsn;
-+
-+	list_for_each_safe(lchunk, temp, &q->abandoned) {
-+		chunk = list_entry(lchunk, struct sctp_chunk, transmitted_list);
-+		tsn = ntohl(chunk->subh.data_hdr->tsn);
-+
-+		if (TSN_lte(tsn, ctsn)) {
-+			list_del_init(lchunk);
-+			sctp_chunk_free(chunk);
-+		} else if (TSN_lte(tsn, asoc->adv_peer_ack_point + 1)) {
-+			__be16 sid = chunk->subh.idata_hdr->stream;
-+			__be32 mid = chunk->subh.idata_hdr->mid;
-+			__u8 flags = 0;
-+
-+			if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
-+				flags |= SCTP_FTSN_U_BIT;
-+
-+			asoc->adv_peer_ack_point = tsn;
-+			skip_pos = sctp_get_skip_pos(&ftsn_skip_arr[0], nskips,
-+						     sid, flags);
-+			ftsn_skip_arr[skip_pos].stream = sid;
-+			ftsn_skip_arr[skip_pos].reserved = 0;
-+			ftsn_skip_arr[skip_pos].flags = flags;
-+			ftsn_skip_arr[skip_pos].mid = mid;
-+			if (skip_pos = nskips)
-+				nskips++;
-+			if (nskips = 10)
++		switch (cevent->msg_flags & SCTP_DATA_FRAG_MASK) {
++		case SCTP_DATA_FIRST_FRAG:
++			if (first_frag)
++				goto out;
++			if (cevent->mid = csin->mid) {
++				first_frag = pos;
++				last_frag = pos;
++				next_fsn = 0;
++				sin = csin;
++				sid = cevent->stream;
++			}
++			break;
++		case SCTP_DATA_MIDDLE_FRAG:
++			if (!first_frag)
 +				break;
-+		} else {
++			if (cevent->stream = sid &&
++			    cevent->mid = sin->mid &&
++			    cevent->fsn = next_fsn) {
++				next_fsn++;
++				last_frag = pos;
++			} else {
++				goto out;
++			}
++			break;
++		case SCTP_DATA_LAST_FRAG:
++			if (first_frag)
++				goto out;
++			break;
++		default:
 +			break;
 +		}
 +	}
 +
-+	if (asoc->adv_peer_ack_point > ctsn)
-+		ftsn_chunk = sctp_make_ifwdtsn(asoc, asoc->adv_peer_ack_point,
-+					       nskips, &ftsn_skip_arr[0]);
++	if (!first_frag)
++		return NULL;
 +
-+	if (ftsn_chunk) {
-+		list_add_tail(&ftsn_chunk->list, &q->control_chunk_list);
-+		SCTP_INC_STATS(sock_net(asoc->base.sk), SCTP_MIB_OUTCTRLCHUNKS);
++out:
++	retval = sctp_make_reassembled_event(sock_net(ulpq->asoc->base.sk),
++					     &ulpq->reasm, first_frag,
++					     last_frag);
++	if (retval) {
++		sin->fsn = next_fsn;
++		sin->pd_mode = 1;
 +	}
++
++	return retval;
++}
++
++static void sctp_intl_start_pd(struct sctp_ulpq *ulpq, gfp_t gfp)
++{
++	struct sctp_ulpevent *event;
++
++	if (skb_queue_empty(&ulpq->reasm))
++		return;
++
++	do {
++		event = sctp_intl_retrieve_first(ulpq);
++		if (event)
++			sctp_enqueue_event(ulpq, event);
++	} while (event);
++}
++
++static void sctp_renege_events(struct sctp_ulpq *ulpq, struct sctp_chunk *chunk,
++			       gfp_t gfp)
++{
++	struct sctp_association *asoc = ulpq->asoc;
++	__u32 freed = 0;
++	__u16 needed;
++
++	if (chunk) {
++		needed = ntohs(chunk->chunk_hdr->length);
++		needed -= sizeof(struct sctp_idata_chunk);
++	} else {
++		needed = SCTP_DEFAULT_MAXWINDOW;
++	}
++
++	if (skb_queue_empty(&asoc->base.sk->sk_receive_queue)) {
++		freed = sctp_ulpq_renege_list(ulpq, &ulpq->lobby, needed);
++		if (freed < needed)
++			freed += sctp_ulpq_renege_list(ulpq, &ulpq->reasm,
++						       needed);
++	}
++
++	if (chunk && freed >= needed)
++		if (sctp_ulpevent_idata(ulpq, chunk, gfp) <= 0)
++			sctp_intl_start_pd(ulpq, gfp);
++
++	sk_mem_reclaim(asoc->base.sk);
 +}
 +
  static struct sctp_stream_interleave sctp_stream_interleave_0 = {
  	.data_chunk_len		= sizeof(struct sctp_data_chunk),
  	/* DATA process functions */
-@@ -1093,6 +1164,8 @@ static struct sctp_stream_interleave sctp_stream_interleave_0 = {
- 	.renege_events		= sctp_ulpq_renege,
- 	.start_pd		= sctp_ulpq_partial_delivery,
- 	.abort_pd		= sctp_ulpq_abort_pd,
-+	/* FORWARD-TSN process functions */
-+	.generate_ftsn		= sctp_generate_fwdtsn,
+@@ -553,6 +660,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_0 = {
+ 	.validate_data		= sctp_validate_data,
+ 	.ulpevent_data		= sctp_ulpq_tail_data,
+ 	.enqueue_event		= sctp_ulpq_tail_event,
++	.renege_events		= sctp_ulpq_renege,
  };
  
  static struct sctp_stream_interleave sctp_stream_interleave_1 = {
-@@ -1106,6 +1179,8 @@ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
- 	.renege_events		= sctp_renege_events,
- 	.start_pd		= sctp_intl_start_pd,
- 	.abort_pd		= sctp_intl_abort_pd,
-+	/* I-FORWARD-TSN process functions */
-+	.generate_ftsn		= sctp_generate_iftsn,
+@@ -563,6 +671,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
+ 	.validate_data		= sctp_validate_idata,
+ 	.ulpevent_data		= sctp_ulpevent_idata,
+ 	.enqueue_event		= sctp_enqueue_event,
++	.renege_events		= sctp_renege_events,
  };
  
  void sctp_stream_interleave_init(struct sctp_stream *stream)
+diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
+index 0d07f2a..76ec514 100644
+--- a/net/sctp/ulpqueue.c
++++ b/net/sctp/ulpqueue.c
+@@ -978,8 +978,8 @@ void sctp_ulpq_skip(struct sctp_ulpq *ulpq, __u16 sid, __u16 ssn)
+ 	sctp_ulpq_reap_ordered(ulpq, sid);
+ }
+ 
+-static __u16 sctp_ulpq_renege_list(struct sctp_ulpq *ulpq,
+-		struct sk_buff_head *list, __u16 needed)
++__u16 sctp_ulpq_renege_list(struct sctp_ulpq *ulpq, struct sk_buff_head *list,
++			    __u16 needed)
+ {
+ 	__u16 freed = 0;
+ 	__u32 tsn, last_tsn;
 -- 
 2.1.0
 
