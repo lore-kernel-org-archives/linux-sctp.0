@@ -1,321 +1,653 @@
-From: Masami Hiramatsu <mhiramat@kernel.org>
-Date: Thu, 28 Dec 2017 06:12:00 +0000
-Subject: [PATCH net-next v6 4/6] net: sctp: Remove debug SCTP probe module
-Message-Id: <151444152081.11331.9346117767974967204.stgit@devbox>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 08 Dec 2017 13:04:04 +0000
+Subject: [PATCHv2 net-next 07/12] sctp: implement ulpevent_data for sctp_stream_interleave
+Message-Id: <9b28c98bbb59126b2be7b81cd4bd16336f99ba69.1512738021.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <151444140014.11331.17287122201510506083.stgit@devbox>
-In-Reply-To: <151444140014.11331.17287122201510506083.stgit@devbox>
+References: <cover.1512738021.git.lucien.xin@gmail.com>
+ <2fef1243f8181062aeb17f7052e5b022ec274a8e.1512738021.git.lucien.xin@gmail.com>
+ <7347f16f5b620ed98fdb5f7ac54db4a70e1fd27e.1512738021.git.lucien.xin@gmail.com>
+ <9a2bf9495313a79f0bbffb8edaaef25269804feb.1512738021.git.lucien.xin@gmail.com>
+ <ed729ca6023dea0812e4caa4d5da3259df375127.1512738021.git.lucien.xin@gmail.com>
+ <be593df99566267deff68ff477d2355dfffada80.1512738021.git.lucien.xin@gmail.com>
+ <083a620b71eb0446997f308372bdbe2d1e0fdc55.1512738021.git.lucien.xin@gmail.com>
+In-Reply-To: <083a620b71eb0446997f308372bdbe2d1e0fdc55.1512738021.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Ingo Molnar <mingo@kernel.org>, "David S . Miller" <davem@davemloft.net>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
-Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-Remove SCTP probe module since jprobe has been deprecated.
-That function is now replaced by sctp/sctp_probe and
-sctp/sctp_probe_path trace-events.
-You can use it via ftrace or perftools.
+ulpevent_data is added as a member of sctp_stream_interleave, used to
+do the most process in ulpq, including to convert data or idata chunk
+to event, reasm them in reasm queue and put them in lobby queue in
+right order, and deliver them up to user sk rx queue.
 
-Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
+This procedure is described in section 2.2.3 of RFC8260.
+
+It adds most functions for idata here to do the similar process as
+the old functions for data. But since the details are very different
+between them, the old functions can not be reused for idata.
+
+event->ssn and event->ppid settings are moved to ulpevent_data from
+sctp_ulpevent_make_rcvmsg, so that sctp_ulpevent_make_rcvmsg could
+work for both data and idata.
+
+Note that mid is added in sctp_ulpevent for idata, __packed has to
+be used for defining sctp_ulpevent, or it would exceeds the skb cb
+that saves a sctp_ulpevent variable for ulp layer process.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
 ---
- net/sctp/Kconfig  |   12 ---
- net/sctp/Makefile |    3 -
- net/sctp/probe.c  |  244 -----------------------------------------------------
- 3 files changed, 259 deletions(-)
- delete mode 100644 net/sctp/probe.c
+ include/net/sctp/stream_interleave.h |   2 +
+ include/net/sctp/structs.h           |   3 +
+ include/net/sctp/ulpevent.h          |  20 +-
+ net/sctp/sm_sideeffect.c             |   5 +-
+ net/sctp/stream_interleave.c         | 418 +++++++++++++++++++++++++++++++++++
+ net/sctp/ulpevent.c                  |   2 -
+ net/sctp/ulpqueue.c                  |  12 +-
+ 7 files changed, 451 insertions(+), 11 deletions(-)
 
-diff --git a/net/sctp/Kconfig b/net/sctp/Kconfig
-index d9c04dc1b3f3..c740b189d4ba 100644
---- a/net/sctp/Kconfig
-+++ b/net/sctp/Kconfig
-@@ -37,18 +37,6 @@ menuconfig IP_SCTP
+diff --git a/include/net/sctp/stream_interleave.h b/include/net/sctp/stream_interleave.h
+index d8d1b51..02f60f5 100644
+--- a/include/net/sctp/stream_interleave.h
++++ b/include/net/sctp/stream_interleave.h
+@@ -39,6 +39,8 @@ struct sctp_stream_interleave {
+ 					    int len, __u8 flags, gfp_t gfp);
+ 	void	(*assign_number)(struct sctp_chunk *chunk);
+ 	bool	(*validate_data)(struct sctp_chunk *chunk);
++	int	(*ulpevent_data)(struct sctp_ulpq *ulpq,
++				 struct sctp_chunk *chunk, gfp_t gfp);
+ };
  
- if IP_SCTP
+ void sctp_stream_interleave_init(struct sctp_stream *stream);
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index be4cc73..73b315d 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -411,6 +411,8 @@ void sctp_stream_update(struct sctp_stream *stream, struct sctp_stream *new);
+ #define sctp_mid_skip(stream, type, sid, mid) \
+ 	((stream)->type[sid].mid = mid + 1)
  
--config NET_SCTPPROBE
--	tristate "SCTP: Association probing"
--        depends on PROC_FS && KPROBES
--        ---help---
--        This module allows for capturing the changes to SCTP association
--        state in response to incoming packets. It is used for debugging
--        SCTP congestion control algorithms. If you don't understand
--        what was just said, you don't need it: say N.
--
--        To compile this code as a module, choose M here: the
--        module will be called sctp_probe.
--
- config SCTP_DBG_OBJCNT
- 	bool "SCTP: Debug object counts"
- 	depends on PROC_FS
-diff --git a/net/sctp/Makefile b/net/sctp/Makefile
-index 54bd9c1a8aa1..6776582ec449 100644
---- a/net/sctp/Makefile
-+++ b/net/sctp/Makefile
-@@ -4,7 +4,6 @@
- #
++#define sctp_stream_in(asoc, sid) (&(asoc)->stream.in[sid])
++
+ /*
+  * Pointers to address related SCTP functions.
+  * (i.e. things that depend on the address family.)
+@@ -1387,6 +1389,7 @@ struct sctp_stream_in {
+ 		__u16 ssn;
+ 	};
+ 	__u32 fsn;
++	char pd_mode;
+ };
  
- obj-$(CONFIG_IP_SCTP) += sctp.o
--obj-$(CONFIG_NET_SCTPPROBE) += sctp_probe.o
- obj-$(CONFIG_INET_SCTP_DIAG) += sctp_diag.o
- 
- sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
-@@ -16,8 +15,6 @@ sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
- 	  offload.o stream_sched.o stream_sched_prio.o \
- 	  stream_sched_rr.o stream_interleave.o
- 
--sctp_probe-y := probe.o
--
- sctp-$(CONFIG_SCTP_DBG_OBJCNT) += objcnt.o
- sctp-$(CONFIG_PROC_FS) += proc.o
- sctp-$(CONFIG_SYSCTL) += sysctl.o
-diff --git a/net/sctp/probe.c b/net/sctp/probe.c
-deleted file mode 100644
-index 1280f85a598d..000000000000
---- a/net/sctp/probe.c
-+++ /dev/null
-@@ -1,244 +0,0 @@
--/*
-- * sctp_probe - Observe the SCTP flow with kprobes.
-- *
-- * The idea for this came from Werner Almesberger's umlsim
-- * Copyright (C) 2004, Stephen Hemminger <shemminger@osdl.org>
-- *
-- * Modified for SCTP from Stephen Hemminger's code
-- * Copyright (C) 2010, Wei Yongjun <yjwei@cn.fujitsu.com>
-- *
-- * This program is free software; you can redistribute it and/or modify
-- * it under the terms of the GNU General Public License as published by
-- * the Free Software Foundation; either version 2 of the License, or
-- * (at your option) any later version.
-- *
-- * This program is distributed in the hope that it will be useful,
-- * but WITHOUT ANY WARRANTY; without even the implied warranty of
-- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-- * GNU General Public License for more details.
-- *
-- * You should have received a copy of the GNU General Public License
-- * along with this program; if not, write to the Free Software
-- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-- */
--
--#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
--
--#include <linux/kernel.h>
--#include <linux/kprobes.h>
--#include <linux/socket.h>
--#include <linux/sctp.h>
--#include <linux/proc_fs.h>
--#include <linux/vmalloc.h>
--#include <linux/module.h>
--#include <linux/kfifo.h>
--#include <linux/time.h>
--#include <net/net_namespace.h>
--
--#include <net/sctp/sctp.h>
--#include <net/sctp/sm.h>
--
--MODULE_SOFTDEP("pre: sctp");
--MODULE_AUTHOR("Wei Yongjun <yjwei@cn.fujitsu.com>");
--MODULE_DESCRIPTION("SCTP snooper");
--MODULE_LICENSE("GPL");
--
--static int port __read_mostly = 0;
--MODULE_PARM_DESC(port, "Port to match (0=all)");
--module_param(port, int, 0);
--
--static unsigned int fwmark __read_mostly = 0;
--MODULE_PARM_DESC(fwmark, "skb mark to match (0=no mark)");
--module_param(fwmark, uint, 0);
--
--static int bufsize __read_mostly = 64 * 1024;
--MODULE_PARM_DESC(bufsize, "Log buffer size (default 64k)");
--module_param(bufsize, int, 0);
--
--static int full __read_mostly = 1;
--MODULE_PARM_DESC(full, "Full log (1=every ack packet received,  0=only cwnd changes)");
--module_param(full, int, 0);
--
--static const char procname[] = "sctpprobe";
--
--static struct {
--	struct kfifo	  fifo;
--	spinlock_t	  lock;
--	wait_queue_head_t wait;
--	struct timespec64 tstart;
--} sctpw;
--
--static __printf(1, 2) void printl(const char *fmt, ...)
--{
--	va_list args;
--	int len;
--	char tbuf[256];
--
--	va_start(args, fmt);
--	len = vscnprintf(tbuf, sizeof(tbuf), fmt, args);
--	va_end(args);
--
--	kfifo_in_locked(&sctpw.fifo, tbuf, len, &sctpw.lock);
--	wake_up(&sctpw.wait);
--}
--
--static int sctpprobe_open(struct inode *inode, struct file *file)
--{
--	kfifo_reset(&sctpw.fifo);
--	ktime_get_ts64(&sctpw.tstart);
--
--	return 0;
--}
--
--static ssize_t sctpprobe_read(struct file *file, char __user *buf,
--			      size_t len, loff_t *ppos)
--{
--	int error = 0, cnt = 0;
--	unsigned char *tbuf;
--
--	if (!buf)
--		return -EINVAL;
--
--	if (len = 0)
--		return 0;
--
--	tbuf = vmalloc(len);
--	if (!tbuf)
--		return -ENOMEM;
--
--	error = wait_event_interruptible(sctpw.wait,
--					 kfifo_len(&sctpw.fifo) != 0);
--	if (error)
--		goto out_free;
--
--	cnt = kfifo_out_locked(&sctpw.fifo, tbuf, len, &sctpw.lock);
--	error = copy_to_user(buf, tbuf, cnt) ? -EFAULT : 0;
--
--out_free:
--	vfree(tbuf);
--
--	return error ? error : cnt;
--}
--
--static const struct file_operations sctpprobe_fops = {
--	.owner	= THIS_MODULE,
--	.open	= sctpprobe_open,
--	.read	= sctpprobe_read,
--	.llseek = noop_llseek,
+ struct sctp_stream {
+diff --git a/include/net/sctp/ulpevent.h b/include/net/sctp/ulpevent.h
+index 231dc42..ce4f2aa 100644
+--- a/include/net/sctp/ulpevent.h
++++ b/include/net/sctp/ulpevent.h
+@@ -45,19 +45,29 @@
+ /* A structure to carry information to the ULP (e.g. Sockets API) */
+ /* Warning: This sits inside an skb.cb[] area.  Be very careful of
+  * growing this structure as it is at the maximum limit now.
++ *
++ * sctp_ulpevent is saved in sk->cb(48 bytes), whose last 4 bytes
++ * have been taken by sock_skb_cb, So here it has to use 'packed'
++ * to make sctp_ulpevent fit into the rest 44 bytes.
+  */
+ struct sctp_ulpevent {
+ 	struct sctp_association *asoc;
+ 	struct sctp_chunk *chunk;
+ 	unsigned int rmem_len;
+-	__u32 ppid;
++	union {
++		__u32 mid;
++		__u16 ssn;
++	};
++	union {
++		__u32 ppid;
++		__u32 fsn;
++	};
+ 	__u32 tsn;
+ 	__u32 cumtsn;
+ 	__u16 stream;
+-	__u16 ssn;
+ 	__u16 flags;
+ 	__u16 msg_flags;
 -};
--
--static enum sctp_disposition jsctp_sf_eat_sack(
--					struct net *net,
--					const struct sctp_endpoint *ep,
--					const struct sctp_association *asoc,
--					const union sctp_subtype type,
--					void *arg,
--					struct sctp_cmd_seq *commands)
--{
--	struct sctp_chunk *chunk = arg;
--	struct sk_buff *skb = chunk->skb;
--	struct sctp_transport *sp;
--	static __u32 lcwnd = 0;
--	struct timespec64 now;
--
--	sp = asoc->peer.primary_path;
--
--	if (((port = 0 && fwmark = 0) ||
--	     asoc->peer.port = port ||
--	     ep->base.bind_addr.port = port ||
--	     (fwmark > 0 && skb->mark = fwmark)) &&
--	    (full || sp->cwnd != lcwnd)) {
--		lcwnd = sp->cwnd;
--
--		ktime_get_ts64(&now);
--		now = timespec64_sub(now, sctpw.tstart);
--
--		printl("%lu.%06lu ", (unsigned long) now.tv_sec,
--		       (unsigned long) now.tv_nsec / NSEC_PER_USEC);
--
--		printl("%p %5d %5d %5d %8d %5d ", asoc,
--		       ep->base.bind_addr.port, asoc->peer.port,
--		       asoc->pathmtu, asoc->peer.rwnd, asoc->unack_data);
--
--		list_for_each_entry(sp, &asoc->peer.transport_addr_list,
--					transports) {
--			if (sp = asoc->peer.primary_path)
--				printl("*");
--
--			printl("%pISc %2u %8u %8u %8u %8u %8u ",
--			       &sp->ipaddr, sp->state, sp->cwnd, sp->ssthresh,
--			       sp->flight_size, sp->partial_bytes_acked,
--			       sp->pathmtu);
--		}
--		printl("\n");
--	}
--
--	jprobe_return();
--	return 0;
--}
--
--static struct jprobe sctp_recv_probe = {
--	.kp	= {
--		.symbol_name = "sctp_sf_eat_sack_6_2",
--	},
--	.entry	= jsctp_sf_eat_sack,
--};
--
--static __init int sctp_setup_jprobe(void)
--{
--	int ret = register_jprobe(&sctp_recv_probe);
--
--	if (ret) {
--		if (request_module("sctp"))
--			goto out;
--		ret = register_jprobe(&sctp_recv_probe);
--	}
--
--out:
--	return ret;
--}
--
--static __init int sctpprobe_init(void)
--{
--	int ret = -ENOMEM;
--
--	/* Warning: if the function signature of sctp_sf_eat_sack_6_2,
--	 * has been changed, you also have to change the signature of
--	 * jsctp_sf_eat_sack, otherwise you end up right here!
--	 */
--	BUILD_BUG_ON(__same_type(sctp_sf_eat_sack_6_2,
--				 jsctp_sf_eat_sack) = 0);
--
--	init_waitqueue_head(&sctpw.wait);
--	spin_lock_init(&sctpw.lock);
--	if (kfifo_alloc(&sctpw.fifo, bufsize, GFP_KERNEL))
--		return ret;
--
--	if (!proc_create(procname, S_IRUSR, init_net.proc_net,
--			 &sctpprobe_fops))
--		goto free_kfifo;
--
--	ret = sctp_setup_jprobe();
--	if (ret)
--		goto remove_proc;
--
--	pr_info("probe registered (port=%d/fwmark=%u) bufsize=%u\n",
--		port, fwmark, bufsize);
--	return 0;
--
--remove_proc:
--	remove_proc_entry(procname, init_net.proc_net);
--free_kfifo:
--	kfifo_free(&sctpw.fifo);
--	return ret;
--}
--
--static __exit void sctpprobe_exit(void)
--{
--	kfifo_free(&sctpw.fifo);
--	remove_proc_entry(procname, init_net.proc_net);
--	unregister_jprobe(&sctp_recv_probe);
--}
--
--module_init(sctpprobe_init);
--module_exit(sctpprobe_exit);
++} __packed;
+ 
+ /* Retrieve the skb this event sits inside of. */
+ static inline struct sk_buff *sctp_event2skb(const struct sctp_ulpevent *ev)
+@@ -140,6 +150,10 @@ struct sctp_ulpevent *sctp_ulpevent_make_stream_change_event(
+ 	const struct sctp_association *asoc, __u16 flags,
+ 	__u32 strchange_instrms, __u32 strchange_outstrms, gfp_t gfp);
+ 
++struct sctp_ulpevent *sctp_make_reassembled_event(
++	struct net *net, struct sk_buff_head *queue,
++	struct sk_buff *f_frag, struct sk_buff *l_frag);
++
+ void sctp_ulpevent_read_sndrcvinfo(const struct sctp_ulpevent *event,
+ 				   struct msghdr *);
+ void sctp_ulpevent_read_rcvinfo(const struct sctp_ulpevent *event,
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index df94d77..9d25efb 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -1483,8 +1483,9 @@ static int sctp_cmd_interpreter(enum sctp_event event_type,
+ 			pr_debug("%s: sm_sideff: chunk_up:%p, ulpq:%p\n",
+ 				 __func__, cmd->obj.chunk, &asoc->ulpq);
+ 
+-			sctp_ulpq_tail_data(&asoc->ulpq, cmd->obj.chunk,
+-					    GFP_ATOMIC);
++			asoc->stream.si->ulpevent_data(&asoc->ulpq,
++						       cmd->obj.chunk,
++						       GFP_ATOMIC);
+ 			break;
+ 
+ 		case SCTP_CMD_EVENT_ULP:
+diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
+index 3d8733b..8238311 100644
+--- a/net/sctp/stream_interleave.c
++++ b/net/sctp/stream_interleave.c
+@@ -29,8 +29,10 @@
+  *    Xin Long <lucien.xin@gmail.com>
+  */
+ 
++#include <net/busy_poll.h>
+ #include <net/sctp/sctp.h>
+ #include <net/sctp/sm.h>
++#include <net/sctp/ulpevent.h>
+ #include <linux/sctp.h>
+ 
+ static struct sctp_chunk *sctp_make_idatafrag_empty(
+@@ -129,12 +131,427 @@ static bool sctp_validate_idata(struct sctp_chunk *chunk)
+ 	return !MID_lt(mid, sctp_mid_peek(stream, in, sid));
+ }
+ 
++static void sctp_intl_store_reasm(struct sctp_ulpq *ulpq,
++				  struct sctp_ulpevent *event)
++{
++	struct sctp_ulpevent *cevent;
++	struct sk_buff *pos;
++
++	pos = skb_peek_tail(&ulpq->reasm);
++	if (!pos) {
++		__skb_queue_tail(&ulpq->reasm, sctp_event2skb(event));
++		return;
++	}
++
++	cevent = sctp_skb2event(pos);
++
++	if (event->stream = cevent->stream &&
++	    event->mid = cevent->mid &&
++	    (cevent->msg_flags & SCTP_DATA_FIRST_FRAG ||
++	     (!(event->msg_flags & SCTP_DATA_FIRST_FRAG) &&
++	      event->fsn > cevent->fsn))) {
++		__skb_queue_tail(&ulpq->reasm, sctp_event2skb(event));
++		return;
++	}
++
++	if ((event->stream = cevent->stream &&
++	     MID_lt(cevent->mid, event->mid)) ||
++	    event->stream > cevent->stream) {
++		__skb_queue_tail(&ulpq->reasm, sctp_event2skb(event));
++		return;
++	}
++
++	skb_queue_walk(&ulpq->reasm, pos) {
++		cevent = sctp_skb2event(pos);
++
++		if (event->stream < cevent->stream ||
++		    (event->stream = cevent->stream &&
++		     MID_lt(event->mid, cevent->mid)))
++			break;
++
++		if (event->stream = cevent->stream &&
++		    event->mid = cevent->mid &&
++		    !(cevent->msg_flags & SCTP_DATA_FIRST_FRAG) &&
++		    (event->msg_flags & SCTP_DATA_FIRST_FRAG ||
++		     event->fsn < cevent->fsn))
++			break;
++	}
++
++	__skb_queue_before(&ulpq->reasm, pos, sctp_event2skb(event));
++}
++
++static struct sctp_ulpevent *sctp_intl_retrieve_partial(
++						struct sctp_ulpq *ulpq,
++						struct sctp_ulpevent *event)
++{
++	struct sk_buff *first_frag = NULL;
++	struct sk_buff *last_frag = NULL;
++	struct sctp_ulpevent *retval;
++	struct sctp_stream_in *sin;
++	struct sk_buff *pos;
++	__u32 next_fsn = 0;
++	int is_last = 0;
++
++	sin = sctp_stream_in(ulpq->asoc, event->stream);
++
++	skb_queue_walk(&ulpq->reasm, pos) {
++		struct sctp_ulpevent *cevent = sctp_skb2event(pos);
++
++		if (cevent->stream < event->stream)
++			continue;
++
++		if (cevent->stream > event->stream ||
++		    cevent->mid != sin->mid)
++			break;
++
++		switch (cevent->msg_flags & SCTP_DATA_FRAG_MASK) {
++		case SCTP_DATA_FIRST_FRAG:
++			goto out;
++		case SCTP_DATA_MIDDLE_FRAG:
++			if (!first_frag) {
++				if (cevent->fsn = sin->fsn) {
++					first_frag = pos;
++					last_frag = pos;
++					next_fsn = cevent->fsn + 1;
++				}
++			} else if (cevent->fsn = next_fsn) {
++				last_frag = pos;
++				next_fsn++;
++			} else {
++				goto out;
++			}
++			break;
++		case SCTP_DATA_LAST_FRAG:
++			if (!first_frag) {
++				if (cevent->fsn = sin->fsn) {
++					first_frag = pos;
++					last_frag = pos;
++					next_fsn = 0;
++					is_last = 1;
++				}
++			} else if (cevent->fsn = next_fsn) {
++				last_frag = pos;
++				next_fsn = 0;
++				is_last = 1;
++			}
++			goto out;
++		default:
++			goto out;
++		}
++	}
++
++out:
++	if (!first_frag)
++		return NULL;
++
++	retval = sctp_make_reassembled_event(sock_net(ulpq->asoc->base.sk),
++					     &ulpq->reasm, first_frag,
++					     last_frag);
++	if (retval) {
++		sin->fsn = next_fsn;
++		if (is_last) {
++			retval->msg_flags |= MSG_EOR;
++			sin->pd_mode = 0;
++		}
++	}
++
++	return retval;
++}
++
++static struct sctp_ulpevent *sctp_intl_retrieve_reassembled(
++						struct sctp_ulpq *ulpq,
++						struct sctp_ulpevent *event)
++{
++	struct sctp_association *asoc = ulpq->asoc;
++	struct sk_buff *pos, *first_frag = NULL;
++	struct sctp_ulpevent *retval = NULL;
++	struct sk_buff *pd_first = NULL;
++	struct sk_buff *pd_last = NULL;
++	struct sctp_stream_in *sin;
++	__u32 next_fsn = 0;
++	__u32 pd_point = 0;
++	__u32 pd_len = 0;
++	__u32 mid = 0;
++
++	sin = sctp_stream_in(ulpq->asoc, event->stream);
++
++	skb_queue_walk(&ulpq->reasm, pos) {
++		struct sctp_ulpevent *cevent = sctp_skb2event(pos);
++
++		if (cevent->stream < event->stream)
++			continue;
++		if (cevent->stream > event->stream)
++			break;
++
++		if (MID_lt(cevent->mid, event->mid))
++			continue;
++		if (MID_lt(event->mid, cevent->mid))
++			break;
++
++		switch (cevent->msg_flags & SCTP_DATA_FRAG_MASK) {
++		case SCTP_DATA_FIRST_FRAG:
++			if (cevent->mid = sin->mid) {
++				pd_first = pos;
++				pd_last = pos;
++				pd_len = pos->len;
++			}
++
++			first_frag = pos;
++			next_fsn = 0;
++			mid = cevent->mid;
++			break;
++
++		case SCTP_DATA_MIDDLE_FRAG:
++			if (first_frag && cevent->mid = mid &&
++			    cevent->fsn = next_fsn) {
++				next_fsn++;
++				if (pd_first) {
++					pd_last = pos;
++					pd_len += pos->len;
++				}
++			} else {
++				first_frag = NULL;
++			}
++			break;
++
++		case SCTP_DATA_LAST_FRAG:
++			if (first_frag && cevent->mid = mid &&
++			    cevent->fsn = next_fsn)
++				goto found;
++			else
++				first_frag = NULL;
++			break;
++		}
++	}
++
++	if (!pd_first)
++		goto out;
++
++	pd_point = sctp_sk(asoc->base.sk)->pd_point;
++	if (pd_point && pd_point <= pd_len) {
++		retval = sctp_make_reassembled_event(sock_net(asoc->base.sk),
++						     &ulpq->reasm,
++						     pd_first, pd_last);
++		if (retval) {
++			sin->fsn = next_fsn;
++			sin->pd_mode = 1;
++		}
++	}
++	goto out;
++
++found:
++	retval = sctp_make_reassembled_event(sock_net(asoc->base.sk),
++					     &ulpq->reasm,
++					     first_frag, pos);
++	if (retval)
++		retval->msg_flags |= MSG_EOR;
++
++out:
++	return retval;
++}
++
++static struct sctp_ulpevent *sctp_intl_reasm(struct sctp_ulpq *ulpq,
++					     struct sctp_ulpevent *event)
++{
++	struct sctp_ulpevent *retval = NULL;
++	struct sctp_stream_in *sin;
++
++	if (SCTP_DATA_NOT_FRAG = (event->msg_flags & SCTP_DATA_FRAG_MASK)) {
++		event->msg_flags |= MSG_EOR;
++		return event;
++	}
++
++	sctp_intl_store_reasm(ulpq, event);
++
++	sin = sctp_stream_in(ulpq->asoc, event->stream);
++	if (sin->pd_mode && event->mid = sin->mid &&
++	    event->fsn = sin->fsn)
++		retval = sctp_intl_retrieve_partial(ulpq, event);
++
++	if (!retval)
++		retval = sctp_intl_retrieve_reassembled(ulpq, event);
++
++	return retval;
++}
++
++static void sctp_intl_store_ordered(struct sctp_ulpq *ulpq,
++				    struct sctp_ulpevent *event)
++{
++	struct sctp_ulpevent *cevent;
++	struct sk_buff *pos;
++
++	pos = skb_peek_tail(&ulpq->lobby);
++	if (!pos) {
++		__skb_queue_tail(&ulpq->lobby, sctp_event2skb(event));
++		return;
++	}
++
++	cevent = (struct sctp_ulpevent *)pos->cb;
++	if (event->stream = cevent->stream &&
++	    MID_lt(cevent->mid, event->mid)) {
++		__skb_queue_tail(&ulpq->lobby, sctp_event2skb(event));
++		return;
++	}
++
++	if (event->stream > cevent->stream) {
++		__skb_queue_tail(&ulpq->lobby, sctp_event2skb(event));
++		return;
++	}
++
++	skb_queue_walk(&ulpq->lobby, pos) {
++		cevent = (struct sctp_ulpevent *)pos->cb;
++
++		if (cevent->stream > event->stream)
++			break;
++
++		if (cevent->stream = event->stream &&
++		    MID_lt(event->mid, cevent->mid))
++			break;
++	}
++
++	__skb_queue_before(&ulpq->lobby, pos, sctp_event2skb(event));
++}
++
++static void sctp_intl_retrieve_ordered(struct sctp_ulpq *ulpq,
++				       struct sctp_ulpevent *event)
++{
++	struct sk_buff_head *event_list;
++	struct sctp_stream *stream;
++	struct sk_buff *pos, *tmp;
++	__u16 sid = event->stream;
++
++	stream  = &ulpq->asoc->stream;
++	event_list = (struct sk_buff_head *)sctp_event2skb(event)->prev;
++
++	sctp_skb_for_each(pos, &ulpq->lobby, tmp) {
++		struct sctp_ulpevent *cevent = (struct sctp_ulpevent *)pos->cb;
++
++		if (cevent->stream > sid)
++			break;
++
++		if (cevent->stream < sid)
++			continue;
++
++		if (cevent->mid != sctp_mid_peek(stream, in, sid))
++			break;
++
++		sctp_mid_next(stream, in, sid);
++
++		__skb_unlink(pos, &ulpq->lobby);
++
++		__skb_queue_tail(event_list, pos);
++	}
++}
++
++static struct sctp_ulpevent *sctp_intl_order(struct sctp_ulpq *ulpq,
++					     struct sctp_ulpevent *event)
++{
++	struct sctp_stream *stream;
++	__u16 sid;
++
++	if (event->msg_flags & SCTP_DATA_UNORDERED)
++		return event;
++
++	stream  = &ulpq->asoc->stream;
++	sid = event->stream;
++
++	if (event->mid != sctp_mid_peek(stream, in, sid)) {
++		sctp_intl_store_ordered(ulpq, event);
++		return NULL;
++	}
++
++	sctp_mid_next(stream, in, sid);
++
++	sctp_intl_retrieve_ordered(ulpq, event);
++
++	return event;
++}
++
++static int sctp_enqueue_event(struct sctp_ulpq *ulpq,
++			      struct sctp_ulpevent *event)
++{
++	struct sk_buff *skb = sctp_event2skb(event);
++	struct sock *sk = ulpq->asoc->base.sk;
++	struct sctp_sock *sp = sctp_sk(sk);
++	struct sk_buff_head *skb_list;
++
++	skb_list = (struct sk_buff_head *)skb->prev;
++
++	if (sk->sk_shutdown & RCV_SHUTDOWN &&
++	    (sk->sk_shutdown & SEND_SHUTDOWN ||
++	     !sctp_ulpevent_is_notification(event)))
++		goto out_free;
++
++	if (!sctp_ulpevent_is_notification(event)) {
++		sk_mark_napi_id(sk, skb);
++		sk_incoming_cpu_update(sk);
++	}
++
++	if (!sctp_ulpevent_is_enabled(event, &sp->subscribe))
++		goto out_free;
++
++	if (skb_list)
++		skb_queue_splice_tail_init(skb_list,
++					   &sk->sk_receive_queue);
++	else
++		__skb_queue_tail(&sk->sk_receive_queue, skb);
++
++	if (!sp->data_ready_signalled) {
++		sp->data_ready_signalled = 1;
++		sk->sk_data_ready(sk);
++	}
++
++	return 1;
++
++out_free:
++	if (skb_list)
++		sctp_queue_purge_ulpevents(skb_list);
++	else
++		sctp_ulpevent_free(event);
++
++	return 0;
++}
++
++static int sctp_ulpevent_idata(struct sctp_ulpq *ulpq,
++			       struct sctp_chunk *chunk, gfp_t gfp)
++{
++	struct sctp_ulpevent *event;
++	struct sk_buff_head temp;
++	int event_eor = 0;
++
++	event = sctp_ulpevent_make_rcvmsg(chunk->asoc, chunk, gfp);
++	if (!event)
++		return -ENOMEM;
++
++	event->mid = ntohl(chunk->subh.idata_hdr->mid);
++	if (event->msg_flags & SCTP_DATA_FIRST_FRAG)
++		event->ppid = chunk->subh.idata_hdr->ppid;
++	else
++		event->fsn = ntohl(chunk->subh.idata_hdr->fsn);
++
++	event = sctp_intl_reasm(ulpq, event);
++	if (event && event->msg_flags & MSG_EOR) {
++		skb_queue_head_init(&temp);
++		__skb_queue_tail(&temp, sctp_event2skb(event));
++
++		event = sctp_intl_order(ulpq, event);
++	}
++
++	if (event) {
++		event_eor = (event->msg_flags & MSG_EOR) ? 1 : 0;
++		sctp_enqueue_event(ulpq, event);
++	}
++
++	return event_eor;
++}
++
+ static struct sctp_stream_interleave sctp_stream_interleave_0 = {
+ 	.data_chunk_len		= sizeof(struct sctp_data_chunk),
+ 	/* DATA process functions */
+ 	.make_datafrag		= sctp_make_datafrag_empty,
+ 	.assign_number		= sctp_chunk_assign_ssn,
+ 	.validate_data		= sctp_validate_data,
++	.ulpevent_data		= sctp_ulpq_tail_data,
+ };
+ 
+ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
+@@ -143,6 +560,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
+ 	.make_datafrag		= sctp_make_idatafrag_empty,
+ 	.assign_number		= sctp_chunk_assign_mid,
+ 	.validate_data		= sctp_validate_idata,
++	.ulpevent_data		= sctp_ulpevent_idata,
+ };
+ 
+ void sctp_stream_interleave_init(struct sctp_stream *stream)
+diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
+index 650b634..d3218f3 100644
+--- a/net/sctp/ulpevent.c
++++ b/net/sctp/ulpevent.c
+@@ -705,8 +705,6 @@ struct sctp_ulpevent *sctp_ulpevent_make_rcvmsg(struct sctp_association *asoc,
+ 	sctp_ulpevent_receive_data(event, asoc);
+ 
+ 	event->stream = ntohs(chunk->subh.data_hdr->stream);
+-	event->ssn = ntohs(chunk->subh.data_hdr->ssn);
+-	event->ppid = chunk->subh.data_hdr->ppid;
+ 	if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED) {
+ 		event->flags |= SCTP_UNORDERED;
+ 		event->cumtsn = sctp_tsnmap_get_ctsn(&asoc->peer.tsn_map);
+diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
+index a71be33..0d07f2a 100644
+--- a/net/sctp/ulpqueue.c
++++ b/net/sctp/ulpqueue.c
+@@ -104,6 +104,9 @@ int sctp_ulpq_tail_data(struct sctp_ulpq *ulpq, struct sctp_chunk *chunk,
+ 	if (!event)
+ 		return -ENOMEM;
+ 
++	event->ssn = ntohs(chunk->subh.data_hdr->ssn);
++	event->ppid = chunk->subh.data_hdr->ppid;
++
+ 	/* Do reassembly if needed.  */
+ 	event = sctp_ulpq_reasm(ulpq, event);
+ 
+@@ -328,9 +331,10 @@ static void sctp_ulpq_store_reasm(struct sctp_ulpq *ulpq,
+  * payload was fragmented on the way and ip had to reassemble them.
+  * We add the rest of skb's to the first skb's fraglist.
+  */
+-static struct sctp_ulpevent *sctp_make_reassembled_event(struct net *net,
+-	struct sk_buff_head *queue, struct sk_buff *f_frag,
+-	struct sk_buff *l_frag)
++struct sctp_ulpevent *sctp_make_reassembled_event(struct net *net,
++						  struct sk_buff_head *queue,
++						  struct sk_buff *f_frag,
++						  struct sk_buff *l_frag)
+ {
+ 	struct sk_buff *pos;
+ 	struct sk_buff *new = NULL;
+@@ -853,7 +857,7 @@ static struct sctp_ulpevent *sctp_ulpq_order(struct sctp_ulpq *ulpq,
+ 	struct sctp_stream *stream;
+ 
+ 	/* Check if this message needs ordering.  */
+-	if (SCTP_DATA_UNORDERED & event->msg_flags)
++	if (event->msg_flags & SCTP_DATA_UNORDERED)
+ 		return event;
+ 
+ 	/* Note: The stream ID must be verified before this routine.  */
+-- 
+2.1.0
 
