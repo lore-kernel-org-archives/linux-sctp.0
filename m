@@ -1,283 +1,301 @@
-From: Masami Hiramatsu <mhiramat@kernel.org>
-Date: Fri, 22 Dec 2017 02:08:03 +0000
-Subject: [PATCH net-next v5 6/6] net: dccp: Remove dccpprobe module
-Message-Id: <151390848313.13277.14439378382509043980.stgit@devbox>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 08 Dec 2017 13:04:02 +0000
+Subject: [PATCHv2 net-next 05/12] sctp: implement assign_number for sctp_stream_interleave
+Message-Id: <be593df99566267deff68ff477d2355dfffada80.1512738021.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <151390830346.13277.15583398024850377955.stgit@devbox>
-In-Reply-To: <151390830346.13277.15583398024850377955.stgit@devbox>
+References: <cover.1512738021.git.lucien.xin@gmail.com>
+ <2fef1243f8181062aeb17f7052e5b022ec274a8e.1512738021.git.lucien.xin@gmail.com>
+ <7347f16f5b620ed98fdb5f7ac54db4a70e1fd27e.1512738021.git.lucien.xin@gmail.com>
+ <9a2bf9495313a79f0bbffb8edaaef25269804feb.1512738021.git.lucien.xin@gmail.com>
+ <ed729ca6023dea0812e4caa4d5da3259df375127.1512738021.git.lucien.xin@gmail.com>
+In-Reply-To: <ed729ca6023dea0812e4caa4d5da3259df375127.1512738021.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Ingo Molnar <mingo@kernel.org>, "David S . Miller" <davem@davemloft.net>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
-Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-Remove DCCP probe module since jprobe has been deprecated.
-That function is now replaced by dccp/dccp_probe trace-event.
-You can use it via ftrace or perftools.
+assign_number is added as a member of sctp_stream_interleave, used
+to assign ssn for data or mid (message id) for idata, called in
+sctp_packet_append_data. sctp_chunk_assign_ssn is left as it is,
+and sctp_chunk_assign_mid is added for sctp_stream_interleave_1.
 
-Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
+This procedure is described in section 2.2.2 of RFC8260.
+
+All sizeof(struct sctp_data_chunk) in tx path is replaced with
+sctp_datachk_len, to make it right for idata as well. And also
+adjust sctp_chunk_is_data for SCTP_CID_I_DATA.
+
+After this patch, idata can be built and sent in tx path.
+
+Note that if sp strm_interleave is set, it has to wait_connect in
+sctp_sendmsg, as asoc intl_enable need to be known after 4 shake-
+hands, to decide if it should use data or idata later. data and
+idata can't be mixed to send in one asoc.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
 ---
- Changes in v5:
-  - Fix a conflict with previous change in Makefile.
----
- net/dccp/Kconfig  |   17 ----
- net/dccp/Makefile |    2 -
- net/dccp/probe.c  |  203 -----------------------------------------------------
- 3 files changed, 222 deletions(-)
- delete mode 100644 net/dccp/probe.c
+ include/net/sctp/constants.h         |  9 +++++----
+ include/net/sctp/sctp.h              |  4 ++--
+ include/net/sctp/sm.h                |  2 +-
+ include/net/sctp/stream_interleave.h |  1 +
+ include/net/sctp/structs.h           | 18 +++++++++++++++++-
+ net/sctp/output.c                    |  5 +++--
+ net/sctp/socket.c                    | 17 +++++++++++++++--
+ net/sctp/stream_interleave.c         | 37 ++++++++++++++++++++++++++++++++++++
+ net/sctp/ulpevent.c                  |  4 ++--
+ 9 files changed, 83 insertions(+), 14 deletions(-)
 
-diff --git a/net/dccp/Kconfig b/net/dccp/Kconfig
-index 8c0ef71bed2f..b270e84d9c13 100644
---- a/net/dccp/Kconfig
-+++ b/net/dccp/Kconfig
-@@ -39,23 +39,6 @@ config IP_DCCP_DEBUG
+diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
+index deaafa9..20ff237 100644
+--- a/include/net/sctp/constants.h
++++ b/include/net/sctp/constants.h
+@@ -145,12 +145,13 @@ SCTP_SUBTYPE_CONSTRUCTOR(OTHER,		enum sctp_event_other,	other)
+ SCTP_SUBTYPE_CONSTRUCTOR(PRIMITIVE,	enum sctp_event_primitive, primitive)
  
- 	  Just say N.
  
--config NET_DCCPPROBE
--	tristate "DCCP connection probing"
--	depends on PROC_FS && KPROBES
--	---help---
--	This module allows for capturing the changes to DCCP connection
--	state in response to incoming packets. It is used for debugging
--	DCCP congestion avoidance modules. If you don't understand
--	what was just said, you don't need it: say N.
--
--	Documentation on how to use DCCP connection probing can be found
--	at:
--	
--	  http://www.linuxfoundation.org/collaborate/workgroups/networking/dccpprobe
--
--	To compile this code as a module, choose M here: the
--	module will be called dccp_probe.
--
+-#define sctp_chunk_is_data(a) (a->chunk_hdr->type = SCTP_CID_DATA)
++#define sctp_chunk_is_data(a) (a->chunk_hdr->type = SCTP_CID_DATA || \
++			       a->chunk_hdr->type = SCTP_CID_I_DATA)
  
- endmenu
+ /* Calculate the actual data size in a data chunk */
+-#define SCTP_DATA_SNDSIZE(c) ((int)((unsigned long)(c->chunk_end)\
+-		       		- (unsigned long)(c->chunk_hdr)\
+-				- sizeof(struct sctp_data_chunk)))
++#define SCTP_DATA_SNDSIZE(c) ((int)((unsigned long)(c->chunk_end) - \
++				    (unsigned long)(c->chunk_hdr) - \
++				    sctp_datachk_len(&c->asoc->stream)))
  
-diff --git a/net/dccp/Makefile b/net/dccp/Makefile
-index 4215f13a63af..5b4ff37bc806 100644
---- a/net/dccp/Makefile
-+++ b/net/dccp/Makefile
-@@ -21,12 +21,10 @@ obj-$(subst y,$(CONFIG_IP_DCCP),$(CONFIG_IPV6)) += dccp_ipv6.o
- dccp_ipv6-y := ipv6.o
+ /* Internal error codes */
+ enum sctp_ierror {
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 906a9c0..63ac57e 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -444,13 +444,13 @@ static inline int sctp_frag_point(const struct sctp_association *asoc, int pmtu)
+ 	int frag = pmtu;
  
- obj-$(CONFIG_INET_DCCP_DIAG) += dccp_diag.o
--obj-$(CONFIG_NET_DCCPPROBE) += dccp_probe.o
+ 	frag -= sp->pf->af->net_header_len;
+-	frag -= sizeof(struct sctphdr) + sizeof(struct sctp_data_chunk);
++	frag -= sizeof(struct sctphdr) + sctp_datachk_len(&asoc->stream);
  
- dccp-$(CONFIG_SYSCTL) += sysctl.o
+ 	if (asoc->user_frag)
+ 		frag = min_t(int, frag, asoc->user_frag);
  
- dccp_diag-y := diag.o
--dccp_probe-y := probe.o
+ 	frag = SCTP_TRUNC4(min_t(int, frag, SCTP_MAX_CHUNK_LEN -
+-					    sizeof(struct sctp_data_chunk)));
++					    sctp_datachk_len(&asoc->stream)));
  
- # build with local directory for trace.h
- CFLAGS_proto.o := -I$(src)
-diff --git a/net/dccp/probe.c b/net/dccp/probe.c
-deleted file mode 100644
-index 3d3fda05b32d..000000000000
---- a/net/dccp/probe.c
-+++ /dev/null
-@@ -1,203 +0,0 @@
--/*
-- * dccp_probe - Observe the DCCP flow with kprobes.
-- *
-- * The idea for this came from Werner Almesberger's umlsim
-- * Copyright (C) 2004, Stephen Hemminger <shemminger@osdl.org>
-- *
-- * Modified for DCCP from Stephen Hemminger's code
-- * Copyright (C) 2006, Ian McDonald <ian.mcdonald@jandi.co.nz>
-- *
-- * This program is free software; you can redistribute it and/or modify
-- * it under the terms of the GNU General Public License as published by
-- * the Free Software Foundation; either version 2 of the License, or
-- * (at your option) any later version.
-- *
-- * This program is distributed in the hope that it will be useful,
-- * but WITHOUT ANY WARRANTY; without even the implied warranty of
-- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-- * GNU General Public License for more details.
-- *
-- * You should have received a copy of the GNU General Public License
-- * along with this program; if not, write to the Free Software
-- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-- */
--
--#include <linux/kernel.h>
--#include <linux/kprobes.h>
--#include <linux/socket.h>
--#include <linux/dccp.h>
--#include <linux/proc_fs.h>
--#include <linux/module.h>
--#include <linux/kfifo.h>
--#include <linux/vmalloc.h>
--#include <linux/time64.h>
--#include <linux/gfp.h>
--#include <net/net_namespace.h>
--
--#include "dccp.h"
--#include "ccid.h"
--#include "ccids/ccid3.h"
--
--static int port;
--
--static int bufsize = 64 * 1024;
--
--static const char procname[] = "dccpprobe";
--
--static struct {
--	struct kfifo	  fifo;
--	spinlock_t	  lock;
--	wait_queue_head_t wait;
--	struct timespec64 tstart;
--} dccpw;
--
--static void printl(const char *fmt, ...)
--{
--	va_list args;
--	int len;
--	struct timespec64 now;
--	char tbuf[256];
--
--	va_start(args, fmt);
--	getnstimeofday64(&now);
--
--	now = timespec64_sub(now, dccpw.tstart);
--
--	len = sprintf(tbuf, "%lu.%06lu ",
--		      (unsigned long) now.tv_sec,
--		      (unsigned long) now.tv_nsec / NSEC_PER_USEC);
--	len += vscnprintf(tbuf+len, sizeof(tbuf)-len, fmt, args);
--	va_end(args);
--
--	kfifo_in_locked(&dccpw.fifo, tbuf, len, &dccpw.lock);
--	wake_up(&dccpw.wait);
--}
--
--static int jdccp_sendmsg(struct sock *sk, struct msghdr *msg, size_t size)
--{
--	const struct inet_sock *inet = inet_sk(sk);
--	struct ccid3_hc_tx_sock *hc = NULL;
--
--	if (ccid_get_current_tx_ccid(dccp_sk(sk)) = DCCPC_CCID3)
--		hc = ccid3_hc_tx_sk(sk);
--
--	if (port = 0 || ntohs(inet->inet_dport) = port ||
--	    ntohs(inet->inet_sport) = port) {
--		if (hc)
--			printl("%pI4:%u %pI4:%u %d %d %d %d %u %llu %llu %d\n",
--			       &inet->inet_saddr, ntohs(inet->inet_sport),
--			       &inet->inet_daddr, ntohs(inet->inet_dport), size,
--			       hc->tx_s, hc->tx_rtt, hc->tx_p,
--			       hc->tx_x_calc, hc->tx_x_recv >> 6,
--			       hc->tx_x >> 6, hc->tx_t_ipi);
--		else
--			printl("%pI4:%u %pI4:%u %d\n",
--			       &inet->inet_saddr, ntohs(inet->inet_sport),
--			       &inet->inet_daddr, ntohs(inet->inet_dport),
--			       size);
--	}
--
--	jprobe_return();
--	return 0;
--}
--
--static struct jprobe dccp_send_probe = {
--	.kp	= {
--		.symbol_name = "dccp_sendmsg",
--	},
--	.entry	= jdccp_sendmsg,
--};
--
--static int dccpprobe_open(struct inode *inode, struct file *file)
--{
--	kfifo_reset(&dccpw.fifo);
--	getnstimeofday64(&dccpw.tstart);
--	return 0;
--}
--
--static ssize_t dccpprobe_read(struct file *file, char __user *buf,
--			      size_t len, loff_t *ppos)
--{
--	int error = 0, cnt = 0;
--	unsigned char *tbuf;
--
--	if (!buf)
--		return -EINVAL;
--
--	if (len = 0)
--		return 0;
--
--	tbuf = vmalloc(len);
--	if (!tbuf)
--		return -ENOMEM;
--
--	error = wait_event_interruptible(dccpw.wait,
--					 kfifo_len(&dccpw.fifo) != 0);
--	if (error)
--		goto out_free;
--
--	cnt = kfifo_out_locked(&dccpw.fifo, tbuf, len, &dccpw.lock);
--	error = copy_to_user(buf, tbuf, cnt) ? -EFAULT : 0;
--
--out_free:
--	vfree(tbuf);
--
--	return error ? error : cnt;
--}
--
--static const struct file_operations dccpprobe_fops = {
--	.owner	 = THIS_MODULE,
--	.open	 = dccpprobe_open,
--	.read    = dccpprobe_read,
--	.llseek  = noop_llseek,
--};
--
--static __init int dccpprobe_init(void)
--{
--	int ret = -ENOMEM;
--
--	init_waitqueue_head(&dccpw.wait);
--	spin_lock_init(&dccpw.lock);
--	if (kfifo_alloc(&dccpw.fifo, bufsize, GFP_KERNEL))
--		return ret;
--	if (!proc_create(procname, S_IRUSR, init_net.proc_net, &dccpprobe_fops))
--		goto err0;
--
--	ret = register_jprobe(&dccp_send_probe);
--	if (ret) {
--		ret = request_module("dccp");
--		if (!ret)
--			ret = register_jprobe(&dccp_send_probe);
--	}
--
--	if (ret)
--		goto err1;
--
--	pr_info("DCCP watch registered (port=%d)\n", port);
--	return 0;
--err1:
--	remove_proc_entry(procname, init_net.proc_net);
--err0:
--	kfifo_free(&dccpw.fifo);
--	return ret;
--}
--module_init(dccpprobe_init);
--
--static __exit void dccpprobe_exit(void)
--{
--	kfifo_free(&dccpw.fifo);
--	remove_proc_entry(procname, init_net.proc_net);
--	unregister_jprobe(&dccp_send_probe);
--
--}
--module_exit(dccpprobe_exit);
--
--MODULE_PARM_DESC(port, "Port to match (0=all)");
--module_param(port, int, 0);
--
--MODULE_PARM_DESC(bufsize, "Log buffer size (default 64k)");
--module_param(bufsize, int, 0);
--
--MODULE_AUTHOR("Ian McDonald <ian.mcdonald@jandi.co.nz>");
--MODULE_DESCRIPTION("DCCP snooper");
--MODULE_LICENSE("GPL");
+ 	return frag;
+ }
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index f950186..ca1db89 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -343,7 +343,7 @@ static inline __u16 sctp_data_size(struct sctp_chunk *chunk)
+ 	__u16 size;
+ 
+ 	size = ntohs(chunk->chunk_hdr->length);
+-	size -= sizeof(struct sctp_data_chunk);
++	size -= sctp_datahdr_len(&chunk->asoc->stream);
+ 
+ 	return size;
+ }
+diff --git a/include/net/sctp/stream_interleave.h b/include/net/sctp/stream_interleave.h
+index 7b9fa8d..99f399e 100644
+--- a/include/net/sctp/stream_interleave.h
++++ b/include/net/sctp/stream_interleave.h
+@@ -37,6 +37,7 @@ struct sctp_stream_interleave {
+ 	struct sctp_chunk *(*make_datafrag)(const struct sctp_association *asoc,
+ 					    const struct sctp_sndrcvinfo *sinfo,
+ 					    int len, __u8 flags, gfp_t gfp);
++	void	(*assign_number)(struct sctp_chunk *chunk);
+ };
+ 
+ void sctp_stream_interleave_init(struct sctp_stream *stream);
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 96cc898..fd93973 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -399,6 +399,18 @@ void sctp_stream_update(struct sctp_stream *stream, struct sctp_stream *new);
+ #define sctp_ssn_skip(stream, type, sid, ssn) \
+ 	((stream)->type[sid].ssn = ssn + 1)
+ 
++/* What is the current MID number for this stream? */
++#define sctp_mid_peek(stream, type, sid) \
++	((stream)->type[sid].mid)
++
++/* Return the next MID number for this stream.  */
++#define sctp_mid_next(stream, type, sid) \
++	((stream)->type[sid].mid++)
++
++/* Skip over this mid and all below. */
++#define sctp_mid_skip(stream, type, sid, mid) \
++	((stream)->type[sid].mid = mid + 1)
++
+ /*
+  * Pointers to address related SCTP functions.
+  * (i.e. things that depend on the address family.)
+@@ -623,6 +635,7 @@ struct sctp_chunk {
+ 	__u16	rtt_in_progress:1,	/* This chunk used for RTT calc? */
+ 		has_tsn:1,		/* Does this chunk have a TSN yet? */
+ 		has_ssn:1,		/* Does this chunk have a SSN yet? */
++#define has_mid has_ssn
+ 		singleton:1,		/* Only chunk in the packet? */
+ 		end_of_packet:1,	/* Last chunk in the packet? */
+ 		ecn_ce_done:1,		/* Have we processed the ECN CE bit? */
+@@ -1360,7 +1373,10 @@ struct sctp_stream_out_ext {
+ };
+ 
+ struct sctp_stream_out {
+-	__u16	ssn;
++	union {
++		__u32 mid;
++		__u16 ssn;
++	};
+ 	__u8	state;
+ 	struct sctp_stream_out_ext *ext;
+ };
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 4a865cd..01a26ee0 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -313,6 +313,7 @@ static enum sctp_xmit __sctp_packet_append_chunk(struct sctp_packet *packet,
+ 	/* We believe that this chunk is OK to add to the packet */
+ 	switch (chunk->chunk_hdr->type) {
+ 	case SCTP_CID_DATA:
++	case SCTP_CID_I_DATA:
+ 		/* Account for the data being in the packet */
+ 		sctp_packet_append_data(packet, chunk);
+ 		/* Disallow SACK bundling after DATA. */
+@@ -724,7 +725,7 @@ static enum sctp_xmit sctp_packet_can_append_data(struct sctp_packet *packet,
+ 	 * or delay in hopes of bundling a full sized packet.
+ 	 */
+ 	if (chunk->skb->len + q->out_qlen > transport->pathmtu -
+-		packet->overhead - sizeof(struct sctp_data_chunk) - 4)
++	    packet->overhead - sctp_datachk_len(&chunk->asoc->stream) - 4)
+ 		/* Enough data queued to fill a packet */
+ 		return SCTP_XMIT_OK;
+ 
+@@ -759,7 +760,7 @@ static void sctp_packet_append_data(struct sctp_packet *packet,
+ 
+ 	asoc->peer.rwnd = rwnd;
+ 	sctp_chunk_assign_tsn(chunk);
+-	sctp_chunk_assign_ssn(chunk);
++	asoc->stream.si->assign_number(chunk);
+ }
+ 
+ static enum sctp_xmit sctp_packet_will_fit(struct sctp_packet *packet,
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 8c33463..036f945 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -2002,7 +2002,20 @@ static int sctp_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
+ 		if (err < 0)
+ 			goto out_free;
+ 
+-		wait_connect = true;
++		/* If stream interleave is enabled, wait_connect has to be
++		 * done earlier than data enqueue, as it needs to make data
++		 * or idata according to asoc->intl_enable which is set
++		 * after connection is done.
++		 */
++		if (sctp_sk(asoc->base.sk)->strm_interleave) {
++			timeo = sock_sndtimeo(sk, 0);
++			err = sctp_wait_for_connect(asoc, &timeo);
++			if (err)
++				goto out_unlock;
++		} else {
++			wait_connect = true;
++		}
++
+ 		pr_debug("%s: we associated primitively\n", __func__);
+ 	}
+ 
+@@ -3180,7 +3193,7 @@ static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned
+ 		if (val = 0) {
+ 			val = asoc->pathmtu - sp->pf->af->net_header_len;
+ 			val -= sizeof(struct sctphdr) +
+-			       sizeof(struct sctp_data_chunk);
++			       sctp_datachk_len(&asoc->stream);
+ 		}
+ 		asoc->user_frag = val;
+ 		asoc->frag_point = sctp_frag_point(asoc, asoc->pathmtu);
+diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
+index 397c3c1..3ac47e7 100644
+--- a/net/sctp/stream_interleave.c
++++ b/net/sctp/stream_interleave.c
+@@ -57,16 +57,53 @@ static struct sctp_chunk *sctp_make_idatafrag_empty(
+ 	return retval;
+ }
+ 
++static void sctp_chunk_assign_mid(struct sctp_chunk *chunk)
++{
++	struct sctp_stream *stream;
++	struct sctp_chunk *lchunk;
++	__u32 cfsn = 0;
++	__u16 sid;
++
++	if (chunk->has_mid)
++		return;
++
++	sid = sctp_chunk_stream_no(chunk);
++	stream = &chunk->asoc->stream;
++
++	list_for_each_entry(lchunk, &chunk->msg->chunks, frag_list) {
++		struct sctp_idatahdr *hdr;
++
++		lchunk->has_mid = 1;
++
++		if (lchunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
++			continue;
++
++		hdr = lchunk->subh.idata_hdr;
++
++		if (lchunk->chunk_hdr->flags & SCTP_DATA_FIRST_FRAG)
++			hdr->ppid = lchunk->sinfo.sinfo_ppid;
++		else
++			hdr->fsn = htonl(cfsn++);
++
++		if (lchunk->chunk_hdr->flags & SCTP_DATA_LAST_FRAG)
++			hdr->mid = htonl(sctp_mid_next(stream, out, sid));
++		else
++			hdr->mid = htonl(sctp_mid_peek(stream, out, sid));
++	}
++}
++
+ static struct sctp_stream_interleave sctp_stream_interleave_0 = {
+ 	.data_chunk_len		= sizeof(struct sctp_data_chunk),
+ 	/* DATA process functions */
+ 	.make_datafrag		= sctp_make_datafrag_empty,
++	.assign_number		= sctp_chunk_assign_ssn,
+ };
+ 
+ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
+ 	.data_chunk_len		= sizeof(struct sctp_idata_chunk),
+ 	/* I-DATA process functions */
+ 	.make_datafrag		= sctp_make_idatafrag_empty,
++	.assign_number		= sctp_chunk_assign_mid,
+ };
+ 
+ void sctp_stream_interleave_init(struct sctp_stream *stream)
+diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
+index 5447228..650b634 100644
+--- a/net/sctp/ulpevent.c
++++ b/net/sctp/ulpevent.c
+@@ -443,8 +443,8 @@ struct sctp_ulpevent *sctp_ulpevent_make_send_failed(
+ 		goto fail;
+ 
+ 	/* Pull off the common chunk header and DATA header.  */
+-	skb_pull(skb, sizeof(struct sctp_data_chunk));
+-	len -= sizeof(struct sctp_data_chunk);
++	skb_pull(skb, sctp_datachk_len(&asoc->stream));
++	len -= sctp_datachk_len(&asoc->stream);
+ 
+ 	/* Embed the event fields inside the cloned skb.  */
+ 	event = sctp_skb2event(skb);
+-- 
+2.1.0
 
