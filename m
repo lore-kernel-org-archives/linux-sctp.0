@@ -1,237 +1,155 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 05 Dec 2017 15:16:06 +0000
-Subject: [PATCH net-next 09/12] sctp: implement renege_events for sctp_stream_interleave
-Message-Id: <167166ed3ee953dbcee3aef43496d8c7b44c6b95.1512486606.git.lucien.xin@gmail.com>
+Date: Fri, 08 Dec 2017 03:44:53 +0000
+Subject: Re: [PATCH net-next 09/12] sctp: implement renege_events for sctp_stream_interleave
+Message-Id: <CADvbK_ddKD+tFck05cq0HYJO8toNzcwgYpO7K2MEM1Zg9Otj9w@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1512486606.git.lucien.xin@gmail.com>
- <b830faf5987dbed8b1e724f039348e960b8537e3.1512486606.git.lucien.xin@gmail.com>
- <590ee9b2ecf13733272f9bb1888c60de1f5f47a4.1512486606.git.lucien.xin@gmail.com>
- <4facf144fb29f5b161dd665e3326311001812a1c.1512486606.git.lucien.xin@gmail.com>
- <b8551388363da7b56f7e56132414c1399557a12d.1512486606.git.lucien.xin@gmail.com>
- <ddf7cc34d5fdbdcbe3e8b4e546799c55edff5ca2.1512486606.git.lucien.xin@gmail.com>
- <010d0fbcbdcb70224859dc281e622e0fdf6f46c5.1512486606.git.lucien.xin@gmail.com>
- <7dd410b23c38f41fb8402880185f5e583dabbc04.1512486606.git.lucien.xin@gmail.com>
- <08ec459b56ee8c72c588bdb2350d5619e3678ae5.1512486606.git.lucien.xin@gmail.com>
-In-Reply-To: <08ec459b56ee8c72c588bdb2350d5619e3678ae5.1512486606.git.lucien.xin@gmail.com>
+References: <167166ed3ee953dbcee3aef43496d8c7b44c6b95.1512486606.git.lucien.xin@gmail.com>
+ <201712081042.25vrMdbv%fengguang.wu@intel.com>
+In-Reply-To: <201712081042.25vrMdbv%fengguang.wu@intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: kbuild test robot <lkp@intel.com>
+Cc: kbuild-all@01.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem <davem@davemloft.net>
 
-renege_events is added as a member of sctp_stream_interleave, used to
-renege some old data or idata in reasm or lobby queue properly to free
-some memory for the new data when there's memory stress.
+On Fri, Dec 8, 2017 at 11:45 AM, kbuild test robot <lkp@intel.com> wrote:
+> Hi Xin,
+>
+> Thank you for the patch! Perhaps something to improve:
+>
+> [auto build test WARNING on net-next/master]
+>
+> url:    https://github.com/0day-ci/linux/commits/Xin-Long/sctp-Implement-Stream-Interleave-The-I-DATA-Chunk-Supporting-User-Message-Interleaving/20171208-031625
+> config: x86_64-randconfig-g0-12080821 (attached as .config)
+> compiler: gcc-4.9 (Debian 4.9.4-2) 4.9.4
+> reproduce:
+>         # save the attached .config to linux build tree
+>         make ARCH=x86_64
+>
+> Note: it may well be a FALSE warning. FWIW you are at least aware of it now.
+> http://gcc.gnu.org/wiki/Better_Uninitialized_Warnings
+>
+> All warnings (new ones prefixed by >>):
+>
+>    Cyclomatic Complexity 1 include/linux/spinlock.h:spinlock_check
+>    Cyclomatic Complexity 1 include/linux/skbuff.h:skb_queue_empty
+>    Cyclomatic Complexity 2 include/linux/skbuff.h:skb_peek_tail
+>    Cyclomatic Complexity 1 include/linux/skbuff.h:__skb_queue_head_init
+>    Cyclomatic Complexity 1 include/linux/skbuff.h:__skb_insert
+>    Cyclomatic Complexity 1 include/linux/skbuff.h:__skb_queue_splice
+>    Cyclomatic Complexity 2 include/linux/skbuff.h:skb_queue_splice_tail_init
+>    Cyclomatic Complexity 1 include/linux/skbuff.h:__skb_queue_before
+>    Cyclomatic Complexity 1 include/linux/skbuff.h:__skb_queue_tail
+>    Cyclomatic Complexity 1 include/linux/skbuff.h:__skb_unlink
+>    Cyclomatic Complexity 1 include/net/net_namespace.h:read_pnet
+>    Cyclomatic Complexity 1 include/net/sock.h:sk_has_account
+>    Cyclomatic Complexity 1 include/net/sock.h:sock_net
+>    Cyclomatic Complexity 1 include/net/busy_poll.h:sk_mark_napi_id
+>    Cyclomatic Complexity 1 include/net/sctp/ulpevent.h:sctp_skb2event
+>    Cyclomatic Complexity 2 include/net/sctp/ulpevent.h:sctp_ulpevent_type_enabled
+>    Cyclomatic Complexity 1 include/net/sctp/structs.h:sctp_sk
+>    Cyclomatic Complexity 1 include/net/sctp/structs.h:sctp_chunk_stream_no
+>    Cyclomatic Complexity 6 net//sctp/stream_interleave.c:sctp_validate_data
+>    Cyclomatic Complexity 15 net//sctp/stream_interleave.c:sctp_intl_retrieve_first
+>    Cyclomatic Complexity 16 net//sctp/stream_interleave.c:sctp_intl_retrieve_partial
+>    Cyclomatic Complexity 25 net//sctp/stream_interleave.c:sctp_intl_retrieve_reassembled
+>    Cyclomatic Complexity 3 include/net/sock.h:sk_mem_reclaim
+>    Cyclomatic Complexity 2 include/net/sctp/ulpevent.h:sctp_event2skb
+>    Cyclomatic Complexity 23 net//sctp/stream_interleave.c:sctp_intl_store_reasm
+>    Cyclomatic Complexity 6 net//sctp/stream_interleave.c:sctp_intl_reasm
+>    Cyclomatic Complexity 13 net//sctp/stream_interleave.c:sctp_intl_store_ordered
+>    Cyclomatic Complexity 5 net//sctp/stream_interleave.c:sctp_intl_retrieve_ordered
+>    Cyclomatic Complexity 3 net//sctp/stream_interleave.c:sctp_intl_order
+>    Cyclomatic Complexity 2 include/net/sock.h:sk_incoming_cpu_update
+>    Cyclomatic Complexity 2 include/net/sctp/ulpevent.h:sctp_ulpevent_is_enabled
+>    Cyclomatic Complexity 9 net//sctp/stream_interleave.c:sctp_enqueue_event
+>    Cyclomatic Complexity 4 net//sctp/stream_interleave.c:sctp_intl_start_pd
+>    Cyclomatic Complexity 6 net//sctp/stream_interleave.c:sctp_validate_idata
+>    Cyclomatic Complexity 8 net//sctp/stream_interleave.c:sctp_chunk_assign_mid
+>    Cyclomatic Complexity 1 include/linux/skbuff.h:skb_queue_head_init
+>    Cyclomatic Complexity 6 net//sctp/stream_interleave.c:sctp_ulpevent_idata
+>    Cyclomatic Complexity 7 net//sctp/stream_interleave.c:sctp_renege_events
+>    Cyclomatic Complexity 3 net//sctp/stream_interleave.c:sctp_make_idatafrag_empty
+>    Cyclomatic Complexity 3 net//sctp/stream_interleave.c:sctp_stream_interleave_init
+>    net//sctp/stream_interleave.c: In function 'sctp_renege_events':
+>>> net//sctp/stream_interleave.c:581:26: warning: 'sin' may be used uninitialized in this function [-Wmaybe-uninitialized]
+>            cevent->mid = sin->mid &&
+>                              ^
+>    net//sctp/stream_interleave.c:550:32: note: 'sin' was declared here
+>      struct sctp_stream_in *csin, *sin;
+>                                    ^
+>
+> vim +/sin +581 net//sctp/stream_interleave.c
+>
+>    547
+>    548  static struct sctp_ulpevent *sctp_intl_retrieve_first(struct sctp_ulpq *ulpq)
+>    549  {
+>    550          struct sctp_stream_in *csin, *sin;
+>    551          struct sk_buff *first_frag = NULL;
+>    552          struct sk_buff *last_frag = NULL;
+>    553          struct sctp_ulpevent *retval;
+>    554          struct sk_buff *pos;
+>    555          __u32 next_fsn = 0;
+>    556          __u16 sid = 0;
+>    557
+>    558          skb_queue_walk(&ulpq->reasm, pos) {
+>    559                  struct sctp_ulpevent *cevent = sctp_skb2event(pos);
+>    560
+>    561                  csin = sctp_stream_in(ulpq->asoc, cevent->stream);
+>    562                  if (csin->pd_mode)
+>    563                          continue;
+>    564
+>    565                  switch (cevent->msg_flags & SCTP_DATA_FRAG_MASK) {
+>    566                  case SCTP_DATA_FIRST_FRAG:
+>    567                          if (first_frag)
+>    568                                  goto out;
+>    569                          if (cevent->mid = csin->mid) {
+>    570                                  first_frag = pos;
+>    571                                  last_frag = pos;
+>    572                                  next_fsn = 0;
+>    573                                  sin = csin;
+>    574                                  sid = cevent->stream;
+>    575                          }
+>    576                          break;
+>    577                  case SCTP_DATA_MIDDLE_FRAG:
+>    578                          if (!first_frag)
+>    579                                  break;
+>    580                          if (cevent->stream = sid &&
+>  > 581                              cevent->mid = sin->mid &&
+>    582                              cevent->fsn = next_fsn) {
+>    583                                  next_fsn++;
+>    584                                  last_frag = pos;
+>    585                          } else {
+>    586                                  goto out;
+>    587                          }
+>    588                          break;
+>    589                  case SCTP_DATA_LAST_FRAG:
+>    590                          if (first_frag)
+>    591                                  goto out;
+>    592                          break;
+>    593                  default:
+>    594                          break;
+>    595                  }
+>    596          }
+>    597
+>    598          if (!first_frag)
+>    599                  return NULL;
+>    600
+>    601  out:
+>    602          retval = sctp_make_reassembled_event(sock_net(ulpq->asoc->base.sk),
+>    603                                               &ulpq->reasm, first_frag,
+>    604                                               last_frag);
+>    605          if (retval) {
+>    606                  sin->fsn = next_fsn;
+>    607                  sin->pd_mode = 1;
+This is safe,  it comes here only when sin already gets initialized.
 
-It defines sctp_renege_events for idata, and leaves sctp_ulpq_renege
-as it is for data.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- include/net/sctp/stream_interleave.h |   2 +
- include/net/sctp/ulpqueue.h          |   9 +--
- net/sctp/sm_sideeffect.c             |   5 +-
- net/sctp/stream_interleave.c         | 109 +++++++++++++++++++++++++++++++++++
- net/sctp/ulpqueue.c                  |   4 +-
- 5 files changed, 119 insertions(+), 10 deletions(-)
-
-diff --git a/include/net/sctp/stream_interleave.h b/include/net/sctp/stream_interleave.h
-index a0f61bc..16a71cb 100644
---- a/include/net/sctp/stream_interleave.h
-+++ b/include/net/sctp/stream_interleave.h
-@@ -43,6 +43,8 @@ struct sctp_stream_interleave {
- 				 struct sctp_chunk *chunk, gfp_t gfp);
- 	int	(*enqueue_event)(struct sctp_ulpq *ulpq,
- 				 struct sctp_ulpevent *event);
-+	void	(*renege_events)(struct sctp_ulpq *ulpq,
-+				 struct sctp_chunk *chunk, gfp_t gfp);
- };
- 
- void sctp_stream_interleave_init(struct sctp_stream *stream);
-diff --git a/include/net/sctp/ulpqueue.h b/include/net/sctp/ulpqueue.h
-index e0dce07..eb98c71 100644
---- a/include/net/sctp/ulpqueue.h
-+++ b/include/net/sctp/ulpqueue.h
-@@ -76,11 +76,8 @@ int sctp_clear_pd(struct sock *sk, struct sctp_association *asoc);
- void sctp_ulpq_skip(struct sctp_ulpq *ulpq, __u16 sid, __u16 ssn);
- 
- void sctp_ulpq_reasm_flushtsn(struct sctp_ulpq *, __u32);
--#endif /* __sctp_ulpqueue_h__ */
--
--
--
--
--
- 
-+__u16 sctp_ulpq_renege_list(struct sctp_ulpq *ulpq,
-+			    struct sk_buff_head *list, __u16 needed);
- 
-+#endif /* __sctp_ulpqueue_h__ */
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index f4e5eca..2bec17a 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -1735,8 +1735,9 @@ static int sctp_cmd_interpreter(enum sctp_event event_type,
- 			break;
- 
- 		case SCTP_CMD_RENEGE:
--			sctp_ulpq_renege(&asoc->ulpq, cmd->obj.chunk,
--					 GFP_ATOMIC);
-+			asoc->stream.si->renege_events(&asoc->ulpq,
-+						       cmd->obj.chunk,
-+						       GFP_ATOMIC);
- 			break;
- 
- 		case SCTP_CMD_SETUP_T4:
-diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
-index e853972..86d6c21 100644
---- a/net/sctp/stream_interleave.c
-+++ b/net/sctp/stream_interleave.c
-@@ -545,6 +545,113 @@ static int sctp_ulpevent_idata(struct sctp_ulpq *ulpq,
- 	return event_eor;
- }
- 
-+static struct sctp_ulpevent *sctp_intl_retrieve_first(struct sctp_ulpq *ulpq)
-+{
-+	struct sctp_stream_in *csin, *sin;
-+	struct sk_buff *first_frag = NULL;
-+	struct sk_buff *last_frag = NULL;
-+	struct sctp_ulpevent *retval;
-+	struct sk_buff *pos;
-+	__u32 next_fsn = 0;
-+	__u16 sid = 0;
-+
-+	skb_queue_walk(&ulpq->reasm, pos) {
-+		struct sctp_ulpevent *cevent = sctp_skb2event(pos);
-+
-+		csin = sctp_stream_in(ulpq->asoc, cevent->stream);
-+		if (csin->pd_mode)
-+			continue;
-+
-+		switch (cevent->msg_flags & SCTP_DATA_FRAG_MASK) {
-+		case SCTP_DATA_FIRST_FRAG:
-+			if (first_frag)
-+				goto out;
-+			if (cevent->mid = csin->mid) {
-+				first_frag = pos;
-+				last_frag = pos;
-+				next_fsn = 0;
-+				sin = csin;
-+				sid = cevent->stream;
-+			}
-+			break;
-+		case SCTP_DATA_MIDDLE_FRAG:
-+			if (!first_frag)
-+				break;
-+			if (cevent->stream = sid &&
-+			    cevent->mid = sin->mid &&
-+			    cevent->fsn = next_fsn) {
-+				next_fsn++;
-+				last_frag = pos;
-+			} else {
-+				goto out;
-+			}
-+			break;
-+		case SCTP_DATA_LAST_FRAG:
-+			if (first_frag)
-+				goto out;
-+			break;
-+		default:
-+			break;
-+		}
-+	}
-+
-+	if (!first_frag)
-+		return NULL;
-+
-+out:
-+	retval = sctp_make_reassembled_event(sock_net(ulpq->asoc->base.sk),
-+					     &ulpq->reasm, first_frag,
-+					     last_frag);
-+	if (retval) {
-+		sin->fsn = next_fsn;
-+		sin->pd_mode = 1;
-+	}
-+
-+	return retval;
-+}
-+
-+static void sctp_intl_start_pd(struct sctp_ulpq *ulpq, gfp_t gfp)
-+{
-+	struct sctp_ulpevent *event;
-+
-+	if (skb_queue_empty(&ulpq->reasm))
-+		return;
-+
-+	do {
-+		event = sctp_intl_retrieve_first(ulpq);
-+		if (event)
-+			sctp_enqueue_event(ulpq, event);
-+	} while (event);
-+}
-+
-+static void sctp_renege_events(struct sctp_ulpq *ulpq, struct sctp_chunk *chunk,
-+			       gfp_t gfp)
-+{
-+	struct sctp_association *asoc = ulpq->asoc;
-+	__u32 freed = 0;
-+	__u16 needed;
-+
-+	if (chunk) {
-+		needed = ntohs(chunk->chunk_hdr->length);
-+		needed -= sizeof(struct sctp_idata_chunk);
-+	} else {
-+		needed = SCTP_DEFAULT_MAXWINDOW;
-+	}
-+
-+	if (skb_queue_empty(&asoc->base.sk->sk_receive_queue)) {
-+		freed = sctp_ulpq_renege_list(ulpq, &ulpq->lobby, needed);
-+		if (freed < needed)
-+			freed += sctp_ulpq_renege_list(ulpq, &ulpq->reasm,
-+						       needed);
-+	}
-+
-+	if (chunk && freed >= needed)
-+		if (sctp_ulpevent_idata(ulpq, chunk, gfp) <= 0)
-+			sctp_intl_start_pd(ulpq, gfp);
-+
-+	sk_mem_reclaim(asoc->base.sk);
-+}
-+
- static struct sctp_stream_interleave sctp_stream_interleave_0 = {
- 	.data_chunk_len		= sizeof(struct sctp_data_chunk),
- 	/* DATA process functions */
-@@ -553,6 +660,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_0 = {
- 	.validate_data		= sctp_validate_data,
- 	.ulpevent_data		= sctp_ulpq_tail_data,
- 	.enqueue_event		= sctp_ulpq_tail_event,
-+	.renege_events		= sctp_ulpq_renege,
- };
- 
- static struct sctp_stream_interleave sctp_stream_interleave_1 = {
-@@ -563,6 +671,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
- 	.validate_data		= sctp_validate_idata,
- 	.ulpevent_data		= sctp_ulpevent_idata,
- 	.enqueue_event		= sctp_enqueue_event,
-+	.renege_events		= sctp_renege_events,
- };
- 
- void sctp_stream_interleave_init(struct sctp_stream *stream)
-diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
-index 0d07f2a..76ec514 100644
---- a/net/sctp/ulpqueue.c
-+++ b/net/sctp/ulpqueue.c
-@@ -978,8 +978,8 @@ void sctp_ulpq_skip(struct sctp_ulpq *ulpq, __u16 sid, __u16 ssn)
- 	sctp_ulpq_reap_ordered(ulpq, sid);
- }
- 
--static __u16 sctp_ulpq_renege_list(struct sctp_ulpq *ulpq,
--		struct sk_buff_head *list, __u16 needed)
-+__u16 sctp_ulpq_renege_list(struct sctp_ulpq *ulpq, struct sk_buff_head *list,
-+			    __u16 needed)
- {
- 	__u16 freed = 0;
- 	__u32 tsn, last_tsn;
--- 
-2.1.0
-
+>    608          }
+>    609
+>    610          return retval;
+>    611  }
+>    612
+>
+> ---
+> 0-DAY kernel test infrastructure                Open Source Technology Center
+> https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
