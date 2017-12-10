@@ -1,80 +1,57 @@
-From: Masami Hiramatsu <mhiramat@kernel.org>
-Date: Wed, 20 Dec 2017 01:05:02 +0000
-Subject: Re: [PATCH -tip v3 3/6] net: sctp: Add SCTP ACK tracking trace event
-Message-Id: <20171220100502.a8d23392147340437142efb7@kernel.org>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sun, 10 Dec 2017 07:40:51 +0000
+Subject: [PATCH net] sctp: make sure stream nums can match optlen in sctp_setsockopt_reset_streams
+Message-Id: <a6c86b9cb13c2b6e2ed2539c028557a6b1a713ef.1512891651.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <151367381480.32364.2659143894655716709.stgit@devbox>
-        <151367390483.32364.4432870291926458046.stgit@devbox>
-        <20171219102024.09a92c75@gandalf.local.home>
-In-Reply-To: <20171219102024.09a92c75@gandalf.local.home>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Steven Rostedt <rostedt@goodmis.org>
-Cc: Ingo Molnar <mingo@kernel.org>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, "David S . Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, syzkaller@googlegroups.com
 
-On Tue, 19 Dec 2017 10:20:24 -0500
-Steven Rostedt <rostedt@goodmis.org> wrote:
+Now in sctp_setsockopt_reset_streams, it only does the check
+optlen < sizeof(*params) for optlen. But it's not enough, as
+params->srs_number_streams should also match optlen.
 
-> On Tue, 19 Dec 2017 17:58:25 +0900
-> Masami Hiramatsu <mhiramat@kernel.org> wrote:
-> 
-> > +TRACE_EVENT(sctp_probe,
-> > +
-> > +	TP_PROTO(const struct sctp_endpoint *ep,
-> > +		 const struct sctp_association *asoc,
-> > +		 struct sctp_chunk *chunk),
-> > +
-> > +	TP_ARGS(ep, asoc, chunk),
-> > +
-> > +	TP_STRUCT__entry(
-> > +		__field(__u64, asoc)
-> > +		__field(__u32, mark)
-> > +		__field(__u16, bind_port)
-> > +		__field(__u16, peer_port)
-> > +		__field(__u32, pathmtu)
-> > +		__field(__u32, rwnd)
-> > +		__field(__u16, unack_data)
-> > +	),
-> > +
-> > +	TP_fast_assign(
-> > +		struct sctp_transport *sp;
-> > +		struct sk_buff *skb = chunk->skb;
-> > +
-> > +		__entry->asoc = (__u64)asoc;
-> > +		__entry->mark = skb->mark;
-> > +		__entry->bind_port = ep->base.bind_addr.port;
-> > +		__entry->peer_port = asoc->peer.port;
-> > +		__entry->pathmtu = asoc->pathmtu;
-> > +		__entry->rwnd = asoc->peer.rwnd;
-> > +		__entry->unack_data = asoc->unack_data;
-> > +
-> > +		if (trace_sctp_probe_path_enabled()) {
-> > +			list_for_each_entry(sp, &asoc->peer.transport_addr_list,
-> > +					    transports) {
-> > +				trace_sctp_probe_path(sp, asoc);
-> > +			}
-> > +		}
-> 
-> I thought you were going to move this into the code, like I suggested?
+If the streams in params->srs_stream_list are less than stream
+nums in params->srs_number_streams, later when dereferencing
+the stream list, it could cause a slab-out-of-bounds crash, as
+reported by syzbot.
 
-Ah, I missed to define sp in the block...
+This patch is to fix it by also checking the stream numbers in
+sctp_setsockopt_reset_streams to make sure at least it's not
+greater than the streams in the list.
 
-Thanks,
+Fixes: 7f9d68ac944e ("sctp: implement sender-side procedures for SSN Reset Request Parameter")
+Reported-by: Dmitry Vyukov <dvyukov@google.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/socket.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-> 
-> -- Steve
-> 
-> > +	),
-> > +
-> > +	TP_printk("asoc=%#llx mark=%#x bind_port=%d peer_port=%d pathmtu=%d "
-> > +		  "rwnd=%u unack_data=%d",
-> > +		  __entry->asoc, __entry->mark, __entry->bind_port,
-> > +		  __entry->peer_port, __entry->pathmtu, __entry->rwnd,
-> > +		  __entry->unack_data)
-> > +);
-> > +
-
-
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 014847e..dbf140d 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3891,13 +3891,17 @@ static int sctp_setsockopt_reset_streams(struct sock *sk,
+ 	struct sctp_association *asoc;
+ 	int retval = -EINVAL;
+ 
+-	if (optlen < sizeof(struct sctp_reset_streams))
++	if (optlen < sizeof(*params))
+ 		return -EINVAL;
+ 
+ 	params = memdup_user(optval, optlen);
+ 	if (IS_ERR(params))
+ 		return PTR_ERR(params);
+ 
++	if (params->srs_number_streams * sizeof(__u16) >
++	    optlen - sizeof(*params))
++		goto out;
++
+ 	asoc = sctp_id2assoc(sk, params->srs_assoc_id);
+ 	if (!asoc)
+ 		goto out;
 -- 
-Masami Hiramatsu <mhiramat@kernel.org>
+2.1.0
+
