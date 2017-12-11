@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Sun, 10 Dec 2017 13:51:49 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 11 Dec 2017 14:54:34 +0000
 Subject: Re: [PATCH net] sctp: make sure stream nums can match optlen in sctp_setsockopt_reset_streams
-Message-Id: <20171210135149.GB4514@localhost.localdomain>
+Message-Id: <20171211145434.GB18284@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <a6c86b9cb13c2b6e2ed2539c028557a6b1a713ef.1512891651.git.lucien.xin@gmail.com>
 In-Reply-To: <a6c86b9cb13c2b6e2ed2539c028557a6b1a713ef.1512891651.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>, syzkaller@googlegroups.com
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, syzkaller@googlegroups.com
 
 On Sun, Dec 10, 2017 at 03:40:51PM +0800, Xin Long wrote:
 > Now in sctp_setsockopt_reset_streams, it only does the check
@@ -28,9 +28,6 @@ On Sun, Dec 10, 2017 at 03:40:51PM +0800, Xin Long wrote:
 > Fixes: 7f9d68ac944e ("sctp: implement sender-side procedures for SSN Reset Request Parameter")
 > Reported-by: Dmitry Vyukov <dvyukov@google.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/socket.c | 6 +++++-
 >  1 file changed, 5 insertions(+), 1 deletion(-)
@@ -47,6 +44,20 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > +	if (optlen < sizeof(*params))
 >  		return -EINVAL;
 >  
+Is this going to work in all corner cases?  IIRC struct sctp_reset_stream has
+variable length array at the end of it, and so sizeof(struct sctp_reset_streams)
+returns just the size of the struct, while sizeof(*params) returns the size of
+the entire object (including the array elements).  If a user space task
+allocates a static memory block to hold this struct and the array, and passes it
+in with a shorter optlen (if for example, they do not intend to use all the
+array elements), this will cause a failure, where no failure is truly warranted.
+It seems the correct check to me should be the origional sizeof(struct
+sctp_reset_streams) check, and the below check to ensure that there are at least
+the same number of array elements available as indicated in srs_nuber_streams.
+
+Regards
+Neil
+
 >  	params = memdup_user(optval, optlen);
 >  	if (IS_ERR(params))
 >  		return PTR_ERR(params);
@@ -60,4 +71,9 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 >  		goto out;
 > -- 
 > 2.1.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
