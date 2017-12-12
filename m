@@ -1,152 +1,120 @@
-From: Masami Hiramatsu <mhiramat@kernel.org>
-Date: Wed, 20 Dec 2017 04:14:41 +0000
-Subject: [PATCH net-next v4 1/6] net: tcp: Add trace events for TCP congestion window tracing
-Message-Id: <151374328165.2497.786936794415136072.stgit@devbox>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 12 Dec 2017 09:25:58 +0000
+Subject: [PATCH net-next 7/8] sctp: update mid instead of ssn when doing stream and asoc reset
+Message-Id: <2ac016924b2b0f70e801297d203697fcb5deb227.1513070662.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <151374325126.2497.6934744693865165386.stgit@devbox>
-In-Reply-To: <151374325126.2497.6934744693865165386.stgit@devbox>
+References: <cover.1513070662.git.lucien.xin@gmail.com>
+ <9b8315277069d021d8a6b581b7304af624a45c61.1513070662.git.lucien.xin@gmail.com>
+ <dbe7bd0f6197086a6a4b4d28f0d63ee1073414e8.1513070662.git.lucien.xin@gmail.com>
+ <807b1707f79b11d5883d71ea771e98e8f7af3ead.1513070662.git.lucien.xin@gmail.com>
+ <5bdf9baf00c367ec91c1e06986be77835be7e451.1513070662.git.lucien.xin@gmail.com>
+ <e4f468dc21292382de70c85f8e40272b37154ce0.1513070662.git.lucien.xin@gmail.com>
+ <7a112fb936709ef7047548f778a895a46c31a935.1513070662.git.lucien.xin@gmail.com>
+In-Reply-To: <7a112fb936709ef7047548f778a895a46c31a935.1513070662.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Ingo Molnar <mingo@kernel.org>, "David S . Miller" <davem@davemloft.net>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
-Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This adds an event to trace TCP stat variables with
-slightly intrusive trace-event. This uses ftrace/perf
-event log buffer to trace those state, no needs to
-prepare own ring-buffer, nor custom user apps.
+When using idata and doing stream and asoc reset, setting ssn with
+0 could only clear the 1st 16 bits of mid.
 
-User can use ftrace to trace this event as below;
+So to make this work for both data and idata, it sets mid with 0
+instead of ssn, and also mid_uo for unordered idata also need to
+be cleared, as said in section 2.3.2 of RFC8260.
 
-  # cd /sys/kernel/debug/tracing
-  # echo 1 > events/tcp/tcp_probe/enable
-  (run workloads)
-  # cat trace
-
-Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- Changes in v3:
-  - Fix build errors caused by including events/tcp.h twice.
-  - Sort out the including headers.
----
- include/trace/events/tcp.h |   80 ++++++++++++++++++++++++++++++++++++++++++++
- net/ipv4/tcp_input.c       |    3 ++
- 2 files changed, 83 insertions(+)
+ net/sctp/stream.c | 40 +++++++++++++++++++++++++---------------
+ 1 file changed, 25 insertions(+), 15 deletions(-)
 
-diff --git a/include/trace/events/tcp.h b/include/trace/events/tcp.h
-index 07cccca6cbf1..14ad60b468fb 100644
---- a/include/trace/events/tcp.h
-+++ b/include/trace/events/tcp.h
-@@ -1,3 +1,4 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
- #undef TRACE_SYSTEM
- #define TRACE_SYSTEM tcp
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index b3a9f37..06b644d 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -216,11 +216,13 @@ void sctp_stream_clear(struct sctp_stream *stream)
+ {
+ 	int i;
  
-@@ -8,6 +9,7 @@
- #include <linux/tcp.h>
- #include <linux/tracepoint.h>
- #include <net/ipv6.h>
-+#include <net/tcp.h>
+-	for (i = 0; i < stream->outcnt; i++)
+-		stream->out[i].ssn = 0;
++	for (i = 0; i < stream->outcnt; i++) {
++		stream->out[i].mid = 0;
++		stream->out[i].mid_uo = 0;
++	}
  
- #define tcp_state_name(state)	{ state, #state }
- #define show_tcp_state_name(val)			\
-@@ -293,6 +295,84 @@ TRACE_EVENT(tcp_retransmit_synack,
- 		  __entry->saddr_v6, __entry->daddr_v6)
- );
+ 	for (i = 0; i < stream->incnt; i++)
+-		stream->in[i].ssn = 0;
++		stream->in[i].mid = 0;
+ }
  
-+TRACE_EVENT(tcp_probe,
-+
-+	TP_PROTO(struct sock *sk, struct sk_buff *skb),
-+
-+	TP_ARGS(sk, skb),
-+
-+	TP_STRUCT__entry(
-+		/* sockaddr_in6 is always bigger than sockaddr_in */
-+		__array(__u8, saddr, sizeof(struct sockaddr_in6))
-+		__array(__u8, daddr, sizeof(struct sockaddr_in6))
-+		__field(__u16, sport)
-+		__field(__u16, dport)
-+		__field(__u32, mark)
-+		__field(__u16, length)
-+		__field(__u32, snd_nxt)
-+		__field(__u32, snd_una)
-+		__field(__u32, snd_cwnd)
-+		__field(__u32, ssthresh)
-+		__field(__u32, snd_wnd)
-+		__field(__u32, srtt)
-+		__field(__u32, rcv_wnd)
-+	),
-+
-+	TP_fast_assign(
-+		const struct tcp_sock *tp = tcp_sk(sk);
-+		const struct inet_sock *inet = inet_sk(sk);
-+
-+		memset(__entry->saddr, 0, sizeof(struct sockaddr_in6));
-+		memset(__entry->daddr, 0, sizeof(struct sockaddr_in6));
-+
-+		if (sk->sk_family = AF_INET) {
-+			struct sockaddr_in *v4 = (void *)__entry->saddr;
-+
-+			v4->sin_family = AF_INET;
-+			v4->sin_port = inet->inet_sport;
-+			v4->sin_addr.s_addr = inet->inet_saddr;
-+			v4 = (void *)__entry->daddr;
-+			v4->sin_family = AF_INET;
-+			v4->sin_port = inet->inet_dport;
-+			v4->sin_addr.s_addr = inet->inet_daddr;
-+#if IS_ENABLED(CONFIG_IPV6)
-+		} else if (sk->sk_family = AF_INET6) {
-+			struct sockaddr_in6 *v6 = (void *)__entry->saddr;
-+
-+			v6->sin6_family = AF_INET6;
-+			v6->sin6_port = inet->inet_sport;
-+			v6->sin6_addr = inet6_sk(sk)->saddr;
-+			v6 = (void *)__entry->daddr;
-+			v6->sin6_family = AF_INET6;
-+			v6->sin6_port = inet->inet_dport;
-+			v6->sin6_addr = sk->sk_v6_daddr;
-+#endif
-+		}
-+
-+		/* For filtering use */
-+		__entry->sport = ntohs(inet->inet_sport);
-+		__entry->dport = ntohs(inet->inet_dport);
-+		__entry->mark = skb->mark;
-+
-+		__entry->length = skb->len;
-+		__entry->snd_nxt = tp->snd_nxt;
-+		__entry->snd_una = tp->snd_una;
-+		__entry->snd_cwnd = tp->snd_cwnd;
-+		__entry->snd_wnd = tp->snd_wnd;
-+		__entry->rcv_wnd = tp->rcv_wnd;
-+		__entry->ssthresh = tcp_current_ssthresh(sk);
-+		__entry->srtt = tp->srtt_us >> 3;
-+	),
-+
-+	TP_printk("src=%pISpc dest=%pISpc mark=%#x length=%d snd_nxt=%#x "
-+		  "snd_una=%#x snd_cwnd=%u ssthresh=%u snd_wnd=%u srtt=%u "
-+		  "rcv_wnd=%u",
-+		  __entry->saddr, __entry->daddr, __entry->mark,
-+		  __entry->length, __entry->snd_nxt, __entry->snd_una,
-+		  __entry->snd_cwnd, __entry->ssthresh, __entry->snd_wnd,
-+		  __entry->srtt, __entry->rcv_wnd)
-+);
-+
- #endif /* _TRACE_TCP_H */
+ void sctp_stream_update(struct sctp_stream *stream, struct sctp_stream *new)
+@@ -607,10 +609,10 @@ struct sctp_chunk *sctp_process_strreset_outreq(
+ 		}
  
- /* This part must be outside protection */
-diff --git a/net/ipv4/tcp_input.c b/net/ipv4/tcp_input.c
-index 4d55c4b338ee..ff71b18d9682 100644
---- a/net/ipv4/tcp_input.c
-+++ b/net/ipv4/tcp_input.c
-@@ -5299,6 +5299,9 @@ void tcp_rcv_established(struct sock *sk, struct sk_buff *skb,
- 	unsigned int len = skb->len;
- 	struct tcp_sock *tp = tcp_sk(sk);
+ 		for (i = 0; i < nums; i++)
+-			stream->in[ntohs(str_p[i])].ssn = 0;
++			stream->in[ntohs(str_p[i])].mid = 0;
+ 	} else {
+ 		for (i = 0; i < stream->incnt; i++)
+-			stream->in[i].ssn = 0;
++			stream->in[i].mid = 0;
+ 	}
  
-+	/* TCP congestion window tracking */
-+	trace_tcp_probe(sk, skb);
-+
- 	tcp_mstamp_refresh(tp);
- 	if (unlikely(!sk->sk_rx_dst))
- 		inet_csk(sk)->icsk_af_ops->sk_rx_dst_set(sk, skb);
+ 	result = SCTP_STRRESET_PERFORMED;
+@@ -783,10 +785,12 @@ struct sctp_chunk *sctp_process_strreset_tsnreq(
+ 	/* G5:  The next expected and outgoing SSNs MUST be reset to 0 for all
+ 	 *      incoming and outgoing streams.
+ 	 */
+-	for (i = 0; i < stream->outcnt; i++)
+-		stream->out[i].ssn = 0;
++	for (i = 0; i < stream->outcnt; i++) {
++		stream->out[i].mid = 0;
++		stream->out[i].mid_uo = 0;
++	}
+ 	for (i = 0; i < stream->incnt; i++)
+-		stream->in[i].ssn = 0;
++		stream->in[i].mid = 0;
+ 
+ 	result = SCTP_STRRESET_PERFORMED;
+ 
+@@ -976,11 +980,15 @@ struct sctp_chunk *sctp_process_strreset_resp(
+ 
+ 		if (result = SCTP_STRRESET_PERFORMED) {
+ 			if (nums) {
+-				for (i = 0; i < nums; i++)
+-					stream->out[ntohs(str_p[i])].ssn = 0;
++				for (i = 0; i < nums; i++) {
++					stream->out[ntohs(str_p[i])].mid = 0;
++					stream->out[ntohs(str_p[i])].mid_uo = 0;
++				}
+ 			} else {
+-				for (i = 0; i < stream->outcnt; i++)
+-					stream->out[i].ssn = 0;
++				for (i = 0; i < stream->outcnt; i++) {
++					stream->out[i].mid = 0;
++					stream->out[i].mid_uo = 0;
++				}
+ 			}
+ 
+ 			flags = SCTP_STREAM_RESET_OUTGOING_SSN;
+@@ -1041,10 +1049,12 @@ struct sctp_chunk *sctp_process_strreset_resp(
+ 			asoc->ctsn_ack_point = asoc->next_tsn - 1;
+ 			asoc->adv_peer_ack_point = asoc->ctsn_ack_point;
+ 
+-			for (i = 0; i < stream->outcnt; i++)
+-				stream->out[i].ssn = 0;
++			for (i = 0; i < stream->outcnt; i++) {
++				stream->out[i].mid = 0;
++				stream->out[i].mid_uo = 0;
++			}
+ 			for (i = 0; i < stream->incnt; i++)
+-				stream->in[i].ssn = 0;
++				stream->in[i].mid = 0;
+ 		}
+ 
+ 		for (i = 0; i < stream->outcnt; i++)
+-- 
+2.1.0
 
