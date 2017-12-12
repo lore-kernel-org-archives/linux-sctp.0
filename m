@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 12 Dec 2017 18:32:04 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 12 Dec 2017 19:38:24 +0000
 Subject: Re: How to restrict SCTP abort during a process crash
-Message-Id: <20171212183203.GA1047@hmswarspite.think-freely.org>
+Message-Id: <20171212193824.GG3532@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CAOTBYLYCFVt0hHf5_pJQCEPsh9vSNXR3V7b0SaVycJ4-KZja0w@mail.gmail.com>
 In-Reply-To: <CAOTBYLYCFVt0hHf5_pJQCEPsh9vSNXR3V7b0SaVycJ4-KZja0w@mail.gmail.com>
@@ -26,6 +26,13 @@ On Tue, Dec 12, 2017 at 10:21:31PM +0530, Ashok Kumar wrote:
 > 
 > But the problem that we face is that when a process crashes on active
 > VM, the LKSCTP stack immediately sends SCTP abort to the peers for all
+
+"... when a *process* crashes..."
+Have you considered redesigning your application so that 1 process
+handles 1 association?
+May not be the optimal solution, but then such crashes won't bring
+all other assocs down too.
+
 > associations before the system goes down completely. This creates
 > confusion with the peers. Is there any way to avoid sending SCTP abort
 > message in this scenario? If yes, please let us know how to do the
@@ -42,26 +49,6 @@ On Tue, Dec 12, 2017 at 10:21:31PM +0530, Ashok Kumar wrote:
 > 
 > A quick response will be highly appreciated.
 > 
-You're not going to be able to reliably block ABORTS, or any packet only on a
-crash condition, just because the stack has points that operates asynchronously
-to the process.  
-
-About the closest thing that I could think of would be to write a custom
-iptables rule to match on ABORT packets and send them to the NFQUEUE target.
-Write a userspace handler process for queue targeted packets which in turn just
-holds the abort packet for at least one cluster live heartbeat time (I'm
-assuming here that, being a clustered system it has some sort of liveness
-check).  Doing this hold may allow the cluster to shift to the new vm in a
-failure situation before your queue handler process releases any abort packets
-that it has, while in the event there is no failover, it will just release the
-abort a little late.
-
-I can't really recommend that approach mind you (its a horrid hack, and will
-likely cause other protocol issues), but its all I can think of at the moment.
-
-Regards
-Neil
-
 > 
 > 
 > Thanks,
