@@ -1,178 +1,48 @@
-From: Masami Hiramatsu <mhiramat@kernel.org>
-Date: Wed, 20 Dec 2017 04:15:41 +0000
-Subject: [PATCH net-next v4 3/6] net: sctp: Add SCTP ACK tracking trace event
-Message-Id: <151374334147.2497.9539406340751214720.stgit@devbox>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 12 Dec 2017 09:25:57 +0000
+Subject: [PATCH net-next 6/8] sctp: add stream interleave support in stream scheduler
+Message-Id: <7a112fb936709ef7047548f778a895a46c31a935.1513070662.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <151374325126.2497.6934744693865165386.stgit@devbox>
-In-Reply-To: <151374325126.2497.6934744693865165386.stgit@devbox>
+References: <cover.1513070662.git.lucien.xin@gmail.com>
+ <9b8315277069d021d8a6b581b7304af624a45c61.1513070662.git.lucien.xin@gmail.com>
+ <dbe7bd0f6197086a6a4b4d28f0d63ee1073414e8.1513070662.git.lucien.xin@gmail.com>
+ <807b1707f79b11d5883d71ea771e98e8f7af3ead.1513070662.git.lucien.xin@gmail.com>
+ <5bdf9baf00c367ec91c1e06986be77835be7e451.1513070662.git.lucien.xin@gmail.com>
+ <e4f468dc21292382de70c85f8e40272b37154ce0.1513070662.git.lucien.xin@gmail.com>
+In-Reply-To: <e4f468dc21292382de70c85f8e40272b37154ce0.1513070662.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Ingo Molnar <mingo@kernel.org>, "David S . Miller" <davem@davemloft.net>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
-Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-Add SCTP ACK tracking trace event to trace the changes of SCTP
-association state in response to incoming packets.
-It is used for debugging SCTP congestion control algorithms,
-and will replace sctp_probe module.
+As Marcelo said in the stream scheduler patch:
 
-Note that this event a bit tricky. Since this consists of 2
-events (sctp_probe and sctp_probe_path) so you have to enable
-both events as below.
+  Support for I-DATA chunks, also described in RFC8260, with user message
+  interleaving is straightforward as it just requires the schedulers to
+  probe for the feature and ignore datamsg boundaries when dequeueing.
 
-  # cd /sys/kernel/debug/tracing
-  # echo 1 > events/sctp/sctp_probe/enable
-  # echo 1 > events/sctp/sctp_probe_path/enable
+All needs to do is just to ignore datamsg boundaries when dequeueing.
 
-Or, you can enable all the events under sctp.
-
-  # echo 1 > events/sctp/enable
-
-Since sctp_probe_path event is always invoked from sctp_probe
-event, you can not see any output if you only enable
-sctp_probe_path.
-
-Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
-  Changes in v3:
-   - Add checking whether sctp_probe_path event is enabled
-     before iterating sctp paths to record. Thanks Steven.
-  Changes in v4:
-   - Move a temporal variable definition in the block.
-   - Fix to cast pointer to unsigned long instead of __u64
-     for 32bit environment.
----
- include/trace/events/sctp.h |   99 +++++++++++++++++++++++++++++++++++++++++++
- net/sctp/sm_statefuns.c     |    5 ++
- 2 files changed, 104 insertions(+)
- create mode 100644 include/trace/events/sctp.h
+ net/sctp/stream_sched.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/include/trace/events/sctp.h b/include/trace/events/sctp.h
-new file mode 100644
-index 000000000000..7475c7be165a
---- /dev/null
-+++ b/include/trace/events/sctp.h
-@@ -0,0 +1,99 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+#undef TRACE_SYSTEM
-+#define TRACE_SYSTEM sctp
-+
-+#if !defined(_TRACE_SCTP_H) || defined(TRACE_HEADER_MULTI_READ)
-+#define _TRACE_SCTP_H
-+
-+#include <net/sctp/structs.h>
-+#include <linux/tracepoint.h>
-+
-+TRACE_EVENT(sctp_probe_path,
-+
-+	TP_PROTO(struct sctp_transport *sp,
-+		 const struct sctp_association *asoc),
-+
-+	TP_ARGS(sp, asoc),
-+
-+	TP_STRUCT__entry(
-+		__field(__u64, asoc)
-+		__field(__u32, primary)
-+		__array(__u8, ipaddr, sizeof(union sctp_addr))
-+		__field(__u32, state)
-+		__field(__u32, cwnd)
-+		__field(__u32, ssthresh)
-+		__field(__u32, flight_size)
-+		__field(__u32, partial_bytes_acked)
-+		__field(__u32, pathmtu)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->asoc = (unsigned long)asoc;
-+		__entry->primary = (sp = asoc->peer.primary_path);
-+		memcpy(__entry->ipaddr, &sp->ipaddr, sizeof(union sctp_addr));
-+		__entry->state = sp->state;
-+		__entry->cwnd = sp->cwnd;
-+		__entry->ssthresh = sp->ssthresh;
-+		__entry->flight_size = sp->flight_size;
-+		__entry->partial_bytes_acked = sp->partial_bytes_acked;
-+		__entry->pathmtu = sp->pathmtu;
-+	),
-+
-+	TP_printk("asoc=%#llx%s ipaddr=%pISpc state=%u cwnd=%u ssthresh=%u "
-+		  "flight_size=%u partial_bytes_acked=%u pathmtu=%u",
-+		  __entry->asoc, __entry->primary ? "(*)" : "",
-+		  __entry->ipaddr, __entry->state, __entry->cwnd,
-+		  __entry->ssthresh, __entry->flight_size,
-+		  __entry->partial_bytes_acked, __entry->pathmtu)
-+);
-+
-+TRACE_EVENT(sctp_probe,
-+
-+	TP_PROTO(const struct sctp_endpoint *ep,
-+		 const struct sctp_association *asoc,
-+		 struct sctp_chunk *chunk),
-+
-+	TP_ARGS(ep, asoc, chunk),
-+
-+	TP_STRUCT__entry(
-+		__field(__u64, asoc)
-+		__field(__u32, mark)
-+		__field(__u16, bind_port)
-+		__field(__u16, peer_port)
-+		__field(__u32, pathmtu)
-+		__field(__u32, rwnd)
-+		__field(__u16, unack_data)
-+	),
-+
-+	TP_fast_assign(
-+		struct sk_buff *skb = chunk->skb;
-+
-+		__entry->asoc = (unsigned long)asoc;
-+		__entry->mark = skb->mark;
-+		__entry->bind_port = ep->base.bind_addr.port;
-+		__entry->peer_port = asoc->peer.port;
-+		__entry->pathmtu = asoc->pathmtu;
-+		__entry->rwnd = asoc->peer.rwnd;
-+		__entry->unack_data = asoc->unack_data;
-+
-+		if (trace_sctp_probe_path_enabled()) {
-+			struct sctp_transport *sp;
-+
-+			list_for_each_entry(sp, &asoc->peer.transport_addr_list,
-+					    transports) {
-+				trace_sctp_probe_path(sp, asoc);
-+			}
-+		}
-+	),
-+
-+	TP_printk("asoc=%#llx mark=%#x bind_port=%d peer_port=%d pathmtu=%d "
-+		  "rwnd=%u unack_data=%d",
-+		  __entry->asoc, __entry->mark, __entry->bind_port,
-+		  __entry->peer_port, __entry->pathmtu, __entry->rwnd,
-+		  __entry->unack_data)
-+);
-+
-+#endif /* _TRACE_SCTP_H */
-+
-+/* This part must be outside protection */
-+#include <trace/define_trace.h>
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 541f34735346..eb7905ffe5f2 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -59,6 +59,9 @@
- #include <net/sctp/sm.h>
- #include <net/sctp/structs.h>
+diff --git a/net/sctp/stream_sched.c b/net/sctp/stream_sched.c
+index d8c162a..f5fcd42 100644
+--- a/net/sctp/stream_sched.c
++++ b/net/sctp/stream_sched.c
+@@ -242,7 +242,8 @@ int sctp_sched_get_value(struct sctp_association *asoc, __u16 sid,
  
-+#define CREATE_TRACE_POINTS
-+#include <trace/events/sctp.h>
-+
- static struct sctp_packet *sctp_abort_pkt_new(
- 					struct net *net,
- 					const struct sctp_endpoint *ep,
-@@ -3219,6 +3222,8 @@ enum sctp_disposition sctp_sf_eat_sack_6_2(struct net *net,
- 	struct sctp_sackhdr *sackh;
- 	__u32 ctsn;
+ void sctp_sched_dequeue_done(struct sctp_outq *q, struct sctp_chunk *ch)
+ {
+-	if (!list_is_last(&ch->frag_list, &ch->msg->chunks)) {
++	if (!list_is_last(&ch->frag_list, &ch->msg->chunks) &&
++	    !q->asoc->intl_enable) {
+ 		struct sctp_stream_out *sout;
+ 		__u16 sid;
  
-+	trace_sctp_probe(ep, asoc, chunk);
-+
- 	if (!sctp_vtag_verify(chunk, asoc))
- 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
- 
+-- 
+2.1.0
 
