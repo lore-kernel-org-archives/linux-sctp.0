@@ -1,48 +1,125 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 12 Dec 2017 09:25:57 +0000
-Subject: [PATCH net-next 6/8] sctp: add stream interleave support in stream scheduler
-Message-Id: <7a112fb936709ef7047548f778a895a46c31a935.1513070662.git.lucien.xin@gmail.com>
+Date: Tue, 12 Dec 2017 09:25:52 +0000
+Subject: [PATCH net-next 1/8] sctp: add basic structures and make chunk function for ifwdtsn
+Message-Id: <9b8315277069d021d8a6b581b7304af624a45c61.1513070662.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1513070662.git.lucien.xin@gmail.com>
- <9b8315277069d021d8a6b581b7304af624a45c61.1513070662.git.lucien.xin@gmail.com>
- <dbe7bd0f6197086a6a4b4d28f0d63ee1073414e8.1513070662.git.lucien.xin@gmail.com>
- <807b1707f79b11d5883d71ea771e98e8f7af3ead.1513070662.git.lucien.xin@gmail.com>
- <5bdf9baf00c367ec91c1e06986be77835be7e451.1513070662.git.lucien.xin@gmail.com>
- <e4f468dc21292382de70c85f8e40272b37154ce0.1513070662.git.lucien.xin@gmail.com>
-In-Reply-To: <e4f468dc21292382de70c85f8e40272b37154ce0.1513070662.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1513070662.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-As Marcelo said in the stream scheduler patch:
+sctp_ifwdtsn_skip, sctp_ifwdtsn_hdr and sctp_ifwdtsn_chunk are used to
+define and parse I-FWD TSN chunk format, and sctp_make_ifwdtsn is a
+function to build the chunk.
 
-  Support for I-DATA chunks, also described in RFC8260, with user message
-  interleaving is straightforward as it just requires the schedulers to
-  probe for the feature and ignore datamsg boundaries when dequeueing.
-
-All needs to do is just to ignore datamsg boundaries when dequeueing.
+The I-FORWARD-TSN Chunk Format is defined in section 2.3.1 of RFC8260.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/sctp/stream_sched.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ include/linux/sctp.h       | 17 +++++++++++++++++
+ include/net/sctp/sm.h      |  3 +++
+ include/net/sctp/structs.h |  1 +
+ net/sctp/sm_make_chunk.c   | 24 ++++++++++++++++++++++++
+ 4 files changed, 45 insertions(+)
 
-diff --git a/net/sctp/stream_sched.c b/net/sctp/stream_sched.c
-index d8c162a..f5fcd42 100644
---- a/net/sctp/stream_sched.c
-+++ b/net/sctp/stream_sched.c
-@@ -242,7 +242,8 @@ int sctp_sched_get_value(struct sctp_association *asoc, __u16 sid,
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index 38e2cf6..b36c766 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -110,6 +110,7 @@ enum sctp_cid {
  
- void sctp_sched_dequeue_done(struct sctp_outq *q, struct sctp_chunk *ch)
- {
--	if (!list_is_last(&ch->frag_list, &ch->msg->chunks)) {
-+	if (!list_is_last(&ch->frag_list, &ch->msg->chunks) &&
-+	    !q->asoc->intl_enable) {
- 		struct sctp_stream_out *sout;
- 		__u16 sid;
+ 	/* Use hex, as defined in ADDIP sec. 3.1 */
+ 	SCTP_CID_ASCONF			= 0xC1,
++	SCTP_CID_I_FWD_TSN		= 0xC2,
+ 	SCTP_CID_ASCONF_ACK		= 0x80,
+ 	SCTP_CID_RECONF			= 0x82,
+ }; /* enum */
+@@ -616,6 +617,22 @@ struct sctp_fwdtsn_chunk {
+ 	struct sctp_fwdtsn_hdr fwdtsn_hdr;
+ };
  
++struct sctp_ifwdtsn_skip {
++	__be16 stream;
++	__u8 reserved;
++	__u8 flags;
++	__be32 mid;
++};
++
++struct sctp_ifwdtsn_hdr {
++	__be32 new_cum_tsn;
++	struct sctp_ifwdtsn_skip skip[0];
++};
++
++struct sctp_ifwdtsn_chunk {
++	struct sctp_chunkhdr chunk_hdr;
++	struct sctp_ifwdtsn_hdr fwdtsn_hdr;
++};
+ 
+ /* ADDIP
+  * Section 3.1.1 Address Configuration Change Chunk (ASCONF)
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index 0993b49..2883c43 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -199,6 +199,9 @@ struct sctp_chunk *sctp_make_cwr(const struct sctp_association *asoc,
+ 				 const struct sctp_chunk *chunk);
+ struct sctp_chunk *sctp_make_idata(const struct sctp_association *asoc,
+ 				   __u8 flags, int paylen, gfp_t gfp);
++struct sctp_chunk *sctp_make_ifwdtsn(const struct sctp_association *asoc,
++				     __u32 new_cum_tsn, size_t nstreams,
++				     struct sctp_ifwdtsn_skip *skiplist);
+ struct sctp_chunk *sctp_make_datafrag_empty(const struct sctp_association *asoc,
+ 					    const struct sctp_sndrcvinfo *sinfo,
+ 					    int len, __u8 flags, gfp_t gfp);
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 8ef638d..a5c3cf4 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -599,6 +599,7 @@ struct sctp_chunk {
+ 		struct sctp_fwdtsn_hdr *fwdtsn_hdr;
+ 		struct sctp_authhdr *auth_hdr;
+ 		struct sctp_idatahdr *idata_hdr;
++		struct sctp_ifwdtsn_hdr *ifwdtsn_hdr;
+ 	} subh;
+ 
+ 	__u8 *chunk_end;
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 23a7313..b9b269c 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -3536,6 +3536,30 @@ struct sctp_chunk *sctp_make_fwdtsn(const struct sctp_association *asoc,
+ 	return retval;
+ }
+ 
++struct sctp_chunk *sctp_make_ifwdtsn(const struct sctp_association *asoc,
++				     __u32 new_cum_tsn, size_t nstreams,
++				     struct sctp_ifwdtsn_skip *skiplist)
++{
++	struct sctp_chunk *retval = NULL;
++	struct sctp_ifwdtsn_hdr ftsn_hdr;
++	size_t hint;
++
++	hint = (nstreams + 1) * sizeof(__u32);
++
++	retval = sctp_make_control(asoc, SCTP_CID_I_FWD_TSN, 0, hint,
++				   GFP_ATOMIC);
++	if (!retval)
++		return NULL;
++
++	ftsn_hdr.new_cum_tsn = htonl(new_cum_tsn);
++	retval->subh.ifwdtsn_hdr +		sctp_addto_chunk(retval, sizeof(ftsn_hdr), &ftsn_hdr);
++
++	sctp_addto_chunk(retval, nstreams * sizeof(skiplist[0]), skiplist);
++
++	return retval;
++}
++
+ /* RE-CONFIG 3.1 (RE-CONFIG chunk)
+  *   0                   1                   2                   3
+  *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 -- 
 2.1.0
 
