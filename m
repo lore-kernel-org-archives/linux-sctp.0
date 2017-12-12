@@ -1,43 +1,40 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 15 Dec 2017 18:53:06 +0000
-Subject: Re: [PATCHv2 net-next 0/8] sctp: Implement Stream Interleave: Interaction with Other SCTP Extensions
-Message-Id: <20171215.135306.1237219753205231632.davem@davemloft.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 12 Dec 2017 16:08:00 +0000
+Subject: Re: [PATCH 2/4] sctp: Add ip option support
+Message-Id: <20171212160800.GE3532@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1513269224.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1513269224.git.lucien.xin@gmail.com>
+References: <20171127193121.2666-1-richard_c_haines@btinternet.com>
+In-Reply-To: <20171127193121.2666-1-richard_c_haines@btinternet.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: linux-security-module@vger.kernel.org
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 15 Dec 2017 00:41:24 +0800
+Hi Richard,
 
-> Stream Interleave would be implemented in two Parts:
-> 
->    1. The I-DATA Chunk Supporting User Message Interleaving
->    2. Interaction with Other SCTP Extensions
-> 
-> Overview in section 2.3 of RFC8260 for Part 2:
-> 
->    The usage of the I-DATA chunk might interfere with other SCTP
->    extensions.  Future SCTP extensions MUST describe if and how they
->    interfere with the usage of I-DATA chunks.  For the SCTP extensions
->    already defined when this document was published, the details are
->    given in the following subsections.
-> 
-> As the 2nd part of Stream Interleave Implementation, this patchset mostly
-> adds the support for SCTP Partial Reliability Extension with I-FORWARD-TSN
-> chunk. Then adjusts stream scheduler and stream reconfig to make them work
-> properly with I-DATA chunks.
-> 
-> In the last patch, all stream interleave codes will be enabled by adding
-> sysctl to allow users to use this feature.
-> 
-> v1 -> v2:
->   - removed the intl_enable check from sctp_chunk_event_lookup, as Marcelo's
->     suggestion.
->   - fixed a typo in changelog.
+On Mon, Nov 27, 2017 at 07:31:21PM +0000, Richard Haines wrote:
+...
+> --- a/net/sctp/socket.c
+> +++ b/net/sctp/socket.c
+> @@ -3123,8 +3123,10 @@ static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned
+>  
+>  	if (asoc) {
+>  		if (val = 0) {
+> +			struct sctp_af *af = sp->pf->af;
+>  			val = asoc->pathmtu;
+> -			val -= sp->pf->af->net_header_len;
+> +			val -= af->ip_options_len(asoc->base.sk);
+> +			val -= af->net_header_len;
+>  			val -= sizeof(struct sctphdr) +
+>  					sizeof(struct sctp_data_chunk);
+>  		}
 
-Series applied, thanks.
+Right below here there is a call to sctp_frag_point(). That function
+also needs this tweak.
+
+Yes, we should simplify all these calculations. I have a patch to use
+sctp_frag_point on where it is currently recalculating it on
+sctp_datamsg_from_user(), but probably should include other places as
+well.
+
+  Marcelo
