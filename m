@@ -1,175 +1,215 @@
-From: Masami Hiramatsu <mhiramat@kernel.org>
-Date: Fri, 22 Dec 2017 02:07:33 +0000
-Subject: [PATCH net-next v5 5/6] net: dccp: Add DCCP sendmsg trace event
-Message-Id: <151390845325.13277.14180438851102772029.stgit@devbox>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 12 Dec 2017 09:25:53 +0000
+Subject: [PATCH net-next 2/8] sctp: implement generate_ftsn for sctp_stream_interleave
+Message-Id: <dbe7bd0f6197086a6a4b4d28f0d63ee1073414e8.1513070662.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <151390830346.13277.15583398024850377955.stgit@devbox>
-In-Reply-To: <151390830346.13277.15583398024850377955.stgit@devbox>
+References: <cover.1513070662.git.lucien.xin@gmail.com>
+ <9b8315277069d021d8a6b581b7304af624a45c61.1513070662.git.lucien.xin@gmail.com>
+In-Reply-To: <9b8315277069d021d8a6b581b7304af624a45c61.1513070662.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Ingo Molnar <mingo@kernel.org>, "David S . Miller" <davem@davemloft.net>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
-Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-Add DCCP sendmsg trace event (dccp/dccp_probe) for
-replacing dccpprobe. User can trace this event via
-ftrace or perftools.
+generate_ftsn is added as a member of sctp_stream_interleave, used to
+create fwdtsn or ifwdtsn chunk according to abandoned chunks, called
+in sctp_retransmit and sctp_outq_sack.
 
-Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
+sctp_generate_iftsn works for ifwdtsn, and sctp_generate_fwdtsn is
+still used for making fwdtsn.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
-  Changes in v5
-   - Fix to add local directory to include for trace.h.
-     Thanks Steven!
----
- net/dccp/Makefile |    3 ++
- net/dccp/proto.c  |    5 +++
- net/dccp/trace.h  |  105 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 113 insertions(+)
- create mode 100644 net/dccp/trace.h
+ include/net/sctp/stream_interleave.h |  2 +
+ include/net/sctp/structs.h           |  1 +
+ net/sctp/outqueue.c                  | 12 +++---
+ net/sctp/stream_interleave.c         | 75 ++++++++++++++++++++++++++++++++++++
+ 4 files changed, 84 insertions(+), 6 deletions(-)
 
-diff --git a/net/dccp/Makefile b/net/dccp/Makefile
-index 2e7b56097bc4..4215f13a63af 100644
---- a/net/dccp/Makefile
-+++ b/net/dccp/Makefile
-@@ -27,3 +27,6 @@ dccp-$(CONFIG_SYSCTL) += sysctl.o
+diff --git a/include/net/sctp/stream_interleave.h b/include/net/sctp/stream_interleave.h
+index 501b2be..66267db 100644
+--- a/include/net/sctp/stream_interleave.h
++++ b/include/net/sctp/stream_interleave.h
+@@ -47,6 +47,8 @@ struct sctp_stream_interleave {
+ 				 struct sctp_chunk *chunk, gfp_t gfp);
+ 	void	(*start_pd)(struct sctp_ulpq *ulpq, gfp_t gfp);
+ 	void	(*abort_pd)(struct sctp_ulpq *ulpq, gfp_t gfp);
++	/* (I-)FORWARD-TSN process */
++	void	(*generate_ftsn)(struct sctp_outq *q, __u32 ctsn);
+ };
  
- dccp_diag-y := diag.o
- dccp_probe-y := probe.o
-+
-+# build with local directory for trace.h
-+CFLAGS_proto.o := -I$(src)
-diff --git a/net/dccp/proto.c b/net/dccp/proto.c
-index 9d43c1f40274..e57b5db495cd 100644
---- a/net/dccp/proto.c
-+++ b/net/dccp/proto.c
-@@ -38,6 +38,9 @@
- #include "dccp.h"
- #include "feat.h"
+ void sctp_stream_interleave_init(struct sctp_stream *stream);
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index a5c3cf4..b7720d6 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1100,6 +1100,7 @@ void sctp_retransmit_mark(struct sctp_outq *, struct sctp_transport *, __u8);
+ void sctp_outq_uncork(struct sctp_outq *, gfp_t gfp);
+ void sctp_prsctp_prune(struct sctp_association *asoc,
+ 		       struct sctp_sndrcvinfo *sinfo, int msg_len);
++void sctp_generate_fwdtsn(struct sctp_outq *q, __u32 sack_ctsn);
+ /* Uncork and flush an outqueue.  */
+ static inline void sctp_outq_cork(struct sctp_outq *q)
+ {
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 7d67fee..af9b5eb 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -67,8 +67,6 @@ static void sctp_mark_missing(struct sctp_outq *q,
+ 			      __u32 highest_new_tsn,
+ 			      int count_of_newacks);
  
-+#define CREATE_TRACE_POINTS
-+#include "trace.h"
-+
- DEFINE_SNMP_STAT(struct dccp_mib, dccp_statistics) __read_mostly;
+-static void sctp_generate_fwdtsn(struct sctp_outq *q, __u32 sack_ctsn);
+-
+ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp);
  
- EXPORT_SYMBOL_GPL(dccp_statistics);
-@@ -761,6 +764,8 @@ int dccp_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
- 	int rc, size;
- 	long timeo;
+ /* Add data to the front of the queue. */
+@@ -591,7 +589,7 @@ void sctp_retransmit(struct sctp_outq *q, struct sctp_transport *transport,
+ 	 * following the procedures outlined in C1 - C5.
+ 	 */
+ 	if (reason = SCTP_RTXR_T3_RTX)
+-		sctp_generate_fwdtsn(q, q->asoc->ctsn_ack_point);
++		q->asoc->stream.si->generate_ftsn(q, q->asoc->ctsn_ack_point);
  
-+	trace_dccp_probe(sk, len);
-+
- 	if (len > dp->dccps_mss_cache)
- 		return -EMSGSIZE;
+ 	/* Flush the queues only on timeout, since fast_rtx is only
+ 	 * triggered during sack processing and the queue
+@@ -942,6 +940,7 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
+ 		case SCTP_CID_ECN_ECNE:
+ 		case SCTP_CID_ASCONF:
+ 		case SCTP_CID_FWD_TSN:
++		case SCTP_CID_I_FWD_TSN:
+ 		case SCTP_CID_RECONF:
+ 			status = sctp_packet_transmit_chunk(packet, chunk,
+ 							    one_packet, gfp);
+@@ -956,7 +955,8 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
+ 			 * sender MUST assure that at least one T3-rtx
+ 			 * timer is running.
+ 			 */
+-			if (chunk->chunk_hdr->type = SCTP_CID_FWD_TSN) {
++			if (chunk->chunk_hdr->type = SCTP_CID_FWD_TSN ||
++			    chunk->chunk_hdr->type = SCTP_CID_I_FWD_TSN) {
+ 				sctp_transport_reset_t3_rtx(transport);
+ 				transport->last_time_sent = jiffies;
+ 			}
+@@ -1372,7 +1372,7 @@ int sctp_outq_sack(struct sctp_outq *q, struct sctp_chunk *chunk)
  
-diff --git a/net/dccp/trace.h b/net/dccp/trace.h
-new file mode 100644
-index 000000000000..aa01321a6c37
---- /dev/null
-+++ b/net/dccp/trace.h
-@@ -0,0 +1,105 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+#undef TRACE_SYSTEM
-+#define TRACE_SYSTEM dccp
+ 	asoc->peer.rwnd = sack_a_rwnd;
+ 
+-	sctp_generate_fwdtsn(q, sack_ctsn);
++	asoc->stream.si->generate_ftsn(q, sack_ctsn);
+ 
+ 	pr_debug("%s: sack cumulative tsn ack:0x%x\n", __func__, sack_ctsn);
+ 	pr_debug("%s: cumulative tsn ack of assoc:%p is 0x%x, "
+@@ -1795,7 +1795,7 @@ static inline int sctp_get_skip_pos(struct sctp_fwdtsn_skip *skiplist,
+ }
+ 
+ /* Create and add a fwdtsn chunk to the outq's control queue if needed. */
+-static void sctp_generate_fwdtsn(struct sctp_outq *q, __u32 ctsn)
++void sctp_generate_fwdtsn(struct sctp_outq *q, __u32 ctsn)
+ {
+ 	struct sctp_association *asoc = q->asoc;
+ 	struct sctp_chunk *ftsn_chunk = NULL;
+diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
+index 87b9417..2ead372 100644
+--- a/net/sctp/stream_interleave.c
++++ b/net/sctp/stream_interleave.c
+@@ -1082,6 +1082,77 @@ static void sctp_intl_abort_pd(struct sctp_ulpq *ulpq, gfp_t gfp)
+ 	sctp_ulpq_flush(ulpq);
+ }
+ 
++static inline int sctp_get_skip_pos(struct sctp_ifwdtsn_skip *skiplist,
++				    int nskips, __be16 stream, __u8 flags)
++{
++	int i;
 +
-+#if !defined(_TRACE_DCCP_H) || defined(TRACE_HEADER_MULTI_READ)
-+#define _TRACE_DCCP_H
++	for (i = 0; i < nskips; i++)
++		if (skiplist[i].stream = stream &&
++		    skiplist[i].flags = flags)
++			return i;
 +
-+#include <net/sock.h>
-+#include "dccp.h"
-+#include "ccids/ccid3.h"
-+#include <linux/tracepoint.h>
++	return i;
++}
 +
-+TRACE_EVENT(dccp_probe,
++#define SCTP_FTSN_U_BIT	0x1
++static void sctp_generate_iftsn(struct sctp_outq *q, __u32 ctsn)
++{
++	struct sctp_ifwdtsn_skip ftsn_skip_arr[10];
++	struct sctp_association *asoc = q->asoc;
++	struct sctp_chunk *ftsn_chunk = NULL;
++	struct list_head *lchunk, *temp;
++	int nskips = 0, skip_pos;
++	struct sctp_chunk *chunk;
++	__u32 tsn;
 +
-+	TP_PROTO(struct sock *sk, size_t size),
++	if (!asoc->peer.prsctp_capable)
++		return;
 +
-+	TP_ARGS(sk, size),
++	if (TSN_lt(asoc->adv_peer_ack_point, ctsn))
++		asoc->adv_peer_ack_point = ctsn;
 +
-+	TP_STRUCT__entry(
-+		/* sockaddr_in6 is always bigger than sockaddr_in */
-+		__array(__u8, saddr, sizeof(struct sockaddr_in6))
-+		__array(__u8, daddr, sizeof(struct sockaddr_in6))
-+		__field(__u16, sport)
-+		__field(__u16, dport)
-+		__field(__u16, size)
-+		__field(__u16, tx_s)
-+		__field(__u32, tx_rtt)
-+		__field(__u32, tx_p)
-+		__field(__u32, tx_x_calc)
-+		__field(__u64, tx_x_recv)
-+		__field(__u64, tx_x)
-+		__field(__u32, tx_t_ipi)
-+	),
++	list_for_each_safe(lchunk, temp, &q->abandoned) {
++		chunk = list_entry(lchunk, struct sctp_chunk, transmitted_list);
++		tsn = ntohl(chunk->subh.data_hdr->tsn);
 +
-+	TP_fast_assign(
-+		const struct inet_sock *inet = inet_sk(sk);
-+		struct ccid3_hc_tx_sock *hc = NULL;
++		if (TSN_lte(tsn, ctsn)) {
++			list_del_init(lchunk);
++			sctp_chunk_free(chunk);
++		} else if (TSN_lte(tsn, asoc->adv_peer_ack_point + 1)) {
++			__be16 sid = chunk->subh.idata_hdr->stream;
++			__be32 mid = chunk->subh.idata_hdr->mid;
++			__u8 flags = 0;
 +
-+		if (ccid_get_current_tx_ccid(dccp_sk(sk)) = DCCPC_CCID3)
-+			hc = ccid3_hc_tx_sk(sk);
++			if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
++				flags |= SCTP_FTSN_U_BIT;
 +
-+		memset(__entry->saddr, 0, sizeof(struct sockaddr_in6));
-+		memset(__entry->daddr, 0, sizeof(struct sockaddr_in6));
-+
-+		if (sk->sk_family = AF_INET) {
-+			struct sockaddr_in *v4 = (void *)__entry->saddr;
-+
-+			v4->sin_family = AF_INET;
-+			v4->sin_port = inet->inet_sport;
-+			v4->sin_addr.s_addr = inet->inet_saddr;
-+			v4 = (void *)__entry->daddr;
-+			v4->sin_family = AF_INET;
-+			v4->sin_port = inet->inet_dport;
-+			v4->sin_addr.s_addr = inet->inet_daddr;
-+#if IS_ENABLED(CONFIG_IPV6)
-+		} else if (sk->sk_family = AF_INET6) {
-+			struct sockaddr_in6 *v6 = (void *)__entry->saddr;
-+
-+			v6->sin6_family = AF_INET6;
-+			v6->sin6_port = inet->inet_sport;
-+			v6->sin6_addr = inet6_sk(sk)->saddr;
-+			v6 = (void *)__entry->daddr;
-+			v6->sin6_family = AF_INET6;
-+			v6->sin6_port = inet->inet_dport;
-+			v6->sin6_addr = sk->sk_v6_daddr;
-+#endif
-+		}
-+
-+		/* For filtering use */
-+		__entry->sport = ntohs(inet->inet_sport);
-+		__entry->dport = ntohs(inet->inet_dport);
-+
-+		__entry->size = size;
-+		if (hc) {
-+			__entry->tx_s = hc->tx_s;
-+			__entry->tx_rtt = hc->tx_rtt;
-+			__entry->tx_p = hc->tx_p;
-+			__entry->tx_x_calc = hc->tx_x_calc;
-+			__entry->tx_x_recv = hc->tx_x_recv >> 6;
-+			__entry->tx_x = hc->tx_x >> 6;
-+			__entry->tx_t_ipi = hc->tx_t_ipi;
++			asoc->adv_peer_ack_point = tsn;
++			skip_pos = sctp_get_skip_pos(&ftsn_skip_arr[0], nskips,
++						     sid, flags);
++			ftsn_skip_arr[skip_pos].stream = sid;
++			ftsn_skip_arr[skip_pos].reserved = 0;
++			ftsn_skip_arr[skip_pos].flags = flags;
++			ftsn_skip_arr[skip_pos].mid = mid;
++			if (skip_pos = nskips)
++				nskips++;
++			if (nskips = 10)
++				break;
 +		} else {
-+			__entry->tx_s = 0;
-+			memset(&__entry->tx_rtt, 0, (void *)&__entry->tx_t_ipi -
-+			       (void *)&__entry->tx_rtt +
-+			       sizeof(__entry->tx_t_ipi));
++			break;
 +		}
-+	),
++	}
 +
-+	TP_printk("src=%pISpc dest=%pISpc size=%d tx_s=%d tx_rtt=%d "
-+		  "tx_p=%d tx_x_calc=%u tx_x_recv=%llu tx_x=%llu tx_t_ipi=%d",
-+		  __entry->saddr, __entry->daddr, __entry->size,
-+		  __entry->tx_s, __entry->tx_rtt, __entry->tx_p,
-+		  __entry->tx_x_calc, __entry->tx_x_recv, __entry->tx_x,
-+		  __entry->tx_t_ipi)
-+);
++	if (asoc->adv_peer_ack_point > ctsn)
++		ftsn_chunk = sctp_make_ifwdtsn(asoc, asoc->adv_peer_ack_point,
++					       nskips, &ftsn_skip_arr[0]);
 +
-+#endif /* _TRACE_TCP_H */
++	if (ftsn_chunk) {
++		list_add_tail(&ftsn_chunk->list, &q->control_chunk_list);
++		SCTP_INC_STATS(sock_net(asoc->base.sk), SCTP_MIB_OUTCTRLCHUNKS);
++	}
++}
 +
-+/* This part must be outside protection */
-+#undef TRACE_INCLUDE_PATH
-+#define TRACE_INCLUDE_PATH .
-+#undef TRACE_INCLUDE_FILE
-+#define TRACE_INCLUDE_FILE trace
-+#include <trace/define_trace.h>
+ static struct sctp_stream_interleave sctp_stream_interleave_0 = {
+ 	.data_chunk_len		= sizeof(struct sctp_data_chunk),
+ 	/* DATA process functions */
+@@ -1093,6 +1164,8 @@ static struct sctp_stream_interleave sctp_stream_interleave_0 = {
+ 	.renege_events		= sctp_ulpq_renege,
+ 	.start_pd		= sctp_ulpq_partial_delivery,
+ 	.abort_pd		= sctp_ulpq_abort_pd,
++	/* FORWARD-TSN process functions */
++	.generate_ftsn		= sctp_generate_fwdtsn,
+ };
+ 
+ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
+@@ -1106,6 +1179,8 @@ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
+ 	.renege_events		= sctp_renege_events,
+ 	.start_pd		= sctp_intl_start_pd,
+ 	.abort_pd		= sctp_intl_abort_pd,
++	/* I-FORWARD-TSN process functions */
++	.generate_ftsn		= sctp_generate_iftsn,
+ };
+ 
+ void sctp_stream_interleave_init(struct sctp_stream *stream)
+-- 
+2.1.0
 
