@@ -1,65 +1,125 @@
-From: Willem de Bruijn <willemdebruijn.kernel@gmail.com>
-Date: Sun, 31 Dec 2017 09:52:14 +0000
-Subject: Re: general protection fault in skb_segment
-Message-Id: <CAF=yD-+KwmB+fX+4A1RiCV6ZCDQbkGGSVu8YVMrAGxfVtG7ndQ@mail.gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 14 Dec 2017 16:41:25 +0000
+Subject: [PATCHv2 net-next 1/8] sctp: add basic structures and make chunk function for ifwdtsn
+Message-Id: <3f8811d3daf19089f75ec75afbca8b397680b6e6.1513269224.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <001a1137452496ffc305617e5fe0@google.com> <CAF=yD-+Ynn+t0dPJXUrXKQ2XMdtiKz8t6PKJUMNqeydYv=yG9A@mail.gmail.com>
- <20171231005220.GD22042@localhost.localdomain>
-In-Reply-To: <20171231005220.GD22042@localhost.localdomain>
+References: <cover.1513269224.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1513269224.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: syzbot <syzbot+fee64147a25aecd48055@syzkaller.appspotmail.com>, David Miller <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, Network Development <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs@googlegroups.com, Vladislav Yasevich <vyasevich@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-> It seems virtio_net could use more sanity checks. When PACKET_VNET_HDR
-> is used, it will end up calling:
-> tpacket_rcv() {
-> ...
->         if (do_vnet) {
->                 if (virtio_net_hdr_from_skb(skb, h.raw + macoff -
->                                             sizeof(struct virtio_net_hdr),
->                                             vio_le(), true)) {
->                         spin_lock(&sk->sk_receive_queue.lock);
->                         goto drop_n_account;
->                 }
->         }
->
-> and virtio_net_hdr_from_skb does:
->         if (skb_is_gso(skb)) {
-> ...
->                 if (sinfo->gso_type & SKB_GSO_TCPV4)
->                         hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV4;
->                 else if (sinfo->gso_type & SKB_GSO_TCPV6)
->                         hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV6;
->                 else
->                         return -EINVAL;
+sctp_ifwdtsn_skip, sctp_ifwdtsn_hdr and sctp_ifwdtsn_chunk are used to
+define and parse I-FWD TSN chunk format, and sctp_make_ifwdtsn is a
+function to build the chunk.
 
-That is the receive path, but the send path is analogous. Just adds
-UFO.
+The I-FORWARD-TSN Chunk Format is defined in section 2.3.1 of RFC8260.
 
-> Meaning that any gso_type other than TCP would be rejected, but this
-> SCTP one got through. Seems the header contains a sctp header, but the
-> gso_type set was actually pointing to TCP (otherwise it would have
-> been rejected). AFAICT if this packet had an ESP header, for example,
-> it could have hit esp4_gso_segment. Can you please confirm this?
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/linux/sctp.h       | 17 +++++++++++++++++
+ include/net/sctp/sm.h      |  3 +++
+ include/net/sctp/structs.h |  1 +
+ net/sctp/sm_make_chunk.c   | 24 ++++++++++++++++++++++++
+ 4 files changed, 45 insertions(+)
 
-I have not tested this yet, but it certainly seems plausible.
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index 38e2cf6..b36c766 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -110,6 +110,7 @@ enum sctp_cid {
+ 
+ 	/* Use hex, as defined in ADDIP sec. 3.1 */
+ 	SCTP_CID_ASCONF			= 0xC1,
++	SCTP_CID_I_FWD_TSN		= 0xC2,
+ 	SCTP_CID_ASCONF_ACK		= 0x80,
+ 	SCTP_CID_RECONF			= 0x82,
+ }; /* enum */
+@@ -616,6 +617,22 @@ struct sctp_fwdtsn_chunk {
+ 	struct sctp_fwdtsn_hdr fwdtsn_hdr;
+ };
+ 
++struct sctp_ifwdtsn_skip {
++	__be16 stream;
++	__u8 reserved;
++	__u8 flags;
++	__be32 mid;
++};
++
++struct sctp_ifwdtsn_hdr {
++	__be32 new_cum_tsn;
++	struct sctp_ifwdtsn_skip skip[0];
++};
++
++struct sctp_ifwdtsn_chunk {
++	struct sctp_chunkhdr chunk_hdr;
++	struct sctp_ifwdtsn_hdr fwdtsn_hdr;
++};
+ 
+ /* ADDIP
+  * Section 3.1.1 Address Configuration Change Chunk (ASCONF)
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index 0993b49..2883c43 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -199,6 +199,9 @@ struct sctp_chunk *sctp_make_cwr(const struct sctp_association *asoc,
+ 				 const struct sctp_chunk *chunk);
+ struct sctp_chunk *sctp_make_idata(const struct sctp_association *asoc,
+ 				   __u8 flags, int paylen, gfp_t gfp);
++struct sctp_chunk *sctp_make_ifwdtsn(const struct sctp_association *asoc,
++				     __u32 new_cum_tsn, size_t nstreams,
++				     struct sctp_ifwdtsn_skip *skiplist);
+ struct sctp_chunk *sctp_make_datafrag_empty(const struct sctp_association *asoc,
+ 					    const struct sctp_sndrcvinfo *sinfo,
+ 					    int len, __u8 flags, gfp_t gfp);
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 8ef638d..a5c3cf4 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -599,6 +599,7 @@ struct sctp_chunk {
+ 		struct sctp_fwdtsn_hdr *fwdtsn_hdr;
+ 		struct sctp_authhdr *auth_hdr;
+ 		struct sctp_idatahdr *idata_hdr;
++		struct sctp_ifwdtsn_hdr *ifwdtsn_hdr;
+ 	} subh;
+ 
+ 	__u8 *chunk_end;
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 23a7313..b9b269c 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -3536,6 +3536,30 @@ struct sctp_chunk *sctp_make_fwdtsn(const struct sctp_association *asoc,
+ 	return retval;
+ }
+ 
++struct sctp_chunk *sctp_make_ifwdtsn(const struct sctp_association *asoc,
++				     __u32 new_cum_tsn, size_t nstreams,
++				     struct sctp_ifwdtsn_skip *skiplist)
++{
++	struct sctp_chunk *retval = NULL;
++	struct sctp_ifwdtsn_hdr ftsn_hdr;
++	size_t hint;
++
++	hint = (nstreams + 1) * sizeof(__u32);
++
++	retval = sctp_make_control(asoc, SCTP_CID_I_FWD_TSN, 0, hint,
++				   GFP_ATOMIC);
++	if (!retval)
++		return NULL;
++
++	ftsn_hdr.new_cum_tsn = htonl(new_cum_tsn);
++	retval->subh.ifwdtsn_hdr +		sctp_addto_chunk(retval, sizeof(ftsn_hdr), &ftsn_hdr);
++
++	sctp_addto_chunk(retval, nstreams * sizeof(skiplist[0]), skiplist);
++
++	return retval;
++}
++
+ /* RE-CONFIG 3.1 (RE-CONFIG chunk)
+  *   0                   1                   2                   3
+  *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+-- 
+2.1.0
 
-There is nothing ensuring consistency between gso_type and
-the actual packet contents that are parsed to look up gso callbacks.
-
-> I don't know of anywhere in the stack validating if the gso_type
-> matches the header that actually is in there.
->
-> The fix you mentioned is a good start, we want that one way or
-> another, but I'm afraid this bug is bigger than sctp.
-
-Good point. Packet sockets require CAP_NET_RAW, but this is also
-taken for virtio, so we probably want more stringent entry tests here.
-
-The alternative to harden the segmentation code itself with a gso_type
-sanity check in every gso callback is more work and fragile.
-
-Need to figure out whether a brief check for just TCP or UDP is sufficient
-or we need a full flow dissector step to support tunnel headers and such.
