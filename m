@@ -1,34 +1,154 @@
-From: Eric Dumazet <eric.dumazet@gmail.com>
-Date: Sun, 10 Dec 2017 05:12:21 +0000
-Subject: Re: kernel BUG at net/core/skbuff.c:LINE! (2)
-Message-Id: <1512882741.25033.39.camel@gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 14 Dec 2017 16:41:29 +0000
+Subject: [PATCHv2 net-next 5/8] sctp: implement handle_ftsn for sctp_stream_interleave
+Message-Id: <d001538d3ff8d80ba726b5443675b7eea6ee09f6.1513269224.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <001a1149c712d56ccc055cc48e37@google.com>
-         <001a1140f5788a1817055fcfcb1f@google.com>
-         <CADvbK_c5Z7rE-AABGOFKXYA5v7_XLg=V1HOGzBO1X-O13aJ8Gg@mail.gmail.com>
-         <CAM_iQpWffARgEqPTCnz=g0RDUUepJUQmfNF5A8DGa28sjcKo-w@mail.gmail.com>
-         <CADvbK_cAeiW-Tt0OnTBrzHObKOaNjRZnB1Uu+GSRJhhFpHTU2w@mail.gmail.com>
-In-Reply-To: <CADvbK_cAeiW-Tt0OnTBrzHObKOaNjRZnB1Uu+GSRJhhFpHTU2w@mail.gmail.com>
+References: <cover.1513269224.git.lucien.xin@gmail.com>
+ <3f8811d3daf19089f75ec75afbca8b397680b6e6.1513269224.git.lucien.xin@gmail.com>
+ <5982a46414cdea7856ee17683c5a714b411c7eb4.1513269224.git.lucien.xin@gmail.com>
+ <30a1a95a2943469521de456d050717e1d46711fc.1513269224.git.lucien.xin@gmail.com>
+ <d19327abb7e1001da4f9f66e06b3dff94b867b18.1513269224.git.lucien.xin@gmail.com>
+In-Reply-To: <d19327abb7e1001da4f9f66e06b3dff94b867b18.1513269224.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>, Cong Wang <xiyou.wangcong@gmail.com>
-Cc: syzbot <bot+ed0838d0fa4c4f2b528e20286e6dc63effc7c14d@syzkaller.appspotmail.com>, davem <davem@davemloft.net>, kuznet <kuznet@ms2.inr.ac.ru>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, network dev <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs@googlegroups.com, Vlad Yasevich <vyasevich@gmail.com>, yoshfuji <yoshfuji@linux-ipv6.org>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-On Sun, 2017-12-10 at 12:38 +0800, Xin Long wrote:
-> On Sun, Dec 10, 2017 at 3:36 AM, Cong Wang <xiyou.wangcong@gmail.com>
-> wrote:
-> > On Fri, Dec 8, 2017 at 12:45 AM, Xin Long <lucien.xin@gmail.com>
-> > wrote:
-> > > This isn't a sctp problem, but mld's, seems when lo's mtu became
-> > > 0,
-> > > it allocs a skb without enough space in add_grec():
-> > 
-> > Shouldn't we just set its min_mtu to ETH_MIN_MTU?
-> 
-> No idea why there's no min_mtu limitation for lo dev.
+handle_ftsn is added as a member of sctp_stream_interleave, used to skip
+ssn for data or mid for idata, called for SCTP_CMD_PROCESS_FWDTSN cmd.
 
-Because it wont solve this bug.
+sctp_handle_iftsn works for ifwdtsn, and sctp_handle_fwdtsn works for
+fwdtsn. Note that different from sctp_handle_fwdtsn, sctp_handle_iftsn
+could do stream abort pd.
 
-ETH_MIN_MTU is really about IPv4.
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/stream_interleave.h |  2 ++
+ net/sctp/sm_sideeffect.c             | 15 ++---------
+ net/sctp/stream_interleave.c         | 49 ++++++++++++++++++++++++++++++++++++
+ 3 files changed, 53 insertions(+), 13 deletions(-)
+
+diff --git a/include/net/sctp/stream_interleave.h b/include/net/sctp/stream_interleave.h
+index 0b55c70..6657711 100644
+--- a/include/net/sctp/stream_interleave.h
++++ b/include/net/sctp/stream_interleave.h
+@@ -52,6 +52,8 @@ struct sctp_stream_interleave {
+ 	void	(*generate_ftsn)(struct sctp_outq *q, __u32 ctsn);
+ 	bool	(*validate_ftsn)(struct sctp_chunk *chunk);
+ 	void	(*report_ftsn)(struct sctp_ulpq *ulpq, __u32 ftsn);
++	void	(*handle_ftsn)(struct sctp_ulpq *ulpq,
++			       struct sctp_chunk *chunk);
+ };
+ 
+ void sctp_stream_interleave_init(struct sctp_stream *stream);
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index be7c6dbd..16ddf2c 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -1007,18 +1007,6 @@ static void sctp_cmd_process_operr(struct sctp_cmd_seq *cmds,
+ 	}
+ }
+ 
+-/* Process variable FWDTSN chunk information. */
+-static void sctp_cmd_process_fwdtsn(struct sctp_ulpq *ulpq,
+-				    struct sctp_chunk *chunk)
+-{
+-	struct sctp_fwdtsn_skip *skip;
+-
+-	/* Walk through all the skipped SSNs */
+-	sctp_walk_fwdtsn(skip, chunk) {
+-		sctp_ulpq_skip(ulpq, ntohs(skip->stream), ntohs(skip->ssn));
+-	}
+-}
+-
+ /* Helper function to remove the association non-primary peer
+  * transports.
+  */
+@@ -1372,7 +1360,8 @@ static int sctp_cmd_interpreter(enum sctp_event event_type,
+ 			break;
+ 
+ 		case SCTP_CMD_PROCESS_FWDTSN:
+-			sctp_cmd_process_fwdtsn(&asoc->ulpq, cmd->obj.chunk);
++			asoc->stream.si->handle_ftsn(&asoc->ulpq,
++						     cmd->obj.chunk);
+ 			break;
+ 
+ 		case SCTP_CMD_GEN_SACK:
+diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
+index f62771cc..8c7cf8f 100644
+--- a/net/sctp/stream_interleave.c
++++ b/net/sctp/stream_interleave.c
+@@ -1239,6 +1239,53 @@ static void sctp_report_iftsn(struct sctp_ulpq *ulpq, __u32 ftsn)
+ 		sctp_intl_abort_pd(ulpq, GFP_ATOMIC);
+ }
+ 
++static void sctp_handle_fwdtsn(struct sctp_ulpq *ulpq, struct sctp_chunk *chunk)
++{
++	struct sctp_fwdtsn_skip *skip;
++
++	/* Walk through all the skipped SSNs */
++	sctp_walk_fwdtsn(skip, chunk)
++		sctp_ulpq_skip(ulpq, ntohs(skip->stream), ntohs(skip->ssn));
++}
++
++static void sctp_intl_skip(struct sctp_ulpq *ulpq, __u16 sid, __u32 mid,
++			   __u8 flags)
++{
++	struct sctp_stream_in *sin = sctp_stream_in(ulpq->asoc, sid);
++	struct sctp_stream *stream  = &ulpq->asoc->stream;
++
++	if (flags & SCTP_FTSN_U_BIT) {
++		if (sin->pd_mode_uo && MID_lt(sin->mid_uo, mid)) {
++			sin->pd_mode_uo = 0;
++			sctp_intl_stream_abort_pd(ulpq, sid, mid, 0x1,
++						  GFP_ATOMIC);
++		}
++		return;
++	}
++
++	if (MID_lt(mid, sctp_mid_peek(stream, in, sid)))
++		return;
++
++	if (sin->pd_mode) {
++		sin->pd_mode = 0;
++		sctp_intl_stream_abort_pd(ulpq, sid, mid, 0x0, GFP_ATOMIC);
++	}
++
++	sctp_mid_skip(stream, in, sid, mid);
++
++	sctp_intl_reap_ordered(ulpq, sid);
++}
++
++static void sctp_handle_iftsn(struct sctp_ulpq *ulpq, struct sctp_chunk *chunk)
++{
++	struct sctp_ifwdtsn_skip *skip;
++
++	/* Walk through all the skipped MIDs and abort stream pd if possible */
++	sctp_walk_ifwdtsn(skip, chunk)
++		sctp_intl_skip(ulpq, ntohs(skip->stream),
++			       ntohl(skip->mid), skip->flags);
++}
++
+ static struct sctp_stream_interleave sctp_stream_interleave_0 = {
+ 	.data_chunk_len		= sizeof(struct sctp_data_chunk),
+ 	.ftsn_chunk_len		= sizeof(struct sctp_fwdtsn_chunk),
+@@ -1255,6 +1302,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_0 = {
+ 	.generate_ftsn		= sctp_generate_fwdtsn,
+ 	.validate_ftsn		= sctp_validate_fwdtsn,
+ 	.report_ftsn		= sctp_report_fwdtsn,
++	.handle_ftsn		= sctp_handle_fwdtsn,
+ };
+ 
+ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
+@@ -1273,6 +1321,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
+ 	.generate_ftsn		= sctp_generate_iftsn,
+ 	.validate_ftsn		= sctp_validate_iftsn,
+ 	.report_ftsn		= sctp_report_iftsn,
++	.handle_ftsn		= sctp_handle_iftsn,
+ };
+ 
+ void sctp_stream_interleave_init(struct sctp_stream *stream)
+-- 
+2.1.0
 
