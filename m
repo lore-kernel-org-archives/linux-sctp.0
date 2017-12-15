@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 14 Dec 2017 19:58:20 +0000
+From: David Miller <davem@davemloft.net>
+Date: Fri, 15 Dec 2017 18:53:06 +0000
 Subject: Re: [PATCHv2 net-next 0/8] sctp: Implement Stream Interleave: Interaction with Other SCTP Extensions
-Message-Id: <20171214195820.GB30889@hmswarspite.think-freely.org>
+Message-Id: <20171215.135306.1237219753205231632.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1513269224.git.lucien.xin@gmail.com>
 In-Reply-To: <cover.1513269224.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, davem@davemloft.net
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
-On Fri, Dec 15, 2017 at 12:41:24AM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 15 Dec 2017 00:41:24 +0800
+
 > Stream Interleave would be implemented in two Parts:
 > 
 >    1. The I-DATA Chunk Supporting User Message Interleaving
@@ -37,39 +39,5 @@ On Fri, Dec 15, 2017 at 12:41:24AM +0800, Xin Long wrote:
 >   - removed the intl_enable check from sctp_chunk_event_lookup, as Marcelo's
 >     suggestion.
 >   - fixed a typo in changelog.
-> 
-> Xin Long (8):
->   sctp: add basic structures and make chunk function for ifwdtsn
->   sctp: implement generate_ftsn for sctp_stream_interleave
->   sctp: implement validate_ftsn for sctp_stream_interleave
->   sctp: implement report_ftsn for sctp_stream_interleave
->   sctp: implement handle_ftsn for sctp_stream_interleave
->   sctp: add stream interleave support in stream scheduler
->   sctp: update mid instead of ssn when doing stream and asoc reset
->   sctp: support sysctl to allow users to use stream interleave
-> 
->  include/linux/sctp.h                 |  17 +++
->  include/net/sctp/sm.h                |   3 +
->  include/net/sctp/stream_interleave.h |   7 ++
->  include/net/sctp/structs.h           |  12 ++
->  net/sctp/outqueue.c                  |  12 +-
->  net/sctp/sm_make_chunk.c             |  24 ++++
->  net/sctp/sm_sideeffect.c             |  24 +---
->  net/sctp/sm_statefuns.c              |  24 ++--
->  net/sctp/sm_statetable.c             |   4 +-
->  net/sctp/stream.c                    |  46 +++++---
->  net/sctp/stream_interleave.c         | 216 +++++++++++++++++++++++++++++++++++
->  net/sctp/stream_sched.c              |   3 +-
->  net/sctp/sysctl.c                    |   7 ++
->  13 files changed, 334 insertions(+), 65 deletions(-)
-> 
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-For the series
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
+Series applied, thanks.
