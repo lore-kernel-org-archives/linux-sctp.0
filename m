@@ -1,102 +1,159 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 08 Dec 2017 13:03:59 +0000
-Subject: [PATCHv2 net-next 02/12] sctp: add asoc intl_enable negotiation during 4 shakehands
-Message-Id: <7347f16f5b620ed98fdb5f7ac54db4a70e1fd27e.1512738021.git.lucien.xin@gmail.com>
+From: Masami Hiramatsu <mhiramat@kernel.org>
+Date: Mon, 18 Dec 2017 08:13:15 +0000
+Subject: [v2 PATCH -tip 5/6] net: dccp: Add DCCP sendmsg trace event
+Message-Id: <151358479502.28850.4464661399413887224.stgit@devbox>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1512738021.git.lucien.xin@gmail.com>
- <2fef1243f8181062aeb17f7052e5b022ec274a8e.1512738021.git.lucien.xin@gmail.com>
-In-Reply-To: <2fef1243f8181062aeb17f7052e5b022ec274a8e.1512738021.git.lucien.xin@gmail.com>
+References: <151358464509.28850.477561174715901317.stgit@devbox>
+In-Reply-To: <151358464509.28850.477561174715901317.stgit@devbox>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: Ingo Molnar <mingo@kernel.org>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
+Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, "David S . Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
 
-asoc intl_enable will be set when local sp strm_interleave is set
-and there's I-DATA chunk in init and init_ack extensions, as said
-in section 2.2.1 of RFC8260.
+Add DCCP sendmsg trace event (dccp/dccp_probe) for
+replacing dccpprobe. User can trace this event via
+ftrace or perftools.
 
-asoc intl_enable indicates all data will be sent as I-DATA chunks.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
 ---
- include/linux/sctp.h     |  3 +++
- net/sctp/sm_make_chunk.c | 18 ++++++++++++++++--
- 2 files changed, 19 insertions(+), 2 deletions(-)
+ net/dccp/proto.c |    5 +++
+ net/dccp/trace.h |  105 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 110 insertions(+)
+ create mode 100644 net/dccp/trace.h
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index da803df..6d2bd64 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -102,6 +102,9 @@ enum sctp_cid {
- 	/* AUTH Extension Section 4.1 */
- 	SCTP_CID_AUTH			= 0x0F,
+diff --git a/net/dccp/proto.c b/net/dccp/proto.c
+index 9d43c1f40274..e57b5db495cd 100644
+--- a/net/dccp/proto.c
++++ b/net/dccp/proto.c
+@@ -38,6 +38,9 @@
+ #include "dccp.h"
+ #include "feat.h"
  
-+	/* sctp ndata 5.1. I-DATA */
-+	SCTP_CID_I_DATA			= 0x40,
++#define CREATE_TRACE_POINTS
++#include "trace.h"
 +
- 	/* PR-SCTP Sec 3.2 */
- 	SCTP_CID_FWD_TSN		= 0xC0,
+ DEFINE_SNMP_STAT(struct dccp_mib, dccp_statistics) __read_mostly;
  
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 9bf575f..da33c85 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -228,7 +228,7 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
- 	struct sctp_inithdr init;
- 	union sctp_params addrs;
- 	struct sctp_sock *sp;
--	__u8 extensions[4];
-+	__u8 extensions[5];
- 	size_t chunksize;
- 	__be16 types[2];
- 	int num_ext = 0;
-@@ -278,6 +278,11 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
- 	if (sp->adaptation_ind)
- 		chunksize += sizeof(aiparam);
+ EXPORT_SYMBOL_GPL(dccp_statistics);
+@@ -761,6 +764,8 @@ int dccp_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
+ 	int rc, size;
+ 	long timeo;
  
-+	if (sp->strm_interleave) {
-+		extensions[num_ext] = SCTP_CID_I_DATA;
-+		num_ext += 1;
-+	}
++	trace_dccp_probe(sk, len);
 +
- 	chunksize += vparam_len;
+ 	if (len > dp->dccps_mss_cache)
+ 		return -EMSGSIZE;
  
- 	/* Account for AUTH related parameters */
-@@ -392,7 +397,7 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
- 	struct sctp_inithdr initack;
- 	union sctp_params addrs;
- 	struct sctp_sock *sp;
--	__u8 extensions[4];
-+	__u8 extensions[5];
- 	size_t chunksize;
- 	int num_ext = 0;
- 	int cookie_len;
-@@ -442,6 +447,11 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
- 	if (sp->adaptation_ind)
- 		chunksize += sizeof(aiparam);
- 
-+	if (asoc->intl_enable) {
-+		extensions[num_ext] = SCTP_CID_I_DATA;
-+		num_ext += 1;
-+	}
+diff --git a/net/dccp/trace.h b/net/dccp/trace.h
+new file mode 100644
+index 000000000000..aa01321a6c37
+--- /dev/null
++++ b/net/dccp/trace.h
+@@ -0,0 +1,105 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#undef TRACE_SYSTEM
++#define TRACE_SYSTEM dccp
 +
- 	if (asoc->peer.auth_capable) {
- 		auth_random = (struct sctp_paramhdr *)asoc->c.auth_random;
- 		chunksize += ntohs(auth_random->length);
-@@ -2032,6 +2042,10 @@ static void sctp_process_ext_param(struct sctp_association *asoc,
- 			if (net->sctp.addip_enable)
- 				asoc->peer.asconf_capable = 1;
- 			break;
-+		case SCTP_CID_I_DATA:
-+			if (sctp_sk(asoc->base.sk)->strm_interleave)
-+				asoc->intl_enable = 1;
-+			break;
- 		default:
- 			break;
- 		}
--- 
-2.1.0
++#if !defined(_TRACE_DCCP_H) || defined(TRACE_HEADER_MULTI_READ)
++#define _TRACE_DCCP_H
++
++#include <net/sock.h>
++#include "dccp.h"
++#include "ccids/ccid3.h"
++#include <linux/tracepoint.h>
++
++TRACE_EVENT(dccp_probe,
++
++	TP_PROTO(struct sock *sk, size_t size),
++
++	TP_ARGS(sk, size),
++
++	TP_STRUCT__entry(
++		/* sockaddr_in6 is always bigger than sockaddr_in */
++		__array(__u8, saddr, sizeof(struct sockaddr_in6))
++		__array(__u8, daddr, sizeof(struct sockaddr_in6))
++		__field(__u16, sport)
++		__field(__u16, dport)
++		__field(__u16, size)
++		__field(__u16, tx_s)
++		__field(__u32, tx_rtt)
++		__field(__u32, tx_p)
++		__field(__u32, tx_x_calc)
++		__field(__u64, tx_x_recv)
++		__field(__u64, tx_x)
++		__field(__u32, tx_t_ipi)
++	),
++
++	TP_fast_assign(
++		const struct inet_sock *inet = inet_sk(sk);
++		struct ccid3_hc_tx_sock *hc = NULL;
++
++		if (ccid_get_current_tx_ccid(dccp_sk(sk)) = DCCPC_CCID3)
++			hc = ccid3_hc_tx_sk(sk);
++
++		memset(__entry->saddr, 0, sizeof(struct sockaddr_in6));
++		memset(__entry->daddr, 0, sizeof(struct sockaddr_in6));
++
++		if (sk->sk_family = AF_INET) {
++			struct sockaddr_in *v4 = (void *)__entry->saddr;
++
++			v4->sin_family = AF_INET;
++			v4->sin_port = inet->inet_sport;
++			v4->sin_addr.s_addr = inet->inet_saddr;
++			v4 = (void *)__entry->daddr;
++			v4->sin_family = AF_INET;
++			v4->sin_port = inet->inet_dport;
++			v4->sin_addr.s_addr = inet->inet_daddr;
++#if IS_ENABLED(CONFIG_IPV6)
++		} else if (sk->sk_family = AF_INET6) {
++			struct sockaddr_in6 *v6 = (void *)__entry->saddr;
++
++			v6->sin6_family = AF_INET6;
++			v6->sin6_port = inet->inet_sport;
++			v6->sin6_addr = inet6_sk(sk)->saddr;
++			v6 = (void *)__entry->daddr;
++			v6->sin6_family = AF_INET6;
++			v6->sin6_port = inet->inet_dport;
++			v6->sin6_addr = sk->sk_v6_daddr;
++#endif
++		}
++
++		/* For filtering use */
++		__entry->sport = ntohs(inet->inet_sport);
++		__entry->dport = ntohs(inet->inet_dport);
++
++		__entry->size = size;
++		if (hc) {
++			__entry->tx_s = hc->tx_s;
++			__entry->tx_rtt = hc->tx_rtt;
++			__entry->tx_p = hc->tx_p;
++			__entry->tx_x_calc = hc->tx_x_calc;
++			__entry->tx_x_recv = hc->tx_x_recv >> 6;
++			__entry->tx_x = hc->tx_x >> 6;
++			__entry->tx_t_ipi = hc->tx_t_ipi;
++		} else {
++			__entry->tx_s = 0;
++			memset(&__entry->tx_rtt, 0, (void *)&__entry->tx_t_ipi -
++			       (void *)&__entry->tx_rtt +
++			       sizeof(__entry->tx_t_ipi));
++		}
++	),
++
++	TP_printk("src=%pISpc dest=%pISpc size=%d tx_s=%d tx_rtt=%d "
++		  "tx_p=%d tx_x_calc=%u tx_x_recv=%llu tx_x=%llu tx_t_ipi=%d",
++		  __entry->saddr, __entry->daddr, __entry->size,
++		  __entry->tx_s, __entry->tx_rtt, __entry->tx_p,
++		  __entry->tx_x_calc, __entry->tx_x_recv, __entry->tx_x,
++		  __entry->tx_t_ipi)
++);
++
++#endif /* _TRACE_TCP_H */
++
++/* This part must be outside protection */
++#undef TRACE_INCLUDE_PATH
++#define TRACE_INCLUDE_PATH .
++#undef TRACE_INCLUDE_FILE
++#define TRACE_INCLUDE_FILE trace
++#include <trace/define_trace.h>
 
