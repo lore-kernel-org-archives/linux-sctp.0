@@ -1,124 +1,168 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 14 Dec 2017 18:26:33 +0000
-Subject: Re: [PATCHv2 net-next 7/8] sctp: update mid instead of ssn when doing stream and asoc reset
-Message-Id: <20171214182633.GO3532@localhost.localdomain>
+From: Masami Hiramatsu <mhiramat@kernel.org>
+Date: Mon, 18 Dec 2017 08:12:15 +0000
+Subject: [v2 PATCH -tip 3/6] net: sctp: Add SCTP ACK tracking trace event
+Message-Id: <151358473510.28850.10475072993963389604.stgit@devbox>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1513269224.git.lucien.xin@gmail.com>
- <3cfeed24a57f7c09d51f95df8545d7efc34db9cc.1513269224.git.lucien.xin@gmail.com>
-In-Reply-To: <3cfeed24a57f7c09d51f95df8545d7efc34db9cc.1513269224.git.lucien.xin@gmail.com>
+References: <151358464509.28850.477561174715901317.stgit@devbox>
+In-Reply-To: <151358464509.28850.477561174715901317.stgit@devbox>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: Ingo Molnar <mingo@kernel.org>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
+Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, "David S . Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
 
-On Fri, Dec 15, 2017 at 12:41:31AM +0800, Xin Long wrote:
-> When using idata and doing stream and asoc reset, setting ssn with
-> 0 could only clear the 1st 16 bits of mid.
-> 
-> So to make this work for both data and idata, it sets mid with 0
-> instead of ssn, and also mid_uo for unordered idata also need to
-> be cleared, as said in section 2.3.2 of RFC8260.
-> 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Add SCTP ACK tracking trace event to trace the changes of SCTP
+association state in response to incoming packets.
+It is used for debugging SCTP congestion control algorithms,
+and will replace sctp_probe module.
 
-Acked-by: Marcelo R. Leitner <marcelo.leitner@gmail.com>
+Note that this event a bit tricky. Since this consists of 2
+events (sctp_probe and sctp_probe_path) so you have to enable
+both events as below.
 
-> ---
->  net/sctp/stream.c | 40 +++++++++++++++++++++++++---------------
->  1 file changed, 25 insertions(+), 15 deletions(-)
-> 
-> diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-> index b3a9f37..06b644d 100644
-> --- a/net/sctp/stream.c
-> +++ b/net/sctp/stream.c
-> @@ -216,11 +216,13 @@ void sctp_stream_clear(struct sctp_stream *stream)
->  {
->  	int i;
->  
-> -	for (i = 0; i < stream->outcnt; i++)
-> -		stream->out[i].ssn = 0;
-> +	for (i = 0; i < stream->outcnt; i++) {
-> +		stream->out[i].mid = 0;
-> +		stream->out[i].mid_uo = 0;
-> +	}
->  
->  	for (i = 0; i < stream->incnt; i++)
-> -		stream->in[i].ssn = 0;
-> +		stream->in[i].mid = 0;
->  }
->  
->  void sctp_stream_update(struct sctp_stream *stream, struct sctp_stream *new)
-> @@ -607,10 +609,10 @@ struct sctp_chunk *sctp_process_strreset_outreq(
->  		}
->  
->  		for (i = 0; i < nums; i++)
-> -			stream->in[ntohs(str_p[i])].ssn = 0;
-> +			stream->in[ntohs(str_p[i])].mid = 0;
->  	} else {
->  		for (i = 0; i < stream->incnt; i++)
-> -			stream->in[i].ssn = 0;
-> +			stream->in[i].mid = 0;
->  	}
->  
->  	result = SCTP_STRRESET_PERFORMED;
-> @@ -783,10 +785,12 @@ struct sctp_chunk *sctp_process_strreset_tsnreq(
->  	/* G5:  The next expected and outgoing SSNs MUST be reset to 0 for all
->  	 *      incoming and outgoing streams.
->  	 */
-> -	for (i = 0; i < stream->outcnt; i++)
-> -		stream->out[i].ssn = 0;
-> +	for (i = 0; i < stream->outcnt; i++) {
-> +		stream->out[i].mid = 0;
-> +		stream->out[i].mid_uo = 0;
-> +	}
->  	for (i = 0; i < stream->incnt; i++)
-> -		stream->in[i].ssn = 0;
-> +		stream->in[i].mid = 0;
->  
->  	result = SCTP_STRRESET_PERFORMED;
->  
-> @@ -976,11 +980,15 @@ struct sctp_chunk *sctp_process_strreset_resp(
->  
->  		if (result = SCTP_STRRESET_PERFORMED) {
->  			if (nums) {
-> -				for (i = 0; i < nums; i++)
-> -					stream->out[ntohs(str_p[i])].ssn = 0;
-> +				for (i = 0; i < nums; i++) {
-> +					stream->out[ntohs(str_p[i])].mid = 0;
-> +					stream->out[ntohs(str_p[i])].mid_uo = 0;
-> +				}
->  			} else {
-> -				for (i = 0; i < stream->outcnt; i++)
-> -					stream->out[i].ssn = 0;
-> +				for (i = 0; i < stream->outcnt; i++) {
-> +					stream->out[i].mid = 0;
-> +					stream->out[i].mid_uo = 0;
-> +				}
->  			}
->  
->  			flags = SCTP_STREAM_RESET_OUTGOING_SSN;
-> @@ -1041,10 +1049,12 @@ struct sctp_chunk *sctp_process_strreset_resp(
->  			asoc->ctsn_ack_point = asoc->next_tsn - 1;
->  			asoc->adv_peer_ack_point = asoc->ctsn_ack_point;
->  
-> -			for (i = 0; i < stream->outcnt; i++)
-> -				stream->out[i].ssn = 0;
-> +			for (i = 0; i < stream->outcnt; i++) {
-> +				stream->out[i].mid = 0;
-> +				stream->out[i].mid_uo = 0;
-> +			}
->  			for (i = 0; i < stream->incnt; i++)
-> -				stream->in[i].ssn = 0;
-> +				stream->in[i].mid = 0;
->  		}
->  
->  		for (i = 0; i < stream->outcnt; i++)
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+  # cd /sys/kernel/debug/tracing
+  # echo 1 > events/sctp/sctp_probe/enable
+  # echo 1 > events/sctp/sctp_probe_path/enable
+
+Or, you can enable all the events under sctp.
+
+  # echo 1 > events/sctp/enable
+
+Since sctp_probe_path event is always invoked from sctp_probe
+event, you can not see any output if you only enable
+sctp_probe_path.
+
+
+Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
+---
+ include/trace/events/sctp.h |   96 +++++++++++++++++++++++++++++++++++++++++++
+ net/sctp/sm_statefuns.c     |    5 ++
+ 2 files changed, 101 insertions(+)
+ create mode 100644 include/trace/events/sctp.h
+
+diff --git a/include/trace/events/sctp.h b/include/trace/events/sctp.h
+new file mode 100644
+index 000000000000..32c2dc72311e
+--- /dev/null
++++ b/include/trace/events/sctp.h
+@@ -0,0 +1,96 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#undef TRACE_SYSTEM
++#define TRACE_SYSTEM sctp
++
++#if !defined(_TRACE_SCTP_H) || defined(TRACE_HEADER_MULTI_READ)
++#define _TRACE_SCTP_H
++
++#include <net/sctp/structs.h>
++#include <linux/tracepoint.h>
++
++TRACE_EVENT(sctp_probe_path,
++
++	TP_PROTO(struct sctp_transport *sp,
++		 const struct sctp_association *asoc),
++
++	TP_ARGS(sp, asoc),
++
++	TP_STRUCT__entry(
++		__field(__u64, asoc)
++		__field(__u32, primary)
++		__array(__u8, ipaddr, sizeof(union sctp_addr))
++		__field(__u32, state)
++		__field(__u32, cwnd)
++		__field(__u32, ssthresh)
++		__field(__u32, flight_size)
++		__field(__u32, partial_bytes_acked)
++		__field(__u32, pathmtu)
++	),
++
++	TP_fast_assign(
++		__entry->asoc = (__u64)asoc;
++		__entry->primary = (sp = asoc->peer.primary_path);
++		memcpy(__entry->ipaddr, &sp->ipaddr, sizeof(union sctp_addr));
++		__entry->state = sp->state;
++		__entry->cwnd = sp->cwnd;
++		__entry->ssthresh = sp->ssthresh;
++		__entry->flight_size = sp->flight_size;
++		__entry->partial_bytes_acked = sp->partial_bytes_acked;
++		__entry->pathmtu = sp->pathmtu;
++	),
++
++	TP_printk("asoc=%#llx%s ipaddr=%pISpc state=%u cwnd=%u ssthresh=%u "
++		  "flight_size=%u partial_bytes_acked=%u pathmtu=%u",
++		  __entry->asoc, __entry->primary ? "(*)" : "",
++		  __entry->ipaddr, __entry->state, __entry->cwnd,
++		  __entry->ssthresh, __entry->flight_size,
++		  __entry->partial_bytes_acked, __entry->pathmtu)
++);
++
++TRACE_EVENT(sctp_probe,
++
++	TP_PROTO(const struct sctp_endpoint *ep,
++		 const struct sctp_association *asoc,
++		 struct sctp_chunk *chunk),
++
++	TP_ARGS(ep, asoc, chunk),
++
++	TP_STRUCT__entry(
++		__field(__u64, asoc)
++		__field(__u32, mark)
++		__field(__u16, bind_port)
++		__field(__u16, peer_port)
++		__field(__u32, pathmtu)
++		__field(__u32, rwnd)
++		__field(__u16, unack_data)
++	),
++
++	TP_fast_assign(
++		struct sctp_transport *sp;
++		struct sk_buff *skb = chunk->skb;
++
++		__entry->asoc = (__u64)asoc;
++		__entry->mark = skb->mark;
++		__entry->bind_port = ep->base.bind_addr.port;
++		__entry->peer_port = asoc->peer.port;
++		__entry->pathmtu = asoc->pathmtu;
++		__entry->rwnd = asoc->peer.rwnd;
++		__entry->unack_data = asoc->unack_data;
++
++		list_for_each_entry(sp, &asoc->peer.transport_addr_list,
++				    transports) {
++			trace_sctp_probe_path(sp, asoc);
++		}
++	),
++
++	TP_printk("asoc=%#llx mark=%#x bind_port=%d peer_port=%d pathmtu=%d "
++		  "rwnd=%u unack_data=%d",
++		  __entry->asoc, __entry->mark, __entry->bind_port,
++		  __entry->peer_port, __entry->pathmtu, __entry->rwnd,
++		  __entry->unack_data)
++);
++
++#endif /* _TRACE_SCTP_H */
++
++/* This part must be outside protection */
++#include <trace/define_trace.h>
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 8f8ccded13e4..c5f92b2cc5c3 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -59,6 +59,9 @@
+ #include <net/sctp/sm.h>
+ #include <net/sctp/structs.h>
+ 
++#define CREATE_TRACE_POINTS
++#include <trace/events/sctp.h>
++
+ static struct sctp_packet *sctp_abort_pkt_new(
+ 					struct net *net,
+ 					const struct sctp_endpoint *ep,
+@@ -3219,6 +3222,8 @@ enum sctp_disposition sctp_sf_eat_sack_6_2(struct net *net,
+ 	struct sctp_sackhdr *sackh;
+ 	__u32 ctsn;
+ 
++	trace_sctp_probe(ep, asoc, chunk);
++
+ 	if (!sctp_vtag_verify(chunk, asoc))
+ 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+ 
+
