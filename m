@@ -1,120 +1,321 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 12 Dec 2017 09:25:58 +0000
-Subject: [PATCH net-next 7/8] sctp: update mid instead of ssn when doing stream and asoc reset
-Message-Id: <2ac016924b2b0f70e801297d203697fcb5deb227.1513070662.git.lucien.xin@gmail.com>
+From: Masami Hiramatsu <mhiramat@kernel.org>
+Date: Mon, 18 Dec 2017 08:12:44 +0000
+Subject: [v2 PATCH -tip 4/6] net: sctp: Remove debug SCTP probe module
+Message-Id: <151358476481.28850.4471363418339219622.stgit@devbox>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1513070662.git.lucien.xin@gmail.com>
- <9b8315277069d021d8a6b581b7304af624a45c61.1513070662.git.lucien.xin@gmail.com>
- <dbe7bd0f6197086a6a4b4d28f0d63ee1073414e8.1513070662.git.lucien.xin@gmail.com>
- <807b1707f79b11d5883d71ea771e98e8f7af3ead.1513070662.git.lucien.xin@gmail.com>
- <5bdf9baf00c367ec91c1e06986be77835be7e451.1513070662.git.lucien.xin@gmail.com>
- <e4f468dc21292382de70c85f8e40272b37154ce0.1513070662.git.lucien.xin@gmail.com>
- <7a112fb936709ef7047548f778a895a46c31a935.1513070662.git.lucien.xin@gmail.com>
-In-Reply-To: <7a112fb936709ef7047548f778a895a46c31a935.1513070662.git.lucien.xin@gmail.com>
+References: <151358464509.28850.477561174715901317.stgit@devbox>
+In-Reply-To: <151358464509.28850.477561174715901317.stgit@devbox>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: Ingo Molnar <mingo@kernel.org>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
+Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, "David S . Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
 
-When using idata and doing stream and asoc reset, setting ssn with
-0 could only clear the 1st 16 bits of mid.
+Remove SCTP probe module since jprobe has been deprecated.
+That function is now replaced by sctp/sctp_probe and
+sctp/sctp_probe_path trace-events.
+You can use it via ftrace or perftools.
 
-So to make this work for both data and idata, it sets mid with 0
-instead of ssn, and also mid_uo for unordered idata also need to
-be cleared, as said in section 2.3.2 of RFC8260.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
 ---
- net/sctp/stream.c | 40 +++++++++++++++++++++++++---------------
- 1 file changed, 25 insertions(+), 15 deletions(-)
+ net/sctp/Kconfig  |   12 ---
+ net/sctp/Makefile |    3 -
+ net/sctp/probe.c  |  244 -----------------------------------------------------
+ 3 files changed, 259 deletions(-)
+ delete mode 100644 net/sctp/probe.c
 
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index b3a9f37..06b644d 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -216,11 +216,13 @@ void sctp_stream_clear(struct sctp_stream *stream)
- {
- 	int i;
+diff --git a/net/sctp/Kconfig b/net/sctp/Kconfig
+index d9c04dc1b3f3..c740b189d4ba 100644
+--- a/net/sctp/Kconfig
++++ b/net/sctp/Kconfig
+@@ -37,18 +37,6 @@ menuconfig IP_SCTP
  
--	for (i = 0; i < stream->outcnt; i++)
--		stream->out[i].ssn = 0;
-+	for (i = 0; i < stream->outcnt; i++) {
-+		stream->out[i].mid = 0;
-+		stream->out[i].mid_uo = 0;
-+	}
+ if IP_SCTP
  
- 	for (i = 0; i < stream->incnt; i++)
--		stream->in[i].ssn = 0;
-+		stream->in[i].mid = 0;
- }
+-config NET_SCTPPROBE
+-	tristate "SCTP: Association probing"
+-        depends on PROC_FS && KPROBES
+-        ---help---
+-        This module allows for capturing the changes to SCTP association
+-        state in response to incoming packets. It is used for debugging
+-        SCTP congestion control algorithms. If you don't understand
+-        what was just said, you don't need it: say N.
+-
+-        To compile this code as a module, choose M here: the
+-        module will be called sctp_probe.
+-
+ config SCTP_DBG_OBJCNT
+ 	bool "SCTP: Debug object counts"
+ 	depends on PROC_FS
+diff --git a/net/sctp/Makefile b/net/sctp/Makefile
+index 1ca84a288443..b52dfc6f8b4c 100644
+--- a/net/sctp/Makefile
++++ b/net/sctp/Makefile
+@@ -4,7 +4,6 @@
+ #
  
- void sctp_stream_update(struct sctp_stream *stream, struct sctp_stream *new)
-@@ -607,10 +609,10 @@ struct sctp_chunk *sctp_process_strreset_outreq(
- 		}
+ obj-$(CONFIG_IP_SCTP) += sctp.o
+-obj-$(CONFIG_NET_SCTPPROBE) += sctp_probe.o
+ obj-$(CONFIG_INET_SCTP_DIAG) += sctp_diag.o
  
- 		for (i = 0; i < nums; i++)
--			stream->in[ntohs(str_p[i])].ssn = 0;
-+			stream->in[ntohs(str_p[i])].mid = 0;
- 	} else {
- 		for (i = 0; i < stream->incnt; i++)
--			stream->in[i].ssn = 0;
-+			stream->in[i].mid = 0;
- 	}
+ sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
+@@ -16,8 +15,6 @@ sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
+ 	  offload.o stream_sched.o stream_sched_prio.o \
+ 	  stream_sched_rr.o
  
- 	result = SCTP_STRRESET_PERFORMED;
-@@ -783,10 +785,12 @@ struct sctp_chunk *sctp_process_strreset_tsnreq(
- 	/* G5:  The next expected and outgoing SSNs MUST be reset to 0 for all
- 	 *      incoming and outgoing streams.
- 	 */
--	for (i = 0; i < stream->outcnt; i++)
--		stream->out[i].ssn = 0;
-+	for (i = 0; i < stream->outcnt; i++) {
-+		stream->out[i].mid = 0;
-+		stream->out[i].mid_uo = 0;
-+	}
- 	for (i = 0; i < stream->incnt; i++)
--		stream->in[i].ssn = 0;
-+		stream->in[i].mid = 0;
- 
- 	result = SCTP_STRRESET_PERFORMED;
- 
-@@ -976,11 +980,15 @@ struct sctp_chunk *sctp_process_strreset_resp(
- 
- 		if (result = SCTP_STRRESET_PERFORMED) {
- 			if (nums) {
--				for (i = 0; i < nums; i++)
--					stream->out[ntohs(str_p[i])].ssn = 0;
-+				for (i = 0; i < nums; i++) {
-+					stream->out[ntohs(str_p[i])].mid = 0;
-+					stream->out[ntohs(str_p[i])].mid_uo = 0;
-+				}
- 			} else {
--				for (i = 0; i < stream->outcnt; i++)
--					stream->out[i].ssn = 0;
-+				for (i = 0; i < stream->outcnt; i++) {
-+					stream->out[i].mid = 0;
-+					stream->out[i].mid_uo = 0;
-+				}
- 			}
- 
- 			flags = SCTP_STREAM_RESET_OUTGOING_SSN;
-@@ -1041,10 +1049,12 @@ struct sctp_chunk *sctp_process_strreset_resp(
- 			asoc->ctsn_ack_point = asoc->next_tsn - 1;
- 			asoc->adv_peer_ack_point = asoc->ctsn_ack_point;
- 
--			for (i = 0; i < stream->outcnt; i++)
--				stream->out[i].ssn = 0;
-+			for (i = 0; i < stream->outcnt; i++) {
-+				stream->out[i].mid = 0;
-+				stream->out[i].mid_uo = 0;
-+			}
- 			for (i = 0; i < stream->incnt; i++)
--				stream->in[i].ssn = 0;
-+				stream->in[i].mid = 0;
- 		}
- 
- 		for (i = 0; i < stream->outcnt; i++)
--- 
-2.1.0
+-sctp_probe-y := probe.o
+-
+ sctp-$(CONFIG_SCTP_DBG_OBJCNT) += objcnt.o
+ sctp-$(CONFIG_PROC_FS) += proc.o
+ sctp-$(CONFIG_SYSCTL) += sysctl.o
+diff --git a/net/sctp/probe.c b/net/sctp/probe.c
+deleted file mode 100644
+index 1280f85a598d..000000000000
+--- a/net/sctp/probe.c
++++ /dev/null
+@@ -1,244 +0,0 @@
+-/*
+- * sctp_probe - Observe the SCTP flow with kprobes.
+- *
+- * The idea for this came from Werner Almesberger's umlsim
+- * Copyright (C) 2004, Stephen Hemminger <shemminger@osdl.org>
+- *
+- * Modified for SCTP from Stephen Hemminger's code
+- * Copyright (C) 2010, Wei Yongjun <yjwei@cn.fujitsu.com>
+- *
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License as published by
+- * the Free Software Foundation; either version 2 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with this program; if not, write to the Free Software
+- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+- */
+-
+-#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+-
+-#include <linux/kernel.h>
+-#include <linux/kprobes.h>
+-#include <linux/socket.h>
+-#include <linux/sctp.h>
+-#include <linux/proc_fs.h>
+-#include <linux/vmalloc.h>
+-#include <linux/module.h>
+-#include <linux/kfifo.h>
+-#include <linux/time.h>
+-#include <net/net_namespace.h>
+-
+-#include <net/sctp/sctp.h>
+-#include <net/sctp/sm.h>
+-
+-MODULE_SOFTDEP("pre: sctp");
+-MODULE_AUTHOR("Wei Yongjun <yjwei@cn.fujitsu.com>");
+-MODULE_DESCRIPTION("SCTP snooper");
+-MODULE_LICENSE("GPL");
+-
+-static int port __read_mostly = 0;
+-MODULE_PARM_DESC(port, "Port to match (0=all)");
+-module_param(port, int, 0);
+-
+-static unsigned int fwmark __read_mostly = 0;
+-MODULE_PARM_DESC(fwmark, "skb mark to match (0=no mark)");
+-module_param(fwmark, uint, 0);
+-
+-static int bufsize __read_mostly = 64 * 1024;
+-MODULE_PARM_DESC(bufsize, "Log buffer size (default 64k)");
+-module_param(bufsize, int, 0);
+-
+-static int full __read_mostly = 1;
+-MODULE_PARM_DESC(full, "Full log (1=every ack packet received,  0=only cwnd changes)");
+-module_param(full, int, 0);
+-
+-static const char procname[] = "sctpprobe";
+-
+-static struct {
+-	struct kfifo	  fifo;
+-	spinlock_t	  lock;
+-	wait_queue_head_t wait;
+-	struct timespec64 tstart;
+-} sctpw;
+-
+-static __printf(1, 2) void printl(const char *fmt, ...)
+-{
+-	va_list args;
+-	int len;
+-	char tbuf[256];
+-
+-	va_start(args, fmt);
+-	len = vscnprintf(tbuf, sizeof(tbuf), fmt, args);
+-	va_end(args);
+-
+-	kfifo_in_locked(&sctpw.fifo, tbuf, len, &sctpw.lock);
+-	wake_up(&sctpw.wait);
+-}
+-
+-static int sctpprobe_open(struct inode *inode, struct file *file)
+-{
+-	kfifo_reset(&sctpw.fifo);
+-	ktime_get_ts64(&sctpw.tstart);
+-
+-	return 0;
+-}
+-
+-static ssize_t sctpprobe_read(struct file *file, char __user *buf,
+-			      size_t len, loff_t *ppos)
+-{
+-	int error = 0, cnt = 0;
+-	unsigned char *tbuf;
+-
+-	if (!buf)
+-		return -EINVAL;
+-
+-	if (len = 0)
+-		return 0;
+-
+-	tbuf = vmalloc(len);
+-	if (!tbuf)
+-		return -ENOMEM;
+-
+-	error = wait_event_interruptible(sctpw.wait,
+-					 kfifo_len(&sctpw.fifo) != 0);
+-	if (error)
+-		goto out_free;
+-
+-	cnt = kfifo_out_locked(&sctpw.fifo, tbuf, len, &sctpw.lock);
+-	error = copy_to_user(buf, tbuf, cnt) ? -EFAULT : 0;
+-
+-out_free:
+-	vfree(tbuf);
+-
+-	return error ? error : cnt;
+-}
+-
+-static const struct file_operations sctpprobe_fops = {
+-	.owner	= THIS_MODULE,
+-	.open	= sctpprobe_open,
+-	.read	= sctpprobe_read,
+-	.llseek = noop_llseek,
+-};
+-
+-static enum sctp_disposition jsctp_sf_eat_sack(
+-					struct net *net,
+-					const struct sctp_endpoint *ep,
+-					const struct sctp_association *asoc,
+-					const union sctp_subtype type,
+-					void *arg,
+-					struct sctp_cmd_seq *commands)
+-{
+-	struct sctp_chunk *chunk = arg;
+-	struct sk_buff *skb = chunk->skb;
+-	struct sctp_transport *sp;
+-	static __u32 lcwnd = 0;
+-	struct timespec64 now;
+-
+-	sp = asoc->peer.primary_path;
+-
+-	if (((port = 0 && fwmark = 0) ||
+-	     asoc->peer.port = port ||
+-	     ep->base.bind_addr.port = port ||
+-	     (fwmark > 0 && skb->mark = fwmark)) &&
+-	    (full || sp->cwnd != lcwnd)) {
+-		lcwnd = sp->cwnd;
+-
+-		ktime_get_ts64(&now);
+-		now = timespec64_sub(now, sctpw.tstart);
+-
+-		printl("%lu.%06lu ", (unsigned long) now.tv_sec,
+-		       (unsigned long) now.tv_nsec / NSEC_PER_USEC);
+-
+-		printl("%p %5d %5d %5d %8d %5d ", asoc,
+-		       ep->base.bind_addr.port, asoc->peer.port,
+-		       asoc->pathmtu, asoc->peer.rwnd, asoc->unack_data);
+-
+-		list_for_each_entry(sp, &asoc->peer.transport_addr_list,
+-					transports) {
+-			if (sp = asoc->peer.primary_path)
+-				printl("*");
+-
+-			printl("%pISc %2u %8u %8u %8u %8u %8u ",
+-			       &sp->ipaddr, sp->state, sp->cwnd, sp->ssthresh,
+-			       sp->flight_size, sp->partial_bytes_acked,
+-			       sp->pathmtu);
+-		}
+-		printl("\n");
+-	}
+-
+-	jprobe_return();
+-	return 0;
+-}
+-
+-static struct jprobe sctp_recv_probe = {
+-	.kp	= {
+-		.symbol_name = "sctp_sf_eat_sack_6_2",
+-	},
+-	.entry	= jsctp_sf_eat_sack,
+-};
+-
+-static __init int sctp_setup_jprobe(void)
+-{
+-	int ret = register_jprobe(&sctp_recv_probe);
+-
+-	if (ret) {
+-		if (request_module("sctp"))
+-			goto out;
+-		ret = register_jprobe(&sctp_recv_probe);
+-	}
+-
+-out:
+-	return ret;
+-}
+-
+-static __init int sctpprobe_init(void)
+-{
+-	int ret = -ENOMEM;
+-
+-	/* Warning: if the function signature of sctp_sf_eat_sack_6_2,
+-	 * has been changed, you also have to change the signature of
+-	 * jsctp_sf_eat_sack, otherwise you end up right here!
+-	 */
+-	BUILD_BUG_ON(__same_type(sctp_sf_eat_sack_6_2,
+-				 jsctp_sf_eat_sack) = 0);
+-
+-	init_waitqueue_head(&sctpw.wait);
+-	spin_lock_init(&sctpw.lock);
+-	if (kfifo_alloc(&sctpw.fifo, bufsize, GFP_KERNEL))
+-		return ret;
+-
+-	if (!proc_create(procname, S_IRUSR, init_net.proc_net,
+-			 &sctpprobe_fops))
+-		goto free_kfifo;
+-
+-	ret = sctp_setup_jprobe();
+-	if (ret)
+-		goto remove_proc;
+-
+-	pr_info("probe registered (port=%d/fwmark=%u) bufsize=%u\n",
+-		port, fwmark, bufsize);
+-	return 0;
+-
+-remove_proc:
+-	remove_proc_entry(procname, init_net.proc_net);
+-free_kfifo:
+-	kfifo_free(&sctpw.fifo);
+-	return ret;
+-}
+-
+-static __exit void sctpprobe_exit(void)
+-{
+-	kfifo_free(&sctpw.fifo);
+-	remove_proc_entry(procname, init_net.proc_net);
+-	unregister_jprobe(&sctp_recv_probe);
+-}
+-
+-module_init(sctpprobe_init);
+-module_exit(sctpprobe_exit);
 
