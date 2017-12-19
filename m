@@ -1,154 +1,152 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 12 Dec 2017 09:25:56 +0000
-Subject: [PATCH net-next 5/8] sctp: implement handle_ftsn for sctp_stream_interleave
-Message-Id: <e4f468dc21292382de70c85f8e40272b37154ce0.1513070662.git.lucien.xin@gmail.com>
+From: Masami Hiramatsu <mhiramat@kernel.org>
+Date: Tue, 19 Dec 2017 08:57:25 +0000
+Subject: [PATCH -tip v3 1/6] net: tcp: Add trace events for TCP congestion window tracing
+Message-Id: <151367384517.32364.15159814032513293875.stgit@devbox>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1513070662.git.lucien.xin@gmail.com>
- <9b8315277069d021d8a6b581b7304af624a45c61.1513070662.git.lucien.xin@gmail.com>
- <dbe7bd0f6197086a6a4b4d28f0d63ee1073414e8.1513070662.git.lucien.xin@gmail.com>
- <807b1707f79b11d5883d71ea771e98e8f7af3ead.1513070662.git.lucien.xin@gmail.com>
- <5bdf9baf00c367ec91c1e06986be77835be7e451.1513070662.git.lucien.xin@gmail.com>
-In-Reply-To: <5bdf9baf00c367ec91c1e06986be77835be7e451.1513070662.git.lucien.xin@gmail.com>
+References: <151367381480.32364.2659143894655716709.stgit@devbox>
+In-Reply-To: <151367381480.32364.2659143894655716709.stgit@devbox>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: Ingo Molnar <mingo@kernel.org>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
+Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, "David S . Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
 
-handle_ftsn is added as a member of sctp_stream_interleave, used to skip
-ssn for data or mid for idata, called for SCTP_CMD_PROCESS_FWDTSN cmd.
+This adds an event to trace TCP stat variables with
+slightly intrusive trace-event. This uses ftrace/perf
+event log buffer to trace those state, no needs to
+prepare own ring-buffer, nor custom user apps.
 
-sctp_handle_iftsn works for ifwdtsn, and sctp_handle_fwdtsn works for
-fwdtsn. Note that different from sctp_handle_fwdtsn, sctp_handle_iftsn
-could do stream abort pd.
+User can use ftrace to trace this event as below;
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+  # cd /sys/kernel/debug/tracing
+  # echo 1 > events/tcp/tcp_probe/enable
+  (run workloads)
+  # cat trace
+
+Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
 ---
- include/net/sctp/stream_interleave.h |  2 ++
- net/sctp/sm_sideeffect.c             | 15 ++---------
- net/sctp/stream_interleave.c         | 49 ++++++++++++++++++++++++++++++++++++
- 3 files changed, 53 insertions(+), 13 deletions(-)
+ Changes in v3:
+  - Fix build errors caused by including events/tcp.h twice.
+  - Sort out the including headers.
+---
+ include/trace/events/tcp.h |   80 ++++++++++++++++++++++++++++++++++++++++++++
+ net/ipv4/tcp_input.c       |    3 ++
+ 2 files changed, 83 insertions(+)
 
-diff --git a/include/net/sctp/stream_interleave.h b/include/net/sctp/stream_interleave.h
-index 0b55c70..6657711 100644
---- a/include/net/sctp/stream_interleave.h
-+++ b/include/net/sctp/stream_interleave.h
-@@ -52,6 +52,8 @@ struct sctp_stream_interleave {
- 	void	(*generate_ftsn)(struct sctp_outq *q, __u32 ctsn);
- 	bool	(*validate_ftsn)(struct sctp_chunk *chunk);
- 	void	(*report_ftsn)(struct sctp_ulpq *ulpq, __u32 ftsn);
-+	void	(*handle_ftsn)(struct sctp_ulpq *ulpq,
-+			       struct sctp_chunk *chunk);
- };
+diff --git a/include/trace/events/tcp.h b/include/trace/events/tcp.h
+index 07cccca6cbf1..14ad60b468fb 100644
+--- a/include/trace/events/tcp.h
++++ b/include/trace/events/tcp.h
+@@ -1,3 +1,4 @@
++/* SPDX-License-Identifier: GPL-2.0 */
+ #undef TRACE_SYSTEM
+ #define TRACE_SYSTEM tcp
  
- void sctp_stream_interleave_init(struct sctp_stream *stream);
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index be7c6dbd..16ddf2c 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -1007,18 +1007,6 @@ static void sctp_cmd_process_operr(struct sctp_cmd_seq *cmds,
- 	}
- }
+@@ -8,6 +9,7 @@
+ #include <linux/tcp.h>
+ #include <linux/tracepoint.h>
+ #include <net/ipv6.h>
++#include <net/tcp.h>
  
--/* Process variable FWDTSN chunk information. */
--static void sctp_cmd_process_fwdtsn(struct sctp_ulpq *ulpq,
--				    struct sctp_chunk *chunk)
--{
--	struct sctp_fwdtsn_skip *skip;
--
--	/* Walk through all the skipped SSNs */
--	sctp_walk_fwdtsn(skip, chunk) {
--		sctp_ulpq_skip(ulpq, ntohs(skip->stream), ntohs(skip->ssn));
--	}
--}
--
- /* Helper function to remove the association non-primary peer
-  * transports.
-  */
-@@ -1372,7 +1360,8 @@ static int sctp_cmd_interpreter(enum sctp_event event_type,
- 			break;
+ #define tcp_state_name(state)	{ state, #state }
+ #define show_tcp_state_name(val)			\
+@@ -293,6 +295,84 @@ TRACE_EVENT(tcp_retransmit_synack,
+ 		  __entry->saddr_v6, __entry->daddr_v6)
+ );
  
- 		case SCTP_CMD_PROCESS_FWDTSN:
--			sctp_cmd_process_fwdtsn(&asoc->ulpq, cmd->obj.chunk);
-+			asoc->stream.si->handle_ftsn(&asoc->ulpq,
-+						     cmd->obj.chunk);
- 			break;
- 
- 		case SCTP_CMD_GEN_SACK:
-diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
-index f62771cc..8c7cf8f 100644
---- a/net/sctp/stream_interleave.c
-+++ b/net/sctp/stream_interleave.c
-@@ -1239,6 +1239,53 @@ static void sctp_report_iftsn(struct sctp_ulpq *ulpq, __u32 ftsn)
- 		sctp_intl_abort_pd(ulpq, GFP_ATOMIC);
- }
- 
-+static void sctp_handle_fwdtsn(struct sctp_ulpq *ulpq, struct sctp_chunk *chunk)
-+{
-+	struct sctp_fwdtsn_skip *skip;
++TRACE_EVENT(tcp_probe,
 +
-+	/* Walk through all the skipped SSNs */
-+	sctp_walk_fwdtsn(skip, chunk)
-+		sctp_ulpq_skip(ulpq, ntohs(skip->stream), ntohs(skip->ssn));
-+}
++	TP_PROTO(struct sock *sk, struct sk_buff *skb),
 +
-+static void sctp_intl_skip(struct sctp_ulpq *ulpq, __u16 sid, __u32 mid,
-+			   __u8 flags)
-+{
-+	struct sctp_stream_in *sin = sctp_stream_in(ulpq->asoc, sid);
-+	struct sctp_stream *stream  = &ulpq->asoc->stream;
++	TP_ARGS(sk, skb),
 +
-+	if (flags & SCTP_FTSN_U_BIT) {
-+		if (sin->pd_mode_uo && MID_lt(sin->mid_uo, mid)) {
-+			sin->pd_mode_uo = 0;
-+			sctp_intl_stream_abort_pd(ulpq, sid, mid, 0x1,
-+						  GFP_ATOMIC);
++	TP_STRUCT__entry(
++		/* sockaddr_in6 is always bigger than sockaddr_in */
++		__array(__u8, saddr, sizeof(struct sockaddr_in6))
++		__array(__u8, daddr, sizeof(struct sockaddr_in6))
++		__field(__u16, sport)
++		__field(__u16, dport)
++		__field(__u32, mark)
++		__field(__u16, length)
++		__field(__u32, snd_nxt)
++		__field(__u32, snd_una)
++		__field(__u32, snd_cwnd)
++		__field(__u32, ssthresh)
++		__field(__u32, snd_wnd)
++		__field(__u32, srtt)
++		__field(__u32, rcv_wnd)
++	),
++
++	TP_fast_assign(
++		const struct tcp_sock *tp = tcp_sk(sk);
++		const struct inet_sock *inet = inet_sk(sk);
++
++		memset(__entry->saddr, 0, sizeof(struct sockaddr_in6));
++		memset(__entry->daddr, 0, sizeof(struct sockaddr_in6));
++
++		if (sk->sk_family = AF_INET) {
++			struct sockaddr_in *v4 = (void *)__entry->saddr;
++
++			v4->sin_family = AF_INET;
++			v4->sin_port = inet->inet_sport;
++			v4->sin_addr.s_addr = inet->inet_saddr;
++			v4 = (void *)__entry->daddr;
++			v4->sin_family = AF_INET;
++			v4->sin_port = inet->inet_dport;
++			v4->sin_addr.s_addr = inet->inet_daddr;
++#if IS_ENABLED(CONFIG_IPV6)
++		} else if (sk->sk_family = AF_INET6) {
++			struct sockaddr_in6 *v6 = (void *)__entry->saddr;
++
++			v6->sin6_family = AF_INET6;
++			v6->sin6_port = inet->inet_sport;
++			v6->sin6_addr = inet6_sk(sk)->saddr;
++			v6 = (void *)__entry->daddr;
++			v6->sin6_family = AF_INET6;
++			v6->sin6_port = inet->inet_dport;
++			v6->sin6_addr = sk->sk_v6_daddr;
++#endif
 +		}
-+		return;
-+	}
 +
-+	if (MID_lt(mid, sctp_mid_peek(stream, in, sid)))
-+		return;
++		/* For filtering use */
++		__entry->sport = ntohs(inet->inet_sport);
++		__entry->dport = ntohs(inet->inet_dport);
++		__entry->mark = skb->mark;
 +
-+	if (sin->pd_mode) {
-+		sin->pd_mode = 0;
-+		sctp_intl_stream_abort_pd(ulpq, sid, mid, 0x0, GFP_ATOMIC);
-+	}
++		__entry->length = skb->len;
++		__entry->snd_nxt = tp->snd_nxt;
++		__entry->snd_una = tp->snd_una;
++		__entry->snd_cwnd = tp->snd_cwnd;
++		__entry->snd_wnd = tp->snd_wnd;
++		__entry->rcv_wnd = tp->rcv_wnd;
++		__entry->ssthresh = tcp_current_ssthresh(sk);
++		__entry->srtt = tp->srtt_us >> 3;
++	),
 +
-+	sctp_mid_skip(stream, in, sid, mid);
++	TP_printk("src=%pISpc dest=%pISpc mark=%#x length=%d snd_nxt=%#x "
++		  "snd_una=%#x snd_cwnd=%u ssthresh=%u snd_wnd=%u srtt=%u "
++		  "rcv_wnd=%u",
++		  __entry->saddr, __entry->daddr, __entry->mark,
++		  __entry->length, __entry->snd_nxt, __entry->snd_una,
++		  __entry->snd_cwnd, __entry->ssthresh, __entry->snd_wnd,
++		  __entry->srtt, __entry->rcv_wnd)
++);
 +
-+	sctp_intl_reap_ordered(ulpq, sid);
-+}
-+
-+static void sctp_handle_iftsn(struct sctp_ulpq *ulpq, struct sctp_chunk *chunk)
-+{
-+	struct sctp_ifwdtsn_skip *skip;
-+
-+	/* Walk through all the skipped MIDs and abort stream pd if possible */
-+	sctp_walk_ifwdtsn(skip, chunk)
-+		sctp_intl_skip(ulpq, ntohs(skip->stream),
-+			       ntohl(skip->mid), skip->flags);
-+}
-+
- static struct sctp_stream_interleave sctp_stream_interleave_0 = {
- 	.data_chunk_len		= sizeof(struct sctp_data_chunk),
- 	.ftsn_chunk_len		= sizeof(struct sctp_fwdtsn_chunk),
-@@ -1255,6 +1302,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_0 = {
- 	.generate_ftsn		= sctp_generate_fwdtsn,
- 	.validate_ftsn		= sctp_validate_fwdtsn,
- 	.report_ftsn		= sctp_report_fwdtsn,
-+	.handle_ftsn		= sctp_handle_fwdtsn,
- };
+ #endif /* _TRACE_TCP_H */
  
- static struct sctp_stream_interleave sctp_stream_interleave_1 = {
-@@ -1273,6 +1321,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
- 	.generate_ftsn		= sctp_generate_iftsn,
- 	.validate_ftsn		= sctp_validate_iftsn,
- 	.report_ftsn		= sctp_report_iftsn,
-+	.handle_ftsn		= sctp_handle_iftsn,
- };
+ /* This part must be outside protection */
+diff --git a/net/ipv4/tcp_input.c b/net/ipv4/tcp_input.c
+index 45f750e85714..fa19cc86b2ad 100644
+--- a/net/ipv4/tcp_input.c
++++ b/net/ipv4/tcp_input.c
+@@ -5306,6 +5306,9 @@ void tcp_rcv_established(struct sock *sk, struct sk_buff *skb,
+ 	unsigned int len = skb->len;
+ 	struct tcp_sock *tp = tcp_sk(sk);
  
- void sctp_stream_interleave_init(struct sctp_stream *stream)
--- 
-2.1.0
++	/* TCP congestion window tracking */
++	trace_tcp_probe(sk, skb);
++
+ 	tcp_mstamp_refresh(tp);
+ 	if (unlikely(!sk->sk_rx_dst))
+ 		inet_csk(sk)->icsk_af_ops->sk_rx_dst_set(sk, skb);
 
