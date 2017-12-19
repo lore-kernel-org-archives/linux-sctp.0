@@ -1,270 +1,173 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 14 Dec 2017 18:26:02 +0000
-Subject: Re: [PATCHv2 net-next 3/8] sctp: implement validate_ftsn for sctp_stream_interleave
-Message-Id: <20171214182602.GK3532@localhost.localdomain>
+From: Masami Hiramatsu <mhiramat@kernel.org>
+Date: Tue, 19 Dec 2017 08:58:25 +0000
+Subject: [PATCH -tip v3 3/6] net: sctp: Add SCTP ACK tracking trace event
+Message-Id: <151367390483.32364.4432870291926458046.stgit@devbox>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1513269224.git.lucien.xin@gmail.com>
- <30a1a95a2943469521de456d050717e1d46711fc.1513269224.git.lucien.xin@gmail.com>
-In-Reply-To: <30a1a95a2943469521de456d050717e1d46711fc.1513269224.git.lucien.xin@gmail.com>
+References: <151367381480.32364.2659143894655716709.stgit@devbox>
+In-Reply-To: <151367381480.32364.2659143894655716709.stgit@devbox>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: Ingo Molnar <mingo@kernel.org>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
+Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, "David S . Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
 
-On Fri, Dec 15, 2017 at 12:41:27AM +0800, Xin Long wrote:
-> validate_ftsn is added as a member of sctp_stream_interleave, used to
-> validate ssn/chunk type for fwdtsn or mid (message id)/chunk type for
-> ifwdtsn, called in sctp_sf_eat_fwd_tsn, just as validate_data.
-> 
-> If this check fails, an abort packet will be sent, as said in section
-> 2.3.1 of RFC8260.
-> 
-> As ifwdtsn and fwdtsn chunks have different length, it also defines
-> ftsn_chunk_len for sctp_stream_interleave to describe the chunk size.
-> Then it replaces all sizeof(struct sctp_fwdtsn_chunk) with
-> sctp_ftsnchk_len.
-> 
-> It also adds the process for ifwdtsn in rx path. As Marcelo pointed
-> out, there's no need to add event table for ifwdtsn, but just share
-> prsctp_chunk_event_table with fwdtsn's. It would drop fwdtsn chunk
-> for ifwdtsn and drop ifwdtsn chunk for fwdtsn by calling validate_ftsn
-> in sctp_sf_eat_fwd_tsn.
-> 
-> After this patch, the ifwdtsn can be accepted.
-> 
-> Note that this patch also removes the sctp.intl_enable check for
-> idata chunks in sctp_chunk_event_lookup, as it will do this check
-> in validate_data later.
-> 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Add SCTP ACK tracking trace event to trace the changes of SCTP
+association state in response to incoming packets.
+It is used for debugging SCTP congestion control algorithms,
+and will replace sctp_probe module.
 
-Acked-by: Marcelo R. Leitner <marcelo.leitner@gmail.com>
+Note that this event a bit tricky. Since this consists of 2
+events (sctp_probe and sctp_probe_path) so you have to enable
+both events as below.
 
-> ---
->  include/net/sctp/stream_interleave.h |  2 ++
->  include/net/sctp/structs.h           | 10 ++++++++
->  net/sctp/sm_statefuns.c              | 24 +++++++-------------
->  net/sctp/sm_statetable.c             |  4 ++--
->  net/sctp/stream_interleave.c         | 44 ++++++++++++++++++++++++++++++++++++
->  5 files changed, 66 insertions(+), 18 deletions(-)
-> 
-> diff --git a/include/net/sctp/stream_interleave.h b/include/net/sctp/stream_interleave.h
-> index 66267db..0db15b5 100644
-> --- a/include/net/sctp/stream_interleave.h
-> +++ b/include/net/sctp/stream_interleave.h
-> @@ -33,6 +33,7 @@
->  
->  struct sctp_stream_interleave {
->  	__u16	data_chunk_len;
-> +	__u16	ftsn_chunk_len;
->  	/* (I-)DATA process */
->  	struct sctp_chunk *(*make_datafrag)(const struct sctp_association *asoc,
->  					    const struct sctp_sndrcvinfo *sinfo,
-> @@ -49,6 +50,7 @@ struct sctp_stream_interleave {
->  	void	(*abort_pd)(struct sctp_ulpq *ulpq, gfp_t gfp);
->  	/* (I-)FORWARD-TSN process */
->  	void	(*generate_ftsn)(struct sctp_outq *q, __u32 ctsn);
-> +	bool	(*validate_ftsn)(struct sctp_chunk *chunk);
->  };
->  
->  void sctp_stream_interleave_init(struct sctp_stream *stream);
-> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-> index b7720d6..8ac4d5c 100644
-> --- a/include/net/sctp/structs.h
-> +++ b/include/net/sctp/structs.h
-> @@ -1443,6 +1443,16 @@ static inline __u16 sctp_datahdr_len(const struct sctp_stream *stream)
->  	return stream->si->data_chunk_len - sizeof(struct sctp_chunkhdr);
->  }
->  
-> +static inline __u16 sctp_ftsnchk_len(const struct sctp_stream *stream)
-> +{
-> +	return stream->si->ftsn_chunk_len;
-> +}
-> +
-> +static inline __u16 sctp_ftsnhdr_len(const struct sctp_stream *stream)
-> +{
-> +	return stream->si->ftsn_chunk_len - sizeof(struct sctp_chunkhdr);
-> +}
-> +
->  /* SCTP_GET_ASSOC_STATS counters */
->  struct sctp_priv_assoc_stats {
->  	/* Maximum observed rto in the association during subsequent
-> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-> index c609c54..541f347 100644
-> --- a/net/sctp/sm_statefuns.c
-> +++ b/net/sctp/sm_statefuns.c
-> @@ -3957,7 +3957,6 @@ enum sctp_disposition sctp_sf_eat_fwd_tsn(struct net *net,
->  {
->  	struct sctp_fwdtsn_hdr *fwdtsn_hdr;
->  	struct sctp_chunk *chunk = arg;
-> -	struct sctp_fwdtsn_skip *skip;
->  	__u16 len;
->  	__u32 tsn;
->  
-> @@ -3971,7 +3970,7 @@ enum sctp_disposition sctp_sf_eat_fwd_tsn(struct net *net,
->  		return sctp_sf_unk_chunk(net, ep, asoc, type, arg, commands);
->  
->  	/* Make sure that the FORWARD_TSN chunk has valid length.  */
-> -	if (!sctp_chunk_length_valid(chunk, sizeof(struct sctp_fwdtsn_chunk)))
-> +	if (!sctp_chunk_length_valid(chunk, sctp_ftsnchk_len(&asoc->stream)))
->  		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
->  						  commands);
->  
-> @@ -3990,14 +3989,11 @@ enum sctp_disposition sctp_sf_eat_fwd_tsn(struct net *net,
->  	if (sctp_tsnmap_check(&asoc->peer.tsn_map, tsn) < 0)
->  		goto discard_noforce;
->  
-> -	/* Silently discard the chunk if stream-id is not valid */
-> -	sctp_walk_fwdtsn(skip, chunk) {
-> -		if (ntohs(skip->stream) >= asoc->stream.incnt)
-> -			goto discard_noforce;
-> -	}
-> +	if (!asoc->stream.si->validate_ftsn(chunk))
-> +		goto discard_noforce;
->  
->  	sctp_add_cmd_sf(commands, SCTP_CMD_REPORT_FWDTSN, SCTP_U32(tsn));
-> -	if (len > sizeof(struct sctp_fwdtsn_hdr))
-> +	if (len > sctp_ftsnhdr_len(&asoc->stream))
->  		sctp_add_cmd_sf(commands, SCTP_CMD_PROCESS_FWDTSN,
->  				SCTP_CHUNK(chunk));
->  
-> @@ -4028,7 +4024,6 @@ enum sctp_disposition sctp_sf_eat_fwd_tsn_fast(
->  {
->  	struct sctp_fwdtsn_hdr *fwdtsn_hdr;
->  	struct sctp_chunk *chunk = arg;
-> -	struct sctp_fwdtsn_skip *skip;
->  	__u16 len;
->  	__u32 tsn;
->  
-> @@ -4042,7 +4037,7 @@ enum sctp_disposition sctp_sf_eat_fwd_tsn_fast(
->  		return sctp_sf_unk_chunk(net, ep, asoc, type, arg, commands);
->  
->  	/* Make sure that the FORWARD_TSN chunk has a valid length.  */
-> -	if (!sctp_chunk_length_valid(chunk, sizeof(struct sctp_fwdtsn_chunk)))
-> +	if (!sctp_chunk_length_valid(chunk, sctp_ftsnchk_len(&asoc->stream)))
->  		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
->  						  commands);
->  
-> @@ -4061,14 +4056,11 @@ enum sctp_disposition sctp_sf_eat_fwd_tsn_fast(
->  	if (sctp_tsnmap_check(&asoc->peer.tsn_map, tsn) < 0)
->  		goto gen_shutdown;
->  
-> -	/* Silently discard the chunk if stream-id is not valid */
-> -	sctp_walk_fwdtsn(skip, chunk) {
-> -		if (ntohs(skip->stream) >= asoc->stream.incnt)
-> -			goto gen_shutdown;
-> -	}
-> +	if (!asoc->stream.si->validate_ftsn(chunk))
-> +		goto gen_shutdown;
->  
->  	sctp_add_cmd_sf(commands, SCTP_CMD_REPORT_FWDTSN, SCTP_U32(tsn));
-> -	if (len > sizeof(struct sctp_fwdtsn_hdr))
-> +	if (len > sctp_ftsnhdr_len(&asoc->stream))
->  		sctp_add_cmd_sf(commands, SCTP_CMD_PROCESS_FWDTSN,
->  				SCTP_CHUNK(chunk));
->  
-> diff --git a/net/sctp/sm_statetable.c b/net/sctp/sm_statetable.c
-> index 8c9bb41..691d9dc 100644
-> --- a/net/sctp/sm_statetable.c
-> +++ b/net/sctp/sm_statetable.c
-> @@ -985,14 +985,14 @@ static const struct sctp_sm_table_entry *sctp_chunk_event_lookup(
->  	if (state > SCTP_STATE_MAX)
->  		return &bug;
->  
-> -	if (net->sctp.intl_enable && cid = SCTP_CID_I_DATA)
-> +	if (cid = SCTP_CID_I_DATA)
->  		cid = SCTP_CID_DATA;
->  
->  	if (cid <= SCTP_CID_BASE_MAX)
->  		return &chunk_event_table[cid][state];
->  
->  	if (net->sctp.prsctp_enable) {
-> -		if (cid = SCTP_CID_FWD_TSN)
-> +		if (cid = SCTP_CID_FWD_TSN || cid = SCTP_CID_I_FWD_TSN)
->  			return &prsctp_chunk_event_table[0][state];
->  	}
->  
-> diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
-> index 2ead372..cc4a5e3 100644
-> --- a/net/sctp/stream_interleave.c
-> +++ b/net/sctp/stream_interleave.c
-> @@ -1153,8 +1153,49 @@ static void sctp_generate_iftsn(struct sctp_outq *q, __u32 ctsn)
->  	}
->  }
->  
-> +#define _sctp_walk_ifwdtsn(pos, chunk, end) \
-> +	for (pos = chunk->subh.ifwdtsn_hdr->skip; \
-> +	     (void *)pos < (void *)chunk->subh.ifwdtsn_hdr->skip + (end); pos++)
-> +
-> +#define sctp_walk_ifwdtsn(pos, ch) \
-> +	_sctp_walk_ifwdtsn((pos), (ch), ntohs((ch)->chunk_hdr->length) - \
-> +					sizeof(struct sctp_ifwdtsn_chunk))
-> +
-> +static bool sctp_validate_fwdtsn(struct sctp_chunk *chunk)
-> +{
-> +	struct sctp_fwdtsn_skip *skip;
-> +	__u16 incnt;
-> +
-> +	if (chunk->chunk_hdr->type != SCTP_CID_FWD_TSN)
-> +		return false;
-> +
-> +	incnt = chunk->asoc->stream.incnt;
-> +	sctp_walk_fwdtsn(skip, chunk)
-> +		if (ntohs(skip->stream) >= incnt)
-> +			return false;
-> +
-> +	return true;
-> +}
-> +
-> +static bool sctp_validate_iftsn(struct sctp_chunk *chunk)
-> +{
-> +	struct sctp_ifwdtsn_skip *skip;
-> +	__u16 incnt;
-> +
-> +	if (chunk->chunk_hdr->type != SCTP_CID_I_FWD_TSN)
-> +		return false;
-> +
-> +	incnt = chunk->asoc->stream.incnt;
-> +	sctp_walk_ifwdtsn(skip, chunk)
-> +		if (ntohs(skip->stream) >= incnt)
-> +			return false;
-> +
-> +	return true;
-> +}
-> +
->  static struct sctp_stream_interleave sctp_stream_interleave_0 = {
->  	.data_chunk_len		= sizeof(struct sctp_data_chunk),
-> +	.ftsn_chunk_len		= sizeof(struct sctp_fwdtsn_chunk),
->  	/* DATA process functions */
->  	.make_datafrag		= sctp_make_datafrag_empty,
->  	.assign_number		= sctp_chunk_assign_ssn,
-> @@ -1166,10 +1207,12 @@ static struct sctp_stream_interleave sctp_stream_interleave_0 = {
->  	.abort_pd		= sctp_ulpq_abort_pd,
->  	/* FORWARD-TSN process functions */
->  	.generate_ftsn		= sctp_generate_fwdtsn,
-> +	.validate_ftsn		= sctp_validate_fwdtsn,
->  };
->  
->  static struct sctp_stream_interleave sctp_stream_interleave_1 = {
->  	.data_chunk_len		= sizeof(struct sctp_idata_chunk),
-> +	.ftsn_chunk_len		= sizeof(struct sctp_ifwdtsn_chunk),
->  	/* I-DATA process functions */
->  	.make_datafrag		= sctp_make_idatafrag_empty,
->  	.assign_number		= sctp_chunk_assign_mid,
-> @@ -1181,6 +1224,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
->  	.abort_pd		= sctp_intl_abort_pd,
->  	/* I-FORWARD-TSN process functions */
->  	.generate_ftsn		= sctp_generate_iftsn,
-> +	.validate_ftsn		= sctp_validate_iftsn,
->  };
->  
->  void sctp_stream_interleave_init(struct sctp_stream *stream)
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+  # cd /sys/kernel/debug/tracing
+  # echo 1 > events/sctp/sctp_probe/enable
+  # echo 1 > events/sctp/sctp_probe_path/enable
+
+Or, you can enable all the events under sctp.
+
+  # echo 1 > events/sctp/enable
+
+Since sctp_probe_path event is always invoked from sctp_probe
+event, you can not see any output if you only enable
+sctp_probe_path.
+
+Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
+---
+  Changes in v3:
+   - Add checking whether sctp_probe_path event is enabled
+     before iterating sctp paths to record. Thanks Steven.
+---
+ include/trace/events/sctp.h |   98 +++++++++++++++++++++++++++++++++++++++++++
+ net/sctp/sm_statefuns.c     |    5 ++
+ 2 files changed, 103 insertions(+)
+ create mode 100644 include/trace/events/sctp.h
+
+diff --git a/include/trace/events/sctp.h b/include/trace/events/sctp.h
+new file mode 100644
+index 000000000000..64ae66f3a9c2
+--- /dev/null
++++ b/include/trace/events/sctp.h
+@@ -0,0 +1,98 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#undef TRACE_SYSTEM
++#define TRACE_SYSTEM sctp
++
++#if !defined(_TRACE_SCTP_H) || defined(TRACE_HEADER_MULTI_READ)
++#define _TRACE_SCTP_H
++
++#include <net/sctp/structs.h>
++#include <linux/tracepoint.h>
++
++TRACE_EVENT(sctp_probe_path,
++
++	TP_PROTO(struct sctp_transport *sp,
++		 const struct sctp_association *asoc),
++
++	TP_ARGS(sp, asoc),
++
++	TP_STRUCT__entry(
++		__field(__u64, asoc)
++		__field(__u32, primary)
++		__array(__u8, ipaddr, sizeof(union sctp_addr))
++		__field(__u32, state)
++		__field(__u32, cwnd)
++		__field(__u32, ssthresh)
++		__field(__u32, flight_size)
++		__field(__u32, partial_bytes_acked)
++		__field(__u32, pathmtu)
++	),
++
++	TP_fast_assign(
++		__entry->asoc = (__u64)asoc;
++		__entry->primary = (sp = asoc->peer.primary_path);
++		memcpy(__entry->ipaddr, &sp->ipaddr, sizeof(union sctp_addr));
++		__entry->state = sp->state;
++		__entry->cwnd = sp->cwnd;
++		__entry->ssthresh = sp->ssthresh;
++		__entry->flight_size = sp->flight_size;
++		__entry->partial_bytes_acked = sp->partial_bytes_acked;
++		__entry->pathmtu = sp->pathmtu;
++	),
++
++	TP_printk("asoc=%#llx%s ipaddr=%pISpc state=%u cwnd=%u ssthresh=%u "
++		  "flight_size=%u partial_bytes_acked=%u pathmtu=%u",
++		  __entry->asoc, __entry->primary ? "(*)" : "",
++		  __entry->ipaddr, __entry->state, __entry->cwnd,
++		  __entry->ssthresh, __entry->flight_size,
++		  __entry->partial_bytes_acked, __entry->pathmtu)
++);
++
++TRACE_EVENT(sctp_probe,
++
++	TP_PROTO(const struct sctp_endpoint *ep,
++		 const struct sctp_association *asoc,
++		 struct sctp_chunk *chunk),
++
++	TP_ARGS(ep, asoc, chunk),
++
++	TP_STRUCT__entry(
++		__field(__u64, asoc)
++		__field(__u32, mark)
++		__field(__u16, bind_port)
++		__field(__u16, peer_port)
++		__field(__u32, pathmtu)
++		__field(__u32, rwnd)
++		__field(__u16, unack_data)
++	),
++
++	TP_fast_assign(
++		struct sctp_transport *sp;
++		struct sk_buff *skb = chunk->skb;
++
++		__entry->asoc = (__u64)asoc;
++		__entry->mark = skb->mark;
++		__entry->bind_port = ep->base.bind_addr.port;
++		__entry->peer_port = asoc->peer.port;
++		__entry->pathmtu = asoc->pathmtu;
++		__entry->rwnd = asoc->peer.rwnd;
++		__entry->unack_data = asoc->unack_data;
++
++		if (trace_sctp_probe_path_enabled()) {
++			list_for_each_entry(sp, &asoc->peer.transport_addr_list,
++					    transports) {
++				trace_sctp_probe_path(sp, asoc);
++			}
++		}
++	),
++
++	TP_printk("asoc=%#llx mark=%#x bind_port=%d peer_port=%d pathmtu=%d "
++		  "rwnd=%u unack_data=%d",
++		  __entry->asoc, __entry->mark, __entry->bind_port,
++		  __entry->peer_port, __entry->pathmtu, __entry->rwnd,
++		  __entry->unack_data)
++);
++
++#endif /* _TRACE_SCTP_H */
++
++/* This part must be outside protection */
++#include <trace/define_trace.h>
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 8f8ccded13e4..c5f92b2cc5c3 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -59,6 +59,9 @@
+ #include <net/sctp/sm.h>
+ #include <net/sctp/structs.h>
+ 
++#define CREATE_TRACE_POINTS
++#include <trace/events/sctp.h>
++
+ static struct sctp_packet *sctp_abort_pkt_new(
+ 					struct net *net,
+ 					const struct sctp_endpoint *ep,
+@@ -3219,6 +3222,8 @@ enum sctp_disposition sctp_sf_eat_sack_6_2(struct net *net,
+ 	struct sctp_sackhdr *sackh;
+ 	__u32 ctsn;
+ 
++	trace_sctp_probe(ep, asoc, chunk);
++
+ 	if (!sctp_vtag_verify(chunk, asoc))
+ 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+ 
+
