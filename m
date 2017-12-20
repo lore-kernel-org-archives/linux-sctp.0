@@ -1,802 +1,159 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 22 Dec 2017 13:05:19 +0000
-Subject: [PATCH v3 4/4] selinux: Add SCTP support
-Message-Id: <50f68d9f55e8147d92f4b3c350f05e1eb00f2dc8.1513940757.git.marcelo.leitner@gmail.com>
+From: Masami Hiramatsu <mhiramat@kernel.org>
+Date: Wed, 20 Dec 2017 04:16:41 +0000
+Subject: [PATCH net-next v4 5/6] net: dccp: Add DCCP sendmsg trace event
+Message-Id: <151374340100.2497.7426103509676124469.stgit@devbox>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1513940757.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1513940757.git.marcelo.leitner@gmail.com>
+References: <151374325126.2497.6934744693865165386.stgit@devbox>
+In-Reply-To: <151374325126.2497.6934744693865165386.stgit@devbox>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-security-module@vger.kernel.org
+To: Ingo Molnar <mingo@kernel.org>, "David S . Miller" <davem@davemloft.net>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
+Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
 
-From: Richard Haines <richard_c_haines@btinternet.com>
+Add DCCP sendmsg trace event (dccp/dccp_probe) for
+replacing dccpprobe. User can trace this event via
+ftrace or perftools.
 
-The SELinux SCTP implementation is explained in:
-Documentation/security/SELinux-sctp.rst
-
-Signed-off-by: Richard Haines <richard_c_haines@btinternet.com>
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
 ---
- Documentation/security/SELinux-sctp.rst | 104 ++++++++++++
- security/selinux/hooks.c                | 278 +++++++++++++++++++++++++++++---
- security/selinux/include/classmap.h     |   2 +-
- security/selinux/include/netlabel.h     |  15 +-
- security/selinux/include/objsec.h       |   4 +
- security/selinux/netlabel.c             | 128 +++++++++++++--
- 6 files changed, 499 insertions(+), 32 deletions(-)
- create mode 100644 Documentation/security/SELinux-sctp.rst
+ net/dccp/proto.c |    5 +++
+ net/dccp/trace.h |  105 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 110 insertions(+)
+ create mode 100644 net/dccp/trace.h
 
-diff --git a/Documentation/security/SELinux-sctp.rst b/Documentation/security/SELinux-sctp.rst
+diff --git a/net/dccp/proto.c b/net/dccp/proto.c
+index 9d43c1f40274..e57b5db495cd 100644
+--- a/net/dccp/proto.c
++++ b/net/dccp/proto.c
+@@ -38,6 +38,9 @@
+ #include "dccp.h"
+ #include "feat.h"
+ 
++#define CREATE_TRACE_POINTS
++#include "trace.h"
++
+ DEFINE_SNMP_STAT(struct dccp_mib, dccp_statistics) __read_mostly;
+ 
+ EXPORT_SYMBOL_GPL(dccp_statistics);
+@@ -761,6 +764,8 @@ int dccp_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
+ 	int rc, size;
+ 	long timeo;
+ 
++	trace_dccp_probe(sk, len);
++
+ 	if (len > dp->dccps_mss_cache)
+ 		return -EMSGSIZE;
+ 
+diff --git a/net/dccp/trace.h b/net/dccp/trace.h
 new file mode 100644
-index 0000000000000000000000000000000000000000..f6a9162d3d61e766e2c36fa001c08a1073c1b02e
+index 000000000000..aa01321a6c37
 --- /dev/null
-+++ b/Documentation/security/SELinux-sctp.rst
-@@ -0,0 +1,104 @@
-+SCTP SELinux Support
-+==========+
-+Security Hooks
-+=======+
-+The ``Documentation/security/LSM-sctp.rst`` document describes how the
-+following sctp security hooks are utilised::
++++ b/net/dccp/trace.h
+@@ -0,0 +1,105 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#undef TRACE_SYSTEM
++#define TRACE_SYSTEM dccp
 +
-+    security_sctp_assoc_request()
-+    security_sctp_bind_connect()
-+    security_sctp_sk_clone()
-+    security_inet_conn_established()
++#if !defined(_TRACE_DCCP_H) || defined(TRACE_HEADER_MULTI_READ)
++#define _TRACE_DCCP_H
 +
++#include <net/sock.h>
++#include "dccp.h"
++#include "ccids/ccid3.h"
++#include <linux/tracepoint.h>
 +
-+Policy Statements
-+=========
-+The following class and permissions to support SCTP are available within the
-+kernel::
++TRACE_EVENT(dccp_probe,
 +
-+    class sctp_socket inherits socket { node_bind }
++	TP_PROTO(struct sock *sk, size_t size),
 +
-+whenever the following policy capability is enabled::
++	TP_ARGS(sk, size),
 +
-+    policycap extended_socket_class;
++	TP_STRUCT__entry(
++		/* sockaddr_in6 is always bigger than sockaddr_in */
++		__array(__u8, saddr, sizeof(struct sockaddr_in6))
++		__array(__u8, daddr, sizeof(struct sockaddr_in6))
++		__field(__u16, sport)
++		__field(__u16, dport)
++		__field(__u16, size)
++		__field(__u16, tx_s)
++		__field(__u32, tx_rtt)
++		__field(__u32, tx_p)
++		__field(__u32, tx_x_calc)
++		__field(__u64, tx_x_recv)
++		__field(__u64, tx_x)
++		__field(__u32, tx_t_ipi)
++	),
 +
-+SELinux SCTP support adds the ``name_connect`` permission for connecting
-+to a specific port type and the ``association`` permission that is explained
-+in the section below.
++	TP_fast_assign(
++		const struct inet_sock *inet = inet_sk(sk);
++		struct ccid3_hc_tx_sock *hc = NULL;
 +
-+If userspace tools have been updated, SCTP will support the ``portcon``
-+statement as shown in the following example::
++		if (ccid_get_current_tx_ccid(dccp_sk(sk)) = DCCPC_CCID3)
++			hc = ccid3_hc_tx_sk(sk);
 +
-+    portcon sctp 1024-1036 system_u:object_r:sctp_ports_t:s0
++		memset(__entry->saddr, 0, sizeof(struct sockaddr_in6));
++		memset(__entry->daddr, 0, sizeof(struct sockaddr_in6));
 +
++		if (sk->sk_family = AF_INET) {
++			struct sockaddr_in *v4 = (void *)__entry->saddr;
 +
-+SCTP Bind, Connect and ASCONF Chunk Parameter Permission Checks
-+================================
-+The hook ``security_sctp_bind_connect()`` is called by SCTP to check
-+permissions required for ipv4/ipv6 addresses based on the ``@optname`` as
-+follows::
-+
-+  ------------------------------------------------------------------
-+  |                   BIND Permission Checks                       |
-+  |       @optname             |         @address contains         |
-+  |----------------------------|-----------------------------------|
-+  | SCTP_SOCKOPT_BINDX_ADD     | One or more ipv4 / ipv6 addresses |
-+  | SCTP_PRIMARY_ADDR          | Single ipv4 or ipv6 address       |
-+  | SCTP_SET_PEER_PRIMARY_ADDR | Single ipv4 or ipv6 address       |
-+  ------------------------------------------------------------------
-+
-+  ------------------------------------------------------------------
-+  |                 CONNECT Permission Checks                      |
-+  |       @optname             |         @address contains         |
-+  |----------------------------|-----------------------------------|
-+  | SCTP_SOCKOPT_CONNECTX      | One or more ipv4 / ipv6 addresses |
-+  | SCTP_PARAM_ADD_IP          | One or more ipv4 / ipv6 addresses |
-+  | SCTP_SENDMSG_CONNECT       | Single ipv4 or ipv6 address       |
-+  | SCTP_PARAM_SET_PRIMARY     | Single ipv4 or ipv6 address       |
-+  ------------------------------------------------------------------
-+
-+
-+SCTP Peer Labeling
-+=========+An SCTP socket will only have one peer label assigned to it. This will be
-+assigned during the establishment of the first association. Once the peer
-+label has been assigned, any new associations will have the ``association``
-+permission validated by checking the socket peer sid against the received
-+packets peer sid to determine whether the association should be allowed or
-+denied.
-+
-+NOTES:
-+   1) If peer labeling is not enabled, then the peer context will always be
-+      ``SECINITSID_UNLABELED`` (``unlabeled_t`` in Reference Policy).
-+
-+   2) As SCTP can support more than one transport address per endpoint
-+      (multi-homing) on a single socket, it is possible to configure policy
-+      and NetLabel to provide different peer labels for each of these. As the
-+      socket peer label is determined by the first associations transport
-+      address, it is recommended that all peer labels are consistent.
-+
-+   3) **getpeercon**\(3) may be used by userspace to retrieve the sockets peer
-+      context.
-+
-+   4) While not SCTP specific, be aware when using NetLabel that if a label
-+      is assigned to a specific interface, and that interface 'goes down',
-+      then the NetLabel service will remove the entry. Therefore ensure that
-+      the network startup scripts call **netlabelctl**\(8) to set the required
-+      label (see **netlabel-config**\(8) helper script for details).
-+
-+   5) The NetLabel SCTP peer labeling rules apply as discussed in the following
-+      set of posts tagged "netlabel" at: http://www.paul-moore.com/blog/t.
-+
-+   6) CIPSO is only supported for IPv4 addressing: ``socket(AF_INET, ...)``
-+      CALIPSO is only supported for IPv6 addressing: ``socket(AF_INET6, ...)``
-+
-+      Note the following when testing CIPSO/CALIPSO:
-+         a) CIPSO will send an ICMP packet if an SCTP packet cannot be
-+            delivered because of an invalid label.
-+         b) CALIPSO does not send an ICMP packet, just silently discards it.
-+
-+   7) IPSEC is not supported as RFC 3554 - sctp/ipsec support has not been
-+      implemented in userspace (**racoon**\(8) or **ipsec_pluto**\(8)),
-+      although the kernel supports SCTP/IPSEC.
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index f21f1e0e6452570c48cac09dc5c76a6b726c00eb..9ffa5792f570f0751f7bd46418eec2b3fc6489ae 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -67,6 +67,8 @@
- #include <linux/tcp.h>
- #include <linux/udp.h>
- #include <linux/dccp.h>
-+#include <linux/sctp.h>
-+#include <net/sctp/structs.h>
- #include <linux/quota.h>
- #include <linux/un.h>		/* for Unix socket types */
- #include <net/af_unix.h>	/* for Unix socket types */
-@@ -4117,6 +4119,23 @@ static int selinux_parse_skb_ipv4(struct sk_buff *skb,
- 		break;
- 	}
- 
-+#if IS_ENABLED(CONFIG_IP_SCTP)
-+	case IPPROTO_SCTP: {
-+		struct sctphdr _sctph, *sh;
-+
-+		if (ntohs(ih->frag_off) & IP_OFFSET)
-+			break;
-+
-+		offset += ihlen;
-+		sh = skb_header_pointer(skb, offset, sizeof(_sctph), &_sctph);
-+		if (sh = NULL)
-+			break;
-+
-+		ad->u.net->sport = sh->source;
-+		ad->u.net->dport = sh->dest;
-+		break;
-+	}
-+#endif
- 	default:
- 		break;
- 	}
-@@ -4190,6 +4209,19 @@ static int selinux_parse_skb_ipv6(struct sk_buff *skb,
- 		break;
- 	}
- 
-+#if IS_ENABLED(CONFIG_IP_SCTP)
-+	case IPPROTO_SCTP: {
-+		struct sctphdr _sctph, *sh;
-+
-+		sh = skb_header_pointer(skb, offset, sizeof(_sctph), &_sctph);
-+		if (sh = NULL)
-+			break;
-+
-+		ad->u.net->sport = sh->source;
-+		ad->u.net->dport = sh->dest;
-+		break;
-+	}
-+#endif
- 	/* includes fragments */
- 	default:
- 		break;
-@@ -4379,6 +4411,10 @@ static int selinux_socket_post_create(struct socket *sock, int family,
- 		sksec = sock->sk->sk_security;
- 		sksec->sclass = sclass;
- 		sksec->sid = sid;
-+		/* Allows detection of the first association on this socket */
-+		if (sksec->sclass = SECCLASS_SCTP_SOCKET)
-+			sksec->sctp_assoc_state = SCTP_ASSOC_UNSET;
-+
- 		err = selinux_netlbl_socket_post_create(sock->sk, family);
- 	}
- 
-@@ -4399,11 +4435,7 @@ static int selinux_socket_bind(struct socket *sock, struct sockaddr *address, in
- 	if (err)
- 		goto out;
- 
--	/*
--	 * If PF_INET or PF_INET6, check name_bind permission for the port.
--	 * Multiple address binding for SCTP is not supported yet: we just
--	 * check the first address now.
--	 */
-+	/* If PF_INET or PF_INET6, check name_bind permission for the port. */
- 	family = sk->sk_family;
- 	if (family = PF_INET || family = PF_INET6) {
- 		char *addrp;
-@@ -4415,7 +4447,13 @@ static int selinux_socket_bind(struct socket *sock, struct sockaddr *address, in
- 		unsigned short snum;
- 		u32 sid, node_perm;
- 
--		if (family = PF_INET) {
-+		/*
-+		 * sctp_bindx(3) calls via selinux_sctp_bind_connect()
-+		 * that validates multiple binding addresses. Because of this
-+		 * need to check address->sa_family as it is possible to have
-+		 * sk->sk_family = PF_INET6 with addr->sa_family = AF_INET.
-+		 */
-+		if (address->sa_family = AF_INET) {
- 			if (addrlen < sizeof(struct sockaddr_in)) {
- 				err = -EINVAL;
- 				goto out;
-@@ -4469,6 +4507,10 @@ static int selinux_socket_bind(struct socket *sock, struct sockaddr *address, in
- 			node_perm = DCCP_SOCKET__NODE_BIND;
- 			break;
- 
-+		case SECCLASS_SCTP_SOCKET:
-+			node_perm = SCTP_SOCKET__NODE_BIND;
-+			break;
-+
- 		default:
- 			node_perm = RAWIP_SOCKET__NODE_BIND;
- 			break;
-@@ -4483,7 +4525,7 @@ static int selinux_socket_bind(struct socket *sock, struct sockaddr *address, in
- 		ad.u.net->sport = htons(snum);
- 		ad.u.net->family = family;
- 
--		if (family = PF_INET)
-+		if (address->sa_family = AF_INET)
- 			ad.u.net->v4info.saddr = addr4->sin_addr.s_addr;
- 		else
- 			ad.u.net->v6info.saddr = addr6->sin6_addr;
-@@ -4497,7 +4539,11 @@ static int selinux_socket_bind(struct socket *sock, struct sockaddr *address, in
- 	return err;
- }
- 
--static int selinux_socket_connect(struct socket *sock, struct sockaddr *address, int addrlen)
-+/* This supports connect(2) and SCTP connect services such as sctp_connectx(3)
-+ * and sctp_sendmsg(3) as described in Documentation/security/LSM-sctp.txt
-+ */
-+static int selinux_socket_connect_helper(struct socket *sock,
-+					 struct sockaddr *address, int addrlen)
- {
- 	struct sock *sk = sock->sk;
- 	struct sk_security_struct *sksec = sk->sk_security;
-@@ -4508,10 +4554,12 @@ static int selinux_socket_connect(struct socket *sock, struct sockaddr *address,
- 		return err;
- 
- 	/*
--	 * If a TCP or DCCP socket, check name_connect permission for the port.
-+	 * If a TCP, DCCP or SCTP socket, check name_connect permission
-+	 * for the port.
- 	 */
- 	if (sksec->sclass = SECCLASS_TCP_SOCKET ||
--	    sksec->sclass = SECCLASS_DCCP_SOCKET) {
-+	    sksec->sclass = SECCLASS_DCCP_SOCKET ||
-+	    sksec->sclass = SECCLASS_SCTP_SOCKET) {
- 		struct common_audit_data ad;
- 		struct lsm_network_audit net = {0,};
- 		struct sockaddr_in *addr4 = NULL;
-@@ -4519,7 +4567,12 @@ static int selinux_socket_connect(struct socket *sock, struct sockaddr *address,
- 		unsigned short snum;
- 		u32 sid, perm;
- 
--		if (sk->sk_family = PF_INET) {
-+		/* sctp_connectx(3) calls via selinux_sctp_bind_connect()
-+		 * that validates multiple connect addresses. Because of this
-+		 * need to check address->sa_family as it is possible to have
-+		 * sk->sk_family = PF_INET6 with addr->sa_family = AF_INET.
-+		 */
-+		if (address->sa_family = AF_INET) {
- 			addr4 = (struct sockaddr_in *)address;
- 			if (addrlen < sizeof(struct sockaddr_in))
- 				return -EINVAL;
-@@ -4533,10 +4586,19 @@ static int selinux_socket_connect(struct socket *sock, struct sockaddr *address,
- 
- 		err = sel_netport_sid(sk->sk_protocol, snum, &sid);
- 		if (err)
--			goto out;
-+			return err;
- 
--		perm = (sksec->sclass = SECCLASS_TCP_SOCKET) ?
--		       TCP_SOCKET__NAME_CONNECT : DCCP_SOCKET__NAME_CONNECT;
-+		switch (sksec->sclass) {
-+		case SECCLASS_TCP_SOCKET:
-+			perm = TCP_SOCKET__NAME_CONNECT;
-+			break;
-+		case SECCLASS_DCCP_SOCKET:
-+			perm = DCCP_SOCKET__NAME_CONNECT;
-+			break;
-+		case SECCLASS_SCTP_SOCKET:
-+			perm = SCTP_SOCKET__NAME_CONNECT;
-+			break;
-+		}
- 
- 		ad.type = LSM_AUDIT_DATA_NET;
- 		ad.u.net = &net;
-@@ -4544,13 +4606,24 @@ static int selinux_socket_connect(struct socket *sock, struct sockaddr *address,
- 		ad.u.net->family = sk->sk_family;
- 		err = avc_has_perm(sksec->sid, sid, sksec->sclass, perm, &ad);
- 		if (err)
--			goto out;
-+			return err;
- 	}
- 
--	err = selinux_netlbl_socket_connect(sk, address);
-+	return 0;
-+}
- 
--out:
--	return err;
-+/* Supports connect(2), see comments in selinux_socket_connect_helper() */
-+static int selinux_socket_connect(struct socket *sock,
-+				  struct sockaddr *address, int addrlen)
-+{
-+	int err;
-+	struct sock *sk = sock->sk;
-+
-+	err = selinux_socket_connect_helper(sock, address, addrlen);
-+	if (err)
-+		return err;
-+
-+	return selinux_netlbl_socket_connect(sk, address);
- }
- 
- static int selinux_socket_listen(struct socket *sock, int backlog)
-@@ -4813,7 +4886,8 @@ static int selinux_socket_getpeersec_stream(struct socket *sock, char __user *op
- 	u32 peer_sid = SECSID_NULL;
- 
- 	if (sksec->sclass = SECCLASS_UNIX_STREAM_SOCKET ||
--	    sksec->sclass = SECCLASS_TCP_SOCKET)
-+	    sksec->sclass = SECCLASS_TCP_SOCKET ||
-+	    sksec->sclass = SECCLASS_SCTP_SOCKET)
- 		peer_sid = sksec->peer_sid;
- 	if (peer_sid = SECSID_NULL)
- 		return -ENOPROTOOPT;
-@@ -4926,6 +5000,169 @@ static void selinux_sock_graft(struct sock *sk, struct socket *parent)
- 	sksec->sclass = isec->sclass;
- }
- 
-+/* Called whenever SCTP receives an INIT chunk. This happens when an incoming
-+ * connect(2), sctp_connectx(3) or sctp_sendmsg(3) (with no association
-+ * already present).
-+ * The lock is to ensure sksec->sctp_assoc_state.
-+ */
-+static DEFINE_SPINLOCK(assoc_lock);
-+static int selinux_sctp_assoc_request(struct sctp_endpoint *ep,
-+				      struct sk_buff *skb)
-+{
-+	struct sk_security_struct *sksec = ep->base.sk->sk_security;
-+	struct common_audit_data ad;
-+	struct lsm_network_audit net = {0,};
-+	u8 peerlbl_active;
-+	u32 peer_sid = SECINITSID_UNLABELED;
-+	u32 conn_sid;
-+	int err = 0;
-+
-+	if (!selinux_policycap_extsockclass)
-+		return 0;
-+
-+	spin_lock(&assoc_lock);
-+
-+	peerlbl_active = selinux_peerlbl_enabled();
-+
-+	if (peerlbl_active) {
-+		/* This will return peer_sid = SECSID_NULL if there are
-+		 * no peer labels, see security_net_peersid_resolve().
-+		 */
-+		err = selinux_skb_peerlbl_sid(skb, ep->base.sk->sk_family,
-+					      &peer_sid);
-+		if (err)
-+			goto err;
-+
-+		if (peer_sid = SECSID_NULL)
-+			peer_sid = SECINITSID_UNLABELED;
-+	}
-+
-+	if (sksec->sctp_assoc_state = SCTP_ASSOC_UNSET) {
-+		sksec->sctp_assoc_state = SCTP_ASSOC_SET;
-+
-+		/* Here as first association on socket. As the peer SID
-+		 * was allowed by peer recv (and the netif/node checks),
-+		 * then it is approved by policy and used as the primary
-+		 * peer SID for getpeercon(3).
-+		 */
-+		sksec->peer_sid = peer_sid;
-+	} else if  (sksec->peer_sid != peer_sid) {
-+		/* Other association peer SIDs are checked to enforce
-+		 * consistency among the peer SIDs.
-+		 */
-+		ad.type = LSM_AUDIT_DATA_NET;
-+		ad.u.net = &net;
-+		ad.u.net->sk = ep->base.sk;
-+		err = avc_has_perm(sksec->peer_sid, peer_sid, sksec->sclass,
-+				   SCTP_SOCKET__ASSOCIATION, &ad);
-+		if (err)
-+			goto err;
-+	}
-+
-+	/* Compute the MLS component for the connection and store
-+	 * the information in ep. This will be used by SCTP TCP type
-+	 * sockets and peeled off connections as they cause a new
-+	 * socket to be generated. selinux_sctp_sk_clone() will then
-+	 * plug this into the new socket.
-+	 */
-+	err = selinux_conn_sid(sksec->sid, peer_sid, &conn_sid);
-+	if (err)
-+		goto err;
-+
-+	ep->secid = conn_sid;
-+	ep->peer_secid = peer_sid;
-+
-+	/* Set any NetLabel labels including CIPSO/CALIPSO options. */
-+	err = selinux_netlbl_sctp_assoc_request(ep, skb);
-+
-+err:
-+	spin_unlock(&assoc_lock);
-+	return err;
-+}
-+
-+/*
-+ * Check if sctp IPv4/IPv6 addresses are valid for binding or connecting
-+ * based on their @optname.
-+ */
-+static int selinux_sctp_bind_connect(struct sock *sk, int optname,
-+				     struct sockaddr *address,
-+				     int addrlen)
-+{
-+	int len, err = 0, walk_size = 0;
-+	void *addr_buf;
-+	struct sockaddr *addr;
-+	struct socket *sock;
-+
-+	if (!selinux_policycap_extsockclass)
-+		return 0;
-+
-+	/* Process one or more addresses that may be IPv4 or IPv6 */
-+	sock = sk->sk_socket;
-+	addr_buf = address;
-+
-+	while (walk_size < addrlen) {
-+		addr = addr_buf;
-+		switch (addr->sa_family) {
-+		case AF_INET:
-+			len = sizeof(struct sockaddr_in);
-+			break;
-+		case AF_INET6:
-+			len = sizeof(struct sockaddr_in6);
-+			break;
-+		default:
-+			return -EAFNOSUPPORT;
-+		}
-+
-+		err = -EINVAL;
-+		switch (optname) {
-+		/* Bind checks */
-+		case SCTP_PRIMARY_ADDR:
-+		case SCTP_SET_PEER_PRIMARY_ADDR:
-+		case SCTP_SOCKOPT_BINDX_ADD:
-+			err = selinux_socket_bind(sock, addr, len);
-+			break;
-+		/* Connect checks */
-+		case SCTP_SOCKOPT_CONNECTX:
-+		case SCTP_PARAM_SET_PRIMARY:
-+		case SCTP_PARAM_ADD_IP:
-+		case SCTP_SENDMSG_CONNECT:
-+			err = selinux_socket_connect_helper(sock, addr, len);
-+			if (err)
-+				return err;
-+
-+			err = selinux_netlbl_sctp_socket_connect(sk, addr);
-+			break;
-+		}
-+
-+		if (err)
-+			return err;
-+
-+		addr_buf += len;
-+		walk_size += len;
-+	}
-+
-+	return 0;
-+}
-+
-+/* Called whenever a new socket is created by accept(2) or sctp_peeloff(3). */
-+static void selinux_sctp_sk_clone(struct sctp_endpoint *ep, struct sock *sk,
-+				  struct sock *newsk)
-+{
-+	struct sk_security_struct *sksec = sk->sk_security;
-+	struct sk_security_struct *newsksec = newsk->sk_security;
-+
-+	/* If policy does not support SECCLASS_SCTP_SOCKET then call
-+	 * the non-sctp clone version.
-+	 */
-+	if (!selinux_policycap_extsockclass)
-+		return selinux_sk_clone_security(sk, newsk);
-+
-+	newsksec->sid = ep->secid;
-+	newsksec->peer_sid = ep->peer_secid;
-+	newsksec->sclass = sksec->sclass;
-+	newsksec->nlbl_state = sksec->nlbl_state;
-+}
-+
- static int selinux_inet_conn_request(struct sock *sk, struct sk_buff *skb,
- 				     struct request_sock *req)
- {
-@@ -6413,6 +6650,9 @@ static struct security_hook_list selinux_hooks[] __lsm_ro_after_init = {
- 	LSM_HOOK_INIT(sk_clone_security, selinux_sk_clone_security),
- 	LSM_HOOK_INIT(sk_getsecid, selinux_sk_getsecid),
- 	LSM_HOOK_INIT(sock_graft, selinux_sock_graft),
-+	LSM_HOOK_INIT(sctp_assoc_request, selinux_sctp_assoc_request),
-+	LSM_HOOK_INIT(sctp_sk_clone, selinux_sctp_sk_clone),
-+	LSM_HOOK_INIT(sctp_bind_connect, selinux_sctp_bind_connect),
- 	LSM_HOOK_INIT(inet_conn_request, selinux_inet_conn_request),
- 	LSM_HOOK_INIT(inet_csk_clone, selinux_inet_csk_clone),
- 	LSM_HOOK_INIT(inet_conn_established, selinux_inet_conn_established),
-diff --git a/security/selinux/include/classmap.h b/security/selinux/include/classmap.h
-index 35ffb29a69cb00b34a4de5d722eaee46df310a74..099065e0a9e099aaf26b765093796caaf7c365ee 100644
---- a/security/selinux/include/classmap.h
-+++ b/security/selinux/include/classmap.h
-@@ -175,7 +175,7 @@ struct security_class_mapping secclass_map[] = {
- 	  { COMMON_CAP2_PERMS, NULL } },
- 	{ "sctp_socket",
- 	  { COMMON_SOCK_PERMS,
--	    "node_bind", NULL } },
-+	    "node_bind", "name_connect", "association", NULL } },
- 	{ "icmp_socket",
- 	  { COMMON_SOCK_PERMS,
- 	    "node_bind", NULL } },
-diff --git a/security/selinux/include/netlabel.h b/security/selinux/include/netlabel.h
-index e77a5e307955bf938f293f29a3b7be8421fc3533..70275c5e8ee8b254e3a5e3e4a984080a2810ef1c 100644
---- a/security/selinux/include/netlabel.h
-+++ b/security/selinux/include/netlabel.h
-@@ -32,6 +32,7 @@
- #include <linux/skbuff.h>
- #include <net/sock.h>
- #include <net/request_sock.h>
-+#include <net/sctp/structs.h>
- 
- #include "avc.h"
- #include "objsec.h"
-@@ -52,7 +53,8 @@ int selinux_netlbl_skbuff_getsid(struct sk_buff *skb,
- int selinux_netlbl_skbuff_setsid(struct sk_buff *skb,
- 				 u16 family,
- 				 u32 sid);
--
-+int selinux_netlbl_sctp_assoc_request(struct sctp_endpoint *ep,
-+				     struct sk_buff *skb);
- int selinux_netlbl_inet_conn_request(struct request_sock *req, u16 family);
- void selinux_netlbl_inet_csk_clone(struct sock *sk, u16 family);
- int selinux_netlbl_socket_post_create(struct sock *sk, u16 family);
-@@ -64,6 +66,7 @@ int selinux_netlbl_socket_setsockopt(struct socket *sock,
- 				     int level,
- 				     int optname);
- int selinux_netlbl_socket_connect(struct sock *sk, struct sockaddr *addr);
-+int selinux_netlbl_sctp_socket_connect(struct sock *sk, struct sockaddr *addr);
- 
- #else
- static inline void selinux_netlbl_cache_invalidate(void)
-@@ -113,6 +116,11 @@ static inline int selinux_netlbl_conn_setsid(struct sock *sk,
- 	return 0;
- }
- 
-+static inline int selinux_netlbl_sctp_assoc_request(struct sctp_endpoint *ep,
-+						    struct sk_buff *skb)
-+{
-+	return 0;
-+}
- static inline int selinux_netlbl_inet_conn_request(struct request_sock *req,
- 						   u16 family)
- {
-@@ -145,6 +153,11 @@ static inline int selinux_netlbl_socket_connect(struct sock *sk,
- {
- 	return 0;
- }
-+static inline int selinux_netlbl_sctp_socket_connect(struct sock *sk,
-+						     struct sockaddr *addr)
-+{
-+	return 0;
-+}
- #endif /* CONFIG_NETLABEL */
- 
- #endif
-diff --git a/security/selinux/include/objsec.h b/security/selinux/include/objsec.h
-index 1649cd18eb0bed125bb38466506309d26c647f90..be145cfe518a409b8b47b74589949c4ea1d5aabf 100644
---- a/security/selinux/include/objsec.h
-+++ b/security/selinux/include/objsec.h
-@@ -130,6 +130,10 @@ struct sk_security_struct {
- 	u32 sid;			/* SID of this object */
- 	u32 peer_sid;			/* SID of peer */
- 	u16 sclass;			/* sock security class */
-+	enum {				/* SCTP association state */
-+		SCTP_ASSOC_UNSET = 0,
-+		SCTP_ASSOC_SET,
-+	} sctp_assoc_state;
- };
- 
- struct tun_security_struct {
-diff --git a/security/selinux/netlabel.c b/security/selinux/netlabel.c
-index 2c297b995b169519978c4fdedd981743add3e7cc..75066f5f98fd65b6b939a2ea8f1117149ca21957 100644
---- a/security/selinux/netlabel.c
-+++ b/security/selinux/netlabel.c
-@@ -249,6 +249,7 @@ int selinux_netlbl_skbuff_setsid(struct sk_buff *skb,
- 	sk = skb_to_full_sk(skb);
- 	if (sk != NULL) {
- 		struct sk_security_struct *sksec = sk->sk_security;
-+
- 		if (sksec->nlbl_state != NLBL_REQSKB)
- 			return 0;
- 		secattr = selinux_netlbl_sock_getattr(sk, sid);
-@@ -269,6 +270,61 @@ int selinux_netlbl_skbuff_setsid(struct sk_buff *skb,
- 	return rc;
- }
- 
-+/**
-+ * selinux_netlbl_sctp_assoc_request - Label an incoming sctp association.
-+ * @ep: incoming association endpoint.
-+ * @skb: the packet.
-+ *
-+ * Description:
-+ * A new incoming connection is represented by @ep, ......
-+ * Returns zero on success, negative values on failure.
-+ *
-+ */
-+int selinux_netlbl_sctp_assoc_request(struct sctp_endpoint *ep,
-+				     struct sk_buff *skb)
-+{
-+	int rc;
-+	struct netlbl_lsm_secattr secattr;
-+	struct sk_security_struct *sksec = ep->base.sk->sk_security;
-+	struct sockaddr *addr;
-+	struct sockaddr_in addr4;
++			v4->sin_family = AF_INET;
++			v4->sin_port = inet->inet_sport;
++			v4->sin_addr.s_addr = inet->inet_saddr;
++			v4 = (void *)__entry->daddr;
++			v4->sin_family = AF_INET;
++			v4->sin_port = inet->inet_dport;
++			v4->sin_addr.s_addr = inet->inet_daddr;
 +#if IS_ENABLED(CONFIG_IPV6)
-+	struct sockaddr_in6 addr6;
++		} else if (sk->sk_family = AF_INET6) {
++			struct sockaddr_in6 *v6 = (void *)__entry->saddr;
++
++			v6->sin6_family = AF_INET6;
++			v6->sin6_port = inet->inet_sport;
++			v6->sin6_addr = inet6_sk(sk)->saddr;
++			v6 = (void *)__entry->daddr;
++			v6->sin6_family = AF_INET6;
++			v6->sin6_port = inet->inet_dport;
++			v6->sin6_addr = sk->sk_v6_daddr;
 +#endif
++		}
 +
-+	if (ep->base.sk->sk_family != PF_INET &&
-+				ep->base.sk->sk_family != PF_INET6)
-+		return 0;
++		/* For filtering use */
++		__entry->sport = ntohs(inet->inet_sport);
++		__entry->dport = ntohs(inet->inet_dport);
 +
-+	netlbl_secattr_init(&secattr);
-+	rc = security_netlbl_sid_to_secattr(ep->secid, &secattr);
-+	if (rc != 0)
-+		goto assoc_request_return;
++		__entry->size = size;
++		if (hc) {
++			__entry->tx_s = hc->tx_s;
++			__entry->tx_rtt = hc->tx_rtt;
++			__entry->tx_p = hc->tx_p;
++			__entry->tx_x_calc = hc->tx_x_calc;
++			__entry->tx_x_recv = hc->tx_x_recv >> 6;
++			__entry->tx_x = hc->tx_x >> 6;
++			__entry->tx_t_ipi = hc->tx_t_ipi;
++		} else {
++			__entry->tx_s = 0;
++			memset(&__entry->tx_rtt, 0, (void *)&__entry->tx_t_ipi -
++			       (void *)&__entry->tx_rtt +
++			       sizeof(__entry->tx_t_ipi));
++		}
++	),
 +
-+	/* Move skb hdr address info to a struct sockaddr and then call
-+	 * netlbl_conn_setattr().
-+	 */
-+	if (ip_hdr(skb)->version = 4) {
-+		addr4.sin_family = AF_INET;
-+		addr4.sin_addr.s_addr = ip_hdr(skb)->saddr;
-+		addr = (struct sockaddr *)&addr4;
-+#if IS_ENABLED(CONFIG_IPV6)
-+	} else {
-+		addr6.sin6_family = AF_INET6;
-+		addr6.sin6_addr = ipv6_hdr(skb)->saddr;
-+		addr = (struct sockaddr *)&addr6;
-+#endif
-+	}
++	TP_printk("src=%pISpc dest=%pISpc size=%d tx_s=%d tx_rtt=%d "
++		  "tx_p=%d tx_x_calc=%u tx_x_recv=%llu tx_x=%llu tx_t_ipi=%d",
++		  __entry->saddr, __entry->daddr, __entry->size,
++		  __entry->tx_s, __entry->tx_rtt, __entry->tx_p,
++		  __entry->tx_x_calc, __entry->tx_x_recv, __entry->tx_x,
++		  __entry->tx_t_ipi)
++);
 +
-+	rc = netlbl_conn_setattr(ep->base.sk, addr, &secattr);
-+	if (rc = 0)
-+		sksec->nlbl_state = NLBL_LABELED;
++#endif /* _TRACE_TCP_H */
 +
-+assoc_request_return:
-+	netlbl_secattr_destroy(&secattr);
-+	return rc;
-+}
-+
- /**
-  * selinux_netlbl_inet_conn_request - Label an incoming stream connection
-  * @req: incoming connection request socket
-@@ -469,7 +525,8 @@ int selinux_netlbl_socket_setsockopt(struct socket *sock,
- }
- 
- /**
-- * selinux_netlbl_socket_connect - Label a client-side socket on connect
-+ * selinux_netlbl_socket_connect_helper - Help label a client-side socket on
-+ * connect
-  * @sk: the socket to label
-  * @addr: the destination address
-  *
-@@ -478,18 +535,13 @@ int selinux_netlbl_socket_setsockopt(struct socket *sock,
-  * Returns zero values on success, negative values on failure.
-  *
-  */
--int selinux_netlbl_socket_connect(struct sock *sk, struct sockaddr *addr)
-+static int selinux_netlbl_socket_connect_helper(struct sock *sk,
-+						struct sockaddr *addr)
- {
- 	int rc;
- 	struct sk_security_struct *sksec = sk->sk_security;
- 	struct netlbl_lsm_secattr *secattr;
- 
--	if (sksec->nlbl_state != NLBL_REQSKB &&
--	    sksec->nlbl_state != NLBL_CONNLABELED)
--		return 0;
--
--	lock_sock(sk);
--
- 	/* connected sockets are allowed to disconnect when the address family
- 	 * is set to AF_UNSPEC, if that is what is happening we want to reset
- 	 * the socket */
-@@ -497,18 +549,72 @@ int selinux_netlbl_socket_connect(struct sock *sk, struct sockaddr *addr)
- 		netlbl_sock_delattr(sk);
- 		sksec->nlbl_state = NLBL_REQSKB;
- 		rc = 0;
--		goto socket_connect_return;
-+		return rc;
- 	}
- 	secattr = selinux_netlbl_sock_genattr(sk);
- 	if (secattr = NULL) {
- 		rc = -ENOMEM;
--		goto socket_connect_return;
-+		return rc;
- 	}
- 	rc = netlbl_conn_setattr(sk, addr, secattr);
- 	if (rc = 0)
- 		sksec->nlbl_state = NLBL_CONNLABELED;
- 
--socket_connect_return:
-+	return rc;
-+}
-+
-+/**
-+ * selinux_netlbl_socket_connect - Label a client-side socket on connect
-+ * @sk: the socket to label
-+ * @addr: the destination address
-+ *
-+ * Description:
-+ * Attempt to label a connected socket with NetLabel using the given address.
-+ * Returns zero values on success, negative values on failure.
-+ *
-+ */
-+int selinux_netlbl_socket_connect(struct sock *sk, struct sockaddr *addr)
-+{
-+	int rc;
-+	struct sk_security_struct *sksec = sk->sk_security;
-+
-+	if (sksec->nlbl_state != NLBL_REQSKB &&
-+	    sksec->nlbl_state != NLBL_CONNLABELED)
-+		return 0;
-+
-+	lock_sock(sk);
-+	rc = selinux_netlbl_socket_connect_helper(sk, addr);
- 	release_sock(sk);
-+
-+	return rc;
-+}
-+
-+/**
-+ * selinux_netlbl_sctp_socket_connect - Label an SCTP client-side socket on a
-+ * connect
-+ * @sk: the socket to label
-+ * @addr: the destination address
-+ *
-+ * Description:
-+ * Attempt to label a connected socket with NetLabel using the given address
-+ * when called by the SCTP protocol layer. The situations handled are:
-+ * sctp_connectx(3), sctp_sendmsg(3), sendmsg(2), whenever a new IP address
-+ * is added or when a new primary address is selected. Note that an SCTP
-+ * connect(2) call happens before the SCTP protocol layer and is handled via
-+ * selinux_netlbl_socket_connect()
-+ * Returns zero values on success, negative values on failure.
-+ *
-+ */
-+int selinux_netlbl_sctp_socket_connect(struct sock *sk, struct sockaddr *addr)
-+{
-+	int rc;
-+	struct sk_security_struct *sksec = sk->sk_security;
-+
-+	if (sksec->nlbl_state != NLBL_REQSKB &&
-+	    sksec->nlbl_state != NLBL_CONNLABELED)
-+		return 0;
-+
-+	rc = selinux_netlbl_socket_connect_helper(sk, addr);
-+
- 	return rc;
- }
--- 
-2.14.3
++/* This part must be outside protection */
++#undef TRACE_INCLUDE_PATH
++#define TRACE_INCLUDE_PATH .
++#undef TRACE_INCLUDE_FILE
++#define TRACE_INCLUDE_FILE trace
++#include <trace/define_trace.h>
 
