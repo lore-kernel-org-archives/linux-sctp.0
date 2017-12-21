@@ -1,32 +1,82 @@
 From: Masami Hiramatsu <mhiramat@kernel.org>
-Date: Thu, 21 Dec 2017 12:43:39 +0000
+Date: Thu, 21 Dec 2017 13:16:51 +0000
 Subject: Re: [PATCH net-next v4 0/6] net: tcp: sctp: dccp: Replace jprobe usage with trace events
-Message-Id: <20171221214339.f5eea0f0f39d09e517a05fe5@kernel.org>
+Message-Id: <20171221221651.fe8f18d4b8c63b1afdb821f4@kernel.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20171220.142040.593760128783699712.davem@davemloft.net>
+References: <151374325126.2497.6934744693865165386.stgit@devbox>
+        <20171220.142040.593760128783699712.davem@davemloft.net>
         <20171220.142424.1214953044518214833.davem@davemloft.net>
         <20171221113657.f25b2f61eb472579ab32132d@kernel.org>
-        <20171220.230838.757628851804244858.davem@davemloft.net>
-In-Reply-To: <20171220.230838.757628851804244858.davem@davemloft.net>
+        <20171220221238.2b0a9fa1@vmware.local.home>
+In-Reply-To: <20171220221238.2b0a9fa1@vmware.local.home>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: mingo@kernel.org, ian.mcdonald@jandi.co.nz, vyasevich@gmail.com, stephen@networkplumber.org, rostedt@goodmis.org, peterz@infradead.org, tglx@linutronix.de, linux-kernel@vger.kernel.org, hpa@zytor.com, gerrit@erg.abdn.ac.uk, nhorman@tuxdriver.com, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, sfr@canb.auug.org.au
+To: Steven Rostedt <rostedt@goodmis.org>
+Cc: David Miller <davem@davemloft.net>, mingo@kernel.org, ian.mcdonald@jandi.co.nz, vyasevich@gmail.com, stephen@networkplumber.org, peterz@infradead.org, tglx@linutronix.de, linux-kernel@vger.kernel.org, hpa@zytor.com, gerrit@erg.abdn.ac.uk, nhorman@tuxdriver.com, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, sfr@canb.auug.org.au
 
-On Wed, 20 Dec 2017 23:08:38 -0500 (EST)
-David Miller <davem@davemloft.net> wrote:
+On Wed, 20 Dec 2017 22:12:38 -0500
+Steven Rostedt <rostedt@goodmis.org> wrote:
 
-> From: Masami Hiramatsu <mhiramat@kernel.org>
-> Date: Thu, 21 Dec 2017 11:36:57 +0900
+> On Thu, 21 Dec 2017 11:36:57 +0900
+> Masami Hiramatsu <mhiramat@kernel.org> wrote:
 > 
-> > Could you share your .config file?
+> > On Wed, 20 Dec 2017 14:24:24 -0500 (EST)
+> > David Miller <davem@davemloft.net> wrote:
+> > 
+> > > From: David Miller <davem@davemloft.net>
+> > > Date: Wed, 20 Dec 2017 14:20:40 -0500 (EST)
+> > >   
+> > > > From: Masami Hiramatsu <mhiramat@kernel.org>
+> > > > Date: Wed, 20 Dec 2017 13:14:11 +0900
+> > > >   
+> > > >> This series is v4 of the replacement of jprobe usage with trace
+> > > >> events. This version is rebased on net-next, fixes a build warning
+> > > >> and moves a temporal variable definition in a block.
+> > > >> 
+> > > >> Previous version is here;
+> > > >> https://lkml.org/lkml/2017/12/19/153
+> > > >> 
+> > > >> Changes from v3:
+> > > >>   All: Rebased on net-next
+> > > >>   [3/6]: fixes a build warning for i386 by casting pointer unsigned
+> > > >>         long instead of __u64, and moves a temporal variable
+> > > >>          definition in a block.  
+> > > > 
+> > > > Looks good, series applied to net-next, thanks.  
+> > > 
+> > > Actually, this doesn't even compile, so I've reverted:
+> > > 
+> > > [davem@dhcp-10-15-49-227 net-next]$ make -s -j16
+> > > In file included from net/dccp/trace.h:105:0,
+> > >                  from net/dccp/proto.c:42:
+> > > ./include/trace/define_trace.h:89:42: fatal error: ./trace.h: No such file or directory
+> > >  #include TRACE_INCLUDE(TRACE_INCLUDE_FILE)
+> > >                                           ^
+> > > compilation terminated.  
+> > 
+> > Hi David,
+> > 
+> > Could you share your .config file? I would like to reproduce it.
+> > When I tried with attached kconfig, I could not reproduce this issue,
+> > and could run it.
+> >
 > 
-> You never need to ask me this question.
+> Hi Masami,
 > 
-> All of my test builds are with "allmodconfig".
+> Are you sure you committed everything in this change set? I don't see a
+> modification of the Makefile to get the trace.h file you created.
+> Shouldn't there be something like:
+> 
+> CFLAGS_proto.o := -I$(src)
+> 
+> in the Makefile?
 
-OK, thanks!
+Oops, I didn't do that, but also I had committed all in this changeset.
+Hmm, strange, because I don't see same issue... At first I will try to
+reproduce it and try above flags again.
+
+Thank you,
 
 -- 
 Masami Hiramatsu <mhiramat@kernel.org>
