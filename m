@@ -1,178 +1,309 @@
-From: Masami Hiramatsu <mhiramat@kernel.org>
-Date: Thu, 28 Dec 2017 06:11:31 +0000
-Subject: [PATCH net-next v6 3/6] net: sctp: Add SCTP ACK tracking trace event
-Message-Id: <151444149116.11331.11755142747199764314.stgit@devbox>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 22 Dec 2017 13:05:17 +0000
+Subject: [PATCH v3 2/4] sctp: Add ip option support
+Message-Id: <10ed2bd9a3f6d7e56bd5e946c671a744251b23ae.1513940757.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <151444140014.11331.17287122201510506083.stgit@devbox>
-In-Reply-To: <151444140014.11331.17287122201510506083.stgit@devbox>
+References: <cover.1513940757.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1513940757.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Ingo Molnar <mingo@kernel.org>, "David S . Miller" <davem@davemloft.net>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
-Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
+To: linux-security-module@vger.kernel.org
 
-Add SCTP ACK tracking trace event to trace the changes of SCTP
-association state in response to incoming packets.
-It is used for debugging SCTP congestion control algorithms,
-and will replace sctp_probe module.
+From: Richard Haines <richard_c_haines@btinternet.com>
 
-Note that this event a bit tricky. Since this consists of 2
-events (sctp_probe and sctp_probe_path) so you have to enable
-both events as below.
+Add ip option support to allow LSM security modules to utilise CIPSO/IPv4
+and CALIPSO/IPv6 services.
 
-  # cd /sys/kernel/debug/tracing
-  # echo 1 > events/sctp/sctp_probe/enable
-  # echo 1 > events/sctp/sctp_probe_path/enable
-
-Or, you can enable all the events under sctp.
-
-  # echo 1 > events/sctp/enable
-
-Since sctp_probe_path event is always invoked from sctp_probe
-event, you can not see any output if you only enable
-sctp_probe_path.
-
-Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
+Signed-off-by: Richard Haines <richard_c_haines@btinternet.com>
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
-  Changes in v3:
-   - Add checking whether sctp_probe_path event is enabled
-     before iterating sctp paths to record. Thanks Steven.
-  Changes in v4:
-   - Move a temporal variable definition in the block.
-   - Fix to cast pointer to unsigned long instead of __u64
-     for 32bit environment.
----
- include/trace/events/sctp.h |   99 +++++++++++++++++++++++++++++++++++++++++++
- net/sctp/sm_statefuns.c     |    5 ++
- 2 files changed, 104 insertions(+)
- create mode 100644 include/trace/events/sctp.h
+ include/net/sctp/sctp.h    |  4 +++-
+ include/net/sctp/structs.h |  2 ++
+ net/sctp/chunk.c           | 13 ++++++++-----
+ net/sctp/ipv6.c            | 42 +++++++++++++++++++++++++++++++++++-------
+ net/sctp/output.c          |  5 ++++-
+ net/sctp/protocol.c        | 36 ++++++++++++++++++++++++++++++++++++
+ net/sctp/socket.c          |  9 +++++++--
+ 7 files changed, 95 insertions(+), 16 deletions(-)
 
-diff --git a/include/trace/events/sctp.h b/include/trace/events/sctp.h
-new file mode 100644
-index 000000000000..7475c7be165a
---- /dev/null
-+++ b/include/trace/events/sctp.h
-@@ -0,0 +1,99 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+#undef TRACE_SYSTEM
-+#define TRACE_SYSTEM sctp
-+
-+#if !defined(_TRACE_SCTP_H) || defined(TRACE_HEADER_MULTI_READ)
-+#define _TRACE_SCTP_H
-+
-+#include <net/sctp/structs.h>
-+#include <linux/tracepoint.h>
-+
-+TRACE_EVENT(sctp_probe_path,
-+
-+	TP_PROTO(struct sctp_transport *sp,
-+		 const struct sctp_association *asoc),
-+
-+	TP_ARGS(sp, asoc),
-+
-+	TP_STRUCT__entry(
-+		__field(__u64, asoc)
-+		__field(__u32, primary)
-+		__array(__u8, ipaddr, sizeof(union sctp_addr))
-+		__field(__u32, state)
-+		__field(__u32, cwnd)
-+		__field(__u32, ssthresh)
-+		__field(__u32, flight_size)
-+		__field(__u32, partial_bytes_acked)
-+		__field(__u32, pathmtu)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->asoc = (unsigned long)asoc;
-+		__entry->primary = (sp = asoc->peer.primary_path);
-+		memcpy(__entry->ipaddr, &sp->ipaddr, sizeof(union sctp_addr));
-+		__entry->state = sp->state;
-+		__entry->cwnd = sp->cwnd;
-+		__entry->ssthresh = sp->ssthresh;
-+		__entry->flight_size = sp->flight_size;
-+		__entry->partial_bytes_acked = sp->partial_bytes_acked;
-+		__entry->pathmtu = sp->pathmtu;
-+	),
-+
-+	TP_printk("asoc=%#llx%s ipaddr=%pISpc state=%u cwnd=%u ssthresh=%u "
-+		  "flight_size=%u partial_bytes_acked=%u pathmtu=%u",
-+		  __entry->asoc, __entry->primary ? "(*)" : "",
-+		  __entry->ipaddr, __entry->state, __entry->cwnd,
-+		  __entry->ssthresh, __entry->flight_size,
-+		  __entry->partial_bytes_acked, __entry->pathmtu)
-+);
-+
-+TRACE_EVENT(sctp_probe,
-+
-+	TP_PROTO(const struct sctp_endpoint *ep,
-+		 const struct sctp_association *asoc,
-+		 struct sctp_chunk *chunk),
-+
-+	TP_ARGS(ep, asoc, chunk),
-+
-+	TP_STRUCT__entry(
-+		__field(__u64, asoc)
-+		__field(__u32, mark)
-+		__field(__u16, bind_port)
-+		__field(__u16, peer_port)
-+		__field(__u32, pathmtu)
-+		__field(__u32, rwnd)
-+		__field(__u16, unack_data)
-+	),
-+
-+	TP_fast_assign(
-+		struct sk_buff *skb = chunk->skb;
-+
-+		__entry->asoc = (unsigned long)asoc;
-+		__entry->mark = skb->mark;
-+		__entry->bind_port = ep->base.bind_addr.port;
-+		__entry->peer_port = asoc->peer.port;
-+		__entry->pathmtu = asoc->pathmtu;
-+		__entry->rwnd = asoc->peer.rwnd;
-+		__entry->unack_data = asoc->unack_data;
-+
-+		if (trace_sctp_probe_path_enabled()) {
-+			struct sctp_transport *sp;
-+
-+			list_for_each_entry(sp, &asoc->peer.transport_addr_list,
-+					    transports) {
-+				trace_sctp_probe_path(sp, asoc);
-+			}
-+		}
-+	),
-+
-+	TP_printk("asoc=%#llx mark=%#x bind_port=%d peer_port=%d pathmtu=%d "
-+		  "rwnd=%u unack_data=%d",
-+		  __entry->asoc, __entry->mark, __entry->bind_port,
-+		  __entry->peer_port, __entry->pathmtu, __entry->rwnd,
-+		  __entry->unack_data)
-+);
-+
-+#endif /* _TRACE_SCTP_H */
-+
-+/* This part must be outside protection */
-+#include <trace/define_trace.h>
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 541f34735346..eb7905ffe5f2 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -59,6 +59,9 @@
- #include <net/sctp/sm.h>
- #include <net/sctp/structs.h>
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index d7d8cba014697602832fe20e414b632104c9f239..1b2f40a3a87875c10647fc768372cabea61fe3b8 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -436,9 +436,11 @@ static inline int sctp_list_single_entry(struct list_head *head)
+ static inline int sctp_frag_point(const struct sctp_association *asoc, int pmtu)
+ {
+ 	struct sctp_sock *sp = sctp_sk(asoc->base.sk);
++	struct sctp_af *af = sp->pf->af;
+ 	int frag = pmtu;
  
-+#define CREATE_TRACE_POINTS
-+#include <trace/events/sctp.h>
-+
- static struct sctp_packet *sctp_abort_pkt_new(
- 					struct net *net,
- 					const struct sctp_endpoint *ep,
-@@ -3219,6 +3222,8 @@ enum sctp_disposition sctp_sf_eat_sack_6_2(struct net *net,
- 	struct sctp_sackhdr *sackh;
- 	__u32 ctsn;
+-	frag -= sp->pf->af->net_header_len;
++	frag -= af->ip_options_len(asoc->base.sk);
++	frag -= af->net_header_len;
+ 	frag -= sizeof(struct sctphdr) + sizeof(struct sctp_data_chunk);
  
-+	trace_sctp_probe(ep, asoc, chunk);
-+
- 	if (!sctp_vtag_verify(chunk, asoc))
- 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+ 	if (asoc->user_frag)
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 0477945de1a3cf5c27348e99d9a30e02c491d1de..9942ed5159448c924f0f018abeea9bab93fc3437 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -461,6 +461,7 @@ struct sctp_af {
+ 	void		(*ecn_capable)(struct sock *sk);
+ 	__u16		net_header_len;
+ 	int		sockaddr_len;
++	int		(*ip_options_len)(struct sock *sk);
+ 	sa_family_t	sa_family;
+ 	struct list_head list;
+ };
+@@ -485,6 +486,7 @@ struct sctp_pf {
+ 	int (*addr_to_user)(struct sctp_sock *sk, union sctp_addr *addr);
+ 	void (*to_sk_saddr)(union sctp_addr *, struct sock *sk);
+ 	void (*to_sk_daddr)(union sctp_addr *, struct sock *sk);
++	void (*copy_ip_options)(struct sock *sk, struct sock *newsk);
+ 	struct sctp_af *af;
+ };
  
+diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
+index 3afac275ee82dbec825dd71378dffe69a53718a7..9d130f447f636c034e4232a9e6426ffce07007ca 100644
+--- a/net/sctp/chunk.c
++++ b/net/sctp/chunk.c
+@@ -153,7 +153,6 @@ static void sctp_datamsg_assign(struct sctp_datamsg *msg, struct sctp_chunk *chu
+ 	chunk->msg = msg;
+ }
+ 
+-
+ /* A data chunk can have a maximum payload of (2^16 - 20).  Break
+  * down any such message into smaller chunks.  Opportunistically, fragment
+  * the chunks down to the current MTU constraints.  We may get refragmented
+@@ -170,6 +169,8 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
+ 	struct list_head *pos, *temp;
+ 	struct sctp_chunk *chunk;
+ 	struct sctp_datamsg *msg;
++	struct sctp_sock *sp;
++	struct sctp_af *af;
+ 	int err;
+ 
+ 	msg = sctp_datamsg_new(GFP_KERNEL);
+@@ -188,9 +189,12 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
+ 	/* This is the biggest possible DATA chunk that can fit into
+ 	 * the packet
+ 	 */
+-	max_data = asoc->pathmtu -
+-		   sctp_sk(asoc->base.sk)->pf->af->net_header_len -
+-		   sizeof(struct sctphdr) - sizeof(struct sctp_data_chunk);
++	sp = sctp_sk(asoc->base.sk);
++	af = sp->pf->af;
++	max_data = asoc->pathmtu - af->net_header_len -
++		   sizeof(struct sctphdr) - sizeof(struct sctp_data_chunk) -
++		   af->ip_options_len(asoc->base.sk);
++
+ 	max_data = SCTP_TRUNC4(max_data);
+ 
+ 	/* If the the peer requested that we authenticate DATA chunks
+@@ -210,7 +214,6 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
+ 
+ 	/* Set first_len and then account for possible bundles on first frag */
+ 	first_len = max_data;
+-
+ 	/* Check to see if we have a pending SACK and try to let it be bundled
+ 	 * with this message.  Do this if we don't have any data queued already.
+ 	 * To check that, look at out_qlen and retransmit list.
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 51c4887695909d171285b98ce1be779a3adedbab..3baede99a06d17b3f7a0826df4874c9c5af77617 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -423,6 +423,38 @@ static void sctp_v6_copy_addrlist(struct list_head *addrlist,
+ 	rcu_read_unlock();
+ }
+ 
++/* Copy over any ip options */
++static void sctp_v6_copy_ip_options(struct sock *sk, struct sock *newsk)
++{
++	struct ipv6_pinfo *newnp, *np = inet6_sk(sk);
++	struct ipv6_txoptions *opt;
++
++	newnp = inet6_sk(newsk);
++
++	rcu_read_lock();
++	opt = rcu_dereference(np->opt);
++	if (opt)
++		opt = ipv6_dup_options(newsk, opt);
++	RCU_INIT_POINTER(newnp->opt, opt);
++	rcu_read_unlock();
++}
++
++/* Account for the IP options */
++static int sctp_v6_ip_options_len(struct sock *sk)
++{
++	struct ipv6_pinfo *np = inet6_sk(sk);
++	struct ipv6_txoptions *opt;
++	int len = 0;
++
++	rcu_read_lock();
++	opt = rcu_dereference(np->opt);
++	if (opt)
++		len = opt->opt_flen + opt->opt_nflen;
++
++	rcu_read_unlock();
++	return len;
++}
++
+ /* Initialize a sockaddr_storage from in incoming skb. */
+ static void sctp_v6_from_skb(union sctp_addr *addr, struct sk_buff *skb,
+ 			     int is_saddr)
+@@ -662,7 +694,6 @@ static struct sock *sctp_v6_create_accept_sk(struct sock *sk,
+ 	struct sock *newsk;
+ 	struct ipv6_pinfo *newnp, *np = inet6_sk(sk);
+ 	struct sctp6_sock *newsctp6sk;
+-	struct ipv6_txoptions *opt;
+ 
+ 	newsk = sk_alloc(sock_net(sk), PF_INET6, GFP_KERNEL, sk->sk_prot, kern);
+ 	if (!newsk)
+@@ -685,12 +716,7 @@ static struct sock *sctp_v6_create_accept_sk(struct sock *sk,
+ 	newnp->ipv6_ac_list = NULL;
+ 	newnp->ipv6_fl_list = NULL;
+ 
+-	rcu_read_lock();
+-	opt = rcu_dereference(np->opt);
+-	if (opt)
+-		opt = ipv6_dup_options(newsk, opt);
+-	RCU_INIT_POINTER(newnp->opt, opt);
+-	rcu_read_unlock();
++	sctp_v6_copy_ip_options(sk, newsk);
+ 
+ 	/* Initialize sk's sport, dport, rcv_saddr and daddr for getsockname()
+ 	 * and getpeername().
+@@ -1033,6 +1059,7 @@ static struct sctp_af sctp_af_inet6 = {
+ 	.ecn_capable	   = sctp_v6_ecn_capable,
+ 	.net_header_len	   = sizeof(struct ipv6hdr),
+ 	.sockaddr_len	   = sizeof(struct sockaddr_in6),
++	.ip_options_len	   = sctp_v6_ip_options_len,
+ #ifdef CONFIG_COMPAT
+ 	.compat_setsockopt = compat_ipv6_setsockopt,
+ 	.compat_getsockopt = compat_ipv6_getsockopt,
+@@ -1051,6 +1078,7 @@ static struct sctp_pf sctp_pf_inet6 = {
+ 	.addr_to_user  = sctp_v6_addr_to_user,
+ 	.to_sk_saddr   = sctp_v6_to_sk_saddr,
+ 	.to_sk_daddr   = sctp_v6_to_sk_daddr,
++	.copy_ip_options = sctp_v6_copy_ip_options,
+ 	.af            = &sctp_af_inet6,
+ };
+ 
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 4a865cd06d76cd5b2aa417de618da3203f7b53e4..2b39c704e1e5b99597a2cfdd35f75c78288d943b 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -151,7 +151,10 @@ void sctp_packet_init(struct sctp_packet *packet,
+ 	INIT_LIST_HEAD(&packet->chunk_list);
+ 	if (asoc) {
+ 		struct sctp_sock *sp = sctp_sk(asoc->base.sk);
+-		overhead = sp->pf->af->net_header_len;
++		struct sctp_af *af = sp->pf->af;
++
++		overhead = af->net_header_len +
++			   af->ip_options_len(asoc->base.sk);
+ 	} else {
+ 		overhead = sizeof(struct ipv6hdr);
+ 	}
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index fcd80feb293f61bd734988f037aa8f210880fb1d..cde051a2ed84b4085447b30af5809e2507a69277 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -237,6 +237,38 @@ int sctp_copy_local_addr_list(struct net *net, struct sctp_bind_addr *bp,
+ 	return error;
+ }
+ 
++/* Copy over any ip options */
++static void sctp_v4_copy_ip_options(struct sock *sk, struct sock *newsk)
++{
++	struct inet_sock *newinet, *inet = inet_sk(sk);
++	struct ip_options_rcu *inet_opt, *newopt = NULL;
++
++	newinet = inet_sk(newsk);
++
++	rcu_read_lock();
++	inet_opt = rcu_dereference(inet->inet_opt);
++	if (inet_opt) {
++		newopt = sock_kmalloc(newsk, sizeof(*inet_opt) +
++				      inet_opt->opt.optlen, GFP_ATOMIC);
++		if (newopt)
++			memcpy(newopt, inet_opt, sizeof(*inet_opt) +
++			       inet_opt->opt.optlen);
++	}
++	RCU_INIT_POINTER(newinet->inet_opt, newopt);
++	rcu_read_unlock();
++}
++
++/* Account for the IP options */
++static int sctp_v4_ip_options_len(struct sock *sk)
++{
++	struct inet_sock *inet = inet_sk(sk);
++
++	if (inet->inet_opt)
++		return inet->inet_opt->opt.optlen;
++	else
++		return 0;
++}
++
+ /* Initialize a sctp_addr from in incoming skb.  */
+ static void sctp_v4_from_skb(union sctp_addr *addr, struct sk_buff *skb,
+ 			     int is_saddr)
+@@ -590,6 +622,8 @@ static struct sock *sctp_v4_create_accept_sk(struct sock *sk,
+ 	sctp_copy_sock(newsk, sk, asoc);
+ 	sock_reset_flag(newsk, SOCK_ZAPPED);
+ 
++	sctp_v4_copy_ip_options(sk, newsk);
++
+ 	newinet = inet_sk(newsk);
+ 
+ 	newinet->inet_daddr = asoc->peer.primary_addr.v4.sin_addr.s_addr;
+@@ -1008,6 +1042,7 @@ static struct sctp_pf sctp_pf_inet = {
+ 	.addr_to_user  = sctp_v4_addr_to_user,
+ 	.to_sk_saddr   = sctp_v4_to_sk_saddr,
+ 	.to_sk_daddr   = sctp_v4_to_sk_daddr,
++	.copy_ip_options = sctp_v4_copy_ip_options,
+ 	.af            = &sctp_af_inet
+ };
+ 
+@@ -1092,6 +1127,7 @@ static struct sctp_af sctp_af_inet = {
+ 	.ecn_capable	   = sctp_v4_ecn_capable,
+ 	.net_header_len	   = sizeof(struct iphdr),
+ 	.sockaddr_len	   = sizeof(struct sockaddr_in),
++	.ip_options_len	   = sctp_v4_ip_options_len,
+ #ifdef CONFIG_COMPAT
+ 	.compat_setsockopt = compat_ip_setsockopt,
+ 	.compat_getsockopt = compat_ip_getsockopt,
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index d4730ada7f3233367be7a0e3bb10e286a25602c8..274082cf49a8380fda06866c631cdc22dc4f157b 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3125,8 +3125,11 @@ static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned
+ 
+ 	if (asoc) {
+ 		if (val = 0) {
++			struct sctp_af *af = sp->pf->af;
++
+ 			val = asoc->pathmtu;
+-			val -= sp->pf->af->net_header_len;
++			val -= af->ip_options_len(asoc->base.sk);
++			val -= af->net_header_len;
+ 			val -= sizeof(struct sctphdr) +
+ 					sizeof(struct sctp_data_chunk);
+ 		}
+@@ -4929,9 +4932,11 @@ int sctp_do_peeloff(struct sock *sk, sctp_assoc_t id, struct socket **sockp)
+ 	sctp_copy_sock(sock->sk, sk, asoc);
+ 
+ 	/* Make peeled-off sockets more like 1-1 accepted sockets.
+-	 * Set the daddr and initialize id to something more random
++	 * Set the daddr and initialize id to something more random and also
++	 * copy over any ip options.
+ 	 */
+ 	sp->pf->to_sk_daddr(&asoc->peer.primary_addr, sk);
++	sp->pf->copy_ip_options(sk, sock->sk);
+ 
+ 	/* Populate the fields of the newsk from the oldsk and migrate the
+ 	 * asoc to the newsk.
+-- 
+2.14.3
 
