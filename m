@@ -1,85 +1,283 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 08 Dec 2017 13:04:07 +0000
-Subject: [PATCHv2 net-next 10/12] sctp: implement start_pd for sctp_stream_interleave
-Message-Id: <0de955e81dc688c578d1b54ab7de5bcda70acfcb.1512738021.git.lucien.xin@gmail.com>
+From: Masami Hiramatsu <mhiramat@kernel.org>
+Date: Fri, 22 Dec 2017 02:08:03 +0000
+Subject: [PATCH net-next v5 6/6] net: dccp: Remove dccpprobe module
+Message-Id: <151390848313.13277.14439378382509043980.stgit@devbox>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1512738021.git.lucien.xin@gmail.com>
- <2fef1243f8181062aeb17f7052e5b022ec274a8e.1512738021.git.lucien.xin@gmail.com>
- <7347f16f5b620ed98fdb5f7ac54db4a70e1fd27e.1512738021.git.lucien.xin@gmail.com>
- <9a2bf9495313a79f0bbffb8edaaef25269804feb.1512738021.git.lucien.xin@gmail.com>
- <ed729ca6023dea0812e4caa4d5da3259df375127.1512738021.git.lucien.xin@gmail.com>
- <be593df99566267deff68ff477d2355dfffada80.1512738021.git.lucien.xin@gmail.com>
- <083a620b71eb0446997f308372bdbe2d1e0fdc55.1512738021.git.lucien.xin@gmail.com>
- <9b28c98bbb59126b2be7b81cd4bd16336f99ba69.1512738021.git.lucien.xin@gmail.com>
- <47320a14e77bc56bcce883b79aebc0509386f9e5.1512738021.git.lucien.xin@gmail.com>
- <1a253f52ab5310dcad8f518652e50b959043d8b2.1512738021.git.lucien.xin@gmail.com>
-In-Reply-To: <1a253f52ab5310dcad8f518652e50b959043d8b2.1512738021.git.lucien.xin@gmail.com>
+References: <151390830346.13277.15583398024850377955.stgit@devbox>
+In-Reply-To: <151390830346.13277.15583398024850377955.stgit@devbox>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: Ingo Molnar <mingo@kernel.org>, "David S . Miller" <davem@davemloft.net>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
+Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
 
-start_pd is added as a member of sctp_stream_interleave, used to
-do partial_delivery for data or idata when datalen >= asoc->rwnd
-in sctp_eat_data. The codes have been done in last patches, but
-they need to be extracted into start_pd, so that it could be used
-for SCTP_CMD_PART_DELIVER cmd as well.
+Remove DCCP probe module since jprobe has been deprecated.
+That function is now replaced by dccp/dccp_probe trace-event.
+You can use it via ftrace or perftools.
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
 ---
- include/net/sctp/stream_interleave.h | 1 +
- net/sctp/sm_sideeffect.c             | 2 +-
- net/sctp/stream_interleave.c         | 2 ++
- 3 files changed, 4 insertions(+), 1 deletion(-)
+ Changes in v5:
+  - Fix a conflict with previous change in Makefile.
+---
+ net/dccp/Kconfig  |   17 ----
+ net/dccp/Makefile |    2 -
+ net/dccp/probe.c  |  203 -----------------------------------------------------
+ 3 files changed, 222 deletions(-)
+ delete mode 100644 net/dccp/probe.c
 
-diff --git a/include/net/sctp/stream_interleave.h b/include/net/sctp/stream_interleave.h
-index 16a71cb..317d9b3 100644
---- a/include/net/sctp/stream_interleave.h
-+++ b/include/net/sctp/stream_interleave.h
-@@ -45,6 +45,7 @@ struct sctp_stream_interleave {
- 				 struct sctp_ulpevent *event);
- 	void	(*renege_events)(struct sctp_ulpq *ulpq,
- 				 struct sctp_chunk *chunk, gfp_t gfp);
-+	void	(*start_pd)(struct sctp_ulpq *ulpq, gfp_t gfp);
- };
+diff --git a/net/dccp/Kconfig b/net/dccp/Kconfig
+index 8c0ef71bed2f..b270e84d9c13 100644
+--- a/net/dccp/Kconfig
++++ b/net/dccp/Kconfig
+@@ -39,23 +39,6 @@ config IP_DCCP_DEBUG
  
- void sctp_stream_interleave_init(struct sctp_stream *stream);
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index 2bec17a..3671054 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -1731,7 +1731,7 @@ static int sctp_cmd_interpreter(enum sctp_event event_type,
- 			break;
+ 	  Just say N.
  
- 		case SCTP_CMD_PART_DELIVER:
--			sctp_ulpq_partial_delivery(&asoc->ulpq, GFP_ATOMIC);
-+			asoc->stream.si->start_pd(&asoc->ulpq, GFP_ATOMIC);
- 			break;
+-config NET_DCCPPROBE
+-	tristate "DCCP connection probing"
+-	depends on PROC_FS && KPROBES
+-	---help---
+-	This module allows for capturing the changes to DCCP connection
+-	state in response to incoming packets. It is used for debugging
+-	DCCP congestion avoidance modules. If you don't understand
+-	what was just said, you don't need it: say N.
+-
+-	Documentation on how to use DCCP connection probing can be found
+-	at:
+-	
+-	  http://www.linuxfoundation.org/collaborate/workgroups/networking/dccpprobe
+-
+-	To compile this code as a module, choose M here: the
+-	module will be called dccp_probe.
+-
  
- 		case SCTP_CMD_RENEGE:
-diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
-index d62ad5c..4dce8d3 100644
---- a/net/sctp/stream_interleave.c
-+++ b/net/sctp/stream_interleave.c
-@@ -661,6 +661,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_0 = {
- 	.ulpevent_data		= sctp_ulpq_tail_data,
- 	.enqueue_event		= sctp_ulpq_tail_event,
- 	.renege_events		= sctp_ulpq_renege,
-+	.start_pd		= sctp_ulpq_partial_delivery,
- };
+ endmenu
  
- static struct sctp_stream_interleave sctp_stream_interleave_1 = {
-@@ -672,6 +673,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
- 	.ulpevent_data		= sctp_ulpevent_idata,
- 	.enqueue_event		= sctp_enqueue_event,
- 	.renege_events		= sctp_renege_events,
-+	.start_pd		= sctp_intl_start_pd,
- };
+diff --git a/net/dccp/Makefile b/net/dccp/Makefile
+index 4215f13a63af..5b4ff37bc806 100644
+--- a/net/dccp/Makefile
++++ b/net/dccp/Makefile
+@@ -21,12 +21,10 @@ obj-$(subst y,$(CONFIG_IP_DCCP),$(CONFIG_IPV6)) += dccp_ipv6.o
+ dccp_ipv6-y := ipv6.o
  
- void sctp_stream_interleave_init(struct sctp_stream *stream)
--- 
-2.1.0
+ obj-$(CONFIG_INET_DCCP_DIAG) += dccp_diag.o
+-obj-$(CONFIG_NET_DCCPPROBE) += dccp_probe.o
+ 
+ dccp-$(CONFIG_SYSCTL) += sysctl.o
+ 
+ dccp_diag-y := diag.o
+-dccp_probe-y := probe.o
+ 
+ # build with local directory for trace.h
+ CFLAGS_proto.o := -I$(src)
+diff --git a/net/dccp/probe.c b/net/dccp/probe.c
+deleted file mode 100644
+index 3d3fda05b32d..000000000000
+--- a/net/dccp/probe.c
++++ /dev/null
+@@ -1,203 +0,0 @@
+-/*
+- * dccp_probe - Observe the DCCP flow with kprobes.
+- *
+- * The idea for this came from Werner Almesberger's umlsim
+- * Copyright (C) 2004, Stephen Hemminger <shemminger@osdl.org>
+- *
+- * Modified for DCCP from Stephen Hemminger's code
+- * Copyright (C) 2006, Ian McDonald <ian.mcdonald@jandi.co.nz>
+- *
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License as published by
+- * the Free Software Foundation; either version 2 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with this program; if not, write to the Free Software
+- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+- */
+-
+-#include <linux/kernel.h>
+-#include <linux/kprobes.h>
+-#include <linux/socket.h>
+-#include <linux/dccp.h>
+-#include <linux/proc_fs.h>
+-#include <linux/module.h>
+-#include <linux/kfifo.h>
+-#include <linux/vmalloc.h>
+-#include <linux/time64.h>
+-#include <linux/gfp.h>
+-#include <net/net_namespace.h>
+-
+-#include "dccp.h"
+-#include "ccid.h"
+-#include "ccids/ccid3.h"
+-
+-static int port;
+-
+-static int bufsize = 64 * 1024;
+-
+-static const char procname[] = "dccpprobe";
+-
+-static struct {
+-	struct kfifo	  fifo;
+-	spinlock_t	  lock;
+-	wait_queue_head_t wait;
+-	struct timespec64 tstart;
+-} dccpw;
+-
+-static void printl(const char *fmt, ...)
+-{
+-	va_list args;
+-	int len;
+-	struct timespec64 now;
+-	char tbuf[256];
+-
+-	va_start(args, fmt);
+-	getnstimeofday64(&now);
+-
+-	now = timespec64_sub(now, dccpw.tstart);
+-
+-	len = sprintf(tbuf, "%lu.%06lu ",
+-		      (unsigned long) now.tv_sec,
+-		      (unsigned long) now.tv_nsec / NSEC_PER_USEC);
+-	len += vscnprintf(tbuf+len, sizeof(tbuf)-len, fmt, args);
+-	va_end(args);
+-
+-	kfifo_in_locked(&dccpw.fifo, tbuf, len, &dccpw.lock);
+-	wake_up(&dccpw.wait);
+-}
+-
+-static int jdccp_sendmsg(struct sock *sk, struct msghdr *msg, size_t size)
+-{
+-	const struct inet_sock *inet = inet_sk(sk);
+-	struct ccid3_hc_tx_sock *hc = NULL;
+-
+-	if (ccid_get_current_tx_ccid(dccp_sk(sk)) = DCCPC_CCID3)
+-		hc = ccid3_hc_tx_sk(sk);
+-
+-	if (port = 0 || ntohs(inet->inet_dport) = port ||
+-	    ntohs(inet->inet_sport) = port) {
+-		if (hc)
+-			printl("%pI4:%u %pI4:%u %d %d %d %d %u %llu %llu %d\n",
+-			       &inet->inet_saddr, ntohs(inet->inet_sport),
+-			       &inet->inet_daddr, ntohs(inet->inet_dport), size,
+-			       hc->tx_s, hc->tx_rtt, hc->tx_p,
+-			       hc->tx_x_calc, hc->tx_x_recv >> 6,
+-			       hc->tx_x >> 6, hc->tx_t_ipi);
+-		else
+-			printl("%pI4:%u %pI4:%u %d\n",
+-			       &inet->inet_saddr, ntohs(inet->inet_sport),
+-			       &inet->inet_daddr, ntohs(inet->inet_dport),
+-			       size);
+-	}
+-
+-	jprobe_return();
+-	return 0;
+-}
+-
+-static struct jprobe dccp_send_probe = {
+-	.kp	= {
+-		.symbol_name = "dccp_sendmsg",
+-	},
+-	.entry	= jdccp_sendmsg,
+-};
+-
+-static int dccpprobe_open(struct inode *inode, struct file *file)
+-{
+-	kfifo_reset(&dccpw.fifo);
+-	getnstimeofday64(&dccpw.tstart);
+-	return 0;
+-}
+-
+-static ssize_t dccpprobe_read(struct file *file, char __user *buf,
+-			      size_t len, loff_t *ppos)
+-{
+-	int error = 0, cnt = 0;
+-	unsigned char *tbuf;
+-
+-	if (!buf)
+-		return -EINVAL;
+-
+-	if (len = 0)
+-		return 0;
+-
+-	tbuf = vmalloc(len);
+-	if (!tbuf)
+-		return -ENOMEM;
+-
+-	error = wait_event_interruptible(dccpw.wait,
+-					 kfifo_len(&dccpw.fifo) != 0);
+-	if (error)
+-		goto out_free;
+-
+-	cnt = kfifo_out_locked(&dccpw.fifo, tbuf, len, &dccpw.lock);
+-	error = copy_to_user(buf, tbuf, cnt) ? -EFAULT : 0;
+-
+-out_free:
+-	vfree(tbuf);
+-
+-	return error ? error : cnt;
+-}
+-
+-static const struct file_operations dccpprobe_fops = {
+-	.owner	 = THIS_MODULE,
+-	.open	 = dccpprobe_open,
+-	.read    = dccpprobe_read,
+-	.llseek  = noop_llseek,
+-};
+-
+-static __init int dccpprobe_init(void)
+-{
+-	int ret = -ENOMEM;
+-
+-	init_waitqueue_head(&dccpw.wait);
+-	spin_lock_init(&dccpw.lock);
+-	if (kfifo_alloc(&dccpw.fifo, bufsize, GFP_KERNEL))
+-		return ret;
+-	if (!proc_create(procname, S_IRUSR, init_net.proc_net, &dccpprobe_fops))
+-		goto err0;
+-
+-	ret = register_jprobe(&dccp_send_probe);
+-	if (ret) {
+-		ret = request_module("dccp");
+-		if (!ret)
+-			ret = register_jprobe(&dccp_send_probe);
+-	}
+-
+-	if (ret)
+-		goto err1;
+-
+-	pr_info("DCCP watch registered (port=%d)\n", port);
+-	return 0;
+-err1:
+-	remove_proc_entry(procname, init_net.proc_net);
+-err0:
+-	kfifo_free(&dccpw.fifo);
+-	return ret;
+-}
+-module_init(dccpprobe_init);
+-
+-static __exit void dccpprobe_exit(void)
+-{
+-	kfifo_free(&dccpw.fifo);
+-	remove_proc_entry(procname, init_net.proc_net);
+-	unregister_jprobe(&dccp_send_probe);
+-
+-}
+-module_exit(dccpprobe_exit);
+-
+-MODULE_PARM_DESC(port, "Port to match (0=all)");
+-module_param(port, int, 0);
+-
+-MODULE_PARM_DESC(bufsize, "Log buffer size (default 64k)");
+-module_param(bufsize, int, 0);
+-
+-MODULE_AUTHOR("Ian McDonald <ian.mcdonald@jandi.co.nz>");
+-MODULE_DESCRIPTION("DCCP snooper");
+-MODULE_LICENSE("GPL");
 
