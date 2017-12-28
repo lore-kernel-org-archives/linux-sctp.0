@@ -1,147 +1,283 @@
-From: Cong Wang <xiyou.wangcong@gmail.com>
-Date: Thu, 14 Dec 2017 19:07:46 +0000
-Subject: Re: KASAN: use-after-free Read in refcount_inc_not_zero
-Message-Id: <CAM_iQpW9CXJxs=8qjN2duAohiPZvTYfpN9DBvvSA6-wsPu-cMQ@mail.gmail.com>
+From: Masami Hiramatsu <mhiramat@kernel.org>
+Date: Thu, 28 Dec 2017 06:13:00 +0000
+Subject: [PATCH net-next v6 6/6] net: dccp: Remove dccpprobe module
+Message-Id: <151444158053.11331.12347286678847677448.stgit@devbox>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <94eb2c1fae04669449055d036865@google.com> <089e082bdf1062d5ed056050f926@google.com>
-In-Reply-To: <089e082bdf1062d5ed056050f926@google.com>
+References: <151444140014.11331.17287122201510506083.stgit@devbox>
+In-Reply-To: <151444140014.11331.17287122201510506083.stgit@devbox>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: syzbot <bot+9e3011b5e961675e736b38d6fd82ad12723a3fa3@syzkaller.appspotmail.com>
-Cc: Andrew Morton <akpm@linux-foundation.org>, alexander.deucher@amd.com, broonie@kernel.org, chris@chris-wilson.co.uk, David Miller <davem@davemloft.net>, deepa.kernel@gmail.com, Greg KH <gregkh@linuxfoundation.org>, gscrivan@redhat.com, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, luc.vanoostenryck@gmail.com, lucien xin <lucien.xin@gmail.com>, Ingo Molnar <mingo@kernel.org>, Linux Kernel Network Developers <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs@googlegroups.com, Al Viro <viro@zeniv.linux.org.uk>, Vladislav Yasevich <vyasevich@gmail.com>
+To: Ingo Molnar <mingo@kernel.org>, "David S . Miller" <davem@davemloft.net>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
+Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
 
-On Thu, Dec 14, 2017 at 10:23 AM, syzbot
-<bot+9e3011b5e961675e736b38d6fd82ad12723a3fa3@syzkaller.appspotmail.com>
-wrote:
-> syzkaller has found reproducer for the following crash on
-> 82bcf1def3b5f1251177ad47c44f7e17af039b4b
-> git://git.cmpxchg.org/linux-mmots.git/master
-> compiler: gcc (GCC) 7.1.1 20170620
-> .config is attached
-> Raw console output is attached.
-> C reproducer is attached
-> syzkaller reproducer is attached. See https://goo.gl/kgGztJ
-> for information about syzkaller reproducers
->
->
-> =================================
-> BUG: KASAN: use-after-free in __read_once_size include/linux/compiler.h:183
-> [inline]
-> BUG: KASAN: use-after-free in atomic_read arch/x86/include/asm/atomic.h:27
-> [inline]
-> BUG: KASAN: use-after-free in refcount_inc_not_zero+0x16e/0x180
-> lib/refcount.c:120
-> Read of size 4 at addr ffff8801c51bb200 by task syzkaller711981/3156
->
-> CPU: 1 PID: 3156 Comm: syzkaller711981 Not tainted 4.15.0-rc2-mm1+ #39
-> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS
-> Google 01/01/2011
-> Call Trace:
->  __dump_stack lib/dump_stack.c:17 [inline]
->  dump_stack+0x194/0x257 lib/dump_stack.c:53
->  print_address_description+0x73/0x250 mm/kasan/report.c:252
->  kasan_report_error mm/kasan/report.c:351 [inline]
->  kasan_report+0x25b/0x340 mm/kasan/report.c:409
->  __asan_report_load4_noabort+0x14/0x20 mm/kasan/report.c:429
->  __read_once_size include/linux/compiler.h:183 [inline]
->  atomic_read arch/x86/include/asm/atomic.h:27 [inline]
->  refcount_inc_not_zero+0x16e/0x180 lib/refcount.c:120
->  refcount_inc+0x15/0x50 lib/refcount.c:153
->  get_ipc_ns include/linux/ipc_namespace.h:129 [inline]
->  __get_ns_from_inode ipc/mqueue.c:110 [inline]
->  get_ns_from_inode ipc/mqueue.c:118 [inline]
->  mqueue_evict_inode+0x137/0x9c0 ipc/mqueue.c:402
->  evict+0x481/0x920 fs/inode.c:552
->  iput_final fs/inode.c:1514 [inline]
->  iput+0x7b9/0xaf0 fs/inode.c:1541
->  dentry_unlink_inode+0x4b0/0x5e0 fs/dcache.c:376
->  __dentry_kill+0x3b7/0x6d0 fs/dcache.c:573
->  shrink_dentry_list+0x3c5/0xcf0 fs/dcache.c:1020
->  shrink_dcache_parent+0xba/0x230 fs/dcache.c:1454
->  do_one_tree+0x15/0x50 fs/dcache.c:1485
->  shrink_dcache_for_umount+0xbb/0x290 fs/dcache.c:1502
->  generic_shutdown_super+0xcd/0x540 fs/super.c:424
->  kill_anon_super fs/super.c:987 [inline]
->  kill_litter_super+0x72/0x90 fs/super.c:997
->  deactivate_locked_super+0x88/0xd0 fs/super.c:312
->  deactivate_super+0x141/0x1b0 fs/super.c:343
->  cleanup_mnt+0xb2/0x150 fs/namespace.c:1173
->  __cleanup_mnt+0x16/0x20 fs/namespace.c:1180
->  task_work_run+0x199/0x270 kernel/task_work.c:113
->  exit_task_work include/linux/task_work.h:22 [inline]
+Remove DCCP probe module since jprobe has been deprecated.
+That function is now replaced by dccp/dccp_probe trace-event.
+You can use it via ftrace or perftools.
 
+Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
+---
+ Changes in v5:
+  - Fix a conflict with previous change in Makefile.
+---
+ net/dccp/Kconfig  |   17 ----
+ net/dccp/Makefile |    2 -
+ net/dccp/probe.c  |  203 -----------------------------------------------------
+ 3 files changed, 222 deletions(-)
+ delete mode 100644 net/dccp/probe.c
 
-Seems we can simply fix it by swapping exit_task_work()
-with exit_task_namespaces() in do_exit()...
+diff --git a/net/dccp/Kconfig b/net/dccp/Kconfig
+index 8c0ef71bed2f..b270e84d9c13 100644
+--- a/net/dccp/Kconfig
++++ b/net/dccp/Kconfig
+@@ -39,23 +39,6 @@ config IP_DCCP_DEBUG
+ 
+ 	  Just say N.
+ 
+-config NET_DCCPPROBE
+-	tristate "DCCP connection probing"
+-	depends on PROC_FS && KPROBES
+-	---help---
+-	This module allows for capturing the changes to DCCP connection
+-	state in response to incoming packets. It is used for debugging
+-	DCCP congestion avoidance modules. If you don't understand
+-	what was just said, you don't need it: say N.
+-
+-	Documentation on how to use DCCP connection probing can be found
+-	at:
+-	
+-	  http://www.linuxfoundation.org/collaborate/workgroups/networking/dccpprobe
+-
+-	To compile this code as a module, choose M here: the
+-	module will be called dccp_probe.
+-
+ 
+ endmenu
+ 
+diff --git a/net/dccp/Makefile b/net/dccp/Makefile
+index 4215f13a63af..5b4ff37bc806 100644
+--- a/net/dccp/Makefile
++++ b/net/dccp/Makefile
+@@ -21,12 +21,10 @@ obj-$(subst y,$(CONFIG_IP_DCCP),$(CONFIG_IPV6)) += dccp_ipv6.o
+ dccp_ipv6-y := ipv6.o
+ 
+ obj-$(CONFIG_INET_DCCP_DIAG) += dccp_diag.o
+-obj-$(CONFIG_NET_DCCPPROBE) += dccp_probe.o
+ 
+ dccp-$(CONFIG_SYSCTL) += sysctl.o
+ 
+ dccp_diag-y := diag.o
+-dccp_probe-y := probe.o
+ 
+ # build with local directory for trace.h
+ CFLAGS_proto.o := -I$(src)
+diff --git a/net/dccp/probe.c b/net/dccp/probe.c
+deleted file mode 100644
+index 3d3fda05b32d..000000000000
+--- a/net/dccp/probe.c
++++ /dev/null
+@@ -1,203 +0,0 @@
+-/*
+- * dccp_probe - Observe the DCCP flow with kprobes.
+- *
+- * The idea for this came from Werner Almesberger's umlsim
+- * Copyright (C) 2004, Stephen Hemminger <shemminger@osdl.org>
+- *
+- * Modified for DCCP from Stephen Hemminger's code
+- * Copyright (C) 2006, Ian McDonald <ian.mcdonald@jandi.co.nz>
+- *
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License as published by
+- * the Free Software Foundation; either version 2 of the License, or
+- * (at your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with this program; if not, write to the Free Software
+- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+- */
+-
+-#include <linux/kernel.h>
+-#include <linux/kprobes.h>
+-#include <linux/socket.h>
+-#include <linux/dccp.h>
+-#include <linux/proc_fs.h>
+-#include <linux/module.h>
+-#include <linux/kfifo.h>
+-#include <linux/vmalloc.h>
+-#include <linux/time64.h>
+-#include <linux/gfp.h>
+-#include <net/net_namespace.h>
+-
+-#include "dccp.h"
+-#include "ccid.h"
+-#include "ccids/ccid3.h"
+-
+-static int port;
+-
+-static int bufsize = 64 * 1024;
+-
+-static const char procname[] = "dccpprobe";
+-
+-static struct {
+-	struct kfifo	  fifo;
+-	spinlock_t	  lock;
+-	wait_queue_head_t wait;
+-	struct timespec64 tstart;
+-} dccpw;
+-
+-static void printl(const char *fmt, ...)
+-{
+-	va_list args;
+-	int len;
+-	struct timespec64 now;
+-	char tbuf[256];
+-
+-	va_start(args, fmt);
+-	getnstimeofday64(&now);
+-
+-	now = timespec64_sub(now, dccpw.tstart);
+-
+-	len = sprintf(tbuf, "%lu.%06lu ",
+-		      (unsigned long) now.tv_sec,
+-		      (unsigned long) now.tv_nsec / NSEC_PER_USEC);
+-	len += vscnprintf(tbuf+len, sizeof(tbuf)-len, fmt, args);
+-	va_end(args);
+-
+-	kfifo_in_locked(&dccpw.fifo, tbuf, len, &dccpw.lock);
+-	wake_up(&dccpw.wait);
+-}
+-
+-static int jdccp_sendmsg(struct sock *sk, struct msghdr *msg, size_t size)
+-{
+-	const struct inet_sock *inet = inet_sk(sk);
+-	struct ccid3_hc_tx_sock *hc = NULL;
+-
+-	if (ccid_get_current_tx_ccid(dccp_sk(sk)) = DCCPC_CCID3)
+-		hc = ccid3_hc_tx_sk(sk);
+-
+-	if (port = 0 || ntohs(inet->inet_dport) = port ||
+-	    ntohs(inet->inet_sport) = port) {
+-		if (hc)
+-			printl("%pI4:%u %pI4:%u %d %d %d %d %u %llu %llu %d\n",
+-			       &inet->inet_saddr, ntohs(inet->inet_sport),
+-			       &inet->inet_daddr, ntohs(inet->inet_dport), size,
+-			       hc->tx_s, hc->tx_rtt, hc->tx_p,
+-			       hc->tx_x_calc, hc->tx_x_recv >> 6,
+-			       hc->tx_x >> 6, hc->tx_t_ipi);
+-		else
+-			printl("%pI4:%u %pI4:%u %d\n",
+-			       &inet->inet_saddr, ntohs(inet->inet_sport),
+-			       &inet->inet_daddr, ntohs(inet->inet_dport),
+-			       size);
+-	}
+-
+-	jprobe_return();
+-	return 0;
+-}
+-
+-static struct jprobe dccp_send_probe = {
+-	.kp	= {
+-		.symbol_name = "dccp_sendmsg",
+-	},
+-	.entry	= jdccp_sendmsg,
+-};
+-
+-static int dccpprobe_open(struct inode *inode, struct file *file)
+-{
+-	kfifo_reset(&dccpw.fifo);
+-	getnstimeofday64(&dccpw.tstart);
+-	return 0;
+-}
+-
+-static ssize_t dccpprobe_read(struct file *file, char __user *buf,
+-			      size_t len, loff_t *ppos)
+-{
+-	int error = 0, cnt = 0;
+-	unsigned char *tbuf;
+-
+-	if (!buf)
+-		return -EINVAL;
+-
+-	if (len = 0)
+-		return 0;
+-
+-	tbuf = vmalloc(len);
+-	if (!tbuf)
+-		return -ENOMEM;
+-
+-	error = wait_event_interruptible(dccpw.wait,
+-					 kfifo_len(&dccpw.fifo) != 0);
+-	if (error)
+-		goto out_free;
+-
+-	cnt = kfifo_out_locked(&dccpw.fifo, tbuf, len, &dccpw.lock);
+-	error = copy_to_user(buf, tbuf, cnt) ? -EFAULT : 0;
+-
+-out_free:
+-	vfree(tbuf);
+-
+-	return error ? error : cnt;
+-}
+-
+-static const struct file_operations dccpprobe_fops = {
+-	.owner	 = THIS_MODULE,
+-	.open	 = dccpprobe_open,
+-	.read    = dccpprobe_read,
+-	.llseek  = noop_llseek,
+-};
+-
+-static __init int dccpprobe_init(void)
+-{
+-	int ret = -ENOMEM;
+-
+-	init_waitqueue_head(&dccpw.wait);
+-	spin_lock_init(&dccpw.lock);
+-	if (kfifo_alloc(&dccpw.fifo, bufsize, GFP_KERNEL))
+-		return ret;
+-	if (!proc_create(procname, S_IRUSR, init_net.proc_net, &dccpprobe_fops))
+-		goto err0;
+-
+-	ret = register_jprobe(&dccp_send_probe);
+-	if (ret) {
+-		ret = request_module("dccp");
+-		if (!ret)
+-			ret = register_jprobe(&dccp_send_probe);
+-	}
+-
+-	if (ret)
+-		goto err1;
+-
+-	pr_info("DCCP watch registered (port=%d)\n", port);
+-	return 0;
+-err1:
+-	remove_proc_entry(procname, init_net.proc_net);
+-err0:
+-	kfifo_free(&dccpw.fifo);
+-	return ret;
+-}
+-module_init(dccpprobe_init);
+-
+-static __exit void dccpprobe_exit(void)
+-{
+-	kfifo_free(&dccpw.fifo);
+-	remove_proc_entry(procname, init_net.proc_net);
+-	unregister_jprobe(&dccp_send_probe);
+-
+-}
+-module_exit(dccpprobe_exit);
+-
+-MODULE_PARM_DESC(port, "Port to match (0=all)");
+-module_param(port, int, 0);
+-
+-MODULE_PARM_DESC(bufsize, "Log buffer size (default 64k)");
+-module_param(bufsize, int, 0);
+-
+-MODULE_AUTHOR("Ian McDonald <ian.mcdonald@jandi.co.nz>");
+-MODULE_DESCRIPTION("DCCP snooper");
+-MODULE_LICENSE("GPL");
 
-
-
-
->  do_exit+0x9bb/0x1ae0 kernel/exit.c:869
->  do_group_exit+0x149/0x400 kernel/exit.c:972
->  SYSC_exit_group kernel/exit.c:983 [inline]
->  SyS_exit_group+0x1d/0x20 kernel/exit.c:981
->  entry_SYSCALL_64_fastpath+0x1f/0x96
-> RIP: 0033:0x440729
-> RSP: 002b:00007ffd090ef228 EFLAGS: 00000206 ORIG_RAX: 00000000000000e7
-> RAX: ffffffffffffffda RBX: 0030656c69662f2e RCX: 0000000000440729
-> RDX: 0000000000440729 RSI: 0000000000000000 RDI: 0000000000000001
-> RBP: 00000000006cb018 R08: 0000000000000000 R09: 00000000004002c8
-> R10: 0000000000000000 R11: 0000000000000206 R12: 0000000000401bf0
-> R13: 0000000000401c80 R14: 0000000000000000 R15: 0000000000000000
->
-> Allocated by task 3156:
->  save_stack+0x43/0xd0 mm/kasan/kasan.c:447
->  set_track mm/kasan/kasan.c:459 [inline]
->  kasan_kmalloc+0xad/0xe0 mm/kasan/kasan.c:551
->  kmem_cache_alloc_trace+0x136/0x750 mm/slab.c:3614
->  kmalloc include/linux/slab.h:516 [inline]
->  create_ipc_ns ipc/namespace.c:45 [inline]
->  copy_ipcs+0x1b3/0x520 ipc/namespace.c:96
->  create_new_namespaces+0x278/0x880 kernel/nsproxy.c:87
->  unshare_nsproxy_namespaces+0xae/0x1e0 kernel/nsproxy.c:206
->  SYSC_unshare kernel/fork.c:2421 [inline]
->  SyS_unshare+0x653/0xfa0 kernel/fork.c:2371
->  entry_SYSCALL_64_fastpath+0x1f/0x96
->
-> Freed by task 3156:
->  save_stack+0x43/0xd0 mm/kasan/kasan.c:447
->  set_track mm/kasan/kasan.c:459 [inline]
->  kasan_slab_free+0x71/0xc0 mm/kasan/kasan.c:524
->  __cache_free mm/slab.c:3492 [inline]
->  kfree+0xca/0x250 mm/slab.c:3807
->  free_ipc_ns ipc/namespace.c:139 [inline]
->  put_ipc_ns+0x112/0x150 ipc/namespace.c:164
->  free_nsproxy+0xc0/0x1f0 kernel/nsproxy.c:180
->  switch_task_namespaces+0x9d/0xc0 kernel/nsproxy.c:229
->  exit_task_namespaces+0x17/0x20 kernel/nsproxy.c:234
->  do_exit+0x9b6/0x1ae0 kernel/exit.c:868
->  do_group_exit+0x149/0x400 kernel/exit.c:972
->  SYSC_exit_group kernel/exit.c:983 [inline]
->  SyS_exit_group+0x1d/0x20 kernel/exit.c:981
->  entry_SYSCALL_64_fastpath+0x1f/0x96
->
-> The buggy address belongs to the object at ffff8801c51bb200
->  which belongs to the cache kmalloc-2048 of size 2048
-> The buggy address is located 0 bytes inside of
->  2048-byte region [ffff8801c51bb200, ffff8801c51bba00)
-> The buggy address belongs to the page:
-> page:000000007764ba6d count:1 mapcount:0 mapping:000000002c36623f index:0x0
-> compound_mapcount: 0
-> flags: 0x2fffc0000008100(slab|head)
-> raw: 02fffc0000008100 ffff8801c51ba100 0000000000000000 0000000100000003
-> raw: ffffea000715d320 ffff8801dac01950 ffff8801dac00c40 0000000000000000
-> page dumped because: kasan: bad access detected
->
-> Memory state around the buggy address:
->  ffff8801c51bb100: fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc
->  ffff8801c51bb180: fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc
->>
->> ffff8801c51bb200: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
->
->                    ^
->  ffff8801c51bb280: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
->  ffff8801c51bb300: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
-> =================================
->
