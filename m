@@ -1,321 +1,169 @@
 From: Masami Hiramatsu <mhiramat@kernel.org>
-Date: Mon, 18 Dec 2017 08:12:44 +0000
-Subject: [v2 PATCH -tip 4/6] net: sctp: Remove debug SCTP probe module
-Message-Id: <151358476481.28850.4471363418339219622.stgit@devbox>
+Date: Thu, 28 Dec 2017 06:10:30 +0000
+Subject: [PATCH net-next v6 1/6] net: tcp: Add trace events for TCP congestion window tracing
+Message-Id: <151444143057.11331.10776286785441811525.stgit@devbox>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <151358464509.28850.477561174715901317.stgit@devbox>
-In-Reply-To: <151358464509.28850.477561174715901317.stgit@devbox>
+References: <151444140014.11331.17287122201510506083.stgit@devbox>
+In-Reply-To: <151444140014.11331.17287122201510506083.stgit@devbox>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Ingo Molnar <mingo@kernel.org>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
-Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, "David S . Miller" <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
+To: Ingo Molnar <mingo@kernel.org>, "David S . Miller" <davem@davemloft.net>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
+Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
 
-Remove SCTP probe module since jprobe has been deprecated.
-That function is now replaced by sctp/sctp_probe and
-sctp/sctp_probe_path trace-events.
-You can use it via ftrace or perftools.
+This adds an event to trace TCP stat variables with
+slightly intrusive trace-event. This uses ftrace/perf
+event log buffer to trace those state, no needs to
+prepare own ring-buffer, nor custom user apps.
+
+User can use ftrace to trace this event as below;
+
+  # cd /sys/kernel/debug/tracing
+  # echo 1 > events/tcp/tcp_probe/enable
+  (run workloads)
+  # cat trace
 
 Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
 ---
- net/sctp/Kconfig  |   12 ---
- net/sctp/Makefile |    3 -
- net/sctp/probe.c  |  244 -----------------------------------------------------
- 3 files changed, 259 deletions(-)
- delete mode 100644 net/sctp/probe.c
+ Changes in v6:
+  - Avoid preprocessor directives in tracepoint macro args as
+    Mat did on net tree.
+---
+ include/trace/events/tcp.h |   97 ++++++++++++++++++++++++++++++++++++++++++++
+ net/ipv4/tcp_input.c       |    3 +
+ 2 files changed, 100 insertions(+)
 
-diff --git a/net/sctp/Kconfig b/net/sctp/Kconfig
-index d9c04dc1b3f3..c740b189d4ba 100644
---- a/net/sctp/Kconfig
-+++ b/net/sctp/Kconfig
-@@ -37,18 +37,6 @@ menuconfig IP_SCTP
+diff --git a/include/trace/events/tcp.h b/include/trace/events/tcp.h
+index 8e88a1671538..4dea6342f7d4 100644
+--- a/include/trace/events/tcp.h
++++ b/include/trace/events/tcp.h
+@@ -1,3 +1,4 @@
++/* SPDX-License-Identifier: GPL-2.0 */
+ #undef TRACE_SYSTEM
+ #define TRACE_SYSTEM tcp
  
- if IP_SCTP
+@@ -8,6 +9,7 @@
+ #include <linux/tcp.h>
+ #include <linux/tracepoint.h>
+ #include <net/ipv6.h>
++#include <net/tcp.h>
  
--config NET_SCTPPROBE
--	tristate "SCTP: Association probing"
--        depends on PROC_FS && KPROBES
--        ---help---
--        This module allows for capturing the changes to SCTP association
--        state in response to incoming packets. It is used for debugging
--        SCTP congestion control algorithms. If you don't understand
--        what was just said, you don't need it: say N.
--
--        To compile this code as a module, choose M here: the
--        module will be called sctp_probe.
--
- config SCTP_DBG_OBJCNT
- 	bool "SCTP: Debug object counts"
- 	depends on PROC_FS
-diff --git a/net/sctp/Makefile b/net/sctp/Makefile
-index 1ca84a288443..b52dfc6f8b4c 100644
---- a/net/sctp/Makefile
-+++ b/net/sctp/Makefile
-@@ -4,7 +4,6 @@
- #
+ /*
+  * tcp event with arguments sk and skb
+@@ -277,6 +279,101 @@ TRACE_EVENT(tcp_retransmit_synack,
+ 		  __entry->saddr_v6, __entry->daddr_v6)
+ );
  
- obj-$(CONFIG_IP_SCTP) += sctp.o
--obj-$(CONFIG_NET_SCTPPROBE) += sctp_probe.o
- obj-$(CONFIG_INET_SCTP_DIAG) += sctp_diag.o
++
++#define TP_STORE_ADDR_PORTS_V4(__entry, inet, sk)			\
++	do {								\
++		struct sockaddr_in *v4 = (void *)__entry->saddr;	\
++									\
++		v4->sin_family = AF_INET;				\
++		v4->sin_port = inet->inet_sport;			\
++		v4->sin_addr.s_addr = inet->inet_saddr;			\
++		v4 = (void *)__entry->daddr;				\
++		v4->sin_family = AF_INET;				\
++		v4->sin_port = inet->inet_dport;			\
++		v4->sin_addr.s_addr = inet->inet_daddr;			\
++	} while (0)
++
++#if IS_ENABLED(CONFIG_IPV6)
++
++#define TP_STORE_ADDR_PORTS(__entry, inet, sk)				\
++	do {								\
++		if (sk->sk_family = AF_INET6) {			\
++			struct sockaddr_in6 *v6 = (void *)__entry->saddr; \
++									\
++			v6->sin6_family = AF_INET6;			\
++			v6->sin6_port = inet->inet_sport;		\
++			v6->sin6_addr = inet6_sk(sk)->saddr;		\
++			v6 = (void *)__entry->daddr;			\
++			v6->sin6_family = AF_INET6;			\
++			v6->sin6_port = inet->inet_dport;		\
++			v6->sin6_addr = sk->sk_v6_daddr;		\
++		} else							\
++			TP_STORE_ADDR_PORTS_V4(__entry, inet, sk);	\
++	} while (0)
++
++#else
++
++#define TP_STORE_ADDR_PORTS(__entry, inet, sk)		\
++	TP_STORE_ADDR_PORTS_V4(__entry, inet, sk);
++
++#endif
++
++TRACE_EVENT(tcp_probe,
++
++	TP_PROTO(struct sock *sk, struct sk_buff *skb),
++
++	TP_ARGS(sk, skb),
++
++	TP_STRUCT__entry(
++		/* sockaddr_in6 is always bigger than sockaddr_in */
++		__array(__u8, saddr, sizeof(struct sockaddr_in6))
++		__array(__u8, daddr, sizeof(struct sockaddr_in6))
++		__field(__u16, sport)
++		__field(__u16, dport)
++		__field(__u32, mark)
++		__field(__u16, length)
++		__field(__u32, snd_nxt)
++		__field(__u32, snd_una)
++		__field(__u32, snd_cwnd)
++		__field(__u32, ssthresh)
++		__field(__u32, snd_wnd)
++		__field(__u32, srtt)
++		__field(__u32, rcv_wnd)
++	),
++
++	TP_fast_assign(
++		const struct tcp_sock *tp = tcp_sk(sk);
++		const struct inet_sock *inet = inet_sk(sk);
++
++		memset(__entry->saddr, 0, sizeof(struct sockaddr_in6));
++		memset(__entry->daddr, 0, sizeof(struct sockaddr_in6));
++
++		TP_STORE_ADDR_PORTS(__entry, inet, sk);
++
++		/* For filtering use */
++		__entry->sport = ntohs(inet->inet_sport);
++		__entry->dport = ntohs(inet->inet_dport);
++		__entry->mark = skb->mark;
++
++		__entry->length = skb->len;
++		__entry->snd_nxt = tp->snd_nxt;
++		__entry->snd_una = tp->snd_una;
++		__entry->snd_cwnd = tp->snd_cwnd;
++		__entry->snd_wnd = tp->snd_wnd;
++		__entry->rcv_wnd = tp->rcv_wnd;
++		__entry->ssthresh = tcp_current_ssthresh(sk);
++		__entry->srtt = tp->srtt_us >> 3;
++	),
++
++	TP_printk("src=%pISpc dest=%pISpc mark=%#x length=%d snd_nxt=%#x "
++		  "snd_una=%#x snd_cwnd=%u ssthresh=%u snd_wnd=%u srtt=%u "
++		  "rcv_wnd=%u",
++		  __entry->saddr, __entry->daddr, __entry->mark,
++		  __entry->length, __entry->snd_nxt, __entry->snd_una,
++		  __entry->snd_cwnd, __entry->ssthresh, __entry->snd_wnd,
++		  __entry->srtt, __entry->rcv_wnd)
++);
++
+ #endif /* _TRACE_TCP_H */
  
- sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
-@@ -16,8 +15,6 @@ sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
- 	  offload.o stream_sched.o stream_sched_prio.o \
- 	  stream_sched_rr.o
+ /* This part must be outside protection */
+diff --git a/net/ipv4/tcp_input.c b/net/ipv4/tcp_input.c
+index 4d55c4b338ee..ff71b18d9682 100644
+--- a/net/ipv4/tcp_input.c
++++ b/net/ipv4/tcp_input.c
+@@ -5299,6 +5299,9 @@ void tcp_rcv_established(struct sock *sk, struct sk_buff *skb,
+ 	unsigned int len = skb->len;
+ 	struct tcp_sock *tp = tcp_sk(sk);
  
--sctp_probe-y := probe.o
--
- sctp-$(CONFIG_SCTP_DBG_OBJCNT) += objcnt.o
- sctp-$(CONFIG_PROC_FS) += proc.o
- sctp-$(CONFIG_SYSCTL) += sysctl.o
-diff --git a/net/sctp/probe.c b/net/sctp/probe.c
-deleted file mode 100644
-index 1280f85a598d..000000000000
---- a/net/sctp/probe.c
-+++ /dev/null
-@@ -1,244 +0,0 @@
--/*
-- * sctp_probe - Observe the SCTP flow with kprobes.
-- *
-- * The idea for this came from Werner Almesberger's umlsim
-- * Copyright (C) 2004, Stephen Hemminger <shemminger@osdl.org>
-- *
-- * Modified for SCTP from Stephen Hemminger's code
-- * Copyright (C) 2010, Wei Yongjun <yjwei@cn.fujitsu.com>
-- *
-- * This program is free software; you can redistribute it and/or modify
-- * it under the terms of the GNU General Public License as published by
-- * the Free Software Foundation; either version 2 of the License, or
-- * (at your option) any later version.
-- *
-- * This program is distributed in the hope that it will be useful,
-- * but WITHOUT ANY WARRANTY; without even the implied warranty of
-- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-- * GNU General Public License for more details.
-- *
-- * You should have received a copy of the GNU General Public License
-- * along with this program; if not, write to the Free Software
-- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-- */
--
--#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
--
--#include <linux/kernel.h>
--#include <linux/kprobes.h>
--#include <linux/socket.h>
--#include <linux/sctp.h>
--#include <linux/proc_fs.h>
--#include <linux/vmalloc.h>
--#include <linux/module.h>
--#include <linux/kfifo.h>
--#include <linux/time.h>
--#include <net/net_namespace.h>
--
--#include <net/sctp/sctp.h>
--#include <net/sctp/sm.h>
--
--MODULE_SOFTDEP("pre: sctp");
--MODULE_AUTHOR("Wei Yongjun <yjwei@cn.fujitsu.com>");
--MODULE_DESCRIPTION("SCTP snooper");
--MODULE_LICENSE("GPL");
--
--static int port __read_mostly = 0;
--MODULE_PARM_DESC(port, "Port to match (0=all)");
--module_param(port, int, 0);
--
--static unsigned int fwmark __read_mostly = 0;
--MODULE_PARM_DESC(fwmark, "skb mark to match (0=no mark)");
--module_param(fwmark, uint, 0);
--
--static int bufsize __read_mostly = 64 * 1024;
--MODULE_PARM_DESC(bufsize, "Log buffer size (default 64k)");
--module_param(bufsize, int, 0);
--
--static int full __read_mostly = 1;
--MODULE_PARM_DESC(full, "Full log (1=every ack packet received,  0=only cwnd changes)");
--module_param(full, int, 0);
--
--static const char procname[] = "sctpprobe";
--
--static struct {
--	struct kfifo	  fifo;
--	spinlock_t	  lock;
--	wait_queue_head_t wait;
--	struct timespec64 tstart;
--} sctpw;
--
--static __printf(1, 2) void printl(const char *fmt, ...)
--{
--	va_list args;
--	int len;
--	char tbuf[256];
--
--	va_start(args, fmt);
--	len = vscnprintf(tbuf, sizeof(tbuf), fmt, args);
--	va_end(args);
--
--	kfifo_in_locked(&sctpw.fifo, tbuf, len, &sctpw.lock);
--	wake_up(&sctpw.wait);
--}
--
--static int sctpprobe_open(struct inode *inode, struct file *file)
--{
--	kfifo_reset(&sctpw.fifo);
--	ktime_get_ts64(&sctpw.tstart);
--
--	return 0;
--}
--
--static ssize_t sctpprobe_read(struct file *file, char __user *buf,
--			      size_t len, loff_t *ppos)
--{
--	int error = 0, cnt = 0;
--	unsigned char *tbuf;
--
--	if (!buf)
--		return -EINVAL;
--
--	if (len = 0)
--		return 0;
--
--	tbuf = vmalloc(len);
--	if (!tbuf)
--		return -ENOMEM;
--
--	error = wait_event_interruptible(sctpw.wait,
--					 kfifo_len(&sctpw.fifo) != 0);
--	if (error)
--		goto out_free;
--
--	cnt = kfifo_out_locked(&sctpw.fifo, tbuf, len, &sctpw.lock);
--	error = copy_to_user(buf, tbuf, cnt) ? -EFAULT : 0;
--
--out_free:
--	vfree(tbuf);
--
--	return error ? error : cnt;
--}
--
--static const struct file_operations sctpprobe_fops = {
--	.owner	= THIS_MODULE,
--	.open	= sctpprobe_open,
--	.read	= sctpprobe_read,
--	.llseek = noop_llseek,
--};
--
--static enum sctp_disposition jsctp_sf_eat_sack(
--					struct net *net,
--					const struct sctp_endpoint *ep,
--					const struct sctp_association *asoc,
--					const union sctp_subtype type,
--					void *arg,
--					struct sctp_cmd_seq *commands)
--{
--	struct sctp_chunk *chunk = arg;
--	struct sk_buff *skb = chunk->skb;
--	struct sctp_transport *sp;
--	static __u32 lcwnd = 0;
--	struct timespec64 now;
--
--	sp = asoc->peer.primary_path;
--
--	if (((port = 0 && fwmark = 0) ||
--	     asoc->peer.port = port ||
--	     ep->base.bind_addr.port = port ||
--	     (fwmark > 0 && skb->mark = fwmark)) &&
--	    (full || sp->cwnd != lcwnd)) {
--		lcwnd = sp->cwnd;
--
--		ktime_get_ts64(&now);
--		now = timespec64_sub(now, sctpw.tstart);
--
--		printl("%lu.%06lu ", (unsigned long) now.tv_sec,
--		       (unsigned long) now.tv_nsec / NSEC_PER_USEC);
--
--		printl("%p %5d %5d %5d %8d %5d ", asoc,
--		       ep->base.bind_addr.port, asoc->peer.port,
--		       asoc->pathmtu, asoc->peer.rwnd, asoc->unack_data);
--
--		list_for_each_entry(sp, &asoc->peer.transport_addr_list,
--					transports) {
--			if (sp = asoc->peer.primary_path)
--				printl("*");
--
--			printl("%pISc %2u %8u %8u %8u %8u %8u ",
--			       &sp->ipaddr, sp->state, sp->cwnd, sp->ssthresh,
--			       sp->flight_size, sp->partial_bytes_acked,
--			       sp->pathmtu);
--		}
--		printl("\n");
--	}
--
--	jprobe_return();
--	return 0;
--}
--
--static struct jprobe sctp_recv_probe = {
--	.kp	= {
--		.symbol_name = "sctp_sf_eat_sack_6_2",
--	},
--	.entry	= jsctp_sf_eat_sack,
--};
--
--static __init int sctp_setup_jprobe(void)
--{
--	int ret = register_jprobe(&sctp_recv_probe);
--
--	if (ret) {
--		if (request_module("sctp"))
--			goto out;
--		ret = register_jprobe(&sctp_recv_probe);
--	}
--
--out:
--	return ret;
--}
--
--static __init int sctpprobe_init(void)
--{
--	int ret = -ENOMEM;
--
--	/* Warning: if the function signature of sctp_sf_eat_sack_6_2,
--	 * has been changed, you also have to change the signature of
--	 * jsctp_sf_eat_sack, otherwise you end up right here!
--	 */
--	BUILD_BUG_ON(__same_type(sctp_sf_eat_sack_6_2,
--				 jsctp_sf_eat_sack) = 0);
--
--	init_waitqueue_head(&sctpw.wait);
--	spin_lock_init(&sctpw.lock);
--	if (kfifo_alloc(&sctpw.fifo, bufsize, GFP_KERNEL))
--		return ret;
--
--	if (!proc_create(procname, S_IRUSR, init_net.proc_net,
--			 &sctpprobe_fops))
--		goto free_kfifo;
--
--	ret = sctp_setup_jprobe();
--	if (ret)
--		goto remove_proc;
--
--	pr_info("probe registered (port=%d/fwmark=%u) bufsize=%u\n",
--		port, fwmark, bufsize);
--	return 0;
--
--remove_proc:
--	remove_proc_entry(procname, init_net.proc_net);
--free_kfifo:
--	kfifo_free(&sctpw.fifo);
--	return ret;
--}
--
--static __exit void sctpprobe_exit(void)
--{
--	kfifo_free(&sctpw.fifo);
--	remove_proc_entry(procname, init_net.proc_net);
--	unregister_jprobe(&sctp_recv_probe);
--}
--
--module_init(sctpprobe_init);
--module_exit(sctpprobe_exit);
++	/* TCP congestion window tracking */
++	trace_tcp_probe(sk, skb);
++
+ 	tcp_mstamp_refresh(tp);
+ 	if (unlikely(!sk->sk_rx_dst))
+ 		inet_csk(sk)->icsk_af_ops->sk_rx_dst_set(sk, skb);
 
