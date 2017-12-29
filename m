@@ -1,265 +1,373 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 05 Dec 2017 15:16:03 +0000
-Subject: [PATCH net-next 06/12] sctp: implement validate_data for sctp_stream_interleave
-Message-Id: <010d0fbcbdcb70224859dc281e622e0fdf6f46c5.1512486606.git.lucien.xin@gmail.com>
+From: Masami Hiramatsu <mhiramat@kernel.org>
+Date: Fri, 29 Dec 2017 02:46:21 +0000
+Subject: [PATCH net-next v7 2/6] net: tcp: Remove TCP probe module
+Message-Id: <151451558090.17912.7577124864784112591.stgit@devbox>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1512486606.git.lucien.xin@gmail.com>
- <b830faf5987dbed8b1e724f039348e960b8537e3.1512486606.git.lucien.xin@gmail.com>
- <590ee9b2ecf13733272f9bb1888c60de1f5f47a4.1512486606.git.lucien.xin@gmail.com>
- <4facf144fb29f5b161dd665e3326311001812a1c.1512486606.git.lucien.xin@gmail.com>
- <b8551388363da7b56f7e56132414c1399557a12d.1512486606.git.lucien.xin@gmail.com>
- <ddf7cc34d5fdbdcbe3e8b4e546799c55edff5ca2.1512486606.git.lucien.xin@gmail.com>
-In-Reply-To: <ddf7cc34d5fdbdcbe3e8b4e546799c55edff5ca2.1512486606.git.lucien.xin@gmail.com>
+References: <151451552014.17912.11834170408829155608.stgit@devbox>
+In-Reply-To: <151451552014.17912.11834170408829155608.stgit@devbox>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: Ingo Molnar <mingo@kernel.org>, "David S . Miller" <davem@davemloft.net>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
+Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
 
-validate_data is added as a member of sctp_stream_interleave, used
-to validate ssn/chunk type for data or mid (message id)/chunk type
-for idata, called in sctp_eat_data.
+Remove TCP probe module since jprobe has been deprecated.
+That function is now replaced by tcp/tcp_probe trace-event.
+You can use it via ftrace or perftools.
 
-If this check fails, an abort packet will be sent, as says in
-section 2.2.3 of RFC8260.
-
-It also adds the process for idata in rx path. As Marcelo pointed
-out, there's no need to add event table for idata, but just share
-chunk_event_table with data's. It would drop data chunk for idata
-and drop idata chunk for data by calling validate_data in
-sctp_eat_data.
-
-As last patch did, it also replaces sizeof(struct sctp_data_chunk)
-with sctp_datachk_len for rx path.
-
-After this patch, the idata can be accepted and delivered to ulp
-layer.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
 ---
- include/net/sctp/sm.h                |  6 ++++++
- include/net/sctp/stream_interleave.h |  1 +
- include/net/sctp/structs.h           |  6 +++++-
- net/sctp/sm_statefuns.c              | 21 ++++++++-----------
- net/sctp/sm_statetable.c             |  3 +++
- net/sctp/stream_interleave.c         | 39 ++++++++++++++++++++++++++++++++++++
- 6 files changed, 62 insertions(+), 14 deletions(-)
+ net/Kconfig          |   17 ---
+ net/ipv4/Makefile    |    1 
+ net/ipv4/tcp_probe.c |  301 --------------------------------------------------
+ 3 files changed, 319 deletions(-)
+ delete mode 100644 net/ipv4/tcp_probe.c
 
-diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index ca1db89..0993b49 100644
---- a/include/net/sctp/sm.h
-+++ b/include/net/sctp/sm.h
-@@ -359,6 +359,12 @@ static inline __u16 sctp_data_size(struct sctp_chunk *chunk)
- 	 typecheck(__u32, b) && \
- 	 ((__s32)((a) - (b)) <= 0))
+diff --git a/net/Kconfig b/net/Kconfig
+index 9dba2715919d..efe930db3c08 100644
+--- a/net/Kconfig
++++ b/net/Kconfig
+@@ -336,23 +336,6 @@ config NET_PKTGEN
+ 	  To compile this code as a module, choose M here: the
+ 	  module will be called pktgen.
  
-+/* Compare two MIDs */
-+#define MID_lt(a, b)	\
-+	(typecheck(__u32, a) && \
-+	 typecheck(__u32, b) && \
-+	 ((__s32)((a) - (b)) < 0))
-+
- /* Compare two SSNs */
- #define SSN_lt(a,b)		\
- 	(typecheck(__u16, a) && \
-diff --git a/include/net/sctp/stream_interleave.h b/include/net/sctp/stream_interleave.h
-index 99f399e..d8d1b51 100644
---- a/include/net/sctp/stream_interleave.h
-+++ b/include/net/sctp/stream_interleave.h
-@@ -38,6 +38,7 @@ struct sctp_stream_interleave {
- 					    const struct sctp_sndrcvinfo *sinfo,
- 					    int len, __u8 flags, gfp_t gfp);
- 	void	(*assign_number)(struct sctp_chunk *chunk);
-+	bool	(*validate_data)(struct sctp_chunk *chunk);
- };
- 
- void sctp_stream_interleave_init(struct sctp_stream *stream);
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index bd2249d..348b25e 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -1381,7 +1381,11 @@ struct sctp_stream_out {
- };
- 
- struct sctp_stream_in {
--	__u16	ssn;
-+	union {
-+		__u32 mid;
-+		__u16 ssn;
-+	};
-+	__u32 fsn;
- };
- 
- struct sctp_stream {
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 8f8ccde..c609c54 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -3013,7 +3013,7 @@ enum sctp_disposition sctp_sf_eat_data_6_2(struct net *net,
- 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
- 	}
- 
--	if (!sctp_chunk_length_valid(chunk, sizeof(struct sctp_data_chunk)))
-+	if (!sctp_chunk_length_valid(chunk, sctp_datachk_len(&asoc->stream)))
- 		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
- 						  commands);
- 
-@@ -3034,7 +3034,7 @@ enum sctp_disposition sctp_sf_eat_data_6_2(struct net *net,
- 	case SCTP_IERROR_PROTO_VIOLATION:
- 		return sctp_sf_abort_violation(net, ep, asoc, chunk, commands,
- 					       (u8 *)chunk->subh.data_hdr,
--					       sizeof(struct sctp_datahdr));
-+					       sctp_datahdr_len(&asoc->stream));
- 	default:
- 		BUG();
- 	}
-@@ -3133,7 +3133,7 @@ enum sctp_disposition sctp_sf_eat_data_fast_4_4(
- 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
- 	}
- 
--	if (!sctp_chunk_length_valid(chunk, sizeof(struct sctp_data_chunk)))
-+	if (!sctp_chunk_length_valid(chunk, sctp_datachk_len(&asoc->stream)))
- 		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
- 						  commands);
- 
-@@ -3150,7 +3150,7 @@ enum sctp_disposition sctp_sf_eat_data_fast_4_4(
- 	case SCTP_IERROR_PROTO_VIOLATION:
- 		return sctp_sf_abort_violation(net, ep, asoc, chunk, commands,
- 					       (u8 *)chunk->subh.data_hdr,
--					       sizeof(struct sctp_datahdr));
-+					       sctp_datahdr_len(&asoc->stream));
- 	default:
- 		BUG();
- 	}
-@@ -6244,14 +6244,12 @@ static int sctp_eat_data(const struct sctp_association *asoc,
- 	struct sctp_chunk *err;
- 	enum sctp_verb deliver;
- 	size_t datalen;
--	u8 ordered = 0;
--	u16 ssn, sid;
- 	__u32 tsn;
- 	int tmp;
- 
- 	data_hdr = (struct sctp_datahdr *)chunk->skb->data;
- 	chunk->subh.data_hdr = data_hdr;
--	skb_pull(chunk->skb, sizeof(*data_hdr));
-+	skb_pull(chunk->skb, sctp_datahdr_len(&asoc->stream));
- 
- 	tsn = ntohl(data_hdr->tsn);
- 	pr_debug("%s: TSN 0x%x\n", __func__, tsn);
-@@ -6299,7 +6297,7 @@ static int sctp_eat_data(const struct sctp_association *asoc,
- 	 * Actually, allow a little bit of overflow (up to a MTU).
- 	 */
- 	datalen = ntohs(chunk->chunk_hdr->length);
--	datalen -= sizeof(struct sctp_data_chunk);
-+	datalen -= sctp_datachk_len(&asoc->stream);
- 
- 	deliver = SCTP_CMD_CHUNK_ULP;
- 
-@@ -6394,7 +6392,6 @@ static int sctp_eat_data(const struct sctp_association *asoc,
- 		SCTP_INC_STATS(net, SCTP_MIB_INORDERCHUNKS);
- 		if (chunk->asoc)
- 			chunk->asoc->stats.iodchunks++;
--		ordered = 1;
- 	}
- 
- 	/* RFC 2960 6.5 Stream Identifier and Stream Sequence Number
-@@ -6405,8 +6402,7 @@ static int sctp_eat_data(const struct sctp_association *asoc,
- 	 * with cause set to "Invalid Stream Identifier" (See Section 3.3.10)
- 	 * and discard the DATA chunk.
- 	 */
--	sid = ntohs(data_hdr->stream);
--	if (sid >= asoc->stream.incnt) {
-+	if (ntohs(data_hdr->stream) >= asoc->stream.incnt) {
- 		/* Mark tsn as received even though we drop it */
- 		sctp_add_cmd_sf(commands, SCTP_CMD_REPORT_TSN, SCTP_U32(tsn));
- 
-@@ -6427,8 +6423,7 @@ static int sctp_eat_data(const struct sctp_association *asoc,
- 	 * SSN is smaller then the next expected one.  If it is, it wrapped
- 	 * and is invalid.
- 	 */
--	ssn = ntohs(data_hdr->ssn);
--	if (ordered && SSN_lt(ssn, sctp_ssn_peek(&asoc->stream, in, sid)))
-+	if (!asoc->stream.si->validate_data(chunk))
- 		return SCTP_IERROR_PROTO_VIOLATION;
- 
- 	/* Send the data up to the user.  Note:  Schedule  the
-diff --git a/net/sctp/sm_statetable.c b/net/sctp/sm_statetable.c
-index 79b6bee..8c9bb41 100644
---- a/net/sctp/sm_statetable.c
-+++ b/net/sctp/sm_statetable.c
-@@ -985,6 +985,9 @@ static const struct sctp_sm_table_entry *sctp_chunk_event_lookup(
- 	if (state > SCTP_STATE_MAX)
- 		return &bug;
- 
-+	if (net->sctp.intl_enable && cid = SCTP_CID_I_DATA)
-+		cid = SCTP_CID_DATA;
-+
- 	if (cid <= SCTP_CID_BASE_MAX)
- 		return &chunk_event_table[cid][state];
- 
-diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
-index 3ac47e7..3d8733b 100644
---- a/net/sctp/stream_interleave.c
-+++ b/net/sctp/stream_interleave.c
-@@ -92,11 +92,49 @@ static void sctp_chunk_assign_mid(struct sctp_chunk *chunk)
- 	}
- }
- 
-+static bool sctp_validate_data(struct sctp_chunk *chunk)
-+{
-+	const struct sctp_stream *stream;
-+	__u16 sid, ssn;
-+
-+	if (chunk->chunk_hdr->type != SCTP_CID_DATA)
-+		return false;
-+
-+	if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
-+		return true;
-+
-+	stream = &chunk->asoc->stream;
-+	sid = sctp_chunk_stream_no(chunk);
-+	ssn = ntohs(chunk->subh.data_hdr->ssn);
-+
-+	return !SSN_lt(ssn, sctp_ssn_peek(stream, in, sid));
-+}
-+
-+static bool sctp_validate_idata(struct sctp_chunk *chunk)
-+{
-+	struct sctp_stream *stream;
-+	__u32 mid;
-+	__u16 sid;
-+
-+	if (chunk->chunk_hdr->type != SCTP_CID_I_DATA)
-+		return false;
-+
-+	if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
-+		return true;
-+
-+	stream = &chunk->asoc->stream;
-+	sid = sctp_chunk_stream_no(chunk);
-+	mid = ntohl(chunk->subh.idata_hdr->mid);
-+
-+	return !MID_lt(mid, sctp_mid_peek(stream, in, sid));
-+}
-+
- static struct sctp_stream_interleave sctp_stream_interleave_0 = {
- 	.data_chunk_len		= sizeof(struct sctp_data_chunk),
- 	/* DATA process functions */
- 	.make_datafrag		= sctp_make_datafrag_empty,
- 	.assign_number		= sctp_chunk_assign_ssn,
-+	.validate_data		= sctp_validate_data,
- };
- 
- static struct sctp_stream_interleave sctp_stream_interleave_1 = {
-@@ -104,6 +142,7 @@ static struct sctp_stream_interleave sctp_stream_interleave_1 = {
- 	/* I-DATA process functions */
- 	.make_datafrag		= sctp_make_idatafrag_empty,
- 	.assign_number		= sctp_chunk_assign_mid,
-+	.validate_data		= sctp_validate_idata,
- };
- 
- void sctp_stream_interleave_init(struct sctp_stream *stream)
--- 
-2.1.0
+-config NET_TCPPROBE
+-	tristate "TCP connection probing"
+-	depends on INET && PROC_FS && KPROBES
+-	---help---
+-	This module allows for capturing the changes to TCP connection
+-	state in response to incoming packets. It is used for debugging
+-	TCP congestion avoidance modules. If you don't understand
+-	what was just said, you don't need it: say N.
+-
+-	Documentation on how to use TCP connection probing can be found
+-	at:
+-	
+-	  http://www.linuxfoundation.org/collaborate/workgroups/networking/tcpprobe
+-
+-	To compile this code as a module, choose M here: the
+-	module will be called tcp_probe.
+-
+ config NET_DROP_MONITOR
+ 	tristate "Network packet drop alerting service"
+ 	depends on INET && TRACEPOINTS
+diff --git a/net/ipv4/Makefile b/net/ipv4/Makefile
+index c6c8ad1d4b6d..47a0a6649a9d 100644
+--- a/net/ipv4/Makefile
++++ b/net/ipv4/Makefile
+@@ -43,7 +43,6 @@ obj-$(CONFIG_INET_DIAG) += inet_diag.o
+ obj-$(CONFIG_INET_TCP_DIAG) += tcp_diag.o
+ obj-$(CONFIG_INET_UDP_DIAG) += udp_diag.o
+ obj-$(CONFIG_INET_RAW_DIAG) += raw_diag.o
+-obj-$(CONFIG_NET_TCPPROBE) += tcp_probe.o
+ obj-$(CONFIG_TCP_CONG_BBR) += tcp_bbr.o
+ obj-$(CONFIG_TCP_CONG_BIC) += tcp_bic.o
+ obj-$(CONFIG_TCP_CONG_CDG) += tcp_cdg.o
+diff --git a/net/ipv4/tcp_probe.c b/net/ipv4/tcp_probe.c
+deleted file mode 100644
+index 697f4c67b2e3..000000000000
+--- a/net/ipv4/tcp_probe.c
++++ /dev/null
+@@ -1,301 +0,0 @@
+-/*
+- * tcpprobe - Observe the TCP flow with kprobes.
+- *
+- * The idea for this came from Werner Almesberger's umlsim
+- * Copyright (C) 2004, Stephen Hemminger <shemminger@osdl.org>
+- *
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License as published by
+- * the Free Software Foundation; either version 2 of the License.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with this program; if not, write to the Free Software
+- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+- */
+-
+-#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+-
+-#include <linux/kernel.h>
+-#include <linux/kprobes.h>
+-#include <linux/socket.h>
+-#include <linux/tcp.h>
+-#include <linux/slab.h>
+-#include <linux/proc_fs.h>
+-#include <linux/module.h>
+-#include <linux/ktime.h>
+-#include <linux/time.h>
+-#include <net/net_namespace.h>
+-
+-#include <net/tcp.h>
+-
+-MODULE_AUTHOR("Stephen Hemminger <shemminger@linux-foundation.org>");
+-MODULE_DESCRIPTION("TCP cwnd snooper");
+-MODULE_LICENSE("GPL");
+-MODULE_VERSION("1.1");
+-
+-static int port __read_mostly;
+-MODULE_PARM_DESC(port, "Port to match (0=all)");
+-module_param(port, int, 0);
+-
+-static unsigned int bufsize __read_mostly = 4096;
+-MODULE_PARM_DESC(bufsize, "Log buffer size in packets (4096)");
+-module_param(bufsize, uint, 0);
+-
+-static unsigned int fwmark __read_mostly;
+-MODULE_PARM_DESC(fwmark, "skb mark to match (0=no mark)");
+-module_param(fwmark, uint, 0);
+-
+-static int full __read_mostly;
+-MODULE_PARM_DESC(full, "Full log (1=every ack packet received,  0=only cwnd changes)");
+-module_param(full, int, 0);
+-
+-static const char procname[] = "tcpprobe";
+-
+-struct tcp_log {
+-	ktime_t tstamp;
+-	union {
+-		struct sockaddr		raw;
+-		struct sockaddr_in	v4;
+-		struct sockaddr_in6	v6;
+-	}	src, dst;
+-	u16	length;
+-	u32	snd_nxt;
+-	u32	snd_una;
+-	u32	snd_wnd;
+-	u32	rcv_wnd;
+-	u32	snd_cwnd;
+-	u32	ssthresh;
+-	u32	srtt;
+-};
+-
+-static struct {
+-	spinlock_t	lock;
+-	wait_queue_head_t wait;
+-	ktime_t		start;
+-	u32		lastcwnd;
+-
+-	unsigned long	head, tail;
+-	struct tcp_log	*log;
+-} tcp_probe;
+-
+-static inline int tcp_probe_used(void)
+-{
+-	return (tcp_probe.head - tcp_probe.tail) & (bufsize - 1);
+-}
+-
+-static inline int tcp_probe_avail(void)
+-{
+-	return bufsize - tcp_probe_used() - 1;
+-}
+-
+-#define tcp_probe_copy_fl_to_si4(inet, si4, mem)		\
+-	do {							\
+-		si4.sin_family = AF_INET;			\
+-		si4.sin_port = inet->inet_##mem##port;		\
+-		si4.sin_addr.s_addr = inet->inet_##mem##addr;	\
+-	} while (0)						\
+-
+-/*
+- * Hook inserted to be called before each receive packet.
+- * Note: arguments must match tcp_rcv_established()!
+- */
+-static void jtcp_rcv_established(struct sock *sk, struct sk_buff *skb,
+-				 const struct tcphdr *th)
+-{
+-	unsigned int len = skb->len;
+-	const struct tcp_sock *tp = tcp_sk(sk);
+-	const struct inet_sock *inet = inet_sk(sk);
+-
+-	/* Only update if port or skb mark matches */
+-	if (((port = 0 && fwmark = 0) ||
+-	     ntohs(inet->inet_dport) = port ||
+-	     ntohs(inet->inet_sport) = port ||
+-	     (fwmark > 0 && skb->mark = fwmark)) &&
+-	    (full || tp->snd_cwnd != tcp_probe.lastcwnd)) {
+-
+-		spin_lock(&tcp_probe.lock);
+-		/* If log fills, just silently drop */
+-		if (tcp_probe_avail() > 1) {
+-			struct tcp_log *p = tcp_probe.log + tcp_probe.head;
+-
+-			p->tstamp = ktime_get();
+-			switch (sk->sk_family) {
+-			case AF_INET:
+-				tcp_probe_copy_fl_to_si4(inet, p->src.v4, s);
+-				tcp_probe_copy_fl_to_si4(inet, p->dst.v4, d);
+-				break;
+-			case AF_INET6:
+-				memset(&p->src.v6, 0, sizeof(p->src.v6));
+-				memset(&p->dst.v6, 0, sizeof(p->dst.v6));
+-#if IS_ENABLED(CONFIG_IPV6)
+-				p->src.v6.sin6_family = AF_INET6;
+-				p->src.v6.sin6_port = inet->inet_sport;
+-				p->src.v6.sin6_addr = inet6_sk(sk)->saddr;
+-
+-				p->dst.v6.sin6_family = AF_INET6;
+-				p->dst.v6.sin6_port = inet->inet_dport;
+-				p->dst.v6.sin6_addr = sk->sk_v6_daddr;
+-#endif
+-				break;
+-			default:
+-				BUG();
+-			}
+-
+-			p->length = len;
+-			p->snd_nxt = tp->snd_nxt;
+-			p->snd_una = tp->snd_una;
+-			p->snd_cwnd = tp->snd_cwnd;
+-			p->snd_wnd = tp->snd_wnd;
+-			p->rcv_wnd = tp->rcv_wnd;
+-			p->ssthresh = tcp_current_ssthresh(sk);
+-			p->srtt = tp->srtt_us >> 3;
+-
+-			tcp_probe.head = (tcp_probe.head + 1) & (bufsize - 1);
+-		}
+-		tcp_probe.lastcwnd = tp->snd_cwnd;
+-		spin_unlock(&tcp_probe.lock);
+-
+-		wake_up(&tcp_probe.wait);
+-	}
+-
+-	jprobe_return();
+-}
+-
+-static struct jprobe tcp_jprobe = {
+-	.kp = {
+-		.symbol_name	= "tcp_rcv_established",
+-	},
+-	.entry	= jtcp_rcv_established,
+-};
+-
+-static int tcpprobe_open(struct inode *inode, struct file *file)
+-{
+-	/* Reset (empty) log */
+-	spin_lock_bh(&tcp_probe.lock);
+-	tcp_probe.head = tcp_probe.tail = 0;
+-	tcp_probe.start = ktime_get();
+-	spin_unlock_bh(&tcp_probe.lock);
+-
+-	return 0;
+-}
+-
+-static int tcpprobe_sprint(char *tbuf, int n)
+-{
+-	const struct tcp_log *p
+-		= tcp_probe.log + tcp_probe.tail;
+-	struct timespec64 ts
+-		= ktime_to_timespec64(ktime_sub(p->tstamp, tcp_probe.start));
+-
+-	return scnprintf(tbuf, n,
+-			"%lu.%09lu %pISpc %pISpc %d %#x %#x %u %u %u %u %u\n",
+-			(unsigned long)ts.tv_sec,
+-			(unsigned long)ts.tv_nsec,
+-			&p->src, &p->dst, p->length, p->snd_nxt, p->snd_una,
+-			p->snd_cwnd, p->ssthresh, p->snd_wnd, p->srtt, p->rcv_wnd);
+-}
+-
+-static ssize_t tcpprobe_read(struct file *file, char __user *buf,
+-			     size_t len, loff_t *ppos)
+-{
+-	int error = 0;
+-	size_t cnt = 0;
+-
+-	if (!buf)
+-		return -EINVAL;
+-
+-	while (cnt < len) {
+-		char tbuf[256];
+-		int width;
+-
+-		/* Wait for data in buffer */
+-		error = wait_event_interruptible(tcp_probe.wait,
+-						 tcp_probe_used() > 0);
+-		if (error)
+-			break;
+-
+-		spin_lock_bh(&tcp_probe.lock);
+-		if (tcp_probe.head = tcp_probe.tail) {
+-			/* multiple readers race? */
+-			spin_unlock_bh(&tcp_probe.lock);
+-			continue;
+-		}
+-
+-		width = tcpprobe_sprint(tbuf, sizeof(tbuf));
+-
+-		if (cnt + width < len)
+-			tcp_probe.tail = (tcp_probe.tail + 1) & (bufsize - 1);
+-
+-		spin_unlock_bh(&tcp_probe.lock);
+-
+-		/* if record greater than space available
+-		   return partial buffer (so far) */
+-		if (cnt + width >= len)
+-			break;
+-
+-		if (copy_to_user(buf + cnt, tbuf, width))
+-			return -EFAULT;
+-		cnt += width;
+-	}
+-
+-	return cnt = 0 ? error : cnt;
+-}
+-
+-static const struct file_operations tcpprobe_fops = {
+-	.owner	 = THIS_MODULE,
+-	.open	 = tcpprobe_open,
+-	.read    = tcpprobe_read,
+-	.llseek  = noop_llseek,
+-};
+-
+-static __init int tcpprobe_init(void)
+-{
+-	int ret = -ENOMEM;
+-
+-	/* Warning: if the function signature of tcp_rcv_established,
+-	 * has been changed, you also have to change the signature of
+-	 * jtcp_rcv_established, otherwise you end up right here!
+-	 */
+-	BUILD_BUG_ON(__same_type(tcp_rcv_established,
+-				 jtcp_rcv_established) = 0);
+-
+-	init_waitqueue_head(&tcp_probe.wait);
+-	spin_lock_init(&tcp_probe.lock);
+-
+-	if (bufsize = 0)
+-		return -EINVAL;
+-
+-	bufsize = roundup_pow_of_two(bufsize);
+-	tcp_probe.log = kcalloc(bufsize, sizeof(struct tcp_log), GFP_KERNEL);
+-	if (!tcp_probe.log)
+-		goto err0;
+-
+-	if (!proc_create(procname, S_IRUSR, init_net.proc_net, &tcpprobe_fops))
+-		goto err0;
+-
+-	ret = register_jprobe(&tcp_jprobe);
+-	if (ret)
+-		goto err1;
+-
+-	pr_info("probe registered (port=%d/fwmark=%u) bufsize=%u\n",
+-		port, fwmark, bufsize);
+-	return 0;
+- err1:
+-	remove_proc_entry(procname, init_net.proc_net);
+- err0:
+-	kfree(tcp_probe.log);
+-	return ret;
+-}
+-module_init(tcpprobe_init);
+-
+-static __exit void tcpprobe_exit(void)
+-{
+-	remove_proc_entry(procname, init_net.proc_net);
+-	unregister_jprobe(&tcp_jprobe);
+-	kfree(tcp_probe.log);
+-}
+-module_exit(tcpprobe_exit);
 
