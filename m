@@ -1,301 +1,178 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 08 Dec 2017 13:04:02 +0000
-Subject: [PATCHv2 net-next 05/12] sctp: implement assign_number for sctp_stream_interleave
-Message-Id: <be593df99566267deff68ff477d2355dfffada80.1512738021.git.lucien.xin@gmail.com>
+From: Masami Hiramatsu <mhiramat@kernel.org>
+Date: Fri, 29 Dec 2017 02:46:51 +0000
+Subject: [PATCH net-next v7 3/6] net: sctp: Add SCTP ACK tracking trace event
+Message-Id: <151451561086.17912.3469350051981038078.stgit@devbox>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1512738021.git.lucien.xin@gmail.com>
- <2fef1243f8181062aeb17f7052e5b022ec274a8e.1512738021.git.lucien.xin@gmail.com>
- <7347f16f5b620ed98fdb5f7ac54db4a70e1fd27e.1512738021.git.lucien.xin@gmail.com>
- <9a2bf9495313a79f0bbffb8edaaef25269804feb.1512738021.git.lucien.xin@gmail.com>
- <ed729ca6023dea0812e4caa4d5da3259df375127.1512738021.git.lucien.xin@gmail.com>
-In-Reply-To: <ed729ca6023dea0812e4caa4d5da3259df375127.1512738021.git.lucien.xin@gmail.com>
+References: <151451552014.17912.11834170408829155608.stgit@devbox>
+In-Reply-To: <151451552014.17912.11834170408829155608.stgit@devbox>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: Ingo Molnar <mingo@kernel.org>, "David S . Miller" <davem@davemloft.net>, Ian McDonald <ian.mcdonald@jandi.co.nz>, Vlad Yasevich <vyasevich@gmail.com>, Stephen Hemminger <stephen@networkplumber.org>, Steven Rostedt <rostedt@goodmis.org>
+Cc: Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, LKML <linux-kernel@vger.kernel.org>, "H . Peter Anvin" <hpa@zytor.com>, Gerrit Renker <gerrit@erg.abdn.ac.uk>, Neil Horman <nhorman@tuxdriver.com>, dccp@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Stephen Rothwell <sfr@canb.auug.org.au>, mhiramat@kernel.org
 
-assign_number is added as a member of sctp_stream_interleave, used
-to assign ssn for data or mid (message id) for idata, called in
-sctp_packet_append_data. sctp_chunk_assign_ssn is left as it is,
-and sctp_chunk_assign_mid is added for sctp_stream_interleave_1.
+Add SCTP ACK tracking trace event to trace the changes of SCTP
+association state in response to incoming packets.
+It is used for debugging SCTP congestion control algorithms,
+and will replace sctp_probe module.
 
-This procedure is described in section 2.2.2 of RFC8260.
+Note that this event a bit tricky. Since this consists of 2
+events (sctp_probe and sctp_probe_path) so you have to enable
+both events as below.
 
-All sizeof(struct sctp_data_chunk) in tx path is replaced with
-sctp_datachk_len, to make it right for idata as well. And also
-adjust sctp_chunk_is_data for SCTP_CID_I_DATA.
+  # cd /sys/kernel/debug/tracing
+  # echo 1 > events/sctp/sctp_probe/enable
+  # echo 1 > events/sctp/sctp_probe_path/enable
 
-After this patch, idata can be built and sent in tx path.
+Or, you can enable all the events under sctp.
 
-Note that if sp strm_interleave is set, it has to wait_connect in
-sctp_sendmsg, as asoc intl_enable need to be known after 4 shake-
-hands, to decide if it should use data or idata later. data and
-idata can't be mixed to send in one asoc.
+  # echo 1 > events/sctp/enable
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Since sctp_probe_path event is always invoked from sctp_probe
+event, you can not see any output if you only enable
+sctp_probe_path.
+
+Signed-off-by: Masami Hiramatsu <mhiramat@kernel.org>
 ---
- include/net/sctp/constants.h         |  9 +++++----
- include/net/sctp/sctp.h              |  4 ++--
- include/net/sctp/sm.h                |  2 +-
- include/net/sctp/stream_interleave.h |  1 +
- include/net/sctp/structs.h           | 18 +++++++++++++++++-
- net/sctp/output.c                    |  5 +++--
- net/sctp/socket.c                    | 17 +++++++++++++++--
- net/sctp/stream_interleave.c         | 37 ++++++++++++++++++++++++++++++++++++
- net/sctp/ulpevent.c                  |  4 ++--
- 9 files changed, 83 insertions(+), 14 deletions(-)
+  Changes in v3:
+   - Add checking whether sctp_probe_path event is enabled
+     before iterating sctp paths to record. Thanks Steven.
+  Changes in v4:
+   - Move a temporal variable definition in the block.
+   - Fix to cast pointer to unsigned long instead of __u64
+     for 32bit environment.
+---
+ include/trace/events/sctp.h |   99 +++++++++++++++++++++++++++++++++++++++++++
+ net/sctp/sm_statefuns.c     |    5 ++
+ 2 files changed, 104 insertions(+)
+ create mode 100644 include/trace/events/sctp.h
 
-diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
-index deaafa9..20ff237 100644
---- a/include/net/sctp/constants.h
-+++ b/include/net/sctp/constants.h
-@@ -145,12 +145,13 @@ SCTP_SUBTYPE_CONSTRUCTOR(OTHER,		enum sctp_event_other,	other)
- SCTP_SUBTYPE_CONSTRUCTOR(PRIMITIVE,	enum sctp_event_primitive, primitive)
- 
- 
--#define sctp_chunk_is_data(a) (a->chunk_hdr->type = SCTP_CID_DATA)
-+#define sctp_chunk_is_data(a) (a->chunk_hdr->type = SCTP_CID_DATA || \
-+			       a->chunk_hdr->type = SCTP_CID_I_DATA)
- 
- /* Calculate the actual data size in a data chunk */
--#define SCTP_DATA_SNDSIZE(c) ((int)((unsigned long)(c->chunk_end)\
--		       		- (unsigned long)(c->chunk_hdr)\
--				- sizeof(struct sctp_data_chunk)))
-+#define SCTP_DATA_SNDSIZE(c) ((int)((unsigned long)(c->chunk_end) - \
-+				    (unsigned long)(c->chunk_hdr) - \
-+				    sctp_datachk_len(&c->asoc->stream)))
- 
- /* Internal error codes */
- enum sctp_ierror {
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index 906a9c0..63ac57e 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -444,13 +444,13 @@ static inline int sctp_frag_point(const struct sctp_association *asoc, int pmtu)
- 	int frag = pmtu;
- 
- 	frag -= sp->pf->af->net_header_len;
--	frag -= sizeof(struct sctphdr) + sizeof(struct sctp_data_chunk);
-+	frag -= sizeof(struct sctphdr) + sctp_datachk_len(&asoc->stream);
- 
- 	if (asoc->user_frag)
- 		frag = min_t(int, frag, asoc->user_frag);
- 
- 	frag = SCTP_TRUNC4(min_t(int, frag, SCTP_MAX_CHUNK_LEN -
--					    sizeof(struct sctp_data_chunk)));
-+					    sctp_datachk_len(&asoc->stream)));
- 
- 	return frag;
- }
-diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index f950186..ca1db89 100644
---- a/include/net/sctp/sm.h
-+++ b/include/net/sctp/sm.h
-@@ -343,7 +343,7 @@ static inline __u16 sctp_data_size(struct sctp_chunk *chunk)
- 	__u16 size;
- 
- 	size = ntohs(chunk->chunk_hdr->length);
--	size -= sizeof(struct sctp_data_chunk);
-+	size -= sctp_datahdr_len(&chunk->asoc->stream);
- 
- 	return size;
- }
-diff --git a/include/net/sctp/stream_interleave.h b/include/net/sctp/stream_interleave.h
-index 7b9fa8d..99f399e 100644
---- a/include/net/sctp/stream_interleave.h
-+++ b/include/net/sctp/stream_interleave.h
-@@ -37,6 +37,7 @@ struct sctp_stream_interleave {
- 	struct sctp_chunk *(*make_datafrag)(const struct sctp_association *asoc,
- 					    const struct sctp_sndrcvinfo *sinfo,
- 					    int len, __u8 flags, gfp_t gfp);
-+	void	(*assign_number)(struct sctp_chunk *chunk);
- };
- 
- void sctp_stream_interleave_init(struct sctp_stream *stream);
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 96cc898..fd93973 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -399,6 +399,18 @@ void sctp_stream_update(struct sctp_stream *stream, struct sctp_stream *new);
- #define sctp_ssn_skip(stream, type, sid, ssn) \
- 	((stream)->type[sid].ssn = ssn + 1)
- 
-+/* What is the current MID number for this stream? */
-+#define sctp_mid_peek(stream, type, sid) \
-+	((stream)->type[sid].mid)
+diff --git a/include/trace/events/sctp.h b/include/trace/events/sctp.h
+new file mode 100644
+index 000000000000..7475c7be165a
+--- /dev/null
++++ b/include/trace/events/sctp.h
+@@ -0,0 +1,99 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#undef TRACE_SYSTEM
++#define TRACE_SYSTEM sctp
 +
-+/* Return the next MID number for this stream.  */
-+#define sctp_mid_next(stream, type, sid) \
-+	((stream)->type[sid].mid++)
++#if !defined(_TRACE_SCTP_H) || defined(TRACE_HEADER_MULTI_READ)
++#define _TRACE_SCTP_H
 +
-+/* Skip over this mid and all below. */
-+#define sctp_mid_skip(stream, type, sid, mid) \
-+	((stream)->type[sid].mid = mid + 1)
++#include <net/sctp/structs.h>
++#include <linux/tracepoint.h>
 +
- /*
-  * Pointers to address related SCTP functions.
-  * (i.e. things that depend on the address family.)
-@@ -623,6 +635,7 @@ struct sctp_chunk {
- 	__u16	rtt_in_progress:1,	/* This chunk used for RTT calc? */
- 		has_tsn:1,		/* Does this chunk have a TSN yet? */
- 		has_ssn:1,		/* Does this chunk have a SSN yet? */
-+#define has_mid has_ssn
- 		singleton:1,		/* Only chunk in the packet? */
- 		end_of_packet:1,	/* Last chunk in the packet? */
- 		ecn_ce_done:1,		/* Have we processed the ECN CE bit? */
-@@ -1360,7 +1373,10 @@ struct sctp_stream_out_ext {
- };
- 
- struct sctp_stream_out {
--	__u16	ssn;
-+	union {
-+		__u32 mid;
-+		__u16 ssn;
-+	};
- 	__u8	state;
- 	struct sctp_stream_out_ext *ext;
- };
-diff --git a/net/sctp/output.c b/net/sctp/output.c
-index 4a865cd..01a26ee0 100644
---- a/net/sctp/output.c
-+++ b/net/sctp/output.c
-@@ -313,6 +313,7 @@ static enum sctp_xmit __sctp_packet_append_chunk(struct sctp_packet *packet,
- 	/* We believe that this chunk is OK to add to the packet */
- 	switch (chunk->chunk_hdr->type) {
- 	case SCTP_CID_DATA:
-+	case SCTP_CID_I_DATA:
- 		/* Account for the data being in the packet */
- 		sctp_packet_append_data(packet, chunk);
- 		/* Disallow SACK bundling after DATA. */
-@@ -724,7 +725,7 @@ static enum sctp_xmit sctp_packet_can_append_data(struct sctp_packet *packet,
- 	 * or delay in hopes of bundling a full sized packet.
- 	 */
- 	if (chunk->skb->len + q->out_qlen > transport->pathmtu -
--		packet->overhead - sizeof(struct sctp_data_chunk) - 4)
-+	    packet->overhead - sctp_datachk_len(&chunk->asoc->stream) - 4)
- 		/* Enough data queued to fill a packet */
- 		return SCTP_XMIT_OK;
- 
-@@ -759,7 +760,7 @@ static void sctp_packet_append_data(struct sctp_packet *packet,
- 
- 	asoc->peer.rwnd = rwnd;
- 	sctp_chunk_assign_tsn(chunk);
--	sctp_chunk_assign_ssn(chunk);
-+	asoc->stream.si->assign_number(chunk);
- }
- 
- static enum sctp_xmit sctp_packet_will_fit(struct sctp_packet *packet,
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 8c33463..036f945 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -2002,7 +2002,20 @@ static int sctp_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
- 		if (err < 0)
- 			goto out_free;
- 
--		wait_connect = true;
-+		/* If stream interleave is enabled, wait_connect has to be
-+		 * done earlier than data enqueue, as it needs to make data
-+		 * or idata according to asoc->intl_enable which is set
-+		 * after connection is done.
-+		 */
-+		if (sctp_sk(asoc->base.sk)->strm_interleave) {
-+			timeo = sock_sndtimeo(sk, 0);
-+			err = sctp_wait_for_connect(asoc, &timeo);
-+			if (err)
-+				goto out_unlock;
-+		} else {
-+			wait_connect = true;
++TRACE_EVENT(sctp_probe_path,
++
++	TP_PROTO(struct sctp_transport *sp,
++		 const struct sctp_association *asoc),
++
++	TP_ARGS(sp, asoc),
++
++	TP_STRUCT__entry(
++		__field(__u64, asoc)
++		__field(__u32, primary)
++		__array(__u8, ipaddr, sizeof(union sctp_addr))
++		__field(__u32, state)
++		__field(__u32, cwnd)
++		__field(__u32, ssthresh)
++		__field(__u32, flight_size)
++		__field(__u32, partial_bytes_acked)
++		__field(__u32, pathmtu)
++	),
++
++	TP_fast_assign(
++		__entry->asoc = (unsigned long)asoc;
++		__entry->primary = (sp = asoc->peer.primary_path);
++		memcpy(__entry->ipaddr, &sp->ipaddr, sizeof(union sctp_addr));
++		__entry->state = sp->state;
++		__entry->cwnd = sp->cwnd;
++		__entry->ssthresh = sp->ssthresh;
++		__entry->flight_size = sp->flight_size;
++		__entry->partial_bytes_acked = sp->partial_bytes_acked;
++		__entry->pathmtu = sp->pathmtu;
++	),
++
++	TP_printk("asoc=%#llx%s ipaddr=%pISpc state=%u cwnd=%u ssthresh=%u "
++		  "flight_size=%u partial_bytes_acked=%u pathmtu=%u",
++		  __entry->asoc, __entry->primary ? "(*)" : "",
++		  __entry->ipaddr, __entry->state, __entry->cwnd,
++		  __entry->ssthresh, __entry->flight_size,
++		  __entry->partial_bytes_acked, __entry->pathmtu)
++);
++
++TRACE_EVENT(sctp_probe,
++
++	TP_PROTO(const struct sctp_endpoint *ep,
++		 const struct sctp_association *asoc,
++		 struct sctp_chunk *chunk),
++
++	TP_ARGS(ep, asoc, chunk),
++
++	TP_STRUCT__entry(
++		__field(__u64, asoc)
++		__field(__u32, mark)
++		__field(__u16, bind_port)
++		__field(__u16, peer_port)
++		__field(__u32, pathmtu)
++		__field(__u32, rwnd)
++		__field(__u16, unack_data)
++	),
++
++	TP_fast_assign(
++		struct sk_buff *skb = chunk->skb;
++
++		__entry->asoc = (unsigned long)asoc;
++		__entry->mark = skb->mark;
++		__entry->bind_port = ep->base.bind_addr.port;
++		__entry->peer_port = asoc->peer.port;
++		__entry->pathmtu = asoc->pathmtu;
++		__entry->rwnd = asoc->peer.rwnd;
++		__entry->unack_data = asoc->unack_data;
++
++		if (trace_sctp_probe_path_enabled()) {
++			struct sctp_transport *sp;
++
++			list_for_each_entry(sp, &asoc->peer.transport_addr_list,
++					    transports) {
++				trace_sctp_probe_path(sp, asoc);
++			}
 +		}
++	),
 +
- 		pr_debug("%s: we associated primitively\n", __func__);
- 	}
++	TP_printk("asoc=%#llx mark=%#x bind_port=%d peer_port=%d pathmtu=%d "
++		  "rwnd=%u unack_data=%d",
++		  __entry->asoc, __entry->mark, __entry->bind_port,
++		  __entry->peer_port, __entry->pathmtu, __entry->rwnd,
++		  __entry->unack_data)
++);
++
++#endif /* _TRACE_SCTP_H */
++
++/* This part must be outside protection */
++#include <trace/define_trace.h>
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 541f34735346..eb7905ffe5f2 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -59,6 +59,9 @@
+ #include <net/sctp/sm.h>
+ #include <net/sctp/structs.h>
  
-@@ -3180,7 +3193,7 @@ static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned
- 		if (val = 0) {
- 			val = asoc->pathmtu - sp->pf->af->net_header_len;
- 			val -= sizeof(struct sctphdr) +
--			       sizeof(struct sctp_data_chunk);
-+			       sctp_datachk_len(&asoc->stream);
- 		}
- 		asoc->user_frag = val;
- 		asoc->frag_point = sctp_frag_point(asoc, asoc->pathmtu);
-diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
-index 397c3c1..3ac47e7 100644
---- a/net/sctp/stream_interleave.c
-+++ b/net/sctp/stream_interleave.c
-@@ -57,16 +57,53 @@ static struct sctp_chunk *sctp_make_idatafrag_empty(
- 	return retval;
- }
++#define CREATE_TRACE_POINTS
++#include <trace/events/sctp.h>
++
+ static struct sctp_packet *sctp_abort_pkt_new(
+ 					struct net *net,
+ 					const struct sctp_endpoint *ep,
+@@ -3219,6 +3222,8 @@ enum sctp_disposition sctp_sf_eat_sack_6_2(struct net *net,
+ 	struct sctp_sackhdr *sackh;
+ 	__u32 ctsn;
  
-+static void sctp_chunk_assign_mid(struct sctp_chunk *chunk)
-+{
-+	struct sctp_stream *stream;
-+	struct sctp_chunk *lchunk;
-+	__u32 cfsn = 0;
-+	__u16 sid;
++	trace_sctp_probe(ep, asoc, chunk);
 +
-+	if (chunk->has_mid)
-+		return;
-+
-+	sid = sctp_chunk_stream_no(chunk);
-+	stream = &chunk->asoc->stream;
-+
-+	list_for_each_entry(lchunk, &chunk->msg->chunks, frag_list) {
-+		struct sctp_idatahdr *hdr;
-+
-+		lchunk->has_mid = 1;
-+
-+		if (lchunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
-+			continue;
-+
-+		hdr = lchunk->subh.idata_hdr;
-+
-+		if (lchunk->chunk_hdr->flags & SCTP_DATA_FIRST_FRAG)
-+			hdr->ppid = lchunk->sinfo.sinfo_ppid;
-+		else
-+			hdr->fsn = htonl(cfsn++);
-+
-+		if (lchunk->chunk_hdr->flags & SCTP_DATA_LAST_FRAG)
-+			hdr->mid = htonl(sctp_mid_next(stream, out, sid));
-+		else
-+			hdr->mid = htonl(sctp_mid_peek(stream, out, sid));
-+	}
-+}
-+
- static struct sctp_stream_interleave sctp_stream_interleave_0 = {
- 	.data_chunk_len		= sizeof(struct sctp_data_chunk),
- 	/* DATA process functions */
- 	.make_datafrag		= sctp_make_datafrag_empty,
-+	.assign_number		= sctp_chunk_assign_ssn,
- };
+ 	if (!sctp_vtag_verify(chunk, asoc))
+ 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
  
- static struct sctp_stream_interleave sctp_stream_interleave_1 = {
- 	.data_chunk_len		= sizeof(struct sctp_idata_chunk),
- 	/* I-DATA process functions */
- 	.make_datafrag		= sctp_make_idatafrag_empty,
-+	.assign_number		= sctp_chunk_assign_mid,
- };
- 
- void sctp_stream_interleave_init(struct sctp_stream *stream)
-diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
-index 5447228..650b634 100644
---- a/net/sctp/ulpevent.c
-+++ b/net/sctp/ulpevent.c
-@@ -443,8 +443,8 @@ struct sctp_ulpevent *sctp_ulpevent_make_send_failed(
- 		goto fail;
- 
- 	/* Pull off the common chunk header and DATA header.  */
--	skb_pull(skb, sizeof(struct sctp_data_chunk));
--	len -= sizeof(struct sctp_data_chunk);
-+	skb_pull(skb, sctp_datachk_len(&asoc->stream));
-+	len -= sctp_datachk_len(&asoc->stream);
- 
- 	/* Embed the event fields inside the cloned skb.  */
- 	event = sctp_skb2event(skb);
--- 
-2.1.0
 
