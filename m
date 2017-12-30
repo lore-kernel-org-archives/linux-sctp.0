@@ -1,63 +1,102 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 22 Dec 2017 19:04:37 +0000
-Subject: Re: INFO: task hung in bpf_exit_net
-Message-Id: <20171222190437.GC6123@localhost.localdomain>
+From: Willem de Bruijn <willemdebruijn.kernel@gmail.com>
+Date: Sat, 30 Dec 2017 07:42:41 +0000
+Subject: Re: general protection fault in skb_segment
+Message-Id: <CAF=yD-+Ynn+t0dPJXUrXKQ2XMdtiKz8t6PKJUMNqeydYv=yG9A@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <001a1143fd00a8cc790560b0b552@google.com>
- <CACT4Y+Ze8t3ipFyhfy9XfmvUw4tob+dAUiVMQ-xHimYDXpSiRw@mail.gmail.com>
- <f519a1f0-8166-027e-e063-13aa718ce4e4@gmail.com>
- <CACT4Y+aaSX4S3KHJjqkiQhhOZAtEN_fMD1m_Ve3rz4u4x9KSWg@mail.gmail.com>
- <20171222182807.GC32765@localhost.localdomain>
-In-Reply-To: <20171222182807.GC32765@localhost.localdomain>
+References: <001a1137452496ffc305617e5fe0@google.com>
+In-Reply-To: <001a1137452496ffc305617e5fe0@google.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Dmitry Vyukov <dvyukov@google.com>
-Cc: David Ahern <dsahern@gmail.com>, syzbot <bot+21b498fc12cf2041655f8e1eeae0733807d794b3@syzkaller.appspotmail.com>, LKML <linux-kernel@vger.kernel.org>, Ingo Molnar <mingo@redhat.com>, Peter Zijlstra <peterz@infradead.org>, syzkaller-bugs@googlegroups.com, David Miller <davem@davemloft.net>, Florian Westphal <fw@strlen.de>, Daniel Borkmann <daniel@iogearbox.net>, Xin Long <lucien.xin@gmail.com>, jakub.kicinski@netronome.com, mschiffer@universe-factory.net, Vladislav Yasevich <vyasevich@gmail.com>, Jiri Benc <jbenc@redhat.com>, netdev <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: syzbot <syzbot+fee64147a25aecd48055@syzkaller.appspotmail.com>
+Cc: David Miller <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, Network Development <netdev@vger.kernel.org>, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com, marcelo.leitner@gmail.com
 
-On Fri, Dec 22, 2017 at 04:28:07PM -0200, Marcelo Ricardo Leitner wrote:
-> On Fri, Dec 22, 2017 at 11:58:08AM +0100, Dmitry Vyukov wrote:
-> ...
-> > > Same with this one, perhaps related to / fixed by:
-> > >     http://patchwork.ozlabs.org/patch/850957/
-> > >
-> > 
-> > 
-> > 
-> > Looking at the log, this one seems to be an infinite loop in SCTP code
-> > with console output in it. Kernel is busy printing gazilion of:
-> > 
-> > [  176.491099] sctp: sctp_transport_update_pmtu: Reported pmtu 508 too
-> > low, using default minimum of 512
-> > ** 110 printk messages dropped **
-> > [  176.503409] sctp: sctp_transport_update_pmtu: Reported pmtu 508 too
-> > low, using default minimum of 512
-> > ** 103 printk messages dropped **
-> > ...
-> > [  246.742374] sctp: sctp_transport_update_pmtu: Reported pmtu 508 too
-> > low, using default minimum of 512
-> > [  246.742484] sctp: sctp_transport_update_pmtu: Reported pmtu 508 too
-> > low, using default minimum of 512
-> > [  246.742590] sctp: sctp_transport_update_pmtu: Reported pmtu 508 too
-> > low, using default minimum of 512
-> > 
-> > Looks like a different issue.
-> > 
-> 
-> Oh. I guess this is caused by the interface having a MTU smaller than
-> SCTP_DEFAULT_MINSEGMENT (512), as the icmp frag needed handler
-> (sctp_icmp_frag_needed) will trigger an instant retransmission.
-> But as the MTU is smaller, SCTP won't update it, but will issue the
-> retransmission anyway.
-> 
-> I will test this soon. Should be fairly easy to trigger it.
+> syzkaller hit the following crash on
+> 37759fa6d0fa9e4d6036d19ac12f555bfc0aeafd
+> git://git.cmpxchg.org/linux-mmots.git/master
+> compiler: gcc (GCC) 7.1.1 20170620
+> .config is attached
+> Raw console output is attached.
+> C reproducer is attached
+> syzkaller reproducer is attached. See https://goo.gl/kgGztJ
+> for information about syzkaller reproducers
 
-Reproduced it.
+Reproduced with the C reproducer on v4.15-rc1 and mainline
+going back at least to v4.8, but not v4.7. SCTP GSO was
+introduced in v4.8-rc1, so a patch in this set is likely the starting
+point. Indeed crashes at 90017accff61 ("sctp: Add GSO support"),
+but not at 90017accff61~4.
 
-netns A veth0(1500) - veth1(1500) B veth2(508) - veth3(508) C
+The reproducer with its sandbox removed shows this invocation in strace -f
 
-When A sends a sctp packet bigger than 508, it triggers the issue as B
-will reply a icmp frag needed with a size that sctp won't accept but
-will retransmit anyway.
+# strace -f ./repro2
+[... skipped ...]
+socket(PF_INET, SOCK_STREAM, IPPROTO_IP) =3D 3
+open("/dev/net/tun", O_RDONLY)          =3D 4
+fcntl(4, F_DUPFD, 3)                    =3D 5
+socket(PF_PACKET, SOCK_RAW|SOCK_CLOEXEC, 8) =3D 6
+ioctl(4, TUNSETIFF, 0x20e63000)         =3D 0
+ioctl(3, SIOCSIFFLAGS, {ifr_name=3D"syz0",
+ifr_flags=3DIFF_UP|IFF_PROMISC|IFF_ALLMULTI}) =3D 0
+setsockopt(6, SOL_PACKET, 0xf /* PACKET_??? */, [4096], 4) =3D 0
+ioctl(6, SIOCGIFINDEX, {ifr_name=3D"syz0", ifr_index$}) =3D 0
+bind(6, {sa_family=AF_PACKET, proto=0000, if24, pkttype=3DPACKET_HOST,
+addr(6)=3D{1, aaaaaaaaaa00}, 20) =3D 0
+dup2(6, 5)                              =3D 5
+write(5, "\0\201\1\0\350\367\0\0\3\0E\364\0 \0d\0\0\7\2042\342\0\0\0
+\177\0\0\1\0\t"..., 42
 
-  Marcelo
+where 0xf in setsockopt is PACKET_VNET_HDR
+
+So this is a packet socket writing something that apparently looks
+like an SCTP packet, is only 42 bytes long, but has GSO set in its
+virtio_net_hdr struct.
+
+It crashes in skb_segment seemingly on a NULL list_skb.
+
+(gdb) list *(skb_segment+0x2a4)
+0xffffffff8167cc24 is in skb_segment (net/core/skbuff.c:3566).
+3561                    if (hsize < 0)
+3562                            hsize =3D 0;
+3563                    if (hsize > len || !sg)
+3564                            hsize =3D len;
+3565
+3566                    if (!hsize && i >=3D nfrags && skb_headlen(list_skb=
+) &&
+3567                        (skb_headlen(list_skb) =3D len || sg)) {
+3568                            BUG_ON(skb_headlen(list_skb) > len);
+3569
+3570                            i =3D 0;
+
+Likely there is a hidden assumption about SCTP GSO packets that does
+not hold for such packets generated by PF_PACKET.
+
+SCTP GSO introduced the GSO_BY_FRAGS mss value, so the code
+takes a different path for SCTP packets generated by the SCTP stack.
+
+PF_PACKET does not necessarily set gso_size to GSO_BY_FRAGS, so
+does not take the branch that requires list_skb to be non-zero here:
+
+                if (unlikely(mss =3D GSO_BY_FRAGS)) {
+                        len =3D list_skb->len;
+                } else {
+                        len =3D head_skb->len - offset;
+                        if (len > mss)
+                                len =3D mss;
+                }
+
+                hsize =3D skb_headlen(head_skb) - offset;
+                if (hsize < 0)
+                        hsize =3D 0;
+                if (hsize > len || !sg)
+                        hsize =3D len;
+
+                if (!hsize && i >=3D nfrags && skb_headlen(list_skb) &&
+                    (skb_headlen(list_skb) =3D len || sg)) {
+
+Somewhat tangential, but any PF_PACKET socket can set this
+magic gso_size value in its virtio_net_hdr, so if it is assumed to
+be an SCTP GSO specific option, setting it for a TCP GSO packet
+may also cause unexpected results.
+
+The crash requires a kernel with CONFIG_IP_SCTP enabled.
