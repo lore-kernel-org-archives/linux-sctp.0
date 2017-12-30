@@ -1,128 +1,276 @@
 From: Richard Haines <richard_c_haines@btinternet.com>
-Date: Sat, 30 Dec 2017 17:18:53 +0000
-Subject: [PATCH V4 0/4] Add SELinux SCTP protocol support
-Message-Id: <20171230171853.15639-1-richard_c_haines@btinternet.com>
+Date: Sat, 30 Dec 2017 17:20:13 +0000
+Subject: [PATCH V4 3/4] sctp: Add LSM hooks
+Message-Id: <20171230172013.15788-1-richard_c_haines@btinternet.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-security-module@vger.kernel.org
 
-Note: Some conflicts are expected when merging with current net-next due to
-Interleaving Data (I-DATA) sets of patches:
-PATCH 2/4 - Where 'sctp_datachk_len(&asoc->stream)' has replaced
-'sizeof(struct sctp_data_chunk)' in include/net/sctp/sctp.h, 
-net/sctp/chunk.c and net/sctp/socket.c 
-PATCH 3/4 - Where include/uapi/linux/sctp.h requires a fix to update the
-#define SCTP_SENDMSG_CONNECT to a higher number.
+Add security hooks to allow security modules to exercise access control
+over SCTP.
 
-These patches have been built on Fedora 27 with kernel 4.14.8 plus
-the following userspace patches to enable testing:
+Signed-off-by: Richard Haines <richard_c_haines@btinternet.com>
+---
+ include/net/sctp/structs.h | 10 ++++++++
+ include/uapi/linux/sctp.h  |  1 +
+ net/sctp/sm_make_chunk.c   | 12 +++++++++
+ net/sctp/sm_statefuns.c    | 18 ++++++++++++++
+ net/sctp/socket.c          | 61 +++++++++++++++++++++++++++++++++++++++++++++-
+ 5 files changed, 101 insertions(+), 1 deletion(-)
 
-1) Updates to libsepol 2.7 to support the sctp portcon statement.
-   The patch is available from:
-         http://arctic.selinuxproject.org/~rhaines/selinux-sctp/
-         selinux-Add-support-for-the-SCTP-portcon-keyword.patch
-
-2) Updates to the SELinux Test Suite adding SCTP tests. Please read the
-   selinux-testsuite/README.sctp for details. The patch is available from:
-         http://arctic.selinuxproject.org/~rhaines/selinux-sctp/
-         selinux-testsuite-Add-SCTP-test-support.patch
-
-3) Updates to lksctp-tools that show SELinux info in sctp_darn and
-   sctp_test. It also contains a minor patch for test_1_to_1_connect.c
-   as when CIPSO/CALIPSO configured, NetLabel returns a different error
-   code for illegal addresses in test 5. The patch is available from:
-         http://arctic.selinuxproject.org/~rhaines/selinux-sctp/
-         lksctp-tools-Add-SELinux-support-to-sctp_test-and-sc.patch
-
-All SCTP lksctp-tools/src/func_tests run correctly in enforcing mode.
-
-All SCTP regression tests "./sctp-tests run" run correctly in enforcing
-mode. These tests are obtained from: https://github.com/sctp/sctp-tests
-
-The selinux-testsuite patch also adds remote tests (that need some manual
-configuration). These are useful for testing CIPSO/CALIPSO over a network
-with a number of categories to produce large ip option fields with various
-message sizes forcing fragmentation etc..
-
-Changes since RFC Patch:
-Removed the NetLabel patch (was [RFC PATCH 4/5] netlabel: Add SCTP support)
-as re-engineered. However this patchset will require the NetLabel
-patch at [1] to fully run the SCTP selinux-testsuite.
-
-V1 Changes:
-PATCH 1/4
-Remove unused parameter from security_sctp_assoc_request().
-Reformat and update LSM-sctp.rst documentation.
-PATCH 2/4
-Add variables and RCU locks as requested in [2] to support IP options.
-PATCH 3/4
-Added security_sctp_assoc_request() hook to sctp_sf_do_unexpected_init()
-and sctp_sf_do_5_2_4_dupcook().
-Removed security_sctp_assoc_request() hook from sctp_sf_do_5_1C_ack() as
-no longer required.
-PATCH 4/4
-Reformat and update SELinux-sctp.rst documentation.
-Remove bindx and connectx permissions.
-Rework selinux_socket_connect() and selinux_netlbl_socket_connect() to
-utilise helpers for code reuse.
-Add spinlock to selinux_sctp_assoc_request().
-Remove unused parameter from security_sctp_assoc_request().
-Use address->sa_family = AF_INET in *_bind and *_connect to ensure
-correct address type.
-Minor cleanups.
-
-V2 Changes:
-PATCH 4/4 - Remove spin lock from selinux_sctp_assoc_request()
-PATCH 4/4 - Fix selinux_sctp_sk_clone() kbuild test robot catch [3]
-
-V3 Changes:
-PATCH 2/4 - Account for IP options length in sctp.h sctp_frag_point() by
-Marcelo
-
-V4 Changes:
-PATCH 1/4 - Move specific SELinux descriptions from LSM-sctp.rst and
-lsm_hooks.h to SELinux-sctp.rst in PATCH 4/4
-PATCH 4/4 - Rename selinux_netlbl_sctp_socket_connect() to
-selinux_netlbl_socket_connect_locked() and move description comments to
-selinux_sctp_bind_connect()
-
-[1] https://marc.info/?l=selinux&m1061619115945&w=2
-[2] https://marc.info/?l=selinux&m0962470215797&w=2
-[3] https://marc.info/?l=selinux&m1198281817779&w=2
-
-
-Richard Haines (4):
-  security: Add support for SCTP security hooks
-  sctp: Add ip option support
-  sctp: Add LSM hooks
-  selinux: Add SCTP support
-
- Documentation/security/LSM-sctp.rst     | 175 ++++++++++++++++++++
- Documentation/security/SELinux-sctp.rst | 157 ++++++++++++++++++
- include/linux/lsm_hooks.h               |  36 ++++
- include/linux/security.h                |  25 +++
- include/net/sctp/sctp.h                 |   4 +-
- include/net/sctp/structs.h              |  12 ++
- include/uapi/linux/sctp.h               |   1 +
- net/sctp/chunk.c                        |  13 +-
- net/sctp/ipv6.c                         |  42 ++++-
- net/sctp/output.c                       |   5 +-
- net/sctp/protocol.c                     |  36 ++++
- net/sctp/sm_make_chunk.c                |  12 ++
- net/sctp/sm_statefuns.c                 |  18 ++
- net/sctp/socket.c                       |  70 +++++++-
- security/security.c                     |  22 +++
- security/selinux/hooks.c                | 280 +++++++++++++++++++++++++++++---
- security/selinux/include/classmap.h     |   2 +-
- security/selinux/include/netlabel.h     |  21 ++-
- security/selinux/include/objsec.h       |   4 +
- security/selinux/netlabel.c             | 138 ++++++++++++++--
- 20 files changed, 1024 insertions(+), 49 deletions(-)
- create mode 100644 Documentation/security/LSM-sctp.rst
- create mode 100644 Documentation/security/SELinux-sctp.rst
-
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 9942ed5..2ca0a3f 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1271,6 +1271,16 @@ struct sctp_endpoint {
+ 	      reconf_enable:1;
+ 
+ 	__u8  strreset_enable;
++
++	/* Security identifiers from incoming (INIT). These are set by
++	 * security_sctp_assoc_request(). These will only be used by
++	 * SCTP TCP type sockets and peeled off connections as they
++	 * cause a new socket to be generated. security_sctp_sk_clone()
++	 * will then plug these into the new socket.
++	 */
++
++	u32 secid;
++	u32 peer_secid;
+ };
+ 
+ /* Recover the outter endpoint structure. */
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index cfe9712..cafac36 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -123,6 +123,7 @@ typedef __s32 sctp_assoc_t;
+ #define SCTP_RESET_ASSOC	120
+ #define SCTP_ADD_STREAMS	121
+ #define SCTP_SOCKOPT_PEELOFF_FLAGS 122
++#define SCTP_SENDMSG_CONNECT	123
+ 
+ /* PR-SCTP policies */
+ #define SCTP_PR_SCTP_NONE	0x0000
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 514465b..269fd3d 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -3054,6 +3054,12 @@ static __be16 sctp_process_asconf_param(struct sctp_association *asoc,
+ 		if (af->is_any(&addr))
+ 			memcpy(&addr, &asconf->source, sizeof(addr));
+ 
++		if (security_sctp_bind_connect(asoc->ep->base.sk,
++					       SCTP_PARAM_ADD_IP,
++					       (struct sockaddr *)&addr,
++					       af->sockaddr_len))
++			return SCTP_ERROR_REQ_REFUSED;
++
+ 		/* ADDIP 4.3 D9) If an endpoint receives an ADD IP address
+ 		 * request and does not have the local resources to add this
+ 		 * new address to the association, it MUST return an Error
+@@ -3120,6 +3126,12 @@ static __be16 sctp_process_asconf_param(struct sctp_association *asoc,
+ 		if (af->is_any(&addr))
+ 			memcpy(&addr.v4, sctp_source(asconf), sizeof(addr));
+ 
++		if (security_sctp_bind_connect(asoc->ep->base.sk,
++					       SCTP_PARAM_SET_PRIMARY,
++					       (struct sockaddr *)&addr,
++					       af->sockaddr_len))
++			return SCTP_ERROR_REQ_REFUSED;
++
+ 		peer = sctp_assoc_lookup_paddr(asoc, &addr);
+ 		if (!peer)
+ 			return SCTP_ERROR_DNS_FAILED;
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 8f8ccde..a2dfc5a 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -318,6 +318,11 @@ enum sctp_disposition sctp_sf_do_5_1B_init(struct net *net,
+ 	struct sctp_packet *packet;
+ 	int len;
+ 
++	/* Update socket peer label if first association. */
++	if (security_sctp_assoc_request((struct sctp_endpoint *)ep,
++					chunk->skb))
++		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
++
+ 	/* 6.10 Bundling
+ 	 * An endpoint MUST NOT bundle INIT, INIT ACK or
+ 	 * SHUTDOWN COMPLETE with any other chunks.
+@@ -905,6 +910,9 @@ enum sctp_disposition sctp_sf_do_5_1E_ca(struct net *net,
+ 	 */
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_INIT_COUNTER_RESET, SCTP_NULL());
+ 
++	/* Set peer label for connection. */
++	security_inet_conn_established(ep->base.sk, chunk->skb);
++
+ 	/* RFC 2960 5.1 Normal Establishment of an Association
+ 	 *
+ 	 * E) Upon reception of the COOKIE ACK, endpoint "A" will move
+@@ -1433,6 +1441,11 @@ static enum sctp_disposition sctp_sf_do_unexpected_init(
+ 	struct sctp_packet *packet;
+ 	int len;
+ 
++	/* Update socket peer label if first association. */
++	if (security_sctp_assoc_request((struct sctp_endpoint *)ep,
++					chunk->skb))
++		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
++
+ 	/* 6.10 Bundling
+ 	 * An endpoint MUST NOT bundle INIT, INIT ACK or
+ 	 * SHUTDOWN COMPLETE with any other chunks.
+@@ -2103,6 +2116,11 @@ enum sctp_disposition sctp_sf_do_5_2_4_dupcook(
+ 		}
+ 	}
+ 
++	/* Update socket peer label if first association. */
++	if (security_sctp_assoc_request((struct sctp_endpoint *)ep,
++					chunk->skb))
++		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
++
+ 	/* Set temp so that it won't be added into hashtable */
+ 	new_asoc->temp = 1;
+ 
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 4373e2a..b40db2d 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1045,6 +1045,12 @@ static int sctp_setsockopt_bindx(struct sock *sk,
+ 	/* Do the work. */
+ 	switch (op) {
+ 	case SCTP_BINDX_ADD_ADDR:
++		/* Allow security module to validate bindx addresses. */
++		err = security_sctp_bind_connect(sk, SCTP_SOCKOPT_BINDX_ADD,
++						 (struct sockaddr *)kaddrs,
++						 addrs_size);
++		if (err)
++			goto out;
+ 		err = sctp_bindx_add(sk, kaddrs, addrcnt);
+ 		if (err)
+ 			goto out;
+@@ -1254,6 +1260,7 @@ static int __sctp_connect(struct sock *sk,
+ 
+ 	if (assoc_id)
+ 		*assoc_id = asoc->assoc_id;
++
+ 	err = sctp_wait_for_connect(asoc, &timeo);
+ 	/* Note: the asoc may be freed after the return of
+ 	 * sctp_wait_for_connect.
+@@ -1367,9 +1374,17 @@ static int __sctp_setsockopt_connectx(struct sock *sk,
+ 	if (__copy_from_user(kaddrs, addrs, addrs_size)) {
+ 		err = -EFAULT;
+ 	} else {
++		/* Allow security module to validate connectx addresses. */
++		err = security_sctp_bind_connect(sk, SCTP_SOCKOPT_CONNECTX,
++						 (struct sockaddr *)kaddrs,
++						  addrs_size);
++		if (err)
++			goto out_free;
++
+ 		err = __sctp_connect(sk, kaddrs, addrs_size, assoc_id);
+ 	}
+ 
++out_free:
+ 	kfree(kaddrs);
+ 
+ 	return err;
+@@ -1636,6 +1651,7 @@ static int sctp_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
+ 	struct sctp_transport *transport, *chunk_tp;
+ 	struct sctp_chunk *chunk;
+ 	union sctp_addr to;
++	struct sctp_af *af;
+ 	struct sockaddr *msg_name = NULL;
+ 	struct sctp_sndrcvinfo default_sinfo;
+ 	struct sctp_sndrcvinfo *sinfo;
+@@ -1865,6 +1881,24 @@ static int sctp_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
+ 		}
+ 
+ 		scope = sctp_scope(&to);
++
++		/* Label connection socket for first association 1-to-many
++		 * style for client sequence socket()->sendmsg(). This
++		 * needs to be done before sctp_assoc_add_peer() as that will
++		 * set up the initial packet that needs to account for any
++		 * security ip options (CIPSO/CALIPSO) added to the packet.
++		 */
++		af = sctp_get_af_specific(to.sa.sa_family);
++		if (!af) {
++			err = -EINVAL;
++			goto out_unlock;
++		}
++		err = security_sctp_bind_connect(sk, SCTP_SENDMSG_CONNECT,
++						 (struct sockaddr *)&to,
++						 af->sockaddr_len);
++		if (err < 0)
++			goto out_unlock;
++
+ 		new_asoc = sctp_association_new(ep, sk, scope, GFP_KERNEL);
+ 		if (!new_asoc) {
+ 			err = -ENOMEM;
+@@ -2904,6 +2938,8 @@ static int sctp_setsockopt_primary_addr(struct sock *sk, char __user *optval,
+ {
+ 	struct sctp_prim prim;
+ 	struct sctp_transport *trans;
++	struct sctp_af *af;
++	int err;
+ 
+ 	if (optlen != sizeof(struct sctp_prim))
+ 		return -EINVAL;
+@@ -2911,6 +2947,17 @@ static int sctp_setsockopt_primary_addr(struct sock *sk, char __user *optval,
+ 	if (copy_from_user(&prim, optval, sizeof(struct sctp_prim)))
+ 		return -EFAULT;
+ 
++	/* Allow security module to validate address but need address len. */
++	af = sctp_get_af_specific(prim.ssp_addr.ss_family);
++	if (!af)
++		return -EINVAL;
++
++	err = security_sctp_bind_connect(sk, SCTP_PRIMARY_ADDR,
++					 (struct sockaddr *)&prim.ssp_addr,
++					 af->sockaddr_len);
++	if (err)
++		return err;
++
+ 	trans = sctp_addr_id2transport(sk, &prim.ssp_addr, prim.ssp_assoc_id);
+ 	if (!trans)
+ 		return -EINVAL;
+@@ -3233,6 +3280,13 @@ static int sctp_setsockopt_peer_primary_addr(struct sock *sk, char __user *optva
+ 	if (!sctp_assoc_lookup_laddr(asoc, (union sctp_addr *)&prim.sspp_addr))
+ 		return -EADDRNOTAVAIL;
+ 
++	/* Allow security module to validate address. */
++	err = security_sctp_bind_connect(sk, SCTP_SET_PEER_PRIMARY_ADDR,
++					 (struct sockaddr *)&prim.sspp_addr,
++					 af->sockaddr_len);
++	if (err)
++		return err;
++
+ 	/* Create an ASCONF chunk with SET_PRIMARY parameter	*/
+ 	chunk = sctp_make_asconf_set_prim(asoc,
+ 					  (union sctp_addr *)&prim.sspp_addr);
+@@ -8084,6 +8138,8 @@ void sctp_copy_sock(struct sock *newsk, struct sock *sk,
+ {
+ 	struct inet_sock *inet = inet_sk(sk);
+ 	struct inet_sock *newinet;
++	struct sctp_sock *sp = sctp_sk(sk);
++	struct sctp_endpoint *ep = sp->ep;
+ 
+ 	newsk->sk_type = sk->sk_type;
+ 	newsk->sk_bound_dev_if = sk->sk_bound_dev_if;
+@@ -8126,7 +8182,10 @@ void sctp_copy_sock(struct sock *newsk, struct sock *sk,
+ 	if (newsk->sk_flags & SK_FLAGS_TIMESTAMP)
+ 		net_enable_timestamp();
+ 
+-	security_sk_clone(sk, newsk);
++	/* Set newsk security attributes from orginal sk and connection
++	 * security attribute from ep.
++	 */
++	security_sctp_sk_clone(ep, sk, newsk);
+ }
+ 
+ static inline void sctp_copy_descendant(struct sock *sk_to,
 -- 
 2.14.3
 
