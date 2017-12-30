@@ -1,102 +1,54 @@
 From: Willem de Bruijn <willemdebruijn.kernel@gmail.com>
-Date: Sat, 30 Dec 2017 07:42:41 +0000
+Date: Sat, 30 Dec 2017 11:54:54 +0000
 Subject: Re: general protection fault in skb_segment
-Message-Id: <CAF=yD-+Ynn+t0dPJXUrXKQ2XMdtiKz8t6PKJUMNqeydYv=yG9A@mail.gmail.com>
+Message-Id: <CAF=yD-KM9ZmHdMrQXr9x5FM4T7xuYYhGL2xnHfNFaaKbaJCohw@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <001a1137452496ffc305617e5fe0@google.com>
-In-Reply-To: <001a1137452496ffc305617e5fe0@google.com>
+References: <001a1137452496ffc305617e5fe0@google.com> <CAF=yD-+Ynn+t0dPJXUrXKQ2XMdtiKz8t6PKJUMNqeydYv=yG9A@mail.gmail.com>
+In-Reply-To: <CAF=yD-+Ynn+t0dPJXUrXKQ2XMdtiKz8t6PKJUMNqeydYv=yG9A@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: syzbot <syzbot+fee64147a25aecd48055@syzkaller.appspotmail.com>
-Cc: David Miller <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, Network Development <netdev@vger.kernel.org>, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com, marcelo.leitner@gmail.com
+Cc: David Miller <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, Network Development <netdev@vger.kernel.org>, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, Vladislav Yasevich <vyasevich@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-> syzkaller hit the following crash on
-> 37759fa6d0fa9e4d6036d19ac12f555bfc0aeafd
-> git://git.cmpxchg.org/linux-mmots.git/master
-> compiler: gcc (GCC) 7.1.1 20170620
-> .config is attached
-> Raw console output is attached.
-> C reproducer is attached
-> syzkaller reproducer is attached. See https://goo.gl/kgGztJ
-> for information about syzkaller reproducers
+> So this is a packet socket writing something that apparently looks
+> like an SCTP packet, is only 42 bytes long, but has GSO set in its
+> virtio_net_hdr struct.
+>
+> It crashes in skb_segment seemingly on a NULL list_skb.
+>
+> (gdb) list *(skb_segment+0x2a4)
+> 0xffffffff8167cc24 is in skb_segment (net/core/skbuff.c:3566).
+> 3561                    if (hsize < 0)
+> 3562                            hsize = 0;
+> 3563                    if (hsize > len || !sg)
+> 3564                            hsize = len;
+> 3565
+> 3566                    if (!hsize && i >= nfrags && skb_headlen(list_skb) &&
+> 3567                        (skb_headlen(list_skb) = len || sg)) {
+> 3568                            BUG_ON(skb_headlen(list_skb) > len);
+> 3569
+> 3570                            i = 0;
 
-Reproduced with the C reproducer on v4.15-rc1 and mainline
-going back at least to v4.8, but not v4.7. SCTP GSO was
-introduced in v4.8-rc1, so a patch in this set is likely the starting
-point. Indeed crashes at 90017accff61 ("sctp: Add GSO support"),
-but not at 90017accff61~4.
+It appears to be a packet that consists only of an sctp header.
+sctp_gso_segment pulls the header before calling skb_segment,
+after which hsize = skb_headlen(head_skb) = 0 and nfrags = 0.
 
-The reproducer with its sandbox removed shows this invocation in strace -f
+This check avoids the crash, but still triggers an skb_warn_bad_offload
+on return in __skb_gso_segment
 
-# strace -f ./repro2
-[... skipped ...]
-socket(PF_INET, SOCK_STREAM, IPPROTO_IP) =3D 3
-open("/dev/net/tun", O_RDONLY)          =3D 4
-fcntl(4, F_DUPFD, 3)                    =3D 5
-socket(PF_PACKET, SOCK_RAW|SOCK_CLOEXEC, 8) =3D 6
-ioctl(4, TUNSETIFF, 0x20e63000)         =3D 0
-ioctl(3, SIOCSIFFLAGS, {ifr_name=3D"syz0",
-ifr_flags=3DIFF_UP|IFF_PROMISC|IFF_ALLMULTI}) =3D 0
-setsockopt(6, SOL_PACKET, 0xf /* PACKET_??? */, [4096], 4) =3D 0
-ioctl(6, SIOCGIFINDEX, {ifr_name=3D"syz0", ifr_index$}) =3D 0
-bind(6, {sa_family=AF_PACKET, proto=0000, if24, pkttype=3DPACKET_HOST,
-addr(6)=3D{1, aaaaaaaaaa00}, 20) =3D 0
-dup2(6, 5)                              =3D 5
-write(5, "\0\201\1\0\350\367\0\0\3\0E\364\0 \0d\0\0\7\2042\342\0\0\0
-\177\0\0\1\0\t"..., 42
+@@ -45,6 +45,13 @@ static struct sk_buff *sctp_gso_segment(struct sk_buff *skb,
+        struct sk_buff *segs = ERR_PTR(-EINVAL);
+        struct sctphdr *sh;
 
-where 0xf in setsockopt is PACKET_VNET_HDR
++       if (!skb_has_frag_list(skb))
++               goto out;
 
-So this is a packet socket writing something that apparently looks
-like an SCTP packet, is only 42 bytes long, but has GSO set in its
-virtio_net_hdr struct.
+A gso packet shorter than mss should perhaps just be dropped. The stack
+does not generate these. tcp_gso_segment does have a test
 
-It crashes in skb_segment seemingly on a NULL list_skb.
+       if (unlikely(skb->len <= mss))
+                goto out;
 
-(gdb) list *(skb_segment+0x2a4)
-0xffffffff8167cc24 is in skb_segment (net/core/skbuff.c:3566).
-3561                    if (hsize < 0)
-3562                            hsize =3D 0;
-3563                    if (hsize > len || !sg)
-3564                            hsize =3D len;
-3565
-3566                    if (!hsize && i >=3D nfrags && skb_headlen(list_skb=
-) &&
-3567                        (skb_headlen(list_skb) =3D len || sg)) {
-3568                            BUG_ON(skb_headlen(list_skb) > len);
-3569
-3570                            i =3D 0;
-
-Likely there is a hidden assumption about SCTP GSO packets that does
-not hold for such packets generated by PF_PACKET.
-
-SCTP GSO introduced the GSO_BY_FRAGS mss value, so the code
-takes a different path for SCTP packets generated by the SCTP stack.
-
-PF_PACKET does not necessarily set gso_size to GSO_BY_FRAGS, so
-does not take the branch that requires list_skb to be non-zero here:
-
-                if (unlikely(mss =3D GSO_BY_FRAGS)) {
-                        len =3D list_skb->len;
-                } else {
-                        len =3D head_skb->len - offset;
-                        if (len > mss)
-                                len =3D mss;
-                }
-
-                hsize =3D skb_headlen(head_skb) - offset;
-                if (hsize < 0)
-                        hsize =3D 0;
-                if (hsize > len || !sg)
-                        hsize =3D len;
-
-                if (!hsize && i >=3D nfrags && skb_headlen(list_skb) &&
-                    (skb_headlen(list_skb) =3D len || sg)) {
-
-Somewhat tangential, but any PF_PACKET socket can set this
-magic gso_size value in its virtio_net_hdr, so if it is assumed to
-be an SCTP GSO specific option, setting it for a TCP GSO packet
-may also cause unexpected results.
-
-The crash requires a kernel with CONFIG_IP_SCTP enabled.
+but as mss is derived from gso_size, which a packet socket controls, this
+may not be sufficient for this purpose.
