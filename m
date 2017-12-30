@@ -1,175 +1,128 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 06 Dec 2017 15:16:13 +0000
-Subject: Re: [PATCH net-next 07/12] sctp: implement ulpevent_data for sctp_stream_interleave
-Message-Id: <20171206151613.GA10595@hmswarspite.think-freely.org>
+From: Richard Haines <richard_c_haines@btinternet.com>
+Date: Sat, 30 Dec 2017 17:18:53 +0000
+Subject: [PATCH V4 0/4] Add SELinux SCTP protocol support
+Message-Id: <20171230171853.15639-1-richard_c_haines@btinternet.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1512486606.git.lucien.xin@gmail.com>
- <7dd410b23c38f41fb8402880185f5e583dabbc04.1512486606.git.lucien.xin@gmail.com>
- <20171205182855.GA10327@hmswarspite.think-freely.org>
- <20171205184853.GC3328@localhost.localdomain>
-In-Reply-To: <20171205184853.GC3328@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net
+To: linux-security-module@vger.kernel.org
 
-On Tue, Dec 05, 2017 at 04:48:53PM -0200, Marcelo Ricardo Leitner wrote:
-> On Tue, Dec 05, 2017 at 01:28:55PM -0500, Neil Horman wrote:
-> > On Tue, Dec 05, 2017 at 11:16:04PM +0800, Xin Long wrote:
-> > > ulpevent_data is added as a member of sctp_stream_interleave, used to
-> > > do the most process in ulpq, including to convert data or idata chunk
-> > > to event, reasm them in reasm queue and put them in lobby queue in
-> > > right order, and deliver them up to user sk rx queue.
-> > > 
-> > > This procedure is described in section 2.2.3 of RFC8260.
-> > > 
-> > > It adds most functions for idata here to do the similar process as
-> > > the old functions for data. But since the details are very different
-> > > between them, the old functions can not be reused for idata.
-> > > 
-> > > event->ssn and event->ppid settings are moved to ulpevent_data from
-> > > sctp_ulpevent_make_rcvmsg, so that sctp_ulpevent_make_rcvmsg could
-> > > work for both data and idata.
-> > > 
-> > > Note that mid is added in sctp_ulpevent for idata, __packed has to
-> > > be used for defining sctp_ulpevent, or it would exceeds the skb cb
-> > > that saves a sctp_ulpevent variable for ulp layer process.
-> > > 
-> > > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> > > ---
-> > >  include/net/sctp/stream_interleave.h |   2 +
-> > >  include/net/sctp/structs.h           |   3 +
-> > >  include/net/sctp/ulpevent.h          |  20 +-
-> > >  net/sctp/sm_sideeffect.c             |   5 +-
-> > >  net/sctp/stream_interleave.c         | 418 +++++++++++++++++++++++++++++++++++
-> > >  net/sctp/ulpevent.c                  |   2 -
-> > >  net/sctp/ulpqueue.c                  |  12 +-
-> > >  7 files changed, 451 insertions(+), 11 deletions(-)
-> > > 
-> > > diff --git a/include/net/sctp/stream_interleave.h b/include/net/sctp/stream_interleave.h
-> > > index d8d1b51..02f60f5 100644
-> > > --- a/include/net/sctp/stream_interleave.h
-> > > +++ b/include/net/sctp/stream_interleave.h
-> > > @@ -39,6 +39,8 @@ struct sctp_stream_interleave {
-> > >  					    int len, __u8 flags, gfp_t gfp);
-> > >  	void	(*assign_number)(struct sctp_chunk *chunk);
-> > >  	bool	(*validate_data)(struct sctp_chunk *chunk);
-> > > +	int	(*ulpevent_data)(struct sctp_ulpq *ulpq,
-> > > +				 struct sctp_chunk *chunk, gfp_t gfp);
-> > >  };
-> > >  
-> > >  void sctp_stream_interleave_init(struct sctp_stream *stream);
-> > > diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-> > > index 348b25e..d7da719 100644
-> > > --- a/include/net/sctp/structs.h
-> > > +++ b/include/net/sctp/structs.h
-> > > @@ -411,6 +411,8 @@ void sctp_stream_update(struct sctp_stream *stream, struct sctp_stream *new);
-> > >  #define sctp_mid_skip(stream, type, sid, mid) \
-> > >  	((stream)->type[sid].mid = mid + 1)
-> > >  
-> > > +#define sctp_stream_in(asoc, sid) (&(asoc)->stream.in[sid])
-> > > +
-> > >  /*
-> > >   * Pointers to address related SCTP functions.
-> > >   * (i.e. things that depend on the address family.)
-> > > @@ -1386,6 +1388,7 @@ struct sctp_stream_in {
-> > >  		__u16 ssn;
-> > >  	};
-> > >  	__u32 fsn;
-> > > +	char pd_mode;
-> > >  };
-> > >  
-> > >  struct sctp_stream {
-> > > diff --git a/include/net/sctp/ulpevent.h b/include/net/sctp/ulpevent.h
-> > > index 231dc42..ce4f2aa 100644
-> > > --- a/include/net/sctp/ulpevent.h
-> > > +++ b/include/net/sctp/ulpevent.h
-> > > @@ -45,19 +45,29 @@
-> > >  /* A structure to carry information to the ULP (e.g. Sockets API) */
-> > >  /* Warning: This sits inside an skb.cb[] area.  Be very careful of
-> > >   * growing this structure as it is at the maximum limit now.
-> > > + *
-> > > + * sctp_ulpevent is saved in sk->cb(48 bytes), whose last 4 bytes
-> > > + * have been taken by sock_skb_cb, So here it has to use 'packed'
-> > > + * to make sctp_ulpevent fit into the rest 44 bytes.
-> > >   */
-> > >  struct sctp_ulpevent {
-> > >  	struct sctp_association *asoc;
-> > >  	struct sctp_chunk *chunk;
-> > >  	unsigned int rmem_len;
-> > > -	__u32 ppid;
-> > > +	union {
-> > > +		__u32 mid;
-> > > +		__u16 ssn;
-> > > +	};
-> > > +	union {
-> > > +		__u32 ppid;
-> > > +		__u32 fsn;
-> > > +	};
-> > >  	__u32 tsn;
-> > >  	__u32 cumtsn;
-> > >  	__u16 stream;
-> > > -	__u16 ssn;
-> > >  	__u16 flags;
-> > >  	__u16 msg_flags;
-> > > -};
-> > > +} __packed;
-> > >  
-> > What kind  of performance do you see before and after this patch?  I ask because
-> > it seems like the members between ppid through stream are going to be misaligned
-> > (not on a 4 byte boundary), now that you've made this structure packed.
-> 
-> It shouldn't be misaligned because the __u16 ssn field is wrapped on a union
-> with __u32 mid, causing the next field to be aligned on the largest member,
-> which is __u32.
-> 
-> FWIW, before:
-> struct sctp_ulpevent {
->         struct sctp_association *  asoc;                 /*     0     8 */
->         struct sctp_chunk *        chunk;                /*     8     8 */
->         unsigned int               rmem_len;             /*    16     4 */
->         __u32                      ppid;                 /*    20     4 */
->         __u32                      tsn;                  /*    24     4 */
->         __u32                      cumtsn;               /*    28     4 */
->         __u16                      stream;               /*    32     2 */
->         __u16                      ssn;                  /*    34     2 */
->         __u16                      flags;                /*    36     2 */
->         __u16                      msg_flags;            /*    38     2 */
-> 
->         /* size: 40, cachelines: 1, members: 10 */
->         /* last cacheline: 40 bytes */
-> };
-> 
-> and after:
-> struct sctp_ulpevent {
->         struct sctp_association *  asoc;                 /*     0     8 */
->         struct sctp_chunk *        chunk;                /*     8     8 */
->         unsigned int               rmem_len;             /*    16     4 */
->         union {
->                 __u32              mid;                  /*           4 */
->                 __u16              ssn;                  /*           2 */
->         };                                               /*    20     4 */
->         union {
->                 __u32              ppid;                 /*           4 */
->                 __u32              fsn;                  /*           4 */
->         };                                               /*    24     4 */
->         __u32                      tsn;                  /*    28     4 */
->         __u32                      cumtsn;               /*    32     4 */
->         __u16                      stream;               /*    36     2 */
->         __u16                      flags;                /*    38     2 */
->         __u16                      msg_flags;            /*    40     2 */
-> 
->         /* size: 42, cachelines: 1, members: 10 */
->         /* last cacheline: 42 bytes */
-> };
-> 
->   Marcelo
-You're right, my bad.
-Neil
+Note: Some conflicts are expected when merging with current net-next due to
+Interleaving Data (I-DATA) sets of patches:
+PATCH 2/4 - Where 'sctp_datachk_len(&asoc->stream)' has replaced
+'sizeof(struct sctp_data_chunk)' in include/net/sctp/sctp.h, 
+net/sctp/chunk.c and net/sctp/socket.c 
+PATCH 3/4 - Where include/uapi/linux/sctp.h requires a fix to update the
+#define SCTP_SENDMSG_CONNECT to a higher number.
 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+These patches have been built on Fedora 27 with kernel 4.14.8 plus
+the following userspace patches to enable testing:
+
+1) Updates to libsepol 2.7 to support the sctp portcon statement.
+   The patch is available from:
+         http://arctic.selinuxproject.org/~rhaines/selinux-sctp/
+         selinux-Add-support-for-the-SCTP-portcon-keyword.patch
+
+2) Updates to the SELinux Test Suite adding SCTP tests. Please read the
+   selinux-testsuite/README.sctp for details. The patch is available from:
+         http://arctic.selinuxproject.org/~rhaines/selinux-sctp/
+         selinux-testsuite-Add-SCTP-test-support.patch
+
+3) Updates to lksctp-tools that show SELinux info in sctp_darn and
+   sctp_test. It also contains a minor patch for test_1_to_1_connect.c
+   as when CIPSO/CALIPSO configured, NetLabel returns a different error
+   code for illegal addresses in test 5. The patch is available from:
+         http://arctic.selinuxproject.org/~rhaines/selinux-sctp/
+         lksctp-tools-Add-SELinux-support-to-sctp_test-and-sc.patch
+
+All SCTP lksctp-tools/src/func_tests run correctly in enforcing mode.
+
+All SCTP regression tests "./sctp-tests run" run correctly in enforcing
+mode. These tests are obtained from: https://github.com/sctp/sctp-tests
+
+The selinux-testsuite patch also adds remote tests (that need some manual
+configuration). These are useful for testing CIPSO/CALIPSO over a network
+with a number of categories to produce large ip option fields with various
+message sizes forcing fragmentation etc..
+
+Changes since RFC Patch:
+Removed the NetLabel patch (was [RFC PATCH 4/5] netlabel: Add SCTP support)
+as re-engineered. However this patchset will require the NetLabel
+patch at [1] to fully run the SCTP selinux-testsuite.
+
+V1 Changes:
+PATCH 1/4
+Remove unused parameter from security_sctp_assoc_request().
+Reformat and update LSM-sctp.rst documentation.
+PATCH 2/4
+Add variables and RCU locks as requested in [2] to support IP options.
+PATCH 3/4
+Added security_sctp_assoc_request() hook to sctp_sf_do_unexpected_init()
+and sctp_sf_do_5_2_4_dupcook().
+Removed security_sctp_assoc_request() hook from sctp_sf_do_5_1C_ack() as
+no longer required.
+PATCH 4/4
+Reformat and update SELinux-sctp.rst documentation.
+Remove bindx and connectx permissions.
+Rework selinux_socket_connect() and selinux_netlbl_socket_connect() to
+utilise helpers for code reuse.
+Add spinlock to selinux_sctp_assoc_request().
+Remove unused parameter from security_sctp_assoc_request().
+Use address->sa_family = AF_INET in *_bind and *_connect to ensure
+correct address type.
+Minor cleanups.
+
+V2 Changes:
+PATCH 4/4 - Remove spin lock from selinux_sctp_assoc_request()
+PATCH 4/4 - Fix selinux_sctp_sk_clone() kbuild test robot catch [3]
+
+V3 Changes:
+PATCH 2/4 - Account for IP options length in sctp.h sctp_frag_point() by
+Marcelo
+
+V4 Changes:
+PATCH 1/4 - Move specific SELinux descriptions from LSM-sctp.rst and
+lsm_hooks.h to SELinux-sctp.rst in PATCH 4/4
+PATCH 4/4 - Rename selinux_netlbl_sctp_socket_connect() to
+selinux_netlbl_socket_connect_locked() and move description comments to
+selinux_sctp_bind_connect()
+
+[1] https://marc.info/?l=selinux&m1061619115945&w=2
+[2] https://marc.info/?l=selinux&m0962470215797&w=2
+[3] https://marc.info/?l=selinux&m1198281817779&w=2
+
+
+Richard Haines (4):
+  security: Add support for SCTP security hooks
+  sctp: Add ip option support
+  sctp: Add LSM hooks
+  selinux: Add SCTP support
+
+ Documentation/security/LSM-sctp.rst     | 175 ++++++++++++++++++++
+ Documentation/security/SELinux-sctp.rst | 157 ++++++++++++++++++
+ include/linux/lsm_hooks.h               |  36 ++++
+ include/linux/security.h                |  25 +++
+ include/net/sctp/sctp.h                 |   4 +-
+ include/net/sctp/structs.h              |  12 ++
+ include/uapi/linux/sctp.h               |   1 +
+ net/sctp/chunk.c                        |  13 +-
+ net/sctp/ipv6.c                         |  42 ++++-
+ net/sctp/output.c                       |   5 +-
+ net/sctp/protocol.c                     |  36 ++++
+ net/sctp/sm_make_chunk.c                |  12 ++
+ net/sctp/sm_statefuns.c                 |  18 ++
+ net/sctp/socket.c                       |  70 +++++++-
+ security/security.c                     |  22 +++
+ security/selinux/hooks.c                | 280 +++++++++++++++++++++++++++++---
+ security/selinux/include/classmap.h     |   2 +-
+ security/selinux/include/netlabel.h     |  21 ++-
+ security/selinux/include/objsec.h       |   4 +
+ security/selinux/netlabel.c             | 138 ++++++++++++++--
+ 20 files changed, 1024 insertions(+), 49 deletions(-)
+ create mode 100644 Documentation/security/LSM-sctp.rst
+ create mode 100644 Documentation/security/SELinux-sctp.rst
+
+-- 
+2.14.3
+
