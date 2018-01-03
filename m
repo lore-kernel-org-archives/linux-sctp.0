@@ -1,32 +1,60 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 16 Jan 2018 19:25:19 +0000
-Subject: Re: [PATCH net] sctp: do not allow the v4 socket to bind a v4mapped v6 address
-Message-Id: <20180116.142519.2081883691476555323.davem@davemloft.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 03 Jan 2018 22:59:51 +0000
+Subject: [PATCH net v2 1/2] sctp: do not retransmit upon FragNeeded if PMTU discovery is disabled
+Message-Id: <f96c4b84a1d19d16424cca1eaafc382d4bcd313b.1515020059.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <e43f937592a7b022a72bdbbd784742ee6b3f6def.1516006920.git.lucien.xin@gmail.com>
-In-Reply-To: <e43f937592a7b022a72bdbbd784742ee6b3f6def.1516006920.git.lucien.xin@gmail.com>
+References: <cover.1515020059.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1515020059.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 15 Jan 2018 17:02:00 +0800
+Currently, if PMTU discovery is disabled on a given transport, but the
+configured value is higher than the actual PMTU, it is likely that we
+will get some icmp Frag Needed. The issue is, if PMTU discovery is
+disabled, we won't update the information and will issue a
+retransmission immediately, which may very well trigger another ICMP,
+and another retransmission, leading to a loop.
 
-> The check in sctp_sockaddr_af is not robust enough to forbid binding a
-> v4mapped v6 addr on a v4 socket.
-> 
-> The worse thing is that v4 socket's bind_verify would not convert this
-> v4mapped v6 addr to a v4 addr. syzbot even reported a crash as the v4
-> socket bound a v6 addr.
-> 
-> This patch is to fix it by doing the common sa.sa_family check first,
-> then AF_INET check for v4mapped v6 addrs.
-> 
-> Fixes: 7dab83de50c7 ("sctp: Support ipv6only AF_INET6 sockets.")
-> Reported-by: syzbot+7b7b518b1228d2743963@syzkaller.appspotmail.com
-> Acked-by: Neil Horman <nhorman@tuxdriver.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+The fix is to simply not trigger immediate retransmissions if PMTU
+discovery is disabled on the given transport.
 
-Applied and queued up for -stable.
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/input.c | 17 +++++++++++------
+ 1 file changed, 11 insertions(+), 6 deletions(-)
+
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 621b5ca3fd1c17c3d7ef7bb1c7677ab98cebbe77..4a8e76f4834c90de9398455862423e598b8354a7 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -399,13 +399,18 @@ void sctp_icmp_frag_needed(struct sock *sk, struct sctp_association *asoc,
+ 		return;
+ 	}
+ 
+-	if (t->param_flags & SPP_PMTUD_ENABLE) {
+-		/* Update transports view of the MTU */
+-		sctp_transport_update_pmtu(t, pmtu);
++	if (!(t->param_flags & SPP_PMTUD_ENABLE))
++		/* We can't allow retransmitting in such case, as the
++		 * retransmission would be sized just as before, and thus we
++		 * would get another icmp, and retransmit again.
++		 */
++		return;
+ 
+-		/* Update association pmtu. */
+-		sctp_assoc_sync_pmtu(asoc);
+-	}
++	/* Update transports view of the MTU */
++	sctp_transport_update_pmtu(t, pmtu);
++
++	/* Update association pmtu. */
++	sctp_assoc_sync_pmtu(asoc);
+ 
+ 	/* Retransmit with the new pmtu setting.
+ 	 * Normally, if PMTU discovery is disabled, an ICMP Fragmentation
+-- 
+2.14.3
+
