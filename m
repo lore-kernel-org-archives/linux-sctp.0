@@ -1,112 +1,19 @@
-From: Kees Cook <keescook@chromium.org>
-Date: Thu, 11 Jan 2018 02:02:58 +0000
-Subject: [PATCH 26/38] sctp: Define usercopy region in SCTP proto slab cache
-Message-Id: <1515636190-24061-27-git-send-email-keescook@chromium.org>
+From: "Peter Deng" <peterddeng2000@securemailer.com>
+Date: Thu, 04 Jan 2018 16:14:02 +0000
+Subject: Business Possibility
+Message-Id: <253240646175290339528@nadneaa2>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1515636190-24061-1-git-send-email-keescook@chromium.org>
-In-Reply-To: <1515636190-24061-1-git-send-email-keescook@chromium.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-kernel@vger.kernel.org
-Cc: Kees Cook <keescook@chromium.org>, David Windsor <dave@nullcore.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>, Alexander Viro <viro@zeniv.linux.org.uk>, Andrew Morton <akpm@linux-foundation.org>, Andy Lutomirski <luto@kernel.org>, Christoph Hellwig <hch@infradead.org>, Christoph Lameter <cl@linux.com>, Laura Abbott <labbott@redhat.com>, Mark Rutland <mark.rutland@arm.com>, "Martin K. Petersen" <martin.petersen@oracle.com>, Paolo Bonzini <pbonzini@redhat.com>, Christian Borntraeger <borntraeger@de.ibm.com>, Christoffer Dall <christoffer.dall@linaro.org>, Dave Kleikamp <dave.kleikamp@oracle.com>, Jan Kara <jack@suse.cz>, Luis de Bethencourt <luisbg@kernel.org>, Marc Zyngier <marc.zyngier@arm.com>, Rik van Riel <riel@redhat.com>, Matthew Garrett <mjg59@google.com>, linux-fsdevel@vger.kernel.org, linux-arch@vger.kernel.org, linux-mm@kvack.org, kernel-hardening@lists.openwall.com
+To: linux-sctp@vger.kernel.org
 
-From: David Windsor <dave@nullcore.net>
+Hello there, My name is Peter Deng a South African citizen and a friend to Mrs Mugabe sister . I got your contact through Korean business online directory. I represent the interest of Mrs Mugabe who wishes to move a total amount of $19 million  into a safe account owns by a trusted business man who is capable of accommodating such volume of funds with absolute trust & confidentiality.
 
-The SCTP socket event notification subscription information need to be
-copied to/from userspace. In support of usercopy hardening, this patch
-defines a region in the struct proto slab cache in which userspace copy
-operations are allowed. Additionally moves the usercopy fields to be
-adjacent for the region to cover both.
+We are willing to give 5-10 percent of the total money for this efforts . A non disclosure non circumvent agreement will be signed before the eventual transfer of funds. It is important for to know that the fund owner is going through a period of political turmoil and she is in a precarious position, so this transaction has to be highly secretive & very confidential.
 
-example usage trace:
+Kindly respond back to me if this is what you can handle .
 
-    net/sctp/socket.c:
-        sctp_getsockopt_events(...):
-            ...
-            copy_to_user(..., &sctp_sk(sk)->subscribe, len)
+Regards,
 
-        sctp_setsockopt_events(...):
-            ...
-            copy_from_user(&sctp_sk(sk)->subscribe, ..., optlen)
-
-        sctp_getsockopt_initmsg(...):
-            ...
-            copy_to_user(..., &sctp_sk(sk)->initmsg, len)
-
-This region is known as the slab cache's usercopy region. Slab caches
-can now check that each dynamically sized copy operation involving
-cache-managed memory falls entirely within the slab's usercopy region.
-
-This patch is modified from Brad Spengler/PaX Team's PAX_USERCOPY
-whitelisting code in the last public patch of grsecurity/PaX based on my
-understanding of the code. Changes or omissions from the original code are
-mine and don't reflect the original grsecurity/PaX code.
-
-Signed-off-by: David Windsor <dave@nullcore.net>
-[kees: split from network patch, move struct members adjacent]
-[kees: add SCTPv6 struct whitelist, provide usage trace]
-Cc: Vlad Yasevich <vyasevich@gmail.com>
-Cc: Neil Horman <nhorman@tuxdriver.com>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: linux-sctp@vger.kernel.org
-Cc: netdev@vger.kernel.org
-Signed-off-by: Kees Cook <keescook@chromium.org>
----
- include/net/sctp/structs.h | 9 +++++++--
- net/sctp/socket.c          | 8 ++++++++
- 2 files changed, 15 insertions(+), 2 deletions(-)
-
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 16f949eef52f..6168e3449131 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -202,12 +202,17 @@ struct sctp_sock {
- 	/* Flags controlling Heartbeat, SACK delay, and Path MTU Discovery. */
- 	__u32 param_flags;
- 
--	struct sctp_initmsg initmsg;
- 	struct sctp_rtoinfo rtoinfo;
- 	struct sctp_paddrparams paddrparam;
--	struct sctp_event_subscribe subscribe;
- 	struct sctp_assocparams assocparams;
- 
-+	/*
-+	 * These two structures must be grouped together for the usercopy
-+	 * whitelist region.
-+	 */
-+	struct sctp_event_subscribe subscribe;
-+	struct sctp_initmsg initmsg;
-+
- 	int user_frag;
- 
- 	__u32 autoclose;
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 014847e25648..efbc8f52c531 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -8470,6 +8470,10 @@ struct proto sctp_prot = {
- 	.unhash      =	sctp_unhash,
- 	.get_port    =	sctp_get_port,
- 	.obj_size    =  sizeof(struct sctp_sock),
-+	.useroffset  =  offsetof(struct sctp_sock, subscribe),
-+	.usersize    =  offsetof(struct sctp_sock, initmsg) -
-+				offsetof(struct sctp_sock, subscribe) +
-+				sizeof_field(struct sctp_sock, initmsg),
- 	.sysctl_mem  =  sysctl_sctp_mem,
- 	.sysctl_rmem =  sysctl_sctp_rmem,
- 	.sysctl_wmem =  sysctl_sctp_wmem,
-@@ -8509,6 +8513,10 @@ struct proto sctpv6_prot = {
- 	.unhash		= sctp_unhash,
- 	.get_port	= sctp_get_port,
- 	.obj_size	= sizeof(struct sctp6_sock),
-+	.useroffset	= offsetof(struct sctp6_sock, sctp.subscribe),
-+	.usersize	= offsetof(struct sctp6_sock, sctp.initmsg) -
-+				offsetof(struct sctp6_sock, sctp.subscribe) +
-+				sizeof_field(struct sctp6_sock, sctp.initmsg),
- 	.sysctl_mem	= sysctl_sctp_mem,
- 	.sysctl_rmem	= sysctl_sctp_rmem,
- 	.sysctl_wmem	= sysctl_sctp_wmem,
--- 
-2.7.4
-
+Peter.
