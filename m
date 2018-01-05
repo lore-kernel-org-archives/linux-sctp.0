@@ -1,15 +1,15 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 03 Jan 2018 22:59:52 +0000
-Subject: [PATCH net v2 2/2] sctp: fix the handling of ICMP Frag Needed for too small MTUs
-Message-Id: <fa373ffe7ccb1b7e75a00d904d673851f833d98b.1515020059.git.marcelo.leitner@gmail.com>
+Date: Fri, 05 Jan 2018 13:17:18 +0000
+Subject: [PATCH net v3 2/2] sctp: fix the handling of ICMP Frag Needed for too small MTUs
+Message-Id: <3927dca7e199eec2e12f4b99f851bb2891c2b9b5.1515152627.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1515020059.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1515020059.git.marcelo.leitner@gmail.com>
+References: <cover.1515152627.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1515152627.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+Cc: linux-sctp@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, marcelo.leitner@gmail.com
 
 syzbot reported a hang involving SCTP, on which it kept flooding dmesg
 with the message:
@@ -40,9 +40,9 @@ Changes from v1:
 06ad391919b2 ("[SCTP] Don't disable PMTU discovery when mtu is small")
 and as suggested by Xin Long.
 - changed the way to break the rtx loop by detecting if the icmp
-  resulted in a change or not.
-- change the warn to use pr_warn_ratelimited, to protect in case there
-  are several transports using such path.
+  resulted in a change or not
+Changes from v2:
+none
 
 See-also: https://lkml.org/lkml/2017/12/22/811
 Reported-by: syzbot <syzkaller@googlegroups.com>
@@ -67,7 +67,7 @@ index 2f8f93da5dc2660f4db37c04f8a434809b3120a1..9a5ccf03a59b1e0a4820e2a978c66f1d
  void sctp_transport_dst_release(struct sctp_transport *t);
  void sctp_transport_dst_confirm(struct sctp_transport *t);
 diff --git a/net/sctp/input.c b/net/sctp/input.c
-index 4a8e76f4834c90de9398455862423e598b8354a7..3cddbecabaa2db410971c66d3256c466c7f5289f 100644
+index 9320661cc41da0b280f69f379128ab7d062e5528..141c9c466ec172ff67930cf38eb02a49e01a12ab 100644
 --- a/net/sctp/input.c
 +++ b/net/sctp/input.c
 @@ -406,8 +406,12 @@ void sctp_icmp_frag_needed(struct sock *sk, struct sctp_association *asoc,
