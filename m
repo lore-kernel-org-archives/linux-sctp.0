@@ -1,66 +1,114 @@
-From: Willem de Bruijn <willemdebruijn.kernel@gmail.com>
-Date: Tue, 16 Jan 2018 20:32:32 +0000
-Subject: Re: general protection fault in skb_segment
-Message-Id: <CAF=yD-LT_qwYix=ALpE+HHbkh5X+enDu-XhfpyCPfWRCm_TT0Q@mail.gmail.com>
+From: Paul Moore <paul@paul-moore.com>
+Date: Wed, 10 Jan 2018 16:37:50 +0000
+Subject: Re: [PATCH V4 4/4] selinux: Add SCTP support
+Message-Id: <CAHC9VhR9AkU4nF8VjCiGERtTU5OEtSUQFcDDhJeyJe2gzM=1gQ@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <001a1137452496ffc305617e5fe0@google.com> <CAF=yD-+Ynn+t0dPJXUrXKQ2XMdtiKz8t6PKJUMNqeydYv=yG9A@mail.gmail.com>
- <20171231005220.GD22042@localhost.localdomain> <CAF=yD-+KwmB+fX+4A1RiCV6ZCDQbkGGSVu8YVMrAGxfVtG7ndQ@mail.gmail.com>
- <CAF=yD-K9M1yps+SogVLSVgoi+ngKzKrwWH+xMr4-m+v-pqyXXQ@mail.gmail.com> <CAF=yD-JLXo9T4XwnJZ6MqeQas5QM4qNTOic9jb3ZNHdeJPTfmA@mail.gmail.com>
-In-Reply-To: <CAF=yD-JLXo9T4XwnJZ6MqeQas5QM4qNTOic9jb3ZNHdeJPTfmA@mail.gmail.com>
+References: <20171230172035.15837-1-richard_c_haines@btinternet.com>
+In-Reply-To: <20171230172035.15837-1-richard_c_haines@btinternet.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: syzbot <syzbot+fee64147a25aecd48055@syzkaller.appspotmail.com>, David Miller <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, Network Development <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs@googlegroups.com, Vladislav Yasevich <vyasevich@gmail.com>
+To: linux-security-module@vger.kernel.org
 
-On Tue, Jan 2, 2018 at 12:23 PM, Willem de Bruijn
-<willemdebruijn.kernel@gmail.com> wrote:
->> Actually, changes just to inet_gso_segment and ipv6_gso_segment
->> will suffice:
->>
->>        bool udpfrag = false, fixedid = false, gso_partial, encap;
->>         struct sk_buff *segs = ERR_PTR(-EINVAL);
->> +       unsigned int offset = 0, gso_type;
->>         const struct net_offload *ops;
->> -       unsigned int offset = 0;
->>         struct iphdr *iph;
->>         int proto, tot_len;
->>         int nhoff;
->> @@ -1258,6 +1258,22 @@ struct sk_buff *inet_gso_segment(struct sk_buff *skb,
->>
->>         skb_reset_transport_header(skb);
->>
->> +       gso_type = skb_shinfo(skb)->gso_type;
->> +       if (gso_type & SKB_GSO_DODGY) {
->> +               switch (gso_type & (SKB_GSO_TCPV4 | SKB_GSO_UDP)) {
->> +               case SKB_GSO_TCPV4:
->> +                       if (proto != IPPROTO_TCP)
->> +                               goto out;
->> +                       break;
->> +               case SKB_GSO_UDP:
->> +                       if (proto != IPPROTO_UDP)
->> +                               goto out;
->> +                       break;
->> +               default:
->> +                       goto out;
->> +               }
->> +       }
->>
->> and analogous for IPv6. For a real patch I would deduplicate this
->> logic between them and move it to a separate helper function
->> (in a header file, then).
+On Sat, Dec 30, 2017 at 12:20 PM, Richard Haines
+<richard_c_haines@btinternet.com> wrote:
+> The SELinux SCTP implementation is explained in:
+> Documentation/security/SELinux-sctp.rst
 >
-> This approach would also need an skb->protocol check either in
-> virtio_net_hdr_to_skb or skb_mac_gso_segment.
+> Signed-off-by: Richard Haines <richard_c_haines@btinternet.com>
+> ---
+>  Documentation/security/SELinux-sctp.rst | 157 ++++++++++++++++++
+>  security/selinux/hooks.c                | 280 +++++++++++++++++++++++++++++---
+>  security/selinux/include/classmap.h     |   2 +-
+>  security/selinux/include/netlabel.h     |  21 ++-
+>  security/selinux/include/objsec.h       |   4 +
+>  security/selinux/netlabel.c             | 138 ++++++++++++++--
+>  6 files changed, 570 insertions(+), 32 deletions(-)
+>  create mode 100644 Documentation/security/SELinux-sctp.rst
 
-It turns out that all paths already call skb_probe_transport_header,
-which also does flow dissection, so has the necessary preconditions
-for dissection checked: skb->protocol and network header have been
-initialized.
+...
 
-I posted http://patchwork.ozlabs.org/patch/861874/ which adds
-gso type and protocol tests based on that flow dissector pass.
+> +/**
+> + * selinux_netlbl_socket_connect - Label a client-side socket on connect
+> + * @sk: the socket to label
+> + * @addr: the destination address
+> + *
+> + * Description:
+> + * Attempt to label a connected socket with NetLabel using the given address.
+> + * Returns zero values on success, negative values on failure.
+> + *
+> + */
+> +int selinux_netlbl_socket_connect(struct sock *sk, struct sockaddr *addr)
+> +{
+> +       int rc;
+> +       struct sk_security_struct *sksec = sk->sk_security;
+> +
+> +       if (sksec->nlbl_state != NLBL_REQSKB &&
+> +           sksec->nlbl_state != NLBL_CONNLABELED)
+> +               return 0;
+> +
+> +       lock_sock(sk);
+> +       rc = selinux_netlbl_socket_connect_helper(sk, addr);
+>         release_sock(sk);
+> +
+>         return rc;
+>  }
+> +
+> +/**
+> + * selinux_netlbl_socket_connect_locked - Label a client-side socket on
+> + * connect
+> + * @sk: the socket to label
+> + * @addr: the destination address
+> + *
+> + * Description:
+> + * Attempt to label a connected socket that already has the socket locked
+> + * with NetLabel using the given address.
+> + * Returns zero values on success, negative values on failure.
+> + *
+> + */
+> +int selinux_netlbl_socket_connect_locked(struct sock *sk,
+> +                                        struct sockaddr *addr)
+> +{
+> +       struct sk_security_struct *sksec = sk->sk_security;
+> +
+> +       if (sksec->nlbl_state != NLBL_REQSKB &&
+> +           sksec->nlbl_state != NLBL_CONNLABELED)
+> +               return 0;
+> +
+> +       return selinux_netlbl_socket_connect_helper(sk, addr);
+> +}
 
-Flow dissection was short circuited when csum offload already
-set the transport header, so this does add a flow dissector call
-to gso packets in practice, even if the datapath is not new.
+[Sorry for the review delay, the holidays and some associated travel
+made it hard to find some quiet time to look at the latest patches.]
+
+I probably should have been a bit more clear in my last comment, but
+what I had in mind was something like the following:
+
+int selinux_netlbl_socket_connect_locked(...)
+{
+    if (sksec->nlbl_state ...)
+        return 0;
+
+    return selinux_netlbl_socket_connect_helper();
+}
+
+int selinux_netlbl_socket_connect(...)
+{
+    int rc;
+
+    lock_sock();
+    rc = selinux_netlbl_socket_connect_locked();
+    release_sock();
+
+    return rc;
+}
+
+Yes, you do end up checking nlbl_state while the socket lock is held,
+but I believe the benefit of consolidating the code outweighs any
+additional overhead (I believe it would be "noise" anyway).
+
+Otherwise, this all looks good to me.
+
+-- 
+paul moore
+www.paul-moore.com
