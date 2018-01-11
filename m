@@ -1,125 +1,112 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Date: Wed, 31 Jan 2018 06:12:23 +0000
-Subject: Re: KASAN: use-after-free Read in refcount_inc_not_zero
-Message-Id: <20180131061223.GC2736@zzz.localdomain>
+From: Kees Cook <keescook@chromium.org>
+Date: Thu, 11 Jan 2018 02:02:58 +0000
+Subject: [PATCH 26/38] sctp: Define usercopy region in SCTP proto slab cache
+Message-Id: <1515636190-24061-27-git-send-email-keescook@chromium.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <94eb2c1fae04669449055d036865@google.com>
- <089e082bdf1062d5ed056050f926@google.com>
-In-Reply-To: <089e082bdf1062d5ed056050f926@google.com>
+References: <1515636190-24061-1-git-send-email-keescook@chromium.org>
+In-Reply-To: <1515636190-24061-1-git-send-email-keescook@chromium.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: syzbot <bot+9e3011b5e961675e736b38d6fd82ad12723a3fa3@syzkaller.appspotmail.com>
-Cc: akpm@linux-foundation.org, alexander.deucher@amd.com, broonie@kernel.org, chris@chris-wilson.co.uk, davem@davemloft.net, deepa.kernel@gmail.com, gregkh@linuxfoundation.org, gscrivan@redhat.com, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, luc.vanoostenryck@gmail.com, lucien.xin@gmail.com, mingo@kernel.org, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, viro@zeniv.linux.org.uk, vyasevich@gmail.com, xiyou.wangcong@gmail.com
+To: linux-kernel@vger.kernel.org
+Cc: Kees Cook <keescook@chromium.org>, David Windsor <dave@nullcore.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>, Alexander Viro <viro@zeniv.linux.org.uk>, Andrew Morton <akpm@linux-foundation.org>, Andy Lutomirski <luto@kernel.org>, Christoph Hellwig <hch@infradead.org>, Christoph Lameter <cl@linux.com>, Laura Abbott <labbott@redhat.com>, Mark Rutland <mark.rutland@arm.com>, "Martin K. Petersen" <martin.petersen@oracle.com>, Paolo Bonzini <pbonzini@redhat.com>, Christian Borntraeger <borntraeger@de.ibm.com>, Christoffer Dall <christoffer.dall@linaro.org>, Dave Kleikamp <dave.kleikamp@oracle.com>, Jan Kara <jack@suse.cz>, Luis de Bethencourt <luisbg@kernel.org>, Marc Zyngier <marc.zyngier@arm.com>, Rik van Riel <riel@redhat.com>, Matthew Garrett <mjg59@google.com>, linux-fsdevel@vger.kernel.org, linux-arch@vger.kernel.org, linux-mm@kvack.org, kernel-hardening@lists.openwall.com
 
-On Thu, Dec 14, 2017 at 10:23:01AM -0800, syzbot wrote:
-> syzkaller has found reproducer for the following crash on
-> 82bcf1def3b5f1251177ad47c44f7e17af039b4b
-> git://git.cmpxchg.org/linux-mmots.git/master
-> compiler: gcc (GCC) 7.1.1 20170620
-> .config is attached
-> Raw console output is attached.
-> C reproducer is attached
-> syzkaller reproducer is attached. See https://goo.gl/kgGztJ
-> for information about syzkaller reproducers
-> 
-> 
-> =================================
-> BUG: KASAN: use-after-free in __read_once_size include/linux/compiler.h:183
-> [inline]
-> BUG: KASAN: use-after-free in atomic_read arch/x86/include/asm/atomic.h:27
-> [inline]
-> BUG: KASAN: use-after-free in refcount_inc_not_zero+0x16e/0x180
-> lib/refcount.c:120
-> Read of size 4 at addr ffff8801c51bb200 by task syzkaller711981/3156
-> 
-> CPU: 1 PID: 3156 Comm: syzkaller711981 Not tainted 4.15.0-rc2-mm1+ #39
-> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS
-> Google 01/01/2011
-> Call Trace:
->  __dump_stack lib/dump_stack.c:17 [inline]
->  dump_stack+0x194/0x257 lib/dump_stack.c:53
->  print_address_description+0x73/0x250 mm/kasan/report.c:252
->  kasan_report_error mm/kasan/report.c:351 [inline]
->  kasan_report+0x25b/0x340 mm/kasan/report.c:409
->  __asan_report_load4_noabort+0x14/0x20 mm/kasan/report.c:429
->  __read_once_size include/linux/compiler.h:183 [inline]
->  atomic_read arch/x86/include/asm/atomic.h:27 [inline]
->  refcount_inc_not_zero+0x16e/0x180 lib/refcount.c:120
->  refcount_inc+0x15/0x50 lib/refcount.c:153
->  get_ipc_ns include/linux/ipc_namespace.h:129 [inline]
->  __get_ns_from_inode ipc/mqueue.c:110 [inline]
->  get_ns_from_inode ipc/mqueue.c:118 [inline]
->  mqueue_evict_inode+0x137/0x9c0 ipc/mqueue.c:402
->  evict+0x481/0x920 fs/inode.c:552
->  iput_final fs/inode.c:1514 [inline]
->  iput+0x7b9/0xaf0 fs/inode.c:1541
->  dentry_unlink_inode+0x4b0/0x5e0 fs/dcache.c:376
->  __dentry_kill+0x3b7/0x6d0 fs/dcache.c:573
->  shrink_dentry_list+0x3c5/0xcf0 fs/dcache.c:1020
->  shrink_dcache_parent+0xba/0x230 fs/dcache.c:1454
->  do_one_tree+0x15/0x50 fs/dcache.c:1485
->  shrink_dcache_for_umount+0xbb/0x290 fs/dcache.c:1502
->  generic_shutdown_super+0xcd/0x540 fs/super.c:424
->  kill_anon_super fs/super.c:987 [inline]
->  kill_litter_super+0x72/0x90 fs/super.c:997
->  deactivate_locked_super+0x88/0xd0 fs/super.c:312
->  deactivate_super+0x141/0x1b0 fs/super.c:343
->  cleanup_mnt+0xb2/0x150 fs/namespace.c:1173
->  __cleanup_mnt+0x16/0x20 fs/namespace.c:1180
->  task_work_run+0x199/0x270 kernel/task_work.c:113
->  exit_task_work include/linux/task_work.h:22 [inline]
->  do_exit+0x9bb/0x1ae0 kernel/exit.c:869
->  do_group_exit+0x149/0x400 kernel/exit.c:972
->  SYSC_exit_group kernel/exit.c:983 [inline]
->  SyS_exit_group+0x1d/0x20 kernel/exit.c:981
->  entry_SYSCALL_64_fastpath+0x1f/0x96
-> RIP: 0033:0x440729
-> RSP: 002b:00007ffd090ef228 EFLAGS: 00000206 ORIG_RAX: 00000000000000e7
-> RAX: ffffffffffffffda RBX: 0030656c69662f2e RCX: 0000000000440729
-> RDX: 0000000000440729 RSI: 0000000000000000 RDI: 0000000000000001
-> RBP: 00000000006cb018 R08: 0000000000000000 R09: 00000000004002c8
-> R10: 0000000000000000 R11: 0000000000000206 R12: 0000000000401bf0
-> R13: 0000000000401c80 R14: 0000000000000000 R15: 0000000000000000
-> 
-> Allocated by task 3156:
->  save_stack+0x43/0xd0 mm/kasan/kasan.c:447
->  set_track mm/kasan/kasan.c:459 [inline]
->  kasan_kmalloc+0xad/0xe0 mm/kasan/kasan.c:551
->  kmem_cache_alloc_trace+0x136/0x750 mm/slab.c:3614
->  kmalloc include/linux/slab.h:516 [inline]
->  create_ipc_ns ipc/namespace.c:45 [inline]
->  copy_ipcs+0x1b3/0x520 ipc/namespace.c:96
->  create_new_namespaces+0x278/0x880 kernel/nsproxy.c:87
->  unshare_nsproxy_namespaces+0xae/0x1e0 kernel/nsproxy.c:206
->  SYSC_unshare kernel/fork.c:2421 [inline]
->  SyS_unshare+0x653/0xfa0 kernel/fork.c:2371
->  entry_SYSCALL_64_fastpath+0x1f/0x96
-> 
-> Freed by task 3156:
->  save_stack+0x43/0xd0 mm/kasan/kasan.c:447
->  set_track mm/kasan/kasan.c:459 [inline]
->  kasan_slab_free+0x71/0xc0 mm/kasan/kasan.c:524
->  __cache_free mm/slab.c:3492 [inline]
->  kfree+0xca/0x250 mm/slab.c:3807
->  free_ipc_ns ipc/namespace.c:139 [inline]
->  put_ipc_ns+0x112/0x150 ipc/namespace.c:164
->  free_nsproxy+0xc0/0x1f0 kernel/nsproxy.c:180
->  switch_task_namespaces+0x9d/0xc0 kernel/nsproxy.c:229
->  exit_task_namespaces+0x17/0x20 kernel/nsproxy.c:234
->  do_exit+0x9b6/0x1ae0 kernel/exit.c:868
->  do_group_exit+0x149/0x400 kernel/exit.c:972
->  SYSC_exit_group kernel/exit.c:983 [inline]
->  SyS_exit_group+0x1d/0x20 kernel/exit.c:981
->  entry_SYSCALL_64_fastpath+0x1f/0x96
-> 
+From: David Windsor <dave@nullcore.net>
 
-syzbot hasn't hit this crash since next-20171221, and it looks like it was
-caused by the patch "ipc, mqueue: lazy call kern_mount_data in new namespaces"
-which was dropped and replaced by "mqueue: switch to on-demand creation of
-internal mount" (thanks Al!).  So, invalidating this bug so that syzbot can
-report crashes here again if they occur.
+The SCTP socket event notification subscription information need to be
+copied to/from userspace. In support of usercopy hardening, this patch
+defines a region in the struct proto slab cache in which userspace copy
+operations are allowed. Additionally moves the usercopy fields to be
+adjacent for the region to cover both.
 
-#syz invalid
+example usage trace:
 
-- Eric
+    net/sctp/socket.c:
+        sctp_getsockopt_events(...):
+            ...
+            copy_to_user(..., &sctp_sk(sk)->subscribe, len)
+
+        sctp_setsockopt_events(...):
+            ...
+            copy_from_user(&sctp_sk(sk)->subscribe, ..., optlen)
+
+        sctp_getsockopt_initmsg(...):
+            ...
+            copy_to_user(..., &sctp_sk(sk)->initmsg, len)
+
+This region is known as the slab cache's usercopy region. Slab caches
+can now check that each dynamically sized copy operation involving
+cache-managed memory falls entirely within the slab's usercopy region.
+
+This patch is modified from Brad Spengler/PaX Team's PAX_USERCOPY
+whitelisting code in the last public patch of grsecurity/PaX based on my
+understanding of the code. Changes or omissions from the original code are
+mine and don't reflect the original grsecurity/PaX code.
+
+Signed-off-by: David Windsor <dave@nullcore.net>
+[kees: split from network patch, move struct members adjacent]
+[kees: add SCTPv6 struct whitelist, provide usage trace]
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org
+Signed-off-by: Kees Cook <keescook@chromium.org>
+---
+ include/net/sctp/structs.h | 9 +++++++--
+ net/sctp/socket.c          | 8 ++++++++
+ 2 files changed, 15 insertions(+), 2 deletions(-)
+
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 16f949eef52f..6168e3449131 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -202,12 +202,17 @@ struct sctp_sock {
+ 	/* Flags controlling Heartbeat, SACK delay, and Path MTU Discovery. */
+ 	__u32 param_flags;
+ 
+-	struct sctp_initmsg initmsg;
+ 	struct sctp_rtoinfo rtoinfo;
+ 	struct sctp_paddrparams paddrparam;
+-	struct sctp_event_subscribe subscribe;
+ 	struct sctp_assocparams assocparams;
+ 
++	/*
++	 * These two structures must be grouped together for the usercopy
++	 * whitelist region.
++	 */
++	struct sctp_event_subscribe subscribe;
++	struct sctp_initmsg initmsg;
++
+ 	int user_frag;
+ 
+ 	__u32 autoclose;
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 014847e25648..efbc8f52c531 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -8470,6 +8470,10 @@ struct proto sctp_prot = {
+ 	.unhash      =	sctp_unhash,
+ 	.get_port    =	sctp_get_port,
+ 	.obj_size    =  sizeof(struct sctp_sock),
++	.useroffset  =  offsetof(struct sctp_sock, subscribe),
++	.usersize    =  offsetof(struct sctp_sock, initmsg) -
++				offsetof(struct sctp_sock, subscribe) +
++				sizeof_field(struct sctp_sock, initmsg),
+ 	.sysctl_mem  =  sysctl_sctp_mem,
+ 	.sysctl_rmem =  sysctl_sctp_rmem,
+ 	.sysctl_wmem =  sysctl_sctp_wmem,
+@@ -8509,6 +8513,10 @@ struct proto sctpv6_prot = {
+ 	.unhash		= sctp_unhash,
+ 	.get_port	= sctp_get_port,
+ 	.obj_size	= sizeof(struct sctp6_sock),
++	.useroffset	= offsetof(struct sctp6_sock, sctp.subscribe),
++	.usersize	= offsetof(struct sctp6_sock, sctp.initmsg) -
++				offsetof(struct sctp6_sock, sctp.subscribe) +
++				sizeof_field(struct sctp6_sock, sctp.initmsg),
+ 	.sysctl_mem	= sysctl_sctp_mem,
+ 	.sysctl_rmem	= sysctl_sctp_rmem,
+ 	.sysctl_wmem	= sysctl_sctp_wmem,
+-- 
+2.7.4
+
