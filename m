@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 15 Jan 2018 12:40:17 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Mon, 15 Jan 2018 19:44:03 +0000
 Subject: Re: [PATCH net] sctp: reinit stream if stream outcnt has been change by sinit in sendmsg
-Message-Id: <20180115124017.GA24317@hmswarspite.think-freely.org>
+Message-Id: <20180115194403.GI7571@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1330acc7e606c50a26e7f972eb9875da82ad8ce9.1516006879.git.lucien.xin@gmail.com>
 In-Reply-To: <1330acc7e606c50a26e7f972eb9875da82ad8ce9.1516006879.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
 
 On Mon, Jan 15, 2018 at 05:01:19PM +0800, Xin Long wrote:
 > After introducing sctp_stream structure, sctp uses stream->outcnt as the
@@ -25,6 +25,9 @@ On Mon, Jan 15, 2018 at 05:01:19PM +0800, Xin Long wrote:
 > 
 > Fixes: a83863174a61 ("sctp: prepare asoc stream for stream reconf")
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
+
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+
 > ---
 >  net/sctp/socket.c | 10 ++++++++--
 >  1 file changed, 8 insertions(+), 2 deletions(-)
@@ -51,5 +54,8 @@ On Mon, Jan 15, 2018 at 05:01:19PM +0800, Xin Long wrote:
 >  				asoc->c.sinit_max_instreams > -- 
 > 2.1.0
 > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
