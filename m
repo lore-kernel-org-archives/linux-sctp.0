@@ -1,17 +1,19 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 15 Jan 2018 19:44:03 +0000
+From: David Miller <davem@davemloft.net>
+Date: Tue, 16 Jan 2018 19:20:57 +0000
 Subject: Re: [PATCH net] sctp: reinit stream if stream outcnt has been change by sinit in sendmsg
-Message-Id: <20180115194403.GI7571@localhost.localdomain>
+Message-Id: <20180116.142057.1449511465809553791.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1330acc7e606c50a26e7f972eb9875da82ad8ce9.1516006879.git.lucien.xin@gmail.com>
 In-Reply-To: <1330acc7e606c50a26e7f972eb9875da82ad8ce9.1516006879.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
-On Mon, Jan 15, 2018 at 05:01:19PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 15 Jan 2018 17:01:19 +0800
+
 > After introducing sctp_stream structure, sctp uses stream->outcnt as the
 > out stream nums instead of c.sinit_num_ostreams.
 > 
@@ -26,36 +28,4 @@ On Mon, Jan 15, 2018 at 05:01:19PM +0800, Xin Long wrote:
 > Fixes: a83863174a61 ("sctp: prepare asoc stream for stream reconf")
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-> ---
->  net/sctp/socket.c | 10 ++++++++--
->  1 file changed, 8 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 9b01e99..15ae018 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -1883,8 +1883,14 @@ static int sctp_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
->  		 */
->  		if (sinit) {
->  			if (sinit->sinit_num_ostreams) {
-> -				asoc->c.sinit_num_ostreams > -					sinit->sinit_num_ostreams;
-> +				__u16 outcnt = sinit->sinit_num_ostreams;
-> +
-> +				asoc->c.sinit_num_ostreams = outcnt;
-> +				/* outcnt has been changed, so re-init stream */
-> +				err = sctp_stream_init(&asoc->stream, outcnt, 0,
-> +						       GFP_KERNEL);
-> +				if (err)
-> +					goto out_free;
->  			}
->  			if (sinit->sinit_max_instreams) {
->  				asoc->c.sinit_max_instreams > -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Applied and queued up for -stable.
