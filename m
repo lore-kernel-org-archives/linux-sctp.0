@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 23 Jan 2018 11:19:00 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 23 Jan 2018 12:09:08 +0000
 Subject: Re: [PATCH net-next] sctp: reset ret in again path in sctp_for_each_transport
-Message-Id: <20180123111900.GA14124@localhost.localdomain>
+Message-Id: <20180123120908.GA22398@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <07dcfcd8098979f6693426fd562867ffa67dd65b.1516702945.git.lucien.xin@gmail.com>
 In-Reply-To: <07dcfcd8098979f6693426fd562867ffa67dd65b.1516702945.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, davem@davemloft.net
 
 On Tue, Jan 23, 2018 at 06:22:25PM +0800, Xin Long wrote:
 > Commit 97a6ec4ac021 ("rhashtable: Change rhashtable_walk_start to
@@ -24,9 +24,6 @@ On Tue, Jan 23, 2018 at 06:22:25PM +0800, Xin Long wrote:
 > 
 > Fixes: 97a6ec4ac021 ("rhashtable: Change rhashtable_walk_start to return void")
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/socket.c | 3 ++-
 >  1 file changed, 2 insertions(+), 1 deletion(-)
@@ -50,8 +47,5 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > -- 
 > 2.1.0
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
