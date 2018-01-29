@@ -1,100 +1,58 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 05 Dec 2017 15:15:59 +0000
-Subject: [PATCH net-next 02/12] sctp: add asoc intl_enable negotiation during 4 shakehands
-Message-Id: <590ee9b2ecf13733272f9bb1888c60de1f5f47a4.1512486606.git.lucien.xin@gmail.com>
+From: Tommi Rantala <tommi.t.rantala@nokia.com>
+Date: Mon, 29 Jan 2018 15:55:45 +0000
+Subject: sctp netns "unregister_netdevice: waiting for lo to become free. Usage count = 1"
+Message-Id: <2a9c25b0-9ee7-baf6-f212-2c94b06941ea@nokia.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1512486606.git.lucien.xin@gmail.com>
- <b830faf5987dbed8b1e724f039348e960b8537e3.1512486606.git.lucien.xin@gmail.com>
-In-Reply-To: <b830faf5987dbed8b1e724f039348e960b8537e3.1512486606.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
 
-asoc intl_enable will be set when local sp strm_interleave is set
-and there's I-DATA chunk in init and init_ack extensions, as says
-in section 2.2.1 of RFC8260.
+Hi,
 
-asoc intl_enable indicates all data will be sent as I-DATA chunks.
+When running sctp_test from lksctp-tools in netns in 4.4 and 4.9 with 
+suitable arguments, the local loopback device in the netns is not 
+getting destroyed after deleting the netns.
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- include/linux/sctp.h     |  3 +++
- net/sctp/sm_make_chunk.c | 18 ++++++++++++++++--
- 2 files changed, 19 insertions(+), 2 deletions(-)
+For example:
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index da803df..6d2bd64 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -102,6 +102,9 @@ enum sctp_cid {
- 	/* AUTH Extension Section 4.1 */
- 	SCTP_CID_AUTH			= 0x0F,
- 
-+	/* sctp ndata 5.1. I-DATA */
-+	SCTP_CID_I_DATA			= 0x40,
-+
- 	/* PR-SCTP Sec 3.2 */
- 	SCTP_CID_FWD_TSN		= 0xC0,
- 
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 9bf575f..da33c85 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -228,7 +228,7 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
- 	struct sctp_inithdr init;
- 	union sctp_params addrs;
- 	struct sctp_sock *sp;
--	__u8 extensions[4];
-+	__u8 extensions[5];
- 	size_t chunksize;
- 	__be16 types[2];
- 	int num_ext = 0;
-@@ -278,6 +278,11 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
- 	if (sp->adaptation_ind)
- 		chunksize += sizeof(aiparam);
- 
-+	if (sp->strm_interleave) {
-+		extensions[num_ext] = SCTP_CID_I_DATA;
-+		num_ext += 1;
-+	}
-+
- 	chunksize += vparam_len;
- 
- 	/* Account for AUTH related parameters */
-@@ -392,7 +397,7 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
- 	struct sctp_inithdr initack;
- 	union sctp_params addrs;
- 	struct sctp_sock *sp;
--	__u8 extensions[4];
-+	__u8 extensions[5];
- 	size_t chunksize;
- 	int num_ext = 0;
- 	int cookie_len;
-@@ -442,6 +447,11 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
- 	if (sp->adaptation_ind)
- 		chunksize += sizeof(aiparam);
- 
-+	if (asoc->intl_enable) {
-+		extensions[num_ext] = SCTP_CID_I_DATA;
-+		num_ext += 1;
-+	}
-+
- 	if (asoc->peer.auth_capable) {
- 		auth_random = (struct sctp_paramhdr *)asoc->c.auth_random;
- 		chunksize += ntohs(auth_random->length);
-@@ -2032,6 +2042,10 @@ static void sctp_process_ext_param(struct sctp_association *asoc,
- 			if (net->sctp.addip_enable)
- 				asoc->peer.asconf_capable = 1;
- 			break;
-+		case SCTP_CID_I_DATA:
-+			if (sctp_sk(asoc->base.sk)->strm_interleave)
-+				asoc->intl_enable = 1;
-+			break;
- 		default:
- 			break;
- 		}
--- 
-2.1.0
+ip netns add TEST
+ip netns exec TEST ip link set lo up
+ip link add dummy0 type dummy
+ip link add dummy1 type dummy
+ip link add dummy2 type dummy
+ip link set dev dummy0 netns TEST
+ip link set dev dummy1 netns TEST
+ip link set dev dummy2 netns TEST
+ip netns exec TEST ip addr add 192.168.1.1/24 dev dummy0
+ip netns exec TEST ip link set dummy0 up
+ip netns exec TEST ip addr add 192.168.1.2/24 dev dummy1
+ip netns exec TEST ip link set dummy1 up
+ip netns exec TEST ip addr add 192.168.1.3/24 dev dummy2
+ip netns exec TEST ip link set dummy2 up
+ip netns exec TEST sctp_test -H 192.168.1.2 -P 20002 -h 192.168.1.1 -p 
+20000 -s -B 192.168.1.3
+ip netns del TEST
 
+Results to:
+
+[  354.179591] unregister_netdevice: waiting for lo to become free. 
+Usage count = 1
+[  364.419674] unregister_netdevice: waiting for lo to become free. 
+Usage count = 1
+[  374.663664] unregister_netdevice: waiting for lo to become free. 
+Usage count = 1
+[  384.903717] unregister_netdevice: waiting for lo to become free. 
+Usage count = 1
+[  395.143724] unregister_netdevice: waiting for lo to become free. 
+Usage count = 1
+[  405.383645] unregister_netdevice: waiting for lo to become free. 
+Usage count = 1
+...
+
+Based on a quick test, 4.14 and 4.15 does not suffer from this, but its 
+reproducible e.g. in 4.4.113 and 4.9.75
+
+Any ideas?
+
+Tommi
