@@ -1,25 +1,95 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 10 Jan 2018 19:53:41 +0000
-Subject: Re: [PATCH net 0/3] Some sockopt optlen fixes
-Message-Id: <20180110.145341.1475369360355738032.davem@davemloft.net>
+From: Eric Biggers <ebiggers3@gmail.com>
+Date: Tue, 30 Jan 2018 23:02:42 +0000
+Subject: Re: general protection fault in sctp_stream_free
+Message-Id: <20180130230242.lpbkdweq3c2ov2x2@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1515436112.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1515436112.git.marcelo.leitner@gmail.com>
+References: <001a113a6750ca1607055d3836d8@google.com>
+In-Reply-To: <001a113a6750ca1607055d3836d8@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: marcelo.leitner@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, nhorman@tuxdriver.com, vyasevich@gmail.com, haliu@redhat.com
+To: syzbot <bot+caf00b3331869268c9a4b8ec22b28127a3f3b306@syzkaller.appspotmail.com>
+Cc: davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
 
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon,  8 Jan 2018 19:02:26 -0200
-
-> Hangbin Liu reported that some SCTP sockopt are allowing the user to get
-> the kernel to allocate really large buffers by not having a ceiling on
-> optlen.
+On Sun, Nov 05, 2017 at 01:35:02AM -0700, syzbot wrote:
+> Hello,
 > 
-> This patchset address this issue (in patch 2), replace an GFP_ATOMIC
-> that isn't needed and avoid calculating the option size multiple times
-> in some setsockopt.
+> syzkaller hit the following crash on
+> 2a171788ba7bb61995e98e8163204fc7880f63b2
+> git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git/master
+> compiler: gcc (GCC) 7.1.1 20170620
+> .config is attached
+> Raw console output is attached.
+> 
+> 
+> 
+> 
+> R13: 00007ff7d3281b58 R14: 00000000004b7560 R15: 0000000000000000
+> kasan: CONFIG_KASAN_INLINE enabled
+> kasan: GPF could be caused by NULL-ptr deref or user memory access
+> general protection fault: 0000 [#1] SMP KASAN
+> Dumping ftrace buffer:
+>    (ftrace buffer empty)
+> Modules linked in:
+> CPU: 1 PID: 17823 Comm: syz-executor4 Not tainted 4.14.0-rc7+ #109
+> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS
+> Google 01/01/2011
+> task: ffff8801c6002380 task.stack: ffff8801c5fe0000
+> RIP: 0010:sctp_stream_free+0xc3/0x1b0 net/sctp/stream.c:209
+> RSP: 0018:ffff8801c5fe6fa0 EFLAGS: 00010202
+> RAX: 0000000000000000 RBX: ffff8801c33fd0b0 RCX: ffffc90003989000
+> RDX: 0000000000000001 RSI: ffffffff84837f78 RDI: 0000000000000008
+> RBP: ffff8801c5fe6fe0 R08: 0000000000000000 R09: 1ffff10038bfcd69
+> R10: 000000009cb59878 R11: 00000000f5f9e5c7 R12: 0000000000000000
+> R13: 0000000000000000 R14: dffffc0000000000 R15: ffffed003867fa16
+> FS:  00007ff7d3282700(0000) GS:ffff8801db300000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 0000000020b50ffc CR3: 00000001c4a5c000 CR4: 00000000001406e0
+> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+> Call Trace:
+>  sctp_association_free+0x301/0x930 net/sctp/associola.c:367
+>  sctp_sf_do_unexpected_init.isra.28+0x67e/0x13b0
+> net/sctp/sm_statefuns.c:1589
+>  sctp_sf_do_5_2_1_siminit+0x35/0x40 net/sctp/sm_statefuns.c:1645
+>  sctp_do_sm+0x18a/0x6a30 net/sctp/sm_sideeffect.c:1190
+>  sctp_assoc_bh_rcv+0x283/0x4b0 net/sctp/associola.c:1065
+>  sctp_inq_push+0x23b/0x300 net/sctp/inqueue.c:95
+>  sctp_backlog_rcv+0x177/0xaa0 net/sctp/input.c:350
+>  sk_backlog_rcv include/net/sock.h:912 [inline]
+>  __release_sock+0x124/0x360 net/core/sock.c:2266
+>  release_sock+0xa4/0x2a0 net/core/sock.c:2778
+>  sctp_sendmsg+0x18d1/0x32b0 net/sctp/socket.c:2051
+>  inet_sendmsg+0x11f/0x5e0 net/ipv4/af_inet.c:763
+>  sock_sendmsg_nosec net/socket.c:633 [inline]
+>  sock_sendmsg+0xca/0x110 net/socket.c:643
+>  SYSC_sendto+0x352/0x5a0 net/socket.c:1750
+>  SyS_sendto+0x40/0x50 net/socket.c:1718
+>  entry_SYSCALL_64_fastpath+0x1f/0xbe
+> RIP: 0033:0x452869
+> RSP: 002b:00007ff7d3281be8 EFLAGS: 00000212 ORIG_RAX: 000000000000002c
+> RAX: ffffffffffffffda RBX: 00000000007580d8 RCX: 0000000000452869
+> RDX: 0000000000000001 RSI: 00000000206a6000 RDI: 0000000000000013
+> RBP: 00007ff7d3281a20 R08: 000000002064b000 R09: 000000000000001c
+> R10: 0000000020000040 R11: 0000000000000212 R12: 00000000004b7550
+> R13: 00007ff7d3281b58 R14: 00000000004b7560 R15: 0000000000000000
+> Code: 48 c1 e8 03 4c 01 f0 48 89 45 d0 e8 d8 b4 ea fc 41 80 3f 00 0f 85 f1
+> 00 00 00 48 8b 03 4c 01 e8 48 8d 78 08 48 89 fa 48 c1 ea 03 <42> 80 3c 32 00
+> 0f 85 c3 00 00 00 48 8b 78 08 41 83 c4 01 e8 85
+> RIP: sctp_stream_free+0xc3/0x1b0 net/sctp/stream.c:209 RSP: ffff8801c5fe6fa0
+> ---[ end trace cf03319dc427fb51 ]---
+> 
+> 
+> ---
+> This bug is generated by a dumb bot. It may contain errors.
+> See https://goo.gl/tpsmEJ for details.
+> Direct all questions to syzkaller@googlegroups.com.
+> Please credit me with: Reported-by: syzbot <syzkaller@googlegroups.com>
+> 
+> syzbot will keep track of this bug report.
+> Once a fix for this bug is committed, please reply to this email with:
+> #syz fix: exact-commit-title
 
-Series applied, thank you.
+This crash seems to have stopped occurring now.  I presume it was fixed by:
+
+#syz fix: sctp: fix error path in sctp_stream_init
