@@ -1,53 +1,57 @@
 From: Tommi Rantala <tommi.t.rantala@nokia.com>
-Date: Wed, 31 Jan 2018 06:58:59 +0000
+Date: Wed, 31 Jan 2018 09:42:24 +0000
 Subject: Re: sctp netns "unregister_netdevice: waiting for lo to become free. Usage count = 1"
-Message-Id: <d226eb63-c613-69ae-c92d-c71785108733@nokia.com>
+Message-Id: <d6ddb96d-513d-0f6b-8114-0035d044e8be@nokia.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <2a9c25b0-9ee7-baf6-f212-2c94b06941ea@nokia.com>
- <20180130225227.GC3503@localhost.localdomain>
-In-Reply-To: <20180130225227.GC3503@localhost.localdomain>
+ <20180130155909.GA25399@hmswarspite.think-freely.org>
+ <085a2abc-36e3-74fd-8c3a-9352bdd05cf8@nokia.com>
+ <20180130210353.GB25399@hmswarspite.think-freely.org>
+In-Reply-To: <20180130210353.GB25399@hmswarspite.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+To: Neil Horman <nhorman@tuxdriver.com>
+Cc: Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
 
-On 31.01.2018 00:52, Marcelo Ricardo Leitner wrote:
-> On Mon, Jan 29, 2018 at 05:55:45PM +0200, Tommi Rantala wrote:
->> Hi,
+On 30.01.2018 23:03, Neil Horman wrote:
+> On Tue, Jan 30, 2018 at 09:24:17PM +0200, Tommi Rantala wrote:
+>> On 30.01.2018 17:59, Neil Horman wrote:
+>>> On Mon, Jan 29, 2018 at 05:55:45PM +0200, Tommi Rantala wrote:
+>>>>
+>>>> ip netns add TEST
+>>>> ip netns exec TEST ip link set lo up
+>>>> ip link add dummy0 type dummy
+>>>> ip link add dummy1 type dummy
+>>>> ip link add dummy2 type dummy
+>>>> ip link set dev dummy0 netns TEST
+>>>> ip link set dev dummy1 netns TEST
+>>>> ip link set dev dummy2 netns TEST
+>>>> ip netns exec TEST ip addr add 192.168.1.1/24 dev dummy0
+>>>> ip netns exec TEST ip link set dummy0 up
+>>>> ip netns exec TEST ip addr add 192.168.1.2/24 dev dummy1
+>>>> ip netns exec TEST ip link set dummy1 up
+>>>> ip netns exec TEST ip addr add 192.168.1.3/24 dev dummy2
+>>>> ip netns exec TEST ip link set dummy2 up
+>>>> ip netns exec TEST sctp_test -H 192.168.1.2 -P 20002 -h 192.168.1.1 -p 20000
+>>>> -s -B 192.168.1.3
+>>>> ip netns del TEST
+>>>>
+>>> Does the problem occur if you don't set lo up?
 >>
->> When running sctp_test from lksctp-tools in netns in 4.4 and 4.9 with
->> suitable arguments, the local loopback device in the netns is not getting
->> destroyed after deleting the netns.
+>> Still happens after dropping "ip netns exec TEST ip link set lo up".
 >>
-> ...
+>> Omitting "-B 192.168.1.3" from the sctp_test args helps.
 >>
->> Based on a quick test, 4.14 and 4.15 does not suffer from this, but its
->> reproducible e.g. in 4.4.113 and 4.9.75
->>
->> Any ideas?
-> 
-> By the versions you mentioned and report, maybe f186ce61bb82 ("Fix an
-> intermittent pr_emerg warning about lo becoming free.") fixed it.
+> Thats....wierd.  I'll look at the sctp_test code in the AM
 
-Thanks, found that commit too, but it does not help. It has been 
-included 4.4.76 already.
+I think there's a problem in the dst refcounting in sctp_v4_get_dst()
 
-Also the warning is not intermittent, but permanent...
+There's a dst_entry struct that has >0 refcnt after running the 
+testcase, which makes it impossible to delete the loopback device, as 
+that dst is never freed.
 
-It makes it impossible to add another netns, in 4.4 "ip netns add" gets 
-stuck in uninterruptible sleep:
-
-$ grep State /proc/$(pidof ip)/status
-State:  D (disk sleep)
-
-$ cat /proc/$(pidof ip)/stack
-[<ffffffff8249c342>] copy_net_ns+0x72/0x100
-[<ffffffff82075ee9>] create_new_namespaces+0xf9/0x1b0
-[<ffffffff82076141>] unshare_nsproxy_namespaces+0x61/0xa0
-[<ffffffff82056c1b>] SyS_unshare+0x1ab/0x2e0
-[<ffffffff825a266e>] entry_SYSCALL_64_fastpath+0x12/0x6d
-[<ffffffffffffffff>] 0xffffffffffffffff
-
+I'll try to make a patch.
 
 Tommi
+
