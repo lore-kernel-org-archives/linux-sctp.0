@@ -1,74 +1,66 @@
-From: Alexey Kodanev <alexey.kodanev@oracle.com>
-Date: Fri, 09 Feb 2018 14:05:37 +0000
-Subject: Re: [PATCH] sctp: verify size of a new chunk in _sctp_make_chunk()
-Message-Id: <3136bfa1-2edc-08b7-e8c1-c7eb8020919b@oracle.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 03 Feb 2018 12:15:05 +0000
+Subject: Re: net: hang in unregister_netdevice: waiting for lo to become free
+Message-Id: <CADvbK_fKDbUnAkdLrgm6rgj895Gb06AK7HaT0s9VD=zdF+vf6Q@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1518181351-28199-1-git-send-email-alexey.kodanev@oracle.com>
- <20180209132732.GB7278@localhost.localdomain>
-In-Reply-To: <20180209132732.GB7278@localhost.localdomain>
+References: <CACT4Y+ZyUxeUqEB7q1EHcs4j93mtk9UOBuYhJtcnnc8AfApoLw@mail.gmail.com>
+ <CAM_iQpVo0iSXKSR=Qc+7syn77BnhE2R72M2u5YfJF=fBkJHjsw@mail.gmail.com>
+ <7fd7e3b3-77b1-0936-b169-d08b946bedc7@iogearbox.net> <991243e2-e7c2-f2b2-72b9-d37b0d569b3b@gmail.com>
+ <efa5811c-0a01-a4af-ade2-71ef5dbc4eaf@gmail.com> <CADvbK_dgEa5g0ynY4F8pX6LuuBwW4e42rK_TFuRhY1=2G5zinw@mail.gmail.com>
+In-Reply-To: <CADvbK_dgEa5g0ynY4F8pX6LuuBwW4e42rK_TFuRhY1=2G5zinw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org
+To: David Ahern <dsahern@gmail.com>
+Cc: Daniel Borkmann <daniel@iogearbox.net>, Cong Wang <xiyou.wangcong@gmail.com>, Dmitry Vyukov <dvyukov@google.com>, David Miller <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>, Willem de Bruijn <willemb@google.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Rasmus Villemoes <linux@rasmusvillemoes.dk>, netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, syzkaller <syzkaller@googlegroups.com>, Dan Streetman <ddstreet@canonical.com>, "Eric W. Biederman" <ebiederm@xmission.com>, tommi.t.rantala@nokia.com, alexey.kodanev@oracle.com, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, linux-sctp@vger.kernel.org
 
-On 09.02.2018 16:27, Marcelo Ricardo Leitner wrote:
-> On Fri, Feb 09, 2018 at 04:02:31PM +0300, Alexey Kodanev wrote:
->> 
->> ---
->>  net/sctp/sm_make_chunk.c |    7 ++++++-
->>  1 files changed, 6 insertions(+), 1 deletions(-)
+On Thu, Feb 1, 2018 at 1:49 AM, Xin Long <lucien.xin@gmail.com> wrote:
+> On Tue, Jan 30, 2018 at 11:59 PM, David Ahern <dsahern@gmail.com> wrote:
+>> On 1/30/18 1:57 PM, David Ahern wrote:
+>>> On 1/30/18 1:08 PM, Daniel Borkmann wrote:
+>>>> On 01/30/2018 07:32 PM, Cong Wang wrote:
+>>>>> On Tue, Jan 30, 2018 at 4:09 AM, Dmitry Vyukov <dvyukov@google.com> wrote:
+>>>>>> Hello,
+>>>>>>
+>>>>>> The following program creates a hang in unregister_netdevice.
+>>>>>> cleanup_net work hangs there forever periodically printing
+>>>>>> "unregister_netdevice: waiting for lo to become free. Usage count = 3"
+>>>>>> and creation of any new network namespaces hangs forever.
+>>>>>
+>>>>> Interestingly, this is not reproducible on net-next.
+>>>>
+>>>> The most recent change on netns refcnt was 4ee806d51176 ("net: tcp: close
+>>>> sock if net namespace is exiting") in net/net-next from 5 days ago, maybe
+>>>> fixed due to that?
+>>>>
+>>>
+>>> This appears to be the commit introducing the refcnt leak:
+>>>
+>>> $ git bisect bad
+>>> dbc2b5e9a09e9a6664679a667ff81cff6e5f2641 is the first bad commit
+>>> commit dbc2b5e9a09e9a6664679a667ff81cff6e5f2641
+>>> Author: Xin Long <lucien.xin@gmail.com>
+>>> Date:   Fri May 12 14:39:52 2017 +0800
+>>>
+>>>     sctp: fix src address selection if using secondary addresses for ipv6
+>>>
+>>>
+>>> v4.14 is bad. Running bisect in the background while doing other things....
+>>>
 >>
->> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
->> index 793b05e..95618eb 100644
->> --- a/net/sctp/sm_make_chunk.c
->> +++ b/net/sctp/sm_make_chunk.c
->> @@ -1380,9 +1380,14 @@ void sctp_init_addrs(struct sctp_chunk *chunk, union sctp_addr *src,
-> 
-> Weird how it identified sctp_init_addrs as the context here o.O
-> Line numbers above and the rest below matches _sctp_make_chunk.
-
-Looks like because of my old git version...
-
-> 
->>  	struct sctp_chunk *retval;
->>  	struct sk_buff *skb;
->>  	struct sock *sk;
->> +	int chunklen;
->> +
->> +	chunklen = sizeof(*chunk_hdr) + paylen;
-> 
-> It's better to do the padding here too, as it may grow the length by 3
-> bytes.
-
-Hmm, SCTP_MAX_CHUNK_LEN is 65532 (accounts for padding by subtracting
-sizeof(__u32) from 1 << 16) and SCTP_PAD4(65531) equals 65532, i.e. it
-can't grow above it or am I missing something?
-
-Agree, may be it's better to not rely on the particular constant value.
-I'll send a new version.
-
-Thanks,
-Alexey
-
-> 
->   Marcelo
-> 
->> +	if (chunklen > SCTP_MAX_CHUNK_LEN)
->> +		goto nodata;
->>  
->>  	/* No need to allocate LL here, as this is only a chunk. */
->> -	skb = alloc_skb(SCTP_PAD4(sizeof(*chunk_hdr) + paylen), gfp);
->> +	skb = alloc_skb(SCTP_PAD4(chunklen), gfp);
->>  	if (!skb)
->>  		goto nodata;
->>  
->> -- 
->> 1.7.1
+>> Interesting. The commit that avoids the refcnt leak is
 >>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> commit 955ec4cb3b54c7c389a9f830be7d3ae2056b9212
+>> Author: David Ahern <dsahern@gmail.com>
+>> Date:   Wed Jan 24 19:45:29 2018 -0800
 >>
+>>     net/ipv6: Do not allow route add with a device that is down
+>>
+>> That commit does not intentionally address the problem so it is just
+>> masking the problematic code introduced by the commit above.
+> Thanks, David A.
+>
+> I'm still on a trip. will look into this asap.
 
+Alexey and Tommi already had the patches for this issue on
+both SCTP v4 and v6 dst_get, Thanks.
