@@ -1,54 +1,89 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 15 Feb 2018 09:51:01 +0000
-Subject: Re: [bug report] sctp: remove the useless check in sctp_renege_events
-Message-Id: <CADvbK_c5f3yExMw_KEWhafTvBjXtXqcgbTym+P4OsQYm3=SueQ@mail.gmail.com>
+From: Tommi Rantala <tommi.t.rantala@nokia.com>
+Date: Sun, 04 Feb 2018 09:02:39 +0000
+Subject: [PATCH net] sctp: fix dst reference leak in sctp_v4_get_dst
+Message-Id: <20180204090239.8875-1-tommi.t.rantala@nokia.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180215081126.GA16057@mwanda>
-In-Reply-To: <20180215081126.GA16057@mwanda>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Tommi Rantala <tommi.t.rantala@nokia.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Alexey Kodanev <alexey.kodanev@oracle.com>
 
-On Thu, Feb 15, 2018 at 4:11 PM, Dan Carpenter <dan.carpenter@oracle.com> wrote:
-> Hello Xin Long,
->
-> This is a semi-automatic email about new static checker warnings.
->
-> The patch fb23403536ea: "sctp: remove the useless check in
-> sctp_renege_events" from Feb 12, 2018, leads to the following Smatch
-> complaint:
->
->     net/sctp/stream_interleave.c:970 sctp_renege_events()
->     warn: variable dereferenced before check 'chunk' (see line 957)
->
-> net/sctp/stream_interleave.c
->    956
->    957          needed = ntohs(chunk->chunk_hdr->length) -
->                                ^^^^^^^^^^^^^^^^
-> We removed the check for "chunk"
->
->    958                   sizeof(struct sctp_idata_chunk);
->    959
->    960          if (skb_queue_empty(&asoc->base.sk->sk_receive_queue)) {
->    961                  freed = sctp_ulpq_renege_list(ulpq, &ulpq->lobby, needed);
->    962                  if (freed < needed)
->    963                          freed += sctp_ulpq_renege_list(ulpq, &ulpq->reasm,
->    964                                                         needed);
->    965                  if (freed < needed)
->    966                          freed += sctp_ulpq_renege_list(ulpq, &ulpq->reasm_uo,
->    967                                                         needed);
->    968          }
->    969
->    970          if (chunk && freed >= needed)
->                     ^^^^^
-> so we should probably remove it here.
-yes, you're right. I should have removed it in that patch.
-I will submit a  new one for it soon, thanks for your report.
+Fix dst reference leak in sctp_v4_get_dst() introduced in commit
+410f03831 ("sctp: add routing output fallback"):
 
->
->    971                  if (sctp_ulpevent_idata(ulpq, chunk, gfp) <= 0)
->    972                          sctp_intl_start_pd(ulpq, gfp);
->
-> regards,
-> dan carpenter
+When walking the address_list, successive ip_route_output_key() calls
+may return the same rt->dst with the reference incremented on each call.
+
+The code would not decrement the dst refcount when the dst pointer was
+identical from the previous iteration, causing the dst leak.
+
+Testcase:
+  ip netns add TEST
+  ip netns exec TEST ip link set lo up
+  ip link add dummy0 type dummy
+  ip link add dummy1 type dummy
+  ip link add dummy2 type dummy
+  ip link set dev dummy0 netns TEST
+  ip link set dev dummy1 netns TEST
+  ip link set dev dummy2 netns TEST
+  ip netns exec TEST ip addr add 192.168.1.1/24 dev dummy0
+  ip netns exec TEST ip link set dummy0 up
+  ip netns exec TEST ip addr add 192.168.1.2/24 dev dummy1
+  ip netns exec TEST ip link set dummy1 up
+  ip netns exec TEST ip addr add 192.168.1.3/24 dev dummy2
+  ip netns exec TEST ip link set dummy2 up
+  ip netns exec TEST sctp_test -H 192.168.1.2 -P 20002 -h 192.168.1.1 -p 20000 -s -B 192.168.1.3
+  ip netns del TEST
+
+In 4.4 and 4.9 kernels this results to:
+  [  354.179591] unregister_netdevice: waiting for lo to become free. Usage count = 1
+  [  364.419674] unregister_netdevice: waiting for lo to become free. Usage count = 1
+  [  374.663664] unregister_netdevice: waiting for lo to become free. Usage count = 1
+  [  384.903717] unregister_netdevice: waiting for lo to become free. Usage count = 1
+  [  395.143724] unregister_netdevice: waiting for lo to become free. Usage count = 1
+  [  405.383645] unregister_netdevice: waiting for lo to become free. Usage count = 1
+  ...
+
+Fixes: 410f03831 ("sctp: add routing output fallback")
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: Alexey Kodanev <alexey.kodanev@oracle.com>
+Signed-off-by: Tommi Rantala <tommi.t.rantala@nokia.com>
+---
+ net/sctp/protocol.c | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
+
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 8b4ff315695e..aadb9e7f60e2 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -508,21 +508,20 @@ static void sctp_v4_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
+ 		if (IS_ERR(rt))
+ 			continue;
+ 
+-		if (!dst)
+-			dst = &rt->dst;
+-
+ 		/* Ensure the src address belongs to the output
+ 		 * interface.
+ 		 */
+ 		odev = __ip_dev_find(sock_net(sk), laddr->a.v4.sin_addr.s_addr,
+ 				     false);
+ 		if (!odev || odev->ifindex != fl4->flowi4_oif) {
+-			if (&rt->dst != dst)
++			if (!dst)
++				dst = &rt->dst;
++			else
+ 				dst_release(&rt->dst);
+ 			continue;
+ 		}
+ 
+-		if (dst != &rt->dst)
++		if (dst && dst != &rt->dst)
+ 			dst_release(dst);
+ 		dst = &rt->dst;
+ 		break;
+-- 
+2.15.1
+
