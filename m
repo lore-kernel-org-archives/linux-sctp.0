@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 05 Feb 2018 12:35:49 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Mon, 05 Feb 2018 15:53:49 +0000
 Subject: Re: [PATCH] sctp: fix dst refcnt leak in sctp_v6_get_dst()
-Message-Id: <20180205123549.GA23491@hmswarspite.think-freely.org>
+Message-Id: <20180205155349.GC27685@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1517832635-18376-1-git-send-email-alexey.kodanev@oracle.com>
 In-Reply-To: <1517832635-18376-1-git-send-email-alexey.kodanev@oracle.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Alexey Kodanev <alexey.kodanev@oracle.com>
-Cc: netdev@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, Tommi Rantala <tommi.t.rantala@nokia.com>, Vlad Yasevich <vyasevich@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, Tommi Rantala <tommi.t.rantala@nokia.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org
 
 On Mon, Feb 05, 2018 at 03:10:35PM +0300, Alexey Kodanev wrote:
 > When going through the bind address list in sctp_v6_get_dst() and
@@ -24,6 +24,9 @@ On Mon, Feb 05, 2018 at 03:10:35PM +0300, Alexey Kodanev wrote:
 > 
 > Fixes: dbc2b5e9a09e ("sctp: fix src address selection if using secondary addresses for ipv6")
 > Signed-off-by: Alexey Kodanev <alexey.kodanev@oracle.com>
+
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+
 > ---
 >  net/sctp/ipv6.c |   10 +++++++---
 >  1 files changed, 7 insertions(+), 3 deletions(-)
@@ -60,5 +63,8 @@ On Mon, Feb 05, 2018 at 03:10:35PM +0300, Alexey Kodanev wrote:
 > -- 
 > 1.7.1
 > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
