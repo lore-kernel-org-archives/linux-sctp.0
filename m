@@ -1,120 +1,59 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 15 Feb 2018 14:21:09 +0000
-Subject: Re: [PATCH V6 0/4] Add SELinux SCTP protocol support
-Message-Id: <20180215142109.GB21419@hmswarspite.think-freely.org>
+From: Alexey Kodanev <alexey.kodanev@oracle.com>
+Date: Mon, 05 Feb 2018 12:10:35 +0000
+Subject: [PATCH] sctp: fix dst refcnt leak in sctp_v6_get_dst()
+Message-Id: <1517832635-18376-1-git-send-email-alexey.kodanev@oracle.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180213205252.4447-1-richard_c_haines@btinternet.com>
-	<CAHC9VhRG8AYpy3O1eLNCg6LP_i8Hk_U4zEGy3_frE2TMzZnG6w@mail.gmail.com>
-In-Reply-To: <CAHC9VhRG8AYpy3O1eLNCg6LP_i8Hk_U4zEGy3_frE2TMzZnG6w@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-security-module@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: Xin Long <lucien.xin@gmail.com>, Tommi Rantala <tommi.t.rantala@nokia.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, Alexey Kodanev <alexey.kodanev@oracle.com>
 
-On Wed, Feb 14, 2018 at 02:19:03PM -0500, Paul Moore wrote:
-> On Tue, Feb 13, 2018 at 3:52 PM, Richard Haines
-> <richard_c_haines@btinternet.com> wrote:
-> > These patches have been built on Fedora 27 with kernel-4.16.0-0.rc1 plus
-> > the following userspace patches to enable testing:
-> >
-> > 1) Updates to libsepol 2.7 to support the sctp portcon statement.
-> >    The patch is available from:
-> >          http://arctic.selinuxproject.org/~rhaines/selinux-sctp/
-> >          selinux-Add-support-for-the-SCTP-portcon-keyword.patch
-> >
-> > 2) Updates to the SELinux Test Suite adding SCTP tests. Please read the
-> >    selinux-testsuite/README.sctp for details. The patch is available from:
-> >          http://arctic.selinuxproject.org/~rhaines/selinux-sctp/
-> >          selinux-testsuite-Add-SCTP-test-support.patch
-> >
-> > 3) Updates to lksctp-tools that show SELinux info in sctp_darn and
-> >    sctp_test. It also contains a minor patch for test_1_to_1_connect.c
-> >    as when CIPSO/CALIPSO configured, NetLabel returns a different error
-> >    code for illegal addresses in test 5. The patch is available from:
-> >          http://arctic.selinuxproject.org/~rhaines/selinux-sctp/
-> >          lksctp-tools-Add-SELinux-support-to-sctp_test-and-sc.patch
-> >
-> > All SCTP lksctp-tools/src/func_tests run correctly in enforcing mode.
-> >
-> > All SCTP regression tests "./sctp-tests run" run correctly in enforcing
-> > mode. These tests are obtained from: https://github.com/sctp/sctp-tests
-> >
-> > The selinux-testsuite patch also adds remote tests (that need some manual
-> > configuration). These are useful for testing CIPSO/CALIPSO over a network
-> > with a number of categories to produce large ip option fields with various
-> > message sizes forcing fragmentation etc..
-> >
-> > Changes since RFC Patch:
-> > Removed the NetLabel patch (was [RFC PATCH 4/5] netlabel: Add SCTP support)
-> > as re-engineered. However this patchset will require the NetLabel
-> > patch at [1] to fully run the SCTP selinux-testsuite.
-> >
-> > V1 Changes:
-> > PATCH 1/4
-> > Remove unused parameter from security_sctp_assoc_request().
-> > Reformat and update LSM-sctp.rst documentation.
-> > PATCH 2/4
-> > Add variables and RCU locks as requested in [2] to support IP options.
-> > PATCH 3/4
-> > Added security_sctp_assoc_request() hook to sctp_sf_do_unexpected_init()
-> > and sctp_sf_do_5_2_4_dupcook().
-> > Removed security_sctp_assoc_request() hook from sctp_sf_do_5_1C_ack() as
-> > no longer required.
-> > PATCH 4/4
-> > Reformat and update SELinux-sctp.rst documentation.
-> > Remove bindx and connectx permissions.
-> > Rework selinux_socket_connect() and selinux_netlbl_socket_connect() to
-> > utilise helpers for code reuse.
-> > Add spinlock to selinux_sctp_assoc_request().
-> > Remove unused parameter from security_sctp_assoc_request().
-> > Use address->sa_family = AF_INET in *_bind and *_connect to ensure
-> > correct address type.
-> > Minor cleanups.
-> >
-> > V2 Changes:
-> > PATCH 4/4 - Remove spin lock from selinux_sctp_assoc_request()
-> > PATCH 4/4 - Fix selinux_sctp_sk_clone() kbuild test robot catch [3]
-> >
-> > V3 Changes:
-> > PATCH 2/4 - Account for IP options length in sctp.h sctp_frag_point() by
-> > Marcelo
-> >
-> > V4 Changes:
-> > PATCH 1/4 - Move specific SELinux descriptions from LSM-sctp.rst and
-> > lsm_hooks.h to SELinux-sctp.rst in PATCH 4/4
-> > PATCH 4/4 - Rename selinux_netlbl_sctp_socket_connect() to
-> > selinux_netlbl_socket_connect_locked() and move description comments to
-> > selinux_sctp_bind_connect()
-> >
-> > V5 Change: Rework selinux_netlbl_socket_connect() and
-> > selinux_netlbl_socket_connect_locked as requested by Paul.
-> >
-> > V6 Changes:
-> > Rework SCTP patches 2/4 and 3/4 as there have been major SCTP updates since
-> > kernel 4.14.
-> >
-> > [1] https://marc.info/?l=selinux&m1061619115945&w=2
-> > [2] https://marc.info/?l=selinux&m0962470215797&w=2
-> > [3] https://marc.info/?l=selinux&m1198281817779&w=2
-> >
-> > Richard Haines (4):
-> >   security: Add support for SCTP security hooks
-> >   sctp: Add ip option support
-> >   sctp: Add LSM hooks
-> >   selinux: Add SCTP support
-> 
-> Marcelo, or any other SCTP folks, do the SCTP changes still look okay
-> to you?  I'd like to merge these into the selinux/next tree by the end
-> of the week ...
-> 
-I had a few comments that I just posted.
-Neil
+When going through the bind address list in sctp_v6_get_dst() and
+the previously found address is better ('matchlen > bmatchlen'),
+the code continues to the next iteration without releasing currently
+held destination.
 
-> -- 
-> paul moore
-> www.paul-moore.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Fix it by releasing 'bdst' before continue to the next iteration, and
+instead of introducing one more '!IS_ERR(bdst)' check for dst_release(),
+move the already existed one right after ip6_dst_lookup_flow(), i.e. we
+shouldn't proceed further if we get an error for the route lookup.
+
+Fixes: dbc2b5e9a09e ("sctp: fix src address selection if using secondary addresses for ipv6")
+Signed-off-by: Alexey Kodanev <alexey.kodanev@oracle.com>
+---
+ net/sctp/ipv6.c |   10 +++++++---
+ 1 files changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 5d4c15b..e35d4f7 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -326,8 +326,10 @@ static void sctp_v6_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
+ 		final_p = fl6_update_dst(fl6, rcu_dereference(np->opt), &final);
+ 		bdst = ip6_dst_lookup_flow(sk, fl6, final_p);
+ 
+-		if (!IS_ERR(bdst) &&
+-		    ipv6_chk_addr(dev_net(bdst->dev),
++		if (IS_ERR(bdst))
++			continue;
++
++		if (ipv6_chk_addr(dev_net(bdst->dev),
+ 				  &laddr->a.v6.sin6_addr, bdst->dev, 1)) {
+ 			if (!IS_ERR_OR_NULL(dst))
+ 				dst_release(dst);
+@@ -336,8 +338,10 @@ static void sctp_v6_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
+ 		}
+ 
+ 		bmatchlen = sctp_v6_addr_match_len(daddr, &laddr->a);
+-		if (matchlen > bmatchlen)
++		if (matchlen > bmatchlen) {
++			dst_release(bdst);
+ 			continue;
++		}
+ 
+ 		if (!IS_ERR_OR_NULL(dst))
+ 			dst_release(dst);
+-- 
+1.7.1
+
