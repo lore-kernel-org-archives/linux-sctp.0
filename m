@@ -1,17 +1,19 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 05 Feb 2018 15:53:49 +0000
+From: David Miller <davem@davemloft.net>
+Date: Tue, 06 Feb 2018 02:22:54 +0000
 Subject: Re: [PATCH] sctp: fix dst refcnt leak in sctp_v6_get_dst()
-Message-Id: <20180205155349.GC27685@localhost.localdomain>
+Message-Id: <20180205.212254.1398375397369589049.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1517832635-18376-1-git-send-email-alexey.kodanev@oracle.com>
 In-Reply-To: <1517832635-18376-1-git-send-email-alexey.kodanev@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Alexey Kodanev <alexey.kodanev@oracle.com>
-Cc: netdev@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, Tommi Rantala <tommi.t.rantala@nokia.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org
+To: alexey.kodanev@oracle.com
+Cc: netdev@vger.kernel.org, lucien.xin@gmail.com, tommi.t.rantala@nokia.com, nhorman@tuxdriver.com, vyasevich@gmail.com, marcelo.leitner@gmail.com, linux-sctp@vger.kernel.org
 
-On Mon, Feb 05, 2018 at 03:10:35PM +0300, Alexey Kodanev wrote:
+From: Alexey Kodanev <alexey.kodanev@oracle.com>
+Date: Mon,  5 Feb 2018 15:10:35 +0300
+
 > When going through the bind address list in sctp_v6_get_dst() and
 > the previously found address is better ('matchlen > bmatchlen'),
 > the code continues to the next iteration without releasing currently
@@ -25,46 +27,4 @@ On Mon, Feb 05, 2018 at 03:10:35PM +0300, Alexey Kodanev wrote:
 > Fixes: dbc2b5e9a09e ("sctp: fix src address selection if using secondary addresses for ipv6")
 > Signed-off-by: Alexey Kodanev <alexey.kodanev@oracle.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-> ---
->  net/sctp/ipv6.c |   10 +++++++---
->  1 files changed, 7 insertions(+), 3 deletions(-)
-> 
-> diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-> index 5d4c15b..e35d4f7 100644
-> --- a/net/sctp/ipv6.c
-> +++ b/net/sctp/ipv6.c
-> @@ -326,8 +326,10 @@ static void sctp_v6_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
->  		final_p = fl6_update_dst(fl6, rcu_dereference(np->opt), &final);
->  		bdst = ip6_dst_lookup_flow(sk, fl6, final_p);
->  
-> -		if (!IS_ERR(bdst) &&
-> -		    ipv6_chk_addr(dev_net(bdst->dev),
-> +		if (IS_ERR(bdst))
-> +			continue;
-> +
-> +		if (ipv6_chk_addr(dev_net(bdst->dev),
->  				  &laddr->a.v6.sin6_addr, bdst->dev, 1)) {
->  			if (!IS_ERR_OR_NULL(dst))
->  				dst_release(dst);
-> @@ -336,8 +338,10 @@ static void sctp_v6_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
->  		}
->  
->  		bmatchlen = sctp_v6_addr_match_len(daddr, &laddr->a);
-> -		if (matchlen > bmatchlen)
-> +		if (matchlen > bmatchlen) {
-> +			dst_release(bdst);
->  			continue;
-> +		}
->  
->  		if (!IS_ERR_OR_NULL(dst))
->  			dst_release(dst);
-> -- 
-> 1.7.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Applied and queued up for -stable, thank you.
