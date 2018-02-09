@@ -1,66 +1,88 @@
-From: Richard Haines <richard_c_haines@btinternet.com>
-Date: Tue, 13 Feb 2018 22:06:56 +0000
-Subject: Re: FYI: selinux/next rebased to v4.16-rc1
-Message-Id: <1518559616.4898.4.camel@btinternet.com>
+From: Alexey Kodanev <alexey.kodanev@oracle.com>
+Date: Fri, 09 Feb 2018 12:54:26 +0000
+Subject: [PATCH] sctp: verify size of a new chunk in _sctp_make_chunk()
+Message-Id: <1518181351-28199-1-git-send-email-alexey.kodanev@oracle.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAHC9VhR22eO9ugfAaY=PM9_aaHVa1hD05LFffNT-pXjz2Zt3Rw@mail.gmail.com>
- <1518538932.18249.14.camel@btinternet.com>
- <CAHC9VhSxN2qcMWCmwx8oTb9+-XzE=uqGv+yhmz1MLPbSx5utZA@mail.gmail.com>
-In-Reply-To: <CAHC9VhSxN2qcMWCmwx8oTb9+-XzE=uqGv+yhmz1MLPbSx5utZA@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Paul Moore <paul@paul-moore.com>
-Cc: linux-sctp@vger.kernel.org, selinux@tycho.nsa.gov
+To: netdev@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org, Alexey Kodanev <alexey.kodanev@oracle.com>
 
-On Tue, 2018-02-13 at 12:55 -0500, Paul Moore wrote:
-> On Tue, Feb 13, 2018 at 11:22 AM, Richard Haines
-> <richard_c_haines@btinternet.com> wrote:
-> > On Mon, 2018-02-12 at 16:13 -0500, Paul Moore wrote:
-> > > A quick note to let you know that I've just rebased the
-> > > selinux/next
-> > > branch to v4.16-rc1.  Over the next day or two I'm going to be
-> > > working
-> > > through the backlog of kernel patches, most notably the SCTP
-> > > work.
-> > > 
-> > 
-> > I've just rebuilt the SCTP patch set on Fedora using:
-> > 
-> > kernel-4.16.0-0.rc1.git0.1.fc28.src.rpm
-> > 
-> > I found there were a number of changes required to get the SCTP
-> > specific patches (2/4 and 3/4) to build as there have been many
-> > updates
-> > since kernel 4.14.
-> > 
-> > The 4-16 kernel build passes my SCTP SELinux Testsuite although I
-> > also
-> > added the "netlabel: If PF_INET6, check sk_buff ip header version"
-> > [1]
-> > patch as well.
-> > 
-> > It's probably best I post these patches so the SCTP team can
-> > finally ok
-> > them (or not).
-> 
-> If you don't mind doing the rebase that would be helpful.  We'll have
-> to wait and see what the changes look like, but I don't expect there
-> to be a problem with the SCTP folks, Marcelo has been very helpful
-> thus far.
-> 
-> As far as the NetLabel patch is concerned, yes, go ahead and include
-> that in the patchset.
+When SCTP makes INIT or INIT_ACK packets the total chunk length
+can exceed SCTP_MAX_CHUNK_LEN which leads to kernel panic when
+transmitting these packets, e.g. the crash on sending INIT_ACK:
 
-I did not include the "netlabel: If PF_INET6, check sk_buff ip header
-version" [1] in the final V6 patches as it was the only one that did
-not require a rebase, therefore [1] can still go standalone in kernel
-4.16
+[  597.804948] skbuff: skb_over_panic: text:00000000ffae06e4 len:120168
+               put:120156 head:000000007aa47635 data:00000000d991c2de
+               tail:0x1d640 end:0xfec0 dev:<NULL>
+...
+[  597.976970] ------------[ cut here ]------------
+[  598.033408] kernel BUG at net/core/skbuff.c:104!
+[  600.314841] Call Trace:
+[  600.345829]  <IRQ>
+[  600.371639]  ? sctp_packet_transmit+0x2095/0x26d0 [sctp]
+[  600.436934]  skb_put+0x16c/0x200
+[  600.477295]  sctp_packet_transmit+0x2095/0x26d0 [sctp]
+[  600.540630]  ? sctp_packet_config+0x890/0x890 [sctp]
+[  600.601781]  ? __sctp_packet_append_chunk+0x3b4/0xd00 [sctp]
+[  600.671356]  ? sctp_cmp_addr_exact+0x3f/0x90 [sctp]
+[  600.731482]  sctp_outq_flush+0x663/0x30d0 [sctp]
+[  600.788565]  ? sctp_make_init+0xbf0/0xbf0 [sctp]
+[  600.845555]  ? sctp_check_transmitted+0x18f0/0x18f0 [sctp]
+[  600.912945]  ? sctp_outq_tail+0x631/0x9d0 [sctp]
+[  600.969936]  sctp_cmd_interpreter.isra.22+0x3be1/0x5cb0 [sctp]
+[  601.041593]  ? sctp_sf_do_5_1B_init+0x85f/0xc30 [sctp]
+[  601.104837]  ? sctp_generate_t1_cookie_event+0x20/0x20 [sctp]
+[  601.175436]  ? sctp_eat_data+0x1710/0x1710 [sctp]
+[  601.233575]  sctp_do_sm+0x182/0x560 [sctp]
+[  601.284328]  ? sctp_has_association+0x70/0x70 [sctp]
+[  601.345586]  ? sctp_rcv+0xef4/0x32f0 [sctp]
+[  601.397478]  ? sctp6_rcv+0xa/0x20 [sctp]
+...
 
-> 
-> Thanks!
-> 
-> > [1] https://marc.info/?l=selinux&m1061619115945&w=2
-> 
-> 
-> 
+Here the chunk size for INIT_ACK packet becomes too big, mostly
+because of the state cookie (INIT packet has large size with
+many address parameters), plus additional server parameters.
+
+Later this chunk causes the panic in skb_put_data():
+
+  skb_packet_transmit()
+      sctp_packet_pack()
+          skb_put_data(nskb, chunk->skb->data, chunk->skb->len);
+
+'nskb' (head skb) was previously allocated with packet->size
+from u16 'chunk->chunk_hdr->length'.
+
+As suggested by Marcelo we should check the chunk's length in
+_sctp_make_chunk() before trying to allocate skb for it and
+discard a chunk if its size bigger than SCTP_MAX_CHUNK_LEN.
+
+Signed-off-by: Alexey Kodanev <alexey.kodanev@oracle.com>
+---
+ net/sctp/sm_make_chunk.c |    7 ++++++-
+ 1 files changed, 6 insertions(+), 1 deletions(-)
+
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 793b05e..95618eb 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -1380,9 +1380,14 @@ void sctp_init_addrs(struct sctp_chunk *chunk, union sctp_addr *src,
+ 	struct sctp_chunk *retval;
+ 	struct sk_buff *skb;
+ 	struct sock *sk;
++	int chunklen;
++
++	chunklen = sizeof(*chunk_hdr) + paylen;
++	if (chunklen > SCTP_MAX_CHUNK_LEN)
++		goto nodata;
+ 
+ 	/* No need to allocate LL here, as this is only a chunk. */
+-	skb = alloc_skb(SCTP_PAD4(sizeof(*chunk_hdr) + paylen), gfp);
++	skb = alloc_skb(SCTP_PAD4(chunklen), gfp);
+ 	if (!skb)
+ 		goto nodata;
+ 
+-- 
+1.7.1
+
