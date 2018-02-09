@@ -1,106 +1,74 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 09 Feb 2018 13:27:32 +0000
+From: Alexey Kodanev <alexey.kodanev@oracle.com>
+Date: Fri, 09 Feb 2018 14:05:37 +0000
 Subject: Re: [PATCH] sctp: verify size of a new chunk in _sctp_make_chunk()
-Message-Id: <20180209132732.GB7278@localhost.localdomain>
+Message-Id: <3136bfa1-2edc-08b7-e8c1-c7eb8020919b@oracle.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1518181351-28199-1-git-send-email-alexey.kodanev@oracle.com>
-In-Reply-To: <1518181351-28199-1-git-send-email-alexey.kodanev@oracle.com>
+ <20180209132732.GB7278@localhost.localdomain>
+In-Reply-To: <20180209132732.GB7278@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Alexey Kodanev <alexey.kodanev@oracle.com>
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 Cc: netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org
 
-On Fri, Feb 09, 2018 at 04:02:31PM +0300, Alexey Kodanev wrote:
-> When SCTP makes INIT or INIT_ACK packets the total chunk length
-> can exceed SCTP_MAX_CHUNK_LEN which leads to kernel panic when
-> transmitting these packets, e.g. the crash on sending INIT_ACK:
+On 09.02.2018 16:27, Marcelo Ricardo Leitner wrote:
+> On Fri, Feb 09, 2018 at 04:02:31PM +0300, Alexey Kodanev wrote:
+>> 
+>> ---
+>>  net/sctp/sm_make_chunk.c |    7 ++++++-
+>>  1 files changed, 6 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+>> index 793b05e..95618eb 100644
+>> --- a/net/sctp/sm_make_chunk.c
+>> +++ b/net/sctp/sm_make_chunk.c
+>> @@ -1380,9 +1380,14 @@ void sctp_init_addrs(struct sctp_chunk *chunk, union sctp_addr *src,
 > 
-> [  597.804948] skbuff: skb_over_panic: text:00000000ffae06e4 len:120168
->                put:120156 head:000000007aa47635 data:00000000d991c2de
->                tail:0x1d640 end:0xfec0 dev:<NULL>
-> ...
-> [  597.976970] ------------[ cut here ]------------
-> [  598.033408] kernel BUG at net/core/skbuff.c:104!
-> [  600.314841] Call Trace:
-> [  600.345829]  <IRQ>
-> [  600.371639]  ? sctp_packet_transmit+0x2095/0x26d0 [sctp]
-> [  600.436934]  skb_put+0x16c/0x200
-> [  600.477295]  sctp_packet_transmit+0x2095/0x26d0 [sctp]
-> [  600.540630]  ? sctp_packet_config+0x890/0x890 [sctp]
-> [  600.601781]  ? __sctp_packet_append_chunk+0x3b4/0xd00 [sctp]
-> [  600.671356]  ? sctp_cmp_addr_exact+0x3f/0x90 [sctp]
-> [  600.731482]  sctp_outq_flush+0x663/0x30d0 [sctp]
-> [  600.788565]  ? sctp_make_init+0xbf0/0xbf0 [sctp]
-> [  600.845555]  ? sctp_check_transmitted+0x18f0/0x18f0 [sctp]
-> [  600.912945]  ? sctp_outq_tail+0x631/0x9d0 [sctp]
-> [  600.969936]  sctp_cmd_interpreter.isra.22+0x3be1/0x5cb0 [sctp]
-> [  601.041593]  ? sctp_sf_do_5_1B_init+0x85f/0xc30 [sctp]
-> [  601.104837]  ? sctp_generate_t1_cookie_event+0x20/0x20 [sctp]
-> [  601.175436]  ? sctp_eat_data+0x1710/0x1710 [sctp]
-> [  601.233575]  sctp_do_sm+0x182/0x560 [sctp]
-> [  601.284328]  ? sctp_has_association+0x70/0x70 [sctp]
-> [  601.345586]  ? sctp_rcv+0xef4/0x32f0 [sctp]
-> [  601.397478]  ? sctp6_rcv+0xa/0x20 [sctp]
-> ...
-> 
-> Here the chunk size for INIT_ACK packet becomes too big, mostly
-> because of the state cookie (INIT packet has large size with
-> many address parameters), plus additional server parameters.
-> 
-> Later this chunk causes the panic in skb_put_data():
-> 
->   skb_packet_transmit()
->       sctp_packet_pack()
->           skb_put_data(nskb, chunk->skb->data, chunk->skb->len);
-> 
-> 'nskb' (head skb) was previously allocated with packet->size
-> from u16 'chunk->chunk_hdr->length'.
-> 
-> As suggested by Marcelo we should check the chunk's length in
-> _sctp_make_chunk() before trying to allocate skb for it and
-> discard a chunk if its size bigger than SCTP_MAX_CHUNK_LEN.
-> 
-> Signed-off-by: Alexey Kodanev <alexey.kodanev@oracle.com>
-> ---
->  net/sctp/sm_make_chunk.c |    7 ++++++-
->  1 files changed, 6 insertions(+), 1 deletions(-)
-> 
-> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> index 793b05e..95618eb 100644
-> --- a/net/sctp/sm_make_chunk.c
-> +++ b/net/sctp/sm_make_chunk.c
-> @@ -1380,9 +1380,14 @@ void sctp_init_addrs(struct sctp_chunk *chunk, union sctp_addr *src,
+> Weird how it identified sctp_init_addrs as the context here o.O
+> Line numbers above and the rest below matches _sctp_make_chunk.
 
-Weird how it identified sctp_init_addrs as the context here o.O
-Line numbers above and the rest below matches _sctp_make_chunk.
+Looks like because of my old git version...
 
->  	struct sctp_chunk *retval;
->  	struct sk_buff *skb;
->  	struct sock *sk;
-> +	int chunklen;
-> +
-> +	chunklen = sizeof(*chunk_hdr) + paylen;
-
-It's better to do the padding here too, as it may grow the length by 3
-bytes.
-
-  Marcelo
-
-> +	if (chunklen > SCTP_MAX_CHUNK_LEN)
-> +		goto nodata;
->  
->  	/* No need to allocate LL here, as this is only a chunk. */
-> -	skb = alloc_skb(SCTP_PAD4(sizeof(*chunk_hdr) + paylen), gfp);
-> +	skb = alloc_skb(SCTP_PAD4(chunklen), gfp);
->  	if (!skb)
->  		goto nodata;
->  
-> -- 
-> 1.7.1
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>  	struct sctp_chunk *retval;
+>>  	struct sk_buff *skb;
+>>  	struct sock *sk;
+>> +	int chunklen;
+>> +
+>> +	chunklen = sizeof(*chunk_hdr) + paylen;
 > 
+> It's better to do the padding here too, as it may grow the length by 3
+> bytes.
+
+Hmm, SCTP_MAX_CHUNK_LEN is 65532 (accounts for padding by subtracting
+sizeof(__u32) from 1 << 16) and SCTP_PAD4(65531) equals 65532, i.e. it
+can't grow above it or am I missing something?
+
+Agree, may be it's better to not rely on the particular constant value.
+I'll send a new version.
+
+Thanks,
+Alexey
+
+> 
+>   Marcelo
+> 
+>> +	if (chunklen > SCTP_MAX_CHUNK_LEN)
+>> +		goto nodata;
+>>  
+>>  	/* No need to allocate LL here, as this is only a chunk. */
+>> -	skb = alloc_skb(SCTP_PAD4(sizeof(*chunk_hdr) + paylen), gfp);
+>> +	skb = alloc_skb(SCTP_PAD4(chunklen), gfp);
+>>  	if (!skb)
+>>  		goto nodata;
+>>  
+>> -- 
+>> 1.7.1
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+
