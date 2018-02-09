@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 09 Feb 2018 14:40:54 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Fri, 09 Feb 2018 15:02:19 +0000
 Subject: Re: [PATCH net v2] sctp: verify size of a new chunk in _sctp_make_chunk()
-Message-Id: <20180209144054.GG7402@localhost.localdomain>
+Message-Id: <20180209150219.GA29097@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1518186923-28650-1-git-send-email-alexey.kodanev@oracle.com>
 In-Reply-To: <1518186923-28650-1-git-send-email-alexey.kodanev@oracle.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Alexey Kodanev <alexey.kodanev@oracle.com>
-Cc: netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org
 
 On Fri, Feb 09, 2018 at 05:35:23PM +0300, Alexey Kodanev wrote:
 > When SCTP makes INIT or INIT_ACK packet the total chunk length
@@ -62,11 +62,6 @@ On Fri, Feb 09, 2018 at 05:35:23PM +0300, Alexey Kodanev wrote:
 > discard a chunk if its size bigger than SCTP_MAX_CHUNK_LEN.
 > 
 > Signed-off-by: Alexey Kodanev <alexey.kodanev@oracle.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leinter@gmail.com>
-
-Thanks Alexey.
-
 > ---
 > 
 > v2: account for padding before checking chunklen
@@ -97,3 +92,7 @@ Thanks Alexey.
 > -- 
 > 1.8.3.1
 > 
+> 
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
