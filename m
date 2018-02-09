@@ -1,49 +1,23 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 09 Feb 2018 15:02:19 +0000
+From: David Miller <davem@davemloft.net>
+Date: Fri, 09 Feb 2018 19:32:23 +0000
 Subject: Re: [PATCH net v2] sctp: verify size of a new chunk in _sctp_make_chunk()
-Message-Id: <20180209150219.GA29097@hmswarspite.think-freely.org>
+Message-Id: <20180209.143223.1410582840717699699.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1518186923-28650-1-git-send-email-alexey.kodanev@oracle.com>
 In-Reply-To: <1518186923-28650-1-git-send-email-alexey.kodanev@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Alexey Kodanev <alexey.kodanev@oracle.com>
-Cc: netdev@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, David Miller <davem@davemloft.net>, linux-sctp@vger.kernel.org
+To: alexey.kodanev@oracle.com
+Cc: netdev@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, vyasevich@gmail.com, linux-sctp@vger.kernel.org
 
-On Fri, Feb 09, 2018 at 05:35:23PM +0300, Alexey Kodanev wrote:
+From: Alexey Kodanev <alexey.kodanev@oracle.com>
+Date: Fri,  9 Feb 2018 17:35:23 +0300
+
 > When SCTP makes INIT or INIT_ACK packet the total chunk length
 > can exceed SCTP_MAX_CHUNK_LEN which leads to kernel panic when
 > transmitting these packets, e.g. the crash on sending INIT_ACK:
-> 
-> [  597.804948] skbuff: skb_over_panic: text:00000000ffae06e4 len:120168
->                put:120156 head:000000007aa47635 data:00000000d991c2de
->                tail:0x1d640 end:0xfec0 dev:<NULL>
-> ...
-> [  597.976970] ------------[ cut here ]------------
-> [  598.033408] kernel BUG at net/core/skbuff.c:104!
-> [  600.314841] Call Trace:
-> [  600.345829]  <IRQ>
-> [  600.371639]  ? sctp_packet_transmit+0x2095/0x26d0 [sctp]
-> [  600.436934]  skb_put+0x16c/0x200
-> [  600.477295]  sctp_packet_transmit+0x2095/0x26d0 [sctp]
-> [  600.540630]  ? sctp_packet_config+0x890/0x890 [sctp]
-> [  600.601781]  ? __sctp_packet_append_chunk+0x3b4/0xd00 [sctp]
-> [  600.671356]  ? sctp_cmp_addr_exact+0x3f/0x90 [sctp]
-> [  600.731482]  sctp_outq_flush+0x663/0x30d0 [sctp]
-> [  600.788565]  ? sctp_make_init+0xbf0/0xbf0 [sctp]
-> [  600.845555]  ? sctp_check_transmitted+0x18f0/0x18f0 [sctp]
-> [  600.912945]  ? sctp_outq_tail+0x631/0x9d0 [sctp]
-> [  600.969936]  sctp_cmd_interpreter.isra.22+0x3be1/0x5cb0 [sctp]
-> [  601.041593]  ? sctp_sf_do_5_1B_init+0x85f/0xc30 [sctp]
-> [  601.104837]  ? sctp_generate_t1_cookie_event+0x20/0x20 [sctp]
-> [  601.175436]  ? sctp_eat_data+0x1710/0x1710 [sctp]
-> [  601.233575]  sctp_do_sm+0x182/0x560 [sctp]
-> [  601.284328]  ? sctp_has_association+0x70/0x70 [sctp]
-> [  601.345586]  ? sctp_rcv+0xef4/0x32f0 [sctp]
-> [  601.397478]  ? sctp6_rcv+0xa/0x20 [sctp]
-> ...
-> 
+ ...
 > Here the chunk size for INIT_ACK packet becomes too big, mostly
 > because of the state cookie (INIT packet has large size with
 > many address parameters), plus additional server parameters.
@@ -62,37 +36,5 @@ On Fri, Feb 09, 2018 at 05:35:23PM +0300, Alexey Kodanev wrote:
 > discard a chunk if its size bigger than SCTP_MAX_CHUNK_LEN.
 > 
 > Signed-off-by: Alexey Kodanev <alexey.kodanev@oracle.com>
-> ---
-> 
-> v2: account for padding before checking chunklen
-> 
->  net/sctp/sm_make_chunk.c | 7 ++++++-
->  1 file changed, 6 insertions(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> index 793b05e..d01475f 100644
-> --- a/net/sctp/sm_make_chunk.c
-> +++ b/net/sctp/sm_make_chunk.c
-> @@ -1380,9 +1380,14 @@ static struct sctp_chunk *_sctp_make_chunk(const struct sctp_association *asoc,
->  	struct sctp_chunk *retval;
->  	struct sk_buff *skb;
->  	struct sock *sk;
-> +	int chunklen;
-> +
-> +	chunklen = SCTP_PAD4(sizeof(*chunk_hdr) + paylen);
-> +	if (chunklen > SCTP_MAX_CHUNK_LEN)
-> +		goto nodata;
->  
->  	/* No need to allocate LL here, as this is only a chunk. */
-> -	skb = alloc_skb(SCTP_PAD4(sizeof(*chunk_hdr) + paylen), gfp);
-> +	skb = alloc_skb(chunklen, gfp);
->  	if (!skb)
->  		goto nodata;
->  
-> -- 
-> 1.8.3.1
-> 
-> 
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
+Applied and queued up for -stable, thanks.
