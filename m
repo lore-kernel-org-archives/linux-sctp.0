@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 12 Feb 2018 12:29:04 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 12 Feb 2018 13:59:35 +0000
 Subject: Re: [PATCH net] sctp: do not pr_err for the duplicated node in transport rhlist
-Message-Id: <20180212122904.GI7402@localhost.localdomain>
+Message-Id: <20180212135935.GA21383@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <f5a0c541d1e47f66d3513ab7974a6e9262ebe09d.1518431346.git.lucien.xin@gmail.com>
 In-Reply-To: <f5a0c541d1e47f66d3513ab7974a6e9262ebe09d.1518431346.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
 On Mon, Feb 12, 2018 at 06:29:06PM +0800, Xin Long wrote:
 > The pr_err in sctp_hash_transport was supposed to report a sctp bug
@@ -24,9 +24,6 @@ On Mon, Feb 12, 2018 at 06:29:06PM +0800, Xin Long wrote:
 > Fixes: cd2b70875058 ("sctp: check duplicate node before inserting a new transport")
 > Reported-by: Wei Chen <weichen@redhat.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/input.c | 5 +----
 >  1 file changed, 1 insertion(+), 4 deletions(-)
@@ -55,3 +52,5 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > -- 
 > 2.1.0
 > 
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
