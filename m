@@ -1,68 +1,45 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 27 Feb 2018 12:24:24 +0000
-Subject: Re: [PATCH V8 2/4] sctp: Add ip option support
-Message-Id: <20180227122424.GA22323@hmswarspite.think-freely.org>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 12 Feb 2018 10:31:24 +0000
+Subject: [PATCH net] sctp: remove the useless check in sctp_renege_events
+Message-Id: <8db12ad85c54e5b56bc871e977bd71a1f6ea2e99.1518431484.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180224161851.29712-1-richard_c_haines@btinternet.com>
-	<CAHC9VhQrNjdtujiazYyM9n535ov1QHZ_b7=u4f-kiYCJE-=YVw@mail.gmail.com>
-In-Reply-To: <CAHC9VhQrNjdtujiazYyM9n535ov1QHZ_b7=u4f-kiYCJE-=YVw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-security-module@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Mon, Feb 26, 2018 at 05:48:48PM -0500, Paul Moore wrote:
-> On Sat, Feb 24, 2018 at 11:18 AM, Richard Haines
-> <richard_c_haines@btinternet.com> wrote:
-> > Add ip option support to allow LSM security modules to utilise CIPSO/IPv4
-> > and CALIPSO/IPv6 services.
-> >
-> > Signed-off-by: Richard Haines <richard_c_haines@btinternet.com>
-> > ---
-> > All SCTP lksctp-tools/src/func_tests run correctly in enforcing mode.
-> > All "./sctp-tests run" obtained from: https://github.com/sctp/sctp-tests
-> > pass.
-> >
-> > V7 Changes:
-> > 1) Log when copy ip options fail for IPv4 and IPv6
-> > 2) Correct sctp_setsockopt_maxseg() function. Note that the lksctp-tools
-> > func_tests do not test with struct sctp_assoc_value. Just used simple test
-> > and okay.
-> > 3) Move calculation of overheads to sctp_packet_config().
-> > NOTE: Initially in sctp_packet_reset() I set packet->size and
-> > packet->overhead to zero (as it is a reset). This was okay for all the
-> > lksctp-tools function tests, however when running "sctp-tests" ndatshched
-> > tests it causes these to fail with an st_s.log entry of:
-> >         sid: 3, expected: 3
-> >         sid: 3, expected: 3
-> >         unexpected sid packet !!!
-> >         sid: 1, expected: 3
-> >
-> > I then found sctp_packet_transmit() relies on setting
-> > "packet->size = packet->overhead;" to reset size to the current overhead
-> > after sending packets, hence the comment in sctp_packet_reset()
-> >
-> > V8 Change:
-> > Fix sparse warning:
-> > net/sctp/protocol.c:269:28: sparse: dereference of noderef expression
-> > highlighted in [1] for sctp_v4_ip_options_len() function.
-> >
-> > [1] https://lists.01.org/pipermail/kbuild-all/2018-February/043695.html
-> >
-> >  include/net/sctp/sctp.h    |  4 +++-
-> >  include/net/sctp/structs.h |  2 ++
-> >  net/sctp/chunk.c           | 10 +++++++---
-> >  net/sctp/ipv6.c            | 45 ++++++++++++++++++++++++++++++++++++++-------
-> >  net/sctp/output.c          | 34 +++++++++++++++++++++-------------
-> >  net/sctp/protocol.c        | 43 +++++++++++++++++++++++++++++++++++++++++++
-> >  net/sctp/socket.c          | 11 ++++++++---
-> >  7 files changed, 122 insertions(+), 27 deletions(-)
-> 
-> Thanks Richard.
-> 
-> Neil and Marcelo, I transfered your acked-by to this patch, if you've
-> got any objections to that please let me know.
-> 
-I'm also fine with the transfer, thanks for checking!
-Neil
+Remove the 'if (chunk)' check in sctp_renege_events for idata process,
+as all renege commands are generated in sctp_eat_data and it can't be
+NULL.
+
+The same thing we already did for common data in sctp_ulpq_renege.
+
+Fixes: 94014e8d871a ("sctp: implement renege_events for sctp_stream_interleave")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/stream_interleave.c | 8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
+
+diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
+index c19fd42..65ac03b 100644
+--- a/net/sctp/stream_interleave.c
++++ b/net/sctp/stream_interleave.c
+@@ -955,12 +955,8 @@ static void sctp_renege_events(struct sctp_ulpq *ulpq, struct sctp_chunk *chunk,
+ 	__u32 freed = 0;
+ 	__u16 needed;
+ 
+-	if (chunk) {
+-		needed = ntohs(chunk->chunk_hdr->length);
+-		needed -= sizeof(struct sctp_idata_chunk);
+-	} else {
+-		needed = SCTP_DEFAULT_MAXWINDOW;
+-	}
++	needed = ntohs(chunk->chunk_hdr->length) -
++		 sizeof(struct sctp_idata_chunk);
+ 
+ 	if (skb_queue_empty(&asoc->base.sk->sk_receive_queue)) {
+ 		freed = sctp_ulpq_renege_list(ulpq, &ulpq->lobby, needed);
+-- 
+2.1.0
 
