@@ -1,40 +1,51 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 09 Feb 2018 19:32:23 +0000
-Subject: Re: [PATCH net v2] sctp: verify size of a new chunk in _sctp_make_chunk()
-Message-Id: <20180209.143223.1410582840717699699.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 12 Feb 2018 10:29:06 +0000
+Subject: [PATCH net] sctp: do not pr_err for the duplicated node in transport rhlist
+Message-Id: <f5a0c541d1e47f66d3513ab7974a6e9262ebe09d.1518431346.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1518186923-28650-1-git-send-email-alexey.kodanev@oracle.com>
-In-Reply-To: <1518186923-28650-1-git-send-email-alexey.kodanev@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: alexey.kodanev@oracle.com
-Cc: netdev@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, vyasevich@gmail.com, linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-From: Alexey Kodanev <alexey.kodanev@oracle.com>
-Date: Fri,  9 Feb 2018 17:35:23 +0300
+The pr_err in sctp_hash_transport was supposed to report a sctp bug
+for using rhashtable/rhlist.
 
-> When SCTP makes INIT or INIT_ACK packet the total chunk length
-> can exceed SCTP_MAX_CHUNK_LEN which leads to kernel panic when
-> transmitting these packets, e.g. the crash on sending INIT_ACK:
- ...
-> Here the chunk size for INIT_ACK packet becomes too big, mostly
-> because of the state cookie (INIT packet has large size with
-> many address parameters), plus additional server parameters.
-> 
-> Later this chunk causes the panic in skb_put_data():
-> 
->   skb_packet_transmit()
->       sctp_packet_pack()
->           skb_put_data(nskb, chunk->skb->data, chunk->skb->len);
-> 
-> 'nskb' (head skb) was previously allocated with packet->size
-> from u16 'chunk->chunk_hdr->length'.
-> 
-> As suggested by Marcelo we should check the chunk's length in
-> _sctp_make_chunk() before trying to allocate skb for it and
-> discard a chunk if its size bigger than SCTP_MAX_CHUNK_LEN.
-> 
-> Signed-off-by: Alexey Kodanev <alexey.kodanev@oracle.com>
+The err '-EEXIST' introduced in Commit cd2b70875058 ("sctp: check
+duplicate node before inserting a new transport") doesn't belong
+to that case.
 
-Applied and queued up for -stable, thanks.
+So just return -EEXIST back without pr_err any kmsg.
+
+Fixes: cd2b70875058 ("sctp: check duplicate node before inserting a new transport")
+Reported-by: Wei Chen <weichen@redhat.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/input.c | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 141c9c4..0247cc4 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -897,15 +897,12 @@ int sctp_hash_transport(struct sctp_transport *t)
+ 	rhl_for_each_entry_rcu(transport, tmp, list, node)
+ 		if (transport->asoc->ep = t->asoc->ep) {
+ 			rcu_read_unlock();
+-			err = -EEXIST;
+-			goto out;
++			return -EEXIST;
+ 		}
+ 	rcu_read_unlock();
+ 
+ 	err = rhltable_insert_key(&sctp_transport_hashtable, &arg,
+ 				  &t->node, sctp_hash_params);
+-
+-out:
+ 	if (err)
+ 		pr_err_once("insert transport fail, errno %d\n", err);
+ 
+-- 
+2.1.0
+
