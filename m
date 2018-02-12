@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 12 Feb 2018 12:29:57 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 12 Feb 2018 14:01:58 +0000
 Subject: Re: [PATCH net] sctp: add SCTP_CID_I_DATA and SCTP_CID_I_FWD_TSN conversion in sctp_cname
-Message-Id: <20180212122957.GJ7402@localhost.localdomain>
+Message-Id: <20180212140158.GB21383@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <2ca12376b0b3b73833878279f20183bf03128626.1518431391.git.lucien.xin@gmail.com>
 In-Reply-To: <2ca12376b0b3b73833878279f20183bf03128626.1518431391.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
 On Mon, Feb 12, 2018 at 06:29:51PM +0800, Xin Long wrote:
 > After the support for SCTP_CID_I_DATA and SCTP_CID_I_FWD_TSN chunks,
@@ -17,9 +17,6 @@ On Mon, Feb 12, 2018 at 06:29:51PM +0800, Xin Long wrote:
 > in some places, pr_debug will print them as "unknown chunk".
 > 
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/debug.c | 6 ++++++
 >  1 file changed, 6 insertions(+)
@@ -44,3 +41,5 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > -- 
 > 2.1.0
 > 
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
