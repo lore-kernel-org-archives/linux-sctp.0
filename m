@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 14 Feb 2018 21:16:39 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Thu, 15 Feb 2018 14:21:09 +0000
 Subject: Re: [PATCH V6 0/4] Add SELinux SCTP protocol support
-Message-Id: <20180214211639.GA4718@localhost.localdomain>
+Message-Id: <20180215142109.GB21419@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20180213205252.4447-1-richard_c_haines@btinternet.com>
 	<CAHC9VhRG8AYpy3O1eLNCg6LP_i8Hk_U4zEGy3_frE2TMzZnG6w@mail.gmail.com>
@@ -106,10 +106,15 @@ On Wed, Feb 14, 2018 at 02:19:03PM -0500, Paul Moore wrote:
 > Marcelo, or any other SCTP folks, do the SCTP changes still look okay
 > to you?  I'd like to merge these into the selinux/next tree by the end
 > of the week ...
+> 
+I had a few comments that I just posted.
+Neil
 
-Other than the issue on patch 2/4, patchset LGTM yes.
-(Not really happy with the casts to remove the const attribute on
-patch 3, but I don't see other way out)
-
-Thanks,
-Marcelo
+> -- 
+> paul moore
+> www.paul-moore.com
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
