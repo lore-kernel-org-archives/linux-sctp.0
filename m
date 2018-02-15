@@ -1,28 +1,48 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 13 Feb 2018 07:24:06 +0000
-Subject: Re: [PATCH net] sctp: rename sctp_diag.c as diag.c
-Message-Id: <CADvbK_eacYGnzek+RJj_b5v+JB1oOnyW4v5gtfJo_3gqOXaFWQ@mail.gmail.com>
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Date: Thu, 15 Feb 2018 08:11:26 +0000
+Subject: [bug report] sctp: remove the useless check in sctp_renege_events
+Message-Id: <20180215081126.GA16057@mwanda>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <0b9abe0b402eaa4c5c71a3d165669814f1789cee.1518431550.git.lucien.xin@gmail.com>
- <20180212123704.GL7402@localhost.localdomain> <20180212.101224.44294606381993057.davem@davemloft.net>
-In-Reply-To: <20180212.101224.44294606381993057.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>
+To: linux-sctp@vger.kernel.org
 
-On Mon, Feb 12, 2018 at 11:12 PM, David Miller <davem@davemloft.net> wrote:
-> From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> Date: Mon, 12 Feb 2018 10:37:04 -0200
->
->> On Mon, Feb 12, 2018 at 06:32:30PM +0800, Xin Long wrote:
->>> Remove sctp_ prefix for diag file, to keep consistent with other
->>> files' names, while at it, also to add file comments for diag.c.
->>
->> Okay but this should be a two-patches series then. The changes made
->> with the rename are hard to find/follow later.
->
-> Agreed, the file move should be a separate change from and
-> modifications to the file itself.
-I will post a two-patch series for this soon.
+Hello Xin Long,
+
+This is a semi-automatic email about new static checker warnings.
+
+The patch fb23403536ea: "sctp: remove the useless check in
+sctp_renege_events" from Feb 12, 2018, leads to the following Smatch
+complaint:
+
+    net/sctp/stream_interleave.c:970 sctp_renege_events()
+    warn: variable dereferenced before check 'chunk' (see line 957)
+
+net/sctp/stream_interleave.c
+   956	
+   957		needed = ntohs(chunk->chunk_hdr->length) -
+                               ^^^^^^^^^^^^^^^^
+We removed the check for "chunk"
+
+   958			 sizeof(struct sctp_idata_chunk);
+   959	
+   960		if (skb_queue_empty(&asoc->base.sk->sk_receive_queue)) {
+   961			freed = sctp_ulpq_renege_list(ulpq, &ulpq->lobby, needed);
+   962			if (freed < needed)
+   963				freed += sctp_ulpq_renege_list(ulpq, &ulpq->reasm,
+   964							       needed);
+   965			if (freed < needed)
+   966				freed += sctp_ulpq_renege_list(ulpq, &ulpq->reasm_uo,
+   967							       needed);
+   968		}
+   969	
+   970		if (chunk && freed >= needed)
+                    ^^^^^
+so we should probably remove it here.
+
+   971			if (sctp_ulpevent_idata(ulpq, chunk, gfp) <= 0)
+   972				sctp_intl_start_pd(ulpq, gfp);
+
+regards,
+dan carpenter
