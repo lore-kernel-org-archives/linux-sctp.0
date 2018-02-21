@@ -1,12 +1,31 @@
-From: "La Caixa Investment" <yuhefizar@polinpdg.ac.id>
-Date: Sat, 03 Feb 2018 01:18:21 +0000
-Subject: Achtung Herr / Frau !!
-Message-Id: <20180203003557.C52D134F35F2@mail.polinpdg.ac.id>
+From: Martin Kiefer <info@mail12.mails-ch.net>
+Date: Wed, 21 Feb 2018 08:04:50 +0000
+Subject: FW: Antwort
+Message-Id: <20180221_080450_059307.info@mail12.mails-ch.net>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="windows-1254"
+Content-Transfer-Encoding: base64
 To: linux-sctp@vger.kernel.org
 
-Wir bieten derzeit Darlehen in H=F6he von 3% pro Jahr f=FCr jeden Teil der =
-Welt an. Antworte zur=FCck f=FCr mehr Details.
+U2VociBnZWVocnRlIERhbWVuIHVuZCBIZXJyZW4sIAoKbmFjaCB1bnNlcmVtIEJlc3VjaCBJaHJl
+ciBIb21lcGFnZSBtw7ZjaHRlbiB3aXIgSWhuZW4gZWluIEFuZ2Vib3Qgdm9uIFByb2R1a3RlbiB2
+b3JzdGVsbGVuLCBkYXMgSWhuZW4gZXJtw7ZnbGljaGVuIHdpcmQsIGRlbiBWZXJrYXVmIElocmVy
+IFByb2R1a3RlIHNvd2llIERpZW5zdGxlaXN0dW5nZW4gZGV1dGxpY2ggenUgZXJow7ZoZW4uCgpE
+aWUgRGF0ZW5iYW5rZW4gZGVyIEZpcm1lbiBzaW5kIGluIGbDvHIgU2llIGludGVyZXNzYW50ZSB1
+bmQgcmVsZXZhbnRlIFppZWxncnVwcGVuIHVudGVyZ2xpZWRlcnQuCgpEaWUgRmlybWVuYW5nYWJl
+biBiZWluaGFsdGVuOgpOYW1lIGRlciBGaXJtYSwgQW5zcHJlY2hwYXJ0bmVyLCBFLW1haWwgQWRy
+ZXNzZSwgVGVsLiArIEZheC1Oci4sIFBMWiwgT3J0LCBTdHJhw59lIGV0Yy4KCioqKiAKMS4gU2No
+d2VpeiAyMDE4ICggMTg3IDc2NCApIC0gMTQ5IEVVUiAoIGJpcyB6dW0gMjEuMDIuMjAxOCApCioq
+KgoKRGllIFZlcndlbmR1bmdzbcO2Z2xpY2hrZWl0ZW4gZGVyIERhdGVuYmFua2VuIHNpbmQgcHJh
+a3Rpc2NoIHVuYmVncmVuenQgdW5kIFNpZSBrw7ZubmVuIGR1cmNoIFZlcndlbmR1bmcgCmRlciB2
+b24gdW5zIGVudHdpY2tlbHRlbiBQcm9ncmFtbWUgZGVzIHBlcnNvbmFsaXNpZXJ0ZW4gVmVyc2Vu
+ZGVucyB2b24gQW5nZWJvdGVuIHUuw6QuIG1pdHRlbHMKRS1tYWlsaW5nIGJ6dy4gRmF4IGVmZmVr
+dGl2ZSB1bmQgc2ljaGVyZSBXZXJiZWthbXBhZ25lbiBkYW1pdCBkdXJjaGbDvGhyZW4uCkJpdHRl
+IGluZm9ybWllcmVuIFNpZSBzaWNoIMO8YmVyIGRpZSB3ZWl0ZXJlbiBEZXRhaWxzIGVpbm1hbCB1
+bnZlcmJpbmRsaWNoIGF1ZiB1bnNlcmVuIFdlYnNlaXRlOgoKaHR0cDovL3d3dy5nbG9iYWwtY2gu
+bmV0Lz9wYWdlynRhbG9nCgoKTWZHCk1hcnRpbiBLaWVmZXIKaHR0cDovL3d3dy5nbG9iYWwtY2gu
+bmV0Lz9wYWdlynRhbG9nIAoKCi0tClRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5k
+IHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1zY3RwIiBpbgp0aGUgYm9keSBvZiBhIG1lc3Nh
+Z2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZwpNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBo
+dHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWw=
