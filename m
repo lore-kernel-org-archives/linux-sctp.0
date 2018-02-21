@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 21 Feb 2018 03:44:27 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 21 Feb 2018 14:33:45 +0000
 Subject: Re: [PATCH V7 2/4] sctp: Add ip option support
-Message-Id: <20180221034427.GA28997@neilslaptop.think-freely.org>
+Message-Id: <20180221143345.GA3888@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20180220191527.14307-1-richard_c_haines@btinternet.com>
 In-Reply-To: <20180220191527.14307-1-richard_c_haines@btinternet.com>
@@ -15,6 +15,11 @@ On Tue, Feb 20, 2018 at 07:15:27PM +0000, Richard Haines wrote:
 > and CALIPSO/IPv6 services.
 > 
 > Signed-off-by: Richard Haines <richard_c_haines@btinternet.com>
+
+LGTM too, thanks!
+
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+
 > ---
 > All SCTP lksctp-tools/src/func_tests run correctly in enforcing mode.
 > All "./sctp-tests run" obtained from: https://github.com/sctp/sctp-tests
@@ -390,7 +395,8 @@ On Tue, Feb 20, 2018 at 07:15:27PM +0000, Richard Haines wrote:
 > -- 
 > 2.14.3
 > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-I think this makes a good bit more sense, thanks for the extra pass
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
-
