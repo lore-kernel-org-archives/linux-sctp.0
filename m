@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 26 Feb 2018 22:57:44 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 27 Feb 2018 12:24:24 +0000
 Subject: Re: [PATCH V8 2/4] sctp: Add ip option support
-Message-Id: <20180226225744.GK4375@localhost.localdomain>
+Message-Id: <20180227122424.GA22323@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20180224161851.29712-1-richard_c_haines@btinternet.com>
 	<CAHC9VhQrNjdtujiazYyM9n535ov1QHZ_b7=u4f-kiYCJE-=YVw@mail.gmail.com>
@@ -62,7 +62,7 @@ On Mon, Feb 26, 2018 at 05:48:48PM -0500, Paul Moore wrote:
 > 
 > Neil and Marcelo, I transfered your acked-by to this patch, if you've
 > got any objections to that please let me know.
+> 
+I'm also fine with the transfer, thanks for checking!
+Neil
 
-That's fine by me. Thanks
-
-  Marcelo
