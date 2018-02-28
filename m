@@ -1,132 +1,31 @@
-From: Tommi Rantala <tommi.t.rantala@nokia.com>
-Date: Mon, 05 Feb 2018 08:39:53 +0000
-Subject: Re: [PATCH net] sctp: fix dst reference leak in sctp_v4_get_dst
-Message-Id: <f5ee639b-8ff9-35e0-7d35-1102ad9d5524@nokia.com>
+From: MK Kontakt <info@mail2.ch-mail-marketing.net>
+Date: Wed, 28 Feb 2018 08:39:21 +0000
+Subject: Kontakt: Nachricht
+Message-Id: <20180228_082721_061898.info@mail2.ch-mail-marketing.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180204090239.8875-1-tommi.t.rantala@nokia.com>
- <20180205010114.GA27685@localhost.localdomain>
-In-Reply-To: <20180205010114.GA27685@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, linux-sctp@vger.kernel.org, Alexey Kodanev <alexey.kodanev@oracle.com>
+Content-Type: text/plain; charset="windows-1254"
+Content-Transfer-Encoding: base64
+To: linux-sctp@vger.kernel.org
 
-On 05.02.2018 03:01, Marcelo Ricardo Leitner wrote:
-> Hi,
-> 
-> On Sun, Feb 04, 2018 at 11:02:39AM +0200, Tommi Rantala wrote:
->> Fix dst reference leak in sctp_v4_get_dst() introduced in commit
->> 410f03831 ("sctp: add routing output fallback"):
->>
->> When walking the address_list, successive ip_route_output_key() calls
->> may return the same rt->dst with the reference incremented on each call.
->>
->> The code would not decrement the dst refcount when the dst pointer was
->> identical from the previous iteration, causing the dst leak.
-
-Ugh, I think this patch still does not get the refcounting right, please 
-don't apply.
-
-For example:
-- on first iteration of the loop:
-   "odev" check fails, and we set dst with refcnt=1.
-- on second iteration:
-   the same dst refcnt is incremented to 2 via ip_route_output_key().
-   "odev" check succeeds.
-   dst = &rt->dst, so we do not touch the refcnt.
-   break out of the loop
-
-=> oops, dst has refcnt=2
-
->> Testcase:
->>    ip netns add TEST
->>    ip netns exec TEST ip link set lo up
->>    ip link add dummy0 type dummy
->>    ip link add dummy1 type dummy
->>    ip link add dummy2 type dummy
->>    ip link set dev dummy0 netns TEST
->>    ip link set dev dummy1 netns TEST
->>    ip link set dev dummy2 netns TEST
->>    ip netns exec TEST ip addr add 192.168.1.1/24 dev dummy0
->>    ip netns exec TEST ip link set dummy0 up
->>    ip netns exec TEST ip addr add 192.168.1.2/24 dev dummy1
->>    ip netns exec TEST ip link set dummy1 up
->>    ip netns exec TEST ip addr add 192.168.1.3/24 dev dummy2
->>    ip netns exec TEST ip link set dummy2 up
->>    ip netns exec TEST sctp_test -H 192.168.1.2 -P 20002 -h 192.168.1.1 -p 20000 -s -B 192.168.1.3
->>    ip netns del TEST
-> 
-> Thanks for the detailed steps. I'll adapt and include it on
-> github/sctp/sctp-tests
-
-ok, good!
-
->> In 4.4 and 4.9 kernels this results to:
-> 
-> I wonder why you couldn't reproduce this on newer kernels. Maybe
-> something masked it?
-
-I didn't check what exactly changed here.
-
-commit 955ec4cb3b54c7c389a9f830be7d3ae2056b9212 was mentioned elsewhere.
-
-Also the commits by Wei Wang changed the dst handling, see e.g.
-5b7c9a8ff828287af5aebe93e707271bf1a82cc3
-
-
->>    [  354.179591] unregister_netdevice: waiting for lo to become free. Usage count = 1
->>    [  364.419674] unregister_netdevice: waiting for lo to become free. Usage count = 1
->>    [  374.663664] unregister_netdevice: waiting for lo to become free. Usage count = 1
->>    [  384.903717] unregister_netdevice: waiting for lo to become free. Usage count = 1
->>    [  395.143724] unregister_netdevice: waiting for lo to become free. Usage count = 1
->>    [  405.383645] unregister_netdevice: waiting for lo to become free. Usage count = 1
->>    ...
->>
->> Fixes: 410f03831 ("sctp: add routing output fallback")
->> Acked-by: Neil Horman <nhorman@tuxdriver.com>
->> Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
->> Cc: Alexey Kodanev <alexey.kodanev@oracle.com>
->> Signed-off-by: Tommi Rantala <tommi.t.rantala@nokia.com>
->> ---
->>   net/sctp/protocol.c | 9 ++++-----
->>   1 file changed, 4 insertions(+), 5 deletions(-)
->>
->> diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
->> index 8b4ff315695e..aadb9e7f60e2 100644
->> --- a/net/sctp/protocol.c
->> +++ b/net/sctp/protocol.c
->> @@ -508,21 +508,20 @@ static void sctp_v4_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
->>   		if (IS_ERR(rt))
->>   			continue;
->>   
->> -		if (!dst)
->> -			dst = &rt->dst;
->> -
->>   		/* Ensure the src address belongs to the output
->>   		 * interface.
->>   		 */
->>   		odev = __ip_dev_find(sock_net(sk), laddr->a.v4.sin_addr.s_addr,
->>   				     false);
->>   		if (!odev || odev->ifindex != fl4->flowi4_oif) {
->> -			if (&rt->dst != dst)
->> +			if (!dst)
->> +				dst = &rt->dst;
->> +			else
->>   				dst_release(&rt->dst);
->>   			continue;
->>   		}
->>   
->> -		if (dst != &rt->dst)
->> +		if (dst && dst != &rt->dst)
->>   			dst_release(dst);
->>   		dst = &rt->dst;
->>   		break;
->> -- 
->> 2.15.1
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+U2VociBnZWVocnRlIERhbWVuIHVuZCBIZXJyZW4sIAoKbmFjaCB1bnNlcmVtIEJlc3VjaCBJaHJl
+ciBIb21lcGFnZSBtw7ZjaHRlbiB3aXIgSWhuZW4gZWluIEFuZ2Vib3Qgdm9uIFByb2R1a3RlbiB2
+b3JzdGVsbGVuLCBkYXMgSWhuZW4gZXJtw7ZnbGljaGVuIHdpcmQsIGRlbiBWZXJrYXVmIElocmVy
+IFByb2R1a3RlIHNvd2llIERpZW5zdGxlaXN0dW5nZW4gZGV1dGxpY2ggenUgZXJow7ZoZW4uCgpE
+aWUgRGF0ZW5iYW5rZW4gZGVyIEZpcm1lbiBzaW5kIGluIGbDvHIgU2llIGludGVyZXNzYW50ZSB1
+bmQgcmVsZXZhbnRlIFppZWxncnVwcGVuIHVudGVyZ2xpZWRlcnQuCgpEaWUgRmlybWVuYW5nYWJl
+biBiZWluaGFsdGVuOgpOYW1lIGRlciBGaXJtYSwgQW5zcHJlY2hwYXJ0bmVyLCBFLW1haWwgQWRy
+ZXNzZSwgVGVsLiArIEZheC1Oci4sIFBMWiwgT3J0LCBTdHJhw59lIGV0Yy4KCioqKiAKMS4gU2No
+d2VpeiAyMDE4ICggMTg3IDc2NCApIC0gMTQ5IEVVUiAoIGJpcyB6dW0gMjguMDIuMjAxOCApCioq
+KgoKRGllIFZlcndlbmR1bmdzbcO2Z2xpY2hrZWl0ZW4gZGVyIERhdGVuYmFua2VuIHNpbmQgcHJh
+a3Rpc2NoIHVuYmVncmVuenQgdW5kIFNpZSBrw7ZubmVuIGR1cmNoIFZlcndlbmR1bmcgCmRlciB2
+b24gdW5zIGVudHdpY2tlbHRlbiBQcm9ncmFtbWUgZGVzIHBlcnNvbmFsaXNpZXJ0ZW4gVmVyc2Vu
+ZGVucyB2b24gQW5nZWJvdGVuIHUuw6QuIG1pdHRlbHMKRS1tYWlsaW5nIGJ6dy4gRmF4IGVmZmVr
+dGl2ZSB1bmQgc2ljaGVyZSBXZXJiZWthbXBhZ25lbiBkYW1pdCBkdXJjaGbDvGhyZW4uCkJpdHRl
+IGluZm9ybWllcmVuIFNpZSBzaWNoIMO8YmVyIGRpZSB3ZWl0ZXJlbiBEZXRhaWxzIGVpbm1hbCB1
+bnZlcmJpbmRsaWNoIGF1ZiB1bnNlcmVuIFdlYnNlaXRlOgoKaHR0cDovL3d3dy5kYmtvbnRha3Qt
+Y2gubmV0Lz9wYWdlynRhbG9nCgoKTWZHCk1hcnRpbiBLaWVmZXIKaHR0cDovL3d3dy5kYmtvbnRh
+a3QtY2gubmV0Lz9wYWdlynRhbG9nIAoKCi0tClRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0
+OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1zY3RwIiBpbgp0aGUgYm9keSBvZiBh
+IG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZwpNb3JlIG1ham9yZG9tbyBpbmZv
+IGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWw=
