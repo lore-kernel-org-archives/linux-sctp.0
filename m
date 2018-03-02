@@ -1,41 +1,110 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 12 Mar 2018 16:57:37 +0000
-Subject: Re: [PATCH] Fix double free in sctp_sendmsg_to_asoc
-Message-Id: <20180312.125737.2298514616330071416.davem@davemloft.net>
+From: Richard Haines <richard_c_haines@btinternet.com>
+Date: Fri, 02 Mar 2018 19:54:34 +0000
+Subject: [PATCH] selinux: Fix ltp test connect-syscall failure
+Message-Id: <20180302195434.15435-1-richard_c_haines@btinternet.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180312160131.13403-1-nhorman@tuxdriver.com>
-In-Reply-To: <20180312160131.13403-1-nhorman@tuxdriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: linux-security-module@vger.kernel.org
 
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 12 Mar 2018 12:01:31 -0400
+Fix the following error when running regression tests using LTP as follows:
+cd /opt/ltp/
+cat runtest/syscalls |grep connect01>runtest/connect-syscall
+./runltp -pq -f connect-syscall
 
-> syzbot/kasan detected a double free in sctp_sendmsg_to_asoc:
-> BUG: KASAN: use-after-free in sctp_association_free+0x7b7/0x930
-> net/sctp/associola.c:332
-> Read of size 8 at addr ffff8801d8006ae0 by task syzkaller914861/4202
- ...
-> This was introduced by commit:
-> f84af33 sctp: factor out sctp_sendmsg_to_asoc from sctp_sendmsg
-> 
-> As the newly refactored function moved the wait_for_sndbuf call to a
-> point after the association was connected, allowing for peeloff events
-> to occur, which in turn caused wait_for_sndbuf to return -EPIPE which
-> was not caught by the logic that determines if an association should be
-> freed or not.
-> 
-> Fix it the easy way by returning the ordering of
-> sctp_primitive_ASSOCIATE and sctp_wait_for_sndbuf to the old order, to
-> ensure that EPIPE will not happen.
-> 
-> Tested by myself using the syzbot reproducers with positive results
-> 
-> Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-> CC: davem@davemloft.net
-> CC: Xin Long <lucien.xin@gmail.com>
-> Reported-by: syzbot+a4e4112c3aff00c8cfd8@syzkaller.appspotmail.com
+Running tests.......
+connect01    1  TPASS  :  bad file descriptor successful
+connect01    2  TPASS  :  invalid socket buffer successful
+connect01    3  TPASS  :  invalid salen successful
+connect01    4  TPASS  :  invalid socket successful
+connect01    5  TPASS  :  already connected successful
+connect01    6  TPASS  :  connection refused successful
+connect01    7  TFAIL  :  connect01.c:146: invalid address family ;
+returned -1 (expected -1), errno 22 (expected 97)
+INFO: ltp-pan reported some tests FAIL
+LTP Version: 20180118
 
-Hope this will be sent to netdev when it's ready...
+Reported-by: Anders Roxell <anders.roxell@linaro.org>
+Signed-off-by: Richard Haines <richard_c_haines@btinternet.com>
+---
+ security/selinux/hooks.c | 42 ++++++++++++++++++++++++++++++------------
+ 1 file changed, 30 insertions(+), 12 deletions(-)
+
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index 28a5c4e..d614df1 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -4470,22 +4470,29 @@ static int selinux_socket_bind(struct socket *sock, struct sockaddr *address, in
+ 		 * need to check address->sa_family as it is possible to have
+ 		 * sk->sk_family = PF_INET6 with addr->sa_family = AF_INET.
+ 		 */
+-		if (address->sa_family = AF_INET) {
+-			if (addrlen < sizeof(struct sockaddr_in)) {
+-				err = -EINVAL;
+-				goto out;
+-			}
++		switch (address->sa_family) {
++		case AF_INET:
++			if (addrlen < sizeof(struct sockaddr_in))
++				return -EINVAL;
+ 			addr4 = (struct sockaddr_in *)address;
+ 			snum = ntohs(addr4->sin_port);
+ 			addrp = (char *)&addr4->sin_addr.s_addr;
+-		} else {
+-			if (addrlen < SIN6_LEN_RFC2133) {
+-				err = -EINVAL;
+-				goto out;
+-			}
++			break;
++		case AF_INET6:
++			if (addrlen < SIN6_LEN_RFC2133)
++				return -EINVAL;
+ 			addr6 = (struct sockaddr_in6 *)address;
+ 			snum = ntohs(addr6->sin6_port);
+ 			addrp = (char *)&addr6->sin6_addr.s6_addr;
++			break;
++		default:
++			/* Note that SCTP services expect -EINVAL, whereas
++			 * others expect -EAFNOSUPPORT.
++			 */
++			if (sksec->sclass = SECCLASS_SCTP_SOCKET)
++				return -EINVAL;
++			else
++				return -EAFNOSUPPORT;
+ 		}
+ 
+ 		if (snum) {
+@@ -4589,16 +4596,27 @@ static int selinux_socket_connect_helper(struct socket *sock,
+ 		 * need to check address->sa_family as it is possible to have
+ 		 * sk->sk_family = PF_INET6 with addr->sa_family = AF_INET.
+ 		 */
+-		if (address->sa_family = AF_INET) {
++		switch (address->sa_family) {
++		case AF_INET:
+ 			addr4 = (struct sockaddr_in *)address;
+ 			if (addrlen < sizeof(struct sockaddr_in))
+ 				return -EINVAL;
+ 			snum = ntohs(addr4->sin_port);
+-		} else {
++			break;
++		case AF_INET6:
+ 			addr6 = (struct sockaddr_in6 *)address;
+ 			if (addrlen < SIN6_LEN_RFC2133)
+ 				return -EINVAL;
+ 			snum = ntohs(addr6->sin6_port);
++			break;
++		default:
++			/* Note that SCTP services expect -EINVAL, whereas
++			 * others expect -EAFNOSUPPORT.
++			 */
++			if (sksec->sclass = SECCLASS_SCTP_SOCKET)
++				return -EINVAL;
++			else
++				return -EAFNOSUPPORT;
+ 		}
+ 
+ 		err = sel_netport_sid(sk->sk_protocol, snum, &sid);
+-- 
+2.14.3
+
