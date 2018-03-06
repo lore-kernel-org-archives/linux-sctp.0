@@ -1,234 +1,167 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 06 Mar 2018 12:21:59 +0000
+Date: Tue, 06 Mar 2018 12:22:31 +0000
 Subject: Re: [PATCH net-next 2/3] sctp: add support for SCTP_DSTADDRV4/6 Information for sendmsg
-Message-Id: <20180306122159.GC27351@localhost.localdomain>
+Message-Id: <20180306122231.GE27351@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1520253539.git.lucien.xin@gmail.com>
  <6ea3660f31c8410bc9e54f32734e4fddab85cf49.1520253539.git.lucien.xin@gmail.com>
- <20180305233934.GA27351@localhost.localdomain>
- <CADvbK_ejiW3WKg66=FLD9v5jFh8BjzDsvopyJ5kr02jsZw-_0w@mail.gmail.com>
-In-Reply-To: <CADvbK_ejiW3WKg66=FLD9v5jFh8BjzDsvopyJ5kr02jsZw-_0w@mail.gmail.com>
+In-Reply-To: <6ea3660f31c8410bc9e54f32734e4fddab85cf49.1520253539.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem <davem@davemloft.net>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-On Tue, Mar 06, 2018 at 03:03:13PM +0800, Xin Long wrote:
-> On Tue, Mar 6, 2018 at 7:39 AM, Marcelo Ricardo Leitner
-> <marcelo.leitner@gmail.com> wrote:
-> > On Mon, Mar 05, 2018 at 08:44:19PM +0800, Xin Long wrote:
-> >> This patch is to add support for Destination IPv4/6 Address options
-> >> for sendmsg, as described in section 5.3.9/10 of RFC6458.
-> >>
-> >> With this option, you can provide more than one destination addrs
-> >> to sendmsg when creating asoc, like sctp_connectx.
-> >>
-> >> It's also a necessary send info for sctp_sendv.
-> >>
-> >> Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> >> ---
-> >>  include/net/sctp/structs.h |  1 +
-> >>  include/uapi/linux/sctp.h  |  6 ++++
-> >>  net/sctp/socket.c          | 77 ++++++++++++++++++++++++++++++++++++++++++++++
-> >>  3 files changed, 84 insertions(+)
-> >>
-> >> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-> >> index d40a2a3..ec6e46b 100644
-> >> --- a/include/net/sctp/structs.h
-> >> +++ b/include/net/sctp/structs.h
-> >> @@ -2113,6 +2113,7 @@ struct sctp_cmsgs {
-> >>       struct sctp_sndrcvinfo *srinfo;
-> >>       struct sctp_sndinfo *sinfo;
-> >>       struct sctp_prinfo *prinfo;
-> >> +     struct msghdr *addrs_msg;
-> >>  };
-> >>
-> >>  /* Structure for tracking memory objects */
-> >> diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-> >> index 0dd1f82..a1bc350 100644
-> >> --- a/include/uapi/linux/sctp.h
-> >> +++ b/include/uapi/linux/sctp.h
-> >> @@ -308,6 +308,12 @@ typedef enum sctp_cmsg_type {
-> >>  #define SCTP_NXTINFO SCTP_NXTINFO
-> >>       SCTP_PRINFO,            /* 5.3.7 SCTP PR-SCTP Information Structure */
-> >>  #define SCTP_PRINFO  SCTP_PRINFO
-> >> +     SCTP_AUTHINFO,          /* 5.3.8 SCTP AUTH Information Structure (RESERVED) */
-> >> +#define SCTP_AUTHINFO        SCTP_AUTHINFO
-> >> +     SCTP_DSTADDRV4,         /* 5.3.9 SCTP Destination IPv4 Address Structure */
-> >> +#define SCTP_DSTADDRV4       SCTP_DSTADDRV4
-> >> +     SCTP_DSTADDRV6,         /* 5.3.10 SCTP Destination IPv6 Address Structure */
-> >> +#define SCTP_DSTADDRV6       SCTP_DSTADDRV6
-> >>  } sctp_cmsg_t;
-> >>
-> >>  /*
-> >> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> >> index fdde697..067b57a 100644
-> >> --- a/net/sctp/socket.c
-> >> +++ b/net/sctp/socket.c
-> >> @@ -1676,6 +1676,7 @@ static int sctp_sendmsg_new_asoc(struct sock *sk, __u16 sflags,
-> >>       struct net *net = sock_net(sk);
-> >>       struct sctp_association *asoc;
-> >>       enum sctp_scope scope;
-> >> +     struct cmsghdr *cmsg;
-> >>       int err = -EINVAL;
-> >>
-> >>       *tp = NULL;
-> >> @@ -1741,6 +1742,67 @@ static int sctp_sendmsg_new_asoc(struct sock *sk, __u16 sflags,
-> >>               goto free;
-> >>       }
-> >>
-> >> +     if (!cmsgs->addrs_msg)
-> >> +             return 0;
-> >> +
-> >> +     /* sendv addr list parse */
-> >> +     for_each_cmsghdr(cmsg, cmsgs->addrs_msg) {
-> >> +             struct sctp_transport *transport;
-> >> +             struct sctp_association *old;
-> >> +             union sctp_addr _daddr;
-> >> +             int dlen;
-> >> +
-> >> +             if (cmsg->cmsg_level != IPPROTO_SCTP ||
-> >> +                 (cmsg->cmsg_type != SCTP_DSTADDRV4 &&
-> >> +                  cmsg->cmsg_type != SCTP_DSTADDRV6))
-> >> +                     continue;
-> >> +
-> >> +             daddr = &_daddr;
-> >> +             memset(daddr, 0, sizeof(*daddr));
-> >> +             dlen = cmsg->cmsg_len - sizeof(struct cmsghdr);
-> >> +             if (cmsg->cmsg_type = SCTP_DSTADDRV4) {
-> >> +                     if (dlen < sizeof(struct in_addr))
-> >> +                             goto free;
-> >> +
-> >> +                     dlen = sizeof(struct in_addr);
-> >> +                     daddr->v4.sin_family = AF_INET;
-> >> +                     daddr->v4.sin_port = htons(asoc->peer.port);
-> >> +                     memcpy(&daddr->v4.sin_addr, CMSG_DATA(cmsg), dlen);
-> >> +             } else {
-> >> +                     if (dlen < sizeof(struct in6_addr))
-> >> +                             goto free;
-> >> +
-> >> +                     dlen = sizeof(struct in6_addr);
-> >> +                     daddr->v6.sin6_family = AF_INET6;
-> >> +                     daddr->v6.sin6_port = htons(asoc->peer.port);
-> >> +                     memcpy(&daddr->v6.sin6_addr, CMSG_DATA(cmsg), dlen);
-> >> +             }
-> >> +             err = sctp_verify_addr(sk, daddr, sizeof(*daddr));
-> >> +             if (err)
-> >> +                     goto free;
-> >> +
-> >> +             old = sctp_endpoint_lookup_assoc(ep, daddr, &transport);
-> >> +             if (old && old != asoc) {
-> >> +                     if (old->state >= SCTP_STATE_ESTABLISHED)
-> >> +                             err = -EISCONN;
-> >> +                     else
-> >> +                             err = -EALREADY;
-> >> +                     goto free;
-> >> +             }
-> >> +
-> >> +             if (sctp_endpoint_is_peeled_off(ep, daddr)) {
-> >> +                     err = -EADDRNOTAVAIL;
-> >> +                     goto free;
-> >> +             }
-> >> +
-> >> +             transport = sctp_assoc_add_peer(asoc, daddr, GFP_KERNEL,
-> >> +                                             SCTP_UNKNOWN);
-> >> +             if (!transport) {
-> >> +                     err = -ENOMEM;
-> >> +                     goto free;
-> >> +             }
-> >> +     }
-> >> +
-> >>       return 0;
-> >>
-> >>  free:
-> >> @@ -7778,6 +7840,21 @@ static int sctp_msghdr_parse(const struct msghdr *msg, struct sctp_cmsgs *cmsgs)
-> >>                       if (cmsgs->prinfo->pr_policy = SCTP_PR_SCTP_NONE)
-> >>                               cmsgs->prinfo->pr_value = 0;
-> >>                       break;
-> >> +             case SCTP_DSTADDRV4:
-> >> +             case SCTP_DSTADDRV6:
-> >> +                     /* SCTP Socket API Extension
-> >> +                      * 5.3.9/10 SCTP Destination IPv4/6 Address Structure (SCTP_DSTADDRV4/6)
-> >> +                      *
-> >> +                      * This cmsghdr structure specifies SCTP options for sendmsg().
-> >> +                      *
-> >> +                      * cmsg_level    cmsg_type         cmsg_data[]
-> >> +                      * ------------  ------------   ---------------------
-> >> +                      * IPPROTO_SCTP  SCTP_DSTADDRV4 struct in_addr
-> >> +                      * ------------  ------------   ---------------------
-> >> +                      * IPPROTO_SCTP  SCTP_DSTADDRV6 struct in6_addr
-> >> +                      */
-> >> +                     cmsgs->addrs_msg = my_msg;
-> >
-> > I think this is being handled differently from what the RFC specifies.
-> > AFAIU the rfc defines these two options being each one an array of a
-> > specific element type, in_addr and in6_addr.
-> Hi, Marcelo.
+On Mon, Mar 05, 2018 at 08:44:19PM +0800, Xin Long wrote:
+> This patch is to add support for Destination IPv4/6 Address options
+> for sendmsg, as described in section 5.3.9/10 of RFC6458.
 > 
-> From section 5.3.9 of RFC6458:
+> With this option, you can provide more than one destination addrs
+> to sendmsg when creating asoc, like sctp_connectx.
 > 
->    This ancillary data can be used to provide more than one destination
->    address to sendmsg().  It can be used to implement sctp_sendv() using
->    sendmsg().
+> It's also a necessary send info for sctp_sendv.
 > 
-> It doesn't say to put "more than one destination address" into an array of
-> one option,  or put "more than one destination address" into many options.
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Spot on. And I went with the first interpretation, thus why the
-difference.
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
+> ---
+>  include/net/sctp/structs.h |  1 +
+>  include/uapi/linux/sctp.h  |  6 ++++
+>  net/sctp/socket.c          | 77 ++++++++++++++++++++++++++++++++++++++++++++++
+>  3 files changed, 84 insertions(+)
 > 
-> I was also confused, then I checked sctp_process_cmsgs_for_init() in
-> freebsd, I think it's in MANY options.
-
-Nice, ok
-
+> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+> index d40a2a3..ec6e46b 100644
+> --- a/include/net/sctp/structs.h
+> +++ b/include/net/sctp/structs.h
+> @@ -2113,6 +2113,7 @@ struct sctp_cmsgs {
+>  	struct sctp_sndrcvinfo *srinfo;
+>  	struct sctp_sndinfo *sinfo;
+>  	struct sctp_prinfo *prinfo;
+> +	struct msghdr *addrs_msg;
+>  };
+>  
+>  /* Structure for tracking memory objects */
+> diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+> index 0dd1f82..a1bc350 100644
+> --- a/include/uapi/linux/sctp.h
+> +++ b/include/uapi/linux/sctp.h
+> @@ -308,6 +308,12 @@ typedef enum sctp_cmsg_type {
+>  #define SCTP_NXTINFO	SCTP_NXTINFO
+>  	SCTP_PRINFO,		/* 5.3.7 SCTP PR-SCTP Information Structure */
+>  #define SCTP_PRINFO	SCTP_PRINFO
+> +	SCTP_AUTHINFO,		/* 5.3.8 SCTP AUTH Information Structure (RESERVED) */
+> +#define SCTP_AUTHINFO	SCTP_AUTHINFO
+> +	SCTP_DSTADDRV4,		/* 5.3.9 SCTP Destination IPv4 Address Structure */
+> +#define SCTP_DSTADDRV4	SCTP_DSTADDRV4
+> +	SCTP_DSTADDRV6,		/* 5.3.10 SCTP Destination IPv6 Address Structure */
+> +#define SCTP_DSTADDRV6	SCTP_DSTADDRV6
+>  } sctp_cmsg_t;
+>  
+>  /*
+> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+> index fdde697..067b57a 100644
+> --- a/net/sctp/socket.c
+> +++ b/net/sctp/socket.c
+> @@ -1676,6 +1676,7 @@ static int sctp_sendmsg_new_asoc(struct sock *sk, __u16 sflags,
+>  	struct net *net = sock_net(sk);
+>  	struct sctp_association *asoc;
+>  	enum sctp_scope scope;
+> +	struct cmsghdr *cmsg;
+>  	int err = -EINVAL;
+>  
+>  	*tp = NULL;
+> @@ -1741,6 +1742,67 @@ static int sctp_sendmsg_new_asoc(struct sock *sk, __u16 sflags,
+>  		goto free;
+>  	}
+>  
+> +	if (!cmsgs->addrs_msg)
+> +		return 0;
+> +
+> +	/* sendv addr list parse */
+> +	for_each_cmsghdr(cmsg, cmsgs->addrs_msg) {
+> +		struct sctp_transport *transport;
+> +		struct sctp_association *old;
+> +		union sctp_addr _daddr;
+> +		int dlen;
+> +
+> +		if (cmsg->cmsg_level != IPPROTO_SCTP ||
+> +		    (cmsg->cmsg_type != SCTP_DSTADDRV4 &&
+> +		     cmsg->cmsg_type != SCTP_DSTADDRV6))
+> +			continue;
+> +
+> +		daddr = &_daddr;
+> +		memset(daddr, 0, sizeof(*daddr));
+> +		dlen = cmsg->cmsg_len - sizeof(struct cmsghdr);
+> +		if (cmsg->cmsg_type = SCTP_DSTADDRV4) {
+> +			if (dlen < sizeof(struct in_addr))
+> +				goto free;
+> +
+> +			dlen = sizeof(struct in_addr);
+> +			daddr->v4.sin_family = AF_INET;
+> +			daddr->v4.sin_port = htons(asoc->peer.port);
+> +			memcpy(&daddr->v4.sin_addr, CMSG_DATA(cmsg), dlen);
+> +		} else {
+> +			if (dlen < sizeof(struct in6_addr))
+> +				goto free;
+> +
+> +			dlen = sizeof(struct in6_addr);
+> +			daddr->v6.sin6_family = AF_INET6;
+> +			daddr->v6.sin6_port = htons(asoc->peer.port);
+> +			memcpy(&daddr->v6.sin6_addr, CMSG_DATA(cmsg), dlen);
+> +		}
+> +		err = sctp_verify_addr(sk, daddr, sizeof(*daddr));
+> +		if (err)
+> +			goto free;
+> +
+> +		old = sctp_endpoint_lookup_assoc(ep, daddr, &transport);
+> +		if (old && old != asoc) {
+> +			if (old->state >= SCTP_STATE_ESTABLISHED)
+> +				err = -EISCONN;
+> +			else
+> +				err = -EALREADY;
+> +			goto free;
+> +		}
+> +
+> +		if (sctp_endpoint_is_peeled_off(ep, daddr)) {
+> +			err = -EADDRNOTAVAIL;
+> +			goto free;
+> +		}
+> +
+> +		transport = sctp_assoc_add_peer(asoc, daddr, GFP_KERNEL,
+> +						SCTP_UNKNOWN);
+> +		if (!transport) {
+> +			err = -ENOMEM;
+> +			goto free;
+> +		}
+> +	}
+> +
+>  	return 0;
+>  
+>  free:
+> @@ -7778,6 +7840,21 @@ static int sctp_msghdr_parse(const struct msghdr *msg, struct sctp_cmsgs *cmsgs)
+>  			if (cmsgs->prinfo->pr_policy = SCTP_PR_SCTP_NONE)
+>  				cmsgs->prinfo->pr_value = 0;
+>  			break;
+> +		case SCTP_DSTADDRV4:
+> +		case SCTP_DSTADDRV6:
+> +			/* SCTP Socket API Extension
+> +			 * 5.3.9/10 SCTP Destination IPv4/6 Address Structure (SCTP_DSTADDRV4/6)
+> +			 *
+> +			 * This cmsghdr structure specifies SCTP options for sendmsg().
+> +			 *
+> +			 * cmsg_level    cmsg_type         cmsg_data[]
+> +			 * ------------  ------------   ---------------------
+> +			 * IPPROTO_SCTP  SCTP_DSTADDRV4 struct in_addr
+> +			 * ------------  ------------   ---------------------
+> +			 * IPPROTO_SCTP  SCTP_DSTADDRV6 struct in6_addr
+> +			 */
+> +			cmsgs->addrs_msg = my_msg;
+> +			break;
+>  		default:
+>  			return -EINVAL;
+>  		}
+> -- 
+> 2.1.0
 > 
-> 
-> >
-> > The patch is saving both options into a single pointer, which later is
-> > processed as a list of (in_addr or in6_addr) elements.
-> It's not, 'my_msg' is the whole msghdr, not only in_addr or in6_addr.
-> later in sctp_sendmsg_new_asoc, it will parse this msghdr again but
-> this time only to pick up SCTP_DSTADDRV4/6 options.
-> (by this way I don't need to alloc list or array to save them)
-
-Which is nice, btw.
-
-> 
-> Note that: one option is just one address, NOT a list of addresses.
-> like, it can even be:
-> SCTP_DSTADDRV4 (one option)
-> SCTP_DSTADDRV6 (one option)
-> SCTP_DSTADDRV4 (one option)
-> SCTP_DSTADDRV4 (one option)
-> SCTP_DSTADDRV6 (one option)
-> 
-> Maybe the name of cmsgs->addrs_msg is confusing here, but I
-> actually think it as a flag to see if there is addrs info in the msghdr,
-> and also as a parameter to pass the msghdr into sctp_sendmsg_new_asoc.
-
-What was more confusing to me is that it seems to overwrite the
-pointer at every other addr option, but I should have noticed that it
-is saving the entire cmsg.
-
-> 
-> >
-> > If an application specifies both options, each with a list of its own
-> > addresses, it will ignore one of the options.
-> If an application specifies many options, some are SCTP_DSTADDRV4
-> and some are SCTP_DSTADDRV6, none of them will be ignored in
-> sctp_sendmsg_new_asoc().
-
-Yep. Thanks.
-
-> 
-> >
-> >> +                     break;
-> >>               default:
-> >>                       return -EINVAL;
-> >>               }
-> >> --
-> >> 2.1.0
-> >>
