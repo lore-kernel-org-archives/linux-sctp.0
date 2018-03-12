@@ -1,150 +1,93 @@
 From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 12 Mar 2018 11:30:03 +0000
-Subject: Re: KASAN: use-after-free Read in sctp_association_free (2)
-Message-Id: <20180312113002.GA7457@hmswarspite.think-freely.org>
+Date: Mon, 12 Mar 2018 16:01:31 +0000
+Subject: [PATCH] Fix double free in sctp_sendmsg_to_asoc
+Message-Id: <20180312160131.13403-1-nhorman@tuxdriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <00000000000017dfe905670110cf@google.com>
- <20180309220823.GA24848@neilslaptop.think-freely.org>
- <CADvbK_fGkhJeirYwiu9ORmmPPBpqamgO2+vi9Osyd92cUWJBVA@mail.gmail.com>
- <20180310131355.GA8798@hmswarspite.think-freely.org>
- <CADvbK_cFjeC-eGdKzYnJxySBY6emVVC8KXQtzLDUZLJzBLb-UA@mail.gmail.com>
- <20180310190427.GA2484@neilslaptop.think-freely.org>
- <CADvbK_cFncE8SH=vrc5wKP5affYCYdnTemauezBqQVnpFq+WLQ@mail.gmail.com>
-In-Reply-To: <CADvbK_cFncE8SH=vrc5wKP5affYCYdnTemauezBqQVnpFq+WLQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: syzbot <syzbot+a4e4112c3aff00c8cfd8@syzkaller.appspotmail.com>, davem <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, network dev <netdev@vger.kernel.org>, syzkaller-bugs@googlegroups.com, Vlad Yasevich <vyasevich@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: linux-sctp@vger.kernel.org
 
-On Mon, Mar 12, 2018 at 04:16:27PM +0800, Xin Long wrote:
-> On Sun, Mar 11, 2018 at 3:04 AM, Neil Horman <nhorman@tuxdriver.com> wrote:
-> > On Sun, Mar 11, 2018 at 12:22:32AM +0800, Xin Long wrote:
-> >> On Sat, Mar 10, 2018 at 9:13 PM, Neil Horman <nhorman@tuxdriver.com> wrote:
-> >> > On Sat, Mar 10, 2018 at 03:58:04PM +0800, Xin Long wrote:
-> >> >> On Sat, Mar 10, 2018 at 6:08 AM, Neil Horman <nhorman@tuxdriver.com> wrote:
-> >> >> > On Fri, Mar 09, 2018 at 12:59:06PM -0800, syzbot wrote:
-> >> >> >> Hello,
-> >> >> >>
-> >> >> >> syzbot hit the following crash on net-next commit
-> >> >> >> fd372a7a9e5e9d8011a0222d10edd3523abcd3b1 (Thu Mar 8 19:43:48 2018 +0000)
-> >> >> >> Merge tag 'mlx5-updates-2018-02-28-2' of
-> >> >> >> git://git.kernel.org/pub/scm/linux/kernel/git/mellanox/linux
-> >> >> >>
-> >> >> >> So far this crash happened 2 times on net-next.
-> >> >> >> C reproducer is attached.
-> >> >> >> syzkaller reproducer is attached.
-> >> >> >> Raw console output is attached.
-> >> >> >> compiler: gcc (GCC) 7.1.1 20170620
-> >> >> >> .config is attached.
-> >> >> >>
-> >> >> >> IMPORTANT: if you fix the bug, please add the following tag to the commit:
-> >> >> >> Reported-by: syzbot+a4e4112c3aff00c8cfd8@syzkaller.appspotmail.com
-> >> >> >> It will help syzbot understand when the bug is fixed. See footer for
-> >> >> >> details.
-> >> >> >> If you forward the report, please keep this part and the footer.
-> >> >> >>
-> >> >> >> IPVS: ftp: loaded support on port[0] = 21
-> >> >> >> IPVS: ftp: loaded support on port[0] = 21
-> >> >> >> IPVS: ftp: loaded support on port[0] = 21
-> >> >> >> IPVS: ftp: loaded support on port[0] = 21
-> >> >> >> =================================
-> >> >> >> BUG: KASAN: use-after-free in sctp_association_free+0x7b7/0x930
-> >> >> >> net/sctp/associola.c:332
-> >> >> >> Read of size 8 at addr ffff8801d8006ae0 by task syzkaller914861/4202
-> >> >> >>
-> >> >> >> CPU: 1 PID: 4202 Comm: syzkaller914861 Not tainted 4.16.0-rc4+ #258
-> >> >> >> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS
-> >> >> >> Google 01/01/2011
-> >> >> >> Call Trace:
-> >> >> >>  __dump_stack lib/dump_stack.c:17 [inline]
-> >> >> >>  dump_stack+0x194/0x24d lib/dump_stack.c:53
-> >> >> >>  print_address_description+0x73/0x250 mm/kasan/report.c:256
-> >> >> >>  kasan_report_error mm/kasan/report.c:354 [inline]
-> >> >> >>  kasan_report+0x23c/0x360 mm/kasan/report.c:412
-> >> >> >>  __asan_report_load8_noabort+0x14/0x20 mm/kasan/report.c:433
-> >> >> >>  sctp_association_free+0x7b7/0x930 net/sctp/associola.c:332
-> >> >> >>  sctp_sendmsg+0xc67/0x1a80 net/sctp/socket.c:2075
-> >> >> >>  inet_sendmsg+0x11f/0x5e0 net/ipv4/af_inet.c:763
-> >> >> >>  sock_sendmsg_nosec net/socket.c:629 [inline]
-> >> >> >>  sock_sendmsg+0xca/0x110 net/socket.c:639
-> >> >> >>  SYSC_sendto+0x361/0x5c0 net/socket.c:1748
-> >> >> >>  SyS_sendto+0x40/0x50 net/socket.c:1716
-> >> >> >>  do_syscall_64+0x281/0x940 arch/x86/entry/common.c:287
-> >> >> >>  entry_SYSCALL_64_after_hwframe+0x42/0xb7
-> >> >> >> RIP: 0033:0x446d09
-> >> >> >> RSP: 002b:00007f5dbac21da8 EFLAGS: 00000216 ORIG_RAX: 000000000000002c
-> >> >> >> RAX: ffffffffffffffda RBX: 00000000006e29fc RCX: 0000000000446d09
-> >> >> >> RDX: 0000000000000001 RSI: 0000000020000340 RDI: 0000000000000003
-> >> >> >> RBP: 00000000006e29f8 R08: 00000000204d9000 R09: 000000000000001c
-> >> >> >> R10: 0000000000000000 R11: 0000000000000216 R12: 0000000000000000
-> >> >> >> R13: 00007fff7b26fb1f R14: 00007f5dbac229c0 R15: 00000000006e2b60
-> >> >> >>
-> >> >> > I think we have a corner case with a0ff660058b88d12625a783ce9e5c1371c87951f
-> >> >> > here.  If a peeloff event happens during a wait for sendbuf space, EPIPE will be
-> >> >> > returned, and the code path appears to call sctp_association_put twice, leading
-> >> >> > to the use after free situation.  I'll write a patch this weekend
-> >> >> Hi, Neil, you're right.
-> >> >>
-> >> >> I didn't expect peeloff can be done on a NEW asoc, as peeloff needs
-> >> >> assoc_id, which can only be set when connecting has started.
-> >> >>
-> >> >> But I realized that:
-> >> >> f84af33 sctp: factor out sctp_sendmsg_to_asoc from sctp_sendmsg
-> >> >>
-> >> >> moved sctp_primitive_ASSOCIATE(connecting) before sctp_wait_for_sndbuf
-> >> >> (snd buffer waiting). It means peeloff can be done on a NEW asoc.
-> >> >> So you may want to move it back.
-> >> >>
-> >> > I agree with the root cause, but I'm not sure I agree with just moving the
-> >> > wait_for_sndbuf call back above the call to associate.  I'm not sure I like
-> >> > relying on placing a call in a spcific order solely to avoid an error condition
-> >> > that might legitimately occur.  I think would rather check the return code at
-> >> > the call site for the complete set of conditions for which we should not free
-> >> > the association.  Something like this:
-> >> >
-> >> > diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> >> > index 7d3476a4860d..a68846d2b0ef 100644
-> >> > --- a/net/sctp/socket.c
-> >> > +++ b/net/sctp/socket.c
-> >> > @@ -2071,8 +2071,9 @@ static int sctp_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
-> >> >
-> >> >         /* Send msg to the asoc */
-> >> >         err = sctp_sendmsg_to_asoc(asoc, msg, msg_len, transport, sinfo);
-> >> > -       if (err < 0 && err != -ESRCH && new)
-> >> > -               sctp_association_free(asoc);
-> >> > +       if ((err != -ESRCH) && (err != -EPIPE))
-> >> > +               if (err < 0 && new)
-> >> > +                       sctp_association_free(asoc);
-> >> >
-> >> >  out_unlock:
-> >> >         release_sock(sk);
-> >> >
-> >> > Which I think also avoids the noted conflict.
-> >> >
-> >> > Thoughts?
-> >> If sctp_association_free is called for general asoc, yes, I agree with you.
-> >> But it's actually only for NEW asoc, a special case, not worth a extra check.
-> >> 'err != -ESRCH' is already kind of ugly there (I couldn't find a nicer way :D),
-> >> I don't hope there will be more like that.
-> >>
-> > I agree with you on the uglyness aspect of the return code check, but I really
-> > don't like the idea of placing the call to wait_for_sndbuf to guarantee a given
-> > error code isn't returned, It just feels rickety to me.
-> I understand, let's not count this moving back as the official fix
-> for this, but only for the compatibility :-)
-> 
-> Then we can start a new one for improving it later as you said below,
-> FYI, we've tried to pass 'new' parameter into sctp_sendmsg_to_asoc
-> or use &asoc as the parameter instead. But it seems not good, and
-> also sctp_association_free will have to be done in sctp_sendmsg_to_asoc,
-> which looks worse.
-> 
-Yeah, I thought about that, and don't particularly care for it either.  I also
-thought about checking the dead flag at the end of send_to_asoc, but that won't
-work either, as the caller of wait_for_sndbuf still has a reference.  I think,
-for now, you were right the first time, we just need to reposition it.   I'll be
-checking the fix with the provided reproducer today.
+syzbot/kasan detected a double free in sctp_sendmsg_to_asoc:
+BUG: KASAN: use-after-free in sctp_association_free+0x7b7/0x930
+net/sctp/associola.c:332
+Read of size 8 at addr ffff8801d8006ae0 by task syzkaller914861/4202
 
-Neil
+CPU: 1 PID: 4202 Comm: syzkaller914861 Not tainted 4.16.0-rc4+ #258
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google
+01/01/2011
+Call Trace:
+ __dump_stack lib/dump_stack.c:17 [inline]
+ dump_stack+0x194/0x24d lib/dump_stack.c:53
+ print_address_description+0x73/0x250 mm/kasan/report.c:256
+ kasan_report_error mm/kasan/report.c:354 [inline]
+ kasan_report+0x23c/0x360 mm/kasan/report.c:412
+ __asan_report_load8_noabort+0x14/0x20 mm/kasan/report.c:433
+ sctp_association_free+0x7b7/0x930 net/sctp/associola.c:332
+ sctp_sendmsg+0xc67/0x1a80 net/sctp/socket.c:2075
+ inet_sendmsg+0x11f/0x5e0 net/ipv4/af_inet.c:763
+ sock_sendmsg_nosec net/socket.c:629 [inline]
+ sock_sendmsg+0xca/0x110 net/socket.c:639
+ SYSC_sendto+0x361/0x5c0 net/socket.c:1748
+ SyS_sendto+0x40/0x50 net/socket.c:1716
+ do_syscall_64+0x281/0x940 arch/x86/entry/common.c:287
+ entry_SYSCALL_64_after_hwframe+0x42/0xb7
+
+This was introduced by commit:
+f84af33 sctp: factor out sctp_sendmsg_to_asoc from sctp_sendmsg
+
+As the newly refactored function moved the wait_for_sndbuf call to a
+point after the association was connected, allowing for peeloff events
+to occur, which in turn caused wait_for_sndbuf to return -EPIPE which
+was not caught by the logic that determines if an association should be
+freed or not.
+
+Fix it the easy way by returning the ordering of
+sctp_primitive_ASSOCIATE and sctp_wait_for_sndbuf to the old order, to
+ensure that EPIPE will not happen.
+
+Tested by myself using the syzbot reproducers with positive results
+
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+CC: davem@davemloft.net
+CC: Xin Long <lucien.xin@gmail.com>
+Reported-by: syzbot+a4e4112c3aff00c8cfd8@syzkaller.appspotmail.com
+---
+ net/sctp/socket.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 7d3476a4860d..88c827b2becf 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1876,6 +1876,13 @@ static int sctp_sendmsg_to_asoc(struct sctp_association *asoc,
+ 		goto err;
+ 	}
+ 
++	if (!sctp_wspace(asoc)) {
++		timeo = sock_sndtimeo(sk, msg->msg_flags & MSG_DONTWAIT);
++		err = sctp_wait_for_sndbuf(asoc, &timeo, msg_len);
++		if (err)
++			goto err;
++	}
++
+ 	if (sctp_state(asoc, CLOSED)) {
+ 		err = sctp_primitive_ASSOCIATE(net, asoc, NULL);
+ 		if (err)
+@@ -1899,13 +1906,6 @@ static int sctp_sendmsg_to_asoc(struct sctp_association *asoc,
+ 	if (sctp_wspace(asoc) < msg_len)
+ 		sctp_prsctp_prune(asoc, sinfo, msg_len - sctp_wspace(asoc));
+ 
+-	if (!sctp_wspace(asoc)) {
+-		timeo = sock_sndtimeo(sk, msg->msg_flags & MSG_DONTWAIT);
+-		err = sctp_wait_for_sndbuf(asoc, &timeo, msg_len);
+-		if (err)
+-			goto err;
+-	}
+-
+ 	datamsg = sctp_datamsg_from_user(asoc, sinfo, &msg->msg_iter);
+ 	if (IS_ERR(datamsg)) {
+ 		err = PTR_ERR(datamsg);
+-- 
+2.14.3
 
