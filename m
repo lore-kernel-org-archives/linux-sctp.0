@@ -1,27 +1,114 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 12 Mar 2018 17:34:18 +0000
-Subject: Re: [PATCH net-next] sctp: fix error return code in sctp_sendmsg_new_asoc()
-Message-Id: <CADvbK_c2riQ4Tqne=q7v-n5kCcYqw5j+duppKWbuf9+TqZPFjQ@mail.gmail.com>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 12 Mar 2018 18:15:25 +0000
+Subject: [PATCH v2] sctp: Fix double free in sctp_sendmsg_to_asoc
+Message-Id: <20180312181525.21774-1-nhorman@tuxdriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1520856964-132516-1-git-send-email-weiyongjun1@huawei.com> <20180312.111903.1047457001442236332.davem@davemloft.net>
-In-Reply-To: <20180312.111903.1047457001442236332.davem@davemloft.net>
+References: <00000000000017dfe905670110cf@google.com>
+In-Reply-To: <00000000000017dfe905670110cf@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: Wei Yongjun <weiyongjun1@huawei.com>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, network dev <netdev@vger.kernel.org>, kernel-janitors@vger.kernel.org
+To: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net, Xin Long <lucien.xin@gmail.com>
 
-On Mon, Mar 12, 2018 at 11:19 PM, David Miller <davem@davemloft.net> wrote:
-> From: Wei Yongjun <weiyongjun1@huawei.com>
-> Date: Mon, 12 Mar 2018 12:16:04 +0000
->
->> Return error code -EINVAL in the address len check error handling
->> case since 'err' can be overwrite to 0 by 'err = sctp_verify_addr()'
->> in the for loop.
->>
->> Fixes: 2c0dbaa0c43d ("sctp: add support for SCTP_DSTADDRV4/6 Information for sendmsg")
->> Signed-off-by: Wei Yongjun <weiyongjun1@huawei.com>
->
-> Xin, I do not want to have a bug fix like this blocked because of that
-> SCTP options merge nightmare which is of no fault of our own.
-Okay, sorry, I was over worried recently, thank you.
+syzbot/kasan detected a double free in sctp_sendmsg_to_asoc:
+BUG: KASAN: use-after-free in sctp_association_free+0x7b7/0x930
+net/sctp/associola.c:332
+Read of size 8 at addr ffff8801d8006ae0 by task syzkaller914861/4202
+
+CPU: 1 PID: 4202 Comm: syzkaller914861 Not tainted 4.16.0-rc4+ #258
+Hardware name: Google Google Compute Engine/Google Compute Engine
+01/01/2011
+Call Trace:
+ __dump_stack lib/dump_stack.c:17 [inline]
+ dump_stack+0x194/0x24d lib/dump_stack.c:53
+ print_address_description+0x73/0x250 mm/kasan/report.c:256
+ kasan_report_error mm/kasan/report.c:354 [inline]
+ kasan_report+0x23c/0x360 mm/kasan/report.c:412
+ __asan_report_load8_noabort+0x14/0x20 mm/kasan/report.c:433
+ sctp_association_free+0x7b7/0x930 net/sctp/associola.c:332
+ sctp_sendmsg+0xc67/0x1a80 net/sctp/socket.c:2075
+ inet_sendmsg+0x11f/0x5e0 net/ipv4/af_inet.c:763
+ sock_sendmsg_nosec net/socket.c:629 [inline]
+ sock_sendmsg+0xca/0x110 net/socket.c:639
+ SYSC_sendto+0x361/0x5c0 net/socket.c:1748
+ SyS_sendto+0x40/0x50 net/socket.c:1716
+ do_syscall_64+0x281/0x940 arch/x86/entry/common.c:287
+ entry_SYSCALL_64_after_hwframe+0x42/0xb7
+
+This was introduced by commit:
+f84af33 sctp: factor out sctp_sendmsg_to_asoc from sctp_sendmsg
+
+As the newly refactored function moved the wait_for_sndbuf call to a
+point after the association was connected, allowing for peeloff events
+to occur, which in turn caused wait_for_sndbuf to return -EPIPE which
+was not caught by the logic that determines if an association should be
+freed or not.
+
+Fix it the easy way by returning the ordering of
+sctp_primitive_ASSOCIATE and sctp_wait_for_sndbuf to the old order, to
+ensure that EPIPE will not happen.
+
+Tested by myself using the syzbot reproducers with positive results
+
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+CC: davem@davemloft.net
+CC: Xin Long <lucien.xin@gmail.com>
+Reported-by: syzbot+a4e4112c3aff00c8cfd8@syzkaller.appspotmail.com
+
+---
+Change notes
+v2)
+ * Moved additional calls to restore origional ordering
+ * add sctp prefix
+---
+ net/sctp/socket.c | 26 +++++++++++++-------------
+ 1 file changed, 13 insertions(+), 13 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 7d3476a4860d..4bbfcf9532c2 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1876,6 +1876,19 @@ static int sctp_sendmsg_to_asoc(struct sctp_association *asoc,
+ 		goto err;
+ 	}
+ 
++	if (asoc->pmtu_pending)
++		sctp_assoc_pending_pmtu(asoc);
++
++	if (sctp_wspace(asoc) < msg_len)
++		sctp_prsctp_prune(asoc, sinfo, msg_len - sctp_wspace(asoc));
++
++	if (!sctp_wspace(asoc)) {
++		timeo = sock_sndtimeo(sk, msg->msg_flags & MSG_DONTWAIT);
++		err = sctp_wait_for_sndbuf(asoc, &timeo, msg_len);
++		if (err)
++			goto err;
++	}
++
+ 	if (sctp_state(asoc, CLOSED)) {
+ 		err = sctp_primitive_ASSOCIATE(net, asoc, NULL);
+ 		if (err)
+@@ -1893,19 +1906,6 @@ static int sctp_sendmsg_to_asoc(struct sctp_association *asoc,
+ 		pr_debug("%s: we associated primitively\n", __func__);
+ 	}
+ 
+-	if (asoc->pmtu_pending)
+-		sctp_assoc_pending_pmtu(asoc);
+-
+-	if (sctp_wspace(asoc) < msg_len)
+-		sctp_prsctp_prune(asoc, sinfo, msg_len - sctp_wspace(asoc));
+-
+-	if (!sctp_wspace(asoc)) {
+-		timeo = sock_sndtimeo(sk, msg->msg_flags & MSG_DONTWAIT);
+-		err = sctp_wait_for_sndbuf(asoc, &timeo, msg_len);
+-		if (err)
+-			goto err;
+-	}
+-
+ 	datamsg = sctp_datamsg_from_user(asoc, sinfo, &msg->msg_iter);
+ 	if (IS_ERR(datamsg)) {
+ 		err = PTR_ERR(datamsg);
+-- 
+2.14.3
+
