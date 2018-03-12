@@ -1,7 +1,7 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 12 Mar 2018 16:16:27 +0000
+From: David Miller <davem@davemloft.net>
+Date: Mon, 12 Mar 2018 16:57:37 +0000
 Subject: Re: [PATCH] Fix double free in sctp_sendmsg_to_asoc
-Message-Id: <CADvbK_dMeHB4g8vLmvWaPW93VYn51zy3wowcE+vELx6Y7zjJaQ@mail.gmail.com>
+Message-Id: <20180312.125737.2298514616330071416.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20180312160131.13403-1-nhorman@tuxdriver.com>
 In-Reply-To: <20180312160131.13403-1-nhorman@tuxdriver.com>
@@ -10,103 +10,32 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On Tue, Mar 13, 2018 at 12:01 AM, Neil Horman <nhorman@tuxdriver.com> wrote:
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 12 Mar 2018 12:01:31 -0400
+
 > syzbot/kasan detected a double free in sctp_sendmsg_to_asoc:
 > BUG: KASAN: use-after-free in sctp_association_free+0x7b7/0x930
 > net/sctp/associola.c:332
 > Read of size 8 at addr ffff8801d8006ae0 by task syzkaller914861/4202
->
-> CPU: 1 PID: 4202 Comm: syzkaller914861 Not tainted 4.16.0-rc4+ #258
-> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google
-> 01/01/2011
-> Call Trace:
->  __dump_stack lib/dump_stack.c:17 [inline]
->  dump_stack+0x194/0x24d lib/dump_stack.c:53
->  print_address_description+0x73/0x250 mm/kasan/report.c:256
->  kasan_report_error mm/kasan/report.c:354 [inline]
->  kasan_report+0x23c/0x360 mm/kasan/report.c:412
->  __asan_report_load8_noabort+0x14/0x20 mm/kasan/report.c:433
->  sctp_association_free+0x7b7/0x930 net/sctp/associola.c:332
->  sctp_sendmsg+0xc67/0x1a80 net/sctp/socket.c:2075
->  inet_sendmsg+0x11f/0x5e0 net/ipv4/af_inet.c:763
->  sock_sendmsg_nosec net/socket.c:629 [inline]
->  sock_sendmsg+0xca/0x110 net/socket.c:639
->  SYSC_sendto+0x361/0x5c0 net/socket.c:1748
->  SyS_sendto+0x40/0x50 net/socket.c:1716
->  do_syscall_64+0x281/0x940 arch/x86/entry/common.c:287
->  entry_SYSCALL_64_after_hwframe+0x42/0xb7
->
+ ...
 > This was introduced by commit:
 > f84af33 sctp: factor out sctp_sendmsg_to_asoc from sctp_sendmsg
->
+> 
 > As the newly refactored function moved the wait_for_sndbuf call to a
 > point after the association was connected, allowing for peeloff events
 > to occur, which in turn caused wait_for_sndbuf to return -EPIPE which
 > was not caught by the logic that determines if an association should be
 > freed or not.
->
+> 
 > Fix it the easy way by returning the ordering of
 > sctp_primitive_ASSOCIATE and sctp_wait_for_sndbuf to the old order, to
 > ensure that EPIPE will not happen.
->
+> 
 > Tested by myself using the syzbot reproducers with positive results
->
+> 
 > Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
 > CC: davem@davemloft.net
 > CC: Xin Long <lucien.xin@gmail.com>
 > Reported-by: syzbot+a4e4112c3aff00c8cfd8@syzkaller.appspotmail.com
-> ---
->  net/sctp/socket.c | 14 +++++++-------
->  1 file changed, 7 insertions(+), 7 deletions(-)
->
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 7d3476a4860d..88c827b2becf 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -1876,6 +1876,13 @@ static int sctp_sendmsg_to_asoc(struct sctp_association *asoc,
->                 goto err;
->         }
->
-> +       if (!sctp_wspace(asoc)) {
-> +               timeo = sock_sndtimeo(sk, msg->msg_flags & MSG_DONTWAIT);
-> +               err = sctp_wait_for_sndbuf(asoc, &timeo, msg_len);
-> +               if (err)
-> +                       goto err;
-> +       }
-> +
->         if (sctp_state(asoc, CLOSED)) {
->                 err = sctp_primitive_ASSOCIATE(net, asoc, NULL);
->                 if (err)
-> @@ -1899,13 +1906,6 @@ static int sctp_sendmsg_to_asoc(struct sctp_association *asoc,
->         if (sctp_wspace(asoc) < msg_len)
->                 sctp_prsctp_prune(asoc, sinfo, msg_len - sctp_wspace(asoc));
->
-Hi, Neil
 
-Do you mind moving these:
-        if (asoc->pmtu_pending)
-                sctp_assoc_pending_pmtu(asoc);
-
-        if (sctp_wspace(asoc) < msg_len)
-                sctp_prsctp_prune(asoc, sinfo, msg_len - sctp_wspace(asoc));
-
-together with sctp_wait_for_sndbuf part up?
-especially, sctp_prsctp_prune has to be earlier than wait_for_sndbuf.
-
-And with prefix "sctp: " in subject and "Fixes:" tag in changelog
-would be nicer.
-
-
-> -       if (!sctp_wspace(asoc)) {
-> -               timeo = sock_sndtimeo(sk, msg->msg_flags & MSG_DONTWAIT);
-> -               err = sctp_wait_for_sndbuf(asoc, &timeo, msg_len);
-> -               if (err)
-> -                       goto err;
-> -       }
-> -
->         datamsg = sctp_datamsg_from_user(asoc, sinfo, &msg->msg_iter);
->         if (IS_ERR(datamsg)) {
->                 err = PTR_ERR(datamsg);
-> --
-> 2.14.3
->
+Hope this will be sent to netdev when it's ready...
