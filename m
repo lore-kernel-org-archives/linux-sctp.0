@@ -1,27 +1,43 @@
-From: Wesley <bianca-ioana.bite@consultant.generali.ro>
-Date: Sun, 18 Mar 2018 08:15:55 +0000
-Subject: Good day friend!!!
-Message-Id: <962776471.11208.1521360955659.JavaMail.zimbra@consultant.generali.ro>
+From: web-kontakt <info@mail20.marketing-mail.net>
+Date: Wed, 14 Mar 2018 08:31:11 +0000
+Subject: FWD: Kontakt
+Message-Id: <20180314_083111_091561.info@mail20.marketing-mail.net>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="iso-8859-9"
+Content-Transfer-Encoding: quoted-printable
 To: linux-sctp@vger.kernel.org
 
-Am Wes from United States but currently in Syria for peace keeping mission. I am currently looking for friendship that will lead to  relationship in which I feel loved again.....
+Sehr geehrte Damen und Herren,
 
-I want to get to know you better, if I may be so bold. I consider myself an easy-going man..............
+nach unserem Besuch Ihrer Homepage m=C3=B6chten wir Ihnen ein Angebot von P=
+rodukten vorstellen, das Ihnen erm=C3=B6glichen wird, den Verkauf Ihrer Pro=
+dukte sowie Dienstleistungen deutlich zu erh=C3=B6hen.
+Die Datenbanken der Firmen sind in f=C3=BCr Sie interessante und relevante =
+Zielgruppen unterglieder.
 
-Please forgive my manners am not good when it comes to Internet because that is not really my field.  Here in Syria we are not allowed to go out that makes it very bored for me so I just think I need a friend to talk to outside to keep me going...........
-
-I would love to get to know the "real" you as a friend. Your likes, your dislikes, your interests......what makes you.
-
-My favorite color is Blue. My favorite food is BACON, I could easily become a vegetarian if it wasn't for bacon!!
-
-I hope you can tell me more details about your job, relationship and your past.........
-
+Ich biete Ihnen den ganz neuen Adressenkatalog der Schweizer Unternehmen an=
+, in dem sich direkte Kontaktdaten der Firmeninhaber und Manager befinden.
+Der neue Katalog enth=C3=A4lt 187.764 schweizerische Firmen und stellt solc=
+he Daten zur Verf=C3=BCgung wie: Namen der Firma, Firmenanschrift, Kontaktd=
+aten des Firmeninhabers oder des Managers, E-Mail-Adresse, Telefon, Faxnumm=
+er, Branche usw.
 
 
-Hoping to hear from you soon.........
+http://www.db-marketing-schweiz.net/?page=CAtalog
 
-Wes.
+Die Verwendungsm=C3=B6glichkeiten der Datenbanken sind praktisch unbegrenzt=
+ und Sie k=C3=B6nnen durch Verwendung
+der von uns entwickelten Programme des personalisierten Versendens von Ange=
+boten u.=C3=A4. mittels
+E-mailing bzw. Fax effektive und sichere Werbekampagnen damit durchf=C3=BCh=
+ren.
+Bitte informieren Sie sich =C3=BCber die weiteren Details einmal unverbindl=
+ich auf unseren Webseite:
+
+http://www.db-marketing-schweiz.net/?page=CAtalog
+
+MfG
+GL-Marketing.
+
+
