@@ -1,167 +1,204 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 06 Mar 2018 12:22:31 +0000
-Subject: Re: [PATCH net-next 2/3] sctp: add support for SCTP_DSTADDRV4/6 Information for sendmsg
-Message-Id: <20180306122231.GE27351@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 14 Mar 2018 11:05:32 +0000
+Subject: [PATCH net-next 3/5] sctp: add sockopt SCTP_AUTH_DEACTIVATE_KEY
+Message-Id: <e958480a6da52ad0947e319a2890fb034a473570.1521025473.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1520253539.git.lucien.xin@gmail.com>
- <6ea3660f31c8410bc9e54f32734e4fddab85cf49.1520253539.git.lucien.xin@gmail.com>
-In-Reply-To: <6ea3660f31c8410bc9e54f32734e4fddab85cf49.1520253539.git.lucien.xin@gmail.com>
+References: <cover.1521025473.git.lucien.xin@gmail.com>
+ <6b9a82f18f69682fea668026d33b937c1702a09a.1521025473.git.lucien.xin@gmail.com>
+ <68816b668678174bdd44abeef7ed63a8260268c2.1521025473.git.lucien.xin@gmail.com>
+In-Reply-To: <68816b668678174bdd44abeef7ed63a8260268c2.1521025473.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-On Mon, Mar 05, 2018 at 08:44:19PM +0800, Xin Long wrote:
-> This patch is to add support for Destination IPv4/6 Address options
-> for sendmsg, as described in section 5.3.9/10 of RFC6458.
-> 
-> With this option, you can provide more than one destination addrs
-> to sendmsg when creating asoc, like sctp_connectx.
-> 
-> It's also a necessary send info for sctp_sendv.
-> 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+This patch is to add sockopt SCTP_AUTH_DEACTIVATE_KEY, as described in
+section 8.3.4 of RFC6458.
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+This set option indicates that the application will no longer send user
+messages using the indicated key identifier.
 
-> ---
->  include/net/sctp/structs.h |  1 +
->  include/uapi/linux/sctp.h  |  6 ++++
->  net/sctp/socket.c          | 77 ++++++++++++++++++++++++++++++++++++++++++++++
->  3 files changed, 84 insertions(+)
-> 
-> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-> index d40a2a3..ec6e46b 100644
-> --- a/include/net/sctp/structs.h
-> +++ b/include/net/sctp/structs.h
-> @@ -2113,6 +2113,7 @@ struct sctp_cmsgs {
->  	struct sctp_sndrcvinfo *srinfo;
->  	struct sctp_sndinfo *sinfo;
->  	struct sctp_prinfo *prinfo;
-> +	struct msghdr *addrs_msg;
->  };
->  
->  /* Structure for tracking memory objects */
-> diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-> index 0dd1f82..a1bc350 100644
-> --- a/include/uapi/linux/sctp.h
-> +++ b/include/uapi/linux/sctp.h
-> @@ -308,6 +308,12 @@ typedef enum sctp_cmsg_type {
->  #define SCTP_NXTINFO	SCTP_NXTINFO
->  	SCTP_PRINFO,		/* 5.3.7 SCTP PR-SCTP Information Structure */
->  #define SCTP_PRINFO	SCTP_PRINFO
-> +	SCTP_AUTHINFO,		/* 5.3.8 SCTP AUTH Information Structure (RESERVED) */
-> +#define SCTP_AUTHINFO	SCTP_AUTHINFO
-> +	SCTP_DSTADDRV4,		/* 5.3.9 SCTP Destination IPv4 Address Structure */
-> +#define SCTP_DSTADDRV4	SCTP_DSTADDRV4
-> +	SCTP_DSTADDRV6,		/* 5.3.10 SCTP Destination IPv6 Address Structure */
-> +#define SCTP_DSTADDRV6	SCTP_DSTADDRV6
->  } sctp_cmsg_t;
->  
->  /*
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index fdde697..067b57a 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -1676,6 +1676,7 @@ static int sctp_sendmsg_new_asoc(struct sock *sk, __u16 sflags,
->  	struct net *net = sock_net(sk);
->  	struct sctp_association *asoc;
->  	enum sctp_scope scope;
-> +	struct cmsghdr *cmsg;
->  	int err = -EINVAL;
->  
->  	*tp = NULL;
-> @@ -1741,6 +1742,67 @@ static int sctp_sendmsg_new_asoc(struct sock *sk, __u16 sflags,
->  		goto free;
->  	}
->  
-> +	if (!cmsgs->addrs_msg)
-> +		return 0;
-> +
-> +	/* sendv addr list parse */
-> +	for_each_cmsghdr(cmsg, cmsgs->addrs_msg) {
-> +		struct sctp_transport *transport;
-> +		struct sctp_association *old;
-> +		union sctp_addr _daddr;
-> +		int dlen;
-> +
-> +		if (cmsg->cmsg_level != IPPROTO_SCTP ||
-> +		    (cmsg->cmsg_type != SCTP_DSTADDRV4 &&
-> +		     cmsg->cmsg_type != SCTP_DSTADDRV6))
-> +			continue;
-> +
-> +		daddr = &_daddr;
-> +		memset(daddr, 0, sizeof(*daddr));
-> +		dlen = cmsg->cmsg_len - sizeof(struct cmsghdr);
-> +		if (cmsg->cmsg_type = SCTP_DSTADDRV4) {
-> +			if (dlen < sizeof(struct in_addr))
-> +				goto free;
-> +
-> +			dlen = sizeof(struct in_addr);
-> +			daddr->v4.sin_family = AF_INET;
-> +			daddr->v4.sin_port = htons(asoc->peer.port);
-> +			memcpy(&daddr->v4.sin_addr, CMSG_DATA(cmsg), dlen);
-> +		} else {
-> +			if (dlen < sizeof(struct in6_addr))
-> +				goto free;
-> +
-> +			dlen = sizeof(struct in6_addr);
-> +			daddr->v6.sin6_family = AF_INET6;
-> +			daddr->v6.sin6_port = htons(asoc->peer.port);
-> +			memcpy(&daddr->v6.sin6_addr, CMSG_DATA(cmsg), dlen);
-> +		}
-> +		err = sctp_verify_addr(sk, daddr, sizeof(*daddr));
-> +		if (err)
-> +			goto free;
-> +
-> +		old = sctp_endpoint_lookup_assoc(ep, daddr, &transport);
-> +		if (old && old != asoc) {
-> +			if (old->state >= SCTP_STATE_ESTABLISHED)
-> +				err = -EISCONN;
-> +			else
-> +				err = -EALREADY;
-> +			goto free;
-> +		}
-> +
-> +		if (sctp_endpoint_is_peeled_off(ep, daddr)) {
-> +			err = -EADDRNOTAVAIL;
-> +			goto free;
-> +		}
-> +
-> +		transport = sctp_assoc_add_peer(asoc, daddr, GFP_KERNEL,
-> +						SCTP_UNKNOWN);
-> +		if (!transport) {
-> +			err = -ENOMEM;
-> +			goto free;
-> +		}
-> +	}
-> +
->  	return 0;
->  
->  free:
-> @@ -7778,6 +7840,21 @@ static int sctp_msghdr_parse(const struct msghdr *msg, struct sctp_cmsgs *cmsgs)
->  			if (cmsgs->prinfo->pr_policy = SCTP_PR_SCTP_NONE)
->  				cmsgs->prinfo->pr_value = 0;
->  			break;
-> +		case SCTP_DSTADDRV4:
-> +		case SCTP_DSTADDRV6:
-> +			/* SCTP Socket API Extension
-> +			 * 5.3.9/10 SCTP Destination IPv4/6 Address Structure (SCTP_DSTADDRV4/6)
-> +			 *
-> +			 * This cmsghdr structure specifies SCTP options for sendmsg().
-> +			 *
-> +			 * cmsg_level    cmsg_type         cmsg_data[]
-> +			 * ------------  ------------   ---------------------
-> +			 * IPPROTO_SCTP  SCTP_DSTADDRV4 struct in_addr
-> +			 * ------------  ------------   ---------------------
-> +			 * IPPROTO_SCTP  SCTP_DSTADDRV6 struct in6_addr
-> +			 */
-> +			cmsgs->addrs_msg = my_msg;
-> +			break;
->  		default:
->  			return -EINVAL;
->  		}
-> -- 
-> 2.1.0
-> 
+Note that RFC requires that only deactivated keys that are no longer used
+by an association can be deleted, but for the backward compatibility, it
+is not to check deactivated when deleting or replacing one sh_key.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/auth.h   | 12 ++++++------
+ include/uapi/linux/sctp.h |  1 +
+ net/sctp/auth.c           | 46 +++++++++++++++++++++++++++++++++++++++++++---
+ net/sctp/socket.c         | 31 +++++++++++++++++++++++++++++++
+ 4 files changed, 81 insertions(+), 9 deletions(-)
+
+diff --git a/include/net/sctp/auth.h b/include/net/sctp/auth.h
+index 017c1aa..687e7f8 100644
+--- a/include/net/sctp/auth.h
++++ b/include/net/sctp/auth.h
+@@ -65,6 +65,7 @@ struct sctp_shared_key {
+ 	struct sctp_auth_bytes *key;
+ 	refcount_t refcnt;
+ 	__u16 key_id;
++	__u8 deactivated;
+ };
+ 
+ #define key_for_each(__key, __list_head) \
+@@ -113,14 +114,13 @@ void sctp_auth_shkey_hold(struct sctp_shared_key *sh_key);
+ int sctp_auth_ep_add_chunkid(struct sctp_endpoint *ep, __u8 chunk_id);
+ int sctp_auth_ep_set_hmacs(struct sctp_endpoint *ep,
+ 			    struct sctp_hmacalgo *hmacs);
+-int sctp_auth_set_key(struct sctp_endpoint *ep,
+-		      struct sctp_association *asoc,
++int sctp_auth_set_key(struct sctp_endpoint *ep, struct sctp_association *asoc,
+ 		      struct sctp_authkey *auth_key);
+ int sctp_auth_set_active_key(struct sctp_endpoint *ep,
+-		      struct sctp_association *asoc,
+-		      __u16 key_id);
++			     struct sctp_association *asoc, __u16 key_id);
+ int sctp_auth_del_key_id(struct sctp_endpoint *ep,
+-		      struct sctp_association *asoc,
+-		      __u16 key_id);
++			 struct sctp_association *asoc, __u16 key_id);
++int sctp_auth_deact_key_id(struct sctp_endpoint *ep,
++			   struct sctp_association *asoc, __u16 key_id);
+ 
+ #endif
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index 47e781e..08fc313 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -99,6 +99,7 @@ typedef __s32 sctp_assoc_t;
+ #define SCTP_RECVRCVINFO	32
+ #define SCTP_RECVNXTINFO	33
+ #define SCTP_DEFAULT_SNDINFO	34
++#define SCTP_AUTH_DEACTIVATE_KEY	35
+ 
+ /* Internal Socket Options. Some of the sctp library functions are
+  * implemented using these socket options.
+diff --git a/net/sctp/auth.c b/net/sctp/auth.c
+index e5214fd..a073123 100644
+--- a/net/sctp/auth.c
++++ b/net/sctp/auth.c
+@@ -449,8 +449,11 @@ struct sctp_shared_key *sctp_auth_get_shkey(
+ 
+ 	/* First search associations set of endpoint pair shared keys */
+ 	key_for_each(key, &asoc->endpoint_shared_keys) {
+-		if (key->key_id = key_id)
+-			return key;
++		if (key->key_id = key_id) {
++			if (!key->deactivated)
++				return key;
++			break;
++		}
+ 	}
+ 
+ 	return NULL;
+@@ -905,7 +908,7 @@ int sctp_auth_set_active_key(struct sctp_endpoint *ep,
+ 		}
+ 	}
+ 
+-	if (!found)
++	if (!found || key->deactivated)
+ 		return -EINVAL;
+ 
+ 	if (asoc) {
+@@ -956,3 +959,40 @@ int sctp_auth_del_key_id(struct sctp_endpoint *ep,
+ 
+ 	return 0;
+ }
++
++int sctp_auth_deact_key_id(struct sctp_endpoint *ep,
++			   struct sctp_association *asoc, __u16  key_id)
++{
++	struct sctp_shared_key *key;
++	struct list_head *sh_keys;
++	int found = 0;
++
++	/* The key identifier MUST NOT be the current active key
++	 * The key identifier MUST correst to an existing key
++	 */
++	if (asoc) {
++		if (asoc->active_key_id = key_id)
++			return -EINVAL;
++
++		sh_keys = &asoc->endpoint_shared_keys;
++	} else {
++		if (ep->active_key_id = key_id)
++			return -EINVAL;
++
++		sh_keys = &ep->endpoint_shared_keys;
++	}
++
++	key_for_each(key, sh_keys) {
++		if (key->key_id = key_id) {
++			found = 1;
++			break;
++		}
++	}
++
++	if (!found)
++		return -EINVAL;
++
++	key->deactivated = 1;
++
++	return 0;
++}
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 9ffdecb..65cc354 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3647,6 +3647,33 @@ static int sctp_setsockopt_del_key(struct sock *sk,
+ }
+ 
+ /*
++ * 8.3.4  Deactivate a Shared Key (SCTP_AUTH_DEACTIVATE_KEY)
++ *
++ * This set option will deactivate a shared secret key.
++ */
++static int sctp_setsockopt_deactivate_key(struct sock *sk, char __user *optval,
++					  unsigned int optlen)
++{
++	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
++	struct sctp_authkeyid val;
++	struct sctp_association *asoc;
++
++	if (!ep->auth_enable)
++		return -EACCES;
++
++	if (optlen != sizeof(struct sctp_authkeyid))
++		return -EINVAL;
++	if (copy_from_user(&val, optval, optlen))
++		return -EFAULT;
++
++	asoc = sctp_id2assoc(sk, val.scact_assoc_id);
++	if (!asoc && val.scact_assoc_id && sctp_style(sk, UDP))
++		return -EINVAL;
++
++	return sctp_auth_deact_key_id(ep, asoc, val.scact_keynumber);
++}
++
++/*
+  * 8.1.23 SCTP_AUTO_ASCONF
+  *
+  * This option will enable or disable the use of the automatic generation of
+@@ -4238,6 +4265,9 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 	case SCTP_AUTH_DELETE_KEY:
+ 		retval = sctp_setsockopt_del_key(sk, optval, optlen);
+ 		break;
++	case SCTP_AUTH_DEACTIVATE_KEY:
++		retval = sctp_setsockopt_deactivate_key(sk, optval, optlen);
++		break;
+ 	case SCTP_AUTO_ASCONF:
+ 		retval = sctp_setsockopt_auto_asconf(sk, optval, optlen);
+ 		break;
+@@ -7212,6 +7242,7 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 	case SCTP_AUTH_KEY:
+ 	case SCTP_AUTH_CHUNK:
+ 	case SCTP_AUTH_DELETE_KEY:
++	case SCTP_AUTH_DEACTIVATE_KEY:
+ 		retval = -EOPNOTSUPP;
+ 		break;
+ 	case SCTP_HMAC_IDENT:
+-- 
+2.1.0
+
