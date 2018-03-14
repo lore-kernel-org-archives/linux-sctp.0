@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 14 Mar 2018 13:53:02 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Wed, 14 Mar 2018 13:59:28 +0000
 Subject: Re: [PATCH net-next 1/5] sctp: add refcnt support for sh_key
-Message-Id: <20180314135302.GV27351@localhost.localdomain>
+Message-Id: <20180314135927.GA28936@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1521025473.git.lucien.xin@gmail.com>
  <6b9a82f18f69682fea668026d33b937c1702a09a.1521025473.git.lucien.xin@gmail.com>
@@ -10,7 +10,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, davem@davemloft.net
 
 On Wed, Mar 14, 2018 at 07:05:30PM +0800, Xin Long wrote:
 > With refcnt support for sh_key, chunks auth sh_keys can be decided
@@ -25,9 +25,6 @@ On Wed, Mar 14, 2018 at 07:05:30PM +0800, Xin Long wrote:
 > in sctp_chunk.
 > 
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  include/net/sctp/auth.h    |  9 +++--
 >  include/net/sctp/sm.h      |  3 +-
@@ -98,6 +95,12 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > +		/* In case of auth enabled, this will point to the shkey */
 > +		struct sctp_shared_key *shkey;
 > +	};
+Why do you need to add this at all?  You add the shared key pointer to the
+association in this patch, and sctp_chunk already has a pointer to the
+association, so you should already be able to find the shared key via
+chunk->asoc->shkey, no?
+
+
 >  
 >  	/* These are the SCTP headers by reverse order in a packet.
 >  	 * Note that some of these may happen more than once.  In that
@@ -174,6 +177,10 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > +				sctp_auth_shkey_hold(chunk->shkey);
 > +			}
 > +		}
+Do we really need to take a reference for every chunk we send?  Wouldn't it be
+sufficient to just hold the shared key until the association is released?
+
+
 >  	}
 >  
 >  	return 0;
@@ -478,4 +485,9 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 >  
 > -- 
 > 2.1.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
