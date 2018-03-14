@@ -1,139 +1,164 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 06 Mar 2018 12:22:22 +0000
-Subject: Re: [PATCH net-next 1/3] sctp: add support for PR-SCTP Information for sendmsg
-Message-Id: <20180306122222.GD27351@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 14 Mar 2018 11:05:33 +0000
+Subject: [PATCH net-next 4/5] sctp: add SCTP_AUTH_FREE_KEY type for AUTHENTICATION_EVENT
+Message-Id: <22218ceee8900508e30833758b613173d02031eb.1521025473.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1520253539.git.lucien.xin@gmail.com>
- <154aa989b7a97aebaffd96ff6773b416b79398be.1520253539.git.lucien.xin@gmail.com>
-In-Reply-To: <154aa989b7a97aebaffd96ff6773b416b79398be.1520253539.git.lucien.xin@gmail.com>
+References: <cover.1521025473.git.lucien.xin@gmail.com>
+ <6b9a82f18f69682fea668026d33b937c1702a09a.1521025473.git.lucien.xin@gmail.com>
+ <68816b668678174bdd44abeef7ed63a8260268c2.1521025473.git.lucien.xin@gmail.com>
+ <e958480a6da52ad0947e319a2890fb034a473570.1521025473.git.lucien.xin@gmail.com>
+In-Reply-To: <e958480a6da52ad0947e319a2890fb034a473570.1521025473.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-On Mon, Mar 05, 2018 at 08:44:18PM +0800, Xin Long wrote:
-> This patch is to add support for PR-SCTP Information for sendmsg,
-> as described in section 5.3.7 of RFC6458.
-> 
-> With this option, you can specify pr_policy and pr_value for user
-> data in sendmsg.
-> 
-> It's also a necessary send info for sctp_sendv.
-> 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+This patch is to add SCTP_AUTH_FREE_KEY type for AUTHENTICATION_EVENT,
+as described in section 6.1.8 of RFC6458.
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+      SCTP_AUTH_FREE_KEY:  This report indicates that the SCTP
+         implementation will no longer use the key identifier specified
+         in auth_keynumber.
 
-> ---
->  include/net/sctp/structs.h |  1 +
->  include/uapi/linux/sctp.h  | 15 +++++++++++++++
->  net/sctp/socket.c          | 31 ++++++++++++++++++++++++++++++-
->  3 files changed, 46 insertions(+), 1 deletion(-)
-> 
-> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-> index 03e92dd..d40a2a3 100644
-> --- a/include/net/sctp/structs.h
-> +++ b/include/net/sctp/structs.h
-> @@ -2112,6 +2112,7 @@ struct sctp_cmsgs {
->  	struct sctp_initmsg *init;
->  	struct sctp_sndrcvinfo *srinfo;
->  	struct sctp_sndinfo *sinfo;
-> +	struct sctp_prinfo *prinfo;
->  };
->  
->  /* Structure for tracking memory objects */
-> diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-> index 4c4db14..0dd1f82 100644
-> --- a/include/uapi/linux/sctp.h
-> +++ b/include/uapi/linux/sctp.h
-> @@ -260,6 +260,19 @@ struct sctp_nxtinfo {
->  	sctp_assoc_t nxt_assoc_id;
->  };
->  
-> +/* 5.3.7 SCTP PR-SCTP Information Structure (SCTP_PRINFO)
-> + *
-> + *   This cmsghdr structure specifies SCTP options for sendmsg().
-> + *
-> + *   cmsg_level    cmsg_type      cmsg_data[]
-> + *   ------------  ------------   -------------------
-> + *   IPPROTO_SCTP  SCTP_PRINFO    struct sctp_prinfo
-> + */
-> +struct sctp_prinfo {
-> +	__u16 pr_policy;
-> +	__u32 pr_value;
-> +};
-> +
->  /*
->   *  sinfo_flags: 16 bits (unsigned integer)
->   *
-> @@ -293,6 +306,8 @@ typedef enum sctp_cmsg_type {
->  #define SCTP_RCVINFO	SCTP_RCVINFO
->  	SCTP_NXTINFO,		/* 5.3.6 SCTP Next Receive Information Structure */
->  #define SCTP_NXTINFO	SCTP_NXTINFO
-> +	SCTP_PRINFO,		/* 5.3.7 SCTP PR-SCTP Information Structure */
-> +#define SCTP_PRINFO	SCTP_PRINFO
->  } sctp_cmsg_t;
->  
->  /*
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 7fa7603..fdde697 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -1644,6 +1644,12 @@ static int sctp_sendmsg_parse(struct sock *sk, struct sctp_cmsgs *cmsgs,
->  		srinfo->sinfo_assoc_id = cmsgs->sinfo->snd_assoc_id;
->  	}
->  
-> +	if (cmsgs->prinfo) {
-> +		srinfo->sinfo_timetolive = cmsgs->prinfo->pr_value;
-> +		SCTP_PR_SET_POLICY(srinfo->sinfo_flags,
-> +				   cmsgs->prinfo->pr_policy);
-> +	}
-> +
->  	sflags = srinfo->sinfo_flags;
->  	if (!sflags && msg_len)
->  		return 0;
-> @@ -1901,9 +1907,12 @@ static void sctp_sendmsg_update_sinfo(struct sctp_association *asoc,
->  		sinfo->sinfo_ppid = asoc->default_ppid;
->  		sinfo->sinfo_context = asoc->default_context;
->  		sinfo->sinfo_assoc_id = sctp_assoc2id(asoc);
-> +
-> +		if (!cmsgs->prinfo)
-> +			sinfo->sinfo_flags = asoc->default_flags;
->  	}
->  
-> -	if (!cmsgs->srinfo)
-> +	if (!cmsgs->srinfo && !cmsgs->prinfo)
->  		sinfo->sinfo_timetolive = asoc->default_timetolive;
->  }
->  
-> @@ -7749,6 +7758,26 @@ static int sctp_msghdr_parse(const struct msghdr *msg, struct sctp_cmsgs *cmsgs)
->  			      SCTP_ABORT | SCTP_EOF))
->  				return -EINVAL;
->  			break;
-> +		case SCTP_PRINFO:
-> +			/* SCTP Socket API Extension
-> +			 * 5.3.7 SCTP PR-SCTP Information Structure (SCTP_PRINFO)
-> +			 *
-> +			 * This cmsghdr structure specifies SCTP options for sendmsg().
-> +			 *
-> +			 * cmsg_level    cmsg_type      cmsg_data[]
-> +			 * ------------  ------------   ---------------------
-> +			 * IPPROTO_SCTP  SCTP_PRINFO    struct sctp_prinfo
-> +			 */
-> +			if (cmsg->cmsg_len != CMSG_LEN(sizeof(struct sctp_prinfo)))
-> +				return -EINVAL;
-> +
-> +			cmsgs->prinfo = CMSG_DATA(cmsg);
-> +			if (cmsgs->prinfo->pr_policy & ~SCTP_PR_SCTP_MASK)
-> +				return -EINVAL;
-> +
-> +			if (cmsgs->prinfo->pr_policy = SCTP_PR_SCTP_NONE)
-> +				cmsgs->prinfo->pr_value = 0;
-> +			break;
->  		default:
->  			return -EINVAL;
->  		}
-> -- 
-> 2.1.0
-> 
+After deactivating a key, it would never be used again, which means
+it's refcnt can't be held/increased by new chunks. But there may be
+some chunks in out queue still using it. So only when refcnt is 1,
+which means no chunk in outqueue is using/holding this key either,
+this EVENT would be sent.
+
+When users receive this notification, they could do DEL_KEY sockopt to
+remove this shkey, and also tell the peer that this key won't be used
+in any chunk thoroughly from now on, then the peer can remove it as
+well safely.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/uapi/linux/sctp.h |  6 +++++-
+ net/sctp/auth.c           | 14 ++++++++++++++
+ net/sctp/sm_make_chunk.c  | 20 +++++++++++++++++++-
+ net/sctp/sm_statefuns.c   |  2 +-
+ net/sctp/socket.c         | 19 ++++++++++++++++++-
+ 5 files changed, 57 insertions(+), 4 deletions(-)
+
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index 08fc313..18ebbfe 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -518,7 +518,11 @@ struct sctp_authkey_event {
+ 	sctp_assoc_t auth_assoc_id;
+ };
+ 
+-enum { SCTP_AUTH_NEWKEY = 0, };
++enum {
++	SCTP_AUTH_NEW_KEY,
++#define	SCTP_AUTH_NEWKEY	SCTP_AUTH_NEW_KEY /* compatible with before */
++	SCTP_AUTH_FREE_KEY,
++};
+ 
+ /*
+  * 6.1.9. SCTP_SENDER_DRY_EVENT
+diff --git a/net/sctp/auth.c b/net/sctp/auth.c
+index a073123..e64630c 100644
+--- a/net/sctp/auth.c
++++ b/net/sctp/auth.c
+@@ -992,6 +992,20 @@ int sctp_auth_deact_key_id(struct sctp_endpoint *ep,
+ 	if (!found)
+ 		return -EINVAL;
+ 
++	/* refcnt = 1 and !list_empty mean it's not being used anywhere
++	 * and deactivated will be set, so it's time to notify userland
++	 * that this shkey can be freed.
++	 */
++	if (asoc && !list_empty(&key->key_list) &&
++	    refcount_read(&key->refcnt) = 1) {
++		struct sctp_ulpevent *ev;
++
++		ev = sctp_ulpevent_make_authkey(asoc, key->key_id,
++						SCTP_AUTH_FREE_KEY, GFP_KERNEL);
++		if (ev)
++			asoc->stream.si->enqueue_event(&asoc->ulpq, ev);
++	}
++
+ 	key->deactivated = 1;
+ 
+ 	return 0;
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 10f071c..cc20bc3 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -89,8 +89,26 @@ static void sctp_control_release_owner(struct sk_buff *skb)
+ {
+ 	struct sctp_chunk *chunk = skb_shinfo(skb)->destructor_arg;
+ 
+-	if (chunk->shkey)
++	if (chunk->shkey) {
++		struct sctp_shared_key *shkey = chunk->shkey;
++		struct sctp_association *asoc = chunk->asoc;
++
++		/* refcnt = 2 and !list_empty mean after this release, it's
++		 * not being used anywhere, and it's time to notify userland
++		 * that this shkey can be freed if it's been deactivated.
++		 */
++		if (shkey->deactivated && !list_empty(&shkey->key_list) &&
++		    refcount_read(&shkey->refcnt) = 2) {
++			struct sctp_ulpevent *ev;
++
++			ev = sctp_ulpevent_make_authkey(asoc, shkey->key_id,
++							SCTP_AUTH_FREE_KEY,
++							GFP_KERNEL);
++			if (ev)
++				asoc->stream.si->enqueue_event(&asoc->ulpq, ev);
++		}
+ 		sctp_auth_shkey_release(chunk->shkey);
++	}
+ }
+ 
+ static void sctp_control_set_owner_w(struct sctp_chunk *chunk)
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 792e0e2..1e41dee 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -4246,7 +4246,7 @@ enum sctp_disposition sctp_sf_eat_auth(struct net *net,
+ 		struct sctp_ulpevent *ev;
+ 
+ 		ev = sctp_ulpevent_make_authkey(asoc, ntohs(auth_hdr->shkey_id),
+-				    SCTP_AUTH_NEWKEY, GFP_ATOMIC);
++				    SCTP_AUTH_NEW_KEY, GFP_ATOMIC);
+ 
+ 		if (!ev)
+ 			return -ENOMEM;
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 65cc354..aeecdd6 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -8166,8 +8166,25 @@ static void sctp_wfree(struct sk_buff *skb)
+ 	sk->sk_wmem_queued   -= skb->truesize;
+ 	sk_mem_uncharge(sk, skb->truesize);
+ 
+-	if (chunk->shkey)
++	if (chunk->shkey) {
++		struct sctp_shared_key *shkey = chunk->shkey;
++
++		/* refcnt = 2 and !list_empty mean after this release, it's
++		 * not being used anywhere, and it's time to notify userland
++		 * that this shkey can be freed if it's been deactivated.
++		 */
++		if (shkey->deactivated && !list_empty(&shkey->key_list) &&
++		    refcount_read(&shkey->refcnt) = 2) {
++			struct sctp_ulpevent *ev;
++
++			ev = sctp_ulpevent_make_authkey(asoc, shkey->key_id,
++							SCTP_AUTH_FREE_KEY,
++							GFP_KERNEL);
++			if (ev)
++				asoc->stream.si->enqueue_event(&asoc->ulpq, ev);
++		}
+ 		sctp_auth_shkey_release(chunk->shkey);
++	}
+ 
+ 	sock_wfree(skb);
+ 	sctp_wake_up_waiters(sk, asoc);
+-- 
+2.1.0
+
