@@ -1,201 +1,202 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 14 Mar 2018 11:05:34 +0000
-Subject: [PATCH net-next 5/5] sctp: add SCTP_AUTH_NO_AUTH type for AUTHENTICATION_EVENT
-Message-Id: <cc798dbc8dfe9248759899ed22617276b308c27d.1521025473.git.lucien.xin@gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 14 Mar 2018 13:53:26 +0000
+Subject: Re: [PATCH net-next 5/5] sctp: add SCTP_AUTH_NO_AUTH type for AUTHENTICATION_EVENT
+Message-Id: <20180314135326.GZ27351@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1521025473.git.lucien.xin@gmail.com>
- <6b9a82f18f69682fea668026d33b937c1702a09a.1521025473.git.lucien.xin@gmail.com>
- <68816b668678174bdd44abeef7ed63a8260268c2.1521025473.git.lucien.xin@gmail.com>
- <e958480a6da52ad0947e319a2890fb034a473570.1521025473.git.lucien.xin@gmail.com>
- <22218ceee8900508e30833758b613173d02031eb.1521025473.git.lucien.xin@gmail.com>
-In-Reply-To: <22218ceee8900508e30833758b613173d02031eb.1521025473.git.lucien.xin@gmail.com>
+ <cc798dbc8dfe9248759899ed22617276b308c27d.1521025473.git.lucien.xin@gmail.com>
+In-Reply-To: <cc798dbc8dfe9248759899ed22617276b308c27d.1521025473.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: Xin Long <lucien.xin@gmail.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to add SCTP_AUTH_NO_AUTH type for AUTHENTICATION_EVENT,
-as described in section 6.1.8 of RFC6458.
+On Wed, Mar 14, 2018 at 07:05:34PM +0800, Xin Long wrote:
+> This patch is to add SCTP_AUTH_NO_AUTH type for AUTHENTICATION_EVENT,
+> as described in section 6.1.8 of RFC6458.
+> 
+>       SCTP_AUTH_NO_AUTH:  This report indicates that the peer does not
+>          support SCTP authentication as defined in [RFC4895].
+> 
+> Note that the implementation is quite similar as that of
+> SCTP_ADAPTATION_INDICATION.
+> 
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-      SCTP_AUTH_NO_AUTH:  This report indicates that the peer does not
-         support SCTP authentication as defined in [RFC4895].
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-Note that the implementation is quite similar as that of
-SCTP_ADAPTATION_INDICATION.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- include/net/sctp/command.h |  1 +
- include/uapi/linux/sctp.h  |  1 +
- net/sctp/sm_sideeffect.c   | 13 +++++++++++++
- net/sctp/sm_statefuns.c    | 43 +++++++++++++++++++++++++++++++++++++++++--
- 4 files changed, 56 insertions(+), 2 deletions(-)
-
-diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
-index b55c6a4..6640f84 100644
---- a/include/net/sctp/command.h
-+++ b/include/net/sctp/command.h
-@@ -100,6 +100,7 @@ enum sctp_verb {
- 	SCTP_CMD_SET_SK_ERR,	 /* Set sk_err */
- 	SCTP_CMD_ASSOC_CHANGE,	 /* generate and send assoc_change event */
- 	SCTP_CMD_ADAPTATION_IND, /* generate and send adaptation event */
-+	SCTP_CMD_PEER_NO_AUTH,   /* generate and send authentication event */
- 	SCTP_CMD_ASSOC_SHKEY,    /* generate the association shared keys */
- 	SCTP_CMD_T1_RETRAN,	 /* Mark for retransmission after T1 timeout  */
- 	SCTP_CMD_UPDATE_INITTAG, /* Update peer inittag */
-diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index 18ebbfe..afd4346 100644
---- a/include/uapi/linux/sctp.h
-+++ b/include/uapi/linux/sctp.h
-@@ -522,6 +522,7 @@ enum {
- 	SCTP_AUTH_NEW_KEY,
- #define	SCTP_AUTH_NEWKEY	SCTP_AUTH_NEW_KEY /* compatible with before */
- 	SCTP_AUTH_FREE_KEY,
-+	SCTP_AUTH_NO_AUTH,
- };
- 
- /*
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index b71e7fb..298112c 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -1049,6 +1049,16 @@ static void sctp_cmd_assoc_change(struct sctp_cmd_seq *commands,
- 		asoc->stream.si->enqueue_event(&asoc->ulpq, ev);
- }
- 
-+static void sctp_cmd_peer_no_auth(struct sctp_cmd_seq *commands,
-+				  struct sctp_association *asoc)
-+{
-+	struct sctp_ulpevent *ev;
-+
-+	ev = sctp_ulpevent_make_authkey(asoc, 0, SCTP_AUTH_NO_AUTH, GFP_ATOMIC);
-+	if (ev)
-+		asoc->stream.si->enqueue_event(&asoc->ulpq, ev);
-+}
-+
- /* Helper function to generate an adaptation indication event */
- static void sctp_cmd_adaptation_ind(struct sctp_cmd_seq *commands,
- 				    struct sctp_association *asoc)
-@@ -1755,6 +1765,9 @@ static int sctp_cmd_interpreter(enum sctp_event event_type,
- 		case SCTP_CMD_ADAPTATION_IND:
- 			sctp_cmd_adaptation_ind(commands, asoc);
- 			break;
-+		case SCTP_CMD_PEER_NO_AUTH:
-+			sctp_cmd_peer_no_auth(commands, asoc);
-+			break;
- 
- 		case SCTP_CMD_ASSOC_SHKEY:
- 			error = sctp_auth_asoc_init_active_key(asoc,
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 1e41dee..cc56a67 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -659,7 +659,7 @@ enum sctp_disposition sctp_sf_do_5_1D_ce(struct net *net,
- 					 void *arg,
- 					 struct sctp_cmd_seq *commands)
- {
--	struct sctp_ulpevent *ev, *ai_ev = NULL;
-+	struct sctp_ulpevent *ev, *ai_ev = NULL, *auth_ev = NULL;
- 	struct sctp_association *new_asoc;
- 	struct sctp_init_chunk *peer_init;
- 	struct sctp_chunk *chunk = arg;
-@@ -820,6 +820,14 @@ enum sctp_disposition sctp_sf_do_5_1D_ce(struct net *net,
- 			goto nomem_aiev;
- 	}
- 
-+	if (!new_asoc->peer.auth_capable) {
-+		auth_ev = sctp_ulpevent_make_authkey(new_asoc, 0,
-+						     SCTP_AUTH_NO_AUTH,
-+						     GFP_ATOMIC);
-+		if (!auth_ev)
-+			goto nomem_authev;
-+	}
-+
- 	/* Add all the state machine commands now since we've created
- 	 * everything.  This way we don't introduce memory corruptions
- 	 * during side-effect processing and correclty count established
-@@ -847,8 +855,14 @@ enum sctp_disposition sctp_sf_do_5_1D_ce(struct net *net,
- 		sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP,
- 				SCTP_ULPEVENT(ai_ev));
- 
-+	if (auth_ev)
-+		sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP,
-+				SCTP_ULPEVENT(auth_ev));
-+
- 	return SCTP_DISPOSITION_CONSUME;
- 
-+nomem_authev:
-+	sctp_ulpevent_free(ai_ev);
- nomem_aiev:
- 	sctp_ulpevent_free(ev);
- nomem_ev:
-@@ -953,6 +967,15 @@ enum sctp_disposition sctp_sf_do_5_1E_ca(struct net *net,
- 				SCTP_ULPEVENT(ev));
- 	}
- 
-+	if (!asoc->peer.auth_capable) {
-+		ev = sctp_ulpevent_make_authkey(asoc, 0, SCTP_AUTH_NO_AUTH,
-+						GFP_ATOMIC);
-+		if (!ev)
-+			goto nomem;
-+		sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP,
-+				SCTP_ULPEVENT(ev));
-+	}
-+
- 	return SCTP_DISPOSITION_CONSUME;
- nomem:
- 	return SCTP_DISPOSITION_NOMEM;
-@@ -1908,6 +1931,9 @@ static enum sctp_disposition sctp_sf_do_dupcook_b(
- 	if (asoc->peer.adaptation_ind)
- 		sctp_add_cmd_sf(commands, SCTP_CMD_ADAPTATION_IND, SCTP_NULL());
- 
-+	if (!asoc->peer.auth_capable)
-+		sctp_add_cmd_sf(commands, SCTP_CMD_PEER_NO_AUTH, SCTP_NULL());
-+
- 	return SCTP_DISPOSITION_CONSUME;
- 
- nomem:
-@@ -1954,7 +1980,7 @@ static enum sctp_disposition sctp_sf_do_dupcook_d(
- 					struct sctp_cmd_seq *commands,
- 					struct sctp_association *new_asoc)
- {
--	struct sctp_ulpevent *ev = NULL, *ai_ev = NULL;
-+	struct sctp_ulpevent *ev = NULL, *ai_ev = NULL, *auth_ev = NULL;
- 	struct sctp_chunk *repl;
- 
- 	/* Clarification from Implementor's Guide:
-@@ -2001,6 +2027,14 @@ static enum sctp_disposition sctp_sf_do_dupcook_d(
- 				goto nomem;
- 
- 		}
-+
-+		if (!asoc->peer.auth_capable) {
-+			auth_ev = sctp_ulpevent_make_authkey(asoc, 0,
-+							     SCTP_AUTH_NO_AUTH,
-+							     GFP_ATOMIC);
-+			if (!auth_ev)
-+				goto nomem;
-+		}
- 	}
- 
- 	repl = sctp_make_cookie_ack(new_asoc, chunk);
-@@ -2015,10 +2049,15 @@ static enum sctp_disposition sctp_sf_do_dupcook_d(
- 	if (ai_ev)
- 		sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP,
- 					SCTP_ULPEVENT(ai_ev));
-+	if (auth_ev)
-+		sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP,
-+				SCTP_ULPEVENT(auth_ev));
- 
- 	return SCTP_DISPOSITION_CONSUME;
- 
- nomem:
-+	if (auth_ev)
-+		sctp_ulpevent_free(auth_ev);
- 	if (ai_ev)
- 		sctp_ulpevent_free(ai_ev);
- 	if (ev)
--- 
-2.1.0
-
+> ---
+>  include/net/sctp/command.h |  1 +
+>  include/uapi/linux/sctp.h  |  1 +
+>  net/sctp/sm_sideeffect.c   | 13 +++++++++++++
+>  net/sctp/sm_statefuns.c    | 43 +++++++++++++++++++++++++++++++++++++++++--
+>  4 files changed, 56 insertions(+), 2 deletions(-)
+> 
+> diff --git a/include/net/sctp/command.h b/include/net/sctp/command.h
+> index b55c6a4..6640f84 100644
+> --- a/include/net/sctp/command.h
+> +++ b/include/net/sctp/command.h
+> @@ -100,6 +100,7 @@ enum sctp_verb {
+>  	SCTP_CMD_SET_SK_ERR,	 /* Set sk_err */
+>  	SCTP_CMD_ASSOC_CHANGE,	 /* generate and send assoc_change event */
+>  	SCTP_CMD_ADAPTATION_IND, /* generate and send adaptation event */
+> +	SCTP_CMD_PEER_NO_AUTH,   /* generate and send authentication event */
+>  	SCTP_CMD_ASSOC_SHKEY,    /* generate the association shared keys */
+>  	SCTP_CMD_T1_RETRAN,	 /* Mark for retransmission after T1 timeout  */
+>  	SCTP_CMD_UPDATE_INITTAG, /* Update peer inittag */
+> diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+> index 18ebbfe..afd4346 100644
+> --- a/include/uapi/linux/sctp.h
+> +++ b/include/uapi/linux/sctp.h
+> @@ -522,6 +522,7 @@ enum {
+>  	SCTP_AUTH_NEW_KEY,
+>  #define	SCTP_AUTH_NEWKEY	SCTP_AUTH_NEW_KEY /* compatible with before */
+>  	SCTP_AUTH_FREE_KEY,
+> +	SCTP_AUTH_NO_AUTH,
+>  };
+>  
+>  /*
+> diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+> index b71e7fb..298112c 100644
+> --- a/net/sctp/sm_sideeffect.c
+> +++ b/net/sctp/sm_sideeffect.c
+> @@ -1049,6 +1049,16 @@ static void sctp_cmd_assoc_change(struct sctp_cmd_seq *commands,
+>  		asoc->stream.si->enqueue_event(&asoc->ulpq, ev);
+>  }
+>  
+> +static void sctp_cmd_peer_no_auth(struct sctp_cmd_seq *commands,
+> +				  struct sctp_association *asoc)
+> +{
+> +	struct sctp_ulpevent *ev;
+> +
+> +	ev = sctp_ulpevent_make_authkey(asoc, 0, SCTP_AUTH_NO_AUTH, GFP_ATOMIC);
+> +	if (ev)
+> +		asoc->stream.si->enqueue_event(&asoc->ulpq, ev);
+> +}
+> +
+>  /* Helper function to generate an adaptation indication event */
+>  static void sctp_cmd_adaptation_ind(struct sctp_cmd_seq *commands,
+>  				    struct sctp_association *asoc)
+> @@ -1755,6 +1765,9 @@ static int sctp_cmd_interpreter(enum sctp_event event_type,
+>  		case SCTP_CMD_ADAPTATION_IND:
+>  			sctp_cmd_adaptation_ind(commands, asoc);
+>  			break;
+> +		case SCTP_CMD_PEER_NO_AUTH:
+> +			sctp_cmd_peer_no_auth(commands, asoc);
+> +			break;
+>  
+>  		case SCTP_CMD_ASSOC_SHKEY:
+>  			error = sctp_auth_asoc_init_active_key(asoc,
+> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+> index 1e41dee..cc56a67 100644
+> --- a/net/sctp/sm_statefuns.c
+> +++ b/net/sctp/sm_statefuns.c
+> @@ -659,7 +659,7 @@ enum sctp_disposition sctp_sf_do_5_1D_ce(struct net *net,
+>  					 void *arg,
+>  					 struct sctp_cmd_seq *commands)
+>  {
+> -	struct sctp_ulpevent *ev, *ai_ev = NULL;
+> +	struct sctp_ulpevent *ev, *ai_ev = NULL, *auth_ev = NULL;
+>  	struct sctp_association *new_asoc;
+>  	struct sctp_init_chunk *peer_init;
+>  	struct sctp_chunk *chunk = arg;
+> @@ -820,6 +820,14 @@ enum sctp_disposition sctp_sf_do_5_1D_ce(struct net *net,
+>  			goto nomem_aiev;
+>  	}
+>  
+> +	if (!new_asoc->peer.auth_capable) {
+> +		auth_ev = sctp_ulpevent_make_authkey(new_asoc, 0,
+> +						     SCTP_AUTH_NO_AUTH,
+> +						     GFP_ATOMIC);
+> +		if (!auth_ev)
+> +			goto nomem_authev;
+> +	}
+> +
+>  	/* Add all the state machine commands now since we've created
+>  	 * everything.  This way we don't introduce memory corruptions
+>  	 * during side-effect processing and correclty count established
+> @@ -847,8 +855,14 @@ enum sctp_disposition sctp_sf_do_5_1D_ce(struct net *net,
+>  		sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP,
+>  				SCTP_ULPEVENT(ai_ev));
+>  
+> +	if (auth_ev)
+> +		sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP,
+> +				SCTP_ULPEVENT(auth_ev));
+> +
+>  	return SCTP_DISPOSITION_CONSUME;
+>  
+> +nomem_authev:
+> +	sctp_ulpevent_free(ai_ev);
+>  nomem_aiev:
+>  	sctp_ulpevent_free(ev);
+>  nomem_ev:
+> @@ -953,6 +967,15 @@ enum sctp_disposition sctp_sf_do_5_1E_ca(struct net *net,
+>  				SCTP_ULPEVENT(ev));
+>  	}
+>  
+> +	if (!asoc->peer.auth_capable) {
+> +		ev = sctp_ulpevent_make_authkey(asoc, 0, SCTP_AUTH_NO_AUTH,
+> +						GFP_ATOMIC);
+> +		if (!ev)
+> +			goto nomem;
+> +		sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP,
+> +				SCTP_ULPEVENT(ev));
+> +	}
+> +
+>  	return SCTP_DISPOSITION_CONSUME;
+>  nomem:
+>  	return SCTP_DISPOSITION_NOMEM;
+> @@ -1908,6 +1931,9 @@ static enum sctp_disposition sctp_sf_do_dupcook_b(
+>  	if (asoc->peer.adaptation_ind)
+>  		sctp_add_cmd_sf(commands, SCTP_CMD_ADAPTATION_IND, SCTP_NULL());
+>  
+> +	if (!asoc->peer.auth_capable)
+> +		sctp_add_cmd_sf(commands, SCTP_CMD_PEER_NO_AUTH, SCTP_NULL());
+> +
+>  	return SCTP_DISPOSITION_CONSUME;
+>  
+>  nomem:
+> @@ -1954,7 +1980,7 @@ static enum sctp_disposition sctp_sf_do_dupcook_d(
+>  					struct sctp_cmd_seq *commands,
+>  					struct sctp_association *new_asoc)
+>  {
+> -	struct sctp_ulpevent *ev = NULL, *ai_ev = NULL;
+> +	struct sctp_ulpevent *ev = NULL, *ai_ev = NULL, *auth_ev = NULL;
+>  	struct sctp_chunk *repl;
+>  
+>  	/* Clarification from Implementor's Guide:
+> @@ -2001,6 +2027,14 @@ static enum sctp_disposition sctp_sf_do_dupcook_d(
+>  				goto nomem;
+>  
+>  		}
+> +
+> +		if (!asoc->peer.auth_capable) {
+> +			auth_ev = sctp_ulpevent_make_authkey(asoc, 0,
+> +							     SCTP_AUTH_NO_AUTH,
+> +							     GFP_ATOMIC);
+> +			if (!auth_ev)
+> +				goto nomem;
+> +		}
+>  	}
+>  
+>  	repl = sctp_make_cookie_ack(new_asoc, chunk);
+> @@ -2015,10 +2049,15 @@ static enum sctp_disposition sctp_sf_do_dupcook_d(
+>  	if (ai_ev)
+>  		sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP,
+>  					SCTP_ULPEVENT(ai_ev));
+> +	if (auth_ev)
+> +		sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP,
+> +				SCTP_ULPEVENT(auth_ev));
+>  
+>  	return SCTP_DISPOSITION_CONSUME;
+>  
+>  nomem:
+> +	if (auth_ev)
+> +		sctp_ulpevent_free(auth_ev);
+>  	if (ai_ev)
+>  		sctp_ulpevent_free(ai_ev);
+>  	if (ev)
+> -- 
+> 2.1.0
+> 
