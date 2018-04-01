@@ -1,141 +1,129 @@
-From: Vlad Yasevich <vyasevic@redhat.com>
-Date: Tue, 17 Apr 2018 19:06:22 +0000
-Subject: Re: [PATCH net-next 1/5] virtio: Add support for SCTP checksum offloading
-Message-Id: <b353ac69-5de0-5c4e-4f10-913ce7cfc319@redhat.com>
+From: Dmitry Vyukov <dvyukov@google.com>
+Date: Sun, 01 Apr 2018 10:29:03 +0000
+Subject: Re: BUG: corrupted list in sctp_association_free
+Message-Id: <CACT4Y+ZhZw+dKrbM2k_25R1_suNbYSmzDcaVLd8znsMEY_1AJA@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180402134006.10111-1-vyasevic@redhat.com>
- <20180402134006.10111-2-vyasevic@redhat.com>
- <20180412014548-mutt-send-email-mst@kernel.org>
- <f5655ab8-f24f-a5a5-d000-2bbb90ecc552@redhat.com>
- <20180416200743-mutt-send-email-mst@kernel.org>
-In-Reply-To: <20180416200743-mutt-send-email-mst@kernel.org>
+References: <001a113ec036450c260567464832@google.com> <CADvbK_ctXVom8WDMZ1kRURSFfGZ_wJFtWrJdrnpgpg3=7_7nUg@mail.gmail.com>
+ <CACT4Y+Ya49+5rMh30Uy=eteB4WUBC4St6ri1uRcscVGj8h51iQ@mail.gmail.com> <20180313111245.GB18164@hmswarspite.think-freely.org>
+In-Reply-To: <20180313111245.GB18164@hmswarspite.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "Michael S. Tsirkin" <mst@redhat.com>
-Cc: Vladislav Yasevich <vyasevich@gmail.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, virtualization@lists.linux-foundation.org, jasowang@redhat.com, nhorman@tuxdriver.com
+To: Neil Horman <nhorman@tuxdriver.com>
+Cc: Xin Long <lucien.xin@gmail.com>, syzbot <syzbot+e56a5d45f832ef33ad2f@syzkaller.appspotmail.com>, davem <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, network dev <netdev@vger.kernel.org>, syzkaller-bugs@googlegroups.com, Vlad Yasevich <vyasevich@gmail.com>
 
-On 04/16/2018 01:09 PM, Michael S. Tsirkin wrote:
-> On Mon, Apr 16, 2018 at 09:45:48AM -0400, Vlad Yasevich wrote:
->> On 04/11/2018 06:49 PM, Michael S. Tsirkin wrote:
->>> On Mon, Apr 02, 2018 at 09:40:02AM -0400, Vladislav Yasevich wrote:
->>>> To support SCTP checksum offloading, we need to add a new feature
->>>> to virtio_net, so we can negotiate support between the hypervisor
->>>> and the guest.
->>>>
->>>> The signalling to the guest that an alternate checksum needs to
->>>> be used is done via a new flag in the virtio_net_hdr.  If the
->>>> flag is set, the host will know to perform an alternate checksum
->>>> calculation, which right now is only CRC32c.
->>>>
->>>> Signed-off-by: Vladislav Yasevich <vyasevic@redhat.com>
->>>> ---
->>>>  drivers/net/virtio_net.c        | 11 ++++++++---
->>>>  include/linux/virtio_net.h      |  6 ++++++
->>>>  include/uapi/linux/virtio_net.h |  2 ++
->>>>  3 files changed, 16 insertions(+), 3 deletions(-)
->>>>
->>>> diff --git a/drivers/net/virtio_net.c b/drivers/net/virtio_net.c
->>>> index 7b187ec..b601294 100644
->>>> --- a/drivers/net/virtio_net.c
->>>> +++ b/drivers/net/virtio_net.c
->>>> @@ -2724,9 +2724,14 @@ static int virtnet_probe(struct virtio_device *vdev)
->>>>  	/* Do we support "hardware" checksums? */
->>>>  	if (virtio_has_feature(vdev, VIRTIO_NET_F_CSUM)) {
->>>>  		/* This opens up the world of extra features. */
->>>> -		dev->hw_features |= NETIF_F_HW_CSUM | NETIF_F_SG;
->>>> +		netdev_features_t sctp = 0;
->>>> +
->>>> +		if (virtio_has_feature(vdev, VIRTIO_NET_F_SCTP_CSUM))
->>>> +			sctp |= NETIF_F_SCTP_CRC;
->>>> +
->>>> +		dev->hw_features |= NETIF_F_HW_CSUM | NETIF_F_SG | sctp;
->>>>  		if (csum)
->>>> -			dev->features |= NETIF_F_HW_CSUM | NETIF_F_SG;
->>>> +			dev->features |= NETIF_F_HW_CSUM | NETIF_F_SG | sctp;
->>>>  
->>>>  		if (virtio_has_feature(vdev, VIRTIO_NET_F_GSO)) {
->>>>  			dev->hw_features |= NETIF_F_TSO
->>>> @@ -2952,7 +2957,7 @@ static struct virtio_device_id id_table[] = {
->>>>  };
->>>>  
->>>>  #define VIRTNET_FEATURES \
->>>> -	VIRTIO_NET_F_CSUM, VIRTIO_NET_F_GUEST_CSUM, \
->>>> +	VIRTIO_NET_F_CSUM, VIRTIO_NET_F_GUEST_CSUM,  VIRTIO_NET_F_SCTP_CSUM, \
->>>>  	VIRTIO_NET_F_MAC, \
->>>>  	VIRTIO_NET_F_HOST_TSO4, VIRTIO_NET_F_HOST_UFO, VIRTIO_NET_F_HOST_TSO6, \
->>>>  	VIRTIO_NET_F_HOST_ECN, VIRTIO_NET_F_GUEST_TSO4, VIRTIO_NET_F_GUEST_TSO6, \
->>>> diff --git a/include/linux/virtio_net.h b/include/linux/virtio_net.h
->>>> index f144216..2e7a64a 100644
->>>> --- a/include/linux/virtio_net.h
->>>> +++ b/include/linux/virtio_net.h
->>>> @@ -39,6 +39,9 @@ static inline int virtio_net_hdr_to_skb(struct sk_buff *skb,
->>>>  
->>>>  		if (!skb_partial_csum_set(skb, start, off))
->>>>  			return -EINVAL;
->>>> +
->>>> +		if (hdr->flags & VIRTIO_NET_HDR_F_CSUM_NOT_INET)
->>>> +			skb->csum_not_inet = 1;
->>>>  	}
->>>>  
->>>>  	if (hdr->gso_type != VIRTIO_NET_HDR_GSO_NONE) {
->>>> @@ -96,6 +99,9 @@ static inline int virtio_net_hdr_from_skb(const struct sk_buff *skb,
->>>>  		hdr->flags = VIRTIO_NET_HDR_F_DATA_VALID;
->>>>  	} /* else everything is zero */
->>>>  
->>>> +	if (skb->csum_not_inet)
->>>> +		hdr->flags &= VIRTIO_NET_HDR_F_CSUM_NOT_INET;
->>>> +
->>>>  	return 0;
->>>>  }
->>>>  
->>>> diff --git a/include/uapi/linux/virtio_net.h b/include/uapi/linux/virtio_net.h
->>>> index 5de6ed3..3f279c8 100644
->>>> --- a/include/uapi/linux/virtio_net.h
->>>> +++ b/include/uapi/linux/virtio_net.h
->>>> @@ -36,6 +36,7 @@
->>>>  #define VIRTIO_NET_F_GUEST_CSUM	1	/* Guest handles pkts w/ partial csum */
->>>>  #define VIRTIO_NET_F_CTRL_GUEST_OFFLOADS 2 /* Dynamic offload configuration. */
->>>>  #define VIRTIO_NET_F_MTU	3	/* Initial MTU advice */
->>>> +#define VIRTIO_NET_F_SCTP_CSUM  4	/* SCTP checksum offload support */
->>>>  #define VIRTIO_NET_F_MAC	5	/* Host has given MAC address. */
->>>>  #define VIRTIO_NET_F_GUEST_TSO4	7	/* Guest can handle TSOv4 in. */
->>>>  #define VIRTIO_NET_F_GUEST_TSO6	8	/* Guest can handle TSOv6 in. */
->>>
->>> Is this a guest or a host checksum? We should differenciate between the
->>> two.
+On Tue, Mar 13, 2018 at 12:12 PM, Neil Horman <nhorman@tuxdriver.com> wrote:
+> On Tue, Mar 13, 2018 at 02:09:09PM +0300, Dmitry Vyukov wrote:
+>> On Tue, Mar 13, 2018 at 1:44 PM, Xin Long <lucien.xin@gmail.com> wrote:
+>> > On Tue, Mar 13, 2018 at 3:34 PM, syzbot
+>> > <syzbot+e56a5d45f832ef33ad2f@syzkaller.appspotmail.com> wrote:
+>> >> Hello,
+>> >>
+>> >> syzbot hit the following crash on net-next commit
+>> >> fd372a7a9e5e9d8011a0222d10edd3523abcd3b1 (Thu Mar 8 19:43:48 2018 +0000)
+>> >> Merge tag 'mlx5-updates-2018-02-28-2' of
+>> >> git://git.kernel.org/pub/scm/linux/kernel/git/mellanox/linux
+>> >>
+>> >> Unfortunately, I don't have any reproducer for this crash yet.
+>> >> Raw console output is attached.
+>> >> compiler: gcc (GCC) 7.1.1 20170620
+>> >> .config is attached.
+>> >>
+>> >> IMPORTANT: if you fix the bug, please add the following tag to the commit:
+>> >> Reported-by: syzbot+e56a5d45f832ef33ad2f@syzkaller.appspotmail.com
+>> >> It will help syzbot understand when the bug is fixed. See footer for
+>> >> details.
+>> >> If you forward the report, please keep this part and the footer.
+>> >>
+>> >> selinux_nlmsg_perm: 1 callbacks suppressed
+>> >> SELinux: unrecognized netlink message: protocol=0 nlmsg_type=0
+>> >> sclass=netlink_route_socket pig502 comm=syz-executor3
+>> >> SELinux: unrecognized netlink message: protocol=0 nlmsg_type=0
+>> >> sclass=netlink_route_socket pig528 comm=syz-executor3
+>> >> list_del corruption, 00000000fcc5fb27->next is LIST_POISON1
+>> >> (00000000cb16e51d)
+>> >> ------------[ cut here ]------------
+>> >> kernel BUG at lib/list_debug.c:47!
+>> >> invalid opcode: 0000 [#1] SMP KASAN
+>> >> Dumping ftrace buffer:
+>> >>    (ftrace buffer empty)
+>> >> Modules linked in:
+>> >> CPU: 0 PID: 12537 Comm: syz-executor2 Not tainted 4.16.0-rc4+ #258
+>> >> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS
+>> >> Google 01/01/2011
+>> >> RIP: 0010:__list_del_entry_valid+0xd3/0x150 lib/list_debug.c:45
+>> >> RSP: 0018:ffff8801b6387778 EFLAGS: 00010286
+>> >> RAX: 000000000000004e RBX: dead000000000200 RCX: 0000000000000000
+>> >> RDX: 000000000000004e RSI: ffffc90002ed6000 RDI: ffffed0036c70ee3
+>> >> RBP: ffff8801b6387790 R08: 1ffff10036c70e3b R09: 0000000000000000
+>> >> R10: 0000000000000000 R11: 0000000000000000 R12: dead000000000100
+>> >> R13: ffff8801d3164000 R14: ffff8801d8502220 R15: ffff8801b6387c58
+>> >> FS:  00007ff42042f700(0000) GS:ffff8801db200000(0000) knlGS:0000000000000000
+>> >> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+>> >> CR2: 00007ff42040ddb8 CR3: 00000001bd840003 CR4: 00000000001606f0
+>> >> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+>> >> DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+>> >> Call Trace:
+>> >>  __list_del_entry include/linux/list.h:117 [inline]
+>> >>  list_del include/linux/list.h:125 [inline]
+>> >>  sctp_association_free+0x133/0x930 net/sctp/associola.c:341
+>> >>  sctp_sendmsg+0xc67/0x1a80 net/sctp/socket.c:2075
+>> >>  inet_sendmsg+0x11f/0x5e0 net/ipv4/af_inet.c:763
+>> >>  sock_sendmsg_nosec net/socket.c:629 [inline]
+>> >>  sock_sendmsg+0xca/0x110 net/socket.c:639
+>> >>  SYSC_sendto+0x361/0x5c0 net/socket.c:1748
+>> >>  SyS_sendto+0x40/0x50 net/socket.c:1716
+>> >>  do_syscall_64+0x281/0x940 arch/x86/entry/common.c:287
+>> >>  entry_SYSCALL_64_after_hwframe+0x42/0xb7
+>> >> RIP: 0033:0x453e69
+>> >> RSP: 002b:00007ff42042ec68 EFLAGS: 00000246 ORIG_RAX: 000000000000002c
+>> >> RAX: ffffffffffffffda RBX: 00007ff42042f6d4 RCX: 0000000000453e69
+>> >> RDX: 0000000000000001 RSI: 0000000020000340 RDI: 0000000000000015
+>> >> RBP: 000000000072c0c8 R08: 00000000204d9000 R09: 000000000000001c
+>> >> R10: 0000000000000000 R11: 0000000000000246 R12: 00000000ffffffff
+>> >> R13: 00000000000004cd R14: 00000000006f73d8 R15: 0000000000000003
+>> >> Code: 8f 00 00 00 49 8b 54 24 08 48 39 f2 75 3b 48 83 c4 08 b8 01 00 00 00
+>> >> 5b 41 5c 5d c3 4c 89 e2 48 c7 c7 c0 7c 40 86 e8 75 f6 fb fe <0f> 0b 48 c7 c7
+>> >> 20 7d 40 86 e8 67 f6 fb fe 0f 0b 48 c7 c7 80 7d
+>> >> RIP: __list_del_entry_valid+0xd3/0x150 lib/list_debug.c:45 RSP:
+>> >> ffff8801b6387778
+>> >> ---[ end trace a6b157f61f9bd43a ]---
+>> >> Kernel panic - not syncing: Fatal exception
+>> >> Dumping ftrace buffer:
+>> >>    (ftrace buffer empty)
+>> >> Kernel Offset: disabled
+>> >> Rebooting in 86400 seconds..
+>> >>
+>> >>
+>> >> ---
+>> >> This bug is generated by a dumb bot. It may contain errors.
+>> >> See https://goo.gl/tpsmEJ for details.
+>> >> Direct all questions to syzkaller@googlegroups.com.
+>> >>
+>> >> syzbot will keep track of this bug report.
+>> >> If you forgot to add the Reported-by tag, once the fix for this bug is
+>> >> merged
+>> >> into any tree, please reply to this email with:
+>> >> #syz fix: exact-commit-title
+>> >> To mark this as a duplicate of another syzbot report, please reply with:
+>> >> #syz dup: exact-subject-of-another-report
+>> >> If it's a one-off invalid bug report, please reply with:
+>> >> #syz invalid
+>> >> Note: if the crash happens again, it will cause creation of a new bug
+>> >> report.
+>> >> Note: all commands must start from beginning of the line in the email body.
+>> > I'd think the patch Neil just posted would fix it.
 >>
->> I suppose this is HOST checksum, since it behaves like VIRTIO_NET_F_CSUM only for
->> SCTP.  I couldn't find the use for the GUEST side flag, since there technically
->> isn't any validations and there is no additional mappings from VIRTIO flag to a
->> NETIF flag.
 >>
->> If the feature is negotiated, the guest ends up generating partially check-summed
->> packets, and the host turns on appropriate flags on it's side.   The host will
->> also make sure the checksum if fixed up if the guest doesn't support it.
->> So 1 flag is currently all that is needed.
+>> Hi Xin,
 >>
->> -vlad
-> 
-> I see code handling VIRTIO_NET_HDR_F_CSUM_NOT_INET on RX side.  Host
-> needs to know whether it's ok/worth it to set this flag, too.
+>> Could you point me to that commit? We need to tell syzbot about it.
+>>
+>> Thanks
+> Its not been pulled in yet, but this is the email thread:
+> https://marc.info/?l=linux-netdev&m2093814606747&w=2
+>
+> I agree this patch should fix the crash syzbot noted
 
-I think I understand. I have to re-consider outside of the context of
-Linux behavior.
 
--vlad
-
-> 
->>>
->>>
->>>> @@ -101,6 +102,7 @@ struct virtio_net_config {
->>>>  struct virtio_net_hdr_v1 {
->>>>  #define VIRTIO_NET_HDR_F_NEEDS_CSUM	1	/* Use csum_start, csum_offset */
->>>>  #define VIRTIO_NET_HDR_F_DATA_VALID	2	/* Csum is valid */
->>>> +#define VIRTIO_NET_HDR_F_CSUM_NOT_INET  4       /* Checksum is not inet */
->>>>  	__u8 flags;
->>>>  #define VIRTIO_NET_HDR_GSO_NONE		0	/* Not a GSO frame */
->>>>  #define VIRTIO_NET_HDR_GSO_TCPV4	1	/* GSO frame, IPv4 TCP (TSO) */
->>>> -- 
->>>> 2.9.5
-
+#syz fix: sctp: fix error return code in sctp_sendmsg_new_asoc()
