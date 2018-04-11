@@ -1,32 +1,82 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 27 Apr 2018 17:35:51 +0000
-Subject: Re: [PATCH net] sctp: clear the new asoc's stream outcnt in sctp_stream_update
-Message-Id: <20180427.133551.2008316162996427868.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 11 Apr 2018 12:58:05 +0000
+Subject: [PATCH net] sctp: do not check port in sctp_inet6_cmp_addr
+Message-Id: <340aad3be762046ca9d02e54edba5bfefa2f4e71.1523451485.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <7a1180e29789ab0aa339ae8b456a100520ffcdc5.1524727304.git.lucien.xin@gmail.com>
-In-Reply-To: <7a1180e29789ab0aa339ae8b456a100520ffcdc5.1524727304.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 26 Apr 2018 15:21:44 +0800
+pf->cmp_addr() is called before binding a v6 address to the sock. It
+should not check ports, like in sctp_inet_cmp_addr.
 
-> When processing a duplicate cookie-echo chunk, sctp moves the new
-> temp asoc's stream out/in into the old asoc, and later frees this
-> new temp asoc.
-> 
-> But now after this move, the new temp asoc's stream->outcnt is not
-> cleared while stream->out is set to NULL, which would cause a same
-> crash as the one fixed in Commit 79d0895140e9 ("sctp: fix error
-> path in sctp_stream_init") when freeing this asoc later.
-> 
-> This fix is to clear this outcnt in sctp_stream_update.
-> 
-> Fixes: f952be79cebd ("sctp: introduce struct sctp_stream_out_ext")
-> Reported-by: Jianwen Ji <jiji@redhat.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+But sctp_inet6_cmp_addr checks the addr by invoking af(6)->cmp_addr,
+sctp_v6_cmp_addr where it also compares the ports.
 
-Applied and queued up for -stable.
+This would cause that setsockopt(SCTP_SOCKOPT_BINDX_ADD) could bind
+multiple duplicated IPv6 addresses after Commit 40b4f0fd74e4 ("sctp:
+lack the check for ports in sctp_v6_cmp_addr").
+
+This patch is to remove af->cmp_addr called in sctp_inet6_cmp_addr,
+but do the proper check for both v6 addrs and v4mapped addrs.
+
+Fixes: 40b4f0fd74e4 ("sctp: lack the check for ports in sctp_v6_cmp_addr")
+Reported-by: Jianwen Ji <jiji@redhat.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/ipv6.c | 27 ++++++++++++++++++++++++---
+ 1 file changed, 24 insertions(+), 3 deletions(-)
+
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index f1fc48e..be4b72c 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -846,8 +846,8 @@ static int sctp_inet6_cmp_addr(const union sctp_addr *addr1,
+ 			       const union sctp_addr *addr2,
+ 			       struct sctp_sock *opt)
+ {
+-	struct sctp_af *af1, *af2;
+ 	struct sock *sk = sctp_opt2sk(opt);
++	struct sctp_af *af1, *af2;
+ 
+ 	af1 = sctp_get_af_specific(addr1->sa.sa_family);
+ 	af2 = sctp_get_af_specific(addr2->sa.sa_family);
+@@ -863,10 +863,31 @@ static int sctp_inet6_cmp_addr(const union sctp_addr *addr1,
+ 	if (sctp_is_any(sk, addr1) || sctp_is_any(sk, addr2))
+ 		return 1;
+ 
+-	if (addr1->sa.sa_family != addr2->sa.sa_family)
++	if (addr1->sa.sa_family != addr2->sa.sa_family) {
++		if (addr1->sa.sa_family = AF_INET &&
++		    addr2->sa.sa_family = AF_INET6 &&
++		    ipv6_addr_v4mapped(&addr2->v6.sin6_addr))
++			if (addr2->v6.sin6_addr.s6_addr32[3] =
++			    addr1->v4.sin_addr.s_addr)
++				return 1;
++		if (addr2->sa.sa_family = AF_INET &&
++		    addr1->sa.sa_family = AF_INET6 &&
++		    ipv6_addr_v4mapped(&addr1->v6.sin6_addr))
++			if (addr1->v6.sin6_addr.s6_addr32[3] =
++			    addr2->v4.sin_addr.s_addr)
++				return 1;
++		return 0;
++	}
++
++	if (!ipv6_addr_equal(&addr1->v6.sin6_addr, &addr2->v6.sin6_addr))
++		return 0;
++
++	if ((ipv6_addr_type(&addr1->v6.sin6_addr) & IPV6_ADDR_LINKLOCAL) &&
++	    addr1->v6.sin6_scope_id && addr2->v6.sin6_scope_id &&
++	    addr1->v6.sin6_scope_id != addr2->v6.sin6_scope_id)
+ 		return 0;
+ 
+-	return af1->cmp_addr(addr1, addr2);
++	return 1;
+ }
+ 
+ /* Verify that the provided sockaddr looks bindable.   Common verification,
+-- 
+2.1.0
+
