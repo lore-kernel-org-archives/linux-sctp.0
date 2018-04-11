@@ -1,97 +1,120 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 26 Apr 2018 19:58:53 +0000
-Subject: [PATCH net-next 04/13] sctp: introduce sctp_assoc_set_pmtu
-Message-Id: <681866125037624e9bf6df47bcd6286e0936d129.1524772453.git.marcelo.leitner@gmail.com>
+From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Date: Wed, 11 Apr 2018 18:34:10 +0000
+Subject: [PATCH 4.4 004/190] x86/asm: Dont use RBP as a temporary register in csum_partial_copy_generic()
+Message-Id: <20180411183550.335450079@linuxfoundation.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1524772453.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1524772453.git.marcelo.leitner@gmail.com>
+References: <20180411183550.114495991@linuxfoundation.org>
+In-Reply-To: <20180411183550.114495991@linuxfoundation.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>
+To: linux-kernel@vger.kernel.org
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, stable@vger.kernel.org, Andrey Konovalov <andreyknvl@google.com>, Josh Poimboeuf <jpoimboe@redhat.com>, Cong Wang <xiyou.wangcong@gmail.com>, "David S . Miller" <davem@davemloft.net>, Dmitry Vyukov <dvyukov@google.com>, Eric Dumazet <edumazet@google.com>, Kostya Serebryany <kcc@google.com>, Linus Torvalds <torvalds@linux-foundation.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Peter Zijlstra <peterz@infradead.org>, Thomas Gleixner <tglx@linutronix.de>, Vlad Yasevich <vyasevich@gmail.com>, linux-sctp@vger.kernel.org, netdev <netdev@vger.kernel.org>, syzkaller <syzkaller@googlegroups.com>, Ingo Molnar <mingo@kernel.org>, Sasha Levin <alexander.levin@microsoft.com>
 
-All changes to asoc PMTU should now go through this wrapper, making it
-easier to track them and to do other actions upon it.
+4.4-stable review patch.  If anyone has any objections, please let me know.
 
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+------------------
+
+From: Josh Poimboeuf <jpoimboe@redhat.com>
+
+
+[ Upstream commit 42fc6c6cb1662ba2fa727dd01c9473c63be4e3b6 ]
+
+Andrey Konovalov reported the following warning while fuzzing the kernel
+with syzkaller:
+
+  WARNING: kernel stack regs at ffff8800686869f8 in a.out:4933 has bad 'bp' value c3fc855a10167ec0
+
+The unwinder dump revealed that RBP had a bad value when an interrupt
+occurred in csum_partial_copy_generic().
+
+That function saves RBP on the stack and then overwrites it, using it as
+a scratch register.  That's problematic because it breaks stack traces
+if an interrupt occurs in the middle of the function.
+
+Replace the usage of RBP with another callee-saved register (R15) so
+stack traces are no longer affected.
+
+Reported-by: Andrey Konovalov <andreyknvl@google.com>
+Tested-by: Andrey Konovalov <andreyknvl@google.com>
+Signed-off-by: Josh Poimboeuf <jpoimboe@redhat.com>
+Cc: Cong Wang <xiyou.wangcong@gmail.com>
+Cc: David S . Miller <davem@davemloft.net>
+Cc: Dmitry Vyukov <dvyukov@google.com>
+Cc: Eric Dumazet <edumazet@google.com>
+Cc: Kostya Serebryany <kcc@google.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: linux-sctp@vger.kernel.org
+Cc: netdev <netdev@vger.kernel.org>
+Cc: syzkaller <syzkaller@googlegroups.com>
+Link: http://lkml.kernel.org/r/4b03a961efda5ec9bfe46b7b9c9ad72d1efad343.1493909486.git.jpoimboe@redhat.com
+Signed-off-by: Ingo Molnar <mingo@kernel.org>
+Signed-off-by: Sasha Levin <alexander.levin@microsoft.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 ---
- include/net/sctp/structs.h |  1 +
- net/sctp/associola.c       | 21 +++++++++++++--------
- net/sctp/socket.c          |  2 +-
- 3 files changed, 15 insertions(+), 9 deletions(-)
+ arch/x86/lib/csum-copy_64.S |   12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 05594b248e5277790cca6542c3680510739ce18b..c5e244be8f1ea99118cac9ada0cfce871cb15d3f 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -2097,6 +2097,7 @@ int sctp_assoc_update(struct sctp_association *old,
+--- a/arch/x86/lib/csum-copy_64.S
++++ b/arch/x86/lib/csum-copy_64.S
+@@ -55,7 +55,7 @@ ENTRY(csum_partial_copy_generic)
+ 	movq  %r12, 3*8(%rsp)
+ 	movq  %r14, 4*8(%rsp)
+ 	movq  %r13, 5*8(%rsp)
+-	movq  %rbp, 6*8(%rsp)
++	movq  %r15, 6*8(%rsp)
  
- __u32 sctp_association_get_next_tsn(struct sctp_association *);
+ 	movq  %r8, (%rsp)
+ 	movq  %r9, 1*8(%rsp)
+@@ -74,7 +74,7 @@ ENTRY(csum_partial_copy_generic)
+ 	/* main loop. clear in 64 byte blocks */
+ 	/* r9: zero, r8: temp2, rbx: temp1, rax: sum, rcx: saved length */
+ 	/* r11:	temp3, rdx: temp4, r12 loopcnt */
+-	/* r10:	temp5, rbp: temp6, r14 temp7, r13 temp8 */
++	/* r10:	temp5, r15: temp6, r14 temp7, r13 temp8 */
+ 	.p2align 4
+ .Lloop:
+ 	source
+@@ -89,7 +89,7 @@ ENTRY(csum_partial_copy_generic)
+ 	source
+ 	movq  32(%rdi), %r10
+ 	source
+-	movq  40(%rdi), %rbp
++	movq  40(%rdi), %r15
+ 	source
+ 	movq  48(%rdi), %r14
+ 	source
+@@ -103,7 +103,7 @@ ENTRY(csum_partial_copy_generic)
+ 	adcq  %r11, %rax
+ 	adcq  %rdx, %rax
+ 	adcq  %r10, %rax
+-	adcq  %rbp, %rax
++	adcq  %r15, %rax
+ 	adcq  %r14, %rax
+ 	adcq  %r13, %rax
  
-+void sctp_assoc_set_pmtu(struct sctp_association *asoc, __u32 pmtu);
- void sctp_assoc_sync_pmtu(struct sctp_association *asoc);
- void sctp_assoc_rwnd_increase(struct sctp_association *, unsigned int);
- void sctp_assoc_rwnd_decrease(struct sctp_association *, unsigned int);
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index c5ed09cfa8423b17546e3d45f6d06db03af66384..85b362324084e9ba139a39293a527ef06824e55b 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -660,13 +660,9 @@ struct sctp_transport *sctp_assoc_add_peer(struct sctp_association *asoc,
- 	 * If not and the current association PMTU is higher than the new
- 	 * peer's PMTU, reset the association PMTU to the new peer's PMTU.
- 	 */
--	if (asoc->pathmtu)
--		asoc->pathmtu = min_t(int, peer->pathmtu, asoc->pathmtu);
--	else
--		asoc->pathmtu = peer->pathmtu;
--
--	pr_debug("%s: association:%p PMTU set to %d\n", __func__, asoc,
--		 asoc->pathmtu);
-+	sctp_assoc_set_pmtu(asoc, asoc->pathmtu ?
-+				  min_t(int, peer->pathmtu, asoc->pathmtu) :
-+				  peer->pathmtu);
+@@ -121,7 +121,7 @@ ENTRY(csum_partial_copy_generic)
+ 	dest
+ 	movq %r10, 32(%rsi)
+ 	dest
+-	movq %rbp, 40(%rsi)
++	movq %r15, 40(%rsi)
+ 	dest
+ 	movq %r14, 48(%rsi)
+ 	dest
+@@ -203,7 +203,7 @@ ENTRY(csum_partial_copy_generic)
+ 	movq 3*8(%rsp), %r12
+ 	movq 4*8(%rsp), %r14
+ 	movq 5*8(%rsp), %r13
+-	movq 6*8(%rsp), %rbp
++	movq 6*8(%rsp), %r15
+ 	addq $7*8, %rsp
+ 	ret
  
- 	peer->pmtu_pending = 0;
- 
-@@ -1374,6 +1370,15 @@ sctp_assoc_choose_alter_transport(struct sctp_association *asoc,
- 	}
- }
- 
-+void sctp_assoc_set_pmtu(struct sctp_association *asoc, __u32 pmtu)
-+{
-+	if (asoc->pathmtu != pmtu)
-+		asoc->pathmtu = pmtu;
-+
-+	pr_debug("%s: asoc:%p, pmtu:%d, frag_point:%d\n", __func__, asoc,
-+		 asoc->pathmtu, asoc->frag_point);
-+}
-+
- /* Update the association's pmtu and frag_point by going through all the
-  * transports. This routine is called when a transport's PMTU has changed.
-  */
-@@ -1397,7 +1402,7 @@ void sctp_assoc_sync_pmtu(struct sctp_association *asoc)
- 			pmtu = t->pathmtu;
- 	}
- 
--	asoc->pathmtu = pmtu;
-+	sctp_assoc_set_pmtu(asoc, pmtu);
- 	asoc->frag_point = sctp_frag_point(asoc, pmtu);
- 
- 	pr_debug("%s: asoc:%p, pmtu:%d, frag_point:%d\n", __func__, asoc,
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 80835ac26d2c3ce6559f75aaaa0b315fb77d9adf..eeec81d5c485b86076f4e3a4f5dc01fc28fbb91b 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -2539,7 +2539,7 @@ static int sctp_apply_peer_addr_params(struct sctp_paddrparams *params,
- 			trans->pathmtu = params->spp_pathmtu;
- 			sctp_assoc_sync_pmtu(asoc);
- 		} else if (asoc) {
--			asoc->pathmtu = params->spp_pathmtu;
-+			sctp_assoc_set_pmtu(asoc, params->spp_pathmtu);
- 		} else {
- 			sp->pathmtu = params->spp_pathmtu;
- 		}
--- 
-2.14.3
+
 
