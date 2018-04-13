@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 12 Apr 2018 13:58:41 +0000
+From: David Miller <davem@davemloft.net>
+Date: Fri, 13 Apr 2018 02:01:46 +0000
 Subject: Re: [PATCHv2 net] sctp: do not check port in sctp_inet6_cmp_addr
-Message-Id: <20180412135841.GB8105@hmswarspite.think-freely.org>
+Message-Id: <20180412.220146.1333515003918278237.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <7220f314b70726ba4afee91df11e9ae8d1962e01.1523514271.git.lucien.xin@gmail.com>
 In-Reply-To: <7220f314b70726ba4afee91df11e9ae8d1962e01.1523514271.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
-On Thu, Apr 12, 2018 at 02:24:31PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 12 Apr 2018 14:24:31 +0800
+
 > pf->cmp_addr() is called before binding a v6 address to the sock. It
 > should not check ports, like in sctp_inet_cmp_addr.
 > 
@@ -32,118 +34,5 @@ On Thu, Apr 12, 2018 at 02:24:31PM +0800, Xin Long wrote:
 > Fixes: 40b4f0fd74e4 ("sctp: lack the check for ports in sctp_v6_cmp_addr")
 > Reported-by: Jianwen Ji <jiji@redhat.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> ---
->  net/sctp/ipv6.c | 60 ++++++++++++++++++++++++++++-----------------------------
->  1 file changed, 30 insertions(+), 30 deletions(-)
-> 
-> diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-> index f1fc48e..09aba03 100644
-> --- a/net/sctp/ipv6.c
-> +++ b/net/sctp/ipv6.c
-> @@ -521,46 +521,49 @@ static void sctp_v6_to_addr(union sctp_addr *addr, struct in6_addr *saddr,
->  	addr->v6.sin6_scope_id = 0;
->  }
->  
-> -/* Compare addresses exactly.
-> - * v4-mapped-v6 is also in consideration.
-> - */
-> -static int sctp_v6_cmp_addr(const union sctp_addr *addr1,
-> -			    const union sctp_addr *addr2)
-> +static int __sctp_v6_cmp_addr(const union sctp_addr *addr1,
-> +			      const union sctp_addr *addr2)
->  {
->  	if (addr1->sa.sa_family != addr2->sa.sa_family) {
->  		if (addr1->sa.sa_family = AF_INET &&
->  		    addr2->sa.sa_family = AF_INET6 &&
-> -		    ipv6_addr_v4mapped(&addr2->v6.sin6_addr)) {
-> -			if (addr2->v6.sin6_port = addr1->v4.sin_port &&
-> -			    addr2->v6.sin6_addr.s6_addr32[3] =
-> -			    addr1->v4.sin_addr.s_addr)
-> -				return 1;
-> -		}
-> +		    ipv6_addr_v4mapped(&addr2->v6.sin6_addr) &&
-> +		    addr2->v6.sin6_addr.s6_addr32[3] =
-> +		    addr1->v4.sin_addr.s_addr)
-> +			return 1;
-> +
->  		if (addr2->sa.sa_family = AF_INET &&
->  		    addr1->sa.sa_family = AF_INET6 &&
-> -		    ipv6_addr_v4mapped(&addr1->v6.sin6_addr)) {
-> -			if (addr1->v6.sin6_port = addr2->v4.sin_port &&
-> -			    addr1->v6.sin6_addr.s6_addr32[3] =
-> -			    addr2->v4.sin_addr.s_addr)
-> -				return 1;
-> -		}
-> +		    ipv6_addr_v4mapped(&addr1->v6.sin6_addr) &&
-> +		    addr1->v6.sin6_addr.s6_addr32[3] =
-> +		    addr2->v4.sin_addr.s_addr)
-> +			return 1;
-> +
->  		return 0;
->  	}
-> -	if (addr1->v6.sin6_port != addr2->v6.sin6_port)
-> -		return 0;
-> +
->  	if (!ipv6_addr_equal(&addr1->v6.sin6_addr, &addr2->v6.sin6_addr))
->  		return 0;
-> +
->  	/* If this is a linklocal address, compare the scope_id. */
-> -	if (ipv6_addr_type(&addr1->v6.sin6_addr) & IPV6_ADDR_LINKLOCAL) {
-> -		if (addr1->v6.sin6_scope_id && addr2->v6.sin6_scope_id &&
-> -		    (addr1->v6.sin6_scope_id != addr2->v6.sin6_scope_id)) {
-> -			return 0;
-> -		}
-> -	}
-> +	if ((ipv6_addr_type(&addr1->v6.sin6_addr) & IPV6_ADDR_LINKLOCAL) &&
-> +	    addr1->v6.sin6_scope_id && addr2->v6.sin6_scope_id &&
-> +	    addr1->v6.sin6_scope_id != addr2->v6.sin6_scope_id)
-> +		return 0;
->  
->  	return 1;
->  }
->  
-> +/* Compare addresses exactly.
-> + * v4-mapped-v6 is also in consideration.
-> + */
-> +static int sctp_v6_cmp_addr(const union sctp_addr *addr1,
-> +			    const union sctp_addr *addr2)
-> +{
-> +	return __sctp_v6_cmp_addr(addr1, addr2) &&
-> +	       addr1->v6.sin6_port = addr2->v6.sin6_port;
-> +}
-> +
->  /* Initialize addr struct to INADDR_ANY. */
->  static void sctp_v6_inaddr_any(union sctp_addr *addr, __be16 port)
->  {
-> @@ -846,8 +849,8 @@ static int sctp_inet6_cmp_addr(const union sctp_addr *addr1,
->  			       const union sctp_addr *addr2,
->  			       struct sctp_sock *opt)
->  {
-> -	struct sctp_af *af1, *af2;
->  	struct sock *sk = sctp_opt2sk(opt);
-> +	struct sctp_af *af1, *af2;
->  
->  	af1 = sctp_get_af_specific(addr1->sa.sa_family);
->  	af2 = sctp_get_af_specific(addr2->sa.sa_family);
-> @@ -863,10 +866,7 @@ static int sctp_inet6_cmp_addr(const union sctp_addr *addr1,
->  	if (sctp_is_any(sk, addr1) || sctp_is_any(sk, addr2))
->  		return 1;
->  
-> -	if (addr1->sa.sa_family != addr2->sa.sa_family)
-> -		return 0;
-> -
-> -	return af1->cmp_addr(addr1, addr2);
-> +	return __sctp_v6_cmp_addr(addr1, addr2);
->  }
->  
->  /* Verify that the provided sockaddr looks bindable.   Common verification,
-> -- 
-> 2.1.0
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 
+Applied and queued up for -stable.
