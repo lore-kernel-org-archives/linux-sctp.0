@@ -1,31 +1,51 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 27 Apr 2018 18:42:13 +0000
-Subject: Re: [PATCH net-next 00/13] sctp: refactor MTU handling
-Message-Id: <20180427.144213.1823377521178882809.davem@davemloft.net>
+From: Florian Weimer <fw@deneb.enyo.de>
+Date: Wed, 18 Apr 2018 19:03:55 +0000
+Subject: sendmmsg flags userspace ABI change in kernel 4.6
+Message-Id: <874lk8jq04.fsf@mid.deneb.enyo.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1524772453.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1524772453.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: marcelo.leitner@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, lucien.xin@gmail.com
+To: linux-api@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, Tom Herbert <tom@herbertland.com>, mjw@fedoraproject.org
 
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 26 Apr 2018 16:58:49 -0300
+Since this commit:
 
-> Currently MTU handling is spread over SCTP stack. There are multiple
-> places doing same/similar calculations and updating them is error prone
-> as one spot can easily be left out.
-> 
-> This patchset converges it into a more concise and consistent code. In
-> general, it moves MTU handling from functions with bigger objectives,
-> such as sctp_assoc_add_peer(), to specific functions.
-> 
-> It's also a preparation for the next patchset, which removes the
-> duplication between sctp_make_op_error_space and
-> sctp_make_op_error_fixed and relies on sctp_mtu_payload introduced here.
-> 
-> More details on each patch.
+commit 28a94d8fb35b3a75b802f368ae6f4a9f6b0d435a
+Author: Tom Herbert <tom@herbertland.com>
+Date:   Mon Mar 7 14:11:02 2016 -0800
 
-Series applied, thanks!
+    net: Allow MSG_EOR in each msghdr of sendmmsg
+
+    This patch allows setting MSG_EOR in each individual msghdr passed
+    in sendmmsg. This allows a sendmmsg to send multiple messages when
+    using SOCK_SEQPACKET.
+
+    Signed-off-by: Tom Herbert <tom@herbertland.com>
+    Signed-off-by: David S. Miller <davem@davemloft.net>
+
+the msg_flags argument in individual msghdr arguments is longer
+completely ignored for SOCK_SEQPACKET sockets.  msg_flags was and is
+still documented as ignored for sendmsg(2), so by analogy for
+sendmmsg(2) as well.
+
+It seems that valgrind does not know about this yet, and due to
+limited use of SCTP, this userspace ABI change has not been noticed so
+far.
+
+What are the plans in this area?  Will other kinds of sockets start
+using the msghdr flags for sending?
+
+A fully backwards-compatibility way to achieve this would be to
+specify that you have to pass a new flag to sendmmsg (MSG_PERHDR?), in
+its flags argument, to activate the per-msghdr flags.
+
+The glibc DNS stub resolver relies on the previously documented
+behavior, and I wonder how widely we should backport the change:
+
+  https://sourceware.org/bugzilla/show_bug.cgi?id#037
+
+If the MSG_PERHDR route will be taken, we can skip this work, and
+valgrind can flag uninitialized bits in msg_flags only if MSG_PERHDR
+is passed.  (I believe it would be difficult for valgrind to look at
+the socket type to determine whether undefined bits need reporting.)
