@@ -1,175 +1,175 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 26 Apr 2018 19:58:55 +0000
-Subject: [PATCH net-next 06/13] sctp: introduce sctp_assoc_update_frag_point
-Message-Id: <cf4652a542b44682ed93e5b61349b6f8b4aa9228.1524772453.git.marcelo.leitner@gmail.com>
+From: Oleg Babin <obabin@virtuozzo.com>
+Date: Mon, 23 Apr 2018 18:41:06 +0000
+Subject: [PATCH net-next 2/2] net/sctp: Replace in/out stream arrays with flex_array
+Message-Id: <1524508866-317485-3-git-send-email-obabin@virtuozzo.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1524772453.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1524772453.git.marcelo.leitner@gmail.com>
+References: <1524508866-317485-1-git-send-email-obabin@virtuozzo.com>
+In-Reply-To: <1524508866-317485-1-git-send-email-obabin@virtuozzo.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>
+To: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
+Cc: "David S. Miller" <davem@davemloft.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Andrey Ryabinin <aryabinin@virtuozzo.com>
 
-and avoid the open-coded versions of it.
+This path replaces physically contiguous memory arrays
+allocated using kmalloc_array() with flexible arrays.
+This enables to avoid memory allocation failures on the
+systems under a memory stress.
 
-Now sctp_datamsg_from_user can just re-use asoc->frag_point as it will
-always be updated.
-
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Signed-off-by: Oleg Babin <obabin@virtuozzo.com>
 ---
- include/net/sctp/sctp.h    | 20 --------------------
  include/net/sctp/structs.h |  1 +
- net/sctp/associola.c       | 24 +++++++++++++++++-------
- net/sctp/chunk.c           | 12 +-----------
- net/sctp/socket.c          |  2 +-
- 5 files changed, 20 insertions(+), 39 deletions(-)
+ net/sctp/stream.c          | 78 +++++++++++++++++++++++++++++++++++-----------
+ 2 files changed, 61 insertions(+), 18 deletions(-)
 
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index 0b98e4683f108670c65a0a7aceaf9a736d54bf29..350c65620a4eb35ba2af0d59fef70e2b8b461e44 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -428,26 +428,6 @@ static inline int sctp_list_single_entry(struct list_head *head)
- 	return (head->next != head) && (head->next = head->prev);
- }
- 
--/* Break down data chunks at this point.  */
--static inline int sctp_frag_point(const struct sctp_association *asoc, int pmtu)
--{
--	struct sctp_sock *sp = sctp_sk(asoc->base.sk);
--	struct sctp_af *af = sp->pf->af;
--	int frag = pmtu;
--
--	frag -= af->ip_options_len(asoc->base.sk);
--	frag -= af->net_header_len;
--	frag -= sizeof(struct sctphdr) + sctp_datachk_len(&asoc->stream);
--
--	if (asoc->user_frag)
--		frag = min_t(int, frag, asoc->user_frag);
--
--	frag = SCTP_TRUNC4(min_t(int, frag, SCTP_MAX_CHUNK_LEN -
--					    sctp_datachk_len(&asoc->stream)));
--
--	return frag;
--}
--
- static inline void sctp_assoc_pending_pmtu(struct sctp_association *asoc)
- {
- 	sctp_assoc_sync_pmtu(asoc);
 diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index c5e244be8f1ea99118cac9ada0cfce871cb15d3f..ebf809eed33add7905ddd13abf98712a833ae0e0 100644
+index 578bb40..c7f42b4 100644
 --- a/include/net/sctp/structs.h
 +++ b/include/net/sctp/structs.h
-@@ -2097,6 +2097,7 @@ int sctp_assoc_update(struct sctp_association *old,
- 
- __u32 sctp_association_get_next_tsn(struct sctp_association *);
- 
-+void sctp_assoc_update_frag_point(struct sctp_association *asoc);
- void sctp_assoc_set_pmtu(struct sctp_association *asoc, __u32 pmtu);
- void sctp_assoc_sync_pmtu(struct sctp_association *asoc);
- void sctp_assoc_rwnd_increase(struct sctp_association *, unsigned int);
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index 85b362324084e9ba139a39293a527ef06824e55b..a29025418b96015dd0240013b0a7c636194da67b 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -666,8 +666,6 @@ struct sctp_transport *sctp_assoc_add_peer(struct sctp_association *asoc,
- 
- 	peer->pmtu_pending = 0;
- 
--	asoc->frag_point = sctp_frag_point(asoc, asoc->pathmtu);
--
- 	/* The asoc->peer.port might not be meaningful yet, but
- 	 * initialize the packet structure anyway.
- 	 */
-@@ -1370,10 +1368,26 @@ sctp_assoc_choose_alter_transport(struct sctp_association *asoc,
- 	}
+@@ -57,6 +57,7 @@
+ #include <linux/atomic.h>		/* This gets us atomic counters.  */
+ #include <linux/skbuff.h>	/* We need sk_buff_head. */
+ #include <linux/workqueue.h>	/* We need tq_struct.	 */
++#include <linux/flex_array.h>	/* We need flex_array.   */
+ #include <linux/sctp.h>		/* We need sctp* header structs.  */
+ #include <net/sctp/auth.h>	/* We need auth specific structs */
+ #include <net/ip.h>		/* For inet_skb_parm */
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 16e36c0..be372b0 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -40,13 +40,60 @@
+ struct sctp_stream_out *sctp_stream_out_ptr(const struct sctp_stream *stream,
+ 					    __u16 sid)
+ {
+-	return ((struct sctp_stream_out *)(stream->out)) + sid;
++	return flex_array_get(stream->out, sid);
  }
  
-+void sctp_assoc_update_frag_point(struct sctp_association *asoc)
-+{
-+	int frag = sctp_mtu_payload(sctp_sk(asoc->base.sk), asoc->pathmtu,
-+				    sctp_datachk_len(&asoc->stream));
-+
-+	if (asoc->user_frag)
-+		frag = min_t(int, frag, asoc->user_frag);
-+
-+	frag = min_t(int, frag, SCTP_MAX_CHUNK_LEN -
-+				sctp_datachk_len(&asoc->stream));
-+
-+	asoc->frag_point = SCTP_TRUNC4(frag);
+ struct sctp_stream_in *sctp_stream_in_ptr(const struct sctp_stream *stream,
+ 					  __u16 sid)
+ {
+-	return ((struct sctp_stream_in *)(stream->in)) + sid;
++	return flex_array_get(stream->in, sid);
 +}
 +
- void sctp_assoc_set_pmtu(struct sctp_association *asoc, __u32 pmtu)
- {
--	if (asoc->pathmtu != pmtu)
-+	if (asoc->pathmtu != pmtu) {
- 		asoc->pathmtu = pmtu;
-+		sctp_assoc_update_frag_point(asoc);
++static struct flex_array *fa_alloc(size_t elem_size, size_t elem_count,
++				   gfp_t gfp)
++{
++	struct flex_array *result;
++	int err;
++
++	result = flex_array_alloc(elem_size, elem_count, gfp);
++	if (result) {
++		err = flex_array_prealloc(result, 0, elem_count, gfp);
++		if (err) {
++			flex_array_free(result);
++			result = NULL;
++		}
 +	}
- 
- 	pr_debug("%s: asoc:%p, pmtu:%d, frag_point:%d\n", __func__, asoc,
- 		 asoc->pathmtu, asoc->frag_point);
-@@ -1403,10 +1417,6 @@ void sctp_assoc_sync_pmtu(struct sctp_association *asoc)
- 	}
- 
- 	sctp_assoc_set_pmtu(asoc, pmtu);
--	asoc->frag_point = sctp_frag_point(asoc, pmtu);
--
--	pr_debug("%s: asoc:%p, pmtu:%d, frag_point:%d\n", __func__, asoc,
--		 asoc->pathmtu, asoc->frag_point);
++
++	return result;
++}
++
++static void fa_free(struct flex_array *fa)
++{
++	if (fa)
++		flex_array_free(fa);
++}
++
++static void fa_copy(struct flex_array *fa, struct flex_array *from,
++		    size_t index, size_t count)
++{
++	void *elem;
++
++	while (count--) {
++		elem = flex_array_get(from, index);
++		flex_array_put(fa, index, elem, 0);
++		index++;
++	}
++}
++
++static void fa_zero(struct flex_array *fa, size_t index, size_t count)
++{
++	void *elem;
++
++	while (count--) {
++		elem = flex_array_get(fa, index);
++		memset(elem, 0, fa->element_size);
++		index++;
++	}
  }
  
- /* Should we send a SACK to update our peer? */
-diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
-index be296d633e951c8df322d560150973b5b2bdce5b..79daa98208c391c780440144d69bc7be875c3476 100644
---- a/net/sctp/chunk.c
-+++ b/net/sctp/chunk.c
-@@ -172,8 +172,6 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
- 	struct list_head *pos, *temp;
- 	struct sctp_chunk *chunk;
- 	struct sctp_datamsg *msg;
--	struct sctp_sock *sp;
--	struct sctp_af *af;
- 	int err;
+ /* Migrates chunks from stream queues to new stream queues if needed,
+@@ -106,19 +153,17 @@ static int sctp_stream_alloc_out(struct sctp_stream *stream, __u16 outcnt,
+ 	struct flex_array *out;
+ 	size_t elem_size = sizeof(struct sctp_stream_out);
  
- 	msg = sctp_datamsg_new(GFP_KERNEL);
-@@ -192,12 +190,7 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
- 	/* This is the biggest possible DATA chunk that can fit into
- 	 * the packet
- 	 */
--	sp = sctp_sk(asoc->base.sk);
--	af = sp->pf->af;
--	max_data = asoc->pathmtu - af->net_header_len -
--		   sizeof(struct sctphdr) - sctp_datachk_len(&asoc->stream) -
--		   af->ip_options_len(asoc->base.sk);
--	max_data = SCTP_TRUNC4(max_data);
-+	max_data = asoc->frag_point;
+-	out = kmalloc_array(outcnt, elem_size, gfp);
++	out = fa_alloc(elem_size, outcnt, gfp);
+ 	if (!out)
+ 		return -ENOMEM;
  
- 	/* If the the peer requested that we authenticate DATA chunks
- 	 * we need to account for bundling of the AUTH chunks along with
-@@ -222,9 +215,6 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
- 		}
+ 	if (stream->out) {
+-		memcpy(out, stream->out, min(outcnt, stream->outcnt) *
+-					 elem_size);
+-		kfree(stream->out);
++		fa_copy(out, stream->out, 0, min(outcnt, stream->outcnt));
++		fa_free(stream->out);
  	}
  
--	/* Check what's our max considering the above */
--	max_data = min_t(size_t, max_data, asoc->frag_point);
--
- 	/* Set first_len and then account for possible bundles on first frag */
- 	first_len = max_data;
+ 	if (outcnt > stream->outcnt)
+-		memset(((struct sctp_stream_out *)out) + stream->outcnt, 0,
+-		       (outcnt - stream->outcnt) * elem_size);
++		fa_zero(out, stream->outcnt, (outcnt - stream->outcnt));
  
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index b9d14f57146b8e551c28379e379158231fb40ae7..21bf457be3ea321457107256c12ccb93e1fbab06 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3251,7 +3251,7 @@ static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned
- 			       sctp_datachk_len(&asoc->stream);
- 		}
- 		asoc->user_frag = val;
--		asoc->frag_point = sctp_frag_point(asoc, asoc->pathmtu);
-+		sctp_assoc_update_frag_point(asoc);
- 	} else {
- 		if (params.assoc_id && sctp_style(sk, UDP))
- 			return -EINVAL;
+ 	stream->out = out;
+ 
+@@ -131,20 +176,17 @@ static int sctp_stream_alloc_in(struct sctp_stream *stream, __u16 incnt,
+ 	struct flex_array *in;
+ 	size_t elem_size = sizeof(struct sctp_stream_in);
+ 
+-	in = kmalloc_array(incnt, elem_size, gfp);
+-
++	in = fa_alloc(elem_size, incnt, gfp);
+ 	if (!in)
+ 		return -ENOMEM;
+ 
+ 	if (stream->in) {
+-		memcpy(in, stream->in, min(incnt, stream->incnt) *
+-				       elem_size);
+-		kfree(stream->in);
++		fa_copy(in, stream->in, 0, min(incnt, stream->incnt));
++		fa_free(stream->in);
+ 	}
+ 
+ 	if (incnt > stream->incnt)
+-		memset(((struct sctp_stream_in *)in) + stream->incnt, 0,
+-		       (incnt - stream->incnt) * elem_size);
++		fa_zero(in, stream->incnt, (incnt - stream->incnt));
+ 
+ 	stream->in = in;
+ 
+@@ -188,7 +230,7 @@ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
+ 	ret = sctp_stream_alloc_in(stream, incnt, gfp);
+ 	if (ret) {
+ 		sched->free(stream);
+-		kfree(stream->out);
++		fa_free(stream->out);
+ 		stream->out = NULL;
+ 		stream->outcnt = 0;
+ 		goto out;
+@@ -220,8 +262,8 @@ void sctp_stream_free(struct sctp_stream *stream)
+ 	sched->free(stream);
+ 	for (i = 0; i < stream->outcnt; i++)
+ 		kfree(SCTP_SO(stream, i)->ext);
+-	kfree(stream->out);
+-	kfree(stream->in);
++	fa_free(stream->out);
++	fa_free(stream->in);
+ }
+ 
+ void sctp_stream_clear(struct sctp_stream *stream)
 -- 
-2.14.3
+1.8.3.1
 
