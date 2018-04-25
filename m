@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 25 Apr 2018 11:49:20 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 25 Apr 2018 13:41:07 +0000
 Subject: Re: [PATCH net-next] sctp: remove the unused sctp_assoc_is_match function
-Message-Id: <20180425114920.GC17646@hmswarspite.think-freely.org>
+Message-Id: <20180425134107.GI3711@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <0acb8eaec9a5be9959d39bb5017d49bb31d0d5e5.1524649607.git.lucien.xin@gmail.com>
 In-Reply-To: <0acb8eaec9a5be9959d39bb5017d49bb31d0d5e5.1524649607.git.lucien.xin@gmail.com>
@@ -9,18 +9,21 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, davem@davemloft.net
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
 On Wed, Apr 25, 2018 at 05:46:47PM +0800, Xin Long wrote:
 > After Commit 4f0087812648 ("sctp: apply rhashtable api to send/recv
 > path"), there's no place using sctp_assoc_is_match, so remove it.
-> 
+>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
+
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+
 > ---
 >  include/net/sctp/structs.h |  4 ----
 >  net/sctp/associola.c       | 25 -------------------------
 >  2 files changed, 29 deletions(-)
-> 
+>
 > diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
 > index a0ec462..05594b2 100644
 > --- a/include/net/sctp/structs.h
@@ -43,7 +46,7 @@ On Wed, Apr 25, 2018 at 05:46:47PM +0800, Xin Long wrote:
 > @@ -988,31 +988,6 @@ struct sctp_transport *sctp_assoc_lookup_tsn(struct sctp_association *asoc,
 >  	return match;
 >  }
->  
+>
 > -/* Is this the association we are looking for? */
 > -struct sctp_transport *sctp_assoc_is_match(struct sctp_association *asoc,
 > -					   struct net *net,
@@ -72,9 +75,11 @@ On Wed, Apr 25, 2018 at 05:46:47PM +0800, Xin Long wrote:
 >  /* Do delayed input processing.  This is scheduled by sctp_rcv(). */
 >  static void sctp_assoc_bh_rcv(struct work_struct *work)
 >  {
-> -- 
+> --
 > 2.1.0
-> 
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
-
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
