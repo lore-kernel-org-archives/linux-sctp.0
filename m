@@ -1,85 +1,42 @@
-From: Vlad Yasevich <vyasevic@redhat.com>
-Date: Mon, 23 Apr 2018 13:17:52 +0000
-Subject: Re: [PATCH net-next 0/5] virtio-net: Add SCTP checksum offload support
-Message-Id: <35995a53-08ed-aa4f-ed53-f05722f42e5d@redhat.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Thu, 26 Apr 2018 19:58:52 +0000
+Subject: [PATCH net-next 03/13] sctp: remove an if() that is always true
+Message-Id: <b083bd9240e25ad84cda4d9212b886da2373ec11.1524772453.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180402134006.10111-1-vyasevic@redhat.com>
- <20180402144730.GA6001@localhost.localdomain>
- <6bc762f6-d6fb-5471-2893-a888cce199f9@redhat.com>
- <20180418162633-mutt-send-email-mst@kernel.org>
- <20180420172219.GR4716@localhost.localdomain>
-In-Reply-To: <20180420172219.GR4716@localhost.localdomain>
+References: <cover.1524772453.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1524772453.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "Michael S. Tsirkin" <mst@redhat.com>
-Cc: Vladislav Yasevich <vyasevich@gmail.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, virtualization@lists.linux-foundation.org, jasowang@redhat.com, nhorman@tuxdriver.com
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>
 
-On 04/20/2018 01:22 PM, Marcelo Ricardo Leitner wrote:
-> On Wed, Apr 18, 2018 at 05:06:46PM +0300, Michael S. Tsirkin wrote:
->> On Tue, Apr 17, 2018 at 04:35:18PM -0400, Vlad Yasevich wrote:
->>> On 04/02/2018 10:47 AM, Marcelo Ricardo Leitner wrote:
->>>> On Mon, Apr 02, 2018 at 09:40:01AM -0400, Vladislav Yasevich wrote:
->>>>> Now that we have SCTP offload capabilities in the kernel, we can add
->>>>> them to virtio as well.  First step is SCTP checksum.
->>>>
->>>> Thanks.
->>>>
->>>>> As for GSO, the way sctp GSO is currently implemented buys us nothing
->>>>> in added support to virtio.  To add true GSO, would require a lot of
->>>>> re-work inside of SCTP and would require extensions to the virtio
->>>>> net header to carry extra sctp data.
->>>>
->>>> Can you please elaborate more on this? Is this because SCTP GSO relies
->>>> on the gso skb format for knowing how to segment it instead of having
->>>> a list of sizes?
->>>>
->>>
->>> it's mainly because all the true segmentation, placing data into chunks,
->>> has already happened.  All that GSO does is allow for higher bundling
->>> rate between VMs. If that is all SCTP GSO ever going to do, that fine,
->>> but the goal is to do real GSO eventually and potentially reduce the
->>> amount of memory copying we are doing.
->>> If we do that, any current attempt at GSO in virtio would have to be
->>> depricated and we'd need GSO2 or something like that.
->>
->> Batching helps virtualization *a lot* though.
-> 
-> Yep. The results posted by Xin in the other email give good insights
-> on it.
-> 
->> Are there actual plans for GSO2? Is it just for SCTP?
-> 
-> No plans. In this context, at least, yes, just for SCTP.
-> 
-> It was a supposition in case we start doing a different GSO for SCTP,
-> one more like what we have for TCP.
-> 
-> Currently, as the SCTP GSO code doesn't leave the system, we can
-> update it if we want. But by the moment we add support for it in
-> virtio, we will have to be backwards compatible if we end up doing
-> SCTP GSO differently.
+As noticed by Xin Long, the if() here is always true as PMTU can never
+be 0.
 
-So, just because the linux code doesn't do it differently doesn't mean
-that someone else doesn't.  Since the device has to work across different
-possible implementations, it needs to be generic enough.  If we simply
-document the current linux practice, that may not be ideal on the future.
+Reported-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/associola.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-I was hesitant to introduce this without studying the feasibility of
-doing late segmentation.
-
--vlad
-
-> 
-> But again, I don't think such approach for SCTP GSO would be neither
-> feasible or worth. The complexity for it, to work across stream
-> schedules and late TSN allocation, would do more harm then good IMO.
-> 
->>
->>>
->>> This is why, after doing the GSO support, I decided not to include it.
->>>
->>> -vlad
->>>>   Marcelo
->>>>
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index b3aa95222bd52113295cb246c503c903bdd5c353..c5ed09cfa8423b17546e3d45f6d06db03af66384 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1397,10 +1397,8 @@ void sctp_assoc_sync_pmtu(struct sctp_association *asoc)
+ 			pmtu = t->pathmtu;
+ 	}
+ 
+-	if (pmtu) {
+-		asoc->pathmtu = pmtu;
+-		asoc->frag_point = sctp_frag_point(asoc, pmtu);
+-	}
++	asoc->pathmtu = pmtu;
++	asoc->frag_point = sctp_frag_point(asoc, pmtu);
+ 
+ 	pr_debug("%s: asoc:%p, pmtu:%d, frag_point:%d\n", __func__, asoc,
+ 		 asoc->pathmtu, asoc->frag_point);
+-- 
+2.14.3
 
