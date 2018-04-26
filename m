@@ -1,7 +1,7 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 26 Apr 2018 19:59:01 +0000
-Subject: [PATCH net-next 12/13] sctp: consider idata chunks when setting SCTP_MAXSEG
-Message-Id: <f5f87da8ce305c2f3e48374f03a6039da715e51b.1524772453.git.marcelo.leitner@gmail.com>
+Date: Thu, 26 Apr 2018 19:58:57 +0000
+Subject: [PATCH net-next 08/13] sctp: introduce sctp_dst_mtu
+Message-Id: <d4e3cd0c60a4560911c548ee31af66a1ad015df6.1524772453.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1524772453.git.marcelo.leitner@gmail.com>
 In-Reply-To: <cover.1524772453.git.marcelo.leitner@gmail.com>
@@ -11,44 +11,73 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
 Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>
 
-When setting SCTP_MAXSEG sock option, it should consider which kind of
-data chunk is being used if the asoc is already available, so that the
-limit better reflect reality.
+Which makes sure that the MTU respects the minimum value of
+SCTP_DEFAULT_MINSEGMENT and that it is correctly aligned.
 
 Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- net/sctp/socket.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+ include/net/sctp/sctp.h | 9 +++++++--
+ net/sctp/associola.c    | 6 ++----
+ net/sctp/transport.c    | 6 +++---
+ 3 files changed, 12 insertions(+), 9 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index ad8965835d8d51d4eda857b91dfca140710bf7da..2d35c8ea2470e7f5481bb9675ffd233eb3424d91 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3233,18 +3233,21 @@ static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned
- 		return -EINVAL;
- 	}
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index e327acad8e7d0710e30f32d0829116593c1171cf..4965cbfa7d92c0f60a76dd6e03571f78209dda5a 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -600,10 +600,15 @@ static inline __u32 sctp_mtu_payload(const struct sctp_sock *sp,
+ 	return mtu ? mtu - overhead : overhead;
+ }
  
-+	asoc = sctp_id2assoc(sk, params.assoc_id);
++static inline __u32 sctp_dst_mtu(const struct dst_entry *dst)
++{
++	return SCTP_TRUNC4(max_t(__u32, dst_mtu(dst),
++				 SCTP_DEFAULT_MINSEGMENT));
++}
 +
- 	if (val) {
- 		int min_len, max_len;
-+		__u16 datasize = asoc ? sctp_datachk_len(&asoc->stream) :
-+				 sizeof(struct sctp_data_chunk);
+ static inline bool sctp_transport_pmtu_check(struct sctp_transport *t)
+ {
+-	__u32 pmtu = max_t(size_t, SCTP_TRUNC4(dst_mtu(t->dst)),
+-			   SCTP_DEFAULT_MINSEGMENT);
++	__u32 pmtu = sctp_dst_mtu(t->dst);
  
- 		min_len = sctp_mtu_payload(sp, SCTP_DEFAULT_MINSEGMENT,
--					   sizeof(struct sctp_data_chunk));
--		max_len = SCTP_MAX_CHUNK_LEN - sizeof(struct sctp_data_chunk);
-+					   datasize);
-+		max_len = SCTP_MAX_CHUNK_LEN - datasize;
+ 	if (t->pathmtu = pmtu)
+ 		return true;
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index a29025418b96015dd0240013b0a7c636194da67b..039fdb862b1797686bf7e5e911379b5b47ea58f7 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1405,11 +1405,9 @@ void sctp_assoc_sync_pmtu(struct sctp_association *asoc)
+ 		return;
  
- 		if (val < min_len || val > max_len)
- 			return -EINVAL;
+ 	/* Get the lowest pmtu of all the transports. */
+-	list_for_each_entry(t, &asoc->peer.transport_addr_list,
+-				transports) {
++	list_for_each_entry(t, &asoc->peer.transport_addr_list, transports) {
+ 		if (t->pmtu_pending && t->dst) {
+-			sctp_transport_update_pmtu(
+-					t, SCTP_TRUNC4(dst_mtu(t->dst)));
++			sctp_transport_update_pmtu(t, sctp_dst_mtu(t->dst));
+ 			t->pmtu_pending = 0;
+ 		}
+ 		if (!pmtu || (t->pathmtu < pmtu))
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index c5fc3aed08a18658448b528b07dbb13900686313..ed73a9d91b83eadd3eb8d681fda104fe71562c3f 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -242,9 +242,9 @@ void sctp_transport_pmtu(struct sctp_transport *transport, struct sock *sk)
+ 						&transport->fl, sk);
  	}
  
--	asoc = sctp_id2assoc(sk, params.assoc_id);
- 	if (asoc) {
- 		if (val = 0) {
- 			val = asoc->pathmtu - af->net_header_len;
+-	if (transport->dst) {
+-		transport->pathmtu = SCTP_TRUNC4(dst_mtu(transport->dst));
+-	} else
++	if (transport->dst)
++		transport->pathmtu = sctp_dst_mtu(transport->dst);
++	else
+ 		transport->pathmtu = SCTP_DEFAULT_MAXSEGMENT;
+ }
+ 
 -- 
 2.14.3
 
