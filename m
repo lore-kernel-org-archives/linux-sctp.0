@@ -1,7 +1,7 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 26 Apr 2018 19:59:02 +0000
-Subject: [PATCH net-next 13/13] sctp: allow unsetting sockopt MAXSEG
-Message-Id: <6b7e01ddf9be2954d55af5ea37b636a1f2e8bb89.1524772453.git.marcelo.leitner@gmail.com>
+Date: Thu, 26 Apr 2018 19:58:59 +0000
+Subject: [PATCH net-next 10/13] sctp: re-use sctp_transport_pmtu in sctp_transport_route
+Message-Id: <f56dc0bbd8d3deae656e41fd91eebe7f303e2a00.1524772453.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1524772453.git.marcelo.leitner@gmail.com>
 In-Reply-To: <cover.1524772453.git.marcelo.leitner@gmail.com>
@@ -11,43 +11,113 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
 Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>
 
-RFC 6458 Section 8.1.16 says that setting MAXSEG as 0 means that the user
-is not limiting it, and not that it should set to the *current* maximum,
-as we are doing.
+sctp_transport_route currently is very similar to sctp_transport_pmtu plus
+a few other bits.
 
-This patch thus allow setting it as 0, effectively removing the user
-limit.
+This patch reuses sctp_transport_pmtu in sctp_transport_route and removes
+the duplicated code.
+
+Also, as all calls to sctp_transport_route were forcing the dst release
+before calling it, let's just include such release too.
 
 Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- net/sctp/socket.c | 7 -------
- 1 file changed, 7 deletions(-)
+ net/sctp/socket.c    |  6 ++----
+ net/sctp/transport.c | 35 +++++++++++++++++------------------
+ 2 files changed, 19 insertions(+), 22 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 2d35c8ea2470e7f5481bb9675ffd233eb3424d91..1b4593b842b001903f518e90484c763d9d3698f3 100644
+index a93b60a28cc5fff0ebe299905fb31cb37de43d88..bb08d44b838bbbb0ffbf80b194a1291fed4069e4 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -3211,7 +3211,6 @@ static int sctp_setsockopt_mappedv4(struct sock *sk, char __user *optval, unsign
- static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned int optlen)
- {
- 	struct sctp_sock *sp = sctp_sk(sk);
--	struct sctp_af *af = sp->pf->af;
- 	struct sctp_assoc_value params;
- 	struct sctp_association *asoc;
- 	int val;
-@@ -3249,12 +3248,6 @@ static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned
+@@ -644,16 +644,15 @@ static int sctp_send_asconf_add_ip(struct sock		*sk,
+ 
+ 			list_for_each_entry(trans,
+ 			    &asoc->peer.transport_addr_list, transports) {
+-				/* Clear the source and route cache */
+-				sctp_transport_dst_release(trans);
+ 				trans->cwnd = min(4*asoc->pathmtu, max_t(__u32,
+ 				    2*asoc->pathmtu, 4380));
+ 				trans->ssthresh = asoc->peer.i.a_rwnd;
+ 				trans->rto = asoc->rto_initial;
+ 				sctp_max_rto(asoc, trans);
+ 				trans->rtt = trans->srtt = trans->rttvar = 0;
++				/* Clear the source and route cache */
+ 				sctp_transport_route(trans, NULL,
+-				    sctp_sk(asoc->base.sk));
++						     sctp_sk(asoc->base.sk));
+ 			}
+ 		}
+ 		retval = sctp_send_asconf(asoc, chunk);
+@@ -896,7 +895,6 @@ static int sctp_send_asconf_del_ip(struct sock		*sk,
+ 		 */
+ 		list_for_each_entry(transport, &asoc->peer.transport_addr_list,
+ 					transports) {
+-			sctp_transport_dst_release(transport);
+ 			sctp_transport_route(transport, NULL,
+ 					     sctp_sk(asoc->base.sk));
+ 		}
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index ed73a9d91b83eadd3eb8d681fda104fe71562c3f..4a95e260b674b3dffe2ffc4c54cf9a330dfac18c 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -242,6 +242,15 @@ void sctp_transport_pmtu(struct sctp_transport *transport, struct sock *sk)
+ 						&transport->fl, sk);
  	}
  
- 	if (asoc) {
--		if (val = 0) {
--			val = asoc->pathmtu - af->net_header_len;
--			val -= af->ip_options_len(sk);
--			val -= sizeof(struct sctphdr) +
--			       sctp_datachk_len(&asoc->stream);
--		}
- 		asoc->user_frag = val;
- 		sctp_assoc_update_frag_point(asoc);
- 	} else {
++	if (transport->param_flags & SPP_PMTUD_DISABLE) {
++		struct sctp_association *asoc = transport->asoc;
++
++		if (!transport->pathmtu && asoc && asoc->pathmtu)
++			transport->pathmtu = asoc->pathmtu;
++		if (transport->pathmtu)
++			return;
++	}
++
+ 	if (transport->dst)
+ 		transport->pathmtu = sctp_dst_mtu(transport->dst);
+ 	else
+@@ -290,6 +299,7 @@ void sctp_transport_route(struct sctp_transport *transport,
+ 	struct sctp_association *asoc = transport->asoc;
+ 	struct sctp_af *af = transport->af_specific;
+ 
++	sctp_transport_dst_release(transport);
+ 	af->get_dst(transport, saddr, &transport->fl, sctp_opt2sk(opt));
+ 
+ 	if (saddr)
+@@ -297,25 +307,14 @@ void sctp_transport_route(struct sctp_transport *transport,
+ 	else
+ 		af->get_saddr(opt, transport, &transport->fl);
+ 
+-	if ((transport->param_flags & SPP_PMTUD_DISABLE) && transport->pathmtu) {
+-		return;
+-	}
+-	if (transport->dst) {
+-		transport->pathmtu = SCTP_TRUNC4(dst_mtu(transport->dst));
++	sctp_transport_pmtu(transport, sctp_opt2sk(opt));
+ 
+-		/* Initialize sk->sk_rcv_saddr, if the transport is the
+-		 * association's active path for getsockname().
+-		 */
+-		if (asoc && (!asoc->peer.primary_path ||
+-			     (transport = asoc->peer.active_path)))
+-			opt->pf->to_sk_saddr(&transport->saddr,
+-					     asoc->base.sk);
+-	} else if ((transport->param_flags & SPP_PMTUD_DISABLE) &&
+-		   asoc && asoc->pathmtu) {
+-		transport->pathmtu = asoc->pathmtu;
+-	} else {
+-		transport->pathmtu = SCTP_DEFAULT_MAXSEGMENT;
+-	}
++	/* Initialize sk->sk_rcv_saddr, if the transport is the
++	 * association's active path for getsockname().
++	 */
++	if (transport->dst && asoc &&
++	    (!asoc->peer.primary_path || transport = asoc->peer.active_path))
++		opt->pf->to_sk_saddr(&transport->saddr, asoc->base.sk);
+ }
+ 
+ /* Hold a reference to a transport.  */
 -- 
 2.14.3
 
