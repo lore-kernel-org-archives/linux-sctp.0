@@ -1,52 +1,31 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 30 Apr 2018 02:34:21 +0000
-Subject: Re: [PATCH net-next 2/2] sctp: add sctp_make_op_error_limited and reuse inner functions
-Message-Id: <20180430023421.GA4977@localhost.localdomain>
+Date: Fri, 27 Apr 2018 19:46:11 +0000
+Subject: [PATCH net] MAINTAINERS: add myself as SCTP co-maintainer
+Message-Id: <88bbaf8536e2c38ee3d0382a7b23a54409548964.1524775440.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <53909b1bd523d45a453431968fd1e03fd4be6196.1525017179.git.marcelo.leitner@gmail.com>
- <201804300849.DRgYHLmw%fengguang.wu@intel.com>
-In-Reply-To: <201804300849.DRgYHLmw%fengguang.wu@intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: kbuild test robot <lkp@intel.com>
-Cc: kbuild-all@01.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Mon, Apr 30, 2018 at 10:14:06AM +0800, kbuild test robot wrote:
-> Hi Marcelo,
->
-> Thank you for the patch! Yet something to improve:
->
-> [auto build test ERROR on net-next/master]
->
-> url:    https://github.com/0day-ci/linux/commits/Marcelo-Ricardo-Leitner/sctp-allow-sctp_init_cause-to-return-errors/20180430-073613
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ MAINTAINERS | 1 +
+ 1 file changed, 1 insertion(+)
 
-This URL doesn't work, 404.
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 92be777d060a7df333a17d69e71bfd01760fa8f2..5bac32b545607933ea41fe9a56cc96d57ee7a094 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -12507,6 +12507,7 @@ F:	drivers/scsi/st_*.h
+ SCTP PROTOCOL
+ M:	Vlad Yasevich <vyasevich@gmail.com>
+ M:	Neil Horman <nhorman@tuxdriver.com>
++M:	Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+ L:	linux-sctp@vger.kernel.org
+ W:	http://lksctp.sourceforge.net
+ S:	Maintained
+--
+2.14.3
 
-> config: x86_64-randconfig-x006-201817 (attached as .config)
-> compiler: gcc-7 (Debian 7.3.0-16) 7.3.0
-> reproduce:
->         # save the attached .config to linux build tree
->         make ARCH=x86_64
->
-> All errors (new ones prefixed by >>):
->
->    net//sctp/sm_make_chunk.c: In function 'sctp_make_op_error_limited':
-> >> net//sctp/sm_make_chunk.c:1260:9: error: implicit declaration of function 'sctp_mtu_payload'; did you mean 'sctp_do_peeloff'? [-Werror=implicit-function-declaration]
->      size = sctp_mtu_payload(sp, size, sizeof(struct sctp_errhdr));
->             ^~~~~~~~~~~~~~~~
->             sctp_do_peeloff
->    cc1: some warnings being treated as errors
-
-Seems the test didn't pick up the MTU refactor patchset yet.
-
-$ grep sctp/sctp -- net/sctp/sm_make_chunk.c
-#include <net/sctp/sctp.h>
-
-$ git grep sctp_mtu_payload -- include/
-include/net/sctp/sctp.h:static inline __u32 sctp_mtu_payload(const
-struct sctp_sock *sp,
-
-it should be reachable.
-
-  Marcelo
