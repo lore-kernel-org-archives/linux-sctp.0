@@ -1,123 +1,69 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 26 Apr 2018 19:58:59 +0000
-Subject: [PATCH net-next 10/13] sctp: re-use sctp_transport_pmtu in sctp_transport_route
-Message-Id: <f56dc0bbd8d3deae656e41fd91eebe7f303e2a00.1524772453.git.marcelo.leitner@gmail.com>
+Date: Sun, 29 Apr 2018 15:56:31 +0000
+Subject: [PATCH net-next 1/2] sctp: allow sctp_init_cause to return errors
+Message-Id: <985b5d2b052dd5121ab46be2704543258c6f5e8b.1525017179.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1524772453.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1524772453.git.marcelo.leitner@gmail.com>
+References: <cover.1525017179.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1525017179.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
 Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>
 
-sctp_transport_route currently is very similar to sctp_transport_pmtu plus
-a few other bits.
-
-This patch reuses sctp_transport_pmtu in sctp_transport_route and removes
-the duplicated code.
-
-Also, as all calls to sctp_transport_route were forcing the dst release
-before calling it, let's just include such release too.
+And do so if the skb doesn't have enough space for the payload.
+This is a preparation for the next patch.
 
 Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- net/sctp/socket.c    |  6 ++----
- net/sctp/transport.c | 35 +++++++++++++++++------------------
- 2 files changed, 19 insertions(+), 22 deletions(-)
+ include/net/sctp/sm.h    |  2 +-
+ net/sctp/sm_make_chunk.c | 12 +++++++++---
+ 2 files changed, 10 insertions(+), 4 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index a93b60a28cc5fff0ebe299905fb31cb37de43d88..bb08d44b838bbbb0ffbf80b194a1291fed4069e4 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -644,16 +644,15 @@ static int sctp_send_asconf_add_ip(struct sock		*sk,
- 
- 			list_for_each_entry(trans,
- 			    &asoc->peer.transport_addr_list, transports) {
--				/* Clear the source and route cache */
--				sctp_transport_dst_release(trans);
- 				trans->cwnd = min(4*asoc->pathmtu, max_t(__u32,
- 				    2*asoc->pathmtu, 4380));
- 				trans->ssthresh = asoc->peer.i.a_rwnd;
- 				trans->rto = asoc->rto_initial;
- 				sctp_max_rto(asoc, trans);
- 				trans->rtt = trans->srtt = trans->rttvar = 0;
-+				/* Clear the source and route cache */
- 				sctp_transport_route(trans, NULL,
--				    sctp_sk(asoc->base.sk));
-+						     sctp_sk(asoc->base.sk));
- 			}
- 		}
- 		retval = sctp_send_asconf(asoc, chunk);
-@@ -896,7 +895,6 @@ static int sctp_send_asconf_del_ip(struct sock		*sk,
- 		 */
- 		list_for_each_entry(transport, &asoc->peer.transport_addr_list,
- 					transports) {
--			sctp_transport_dst_release(transport);
- 			sctp_transport_route(transport, NULL,
- 					     sctp_sk(asoc->base.sk));
- 		}
-diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-index ed73a9d91b83eadd3eb8d681fda104fe71562c3f..4a95e260b674b3dffe2ffc4c54cf9a330dfac18c 100644
---- a/net/sctp/transport.c
-+++ b/net/sctp/transport.c
-@@ -242,6 +242,15 @@ void sctp_transport_pmtu(struct sctp_transport *transport, struct sock *sk)
- 						&transport->fl, sk);
- 	}
- 
-+	if (transport->param_flags & SPP_PMTUD_DISABLE) {
-+		struct sctp_association *asoc = transport->asoc;
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index f4b657478a304050851f33d92c71162a4a4a2e50..5ef1bad81ef54906b375dbfd0e4fd897d078abce 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -215,7 +215,7 @@ struct sctp_chunk *sctp_make_shutdown_ack(const struct sctp_association *asoc,
+ struct sctp_chunk *sctp_make_shutdown_complete(
+ 					const struct sctp_association *asoc,
+ 					const struct sctp_chunk *chunk);
+-void sctp_init_cause(struct sctp_chunk *chunk, __be16 cause, size_t paylen);
++int sctp_init_cause(struct sctp_chunk *chunk, __be16 cause, size_t paylen);
+ struct sctp_chunk *sctp_make_abort(const struct sctp_association *asoc,
+ 				   const struct sctp_chunk *chunk,
+ 				   const size_t hint);
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index db93eabd6ef500ab20be6e091ee06bd3b60923c9..e518eb64ccf3578f7892da050c160a56cf3cc833 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -158,8 +158,8 @@ static const struct sctp_paramhdr prsctp_param = {
+  * provided chunk, as most cause codes will be embedded inside an
+  * abort chunk.
+  */
+-void sctp_init_cause(struct sctp_chunk *chunk, __be16 cause_code,
+-		     size_t paylen)
++int sctp_init_cause(struct sctp_chunk *chunk, __be16 cause_code,
++		    size_t paylen)
+ {
+ 	struct sctp_errhdr err;
+ 	__u16 len;
+@@ -167,8 +167,14 @@ void sctp_init_cause(struct sctp_chunk *chunk, __be16 cause_code,
+ 	/* Cause code constants are now defined in network order.  */
+ 	err.cause = cause_code;
+ 	len = sizeof(err) + paylen;
+-	err.length  = htons(len);
++	err.length = htons(len);
 +
-+		if (!transport->pathmtu && asoc && asoc->pathmtu)
-+			transport->pathmtu = asoc->pathmtu;
-+		if (transport->pathmtu)
-+			return;
-+	}
++	if (skb_tailroom(chunk->skb) < len)
++		return -ENOSPC;
 +
- 	if (transport->dst)
- 		transport->pathmtu = sctp_dst_mtu(transport->dst);
- 	else
-@@ -290,6 +299,7 @@ void sctp_transport_route(struct sctp_transport *transport,
- 	struct sctp_association *asoc = transport->asoc;
- 	struct sctp_af *af = transport->af_specific;
- 
-+	sctp_transport_dst_release(transport);
- 	af->get_dst(transport, saddr, &transport->fl, sctp_opt2sk(opt));
- 
- 	if (saddr)
-@@ -297,25 +307,14 @@ void sctp_transport_route(struct sctp_transport *transport,
- 	else
- 		af->get_saddr(opt, transport, &transport->fl);
- 
--	if ((transport->param_flags & SPP_PMTUD_DISABLE) && transport->pathmtu) {
--		return;
--	}
--	if (transport->dst) {
--		transport->pathmtu = SCTP_TRUNC4(dst_mtu(transport->dst));
-+	sctp_transport_pmtu(transport, sctp_opt2sk(opt));
- 
--		/* Initialize sk->sk_rcv_saddr, if the transport is the
--		 * association's active path for getsockname().
--		 */
--		if (asoc && (!asoc->peer.primary_path ||
--			     (transport = asoc->peer.active_path)))
--			opt->pf->to_sk_saddr(&transport->saddr,
--					     asoc->base.sk);
--	} else if ((transport->param_flags & SPP_PMTUD_DISABLE) &&
--		   asoc && asoc->pathmtu) {
--		transport->pathmtu = asoc->pathmtu;
--	} else {
--		transport->pathmtu = SCTP_DEFAULT_MAXSEGMENT;
--	}
-+	/* Initialize sk->sk_rcv_saddr, if the transport is the
-+	 * association's active path for getsockname().
-+	 */
-+	if (transport->dst && asoc &&
-+	    (!asoc->peer.primary_path || transport = asoc->peer.active_path))
-+		opt->pf->to_sk_saddr(&transport->saddr, asoc->base.sk);
+ 	chunk->subh.err_hdr = sctp_addto_chunk(chunk, sizeof(err), &err);
++
++	return 0;
  }
  
- /* Hold a reference to a transport.  */
+ /* A helper to initialize an op error inside a
 -- 
 2.14.3
 
