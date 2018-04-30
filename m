@@ -1,127 +1,446 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 26 Apr 2018 19:58:54 +0000
-Subject: [PATCH net-next 05/13] sctp: introduce sctp_mtu_payload
-Message-Id: <54cf97d9fb948489ca0dedb5087cc2a0c9233c72.1524772453.git.marcelo.leitner@gmail.com>
+From: syzbot <syzbot+deec965c578bb9b81613@syzkaller.appspotmail.com>
+Date: Mon, 30 Apr 2018 18:05:02 +0000
+Subject: INFO: rcu detected stall in kmem_cache_alloc_node_trace
+Message-Id: <00000000000060115b056b14b1fb@google.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1524772453.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1524772453.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
 
-When given a MTU, this function calculates how much payload we can carry
-on it. Without a MTU, it calculates the amount of header overhead we
-have.
+Hello,
 
-So that when we have extra overhead, like the one added for IP options
-on SELinux patches, it is easier to handle it.
+syzbot found the following crash on:
 
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+HEAD commit:    17dec0a94915 Merge branch 'userns-linus' of =20
+git://git.kerne...
+git tree:       net-next
+console output: https://syzkaller.appspot.com/x/log.txt?id`93051722203136
+kernel config:  =20
+https://syzkaller.appspot.com/x/.config?id=3D-2735707888269579554
+dashboard link: https://syzkaller.appspot.com/bug?extid=DEec965c578bb9b81613
+compiler:       gcc (GCC) 8.0.1 20180301 (experimental)
+
+Unfortunately, I don't have any reproducer for this crash yet.
+
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+deec965c578bb9b81613@syzkaller.appspotmail.com
+
+sctp: [Deprecated]: syz-executor3 (pid 10218) Use of int in max_burst =20
+socket option.
+Use struct sctp_assoc_value instead
+sctp: [Deprecated]: syz-executor3 (pid 10218) Use of int in max_burst =20
+socket option.
+Use struct sctp_assoc_value instead
+random: crng init done
+INFO: rcu_sched self-detected stall on CPU
+	0-....: (120712 ticks this GP) idle=AC6/1/4611686018427387908 =20
+softirq1693/31693 fqs1173
+	 (t=125001 jiffies g=17039 c=17038 q03419)
+NMI backtrace for cpu 0
+CPU: 0 PID: 10218 Comm: syz-executor3 Not tainted 4.16.0+ #1
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS =20
+Google 01/01/2011
+Call Trace:
+  <IRQ>
+  __dump_stack lib/dump_stack.c:17 [inline]
+  dump_stack+0x1b9/0x29f lib/dump_stack.c:53
+  nmi_cpu_backtrace.cold.4+0x19/0xce lib/nmi_backtrace.c:103
+  nmi_trigger_cpumask_backtrace+0x151/0x192 lib/nmi_backtrace.c:62
+  arch_trigger_cpumask_backtrace+0x14/0x20 arch/x86/kernel/apic/hw_nmi.c:38
+  trigger_single_cpu_backtrace include/linux/nmi.h:156 [inline]
+  rcu_dump_cpu_stacks+0x175/0x1c2 kernel/rcu/tree.c:1376
+  print_cpu_stall kernel/rcu/tree.c:1525 [inline]
+  check_cpu_stall.isra.61.cold.80+0x36c/0x59a kernel/rcu/tree.c:1593
+  __rcu_pending kernel/rcu/tree.c:3356 [inline]
+  rcu_pending kernel/rcu/tree.c:3401 [inline]
+  rcu_check_callbacks+0x21b/0xad0 kernel/rcu/tree.c:2763
+  update_process_times+0x2d/0x70 kernel/time/timer.c:1636
+  tick_sched_handle+0xa0/0x180 kernel/time/tick-sched.c:162
+  tick_sched_timer+0x42/0x130 kernel/time/tick-sched.c:1170
+  __run_hrtimer kernel/time/hrtimer.c:1349 [inline]
+  __hrtimer_run_queues+0x3e3/0x10a0 kernel/time/hrtimer.c:1411
+  hrtimer_interrupt+0x2f3/0x750 kernel/time/hrtimer.c:1469
+  local_apic_timer_interrupt arch/x86/kernel/apic/apic.c:1025 [inline]
+  smp_apic_timer_interrupt+0x15d/0x710 arch/x86/kernel/apic/apic.c:1050
+  apic_timer_interrupt+0xf/0x20 arch/x86/entry/entry_64.S:862
+RIP: 0010:arch_local_irq_restore arch/x86/include/asm/paravirt.h:783 =20
+[inline]
+RIP: 0010:lock_is_held_type+0x18b/0x210 kernel/locking/lockdep.c:3960
+RSP: 0018:ffff8801db006400 EFLAGS: 00000282 ORIG_RAX: ffffffffffffff12
+RAX: dffffc0000000000 RBX: 0000000000000282 RCX: 0000000000000000
+RDX: 1ffffffff1162e55 RSI: ffffffff88b90c60 RDI: 0000000000000282
+RBP: ffff8801db006420 R08: ffffed003b6046c3 R09: ffffed003b6046c2
+R10: ffffed003b6046c2 R11: ffff8801db023613 R12: ffff8801b2f623c0
+R13: 0000000000000000 R14: ffff88009932bb00 R15: 00000000ffffffff
+  lock_is_held include/linux/lockdep.h:344 [inline]
+  rcu_read_lock_sched_held+0x108/0x120 kernel/rcu/update.c:117
+  trace_kmalloc_node include/trace/events/kmem.h:100 [inline]
+  kmem_cache_alloc_node_trace+0x34e/0x770 mm/slab.c:3652
+  __do_kmalloc_node mm/slab.c:3669 [inline]
+  __kmalloc_node_track_caller+0x33/0x70 mm/slab.c:3684
+  __kmalloc_reserve.isra.38+0x3a/0xe0 net/core/skbuff.c:137
+  __alloc_skb+0x14d/0x780 net/core/skbuff.c:205
+  alloc_skb include/linux/skbuff.h:987 [inline]
+  sctp_packet_transmit+0x45e/0x3ba0 net/sctp/output.c:585
+  sctp_outq_flush+0x1373/0x4370 net/sctp/outqueue.c:1197
+  sctp_outq_uncork+0x6a/0x80 net/sctp/outqueue.c:776
+  sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1820 [inline]
+  sctp_side_effects net/sctp/sm_sideeffect.c:1220 [inline]
+  sctp_do_sm+0x596/0x7160 net/sctp/sm_sideeffect.c:1191
+  sctp_generate_heartbeat_event+0x218/0x450 net/sctp/sm_sideeffect.c:406
+  call_timer_fn+0x230/0x940 kernel/time/timer.c:1326
+  expire_timers kernel/time/timer.c:1363 [inline]
+  __run_timers+0x79e/0xc50 kernel/time/timer.c:1666
+  run_timer_softirq+0x4c/0x70 kernel/time/timer.c:1692
+  __do_softirq+0x2e0/0xaf5 kernel/softirq.c:285
+  invoke_softirq kernel/softirq.c:365 [inline]
+  irq_exit+0x1d1/0x200 kernel/softirq.c:405
+  exiting_irq arch/x86/include/asm/apic.h:525 [inline]
+  smp_apic_timer_interrupt+0x17e/0x710 arch/x86/kernel/apic/apic.c:1052
+  apic_timer_interrupt+0xf/0x20 arch/x86/entry/entry_64.S:862
+  </IRQ>
+RIP: 0010:arch_local_irq_restore arch/x86/include/asm/paravirt.h:783 =20
+[inline]
+RIP: 0010:console_unlock+0xcdf/0x1100 kernel/printk/printk.c:2403
+RSP: 0018:ffff8801946eec00 EFLAGS: 00000212 ORIG_RAX: ffffffffffffff12
+RAX: 0000000000040000 RBX: 0000000000000200 RCX: ffffc90002ee8000
+RDX: 0000000000004461 RSI: ffffffff815f3446 RDI: 0000000000000212
+RBP: ffff8801946eed68 R08: ffff8801b2f62c38 R09: 0000000000000006
+R10: ffff8801b2f623c0 R11: 0000000000000000 R12: 0000000000000000
+R13: ffffffff84b84430 R14: 0000000000000001 R15: dffffc0000000000
+  vprintk_emit+0x6ad/0xdd0 kernel/printk/printk.c:1907
+  vprintk_default+0x28/0x30 kernel/printk/printk.c:1947
+  vprintk_func+0x7a/0xe7 kernel/printk/printk_safe.c:379
+  printk+0x9e/0xba kernel/printk/printk.c:1980
+  sctp_getsockopt_maxburst net/sctp/socket.c:6265 [inline]
+  sctp_getsockopt.cold.34+0x11d/0x14c net/sctp/socket.c:7240
+  sock_common_getsockopt+0x9a/0xe0 net/core/sock.c:2998
+  __sys_getsockopt+0x1a5/0x370 net/socket.c:1940
+  SYSC_getsockopt net/socket.c:1951 [inline]
+  SyS_getsockopt+0x34/0x50 net/socket.c:1948
+  do_syscall_64+0x29e/0x9d0 arch/x86/entry/common.c:287
+  entry_SYSCALL_64_after_hwframe+0x42/0xb7
+RIP: 0033:0x455279
+RSP: 002b:00007f5c0c0f2c68 EFLAGS: 00000246 ORIG_RAX: 0000000000000037
+RAX: ffffffffffffffda RBX: 00007f5c0c0f36d4 RCX: 0000000000455279
+RDX: 0000000000000014 RSI: 0000000000000084 RDI: 0000000000000014
+RBP: 000000000072bea0 R08: 0000000020000240 R09: 0000000000000000
+R10: 0000000020000140 R11: 0000000000000246 R12: 00000000ffffffff
+R13: 000000000000012b R14: 00000000006f4ca8 R15: 0000000000000000
+INFO: rcu_sched detected stalls on CPUs/tasks:
+	0-....: (120712 ticks this GP) idle=AC6/1/4611686018427387908 =20
+softirq1693/31693 fqs1173
+	(detected by 1, t=125002 jiffies, g=17039, c=17038, q03419)
+Sending NMI from CPU 1 to CPUs 0:
+NMI backtrace for cpu 0
+CPU: 0 PID: 10218 Comm: syz-executor3 Not tainted 4.16.0+ #1
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS =20
+Google 01/01/2011
+RIP: 0010:__lock_acquire+0xa78/0x5130 kernel/locking/lockdep.c:3434
+RSP: 0018:ffff8801db005b40 EFLAGS: 00000046
+RAX: dffffc0000000000 RBX: 00000000858813a6 RCX: 0000000000000001
+RDX: 1ffff100365ec585 RSI: ffff8801b2f62c38 RDI: ffff8801b2f62cf9
+RBP: ffff8801db005ed0 R08: 0000000000000008 R09: 0000000000000004
+R10: ffff8801b2f62cd8 R11: ffff8801b2f623c0 R12: 00000000be6c7baf
+R13: 0000000000000000 R14: 2ca977e0cccfd81f R15: 0000000000000000
+FS:  00007f5c0c0f3700(0000) GS:ffff8801db000000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007ffe57df8fa8 CR3: 00000001d7124000 CR4: 00000000001406f0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+Call Trace:
+  <IRQ>
+  lock_acquire+0x1dc/0x520 kernel/locking/lockdep.c:3920
+  rcu_lock_acquire include/linux/rcupdate.h:246 [inline]
+  rcu_read_lock include/linux/rcupdate.h:632 [inline]
+  is_bpf_text_address+0x3b/0x170 kernel/bpf/core.c:478
+  kernel_text_address+0x79/0xf0 kernel/extable.c:152
+  __kernel_text_address+0xd/0x40 kernel/extable.c:107
+  unwind_get_return_address+0x61/0xa0 arch/x86/kernel/unwind_frame.c:18
+  __save_stack_trace+0x7e/0xd0 arch/x86/kernel/stacktrace.c:45
+  save_stack_trace+0x1a/0x20 arch/x86/kernel/stacktrace.c:60
+  save_stack+0x43/0xd0 mm/kasan/kasan.c:447
+  set_track mm/kasan/kasan.c:459 [inline]
+  __kasan_slab_free+0x11a/0x170 mm/kasan/kasan.c:520
+  kasan_slab_free+0xe/0x10 mm/kasan/kasan.c:527
+  __cache_free mm/slab.c:3486 [inline]
+  kmem_cache_free+0x86/0x2d0 mm/slab.c:3744
+  kfree_skbmem+0x13c/0x210 net/core/skbuff.c:582
+  __kfree_skb net/core/skbuff.c:642 [inline]
+  consume_skb+0x193/0x550 net/core/skbuff.c:701
+  sctp_chunk_destroy net/sctp/sm_make_chunk.c:1477 [inline]
+  sctp_chunk_put+0x2c0/0x440 net/sctp/sm_make_chunk.c:1504
+  sctp_chunk_free+0x53/0x60 net/sctp/sm_make_chunk.c:1491
+  sctp_packet_pack net/sctp/output.c:489 [inline]
+  sctp_packet_transmit+0x142e/0x3ba0 net/sctp/output.c:610
+  sctp_outq_flush+0x1373/0x4370 net/sctp/outqueue.c:1197
+  sctp_outq_uncork+0x6a/0x80 net/sctp/outqueue.c:776
+  sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1820 [inline]
+  sctp_side_effects net/sctp/sm_sideeffect.c:1220 [inline]
+  sctp_do_sm+0x596/0x7160 net/sctp/sm_sideeffect.c:1191
+  sctp_generate_heartbeat_event+0x218/0x450 net/sctp/sm_sideeffect.c:406
+  call_timer_fn+0x230/0x940 kernel/time/timer.c:1326
+  expire_timers kernel/time/timer.c:1363 [inline]
+  __run_timers+0x79e/0xc50 kernel/time/timer.c:1666
+  run_timer_softirq+0x4c/0x70 kernel/time/timer.c:1692
+  __do_softirq+0x2e0/0xaf5 kernel/softirq.c:285
+  invoke_softirq kernel/softirq.c:365 [inline]
+  irq_exit+0x1d1/0x200 kernel/softirq.c:405
+  exiting_irq arch/x86/include/asm/apic.h:525 [inline]
+  smp_apic_timer_interrupt+0x17e/0x710 arch/x86/kernel/apic/apic.c:1052
+  apic_timer_interrupt+0xf/0x20 arch/x86/entry/entry_64.S:862
+  </IRQ>
+RIP: 0010:arch_local_irq_restore arch/x86/include/asm/paravirt.h:783 =20
+[inline]
+RIP: 0010:console_unlock+0xcdf/0x1100 kernel/printk/printk.c:2403
+RSP: 0018:ffff8801946eec00 EFLAGS: 00000212 ORIG_RAX: ffffffffffffff12
+RAX: 0000000000040000 RBX: 0000000000000200 RCX: ffffc90002ee8000
+RDX: 0000000000004461 RSI: ffffffff815f3446 RDI: 0000000000000212
+RBP: ffff8801946eed68 R08: ffff8801b2f62c38 R09: 0000000000000006
+R10: ffff8801b2f623c0 R11: 0000000000000000 R12: 0000000000000000
+R13: ffffffff84b84430 R14: 0000000000000001 R15: dffffc0000000000
+  vprintk_emit+0x6ad/0xdd0 kernel/printk/printk.c:1907
+  vprintk_default+0x28/0x30 kernel/printk/printk.c:1947
+  vprintk_func+0x7a/0xe7 kernel/printk/printk_safe.c:379
+  printk+0x9e/0xba kernel/printk/printk.c:1980
+  sctp_getsockopt_maxburst net/sctp/socket.c:6265 [inline]
+  sctp_getsockopt.cold.34+0x11d/0x14c net/sctp/socket.c:7240
+  sock_common_getsockopt+0x9a/0xe0 net/core/sock.c:2998
+  __sys_getsockopt+0x1a5/0x370 net/socket.c:1940
+  SYSC_getsockopt net/socket.c:1951 [inline]
+  SyS_getsockopt+0x34/0x50 net/socket.c:1948
+  do_syscall_64+0x29e/0x9d0 arch/x86/entry/common.c:287
+  entry_SYSCALL_64_after_hwframe+0x42/0xb7
+RIP: 0033:0x455279
+RSP: 002b:00007f5c0c0f2c68 EFLAGS: 00000246 ORIG_RAX: 0000000000000037
+RAX: ffffffffffffffda RBX: 00007f5c0c0f36d4 RCX: 0000000000455279
+RDX: 0000000000000014 RSI: 0000000000000084 RDI: 0000000000000014
+RBP: 000000000072bea0 R08: 0000000020000240 R09: 0000000000000000
+R10: 0000000020000140 R11: 0000000000000246 R12: 00000000ffffffff
+R13: 000000000000012b R14: 00000000006f4ca8 R15: 0000000000000000
+Code: 0f 85 dc 32 00 00 8b 0d b7 9e 8b 07 85 c9 0f 84 62 f7 ff ff 48 b8 00 =
+=20
+00 00 00 00 fc ff df 48 8b 54 24 78 48 c1 ea 03 80 3c 02 00 <0f> 85 0b 31  =
+
+00 00 48 8b 94 24 88 00 00 00 4d 89 b3 68 08 00 00
+INFO: NMI handler (nmi_cpu_backtrace_handler) took too long to run: 3.007  =
+
+msecs
+INFO: task kworker/u4:4:688 blocked for more than 120 seconds.
+       Not tainted 4.16.0+ #1
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+kworker/u4:4    D19560   688      2 0x80000000
+Workqueue: events_unbound fsnotify_mark_destroy_workfn
+Call Trace:
+  context_switch kernel/sched/core.c:2848 [inline]
+  __schedule+0x807/0x1e40 kernel/sched/core.c:3490
+  schedule+0xef/0x430 kernel/sched/core.c:3549
+  schedule_timeout+0x1b5/0x240 kernel/time/timer.c:1777
+  do_wait_for_common kernel/sched/completion.c:83 [inline]
+  __wait_for_common kernel/sched/completion.c:104 [inline]
+  wait_for_common kernel/sched/completion.c:115 [inline]
+  wait_for_completion+0x3e7/0x870 kernel/sched/completion.c:136
+  __synchronize_srcu+0x189/0x240 kernel/rcu/srcutree.c:924
+  synchronize_srcu+0x408/0x54f kernel/rcu/srcutree.c:1002
+  fsnotify_mark_destroy_workfn+0x1aa/0x530 fs/notify/mark.c:759
+  process_one_work+0xc1e/0x1b50 kernel/workqueue.c:2145
+  worker_thread+0x1cc/0x1440 kernel/workqueue.c:2279
+  kthread+0x345/0x410 kernel/kthread.c:238
+  ret_from_fork+0x3a/0x50 arch/x86/entry/entry_64.S:411
+
+Showing all locks held in the system:
+2 locks held by kworker/u4:4/688:
+  #0: 000000007b6e92d0 ((wq_completion)"events_unbound"){+.+.}, at: =20
+__write_once_size include/linux/compiler.h:215 [inline]
+  #0: 000000007b6e92d0 ((wq_completion)"events_unbound"){+.+.}, at: =20
+arch_atomic64_set arch/x86/include/asm/atomic64_64.h:34 [inline]
+  #0: 000000007b6e92d0 ((wq_completion)"events_unbound"){+.+.}, at: =20
+atomic64_set include/asm-generic/atomic-instrumented.h:40 [inline]
+  #0: 000000007b6e92d0 ((wq_completion)"events_unbound"){+.+.}, at: =20
+atomic_long_set include/asm-generic/atomic-long.h:57 [inline]
+  #0: 000000007b6e92d0 ((wq_completion)"events_unbound"){+.+.}, at: =20
+set_work_data kernel/workqueue.c:617 [inline]
+  #0: 000000007b6e92d0 ((wq_completion)"events_unbound"){+.+.}, at: =20
+set_work_pool_and_clear_pending kernel/workqueue.c:644 [inline]
+  #0: 000000007b6e92d0 ((wq_completion)"events_unbound"){+.+.}, at: =20
+process_one_work+0xaef/0x1b50 kernel/workqueue.c:2116
+  #1: 000000004c7e11cf ((reaper_work).work){+.+.}, at: =20
+process_one_work+0xb46/0x1b50 kernel/workqueue.c:2120
+2 locks held by khungtaskd/878:
+  #0: 000000001cc267e2 (rcu_read_lock){....}, at: =20
+check_hung_uninterruptible_tasks kernel/hung_task.c:175 [inline]
+  #0: 000000001cc267e2 (rcu_read_lock){....}, at: watchdog+0x1ff/0xf60 =20
+kernel/hung_task.c:249
+  #1: 000000002f71223f (tasklist_lock){.+.+}, at: =20
+debug_show_all_locks+0xde/0x34a kernel/locking/lockdep.c:4470
+2 locks held by kworker/1:2/1980:
+  #0: 00000000dc6681fd ((wq_completion)"events"){+.+.}, at: =20
+__write_once_size include/linux/compiler.h:215 [inline]
+  #0: 00000000dc6681fd ((wq_completion)"events"){+.+.}, at: =20
+arch_atomic64_set arch/x86/include/asm/atomic64_64.h:34 [inline]
+  #0: 00000000dc6681fd ((wq_completion)"events"){+.+.}, at: atomic64_set =20
+include/asm-generic/atomic-instrumented.h:40 [inline]
+  #0: 00000000dc6681fd ((wq_completion)"events"){+.+.}, at: atomic_long_set=
+ =20
+include/asm-generic/atomic-long.h:57 [inline]
+  #0: 00000000dc6681fd ((wq_completion)"events"){+.+.}, at: set_work_data  =
+
+kernel/workqueue.c:617 [inline]
+  #0: 00000000dc6681fd ((wq_completion)"events"){+.+.}, at: =20
+set_work_pool_and_clear_pending kernel/workqueue.c:644 [inline]
+  #0: 00000000dc6681fd ((wq_completion)"events"){+.+.}, at: =20
+process_one_work+0xaef/0x1b50 kernel/workqueue.c:2116
+  #1: 000000008e69c2e7 (xfrm_state_gc_work){+.+.}, at: =20
+process_one_work+0xb46/0x1b50 kernel/workqueue.c:2120
+1 lock held by rsyslogd/4365:
+  #0: 00000000ef321630 (&f->f_pos_lock){+.+.}, at: __fdget_pos+0x1a9/0x1e0 =
+=20
+fs/file.c:766
+2 locks held by getty/4456:
+  #0: 0000000044e43f49 (&tty->ldisc_sem){++++}, at: =20
+ldsem_down_read+0x37/0x40 drivers/tty/tty_ldsem.c:365
+  #1: 0000000093b079e0 (&ldata->atomic_read_lock){+.+.}, at: =20
+n_tty_read+0x321/0x1cc0 drivers/tty/n_tty.c:2131
+2 locks held by getty/4457:
+  #0: 000000005b25b55f (&tty->ldisc_sem){++++}, at: =20
+ldsem_down_read+0x37/0x40 drivers/tty/tty_ldsem.c:365
+  #1: 0000000099955ee5 (&ldata->atomic_read_lock){+.+.}, at: =20
+n_tty_read+0x321/0x1cc0 drivers/tty/n_tty.c:2131
+2 locks held by getty/4458:
+  #0: 0000000050f5738d (&tty->ldisc_sem){++++}, at: =20
+ldsem_down_read+0x37/0x40 drivers/tty/tty_ldsem.c:365
+  #1: 00000000cccc0402 (&ldata->atomic_read_lock){+.+.}, at: =20
+n_tty_read+0x321/0x1cc0 drivers/tty/n_tty.c:2131
+2 locks held by getty/4459:
+  #0: 00000000ddecfb5c (&tty->ldisc_sem){++++}, at: =20
+ldsem_down_read+0x37/0x40 drivers/tty/tty_ldsem.c:365
+  #1: 000000003c071f3a (&ldata->atomic_read_lock){+.+.}, at: =20
+n_tty_read+0x321/0x1cc0 drivers/tty/n_tty.c:2131
+2 locks held by getty/4460:
+  #0: 000000003bec706e (&tty->ldisc_sem){++++}, at: =20
+ldsem_down_read+0x37/0x40 drivers/tty/tty_ldsem.c:365
+  #1: 00000000dd28453c (&ldata->atomic_read_lock){+.+.}, at: =20
+n_tty_read+0x321/0x1cc0 drivers/tty/n_tty.c:2131
+2 locks held by getty/4461:
+  #0: 00000000313fc55a (&tty->ldisc_sem){++++}, at: =20
+ldsem_down_read+0x37/0x40 drivers/tty/tty_ldsem.c:365
+  #1: 00000000e9766156 (&ldata->atomic_read_lock){+.+.}, at: =20
+n_tty_read+0x321/0x1cc0 drivers/tty/n_tty.c:2131
+2 locks held by getty/4462:
+  #0: 000000003212bb13 (&tty->ldisc_sem){++++}, at: =20
+ldsem_down_read+0x37/0x40 drivers/tty/tty_ldsem.c:365
+  #1: 0000000065fa2f73 (&ldata->atomic_read_lock){+.+.}, at: =20
+n_tty_read+0x321/0x1cc0 drivers/tty/n_tty.c:2131
+
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+NMI backtrace for cpu 1
+CPU: 1 PID: 878 Comm: khungtaskd Not tainted 4.16.0+ #1
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS =20
+Google 01/01/2011
+Call Trace:
+  __dump_stack lib/dump_stack.c:17 [inline]
+  dump_stack+0x1b9/0x29f lib/dump_stack.c:53
+  nmi_cpu_backtrace.cold.4+0x19/0xce lib/nmi_backtrace.c:103
+  nmi_trigger_cpumask_backtrace+0x151/0x192 lib/nmi_backtrace.c:62
+  arch_trigger_cpumask_backtrace+0x14/0x20 arch/x86/kernel/apic/hw_nmi.c:38
+  trigger_all_cpu_backtrace include/linux/nmi.h:138 [inline]
+  check_hung_task kernel/hung_task.c:132 [inline]
+  check_hung_uninterruptible_tasks kernel/hung_task.c:190 [inline]
+  watchdog+0xc10/0xf60 kernel/hung_task.c:249
+  kthread+0x345/0x410 kernel/kthread.c:238
+  ret_from_fork+0x3a/0x50 arch/x86/entry/entry_64.S:411
+Sending NMI from CPU 1 to CPUs 0:
+NMI backtrace for cpu 0
+CPU: 0 PID: 10218 Comm: syz-executor3 Not tainted 4.16.0+ #1
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS =20
+Google 01/01/2011
+RIP: 0010:debug_lockdep_rcu_enabled.part.1+0xb/0x60 kernel/rcu/update.c:298
+RSP: 0018:ffff8801db0062e8 EFLAGS: 00000202
+RAX: dffffc0000000000 RBX: 1ffff1003b600c61 RCX: ffffffff86583d15
+RDX: 0000000000000004 RSI: ffffffff86583d65 RDI: ffffffff88e6cc40
+RBP: ffff8801db0062f8 R08: ffff8801b2f623c0 R09: ffffed003b6046c2
+R10: ffffed003b6046c2 R11: ffff8801db023613 R12: ffff8801c3d740c0
+R13: 0000000000000001 R14: 0000000000010000 R15: ffff88019cc0a900
+FS:  00007f5c0c0f3700(0000) GS:ffff8801db000000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007ffe57df8fa8 CR3: 00000001d7124000 CR4: 00000000001406f0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+Call Trace:
+  <IRQ>
+  rcu_read_unlock include/linux/rcupdate.h:684 [inline]
+  ip6_mtu+0x36a/0x590 net/ipv6/route.c:2420
+  dst_mtu include/net/dst.h:210 [inline]
+  ip6_xmit+0xb42/0x23f0 net/ipv6/ip6_output.c:262
+  sctp_v6_xmit+0x4a5/0x6b0 net/sctp/ipv6.c:225
+  sctp_packet_transmit+0x26f6/0x3ba0 net/sctp/output.c:642
+  sctp_outq_flush+0x1373/0x4370 net/sctp/outqueue.c:1197
+  sctp_outq_uncork+0x6a/0x80 net/sctp/outqueue.c:776
+  sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1820 [inline]
+  sctp_side_effects net/sctp/sm_sideeffect.c:1220 [inline]
+  sctp_do_sm+0x596/0x7160 net/sctp/sm_sideeffect.c:1191
+  sctp_generate_heartbeat_event+0x218/0x450 net/sctp/sm_sideeffect.c:406
+  call_timer_fn+0x230/0x940 kernel/time/timer.c:1326
+  expire_timers kernel/time/timer.c:1363 [inline]
+  __run_timers+0x79e/0xc50 kernel/time/timer.c:1666
+  run_timer_softirq+0x4c/0x70 kernel/time/timer.c:1692
+  __do_softirq+0x2e0/0xaf5 kernel/softirq.c:285
+  invoke_softirq kernel/softirq.c:365 [inline]
+  irq_exit+0x1d1/0x200 kernel/softirq.c:405
+  exiting_irq arch/x86/include/asm/apic.h:525 [inline]
+  smp_apic_timer_interrupt+0x17e/0x710 arch/x86/kernel/apic/apic.c:1052
+  apic_timer_interrupt+0xf/0x20 arch/x86/entry/entry_64.S:862
+  </IRQ>
+RIP: 0010:arch_local_irq_restore arch/x86/include/asm/paravirt.h:783 =20
+[inline]
+RIP: 0010:console_unlock+0xcdf/0x1100 kernel/printk/printk.c:2403
+RSP: 0018:ffff8801946eec00 EFLAGS: 00000212 ORIG_RAX: ffffffffffffff12
+RAX: 0000000000040000 RBX: 0000000000000200 RCX: ffffc90002ee8000
+RDX: 0000000000004461 RSI: ffffffff815f3446 RDI: 0000000000000212
+RBP: ffff8801946eed68 R08: ffff8801b2f62c38 R09: 0000000000000006
+R10: ffff8801b2f623c0 R11: 0000000000000000 R12: 0000000000000000
+R13: ffffffff84b84430 R14: 0000000000000001 R15: dffffc0000000000
+  vprintk_emit+0x6ad/0xdd0 kernel/printk/printk.c:1907
+  vprintk_default+0x28/0x30 kernel/printk/printk.c:1947
+  vprintk_func+0x7a/0xe7 kernel/printk/printk_safe.c:379
+  printk+0x9e/0xba kernel/printk/printk.c:1980
+  sctp_getsockopt_maxburst net/sctp/socket.c:6265 [inline]
+  sctp_getsockopt.cold.34+0x11d/0x14c net/sctp/socket.c:7240
+  sock_common_getsockopt+0x9a/0xe0 net/core/sock.c:2998
+  __sys_getsockopt+0x1a5/0x370 net/socket.c:1940
+  SYSC_getsockopt net/socket.c:1951 [inline]
+  SyS_getsockopt+0x34/0x50 net/socket.c:1948
+  do_syscall_64+0x29e/0x9d0 arch/x86/entry/common.c:287
+  entry_SYSCALL_64_after_hwframe+0x42/0xb7
+RIP: 0033:0x455279
+RSP: 002b:00007f5c0c0f2c68 EFLAGS: 00000246 ORIG_RAX: 0000000000000037
+RAX: ffffffffffffffda RBX: 00007f5c0c0f36d4 RCX: 0000000000455279
+RDX: 0000000000000014 RSI: 0000000000000084 RDI: 0000000000000014
+RBP: 000000000072bea0 R08: 0000000020000240 R09: 0000000000000000
+R10: 0000000020000140 R11: 0000000000000246 R12: 00000000ffffffff
+R13: 000000000000012b R14: 00000000006f4ca8 R15: 0000000000000000
+Code: e9 c3 fd ff ff 48 8b 7d c8 e8 52 6c 50 00 e9 9c fd ff ff 0f 1f 00 66 =
+=20
+2e 0f 1f 84 00 00 00 00 00 48 b8 00 00 00 00 00 fc ff df 55 <48> 89 e5 53  =
+
+65 48 8b 1c 25 c0 ed 01 00 48 8d bb 74 08 00 00 48
+
+
 ---
- include/net/sctp/sctp.h | 19 +++++++++++++++++++
- net/sctp/output.c       | 25 ++++++++++---------------
- net/sctp/socket.c       |  7 ++-----
- 3 files changed, 31 insertions(+), 20 deletions(-)
+This bug is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index 28b996d6349072fb031de91e10115b688d89b42d..0b98e4683f108670c65a0a7aceaf9a736d54bf29 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -607,6 +607,25 @@ static inline struct dst_entry *sctp_transport_dst_check(struct sctp_transport *
- 	return t->dst;
- }
- 
-+/* Calculate max payload size given a MTU, or the total overhead if
-+ * given MTU is zero
-+ */
-+static inline __u32 sctp_mtu_payload(const struct sctp_sock *sp,
-+				     __u32 mtu, __u32 extra)
-+{
-+	__u32 overhead = sizeof(struct sctphdr) + extra;
-+
-+	if (sp)
-+		overhead += sp->pf->af->net_header_len;
-+	else
-+		overhead += sizeof(struct ipv6hdr);
-+
-+	if (WARN_ON_ONCE(mtu && mtu <= overhead))
-+		mtu = overhead;
-+
-+	return mtu ? mtu - overhead : overhead;
-+}
-+
- static inline bool sctp_transport_pmtu_check(struct sctp_transport *t)
- {
- 	__u32 pmtu = max_t(size_t, SCTP_TRUNC4(dst_mtu(t->dst)),
-diff --git a/net/sctp/output.c b/net/sctp/output.c
-index 690d8557bb7bfe20a0a209b6c937c85c764a3bd0..bf4226c3cc1de79f2041d55a68ea53f4fd600b25 100644
---- a/net/sctp/output.c
-+++ b/net/sctp/output.c
-@@ -90,8 +90,8 @@ void sctp_packet_config(struct sctp_packet *packet, __u32 vtag,
- {
- 	struct sctp_transport *tp = packet->transport;
- 	struct sctp_association *asoc = tp->asoc;
-+	struct sctp_sock *sp = NULL;
- 	struct sock *sk;
--	size_t overhead = sizeof(struct ipv6hdr) + sizeof(struct sctphdr);
- 
- 	pr_debug("%s: packet:%p vtag:0x%x\n", __func__, packet, vtag);
- 	packet->vtag = vtag;
-@@ -102,25 +102,20 @@ void sctp_packet_config(struct sctp_packet *packet, __u32 vtag,
- 
- 	/* set packet max_size with pathmtu, then calculate overhead */
- 	packet->max_size = tp->pathmtu;
-+
- 	if (asoc) {
--		struct sctp_sock *sp = sctp_sk(asoc->base.sk);
--		struct sctp_af *af = sp->pf->af;
--
--		overhead = af->net_header_len +
--			   af->ip_options_len(asoc->base.sk);
--		overhead += sizeof(struct sctphdr);
--		packet->overhead = overhead;
--		packet->size = overhead;
--	} else {
--		packet->overhead = overhead;
--		packet->size = overhead;
--		return;
-+		sk = asoc->base.sk;
-+		sp = sctp_sk(sk);
- 	}
-+	packet->overhead = sctp_mtu_payload(sp, 0, 0);
-+	packet->size = packet->overhead;
-+
-+	if (!asoc)
-+		return;
- 
- 	/* update dst or transport pathmtu if in need */
--	sk = asoc->base.sk;
- 	if (!sctp_transport_dst_check(tp)) {
--		sctp_transport_route(tp, NULL, sctp_sk(sk));
-+		sctp_transport_route(tp, NULL, sp);
- 		if (asoc->param_flags & SPP_PMTUD_ENABLE)
- 			sctp_assoc_sync_pmtu(asoc);
- 	} else if (!sctp_transport_pmtu_check(tp)) {
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index eeec81d5c485b86076f4e3a4f5dc01fc28fbb91b..b9d14f57146b8e551c28379e379158231fb40ae7 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3234,11 +3234,8 @@ static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned
- 	if (val) {
- 		int min_len, max_len;
- 
--		min_len = SCTP_DEFAULT_MINSEGMENT - af->net_header_len;
--		min_len -= af->ip_options_len(sk);
--		min_len -= sizeof(struct sctphdr) +
--			   sizeof(struct sctp_data_chunk);
--
-+		min_len = sctp_mtu_payload(sp, SCTP_DEFAULT_MINSEGMENT,
-+					   sizeof(struct sctp_data_chunk));
- 		max_len = SCTP_MAX_CHUNK_LEN - sizeof(struct sctp_data_chunk);
- 
- 		if (val < min_len || val > max_len)
--- 
-2.14.3
-
+syzbot will keep track of this bug report.
+If you forgot to add the Reported-by tag, once the fix for this bug is =20
+merged
+into any tree, please reply to this email with:
+#syz fix: exact-commit-title
+To mark this as a duplicate of another syzbot report, please reply with:
+#syz dup: exact-subject-of-another-report
+If it's a one-off invalid bug report, please reply with:
+#syz invalid
+Note: if the crash happens again, it will cause creation of a new bug =20
+report.
+Note: all commands must start from beginning of the line in the email body.
