@@ -1,25 +1,26 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 02 May 2018 13:36:03 +0000
-Subject: Re: non-blocking connect for kernel SCTP sockets
-Message-Id: <20180502133603.GC5105@localhost.localdomain>
+From: David Miller <davem@davemloft.net>
+Date: Tue, 01 May 2018 16:13:53 +0000
+Subject: Re: [PATCH net-next 0/2] sctp: unify sctp_make_op_error_fixed and sctp_make_op_error_space
+Message-Id: <20180501.121353.1918662858023133319.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180502090639.j55mnclmkzdts6xb@unicorn.suse.cz>
- <CADvbK_fT5qYmOKHgBf6KWyuRcDUT3Fa8DyMQkN75C8PFkPKLXw@mail.gmail.com>
- <20180502123227.x7yucbi4lejj55o5@unicorn.suse.cz>
-In-Reply-To: <20180502123227.x7yucbi4lejj55o5@unicorn.suse.cz>
+References: <cover.1525017179.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1525017179.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Michal Kubecek <mkubecek@suse.cz>
-Cc: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Gang He <ghe@suse.com>, GuoQing Jiang <gqjiang@suse.com>
+To: marcelo.leitner@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, lucien.xin@gmail.com
 
-On Wed, May 02, 2018 at 02:32:28PM +0200, Michal Kubecek wrote:
-> On Wed, May 02, 2018 at 05:46:23PM +0800, Xin Long wrote:
-...
-> > It is a bug, https://bugzilla.redhat.com/show_bug.cgi?id51530
->
-> Not authorized. :-)
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Sun, 29 Apr 2018 12:56:30 -0300
 
-Oups! I just made it public.
+> These two variants are very close to each other and can be merged
+> to avoid code duplication. That's what this patchset does.
+> 
+> First, we allow sctp_init_cause to return errors, which then allow us to
+> add sctp_make_op_error_limited that handles both situations.
 
-  Marcelo
+Series applied.
+
+But generally, there are a lot of smtp_init_cause() call sites with non-zero
+payload length that should start checking the return value now.
