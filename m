@@ -1,266 +1,366 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 05 May 2018 07:01:06 +0000
-Subject: Re: [PATCH net] sctp: delay the authentication for the duplicated cookie-echo chunk
-Message-Id: <CADvbK_dgQmkK8RR2kUJs5XtePdUmQKfrdYDrSMNmKjSeYSDEZg@mail.gmail.com>
+Date: Tue, 01 May 2018 10:24:07 +0000
+Subject: [PATCH lksctp-tools 1/3] lib: add the core functions for sctp_sendv and sctp_recvv
+Message-Id: <715ad5dd0aae4dda8b96a396ea8d57b07f9a3e82.1525170039.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <091d842812b99059231ff87e9bb7dff175336525.1525424710.git.lucien.xin@gmail.com>
- <20180504223337.GO5105@localhost.localdomain>
-In-Reply-To: <20180504223337.GO5105@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>
+To: linux-sctp@vger.kernel.org
 
-On Sat, May 5, 2018 at 6:33 AM, Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
-> On Fri, May 04, 2018 at 05:05:10PM +0800, Xin Long wrote:
->> Now sctp only delays the authentication for the normal cookie-echo
->> chunk by setting chunk->auth_chunk in sctp_endpoint_bh_rcv(). But
->> for the duplicated one with auth, in sctp_assoc_bh_rcv(), it does
->> authentication first based on the old asoc, which will definitely
->> fail due to the different auth info in the old asoc.
->>
->> The duplicated cookie-echo chunk will create a new asoc with the
->> auth info from this chunk, and the authentication should also be
->> done with the new asoc's auth info for all of the collision 'A',
->> 'B' and 'D'. Otherwise, the duplicated cookie-echo chunk with auth
->> will never pass the authentication and create the new connection.
->>
->> This issue exists since very beginning, and this fix is to make
->> sctp_assoc_bh_rcv() follow the way sctp_assoc_bh_rcv() does for
->    I guess you meant sctp_endpoint_bh_rcv here --^ right?
-have posted v2, thanks.
+This patch is to implement sctp_sendv and sctp_recvv defined in
+rfc6458#section-9.12 and 9.13. They provide an extensible way
+for users to send or receive messages from a SCTP socket.
 
->
-> Other than this LGTM
->
->> the normal cookie-echo chunk to delay the authentication.
->>
->> While at it, remove the unused params from sctp_sf_authenticate()
->> and define sctp_auth_chunk_verify() used for all the places that
->> do the delayed authentication.
->>
->> Signed-off-by: Xin Long <lucien.xin@gmail.com>
->> ---
->>  net/sctp/associola.c    | 30 ++++++++++++++++-
->>  net/sctp/sm_statefuns.c | 86 ++++++++++++++++++++++++++-----------------------
->>  2 files changed, 75 insertions(+), 41 deletions(-)
->>
->> diff --git a/net/sctp/associola.c b/net/sctp/associola.c
->> index 837806d..a47179d 100644
->> --- a/net/sctp/associola.c
->> +++ b/net/sctp/associola.c
->> @@ -1024,8 +1024,9 @@ static void sctp_assoc_bh_rcv(struct work_struct *work)
->>       struct sctp_endpoint *ep;
->>       struct sctp_chunk *chunk;
->>       struct sctp_inq *inqueue;
->> -     int state;
->> +     int first_time = 1;     /* is this the first time through the loop */
->>       int error = 0;
->> +     int state;
->>
->>       /* The association should be held so we should be safe. */
->>       ep = asoc->ep;
->> @@ -1036,6 +1037,30 @@ static void sctp_assoc_bh_rcv(struct work_struct *work)
->>               state = asoc->state;
->>               subtype = SCTP_ST_CHUNK(chunk->chunk_hdr->type);
->>
->> +             /* If the first chunk in the packet is AUTH, do special
->> +              * processing specified in Section 6.3 of SCTP-AUTH spec
->> +              */
->> +             if (first_time && subtype.chunk = SCTP_CID_AUTH) {
->> +                     struct sctp_chunkhdr *next_hdr;
->> +
->> +                     next_hdr = sctp_inq_peek(inqueue);
->> +                     if (!next_hdr)
->> +                             goto normal;
->> +
->> +                     /* If the next chunk is COOKIE-ECHO, skip the AUTH
->> +                      * chunk while saving a pointer to it so we can do
->> +                      * Authentication later (during cookie-echo
->> +                      * processing).
->> +                      */
->> +                     if (next_hdr->type = SCTP_CID_COOKIE_ECHO) {
->> +                             chunk->auth_chunk = skb_clone(chunk->skb,
->> +                                                           GFP_ATOMIC);
->> +                             chunk->auth = 1;
->> +                             continue;
->> +                     }
->> +             }
->> +
->> +normal:
->>               /* SCTP-AUTH, Section 6.3:
->>                *    The receiver has a list of chunk types which it expects
->>                *    to be received only after an AUTH-chunk.  This list has
->> @@ -1074,6 +1099,9 @@ static void sctp_assoc_bh_rcv(struct work_struct *work)
->>               /* If there is an error on chunk, discard this packet. */
->>               if (error && chunk)
->>                       chunk->pdiscard = 1;
->> +
->> +             if (first_time)
->> +                     first_time = 0;
->>       }
->>       sctp_association_put(asoc);
->>  }
->> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
->> index 28c070e..c9ae340 100644
->> --- a/net/sctp/sm_statefuns.c
->> +++ b/net/sctp/sm_statefuns.c
->> @@ -153,10 +153,7 @@ static enum sctp_disposition sctp_sf_violation_chunk(
->>                                       struct sctp_cmd_seq *commands);
->>
->>  static enum sctp_ierror sctp_sf_authenticate(
->> -                                     struct net *net,
->> -                                     const struct sctp_endpoint *ep,
->>                                       const struct sctp_association *asoc,
->> -                                     const union sctp_subtype type,
->>                                       struct sctp_chunk *chunk);
->>
->>  static enum sctp_disposition __sctp_sf_do_9_1_abort(
->> @@ -626,6 +623,38 @@ enum sctp_disposition sctp_sf_do_5_1C_ack(struct net *net,
->>       return SCTP_DISPOSITION_CONSUME;
->>  }
->>
->> +static bool sctp_auth_chunk_verify(struct net *net, struct sctp_chunk *chunk,
->> +                                const struct sctp_association *asoc)
->> +{
->> +     struct sctp_chunk auth;
->> +
->> +     if (!chunk->auth_chunk)
->> +             return true;
->> +
->> +     /* SCTP-AUTH:  auth_chunk pointer is only set when the cookie-echo
->> +      * is supposed to be authenticated and we have to do delayed
->> +      * authentication.  We've just recreated the association using
->> +      * the information in the cookie and now it's much easier to
->> +      * do the authentication.
->> +      */
->> +
->> +     /* Make sure that we and the peer are AUTH capable */
->> +     if (!net->sctp.auth_enable || !asoc->peer.auth_capable)
->> +             return false;
->> +
->> +     /* set-up our fake chunk so that we can process it */
->> +     auth.skb = chunk->auth_chunk;
->> +     auth.asoc = chunk->asoc;
->> +     auth.sctp_hdr = chunk->sctp_hdr;
->> +     auth.chunk_hdr = (struct sctp_chunkhdr *)
->> +                             skb_push(chunk->auth_chunk,
->> +                                      sizeof(struct sctp_chunkhdr));
->> +     skb_pull(chunk->auth_chunk, sizeof(struct sctp_chunkhdr));
->> +     auth.transport = chunk->transport;
->> +
->> +     return sctp_sf_authenticate(asoc, &auth) = SCTP_IERROR_NO_ERROR;
->> +}
->> +
->>  /*
->>   * Respond to a normal COOKIE ECHO chunk.
->>   * We are the side that is being asked for an association.
->> @@ -763,37 +792,9 @@ enum sctp_disposition sctp_sf_do_5_1D_ce(struct net *net,
->>       if (error)
->>               goto nomem_init;
->>
->> -     /* SCTP-AUTH:  auth_chunk pointer is only set when the cookie-echo
->> -      * is supposed to be authenticated and we have to do delayed
->> -      * authentication.  We've just recreated the association using
->> -      * the information in the cookie and now it's much easier to
->> -      * do the authentication.
->> -      */
->> -     if (chunk->auth_chunk) {
->> -             struct sctp_chunk auth;
->> -             enum sctp_ierror ret;
->> -
->> -             /* Make sure that we and the peer are AUTH capable */
->> -             if (!net->sctp.auth_enable || !new_asoc->peer.auth_capable) {
->> -                     sctp_association_free(new_asoc);
->> -                     return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
->> -             }
->> -
->> -             /* set-up our fake chunk so that we can process it */
->> -             auth.skb = chunk->auth_chunk;
->> -             auth.asoc = chunk->asoc;
->> -             auth.sctp_hdr = chunk->sctp_hdr;
->> -             auth.chunk_hdr = (struct sctp_chunkhdr *)
->> -                                     skb_push(chunk->auth_chunk,
->> -                                              sizeof(struct sctp_chunkhdr));
->> -             skb_pull(chunk->auth_chunk, sizeof(struct sctp_chunkhdr));
->> -             auth.transport = chunk->transport;
->> -
->> -             ret = sctp_sf_authenticate(net, ep, new_asoc, type, &auth);
->> -             if (ret != SCTP_IERROR_NO_ERROR) {
->> -                     sctp_association_free(new_asoc);
->> -                     return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
->> -             }
->> +     if (!sctp_auth_chunk_verify(net, chunk, new_asoc)) {
->> +             sctp_association_free(new_asoc);
->> +             return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
->>       }
->>
->>       repl = sctp_make_cookie_ack(new_asoc, chunk);
->> @@ -1797,13 +1798,15 @@ static enum sctp_disposition sctp_sf_do_dupcook_a(
->>       if (sctp_auth_asoc_init_active_key(new_asoc, GFP_ATOMIC))
->>               goto nomem;
->>
->> +     if (!sctp_auth_chunk_verify(net, chunk, new_asoc))
->> +             return SCTP_DISPOSITION_DISCARD;
->> +
->>       /* Make sure no new addresses are being added during the
->>        * restart.  Though this is a pretty complicated attack
->>        * since you'd have to get inside the cookie.
->>        */
->> -     if (!sctp_sf_check_restart_addrs(new_asoc, asoc, chunk, commands)) {
->> +     if (!sctp_sf_check_restart_addrs(new_asoc, asoc, chunk, commands))
->>               return SCTP_DISPOSITION_CONSUME;
->> -     }
->>
->>       /* If the endpoint is in the SHUTDOWN-ACK-SENT state and recognizes
->>        * the peer has restarted (Action A), it MUST NOT setup a new
->> @@ -1912,6 +1915,9 @@ static enum sctp_disposition sctp_sf_do_dupcook_b(
->>       if (sctp_auth_asoc_init_active_key(new_asoc, GFP_ATOMIC))
->>               goto nomem;
->>
->> +     if (!sctp_auth_chunk_verify(net, chunk, new_asoc))
->> +             return SCTP_DISPOSITION_DISCARD;
->> +
->>       /* Update the content of current association.  */
->>       sctp_add_cmd_sf(commands, SCTP_CMD_UPDATE_ASSOC, SCTP_ASOC(new_asoc));
->>       sctp_add_cmd_sf(commands, SCTP_CMD_NEW_STATE,
->> @@ -2009,6 +2015,9 @@ static enum sctp_disposition sctp_sf_do_dupcook_d(
->>        * a COOKIE ACK.
->>        */
->>
->> +     if (!sctp_auth_chunk_verify(net, chunk, asoc))
->> +             return SCTP_DISPOSITION_DISCARD;
->> +
->>       /* Don't accidentally move back into established state. */
->>       if (asoc->state < SCTP_STATE_ESTABLISHED) {
->>               sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_STOP,
->> @@ -4171,10 +4180,7 @@ enum sctp_disposition sctp_sf_eat_fwd_tsn_fast(
->>   * The return value is the disposition of the chunk.
->>   */
->>  static enum sctp_ierror sctp_sf_authenticate(
->> -                                     struct net *net,
->> -                                     const struct sctp_endpoint *ep,
->>                                       const struct sctp_association *asoc,
->> -                                     const union sctp_subtype type,
->>                                       struct sctp_chunk *chunk)
->>  {
->>       struct sctp_shared_key *sh_key = NULL;
->> @@ -4275,7 +4281,7 @@ enum sctp_disposition sctp_sf_eat_auth(struct net *net,
->>                                                 commands);
->>
->>       auth_hdr = (struct sctp_authhdr *)chunk->skb->data;
->> -     error = sctp_sf_authenticate(net, ep, asoc, type, chunk);
->> +     error = sctp_sf_authenticate(asoc, chunk);
->>       switch (error) {
->>       case SCTP_IERROR_AUTH_BAD_HMAC:
->>               /* Generate the ERROR chunk and discard the rest
->> --
->> 2.1.0
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ src/include/netinet/sctp.h |  43 ++++++++++++
+ src/lib/Versions.map       |   2 +
+ src/lib/recvmsg.c          |  88 +++++++++++++++++++++++++
+ src/lib/sendmsg.c          | 161 +++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 294 insertions(+)
+
+diff --git a/src/include/netinet/sctp.h b/src/include/netinet/sctp.h
+index a0cd14c..701f091 100644
+--- a/src/include/netinet/sctp.h
++++ b/src/include/netinet/sctp.h
+@@ -122,6 +122,49 @@ int sctp_recvmsg(int s, void *msg, size_t len, struct sockaddr *from,
+ /* Return the address length for an address family. */
+ int sctp_getaddrlen(sa_family_t family);
+ 
++
++/* sendv infotype */
++enum {
++	SCTP_SENDV_NOINFO,
++	SCTP_SENDV_SNDINFO,
++	SCTP_SENDV_PRINFO,
++	SCTP_SENDV_AUTHINFO,
++	SCTP_SENDV_SPA
++};
++
++/* sendv_flags */
++#define SCTP_SEND_SNDINFO_VALID		0x1
++#define SCTP_SEND_PRINFO_VALID		0x2
++#define SCTP_SEND_AUTHINFO_VALID	0x4
++
++struct sctp_sendv_spa {
++	uint32_t sendv_flags;
++	struct sctp_sndinfo sendv_sndinfo;
++	struct sctp_prinfo sendv_prinfo;
++	struct sctp_authinfo sendv_authinfo;
++};
++
++int sctp_sendv(int s, const struct iovec *iov, int iovcnt,
++	       struct sockaddr *addrs, int addrcnt, void *info,
++	       socklen_t infolen, unsigned int infotype, int flags);
++
++/* recvv infotype */
++enum {
++	SCTP_RECVV_NOINFO,
++	SCTP_RECVV_RCVINFO,
++	SCTP_RECVV_NXTINFO,
++	SCTP_RECVV_RN
++};
++
++struct sctp_recvv_rn {
++	struct sctp_rcvinfo recvv_rcvinfo;
++	struct sctp_nxtinfo recvv_nxtinfo;
++};
++
++int sctp_recvv(int s, const struct iovec *iov, int iovlen,
++	       struct sockaddr *from, socklen_t *fromlen, void *info,
++	       socklen_t *infolen, unsigned int *infotype, int *flags);
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/src/lib/Versions.map b/src/lib/Versions.map
+index a3c5561..7faad5d 100644
+--- a/src/lib/Versions.map
++++ b/src/lib/Versions.map
+@@ -10,7 +10,9 @@ VERS_1 {
+ 		sctp_opt_info;
+ 		sctp_peeloff;
+ 		sctp_recvmsg;
++		sctp_recvv;
+ 		sctp_sendmsg;
++		sctp_sendv;
+ 		sctp_send;
+ 
+ 	local:
+diff --git a/src/lib/recvmsg.c b/src/lib/recvmsg.c
+index 4575788..7c1dcad 100644
+--- a/src/lib/recvmsg.c
++++ b/src/lib/recvmsg.c
+@@ -99,3 +99,91 @@ int sctp_recvmsg(int s, void *msg, size_t len, struct sockaddr *from,
+ 
+ 	return (error);
+ }
++
++int sctp_recvv(int s, const struct iovec *iov, int iovlen,
++	       struct sockaddr *from, socklen_t *fromlen, void *info,
++	       socklen_t *infolen, unsigned int *infotype, int *flags)
++{
++	char incmsg[CMSG_SPACE(sizeof(struct sctp_rcvinfo) +
++			       sizeof(struct sctp_nxtinfo))];
++	int error, len, _infolen;
++	struct cmsghdr *cmsg;
++	struct msghdr inmsg;
++
++	memset(&inmsg, 0, sizeof(inmsg));
++
++	/* set from and iov */
++	inmsg.msg_name = from;
++	inmsg.msg_namelen = fromlen ? *fromlen : 0;
++	inmsg.msg_iov = (struct iovec *)iov;
++	inmsg.msg_iovlen = iovlen;
++	inmsg.msg_control = incmsg;
++	inmsg.msg_controllen = sizeof(incmsg);
++
++	error = recvmsg(s, &inmsg, flags ? *flags : 0);
++	if (error < 0)
++		return error;
++
++	/* set fromlen, frags */
++	if (fromlen)
++		*fromlen = inmsg.msg_namelen;
++
++	if (flags)
++		*flags = inmsg.msg_flags;
++
++	if (!info || !infotype || !infolen)
++		return error;
++
++	*infotype = SCTP_RECVV_NOINFO;
++	_infolen = *infolen;
++
++	/* set info and infotype */
++	for (cmsg = CMSG_FIRSTHDR(&inmsg); cmsg != NULL;
++				cmsg = CMSG_NXTHDR(&inmsg, cmsg)) {
++		if (cmsg->cmsg_level != IPPROTO_SCTP)
++			continue;
++
++		if (cmsg->cmsg_type = SCTP_RCVINFO) {
++			len = sizeof(struct sctp_rcvinfo);
++			if (*infotype = SCTP_RECVV_NOINFO) {
++				if (_infolen < len)
++					break;
++				memcpy(info, CMSG_DATA(cmsg), len);
++				*infotype = SCTP_RECVV_RCVINFO;
++				*infolen = len;
++			} else if (*infotype = SCTP_RECVV_NXTINFO) {
++				if (_infolen < len +
++					       sizeof(struct sctp_nxtinfo))
++					break;
++				memcpy(info + len, info,
++				       sizeof(struct sctp_nxtinfo));
++				memcpy(info, CMSG_DATA(cmsg), len);
++				*infotype = SCTP_RECVV_RN;
++				*infolen = len + sizeof(struct sctp_nxtinfo);
++			} else {
++				break;
++			}
++		} else if (cmsg->cmsg_type = SCTP_NXTINFO) {
++			len = sizeof(struct sctp_nxtinfo);
++			if (*infotype = SCTP_RECVV_NOINFO) {
++				if (_infolen < len)
++					break;
++				memcpy(info, CMSG_DATA(cmsg), len);
++				*infotype = SCTP_RECVV_NXTINFO;
++				*infolen = len;
++			} else if (*infotype = SCTP_RECVV_RCVINFO) {
++				if (_infolen < len +
++					       sizeof(struct sctp_rcvinfo))
++					break;
++				memcpy(info + sizeof(struct sctp_rcvinfo),
++				       CMSG_DATA(cmsg), len);
++				*infotype = SCTP_RECVV_RN;
++				*infolen = len + sizeof(struct sctp_rcvinfo);
++			} else {
++				break;
++			}
++		}
++	}
++
++	return error;
++}
+diff --git a/src/lib/sendmsg.c b/src/lib/sendmsg.c
+index 9046174..cb75378 100644
+--- a/src/lib/sendmsg.c
++++ b/src/lib/sendmsg.c
+@@ -19,7 +19,10 @@
+  *  Ardelle Fan     <ardelle.fan@intel.com>
+  */
+ 
++#include <errno.h>
+ #include <string.h>
++#include <stdlib.h>
++#include <netinet/in.h>
+ #include <sys/socket.h>   /* struct sockaddr_storage, setsockopt() */
+ #include <netinet/sctp.h>
+ 
+@@ -104,3 +107,161 @@ sctp_send(int s, const void *msg, size_t len,
+ 
+ 	return sendmsg(s, &outmsg, flags);
+ }
++
++static struct cmsghdr *sctp_sendv_store_cmsg(struct cmsghdr *cmsg, int *cmsglen,
++					     int type, int len, void *data)
++{
++	cmsg->cmsg_level = IPPROTO_SCTP;
++	cmsg->cmsg_type = type;
++	cmsg->cmsg_len = CMSG_LEN(len);
++	memcpy(CMSG_DATA(cmsg), data, len);
++
++	*cmsglen -= CMSG_SPACE(len);
++	if (!*cmsglen)
++		return NULL;
++
++	return (struct cmsghdr *)((char *)cmsg + CMSG_SPACE(len));
++}
++
++int sctp_sendv(int s, const struct iovec *iov, int iovcnt,
++	       struct sockaddr *addrs, int addrcnt, void *info,
++	       socklen_t infolen, unsigned int infotype, int flags)
++{
++	struct sockaddr *addr;
++	struct msghdr outmsg;
++	struct cmsghdr *cmsg;
++	int type, len, i;
++	int cmsglen = 0;
++	char *addrbuf;
++
++	/* set msg_iov, msg_iovlen, msg_flags */
++	memset(&outmsg, 0x00, sizeof(outmsg));
++	outmsg.msg_iov = (struct iovec *)iov;
++	outmsg.msg_iovlen = iovcnt;
++	outmsg.msg_flags = flags;
++
++	/* set msg_name and msg_namelen */
++	if (addrs && addrcnt) {
++		outmsg.msg_name = addrs;
++		if (addrs->sa_family = AF_INET)
++			outmsg.msg_namelen = sizeof(struct sockaddr_in);
++		else if (addrs->sa_family = AF_INET6)
++			outmsg.msg_namelen = sizeof(struct sockaddr_in6);
++		else
++			return -EINVAL;
++		addrcnt -= 1;
++		addrbuf = (char *)addrs;
++		addrs = (struct sockaddr *)(addrbuf + outmsg.msg_namelen);
++	}
++
++	/* get the cmsg length it will need for addr info */
++	for (i = 0, addrbuf = (char *)addrs; i < addrcnt; i++) {
++		addr = (struct sockaddr *)addrbuf;
++		if (addr->sa_family = AF_INET) {
++			len = sizeof(struct in_addr);
++			cmsglen += CMSG_SPACE(len);
++			addrbuf += sizeof(struct sockaddr_in);
++		} else if (addr->sa_family = AF_INET6) {
++			len = sizeof(struct in6_addr);
++			cmsglen += CMSG_SPACE(len);
++			addrbuf += sizeof(struct sockaddr_in6);
++		} else {
++			return -EINVAL;
++		}
++	}
++	/* get the cmsg length it will need for snd/pr/auth info */
++	if (infotype = SCTP_SENDV_SPA) {
++		struct sctp_sendv_spa *spa = info;
++
++		if (spa->sendv_flags & SCTP_SEND_SNDINFO_VALID)
++			cmsglen += CMSG_SPACE(sizeof(struct sctp_sndinfo));
++		if (spa->sendv_flags & SCTP_SEND_PRINFO_VALID)
++			cmsglen += CMSG_SPACE(sizeof(struct sctp_prinfo));
++		if (spa->sendv_flags & SCTP_SEND_AUTHINFO_VALID)
++			cmsglen +=  CMSG_SPACE(sizeof(struct sctp_authinfo));
++	} else if (infotype = SCTP_SENDV_SNDINFO) {
++		cmsglen += CMSG_SPACE(sizeof(struct sctp_sndinfo));
++	} else if (infotype = SCTP_SENDV_PRINFO) {
++		cmsglen += CMSG_SPACE(sizeof(struct sctp_prinfo));
++	} else if (infotype = SCTP_SENDV_AUTHINFO) {
++		cmsglen += CMSG_SPACE(sizeof(struct sctp_authinfo));
++	}
++
++	if (!cmsglen)
++		goto send;
++
++	/* set msg_control, msg_controllen */
++	outmsg.msg_control = alloca(cmsglen);	/* alloc memory*/
++	if (!outmsg.msg_control)
++		return -ENOMEM;
++	outmsg.msg_controllen = cmsglen;
++
++	/* add cmsg info for addr info */
++	cmsg = CMSG_FIRSTHDR(&outmsg);
++	for (i = 0, addrbuf = (char *)addrs; i < addrcnt; i++) {
++		void *ainfo;
++
++		addr = (struct sockaddr *)addrbuf;
++		if (addr->sa_family = AF_INET) {
++			struct sockaddr_in *a = (struct sockaddr_in *)addrbuf;
++
++			len = sizeof(struct in_addr);
++			type = SCTP_DSTADDRV4;
++			ainfo = &a->sin_addr;
++			addrbuf += sizeof(*a);
++		} else {
++			struct sockaddr_in6 *a = (struct sockaddr_in6 *)addrbuf;
++
++			len = sizeof(struct in6_addr);
++			type = SCTP_DSTADDRV6;
++			ainfo = &a->sin6_addr;
++			addrbuf += sizeof(*a);
++		}
++
++		cmsg = sctp_sendv_store_cmsg(cmsg, &cmsglen, type, len, ainfo);
++		if (!cmsg)
++			goto send;
++	}
++	/* add cmsg info for addr info for snd/pr/auth info */
++	if (infotype = SCTP_SENDV_SPA) {
++		struct sctp_sendv_spa *spa = info;
++
++		if (spa->sendv_flags & SCTP_SEND_SNDINFO_VALID) {
++			type = SCTP_SNDINFO;
++			len = sizeof(struct sctp_sndinfo);
++			cmsg = sctp_sendv_store_cmsg(cmsg, &cmsglen, type, len,
++						     &spa->sendv_sndinfo);
++			if (!cmsg)
++				goto send;
++		}
++		if (spa->sendv_flags & SCTP_SEND_PRINFO_VALID) {
++			type = SCTP_PRINFO;
++			len = sizeof(struct sctp_prinfo);
++			cmsg = sctp_sendv_store_cmsg(cmsg, &cmsglen, type, len,
++						     &spa->sendv_prinfo);
++			if (!cmsg)
++				goto send;
++		}
++		if (spa->sendv_flags & SCTP_SEND_AUTHINFO_VALID) {
++			type = SCTP_AUTHINFO;
++			len = sizeof(struct sctp_authinfo);
++			sctp_sendv_store_cmsg(cmsg, &cmsglen, type, len,
++					      &spa->sendv_authinfo);
++		}
++	} else if (infotype = SCTP_SENDV_SNDINFO) {
++		type = SCTP_SNDINFO;
++		len = sizeof(struct sctp_sndinfo);
++		sctp_sendv_store_cmsg(cmsg, &cmsglen, type, len, info);
++	} else if (infotype = SCTP_SENDV_PRINFO) {
++		type = SCTP_PRINFO;
++		len = sizeof(struct sctp_prinfo);
++		sctp_sendv_store_cmsg(cmsg, &cmsglen, type, len, info);
++	} else if (infotype = SCTP_SENDV_AUTHINFO) {
++		type = SCTP_AUTHINFO;
++		len = sizeof(struct sctp_authinfo);
++		sctp_sendv_store_cmsg(cmsg, &cmsglen, type, len, info);
++	}
++
++send:
++	return sendmsg(s, &outmsg, 0);
++}
+-- 
+2.1.0
+
