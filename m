@@ -1,174 +1,386 @@
-From: Dmitry Vyukov <dvyukov@google.com>
-Date: Sat, 26 May 2018 15:32:47 +0000
-Subject: Re: INFO: rcu detected stall in ip_route_output_key_hash
-Message-Id: <CACT4Y+ZMdJoT1iRC4aq2e3a0Ta5rc2_KtNV93JrWfduNfLeR5Q@mail.gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 01 May 2018 10:24:08 +0000
+Subject: [PATCH lksctp-tools 2/3] func_tests: add the testing for sctp_sendv and sctp_recvv
+Message-Id: <220befa6a1975e92076fc1033d5507387878e350.1525170039.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <000000000000e2e064056c5460e3@google.com>
-In-Reply-To: <000000000000e2e064056c5460e3@google.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: syzbot <syzbot+769a7ccbbb4b5074f125@syzkaller.appspotmail.com>
-Cc: David Miller <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, LKML <linux-kernel@vger.kernel.org>, netdev <netdev@vger.kernel.org>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: linux-sctp@vger.kernel.org
 
-On Wed, May 16, 2018 at 5:29 PM, syzbot
-<syzbot+769a7ccbbb4b5074f125@syzkaller.appspotmail.com> wrote:
-> Hello,
->
-> syzbot found the following crash on:
->
-> HEAD commit:    0b7d9978406f Merge branch 'Microsemi-Ocelot-Ethernet-swit=
-c..
-> git tree:       net-next
-> console output: https://syzkaller.appspot.com/x/log.txt?x=1138c477800000
-> kernel config:  https://syzkaller.appspot.com/x/.config?x=B632d8e2c2ab2c1
-> dashboard link: https://syzkaller.appspot.com/bug?extidv9a7ccbbb4b5074f125
-> compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
->
-> Unfortunately, I don't have any reproducer for this crash yet.
->
-> IMPORTANT: if you fix the bug, please add the following tag to the commit:
-> Reported-by: syzbot+769a7ccbbb4b5074f125@syzkaller.appspotmail.com
->
-> netlink: 4 bytes leftover after parsing attributes in process
-> `syz-executor2'.
-> random: crng init done
-> INFO: rcu_sched self-detected stall on CPU
->         1-...!: (121515 ticks this GP) idle=E7e/1/4611686018427387908
-> softirq1362/31362 fqs=3D7
->          (t=125000 jiffies g=16439 c=16438 qf8508)
-> rcu_sched kthread starved for 124958 jiffies! g16439 c16438 f0x2
-> RCU_GP_WAIT_FQS(3) ->state=3D0x0 ->cpu=3D0
-> RCU grace-period kthread stack dump:
-> rcu_sched       R  running task    23768     9      2 0x80000000
-> Call Trace:
->  context_switch kernel/sched/core.c:2848 [inline]
->  __schedule+0x801/0x1e30 kernel/sched/core.c:3490
->  schedule+0xef/0x430 kernel/sched/core.c:3549
->  schedule_timeout+0x138/0x240 kernel/time/timer.c:1801
->  rcu_gp_kthread+0x6b5/0x1940 kernel/rcu/tree.c:2231
->  kthread+0x345/0x410 kernel/kthread.c:238
->  ret_from_fork+0x3a/0x50 arch/x86/entry/entry_64.S:412
-> NMI backtrace for cpu 1
-> CPU: 1 PID: 4488 Comm: syz-fuzzer Not tainted 4.17.0-rc4+ #45
-> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS
-> Google 01/01/2011
-> Call Trace:
->  <IRQ>
->  __dump_stack lib/dump_stack.c:77 [inline]
->  dump_stack+0x1b9/0x294 lib/dump_stack.c:113
->  nmi_cpu_backtrace.cold.4+0x19/0xce lib/nmi_backtrace.c:103
->  nmi_trigger_cpumask_backtrace+0x151/0x192 lib/nmi_backtrace.c:62
->  arch_trigger_cpumask_backtrace+0x14/0x20 arch/x86/kernel/apic/hw_nmi.c:38
->  trigger_single_cpu_backtrace include/linux/nmi.h:156 [inline]
->  rcu_dump_cpu_stacks+0x175/0x1c2 kernel/rcu/tree.c:1376
->  print_cpu_stall kernel/rcu/tree.c:1525 [inline]
->  check_cpu_stall.isra.61.cold.80+0x36c/0x59a kernel/rcu/tree.c:1593
->  __rcu_pending kernel/rcu/tree.c:3356 [inline]
->  rcu_pending kernel/rcu/tree.c:3401 [inline]
->  rcu_check_callbacks+0x21b/0xad0 kernel/rcu/tree.c:2763
->  update_process_times+0x2d/0x70 kernel/time/timer.c:1636
->  tick_sched_handle+0x9f/0x180 kernel/time/tick-sched.c:164
->  tick_sched_timer+0x45/0x130 kernel/time/tick-sched.c:1274
->  __run_hrtimer kernel/time/hrtimer.c:1398 [inline]
->  __hrtimer_run_queues+0x3e3/0x10a0 kernel/time/hrtimer.c:1460
->  hrtimer_interrupt+0x2f3/0x750 kernel/time/hrtimer.c:1518
->  local_apic_timer_interrupt arch/x86/kernel/apic/apic.c:1025 [inline]
->  smp_apic_timer_interrupt+0x15d/0x710 arch/x86/kernel/apic/apic.c:1050
->  apic_timer_interrupt+0xf/0x20 arch/x86/entry/entry_64.S:863
-> RIP: 0010:rcu_is_watching+0x6/0x140 kernel/rcu/tree.c:1071
-> RSP: 0000:ffff8801daf06620 EFLAGS: 00000206 ORIG_RAX: ffffffffffffff13
-> RAX: ffff8801ad526240 RBX: 0000000000000000 RCX: ffffffff86444456
-> RDX: 0000000000000100 RSI: ffffffff864444b8 RDI: 0000000000000001
-> RBP: ffff8801daf06628 R08: ffff8801ad526240 R09: 0000000000000002
-> R10: ffff8801ad526240 R11: 0000000000000000 R12: 1ffff1003b5e0cca
-> R13: ffff88008ff1a100 R14: 0000000000000000 R15: ffff8801daf066d0
->  rcu_read_unlock include/linux/rcupdate.h:684 [inline]
->  ip_route_output_key_hash+0x2cd/0x390 net/ipv4/route.c:2303
->  __ip_route_output_key include/net/route.h:124 [inline]
->  ip_route_output_flow+0x28/0xc0 net/ipv4/route.c:2557
->  ip_route_output_key include/net/route.h:134 [inline]
->  sctp_v4_get_dst+0x50e/0x17a0 net/sctp/protocol.c:447
->  sctp_transport_route+0x132/0x360 net/sctp/transport.c:303
->  sctp_packet_config+0x926/0xdd0 net/sctp/output.c:118
->  sctp_outq_select_transport+0x2bb/0x9c0 net/sctp/outqueue.c:877
->  sctp_outq_flush_ctrl.constprop.12+0x2ad/0xe60 net/sctp/outqueue.c:911
->  sctp_outq_flush+0x2ef/0x3430 net/sctp/outqueue.c:1203
->  sctp_outq_uncork+0x6a/0x80 net/sctp/outqueue.c:776
->  sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1820 [inline]
->  sctp_side_effects net/sctp/sm_sideeffect.c:1220 [inline]
->  sctp_do_sm+0x596/0x7160 net/sctp/sm_sideeffect.c:1191
->  sctp_generate_heartbeat_event+0x218/0x450 net/sctp/sm_sideeffect.c:406
+This patch adds test_sctp_sendv and test_sctp_recvv in sctputil.h,
+then based on them, adds test_sctp_sendvrecvv.c to do base testing
+for sctp_sendv and sctp_recvv.
 
-#syz fix: sctp: not allow to set rto_min with a value below 200 msecs
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ src/func_tests/Makefile.am            |   5 +
+ src/func_tests/test_sctp_sendvrecvv.c | 270 ++++++++++++++++++++++++++++++++++
+ src/testlib/sctputil.h                |  29 ++++
+ 3 files changed, 304 insertions(+)
+ create mode 100644 src/func_tests/test_sctp_sendvrecvv.c
 
->  call_timer_fn+0x230/0x940 kernel/time/timer.c:1326
->  expire_timers kernel/time/timer.c:1363 [inline]
->  __run_timers+0x79e/0xc50 kernel/time/timer.c:1666
->  run_timer_softirq+0x4c/0x70 kernel/time/timer.c:1692
->  __do_softirq+0x2e0/0xaf5 kernel/softirq.c:285
->  invoke_softirq kernel/softirq.c:365 [inline]
->  irq_exit+0x1d1/0x200 kernel/softirq.c:405
->  exiting_irq arch/x86/include/asm/apic.h:525 [inline]
->  smp_apic_timer_interrupt+0x17e/0x710 arch/x86/kernel/apic/apic.c:1052
->  apic_timer_interrupt+0xf/0x20 arch/x86/entry/entry_64.S:863
->  </IRQ>
-> RIP: 0033:0x40b55d
-> RSP: 002b:000000c424bedca8 EFLAGS: 00000293 ORIG_RAX: ffffffffffffff13
-> RAX: 000000c4244e5470 RBX: 000000004d36768c RCX: 0000000000000000
-> RDX: 000000c4244e5470 RSI: 000000000000ffff RDI: 0000000000000000
-> RBP: 000000c424bedcc0 R08: 0000000000000000 R09: 0000000000000000
-> R10: 00000000009466f2 R11: 0000000000000004 R12: 0000000000000000
-> R13: 0000000000000020 R14: 0000000000000013 R15: 0000000000000034
-> BUG: workqueue lockup - pool cpus=3D0 node=3D0 flags=3D0x0 nice=3D0 stuck=
- for 125s!
-> BUG: workqueue lockup - pool cpus=3D0-1 flags=3D0x4 nice=3D0 stuck for 12=
-5s!
-> Showing busy workqueues and worker pools:
-> workqueue events: flags=3D0x0
->   pwq 2: cpus=3D1 node=3D0 flags=3D0x0 nice=3D0 active=3D3/256
->     in-flight: 2104:do_numa_crng_init
->     pending: drbg_async_seed, cache_reap
->   pwq 0: cpus=3D0 node=3D0 flags=3D0x0 nice=3D0 active=3D9/256
->     pending: defense_work_handler, defense_work_handler,
-> defense_work_handler, defense_work_handler, defense_work_handler,
-> defense_work_handler, check_corruption, vmstat_shepherd, cache_reap
-> workqueue events_power_efficient: flags=3D0x80
->   pwq 2: cpus=3D1 node=3D0 flags=3D0x0 nice=3D0 active=3D1/256
->     pending: do_cache_clean
->   pwq 0: cpus=3D0 node=3D0 flags=3D0x0 nice=3D0 active=3D2/256
->     pending: check_lifetime, gc_worker
-> workqueue writeback: flags=3D0x4e
->   pwq 4: cpus=3D0-1 flags=3D0x4 nice=3D0 active=3D1/256
->     in-flight: 6:wb_workfn
-> workqueue ipv6_addrconf: flags=3D0x40008
->   pwq 0: cpus=3D0 node=3D0 flags=3D0x0 nice=3D0 active=3D1/1
->     pending: addrconf_verify_work
-> workqueue krdsd: flags=3D0xe000a
->   pwq 4: cpus=3D0-1 flags=3D0x4 nice=3D0 active=3D1/1
->     in-flight: 43:rds_connect_worker
-> pool 2: cpus=3D1 node=3D0 flags=3D0x0 nice=3D0 hung=3D0s workers=3D4 idle=
-: 24 1980 18
-> pool 4: cpus=3D0-1 flags=3D0x4 nice=3D0 hung=3D0s workers=3D7 idle: 22 80=
-18 287 6751
-> 89
->
->
-> ---
-> This bug is generated by a bot. It may contain errors.
-> See https://goo.gl/tpsmEJ for more information about syzbot.
-> syzbot engineers can be reached at syzkaller@googlegroups.com.
->
-> syzbot will keep track of this bug report. See:
-> https://goo.gl/tpsmEJ#bug-status-tracking for how to communicate with
-> syzbot.
->
-> --
-> You received this message because you are subscribed to the Google Groups
-> "syzkaller-bugs" group.
-> To unsubscribe from this group and stop receiving emails from it, send an
-> email to syzkaller-bugs+unsubscribe@googlegroups.com.
-> To view this discussion on the web visit
-> https://groups.google.com/d/msgid/syzkaller-bugs/000000000000e2e064056c54=
-60e3%40google.com.
-> For more options, visit https://groups.google.com/d/optout.
+diff --git a/src/func_tests/Makefile.am b/src/func_tests/Makefile.am
+index a951c8f..1f51356 100644
+--- a/src/func_tests/Makefile.am
++++ b/src/func_tests/Makefile.am
+@@ -30,6 +30,7 @@ PASSING_KERN_TESTS = \
+ 	test_recvmsg \
+ 	test_timetolive \
+ 	test_sctp_sendrecvmsg \
++	test_sctp_sendvrecvv \
+ 	test_getname \
+ 	test_tcp_style\
+ 	test_1_to_1_socket_bind_listen \
+@@ -58,6 +59,7 @@ PASSING_V6_KERN_TESTS = \
+ 	test_peeloff_v6 \
+ 	test_timetolive_v6 \
+ 	test_sctp_sendrecvmsg_v6 \
++	test_sctp_sendvrecvv_v6 \
+ 	test_getname_v6 \
+ 	test_tcp_style_v6
+ 
+@@ -117,6 +119,7 @@ test_connectx_SOURCES = test_connectx.c
+ test_recvmsg_SOURCES = test_recvmsg.c 
+ test_timetolive_SOURCES = test_timetolive.c
+ test_sctp_sendrecvmsg_SOURCES = test_sctp_sendrecvmsg.c
++test_sctp_sendvrecvv_SOURCES = test_sctp_sendvrecvv.c
+ test_getname_SOURCES = test_getname.c 
+ test_tcp_style_SOURCES = test_tcp_style.c 
+ 
+@@ -160,7 +163,9 @@ test_timetolive_v6_SOURCES = test_timetolive.c
+ test_timetolive_v6_CFLAGS = ${V6FLAGS}
+ 
+ test_sctp_sendrecvmsg_v6_SOURCES = test_sctp_sendrecvmsg.c
++test_sctp_sendvrecvv_v6_SOURCES = test_sctp_sendvrecvv.c
+ test_sctp_sendrecvmsg_v6_CFLAGS = ${V6FLAGS}
++test_sctp_sendvrecvv_v6_CFLAGS = ${V6FLAGS}
+ 
+ test_getname_v6_SOURCES = test_getname.c
+ test_getname_v6_CFLAGS = ${V6FLAGS}
+diff --git a/src/func_tests/test_sctp_sendvrecvv.c b/src/func_tests/test_sctp_sendvrecvv.c
+new file mode 100644
+index 0000000..4991e79
+--- /dev/null
++++ b/src/func_tests/test_sctp_sendvrecvv.c
+@@ -0,0 +1,270 @@
++/* SCTP kernel Implementation
++ * (C) Copyright REDHAT Corp. 2018
++ *
++ * The SCTP implementation is free software;
++ * you can redistribute it and/or modify it under the terms of
++ * the GNU General Public License as published by
++ * the Free Software Foundation; either version 2, or (at your option)
++ * any later version.
++ *
++ * The SCTP implementation is distributed in the hope that it
++ * will be useful, but WITHOUT ANY WARRANTY; without even the implied
++ *                 ************************
++ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ * See the GNU General Public License for more details.
++ *
++ * Please send any bug reports or fixes you make to the
++ * email address(es):
++ *    lksctp developers <lksctp-developers@lists.sourceforge.net>
++ *
++ * Or submit a bug report through the following website:
++ *    http://www.sf.net/projects/lksctp
++ *
++ * Any bugs reported to us we will try to fix... any fixes shared will
++ * be incorporated into the next SCTP release.
++ *
++ * Written or modified by:
++ * To compile the v6 version, set the symbol TEST_V6 to 1.
++ *
++ * Written or modified by:
++ *    Xin Long		<lucien.xin@gmail.com>
++ */
++
++/* This is a basic functional test for the SCTP new library APIs
++ * sctp_sendv() and sctp_recvv().
++ */
++
++#include <stdio.h>
++#include <unistd.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/types.h>
++#include <sys/socket.h>
++#include <sys/uio.h>
++#include <arpa/inet.h>
++#include <netinet/in.h>
++#include <errno.h>
++#include <netinet/sctp.h>
++#include <sctputil.h>
++
++char *TCID = __FILE__;
++int TST_TOTAL = 10;
++int TST_CNT;
++
++/* RCVBUF value, and indirectly RWND*2 */
++#define SMALL_RCVBUF 3000
++#define SMALL_MAXSEG 500
++/* This is extra data length to ensure rwnd closes */
++#define RWND_SLOP    100
++static char *message = "Hello world\n";
++
++int main(int argc, char *argv[])
++{
++	sockaddr_storage_t loop1, loop2, msgname;
++	int sk1, sk2, error, buflen, i, addrcnt;
++	socklen_t msgname_len, rn_len;
++	struct sctp_authinfo authinfo;
++	struct sctp_sndinfo sndinfo;
++	struct sockaddr *addr_list;
++	struct sctp_sendv_spa spa;
++	uint32_t infotype, stream;
++	struct iovec iov, iovx[3];
++	struct sctp_prinfo prinfo;
++	struct sctp_recvv_rn rn;
++	int pf_class, msg_flags;
++	socklen_t val = 1;
++	char addr_str[64];
++
++	/* Set some basic values which depend on the address family. */
++#if TEST_V6
++	struct sockaddr_in6 *v6addrs;
++
++	pf_class = PF_INET6;
++
++	loop1.v6.sin6_family = AF_INET6;
++	loop1.v6.sin6_addr = in6addr_loopback;
++	loop1.v6.sin6_port = htons(SCTP_TESTPORT_1);
++
++	loop2.v6.sin6_family = AF_INET6;
++	loop2.v6.sin6_addr = in6addr_loopback;
++	loop2.v6.sin6_port = htons(SCTP_TESTPORT_2);
++
++	addrcnt = 5;
++	v6addrs = test_malloc(sizeof(*v6addrs) * addrcnt);
++	v6addrs[0].sin6_family = PF_INET6;
++	v6addrs[0].sin6_addr = in6addr_loopback;
++	v6addrs[0].sin6_port = htons(SCTP_TESTPORT_2);
++	for (i = 1; i < addrcnt; i++) {
++		sprintf(addr_str, "2020::%d", i);
++		v6addrs[i].sin6_family = PF_INET6;
++		inet_pton(PF_INET6, addr_str, &v6addrs[i].sin6_addr);
++	}
++	addr_list = (struct sockaddr *)v6addrs;
++#else
++	struct sockaddr_in *v4addrs;
++
++	pf_class = PF_INET;
++
++	loop1.v4.sin_family = AF_INET;
++	loop1.v4.sin_addr.s_addr = SCTP_IP_LOOPBACK;
++	loop1.v4.sin_port = htons(SCTP_TESTPORT_1);
++
++	loop2.v4.sin_family = AF_INET;
++	loop2.v4.sin_addr.s_addr = SCTP_IP_LOOPBACK;
++	loop2.v4.sin_port = htons(SCTP_TESTPORT_2);
++
++	addrcnt = 5;
++	v4addrs = test_malloc(sizeof(*v4addrs) * addrcnt);
++	v4addrs[0].sin_family = PF_INET;
++	v4addrs[0].sin_addr.s_addr = SCTP_IP_LOOPBACK;
++	v4addrs[0].sin_port = htons(SCTP_TESTPORT_2);
++	for (i = 1; i < addrcnt; i++) {
++		sprintf(addr_str, "172.16.1.%d", i);
++		v4addrs[i].sin_family = PF_INET;
++		v4addrs[i].sin_addr.s_addr = inet_addr(addr_str);
++	}
++	addr_list = (struct sockaddr *)v4addrs;
++#endif /* TEST_V6 */
++
++	setvbuf(stdout, NULL, _IONBF, 0);
++
++	/* Create the two endpoints which will talk to each other.  */
++	sk1 = test_socket(pf_class, SOCK_SEQPACKET, IPPROTO_SCTP);
++	sk2 = test_socket(pf_class, SOCK_SEQPACKET, IPPROTO_SCTP);
++
++	/* Bind these sockets to the test ports.  */
++	test_bind(sk1, &loop1.sa, sizeof(loop1));
++	test_bind(sk2, &loop2.sa, sizeof(loop2));
++
++	/* Mark sk2 as being able to accept new associations.  */
++	test_listen(sk2, 1);
++
++
++	/* Testing for sctp_sendv */
++	iov.iov_base = message;
++	iov.iov_len = strlen(message) + 1;
++	test_sctp_sendv(sk1, &iov, 1, addr_list, addrcnt, NULL, 0, 0, 0);
++	tst_resm(TPASS, "sctp_sendv addr info");
++
++	stream = 1;
++	memset(&sndinfo, 0, sizeof(sndinfo));
++	sndinfo.snd_flags = SCTP_UNORDERED;
++	sndinfo.snd_sid = stream;
++	test_sctp_sendv(sk1, &iov, 1, addr_list, addrcnt, &sndinfo,
++			sizeof(sndinfo), SCTP_SENDV_SNDINFO, 0);
++	tst_resm(TPASS, "sctp_sendv sndinfo with stream %d", stream);
++
++	iovx[0].iov_base = message;
++	iovx[0].iov_len = strlen(message) + 1;
++	iovx[1].iov_base = message;
++	iovx[1].iov_len = strlen(message) + 1;
++	iovx[2].iov_base = message;
++	iovx[2].iov_len = strlen(message) + 1;
++
++	stream = 2;
++	sndinfo.snd_sid = stream;
++	test_sctp_sendv(sk1, iovx, 3, addr_list, addrcnt, &sndinfo,
++			sizeof(sndinfo), SCTP_SENDV_SNDINFO, 0);
++	tst_resm(TPASS, "sctp_sendv sndinfo with stream %d", stream);
++
++	prinfo.pr_policy = SCTP_PR_SCTP_RTX;
++	prinfo.pr_value = 10;
++	test_sctp_sendv(sk1, iovx, 3, addr_list, addrcnt, &prinfo,
++			sizeof(prinfo), SCTP_SENDV_PRINFO, 0);
++	tst_resm(TPASS, "sctp_sendv prinfo");
++
++	authinfo.auth_keynumber = 0;
++	test_sctp_sendv(sk1, iovx, 3, addr_list, addrcnt, &authinfo,
++			sizeof(authinfo), SCTP_SENDV_AUTHINFO, 0);
++	tst_resm(TPASS, "sctp_sendv authinfo");
++
++
++	spa.sendv_sndinfo = sndinfo;
++	spa.sendv_prinfo = prinfo;
++	spa.sendv_authinfo = authinfo;
++
++	stream = 3;
++	spa.sendv_sndinfo.snd_sid = stream;
++	spa.sendv_flags = SCTP_SEND_SNDINFO_VALID | SCTP_SEND_PRINFO_VALID;
++	test_sctp_sendv(sk1, iovx, 3, addr_list, addrcnt, &spa,
++			sizeof(spa), SCTP_SENDV_SPA, 0);
++	tst_resm(TPASS, "sctp_sendv spa with stream %d", stream);
++
++	stream = 4;
++	spa.sendv_sndinfo.snd_sid = stream;
++	spa.sendv_flags = SCTP_SEND_SNDINFO_VALID | SCTP_SEND_PRINFO_VALID |
++			  SCTP_SEND_AUTHINFO_VALID;
++	test_sctp_sendv(sk1, iovx, 3, addr_list, addrcnt, &spa,
++			sizeof(spa), SCTP_SENDV_SPA, 0);
++	tst_resm(TPASS, "sctp_sendv spa with stream %d", stream);
++
++	/* Testing for sctp_recvv */
++	buflen = REALLY_BIG;
++	msgname_len = sizeof(msgname);
++	msg_flags = 0;
++	iov.iov_base = test_malloc(buflen);
++	iov.iov_len = buflen;
++	rn_len = sizeof(rn);
++
++	error = test_sctp_recvv(sk2, &iov, 1, (struct sockaddr *)&msgname,
++				&msgname_len, &rn, &rn_len, &infotype,
++				&msg_flags);
++	if (infotype != SCTP_RECVV_NOINFO)
++		tst_brkm(TBROK, tst_exit, "sctp_recvv infotype %d != %d",
++			 infotype, SCTP_RECVV_NOINFO);
++	tst_resm(TPASS, "sctp_recvv SCTP_RECVV_NOINFO");
++
++	error = setsockopt(sk2, SOL_SCTP, SCTP_RECVRCVINFO,
++			   &val, sizeof(val));
++	if (error)
++		tst_brkm(TBROK, tst_exit, "setsockopt(SCTP_RECVRCVINFO): %s",
++			 strerror(errno));
++
++	error = test_sctp_recvv(sk2, &iov, 1, (struct sockaddr *)&msgname,
++				&msgname_len, &rn, &rn_len, &infotype,
++				&msg_flags);
++	if (infotype != SCTP_RECVV_RCVINFO ||
++	    rn.recvv_rcvinfo.rcv_sid != 1)
++		tst_brkm(TBROK, tst_exit, "sctp_recvv infotype %d != %d",
++			 infotype, SCTP_RECVV_NOINFO);
++	tst_resm(TPASS, "sctp_recvv SCTP_RECVV_RCVINFO");
++
++	error = setsockopt(sk2, SOL_SCTP, SCTP_RECVNXTINFO,
++			   &val, sizeof(val));
++	if (error)
++		tst_brkm(TBROK, tst_exit, "setsockopt(SCTP_RECVNXTINFO): %s",
++			 strerror(errno));
++
++	rn_len = 1;
++	error = test_sctp_recvv(sk2, &iov, 1, (struct sockaddr *)&msgname,
++				&msgname_len, &rn, &rn_len, &infotype,
++				&msg_flags);
++	if (infotype != SCTP_RECVV_NOINFO)
++		tst_brkm(TBROK, tst_exit, "sctp_recvv infotype %d != %d",
++			 infotype, SCTP_RECVV_NOINFO);
++	tst_resm(TPASS, "sctp_recvv SCTP_RECVV_NOINFO due to small size");
++
++	rn_len = sizeof(struct sctp_nxtinfo);
++	error = test_sctp_recvv(sk2, &iov, 1, (struct sockaddr *)&msgname,
++				&msgname_len, &rn, &rn_len, &infotype,
++				&msg_flags);
++	if (infotype != SCTP_RECVV_NXTINFO)
++		tst_brkm(TBROK, tst_exit, "sctp_recvv infotype %d != %d",
++			 infotype, SCTP_RECVV_NXTINFO);
++	tst_resm(TPASS, "sctp_recvv SCTP_RECVV_NXTINFO due to small size");
++
++	rn_len = sizeof(rn);
++	error = test_sctp_recvv(sk2, &iov, 1, (struct sockaddr *)&msgname,
++				&msgname_len, &rn, &rn_len, &infotype,
++				&msg_flags);
++	if (infotype != SCTP_RECVV_RN ||
++	    rn.recvv_rcvinfo.rcv_sid != 0 || rn.recvv_nxtinfo.nxt_sid != 3)
++		tst_brkm(TBROK, tst_exit, "sctp_recvv infotype %d != %d",
++			 infotype, SCTP_RECVV_RN);
++	tst_resm(TPASS, "sctp_recvv SCTP_RECVV_RN");
++
++	close(sk1);
++	close(sk2);
++
++	return 0;
++}
+diff --git a/src/testlib/sctputil.h b/src/testlib/sctputil.h
+index 347c91b..dda9169 100644
+--- a/src/testlib/sctputil.h
++++ b/src/testlib/sctputil.h
+@@ -292,6 +292,24 @@ static inline int test_sctp_send(int s, const void *msg, size_t len,
+ 	return error;			
+ }
+ 
++static inline int test_sctp_sendv(int s, const struct iovec *iov, int iovcnt,
++				  struct sockaddr *addrs, int addrcnt,
++				  void *info, socklen_t infolen,
++				  unsigned int infotype, int flags)
++{
++	int error = sctp_sendv(s, iov, iovcnt, addrs, addrcnt, info, infolen,
++			       infotype, flags);
++	int i, tlen = 0;
++
++	for (i = 0; i < iovcnt; i++)
++		tlen += iov->iov_len;
++
++	if (tlen != error)
++		tst_brkm(TBROK, tst_exit, "sctp_sendv: error:%d errno:%d",
++			 error, errno);
++	return error;
++}
++
+ static inline int test_sctp_recvmsg(int sk, void *msg, size_t len,
+ 				    struct sockaddr *from, socklen_t *fromlen,
+ 				    struct sctp_sndrcvinfo *sinfo,
+@@ -303,6 +321,17 @@ static inline int test_sctp_recvmsg(int sk, void *msg, size_t len,
+ 	return error;			
+ }
+ 
++static inline int test_sctp_recvv(int s, const struct iovec *iov, int iovlen,
++				  struct sockaddr *from, socklen_t *fromlen,
++				  void *info, socklen_t *infolen,
++				  unsigned int *infotype, int *flags)
++{
++	int error = sctp_recvv(s, iov, iovlen, from, fromlen, info, infolen,
++			       infotype, flags);
++	if (-1 = error)
++		tst_brkm(TBROK, tst_exit, "sctp_recvmsg: %s", strerror(errno));
++	return error;
++}
+ static inline void *test_malloc(size_t size)
+ {
+ 	void *buf = malloc(size);
+-- 
+2.1.0
+
