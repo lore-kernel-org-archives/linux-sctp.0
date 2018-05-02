@@ -1,54 +1,45 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 31 May 2018 15:32:06 +0000
-Subject: Re: [PATCH] sctp: use non-archaic spelling of failes
-Message-Id: <20180531153206.GA26468@hmswarspite.think-freely.org>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 02 May 2018 05:45:12 +0000
+Subject: [PATCH net] sctp: fix the issue that the cookie-ack with auth can't get processed
+Message-Id: <aec2a2b5bff80a4d8eb6a9db96a36a92e429e574.1525239912.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180531121800.9035-1-cascardo@canonical.com>
-In-Reply-To: <20180531121800.9035-1-cascardo@canonical.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Thu, May 31, 2018 at 09:34:27AM -0300, Marcelo Ricardo Leitner wrote:
-> On Thu, May 31, 2018 at 09:18:00AM -0300, Thadeu Lima de Souza Cascardo wrote:
-> 
-> Non-archaic.. :-)
-> I would have thought it was just a typo.
-> 
-> > Signed-off-by: Thadeu Lima de Souza Cascardo <cascardo@canonical.com>
-> 
-> Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> 
-> > ---
-> >  net/sctp/sm_statefuns.c | 2 +-
-> >  1 file changed, 1 insertion(+), 1 deletion(-)
-> > 
-> > diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-> > index c9ae3404b1bb..b71d8e211f50 100644
-> > --- a/net/sctp/sm_statefuns.c
-> > +++ b/net/sctp/sm_statefuns.c
-> > @@ -3482,7 +3482,7 @@ enum sctp_disposition sctp_sf_do_9_2_final(struct net *net,
-> >  		goto nomem_chunk;
-> >  
-> >  	/* Do all the commands now (after allocation), so that we
-> > -	 * have consistent state if memory allocation failes
-> > +	 * have consistent state if memory allocation fails
-> >  	 */
-> >  	sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP, SCTP_ULPEVENT(ev));
-> >  
-> > -- 
-> > 2.17.0
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+When auth is enabled for cookie-ack chunk, in sctp_inq_pop, sctp
+processes auth chunk first, then continues to the next chunk in
+this packet if chunk_end + chunk_hdr size < skb_tail_pointer().
+Otherwise, it will go to the next packet or discard this chunk.
+
+However, it missed the fact that cookie-ack chunk's size is equal
+to chunk_hdr size, which couldn't match that check, and thus this
+chunk would not get processed.
+
+This patch fixes it by changing the check to chunk_end + chunk_hdr
+size <= skb_tail_pointer().
+
+Fixes: 26b87c788100 ("net: sctp: fix remote memory pressure from excessive queueing")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/inqueue.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sctp/inqueue.c b/net/sctp/inqueue.c
+index 23ebc53..eb93ffe 100644
+--- a/net/sctp/inqueue.c
++++ b/net/sctp/inqueue.c
+@@ -217,7 +217,7 @@ struct sctp_chunk *sctp_inq_pop(struct sctp_inq *queue)
+ 	skb_pull(chunk->skb, sizeof(*ch));
+ 	chunk->subh.v = NULL; /* Subheader is no longer valid.  */
+ 
+-	if (chunk->chunk_end + sizeof(*ch) < skb_tail_pointer(chunk->skb)) {
++	if (chunk->chunk_end + sizeof(*ch) <= skb_tail_pointer(chunk->skb)) {
+ 		/* This is not a singleton */
+ 		chunk->singleton = 0;
+ 	} else if (chunk->chunk_end > skb_tail_pointer(chunk->skb)) {
+-- 
+2.1.0
 
