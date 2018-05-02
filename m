@@ -1,240 +1,335 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 14 May 2018 17:34:40 +0000
-Subject: [PATCH net-next v3 5/8] sctp: move flushing of data chunks out of sctp_outq_flush
-Message-Id: <816d58dbcf25ec79372bb215d78b8d2b2194424e.1526318522.git.marcelo.leitner@gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 02 May 2018 16:12:25 +0000
+Subject: [PATCHv2 lksctp-tools 1/3] lib: add the core functions for sctp_sendv and sctp_recvv
+Message-Id: <87be890523e90cb351b5a3e0a53589a4a2cc6c30.1525277218.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1526318522.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1526318522.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>
+To: linux-sctp@vger.kernel.org
 
-To the new sctp_outq_flush_data. Again, smaller functions and with well
-defined objectives.
+This patch is to implement sctp_sendv and sctp_recvv defined in
+rfc6458#section-9.12 and 9.13. They provide an extensible way
+for users to send or receive messages from a SCTP socket.
 
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/sctp/outqueue.c | 149 ++++++++++++++++++++++++++--------------------------
- 1 file changed, 75 insertions(+), 74 deletions(-)
+ src/include/netinet/sctp.h |  43 +++++++++++++++
+ src/lib/Versions.map       |   2 +
+ src/lib/recvmsg.c          |  88 ++++++++++++++++++++++++++++++
+ src/lib/sendmsg.c          | 130 +++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 263 insertions(+)
 
-diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index 49e80bf2ade73914f3be275016df0a6e7f06f606..bfa2e43dfd31d115862b65d1650858fcaa6f203b 100644
---- a/net/sctp/outqueue.c
-+++ b/net/sctp/outqueue.c
-@@ -1038,46 +1038,17 @@ static bool sctp_outq_flush_rtx(struct sctp_outq *q,
+diff --git a/src/include/netinet/sctp.h b/src/include/netinet/sctp.h
+index a0cd14c..701f091 100644
+--- a/src/include/netinet/sctp.h
++++ b/src/include/netinet/sctp.h
+@@ -122,6 +122,49 @@ int sctp_recvmsg(int s, void *msg, size_t len, struct sockaddr *from,
+ /* Return the address length for an address family. */
+ int sctp_getaddrlen(sa_family_t family);
  
- 	return true;
++
++/* sendv infotype */
++enum {
++	SCTP_SENDV_NOINFO,
++	SCTP_SENDV_SNDINFO,
++	SCTP_SENDV_PRINFO,
++	SCTP_SENDV_AUTHINFO,
++	SCTP_SENDV_SPA
++};
++
++/* sendv_flags */
++#define SCTP_SEND_SNDINFO_VALID		0x1
++#define SCTP_SEND_PRINFO_VALID		0x2
++#define SCTP_SEND_AUTHINFO_VALID	0x4
++
++struct sctp_sendv_spa {
++	uint32_t sendv_flags;
++	struct sctp_sndinfo sendv_sndinfo;
++	struct sctp_prinfo sendv_prinfo;
++	struct sctp_authinfo sendv_authinfo;
++};
++
++int sctp_sendv(int s, const struct iovec *iov, int iovcnt,
++	       struct sockaddr *addrs, int addrcnt, void *info,
++	       socklen_t infolen, unsigned int infotype, int flags);
++
++/* recvv infotype */
++enum {
++	SCTP_RECVV_NOINFO,
++	SCTP_RECVV_RCVINFO,
++	SCTP_RECVV_NXTINFO,
++	SCTP_RECVV_RN
++};
++
++struct sctp_recvv_rn {
++	struct sctp_rcvinfo recvv_rcvinfo;
++	struct sctp_nxtinfo recvv_nxtinfo;
++};
++
++int sctp_recvv(int s, const struct iovec *iov, int iovlen,
++	       struct sockaddr *from, socklen_t *fromlen, void *info,
++	       socklen_t *infolen, unsigned int *infotype, int *flags);
++
+ #ifdef __cplusplus
  }
--/*
-- * Try to flush an outqueue.
-- *
-- * Description: Send everything in q which we legally can, subject to
-- * congestion limitations.
-- * * Note: This function can be called from multiple contexts so appropriate
-- * locking concerns must be made.  Today we use the sock lock to protect
-- * this function.
-- */
--static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
+ #endif
+diff --git a/src/lib/Versions.map b/src/lib/Versions.map
+index a3c5561..7faad5d 100644
+--- a/src/lib/Versions.map
++++ b/src/lib/Versions.map
+@@ -10,7 +10,9 @@ VERS_1 {
+ 		sctp_opt_info;
+ 		sctp_peeloff;
+ 		sctp_recvmsg;
++		sctp_recvv;
+ 		sctp_sendmsg;
++		sctp_sendv;
+ 		sctp_send;
+ 
+ 	local:
+diff --git a/src/lib/recvmsg.c b/src/lib/recvmsg.c
+index 4575788..7c1dcad 100644
+--- a/src/lib/recvmsg.c
++++ b/src/lib/recvmsg.c
+@@ -99,3 +99,91 @@ int sctp_recvmsg(int s, void *msg, size_t len, struct sockaddr *from,
+ 
+ 	return (error);
+ }
 +
-+static void sctp_outq_flush_data(struct sctp_outq *q,
-+				 struct sctp_transport **_transport,
-+				 struct list_head *transport_list,
-+				 int rtx_timeout, gfp_t gfp)
- {
--	struct sctp_packet *packet;
-+	struct sctp_transport *transport = *_transport;
-+	struct sctp_packet *packet = transport ? &transport->packet : NULL;
- 	struct sctp_association *asoc = q->asoc;
--	struct sctp_transport *transport = NULL;
- 	struct sctp_chunk *chunk;
- 	enum sctp_xmit status;
--	int error = 0;
--
--	/* These transports have chunks to send. */
--	struct list_head transport_list;
--	struct list_head *ltransport;
--
--	INIT_LIST_HEAD(&transport_list);
--	packet = NULL;
--
--	/*
--	 * 6.10 Bundling
--	 *   ...
--	 *   When bundling control chunks with DATA chunks, an
--	 *   endpoint MUST place control chunks first in the outbound
--	 *   SCTP packet.  The transmitter MUST transmit DATA chunks
--	 *   within a SCTP packet in increasing order of TSN.
--	 *   ...
--	 */
--
--	sctp_outq_flush_ctrl(q, &transport, &transport_list, gfp);
--	packet = &transport->packet;
--
--	if (q->asoc->src_out_of_asoc_ok)
--		goto sctp_flush_out;
- 
- 	/* Is it OK to send data chunks?  */
- 	switch (asoc->state) {
-@@ -1102,10 +1073,11 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 		 * current cwnd).
- 		 */
- 		if (!list_empty(&q->retransmit)) {
--			if (!sctp_outq_flush_rtx(q, &transport, &transport_list,
-+			if (!sctp_outq_flush_rtx(q, _transport, transport_list,
- 						 rtx_timeout))
- 				break;
- 			/* We may have switched current transport */
-+			transport = *_transport;
- 			packet = &transport->packet;
- 		}
- 
-@@ -1131,12 +1103,14 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 
- 			if (asoc->stream.out[sid].state = SCTP_STREAM_CLOSED) {
- 				sctp_outq_head_data(q, chunk);
--				goto sctp_flush_out;
++int sctp_recvv(int s, const struct iovec *iov, int iovlen,
++	       struct sockaddr *from, socklen_t *fromlen, void *info,
++	       socklen_t *infolen, unsigned int *infotype, int *flags)
++{
++	char incmsg[CMSG_SPACE(sizeof(struct sctp_rcvinfo) +
++			       sizeof(struct sctp_nxtinfo))];
++	int error, len, _infolen;
++	struct cmsghdr *cmsg;
++	struct msghdr inmsg;
++
++	memset(&inmsg, 0, sizeof(inmsg));
++
++	/* set from and iov */
++	inmsg.msg_name = from;
++	inmsg.msg_namelen = fromlen ? *fromlen : 0;
++	inmsg.msg_iov = (struct iovec *)iov;
++	inmsg.msg_iovlen = iovlen;
++	inmsg.msg_control = incmsg;
++	inmsg.msg_controllen = sizeof(incmsg);
++
++	error = recvmsg(s, &inmsg, flags ? *flags : 0);
++	if (error < 0)
++		return error;
++
++	/* set fromlen, frags */
++	if (fromlen)
++		*fromlen = inmsg.msg_namelen;
++
++	if (flags)
++		*flags = inmsg.msg_flags;
++
++	if (!info || !infotype || !infolen)
++		return error;
++
++	*infotype = SCTP_RECVV_NOINFO;
++	_infolen = *infolen;
++
++	/* set info and infotype */
++	for (cmsg = CMSG_FIRSTHDR(&inmsg); cmsg != NULL;
++				cmsg = CMSG_NXTHDR(&inmsg, cmsg)) {
++		if (cmsg->cmsg_level != IPPROTO_SCTP)
++			continue;
++
++		if (cmsg->cmsg_type = SCTP_RCVINFO) {
++			len = sizeof(struct sctp_rcvinfo);
++			if (*infotype = SCTP_RECVV_NOINFO) {
++				if (_infolen < len)
++					break;
++				memcpy(info, CMSG_DATA(cmsg), len);
++				*infotype = SCTP_RECVV_RCVINFO;
++				*infolen = len;
++			} else if (*infotype = SCTP_RECVV_NXTINFO) {
++				if (_infolen < len +
++					       sizeof(struct sctp_nxtinfo))
++					break;
++				memcpy(info + len, info,
++				       sizeof(struct sctp_nxtinfo));
++				memcpy(info, CMSG_DATA(cmsg), len);
++				*infotype = SCTP_RECVV_RN;
++				*infolen = len + sizeof(struct sctp_nxtinfo);
++			} else {
 +				break;
- 			}
- 
--			if (sctp_outq_select_transport(chunk, asoc, &transport,
--						       &transport_list))
-+			if (sctp_outq_select_transport(chunk, asoc, _transport,
-+						       transport_list)) {
-+				transport = *_transport;
- 				packet = &transport->packet;
 +			}
- 
- 			pr_debug("%s: outq:%p, chunk:%p[%s], tx-tsn:0x%x skb->head:%p "
- 				 "skb->users:%d\n",
-@@ -1148,8 +1122,10 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 
- 			/* Add the chunk to the packet.  */
- 			status = sctp_packet_transmit_chunk(packet, chunk, 0, gfp);
--
- 			switch (status) {
-+			case SCTP_XMIT_OK:
++		} else if (cmsg->cmsg_type = SCTP_NXTINFO) {
++			len = sizeof(struct sctp_nxtinfo);
++			if (*infotype = SCTP_RECVV_NOINFO) {
++				if (_infolen < len)
++					break;
++				memcpy(info, CMSG_DATA(cmsg), len);
++				*infotype = SCTP_RECVV_NXTINFO;
++				*infolen = len;
++			} else if (*infotype = SCTP_RECVV_RCVINFO) {
++				if (_infolen < len +
++					       sizeof(struct sctp_rcvinfo))
++					break;
++				memcpy(info + sizeof(struct sctp_rcvinfo),
++				       CMSG_DATA(cmsg), len);
++				*infotype = SCTP_RECVV_RN;
++				*infolen = len + sizeof(struct sctp_rcvinfo);
++			} else {
 +				break;
++			}
++		}
++	}
 +
- 			case SCTP_XMIT_PMTU_FULL:
- 			case SCTP_XMIT_RWND_FULL:
- 			case SCTP_XMIT_DELAY:
-@@ -1161,41 +1137,25 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 					 status);
++	return error;
++}
+diff --git a/src/lib/sendmsg.c b/src/lib/sendmsg.c
+index 9046174..a67c1c8 100644
+--- a/src/lib/sendmsg.c
++++ b/src/lib/sendmsg.c
+@@ -19,7 +19,10 @@
+  *  Ardelle Fan     <ardelle.fan@intel.com>
+  */
  
- 				sctp_outq_head_data(q, chunk);
--				goto sctp_flush_out;
--
--			case SCTP_XMIT_OK:
--				/* The sender is in the SHUTDOWN-PENDING state,
--				 * The sender MAY set the I-bit in the DATA
--				 * chunk header.
--				 */
--				if (asoc->state = SCTP_STATE_SHUTDOWN_PENDING)
--					chunk->chunk_hdr->flags |= SCTP_DATA_SACK_IMM;
--				if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
--					asoc->stats.ouodchunks++;
--				else
--					asoc->stats.oodchunks++;
--
--				/* Only now it's safe to consider this
--				 * chunk as sent, sched-wise.
--				 */
--				sctp_sched_dequeue_done(q, chunk);
--
--				break;
--
--			default:
--				BUG();
-+				return;
- 			}
++#include <errno.h>
+ #include <string.h>
++#include <stdlib.h>
++#include <netinet/in.h>
+ #include <sys/socket.h>   /* struct sockaddr_storage, setsockopt() */
+ #include <netinet/sctp.h>
  
--			/* BUG: We assume that the sctp_packet_transmit()
--			 * call below will succeed all the time and add the
--			 * chunk to the transmitted list and restart the
--			 * timers.
--			 * It is possible that the call can fail under OOM
--			 * conditions.
--			 *
--			 * Is this really a problem?  Won't this behave
--			 * like a lost TSN?
-+			/* The sender is in the SHUTDOWN-PENDING state,
-+			 * The sender MAY set the I-bit in the DATA
-+			 * chunk header.
- 			 */
-+			if (asoc->state = SCTP_STATE_SHUTDOWN_PENDING)
-+				chunk->chunk_hdr->flags |= SCTP_DATA_SACK_IMM;
-+			if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
-+				asoc->stats.ouodchunks++;
-+			else
-+				asoc->stats.oodchunks++;
+@@ -104,3 +107,130 @@ sctp_send(int s, const void *msg, size_t len,
+ 
+ 	return sendmsg(s, &outmsg, flags);
+ }
 +
-+			/* Only now it's safe to consider this
-+			 * chunk as sent, sched-wise.
-+			 */
-+			sctp_sched_dequeue_done(q, chunk);
++static struct cmsghdr *sctp_sendv_store_cmsg(struct cmsghdr *cmsg, int *cmsglen,
++					     int type, int len, void *data)
++{
++	cmsg->cmsg_level = IPPROTO_SCTP;
++	cmsg->cmsg_type = type;
++	cmsg->cmsg_len = CMSG_LEN(len);
++	memcpy(CMSG_DATA(cmsg), data, len);
 +
- 			list_add_tail(&chunk->transmitted_list,
- 				      &transport->transmitted);
- 
-@@ -1206,7 +1166,7 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 			 * COOKIE-ECHO chunk.
- 			 */
- 			if (packet->has_cookie_echo)
--				goto sctp_flush_out;
-+				break;
- 		}
- 		break;
- 
-@@ -1214,6 +1174,47 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 		/* Do nothing.  */
- 		break;
- 	}
++	*cmsglen += CMSG_SPACE(len);
++
++	return (struct cmsghdr *)((char *)cmsg + CMSG_SPACE(len));
 +}
 +
-+/*
-+ * Try to flush an outqueue.
-+ *
-+ * Description: Send everything in q which we legally can, subject to
-+ * congestion limitations.
-+ * * Note: This function can be called from multiple contexts so appropriate
-+ * locking concerns must be made.  Today we use the sock lock to protect
-+ * this function.
-+ */
-+static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
++int sctp_sendv(int s, const struct iovec *iov, int iovcnt,
++	       struct sockaddr *addrs, int addrcnt, void *info,
++	       socklen_t infolen, unsigned int infotype, int flags)
 +{
-+	struct sctp_packet *packet;
-+	struct sctp_association *asoc = q->asoc;
-+	struct sctp_transport *transport = NULL;
-+	int error = 0;
++	char _cmsg[CMSG_SPACE(sizeof(struct sctp_sendv_spa))];
++	struct cmsghdr *cmsg = (struct cmsghdr *)_cmsg;
++	struct sockaddr *addr;
++	struct msghdr outmsg;
++	int len, cmsglen = 0;
++	int err, type, i;
++	char *addrbuf;
 +
-+	/* These transports have chunks to send. */
-+	struct list_head transport_list;
-+	struct list_head *ltransport;
++	/* set msg_iov, msg_iovlen, msg_flags */
++	memset(&outmsg, 0x00, sizeof(outmsg));
++	outmsg.msg_iov = (struct iovec *)iov;
++	outmsg.msg_iovlen = iovcnt;
++	outmsg.msg_flags = flags;
 +
-+	INIT_LIST_HEAD(&transport_list);
-+	packet = NULL;
++	/* set msg_name and msg_namelen */
++	if (addrs && addrcnt) {
++		outmsg.msg_name = addrs;
++		if (addrs->sa_family = AF_INET)
++			outmsg.msg_namelen = sizeof(struct sockaddr_in);
++		else if (addrs->sa_family = AF_INET6)
++			outmsg.msg_namelen = sizeof(struct sockaddr_in6);
++		else
++			return -EINVAL;
++		addrcnt -= 1;
++		addrbuf = (char *)addrs;
++		addrs = (struct sockaddr *)(addrbuf + outmsg.msg_namelen);
++	}
 +
-+	/*
-+	 * 6.10 Bundling
-+	 *   ...
-+	 *   When bundling control chunks with DATA chunks, an
-+	 *   endpoint MUST place control chunks first in the outbound
-+	 *   SCTP packet.  The transmitter MUST transmit DATA chunks
-+	 *   within a SCTP packet in increasing order of TSN.
-+	 *   ...
-+	 */
++	/* alloc memory only when it's multi-address */
++	if (addrcnt) {
++		len = CMSG_SPACE(sizeof(struct sockaddr_in6)) * addrcnt;
++		cmsg = malloc(sizeof(_cmsg) + len);
++		if (!cmsg)
++			return -ENOMEM;
++	}
 +
-+	sctp_outq_flush_ctrl(q, &transport, &transport_list, gfp);
++	outmsg.msg_control = cmsg;
 +
-+	if (q->asoc->src_out_of_asoc_ok)
-+		goto sctp_flush_out;
++	/* add cmsg info for addr info */
++	for (i = 0, addrbuf = (char *)addrs; i < addrcnt; i++) {
++		void *ainfo;
 +
-+	sctp_outq_flush_data(q, &transport, &transport_list, rtx_timeout, gfp);
- 
- sctp_flush_out:
- 
++		addr = (struct sockaddr *)addrbuf;
++		if (addr->sa_family = AF_INET) {
++			struct sockaddr_in *a = (struct sockaddr_in *)addrbuf;
++
++			len = sizeof(struct in_addr);
++			type = SCTP_DSTADDRV4;
++			ainfo = &a->sin_addr;
++			addrbuf += sizeof(*a);
++		} else if (addr->sa_family = AF_INET6) {
++			struct sockaddr_in6 *a = (struct sockaddr_in6 *)addrbuf;
++
++			len = sizeof(struct in6_addr);
++			type = SCTP_DSTADDRV6;
++			ainfo = &a->sin6_addr;
++			addrbuf += sizeof(*a);
++		} else {
++			free(outmsg.msg_control);
++			return -EINVAL;
++		}
++
++		cmsg = sctp_sendv_store_cmsg(cmsg, &cmsglen, type, len, ainfo);
++	}
++	/* add cmsg info for addr info for snd/pr/auth info */
++	if (infotype = SCTP_SENDV_SPA) {
++		struct sctp_sendv_spa *spa = info;
++
++		if (spa->sendv_flags & SCTP_SEND_SNDINFO_VALID) {
++			type = SCTP_SNDINFO;
++			len = sizeof(struct sctp_sndinfo);
++			cmsg = sctp_sendv_store_cmsg(cmsg, &cmsglen, type, len,
++						     &spa->sendv_sndinfo);
++		}
++		if (spa->sendv_flags & SCTP_SEND_PRINFO_VALID) {
++			type = SCTP_PRINFO;
++			len = sizeof(struct sctp_prinfo);
++			cmsg = sctp_sendv_store_cmsg(cmsg, &cmsglen, type, len,
++						     &spa->sendv_prinfo);
++		}
++		if (spa->sendv_flags & SCTP_SEND_AUTHINFO_VALID) {
++			type = SCTP_AUTHINFO;
++			len = sizeof(struct sctp_authinfo);
++			sctp_sendv_store_cmsg(cmsg, &cmsglen, type, len,
++					      &spa->sendv_authinfo);
++		}
++	} else if (infotype = SCTP_SENDV_SNDINFO) {
++		type = SCTP_SNDINFO;
++		len = sizeof(struct sctp_sndinfo);
++		sctp_sendv_store_cmsg(cmsg, &cmsglen, type, len, info);
++	} else if (infotype = SCTP_SENDV_PRINFO) {
++		type = SCTP_PRINFO;
++		len = sizeof(struct sctp_prinfo);
++		sctp_sendv_store_cmsg(cmsg, &cmsglen, type, len, info);
++	} else if (infotype = SCTP_SENDV_AUTHINFO) {
++		type = SCTP_AUTHINFO;
++		len = sizeof(struct sctp_authinfo);
++		sctp_sendv_store_cmsg(cmsg, &cmsglen, type, len, info);
++	}
++
++	outmsg.msg_controllen = cmsglen;
++
++	err = sendmsg(s, &outmsg, 0);
++
++	if (outmsg.msg_control != _cmsg)
++		free(outmsg.msg_control);
++
++	return err;
++}
 -- 
-2.14.3
+2.1.0
 
