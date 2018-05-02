@@ -1,31 +1,57 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 10 May 2018 21:49:08 +0000
-Subject: Re: [PATCH net] sctp: remove sctp_chunk_put from fail_mark err path in sctp_ulpevent_make_rcvmsg
-Message-Id: <20180510.174908.2166045029697003189.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 02 May 2018 16:12:24 +0000
+Subject: [PATCHv2 lksctp-tools 0/3] add the support for sctp_sendv and sctp_recvv
+Message-Id: <cover.1525277218.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <e4d7cf118c028ed05c9005951e30babc8bb300eb.1525944853.git.lucien.xin@gmail.com>
-In-Reply-To: <e4d7cf118c028ed05c9005951e30babc8bb300eb.1525944853.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, syzkaller@googlegroups.com
+To: linux-sctp@vger.kernel.org
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 10 May 2018 17:34:13 +0800
+sctp_sendv and sctp_recvv provide an extensible way for an application
+to communicate different snd attributes to the SCTP stack when sending
+a message, and to pass up different SCTP attributes associated with a
+received message to an application when receiving a message, as said
+in rfc6458.
 
-> In Commit 1f45f78f8e51 ("sctp: allow GSO frags to access the chunk too"),
-> it held the chunk in sctp_ulpevent_make_rcvmsg to access it safely later
-> in recvmsg. However, it also added sctp_chunk_put in fail_mark err path,
-> which is only triggered before holding the chunk.
-> 
-> syzbot reported a use-after-free crash happened on this err path, where
-> it shouldn't call sctp_chunk_put.
-> 
-> This patch simply removes this call.
-> 
-> Fixes: 1f45f78f8e51 ("sctp: allow GSO frags to access the chunk too")
-> Reported-by: syzbot+141d898c5f24489db4aa@syzkaller.appspotmail.com
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+This patchset is to add the sctp_sendv and sctp_recvv functions, their
+man docs and the function testing for them. These are based on linux
+kernel-4.16.
 
-Applied and queued up for -stable.
+v1->v2:
+  - remove the extra loop and if-else checks from sctp_sendv() by
+    pre-allocating a maximum buffer, according to Neil's suggestion.
+
+Xin Long (3):
+  lib: add the core functions for sctp_sendv and sctp_recvv
+  func_tests: add the testing for sctp_sendv and sctp_recvv
+  man: add the man docs for sctp_sendv and sctp_recvv
+
+ man/Makefile.am                       |   2 +-
+ man/sctp.7                            |   2 +
+ man/sctp_bindx.3                      |   2 +
+ man/sctp_connectx.3                   |   2 +
+ man/sctp_getladdrs.3                  |   2 +
+ man/sctp_getpaddrs.3                  |   2 +
+ man/sctp_opt_info.3                   |   2 +
+ man/sctp_peeloff.3                    |   2 +
+ man/sctp_recvmsg.3                    |   1 +
+ man/sctp_recvv.3                      |  99 +++++++++++++
+ man/sctp_send.3                       |   4 +-
+ man/sctp_sendmsg.3                    |   2 +
+ man/sctp_sendv.3                      |  97 ++++++++++++
+ src/func_tests/Makefile.am            |   5 +
+ src/func_tests/test_sctp_sendvrecvv.c | 270 ++++++++++++++++++++++++++++++++++
+ src/include/netinet/sctp.h            |  43 ++++++
+ src/lib/Versions.map                  |   2 +
+ src/lib/recvmsg.c                     |  88 +++++++++++
+ src/lib/sendmsg.c                     | 130 ++++++++++++++++
+ src/testlib/sctputil.h                |  29 ++++
+ 20 files changed, 784 insertions(+), 2 deletions(-)
+ create mode 100644 man/sctp_recvv.3
+ create mode 100644 man/sctp_sendv.3
+ create mode 100644 src/func_tests/test_sctp_sendvrecvv.c
+
+-- 
+2.1.0
+
