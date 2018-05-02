@@ -1,19 +1,52 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 14 May 2018 00:21:09 +0000
-Subject: Re: [PATCH net-next v2 3/8] sctp: move the flush of ctrl chunks into its own function
-Message-Id: <20180514002109.GZ5105@localhost.localdomain>
+From: Vladislav Yasevich <vyasevich@gmail.com>
+Date: Wed, 02 May 2018 02:07:35 +0000
+Subject: [PATCH V2 net-next 2/6] sctp: Handle sctp packets with CHECKSUM_PARTIAL
+Message-Id: <20180502020739.19239-3-vyasevic@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1526142784.git.marcelo.leitner@gmail.com>
- <629f02a784ff90761adee451a870c7548069287d.1526142784.git.marcelo.leitner@gmail.com>
-In-Reply-To: <629f02a784ff90761adee451a870c7548069287d.1526142784.git.marcelo.leitner@gmail.com>
+References: <20180502020739.19239-1-vyasevic@redhat.com>
+In-Reply-To: <20180502020739.19239-1-vyasevic@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>
+Cc: linux-sctp@vger.kernel.org, virtualization@lists.linux-foundation.org, virtio-dev@lists.oasis-open.org, mst@redhat.com, jasowang@redhat.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, Vladislav Yasevich <vyasevic@redhat.com>
 
-On Sat, May 12, 2018 at 07:21:01PM -0300, Marcelo Ricardo Leitner wrote:
-> Named sctp_outq_flush_ctrl and, with that, keep the contexts contained.
+With SCTP checksum offload available in virtio, it is now
+possible for virtio to receive a sctp packet with CHECKSUM_PARTIAL
+set (guest-to-guest traffic).  SCTP doesn't really have a
+partial checksum like TCP does, because CRC32c can't do partial
+additive checksumming.  It's all or nothing.  So an SCTP packet
+with CHECKSUM_PARTIAL will have checksum set to 0.  Let SCTP
+treat this as a valid checksum if CHECKSUM_PARTIAL is set.
 
-Trinity triggered a panic on this patch. I'm debugging it.
+Signed-off-by: Vladislav Yasevich <vyasevic@redhat.com>
+---
+ net/sctp/input.c | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index ba8a6e6..055b8ffa 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -80,8 +80,17 @@ static inline int sctp_rcv_checksum(struct net *net, struct sk_buff *skb)
+ {
+ 	struct sctphdr *sh = sctp_hdr(skb);
+ 	__le32 cmp = sh->checksum;
+-	__le32 val = sctp_compute_cksum(skb, 0);
++	__le32 val = 0;
+ 
++	/* In sctp PARTIAL checksum is always 0.  This is a case of
++	 * a packet received from guest that supports checksum offload.
++	 * Assume it's correct as there is really no way to verify,
++	 * and we want to avaoid computing it unnecesarily.
++	 */
++	if (skb->ip_summed = CHECKSUM_PARTIAL)
++		return 0;
++
++	val = sctp_compute_cksum(skb, 0);
+ 	if (val != cmp) {
+ 		/* CRC failure, dump it. */
+ 		__SCTP_INC_STATS(net, SCTP_MIB_CHECKSUMERRORS);
+-- 
+2.9.5
 
