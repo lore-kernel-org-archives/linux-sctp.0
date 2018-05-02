@@ -1,249 +1,127 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 11 May 2018 23:29:22 +0000
-Subject: [PATCH net-next 8/8] sctp: rework switch cases in sctp_outq_flush_data
-Message-Id: <b00a251410b049e2d0b2ef1bb957a6745d4d9c5e.1526077476.git.marcelo.leitner@gmail.com>
+From: Vladislav Yasevich <vyasevich@gmail.com>
+Date: Wed, 02 May 2018 02:07:36 +0000
+Subject: [PATCH V2 net-next 3/6] sctp: Build sctp offload support into the base kernel
+Message-Id: <20180502020739.19239-4-vyasevic@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1526077476.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1526077476.git.marcelo.leitner@gmail.com>
+References: <20180502020739.19239-1-vyasevic@redhat.com>
+In-Reply-To: <20180502020739.19239-1-vyasevic@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>
+Cc: virtio-dev@lists.oasis-open.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, mst@redhat.com, virtualization@lists.linux-foundation.org, linux-sctp@vger.kernel.org
 
-Remove an inner one, which tended to be error prone due to the cascading
-and it can be replaced by a simple if ().
+With the SCTP checksum offload support added to virtio, it is
+now possible to get into a situation where SCTP not present
+in the kernel, but the feature is negotiated.  Handle this just
+like we do IPv6 and other modular offloads.
+Move the sctp offload out of the sctp module and into the base
+kernel.
 
-Rework the outer one so that the actual flush code is not inside it. Now
-we first validate if we can or cannot send data, return if not, and then
-the flush code.
-
-Suggested-by: Xin Long <lucien.xin@gmail.com>
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Signed-off-by: Vladislav Yasevich <vyasevic@redhat.com>
 ---
- net/sctp/outqueue.c | 191 +++++++++++++++++++++++++---------------------------
- 1 file changed, 93 insertions(+), 98 deletions(-)
+ include/net/sctp/sctp.h | 5 -----
+ net/Kconfig             | 1 +
+ net/sctp/Kconfig        | 1 -
+ net/sctp/Makefile       | 3 ++-
+ net/sctp/offload.c      | 4 +++-
+ net/sctp/protocol.c     | 3 ---
+ 6 files changed, 6 insertions(+), 11 deletions(-)
 
-diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index 388e0665057be6ca7864b8bfdc0925e95e8b2858..c7f65bcd7bd6ee6996080d091bda1651f7bb8c44 100644
---- a/net/sctp/outqueue.c
-+++ b/net/sctp/outqueue.c
-@@ -1058,122 +1058,117 @@ static void sctp_outq_flush_data(struct sctp_outq *q,
- 		 * chunk.
- 		 */
- 		if (!packet || !packet->has_cookie_echo)
--			break;
-+			return;
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 72c5b8f..625b45f 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -183,11 +183,6 @@ struct sctp_transport *sctp_epaddr_lookup_transport(
+ int __net_init sctp_proc_init(struct net *net);
  
- 		/* fallthru */
- 	case SCTP_STATE_ESTABLISHED:
- 	case SCTP_STATE_SHUTDOWN_PENDING:
- 	case SCTP_STATE_SHUTDOWN_RECEIVED:
--		/*
--		 * RFC 2960 6.1  Transmission of DATA Chunks
--		 *
--		 * C) When the time comes for the sender to transmit,
--		 * before sending new DATA chunks, the sender MUST
--		 * first transmit any outstanding DATA chunks which
--		 * are marked for retransmission (limited by the
--		 * current cwnd).
--		 */
--		if (!list_empty(&q->retransmit)) {
--			if (!sctp_outq_flush_rtx(q, _transport, transport_list,
--						 rtx_timeout, gfp))
--				break;
--			/* We may have switched current transport */
--			transport = *_transport;
--			packet = &transport->packet;
--		}
-+		break;
- 
--		/* Apply Max.Burst limitation to the current transport in
--		 * case it will be used for new data.  We are going to
--		 * rest it before we return, but we want to apply the limit
--		 * to the currently queued data.
--		 */
--		if (transport)
--			sctp_transport_burst_limited(transport);
+ /*
+- * sctp/offload.c
+- */
+-int sctp_offload_init(void);
 -
--		/* Finally, transmit new packets.  */
--		while ((chunk = sctp_outq_dequeue_data(q)) != NULL) {
--			__u32 sid = ntohs(chunk->subh.data_hdr->stream);
--
--			/* Has this chunk expired? */
--			if (sctp_chunk_abandoned(chunk)) {
--				sctp_sched_dequeue_done(q, chunk);
--				sctp_chunk_fail(chunk, 0);
--				sctp_chunk_free(chunk);
--				continue;
--			}
-+	default:
-+		/* Do nothing. */
-+		return;
-+	}
+-/*
+  * sctp/stream_sched.c
+  */
+ void sctp_sched_ops_init(void);
+diff --git a/net/Kconfig b/net/Kconfig
+index 0428f12..2773f98 100644
+--- a/net/Kconfig
++++ b/net/Kconfig
+@@ -64,6 +64,7 @@ config INET
+ 	bool "TCP/IP networking"
+ 	select CRYPTO
+ 	select CRYPTO_AES
++	select LIBCRC32C
+ 	---help---
+ 	  These are the protocols used on the Internet and on most local
+ 	  Ethernets. It is highly recommended to say Y here (this will enlarge
+diff --git a/net/sctp/Kconfig b/net/sctp/Kconfig
+index c740b18..d07477a 100644
+--- a/net/sctp/Kconfig
++++ b/net/sctp/Kconfig
+@@ -9,7 +9,6 @@ menuconfig IP_SCTP
+ 	select CRYPTO
+ 	select CRYPTO_HMAC
+ 	select CRYPTO_SHA1
+-	select LIBCRC32C
+ 	---help---
+ 	  Stream Control Transmission Protocol
  
--			if (asoc->stream.out[sid].state = SCTP_STREAM_CLOSED) {
--				sctp_outq_head_data(q, chunk);
--				break;
--			}
-+	/*
-+	 * RFC 2960 6.1  Transmission of DATA Chunks
-+	 *
-+	 * C) When the time comes for the sender to transmit,
-+	 * before sending new DATA chunks, the sender MUST
-+	 * first transmit any outstanding DATA chunks which
-+	 * are marked for retransmission (limited by the
-+	 * current cwnd).
-+	 */
-+	if (!list_empty(&q->retransmit)) {
-+		if (!sctp_outq_flush_rtx(q, _transport, transport_list,
-+					 rtx_timeout, gfp))
-+			return;
-+		/* We may have switched current transport */
-+		transport = *_transport;
-+		packet = &transport->packet;
-+	}
+diff --git a/net/sctp/Makefile b/net/sctp/Makefile
+index e845e45..ee206ca 100644
+--- a/net/sctp/Makefile
++++ b/net/sctp/Makefile
+@@ -5,6 +5,7 @@
  
--			if (sctp_outq_select_transport(chunk, asoc, &transport,
--						       &transport_list)) {
--				transport = *_transport;
--				packet = &transport->packet;
--			}
-+	/* Apply Max.Burst limitation to the current transport in
-+	 * case it will be used for new data.  We are going to
-+	 * rest it before we return, but we want to apply the limit
-+	 * to the currently queued data.
-+	 */
-+	if (transport)
-+		sctp_transport_burst_limited(transport);
+ obj-$(CONFIG_IP_SCTP) += sctp.o
+ obj-$(CONFIG_INET_SCTP_DIAG) += sctp_diag.o
++obj-$(CONFIG_INET) += offload.o
  
--			pr_debug("%s: outq:%p, chunk:%p[%s], tx-tsn:0x%x skb->head:%p "
--				 "skb->users:%d\n",
--				 __func__, q, chunk, chunk && chunk->chunk_hdr ?
--				 sctp_cname(SCTP_ST_CHUNK(chunk->chunk_hdr->type)) :
--				 "illegal chunk", ntohl(chunk->subh.data_hdr->tsn),
--				 chunk->skb ? chunk->skb->head : NULL, chunk->skb ?
--				 refcount_read(&chunk->skb->users) : -1);
--
--			/* Add the chunk to the packet.  */
--			status = sctp_packet_transmit_chunk(packet, chunk, 0, gfp);
--			switch (status) {
--			case SCTP_XMIT_OK:
--				break;
-+	/* Finally, transmit new packets.  */
-+	while ((chunk = sctp_outq_dequeue_data(q)) != NULL) {
-+		__u32 sid = ntohs(chunk->subh.data_hdr->stream);
+ sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
+ 	  protocol.o endpointola.o associola.o \
+@@ -12,7 +13,7 @@ sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
+ 	  inqueue.o outqueue.o ulpqueue.o \
+ 	  tsnmap.o bind_addr.o socket.o primitive.o \
+ 	  output.o input.o debug.o stream.o auth.o \
+-	  offload.o stream_sched.o stream_sched_prio.o \
++	  stream_sched.o stream_sched_prio.o \
+ 	  stream_sched_rr.o stream_interleave.o
  
--			case SCTP_XMIT_PMTU_FULL:
--			case SCTP_XMIT_RWND_FULL:
--			case SCTP_XMIT_DELAY:
--				/* We could not append this chunk, so put
--				 * the chunk back on the output queue.
--				 */
--				pr_debug("%s: could not transmit tsn:0x%x, status:%d\n",
--					 __func__, ntohl(chunk->subh.data_hdr->tsn),
--					 status);
-+		/* Has this chunk expired? */
-+		if (sctp_chunk_abandoned(chunk)) {
-+			sctp_sched_dequeue_done(q, chunk);
-+			sctp_chunk_fail(chunk, 0);
-+			sctp_chunk_free(chunk);
-+			continue;
-+		}
+ sctp_diag-y := diag.o
+diff --git a/net/sctp/offload.c b/net/sctp/offload.c
+index 123e9f2..c61cbde 100644
+--- a/net/sctp/offload.c
++++ b/net/sctp/offload.c
+@@ -107,7 +107,7 @@ static const struct skb_checksum_ops crc32c_csum_ops = {
+ 	.combine = sctp_csum_combine,
+ };
  
--				sctp_outq_head_data(q, chunk);
--				return;
--			}
-+		if (asoc->stream.out[sid].state = SCTP_STREAM_CLOSED) {
-+			sctp_outq_head_data(q, chunk);
-+			break;
-+		}
+-int __init sctp_offload_init(void)
++static int __init sctp_offload_init(void)
+ {
+ 	int ret;
  
--			/* The sender is in the SHUTDOWN-PENDING state,
--			 * The sender MAY set the I-bit in the DATA
--			 * chunk header.
--			 */
--			if (asoc->state = SCTP_STATE_SHUTDOWN_PENDING)
--				chunk->chunk_hdr->flags |= SCTP_DATA_SACK_IMM;
--			if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
--				asoc->stats.ouodchunks++;
--			else
--				asoc->stats.oodchunks++;
-+		if (sctp_outq_select_transport(chunk, asoc, &transport,
-+					       &transport_list)) {
-+			transport = *_transport;
-+			packet = &transport->packet;
-+		}
- 
--			/* Only now it's safe to consider this
--			 * chunk as sent, sched-wise.
-+		pr_debug("%s: outq:%p, chunk:%p[%s], tx-tsn:0x%x skb->head:%p "
-+			 "skb->users:%d\n",
-+			 __func__, q, chunk, chunk && chunk->chunk_hdr ?
-+			 sctp_cname(SCTP_ST_CHUNK(chunk->chunk_hdr->type)) :
-+			 "illegal chunk", ntohl(chunk->subh.data_hdr->tsn),
-+			 chunk->skb ? chunk->skb->head : NULL, chunk->skb ?
-+			 refcount_read(&chunk->skb->users) : -1);
-+
-+		/* Add the chunk to the packet.  */
-+		status = sctp_packet_transmit_chunk(packet, chunk, 0, gfp);
-+		if (status != SCTP_XMIT_OK) {
-+			/* We could not append this chunk, so put
-+			 * the chunk back on the output queue.
- 			 */
--			sctp_sched_dequeue_done(q, chunk);
-+			pr_debug("%s: could not transmit tsn:0x%x, status:%d\n",
-+				 __func__, ntohl(chunk->subh.data_hdr->tsn),
-+				 status);
- 
--			list_add_tail(&chunk->transmitted_list,
--				      &transport->transmitted);
-+			sctp_outq_head_data(q, chunk);
-+			break;
-+		}
- 
--			sctp_transport_reset_t3_rtx(transport);
--			transport->last_time_sent = jiffies;
-+		/* The sender is in the SHUTDOWN-PENDING state,
-+		 * The sender MAY set the I-bit in the DATA
-+		 * chunk header.
-+		 */
-+		if (asoc->state = SCTP_STATE_SHUTDOWN_PENDING)
-+			chunk->chunk_hdr->flags |= SCTP_DATA_SACK_IMM;
-+		if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
-+			asoc->stats.ouodchunks++;
-+		else
-+			asoc->stats.oodchunks++;
- 
--			/* Only let one DATA chunk get bundled with a
--			 * COOKIE-ECHO chunk.
--			 */
--			if (packet->has_cookie_echo)
--				break;
--		}
--		break;
-+		/* Only now it's safe to consider this
-+		 * chunk as sent, sched-wise.
-+		 */
-+		sctp_sched_dequeue_done(q, chunk);
- 
--	default:
--		/* Do nothing.  */
--		break;
-+		list_add_tail(&chunk->transmitted_list,
-+			      &transport->transmitted);
-+
-+		sctp_transport_reset_t3_rtx(transport);
-+		transport->last_time_sent = jiffies;
-+
-+		/* Only let one DATA chunk get bundled with a
-+		 * COOKIE-ECHO chunk.
-+		 */
-+		if (packet->has_cookie_echo)
-+			break;
- 	}
+@@ -127,3 +127,5 @@ int __init sctp_offload_init(void)
+ out:
+ 	return ret;
  }
++
++fs_initcall(sctp_offload_init);
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index a24cde2..46d2b63 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -1479,9 +1479,6 @@ static __init int sctp_init(void)
+ 	if (status)
+ 		goto err_v6_add_protocol;
  
+-	if (sctp_offload_init() < 0)
+-		pr_crit("%s: Cannot add SCTP protocol offload\n", __func__);
+-
+ out:
+ 	return status;
+ err_v6_add_protocol:
 -- 
-2.14.3
+2.9.5
 
