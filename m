@@ -1,38 +1,38 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Sun, 13 May 2018 21:40:47 +0000
-Subject: Re: [PATCH net-next v2 2/3] sctp: add asoc and packet to sctp_flush_ctx
-Message-Id: <20180513214047.GY5105@localhost.localdomain>
+From: Vladislav Yasevich <vyasevich@gmail.com>
+Date: Wed, 02 May 2018 02:07:39 +0000
+Subject: [PATCH V2 net-next 6/6] ipvlan: Add support for SCTP checksum offload
+Message-Id: <20180502020739.19239-7-vyasevic@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1526142994.git.marcelo.leitner@gmail.com>
- <8de39e2ff04a8a96440c8b5f66cbc5cbc6303067.1526142994.git.marcelo.leitner@gmail.com>
-In-Reply-To: <8de39e2ff04a8a96440c8b5f66cbc5cbc6303067.1526142994.git.marcelo.leitner@gmail.com>
+References: <20180502020739.19239-1-vyasevic@redhat.com>
+In-Reply-To: <20180502020739.19239-1-vyasevic@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>
+Cc: linux-sctp@vger.kernel.org, virtualization@lists.linux-foundation.org, virtio-dev@lists.oasis-open.org, mst@redhat.com, jasowang@redhat.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, Vladislav Yasevich <vyasevic@redhat.com>
 
-On Sat, May 12, 2018 at 07:21:51PM -0300, Marcelo Ricardo Leitner wrote:
-> @@ -1043,20 +1038,17 @@ static bool sctp_outq_flush_rtx(struct sctp_flush_ctx *ctx,
->  static void sctp_outq_flush_data(struct sctp_flush_ctx *ctx,
->  				 int rtx_timeout)
->  {
-> -	struct sctp_packet *packet = ctx->transport ? &ctx->transport->packet :
-> -				     NULL;
-> -	struct sctp_association *asoc = ctx->q->asoc;
->  	struct sctp_chunk *chunk;
->  	enum sctp_xmit status;
->
->  	/* Is it OK to send data chunks?  */
-> -	switch (asoc->state) {
-> +	switch (ctx->asoc->state) {
->  	case SCTP_STATE_COOKIE_ECHOED:
->  		/* Only allow bundling when this packet has a COOKIE-ECHO
->  		 * chunk.
->  		 */
-> -		if (!packet || !packet->has_cookie_echo)
-> -			return;
-> +		if (!ctx->packet || !ctx->packet->has_cookie_echo)
-> +			break;
+Since ipvlan is a software device, we can turn on SCTP checksum
+offload and let the checksum be computed at the lower layer.
 
-This return/break change was by mistake. Will post v3 tomorrow.
+Signed-off-by: Vladislav Yasevich <vyasevic@redhat.com>
+---
+ drivers/net/ipvlan/ipvlan_main.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/ipvlan/ipvlan_main.c b/drivers/net/ipvlan/ipvlan_main.c
+index 450eec2..ddb1590 100644
+--- a/drivers/net/ipvlan/ipvlan_main.c
++++ b/drivers/net/ipvlan/ipvlan_main.c
+@@ -161,7 +161,8 @@ static void ipvlan_port_destroy(struct net_device *dev)
+ 	(NETIF_F_SG | NETIF_F_HW_CSUM | NETIF_F_HIGHDMA | NETIF_F_FRAGLIST | \
+ 	 NETIF_F_GSO | NETIF_F_TSO | NETIF_F_GSO_ROBUST | \
+ 	 NETIF_F_TSO_ECN | NETIF_F_TSO6 | NETIF_F_GRO | NETIF_F_RXCSUM | \
+-	 NETIF_F_HW_VLAN_CTAG_FILTER | NETIF_F_HW_VLAN_STAG_FILTER)
++	 NETIF_F_HW_VLAN_CTAG_FILTER | NETIF_F_HW_VLAN_STAG_FILTER | \
++	 NETIF_F_SCTP_CRC)
+ 
+ #define IPVLAN_STATE_MASK \
+ 	((1<<__LINK_STATE_NOCARRIER) | (1<<__LINK_STATE_DORMANT))
+-- 
+2.9.5
+
