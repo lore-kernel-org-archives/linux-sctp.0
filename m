@@ -1,30 +1,249 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 02 May 2018 15:16:37 +0000
-Subject: Re: [PATCH net] sctp: init active key for the new asoc in dupcook_a and dupcook_b
-Message-Id: <20180502.111637.1201522056104570616.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 04 May 2018 09:05:10 +0000
+Subject: [PATCH net] sctp: delay the authentication for the duplicated cookie-echo chunk
+Message-Id: <091d842812b99059231ff87e9bb7dff175336525.1525424710.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <96c2191206cb67ccec250ca1ec66d83dc9f40c9a.1525239464.git.lucien.xin@gmail.com>
-In-Reply-To: <96c2191206cb67ccec250ca1ec66d83dc9f40c9a.1525239464.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Wed,  2 May 2018 13:37:44 +0800
+Now sctp only delays the authentication for the normal cookie-echo
+chunk by setting chunk->auth_chunk in sctp_endpoint_bh_rcv(). But
+for the duplicated one with auth, in sctp_assoc_bh_rcv(), it does
+authentication first based on the old asoc, which will definitely
+fail due to the different auth info in the old asoc.
 
-> When processing a duplicate cookie-echo chunk, for case 'A' and 'B',
-> after sctp_process_init for the new asoc, if auth is enabled for the
-> cookie-ack chunk, the active key should also be initialized.
-> 
-> Otherwise, the cookie-ack chunk made later can not be set with auth
-> shkey properly, and a crash can even be caused by this, as after
-> Commit 1b1e0bc99474 ("sctp: add refcnt support for sh_key"), sctp
-> needs to hold the shkey when making control chunks.
-> 
-> Fixes: 1b1e0bc99474 ("sctp: add refcnt support for sh_key")
-> Reported-by: Jianwen Ji <jiji@redhat.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+The duplicated cookie-echo chunk will create a new asoc with the
+auth info from this chunk, and the authentication should also be
+done with the new asoc's auth info for all of the collision 'A',
+'B' and 'D'. Otherwise, the duplicated cookie-echo chunk with auth
+will never pass the authentication and create the new connection.
 
-Applied.
+This issue exists since very beginning, and this fix is to make
+sctp_assoc_bh_rcv() follow the way sctp_assoc_bh_rcv() does for
+the normal cookie-echo chunk to delay the authentication.
+
+While at it, remove the unused params from sctp_sf_authenticate()
+and define sctp_auth_chunk_verify() used for all the places that
+do the delayed authentication.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/associola.c    | 30 ++++++++++++++++-
+ net/sctp/sm_statefuns.c | 86 ++++++++++++++++++++++++++-----------------------
+ 2 files changed, 75 insertions(+), 41 deletions(-)
+
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 837806d..a47179d 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1024,8 +1024,9 @@ static void sctp_assoc_bh_rcv(struct work_struct *work)
+ 	struct sctp_endpoint *ep;
+ 	struct sctp_chunk *chunk;
+ 	struct sctp_inq *inqueue;
+-	int state;
++	int first_time = 1;	/* is this the first time through the loop */
+ 	int error = 0;
++	int state;
+ 
+ 	/* The association should be held so we should be safe. */
+ 	ep = asoc->ep;
+@@ -1036,6 +1037,30 @@ static void sctp_assoc_bh_rcv(struct work_struct *work)
+ 		state = asoc->state;
+ 		subtype = SCTP_ST_CHUNK(chunk->chunk_hdr->type);
+ 
++		/* If the first chunk in the packet is AUTH, do special
++		 * processing specified in Section 6.3 of SCTP-AUTH spec
++		 */
++		if (first_time && subtype.chunk = SCTP_CID_AUTH) {
++			struct sctp_chunkhdr *next_hdr;
++
++			next_hdr = sctp_inq_peek(inqueue);
++			if (!next_hdr)
++				goto normal;
++
++			/* If the next chunk is COOKIE-ECHO, skip the AUTH
++			 * chunk while saving a pointer to it so we can do
++			 * Authentication later (during cookie-echo
++			 * processing).
++			 */
++			if (next_hdr->type = SCTP_CID_COOKIE_ECHO) {
++				chunk->auth_chunk = skb_clone(chunk->skb,
++							      GFP_ATOMIC);
++				chunk->auth = 1;
++				continue;
++			}
++		}
++
++normal:
+ 		/* SCTP-AUTH, Section 6.3:
+ 		 *    The receiver has a list of chunk types which it expects
+ 		 *    to be received only after an AUTH-chunk.  This list has
+@@ -1074,6 +1099,9 @@ static void sctp_assoc_bh_rcv(struct work_struct *work)
+ 		/* If there is an error on chunk, discard this packet. */
+ 		if (error && chunk)
+ 			chunk->pdiscard = 1;
++
++		if (first_time)
++			first_time = 0;
+ 	}
+ 	sctp_association_put(asoc);
+ }
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 28c070e..c9ae340 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -153,10 +153,7 @@ static enum sctp_disposition sctp_sf_violation_chunk(
+ 					struct sctp_cmd_seq *commands);
+ 
+ static enum sctp_ierror sctp_sf_authenticate(
+-					struct net *net,
+-					const struct sctp_endpoint *ep,
+ 					const struct sctp_association *asoc,
+-					const union sctp_subtype type,
+ 					struct sctp_chunk *chunk);
+ 
+ static enum sctp_disposition __sctp_sf_do_9_1_abort(
+@@ -626,6 +623,38 @@ enum sctp_disposition sctp_sf_do_5_1C_ack(struct net *net,
+ 	return SCTP_DISPOSITION_CONSUME;
+ }
+ 
++static bool sctp_auth_chunk_verify(struct net *net, struct sctp_chunk *chunk,
++				   const struct sctp_association *asoc)
++{
++	struct sctp_chunk auth;
++
++	if (!chunk->auth_chunk)
++		return true;
++
++	/* SCTP-AUTH:  auth_chunk pointer is only set when the cookie-echo
++	 * is supposed to be authenticated and we have to do delayed
++	 * authentication.  We've just recreated the association using
++	 * the information in the cookie and now it's much easier to
++	 * do the authentication.
++	 */
++
++	/* Make sure that we and the peer are AUTH capable */
++	if (!net->sctp.auth_enable || !asoc->peer.auth_capable)
++		return false;
++
++	/* set-up our fake chunk so that we can process it */
++	auth.skb = chunk->auth_chunk;
++	auth.asoc = chunk->asoc;
++	auth.sctp_hdr = chunk->sctp_hdr;
++	auth.chunk_hdr = (struct sctp_chunkhdr *)
++				skb_push(chunk->auth_chunk,
++					 sizeof(struct sctp_chunkhdr));
++	skb_pull(chunk->auth_chunk, sizeof(struct sctp_chunkhdr));
++	auth.transport = chunk->transport;
++
++	return sctp_sf_authenticate(asoc, &auth) = SCTP_IERROR_NO_ERROR;
++}
++
+ /*
+  * Respond to a normal COOKIE ECHO chunk.
+  * We are the side that is being asked for an association.
+@@ -763,37 +792,9 @@ enum sctp_disposition sctp_sf_do_5_1D_ce(struct net *net,
+ 	if (error)
+ 		goto nomem_init;
+ 
+-	/* SCTP-AUTH:  auth_chunk pointer is only set when the cookie-echo
+-	 * is supposed to be authenticated and we have to do delayed
+-	 * authentication.  We've just recreated the association using
+-	 * the information in the cookie and now it's much easier to
+-	 * do the authentication.
+-	 */
+-	if (chunk->auth_chunk) {
+-		struct sctp_chunk auth;
+-		enum sctp_ierror ret;
+-
+-		/* Make sure that we and the peer are AUTH capable */
+-		if (!net->sctp.auth_enable || !new_asoc->peer.auth_capable) {
+-			sctp_association_free(new_asoc);
+-			return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+-		}
+-
+-		/* set-up our fake chunk so that we can process it */
+-		auth.skb = chunk->auth_chunk;
+-		auth.asoc = chunk->asoc;
+-		auth.sctp_hdr = chunk->sctp_hdr;
+-		auth.chunk_hdr = (struct sctp_chunkhdr *)
+-					skb_push(chunk->auth_chunk,
+-						 sizeof(struct sctp_chunkhdr));
+-		skb_pull(chunk->auth_chunk, sizeof(struct sctp_chunkhdr));
+-		auth.transport = chunk->transport;
+-
+-		ret = sctp_sf_authenticate(net, ep, new_asoc, type, &auth);
+-		if (ret != SCTP_IERROR_NO_ERROR) {
+-			sctp_association_free(new_asoc);
+-			return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+-		}
++	if (!sctp_auth_chunk_verify(net, chunk, new_asoc)) {
++		sctp_association_free(new_asoc);
++		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+ 	}
+ 
+ 	repl = sctp_make_cookie_ack(new_asoc, chunk);
+@@ -1797,13 +1798,15 @@ static enum sctp_disposition sctp_sf_do_dupcook_a(
+ 	if (sctp_auth_asoc_init_active_key(new_asoc, GFP_ATOMIC))
+ 		goto nomem;
+ 
++	if (!sctp_auth_chunk_verify(net, chunk, new_asoc))
++		return SCTP_DISPOSITION_DISCARD;
++
+ 	/* Make sure no new addresses are being added during the
+ 	 * restart.  Though this is a pretty complicated attack
+ 	 * since you'd have to get inside the cookie.
+ 	 */
+-	if (!sctp_sf_check_restart_addrs(new_asoc, asoc, chunk, commands)) {
++	if (!sctp_sf_check_restart_addrs(new_asoc, asoc, chunk, commands))
+ 		return SCTP_DISPOSITION_CONSUME;
+-	}
+ 
+ 	/* If the endpoint is in the SHUTDOWN-ACK-SENT state and recognizes
+ 	 * the peer has restarted (Action A), it MUST NOT setup a new
+@@ -1912,6 +1915,9 @@ static enum sctp_disposition sctp_sf_do_dupcook_b(
+ 	if (sctp_auth_asoc_init_active_key(new_asoc, GFP_ATOMIC))
+ 		goto nomem;
+ 
++	if (!sctp_auth_chunk_verify(net, chunk, new_asoc))
++		return SCTP_DISPOSITION_DISCARD;
++
+ 	/* Update the content of current association.  */
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_UPDATE_ASSOC, SCTP_ASOC(new_asoc));
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_NEW_STATE,
+@@ -2009,6 +2015,9 @@ static enum sctp_disposition sctp_sf_do_dupcook_d(
+ 	 * a COOKIE ACK.
+ 	 */
+ 
++	if (!sctp_auth_chunk_verify(net, chunk, asoc))
++		return SCTP_DISPOSITION_DISCARD;
++
+ 	/* Don't accidentally move back into established state. */
+ 	if (asoc->state < SCTP_STATE_ESTABLISHED) {
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_STOP,
+@@ -4171,10 +4180,7 @@ enum sctp_disposition sctp_sf_eat_fwd_tsn_fast(
+  * The return value is the disposition of the chunk.
+  */
+ static enum sctp_ierror sctp_sf_authenticate(
+-					struct net *net,
+-					const struct sctp_endpoint *ep,
+ 					const struct sctp_association *asoc,
+-					const union sctp_subtype type,
+ 					struct sctp_chunk *chunk)
+ {
+ 	struct sctp_shared_key *sh_key = NULL;
+@@ -4275,7 +4281,7 @@ enum sctp_disposition sctp_sf_eat_auth(struct net *net,
+ 						  commands);
+ 
+ 	auth_hdr = (struct sctp_authhdr *)chunk->skb->data;
+-	error = sctp_sf_authenticate(net, ep, asoc, type, chunk);
++	error = sctp_sf_authenticate(asoc, chunk);
+ 	switch (error) {
+ 	case SCTP_IERROR_AUTH_BAD_HMAC:
+ 		/* Generate the ERROR chunk and discard the rest
+-- 
+2.1.0
+
