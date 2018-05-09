@@ -1,84 +1,43 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 31 May 2018 15:41:01 +0000
-Subject: Re: [PATCH lksctp-tools 00/12] build: detect kernel features when building
-Message-Id: <20180531154101.GB26468@hmswarspite.think-freely.org>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 09 May 2018 02:14:06 +0000
+Subject: [PATCH lksctp-tools] func_tests: add a reference to Issue 24
+Message-Id: <ce318353a5288076342d5517262e9aa08d4b1c67.1525831854.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1527700680.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1527700680.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On Wed, May 30, 2018 at 02:17:51PM -0300, Marcelo Ricardo Leitner wrote:
-> Currently we have an issue with struct sctp_event_subscribe. Kernel
-> won't accept any buffer larger than the version of sctp_event_subscribe
-> that is expects, and because of that we cannot simply have a copy of
-> kernel headers inside lksctp-tools. If we do, we have no way to use the
-> right version of sctp_event_subscribe.
-> 
-> That pretty much means that currently one has to tweak the internal copy
-> to comply with what the kernel one is using, which is really not good.
-> 
-> This patchset introduces probing of kernel features during build time
-> into lksctp-tools. With that, we can tell the applications that this or
-> that feature is enabled or not in the environment that it was compiled
-> on.
-> 
-> With the removal of the internal copy, other issues came up. Such as the
-> usage of sctp_peeloff_flags_arg_t by default, regardless of the kernel
-> being used. This became an issue because old kernels don't have such
-> struct, and thus the library doesn't build.
-> 
-> Another example is support for sendv/recv. Even if we use a private copy
-> with the symbols needed, the lib functions will compile but unit tests
-> will fail, as such function calls will always return EINVAL.
-> 
-> A check for recent UAPI changes was done by me and Xin Long and this is
-> the list that we came up with. Hopefully this restores lksctp-tools
-> compatibility with older kernels.
-> 
-> Fixes https://github.com/sctp/lksctp-tools/issues/24 .
-> 
-> Marcelo Ricardo Leitner (12):
->   build: remove internal copy of kernel header
->   build: add m4 macros to probe for kernel features
->   configure.ac: style fixes
->   build: probe for linux/sctp.h
->   netinet/sctp.h: dynamically build based on system setup
->   build: add define HAVE_SCTP_STREAM_RESET_EVENT
->   build: add define HAVE_SCTP_ASSOC_RESET_EVENT
->   build: add define HAVE_SCTP_STREAM_CHANGE_EVENT
->   build: add define HAVE_SCTP_STREAM_RECONFIG
->   build: add define HAVE_SCTP_PEELOFF_FLAGS
->   build: add two defines for Partial Delivery extensions on
->     sctp_pdapi_event
->   build: add define HAVE_SCTP_SENDV
-> 
->  configure.ac                              |   44 +-
->  m4/.gitignore                             |    1 +
->  m4/sctp.m4                                |   63 ++
->  src/func_tests/Makefile.am                |    9 +-
->  src/include/linux/sctp.h                  | 1153 -----------------------------
->  src/include/netinet/Makefile.am           |    5 +-
->  src/include/netinet/{sctp.h => sctp.h.in} |   15 +
->  src/lib/peeloff.c                         |   38 +-
->  src/lib/recvmsg.c                         |    2 +
->  src/lib/sendmsg.c                         |    2 +
->  src/testlib/sctputil.h                    |    5 +
->  11 files changed, 163 insertions(+), 1174 deletions(-)
->  create mode 100644 m4/sctp.m4
->  delete mode 100644 src/include/linux/sctp.h
->  rename src/include/netinet/{sctp.h => sctp.h.in} (93%)
-> 
-> -- 
-> 2.14.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Nice work, this looks good
+We extended struct sctp_event_subscribe in the kernel UAPI. The change
+itself would have been backwards compatible if only the kernel was doing
+the right size check, as described at Issue 24.
 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+That said, place a pointer to the known issue in the code to ease it for
+who else trip over this.
+
+See-also: https://github.com/sctp/lksctp-tools/issues/24
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+Note: kernel is not yet fixed. Draft patch is available at the issue
+page.
+
+ src/func_tests/test_1_to_1_events.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/func_tests/test_1_to_1_events.c b/src/func_tests/test_1_to_1_events.c
+index 352534680610248382f8ce6aebe7f97aa49283af..5c0dcc0341efb92ea0e253dabecdc8541b201651 100644
+--- a/src/func_tests/test_1_to_1_events.c
++++ b/src/func_tests/test_1_to_1_events.c
+@@ -96,6 +96,9 @@ main(int argc, char *argv[])
+ 	event.sctp_association_event = 1;
+ 	event.sctp_shutdown_event = 1;
+ 	len = sizeof(struct sctp_event_subscribe);
++	/* The below may fail due to:
++	 *   - https://github.com/sctp/lksctp-tools/issues/24
++	 */
+ 	test_setsockopt(svr_sk, SCTP_EVENTS, &event, len);
+ 	test_setsockopt(clt_sk, SCTP_EVENTS, &event, len);
+
+--
+2.14.3
+
