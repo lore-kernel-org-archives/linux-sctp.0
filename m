@@ -1,7 +1,7 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 11 May 2018 23:28:54 +0000
-Subject: [PATCH net-next 5/8] sctp: move flushing of data chunks out of sctp_outq_flush
-Message-Id: <5bb63f578cf2084164e4de817f333b3e59178318.1526077476.git.marcelo.leitner@gmail.com>
+Date: Fri, 11 May 2018 23:29:06 +0000
+Subject: [PATCH net-next 7/8] sctp: make use of gfp on retransmissions
+Message-Id: <4f25778a5e79d1c39b22dfec82b30af96476dbeb.1526077476.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1526077476.git.marcelo.leitner@gmail.com>
 In-Reply-To: <cover.1526077476.git.marcelo.leitner@gmail.com>
@@ -11,223 +11,88 @@ Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
 Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>
 
-To the new sctp_outq_flush_data. Again, smaller functions and with well
-defined objectives.
+Retransmissions may be triggered when in user context, so lets make use
+of gfp.
 
 Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- net/sctp/outqueue.c | 144 ++++++++++++++++++++++++++--------------------------
- 1 file changed, 73 insertions(+), 71 deletions(-)
+ net/sctp/outqueue.c | 17 +++++++++--------
+ 1 file changed, 9 insertions(+), 8 deletions(-)
 
 diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index 74c3961eec4fca8b4ce9bb380f8465fae4625763..e445a59db26004553984088d50e458a93b03dcb8 100644
+index e867bde0b2d93f730f0cb89ad2f54a2094f47833..388e0665057be6ca7864b8bfdc0925e95e8b2858 100644
 --- a/net/sctp/outqueue.c
 +++ b/net/sctp/outqueue.c
-@@ -1038,45 +1038,17 @@ static bool sctp_outq_flush_rtx(struct sctp_outq *q,
- 
- 	return true;
- }
--/*
-- * Try to flush an outqueue.
-- *
-- * Description: Send everything in q which we legally can, subject to
-- * congestion limitations.
-- * * Note: This function can be called from multiple contexts so appropriate
-- * locking concerns must be made.  Today we use the sock lock to protect
-- * this function.
-- */
--static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
-+
-+static void sctp_outq_flush_data(struct sctp_outq *q,
-+				 struct sctp_transport **_transport,
-+				 struct list_head *transport_list,
-+				 int rtx_timeout, gfp_t gfp)
+@@ -608,7 +608,7 @@ void sctp_retransmit(struct sctp_outq *q, struct sctp_transport *transport,
+  * The return value is a normal kernel error return value.
+  */
+ static int __sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+-				 int rtx_timeout, int *start_timer)
++				 int rtx_timeout, int *start_timer, gfp_t gfp)
  {
--	struct sctp_packet *packet;
-+	struct sctp_transport *transport = *_transport;
-+	struct sctp_packet *packet = transport ? &transport->packet : NULL;
- 	struct sctp_association *asoc = q->asoc;
--	struct sctp_transport *transport = NULL;
- 	struct sctp_chunk *chunk;
- 	enum sctp_xmit status;
--	int error = 0;
--
--	/* These transports have chunks to send. */
--	struct list_head transport_list;
--	struct list_head *ltransport;
--
--	INIT_LIST_HEAD(&transport_list);
--	packet = NULL;
--
--	/*
--	 * 6.10 Bundling
--	 *   ...
--	 *   When bundling control chunks with DATA chunks, an
--	 *   endpoint MUST place control chunks first in the outbound
--	 *   SCTP packet.  The transmitter MUST transmit DATA chunks
--	 *   within a SCTP packet in increasing order of TSN.
--	 *   ...
--	 */
--
--	sctp_outq_flush_ctrl(q, &transport, &transport_list, gfp);
--
--	if (q->asoc->src_out_of_asoc_ok)
--		goto sctp_flush_out;
+ 	struct sctp_transport *transport = pkt->transport;
+ 	struct sctp_chunk *chunk, *chunk1;
+@@ -684,12 +684,12 @@ static int __sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+ 				 * control chunks are already freed so there
+ 				 * is nothing we can do.
+ 				 */
+-				sctp_packet_transmit(pkt, GFP_ATOMIC);
++				sctp_packet_transmit(pkt, gfp);
+ 				goto redo;
+ 			}
  
- 	/* Is it OK to send data chunks?  */
- 	switch (asoc->state) {
-@@ -1105,6 +1077,7 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 						 rtx_timeout))
+ 			/* Send this packet.  */
+-			error = sctp_packet_transmit(pkt, GFP_ATOMIC);
++			error = sctp_packet_transmit(pkt, gfp);
+ 
+ 			/* If we are retransmitting, we should only
+ 			 * send a single packet.
+@@ -705,7 +705,7 @@ static int __sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+ 
+ 		case SCTP_XMIT_RWND_FULL:
+ 			/* Send this packet. */
+-			error = sctp_packet_transmit(pkt, GFP_ATOMIC);
++			error = sctp_packet_transmit(pkt, gfp);
+ 
+ 			/* Stop sending DATA as there is no more room
+ 			 * at the receiver.
+@@ -715,7 +715,7 @@ static int __sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+ 
+ 		case SCTP_XMIT_DELAY:
+ 			/* Send this packet. */
+-			error = sctp_packet_transmit(pkt, GFP_ATOMIC);
++			error = sctp_packet_transmit(pkt, gfp);
+ 
+ 			/* Stop sending DATA because of nagle delay. */
+ 			done = 1;
+@@ -991,7 +991,7 @@ static void sctp_outq_flush_ctrl(struct sctp_outq *q,
+ static bool sctp_outq_flush_rtx(struct sctp_outq *q,
+ 				struct sctp_transport **_transport,
+ 				struct list_head *transport_list,
+-				int rtx_timeout)
++				int rtx_timeout, gfp_t gfp)
+ {
+ 	struct sctp_transport *transport = *_transport;
+ 	struct sctp_packet *packet = transport ? &transport->packet : NULL;
+@@ -1015,7 +1015,8 @@ static bool sctp_outq_flush_rtx(struct sctp_outq *q,
+ 				   asoc->peer.ecn_capable);
+ 	}
+ 
+-	error = __sctp_outq_flush_rtx(q, packet, rtx_timeout, &start_timer);
++	error = __sctp_outq_flush_rtx(q, packet, rtx_timeout, &start_timer,
++				      gfp);
+ 	if (error < 0)
+ 		asoc->base.sk->sk_err = -error;
+ 
+@@ -1074,7 +1075,7 @@ static void sctp_outq_flush_data(struct sctp_outq *q,
+ 		 */
+ 		if (!list_empty(&q->retransmit)) {
+ 			if (!sctp_outq_flush_rtx(q, _transport, transport_list,
+-						 rtx_timeout))
++						 rtx_timeout, gfp))
  				break;
  			/* We may have switched current transport */
-+			transport = *_transport;
- 			packet = &transport->packet;
- 		}
- 
-@@ -1130,12 +1103,14 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 
- 			if (asoc->stream.out[sid].state = SCTP_STREAM_CLOSED) {
- 				sctp_outq_head_data(q, chunk);
--				goto sctp_flush_out;
-+				break;
- 			}
- 
- 			if (sctp_outq_select_transport(chunk, asoc, &transport,
--						       &transport_list))
-+						       &transport_list)) {
-+				transport = *_transport;
- 				packet = &transport->packet;
-+			}
- 
- 			pr_debug("%s: outq:%p, chunk:%p[%s], tx-tsn:0x%x skb->head:%p "
- 				 "skb->users:%d\n",
-@@ -1147,8 +1122,10 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 
- 			/* Add the chunk to the packet.  */
- 			status = sctp_packet_transmit_chunk(packet, chunk, 0, gfp);
--
- 			switch (status) {
-+			case SCTP_XMIT_OK:
-+				break;
-+
- 			case SCTP_XMIT_PMTU_FULL:
- 			case SCTP_XMIT_RWND_FULL:
- 			case SCTP_XMIT_DELAY:
-@@ -1160,41 +1137,25 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 					 status);
- 
- 				sctp_outq_head_data(q, chunk);
--				goto sctp_flush_out;
--
--			case SCTP_XMIT_OK:
--				/* The sender is in the SHUTDOWN-PENDING state,
--				 * The sender MAY set the I-bit in the DATA
--				 * chunk header.
--				 */
--				if (asoc->state = SCTP_STATE_SHUTDOWN_PENDING)
--					chunk->chunk_hdr->flags |= SCTP_DATA_SACK_IMM;
--				if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
--					asoc->stats.ouodchunks++;
--				else
--					asoc->stats.oodchunks++;
--
--				/* Only now it's safe to consider this
--				 * chunk as sent, sched-wise.
--				 */
--				sctp_sched_dequeue_done(q, chunk);
--
--				break;
--
--			default:
--				BUG();
-+				return;
- 			}
- 
--			/* BUG: We assume that the sctp_packet_transmit()
--			 * call below will succeed all the time and add the
--			 * chunk to the transmitted list and restart the
--			 * timers.
--			 * It is possible that the call can fail under OOM
--			 * conditions.
--			 *
--			 * Is this really a problem?  Won't this behave
--			 * like a lost TSN?
-+			/* The sender is in the SHUTDOWN-PENDING state,
-+			 * The sender MAY set the I-bit in the DATA
-+			 * chunk header.
- 			 */
-+			if (asoc->state = SCTP_STATE_SHUTDOWN_PENDING)
-+				chunk->chunk_hdr->flags |= SCTP_DATA_SACK_IMM;
-+			if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
-+				asoc->stats.ouodchunks++;
-+			else
-+				asoc->stats.oodchunks++;
-+
-+			/* Only now it's safe to consider this
-+			 * chunk as sent, sched-wise.
-+			 */
-+			sctp_sched_dequeue_done(q, chunk);
-+
- 			list_add_tail(&chunk->transmitted_list,
- 				      &transport->transmitted);
- 
-@@ -1205,7 +1166,7 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 			 * COOKIE-ECHO chunk.
- 			 */
- 			if (packet->has_cookie_echo)
--				goto sctp_flush_out;
-+				break;
- 		}
- 		break;
- 
-@@ -1213,6 +1174,47 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 		/* Do nothing.  */
- 		break;
- 	}
-+}
-+
-+/*
-+ * Try to flush an outqueue.
-+ *
-+ * Description: Send everything in q which we legally can, subject to
-+ * congestion limitations.
-+ * * Note: This function can be called from multiple contexts so appropriate
-+ * locking concerns must be made.  Today we use the sock lock to protect
-+ * this function.
-+ */
-+static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
-+{
-+	struct sctp_packet *packet;
-+	struct sctp_association *asoc = q->asoc;
-+	struct sctp_transport *transport = NULL;
-+	int error = 0;
-+
-+	/* These transports have chunks to send. */
-+	struct list_head transport_list;
-+	struct list_head *ltransport;
-+
-+	INIT_LIST_HEAD(&transport_list);
-+	packet = NULL;
-+
-+	/*
-+	 * 6.10 Bundling
-+	 *   ...
-+	 *   When bundling control chunks with DATA chunks, an
-+	 *   endpoint MUST place control chunks first in the outbound
-+	 *   SCTP packet.  The transmitter MUST transmit DATA chunks
-+	 *   within a SCTP packet in increasing order of TSN.
-+	 *   ...
-+	 */
-+
-+	sctp_outq_flush_ctrl(q, &transport, &transport_list, gfp);
-+
-+	if (q->asoc->src_out_of_asoc_ok)
-+		goto sctp_flush_out;
-+
-+	sctp_outq_flush_data(q, &transport, &transport_list, rtx_timeout, gfp);
- 
- sctp_flush_out:
- 
+ 			transport = *_transport;
 -- 
 2.14.3
 
