@@ -1,178 +1,201 @@
-From: Vlad Yasevich <vyasevic@redhat.com>
-Date: Wed, 02 May 2018 14:25:31 +0000
-Subject: Re: [PATCH V2 net-next 5/6] macvlan/macvtap: Add support for SCTP checksum offload.
-Message-Id: <b895abdb-9608-d075-ff2d-46b43d94692b@redhat.com>
+From: Dmitry Vyukov <dvyukov@google.com>
+Date: Fri, 11 May 2018 10:00:38 +0000
+Subject: Re: INFO: rcu detected stall in kfree_skbmem
+Message-Id: <CACT4Y+Z_+=VLbELVW69B7WEVqvri1xBMM5RMnMQynec_XgaE=w@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180502020739.19239-1-vyasevic@redhat.com>
- <20180502020739.19239-6-vyasevic@redhat.com>
- <20180502062400-mutt-send-email-mst@kernel.org>
- <35def050-3803-42f4-5ee3-c10f98186c6d@redhat.com>
- <20180502164317-mutt-send-email-mst@kernel.org>
- <cd94e936-f24c-de0d-7254-069054e33268@redhat.com>
- <20180502170424-mutt-send-email-mst@kernel.org>
-In-Reply-To: <20180502170424-mutt-send-email-mst@kernel.org>
+References: <000000000000a9b0e3056b14bfb2@google.com>
+In-Reply-To: <000000000000a9b0e3056b14bfb2@google.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: "Michael S. Tsirkin" <mst@redhat.com>
-Cc: Vladislav Yasevich <vyasevich@gmail.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, virtualization@lists.linux-foundation.org, virtio-dev@lists.oasis-open.org, jasowang@redhat.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com
+Content-Type: text/plain; charset="windows-1252"
+Content-Transfer-Encoding: quoted-printable
+To: syzbot <syzbot+fc78715ba3b3257caf6a@syzkaller.appspotmail.com>, Vladislav Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, linux-sctp@vger.kernel.org
+Cc: Andrei Vagin <avagin@virtuozzo.com>, David Miller <davem@davemloft.net>, Kirill Tkhai <ktkhai@virtuozzo.com>, LKML <linux-kernel@vger.kernel.org>, netdev <netdev@vger.kernel.org>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>
 
-On 05/02/2018 10:17 AM, Michael S. Tsirkin wrote:
-> On Wed, May 02, 2018 at 10:00:14AM -0400, Vlad Yasevich wrote:
->> On 05/02/2018 09:46 AM, Michael S. Tsirkin wrote:
->>> On Wed, May 02, 2018 at 09:27:00AM -0400, Vlad Yasevich wrote:
->>>> On 05/01/2018 11:24 PM, Michael S. Tsirkin wrote:
->>>>> On Tue, May 01, 2018 at 10:07:38PM -0400, Vladislav Yasevich wrote:
->>>>>> Since we now have support for software CRC32c offload, turn it on
->>>>>> for macvlan and macvtap devices so that guests can take advantage
->>>>>> of offload SCTP checksums to the host or host hardware.
->>>>>>
->>>>>> Signed-off-by: Vladislav Yasevich <vyasevic@redhat.com>
->>>>>> ---
->>>>>>  drivers/net/macvlan.c | 5 +++--
->>>>>>  drivers/net/tap.c     | 8 +++++---
->>>>>>  2 files changed, 8 insertions(+), 5 deletions(-)
->>>>>>
->>>>>> diff --git a/drivers/net/macvlan.c b/drivers/net/macvlan.c
->>>>>> index 725f4b4..646b730 100644
->>>>>> --- a/drivers/net/macvlan.c
->>>>>> +++ b/drivers/net/macvlan.c
->>>>>> @@ -834,7 +834,7 @@ static struct lock_class_key macvlan_netdev_addr_lock_key;
->>>>>>  
->>>>>>  #define ALWAYS_ON_OFFLOADS \
->>>>>>  	(NETIF_F_SG | NETIF_F_HW_CSUM | NETIF_F_GSO_SOFTWARE | \
->>>>>> -	 NETIF_F_GSO_ROBUST | NETIF_F_GSO_ENCAP_ALL)
->>>>>> +	 NETIF_F_GSO_ROBUST | NETIF_F_GSO_ENCAP_ALL | NETIF_F_SCTP_CRC)
->>>>>>  
->>>>>>  #define ALWAYS_ON_FEATURES (ALWAYS_ON_OFFLOADS | NETIF_F_LLTX)
->>>>>>  
->>>>>> @@ -842,7 +842,8 @@ static struct lock_class_key macvlan_netdev_addr_lock_key;
->>>>>>  	(NETIF_F_SG | NETIF_F_HW_CSUM | NETIF_F_HIGHDMA | NETIF_F_FRAGLIST | \
->>>>>>  	 NETIF_F_GSO | NETIF_F_TSO | NETIF_F_LRO | \
->>>>>>  	 NETIF_F_TSO_ECN | NETIF_F_TSO6 | NETIF_F_GRO | NETIF_F_RXCSUM | \
->>>>>> -	 NETIF_F_HW_VLAN_CTAG_FILTER | NETIF_F_HW_VLAN_STAG_FILTER)
->>>>>> +	 NETIF_F_HW_VLAN_CTAG_FILTER | NETIF_F_HW_VLAN_STAG_FILTER | \
->>>>>> +	 NETIF_F_SCTP_CRC)
->>>>>>  
->>>>>>  #define MACVLAN_STATE_MASK \
->>>>>>  	((1<<__LINK_STATE_NOCARRIER) | (1<<__LINK_STATE_DORMANT))
->>>>>> diff --git a/drivers/net/tap.c b/drivers/net/tap.c
->>>>>> index 9b6cb78..2c8512b 100644
->>>>>> --- a/drivers/net/tap.c
->>>>>> +++ b/drivers/net/tap.c
->>>>>> @@ -369,8 +369,7 @@ rx_handler_result_t tap_handle_frame(struct sk_buff **pskb)
->>>>>>  		 *	  check, we either support them all or none.
->>>>>>  		 */
->>>>>>  		if (skb->ip_summed = CHECKSUM_PARTIAL &&
->>>>>> -		    !(features & NETIF_F_CSUM_MASK) &&
->>>>>> -		    skb_checksum_help(skb))
->>>>>> +		    skb_csum_hwoffload_help(skb, features))
->>>>>>  			goto drop;
->>>>>>  		if (ptr_ring_produce(&q->ring, skb))
->>>>>>  			goto drop;
->>>>>> @@ -945,6 +944,9 @@ static int set_offload(struct tap_queue *q, unsigned long arg)
->>>>>>  		}
->>>>>>  	}
->>>>>>  
->>>>>> +	if (arg & TUN_F_SCTP_CSUM)
->>>>>> +		feature_mask |= NETIF_F_SCTP_CRC;
->>>>>> +
->>>>>
->>>>> so this still affects TX, shouldn't this affect RX instead?
->>>>
->>>> There is no bit to set on the RX path just like there is no bit to set on the RX patch
->>>> for TUN_F_CSUM.
->>>>
->>>> We only invert TSO offloads, not checksum offloads as the comment below states.
->>>> For checksum,  macvtap has to compute the checksum itself in tap_handle_frame() above.
->>>> It uses tx feature bits to see if needs do to the checksum.
->>>>
->>>> If you think we need another flag to macvtap to control RXCSUM, that would need to be
->>>> separate and cover standard TCP checksum as well.
->>>>
->>>> -vlad
->>>
->>> Confused. What is the meaning of TUN_F_SCTP_CSUM? I assume this is
->>> a way for userspace to tell tun device: "I can handle
->>> packets without SCTP checksum, pls send them my way".
->>
->> Yes,  just as TUN_F_CSUM means that tun device can handle packets with
->> partial tcp/udp checksum.
->>
->>>
->>> Now what is the implication for macvtap? 
->>
->> The implication is exactly the same as for TUN_F_CSUM.  If the
->> flag is set on the macvtap device, the TX checksum feature is
->> turned on.
-> 
-> I guess I will have to go back and re-read that code - I do not remember
-> what does TUN_F_CSUM does by now.  Here is a quick question that might
-> help me:
-> 
-> Let's assume userspace does not set TUN_F_SCTP_CSUM and device
-> does not calculate the checksums either. I would expect that with
-> macvtap this then behaves exactly like now with no overhead.
+On Mon, Apr 30, 2018 at 8:09 PM, syzbot
+<syzbot+fc78715ba3b3257caf6a@syzkaller.appspotmail.com> wrote:
+> Hello,
+>
+> syzbot found the following crash on:
+>
+> HEAD commit:    5d1365940a68 Merge
+> git://git.kernel.org/pub/scm/linux/kerne...
+> git tree:       net-next
+> console output: https://syzkaller.appspot.com/x/log.txt?idV67997129637888
+> kernel config:
+> https://syzkaller.appspot.com/x/.config?id=3D-5947642240294114534
+> dashboard link: https://syzkaller.appspot.com/bug?extid=FC78715ba3b3257ca=
+f6a
+> compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
+>
+> Unfortunately, I don't have any reproducer for this crash yet.
 
-correct.
+This looks sctp-related, +sctp maintainers.
 
-> 
->>
->>> And why  are
->>> you setting NETIF_F_SCTP_CRC which is a flag
->>> that affects packets sent by guest to host?
->>
->> Mainly its because we are using just 1 flag to control checksum
->> offloading and we need to be able control both tx and rx paths.
-> 
-> Well that's not really the case I think. What we have is controls for tx
-> offloads for tun. That's TUN_F_CSUM.
-> there are no rx offloads - userspace can send what it wants.
-> 
-> These are supposed to translate to rx offloads for macvtap.
-> tx offloads shouldn't be affected at all.
-
-Ok.  This is how it works for TSO, but looks like there was a disconnect
-on the checksum.   In both tun and macvtap case, TUN_F_CSUM controls
-the tx checksum feature bit.
-
-> 
-> Maybe that's not the case - as I said need to go back and check.
-> Will try to find the time in the next couple of days.
-> 
->> What you are suggesting that we either invert what TUN_F_CSUM
->> is doing in macvtap case, or have another flag that lets us control
->> TX and RX paths separately.
->>
->> Either case, that would be separate work.
->> -vlad
-> 
-> So assuming TUN_F_CSUM affects tx for macvtap do you
-> agree it's a bug? And should we add to it with
-> TUN_F_SCTP_CSUM doing the same?
-
-let me think about what it would look like if TUN_F_CSUM
-controlled the rx bits...
-
--vlad
-
-> 
->>>
->>>
->>>>>
->>>>>
->>>>>>  	/* tun/tap driver inverts the usage for TSO offloads, where
->>>>>>  	 * setting the TSO bit means that the userspace wants to
->>>>>>  	 * accept TSO frames and turning it off means that user space
->>>>>> @@ -1077,7 +1079,7 @@ static long tap_ioctl(struct file *file, unsigned int cmd,
->>>>>>  	case TUNSETOFFLOAD:
->>>>>>  		/* let the user check for future flags */
->>>>>>  		if (arg & ~(TUN_F_CSUM | TUN_F_TSO4 | TUN_F_TSO6 |
->>>>>> -			    TUN_F_TSO_ECN | TUN_F_UFO))
->>>>>> +			    TUN_F_TSO_ECN | TUN_F_UFO | TUN_F_SCTP_CSUM))
->>>>>>  			return -EINVAL;
->>>>>>  
->>>>>>  		rtnl_lock();
->>>>>> -- 
->>>>>> 2.9.5
-
+> IMPORTANT: if you fix the bug, please add the following tag to the commit:
+> Reported-by: syzbot+fc78715ba3b3257caf6a@syzkaller.appspotmail.com
+>
+> INFO: rcu_sched self-detected stall on CPU
+>         1-...!: (1 GPs behind) idle=A3e/1/4611686018427387908
+> softirqq980/71983 fqs3
+>          (t=125000 jiffies g9438 c9437 q=958)
+> rcu_sched kthread starved for 124829 jiffies! g39438 c39437 f0x0
+> RCU_GP_WAIT_FQS(3) ->state=3D0x0 ->cpu=3D0
+> RCU grace-period kthread stack dump:
+> rcu_sched       R  running task    23768     9      2 0x80000000
+> Call Trace:
+>  context_switch kernel/sched/core.c:2848 [inline]
+>  __schedule+0x801/0x1e30 kernel/sched/core.c:3490
+>  schedule+0xef/0x430 kernel/sched/core.c:3549
+>  schedule_timeout+0x138/0x240 kernel/time/timer.c:1801
+>  rcu_gp_kthread+0x6b5/0x1940 kernel/rcu/tree.c:2231
+>  kthread+0x345/0x410 kernel/kthread.c:238
+>  ret_from_fork+0x3a/0x50 arch/x86/entry/entry_64.S:411
+> NMI backtrace for cpu 1
+> CPU: 1 PID: 20560 Comm: syz-executor4 Not tainted 4.16.0+ #1
+> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS
+> Google 01/01/2011
+> Call Trace:
+>  <IRQ>
+>  __dump_stack lib/dump_stack.c:77 [inline]
+>  dump_stack+0x1b9/0x294 lib/dump_stack.c:113
+>  nmi_cpu_backtrace.cold.4+0x19/0xce lib/nmi_backtrace.c:103
+>  nmi_trigger_cpumask_backtrace+0x151/0x192 lib/nmi_backtrace.c:62
+>  arch_trigger_cpumask_backtrace+0x14/0x20 arch/x86/kernel/apic/hw_nmi.c:38
+>  trigger_single_cpu_backtrace include/linux/nmi.h:156 [inline]
+>  rcu_dump_cpu_stacks+0x175/0x1c2 kernel/rcu/tree.c:1376
+>  print_cpu_stall kernel/rcu/tree.c:1525 [inline]
+>  check_cpu_stall.isra.61.cold.80+0x36c/0x59a kernel/rcu/tree.c:1593
+>  __rcu_pending kernel/rcu/tree.c:3356 [inline]
+>  rcu_pending kernel/rcu/tree.c:3401 [inline]
+>  rcu_check_callbacks+0x21b/0xad0 kernel/rcu/tree.c:2763
+>  update_process_times+0x2d/0x70 kernel/time/timer.c:1636
+>  tick_sched_handle+0x9f/0x180 kernel/time/tick-sched.c:173
+>  tick_sched_timer+0x45/0x130 kernel/time/tick-sched.c:1283
+>  __run_hrtimer kernel/time/hrtimer.c:1386 [inline]
+>  __hrtimer_run_queues+0x3e3/0x10a0 kernel/time/hrtimer.c:1448
+>  hrtimer_interrupt+0x286/0x650 kernel/time/hrtimer.c:1506
+>  local_apic_timer_interrupt arch/x86/kernel/apic/apic.c:1025 [inline]
+>  smp_apic_timer_interrupt+0x15d/0x710 arch/x86/kernel/apic/apic.c:1050
+>  apic_timer_interrupt+0xf/0x20 arch/x86/entry/entry_64.S:862
+> RIP: 0010:arch_local_irq_restore arch/x86/include/asm/paravirt.h:783
+> [inline]
+> RIP: 0010:kmem_cache_free+0xb3/0x2d0 mm/slab.c:3757
+> RSP: 0018:ffff8801db105228 EFLAGS: 00000282 ORIG_RAX: ffffffffffffff13
+> RAX: 0000000000000007 RBX: ffff8800b055c940 RCX: 1ffff1003b2345a5
+> RDX: 0000000000000000 RSI: ffff8801d91a2d80 RDI: 0000000000000282
+> RBP: ffff8801db105248 R08: ffff8801d91a2cb8 R09: 0000000000000002
+> R10: ffff8801d91a2480 R11: 0000000000000000 R12: ffff8801d9848e40
+> R13: 0000000000000282 R14: ffffffff85b7f27c R15: 0000000000000000
+>  kfree_skbmem+0x13c/0x210 net/core/skbuff.c:582
+>  __kfree_skb net/core/skbuff.c:642 [inline]
+>  kfree_skb+0x19d/0x560 net/core/skbuff.c:659
+>  enqueue_to_backlog+0x2fc/0xc90 net/core/dev.c:3968
+>  netif_rx_internal+0x14d/0xae0 net/core/dev.c:4181
+>  netif_rx+0xba/0x400 net/core/dev.c:4206
+>  loopback_xmit+0x283/0x741 drivers/net/loopback.c:91
+>  __netdev_start_xmit include/linux/netdevice.h:4087 [inline]
+>  netdev_start_xmit include/linux/netdevice.h:4096 [inline]
+>  xmit_one net/core/dev.c:3053 [inline]
+>  dev_hard_start_xmit+0x264/0xc10 net/core/dev.c:3069
+>  __dev_queue_xmit+0x2724/0x34c0 net/core/dev.c:3584
+>  dev_queue_xmit+0x17/0x20 net/core/dev.c:3617
+>  neigh_hh_output include/net/neighbour.h:472 [inline]
+>  neigh_output include/net/neighbour.h:480 [inline]
+>  ip6_finish_output2+0x134e/0x2810 net/ipv6/ip6_output.c:120
+>  ip6_finish_output+0x5fe/0xbc0 net/ipv6/ip6_output.c:154
+>  NF_HOOK_COND include/linux/netfilter.h:277 [inline]
+>  ip6_output+0x227/0x9b0 net/ipv6/ip6_output.c:171
+>  dst_output include/net/dst.h:444 [inline]
+>  NF_HOOK include/linux/netfilter.h:288 [inline]
+>  ip6_xmit+0xf51/0x23f0 net/ipv6/ip6_output.c:277
+>  sctp_v6_xmit+0x4a5/0x6b0 net/sctp/ipv6.c:225
+>  sctp_packet_transmit+0x26f6/0x3ba0 net/sctp/output.c:650
+>  sctp_outq_flush+0x1373/0x4370 net/sctp/outqueue.c:1197
+>  sctp_outq_uncork+0x6a/0x80 net/sctp/outqueue.c:776
+>  sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1820 [inline]
+>  sctp_side_effects net/sctp/sm_sideeffect.c:1220 [inline]
+>  sctp_do_sm+0x596/0x7160 net/sctp/sm_sideeffect.c:1191
+>  sctp_generate_heartbeat_event+0x218/0x450 net/sctp/sm_sideeffect.c:406
+>  call_timer_fn+0x230/0x940 kernel/time/timer.c:1326
+>  expire_timers kernel/time/timer.c:1363 [inline]
+>  __run_timers+0x79e/0xc50 kernel/time/timer.c:1666
+>  run_timer_softirq+0x4c/0x70 kernel/time/timer.c:1692
+>  __do_softirq+0x2e0/0xaf5 kernel/softirq.c:285
+>  invoke_softirq kernel/softirq.c:365 [inline]
+>  irq_exit+0x1d1/0x200 kernel/softirq.c:405
+>  exiting_irq arch/x86/include/asm/apic.h:525 [inline]
+>  smp_apic_timer_interrupt+0x17e/0x710 arch/x86/kernel/apic/apic.c:1052
+>  apic_timer_interrupt+0xf/0x20 arch/x86/entry/entry_64.S:862
+>  </IRQ>
+> RIP: 0010:arch_local_irq_restore arch/x86/include/asm/paravirt.h:783
+> [inline]
+> RIP: 0010:lock_release+0x4d4/0xa10 kernel/locking/lockdep.c:3942
+> RSP: 0018:ffff8801971ce7b0 EFLAGS: 00000282 ORIG_RAX: ffffffffffffff13
+> RAX: dffffc0000000000 RBX: 1ffff10032e39cfb RCX: 1ffff1003b234595
+> RDX: 1ffffffff11630ed RSI: 0000000000000002 RDI: 0000000000000282
+> RBP: ffff8801971ce8e0 R08: 1ffff10032e39cff R09: ffffed003b6246c2
+> R10: 0000000000000003 R11: 0000000000000001 R12: ffff8801d91a2480
+> R13: ffffffff88b8df60 R14: ffff8801d91a2480 R15: ffff8801971ce7f8
+>  rcu_lock_release include/linux/rcupdate.h:251 [inline]
+>  rcu_read_unlock include/linux/rcupdate.h:688 [inline]
+>  __unlock_page_memcg+0x72/0x100 mm/memcontrol.c:1654
+>  unlock_page_memcg+0x2c/0x40 mm/memcontrol.c:1663
+>  page_remove_file_rmap mm/rmap.c:1248 [inline]
+>  page_remove_rmap+0x6f2/0x1250 mm/rmap.c:1299
+>  zap_pte_range mm/memory.c:1337 [inline]
+>  zap_pmd_range mm/memory.c:1441 [inline]
+>  zap_pud_range mm/memory.c:1470 [inline]
+>  zap_p4d_range mm/memory.c:1491 [inline]
+>  unmap_page_range+0xeb4/0x2200 mm/memory.c:1512
+>  unmap_single_vma+0x1a0/0x310 mm/memory.c:1557
+>  unmap_vmas+0x120/0x1f0 mm/memory.c:1587
+>  exit_mmap+0x265/0x570 mm/mmap.c:3038
+>  __mmput kernel/fork.c:962 [inline]
+>  mmput+0x251/0x610 kernel/fork.c:983
+>  exit_mm kernel/exit.c:544 [inline]
+>  do_exit+0xe98/0x2730 kernel/exit.c:852
+>  do_group_exit+0x16f/0x430 kernel/exit.c:968
+>  get_signal+0x886/0x1960 kernel/signal.c:2469
+>  do_signal+0x98/0x2040 arch/x86/kernel/signal.c:810
+>  exit_to_usermode_loop+0x28a/0x310 arch/x86/entry/common.c:162
+>  prepare_exit_to_usermode arch/x86/entry/common.c:196 [inline]
+>  syscall_return_slowpath arch/x86/entry/common.c:265 [inline]
+>  do_syscall_64+0x792/0x9d0 arch/x86/entry/common.c:292
+>  entry_SYSCALL_64_after_hwframe+0x42/0xb7
+> RIP: 0033:0x455319
+> RSP: 002b:00007fa346e81ce8 EFLAGS: 00000246 ORIG_RAX: 00000000000000ca
+> RAX: fffffffffffffe00 RBX: 000000000072bf80 RCX: 0000000000455319
+> RDX: 0000000000000000 RSI: 0000000000000000 RDI: 000000000072bf80
+> RBP: 000000000072bf80 R08: 0000000000000000 R09: 000000000072bf58
+> R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
+> R13: 0000000000a3e81f R14: 00007fa346e829c0 R15: 0000000000000001
+>
+>
+> ---
+> This bug is generated by a bot. It may contain errors.
+> See https://goo.gl/tpsmEJ for more information about syzbot.
+> syzbot engineers can be reached at syzkaller@googlegroups.com.
+>
+> syzbot will keep track of this bug report.
+> If you forgot to add the Reported-by tag, once the fix for this bug is
+> merged
+> into any tree, please reply to this email with:
+> #syz fix: exact-commit-title
+> To mark this as a duplicate of another syzbot report, please reply with:
+> #syz dup: exact-subject-of-another-report
+> If it's a one-off invalid bug report, please reply with:
+> #syz invalid
+> Note: if the crash happens again, it will cause creation of a new bug
+> report.
+> Note: all commands must start from beginning of the line in the email bod=
+y.
+>
+> --
+> You received this message because you are subscribed to the Google Groups
+> "syzkaller-bugs" group.
+> To unsubscribe from this group and stop receiving emails from it, send an
+> email to syzkaller-bugs+unsubscribe@googlegroups.com.
+> To view this discussion on the web visit
+> https://groups.google.com/d/msgid/syzkaller-bugs/000000000000a9b0e3056b14=
+bfb2%40google.com.
+> For more options, visit https://groups.google.com/d/optout.
