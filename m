@@ -1,113 +1,27 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 11 May 2018 23:29:00 +0000
-Subject: [PATCH net-next 6/8] sctp: move transport flush code out of sctp_outq_flush
-Message-Id: <0b335685619527018d1209580a8ac25d3d610d12.1526077476.git.marcelo.leitner@gmail.com>
+Date: Fri, 11 May 2018 23:29:50 +0000
+Subject: [PATCH net-next 0/3] sctp: Introduce sctp_flush_ctx
+Message-Id: <cover.1526078163.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1526077476.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1526077476.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
 Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>
 
-To the new sctp_outq_flush_transports.
+This struct will hold all the context used during the outq flush, so we
+don't have to pass lots of pointers all around.
 
-Comment on Nagle is outdated and removed. Nagle is performed earlier, while
-checking if the chunk fits the packet: if the outq length is not enough to
-fill the packet, it returns SCTP_XMIT_DELAY.
+Checked on x86_64, the compiler inlines all these functions and there is no
+derreference added because of the struct.
 
-So by when it gets to sctp_outq_flush_transports, it has to go through all
-enlisted transports.
+Marcelo Ricardo Leitner (3):
+  sctp: add sctp_flush_ctx, a context struct on outq_flush routines
+  sctp: add asoc and packet to sctp_flush_ctx
+  sctp: checkpatch fixups
 
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
----
- net/sctp/outqueue.c | 56 +++++++++++++++++++++++++----------------------------
- 1 file changed, 26 insertions(+), 30 deletions(-)
+ net/sctp/outqueue.c | 259 ++++++++++++++++++++++++----------------------------
+ 1 file changed, 119 insertions(+), 140 deletions(-)
 
-diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index e445a59db26004553984088d50e458a93b03dcb8..e867bde0b2d93f730f0cb89ad2f54a2094f47833 100644
---- a/net/sctp/outqueue.c
-+++ b/net/sctp/outqueue.c
-@@ -1176,6 +1176,29 @@ static void sctp_outq_flush_data(struct sctp_outq *q,
- 	}
- }
- 
-+static void sctp_outq_flush_transports(struct sctp_outq *q,
-+				       struct list_head *transport_list,
-+				       gfp_t gfp)
-+{
-+	struct list_head *ltransport;
-+	struct sctp_packet *packet;
-+	struct sctp_transport *t;
-+	int error = 0;
-+
-+	while ((ltransport = sctp_list_dequeue(transport_list)) != NULL) {
-+		t = list_entry(ltransport, struct sctp_transport, send_ready);
-+		packet = &t->packet;
-+		if (!sctp_packet_empty(packet)) {
-+			error = sctp_packet_transmit(packet, gfp);
-+			if (error < 0)
-+				q->asoc->base.sk->sk_err = -error;
-+		}
-+
-+		/* Clear the burst limited state, if any */
-+		sctp_transport_burst_reset(t);
-+	}
-+}
-+
- /*
-  * Try to flush an outqueue.
-  *
-@@ -1187,17 +1210,10 @@ static void sctp_outq_flush_data(struct sctp_outq *q,
-  */
- static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- {
--	struct sctp_packet *packet;
--	struct sctp_association *asoc = q->asoc;
-+	/* Current transport being used. It's NOT the same as curr active one */
- 	struct sctp_transport *transport = NULL;
--	int error = 0;
--
- 	/* These transports have chunks to send. */
--	struct list_head transport_list;
--	struct list_head *ltransport;
--
--	INIT_LIST_HEAD(&transport_list);
--	packet = NULL;
-+	LIST_HEAD(transport_list);
- 
- 	/*
- 	 * 6.10 Bundling
-@@ -1218,27 +1234,7 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 
- sctp_flush_out:
- 
--	/* Before returning, examine all the transports touched in
--	 * this call.  Right now, we bluntly force clear all the
--	 * transports.  Things might change after we implement Nagle.
--	 * But such an examination is still required.
--	 *
--	 * --xguo
--	 */
--	while ((ltransport = sctp_list_dequeue(&transport_list)) != NULL) {
--		struct sctp_transport *t = list_entry(ltransport,
--						      struct sctp_transport,
--						      send_ready);
--		packet = &t->packet;
--		if (!sctp_packet_empty(packet)) {
--			error = sctp_packet_transmit(packet, gfp);
--			if (error < 0)
--				asoc->base.sk->sk_err = -error;
--		}
--
--		/* Clear the burst limited state, if any */
--		sctp_transport_burst_reset(t);
--	}
-+	sctp_outq_flush_transports(q, &transport_list, gfp);
- }
- 
- /* Update unack_data based on the incoming SACK chunk */
--- 
+--
 2.14.3
-
