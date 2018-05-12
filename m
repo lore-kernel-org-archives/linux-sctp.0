@@ -1,97 +1,74 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Sat, 12 May 2018 22:21:54 +0000
-Subject: [PATCH net-next v2 3/3] sctp: checkpatch fixups
-Message-Id: <c613803e64bb084e2c7b1048cd9d45c1870aec93.1526142994.git.marcelo.leitner@gmail.com>
+Date: Sat, 12 May 2018 22:20:50 +0000
+Subject: [PATCH net-next v2 1/8] sctp: add sctp_packet_singleton
+Message-Id: <3a5891776a3b203d92c22df4794b0828ac92274d.1526142784.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1526142994.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1526142994.git.marcelo.leitner@gmail.com>
+References: <cover.1526142784.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1526142784.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
 Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>
 
-A collection of fixups from previous patches, left for later to not
-introduce unnecessary changes while moving code around.
+Factor out the code for generating singletons. It's used only once, but
+helps to keep the context contained.
+
+The const variables are to ease the reading of subsequent calls in there.
 
 Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- net/sctp/outqueue.c | 20 +++++++-------------
- 1 file changed, 7 insertions(+), 13 deletions(-)
+ net/sctp/outqueue.c | 22 +++++++++++++++-------
+ 1 file changed, 15 insertions(+), 7 deletions(-)
 
 diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index a594d181fa1178c34cf477e13d700f7b37e72e21..9a2fa7d6d68b1d695cd745ed612eb32193f947e0 100644
+index dee7cbd5483149024f2f3195db2fe4d473b1a00a..300bd0dfc7c14c9df579dbe2f9e78dd8356ae1a3 100644
 --- a/net/sctp/outqueue.c
 +++ b/net/sctp/outqueue.c
-@@ -812,8 +812,7 @@ static void sctp_outq_select_transport(struct sctp_flush_ctx *ctx,
- 
- 	if (!new_transport) {
- 		if (!sctp_chunk_is_data(chunk)) {
--			/*
--			 * If we have a prior transport pointer, see if
-+			/* If we have a prior transport pointer, see if
- 			 * the destination address of the chunk
- 			 * matches the destination address of the
- 			 * current transport.  If not a match, then
-@@ -912,8 +911,7 @@ static void sctp_outq_flush_ctrl(struct sctp_flush_ctx *ctx)
- 		sctp_outq_select_transport(ctx, chunk);
- 
- 		switch (chunk->chunk_hdr->type) {
--		/*
--		 * 6.10 Bundling
-+		/* 6.10 Bundling
- 		 *   ...
- 		 *   An endpoint MUST NOT bundle INIT, INIT ACK or SHUTDOWN
- 		 *   COMPLETE with any other chunks.  [Send them immediately.]
-@@ -1061,8 +1059,7 @@ static void sctp_outq_flush_data(struct sctp_flush_ctx *ctx,
- 		return;
- 	}
- 
--	/*
--	 * RFC 2960 6.1  Transmission of DATA Chunks
-+	/* RFC 2960 6.1  Transmission of DATA Chunks
- 	 *
- 	 * C) When the time comes for the sender to transmit,
- 	 * before sending new DATA chunks, the sender MUST
-@@ -1101,8 +1098,7 @@ static void sctp_outq_flush_data(struct sctp_flush_ctx *ctx,
- 
- 		sctp_outq_select_transport(ctx, chunk);
- 
--		pr_debug("%s: outq:%p, chunk:%p[%s], tx-tsn:0x%x skb->head:%p "
--			 "skb->users:%d\n",
-+		pr_debug("%s: outq:%p, chunk:%p[%s], tx-tsn:0x%x skb->head:%p skb->users:%d\n",
- 			 __func__, ctx->q, chunk, chunk && chunk->chunk_hdr ?
- 			 sctp_cname(SCTP_ST_CHUNK(chunk->chunk_hdr->type)) :
- 			 "illegal chunk", ntohl(chunk->subh.data_hdr->tsn),
-@@ -1175,8 +1171,7 @@ static void sctp_outq_flush_transports(struct sctp_flush_ctx *ctx)
- 	}
+@@ -776,6 +776,20 @@ void sctp_outq_uncork(struct sctp_outq *q, gfp_t gfp)
+ 	sctp_outq_flush(q, 0, gfp);
  }
  
--/*
-- * Try to flush an outqueue.
-+/* Try to flush an outqueue.
-  *
-  * Description: Send everything in q which we legally can, subject to
-  * congestion limitations.
-@@ -1196,8 +1191,7 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 		.gfp = gfp,
- 	};
++static int sctp_packet_singleton(struct sctp_transport *transport,
++				 struct sctp_chunk *chunk, gfp_t gfp)
++{
++	const struct sctp_association *asoc = transport->asoc;
++	const __u16 sport = asoc->base.bind_addr.port;
++	const __u16 dport = asoc->peer.port;
++	const __u32 vtag = asoc->peer.i.init_tag;
++	struct sctp_packet singleton;
++
++	sctp_packet_init(&singleton, transport, sport, dport);
++	sctp_packet_config(&singleton, vtag, 0);
++	sctp_packet_append_chunk(&singleton, chunk);
++	return sctp_packet_transmit(&singleton, gfp);
++}
  
--	/*
--	 * 6.10 Bundling
-+	/* 6.10 Bundling
- 	 *   ...
- 	 *   When bundling control chunks with DATA chunks, an
- 	 *   endpoint MUST place control chunks first in the outbound
-@@ -1768,7 +1762,7 @@ static int sctp_acked(struct sctp_sackhdr *sack, __u32 tsn)
- 	if (TSN_lte(tsn, ctsn))
- 		goto pass;
- 
--	/* 3.3.4 Selective Acknowledgement (SACK) (3):
-+	/* 3.3.4 Selective Acknowledgment (SACK) (3):
- 	 *
- 	 * Gap Ack Blocks:
- 	 *  These fields contain the Gap Ack Blocks. They are repeated
+ /*
+  * Try to flush an outqueue.
+@@ -789,10 +803,7 @@ void sctp_outq_uncork(struct sctp_outq *q, gfp_t gfp)
+ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
+ {
+ 	struct sctp_packet *packet;
+-	struct sctp_packet singleton;
+ 	struct sctp_association *asoc = q->asoc;
+-	__u16 sport = asoc->base.bind_addr.port;
+-	__u16 dport = asoc->peer.port;
+ 	__u32 vtag = asoc->peer.i.init_tag;
+ 	struct sctp_transport *transport = NULL;
+ 	struct sctp_transport *new_transport;
+@@ -905,10 +916,7 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
+ 		case SCTP_CID_INIT:
+ 		case SCTP_CID_INIT_ACK:
+ 		case SCTP_CID_SHUTDOWN_COMPLETE:
+-			sctp_packet_init(&singleton, transport, sport, dport);
+-			sctp_packet_config(&singleton, vtag, 0);
+-			sctp_packet_append_chunk(&singleton, chunk);
+-			error = sctp_packet_transmit(&singleton, gfp);
++			error = sctp_packet_singleton(transport, chunk, gfp);
+ 			if (error < 0) {
+ 				asoc->base.sk->sk_err = -error;
+ 				return;
 -- 
 2.14.3
 
