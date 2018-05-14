@@ -1,49 +1,42 @@
-From: Vlad Yasevich <vyasevic@redhat.com>
-Date: Wed, 02 May 2018 17:17:50 +0000
-Subject: Re: [PATCH V2 net-next 4/6] tun: Add support for SCTP checksum offload
-Message-Id: <5e968e6d-4dbf-cfef-a270-99b0d1dd4ea8@redhat.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Mon, 14 May 2018 17:34:35 +0000
+Subject: [PATCH net-next v3 0/8] sctp: refactor sctp_outq_flush
+Message-Id: <cover.1526318522.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180502020739.19239-1-vyasevic@redhat.com>
- <20180502020739.19239-5-vyasevic@redhat.com>
- <20180502145347.GG5105@localhost.localdomain>
- <20180502145607.GH5105@localhost.localdomain>
-In-Reply-To: <20180502145607.GH5105@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vladislav Yasevich <vyasevich@gmail.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, virtualization@lists.linux-foundation.org, virtio-dev@lists.oasis-open.org, mst@redhat.com, jasowang@redhat.com, nhorman@tuxdriver.com
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-On 05/02/2018 10:56 AM, Marcelo Ricardo Leitner wrote:
-> On Wed, May 02, 2018 at 11:53:47AM -0300, Marcelo Ricardo Leitner wrote:
->> On Tue, May 01, 2018 at 10:07:37PM -0400, Vladislav Yasevich wrote:
->>> Adds a new tun offload flag to allow for SCTP checksum offload.
->>> The flag has to be set by the user and defaults to "no offload".
->>
->> I'm confused here:
->>
->>> +++ b/drivers/net/tun.c
->>> @@ -216,7 +216,7 @@ struct tun_struct {
->>>  	struct net_device	*dev;
->>>  	netdev_features_t	set_features;
->>>  #define TUN_USER_FEATURES (NETIF_F_HW_CSUM|NETIF_F_TSO_ECN|NETIF_F_TSO| \
->>> -			  NETIF_F_TSO6)
->>> +			  NETIF_F_TSO6|NETIF_F_SCTP_CRC)
->>
->> Doesn't adding it here mean it defaults to "offload", instead?
->>
->> later on, it does:
->>                 dev->hw_features = NETIF_F_SG | NETIF_F_FRAGLIST |
->>                                    TUN_USER_FEATURES | NETIF_F_HW_VLAN_CTAG_TX |
->>                                    NETIF_F_HW_VLAN_STAG_TX;
-> 
-> Missed to paste the next line too:
->                 dev->features = dev->hw_features | NETIF_F_LLTX;
-> 
+Currently sctp_outq_flush does many different things and arguably
+unrelated, such as doing transport selection and outq dequeueing.
 
-Yes, as a software device, we can default it to on.  However, qemu will 0-out
-the features and then set them up based on the guest (just like regular checksum).
+This patchset refactors it into smaller and more dedicated functions.
+The end behavior should be the same.
 
--vlad
+The next patchset will rework the function parameters.
 
+Changes since v1:
+- fix build issues on patches 3 and 4, and updated 5 and 8 because of
+  it.
+
+Changes since v2:
+- fixed panic if building with just up to patch 3 applied
+
+Marcelo Ricardo Leitner (8):
+  sctp: add sctp_packet_singleton
+  sctp: factor out sctp_outq_select_transport
+  sctp: move the flush of ctrl chunks into its own function
+  sctp: move outq data rtx code out of sctp_outq_flush
+  sctp: move flushing of data chunks out of sctp_outq_flush
+  sctp: move transport flush code out of sctp_outq_flush
+  sctp: make use of gfp on retransmissions
+  sctp: rework switch cases in sctp_outq_flush_data
+
+ net/sctp/outqueue.c | 593 +++++++++++++++++++++++++++-------------------------
+ 1 file changed, 311 insertions(+), 282 deletions(-)
+
+--
+2.14.3
 
