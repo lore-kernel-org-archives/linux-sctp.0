@@ -1,101 +1,173 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 30 May 2018 17:17:53 +0000
-Subject: [PATCH lksctp-tools 02/12] build: add m4 macros to probe for kernel features
-Message-Id: <c8edd02013cec56b9abc0d3d11d4b2f3e487e591.1527700680.git.marcelo.leitner@gmail.com>
+Date: Mon, 14 May 2018 17:34:39 +0000
+Subject: [PATCH net-next v3 4/8] sctp: move outq data rtx code out of sctp_outq_flush
+Message-Id: <84221eeeec444593bfe297330452e3be3a91b5e3.1526318522.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1526318522.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1526318522.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: netdev@vger.kernel.org
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-These macros are to assist on probing kernel features. The main reason
-for using them is to have the default includes right and the
-AM_CONDITIONALs that can be used to selectively enable (unit tests)
-sources.
+This patch renames current sctp_outq_flush_rtx to __sctp_outq_flush_rtx
+and create a new sctp_outq_flush_rtx, with the code that was on
+sctp_outq_flush. Again, the idea is to have functions with small and
+defined objectives.
+
+Yes, there is an open-coded path selection in the now sctp_outq_flush_rtx.
+That is kept as is for now because it may be very different when we
+implement retransmission path selection algorithms for CMT-SCTP.
 
 Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- m4/.gitignore |  1 +
- m4/sctp.m4    | 63 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 64 insertions(+)
- create mode 100644 m4/sctp.m4
+ net/sctp/outqueue.c | 101 ++++++++++++++++++++++++++++++----------------------
+ 1 file changed, 58 insertions(+), 43 deletions(-)
 
-diff --git a/m4/.gitignore b/m4/.gitignore
-index 0f4126cd671839a82779a5c522f95ec373eb9a00..1ff72df33a7f7e709bb752a23623266d11c92282 100644
---- a/m4/.gitignore
-+++ b/m4/.gitignore
-@@ -1 +1,2 @@
- *.m4
-+!sctp.m4
-diff --git a/m4/sctp.m4 b/m4/sctp.m4
-new file mode 100644
-index 0000000000000000000000000000000000000000..6593517502b565ee1e02f143c8ad2efdcf7e587d
---- /dev/null
-+++ b/m4/sctp.m4
-@@ -0,0 +1,63 @@
-+# Handy references:
-+# https://www.gnu.org/software/autoconf/manual/autoconf.html#Generic-Structures
-+# AC_CHECK_MEMBER (aggregate.member, [action-if-found], [action-if-not-found], [includes = 'AC_INCLUDES_DEFAULT'])
-+# https://www.gnu.org/software/autoconf/manual/autoconf.html#Generic-Types
-+# AC_CHECK_TYPE (type, [action-if-found], [action-if-not-found], [includes = 'AC_INCLUDES_DEFAULT'])
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 92f14f51edf28cf596c76b98854a10c0fd28bb22..49e80bf2ade73914f3be275016df0a6e7f06f606 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -601,14 +601,14 @@ void sctp_retransmit(struct sctp_outq *q, struct sctp_transport *transport,
+ 
+ /*
+  * Transmit DATA chunks on the retransmit queue.  Upon return from
+- * sctp_outq_flush_rtx() the packet 'pkt' may contain chunks which
++ * __sctp_outq_flush_rtx() the packet 'pkt' may contain chunks which
+  * need to be transmitted by the caller.
+  * We assume that pkt->transport has already been set.
+  *
+  * The return value is a normal kernel error return value.
+  */
+-static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
+-			       int rtx_timeout, int *start_timer)
++static int __sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
++				 int rtx_timeout, int *start_timer)
+ {
+ 	struct sctp_transport *transport = pkt->transport;
+ 	struct sctp_chunk *chunk, *chunk1;
+@@ -987,6 +987,57 @@ static void sctp_outq_flush_ctrl(struct sctp_outq *q,
+ 	}
+ }
+ 
++/* Returns false if new data shouldn't be sent */
++static bool sctp_outq_flush_rtx(struct sctp_outq *q,
++				struct sctp_transport **_transport,
++				struct list_head *transport_list,
++				int rtx_timeout)
++{
++	struct sctp_transport *transport = *_transport;
++	struct sctp_packet *packet = transport ? &transport->packet : NULL;
++	struct sctp_association *asoc = q->asoc;
++	int error, start_timer = 0;
 +
-+# Macros to assist on probing kernel features
-+#   Probes if a type is defined
-+AC_DEFUN([LKSCTP_CHECK_TYPE], [{
-+AC_CHECK_TYPE([$1],
-+	AC_DEFINE([$2], 1,
-+		  [Define if $1 is present.])
-+	AM_CONDITIONAL([$2], [true]),
-+	AM_CONDITIONAL([$2], [false]),
-+	[AC_INCLUDES_DEFAULT
-+#ifdef HAVE_STDINT_H
-+# include <stdint.h>
-+#endif
-+#ifdef HAVE_SYS_SOCKET_H
-+# include <sys/socket.h>
-+#endif
-+#ifdef HAVE_LINUX_SCTP_H
-+# include <linux/sctp.h>
-+#endif
-+])}])
++	if (asoc->peer.retran_path->state = SCTP_UNCONFIRMED)
++		return false;
 +
-+#   Probes if a struct has a given member
-+AC_DEFUN([LKSCTP_CHECK_MEMBER], [{
-+AC_CHECK_MEMBER([$1],
-+	AC_DEFINE([$2], 1,
-+		  [Define if $1 is present.])
-+	AM_CONDITIONAL([$2], [true]),
-+	AM_CONDITIONAL([$2], [false]),
-+	[AC_INCLUDES_DEFAULT
-+#ifdef HAVE_STDINT_H
-+# include <stdint.h>
-+#endif
-+#ifdef HAVE_SYS_SOCKET_H
-+# include <sys/socket.h>
-+#endif
-+#ifdef HAVE_LINUX_SCTP_H
-+# include <linux/sctp.h>
-+#endif
-+])}])
++	if (transport != asoc->peer.retran_path) {
++		/* Switch transports & prepare the packet.  */
++		transport = asoc->peer.retran_path;
++		*_transport = transport;
 +
-+#   Probes if a declaration is present
-+AC_DEFUN([LKSCTP_CHECK_DECL], [{
-+AC_CHECK_DECL([$1],
-+	AC_DEFINE([$2], 1,
-+		  [Define if $1 is present.])
-+	AM_CONDITIONAL([$2], [true]),
-+	AM_CONDITIONAL([$2], [false]),
-+	[AC_INCLUDES_DEFAULT
-+#ifdef HAVE_STDINT_H
-+# include <stdint.h>
-+#endif
-+#ifdef HAVE_SYS_SOCKET_H
-+# include <sys/socket.h>
-+#endif
-+#ifdef HAVE_LINUX_SCTP_H
-+# include <linux/sctp.h>
-+#endif
-+])}])
++		if (list_empty(&transport->send_ready))
++			list_add_tail(&transport->send_ready,
++				      transport_list);
++
++		packet = &transport->packet;
++		sctp_packet_config(packet, asoc->peer.i.init_tag,
++				   asoc->peer.ecn_capable);
++	}
++
++	error = __sctp_outq_flush_rtx(q, packet, rtx_timeout, &start_timer);
++	if (error < 0)
++		asoc->base.sk->sk_err = -error;
++
++	if (start_timer) {
++		sctp_transport_reset_t3_rtx(transport);
++		transport->last_time_sent = jiffies;
++	}
++
++	/* This can happen on COOKIE-ECHO resend.  Only
++	 * one chunk can get bundled with a COOKIE-ECHO.
++	 */
++	if (packet->has_cookie_echo)
++		return false;
++
++	/* Don't send new data if there is still data
++	 * waiting to retransmit.
++	 */
++	if (!list_empty(&q->retransmit))
++		return false;
++
++	return true;
++}
+ /*
+  * Try to flush an outqueue.
+  *
+@@ -1000,12 +1051,10 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
+ {
+ 	struct sctp_packet *packet;
+ 	struct sctp_association *asoc = q->asoc;
+-	__u32 vtag = asoc->peer.i.init_tag;
+ 	struct sctp_transport *transport = NULL;
+ 	struct sctp_chunk *chunk;
+ 	enum sctp_xmit status;
+ 	int error = 0;
+-	int start_timer = 0;
+ 
+ 	/* These transports have chunks to send. */
+ 	struct list_head transport_list;
+@@ -1053,45 +1102,11 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
+ 		 * current cwnd).
+ 		 */
+ 		if (!list_empty(&q->retransmit)) {
+-			if (asoc->peer.retran_path->state = SCTP_UNCONFIRMED)
+-				goto sctp_flush_out;
+-			if (transport = asoc->peer.retran_path)
+-				goto retran;
+-
+-			/* Switch transports & prepare the packet.  */
+-
+-			transport = asoc->peer.retran_path;
+-
+-			if (list_empty(&transport->send_ready)) {
+-				list_add_tail(&transport->send_ready,
+-					      &transport_list);
+-			}
+-
++			if (!sctp_outq_flush_rtx(q, &transport, &transport_list,
++						 rtx_timeout))
++				break;
++			/* We may have switched current transport */
+ 			packet = &transport->packet;
+-			sctp_packet_config(packet, vtag,
+-					   asoc->peer.ecn_capable);
+-		retran:
+-			error = sctp_outq_flush_rtx(q, packet,
+-						    rtx_timeout, &start_timer);
+-			if (error < 0)
+-				asoc->base.sk->sk_err = -error;
+-
+-			if (start_timer) {
+-				sctp_transport_reset_t3_rtx(transport);
+-				transport->last_time_sent = jiffies;
+-			}
+-
+-			/* This can happen on COOKIE-ECHO resend.  Only
+-			 * one chunk can get bundled with a COOKIE-ECHO.
+-			 */
+-			if (packet->has_cookie_echo)
+-				goto sctp_flush_out;
+-
+-			/* Don't send new data if there is still data
+-			 * waiting to retransmit.
+-			 */
+-			if (!list_empty(&q->retransmit))
+-				goto sctp_flush_out;
+ 		}
+ 
+ 		/* Apply Max.Burst limitation to the current transport in
 -- 
 2.14.3
 
