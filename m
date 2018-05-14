@@ -1,15 +1,15 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 11 May 2018 23:30:08 +0000
-Subject: [PATCH net-next 3/3] sctp: checkpatch fixups
-Message-Id: <0a3362579929f389bdf41e3ad2dc1325a2df5931.1526078163.git.marcelo.leitner@gmail.com>
+Date: Mon, 14 May 2018 17:35:20 +0000
+Subject: [PATCH net-next v3 3/3] sctp: checkpatch fixups
+Message-Id: <1532d28423d0c2322f66e5d15de709ef2f574bc8.1526319083.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1526078163.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1526078163.git.marcelo.leitner@gmail.com>
+References: <cover.1526319083.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1526319083.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>
+Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>
 
 A collection of fixups from previous patches, left for later to not
 introduce unnecessary changes while moving code around.
@@ -20,7 +20,7 @@ Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
  1 file changed, 7 insertions(+), 13 deletions(-)
 
 diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index a594d181fa1178c34cf477e13d700f7b37e72e21..9a2fa7d6d68b1d695cd745ed612eb32193f947e0 100644
+index 68b7baea3feaacf6738a2346501b2ad673b67503..d68aa33485a94e87858fed9b655f00a1b9748998 100644
 --- a/net/sctp/outqueue.c
 +++ b/net/sctp/outqueue.c
 @@ -812,8 +812,7 @@ static void sctp_outq_select_transport(struct sctp_flush_ctx *ctx,
