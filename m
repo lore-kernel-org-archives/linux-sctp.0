@@ -1,42 +1,32 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 14 May 2018 17:34:35 +0000
-Subject: [PATCH net-next v3 0/8] sctp: refactor sctp_outq_flush
-Message-Id: <cover.1526318522.git.marcelo.leitner@gmail.com>
+From: David Miller <davem@davemloft.net>
+Date: Tue, 15 May 2018 02:57:32 +0000
+Subject: Re: [PATCH net-next v3 0/8] sctp: refactor sctp_outq_flush
+Message-Id: <20180514.225732.1585931004339408037.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1526318522.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1526318522.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>
+To: marcelo.leitner@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, nhorman@tuxdriver.com, lucien.xin@gmail.com, vyasevich@gmail.com
 
-Currently sctp_outq_flush does many different things and arguably
-unrelated, such as doing transport selection and outq dequeueing.
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Mon, 14 May 2018 14:34:35 -0300
 
-This patchset refactors it into smaller and more dedicated functions.
-The end behavior should be the same.
+> Currently sctp_outq_flush does many different things and arguably
+> unrelated, such as doing transport selection and outq dequeueing.
+> 
+> This patchset refactors it into smaller and more dedicated functions.
+> The end behavior should be the same.
+> 
+> The next patchset will rework the function parameters.
+> 
+> Changes since v1:
+> - fix build issues on patches 3 and 4, and updated 5 and 8 because of
+>   it.
+> 
+> Changes since v2:
+> - fixed panic if building with just up to patch 3 applied
 
-The next patchset will rework the function parameters.
-
-Changes since v1:
-- fix build issues on patches 3 and 4, and updated 5 and 8 because of
-  it.
-
-Changes since v2:
-- fixed panic if building with just up to patch 3 applied
-
-Marcelo Ricardo Leitner (8):
-  sctp: add sctp_packet_singleton
-  sctp: factor out sctp_outq_select_transport
-  sctp: move the flush of ctrl chunks into its own function
-  sctp: move outq data rtx code out of sctp_outq_flush
-  sctp: move flushing of data chunks out of sctp_outq_flush
-  sctp: move transport flush code out of sctp_outq_flush
-  sctp: make use of gfp on retransmissions
-  sctp: rework switch cases in sctp_outq_flush_data
-
- net/sctp/outqueue.c | 593 +++++++++++++++++++++++++++-------------------------
- 1 file changed, 311 insertions(+), 282 deletions(-)
-
---
-2.14.3
-
+Series applied, thanks.
