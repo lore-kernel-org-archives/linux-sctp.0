@@ -1,31 +1,106 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 29 May 2018 02:55:42 +0000
-Subject: Re: [PATCH net-next] vrf: add CRC32c offload to device features
-Message-Id: <20180528.225542.1722255732303958123.davem@davemloft.net>
+From: Andreas Fink <afink@list.fink.org>
+Date: Wed, 16 May 2018 12:02:46 +0000
+Subject: SCTP nailed down connections trouble
+Message-Id: <F7A4BA05-180B-4762-A4CD-3348DC41364F@list.fink.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <bb3aa69eaef613f033f8f52674740286ba67dc31.1527175921.git.dcaratti@redhat.com>
-In-Reply-To: <bb3aa69eaef613f033f8f52674740286ba67dc31.1527175921.git.dcaratti@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: dcaratti@redhat.com
-Cc: dsa@cumulusnetworks.com, vyasevich@gmail.com, marcelo.leitner@gmail.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: linux-sctp@vger.kernel.org
 
-From: Davide Caratti <dcaratti@redhat.com>
-Date: Thu, 24 May 2018 17:49:35 +0200
+Hello all
 
-> SCTP sockets originated in a VRF can improve their performance if CRC32c
-> computation is delegated to underlying devices: update device features,
-> setting NETIF_F_SCTP_CRC. Iterating the following command in the topology
-> proposed with [1],
->=20
->  # ip vrf exec vrf-h2 netperf -H 192.0.2.1 -t SCTP_STREAM -- -m 10K
->=20
-> the measured throughput in Mbit/s improved from 2395 =B1 1% to 2720 =B1 1=
-%.
->=20
-> [1] https://www.spinics.net/lists/netdev/msg486007.html
->=20
-> Signed-off-by: Davide Caratti <dcaratti@redhat.com>
+I have detected that the Linux SCTP implementation behaves differently than the FreeBSD and MacOS X SCTP implementations and I am trying to find the proper way to work around this issue.
+What I have is nailed down peer to peer SCTP associations as it is mandatory in the Sigtran world. This means the source and destination ports are preconfigured on both sides and both sides can establish the connection at any time. So there is no client and no server. 
 
-Applied, thank you.
+For this to work I normally do
+
+	socket()
+	fcntl() to set to non blocking
+	setsockopt() to set various options such as linger time, nodelay and reuseaddr and enable sctp events
+	bind() to define the local IP's and ports to use
+	sctp_connectx() to connect to the remote ip and port
+
+After this a SCTP INIT is sent to the remote.
+
+	if the remote is a Cisco ITP; the connection comes up normally and all works.
+	If the remote is another linux box with the same software it fails because the Linux kernel sends back a SCTP ABORT. and sctp_connectx fails instead of waiting for the other side to come up.
+	So we end up in a race condition that both sides have to send the SCTP INIT at the same time to have this working. Whenever one is faster, the other side generates ABORT and it fails again.
+
+
+Under FreeBSD and MacOS, the sctp_connectx returns without an error (as its a non blocking socket) and my subsequent code then calls poll to wait for events or data to be delivered with a follow up call to sctp_recvmsg to process that data and/or events
+I would expect  a SCTP UP message  to appear after the other side has done the same after the SCTP handshake completes.
+
+Under Linux however sctp_connectx does immediately return with connection refused and we are stuck.
+I have not figured out how this can be achieved reliably. constantly calling sctp_connectx can not be the solution as it would create a busy loop and probably a packet storm.
+
+I have a minimalized code example on https://github.com/andreasfink/sctp-test.
+
+That example  you run with 
+	./sctp-test <localip> <localport> <remoteip> <remoteport>
+
+when run under MacOS with a non existing host I get
+
+./sctp-test 10.0.67.209 7000 1.2.3.4 7000
+socket() successful
+setting socket to non blocking
+setting socket to blocking=0
+fcntl successful
+setsockopt(IPPROTO_SCTP,SCTP_EVENTS) successful
+setsockopt(SOL_SOCKET,SO_LINGER,5) successful
+setsockopt(SOL_SOCKET,SO_REUSEADDR) successful
+setsockopt(IPPROTO_SCTP,SCTP_REUSE_PORT) successful
+setsockopt(SCTP_NODELAY) successful
+bind() successful
+sctp_connectx() successful
+ poll returns 0
+ poll returns 0
+ poll returns 0
+ poll returns 0
+ poll returns 0
+ poll returns 0
+ poll returns 0
+
+when under Linux
+
+to a non existing hist
+./sctp-test 10.99.3.27 7000 1.2.3.4 7000
+socket() successful
+setting socket to non blocking
+setting socket to blocking=0
+fcntl successful
+setsockopt(IPPROTO_SCTP,SCTP_EVENTS) successful
+setsockopt(SOL_SOCKET,SO_LINGER,5) successful
+setsockopt(SOL_SOCKET,SO_REUSEADDR) successful
+setsockopt(SCTP_NODELAY) successful
+bind() successful
+
+(meaning sctp_connectx doesn't return here and locks)
+
+
+under Linux to a existing host where the software is not started yet.
+
+./sctp-test x.x.x.x 7000 y.y.y.y 8000
+socket() successful
+setting socket to non blocking
+setting socket to blocking=0
+fcntl successful
+setsockopt(IPPROTO_SCTP,SCTP_EVENTS) successful
+setsockopt(SOL_SOCKET,SO_LINGER,5) successful
+setsockopt(SOL_SOCKET,SO_REUSEADDR) successful
+setsockopt(IPPROTO_SCTP,SCTP_REUSE_PORT) not supported
+setsockopt(SCTP_NODELAY) successful
+bind() successful
+sctp_connectx failed (111 Connection refused)
+
+Note: the error is immediately returned. not after timeout.
+
+
+I test with the lksctp version delivered with Debian 9 - strech. If theres some changes since that version in this area, let me know.
+
+A second area where I found issues is on how to configure a specific port to be used for multiple connections. For example my local port 2000 can be used for a connection to host 1 or to host 2 and the individual sessions which are created as above will however not allow me to use the same port in a second socket even though the bind is not follwed with a listen and the sctp_connectx goes to  a different port. Workaround to this is to use different ports for every connection (which is not really nice). Maybe there's another way?
+
+
+
+
+A. FInk
