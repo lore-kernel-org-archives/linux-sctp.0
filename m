@@ -1,135 +1,165 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 16 May 2018 07:17:08 +0000
+From: Alexander Potapenko <glider@google.com>
+Date: Wed, 16 May 2018 09:08:29 +0000
 Subject: Re: KMSAN: uninit-value in __sctp_v6_cmp_addr
-Message-Id: <CADvbK_cGes4gorUa2Y8PSkL4qF4WetC2eo3PFvEYd1xbRiSihQ@mail.gmail.com>
+Message-Id: <CAG_fn=W8JFQw9oQkAqLJdZ1x5TyL8sxU7eBf1SXyvvcKMUG91Q@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <0000000000004f4075056c410b96@google.com>
-In-Reply-To: <0000000000004f4075056c410b96@google.com>
+References: <0000000000004f4075056c410b96@google.com> <CADvbK_cGes4gorUa2Y8PSkL4qF4WetC2eo3PFvEYd1xbRiSihQ@mail.gmail.com>
+In-Reply-To: <CADvbK_cGes4gorUa2Y8PSkL4qF4WetC2eo3PFvEYd1xbRiSihQ@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="windows-1252"
-Content-Transfer-Encoding: quoted-printable
-To: syzbot <syzbot+85490c30c260afff22f2@syzkaller.appspotmail.com>
-Cc: davem <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, network dev <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, Vlad Yasevich <vyasevich@gmail.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: lucien xin <lucien.xin@gmail.com>
+Cc: syzbot+85490c30c260afff22f2@syzkaller.appspotmail.com, David Miller <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, Networking <netdev@vger.kernel.org>, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, Vladislav Yasevich <vyasevich@gmail.com>
 
-On Wed, May 16, 2018 at 12:25 AM, syzbot
-<syzbot+85490c30c260afff22f2@syzkaller.appspotmail.com> wrote:
-> Hello,
->
-> syzbot found the following crash on:
->
-> HEAD commit:    74ee2200b89f kmsan: bump .config.example to v4.17-rc3
-> git tree:       https://github.com/google/kmsan.git/master
-> console output: https://syzkaller.appspot.com/x/log.txt?x=169efb5b800000
-> kernel config:  https://syzkaller.appspot.com/x/.config?xLa1e57bafa8ab1f
-> dashboard link: https://syzkaller.appspot.com/bug?extid=85490c30c260afff2=
-2f2
-> compiler:       clang version 7.0.0 (trunk 329391)
-> syzkaller repro:https://syzkaller.appspot.com/x/repro.syz?x=157e9237800000
-> C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=10fe5de7800000
->
-> IMPORTANT: if you fix the bug, please add the following tag to the commit:
-> Reported-by: syzbot+85490c30c260afff22f2@syzkaller.appspotmail.com
->
-> random: sshd: uninitialized urandom read (32 bytes read)
-> random: sshd: uninitialized urandom read (32 bytes read)
-> random: sshd: uninitialized urandom read (32 bytes read)
-> random: sshd: uninitialized urandom read (32 bytes read)
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> BUG: KMSAN: uninit-value in __sctp_v6_cmp_addr+0x49a/0x850
-> net/sctp/ipv6.c:580
-> CPU: 0 PID: 4453 Comm: syz-executor325 Not tainted 4.17.0-rc3+ #88
-> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS
-> Google 01/01/2011
-> Call Trace:
->  <IRQ>
->  __dump_stack lib/dump_stack.c:77 [inline]
->  dump_stack+0x185/0x1d0 lib/dump_stack.c:113
->  kmsan_report+0x142/0x240 mm/kmsan/kmsan.c:1067
->  __msan_warning_32+0x6c/0xb0 mm/kmsan/kmsan_instr.c:683
->  __sctp_v6_cmp_addr+0x49a/0x850 net/sctp/ipv6.c:580
-Pls check if the testing kernel has this commit:
-commit d625329b06e46bd20baf9ee40847d11982569204
-Author: Xin Long <lucien.xin@gmail.com>
-Date:   Thu Apr 26 14:13:57 2018 +0800
+On Wed, May 16, 2018 at 9:17 AM Xin Long <lucien.xin@gmail.com> wrote:
 
-    sctp: handle two v4 addrs comparison in sctp_inet6_cmp_addr
+> On Wed, May 16, 2018 at 12:25 AM, syzbot
+> <syzbot+85490c30c260afff22f2@syzkaller.appspotmail.com> wrote:
+> > Hello,
+> >
+> > syzbot found the following crash on:
+> >
+> > HEAD commit:    74ee2200b89f kmsan: bump .config.example to v4.17-rc3
+> > git tree:       https://github.com/google/kmsan.git/master
+> > console output: https://syzkaller.appspot.com/x/log.txt?x=169efb5b800000
+> > kernel config:
+https://syzkaller.appspot.com/x/.config?x=4ca1e57bafa8ab1f
+> > dashboard link:
+https://syzkaller.appspot.com/bug?extid=85490c30c260afff22f2
+> > compiler:       clang version 7.0.0 (trunk 329391)
+> > syzkaller repro:
+https://syzkaller.appspot.com/x/repro.syz?x=157e9237800000
+> > C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=10fe5de7800000
+> >
+> > IMPORTANT: if you fix the bug, please add the following tag to the
+commit:
+> > Reported-by: syzbot+85490c30c260afff22f2@syzkaller.appspotmail.com
+> >
+> > random: sshd: uninitialized urandom read (32 bytes read)
+> > random: sshd: uninitialized urandom read (32 bytes read)
+> > random: sshd: uninitialized urandom read (32 bytes read)
+> > random: sshd: uninitialized urandom read (32 bytes read)
+> > ==================================================================
+> > BUG: KMSAN: uninit-value in __sctp_v6_cmp_addr+0x49a/0x850
+> > net/sctp/ipv6.c:580
+> > CPU: 0 PID: 4453 Comm: syz-executor325 Not tainted 4.17.0-rc3+ #88
+> > Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS
+> > Google 01/01/2011
+> > Call Trace:
+> >  <IRQ>
+> >  __dump_stack lib/dump_stack.c:77 [inline]
+> >  dump_stack+0x185/0x1d0 lib/dump_stack.c:113
+> >  kmsan_report+0x142/0x240 mm/kmsan/kmsan.c:1067
+> >  __msan_warning_32+0x6c/0xb0 mm/kmsan/kmsan_instr.c:683
+> >  __sctp_v6_cmp_addr+0x49a/0x850 net/sctp/ipv6.c:580
+> Pls check if the testing kernel has this commit:
+> commit d625329b06e46bd20baf9ee40847d11982569204
+> Author: Xin Long <lucien.xin@gmail.com>
+> Date:   Thu Apr 26 14:13:57 2018 +0800
 
-Thanks.
+>      sctp: handle two v4 addrs comparison in sctp_inet6_cmp_addr
 
->  sctp_inet6_cmp_addr+0x3dc/0x400 net/sctp/ipv6.c:898
->  sctp_bind_addr_match+0x18b/0x2f0 net/sctp/bind_addr.c:330
->  sctp_addrs_lookup_transport+0x904/0xa20 net/sctp/input.c:942
->  __sctp_lookup_association net/sctp/input.c:985 [inline]
->  __sctp_rcv_lookup net/sctp/input.c:1249 [inline]
->  sctp_rcv+0x15e6/0x4d30 net/sctp/input.c:170
->  ip_local_deliver_finish+0x874/0xec0 net/ipv4/ip_input.c:215
->  NF_HOOK include/linux/netfilter.h:288 [inline]
->  ip_local_deliver+0x43c/0x4e0 net/ipv4/ip_input.c:256
->  dst_input include/net/dst.h:450 [inline]
->  ip_rcv_finish+0xa36/0x1d00 net/ipv4/ip_input.c:396
->  NF_HOOK include/linux/netfilter.h:288 [inline]
->  ip_rcv+0x118f/0x16d0 net/ipv4/ip_input.c:492
->  __netif_receive_skb_core+0x47df/0x4a90 net/core/dev.c:4592
->  __netif_receive_skb net/core/dev.c:4657 [inline]
->  process_backlog+0x62d/0xe20 net/core/dev.c:5337
->  napi_poll net/core/dev.c:5735 [inline]
->  net_rx_action+0x7c1/0x1a70 net/core/dev.c:5801
->  __do_softirq+0x56d/0x93d kernel/softirq.c:285
->  do_softirq_own_stack+0x2a/0x40 arch/x86/entry/entry_64.S:1046
->  </IRQ>
->  do_softirq kernel/softirq.c:329 [inline]
->  __local_bh_enable_ip+0x114/0x140 kernel/softirq.c:182
->  local_bh_enable+0x36/0x40 include/linux/bottom_half.h:32
->  rcu_read_unlock_bh include/linux/rcupdate.h:728 [inline]
->  ip_finish_output2+0x135a/0x1470 net/ipv4/ip_output.c:231
->  ip_finish_output+0xcb2/0xff0 net/ipv4/ip_output.c:317
->  NF_HOOK_COND include/linux/netfilter.h:277 [inline]
->  ip_output+0x505/0x5d0 net/ipv4/ip_output.c:405
->  dst_output include/net/dst.h:444 [inline]
->  ip_local_out net/ipv4/ip_output.c:124 [inline]
->  ip_queue_xmit+0x1a1e/0x1d10 net/ipv4/ip_output.c:504
->  sctp_v4_xmit+0x188/0x210 net/sctp/protocol.c:983
->  sctp_packet_transmit+0x3eaa/0x4350 net/sctp/output.c:650
->  sctp_outq_flush+0x1a7a/0x6320 net/sctp/outqueue.c:1197
->  sctp_outq_uncork+0xd2/0xf0 net/sctp/outqueue.c:776
->  sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1820 [inline]
->  sctp_side_effects net/sctp/sm_sideeffect.c:1220 [inline]
->  sctp_do_sm+0x8707/0x8d20 net/sctp/sm_sideeffect.c:1191
->  sctp_primitive_REQUESTHEARTBEAT+0x175/0x1a0 net/sctp/primitive.c:200
->  sctp_apply_peer_addr_params+0x207/0x1670 net/sctp/socket.c:2487
->  sctp_setsockopt_peer_addr_params net/sctp/socket.c:2683 [inline]
->  sctp_setsockopt+0x10e5f/0x11600 net/sctp/socket.c:4258
->  sock_common_setsockopt+0x136/0x170 net/core/sock.c:3039
->  __sys_setsockopt+0x4af/0x560 net/socket.c:1903
->  __do_sys_setsockopt net/socket.c:1914 [inline]
->  __se_sys_setsockopt net/socket.c:1911 [inline]
->  __x64_sys_setsockopt+0x15c/0x1c0 net/socket.c:1911
->  do_syscall_64+0x154/0x220 arch/x86/entry/common.c:287
->  entry_SYSCALL_64_after_hwframe+0x44/0xa9
-> RIP: 0033:0x43fef9
-> RSP: 002b:00007ffc00d9bfd8 EFLAGS: 00000207 ORIG_RAX: 0000000000000036
-> RAX: ffffffffffffffda RBX: 00000000004002c8 RCX: 000000000043fef9
-> RDX: 0000000000000009 RSI: 0000000000000084 RDI: 0000000000000003
-> RBP: 00000000006ca018 R08: 0000000000000098 R09: 000000000000001c
-> R10: 0000000020000180 R11: 0000000000000207 R12: 0000000000401820
-> R13: 00000000004018b0 R14: 0000000000000000 R15: 0000000000000000
->
-> Local variable description: ----dest@sctp_rcv
-> Variable was created at:
->  sctp_rcv+0x13d/0x4d30 net/sctp/input.c:97
->  ip_local_deliver_finish+0x874/0xec0 net/ipv4/ip_input.c:215
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D
->
->
-> ---
-> This bug is generated by a bot. It may contain errors.
-> See https://goo.gl/tpsmEJ for more information about syzbot.
-> syzbot engineers can be reached at syzkaller@googlegroups.com.
->
-> syzbot will keep track of this bug report. See:
-> https://goo.gl/tpsmEJ#bug-status-tracking for how to communicate with
-> syzbot.
-> syzbot can test patches for this bug, for details see:
-> https://goo.gl/tpsmEJ#testing-patches
+It doesn't, because we were testing v4.17-rc3, and the patch is in
+v4.17-rc4.
+I'll update to -rc5 and test again.
+> Thanks.
+Thank you!
+> >  sctp_inet6_cmp_addr+0x3dc/0x400 net/sctp/ipv6.c:898
+> >  sctp_bind_addr_match+0x18b/0x2f0 net/sctp/bind_addr.c:330
+> >  sctp_addrs_lookup_transport+0x904/0xa20 net/sctp/input.c:942
+> >  __sctp_lookup_association net/sctp/input.c:985 [inline]
+> >  __sctp_rcv_lookup net/sctp/input.c:1249 [inline]
+> >  sctp_rcv+0x15e6/0x4d30 net/sctp/input.c:170
+> >  ip_local_deliver_finish+0x874/0xec0 net/ipv4/ip_input.c:215
+> >  NF_HOOK include/linux/netfilter.h:288 [inline]
+> >  ip_local_deliver+0x43c/0x4e0 net/ipv4/ip_input.c:256
+> >  dst_input include/net/dst.h:450 [inline]
+> >  ip_rcv_finish+0xa36/0x1d00 net/ipv4/ip_input.c:396
+> >  NF_HOOK include/linux/netfilter.h:288 [inline]
+> >  ip_rcv+0x118f/0x16d0 net/ipv4/ip_input.c:492
+> >  __netif_receive_skb_core+0x47df/0x4a90 net/core/dev.c:4592
+> >  __netif_receive_skb net/core/dev.c:4657 [inline]
+> >  process_backlog+0x62d/0xe20 net/core/dev.c:5337
+> >  napi_poll net/core/dev.c:5735 [inline]
+> >  net_rx_action+0x7c1/0x1a70 net/core/dev.c:5801
+> >  __do_softirq+0x56d/0x93d kernel/softirq.c:285
+> >  do_softirq_own_stack+0x2a/0x40 arch/x86/entry/entry_64.S:1046
+> >  </IRQ>
+> >  do_softirq kernel/softirq.c:329 [inline]
+> >  __local_bh_enable_ip+0x114/0x140 kernel/softirq.c:182
+> >  local_bh_enable+0x36/0x40 include/linux/bottom_half.h:32
+> >  rcu_read_unlock_bh include/linux/rcupdate.h:728 [inline]
+> >  ip_finish_output2+0x135a/0x1470 net/ipv4/ip_output.c:231
+> >  ip_finish_output+0xcb2/0xff0 net/ipv4/ip_output.c:317
+> >  NF_HOOK_COND include/linux/netfilter.h:277 [inline]
+> >  ip_output+0x505/0x5d0 net/ipv4/ip_output.c:405
+> >  dst_output include/net/dst.h:444 [inline]
+> >  ip_local_out net/ipv4/ip_output.c:124 [inline]
+> >  ip_queue_xmit+0x1a1e/0x1d10 net/ipv4/ip_output.c:504
+> >  sctp_v4_xmit+0x188/0x210 net/sctp/protocol.c:983
+> >  sctp_packet_transmit+0x3eaa/0x4350 net/sctp/output.c:650
+> >  sctp_outq_flush+0x1a7a/0x6320 net/sctp/outqueue.c:1197
+> >  sctp_outq_uncork+0xd2/0xf0 net/sctp/outqueue.c:776
+> >  sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1820 [inline]
+> >  sctp_side_effects net/sctp/sm_sideeffect.c:1220 [inline]
+> >  sctp_do_sm+0x8707/0x8d20 net/sctp/sm_sideeffect.c:1191
+> >  sctp_primitive_REQUESTHEARTBEAT+0x175/0x1a0 net/sctp/primitive.c:200
+> >  sctp_apply_peer_addr_params+0x207/0x1670 net/sctp/socket.c:2487
+> >  sctp_setsockopt_peer_addr_params net/sctp/socket.c:2683 [inline]
+> >  sctp_setsockopt+0x10e5f/0x11600 net/sctp/socket.c:4258
+> >  sock_common_setsockopt+0x136/0x170 net/core/sock.c:3039
+> >  __sys_setsockopt+0x4af/0x560 net/socket.c:1903
+> >  __do_sys_setsockopt net/socket.c:1914 [inline]
+> >  __se_sys_setsockopt net/socket.c:1911 [inline]
+> >  __x64_sys_setsockopt+0x15c/0x1c0 net/socket.c:1911
+> >  do_syscall_64+0x154/0x220 arch/x86/entry/common.c:287
+> >  entry_SYSCALL_64_after_hwframe+0x44/0xa9
+> > RIP: 0033:0x43fef9
+> > RSP: 002b:00007ffc00d9bfd8 EFLAGS: 00000207 ORIG_RAX: 0000000000000036
+> > RAX: ffffffffffffffda RBX: 00000000004002c8 RCX: 000000000043fef9
+> > RDX: 0000000000000009 RSI: 0000000000000084 RDI: 0000000000000003
+> > RBP: 00000000006ca018 R08: 0000000000000098 R09: 000000000000001c
+> > R10: 0000000020000180 R11: 0000000000000207 R12: 0000000000401820
+> > R13: 00000000004018b0 R14: 0000000000000000 R15: 0000000000000000
+> >
+> > Local variable description: ----dest@sctp_rcv
+> > Variable was created at:
+> >  sctp_rcv+0x13d/0x4d30 net/sctp/input.c:97
+> >  ip_local_deliver_finish+0x874/0xec0 net/ipv4/ip_input.c:215
+> > ==================================================================
+> >
+> >
+> > ---
+> > This bug is generated by a bot. It may contain errors.
+> > See https://goo.gl/tpsmEJ for more information about syzbot.
+> > syzbot engineers can be reached at syzkaller@googlegroups.com.
+> >
+> > syzbot will keep track of this bug report. See:
+> > https://goo.gl/tpsmEJ#bug-status-tracking for how to communicate with
+> > syzbot.
+> > syzbot can test patches for this bug, for details see:
+> > https://goo.gl/tpsmEJ#testing-patches
+
+> --
+> You received this message because you are subscribed to the Google Groups
+"syzkaller-bugs" group.
+> To unsubscribe from this group and stop receiving emails from it, send an
+email to syzkaller-bugs+unsubscribe@googlegroups.com.
+> To view this discussion on the web visit
+https://groups.google.com/d/msgid/syzkaller-bugs/CADvbK_cGes4gorUa2Y8PSkL4qF4WetC2eo3PFvEYd1xbRiSihQ%40mail.gmail.com
+.
+> For more options, visit https://groups.google.com/d/optout.
+
+
+
+-- 
+Alexander Potapenko
+Software Engineer
+
+Google Germany GmbH
+Erika-Mann-Straße, 33
+80636 München
+
+Geschäftsführer: Paul Manicle, Halimah DeLaine Prado
+Registergericht und -nummer: Hamburg, HRB 86891
+Sitz der Gesellschaft: Hamburg
