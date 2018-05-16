@@ -1,190 +1,125 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 02 May 2018 14:34:28 +0000
-Subject: Re: [PATCH V2 net-next 1/6] virtio: Add support for SCTP checksum offloading
-Message-Id: <20180502143428.GE5105@localhost.localdomain>
+From: syzbot <syzbot+ff0b569fb5111dcd1a36@syzkaller.appspotmail.com>
+Date: Wed, 16 May 2018 08:11:02 +0000
+Subject: INFO: rcu detected stall in sctp_packet_transmit
+Message-Id: <0000000000008149ec056c4e4289@google.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180502020739.19239-1-vyasevic@redhat.com>
- <20180502020739.19239-2-vyasevic@redhat.com>
- <20180502061520-mutt-send-email-mst@kernel.org>
- <20180502141413.GD5105@localhost.localdomain>
- <20180502171943-mutt-send-email-mst@kernel.org>
-In-Reply-To: <20180502171943-mutt-send-email-mst@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: "Michael S. Tsirkin" <mst@redhat.com>
-Cc: Vladislav Yasevich <vyasevich@gmail.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, virtualization@lists.linux-foundation.org, virtio-dev@lists.oasis-open.org, jasowang@redhat.com, nhorman@tuxdriver.com, Vladislav Yasevich <vyasevic@redhat.com>
+Content-Type: text/plain; charset="windows-1252"
+Content-Transfer-Encoding: quoted-printable
+To: davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
 
-On Wed, May 02, 2018 at 05:21:38PM +0300, Michael S. Tsirkin wrote:
-> On Wed, May 02, 2018 at 11:14:13AM -0300, Marcelo Ricardo Leitner wrote:
-> > On Wed, May 02, 2018 at 06:16:45AM +0300, Michael S. Tsirkin wrote:
-> > > On Tue, May 01, 2018 at 10:07:34PM -0400, Vladislav Yasevich wrote:
-> > > > To support SCTP checksum offloading, we need to add a new feature
-> > > > to virtio_net, so we can negotiate support between the hypervisor
-> > > > and the guest.
-> > > > The HOST feature bit signifies offloading support for transmit and
-> > > > enables device offload features.
-> > > > The GUEST feature bit signifies offloading support of recieve and
-> > > > is currently only used by the driver in case of xdp.
-> > > >
-> > > > That patch also adds an addition virtio_net header flag which
-> > > > mirrors the skb->csum_not_inet flag.  This flags is used to indicate
-> > > > that is this an SCTP packet that needs its checksum computed by the
-> > > > lower layer.  In this case, the lower layer is the host hypervisor or
-> > > > possibly HW nic that supporst CRC32c offload.
-> > > >
-> > > > In the case that GUEST feature bit is flag, it will be possible to
-> > > > receive a virtio_net header with this bit set, which will set the
-> > > > corresponding skb bit.  SCTP protocol will be updated to correctly
-> > > > deal with it.
-> > > >
-> > > > Signed-off-by: Vladislav Yasevich <vyasevic@redhat.com>
-> > > > ---
-> > > >  drivers/net/virtio_net.c        | 14 +++++++++++++-
-> > > >  include/linux/virtio_net.h      |  6 ++++++
-> > > >  include/uapi/linux/virtio_net.h |  5 +++++
-> > > >  3 files changed, 24 insertions(+), 1 deletion(-)
-> > > >
-> > > > diff --git a/drivers/net/virtio_net.c b/drivers/net/virtio_net.c
-> > > > index 7b187ec..34af280 100644
-> > > > --- a/drivers/net/virtio_net.c
-> > > > +++ b/drivers/net/virtio_net.c
-> > > > @@ -2148,6 +2148,8 @@ static int virtnet_clear_guest_offloads(struct virtnet_info *vi)
-> > > >
-> > > >  	if (virtio_has_feature(vi->vdev, VIRTIO_NET_F_GUEST_CSUM))
-> > > >  		offloads = 1ULL << VIRTIO_NET_F_GUEST_CSUM;
-> > > > +	if (virtio_has_feature(vi->vdev, VIRTIO_NET_F_GUEST_SCTP_CSUM))
-> > > > +		offloads |= 1ULL << VIRTIO_NET_F_GUEST_SCTP_CSUM;
-> > > >
-> > > >  	return virtnet_set_guest_offloads(vi, offloads);
-> > > >  }
-> > > > @@ -2160,6 +2162,8 @@ static int virtnet_restore_guest_offloads(struct virtnet_info *vi)
-> > > >  		return 0;
-> > > >  	if (virtio_has_feature(vi->vdev, VIRTIO_NET_F_GUEST_CSUM))
-> > > >  		offloads |= 1ULL << VIRTIO_NET_F_GUEST_CSUM;
-> > > > +	if (virtio_has_feature(vi->vdev, VIRTIO_NET_F_GUEST_SCTP_CSUM))
-> > > > +		offloads |= 1ULL << VIRTIO_NET_F_GUEST_SCTP_CSUM;
-> > > >
-> > > >  	return virtnet_set_guest_offloads(vi, offloads);
-> > > >  }
-> > > > @@ -2724,6 +2728,7 @@ static int virtnet_probe(struct virtio_device *vdev)
-> > > >  	/* Do we support "hardware" checksums? */
-> > > >  	if (virtio_has_feature(vdev, VIRTIO_NET_F_CSUM)) {
-> > > >  		/* This opens up the world of extra features. */
-> > > > +
-> > > >  		dev->hw_features |= NETIF_F_HW_CSUM | NETIF_F_SG;
-> > > >  		if (csum)
-> > > >  			dev->features |= NETIF_F_HW_CSUM | NETIF_F_SG;
-> > > > @@ -2746,9 +2751,15 @@ static int virtnet_probe(struct virtio_device *vdev)
-> > > >  			dev->features |= dev->hw_features & NETIF_F_ALL_TSO;
-> > > >  		/* (!csum && gso) case will be fixed by register_netdev() */
-> > > >  	}
-> > > > +
-> > > >  	if (virtio_has_feature(vdev, VIRTIO_NET_F_GUEST_CSUM))
-> > > >  		dev->features |= NETIF_F_RXCSUM;
-> > > >
-> > > > +	if (virtio_has_feature(vdev, VIRTIO_NET_F_HOST_SCTP_CSUM)) {
-> > > > +		dev->hw_features |= NETIF_F_SCTP_CRC;
-> > > > +		dev->features |= NETIF_F_SCTP_CRC;
-> > > > +	}
-> > > > +
-> > > >  	dev->vlan_features = dev->features;
-> > > >
-> > > >  	/* MTU range: 68 - 65535 */
-> > > > @@ -2962,7 +2973,8 @@ static struct virtio_device_id id_table[] = {
-> > > >  	VIRTIO_NET_F_GUEST_ANNOUNCE, VIRTIO_NET_F_MQ, \
-> > > >  	VIRTIO_NET_F_CTRL_MAC_ADDR, \
-> > > >  	VIRTIO_NET_F_MTU, VIRTIO_NET_F_CTRL_GUEST_OFFLOADS, \
-> > > > -	VIRTIO_NET_F_SPEED_DUPLEX
-> > > > +	VIRTIO_NET_F_SPEED_DUPLEX, \
-> > > > +	VIRTIO_NET_F_HOST_SCTP_CSUM, VIRTIO_NET_F_GUEST_SCTP_CSUM
-> > > >
-> > > >  static unsigned int features[] = {
-> > > >  	VIRTNET_FEATURES,
-> > > > diff --git a/include/linux/virtio_net.h b/include/linux/virtio_net.h
-> > > > index f144216..28fffdc 100644
-> > > > --- a/include/linux/virtio_net.h
-> > > > +++ b/include/linux/virtio_net.h
-> > > > @@ -39,6 +39,9 @@ static inline int virtio_net_hdr_to_skb(struct sk_buff *skb,
-> > > >
-> > > >  		if (!skb_partial_csum_set(skb, start, off))
-> > > >  			return -EINVAL;
-> > > > +
-> > > > +		if (hdr->flags & VIRTIO_NET_HDR_F_CSUM_NOT_INET)
-> > > > +			skb->csum_not_inet = 1;
-> > > >  	}
-> > > >
-> > > >  	if (hdr->gso_type != VIRTIO_NET_HDR_GSO_NONE) {
-> > > > @@ -91,6 +94,9 @@ static inline int virtio_net_hdr_from_skb(const struct sk_buff *skb,
-> > > >  				skb_checksum_start_offset(skb));
-> > > >  		hdr->csum_offset = __cpu_to_virtio16(little_endian,
-> > > >  				skb->csum_offset);
-> > > > +
-> > > > +		if (skb->csum_not_inet)
-> > > > +			hdr->flags |= VIRTIO_NET_HDR_F_CSUM_NOT_INET;
-> > > >  	} else if (has_data_valid &&
-> > > >  		   skb->ip_summed = CHECKSUM_UNNECESSARY) {
-> > > >  		hdr->flags = VIRTIO_NET_HDR_F_DATA_VALID;
-> > > > diff --git a/include/uapi/linux/virtio_net.h b/include/uapi/linux/virtio_net.h
-> > > > index 5de6ed3..9dfca1a 100644
-> > > > --- a/include/uapi/linux/virtio_net.h
-> > > > +++ b/include/uapi/linux/virtio_net.h
-> > > > @@ -57,6 +57,10 @@
-> > > >  					 * Steering */
-> > > >  #define VIRTIO_NET_F_CTRL_MAC_ADDR 23	/* Set MAC address */
-> > > >
-> > > > +#define VIRTIO_NET_F_GUEST_SCTP_CSUM  61 /* Guest handles SCTP pks w/ partial
-> > > > +					  * csum */
-> > > > +#define VIRTIO_NET_F_HOST_SCTP_CSUM   62 /* HOST handles SCTP pkts w/ partial
-> > > > +					  * csum */
-> > > >  #define VIRTIO_NET_F_SPEED_DUPLEX 63	/* Device set linkspeed and duplex */
-> > > >
-> > > >  #ifndef VIRTIO_NET_NO_LEGACY
-> > > > @@ -101,6 +105,7 @@ struct virtio_net_config {
-> > > >  struct virtio_net_hdr_v1 {
-> > > >  #define VIRTIO_NET_HDR_F_NEEDS_CSUM	1	/* Use csum_start, csum_offset */
-> > > >  #define VIRTIO_NET_HDR_F_DATA_VALID	2	/* Csum is valid */
-> > > > +#define VIRTIO_NET_HDR_F_CSUM_NOT_INET  4       /* Checksum is not inet */
-> > >
-> > > Both comment and name are not very informative.
-> > > How about just saying CRC32c ?
-> >
-> > csum_not_inet is following the nomenclature used in sk_buff. Initially
-> > Davide had named the sk_buff field after crc32c but then it was argued
-> > that maybe another check method may be introduced later and the name
-> > would be bogus, thus why the "csum_not_inet".
->
-> That's sk_buff internals, since Linux can change these
-> at any time without breaking anything.
->
-> virtio defines an ABI so we won't be able to make it
-> mean something else, need to document it fully.
-> "Go read linux net core code" is not a good answer
-> to the natural question "what does this bit in the
-> interface do".
+Hello,
 
-Fair enough, but as I just said that is exactly why it was named
-'csum_not_inet' in the first place, so that it wouldn't have to change
-if another method needs to be added.
+syzbot found the following crash on:
 
-But I guess your main point is that virtio can have a cleaner ABI and
-skip this csum_not_inet case (which is only there because sk_buff
-doesn't have as many bits as we would want), right?
+HEAD commit:    961423f9fcbc Merge branch 'sctp-Introduce-sctp_flush_ctx'
+git tree:       net-next
+console output: https://syzkaller.appspot.com/x/log.txt?x=1366aea7800000
+kernel config:  https://syzkaller.appspot.com/x/.config?xQfb0a6913f757db
+dashboard link: https://syzkaller.appspot.com/bug?extid=FF0b569fb5111dcd1a36
+compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
 
->
-> > >
-> > > >  	__u8 flags;
-> > > >  #define VIRTIO_NET_HDR_GSO_NONE		0	/* Not a GSO frame */
-> > > >  #define VIRTIO_NET_HDR_GSO_TCPV4	1	/* GSO frame, IPv4 TCP (TSO) */
-> > > > --
-> > > > 2.9.5
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > >
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+Unfortunately, I don't have any reproducer for this crash yet.
+
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+ff0b569fb5111dcd1a36@syzkaller.appspotmail.com
+
+INFO: rcu_sched self-detected stall on CPU
+	0-....: (1 GPs behind) idle=DAe/1/4611686018427387908 softirq=93090/93091 =
+=20
+fqs0902
+	 (t=125000 jiffies gQ107 cQ106 q=972)
+NMI backtrace for cpu 0
+CPU: 0 PID: 24668 Comm: syz-executor6 Not tainted 4.17.0-rc4+ #44
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS =20
+Google 01/01/2011
+Call Trace:
+  <IRQ>
+  __dump_stack lib/dump_stack.c:77 [inline]
+  dump_stack+0x1b9/0x294 lib/dump_stack.c:113
+  nmi_cpu_backtrace.cold.4+0x19/0xce lib/nmi_backtrace.c:103
+  nmi_trigger_cpumask_backtrace+0x151/0x192 lib/nmi_backtrace.c:62
+  arch_trigger_cpumask_backtrace+0x14/0x20 arch/x86/kernel/apic/hw_nmi.c:38
+  trigger_single_cpu_backtrace include/linux/nmi.h:156 [inline]
+  rcu_dump_cpu_stacks+0x175/0x1c2 kernel/rcu/tree.c:1376
+  print_cpu_stall kernel/rcu/tree.c:1525 [inline]
+  check_cpu_stall.isra.61.cold.80+0x36c/0x59a kernel/rcu/tree.c:1593
+  __rcu_pending kernel/rcu/tree.c:3356 [inline]
+  rcu_pending kernel/rcu/tree.c:3401 [inline]
+  rcu_check_callbacks+0x21b/0xad0 kernel/rcu/tree.c:2763
+  update_process_times+0x2d/0x70 kernel/time/timer.c:1636
+  tick_sched_handle+0x9f/0x180 kernel/time/tick-sched.c:164
+  tick_sched_timer+0x45/0x130 kernel/time/tick-sched.c:1274
+  __run_hrtimer kernel/time/hrtimer.c:1398 [inline]
+  __hrtimer_run_queues+0x3e3/0x10a0 kernel/time/hrtimer.c:1460
+  hrtimer_interrupt+0x2f3/0x750 kernel/time/hrtimer.c:1518
+  local_apic_timer_interrupt arch/x86/kernel/apic/apic.c:1025 [inline]
+  smp_apic_timer_interrupt+0x15d/0x710 arch/x86/kernel/apic/apic.c:1050
+  apic_timer_interrupt+0xf/0x20 arch/x86/entry/entry_64.S:863
+RIP: 0010:sctp_v6_xmit+0x259/0x6b0 net/sctp/ipv6.c:219
+RSP: 0018:ffff8801dae068e8 EFLAGS: 00000246 ORIG_RAX: ffffffffffffff13
+RAX: 0000000000000007 RBX: ffff8801bb7ec800 RCX: ffffffff86f1b345
+RDX: 0000000000000000 RSI: ffffffff86f1b381 RDI: ffff8801b73d97c4
+RBP: ffff8801dae06988 R08: ffff88019505c300 R09: ffffed003b5c46c2
+R10: ffffed003b5c46c2 R11: ffff8801dae23613 R12: ffff88011fd57300
+R13: ffff8801bb7ecec8 R14: 0000000000000029 R15: 0000000000000002
+  sctp_packet_transmit+0x26f6/0x3ba0 net/sctp/output.c:642
+  sctp_outq_flush_transports net/sctp/outqueue.c:1164 [inline]
+  sctp_outq_flush+0x5f5/0x3430 net/sctp/outqueue.c:1212
+  sctp_outq_uncork+0x6a/0x80 net/sctp/outqueue.c:776
+  sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1820 [inline]
+  sctp_side_effects net/sctp/sm_sideeffect.c:1220 [inline]
+  sctp_do_sm+0x596/0x7160 net/sctp/sm_sideeffect.c:1191
+  sctp_generate_heartbeat_event+0x218/0x450 net/sctp/sm_sideeffect.c:406
+  call_timer_fn+0x230/0x940 kernel/time/timer.c:1326
+  expire_timers kernel/time/timer.c:1363 [inline]
+  __run_timers+0x79e/0xc50 kernel/time/timer.c:1666
+  run_timer_softirq+0x4c/0x70 kernel/time/timer.c:1692
+  __do_softirq+0x2e0/0xaf5 kernel/softirq.c:285
+  invoke_softirq kernel/softirq.c:365 [inline]
+  irq_exit+0x1d1/0x200 kernel/softirq.c:405
+  exiting_irq arch/x86/include/asm/apic.h:525 [inline]
+  smp_apic_timer_interrupt+0x17e/0x710 arch/x86/kernel/apic/apic.c:1052
+  apic_timer_interrupt+0xf/0x20 arch/x86/entry/entry_64.S:863
+  </IRQ>
+RIP: 0010:arch_local_irq_restore arch/x86/include/asm/paravirt.h:783 =20
+[inline]
+RIP: 0010:__raw_spin_unlock_irqrestore include/linux/spinlock_api_smp.h:160=
+ =20
+[inline]
+RIP: 0010:_raw_spin_unlock_irqrestore+0xa1/0xc0 =20
+kernel/locking/spinlock.c:184
+RSP: 0018:ffff880196227328 EFLAGS: 00000286 ORIG_RAX: ffffffffffffff13
+RAX: dffffc0000000000 RBX: 0000000000000286 RCX: 0000000000000000
+RDX: 1ffffffff11a316d RSI: 0000000000000001 RDI: 0000000000000286
+RBP: ffff880196227338 R08: ffffed003b5c4b81 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000000 R12: ffff8801dae25c00
+R13: ffff8801dae25c80 R14: ffff880196227758 R15: ffff8801dae25c00
+  unlock_hrtimer_base kernel/time/hrtimer.c:887 [inline]
+  hrtimer_start_range_ns+0x692/0xd10 kernel/time/hrtimer.c:1118
+  hrtimer_start_expires include/linux/hrtimer.h:412 [inline]
+  futex_wait_queue_me+0x304/0x820 kernel/futex.c:2517
+  futex_wait+0x450/0x9f0 kernel/futex.c:2645
+  do_futex+0x336/0x27d0 kernel/futex.c:3527
+  __do_sys_futex kernel/futex.c:3587 [inline]
+  __se_sys_futex kernel/futex.c:3555 [inline]
+  __x64_sys_futex+0x46a/0x680 kernel/futex.c:3555
+  do_syscall_64+0x1b1/0x800 arch/x86/entry/common.c:287
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+RIP: 0033:0x455a09
+RSP: 002b:0000000000a3e938 EFLAGS: 00000246 ORIG_RAX: 00000000000000ca
+RAX: ffffffffffffffda RBX: 0000000000045a9b RCX: 0000000000455a09
+RDX: 0000000000000000 RSI: 0000000000000000 RDI: 000000000072becc
+RBP: 000000000072becc R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000a3e940 R11: 0000000000000246 R12: 0000000000000019
+R13: 0000000000000002 R14: 000000000072bea0 R15: 0000000000045a8f
+
+
+---
+This bug is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this bug report. See:
+https://goo.gl/tpsmEJ#bug-status-tracking for how to communicate with =20
+syzbot.
