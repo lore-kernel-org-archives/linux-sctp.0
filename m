@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 21 May 2018 11:46:12 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Mon, 21 May 2018 15:52:18 +0000
 Subject: Re: [PATCH net] sctp: fix the issue that flags are ignored when using kernel_connect
-Message-Id: <20180521114612.GB17593@hmswarspite.think-freely.org>
+Message-Id: <20180521155218.GC5489@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <4863916c3e574b0d860725466d7d4a2f445fbe5b.1526805550.git.lucien.xin@gmail.com>
 In-Reply-To: <4863916c3e574b0d860725466d7d4a2f445fbe5b.1526805550.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, mkubecek@suse.cz
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>, mkubecek@suse.cz
 
 On Sun, May 20, 2018 at 04:39:10PM +0800, Xin Long wrote:
 > Now sctp uses inet_dgram_connect as its proto_ops .connect, and the flags
@@ -34,6 +34,9 @@ On Sun, May 20, 2018 at 04:39:10PM +0800, Xin Long wrote:
 > 
 > Suggested-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
+
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+
 > ---
 >  include/net/sctp/sctp.h |  2 ++
 >  net/sctp/ipv6.c         |  2 +-
@@ -215,6 +218,8 @@ On Sun, May 20, 2018 at 04:39:10PM +0800, Xin Long wrote:
 > -- 
 > 2.1.0
 > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
-
