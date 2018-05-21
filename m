@@ -1,7 +1,7 @@
-From: Tom Herbert <tom@herbertland.com>
-Date: Mon, 21 May 2018 03:59:35 +0000
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 21 May 2018 07:46:52 +0000
 Subject: Re: [PATCH net-next] sctp: add support for SCTP_REUSE_PORT sockopt
-Message-Id: <CALx6S377wxigOqe2zhhAOUrYJzTZ27NdKYC--LhVyJ0X=wVwuA@mail.gmail.com>
+Message-Id: <CADvbK_c1s-nsm6xAw74pkmAH6f1bMyV4_VRKt95PBJ=fPQoFSg@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <be8e672439406e6c8b838321d63aa109b9620f4c.1526715880.git.lucien.xin@gmail.com>
  <20180521005059.GA15233@neilslaptop.think-freely.org> <20180521015404.GI5488@localhost.localdomain>
@@ -9,10 +9,10 @@ In-Reply-To: <20180521015404.GI5488@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, "linux-sctp @ vger . kernel . org" <linux-sctp@vger.kernel.org>, "David S. Miller" <davem@davemloft.net>
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Michael Tuexen <michael.tuexen@lurchi.franken.de>
+Cc: Neil Horman <nhorman@tuxdriver.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>
 
-On Sun, May 20, 2018 at 6:54 PM, Marcelo Ricardo Leitner
+On Mon, May 21, 2018 at 9:54 AM, Marcelo Ricardo Leitner
 <marcelo.leitner@gmail.com> wrote:
 > On Sun, May 20, 2018 at 08:50:59PM -0400, Neil Horman wrote:
 >> On Sat, May 19, 2018 at 03:44:40PM +0800, Xin Long wrote:
@@ -62,11 +62,6 @@ On Sun, May 20, 2018 at 6:54 PM, Marcelo Ricardo Leitner
 > fully meet SCTP standards regarding reuse because a rogue application
 > may always abuse of the socket level opt to gain access to the port.
 >
-There are mitigations in SO_REUSEPORT to prevent port hijacking. Don't
-see why they can't be applied to SCTP.
-
-Tom
-
 > IOW, the patch allows the application to use such restrictions against
 > itself and nothing else, which undermines the patch idea.
 >
@@ -75,6 +70,15 @@ Tom
 > Does the usage of the current imply in any risk to SCTP sockets? If
 > yes, that would give some grounds for going forward with the SCTP
 > option.
+It should go with SCTP option unless RFC6458 section 8.1.27 can really
+be removed. Otherwise, sctp users will think linux sctp doesn't support
+this feature.
+
+Another thing is, when going with SCTP_PORT_REUSE, in this patch I didn't
+add a new reuse_port member for sctp_sock, which causes the abuse of the
+socket level opt to gain access to the port as you said. But if I do and ignore
+the old sk->sk_reuse, there may be a compatibility problem with before.
+
 >
 >>
 >> Its a bit frustrating, since SO_REUSEPORT is widely available on multiple
@@ -83,11 +87,3 @@ Tom
 >> of the sctp specific option, or at the least implement and document it as being
 >
 > Is it possible, to remove/deprecate an option once it is published on a RFC?
->
->> an alias for SO_REUSEPORT
->>
->>
->> As this stands however, its a NACK from me.
->>
->> Neil
->>
