@@ -1,17 +1,19 @@
-From: Michal Kubecek <mkubecek@suse.cz>
-Date: Tue, 22 May 2018 12:38:14 +0000
+From: David Miller <davem@davemloft.net>
+Date: Tue, 22 May 2018 17:40:14 +0000
 Subject: Re: [PATCH net] sctp: fix the issue that flags are ignored when using kernel_connect
-Message-Id: <20180522123814.omrt6lzzfzdsvxjp@unicorn.suse.cz>
+Message-Id: <20180522.134014.1038689773683362410.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <4863916c3e574b0d860725466d7d4a2f445fbe5b.1526805550.git.lucien.xin@gmail.com>
 In-Reply-To: <4863916c3e574b0d860725466d7d4a2f445fbe5b.1526805550.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, mkubecek@suse.cz
 
-On Sun, May 20, 2018 at 04:39:10PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sun, 20 May 2018 16:39:10 +0800
+
 > Now sctp uses inet_dgram_connect as its proto_ops .connect, and the flags
 > param can't be passed into its proto .connect where this flags is really
 > needed.
@@ -35,4 +37,6 @@ On Sun, May 20, 2018 at 04:39:10PM +0800, Xin Long wrote:
 > Suggested-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Reviewed-by: Michal Kubecek <mkubecek@suse.cz>
+Applied, thank you.
+
+I don't see a Fixes: tag, please give me some guidance me wrt. -stable.
