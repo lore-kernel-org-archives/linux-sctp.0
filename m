@@ -1,173 +1,119 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 14 May 2018 17:34:39 +0000
-Subject: [PATCH net-next v3 4/8] sctp: move outq data rtx code out of sctp_outq_flush
-Message-Id: <84221eeeec444593bfe297330452e3be3a91b5e3.1526318522.git.marcelo.leitner@gmail.com>
+Date: Wed, 30 May 2018 17:18:01 +0000
+Subject: [PATCH lksctp-tools 10/12] build: add define HAVE_SCTP_PEELOFF_FLAGS
+Message-Id: <555e42a521858d59a321241c98088e766f31ed2d.1527700680.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1526318522.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1526318522.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>
+To: linux-sctp@vger.kernel.org
 
-This patch renames current sctp_outq_flush_rtx to __sctp_outq_flush_rtx
-and create a new sctp_outq_flush_rtx, with the code that was on
-sctp_outq_flush. Again, the idea is to have functions with small and
-defined objectives.
-
-Yes, there is an open-coded path selection in the now sctp_outq_flush_rtx.
-That is kept as is for now because it may be very different when we
-implement retransmission path selection algorithms for CMT-SCTP.
+Indicate that SCTP_PEELOFF_FLAGS sockopt is available and, with it, adjust
+how we build sctp_peeloff{,_flags}(). We cannot make sctp_peeloff() reuse
+sctp_peeloff_flags() because the latter may not be available.
 
 Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- net/sctp/outqueue.c | 101 ++++++++++++++++++++++++++++++----------------------
- 1 file changed, 58 insertions(+), 43 deletions(-)
+ configure.ac                  |  3 +++
+ src/include/netinet/sctp.h.in |  1 +
+ src/lib/peeloff.c             | 38 +++++++++++++++++++++++---------------
+ 3 files changed, 27 insertions(+), 15 deletions(-)
 
-diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index 92f14f51edf28cf596c76b98854a10c0fd28bb22..49e80bf2ade73914f3be275016df0a6e7f06f606 100644
---- a/net/sctp/outqueue.c
-+++ b/net/sctp/outqueue.c
-@@ -601,14 +601,14 @@ void sctp_retransmit(struct sctp_outq *q, struct sctp_transport *transport,
+diff --git a/configure.ac b/configure.ac
+index daf14e398c6282cbbe56ba8c99abb9c0fc230d83..1558579a385b87bf5afc76cd2548e0c51628d708 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -86,6 +86,9 @@ LKSCTP_CHECK_MEMBER([struct sctp_event_subscribe.sctp_stream_reset_event],
+ # RFC 6525 (Stream Reconf), finished on v4.12, c0d8bab6ae51
+ LKSCTP_CHECK_DECL([SCTP_RECONFIG_SUPPORTED], [HAVE_SCTP_STREAM_RECONFIG])
  
- /*
-  * Transmit DATA chunks on the retransmit queue.  Upon return from
-- * sctp_outq_flush_rtx() the packet 'pkt' may contain chunks which
-+ * __sctp_outq_flush_rtx() the packet 'pkt' may contain chunks which
-  * need to be transmitted by the caller.
-  * We assume that pkt->transport has already been set.
-  *
-  * The return value is a normal kernel error return value.
-  */
--static int sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
--			       int rtx_timeout, int *start_timer)
-+static int __sctp_outq_flush_rtx(struct sctp_outq *q, struct sctp_packet *pkt,
-+				 int rtx_timeout, int *start_timer)
++# sctp_peeloff_flags was added on v4.13, 2cb5c8e378d1
++LKSCTP_CHECK_TYPE([sctp_peeloff_flags_arg_t], [HAVE_SCTP_PEELOFF_FLAGS])
++
+ AC_CONFIG_HEADERS([src/include/netinet/sctp.h])
+ AC_CONFIG_FILES([lksctp-tools.spec
+ 		Makefile
+diff --git a/src/include/netinet/sctp.h.in b/src/include/netinet/sctp.h.in
+index 31750811ad601444f1cf13e64229ba4ac9a1c379..0c856a837c08a8768ab6f4d5c81c1c3cce1d4378 100644
+--- a/src/include/netinet/sctp.h.in
++++ b/src/include/netinet/sctp.h.in
+@@ -64,6 +64,7 @@ extern "C" {
+ #undef HAVE_SCTP_ASSOC_RESET_EVENT
+ #undef HAVE_SCTP_STREAM_CHANGE_EVENT
+ #undef HAVE_SCTP_STREAM_RECONFIG
++#undef HAVE_SCTP_PEELOFF_FLAGS
+ 
+ int sctp_bindx(int sd, struct sockaddr *addrs, int addrcnt, int flags);
+ 
+diff --git a/src/lib/peeloff.c b/src/lib/peeloff.c
+index edd75a0b3cd42a8b6cd219038c9c61ff6d2b000c..a4e1ed9b9bb97342acc9869f51710dd0baf11e1b 100644
+--- a/src/lib/peeloff.c
++++ b/src/lib/peeloff.c
+@@ -23,34 +23,30 @@
+ #include <netinet/sctp.h> /* SCTP_SOCKOPT_BINDX_* */
+ #include <errno.h>
+ 
++#ifdef HAVE_SCTP_PEELOFF_FLAGS
+ int
+ sctp_peeloff_flags(int fd, sctp_assoc_t associd, unsigned flags)
  {
- 	struct sctp_transport *transport = pkt->transport;
- 	struct sctp_chunk *chunk, *chunk1;
-@@ -987,6 +987,57 @@ static void sctp_outq_flush_ctrl(struct sctp_outq *q,
- 	}
- }
++	socklen_t peeloff_size = sizeof(sctp_peeloff_flags_arg_t);
+ 	sctp_peeloff_flags_arg_t peeloff;
+-	socklen_t peeloff_size;
+ 	int err;
  
-+/* Returns false if new data shouldn't be sent */
-+static bool sctp_outq_flush_rtx(struct sctp_outq *q,
-+				struct sctp_transport **_transport,
-+				struct list_head *transport_list,
-+				int rtx_timeout)
-+{
-+	struct sctp_transport *transport = *_transport;
-+	struct sctp_packet *packet = transport ? &transport->packet : NULL;
-+	struct sctp_association *asoc = q->asoc;
-+	int error, start_timer = 0;
++	if (!flags)
++		return sctp_peeloff(fd, associd);
 +
-+	if (asoc->peer.retran_path->state = SCTP_UNCONFIRMED)
-+		return false;
-+
-+	if (transport != asoc->peer.retran_path) {
-+		/* Switch transports & prepare the packet.  */
-+		transport = asoc->peer.retran_path;
-+		*_transport = transport;
-+
-+		if (list_empty(&transport->send_ready))
-+			list_add_tail(&transport->send_ready,
-+				      transport_list);
-+
-+		packet = &transport->packet;
-+		sctp_packet_config(packet, asoc->peer.i.init_tag,
-+				   asoc->peer.ecn_capable);
-+	}
-+
-+	error = __sctp_outq_flush_rtx(q, packet, rtx_timeout, &start_timer);
-+	if (error < 0)
-+		asoc->base.sk->sk_err = -error;
-+
-+	if (start_timer) {
-+		sctp_transport_reset_t3_rtx(transport);
-+		transport->last_time_sent = jiffies;
-+	}
-+
-+	/* This can happen on COOKIE-ECHO resend.  Only
-+	 * one chunk can get bundled with a COOKIE-ECHO.
-+	 */
-+	if (packet->has_cookie_echo)
-+		return false;
-+
-+	/* Don't send new data if there is still data
-+	 * waiting to retransmit.
-+	 */
-+	if (!list_empty(&q->retransmit))
-+		return false;
-+
-+	return true;
+ 	peeloff.p_arg.associd = associd;
+ 	peeloff.p_arg.sd = 0;
+ 	peeloff.flags = flags;
+ 
+-
+-	if (flags) {
+-		peeloff_size = sizeof(sctp_peeloff_flags_arg_t);
+-		err = getsockopt(fd, SOL_SCTP, SCTP_SOCKOPT_PEELOFF_FLAGS, &peeloff,
+-				 &peeloff_size);
+-	} else {
+-		peeloff_size = sizeof(sctp_peeloff_arg_t);
+-		err = getsockopt(fd, SOL_SCTP, SCTP_SOCKOPT_PEELOFF, &peeloff.p_arg,
+-				 &peeloff_size);
+-	}
++	err = getsockopt(fd, SOL_SCTP, SCTP_SOCKOPT_PEELOFF_FLAGS, &peeloff,
++			 &peeloff_size);
+ 
+ 	if (err < 0)
+ 		return err;
+ 
+ 	return peeloff.p_arg.sd;
+-
+-} /* sctp_peeloff() */
 +}
- /*
-  * Try to flush an outqueue.
-  *
-@@ -1000,12 +1051,10 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
++#endif
+ 
+ /* Branch off an association into a seperate socket.  This is a new SCTP API
+  * described in the section 8.2 of the Sockets API Extensions for SCTP. 
+@@ -59,6 +55,18 @@ sctp_peeloff_flags(int fd, sctp_assoc_t associd, unsigned flags)
+ int
+ sctp_peeloff(int fd, sctp_assoc_t associd)
  {
- 	struct sctp_packet *packet;
- 	struct sctp_association *asoc = q->asoc;
--	__u32 vtag = asoc->peer.i.init_tag;
- 	struct sctp_transport *transport = NULL;
- 	struct sctp_chunk *chunk;
- 	enum sctp_xmit status;
- 	int error = 0;
--	int start_timer = 0;
+-	return sctp_peeloff_flags(fd, associd, 0);
+-}
++	socklen_t peeloff_size = sizeof(sctp_peeloff_arg_t);
++	sctp_peeloff_arg_t peeloff;
++	int err;
  
- 	/* These transports have chunks to send. */
- 	struct list_head transport_list;
-@@ -1053,45 +1102,11 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 		 * current cwnd).
- 		 */
- 		if (!list_empty(&q->retransmit)) {
--			if (asoc->peer.retran_path->state = SCTP_UNCONFIRMED)
--				goto sctp_flush_out;
--			if (transport = asoc->peer.retran_path)
--				goto retran;
--
--			/* Switch transports & prepare the packet.  */
--
--			transport = asoc->peer.retran_path;
--
--			if (list_empty(&transport->send_ready)) {
--				list_add_tail(&transport->send_ready,
--					      &transport_list);
--			}
--
-+			if (!sctp_outq_flush_rtx(q, &transport, &transport_list,
-+						 rtx_timeout))
-+				break;
-+			/* We may have switched current transport */
- 			packet = &transport->packet;
--			sctp_packet_config(packet, vtag,
--					   asoc->peer.ecn_capable);
--		retran:
--			error = sctp_outq_flush_rtx(q, packet,
--						    rtx_timeout, &start_timer);
--			if (error < 0)
--				asoc->base.sk->sk_err = -error;
--
--			if (start_timer) {
--				sctp_transport_reset_t3_rtx(transport);
--				transport->last_time_sent = jiffies;
--			}
--
--			/* This can happen on COOKIE-ECHO resend.  Only
--			 * one chunk can get bundled with a COOKIE-ECHO.
--			 */
--			if (packet->has_cookie_echo)
--				goto sctp_flush_out;
--
--			/* Don't send new data if there is still data
--			 * waiting to retransmit.
--			 */
--			if (!list_empty(&q->retransmit))
--				goto sctp_flush_out;
- 		}
- 
- 		/* Apply Max.Burst limitation to the current transport in
++	peeloff.associd = associd;
++	peeloff.sd = 0;
++
++	err = getsockopt(fd, SOL_SCTP, SCTP_SOCKOPT_PEELOFF, &peeloff,
++			 &peeloff_size);
++
++	if (err < 0)
++		return err;
++
++	return peeloff.sd;
++}
 -- 
 2.14.3
 
