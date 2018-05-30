@@ -1,127 +1,58 @@
-From: Vladislav Yasevich <vyasevich@gmail.com>
-Date: Wed, 02 May 2018 02:07:36 +0000
-Subject: [PATCH V2 net-next 3/6] sctp: Build sctp offload support into the base kernel
-Message-Id: <20180502020739.19239-4-vyasevic@redhat.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 30 May 2018 17:17:56 +0000
+Subject: [PATCH lksctp-tools 05/12] netinet/sctp.h: dynamically build based on system setup
+Message-Id: <e59a91df9f7dbcd3ceab24f2f3a6a823a200ee8c.1527700680.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180502020739.19239-1-vyasevic@redhat.com>
-In-Reply-To: <20180502020739.19239-1-vyasevic@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: virtio-dev@lists.oasis-open.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, mst@redhat.com, virtualization@lists.linux-foundation.org, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-With the SCTP checksum offload support added to virtio, it is
-now possible to get into a situation where SCTP not present
-in the kernel, but the feature is negotiated.  Handle this just
-like we do IPv6 and other modular offloads.
-Move the sctp offload out of the sctp module and into the base
-kernel.
+After this patch, the exported netinet/sctp.h will be updated to reflect
+the features that configure could probe on available kernel headers.
 
-Signed-off-by: Vladislav Yasevich <vyasevic@redhat.com>
+Applications should use these defines to identify what is available.
+
+This patch only adds the structure. Subsequent patches are to add such
+defines.
+
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- include/net/sctp/sctp.h | 5 -----
- net/Kconfig             | 1 +
- net/sctp/Kconfig        | 1 -
- net/sctp/Makefile       | 3 ++-
- net/sctp/offload.c      | 4 +++-
- net/sctp/protocol.c     | 3 ---
- 6 files changed, 6 insertions(+), 11 deletions(-)
+ configure.ac                              | 1 +
+ src/include/netinet/Makefile.am           | 5 +++--
+ src/include/netinet/{sctp.h => sctp.h.in} | 0
+ 3 files changed, 4 insertions(+), 2 deletions(-)
+ rename src/include/netinet/{sctp.h => sctp.h.in} (100%)
 
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index 72c5b8f..625b45f 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -183,11 +183,6 @@ struct sctp_transport *sctp_epaddr_lookup_transport(
- int __net_init sctp_proc_init(struct net *net);
+diff --git a/configure.ac b/configure.ac
+index 349819e1fdca716274ac4dd1b33e1c5683303c5d..9598bc83579299b1b1e68bd49cac407e3a0713fb 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -71,6 +71,7 @@ AC_FUNC_VPRINTF
+ AC_CHECK_FUNCS([bzero gethostbyname gettimeofday memmove memset select socket \
+ 		strchr strerror strtol strtoul])
  
- /*
-- * sctp/offload.c
-- */
--int sctp_offload_init(void);
--
--/*
-  * sctp/stream_sched.c
-  */
- void sctp_sched_ops_init(void);
-diff --git a/net/Kconfig b/net/Kconfig
-index 0428f12..2773f98 100644
---- a/net/Kconfig
-+++ b/net/Kconfig
-@@ -64,6 +64,7 @@ config INET
- 	bool "TCP/IP networking"
- 	select CRYPTO
- 	select CRYPTO_AES
-+	select LIBCRC32C
- 	---help---
- 	  These are the protocols used on the Internet and on most local
- 	  Ethernets. It is highly recommended to say Y here (this will enlarge
-diff --git a/net/sctp/Kconfig b/net/sctp/Kconfig
-index c740b18..d07477a 100644
---- a/net/sctp/Kconfig
-+++ b/net/sctp/Kconfig
-@@ -9,7 +9,6 @@ menuconfig IP_SCTP
- 	select CRYPTO
- 	select CRYPTO_HMAC
- 	select CRYPTO_SHA1
--	select LIBCRC32C
- 	---help---
- 	  Stream Control Transmission Protocol
++AC_CONFIG_HEADERS([src/include/netinet/sctp.h])
+ AC_CONFIG_FILES([lksctp-tools.spec
+ 		Makefile
+ 		bin/Makefile
+diff --git a/src/include/netinet/Makefile.am b/src/include/netinet/Makefile.am
+index 8aa9429c4af1078cd60bc80ff84066c75f859fb6..ca0aac21f531d97fc80df152e78b8b075ce17a02 100644
+--- a/src/include/netinet/Makefile.am
++++ b/src/include/netinet/Makefile.am
+@@ -9,6 +9,7 @@ libcnetinetdir = $(includedir)/netinet
  
-diff --git a/net/sctp/Makefile b/net/sctp/Makefile
-index e845e45..ee206ca 100644
---- a/net/sctp/Makefile
-+++ b/net/sctp/Makefile
-@@ -5,6 +5,7 @@
- 
- obj-$(CONFIG_IP_SCTP) += sctp.o
- obj-$(CONFIG_INET_SCTP_DIAG) += sctp_diag.o
-+obj-$(CONFIG_INET) += offload.o
- 
- sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
- 	  protocol.o endpointola.o associola.o \
-@@ -12,7 +13,7 @@ sctp-y := sm_statetable.o sm_statefuns.o sm_sideeffect.o \
- 	  inqueue.o outqueue.o ulpqueue.o \
- 	  tsnmap.o bind_addr.o socket.o primitive.o \
- 	  output.o input.o debug.o stream.o auth.o \
--	  offload.o stream_sched.o stream_sched_prio.o \
-+	  stream_sched.o stream_sched_prio.o \
- 	  stream_sched_rr.o stream_interleave.o
- 
- sctp_diag-y := diag.o
-diff --git a/net/sctp/offload.c b/net/sctp/offload.c
-index 123e9f2..c61cbde 100644
---- a/net/sctp/offload.c
-+++ b/net/sctp/offload.c
-@@ -107,7 +107,7 @@ static const struct skb_checksum_ops crc32c_csum_ops = {
- 	.combine = sctp_csum_combine,
- };
- 
--int __init sctp_offload_init(void)
-+static int __init sctp_offload_init(void)
- {
- 	int ret;
- 
-@@ -127,3 +127,5 @@ int __init sctp_offload_init(void)
- out:
- 	return ret;
- }
-+
-+fs_initcall(sctp_offload_init);
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index a24cde2..46d2b63 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -1479,9 +1479,6 @@ static __init int sctp_init(void)
- 	if (status)
- 		goto err_v6_add_protocol;
- 
--	if (sctp_offload_init() < 0)
--		pr_crit("%s: Cannot add SCTP protocol offload\n", __func__);
--
- out:
- 	return status;
- err_v6_add_protocol:
+ # Supposing this is part of the development package, header for our
+ # API.
+-include_HEADERS = 
++include_HEADERS  
+-libcnetinet_HEADERS = sctp.h
++libcnetinet_HEADERS = sctp.h.in
++BUILT_SOURCES = sctp.h
+diff --git a/src/include/netinet/sctp.h b/src/include/netinet/sctp.h.in
+similarity index 100%
+rename from src/include/netinet/sctp.h
+rename to src/include/netinet/sctp.h.in
 -- 
-2.9.5
+2.14.3
 
