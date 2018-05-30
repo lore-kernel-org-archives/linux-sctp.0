@@ -1,322 +1,190 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 11 May 2018 23:30:03 +0000
-Subject: [PATCH net-next 2/3] sctp: add asoc and packet to sctp_flush_ctx
-Message-Id: <5635a6d7212362120272e36edf35aa011483c9e2.1526078163.git.marcelo.leitner@gmail.com>
+Date: Wed, 30 May 2018 17:18:03 +0000
+Subject: [PATCH lksctp-tools 12/12] build: add define HAVE_SCTP_SENDV
+Message-Id: <8bb7da037b136fc80d92febbebc5656613b90e49.1527700680.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1526078163.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1526078163.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>
+To: linux-sctp@vger.kernel.org
 
-Pre-compute these so the compiler won't reload them (due to
-no-strict-aliasing).
+To indicate whether SENDV/RECVV operations are supported.
+If not, the library must not try to build such unit tests nor run then.
+It then also hides the symbols in netinet/sctp.h that are related to it.
 
 Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- net/sctp/outqueue.c | 99 ++++++++++++++++++++++++-----------------------------
- 1 file changed, 45 insertions(+), 54 deletions(-)
+ configure.ac                  | 4 ++++
+ src/func_tests/Makefile.am    | 9 +++++++--
+ src/include/netinet/sctp.h.in | 7 +++++++
+ src/lib/recvmsg.c             | 2 ++
+ src/lib/sendmsg.c             | 2 ++
+ src/testlib/sctputil.h        | 5 +++++
+ 6 files changed, 27 insertions(+), 2 deletions(-)
 
-diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index db94a2513dd874149aa77c4936f68537e97f8855..a594d181fa1178c34cf477e13d700f7b37e72e21 100644
---- a/net/sctp/outqueue.c
-+++ b/net/sctp/outqueue.c
-@@ -798,16 +798,17 @@ struct sctp_flush_ctx {
- 	struct sctp_transport *transport;
- 	/* These transports have chunks to send. */
- 	struct list_head transport_list;
-+	struct sctp_association *asoc;
-+	/* Packet on the current transport above */
-+	struct sctp_packet *packet;
- 	gfp_t gfp;
+diff --git a/configure.ac b/configure.ac
+index 4cdc1339a19a9e2d17ee5a133a3d0f532539118c..765115de5d9a169a588e2b2186dde46ce34a2c1c 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -95,6 +95,10 @@ LKSCTP_CHECK_MEMBER([struct sctp_pdapi_event.pdapi_stream],
+ LKSCTP_CHECK_MEMBER([struct sctp_pdapi_event.pdapi_seq],
+ 		    [HAVE_SCTP_PDAPI_EVENT_PDAPI_SEQ])
+ 
++# PR-SCTP field used to probe for sendv/recvv support, added on v4.17
++LKSCTP_CHECK_MEMBER([struct sendv_prinfo.sctp_prinfo],
++		    [HAVE_SCTP_SENDV])
++
+ AC_CONFIG_HEADERS([src/include/netinet/sctp.h])
+ AC_CONFIG_FILES([lksctp-tools.spec
+ 		Makefile
+diff --git a/src/func_tests/Makefile.am b/src/func_tests/Makefile.am
+index 1f51356f750c727c066d67b89e5db84697839ff3..495adcf352caf2aa446b4dec599a289a6bb05205 100644
+--- a/src/func_tests/Makefile.am
++++ b/src/func_tests/Makefile.am
+@@ -30,7 +30,6 @@ PASSING_KERN_TESTS = \
+ 	test_recvmsg \
+ 	test_timetolive \
+ 	test_sctp_sendrecvmsg \
+-	test_sctp_sendvrecvv \
+ 	test_getname \
+ 	test_tcp_style\
+ 	test_1_to_1_socket_bind_listen \
+@@ -59,10 +58,16 @@ PASSING_V6_KERN_TESTS = \
+ 	test_peeloff_v6 \
+ 	test_timetolive_v6 \
+ 	test_sctp_sendrecvmsg_v6 \
+-	test_sctp_sendvrecvv_v6 \
+ 	test_getname_v6 \
+ 	test_tcp_style_v6
+ 
++if HAVE_SCTP_SENDV
++PASSING_KERN_TESTS += \
++	test_sctp_sendvrecvv
++PASSING_V6_KERN_TESTS += \
++	test_sctp_sendvrecvv_v6
++endif
++
+ noinst_PROGRAMS = ${PASSING_KERN_TESTS} ${PASSING_V6_KERN_TESTS}
+ 
+ $(top_builddir)/src/lib/libsctp.la:
+diff --git a/src/include/netinet/sctp.h.in b/src/include/netinet/sctp.h.in
+index 04932a6474bddfe4af7cbc1de0c4ab501a2d31c5..bc8acc9377f988bad6809b5b98ea9cb8b6de89e6 100644
+--- a/src/include/netinet/sctp.h.in
++++ b/src/include/netinet/sctp.h.in
+@@ -67,6 +67,7 @@ extern "C" {
+ #undef HAVE_SCTP_PEELOFF_FLAGS
+ #undef HAVE_SCTP_PDAPI_EVENT_PDAPI_STREAM
+ #undef HAVE_SCTP_PDAPI_EVENT_PDAPI_SEQ
++#undef HAVE_SCTP_SENDV
+ 
+ int sctp_bindx(int sd, struct sockaddr *addrs, int addrcnt, int flags);
+ 
+@@ -131,6 +132,7 @@ int sctp_recvmsg(int s, void *msg, size_t len, struct sockaddr *from,
+ int sctp_getaddrlen(sa_family_t family);
+ 
+ 
++#ifdef HAVE_SCTP_SENDV
+ /* sendv infotype */
+ enum {
+ 	SCTP_SENDV_NOINFO,
+@@ -144,14 +146,18 @@ enum {
+ #define SCTP_SEND_SNDINFO_VALID		0x1
+ #define SCTP_SEND_PRINFO_VALID		0x2
+ #define SCTP_SEND_AUTHINFO_VALID	0x4
++#endif
+ 
+ struct sctp_sendv_spa {
+ 	uint32_t sendv_flags;
+ 	struct sctp_sndinfo sendv_sndinfo;
++#ifdef HAVE_SCTP_SENDV
+ 	struct sctp_prinfo sendv_prinfo;
+ 	struct sctp_authinfo sendv_authinfo;
++#endif
  };
  
- /* transport: current transport */
--static bool sctp_outq_select_transport(struct sctp_flush_ctx *ctx,
-+static void sctp_outq_select_transport(struct sctp_flush_ctx *ctx,
- 				       struct sctp_chunk *chunk)
++#ifdef HAVE_SCTP_SENDV
+ int sctp_sendv(int s, const struct iovec *iov, int iovcnt,
+ 	       struct sockaddr *addrs, int addrcnt, void *info,
+ 	       socklen_t infolen, unsigned int infotype, int flags);
+@@ -172,6 +178,7 @@ struct sctp_recvv_rn {
+ int sctp_recvv(int s, const struct iovec *iov, int iovlen,
+ 	       struct sockaddr *from, socklen_t *fromlen, void *info,
+ 	       socklen_t *infolen, unsigned int *infotype, int *flags);
++#endif
+ 
+ #ifdef __cplusplus
+ }
+diff --git a/src/lib/recvmsg.c b/src/lib/recvmsg.c
+index 7c1dcad746a11d042108826a27d99067d7e5060c..88fe061b091926d3ab6897b6a992ba818004c916 100644
+--- a/src/lib/recvmsg.c
++++ b/src/lib/recvmsg.c
+@@ -100,6 +100,7 @@ int sctp_recvmsg(int s, void *msg, size_t len, struct sockaddr *from,
+ 	return (error);
+ }
+ 
++#ifdef HAVE_SCTP_SENDV
+ int sctp_recvv(int s, const struct iovec *iov, int iovlen,
+ 	       struct sockaddr *from, socklen_t *fromlen, void *info,
+ 	       socklen_t *infolen, unsigned int *infotype, int *flags)
+@@ -187,3 +188,4 @@ int sctp_recvv(int s, const struct iovec *iov, int iovlen,
+ 
+ 	return error;
+ }
++#endif
+diff --git a/src/lib/sendmsg.c b/src/lib/sendmsg.c
+index a67c1c8395041badd14c990815351e4938e36288..ea9c078f1543705f11031edc72b8d87d813e2faa 100644
+--- a/src/lib/sendmsg.c
++++ b/src/lib/sendmsg.c
+@@ -108,6 +108,7 @@ sctp_send(int s, const void *msg, size_t len,
+ 	return sendmsg(s, &outmsg, flags);
+ }
+ 
++#ifdef HAVE_SCTP_SENDV
+ static struct cmsghdr *sctp_sendv_store_cmsg(struct cmsghdr *cmsg, int *cmsglen,
+ 					     int type, int len, void *data)
  {
- 	struct sctp_transport *new_transport = chunk->transport;
--	struct sctp_association *asoc = ctx->q->asoc;
--	bool changed = false;
+@@ -234,3 +235,4 @@ int sctp_sendv(int s, const struct iovec *iov, int iovcnt,
  
- 	if (!new_transport) {
- 		if (!sctp_chunk_is_data(chunk)) {
-@@ -825,7 +826,7 @@ static bool sctp_outq_select_transport(struct sctp_flush_ctx *ctx,
- 							&ctx->transport->ipaddr))
- 				new_transport = ctx->transport;
- 			else
--				new_transport = sctp_assoc_lookup_paddr(asoc,
-+				new_transport = sctp_assoc_lookup_paddr(ctx->asoc,
- 								  &chunk->dest);
- 		}
+ 	return err;
+ }
++#endif
+diff --git a/src/testlib/sctputil.h b/src/testlib/sctputil.h
+index dda91696838511d14dfd26a5910aa1100118467a..9dbabd4762e0693d755f898659ed4d376ea7b21c 100644
+--- a/src/testlib/sctputil.h
++++ b/src/testlib/sctputil.h
+@@ -292,6 +292,7 @@ static inline int test_sctp_send(int s, const void *msg, size_t len,
+ 	return error;			
+ }
  
-@@ -833,7 +834,7 @@ static bool sctp_outq_select_transport(struct sctp_flush_ctx *ctx,
- 		 * use the current active path.
- 		 */
- 		if (!new_transport)
--			new_transport = asoc->peer.active_path;
-+			new_transport = ctx->asoc->peer.active_path;
- 	} else {
- 		__u8 type;
++#ifdef HAVE_SCTP_SENDV
+ static inline int test_sctp_sendv(int s, const struct iovec *iov, int iovcnt,
+ 				  struct sockaddr *addrs, int addrcnt,
+ 				  void *info, socklen_t infolen,
+@@ -309,6 +310,7 @@ static inline int test_sctp_sendv(int s, const struct iovec *iov, int iovcnt,
+ 			 error, errno);
+ 	return error;
+ }
++#endif
  
-@@ -858,7 +859,7 @@ static bool sctp_outq_select_transport(struct sctp_flush_ctx *ctx,
- 			if (type != SCTP_CID_HEARTBEAT &&
- 			    type != SCTP_CID_HEARTBEAT_ACK &&
- 			    type != SCTP_CID_ASCONF_ACK)
--				new_transport = asoc->peer.active_path;
-+				new_transport = ctx->asoc->peer.active_path;
- 			break;
- 		default:
- 			break;
-@@ -867,27 +868,25 @@ static bool sctp_outq_select_transport(struct sctp_flush_ctx *ctx,
+ static inline int test_sctp_recvmsg(int sk, void *msg, size_t len,
+ 				    struct sockaddr *from, socklen_t *fromlen,
+@@ -321,6 +323,7 @@ static inline int test_sctp_recvmsg(int sk, void *msg, size_t len,
+ 	return error;			
+ }
  
- 	/* Are we switching transports? Take care of transport locks. */
- 	if (new_transport != ctx->transport) {
--		changed = true;
- 		ctx->transport = new_transport;
-+		ctx->packet = &ctx->transport->packet;
++#ifdef HAVE_SCTP_SENDV
+ static inline int test_sctp_recvv(int s, const struct iovec *iov, int iovlen,
+ 				  struct sockaddr *from, socklen_t *fromlen,
+ 				  void *info, socklen_t *infolen,
+@@ -332,6 +335,8 @@ static inline int test_sctp_recvv(int s, const struct iovec *iov, int iovlen,
+ 		tst_brkm(TBROK, tst_exit, "sctp_recvmsg: %s", strerror(errno));
+ 	return error;
+ }
++#endif
 +
- 		if (list_empty(&ctx->transport->send_ready))
- 			list_add_tail(&ctx->transport->send_ready,
- 				      &ctx->transport_list);
- 
--		sctp_packet_config(&ctx->transport->packet, asoc->peer.i.init_tag,
--				   asoc->peer.ecn_capable);
-+		sctp_packet_config(ctx->packet,
-+				   ctx->asoc->peer.i.init_tag,
-+				   ctx->asoc->peer.ecn_capable);
- 		/* We've switched transports, so apply the
- 		 * Burst limit to the new transport.
- 		 */
- 		sctp_transport_burst_limited(ctx->transport);
- 	}
--
--	return changed;
- }
- 
- static void sctp_outq_flush_ctrl(struct sctp_flush_ctx *ctx)
+ static inline void *test_malloc(size_t size)
  {
--	struct sctp_association *asoc = ctx->q->asoc;
--	struct sctp_packet *packet = NULL;
- 	struct sctp_chunk *chunk, *tmp;
- 	enum sctp_xmit status;
- 	int one_packet, error;
-@@ -901,7 +900,7 @@ static void sctp_outq_flush_ctrl(struct sctp_flush_ctx *ctx)
- 		 * NOT use the new IP address as a source for ANY SCTP
- 		 * packet except on carrying an ASCONF Chunk.
- 		 */
--		if (asoc->src_out_of_asoc_ok &&
-+		if (ctx->asoc->src_out_of_asoc_ok &&
- 		    chunk->chunk_hdr->type != SCTP_CID_ASCONF)
- 			continue;
- 
-@@ -910,8 +909,7 @@ static void sctp_outq_flush_ctrl(struct sctp_flush_ctx *ctx)
- 		/* Pick the right transport to use. Should always be true for
- 		 * the first chunk as we don't have a transport by then.
- 		 */
--		if (sctp_outq_select_transport(ctx, chunk))
--			packet = &ctx->transport->packet;
-+		sctp_outq_select_transport(ctx, chunk);
- 
- 		switch (chunk->chunk_hdr->type) {
- 		/*
-@@ -926,14 +924,14 @@ static void sctp_outq_flush_ctrl(struct sctp_flush_ctx *ctx)
- 			error = sctp_packet_singleton(ctx->transport, chunk,
- 						      ctx->gfp);
- 			if (error < 0) {
--				asoc->base.sk->sk_err = -error;
-+				ctx->asoc->base.sk->sk_err = -error;
- 				return;
- 			}
- 			break;
- 
- 		case SCTP_CID_ABORT:
- 			if (sctp_test_T_bit(chunk))
--				packet->vtag = asoc->c.my_vtag;
-+				ctx->packet->vtag = ctx->asoc->c.my_vtag;
- 			/* fallthru */
- 
- 		/* The following chunks are "response" chunks, i.e.
-@@ -959,7 +957,7 @@ static void sctp_outq_flush_ctrl(struct sctp_flush_ctx *ctx)
- 		case SCTP_CID_FWD_TSN:
- 		case SCTP_CID_I_FWD_TSN:
- 		case SCTP_CID_RECONF:
--			status = sctp_packet_transmit_chunk(packet, chunk,
-+			status = sctp_packet_transmit_chunk(ctx->packet, chunk,
- 							    one_packet, ctx->gfp);
- 			if (status != SCTP_XMIT_OK) {
- 				/* put the chunk back */
-@@ -967,7 +965,7 @@ static void sctp_outq_flush_ctrl(struct sctp_flush_ctx *ctx)
- 				break;
- 			}
- 
--			asoc->stats.octrlchunks++;
-+			ctx->asoc->stats.octrlchunks++;
- 			/* PR-SCTP C5) If a FORWARD TSN is sent, the
- 			 * sender MUST assure that at least one T3-rtx
- 			 * timer is running.
-@@ -978,7 +976,7 @@ static void sctp_outq_flush_ctrl(struct sctp_flush_ctx *ctx)
- 				ctx->transport->last_time_sent = jiffies;
- 			}
- 
--			if (chunk = asoc->strreset_chunk)
-+			if (chunk = ctx->asoc->strreset_chunk)
- 				sctp_transport_reset_reconf_timer(ctx->transport);
- 
- 			break;
-@@ -994,31 +992,28 @@ static void sctp_outq_flush_ctrl(struct sctp_flush_ctx *ctx)
- static bool sctp_outq_flush_rtx(struct sctp_flush_ctx *ctx,
- 				int rtx_timeout)
- {
--	struct sctp_packet *packet = ctx->transport ? &ctx->transport->packet :
--				     NULL;
--	struct sctp_association *asoc = ctx->q->asoc;
- 	int error, start_timer = 0;
- 
--	if (asoc->peer.retran_path->state = SCTP_UNCONFIRMED)
-+	if (ctx->asoc->peer.retran_path->state = SCTP_UNCONFIRMED)
- 		return false;
- 
--	if (ctx->transport != asoc->peer.retran_path) {
-+	if (ctx->transport != ctx->asoc->peer.retran_path) {
- 		/* Switch transports & prepare the packet.  */
--		ctx->transport = asoc->peer.retran_path;
-+		ctx->transport = ctx->asoc->peer.retran_path;
-+		ctx->packet = &ctx->transport->packet;
- 
- 		if (list_empty(&ctx->transport->send_ready))
- 			list_add_tail(&ctx->transport->send_ready,
- 				      &ctx->transport_list);
- 
--		packet = &ctx->transport->packet;
--		sctp_packet_config(packet, asoc->peer.i.init_tag,
--				   asoc->peer.ecn_capable);
-+		sctp_packet_config(ctx->packet, ctx->asoc->peer.i.init_tag,
-+				   ctx->asoc->peer.ecn_capable);
- 	}
- 
--	error = __sctp_outq_flush_rtx(ctx->q, packet, rtx_timeout, &start_timer,
--				      ctx->gfp);
-+	error = __sctp_outq_flush_rtx(ctx->q, ctx->packet, rtx_timeout,
-+				      &start_timer, ctx->gfp);
- 	if (error < 0)
--		asoc->base.sk->sk_err = -error;
-+		ctx->asoc->base.sk->sk_err = -error;
- 
- 	if (start_timer) {
- 		sctp_transport_reset_t3_rtx(ctx->transport);
-@@ -1028,7 +1023,7 @@ static bool sctp_outq_flush_rtx(struct sctp_flush_ctx *ctx,
- 	/* This can happen on COOKIE-ECHO resend.  Only
- 	 * one chunk can get bundled with a COOKIE-ECHO.
- 	 */
--	if (packet->has_cookie_echo)
-+	if (ctx->packet->has_cookie_echo)
- 		return false;
- 
- 	/* Don't send new data if there is still data
-@@ -1043,20 +1038,17 @@ static bool sctp_outq_flush_rtx(struct sctp_flush_ctx *ctx,
- static void sctp_outq_flush_data(struct sctp_flush_ctx *ctx,
- 				 int rtx_timeout)
- {
--	struct sctp_packet *packet = ctx->transport ? &ctx->transport->packet :
--				     NULL;
--	struct sctp_association *asoc = ctx->q->asoc;
- 	struct sctp_chunk *chunk;
- 	enum sctp_xmit status;
- 
- 	/* Is it OK to send data chunks?  */
--	switch (asoc->state) {
-+	switch (ctx->asoc->state) {
- 	case SCTP_STATE_COOKIE_ECHOED:
- 		/* Only allow bundling when this packet has a COOKIE-ECHO
- 		 * chunk.
- 		 */
--		if (!packet || !packet->has_cookie_echo)
--			return;
-+		if (!ctx->packet || !ctx->packet->has_cookie_echo)
-+			break;
- 
- 		/* fallthru */
- 	case SCTP_STATE_ESTABLISHED:
-@@ -1078,12 +1070,9 @@ static void sctp_outq_flush_data(struct sctp_flush_ctx *ctx,
- 	 * are marked for retransmission (limited by the
- 	 * current cwnd).
- 	 */
--	if (!list_empty(&ctx->q->retransmit)) {
--		if (!sctp_outq_flush_rtx(ctx, rtx_timeout))
--			return;
--		/* We may have switched current transport */
--		packet = &ctx->transport->packet;
--	}
-+	if (!list_empty(&ctx->q->retransmit) &&
-+	    !sctp_outq_flush_rtx(ctx, rtx_timeout))
-+		return;
- 
- 	/* Apply Max.Burst limitation to the current transport in
- 	 * case it will be used for new data.  We are going to
-@@ -1105,13 +1094,12 @@ static void sctp_outq_flush_data(struct sctp_flush_ctx *ctx,
- 			continue;
- 		}
- 
--		if (asoc->stream.out[sid].state = SCTP_STREAM_CLOSED) {
-+		if (ctx->asoc->stream.out[sid].state = SCTP_STREAM_CLOSED) {
- 			sctp_outq_head_data(ctx->q, chunk);
- 			break;
- 		}
- 
--		if (sctp_outq_select_transport(ctx, chunk))
--			packet = &ctx->transport->packet;
-+		sctp_outq_select_transport(ctx, chunk);
- 
- 		pr_debug("%s: outq:%p, chunk:%p[%s], tx-tsn:0x%x skb->head:%p "
- 			 "skb->users:%d\n",
-@@ -1122,7 +1110,8 @@ static void sctp_outq_flush_data(struct sctp_flush_ctx *ctx,
- 			 refcount_read(&chunk->skb->users) : -1);
- 
- 		/* Add the chunk to the packet.  */
--		status = sctp_packet_transmit_chunk(packet, chunk, 0, ctx->gfp);
-+		status = sctp_packet_transmit_chunk(ctx->packet, chunk, 0,
-+						    ctx->gfp);
- 		if (status != SCTP_XMIT_OK) {
- 			/* We could not append this chunk, so put
- 			 * the chunk back on the output queue.
-@@ -1139,12 +1128,12 @@ static void sctp_outq_flush_data(struct sctp_flush_ctx *ctx,
- 		 * The sender MAY set the I-bit in the DATA
- 		 * chunk header.
- 		 */
--		if (asoc->state = SCTP_STATE_SHUTDOWN_PENDING)
-+		if (ctx->asoc->state = SCTP_STATE_SHUTDOWN_PENDING)
- 			chunk->chunk_hdr->flags |= SCTP_DATA_SACK_IMM;
- 		if (chunk->chunk_hdr->flags & SCTP_DATA_UNORDERED)
--			asoc->stats.ouodchunks++;
-+			ctx->asoc->stats.ouodchunks++;
- 		else
--			asoc->stats.oodchunks++;
-+			ctx->asoc->stats.oodchunks++;
- 
- 		/* Only now it's safe to consider this
- 		 * chunk as sent, sched-wise.
-@@ -1160,7 +1149,7 @@ static void sctp_outq_flush_data(struct sctp_flush_ctx *ctx,
- 		/* Only let one DATA chunk get bundled with a
- 		 * COOKIE-ECHO chunk.
- 		 */
--		if (packet->has_cookie_echo)
-+		if (ctx->packet->has_cookie_echo)
- 			break;
- 	}
- }
-@@ -1202,6 +1191,8 @@ static void sctp_outq_flush(struct sctp_outq *q, int rtx_timeout, gfp_t gfp)
- 		.q = q,
- 		.transport = NULL,
- 		.transport_list = LIST_HEAD_INIT(ctx.transport_list),
-+		.asoc = q->asoc,
-+		.packet = NULL,
- 		.gfp = gfp,
- 	};
- 
+ 	void *buf = malloc(size);
 -- 
 2.14.3
 
