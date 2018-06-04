@@ -1,119 +1,90 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 30 May 2018 17:18:01 +0000
-Subject: [PATCH lksctp-tools 10/12] build: add define HAVE_SCTP_PEELOFF_FLAGS
-Message-Id: <555e42a521858d59a321241c98088e766f31ed2d.1527700680.git.marcelo.leitner@gmail.com>
+From: Dmitry Vyukov <dvyukov@google.com>
+Date: Mon, 04 Jun 2018 08:34:07 +0000
+Subject: Re: [PATCH net] sctp: not allow to set rto_min with a value below 200 msecs
+Message-Id: <CACT4Y+bVvSsQm0hywC-_UqnJKhBeQryZZBjYaiWszvQGURS=vA@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <dc48b7c6a6dd1d8f19215cea6713d5723779d564.1527270062.git.lucien.xin@gmail.com>
+ <20180525191319.GB392@hmswarspite.think-freely.org> <71FD541D-25FE-4100-980B-C3A0CEAF6CD4@lurchi.franken.de>
+ <CACT4Y+YozRSfcoUoKHOWy5wujhVdks38vcfNGhwNj-REWcd-hw@mail.gmail.com>
+ <20180527010059.GA15798@neilslaptop.think-freely.org> <20180528194315.GB3788@localhost.localdomain>
+ <20180529114111.GA24144@hmswarspite.think-freely.org> <559FFFDD-E508-4936-9544-CACE606AF40F@lurchi.franken.de>
+ <20180529154514.GC3788@localhost.localdomain> <CADVnQymCNEtQFThsbQ0u7jirx24i45f5L7P-2dPf8omkshqwmg@mail.gmail.com>
+ <20180529170604.GD3788@localhost.localdomain> <CADvbK_fbKbH2wm6Xurr+ELVag-LvyQdL+peJd=wp7OL7_zMZTQ@mail.gmail.com>
+In-Reply-To: <CADvbK_fbKbH2wm6Xurr+ELVag-LvyQdL+peJd=wp7OL7_zMZTQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: Xin Long <lucien.xin@gmail.com>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neal Cardwell <ncardwell@google.com>, Michael Tuexen <michael.tuexen@lurchi.franken.de>, Neil Horman <nhorman@tuxdriver.com>, Netdev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, David Miller <davem@davemloft.net>, David Ahern <dsa@cumulusnetworks.com>, Eric Dumazet <edumazet@google.com>, syzkaller <syzkaller@googlegroups.com>
 
-Indicate that SCTP_PEELOFF_FLAGS sockopt is available and, with it, adjust
-how we build sctp_peeloff{,_flags}(). We cannot make sctp_peeloff() reuse
-sctp_peeloff_flags() because the latter may not be available.
+On Tue, May 29, 2018 at 7:45 PM, Xin Long <lucien.xin@gmail.com> wrote:
+> On Wed, May 30, 2018 at 1:06 AM, Marcelo Ricardo Leitner
+> <marcelo.leitner@gmail.com> wrote:
+>> On Tue, May 29, 2018 at 12:03:46PM -0400, Neal Cardwell wrote:
+>>> On Tue, May 29, 2018 at 11:45 AM Marcelo Ricardo Leitner <
+>>> marcelo.leitner@gmail.com> wrote:
+>>> > - patch2 - fix rtx attack vector
+>>> >    - Add the floor value to rto_min to HZ/20 (which fits the values
+>>> >      that Michael shared on the other email)
+>>>
+>>> I would encourage allowing minimum RTO values down to 5ms, if the ACK
+>>> policy in the receiver makes this feasible. Our experience is that in
+>>> datacenter environments it can be advantageous to allow timer-based loss
+>>> recoveries using timeout values as low as 5ms, e.g.:
+>>
+>> Thanks Neal. On Xin's tests, the hearbeat timer becomes an issue at
+>> ~25ms already. Xin, can you share more details on the hw, which CPU
+>> was used?
 
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
----
- configure.ac                  |  3 +++
- src/include/netinet/sctp.h.in |  1 +
- src/lib/peeloff.c             | 38 +++++++++++++++++++++++---------------
- 3 files changed, 27 insertions(+), 15 deletions(-)
+Hi,
 
-diff --git a/configure.ac b/configure.ac
-index daf14e398c6282cbbe56ba8c99abb9c0fc230d83..1558579a385b87bf5afc76cd2548e0c51628d708 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -86,6 +86,9 @@ LKSCTP_CHECK_MEMBER([struct sctp_event_subscribe.sctp_stream_reset_event],
- # RFC 6525 (Stream Reconf), finished on v4.12, c0d8bab6ae51
- LKSCTP_CHECK_DECL([SCTP_RECONFIG_SUPPORTED], [HAVE_SCTP_STREAM_RECONFIG])
- 
-+# sctp_peeloff_flags was added on v4.13, 2cb5c8e378d1
-+LKSCTP_CHECK_TYPE([sctp_peeloff_flags_arg_t], [HAVE_SCTP_PEELOFF_FLAGS])
-+
- AC_CONFIG_HEADERS([src/include/netinet/sctp.h])
- AC_CONFIG_FILES([lksctp-tools.spec
- 		Makefile
-diff --git a/src/include/netinet/sctp.h.in b/src/include/netinet/sctp.h.in
-index 31750811ad601444f1cf13e64229ba4ac9a1c379..0c856a837c08a8768ab6f4d5c81c1c3cce1d4378 100644
---- a/src/include/netinet/sctp.h.in
-+++ b/src/include/netinet/sctp.h.in
-@@ -64,6 +64,7 @@ extern "C" {
- #undef HAVE_SCTP_ASSOC_RESET_EVENT
- #undef HAVE_SCTP_STREAM_CHANGE_EVENT
- #undef HAVE_SCTP_STREAM_RECONFIG
-+#undef HAVE_SCTP_PEELOFF_FLAGS
- 
- int sctp_bindx(int sd, struct sockaddr *addrs, int addrcnt, int flags);
- 
-diff --git a/src/lib/peeloff.c b/src/lib/peeloff.c
-index edd75a0b3cd42a8b6cd219038c9c61ff6d2b000c..a4e1ed9b9bb97342acc9869f51710dd0baf11e1b 100644
---- a/src/lib/peeloff.c
-+++ b/src/lib/peeloff.c
-@@ -23,34 +23,30 @@
- #include <netinet/sctp.h> /* SCTP_SOCKOPT_BINDX_* */
- #include <errno.h>
- 
-+#ifdef HAVE_SCTP_PEELOFF_FLAGS
- int
- sctp_peeloff_flags(int fd, sctp_assoc_t associd, unsigned flags)
- {
-+	socklen_t peeloff_size = sizeof(sctp_peeloff_flags_arg_t);
- 	sctp_peeloff_flags_arg_t peeloff;
--	socklen_t peeloff_size;
- 	int err;
- 
-+	if (!flags)
-+		return sctp_peeloff(fd, associd);
-+
- 	peeloff.p_arg.associd = associd;
- 	peeloff.p_arg.sd = 0;
- 	peeloff.flags = flags;
- 
--
--	if (flags) {
--		peeloff_size = sizeof(sctp_peeloff_flags_arg_t);
--		err = getsockopt(fd, SOL_SCTP, SCTP_SOCKOPT_PEELOFF_FLAGS, &peeloff,
--				 &peeloff_size);
--	} else {
--		peeloff_size = sizeof(sctp_peeloff_arg_t);
--		err = getsockopt(fd, SOL_SCTP, SCTP_SOCKOPT_PEELOFF, &peeloff.p_arg,
--				 &peeloff_size);
--	}
-+	err = getsockopt(fd, SOL_SCTP, SCTP_SOCKOPT_PEELOFF_FLAGS, &peeloff,
-+			 &peeloff_size);
- 
- 	if (err < 0)
- 		return err;
- 
- 	return peeloff.p_arg.sd;
--
--} /* sctp_peeloff() */
-+}
-+#endif
- 
- /* Branch off an association into a seperate socket.  This is a new SCTP API
-  * described in the section 8.2 of the Sockets API Extensions for SCTP. 
-@@ -59,6 +55,18 @@ sctp_peeloff_flags(int fd, sctp_assoc_t associd, unsigned flags)
- int
- sctp_peeloff(int fd, sctp_assoc_t associd)
- {
--	return sctp_peeloff_flags(fd, associd, 0);
--}
-+	socklen_t peeloff_size = sizeof(sctp_peeloff_arg_t);
-+	sctp_peeloff_arg_t peeloff;
-+	int err;
- 
-+	peeloff.associd = associd;
-+	peeloff.sd = 0;
-+
-+	err = getsockopt(fd, SOL_SCTP, SCTP_SOCKOPT_PEELOFF, &peeloff,
-+			 &peeloff_size);
-+
-+	if (err < 0)
-+		return err;
-+
-+	return peeloff.sd;
-+}
--- 
-2.14.3
+Did we reach any decision on this? This continues to produce bug
+reports on syzbot.
 
+I am not sure whom you are asking, because Xin is you unless I am
+missing something :)
+But if you mean syzbot hardware, then it's GCE VMs with modern Intel
+CPUs but an important aspect is a heavy-debug config (which you can
+take from here https://syzkaller.appspot.com/bug?extid=cd59a1f907245f891f)
+and systematic bug reporting. So if it's any flaky in your testing, it
+will produce dozens of bug emails on syzbot.
+
+
+> It was on a KVM guest,  "-smp 2,cores=1,threads=1,sockets=2"
+> # lscpu
+> Architecture:          x86_64
+> CPU op-mode(s):        32-bit, 64-bit
+> Byte Order:            Little Endian
+> CPU(s):                2
+> On-line CPU(s) list:   0,1
+> Thread(s) per core:    1
+> Core(s) per socket:    1
+> Socket(s):             2
+> NUMA node(s):          1
+> Vendor ID:             GenuineIntel
+> CPU family:            6
+> Model:                 13
+> Model name:            QEMU Virtual CPU version 1.5.3
+> Stepping:              3
+> CPU MHz:               2397.222
+> BogoMIPS:              4794.44
+> Hypervisor vendor:     KVM
+> Virtualization type:   full
+> L1d cache:             32K
+> L1i cache:             32K
+> L2 cache:              4096K
+> NUMA node0 CPU(s):     0,1
+> Flags:                 fpu de pse tsc msr pae mce cx8 apic sep mtrr
+> pge mca cmov pse36 clflush mmx fxsr sse sse2 syscall nx lm rep_good
+> nopl cpuid pni cx16 hypervisor lahf_lm abm pti
+>
+> If we're counting on max_t to fix this CPU stuck. It should not that
+> matter if min rto < the value causing that stuck.
+>
+>>
+>> Anyway, what about we add a floor to rto_max too, so that RTO can
+>> actually grow into something bigger that don't hog the CPU? Like:
+>> rto_min floor = 5ms
+>> rto_max floor = 50ms
+>>
+>>   Marcelo
