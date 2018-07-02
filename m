@@ -1,46 +1,49 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 24 Jul 2018 17:36:47 +0000
-Subject: Re: [PATCH net-next 0/2] net/sctp: Avoid allocating high order memory with kmalloc()
-Message-Id: <20180724173647.GA8881@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 02 Jul 2018 06:51:16 +0000
+Subject: [PATCH net] sctp: fix the issue that pathmtu may be set lower than MINSEGMENT
+Message-Id: <0928f7dda7db59c8aa01e97a87792d9e643e70ab.1530514276.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180426222814.GA10301@localhost.localdomain>
- <b5ab1199-629b-1803-7826-ad74200bb34d@virtuozzo.com>
-In-Reply-To: <b5ab1199-629b-1803-7826-ad74200bb34d@virtuozzo.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Konstantin Khorenko <khorenko@virtuozzo.com>
-Cc: oleg.babin@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>, Andrey Ryabinin <aryabinin@virtuozzo.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, syzkaller@googlegroups.com
 
-On Tue, Jul 24, 2018 at 06:35:35PM +0300, Konstantin Khorenko wrote:
-> Hi Marcelo,
-> 
-> pity to abandon Oleg's attempt to avoid high order allocations and use
-> flex_array instead, so i tried to do the performance measurements with
-> options you kindly suggested.
+After commit b6c5734db070 ("sctp: fix the handling of ICMP Frag Needed
+for too small MTUs"), sctp_transport_update_pmtu would refetch pathmtu
+from the dst and set it to transport's pathmtu without any check.
 
-Nice, thanks!
+The new pathmtu may be lower than MINSEGMENT if the dst is obsolete and
+updated by .get_dst() in sctp_transport_update_pmtu.
 
-...
-> As we can see single stream tests do not show any noticeable degradation,
-> and SCTP_*_MANY tests spread decreased significantly when -S/-s options are used,
-> but still too big to consider the performance test pass or fail.
-> 
-> Can you please advise anything else to try - to decrease the dispersion rate -
+Syzbot reported a warning in sctp_mtu_payload caused by this.
 
-In addition, you can try also using a veth tunnel or reducing lo mtu
-down to 1500, and also make use of sctp tests (need to be after the --
-) option -m 1452.  These will alleaviate issues with cwnd handling
-that happen on loopback due to the big MTU and minimize issues with
-rwnd/buffer size too.
+This fix uses the refetched pathmtu only when it's greater than the
+frag_needed pmtu.
 
-Even with -S, -s, -m and the lower MTU, it is usual to see some
-fluctuation, but not that much.
+Fixes: b6c5734db070 ("sctp: fix the handling of ICMP Frag Needed for too small MTUs")
+Reported-by: syzbot+f0d9d7cba052f9344b03@syzkaller.appspotmail.com
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/transport.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-> or can we just consider values are fine and i'm reworking the patch according
-> to your comment about sctp_stream_in(asoc, sid)/sctp_stream_in_ptr(stream, sid)
-> and that's it?
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index 445b7ef..ddfb687 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -282,7 +282,10 @@ bool sctp_transport_update_pmtu(struct sctp_transport *t, u32 pmtu)
+ 
+ 	if (dst) {
+ 		/* Re-fetch, as under layers may have a higher minimum size */
+-		pmtu = SCTP_TRUNC4(dst_mtu(dst));
++		u32 mtu = SCTP_TRUNC4(dst_mtu(dst));
++
++		if (pmtu < mtu)
++			pmtu = mtu;
+ 		change = t->pathmtu != pmtu;
+ 	}
+ 	t->pathmtu = pmtu;
+-- 
+2.1.0
 
-Ok, thanks. It seems so, yes.
-
-  Marcelo
