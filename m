@@ -1,41 +1,28 @@
-From: Stephen Hemminger <stephen@networkplumber.org>
-Date: Tue, 24 Jul 2018 19:29:13 +0000
-Subject: [PATCH PATCH net-next 13/18] x25: remove blank lines at EOF
-Message-Id: <20180724192918.31165-14-sthemmin@microsoft.com>
+From: "peicaiyun" <peicaiyun@potevio.com>
+Date: Mon, 02 Jul 2018 01:18:18 +0000
+Subject: =?gb2312?B?16q3ojogSSBtZWV0IGEgcHJvYmxlbSBhYm91dCAgc2N0cCBhbmQgbA==?= =?gb2312?B?aW51eCBwb2xpY3kgcm9
+Message-Id: <00e601d411a2$9086bb30$b1943190$@potevio.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180724192918.31165-1-sthemmin@microsoft.com>
-In-Reply-To: <20180724192918.31165-1-sthemmin@microsoft.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net, ericvh@gmail.com, rminnich@sandia.gov, lucho@ionkov.net, ralf@linux-mips.org, jreuter@yaina.de, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, alex.aring@gmail.com, stefan@datenfreihafen.org, kuznet@ms2.inr.ac.ru, yoshfuji@linux-ipv6.org, johannes@sipsolutions.net, jhs@mojatatu.com, xiyou.wangcong@gmail.com, jiri@resnulli.us, vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, trond.myklebust@hammerspace.com, anna.schumaker@netapp.com, steffen.klassert@secunet.com, herbert@gondor.apana.org.au
-Cc: netdev@vger.kernel.org, v9fs-developer@lists.sourceforge.net, linux-hams@vger.kernel.org, ceph-devel@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, linux-wireless@vger.kernel.org, linux-rdma@vger.kernel.org, linux-sctp@vger.kernel.org, linux-nfs@vger.kernel.org, linux-x25@vger.kernel.org, Stephen Hemminger <sthemmin@microsoft.com>, Stephen Hemminger <stephen@networkplumber.org>
+Content-Type: text/plain; charset="gb2312"
+Content-Transfer-Encoding: base64
+To: linux-sctp@vger.kernel.org
 
-Signed-off-by: Stephen Hemminger <stephen@networkplumber.org>
----
- net/x25/Kconfig    | 2 --
- net/x25/x25_subr.c | 1 -
- 2 files changed, 3 deletions(-)
-
-diff --git a/net/x25/Kconfig b/net/x25/Kconfig
-index e2fa133f9fba..59fcb41fc5e6 100644
---- a/net/x25/Kconfig
-+++ b/net/x25/Kconfig
-@@ -31,5 +31,3 @@ config X25
- 
- 	  To compile this driver as a module, choose M here: the module
- 	  will be called x25. If unsure, say N.
--
--
-diff --git a/net/x25/x25_subr.c b/net/x25/x25_subr.c
-index 9c214ec681ac..743103786652 100644
---- a/net/x25/x25_subr.c
-+++ b/net/x25/x25_subr.c
-@@ -381,4 +381,3 @@ void x25_check_rbuf(struct sock *sk)
- 		x25_stop_timer(sk);
- 	}
- }
--
--- 
-2.18.0
-
+V2UgY29uZmlnIG91ciBzeXN0ZW0gYSBwb2xpY3kgcm91dGUgYXMgZm9sbG93OgoKZWNobyAiMTAw
+IG15IiA+PiAvZXRjL2lwcm91dGUyL3J0X3RhYmxlcyBpcCByb3V0ZSBhZGQgdG8gMC4wLjAuMC8w
+IHZpYQoxOTIuMTY4LjAuMiBkZXYgZXRoMCB0YWJsZSBteSAvc2Jpbi9pcCBydWxlIGFkZCBmcm9t
+IDEyLjM0LjAuMC8zMiB0YWJsZSBteQoKV2hlbiBJIHNlbmQgc2N0cCBwYWNrYWdlIGZyb20gMTIu
+MzQuMC4xMDAgaW4gbXkgbWFjaGluZSgxMi4zNC4wLjEwMCBpcyBpcCBvZgp0aGlzIG1hY2hpbmUp
+LCB0byAgMTIuMzQuMC4xMTEgVGhlbiBJIGZpbmQgdGhlIHBhY2thZ2Ugd2FzIHNlbmQgdG8KMTIu
+MzQuMC4xMTEsbm90IHRocm91Z2ggZ3cgMTkyLjE2OC4wLjIgSXMgdGhlIHNjdHAgcGFja2FnZSBu
+b3QgZm9sbG93IHBvbGljeQpyb3V0ZT8KV2h5IHRoZSBwYWNrYWdlIGlzIG5vdCByb3V0ZWQgdG8g
+MTkyLjE2OC4wLjI/CgpUaGFua3MgZm9yIHlvdSBraW5kIHJlcGx5LgoKLS0tLS3Tyrz+1K28/i0t
+LS0tCreivP7IyzogbGtzY3RwLWRldmVsb3BlcnMtb3duZXJAbGlzdHMuc291cmNlZm9yZ2UubmV0
+ClttYWlsdG86bGtzY3RwLWRldmVsb3BlcnMtb3duZXJAbGlzdHMuc291cmNlZm9yZ2UubmV0XQq3
+osvNyrG85DogMjAxOMTqNtTCMjnI1SAxOToxMArK1bz+yMs6IHBlaWNhaXl1bkBwb3RldmlvLmNv
+bQrW98ziOiBJIG1lZXQgYSBwcm9ibGVtIGFib3V0IHNjdHAgYW5kIGxpbnV4IHBvbGljeSByb3V0
+ZQoKUGxlYXNlIHVzZSBsaW51eC1zY3RwQHZnZXIua2VybmVsLm9yZyBmb3IgcG9zdGluZyBTQ1RQ
+IHF1ZXN0aW9ucy4KCgoKLS0KVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhl
+IGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LXNjdHAiIGluCnRoZSBib2R5IG9mIGEgbWVzc2FnZSB0
+byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnCk1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6
+Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA==
