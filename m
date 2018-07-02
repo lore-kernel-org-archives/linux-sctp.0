@@ -1,40 +1,86 @@
-From: Stephen Hemminger <stephen@networkplumber.org>
-Date: Tue, 24 Jul 2018 19:29:06 +0000
-Subject: [PATCH PATCH net-next 06/18] xfrm: remove blank lines at EOF
-Message-Id: <20180724192918.31165-7-sthemmin@microsoft.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 02 Jul 2018 10:21:14 +0000
+Subject: [PATCHv2 net-next 4/5] sctp: add support for setting flowlabel when adding a transport
+Message-Id: <ec560e0a131aac9425c93a02eafd320c3bb5e584.1530526661.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180724192918.31165-1-sthemmin@microsoft.com>
-In-Reply-To: <20180724192918.31165-1-sthemmin-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>
+References: <cover.1530526661.git.lucien.xin@gmail.com>
+ <6504d3609be85e1574b6f44051d2523342f9e955.1530526661.git.lucien.xin@gmail.com>
+ <d4512b8239763cedc076bdbc3a10fe1fb9e88481.1530526661.git.lucien.xin@gmail.com>
+ <cbeee9df0afd61d4f1bf1ac08a627b1d8e9dcf6a.1530526661.git.lucien.xin@gmail.com>
+In-Reply-To: <cbeee9df0afd61d4f1bf1ac08a627b1d8e9dcf6a.1530526661.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org, ericvh-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, rminnich-4OHPYypu0djtX7QSmKvirg@public.gmane.org, lucho-OnYtXJJ0/fesTnJN9+BGXg@public.gmane.org, ralf-6z/3iImG2C8G8FEW9MqTrA@public.gmane.org, jreuter-K7Hl1MveuGQ@public.gmane.org, pablo-Cap9r6Oaw4JrovVCs/uTlw@public.gmane.org, kadlec-K40Dz/62t/MgiyqX0sVFJYdd74u8MsAO@public.gmane.org, fw-HFFVJYpyMKqzQB+pC5nmwQ@public.gmane.org, alex.aring-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, stefan-OrPQZGeq07wqhVmZOOOmNx2eb7JE58TQ@public.gmane.org, kuznet-v/Mj1YrvjDBInbfyfbPRSQ@public.gmane.org, yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org, johannes-cdvu00un1VgdHxzADdlk8Q@public.gmane.org, jhs-jkUAjuhPggJWk0Htik3J/w@public.gmane.org, xiyou.wangcong-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, jiri-rHqAuBHg3fBzbRFIqnYvSA@public.gmane.org, vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org, marcelo.leitner-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, trond.myklebust-F/q8l9xzQnoyLce1RVWEUA@public.gmane.org, anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org, steffen.klassert-opNxpl+3fjRBDgjK7y7TUQ@public.gmane.org, herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org
-Cc: netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, v9fs-developer-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, linux-hams-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-decnet-user-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, netfilter-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, coreteam-Cap9r6Oaw4JrovVCs/uTlw@public.gmane.org, linux-wpan-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-s390-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-wireless-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-x25-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Stephen Hemminger <sthemmin-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, Stephen Hemminger <stephen-OTpzqLSitTUnbdJkjeBofR2eb7JE58TQ@public.gmane.org>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net, hideaki.yoshifuji@miraclelinux.com
 
-Signed-off-by: Stephen Hemminger <stephen@networkplumber.org>
+Struct sockaddr_in6 has the member sin6_flowinfo that includes the
+ipv6 flowlabel, it should also support for setting flowlabel when
+adding a transport whose ipaddr is from userspace.
+
+Note that addrinfo in sctp_sendmsg is using struct in6_addr for
+the secondary addrs, which doesn't contain sin6_flowinfo, and
+it needs to copy sin6_flowinfo from the primary addr.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/xfrm/Kconfig     | 1 -
- net/xfrm/xfrm_user.c | 1 -
- 2 files changed, 2 deletions(-)
+ net/sctp/associola.c | 12 ++++++++++--
+ net/sctp/socket.c    |  5 +++++
+ 2 files changed, 15 insertions(+), 2 deletions(-)
 
-diff --git a/net/xfrm/Kconfig b/net/xfrm/Kconfig
-index 286ed25c1a69..eab952cca7d0 100644
---- a/net/xfrm/Kconfig
-+++ b/net/xfrm/Kconfig
-@@ -87,4 +87,3 @@ config NET_KEY_MIGRATE
- 	  <draft-sugimoto-mip6-pfkey-migrate>.
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 16ecfbc..297d9cf 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -650,8 +650,16 @@ struct sctp_transport *sctp_assoc_add_peer(struct sctp_association *asoc,
+ 	peer->sackdelay = asoc->sackdelay;
+ 	peer->sackfreq = asoc->sackfreq;
  
- 	  If unsure, say N.
--
-diff --git a/net/xfrm/xfrm_user.c b/net/xfrm/xfrm_user.c
-index 080035f056d9..09cceab450b8 100644
---- a/net/xfrm/xfrm_user.c
-+++ b/net/xfrm/xfrm_user.c
-@@ -3280,4 +3280,3 @@ module_init(xfrm_user_init);
- module_exit(xfrm_user_exit);
- MODULE_LICENSE("GPL");
- MODULE_ALIAS_NET_PF_PROTO(PF_NETLINK, NETLINK_XFRM);
--
+-	if (addr->sa.sa_family = AF_INET6)
+-		peer->flowlabel = asoc->flowlabel;
++	if (addr->sa.sa_family = AF_INET6) {
++		__be32 info = addr->v6.sin6_flowinfo;
++
++		if (info) {
++			peer->flowlabel = ntohl(info & IPV6_FLOWLABEL_MASK);
++			peer->flowlabel |= SCTP_FLOWLABEL_SET_MASK;
++		} else {
++			peer->flowlabel = asoc->flowlabel;
++		}
++	}
+ 	peer->dscp = asoc->dscp;
+ 
+ 	/* Enable/disable heartbeat, SACK delay, and path MTU discovery
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 452029f..2607b50 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1697,6 +1697,7 @@ static int sctp_sendmsg_new_asoc(struct sock *sk, __u16 sflags,
+ 	struct sctp_association *asoc;
+ 	enum sctp_scope scope;
+ 	struct cmsghdr *cmsg;
++	__be32 flowinfo = 0;
+ 	struct sctp_af *af;
+ 	int err;
+ 
+@@ -1781,6 +1782,9 @@ static int sctp_sendmsg_new_asoc(struct sock *sk, __u16 sflags,
+ 	if (!cmsgs->addrs_msg)
+ 		return 0;
+ 
++	if (daddr->sa.sa_family = AF_INET6)
++		flowinfo = daddr->v6.sin6_flowinfo;
++
+ 	/* sendv addr list parse */
+ 	for_each_cmsghdr(cmsg, cmsgs->addrs_msg) {
+ 		struct sctp_transport *transport;
+@@ -1813,6 +1817,7 @@ static int sctp_sendmsg_new_asoc(struct sock *sk, __u16 sflags,
+ 			}
+ 
+ 			dlen = sizeof(struct in6_addr);
++			daddr->v6.sin6_flowinfo = flowinfo;
+ 			daddr->v6.sin6_family = AF_INET6;
+ 			daddr->v6.sin6_port = htons(asoc->peer.port);
+ 			memcpy(&daddr->v6.sin6_addr, CMSG_DATA(cmsg), dlen);
 -- 
-2.18.0
+2.1.0
 
