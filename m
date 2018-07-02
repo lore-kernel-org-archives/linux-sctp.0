@@ -1,77 +1,48 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 31 Jul 2018 08:53:17 +0000
-Subject: [PATCH lksctp-tools 9/9] func_tests: fix covscan warnings
-Message-Id: <565317fe15ba3a6e65ee1ffd850b5669613f16ee.1533027042.git.lucien.xin@gmail.com>
+Date: Mon, 02 Jul 2018 10:21:15 +0000
+Subject: [PATCHv2 net-next 5/5] sctp: check for ipv6_pinfo legal sndflow with flowlabel in sctp_v6_get_dst
+Message-Id: <94701d8675557612cea7afd70c93f5823cc900de.1530526661.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1530526661.git.lucien.xin@gmail.com>
+ <6504d3609be85e1574b6f44051d2523342f9e955.1530526661.git.lucien.xin@gmail.com>
+ <d4512b8239763cedc076bdbc3a10fe1fb9e88481.1530526661.git.lucien.xin@gmail.com>
+ <cbeee9df0afd61d4f1bf1ac08a627b1d8e9dcf6a.1530526661.git.lucien.xin@gmail.com>
+ <ec560e0a131aac9425c93a02eafd320c3bb5e584.1530526661.git.lucien.xin@gmail.com>
+In-Reply-To: <ec560e0a131aac9425c93a02eafd320c3bb5e584.1530526661.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net, hideaki.yoshifuji@miraclelinux.com
 
-use the right socket parameter when calling test_sendto in
-func_tests/test_1_to_1_sendto; and use 48, the ascii code
-of '0', when calling memset in func_tests/test_timetolive,
-since memset requires 'int' type.
+The transport with illegal flowlabel should not be allowed to send
+packets. Other transport protocols already denies this.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- src/func_tests/test_1_to_1_rtoinfo.c   | 1 +
- src/func_tests/test_1_to_1_sendto.c    | 2 +-
- src/func_tests/test_sctp_sendrecvmsg.c | 2 +-
- src/func_tests/test_timetolive.c       | 2 +-
- 4 files changed, 4 insertions(+), 3 deletions(-)
+ net/sctp/ipv6.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-diff --git a/src/func_tests/test_1_to_1_rtoinfo.c b/src/func_tests/test_1_to_1_rtoinfo.c
-index 02dd477..1651df1 100644
---- a/src/func_tests/test_1_to_1_rtoinfo.c
-+++ b/src/func_tests/test_1_to_1_rtoinfo.c
-@@ -82,6 +82,7 @@ main(void)
- 	srtoinfo.srto_initial`;
- 	srtoinfo.srto_max0;
- 	srtoinfo.srto_min@;
-+	srtoinfo.srto_assoc_id = 0;
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 772513d..d83ddc4 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -262,6 +262,15 @@ static void sctp_v6_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
+ 	if (t->flowlabel & SCTP_FLOWLABEL_SET_MASK)
+ 		fl6->flowlabel = htonl(t->flowlabel & SCTP_FLOWLABEL_VAL_MASK);
  
- 	/*TEST2 Setting the values using setsockopt()*/
- 	ret = setsockopt(sd, IPPROTO_SCTP, SCTP_RTOINFO, &srtoinfo, 
-diff --git a/src/func_tests/test_1_to_1_sendto.c b/src/func_tests/test_1_to_1_sendto.c
-index 8f5804c..56b102a 100644
---- a/src/func_tests/test_1_to_1_sendto.c
-+++ b/src/func_tests/test_1_to_1_sendto.c
-@@ -150,7 +150,7 @@ main(int argc, char *argv[])
++	if (np->sndflow && (fl6->flowlabel & IPV6_FLOWLABEL_MASK)) {
++		struct ip6_flowlabel *flowlabel;
++
++		flowlabel = fl6_sock_lookup(sk, fl6->flowlabel);
++		if (!flowlabel)
++			goto out;
++		fl6_sock_release(flowlabel);
++	}
++
+ 	pr_debug("%s: dst=%pI6 ", __func__, &fl6->daddr);
  
- 	/*send() TEST4: Sending less number of data from the buffer*/
- 	/*Sending only 5 bytes so that only hello is received*/
--	test_sendto(sk, message, 5 , flag, (const struct sockaddr *)&conn_addr,
-+	test_sendto(sk1, message, 5, flag, (const struct sockaddr *)&conn_addr,
- 		    len);
- 	test_recv(acpt_sk, message_rcv, 5, flag);
- 	
-diff --git a/src/func_tests/test_sctp_sendrecvmsg.c b/src/func_tests/test_sctp_sendrecvmsg.c
-index 33d013c..ceccd5a 100644
---- a/src/func_tests/test_sctp_sendrecvmsg.c
-+++ b/src/func_tests/test_sctp_sendrecvmsg.c
-@@ -248,7 +248,7 @@ int main(int argc, char *argv[])
- 	tst_resm(TPASS, "sctp_sendmsg with zero ttl");
- 
- 	/* And finally a fragmented message that will time out. */
--	memset(ttlfrag, '0', sizeof(ttlfrag));
-+	memset(ttlfrag, 48, sizeof(ttlfrag)); /* 48 is the ascii of '0' */
- 	ttlfrag[sizeof(ttlfrag)-1] = '\0';
- 	test_sctp_sendmsg(sk1, ttlfrag, sizeof(ttlfrag),
- 			  (struct sockaddr *)&loop2, sizeof(loop2),
-diff --git a/src/func_tests/test_timetolive.c b/src/func_tests/test_timetolive.c
-index 85325da..58d76f0 100644
---- a/src/func_tests/test_timetolive.c
-+++ b/src/func_tests/test_timetolive.c
-@@ -310,7 +310,7 @@ int main(int argc, char *argv[])
- 	/* And finally a fragmented message that will time out. */
- 	sinfo->sinfo_ppid = ppid;
- 	sinfo->sinfo_stream = stream;
--	memset(ttlfrag, '0', sizeof(ttlfrag));
-+	memset(ttlfrag, 48, sizeof(ttlfrag)); /* 48 is the ascii of '0' */
- 	ttlfrag[sizeof(ttlfrag)-1] = '\0';
- 	outmessage.msg_iov->iov_base = ttlfrag;
-         outmessage.msg_iov->iov_len = sizeof(ttlfrag);
+ 	if (asoc)
 -- 
 2.1.0
 
