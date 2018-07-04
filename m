@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 04 Jul 2018 02:28:04 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Wed, 04 Jul 2018 11:07:37 +0000
 Subject: Re: [PATCHv2 net] sctp: fix the issue that pathmtu may be set lower than MINSEGMENT
-Message-Id: <20180704022804.GE26991@localhost.localdomain>
+Message-Id: <20180704110737.GA10568@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <0ebc621b57952699c67c558dde3ce61b784e3f74.1530606647.git.lucien.xin@gmail.com>
 In-Reply-To: <0ebc621b57952699c67c558dde3ce61b784e3f74.1530606647.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>, syzkaller@googlegroups.com
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, syzkaller@googlegroups.com
 
 On Tue, Jul 03, 2018 at 04:30:47PM +0800, Xin Long wrote:
 > After commit b6c5734db070 ("sctp: fix the handling of ICMP Frag Needed
@@ -34,9 +34,6 @@ On Tue, Jul 03, 2018 at 04:30:47PM +0800, Xin Long wrote:
 > Reported-by: syzbot+f0d9d7cba052f9344b03@syzkaller.appspotmail.com
 > Suggested-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/transport.c | 2 +-
 >  1 file changed, 1 insertion(+), 1 deletion(-)
@@ -62,3 +59,4 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
