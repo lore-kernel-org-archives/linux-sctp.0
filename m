@@ -1,32 +1,34 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Sat, 28 Jul 2018 22:31:23 +0000
-Subject: [PATCH 4/4] travis: only send notifications if build status changed
-Message-Id: <35eff65055194ac7a89c211967ce3435e0ca3513.1532816583.git.marcelo.leitner@gmail.com>
+From: Firma <info@m2.dbc-mail.net>
+Date: Wed, 04 Jul 2018 07:08:09 +0000
+Subject: Offerte
+Message-Id: <20180704_070809_043405.info@m2.dbc-mail.net>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="windows-1254"
+Content-Transfer-Encoding: base64
 To: linux-sctp@vger.kernel.org
 
-Less emails..
-
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
----
- .travis.yml | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
-
-diff --git a/.travis.yml b/.travis.yml
-index eb636e18c7e3a2c85201b7c5bb235ac0cbed7d7b..8416b621a6f486469cef8fbb61e3d782674a4978 100644
---- a/.travis.yml
-+++ b/.travis.yml
-@@ -106,4 +106,6 @@ before_install:
- 
- notifications:
-   email:
--    - linux-sctp@vger.kernel.org
-+    on_success: change
-+    on_failure: change
-+    recipients: linux-sctp@vger.kernel.org
--- 
-2.17.1
-
+U2VociBnZWVocnRlIERhbWVuIHVuZCBIZXJyZW4sIAoKaWNoIGhhYmUgYmVtZXJrdCwgZGFzcyBT
+aWUgSWhyIEFuZ2Vib3QgenVtIGdyw7bDn3RlbiBUZWlsIGFuIEZpcm1lbiByaWNodGVuIHVuZCBk
+ZXN3ZWdlbiBtw7ZjaHRlIGljaCBJaG5lbiBlaW4gUHJvZHVrdCBhbmJpZXRlbiwgd2VsY2hlcyB6
+dXIgRXJow7ZodW5nIGRlciBBbnphaGwgSWhyZXIgS3VuZGVuIGVyaGVibGljaCBiZWl0cmFnZW4g
+d2lyZC4KCkRpZSBEYXRlbmJhbmtlbiBkZXIgRmlybWVuIHNpbmQgaW4gZsO8ciBTaWUgaW50ZXJl
+c3NhbnRlIHVuZCByZWxldmFudGUgWmllbGdydXBwZW4gdW50ZXJnbGllZGVydC4KCkRlciBuZXVl
+IEthdGFsb2cgZW50aMOkbHQgMTg3Ljc2NCBzY2h3ZWl6ZXJpc2NoZSBGaXJtZW4gdW5kIHN0ZWxs
+dCBzb2xjaGUgRGF0ZW4genVyIFZlcmbDvGd1bmcgd2llOiBOYW1lbiBkZXIgRmlybWEsIEZpcm1l
+bmFuc2NocmlmdCwgS29udGFrdGRhdGVuIGRlcyBGaXJtZW5pbmhhYmVycyBvZGVyIGRlcyBNYW5h
+Z2VycywgRS1NYWlsLUFkcmVzc2UsIFRlbGVmb251bW1lciwKRmF4bnVtbWVyLCBCcmFuY2hlIHVz
+dy4KCmh0dHA6Ly93d3cudG9wYWRyZXNzZW4tY2gubmV0Lz9wYWdlynRhbG9nCgoqKiogCjEuIFNj
+aHdlaXogMjAxOCAoIDE4NyA3NjQgKSAtIDE0OSBFVVIgKCBiaXMgenVtIDA0LjA3LjIwMTggKQoq
+KioKCkRpZSBWZXJ3ZW5kdW5nc23DtmdsaWNoa2VpdGVuIGRlciBEYXRlbmJhbmtlbiBzaW5kIHBy
+YWt0aXNjaCB1bmJlZ3Jlbnp0IHVuZCBTaWUga8O2bm5lbiBkdXJjaCBWZXJ3ZW5kdW5nIGRlciB2
+b24gdW5zIGVudHdpY2tlbHRlbiBQcm9ncmFtbWUgZGVzIHBlcnNvbmFsaXNpZXJ0ZW4gVmVyc2Vu
+ZGVucyB2b24gQW5nZWJvdGVuIHUuw6QuIG1pdHRlbHMgRS1tYWlsaW5nIGJ6dy4gCkZheCBlZmZl
+a3RpdmUgdW5kIHNpY2hlcmUgV2VyYmVrYW1wYWduZW4gZGFtaXQgZHVyY2hmw7xocmVuLgoKQml0
+dGUgaW5mb3JtaWVyZW4gU2llIHNpY2ggw7xiZXIgZGllIHdlaXRlcmVuIERldGFpbHMgZWlubWFs
+IHVudmVyYmluZGxpY2ggYXVmIHVuc2VyZW4gV2Vic2VpdGU6CgpodHRwOi8vd3d3LnRvcGFkcmVz
+c2VuLWNoLm5ldC8/cGFnZcp0YWxvZwoKCk1mRwpHTC1UZWFtCgoKLS0KVG8gdW5zdWJzY3JpYmUg
+ZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LXNjdHAiIGlu
+CnRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnCk1vcmUg
+bWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8u
+aHRtbA==
