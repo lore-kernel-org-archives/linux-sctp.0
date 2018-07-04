@@ -1,78 +1,32 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 03 Jul 2018 01:43:06 +0000
-Subject: Re: [PATCH net] sctp: fix the issue that pathmtu may be set lower than MINSEGMENT
-Message-Id: <20180703014306.GC26991@localhost.localdomain>
+From: =?UTF-8?Q?Martin_Schr=C3=B6der?= <martin@oneiros.de>
+Date: Wed, 04 Jul 2018 13:09:12 +0000
+Subject: Possible bug: Association always uses the primary source address in replies
+Message-Id: <CAP7DCDdyeJZAhthTbPdr1TCnpSO5KTw55S6HzX35J2rgSLUAbg@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <0928f7dda7db59c8aa01e97a87792d9e643e70ab.1530514276.git.lucien.xin@gmail.com>
- <20180702114512.GA15612@hmswarspite.think-freely.org>
-In-Reply-To: <20180702114512.GA15612@hmswarspite.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, syzkaller@googlegroups.com
+To: linux-sctp@vger.kernel.org
 
-On Mon, Jul 02, 2018 at 07:45:12AM -0400, Neil Horman wrote:
-> On Mon, Jul 02, 2018 at 02:51:16PM +0800, Xin Long wrote:
-> > After commit b6c5734db070 ("sctp: fix the handling of ICMP Frag Needed
-> > for too small MTUs"), sctp_transport_update_pmtu would refetch pathmtu
-> > from the dst and set it to transport's pathmtu without any check.
-> > 
-> > The new pathmtu may be lower than MINSEGMENT if the dst is obsolete and
-> > updated by .get_dst() in sctp_transport_update_pmtu.
+Hi,
+we have a server and a client. Both are connected to two different networks.
+Betweeen these four networks there is a complex routing structure.
+Due to an outage we have an outage from the primary interface of the server
+to all networks of the client; there is still a route with the secondary
+interface.
 
-In this case, it could have a smaller MTU as well, and thus we should
-validate it against MINSEGMENT instead.
+And then this happens:
+1. The server is listening, the client is starting.
+2. Client begins to start Init to the reachable (secondary) interface of
+   the server
+3. Server answers with Init ACK from his *primary* interface, which of
+   course does not reach the client
 
-> > 
-> > Syzbot reported a warning in sctp_mtu_payload caused by this.
-> > 
-> > This fix uses the refetched pathmtu only when it's greater than the
-> > frag_needed pmtu.
-> > 
-> > Fixes: b6c5734db070 ("sctp: fix the handling of ICMP Frag Needed for too small MTUs")
-> > Reported-by: syzbot+f0d9d7cba052f9344b03@syzkaller.appspotmail.com
-> > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> > ---
-> >  net/sctp/transport.c | 5 ++++-
-> >  1 file changed, 4 insertions(+), 1 deletion(-)
-> > 
-> > diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-> > index 445b7ef..ddfb687 100644
-> > --- a/net/sctp/transport.c
-> > +++ b/net/sctp/transport.c
-> > @@ -282,7 +282,10 @@ bool sctp_transport_update_pmtu(struct sctp_transport *t, u32 pmtu)
-> >  
-> >  	if (dst) {
-> >  		/* Re-fetch, as under layers may have a higher minimum size */
-> > -		pmtu = SCTP_TRUNC4(dst_mtu(dst));
-> > +		u32 mtu = SCTP_TRUNC4(dst_mtu(dst));
-> > +
-> > +		if (pmtu < mtu)
-> > +			pmtu = mtu;
-> nit, but why not u32 mtu = min(pmtu, SCTP_TRUNC4(dst_mtu(dst))) here ?
+Why does the server not answer on his secondary interface when there is
+still a route on this interface to the client but uses the primary interface
+which has no route?
 
-sctp_dst_mtu() is wrapping all that for us :)
+Tested with 4.9 and 4.18.rc1.
 
--		pmtu = SCTP_TRUNC4(dst_mtu(dst));
-+		pmtu = sctp_dst_mtu(dst);
-
-> 
-> Neil
-> 
-> >  		change = t->pathmtu != pmtu;
-> >  	}
-> >  	t->pathmtu = pmtu;
-> > -- 
-> > 2.1.0
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Best
+   Martin
