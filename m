@@ -1,28 +1,26 @@
-From: "peicaiyun" <peicaiyun@potevio.com>
-Date: Mon, 02 Jul 2018 01:18:18 +0000
-Subject: =?gb2312?B?16q3ojogSSBtZWV0IGEgcHJvYmxlbSBhYm91dCAgc2N0cCBhbmQgbA==?= =?gb2312?B?aW51eCBwb2xpY3kgcm9
-Message-Id: <00e601d411a2$9086bb30$b1943190$@potevio.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 10 Jul 2018 11:07:02 +0000
+Subject: [PATCH lksctp-tools 0/2] build: add more kernel features detecting when building
+Message-Id: <cover.1531220086.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="gb2312"
-Content-Transfer-Encoding: base64
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-V2UgY29uZmlnIG91ciBzeXN0ZW0gYSBwb2xpY3kgcm91dGUgYXMgZm9sbG93OgoKZWNobyAiMTAw
-IG15IiA+PiAvZXRjL2lwcm91dGUyL3J0X3RhYmxlcyBpcCByb3V0ZSBhZGQgdG8gMC4wLjAuMC8w
-IHZpYQoxOTIuMTY4LjAuMiBkZXYgZXRoMCB0YWJsZSBteSAvc2Jpbi9pcCBydWxlIGFkZCBmcm9t
-IDEyLjM0LjAuMC8zMiB0YWJsZSBteQoKV2hlbiBJIHNlbmQgc2N0cCBwYWNrYWdlIGZyb20gMTIu
-MzQuMC4xMDAgaW4gbXkgbWFjaGluZSgxMi4zNC4wLjEwMCBpcyBpcCBvZgp0aGlzIG1hY2hpbmUp
-LCB0byAgMTIuMzQuMC4xMTEgVGhlbiBJIGZpbmQgdGhlIHBhY2thZ2Ugd2FzIHNlbmQgdG8KMTIu
-MzQuMC4xMTEsbm90IHRocm91Z2ggZ3cgMTkyLjE2OC4wLjIgSXMgdGhlIHNjdHAgcGFja2FnZSBu
-b3QgZm9sbG93IHBvbGljeQpyb3V0ZT8KV2h5IHRoZSBwYWNrYWdlIGlzIG5vdCByb3V0ZWQgdG8g
-MTkyLjE2OC4wLjI/CgpUaGFua3MgZm9yIHlvdSBraW5kIHJlcGx5LgoKLS0tLS3Tyrz+1K28/i0t
-LS0tCreivP7IyzogbGtzY3RwLWRldmVsb3BlcnMtb3duZXJAbGlzdHMuc291cmNlZm9yZ2UubmV0
-ClttYWlsdG86bGtzY3RwLWRldmVsb3BlcnMtb3duZXJAbGlzdHMuc291cmNlZm9yZ2UubmV0XQq3
-osvNyrG85DogMjAxOMTqNtTCMjnI1SAxOToxMArK1bz+yMs6IHBlaWNhaXl1bkBwb3RldmlvLmNv
-bQrW98ziOiBJIG1lZXQgYSBwcm9ibGVtIGFib3V0IHNjdHAgYW5kIGxpbnV4IHBvbGljeSByb3V0
-ZQoKUGxlYXNlIHVzZSBsaW51eC1zY3RwQHZnZXIua2VybmVsLm9yZyBmb3IgcG9zdGluZyBTQ1RQ
-IHF1ZXN0aW9ucy4KCgoKLS0KVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhl
-IGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LXNjdHAiIGluCnRoZSBib2R5IG9mIGEgbWVzc2FnZSB0
-byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnCk1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6
-Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA==
+This patchset is to add two more kernel features detecting after
+Marcelo's fixes "build: detect kernel features when building".
+
+Xin Long (2):
+  build: add define HAVE_SCTP_AUTH_NO_AUTH
+  build: add two defines for Peer Address Parameters extensions on
+    sctp_paddrparams
+
+ configure.ac                        | 10 ++++++++++
+ src/func_tests/test_1_to_1_events.c | 11 +++++++++++
+ src/include/netinet/sctp.h.in       |  3 +++
+ 3 files changed, 24 insertions(+)
+
+-- 
+2.1.0
+
