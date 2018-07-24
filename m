@@ -1,67 +1,41 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Sat, 28 Jul 2018 22:31:22 +0000
-Subject: [PATCH 3/4] travis: build against multiple clang versions
-Message-Id: <fb64c5eca53c693e7b1c4071611c114e6c10a8d9.1532816583.git.marcelo.leitner@gmail.com>
+From: Stephen Hemminger <stephen@networkplumber.org>
+Date: Tue, 24 Jul 2018 19:29:13 +0000
+Subject: [PATCH PATCH net-next 13/18] x25: remove blank lines at EOF
+Message-Id: <20180724192918.31165-14-sthemmin@microsoft.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20180724192918.31165-1-sthemmin@microsoft.com>
+In-Reply-To: <20180724192918.31165-1-sthemmin@microsoft.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: davem@davemloft.net, ericvh@gmail.com, rminnich@sandia.gov, lucho@ionkov.net, ralf@linux-mips.org, jreuter@yaina.de, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, alex.aring@gmail.com, stefan@datenfreihafen.org, kuznet@ms2.inr.ac.ru, yoshfuji@linux-ipv6.org, johannes@sipsolutions.net, jhs@mojatatu.com, xiyou.wangcong@gmail.com, jiri@resnulli.us, vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, trond.myklebust@hammerspace.com, anna.schumaker@netapp.com, steffen.klassert@secunet.com, herbert@gondor.apana.org.au
+Cc: netdev@vger.kernel.org, v9fs-developer@lists.sourceforge.net, linux-hams@vger.kernel.org, ceph-devel@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, linux-wireless@vger.kernel.org, linux-rdma@vger.kernel.org, linux-sctp@vger.kernel.org, linux-nfs@vger.kernel.org, linux-x25@vger.kernel.org, Stephen Hemminger <sthemmin@microsoft.com>, Stephen Hemminger <stephen@networkplumber.org>
 
-In case we get anything odd out of it.
-
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Signed-off-by: Stephen Hemminger <stephen@networkplumber.org>
 ---
- .travis.yml | 36 ++++++++++++++++++++++++++++++++++++
- 1 file changed, 36 insertions(+)
+ net/x25/Kconfig    | 2 --
+ net/x25/x25_subr.c | 1 -
+ 2 files changed, 3 deletions(-)
 
-diff --git a/.travis.yml b/.travis.yml
-index 6b06efc7a16ef4085091f27202b7a3832eccd405..eb636e18c7e3a2c85201b7c5bb235ac0cbed7d7b 100644
---- a/.travis.yml
-+++ b/.travis.yml
-@@ -64,6 +64,42 @@ matrix:
-             - g++-7
-       env:
-         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
-+
-+    # works on Trusty
-+    - os: linux
-+      addons:
-+        apt:
-+          sources:
-+            - llvm-toolchain-trusty-3.9
-+          packages:
-+            - libelf-dev
-+            - clang-3.9
-+      env:
-+        - MATRIX_EVAL="CC=clang-3.9 && CXX=clang++-3.9"
-+
-+    # works on Trusty
-+    - os: linux
-+      addons:
-+        apt:
-+          sources:
-+            - llvm-toolchain-trusty-4.0
-+          packages:
-+            - libelf-dev
-+            - clang-4.0
-+      env:
-+        - MATRIX_EVAL="CC=clang-4.0 && CXX=clang++-4.0"
-+
-+    # works on Trusty
-+    - os: linux
-+      addons:
-+        apt:
-+          sources:
-+            - llvm-toolchain-trusty-5.0
-+          packages:
-+            - libelf-dev
-+            - clang-5.0
-+      env:
-+        - MATRIX_EVAL="CC=clang-5.0 && CXX=clang++-5.0"
- before_install:
-   - eval "${MATRIX_EVAL}"
-   - $CC --version
+diff --git a/net/x25/Kconfig b/net/x25/Kconfig
+index e2fa133f9fba..59fcb41fc5e6 100644
+--- a/net/x25/Kconfig
++++ b/net/x25/Kconfig
+@@ -31,5 +31,3 @@ config X25
+ 
+ 	  To compile this driver as a module, choose M here: the module
+ 	  will be called x25. If unsure, say N.
+-
+-
+diff --git a/net/x25/x25_subr.c b/net/x25/x25_subr.c
+index 9c214ec681ac..743103786652 100644
+--- a/net/x25/x25_subr.c
++++ b/net/x25/x25_subr.c
+@@ -381,4 +381,3 @@ void x25_check_rbuf(struct sock *sk)
+ 		x25_stop_timer(sk);
+ 	}
+ }
+-
 -- 
-2.17.1
+2.18.0
 
