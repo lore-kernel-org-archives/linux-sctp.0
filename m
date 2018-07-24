@@ -1,53 +1,88 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 10 Jul 2018 11:07:04 +0000
-Subject: [PATCH lksctp-tools 2/2] build: add two defines for Peer Address Parameters extensions on sctp_paddr
-Message-Id: <a78e25c78f33ad644df454d214395fbfff23ebc4.1531220086.git.lucien.xin@gmail.com>
+From: Stephen Hemminger <stephen@networkplumber.org>
+Date: Tue, 24 Jul 2018 19:29:01 +0000
+Subject: [PATCH PATCH net-next 01/18] sched: fix trailing whitespace
+Message-Id: <20180724192918.31165-2-sthemmin@microsoft.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20180724192918.31165-1-sthemmin@microsoft.com>
+In-Reply-To: <20180724192918.31165-1-sthemmin-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org, ericvh-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, rminnich-4OHPYypu0djtX7QSmKvirg@public.gmane.org, lucho-OnYtXJJ0/fesTnJN9+BGXg@public.gmane.org, ralf-6z/3iImG2C8G8FEW9MqTrA@public.gmane.org, jreuter-K7Hl1MveuGQ@public.gmane.org, pablo-Cap9r6Oaw4JrovVCs/uTlw@public.gmane.org, kadlec-K40Dz/62t/MgiyqX0sVFJYdd74u8MsAO@public.gmane.org, fw-HFFVJYpyMKqzQB+pC5nmwQ@public.gmane.org, alex.aring-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, stefan-OrPQZGeq07wqhVmZOOOmNx2eb7JE58TQ@public.gmane.org, kuznet-v/Mj1YrvjDBInbfyfbPRSQ@public.gmane.org, yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org, johannes-cdvu00un1VgdHxzADdlk8Q@public.gmane.org, jhs-jkUAjuhPggJWk0Htik3J/w@public.gmane.org, xiyou.wangcong-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, jiri-rHqAuBHg3fBzbRFIqnYvSA@public.gmane.org, vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org, marcelo.leitner-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, trond.myklebust-F/q8l9xzQnoyLce1RVWEUA@public.gmane.org, anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org, steffen.klassert-opNxpl+3fjRBDgjK7y7TUQ@public.gmane.org, herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org
+Cc: netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, v9fs-developer-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, linux-hams-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-decnet-user-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, netfilter-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, coreteam-Cap9r6Oaw4JrovVCs/uTlw@public.gmane.org, linux-wpan-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-s390-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-wireless-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-x25-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Stephen Hemminger <sthemmin-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, Stephen Hemminger <stephen-OTpzqLSitTUnbdJkjeBofR2eb7JE58TQ@public.gmane.org>
 
-HAVE_SCTP_SPP_IPV6_FLOWLABEL and HAVE_SCTP_SPP_DSCP, for
-sctp_paddrparams.spp_ipv6_flowlabel and sctp_paddrparams.spp_dscp
-respectively.
+Remove trailing whitespace and blank lines at EOF
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Stephen Hemminger <stephen@networkplumber.org>
 ---
- configure.ac                  | 6 ++++++
- src/include/netinet/sctp.h.in | 2 ++
- 2 files changed, 8 insertions(+)
+ net/sched/Kconfig        | 4 ++--
+ net/sched/Makefile       | 2 +-
+ net/sched/act_connmark.c | 1 -
+ net/sched/act_pedit.c    | 1 -
+ net/sched/cls_basic.c    | 1 -
+ 5 files changed, 3 insertions(+), 6 deletions(-)
 
-diff --git a/configure.ac b/configure.ac
-index d4f80f2..b2136b6 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -103,6 +103,12 @@ LKSCTP_CHECK_MEMBER([struct sendv_prinfo.sctp_prinfo],
- # added on v4.16, 30f6ebf65bc4
- LKSCTP_CHECK_DECL([SCTP_AUTH_NO_AUTH], [HAVE_SCTP_AUTH_NO_AUTH])
+diff --git a/net/sched/Kconfig b/net/sched/Kconfig
+index 7af246764a35..bba71225adbd 100644
+--- a/net/sched/Kconfig
++++ b/net/sched/Kconfig
+@@ -1,6 +1,6 @@
+ #
+ # Traffic control configuration.
+-# 
++#
  
-+# New members to sctp_paddrparams, added on v4.18, 0b0dce7a36fb
-+LKSCTP_CHECK_MEMBER([struct sctp_paddrparams.spp_ipv6_flowlabel],
-+		    [HAVE_SCTP_SPP_IPV6_FLOWLABEL])
-+LKSCTP_CHECK_MEMBER([struct sctp_paddrparams.spp_dscp],
-+		    [HAVE_SCTP_SPP_DSCP])
-+
- AC_CONFIG_HEADERS([src/include/netinet/sctp.h])
- AC_CONFIG_FILES([lksctp-tools.spec
- 		Makefile
-diff --git a/src/include/netinet/sctp.h.in b/src/include/netinet/sctp.h.in
-index 0b7ba03..c049077 100644
---- a/src/include/netinet/sctp.h.in
-+++ b/src/include/netinet/sctp.h.in
-@@ -69,6 +69,8 @@ extern "C" {
- #undef HAVE_SCTP_PDAPI_EVENT_PDAPI_SEQ
- #undef HAVE_SCTP_SENDV
- #undef HAVE_SCTP_AUTH_NO_AUTH
-+#undef HAVE_SCTP_SPP_IPV6_FLOWLABEL
-+#undef HAVE_SCTP_SPP_DSCP
+ menuconfig NET_SCHED
+ 	bool "QoS and/or fair queueing"
+@@ -706,7 +706,7 @@ config NET_CLS_ACT
  
- int sctp_bindx(int sd, struct sockaddr *addrs, int addrcnt, int flags);
+ config NET_ACT_POLICE
+ 	tristate "Traffic Policing"
+-        depends on NET_CLS_ACT 
++        depends on NET_CLS_ACT
+         ---help---
+ 	  Say Y here if you want to do traffic policing, i.e. strict
+ 	  bandwidth limiting. This action replaces the existing policing
+diff --git a/net/sched/Makefile b/net/sched/Makefile
+index 673ee7d26ff2..910ec7463a36 100644
+--- a/net/sched/Makefile
++++ b/net/sched/Makefile
+@@ -33,7 +33,7 @@ obj-$(CONFIG_NET_SCH_HTB)	+= sch_htb.o
+ obj-$(CONFIG_NET_SCH_HFSC)	+= sch_hfsc.o
+ obj-$(CONFIG_NET_SCH_RED)	+= sch_red.o
+ obj-$(CONFIG_NET_SCH_GRED)	+= sch_gred.o
+-obj-$(CONFIG_NET_SCH_INGRESS)	+= sch_ingress.o 
++obj-$(CONFIG_NET_SCH_INGRESS)	+= sch_ingress.o
+ obj-$(CONFIG_NET_SCH_DSMARK)	+= sch_dsmark.o
+ obj-$(CONFIG_NET_SCH_SFB)	+= sch_sfb.o
+ obj-$(CONFIG_NET_SCH_SFQ)	+= sch_sfq.o
+diff --git a/net/sched/act_connmark.c b/net/sched/act_connmark.c
+index 1e31f0e448e2..2f9bc833d046 100644
+--- a/net/sched/act_connmark.c
++++ b/net/sched/act_connmark.c
+@@ -252,4 +252,3 @@ module_exit(connmark_cleanup_module);
+ MODULE_AUTHOR("Felix Fietkau <nbd@openwrt.org>");
+ MODULE_DESCRIPTION("Connection tracking mark restoring");
+ MODULE_LICENSE("GPL");
+-
+diff --git a/net/sched/act_pedit.c b/net/sched/act_pedit.c
+index cc8ffcd1ddb5..9ab5d81aff1a 100644
+--- a/net/sched/act_pedit.c
++++ b/net/sched/act_pedit.c
+@@ -516,4 +516,3 @@ static void __exit pedit_cleanup_module(void)
  
+ module_init(pedit_init_module);
+ module_exit(pedit_cleanup_module);
+-
+diff --git a/net/sched/cls_basic.c b/net/sched/cls_basic.c
+index 95367f37098d..6a5dce8baf19 100644
+--- a/net/sched/cls_basic.c
++++ b/net/sched/cls_basic.c
+@@ -324,4 +324,3 @@ static void __exit exit_basic(void)
+ module_init(init_basic)
+ module_exit(exit_basic)
+ MODULE_LICENSE("GPL");
+-
 -- 
-2.1.0
+2.18.0
 
