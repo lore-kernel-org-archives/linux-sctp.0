@@ -1,86 +1,141 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 02 Jul 2018 10:21:14 +0000
-Subject: [PATCHv2 net-next 4/5] sctp: add support for setting flowlabel when adding a transport
-Message-Id: <ec560e0a131aac9425c93a02eafd320c3bb5e584.1530526661.git.lucien.xin@gmail.com>
+From: Stephen Hemminger <stephen@networkplumber.org>
+Date: Tue, 24 Jul 2018 19:29:14 +0000
+Subject: [PATCH PATCH net-next 14/18] decnet: whitespace fixes
+Message-Id: <20180724192918.31165-15-sthemmin@microsoft.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1530526661.git.lucien.xin@gmail.com>
- <6504d3609be85e1574b6f44051d2523342f9e955.1530526661.git.lucien.xin@gmail.com>
- <d4512b8239763cedc076bdbc3a10fe1fb9e88481.1530526661.git.lucien.xin@gmail.com>
- <cbeee9df0afd61d4f1bf1ac08a627b1d8e9dcf6a.1530526661.git.lucien.xin@gmail.com>
-In-Reply-To: <cbeee9df0afd61d4f1bf1ac08a627b1d8e9dcf6a.1530526661.git.lucien.xin@gmail.com>
+References: <20180724192918.31165-1-sthemmin@microsoft.com>
+In-Reply-To: <20180724192918.31165-1-sthemmin@microsoft.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net, hideaki.yoshifuji@miraclelinux.com
+To: davem@davemloft.net, ericvh@gmail.com, rminnich@sandia.gov, lucho@ionkov.net, ralf@linux-mips.org, jreuter@yaina.de, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, alex.aring@gmail.com, stefan@datenfreihafen.org, kuznet@ms2.inr.ac.ru, yoshfuji@linux-ipv6.org, johannes@sipsolutions.net, jhs@mojatatu.com, xiyou.wangcong@gmail.com, jiri@resnulli.us, vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, trond.myklebust@hammerspace.com, anna.schumaker@netapp.com, steffen.klassert@secunet.com, herbert@gondor.apana.org.au
+Cc: netdev@vger.kernel.org, v9fs-developer@lists.sourceforge.net, linux-hams@vger.kernel.org, ceph-devel@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, linux-wireless@vger.kernel.org, linux-rdma@vger.kernel.org, linux-sctp@vger.kernel.org, linux-nfs@vger.kernel.org, linux-x25@vger.kernel.org, Stephen Hemminger <sthemmin@microsoft.com>, Stephen Hemminger <stephen@networkplumber.org>
 
-Struct sockaddr_in6 has the member sin6_flowinfo that includes the
-ipv6 flowlabel, it should also support for setting flowlabel when
-adding a transport whose ipaddr is from userspace.
+Remove trailing whitespace and extra lines at EOF
 
-Note that addrinfo in sctp_sendmsg is using struct in6_addr for
-the secondary addrs, which doesn't contain sin6_flowinfo, and
-it needs to copy sin6_flowinfo from the primary addr.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Stephen Hemminger <stephen@networkplumber.org>
 ---
- net/sctp/associola.c | 12 ++++++++++--
- net/sctp/socket.c    |  5 +++++
- 2 files changed, 15 insertions(+), 2 deletions(-)
+ net/decnet/Kconfig              | 1 -
+ net/decnet/Makefile             | 1 -
+ net/decnet/TODO                 | 5 ++---
+ net/decnet/dn_fib.c             | 2 --
+ net/decnet/dn_nsp_in.c          | 1 -
+ net/decnet/dn_nsp_out.c         | 1 -
+ net/decnet/dn_route.c           | 1 -
+ net/decnet/dn_rules.c           | 2 --
+ net/decnet/netfilter/Makefile   | 1 -
+ net/decnet/netfilter/dn_rtmsg.c | 1 -
+ 10 files changed, 2 insertions(+), 14 deletions(-)
 
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index 16ecfbc..297d9cf 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -650,8 +650,16 @@ struct sctp_transport *sctp_assoc_add_peer(struct sctp_association *asoc,
- 	peer->sackdelay = asoc->sackdelay;
- 	peer->sackfreq = asoc->sackfreq;
+diff --git a/net/decnet/Kconfig b/net/decnet/Kconfig
+index f3393e154f0f..dcc74956badd 100644
+--- a/net/decnet/Kconfig
++++ b/net/decnet/Kconfig
+@@ -40,4 +40,3 @@ config DECNET_ROUTER
+ 	  to work.
  
--	if (addr->sa.sa_family = AF_INET6)
--		peer->flowlabel = asoc->flowlabel;
-+	if (addr->sa.sa_family = AF_INET6) {
-+		__be32 info = addr->v6.sin6_flowinfo;
-+
-+		if (info) {
-+			peer->flowlabel = ntohl(info & IPV6_FLOWLABEL_MASK);
-+			peer->flowlabel |= SCTP_FLOWLABEL_SET_MASK;
-+		} else {
-+			peer->flowlabel = asoc->flowlabel;
-+		}
-+	}
- 	peer->dscp = asoc->dscp;
+ 	  See <file:Documentation/networking/decnet.txt> for more information.
+-
+diff --git a/net/decnet/Makefile b/net/decnet/Makefile
+index 9e38122d942b..07b38e441b2d 100644
+--- a/net/decnet/Makefile
++++ b/net/decnet/Makefile
+@@ -8,4 +8,3 @@ decnet-$(CONFIG_DECNET_ROUTER) += dn_fib.o dn_rules.o dn_table.o
+ decnet-y += sysctl_net_decnet.o
  
- 	/* Enable/disable heartbeat, SACK delay, and path MTU discovery
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 452029f..2607b50 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -1697,6 +1697,7 @@ static int sctp_sendmsg_new_asoc(struct sock *sk, __u16 sflags,
- 	struct sctp_association *asoc;
- 	enum sctp_scope scope;
- 	struct cmsghdr *cmsg;
-+	__be32 flowinfo = 0;
- 	struct sctp_af *af;
- 	int err;
+ obj-$(CONFIG_NETFILTER) += netfilter/
+-
+diff --git a/net/decnet/TODO b/net/decnet/TODO
+index ebb5ac69d128..358e9eb49016 100644
+--- a/net/decnet/TODO
++++ b/net/decnet/TODO
+@@ -16,14 +16,14 @@ Steve's quick list of things that need finishing off:
  
-@@ -1781,6 +1782,9 @@ static int sctp_sendmsg_new_asoc(struct sock *sk, __u16 sflags,
- 	if (!cmsgs->addrs_msg)
- 		return 0;
+  o Verify errors etc. against POSIX 1003.1g (draft)
  
-+	if (daddr->sa.sa_family = AF_INET6)
-+		flowinfo = daddr->v6.sin6_flowinfo;
-+
- 	/* sendv addr list parse */
- 	for_each_cmsghdr(cmsg, cmsgs->addrs_msg) {
- 		struct sctp_transport *transport;
-@@ -1813,6 +1817,7 @@ static int sctp_sendmsg_new_asoc(struct sock *sk, __u16 sflags,
- 			}
+- o Using send/recvmsg() to get at connect/disconnect data (POSIX 1003.1g) 
++ o Using send/recvmsg() to get at connect/disconnect data (POSIX 1003.1g)
+    [maybe this should be done at socket level... the control data in the
+     send/recvmsg() calls should simply be a vector of set/getsockopt()
+     calls]
  
- 			dlen = sizeof(struct in6_addr);
-+			daddr->v6.sin6_flowinfo = flowinfo;
- 			daddr->v6.sin6_family = AF_INET6;
- 			daddr->v6.sin6_port = htons(asoc->peer.port);
- 			memcpy(&daddr->v6.sin6_addr, CMSG_DATA(cmsg), dlen);
+  o check MSG_CTRUNC is set where it should be.
+ 
+- o Find all the commonality between DECnet and IPv4 routing code and extract 
++ o Find all the commonality between DECnet and IPv4 routing code and extract
+    it into a small library of routines. [probably a project for 2.7.xx]
+ 
+  o Add perfect socket hashing - an idea suggested by Paul Koning. Currently
+@@ -38,4 +38,3 @@ Steve's quick list of things that need finishing off:
+  o DECnet sendpages() function
+ 
+  o AIO for DECnet
+-
+diff --git a/net/decnet/dn_fib.c b/net/decnet/dn_fib.c
+index fce94cbd4378..f78fe58eafc8 100644
+--- a/net/decnet/dn_fib.c
++++ b/net/decnet/dn_fib.c
+@@ -797,5 +797,3 @@ void __init dn_fib_init(void)
+ 	rtnl_register_module(THIS_MODULE, PF_DECnet, RTM_DELROUTE,
+ 			     dn_fib_rtm_delroute, NULL, 0);
+ }
+-
+-
+diff --git a/net/decnet/dn_nsp_in.c b/net/decnet/dn_nsp_in.c
+index 34aba55ed573..2fb5e055ba25 100644
+--- a/net/decnet/dn_nsp_in.c
++++ b/net/decnet/dn_nsp_in.c
+@@ -912,4 +912,3 @@ int dn_nsp_backlog_rcv(struct sock *sk, struct sk_buff *skb)
+ 
+ 	return NET_RX_SUCCESS;
+ }
+-
+diff --git a/net/decnet/dn_nsp_out.c b/net/decnet/dn_nsp_out.c
+index 56a52a004c56..a1779de6bd9c 100644
+--- a/net/decnet/dn_nsp_out.c
++++ b/net/decnet/dn_nsp_out.c
+@@ -701,4 +701,3 @@ void dn_nsp_send_conninit(struct sock *sk, unsigned char msgflg)
+ 
+ 	dn_nsp_send(skb);
+ }
+-
+diff --git a/net/decnet/dn_route.c b/net/decnet/dn_route.c
+index e74765024d88..3107a2e24e6b 100644
+--- a/net/decnet/dn_route.c
++++ b/net/decnet/dn_route.c
+@@ -1925,4 +1925,3 @@ void __exit dn_route_cleanup(void)
+ 	remove_proc_entry("decnet_cache", init_net.proc_net);
+ 	dst_entries_destroy(&dn_dst_ops);
+ }
+-
+diff --git a/net/decnet/dn_rules.c b/net/decnet/dn_rules.c
+index 72236695db3d..4a4e3c17740c 100644
+--- a/net/decnet/dn_rules.c
++++ b/net/decnet/dn_rules.c
+@@ -256,5 +256,3 @@ void __exit dn_fib_rules_cleanup(void)
+ 	rtnl_unlock();
+ 	rcu_barrier();
+ }
+-
+-
+diff --git a/net/decnet/netfilter/Makefile b/net/decnet/netfilter/Makefile
+index 255c1ae9daeb..b579e52130aa 100644
+--- a/net/decnet/netfilter/Makefile
++++ b/net/decnet/netfilter/Makefile
+@@ -3,4 +3,3 @@
+ #
+ 
+ obj-$(CONFIG_DECNET_NF_GRABULATOR) += dn_rtmsg.o
+-
+diff --git a/net/decnet/netfilter/dn_rtmsg.c b/net/decnet/netfilter/dn_rtmsg.c
+index ab395e55cd78..a4faacadd8a8 100644
+--- a/net/decnet/netfilter/dn_rtmsg.c
++++ b/net/decnet/netfilter/dn_rtmsg.c
+@@ -158,4 +158,3 @@ MODULE_ALIAS_NET_PF_PROTO(PF_NETLINK, NETLINK_DNRTMSG);
+ 
+ module_init(dn_rtmsg_init);
+ module_exit(dn_rtmsg_fini);
+-
 -- 
-2.1.0
+2.18.0
 
