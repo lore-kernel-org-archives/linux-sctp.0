@@ -1,7 +1,7 @@
 From: Stephen Hemminger <stephen@networkplumber.org>
-Date: Tue, 24 Jul 2018 19:29:05 +0000
-Subject: [PATCH PATCH net-next 05/18] mpls: remove trailing whitepace
-Message-Id: <20180724192918.31165-6-sthemmin@microsoft.com>
+Date: Tue, 24 Jul 2018 19:29:02 +0000
+Subject: [PATCH PATCH net-next 02/18] wimax: remove blank lines at EOF
+Message-Id: <20180724192918.31165-3-sthemmin@microsoft.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20180724192918.31165-1-sthemmin@microsoft.com>
 In-Reply-To: <20180724192918.31165-1-sthemmin-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>
@@ -13,22 +13,50 @@ Cc: netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, v9fs-developer-5NWGOfrQmneRv
 
 Signed-off-by: Stephen Hemminger <stephen@networkplumber.org>
 ---
- net/mpls/mpls_iptunnel.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/wimax/Makefile  | 2 --
+ net/wimax/debugfs.c | 2 --
+ net/wimax/op-msg.c  | 1 -
+ net/wimax/stack.c   | 1 -
+ 4 files changed, 6 deletions(-)
 
-diff --git a/net/mpls/mpls_iptunnel.c b/net/mpls/mpls_iptunnel.c
-index 6e558a419f60..94f53a9b7d1a 100644
---- a/net/mpls/mpls_iptunnel.c
-+++ b/net/mpls/mpls_iptunnel.c
-@@ -224,7 +224,7 @@ static int mpls_fill_encap_info(struct sk_buff *skb,
- 				struct lwtunnel_state *lwtstate)
- {
- 	struct mpls_iptunnel_encap *tun_encap_info;
--	
-+
- 	tun_encap_info = mpls_lwtunnel_encap(lwtstate);
+diff --git a/net/wimax/Makefile b/net/wimax/Makefile
+index eb2db0d3b880..c2a71ae487ac 100644
+--- a/net/wimax/Makefile
++++ b/net/wimax/Makefile
+@@ -11,5 +11,3 @@ wimax-y :=		\
+ 	stack.o
  
- 	if (nla_put_labels(skb, MPLS_IPTUNNEL_DST, tun_encap_info->labels,
+ wimax-$(CONFIG_DEBUG_FS) += debugfs.o
+-
+-
+diff --git a/net/wimax/debugfs.c b/net/wimax/debugfs.c
+index 6c9bedb7431e..24514840746e 100644
+--- a/net/wimax/debugfs.c
++++ b/net/wimax/debugfs.c
+@@ -76,5 +76,3 @@ void wimax_debugfs_rm(struct wimax_dev *wimax_dev)
+ {
+ 	debugfs_remove_recursive(wimax_dev->debugfs_dentry);
+ }
+-
+-
+diff --git a/net/wimax/op-msg.c b/net/wimax/op-msg.c
+index 54aa146930bd..101b2fa3f32e 100644
+--- a/net/wimax/op-msg.c
++++ b/net/wimax/op-msg.c
+@@ -404,4 +404,3 @@ int wimax_gnl_doit_msg_from_user(struct sk_buff *skb, struct genl_info *info)
+ 	d_fnend(3, NULL, "(skb %p info %p) = %d\n", skb, info, result);
+ 	return result;
+ }
+-
+diff --git a/net/wimax/stack.c b/net/wimax/stack.c
+index 73dba9c077bb..a6307813b6d5 100644
+--- a/net/wimax/stack.c
++++ b/net/wimax/stack.c
+@@ -630,4 +630,3 @@ module_exit(wimax_subsys_exit);
+ MODULE_AUTHOR("Intel Corporation <linux-wimax@intel.com>");
+ MODULE_DESCRIPTION("Linux WiMAX stack");
+ MODULE_LICENSE("GPL");
+-
 -- 
 2.18.0
 
