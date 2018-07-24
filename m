@@ -1,66 +1,34 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 31 Jul 2018 08:53:16 +0000
-Subject: [PATCH lksctp-tools 8/9] lib: fix covscan warnings
-Message-Id: <29c6bf7a0a4e3d2e198fbd0838aa91c5a5cabcb7.1533027042.git.lucien.xin@gmail.com>
+From: Stephen Hemminger <stephen@networkplumber.org>
+Date: Tue, 24 Jul 2018 19:29:05 +0000
+Subject: [PATCH PATCH net-next 05/18] mpls: remove trailing whitepace
+Message-Id: <20180724192918.31165-6-sthemmin@microsoft.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20180724192918.31165-1-sthemmin@microsoft.com>
+In-Reply-To: <20180724192918.31165-1-sthemmin-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org, ericvh-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, rminnich-4OHPYypu0djtX7QSmKvirg@public.gmane.org, lucho-OnYtXJJ0/fesTnJN9+BGXg@public.gmane.org, ralf-6z/3iImG2C8G8FEW9MqTrA@public.gmane.org, jreuter-K7Hl1MveuGQ@public.gmane.org, pablo-Cap9r6Oaw4JrovVCs/uTlw@public.gmane.org, kadlec-K40Dz/62t/MgiyqX0sVFJYdd74u8MsAO@public.gmane.org, fw-HFFVJYpyMKqzQB+pC5nmwQ@public.gmane.org, alex.aring-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, stefan-OrPQZGeq07wqhVmZOOOmNx2eb7JE58TQ@public.gmane.org, kuznet-v/Mj1YrvjDBInbfyfbPRSQ@public.gmane.org, yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org, johannes-cdvu00un1VgdHxzADdlk8Q@public.gmane.org, jhs-jkUAjuhPggJWk0Htik3J/w@public.gmane.org, xiyou.wangcong-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, jiri-rHqAuBHg3fBzbRFIqnYvSA@public.gmane.org, vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org, marcelo.leitner-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, trond.myklebust-F/q8l9xzQnoyLce1RVWEUA@public.gmane.org, anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org, steffen.klassert-opNxpl+3fjRBDgjK7y7TUQ@public.gmane.org, herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org
+Cc: netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, v9fs-developer-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, linux-hams-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-decnet-user-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, netfilter-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, coreteam-Cap9r6Oaw4JrovVCs/uTlw@public.gmane.org, linux-wpan-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-s390-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-wireless-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-x25-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Stephen Hemminger <sthemmin-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, Stephen Hemminger <stephen-OTpzqLSitTUnbdJkjeBofR2eb7JE58TQ@public.gmane.org>
 
-change to use define addrs_size as type int before the check
-'addrs_size < 0' in lib/connectx, and initialize
-outmsg.msg_control in lib/sendmsg.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Stephen Hemminger <stephen@networkplumber.org>
 ---
- src/lib/connectx.c | 6 +++---
- src/lib/sendmsg.c  | 1 +
- 2 files changed, 4 insertions(+), 3 deletions(-)
+ net/mpls/mpls_iptunnel.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/src/lib/connectx.c b/src/lib/connectx.c
-index 3d1b925..5f4552b 100644
---- a/src/lib/connectx.c
-+++ b/src/lib/connectx.c
-@@ -66,7 +66,7 @@ static int __connectx_addrsize(const struct sockaddr *addrs,
- 
- int __sctp_connectx(int fd, struct sockaddr *addrs, int addrcnt)
+diff --git a/net/mpls/mpls_iptunnel.c b/net/mpls/mpls_iptunnel.c
+index 6e558a419f60..94f53a9b7d1a 100644
+--- a/net/mpls/mpls_iptunnel.c
++++ b/net/mpls/mpls_iptunnel.c
+@@ -224,7 +224,7 @@ static int mpls_fill_encap_info(struct sk_buff *skb,
+ 				struct lwtunnel_state *lwtstate)
  {
--	socklen_t addrs_size = __connectx_addrsize(addrs, addrcnt);
-+	int addrs_size = __connectx_addrsize(addrs, addrcnt);
+ 	struct mpls_iptunnel_encap *tun_encap_info;
+-	
++
+ 	tun_encap_info = mpls_lwtunnel_encap(lwtstate);
  
- 	if (addrs_size < 0)
- 		return addrs_size;
-@@ -117,7 +117,7 @@ static int __connectx(int fd, struct sockaddr *addrs, socklen_t addrs_size,
- int sctp_connectx2(int fd, struct sockaddr *addrs, int addrcnt,
- 		      sctp_assoc_t *id)
- {
--	socklen_t addrs_size = __connectx_addrsize(addrs, addrcnt);
-+	int addrs_size = __connectx_addrsize(addrs, addrcnt);
- 
- 	if (addrs_size < 0)
- 		return addrs_size;
-@@ -128,7 +128,7 @@ int sctp_connectx2(int fd, struct sockaddr *addrs, int addrcnt,
- int sctp_connectx3(int fd, struct sockaddr *addrs, int addrcnt,
- 		      sctp_assoc_t *id)
- {
--	socklen_t addrs_size = __connectx_addrsize(addrs, addrcnt);
-+	int addrs_size = __connectx_addrsize(addrs, addrcnt);
- 	int status;
- 	struct sctp_getaddrs_old param;
- 	socklen_t opt_len = sizeof(param);
-diff --git a/src/lib/sendmsg.c b/src/lib/sendmsg.c
-index ea9c078..4c90b07 100644
---- a/src/lib/sendmsg.c
-+++ b/src/lib/sendmsg.c
-@@ -87,6 +87,7 @@ sctp_send(int s, const void *msg, size_t len,
- 	iov.iov_base = (void *)msg;
- 	iov.iov_len = len;
- 	outmsg.msg_iovlen = 1;
-+	outmsg.msg_control = NULL;
- 	outmsg.msg_controllen = 0;
- 
- 	if (sinfo) {	
+ 	if (nla_put_labels(skb, MPLS_IPTUNNEL_DST, tun_encap_info->labels,
 -- 
-2.1.0
+2.18.0
 
