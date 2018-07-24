@@ -1,7 +1,7 @@
 From: Stephen Hemminger <stephen@networkplumber.org>
-Date: Tue, 24 Jul 2018 19:29:16 +0000
-Subject: [PATCH PATCH net-next 16/18] bpfilter: remove trailing newline
-Message-Id: <20180724192918.31165-17-sthemmin@microsoft.com>
+Date: Tue, 24 Jul 2018 19:29:09 +0000
+Subject: [PATCH PATCH net-next 09/18] ila: remove blank lines at EOF
+Message-Id: <20180724192918.31165-10-sthemmin@microsoft.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20180724192918.31165-1-sthemmin@microsoft.com>
 In-Reply-To: <20180724192918.31165-1-sthemmin@microsoft.com>
@@ -13,25 +13,27 @@ Cc: netdev@vger.kernel.org, v9fs-developer@lists.sourceforge.net, linux-hams@vge
 
 Signed-off-by: Stephen Hemminger <stephen@networkplumber.org>
 ---
- net/bpfilter/Kconfig       | 1 -
- net/ipv4/bpfilter/Makefile | 1 -
+ net/ipv6/ila/ila_common.c | 1 -
+ net/ipv6/ila/ila_xlat.c   | 1 -
  2 files changed, 2 deletions(-)
 
-diff --git a/net/bpfilter/Kconfig b/net/bpfilter/Kconfig
-index 76deb6615883..e558b46596c4 100644
---- a/net/bpfilter/Kconfig
-+++ b/net/bpfilter/Kconfig
-@@ -13,4 +13,3 @@ config BPFILTER_UMH
- 	help
- 	  This builds bpfilter kernel module with embedded user mode helper
- endif
+diff --git a/net/ipv6/ila/ila_common.c b/net/ipv6/ila/ila_common.c
+index 579310466eac..95e9146918cc 100644
+--- a/net/ipv6/ila/ila_common.c
++++ b/net/ipv6/ila/ila_common.c
+@@ -153,4 +153,3 @@ void ila_update_ipv6_locator(struct sk_buff *skb, struct ila_params *p,
+ 	/* Now change destination address */
+ 	iaddr->loc = p->locator;
+ }
 -
-diff --git a/net/ipv4/bpfilter/Makefile b/net/ipv4/bpfilter/Makefile
-index ce262d76cc48..e9e42f99725e 100644
---- a/net/ipv4/bpfilter/Makefile
-+++ b/net/ipv4/bpfilter/Makefile
-@@ -1,2 +1 @@
- obj-$(CONFIG_BPFILTER) += sockopt.o
+diff --git a/net/ipv6/ila/ila_xlat.c b/net/ipv6/ila/ila_xlat.c
+index 51a15ce50a64..17c455ff69ff 100644
+--- a/net/ipv6/ila/ila_xlat.c
++++ b/net/ipv6/ila/ila_xlat.c
+@@ -663,4 +663,3 @@ static int ila_xlat_addr(struct sk_buff *skb, bool sir2ila)
+ 
+ 	return 0;
+ }
 -
 -- 
 2.18.0
