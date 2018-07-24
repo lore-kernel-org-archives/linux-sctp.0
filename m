@@ -1,34 +1,40 @@
-From: Firma <info@m2.dbc-mail.net>
-Date: Wed, 04 Jul 2018 07:08:09 +0000
-Subject: Offerte
-Message-Id: <20180704_070809_043405.info@m2.dbc-mail.net>
+From: Stephen Hemminger <stephen@networkplumber.org>
+Date: Tue, 24 Jul 2018 19:29:06 +0000
+Subject: [PATCH PATCH net-next 06/18] xfrm: remove blank lines at EOF
+Message-Id: <20180724192918.31165-7-sthemmin@microsoft.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20180724192918.31165-1-sthemmin@microsoft.com>
+In-Reply-To: <20180724192918.31165-1-sthemmin-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="windows-1254"
-Content-Transfer-Encoding: base64
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org, ericvh-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, rminnich-4OHPYypu0djtX7QSmKvirg@public.gmane.org, lucho-OnYtXJJ0/fesTnJN9+BGXg@public.gmane.org, ralf-6z/3iImG2C8G8FEW9MqTrA@public.gmane.org, jreuter-K7Hl1MveuGQ@public.gmane.org, pablo-Cap9r6Oaw4JrovVCs/uTlw@public.gmane.org, kadlec-K40Dz/62t/MgiyqX0sVFJYdd74u8MsAO@public.gmane.org, fw-HFFVJYpyMKqzQB+pC5nmwQ@public.gmane.org, alex.aring-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, stefan-OrPQZGeq07wqhVmZOOOmNx2eb7JE58TQ@public.gmane.org, kuznet-v/Mj1YrvjDBInbfyfbPRSQ@public.gmane.org, yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org, johannes-cdvu00un1VgdHxzADdlk8Q@public.gmane.org, jhs-jkUAjuhPggJWk0Htik3J/w@public.gmane.org, xiyou.wangcong-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, jiri-rHqAuBHg3fBzbRFIqnYvSA@public.gmane.org, vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org, marcelo.leitner-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org, trond.myklebust-F/q8l9xzQnoyLce1RVWEUA@public.gmane.org, anna.schumaker-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org, steffen.klassert-opNxpl+3fjRBDgjK7y7TUQ@public.gmane.org, herbert-lOAM2aK0SrRLBo1qDEOMRrpzq4S04n8Q@public.gmane.org
+Cc: netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, v9fs-developer-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, linux-hams-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-decnet-user-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org, netfilter-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, coreteam-Cap9r6Oaw4JrovVCs/uTlw@public.gmane.org, linux-wpan-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-s390-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-wireless-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-x25-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Stephen Hemminger <sthemmin-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, Stephen Hemminger <stephen-OTpzqLSitTUnbdJkjeBofR2eb7JE58TQ@public.gmane.org>
 
-U2VociBnZWVocnRlIERhbWVuIHVuZCBIZXJyZW4sIAoKaWNoIGhhYmUgYmVtZXJrdCwgZGFzcyBT
-aWUgSWhyIEFuZ2Vib3QgenVtIGdyw7bDn3RlbiBUZWlsIGFuIEZpcm1lbiByaWNodGVuIHVuZCBk
-ZXN3ZWdlbiBtw7ZjaHRlIGljaCBJaG5lbiBlaW4gUHJvZHVrdCBhbmJpZXRlbiwgd2VsY2hlcyB6
-dXIgRXJow7ZodW5nIGRlciBBbnphaGwgSWhyZXIgS3VuZGVuIGVyaGVibGljaCBiZWl0cmFnZW4g
-d2lyZC4KCkRpZSBEYXRlbmJhbmtlbiBkZXIgRmlybWVuIHNpbmQgaW4gZsO8ciBTaWUgaW50ZXJl
-c3NhbnRlIHVuZCByZWxldmFudGUgWmllbGdydXBwZW4gdW50ZXJnbGllZGVydC4KCkRlciBuZXVl
-IEthdGFsb2cgZW50aMOkbHQgMTg3Ljc2NCBzY2h3ZWl6ZXJpc2NoZSBGaXJtZW4gdW5kIHN0ZWxs
-dCBzb2xjaGUgRGF0ZW4genVyIFZlcmbDvGd1bmcgd2llOiBOYW1lbiBkZXIgRmlybWEsIEZpcm1l
-bmFuc2NocmlmdCwgS29udGFrdGRhdGVuIGRlcyBGaXJtZW5pbmhhYmVycyBvZGVyIGRlcyBNYW5h
-Z2VycywgRS1NYWlsLUFkcmVzc2UsIFRlbGVmb251bW1lciwKRmF4bnVtbWVyLCBCcmFuY2hlIHVz
-dy4KCmh0dHA6Ly93d3cudG9wYWRyZXNzZW4tY2gubmV0Lz9wYWdlynRhbG9nCgoqKiogCjEuIFNj
-aHdlaXogMjAxOCAoIDE4NyA3NjQgKSAtIDE0OSBFVVIgKCBiaXMgenVtIDA0LjA3LjIwMTggKQoq
-KioKCkRpZSBWZXJ3ZW5kdW5nc23DtmdsaWNoa2VpdGVuIGRlciBEYXRlbmJhbmtlbiBzaW5kIHBy
-YWt0aXNjaCB1bmJlZ3Jlbnp0IHVuZCBTaWUga8O2bm5lbiBkdXJjaCBWZXJ3ZW5kdW5nIGRlciB2
-b24gdW5zIGVudHdpY2tlbHRlbiBQcm9ncmFtbWUgZGVzIHBlcnNvbmFsaXNpZXJ0ZW4gVmVyc2Vu
-ZGVucyB2b24gQW5nZWJvdGVuIHUuw6QuIG1pdHRlbHMgRS1tYWlsaW5nIGJ6dy4gCkZheCBlZmZl
-a3RpdmUgdW5kIHNpY2hlcmUgV2VyYmVrYW1wYWduZW4gZGFtaXQgZHVyY2hmw7xocmVuLgoKQml0
-dGUgaW5mb3JtaWVyZW4gU2llIHNpY2ggw7xiZXIgZGllIHdlaXRlcmVuIERldGFpbHMgZWlubWFs
-IHVudmVyYmluZGxpY2ggYXVmIHVuc2VyZW4gV2Vic2VpdGU6CgpodHRwOi8vd3d3LnRvcGFkcmVz
-c2VuLWNoLm5ldC8/cGFnZcp0YWxvZwoKCk1mRwpHTC1UZWFtCgoKLS0KVG8gdW5zdWJzY3JpYmUg
-ZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LXNjdHAiIGlu
-CnRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnCk1vcmUg
-bWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8u
-aHRtbA==
+Signed-off-by: Stephen Hemminger <stephen@networkplumber.org>
+---
+ net/xfrm/Kconfig     | 1 -
+ net/xfrm/xfrm_user.c | 1 -
+ 2 files changed, 2 deletions(-)
+
+diff --git a/net/xfrm/Kconfig b/net/xfrm/Kconfig
+index 286ed25c1a69..eab952cca7d0 100644
+--- a/net/xfrm/Kconfig
++++ b/net/xfrm/Kconfig
+@@ -87,4 +87,3 @@ config NET_KEY_MIGRATE
+ 	  <draft-sugimoto-mip6-pfkey-migrate>.
+ 
+ 	  If unsure, say N.
+-
+diff --git a/net/xfrm/xfrm_user.c b/net/xfrm/xfrm_user.c
+index 080035f056d9..09cceab450b8 100644
+--- a/net/xfrm/xfrm_user.c
++++ b/net/xfrm/xfrm_user.c
+@@ -3280,4 +3280,3 @@ module_init(xfrm_user_init);
+ module_exit(xfrm_user_exit);
+ MODULE_LICENSE("GPL");
+ MODULE_ALIAS_NET_PF_PROTO(PF_NETLINK, NETLINK_XFRM);
+-
+-- 
+2.18.0
+
