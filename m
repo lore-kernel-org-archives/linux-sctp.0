@@ -1,61 +1,32 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 31 Jul 2018 08:53:09 +0000
-Subject: [PATCH lksctp-tools 1/9] myftp: fix covscan warnings
-Message-Id: <3946badd1926c4aa2337385307131b6d61f499e3.1533027042.git.lucien.xin@gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Sat, 28 Jul 2018 22:31:23 +0000
+Subject: [PATCH 4/4] travis: only send notifications if build status changed
+Message-Id: <35eff65055194ac7a89c211967ce3435e0ca3513.1532816583.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-add the missing 'break', check the listen returned value, initialize
-laddr and remove the useless 'while' check in myftp.
+Less emails..
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- src/apps/myftp.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+ .travis.yml | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/src/apps/myftp.c b/src/apps/myftp.c
-index 993e591..64fa3f2 100644
---- a/src/apps/myftp.c
-+++ b/src/apps/myftp.c
-@@ -161,6 +161,8 @@ static int parse_arguments(int argc, char *argv[])
- 				buffer_size = BUFSIZE;
- 				fprintf(stderr,"Warning, buffer size too large, set to %d\n",buffer_size);
- 			}
-+			break;
-+
- 		case 12:
- 		case 'q':	interactive = 0; break;
+diff --git a/.travis.yml b/.travis.yml
+index eb636e18c7e3a2c85201b7c5bb235ac0cbed7d7b..8416b621a6f486469cef8fbb61e3d782674a4978 100644
+--- a/.travis.yml
++++ b/.travis.yml
+@@ -106,4 +106,6 @@ before_install:
  
-@@ -246,6 +248,7 @@ static int build_endpoint(char *argv0)
- 		struct hostent *hst;
- 		struct sockaddr_in laddr;
- 
-+		memset(&laddr, 0, sizeof(laddr));
- 		/* Get the transport address for the local host name.  */
- 		fprintf(stderr,"Hostname %d is %s\n",i+1,local_host[i]);
- 		if ( (hst = gethostbyname(local_host[i])) = NULL ) {
-@@ -286,7 +289,8 @@ command_recv(char *argv0, int sk)
- 	int fd;
- 	int ct;
- 
--	listen(sk, 1);
-+	if (listen(sk, 1) = -1)
-+		emsg(argv0, "listen");
- 	/* Initialize inmessage with enough space for DATA... */
- 	memset(&inmessage, 0, sizeof(inmessage));
- 	iov.iov_base = buffer;
-@@ -379,7 +383,7 @@ command_send(char *argv0, int sk)
- 			// no flow control? no problem, make it slow
- 		else if ( delay > 0 ) 
- 			usleep(delay);
--	} while ( msglen > 0 );
-+	}
- 
- 	close(fd);
- 	close(sk);
+ notifications:
+   email:
+-    - linux-sctp@vger.kernel.org
++    on_success: change
++    on_failure: change
++    recipients: linux-sctp@vger.kernel.org
 -- 
-2.1.0
+2.17.1
 
