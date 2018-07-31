@@ -1,56 +1,66 @@
-From: Stephen Hemminger <stephen@networkplumber.org>
-Date: Tue, 24 Jul 2018 19:29:04 +0000
-Subject: [PATCH PATCH net-next 04/18] llc: fix whitespace issues
-Message-Id: <20180724192918.31165-5-sthemmin@microsoft.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 31 Jul 2018 08:53:16 +0000
+Subject: [PATCH lksctp-tools 8/9] lib: fix covscan warnings
+Message-Id: <29c6bf7a0a4e3d2e198fbd0838aa91c5a5cabcb7.1533027042.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180724192918.31165-1-sthemmin@microsoft.com>
-In-Reply-To: <20180724192918.31165-1-sthemmin@microsoft.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net, ericvh@gmail.com, rminnich@sandia.gov, lucho@ionkov.net, ralf@linux-mips.org, jreuter@yaina.de, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, alex.aring@gmail.com, stefan@datenfreihafen.org, kuznet@ms2.inr.ac.ru, yoshfuji@linux-ipv6.org, johannes@sipsolutions.net, jhs@mojatatu.com, xiyou.wangcong@gmail.com, jiri@resnulli.us, vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, trond.myklebust@hammerspace.com, anna.schumaker@netapp.com, steffen.klassert@secunet.com, herbert@gondor.apana.org.au
-Cc: netdev@vger.kernel.org, v9fs-developer@lists.sourceforge.net, linux-hams@vger.kernel.org, ceph-devel@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, linux-wireless@vger.kernel.org, linux-rdma@vger.kernel.org, linux-sctp@vger.kernel.org, linux-nfs@vger.kernel.org, linux-x25@vger.kernel.org, Stephen Hemminger <sthemmin@microsoft.com>, Stephen Hemminger <stephen@networkplumber.org>
+To: linux-sctp@vger.kernel.org
 
-Signed-off-by: Stephen Hemminger <stephen@networkplumber.org>
+change to use define addrs_size as type int before the check
+'addrs_size < 0' in lib/connectx, and initialize
+outmsg.msg_control in lib/sendmsg.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/llc/Kconfig  | 2 +-
- net/llc/Makefile | 2 +-
- net/llc/llc_if.c | 1 -
- 3 files changed, 2 insertions(+), 3 deletions(-)
+ src/lib/connectx.c | 6 +++---
+ src/lib/sendmsg.c  | 1 +
+ 2 files changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/net/llc/Kconfig b/net/llc/Kconfig
-index b91c65108162..176a6c1521a5 100644
---- a/net/llc/Kconfig
-+++ b/net/llc/Kconfig
-@@ -6,5 +6,5 @@ config LLC2
- 	tristate "ANSI/IEEE 802.2 LLC type 2 Support"
- 	select LLC
- 	help
--	  This is a Logical Link Layer type 2, connection oriented support. 
-+	  This is a Logical Link Layer type 2, connection oriented support.
- 	  Select this if you want to have support for PF_LLC sockets.
-diff --git a/net/llc/Makefile b/net/llc/Makefile
-index 4e260cff3c5d..5e0ef436daae 100644
---- a/net/llc/Makefile
-+++ b/net/llc/Makefile
-@@ -4,7 +4,7 @@
- # Copyright (c) 1997 by Procom Technology,Inc.
- #		2001-2003 by Arnaldo Carvalho de Melo <acme@conectiva.com.br>
- #
--# This program can be redistributed or modified under the terms of the 
-+# This program can be redistributed or modified under the terms of the
- # GNU General Public License as published by the Free Software Foundation.
- # This program is distributed without any warranty or implied warranty
- # of merchantability or fitness for a particular purpose.
-diff --git a/net/llc/llc_if.c b/net/llc/llc_if.c
-index 6daf391b3e84..8db03c2d5440 100644
---- a/net/llc/llc_if.c
-+++ b/net/llc/llc_if.c
-@@ -151,4 +151,3 @@ int llc_send_disc(struct sock *sk)
- 	sock_put(sk);
- 	return rc;
- }
--
+diff --git a/src/lib/connectx.c b/src/lib/connectx.c
+index 3d1b925..5f4552b 100644
+--- a/src/lib/connectx.c
++++ b/src/lib/connectx.c
+@@ -66,7 +66,7 @@ static int __connectx_addrsize(const struct sockaddr *addrs,
+ 
+ int __sctp_connectx(int fd, struct sockaddr *addrs, int addrcnt)
+ {
+-	socklen_t addrs_size = __connectx_addrsize(addrs, addrcnt);
++	int addrs_size = __connectx_addrsize(addrs, addrcnt);
+ 
+ 	if (addrs_size < 0)
+ 		return addrs_size;
+@@ -117,7 +117,7 @@ static int __connectx(int fd, struct sockaddr *addrs, socklen_t addrs_size,
+ int sctp_connectx2(int fd, struct sockaddr *addrs, int addrcnt,
+ 		      sctp_assoc_t *id)
+ {
+-	socklen_t addrs_size = __connectx_addrsize(addrs, addrcnt);
++	int addrs_size = __connectx_addrsize(addrs, addrcnt);
+ 
+ 	if (addrs_size < 0)
+ 		return addrs_size;
+@@ -128,7 +128,7 @@ int sctp_connectx2(int fd, struct sockaddr *addrs, int addrcnt,
+ int sctp_connectx3(int fd, struct sockaddr *addrs, int addrcnt,
+ 		      sctp_assoc_t *id)
+ {
+-	socklen_t addrs_size = __connectx_addrsize(addrs, addrcnt);
++	int addrs_size = __connectx_addrsize(addrs, addrcnt);
+ 	int status;
+ 	struct sctp_getaddrs_old param;
+ 	socklen_t opt_len = sizeof(param);
+diff --git a/src/lib/sendmsg.c b/src/lib/sendmsg.c
+index ea9c078..4c90b07 100644
+--- a/src/lib/sendmsg.c
++++ b/src/lib/sendmsg.c
+@@ -87,6 +87,7 @@ sctp_send(int s, const void *msg, size_t len,
+ 	iov.iov_base = (void *)msg;
+ 	iov.iov_len = len;
+ 	outmsg.msg_iovlen = 1;
++	outmsg.msg_control = NULL;
+ 	outmsg.msg_controllen = 0;
+ 
+ 	if (sinfo) {	
 -- 
-2.18.0
+2.1.0
 
