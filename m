@@ -1,40 +1,52 @@
-From: Stephen Hemminger <stephen@networkplumber.org>
-Date: Tue, 24 Jul 2018 19:29:09 +0000
-Subject: [PATCH PATCH net-next 09/18] ila: remove blank lines at EOF
-Message-Id: <20180724192918.31165-10-sthemmin@microsoft.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 31 Jul 2018 08:53:10 +0000
+Subject: [PATCH lksctp-tools 2/9] peel_client: fix covscan warnings
+Message-Id: <d695f370e856d27c8a0caa14d4440748a89b1ecd.1533027042.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180724192918.31165-1-sthemmin@microsoft.com>
-In-Reply-To: <20180724192918.31165-1-sthemmin@microsoft.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net, ericvh@gmail.com, rminnich@sandia.gov, lucho@ionkov.net, ralf@linux-mips.org, jreuter@yaina.de, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, alex.aring@gmail.com, stefan@datenfreihafen.org, kuznet@ms2.inr.ac.ru, yoshfuji@linux-ipv6.org, johannes@sipsolutions.net, jhs@mojatatu.com, xiyou.wangcong@gmail.com, jiri@resnulli.us, vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, trond.myklebust@hammerspace.com, anna.schumaker@netapp.com, steffen.klassert@secunet.com, herbert@gondor.apana.org.au
-Cc: netdev@vger.kernel.org, v9fs-developer@lists.sourceforge.net, linux-hams@vger.kernel.org, ceph-devel@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, linux-wireless@vger.kernel.org, linux-rdma@vger.kernel.org, linux-sctp@vger.kernel.org, linux-nfs@vger.kernel.org, linux-x25@vger.kernel.org, Stephen Hemminger <sthemmin@microsoft.com>, Stephen Hemminger <stephen@networkplumber.org>
+To: linux-sctp@vger.kernel.org
 
-Signed-off-by: Stephen Hemminger <stephen@networkplumber.org>
+initialize msg.msg_flags and event, and check 'select' returned value
+in peel_client.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/ipv6/ila/ila_common.c | 1 -
- net/ipv6/ila/ila_xlat.c   | 1 -
- 2 files changed, 2 deletions(-)
+ src/apps/peel_client.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/net/ipv6/ila/ila_common.c b/net/ipv6/ila/ila_common.c
-index 579310466eac..95e9146918cc 100644
---- a/net/ipv6/ila/ila_common.c
-+++ b/net/ipv6/ila/ila_common.c
-@@ -153,4 +153,3 @@ void ila_update_ipv6_locator(struct sk_buff *skb, struct ila_params *p,
- 	/* Now change destination address */
- 	iaddr->loc = p->locator;
- }
--
-diff --git a/net/ipv6/ila/ila_xlat.c b/net/ipv6/ila/ila_xlat.c
-index 51a15ce50a64..17c455ff69ff 100644
---- a/net/ipv6/ila/ila_xlat.c
-+++ b/net/ipv6/ila/ila_xlat.c
-@@ -663,4 +663,3 @@ static int ila_xlat_addr(struct sk_buff *skb, bool sir2ila)
+diff --git a/src/apps/peel_client.c b/src/apps/peel_client.c
+index f604349..5c195d3 100644
+--- a/src/apps/peel_client.c
++++ b/src/apps/peel_client.c
+@@ -446,6 +446,7 @@ my_sctpReadInput(int fd)
+ 	msg.msg_iovlen = 1;
+ 	msg.msg_control = (caddr_t)controlVector;
+ 	msg.msg_controllen = sizeof(controlVector);
++	msg.msg_flags = 0;
+ 	errno = 0;
+ 	sz = recvmsg(fd,&msg,0);
+ 	if(sz <= 0){
+@@ -483,7 +484,8 @@ clear_fds(int fd,int fd1)
+ 	}
+ 	notdone = 1;
+ 	while(notdone){
+-		select(max,&readfds,&writefds,&exceptfds,&tv);
++		if (select(max, &readfds, &writefds, &exceptfds, &tv) = -1)
++			break;
+ 		notdone = 0;
+ 		if(FD_ISSET(fd,&readfds)){
+ 			notdone++;
+@@ -553,7 +555,7 @@ main(int argc, char **argv)
+ 	char *addr=NULL;
+ 	uint16_t port=0;
+ 	int protocol_touse = IPPROTO_SCTP;
+-	struct sctp_event_subscribe event;
++	struct sctp_event_subscribe event = {0};
  
- 	return 0;
- }
--
+ 	while((i= getopt(argc,argv,"p:h:")) != EOF){
+ 		switch(i){
 -- 
-2.18.0
+2.1.0
 
