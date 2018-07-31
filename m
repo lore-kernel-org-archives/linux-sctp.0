@@ -1,30 +1,61 @@
-From: Stephen Hemminger <stephen@networkplumber.org>
-Date: Tue, 24 Jul 2018 19:29:17 +0000
-Subject: [PATCH PATCH net-next 17/18] l2tp: remove trailing newline
-Message-Id: <20180724192918.31165-18-sthemmin@microsoft.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 31 Jul 2018 08:53:09 +0000
+Subject: [PATCH lksctp-tools 1/9] myftp: fix covscan warnings
+Message-Id: <3946badd1926c4aa2337385307131b6d61f499e3.1533027042.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180724192918.31165-1-sthemmin@microsoft.com>
-In-Reply-To: <20180724192918.31165-1-sthemmin@microsoft.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem@davemloft.net, ericvh@gmail.com, rminnich@sandia.gov, lucho@ionkov.net, ralf@linux-mips.org, jreuter@yaina.de, pablo@netfilter.org, kadlec@blackhole.kfki.hu, fw@strlen.de, alex.aring@gmail.com, stefan@datenfreihafen.org, kuznet@ms2.inr.ac.ru, yoshfuji@linux-ipv6.org, johannes@sipsolutions.net, jhs@mojatatu.com, xiyou.wangcong@gmail.com, jiri@resnulli.us, vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, trond.myklebust@hammerspace.com, anna.schumaker@netapp.com, steffen.klassert@secunet.com, herbert@gondor.apana.org.au
-Cc: netdev@vger.kernel.org, v9fs-developer@lists.sourceforge.net, linux-hams@vger.kernel.org, ceph-devel@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, linux-wireless@vger.kernel.org, linux-rdma@vger.kernel.org, linux-sctp@vger.kernel.org, linux-nfs@vger.kernel.org, linux-x25@vger.kernel.org, Stephen Hemminger <sthemmin@microsoft.com>, Stephen Hemminger <stephen@networkplumber.org>
+To: linux-sctp@vger.kernel.org
 
-Signed-off-by: Stephen Hemminger <stephen@networkplumber.org>
+add the missing 'break', check the listen returned value, initialize
+laddr and remove the useless 'while' check in myftp.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/l2tp/l2tp_core.c | 1 -
- 1 file changed, 1 deletion(-)
+ src/apps/myftp.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/net/l2tp/l2tp_core.c b/net/l2tp/l2tp_core.c
-index 1ea285bad84b..c8fc0f7f0b4b 100644
---- a/net/l2tp/l2tp_core.c
-+++ b/net/l2tp/l2tp_core.c
-@@ -1795,4 +1795,3 @@ MODULE_AUTHOR("James Chapman <jchapman@katalix.com>");
- MODULE_DESCRIPTION("L2TP core");
- MODULE_LICENSE("GPL");
- MODULE_VERSION(L2TP_DRV_VERSION);
--
+diff --git a/src/apps/myftp.c b/src/apps/myftp.c
+index 993e591..64fa3f2 100644
+--- a/src/apps/myftp.c
++++ b/src/apps/myftp.c
+@@ -161,6 +161,8 @@ static int parse_arguments(int argc, char *argv[])
+ 				buffer_size = BUFSIZE;
+ 				fprintf(stderr,"Warning, buffer size too large, set to %d\n",buffer_size);
+ 			}
++			break;
++
+ 		case 12:
+ 		case 'q':	interactive = 0; break;
+ 
+@@ -246,6 +248,7 @@ static int build_endpoint(char *argv0)
+ 		struct hostent *hst;
+ 		struct sockaddr_in laddr;
+ 
++		memset(&laddr, 0, sizeof(laddr));
+ 		/* Get the transport address for the local host name.  */
+ 		fprintf(stderr,"Hostname %d is %s\n",i+1,local_host[i]);
+ 		if ( (hst = gethostbyname(local_host[i])) = NULL ) {
+@@ -286,7 +289,8 @@ command_recv(char *argv0, int sk)
+ 	int fd;
+ 	int ct;
+ 
+-	listen(sk, 1);
++	if (listen(sk, 1) = -1)
++		emsg(argv0, "listen");
+ 	/* Initialize inmessage with enough space for DATA... */
+ 	memset(&inmessage, 0, sizeof(inmessage));
+ 	iov.iov_base = buffer;
+@@ -379,7 +383,7 @@ command_send(char *argv0, int sk)
+ 			// no flow control? no problem, make it slow
+ 		else if ( delay > 0 ) 
+ 			usleep(delay);
+-	} while ( msglen > 0 );
++	}
+ 
+ 	close(fd);
+ 	close(sk);
 -- 
-2.18.0
+2.1.0
 
