@@ -1,91 +1,60 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 30 Jul 2018 21:10:21 +0000
-Subject: Re: [PATCH 1/4] travis: build against multiple kernel versions
-Message-Id: <20180730211021.GC14421@hmswarspite.think-freely.org>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 31 Jul 2018 08:53:08 +0000
+Subject: [PATCH lksctp-tools 0/9] lksctp-tools: fix covscan warnings
+Message-Id: <cover.1533027042.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <69c9bde6c476f33b6d2cf5b9d06b4dccc96fe083.1532816583.git.marcelo.leitner@gmail.com>
-In-Reply-To: <69c9bde6c476f33b6d2cf5b9d06b4dccc96fe083.1532816583.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On Mon, Jul 30, 2018 at 01:01:42PM -0300, Marcelo Ricardo Leitner wrote:
-> On Mon, Jul 30, 2018 at 07:50:17AM -0400, Neil Horman wrote:
-> > On Sat, Jul 28, 2018 at 07:31:20PM -0300, Marcelo Ricardo Leitner wrote:
-> > > With recent changes, configure is probing for kernel features before
-> > > enabling them in the library.
-> > > 
-> > > Now with this change, travis-ci will build the library against several
-> > > different kernels, allowing a better CI.
-> > > 
-> > > Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> > > ---
-> > > 
-> > > The comments in linux-build.sh are intentional. Place holders for next
-> > > steps.
-> > > 
-> > >  .travis.yml            | 17 ++++++++++++-----
-> > >  .travis/linux-build.sh | 43 ++++++++++++++++++++++++++++++++++++++++++
-> > >  2 files changed, 55 insertions(+), 5 deletions(-)
-> > >  create mode 100755 .travis/linux-build.sh
-> > > 
-> > > diff --git a/.travis.yml b/.travis.yml
-> > > index 75d07aa0640d73d12321231ecce18aa407ce15f4..c0fb7c68c4977c7185cd05df1b88b6d552cfa59f 100644
-> > > --- a/.travis.yml
-> > > +++ b/.travis.yml
-> > > @@ -1,10 +1,17 @@
-> > >  language: c
-> > > +addons:
-> > > +  apt:
-> > > +    packages:
-> > > +      - libelf-dev
-> > >  script:
-> > > -  - ./bootstrap
-> > > -    && ./configure
-> > > -    && make -j `/usr/bin/getconf _NPROCESSORS_ONLN`
-> > > -  # ipv6 is not supported by Travis
-> > > -  - make -C src/func_tests/ v4test
-> > > +  - ./.travis/linux-build.sh
-> > > +env:
-> > > +  - KERNEL=4.10
-> > > +  - KERNEL=4.11
-> > > +  - KERNEL=4.12
-> > > +  - KERNEL=4.13
-> > > +  - KERNEL=4.16
-> > > +  - KERNEL=4.17
-> > >  compiler:
-> > >    - gcc
-> > >    - clang
-> > > diff --git a/.travis/linux-build.sh b/.travis/linux-build.sh
-> > > new file mode 100755
-> > > index 0000000000000000000000000000000000000000..e1874f3e16fb86ab86d7796b6c807b791b584e95
-> > > --- /dev/null
-> > > +++ b/.travis/linux-build.sh
-> > > @@ -0,0 +1,43 @@
-> > > +#!/bin/bash
-> > > +
-> > > +set -ex
-> > Did you mean to keep this in here?  I can understand the -e since this is for
-> 
-> Yes,
-> 
-> > travis ci testing, but -x seems like its just going to generate alot of noise.
-> 
-> but it's not much. There is no loop and it doesn't get propagated to
-> what the script is calling, so it prints pretty much the same number
-> of code lines, as debug lines.
-> 
-> As is it helps on identifying which command outputted what, instead of
-> adding specific echo commands.
-> 
-> Thx,
->   Marcelo
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-sctp" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-Ok, then for the series
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+This patchset fixes most of the warnings from the covscan of
+  https://scan.coverity.com/projects/sctp-lksctp-tools
+
+Note that we don't fix these types of warnings:
+  - getchar() returned value check (medium):
+    278659 (nowhere uses the returned value)
+
+  - call close(-1)/getsockname(-1) (medium):
+    278617, 278598, 278651, 278594, 278629, 278644, 278620, 278601
+    (does on purpose)
+
+  - DUMPCORE (medium):
+    278611, 278626, 278653, 278663, 278641, 278591 (does on purpose)
+
+  - call mkstemp without securely setting umask first (low):
+    278636, 278634, 278628, 278616, 278603, 278589, 278647, 278625, 278610
+    (low priority)
+
+  - recvsk (high):
+    278649, 278588 (false positives)
+
+Xin Long (9):
+  myftp: fix covscan warnings
+  peel_client: fix covscan warnings
+  peel_server: fix covscan warnings
+  sctp_darn: fix covscan warnings
+  sctp_test: fix covscan warnings
+  sctp_xconnect: fix covscan warnings
+  testlib: fix covscan warnings
+  lib: fix covscan warnings
+  func_tests: fix covscan warnings
+
+ src/apps/myftp.c                       |  8 ++++++--
+ src/apps/peel_client.c                 |  6 ++++--
+ src/apps/peel_server.c                 | 11 ++++++++---
+ src/apps/sctp_darn.c                   | 15 ++++++++++++---
+ src/apps/sctp_test.c                   | 18 +++++++++++++-----
+ src/apps/sctp_xconnect.c               | 18 +++++++++---------
+ src/func_tests/test_1_to_1_rtoinfo.c   |  1 +
+ src/func_tests/test_1_to_1_sendto.c    |  2 +-
+ src/func_tests/test_sctp_sendrecvmsg.c |  2 +-
+ src/func_tests/test_timetolive.c       |  2 +-
+ src/lib/connectx.c                     |  6 +++---
+ src/lib/sendmsg.c                      |  1 +
+ src/testlib/sctputil.c                 |  1 +
+ 13 files changed, 61 insertions(+), 30 deletions(-)
+
+-- 
+2.1.0
 
