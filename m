@@ -1,22 +1,44 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 24 Aug 2018 16:55:36 +0000
-Subject: Re: [PATCH 0/3] Fixes for kernel feature detection
-Message-Id: <20180824165536.GA4591@localhost.localdomain>
+Date: Wed, 01 Aug 2018 16:33:03 +0000
+Subject: [PATCH lksctp-tools] doc: update docs to match current rfc documents
+Message-Id: <6b56ee62ae03b3ed19091c75346b558545109c34.1533140089.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1535062650.git.marcelo.leitner@gmail.com>
-In-Reply-To: <cover.1535062650.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On Fri, Aug 24, 2018 at 09:52:57AM -0300, Marcelo Ricardo Leitner wrote:
-> Simple fixes, while the 2nd patch is the most important.
-> 
-> Marcelo Ricardo Leitner (3):
->   build: remove v4.12 secondary defines in favor of
->     HAVE_SCTP_STREAM_RECONFIG
->   build: fix probing for HAVE_SCTP_SENDV
->   build: 0b0dce7a36fb actually belongs to v4.19
+We applied some changes to the docs but forgot to update Makefile.am to
+reflect them, so currently 'make distcheck' fails with some files not
+being found.
 
-Applied.
+This patch syncs it with the current folder content.
+
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ doc/Makefile.am | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/doc/Makefile.am b/doc/Makefile.am
+index 6e7c648acf89f1c1264c3f05dc8b1781536301a7..6ed32b80633c2a7c3f19953ecdf2c16c4f509b22 100644
+--- a/doc/Makefile.am
++++ b/doc/Makefile.am
+@@ -2,10 +2,11 @@ include $(top_srcdir)/Makefile.vars
+ include $(top_srcdir)/Makefile.rules
+ 
+ internet_drafts = \
+-   draft-ietf-tsvwg-sctpsocket-14.txt \
+-   draft-ietf-tsvwg-addip-sctp-15.txt
++	draft-stewart-tsvwg-sctpipv6-00.txt \
++	draft-stewart-tsvwg-sctpscore-01.txt
+ 
+-rfcs = rfc2960.txt rfc3309.txt rfc3257.txt rfc3286.txt rfc3758.txt \
+-       rfc3873.txt rfc4460.txt 
++rfcs = rfc2960.txt rfc3257.txt rfc3286.txt rfc3309.txt rfc3554.txt \
++       rfc3758.txt rfc3873.txt rfc4460.txt rfc4820.txt rfc4895.txt \
++       rfc4960.txt rfc5061.txt rfc5062.txt rfc6458.txt
+ 
+ EXTRA_DIST += $(rfcs) $(internet_drafts)
+-- 
+2.17.1
+
