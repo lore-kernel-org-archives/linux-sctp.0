@@ -1,52 +1,140 @@
-From: David Miller <davem@davemloft.net>
-Date: Sat, 11 Aug 2018 19:36:20 +0000
-Subject: Re: [PATCH v3 0/2] net/sctp: Avoid allocating high order memory with kmalloc()
-Message-Id: <20180811.123620.1211840066709410941.davem@davemloft.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 01 Aug 2018 16:33:05 +0000
+Subject: [PATCH lksctp-tools] travis: use git instead of downloading tarballs
+Message-Id: <61414c1f14e60615bd2c2235dca6797baa1c0783.1533141162.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <deb7cbdc-55b9-3ff5-8f13-cfa61e08eebe@virtuozzo.com>
-        <20180810171143.21592-1-khorenko@virtuozzo.com>
-In-Reply-To: <20180810171143.21592-1-khorenko@virtuozzo.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: khorenko@virtuozzo.com
-Cc: marcelo.leitner@gmail.com, oleg.babin@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, lucien.xin@gmail.com, aryabinin@virtuozzo.com
+To: linux-sctp@vger.kernel.org
 
-From: Konstantin Khorenko <khorenko@virtuozzo.com>
-Date: Fri, 10 Aug 2018 20:11:41 +0300
+With this, we 1) avoid downloading several tarballs and 2) make it
+easier to test against Linus master.
 
-> Each SCTP association can have up to 65535 input and output streams.
-> For each stream type an array of sctp_stream_in or sctp_stream_out
-> structures is allocated using kmalloc_array() function. This function
-> allocates physically contiguous memory regions, so this can lead
-> to allocation of memory regions of very high order, i.e.:
-> 
->   sizeof(struct sctp_stream_out) = 24,
->   ((65535 * 24) / 4096) = 383 memory pages (4096 byte per page),
->   which means 9th memory order.
-> 
-> This can lead to a memory allocation failures on the systems
-> under a memory stress.
-> 
-> We actually do not need these arrays of memory to be physically
-> contiguous. Possible simple solution would be to use kvmalloc()
-> instread of kmalloc() as kvmalloc() can allocate physically scattered
-> pages if contiguous pages are not available. But the problem
-> is that the allocation can happed in a softirq context with
-> GFP_ATOMIC flag set, and kvmalloc() cannot be used in this scenario.
-> 
-> So the other possible solution is to use flexible arrays instead of
-> contiguios arrays of memory so that the memory would be allocated
-> on a per-page basis.
-> 
-> This patchset replaces kvmalloc() with flex_array usage.
-> It consists of two parts:
-> 
->   * First patch is preparatory - it mechanically wraps all direct
->     access to assoc->stream.out[] and assoc->stream.in[] arrays
->     with SCTP_SO() and SCTP_SI() wrappers so that later a direct
->     array access could be easily changed to an access to a
->     flex_array (or any other possible alternative).
->   * Second patch replaces kmalloc_array() with flex_array usage.
+We want to test against Linus master so can catch build errors before
+GA, like the one fixed by Xin's patches in the sequence.
 
-Looks good, series applied, thanks!
+Sample build: https://travis-ci.org/sctp/lksctp-tools/builds/410860154
+
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ .travis.yml            |  7 +----
+ .travis/linux-build.sh | 61 +++++++++++++++++++++++++++++++++++-------
+ 2 files changed, 53 insertions(+), 15 deletions(-)
+
+diff --git a/.travis.yml b/.travis.yml
+index 8416b621a6f486469cef8fbb61e3d782674a4978..f1b2b49b97485f870047c7865d18605175b35c53 100644
+--- a/.travis.yml
++++ b/.travis.yml
+@@ -9,12 +9,7 @@ env:
+   global:
+     - KERNEL=4.17
+   matrix:
+-    - KERNEL=4.10
+-    - KERNEL=4.11
+-    - KERNEL=4.12
+-    - KERNEL=4.13
+-    - KERNEL=4.16
+-    - KERNEL=4.17
++    - KERNEL=""
+ compiler:
+   - gcc
+   - clang
+diff --git a/.travis/linux-build.sh b/.travis/linux-build.sh
+index e1874f3e16fb86ab86d7796b6c807b791b584e95..746f17252992f8f80a49fd9004bc9600cc97081e 100755
+--- a/.travis/linux-build.sh
++++ b/.travis/linux-build.sh
+@@ -1,17 +1,34 @@
+-#!/bin/bash
++#!/bin/bash -ex
+ 
+-set -ex
++VERS="master v4.17 v4.16 v4.13 v4.12 v4.11 v4.10"
+ 
+ nproc=$(/usr/bin/getconf _NPROCESSORS_ONLN)
++basedir=$(pwd)
+ 
+-function install_kernel()
++function cleanup()
++{
++	cd "$basedir"
++	[ ! -d linux ] || rm -rf linux
++	[ ! -d "linux-$KERNEL" ] || rm -rf "linux-$KERNEL"
++	make distclean || :
++}
++
++function clone_kernel()
++{
++	git clone https://github.com/torvalds/linux
++}
++
++function download_kernel()
+ {
+ 	VER="$1"
+ 	URL="https://www.kernel.org/pub/linux/kernel/v4.x/linux-$VER.tar.xz"
+ 	wget "$URL"
+ 	tar xf "linux-$VER.tar.xz"
++}
+ 
+-	pushd "linux-$VER"
++function __prep_kernel()
++{
++	make mrproper
+ 	make allmodconfig
+ 	make -j $nproc modules_prepare
+ 	make -j $nproc headers_install
+@@ -19,8 +36,26 @@ function install_kernel()
+ 	popd
+ }
+ 
++function git_prep_kernel()
++{
++	VER="$1"
++
++	pushd "linux"
++	git checkout "$VER"
++	__prep_kernel
++}
++
++function download_prep_kernel()
++{
++	VER="$1"
++
++	pushd "linux-$VER"
++	__prep_kernel
++}
++
+ function build_lksctp()
+ {
++	make distclean || :
+ 	./bootstrap
+ 
+ 	#CFLAGS="-Werror"
+@@ -33,11 +68,19 @@ function build_lksctp()
+ 	make -j $nproc
+ 
+ 	#make -j $nproc distcheck
+-}
+ 
+-if [ -n "$KERNEL" ]; then
+-	install_kernel "$KERNEL"
+-fi
++}
+ 
+-build_lksctp
++trap cleanup EXIT
++if [ -z "$KERNEL" ]; then
++	clone_kernel
+ 
++	for ver in $VERS; do
++		git_prep_kernel "$ver"
++		build_lksctp
++	done
++else
++	download_kernel "$KERNEL"
++	download_prep_kernel "$KERNEL"
++	build_lksctp
++fi
+-- 
+2.17.1
+
