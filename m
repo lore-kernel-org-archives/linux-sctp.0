@@ -1,74 +1,69 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 03 Aug 2018 23:36:26 +0000
-Subject: Re: [PATCH v2 0/2] net/sctp: Avoid allocating high order memory with kmalloc()
-Message-Id: <20180803233626.GI5482@localhost.localdomain>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Mon, 06 Aug 2018 09:34:05 +0000
+Subject: RE: [PATCH v2 0/2] net/sctp: Avoid allocating high order memory with kmalloc()
+Message-Id: <561fae7f72d34f0b983bfbad5d766bdf@AcuMS.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20180724173647.GA8881@localhost.localdomain>
  <20180803162102.19540-1-khorenko@virtuozzo.com>
-In-Reply-To: <20180803162102.19540-1-khorenko@virtuozzo.com>
+ <cd32848f0018432fad7246620d32c4e5@AcuMS.aculab.com>
+ <20180803203009.GG5482@localhost.localdomain>
+ <2D7531CF-9E0A-4B33-83E5-724B7C88F363@lurchi.franken.de>
+In-Reply-To: <2D7531CF-9E0A-4B33-83E5-724B7C88F363@lurchi.franken.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Konstantin Khorenko <khorenko@virtuozzo.com>
-Cc: oleg.babin@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, "David S . Miller" <davem@davemloft.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>, Andrey Ryabinin <aryabinin@virtuozzo.com>
+To: 'Michael Tuexen' <Michael.Tuexen@lurchi.franken.de>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: Konstantin Khorenko <khorenko@virtuozzo.com>, "oleg.babin@gmail.com" <oleg.babin@gmail.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "David S . Miller" <davem@davemloft.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>, Andrey Ryabinin <aryabinin@virtuozzo.com>
 
-On Fri, Aug 03, 2018 at 07:21:00PM +0300, Konstantin Khorenko wrote:
+From: Michael Tuexen
+> Sent: 03 August 2018 21:57
 ...
-> Performance results:
-> ==========
->   * Kernel: v4.18-rc6 - stock and with 2 patches from Oleg (earlier in this thread)
->   * Node: CPU (8 cores): Intel(R) Xeon(R) CPU E31230 @ 3.20GHz
->           RAM: 32 Gb
+> >> Given how useless SCTP streams are, does anything actually use
+> >> more than about 4?
+> >
+> > Maybe Michael can help us with that. I'm also curious now.
+> In the context of SIGTRAN I have seen 17 streams...
+
+Ok, I've seen 17 there as well, 5 is probably more common.
+
+> In the context of WebRTC I have seen more streams. In general,
+> the streams concept seems to be useful. QUIC has lots of streams.
 > 
->   * netperf: taken from https://github.com/HewlettPackard/netperf.git,
-> 	     compiled from sources with sctp support
->   * netperf server and client are run on the same node
->   * ip link set lo mtu 1500
-> 
-> The script used to run tests:
->  # cat run_tests.sh
->  #!/bin/bash
-> 
-> for test in SCTP_STREAM SCTP_STREAM_MANY SCTP_RR SCTP_RR_MANY; do
->   echo "TEST: $test";
->   for i in `seq 1 3`; do
->     echo "Iteration: $i";
->     set -x
->     netperf -t $test -H localhost -p 22222 -S 200000,200000 -s 200000,200000 \
->             -l 60 -- -m 1452;
->     set +x
->   done
-> done
-> ========================
-> 
-> Results (a bit reformatted to be more readable):
-...
+> So I'm wondering why they are considered useless.
+> David, can you elaborate on this?
 
-Nice, good numbers.
+I don't think a lot of people know what they actually are.
 
-I'm missing some test that actually uses more than 1 stream. All tests
-in netperf uses only 1 stream. They can use 1 or Many associations on
-a socket, but not multiple streams. That means the numbers here show
-that we shouldn't see any regression on the more traditional uses, per
-Michael's reply on the other email, but it is not testing how it will
-behave if we go crazy and use the 64k streams (worst case).
+Streams just allow some receive data to forwarded to applications when receive
+message(s) on stream(s) are lost and have to be retransmitted.
 
-You'll need some other tool to test it. One idea is sctp_test, from
-lksctp-tools. Something like:
+I suspect some people think that the separate streams have separate flow control,
+not just separate data sequences.
 
-Server side: 
-	./sctp_test -H 172.0.0.1 -P 22222 -l -d 0
-Client side: 
-	time ./sctp_test -H 172.0.0.1 -P 22221 \
-		-h 172.0.0.1 -p 22222 -s \
-		-c 1 -M 65535 -T -t 1 -x 100000 -d 0
+M2PA separates control message (stream 0) from user data (stream 1).
+I think the spec even suggests this is so control messages get through when
+user data is flow controlled off - not true (it would be true for ISO
+transport's 'expedited data).
 
-And then measure the difference on how long each test took. Can you
-get these too?
+M3UA will use 16 streams (one for each (ITU) SLS), but uses stream 0 for control.
+If a data message is lost then data for the other sls can be passed to the
+userpart/mtp3 - this might save bursty processing when the SACK-requested
+retransmission arrives. But I doubt you'd want to run M3UA on anything lossy
+enough for more than 4 data streams to make sense.
 
-Interesting that in my laptop just to start this test for the first
-time can took some *seconds*. Seems kernel had a hard time
-defragmenting the memory here. :)
+Even M3UA separating control onto stream 0 data onto 1-n doesn't seem useful to me.
 
-Thanks,
-Marcelo
+If QUIC is using 'lots of streams' is it just using the stream-id as a qualifier
+for the data? Rather than requiring the 'not head of line blocking' feature
+of sctp streams?
+
+Thought....
+Could we let the application set large stream-ids, but actually mask them
+down to (say) 32 for the protocol code?
+
+	David
+
+-
+Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
+Registration No: 1397386 (Wales)
+
