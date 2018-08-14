@@ -1,178 +1,131 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 10 Aug 2018 17:41:24 +0000
-Subject: Re: [PATCH v2 0/2] net/sctp: Avoid allocating high order memory with kmalloc()
-Message-Id: <20180810174123.GH14666@localhost.localdomain>
+From: syzbot <syzbot+6a15c8ad0f0632ccd7f3@syzkaller.appspotmail.com>
+Date: Tue, 14 Aug 2018 00:55:02 +0000
+Subject: WARNING: refcount bug in sctp_transport_put
+Message-Id: <000000000000fb3b1605735aa815@google.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180724173647.GA8881@localhost.localdomain>
- <20180803162102.19540-1-khorenko@virtuozzo.com>
- <20180803233626.GI5482@localhost.localdomain>
- <3356eb3e-323f-e28d-62b1-b3bd801bfe6e@virtuozzo.com>
- <deb7cbdc-55b9-3ff5-8f13-cfa61e08eebe@virtuozzo.com>
-In-Reply-To: <deb7cbdc-55b9-3ff5-8f13-cfa61e08eebe@virtuozzo.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Konstantin Khorenko <khorenko@virtuozzo.com>
-Cc: oleg.babin@gmail.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, "David S . Miller" <davem@davemloft.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Xin Long <lucien.xin@gmail.com>, Andrey Ryabinin <aryabinin@virtuozzo.com>
+To: davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
 
-On Fri, Aug 10, 2018 at 08:03:51PM +0300, Konstantin Khorenko wrote:
-> On 08/09/2018 11:43 AM, Konstantin Khorenko wrote:
-> > On 08/04/2018 02:36 AM, Marcelo Ricardo Leitner wrote:
-> > > On Fri, Aug 03, 2018 at 07:21:00PM +0300, Konstantin Khorenko wrote:
-> > > ...
-> > > > Performance results:
-> > > > ==========
-> > > >   * Kernel: v4.18-rc6 - stock and with 2 patches from Oleg (earlier in this thread)
-> > > >   * Node: CPU (8 cores): Intel(R) Xeon(R) CPU E31230 @ 3.20GHz
-> > > >           RAM: 32 Gb
-> > > > 
-> > > >   * netperf: taken from https://github.com/HewlettPackard/netperf.git,
-> > > > 	     compiled from sources with sctp support
-> > > >   * netperf server and client are run on the same node
-> > > >   * ip link set lo mtu 1500
-> > > > 
-> > > > The script used to run tests:
-> > > >  # cat run_tests.sh
-> > > >  #!/bin/bash
-> > > > 
-> > > > for test in SCTP_STREAM SCTP_STREAM_MANY SCTP_RR SCTP_RR_MANY; do
-> > > >   echo "TEST: $test";
-> > > >   for i in `seq 1 3`; do
-> > > >     echo "Iteration: $i";
-> > > >     set -x
-> > > >     netperf -t $test -H localhost -p 22222 -S 200000,200000 -s 200000,200000 \
-> > > >             -l 60 -- -m 1452;
-> > > >     set +x
-> > > >   done
-> > > > done
-> > > > ========================
-> > > > 
-> > > > Results (a bit reformatted to be more readable):
-> > > ...
-> > > 
-> > > Nice, good numbers.
-> > > 
-> > > I'm missing some test that actually uses more than 1 stream. All tests
-> > > in netperf uses only 1 stream. They can use 1 or Many associations on
-> > > a socket, but not multiple streams. That means the numbers here show
-> > > that we shouldn't see any regression on the more traditional uses, per
-> > > Michael's reply on the other email, but it is not testing how it will
-> > > behave if we go crazy and use the 64k streams (worst case).
-> > > 
-> > > You'll need some other tool to test it. One idea is sctp_test, from
-> > > lksctp-tools. Something like:
-> > > 
-> > > Server side:
-> > > 	./sctp_test -H 172.0.0.1 -P 22222 -l -d 0
-> > > Client side:
-> > > 	time ./sctp_test -H 172.0.0.1 -P 22221 \
-> > > 		-h 172.0.0.1 -p 22222 -s \
-> > > 		-c 1 -M 65535 -T -t 1 -x 100000 -d 0
-> > > 
-> > > And then measure the difference on how long each test took. Can you
-> > > get these too?
-> > > 
-> > > Interesting that in my laptop just to start this test for the first
-> > > time can took some *seconds*. Seems kernel had a hard time
-> > > defragmenting the memory here. :)
-> 
-> Hi Marcelo,
-> 
-> got 3 of 4 results, please take a look, but i failed to measure running
-> the test on stock kernel when memory is fragmented, test fails with
->         *** connect:  Cannot allocate memory ***
+Hello,
 
-Hah, okay.
+syzbot found the following crash on:
 
-> 
-> 
-> Performance results:
-> ==========
->   * Kernel: v4.18-rc8 - stock and with 2 patches v3
->   * Node: CPU (8 cores): Intel(R) Xeon(R) CPU E31230 @ 3.20GHz
->           RAM: 32 Gb
-> 
->   * sctp_test: https://github.com/sctp/lksctp-tools
->   * both server and client are run on the same node
->   * ip link set lo mtu 1500
->   * sysctl -w vm.max_map_counte530000 (need it to make memory fragmented)
-> 
-> The script used to run tests:
-> ==============> # cat run_sctp_test.sh
-> #!/bin/bash
-> 
-> set -x
-> 
-> uname -r
-> ip link set lo mtu 1500
-> swapoff -a
-> 
-> free
-> cat /proc/buddyinfo
-> 
-> ./src/apps/sctp_test -H 127.0.0.1 -P 22222 -l -d 0 &
-> sleep 3
-> 
-> time ./src/apps/sctp_test -H 127.0.0.1 -P 22221 -h 127.0.0.1 -p 22222 \
->         -s -c 1 -M 65535 -T -t 1 -x 100000 -d 0 1>/dev/null
-> 
-> killall -9 lt-sctp_test
-> ===============> 
-> Results (a bit reformatted to be more readable):
-> 
-> 1) ms stock kernel v4.18-rc8, no memory fragmentation
-> Info about memory - more or less same to iterations:
-> # free
->               total        used        free      shared  buff/cache   available
-> Mem:       32906008      213156    32178184         764      514668    32260968
-> Swap:             0           0           0
-> 
-> cat /proc/buddyinfo
-> Node 0, zone      DMA      0      1      1      0      2      1      1      0      1      1      3
-> Node 0, zone    DMA32      1      3      5      4      2      2      3      6      6      4    867
-> Node 0, zone   Normal    551    422    160    204    193     34     15      7     22     19   6956
-> 
-> 	test 1		test 2		test 3
-> real    0m14.715s	0m14.593s	0m15.954s
-> user    0m0.954s	0m0.955s	0m0.854s
-> sys     0m13.388s	0m12.537s	0m13.749s
-> 
-> 2) kernel with fixes, no memory fragmentation
-> 'free' and 'buddyinfo' similar to 1)
-> 
-> 	test 1		test 2		test 3
-> real    0m14.959s	0m14.693s	0m14.762s
-> user    0m0.948s	0m0.921s	0m0.929s
-> sys     0m13.538s	0m13.225s	0m13.217s
-> 
-> 3) kernel with fixes, memory fragmented
-> (mmap() all available RAM, touch all pages, munmap() half of pages (each second page), do it again for RAM/2)
-> 'free':
->               total        used        free      shared  buff/cache   available
-> Mem:       32906008    30555200      302740         764     2048068      266452
-> Mem:       32906008    30379948      541436         764     1984624      442376
-> Mem:       32906008    30717312      262380         764     1926316      109908
-> 
-> /proc/buddyinfo:
-> Node 0, zone   Normal  40773     37     34     29      0      0      0      0      0      0      0
-> Node 0, zone   Normal 100332     68      8      4      2      1      1      0      0      0      0
-> Node 0, zone   Normal  31113      7      2      1      0      0      0      0      0      0      0
-> 
-> 	test 1		test 2		test 3
-> real    0m14.159s	0m15.252s	0m15.826s
-> user    0m0.839s	0m1.004s	0m1.048s
-> sys     0m11.827s	0m14.240s	0m14.778s
+HEAD commit:    112cbae26d18 Merge branch 'linus' of git://git.kernel.org/..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x401622400000
+kernel config:  https://syzkaller.appspot.com/x/.config?x2cb8ccd35b1f70
+dashboard link: https://syzkaller.appspot.com/bug?extidj15c8ad0f0632ccd7f3
+compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
 
-Nice. Looks like there won't be (noticeable) performance regressions
-on where it was functional, and it will help make it functional in
-case memory is fragmented. With some overhead, but it at least works.
+Unfortunately, I don't have any reproducer for this crash yet.
 
-Thanks for running all theses.
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+6a15c8ad0f0632ccd7f3@syzkaller.appspotmail.com
 
-> 
-> 
-> --
-> Best regards,
-> 
-> Konstantin Khorenko,
-> Virtuozzo Linux Kernel Team
+------------[ cut here ]------------
+refcount_t: underflow; use-after-free.
+WARNING: CPU: 1 PID: 7203 at lib/refcount.c:187  
+refcount_sub_and_test+0x2e7/0x350 lib/refcount.c:187
+Kernel panic - not syncing: panic_on_warn set ...
+
+CPU: 1 PID: 7203 Comm: udevd Not tainted 4.18.0-rc8+ #182
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
+Google 01/01/2011
+Call Trace:
+  <IRQ>
+  __dump_stack lib/dump_stack.c:77 [inline]
+  dump_stack+0x1c9/0x2b4 lib/dump_stack.c:113
+  panic+0x238/0x4e7 kernel/panic.c:184
+  __warn.cold.8+0x163/0x1ba kernel/panic.c:536
+  report_bug+0x252/0x2d0 lib/bug.c:186
+  fixup_bug arch/x86/kernel/traps.c:178 [inline]
+  do_error_trap+0x1fc/0x4d0 arch/x86/kernel/traps.c:296
+  do_invalid_op+0x1b/0x20 arch/x86/kernel/traps.c:316
+  invalid_op+0x14/0x20 arch/x86/entry/entry_64.S:992
+RIP: 0010:refcount_sub_and_test+0x2e7/0x350 lib/refcount.c:187
+Code: 89 de e8 fc b4 1c fe 84 db 74 07 31 db e9 46 ff ff ff e8 1c b4 1c fe  
+48 c7 c7 80 48 3a 87 c6 05 82 f2 25 05 01 e8 f9 cc e7 fd <0f> 0b 31 db e9  
+25 ff ff ff 48 8b bd 28 ff ff ff 89 85 34 ff ff ff
+RSP: 0018:ffff8801db107598 EFLAGS: 00010286
+RAX: 0000000000000000 RBX: 0000000000000000 RCX: 0000000000000000
+RDX: 0000000000000100 RSI: ffffffff81632481 RDI: ffff8801db107270
+RBP: ffff8801db107680 R08: ffff8801b9a22780 R09: 0000000000000002
+R10: ffff8801b9a22780 R11: 0000000000000000 R12: 00000000ffffffff
+R13: ffff8801db107658 R14: 0000000000000001 R15: ffff8801aefee088
+  refcount_dec_and_test+0x1a/0x20 lib/refcount.c:212
+  sctp_transport_put+0x76/0x200 net/sctp/transport.c:331
+  sctp_generate_heartbeat_event+0x2d7/0x450 net/sctp/sm_sideeffect.c:416
+  call_timer_fn+0x242/0x970 kernel/time/timer.c:1326
+  expire_timers kernel/time/timer.c:1363 [inline]
+  __run_timers+0x7a6/0xc70 kernel/time/timer.c:1666
+  run_timer_softirq+0x4c/0x70 kernel/time/timer.c:1692
+  __do_softirq+0x2e8/0xb17 kernel/softirq.c:292
+  invoke_softirq kernel/softirq.c:372 [inline]
+  irq_exit+0x1d4/0x210 kernel/softirq.c:412
+  exiting_irq arch/x86/include/asm/apic.h:527 [inline]
+  smp_apic_timer_interrupt+0x186/0x730 arch/x86/kernel/apic/apic.c:1055
+  apic_timer_interrupt+0xf/0x20 arch/x86/entry/entry_64.S:863
+  </IRQ>
+RIP: 0010:update_stack_state+0xcc/0x690 arch/x86/kernel/unwind_frame.c:215
+Code: 06 49 8d 7e 50 48 89 fa 89 85 24 ff ff ff 48 c1 ea 03 48 b8 00 00 00  
+00 00 fc ff df 80 3c 02 00 0f 85 04 05 00 00 49 8b 46 50 <48> 85 c0 0f 84  
+66 03 00 00 48 05 a8 00 00 00 48 89 85 10 ff ff ff
+RSP: 0018:ffff88018d816a60 EFLAGS: 00000246 ORIG_RAX: ffffffffffffff13
+RAX: 0000000000000000 RBX: ffff88018d816cc8 RCX: ffff88018d816c40
+RDX: 1ffff10031b02da3 RSI: ffff88018d816d48 RDI: ffff88018d816d18
+RBP: ffff88018d816b68 R08: ffff88018d816d00 R09: ffff8801b9a22780
+R10: ffffed0031b02da3 R11: ffff88018d816d1f R12: 1ffff10031b02d54
+R13: ffff88018d816d48 R14: ffff88018d816cc8 R15: ffff88018d816d18
+  unwind_next_frame.part.7+0x1ae/0x9e0 arch/x86/kernel/unwind_frame.c:329
+  unwind_next_frame arch/x86/include/asm/unwind.h:40 [inline]
+  __unwind_start+0x166/0x330 arch/x86/kernel/unwind_frame.c:414
+  unwind_start arch/x86/include/asm/unwind.h:54 [inline]
+  __save_stack_trace+0x59/0xf0 arch/x86/kernel/stacktrace.c:43
+  save_stack_trace+0x1a/0x20 arch/x86/kernel/stacktrace.c:60
+  save_stack+0x43/0xd0 mm/kasan/kasan.c:448
+  set_track mm/kasan/kasan.c:460 [inline]
+  kasan_kmalloc+0xc4/0xe0 mm/kasan/kasan.c:553
+  kasan_slab_alloc+0x12/0x20 mm/kasan/kasan.c:490
+  slab_post_alloc_hook mm/slab.h:444 [inline]
+  slab_alloc mm/slab.c:3392 [inline]
+  kmem_cache_alloc+0x11b/0x760 mm/slab.c:3552
+  anon_vma_chain_alloc mm/rmap.c:129 [inline]
+  anon_vma_clone+0x140/0x740 mm/rmap.c:269
+  anon_vma_fork+0xf0/0x960 mm/rmap.c:332
+  dup_mmap kernel/fork.c:498 [inline]
+  dup_mm kernel/fork.c:1266 [inline]
+  copy_mm kernel/fork.c:1320 [inline]
+  copy_process.part.39+0x4e53/0x70b0 kernel/fork.c:1826
+  copy_process kernel/fork.c:1639 [inline]
+  _do_fork+0x291/0x12a0 kernel/fork.c:2122
+  __do_sys_clone kernel/fork.c:2229 [inline]
+  __se_sys_clone kernel/fork.c:2223 [inline]
+  __x64_sys_clone+0xbf/0x150 kernel/fork.c:2223
+  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+RIP: 0033:0x7f1b0bf66f46
+Code: f7 d8 64 89 04 25 d4 02 00 00 64 4c 8b 14 25 10 00 00 00 31 d2 49 81  
+c2 d0 02 00 00 31 f6 bf 11 00 20 01 b8 38 00 00 00 0f 05 <48> 3d 00 f0 ff  
+ff 0f 87 31 01 00 00 85 c0 41 89 c4 0f 85 3b 01 00
+RSP: 002b:00007ffc9eb9ddb0 EFLAGS: 00000246 ORIG_RAX: 0000000000000038
+RAX: ffffffffffffffda RBX: 00007ffc9eb9ddb0 RCX: 00007f1b0bf66f46
+RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000001200011
+RBP: 00007ffc9eb9de10 R08: 0000000000001c23 R09: 0000000000001c23
+R10: 00007f1b0c883a70 R11: 0000000000000246 R12: 0000000000000000
+R13: 00007ffc9eb9ddd0 R14: 0000000000000005 R15: 0000000000000005
+Dumping ftrace buffer:
+    (ftrace buffer empty)
+Kernel Offset: disabled
+Rebooting in 86400 seconds..
+
+
+---
+This bug is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this bug report. See:
+https://goo.gl/tpsmEJ#bug-status-tracking for how to communicate with  
+syzbot.
