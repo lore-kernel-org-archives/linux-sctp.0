@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 16 Aug 2018 11:22:19 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Thu, 16 Aug 2018 18:18:41 +0000
 Subject: Re: [PATCH lksctp-tools] configure.ac: add CURRENT REVISION and AGE for libsctp and libwithsctp
-Message-Id: <20180816112219.GC2641@hmswarspite.think-freely.org>
+Message-Id: <20180816181841.GI5311@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <d594347d6683fbbfaf468010d9e9bd9b86c4ca0b.1534399950.git.lucien.xin@gmail.com>
 In-Reply-To: <d594347d6683fbbfaf468010d9e9bd9b86c4ca0b.1534399950.git.lucien.xin@gmail.com>
@@ -38,41 +38,5 @@ On Thu, Aug 16, 2018 at 02:12:30PM +0800, Xin Long wrote:
 > +AC_SUBST(LIBWITHSCTP_CURRENT, 1)
 > +AC_SUBST(LIBWITHSCTP_REVISION, 18)
 > +AC_SUBST(LIBWITHSCTP_AGE, 0)
-> +
->  AC_CONFIG_AUX_DIR(bin)
->  AC_CONFIG_SRCDIR([src/apps/sctp_darn.c])
->  AC_CONFIG_HEADERS([config.h])
-> diff --git a/src/lib/Makefile.am b/src/lib/Makefile.am
-> index 6100c56..1d62175 100644
-> --- a/src/lib/Makefile.am
-> +++ b/src/lib/Makefile.am
-> @@ -8,5 +8,8 @@ AM_CPPFLAGS = -I$(top_srcdir)/src/include
->  
->  lib_LTLIBRARIES = libsctp.la
->  
-> -libsctp_la_SOURCES = bindx.c connectx.c peeloff.c opt_info.c addrs.c sendmsg.c recvmsg.c Versions.map
-> -libsctp_la_LDFLAGS = -version-info 1:17:0 -Wl,--version-script=$(srcdir)/Versions.map
-> +libsctp_la_SOURCES = bindx.c connectx.c peeloff.c opt_info.c \
-> +		addrs.c sendmsg.c recvmsg.c Versions.map
-> +libsctp_la_LDFLAGS = -version-info \
-> +		@LIBSCTP_CURRENT@:@LIBSCTP_REVISION@:@LIBSCTP_AGE@ \
-> +		-Wl,--version-script=$(srcdir)/Versions.map
-> diff --git a/src/withsctp/Makefile.am b/src/withsctp/Makefile.am
-> index 70b1cca..1f6ca37 100644
-> --- a/src/withsctp/Makefile.am
-> +++ b/src/withsctp/Makefile.am
-> @@ -14,7 +14,8 @@ AM_CPPFLAGS=-I$(top_srcdir)/src/include
->  pkglib_LTLIBRARIES = libwithsctp.la
->  libwithsctp_la_SOURCES = sctp_load_libs.c sctp_socket.c sctp_bind.c \
->  	sctp_sockopt.c sctp_socket.h
-> -libwithsctp_la_LDFLAGS = -version-info 1:17:0 -ldl
-> +libwithsctp_la_LDFLAGS = -version-info \
-> +	@LIBWITHSCTP_CURRENT@:@LIBWITHSCTP_REVISION@:@LIBWITHSCTP_AGE@ -ldl
->  
->  pkgdoc_DATA = sctp_load_libs.c sctp_socket.c sctp_bind.c \
->  	sctp_sockopt.c sctp_socket.h checksctp.c
-> -- 
-> 2.1.0
-> 
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
+Applied.  Thanks, now it will be harder to miss these =)
