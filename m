@@ -1,72 +1,78 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 16 Aug 2018 06:12:30 +0000
-Subject: [PATCH lksctp-tools] configure.ac: add CURRENT REVISION and AGE for libsctp and libwithsctp
-Message-Id: <d594347d6683fbbfaf468010d9e9bd9b86c4ca0b.1534399950.git.lucien.xin@gmail.com>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Thu, 16 Aug 2018 11:22:19 +0000
+Subject: Re: [PATCH lksctp-tools] configure.ac: add CURRENT REVISION and AGE for libsctp and libwithsctp
+Message-Id: <20180816112219.GC2641@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <d594347d6683fbbfaf468010d9e9bd9b86c4ca0b.1534399950.git.lucien.xin@gmail.com>
+In-Reply-To: <d594347d6683fbbfaf468010d9e9bd9b86c4ca0b.1534399950.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Add CURRENT REVISION and AGE for libsctp and libwithsctp in
-configure.ac to update these 2 library version information.
-
-Compatible with before, they will start from 1:18:0. But each
-will get updated according to their definitions in the future.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- configure.ac             | 7 +++++++
- src/lib/Makefile.am      | 7 +++++--
- src/withsctp/Makefile.am | 3 ++-
- 3 files changed, 14 insertions(+), 3 deletions(-)
-
-diff --git a/configure.ac b/configure.ac
-index 275ef4e..2ae36ec 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -14,6 +14,13 @@ dnl reduce clutter in the root; if we put it below AM_INIT_AUTOMAKE,
- dnl configure will fail ...)
- 
- AC_INIT([lksctp-tools], [1.0.18], [], [], [http://www.lksctp.org/])
-+AC_SUBST(LIBSCTP_CURRENT, 1)
-+AC_SUBST(LIBSCTP_REVISION, 18)
-+AC_SUBST(LIBSCTP_AGE, 0)
-+AC_SUBST(LIBWITHSCTP_CURRENT, 1)
-+AC_SUBST(LIBWITHSCTP_REVISION, 18)
-+AC_SUBST(LIBWITHSCTP_AGE, 0)
-+
- AC_CONFIG_AUX_DIR(bin)
- AC_CONFIG_SRCDIR([src/apps/sctp_darn.c])
- AC_CONFIG_HEADERS([config.h])
-diff --git a/src/lib/Makefile.am b/src/lib/Makefile.am
-index 6100c56..1d62175 100644
---- a/src/lib/Makefile.am
-+++ b/src/lib/Makefile.am
-@@ -8,5 +8,8 @@ AM_CPPFLAGS = -I$(top_srcdir)/src/include
- 
- lib_LTLIBRARIES = libsctp.la
- 
--libsctp_la_SOURCES = bindx.c connectx.c peeloff.c opt_info.c addrs.c sendmsg.c recvmsg.c Versions.map
--libsctp_la_LDFLAGS = -version-info 1:17:0 -Wl,--version-script=$(srcdir)/Versions.map
-+libsctp_la_SOURCES = bindx.c connectx.c peeloff.c opt_info.c \
-+		addrs.c sendmsg.c recvmsg.c Versions.map
-+libsctp_la_LDFLAGS = -version-info \
-+		@LIBSCTP_CURRENT@:@LIBSCTP_REVISION@:@LIBSCTP_AGE@ \
-+		-Wl,--version-script=$(srcdir)/Versions.map
-diff --git a/src/withsctp/Makefile.am b/src/withsctp/Makefile.am
-index 70b1cca..1f6ca37 100644
---- a/src/withsctp/Makefile.am
-+++ b/src/withsctp/Makefile.am
-@@ -14,7 +14,8 @@ AM_CPPFLAGS=-I$(top_srcdir)/src/include
- pkglib_LTLIBRARIES = libwithsctp.la
- libwithsctp_la_SOURCES = sctp_load_libs.c sctp_socket.c sctp_bind.c \
- 	sctp_sockopt.c sctp_socket.h
--libwithsctp_la_LDFLAGS = -version-info 1:17:0 -ldl
-+libwithsctp_la_LDFLAGS = -version-info \
-+	@LIBWITHSCTP_CURRENT@:@LIBWITHSCTP_REVISION@:@LIBWITHSCTP_AGE@ -ldl
- 
- pkgdoc_DATA = sctp_load_libs.c sctp_socket.c sctp_bind.c \
- 	sctp_sockopt.c sctp_socket.h checksctp.c
--- 
-2.1.0
+On Thu, Aug 16, 2018 at 02:12:30PM +0800, Xin Long wrote:
+> Add CURRENT REVISION and AGE for libsctp and libwithsctp in
+> configure.ac to update these 2 library version information.
+> 
+> Compatible with before, they will start from 1:18:0. But each
+> will get updated according to their definitions in the future.
+> 
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+> ---
+>  configure.ac             | 7 +++++++
+>  src/lib/Makefile.am      | 7 +++++--
+>  src/withsctp/Makefile.am | 3 ++-
+>  3 files changed, 14 insertions(+), 3 deletions(-)
+> 
+> diff --git a/configure.ac b/configure.ac
+> index 275ef4e..2ae36ec 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -14,6 +14,13 @@ dnl reduce clutter in the root; if we put it below AM_INIT_AUTOMAKE,
+>  dnl configure will fail ...)
+>  
+>  AC_INIT([lksctp-tools], [1.0.18], [], [], [http://www.lksctp.org/])
+> +AC_SUBST(LIBSCTP_CURRENT, 1)
+> +AC_SUBST(LIBSCTP_REVISION, 18)
+> +AC_SUBST(LIBSCTP_AGE, 0)
+> +AC_SUBST(LIBWITHSCTP_CURRENT, 1)
+> +AC_SUBST(LIBWITHSCTP_REVISION, 18)
+> +AC_SUBST(LIBWITHSCTP_AGE, 0)
+> +
+>  AC_CONFIG_AUX_DIR(bin)
+>  AC_CONFIG_SRCDIR([src/apps/sctp_darn.c])
+>  AC_CONFIG_HEADERS([config.h])
+> diff --git a/src/lib/Makefile.am b/src/lib/Makefile.am
+> index 6100c56..1d62175 100644
+> --- a/src/lib/Makefile.am
+> +++ b/src/lib/Makefile.am
+> @@ -8,5 +8,8 @@ AM_CPPFLAGS = -I$(top_srcdir)/src/include
+>  
+>  lib_LTLIBRARIES = libsctp.la
+>  
+> -libsctp_la_SOURCES = bindx.c connectx.c peeloff.c opt_info.c addrs.c sendmsg.c recvmsg.c Versions.map
+> -libsctp_la_LDFLAGS = -version-info 1:17:0 -Wl,--version-script=$(srcdir)/Versions.map
+> +libsctp_la_SOURCES = bindx.c connectx.c peeloff.c opt_info.c \
+> +		addrs.c sendmsg.c recvmsg.c Versions.map
+> +libsctp_la_LDFLAGS = -version-info \
+> +		@LIBSCTP_CURRENT@:@LIBSCTP_REVISION@:@LIBSCTP_AGE@ \
+> +		-Wl,--version-script=$(srcdir)/Versions.map
+> diff --git a/src/withsctp/Makefile.am b/src/withsctp/Makefile.am
+> index 70b1cca..1f6ca37 100644
+> --- a/src/withsctp/Makefile.am
+> +++ b/src/withsctp/Makefile.am
+> @@ -14,7 +14,8 @@ AM_CPPFLAGS=-I$(top_srcdir)/src/include
+>  pkglib_LTLIBRARIES = libwithsctp.la
+>  libwithsctp_la_SOURCES = sctp_load_libs.c sctp_socket.c sctp_bind.c \
+>  	sctp_sockopt.c sctp_socket.h
+> -libwithsctp_la_LDFLAGS = -version-info 1:17:0 -ldl
+> +libwithsctp_la_LDFLAGS = -version-info \
+> +	@LIBWITHSCTP_CURRENT@:@LIBWITHSCTP_REVISION@:@LIBWITHSCTP_AGE@ -ldl
+>  
+>  pkgdoc_DATA = sctp_load_libs.c sctp_socket.c sctp_bind.c \
+>  	sctp_sockopt.c sctp_socket.h checksctp.c
+> -- 
+> 2.1.0
+> 
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
