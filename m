@@ -1,22 +1,37 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 10 Aug 2018 18:29:51 +0000
-Subject: Re: [PATCH lksctp-tools] travis: use git instead of downloading tarballs
-Message-Id: <20180810182951.GC5311@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 23 Aug 2018 17:13:32 +0000
+Subject: [PATCH lksctp-tools] build: fix netinet/sctp.h not to be installed
+Message-Id: <16d4fc6998450e9aba61259a1ee4869df841cc6c.1535044412.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <61414c1f14e60615bd2c2235dca6797baa1c0783.1533141162.git.marcelo.leitner@gmail.com>
-In-Reply-To: <61414c1f14e60615bd2c2235dca6797baa1c0783.1533141162.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On Wed, Aug 01, 2018 at 01:33:05PM -0300, Marcelo Ricardo Leitner wrote:
-> With this, we 1) avoid downloading several tarballs and 2) make it
-> easier to test against Linus master.
-> 
-> We want to test against Linus master so can catch build errors before
-> GA, like the one fixed by Xin's patches in the sequence.
-> 
-> Sample build: https://travis-ci.org/sctp/lksctp-tools/builds/410860154
+After libcnetinet_HEADERS was set to sctp.h.in, netinet/sctp.h can
+no longer be installed into ${includedir}.
 
-Applied
+Since "AC_CONFIG_HEADERS([src/include/netinet/sctp.h])" is already
+added into configure.ac, there's no need to generate sctp.h by
+automake.
+
+So we simply set libcnetinet_HEADERS back to sctp.h.
+
+Fixes: 9607dd85e70a ("netinet/sctp.h: dynamically build based on system setup")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ src/include/netinet/Makefile.am | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/src/include/netinet/Makefile.am b/src/include/netinet/Makefile.am
+index ca0aac2..965db8c 100644
+--- a/src/include/netinet/Makefile.am
++++ b/src/include/netinet/Makefile.am
+@@ -11,5 +11,4 @@ libcnetinetdir = $(includedir)/netinet
+ # API.
+ include_HEADERS  
+-libcnetinet_HEADERS = sctp.h.in
+-BUILT_SOURCES = sctp.h
++libcnetinet_HEADERS = sctp.h
+-- 
+2.1.0
