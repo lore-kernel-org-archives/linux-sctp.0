@@ -1,37 +1,38 @@
-From: KELLY ALAN <kellyalan@servicescourrier.club>
-Date: Sat, 25 Aug 2018 09:46:35 +0000
-Subject: TRADING  ACCOUNT
-Message-Id: <a560658f01f601c00ee3b6e124139d27@servicescourrier.club>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 24 Aug 2018 12:52:59 +0000
+Subject: [PATCH 2/3] build: fix probing for HAVE_SCTP_SENDV
+Message-Id: <a92b9f8a78ab6e74894d944ed76239fd834660f9.1535062650.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
+Somehow it was using a type that is non-existent. The right one is
+sctp_prinfo, introduced on ed63afb8a318 ("sctp: add support for PR-SCTP
+Information for sendmsg"), present on v4.17.
 
-Dear sir ,
+Fixes: 1b798f1ca3b5 ("build: add define HAVE_SCTP_AUTH_NO_AUTH")
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ configure.ac | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-I KELLY ALAN  purchasing and sales manager of CFM INTERNATIONAL .Our 
-Company specialised in Supplying computer hardware and Electronic .We 
-want to extend our supplier list because of concurrency in prices on the 
-international market. We are seeking a supplier with whom we can to have 
-  partnered long-term in order to have competitive prices . we are 
-interested to buy the products you sell and want to place an order with 
-you in big quantities.
-Can you give us payment facilities ( 14 , 30 or 60 days payment terms ) 
-?
-What is the procedure for our account opening  and credit line 
-application ?
-
-Cordially
-
-  KELLY ALAN
-
-CFM INTERNATIONAL
-2 BOULEVARD DU GAL MARTIAL VALIN
-75015 PARIS
-REG N° 302 527 700
-VAT N° FR90 302527700
-TEL +33171025367
-FAX +33177759149
-https://www.cfmaeroengines.com
+diff --git a/configure.ac b/configure.ac
+index dad658c04c946ff30b6df1a739750f0929238907..f55775af76ff7a464688d21ccfff39fcd1c54451 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -94,9 +94,8 @@ LKSCTP_CHECK_MEMBER([struct sctp_pdapi_event.pdapi_stream],
+ LKSCTP_CHECK_MEMBER([struct sctp_pdapi_event.pdapi_seq],
+ 		    [HAVE_SCTP_PDAPI_EVENT_PDAPI_SEQ])
+ 
+-# PR-SCTP field used to probe for sendv/recvv support, added on v4.17
+-LKSCTP_CHECK_MEMBER([struct sendv_prinfo.sctp_prinfo],
+-		    [HAVE_SCTP_SENDV])
++# PR-SCTP struct used to probe for sendv/recvv support, added on v4.17
++LKSCTP_CHECK_TYPE([struct sctp_prinfo], [HAVE_SCTP_SENDV])
+ 
+ # This event indicates that the peer does not support SCTP authentication,
+ # added on v4.16, 30f6ebf65bc4
+-- 
+2.17.1
