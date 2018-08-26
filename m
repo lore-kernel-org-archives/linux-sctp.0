@@ -1,98 +1,158 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 24 Aug 2018 15:27:39 +0000
+From: syzbot <syzbot+fe62a0c9aa6a85c6de16@syzkaller.appspotmail.com>
+Date: Sun, 26 Aug 2018 19:36:02 +0000
 Subject: Re: KASAN: use-after-free Read in sctp_transport_get_next
-Message-Id: <CADvbK_dWirKTx7rwhuYqbBfwS32YqOaHab8fra0RFVg6+9e+4g@mail.gmail.com>
+Message-Id: <00000000000014e7c305745bb8f7@google.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <000000000000ccaf1d0574297b6b@google.com> <20180824125150.GL5311@localhost.localdomain>
-In-Reply-To: <20180824125150.GL5311@localhost.localdomain>
+In-Reply-To: <000000000000ccaf1d0574297b6b@google.com>
+References: <000000000000ccaf1d0574297b6b@google.com>
+In-Reply-To: <000000000000ccaf1d0574297b6b@google.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: syzbot+fe62a0c9aa6a85c6de16@syzkaller.appspotmail.com, davem <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, network dev <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, Vlad Yasevich <vyasevich@gmail.com>
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, lucien.xin@gmail.com, marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
 
-On Fri, Aug 24, 2018 at 8:51 PM Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
->
-> On Fri, Aug 24, 2018 at 12:40:03AM -0700, syzbot wrote:
-> > CPU: 1 PID: 12694 Comm: syz-executor0 Not tainted 4.18.0+ #107
-> > Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS
-> > Google 01/01/2011
-> > Call Trace:
-> >  __dump_stack lib/dump_stack.c:77 [inline]
-> >  dump_stack+0x1c9/0x2b4 lib/dump_stack.c:113
-> >  print_address_description+0x6c/0x20b mm/kasan/report.c:256
-> >  kasan_report_error mm/kasan/report.c:354 [inline]
-> >  kasan_report.cold.7+0x242/0x30d mm/kasan/report.c:412
-> >  __asan_report_load8_noabort+0x14/0x20 mm/kasan/report.c:433
-> >  sctp_transport_get_next+0x11c/0x140 net/sctp/socket.c:5008
-> >  sctp_transport_get_idx net/sctp/socket.c:5022 [inline]
->
-> It is iterating over transports but then also accessing the
-> association directly, without checking any refcnts before that.
->
-> struct sctp_transport *sctp_transport_get_next(struct net *net,
->                                                struct rhashtable_iter *iter)
-> {
->         struct sctp_transport *t;
->
->         t = rhashtable_walk_next(iter);
->         for (; t; t = rhashtable_walk_next(iter)) {
->                 if (IS_ERR(t)) {
->                         if (PTR_ERR(t) = -EAGAIN)
->                                 continue;
->                         break;
->                 }
->
->                 if (net_eq(sock_net(t->asoc->base.sk), net) &&
->                     t->asoc->peer.primary_path = t)
->                         break;
->
-> and these t->asoc->  are risky because transport may be laying dead on
-> the water already, as transports are freed by RCU and associations are
-> not.
-Thanks,
-I will move sctp_transport_hold into sctp_transport_get_next():
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index ce620e8..4bd5c2d 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -4881,9 +4881,14 @@ struct sctp_transport
-*sctp_transport_get_next(struct net *net,
-                        break;
-                }
+syzbot has found a reproducer for the following crash on:
 
-+               if (!sctp_transport_hold(t))
-+                       continue;
-+
-                if (net_eq(sock_net(t->asoc->base.sk), net) &&
-                    t->asoc->peer.primary_path = t)
-                        break;
-+
-+               sctp_transport_put(t);
-        }
+HEAD commit:    2923b27e5424 Merge tag 'libnvdimm-for-4.19_dax-memory-fail..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=10f01a1e400000
+kernel config:  https://syzkaller.appspot.com/x/.config?x;576e333ca31bb2
+dashboard link: https://syzkaller.appspot.com/bug?extid=FE62a0c9aa6a85c6de16
+compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=1022f96a400000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=13be8b32400000
 
-        return t;
-@@ -4896,8 +4901,10 @@ struct sctp_transport
-*sctp_transport_get_idx(struct net *net,
-        void *obj = SEQ_START_TOKEN;
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+fe62a0c9aa6a85c6de16@syzkaller.appspotmail.com
 
-        while (pos && (obj = sctp_transport_get_next(net, iter)) &&
--              !IS_ERR(obj))
-+              !IS_ERR(obj)) {
-                pos--;
-+               sctp_transport_put(obj);
-+       }
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D
+BUG: KASAN: use-after-free in sctp_transport_get_next+0x11c/0x140 =20
+net/sctp/socket.c:5008
+Read of size 8 at addr ffff8801b09a23e0 by task syz-executor305/13769
 
-        return obj;
- }
-@@ -4958,8 +4965,6 @@ int sctp_for_each_transport(int (*cb)(struct
-sctp_transport *, void *),
+CPU: 0 PID: 13769 Comm: syz-executor305 Not tainted 4.18.0+ #209
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS =20
+Google 01/01/2011
+Call Trace:
+  __dump_stack lib/dump_stack.c:77 [inline]
+  dump_stack+0x1c9/0x2b4 lib/dump_stack.c:113
+  print_address_description+0x6c/0x20b mm/kasan/report.c:256
+  kasan_report_error mm/kasan/report.c:354 [inline]
+  kasan_report.cold.7+0x242/0x30d mm/kasan/report.c:412
+  __asan_report_load8_noabort+0x14/0x20 mm/kasan/report.c:433
+  sctp_transport_get_next+0x11c/0x140 net/sctp/socket.c:5008
+  sctp_transport_get_idx net/sctp/socket.c:5022 [inline]
+  sctp_for_each_transport+0x152/0x370 net/sctp/socket.c:5083
+  sctp_diag_dump+0x3a7/0x620 net/sctp/diag.c:527
+  __inet_diag_dump+0xa8/0x140 net/ipv4/inet_diag.c:1049
+  inet_diag_dump+0x9b/0x110 net/ipv4/inet_diag.c:1065
+  netlink_dump+0x519/0xd50 net/netlink/af_netlink.c:2233
+  __netlink_dump_start+0x4f1/0x6f0 net/netlink/af_netlink.c:2329
+  netlink_dump_start include/linux/netlink.h:213 [inline]
+  inet_diag_handler_cmd+0x2ce/0x3f0 net/ipv4/inet_diag.c:1170
+  __sock_diag_cmd net/core/sock_diag.c:232 [inline]
+  sock_diag_rcv_msg+0x31d/0x410 net/core/sock_diag.c:263
+  netlink_rcv_skb+0x172/0x440 net/netlink/af_netlink.c:2454
+  sock_diag_rcv+0x2a/0x40 net/core/sock_diag.c:274
+  netlink_unicast_kernel net/netlink/af_netlink.c:1317 [inline]
+  netlink_unicast+0x5a0/0x760 net/netlink/af_netlink.c:1343
+  netlink_sendmsg+0xa18/0xfc0 net/netlink/af_netlink.c:1908
+  sock_sendmsg_nosec net/socket.c:621 [inline]
+  sock_sendmsg+0xd5/0x120 net/socket.c:631
+  sock_write_iter+0x362/0x5c0 net/socket.c:900
+  call_write_iter include/linux/fs.h:1807 [inline]
+  do_iter_readv_writev+0x8b0/0xa80 fs/read_write.c:680
+  do_iter_write+0x185/0x5f0 fs/read_write.c:959
+  vfs_writev+0x1f1/0x360 fs/read_write.c:1004
+  do_writev+0x11a/0x310 fs/read_write.c:1039
+  __do_sys_writev fs/read_write.c:1112 [inline]
+  __se_sys_writev fs/read_write.c:1109 [inline]
+  __x64_sys_writev+0x75/0xb0 fs/read_write.c:1109
+  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+RIP: 0033:0x446679
+Code: e8 0c e8 ff ff 48 83 c4 18 c3 0f 1f 80 00 00 00 00 48 89 f8 48 89 f7 =
+=20
+48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff  =
 
-        tsp = sctp_transport_get_idx(net, &hti, *pos + 1);
-        for (; !IS_ERR_OR_NULL(tsp); tsp = sctp_transport_get_next(net, &hti)) {
--               if (!sctp_transport_hold(tsp))
--                       continue;
-                ret = cb(tsp, p);
-                if (ret)
-                        break;
+ff 0f 83 7b 08 fc ff c3 66 2e 0f 1f 84 00 00 00 00
+RSP: 002b:00007f5b0050bda8 EFLAGS: 00000246 ORIG_RAX: 0000000000000014
+RAX: ffffffffffffffda RBX: 00000000006dbc48 RCX: 0000000000446679
+RDX: 0000000000000001 RSI: 0000000020000000 RDI: 0000000000000005
+RBP: 00000000006dbc40 R08: 000000000000001c R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 00000000006dbc4c
+R13: 0100000000000000 R14: 00007f5b0050c9c0 R15: 00000000006dbd4c
+
+Allocated by task 13750:
+  save_stack+0x43/0xd0 mm/kasan/kasan.c:448
+  set_track mm/kasan/kasan.c:460 [inline]
+  kasan_kmalloc+0xc4/0xe0 mm/kasan/kasan.c:553
+  kmem_cache_alloc_trace+0x152/0x730 mm/slab.c:3620
+  kmalloc include/linux/slab.h:513 [inline]
+  kzalloc include/linux/slab.h:707 [inline]
+  sctp_association_new+0x127/0x2290 net/sctp/associola.c:311
+  sctp_sendmsg_new_asoc+0x39e/0x1200 net/sctp/socket.c:1742
+  sctp_sendmsg+0x18a5/0x1da0 net/sctp/socket.c:2103
+  inet_sendmsg+0x1a1/0x690 net/ipv4/af_inet.c:798
+  sock_sendmsg_nosec net/socket.c:621 [inline]
+  sock_sendmsg+0xd5/0x120 net/socket.c:631
+  __sys_sendto+0x3d7/0x670 net/socket.c:1786
+  __do_sys_sendto net/socket.c:1798 [inline]
+  __se_sys_sendto net/socket.c:1794 [inline]
+  __x64_sys_sendto+0xe1/0x1a0 net/socket.c:1794
+  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+
+Freed by task 13747:
+  save_stack+0x43/0xd0 mm/kasan/kasan.c:448
+  set_track mm/kasan/kasan.c:460 [inline]
+  __kasan_slab_free+0x11a/0x170 mm/kasan/kasan.c:521
+  kasan_slab_free+0xe/0x10 mm/kasan/kasan.c:528
+  __cache_free mm/slab.c:3498 [inline]
+  kfree+0xd9/0x210 mm/slab.c:3813
+  sctp_association_destroy net/sctp/associola.c:437 [inline]
+  sctp_association_put+0x264/0x350 net/sctp/associola.c:885
+  sctp_transport_destroy net/sctp/transport.c:180 [inline]
+  sctp_transport_put+0x193/0x200 net/sctp/transport.c:332
+  sctp_backlog_rcv+0x28e/0xd50 net/sctp/input.c:357
+  sk_backlog_rcv include/net/sock.h:931 [inline]
+  __release_sock+0x12f/0x3a0 net/core/sock.c:2336
+  release_sock+0xad/0x2c0 net/core/sock.c:2849
+  sctp_close+0x49c/0xa80 net/sctp/socket.c:1569
+  inet_release+0x104/0x1f0 net/ipv4/af_inet.c:428
+  inet6_release+0x50/0x70 net/ipv6/af_inet6.c:457
+  __sock_release+0xd7/0x250 net/socket.c:579
+  sock_close+0x19/0x20 net/socket.c:1139
+  __fput+0x36e/0x8c0 fs/file_table.c:278
+  ____fput+0x15/0x20 fs/file_table.c:309
+  task_work_run+0x1e8/0x2a0 kernel/task_work.c:113
+  tracehook_notify_resume include/linux/tracehook.h:193 [inline]
+  exit_to_usermode_loop+0x318/0x380 arch/x86/entry/common.c:166
+  prepare_exit_to_usermode arch/x86/entry/common.c:197 [inline]
+  syscall_return_slowpath arch/x86/entry/common.c:268 [inline]
+  do_syscall_64+0x6be/0x820 arch/x86/entry/common.c:293
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+
+The buggy address belongs to the object at ffff8801b09a23c0
+  which belongs to the cache kmalloc-4096 of size 4096
+The buggy address is located 32 bytes inside of
+  4096-byte region [ffff8801b09a23c0, ffff8801b09a33c0)
+The buggy address belongs to the page:
+page:ffffea0006c26880 count:1 mapcount:0 mapping:ffff8801dac00dc0 index:0x0=
+ =20
+compound_mapcount: 0
+flags: 0x2fffc0000008100(slab|head)
+raw: 02fffc0000008100 ffffea0006c0f188 ffffea0006bf8108 ffff8801dac00dc0
+raw: 0000000000000000 ffff8801b09a23c0 0000000100000001 0000000000000000
+page dumped because: kasan: bad access detected
+
+Memory state around the buggy address:
+  ffff8801b09a2280: fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc
+  ffff8801b09a2300: fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc
+> ffff8801b09a2380: fc fc fc fc fc fc fc fc fb fb fb fb fb fb fb fb
+                                                        ^
+  ffff8801b09a2400: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+  ffff8801b09a2480: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D
