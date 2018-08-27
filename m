@@ -1,45 +1,103 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Mon, 20 Aug 2018 15:39:32 +0000
-Subject: RE: [PATCH V2 net-next 2/6] sctp: Handle sctp packets with CHECKSUM_PARTIAL
-Message-Id: <a9c9c7f8bb89475c84d665bfdc182f57@AcuMS.aculab.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 27 Aug 2018 10:38:31 +0000
+Subject: [PATCH net] sctp: hold transport before accessing its asoc in sctp_transport_get_next
+Message-Id: <607dd2950d09fc83404d670a73099523087d4963.1535366311.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180502020739.19239-1-vyasevic@redhat.com>
- <20180502020739.19239-3-vyasevic@redhat.com>
- <20180502143824.GF5105@localhost.localdomain>
- <20180820145415.GA5310@localhost.localdomain>
-In-Reply-To: <20180820145415.GA5310@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>, Vladislav Yasevich <vyasevich@gmail.com>
-Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "virtualization@lists.linux-foundation.org" <virtualization@lists.linux-foundation.org>, "virtio-dev@lists.oasis-open.org" <virtio-dev@lists.oasis-open.org>, "mst@redhat.com" <mst@redhat.com>, "jasowang@redhat.com" <jasowang@redhat.com>, "nhorman@tuxdriver.com" <nhorman@tuxdriver.com>, Vladislav Yasevich <vyasevic@redhat.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-From: Marcelo Ricardo Leitner
-> Sent: 20 August 2018 15:54
-> On Wed, May 02, 2018 at 11:38:24AM -0300, Marcelo Ricardo Leitner wrote:
-> > On Tue, May 01, 2018 at 10:07:35PM -0400, Vladislav Yasevich wrote:
-> > > With SCTP checksum offload available in virtio, it is now
-> > > possible for virtio to receive a sctp packet with CHECKSUM_PARTIAL
-> > > set (guest-to-guest traffic).  SCTP doesn't really have a
-> > > partial checksum like TCP does, because CRC32c can't do partial
-> > > additive checksumming.
-...
+As Marcelo noticed, in sctp_transport_get_next, it is iterating over
+transports but then also accessing the association directly, without
+checking any refcnts before that, which can cause an use-after-free
+Read.
 
-Actually that isn't entirely true.
-For all crc, crc(a) ^ crc(b) = crc(a^b).
-Since crc(0) = 0 you can xor together two separately calculated crc
-provided they both end at the same point.
-The slight problem is that you are more likely to be appending
-one buffer to another - which requires appending lots of zero
-bytes to one of the crcs.
-This could be speeded up by using lookup tables that add moderate
-sized blocks of zero bytes to a crc instead of adding the zero
-bytes one at a time.
-Doing it without large const data and/or data cache trashing
-is left as an exercise to the implementer.
+So fix it by holding transport before accessing the association. With
+that, sctp_transport_hold calls can be removed in the later places.
 
-	David
+Fixes: 626d16f50f39 ("sctp: export some apis or variables for sctp_diag and reuse some for proc")
+Reported-by: syzbot+fe62a0c9aa6a85c6de16@syzkaller.appspotmail.com
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/proc.c   |  4 ----
+ net/sctp/socket.c | 22 +++++++++++++++-------
+ 2 files changed, 15 insertions(+), 11 deletions(-)
 
--
-Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-Registration No: 1397386 (Wales)
+diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+index ef5c9a8..4d6f1c8 100644
+--- a/net/sctp/proc.c
++++ b/net/sctp/proc.c
+@@ -264,8 +264,6 @@ static int sctp_assocs_seq_show(struct seq_file *seq, void *v)
+ 	}
+ 
+ 	transport = (struct sctp_transport *)v;
+-	if (!sctp_transport_hold(transport))
+-		return 0;
+ 	assoc = transport->asoc;
+ 	epb = &assoc->base;
+ 	sk = epb->sk;
+@@ -322,8 +320,6 @@ static int sctp_remaddr_seq_show(struct seq_file *seq, void *v)
+ 	}
+ 
+ 	transport = (struct sctp_transport *)v;
+-	if (!sctp_transport_hold(transport))
+-		return 0;
+ 	assoc = transport->asoc;
+ 
+ 	list_for_each_entry_rcu(tsp, &assoc->peer.transport_addr_list,
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index e96b15a..aa76586 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -5005,9 +5005,14 @@ struct sctp_transport *sctp_transport_get_next(struct net *net,
+ 			break;
+ 		}
+ 
++		if (!sctp_transport_hold(t))
++			continue;
++
+ 		if (net_eq(sock_net(t->asoc->base.sk), net) &&
+ 		    t->asoc->peer.primary_path = t)
+ 			break;
++
++		sctp_transport_put(t);
+ 	}
+ 
+ 	return t;
+@@ -5017,13 +5022,18 @@ struct sctp_transport *sctp_transport_get_idx(struct net *net,
+ 					      struct rhashtable_iter *iter,
+ 					      int pos)
+ {
+-	void *obj = SEQ_START_TOKEN;
++	struct sctp_transport *t;
+ 
+-	while (pos && (obj = sctp_transport_get_next(net, iter)) &&
+-	       !IS_ERR(obj))
+-		pos--;
++	if (!pos)
++		return SEQ_START_TOKEN;
+ 
+-	return obj;
++	while ((t = sctp_transport_get_next(net, iter)) && !IS_ERR(t)) {
++		if (!--pos)
++			break;
++		sctp_transport_put(t);
++	}
++
++	return t;
+ }
+ 
+ int sctp_for_each_endpoint(int (*cb)(struct sctp_endpoint *, void *),
+@@ -5082,8 +5092,6 @@ int sctp_for_each_transport(int (*cb)(struct sctp_transport *, void *),
+ 
+ 	tsp = sctp_transport_get_idx(net, &hti, *pos + 1);
+ 	for (; !IS_ERR_OR_NULL(tsp); tsp = sctp_transport_get_next(net, &hti)) {
+-		if (!sctp_transport_hold(tsp))
+-			continue;
+ 		ret = cb(tsp, p);
+ 		if (ret)
+ 			break;
+-- 
+2.1.0
