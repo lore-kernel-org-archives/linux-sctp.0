@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 27 Aug 2018 13:13:37 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Mon, 27 Aug 2018 13:30:03 +0000
 Subject: Re: [PATCH net] sctp: remove useless start_fail from sctp_ht_iter in proc
-Message-Id: <20180827131337.GB12418@hmswarspite.think-freely.org>
+Message-Id: <20180827133003.GC4591@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <265533f54ceb4684bb8323c9601a743eed409527.1535366418.git.lucien.xin@gmail.com>
 In-Reply-To: <265533f54ceb4684bb8323c9601a743eed409527.1535366418.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
 
 On Mon, Aug 27, 2018 at 06:40:18PM +0800, Xin Long wrote:
 > After changing rhashtable_walk_start to return void, start_fail would
@@ -18,6 +18,9 @@ On Mon, Aug 27, 2018 at 06:40:18PM +0800, Xin Long wrote:
 > 
 > Fixes: 97a6ec4ac021 ("rhashtable: Change rhashtable_walk_start to return void")
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
+
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+
 > ---
 >  net/sctp/proc.c | 4 ----
 >  1 file changed, 4 deletions(-)
@@ -54,5 +57,3 @@ On Mon, Aug 27, 2018 at 06:40:18PM +0800, Xin Long wrote:
 > -- 
 > 2.1.0
 > 
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
