@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 27 Aug 2018 13:08:03 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Mon, 27 Aug 2018 13:28:22 +0000
 Subject: Re: [PATCH net] sctp: hold transport before accessing its asoc in sctp_transport_get_next
-Message-Id: <20180827130803.GA12418@hmswarspite.think-freely.org>
+Message-Id: <20180827132822.GB4591@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <607dd2950d09fc83404d670a73099523087d4963.1535366311.git.lucien.xin@gmail.com>
 In-Reply-To: <607dd2950d09fc83404d670a73099523087d4963.1535366311.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
 
 On Mon, Aug 27, 2018 at 06:38:31PM +0800, Xin Long wrote:
 > As Marcelo noticed, in sctp_transport_get_next, it is iterating over
@@ -23,6 +23,9 @@ On Mon, Aug 27, 2018 at 06:38:31PM +0800, Xin Long wrote:
 > Fixes: 626d16f50f39 ("sctp: export some apis or variables for sctp_diag and reuse some for proc")
 > Reported-by: syzbot+fe62a0c9aa6a85c6de16@syzkaller.appspotmail.com
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
+
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+
 > ---
 >  net/sctp/proc.c   |  4 ----
 >  net/sctp/socket.c | 22 +++++++++++++++-------
@@ -105,11 +108,3 @@ On Mon, Aug 27, 2018 at 06:38:31PM +0800, Xin Long wrote:
 > -- 
 > 2.1.0
 > 
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
-
-Additionally, its not germaine to this particular fix, but why are we still
-using that pos variable in sctp_transport_get_idx?  With the conversion to
-rhashtables, it doesn't seem particularly useful anymore.
-
-Neil
