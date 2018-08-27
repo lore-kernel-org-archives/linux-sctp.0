@@ -1,17 +1,19 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 27 Aug 2018 13:28:22 +0000
+From: David Miller <davem@davemloft.net>
+Date: Mon, 27 Aug 2018 22:13:52 +0000
 Subject: Re: [PATCH net] sctp: hold transport before accessing its asoc in sctp_transport_get_next
-Message-Id: <20180827132822.GB4591@localhost.localdomain>
+Message-Id: <20180827.151352.1790869499011600822.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <607dd2950d09fc83404d670a73099523087d4963.1535366311.git.lucien.xin@gmail.com>
 In-Reply-To: <607dd2950d09fc83404d670a73099523087d4963.1535366311.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
-On Mon, Aug 27, 2018 at 06:38:31PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 27 Aug 2018 18:38:31 +0800
+
 > As Marcelo noticed, in sctp_transport_get_next, it is iterating over
 > transports but then also accessing the association directly, without
 > checking any refcnts before that, which can cause an use-after-free
@@ -24,87 +26,4 @@ On Mon, Aug 27, 2018 at 06:38:31PM +0800, Xin Long wrote:
 > Reported-by: syzbot+fe62a0c9aa6a85c6de16@syzkaller.appspotmail.com
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-> ---
->  net/sctp/proc.c   |  4 ----
->  net/sctp/socket.c | 22 +++++++++++++++-------
->  2 files changed, 15 insertions(+), 11 deletions(-)
-> 
-> diff --git a/net/sctp/proc.c b/net/sctp/proc.c
-> index ef5c9a8..4d6f1c8 100644
-> --- a/net/sctp/proc.c
-> +++ b/net/sctp/proc.c
-> @@ -264,8 +264,6 @@ static int sctp_assocs_seq_show(struct seq_file *seq, void *v)
->  	}
->  
->  	transport = (struct sctp_transport *)v;
-> -	if (!sctp_transport_hold(transport))
-> -		return 0;
->  	assoc = transport->asoc;
->  	epb = &assoc->base;
->  	sk = epb->sk;
-> @@ -322,8 +320,6 @@ static int sctp_remaddr_seq_show(struct seq_file *seq, void *v)
->  	}
->  
->  	transport = (struct sctp_transport *)v;
-> -	if (!sctp_transport_hold(transport))
-> -		return 0;
->  	assoc = transport->asoc;
->  
->  	list_for_each_entry_rcu(tsp, &assoc->peer.transport_addr_list,
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index e96b15a..aa76586 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -5005,9 +5005,14 @@ struct sctp_transport *sctp_transport_get_next(struct net *net,
->  			break;
->  		}
->  
-> +		if (!sctp_transport_hold(t))
-> +			continue;
-> +
->  		if (net_eq(sock_net(t->asoc->base.sk), net) &&
->  		    t->asoc->peer.primary_path = t)
->  			break;
-> +
-> +		sctp_transport_put(t);
->  	}
->  
->  	return t;
-> @@ -5017,13 +5022,18 @@ struct sctp_transport *sctp_transport_get_idx(struct net *net,
->  					      struct rhashtable_iter *iter,
->  					      int pos)
->  {
-> -	void *obj = SEQ_START_TOKEN;
-> +	struct sctp_transport *t;
->  
-> -	while (pos && (obj = sctp_transport_get_next(net, iter)) &&
-> -	       !IS_ERR(obj))
-> -		pos--;
-> +	if (!pos)
-> +		return SEQ_START_TOKEN;
->  
-> -	return obj;
-> +	while ((t = sctp_transport_get_next(net, iter)) && !IS_ERR(t)) {
-> +		if (!--pos)
-> +			break;
-> +		sctp_transport_put(t);
-> +	}
-> +
-> +	return t;
->  }
->  
->  int sctp_for_each_endpoint(int (*cb)(struct sctp_endpoint *, void *),
-> @@ -5082,8 +5092,6 @@ int sctp_for_each_transport(int (*cb)(struct sctp_transport *, void *),
->  
->  	tsp = sctp_transport_get_idx(net, &hti, *pos + 1);
->  	for (; !IS_ERR_OR_NULL(tsp); tsp = sctp_transport_get_next(net, &hti)) {
-> -		if (!sctp_transport_hold(tsp))
-> -			continue;
->  		ret = cb(tsp, p);
->  		if (ret)
->  			break;
-> -- 
-> 2.1.0
-> 
+Applied and queued up for -stable.
