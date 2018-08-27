@@ -1,42 +1,52 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 16 Aug 2018 18:18:41 +0000
-Subject: Re: [PATCH lksctp-tools] configure.ac: add CURRENT REVISION and AGE for libsctp and libwithsctp
-Message-Id: <20180816181841.GI5311@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 27 Aug 2018 10:40:18 +0000
+Subject: [PATCH net] sctp: remove useless start_fail from sctp_ht_iter in proc
+Message-Id: <265533f54ceb4684bb8323c9601a743eed409527.1535366418.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <d594347d6683fbbfaf468010d9e9bd9b86c4ca0b.1534399950.git.lucien.xin@gmail.com>
-In-Reply-To: <d594347d6683fbbfaf468010d9e9bd9b86c4ca0b.1534399950.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Thu, Aug 16, 2018 at 02:12:30PM +0800, Xin Long wrote:
-> Add CURRENT REVISION and AGE for libsctp and libwithsctp in
-> configure.ac to update these 2 library version information.
-> 
-> Compatible with before, they will start from 1:18:0. But each
-> will get updated according to their definitions in the future.
-> 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> ---
->  configure.ac             | 7 +++++++
->  src/lib/Makefile.am      | 7 +++++--
->  src/withsctp/Makefile.am | 3 ++-
->  3 files changed, 14 insertions(+), 3 deletions(-)
-> 
-> diff --git a/configure.ac b/configure.ac
-> index 275ef4e..2ae36ec 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -14,6 +14,13 @@ dnl reduce clutter in the root; if we put it below AM_INIT_AUTOMAKE,
->  dnl configure will fail ...)
->  
->  AC_INIT([lksctp-tools], [1.0.18], [], [], [http://www.lksctp.org/])
-> +AC_SUBST(LIBSCTP_CURRENT, 1)
-> +AC_SUBST(LIBSCTP_REVISION, 18)
-> +AC_SUBST(LIBSCTP_AGE, 0)
-> +AC_SUBST(LIBWITHSCTP_CURRENT, 1)
-> +AC_SUBST(LIBWITHSCTP_REVISION, 18)
-> +AC_SUBST(LIBWITHSCTP_AGE, 0)
+After changing rhashtable_walk_start to return void, start_fail would
+never be set other value than 0, and the checking for start_fail is
+pointless, so remove it.
 
-Applied.  Thanks, now it will be harder to miss these =)
+Fixes: 97a6ec4ac021 ("rhashtable: Change rhashtable_walk_start to return void")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/proc.c | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+index 4d6f1c8..a644292 100644
+--- a/net/sctp/proc.c
++++ b/net/sctp/proc.c
+@@ -215,7 +215,6 @@ static const struct seq_operations sctp_eps_ops = {
+ struct sctp_ht_iter {
+ 	struct seq_net_private p;
+ 	struct rhashtable_iter hti;
+-	int start_fail;
+ };
+ 
+ static void *sctp_transport_seq_start(struct seq_file *seq, loff_t *pos)
+@@ -224,7 +223,6 @@ static void *sctp_transport_seq_start(struct seq_file *seq, loff_t *pos)
+ 
+ 	sctp_transport_walk_start(&iter->hti);
+ 
+-	iter->start_fail = 0;
+ 	return sctp_transport_get_idx(seq_file_net(seq), &iter->hti, *pos);
+ }
+ 
+@@ -232,8 +230,6 @@ static void sctp_transport_seq_stop(struct seq_file *seq, void *v)
+ {
+ 	struct sctp_ht_iter *iter = seq->private;
+ 
+-	if (iter->start_fail)
+-		return;
+ 	sctp_transport_walk_stop(&iter->hti);
+ }
+ 
+-- 
+2.1.0
