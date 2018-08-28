@@ -1,29 +1,119 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 27 Aug 2018 22:13:52 +0000
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 28 Aug 2018 16:08:40 +0000
 Subject: Re: [PATCH net] sctp: hold transport before accessing its asoc in sctp_transport_get_next
-Message-Id: <20180827.151352.1790869499011600822.davem@davemloft.net>
+Message-Id: <CADvbK_f7+UqMqm-ZzEwSz92Joxx_46a1kBrwNbpAi52Qkk=FuQ@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <607dd2950d09fc83404d670a73099523087d4963.1535366311.git.lucien.xin@gmail.com>
-In-Reply-To: <607dd2950d09fc83404d670a73099523087d4963.1535366311.git.lucien.xin@gmail.com>
+ <20180827130803.GA12418@hmswarspite.think-freely.org>
+In-Reply-To: <20180827130803.GA12418@hmswarspite.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: Neil Horman <nhorman@tuxdriver.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 27 Aug 2018 18:38:31 +0800
-
-> As Marcelo noticed, in sctp_transport_get_next, it is iterating over
-> transports but then also accessing the association directly, without
-> checking any refcnts before that, which can cause an use-after-free
-> Read.
-> 
-> So fix it by holding transport before accessing the association. With
-> that, sctp_transport_hold calls can be removed in the later places.
-> 
-> Fixes: 626d16f50f39 ("sctp: export some apis or variables for sctp_diag and reuse some for proc")
-> Reported-by: syzbot+fe62a0c9aa6a85c6de16@syzkaller.appspotmail.com
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Applied and queued up for -stable.
+On Mon, Aug 27, 2018 at 9:08 PM Neil Horman <nhorman@tuxdriver.com> wrote:
+>
+> On Mon, Aug 27, 2018 at 06:38:31PM +0800, Xin Long wrote:
+> > As Marcelo noticed, in sctp_transport_get_next, it is iterating over
+> > transports but then also accessing the association directly, without
+> > checking any refcnts before that, which can cause an use-after-free
+> > Read.
+> >
+> > So fix it by holding transport before accessing the association. With
+> > that, sctp_transport_hold calls can be removed in the later places.
+> >
+> > Fixes: 626d16f50f39 ("sctp: export some apis or variables for sctp_diag and reuse some for proc")
+> > Reported-by: syzbot+fe62a0c9aa6a85c6de16@syzkaller.appspotmail.com
+> > Signed-off-by: Xin Long <lucien.xin@gmail.com>
+> > ---
+> >  net/sctp/proc.c   |  4 ----
+> >  net/sctp/socket.c | 22 +++++++++++++++-------
+> >  2 files changed, 15 insertions(+), 11 deletions(-)
+> >
+> > diff --git a/net/sctp/proc.c b/net/sctp/proc.c
+> > index ef5c9a8..4d6f1c8 100644
+> > --- a/net/sctp/proc.c
+> > +++ b/net/sctp/proc.c
+> > @@ -264,8 +264,6 @@ static int sctp_assocs_seq_show(struct seq_file *seq, void *v)
+> >       }
+> >
+> >       transport = (struct sctp_transport *)v;
+> > -     if (!sctp_transport_hold(transport))
+> > -             return 0;
+> >       assoc = transport->asoc;
+> >       epb = &assoc->base;
+> >       sk = epb->sk;
+> > @@ -322,8 +320,6 @@ static int sctp_remaddr_seq_show(struct seq_file *seq, void *v)
+> >       }
+> >
+> >       transport = (struct sctp_transport *)v;
+> > -     if (!sctp_transport_hold(transport))
+> > -             return 0;
+> >       assoc = transport->asoc;
+> >
+> >       list_for_each_entry_rcu(tsp, &assoc->peer.transport_addr_list,
+> > diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+> > index e96b15a..aa76586 100644
+> > --- a/net/sctp/socket.c
+> > +++ b/net/sctp/socket.c
+> > @@ -5005,9 +5005,14 @@ struct sctp_transport *sctp_transport_get_next(struct net *net,
+> >                       break;
+> >               }
+> >
+> > +             if (!sctp_transport_hold(t))
+> > +                     continue;
+> > +
+> >               if (net_eq(sock_net(t->asoc->base.sk), net) &&
+> >                   t->asoc->peer.primary_path = t)
+> >                       break;
+> > +
+> > +             sctp_transport_put(t);
+> >       }
+> >
+> >       return t;
+> > @@ -5017,13 +5022,18 @@ struct sctp_transport *sctp_transport_get_idx(struct net *net,
+> >                                             struct rhashtable_iter *iter,
+> >                                             int pos)
+> >  {
+> > -     void *obj = SEQ_START_TOKEN;
+> > +     struct sctp_transport *t;
+> >
+> > -     while (pos && (obj = sctp_transport_get_next(net, iter)) &&
+> > -            !IS_ERR(obj))
+> > -             pos--;
+> > +     if (!pos)
+> > +             return SEQ_START_TOKEN;
+> >
+> > -     return obj;
+> > +     while ((t = sctp_transport_get_next(net, iter)) && !IS_ERR(t)) {
+> > +             if (!--pos)
+> > +                     break;
+> > +             sctp_transport_put(t);
+> > +     }
+> > +
+> > +     return t;
+> >  }
+> >
+> >  int sctp_for_each_endpoint(int (*cb)(struct sctp_endpoint *, void *),
+> > @@ -5082,8 +5092,6 @@ int sctp_for_each_transport(int (*cb)(struct sctp_transport *, void *),
+> >
+> >       tsp = sctp_transport_get_idx(net, &hti, *pos + 1);
+> >       for (; !IS_ERR_OR_NULL(tsp); tsp = sctp_transport_get_next(net, &hti)) {
+> > -             if (!sctp_transport_hold(tsp))
+> > -                     continue;
+> >               ret = cb(tsp, p);
+> >               if (ret)
+> >                       break;
+> > --
+> > 2.1.0
+> >
+> >
+> Acked-by: Neil Horman <nhorman@tuxdriver.com>
+>
+> Additionally, its not germaine to this particular fix, but why are we still
+> using that pos variable in sctp_transport_get_idx?  With the conversion to
+> rhashtables, it doesn't seem particularly useful anymore.
+For proc, seems so, hti is saved into seq->private.
+But for diag, "hti" in sctp_for_each_transport() is a local variable.
+do you think where we can save it?
