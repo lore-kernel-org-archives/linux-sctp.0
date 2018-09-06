@@ -1,171 +1,282 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 03 Sep 2018 13:03:22 +0000
-Subject: Re: [PATCH net] sctp: hold transport before accessing its asoc in sctp_transport_get_next
-Message-Id: <20180903130322.GA31019@hmswarspite.think-freely.org>
+From: Olof Johansson <olof@lixom.net>
+Date: Thu, 06 Sep 2018 19:20:34 +0000
+Subject: [PATCH] net/sock: move memory_allocated over to percpu_counter variables
+Message-Id: <20180906192034.8467-1-olof@lixom.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <607dd2950d09fc83404d670a73099523087d4963.1535366311.git.lucien.xin@gmail.com>
- <20180827130803.GA12418@hmswarspite.think-freely.org>
- <CADvbK_f7+UqMqm-ZzEwSz92Joxx_46a1kBrwNbpAi52Qkk=FuQ@mail.gmail.com>
- <20180829113532.GA21923@hmswarspite.think-freely.org>
- <CADvbK_dnuFTbF7xwHS=ZtywPpuC08X13goA26C5qqhOnrFwSLA@mail.gmail.com>
- <20180831120323.GA2960@hmswarspite.think-freely.org>
-In-Reply-To: <20180831120323.GA2960@hmswarspite.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: Eric Dumazet <edumazet@google.com>, "David S . Miller" <davem@davemloft.net>
+Cc: Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, Herbert Xu <herbert@gondor.apana.org.au>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, kernel-team@fb.com, Olof Johansson <olof@lixom.net>
 
-On Fri, Aug 31, 2018 at 08:03:23AM -0400, Neil Horman wrote:
-> On Fri, Aug 31, 2018 at 03:09:05PM +0800, Xin Long wrote:
-> > On Wed, Aug 29, 2018 at 7:36 PM Neil Horman <nhorman@tuxdriver.com> wrote:
-> > >
-> > > On Wed, Aug 29, 2018 at 12:08:40AM +0800, Xin Long wrote:
-> > > > On Mon, Aug 27, 2018 at 9:08 PM Neil Horman <nhorman@tuxdriver.com> wrote:
-> > > > >
-> > > > > On Mon, Aug 27, 2018 at 06:38:31PM +0800, Xin Long wrote:
-> > > > > > As Marcelo noticed, in sctp_transport_get_next, it is iterating over
-> > > > > > transports but then also accessing the association directly, without
-> > > > > > checking any refcnts before that, which can cause an use-after-free
-> > > > > > Read.
-> > > > > >
-> > > > > > So fix it by holding transport before accessing the association. With
-> > > > > > that, sctp_transport_hold calls can be removed in the later places.
-> > > > > >
-> > > > > > Fixes: 626d16f50f39 ("sctp: export some apis or variables for sctp_diag and reuse some for proc")
-> > > > > > Reported-by: syzbot+fe62a0c9aa6a85c6de16@syzkaller.appspotmail.com
-> > > > > > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> > > > > > ---
-> > > > > >  net/sctp/proc.c   |  4 ----
-> > > > > >  net/sctp/socket.c | 22 +++++++++++++++-------
-> > > > > >  2 files changed, 15 insertions(+), 11 deletions(-)
-> > > > > >
-> > > > > > diff --git a/net/sctp/proc.c b/net/sctp/proc.c
-> > > > > > index ef5c9a8..4d6f1c8 100644
-> > > > > > --- a/net/sctp/proc.c
-> > > > > > +++ b/net/sctp/proc.c
-> > > > > > @@ -264,8 +264,6 @@ static int sctp_assocs_seq_show(struct seq_file *seq, void *v)
-> > > > > >       }
-> > > > > >
-> > > > > >       transport = (struct sctp_transport *)v;
-> > > > > > -     if (!sctp_transport_hold(transport))
-> > > > > > -             return 0;
-> > > > > >       assoc = transport->asoc;
-> > > > > >       epb = &assoc->base;
-> > > > > >       sk = epb->sk;
-> > > > > > @@ -322,8 +320,6 @@ static int sctp_remaddr_seq_show(struct seq_file *seq, void *v)
-> > > > > >       }
-> > > > > >
-> > > > > >       transport = (struct sctp_transport *)v;
-> > > > > > -     if (!sctp_transport_hold(transport))
-> > > > > > -             return 0;
-> > > > > >       assoc = transport->asoc;
-> > > > > >
-> > > > > >       list_for_each_entry_rcu(tsp, &assoc->peer.transport_addr_list,
-> > > > > > diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> > > > > > index e96b15a..aa76586 100644
-> > > > > > --- a/net/sctp/socket.c
-> > > > > > +++ b/net/sctp/socket.c
-> > > > > > @@ -5005,9 +5005,14 @@ struct sctp_transport *sctp_transport_get_next(struct net *net,
-> > > > > >                       break;
-> > > > > >               }
-> > > > > >
-> > > > > > +             if (!sctp_transport_hold(t))
-> > > > > > +                     continue;
-> > > > > > +
-> > > > > >               if (net_eq(sock_net(t->asoc->base.sk), net) &&
-> > > > > >                   t->asoc->peer.primary_path = t)
-> > > > > >                       break;
-> > > > > > +
-> > > > > > +             sctp_transport_put(t);
-> > > > > >       }
-> > > > > >
-> > > > > >       return t;
-> > > > > > @@ -5017,13 +5022,18 @@ struct sctp_transport *sctp_transport_get_idx(struct net *net,
-> > > > > >                                             struct rhashtable_iter *iter,
-> > > > > >                                             int pos)
-> > > > > >  {
-> > > > > > -     void *obj = SEQ_START_TOKEN;
-> > > > > > +     struct sctp_transport *t;
-> > > > > >
-> > > > > > -     while (pos && (obj = sctp_transport_get_next(net, iter)) &&
-> > > > > > -            !IS_ERR(obj))
-> > > > > > -             pos--;
-> > > > > > +     if (!pos)
-> > > > > > +             return SEQ_START_TOKEN;
-> > > > > >
-> > > > > > -     return obj;
-> > > > > > +     while ((t = sctp_transport_get_next(net, iter)) && !IS_ERR(t)) {
-> > > > > > +             if (!--pos)
-> > > > > > +                     break;
-> > > > > > +             sctp_transport_put(t);
-> > > > > > +     }
-> > > > > > +
-> > > > > > +     return t;
-> > > > > >  }
-> > > > > >
-> > > > > >  int sctp_for_each_endpoint(int (*cb)(struct sctp_endpoint *, void *),
-> > > > > > @@ -5082,8 +5092,6 @@ int sctp_for_each_transport(int (*cb)(struct sctp_transport *, void *),
-> > > > > >
-> > > > > >       tsp = sctp_transport_get_idx(net, &hti, *pos + 1);
-> > > > > >       for (; !IS_ERR_OR_NULL(tsp); tsp = sctp_transport_get_next(net, &hti)) {
-> > > > > > -             if (!sctp_transport_hold(tsp))
-> > > > > > -                     continue;
-> > > > > >               ret = cb(tsp, p);
-> > > > > >               if (ret)
-> > > > > >                       break;
-> > > > > > --
-> > > > > > 2.1.0
-> > > > > >
-> > > > > >
-> > > > > Acked-by: Neil Horman <nhorman@tuxdriver.com>
-> > > > >
-> > > > > Additionally, its not germaine to this particular fix, but why are we still
-> > > > > using that pos variable in sctp_transport_get_idx?  With the conversion to
-> > > > > rhashtables, it doesn't seem particularly useful anymore.
-> > > > For proc, seems so, hti is saved into seq->private.
-> > > > But for diag, "hti" in sctp_for_each_transport() is a local variable.
-> > > > do you think where we can save it?
-> > > >
-> > > Sorry, wasn't suggesting that it had to be removed from sctp_for_each_trasnport,
-> > > its clearly used as both an input and output there.  All I was sugesting was
-> > > that, in sctp_transport_get_idx, the pos variable might no longer be needed
-> > > there specifically, as sctp_transprt_get_next should terminate the loop on its
-> > > own.  Or is there another purpose for that positional variable I am missing
-> > Yes, Neil, all transports/asocs could not be dumped once as one buffer/rtnl msg
-> > is not big enough for them. when coming into proc/diag again, it needs to start
-> > from the *next* one, and 'pos' is used to save its position.
-> > 
-> > Without 'pos', it would always start from the first one and dump the duplicate
-> > ones in the next times. Make sense?
-> > 
-> You're missing what I'm trying to say.  I'm speaking specifically about
-> sctp_transport_get_idx here.  In that function, pos is passed by value, and has
-> no bearing on if sctp_transport_get_idx starts at the beginning of the list, or
-> not, thats in control of the iterator entirely here. If we remove pos from the
-> parameter list, at worst, the iterator continues until the end of the list,
-> which I think is fine.
-> 
-> No?
-> Neil
-> 
+Today these are all global shared variables per protocol, and in
+particular tcp_memory_allocated can get hot on a system with
+large number of CPUs and a substantial number of connections.
 
-Sorry, slight correction here, I see what you were trying to say.  You're saying
-that the one user of sctp_for_each_transport (sctp_diag_dump), uses the pos
-variable to start at a point other than the head of the list, because the
-netlink protocol that uses that allows you to index into it that way.  Sorry
-about that.
+Moving it over to a per-cpu variable makes it significantly cheaper,
+and the added overhead when summing up the percpu copies is still smaller
+than the cost of having a hot cacheline bouncing around.
 
-That said, thats....odd.  Its certainly no in keeping with the other _for_each
-methods the kernel has.  The for_each construct typically iterates over the
-entire list regardless, and leaves filtering up to the caller.  I'd suggest we
-do the same, by not requireing a positional argument, and instead checking that
-positional argument in the callback.  I'll write a patch for it this week
+Signed-off-by: Olof Johansson <olof@lixom.net>
+---
+ crypto/af_alg.c         | 10 ++++++++--
+ include/net/sctp/sctp.h |  3 ++-
+ include/net/sock.h      | 12 ++++++------
+ include/net/tcp.h       |  2 +-
+ include/net/udp.h       |  2 +-
+ net/core/sock.c         |  5 ++++-
+ net/decnet/af_decnet.c  |  3 ++-
+ net/ipv4/tcp.c          |  3 ++-
+ net/ipv4/udp.c          |  4 +++-
+ net/sctp/protocol.c     |  6 ++++++
+ net/sctp/socket.c       |  2 +-
+ 11 files changed, 36 insertions(+), 16 deletions(-)
 
-Neil
-
-> > >
-> > > Neil
-> > >
-> > 
-> 
+diff --git a/crypto/af_alg.c b/crypto/af_alg.c
+index b053179e0bc5..1fd75a709d7b 100644
+--- a/crypto/af_alg.c
++++ b/crypto/af_alg.c
+@@ -29,7 +29,7 @@ struct alg_type_list {
+ 	struct list_head list;
+ };
+ 
+-static atomic_long_t alg_memory_allocated;
++static struct percpu_counter alg_memory_allocated;
+ 
+ static struct proto alg_proto = {
+ 	.name			= "ALG",
+@@ -1183,13 +1183,19 @@ static int __init af_alg_init(void)
+ 	if (err)
+ 		goto out;
+ 
+-	err = sock_register(&alg_family);
++	err = percpu_counter_init(&alg_memory_allocated, 0, GFP_KERNEL);
+ 	if (err != 0)
+ 		goto out_unregister_proto;
+ 
++	err = sock_register(&alg_family);
++	if (err != 0)
++		goto out_free_percpu;
++
+ out:
+ 	return err;
+ 
++out_free_percpu:
++	percpu_counter_destroy(&alg_memory_allocated);
+ out_unregister_proto:
+ 	proto_unregister(&alg_proto);
+ 	goto out;
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 8c2caa370e0f..270579cf310b 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -36,7 +36,7 @@
+  *    Sridhar Samudrala     <sri@us.ibm.com>
+  *    Ardelle Fan           <ardelle.fan@intel.com>
+  *    Ryan Layer            <rmlayer@us.ibm.com>
+- *    Kevin Gao             <kevin.gao@intel.com> 
++ *    Kevin Gao             <kevin.gao@intel.com>
+  */
+ 
+ #ifndef __net_sctp_h__
+@@ -114,6 +114,7 @@ __poll_t sctp_poll(struct file *file, struct socket *sock,
+ void sctp_sock_rfree(struct sk_buff *skb);
+ void sctp_copy_sock(struct sock *newsk, struct sock *sk,
+ 		    struct sctp_association *asoc);
++extern struct percpu_counter sctp_memory_allocated;
+ extern struct percpu_counter sctp_sockets_allocated;
+ int sctp_asconf_mgmt(struct sctp_sock *, struct sctp_sockaddr_entry *);
+ struct sk_buff *sctp_skb_recv_datagram(struct sock *, int, int, int *);
+diff --git a/include/net/sock.h b/include/net/sock.h
+index 433f45fc2d68..45aed5e84b5d 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -1114,7 +1114,7 @@ struct proto {
+ 	/* Memory pressure */
+ 	void			(*enter_memory_pressure)(struct sock *sk);
+ 	void			(*leave_memory_pressure)(struct sock *sk);
+-	atomic_long_t		*memory_allocated;	/* Current allocated memory. */
++	struct percpu_counter	*memory_allocated;	/* Current allocated memory. */
+ 	struct percpu_counter	*sockets_allocated;	/* Current number of sockets. */
+ 	/*
+ 	 * Pressure flag: try to collapse.
+@@ -1237,19 +1237,19 @@ static inline bool sk_under_memory_pressure(const struct sock *sk)
+ static inline long
+ sk_memory_allocated(const struct sock *sk)
+ {
+-	return atomic_long_read(sk->sk_prot->memory_allocated);
++	return percpu_counter_sum_positive(sk->sk_prot->memory_allocated);
+ }
+ 
+-static inline long
++static inline void
+ sk_memory_allocated_add(struct sock *sk, int amt)
+ {
+-	return atomic_long_add_return(amt, sk->sk_prot->memory_allocated);
++	percpu_counter_add(sk->sk_prot->memory_allocated, amt);
+ }
+ 
+ static inline void
+ sk_memory_allocated_sub(struct sock *sk, int amt)
+ {
+-	atomic_long_sub(amt, sk->sk_prot->memory_allocated);
++	percpu_counter_sub(sk->sk_prot->memory_allocated, amt);
+ }
+ 
+ static inline void sk_sockets_allocated_dec(struct sock *sk)
+@@ -1277,7 +1277,7 @@ proto_sockets_allocated_sum_positive(struct proto *prot)
+ static inline long
+ proto_memory_allocated(struct proto *prot)
+ {
+-	return atomic_long_read(prot->memory_allocated);
++	return percpu_counter_sum_positive(prot->memory_allocated);
+ }
+ 
+ static inline bool
+diff --git a/include/net/tcp.h b/include/net/tcp.h
+index 770917d0caa7..2df1754cf3ab 100644
+--- a/include/net/tcp.h
++++ b/include/net/tcp.h
+@@ -248,7 +248,7 @@ extern long sysctl_tcp_mem[3];
+ #define TCP_RACK_STATIC_REO_WND  0x2 /* Use static RACK reo wnd */
+ #define TCP_RACK_NO_DUPTHRESH    0x4 /* Do not use DUPACK threshold in RACK */
+ 
+-extern atomic_long_t tcp_memory_allocated;
++extern struct percpu_counter tcp_memory_allocated;
+ extern struct percpu_counter tcp_sockets_allocated;
+ extern unsigned long tcp_memory_pressure;
+ 
+diff --git a/include/net/udp.h b/include/net/udp.h
+index 8482a990b0bb..9e0d9f7091a0 100644
+--- a/include/net/udp.h
++++ b/include/net/udp.h
+@@ -97,7 +97,7 @@ static inline struct udp_hslot *udp_hashslot2(struct udp_table *table,
+ 
+ extern struct proto udp_prot;
+ 
+-extern atomic_long_t udp_memory_allocated;
++extern struct percpu_counter udp_memory_allocated;
+ 
+ /* sysctl variables for udp */
+ extern long sysctl_udp_mem[3];
+diff --git a/net/core/sock.c b/net/core/sock.c
+index 3730eb855095..0a755f6c8942 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -2394,9 +2394,12 @@ EXPORT_SYMBOL(sk_wait_data);
+ int __sk_mem_raise_allocated(struct sock *sk, int size, int amt, int kind)
+ {
+ 	struct proto *prot = sk->sk_prot;
+-	long allocated = sk_memory_allocated_add(sk, amt);
++	long allocated;
+ 	bool charged = true;
+ 
++	sk_memory_allocated_add(sk, amt);
++	allocated = sk_memory_allocated(sk);
++
+ 	if (mem_cgroup_sockets_enabled && sk->sk_memcg &&
+ 	    !(charged = mem_cgroup_charge_skmem(sk->sk_memcg, amt)))
+ 		goto suppress_allocation;
+diff --git a/net/decnet/af_decnet.c b/net/decnet/af_decnet.c
+index 7d6ff983ba2c..f88af9ae4474 100644
+--- a/net/decnet/af_decnet.c
++++ b/net/decnet/af_decnet.c
+@@ -156,7 +156,7 @@ static const struct proto_ops dn_proto_ops;
+ static DEFINE_RWLOCK(dn_hash_lock);
+ static struct hlist_head dn_sk_hash[DN_SK_HASH_SIZE];
+ static struct hlist_head dn_wild_sk;
+-static atomic_long_t decnet_memory_allocated;
++static struct percpu_counter decnet_memory_allocated;
+ 
+ static int __dn_setsockopt(struct socket *sock, int level, int optname, char __user *optval, unsigned int optlen, int flags);
+ static int __dn_getsockopt(struct socket *sock, int level, int optname, char __user *optval, int __user *optlen, int flags);
+@@ -2356,6 +2356,7 @@ static int __init decnet_init(void)
+ 	int rc;
+ 
+ 	printk(banner);
++	percpu_counter_init(&decnet_memory_allocated, 0, GFP_KERNEL);
+ 
+ 	rc = proto_register(&dn_proto, 1);
+ 	if (rc != 0)
+diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
+index 8c4235c098fd..eb6531ba6bd3 100644
+--- a/net/ipv4/tcp.c
++++ b/net/ipv4/tcp.c
+@@ -289,7 +289,7 @@ EXPORT_SYMBOL_GPL(tcp_orphan_count);
+ long sysctl_tcp_mem[3] __read_mostly;
+ EXPORT_SYMBOL(sysctl_tcp_mem);
+ 
+-atomic_long_t tcp_memory_allocated;	/* Current allocated memory. */
++struct percpu_counter tcp_memory_allocated;	/* Current allocated memory. */
+ EXPORT_SYMBOL(tcp_memory_allocated);
+ 
+ #if IS_ENABLED(CONFIG_SMC)
+@@ -3834,6 +3834,7 @@ void __init tcp_init(void)
+ 	BUILD_BUG_ON(sizeof(struct tcp_skb_cb) >
+ 		     FIELD_SIZEOF(struct sk_buff, cb));
+ 
++	percpu_counter_init(&tcp_memory_allocated, 0, GFP_KERNEL);
+ 	percpu_counter_init(&tcp_sockets_allocated, 0, GFP_KERNEL);
+ 	percpu_counter_init(&tcp_orphan_count, 0, GFP_KERNEL);
+ 	inet_hashinfo_init(&tcp_hashinfo);
+diff --git a/net/ipv4/udp.c b/net/ipv4/udp.c
+index f4e35b2ff8b8..6ec5d2f68ae7 100644
+--- a/net/ipv4/udp.c
++++ b/net/ipv4/udp.c
+@@ -122,7 +122,7 @@ EXPORT_SYMBOL(udp_table);
+ long sysctl_udp_mem[3] __read_mostly;
+ EXPORT_SYMBOL(sysctl_udp_mem);
+ 
+-atomic_long_t udp_memory_allocated;
++struct percpu_counter udp_memory_allocated;
+ EXPORT_SYMBOL(udp_memory_allocated);
+ 
+ #define MAX_UDP_PORTS 65536
+@@ -2923,6 +2923,8 @@ void __init udp_init(void)
+ 
+ 	__udp_sysctl_init(&init_net);
+ 
++	percpu_counter_init(&udp_memory_allocated, 0, GFP_KERNEL);
++
+ 	/* 16 spinlocks per cpu */
+ 	udp_busylocks_log = ilog2(nr_cpu_ids) + 4;
+ 	udp_busylocks = kmalloc(sizeof(spinlock_t) << udp_busylocks_log,
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index e948db29ab53..ca59ca0dc740 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -1391,6 +1391,10 @@ static __init int sctp_init(void)
+ 	if (!sctp_chunk_cachep)
+ 		goto err_chunk_cachep;
+ 
++	status = percpu_counter_init(&sctp_memory_allocated, 0, GFP_KERNEL);
++	if (status)
++		goto err_percpu_memory_init;
++
+ 	status = percpu_counter_init(&sctp_sockets_allocated, 0, GFP_KERNEL);
+ 	if (status)
+ 		goto err_percpu_counter_init;
+@@ -1559,6 +1563,8 @@ static __init int sctp_init(void)
+ err_ehash_alloc:
+ 	percpu_counter_destroy(&sctp_sockets_allocated);
+ err_percpu_counter_init:
++	percpu_counter_destroy(&sctp_memory_allocated);
++err_percpu_memory_init:
+ 	kmem_cache_destroy(sctp_chunk_cachep);
+ err_chunk_cachep:
+ 	kmem_cache_destroy(sctp_bucket_cachep);
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index f73e9d38d5ba..60d55573baa5 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -107,7 +107,7 @@ static void sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
+ 			      enum sctp_socket_type type);
+ 
+ static unsigned long sctp_memory_pressure;
+-static atomic_long_t sctp_memory_allocated;
++struct percpu_counter sctp_memory_allocated;
+ struct percpu_counter sctp_sockets_allocated;
+ 
+ static void sctp_enter_memory_pressure(struct sock *sk)
+-- 
+2.11.0
