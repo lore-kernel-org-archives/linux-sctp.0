@@ -1,30 +1,89 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 27 Sep 2018 15:10:45 +0000
-Subject: Re: [PATCH lksctp-tools] func_tests: fix use of uninitialized var
-Message-Id: <20180927151045.GA6761@localhost.localdomain>
+From: Arnd Bergmann <arnd@arndb.de>
+Date: Thu, 13 Sep 2018 12:28:08 +0000
+Subject: Re: [PATCH net-next 1/3] net: rework SIOCGSTAMP ioctl handling
+Message-Id: <CAK8P3a038aDQQotzua_QtKGhq8O9n+rdiz2=WDCp82ys8eUT+A@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <04a0012e5f7a25b2995813c17cd5f38245eb9fe4.1537980726.git.marcelo.leitner@gmail.com>
-In-Reply-To: <04a0012e5f7a25b2995813c17cd5f38245eb9fe4.1537980726.git.marcelo.leitner@gmail.com>
+References: <20180829130308.3504560-1-arnd@arndb.de>
+In-Reply-To: <20180829130308.3504560-1-arnd@arndb.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: Networking <netdev@vger.kernel.org>, David Miller <davem@davemloft.net>
+Cc: linux-arch <linux-arch@vger.kernel.org>, y2038 Mailman List <y2038@lists.linaro.org>, Eric Dumazet <edumazet@google.com>, Willem de Bruijn <willemb@google.com>, Linux Kernel Mailing List <linux-kernel@vger.kernel.org>, linux-hams@vger.kernel.org, Bluez mailing list <linux-bluetooth@vger.kernel.org>, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-wpan@vger.kernel.org, linux-sctp@vger.kernel.org, linux-x25@vger.kernel.org
 
-On Wed, Sep 26, 2018 at 01:53:58PM -0300, Marcelo Ricardo Leitner wrote:
-> From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> 
-> code-share1 reported that test_1_to_1_events was failing with:
-> ./test_1_to_1_events
-> test_1_to_1_events.c 1 PASS : COMM_UP notification on client socket - SUCCESS
-> test_1_to_1_events.c 2 PASS : COMM_UP notification on server socket - SUCCESS
-> test_1_to_1_events.c 3 BROK : Got a datamsg, expecting notification
-> DUMP_CORE sctputil.c: 187
-> 
-> Turns out we were not initializing events, and thus relying on trash in
-> the stack to enable sctp_authentication_event for us.
-> 
-> Fixes #25
-> 
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+On Wed, Aug 29, 2018 at 3:03 PM Arnd Bergmann <arnd@arndb.de> wrote:
 
-Applied.
+> diff --git a/net/core/sock.c b/net/core/sock.c
+> index 3730eb855095..df17bbfaca27 100644
+> --- a/net/core/sock.c
+> +++ b/net/core/sock.c
+> @@ -2897,37 +2897,31 @@ bool lock_sock_fast(struct sock *sk)
+>  }
+>  EXPORT_SYMBOL(lock_sock_fast);
+>
+> -int sock_get_timestamp(struct sock *sk, struct timeval __user *userstamp)
+> +int sock_gettstamp(struct socket *sock, void __user *userstamp,
+> +                  bool timeval, bool time32)
+>  {
+> -       struct timeval tv;
+> -
+> -       sock_enable_timestamp(sk, SOCK_TIMESTAMP);
+> -       tv = ktime_to_timeval(sk->sk_stamp);
+> -       if (tv.tv_sec = -1)
+> -               return -ENOENT;
+> -       if (tv.tv_sec = 0) {
+> -               sk->sk_stamp = ktime_get_real();
+> -               tv = ktime_to_timeval(sk->sk_stamp);
+> -       }
+> -       return copy_to_user(userstamp, &tv, sizeof(tv)) ? -EFAULT : 0;
+> -}
+> -EXPORT_SYMBOL(sock_get_timestamp);
+
+As  I just learned, sparc64 uses a 32-bit suseconds_t, so this
+function always leaked 32 bits of kernel stack data by copying
+the padding bytes of 'tv' into user space.
+
+Linux-4.11 and higher could avoid that with
+CONFIG_GCC_PLUGIN_STRUCTLEAK, but older kernels
+have been affected since socket timestamps were first added.
+
+The same thing is probably true of many other interfaces
+that pass a timeval.
+
+> -int sock_get_timestampns(struct sock *sk, struct timespec __user *userstamp)
+> -{
+> -       struct timespec ts;
+> +       struct sock *sk = sock->sk;
+> +       struct timespec64 ts;
+>
+>         sock_enable_timestamp(sk, SOCK_TIMESTAMP);
+> -       ts = ktime_to_timespec(sk->sk_stamp);
+> +       ts = ktime_to_timespec64(sk->sk_stamp);
+>         if (ts.tv_sec = -1)
+>                 return -ENOENT;
+>         if (ts.tv_sec = 0) {
+>                 sk->sk_stamp = ktime_get_real();
+> -               ts = ktime_to_timespec(sk->sk_stamp);
+> +               ts = ktime_to_timespec64(sk->sk_stamp);
+>         }
+> -       return copy_to_user(userstamp, &ts, sizeof(ts)) ? -EFAULT : 0;
+> +
+> +       if (timeval)
+> +               ts.tv_nsec /= 1000;
+> +#ifdef CONFIG_COMPAT_32BIT_TIME
+> +       if (time32)
+> +               return put_old_timespec32(&ts, userstamp);
+> +#endif
+> +
+> +       return put_timespec64(&ts, userstamp);
+>  }
+
+My new implementation is worse here: it no longer leaks stack
+data, but since we now write a big-endian 64-bit microseconds
+value, the microseconds are in the wrong place and will
+be interpreted as zero by user space...
+
+I'll also have to revisit a few other similar patches I did for
+y2038, to figure out what they should do on sparc64.
+
+         Arnd
