@@ -1,17 +1,19 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 20 Sep 2018 14:17:56 +0000
+From: David Miller <davem@davemloft.net>
+Date: Thu, 20 Sep 2018 18:31:13 +0000
 Subject: Re: [PATCH net] sctp: update dst pmtu with the correct daddr
-Message-Id: <20180920141755.GD4591@localhost.localdomain>
+Message-Id: <20180920.113113.1168948449098131783.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <dbed84b3964b13a0c15b3a5c8e825940819a2918.1537435648.git.lucien.xin@gmail.com>
 In-Reply-To: <dbed84b3964b13a0c15b3a5c8e825940819a2918.1537435648.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
-On Thu, Sep 20, 2018 at 05:27:28PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 20 Sep 2018 17:27:28 +0800
+
 > When processing pmtu update from an icmp packet, it calls .update_pmtu
 > with sk instead of skb in sctp_transport_update_pmtu.
 > 
@@ -30,46 +32,10 @@ On Thu, Sep 20, 2018 at 05:27:28PM +0800, Xin Long wrote:
 > Reported-by: ian.periam@dialogic.com
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Applied and queued up for -stable.
 
-> ---
->  net/sctp/transport.c | 12 ++++++++++--
->  1 file changed, 10 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-> index 12cac85..033696e 100644
-> --- a/net/sctp/transport.c
-> +++ b/net/sctp/transport.c
-> @@ -260,6 +260,7 @@ void sctp_transport_pmtu(struct sctp_transport *transport, struct sock *sk)
->  bool sctp_transport_update_pmtu(struct sctp_transport *t, u32 pmtu)
->  {
->  	struct dst_entry *dst = sctp_transport_dst_check(t);
-> +	struct sock *sk = t->asoc->base.sk;
->  	bool change = true;
->  
->  	if (unlikely(pmtu < SCTP_DEFAULT_MINSEGMENT)) {
-> @@ -271,12 +272,19 @@ bool sctp_transport_update_pmtu(struct sctp_transport *t, u32 pmtu)
->  	pmtu = SCTP_TRUNC4(pmtu);
->  
->  	if (dst) {
-> -		dst->ops->update_pmtu(dst, t->asoc->base.sk, NULL, pmtu);
-> +		struct sctp_pf *pf = sctp_get_pf_specific(dst->ops->family);
-> +		union sctp_addr addr;
-> +
-> +		pf->af->from_sk(&addr, sk);
-> +		pf->to_sk_daddr(&t->ipaddr, sk);
-> +		dst->ops->update_pmtu(dst, sk, NULL, pmtu);
-> +		pf->to_sk_daddr(&addr, sk);
-> +
->  		dst = sctp_transport_dst_check(t);
->  	}
->  
->  	if (!dst) {
-> -		t->af_specific->get_dst(t, &t->saddr, &t->fl, t->asoc->base.sk);
-> +		t->af_specific->get_dst(t, &t->saddr, &t->fl, sk);
->  		dst = t->dst;
->  	}
->  
-> -- 
-> 2.1.0
-> 
+Although are you sure it's OK to temporarily change the sockets address
+like this?  What if an asynchronous context looks at the socket state
+and sees the temporarily set address?
+
+Thanks.
