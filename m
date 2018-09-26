@@ -1,34 +1,49 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 24 Aug 2018 12:53:00 +0000
-Subject: [PATCH 3/3] build: 0b0dce7a36fb actually belongs to v4.19
-Message-Id: <08972985460e9c9d7fbd516ad95fa0f40b9cc557.1535062650.git.marcelo.leitner@gmail.com>
+From: Marcelo Ricardo Leitner <mleitner@redhat.com>
+Date: Wed, 26 Sep 2018 16:53:58 +0000
+Subject: [PATCH lksctp-tools] func_tests: fix use of uninitialized var
+Message-Id: <04a0012e5f7a25b2995813c17cd5f38245eb9fe4.1537980726.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Typo or not, this commit actually belongs to v4.19 and made me wonder why
-on v4.18 it didn't find this feature.
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-Fixes: 817f0bfa248f ("build: add two defines for Peer Address Parameters extensions on sctp_paddrparams")
+code-share1 reported that test_1_to_1_events was failing with:
+./test_1_to_1_events
+test_1_to_1_events.c 1 PASS : COMM_UP notification on client socket - SUCCESS
+test_1_to_1_events.c 2 PASS : COMM_UP notification on server socket - SUCCESS
+test_1_to_1_events.c 3 BROK : Got a datamsg, expecting notification
+DUMP_CORE sctputil.c: 187
+
+Turns out we were not initializing events, and thus relying on trash in
+the stack to enable sctp_authentication_event for us.
+
+Fixes #25
+
 Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- configure.ac | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ src/func_tests/test_1_to_1_events.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/configure.ac b/configure.ac
-index f55775af76ff7a464688d21ccfff39fcd1c54451..5de5c763005e1485a38348bf4157b308568b486e 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -101,7 +101,7 @@ LKSCTP_CHECK_TYPE([struct sctp_prinfo], [HAVE_SCTP_SENDV])
- # added on v4.16, 30f6ebf65bc4
- LKSCTP_CHECK_DECL([SCTP_AUTH_NO_AUTH], [HAVE_SCTP_AUTH_NO_AUTH])
+diff --git a/src/func_tests/test_1_to_1_events.c b/src/func_tests/test_1_to_1_events.c
+index 46439bf79c5ad5a49dca5d209fef67dc6b04177d..f758d6f701b60e485a63b45d92e7ce938d17be85 100644
+--- a/src/func_tests/test_1_to_1_events.c
++++ b/src/func_tests/test_1_to_1_events.c
+@@ -92,9 +92,13 @@ main(int argc, char *argv[])
+ 	/* Create the client socket.  */
+ 	clt_sk = test_socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
  
--# New members to sctp_paddrparams, added on v4.18, 0b0dce7a36fb
-+# New members to sctp_paddrparams, added on v4.19, 0b0dce7a36fb
- LKSCTP_CHECK_MEMBER([struct sctp_paddrparams.spp_ipv6_flowlabel],
- 		    [HAVE_SCTP_SPP_IPV6_FLOWLABEL])
- LKSCTP_CHECK_MEMBER([struct sctp_paddrparams.spp_dscp],
++	memset(&event, 0, sizeof(event));
+ 	event.sctp_data_io_event = 1;
+ 	event.sctp_association_event = 1;
+ 	event.sctp_shutdown_event = 1;
++#ifdef HAVE_SCTP_AUTH_NO_AUTH
++	event.sctp_authentication_event = 1;
++#endif
+ 	len = sizeof(struct sctp_event_subscribe);
+ 	test_setsockopt(svr_sk, SCTP_EVENTS, &event, len);
+ 	test_setsockopt(clt_sk, SCTP_EVENTS, &event, len);
 -- 
 2.17.1
