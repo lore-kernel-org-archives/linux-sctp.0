@@ -1,26 +1,36 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 22 Oct 2018 14:20:52 +0000
-Subject: Re: [PATCH net-next 0/3] sctp: add support for sk_reuseport
-Message-Id: <20181022142052.GN6634@localhost.localdomain>
+From: "Gustavo A. R. Silva" <gustavo@embeddedor.com>
+Date: Wed, 03 Oct 2018 10:45:56 +0000
+Subject: [PATCH] sctp: fix fall-through annotation
+Message-Id: <20181003104556.GA23489@embeddedor.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1540095102.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1540095102.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S. Miller" <davem@davemloft.net>
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, "Gustavo A. R. Silva" <gustavo@embeddedor.com>
 
-On Sun, Oct 21, 2018 at 12:43:35PM +0800, Xin Long wrote:
-> sctp sk_reuseport allows multiple socks to listen on the same port and
-> addresses, as long as these socks have the same uid. This works pretty
-> much as TCP/UDP does, the only difference is that sctp is multi-homing
-> and all the bind_addrs in these socks will have to completely matched,
-> otherwise listen() will return err.
-> 
+Replace "fallthru" with a proper "fall through" annotation.
 
-FWIW, I won't be able to review this patchset thoroughly. The 2 small
-comments that I sent are all I have.
+This fix is part of the ongoing efforts to enabling
+-Wimplicit-fallthrough
 
-Thanks,
-Marcelo
+Signed-off-by: Gustavo A. R. Silva <gustavo@embeddedor.com>
+---
+ net/sctp/outqueue.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index d74d00b..42191ed 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -1048,7 +1048,7 @@ static void sctp_outq_flush_data(struct sctp_flush_ctx *ctx,
+ 		if (!ctx->packet || !ctx->packet->has_cookie_echo)
+ 			return;
+ 
+-		/* fallthru */
++		/* fall through */
+ 	case SCTP_STATE_ESTABLISHED:
+ 	case SCTP_STATE_SHUTDOWN_PENDING:
+ 	case SCTP_STATE_SHUTDOWN_RECEIVED:
+-- 
+2.7.4
