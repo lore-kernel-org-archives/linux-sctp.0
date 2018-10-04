@@ -1,33 +1,142 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 16 Oct 2018 16:59:18 +0000
-Subject: Re: [PATCH net] sctp: get pr_assoc and pr_stream all status with SCTP_PR_SCTP_ALL instead
-Message-Id: <20181016.095918.2016842324386473147.davem@davemloft.net>
+From: syzbot <syzbot+c7dd55d7aec49d48e49a@syzkaller.appspotmail.com>
+Date: Thu, 04 Oct 2018 08:48:03 +0000
+Subject: KASAN: use-after-free Read in sctp_id2assoc
+Message-Id: <0000000000007e767d05776336da@google.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <e1b1741db983e1775312816bc2e6f0f685f9828d.1539676322.git.lucien.xin@gmail.com>
-In-Reply-To: <e1b1741db983e1775312816bc2e6f0f685f9828d.1539676322.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 16 Oct 2018 15:52:02 +0800
+Hello,
 
-> According to rfc7496 section 4.3 or 4.4:
-> 
->    sprstat_policy:  This parameter indicates for which PR-SCTP policy
->       the user wants the information.  It is an error to use
->       SCTP_PR_SCTP_NONE in sprstat_policy.  If SCTP_PR_SCTP_ALL is used,
->       the counters provided are aggregated over all supported policies.
-> 
-> We change to dump pr_assoc and pr_stream all status by SCTP_PR_SCTP_ALL
-> instead, and return error for SCTP_PR_SCTP_NONE, as it also said "It is
-> an error to use SCTP_PR_SCTP_NONE in sprstat_policy. "
-> 
-> Fixes: 826d253d57b1 ("sctp: add SCTP_PR_ASSOC_STATUS on sctp sockopt")
-> Fixes: d229d48d183f ("sctp: add SCTP_PR_STREAM_STATUS sockopt for prsctp")
-> Reported-by: Ying Xu <yinxu@redhat.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+syzbot found the following crash on:
 
-Applied and queued up for -stable.
+HEAD commit:    4e6d47206c32 tls: Add support for inplace records encryption
+git tree:       net-next
+console output: https://syzkaller.appspot.com/x/log.txt?x=13834b81400000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=E569aa5632ebd436
+dashboard link: https://syzkaller.appspot.com/bug?extid=C7dd55d7aec49d48e49a
+compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
+
+Unfortunately, I don't have any reproducer for this crash yet.
+
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+c7dd55d7aec49d48e49a@syzkaller.appspotmail.com
+
+netlink: 'syz-executor1': attribute type 1 has an invalid length.
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D
+BUG: KASAN: use-after-free in sctp_id2assoc+0x3a7/0x3e0 =20
+net/sctp/socket.c:276
+Read of size 8 at addr ffff880195b3eb20 by task syz-executor2/15454
+
+CPU: 1 PID: 15454 Comm: syz-executor2 Not tainted 4.19.0-rc5+ #242
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS =20
+Google 01/01/2011
+Call Trace:
+  __dump_stack lib/dump_stack.c:77 [inline]
+  dump_stack+0x1c4/0x2b4 lib/dump_stack.c:113
+  print_address_description.cold.8+0x9/0x1ff mm/kasan/report.c:256
+  kasan_report_error mm/kasan/report.c:354 [inline]
+  kasan_report.cold.9+0x242/0x309 mm/kasan/report.c:412
+  __asan_report_load8_noabort+0x14/0x20 mm/kasan/report.c:433
+  sctp_id2assoc+0x3a7/0x3e0 net/sctp/socket.c:276
+  sctp_do_peeloff+0x88/0x530 net/sctp/socket.c:5327
+  sctp_getsockopt_peeloff_common.isra.24+0xb5/0x2f0 net/sctp/socket.c:5376
+  sctp_getsockopt_peeloff_flags net/sctp/socket.c:5452 [inline]
+  sctp_getsockopt+0x17f1/0x7c78 net/sctp/socket.c:7474
+  sock_common_getsockopt+0x9a/0xe0 net/core/sock.c:2997
+  __sys_getsockopt+0x1ad/0x390 net/socket.c:1939
+  __do_sys_getsockopt net/socket.c:1950 [inline]
+  __se_sys_getsockopt net/socket.c:1947 [inline]
+  __x64_sys_getsockopt+0xbe/0x150 net/socket.c:1947
+  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+RIP: 0033:0x457579
+Code: 1d b4 fb ff c3 66 2e 0f 1f 84 00 00 00 00 00 66 90 48 89 f8 48 89 f7 =
+=20
+48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff  =
+
+ff 0f 83 eb b3 fb ff c3 66 2e 0f 1f 84 00 00 00 00
+RSP: 002b:00007f86d7f8bc78 EFLAGS: 00000246 ORIG_RAX: 0000000000000037
+RAX: ffffffffffffffda RBX: 0000000000000005 RCX: 0000000000457579
+RDX: 000000000000007a RSI: 0000000000000084 RDI: 0000000000000007
+RBP: 000000000072c040 R08: 00000000200001c0 R09: 0000000000000000
+R10: 0000000020000080 R11: 0000000000000246 R12: 00007f86d7f8c6d4
+R13: 00000000004c79b8 R14: 00000000004cdb70 R15: 00000000ffffffff
+
+Allocated by task 15404:
+  save_stack+0x43/0xd0 mm/kasan/kasan.c:448
+  set_track mm/kasan/kasan.c:460 [inline]
+  kasan_kmalloc+0xc7/0xe0 mm/kasan/kasan.c:553
+  kmem_cache_alloc_trace+0x152/0x750 mm/slab.c:3620
+  kmalloc include/linux/slab.h:513 [inline]
+  kzalloc include/linux/slab.h:707 [inline]
+  sctp_association_new+0x12b/0x22a0 net/sctp/associola.c:311
+  __sctp_connect+0x6ad/0xda0 net/sctp/socket.c:1209
+  __sctp_setsockopt_connectx+0x134/0x190 net/sctp/socket.c:1368
+  sctp_setsockopt_connectx net/sctp/socket.c:1400 [inline]
+  sctp_setsockopt+0x18e2/0x6da0 net/sctp/socket.c:4359
+  sock_common_setsockopt+0x9a/0xe0 net/core/sock.c:3038
+  __sys_setsockopt+0x1ba/0x3c0 net/socket.c:1902
+  __do_sys_setsockopt net/socket.c:1913 [inline]
+  __se_sys_setsockopt net/socket.c:1910 [inline]
+  __x64_sys_setsockopt+0xbe/0x150 net/socket.c:1910
+  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+
+Freed by task 15404:
+  save_stack+0x43/0xd0 mm/kasan/kasan.c:448
+  set_track mm/kasan/kasan.c:460 [inline]
+  __kasan_slab_free+0x102/0x150 mm/kasan/kasan.c:521
+  kasan_slab_free+0xe/0x10 mm/kasan/kasan.c:528
+  __cache_free mm/slab.c:3498 [inline]
+  kfree+0xcf/0x230 mm/slab.c:3813
+  sctp_association_destroy net/sctp/associola.c:437 [inline]
+  sctp_association_put+0x264/0x350 net/sctp/associola.c:885
+  sctp_wait_for_connect+0x444/0x640 net/sctp/socket.c:8677
+  __sctp_connect+0xbb3/0xda0 net/sctp/socket.c:1260
+  __sctp_setsockopt_connectx+0x134/0x190 net/sctp/socket.c:1368
+  sctp_setsockopt_connectx net/sctp/socket.c:1400 [inline]
+  sctp_setsockopt+0x18e2/0x6da0 net/sctp/socket.c:4359
+  sock_common_setsockopt+0x9a/0xe0 net/core/sock.c:3038
+  __sys_setsockopt+0x1ba/0x3c0 net/socket.c:1902
+  __do_sys_setsockopt net/socket.c:1913 [inline]
+  __se_sys_setsockopt net/socket.c:1910 [inline]
+  __x64_sys_setsockopt+0xbe/0x150 net/socket.c:1910
+  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+
+The buggy address belongs to the object at ffff880195b3eb00
+  which belongs to the cache kmalloc-4096 of size 4096
+The buggy address is located 32 bytes inside of
+  4096-byte region [ffff880195b3eb00, ffff880195b3fb00)
+The buggy address belongs to the page:
+page:ffffea000656cf80 count:1 mapcount:0 mapping:ffff8801da800dc0 index:0x0=
+ =20
+compound_mapcount: 0
+flags: 0x2fffc0000008100(slab|head)
+raw: 02fffc0000008100 ffffea0006e66188 ffffea00065b5d08 ffff8801da800dc0
+raw: 0000000000000000 ffff880195b3eb00 0000000100000001 0000000000000000
+page dumped because: kasan: bad access detected
+
+Memory state around the buggy address:
+  ffff880195b3ea00: fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc
+  ffff880195b3ea80: fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc
+> ffff880195b3eb00: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+                                ^
+  ffff880195b3eb80: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+  ffff880195b3ec00: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D
+
+
+---
+This bug is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this bug report. See:
+https://goo.gl/tpsmEJ#bug-status-tracking for how to communicate with =20
+syzbot.
