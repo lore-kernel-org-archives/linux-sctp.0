@@ -1,237 +1,112 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 22 Oct 2018 14:15:47 +0000
-Subject: Re: [PATCH net-next 2/3] sctp: add sock_reuseport for the sock in __sctp_hash_endpoint
-Message-Id: <20181022141547.GL6634@localhost.localdomain>
+From: Krzysztof Grzywocz <kgrzywocz@wp.pl>
+Date: Mon, 08 Oct 2018 19:07:24 +0000
+Subject: [PATCH 1/1] sctp: fix align sctp_assoc_stats to run on x86_64 in compat IA32
+Message-Id: <C23DDB3F-AE59-49F1-9B45-4205B61668E4@wp.pl>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1540095102.git.lucien.xin@gmail.com>
- <661578e3134c79c575d934b3267b327773fd34f7.1540095102.git.lucien.xin@gmail.com>
-In-Reply-To: <661578e3134c79c575d934b3267b327773fd34f7.1540095102.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: linux-sctp@vger.kernel.org
 
-On Sun, Oct 21, 2018 at 12:43:37PM +0800, Xin Long wrote:
-> This is a part of sk_reuseport support for sctp. It defines a helper
-> sctp_bind_addrs_check() to check if the bind_addrs in two socks are
-> matched. It will add sock_reuseport if they are completely matched,
-> and return err if they are partly matched, and alloc sock_reuseport
-> if all socks are not matched at all.
-> 
-> It will work until sk_reuseport support is added in
-> sctp_get_port_local() in the next patch.
-> 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> ---
->  include/net/sctp/sctp.h    |  2 +-
->  include/net/sctp/structs.h |  2 ++
->  net/core/sock_reuseport.c  |  1 +
->  net/sctp/bind_addr.c       | 28 ++++++++++++++++++++++
->  net/sctp/input.c           | 60 +++++++++++++++++++++++++++++++++++++++-------
->  net/sctp/socket.c          |  3 +--
->  6 files changed, 85 insertions(+), 11 deletions(-)
-> 
-> diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-> index 8c2caa3..b8cd58d 100644
-> --- a/include/net/sctp/sctp.h
-> +++ b/include/net/sctp/sctp.h
-> @@ -152,7 +152,7 @@ int sctp_primitive_RECONF(struct net *net, struct sctp_association *asoc,
->   */
->  int sctp_rcv(struct sk_buff *skb);
->  void sctp_v4_err(struct sk_buff *skb, u32 info);
-> -void sctp_hash_endpoint(struct sctp_endpoint *);
-> +int sctp_hash_endpoint(struct sctp_endpoint *ep);
->  void sctp_unhash_endpoint(struct sctp_endpoint *);
->  struct sock *sctp_err_lookup(struct net *net, int family, struct sk_buff *,
->  			     struct sctphdr *, struct sctp_association **,
-> diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-> index a11f937..15d017f 100644
-> --- a/include/net/sctp/structs.h
-> +++ b/include/net/sctp/structs.h
-> @@ -1190,6 +1190,8 @@ int sctp_bind_addr_conflict(struct sctp_bind_addr *, const union sctp_addr *,
->  			 struct sctp_sock *, struct sctp_sock *);
->  int sctp_bind_addr_state(const struct sctp_bind_addr *bp,
->  			 const union sctp_addr *addr);
-> +int sctp_bind_addrs_check(struct sctp_sock *sp,
-> +			  struct sctp_sock *sp2, int cnt2);
->  union sctp_addr *sctp_find_unmatch_addr(struct sctp_bind_addr	*bp,
->  					const union sctp_addr	*addrs,
->  					int			addrcnt,
-> diff --git a/net/core/sock_reuseport.c b/net/core/sock_reuseport.c
-> index ba5cba5..d8fe3e5 100644
-> --- a/net/core/sock_reuseport.c
-> +++ b/net/core/sock_reuseport.c
-> @@ -187,6 +187,7 @@ int reuseport_add_sock(struct sock *sk, struct sock *sk2, bool bind_inany)
->  		call_rcu(&old_reuse->rcu, reuseport_free_rcu);
->  	return 0;
->  }
-> +EXPORT_SYMBOL(reuseport_add_sock);
->  
->  void reuseport_detach_sock(struct sock *sk)
->  {
-> diff --git a/net/sctp/bind_addr.c b/net/sctp/bind_addr.c
-> index 7df3704..78d0d93 100644
-> --- a/net/sctp/bind_addr.c
-> +++ b/net/sctp/bind_addr.c
-> @@ -337,6 +337,34 @@ int sctp_bind_addr_match(struct sctp_bind_addr *bp,
->  	return match;
->  }
->  
-> +int sctp_bind_addrs_check(struct sctp_sock *sp,
-> +			  struct sctp_sock *sp2, int cnt2)
-> +{
-> +	struct sctp_bind_addr *bp2 = &sp2->ep->base.bind_addr;
-> +	struct sctp_bind_addr *bp = &sp->ep->base.bind_addr;
-> +	struct sctp_sockaddr_entry *laddr, *laddr2;
-> +	bool exist = false;
-> +	int cnt = 0;
-> +
-> +	rcu_read_lock();
-> +	list_for_each_entry_rcu(laddr, &bp->address_list, list) {
-> +		list_for_each_entry_rcu(laddr2, &bp2->address_list, list) {
-> +			if (sp->pf->af->cmp_addr(&laddr->a, &laddr2->a) &&
-> +			    laddr->valid = laddr2->valid) {
+From: Krzysztof Grzywocz <kgrzywocz@wp.pl>
 
-I think by here in the normal run laddr2->valid will always be true,
-but as is it gives the impression that it accepts 0 = 0 too, which
-would be bad.  May be on a fast BINDX_REM/BINDX_ADD it could trigger
-laddr2->valid = 0 in there, not sure.
+Problem:
+On 64bit kernel ELF32bit gets improper value of `SCTP_GET_ASSOC_STATS` (call `getsockopt` on SCTP socket) due to different `struct sctp_assoc_stats` aligment (mostly because of different `_K_SS_ALIGNSIZE`).
 
-Anyway, may be '... laddr->valid && laddr2->valid' instead or you
-really want to allow the 0 = 0 case?
+Example:
+Sent 1000 bytes, Received 1000 bytes
+May result in: 
+packets sent(sas_opackets): 12884901888
+packets recv(sas_ipackets): 12884901888
 
-> +				exist = true;
-> +				goto next;
-> +			}
-> +		}
-> +		cnt = 0;
-> +		break;
-> +next:
-> +		cnt++;
-> +	}
-> +	rcu_read_unlock();
-> +
-> +	return (cnt = cnt2) ? 0 : (exist ? -EEXIST : 1);
-> +}
-> +
->  /* Does the address 'addr' conflict with any addresses in
->   * the bp.
->   */
-> diff --git a/net/sctp/input.c b/net/sctp/input.c
-> index 60ede89..6bfeb10 100644
-> --- a/net/sctp/input.c
-> +++ b/net/sctp/input.c
-> @@ -723,43 +723,87 @@ static int sctp_rcv_ootb(struct sk_buff *skb)
->  }
->  
->  /* Insert endpoint into the hash table.  */
-> -static void __sctp_hash_endpoint(struct sctp_endpoint *ep)
-> +static int __sctp_hash_endpoint(struct sctp_endpoint *ep)
->  {
-> -	struct net *net = sock_net(ep->base.sk);
-> -	struct sctp_ep_common *epb;
-> +	struct sock *sk = ep->base.sk;
-> +	struct net *net = sock_net(sk);
->  	struct sctp_hashbucket *head;
-> +	struct sctp_ep_common *epb;
->  
->  	epb = &ep->base;
-> -
->  	epb->hashent = sctp_ep_hashfn(net, epb->bind_addr.port);
->  	head = &sctp_ep_hashtable[epb->hashent];
->  
-> +	if (sk->sk_reuseport) {
-> +		bool any = sctp_is_ep_boundall(sk);
-> +		struct sctp_ep_common *epb2;
-> +		struct list_head *list;
-> +		int cnt = 0, err = 1;
-> +
-> +		list_for_each(list, &ep->base.bind_addr.address_list)
-> +			cnt++;
-> +
-> +		sctp_for_each_hentry(epb2, &head->chain) {
-> +			struct sock *sk2 = epb2->sk;
-> +
-> +			if (!net_eq(sock_net(sk2), net) || sk2 = sk ||
-> +			    !uid_eq(sock_i_uid(sk2), sock_i_uid(sk)) ||
-> +			    !sk2->sk_reuseport)
-> +				continue;
-> +
-> +			err = sctp_bind_addrs_check(sctp_sk(sk2),
-> +						    sctp_sk(sk), cnt);
-> +			if (!err) {
-> +				err = reuseport_add_sock(sk, sk2, any);
-> +				if (err)
-> +					return err;
-> +				break;
-> +			} else if (err < 0) {
-> +				return err;
-> +			}
-> +		}
-> +
-> +		if (err) {
-> +			err = reuseport_alloc(sk, any);
-> +			if (err)
-> +				return err;
-> +		}
-> +	}
-> +
->  	write_lock(&head->lock);
->  	hlist_add_head(&epb->node, &head->chain);
->  	write_unlock(&head->lock);
-> +	return 0;
->  }
->  
->  /* Add an endpoint to the hash. Local BH-safe. */
-> -void sctp_hash_endpoint(struct sctp_endpoint *ep)
-> +int sctp_hash_endpoint(struct sctp_endpoint *ep)
->  {
-> +	int err;
-> +
->  	local_bh_disable();
-> -	__sctp_hash_endpoint(ep);
-> +	err = __sctp_hash_endpoint(ep);
->  	local_bh_enable();
-> +
-> +	return err;
->  }
->  
->  /* Remove endpoint from the hash table.  */
->  static void __sctp_unhash_endpoint(struct sctp_endpoint *ep)
->  {
-> -	struct net *net = sock_net(ep->base.sk);
-> +	struct sock *sk = ep->base.sk;
->  	struct sctp_hashbucket *head;
->  	struct sctp_ep_common *epb;
->  
->  	epb = &ep->base;
->  
-> -	epb->hashent = sctp_ep_hashfn(net, epb->bind_addr.port);
-> +	epb->hashent = sctp_ep_hashfn(sock_net(sk), epb->bind_addr.port);
->  
->  	head = &sctp_ep_hashtable[epb->hashent];
->  
-> +	if (rcu_access_pointer(sk->sk_reuseport_cb))
-> +		reuseport_detach_sock(sk);
-> +
->  	write_lock(&head->lock);
->  	hlist_del_init(&epb->node);
->  	write_unlock(&head->lock);
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index fc0386e..44e7d8c 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -7850,8 +7850,7 @@ static int sctp_listen_start(struct sock *sk, int backlog)
->  	}
->  
->  	sk->sk_max_ack_backlog = backlog;
-> -	sctp_hash_endpoint(ep);
-> -	return 0;
-> +	return sctp_hash_endpoint(ep);
->  }
->  
->  /*
-> -- 
-> 2.1.0
-> 
+Patch solution:
+Realign struct at the end of `sctp_getsockopt_assoc_stats(..)` when called in compat mode. See patch for details.
+
+For more details see: https://github.com/kgrzywocz/align_compat32_sctp_assoc_stats
+
+
+-----
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index ce620e87..73963062 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -6685,6 +6685,65 @@ static int sctp_getsockopt_paddr_thresholds(struct sock *sk,
+ 	return 0;
+ }
+ 
++#ifdef CONFIG_COMPAT
++
++struct __kernel_sockaddr_storage_compat32 {
++	__kernel_sa_family_t	ss_family;		/* address family */
++	/* Following field(s) are implementation specific */
++	char		__data[_K_SS_MAXSIZE - sizeof(unsigned short)];
++				/* space to achieve desired size, */
++				/* _SS_MAXSIZE value minus size of ss_family */
++} __attribute__ ((packed,aligned(4)));	/* force desired alignment */
++
++
++struct sctp_assoc_stats_compat32 {
++	int32_t	sas_assoc_id;    /* Input */
++					 /* Transport of observed max RTO */
++	struct __kernel_sockaddr_storage_compat32 sas_obs_rto_ipaddr;
++	uint64_t		sas_maxrto;      /* Maximum Observed RTO for period */
++	uint64_t		sas_isacks;	 /* SACKs received */
++	uint64_t		sas_osacks;	 /* SACKs sent */
++	uint64_t		sas_opackets;	 /* Packets sent */
++	uint64_t		sas_ipackets;	 /* Packets received */
++	uint64_t		sas_rtxchunks;   /* Retransmitted Chunks */
++	uint64_t		sas_outofseqtsns;/* TSN received > next expected */
++	uint64_t		sas_idupchunks;  /* Dups received (ordered+unordered) */
++	uint64_t		sas_gapcnt;      /* Gap Acknowledgements Received */
++	uint64_t		sas_ouodchunks;  /* Unordered data chunks sent */
++	uint64_t		sas_iuodchunks;  /* Unordered data chunks received */
++	uint64_t		sas_oodchunks;	 /* Ordered data chunks sent */
++	uint64_t		sas_iodchunks;	 /* Ordered data chunks received */
++	uint64_t		sas_octrlchunks; /* Control chunks sent */
++	uint64_t		sas_ictrlchunks; /* Control chunks received */
++} __attribute__ ((packed,aligned(4)));
++
++
++static void align_compat32_sctp_assoc_stats(void *sctp_assoc_stats)
++{
++	struct sctp_assoc_stats* p64 = sctp_assoc_stats;
++	struct sctp_assoc_stats_compat32* p32 = sctp_assoc_stats;
++
++	p32->sas_assoc_id   				= p64->sas_assoc_id;
++	p32->sas_obs_rto_ipaddr.ss_family   = p64->sas_obs_rto_ipaddr.ss_family;
++	memcpy(p32->sas_obs_rto_ipaddr.__data, p64->sas_obs_rto_ipaddr.__data, sizeof(p32->sas_obs_rto_ipaddr.__data));
++	p32->sas_maxrto		  				= p64->sas_maxrto;
++	p32->sas_isacks  					= p64->sas_isacks;
++	p32->sas_osacks  					= p64->sas_osacks;
++	p32->sas_opackets  					= p64->sas_opackets;
++	p32->sas_ipackets  					= p64->sas_ipackets;
++	p32->sas_rtxchunks  				= p64->sas_rtxchunks;
++	p32->sas_outofseqtsns  				= p64->sas_outofseqtsns;
++	p32->sas_idupchunks  				= p64->sas_idupchunks;
++	p32->sas_gapcnt   					= p64->sas_gapcnt;
++	p32->sas_ouodchunks   				= p64->sas_ouodchunks;
++	p32->sas_iuodchunks   				= p64->sas_iuodchunks;
++	p32->sas_oodchunks   				= p64->sas_oodchunks;
++	p32->sas_iodchunks   				= p64->sas_iodchunks;
++	p32->sas_octrlchunks   				= p64->sas_octrlchunks;
++	p32->sas_ictrlchunks   				= p64->sas_ictrlchunks;
++}
++#endif
++
+ /*
+  * SCTP_GET_ASSOC_STATS
+  *
+@@ -6743,6 +6802,13 @@ static int sctp_getsockopt_assoc_stats(struct sock *sk, int len,
+ 
+ 	pr_debug("%s: len:%d, assoc_id:%d\n", __func__, len, sas.sas_assoc_id);
+ 
++	#ifdef CONFIG_COMPAT
++	if (in_compat_syscall()) {
++		pr_debug("%s:running in compat32. Aligningsctp_assoc_stats\n", __func__);
++		align_compat32_sctp_assoc_stats(&sas);
++	}
++	#endif
++
+ 	if (copy_to_user(optval, &sas, len))
+ 		return -EFAULT;
+ 
