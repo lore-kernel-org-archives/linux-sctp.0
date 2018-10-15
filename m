@@ -1,160 +1,95 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 22 Oct 2018 14:17:57 +0000
-Subject: Re: [PATCH net-next 1/3] sctp: do reuseport_select_sock in __sctp_rcv_lookup_endpoint
-Message-Id: <20181022141757.GM6634@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 15 Oct 2018 11:58:29 +0000
+Subject: [PATCH net] sctp: use the pmtu from the icmp packet to update transport pathmtu
+Message-Id: <de1ad572beb97767e535b7cf60da7b1de6cbfd4f.1539604709.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1540095102.git.lucien.xin@gmail.com>
- <08b533092a01a8f7cf2eb4c459fe3570a8df702b.1540095102.git.lucien.xin@gmail.com>
-In-Reply-To: <08b533092a01a8f7cf2eb4c459fe3570a8df702b.1540095102.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Sun, Oct 21, 2018 at 12:43:36PM +0800, Xin Long wrote:
-> This is a part of sk_reuseport support for sctp, and it selects a
-> sock by the hashkey of lport, paddr and dport by default. It will
-> work until sk_reuseport support is added in sctp_get_port_local()
-> in the next patch.
-> 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> ---
->  net/sctp/input.c | 69 +++++++++++++++++++++++++++++++++-----------------------
->  1 file changed, 41 insertions(+), 28 deletions(-)
-> 
-> diff --git a/net/sctp/input.c b/net/sctp/input.c
-> index 5c36a99..60ede89 100644
-> --- a/net/sctp/input.c
-> +++ b/net/sctp/input.c
-> @@ -57,6 +57,7 @@
->  #include <net/sctp/checksum.h>
->  #include <net/net_namespace.h>
->  #include <linux/rhashtable.h>
-> +#include <net/sock_reuseport.h>
->  
->  /* Forward declarations for internal helpers. */
->  static int sctp_rcv_ootb(struct sk_buff *);
-> @@ -65,8 +66,10 @@ static struct sctp_association *__sctp_rcv_lookup(struct net *net,
->  				      const union sctp_addr *paddr,
->  				      const union sctp_addr *laddr,
->  				      struct sctp_transport **transportp);
-> -static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(struct net *net,
-> -						const union sctp_addr *laddr);
-> +static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(
-> +					struct net *net, struct sk_buff *skb,
-> +					const union sctp_addr *laddr,
-> +					const union sctp_addr *daddr);
->  static struct sctp_association *__sctp_lookup_association(
->  					struct net *net,
->  					const union sctp_addr *local,
-> @@ -171,7 +174,7 @@ int sctp_rcv(struct sk_buff *skb)
->  	asoc = __sctp_rcv_lookup(net, skb, &src, &dest, &transport);
->  
->  	if (!asoc)
-> -		ep = __sctp_rcv_lookup_endpoint(net, &dest);
-> +		ep = __sctp_rcv_lookup_endpoint(net, skb, &dest, &src);
->  
->  	/* Retrieve the common input handling substructure. */
->  	rcvr = asoc ? &asoc->base : &ep->base;
-> @@ -770,16 +773,35 @@ void sctp_unhash_endpoint(struct sctp_endpoint *ep)
->  	local_bh_enable();
->  }
->  
-> +static inline __u32 sctp_hashfn(const struct net *net, __be16 lport,
-> +				const union sctp_addr *paddr, __u32 seed)
-> +{
-> +	__u32 addr;
-> +
-> +	if (paddr->sa.sa_family = AF_INET6)
-> +		addr = jhash(&paddr->v6.sin6_addr, 16, seed);
-> +	else
-> +		addr = (__force __u32)paddr->v4.sin_addr.s_addr;
-> +
-> +	return  jhash_3words(addr, ((__force __u32)paddr->v4.sin_port) << 16 |
-> +			     (__force __u32)lport, net_hash_mix(net), seed);
-> +}
-> +
->  /* Look up an endpoint. */
-> -static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(struct net *net,
-> -						const union sctp_addr *laddr)
-> +static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(
-> +					struct net *net, struct sk_buff *skb,
-> +					const union sctp_addr *laddr,
-> +					const union sctp_addr *paddr)
->  {
->  	struct sctp_hashbucket *head;
->  	struct sctp_ep_common *epb;
->  	struct sctp_endpoint *ep;
-> +	struct sock *sk;
-> +	__be32 lport;
+Other than asoc pmtu sync from all transports, sctp_assoc_sync_pmtu
+is also processing transport pmtu_pending by icmp packets. But it's
+meaningless to use sctp_dst_mtu(t->dst) as new pmtu for a transport.
 
-This could be a __be16 one.
+The right pmtu value should come from the icmp packet, and it would
+be saved into transport->mtu_info in this patch and used later when
+the pmtu sync happens in sctp_sendmsg_to_asoc or sctp_packet_config.
 
->  	int hash;
->  
-> -	hash = sctp_ep_hashfn(net, ntohs(laddr->v4.sin_port));
-> +	lport = laddr->v4.sin_port;
-> +	hash = sctp_ep_hashfn(net, ntohs(lport));
->  	head = &sctp_ep_hashtable[hash];
->  	read_lock(&head->lock);
->  	sctp_for_each_hentry(epb, &head->chain) {
-> @@ -791,6 +813,15 @@ static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(struct net *net,
->  	ep = sctp_sk(net->sctp.ctl_sock)->ep;
->  
->  hit:
-> +	sk = ep->base.sk;
-> +	if (sk->sk_reuseport) {
-> +		__u32 phash = sctp_hashfn(net, lport, paddr, 0);
-> +
-> +		sk = reuseport_select_sock(sk, phash, skb,
-> +					   sizeof(struct sctphdr));
-> +		if (sk)
-> +			ep = sctp_sk(sk)->ep;
-> +	}
->  	sctp_endpoint_hold(ep);
->  	read_unlock(&head->lock);
->  	return ep;
-> @@ -829,35 +860,17 @@ static inline int sctp_hash_cmp(struct rhashtable_compare_arg *arg,
->  static inline __u32 sctp_hash_obj(const void *data, u32 len, u32 seed)
->  {
->  	const struct sctp_transport *t = data;
-> -	const union sctp_addr *paddr = &t->ipaddr;
-> -	const struct net *net = sock_net(t->asoc->base.sk);
-> -	__be16 lport = htons(t->asoc->base.bind_addr.port);
-> -	__u32 addr;
-> -
-> -	if (paddr->sa.sa_family = AF_INET6)
-> -		addr = jhash(&paddr->v6.sin6_addr, 16, seed);
-> -	else
-> -		addr = (__force __u32)paddr->v4.sin_addr.s_addr;
->  
-> -	return  jhash_3words(addr, ((__force __u32)paddr->v4.sin_port) << 16 |
-> -			     (__force __u32)lport, net_hash_mix(net), seed);
-> +	return sctp_hashfn(sock_net(t->asoc->base.sk),
-> +			   htons(t->asoc->base.bind_addr.port),
-> +			   &t->ipaddr, seed);
->  }
->  
->  static inline __u32 sctp_hash_key(const void *data, u32 len, u32 seed)
->  {
->  	const struct sctp_hash_cmp_arg *x = data;
-> -	const union sctp_addr *paddr = x->paddr;
-> -	const struct net *net = x->net;
-> -	__be16 lport = x->lport;
-> -	__u32 addr;
-> -
-> -	if (paddr->sa.sa_family = AF_INET6)
-> -		addr = jhash(&paddr->v6.sin6_addr, 16, seed);
-> -	else
-> -		addr = (__force __u32)paddr->v4.sin_addr.s_addr;
->  
-> -	return  jhash_3words(addr, ((__force __u32)paddr->v4.sin_port) << 16 |
-> -			     (__force __u32)lport, net_hash_mix(net), seed);
-> +	return sctp_hashfn(x->net, x->lport, x->paddr, seed);
->  }
->  
->  static const struct rhashtable_params sctp_hash_params = {
-> -- 
-> 2.1.0
-> 
+Besides, without this patch, as pmtu can only be updated correctly
+when receiving a icmp packet and no place is holding sock lock, it
+will take long time if the sock is busy with sending packets.
+
+Note that it doesn't process transport->mtu_info in .release_cb(),
+as there is no enough information for pmtu update, like for which
+asoc or transport. It is not worth traversing all asocs to check
+pmtu_pending. So unlike tcp, sctp does this in tx path, for which
+mtu_info needs to be atomic_t.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/structs.h | 2 ++
+ net/sctp/associola.c       | 3 ++-
+ net/sctp/input.c           | 1 +
+ net/sctp/output.c          | 6 ++++++
+ 4 files changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 28a7c8e..a11f937 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -876,6 +876,8 @@ struct sctp_transport {
+ 	unsigned long sackdelay;
+ 	__u32 sackfreq;
+ 
++	atomic_t mtu_info;
++
+ 	/* When was the last time that we heard from this transport? We use
+ 	 * this to pick new active and retran paths.
+ 	 */
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 297d9cf..a827a1f 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -1450,7 +1450,8 @@ void sctp_assoc_sync_pmtu(struct sctp_association *asoc)
+ 	/* Get the lowest pmtu of all the transports. */
+ 	list_for_each_entry(t, &asoc->peer.transport_addr_list, transports) {
+ 		if (t->pmtu_pending && t->dst) {
+-			sctp_transport_update_pmtu(t, sctp_dst_mtu(t->dst));
++			sctp_transport_update_pmtu(t,
++						   atomic_read(&t->mtu_info));
+ 			t->pmtu_pending = 0;
+ 		}
+ 		if (!pmtu || (t->pathmtu < pmtu))
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 9bbc5f9..5c36a99 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -395,6 +395,7 @@ void sctp_icmp_frag_needed(struct sock *sk, struct sctp_association *asoc,
+ 		return;
+ 
+ 	if (sock_owned_by_user(sk)) {
++		atomic_set(&t->mtu_info, pmtu);
+ 		asoc->pmtu_pending = 1;
+ 		t->pmtu_pending = 1;
+ 		return;
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 7f849b0..67939ad 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -120,6 +120,12 @@ void sctp_packet_config(struct sctp_packet *packet, __u32 vtag,
+ 			sctp_assoc_sync_pmtu(asoc);
+ 	}
+ 
++	if (asoc->pmtu_pending) {
++		if (asoc->param_flags & SPP_PMTUD_ENABLE)
++			sctp_assoc_sync_pmtu(asoc);
++		asoc->pmtu_pending = 0;
++	}
++
+ 	/* If there a is a prepend chunk stick it on the list before
+ 	 * any other chunks get appended.
+ 	 */
+-- 
+2.1.0
