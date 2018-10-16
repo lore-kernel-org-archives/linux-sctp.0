@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 16 Oct 2018 11:25:59 +0000
+From: David Miller <davem@davemloft.net>
+Date: Tue, 16 Oct 2018 16:59:18 +0000
 Subject: Re: [PATCH net] sctp: get pr_assoc and pr_stream all status with SCTP_PR_SCTP_ALL instead
-Message-Id: <20181016112559.GA20870@hmswarspite.think-freely.org>
+Message-Id: <20181016.095918.2016842324386473147.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <e1b1741db983e1775312816bc2e6f0f685f9828d.1539676322.git.lucien.xin@gmail.com>
 In-Reply-To: <e1b1741db983e1775312816bc2e6f0f685f9828d.1539676322.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
-On Tue, Oct 16, 2018 at 03:52:02PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 16 Oct 2018 15:52:02 +0800
+
 > According to rfc7496 section 4.3 or 4.4:
 > 
 >    sprstat_policy:  This parameter indicates for which PR-SCTP policy
@@ -27,64 +29,5 @@ On Tue, Oct 16, 2018 at 03:52:02PM +0800, Xin Long wrote:
 > Fixes: d229d48d183f ("sctp: add SCTP_PR_STREAM_STATUS sockopt for prsctp")
 > Reported-by: Ying Xu <yinxu@redhat.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> ---
->  include/uapi/linux/sctp.h | 1 +
->  net/sctp/socket.c         | 8 ++++----
->  2 files changed, 5 insertions(+), 4 deletions(-)
-> 
-> diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-> index b479db5..34dd3d4 100644
-> --- a/include/uapi/linux/sctp.h
-> +++ b/include/uapi/linux/sctp.h
-> @@ -301,6 +301,7 @@ enum sctp_sinfo_flags {
->  	SCTP_SACK_IMMEDIATELY	= (1 << 3), /* SACK should be sent without delay. */
->  	/* 2 bits here have been used by SCTP_PR_SCTP_MASK */
->  	SCTP_SENDALL		= (1 << 6),
-> +	SCTP_PR_SCTP_ALL	= (1 << 7),
->  	SCTP_NOTIFICATION	= MSG_NOTIFICATION, /* Next message is not user msg but notification. */
->  	SCTP_EOF		= MSG_FIN,  /* Initiate graceful shutdown process. */
->  };
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index f73e9d3..e25a20f 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -7100,14 +7100,14 @@ static int sctp_getsockopt_pr_assocstatus(struct sock *sk, int len,
->  	}
->  
->  	policy = params.sprstat_policy;
-> -	if (policy & ~SCTP_PR_SCTP_MASK)
-> +	if (!policy || (policy & ~(SCTP_PR_SCTP_MASK | SCTP_PR_SCTP_ALL)))
->  		goto out;
->  
->  	asoc = sctp_id2assoc(sk, params.sprstat_assoc_id);
->  	if (!asoc)
->  		goto out;
->  
-> -	if (policy = SCTP_PR_SCTP_NONE) {
-> +	if (policy & SCTP_PR_SCTP_ALL) {
->  		params.sprstat_abandoned_unsent = 0;
->  		params.sprstat_abandoned_sent = 0;
->  		for (policy = 0; policy <= SCTP_PR_INDEX(MAX); policy++) {
-> @@ -7159,7 +7159,7 @@ static int sctp_getsockopt_pr_streamstatus(struct sock *sk, int len,
->  	}
->  
->  	policy = params.sprstat_policy;
-> -	if (policy & ~SCTP_PR_SCTP_MASK)
-> +	if (!policy || (policy & ~(SCTP_PR_SCTP_MASK | SCTP_PR_SCTP_ALL)))
->  		goto out;
->  
->  	asoc = sctp_id2assoc(sk, params.sprstat_assoc_id);
-> @@ -7175,7 +7175,7 @@ static int sctp_getsockopt_pr_streamstatus(struct sock *sk, int len,
->  		goto out;
->  	}
->  
-> -	if (policy = SCTP_PR_SCTP_NONE) {
-> +	if (policy = SCTP_PR_SCTP_ALL) {
->  		params.sprstat_abandoned_unsent = 0;
->  		params.sprstat_abandoned_sent = 0;
->  		for (policy = 0; policy <= SCTP_PR_INDEX(MAX); policy++) {
-> -- 
-> 2.1.0
-> 
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
+Applied and queued up for -stable.
