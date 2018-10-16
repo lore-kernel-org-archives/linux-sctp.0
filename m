@@ -1,107 +1,124 @@
-From: Krzysztof Grzywocz <kgrzywocz@wp.pl>
-Date: Tue, 09 Oct 2018 04:45:05 +0000
-Subject: [PATCH v2 1/1] sctp: fix align sctp_assoc_stats to run on x86_64 in compat IA32
-Message-Id: <D54ABB61-F55D-4CE5-8A31-4BBD255B807C@wp.pl>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 16 Oct 2018 19:07:51 +0000
+Subject: [PATCH net-next 2/2] sctp: use sk_wmem_queued to check for writable space
+Message-Id: <e794048df28ac777385e7ecde80e63e65d0d7d69.1539716812.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1539716812.git.lucien.xin@gmail.com>
+ <69e02c98600ba4e4142056bd25fbe3a006f94e52.1539716812.git.lucien.xin@gmail.com>
+In-Reply-To: <69e02c98600ba4e4142056bd25fbe3a006f94e52.1539716812.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-From: Krzysztof Grzywocz <kgrzywocz@wp.pl>
+sk->sk_wmem_queued is used to count the size of chunks in out queue
+while sk->sk_wmem_alloc is for counting the size of chunks has been
+sent. sctp is increasing both of them before enqueuing the chunks,
+and using sk->sk_wmem_alloc to check for writable space.
 
-Problem:
-On 64bit kernel ELF32bit gets improper value of `SCTP_GET_ASSOC_STATS` (call `getsockopt` on SCTP socket) due to different `struct sctp_assoc_stats` aligment (mostly because of different `_K_SS_ALIGNSIZE`).
+However, sk_wmem_alloc is also increased by 1 for the skb allocked
+for sending in sctp_packet_transmit() but it will not wake up the
+waiters when sk_wmem_alloc is decreased in this skb's destructor.
 
-Example:
-Sent 1000 bytes, Received 1000 bytes
-May result in: 
-packets sent(sas_opackets): 12884901888
-packets recv(sas_ipackets): 12884901888
+If msg size is equal to sk_sndbuf and sendmsg is waiting for sndbuf,
+the check 'msg_len <= sctp_wspace(asoc)' in sctp_wait_for_sndbuf()
+will keep waiting if there's a skb allocked in sctp_packet_transmit,
+and later even if this skb got freed, the waiting thread will never
+get waked up.
 
-Patch solution:
-Realign struct at the end of `sctp_getsockopt_assoc_stats(..)` when called in compat mode see patch for details.
+This issue has been there since very beginning, so we change to use
+sk->sk_wmem_queued to check for writable space as sk_wmem_queued is
+not increased for the skb allocked for sending, also as TCP does.
 
-For detail see: https://github.com/kgrzywocz/align_compat32_sctp_assoc_stats
+SOCK_SNDBUF_LOCK check is also removed here as it's for tx buf auto
+tuning which I will add in another patch.
 
-Signed-off-by: Krzysztof Grzywocz <kgrzywocz@wp.pl>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/socket.c | 38 +++++++++-----------------------------
+ 1 file changed, 9 insertions(+), 29 deletions(-)
 
------
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index ce620e87..4e3f920f 100644
+index c6f2950..111ebd8 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -6685,6 +6685,59 @@ static int sctp_getsockopt_paddr_thresholds(struct sock *sk,
- 	return 0;
+@@ -83,7 +83,7 @@
+ #include <net/sctp/stream_sched.h>
+ 
+ /* Forward declarations for internal helper functions. */
+-static int sctp_writeable(struct sock *sk);
++static bool sctp_writeable(struct sock *sk);
+ static void sctp_wfree(struct sk_buff *skb);
+ static int sctp_wait_for_sndbuf(struct sctp_association *asoc, long *timeo_p,
+ 				size_t msg_len);
+@@ -119,25 +119,10 @@ static void sctp_enter_memory_pressure(struct sock *sk)
+ /* Get the sndbuf space available at the time on the association.  */
+ static inline int sctp_wspace(struct sctp_association *asoc)
+ {
+-	int amt;
++	struct sock *sk = asoc->base.sk;
+ 
+-	if (asoc->ep->sndbuf_policy)
+-		amt = asoc->sndbuf_used;
+-	else
+-		amt = sk_wmem_alloc_get(asoc->base.sk);
+-
+-	if (amt >= asoc->base.sk->sk_sndbuf) {
+-		if (asoc->base.sk->sk_userlocks & SOCK_SNDBUF_LOCK)
+-			amt = 0;
+-		else {
+-			amt = sk_stream_wspace(asoc->base.sk);
+-			if (amt < 0)
+-				amt = 0;
+-		}
+-	} else {
+-		amt = asoc->base.sk->sk_sndbuf - amt;
+-	}
+-	return amt;
++	return asoc->ep->sndbuf_policy ? sk->sk_sndbuf - asoc->sndbuf_used
++				       : sk_stream_wspace(sk);
  }
  
-+#ifdef CONFIG_COMPAT
-+
-+struct __kernel_sockaddr_storage_compat32 {
-+	__kernel_sa_family_t	ss_family;
-+	char		__data[_K_SS_MAXSIZE - sizeof(unsigned short)];
-+} __attribute__ ((packed,aligned(4)));	/* force desired alignment */
-+
-+struct sctp_assoc_stats_compat32 {
-+	int32_t	sas_assoc_id;
-+	struct __kernel_sockaddr_storage_compat32 sas_obs_rto_ipaddr;
-+	uint64_t sas_maxrto;
-+	uint64_t sas_isacks;
-+	uint64_t sas_osacks;
-+	uint64_t sas_opackets;
-+	uint64_t sas_ipackets;
-+	uint64_t sas_rtxchunks;
-+	uint64_t sas_outofseqtsns;
-+	uint64_t sas_idupchunks;
-+	uint64_t sas_gapcnt;
-+	uint64_t sas_ouodchunks;
-+	uint64_t sas_iuodchunks;
-+	uint64_t sas_oodchunks;
-+	uint64_t sas_iodchunks;
-+	uint64_t sas_octrlchunks;
-+	uint64_t sas_ictrlchunks;
-+} __attribute__ ((packed,aligned(4)));
-+
-+static void align_compat32_sctp_assoc_stats(void *sctp_assoc_stats)
-+{
-+	struct sctp_assoc_stats* p64 = sctp_assoc_stats;
-+	struct sctp_assoc_stats_compat32* p32 = sctp_assoc_stats;
-+
-+	p32->sas_assoc_id = p64->sas_assoc_id;
-+	p32->sas_obs_rto_ipaddr.ss_family = p64->sas_obs_rto_ipaddr.ss_family;
-+	memcpy(p32->sas_obs_rto_ipaddr.__data, p64->sas_obs_rto_ipaddr.__data, sizeof(p32->sas_obs_rto_ipaddr.__data));
-+	p32->sas_maxrto = p64->sas_maxrto;
-+	p32->sas_isacks = p64->sas_isacks;
-+	p32->sas_osacks = p64->sas_osacks;
-+	p32->sas_opackets = p64->sas_opackets;
-+	p32->sas_ipackets = p64->sas_ipackets;
-+	p32->sas_rtxchunks = p64->sas_rtxchunks;
-+	p32->sas_outofseqtsns = p64->sas_outofseqtsns;
-+	p32->sas_idupchunks = p64->sas_idupchunks;
-+	p32->sas_gapcnt = p64->sas_gapcnt;
-+	p32->sas_ouodchunks = p64->sas_ouodchunks;
-+	p32->sas_iuodchunks = p64->sas_iuodchunks;
-+	p32->sas_oodchunks = p64->sas_oodchunks;
-+	p32->sas_iodchunks = p64->sas_iodchunks;
-+	p32->sas_octrlchunks = p64->sas_octrlchunks;
-+	p32->sas_ictrlchunks = p64->sas_ictrlchunks;
-+}
-+#endif
-+
- /*
-  * SCTP_GET_ASSOC_STATS
-  *
-@@ -6743,6 +6796,13 @@ static int sctp_getsockopt_assoc_stats(struct sock *sk, int len,
+ /* Increment the used sndbuf space count of the corresponding association by
+@@ -1925,10 +1910,10 @@ static int sctp_sendmsg_to_asoc(struct sctp_association *asoc,
+ 		asoc->pmtu_pending = 0;
+ 	}
  
- 	pr_debug("%s: len:%d, assoc_id:%d\n", __func__, len, sas.sas_assoc_id);
+-	if (sctp_wspace(asoc) < msg_len)
++	if (sctp_wspace(asoc) < (int)msg_len)
+ 		sctp_prsctp_prune(asoc, sinfo, msg_len - sctp_wspace(asoc));
  
-+#ifdef CONFIG_COMPAT
-+	if (in_compat_syscall()) {
-+		pr_debug("%s: Aligning sctp_assoc_stats for 32bit compat\n", __func__);
-+		align_compat32_sctp_assoc_stats(&sas);
-+	}
-+#endif
-+
- 	if (copy_to_user(optval, &sas, len))
- 		return -EFAULT;
+-	if (!sctp_wspace(asoc)) {
++	if (sctp_wspace(asoc) <= 0) {
+ 		timeo = sock_sndtimeo(sk, msg->msg_flags & MSG_DONTWAIT);
+ 		err = sctp_wait_for_sndbuf(asoc, &timeo, msg_len);
+ 		if (err)
+@@ -8535,7 +8520,7 @@ static int sctp_wait_for_sndbuf(struct sctp_association *asoc, long *timeo_p,
+ 			goto do_error;
+ 		if (signal_pending(current))
+ 			goto do_interrupted;
+-		if (msg_len <= sctp_wspace(asoc))
++		if ((int)msg_len <= sctp_wspace(asoc))
+ 			break;
  
+ 		/* Let another process have a go.  Since we are going
+@@ -8610,14 +8595,9 @@ void sctp_write_space(struct sock *sk)
+  * UDP-style sockets or TCP-style sockets, this code should work.
+  *  - Daisy
+  */
+-static int sctp_writeable(struct sock *sk)
++static bool sctp_writeable(struct sock *sk)
+ {
+-	int amt = 0;
+-
+-	amt = sk->sk_sndbuf - sk_wmem_alloc_get(sk);
+-	if (amt < 0)
+-		amt = 0;
+-	return amt;
++	return sk->sk_sndbuf > sk->sk_wmem_queued;
+ }
+ 
+ /* Wait for an association to go into ESTABLISHED state. If timeout is 0,
+-- 
+2.1.0
