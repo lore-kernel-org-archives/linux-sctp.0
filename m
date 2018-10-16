@@ -1,48 +1,28 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 18 Oct 2018 05:12:12 +0000
-Subject: Re: [PATCH net] sctp: fix race on sctp_id2asoc
-Message-Id: <20181017.221212.2290996875910546663.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 16 Oct 2018 19:07:49 +0000
+Subject: [PATCH net-next 0/2] sctp: fix sk_wmem_queued and use it to check for writable space
+Message-Id: <cover.1539716812.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <081e1546a92f5bde8bdef0366561ff0b8ddd9eb2.1539707812.git.mleitner@redhat.com>
-In-Reply-To: <081e1546a92f5bde8bdef0366561ff0b8ddd9eb2.1539707812.git.mleitner@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: marcelo.leitner@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, dvyukov@google.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 16 Oct 2018 15:18:17 -0300
+sctp doesn't count and use asoc sndbuf_used, sk sk_wmem_alloc and
+sk_wmem_queued properly, which also causes some problem.
 
-> syzbot reported an use-after-free involving sctp_id2asoc.  Dmitry Vyukov
-> helped to root cause it and it is because of reading the asoc after it
-> was freed:
-> 
->         CPU 1                       CPU 2
-> (working on socket 1)            (working on socket 2)
-> 	                         sctp_association_destroy
-> sctp_id2asoc
->    spin lock
->      grab the asoc from idr
->    spin unlock
->                                    spin lock
-> 				     remove asoc from idr
-> 				   spin unlock
-> 				   free(asoc)
->    if asoc->base.sk != sk ... [*]
-> 
-> This can only be hit if trying to fetch asocs from different sockets. As
-> we have a single IDR for all asocs, in all SCTP sockets, their id is
-> unique on the system. An application can try to send stuff on an id
-> that matches on another socket, and the if in [*] will protect from such
-> usage. But it didn't consider that as that asoc may belong to another
-> socket, it may be freed in parallel (read: under another socket lock).
-> 
-> We fix it by moving the checks in [*] into the protected region. This
-> fixes it because the asoc cannot be freed while the lock is held.
-> 
-> Reported-by: syzbot+c7dd55d7aec49d48e49a@syzkaller.appspotmail.com
-> Acked-by: Dmitry Vyukov <dvyukov@google.com>
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+This patchset is to improve it.
 
-Applied and queued up for -stable.
+Xin Long (2):
+  sctp: count both sk and asoc sndbuf with skb truesize and sctp_chunk
+    size
+  sctp: use sk_wmem_queued to check for writable space
+
+ include/net/sctp/constants.h |  5 ----
+ net/sctp/outqueue.c          |  8 ++----
+ net/sctp/socket.c            | 59 +++++++++++---------------------------------
+ 3 files changed, 17 insertions(+), 55 deletions(-)
+
+-- 
+2.1.0
