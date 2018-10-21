@@ -1,189 +1,154 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 16 Oct 2018 13:46:46 +0000
-Subject: Re: KASAN: use-after-free Read in sctp_id2assoc
-Message-Id: <20181016134646.GJ6634@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sun, 21 Oct 2018 04:43:36 +0000
+Subject: [PATCH net-next 1/3] sctp: do reuseport_select_sock in __sctp_rcv_lookup_endpoint
+Message-Id: <08b533092a01a8f7cf2eb4c459fe3570a8df702b.1540095102.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <0000000000007e767d05776336da@google.com>
- <20181005145855.GB6761@localhost.localdomain>
- <CACT4Y+YVRWSF+VyoBB1vwDevt0gwZYz69bSAivmZDG6r4J-kaA@mail.gmail.com>
- <20181010181325.GD6761@localhost.localdomain>
- <CACT4Y+YYpjjvW-UCkHEXWZA50F==7JC1cnMvoAZHKmOqq=9vAw@mail.gmail.com>
- <20181010184011.GE6761@localhost.localdomain>
- <20181015112330.GA31030@hmswarspite.think-freely.org>
-In-Reply-To: <20181015112330.GA31030@hmswarspite.think-freely.org>
+References: <cover.1540095102.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1540095102.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: Dmitry Vyukov <dvyukov@google.com>, syzbot <syzbot+c7dd55d7aec49d48e49a@syzkaller.appspotmail.com>, David Miller <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, netdev <netdev@vger.kernel.org>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, Vladislav Yasevich <vyasevich@gmail.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-On Tue, Oct 16, 2018 at 07:28:17AM -0400, Neil Horman wrote:
-> On Wed, Oct 10, 2018 at 03:40:11PM -0300, Marcelo Ricardo Leitner wrote:
-> > On Wed, Oct 10, 2018 at 08:28:22PM +0200, Dmitry Vyukov wrote:
-> > > On Wed, Oct 10, 2018 at 8:13 PM, Marcelo Ricardo Leitner
-> > > <marcelo.leitner@gmail.com> wrote:
-> > > > On Wed, Oct 10, 2018 at 05:28:12PM +0200, Dmitry Vyukov wrote:
-> > > >> On Fri, Oct 5, 2018 at 4:58 PM, Marcelo Ricardo Leitner
-> > > >> <marcelo.leitner@gmail.com> wrote:
-> > > >> > On Thu, Oct 04, 2018 at 01:48:03AM -0700, syzbot wrote:
-> > > >> >> Hello,
-> > > >> >>
-> > > >> >> syzbot found the following crash on:
-> > > >> >>
-> > > >> >> HEAD commit:    4e6d47206c32 tls: Add support for inplace recor=
-ds encryption
-> > > >> >> git tree:       net-next
-> > > >> >> console output: https://syzkaller.appspot.com/x/log.txt?x=13834=
-b81400000
-> > > >> >> kernel config:  https://syzkaller.appspot.com/x/.config?x=E569a=
-a5632ebd436
-> > > >> >> dashboard link: https://syzkaller.appspot.com/bug?extid=C7dd55d=
-7aec49d48e49a
-> > > >> >> compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
-> > > >> >>
-> > > >> >> Unfortunately, I don't have any reproducer for this crash yet.
-> > > >> >>
-> > > >> >> IMPORTANT: if you fix the bug, please add the following tag to =
-the commit:
-> > > >> >> Reported-by: syzbot+c7dd55d7aec49d48e49a@syzkaller.appspotmail.=
-com
-> > > >> >>
-> > > >> >> netlink: 'syz-executor1': attribute type 1 has an invalid lengt=
-h.
-> > > >> >> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> > > >> >> BUG: KASAN: use-after-free in sctp_id2assoc+0x3a7/0x3e0
-> > > >> >> net/sctp/socket.c:276
-> > > >> >> Read of size 8 at addr ffff880195b3eb20 by task syz-executor2/1=
-5454
-> > > >> >>
-> > > >> >> CPU: 1 PID: 15454 Comm: syz-executor2 Not tainted 4.19.0-rc5+ #=
-242
-> > > >> >> Hardware name: Google Google Compute Engine/Google Compute Engi=
-ne, BIOS
-> > > >> >> Google 01/01/2011
-> > > >> >> Call Trace:
-> > > >> >>  __dump_stack lib/dump_stack.c:77 [inline]
-> > > >> >>  dump_stack+0x1c4/0x2b4 lib/dump_stack.c:113
-> > > >> >>  print_address_description.cold.8+0x9/0x1ff mm/kasan/report.c:2=
-56
-> > > >> >>  kasan_report_error mm/kasan/report.c:354 [inline]
-> > > >> >>  kasan_report.cold.9+0x242/0x309 mm/kasan/report.c:412
-> > > >> >>  __asan_report_load8_noabort+0x14/0x20 mm/kasan/report.c:433
-> > > >> >>  sctp_id2assoc+0x3a7/0x3e0 net/sctp/socket.c:276
-> > > >> >
-> > > >> > I'm not seeing yet how this could happen.
-> > > >> > All sockopts here are serialized by sock_lock.
-> > > >> > do_peeloff here would create another socket, but the issue was
-> > > >> > triggered before that.
-> > > >> > The same function that freed this memory, also removes the entry=
- from
-> > > >> > idr mapping, so this entry shouldn't be there anymore.
-> > > >> >
-> > > >> > I have only two theories so far:
-> > > >> > - an issue with IDR/RCU.
-> > > >> > - something else happened that just the call stacks are not reve=
-aling.
-> > > >>
-> > > >> The "asoc->base.sk !=3D sk" check after idr_find suggests that we =
-don't
-> > > >> actually know what sock it belongs to. And if we don't know then
-> > > >
-> > > > Right. The check is more because the IDR is global and not per sock=
-et
-> > > > (and we don't want sockets accessing asocs from other sockets), and=
- not
-> > > > that the asoc may move to another socket in between, but it also
-> > > > protects from such cases, yes.
-> > > >
-> > > >> locking this sock can't help keeping another sock association aliv=
-e.
-> > > >> Am I missing something obvious here? Should we take assoc ref whil=
-e we
-> > > >
-> > > > Not sure. Maybe I am.  Thanks for looking into this, btw.
-> > > >
-> > > >> are still holding sctp_assocs_id_lock?
-> > > >
-> > > > Shouldn't be needed.
-> > > >
-> > > > Solely by the call stacks:
-> > > > - we tried to establish a new asoc from a sctp_connect() call,
-> > > >   blocking one.
-> > > > - it slept waiting for the connect
-> > > > - (something closed the asoc in between the sleeps, because it freed
-> > > >   the asoc right when waking up on sctp_wait_for_connect())
-> > > > - it freed the asoc after sleeping on it on sctp_wait_for_connect [=
-A]
-> > > > - another thread tried to peeloff that asoc [B]
-> > > >
-> > > > For [B] to access the asoc in question, it had to take the same sock
-> > > > lock [A] had taken, and then the idr should not return an asoc in
-> > > > sctp_i2asoc(). Note that we can't peeloff an asoc twice, thus why
-> > > > the certainty here.
-> > > >
-> > > > If [B] actually kicked in before the sleep resumed, that should have
-> > > > been fine because it took the same sock lock [A] would have to
-> > > > re-take. In this case an asoc would have been returned by
-> > > > sctp_id2asoc(), the asoc would have been moved to a new socket, but
-> > > > all while holding the original socket sock lock.
-> > >=20
-> > > But why A and B use the same lock?
-> > >=20
-> > > sctp_assocs_id is global, so it contains asocs from all sockets, righ=
-t?
-> > > assoc id comes straight from userspaces.
-> > > So isn't it possible that B uses completely different sock but passes
-> > > assoc id from the A sock? Then B should find assoc in sctp_assocs_id,
-> > > and at the point of "asoc->base.sk !=3D sk" check the assoc can be
-> > > already freed.
-> >=20
-> > That explains it. Somehow I was thinking the issue was for reading
-> > ->dead instead.  Now it's pretty clear. Then this should be the patch
-> > we want. Can you please give it a spin? (only compile tested)
-> >=20
-> > While holding the spinlock, an entry cannot be removed from the idr
-> > and thus it cannot be freed. So even if the app uses an id from
-> > another socket, it will still be there.
-> >=20
-> > ---8<---
-> >=20
-> > diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> > index f73e9d38d5ba..a7722f43aa69 100644
-> > --- a/net/sctp/socket.c
-> > +++ b/net/sctp/socket.c
-> > @@ -271,11 +271,10 @@ struct sctp_association *sctp_id2assoc(struct soc=
-k *sk, sctp_assoc_t id)
-> > =20
-> >  	spin_lock_bh(&sctp_assocs_id_lock);
-> >  	asoc =3D (struct sctp_association *)idr_find(&sctp_assocs_id, (int)id=
-);
-> > +	if (asoc && (asoc->base.sk !=3D sk || asoc->base.dead))
-> > +		asoc =3D NULL;
-> >  	spin_unlock_bh(&sctp_assocs_id_lock);
-> > =20
-> > -	if (!asoc || (asoc->base.sk !=3D sk) || asoc->base.dead)
-> > -		return NULL;
-> > -
-> >  	return asoc;
-> >  }
-> > =20
-> >=20
-> Marcello, can you post this with a proper changelog commit please?  Based=
- on the
-> bug report, and description of the problem, I think we can all agree this=
- is a
-> sane fix
+This is a part of sk_reuseport support for sctp, and it selects a
+sock by the hashkey of lport, paddr and dport by default. It will
+work until sk_reuseport support is added in sctp_get_port_local()
+in the next patch.
 
-Yes, in a few. The patch should be ready, but ahm.. I had destroyed by
-test environment (disk failures). I'm seizing the moment to bring it
-up.
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/input.c | 69 +++++++++++++++++++++++++++++++++-----------------------
+ 1 file changed, 41 insertions(+), 28 deletions(-)
 
-Thanks,
-  Marcelo
-
->=20
->=20
-> Thanks
-> Neil
->=20
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 5c36a99..60ede89 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -57,6 +57,7 @@
+ #include <net/sctp/checksum.h>
+ #include <net/net_namespace.h>
+ #include <linux/rhashtable.h>
++#include <net/sock_reuseport.h>
+ 
+ /* Forward declarations for internal helpers. */
+ static int sctp_rcv_ootb(struct sk_buff *);
+@@ -65,8 +66,10 @@ static struct sctp_association *__sctp_rcv_lookup(struct net *net,
+ 				      const union sctp_addr *paddr,
+ 				      const union sctp_addr *laddr,
+ 				      struct sctp_transport **transportp);
+-static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(struct net *net,
+-						const union sctp_addr *laddr);
++static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(
++					struct net *net, struct sk_buff *skb,
++					const union sctp_addr *laddr,
++					const union sctp_addr *daddr);
+ static struct sctp_association *__sctp_lookup_association(
+ 					struct net *net,
+ 					const union sctp_addr *local,
+@@ -171,7 +174,7 @@ int sctp_rcv(struct sk_buff *skb)
+ 	asoc = __sctp_rcv_lookup(net, skb, &src, &dest, &transport);
+ 
+ 	if (!asoc)
+-		ep = __sctp_rcv_lookup_endpoint(net, &dest);
++		ep = __sctp_rcv_lookup_endpoint(net, skb, &dest, &src);
+ 
+ 	/* Retrieve the common input handling substructure. */
+ 	rcvr = asoc ? &asoc->base : &ep->base;
+@@ -770,16 +773,35 @@ void sctp_unhash_endpoint(struct sctp_endpoint *ep)
+ 	local_bh_enable();
+ }
+ 
++static inline __u32 sctp_hashfn(const struct net *net, __be16 lport,
++				const union sctp_addr *paddr, __u32 seed)
++{
++	__u32 addr;
++
++	if (paddr->sa.sa_family = AF_INET6)
++		addr = jhash(&paddr->v6.sin6_addr, 16, seed);
++	else
++		addr = (__force __u32)paddr->v4.sin_addr.s_addr;
++
++	return  jhash_3words(addr, ((__force __u32)paddr->v4.sin_port) << 16 |
++			     (__force __u32)lport, net_hash_mix(net), seed);
++}
++
+ /* Look up an endpoint. */
+-static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(struct net *net,
+-						const union sctp_addr *laddr)
++static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(
++					struct net *net, struct sk_buff *skb,
++					const union sctp_addr *laddr,
++					const union sctp_addr *paddr)
+ {
+ 	struct sctp_hashbucket *head;
+ 	struct sctp_ep_common *epb;
+ 	struct sctp_endpoint *ep;
++	struct sock *sk;
++	__be32 lport;
+ 	int hash;
+ 
+-	hash = sctp_ep_hashfn(net, ntohs(laddr->v4.sin_port));
++	lport = laddr->v4.sin_port;
++	hash = sctp_ep_hashfn(net, ntohs(lport));
+ 	head = &sctp_ep_hashtable[hash];
+ 	read_lock(&head->lock);
+ 	sctp_for_each_hentry(epb, &head->chain) {
+@@ -791,6 +813,15 @@ static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(struct net *net,
+ 	ep = sctp_sk(net->sctp.ctl_sock)->ep;
+ 
+ hit:
++	sk = ep->base.sk;
++	if (sk->sk_reuseport) {
++		__u32 phash = sctp_hashfn(net, lport, paddr, 0);
++
++		sk = reuseport_select_sock(sk, phash, skb,
++					   sizeof(struct sctphdr));
++		if (sk)
++			ep = sctp_sk(sk)->ep;
++	}
+ 	sctp_endpoint_hold(ep);
+ 	read_unlock(&head->lock);
+ 	return ep;
+@@ -829,35 +860,17 @@ static inline int sctp_hash_cmp(struct rhashtable_compare_arg *arg,
+ static inline __u32 sctp_hash_obj(const void *data, u32 len, u32 seed)
+ {
+ 	const struct sctp_transport *t = data;
+-	const union sctp_addr *paddr = &t->ipaddr;
+-	const struct net *net = sock_net(t->asoc->base.sk);
+-	__be16 lport = htons(t->asoc->base.bind_addr.port);
+-	__u32 addr;
+-
+-	if (paddr->sa.sa_family = AF_INET6)
+-		addr = jhash(&paddr->v6.sin6_addr, 16, seed);
+-	else
+-		addr = (__force __u32)paddr->v4.sin_addr.s_addr;
+ 
+-	return  jhash_3words(addr, ((__force __u32)paddr->v4.sin_port) << 16 |
+-			     (__force __u32)lport, net_hash_mix(net), seed);
++	return sctp_hashfn(sock_net(t->asoc->base.sk),
++			   htons(t->asoc->base.bind_addr.port),
++			   &t->ipaddr, seed);
+ }
+ 
+ static inline __u32 sctp_hash_key(const void *data, u32 len, u32 seed)
+ {
+ 	const struct sctp_hash_cmp_arg *x = data;
+-	const union sctp_addr *paddr = x->paddr;
+-	const struct net *net = x->net;
+-	__be16 lport = x->lport;
+-	__u32 addr;
+-
+-	if (paddr->sa.sa_family = AF_INET6)
+-		addr = jhash(&paddr->v6.sin6_addr, 16, seed);
+-	else
+-		addr = (__force __u32)paddr->v4.sin_addr.s_addr;
+ 
+-	return  jhash_3words(addr, ((__force __u32)paddr->v4.sin_port) << 16 |
+-			     (__force __u32)lport, net_hash_mix(net), seed);
++	return sctp_hashfn(x->net, x->lport, x->paddr, seed);
+ }
+ 
+ static const struct rhashtable_params sctp_hash_params = {
+-- 
+2.1.0
