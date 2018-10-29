@@ -1,92 +1,62 @@
-From: Krzysztof Grzywocz <kgrzywocz@wp.pl>
-Date: Tue, 09 Oct 2018 16:17:13 +0000
-Subject: Re: [PATCH 1/1] sctp: fix align sctp_assoc_stats to run on x86_64 in compat IA32
-Message-Id: <A480541A-6160-424F-B806-F2F0F67D3886@wp.pl>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 29 Oct 2018 15:10:29 +0000
+Subject: [PATCH net] sctp: clear the transport of some out_chunk_list chunks in sctp_assoc_rm_peer
+Message-Id: <f3d3a876b124a96a8e44913abfa552a278cd758c.1540825829.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <C23DDB3F-AE59-49F1-9B45-4205B61668E4@wp.pl>
-In-Reply-To: <C23DDB3F-AE59-49F1-9B45-4205B61668E4@wp.pl>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
+If a transport is removed by asconf but there still are some chunks with
+this transport queuing on out_chunk_list, later an use-after-free issue
+will be caused when accessing this transport from these chunks in
+sctp_outq_flush().
 
-> On 9 Oct 2018, at 10:40, David Laight <David.Laight@ACULAB.COM> wrote:
-> 
-> From: Krzysztof Grzywocz
->> Sent: 08 October 2018 20:07
->> 
->> Problem:
->> On 64bit kernel ELF32bit gets improper value of `SCTP_GET_ASSOC_STATS` (call `getsockopt` on SCTP
->> socket) due to different `struct sctp_assoc_stats` aligment (mostly because of different
->> `_K_SS_ALIGNSIZE`).
-> ...
->> -----
->> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
->> index ce620e87..73963062 100644
->> --- a/net/sctp/socket.c
->> +++ b/net/sctp/socket.c
->> @@ -6685,6 +6685,65 @@ static int sctp_getsockopt_paddr_thresholds(struct sock *sk,
->> 	return 0;
->> }
->> 
->> +#ifdef CONFIG_COMPAT
->> +
->> +struct __kernel_sockaddr_storage_compat32 {
->> +	__kernel_sa_family_t	ss_family;		/* address family */
->> +	/* Following field(s) are implementation specific */
->> +	char		__data[_K_SS_MAXSIZE - sizeof(unsigned short)];
->> +				/* space to achieve desired size, */
->> +				/* _SS_MAXSIZE value minus size of ss_family */
->> +} __attribute__ ((packed,aligned(4)));	/* force desired alignment */
-> 
-> I don't think you need the attribute here.
-> You could also use an unnamed union. probably:
-> struct __kernel_sockaddr_storage_compat32 {
-> 	union {
-> 		__kernel_sa_family_t	ss_family;		/* address family */
-> 		char		__data[_K_SS_MAXSIZE];		/* Pad to correct size */
-> 	}
-> };
-> 
->> +struct sctp_assoc_stats_compat32 {
->> +	int32_t	sas_assoc_id;    /* Input */
->> +					 /* Transport of observed max RTO */
->> +	struct __kernel_sockaddr_storage_compat32 sas_obs_rto_ipaddr;
->> +	uint64_t		sas_maxrto;      /* Maximum Observed RTO for period */
->> +	uint64_t		sas_isacks;	 /* SACKs received */
->> +	uint64_t		sas_osacks;	 /* SACKs sent */
->> +	uint64_t		sas_opackets;	 /* Packets sent */
->> +	uint64_t		sas_ipackets;	 /* Packets received */
->> +	uint64_t		sas_rtxchunks;   /* Retransmitted Chunks */
->> +	uint64_t		sas_outofseqtsns;/* TSN received > next expected */
->> +	uint64_t		sas_idupchunks;  /* Dups received (ordered+unordered) */
->> +	uint64_t		sas_gapcnt;      /* Gap Acknowledgements Received */
->> +	uint64_t		sas_ouodchunks;  /* Unordered data chunks sent */
->> +	uint64_t		sas_iuodchunks;  /* Unordered data chunks received */
->> +	uint64_t		sas_oodchunks;	 /* Ordered data chunks sent */
->> +	uint64_t		sas_iodchunks;	 /* Ordered data chunks received */
->> +	uint64_t		sas_octrlchunks; /* Control chunks sent */
->> +	uint64_t		sas_ictrlchunks; /* Control chunks received */
->> +} __attribute__ ((packed,aligned(4)));
-> 
-> Isn't there a 'uint64_t with the alignment needed for 32bit apps'
-> that can be used for the uint64_t structure members?
-> It will be needed for a lot of compat fields.
-> Then you don't need the attribute here either.
-> It would then be right for any 32bit architectures where u64 is 8
-> byte aligned.
-> 
-> 	David
-> 
-> -
-> Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-> Registration No: 1397386 (Wales)
-> 
+This is an old bug, we fix it by clearing the transport of these chunks
+in out_chunk_list when removing a transport in sctp_assoc_rm_peer().
 
-Hi David,
+Reported-by: syzbot+56a40ceee5fb35932f4d@syzkaller.appspotmail.com
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/associola.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
 
-I think you are right and your approach will work perfectly, however I wanted to make exact copy of what compiler would do on 32bit. Every structure is strictly the same as the original one (see definition of struct __kernel_sockaddr_storage, struct sctp_assoc_stats) with just different value of attribute and _compat32 suffix. A think this approach will be more clear and follows the compiler behavior.
-Maybe we need some comment about the reference to original struct? Let me know what you prefer - of course I can  implement your approach ;)
-
-Krzysiek
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index a827a1f..6a28b96 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -499,8 +499,9 @@ void sctp_assoc_set_primary(struct sctp_association *asoc,
+ void sctp_assoc_rm_peer(struct sctp_association *asoc,
+ 			struct sctp_transport *peer)
+ {
+-	struct list_head	*pos;
+-	struct sctp_transport	*transport;
++	struct sctp_transport *transport;
++	struct list_head *pos;
++	struct sctp_chunk *ch;
+ 
+ 	pr_debug("%s: association:%p addr:%pISpc\n",
+ 		 __func__, asoc, &peer->ipaddr.sa);
+@@ -564,7 +565,6 @@ void sctp_assoc_rm_peer(struct sctp_association *asoc,
+ 	 */
+ 	if (!list_empty(&peer->transmitted)) {
+ 		struct sctp_transport *active = asoc->peer.active_path;
+-		struct sctp_chunk *ch;
+ 
+ 		/* Reset the transport of each chunk on this list */
+ 		list_for_each_entry(ch, &peer->transmitted,
+@@ -586,6 +586,10 @@ void sctp_assoc_rm_peer(struct sctp_association *asoc,
+ 				sctp_transport_hold(active);
+ 	}
+ 
++	list_for_each_entry(ch, &asoc->outqueue.out_chunk_list, list)
++		if (ch->transport = peer)
++			ch->transport = NULL;
++
+ 	asoc->peer.transport_count--;
+ 
+ 	sctp_transport_free(peer);
+-- 
+2.1.0
