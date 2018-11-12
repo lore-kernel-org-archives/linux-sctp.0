@@ -1,136 +1,174 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 12 Nov 2018 10:27:17 +0000
-Subject: [PATCHv2 net-next 3/3] sctp: process sk_reuseport in sctp_get_port_local
-Message-Id: <f79504884e689b3284f2eb236c41427ac7350df8.1542018324.git.lucien.xin@gmail.com>
+Date: Mon, 12 Nov 2018 16:26:45 +0000
+Subject: [PATCH net-next 4/4] sctp: add sockopt SCTP_EVENT
+Message-Id: <a34f3fbcd89b40e789c485c4972270e43d8e27ff.1542039673.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1542018324.git.lucien.xin@gmail.com>
- <51f701b95b1c2cecdc53f1ad518a2011b43d7621.1542018324.git.lucien.xin@gmail.com>
- <85a05853d769b272da4a365888ff1c2f2715f8a9.1542018324.git.lucien.xin@gmail.com>
-In-Reply-To: <85a05853d769b272da4a365888ff1c2f2715f8a9.1542018324.git.lucien.xin@gmail.com>
+References: <cover.1542039672.git.lucien.xin@gmail.com>
+ <7ecc29f2a93410e51c32a433417bcf84a9aaf44c.1542039673.git.lucien.xin@gmail.com>
+ <fb63fe1e7b08dfc38a3da8670584296660ba5e16.1542039673.git.lucien.xin@gmail.com>
+ <0c2ae084947de1de336988616b641ae11a54404d.1542039673.git.lucien.xin@gmail.com>
+In-Reply-To: <0c2ae084947de1de336988616b641ae11a54404d.1542039673.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-When socks' sk_reuseport is set, the same port and address are allowed
-to be bound into these socks who have the same uid.
+This patch adds sockopt SCTP_EVENT described in rfc6525#section-6.2.
+With this sockopt users can subscribe to an event from a specified
+asoc.
 
-Note that the difference from sk_reuse is that it allows multiple socks
-to listen on the same port and address.
-
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/structs.h |  4 +++-
- net/sctp/socket.c          | 46 +++++++++++++++++++++++++++++++++-------------
- 2 files changed, 36 insertions(+), 14 deletions(-)
+ include/uapi/linux/sctp.h |  7 ++++
+ net/sctp/socket.c         | 89 +++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 96 insertions(+)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 15d017f..af9d494 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -96,7 +96,9 @@ struct sctp_stream;
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index 66afa5b..d584073 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -129,6 +129,7 @@ typedef __s32 sctp_assoc_t;
+ #define SCTP_STREAM_SCHEDULER_VALUE	124
+ #define SCTP_INTERLEAVING_SUPPORTED	125
+ #define SCTP_SENDMSG_CONNECT	126
++#define SCTP_EVENT	127
  
- struct sctp_bind_bucket {
- 	unsigned short	port;
--	unsigned short	fastreuse;
-+	signed char	fastreuse;
-+	signed char	fastreuseport;
-+	kuid_t		fastuid;
- 	struct hlist_node	node;
- 	struct hlist_head	owner;
- 	struct net	*net;
+ /* PR-SCTP policies */
+ #define SCTP_PR_SCTP_NONE	0x0000
+@@ -1154,6 +1155,12 @@ struct sctp_add_streams {
+ 	uint16_t sas_outstrms;
+ };
+ 
++struct sctp_event {
++	sctp_assoc_t se_assoc_id;
++	uint16_t se_type;
++	uint8_t se_on;
++};
++
+ /* SCTP Stream schedulers */
+ enum sctp_sched_type {
+ 	SCTP_SS_FCFS,
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 2e955f1..5299add 100644
+index 789008d..1451211 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -7644,8 +7644,10 @@ static struct sctp_bind_bucket *sctp_bucket_create(
+@@ -4288,6 +4288,57 @@ static int sctp_setsockopt_reuse_port(struct sock *sk, char __user *optval,
+ 	return 0;
+ }
  
- static long sctp_get_port_local(struct sock *sk, union sctp_addr *addr)
- {
--	bool reuse = (sk->sk_reuse || sctp_sk(sk)->reuse);
-+	struct sctp_sock *sp = sctp_sk(sk);
-+	bool reuse = (sk->sk_reuse || sp->reuse);
- 	struct sctp_bind_hashbucket *head; /* hash list */
-+	kuid_t uid = sock_i_uid(sk);
- 	struct sctp_bind_bucket *pp;
- 	unsigned short snum;
- 	int ret;
-@@ -7721,7 +7723,10 @@ static long sctp_get_port_local(struct sock *sk, union sctp_addr *addr)
- 
- 		pr_debug("%s: found a possible match\n", __func__);
- 
--		if (pp->fastreuse && reuse && sk->sk_state != SCTP_SS_LISTENING)
-+		if ((pp->fastreuse && reuse &&
-+		     sk->sk_state != SCTP_SS_LISTENING) ||
-+		    (pp->fastreuseport && sk->sk_reuseport &&
-+		     uid_eq(pp->fastuid, uid)))
- 			goto success;
- 
- 		/* Run through the list of sockets bound to the port
-@@ -7735,16 +7740,18 @@ static long sctp_get_port_local(struct sock *sk, union sctp_addr *addr)
- 		 * in an endpoint.
- 		 */
- 		sk_for_each_bound(sk2, &pp->owner) {
--			struct sctp_endpoint *ep2;
--			ep2 = sctp_sk(sk2)->ep;
-+			struct sctp_sock *sp2 = sctp_sk(sk2);
-+			struct sctp_endpoint *ep2 = sp2->ep;
- 
- 			if (sk = sk2 ||
--			    (reuse && (sk2->sk_reuse || sctp_sk(sk2)->reuse) &&
--			     sk2->sk_state != SCTP_SS_LISTENING))
-+			    (reuse && (sk2->sk_reuse || sp2->reuse) &&
-+			     sk2->sk_state != SCTP_SS_LISTENING) ||
-+			    (sk->sk_reuseport && sk2->sk_reuseport &&
-+			     uid_eq(uid, sock_i_uid(sk2))))
- 				continue;
- 
--			if (sctp_bind_addr_conflict(&ep2->base.bind_addr, addr,
--						 sctp_sk(sk2), sctp_sk(sk))) {
-+			if (sctp_bind_addr_conflict(&ep2->base.bind_addr,
-+						    addr, sp2, sp)) {
- 				ret = (long)sk2;
- 				goto fail_unlock;
- 			}
-@@ -7767,19 +7774,32 @@ static long sctp_get_port_local(struct sock *sk, union sctp_addr *addr)
- 			pp->fastreuse = 1;
- 		else
- 			pp->fastreuse = 0;
--	} else if (pp->fastreuse &&
--		   (!reuse || sk->sk_state = SCTP_SS_LISTENING))
--		pp->fastreuse = 0;
++static int sctp_setsockopt_event(struct sock *sk, char __user *optval,
++				 unsigned int optlen)
++{
++	struct sctp_association *asoc;
++	struct sctp_ulpevent *event;
++	struct sctp_event param;
++	int retval = 0;
 +
-+		if (sk->sk_reuseport) {
-+			pp->fastreuseport = 1;
-+			pp->fastuid = uid;
-+		} else {
-+			pp->fastreuseport = 0;
-+		}
-+	} else {
-+		if (pp->fastreuse &&
-+		    (!reuse || sk->sk_state = SCTP_SS_LISTENING))
-+			pp->fastreuse = 0;
-+
-+		if (pp->fastreuseport &&
-+		    (!sk->sk_reuseport || !uid_eq(pp->fastuid, uid)))
-+			pp->fastreuseport = 0;
++	if (optlen < sizeof(param)) {
++		retval = -EINVAL;
++		goto out;
 +	}
++
++	optlen = sizeof(param);
++	if (copy_from_user(&param, optval, optlen)) {
++		retval = -EFAULT;
++		goto out;
++	}
++
++	if (param.se_type < SCTP_SN_TYPE_BASE ||
++	    param.se_type > SCTP_SN_TYPE_MAX) {
++		retval = -EINVAL;
++		goto out;
++	}
++
++	asoc = sctp_id2assoc(sk, param.se_assoc_id);
++	if (!asoc) {
++		sctp_ulpevent_type_set(&sctp_sk(sk)->subscribe,
++				       param.se_type, param.se_on);
++		goto out;
++	}
++
++	sctp_ulpevent_type_set(&asoc->subscribe, param.se_type, param.se_on);
++
++	if (param.se_type = SCTP_SENDER_DRY_EVENT && param.se_on) {
++		if (sctp_outq_is_empty(&asoc->outqueue)) {
++			event = sctp_ulpevent_make_sender_dry_event(asoc,
++					GFP_USER | __GFP_NOWARN);
++			if (!event) {
++				retval = -ENOMEM;
++				goto out;
++			}
++
++			asoc->stream.si->enqueue_event(&asoc->ulpq, event);
++		}
++	}
++
++out:
++	return retval;
++}
++
+ /* API 6.2 setsockopt(), getsockopt()
+  *
+  * Applications use setsockopt() and getsockopt() to set or retrieve
+@@ -4485,6 +4536,9 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 	case SCTP_REUSE_PORT:
+ 		retval = sctp_setsockopt_reuse_port(sk, optval, optlen);
+ 		break;
++	case SCTP_EVENT:
++		retval = sctp_setsockopt_event(sk, optval, optlen);
++		break;
+ 	default:
+ 		retval = -ENOPROTOOPT;
+ 		break;
+@@ -7430,6 +7484,38 @@ static int sctp_getsockopt_reuse_port(struct sock *sk, int len,
+ 	return 0;
+ }
  
- 	/* We are set, so fill up all the data in the hash table
- 	 * entry, tie the socket list information with the rest of the
- 	 * sockets FIXME: Blurry, NPI (ipg).
- 	 */
- success:
--	if (!sctp_sk(sk)->bind_hash) {
-+	if (!sp->bind_hash) {
- 		inet_sk(sk)->inet_num = snum;
- 		sk_add_bind_node(sk, &pp->owner);
--		sctp_sk(sk)->bind_hash = pp;
-+		sp->bind_hash = pp;
- 	}
- 	ret = 0;
- 
++static int sctp_getsockopt_event(struct sock *sk, int len, char __user *optval,
++				 int __user *optlen)
++{
++	struct sctp_association *asoc;
++	struct sctp_event param;
++	__u16 subscribe;
++
++	if (len < sizeof(param))
++		return -EINVAL;
++
++	len = sizeof(param);
++	if (copy_from_user(&param, optval, len))
++		return -EFAULT;
++
++	if (param.se_type < SCTP_SN_TYPE_BASE ||
++	    param.se_type > SCTP_SN_TYPE_MAX)
++		return -EINVAL;
++
++	asoc = sctp_id2assoc(sk, param.se_assoc_id);
++	subscribe = asoc ? asoc->subscribe : sctp_sk(sk)->subscribe;
++	param.se_on = sctp_ulpevent_type_enabled(subscribe, param.se_type);
++
++	if (put_user(len, optlen))
++		return -EFAULT;
++
++	if (copy_to_user(optval, &param, len))
++		return -EFAULT;
++
++	return 0;
++}
++
++
+ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 			   char __user *optval, int __user *optlen)
+ {
+@@ -7628,6 +7714,9 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 	case SCTP_REUSE_PORT:
+ 		retval = sctp_getsockopt_reuse_port(sk, len, optval, optlen);
+ 		break;
++	case SCTP_EVENT:
++		retval = sctp_getsockopt_event(sk, len, optval, optlen);
++		break;
+ 	default:
+ 		retval = -ENOPROTOOPT;
+ 		break;
 -- 
 2.1.0
