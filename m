@@ -1,173 +1,71 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 19 Nov 2018 08:30:12 +0000
-Subject: Re: KASAN: use-after-free Read in sctp_hash_transport
-Message-Id: <CADvbK_e0=A7TUd4u0o3c3xs1uv8vEuCxv2ht-K02LWAkTaV2oA@mail.gmail.com>
+Date: Mon, 12 Nov 2018 10:27:14 +0000
+Subject: [PATCHv2 net-next 0/3] sctp: add support for sk_reuseport
+Message-Id: <cover.1542018324.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <00000000000044e23f057af554d7@google.com>
-In-Reply-To: <00000000000044e23f057af554d7@google.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: syzbot+0b05d8aa7cb185107483@syzkaller.appspotmail.com
-Cc: davem <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, network dev <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs@googlegroups.com, Vlad Yasevich <vyasevich@gmail.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-On Mon, Nov 19, 2018 at 4:23 AM syzbot
-<syzbot+0b05d8aa7cb185107483@syzkaller.appspotmail.com> wrote:
->
-> Hello,
->
-> syzbot found the following crash on:
->
-> HEAD commit:    e119a369b0f1 Merge branch 'SMSC95xx-driver-updates'
-> git tree:       net-next
-> console output: https://syzkaller.appspot.com/x/log.txt?x=124f5f7b400000
-> kernel config:  https://syzkaller.appspot.com/x/.config?x=D86f24333880b605
-> dashboard link: https://syzkaller.appspot.com/bug?extid=0B05d8aa7cb185107=
-483
-> compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
->
-> Unfortunately, I don't have any reproducer for this crash yet.
->
-> IMPORTANT: if you fix the bug, please add the following tag to the commit:
-> Reported-by: syzbot+0b05d8aa7cb185107483@syzkaller.appspotmail.com
->
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> BUG: KASAN: use-after-free in sctp_hash_transport+0x803/0x810
-> net/sctp/input.c:958
-> Read of size 8 at addr ffff8881c6b98cb0 by task syz-executor5/3552
->
-> CPU: 0 PID: 3552 Comm: syz-executor5 Not tainted 4.20.0-rc2+ #299
-> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS
-> Google 01/01/2011
-> Call Trace:
->   __dump_stack lib/dump_stack.c:77 [inline]
->   dump_stack+0x244/0x39d lib/dump_stack.c:113
->   print_address_description.cold.7+0x9/0x1ff mm/kasan/report.c:256
->   kasan_report_error mm/kasan/report.c:354 [inline]
->   kasan_report.cold.8+0x242/0x309 mm/kasan/report.c:412
->   __asan_report_load8_noabort+0x14/0x20 mm/kasan/report.c:433
->   sctp_hash_transport+0x803/0x810 net/sctp/input.c:958
-Caused by:
-commit cd2b708750582e327789d8fb07c6eb5f79f7759f
-Author: Xin Long <lucien.xin@gmail.com>
-Date:   Fri Feb 17 16:35:24 2017 +0800
+sctp sk_reuseport allows multiple socks to listen on the same port and
+addresses, as long as these socks have the same uid. This works pretty
+much as TCP/UDP does, the only difference is that sctp is multi-homing
+and all the bind_addrs in these socks will have to completely matched,
+otherwise listen() will return err.
 
-    sctp: check duplicate node before inserting a new transport
+The below is when 5 sockets are listening on 172.16.254.254:6400 on a
+server, 26 sockets on a client connect to 172.16.254.254:6400 and each
+may be processed by a different socket on the server which is selected
+by hash(lport, pport, paddr) in reuseport_select_sock():
 
-A same fix is needed as:
-commit bab1be79a5169ac748d8292b20c86d874022d7ba
-Author: Xin Long <lucien.xin@gmail.com>
-Date:   Mon Aug 27 18:38:31 2018 +0800
+ # ss --sctp -nn
+   State      Recv-Q Send-Q        Local Address:Port     Peer Address:Port
+   LISTEN     0      10           172.16.254.254:6400                *:*
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.2.1:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.2.4:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.3.3:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.3.4:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.5.2:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.5.3:1234
+   LISTEN     0      10           172.16.254.254:6400                *:*
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.1.3:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.1.4:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.3.2:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.4.1:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.4.2:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.4.3:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.4.4:1234
+   LISTEN     0      10           172.16.254.254:6400                *:*
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.1.2:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.3.5:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.4.5:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400   172.16.253.253:1234
+   LISTEN     0      10           172.16.254.254:6400                *:*
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.2.2:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.2.3:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.5.4:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.5.5:1234
+   LISTEN     0      10           172.16.254.254:6400                *:*
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.1.1:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.1.5:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.2.5:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.3.1:1234
+   `- ESTAB   0      0       172.16.254.254%eth1:6400       172.16.5.1:1234
 
-    sctp: hold transport before accessing its asoc in sctp_transport_get_ne=
-xt
+Xin Long (3):
+  sctp: do reuseport_select_sock in __sctp_rcv_lookup_endpoint
+  sctp: add sock_reuseport for the sock in __sctp_hash_endpoint
+  sctp: process sk_reuseport in sctp_get_port_local
 
+ include/net/sctp/sctp.h    |   2 +-
+ include/net/sctp/structs.h |   6 ++-
+ net/core/sock_reuseport.c  |   1 +
+ net/sctp/bind_addr.c       |  28 ++++++++++
+ net/sctp/input.c           | 129 ++++++++++++++++++++++++++++++++-------------
+ net/sctp/socket.c          |  49 +++++++++++------
+ 6 files changed, 162 insertions(+), 53 deletions(-)
 
->   sctp_assoc_add_peer+0xa21/0x10d0 net/sctp/associola.c:724
->   sctp_sendmsg_new_asoc+0x5da/0x11f0 net/sctp/socket.c:1757
->   sctp_sendmsg+0x18a5/0x1da0 net/sctp/socket.c:2086
->   inet_sendmsg+0x1a1/0x690 net/ipv4/af_inet.c:798
->   sock_sendmsg_nosec net/socket.c:621 [inline]
->   sock_sendmsg+0xd5/0x120 net/socket.c:631
->   ___sys_sendmsg+0x7fd/0x930 net/socket.c:2116
->   __sys_sendmsg+0x11d/0x280 net/socket.c:2154
->   __do_sys_sendmsg net/socket.c:2163 [inline]
->   __se_sys_sendmsg net/socket.c:2161 [inline]
->   __x64_sys_sendmsg+0x78/0xb0 net/socket.c:2161
->   do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
->   entry_SYSCALL_64_after_hwframe+0x49/0xbe
-> RIP: 0033:0x457569
-> Code: fd b3 fb ff c3 66 2e 0f 1f 84 00 00 00 00 00 66 90 48 89 f8 48 89 f7
-> 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff
-> ff 0f 83 cb b3 fb ff c3 66 2e 0f 1f 84 00 00 00 00
-> RSP: 002b:00007f45462c7c78 EFLAGS: 00000246 ORIG_RAX: 000000000000002e
-> RAX: ffffffffffffffda RBX: 0000000000000003 RCX: 0000000000457569
-> RDX: 0000000000000000 RSI: 000000002001afc8 RDI: 0000000000000005
-> RBP: 000000000072c0e0 R08: 0000000000000000 R09: 0000000000000000
-> R10: 0000000000000000 R11: 0000000000000246 R12: 00007f45462c86d4
-> R13: 00000000004c381e R14: 00000000004d59e8 R15: 00000000ffffffff
->
-> Allocated by task 3509:
->   save_stack+0x43/0xd0 mm/kasan/kasan.c:448
->   set_track mm/kasan/kasan.c:460 [inline]
->   kasan_kmalloc+0xc7/0xe0 mm/kasan/kasan.c:553
->   kmem_cache_alloc_trace+0x152/0x750 mm/slab.c:3620
->   kmalloc include/linux/slab.h:546 [inline]
->   kzalloc include/linux/slab.h:741 [inline]
->   sctp_association_new+0x14e/0x2290 net/sctp/associola.c:311
->   sctp_sendmsg_new_asoc+0x39c/0x11f0 net/sctp/socket.c:1723
->   sctp_sendmsg+0x18a5/0x1da0 net/sctp/socket.c:2086
->   inet_sendmsg+0x1a1/0x690 net/ipv4/af_inet.c:798
->   sock_sendmsg_nosec net/socket.c:621 [inline]
->   sock_sendmsg+0xd5/0x120 net/socket.c:631
->   ___sys_sendmsg+0x7fd/0x930 net/socket.c:2116
->   __sys_sendmsg+0x11d/0x280 net/socket.c:2154
->   __do_sys_sendmsg net/socket.c:2163 [inline]
->   __se_sys_sendmsg net/socket.c:2161 [inline]
->   __x64_sys_sendmsg+0x78/0xb0 net/socket.c:2161
->   do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
->   entry_SYSCALL_64_after_hwframe+0x49/0xbe
->
-> Freed by task 3552:
->   save_stack+0x43/0xd0 mm/kasan/kasan.c:448
->   set_track mm/kasan/kasan.c:460 [inline]
->   __kasan_slab_free+0x102/0x150 mm/kasan/kasan.c:521
->   kasan_slab_free+0xe/0x10 mm/kasan/kasan.c:528
->   __cache_free mm/slab.c:3498 [inline]
->   kfree+0xcf/0x230 mm/slab.c:3817
->   sctp_association_destroy net/sctp/associola.c:437 [inline]
->   sctp_association_put+0x264/0x350 net/sctp/associola.c:889
->   sctp_transport_destroy net/sctp/transport.c:180 [inline]
->   sctp_transport_put+0x186/0x1f0 net/sctp/transport.c:340
->   sctp_hash_cmp+0x1ef/0x260 net/sctp/input.c:901
->   __rhashtable_lookup.isra.24.constprop.29+0x3b6/0x7d0
-> include/linux/rhashtable.h:483
->   rhltable_lookup include/linux/rhashtable.h:566 [inline]
->   sctp_hash_transport+0x2f6/0x810 net/sctp/input.c:954
->   sctp_assoc_add_peer+0xa21/0x10d0 net/sctp/associola.c:724
->   sctp_sendmsg_new_asoc+0x5da/0x11f0 net/sctp/socket.c:1757
->   sctp_sendmsg+0x18a5/0x1da0 net/sctp/socket.c:2086
->   inet_sendmsg+0x1a1/0x690 net/ipv4/af_inet.c:798
->   sock_sendmsg_nosec net/socket.c:621 [inline]
->   sock_sendmsg+0xd5/0x120 net/socket.c:631
->   ___sys_sendmsg+0x7fd/0x930 net/socket.c:2116
->   __sys_sendmsg+0x11d/0x280 net/socket.c:2154
->   __do_sys_sendmsg net/socket.c:2163 [inline]
->   __se_sys_sendmsg net/socket.c:2161 [inline]
->   __x64_sys_sendmsg+0x78/0xb0 net/socket.c:2161
->   do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
->   entry_SYSCALL_64_after_hwframe+0x49/0xbe
->
-> The buggy address belongs to the object at ffff8881c6b98c00
->   which belongs to the cache kmalloc-4k of size 4096
-> The buggy address is located 176 bytes inside of
->   4096-byte region [ffff8881c6b98c00, ffff8881c6b99c00)
-> The buggy address belongs to the page:
-> page:ffffea00071ae600 count:1 mapcount:0 mapping:ffff8881da800dc0 index:0=
-x0
-> compound_mapcount: 0
-> flags: 0x2fffc0000010200(slab|head)
-> raw: 02fffc0000010200 ffffea0007175888 ffffea0006421308 ffff8881da800dc0
-> raw: 0000000000000000 ffff8881c6b98c00 0000000100000001 0000000000000000
-> page dumped because: kasan: bad access detected
->
-> Memory state around the buggy address:
->   ffff8881c6b98b80: fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc
->   ffff8881c6b98c00: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
-> > ffff8881c6b98c80: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
->                                       ^
->   ffff8881c6b98d00: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
->   ffff8881c6b98d80: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D
->
->
-> ---
-> This bug is generated by a bot. It may contain errors.
-> See https://goo.gl/tpsmEJ for more information about syzbot.
-> syzbot engineers can be reached at syzkaller@googlegroups.com.
->
-> syzbot will keep track of this bug report. See:
-> https://goo.gl/tpsmEJ#bug-status-tracking for how to communicate with
-> syzbot.
+-- 
+2.1.0
