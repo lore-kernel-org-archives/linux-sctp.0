@@ -1,300 +1,136 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 18 Nov 2018 08:08:51 +0000
-Subject: [PATCHv3 net-next 1/4] sctp: define subscribe in sctp_sock as __u16
-Message-Id: <dcc896a5655922d754c5da3b215d2d5ee338ca69.1542528309.git.lucien.xin@gmail.com>
+Date: Mon, 12 Nov 2018 10:27:17 +0000
+Subject: [PATCHv2 net-next 3/3] sctp: process sk_reuseport in sctp_get_port_local
+Message-Id: <f79504884e689b3284f2eb236c41427ac7350df8.1542018324.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1542528309.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1542528309.git.lucien.xin@gmail.com>
+References: <cover.1542018324.git.lucien.xin@gmail.com>
+ <51f701b95b1c2cecdc53f1ad518a2011b43d7621.1542018324.git.lucien.xin@gmail.com>
+ <85a05853d769b272da4a365888ff1c2f2715f8a9.1542018324.git.lucien.xin@gmail.com>
+In-Reply-To: <85a05853d769b272da4a365888ff1c2f2715f8a9.1542018324.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-The member subscribe in sctp_sock is used to indicate to which of
-the events it is subscribed, more like a group of flags. So it's
-better to be defined as __u16 (2 bytpes), instead of struct
-sctp_event_subscribe (13 bytes).
+When socks' sk_reuseport is set, the same port and address are allowed
+to be bound into these socks who have the same uid.
 
-Note that sctp_event_subscribe is an UAPI struct, used on sockopt
-calls, and thus it will not be removed. This patch only changes
-the internal storage of the flags.
+Note that the difference from sk_reuse is that it allows multiple socks
+to listen on the same port and address.
 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/structs.h   |  2 +-
- include/net/sctp/ulpevent.h  | 39 ++++++++++++++++++++++++---------------
- include/uapi/linux/sctp.h    |  6 +++++-
- net/sctp/chunk.c             |  4 ++--
- net/sctp/socket.c            | 35 ++++++++++++++++++++++++++---------
- net/sctp/stream_interleave.c | 11 ++++++-----
- net/sctp/ulpqueue.c          |  8 ++++----
- 7 files changed, 68 insertions(+), 37 deletions(-)
+ include/net/sctp/structs.h |  4 +++-
+ net/sctp/socket.c          | 46 +++++++++++++++++++++++++++++++++-------------
+ 2 files changed, 36 insertions(+), 14 deletions(-)
 
 diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index af9d494..bc7808a 100644
+index 15d017f..af9d494 100644
 --- a/include/net/sctp/structs.h
 +++ b/include/net/sctp/structs.h
-@@ -217,7 +217,7 @@ struct sctp_sock {
- 	 * These two structures must be grouped together for the usercopy
- 	 * whitelist region.
- 	 */
--	struct sctp_event_subscribe subscribe;
-+	__u16 subscribe;
- 	struct sctp_initmsg initmsg;
+@@ -96,7 +96,9 @@ struct sctp_stream;
  
- 	int user_frag;
-diff --git a/include/net/sctp/ulpevent.h b/include/net/sctp/ulpevent.h
-index 51b4e06..bd922a0 100644
---- a/include/net/sctp/ulpevent.h
-+++ b/include/net/sctp/ulpevent.h
-@@ -164,30 +164,39 @@ void sctp_ulpevent_read_nxtinfo(const struct sctp_ulpevent *event,
- 
- __u16 sctp_ulpevent_get_notification_type(const struct sctp_ulpevent *event);
- 
-+static inline void sctp_ulpevent_type_set(__u16 *subscribe,
-+					  __u16 sn_type, __u8 on)
-+{
-+	if (sn_type > SCTP_SN_TYPE_MAX)
-+		return;
-+
-+	if (on)
-+		*subscribe |=  (1 << (sn_type - SCTP_SN_TYPE_BASE));
-+	else
-+		*subscribe &= ~(1 << (sn_type - SCTP_SN_TYPE_BASE));
-+}
-+
- /* Is this event type enabled? */
--static inline int sctp_ulpevent_type_enabled(__u16 sn_type,
--					     struct sctp_event_subscribe *mask)
-+static inline bool sctp_ulpevent_type_enabled(__u16 subscribe, __u16 sn_type)
- {
--	int offset = sn_type - SCTP_SN_TYPE_BASE;
--	char *amask = (char *) mask;
-+	if (sn_type > SCTP_SN_TYPE_MAX)
-+		return false;
- 
--	if (offset >= sizeof(struct sctp_event_subscribe))
--		return 0;
--	return amask[offset];
-+	return subscribe & (1 << (sn_type - SCTP_SN_TYPE_BASE));
- }
- 
- /* Given an event subscription, is this event enabled? */
--static inline int sctp_ulpevent_is_enabled(const struct sctp_ulpevent *event,
--					   struct sctp_event_subscribe *mask)
-+static inline bool sctp_ulpevent_is_enabled(const struct sctp_ulpevent *event,
-+					    __u16 subscribe)
- {
- 	__u16 sn_type;
--	int enabled = 1;
- 
--	if (sctp_ulpevent_is_notification(event)) {
--		sn_type = sctp_ulpevent_get_notification_type(event);
--		enabled = sctp_ulpevent_type_enabled(sn_type, mask);
--	}
--	return enabled;
-+	if (!sctp_ulpevent_is_notification(event))
-+		return true;
-+
-+	sn_type = sctp_ulpevent_get_notification_type(event);
-+
-+	return sctp_ulpevent_type_enabled(subscribe, sn_type);
- }
- 
- #endif /* __sctp_ulpevent_h__ */
-diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index c81feb3..66afa5b 100644
---- a/include/uapi/linux/sctp.h
-+++ b/include/uapi/linux/sctp.h
-@@ -632,7 +632,9 @@ union sctp_notification {
-  */
- 
- enum sctp_sn_type {
--	SCTP_SN_TYPE_BASE     = (1<<15),
-+	SCTP_SN_TYPE_BASE	= (1<<15),
-+	SCTP_DATA_IO_EVENT	= SCTP_SN_TYPE_BASE,
-+#define SCTP_DATA_IO_EVENT		SCTP_DATA_IO_EVENT
- 	SCTP_ASSOC_CHANGE,
- #define SCTP_ASSOC_CHANGE		SCTP_ASSOC_CHANGE
- 	SCTP_PEER_ADDR_CHANGE,
-@@ -657,6 +659,8 @@ enum sctp_sn_type {
- #define SCTP_ASSOC_RESET_EVENT		SCTP_ASSOC_RESET_EVENT
- 	SCTP_STREAM_CHANGE_EVENT,
- #define SCTP_STREAM_CHANGE_EVENT	SCTP_STREAM_CHANGE_EVENT
-+	SCTP_SN_TYPE_MAX	= SCTP_STREAM_CHANGE_EVENT,
-+#define SCTP_SN_TYPE_MAX		SCTP_SN_TYPE_MAX
- };
- 
- /* Notification error codes used to fill up the error fields in some
-diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
-index ce80878..6c761af 100644
---- a/net/sctp/chunk.c
-+++ b/net/sctp/chunk.c
-@@ -109,8 +109,8 @@ static void sctp_datamsg_destroy(struct sctp_datamsg *msg)
- 				error = asoc->outqueue.error;
- 
- 			sp = sctp_sk(asoc->base.sk);
--			notify = sctp_ulpevent_type_enabled(SCTP_SEND_FAILED,
--							    &sp->subscribe);
-+			notify = sctp_ulpevent_type_enabled(sp->subscribe,
-+							    SCTP_SEND_FAILED);
- 		}
- 
- 		/* Generate a SEND FAILED event only if enabled. */
+ struct sctp_bind_bucket {
+ 	unsigned short	port;
+-	unsigned short	fastreuse;
++	signed char	fastreuse;
++	signed char	fastreuseport;
++	kuid_t		fastuid;
+ 	struct hlist_node	node;
+ 	struct hlist_head	owner;
+ 	struct net	*net;
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 5299add..9d75129 100644
+index 2e955f1..5299add 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -2230,7 +2230,7 @@ static int sctp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
- 	if (sp->recvrcvinfo)
- 		sctp_ulpevent_read_rcvinfo(event, msg);
- 	/* Check if we allow SCTP_SNDRCVINFO. */
--	if (sp->subscribe.sctp_data_io_event)
-+	if (sctp_ulpevent_type_enabled(sp->subscribe, SCTP_DATA_IO_EVENT))
- 		sctp_ulpevent_read_sndrcvinfo(event, msg);
+@@ -7644,8 +7644,10 @@ static struct sctp_bind_bucket *sctp_bucket_create(
  
- 	err = copied;
-@@ -2304,21 +2304,28 @@ static int sctp_setsockopt_disable_fragments(struct sock *sk,
- static int sctp_setsockopt_events(struct sock *sk, char __user *optval,
- 				  unsigned int optlen)
+ static long sctp_get_port_local(struct sock *sk, union sctp_addr *addr)
  {
--	struct sctp_association *asoc;
--	struct sctp_ulpevent *event;
-+	struct sctp_event_subscribe subscribe;
-+	__u8 *sn_type = (__u8 *)&subscribe;
+-	bool reuse = (sk->sk_reuse || sctp_sk(sk)->reuse);
 +	struct sctp_sock *sp = sctp_sk(sk);
-+	int i;
++	bool reuse = (sk->sk_reuse || sp->reuse);
+ 	struct sctp_bind_hashbucket *head; /* hash list */
++	kuid_t uid = sock_i_uid(sk);
+ 	struct sctp_bind_bucket *pp;
+ 	unsigned short snum;
+ 	int ret;
+@@ -7721,7 +7723,10 @@ static long sctp_get_port_local(struct sock *sk, union sctp_addr *addr)
  
- 	if (optlen > sizeof(struct sctp_event_subscribe))
- 		return -EINVAL;
--	if (copy_from_user(&sctp_sk(sk)->subscribe, optval, optlen))
-+
-+	if (copy_from_user(&subscribe, optval, optlen))
- 		return -EFAULT;
+ 		pr_debug("%s: found a possible match\n", __func__);
  
-+	for (i = 0; i < optlen; i++)
-+		sctp_ulpevent_type_set(&sp->subscribe, SCTP_SN_TYPE_BASE + i,
-+				       sn_type[i]);
+-		if (pp->fastreuse && reuse && sk->sk_state != SCTP_SS_LISTENING)
++		if ((pp->fastreuse && reuse &&
++		     sk->sk_state != SCTP_SS_LISTENING) ||
++		    (pp->fastreuseport && sk->sk_reuseport &&
++		     uid_eq(pp->fastuid, uid)))
+ 			goto success;
+ 
+ 		/* Run through the list of sockets bound to the port
+@@ -7735,16 +7740,18 @@ static long sctp_get_port_local(struct sock *sk, union sctp_addr *addr)
+ 		 * in an endpoint.
+ 		 */
+ 		sk_for_each_bound(sk2, &pp->owner) {
+-			struct sctp_endpoint *ep2;
+-			ep2 = sctp_sk(sk2)->ep;
++			struct sctp_sock *sp2 = sctp_sk(sk2);
++			struct sctp_endpoint *ep2 = sp2->ep;
+ 
+ 			if (sk = sk2 ||
+-			    (reuse && (sk2->sk_reuse || sctp_sk(sk2)->reuse) &&
+-			     sk2->sk_state != SCTP_SS_LISTENING))
++			    (reuse && (sk2->sk_reuse || sp2->reuse) &&
++			     sk2->sk_state != SCTP_SS_LISTENING) ||
++			    (sk->sk_reuseport && sk2->sk_reuseport &&
++			     uid_eq(uid, sock_i_uid(sk2))))
+ 				continue;
+ 
+-			if (sctp_bind_addr_conflict(&ep2->base.bind_addr, addr,
+-						 sctp_sk(sk2), sctp_sk(sk))) {
++			if (sctp_bind_addr_conflict(&ep2->base.bind_addr,
++						    addr, sp2, sp)) {
+ 				ret = (long)sk2;
+ 				goto fail_unlock;
+ 			}
+@@ -7767,19 +7774,32 @@ static long sctp_get_port_local(struct sock *sk, union sctp_addr *addr)
+ 			pp->fastreuse = 1;
+ 		else
+ 			pp->fastreuse = 0;
+-	} else if (pp->fastreuse &&
+-		   (!reuse || sk->sk_state = SCTP_SS_LISTENING))
+-		pp->fastreuse = 0;
 +
- 	/* At the time when a user app subscribes to SCTP_SENDER_DRY_EVENT,
- 	 * if there is no data to be sent or retransmit, the stack will
- 	 * immediately send up this notification.
++		if (sk->sk_reuseport) {
++			pp->fastreuseport = 1;
++			pp->fastuid = uid;
++		} else {
++			pp->fastreuseport = 0;
++		}
++	} else {
++		if (pp->fastreuse &&
++		    (!reuse || sk->sk_state = SCTP_SS_LISTENING))
++			pp->fastreuse = 0;
++
++		if (pp->fastreuseport &&
++		    (!sk->sk_reuseport || !uid_eq(pp->fastuid, uid)))
++			pp->fastreuseport = 0;
++	}
+ 
+ 	/* We are set, so fill up all the data in the hash table
+ 	 * entry, tie the socket list information with the rest of the
+ 	 * sockets FIXME: Blurry, NPI (ipg).
  	 */
--	if (sctp_ulpevent_type_enabled(SCTP_SENDER_DRY_EVENT,
--				       &sctp_sk(sk)->subscribe)) {
--		asoc = sctp_id2assoc(sk, 0);
-+	if (sctp_ulpevent_type_enabled(sp->subscribe, SCTP_SENDER_DRY_EVENT)) {
-+		struct sctp_association *asoc = sctp_id2assoc(sk, 0);
-+		struct sctp_ulpevent *event;
- 
- 		if (asoc && sctp_outq_is_empty(&asoc->outqueue)) {
- 			event = sctp_ulpevent_make_sender_dry_event(asoc,
-@@ -4722,7 +4729,7 @@ static int sctp_init_sock(struct sock *sk)
- 	/* Initialize default event subscriptions. By default, all the
- 	 * options are off.
- 	 */
--	memset(&sp->subscribe, 0, sizeof(struct sctp_event_subscribe));
-+	sp->subscribe = 0;
- 
- 	/* Default Peer Address Parameters.  These defaults can
- 	 * be modified via SCTP_PEER_ADDR_PARAMS
-@@ -5267,14 +5274,24 @@ static int sctp_getsockopt_disable_fragments(struct sock *sk, int len,
- static int sctp_getsockopt_events(struct sock *sk, int len, char __user *optval,
- 				  int __user *optlen)
- {
-+	struct sctp_event_subscribe subscribe;
-+	__u8 *sn_type = (__u8 *)&subscribe;
-+	int i;
-+
- 	if (len = 0)
- 		return -EINVAL;
- 	if (len > sizeof(struct sctp_event_subscribe))
- 		len = sizeof(struct sctp_event_subscribe);
- 	if (put_user(len, optlen))
- 		return -EFAULT;
--	if (copy_to_user(optval, &sctp_sk(sk)->subscribe, len))
-+
-+	for (i = 0; i < len; i++)
-+		sn_type[i] = sctp_ulpevent_type_enabled(sctp_sk(sk)->subscribe,
-+							SCTP_SN_TYPE_BASE + i);
-+
-+	if (copy_to_user(optval, &subscribe, len))
- 		return -EFAULT;
-+
- 	return 0;
- }
- 
-diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
-index 2b499a8..ceef5a3 100644
---- a/net/sctp/stream_interleave.c
-+++ b/net/sctp/stream_interleave.c
-@@ -503,7 +503,7 @@ static int sctp_enqueue_event(struct sctp_ulpq *ulpq,
- 		sk_incoming_cpu_update(sk);
+ success:
+-	if (!sctp_sk(sk)->bind_hash) {
++	if (!sp->bind_hash) {
+ 		inet_sk(sk)->inet_num = snum;
+ 		sk_add_bind_node(sk, &pp->owner);
+-		sctp_sk(sk)->bind_hash = pp;
++		sp->bind_hash = pp;
  	}
+ 	ret = 0;
  
--	if (!sctp_ulpevent_is_enabled(event, &sp->subscribe))
-+	if (!sctp_ulpevent_is_enabled(event, sp->subscribe))
- 		goto out_free;
- 
- 	if (skb_list)
-@@ -992,10 +992,11 @@ static void sctp_intl_stream_abort_pd(struct sctp_ulpq *ulpq, __u16 sid,
- 				      __u32 mid, __u16 flags, gfp_t gfp)
- {
- 	struct sock *sk = ulpq->asoc->base.sk;
-+	struct sctp_sock *sp = sctp_sk(sk);
- 	struct sctp_ulpevent *ev = NULL;
- 
--	if (!sctp_ulpevent_type_enabled(SCTP_PARTIAL_DELIVERY_EVENT,
--					&sctp_sk(sk)->subscribe))
-+	if (!sctp_ulpevent_type_enabled(sp->subscribe,
-+					SCTP_PARTIAL_DELIVERY_EVENT))
- 		return;
- 
- 	ev = sctp_ulpevent_make_pdapi(ulpq->asoc, SCTP_PARTIAL_DELIVERY_ABORTED,
-@@ -1003,8 +1004,8 @@ static void sctp_intl_stream_abort_pd(struct sctp_ulpq *ulpq, __u16 sid,
- 	if (ev) {
- 		__skb_queue_tail(&sk->sk_receive_queue, sctp_event2skb(ev));
- 
--		if (!sctp_sk(sk)->data_ready_signalled) {
--			sctp_sk(sk)->data_ready_signalled = 1;
-+		if (!sp->data_ready_signalled) {
-+			sp->data_ready_signalled = 1;
- 			sk->sk_data_ready(sk);
- 		}
- 	}
-diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
-index 331cc73..b36dd90 100644
---- a/net/sctp/ulpqueue.c
-+++ b/net/sctp/ulpqueue.c
-@@ -219,7 +219,7 @@ int sctp_ulpq_tail_event(struct sctp_ulpq *ulpq, struct sctp_ulpevent *event)
- 		sk_incoming_cpu_update(sk);
- 	}
- 	/* Check if the user wishes to receive this event.  */
--	if (!sctp_ulpevent_is_enabled(event, &sp->subscribe))
-+	if (!sctp_ulpevent_is_enabled(event, sp->subscribe))
- 		goto out_free;
- 
- 	/* If we are in partial delivery mode, post to the lobby until
-@@ -1129,16 +1129,16 @@ void sctp_ulpq_renege(struct sctp_ulpq *ulpq, struct sctp_chunk *chunk,
- void sctp_ulpq_abort_pd(struct sctp_ulpq *ulpq, gfp_t gfp)
- {
- 	struct sctp_ulpevent *ev = NULL;
--	struct sock *sk;
- 	struct sctp_sock *sp;
-+	struct sock *sk;
- 
- 	if (!ulpq->pd_mode)
- 		return;
- 
- 	sk = ulpq->asoc->base.sk;
- 	sp = sctp_sk(sk);
--	if (sctp_ulpevent_type_enabled(SCTP_PARTIAL_DELIVERY_EVENT,
--				       &sctp_sk(sk)->subscribe))
-+	if (sctp_ulpevent_type_enabled(sp->subscribe,
-+				       SCTP_PARTIAL_DELIVERY_EVENT))
- 		ev = sctp_ulpevent_make_pdapi(ulpq->asoc,
- 					      SCTP_PARTIAL_DELIVERY_ABORTED,
- 					      0, 0, 0, gfp);
 -- 
 2.1.0
