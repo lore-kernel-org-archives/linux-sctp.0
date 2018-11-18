@@ -1,28 +1,44 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 19 Nov 2018 20:44:10 +0000
-Subject: Re: [PATCH net] Revert "sctp: remove sctp_transport_pmtu_check"
-Message-Id: <20181119.124410.2142300768746731115.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sun, 18 Nov 2018 13:59:49 +0000
+Subject: [PATCH net] sctp: not increase stream's incnt before sending addstrm_in request
+Message-Id: <74669ed0fa48471de2b6b1ebb3580858e4fa7895.1542549589.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <722a49900dadb13e3a97a63d54561418db28e1cc.1542528887.git.lucien.xin@gmail.com>
-In-Reply-To: <722a49900dadb13e3a97a63d54561418db28e1cc.1542528887.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 18 Nov 2018 16:14:47 +0800
+Different from processing the addstrm_out request, The receiver handles
+an addstrm_in request by sending back an addstrm_out request to the
+sender who will increase its stream's in and incnt later.
 
-> This reverts commit 22d7be267eaa8114dcc28d66c1c347f667d7878a.
-> 
-> The dst's mtu in transport can be updated by a non sctp place like
-> in xfrm where the MTU information didn't get synced between asoc,
-> transport and dst, so it is still needed to do the pmtu check
-> in sctp_packet_config.
+Now stream->incnt has been increased since it sent out the addstrm_in
+request in sctp_send_add_streams(), with the wrong stream->incnt will
+even cause crash when copying stream info from the old stream's in to
+the new one's in sctp_process_strreset_addstrm_out().
 
-Applied and queued up for -stable.
+This patch is to fix it by simply removing the stream->incnt change
+from sctp_send_add_streams().
 
-Please provide a proper signoff for reverts in the future.
+Fixes: 242bd2d519d7 ("sctp: implement sender-side procedures for Add Incoming/Outgoing Streams Request Parameter")
+Reported-by: Jianwen Ji <jiji@redhat.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/stream.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-Thanks.
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index ffb940d..3892e76 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -535,7 +535,6 @@ int sctp_send_add_streams(struct sctp_association *asoc,
+ 		goto out;
+ 	}
+ 
+-	stream->incnt = incnt;
+ 	stream->outcnt = outcnt;
+ 
+ 	asoc->strreset_outstanding = !!out + !!in;
+-- 
+2.1.0
