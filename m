@@ -1,159 +1,148 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 12 Nov 2018 10:27:15 +0000
-Subject: [PATCHv2 net-next 1/3] sctp: do reuseport_select_sock in __sctp_rcv_lookup_endpoint
-Message-Id: <51f701b95b1c2cecdc53f1ad518a2011b43d7621.1542018324.git.lucien.xin@gmail.com>
+Date: Sun, 18 Nov 2018 08:08:53 +0000
+Subject: [PATCHv3 net-next 3/4] sctp: rename enum sctp_event to sctp_event_type
+Message-Id: <e729d53856fbbd755f6a90229a2976deb2ccb319.1542528309.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1542018324.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1542018324.git.lucien.xin@gmail.com>
+References: <cover.1542528309.git.lucien.xin@gmail.com>
+ <dcc896a5655922d754c5da3b215d2d5ee338ca69.1542528309.git.lucien.xin@gmail.com>
+ <55fc02263caa543564279aa33023cfaba9f2413a.1542528309.git.lucien.xin@gmail.com>
+In-Reply-To: <55fc02263caa543564279aa33023cfaba9f2413a.1542528309.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This is a part of sk_reuseport support for sctp, and it selects a
-sock by the hashkey of lport, paddr and dport by default. It will
-work until sk_reuseport support is added in sctp_get_port_local()
-in the next patch.
+sctp_event is a structure name defined in RFC for sockopt
+SCTP_EVENT. To avoid the conflict, rename it.
 
-v1->v2:
-  - define lport as __be16 instead of __be32 as Marcelo pointed in
-    __sctp_rcv_lookup_endpoint().
-
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/sctp/input.c | 69 +++++++++++++++++++++++++++++++++-----------------------
- 1 file changed, 41 insertions(+), 28 deletions(-)
+ include/net/sctp/constants.h |  2 +-
+ include/net/sctp/sm.h        |  4 ++--
+ net/sctp/primitive.c         |  2 +-
+ net/sctp/sm_sideeffect.c     | 12 ++++++------
+ net/sctp/sm_statetable.c     |  2 +-
+ 5 files changed, 11 insertions(+), 11 deletions(-)
 
-diff --git a/net/sctp/input.c b/net/sctp/input.c
-index 7ab08a5..00f995e 100644
---- a/net/sctp/input.c
-+++ b/net/sctp/input.c
-@@ -57,6 +57,7 @@
- #include <net/sctp/checksum.h>
- #include <net/net_namespace.h>
- #include <linux/rhashtable.h>
-+#include <net/sock_reuseport.h>
+diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
+index 8dadc74..4588bdc 100644
+--- a/include/net/sctp/constants.h
++++ b/include/net/sctp/constants.h
+@@ -71,7 +71,7 @@ enum { SCTP_DEFAULT_INSTREAMS = SCTP_MAX_STREAM };
+ 					 SCTP_NUM_AUTH_CHUNK_TYPES)
  
- /* Forward declarations for internal helpers. */
- static int sctp_rcv_ootb(struct sk_buff *);
-@@ -65,8 +66,10 @@ static struct sctp_association *__sctp_rcv_lookup(struct net *net,
- 				      const union sctp_addr *paddr,
- 				      const union sctp_addr *laddr,
- 				      struct sctp_transport **transportp);
--static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(struct net *net,
--						const union sctp_addr *laddr);
-+static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(
-+					struct net *net, struct sk_buff *skb,
-+					const union sctp_addr *laddr,
-+					const union sctp_addr *daddr);
- static struct sctp_association *__sctp_lookup_association(
+ /* These are the different flavours of event.  */
+-enum sctp_event {
++enum sctp_event_type {
+ 	SCTP_EVENT_T_CHUNK = 1,
+ 	SCTP_EVENT_T_TIMEOUT,
+ 	SCTP_EVENT_T_OTHER,
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index 9e3d327..24825a8 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -173,7 +173,7 @@ sctp_state_fn_t sctp_sf_autoclose_timer_expire;
+ __u8 sctp_get_chunk_type(struct sctp_chunk *chunk);
+ const struct sctp_sm_table_entry *sctp_sm_lookup_event(
  					struct net *net,
- 					const union sctp_addr *local,
-@@ -171,7 +174,7 @@ int sctp_rcv(struct sk_buff *skb)
- 	asoc = __sctp_rcv_lookup(net, skb, &src, &dest, &transport);
+-					enum sctp_event event_type,
++					enum sctp_event_type event_type,
+ 					enum sctp_state state,
+ 					union sctp_subtype event_subtype);
+ int sctp_chunk_iif(const struct sctp_chunk *);
+@@ -313,7 +313,7 @@ struct sctp_chunk *sctp_process_strreset_resp(
  
- 	if (!asoc)
--		ep = __sctp_rcv_lookup_endpoint(net, &dest);
-+		ep = __sctp_rcv_lookup_endpoint(net, skb, &dest, &src);
+ /* Prototypes for statetable processing. */
  
- 	/* Retrieve the common input handling substructure. */
- 	rcvr = asoc ? &asoc->base : &ep->base;
-@@ -771,16 +774,35 @@ void sctp_unhash_endpoint(struct sctp_endpoint *ep)
- 	local_bh_enable();
- }
+-int sctp_do_sm(struct net *net, enum sctp_event event_type,
++int sctp_do_sm(struct net *net, enum sctp_event_type event_type,
+ 	       union sctp_subtype subtype, enum sctp_state state,
+ 	       struct sctp_endpoint *ep, struct sctp_association *asoc,
+ 	       void *event_arg, gfp_t gfp);
+diff --git a/net/sctp/primitive.c b/net/sctp/primitive.c
+index c0817f7a..a8c4c33 100644
+--- a/net/sctp/primitive.c
++++ b/net/sctp/primitive.c
+@@ -53,7 +53,7 @@
+ int sctp_primitive_ ## name(struct net *net, struct sctp_association *asoc, \
+ 			    void *arg) { \
+ 	int error = 0; \
+-	enum sctp_event event_type; union sctp_subtype subtype; \
++	enum sctp_event_type event_type; union sctp_subtype subtype; \
+ 	enum sctp_state state; \
+ 	struct sctp_endpoint *ep; \
+ 	\
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 85d3930..1d143bc 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -52,7 +52,7 @@
+ #include <net/sctp/sm.h>
+ #include <net/sctp/stream_sched.h>
  
-+static inline __u32 sctp_hashfn(const struct net *net, __be16 lport,
-+				const union sctp_addr *paddr, __u32 seed)
-+{
-+	__u32 addr;
-+
-+	if (paddr->sa.sa_family = AF_INET6)
-+		addr = jhash(&paddr->v6.sin6_addr, 16, seed);
-+	else
-+		addr = (__force __u32)paddr->v4.sin_addr.s_addr;
-+
-+	return  jhash_3words(addr, ((__force __u32)paddr->v4.sin_port) << 16 |
-+			     (__force __u32)lport, net_hash_mix(net), seed);
-+}
-+
- /* Look up an endpoint. */
--static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(struct net *net,
--						const union sctp_addr *laddr)
-+static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(
-+					struct net *net, struct sk_buff *skb,
-+					const union sctp_addr *laddr,
-+					const union sctp_addr *paddr)
+-static int sctp_cmd_interpreter(enum sctp_event event_type,
++static int sctp_cmd_interpreter(enum sctp_event_type event_type,
+ 				union sctp_subtype subtype,
+ 				enum sctp_state state,
+ 				struct sctp_endpoint *ep,
+@@ -61,7 +61,7 @@ static int sctp_cmd_interpreter(enum sctp_event event_type,
+ 				enum sctp_disposition status,
+ 				struct sctp_cmd_seq *commands,
+ 				gfp_t gfp);
+-static int sctp_side_effects(enum sctp_event event_type,
++static int sctp_side_effects(enum sctp_event_type event_type,
+ 			     union sctp_subtype subtype,
+ 			     enum sctp_state state,
+ 			     struct sctp_endpoint *ep,
+@@ -623,7 +623,7 @@ static void sctp_cmd_init_failed(struct sctp_cmd_seq *commands,
+ /* Worker routine to handle SCTP_CMD_ASSOC_FAILED.  */
+ static void sctp_cmd_assoc_failed(struct sctp_cmd_seq *commands,
+ 				  struct sctp_association *asoc,
+-				  enum sctp_event event_type,
++				  enum sctp_event_type event_type,
+ 				  union sctp_subtype subtype,
+ 				  struct sctp_chunk *chunk,
+ 				  unsigned int error)
+@@ -1162,7 +1162,7 @@ static void sctp_cmd_send_asconf(struct sctp_association *asoc)
+  * If you want to understand all of lksctp, this is a
+  * good place to start.
+  */
+-int sctp_do_sm(struct net *net, enum sctp_event event_type,
++int sctp_do_sm(struct net *net, enum sctp_event_type event_type,
+ 	       union sctp_subtype subtype, enum sctp_state state,
+ 	       struct sctp_endpoint *ep, struct sctp_association *asoc,
+ 	       void *event_arg, gfp_t gfp)
+@@ -1199,7 +1199,7 @@ int sctp_do_sm(struct net *net, enum sctp_event event_type,
+ /*****************************************************************
+  * This the master state function side effect processing function.
+  *****************************************************************/
+-static int sctp_side_effects(enum sctp_event event_type,
++static int sctp_side_effects(enum sctp_event_type event_type,
+ 			     union sctp_subtype subtype,
+ 			     enum sctp_state state,
+ 			     struct sctp_endpoint *ep,
+@@ -1285,7 +1285,7 @@ static int sctp_side_effects(enum sctp_event event_type,
+  ********************************************************************/
+ 
+ /* This is the side-effect interpreter.  */
+-static int sctp_cmd_interpreter(enum sctp_event event_type,
++static int sctp_cmd_interpreter(enum sctp_event_type event_type,
+ 				union sctp_subtype subtype,
+ 				enum sctp_state state,
+ 				struct sctp_endpoint *ep,
+diff --git a/net/sctp/sm_statetable.c b/net/sctp/sm_statetable.c
+index 691d9dc..d239b94 100644
+--- a/net/sctp/sm_statetable.c
++++ b/net/sctp/sm_statetable.c
+@@ -79,7 +79,7 @@ static const struct sctp_sm_table_entry bug = {
+ 
+ const struct sctp_sm_table_entry *sctp_sm_lookup_event(
+ 					struct net *net,
+-					enum sctp_event event_type,
++					enum sctp_event_type event_type,
+ 					enum sctp_state state,
+ 					union sctp_subtype event_subtype)
  {
- 	struct sctp_hashbucket *head;
- 	struct sctp_ep_common *epb;
- 	struct sctp_endpoint *ep;
-+	struct sock *sk;
-+	__be16 lport;
- 	int hash;
- 
--	hash = sctp_ep_hashfn(net, ntohs(laddr->v4.sin_port));
-+	lport = laddr->v4.sin_port;
-+	hash = sctp_ep_hashfn(net, ntohs(lport));
- 	head = &sctp_ep_hashtable[hash];
- 	read_lock(&head->lock);
- 	sctp_for_each_hentry(epb, &head->chain) {
-@@ -792,6 +814,15 @@ static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(struct net *net,
- 	ep = sctp_sk(net->sctp.ctl_sock)->ep;
- 
- hit:
-+	sk = ep->base.sk;
-+	if (sk->sk_reuseport) {
-+		__u32 phash = sctp_hashfn(net, lport, paddr, 0);
-+
-+		sk = reuseport_select_sock(sk, phash, skb,
-+					   sizeof(struct sctphdr));
-+		if (sk)
-+			ep = sctp_sk(sk)->ep;
-+	}
- 	sctp_endpoint_hold(ep);
- 	read_unlock(&head->lock);
- 	return ep;
-@@ -830,35 +861,17 @@ static inline int sctp_hash_cmp(struct rhashtable_compare_arg *arg,
- static inline __u32 sctp_hash_obj(const void *data, u32 len, u32 seed)
- {
- 	const struct sctp_transport *t = data;
--	const union sctp_addr *paddr = &t->ipaddr;
--	const struct net *net = sock_net(t->asoc->base.sk);
--	__be16 lport = htons(t->asoc->base.bind_addr.port);
--	__u32 addr;
--
--	if (paddr->sa.sa_family = AF_INET6)
--		addr = jhash(&paddr->v6.sin6_addr, 16, seed);
--	else
--		addr = (__force __u32)paddr->v4.sin_addr.s_addr;
- 
--	return  jhash_3words(addr, ((__force __u32)paddr->v4.sin_port) << 16 |
--			     (__force __u32)lport, net_hash_mix(net), seed);
-+	return sctp_hashfn(sock_net(t->asoc->base.sk),
-+			   htons(t->asoc->base.bind_addr.port),
-+			   &t->ipaddr, seed);
- }
- 
- static inline __u32 sctp_hash_key(const void *data, u32 len, u32 seed)
- {
- 	const struct sctp_hash_cmp_arg *x = data;
--	const union sctp_addr *paddr = x->paddr;
--	const struct net *net = x->net;
--	__be16 lport = x->lport;
--	__u32 addr;
--
--	if (paddr->sa.sa_family = AF_INET6)
--		addr = jhash(&paddr->v6.sin6_addr, 16, seed);
--	else
--		addr = (__force __u32)paddr->v4.sin_addr.s_addr;
- 
--	return  jhash_3words(addr, ((__force __u32)paddr->v4.sin_port) << 16 |
--			     (__force __u32)lport, net_hash_mix(net), seed);
-+	return sctp_hashfn(x->net, x->lport, x->paddr, seed);
- }
- 
- static const struct rhashtable_params sctp_hash_params = {
 -- 
 2.1.0
