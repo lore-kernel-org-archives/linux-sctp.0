@@ -1,165 +1,147 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 12 Nov 2018 09:56:20 +0000
-Subject: Re: [PATCH net-next 1/3] sctp: do reuseport_select_sock in __sctp_rcv_lookup_endpoint
-Message-Id: <CADvbK_caQOm7hW71vBzLcpqjNgfRb94QnT1m_b+fKEjvMgiAmQ@mail.gmail.com>
+From: syzbot <syzbot+e33a3a138267ca119c7d@syzkaller.appspotmail.com>
+Date: Wed, 21 Nov 2018 04:28:03 +0000
+Subject: general protection fault in sctp_sched_dequeue_common
+Message-Id: <00000000000014c430057b252d70@google.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1540095102.git.lucien.xin@gmail.com> <08b533092a01a8f7cf2eb4c459fe3570a8df702b.1540095102.git.lucien.xin@gmail.com>
- <20181022141757.GM6634@localhost.localdomain>
-In-Reply-To: <20181022141757.GM6634@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem <davem@davemloft.net>
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
 
-On Mon, Oct 22, 2018 at 11:18 PM Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
->
-> On Sun, Oct 21, 2018 at 12:43:36PM +0800, Xin Long wrote:
-> > This is a part of sk_reuseport support for sctp, and it selects a
-> > sock by the hashkey of lport, paddr and dport by default. It will
-> > work until sk_reuseport support is added in sctp_get_port_local()
-> > in the next patch.
-> >
-> > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> > ---
-> >  net/sctp/input.c | 69 +++++++++++++++++++++++++++++++++-----------------------
-> >  1 file changed, 41 insertions(+), 28 deletions(-)
-> >
-> > diff --git a/net/sctp/input.c b/net/sctp/input.c
-> > index 5c36a99..60ede89 100644
-> > --- a/net/sctp/input.c
-> > +++ b/net/sctp/input.c
-> > @@ -57,6 +57,7 @@
-> >  #include <net/sctp/checksum.h>
-> >  #include <net/net_namespace.h>
-> >  #include <linux/rhashtable.h>
-> > +#include <net/sock_reuseport.h>
-> >
-> >  /* Forward declarations for internal helpers. */
-> >  static int sctp_rcv_ootb(struct sk_buff *);
-> > @@ -65,8 +66,10 @@ static struct sctp_association *__sctp_rcv_lookup(struct net *net,
-> >                                     const union sctp_addr *paddr,
-> >                                     const union sctp_addr *laddr,
-> >                                     struct sctp_transport **transportp);
-> > -static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(struct net *net,
-> > -                                             const union sctp_addr *laddr);
-> > +static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(
-> > +                                     struct net *net, struct sk_buff *skb,
-> > +                                     const union sctp_addr *laddr,
-> > +                                     const union sctp_addr *daddr);
-> >  static struct sctp_association *__sctp_lookup_association(
-> >                                       struct net *net,
-> >                                       const union sctp_addr *local,
-> > @@ -171,7 +174,7 @@ int sctp_rcv(struct sk_buff *skb)
-> >       asoc = __sctp_rcv_lookup(net, skb, &src, &dest, &transport);
-> >
-> >       if (!asoc)
-> > -             ep = __sctp_rcv_lookup_endpoint(net, &dest);
-> > +             ep = __sctp_rcv_lookup_endpoint(net, skb, &dest, &src);
-> >
-> >       /* Retrieve the common input handling substructure. */
-> >       rcvr = asoc ? &asoc->base : &ep->base;
-> > @@ -770,16 +773,35 @@ void sctp_unhash_endpoint(struct sctp_endpoint *ep)
-> >       local_bh_enable();
-> >  }
-> >
-> > +static inline __u32 sctp_hashfn(const struct net *net, __be16 lport,
-> > +                             const union sctp_addr *paddr, __u32 seed)
-> > +{
-> > +     __u32 addr;
-> > +
-> > +     if (paddr->sa.sa_family = AF_INET6)
-> > +             addr = jhash(&paddr->v6.sin6_addr, 16, seed);
-> > +     else
-> > +             addr = (__force __u32)paddr->v4.sin_addr.s_addr;
-> > +
-> > +     return  jhash_3words(addr, ((__force __u32)paddr->v4.sin_port) << 16 |
-> > +                          (__force __u32)lport, net_hash_mix(net), seed);
-> > +}
-> > +
-> >  /* Look up an endpoint. */
-> > -static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(struct net *net,
-> > -                                             const union sctp_addr *laddr)
-> > +static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(
-> > +                                     struct net *net, struct sk_buff *skb,
-> > +                                     const union sctp_addr *laddr,
-> > +                                     const union sctp_addr *paddr)
-> >  {
-> >       struct sctp_hashbucket *head;
-> >       struct sctp_ep_common *epb;
-> >       struct sctp_endpoint *ep;
-> > +     struct sock *sk;
-> > +     __be32 lport;
->
-> This could be a __be16 one.
-right, will correct it in v2.
+Hello,
 
->
-> >       int hash;
-> >
-> > -     hash = sctp_ep_hashfn(net, ntohs(laddr->v4.sin_port));
-> > +     lport = laddr->v4.sin_port;
-> > +     hash = sctp_ep_hashfn(net, ntohs(lport));
-> >       head = &sctp_ep_hashtable[hash];
-> >       read_lock(&head->lock);
-> >       sctp_for_each_hentry(epb, &head->chain) {
-> > @@ -791,6 +813,15 @@ static struct sctp_endpoint *__sctp_rcv_lookup_endpoint(struct net *net,
-> >       ep = sctp_sk(net->sctp.ctl_sock)->ep;
-> >
-> >  hit:
-> > +     sk = ep->base.sk;
-> > +     if (sk->sk_reuseport) {
-> > +             __u32 phash = sctp_hashfn(net, lport, paddr, 0);
-> > +
-> > +             sk = reuseport_select_sock(sk, phash, skb,
-> > +                                        sizeof(struct sctphdr));
-> > +             if (sk)
-> > +                     ep = sctp_sk(sk)->ep;
-> > +     }
-> >       sctp_endpoint_hold(ep);
-> >       read_unlock(&head->lock);
-> >       return ep;
-> > @@ -829,35 +860,17 @@ static inline int sctp_hash_cmp(struct rhashtable_compare_arg *arg,
-> >  static inline __u32 sctp_hash_obj(const void *data, u32 len, u32 seed)
-> >  {
-> >       const struct sctp_transport *t = data;
-> > -     const union sctp_addr *paddr = &t->ipaddr;
-> > -     const struct net *net = sock_net(t->asoc->base.sk);
-> > -     __be16 lport = htons(t->asoc->base.bind_addr.port);
-> > -     __u32 addr;
-> > -
-> > -     if (paddr->sa.sa_family = AF_INET6)
-> > -             addr = jhash(&paddr->v6.sin6_addr, 16, seed);
-> > -     else
-> > -             addr = (__force __u32)paddr->v4.sin_addr.s_addr;
-> >
-> > -     return  jhash_3words(addr, ((__force __u32)paddr->v4.sin_port) << 16 |
-> > -                          (__force __u32)lport, net_hash_mix(net), seed);
-> > +     return sctp_hashfn(sock_net(t->asoc->base.sk),
-> > +                        htons(t->asoc->base.bind_addr.port),
-> > +                        &t->ipaddr, seed);
-> >  }
-> >
-> >  static inline __u32 sctp_hash_key(const void *data, u32 len, u32 seed)
-> >  {
-> >       const struct sctp_hash_cmp_arg *x = data;
-> > -     const union sctp_addr *paddr = x->paddr;
-> > -     const struct net *net = x->net;
-> > -     __be16 lport = x->lport;
-> > -     __u32 addr;
-> > -
-> > -     if (paddr->sa.sa_family = AF_INET6)
-> > -             addr = jhash(&paddr->v6.sin6_addr, 16, seed);
-> > -     else
-> > -             addr = (__force __u32)paddr->v4.sin_addr.s_addr;
-> >
-> > -     return  jhash_3words(addr, ((__force __u32)paddr->v4.sin_port) << 16 |
-> > -                          (__force __u32)lport, net_hash_mix(net), seed);
-> > +     return sctp_hashfn(x->net, x->lport, x->paddr, seed);
-> >  }
-> >
-> >  static const struct rhashtable_params sctp_hash_params = {
-> > --
-> > 2.1.0
-> >
+syzbot found the following crash on:
+
+HEAD commit:    cfc6731d2f79 Merge branch 'sctp-add-subscribe-per-asoc-and..
+git tree:       net-next
+console output: https://syzkaller.appspot.com/x/log.txt?x=14fc234d400000
+kernel config:  https://syzkaller.appspot.com/x/.config?xse2bc0cb6463446
+dashboard link: https://syzkaller.appspot.com/bug?extid=E33a3a138267ca119c7d
+compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
+
+Unfortunately, I don't have any reproducer for this crash yet.
+
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+e33a3a138267ca119c7d@syzkaller.appspotmail.com
+
+netlink: 'syz-executor1': attribute type 39 has an invalid length.
+IPv6: ADDRCONF(NETDEV_CHANGE): lo: link becomes ready
+A link change request failed with some changes committed already. Interface=
+ =20
+lo may have been left with an inconsistent configuration, please check.
+kasan: CONFIG_KASAN_INLINE enabled
+kasan: GPF could be caused by NULL-ptr deref or user memory access
+general protection fault: 0000 [#1] PREEMPT SMP KASAN
+CPU: 1 PID: 4030 Comm: syz-executor5 Not tainted 4.20.0-rc3+ #304
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS =20
+Google 01/01/2011
+RIP: 0010:__list_del_entry_valid+0x84/0x100 lib/list_debug.c:51
+Code: 0f 84 60 01 00 00 48 b8 00 02 00 00 00 00 ad de 49 39 c4 0f 84 39 01 =
+=20
+00 00 48 b8 00 00 00 00 00 fc ff df 4c 89 e2 48 c1 ea 03 <80> 3c 02 00 75  =
+
+5f 49 8b 14 24 48 39 da 0f 85 4e 01 00 00 49 8d 7d
+RSP: 0018:ffff8881c1bfea48 EFLAGS: 00010246
+RAX: dffffc0000000000 RBX: ffff8881bb175618 RCX: ffffc9001006b000
+RDX: 0000000000000000 RSI: ffffffff8752c823 RDI: ffff8881bb175620
+RBP: ffff8881c1bfea60 R08: ffff88818dc04200 R09: ffff8881c1bff488
+R10: ffffed103837feb6 R11: 0000000000000003 R12: 0000000000000000
+R13: 0000000000000000 R14: ffff8881cb4d8e20 R15: dffffc0000000000
+FS:  00007f34b0944700(0000) GS:ffff8881daf00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000000000ae0ed0 CR3: 00000001cb898000 CR4: 00000000001406e0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+Call Trace:
+  __list_del_entry include/linux/list.h:117 [inline]
+  list_del_init include/linux/list.h:159 [inline]
+  sctp_sched_dequeue_common+0xab/0x610 net/sctp/stream_sched.c:267
+  sctp_sched_fcfs_dequeue+0x18d/0x280 net/sctp/stream_sched.c:90
+  sctp_outq_dequeue_data net/sctp/outqueue.c:90 [inline]
+  sctp_outq_flush_data net/sctp/outqueue.c:1079 [inline]
+  sctp_outq_flush+0x13e2/0x34f0 net/sctp/outqueue.c:1205
+  sctp_outq_uncork+0x6a/0x80 net/sctp/outqueue.c:772
+  sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1820 [inline]
+  sctp_side_effects net/sctp/sm_sideeffect.c:1220 [inline]
+  sctp_do_sm+0x5ff/0x7180 net/sctp/sm_sideeffect.c:1191
+  sctp_primitive_SEND+0xa0/0xd0 net/sctp/primitive.c:178
+  sctp_sendmsg_to_asoc+0xa0b/0x1a10 net/sctp/socket.c:1955
+  sctp_sendmsg+0x13c2/0x1da0 net/sctp/socket.c:2113
+  inet_sendmsg+0x1a1/0x690 net/ipv4/af_inet.c:798
+  sock_sendmsg_nosec net/socket.c:621 [inline]
+  sock_sendmsg+0xd5/0x120 net/socket.c:631
+  sock_write_iter+0x35e/0x5c0 net/socket.c:900
+  call_write_iter include/linux/fs.h:1857 [inline]
+  new_sync_write fs/read_write.c:474 [inline]
+  __vfs_write+0x6b8/0x9f0 fs/read_write.c:487
+  vfs_write+0x1fc/0x560 fs/read_write.c:549
+  ksys_write+0x101/0x260 fs/read_write.c:598
+  __do_sys_write fs/read_write.c:610 [inline]
+  __se_sys_write fs/read_write.c:607 [inline]
+  __x64_sys_write+0x73/0xb0 fs/read_write.c:607
+  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+RIP: 0033:0x457569
+Code: fd b3 fb ff c3 66 2e 0f 1f 84 00 00 00 00 00 66 90 48 89 f8 48 89 f7 =
+=20
+48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff  =
+
+ff 0f 83 cb b3 fb ff c3 66 2e 0f 1f 84 00 00 00 00
+RSP: 002b:00007f34b0943c78 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+RAX: ffffffffffffffda RBX: 0000000000000003 RCX: 0000000000457569
+RDX: 0000000000034000 RSI: 0000000020000040 RDI: 0000000000000005
+RBP: 000000000072bfa0 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 00007f34b09446d4
+R13: 00000000004c5cde R14: 00000000004da090 R15: 00000000ffffffff
+Modules linked in:
+---[ end trace 23757f22491d2e93 ]---
+RIP: 0010:__list_del_entry_valid+0x84/0x100 lib/list_debug.c:51
+Code: 0f 84 60 01 00 00 48 b8 00 02 00 00 00 00 ad de 49 39 c4 0f 84 39 01 =
+=20
+00 00 48 b8 00 00 00 00 00 fc ff df 4c 89 e2 48 c1 ea 03 <80> 3c 02 00 75  =
+
+5f 49 8b 14 24 48 39 da 0f 85 4e 01 00 00 49 8d 7d
+kobject: 'loop0' (00000000e65c44e1): kobject_uevent_env
+kobject: 'loop0' (00000000e65c44e1): fill_kobj_path: path =20
+=3D '/devices/virtual/block/loop0'
+RSP: 0018:ffff8881c1bfea48 EFLAGS: 00010246
+RAX: dffffc0000000000 RBX: ffff8881bb175618 RCX: ffffc9001006b000
+kobject: 'rx-0' (000000005994716d): kobject_cleanup, parent 00000000ba7aa131
+RDX: 0000000000000000 RSI: ffffffff8752c823 RDI: ffff8881bb175620
+kobject: 'loop4' (000000004d250bad): kobject_uevent_env
+kobject: 'rx-0' (000000005994716d): auto cleanup 'remove' event
+kobject: 'loop4' (000000004d250bad): fill_kobj_path: path =20
+=3D '/devices/virtual/block/loop4'
+kobject: 'rx-0' (000000005994716d): kobject_uevent_env
+RBP: ffff8881c1bfea60 R08: ffff88818dc04200 R09: ffff8881c1bff488
+R10: ffffed103837feb6 R11: 0000000000000003 R12: 0000000000000000
+kobject: 'rx-0' (000000005994716d): kobject_uevent_env: uevent_suppress =20
+caused the event to drop!
+R13: 0000000000000000 R14: ffff8881cb4d8e20 R15: dffffc0000000000
+kobject: 'rx-0' (000000005994716d): auto cleanup kobject_del
+FS:  00007f34b0944700(0000) GS:ffff8881daf00000(0000) knlGS:0000000000000000
+kobject: 'rx-0' (000000005994716d): calling ktype release
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 000000000072c000 CR3: 00000001cb898000 CR4: 00000000001406e0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+kobject: 'rx-0': free name
+kobject: 'loop0' (00000000e65c44e1): kobject_uevent_env
+kobject: 'tx-3' (00000000a24965cd): kobject_cleanup, parent 00000000ba7aa131
+DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+kobject: 'tx-3' (00000000a24965cd): auto cleanup 'remove' event
+kobject: 'loop0' (00000000e65c44e1): fill_kobj_path: path =20
+=3D '/devices/virtual/block/loop0'
+kobject: 'tx-3' (00000000a24965cd): kobject_uevent_env
+kobject: 'tx-3' (00000000a24965cd): kobject_uevent_env: uevent_suppress =20
+caused the event to drop!
+kobject: 'tx-3' (00000000a24965cd): auto cleanup kobject_del
+
+
+---
+This bug is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this bug report. See:
+https://goo.gl/tpsmEJ#bug-status-tracking for how to communicate with =20
+syzbot.
