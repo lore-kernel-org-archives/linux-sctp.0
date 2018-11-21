@@ -1,29 +1,65 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 27 Nov 2018 23:42:48 +0000
-Subject: Re: [PATCH net] sctp: increase sk_wmem_alloc when head->truesize is increased
-Message-Id: <20181127.154248.292898274922488309.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 21 Nov 2018 07:58:54 +0000
+Subject: Re: Kernel Panic in SCTP driver (Debian 4.18.0-bpo1-amd64)
+Message-Id: <CADvbK_cOvzTNz+tiSTKNyEEL4VqnEYETuSzBk-Zf0=LxOjb7BQ@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4989c666f6077526983b02615cad001748d2e658.1543215164.git.lucien.xin@gmail.com>
-In-Reply-To: <4989c666f6077526983b02615cad001748d2e658.1543215164.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: linux-sctp@vger.kernel.org
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 26 Nov 2018 14:52:44 +0800
+On Wed, Nov 21, 2018 at 4:41 PM Andreas Fink <afink@list.fink.org> wrote:
+>
+> Hello all
+>
+> I have run into a kernel panic I can consistently reproduce within minutes:
+>
+>
+> "Kernel panic - not synching: out of memory and no killable processes..."
+> ...
+>
+> with the following stack trace:
+> ..
+> out of memory
+> ..
+> __slab_alloc
+> __kmalloc:node_track_caller
+> __kmalloc_reserve.isra
+> __alloc
+> sctp_make_datafrag_empty
+> sctp_datamsg_from_user
+> sctp_sendmsg_to_assoc
+> sctp_epaddr_lookup_transport
+> sctp_sendmsg
+> sctp_sendmsg
+> ___sys_sendmsg
+>
+>
+> This is with the 4.18.0-0.bpo.1-amd64 kernel of the debian backported repository which should have a fairly new SCTP driver version.
+>
+> Anyone want to take a closer look at this?
+>
+> I have an empty VM where I start my software in userspace, wait 2 minutes and the kernel panics.
+> The app's memory usage is around 2% of the system at the time of crash but its CPU load is 100% (probably some busy loop on my side which I will fix soon).
+>
+>
+> Anyone want to take a closer look or have some insights on how to debug this?
 
-> I changed to count sk_wmem_alloc by skb truesize instead of 1 to
-> fix the sk_wmem_alloc leak caused by later truesize's change in
-> xfrm in Commit 02968ccf0125 ("sctp: count sk_wmem_alloc by skb
-> truesize in sctp_packet_transmit").
-> 
-> But I should have also increased sk_wmem_alloc when head->truesize
-> is increased in sctp_packet_gso_append() as xfrm does. Otherwise,
-> sctp gso packet will cause sk_wmem_alloc underflow.
-> 
-> Fixes: 02968ccf0125 ("sctp: count sk_wmem_alloc by skb truesize in sctp_packet_transmit")
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Jakub reported a similar one:
+https://www.spinics.net/lists/netdev/msg534371.html
 
-Applied.
+Would you pls verify this fix in your env:
+
+diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
+index 0a78cdf..19d596d 100644
+--- a/net/sctp/stream_interleave.c
++++ b/net/sctp/stream_interleave.c
+@@ -1327,4 +1327,5 @@ void sctp_stream_interleave_init(struct
+sctp_stream *stream)
+        asoc = container_of(stream, struct sctp_association, stream);
+        stream->si = asoc->intl_enable ? &sctp_stream_interleave_1
+                                       : &sctp_stream_interleave_0;
++       sctp_assoc_update_frag_point(asoc);
+ }
+
+Thanks.
