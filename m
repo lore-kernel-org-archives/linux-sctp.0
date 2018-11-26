@@ -1,67 +1,112 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 13 Nov 2018 06:35:56 +0000
-Subject: Re: [PATCH net-next 0/4] sctp: add subscribe per asoc and sockopt SCTP_EVENT
-Message-Id: <CADvbK_cSV-ZCzB9YehyyqdSizL-YctpeVyozqW19n-O8=wUd2g@mail.gmail.com>
+Date: Mon, 26 Nov 2018 11:22:05 +0000
+Subject: [PATCH net] sctp: check and update stream->out_curr when allocating stream_out
+Message-Id: <3abaeca7357361956c7c5629544aeb7704353308.1543231325.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1542039672.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1542039672.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem <davem@davemloft.net>
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Tue, Nov 13, 2018 at 1:26 AM Xin Long <lucien.xin@gmail.com> wrote:
->
-> This patchset mainly adds the Event Subscription sockopt described in
-> rfc6525#section-6.2:
->
-> Subscribing to events as described in [RFC6458] uses a setsockopt()
-> call with the SCTP_EVENT socket option.  This option takes the
-> following structure, which specifies the association, the event type
-> (using the same value found in the event type field), and an on/off
-> boolean.
->
->   struct sctp_event {
->     sctp_assoc_t se_assoc_id;
->     uint16_t     se_type;
->     uint8_t      se_on;
->   };
->
-> The user fills in the se_type field with the same value found in the
-> strreset_type field, i.e., SCTP_STREAM_RESET_EVENT.  The user will
-> also fill in the se_assoc_id field with either the association to set
-> this event on (this field is ignored for one-to-one style sockets) or
-> one of the reserved constant values defined in [RFC6458].  Finally,
-> the se_on field is set with a 1 to enable the event or a 0 to disable
-> the event.
->
-> As for the old SCTP_EVENTS Option with struct sctp_event_subscribe,
-> it's being DEPRECATED.
->
-> Xin Long (4):
->   sctp: define subscribe in sctp_sock as __u16
->   sctp: add subscribe per asoc
->   sctp: rename enum sctp_event to sctp_event_type
->   sctp: add sockopt SCTP_EVENT
->
->  include/net/sctp/constants.h |   2 +-
->  include/net/sctp/sm.h        |   4 +-
->  include/net/sctp/structs.h   |   4 +-
->  include/net/sctp/ulpevent.h  |  39 ++++++++------
->  include/uapi/linux/sctp.h    |  13 ++++-
->  net/sctp/associola.c         |   2 +
->  net/sctp/chunk.c             |   8 ++-
->  net/sctp/primitive.c         |   2 +-
->  net/sctp/sm_sideeffect.c     |  12 ++---
->  net/sctp/sm_statetable.c     |   2 +-
->  net/sctp/socket.c            | 126 ++++++++++++++++++++++++++++++++++++++++---
->  net/sctp/stream_interleave.c |  12 +++--
->  net/sctp/ulpqueue.c          |   8 +--
->  13 files changed, 184 insertions(+), 50 deletions(-)
->
-> --
-> 2.1.0
->
-Because some key word in changelog triggerred the filters at vger.kernel.org,
-v2 has been posted.
+Now when using stream reconfig to add out streams, stream->out
+will get re-allocated, and all old streams' information will
+be copied to the new ones and the old ones will be freed.
+
+So without stream->out_curr updated, next time when trying to
+send from stream->out_curr stream, a panic would be caused.
+
+This patch is to define sctp_stream_out_copy used to update the
+stream->out_curr pointer to the new stream when copying the old
+streams' information.
+
+While at it, rename fa_copy to sctp_stream_in_copy.
+
+Fixes: 5bbbbe32a431 ("sctp: introduce stream scheduler foundations")
+Reported-by: Ying Xu <yinxu@redhat.com>
+Reported-by: syzbot+e33a3a138267ca119c7d@syzkaller.appspotmail.com
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/stream.c | 46 ++++++++++++++++++++++++++++++++--------------
+ 1 file changed, 32 insertions(+), 14 deletions(-)
+
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 3892e76..0687eeb 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -61,18 +61,6 @@ static void fa_free(struct flex_array *fa)
+ 		flex_array_free(fa);
+ }
+ 
+-static void fa_copy(struct flex_array *fa, struct flex_array *from,
+-		    size_t index, size_t count)
+-{
+-	void *elem;
+-
+-	while (count--) {
+-		elem = flex_array_get(from, index);
+-		flex_array_put(fa, index, elem, 0);
+-		index++;
+-	}
+-}
+-
+ static void fa_zero(struct flex_array *fa, size_t index, size_t count)
+ {
+ 	void *elem;
+@@ -135,6 +123,36 @@ static void sctp_stream_outq_migrate(struct sctp_stream *stream,
+ 		kfree(SCTP_SO(stream, i)->ext);
+ }
+ 
++static void sctp_stream_in_copy(struct flex_array *fa,
++				struct sctp_stream *stream, __u16 count)
++{
++	size_t index = 0;
++	void *elem;
++
++	count = min(count, stream->incnt);
++	while (count--) {
++		elem = flex_array_get(stream->in, index);
++		flex_array_put(fa, index, elem, 0);
++		index++;
++	}
++}
++
++static void sctp_stream_out_copy(struct flex_array *fa,
++				 struct sctp_stream *stream, __u16 count)
++{
++	size_t index = 0;
++	void *elem;
++
++	count = min(count, stream->outcnt);
++	while (count--) {
++		elem = flex_array_get(stream->out, index);
++		flex_array_put(fa, index, elem, 0);
++		if (stream->out_curr = elem)
++			stream->out_curr = flex_array_get(fa, index);
++		index++;
++	}
++}
++
+ static int sctp_stream_alloc_out(struct sctp_stream *stream, __u16 outcnt,
+ 				 gfp_t gfp)
+ {
+@@ -146,7 +164,7 @@ static int sctp_stream_alloc_out(struct sctp_stream *stream, __u16 outcnt,
+ 		return -ENOMEM;
+ 
+ 	if (stream->out) {
+-		fa_copy(out, stream->out, 0, min(outcnt, stream->outcnt));
++		sctp_stream_out_copy(out, stream, outcnt);
+ 		fa_free(stream->out);
+ 	}
+ 
+@@ -169,7 +187,7 @@ static int sctp_stream_alloc_in(struct sctp_stream *stream, __u16 incnt,
+ 		return -ENOMEM;
+ 
+ 	if (stream->in) {
+-		fa_copy(in, stream->in, 0, min(incnt, stream->incnt));
++		sctp_stream_in_copy(in, stream, incnt);
+ 		fa_free(stream->in);
+ 	}
+ 
+-- 
+2.1.0
