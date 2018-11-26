@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 26 Nov 2018 12:04:18 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 26 Nov 2018 12:26:54 +0000
 Subject: Re: [PATCH net] sctp: increase sk_wmem_alloc when head->truesize is increased
-Message-Id: <20181126120418.GH3601@localhost.localdomain>
+Message-Id: <20181126122654.GA18847@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <4989c666f6077526983b02615cad001748d2e658.1543215164.git.lucien.xin@gmail.com>
 In-Reply-To: <4989c666f6077526983b02615cad001748d2e658.1543215164.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
 On Mon, Nov 26, 2018 at 02:52:44PM +0800, Xin Long wrote:
 > I changed to count sk_wmem_alloc by skb truesize instead of 1 to
@@ -23,9 +23,6 @@ On Mon, Nov 26, 2018 at 02:52:44PM +0800, Xin Long wrote:
 > 
 > Fixes: 02968ccf0125 ("sctp: count sk_wmem_alloc by skb truesize in sctp_packet_transmit")
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/output.c | 1 +
 >  1 file changed, 1 insertion(+)
@@ -42,6 +39,13 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 >  
 >  	__skb_header_release(skb);
 >  }
+This looks to me like you are now double counting every packet that passes
+through sctp_packet_transmit, once in skb_set_owner_w and again in
+sctp_packet_pack=>sctp_packet_gso_append
+
+Neil
+
 > -- 
 > 2.1.0
+> 
 > 
