@@ -1,7 +1,7 @@
-From: Jakub Audykowicz <jakub.audykowicz@gmail.com>
-Date: Tue, 27 Nov 2018 21:39:44 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 27 Nov 2018 21:41:31 +0000
 Subject: Re: [PATCHv2 net] sctp: update frag_point when stream_interleave is set
-Message-Id: <7698ecb9-1007-5362-03ab-3ae91da6518d@gmail.com>
+Message-Id: <20181127214131.GI30481@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <507afa887be8d5be9cc3030f6f21bc40719615e2.1543317110.git.lucien.xin@gmail.com>
 In-Reply-To: <507afa887be8d5be9cc3030f6f21bc40719615e2.1543317110.git.lucien.xin@gmail.com>
@@ -9,39 +9,41 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>, Jakub Audykowicz <jakub.audykowicz@gmail.com>
 
-On 2018-11-27 12:11, Xin Long wrote:
-
+On Tue, Nov 27, 2018 at 07:11:50PM +0800, Xin Long wrote:
 > sctp_assoc_update_frag_point() should be called whenever asoc->pathmtu
 > changes, but we missed one place in sctp_association_init(). It would
 > cause frag_point is zero when sending data.
->
+> 
 > As says in Jakub's reproducer, if sp->pathmtu is set by socketopt, the
 > new asoc->pathmtu inherits it in sctp_association_init(). Later when
 > transports are added and their pmtu >= asoc->pathmtu, it will never
 > call sctp_assoc_update_frag_point() to set frag_point.
->
+> 
 > This patch is to fix it by updating frag_point after asoc->pathmtu is
 > set as sp->pathmtu in sctp_association_init(). Note that it moved them
 > after sctp_stream_init(), as stream->si needs to be set first.
->
+> 
 > Frag_point's calculation is also related with datachunk's type, so it
 > needs to update frag_point when stream->si may be changed in
 > sctp_process_init().
->
+> 
 > v1->v2:
 >   - call sctp_assoc_update_frag_point() separately in sctp_process_init
 >     and sctp_association_init, per Marcelo's suggestion.
->
+> 
 > Fixes: 2f5e3c9df693 ("sctp: introduce sctp_assoc_update_frag_point")
 > Reported-by: Jakub Audykowicz <jakub.audykowicz@gmail.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
+
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+
 > ---
 >  net/sctp/associola.c     | 7 ++++---
 >  net/sctp/sm_make_chunk.c | 3 +++
 >  2 files changed, 7 insertions(+), 3 deletions(-)
->
+> 
 > diff --git a/net/sctp/associola.c b/net/sctp/associola.c
 > index 6a28b96..dd77ec3 100644
 > --- a/net/sctp/associola.c
@@ -81,5 +83,6 @@ On 2018-11-27 12:11, Xin Long wrote:
 >  	if (!asoc->temp && sctp_assoc_set_id(asoc, gfp))
 >  		goto clean_up;
 >  
-
-For what it's worth, I can confirm this works as a fix for my issue:)
+> -- 
+> 2.1.0
+> 
