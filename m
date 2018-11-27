@@ -1,20 +1,21 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 27 Nov 2018 10:34:08 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 27 Nov 2018 14:43:04 +0000
 Subject: Re: [PATCH net] sctp: check and update stream->out_curr when allocating stream_out
-Message-Id: <CADvbK_drx-O5CyygwTW3YgfZiC5TPbRX5YG8PoO+8kW7TNLqZw@mail.gmail.com>
+Message-Id: <20181127144304.GA19586@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <3abaeca7357361956c7c5629544aeb7704353308.1543231325.git.lucien.xin@gmail.com>
- <20181126125351.GB18847@hmswarspite.think-freely.org> <CADvbK_cvJYeuvjfahaWV-O3EGcm3cnSPDcXftQGQjw_mr8WFBw@mail.gmail.com>
- <20181126135846.GC18847@hmswarspite.think-freely.org> <CADvbK_fOv0+9bx1APO4rPwnRjYYC=Mov_803zCLAVAU7TgpekQ@mail.gmail.com>
+ <20181126125351.GB18847@hmswarspite.think-freely.org>
+ <CADvbK_cvJYeuvjfahaWV-O3EGcm3cnSPDcXftQGQjw_mr8WFBw@mail.gmail.com>
+ <20181126135846.GC18847@hmswarspite.think-freely.org>
+ <CADvbK_fOv0+9bx1APO4rPwnRjYYC=Mov_803zCLAVAU7TgpekQ@mail.gmail.com>
 In-Reply-To: <CADvbK_fOv0+9bx1APO4rPwnRjYYC=Mov_803zCLAVAU7TgpekQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
+To: Xin Long <lucien.xin@gmail.com>
 Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-On Tue, Nov 27, 2018 at 7:30 PM Xin Long <lucien.xin@gmail.com> wrote:
->
+On Tue, Nov 27, 2018 at 07:30:49PM +0900, Xin Long wrote:
 > On Mon, Nov 26, 2018 at 10:59 PM Neil Horman <nhorman@tuxdriver.com> wrote:
 > >
 > > On Mon, Nov 26, 2018 at 10:46:33PM +0900, Xin Long wrote:
@@ -113,11 +114,11 @@ On Tue, Nov 27, 2018 at 7:30 PM Xin Long <lucien.xin@gmail.com> wrote:
 > > a copy function, as well as a pointer to index lookup element, that could have
 > > use beyond just sctp.
 > What do you think of this?
->
+> 
 > It's not called in tx/rx path, so no performance problem caused.
 > Since only SCTP is using fa_xxx(), I will not move any to
 > lib/flex_array.c for now.
->
+> 
 > +static size_t fa_index(struct flex_array *fa, void *elem, size_t count)
 > +{
 > +       size_t index = 0;
@@ -125,13 +126,6 @@ On Tue, Nov 27, 2018 at 7:30 PM Xin Long <lucien.xin@gmail.com> wrote:
 > +       while (count--)
 > +               if (elem = flex_array_get(fa, index++))
 > +                       break;
-sorry, I meant:
-        while (count--) {
-                if (elem = flex_array_get(fa, index))
-                        break;
-                index++;
-        }
-
 > +
 > +       return index;
 > +}
@@ -141,7 +135,7 @@ sorry, I meant:
 >   * higher than the new max.
 > @@ -147,6 +158,13 @@ static int sctp_stream_alloc_out(struct
 > sctp_stream *stream, __u16 outcnt,
->
+> 
 >         if (stream->out) {
 >                 fa_copy(out, stream->out, 0, min(outcnt, stream->outcnt));
 > +               if (stream->out_curr) {
@@ -153,7 +147,25 @@ sorry, I meant:
 > +               }
 >                 fa_free(stream->out);
 >         }
->
+> 
+
+I like this idea, I think its more concise than what you had the first time,
+though as I'm reading over the flex array code, it seems like what might be even
+better would be a flex_array_grow function, that internally adjusted the
+flex_array structure to house the new maximum number of elements, and krealloced
+the parts[] array to accordingly.  There is already a flex_array_shrink
+function, so it seems there would be a use for its corresponding grow method
+genreally speaking, and implementing it that way would avoid the need to do all
+this copying, and checking for the current element pointer, as a realloc would
+allow the existing memory to remain in place unaltered.
+
+As for implementing in the flex array code vs the sctp code, I'll let Dave be
+the deciding factor on that, but it would be my preference to implement this as
+a general mechanism in the flex array code so others can make use of it.
+
+Best
+Neil
+
 > >
 > > > > so that it doesn't have to be updated here at all, or alternatively, just set it
 > > > > back to NULL here so that the selected scheduler will be forced to do the next
@@ -173,3 +185,4 @@ sorry, I meant:
 > >
 > > Neil
 > >
+> 
