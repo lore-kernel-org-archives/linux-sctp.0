@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 27 Nov 2018 21:41:31 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Wed, 28 Nov 2018 12:21:38 +0000
 Subject: Re: [PATCHv2 net] sctp: update frag_point when stream_interleave is set
-Message-Id: <20181127214131.GI30481@localhost.localdomain>
+Message-Id: <20181128122138.GA32491@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <507afa887be8d5be9cc3030f6f21bc40719615e2.1543317110.git.lucien.xin@gmail.com>
 In-Reply-To: <507afa887be8d5be9cc3030f6f21bc40719615e2.1543317110.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>, Jakub Audykowicz <jakub.audykowicz@gmail.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jakub Audykowicz <jakub.audykowicz@gmail.com>
 
 On Tue, Nov 27, 2018 at 07:11:50PM +0800, Xin Long wrote:
 > sctp_assoc_update_frag_point() should be called whenever asoc->pathmtu
@@ -36,9 +36,6 @@ On Tue, Nov 27, 2018 at 07:11:50PM +0800, Xin Long wrote:
 > Fixes: 2f5e3c9df693 ("sctp: introduce sctp_assoc_update_frag_point")
 > Reported-by: Jakub Audykowicz <jakub.audykowicz@gmail.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/associola.c     | 7 ++++---
 >  net/sctp/sm_make_chunk.c | 3 +++
@@ -86,3 +83,5 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > -- 
 > 2.1.0
 > 
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
