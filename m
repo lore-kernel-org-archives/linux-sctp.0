@@ -1,21 +1,21 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 30 Nov 2018 14:05:06 +0000
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 30 Nov 2018 14:15:50 +0000
 Subject: Re: [PATCHv2 net] sctp: hold transport before accessing its asoc in sctp_epaddr_lookup_transport
-Message-Id: <20181130140506.GE24285@hmswarspite.think-freely.org>
+Message-Id: <CADvbK_fGDGPV1jY5G6-bZjJS6r6mU+6aVYY4ChryhRbAPzeNKg@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <01212b7ece946393c21023a3bde5a4c712ae0293.1543473847.git.lucien.xin@gmail.com>
- <20181129205144.GC14550@hmswarspite.think-freely.org>
- <CADvbK_dYtWeftJEkL-acWqts+0V47bMJeMi4iY0Vq0rJyMSjYQ@mail.gmail.com>
- <20181130123236.GB24285@hmswarspite.think-freely.org>
- <20181130133315.GR30481@localhost.localdomain>
+ <20181129205144.GC14550@hmswarspite.think-freely.org> <CADvbK_dYtWeftJEkL-acWqts+0V47bMJeMi4iY0Vq0rJyMSjYQ@mail.gmail.com>
+ <20181130123236.GB24285@hmswarspite.think-freely.org> <20181130133315.GR30481@localhost.localdomain>
 In-Reply-To: <20181130133315.GR30481@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>
+Cc: Neil Horman <nhorman@tuxdriver.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>
 
-On Fri, Nov 30, 2018 at 11:33:15AM -0200, Marcelo Ricardo Leitner wrote:
+On Fri, Nov 30, 2018 at 10:33 PM Marcelo Ricardo Leitner
+<marcelo.leitner@gmail.com> wrote:
+>
 > On Fri, Nov 30, 2018 at 07:32:36AM -0500, Neil Horman wrote:
 > > On Fri, Nov 30, 2018 at 02:04:16PM +0900, Xin Long wrote:
 > > > On Fri, Nov 30, 2018 at 5:52 AM Neil Horman <nhorman@tuxdriver.com> wrote:
@@ -75,25 +75,25 @@ On Fri, Nov 30, 2018 at 11:33:15AM -0200, Marcelo Ricardo Leitner wrote:
 > > > > sctp_epaddr_lookup_transport could complete safely.  Its another two pointers
 > > > We discussed this in last thread:
 > > > https://www.spinics.net/lists/netdev/msg535191.html
-> > > 
+> > >
 > > > It will cause closed sk to linger longer.
-> > > 
+> > >
 > > Yes, but we never really got resolution on that topic.  I don't see that a
-> 
+>
 > Fair point. We should have brought back the discussion online.
-> 
+>
 > > socket lingering for an extra grace period is that big a deal.  I also don't see
-> 
+>
 > What we really don't want is to bring back
 > 8c98653f0553 ("sctp: sctp_close: fix release of bindings for deferred call_rcu's").
 > (more below). That's where our fear lies.
-> 
+>
 > > how sending the actual kfree through a grace period is going to cause the socket
 > > to linger.  If you look at sctp_association_destroy, we call sock_put prior to
 > > calling kfree at the end of the function.  All I'm looking for here is for the
 > > memory free to wait until any list traversal in sctp_epaddr_lookup_transport is
 > > done, which is what you are trying to do with your atomics.
-> > 
+> >
 > > As for your comment regarding sctp_transport_destroy_rcu, yes, that forces a
 > > grace period when a transport is being destroyed, which will protect against
 > > list corruption of the transport list here.  Thats good, but isn't what you are
@@ -105,18 +105,18 @@ On Fri, Nov 30, 2018 at 11:33:15AM -0200, Marcelo Ricardo Leitner wrote:
 > > transports that pass through a grace period before getting freed, the
 > > association happens synchrnously, ignoring any grace period, and thats what we
 > > need to change.
-> > 
+> >
 > > The more I look at it the more I'm convinced. What you're doing here is
 > > definately overkill.  You need to add an rcu_head to the association and just do
 > > the kfree of its memory after a grace period.  Its actually only a single grace
 > > period as well.  If someone is traversing the transport list, both the transport
 > > and association rcu callbacks will get run once the rcu_read_lock is released.
-> 
+>
 > Ok, delaying *just* the kfree works too. It wouldn't bring back the
 > issue I mentioned above.
-> 
+>
 > We have basically 3 options then:
-> 
+>
 > 1) your proposal above
 >    extends sctp_association by rcu_head
 >    delays the assoc kfree by a grace period, but just the kfree
@@ -131,37 +131,24 @@ On Fri, Nov 30, 2018 at 11:33:15AM -0200, Marcelo Ricardo Leitner wrote:
 >    might be tricky considering peeloff operation, but shouldn't be
 >      much different from what we already have today with the asoc
 >      migration itself.
-> 
+>
 > Considering 2 is a no go, we have the other 2 options. Between 1 and
 > 3, WDYT?
-> 
-I think that option (1) is the correct philisophical approach.  If we have
-pointers that are accessed with the expectation of safety from rcu traversal, we
-should bind the addition and removal of those data structures to rcu semantics.
-Given that we are using rcu list traversal to walk through the transport list,
-it seems to me we are implying rcu semantics.
+I vote for 2 if 2 still has a chance, sorry :D
+Unless I can see a case that shows this atomic operation
+really hurts performance.
 
-That said, Option 3 works too, and might offer superior performance (in fact it
-likely will), but I don't like the idea of caching the ep pointer.  We would be
-doing so as much for safety as for performance, and I would be concerned that
-caching that pointer opens up the possibility of likely bugs down the road (such
-a cached pointer could only be used for comparison, and not for derefence, which
-is wierd to say the least).
-
-I would vote for option 1
-
-Neil
-
-> > 
-> > 
+>
+> >
+> >
 > > Nak to this patch
 > > Neil
-> > 
+> >
 > > > > worth of space in the association, but I think that would be a worthwhile
 > > > > tradeoff for not having to do N atomic adds/puts every time you wanted to
 > > > > receive or send a frame.
 > > > N is not a big value, as rhlist itself keeps lists in a size.
-> > > 
+> > >
 > > > >
 > > > > Neil
 > > > >
@@ -169,5 +156,4 @@ Neil
 > > > > > 2.1.0
 > > > > >
 > > > > >
-> > > 
-> 
+> > >
