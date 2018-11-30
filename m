@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 30 Nov 2018 17:50:16 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Fri, 30 Nov 2018 18:19:53 +0000
 Subject: Re: [PATCH net] sctp: kfree_rcu asoc
-Message-Id: <20181130175016.GN3601@localhost.localdomain>
+Message-Id: <20181130181953.GJ24285@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cbb02c228ba4d3500580bf1fe0792a3b5561517b.1543599419.git.lucien.xin@gmail.com>
 In-Reply-To: <cbb02c228ba4d3500580bf1fe0792a3b5561517b.1543599419.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
 On Sat, Dec 01, 2018 at 01:36:59AM +0800, Xin Long wrote:
 > In sctp_hash_transport/sctp_epaddr_lookup_transport, it dereferences
@@ -24,17 +24,16 @@ On Sat, Dec 01, 2018 at 01:36:59AM +0800, Xin Long wrote:
 > 
 > Thanks Neil and Marcelo to make this clear.
 > 
+Thank you for taking the extra time on this
+
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
 > Fixes: 7fda702f9315 ("sctp: use new rhlist interface on sctp transport rhashtable")
 > Fixes: cd2b70875058 ("sctp: check duplicate node before inserting a new transport")
 > Reported-by: syzbot+0b05d8aa7cb185107483@syzkaller.appspotmail.com
 > Reported-by: syzbot+aad231d51b1923158444@syzkaller.appspotmail.com
 > Suggested-by: Neil Horman <nhorman@tuxdriver.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Phew :-)
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  include/net/sctp/structs.h | 2 ++
 >  net/sctp/associola.c       | 2 +-
@@ -68,4 +67,5 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 >  
 > -- 
 > 2.1.0
+> 
 > 
