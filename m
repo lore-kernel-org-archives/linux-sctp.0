@@ -1,7 +1,7 @@
 From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 30 Nov 2018 19:35:27 +0000
+Date: Fri, 30 Nov 2018 19:40:34 +0000
 Subject: Re: [PATCHv2 net] sctp: check and update stream->out_curr when allocating stream_out
-Message-Id: <20181130193527.GK24285@hmswarspite.think-freely.org>
+Message-Id: <20181130194034.GL24285@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <8a5df8eb5cc41dfc3d08e294147b9729bbe90aa0.1543473776.git.lucien.xin@gmail.com>
  <20181129143855.GB14550@hmswarspite.think-freely.org>
@@ -230,12 +230,8 @@ On Sat, Dec 01, 2018 at 03:53:26AM +0900, Xin Long wrote:
 > or put it into flex_array_resize(),  considering FLEX_ARRAY_FREE
 > may not work for other cases.
 > 
-I appreciate you working on this.  I think the growth path looks good for both
-cases (fit in base and not fit in base).  However, I think you need to do some
-extra checking for the case where a resize shrinks the array.  That is to say,
-you should not allow a flex array to be resized from A elements to B elements
-(where B < A), if the origional array has element A-1 populated (where A-1 > B).
-In that event you have to deny the resize request.
+Sorry, didn't answer this in my last email. It think it makes sense to do the
+shrink inside the resize function, just to ensure that memory won't go unsued.
 
 Neil
 
