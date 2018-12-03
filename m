@@ -1,47 +1,36 @@
-From: Kent Overstreet <kent.overstreet@gmail.com>
-Date: Mon, 17 Dec 2018 21:00:21 +0000
-Subject: Re: [PATCH 6/7] sctp: Convert to genradix
-Message-Id: <20181217210021.GA7144@kmo-pixel>
+From: David Miller <davem@davemloft.net>
+Date: Mon, 03 Dec 2018 23:55:16 +0000
+Subject: Re: [PATCH net] sctp: kfree_rcu asoc
+Message-Id: <20181203.155516.1922731498178619066.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20181217131929.11727-1-kent.overstreet@gmail.com>
- <20181217131929.11727-7-kent.overstreet@gmail.com>
- <20181217125001.8e89ac2565417d55ef7a624e@linux-foundation.org>
-In-Reply-To: <20181217125001.8e89ac2565417d55ef7a624e@linux-foundation.org>
+References: <cbb02c228ba4d3500580bf1fe0792a3b5561517b.1543599419.git.lucien.xin@gmail.com>
+In-Reply-To: <cbb02c228ba4d3500580bf1fe0792a3b5561517b.1543599419.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: linux-kernel@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, linux-sctp@vger.kernel.org
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
-On Mon, Dec 17, 2018 at 12:50:01PM -0800, Andrew Morton wrote:
-> On Mon, 17 Dec 2018 08:19:28 -0500 Kent Overstreet <kent.overstreet@gmail.com> wrote:
-> 
-> > @@ -535,9 +470,6 @@ int sctp_send_add_streams(struct sctp_association *asoc,
-> >  		goto out;
-> >  	}
-> >  
-> > -	stream->incnt = incnt;
-> > -	stream->outcnt = outcnt;
-> > -
-> >  	asoc->strreset_outstanding = !!out + !!in;
-> >  
-> 
-> I'm seeing a reject here for some reason.  Using todays's linux-next,
-> but there are no changes against net/sctp/stream.c in -next.  The
-> assignment to stream->incnt has disappeared.  I did this:
-> 
-> @@ -535,8 +470,6 @@ int sctp_send_add_streams(struct sctp_as
->  		goto out;
->  	}
->  
-> -	stream->outcnt = outcnt;
-> -
->  	asoc->strreset_outstanding = !!out + !!in;
->  
->  out:
-> 
-> 
-> We're at 4.20-rc7 and this series is rather large.  I'll merge them all
-> to see what happens, but I don't think it's 4.21-rc1 material?
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat,  1 Dec 2018 01:36:59 +0800
 
-Yeah, agreed. Thanks!
+> In sctp_hash_transport/sctp_epaddr_lookup_transport, it dereferences
+> a transport's asoc under rcu_read_lock while asoc is freed not after
+> a grace period, which leads to a use-after-free panic.
+> 
+> This patch fixes it by calling kfree_rcu to make asoc be freed after
+> a grace period.
+> 
+> Note that only the asoc's memory is delayed to free in the patch, it
+> won't cause sk to linger longer.
+> 
+> Thanks Neil and Marcelo to make this clear.
+> 
+> Fixes: 7fda702f9315 ("sctp: use new rhlist interface on sctp transport rhashtable")
+> Fixes: cd2b70875058 ("sctp: check duplicate node before inserting a new transport")
+> Reported-by: syzbot+0b05d8aa7cb185107483@syzkaller.appspotmail.com
+> Reported-by: syzbot+aad231d51b1923158444@syzkaller.appspotmail.com
+> Suggested-by: Neil Horman <nhorman@tuxdriver.com>
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+
+Applied and queued up for -stable, thanks.
