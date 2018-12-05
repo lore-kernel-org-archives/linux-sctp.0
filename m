@@ -1,342 +1,168 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 10 Dec 2018 08:56:14 +0000
-Subject: Re: KMSAN: kernel-infoleak in sctp_getsockopt
-Message-Id: <CADvbK_f-F9hp8HwxCp8og8FmEf_4E3=HOr8DPq3sEmRA8wGepg@mail.gmail.com>
+From: syzbot <syzbot+9276d76e83e3bcde6c99@syzkaller.appspotmail.com>
+Date: Wed, 05 Dec 2018 18:32:02 +0000
+Subject: Re: KASAN: use-after-free Read in __lock_sock
+Message-Id: <0000000000002f45c5057c4a990d@google.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <000000000000311344057c4b6cc3@google.com> <CAG_fn=WbOyQ0R35_OhCLjxTTnV7z=u5xnjtm2gXtiSRdHbDz=A@mail.gmail.com>
- <20181206110634.GA9056@localhost.localdomain>
-In-Reply-To: <20181206110634.GA9056@localhost.localdomain>
+In-Reply-To: <000000000000b98a67057ad7158a@google.com>
+References: <000000000000b98a67057ad7158a@google.com>
+In-Reply-To: <000000000000b98a67057ad7158a@google.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: Alexander Potapenko <glider@google.com>, syzbot+ad5d327e6936a2e284be@syzkaller.appspotmail.com, davem <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, network dev <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, Vlad Yasevich <vyasevich@gmail.com>
+Content-Type: text/plain; charset="windows-1252"
+Content-Transfer-Encoding: quoted-printable
+To: davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, lucien.xin@gmail.com, marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
 
-On Thu, Dec 6, 2018 at 8:08 PM Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
->
-> On Thu, Dec 06, 2018 at 11:36:08AM +0100, Alexander Potapenko wrote:
-> > On Wed, Dec 5, 2018 at 8:31 PM syzbot
-> > <syzbot+ad5d327e6936a2e284be@syzkaller.appspotmail.com> wrote:
-> > >
-> > > Hello,
-> > >
-> > > syzbot found the following crash on:
-> > >
-> > > HEAD commit:    fffec98ae2a6 net: proper support for CONFIG_GENERIC_CSUM o..
-> > > git tree:       https://github.com/google/kmsan.git/master
-> > > console output: https://syzkaller.appspot.com/x/log.txt?x=12e84a47400000
-> > > kernel config:  https://syzkaller.appspot.com/x/.config?x=56b48b46dafe4516
-> > > dashboard link: https://syzkaller.appspot.com/bug?extid=ad5d327e6936a2e284be
-> > > compiler:       clang version 8.0.0 (trunk 343298)
-> > > syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=103cd225400000
-> > >
-> > > IMPORTANT: if you fix the bug, please add the following tag to the commit:
-> > > Reported-by: syzbot+ad5d327e6936a2e284be@syzkaller.appspotmail.com
-> > >
-> > > 8021q: adding VLAN 0 to HW filter on device team0
-> > > 8021q: adding VLAN 0 to HW filter on device team0
-> > > 8021q: adding VLAN 0 to HW filter on device team0
-> > > 8021q: adding VLAN 0 to HW filter on device team0
-> > > ==================================================================
-> > > BUG: KMSAN: kernel-infoleak in _copy_to_user+0x19a/0x230 lib/usercopy.c:33
-> > > CPU: 1 PID: 8164 Comm: syz-executor2 Not tainted 4.20.0-rc3+ #95
-> > > Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS
-> > > Google 01/01/2011
-> > > Call Trace:
-> > >   __dump_stack lib/dump_stack.c:77 [inline]
-> > >   dump_stack+0x32d/0x480 lib/dump_stack.c:113
-> > >   kmsan_report+0x12c/0x290 mm/kmsan/kmsan.c:683
-> > >   kmsan_internal_check_memory+0x32a/0xa50 mm/kmsan/kmsan.c:743
-> > >   kmsan_copy_to_user+0x78/0xd0 mm/kmsan/kmsan_hooks.c:634
-> > >   _copy_to_user+0x19a/0x230 lib/usercopy.c:33
-> > >   copy_to_user include/linux/uaccess.h:183 [inline]
-> > >   sctp_getsockopt_local_addrs net/sctp/socket.c:5998 [inline]
-> > >   sctp_getsockopt+0x15248/0x186f0 net/sctp/socket.c:7477
-> > >   sock_common_getsockopt+0x13f/0x180 net/core/sock.c:2937
-> > >   __sys_getsockopt+0x489/0x550 net/socket.c:1939
-> > >   __do_sys_getsockopt net/socket.c:1950 [inline]
-> > >   __se_sys_getsockopt+0xe1/0x100 net/socket.c:1947
-> > >   __x64_sys_getsockopt+0x62/0x80 net/socket.c:1947
-> > >   do_syscall_64+0xcf/0x110 arch/x86/entry/common.c:291
-> > >   entry_SYSCALL_64_after_hwframe+0x63/0xe7
-> > > RIP: 0033:0x457569
-> > > Code: fd b3 fb ff c3 66 2e 0f 1f 84 00 00 00 00 00 66 90 48 89 f8 48 89 f7
-> > > 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff
-> > > ff 0f 83 cb b3 fb ff c3 66 2e 0f 1f 84 00 00 00 00
-> > > RSP: 002b:00007f4991886c78 EFLAGS: 00000246 ORIG_RAX: 0000000000000037
-> > > RAX: ffffffffffffffda RBX: 0000000000000005 RCX: 0000000000457569
-> > > RDX: 000000000000006d RSI: 0000000000000084 RDI: 0000000000000003
-> > > RBP: 000000000072bf00 R08: 0000000020000140 R09: 0000000000000000
-> > > R10: 0000000020001100 R11: 0000000000000246 R12: 00007f49918876d4
-> > > R13: 00000000004c7d88 R14: 00000000004ce348 R15: 00000000ffffffff
-> > >
-> > > Uninit was stored to memory at:
-> > >   kmsan_save_stack_with_flags mm/kmsan/kmsan.c:246 [inline]
-> > >   kmsan_save_stack mm/kmsan/kmsan.c:261 [inline]
-> > >   kmsan_internal_chain_origin+0x13d/0x240 mm/kmsan/kmsan.c:469
-> > >   kmsan_memcpy_memmove_metadata+0x1a9/0xf70 mm/kmsan/kmsan.c:344
-> > >   kmsan_memcpy_metadata+0xb/0x10 mm/kmsan/kmsan.c:362
-> > >   __msan_memcpy+0x61/0x70 mm/kmsan/kmsan_instr.c:162
-> > >   sctp_copy_laddrs net/sctp/socket.c:5901 [inline]
-> > >   sctp_getsockopt_local_addrs net/sctp/socket.c:5967 [inline]
-> > >   sctp_getsockopt+0x14f41/0x186f0 net/sctp/socket.c:7477
-> > >   sock_common_getsockopt+0x13f/0x180 net/core/sock.c:2937
-> > >   __sys_getsockopt+0x489/0x550 net/socket.c:1939
-> > >   __do_sys_getsockopt net/socket.c:1950 [inline]
-> > >   __se_sys_getsockopt+0xe1/0x100 net/socket.c:1947
-> > >   __x64_sys_getsockopt+0x62/0x80 net/socket.c:1947
-> > >   do_syscall_64+0xcf/0x110 arch/x86/entry/common.c:291
-> > >   entry_SYSCALL_64_after_hwframe+0x63/0xe7
-> > >
-> > > Uninit was stored to memory at:
-> > >   kmsan_save_stack_with_flags mm/kmsan/kmsan.c:246 [inline]
-> > >   kmsan_save_stack mm/kmsan/kmsan.c:261 [inline]
-> > >   kmsan_internal_chain_origin+0x13d/0x240 mm/kmsan/kmsan.c:469
-> > >   kmsan_memcpy_memmove_metadata+0x1a9/0xf70 mm/kmsan/kmsan.c:344
-> > >   kmsan_memcpy_metadata+0xb/0x10 mm/kmsan/kmsan.c:362
-> > >   __msan_memcpy+0x61/0x70 mm/kmsan/kmsan_instr.c:162
-> > >   sctp_copy_laddrs net/sctp/socket.c:5890 [inline]
-> > >   sctp_getsockopt_local_addrs net/sctp/socket.c:5967 [inline]
-> > >   sctp_getsockopt+0x14de8/0x186f0 net/sctp/socket.c:7477
-> > >   sock_common_getsockopt+0x13f/0x180 net/core/sock.c:2937
-> > >   __sys_getsockopt+0x489/0x550 net/socket.c:1939
-> > >   __do_sys_getsockopt net/socket.c:1950 [inline]
-> > >   __se_sys_getsockopt+0xe1/0x100 net/socket.c:1947
-> > >   __x64_sys_getsockopt+0x62/0x80 net/socket.c:1947
-> > >   do_syscall_64+0xcf/0x110 arch/x86/entry/common.c:291
-> > >   entry_SYSCALL_64_after_hwframe+0x63/0xe7
-> > >
-> > > Uninit was created at:
-> > >   kmsan_save_stack_with_flags mm/kmsan/kmsan.c:246 [inline]
-> > >   kmsan_internal_poison_shadow+0x6d/0x130 mm/kmsan/kmsan.c:170
-> > >   kmsan_kmalloc+0xa1/0x100 mm/kmsan/kmsan_hooks.c:186
-> > >   __kmalloc+0x14c/0x4d0 mm/slub.c:3825
-> > >   kmalloc include/linux/slab.h:551 [inline]
-> > >   sctp_inet6addr_event+0x60e/0xbd0 net/sctp/ipv6.c:100
-> > >   notifier_call_chain kernel/notifier.c:93 [inline]
-> > >   __atomic_notifier_call_chain kernel/notifier.c:183 [inline]
-> > >   atomic_notifier_call_chain+0x13d/0x240 kernel/notifier.c:193
-> > >   inet6addr_notifier_call_chain+0x76/0x90 net/ipv6/addrconf_core.c:107
-> > >   ipv6_add_addr+0x2597/0x2890 net/ipv6/addrconf.c:1115
-> > >   inet6_addr_add+0xc86/0x1c10 net/ipv6/addrconf.c:2912
-> > >   inet6_rtm_newaddr+0x167e/0x3d20 net/ipv6/addrconf.c:4750
-> > >   rtnetlink_rcv_msg+0x1148/0x1540 net/core/rtnetlink.c:4947
-> > >   netlink_rcv_skb+0x394/0x640 net/netlink/af_netlink.c:2477
-> > >   rtnetlink_rcv+0x50/0x60 net/core/rtnetlink.c:4965
-> > >   netlink_unicast_kernel net/netlink/af_netlink.c:1310 [inline]
-> > >   netlink_unicast+0x1699/0x1740 net/netlink/af_netlink.c:1336
-> > >   netlink_sendmsg+0x13c7/0x1440 net/netlink/af_netlink.c:1917
-> > >   sock_sendmsg_nosec net/socket.c:621 [inline]
-> > >   sock_sendmsg net/socket.c:631 [inline]
-> > >   ___sys_sendmsg+0xe3b/0x1240 net/socket.c:2116
-> > >   __sys_sendmsg net/socket.c:2154 [inline]
-> > >   __do_sys_sendmsg net/socket.c:2163 [inline]
-> > >   __se_sys_sendmsg+0x305/0x460 net/socket.c:2161
-> > >   __x64_sys_sendmsg+0x4a/0x70 net/socket.c:2161
-> > >   do_syscall_64+0xcf/0x110 arch/x86/entry/common.c:291
-> > >   entry_SYSCALL_64_after_hwframe+0x63/0xe7
-> > >
-> > > Bytes 32-35 of 2100 are uninitialized
-> > > Memory access of size 2100 starts at ffff888185d8b000
-> > > Data copied to user address 0000000020001108
-> > > ==================================================================
-> > When a network device goes up and sctp_inetaddr_event() is called, it
-> > allocates a partially initialized struct sctp_sockaddr_entry to hold
-> > the newly created address.
-> > The attached reproducer can be then used to read up to 8 uninit bytes
-> > for each of the local addresses.
-> > I guess the devices aren't created so often that this can pose any
-> > security risk, but we probably still need to allocate this structure
-> > with __GFP_ZERO.
->
-> Agree. Thanks Alexander.
-> Looks like this is the last/only place left with this issue.
-This field is not really used by sctp, I will just set it to 0.
+syzbot has found a reproducer for the following crash on:
 
-diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-index fc6c5e4bffa5..7f0539db5604 100644
---- a/net/sctp/ipv6.c
-+++ b/net/sctp/ipv6.c
-@@ -101,6 +101,7 @@ static int sctp_inet6addr_event(struct
-notifier_block *this, unsigned long ev,
-                if (addr) {
-                        addr->a.v6.sin6_family = AF_INET6;
-                        addr->a.v6.sin6_port = 0;
-+                       addr->a.v6.sin6_flowinfo = 0;
-                        addr->a.v6.sin6_addr = ifa->addr;
-                        addr->a.v6.sin6_scope_id = ifa->idev->dev->ifindex;
-                        addr->valid = 1;
+HEAD commit:    0072a0c14d5b Merge tag 'media/v4.20-4' of git://git.kernel..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=16abfdeb400000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=B9cc5a440391cbfd
+dashboard link: https://syzkaller.appspot.com/bug?extid=9276d76e83e3bcde6c99
+compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=12b80cfb400000
 
->
-> > >
-> > > ---
-> > > This bug is generated by a bot. It may contain errors.
-> > > See https://goo.gl/tpsmEJ for more information about syzbot.
-> > > syzbot engineers can be reached at syzkaller@googlegroups.com.
-> > >
-> > > syzbot will keep track of this bug report. See:
-> > > https://goo.gl/tpsmEJ#bug-status-tracking for how to communicate with
-> > > syzbot.
-> > > syzbot can test patches for this bug, for details see:
-> > > https://goo.gl/tpsmEJ#testing-patches
-> > >
-> > > --
-> > > You received this message because you are subscribed to the Google Groups "syzkaller-bugs" group.
-> > > To unsubscribe from this group and stop receiving emails from it, send an email to syzkaller-bugs+unsubscribe@googlegroups.com.
-> > > To view this discussion on the web visit https://groups.google.com/d/msgid/syzkaller-bugs/000000000000311344057c4b6cc3%40google.com.
-> > > For more options, visit https://groups.google.com/d/optout.
-> >
-> >
-> >
-> > --
-> > Alexander Potapenko
-> > Software Engineer
-> >
-> > Google Germany GmbH
-> > Erika-Mann-Straße, 33
-> > 80636 München
-> >
-> > Geschäftsführer: Paul Manicle, Halimah DeLaine Prado
-> > Registergericht und -nummer: Hamburg, HRB 86891
-> > Sitz der Gesellschaft: Hamburg
->
-> > #ifndef DUMP_BUF_H
-> > #define DUMP_BUF_H
-> >
-> > #ifndef DUMP_MIN_STRLEN
-> > #define DUMP_MIN_STRLEN 1
-> > #endif
-> >
-> > #ifndef DUMP_PARALLEL
-> > #define DUMP_PARALLEL 0
-> > #endif
-> >
-> > #ifndef DUMP_PRINT_BUF_ADDR
-> > #define DUMP_PRINT_BUF_ADDR 0
-> > #endif
-> >
-> > #ifndef DUMP_PRINT_HEX
-> > #define DUMP_PRINT_HEX 0
-> > #endif
-> >
-> > #ifndef DUMP_PRINT_STRING
-> > #define DUMP_PRINT_STRING 0
-> > #endif
-> >
-> > #if DUMP_PARALLEL
-> > pthread_mutex_t out_mutex = PTHREAD_MUTEX_INITIALIZER;
-> > #endif
-> >
-> > void dump_buf(unsigned char *buf, int len) {
-> >   int i, nz = 0;
-> >   for (i = 0; i < len; i++) {
-> >     if (buf[i]) {
-> >       nz = 1;
-> >       break;
-> >     }
-> >   }
-> >   if (!nz) {
-> >     // The buffer is empty.
-> >     return;
-> >   } else {
-> > #if DUMP_PARALLEL
-> >     pthread_mutex_lock(&out_mutex);
-> > #endif
-> > #if DUMP_PRINT_BUF_ADDR
-> >     fprintf(stderr, "nonempty buffer at %p\n", buf);
-> > #endif
-> > #if DUMP_PRINT_HEX
-> >     for (i=0; i < len; i++) {
-> >       if (buf[i]) {
-> >         fprintf(stderr, "buf[%d]: %x (%p)\n", i, buf[i], *(void**)&buf[i]);
-> >       }
-> >     }
-> > #endif // DUMP_PRINT_HEX
-> > #if DUMP_PARALLEL
-> >     pthread_mutex_unlock(&out_mutex);
-> > #endif
-> >   }
-> > #if DUMP_PARALLEL
-> >   pthread_mutex_lock(&out_mutex);
-> > #endif
-> > #if DUMP_PRINT_STRING
-> >   for (i = 0; i < len; i++) {
-> >     if (buf[i]) {
-> >       int str_len = strlen(&buf[i]);
-> >       // Short string pieces are too boring.
-> >       if (str_len >= DUMP_MIN_STRLEN) {
-> >         unsigned char *c;
-> >         for (c = &buf[i]; c < &buf[i + str_len]; c++) {
-> >           if ((*c > 127) || ((*c < 32) && (*c != 10) && (*c != 13)))  {
-> >             *c = ' ';
-> >             continue;
-> >           }
-> >         }
-> >         // Dump the buffer.
-> >         fprintf(stderr, "%s\n", &buf[i]);
-> >       }
-> >       i += str_len;
-> >     }
-> >   }
-> > #endif // DUMP_PRINT_STRING
-> > #if DUMP_PARALLEL
-> >   pthread_mutex_unlock(&out_mutex);
-> > #endif
-> > }
-> >
-> > #endif
->
-> > #include <stdio.h>
-> > #include <pthread.h>
-> > #include <sys/types.h>          /* See NOTES */
-> > #include <sys/socket.h>
-> > #include <unistd.h>
-> >
-> > #define DUMP_PARALLEL 1
-> > #define DUMP_PRINT_BUF_ADDR 1
-> > #define DUMP_PRINT_STRING 1
-> > #define DUMP_PRINT_HEX 1
-> > #include "dump_buf.h"
-> >
-> > void *setsockopt_fn(void *arg) {
-> >   int sock = (int)arg;
-> >   struct sockaddr addr;
-> >   memset(&addr, 0, sizeof(addr));
-> >   addr.sa_family = 2;
-> >   addr.sa_data[2] = 0xac;
-> >   addr.sa_data[3] = 0x14;
-> >   addr.sa_data[4] = 0x14;
-> >   setsockopt(sock, 0x84, 0x6e, &addr, 0x10);
-> > }
-> >
-> > #define BUFLEN (0x2c2)
-> > void *getsockopt_fn(void *arg) {
-> >   int sock = (int)arg;
-> >   char buf[BUFLEN];
-> >   memset(buf, 0, BUFLEN);
-> >   int socklen = BUFLEN;
-> >   getsockopt(sock, 0x84, /*SCTP_GET_LOCAL_ADDRS*/0x6d, buf, &socklen);
-> >   dump_buf(&(buf[8]), 32);
-> > }
-> >
-> > void do_work(int sock) {
-> >   pthread_t t1, t2;
-> >   for (int i = 0; i < 10; i++) {
-> >     pthread_create(&t1, NULL, getsockopt_fn, (void*)sock);
-> >     pthread_create(&t2, NULL, setsockopt_fn, (void*)sock);
-> >     usleep(100);
-> >   }
-> > }
-> >
-> > int main(int argc, char *argv[]) {
-> >   int res;
-> >   int pid = fork();
-> >   if (pid == 0) {
-> >     int sock = socket(0x2, 0x1, 0x84);
-> >     do_work(sock);
-> >   }
-> >   sleep(10);
-> >   return 0;
-> > }
->
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+9276d76e83e3bcde6c99@syzkaller.appspotmail.com
+
+8021q: adding VLAN 0 to HW filter on device team0
+8021q: adding VLAN 0 to HW filter on device team0
+audit: type=1400 audit(1544033924.799:39): avc:  denied  { associate } for =
+ =20
+pidb34 comm=3D"syz-executor3" name=3D"syz3" =20
+scontext=3Dunconfined_u:object_r:unlabeled_t:s0 =20
+tcontext=3Dsystem_u:object_r:unlabeled_t:s0 tclass=3Dfilesystem permissive=
+=3D1
+hrtimer: interrupt took 36373 ns
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D
+BUG: KASAN: use-after-free in __lock_acquire+0x36d9/0x4c20 =20
+kernel/locking/lockdep.c:3218
+Read of size 8 at addr ffff8881b0f54820 by task syz-executor2/7909
+
+CPU: 0 PID: 7909 Comm: syz-executor2 Not tainted 4.20.0-rc5+ #142
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS =20
+Google 01/01/2011
+Call Trace:
+  __dump_stack lib/dump_stack.c:77 [inline]
+  dump_stack+0x244/0x39d lib/dump_stack.c:113
+  print_address_description.cold.7+0x9/0x1ff mm/kasan/report.c:256
+  kasan_report_error mm/kasan/report.c:354 [inline]
+  kasan_report.cold.8+0x242/0x309 mm/kasan/report.c:412
+  __asan_report_load8_noabort+0x14/0x20 mm/kasan/report.c:433
+  __lock_acquire+0x36d9/0x4c20 kernel/locking/lockdep.c:3218
+  lock_acquire+0x1ed/0x520 kernel/locking/lockdep.c:3844
+  __raw_spin_lock_bh include/linux/spinlock_api_smp.h:135 [inline]
+  _raw_spin_lock_bh+0x31/0x40 kernel/locking/spinlock.c:168
+  spin_lock_bh include/linux/spinlock.h:334 [inline]
+  __lock_sock+0x203/0x350 net/core/sock.c:2253
+  lock_sock_nested+0xfe/0x120 net/core/sock.c:2774
+  lock_sock include/net/sock.h:1492 [inline]
+  sctp_sock_dump+0x122/0xb20 net/sctp/diag.c:324
+  sctp_for_each_transport+0x2b5/0x370 net/sctp/socket.c:5075
+  sctp_diag_dump+0x3ac/0x660 net/sctp/diag.c:527
+  __inet_diag_dump+0xa8/0x140 net/ipv4/inet_diag.c:1049
+  inet_diag_dump+0x9b/0x110 net/ipv4/inet_diag.c:1065
+  netlink_dump+0x606/0x1080 net/netlink/af_netlink.c:2244
+  __netlink_dump_start+0x59a/0x7c0 net/netlink/af_netlink.c:2352
+  netlink_dump_start include/linux/netlink.h:216 [inline]
+  inet_diag_handler_cmd+0x2ce/0x3f0 net/ipv4/inet_diag.c:1170
+  __sock_diag_cmd net/core/sock_diag.c:232 [inline]
+  sock_diag_rcv_msg+0x31d/0x410 net/core/sock_diag.c:263
+  netlink_rcv_skb+0x172/0x440 net/netlink/af_netlink.c:2477
+  sock_diag_rcv+0x2a/0x40 net/core/sock_diag.c:274
+  netlink_unicast_kernel net/netlink/af_netlink.c:1310 [inline]
+  netlink_unicast+0x5a5/0x760 net/netlink/af_netlink.c:1336
+  netlink_sendmsg+0xa18/0xfc0 net/netlink/af_netlink.c:1917
+  sock_sendmsg_nosec net/socket.c:621 [inline]
+  sock_sendmsg+0xd5/0x120 net/socket.c:631
+  sock_write_iter+0x35e/0x5c0 net/socket.c:900
+  call_write_iter include/linux/fs.h:1857 [inline]
+  do_iter_readv_writev+0x8b0/0xa80 fs/read_write.c:680
+  do_iter_write+0x185/0x5f0 fs/read_write.c:959
+  vfs_writev+0x1f1/0x360 fs/read_write.c:1004
+  do_writev+0x11a/0x310 fs/read_write.c:1039
+  __do_sys_writev fs/read_write.c:1112 [inline]
+  __se_sys_writev fs/read_write.c:1109 [inline]
+  __x64_sys_writev+0x75/0xb0 fs/read_write.c:1109
+  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+RIP: 0033:0x457569
+Code: fd b3 fb ff c3 66 2e 0f 1f 84 00 00 00 00 00 66 90 48 89 f8 48 89 f7 =
+=20
+48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff  =
+
+ff 0f 83 cb b3 fb ff c3 66 2e 0f 1f 84 00 00 00 00
+RSP: 002b:00007f75b80d7c78 EFLAGS: 00000246 ORIG_RAX: 0000000000000014
+RAX: ffffffffffffffda RBX: 0000000000000003 RCX: 0000000000457569
+RDX: 0000000000000001 RSI: 000000002051c000 RDI: 000000000000000a
+RBP: 000000000072c0e0 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 00007f75b80d86d4
+R13: 00000000004c3807 R14: 00000000004d9f50 R15: 00000000ffffffff
+
+Allocated by task 7881:
+  save_stack+0x43/0xd0 mm/kasan/kasan.c:448
+  set_track mm/kasan/kasan.c:460 [inline]
+  kasan_kmalloc+0xc7/0xe0 mm/kasan/kasan.c:553
+  kasan_slab_alloc+0x12/0x20 mm/kasan/kasan.c:490
+  kmem_cache_alloc+0x12e/0x730 mm/slab.c:3554
+  sk_prot_alloc+0x69/0x2e0 net/core/sock.c:1463
+  sk_alloc+0x10d/0x1690 net/core/sock.c:1523
+  inet_create+0x509/0x1070 net/ipv4/af_inet.c:321
+  __sock_create+0x536/0x930 net/socket.c:1277
+  sock_create net/socket.c:1317 [inline]
+  __sys_socket+0x106/0x260 net/socket.c:1347
+  __do_sys_socket net/socket.c:1356 [inline]
+  __se_sys_socket net/socket.c:1354 [inline]
+  __x64_sys_socket+0x73/0xb0 net/socket.c:1354
+  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+
+Freed by task 7908:
+  save_stack+0x43/0xd0 mm/kasan/kasan.c:448
+  set_track mm/kasan/kasan.c:460 [inline]
+  __kasan_slab_free+0x102/0x150 mm/kasan/kasan.c:521
+  kasan_slab_free+0xe/0x10 mm/kasan/kasan.c:528
+  __cache_free mm/slab.c:3498 [inline]
+  kmem_cache_free+0x83/0x290 mm/slab.c:3760
+  sk_prot_free net/core/sock.c:1504 [inline]
+  __sk_destruct+0x728/0xa80 net/core/sock.c:1588
+  sk_destruct+0x78/0x90 net/core/sock.c:1596
+  __sk_free+0xcf/0x300 net/core/sock.c:1607
+  sk_free+0x42/0x50 net/core/sock.c:1618
+  sock_put include/net/sock.h:1693 [inline]
+  sctp_close+0x8d4/0xad0 net/sctp/socket.c:1569
+  inet_release+0x104/0x1f0 net/ipv4/af_inet.c:428
+  __sock_release+0xd7/0x250 net/socket.c:579
+  sock_close+0x19/0x20 net/socket.c:1141
+  __fput+0x385/0xa30 fs/file_table.c:278
+  ____fput+0x15/0x20 fs/file_table.c:309
+  task_work_run+0x1e8/0x2a0 kernel/task_work.c:113
+  get_signal+0x1558/0x1980 kernel/signal.c:2347
+  do_signal+0x9c/0x21c0 arch/x86/kernel/signal.c:816
+  exit_to_usermode_loop+0x2e5/0x380 arch/x86/entry/common.c:162
+  prepare_exit_to_usermode arch/x86/entry/common.c:197 [inline]
+  syscall_return_slowpath arch/x86/entry/common.c:268 [inline]
+  do_syscall_64+0x6be/0x820 arch/x86/entry/common.c:293
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+
+The buggy address belongs to the object at ffff8881b0f54780
+  which belongs to the cache SCTP(33:syz2) of size 1776
+The buggy address is located 160 bytes inside of
+  1776-byte region [ffff8881b0f54780, ffff8881b0f54e70)
+The buggy address belongs to the page:
+page:ffffea0006c3d500 count:1 mapcount:0 mapping:ffff8881d9391e40 index:0x0
+flags: 0x2fffc0000000200(slab)
+raw: 02fffc0000000200 ffffea0007310108 ffff8881cc327148 ffff8881d9391e40
+raw: 0000000000000000 ffff8881b0f54000 0000000100000002 ffff8881c0f20580
+page dumped because: kasan: bad access detected
+page->mem_cgroup:ffff8881c0f20580
+
+Memory state around the buggy address:
+  ffff8881b0f54700: fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc
+  ffff8881b0f54780: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+> ffff8881b0f54800: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+                                ^
+  ffff8881b0f54880: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+  ffff8881b0f54900: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D
