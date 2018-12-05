@@ -1,17 +1,17 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 07 Dec 2018 06:30:35 +0000
-Subject: [PATCHv2 net 3/3] sctp: fa_resize sctp stream instead of redo fa_alloc
-Message-Id: <3bc7041d4157e92a36a60c4868834d0a8a439041.1544163962.git.lucien.xin@gmail.com>
+Date: Wed, 05 Dec 2018 06:49:42 +0000
+Subject: [PATCH net 3/3] sctp: fa_resize sctp stream instead of redo fa_alloc
+Message-Id: <be2e052517def5815d395c1e2b19b96055a6e555.1543992464.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1544163962.git.lucien.xin@gmail.com>
- <a4474a5886807d13146dc67e2d214b7ba3029d32.1544163962.git.lucien.xin@gmail.com>
- <9122685dd16d04613de02594325acf79b2d04a3d.1544163962.git.lucien.xin@gmail.com>
-In-Reply-To: <9122685dd16d04613de02594325acf79b2d04a3d.1544163962.git.lucien.xin@gmail.com>
+References: <cover.1543992464.git.lucien.xin@gmail.com>
+ <afecf0734c4f583e9179d2b2e069b969647f29bb.1543992464.git.lucien.xin@gmail.com>
+ <0b9912f68aae316b0a7f0a0a775f8b0233223889.1543992464.git.lucien.xin@gmail.com>
+In-Reply-To: <0b9912f68aae316b0a7f0a0a775f8b0233223889.1543992464.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Dave Hansen <dave.hansen@linux.intel.com>, David Rientjes <rientjes@google.com>, Eric Paris <eparis@redhat.com>, Konstantin Khorenko <khorenko@virtuozzo.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Dave Hansen <dave@linux.vnet.ibm.com>, Konstantin Khorenko <khorenko@virtuozzo.com>
 
 Now when doing 4-shakehand or adding new streams, sctp has to allocate
 new memory for asoc->stream and copy the old stream's information from
@@ -32,7 +32,6 @@ Reported-by: Ying Xu <yinxu@redhat.com>
 Reported-by: syzbot+e33a3a138267ca119c7d@syzkaller.appspotmail.com
 Suggested-by: Neil Horman <nhorman@tuxdriver.com>
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
 ---
  net/sctp/stream.c | 87 +++++++++++++++++++++++++------------------------------
  1 file changed, 40 insertions(+), 47 deletions(-)
