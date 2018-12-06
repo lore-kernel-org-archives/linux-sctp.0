@@ -1,30 +1,34 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 10 Dec 2018 19:54:33 +0000
-Subject: Re: [PATCH net] sctp: initialize sin6_flowinfo for ipv6 addrs in sctp_inet6addr_event
-Message-Id: <20181210.115433.42616985092042285.davem@davemloft.net>
+From: Jakub Audykowicz <jakub.audykowicz@gmail.com>
+Date: Thu, 06 Dec 2018 07:58:37 +0000
+Subject: [PATCH net] sctp: fix pr_warn max_data argument type mismatch
+Message-Id: <20181206075837.13336-1-jakub.audykowicz@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <4c3dc15beee77a541042f79f35702574347dffc9.1544436052.git.lucien.xin@gmail.com>
-In-Reply-To: <4c3dc15beee77a541042f79f35702574347dffc9.1544436052.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, davem@davemloft.net
+Cc: netdev@vger.kernel.org, Jakub Audykowicz <jakub.audykowicz@gmail.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 10 Dec 2018 18:00:52 +0800
+My previous patch introduced a compilation warning regarding a type
+mismatch (int vs size_t). This is a one-letter fix for good housekeeping.
 
-> syzbot reported a kernel-infoleak, which is caused by an uninitialized
-> field(sin6_flowinfo) of addr->a.v6 in sctp_inet6addr_event().
-> The call trace is as below:
-...
-> sin6_flowinfo is not really used by SCTP, so it will be fixed by simply
-> setting it to 0.
-> 
-> The issue exists since very beginning.
-> Thanks Alexander for the reproducer provided.
-> 
-> Reported-by: syzbot+ad5d327e6936a2e284be@syzkaller.appspotmail.com
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Jakub Audykowicz <jakub.audykowicz@gmail.com>
+---
+ net/sctp/chunk.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Applied and queued up for -stable, thanks Xin.
+diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
+index d5b91bc8a377..ee5638358ad5 100644
+--- a/net/sctp/chunk.c
++++ b/net/sctp/chunk.c
+@@ -194,7 +194,7 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
+ 	if (unlikely(!max_data)) {
+ 		max_data = sctp_min_frag_point(sctp_sk(asoc->base.sk),
+ 					       sctp_datachk_len(&asoc->stream));
+-		pr_warn_ratelimited("%s: asoc:%p frag_point is zero, forcing max_data to default minimum (%d)",
++		pr_warn_ratelimited("%s: asoc:%p frag_point is zero, forcing max_data to default minimum (%ld)",
+ 				    __func__, asoc, max_data);
+ 	}
+ 
+-- 
+2.17.1
