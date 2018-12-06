@@ -1,34 +1,24 @@
-From: Jakub Audykowicz <jakub.audykowicz@gmail.com>
-Date: Thu, 06 Dec 2018 07:58:37 +0000
-Subject: [PATCH net] sctp: fix pr_warn max_data argument type mismatch
-Message-Id: <20181206075837.13336-1-jakub.audykowicz@gmail.com>
+From: David Miller <davem@davemloft.net>
+Date: Thu, 06 Dec 2018 08:03:47 +0000
+Subject: Re: [PATCH net] sctp: fix pr_warn max_data argument type mismatch
+Message-Id: <20181206.000347.363769635369199993.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20181206075837.13336-1-jakub.audykowicz@gmail.com>
+In-Reply-To: <20181206075837.13336-1-jakub.audykowicz@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, davem@davemloft.net
-Cc: netdev@vger.kernel.org, Jakub Audykowicz <jakub.audykowicz@gmail.com>
+To: jakub.audykowicz@gmail.com
+Cc: linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, netdev@vger.kernel.org
 
-My previous patch introduced a compilation warning regarding a type
-mismatch (int vs size_t). This is a one-letter fix for good housekeeping.
+From: Jakub Audykowicz <jakub.audykowicz@gmail.com>
+Date: Thu,  6 Dec 2018 08:58:37 +0100
 
-Signed-off-by: Jakub Audykowicz <jakub.audykowicz@gmail.com>
----
- net/sctp/chunk.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+> My previous patch introduced a compilation warning regarding a type
+> mismatch (int vs size_t). This is a one-letter fix for good housekeeping.
+> 
+> Signed-off-by: Jakub Audykowicz <jakub.audykowicz@gmail.com>
 
-diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
-index d5b91bc8a377..ee5638358ad5 100644
---- a/net/sctp/chunk.c
-+++ b/net/sctp/chunk.c
-@@ -194,7 +194,7 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
- 	if (unlikely(!max_data)) {
- 		max_data = sctp_min_frag_point(sctp_sk(asoc->base.sk),
- 					       sctp_datachk_len(&asoc->stream));
--		pr_warn_ratelimited("%s: asoc:%p frag_point is zero, forcing max_data to default minimum (%d)",
-+		pr_warn_ratelimited("%s: asoc:%p frag_point is zero, forcing max_data to default minimum (%ld)",
- 				    __func__, asoc, max_data);
- 	}
- 
--- 
-2.17.1
+Still wrong and I fixed it when I applied your patch.
+
+You need to use the 'Z' prefix for size_t, so %Zu in this case.
