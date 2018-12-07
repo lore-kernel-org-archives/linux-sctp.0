@@ -1,176 +1,134 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 05 Dec 2018 06:49:42 +0000
-Subject: [PATCH net 3/3] sctp: fa_resize sctp stream instead of redo fa_alloc
-Message-Id: <be2e052517def5815d395c1e2b19b96055a6e555.1543992464.git.lucien.xin@gmail.com>
+Date: Fri, 07 Dec 2018 06:30:33 +0000
+Subject: [PATCHv2 net 1/3] flex_array: make FLEX_ARRAY_BASE_SIZE the same value of FLEX_ARRAY_PART_SIZE
+Message-Id: <a4474a5886807d13146dc67e2d214b7ba3029d32.1544163962.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1543992464.git.lucien.xin@gmail.com>
- <afecf0734c4f583e9179d2b2e069b969647f29bb.1543992464.git.lucien.xin@gmail.com>
- <0b9912f68aae316b0a7f0a0a775f8b0233223889.1543992464.git.lucien.xin@gmail.com>
-In-Reply-To: <0b9912f68aae316b0a7f0a0a775f8b0233223889.1543992464.git.lucien.xin@gmail.com>
+References: <cover.1544163962.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1544163962.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Dave Hansen <dave@linux.vnet.ibm.com>, Konstantin Khorenko <khorenko@virtuozzo.com>
+To: linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Dave Hansen <dave.hansen@linux.intel.com>, David Rientjes <rientjes@google.com>, Eric Paris <eparis@redhat.com>, Konstantin Khorenko <khorenko@virtuozzo.com>
 
-Now when doing 4-shakehand or adding new streams, sctp has to allocate
-new memory for asoc->stream and copy the old stream's information from
-the old asoc->stream to the new one. It also cause the stream pointers
-to change, by which a panic was even caused due to stream->out_curr's
-change.
+This patch is to separate the base data memory from struct flex_array and
+save it into a page. With this change, total_nr_elements of a flex_array
+can grow or shrink without having the old element's memory changed when
+the new size of the flex_arry crosses FLEX_ARRAY_BASE_SIZE, which will
+be added in the next patch.
 
-To fix this, flex_array_resize() is used in sctp_stream_alloc_out/in()
-when asoc->stream has been allocated. Besides, with this asoc->stream
-will only be allocated once, and grow or shrink dynamically later.
-
-Note that flex_array_prealloc() is needed before growing as fa_alloc
-does, while flex_array_clear() and flex_array_shrink() are called to
-free the unused memory before shrinking.
-
-Fixes: 5bbbbe32a431 ("sctp: introduce stream scheduler foundations")
-Reported-by: Ying Xu <yinxu@redhat.com>
-Reported-by: syzbot+e33a3a138267ca119c7d@syzkaller.appspotmail.com
 Suggested-by: Neil Horman <nhorman@tuxdriver.com>
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
 ---
- net/sctp/stream.c | 87 +++++++++++++++++++++++++------------------------------
- 1 file changed, 40 insertions(+), 47 deletions(-)
+ include/linux/flex_array.h | 29 +++++++++--------------------
+ lib/flex_array.c           | 15 ++++++++++++---
+ 2 files changed, 21 insertions(+), 23 deletions(-)
 
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index 3892e76..aff30b2 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -37,6 +37,17 @@
- #include <net/sctp/sm.h>
- #include <net/sctp/stream_sched.h>
+diff --git a/include/linux/flex_array.h b/include/linux/flex_array.h
+index b94fa61..29ad65f 100644
+--- a/include/linux/flex_array.h
++++ b/include/linux/flex_array.h
+@@ -7,9 +7,10 @@
+ #include <asm/page.h>
  
-+static void fa_zero(struct flex_array *fa, size_t index, size_t count)
-+{
-+	void *elem;
+ #define FLEX_ARRAY_PART_SIZE PAGE_SIZE
+-#define FLEX_ARRAY_BASE_SIZE PAGE_SIZE
++#define FLEX_ARRAY_BASE_SIZE FLEX_ARRAY_PART_SIZE
+ 
+ struct flex_array_part;
++struct flex_array_part_p;
+ 
+ /*
+  * This is meant to replace cases where an array-like
+@@ -19,29 +20,17 @@ struct flex_array_part;
+  */
+ 
+ struct flex_array {
+-	union {
+-		struct {
+-			int element_size;
+-			int total_nr_elements;
+-			int elems_per_part;
+-			struct reciprocal_value reciprocal_elems;
+-			struct flex_array_part *parts[];
+-		};
+-		/*
+-		 * This little trick makes sure that
+-		 * sizeof(flex_array) = PAGE_SIZE
+-		 */
+-		char padding[FLEX_ARRAY_BASE_SIZE];
+-	};
++	int element_size;
++	int total_nr_elements;
++	int elems_per_part;
++	struct reciprocal_value reciprocal_elems;
++	struct flex_array_part_p *part_p;
++#define parts part_p->p_part
+ };
+ 
+-/* Number of bytes left in base struct flex_array, excluding metadata */
+-#define FLEX_ARRAY_BASE_BYTES_LEFT					\
+-	(FLEX_ARRAY_BASE_SIZE - offsetof(struct flex_array, parts))
+-
+ /* Number of pointers in base to struct flex_array_part pages */
+ #define FLEX_ARRAY_NR_BASE_PTRS						\
+-	(FLEX_ARRAY_BASE_BYTES_LEFT / sizeof(struct flex_array_part *))
++	(FLEX_ARRAY_BASE_SIZE / sizeof(struct flex_array_part *))
+ 
+ /* Number of elements of size that fit in struct flex_array_part */
+ #define FLEX_ARRAY_ELEMENTS_PER_PART(size)				\
+diff --git a/lib/flex_array.c b/lib/flex_array.c
+index 2eed22f..8c0b9b6 100644
+--- a/lib/flex_array.c
++++ b/lib/flex_array.c
+@@ -30,6 +30,10 @@ struct flex_array_part {
+ 	char elements[FLEX_ARRAY_PART_SIZE];
+ };
+ 
++struct flex_array_part_p {
++	struct flex_array_part *p_part[FLEX_ARRAY_NR_BASE_PTRS];
++};
 +
-+	while (count--) {
-+		elem = flex_array_get(fa, index);
-+		memset(elem, 0, fa->element_size);
-+		index++;
+ /*
+  * If a user requests an allocation which is small
+  * enough, we may simply use the space in the
+@@ -39,7 +43,7 @@ struct flex_array_part {
+ static inline int elements_fit_in_base(struct flex_array *fa)
+ {
+ 	int data_size = fa->element_size * fa->total_nr_elements;
+-	if (data_size <= FLEX_ARRAY_BASE_BYTES_LEFT)
++	if (data_size <= FLEX_ARRAY_BASE_SIZE)
+ 		return 1;
+ 	return 0;
+ }
+@@ -105,13 +109,17 @@ struct flex_array *flex_array_alloc(int element_size, unsigned int total,
+ 	ret = kzalloc(sizeof(struct flex_array), flags);
+ 	if (!ret)
+ 		return NULL;
++	ret->part_p = kzalloc(sizeof(struct flex_array_part_p), flags);
++	if (!ret->part_p) {
++		kfree(ret);
++		return NULL;
 +	}
-+}
-+
- static struct flex_array *fa_alloc(size_t elem_size, size_t elem_count,
- 				   gfp_t gfp)
- {
-@@ -48,8 +59,9 @@ static struct flex_array *fa_alloc(size_t elem_size, size_t elem_count,
- 		err = flex_array_prealloc(result, 0, elem_count, gfp);
- 		if (err) {
- 			flex_array_free(result);
--			result = NULL;
-+			return NULL;
- 		}
-+		fa_zero(result, 0, elem_count);
- 	}
- 
- 	return result;
-@@ -61,27 +73,28 @@ static void fa_free(struct flex_array *fa)
- 		flex_array_free(fa);
+ 	ret->element_size = element_size;
+ 	ret->total_nr_elements = total;
+ 	ret->elems_per_part = elems_per_part;
+ 	ret->reciprocal_elems = reciprocal_elems;
+ 	if (elements_fit_in_base(ret) && !(flags & __GFP_ZERO))
+-		memset(&ret->parts[0], FLEX_ARRAY_FREE,
+-						FLEX_ARRAY_BASE_BYTES_LEFT);
++		memset(&ret->parts[0], FLEX_ARRAY_FREE, FLEX_ARRAY_BASE_SIZE);
+ 	return ret;
  }
- 
--static void fa_copy(struct flex_array *fa, struct flex_array *from,
--		    size_t index, size_t count)
-+static int fa_resize(struct flex_array *fa, size_t count, gfp_t gfp)
+ EXPORT_SYMBOL(flex_array_alloc);
+@@ -148,6 +156,7 @@ EXPORT_SYMBOL(flex_array_free_parts);
+ void flex_array_free(struct flex_array *fa)
  {
--	void *elem;
-+	int nr = fa->total_nr_elements, n;
- 
--	while (count--) {
--		elem = flex_array_get(from, index);
--		flex_array_put(fa, index, elem, 0);
--		index++;
-+	if (count > nr) {
-+		if (flex_array_resize(fa, count, gfp))
-+			return -ENOMEM;
-+		if (flex_array_prealloc(fa, nr, count - nr, gfp))
-+			return -ENOMEM;
-+		fa_zero(fa, nr, count - nr);
-+
-+		return 0;
- 	}
--}
- 
--static void fa_zero(struct flex_array *fa, size_t index, size_t count)
--{
--	void *elem;
-+	/* Shrink the unused memory,
-+	 * FLEX_ARRAY_FREE check is safe for sctp stream.
-+	 */
-+	for (n = count; n < nr; n++)
-+		flex_array_clear(fa, n);
-+	flex_array_shrink(fa);
- 
--	while (count--) {
--		elem = flex_array_get(fa, index);
--		memset(elem, 0, fa->element_size);
--		index++;
--	}
-+	return flex_array_resize(fa, count, gfp);
+ 	flex_array_free_parts(fa);
++	kfree(fa->part_p);
+ 	kfree(fa);
  }
- 
- /* Migrates chunks from stream queues to new stream queues if needed,
-@@ -138,47 +151,27 @@ static void sctp_stream_outq_migrate(struct sctp_stream *stream,
- static int sctp_stream_alloc_out(struct sctp_stream *stream, __u16 outcnt,
- 				 gfp_t gfp)
- {
--	struct flex_array *out;
--	size_t elem_size = sizeof(struct sctp_stream_out);
--
--	out = fa_alloc(elem_size, outcnt, gfp);
--	if (!out)
--		return -ENOMEM;
-+	if (!stream->out) {
-+		stream->out = fa_alloc(sizeof(struct sctp_stream_out),
-+				       outcnt, gfp);
- 
--	if (stream->out) {
--		fa_copy(out, stream->out, 0, min(outcnt, stream->outcnt));
--		fa_free(stream->out);
-+		return stream->out ? 0 : -ENOMEM;
- 	}
- 
--	if (outcnt > stream->outcnt)
--		fa_zero(out, stream->outcnt, (outcnt - stream->outcnt));
--
--	stream->out = out;
--
--	return 0;
-+	return fa_resize(stream->out, outcnt, gfp);
- }
- 
- static int sctp_stream_alloc_in(struct sctp_stream *stream, __u16 incnt,
- 				gfp_t gfp)
- {
--	struct flex_array *in;
--	size_t elem_size = sizeof(struct sctp_stream_in);
-+	if (!stream->in) {
-+		stream->in = fa_alloc(sizeof(struct sctp_stream_in),
-+				      incnt, gfp);
- 
--	in = fa_alloc(elem_size, incnt, gfp);
--	if (!in)
--		return -ENOMEM;
--
--	if (stream->in) {
--		fa_copy(in, stream->in, 0, min(incnt, stream->incnt));
--		fa_free(stream->in);
-+		return stream->in ? 0 : -ENOMEM;
- 	}
- 
--	if (incnt > stream->incnt)
--		fa_zero(in, stream->incnt, (incnt - stream->incnt));
--
--	stream->in = in;
--
--	return 0;
-+	return fa_resize(stream->in, incnt, gfp);
- }
- 
- int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
+ EXPORT_SYMBOL(flex_array_free);
 -- 
 2.1.0
