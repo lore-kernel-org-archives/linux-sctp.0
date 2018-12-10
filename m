@@ -1,28 +1,63 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 13 Dec 2018 00:06:09 +0000
-Subject: Re: [PATCHv2 net 0/3] net: add support for flex_array_resize in flex_array
-Message-Id: <20181212.160609.1564345085630799191.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 10 Dec 2018 10:00:52 +0000
+Subject: [PATCH net] sctp: initialize sin6_flowinfo for ipv6 addrs in sctp_inet6addr_event
+Message-Id: <4c3dc15beee77a541042f79f35702574347dffc9.1544436052.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1544163962.git.lucien.xin@gmail.com>
-        <20181211.225000.726755542677275663.davem@davemloft.net>
-        <20181212120015.GA7637@hmswarspite.think-freely.org>
-In-Reply-To: <20181212120015.GA7637@hmswarspite.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: nhorman@tuxdriver.com
-Cc: lucien.xin@gmail.com, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, dave.hansen@linux.intel.com, rientjes@google.com, eparis@redhat.com, khorenko@virtuozzo.com
+To: linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 12 Dec 2018 07:00:15 -0500
+syzbot reported a kernel-infoleak, which is caused by an uninitialized
+field(sin6_flowinfo) of addr->a.v6 in sctp_inet6addr_event().
+The call trace is as below:
 
-> I suggest xin respond to messageid
-> 20180523011821.12165-6-kent.overstreet@gmail.com> and send a NAK,
-> indicating that his patch seems like it will break the build, as,
-> looking through it, it never removes flex_array calls from the sctp
-> code.  If kent reposts with a conversion of the sctp code to radix
-> trees, we're done.  If not, you can move forward with this commit.
+  BUG: KMSAN: kernel-infoleak in _copy_to_user+0x19a/0x230 lib/usercopy.c:33
+  CPU: 1 PID: 8164 Comm: syz-executor2 Not tainted 4.20.0-rc3+ #95
+  Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS
+  Google 01/01/2011
+  Call Trace:
+    __dump_stack lib/dump_stack.c:77 [inline]
+    dump_stack+0x32d/0x480 lib/dump_stack.c:113
+    kmsan_report+0x12c/0x290 mm/kmsan/kmsan.c:683
+    kmsan_internal_check_memory+0x32a/0xa50 mm/kmsan/kmsan.c:743
+    kmsan_copy_to_user+0x78/0xd0 mm/kmsan/kmsan_hooks.c:634
+    _copy_to_user+0x19a/0x230 lib/usercopy.c:33
+    copy_to_user include/linux/uaccess.h:183 [inline]
+    sctp_getsockopt_local_addrs net/sctp/socket.c:5998 [inline]
+    sctp_getsockopt+0x15248/0x186f0 net/sctp/socket.c:7477
+    sock_common_getsockopt+0x13f/0x180 net/core/sock.c:2937
+    __sys_getsockopt+0x489/0x550 net/socket.c:1939
+    __do_sys_getsockopt net/socket.c:1950 [inline]
+    __se_sys_getsockopt+0xe1/0x100 net/socket.c:1947
+    __x64_sys_getsockopt+0x62/0x80 net/socket.c:1947
+    do_syscall_64+0xcf/0x110 arch/x86/entry/common.c:291
+    entry_SYSCALL_64_after_hwframe+0x63/0xe7
 
-Ok, Xin please do that so we can more forward.
+sin6_flowinfo is not really used by SCTP, so it will be fixed by simply
+setting it to 0.
 
-Thanks Neil.
+The issue exists since very beginning.
+Thanks Alexander for the reproducer provided.
+
+Reported-by: syzbot+ad5d327e6936a2e284be@syzkaller.appspotmail.com
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/ipv6.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index fc6c5e4..7f0539d 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -101,6 +101,7 @@ static int sctp_inet6addr_event(struct notifier_block *this, unsigned long ev,
+ 		if (addr) {
+ 			addr->a.v6.sin6_family = AF_INET6;
+ 			addr->a.v6.sin6_port = 0;
++			addr->a.v6.sin6_flowinfo = 0;
+ 			addr->a.v6.sin6_addr = ifa->addr;
+ 			addr->a.v6.sin6_scope_id = ifa->idev->dev->ifindex;
+ 			addr->valid = 1;
+-- 
+2.1.0
