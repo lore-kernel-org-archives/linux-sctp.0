@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 10 Dec 2018 12:21:41 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 10 Dec 2018 12:24:36 +0000
 Subject: Re: [PATCH net] sctp: initialize sin6_flowinfo for ipv6 addrs in sctp_inet6addr_event
-Message-Id: <20181210122140.GC9056@localhost.localdomain>
+Message-Id: <20181210122436.GA4499@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <4c3dc15beee77a541042f79f35702574347dffc9.1544436052.git.lucien.xin@gmail.com>
 In-Reply-To: <4c3dc15beee77a541042f79f35702574347dffc9.1544436052.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+Cc: linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
 On Mon, Dec 10, 2018 at 06:00:52PM +0800, Xin Long wrote:
 > syzbot reported a kernel-infoleak, which is caused by an uninitialized
@@ -46,9 +46,6 @@ On Mon, Dec 10, 2018 at 06:00:52PM +0800, Xin Long wrote:
 > 
 > Reported-by: syzbot+ad5d327e6936a2e284be@syzkaller.appspotmail.com
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/ipv6.c | 1 +
 >  1 file changed, 1 insertion(+)
@@ -68,3 +65,5 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > -- 
 > 2.1.0
 > 
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
