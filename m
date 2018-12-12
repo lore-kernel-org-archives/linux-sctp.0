@@ -1,18 +1,49 @@
-From: Dave Hansen <dave.hansen@intel.com>
-Date: Fri, 07 Dec 2018 18:10:48 +0000
+From: David Miller <davem@davemloft.net>
+Date: Wed, 12 Dec 2018 06:50:00 +0000
 Subject: Re: [PATCHv2 net 0/3] net: add support for flex_array_resize in flex_array
-Message-Id: <a15bc30d-a91f-8254-1565-ce890770671e@intel.com>
+Message-Id: <20181211.225000.726755542677275663.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1544163962.git.lucien.xin@gmail.com>
 In-Reply-To: <cover.1544163962.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>, linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Dave Hansen <dave.hansen@linux.intel.com>, David Rientjes <rientjes@google.com>, Eric Paris <eparis@redhat.com>, Konstantin Khorenko <khorenko@virtuozzo.com>, Kent Overstreet <kent.overstreet@gmail.com>
+To: lucien.xin@gmail.com
+Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, dave.hansen@linux.intel.com, rientjes@google.com, eparis@redhat.com, khorenko@virtuozzo.com
 
-Kent Overstreet had a patch set to completely remove flex arrays:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri,  7 Dec 2018 14:30:32 +0800
 
-	20180907165635.8469-7-kent.overstreet@gmail.com
+> Without the support for the total_nr_elements's growing or shrinking
+> dynamically, flex_array is not that 'flexible'. Like when users want
+> to change the size, they have to redo flex_array_alloc and copy all
+> the elements from the old to the new one.  The worse thing is every
+> element's memory gets changed.
+> 
+> To implement flex_array_resize based on current code, the difficult
+> thing is to process the size border of FLEX_ARRAY_BASE_BYTES_LEFT,
+> where the base data memory may change to an array for the 2nd level
+> data memory for growing, likewise for shrinking.
+> 
+> To make this part easier, we separate the base data memory and define
+> FLEX_ARRAY_BASE_SIZE as a same value of FLEX_ARRAY_PART_SIZE, as Neil
+> suggested.  When new size is crossing the border, the base memory is
+> allocated as the array for the 2nd level data memory and its part[0]
+> is pointed to the old base memory, and do the opposite for shrinking.
+> 
+> But it doesn't do any memory allocation or shrinking for elements in
+> flex_array_resize, as which should be done by flex_array_prealloc or
+> flex_array_shrink called by users.  No memory leaks can be caused by
+> that.
+> 
+> SCTP has benefited a lot from flex_array_resize() for managing its
+> stream memory so far.
+> 
+> v1->v2:
+>   Cc LKML and more developers.
 
-I wonder where that set went.
+So I don't know what to do about this series.
+
+One of the responses stated that it has been proposed to remove flex_array
+and I don't know what to make of that, nor can I tell if that makes this
+series inappropriate or not.
