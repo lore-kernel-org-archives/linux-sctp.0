@@ -1,38 +1,44 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 06 Dec 2018 05:48:40 +0000
-Subject: Re: [PATCH net 1/3] flex_array: make FLEX_ARRAY_BASE_SIZE the same value of FLEX_ARRAY_PART_SIZE
-Message-Id: <CADvbK_fLgF7gAj=FagHcw+bkMVGahKF4_Bcc+JaZdALT2DXf5g@mail.gmail.com>
+From: Jianwen Ji <jijianwen@gmail.com>
+Date: Tue, 18 Dec 2018 06:40:37 +0000
+Subject: [PATCH] Fix error->errno typos
+Message-Id: <20181218064037.19171-1-jijianwen@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1543992464.git.lucien.xin@gmail.com> <afecf0734c4f583e9179d2b2e069b969647f29bb.1543992464.git.lucien.xin@gmail.com>
- <20181205.203836.864527645836497612.davem@davemloft.net>
-In-Reply-To: <20181205.203836.864527645836497612.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: davem <davem@davemloft.net>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Dave Hansen <dave@linux.vnet.ibm.com>, Konstantin Khorenko <khorenko@virtuozzo.com>
+To: linux-sctp@vger.kernel.org
 
-On Thu, Dec 6, 2018 at 1:38 PM David Miller <davem@davemloft.net> wrote:
->
-> From: Xin Long <lucien.xin@gmail.com>
-> Date: Wed,  5 Dec 2018 14:49:40 +0800
->
-> > This patch is to separate the base data memory from struct flex_array and
-> > save it into a page. With this change, total_nr_elements of a flex_array
-> > can grow or shrink without having the old element's memory changed when
-> > the new size of the flex_arry crosses FLEX_ARRAY_BASE_SIZE, which will
-> > be added in the next patch.
-> >
-> > Suggested-by: Neil Horman <nhorman@tuxdriver.com>
-> > Signed-off-by: Xin Long <lucien.xin@gmail.com>
->
-> This needs to be reviewed by the flex array hackers and lkml.
->
-> It can't just get reviewed on netdev alone.
-Will repost with CCing lkml and
-the author:
-  "Dave Hansen <dave.hansen@linux.intel.com>"
-and two contributors:
-  "David Rientjes <rientjes@google.com>", "Eric Paris <eparis@redhat.com>"
+Signed-off-by: Jianwen Ji <jijianwen@gmail.com>
+---
+ src/apps/sctp_status.c | 2 +-
+ src/apps/sctp_test.c   | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-Thanks.
+diff --git a/src/apps/sctp_status.c b/src/apps/sctp_status.c
+index 46e9ca2..8563cbe 100644
+--- a/src/apps/sctp_status.c
++++ b/src/apps/sctp_status.c
+@@ -529,7 +529,7 @@ int receive_r(int sk)
+ 		DEBUG_PRINT(DEBUG_MIN, "\trecvmsg(sk=%d) ", sk);
+ 
+ 		error = recvmsg(sk, &inmessage, MSG_WAITALL);
+-		if (error < 0 && error != EAGAIN) {
++		if (error < 0 && errno != EAGAIN) {
+ 			fprintf(stderr, "\n\t\t*** recvmsg: %s ***\n\n",
+ 					strerror(errno));
+ 			fflush(stdout);
+diff --git a/src/apps/sctp_test.c b/src/apps/sctp_test.c
+index 4aa2d13..cd7654b 100644
+--- a/src/apps/sctp_test.c
++++ b/src/apps/sctp_test.c
+@@ -870,7 +870,7 @@ int receive_r(int sk, int once)
+ 		DEBUG_PRINT(DEBUG_MIN, "\trecvmsg(sk=%d) ", sk);
+ 
+ 		error = recvmsg(recvsk, &inmessage, MSG_WAITALL);
+-		if (error < 0 && error != EAGAIN) {
++		if (error < 0 && errno != EAGAIN) {
+ 			if (errno = ENOTCONN && socket_type = SOCK_STREAM &&
+ 			    role = SERVER) {
+ 				printf("No association is present now!!\n");
+-- 
+2.9.5
