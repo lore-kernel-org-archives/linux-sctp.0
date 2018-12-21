@@ -1,134 +1,50 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 07 Dec 2018 06:30:33 +0000
-Subject: [PATCHv2 net 1/3] flex_array: make FLEX_ARRAY_BASE_SIZE the same value of FLEX_ARRAY_PART_SIZE
-Message-Id: <a4474a5886807d13146dc67e2d214b7ba3029d32.1544163962.git.lucien.xin@gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 21 Dec 2018 12:30:53 +0000
+Subject: [PATCH lksctp-tools] withsctp: do not reuse PACKAGE_VERSION as lib version
+Message-Id: <79e7e6e4304bdde2922fab4a446b7384e204440e.1545395375.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1544163962.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1544163962.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Dave Hansen <dave.hansen@linux.intel.com>, David Rientjes <rientjes@google.com>, Eric Paris <eparis@redhat.com>, Konstantin Khorenko <khorenko@virtuozzo.com>
+To: linux-sctp@vger.kernel.org
 
-This patch is to separate the base data memory from struct flex_array and
-save it into a page. With this change, total_nr_elements of a flex_array
-can grow or shrink without having the old element's memory changed when
-the new size of the flex_arry crosses FLEX_ARRAY_BASE_SIZE, which will
-be added in the next patch.
+Currently and likely in the future, they resolv to the same value, but
+conceptually speaking they are different things. As we introduced
+dedicated variables for libsctp and libwithsctp versioning, lets avoid
+possible confusion and expand them instead of reusing the
+PACKAGE_VERSION one.
 
-Suggested-by: Neil Horman <nhorman@tuxdriver.com>
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Fixes: #28
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- include/linux/flex_array.h | 29 +++++++++--------------------
- lib/flex_array.c           | 15 ++++++++++++---
- 2 files changed, 21 insertions(+), 23 deletions(-)
+ Makefile.rules           | 4 +++-
+ src/withsctp/withsctp.in | 2 +-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/flex_array.h b/include/linux/flex_array.h
-index b94fa61..29ad65f 100644
---- a/include/linux/flex_array.h
-+++ b/include/linux/flex_array.h
-@@ -7,9 +7,10 @@
- #include <asm/page.h>
- 
- #define FLEX_ARRAY_PART_SIZE PAGE_SIZE
--#define FLEX_ARRAY_BASE_SIZE PAGE_SIZE
-+#define FLEX_ARRAY_BASE_SIZE FLEX_ARRAY_PART_SIZE
- 
- struct flex_array_part;
-+struct flex_array_part_p;
- 
- /*
-  * This is meant to replace cases where an array-like
-@@ -19,29 +20,17 @@ struct flex_array_part;
-  */
- 
- struct flex_array {
--	union {
--		struct {
--			int element_size;
--			int total_nr_elements;
--			int elems_per_part;
--			struct reciprocal_value reciprocal_elems;
--			struct flex_array_part *parts[];
--		};
--		/*
--		 * This little trick makes sure that
--		 * sizeof(flex_array) = PAGE_SIZE
--		 */
--		char padding[FLEX_ARRAY_BASE_SIZE];
--	};
-+	int element_size;
-+	int total_nr_elements;
-+	int elems_per_part;
-+	struct reciprocal_value reciprocal_elems;
-+	struct flex_array_part_p *part_p;
-+#define parts part_p->p_part
- };
- 
--/* Number of bytes left in base struct flex_array, excluding metadata */
--#define FLEX_ARRAY_BASE_BYTES_LEFT					\
--	(FLEX_ARRAY_BASE_SIZE - offsetof(struct flex_array, parts))
--
- /* Number of pointers in base to struct flex_array_part pages */
- #define FLEX_ARRAY_NR_BASE_PTRS						\
--	(FLEX_ARRAY_BASE_BYTES_LEFT / sizeof(struct flex_array_part *))
-+	(FLEX_ARRAY_BASE_SIZE / sizeof(struct flex_array_part *))
- 
- /* Number of elements of size that fit in struct flex_array_part */
- #define FLEX_ARRAY_ELEMENTS_PER_PART(size)				\
-diff --git a/lib/flex_array.c b/lib/flex_array.c
-index 2eed22f..8c0b9b6 100644
---- a/lib/flex_array.c
-+++ b/lib/flex_array.c
-@@ -30,6 +30,10 @@ struct flex_array_part {
- 	char elements[FLEX_ARRAY_PART_SIZE];
- };
- 
-+struct flex_array_part_p {
-+	struct flex_array_part *p_part[FLEX_ARRAY_NR_BASE_PTRS];
-+};
-+
- /*
-  * If a user requests an allocation which is small
-  * enough, we may simply use the space in the
-@@ -39,7 +43,7 @@ struct flex_array_part {
- static inline int elements_fit_in_base(struct flex_array *fa)
- {
- 	int data_size = fa->element_size * fa->total_nr_elements;
--	if (data_size <= FLEX_ARRAY_BASE_BYTES_LEFT)
-+	if (data_size <= FLEX_ARRAY_BASE_SIZE)
- 		return 1;
- 	return 0;
- }
-@@ -105,13 +109,17 @@ struct flex_array *flex_array_alloc(int element_size, unsigned int total,
- 	ret = kzalloc(sizeof(struct flex_array), flags);
- 	if (!ret)
- 		return NULL;
-+	ret->part_p = kzalloc(sizeof(struct flex_array_part_p), flags);
-+	if (!ret->part_p) {
-+		kfree(ret);
-+		return NULL;
-+	}
- 	ret->element_size = element_size;
- 	ret->total_nr_elements = total;
- 	ret->elems_per_part = elems_per_part;
- 	ret->reciprocal_elems = reciprocal_elems;
- 	if (elements_fit_in_base(ret) && !(flags & __GFP_ZERO))
--		memset(&ret->parts[0], FLEX_ARRAY_FREE,
--						FLEX_ARRAY_BASE_BYTES_LEFT);
-+		memset(&ret->parts[0], FLEX_ARRAY_FREE, FLEX_ARRAY_BASE_SIZE);
- 	return ret;
- }
- EXPORT_SYMBOL(flex_array_alloc);
-@@ -148,6 +156,7 @@ EXPORT_SYMBOL(flex_array_free_parts);
- void flex_array_free(struct flex_array *fa)
- {
- 	flex_array_free_parts(fa);
-+	kfree(fa->part_p);
- 	kfree(fa);
- }
- EXPORT_SYMBOL(flex_array_free);
+diff --git a/Makefile.rules b/Makefile.rules
+index d3693facfdfdbe6b0d776cd91e1fa7ae172e15b8..9488228fe017734a5e8976d27a76a23e2d373902 100644
+--- a/Makefile.rules
++++ b/Makefile.rules
+@@ -16,4 +16,6 @@ edit = @sed \
+ 	-e "s|\@bindir\@|$(bindir)|" \
+ 	-e "s|\@libdir\@|$(libdir)|" \
+ 	-e "s|\@PACKAGE\@|$(PACKAGE)|" \
+-	-e "s|\@PACKAGE_VERSION\@|$(PACKAGE_VERSION)|"
++	-e "s|\@LIBWITHSCTP_CURRENT\@|$(LIBWITHSCTP_CURRENT)|" \
++	-e "s|\@LIBWITHSCTP_REVISION\@|$(LIBWITHSCTP_REVISION)|" \
++	-e "s|\@LIBWITHSCTP_AGE\@|$(LIBWITHSCTP_AGE)|"
+diff --git a/src/withsctp/withsctp.in b/src/withsctp/withsctp.in
+index fda5ebc2059063c910a274fb63abe243c6d8eb62..ef4f7bbc2eccf71829cae66c178b579d4ffbf5e4 100644
+--- a/src/withsctp/withsctp.in
++++ b/src/withsctp/withsctp.in
+@@ -2,7 +2,7 @@
+ # -*- sh -*-
+ LIBDIR=@libdir@/@PACKAGE@
+ BINDIR=@bindir@
+-LIBVER=@PACKAGE_VERSION@
++LIBVER=@LIBWITHSCTP_CURRENT@.@LIBWITHSCTP_AGE@.@LIBWITHSCTP_REVISION@
+ export LD_PRELOAD=${LIBDIR}/libwithsctp.so.${LIBVER}
+ if ! ${BINDIR}/checksctp 2> /dev/null
+ then
 -- 
-2.1.0
+2.19.2
