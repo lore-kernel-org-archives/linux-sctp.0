@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 14 Jan 2019 13:10:24 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 14 Jan 2019 14:08:12 +0000
 Subject: Re: [PATCH net] sctp: allocate sctp_sockaddr_entry with kzalloc
-Message-Id: <20190114131023.GP23855@localhost.localdomain>
+Message-Id: <20190114140812.GA4751@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <b1033e296052216772051e87ba5aa61bfc222076.1547462042.git.lucien.xin@gmail.com>
 In-Reply-To: <b1033e296052216772051e87ba5aa61bfc222076.1547462042.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>, Alexander Potapenko <glider@google.com>
+Cc: linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Alexander Potapenko <glider@google.com>
 
 On Mon, Jan 14, 2019 at 06:34:02PM +0800, Xin Long wrote:
 > The similar issue as fixed in Commit 4a2eb0c37b47 ("sctp: initialize
@@ -21,12 +21,6 @@ On Mon, Jan 14, 2019 at 06:34:02PM +0800, Xin Long wrote:
 > 
 > Reported-by: Alexander Potapenko <glider@google.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Seems you were faster than syzkaller, but we could still use:
-Reported-by: syzbot+ae0c70c0c2d40c51bb92@syzkaller.appspotmail.com
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/ipv6.c     | 5 +----
 >  net/sctp/protocol.c | 4 +---
@@ -84,3 +78,5 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > -- 
 > 2.1.0
 > 
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
