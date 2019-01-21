@@ -1,44 +1,135 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 25 Jan 2019 02:25:41 +0000
-Subject: Re: [PATCH net] sctp: set flow sport from saddr only when it's 0
-Message-Id: <20190124.182541.341610576126108739.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 21 Jan 2019 18:39:34 +0000
+Subject: [PATCH net] sctp: improve the events for sctp stream reset
+Message-Id: <dc740e7814086bd4d759c39310c98b214a76ae21.1548095974.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <91961be2ab833139b1a4b0188ba47c2581b991d4.1548096161.git.lucien.xin@gmail.com>
-In-Reply-To: <91961be2ab833139b1a4b0188ba47c2581b991d4.1548096161.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 22 Jan 2019 02:42:41 +0800
+This patch is to improve sctp stream reset events in 4 places:
 
-> Now sctp_transport_pmtu() passes transport->saddr into .get_dst() to set
-> flow sport from 'saddr'. However, transport->saddr is set only when
-> transport->dst exists in sctp_transport_route().
-> 
-> If sctp_transport_pmtu() is called without transport->saddr set, like
-> when transport->dst doesn't exists, the flow sport will be set to 0
-> from transport->saddr, which will cause a wrong route to be got.
-> 
-> Commit 6e91b578bf3f ("sctp: re-use sctp_transport_pmtu in
-> sctp_transport_route") made the issue be triggered more easily
-> since sctp_transport_pmtu() would be called in sctp_transport_route()
-> after that.
-> 
-> In gerneral, fl4->fl4_sport should always be set to
-> htons(asoc->base.bind_addr.port), unless transport->asoc doesn't exist
-> in sctp_v4/6_get_dst(), which is the case:
-> 
->   sctp_ootb_pkt_new() ->
->     sctp_transport_route()
-> 
-> For that, we can simply handle it by setting flow sport from saddr only
-> when it's 0 in sctp_v4/6_get_dst().
-> 
-> Fixes: 6e91b578bf3f ("sctp: re-use sctp_transport_pmtu in sctp_transport_route")
-> Reported-by: Ying Xu <yinxu@redhat.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+  1. In sctp_process_strreset_outreq(), the flag should always be set with
+     SCTP_STREAM_RESET_INCOMING_SSN instead of OUTGOING, as receiver's in
+     stream is reset here.
+  2. In sctp_process_strreset_outreq(), move up SCTP_STRRESET_ERR_WRONG_SSN
+     check, as the reset has to succeed after reconf_timer stops for the
+     in stream reset request retransmission.
+  3. In sctp_process_strreset_inreq(), no event should be sent, as no in
+     or out stream is reset here.
+  4. In sctp_process_strreset_resp(), SCTP_STREAM_RESET_INCOMING_SSN or
+     OUTGOING event should always be sent for stream reset requests, no
+     matter it fails or succeeds to process the request.
 
-Applied and queued up for -stable.
+Fixes: 810544764536 ("sctp: implement receiver-side procedures for the Outgoing SSN Reset Request Parameter")
+Fixes: 16e1a91965b0 ("sctp: implement receiver-side procedures for the Incoming SSN Reset Request Parameter")
+Fixes: 11ae76e67a17 ("sctp: implement receiver-side procedures for the Reconf Response Parameter")
+Reported-by: Ying Xu <yinxu@redhat.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/stream.c | 39 +++++++++++++++++----------------------
+ 1 file changed, 17 insertions(+), 22 deletions(-)
+
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 3892e76..6c188b0 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -585,9 +585,9 @@ struct sctp_chunk *sctp_process_strreset_outreq(
+ 	struct sctp_strreset_outreq *outreq = param.v;
+ 	struct sctp_stream *stream = &asoc->stream;
+ 	__u32 result = SCTP_STRRESET_DENIED;
+-	__u16 i, nums, flags = 0;
+ 	__be16 *str_p = NULL;
+ 	__u32 request_seq;
++	__u16 i, nums;
+ 
+ 	request_seq = ntohl(outreq->request_seq);
+ 
+@@ -615,6 +615,15 @@ struct sctp_chunk *sctp_process_strreset_outreq(
+ 	if (!(asoc->strreset_enable & SCTP_ENABLE_RESET_STREAM_REQ))
+ 		goto out;
+ 
++	nums = (ntohs(param.p->length) - sizeof(*outreq)) / sizeof(__u16);
++	str_p = outreq->list_of_streams;
++	for (i = 0; i < nums; i++) {
++		if (ntohs(str_p[i]) >= stream->incnt) {
++			result = SCTP_STRRESET_ERR_WRONG_SSN;
++			goto out;
++		}
++	}
++
+ 	if (asoc->strreset_chunk) {
+ 		if (!sctp_chunk_lookup_strreset_param(
+ 				asoc, outreq->response_seq,
+@@ -637,32 +646,19 @@ struct sctp_chunk *sctp_process_strreset_outreq(
+ 			sctp_chunk_put(asoc->strreset_chunk);
+ 			asoc->strreset_chunk = NULL;
+ 		}
+-
+-		flags = SCTP_STREAM_RESET_INCOMING_SSN;
+ 	}
+ 
+-	nums = (ntohs(param.p->length) - sizeof(*outreq)) / sizeof(__u16);
+-	if (nums) {
+-		str_p = outreq->list_of_streams;
+-		for (i = 0; i < nums; i++) {
+-			if (ntohs(str_p[i]) >= stream->incnt) {
+-				result = SCTP_STRRESET_ERR_WRONG_SSN;
+-				goto out;
+-			}
+-		}
+-
++	if (nums)
+ 		for (i = 0; i < nums; i++)
+ 			SCTP_SI(stream, ntohs(str_p[i]))->mid = 0;
+-	} else {
++	else
+ 		for (i = 0; i < stream->incnt; i++)
+ 			SCTP_SI(stream, i)->mid = 0;
+-	}
+ 
+ 	result = SCTP_STRRESET_PERFORMED;
+ 
+ 	*evp = sctp_ulpevent_make_stream_reset_event(asoc,
+-		flags | SCTP_STREAM_RESET_OUTGOING_SSN, nums, str_p,
+-		GFP_ATOMIC);
++		SCTP_STREAM_RESET_INCOMING_SSN, nums, str_p, GFP_ATOMIC);
+ 
+ out:
+ 	sctp_update_strreset_result(asoc, result);
+@@ -738,9 +734,6 @@ struct sctp_chunk *sctp_process_strreset_inreq(
+ 
+ 	result = SCTP_STRRESET_PERFORMED;
+ 
+-	*evp = sctp_ulpevent_make_stream_reset_event(asoc,
+-		SCTP_STREAM_RESET_INCOMING_SSN, nums, str_p, GFP_ATOMIC);
+-
+ out:
+ 	sctp_update_strreset_result(asoc, result);
+ err:
+@@ -1036,10 +1029,10 @@ struct sctp_chunk *sctp_process_strreset_resp(
+ 					sout->mid_uo = 0;
+ 				}
+ 			}
+-
+-			flags = SCTP_STREAM_RESET_OUTGOING_SSN;
+ 		}
+ 
++		flags |= SCTP_STREAM_RESET_OUTGOING_SSN;
++
+ 		for (i = 0; i < stream->outcnt; i++)
+ 			SCTP_SO(stream, i)->state = SCTP_STREAM_OPEN;
+ 
+@@ -1058,6 +1051,8 @@ struct sctp_chunk *sctp_process_strreset_resp(
+ 		nums = (ntohs(inreq->param_hdr.length) - sizeof(*inreq)) /
+ 		       sizeof(__u16);
+ 
++		flags |= SCTP_STREAM_RESET_INCOMING_SSN;
++
+ 		*evp = sctp_ulpevent_make_stream_reset_event(asoc, flags,
+ 			nums, str_p, GFP_ATOMIC);
+ 	} else if (req->type = SCTP_PARAM_RESET_TSN_REQUEST) {
+-- 
+2.1.0
