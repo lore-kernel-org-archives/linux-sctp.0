@@ -1,36 +1,66 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 28 Jan 2019 18:09:47 +0000
-Subject: Re: [PATCH AUTOSEL 4.19 033/258] sctp: Fix SKB list traversal in sctp_intl_store_ordered().
-Message-Id: <20190128180947.GB10665@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 21 Jan 2019 18:42:09 +0000
+Subject: [PATCH net] sctp: set chunk transport correctly when it's a new asoc
+Message-Id: <d08f8708003363950333c0690960ce3d97897bd4.1548096129.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20190128155924.51521-1-sashal@kernel.org>
- <20190128155924.51521-33-sashal@kernel.org>
-In-Reply-To: <20190128155924.51521-33-sashal@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Sasha Levin <sashal@kernel.org>
-Cc: linux-kernel@vger.kernel.org, stable@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Mon, Jan 28, 2019 at 10:55:39AM -0500, Sasha Levin wrote:
-> From: "David S. Miller" <davem@davemloft.net>
-> 
-> [ Upstream commit e15e067d0656625c77c52b4e5f0cfbf0c0c3583f ]
-> 
-> Same change as made to sctp_intl_store_reasm().
-> 
-> To be fully correct, an iterator has an undefined value when something
-> like skb_queue_walk() naturally terminates.
-> 
-> This will actually matter when SKB queues are converted over to
-> list_head.
-> 
-> Formalize what this code ends up doing with the current
-> implementation.
+In the paths:
 
-Hi Sasha,
+  sctp_sf_do_unexpected_init() ->
+    sctp_make_init_ack()
+  sctp_sf_do_dupcook_a/b()() ->
+    sctp_sf_do_5_1D_ce()
 
-This one too then.
+The new chunk 'retval' transport is set from the incoming chunk 'chunk'
+transport. However, 'retval' transport belong to the new asoc, which
+is a different one from 'chunk' transport's asoc.
 
-Thanks,
-Marcelo
+It will cause that the 'retval' chunk gets set with a wrong transport.
+Later when sending it and because of Commit b9fd683982c9 ("sctp: add
+sctp_packet_singleton"), sctp_packet_singleton() will set some fields,
+like vtag to 'retval' chunk from that wrong transport's asoc.
+
+This patch is to fix it by setting 'retval' transport correctly which
+belongs to the right asoc in sctp_make_init_ack() and
+sctp_sf_do_5_1D_ce().
+
+Fixes: b9fd683982c9 ("sctp: add sctp_packet_singleton")
+Reported-by: Ying Xu <yinxu@redhat.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/sm_make_chunk.c | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index f4ac6c5..d05c576 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -495,7 +495,10 @@ struct sctp_chunk *sctp_make_init_ack(const struct sctp_association *asoc,
+ 	 *
+ 	 * [INIT ACK back to where the INIT came from.]
+ 	 */
+-	retval->transport = chunk->transport;
++	if (chunk->transport)
++		retval->transport +			sctp_assoc_lookup_paddr(asoc,
++						&chunk->transport->ipaddr);
+ 
+ 	retval->subh.init_hdr  		sctp_addto_chunk(retval, sizeof(initack), &initack);
+@@ -642,8 +645,10 @@ struct sctp_chunk *sctp_make_cookie_ack(const struct sctp_association *asoc,
+ 	 *
+ 	 * [COOKIE ACK back to where the COOKIE ECHO came from.]
+ 	 */
+-	if (retval && chunk)
+-		retval->transport = chunk->transport;
++	if (retval && chunk && chunk->transport)
++		retval->transport +			sctp_assoc_lookup_paddr(asoc,
++						&chunk->transport->ipaddr);
+ 
+ 	return retval;
+ }
+-- 
+2.1.0
