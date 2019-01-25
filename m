@@ -1,77 +1,37 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 21 Jan 2019 18:40:12 +0000
-Subject: [PATCH net] sctp: improve the events for sctp stream adding
-Message-Id: <a4261c440ed5821ddd5943ec7ed163004953d8b8.1548096012.git.lucien.xin@gmail.com>
+From: David Miller <davem@davemloft.net>
+Date: Fri, 25 Jan 2019 02:25:06 +0000
+Subject: Re: [PATCH net] sctp: improve the events for sctp stream reset
+Message-Id: <20190124.182506.271204705053172488.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <dc740e7814086bd4d759c39310c98b214a76ae21.1548095974.git.lucien.xin@gmail.com>
 In-Reply-To: <dc740e7814086bd4d759c39310c98b214a76ae21.1548095974.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+To: lucien.xin@gmail.com
+Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
-This patch is to improve sctp stream adding events in 2 places:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 22 Jan 2019 02:39:34 +0800
 
-  1. In sctp_process_strreset_addstrm_out(), move up SCTP_MAX_STREAM
-     and in stream allocation failure checks, as the adding has to
-     succeed after reconf_timer stops for the in stream adding
-     request retransmission.
+> This patch is to improve sctp stream reset events in 4 places:
+> 
+>   1. In sctp_process_strreset_outreq(), the flag should always be set with
+>      SCTP_STREAM_RESET_INCOMING_SSN instead of OUTGOING, as receiver's in
+>      stream is reset here.
+>   2. In sctp_process_strreset_outreq(), move up SCTP_STRRESET_ERR_WRONG_SSN
+>      check, as the reset has to succeed after reconf_timer stops for the
+>      in stream reset request retransmission.
+>   3. In sctp_process_strreset_inreq(), no event should be sent, as no in
+>      or out stream is reset here.
+>   4. In sctp_process_strreset_resp(), SCTP_STREAM_RESET_INCOMING_SSN or
+>      OUTGOING event should always be sent for stream reset requests, no
+>      matter it fails or succeeds to process the request.
+> 
+> Fixes: 810544764536 ("sctp: implement receiver-side procedures for the Outgoing SSN Reset Request Parameter")
+> Fixes: 16e1a91965b0 ("sctp: implement receiver-side procedures for the Incoming SSN Reset Request Parameter")
+> Fixes: 11ae76e67a17 ("sctp: implement receiver-side procedures for the Reconf Response Parameter")
+> Reported-by: Ying Xu <yinxu@redhat.com>
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-  3. In sctp_process_strreset_addstrm_in(), no event should be sent,
-     as no in or out stream is added here.
-
-Fixes: 50a41591f110 ("sctp: implement receiver-side procedures for the Add Outgoing Streams Request Parameter")
-Fixes: c5c4ebb3ab87 ("sctp: implement receiver-side procedures for the Add Incoming Streams Request Parameter")
-Reported-by: Ying Xu <yinxu@redhat.com>
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- net/sctp/stream.c | 19 ++++++++-----------
- 1 file changed, 8 insertions(+), 11 deletions(-)
-
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index 6c188b0..80e0ae5 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -866,6 +866,14 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
- 	if (!(asoc->strreset_enable & SCTP_ENABLE_CHANGE_ASSOC_REQ))
- 		goto out;
- 
-+	in = ntohs(addstrm->number_of_streams);
-+	incnt = stream->incnt + in;
-+	if (!in || incnt > SCTP_MAX_STREAM)
-+		goto out;
-+
-+	if (sctp_stream_alloc_in(stream, incnt, GFP_ATOMIC))
-+		goto out;
-+
- 	if (asoc->strreset_chunk) {
- 		if (!sctp_chunk_lookup_strreset_param(
- 			asoc, 0, SCTP_PARAM_RESET_ADD_IN_STREAMS)) {
-@@ -889,14 +897,6 @@ struct sctp_chunk *sctp_process_strreset_addstrm_out(
- 		}
- 	}
- 
--	in = ntohs(addstrm->number_of_streams);
--	incnt = stream->incnt + in;
--	if (!in || incnt > SCTP_MAX_STREAM)
--		goto out;
--
--	if (sctp_stream_alloc_in(stream, incnt, GFP_ATOMIC))
--		goto out;
--
- 	stream->incnt = incnt;
- 
- 	result = SCTP_STRRESET_PERFORMED;
-@@ -966,9 +966,6 @@ struct sctp_chunk *sctp_process_strreset_addstrm_in(
- 
- 	result = SCTP_STRRESET_PERFORMED;
- 
--	*evp = sctp_ulpevent_make_stream_change_event(asoc,
--		0, 0, ntohs(addstrm->number_of_streams), GFP_ATOMIC);
--
- out:
- 	sctp_update_strreset_result(asoc, result);
- err:
--- 
-2.1.0
+Applied and queued up for -stable.
