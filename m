@@ -1,7 +1,7 @@
 From: Sasha Levin <sashal@kernel.org>
-Date: Mon, 28 Jan 2019 15:39:17 +0000
-Subject: [PATCH AUTOSEL 4.20 040/304] sctp: Fix SKB list traversal in sctp_intl_store_reasm().
-Message-Id: <20190128154341.47195-40-sashal@kernel.org>
+Date: Mon, 28 Jan 2019 15:39:16 +0000
+Subject: [PATCH AUTOSEL 4.20 039/304] sctp: Fix SKB list traversal in sctp_intl_store_ordered().
+Message-Id: <20190128154341.47195-39-sashal@kernel.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20190128154341.47195-1-sashal@kernel.org>
 In-Reply-To: <20190128154341.47195-1-sashal@kernel.org>
@@ -13,7 +13,9 @@ Cc: "David S. Miller" <davem@davemloft.net>, Sasha Levin <sashal@kernel.org>, li
 
 From: "David S. Miller" <davem@davemloft.net>
 
-[ Upstream commit 348bbc25c40844c5efa083a3842c7f53d70a815e ]
+[ Upstream commit e15e067d0656625c77c52b4e5f0cfbf0c0c3583f ]
+
+Same change as made to sctp_intl_store_reasm().
 
 To be fully correct, an iterator has an undefined value when something
 like skb_queue_walk() naturally terminates.
@@ -31,52 +33,47 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 12 insertions(+), 5 deletions(-)
 
 diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
-index 500449b72eca..2b499a85db0e 100644
+index 0a78cdf86463..500449b72eca 100644
 --- a/net/sctp/stream_interleave.c
 +++ b/net/sctp/stream_interleave.c
-@@ -140,7 +140,7 @@ static void sctp_intl_store_reasm(struct sctp_ulpq *ulpq,
- 				  struct sctp_ulpevent *event)
+@@ -383,7 +383,7 @@ static void sctp_intl_store_ordered(struct sctp_ulpq *ulpq,
+ 				    struct sctp_ulpevent *event)
  {
  	struct sctp_ulpevent *cevent;
 -	struct sk_buff *pos;
 +	struct sk_buff *pos, *loc;
  
- 	pos = skb_peek_tail(&ulpq->reasm);
+ 	pos = skb_peek_tail(&ulpq->lobby);
  	if (!pos) {
-@@ -166,23 +166,30 @@ static void sctp_intl_store_reasm(struct sctp_ulpq *ulpq,
+@@ -403,18 +403,25 @@ static void sctp_intl_store_ordered(struct sctp_ulpq *ulpq,
  		return;
  	}
  
 +	loc = NULL;
- 	skb_queue_walk(&ulpq->reasm, pos) {
- 		cevent = sctp_skb2event(pos);
+ 	skb_queue_walk(&ulpq->lobby, pos) {
+ 		cevent = (struct sctp_ulpevent *)pos->cb;
  
- 		if (event->stream < cevent->stream ||
- 		    (event->stream = cevent->stream &&
--		     MID_lt(event->mid, cevent->mid)))
-+		     MID_lt(event->mid, cevent->mid))) {
+-		if (cevent->stream > event->stream)
++		if (cevent->stream > event->stream) {
 +			loc = pos;
  			break;
 -
 +		}
- 		if (event->stream = cevent->stream &&
- 		    event->mid = cevent->mid &&
- 		    !(cevent->msg_flags & SCTP_DATA_FIRST_FRAG) &&
- 		    (event->msg_flags & SCTP_DATA_FIRST_FRAG ||
--		     event->fsn < cevent->fsn))
-+		     event->fsn < cevent->fsn)) {
+ 		if (cevent->stream = event->stream &&
+-		    MID_lt(event->mid, cevent->mid))
++		    MID_lt(event->mid, cevent->mid)) {
 +			loc = pos;
  			break;
 +		}
  	}
  
--	__skb_queue_before(&ulpq->reasm, pos, sctp_event2skb(event));
+-	__skb_queue_before(&ulpq->lobby, pos, sctp_event2skb(event));
 +	if (!loc)
-+		__skb_queue_tail(&ulpq->reasm, sctp_event2skb(event));
++		__skb_queue_tail(&ulpq->lobby, sctp_event2skb(event));
 +	else
-+		__skb_queue_before(&ulpq->reasm, loc, sctp_event2skb(event));
++		__skb_queue_before(&ulpq->lobby, loc, sctp_event2skb(event));
  }
  
- static struct sctp_ulpevent *sctp_intl_retrieve_partial(
+ static void sctp_intl_retrieve_ordered(struct sctp_ulpq *ulpq,
 -- 
 2.19.1
