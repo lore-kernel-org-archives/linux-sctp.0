@@ -1,7 +1,7 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 28 Jan 2019 07:08:29 +0000
-Subject: [PATCH net-next 07/24] sctp: add SCTP_FUTURE_ASSOC for SCTP_PEER_ADDR_THLDS sockopt
-Message-Id: <ad87082d72bcf6efccfca7b13adb3a73c72c02ee.1548659198.git.lucien.xin@gmail.com>
+Date: Mon, 28 Jan 2019 07:08:44 +0000
+Subject: [PATCH net-next 22/24] sctp: use SCTP_FUTURE_ASSOC and add SCTP_CURRENT_ASSOC for SCTP_ENABLE_STREAM
+Message-Id: <9f448381e64f109d0e82f25751cd04129b41b493.1548659198.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1548659198.git.lucien.xin@gmail.com>
  <3ca66b981a0fe9368bd976676fe7450634b091cd.1548659198.git.lucien.xin@gmail.com>
@@ -10,150 +10,106 @@ References: <cover.1548659198.git.lucien.xin@gmail.com>
  <088bc37947694e4e80302b075f767a7828ea4a05.1548659198.git.lucien.xin@gmail.com>
  <b6b839acf08b7ed5ea06b36156ab3ad8a4a47cf7.1548659198.git.lucien.xin@gmail.com>
  <285500315e06236e468142d80c6557eae4898b36.1548659198.git.lucien.xin@gmail.com>
-In-Reply-To: <285500315e06236e468142d80c6557eae4898b36.1548659198.git.lucien.xin@gmail.com>
+ <ad87082d72bcf6efccfca7b13adb3a73c72c02ee.1548659198.git.lucien.xin@gmail.com>
+ <a6316f97dbdcfbde1104e2296df9d8b24958a7df.1548659198.git.lucien.xin@gmail.com>
+ <17140f5cc5fc1961e3e7cf74888affd55e0e6c06.1548659198.git.lucien.xin@gmail.com>
+ <ea9e2c6de0c242a440773e99e22a59a72b77776d.1548659198.git.lucien.xin@gmail.com>
+ <33a798e9b29f2dcbe6dd132cb801b4960d1411a5.1548659198.git.lucien.xin@gmail.com>
+ <d2e888e961165b773dfbf68847af5f2d0ac864c0.1548659198.git.lucien.xin@gmail.com>
+ <5d9d0bf635fb89cc3933b256e5e41dd3958c61d6.1548659198.git.lucien.xin@gmail.com>
+ <b4094ac0945bbea9ebe455b4357e983400bfe8bb.1548659198.git.lucien.xin@gmail.com>
+ <4a601f978a5364fb8f5c4ee97e314eb28087917f.1548659198.git.lucien.xin@gmail.com>
+ <1788c2da8ddb39854267ea1321d725635a7c983e.1548659198.git.lucien.xin@gmail.com>
+ <70a401b7942eae75d2834dcbefe242f5eb4ad28d.1548659198.git.lucien.xin@gmail.com>
+ <a87d5c204cc640751b70c7df7947f4d57a62ab69.1548659198.git.lucien.xin@gmail.com>
+ <8cc9dcf9afe96c746c525943dd95d51a804f0126.1548659198.git.lucien.xin@gmail.com>
+ <439c70f52f7a642875ab45b7103f586bd09785d2.1548659198.git.lucien.xin@gmail.com>
+ <3ec8b9a5111b19fc30d5f6acfdad7cdb771dc04c.1548659198.git.lucien.xin@gmail.com>
+In-Reply-To: <3ec8b9a5111b19fc30d5f6acfdad7cdb771dc04c.1548659198.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-Check with SCTP_FUTURE_ASSOC instead in
-sctp_set/getsockopt_paddr_thresholds, it's compatible with 0.
+Check with SCTP_ALL_ASSOC instead in sctp_setsockopt_enable_strreset and
+check with SCTP_FUTURE_ASSOC instead in sctp_getsockopt_enable_strreset,
+it's compatible with 0.
 
-It also adds pf_retrans in sctp_sock to support SCTP_FUTURE_ASSOC.
+SCTP_CURRENT_ASSOC is supported for SCTP_ENABLE_STREAM_RESET in this patch.
+It also adjusts some code to keep a same check form as other functions.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/structs.h |  2 ++
- net/sctp/associola.c       |  2 +-
- net/sctp/socket.c          | 58 ++++++++++++++++++++++++++++++++--------------
- 3 files changed, 43 insertions(+), 19 deletions(-)
+ net/sctp/socket.c | 33 ++++++++++++++++++++-------------
+ 1 file changed, 20 insertions(+), 13 deletions(-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 003020e..a5a46b1 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -199,6 +199,8 @@ struct sctp_sock {
- 	__u32 flowlabel;
- 	__u8  dscp;
- 
-+	int pf_retrans;
-+
- 	/* The initial Path MTU to use for new associations. */
- 	__u32 pathmtu;
- 
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index b99f163..d2c7d0d 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -101,7 +101,7 @@ static struct sctp_association *sctp_association_init(
- 	 * socket values.
- 	 */
- 	asoc->max_retrans = sp->assocparams.sasoc_asocmaxrxt;
--	asoc->pf_retrans  = net->sctp.pf_retrans;
-+	asoc->pf_retrans  = sp->pf_retrans;
- 
- 	asoc->rto_initial = msecs_to_jiffies(sp->rtoinfo.srto_initial);
- 	asoc->rto_max = msecs_to_jiffies(sp->rtoinfo.srto_max);
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 7df2123..1d49b7d 100644
+index 2f70171..93004c7 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -3888,11 +3888,25 @@ static int sctp_setsockopt_paddr_thresholds(struct sock *sk,
- 			   sizeof(struct sctp_paddrthlds)))
- 		return -EFAULT;
+@@ -4222,6 +4222,7 @@ static int sctp_setsockopt_enable_strreset(struct sock *sk,
+ 					   char __user *optval,
+ 					   unsigned int optlen)
+ {
++	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
+ 	struct sctp_assoc_value params;
+ 	struct sctp_association *asoc;
+ 	int retval = -EINVAL;
+@@ -4238,17 +4239,25 @@ static int sctp_setsockopt_enable_strreset(struct sock *sk,
+ 		goto out;
  
--
--	if (sctp_is_any(sk, (const union sctp_addr *)&val.spt_address)) {
--		asoc = sctp_id2assoc(sk, val.spt_assoc_id);
--		if (!asoc)
-+	if (!sctp_is_any(sk, (const union sctp_addr *)&val.spt_address)) {
-+		trans = sctp_addr_id2transport(sk, &val.spt_address,
-+					       val.spt_assoc_id);
-+		if (!trans)
- 			return -ENOENT;
-+
-+		if (val.spt_pathmaxrxt)
-+			trans->pathmaxrxt = val.spt_pathmaxrxt;
-+		trans->pf_retrans = val.spt_pathpfthld;
-+
-+		return 0;
-+	}
-+
-+	asoc = sctp_id2assoc(sk, val.spt_assoc_id);
-+	if (!asoc && val.spt_assoc_id != SCTP_FUTURE_ASSOC &&
+ 	asoc = sctp_id2assoc(sk, params.assoc_id);
++	if (!asoc && params.assoc_id > SCTP_ALL_ASSOC &&
 +	    sctp_style(sk, UDP))
-+		return -EINVAL;
++		goto out;
 +
-+	if (asoc) {
- 		list_for_each_entry(trans, &asoc->peer.transport_addr_list,
- 				    transports) {
- 			if (val.spt_pathmaxrxt)
-@@ -3904,14 +3918,11 @@ static int sctp_setsockopt_paddr_thresholds(struct sock *sk,
- 			asoc->pathmaxrxt = val.spt_pathmaxrxt;
- 		asoc->pf_retrans = val.spt_pathpfthld;
- 	} else {
--		trans = sctp_addr_id2transport(sk, &val.spt_address,
--					       val.spt_assoc_id);
--		if (!trans)
--			return -ENOENT;
-+		struct sctp_sock *sp = sctp_sk(sk);
- 
- 		if (val.spt_pathmaxrxt)
--			trans->pathmaxrxt = val.spt_pathmaxrxt;
--		trans->pf_retrans = val.spt_pathpfthld;
-+			sp->pathmaxrxt = val.spt_pathmaxrxt;
-+		sp->pf_retrans = val.spt_pathpfthld;
- 	}
- 
- 	return 0;
-@@ -4781,6 +4792,7 @@ static int sctp_init_sock(struct sock *sk)
- 	 */
- 	sp->hbinterval  = net->sctp.hb_interval;
- 	sp->pathmaxrxt  = net->sctp.max_retrans_path;
-+	sp->pf_retrans  = net->sctp.pf_retrans;
- 	sp->pathmtu     = 0; /* allow default discovery */
- 	sp->sackdelay   = net->sctp.sack_timeout;
- 	sp->sackfreq	= 2;
-@@ -6917,14 +6929,7 @@ static int sctp_getsockopt_paddr_thresholds(struct sock *sk,
- 	if (copy_from_user(&val, (struct sctp_paddrthlds __user *)optval, len))
- 		return -EFAULT;
- 
--	if (sctp_is_any(sk, (const union sctp_addr *)&val.spt_address)) {
--		asoc = sctp_id2assoc(sk, val.spt_assoc_id);
--		if (!asoc)
--			return -ENOENT;
++	retval = 0;
++
+ 	if (asoc) {
+ 		asoc->strreset_enable = params.assoc_value;
+-	} else if (!params.assoc_id) {
+-		struct sctp_sock *sp = sctp_sk(sk);
 -
--		val.spt_pathpfthld = asoc->pf_retrans;
--		val.spt_pathmaxrxt = asoc->pathmaxrxt;
+-		sp->ep->strreset_enable = params.assoc_value;
 -	} else {
-+	if (!sctp_is_any(sk, (const union sctp_addr *)&val.spt_address)) {
- 		trans = sctp_addr_id2transport(sk, &val.spt_address,
- 					       val.spt_assoc_id);
- 		if (!trans)
-@@ -6932,6 +6937,23 @@ static int sctp_getsockopt_paddr_thresholds(struct sock *sk,
- 
- 		val.spt_pathmaxrxt = trans->pathmaxrxt;
- 		val.spt_pathpfthld = trans->pf_retrans;
-+
-+		return 0;
-+	}
-+
-+	asoc = sctp_id2assoc(sk, val.spt_assoc_id);
-+	if (!asoc && val.spt_assoc_id != SCTP_FUTURE_ASSOC &&
-+	    sctp_style(sk, UDP))
-+		return -EINVAL;
-+
-+	if (asoc) {
-+		val.spt_pathpfthld = asoc->pf_retrans;
-+		val.spt_pathmaxrxt = asoc->pathmaxrxt;
-+	} else {
-+		struct sctp_sock *sp = sctp_sk(sk);
-+
-+		val.spt_pathpfthld = sp->pf_retrans;
-+		val.spt_pathmaxrxt = sp->pathmaxrxt;
+ 		goto out;
  	}
  
- 	if (put_user(len, optlen) || copy_to_user(optval, &val, len))
+-	retval = 0;
++	if (params.assoc_id = SCTP_FUTURE_ASSOC ||
++	    params.assoc_id = SCTP_ALL_ASSOC)
++		ep->strreset_enable = params.assoc_value;
++
++	if (params.assoc_id = SCTP_CURRENT_ASSOC ||
++	    params.assoc_id = SCTP_ALL_ASSOC)
++		list_for_each_entry(asoc, &ep->asocs, asocs)
++			asoc->strreset_enable = params.assoc_value;
+ 
+ out:
+ 	return retval;
+@@ -7509,17 +7518,15 @@ static int sctp_getsockopt_enable_strreset(struct sock *sk, int len,
+ 		goto out;
+ 
+ 	asoc = sctp_id2assoc(sk, params.assoc_id);
+-	if (asoc) {
+-		params.assoc_value = asoc->strreset_enable;
+-	} else if (!params.assoc_id) {
+-		struct sctp_sock *sp = sctp_sk(sk);
+-
+-		params.assoc_value = sp->ep->strreset_enable;
+-	} else {
++	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
++	    sctp_style(sk, UDP)) {
+ 		retval = -EINVAL;
+ 		goto out;
+ 	}
+ 
++	params.assoc_value = asoc ? asoc->strreset_enable
++				  : sctp_sk(sk)->ep->strreset_enable;
++
+ 	if (put_user(len, optlen))
+ 		goto out;
+ 
 -- 
 2.1.0
