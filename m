@@ -1,19 +1,12 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 28 Jan 2019 07:08:32 +0000
-Subject: [PATCH net-next 10/24] sctp: use SCTP_FUTURE_ASSOC for SCTP_INTERLEAVING_SUPPORTED sockopt
-Message-Id: <ea9e2c6de0c242a440773e99e22a59a72b77776d.1548659198.git.lucien.xin@gmail.com>
+Date: Mon, 28 Jan 2019 07:08:25 +0000
+Subject: [PATCH net-next 03/24] sctp: use SCTP_FUTURE_ASSOC for SCTP_RTOINFO sockopt
+Message-Id: <16e83f8259873a6818863586e6a3fcb1e2e3717b.1548659198.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1548659198.git.lucien.xin@gmail.com>
  <3ca66b981a0fe9368bd976676fe7450634b091cd.1548659198.git.lucien.xin@gmail.com>
  <bf66a45aa6763646c07e1b8be102466f07fc1648.1548659198.git.lucien.xin@gmail.com>
- <16e83f8259873a6818863586e6a3fcb1e2e3717b.1548659198.git.lucien.xin@gmail.com>
- <088bc37947694e4e80302b075f767a7828ea4a05.1548659198.git.lucien.xin@gmail.com>
- <b6b839acf08b7ed5ea06b36156ab3ad8a4a47cf7.1548659198.git.lucien.xin@gmail.com>
- <285500315e06236e468142d80c6557eae4898b36.1548659198.git.lucien.xin@gmail.com>
- <ad87082d72bcf6efccfca7b13adb3a73c72c02ee.1548659198.git.lucien.xin@gmail.com>
- <a6316f97dbdcfbde1104e2296df9d8b24958a7df.1548659198.git.lucien.xin@gmail.com>
- <17140f5cc5fc1961e3e7cf74888affd55e0e6c06.1548659198.git.lucien.xin@gmail.com>
-In-Reply-To: <17140f5cc5fc1961e3e7cf74888affd55e0e6c06.1548659198.git.lucien.xin@gmail.com>
+In-Reply-To: <bf66a45aa6763646c07e1b8be102466f07fc1648.1548659198.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -21,66 +14,36 @@ To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
 Check with SCTP_FUTURE_ASSOC instead in
-sctp_set/getsockopt_reconfig_supported, it's compatible with 0.
-
-It also adjusts some code to keep a same check form as other functions.
+sctp_set/getsockopt_rtoinfo, it's compatible with 0.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/sctp/socket.c | 20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
+ net/sctp/socket.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index e5487a1..b9263ad 100644
+index 4c43b95..48d6be8 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -4240,8 +4240,8 @@ static int sctp_setsockopt_interleaving_supported(struct sock *sk,
- 						  unsigned int optlen)
- {
- 	struct sctp_sock *sp = sctp_sk(sk);
--	struct net *net = sock_net(sk);
- 	struct sctp_assoc_value params;
-+	struct sctp_association *asoc;
- 	int retval = -EINVAL;
+@@ -3145,7 +3145,8 @@ static int sctp_setsockopt_rtoinfo(struct sock *sk, char __user *optval, unsigne
+ 	asoc = sctp_id2assoc(sk, rtoinfo.srto_assoc_id);
  
- 	if (optlen < sizeof(params))
-@@ -4253,10 +4253,12 @@ static int sctp_setsockopt_interleaving_supported(struct sock *sk,
- 		goto out;
- 	}
- 
--	if (params.assoc_id)
-+	asoc = sctp_id2assoc(sk, params.assoc_id);
-+	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
+ 	/* Set the values to the specific association */
+-	if (!asoc && rtoinfo.srto_assoc_id && sctp_style(sk, UDP))
++	if (!asoc && rtoinfo.srto_assoc_id != SCTP_FUTURE_ASSOC &&
 +	    sctp_style(sk, UDP))
- 		goto out;
+ 		return -EINVAL;
  
--	if (!net->sctp.intl_enable || !sp->frag_interleave) {
-+	if (!sock_net(sk)->sctp.intl_enable || !sp->frag_interleave) {
- 		retval = -EPERM;
- 		goto out;
- 	}
-@@ -7453,17 +7455,15 @@ static int sctp_getsockopt_interleaving_supported(struct sock *sk, int len,
- 		goto out;
+ 	rto_max = rtoinfo.srto_max;
+@@ -6298,7 +6299,8 @@ static int sctp_getsockopt_rtoinfo(struct sock *sk, int len,
  
- 	asoc = sctp_id2assoc(sk, params.assoc_id);
--	if (asoc) {
--		params.assoc_value = asoc->intl_enable;
--	} else if (!params.assoc_id) {
--		struct sctp_sock *sp = sctp_sk(sk);
--
--		params.assoc_value = sp->strm_interleave;
--	} else {
-+	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
-+	    sctp_style(sk, UDP)) {
- 		retval = -EINVAL;
- 		goto out;
- 	}
+ 	asoc = sctp_id2assoc(sk, rtoinfo.srto_assoc_id);
  
-+	params.assoc_value = asoc ? asoc->intl_enable
-+				  : sctp_sk(sk)->strm_interleave;
-+
- 	if (put_user(len, optlen))
- 		goto out;
+-	if (!asoc && rtoinfo.srto_assoc_id && sctp_style(sk, UDP))
++	if (!asoc && rtoinfo.srto_assoc_id != SCTP_FUTURE_ASSOC &&
++	    sctp_style(sk, UDP))
+ 		return -EINVAL;
  
+ 	/* Values corresponding to the specific association. */
 -- 
 2.1.0
