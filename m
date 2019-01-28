@@ -1,7 +1,7 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 28 Jan 2019 07:08:33 +0000
-Subject: [PATCH net-next 11/24] sctp: add SCTP_CURRENT_ASSOC for SCTP_STREAM_SCHEDULER_VALUE sockopt
-Message-Id: <33a798e9b29f2dcbe6dd132cb801b4960d1411a5.1548659198.git.lucien.xin@gmail.com>
+Date: Mon, 28 Jan 2019 07:08:36 +0000
+Subject: [PATCH net-next 14/24] sctp: use SCTP_FUTURE_ASSOC and add SCTP_CURRENT_ASSOC for SCTP_DEFAULT_SNDIN
+Message-Id: <b4094ac0945bbea9ebe455b4357e983400bfe8bb.1548659198.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1548659198.git.lucien.xin@gmail.com>
  <3ca66b981a0fe9368bd976676fe7450634b091cd.1548659198.git.lucien.xin@gmail.com>
@@ -14,66 +14,82 @@ References: <cover.1548659198.git.lucien.xin@gmail.com>
  <a6316f97dbdcfbde1104e2296df9d8b24958a7df.1548659198.git.lucien.xin@gmail.com>
  <17140f5cc5fc1961e3e7cf74888affd55e0e6c06.1548659198.git.lucien.xin@gmail.com>
  <ea9e2c6de0c242a440773e99e22a59a72b77776d.1548659198.git.lucien.xin@gmail.com>
-In-Reply-To: <ea9e2c6de0c242a440773e99e22a59a72b77776d.1548659198.git.lucien.xin@gmail.com>
+ <33a798e9b29f2dcbe6dd132cb801b4960d1411a5.1548659198.git.lucien.xin@gmail.com>
+ <d2e888e961165b773dfbf68847af5f2d0ac864c0.1548659198.git.lucien.xin@gmail.com>
+ <5d9d0bf635fb89cc3933b256e5e41dd3958c61d6.1548659198.git.lucien.xin@gmail.com>
+In-Reply-To: <5d9d0bf635fb89cc3933b256e5e41dd3958c61d6.1548659198.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-SCTP_STREAM_SCHEDULER_VALUE is a special one, as its value is not
-save in sctp_sock, but only in asoc. So only SCTP_CURRENT_ASSOC
-reserved assoc_id can be used in sctp_setsockopt_scheduler_value.
+Check with SCTP_ALL_ASSOC instead in sctp_setsockopt_default_sndinfo and
+check with SCTP_FUTURE_ASSOC instead in sctp_getsockopt_default_sndinfo,
+it's compatible with 0.
 
-This patch adds SCTP_CURRENT_ASOC support for
-SCTP_STREAM_SCHEDULER_VALUE.
+SCTP_CURRENT_ASSOC is supported for SCTP_DEFAULT_SNDINFO in this patch.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/sctp/socket.c | 21 +++++++++++++++++----
- 1 file changed, 17 insertions(+), 4 deletions(-)
+ net/sctp/socket.c | 25 ++++++++++++++++++++++---
+ 1 file changed, 22 insertions(+), 3 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index b9263ad..bf91591 100644
+index 3d3b4f0..6a674cf 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -4211,8 +4211,8 @@ static int sctp_setsockopt_scheduler_value(struct sock *sk,
- 					   char __user *optval,
- 					   unsigned int optlen)
- {
--	struct sctp_association *asoc;
- 	struct sctp_stream_value params;
-+	struct sctp_association *asoc;
- 	int retval = -EINVAL;
+@@ -3067,20 +3067,37 @@ static int sctp_setsockopt_default_sndinfo(struct sock *sk,
+ 		return -EINVAL;
  
- 	if (optlen < sizeof(params))
-@@ -4225,11 +4225,24 @@ static int sctp_setsockopt_scheduler_value(struct sock *sk,
+ 	asoc = sctp_id2assoc(sk, info.snd_assoc_id);
+-	if (!asoc && info.snd_assoc_id && sctp_style(sk, UDP))
++	if (!asoc && info.snd_assoc_id > SCTP_ALL_ASSOC &&
++	    sctp_style(sk, UDP))
+ 		return -EINVAL;
++
+ 	if (asoc) {
+ 		asoc->default_stream = info.snd_sid;
+ 		asoc->default_flags = info.snd_flags;
+ 		asoc->default_ppid = info.snd_ppid;
+ 		asoc->default_context = info.snd_context;
+-	} else {
++
++		return 0;
++	}
++
++	if (info.snd_assoc_id = SCTP_FUTURE_ASSOC ||
++	    info.snd_assoc_id = SCTP_ALL_ASSOC) {
+ 		sp->default_stream = info.snd_sid;
+ 		sp->default_flags = info.snd_flags;
+ 		sp->default_ppid = info.snd_ppid;
+ 		sp->default_context = info.snd_context;
  	}
  
- 	asoc = sctp_id2assoc(sk, params.assoc_id);
--	if (!asoc)
-+	if (!asoc && params.assoc_id != SCTP_CURRENT_ASSOC &&
++	if (info.snd_assoc_id = SCTP_CURRENT_ASSOC ||
++	    info.snd_assoc_id = SCTP_ALL_ASSOC) {
++		list_for_each_entry(asoc, &sp->ep->asocs, asocs) {
++			asoc->default_stream = info.snd_sid;
++			asoc->default_flags = info.snd_flags;
++			asoc->default_ppid = info.snd_ppid;
++			asoc->default_context = info.snd_context;
++		}
++	}
++
+ 	return 0;
+ }
+ 
+@@ -6287,8 +6304,10 @@ static int sctp_getsockopt_default_sndinfo(struct sock *sk, int len,
+ 		return -EFAULT;
+ 
+ 	asoc = sctp_id2assoc(sk, info.snd_assoc_id);
+-	if (!asoc && info.snd_assoc_id && sctp_style(sk, UDP))
++	if (!asoc && info.snd_assoc_id != SCTP_FUTURE_ASSOC &&
 +	    sctp_style(sk, UDP))
- 		goto out;
- 
--	retval = sctp_sched_set_value(asoc, params.stream_id,
--				      params.stream_value, GFP_KERNEL);
-+	if (asoc) {
-+		retval = sctp_sched_set_value(asoc, params.stream_id,
-+					      params.stream_value, GFP_KERNEL);
-+		goto out;
-+	}
+ 		return -EINVAL;
 +
-+	retval = 0;
-+
-+	list_for_each_entry(asoc, &sctp_sk(sk)->ep->asocs, asocs) {
-+		int ret = sctp_sched_set_value(asoc, params.stream_id,
-+					       params.stream_value, GFP_KERNEL);
-+		if (ret && !retval) /* try to return the 1st error. */
-+			retval = ret;
-+	}
- 
- out:
- 	return retval;
+ 	if (asoc) {
+ 		info.snd_sid = asoc->default_stream;
+ 		info.snd_flags = asoc->default_flags;
 -- 
 2.1.0
