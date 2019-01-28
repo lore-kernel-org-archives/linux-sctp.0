@@ -1,7 +1,7 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 28 Jan 2019 07:08:42 +0000
-Subject: [PATCH net-next 20/24] sctp: use SCTP_FUTURE_ASSOC and add SCTP_CURRENT_ASSOC for SCTP_AUTH_DEACTIVA
-Message-Id: <439c70f52f7a642875ab45b7103f586bd09785d2.1548659198.git.lucien.xin@gmail.com>
+Date: Mon, 28 Jan 2019 07:08:40 +0000
+Subject: [PATCH net-next 18/24] sctp: use SCTP_FUTURE_ASSOC and add SCTP_CURRENT_ASSOC for SCTP_AUTH_ACTIVE_K
+Message-Id: <a87d5c204cc640751b70c7df7947f4d57a62ab69.1548659198.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1548659198.git.lucien.xin@gmail.com>
  <3ca66b981a0fe9368bd976676fe7450634b091cd.1548659198.git.lucien.xin@gmail.com>
@@ -21,18 +21,15 @@ References: <cover.1548659198.git.lucien.xin@gmail.com>
  <4a601f978a5364fb8f5c4ee97e314eb28087917f.1548659198.git.lucien.xin@gmail.com>
  <1788c2da8ddb39854267ea1321d725635a7c983e.1548659198.git.lucien.xin@gmail.com>
  <70a401b7942eae75d2834dcbefe242f5eb4ad28d.1548659198.git.lucien.xin@gmail.com>
- <a87d5c204cc640751b70c7df7947f4d57a62ab69.1548659198.git.lucien.xin@gmail.com>
- <8cc9dcf9afe96c746c525943dd95d51a804f0126.1548659198.git.lucien.xin@gmail.com>
-In-Reply-To: <8cc9dcf9afe96c746c525943dd95d51a804f0126.1548659198.git.lucien.xin@gmail.com>
+In-Reply-To: <70a401b7942eae75d2834dcbefe242f5eb4ad28d.1548659198.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-Check with SCTP_ALL_ASSOC instead in sctp_setsockopt_deactivate_key.
-SCTP_CURRENT_ASSOC is supported for SCTP_AUTH_DEACTIVATE_KEY in this
-patch.
+Check with SCTP_ALL_ASSOC instead in sctp_setsockopt_auth_key.
+SCTP_CURRENT_ASSOC is supported for SCTP_AUTH_ACTIVE_KEY in this patch.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
@@ -40,11 +37,11 @@ Signed-off-by: Xin Long <lucien.xin@gmail.com>
  1 file changed, 26 insertions(+), 3 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index c3463f7..3a954ac 100644
+index ec969c0..3345eb1 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -3933,8 +3933,9 @@ static int sctp_setsockopt_deactivate_key(struct sock *sk, char __user *optval,
- 					  unsigned int optlen)
+@@ -3832,8 +3832,9 @@ static int sctp_setsockopt_active_key(struct sock *sk,
+ 				      unsigned int optlen)
  {
  	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
 -	struct sctp_authkeyid val;
@@ -54,7 +51,7 @@ index c3463f7..3a954ac 100644
  
  	if (!ep->auth_enable)
  		return -EACCES;
-@@ -3945,10 +3946,32 @@ static int sctp_setsockopt_deactivate_key(struct sock *sk, char __user *optval,
+@@ -3844,10 +3845,32 @@ static int sctp_setsockopt_active_key(struct sock *sk,
  		return -EFAULT;
  
  	asoc = sctp_id2assoc(sk, val.scact_assoc_id);
@@ -63,13 +60,13 @@ index c3463f7..3a954ac 100644
 +	    sctp_style(sk, UDP))
  		return -EINVAL;
  
--	return sctp_auth_deact_key_id(ep, asoc, val.scact_keynumber);
+-	return sctp_auth_set_active_key(ep, asoc, val.scact_keynumber);
 +	if (asoc)
-+		return sctp_auth_deact_key_id(ep, asoc, val.scact_keynumber);
++		return sctp_auth_set_active_key(ep, asoc, val.scact_keynumber);
 +
 +	if (val.scact_assoc_id = SCTP_FUTURE_ASSOC ||
 +	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
-+		ret = sctp_auth_deact_key_id(ep, asoc, val.scact_keynumber);
++		ret = sctp_auth_set_active_key(ep, asoc, val.scact_keynumber);
 +		if (ret)
 +			return ret;
 +	}
@@ -77,8 +74,8 @@ index c3463f7..3a954ac 100644
 +	if (val.scact_assoc_id = SCTP_CURRENT_ASSOC ||
 +	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
 +		list_for_each_entry(asoc, &ep->asocs, asocs) {
-+			int res = sctp_auth_deact_key_id(ep, asoc,
-+							 val.scact_keynumber);
++			int res = sctp_auth_set_active_key(ep, asoc,
++							   val.scact_keynumber);
 +
 +			if (res && !ret)
 +				ret = res;
