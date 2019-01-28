@@ -1,7 +1,7 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 28 Jan 2019 07:08:37 +0000
-Subject: [PATCH net-next 15/24] sctp: use SCTP_FUTURE_ASSOC and add SCTP_CURRENT_ASSOC for SCTP_CONTEXT socko
-Message-Id: <4a601f978a5364fb8f5c4ee97e314eb28087917f.1548659198.git.lucien.xin@gmail.com>
+Date: Mon, 28 Jan 2019 07:08:41 +0000
+Subject: [PATCH net-next 19/24] sctp: use SCTP_FUTURE_ASSOC and add SCTP_CURRENT_ASSOC for SCTP_AUTH_DELETE_K
+Message-Id: <8cc9dcf9afe96c746c525943dd95d51a804f0126.1548659198.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1548659198.git.lucien.xin@gmail.com>
  <3ca66b981a0fe9368bd976676fe7450634b091cd.1548659198.git.lucien.xin@gmail.com>
@@ -18,104 +18,74 @@ References: <cover.1548659198.git.lucien.xin@gmail.com>
  <d2e888e961165b773dfbf68847af5f2d0ac864c0.1548659198.git.lucien.xin@gmail.com>
  <5d9d0bf635fb89cc3933b256e5e41dd3958c61d6.1548659198.git.lucien.xin@gmail.com>
  <b4094ac0945bbea9ebe455b4357e983400bfe8bb.1548659198.git.lucien.xin@gmail.com>
-In-Reply-To: <b4094ac0945bbea9ebe455b4357e983400bfe8bb.1548659198.git.lucien.xin@gmail.com>
+ <4a601f978a5364fb8f5c4ee97e314eb28087917f.1548659198.git.lucien.xin@gmail.com>
+ <1788c2da8ddb39854267ea1321d725635a7c983e.1548659198.git.lucien.xin@gmail.com>
+ <70a401b7942eae75d2834dcbefe242f5eb4ad28d.1548659198.git.lucien.xin@gmail.com>
+ <a87d5c204cc640751b70c7df7947f4d57a62ab69.1548659198.git.lucien.xin@gmail.com>
+In-Reply-To: <a87d5c204cc640751b70c7df7947f4d57a62ab69.1548659198.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-Check with SCTP_ALL_ASSOC instead in sctp_setsockopt_context and
-check with SCTP_FUTURE_ASSOC instead in sctp_getsockopt_context,
-it's compatible with 0.
-
-SCTP_CURRENT_ASSOC is supported for SCTP_CONTEXT in this patch.
-It also adjusts some code to keep a same check form as other
-functions.
+Check with SCTP_ALL_ASSOC instead in sctp_setsockopt_del_key.
+SCTP_CURRENT_ASSOC is supported for SCTP_AUTH_DELETE_KEY in this patch.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/sctp/socket.c | 41 +++++++++++++++++++++++------------------
- 1 file changed, 23 insertions(+), 18 deletions(-)
+ net/sctp/socket.c | 28 +++++++++++++++++++++++++---
+ 1 file changed, 25 insertions(+), 3 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 6a674cf..36387be 100644
+index 3345eb1..c3463f7 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -3510,8 +3510,8 @@ static int sctp_setsockopt_adaptation_layer(struct sock *sk, char __user *optval
- static int sctp_setsockopt_context(struct sock *sk, char __user *optval,
+@@ -3883,8 +3883,9 @@ static int sctp_setsockopt_del_key(struct sock *sk,
  				   unsigned int optlen)
  {
-+	struct sctp_sock *sp = sctp_sk(sk);
- 	struct sctp_assoc_value params;
--	struct sctp_sock *sp;
+ 	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
+-	struct sctp_authkeyid val;
  	struct sctp_association *asoc;
++	struct sctp_authkeyid val;
++	int ret = 0;
  
- 	if (optlen != sizeof(struct sctp_assoc_value))
-@@ -3519,17 +3519,26 @@ static int sctp_setsockopt_context(struct sock *sk, char __user *optval,
- 	if (copy_from_user(&params, optval, optlen))
+ 	if (!ep->auth_enable)
+ 		return -EACCES;
+@@ -3895,11 +3896,32 @@ static int sctp_setsockopt_del_key(struct sock *sk,
  		return -EFAULT;
  
--	sp = sctp_sk(sk);
-+	asoc = sctp_id2assoc(sk, params.assoc_id);
-+	if (!asoc && params.assoc_id > SCTP_ALL_ASSOC &&
+ 	asoc = sctp_id2assoc(sk, val.scact_assoc_id);
+-	if (!asoc && val.scact_assoc_id && sctp_style(sk, UDP))
++	if (!asoc && val.scact_assoc_id > SCTP_ALL_ASSOC &&
 +	    sctp_style(sk, UDP))
-+		return -EINVAL;
+ 		return -EINVAL;
  
--	if (params.assoc_id != 0) {
--		asoc = sctp_id2assoc(sk, params.assoc_id);
--		if (!asoc)
--			return -EINVAL;
-+	if (asoc) {
- 		asoc->default_rcv_context = params.assoc_value;
--	} else {
--		sp->default_rcv_context = params.assoc_value;
-+
-+		return 0;
- 	}
+-	return sctp_auth_del_key_id(ep, asoc, val.scact_keynumber);
++	if (asoc)
++		return sctp_auth_del_key_id(ep, asoc, val.scact_keynumber);
  
-+	if (params.assoc_id = SCTP_FUTURE_ASSOC ||
-+	    params.assoc_id = SCTP_ALL_ASSOC)
-+		sp->default_rcv_context = params.assoc_value;
++	if (val.scact_assoc_id = SCTP_FUTURE_ASSOC ||
++	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
++		ret = sctp_auth_del_key_id(ep, asoc, val.scact_keynumber);
++		if (ret)
++			return ret;
++	}
 +
-+	if (params.assoc_id = SCTP_CURRENT_ASSOC ||
-+	    params.assoc_id = SCTP_ALL_ASSOC)
-+		list_for_each_entry(asoc, &sp->ep->asocs, asocs)
-+			asoc->default_rcv_context = params.assoc_value;
++	if (val.scact_assoc_id = SCTP_CURRENT_ASSOC ||
++	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
++		list_for_each_entry(asoc, &ep->asocs, asocs) {
++			int res = sctp_auth_del_key_id(ep, asoc,
++						       val.scact_keynumber);
 +
- 	return 0;
++			if (res && !ret)
++				ret = res;
++		}
++	}
++
++	return ret;
  }
  
-@@ -6517,7 +6526,6 @@ static int sctp_getsockopt_context(struct sock *sk, int len,
- 				   char __user *optval, int __user *optlen)
- {
- 	struct sctp_assoc_value params;
--	struct sctp_sock *sp;
- 	struct sctp_association *asoc;
- 
- 	if (len < sizeof(struct sctp_assoc_value))
-@@ -6528,16 +6536,13 @@ static int sctp_getsockopt_context(struct sock *sk, int len,
- 	if (copy_from_user(&params, optval, len))
- 		return -EFAULT;
- 
--	sp = sctp_sk(sk);
-+	asoc = sctp_id2assoc(sk, params.assoc_id);
-+	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
-+	    sctp_style(sk, UDP))
-+		return -EINVAL;
- 
--	if (params.assoc_id != 0) {
--		asoc = sctp_id2assoc(sk, params.assoc_id);
--		if (!asoc)
--			return -EINVAL;
--		params.assoc_value = asoc->default_rcv_context;
--	} else {
--		params.assoc_value = sp->default_rcv_context;
--	}
-+	params.assoc_value = asoc ? asoc->default_rcv_context
-+				  : sctp_sk(sk)->default_rcv_context;
- 
- 	if (put_user(len, optlen))
- 		return -EFAULT;
+ /*
 -- 
 2.1.0
