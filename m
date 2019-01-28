@@ -1,119 +1,79 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 30 Jan 2019 07:37:56 +0000
-Subject: Re: [PATCH net-next 02/24] sctp: use SCTP_FUTURE_ASSOC for SCTP_PEER_ADDR_PARAMS sockopt
-Message-Id: <20190130073756.GA6120@neilslaptop.think-freely.org>
+From: Sasha Levin <sashal@kernel.org>
+Date: Mon, 28 Jan 2019 15:55:39 +0000
+Subject: [PATCH AUTOSEL 4.19 033/258] sctp: Fix SKB list traversal in sctp_intl_store_ordered().
+Message-Id: <20190128155924.51521-33-sashal@kernel.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1548659198.git.lucien.xin@gmail.com>
- <bf66a45aa6763646c07e1b8be102466f07fc1648.1548659198.git.lucien.xin@gmail.com>
- <20190129212508.GB2592@neilslaptop.think-freely.org>
- <CADvbK_fPbz+Rso6ADXh2PpUYoMRtHnbJdu4VygckAjDiW1MzSw@mail.gmail.com>
-In-Reply-To: <CADvbK_fPbz+Rso6ADXh2PpUYoMRtHnbJdu4VygckAjDiW1MzSw@mail.gmail.com>
+References: <20190128155924.51521-1-sashal@kernel.org>
+In-Reply-To: <20190128155924.51521-1-sashal@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, davem <davem@davemloft.net>
+To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc: "David S. Miller" <davem@davemloft.net>, Sasha Levin <sashal@kernel.org>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On Wed, Jan 30, 2019 at 03:03:01PM +0800, Xin Long wrote:
-> On Wed, Jan 30, 2019 at 5:25 AM Neil Horman <nhorman@tuxdriver.com> wrote:
-> >
-> > On Mon, Jan 28, 2019 at 03:08:24PM +0800, Xin Long wrote:
-> > > Check with SCTP_FUTURE_ASSOC instead in
-> > > sctp_/setgetsockopt_peer_addr_params, it's compatible with 0.
-> > >
-> > > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> > > ---
-> > >  net/sctp/socket.c | 18 ++++++++++--------
-> > >  1 file changed, 10 insertions(+), 8 deletions(-)
-> > >
-> > > diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> > > index a52d132..4c43b95 100644
-> > > --- a/net/sctp/socket.c
-> > > +++ b/net/sctp/socket.c
-> > > @@ -2750,12 +2750,13 @@ static int sctp_setsockopt_peer_addr_params(struct sock *sk,
-> > >                       return -EINVAL;
-> > >       }
-> > >
-> > > -     /* Get association, if assoc_id != 0 and the socket is a one
-> > > -      * to many style socket, and an association was not found, then
-> > > -      * the id was invalid.
-> > > +     /* Get association, if assoc_id != SCTP_FUTURE_ASSOC and the
-> > > +      * socket is a one to many style socket, and an association
-> > > +      * was not found, then the id was invalid.
-> > >        */
-> > >       asoc = sctp_id2assoc(sk, params.spp_assoc_id);
-> > > -     if (!asoc && params.spp_assoc_id && sctp_style(sk, UDP))
-> > > +     if (!asoc && params.spp_assoc_id != SCTP_FUTURE_ASSOC &&
-> > Sorry to follow up, but I misspoke in my previous email, I should have said, why
-> > do we only allow future associations as the only special case association id
-> > here?  Since the function is meant to set a specific association id, it seems to
-> > me that you would want to:
-> >
-> > a) allow setting of a specific id
-> > b) allow setting of all association ids on the socket
-> > (SCTP_CURRENT_ASSOC)
-> > c) allow recording of a set of params to apply to all current and future
-> > associations (FUTURE/ALL).
-> >
-> > (a) is already handled clearly, but (b) and (c) require more work on this
-> > function than just checking association id on entry.
-> Hi, Neil,
-> 
-> Note that not all sockopts support both of them, like
-> we don't allow some sockopt to be applied to current assocs.
-> and we don't allow some to be applied to future assocs.
-> 
-> SCTP_FUTURE_ASSOC means sock's xxxx only
-> SCTP_CURRENT_ASSOC means all sock->asocs' xxxx only
-> 
-> If we only check assoc_id != SCTP_FUTURE_ASSOC, it means this
-> sockopt doesn't support for all sock->asocs xxxx setting,
-> or getting (like all sockopts getting).
-> If we only check assoc_id != SCTP_CURRENT_ASSOC, it means this
-> sockopt doesn't support for sock's xxxx setting (like Patch 11)
-> 
-> As for SCTP_ALL_ASSOC, it means both of sock's and sock->asocs
-> xxxx, not either of them. So we don't allow it in here.
-> 
-> As you can see, in this patchset:
-> 1. for sockopt setting:
->    these who only support FUTURE will check SCTP_FUTURE_ASSOC, like Patch 2-10.
->    these who only support CURRENT will check SCTP_CURRENT_ASSOC, like Patch 11.
->    these who support both FUTURE and CURRENT will check assoc_id >
-> SCTP_ALL_ASSOC, like Patch 12-24.
-> 2. for sockopt getting:
->    all sockopts will check SCTP_FUTURE_ASSOC. (as it's impossible to
-> get all sock->asocs' xxxx)
-> 
-> >
-> > I think this comment may apply to all the socket option functions
-> >
-> > > +         sctp_style(sk, UDP))
-> > >               return -EINVAL;
-> > >
-> > >       /* Heartbeat demand can only be sent on a transport or
-> > > @@ -5676,12 +5677,13 @@ static int sctp_getsockopt_peer_addr_params(struct sock *sk, int len,
-> > >               }
-> > >       }
-> > >
-> > > -     /* Get association, if assoc_id != 0 and the socket is a one
-> > > -      * to many style socket, and an association was not found, then
-> > > -      * the id was invalid.
-> > > +     /* Get association, if assoc_id != SCTP_FUTURE_ASSOC and the
-> > > +      * socket is a one to many style socket, and an association
-> > > +      * was not found, then the id was invalid.
-> > >        */
-> > >       asoc = sctp_id2assoc(sk, params.spp_assoc_id);
-> > > -     if (!asoc && params.spp_assoc_id && sctp_style(sk, UDP)) {
-> > > +     if (!asoc && params.spp_assoc_id != SCTP_FUTURE_ASSOC &&
-> > > +         sctp_style(sk, UDP)) {
-> > >               pr_debug("%s: failed no association\n", __func__);
-> > >               return -EINVAL;
-> > >       }
-> > > --
-> > > 2.1.0
-> > >
-> > >
-> 
-Ah, ok, apologies for misunderstanding.  I'm apparently still jet lagged.
-Neil
+From: "David S. Miller" <davem@davemloft.net>
+
+[ Upstream commit e15e067d0656625c77c52b4e5f0cfbf0c0c3583f ]
+
+Same change as made to sctp_intl_store_reasm().
+
+To be fully correct, an iterator has an undefined value when something
+like skb_queue_walk() naturally terminates.
+
+This will actually matter when SKB queues are converted over to
+list_head.
+
+Formalize what this code ends up doing with the current
+implementation.
+
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ net/sctp/stream_interleave.c | 17 ++++++++++++-----
+ 1 file changed, 12 insertions(+), 5 deletions(-)
+
+diff --git a/net/sctp/stream_interleave.c b/net/sctp/stream_interleave.c
+index 0a78cdf86463..500449b72eca 100644
+--- a/net/sctp/stream_interleave.c
++++ b/net/sctp/stream_interleave.c
+@@ -383,7 +383,7 @@ static void sctp_intl_store_ordered(struct sctp_ulpq *ulpq,
+ 				    struct sctp_ulpevent *event)
+ {
+ 	struct sctp_ulpevent *cevent;
+-	struct sk_buff *pos;
++	struct sk_buff *pos, *loc;
+ 
+ 	pos = skb_peek_tail(&ulpq->lobby);
+ 	if (!pos) {
+@@ -403,18 +403,25 @@ static void sctp_intl_store_ordered(struct sctp_ulpq *ulpq,
+ 		return;
+ 	}
+ 
++	loc = NULL;
+ 	skb_queue_walk(&ulpq->lobby, pos) {
+ 		cevent = (struct sctp_ulpevent *)pos->cb;
+ 
+-		if (cevent->stream > event->stream)
++		if (cevent->stream > event->stream) {
++			loc = pos;
+ 			break;
+-
++		}
+ 		if (cevent->stream = event->stream &&
+-		    MID_lt(event->mid, cevent->mid))
++		    MID_lt(event->mid, cevent->mid)) {
++			loc = pos;
+ 			break;
++		}
+ 	}
+ 
+-	__skb_queue_before(&ulpq->lobby, pos, sctp_event2skb(event));
++	if (!loc)
++		__skb_queue_tail(&ulpq->lobby, sctp_event2skb(event));
++	else
++		__skb_queue_before(&ulpq->lobby, loc, sctp_event2skb(event));
+ }
+ 
+ static void sctp_intl_retrieve_ordered(struct sctp_ulpq *ulpq,
+-- 
+2.19.1
