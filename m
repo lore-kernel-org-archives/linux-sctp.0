@@ -1,39 +1,51 @@
-From: Sasha Levin <sashal@kernel.org>
-Date: Mon, 28 Jan 2019 18:04:59 +0000
-Subject: Re: [PATCH AUTOSEL 4.19 034/258] sctp: Fix SKB list traversal in sctp_intl_store_reasm().
-Message-Id: <20190128180459.GG3973@sasha-vm>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 29 Jan 2019 12:05:32 +0000
+Subject: Re: [PATCHv2 net] sctp: check and update stream->out_curr when allocating stream_out
+Message-Id: <20190129120531.GC10665@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20190128155924.51521-1-sashal@kernel.org>
- <20190128155924.51521-34-sashal@kernel.org>
- <20190128170434.GA10665@localhost.localdomain>
-In-Reply-To: <20190128170434.GA10665@localhost.localdomain>
+References: <8a5df8eb5cc41dfc3d08e294147b9729bbe90aa0.1543473776.git.lucien.xin@gmail.com>
+In-Reply-To: <8a5df8eb5cc41dfc3d08e294147b9729bbe90aa0.1543473776.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: linux-kernel@vger.kernel.org, stable@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: Xin Long <lucien.xin@gmail.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
 
-On Mon, Jan 28, 2019 at 03:04:34PM -0200, Marcelo Ricardo Leitner wrote:
->On Mon, Jan 28, 2019 at 10:55:40AM -0500, Sasha Levin wrote:
->> From: "David S. Miller" <davem@davemloft.net>
->>
->> [ Upstream commit 348bbc25c40844c5efa083a3842c7f53d70a815e ]
->>
->> To be fully correct, an iterator has an undefined value when something
->> like skb_queue_walk() naturally terminates.
->>
->> This will actually matter when SKB queues are converted over to
->> list_head.
->>
->> Formalize what this code ends up doing with the current
->> implementation.
->
->I don't think this patch is really needed for -stable without the SKB
->queue convertion, but okay.
+On Thu, Nov 29, 2018 at 02:42:56PM +0800, Xin Long wrote:
+> Now when using stream reconfig to add out streams, stream->out
+> will get re-allocated, and all old streams' information will
+> be copied to the new ones and the old ones will be freed.
+> 
+> So without stream->out_curr updated, next time when trying to
+> send from stream->out_curr stream, a panic would be caused.
+> 
+> This patch is to check and update stream->out_curr when
+> allocating stream_out.
+> 
+> v1->v2:
+>   - define fa_index() to get elem index from stream->out_curr.
+> 
+> Fixes: 5bbbbe32a431 ("sctp: introduce stream scheduler foundations")
+> Reported-by: Ying Xu <yinxu@redhat.com>
+> Reported-by: syzbot+e33a3a138267ca119c7d@syzkaller.appspotmail.com
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-I'll drop it. I'm not sure why this sctp patch wasn't filtered out as
-davem deals with net/. Sorry for the noise.
+We are sort of mixing things up here. We have a bug on SCTP stack that
+triggers panics. As good practices recommends, the code should be as
+generic as possible and the SCTP-only was dropped in favor of a more
+generic one, fixing rhashtables instead. Okay. But then we discovered
+rhashtables are going away and we are now waiting on a restructing
+to fix the panic. That's not good, especially because it cannot and
+should not be backported into -stable trees.
 
---
+That said, we should not wait for the restructuring to _implicitly_
+fix the bug. We should pursuit both fixes here:
+- Apply this patch, to fix SCTP stack and allow it to be easily
+  backportable.
+- Apply the generic fix, which is the restructuring, whenever it
+  actually lands.
+
+Thoughts?
+
 Thanks,
-Sasha
+Marcelo
