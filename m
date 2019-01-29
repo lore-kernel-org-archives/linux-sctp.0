@@ -1,7 +1,7 @@
 From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 29 Jan 2019 21:17:23 +0000
+Date: Tue, 29 Jan 2019 21:25:08 +0000
 Subject: Re: [PATCH net-next 02/24] sctp: use SCTP_FUTURE_ASSOC for SCTP_PEER_ADDR_PARAMS sockopt
-Message-Id: <20190129211723.GA2592@neilslaptop.think-freely.org>
+Message-Id: <20190129212508.GB2592@neilslaptop.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1548659198.git.lucien.xin@gmail.com>
  <bf66a45aa6763646c07e1b8be102466f07fc1648.1548659198.git.lucien.xin@gmail.com>
@@ -39,9 +39,22 @@ On Mon, Jan 28, 2019 at 03:08:24PM +0800, Xin Long wrote:
 >  	asoc = sctp_id2assoc(sk, params.spp_assoc_id);
 > -	if (!asoc && params.spp_assoc_id && sctp_style(sk, UDP))
 > +	if (!asoc && params.spp_assoc_id != SCTP_FUTURE_ASSOC &&
-If we are disallowing SCTP_FUTURE_ASSOC here, why would we allow SCTP_ALL_ASSOC
-(which, as noted by patch 0, includes future associations)?
+Sorry to follow up, but I misspoke in my previous email, I should have said, why
+do we only allow future associations as the only special case association id
+here?  Since the function is meant to set a specific association id, it seems to
+me that you would want to:
 
+a) allow setting of a specific id
+b) allow setting of all association ids on the socket
+(SCTP_CURRENT_ASSOC)
+c) allow recording of a set of params to apply to all current and future
+associations (FUTURE/ALL).
+
+(a) is already handled clearly, but (b) and (c) require more work on this
+function than just checking association id on entry.
+
+I think this comment may apply to all the socket option functions
+ 
 > +	    sctp_style(sk, UDP))
 >  		return -EINVAL;
 >  
@@ -60,9 +73,6 @@ If we are disallowing SCTP_FUTURE_ASSOC here, why would we allow SCTP_ALL_ASSOC
 >  	asoc = sctp_id2assoc(sk, params.spp_assoc_id);
 > -	if (!asoc && params.spp_assoc_id && sctp_style(sk, UDP)) {
 > +	if (!asoc && params.spp_assoc_id != SCTP_FUTURE_ASSOC &&
-Same question as above, shouldn't both of these be restricted to specific
-associations or to CURRENT associations?
-
 > +	    sctp_style(sk, UDP)) {
 >  		pr_debug("%s: failed no association\n", __func__);
 >  		return -EINVAL;
