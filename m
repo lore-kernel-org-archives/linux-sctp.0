@@ -1,17 +1,19 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 01 Feb 2019 15:55:03 +0000
+From: David Miller <davem@davemloft.net>
+Date: Fri, 01 Feb 2019 19:04:56 +0000
 Subject: Re: [PATCH net] sctp: walk the list of asoc safely
-Message-Id: <20190201155503.GB5970@hmswarspite.think-freely.org>
+Message-Id: <20190201.110456.1003158949772454122.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20190201141522.GA20785@kroah.com>
 In-Reply-To: <20190201141522.GA20785@kroah.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: gregkh@linuxfoundation.org
+Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On Fri, Feb 01, 2019 at 03:15:22PM +0100, Greg Kroah-Hartman wrote:
+From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Date: Fri, 1 Feb 2019 15:15:22 +0100
+
 > In sctp_sendmesg(), when walking the list of endpoint associations, the
 > association can be dropped from the list, making the list corrupt.
 > Properly handle this by using list_for_each_entry_safe()
@@ -20,28 +22,5 @@ On Fri, Feb 01, 2019 at 03:15:22PM +0100, Greg Kroah-Hartman wrote:
 > Reported-by: Secunia Research <vuln@secunia.com>
 > Tested-by: Secunia Research <vuln@secunia.com>
 > Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-> 
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index f93c3cf9e567..65d6d04546ae 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -2027,7 +2027,7 @@ static int sctp_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
->  	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
->  	struct sctp_transport *transport = NULL;
->  	struct sctp_sndrcvinfo _sinfo, *sinfo;
-> -	struct sctp_association *asoc;
-> +	struct sctp_association *asoc, *tmp;
->  	struct sctp_cmsgs cmsgs;
->  	union sctp_addr *daddr;
->  	bool new = false;
-> @@ -2053,7 +2053,7 @@ static int sctp_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
->  
->  	/* SCTP_SENDALL process */
->  	if ((sflags & SCTP_SENDALL) && sctp_style(sk, UDP)) {
-> -		list_for_each_entry(asoc, &ep->asocs, asocs) {
-> +		list_for_each_entry_safe(asoc, tmp, &ep->asocs, asocs) {
->  			err = sctp_sendmsg_check_sflags(asoc, sflags, msg,
->  							msg_len);
->  			if (err = 0)
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
+Applied and queued up for -stable.
