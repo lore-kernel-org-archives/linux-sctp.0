@@ -1,142 +1,92 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 27 Feb 2019 17:13:38 +0000
-Subject: Re: [PATCH net] sctp: get sctphdr by offset in sctp_compute_cksum
-Message-Id: <20190227171338.GA10217@hmswarspite.think-freely.org>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 01 Feb 2019 00:39:41 +0000
+Subject: Re: [PATCHv2 net] sctp: check and update stream->out_curr when allocating stream_out
+Message-Id: <20190201003941.GD10665@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <2aee76766861ac9e46b7acf123d5d6e8f2adf8e0.1551093937.git.lucien.xin@gmail.com>
- <20190225124614.GB30699@hmswarspite.think-freely.org>
- <CADvbK_cC4q1D5w1AHAVQjCTW4Pm6H+-ZOVg7xCp+eiOkkRJ8SQ@mail.gmail.com>
- <20190225140720.GC30699@hmswarspite.think-freely.org>
- <CADvbK_dtfZnKQvWO5CMaVfaUg+yZUGH3TVN2xkWrqz7L+Z_MGQ@mail.gmail.com>
- <20190226122902.GA13064@hmswarspite.think-freely.org>
- <CADvbK_cFyjd5T-rrZTBaZCNU0RVJMHd_ouuCE-kKpSWoMpFJog@mail.gmail.com>
-In-Reply-To: <CADvbK_cFyjd5T-rrZTBaZCNU0RVJMHd_ouuCE-kKpSWoMpFJog@mail.gmail.com>
+References: <8a5df8eb5cc41dfc3d08e294147b9729bbe90aa0.1543473776.git.lucien.xin@gmail.com>
+ <20190129120531.GC10665@localhost.localdomain>
+ <1689af9c618.2807.d241da8dbb85b87157d6a44ac288e71f@tuxdriver.com>
+In-Reply-To: <1689af9c618.2807.d241da8dbb85b87157d6a44ac288e71f@tuxdriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: LKML <linux-kernel@vger.kernel.org>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To: Tuxdriver <nhorman@tuxdriver.com>
+Cc: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net
 
-On Wed, Feb 27, 2019 at 08:53:26PM +0800, Xin Long wrote:
-> On Tue, Feb 26, 2019 at 8:29 PM Neil Horman <nhorman@tuxdriver.com> wrote:
-> >
-> > On Tue, Feb 26, 2019 at 12:15:54AM +0800, Xin Long wrote:
-> > > On Mon, Feb 25, 2019 at 10:08 PM Neil Horman <nhorman@tuxdriver.com> wrote:
-> > > >
-> > > > On Mon, Feb 25, 2019 at 09:20:44PM +0800, Xin Long wrote:
-> > > > > On Mon, Feb 25, 2019 at 8:47 PM Neil Horman <nhorman@tuxdriver.com> wrote:
-> > > > > >
-> > > > > > On Mon, Feb 25, 2019 at 07:25:37PM +0800, Xin Long wrote:
-> > > > > > > sctp_hdr(skb) only works when skb->transport_header is set properly.
-> > > > > > >
-> > > > > > > But in the path of nf_conntrack_in: sctp_packet() -> sctp_error()
-> > > > > > >
-> > > > > > > skb->transport_header is not guaranteed to be right value for sctp.
-> > > > > > > It will cause to fail to check the checksum for sctp packets.
-> > > > > > >
-> > > > > > > So fix it by using offset, which is always right in all places.
-> > > > > > >
-> > > > > > > Fixes: e6d8b64b34aa ("net: sctp: fix and consolidate SCTP checksumming code")
-> > > > > > > Reported-by: Li Shuang <shuali@redhat.com>
-> > > > > > > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> > > > > > > ---
-> > > > > > >  include/net/sctp/checksum.h | 2 +-
-> > > > > > >  1 file changed, 1 insertion(+), 1 deletion(-)
-> > > > > > >
-> > > > > > > diff --git a/include/net/sctp/checksum.h b/include/net/sctp/checksum.h
-> > > > > > > index 32ee65a..1c6e6c0 100644
-> > > > > > > --- a/include/net/sctp/checksum.h
-> > > > > > > +++ b/include/net/sctp/checksum.h
-> > > > > > > @@ -61,7 +61,7 @@ static inline __wsum sctp_csum_combine(__wsum csum, __wsum csum2,
-> > > > > > >  static inline __le32 sctp_compute_cksum(const struct sk_buff *skb,
-> > > > > > >                                       unsigned int offset)
-> > > > > > >  {
-> > > > > > > -     struct sctphdr *sh = sctp_hdr(skb);
-> > > > > > > +     struct sctphdr *sh = (struct sctphdr *)(skb->data + offset);
-> > > > > > >       const struct skb_checksum_ops ops = {
-> > > > > > >               .update  = sctp_csum_update,
-> > > > > > >               .combine = sctp_csum_combine,
-> > > > > > > --
-> > > > > > > 2.1.0
-> > > > > > >
-> > > > > > >
-> > > > > > Shouldn't you use skb_set_transport_header and skb_transport_header here?
-> > > > > you mean:
-> > > > > skb_set_transport_header(skb, offset);
-> > > > > sh = sctp_hdr(skb);
-> > > > > ?
-> > > > >
-> > > > > There's no place counting on here to set transport_header.
-> > > > > It will be a kinda redundant job, yet skb is 'const'.
-> > > > >
-> > > > I'm not sure what you mean by "theres no place counting here".  We have the
-> > > > transport header offset, and you're doing the exact same computation that that
-> > > > function does.  It seems like we should use it in case the underlying
-> > > > implementation changes.
-> > > 1. skb_set_transport_header() and sctp_hdr() are like:
-> > > skb->transport_header = skb->data - skb->head;
-> > > skb->transport_header += offset
-> > > sh = skb->head + skb->transport_header;
-> > >
-> > > 2. in this patch:
-> > > sh = (struct sctphdr *)(skb->data + offset);  only
-> > >
-> > > I think the 2nd one is better.
-> > >
-> > > I feel it's weird to set transport_header here if it's only for
-> > > sctp_hdr(skb) in here.
-> > >
-> > > As for "underlying implementation changes", I don't know exactly the case
-> > > but there are quite a few places doing things like:
-> > > *hdr = (struct *hdr *)(skb->data + hdroff);
-> > >
-> > > I'd think it's safe. no?
-> > >
-> > Safe, yes, it just doesn't seem right.  I know you've pointed out several places
-> > below that rapidly compute transport offsets in a one-off fashion, but at this
-> > same time, the other primary transports (tcp and udp), all seems to use the
-> > transport header to do their work (linearizing as necessecary, which sctp also
-> > does in sctp_rcv, at least in most cases).
-> > > >
-> > > > I understand what you are saying regarding the use of a const variable there,
-> > > > but perhaps thats an argument for removing the const storage classifier.  Better
-> > > > still, it would be good to figure out why all paths to this function don't
-> > > > already set the transport header offset to begin with (addressing your redundant
-> > > > comment)
-> > > The issue was reported when going to nf_conntrack by br_netfilter's
-> > > bridge-nf-call-iptables.
-> > > As you can see on nf_conntrack_in() path, even iphdr is got by:
-> > >    iph = skb_header_pointer(skb, nhoff, sizeof(_iph), &_iph);
-> > > It's impossible to set skb->transport_header when we're not sure iphdr
-> > > in linearized memory.
-> > >
-> > But if the skb isn't linearized, computing the transport header manually isn't
-> > going to help you anyway.  You can see that in skb_header_pointer.  If the
-> > offset they are trying to get to is outside the bounds of the length of the skb
-> > (i.e. the fragmented case), it calls skb_copy_bits to linearize the needed
-> > segment.  It seems we should be doing something simmilar.  In most cases we are
-> > already linearized from sctp_rcv (possibly all, I need to think about that). All
-> > I'm really saying is that by using the skb apis we insulate ourselves from
-> > potential changes in how skbs might work in the future.  I'm not strictly bound
-> > to setting the transport header, but we should definately be getting the
-> > transport header via the skb utility functions wherever possible.
-> Okay, I will change to fix it with the below patch if you agree.
-> I've confirmed this won't affect netfilter.
-> 
-> diff --git a/net/netfilter/nf_conntrack_proto_sctp.c
-> b/net/netfilter/nf_conntrack_proto_sctp.c
-> index d53e3e7..6b53cd2 100644
-> --- a/net/netfilter/nf_conntrack_proto_sctp.c
-> +++ b/net/netfilter/nf_conntrack_proto_sctp.c
-> @@ -343,7 +343,9 @@ static bool sctp_error(struct sk_buff *skb,
->                         logmsg = "nf_ct_sctp: failed to read header ";
->                         goto out_invalid;
->                 }
-> -               sh = (const struct sctphdr *)(skb->data + dataoff);
-> +               /* sctp_compute_cksum() depends on correct transport header */
-> +               skb_set_transport_header(skb, dataoff);
-> +               sh = sctp_hdr(skb);
-> 
-Thank you, that looks much better to me.
+On Tue, Jan 29, 2019 at 07:58:07PM +0100, Tuxdriver wrote:
+> I was initially under the impression that with Kent's repost, the radixtree
+> (which is what I think you meant by rhashtables) updates would be merged
 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Oops! Yep.. I had meant flex_arrays actually.
+
+> imminently, but that doesn't seem to be the case.  I'd really like to know
+> what the hold up there is, as that patch seems to have been stalled for
+> months.  I hate the notion of breaking the radixtree patch, but if it's
+> status is indeterminate, then, yes, we probably need to go with xins patch
+> for the short term, and let Kent fix it up in due course.
+
+Dave, can you please consider applying this patch? The conflict
+resolution will be easy: just ignore the changes introduced by this
+patch.
+
+This is the radixtree converstion:
+https://lwn.net/ml/linux-kernel/20181217131929.11727-1-kent.overstreet@gmail.com/
+Seems that went to a limbo after
+https://lwn.net/ml/linux-kernel/20181217210021.GA7144@kmo-pixel/
+Maybe Kent should have reposted, but he didn't reply either.
+
+My reasoning is below. Just please also notice that this is
+triggerable by users and remotely, as remote peers may request to add
+'in' streams and that implies in adding 'out' streams on local peer.
+(https://tools.ietf.org/html/rfc6525#section-5.2.6)
+
+> 
+> Neil
+> 
+> On January 29, 2019 1:06:33 PM Marcelo Ricardo Leitner
+> <marcelo.leitner@gmail.com> wrote:
+> 
+> > On Thu, Nov 29, 2018 at 02:42:56PM +0800, Xin Long wrote:
+> > > Now when using stream reconfig to add out streams, stream->out
+> > > will get re-allocated, and all old streams' information will
+> > > be copied to the new ones and the old ones will be freed.
+> > > 
+> > > So without stream->out_curr updated, next time when trying to
+> > > send from stream->out_curr stream, a panic would be caused.
+> > > 
+> > > This patch is to check and update stream->out_curr when
+> > > allocating stream_out.
+> > > 
+> > > v1->v2:
+> > >   - define fa_index() to get elem index from stream->out_curr.
+> > > 
+> > > Fixes: 5bbbbe32a431 ("sctp: introduce stream scheduler foundations")
+> > > Reported-by: Ying Xu <yinxu@redhat.com>
+> > > Reported-by: syzbot+e33a3a138267ca119c7d@syzkaller.appspotmail.com
+> > > Signed-off-by: Xin Long <lucien.xin@gmail.com>
+> > 
+> > We are sort of mixing things up here. We have a bug on SCTP stack that
+> > triggers panics. As good practices recommends, the code should be as
+> > generic as possible and the SCTP-only was dropped in favor of a more
+> > generic one, fixing rhashtables instead. Okay. But then we discovered
+> > rhashtables are going away and we are now waiting on a restructing
+> > to fix the panic. That's not good, especially because it cannot and
+> > should not be backported into -stable trees.
+> > 
+> > That said, we should not wait for the restructuring to _implicitly_
+> > fix the bug. We should pursuit both fixes here:
+> > - Apply this patch, to fix SCTP stack and allow it to be easily
+> >  backportable.
+> > - Apply the generic fix, which is the restructuring, whenever it
+> >  actually lands.
+> > 
+> > Thoughts?
+> > 
+> > Thanks,
+> > Marcelo
+> 
+> 
+> Sent with AquaMail for Android
+> https://www.mobisystems.com/aqua-mail
+> 
+> 
