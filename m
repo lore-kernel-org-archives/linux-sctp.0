@@ -1,198 +1,168 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 14 Feb 2019 15:27:39 +0000
-Subject: Re: KASAN: use-after-free Read in sctp_outq_tail
-Message-Id: <20190214152739.GM13621@localhost.localdomain>
+From: syzbot <syzbot+58e480e7b28f2d890bfd@syzkaller.appspotmail.com>
+Date: Mon, 04 Feb 2019 16:33:03 +0000
+Subject: KASAN: invalid-free in sctp_stream_free
+Message-Id: <000000000000f4f3ad0581140b3f@google.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <0000000000002015db0581b71858@google.com>
- <CADvbK_dndFMxyUZk=k8qEy9=PNbLc81F++2L0fbdtUdbupq4Xg@mail.gmail.com>
- <20190213135157.GJ10665@localhost.localdomain>
- <CADvbK_fwUdU3_CWBFYfw+ZeOLvEF9p6koP2FUdo+m0SCqGN+Ug@mail.gmail.com>
- <20190214141745.GL13621@localhost.localdomain>
- <20190214143911.GL10665@localhost.localdomain>
- <CADvbK_ctRtcV3Fz6CwAoiTtVH3h5u7gj=6BsiZSR3Qdq+2rDMA@mail.gmail.com>
-In-Reply-To: <CADvbK_ctRtcV3Fz6CwAoiTtVH3h5u7gj=6BsiZSR3Qdq+2rDMA@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: Xin Long <lucien.xin@gmail.com>
-Cc: syzbot <syzbot+7823fa3f3e2d69341ea8@syzkaller.appspotmail.com>, davem <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, network dev <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, Vlad Yasevich <vyasevich@gmail.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
 
-On Thu, Feb 14, 2019 at 10:52:00PM +0800, Xin Long wrote:
-> On Thu, Feb 14, 2019 at 10:39 PM Marcelo Ricardo Leitner
-> <marcelo.leitner@gmail.com> wrote:
-> >
-> > On Thu, Feb 14, 2019 at 12:17:45PM -0200, Marcelo Ricardo Leitner wrote:
-> > > On Thu, Feb 14, 2019 at 10:03:30PM +0800, Xin Long wrote:
-> > > > On Wed, Feb 13, 2019 at 9:52 PM Marcelo Ricardo Leitner
-> > > > <marcelo.leitner@gmail.com> wrote:
-> > > > >
-> > > > > On Wed, Feb 13, 2019 at 12:35:56PM +0800, Xin Long wrote:
-> > > > > > On Wed, Feb 13, 2019 at 4:00 AM syzbot
-> > > > > > <syzbot+7823fa3f3e2d69341ea8@syzkaller.appspotmail.com> wrote:
-> > > > > > >
-> > > > > > > Hello,
-> > > > > > >
-> > > > > > > syzbot found the following crash on:
-> > > > > > >
-> > > > > > > HEAD commit:    d4104460aec1 Add linux-next specific files fo=
-r 20190211
-> > > > > > > git tree:       linux-next
-> > > > > > > console output: https://syzkaller.appspot.com/x/log.txt?x=141=
-40124c00000
-> > > > > > > kernel config:  https://syzkaller.appspot.com/x/.config?x=C8a=
-112d3b0d6719b
-> > > > > > > dashboard link: https://syzkaller.appspot.com/bug?extidx23fa3=
-f3e2d69341ea8
-> > > > > > > compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
-> > > > > > >
-> > > > > > > Unfortunately, I don't have any reproducer for this crash yet.
-> > > > > > >
-> > > > > > > IMPORTANT: if you fix the bug, please add the following tag t=
-o the commit:
-> > > > > > > Reported-by: syzbot+7823fa3f3e2d69341ea8@syzkaller.appspotmai=
-l.com
-> > > > > > >
-> > > > > > > =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> > > > > > > BUG: KASAN: use-after-free in list_add_tail include/linux/lis=
-t.h:93 [inline]
-> > > > > > > BUG: KASAN: use-after-free in sctp_outq_tail_data net/sctp/ou=
-tqueue.c:105
-> > > > > > > [inline]
-> > > > > > > BUG: KASAN: use-after-free in sctp_outq_tail+0x816/0x930
-> > > > > > > net/sctp/outqueue.c:313
-> > > > > > > Read of size 8 at addr ffff88807b19a7b8 by task syz-executor.=
-0/30745
-> > > > > > I think https://patchwork.ozlabs.org/patch/1040500/ will fix th=
-is.
-> > > > >
-> > > > > I don't think so. Seems it will switch from use-after-free to NUL=
-L deref
-> > > > > instead with that patch.
-> > > > It will allocate ext for the stream if its ext is NULL in
-> > > > sctp_sendmsg_to_asoc(), the new data will work fine. As for
-> > >
-> > > Ehh, right!
-> > >
-> > > > the old data on the surplus streams, it has been dropped in
-> > > > sctp_stream_outq_migrate().
-> > >
-> > > Yep.
-> > >
-> > > >
-> > > > >
-> > > > > > > CPU: 1 PID: 30745 Comm: syz-executor.0 Not tainted 5.0.0-rc5-=
-next-20190211
-> > > > > > > #32
-> > > > > > > Hardware name: Google Google Compute Engine/Google Compute En=
-gine, BIOS
-> > > > > > > Google 01/01/2011
-> > > > > > > Call Trace:
-> > > > > > >   __dump_stack lib/dump_stack.c:77 [inline]
-> > > > > > >   dump_stack+0x172/0x1f0 lib/dump_stack.c:113
-> > > > > > >   print_address_description.cold+0x7c/0x20d mm/kasan/report.c=
-:187
-> > > > > > >   kasan_report.cold+0x1b/0x40 mm/kasan/report.c:317
-> > > > > > >   __asan_report_load8_noabort+0x14/0x20 mm/kasan/generic_repo=
-rt.c:132
-> > > > > > >   list_add_tail include/linux/list.h:93 [inline]
-> > > > > > >   sctp_outq_tail_data net/sctp/outqueue.c:105 [inline]
-> > > > > > >   sctp_outq_tail+0x816/0x930 net/sctp/outqueue.c:313
-> > > > > > >   sctp_cmd_send_msg net/sctp/sm_sideeffect.c:1109 [inline]
-> > > > > > >   sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1784 [inline]
-> > > > > > >   sctp_side_effects net/sctp/sm_sideeffect.c:1220 [inline]
-> > > > > > >   sctp_do_sm+0x68e/0x5380 net/sctp/sm_sideeffect.c:1191
-> > > > > > >   sctp_primitive_SEND+0xa0/0xd0 net/sctp/primitive.c:178
-> > > > > > >   sctp_sendmsg_to_asoc+0xa63/0x17b0 net/sctp/socket.c:1955
-> > > > >
-> > > > > sctp_sendmsg_to_asoc()
-> > > > > ...
-> > > > >         if (sinfo->sinfo_stream >=3D asoc->stream.outcnt) {
-> > > > >                 err =3D -EINVAL;
-> > > > >                 goto err;
-> > > > >         }
-> > > > >
-> > > > >         if (unlikely(!SCTP_SO(&asoc->stream, sinfo->sinfo_stream)=
-->ext)) {
-> > > > > ...
-> > > > >
-> > > > > It should have aborted even if an old ->ext was still there becau=
-se
-> > > > > outcnt is correctly updated. So somehow outcnt was wrong here.
-> > > > >
-> > > > > sctp_stream_init()
-> > > > > ...
-> > > > >         /* Filter out chunks queued on streams that won't exist a=
-nymore */
-> > > > >         sched->unsched_all(stream);
-> > > > >         sctp_stream_outq_migrate(stream, NULL, outcnt);   <--- [A]
-> > > > >         sched->sched_all(stream);
-> > > > >
-> > > > >         ret =3D sctp_stream_alloc_out(stream, outcnt, gfp); <--- =
-[B]
-> > > > >         if (ret)
-> > > > >                 goto out;
-> > > > >
-> > > > >         stream->outcnt =3D outcnt;                          <--- =
-[C]
-> > > > > ...
-> > > > >
-> > > > > We have a problem here because [A] is freeing ->ext, but [B] can =
-fail (ENOMEM),
-> > > > > which would lead it to not update outcnt in [C] even after the
-> > > > > changes already performed in [A].
-> > > > >
-> > > > > It should handle the freeing of ->ext in sctp_stream_alloc_out()
-> > > > > instead, or allocate the flexarray earlier (so it can bail out be=
-fore
-> > > > > freeing stuff).
-> > > > Agree that it's better to do:
-> > > >         sched->unsched_all(stream);
-> > > >         sctp_stream_outq_migrate(stream, NULL, outcnt);
-> > > >         sched->sched_all(stream);
-> > > > after the flexarray allocation.
-> > > >
-> > > > Just sctp_stream_alloc_out() can not be used here anymore, as
-> > > > stream->out will be set in it.
-> > >
-> > > What about carving out a sctp_stream_init_out() ? Like
-> > >
-> > >        struct flex_array *new_out;
-> > >
-> > >       /* just allocate it, nothing more */
-> > >          new_out =3D sctp_stream_alloc_out(outcnt, gfp);
-> > >          if (!new_out)
-> > >               goto out;
-> > >
-> > >          /* Filter out chunks queued on streams that won't exist anym=
-ore */
-> > >          sched->unsched_all(stream);
-> > >          sctp_stream_outq_migrate(stream, NULL, outcnt);
-> > >          sched->sched_all(stream);
-> > >
-> > >       /* initialization stuff, and it can't fail anymore */
-> > >          sctp_stream_init_out(stream, outcnt, new_out);
-> > >
-> > > This may hurt a bit more with the genradix migration, but then we
-> > > don't end up dropping data for nothing.
-> >
-> > Reviewing calls to this function, if this allocation fails it will
-> > either cause the asoc to be terminated or sendmsg error.  So data loss
-> > is not really an issue here.
-> >
->   sctp_stream_init+0xbc/0x410 net/sctp/stream.c:139
->   sctp_process_init+0x21c3/0x2b20 net/sctp/sm_make_chunk.c:2466
->   sctp_cmd_process_init net/sctp/sm_sideeffect.c:682 [inline]
->   sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1410 [inline]
->=20
-> on this path, seems that it won't terminate the asoc nor report a sending=
- error.
+Hello,
 
-Seems that's only triggered from sctp_sf_do_5_1C_ack() and quite
-interesting. If we can't perform the reduction of the number of output
-streams, we will be violating the handshake. Considering the error
-will cause it to stop processing the commands from the state machine,
-it won't output cookie echo pkt and this asoc will be left in a
-somewhat funny state.  I think the fact that it won't stop the T1
-then, allows it to get corrected later on.
-But that err_chunk, if any, gets leaked.
+syzbot found the following crash on:
+
+HEAD commit:    dc4c89997735 Add linux-next specific files for 20190201
+git tree:       linux-next
+console output: https://syzkaller.appspot.com/x/log.txt?xeb3dc4c00000
+kernel config:  https://syzkaller.appspot.com/x/.config?xYaefae07c771af6
+dashboard link: https://syzkaller.appspot.com/bug?extidXe480e7b28f2d890bfd
+compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x7990e4c00000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x758df8c00000
+
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+58e480e7b28f2d890bfd@syzkaller.appspotmail.com
+
+=================================
+BUG: KASAN: double-free or invalid-free in sctp_stream_free+0xfa/0x190  
+net/sctp/stream.c:187
+
+CPU: 0 PID: 7775 Comm: syz-executor682 Not tainted 5.0.0-rc4-next-20190201  
+#25
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
+Google 01/01/2011
+Call Trace:
+  __dump_stack lib/dump_stack.c:77 [inline]
+  dump_stack+0x172/0x1f0 lib/dump_stack.c:113
+  print_address_description.cold+0x7c/0x20d mm/kasan/report.c:187
+  kasan_report_invalid_free+0x65/0xa0 mm/kasan/report.c:278
+  __kasan_slab_free+0x13a/0x150 mm/kasan/common.c:439
+  kasan_slab_free+0xe/0x10 mm/kasan/common.c:468
+  __cache_free mm/slab.c:3488 [inline]
+  kfree+0xcf/0x230 mm/slab.c:3807
+  sctp_stream_free+0xfa/0x190 net/sctp/stream.c:187
+  sctp_association_free+0x235/0x79a net/sctp/associola.c:373
+  sctp_cmd_delete_tcb net/sctp/sm_sideeffect.c:939 [inline]
+  sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1353 [inline]
+  sctp_side_effects net/sctp/sm_sideeffect.c:1220 [inline]
+  sctp_do_sm+0x3c4e/0x5380 net/sctp/sm_sideeffect.c:1191
+  sctp_assoc_bh_rcv+0x343/0x660 net/sctp/associola.c:1074
+  sctp_inq_push+0x1ea/0x290 net/sctp/inqueue.c:95
+  sctp_backlog_rcv+0x196/0xbe0 net/sctp/input.c:354
+  sk_backlog_rcv include/net/sock.h:936 [inline]
+  __release_sock+0x12e/0x3a0 net/core/sock.c:2309
+  release_sock+0x59/0x1c0 net/core/sock.c:2825
+  sctp_close+0x4a4/0x860 net/sctp/socket.c:1550
+  inet_release+0x105/0x1f0 net/ipv4/af_inet.c:428
+  __sock_release+0xd3/0x250 net/socket.c:579
+  sock_close+0x1b/0x30 net/socket.c:1139
+  __fput+0x2df/0x8d0 fs/file_table.c:278
+  ____fput+0x16/0x20 fs/file_table.c:309
+  task_work_run+0x14a/0x1c0 kernel/task_work.c:113
+  exit_task_work include/linux/task_work.h:22 [inline]
+  do_exit+0x90a/0x2fa0 kernel/exit.c:876
+  do_group_exit+0x135/0x370 kernel/exit.c:980
+  __do_sys_exit_group kernel/exit.c:991 [inline]
+  __se_sys_exit_group kernel/exit.c:989 [inline]
+  __x64_sys_exit_group+0x44/0x50 kernel/exit.c:989
+  do_syscall_64+0x103/0x610 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+RIP: 0033:0x43edd8
+Code: Bad RIP value.
+RSP: 002b:00007fff92021088 EFLAGS: 00000246 ORIG_RAX: 00000000000000e7
+RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 000000000043edd8
+RDX: 0000000000000000 RSI: 000000000000003c RDI: 0000000000000000
+RBP: 00000000004be688 R08: 00000000000000e7 R09: ffffffffffffffd0
+R10: 0000000000000010 R11: 0000000000000246 R12: 0000000000000001
+R13: 00000000006d0180 R14: 0000000000000000 R15: 0000000000000000
+
+Allocated by task 7775:
+  save_stack+0x45/0xd0 mm/kasan/common.c:75
+  set_track mm/kasan/common.c:87 [inline]
+  __kasan_kmalloc mm/kasan/common.c:498 [inline]
+  __kasan_kmalloc.constprop.0+0xcf/0xe0 mm/kasan/common.c:471
+  kasan_kmalloc+0x9/0x10 mm/kasan/common.c:506
+  kmem_cache_alloc_trace+0x151/0x760 mm/slab.c:3610
+  kmalloc include/linux/slab.h:548 [inline]
+  kzalloc include/linux/slab.h:743 [inline]
+  sctp_stream_init_ext+0x51/0x110 net/sctp/stream.c:172
+  sctp_sendmsg_to_asoc+0x1273/0x17b0 net/sctp/socket.c:1896
+  sctp_sendmsg+0x81f/0x17f0 net/sctp/socket.c:2113
+  inet_sendmsg+0x147/0x5d0 net/ipv4/af_inet.c:798
+  sock_sendmsg_nosec net/socket.c:621 [inline]
+  sock_sendmsg+0xdd/0x130 net/socket.c:631
+  ___sys_sendmsg+0x806/0x930 net/socket.c:2114
+  __sys_sendmsg+0x105/0x1d0 net/socket.c:2152
+  __do_sys_sendmsg net/socket.c:2161 [inline]
+  __se_sys_sendmsg net/socket.c:2159 [inline]
+  __x64_sys_sendmsg+0x78/0xb0 net/socket.c:2159
+  do_syscall_64+0x103/0x610 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+
+Freed by task 7775:
+  save_stack+0x45/0xd0 mm/kasan/common.c:75
+  set_track mm/kasan/common.c:87 [inline]
+  __kasan_slab_free+0x102/0x150 mm/kasan/common.c:460
+  kasan_slab_free+0xe/0x10 mm/kasan/common.c:468
+  __cache_free mm/slab.c:3488 [inline]
+  kfree+0xcf/0x230 mm/slab.c:3807
+  sctp_stream_outq_migrate+0x3e6/0x540 net/sctp/stream.c:88
+  sctp_stream_init+0xbc/0x410 net/sctp/stream.c:139
+  sctp_process_init+0x21c3/0x2b20 net/sctp/sm_make_chunk.c:2466
+  sctp_cmd_process_init net/sctp/sm_sideeffect.c:682 [inline]
+  sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1410 [inline]
+  sctp_side_effects net/sctp/sm_sideeffect.c:1220 [inline]
+  sctp_do_sm+0x3145/0x5380 net/sctp/sm_sideeffect.c:1191
+  sctp_assoc_bh_rcv+0x343/0x660 net/sctp/associola.c:1074
+  sctp_inq_push+0x1ea/0x290 net/sctp/inqueue.c:95
+  sctp_backlog_rcv+0x196/0xbe0 net/sctp/input.c:354
+  sk_backlog_rcv include/net/sock.h:936 [inline]
+  __release_sock+0x12e/0x3a0 net/core/sock.c:2309
+  release_sock+0x59/0x1c0 net/core/sock.c:2825
+  sctp_wait_for_connect+0x316/0x540 net/sctp/socket.c:8998
+  sctp_sendmsg_to_asoc+0x13e3/0x17b0 net/sctp/socket.c:1967
+  sctp_sendmsg+0x81f/0x17f0 net/sctp/socket.c:2113
+  inet_sendmsg+0x147/0x5d0 net/ipv4/af_inet.c:798
+  sock_sendmsg_nosec net/socket.c:621 [inline]
+  sock_sendmsg+0xdd/0x130 net/socket.c:631
+  ___sys_sendmsg+0x806/0x930 net/socket.c:2114
+  __sys_sendmsg+0x105/0x1d0 net/socket.c:2152
+  __do_sys_sendmsg net/socket.c:2161 [inline]
+  __se_sys_sendmsg net/socket.c:2159 [inline]
+  __x64_sys_sendmsg+0x78/0xb0 net/socket.c:2159
+  do_syscall_64+0x103/0x610 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+
+The buggy address belongs to the object at ffff8880a7e2c480
+  which belongs to the cache kmalloc-96 of size 96
+The buggy address is located 0 bytes inside of
+  96-byte region [ffff8880a7e2c480, ffff8880a7e2c4e0)
+The buggy address belongs to the page:
+page:ffffea00029f8b00 count:1 mapcount:0 mapping:ffff88812c3f04c0  
+index:0xffff8880a7e2c300
+flags: 0x1fffc0000000200(slab)
+raw: 01fffc0000000200 ffffea00029f9908 ffff88812c3f1438 ffff88812c3f04c0
+raw: ffff8880a7e2c300 ffff8880a7e2c000 0000000100000012 0000000000000000
+page dumped because: kasan: bad access detected
+
+Memory state around the buggy address:
+  ffff8880a7e2c380: 00 00 00 00 00 00 00 00 00 fc fc fc fc fc fc fc
+  ffff8880a7e2c400: fb fb fb fb fb fb fb fb fb fb fb fb fc fc fc fc
+> ffff8880a7e2c480: fb fb fb fb fb fb fb fb fb fb fb fb fc fc fc fc
+                    ^
+  ffff8880a7e2c500: fb fb fb fb fb fb fb fb fb fb fb fb fc fc fc fc
+  ffff8880a7e2c580: fb fb fb fb fb fb fb fb fb fb fb fb fc fc fc fc
+=================================
+
+
+---
+This bug is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this bug report. See:
+https://goo.gl/tpsmEJ#bug-status-tracking for how to communicate with  
+syzbot.
+syzbot can test patches for this bug, for details see:
+https://goo.gl/tpsmEJ#testing-patches
