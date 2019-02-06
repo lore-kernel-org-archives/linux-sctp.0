@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 06 Feb 2019 21:07:23 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Wed, 06 Feb 2019 21:08:27 +0000
 Subject: Re: [PATCH net] sctp: make sctp_setsockopt_events() less strict about the option length
-Message-Id: <20190206210723.GD13621@localhost.localdomain>
+Message-Id: <20190206210827.GC16887@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20190206201430.18830-1-julien@arista.com>
  <20190206203754.GC13621@localhost.localdomain>
@@ -11,7 +11,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Julien Gomes <julien@arista.com>
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, nhorman@tuxdriver.com, vyasevich@gmail.com, lucien.xin@gmail.com
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, vyasevich@gmail.com, lucien.xin@gmail.com
 
 On Wed, Feb 06, 2019 at 12:48:38PM -0800, Julien Gomes wrote:
 > 
@@ -44,26 +44,20 @@ On Wed, Feb 06, 2019 at 12:48:38PM -0800, Julien Gomes wrote:
 > 
 > With the current implementation, given sources that say are supposed to
 > run on a 4.9 kernel (no use of any newer field added in 4.11 or 4.12),
+What given sources say that?  I understand it might be expected, but this is an
+common concern with setsockopt method on many protocols, it just so happens that
+sctp extends them more than other protocols.
+
 > we can't rebuild the exact same sources on a 4.19 kernel and still run
 > them on 4.9 without messing with structures re-definition.
-
-Maybe what we want(ed) here then is explicit versioning, to have the 3
-definitions available. Then the application is able to use, say struct
-sctp_event_subscribe, and be happy with it, while there is struct
-sctp_event_subscribe_v2 and struct sctp_event_subscribe_v3 there too.
-
-But it's too late for that now because that would break applications
-already using the new fields in sctp_event_subscribe.
-
 > 
+Right, put another way, we support backward compatibility with older userspace
+applications, but not newer one.  I.e. if you build an application against the
+4.9 SCTP API, it should work with the 4.19 UAPI, but not vice versa, which it
+seems is like what you are trying to do here.
+
 > I understand your point, but this still looks like a sort of uapi
 > breakage to me.
-
-Not disagreeing. I really just don't know how supported that is.
-Willing to know so I can pay more attention to this on future changes.
-
-Btw, is this the only occurrence?
-
 > 
 > 
 > I also had another way to work-around this in mind, by copying optlen
@@ -73,20 +67,22 @@ Btw, is this the only occurrence?
 > The issue with this is that I didn't find a suitable (ie not totally
 > arbitrary such as "twice the existing structure size") upper limit to
 > optlen.
-
-Seems interesting. Why would it need that upper limit to optlen?
-
-Say struct v1 had 4 bytes, v3 now had 12. The user supplies 12 bytes
-to the kernel that only knows about 4 bytes. It can check that (12-4)
-bytes in the end, make sure no bit is on and use only the first 4.
-
-The fact that it was 12 or 200 shouldn't matter, should it? As long as
-the (200-4) bytes are 0'ed, only the first 4 will be used and it
-should be ok, otherwise EINVAL. No need to know how big the current
-current actually is because it wouldn't be validating that here: just
-that it can safely use the first 4 bytes.
-
 > 
+There is no real uppper limit to the size of the structure in this case, and
+IIRC this isn't the only sockopt structure that can be exentded for SCTP in this
+way.
+
+I really don't see a sane way to allow newer userspaces to be compatible with
+older kernels here.  If we were to do it I would suggest moving the
+responsibility for that feature into lksctp-tools, versioning that library such
+that correlary symbols are versioned to translate the application view of the
+socket options structs to the size and format that the running kernel
+undertands.  Note that I'm not really advocating for that, as it seems like a
+fast moving target, but if we were to do it I think that would be the most sane
+way to handle it.
+
+Neil
+
 > > 
 > >>
 > >> Signed-off-by: Julien Gomes <julien@arista.com>
@@ -110,4 +106,5 @@ that it can safely use the first 4 bytes.
 > >> -- 
 > >> 2.20.1
 > >>
+> 
 > 
