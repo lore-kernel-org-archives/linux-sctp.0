@@ -1,20 +1,20 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 06 Feb 2019 21:18:12 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Wed, 06 Feb 2019 21:23:16 +0000
 Subject: Re: [PATCH net] sctp: make sctp_setsockopt_events() less strict about the option length
-Message-Id: <20190206211812.GE13621@localhost.localdomain>
+Message-Id: <20190206212316.GD16887@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20190206201430.18830-1-julien@arista.com>
  <20190206203754.GC13621@localhost.localdomain>
  <c13067c0-f127-50a0-9ae0-4be7f0399c0d@arista.com>
- <20190206210827.GC16887@hmswarspite.think-freely.org>
-In-Reply-To: <20190206210827.GC16887@hmswarspite.think-freely.org>
+ <20190206210723.GD13621@localhost.localdomain>
+In-Reply-To: <20190206210723.GD13621@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 Cc: Julien Gomes <julien@arista.com>, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, davem@davemloft.net, vyasevich@gmail.com, lucien.xin@gmail.com
 
-On Wed, Feb 06, 2019 at 04:08:27PM -0500, Neil Horman wrote:
+On Wed, Feb 06, 2019 at 07:07:23PM -0200, Marcelo Ricardo Leitner wrote:
 > On Wed, Feb 06, 2019 at 12:48:38PM -0800, Julien Gomes wrote:
 > > 
 > > 
@@ -46,23 +46,32 @@ On Wed, Feb 06, 2019 at 04:08:27PM -0500, Neil Horman wrote:
 > > 
 > > With the current implementation, given sources that say are supposed to
 > > run on a 4.9 kernel (no use of any newer field added in 4.11 or 4.12),
-> What given sources say that?  I understand it might be expected, but this is an
-> common concern with setsockopt method on many protocols, it just so happens that
-> sctp extends them more than other protocols.
-> 
 > > we can't rebuild the exact same sources on a 4.19 kernel and still run
 > > them on 4.9 without messing with structures re-definition.
-> > 
-> Right, put another way, we support backward compatibility with older userspace
-> applications, but not newer one.  I.e. if you build an application against the
-> 4.9 SCTP API, it should work with the 4.19 UAPI, but not vice versa, which it
-> seems is like what you are trying to do here.
-
-Was looking for that. Thanks.
-
 > 
+> Maybe what we want(ed) here then is explicit versioning, to have the 3
+> definitions available. Then the application is able to use, say struct
+> sctp_event_subscribe, and be happy with it, while there is struct
+> sctp_event_subscribe_v2 and struct sctp_event_subscribe_v3 there too.
+> 
+> But it's too late for that now because that would break applications
+> already using the new fields in sctp_event_subscribe.
+> 
+Yeah, I'm not supportive of codifying that knoweldge in the kernel.  If we were
+to support bi-directional versioning, I would encode it into lksctp-tools rather
+than the kernel.
+
+> > 
 > > I understand your point, but this still looks like a sort of uapi
 > > breakage to me.
+> 
+> Not disagreeing. I really just don't know how supported that is.
+> Willing to know so I can pay more attention to this on future changes.
+> 
+> Btw, is this the only occurrence?
+> 
+No, I think there are a few others (maybe paddrparams?)
+
 > > 
 > > 
 > > I also had another way to work-around this in mind, by copying optlen
@@ -72,28 +81,43 @@ Was looking for that. Thanks.
 > > The issue with this is that I didn't find a suitable (ie not totally
 > > arbitrary such as "twice the existing structure size") upper limit to
 > > optlen.
+> 
+> Seems interesting. Why would it need that upper limit to optlen?
+> 
+I think the thought was to differentiate between someone passing a legit larger
+structure from a newer UAPI, from someone just passing in a massive
+inappropriately sized buffer (even if the return on both is the same).
+
+> Say struct v1 had 4 bytes, v3 now had 12. The user supplies 12 bytes
+> to the kernel that only knows about 4 bytes. It can check that (12-4)
+> bytes in the end, make sure no bit is on and use only the first 4.
+> 
+> The fact that it was 12 or 200 shouldn't matter, should it? As long as
+> the (200-4) bytes are 0'ed, only the first 4 will be used and it
+> should be ok, otherwise EINVAL. No need to know how big the current
+> current actually is because it wouldn't be validating that here: just
+> that it can safely use the first 4 bytes.
+> 
+I'm less than excited about making the kernel check an unbounded user space
+buffer, thats seems like a potential DOS attack from an unpriviledged user to
+me.  I'm also still hung up on the notion that, despite how we do this, this
+patch is going into the latest kernel, so it will only work on a kernel that
+already understands the most recent set of subscriptions.  It would work if we,
+again someday in the future extended this struct, someone built against that
+newer UAPI, and then tried to run it on a kernel that had this patch.
+
+FWIW, there is an existing implied method to determine the available
+subscription events. sctp_getsockopt_events does clamp the size of the output
+buffer, and returns that information in the optlen field via put_user.  An
+application that was build against UAPIs from 4.19 could pass in the 4.19
+sctp_event_subscribe struct to sctp_getsockopt_events, and read the output
+length, whcih would inform the application of the events that the kernel is
+capable of reporting, and limit itself to only using those events.  Its not a
+perfect solution, but its direct, understandable and portable.
+
+Neil
+
 > > 
-> There is no real uppper limit to the size of the structure in this case, and
-> IIRC this isn't the only sockopt structure that can be exentded for SCTP in this
-> way.
-> 
-> I really don't see a sane way to allow newer userspaces to be compatible with
-> older kernels here.  If we were to do it I would suggest moving the
-> responsibility for that feature into lksctp-tools, versioning that library such
-> that correlary symbols are versioned to translate the application view of the
-> socket options structs to the size and format that the running kernel
-> undertands.  Note that I'm not really advocating for that, as it seems like a
-> fast moving target, but if we were to do it I think that would be the most sane
-> way to handle it.
-
-Speaking of that, recent lksctp-tools got some defines to help knowing
-which features the available kernel headers have as it now probes if
-specific struct members are available or not. Though yeah, it also
-wouldn't help in this case, just mentioning it.
-
-> 
-> Neil
-> 
 > > > 
 > > >>
 > > >> Signed-off-by: Julien Gomes <julien@arista.com>
@@ -118,4 +142,4 @@ wouldn't help in this case, just mentioning it.
 > > >> 2.20.1
 > > >>
 > > 
-> > 
+> 
