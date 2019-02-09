@@ -1,32 +1,117 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 14 Feb 2019 00:33:09 +0000
-Subject: Re: [PATCH net] sctp: call gso_reset_checksum when computing checksum in sctp_gso_segment
-Message-Id: <20190213.163309.1448482672803486233.davem@davemloft.net>
+From: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
+Date: Sat, 09 Feb 2019 10:35:52 +0000
+Subject: [PATCH] inet_diag: fix reporting cgroup classid and fallback to priority
+Message-Id: <154970855279.305165.13649851988934332761.stgit@buzz>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <5b8187d1eabd52e4db7d3e4506d98c33571c1c83.1549968450.git.lucien.xin@gmail.com>
-In-Reply-To: <5b8187d1eabd52e4db7d3e4506d98c33571c1c83.1549968450.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: netdev@vger.kernel.org, linux-kernel@vger.kernel.org, "David S. Miller" <davem@davemloft.net>
+Cc: Sasha Levin <sashal@kernel.org>, linux-sctp@vger.kernel.org
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 12 Feb 2019 18:47:30 +0800
+Field idiag_ext in struct inet_diag_req_v2 used as bitmap of requested
+extensions has only 8 bits. Thus extensions starting from DCTCPINFO
+cannot be requested directly. Some of them included into response
+unconditionally or hook into some of lower 8 bits.
 
-> Jianlin reported a panic when running sctp gso over gre over vlan device:
- ...
-> It was caused by SKB_GSO_CB(skb)->csum_start not set in sctp_gso_segment.
-> sctp_gso_segment() calls skb_segment() with 'feature | NETIF_F_HW_CSUM',
-> which causes SKB_GSO_CB(skb)->csum_start not to be set in skb_segment().
-> 
-> For TCP/UDP, when feature supports HW_CSUM, CHECKSUM_PARTIAL will be set
-> and gso_reset_checksum will be called to set SKB_GSO_CB(skb)->csum_start.
-> 
-> So SCTP should do the same as TCP/UDP, to call gso_reset_checksum() when
-> computing checksum in sctp_gso_segment.
-> 
-> Reported-by: Jianlin Shi <jishi@redhat.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Extension INET_DIAG_CLASS_ID has not way to request from the beginning.
 
-Applied and queued up for -stable, thanks.
+This patch bundle it with INET_DIAG_TCLASS (ipv6 tos), fixes space
+reservation, and documents behavior for other extensions.
+
+Also this patch adds fallback to reporting socket priority. This filed
+is more widely used for traffic classification because ipv4 sockets
+automatically maps TOS to priority and default qdisc pfifo_fast knows
+about that. But priority could be changed via setsockopt SO_PRIORITY so
+INET_DIAG_TOS isn't enough for predicting class.
+
+Also cgroup2 obsoletes net_cls classid (it always zero), but we cannot
+reuse this field for reporting cgroup2 id because it is 64-bit (ino+gen).
+
+So, after this patch INET_DIAG_CLASS_ID will report socket priority
+for most common setup when net_cls isn't set and/or cgroup2 in use.
+
+Signed-off-by: Konstantin Khlebnikov <khlebnikov@yandex-team.ru>
+Fixes: 0888e372c37f ("net: inet: diag: expose sockets cgroup classid")
+---
+ include/uapi/linux/inet_diag.h |   16 +++++++++++-----
+ net/ipv4/inet_diag.c           |   10 +++++++++-
+ net/sctp/diag.c                |    1 +
+ 3 files changed, 21 insertions(+), 6 deletions(-)
+
+diff --git a/include/uapi/linux/inet_diag.h b/include/uapi/linux/inet_diag.h
+index 14565d703291..e8baca85bac6 100644
+--- a/include/uapi/linux/inet_diag.h
++++ b/include/uapi/linux/inet_diag.h
+@@ -137,15 +137,21 @@ enum {
+ 	INET_DIAG_TCLASS,
+ 	INET_DIAG_SKMEMINFO,
+ 	INET_DIAG_SHUTDOWN,
+-	INET_DIAG_DCTCPINFO,
+-	INET_DIAG_PROTOCOL,  /* response attribute only */
++
++	/*
++	 * Next extenstions cannot be requested in struct inet_diag_req_v2:
++	 * its field idiag_ext has only 8 bits.
++	 */
++
++	INET_DIAG_DCTCPINFO,	/* request as INET_DIAG_VEGASINFO */
++	INET_DIAG_PROTOCOL,	/* response attribute only */
+ 	INET_DIAG_SKV6ONLY,
+ 	INET_DIAG_LOCALS,
+ 	INET_DIAG_PEERS,
+ 	INET_DIAG_PAD,
+-	INET_DIAG_MARK,
+-	INET_DIAG_BBRINFO,
+-	INET_DIAG_CLASS_ID,
++	INET_DIAG_MARK,		/* only with CAP_NET_ADMIN */
++	INET_DIAG_BBRINFO,	/* request as INET_DIAG_VEGASINFO */
++	INET_DIAG_CLASS_ID,	/* request as INET_DIAG_TCLASS */
+ 	INET_DIAG_MD5SIG,
+ 	__INET_DIAG_MAX,
+ };
+diff --git a/net/ipv4/inet_diag.c b/net/ipv4/inet_diag.c
+index 1a4e9ff02762..5731670c560b 100644
+--- a/net/ipv4/inet_diag.c
++++ b/net/ipv4/inet_diag.c
+@@ -108,6 +108,7 @@ static size_t inet_sk_attr_size(struct sock *sk,
+ 		+ nla_total_size(1) /* INET_DIAG_TOS */
+ 		+ nla_total_size(1) /* INET_DIAG_TCLASS */
+ 		+ nla_total_size(4) /* INET_DIAG_MARK */
++		+ nla_total_size(4) /* INET_DIAG_CLASS_ID */
+ 		+ nla_total_size(sizeof(struct inet_diag_meminfo))
+ 		+ nla_total_size(sizeof(struct inet_diag_msg))
+ 		+ nla_total_size(SK_MEMINFO_VARS * sizeof(u32))
+@@ -287,12 +288,19 @@ int inet_sk_diag_fill(struct sock *sk, struct inet_connection_sock *icsk,
+ 			goto errout;
+ 	}
+ 
+-	if (ext & (1 << (INET_DIAG_CLASS_ID - 1))) {
++	if (ext & (1 << (INET_DIAG_CLASS_ID - 1)) ||
++	    ext & (1 << (INET_DIAG_TCLASS - 1))) {
+ 		u32 classid = 0;
+ 
+ #ifdef CONFIG_SOCK_CGROUP_DATA
+ 		classid = sock_cgroup_classid(&sk->sk_cgrp_data);
+ #endif
++		/* Fallback to socket priority if class id isn't set.
++		 * Classful qdiscs use it as direct reference to class.
++		 * For cgroup2 classid is always zero.
++		 */
++		if (!classid)
++			classid = sk->sk_priority;
+ 
+ 		if (nla_put_u32(skb, INET_DIAG_CLASS_ID, classid))
+ 			goto errout;
+diff --git a/net/sctp/diag.c b/net/sctp/diag.c
+index 078f01a8d582..435847d98b51 100644
+--- a/net/sctp/diag.c
++++ b/net/sctp/diag.c
+@@ -256,6 +256,7 @@ static size_t inet_assoc_attr_size(struct sctp_association *asoc)
+ 		+ nla_total_size(1) /* INET_DIAG_TOS */
+ 		+ nla_total_size(1) /* INET_DIAG_TCLASS */
+ 		+ nla_total_size(4) /* INET_DIAG_MARK */
++		+ nla_total_size(4) /* INET_DIAG_CLASS_ID */
+ 		+ nla_total_size(addrlen * asoc->peer.transport_count)
+ 		+ nla_total_size(addrlen * addrcnt)
+ 		+ nla_total_size(sizeof(struct inet_diag_meminfo))
