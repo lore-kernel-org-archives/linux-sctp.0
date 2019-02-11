@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Sun, 10 Feb 2019 20:15:59 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 11 Feb 2019 15:04:32 +0000
 Subject: Re: [PATCH net] sctp: make sctp_setsockopt_events() less strict about the option length
-Message-Id: <20190210201559.GE10665@localhost.localdomain>
+Message-Id: <20190211150432.GA13525@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20190206201430.18830-1-julien@arista.com>
  <20190206203754.GC13621@localhost.localdomain>
@@ -11,8 +11,8 @@ In-Reply-To: <20190210124616.GG13621@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: julien@arista.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, nhorman@tuxdriver.com, vyasevich@gmail.com, lucien.xin@gmail.com
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: David Miller <davem@davemloft.net>, julien@arista.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, vyasevich@gmail.com, lucien.xin@gmail.com
 
 On Sun, Feb 10, 2019 at 10:46:16AM -0200, Marcelo Ricardo Leitner wrote:
 > On Sat, Feb 09, 2019 at 03:12:17PM -0800, David Miller wrote:
@@ -41,6 +41,12 @@ On Sun, Feb 10, 2019 at 10:46:16AM -0200, Marcelo Ricardo Leitner wrote:
 > 
 > That way we have a clear definition of the user's intent.
 > 
+Thats possible, but I think thats pretty equivalaent to what daves saying, in
+that he wants us to identify all the sizes of this struct and the git history
+and act on them accordingly.  Having internal versions of the struct seems like
+a fine way to get there, but I think we need to consider how we got to this
+situations before we go down the implementation path.
+
 > > 
 > > This whole thread, if you read it, is basically "if we compatability
 > > this way, that breaks, and if we do compatability this other way oh
@@ -56,16 +62,19 @@ On Sun, Feb 10, 2019 at 10:46:16AM -0200, Marcelo Ricardo Leitner wrote:
 > we can do so far. If the struct is allocated but not fully initialized
 > via a memset, but by setting its fields one by one, the remaining new
 > fields will be left uninitinialized.
-
-Need to clarify the "clearing out", I think it was meant differently.
-It was more about on how to ensure that the 16-bytes long of the v3
-supplied to a v1-only kernel is compatible with the 12-bytes long v1.
-The kernel would have to check the trailing 4 bytes after v1-size and
-make sure they are all zeroed in order for the old kernel to accept it
-as a v1. But, as I said above, there are situations that this will not
-be enough.
-
 > 
+
+I'm not sure this even makes sense.  Currently (as I understood it), the issue
+we are facing is the one in which an application is built against a newer kernel
+and run on an older one, the implication there being that the application will
+pass in a buffer that is larger than what the kernel expects.  In that
+situation, clearing isn't needed, all thats needed (I think), is a memcmp of the
+space between the sizeof(kernel struct version), and sizeof(userspace struct
+version) to see if any bits are non-zero.  If they are, we error out, otherwise,
+we ignore the space and move forward as though that overage doesn't exist.
+
+Mind you, I'm not (yet) advocating for that approach, just trying to clarify
+whats needed.
 > > 
 > > Which, btw, is terrible behavior.  Newly compiled apps should work on
 > > older kernels if they don't try to use the new features, and if they
@@ -76,6 +85,8 @@ be enough.
 > whatever reason, doesn't upgrade kernel or reboot the system. Here,
 > Foo doesn't work anymore until the new kernel is also running.
 > 
+Yes, thats the use case that we're trying to address.
+
 > > can the ones that want to try to use the new features should be able
 > > to fall back when that feature isn't available in a non-ambiguous
 > > and precisely defined way.
@@ -86,15 +97,44 @@ be enough.
 > > This patch, at best, needs some work and definitely a longer and more
 > > detailed commit message.
 > 
+FWIW, before we decide on a course of action, I think I need to point out that,
+over the last 10 years, we've extended this structure 6 times, in the following
+commits:
+0f3fffd8ab1db
+7e8616d8e7731
+e1cdd553d482c
+35ea82d611da5
+c95129d127c6d
+b444153fb5a64
 
-We have issues on read path too. 52ccb8e90c0a ("[SCTP]: Update
-SCTP_PEER_ADDR_PARAMS socket option to the latest api draft.")
-extended struct sctp_paddrparams and its getsockopt goes with:
+The first two I believe were modifications during a period when sctp was
+actually getting integrated to the kernel, but the last 4 were definately done
+during more recent development periods and wen't in without any commentary about
+the impact to UAPI compatibility.  The check for optlen > sizeof(struct
+sctp_event_subscribe) was made back in 2008, and while not spelled out, seems
+pretty clearly directed at enforcing compatibility with older appliations, not
+compatibility with newer applications running on older kernels.
 
-sctp_getsockopt_peer_addr_params()
-...
-        if (len < sizeof(struct sctp_paddrparams))
-                return -EINVAL;
-        len = sizeof(struct sctp_paddrparams);
+I really worry about situations in which we need to support applications
+expecting features that the running kernel doesn't have.  In this particular
+situation it seems like a fixable thing, but I could envision situations in
+which we just can't do it, and I don't want to set that expectation when we
+can't consistently meet it.
 
-By then, we didn't have the /uapi/ folder yet. There may other cases.
+So, if the consensus is that we need to support applications built on newer
+kernels, but run on older kernels (and I'd like to get verbal consensus on
+that), then we need to identify a method to fix this.  I'm still hesitant to
+do anything that involves us accepting any size buffer over the kernel expected
+size, as that puts us in a position to have to read large amounts of user data
+(i.e. possible DOS), and just picking an arbitrary large number to limit the
+buffer size seems wrong.  What if, on receipt of a structure from a newer kernel
+(implying a size larger than what the kernel expects), we clamp optlen to the
+kernel size, and put_user it back to the application?  i.e. we don't check any
+data above and beyond what the the kernel knows about, but we use the optlen as
+an indicator to user space that not all the data was processed?  That allows the
+kernel to ignore the overage safely, and while its not in the socket api
+extension RFC, its not violating anything, and is something we can document in
+the sctp(7) man page as a linux only behavior.
+
+Thoughts?
+Neil
