@@ -1,39 +1,71 @@
-From: David Miller <davem@davemloft.net>
-Date: Sun, 03 Feb 2019 22:31:39 +0000
-Subject: Re: [PATCHv3 net] sctp: check and update stream->out_curr when allocating stream_out
-Message-Id: <20190203.143139.2186062220005546704.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 12 Feb 2019 10:47:30 +0000
+Subject: [PATCH net] sctp: call gso_reset_checksum when computing checksum in sctp_gso_segment
+Message-Id: <5b8187d1eabd52e4db7d3e4506d98c33571c1c83.1549968450.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <91ab89c95836cfcacbe823f4bc0ecd2568bad113.1549222078.git.lucien.xin@gmail.com>
-In-Reply-To: <91ab89c95836cfcacbe823f4bc0ecd2568bad113.1549222078.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon,  4 Feb 2019 03:27:58 +0800
+Jianlin reported a panic when running sctp gso over gre over vlan device:
 
-> Now when using stream reconfig to add out streams, stream->out
-> will get re-allocated, and all old streams' information will
-> be copied to the new ones and the old ones will be freed.
-> 
-> So without stream->out_curr updated, next time when trying to
-> send from stream->out_curr stream, a panic would be caused.
-> 
-> This patch is to check and update stream->out_curr when
-> allocating stream_out.
-> 
-> v1->v2:
->   - define fa_index() to get elem index from stream->out_curr.
-> v2->v3:
->   - repost with no change.
-> 
-> Fixes: 5bbbbe32a431 ("sctp: introduce stream scheduler foundations")
-> Reported-by: Ying Xu <yinxu@redhat.com>
-> Reported-by: syzbot+e33a3a138267ca119c7d@syzkaller.appspotmail.com
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+  [   84.772930] RIP: 0010:do_csum+0x6d/0x170
+  [   84.790605] Call Trace:
+  [   84.791054]  csum_partial+0xd/0x20
+  [   84.791657]  gre_gso_segment+0x2c3/0x390
+  [   84.792364]  inet_gso_segment+0x161/0x3e0
+  [   84.793071]  skb_mac_gso_segment+0xb8/0x120
+  [   84.793846]  __skb_gso_segment+0x7e/0x180
+  [   84.794581]  validate_xmit_skb+0x141/0x2e0
+  [   84.795297]  __dev_queue_xmit+0x258/0x8f0
+  [   84.795949]  ? eth_header+0x26/0xc0
+  [   84.796581]  ip_finish_output2+0x196/0x430
+  [   84.797295]  ? skb_gso_validate_network_len+0x11/0x80
+  [   84.798183]  ? ip_finish_output+0x169/0x270
+  [   84.798875]  ip_output+0x6c/0xe0
+  [   84.799413]  ? ip_append_data.part.50+0xc0/0xc0
+  [   84.800145]  iptunnel_xmit+0x144/0x1c0
+  [   84.800814]  ip_tunnel_xmit+0x62d/0x930 [ip_tunnel]
+  [   84.801699]  gre_tap_xmit+0xac/0xf0 [ip_gre]
+  [   84.802395]  dev_hard_start_xmit+0xa5/0x210
+  [   84.803086]  sch_direct_xmit+0x14f/0x340
+  [   84.803733]  __dev_queue_xmit+0x799/0x8f0
+  [   84.804472]  ip_finish_output2+0x2e0/0x430
+  [   84.805255]  ? skb_gso_validate_network_len+0x11/0x80
+  [   84.806154]  ip_output+0x6c/0xe0
+  [   84.806721]  ? ip_append_data.part.50+0xc0/0xc0
+  [   84.807516]  sctp_packet_transmit+0x716/0xa10 [sctp]
+  [   84.808337]  sctp_outq_flush+0xd7/0x880 [sctp]
 
-Applied and queued up for -stable.
+It was caused by SKB_GSO_CB(skb)->csum_start not set in sctp_gso_segment.
+sctp_gso_segment() calls skb_segment() with 'feature | NETIF_F_HW_CSUM',
+which causes SKB_GSO_CB(skb)->csum_start not to be set in skb_segment().
 
-Thanks!
+For TCP/UDP, when feature supports HW_CSUM, CHECKSUM_PARTIAL will be set
+and gso_reset_checksum will be called to set SKB_GSO_CB(skb)->csum_start.
+
+So SCTP should do the same as TCP/UDP, to call gso_reset_checksum() when
+computing checksum in sctp_gso_segment.
+
+Reported-by: Jianlin Shi <jishi@redhat.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/offload.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/net/sctp/offload.c b/net/sctp/offload.c
+index 123e9f2..edfcf16 100644
+--- a/net/sctp/offload.c
++++ b/net/sctp/offload.c
+@@ -36,6 +36,7 @@ static __le32 sctp_gso_make_checksum(struct sk_buff *skb)
+ {
+ 	skb->ip_summed = CHECKSUM_NONE;
+ 	skb->csum_not_inet = 0;
++	gso_reset_checksum(skb, ~0);
+ 	return sctp_compute_cksum(skb, skb_transport_offset(skb));
+ }
+ 
+-- 
+2.1.0
