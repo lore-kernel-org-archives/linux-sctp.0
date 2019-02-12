@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 12 Feb 2019 15:46:55 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 12 Feb 2019 16:07:38 +0000
 Subject: Re: [PATCH net] sctp: set stream ext to NULL after freeing it in sctp_stream_outq_migrate
-Message-Id: <20190212154655.GA2151@hmswarspite.think-freely.org>
+Message-Id: <20190212160738.GG10665@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <0cb9e543c21495df48c3723044d6c9f64f238eca.1549968661.git.lucien.xin@gmail.com>
 In-Reply-To: <0cb9e543c21495df48c3723044d6c9f64f238eca.1549968661.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
 
 On Tue, Feb 12, 2019 at 06:51:01PM +0800, Xin Long wrote:
 > In sctp_stream_init(), after sctp_stream_outq_migrate() freed the
@@ -27,6 +27,9 @@ On Tue, Feb 12, 2019 at 06:51:01PM +0800, Xin Long wrote:
 > Fixes: 5bbbbe32a431 ("sctp: introduce stream scheduler foundations")
 > Reported-by: syzbot+58e480e7b28f2d890bfd@syzkaller.appspotmail.com
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
+
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+
 > ---
 >  net/sctp/stream.c | 4 +++-
 >  1 file changed, 3 insertions(+), 1 deletion(-)
@@ -50,5 +53,3 @@ On Tue, Feb 12, 2019 at 06:51:01PM +0800, Xin Long wrote:
 > -- 
 > 2.1.0
 > 
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
