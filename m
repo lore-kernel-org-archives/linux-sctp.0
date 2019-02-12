@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 12 Feb 2019 15:46:01 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Tue, 12 Feb 2019 16:15:35 +0000
 Subject: Re: [PATCH net] sctp: call gso_reset_checksum when computing checksum in sctp_gso_segment
-Message-Id: <20190212123456.GA8267@hmswarspite.think-freely.org>
+Message-Id: <20190212161535.GH10665@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <5b8187d1eabd52e4db7d3e4506d98c33571c1c83.1549968450.git.lucien.xin@gmail.com>
 In-Reply-To: <5b8187d1eabd52e4db7d3e4506d98c33571c1c83.1549968450.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "hange-folder>?" <toggle-mailboxes@hmswarspite.think-freely.org>
+Cc: linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
 
 On Tue, Feb 12, 2019 at 06:47:30PM +0800, Xin Long wrote:
 > Jianlin reported a panic when running sctp gso over gre over vlan device:
@@ -54,6 +54,9 @@ On Tue, Feb 12, 2019 at 06:47:30PM +0800, Xin Long wrote:
 > 
 > Reported-by: Jianlin Shi <jishi@redhat.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
+
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+
 > ---
 >  net/sctp/offload.c | 1 +
 >  1 file changed, 1 insertion(+)
@@ -73,6 +76,3 @@ On Tue, Feb 12, 2019 at 06:47:30PM +0800, Xin Long wrote:
 > -- 
 > 2.1.0
 > 
-> 
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
