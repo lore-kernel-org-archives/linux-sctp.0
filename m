@@ -1,18 +1,18 @@
-From: Dmitry Vyukov <dvyukov@google.com>
-Date: Wed, 13 Feb 2019 08:29:01 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 13 Feb 2019 13:51:58 +0000
 Subject: Re: KASAN: use-after-free Read in sctp_outq_tail
-Message-Id: <CACT4Y+YEmq8DMdas3K8CoL_TX8jJsmgNBe9GKS0PWLH2GWWN+A@mail.gmail.com>
+Message-Id: <20190213135157.GJ10665@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <0000000000002015db0581b71858@google.com> <CADvbK_dndFMxyUZk=k8qEy9=PNbLc81F++2L0fbdtUdbupq4Xg@mail.gmail.com>
+References: <0000000000002015db0581b71858@google.com>
+ <CADvbK_dndFMxyUZk=k8qEy9=PNbLc81F++2L0fbdtUdbupq4Xg@mail.gmail.com>
 In-Reply-To: <CADvbK_dndFMxyUZk=k8qEy9=PNbLc81F++2L0fbdtUdbupq4Xg@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
 To: Xin Long <lucien.xin@gmail.com>
-Cc: syzbot <syzbot+7823fa3f3e2d69341ea8@syzkaller.appspotmail.com>, davem <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, network dev <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, Vlad Yasevich <vyasevich@gmail.com>
+Cc: syzbot <syzbot+7823fa3f3e2d69341ea8@syzkaller.appspotmail.com>, davem <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, network dev <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-On Wed, Feb 13, 2019 at 5:36 AM Xin Long <lucien.xin@gmail.com> wrote:
->
+On Wed, Feb 13, 2019 at 12:35:56PM +0800, Xin Long wrote:
 > On Wed, Feb 13, 2019 at 4:00 AM syzbot
 > <syzbot+7823fa3f3e2d69341ea8@syzkaller.appspotmail.com> wrote:
 > >
@@ -47,11 +47,8 @@ line]
 > > Read of size 8 at addr ffff88807b19a7b8 by task syz-executor.0/30745
 > I think https://patchwork.ozlabs.org/patch/1040500/ will fix this.
 
-Let's mark it then to not return later:
-
-#syz fix:
-sctp: set stream ext to NULL after freeing it in sctp_stream_outq_migrate
-
+I don't think so. Seems it will switch from use-after-free to NULL deref
+instead with that patch.
 
 > > CPU: 1 PID: 30745 Comm: syz-executor.0 Not tainted 5.0.0-rc5-next-20190=
 211
@@ -73,6 +70,43 @@ sctp: set stream ext to NULL after freeing it in sctp_stream_outq_migrate
 > >   sctp_do_sm+0x68e/0x5380 net/sctp/sm_sideeffect.c:1191
 > >   sctp_primitive_SEND+0xa0/0xd0 net/sctp/primitive.c:178
 > >   sctp_sendmsg_to_asoc+0xa63/0x17b0 net/sctp/socket.c:1955
+
+sctp_sendmsg_to_asoc()
+...
+        if (sinfo->sinfo_stream >=3D asoc->stream.outcnt) {
+                err =3D -EINVAL;
+                goto err;
+        }
+
+        if (unlikely(!SCTP_SO(&asoc->stream, sinfo->sinfo_stream)->ext)) {
+...
+
+It should have aborted even if an old ->ext was still there because
+outcnt is correctly updated. So somehow outcnt was wrong here.
+
+sctp_stream_init()
+...
+        /* Filter out chunks queued on streams that won't exist anymore */
+        sched->unsched_all(stream);
+        sctp_stream_outq_migrate(stream, NULL, outcnt);   <--- [A]
+        sched->sched_all(stream);
+
+        ret =3D sctp_stream_alloc_out(stream, outcnt, gfp); <--- [B]
+        if (ret)
+                goto out;
+
+        stream->outcnt =3D outcnt;                          <--- [C]
+...
+
+We have a problem here because [A] is freeing ->ext, but [B] can fail (ENOM=
+EM),
+which would lead it to not update outcnt in [C] even after the
+changes already performed in [A].
+
+It should handle the freeing of ->ext in sctp_stream_alloc_out()
+instead, or allocate the flexarray earlier (so it can bail out before
+freeing stuff).
+
 > >   sctp_sendmsg+0x10a9/0x17e0 net/sctp/socket.c:2113
 > >   inet_sendmsg+0x147/0x5d0 net/ipv4/af_inet.c:798
 > >   sock_sendmsg_nosec net/socket.c:621 [inline]
@@ -185,13 +219,4 @@ ff
 > > syzbot will keep track of this bug report. See:
 > > https://goo.gl/tpsmEJ#bug-status-tracking for how to communicate with
 > > syzbot.
->
-> --
-> You received this message because you are subscribed to the Google Groups=
- "syzkaller-bugs" group.
-> To unsubscribe from this group and stop receiving emails from it, send an=
- email to syzkaller-bugs+unsubscribe@googlegroups.com.
-> To view this discussion on the web visit https://groups.google.com/d/msgi=
-d/syzkaller-bugs/CADvbK_dndFMxyUZk%3Dk8qEy9%3DPNbLc81F%2B%2B2L0fbdtUdbupq4X=
-g%40mail.gmail.com.
-> For more options, visit https://groups.google.com/d/optout.
+>=20
