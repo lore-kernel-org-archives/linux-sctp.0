@@ -1,17 +1,19 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 12 Feb 2019 16:07:38 +0000
+From: David Miller <davem@davemloft.net>
+Date: Thu, 14 Feb 2019 00:34:26 +0000
 Subject: Re: [PATCH net] sctp: set stream ext to NULL after freeing it in sctp_stream_outq_migrate
-Message-Id: <20190212160738.GG10665@localhost.localdomain>
+Message-Id: <20190213.163426.603453137542648612.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <0cb9e543c21495df48c3723044d6c9f64f238eca.1549968661.git.lucien.xin@gmail.com>
 In-Reply-To: <0cb9e543c21495df48c3723044d6c9f64f238eca.1549968661.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+To: lucien.xin@gmail.com
+Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
-On Tue, Feb 12, 2019 at 06:51:01PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 12 Feb 2019 18:51:01 +0800
+
 > In sctp_stream_init(), after sctp_stream_outq_migrate() freed the
 > surplus streams' ext, but sctp_stream_alloc_out() returns -ENOMEM,
 > stream->outcnt will not be set to 'outcnt'.
@@ -28,28 +30,4 @@ On Tue, Feb 12, 2019 at 06:51:01PM +0800, Xin Long wrote:
 > Reported-by: syzbot+58e480e7b28f2d890bfd@syzkaller.appspotmail.com
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-> ---
->  net/sctp/stream.c | 4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-> index f246331..2936ed1 100644
-> --- a/net/sctp/stream.c
-> +++ b/net/sctp/stream.c
-> @@ -144,8 +144,10 @@ static void sctp_stream_outq_migrate(struct sctp_stream *stream,
->  		}
->  	}
->  
-> -	for (i = outcnt; i < stream->outcnt; i++)
-> +	for (i = outcnt; i < stream->outcnt; i++) {
->  		kfree(SCTP_SO(stream, i)->ext);
-> +		SCTP_SO(stream, i)->ext = NULL;
-> +	}
->  }
->  
->  static int sctp_stream_alloc_out(struct sctp_stream *stream, __u16 outcnt,
-> -- 
-> 2.1.0
-> 
+Also applied and queued up for -stable, thanks.
