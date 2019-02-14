@@ -1,47 +1,21 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 12 Feb 2019 16:15:35 +0000
+From: David Miller <davem@davemloft.net>
+Date: Thu, 14 Feb 2019 00:33:09 +0000
 Subject: Re: [PATCH net] sctp: call gso_reset_checksum when computing checksum in sctp_gso_segment
-Message-Id: <20190212161535.GH10665@localhost.localdomain>
+Message-Id: <20190213.163309.1448482672803486233.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <5b8187d1eabd52e4db7d3e4506d98c33571c1c83.1549968450.git.lucien.xin@gmail.com>
 In-Reply-To: <5b8187d1eabd52e4db7d3e4506d98c33571c1c83.1549968450.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+To: lucien.xin@gmail.com
+Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
-On Tue, Feb 12, 2019 at 06:47:30PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 12 Feb 2019 18:47:30 +0800
+
 > Jianlin reported a panic when running sctp gso over gre over vlan device:
-> 
->   [   84.772930] RIP: 0010:do_csum+0x6d/0x170
->   [   84.790605] Call Trace:
->   [   84.791054]  csum_partial+0xd/0x20
->   [   84.791657]  gre_gso_segment+0x2c3/0x390
->   [   84.792364]  inet_gso_segment+0x161/0x3e0
->   [   84.793071]  skb_mac_gso_segment+0xb8/0x120
->   [   84.793846]  __skb_gso_segment+0x7e/0x180
->   [   84.794581]  validate_xmit_skb+0x141/0x2e0
->   [   84.795297]  __dev_queue_xmit+0x258/0x8f0
->   [   84.795949]  ? eth_header+0x26/0xc0
->   [   84.796581]  ip_finish_output2+0x196/0x430
->   [   84.797295]  ? skb_gso_validate_network_len+0x11/0x80
->   [   84.798183]  ? ip_finish_output+0x169/0x270
->   [   84.798875]  ip_output+0x6c/0xe0
->   [   84.799413]  ? ip_append_data.part.50+0xc0/0xc0
->   [   84.800145]  iptunnel_xmit+0x144/0x1c0
->   [   84.800814]  ip_tunnel_xmit+0x62d/0x930 [ip_tunnel]
->   [   84.801699]  gre_tap_xmit+0xac/0xf0 [ip_gre]
->   [   84.802395]  dev_hard_start_xmit+0xa5/0x210
->   [   84.803086]  sch_direct_xmit+0x14f/0x340
->   [   84.803733]  __dev_queue_xmit+0x799/0x8f0
->   [   84.804472]  ip_finish_output2+0x2e0/0x430
->   [   84.805255]  ? skb_gso_validate_network_len+0x11/0x80
->   [   84.806154]  ip_output+0x6c/0xe0
->   [   84.806721]  ? ip_append_data.part.50+0xc0/0xc0
->   [   84.807516]  sctp_packet_transmit+0x716/0xa10 [sctp]
->   [   84.808337]  sctp_outq_flush+0xd7/0x880 [sctp]
-> 
+ ...
 > It was caused by SKB_GSO_CB(skb)->csum_start not set in sctp_gso_segment.
 > sctp_gso_segment() calls skb_segment() with 'feature | NETIF_F_HW_CSUM',
 > which causes SKB_GSO_CB(skb)->csum_start not to be set in skb_segment().
@@ -55,24 +29,4 @@ On Tue, Feb 12, 2019 at 06:47:30PM +0800, Xin Long wrote:
 > Reported-by: Jianlin Shi <jishi@redhat.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-> ---
->  net/sctp/offload.c | 1 +
->  1 file changed, 1 insertion(+)
-> 
-> diff --git a/net/sctp/offload.c b/net/sctp/offload.c
-> index 123e9f2..edfcf16 100644
-> --- a/net/sctp/offload.c
-> +++ b/net/sctp/offload.c
-> @@ -36,6 +36,7 @@ static __le32 sctp_gso_make_checksum(struct sk_buff *skb)
->  {
->  	skb->ip_summed = CHECKSUM_NONE;
->  	skb->csum_not_inet = 0;
-> +	gso_reset_checksum(skb, ~0);
->  	return sctp_compute_cksum(skb, skb_transport_offset(skb));
->  }
->  
-> -- 
-> 2.1.0
-> 
+Applied and queued up for -stable, thanks.
