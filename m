@@ -1,7 +1,7 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 14 Feb 2019 14:23:41 +0000
+Date: Thu, 14 Feb 2019 14:39:11 +0000
 Subject: Re: KASAN: use-after-free Read in sctp_outq_tail
-Message-Id: <20190214142341.GK10665@localhost.localdomain>
+Message-Id: <20190214143911.GL10665@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <0000000000002015db0581b71858@google.com>
  <CADvbK_dndFMxyUZk=k8qEy9=PNbLc81F++2L0fbdtUdbupq4Xg@mail.gmail.com>
@@ -65,13 +65,6 @@ ref
 > > sctp_sendmsg_to_asoc(), the new data will work fine. As for
 >=20
 > Ehh, right!
-
-Marking it as fixed again then, as with this patch it won't crash
-anymore.
-
-#syz fix:
-sctp: set stream ext to NULL after freeing it in sctp_stream_outq_migrate
-
 >=20
 > > the old data on the surplus streams, it has been dropped in
 > > sctp_stream_outq_migrate().
@@ -169,4 +162,7 @@ re */
 >=20
 > This may hurt a bit more with the genradix migration, but then we
 > don't end up dropping data for nothing.
->=20
+
+Reviewing calls to this function, if this allocation fails it will
+either cause the asoc to be terminated or sendmsg error.  So data loss
+is not really an issue here.
