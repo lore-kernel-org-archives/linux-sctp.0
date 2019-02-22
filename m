@@ -1,58 +1,55 @@
-From: kwiecienmaciek@gmail.com
-Date: Fri, 22 Feb 2019 08:45:26 +0000
-Subject: [PATCH] sctp: don't compare hb_timer expire date before starting it
-Message-Id: <20190222084526.8214-1-maciej.kwiecien@nokia.com>
+From: "Sverdlin, Alexander (Nokia - DE/Ulm)" <alexander.sverdlin@nokia.com>
+Date: Fri, 22 Feb 2019 10:03:39 +0000
+Subject: Re: [PATCH] sctp: don't compare hb_timer expire date before starting it
+Message-Id: <16110895-be57-eea2-ddba-5265916e9493@nokia.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20190222084526.8214-1-maciej.kwiecien@nokia.com>
+In-Reply-To: <20190222084526.8214-1-maciej.kwiecien@nokia.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
-Cc: netdev@vger.kernel.org, alexander.sverdlin@nokia.com, Maciej Kwiecien <maciej.kwiecien@nokia.com>
+To: "kwiecienmaciek@gmail.com" <kwiecienmaciek@gmail.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
+Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "Kwiecien, Maciej (Nokia - PL/Wroclaw)" <maciej.kwiecien@nokia.com>
 
-From: Maciej Kwiecien <maciej.kwiecien@nokia.com>
-
-hb_timer might not start at all for a particular transport because its
-start is conditional. In a result a node is not sending heartbeats.
-
-Function sctp_transport_reset_hb_timer has two roles:
-    - initial start of hb_timer for a given transport,
-    - update expire date of hb_timer for a given transport.
-The function is optimized to update timer's expire only if it is before
-a new calculated one but this comparison is invalid for a timer which
-has not yet started. Such a timer has expire = 0 and if a new expire
-value is bigger than (MAX_JIFFIES / 2 + 2) then "time_before" macro will
-fail and timer will not start resulting in no heartbeat packets send by
-the node.
-
-This was found when association was initialized within first 5 mins
-after system boot due to jiffies init value which is near to MAX_JIFFIES.
-
-Test kernel version: 4.9.154 (ARCH=arm)
-hb_timer.expire = 0;                //initialized, not started timer
-new_expire = MAX_JIFFIES / 2 + 2;   //or more
-time_before(hb_timer.expire, new_expire) = false
-
-Fixes: ba6f5e33bdbb ("sctp: avoid refreshing heartbeat timer too often")
-Reported-by: Marcin Stojek <marcin.stojek@nokia.com>
-Tested-by: Marcin Stojek <marcin.stojek@nokia.com>
-Signed-off-by: Maciej Kwiecien <maciej.kwiecien@nokia.com>
----
- net/sctp/transport.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-index 033696e6f74f..ad158d311ffa 100644
---- a/net/sctp/transport.c
-+++ b/net/sctp/transport.c
-@@ -207,7 +207,8 @@ void sctp_transport_reset_hb_timer(struct sctp_transport *transport)
- 
- 	/* When a data chunk is sent, reset the heartbeat interval.  */
- 	expires = jiffies + sctp_transport_timeout(transport);
--	if (time_before(transport->hb_timer.expires, expires) &&
-+	if ((time_before(transport->hb_timer.expires, expires) ||
-+	     !timer_pending(&transport->hb_timer)) &&
- 	    !mod_timer(&transport->hb_timer,
- 		       expires + prandom_u32_max(transport->rto)))
- 		sctp_transport_hold(transport);
--- 
-2.14.1
+T24gMjIvMDIvMjAxOSAwOTo0NSwga3dpZWNpZW5tYWNpZWtAZ21haWwuY29tIHdyb3RlOg0KPiBG
+cm9tOiBNYWNpZWogS3dpZWNpZW4gPG1hY2llai5rd2llY2llbkBub2tpYS5jb20+DQo+IA0KPiBo
+Yl90aW1lciBtaWdodCBub3Qgc3RhcnQgYXQgYWxsIGZvciBhIHBhcnRpY3VsYXIgdHJhbnNwb3J0
+IGJlY2F1c2UgaXRzDQo+IHN0YXJ0IGlzIGNvbmRpdGlvbmFsLiBJbiBhIHJlc3VsdCBhIG5vZGUg
+aXMgbm90IHNlbmRpbmcgaGVhcnRiZWF0cy4NCj4gDQo+IEZ1bmN0aW9uIHNjdHBfdHJhbnNwb3J0
+X3Jlc2V0X2hiX3RpbWVyIGhhcyB0d28gcm9sZXM6DQo+ICAgICAtIGluaXRpYWwgc3RhcnQgb2Yg
+aGJfdGltZXIgZm9yIGEgZ2l2ZW4gdHJhbnNwb3J0LA0KPiAgICAgLSB1cGRhdGUgZXhwaXJlIGRh
+dGUgb2YgaGJfdGltZXIgZm9yIGEgZ2l2ZW4gdHJhbnNwb3J0Lg0KPiBUaGUgZnVuY3Rpb24gaXMg
+b3B0aW1pemVkIHRvIHVwZGF0ZSB0aW1lcidzIGV4cGlyZSBvbmx5IGlmIGl0IGlzIGJlZm9yZQ0K
+PiBhIG5ldyBjYWxjdWxhdGVkIG9uZSBidXQgdGhpcyBjb21wYXJpc29uIGlzIGludmFsaWQgZm9y
+IGEgdGltZXIgd2hpY2gNCj4gaGFzIG5vdCB5ZXQgc3RhcnRlZC4gU3VjaCBhIHRpbWVyIGhhcyBl
+eHBpcmUgPT0gMCBhbmQgaWYgYSBuZXcgZXhwaXJlDQo+IHZhbHVlIGlzIGJpZ2dlciB0aGFuIChN
+QVhfSklGRklFUyAvIDIgKyAyKSB0aGVuICJ0aW1lX2JlZm9yZSIgbWFjcm8gd2lsbA0KPiBmYWls
+IGFuZCB0aW1lciB3aWxsIG5vdCBzdGFydCByZXN1bHRpbmcgaW4gbm8gaGVhcnRiZWF0IHBhY2tl
+dHMgc2VuZCBieQ0KPiB0aGUgbm9kZS4NCj4gDQo+IFRoaXMgd2FzIGZvdW5kIHdoZW4gYXNzb2Np
+YXRpb24gd2FzIGluaXRpYWxpemVkIHdpdGhpbiBmaXJzdCA1IG1pbnMNCj4gYWZ0ZXIgc3lzdGVt
+IGJvb3QgZHVlIHRvIGppZmZpZXMgaW5pdCB2YWx1ZSB3aGljaCBpcyBuZWFyIHRvIE1BWF9KSUZG
+SUVTLg0KPiANCj4gVGVzdCBrZXJuZWwgdmVyc2lvbjogNC45LjE1NCAoQVJDSD1hcm0pDQo+IGhi
+X3RpbWVyLmV4cGlyZSA9IDA7ICAgICAgICAgICAgICAgIC8vaW5pdGlhbGl6ZWQsIG5vdCBzdGFy
+dGVkIHRpbWVyDQo+IG5ld19leHBpcmUgPSBNQVhfSklGRklFUyAvIDIgKyAyOyAgIC8vb3IgbW9y
+ZQ0KPiB0aW1lX2JlZm9yZShoYl90aW1lci5leHBpcmUsIG5ld19leHBpcmUpID09IGZhbHNlDQo+
+IA0KPiBGaXhlczogYmE2ZjVlMzNiZGJiICgic2N0cDogYXZvaWQgcmVmcmVzaGluZyBoZWFydGJl
+YXQgdGltZXIgdG9vIG9mdGVuIikNCj4gUmVwb3J0ZWQtYnk6IE1hcmNpbiBTdG9qZWsgPG1hcmNp
+bi5zdG9qZWtAbm9raWEuY29tPg0KPiBUZXN0ZWQtYnk6IE1hcmNpbiBTdG9qZWsgPG1hcmNpbi5z
+dG9qZWtAbm9raWEuY29tPg0KDQpSZXZpZXdlZC1ieTogQWxleGFuZGVyIFN2ZXJkbGluIDxhbGV4
+YW5kZXIuc3ZlcmRsaW5Abm9raWEuY29tPg0KDQo+IFNpZ25lZC1vZmYtYnk6IE1hY2llaiBLd2ll
+Y2llbiA8bWFjaWVqLmt3aWVjaWVuQG5va2lhLmNvbT4NCj4gLS0tDQo+ICBuZXQvc2N0cC90cmFu
+c3BvcnQuYyB8IDMgKystDQo+ICAxIGZpbGUgY2hhbmdlZCwgMiBpbnNlcnRpb25zKCspLCAxIGRl
+bGV0aW9uKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvbmV0L3NjdHAvdHJhbnNwb3J0LmMgYi9uZXQv
+c2N0cC90cmFuc3BvcnQuYw0KPiBpbmRleCAwMzM2OTZlNmY3NGYuLmFkMTU4ZDMxMWZmYSAxMDA2
+NDQNCj4gLS0tIGEvbmV0L3NjdHAvdHJhbnNwb3J0LmMNCj4gKysrIGIvbmV0L3NjdHAvdHJhbnNw
+b3J0LmMNCj4gQEAgLTIwNyw3ICsyMDcsOCBAQCB2b2lkIHNjdHBfdHJhbnNwb3J0X3Jlc2V0X2hi
+X3RpbWVyKHN0cnVjdCBzY3RwX3RyYW5zcG9ydCAqdHJhbnNwb3J0KQ0KPiAgDQo+ICAJLyogV2hl
+biBhIGRhdGEgY2h1bmsgaXMgc2VudCwgcmVzZXQgdGhlIGhlYXJ0YmVhdCBpbnRlcnZhbC4gICov
+DQo+ICAJZXhwaXJlcyA9IGppZmZpZXMgKyBzY3RwX3RyYW5zcG9ydF90aW1lb3V0KHRyYW5zcG9y
+dCk7DQo+IC0JaWYgKHRpbWVfYmVmb3JlKHRyYW5zcG9ydC0+aGJfdGltZXIuZXhwaXJlcywgZXhw
+aXJlcykgJiYNCj4gKwlpZiAoKHRpbWVfYmVmb3JlKHRyYW5zcG9ydC0+aGJfdGltZXIuZXhwaXJl
+cywgZXhwaXJlcykgfHwNCj4gKwkgICAgICF0aW1lcl9wZW5kaW5nKCZ0cmFuc3BvcnQtPmhiX3Rp
+bWVyKSkgJiYNCj4gIAkgICAgIW1vZF90aW1lcigmdHJhbnNwb3J0LT5oYl90aW1lciwNCj4gIAkJ
+ICAgICAgIGV4cGlyZXMgKyBwcmFuZG9tX3UzMl9tYXgodHJhbnNwb3J0LT5ydG8pKSkNCj4gIAkJ
+c2N0cF90cmFuc3BvcnRfaG9sZCh0cmFuc3BvcnQpOw0KDQotLSANCkJlc3QgcmVnYXJkcywNCkFs
+ZXhhbmRlciBTdmVyZGxpbi4NCg=
