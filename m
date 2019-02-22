@@ -1,46 +1,58 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 03 Feb 2019 19:28:34 +0000
-Subject: Re: [PATCHv2 net] sctp: check and update stream->out_curr when allocating stream_out
-Message-Id: <CADvbK_eY1UePmKDPYFkhTq3mZ=T6-7QGikip3v+pjfvC_BYk2w@mail.gmail.com>
+From: kwiecienmaciek@gmail.com
+Date: Fri, 22 Feb 2019 08:45:26 +0000
+Subject: [PATCH] sctp: don't compare hb_timer expire date before starting it
+Message-Id: <20190222084526.8214-1-maciej.kwiecien@nokia.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1689af9c618.2807.d241da8dbb85b87157d6a44ac288e71f@tuxdriver.com>
- <20190201003941.GD10665@localhost.localdomain> <20190201123118.GA5970@hmswarspite.think-freely.org>
- <20190201.103812.1527503455899125278.davem@davemloft.net>
-In-Reply-To: <20190201.103812.1527503455899125278.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org, alexander.sverdlin@nokia.com, Maciej Kwiecien <maciej.kwiecien@nokia.com>
 
-On Sat, Feb 2, 2019 at 2:38 AM David Miller <davem@davemloft.net> wrote:
->
-> From: Neil Horman <nhorman@tuxdriver.com>
-> Date: Fri, 1 Feb 2019 07:31:18 -0500
->
-> > On Thu, Jan 31, 2019 at 10:39:41PM -0200, Marcelo Ricardo Leitner wrote:
-> >> On Tue, Jan 29, 2019 at 07:58:07PM +0100, Tuxdriver wrote:
-> >> > I was initially under the impression that with Kent's repost, the radixtree
-> >> > (which is what I think you meant by rhashtables) updates would be merged
-> >>
-> >> Oops! Yep.. I had meant flex_arrays actually.
-> >>
-> >> > imminently, but that doesn't seem to be the case.  I'd really like to know
-> >> > what the hold up there is, as that patch seems to have been stalled for
-> >> > months.  I hate the notion of breaking the radixtree patch, but if it's
-> >> > status is indeterminate, then, yes, we probably need to go with xins patch
-> >> > for the short term, and let Kent fix it up in due course.
-> >>
-> >> Dave, can you please consider applying this patch? The conflict
-> >> resolution will be easy: just ignore the changes introduced by this
-> >> patch.
-> >>
-> > Dave I concur with Marcelo here.  Kent was very active in getting sctp fixed up
-> > to use radixtrees, but now he seems to have gone to ground, and for whatever
-> > reason, no one seems interested in incorporating his patch.  Its been languising
-> > for months, so I think we need to take action to secure sctp now until such time
-> > as his genradix changes finally move forward.
->
-> I agree, please let's get this sctp patch resubmitted and back into
-> patchwork and I will apply it.
-reposted.
+From: Maciej Kwiecien <maciej.kwiecien@nokia.com>
+
+hb_timer might not start at all for a particular transport because its
+start is conditional. In a result a node is not sending heartbeats.
+
+Function sctp_transport_reset_hb_timer has two roles:
+    - initial start of hb_timer for a given transport,
+    - update expire date of hb_timer for a given transport.
+The function is optimized to update timer's expire only if it is before
+a new calculated one but this comparison is invalid for a timer which
+has not yet started. Such a timer has expire = 0 and if a new expire
+value is bigger than (MAX_JIFFIES / 2 + 2) then "time_before" macro will
+fail and timer will not start resulting in no heartbeat packets send by
+the node.
+
+This was found when association was initialized within first 5 mins
+after system boot due to jiffies init value which is near to MAX_JIFFIES.
+
+Test kernel version: 4.9.154 (ARCH=arm)
+hb_timer.expire = 0;                //initialized, not started timer
+new_expire = MAX_JIFFIES / 2 + 2;   //or more
+time_before(hb_timer.expire, new_expire) = false
+
+Fixes: ba6f5e33bdbb ("sctp: avoid refreshing heartbeat timer too often")
+Reported-by: Marcin Stojek <marcin.stojek@nokia.com>
+Tested-by: Marcin Stojek <marcin.stojek@nokia.com>
+Signed-off-by: Maciej Kwiecien <maciej.kwiecien@nokia.com>
+---
+ net/sctp/transport.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index 033696e6f74f..ad158d311ffa 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -207,7 +207,8 @@ void sctp_transport_reset_hb_timer(struct sctp_transport *transport)
+ 
+ 	/* When a data chunk is sent, reset the heartbeat interval.  */
+ 	expires = jiffies + sctp_transport_timeout(transport);
+-	if (time_before(transport->hb_timer.expires, expires) &&
++	if ((time_before(transport->hb_timer.expires, expires) ||
++	     !timer_pending(&transport->hb_timer)) &&
+ 	    !mod_timer(&transport->hb_timer,
+ 		       expires + prandom_u32_max(transport->rto)))
+ 		sctp_transport_hold(transport);
+-- 
+2.14.1
