@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 22 Feb 2019 12:49:13 +0000
+From: David Miller <davem@davemloft.net>
+Date: Fri, 22 Feb 2019 19:22:22 +0000
 Subject: Re: [PATCH] sctp: don't compare hb_timer expire date before starting it
-Message-Id: <20190222124913.GM10665@localhost.localdomain>
+Message-Id: <20190222.112222.1641489327512557605.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20190222084526.8214-1-maciej.kwiecien@nokia.com>
 In-Reply-To: <20190222084526.8214-1-maciej.kwiecien@nokia.com>
@@ -9,9 +9,11 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: kwiecienmaciek@gmail.com
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, alexander.sverdlin@nokia.com, Maciej Kwiecien <maciej.kwiecien@nokia.com>
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, alexander.sverdlin@nokia.com, maciej.kwiecien@nokia.com
 
-On Fri, Feb 22, 2019 at 09:45:26AM +0100, kwiecienmaciek@gmail.com wrote:
+From: kwiecienmaciek@gmail.com
+Date: Fri, 22 Feb 2019 09:45:26 +0100
+
 > From: Maciej Kwiecien <maciej.kwiecien@nokia.com>
 > 
 > hb_timer might not start at all for a particular transport because its
@@ -40,26 +42,4 @@ On Fri, Feb 22, 2019 at 09:45:26AM +0100, kwiecienmaciek@gmail.com wrote:
 > Tested-by: Marcin Stojek <marcin.stojek@nokia.com>
 > Signed-off-by: Maciej Kwiecien <maciej.kwiecien@nokia.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-> ---
->  net/sctp/transport.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-> index 033696e6f74f..ad158d311ffa 100644
-> --- a/net/sctp/transport.c
-> +++ b/net/sctp/transport.c
-> @@ -207,7 +207,8 @@ void sctp_transport_reset_hb_timer(struct sctp_transport *transport)
->  
->  	/* When a data chunk is sent, reset the heartbeat interval.  */
->  	expires = jiffies + sctp_transport_timeout(transport);
-> -	if (time_before(transport->hb_timer.expires, expires) &&
-> +	if ((time_before(transport->hb_timer.expires, expires) ||
-> +	     !timer_pending(&transport->hb_timer)) &&
->  	    !mod_timer(&transport->hb_timer,
->  		       expires + prandom_u32_max(transport->rto)))
->  		sctp_transport_hold(transport);
-> -- 
-> 2.14.1
-> 
+Applied and queued up for -stable, thank you.
