@@ -1,36 +1,42 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 28 Feb 2019 18:34:12 +0000
-Subject: Re: [PATCH] sctp: chunk.c: correct format string for size_t in printk
-Message-Id: <20190228.103412.1079788847751298444.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 25 Feb 2019 11:25:37 +0000
+Subject: [PATCH net] sctp: get sctphdr by offset in sctp_compute_cksum
+Message-Id: <2aee76766861ac9e46b7acf123d5d6e8f2adf8e0.1551093937.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20190228113652.55552-1-maennich@google.com>
-In-Reply-To: <20190228113652.55552-1-maennich@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: maennich@google.com
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: linux-kernel@vger.kernel.org, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-From: Matthias Maennich <maennich@google.com>
-Date: Thu, 28 Feb 2019 11:36:52 +0000
+sctp_hdr(skb) only works when skb->transport_header is set properly.
 
-> According to Documentation/core-api/printk-formats.rst, size_t should be
-> printed with %zu, rather than %Zu.
-> 
-> In addition, using %Zu triggers a warning on clang (-Wformat-extra-args):
-> 
-> net/sctp/chunk.c:196:25: warning: data argument not used by format string [-Wformat-extra-args]
->                                     __func__, asoc, max_data);
->                                     ~~~~~~~~~~~~~~~~^~~~~~~~~
-> ./include/linux/printk.h:440:49: note: expanded from macro 'pr_warn_ratelimited'
->         printk_ratelimited(KERN_WARNING pr_fmt(fmt), ##__VA_ARGS__)
->         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~
-> ./include/linux/printk.h:424:17: note: expanded from macro 'printk_ratelimited'
->                 printk(fmt, ##__VA_ARGS__);                             \
->                        ~~~    ^
-> 
-> Fixes: 5b5e0928f742 ("lib/vsprintf.c: remove %Z support")
-> Link: https://github.com/ClangBuiltLinux/linux/issues/378
-> Signed-off-by: Matthias Maennich <maennich@google.com>
+But in the path of nf_conntrack_in: sctp_packet() -> sctp_error()
 
-Applied, thanks.
+skb->transport_header is not guaranteed to be right value for sctp.
+It will cause to fail to check the checksum for sctp packets.
+
+So fix it by using offset, which is always right in all places.
+
+Fixes: e6d8b64b34aa ("net: sctp: fix and consolidate SCTP checksumming code")
+Reported-by: Li Shuang <shuali@redhat.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/checksum.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/net/sctp/checksum.h b/include/net/sctp/checksum.h
+index 32ee65a..1c6e6c0 100644
+--- a/include/net/sctp/checksum.h
++++ b/include/net/sctp/checksum.h
+@@ -61,7 +61,7 @@ static inline __wsum sctp_csum_combine(__wsum csum, __wsum csum2,
+ static inline __le32 sctp_compute_cksum(const struct sk_buff *skb,
+ 					unsigned int offset)
+ {
+-	struct sctphdr *sh = sctp_hdr(skb);
++	struct sctphdr *sh = (struct sctphdr *)(skb->data + offset);
+ 	const struct skb_checksum_ops ops = {
+ 		.update  = sctp_csum_update,
+ 		.combine = sctp_csum_combine,
+-- 
+2.1.0
