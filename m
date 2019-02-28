@@ -1,52 +1,47 @@
-From: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
-Date: Wed, 13 Feb 2019 17:23:39 +0000
-Subject: Re: [PATCH net] sctp: make sctp_setsockopt_events() less strict about the option length
-Message-Id: <20190213172339.GJ13621@localhost.localdomain>
+From: Matthias Maennich <maennich@google.com>
+Date: Thu, 28 Feb 2019 11:36:52 +0000
+Subject: [PATCH] sctp: chunk.c: correct format string for size_t in printk
+Message-Id: <20190228113652.55552-1-maennich@google.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20190206201430.18830-1-julien@arista.com>
- <20190206203754.GC13621@localhost.localdomain>
- <20190209.151217.175627323493244750.davem@davemloft.net>
- <20190210124616.GG13621@localhost.localdomain>
- <20190210201559.GE10665@localhost.localdomain>
- <71e3d64ae3d44e499f3fb9f876398ee4@AcuMS.aculab.com>
-In-Reply-To: <71e3d64ae3d44e499f3fb9f876398ee4@AcuMS.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@aculab.com>
-Cc: David Miller <davem@davemloft.net>, "julien@arista.com" <julien@arista.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "nhorman@tuxdriver.com" <nhorman@tuxdriver.com>, "vyasevich@gmail.com" <vyasevich@gmail.com>, "lucien.xin@gmail.com" <lucien.xin@gmail.com>
+Cc: Matthias Maennich <maennich@google.com>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On Wed, Feb 13, 2019 at 04:17:41PM +0000, David Laight wrote:
-> From: Marcelo Ricardo Leitner
-> > Sent: 10 February 2019 20:16
-> ...
-> > We have issues on read path too. 52ccb8e90c0a ("[SCTP]: Update
-> > SCTP_PEER_ADDR_PARAMS socket option to the latest api draft.")
-> > extended struct sctp_paddrparams and its getsockopt goes with:
-> 
-> The API shouldn't change like this at all.
-> Is this from the RFC or elsewhere??
+According to Documentation/core-api/printk-formats.rst, size_t should be
+printed with %zu, rather than %Zu.
 
-I would think so. That commit is from 2005, pretty close to initial
-SCTP RFCs.
+In addition, using %Zu triggers a warning on clang (-Wformat-extra-args):
 
-> 
-> If the structure changes the socket option name and value
-> should also change.
+net/sctp/chunk.c:196:25: warning: data argument not used by format string [-Wformat-extra-args]
+                                    __func__, asoc, max_data);
+                                    ~~~~~~~~~~~~~~~~^~~~~~~~~
+./include/linux/printk.h:440:49: note: expanded from macro 'pr_warn_ratelimited'
+        printk_ratelimited(KERN_WARNING pr_fmt(fmt), ##__VA_ARGS__)
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~
+./include/linux/printk.h:424:17: note: expanded from macro 'printk_ratelimited'
+                printk(fmt, ##__VA_ARGS__);                             \
+                       ~~~    ^
 
-That's what is at the core of this thread.
+Fixes: 5b5e0928f742 ("lib/vsprintf.c: remove %Z support")
+Link: https://github.com/ClangBuiltLinux/linux/issues/378
+Signed-off-by: Matthias Maennich <maennich@google.com>
+---
+ net/sctp/chunk.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-  Marcelo
-
-> 
-> IMHO large chunks of the sctp rfc are just horrid.
-> In particular all the places where is states that API functions are
-> implemented using setsockopt() - that should be an implementation detail.
-> Also ISTR that some of the structures are defined to have holes in them...
-> 
-> 	David
-> 
-> -
-> Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-> Registration No: 1397386 (Wales)
-> 
+diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
+index 64bef313d436..5cb7c1ff97e9 100644
+--- a/net/sctp/chunk.c
++++ b/net/sctp/chunk.c
+@@ -192,7 +192,7 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
+ 	if (unlikely(!max_data)) {
+ 		max_data = sctp_min_frag_point(sctp_sk(asoc->base.sk),
+ 					       sctp_datachk_len(&asoc->stream));
+-		pr_warn_ratelimited("%s: asoc:%p frag_point is zero, forcing max_data to default minimum (%Zu)",
++		pr_warn_ratelimited("%s: asoc:%p frag_point is zero, forcing max_data to default minimum (%zu)",
+ 				    __func__, asoc, max_data);
+ 	}
+ 
+-- 
+2.21.0.rc2.261.ga7da99ff1b-goog
