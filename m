@@ -1,17 +1,19 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 28 Feb 2019 13:55:34 +0000
+From: David Miller <davem@davemloft.net>
+Date: Thu, 28 Feb 2019 18:34:12 +0000
 Subject: Re: [PATCH] sctp: chunk.c: correct format string for size_t in printk
-Message-Id: <20190228135534.GC13343@localhost.localdomain>
+Message-Id: <20190228.103412.1079788847751298444.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20190228113652.55552-1-maennich@google.com>
 In-Reply-To: <20190228113652.55552-1-maennich@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Matthias Maennich <maennich@google.com>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: maennich@google.com
+Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On Thu, Feb 28, 2019 at 11:36:52AM +0000, Matthias Maennich wrote:
+From: Matthias Maennich <maennich@google.com>
+Date: Thu, 28 Feb 2019 11:36:52 +0000
+
 > According to Documentation/core-api/printk-formats.rst, size_t should be
 > printed with %zu, rather than %Zu.
 > 
@@ -31,25 +33,4 @@ On Thu, Feb 28, 2019 at 11:36:52AM +0000, Matthias Maennich wrote:
 > Link: https://github.com/ClangBuiltLinux/linux/issues/378
 > Signed-off-by: Matthias Maennich <maennich@google.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-> ---
->  net/sctp/chunk.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
-> index 64bef313d436..5cb7c1ff97e9 100644
-> --- a/net/sctp/chunk.c
-> +++ b/net/sctp/chunk.c
-> @@ -192,7 +192,7 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
->  	if (unlikely(!max_data)) {
->  		max_data = sctp_min_frag_point(sctp_sk(asoc->base.sk),
->  					       sctp_datachk_len(&asoc->stream));
-> -		pr_warn_ratelimited("%s: asoc:%p frag_point is zero, forcing max_data to default minimum (%Zu)",
-> +		pr_warn_ratelimited("%s: asoc:%p frag_point is zero, forcing max_data to default minimum (%zu)",
->  				    __func__, asoc, max_data);
->  	}
->  
-> -- 
-> 2.21.0.rc2.261.ga7da99ff1b-goog
-> 
+Applied, thanks.
