@@ -1,38 +1,30 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 20 Mar 2019 18:10:28 +0000
-Subject: Re: [PATCH net] sctp: use memdup_user instead of vmemdup_user
-Message-Id: <20190320.111028.467469471139039452.davem@davemloft.net>
+From: Joe Perches <joe@perches.com>
+Date: Fri, 01 Mar 2019 22:22:30 +0000
+Subject: Re: [PATCH] sctp: chunk.c: correct format string for size_t in printk
+Message-Id: <9bcd6a2389a8ffce41768ddc8b224daedacf76b7.camel@perches.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <94e635135533b7469c84b0aa4df59ea7818a486a.1553064578.git.lucien.xin@gmail.com>
-In-Reply-To: <94e635135533b7469c84b0aa4df59ea7818a486a.1553064578.git.lucien.xin@gmail.com>
+References: <20190228113652.55552-1-maennich@google.com>
+In-Reply-To: <20190228113652.55552-1-maennich@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, syzkaller@googlegroups.com
+To: Matthias Maennich <maennich@google.com>
+Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 20 Mar 2019 14:49:38 +0800
+On Thu, 2019-02-28 at 11:36 +0000, Matthias Maennich wrote:
+> According to Documentation/core-api/printk-formats.rst, size_t should be
+> printed with %zu, rather than %Zu.
+> 
+> In addition, using %Zu triggers a warning on clang (-Wformat-extra-args):
+[]
+> diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
+[]
+> @@ -192,7 +192,7 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
+>  	if (unlikely(!max_data)) {
+>  		max_data = sctp_min_frag_point(sctp_sk(asoc->base.sk),
+>  					       sctp_datachk_len(&asoc->stream));
+> -		pr_warn_ratelimited("%s: asoc:%p frag_point is zero, forcing max_data to default minimum (%Zu)",
+> +		pr_warn_ratelimited("%s: asoc:%p frag_point is zero, forcing max_data to default minimum (%zu)",
+>  				    __func__, asoc, max_data);
 
-> In sctp_setsockopt_bindx()/__sctp_setsockopt_connectx(), it allocates
-> memory with addrs_size which is passed from userspace. We used flag
-> GFP_USER to put some more restrictions on it in Commit cacc06215271
-> ("sctp: use GFP_USER for user-controlled kmalloc").
-> 
-> However, since Commit c981f254cc82 ("sctp: use vmemdup_user() rather
-> than badly open-coding memdup_user()"), vmemdup_user() has been used,
-> which doesn't check GFP_USER flag when goes to vmalloc_*(). So when
-> addrs_size is a huge value, it could exhaust memory and even trigger
-> oom killer.
-> 
-> This patch is to use memdup_user() instead, in which GFP_USER would
-> work to limit the memory allocation with a huge addrs_size.
-> 
-> Note we can't fix it by limiting 'addrs_size', as there's no demand
-> for it from RFC.
-> 
-> Reported-by: syzbot+ec1b7575afef85a0e5ca@syzkaller.appspotmail.com
-> Fixes: c981f254cc82 ("sctp: use vmemdup_user() rather than badly open-coding memdup_user()")
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Applied and queued up for -stable, thanks Xin.
+trivia: the format is also missing a terminating '\n'
