@@ -1,30 +1,32 @@
-From: Joe Perches <joe@perches.com>
-Date: Fri, 01 Mar 2019 22:22:30 +0000
-Subject: Re: [PATCH] sctp: chunk.c: correct format string for size_t in printk
-Message-Id: <9bcd6a2389a8ffce41768ddc8b224daedacf76b7.camel@perches.com>
+From: syzbot <syzbot+ec1b7575afef85a0e5ca@syzkaller.appspotmail.com>
+Date: Sun, 17 Mar 2019 20:49:01 +0000
+Subject: Re: kernel panic: corrupted stack end in wb_workfn
+Message-Id: <000000000000db3d130584506672@google.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20190228113652.55552-1-maennich@google.com>
-In-Reply-To: <20190228113652.55552-1-maennich@google.com>
+In-Reply-To: <000000000000b05d0c057e492e33@google.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Matthias Maennich <maennich@google.com>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: akpm@linux-foundation.org, aryabinin@virtuozzo.com, cai@lca.pw, davem@davemloft.net, dvyukov@google.com, guro@fb.com, hannes@cmpxchg.org, jbacik@fb.com, ktkhai@virtuozzo.com, linux-kernel@vger.kernel.org, linux-mm@kvack.org, linux-sctp@vger.kernel.org, mgorman@techsingularity.net, mhocko@suse.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, shakeelb@google.com, syzkaller-bugs@googlegroups.com, viro@zeniv.linux.org.uk, vyasevich@gmail.com, willy@infradead.org
 
-On Thu, 2019-02-28 at 11:36 +0000, Matthias Maennich wrote:
-> According to Documentation/core-api/printk-formats.rst, size_t should be
-> printed with %zu, rather than %Zu.
-> 
-> In addition, using %Zu triggers a warning on clang (-Wformat-extra-args):
-[]
-> diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
-[]
-> @@ -192,7 +192,7 @@ struct sctp_datamsg *sctp_datamsg_from_user(struct sctp_association *asoc,
->  	if (unlikely(!max_data)) {
->  		max_data = sctp_min_frag_point(sctp_sk(asoc->base.sk),
->  					       sctp_datachk_len(&asoc->stream));
-> -		pr_warn_ratelimited("%s: asoc:%p frag_point is zero, forcing max_data to default minimum (%Zu)",
-> +		pr_warn_ratelimited("%s: asoc:%p frag_point is zero, forcing max_data to default minimum (%zu)",
->  				    __func__, asoc, max_data);
+syzbot has bisected this bug to:
 
-trivia: the format is also missing a terminating '\n'
+commit c981f254cc82f50f8cb864ce6432097b23195b9c
+Author: Al Viro <viro@zeniv.linux.org.uk>
+Date:   Sun Jan 7 18:19:09 2018 +0000
+
+     sctp: use vmemdup_user() rather than badly open-coding memdup_user()
+
+bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=137bcecf200000
+start commit:   c981f254 sctp: use vmemdup_user() rather than badly open-c..
+git tree:       upstream
+final crash:    https://syzkaller.appspot.com/x/report.txt?x=10fbcecf200000
+console output: https://syzkaller.appspot.com/x/log.txt?x=177bcecf200000
+kernel config:  https://syzkaller.appspot.com/x/.config?x^7dc790609552d7
+dashboard link: https://syzkaller.appspot.com/bug?extid=EC1b7575afef85a0e5ca
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=16a9a84b400000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=17199bb3400000
+
+Reported-by: syzbot+ec1b7575afef85a0e5ca@syzkaller.appspotmail.com
+Fixes: c981f254 ("sctp: use vmemdup_user() rather than badly open-coding =20
+memdup_user()")
