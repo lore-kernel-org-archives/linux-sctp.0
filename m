@@ -1,15 +1,44 @@
-From: Eden Zuwa <edenzuwa@gmail.com>
-Date: Sat, 23 Mar 2019 10:04:17 +0000
-Subject: Hi
-Message-Id: <1395724331.9089888.1553335457956@mail.yahoo.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 18 Mar 2019 12:06:05 +0000
+Subject: [PATCH net 07/13] sctp: fix ignoring asoc_id for tcp-style sockets on SCTP_AUTH_ACTIVE_KEY sockopt
+Message-Id: <ead4f7e6f620d64b9616b8e394e559c55427229e.1552910681.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1552910681.git.lucien.xin@gmail.com>
+ <a866141aba7511710929fffd71b0b911ddda28f4.1552910681.git.lucien.xin@gmail.com>
+ <b7541db7198a1df5d75100bd9cb19678613c0a10.1552910681.git.lucien.xin@gmail.com>
+ <47d570738f0cc850e9183731e47d15a7647764a0.1552910681.git.lucien.xin@gmail.com>
+ <3d889968ad901918974cc09c78064bd4a5a24ff7.1552910681.git.lucien.xin@gmail.com>
+ <446bf443557ec1433a5f85c9a1e15987df20a8df.1552910681.git.lucien.xin@gmail.com>
+ <9028a9b0f9968d629614a36cbbf79fef34935717.1552910681.git.lucien.xin@gmail.com>
+In-Reply-To: <9028a9b0f9968d629614a36cbbf79fef34935717.1552910681.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
+A similar fix as Patch "sctp: fix ignoring asoc_id for tcp-style sockets on
+SCTP_DEFAULT_SEND_PARAM sockopt" on SCTP_AUTH_ACTIVE_KEY sockopt.
 
+Fixes: bf9fb6ad4f29 ("sctp: use SCTP_FUTURE_ASSOC and add SCTP_CURRENT_ASSOC for SCTP_AUTH_ACTIVE_KEY sockopt")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/socket.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-Hello,
-My name is Miss Eden,i saw your profile and i love it,i think we can make it together,please i will like you to email me back through my email thus;so that i will send you my picture.so that we will discuss more about my interest,I will be waiting to receive your lovely reply soon
-Miss Eden
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 2ac221c..1d098f0 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3871,6 +3871,9 @@ static int sctp_setsockopt_active_key(struct sock *sk,
+ 	if (asoc)
+ 		return sctp_auth_set_active_key(ep, asoc, val.scact_keynumber);
+ 
++	if (sctp_style(sk, TCP))
++		val.scact_assoc_id = SCTP_FUTURE_ASSOC;
++
+ 	if (val.scact_assoc_id = SCTP_FUTURE_ASSOC ||
+ 	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
+ 		ret = sctp_auth_set_active_key(ep, asoc, val.scact_keynumber);
+-- 
+2.1.0
