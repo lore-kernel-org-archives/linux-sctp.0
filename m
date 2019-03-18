@@ -1,132 +1,46 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Sun, 31 Mar 2019 08:53:47 +0000
-Subject: [PATCH net-next 2/2] sctp: implement memory accounting on rx path
-Message-Id: <b024dd60e7e4ef9fb28fc955bc8f2937048206eb.1554022192.git.lucien.xin@gmail.com>
+Date: Mon, 18 Mar 2019 12:06:07 +0000
+Subject: [PATCH net 09/13] sctp: fix ignoring asoc_id for tcp-style sockets on SCTP_AUTH_DEACTIVATE_KEY socko
+Message-Id: <fa16260b4714687bba2cfbf2703347c9d0d9f6c2.1552910681.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1554022192.git.lucien.xin@gmail.com>
- <57b7c29e160acf1a7e5f86ae8549b23ba8946c4b.1554022192.git.lucien.xin@gmail.com>
-In-Reply-To: <57b7c29e160acf1a7e5f86ae8549b23ba8946c4b.1554022192.git.lucien.xin@gmail.com>
+References: <cover.1552910681.git.lucien.xin@gmail.com>
+ <a866141aba7511710929fffd71b0b911ddda28f4.1552910681.git.lucien.xin@gmail.com>
+ <b7541db7198a1df5d75100bd9cb19678613c0a10.1552910681.git.lucien.xin@gmail.com>
+ <47d570738f0cc850e9183731e47d15a7647764a0.1552910681.git.lucien.xin@gmail.com>
+ <3d889968ad901918974cc09c78064bd4a5a24ff7.1552910681.git.lucien.xin@gmail.com>
+ <446bf443557ec1433a5f85c9a1e15987df20a8df.1552910681.git.lucien.xin@gmail.com>
+ <9028a9b0f9968d629614a36cbbf79fef34935717.1552910681.git.lucien.xin@gmail.com>
+ <ead4f7e6f620d64b9616b8e394e559c55427229e.1552910681.git.lucien.xin@gmail.com>
+ <0c9808b498eb088a9146a09c79d795e30e3c79c5.1552910681.git.lucien.xin@gmail.com>
+In-Reply-To: <0c9808b498eb088a9146a09c79d795e30e3c79c5.1552910681.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net, Matteo Croce <mcroce@redhat.com>, Vladis Dronov <vdronov@redhat.com>
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-sk_forward_alloc's updating is also done on rx path, but to be consistent
-we change to use sk_mem_charge() in sctp_skb_set_owner_r().
+A similar fix as Patch "sctp: fix ignoring asoc_id for tcp-style sockets on
+SCTP_DEFAULT_SEND_PARAM sockopt" on SCTP_AUTH_DEACTIVATE_KEY sockopt.
 
-In sctp_eat_data(), it's not enough to check sctp_memory_pressure only,
-which doesn't work for mem_cgroup_sockets_enabled, so we change to use
-sk_under_memory_pressure().
-
-When it's under memory pressure, sk_mem_reclaim() and sk_rmem_schedule()
-should be called on both RENEGE or CHUNK DELIVERY path exit the memory
-pressure status as soon as possible.
-
-Note that sk_rmem_schedule() is using datalen to make things easy there.
-
+Fixes: 2af66ff3edc7 ("sctp: use SCTP_FUTURE_ASSOC and add SCTP_CURRENT_ASSOC for SCTP_AUTH_DEACTIVATE_KEY sockopt")
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/sctp.h |  2 +-
- net/sctp/sm_statefuns.c |  6 ++++--
- net/sctp/ulpevent.c     | 19 ++++++++-----------
- net/sctp/ulpqueue.c     |  3 ++-
- 4 files changed, 15 insertions(+), 15 deletions(-)
+ net/sctp/socket.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index 1d13ec3..eefdfa5 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -421,7 +421,7 @@ static inline void sctp_skb_set_owner_r(struct sk_buff *skb, struct sock *sk)
- 	/*
- 	 * This mimics the behavior of skb_set_owner_r
- 	 */
--	sk->sk_forward_alloc -= event->rmem_len;
-+	sk_mem_charge(sk, event->rmem_len);
- }
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 087ca0b..0187444 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3978,6 +3978,9 @@ static int sctp_setsockopt_deactivate_key(struct sock *sk, char __user *optval,
+ 	if (asoc)
+ 		return sctp_auth_deact_key_id(ep, asoc, val.scact_keynumber);
  
- /* Tests if the list has one and only one entry. */
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index c9ae340..7dfc34b 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -6412,13 +6412,15 @@ static int sctp_eat_data(const struct sctp_association *asoc,
- 	 * in sctp_ulpevent_make_rcvmsg will drop the frame if we grow our
- 	 * memory usage too much
- 	 */
--	if (*sk->sk_prot_creator->memory_pressure) {
-+	if (sk_under_memory_pressure(sk)) {
- 		if (sctp_tsnmap_has_gap(map) &&
- 		    (sctp_tsnmap_get_ctsn(map) + 1) = tsn) {
- 			pr_debug("%s: under pressure, reneging for tsn:%u\n",
- 				 __func__, tsn);
- 			deliver = SCTP_CMD_RENEGE;
--		 }
-+		} else {
-+			sk_mem_reclaim(sk);
-+		}
- 	}
- 
- 	/*
-diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
-index 8cb7d98..c2a7478 100644
---- a/net/sctp/ulpevent.c
-+++ b/net/sctp/ulpevent.c
-@@ -634,8 +634,9 @@ struct sctp_ulpevent *sctp_ulpevent_make_rcvmsg(struct sctp_association *asoc,
- 						gfp_t gfp)
- {
- 	struct sctp_ulpevent *event = NULL;
--	struct sk_buff *skb;
--	size_t padding, len;
-+	struct sk_buff *skb = chunk->skb;
-+	struct sock *sk = asoc->base.sk;
-+	size_t padding, datalen;
- 	int rx_count;
- 
- 	/*
-@@ -646,15 +647,12 @@ struct sctp_ulpevent *sctp_ulpevent_make_rcvmsg(struct sctp_association *asoc,
- 	if (asoc->ep->rcvbuf_policy)
- 		rx_count = atomic_read(&asoc->rmem_alloc);
- 	else
--		rx_count = atomic_read(&asoc->base.sk->sk_rmem_alloc);
-+		rx_count = atomic_read(&sk->sk_rmem_alloc);
- 
--	if (rx_count >= asoc->base.sk->sk_rcvbuf) {
-+	datalen = ntohs(chunk->chunk_hdr->length);
- 
--		if ((asoc->base.sk->sk_userlocks & SOCK_RCVBUF_LOCK) ||
--		    (!sk_rmem_schedule(asoc->base.sk, chunk->skb,
--				       chunk->skb->truesize)))
--			goto fail;
--	}
-+	if (rx_count >= sk->sk_rcvbuf || !sk_rmem_schedule(sk, skb, datalen))
-+		goto fail;
- 
- 	/* Clone the original skb, sharing the data.  */
- 	skb = skb_clone(chunk->skb, gfp);
-@@ -681,8 +679,7 @@ struct sctp_ulpevent *sctp_ulpevent_make_rcvmsg(struct sctp_association *asoc,
- 	 * The sender should never pad with more than 3 bytes.  The receiver
- 	 * MUST ignore the padding bytes.
- 	 */
--	len = ntohs(chunk->chunk_hdr->length);
--	padding = SCTP_PAD4(len) - len;
-+	padding = SCTP_PAD4(datalen) - datalen;
- 
- 	/* Fixup cloned skb with just this chunks data.  */
- 	skb_trim(skb, chunk->chunk_end - padding - skb->data);
-diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
-index 5dde921..770ff1f 100644
---- a/net/sctp/ulpqueue.c
-+++ b/net/sctp/ulpqueue.c
-@@ -1106,7 +1106,8 @@ void sctp_ulpq_renege(struct sctp_ulpq *ulpq, struct sctp_chunk *chunk,
- 			freed += sctp_ulpq_renege_frags(ulpq, needed - freed);
- 	}
- 	/* If able to free enough room, accept this chunk. */
--	if (freed >= needed) {
-+	if (sk_rmem_schedule(asoc->base.sk, chunk->skb, needed) &&
-+	    freed >= needed) {
- 		int retval = sctp_ulpq_tail_data(ulpq, chunk, gfp);
- 		/*
- 		 * Enter partial delivery if chunk has not been
++	if (sctp_style(sk, TCP))
++		val.scact_assoc_id = SCTP_FUTURE_ASSOC;
++
+ 	if (val.scact_assoc_id = SCTP_FUTURE_ASSOC ||
+ 	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
+ 		ret = sctp_auth_deact_key_id(ep, asoc, val.scact_keynumber);
 -- 
 2.1.0
