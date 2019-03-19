@@ -1,19 +1,17 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 19 Mar 2019 01:24:31 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 19 Mar 2019 11:13:00 +0000
 Subject: Re: [PATCH net] sctp: not copy sctp_sock pd_lobby in sctp_copy_descendant
-Message-Id: <20190318.182431.545997926960587440.davem@davemloft.net>
+Message-Id: <20190319111300.GB3722@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <130ce0bbbc015f9fb47f97b51c650843e2ac39a3.1552910309.git.lucien.xin@gmail.com>
 In-Reply-To: <130ce0bbbc015f9fb47f97b51c650843e2ac39a3.1552910309.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, syzkaller@googlegroups.com
+To: Xin Long <lucien.xin@gmail.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, syzkaller@googlegroups.com
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 18 Mar 2019 19:58:29 +0800
-
+On Mon, Mar 18, 2019 at 07:58:29PM +0800, Xin Long wrote:
 > Now sctp_copy_descendant() copies pd_lobby from old sctp scok to new
 > sctp sock. If sctp_sock_migrate() returns error, it will panic when
 > releasing new sock and trying to purge pd_lobby due to the incorrect
@@ -35,6 +33,33 @@ Date: Mon, 18 Mar 2019 19:58:29 +0800
 > Reported-by: syzbot+85e0b422ff140b03672a@syzkaller.appspotmail.com
 > Fixes: 89664c623617 ("sctp: sctp_sock_migrate() returns error if sctp_bind_addr_dup() fails")
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Applied and looks to not need -stable backporting.  Let me know if you
-disagree.
+> ---
+>  net/sctp/socket.c | 3 +--
+>  1 file changed, 1 insertion(+), 2 deletions(-)
+> 
+> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+> index 6140471..65b5386 100644
+> --- a/net/sctp/socket.c
+> +++ b/net/sctp/socket.c
+> @@ -9169,7 +9169,7 @@ static inline void sctp_copy_descendant(struct sock *sk_to,
+>  {
+>  	int ancestor_size = sizeof(struct inet_sock) +
+>  			    sizeof(struct sctp_sock) -
+> -			    offsetof(struct sctp_sock, auto_asconf_list);
+> +			    offsetof(struct sctp_sock, pd_lobby);
+>  
+>  	if (sk_from->sk_family = PF_INET6)
+>  		ancestor_size += sizeof(struct ipv6_pinfo);
+> @@ -9253,7 +9253,6 @@ static int sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
+>  	 * 2) Peeling off partial delivery; keep pd_lobby in new pd_lobby.
+>  	 * 3) Peeling off non-partial delivery; move pd_lobby to receive_queue.
+>  	 */
+> -	skb_queue_head_init(&newsp->pd_lobby);
+>  	atomic_set(&sctp_sk(newsk)->pd_mode, assoc->ulpq.pd_mode);
+>  
+>  	if (atomic_read(&sctp_sk(oldsk)->pd_mode)) {
+> -- 
+> 2.1.0
+> 
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
