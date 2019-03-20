@@ -1,111 +1,55 @@
 From: Dmitry Vyukov <dvyukov@google.com>
-Date: Wed, 20 Mar 2019 13:57:01 +0000
+Date: Wed, 20 Mar 2019 13:59:19 +0000
 Subject: Re: kernel panic: corrupted stack end in wb_workfn
-Message-Id: <CACT4Y+axojyHxk5K34YuLUyj+NJ05+FC3n8ozseHC91B1qn5ZQ@mail.gmail.com>
+Message-Id: <CACT4Y+b-VNeKwgP9-x2YZJ08v0f=2C2SujVkgEmcQ+B-ZmmCLQ@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <000000000000db3d130584506672@google.com> <d9e4e36d-1e7a-caaf-f96e-b05592405b5f@virtuozzo.com>
  <CACT4Y+Zj=35t2djhKoq+e1SH3Zu3389Pns7xX6MiMWZ=PFpShA@mail.gmail.com>
  <426293c3-bf63-88ad-06fb-83927ab0d7c0@I-love.SAKURA.ne.jp>
- <CACT4Y+Zh8eA50egLquE4LPffTCmF+30QR0pKTpuz_FpzsXVmZg@mail.gmail.com> <315c8ff3-fd03-f2ca-c546-ca7dc5c14669@virtuozzo.com>
-In-Reply-To: <315c8ff3-fd03-f2ca-c546-ca7dc5c14669@virtuozzo.com>
+ <CACT4Y+Zh8eA50egLquE4LPffTCmF+30QR0pKTpuz_FpzsXVmZg@mail.gmail.com>
+ <CACT4Y+Z2FL=t8cHceXMGvG2QfChKdJYprVvBonu9X+jJaL0HMQ@mail.gmail.com> <a06830e7-e396-6dd5-d9d5-2a7b1df9efc1@i-love.sakura.ne.jp>
+In-Reply-To: <a06830e7-e396-6dd5-d9d5-2a7b1df9efc1@i-love.sakura.ne.jp>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Andrey Ryabinin <aryabinin@virtuozzo.com>
-Cc: Tetsuo Handa <penguin-kernel@i-love.sakura.ne.jp>, syzbot <syzbot+ec1b7575afef85a0e5ca@syzkaller.appspotmail.com>, Andrew Morton <akpm@linux-foundation.org>, Qian Cai <cai@lca.pw>, David Miller <davem@davemloft.net>, guro@fb.com, Johannes Weiner <hannes@cmpxchg.org>, Josef Bacik <jbacik@fb.com>, Kirill Tkhai <ktkhai@virtuozzo.com>, LKML <linux-kernel@vger.kernel.org>, Linux-MM <linux-mm@kvack.org>, linux-sctp@vger.kernel.org, Mel Gorman <mgorman@techsingularity.net>, Michal Hocko <mhocko@suse.com>, netdev <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, Shakeel Butt <shakeelb@google.com>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, Al Viro <viro@zeniv.linux.org.uk>, Vladislav Yasevich <vyasevich@gmail.com>, Matthew Wilcox <willy@infradead.org>, Xin Long <lucien.xin@gmail.com>
+To: Tetsuo Handa <penguin-kernel@i-love.sakura.ne.jp>
+Cc: Andrey Ryabinin <aryabinin@virtuozzo.com>, syzbot <syzbot+ec1b7575afef85a0e5ca@syzkaller.appspotmail.com>, Andrew Morton <akpm@linux-foundation.org>, Qian Cai <cai@lca.pw>, David Miller <davem@davemloft.net>, guro@fb.com, Johannes Weiner <hannes@cmpxchg.org>, Josef Bacik <jbacik@fb.com>, Kirill Tkhai <ktkhai@virtuozzo.com>, LKML <linux-kernel@vger.kernel.org>, Linux-MM <linux-mm@kvack.org>, linux-sctp@vger.kernel.org, Mel Gorman <mgorman@techsingularity.net>, Michal Hocko <mhocko@suse.com>, netdev <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, Shakeel Butt <shakeelb@google.com>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, Al Viro <viro@zeniv.linux.org.uk>, Vladislav Yasevich <vyasevich@gmail.com>, Matthew Wilcox <willy@infradead.org>, Xin Long <lucien.xin@gmail.com>
 
-On Wed, Mar 20, 2019 at 2:33 PM Andrey Ryabinin <aryabinin@virtuozzo.com> wrote:
+On Wed, Mar 20, 2019 at 11:59 AM Tetsuo Handa
+<penguin-kernel@i-love.sakura.ne.jp> wrote:
 >
+> On 2019/03/20 19:42, Dmitry Vyukov wrote:
+> >> I mean, yes, I agree, kernel bug bisection won't be perfect. But do
+> >> you see anything actionable here?
 >
+> Allow users to manually tell bisection range when
+> automatic bisection found a wrong commit.
 >
-> On 3/20/19 1:38 PM, Dmitry Vyukov wrote:
-> > On Wed, Mar 20, 2019 at 11:24 AM Tetsuo Handa
-> > <penguin-kernel@i-love.sakura.ne.jp> wrote:
-> >>
-> >> On 2019/03/20 18:59, Dmitry Vyukov wrote:
-> >>>> From bisection log:
-> >>>>
-> >>>>         testing release v4.17
-> >>>>         testing commit 29dcea88779c856c7dc92040a0c01233263101d4 with gcc (GCC) 8.1.0
-> >>>>         run #0: crashed: kernel panic: corrupted stack end in wb_workfn
-> >>>>         run #1: crashed: kernel panic: corrupted stack end in worker_thread
-> >>>>         run #2: crashed: kernel panic: Out of memory and no killable processes...
-> >>>>         run #3: crashed: kernel panic: corrupted stack end in wb_workfn
-> >>>>         run #4: crashed: kernel panic: corrupted stack end in wb_workfn
-> >>>>         run #5: crashed: kernel panic: corrupted stack end in wb_workfn
-> >>>>         run #6: crashed: kernel panic: corrupted stack end in wb_workfn
-> >>>>         run #7: crashed: kernel panic: corrupted stack end in wb_workfn
-> >>>>         run #8: crashed: kernel panic: Out of memory and no killable processes...
-> >>>>         run #9: crashed: kernel panic: corrupted stack end in wb_workfn
-> >>>>         testing release v4.16
-> >>>>         testing commit 0adb32858b0bddf4ada5f364a84ed60b196dbcda with gcc (GCC) 8.1.0
-> >>>>         run #0: OK
-> >>>>         run #1: OK
-> >>>>         run #2: OK
-> >>>>         run #3: OK
-> >>>>         run #4: OK
-> >>>>         run #5: crashed: kernel panic: Out of memory and no killable processes...
-> >>>>         run #6: OK
-> >>>>         run #7: crashed: kernel panic: Out of memory and no killable processes...
-> >>>>         run #8: OK
-> >>>>         run #9: OK
-> >>>>         testing release v4.15
-> >>>>         testing commit d8a5b80568a9cb66810e75b182018e9edb68e8ff with gcc (GCC) 8.1.0
-> >>>>         all runs: OK
-> >>>>         # git bisect start v4.16 v4.15
-> >>>>
-> >>>> Why bisect started between 4.16 4.15 instead of 4.17 4.16?
-> >>>
-> >>> Because 4.16 was still crashing and 4.15 was not crashing. 4.15..4.16
-> >>> looks like the right range, no?
-> >>
-> >> No, syzbot should bisect between 4.16 and 4.17 regarding this bug, for
-> >> "Stack corruption" can't manifest as "Out of memory and no killable processes".
-> >>
-> >> "kernel panic: Out of memory and no killable processes..." is completely
-> >> unrelated to "kernel panic: corrupted stack end in wb_workfn".
+> Also, allow users to specify reproducer program
+> when automatic bisection found a wrong commit.
+>
+> Yes, this is anti automation. But since automation can't become perfect,
+> I'm suggesting manual adjustment. Even if we involve manual adjustment,
+> the syzbot's plenty CPU resources for building/testing kernels is highly
+> appreciated (compared to doing manual bisection by building/testing kernels
+> on personal PC environments).
+
+FTR: provided an extended answer here:
+https://groups.google.com/d/msg/syzkaller-bugs/1BSkmb_fawo/DOcDxv_KAgAJ
+
+
+> > I see the larger long term bisection quality improvement (for syzbot
+> > and for everybody else) in doing some actual testing for each kernel
+> > commit before it's being merged into any kernel tree, so that we have
+> > less of these a single program triggers 3 different bugs, stray
+> > unrelated bugs, broken release boots, etc. I don't see how reliable
+> > bisection is possible without that.
 > >
-> >
-> > Do you think this predicate is possible to code?
 >
-> Something like bellow probably would work better than current behavior.
->
-> For starters, is_duplicates() might just compare 'crash' title with 'target_crash' title and its duplicates titles.
+> syzbot currently cannot test kernels with custom patches (unless "#syz test:" requests).
+> Are you saying that syzbot will become be able to test kernels with custom patches?
 
-Lots of bugs (half?) manifest differently. On top of this, titles
-change as we go back in history. On top of this, if we see a different
-bug, it does not mean that the original bug is also not there.
-This will sure solve some subset of cases better then the current
-logic. But I feel that that subset is smaller then what the current
-logic solves.
-
-> syzbot has some knowledge about duplicates with different crash titles when people use "syz dup" command.
-
-This is very limited set of info. And in the end I think we've seen
-all bug types being duped on all other bugs types pair-wise, and at
-the same time we've seen all bug types being not dups to all other bug
-types. So I don't see where this gets us.
-And again as we go back in history all these titles change.
-
-> Also it might be worth to experiment with using neural networks to identify duplicates.
->
->
-> target_crash = 'kernel panic: corrupted stack end in wb_workfn'
-> test commit:
->         bad = false;
->         skip = true;
->         foreach run:
->                 run_started, crashed, crash := run_repro();
->
->                 //kernel built, booted, reproducer launched successfully
->                 if (run_started)
->                         skip = false;
->                 if (crashed && is_duplicates(crash, target_crash))
->                         bad = true;
->
->         if (skip)
->                 git bisect skip;
->         else if (bad)
->                 git bisect bad;
->         else
->                 git bisect good;
+I mean if we start improving kernel quality over time so that we have
+less of these a single program triggers 3 different bugs, stray
+unrelated bugs, broken release boots, etc, it will improve bisection
+quality for everybody (beside being hugely useful in itself).
