@@ -1,36 +1,57 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 08 Mar 2019 19:25:03 +0000
-Subject: Re: [PATCH net] sctp: remove sched init from sctp_stream_init
-Message-Id: <20190308.112503.775390652844673739.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sun, 31 Mar 2019 08:58:15 +0000
+Subject: [PATCH net] sctp: initialize _pad of sockaddr_in before copying to user memory
+Message-Id: <b4aeae8a46f4dcddcfddb0ba3943abda3413f142.1554022695.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <f6f7a239cbe5a5dc051f605752e03b54d68e878a.1552031356.git.lucien.xin@gmail.com>
-In-Reply-To: <f6f7a239cbe5a5dc051f605752e03b54d68e878a.1552031356.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, syzkaller@googlegroups.com
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri,  8 Mar 2019 15:49:16 +0800
+Syzbot report a kernel-infoleak:
 
-> syzbot reported a NULL-ptr deref caused by that sched->init() in
-> sctp_stream_init() set stream->rr_next = NULL.
-> 
->   kasan: GPF could be caused by NULL-ptr deref or user memory access
->   RIP: 0010:sctp_sched_rr_dequeue+0xd3/0x170 net/sctp/stream_sched_rr.c:141
->   Call Trace:
->     sctp_outq_dequeue_data net/sctp/outqueue.c:90 [inline]
->     sctp_outq_flush_data net/sctp/outqueue.c:1079 [inline]
->     sctp_outq_flush+0xba2/0x2790 net/sctp/outqueue.c:1205
-> 
-> All sched info is saved in sout->ext now, in sctp_stream_init()
-> sctp_stream_alloc_out() will not change it, there's no need to
-> call sched->init() again, since sctp_outq_init() has already
-> done it.
-> 
-> Fixes: 5bbbbe32a431 ("sctp: introduce stream scheduler foundations")
-> Reported-by: syzbot+4c9934f20522c0efd657@syzkaller.appspotmail.com
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+  BUG: KMSAN: kernel-infoleak in _copy_to_user+0x16b/0x1f0 lib/usercopy.c:32
+  Call Trace:
+    _copy_to_user+0x16b/0x1f0 lib/usercopy.c:32
+    copy_to_user include/linux/uaccess.h:174 [inline]
+    sctp_getsockopt_peer_addrs net/sctp/socket.c:5911 [inline]
+    sctp_getsockopt+0x1668e/0x17f70 net/sctp/socket.c:7562
+    ...
+  Uninit was stored to memory at:
+    sctp_transport_init net/sctp/transport.c:61 [inline]
+    sctp_transport_new+0x16d/0x9a0 net/sctp/transport.c:115
+    sctp_assoc_add_peer+0x532/0x1f70 net/sctp/associola.c:637
+    sctp_process_param net/sctp/sm_make_chunk.c:2548 [inline]
+    sctp_process_init+0x1a1b/0x3ed0 net/sctp/sm_make_chunk.c:2361
+    ...
+  Bytes 8-15 of 16 are uninitialized
 
-Applied and queued up for -stable, thanks.
+It was caused by that th _pad field (the 8-15 bytes) of a v4 addr (saved in
+struct sockaddr_in) wasn't initialized, but directly copied to user memory
+in sctp_getsockopt_peer_addrs().
+
+So fix it by calling memset(addr->v4.sin_zero, 0, 8) to initialize _pad of
+sockaddr_in before copying it to user memory in sctp_v4_addr_to_user(), as
+sctp_v6_addr_to_user() does.
+
+Reported-by: syzbot+86b5c7c236a22616a72f@syzkaller.appspotmail.com
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/protocol.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 6abc8b2..951afde 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -600,6 +600,7 @@ static struct sock *sctp_v4_create_accept_sk(struct sock *sk,
+ static int sctp_v4_addr_to_user(struct sctp_sock *sp, union sctp_addr *addr)
+ {
+ 	/* No address mapping for V4 sockets */
++	memset(addr->v4.sin_zero, 0, sizeof(addr->v4.sin_zero));
+ 	return sizeof(struct sockaddr_in);
+ }
+ 
+-- 
+2.1.0
