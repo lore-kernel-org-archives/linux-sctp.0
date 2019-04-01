@@ -1,47 +1,81 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 05 Apr 2019 04:49:37 +0000
-Subject: Re: [PATCH net-next 0/2] sctp: fully support memory accounting
-Message-Id: <CADvbK_fcGR_U-URF-5N1i=nK=u7Xxa+tkfWeb5hTzMPFukHysg@mail.gmail.com>
+From: Alexander Potapenko <glider@google.com>
+Date: Mon, 01 Apr 2019 08:43:55 +0000
+Subject: Re: [PATCH net] sctp: initialize _pad of sockaddr_in before copying to user memory
+Message-Id: <CAG_fn=UPX0d9DGjih0H03WfK=TZBz5rfF09E59ux3HteTUfDNw@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CADvbK_fuTOQYZxN+d4OkwEZmjVacP6OK5YAszuijNa=3RQenBA@mail.gmail.com>
- <20190331.110248.968610750836978684.davem@davemloft.net> <CADvbK_cZ6q7k8X_7=SYzXKRkwXVZAHGBejxPSgK0vkUNcoktXA@mail.gmail.com>
- <20190404.103836.99803631681096896.davem@davemloft.net>
-In-Reply-To: <20190404.103836.99803631681096896.davem@davemloft.net>
+References: <b4aeae8a46f4dcddcfddb0ba3943abda3413f142.1554022695.git.lucien.xin@gmail.com>
+In-Reply-To: <b4aeae8a46f4dcddcfddb0ba3943abda3413f142.1554022695.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Matteo Croce <mcroce@redhat.com>, Vladis Dronov <vdronov@redhat.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: Xin Long <lucien.xin@gmail.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, David Miller <davem@davemloft.net>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, syzkaller <syzkaller@googlegroups.com>
 
-On Fri, Apr 5, 2019 at 1:38 AM David Miller <davem@davemloft.net> wrote:
+On Sun, Mar 31, 2019 at 10:58 AM Xin Long <lucien.xin@gmail.com> wrote:
 >
-> From: Xin Long <lucien.xin@gmail.com>
-> Date: Thu, 4 Apr 2019 17:45:07 +0800
+> Syzbot report a kernel-infoleak:
 >
-> > We're thinking about adding some sctp tests into selftests,
-> > but these ones are not good to be the first one, I think.
-> > sysctl_sockets_memctl.sh is a multi-host test, even netns can't work for it.
+>   BUG: KMSAN: kernel-infoleak in _copy_to_user+0x16b/0x1f0 lib/usercopy.c:32
+>   Call Trace:
+>     _copy_to_user+0x16b/0x1f0 lib/usercopy.c:32
+>     copy_to_user include/linux/uaccess.h:174 [inline]
+>     sctp_getsockopt_peer_addrs net/sctp/socket.c:5911 [inline]
+>     sctp_getsockopt+0x1668e/0x17f70 net/sctp/socket.c:7562
+>     ...
+>   Uninit was stored to memory at:
+>     sctp_transport_init net/sctp/transport.c:61 [inline]
+>     sctp_transport_new+0x16d/0x9a0 net/sctp/transport.c:115
+>     sctp_assoc_add_peer+0x532/0x1f70 net/sctp/associola.c:637
+>     sctp_process_param net/sctp/sm_make_chunk.c:2548 [inline]
+>     sctp_process_init+0x1a1b/0x3ed0 net/sctp/sm_make_chunk.c:2361
+>     ...
+>   Bytes 8-15 of 16 are uninitialized
 >
-> You can't set per-netns memory controls appropriately to make the
-> tests work?
-static atomic_long_t sctp_memory_allocated;
+> It was caused by that th _pad field (the 8-15 bytes) of a v4 addr (saved in
+> struct sockaddr_in) wasn't initialized, but directly copied to user memory
+> in sctp_getsockopt_peer_addrs().
+>
+> So fix it by calling memset(addr->v4.sin_zero, 0, 8) to initialize _pad of
+> sockaddr_in before copying it to user memory in sctp_v4_addr_to_user(), as
+> sctp_v6_addr_to_user() does.
+>
+> Reported-by: syzbot+86b5c7c236a22616a72f@syzkaller.appspotmail.com
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Tested-by: Alexander Potapenko <glider@google.com>
+> ---
+>  net/sctp/protocol.c | 1 +
+>  1 file changed, 1 insertion(+)
+>
+> diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+> index 6abc8b2..951afde 100644
+> --- a/net/sctp/protocol.c
+> +++ b/net/sctp/protocol.c
+> @@ -600,6 +600,7 @@ static struct sock *sctp_v4_create_accept_sk(struct sock *sk,
+>  static int sctp_v4_addr_to_user(struct sctp_sock *sp, union sctp_addr *addr)
+>  {
+>         /* No address mapping for V4 sockets */
+> +       memset(addr->v4.sin_zero, 0, sizeof(addr->v4.sin_zero));
+>         return sizeof(struct sockaddr_in);
+>  }
+>
+> --
+> 2.1.0
+>
+> --
+> You received this message because you are subscribed to the Google Groups "syzkaller" group.
+> To unsubscribe from this group and stop receiving emails from it, send an email to syzkaller+unsubscribe@googlegroups.com.
+> For more options, visit https://groups.google.com/d/optout.
 
-struct proto sctp_prot = {
-.memory_allocated = &sctp_memory_allocated,
 
-sysctl limitation is per-netns, but the counter 'sctp_memory_allocated' is not.
-It means other netns buffer allocation will affect the current netns.
 
->
-> > Each subcomponent seems to have its own test case in other git repo,
-> > can I ask what kind of tests should I put into kernel selftests in
-> > the future?
->
-> It would be ideal that we have a decent base set of SCTP tests and
-> then when bug fixes are added, we get a unit test with the fix.
->
-> I guess a good baseline would be testing basic comminucation between
-> SCTP sockets in different netns, and then adding tests for setting
-> the various socket options and making sure the socket option had the
-> desired effect.
-got your point. thanks
+-- 
+Alexander Potapenko
+Software Engineer
+
+Google Germany GmbH
+Erika-Mann-Straße, 33
+80636 München
+
+Geschäftsführer: Paul Manicle, Halimah DeLaine Prado
+Registergericht und -nummer: Hamburg, HRB 86891
+Sitz der Gesellschaft: Hamburg
