@@ -1,65 +1,60 @@
-From: Shyam Saini <mayhs11saini@gmail.com>
-Date: Mon, 15 Apr 2019 07:25:39 +0000
+From: William Kucharski <william.kucharski@oracle.com>
+Date: Mon, 15 Apr 2019 10:12:16 +0000
 Subject: Re: [PATCH 1/2] include: linux: Regularise the use of FIELD_SIZEOF macro
-Message-Id: <CAOfkYf5FZdN3v9pkcdNmyJM5O=789bKwFmFsMTp20RE=gVgwqQ@mail.gmail.com>
+Message-Id: <C398B8C9-6A54-4590-AA88-58D514BAEB71@oracle.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20190414091452.22275-1-shyam.saini@amarulasolutions.com> <CAADnVQKx5WrUYxr_gSc5ai=fJh2cM9e26NZL1mRPkoSVQxAd0Q@mail.gmail.com>
-In-Reply-To: <CAADnVQKx5WrUYxr_gSc5ai=fJh2cM9e26NZL1mRPkoSVQxAd0Q@mail.gmail.com>
+References: <20190414091452.22275-1-shyam.saini@amarulasolutions.com>
+In-Reply-To: <20190414091452.22275-1-shyam.saini@amarulasolutions.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Alexei Starovoitov <alexei.starovoitov@gmail.com>
-Cc: Shyam Saini <shyam.saini@amarulasolutions.com>, Kernel Hardening <kernel-hardening@lists.openwall.com>, LKML <linux-kernel@vger.kernel.org>, Andrew Morton <akpm@linux-foundation.org>, Kees Cook <keescook@chromium.org>, linux-arm-kernel@lists.infradead.org, linux-mips@vger.kernel.org, intel-gvt-dev@lists.freedesktop.org, intel-gfx@lists.freedesktop.org, dri-devel <dri-devel@lists.freedesktop.org>, Network Development <netdev@vger.kernel.org>, linux-ext4@vger.kernel.org, devel@lists.orangefs.org, linux-mm <linux-mm@kvack.org>, linux-sctp@vger.kernel.org, bpf <bpf@vger.kernel.org>, kvm@vger.kernel.org
+To: Shyam Saini <shyam.saini@amarulasolutions.com>
+Cc: Kernel Hardening <kernel-hardening@lists.openwall.com>, LKML <linux-kernel@vger.kernel.org>, Andrew Morton <akpm@linux-foundation.org>, keescook@chromium.org, linux-arm-kernel@lists.infradead.org, linux-mips@vger.kernel.org, intel-gvt-dev@lists.freedesktop.org, intel-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, netdev@vger.kernel.org, linux-ext4@vger.kernel.org, devel@lists.orangefs.org, linux-mm@kvack.org, linux-sctp@vger.kernel.org, bpf@vger.kernel.org, kvm@vger.kernel.org, mayhs11saini@gmail.com
 
-Hi,
 
-On Mon, Apr 15, 2019 at 11:13 AM Alexei Starovoitov
-<alexei.starovoitov@gmail.com> wrote:
->
-> On Sun, Apr 14, 2019 at 2:15 AM Shyam Saini
-> <shyam.saini@amarulasolutions.com> wrote:
-> >
-> > Currently, there are 3 different macros, namely sizeof_field, SIZEOF_FIELD
-> > and FIELD_SIZEOF which are used to calculate the size of a member of
-> > structure, so to bring uniformity in entire kernel source tree lets use
-> > FIELD_SIZEOF and replace all occurrences of other two macros with this.
-> >
-> > For this purpose, redefine FIELD_SIZEOF in include/linux/stddef.h and
-> > tools/testing/selftests/bpf/bpf_util.h and remove its defination from
-> > include/linux/kernel.h
-> >
-> > Signed-off-by: Shyam Saini <shyam.saini@amarulasolutions.com>
-> > ---
-> >  arch/arm64/include/asm/processor.h                 | 10 +++++-----
-> >  arch/mips/cavium-octeon/executive/cvmx-bootmem.c   |  2 +-
-> >  drivers/gpu/drm/i915/gvt/scheduler.c               |  2 +-
-> >  drivers/net/ethernet/mellanox/mlxsw/spectrum_fid.c |  4 ++--
-> >  fs/befs/linuxvfs.c                                 |  2 +-
-> >  fs/ext2/super.c                                    |  2 +-
-> >  fs/ext4/super.c                                    |  2 +-
-> >  fs/freevxfs/vxfs_super.c                           |  2 +-
-> >  fs/orangefs/super.c                                |  2 +-
-> >  fs/ufs/super.c                                     |  2 +-
-> >  include/linux/kernel.h                             |  9 ---------
-> >  include/linux/slab.h                               |  2 +-
-> >  include/linux/stddef.h                             | 11 ++++++++++-
-> >  kernel/fork.c                                      |  2 +-
-> >  kernel/utsname.c                                   |  2 +-
-> >  net/caif/caif_socket.c                             |  2 +-
-> >  net/core/skbuff.c                                  |  2 +-
-> >  net/ipv4/raw.c                                     |  2 +-
-> >  net/ipv6/raw.c                                     |  2 +-
-> >  net/sctp/socket.c                                  |  4 ++--
-> >  tools/testing/selftests/bpf/bpf_util.h             | 11 ++++++++++-
->
-> tools/ directory is for user space pieces that don't include kernel's include.
-> I bet your pathes break the user space builds.
 
-I think it shouldn't because I haven't included any kernel header in
-tool/ files, instead
-I have introduced definition of macro in tool/ , so this patch doesn't
-create any dependency
-on kernel headers.
+> On Apr 14, 2019, at 3:14 AM, Shyam Saini <shyam.saini@amarulasolutions.com> wrote:
+> 
+> Currently, there are 3 different macros, namely sizeof_field, SIZEOF_FIELD
+> and FIELD_SIZEOF which are used to calculate the size of a member of
+> structure, so to bring uniformity in entire kernel source tree lets use
+> FIELD_SIZEOF and replace all occurrences of other two macros with this.
+> 
+> For this purpose, redefine FIELD_SIZEOF in include/linux/stddef.h and
+> tools/testing/selftests/bpf/bpf_util.h and remove its defination from
+> include/linux/kernel.h
 
-Thanks a lot,
-Shyam
+
+> --- a/include/linux/stddef.h
+> +++ b/include/linux/stddef.h
+> @@ -20,6 +20,15 @@ enum {
+> #endif
+> 
+> /**
+> + * FIELD_SIZEOF - get the size of a struct's field
+> + * @t: the target struct
+> + * @f: the target struct's field
+> + * Return: the size of @f in the struct definition without having a
+> + * declared instance of @t.
+> + */
+> +#define FIELD_SIZEOF(t, f) (sizeof(((t *)0)->f))
+> +
+> +/**
+>  * sizeof_field(TYPE, MEMBER)
+>  *
+>  * @TYPE: The structure containing the field of interest
+> @@ -34,6 +43,6 @@ enum {
+>  * @MEMBER: The member within the structure to get the end offset of
+>  */
+> #define offsetofend(TYPE, MEMBER) \
+> -	(offsetof(TYPE, MEMBER)	+ sizeof_field(TYPE, MEMBER))
+> +	(offsetof(TYPE, MEMBER)	+ FIELD_SIZEOF(TYPE, MEMBER))
+
+If you're doing this, why are you leaving the definition of sizeof_field() in
+stddef.h untouched?
+
+Given the way this has worked historically, if you are leaving it in place for
+source compatibility reasons, shouldn't it be redefined in terms of
+FIELD_SIZEOF(), e.g.:
+
+#define sizeof_field(TYPE, MEMBER) FIELD_SIZEOF(TYPE, MEMBER)
