@@ -1,66 +1,79 @@
-From: Shyam Saini <mayhs11saini@gmail.com>
-Date: Sat, 20 Apr 2019 10:51:29 +0000
-Subject: Re: [PATCH 1/2] include: linux: Regularise the use of FIELD_SIZEOF macro
-Message-Id: <CAOfkYf7vn7UnYzZDh9==agVu61sYyFWzvo6hQBt3KfaKrWC-6Q@mail.gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 20 Apr 2019 10:45:49 +0000
+Subject: Re: Few Questions About SCTP NAT
+Message-Id: <CADvbK_f22Xy_ZA-Ro1wXk-0GTyPo4jr7MocvZSfdwPk3r0YWag@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20190414091452.22275-1-shyam.saini@amarulasolutions.com> <C398B8C9-6A54-4590-AA88-58D514BAEB71@oracle.com>
-In-Reply-To: <C398B8C9-6A54-4590-AA88-58D514BAEB71@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: William Kucharski <william.kucharski@oracle.com>
-Cc: Shyam Saini <shyam.saini@amarulasolutions.com>, Kernel Hardening <kernel-hardening@lists.openwall.com>, LKML <linux-kernel@vger.kernel.org>, Andrew Morton <akpm@linux-foundation.org>, Kees Cook <keescook@chromium.org>, linux-arm-kernel@lists.infradead.org, linux-mips@vger.kernel.org, intel-gvt-dev@lists.freedesktop.org, intel-gfx@lists.freedesktop.org, dri-devel <dri-devel@lists.freedesktop.org>, Network Development <netdev@vger.kernel.org>, linux-ext4@vger.kernel.org, devel@lists.orangefs.org, linux-mm <linux-mm@kvack.org>, linux-sctp@vger.kernel.org, bpf <bpf@vger.kernel.org>, kvm@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-Hi William,
+cc'ing linux-sctp.
 
-Sorry for the late reply.
-
-> > Currently, there are 3 different macros, namely sizeof_field, SIZEOF_FIELD
-> > and FIELD_SIZEOF which are used to calculate the size of a member of
-> > structure, so to bring uniformity in entire kernel source tree lets use
-> > FIELD_SIZEOF and replace all occurrences of other two macros with this.
-> >
-> > For this purpose, redefine FIELD_SIZEOF in include/linux/stddef.h and
-> > tools/testing/selftests/bpf/bpf_util.h and remove its defination from
-> > include/linux/kernel.h
+On Sat, Apr 20, 2019 at 4:24 PM Xin Long <lucien.xin@gmail.com> wrote:
 >
+> Hi, Michael,
 >
-> > --- a/include/linux/stddef.h
-> > +++ b/include/linux/stddef.h
-> > @@ -20,6 +20,15 @@ enum {
-> > #endif
-> >
-> > /**
-> > + * FIELD_SIZEOF - get the size of a struct's field
-> > + * @t: the target struct
-> > + * @f: the target struct's field
-> > + * Return: the size of @f in the struct definition without having a
-> > + * declared instance of @t.
-> > + */
-> > +#define FIELD_SIZEOF(t, f) (sizeof(((t *)0)->f))
-> > +
-> > +/**
-> >  * sizeof_field(TYPE, MEMBER)
-> >  *
-> >  * @TYPE: The structure containing the field of interest
-> > @@ -34,6 +43,6 @@ enum {
-> >  * @MEMBER: The member within the structure to get the end offset of
-> >  */
-> > #define offsetofend(TYPE, MEMBER) \
-> > -     (offsetof(TYPE, MEMBER) + sizeof_field(TYPE, MEMBER))
-> > +     (offsetof(TYPE, MEMBER) + FIELD_SIZEOF(TYPE, MEMBER))
+> I'm trying to implement SCTP NAT
+> (https://tools.ietf.org/html/draft-ietf-tsvwg-natsupp-12) on linux,
+> but got some questions:
 >
-> If you're doing this, why are you leaving the definition of sizeof_field() in
-> stddef.h untouched?
-
-I have removed definition of sizeof_field in [1/2] patch.
-
-> Given the way this has worked historically, if you are leaving it in place for
-> source compatibility reasons, shouldn't it be redefined in terms of
-> FIELD_SIZEOF(), e.g.:
+> 1.
+>                         +-------+
+>                /--------| NAT 1 |--------\       /--\/--\
+>    +------+   /         +-------+         \     /        \    +--------+
+>    | Host |==                             ==| Internet |==| Host B |
+>    |   A  |   \         +-------+         /     \        /    +--------+
+>    +------+    \--------| NAT 2 |--------/       \--/\--/
+>                         +-------+
 >
-> #define sizeof_field(TYPE, MEMBER) FIELD_SIZEOF(TYPE, MEMBER)
-
-Actually, never thought this way. So,Thanks a lot for this valuable feedback.
-
-I'll re-spin and post again.
+> In this topo, after 4 shake-hands and asconf:
+>
+>           +---------+--------+----------+--------+-----------+
+>    NAT 1  |  Int    |  Int   |   Ext    |   Ext  |    Priv   |
+>           |  VTag   |  Port  |   VTag   |   Port |    Addr   |
+>           +---------+--------+----------+--------+-----------+
+>           |  1234   |    1   |    5678  |    2   |  10.0.0.1 |
+>           +---------+--------+----------+--------+-----------+
+>
+>           +---------+--------+----------+--------+-----------+
+>    NAT 2  |  Int    |  Int   |   Ext    |   Ext  |    Priv   |
+>           |  VTag   |  Port  |   VTag   |   Port |    Addr   |
+>           +---------+--------+----------+--------+-----------+
+>           |  1234   |    1   |    5678  |    2   |  10.1.0.1 |
+>           +---------+--------+----------+--------+-----------+
+>
+> Now there are 1 entry on nat1 and 1 entry on nat2. If the connection is
+> shutdown via nat1, the entry on nat1 will be deleted, right? What about
+> the entry on nat2, when can it be deleted?
+>
+> 2.
+>                                             /--\/--\
+>    +--------+              +-----+         /        \         +--------+
+>    | Host A | <----------> | NAT | <----> | Internet | <----> | Host B |
+>    +--------+              +-----+         \        /         +--------+
+>                                             \--/\--/
+>
+> In this topo,  if both paths with saddr 10.0.0.1 and 10.1.0.1 go through
+> NAT, will there be 2 entries created on this NAT after 4 shake-hands and
+> asconf like:
+>
+>           +---------+--------+----------+--------+-----------+
+>    NAT    |  Int    |  Int   |   Ext    |   Ext  |    Priv   |
+>           |  VTag   |  Port  |   VTag   |   Port |    Addr   |
+>           +---------+--------+----------+--------+-----------+
+>           |  1234   |    1   |    5678  |    2   |  10.0.0.1 |
+>           +---------+--------+----------+--------+-----------+
+>           |  1234   |    1   |    5678  |    2   |  10.1.0.1 |
+>           +---------+--------+----------+--------+-----------+
+>
+> or it will be handled as "Internal Port Number and Verification Tag
+> Collisions"?
+>
+> 3.
+> For multipath, each entry for one path should maintain a 'state', like
+> closed, established, cookie-echo etc, right?  If they belong to a same
+> association, especially when they're on different nats, how do we keep
+> each entry's state consistent? or they don't have to be consistent?
+>
+> Thanks.
