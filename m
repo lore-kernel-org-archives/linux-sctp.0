@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 29 Apr 2019 11:21:31 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Mon, 29 Apr 2019 11:53:36 +0000
 Subject: Re: [PATCH net] sctp: avoid running the sctp state machine recursively
-Message-Id: <20190429112131.GA18158@hmswarspite.think-freely.org>
+Message-Id: <20190429115336.GF13306@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <3a5d5e96521a5f53ed36ca85219294c34be7d0ef.1556518579.git.lucien.xin@gmail.com>
 In-Reply-To: <3a5d5e96521a5f53ed36ca85219294c34be7d0ef.1556518579.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
 
 On Mon, Apr 29, 2019 at 02:16:19PM +0800, Xin Long wrote:
 > Ying triggered a call trace when doing an asconf testing:
@@ -52,10 +52,5 @@ On Mon, Apr 29, 2019 at 02:16:19PM +0800, Xin Long wrote:
 > 
 > Reported-by: Ying Xu <yinxu@redhat.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> ---
->  include/net/sctp/command.h |  1 -
->  net/sctp/sm_sideeffect.c   | 29 -----------------------------
->  net/sctp/sm_statefuns.c    | 35 +++++++++++++++++++++++++++--------
->  3 files changed, 27 insertions(+), 38 deletions(-)
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
