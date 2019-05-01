@@ -1,26 +1,37 @@
-From: Mark Casady <michaeljonas742@gmail.com>
-Date: Fri, 19 Apr 2019 18:10:58 +0000
-Subject: Dear
-Message-Id: <CAKu0aF6CU939muQ9OMM1O5-ZSmOtDA4qak4DDinNT=G9UpXPag@mail.gmail.com>
+From: David Miller <davem@davemloft.net>
+Date: Wed, 01 May 2019 13:19:48 +0000
+Subject: Re: [PATCH net] sctp: avoid running the sctp state machine recursively
+Message-Id: <20190501.091948.243588960568894414.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <3a5d5e96521a5f53ed36ca85219294c34be7d0ef.1556518579.git.lucien.xin@gmail.com>
+In-Reply-To: <3a5d5e96521a5f53ed36ca85219294c34be7d0ef.1556518579.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
-Dear,
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 29 Apr 2019 14:16:19 +0800
 
-I am Mr.Marck Csady a solicitor at law, i need your assistance to
-represent my late client fund valued at $2.5 million dollars that his
-bank wants to comfiscate, You bear the same last name with my late
-client and he is also a national of your country.
+> Ying triggered a call trace when doing an asconf testing:
+ ...
+> As it shows, the first sctp_do_sm() running under atomic context (NET_RX
+> softirq) invoked sctp_primitive_ASCONF() that uses GFP_KERNEL flag later,
+> and this flag is supposed to be used in non-atomic context only. Besides,
+> sctp_do_sm() was called recursively, which is not expected.
+> 
+> Vlad tried to fix this recursive call in Commit c0786693404c ("sctp: Fix
+> oops when sending queued ASCONF chunks") by introducing a new command
+> SCTP_CMD_SEND_NEXT_ASCONF. But it didn't work as this command is still
+> used in the first sctp_do_sm() call, and sctp_primitive_ASCONF() will
+> be called in this command again.
+> 
+> To avoid calling sctp_do_sm() recursively, we send the next queued ASCONF
+> not by sctp_primitive_ASCONF(), but by sctp_sf_do_prm_asconf() in the 1st
+> sctp_do_sm() directly.
+> 
+> Reported-by: Ying Xu <yinxu@redhat.com>
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Please if you are interested to assist me then get back to me through
-my private email bellow.
-
-i will make all necessary informations known to you,including the name
-of the bank and modes to the repartriation of this fund.
-
-PLEASE REPLY THROUGH MY PRIVATE EMAIL ADDRESS
-Thanks for your understanding
-Marck Csady Esq.
+Applied and queued up for -stable.
