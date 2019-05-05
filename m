@@ -1,51 +1,299 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 15 May 2019 14:12:58 +0000
-Subject: Re: [PATCH net-next] sctp: remove unused cmd SCTP_CMD_GEN_INIT_ACK
-Message-Id: <20190515141219.GA23839@localhost.localdomain>
+From: Michael Tuexen <tuexen@fh-muenster.de>
+Date: Sun, 05 May 2019 13:54:39 +0000
+Subject: Re: Few Questions About SCTP NAT
+Message-Id: <A0A2576C-99C4-4F2E-98CB-D70C7CE3297A@fh-muenster.de>
+MIME-Version: 1
+Content-Type: multipart/mixed; boundary="Apple-Mail=_424B3C84-8637-4616-AB7A-EE44160B4AF6"
 List-Id: <linux-sctp.vger.kernel.org>
-References: <fa41cfdb9f8919d1420d12d270d97e3b17a0fb18.1557383280.git.lucien.xin@gmail.com>
- <20190509113235.GA12387@hmswarspite.think-freely.org>
- <20190509.093913.1261211226773919507.davem@davemloft.net>
- <20190510112718.GA4902@hmswarspite.think-freely.org>
- <CADvbK_f3cmHB+gcY-h6df06kMbB8eB4oiXdL7A8BvxNqVF2aJw@mail.gmail.com>
-In-Reply-To: <CADvbK_f3cmHB+gcY-h6df06kMbB8eB4oiXdL7A8BvxNqVF2aJw@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: David Miller <davem@davemloft.net>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "hange-folder>?" <toggle-mailboxes@localhost.localdomain>
+References: <CADvbK_f22Xy_ZA-Ro1wXk-0GTyPo4jr7MocvZSfdwPk3r0YWag@mail.gmail.com>
+In-Reply-To: <CADvbK_f22Xy_ZA-Ro1wXk-0GTyPo4jr7MocvZSfdwPk3r0YWag@mail.gmail.com>
+To: linux-sctp@vger.kernel.org
 
-On Sun, May 12, 2019 at 01:52:48PM +0800, Xin Long wrote:
-> On Fri, May 10, 2019 at 7:27 PM Neil Horman <nhorman@tuxdriver.com> wrote:
-> >
-> > On Thu, May 09, 2019 at 09:39:13AM -0700, David Miller wrote:
-> > > From: Neil Horman <nhorman@tuxdriver.com>
-> > > Date: Thu, 9 May 2019 07:32:35 -0400
-> > >
-> > > > This is definately a valid cleanup, but I wonder if it wouldn't be better to,
-> > > > instead of removing it, to use it.  We have 2 locations where we actually call
-> > > > sctp_make_init_ack, and then have to check the return code and abort the
-> > > > operation if we get a NULL return.  Would it be a better solution (in the sense
-> > > > of keeping our control flow in line with how the rest of the state machine is
-> > > > supposed to work), if we didn't just add a SCTP_CMD_GEN_INIT_ACK sideeffect to
-> > > > the state machine queue in the locations where we otherwise would call
-> > > > sctp_make_init_ack/sctp_add_cmd_sf(...SCTP_CMD_REPLY)?
-> I think they didn't do that, as the new INIT_ACK needs to add unk_param from
-> the err_chunk which is allocated and freed in those two places
-> sctp_sf_do_5_1B_init()/sctp_sf_do_unexpected_init().
-> 
-> It looks not good to pass that err_chunk as a param to the state machine.
-> 
-Hmm, perhaps you're right, this does look like the more clean way to do
-this, even if its outside the state machine ordering
 
-Neil
+--Apple-Mail=_424B3C84-8637-4616-AB7A-EE44160B4AF6
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-> > >
-> > > Also, net-next is closed 8-)
-> > >
-> > Details, details :)
-> >
-> So everytime before posting a patch on net-next,
-> I should check http://vger.kernel.org/~davem/net-next.html first, right?
-> 
+> On 26. Apr 2019, at 18:39, Xin Long <lucien.xin@gmail.com> wrote:
+>=20
+> On Fri, Apr 26, 2019 at 8:33 PM Michael Tuexen <tuexen@fh-muenster.de> =
+wrote:
+>>=20
+>>> On 25. Apr 2019, at 13:46, Xin Long <lucien.xin@gmail.com> wrote:
+>>>=20
+>>> Sorry, seems I sent to the wrong email address.
+>>> use tuexen@fh-muenster.de instead.
+>> ... I'm typically more responsive on this address than on the one
+>> I use for mailing lists...
+>>>=20
+>>> On Sat, Apr 20, 2019 at 6:45 PM Xin Long <lucien.xin@gmail.com> =
+wrote:
+>>>>=20
+>>>> cc'ing linux-sctp.
+>>>>=20
+>>>> On Sat, Apr 20, 2019 at 4:24 PM Xin Long <lucien.xin@gmail.com> =
+wrote:
+>>>>>=20
+>>>>> Hi, Michael,
+>>>>>=20
+>>>>> I'm trying to implement SCTP NAT
+>>>>> (https://tools.ietf.org/html/draft-ietf-tsvwg-natsupp-12) on =
+linux,
+>>>>> but got some questions:
+>>>>>=20
+>>>>> 1.
+>>>>>                       +-------+
+>>>>>              /--------| NAT 1 |--------\       /--\/--\
+>>>>>  +------+   /         +-------+         \     /        \    =
++--------+
+>>>>>  | Host |=3D=3D=3D                             =3D=3D=3D=3D| =
+Internet |=3D=3D=3D| Host B |
+>>>>>  |   A  |   \         +-------+         /     \        /    =
++--------+
+>>>>>  +------+    \--------| NAT 2 |--------/       \--/\--/
+>>>>>                       +-------+
+>>>>>=20
+>>>>> In this topo, after 4 shake-hands and asconf:
+>>>>>=20
+>>>>>         +---------+--------+----------+--------+-----------+
+>>>>>  NAT 1  |  Int    |  Int   |   Ext    |   Ext  |    Priv   |
+>>>>>         |  VTag   |  Port  |   VTag   |   Port |    Addr   |
+>>>>>         +---------+--------+----------+--------+-----------+
+>>>>>         |  1234   |    1   |    5678  |    2   |  10.0.0.1 |
+>>>>>         +---------+--------+----------+--------+-----------+
+>>>>>=20
+>>>>>         +---------+--------+----------+--------+-----------+
+>>>>>  NAT 2  |  Int    |  Int   |   Ext    |   Ext  |    Priv   |
+>>>>>         |  VTag   |  Port  |   VTag   |   Port |    Addr   |
+>>>>>         +---------+--------+----------+--------+-----------+
+>>>>>         |  1234   |    1   |    5678  |    2   |  10.1.0.1 |
+>>>>>         +---------+--------+----------+--------+-----------+
+>>>>>=20
+>>>>> Now there are 1 entry on nat1 and 1 entry on nat2. If the =
+connection is
+>>>>> shutdown via nat1, the entry on nat1 will be deleted, right? What =
+about
+>>>>> the entry on nat2, when can it be deleted?
+>> Deletion of state is purely timer based. This applies to NAT1 and =
+NAT2.
+>>>>>=20
+>>>>> 2.
+>>>>>                                           /--\/--\
+>>>>>  +--------+              +-----+         /        \         =
++--------+
+>>>>>  | Host A | <----------> | NAT | <----> | Internet | <----> | Host =
+B |
+>>>>>  +--------+              +-----+         \        /         =
++--------+
+>>>>>                                           \--/\--/
+>>>>>=20
+>>>>> In this topo,  if both paths with saddr 10.0.0.1 and 10.1.0.1 go =
+through
+>>>>> NAT, will there be 2 entries created on this NAT after 4 =
+shake-hands and
+>>>>> asconf like:
+>>>>>=20
+>>>>>         +---------+--------+----------+--------+-----------+
+>>>>>  NAT    |  Int    |  Int   |   Ext    |   Ext  |    Priv   |
+>>>>>         |  VTag   |  Port  |   VTag   |   Port |    Addr   |
+>>>>>         +---------+--------+----------+--------+-----------+
+>>>>>         |  1234   |    1   |    5678  |    2   |  10.0.0.1 |
+>>>>>         +---------+--------+----------+--------+-----------+
+>>>>>         |  1234   |    1   |    5678  |    2   |  10.1.0.1 |
+>>>>>         +---------+--------+----------+--------+-----------+
+>>>>>=20
+>>>>> or it will be handled as "Internal Port Number and Verification =
+Tag
+>>>>> Collisions"?
+>> Which section are you referring to?
+> I was looking at:
+>=20
+> 6.3.  Handling of Internal Port Number and Verification Tag =
+Collisions:
+>=20
+> "two hosts in the Private-Address space want  to set up an SCTP =
+association
+> with the same service provided by some hosts in the Internet"
+>=20
+> "in this unlikely event the NAT box MUST send an ABORT chunk with the =
+M-bit
+> set if the collision is triggered by an INIT or INIT-ACK chunk or send =
+an
+> ERROR chunk with the M-bit set if the collision is triggered by an =
+ASCONF
+> chunk"
+>=20
+> Does it mean:
+> Users will fail to add the 2nd path by ASCONF chunk on the same NAT as
+> the 1st path? (if these 2 paths for one asoc go through the same one =
+NAT,
+> NOT two different NATs).
+>=20
+> like:
+>                                                  +--------+
+>                                  /--\/--\      /-|Router 1| \
+>   +------+         +-----+      /        \    /  +--------+  \ =
++------+
+>   | Host | <-----> | NAT | <-> | Internet | =3D=3D                =3D| =
+Host |
+>   |   A  |         +-----+      \        /    \  +--------+  / |   B  =
+|
+>   +------+                       \--/\--/      \-|Router 2|-/  =
++------+
+>=20
+> (10.0.0.1, 10.1.0.1)                             (203.0.113.1, =
+203.0.113.129)
+>=20
+>=20
+> After 4 shake-hands by 10.0.0.1:1 ---> 203.0.113.1:2:
+>=20
+>          +---------+--------+----------+--------+-----------+
+>   NAT    |  Int    |  Int   |   Ext    |   Ext  |    Priv   |
+>          |  VTag   |  Port  |   VTag   |   Port |    Addr   |
+>          +---------+--------+----------+--------+-----------+
+>          |  1234   |    1   |    5678  |    2   |  10.0.0.1 |
+>          +---------+--------+----------+--------+-----------+
+>=20
+> then the user wants to add the 2nd path, which will also go this NAT:
+>=20
+>   ASCONF [ADD-IP=3D0.0.0.0, INT-VTag=3D1234, Ext-VTag =3D 5678]
+>   10.1.0.1:1 --------> 203.0.113.129:2
+>            Ext-VTag =3D 5678
+>=20
+> What will happen on this NAT?
+>=20
+> please let me know if it's still unclear. Thanks.
+Now it is clear to me what you are referring to.
+
+Based on the remote vtag we could detect that this belongs to the =
+existing
+association.
+But what would you gain? We assume that the NAT box has a single public
+address. How should the NAT box map an incoming packet to one of the =
+private
+addresses. This selection is normally done by Host B.
+
+Best regards
+Michael
+>=20
+>>>>>=20
+>>>>> 3.
+>>>>> For multipath, each entry for one path should maintain a 'state', =
+like
+>>>>> closed, established, cookie-echo etc, right?  If they belong to a =
+same
+>>>>> association, especially when they're on different nats, how do we =
+keep
+>>>>> each entry's state consistent? or they don't have to be =
+consistent?
+>> You don't need such a state as long as you delete state purely timer =
+based.
+>>>>>=20
+>>>>> Thanks.
+>>=20
+
+
+--Apple-Mail=_424B3C84-8637-4616-AB7A-EE44160B4AF6
+Content-Disposition: attachment;
+	filename=smime.p7s
+Content-Type: application/pkcs7-signature;
+	name=smime.p7s
+Content-Transfer-Encoding: base64
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExDzANBglghkgBZQMEAgEFADCABgkqhkiG9w0BBwEAAKCCEJAw
+ggTVMIIDvaADAgECAghQTsb1PRG0ZDANBgkqhkiG9w0BAQsFADBxMQswCQYDVQQGEwJERTEcMBoG
+A1UEChMTRGV1dHNjaGUgVGVsZWtvbSBBRzEfMB0GA1UECxMWVC1UZWxlU2VjIFRydXN0IENlbnRl
+cjEjMCEGA1UEAxMaRGV1dHNjaGUgVGVsZWtvbSBSb290IENBIDIwHhcNMTQwNzIyMTIwODI2WhcN
+MTkwNzA5MjM1OTAwWjBaMQswCQYDVQQGEwJERTETMBEGA1UEChMKREZOLVZlcmVpbjEQMA4GA1UE
+CxMHREZOLVBLSTEkMCIGA1UEAxMbREZOLVZlcmVpbiBQQ0EgR2xvYmFsIC0gRzAxMIIBIjANBgkq
+hkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA6ZvDZ4X5Da71jVTDllA1PWLpbkztlNcAW5UidNQg6zSP
+1uzAMQQLmYHiphTSUqAoI4SLdIkEXlvg4njBeMsWyyg1OXstkEXQ7aAAeny/Sg4bAMOG6VwrMRF7
+DPOCJEOMHDiLamgAmu7cT3ir0sYTm3at7t4m6O8Br3QPwQmi9mvOvdPNFDBP9eXjpMhim4IaAycw
+DQJlYE3t0QkjKpY1WCfTdsZxtpAdxO3/NYZ9bzOz2w/FEcKKg6GUXUFr2NIQ9Uz9ylGs2b3vkoO7
+2uuLFlZWQ8/h1RM9ph8nMM1JVNvJEzSacXXFbOqnC5j5IZ0nrz6jOTlIaoytyZn7wxLyvQIDAQAB
+o4IBhjCCAYIwDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBRJt8bP6D0ff+pEexMp9/EKcD7eZDAf
+BgNVHSMEGDAWgBQxw3kbuvVT1xfgiXotF2wKsyudMzASBgNVHRMBAf8ECDAGAQH/AgECMGIGA1Ud
+IARbMFkwEQYPKwYBBAGBrSGCLAEBBAICMBEGDysGAQQBga0hgiwBAQQDADARBg8rBgEEAYGtIYIs
+AQEEAwEwDwYNKwYBBAGBrSGCLAEBBDANBgsrBgEEAYGtIYIsHjA+BgNVHR8ENzA1MDOgMaAvhi1o
+dHRwOi8vcGtpMDMzNi50ZWxlc2VjLmRlL3JsL0RUX1JPT1RfQ0FfMi5jcmwweAYIKwYBBQUHAQEE
+bDBqMCwGCCsGAQUFBzABhiBodHRwOi8vb2NzcDAzMzYudGVsZXNlYy5kZS9vY3NwcjA6BggrBgEF
+BQcwAoYuaHR0cDovL3BraTAzMzYudGVsZXNlYy5kZS9jcnQvRFRfUk9PVF9DQV8yLmNlcjANBgkq
+hkiG9w0BAQsFAAOCAQEAYyAo/ZwhhnK+OUZZOTIlvKkBmw3Myn1BnIZtCm4ssxNZdbEzkhthJxb/
+w7LVNYL7hCoBSb1mu2YvssIGXW4/buMBWlvKQ2NclbbhMacf1QdfTeZlgk4y+cN8ekvNTVx07iHy
+dQLsUj7SyWrTkCNuSWc1vn9NVqTszC/Pt6GXqHI+ybxA1lqkCD3WvILDt7cyjrEsjmpttzUCGc/1
+OURYY6ckABCwu/xOr24vOLulV0k/2G5QbyyXltwdRpplic+uzPLl2Z9Tsz6hL5Kp2AvGhB8Exuse
+6J99tXulAvEkxSRjETTMWpMgKnmIOiVCkKllO3yG0xIVIyn8LNrMOVtUFzCCBaIwggSKoAMCAQIC
+BxekJKEJSDMwDQYJKoZIhvcNAQELBQAwWjELMAkGA1UEBhMCREUxEzARBgNVBAoTCkRGTi1WZXJl
+aW4xEDAOBgNVBAsTB0RGTi1QS0kxJDAiBgNVBAMTG0RGTi1WZXJlaW4gUENBIEdsb2JhbCAtIEcw
+MTAeFw0xNDA1MjcxNDU0MDlaFw0xOTA3MDkyMzU5MDBaMIHGMQswCQYDVQQGEwJERTEcMBoGA1UE
+CBMTTm9yZHJoZWluLVdlc3RmYWxlbjERMA8GA1UEBxMITXVlbnN0ZXIxIDAeBgNVBAoTF0ZhY2ho
+b2Noc2NodWxlIE11ZW5zdGVyMSMwIQYDVQQLExpEYXRlbnZlcmFyYmVpdHVuZ3N6ZW50cmFsZTEd
+MBsGA1UEAxMURkggTXVlbnN0ZXIgQ0EgLSBHMDExIDAeBgkqhkiG9w0BCQEWEWNhQGZoLW11ZW5z
+dGVyLmRlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuHlsrvBs7CL9IqMH9r//QU9E
+pghTV/3skHuQZ3DpNY+lyJWOW5zbtUubgXt7lYHpIE4d4CclTZWqCHwoAI6gqzSSGjUKuX6/0ui/
+LhXmlDvCBfwuER+T+3/R59hlLnhI5iYYPQiNywQIa3wJhBLTZrlXw8nDdjI54MAzcVDUX7l21sbo
+ZIA6idM7SXmshxoRQ6xsfPHskrceNMcvtHNDhVnVscwRUJQUR55fs0X7Y93PasugWPv3xmgNr1da
+Cq94eV+nslNU/GJaT9TQ3uG8pagLXl9NbDNkHIrvFAD5zXO0m/d00I4QhUVQyEtwnTegDqcM+WFh
+JXensgnZhWe6bwIDAQABo4IB/jCCAfowEgYDVR0TAQH/BAgwBgEB/wIBATAOBgNVHQ8BAf8EBAMC
+AQYwEQYDVR0gBAowCDAGBgRVHSAAMB0GA1UdDgQWBBQK81u85DGA1jVCiabTw8833tHf1zAfBgNV
+HSMEGDAWgBRJt8bP6D0ff+pEexMp9/EKcD7eZDAcBgNVHREEFTATgRFjYUBmaC1tdWVuc3Rlci5k
+ZTCBiAYDVR0fBIGAMH4wPaA7oDmGN2h0dHA6Ly9jZHAxLnBjYS5kZm4uZGUvZ2xvYmFsLXJvb3Qt
+Y2EvcHViL2NybC9jYWNybC5jcmwwPaA7oDmGN2h0dHA6Ly9jZHAyLnBjYS5kZm4uZGUvZ2xvYmFs
+LXJvb3QtY2EvcHViL2NybC9jYWNybC5jcmwwgdcGCCsGAQUFBwEBBIHKMIHHMDMGCCsGAQUFBzAB
+hidodHRwOi8vb2NzcC5wY2EuZGZuLmRlL09DU1AtU2VydmVyL09DU1AwRwYIKwYBBQUHMAKGO2h0
+dHA6Ly9jZHAxLnBjYS5kZm4uZGUvZ2xvYmFsLXJvb3QtY2EvcHViL2NhY2VydC9jYWNlcnQuY3J0
+MEcGCCsGAQUFBzAChjtodHRwOi8vY2RwMi5wY2EuZGZuLmRlL2dsb2JhbC1yb290LWNhL3B1Yi9j
+YWNlcnQvY2FjZXJ0LmNydDANBgkqhkiG9w0BAQsFAAOCAQEA3kcDNdZKb7kSD7s1ly2qa/2QbQe+
+ld3LhZeOcfysdLtN8oweBmgT3MYoZ+D9c+SoUWJAwTKPB15DoGy+fWhelXTpQrqxIGb4ISr1JCjg
+slnmMUva0xjwZGxojZ9gE1bi18xfKw3+dMpwCLt6LbLTjr/tyH6otacwr2tZzuuJIUAORnefwTcr
+vmB21n/BEQH/ZXruWu8lSO3L9YAmQB6ViaZFCpn2sMmOLACdoWxmUQb3QAjsa327jHUjsz53k9q5
+Zrx/g+zOg5s1Wmy2JOlLQMUIZXXf0/6rB5Fr2llx7dBG/Uk7NhZdNy7OzNzci0C4Wnkd8rDVEWHG
+hH2gfpcTfjCCBg0wggT1oAMCAQICBxuZiHQ3saMwDQYJKoZIhvcNAQELBQAwgcYxCzAJBgNVBAYT
+AkRFMRwwGgYDVQQIExNOb3JkcmhlaW4tV2VzdGZhbGVuMREwDwYDVQQHEwhNdWVuc3RlcjEgMB4G
+A1UEChMXRmFjaGhvY2hzY2h1bGUgTXVlbnN0ZXIxIzAhBgNVBAsTGkRhdGVudmVyYXJiZWl0dW5n
+c3plbnRyYWxlMR0wGwYDVQQDExRGSCBNdWVuc3RlciBDQSAtIEcwMTEgMB4GCSqGSIb3DQEJARYR
+Y2FAZmgtbXVlbnN0ZXIuZGUwHhcNMTYwNzA0MDcwNjEzWhcNMTkwNzA0MDcwNjEzWjB8MQswCQYD
+VQQGEwJERTEgMB4GA1UECgwXRmFjaGhvY2hzY2h1bGUgTXVlbnN0ZXIxMjAwBgNVBAsMKUZhY2hi
+ZXJlaWNoIEVsZWt0cm90ZWNobmlrIHVuZCBJbmZvcm1hdGlrMRcwFQYDVQQDDA5NaWNoYWVsIFR1
+ZXhlbjCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMyaGlBt2ZtuF8QP8zYNrGxXC+es
+PMajIPl+hu1LGHnN2BJ3J5ZMN44BOZw3n6LO1FaAgO8D4xU4/AELecX6VxJZ2zOOSD8uTYO4OnUu
+24hkjFUQAj13tT644AKUQMMBpgj7wC52V5Jij+mZX/t1S38/WFiCGnirt4xTNi5OmN4K+VNZfG4x
+0msDqFjJX70rF1y09/Mylu1M/Y0tu/I9DqhwDQT4LBOvyyaAlhSJ8Jb8m8YTt5xlOzrXlBmj4pKs
+74y7C2IKRw4tFozGX1cf1LVEs2eBCb5iUwXrlcMipwm62sJ38GD00EOlRNTpAM5rDAcgWxMCffek
+bRv/01whtOkCAwEAAaOCAkcwggJDMEAGA1UdIAQ5MDcwEQYPKwYBBAGBrSGCLAEBBAMFMBEGDysG
+AQQBga0hgiwCAQQDATAPBg0rBgEEAYGtIYIsAQEEMAkGA1UdEwQCMAAwDgYDVR0PAQH/BAQDAgXg
+MB0GA1UdJQQWMBQGCCsGAQUFBwMCBggrBgEFBQcDBDAdBgNVHQ4EFgQU0B2vaoSoEmYAggD04WZF
+2hGif3UwHwYDVR0jBBgwFoAUCvNbvOQxgNY1Qomm08PPN97R39cwIAYDVR0RBBkwF4EVdHVleGVu
+QGZoLW11ZW5zdGVyLmRlMIGIBgNVHR8EgYAwfjA9oDugOYY3aHR0cDovL2NkcDEucGNhLmRmbi5k
+ZS9maC1tdWVuc3Rlci1jYS9wdWIvY3JsL2NhY3JsLmNybDA9oDugOYY3aHR0cDovL2NkcDIucGNh
+LmRmbi5kZS9maC1tdWVuc3Rlci1jYS9wdWIvY3JsL2NhY3JsLmNybDCB1wYIKwYBBQUHAQEEgcow
+gccwMwYIKwYBBQUHMAGGJ2h0dHA6Ly9vY3NwLnBjYS5kZm4uZGUvT0NTUC1TZXJ2ZXIvT0NTUDBH
+BggrBgEFBQcwAoY7aHR0cDovL2NkcDEucGNhLmRmbi5kZS9maC1tdWVuc3Rlci1jYS9wdWIvY2Fj
+ZXJ0L2NhY2VydC5jcnQwRwYIKwYBBQUHMAKGO2h0dHA6Ly9jZHAyLnBjYS5kZm4uZGUvZmgtbXVl
+bnN0ZXItY2EvcHViL2NhY2VydC9jYWNlcnQuY3J0MA0GCSqGSIb3DQEBCwUAA4IBAQBI9v+seJM6
+AlSIrmmpopz6zh8QAsqGLJkkY2D0KYFucUY/xZaJTtZxvmWddbKk2903Qhg+vZKOf87PHhip7/4t
+FSwhxYNSS36WsRJTeUa0f3KkSa28yrIRfWlJATgxfL5X/QQnopjCt34n4221kcsR7LHxBAn37ow+
+/2L7WjWDDuOkaM9/ZSCtrN+yFRat1eUVs1Hk7sKT/bfJTsYqzovXitjmCP3YdB40dkuQ6/ZzEdXT
+bpa4c45RcRnPqKXnxknK0UfRHNHqk15W7dUPVMzSGFUvjhmWPP2wW6a8F1U5sEqfHcoBFC5CGjGy
+7Gk2luk3obi/KLrDyZC+dkjhDYEpMYIEOTCCBDUCAQEwgdIwgcYxCzAJBgNVBAYTAkRFMRwwGgYD
+VQQIExNOb3JkcmhlaW4tV2VzdGZhbGVuMREwDwYDVQQHEwhNdWVuc3RlcjEgMB4GA1UEChMXRmFj
+aGhvY2hzY2h1bGUgTXVlbnN0ZXIxIzAhBgNVBAsTGkRhdGVudmVyYXJiZWl0dW5nc3plbnRyYWxl
+MR0wGwYDVQQDExRGSCBNdWVuc3RlciBDQSAtIEcwMTEgMB4GCSqGSIb3DQEJARYRY2FAZmgtbXVl
+bnN0ZXIuZGUCBxuZiHQ3saMwDQYJYIZIAWUDBAIBBQCgggI3MBgGCSqGSIb3DQEJAzELBgkqhkiG
+9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTE5MDUwNTEzNTQzOVowLwYJKoZIhvcNAQkEMSIEIJ4x2BLG
+yhE+XPXQKZIEJ6gC9f0pK7oqcJ5EARisq9zZMIHjBgkrBgEEAYI3EAQxgdUwgdIwgcYxCzAJBgNV
+BAYTAkRFMRwwGgYDVQQIExNOb3JkcmhlaW4tV2VzdGZhbGVuMREwDwYDVQQHEwhNdWVuc3RlcjEg
+MB4GA1UEChMXRmFjaGhvY2hzY2h1bGUgTXVlbnN0ZXIxIzAhBgNVBAsTGkRhdGVudmVyYXJiZWl0
+dW5nc3plbnRyYWxlMR0wGwYDVQQDExRGSCBNdWVuc3RlciBDQSAtIEcwMTEgMB4GCSqGSIb3DQEJ
+ARYRY2FAZmgtbXVlbnN0ZXIuZGUCBxuZiHQ3saMwgeUGCyqGSIb3DQEJEAILMYHVoIHSMIHGMQsw
+CQYDVQQGEwJERTEcMBoGA1UECBMTTm9yZHJoZWluLVdlc3RmYWxlbjERMA8GA1UEBxMITXVlbnN0
+ZXIxIDAeBgNVBAoTF0ZhY2hob2Noc2NodWxlIE11ZW5zdGVyMSMwIQYDVQQLExpEYXRlbnZlcmFy
+YmVpdHVuZ3N6ZW50cmFsZTEdMBsGA1UEAxMURkggTXVlbnN0ZXIgQ0EgLSBHMDExIDAeBgkqhkiG
+9w0BCQEWEWNhQGZoLW11ZW5zdGVyLmRlAgcbmYh0N7GjMA0GCSqGSIb3DQEBAQUABIIBAGyIOszI
+Pf+PigqhH2AjEiRdAlDx3UG9TjeqrITspoWFj9tn8KEYIIX8wiciBcwwvfCSyR3VPEZ4w0zFJJlI
+7eJXpcg0eG7HCepQ3hC3J7qjhK+9w43utz1/DMUNPeK46/mVEw+BoG57XYYx+lQjPBigtdsdPvW7
+aKwmiGP+y71pAuOzBcJxQo+O+XqM5yCkYpOUaE7o6rlOisHV+qceQ+AmD8gkBAC7innzTpgy3k/v
+nmlqwDDFBENl0MFOEE0nPOFTMBKYmNKm24SuElNbsay+WeRuYKc8WZg0ufRU4GWC48uJXTFShXZu
+FuaFjRpdtEacVitCKpnheZWmCCzc/DoAAAAAAAA=
+--Apple-Mail=_424B3C84-8637-4616-AB7A-EE44160B4AF6--
