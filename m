@@ -1,17 +1,19 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 29 May 2019 17:10:18 +0000
+From: David Miller <davem@davemloft.net>
+Date: Thu, 30 May 2019 21:36:04 +0000
 Subject: Re: [PATCH net-next] sctp: deduplicate identical skb_checksum_ops
-Message-Id: <20190529171018.GA3713@localhost.localdomain>
+Message-Id: <20190530.143604.925231544360388287.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20190529153941.12166-1-mcroce@redhat.com>
 In-Reply-To: <20190529153941.12166-1-mcroce@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Matteo Croce <mcroce@redhat.com>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-kernel@vger.kernel.org
+To: mcroce@redhat.com
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, linux-kernel@vger.kernel.org
 
-On Wed, May 29, 2019 at 05:39:41PM +0200, Matteo Croce wrote:
+From: Matteo Croce <mcroce@redhat.com>
+Date: Wed, 29 May 2019 17:39:41 +0200
+
 > The same skb_checksum_ops struct is defined twice in two different places,
 > leading to code duplication. Declare it as a global variable into a common
 > header instead of allocating it on the stack on each function call.
@@ -36,4 +38,4 @@ On Wed, May 29, 2019 at 05:39:41PM +0200, Matteo Croce wrote:
 > Reviewed-by: Xin Long <lucien.xin@gmail.com>
 > Signed-off-by: Matteo Croce <mcroce@redhat.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Applied.
