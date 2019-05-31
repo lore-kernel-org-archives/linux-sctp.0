@@ -1,120 +1,90 @@
-From: syzbot <syzbot+7f3b6b106be8dcdcdeec@syzkaller.appspotmail.com>
-Date: Fri, 31 May 2019 14:58:05 +0000
-Subject: memory leak in sctp_stream_init_ext
-Message-Id: <000000000000f122ab058a303d94@google.com>
+From: syzbot <syzbot+6ad9c3bd0a218a2ab41d@syzkaller.appspotmail.com>
+Date: Fri, 31 May 2019 21:18:06 +0000
+Subject: memory leak in sctp_send_reset_streams
+Message-Id: <000000000000f7a443058a358cb4@google.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="windows-1254"
+Content-Transfer-Encoding: base64
 To: davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
 
-Hello,
-
-syzbot found the following crash on:
-
-HEAD commit:    bec7550c Merge tag 'docs-5.2-fixes2' of git://git.lwn.net/..
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x2a0916a00000
-kernel config:  https://syzkaller.appspot.com/x/.config?xd479170dcaf0e11
-dashboard link: https://syzkaller.appspot.com/bug?extid3b6b106be8dcdcdeec
-compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x42cd4ca00000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?xf81d72a00000
-
-IMPORTANT: if you fix the bug, please add the following tag to the commit:
-Reported-by: syzbot+7f3b6b106be8dcdcdeec@syzkaller.appspotmail.com
-
-executing program
-executing program
-executing program
-executing program
-executing program
-BUG: memory leak
-unreferenced object 0xffff8881114f5d80 (size 96):
-   comm "syz-executor934", pid 7160, jiffies 4294993058 (age 31.950s)
-   hex dump (first 32 bytes):
-     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-   backtrace:
-     [<00000000ce7a1326>] kmemleak_alloc_recursive  
-include/linux/kmemleak.h:55 [inline]
-     [<00000000ce7a1326>] slab_post_alloc_hook mm/slab.h:439 [inline]
-     [<00000000ce7a1326>] slab_alloc mm/slab.c:3326 [inline]
-     [<00000000ce7a1326>] kmem_cache_alloc_trace+0x13d/0x280 mm/slab.c:3553
-     [<000000007abb7ac9>] kmalloc include/linux/slab.h:547 [inline]
-     [<000000007abb7ac9>] kzalloc include/linux/slab.h:742 [inline]
-     [<000000007abb7ac9>] sctp_stream_init_ext+0x2b/0xa0  
-net/sctp/stream.c:157
-     [<0000000048ecb9c1>] sctp_sendmsg_to_asoc+0x946/0xa00  
-net/sctp/socket.c:1882
-     [<000000004483ca2b>] sctp_sendmsg+0x2a8/0x990 net/sctp/socket.c:2102
-     [<0000000094bdc32e>] inet_sendmsg+0x64/0x120 net/ipv4/af_inet.c:802
-     [<0000000022d1c2a5>] sock_sendmsg_nosec net/socket.c:652 [inline]
-     [<0000000022d1c2a5>] sock_sendmsg+0x54/0x70 net/socket.c:671
-     [<000000006ab53119>] sock_write_iter+0xb6/0x130 net/socket.c:1000
-     [<00000000973772ef>] call_write_iter include/linux/fs.h:1872 [inline]
-     [<00000000973772ef>] new_sync_write+0x1ad/0x260 fs/read_write.c:483
-     [<0000000033f2491b>] __vfs_write+0x87/0xa0 fs/read_write.c:496
-     [<00000000372fbd56>] vfs_write fs/read_write.c:558 [inline]
-     [<00000000372fbd56>] vfs_write+0xee/0x210 fs/read_write.c:542
-     [<000000007ccb2ea5>] ksys_write+0x7c/0x130 fs/read_write.c:611
-     [<000000001c29b8c7>] __do_sys_write fs/read_write.c:623 [inline]
-     [<000000001c29b8c7>] __se_sys_write fs/read_write.c:620 [inline]
-     [<000000001c29b8c7>] __x64_sys_write+0x1e/0x30 fs/read_write.c:620
-     [<0000000014d9243b>] do_syscall_64+0x76/0x1a0  
-arch/x86/entry/common.c:301
-     [<0000000059f6e9a8>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
-
-BUG: memory leak
-unreferenced object 0xffff8881114f5d80 (size 96):
-   comm "syz-executor934", pid 7160, jiffies 4294993058 (age 33.160s)
-   hex dump (first 32 bytes):
-     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-   backtrace:
-     [<00000000ce7a1326>] kmemleak_alloc_recursive  
-include/linux/kmemleak.h:55 [inline]
-     [<00000000ce7a1326>] slab_post_alloc_hook mm/slab.h:439 [inline]
-     [<00000000ce7a1326>] slab_alloc mm/slab.c:3326 [inline]
-     [<00000000ce7a1326>] kmem_cache_alloc_trace+0x13d/0x280 mm/slab.c:3553
-     [<000000007abb7ac9>] kmalloc include/linux/slab.h:547 [inline]
-     [<000000007abb7ac9>] kzalloc include/linux/slab.h:742 [inline]
-     [<000000007abb7ac9>] sctp_stream_init_ext+0x2b/0xa0  
-net/sctp/stream.c:157
-     [<0000000048ecb9c1>] sctp_sendmsg_to_asoc+0x946/0xa00  
-net/sctp/socket.c:1882
-     [<000000004483ca2b>] sctp_sendmsg+0x2a8/0x990 net/sctp/socket.c:2102
-     [<0000000094bdc32e>] inet_sendmsg+0x64/0x120 net/ipv4/af_inet.c:802
-     [<0000000022d1c2a5>] sock_sendmsg_nosec net/socket.c:652 [inline]
-     [<0000000022d1c2a5>] sock_sendmsg+0x54/0x70 net/socket.c:671
-     [<000000006ab53119>] sock_write_iter+0xb6/0x130 net/socket.c:1000
-     [<00000000973772ef>] call_write_iter include/linux/fs.h:1872 [inline]
-     [<00000000973772ef>] new_sync_write+0x1ad/0x260 fs/read_write.c:483
-     [<0000000033f2491b>] __vfs_write+0x87/0xa0 fs/read_write.c:496
-     [<00000000372fbd56>] vfs_write fs/read_write.c:558 [inline]
-     [<00000000372fbd56>] vfs_write+0xee/0x210 fs/read_write.c:542
-     [<000000007ccb2ea5>] ksys_write+0x7c/0x130 fs/read_write.c:611
-     [<000000001c29b8c7>] __do_sys_write fs/read_write.c:623 [inline]
-     [<000000001c29b8c7>] __se_sys_write fs/read_write.c:620 [inline]
-     [<000000001c29b8c7>] __x64_sys_write+0x1e/0x30 fs/read_write.c:620
-     [<0000000014d9243b>] do_syscall_64+0x76/0x1a0  
-arch/x86/entry/common.c:301
-     [<0000000059f6e9a8>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
-
-executing program
-executing program
-executing program
-executing program
-executing program
-executing program
-
-
----
-This bug is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
-
-syzbot will keep track of this bug report. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
-syzbot can test patches for this bug, for details see:
-https://goo.gl/tpsmEJ#testing-patches
+SGVsbG8sCgpzeXpib3QgZm91bmQgdGhlIGZvbGxvd2luZyBjcmFzaCBvbjoKCkhFQUQgY29tbWl0
+OiAgICAwMzZlMzQzMSBNZXJnZSBnaXQ6Ly9naXQua2VybmVsLm9yZy9wdWIvc2NtL2xpbnV4L2tl
+cm5lbC9nLi4KZ2l0IHRyZWU6ICAgICAgIHVwc3RyZWFtCmNvbnNvbGUgb3V0cHV0OiBodHRwczov
+L3N5emthbGxlci5hcHBzcG90LmNvbS94L2xvZy50eHQ/eBUzY2ZmMTJhMDAwMDAKa2VybmVsIGNv
+bmZpZzogIGh0dHBzOi8vc3l6a2FsbGVyLmFwcHNwb3QuY29tL3gvLmNvbmZpZz94jzBmNjNhNjJi
+YjViMTNjCmRhc2hib2FyZCBsaW5rOiBodHRwczovL3N5emthbGxlci5hcHBzcG90LmNvbS9idWc/
+ZXh0aWRqZDljM2JkMGEyMThhMmFiNDFkCmNvbXBpbGVyOiAgICAgICBnY2MgKEdDQykgOS4wLjAg
+MjAxODEyMzEgKGV4cGVyaW1lbnRhbCkKc3l6IHJlcHJvOiAgICAgIGh0dHBzOi8vc3l6a2FsbGVy
+LmFwcHNwb3QuY29tL3gvcmVwcm8uc3l6P3gSNTYxYzg2YTAwMDAwCkMgcmVwcm9kdWNlcjogICBo
+dHRwczovL3N5emthbGxlci5hcHBzcG90LmNvbS94L3JlcHJvLmM/eBViNzZmZDhhMDAwMDAKCklN
+UE9SVEFOVDogaWYgeW91IGZpeCB0aGUgYnVnLCBwbGVhc2UgYWRkIHRoZSBmb2xsb3dpbmcgdGFn
+IHRvIHRoZSBjb21taXQ6ClJlcG9ydGVkLWJ5OiBzeXpib3QrNmFkOWMzYmQwYTIxOGEyYWI0MWRA
+c3l6a2FsbGVyLmFwcHNwb3RtYWlsLmNvbQoKZXhlY3V0aW5nIHByb2dyYW0KZXhlY3V0aW5nIHBy
+b2dyYW0KZXhlY3V0aW5nIHByb2dyYW0KZXhlY3V0aW5nIHByb2dyYW0KZXhlY3V0aW5nIHByb2dy
+YW0KQlVHOiBtZW1vcnkgbGVhawp1bnJlZmVyZW5jZWQgb2JqZWN0IDB4ZmZmZjg4ODEyMzg5NDgy
+MCAoc2l6ZSAzMik6CiAgIGNvbW0gInN5ei1leGVjdXRvcjA0NSIsIHBpZCA3MjY3LCBqaWZmaWVz
+IDQyOTQ5NDM1NTkgKGFnZSAxMy42NjBzKQogICBoZXggZHVtcCAoZmlyc3QgMzIgYnl0ZXMpOgog
+ICAgIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwICAuLi4u
+Li4uLi4uLi4uLi4uCiAgICAgMDAgMDAgMDAgMDAgMDAgMDAgMDAgMDAgMDAgMDAgMDAgMDAgMDAg
+MDAgMDAgMDAgIC4uLi4uLi4uLi4uLi4uLi4KICAgYmFja3RyYWNlOgogICAgIFs8MDAwMDAwMDBj
+N2U3MWM2OT5dIGttZW1sZWFrX2FsbG9jX3JlY3Vyc2l2ZSAgCmluY2x1ZGUvbGludXgva21lbWxl
+YWsuaDo1NSBbaW5saW5lXQogICAgIFs8MDAwMDAwMDBjN2U3MWM2OT5dIHNsYWJfcG9zdF9hbGxv
+Y19ob29rIG1tL3NsYWIuaDo0MzkgW2lubGluZV0KICAgICBbPDAwMDAwMDAwYzdlNzFjNjk+XSBz
+bGFiX2FsbG9jIG1tL3NsYWIuYzozMzI2IFtpbmxpbmVdCiAgICAgWzwwMDAwMDAwMGM3ZTcxYzY5
+Pl0gX19kb19rbWFsbG9jIG1tL3NsYWIuYzozNjU4IFtpbmxpbmVdCiAgICAgWzwwMDAwMDAwMGM3
+ZTcxYzY5Pl0gX19rbWFsbG9jKzB4MTYxLzB4MmMwIG1tL3NsYWIuYzozNjY5CiAgICAgWzwwMDAw
+MDAwMDMyNTBlZDhlPl0ga21hbGxvY19hcnJheSBpbmNsdWRlL2xpbnV4L3NsYWIuaDo2NzAgW2lu
+bGluZV0KICAgICBbPDAwMDAwMDAwMzI1MGVkOGU+XSBrY2FsbG9jIGluY2x1ZGUvbGludXgvc2xh
+Yi5oOjY4MSBbaW5saW5lXQogICAgIFs8MDAwMDAwMDAzMjUwZWQ4ZT5dIHNjdHBfc2VuZF9yZXNl
+dF9zdHJlYW1zKzB4MWFiLzB4NWEwICAKbmV0L3NjdHAvc3RyZWFtLmM6MzAyCiAgICAgWzwwMDAw
+MDAwMGNkODk5YzZlPl0gc2N0cF9zZXRzb2Nrb3B0X3Jlc2V0X3N0cmVhbXMgIApuZXQvc2N0cC9z
+b2NrZXQuYzo0MzE0IFtpbmxpbmVdCiAgICAgWzwwMDAwMDAwMGNkODk5YzZlPl0gc2N0cF9zZXRz
+b2Nrb3B0IG5ldC9zY3RwL3NvY2tldC5jOjQ3NjUgW2lubGluZV0KICAgICBbPDAwMDAwMDAwY2Q4
+OTljNmU+XSBzY3RwX3NldHNvY2tvcHQrMHhjMjMvMHgyYmYwIG5ldC9zY3RwL3NvY2tldC5jOjQ2
+MDgKICAgICBbPDAwMDAwMDAwZmYzYTIxYTI+XSBzb2NrX2NvbW1vbl9zZXRzb2Nrb3B0KzB4Mzgv
+MHg1MCAgCm5ldC9jb3JlL3NvY2suYzozMTMwCiAgICAgWzwwMDAwMDAwMDllYjg3YWU3Pl0gX19z
+eXNfc2V0c29ja29wdCsweDk4LzB4MTIwIG5ldC9zb2NrZXQuYzoyMDc4CiAgICAgWzwwMDAwMDAw
+MGUwZWRlNmNhPl0gX19kb19zeXNfc2V0c29ja29wdCBuZXQvc29ja2V0LmM6MjA4OSBbaW5saW5l
+XQogICAgIFs8MDAwMDAwMDBlMGVkZTZjYT5dIF9fc2Vfc3lzX3NldHNvY2tvcHQgbmV0L3NvY2tl
+dC5jOjIwODYgW2lubGluZV0KICAgICBbPDAwMDAwMDAwZTBlZGU2Y2E+XSBfX3g2NF9zeXNfc2V0
+c29ja29wdCsweDI2LzB4MzAgbmV0L3NvY2tldC5jOjIwODYKICAgICBbPDAwMDAwMDAwYzYxMTU1
+ZjU+XSBkb19zeXNjYWxsXzY0KzB4NzYvMHgxYTAgIAphcmNoL3g4Ni9lbnRyeS9jb21tb24uYzoz
+MDEKICAgICBbPDAwMDAwMDAwZTU0MDk1OGM+XSBlbnRyeV9TWVNDQUxMXzY0X2FmdGVyX2h3ZnJh
+bWUrMHg0NC8weGE5CgpCVUc6IG1lbW9yeSBsZWFrCnVucmVmZXJlbmNlZCBvYmplY3QgMHhmZmZm
+ODg4MTIzODk0OTgwIChzaXplIDMyKToKICAgY29tbSAic3l6LWV4ZWN1dG9yMDQ1IiwgcGlkIDcy
+NjgsIGppZmZpZXMgNDI5NDk0NDE0NSAoYWdlIDcuODAwcykKICAgaGV4IGR1bXAgKGZpcnN0IDMy
+IGJ5dGVzKToKICAgICAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAw
+MCAwMCAgLi4uLi4uLi4uLi4uLi4uLgogICAgIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAw
+IDAwIDAwIDAwIDAwIDAwIDAwICAuLi4uLi4uLi4uLi4uLi4uCiAgIGJhY2t0cmFjZToKICAgICBb
+PDAwMDAwMDAwYzdlNzFjNjk+XSBrbWVtbGVha19hbGxvY19yZWN1cnNpdmUgIAppbmNsdWRlL2xp
+bnV4L2ttZW1sZWFrLmg6NTUgW2lubGluZV0KICAgICBbPDAwMDAwMDAwYzdlNzFjNjk+XSBzbGFi
+X3Bvc3RfYWxsb2NfaG9vayBtbS9zbGFiLmg6NDM5IFtpbmxpbmVdCiAgICAgWzwwMDAwMDAwMGM3
+ZTcxYzY5Pl0gc2xhYl9hbGxvYyBtbS9zbGFiLmM6MzMyNiBbaW5saW5lXQogICAgIFs8MDAwMDAw
+MDBjN2U3MWM2OT5dIF9fZG9fa21hbGxvYyBtbS9zbGFiLmM6MzY1OCBbaW5saW5lXQogICAgIFs8
+MDAwMDAwMDBjN2U3MWM2OT5dIF9fa21hbGxvYysweDE2MS8weDJjMCBtbS9zbGFiLmM6MzY2OQog
+ICAgIFs8MDAwMDAwMDAzMjUwZWQ4ZT5dIGttYWxsb2NfYXJyYXkgaW5jbHVkZS9saW51eC9zbGFi
+Lmg6NjcwIFtpbmxpbmVdCiAgICAgWzwwMDAwMDAwMDMyNTBlZDhlPl0ga2NhbGxvYyBpbmNsdWRl
+L2xpbnV4L3NsYWIuaDo2ODEgW2lubGluZV0KICAgICBbPDAwMDAwMDAwMzI1MGVkOGU+XSBzY3Rw
+X3NlbmRfcmVzZXRfc3RyZWFtcysweDFhYi8weDVhMCAgCm5ldC9zY3RwL3N0cmVhbS5jOjMwMgog
+ICAgIFs8MDAwMDAwMDBjZDg5OWM2ZT5dIHNjdHBfc2V0c29ja29wdF9yZXNldF9zdHJlYW1zICAK
+bmV0L3NjdHAvc29ja2V0LmM6NDMxNCBbaW5saW5lXQogICAgIFs8MDAwMDAwMDBjZDg5OWM2ZT5d
+IHNjdHBfc2V0c29ja29wdCBuZXQvc2N0cC9zb2NrZXQuYzo0NzY1IFtpbmxpbmVdCiAgICAgWzww
+MDAwMDAwMGNkODk5YzZlPl0gc2N0cF9zZXRzb2Nrb3B0KzB4YzIzLzB4MmJmMCBuZXQvc2N0cC9z
+b2NrZXQuYzo0NjA4CiAgICAgWzwwMDAwMDAwMGZmM2EyMWEyPl0gc29ja19jb21tb25fc2V0c29j
+a29wdCsweDM4LzB4NTAgIApuZXQvY29yZS9zb2NrLmM6MzEzMAogICAgIFs8MDAwMDAwMDA5ZWI4
+N2FlNz5dIF9fc3lzX3NldHNvY2tvcHQrMHg5OC8weDEyMCBuZXQvc29ja2V0LmM6MjA3OAogICAg
+IFs8MDAwMDAwMDBlMGVkZTZjYT5dIF9fZG9fc3lzX3NldHNvY2tvcHQgbmV0L3NvY2tldC5jOjIw
+ODkgW2lubGluZV0KICAgICBbPDAwMDAwMDAwZTBlZGU2Y2E+XSBfX3NlX3N5c19zZXRzb2Nrb3B0
+IG5ldC9zb2NrZXQuYzoyMDg2IFtpbmxpbmVdCiAgICAgWzwwMDAwMDAwMGUwZWRlNmNhPl0gX194
+NjRfc3lzX3NldHNvY2tvcHQrMHgyNi8weDMwIG5ldC9zb2NrZXQuYzoyMDg2CiAgICAgWzwwMDAw
+MDAwMGM2MTE1NWY1Pl0gZG9fc3lzY2FsbF82NCsweDc2LzB4MWEwICAKYXJjaC94ODYvZW50cnkv
+Y29tbW9uLmM6MzAxCiAgICAgWzwwMDAwMDAwMGU1NDA5NThjPl0gZW50cnlfU1lTQ0FMTF82NF9h
+ZnRlcl9od2ZyYW1lKzB4NDQvMHhhOQoKCgotLS0KVGhpcyBidWcgaXMgZ2VuZXJhdGVkIGJ5IGEg
+Ym90LiBJdCBtYXkgY29udGFpbiBlcnJvcnMuClNlZSBodHRwczovL2dvby5nbC90cHNtRUogZm9y
+IG1vcmUgaW5mb3JtYXRpb24gYWJvdXQgc3l6Ym90LgpzeXpib3QgZW5naW5lZXJzIGNhbiBiZSBy
+ZWFjaGVkIGF0IHN5emthbGxlckBnb29nbGVncm91cHMuY29tLgoKc3l6Ym90IHdpbGwga2VlcCB0
+cmFjayBvZiB0aGlzIGJ1ZyByZXBvcnQuIFNlZToKaHR0cHM6Ly9nb28uZ2wvdHBzbUVKI3N0YXR1
+cyBmb3IgaG93IHRvIGNvbW11bmljYXRlIHdpdGggc3l6Ym90LgpzeXpib3QgY2FuIHRlc3QgcGF0
+Y2hlcyBmb3IgdGhpcyBidWcsIGZvciBkZXRhaWxzIHNlZToKaHR0cHM6Ly9nb28uZ2wvdHBzbUVK
+I3Rlc3RpbmctcGF0Y2hlcw==
