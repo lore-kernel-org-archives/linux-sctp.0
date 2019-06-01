@@ -1,265 +1,111 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 08 Jun 2019 07:06:08 +0000
-Subject: Re: [PATCH V2] Fix memory leak in sctp_process_init
-Message-Id: <CADvbK_eTqSJ27=0=yf7MXtKW796gvaByBMQ-2AKWr9BEoX_r+g@mail.gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Sat, 01 Jun 2019 15:47:53 +0000
+Subject: Re: memory leak in sctp_send_reset_streams
+Message-Id: <20190601154753.GG3713@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <00000000000097abb90589e804fd@google.com> <20190603203259.21508-1-nhorman@tuxdriver.com>
- <CADvbK_c6Ym2pbKqGQD8WUmUPX_PtAa6RGde7AQwhRZzUr_emiw@mail.gmail.com>
- <20190605112010.GA554@hmswarspite.think-freely.org> <20190606154754.GA3500@localhost.localdomain>
- <20190607105639.GB26017@hmswarspite.think-freely.org> <20190607124813.GA3436@localhost.localdomain>
-In-Reply-To: <20190607124813.GA3436@localhost.localdomain>
+References: <20190601122615.16872-1-hdanton@sina.com>
+In-Reply-To: <20190601122615.16872-1-hdanton@sina.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, syzbot+f7e9153b037eac9b1df8@syzkaller.appspotmail.com, "David S. Miller" <davem@davemloft.net>, network dev <netdev@vger.kernel.org>
+Content-Type: text/plain; charset="windows-1254"
+Content-Transfer-Encoding: base64
+To: Hillf Danton <hdanton@sina.com>
+Cc: syzbot <syzbot+6ad9c3bd0a218a2ab41d@syzkaller.appspotmail.com>, davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
 
-On Fri, Jun 7, 2019 at 8:48 PM Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
->
-> On Fri, Jun 07, 2019 at 06:56:39AM -0400, Neil Horman wrote:
-> > On Thu, Jun 06, 2019 at 12:47:55PM -0300, Marcelo Ricardo Leitner wrote:
-> > > On Wed, Jun 05, 2019 at 07:20:10AM -0400, Neil Horman wrote:
-> > > > On Wed, Jun 05, 2019 at 04:16:24AM +0800, Xin Long wrote:
-> > > > > On Tue, Jun 4, 2019 at 4:34 AM Neil Horman <nhorman@tuxdriver.com> wrote:
-> > > > > >
-> > > > > > syzbot found the following leak in sctp_process_init
-> > > > > > BUG: memory leak
-> > > > > > unreferenced object 0xffff88810ef68400 (size 1024):
-> > > > > >   comm "syz-executor273", pid 7046, jiffies 4294945598 (age 28.770s)
-> > > > > >   hex dump (first 32 bytes):
-> > > > > >     1d de 28 8d de 0b 1b e3 b5 c2 f9 68 fd 1a 97 25  ..(........h...%
-> > > > > >     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-> > > > > >   backtrace:
-> > > > > >     [<00000000a02cebbd>] kmemleak_alloc_recursive include/linux/kmemleak.h:55
-> > > > > > [inline]
-> > > > > >     [<00000000a02cebbd>] slab_post_alloc_hook mm/slab.h:439 [inline]
-> > > > > >     [<00000000a02cebbd>] slab_alloc mm/slab.c:3326 [inline]
-> > > > > >     [<00000000a02cebbd>] __do_kmalloc mm/slab.c:3658 [inline]
-> > > > > >     [<00000000a02cebbd>] __kmalloc_track_caller+0x15d/0x2c0 mm/slab.c:3675
-> > > > > >     [<000000009e6245e6>] kmemdup+0x27/0x60 mm/util.c:119
-> > > > > >     [<00000000dfdc5d2d>] kmemdup include/linux/string.h:432 [inline]
-> > > > > >     [<00000000dfdc5d2d>] sctp_process_init+0xa7e/0xc20
-> > > > > > net/sctp/sm_make_chunk.c:2437
-> > > > > >     [<00000000b58b62f8>] sctp_cmd_process_init net/sctp/sm_sideeffect.c:682
-> > > > > > [inline]
-> > > > > >     [<00000000b58b62f8>] sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1384
-> > > > > > [inline]
-> > > > > >     [<00000000b58b62f8>] sctp_side_effects net/sctp/sm_sideeffect.c:1194
-> > > > > > [inline]
-> > > > > >     [<00000000b58b62f8>] sctp_do_sm+0xbdc/0x1d60 net/sctp/sm_sideeffect.c:1165
-> > > > > >     [<0000000044e11f96>] sctp_assoc_bh_rcv+0x13c/0x200
-> > > > > > net/sctp/associola.c:1074
-> > > > > >     [<00000000ec43804d>] sctp_inq_push+0x7f/0xb0 net/sctp/inqueue.c:95
-> > > > > >     [<00000000726aa954>] sctp_backlog_rcv+0x5e/0x2a0 net/sctp/input.c:354
-> > > > > >     [<00000000d9e249a8>] sk_backlog_rcv include/net/sock.h:950 [inline]
-> > > > > >     [<00000000d9e249a8>] __release_sock+0xab/0x110 net/core/sock.c:2418
-> > > > > >     [<00000000acae44fa>] release_sock+0x37/0xd0 net/core/sock.c:2934
-> > > > > >     [<00000000963cc9ae>] sctp_sendmsg+0x2c0/0x990 net/sctp/socket.c:2122
-> > > > > >     [<00000000a7fc7565>] inet_sendmsg+0x64/0x120 net/ipv4/af_inet.c:802
-> > > > > >     [<00000000b732cbd3>] sock_sendmsg_nosec net/socket.c:652 [inline]
-> > > > > >     [<00000000b732cbd3>] sock_sendmsg+0x54/0x70 net/socket.c:671
-> > > > > >     [<00000000274c57ab>] ___sys_sendmsg+0x393/0x3c0 net/socket.c:2292
-> > > > > >     [<000000008252aedb>] __sys_sendmsg+0x80/0xf0 net/socket.c:2330
-> > > > > >     [<00000000f7bf23d1>] __do_sys_sendmsg net/socket.c:2339 [inline]
-> > > > > >     [<00000000f7bf23d1>] __se_sys_sendmsg net/socket.c:2337 [inline]
-> > > > > >     [<00000000f7bf23d1>] __x64_sys_sendmsg+0x23/0x30 net/socket.c:2337
-> > > > > >     [<00000000a8b4131f>] do_syscall_64+0x76/0x1a0 arch/x86/entry/common.c:3
-> > > > > >
-> > > > > > The problem was that the peer.cookie value points to an skb allocated
-> > > > > > area on the first pass through this function, at which point it is
-> > > > > > overwritten with a heap allocated value, but in certain cases, where a
-> > > > > > COOKIE_ECHO chunk is included in the packet, a second pass through
-> > > > > > sctp_process_init is made, where the cookie value is re-allocated,
-> > > > > > leaking the first allocation.
-> > > > > This's not gonna happen, as after processing INIT, the temp asoc will be
-> > > > > deleted on the server side. Besides, from the reproducer:
-> > > > >
-> > > > >   https://syzkaller.appspot.com/x/repro.syz?xe32f8ca00000
-> > > > >
-> > > > > Packet(INIT|COOKIE_ECHO) can't be made in here.
-> > > > >
-> > > > > The call trace says the leak happened when processing INIT_ACK on the
-> > > > > client side, as Marcelo noticed.  Then it can be triggered by:
-> > > > >
-> > > > > 1. sctp_sf_do_5_1C_ack() -> SCTP_CMD_PEER_INIT -> sctp_process_init():
-> > > > >    where it "goto clean_up" after sctp_process_param(), but in 'cleanup'
-> > > > >    path, it doesn't do any freeup for the memdups of sctp_process_param().
-> > > > >    then the client T1 retrans INIT, and later get INIT_ACK again from the
-> > > > >    peer, and go to sctp_process_init() to memdup().
-> > > > >
-> > > > > 2. sctp_sf_cookie_echoed_err() -> sctp_sf_do_5_2_6_stale():
-> > > > >    where the asoc state will go from COOKIE_ECHOED back to COOKIE_WAIT,
-> > > > >    and T1 starts to retrans INIT, and later it will get INIT_ACK again
-> > > > >    to sctp_process_init() and memdup().
-> > > > >
-> > > > ok, you may well be right as to the path that we take to get here, but the root
-> > > > cause is the same, multiple passes through sctp_process_init without freeing the
-> > > > previously memduped memory.  Thats why I would think my patch is fixing the
-> > > > issue, because now we're always duping the cookie memory and always freeing it
-> > > > when we transition to the ESTABLISHED state.
-> > > >
-> > > > As for the other variables (peer_[random|chunks|hmacs]), I'm not sure why we're
-> > > > not seeing leak reports of those variables.
-> > >
-> > > This actually also works for peer.cookie as well, as now they are
-> > > allocated and freed in the same places.
-> > >
-> > > I talked with Xin and I agree that this patch didn't really fix the
-> > > leak. It moved the allocation from sctp_process_init() to
-> > > sctp_process_param() which is called by sctp_process_init and there is
-> > > nothing avoiding multiple allocations on these vars once INIT_ACK is
-> > > retransmited.
-> > >
-> > > The reproducer works by having the client to re-request cookies by
-> > > setting a short lifetime. So
-> > > Client sends INIT
-> > >                        Server replies INIT_ACK with cookie
-> > > Client echoes the cookie
-> > >                        Server rejects because the cookie expired
-> > > Client sends INIT again, to ask for another cookie
-> > >   (sctp_sf_do_5_2_6_stale)
-> > >                        Server sends INIT_ACK again with a new cookie
-> > > Client calls sctp_process_init again, from
-> > >   -> sctp_sf_do_5_1C_ack()
-> > >    -> sctp_cmd_process_init()
-> > >     -> sctp_process_init()
-> > >      -> sctp_process_param()
-> > >         ^-- leak happens
-> > >                    Server may or may not accept the new cookie,
-> > >                    leading to further leaks if not
-> > If this is the case, it seems like the most reasonable fix then is to just
-> > check to see if peer.cookie is non-null prior to calling kmemdup, and freeing
-> > the old cookie first, no?
->
-> That probably would be clearer and easier to maintain later, yes.
-> Xin?
-Sure, looks good to me. :)
-
->
->   Marcelo
->
-> >
-> > Neil
-> >
-> > > (this is his 2nd case above)
-> > >
-> > > Yet somehow the patch changed the dynamics and made the test pass (4x
-> > > 10mins each run) here. Uff.
-> > >
-> > >   Marcelo
-> > >
-> > > >
-> > > > Neil
-> > > >
-> > > > > As on either above, asoc's never been to ESTABLISHED state,
-> > > > > asoc->peer.cookie can be not freed, and this patch won't work.
-> > > > > But yes, it's nice to have this patch, just not to fix this memleak.
-> > >
-> > > +1 (read: won't hurt -stable and no need to revert)
-> > >
-> > > > >
-> > > > > I tracked the code, this memleak was triggered by case 2, so I think
-> > > > > you also need to add something like:
-> > > > >
-> > > > > @@ -881,6 +893,18 @@ static void sctp_cmd_new_state(struct sctp_cmd_seq *cmds,
-> > > > >                                                 asoc->rto_initial;
-> > > > >                 asoc->timeouts[SCTP_EVENT_TIMEOUT_T1_COOKIE] > > > > >                                                 asoc->rto_initial;
-> > > > > +
-> > > > > +               if (asoc->peer.cookie) {
-> > > > > +                       kfree(asoc->peer.cookie);
-> > > > > +                       kfree(asoc->peer.peer_random);
-> > > > > +                       kfree(asoc->peer.peer_chunks);
-> > > > > +                       kfree(asoc->peer.peer_hmacs);
-> > > > > +
-> > > > > +                       asoc->peer.cookie = NULL;
-> > > > > +                       asoc->peer.peer_random = NULL;
-> > > > > +                       asoc->peer.peer_random = NULL;
-> > > > > +                       asoc->peer.peer_hmacs = NULL;
-> > > > > +               }
-> > > > >         }
-> > > > >
-> > > > > and the same thing may also be needed in sctp_cmd_process_init() on the
-> > > > > err path for case 1.
-> > > > >
-> > > > > >
-> > > > > > Fix is to always allocate the cookie value, and free it when we are done
-> > > > > > using it.
-> > > > > >
-> > > > > > Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-> > > > > > Reported-by: syzbot+f7e9153b037eac9b1df8@syzkaller.appspotmail.com
-> > > > > > CC: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> > > > > > CC: "David S. Miller" <davem@davemloft.net>
-> > > > > > CC: netdev@vger.kernel.org
-> > > > > >
-> > > > > > ---
-> > > > > > Change notes
-> > > > > >
-> > > > > > V1->V2:
-> > > > > >   * Removed an accidental double free I let slip in in
-> > > > > > sctp_association_free
-> > > > > >   * Removed now unused cookie variable
-> > > > > > ---
-> > > > > >  net/sctp/sm_make_chunk.c | 13 +++----------
-> > > > > >  net/sctp/sm_sideeffect.c |  5 +++++
-> > > > > >  2 files changed, 8 insertions(+), 10 deletions(-)
-> > > > > >
-> > > > > > diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> > > > > > index 72e74503f9fc..8e12e19fe42d 100644
-> > > > > > --- a/net/sctp/sm_make_chunk.c
-> > > > > > +++ b/net/sctp/sm_make_chunk.c
-> > > > > > @@ -2327,7 +2327,6 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
-> > > > > >         union sctp_addr addr;
-> > > > > >         struct sctp_af *af;
-> > > > > >         int src_match = 0;
-> > > > > > -       char *cookie;
-> > > > > >
-> > > > > >         /* We must include the address that the INIT packet came from.
-> > > > > >          * This is the only address that matters for an INIT packet.
-> > > > > > @@ -2431,14 +2430,6 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
-> > > > > >         /* Peer Rwnd   : Current calculated value of the peer's rwnd.  */
-> > > > > >         asoc->peer.rwnd = asoc->peer.i.a_rwnd;
-> > > > > >
-> > > > > > -       /* Copy cookie in case we need to resend COOKIE-ECHO. */
-> > > > > > -       cookie = asoc->peer.cookie;
-> > > > > > -       if (cookie) {
-> > > > > > -               asoc->peer.cookie = kmemdup(cookie, asoc->peer.cookie_len, gfp);
-> > > > > > -               if (!asoc->peer.cookie)
-> > > > > > -                       goto clean_up;
-> > > > > > -       }
-> > > > > > -
-> > > > > >         /* RFC 2960 7.2.1 The initial value of ssthresh MAY be arbitrarily
-> > > > > >          * high (for example, implementations MAY use the size of the receiver
-> > > > > >          * advertised window).
-> > > > > > @@ -2607,7 +2598,9 @@ static int sctp_process_param(struct sctp_association *asoc,
-> > > > > >         case SCTP_PARAM_STATE_COOKIE:
-> > > > > >                 asoc->peer.cookie_len > > > > > >                         ntohs(param.p->length) - sizeof(struct sctp_paramhdr);
-> > > > > > -               asoc->peer.cookie = param.cookie->body;
-> > > > > > +               asoc->peer.cookie = kmemdup(param.cookie->body, asoc->peer.cookie_len, gfp);
-> > > > > > +               if (!asoc->peer.cookie)
-> > > > > > +                       retval = 0;
-> > > > > >                 break;
-> > > > > >
-> > > > > >         case SCTP_PARAM_HEARTBEAT_INFO:
-> > > > > > diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-> > > > > > index 4aa03588f87b..27ddf2d8f001 100644
-> > > > > > --- a/net/sctp/sm_sideeffect.c
-> > > > > > +++ b/net/sctp/sm_sideeffect.c
-> > > > > > @@ -898,6 +898,11 @@ static void sctp_cmd_new_state(struct sctp_cmd_seq *cmds,
-> > > > > >                                                 asoc->rto_initial;
-> > > > > >         }
-> > > > > >
-> > > > > > +       if (sctp_state(asoc, ESTABLISHED)) {
-> > > > > > +               kfree(asoc->peer.cookie);
-> > > > > > +               asoc->peer.cookie = NULL;
-> > > > > > +       }
-> > > > > > +
-> > > > > >         if (sctp_state(asoc, ESTABLISHED) ||
-> > > > > >             sctp_state(asoc, CLOSED) ||
-> > > > > >             sctp_state(asoc, SHUTDOWN_RECEIVED)) {
-> > > > > > --
-> > > > > > 2.20.1
-> > > > > >
-> > > > >
-> > > >
-> > >
+T24gU2F0LCBKdW4gMDEsIDIwMTkgYXQgMDg6MjY6MTVQTSArMDgwMCwgSGlsbGYgRGFudG9uIHdy
+b3RlOgo+IAo+IEhpCgpIaSwKCj4gCj4gT24gRnJpLCBNYXkgMzEsIDIwMTkgYXQgMDI6MTg6MDZQ
+TSAtMDcwMCwgc3l6Ym90IHdyb3RlOgo+ID4gSGVsbG8sCj4gPiAKPiA+IHN5emJvdCBmb3VuZCB0
+aGUgZm9sbG93aW5nIGNyYXNoIG9uOgo+ID4gCj4gPiBIRUFEIGNvbW1pdDogICAgMDM2ZTM0MzEg
+TWVyZ2UgZ2l0Oi8vZ2l0Lmtlcm5lbC5vcmcvcHViL3NjbS9saW51eC9rZXJuZWwvZy4uCj4gPiBn
+aXQgdHJlZTogICAgICAgdXBzdHJlYW0KPiA+IGNvbnNvbGUgb3V0cHV0OiBodHRwczovL3N5emth
+bGxlci5hcHBzcG90LmNvbS94L2xvZy50eHQ/eBUzY2ZmMTJhMDAwMDAKPiA+IGtlcm5lbCBjb25m
+aWc6ICBodHRwczovL3N5emthbGxlci5hcHBzcG90LmNvbS94Ly5jb25maWc/eI8wZjYzYTYyYmI1
+YjEzYwo+ID4gZGFzaGJvYXJkIGxpbms6IGh0dHBzOi8vc3l6a2FsbGVyLmFwcHNwb3QuY29tL2J1
+Zz9leHRpZGpkOWMzYmQwYTIxOGEyYWI0MWQKPiA+IGNvbXBpbGVyOiAgICAgICBnY2MgKEdDQykg
+OS4wLjAgMjAxODEyMzEgKGV4cGVyaW1lbnRhbCkKPiA+IHN5eiByZXBybzogICAgICBodHRwczov
+L3N5emthbGxlci5hcHBzcG90LmNvbS94L3JlcHJvLnN5ej94EjU2MWM4NmEwMDAwMAo+ID4gQyBy
+ZXByb2R1Y2VyOiAgIGh0dHBzOi8vc3l6a2FsbGVyLmFwcHNwb3QuY29tL3gvcmVwcm8uYz94FWI3
+NmZkOGEwMDAwMAo+ID4gCj4gPiBJTVBPUlRBTlQ6IGlmIHlvdSBmaXggdGhlIGJ1ZywgcGxlYXNl
+IGFkZCB0aGUgZm9sbG93aW5nIHRhZyB0byB0aGUgY29tbWl0Ogo+ID4gUmVwb3J0ZWQtYnk6IHN5
+emJvdCs2YWQ5YzNiZDBhMjE4YTJhYjQxZEBzeXprYWxsZXIuYXBwc3BvdG1haWwuY29tCj4gPiAK
+PiA+IGV4ZWN1dGluZyBwcm9ncmFtCj4gPiBleGVjdXRpbmcgcHJvZ3JhbQo+ID4gZXhlY3V0aW5n
+IHByb2dyYW0KPiA+IGV4ZWN1dGluZyBwcm9ncmFtCj4gPiBleGVjdXRpbmcgcHJvZ3JhbQo+ID4g
+QlVHOiBtZW1vcnkgbGVhawo+ID4gdW5yZWZlcmVuY2VkIG9iamVjdCAweGZmZmY4ODgxMjM4OTQ4
+MjAgKHNpemUgMzIpOgo+ID4gICAgY29tbSAic3l6LWV4ZWN1dG9yMDQ1IiwgcGlkIDcyNjcsIGpp
+ZmZpZXMgNDI5NDk0MzU1OSAoYWdlIDEzLjY2MHMpCj4gPiAgICBoZXggZHVtcCAoZmlyc3QgMzIg
+Ynl0ZXMpOgo+ID4gICAgICAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAw
+MCAwMCAwMCAgLi4uLi4uLi4uLi4uLi4uLgo+ID4gICAgICAwMCAwMCAwMCAwMCAwMCAwMCAwMCAw
+MCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAgLi4uLi4uLi4uLi4uLi4uLgo+ID4gICAgYmFja3Ry
+YWNlOgo+ID4gICAgICBbPDAwMDAwMDAwYzdlNzFjNjk+XSBrbWVtbGVha19hbGxvY19yZWN1cnNp
+dmUKPiA+IGluY2x1ZGUvbGludXgva21lbWxlYWsuaDo1NSBbaW5saW5lXQo+ID4gICAgICBbPDAw
+MDAwMDAwYzdlNzFjNjk+XSBzbGFiX3Bvc3RfYWxsb2NfaG9vayBtbS9zbGFiLmg6NDM5IFtpbmxp
+bmVdCj4gPiAgICAgIFs8MDAwMDAwMDBjN2U3MWM2OT5dIHNsYWJfYWxsb2MgbW0vc2xhYi5jOjMz
+MjYgW2lubGluZV0KPiA+ICAgICAgWzwwMDAwMDAwMGM3ZTcxYzY5Pl0gX19kb19rbWFsbG9jIG1t
+L3NsYWIuYzozNjU4IFtpbmxpbmVdCj4gPiAgICAgIFs8MDAwMDAwMDBjN2U3MWM2OT5dIF9fa21h
+bGxvYysweDE2MS8weDJjMCBtbS9zbGFiLmM6MzY2OQo+ID4gICAgICBbPDAwMDAwMDAwMzI1MGVk
+OGU+XSBrbWFsbG9jX2FycmF5IGluY2x1ZGUvbGludXgvc2xhYi5oOjY3MCBbaW5saW5lXQo+ID4g
+ICAgICBbPDAwMDAwMDAwMzI1MGVkOGU+XSBrY2FsbG9jIGluY2x1ZGUvbGludXgvc2xhYi5oOjY4
+MSBbaW5saW5lXQo+ID4gICAgICBbPDAwMDAwMDAwMzI1MGVkOGU+XSBzY3RwX3NlbmRfcmVzZXRf
+c3RyZWFtcysweDFhYi8weDVhMCBuZXQvc2N0cC9zdHJlYW0uYzozMDIKPiA+ICAgICAgWzwwMDAw
+MDAwMGNkODk5YzZlPl0gc2N0cF9zZXRzb2Nrb3B0X3Jlc2V0X3N0cmVhbXMgbmV0L3NjdHAvc29j
+a2V0LmM6NDMxNCBbaW5saW5lXQo+ID4gICAgICBbPDAwMDAwMDAwY2Q4OTljNmU+XSBzY3RwX3Nl
+dHNvY2tvcHQgbmV0L3NjdHAvc29ja2V0LmM6NDc2NSBbaW5saW5lXQo+ID4gICAgICBbPDAwMDAw
+MDAwY2Q4OTljNmU+XSBzY3RwX3NldHNvY2tvcHQrMHhjMjMvMHgyYmYwIG5ldC9zY3RwL3NvY2tl
+dC5jOjQ2MDgKPiA+ICAgICAgWzwwMDAwMDAwMGZmM2EyMWEyPl0gc29ja19jb21tb25fc2V0c29j
+a29wdCsweDM4LzB4NTAgbmV0L2NvcmUvc29jay5jOjMxMzAKPiA+ICAgICAgWzwwMDAwMDAwMDll
+Yjg3YWU3Pl0gX19zeXNfc2V0c29ja29wdCsweDk4LzB4MTIwIG5ldC9zb2NrZXQuYzoyMDc4Cj4g
+PiAgICAgIFs8MDAwMDAwMDBlMGVkZTZjYT5dIF9fZG9fc3lzX3NldHNvY2tvcHQgbmV0L3NvY2tl
+dC5jOjIwODkgW2lubGluZV0KPiA+ICAgICAgWzwwMDAwMDAwMGUwZWRlNmNhPl0gX19zZV9zeXNf
+c2V0c29ja29wdCBuZXQvc29ja2V0LmM6MjA4NiBbaW5saW5lXQo+ID4gICAgICBbPDAwMDAwMDAw
+ZTBlZGU2Y2E+XSBfX3g2NF9zeXNfc2V0c29ja29wdCsweDI2LzB4MzAgbmV0L3NvY2tldC5jOjIw
+ODYKPiA+ICAgICAgWzwwMDAwMDAwMGM2MTE1NWY1Pl0gZG9fc3lzY2FsbF82NCsweDc2LzB4MWEw
+IGFyY2gveDg2L2VudHJ5L2NvbW1vbi5jOjMwMQo+ID4gICAgICBbPDAwMDAwMDAwZTU0MDk1OGM+
+XSBlbnRyeV9TWVNDQUxMXzY0X2FmdGVyX2h3ZnJhbWUrMHg0NC8weGE5Cj4gPiAKPiA+IEJVRzog
+bWVtb3J5IGxlYWsKPiA+IHVucmVmZXJlbmNlZCBvYmplY3QgMHhmZmZmODg4MTIzODk0OTgwIChz
+aXplIDMyKToKPiA+ICAgIGNvbW0gInN5ei1leGVjdXRvcjA0NSIsIHBpZCA3MjY4LCBqaWZmaWVz
+IDQyOTQ5NDQxNDUgKGFnZSA3LjgwMHMpCj4gPiAgICBoZXggZHVtcCAoZmlyc3QgMzIgYnl0ZXMp
+Ogo+ID4gICAgICAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAw
+MCAgLi4uLi4uLi4uLi4uLi4uLgo+ID4gICAgICAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAw
+MCAwMCAwMCAwMCAwMCAwMCAwMCAgLi4uLi4uLi4uLi4uLi4uLgo+ID4gICAgYmFja3RyYWNlOgo+
+ID4gICAgICBbPDAwMDAwMDAwYzdlNzFjNjk+XSBrbWVtbGVha19hbGxvY19yZWN1cnNpdmUKPiA+
+IGluY2x1ZGUvbGludXgva21lbWxlYWsuaDo1NSBbaW5saW5lXQo+ID4gICAgICBbPDAwMDAwMDAw
+YzdlNzFjNjk+XSBzbGFiX3Bvc3RfYWxsb2NfaG9vayBtbS9zbGFiLmg6NDM5IFtpbmxpbmVdCj4g
+PiAgICAgIFs8MDAwMDAwMDBjN2U3MWM2OT5dIHNsYWJfYWxsb2MgbW0vc2xhYi5jOjMzMjYgW2lu
+bGluZV0KPiA+ICAgICAgWzwwMDAwMDAwMGM3ZTcxYzY5Pl0gX19kb19rbWFsbG9jIG1tL3NsYWIu
+YzozNjU4IFtpbmxpbmVdCj4gPiAgICAgIFs8MDAwMDAwMDBjN2U3MWM2OT5dIF9fa21hbGxvYysw
+eDE2MS8weDJjMCBtbS9zbGFiLmM6MzY2OQo+ID4gICAgICBbPDAwMDAwMDAwMzI1MGVkOGU+XSBr
+bWFsbG9jX2FycmF5IGluY2x1ZGUvbGludXgvc2xhYi5oOjY3MCBbaW5saW5lXQo+ID4gICAgICBb
+PDAwMDAwMDAwMzI1MGVkOGU+XSBrY2FsbG9jIGluY2x1ZGUvbGludXgvc2xhYi5oOjY4MSBbaW5s
+aW5lXQo+ID4gICAgICBbPDAwMDAwMDAwMzI1MGVkOGU+XSBzY3RwX3NlbmRfcmVzZXRfc3RyZWFt
+cysweDFhYi8weDVhMCBuZXQvc2N0cC9zdHJlYW0uYzozMDIKPiA+ICAgICAgWzwwMDAwMDAwMGNk
+ODk5YzZlPl0gc2N0cF9zZXRzb2Nrb3B0X3Jlc2V0X3N0cmVhbXMgbmV0L3NjdHAvc29ja2V0LmM6
+NDMxNCBbaW5saW5lXQo+ID4gICAgICBbPDAwMDAwMDAwY2Q4OTljNmU+XSBzY3RwX3NldHNvY2tv
+cHQgbmV0L3NjdHAvc29ja2V0LmM6NDc2NSBbaW5saW5lXQo+ID4gICAgICBbPDAwMDAwMDAwY2Q4
+OTljNmU+XSBzY3RwX3NldHNvY2tvcHQrMHhjMjMvMHgyYmYwIG5ldC9zY3RwL3NvY2tldC5jOjQ2
+MDgKPiA+ICAgICAgWzwwMDAwMDAwMGZmM2EyMWEyPl0gc29ja19jb21tb25fc2V0c29ja29wdCsw
+eDM4LzB4NTAgbmV0L2NvcmUvc29jay5jOjMxMzAKPiA+ICAgICAgWzwwMDAwMDAwMDllYjg3YWU3
+Pl0gX19zeXNfc2V0c29ja29wdCsweDk4LzB4MTIwIG5ldC9zb2NrZXQuYzoyMDc4Cj4gPiAgICAg
+IFs8MDAwMDAwMDBlMGVkZTZjYT5dIF9fZG9fc3lzX3NldHNvY2tvcHQgbmV0L3NvY2tldC5jOjIw
+ODkgW2lubGluZV0KPiA+ICAgICAgWzwwMDAwMDAwMGUwZWRlNmNhPl0gX19zZV9zeXNfc2V0c29j
+a29wdCBuZXQvc29ja2V0LmM6MjA4NiBbaW5saW5lXQo+ID4gICAgICBbPDAwMDAwMDAwZTBlZGU2
+Y2E+XSBfX3g2NF9zeXNfc2V0c29ja29wdCsweDI2LzB4MzAgbmV0L3NvY2tldC5jOjIwODYKPiA+
+ICAgICAgWzwwMDAwMDAwMGM2MTE1NWY1Pl0gZG9fc3lzY2FsbF82NCsweDc2LzB4MWEwIGFyY2gv
+eDg2L2VudHJ5L2NvbW1vbi5jOjMwMQo+ID4gICAgICBbPDAwMDAwMDAwZTU0MDk1OGM+XSBlbnRy
+eV9TWVNDQUxMXzY0X2FmdGVyX2h3ZnJhbWUrMHg0NC8weGE5Cj4gPiAKPiA+IAo+ID4gCj4gPiAt
+LS0KPiA+IFRoaXMgYnVnIGlzIGdlbmVyYXRlZCBieSBhIGJvdC4gSXQgbWF5IGNvbnRhaW4gZXJy
+b3JzLgo+ID4gU2VlIGh0dHBzOi8vZ29vLmdsL3Rwc21FSiBmb3IgbW9yZSBpbmZvcm1hdGlvbiBh
+Ym91dCBzeXpib3QuCj4gPiBzeXpib3QgZW5naW5lZXJzIGNhbiBiZSByZWFjaGVkIGF0IHN5emth
+bGxlckBnb29nbGVncm91cHMuY29tLgo+ID4gCj4gPiBzeXpib3Qgd2lsbCBrZWVwIHRyYWNrIG9m
+IHRoaXMgYnVnIHJlcG9ydC4gU2VlOgo+ID4gaHR0cHM6Ly9nb28uZ2wvdHBzbUVKI3N0YXR1cyBm
+b3IgaG93IHRvIGNvbW11bmljYXRlIHdpdGggc3l6Ym90Lgo+ID4gc3l6Ym90IGNhbiB0ZXN0IHBh
+dGNoZXMgZm9yIHRoaXMgYnVnLCBmb3IgZGV0YWlscyBzZWU6Cj4gPiBodHRwczovL2dvby5nbC90
+cHNtRUojdGVzdGluZy1wYXRjaGVzCj4gPiAKPiBUaGUgZm9sbG93aW5nIHRpbnkgY2hhbmdlIGlz
+IHByZXBhcmVkIGJhc2VkIG9uIHRoZSBpbmZvIGxpc3RlZCBhYm92ZSBhbmQgSSB3YW50Cj4gdG8g
+a25vdyBpZiBpdCB3b3JrcyBmb3IgeW91Lgo+IAo+IHRoYW5rcwo+IEhpbGxmCj4gLS0tLS0tLT44
+LS0tCj4gZGlmZiAtLWdpdCBhL25ldC9zY3RwL3N0cmVhbS5jIGIvbmV0L3NjdHAvc3RyZWFtLmMK
+PiBpbmRleCA5M2VkMDc4Li5kM2UyZjAzIDEwMDY0NAo+IC0tLSBhL25ldC9zY3RwL3N0cmVhbS5j
+Cj4gKysrIGIvbmV0L3NjdHAvc3RyZWFtLmMKPiBAQCAtMzEwLDYgKzMxMCw3IEBAIGludCBzY3Rw
+X3NlbmRfcmVzZXRfc3RyZWFtcyhzdHJ1Y3Qgc2N0cF9hc3NvY2lhdGlvbiAqYXNvYywKPiAKPiAJ
+aWYgKG91dCAmJiAhc2N0cF9zdHJlYW1fb3V0cV9pc19lbXB0eShzdHJlYW0sIHN0cl9udW1zLCBu
+c3RyX2xpc3QpKSB7Cj4gCQlyZXR2YWwgPSAtRUFHQUlOOwo+ICsJCWtmcmVlKG5zdHJfbGlzdCk7
+CgpZZXMgaXQgZG9lcy4gVGhhbmtzIEhpbGxmLgoKPiAJCWdvdG8gb3V0Owo+IAl9Cj4gCj4gLS0K
+PiA=
