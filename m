@@ -1,43 +1,81 @@
-From: David Miller <davem@davemloft.net>
-Date: Sat, 15 Jun 2019 02:27:59 +0000
-Subject: Re: [PATCH v5 net] sctp: Free cookie before we memdup a new one
-Message-Id: <20190614.192759.352171429890636844.davem@davemloft.net>
-List-Id: <linux-sctp.vger.kernel.org>
-References: <20190610163456.7778-1-nhorman@tuxdriver.com>
-        <20190613103559.2603-1-nhorman@tuxdriver.com>
-In-Reply-To: <20190613103559.2603-1-nhorman@tuxdriver.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: nhorman@tuxdriver.com
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, syzbot+f7e9153b037eac9b1df8@syzkaller.appspotmail.com, marcelo.leitner@gmail.com, lucien.xin@gmail.com
-
 From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 13 Jun 2019 06:35:59 -0400
+Date: Sun, 02 Jun 2019 10:51:33 +0000
+Subject: Re: [PATCH] net: sctp: fix memory leak in sctp_send_reset_streams
+Message-Id: <20190602105133.GA16948@hmswarspite.think-freely.org>
+List-Id: <linux-sctp.vger.kernel.org>
+References: <20190602034429.6888-1-hdanton@sina.com>
+In-Reply-To: <20190602034429.6888-1-hdanton@sina.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="windows-1254"
+Content-Transfer-Encoding: base64
+To: Hillf Danton <hdanton@sina.com>
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, syzkaller@googlegroups.com, "David S . Miller" <davem@davemloft.net>, linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com, syzbot <syzbot+6ad9c3bd0a218a2ab41d@syzkaller.appspotmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Xin Long <lucien.xin@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, Eric Dumazet <edumazet@google.com>
 
-> Based on comments from Xin, even after fixes for our recent syzbot
-> report of cookie memory leaks, its possible to get a resend of an INIT
-> chunk which would lead to us leaking cookie memory.
-> 
-> To ensure that we don't leak cookie memory, free any previously
-> allocated cookie first.
-> 
-> Change notes
-> v1->v2
-> update subsystem tag in subject (davem)
-> repeat kfree check for peer_random and peer_hmacs (xin)
-> 
-> v2->v3
-> net->sctp
-> also free peer_chunks
-> 
-> v3->v4
-> fix subject tags
-> 
-> v4->v5
-> remove cut line
-> 
-> Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-> Reported-by: syzbot+f7e9153b037eac9b1df8@syzkaller.appspotmail.com
-
-Applied, thanks.
+T24gU3VuLCBKdW4gMDIsIDIwMTkgYXQgMTE6NDQ6MjlBTSArMDgwMCwgSGlsbGYgRGFudG9uIHdy
+b3RlOgo+IAo+IHN5emJvdCBmb3VuZCB0aGUgZm9sbG93aW5nIGNyYXNoIG9uOgo+IAo+IEhFQUQg
+Y29tbWl0OiAgICAwMzZlMzQzMSBNZXJnZSBnaXQ6Ly9naXQua2VybmVsLm9yZy9wdWIvc2NtL2xp
+bnV4L2tlcm5lbC9nLi4KPiBnaXQgdHJlZTogICAgICAgdXBzdHJlYW0KPiBjb25zb2xlIG91dHB1
+dDogaHR0cHM6Ly9zeXprYWxsZXIuYXBwc3BvdC5jb20veC9sb2cudHh0P3gVM2NmZjEyYTAwMDAw
+Cj4ga2VybmVsIGNvbmZpZzogIGh0dHBzOi8vc3l6a2FsbGVyLmFwcHNwb3QuY29tL3gvLmNvbmZp
+Zz94jzBmNjNhNjJiYjViMTNjCj4gZGFzaGJvYXJkIGxpbms6IGh0dHBzOi8vc3l6a2FsbGVyLmFw
+cHNwb3QuY29tL2J1Zz9leHRpZGpkOWMzYmQwYTIxOGEyYWI0MWQKPiBjb21waWxlcjogICAgICAg
+Z2NjIChHQ0MpIDkuMC4wIDIwMTgxMjMxIChleHBlcmltZW50YWwpCj4gc3l6IHJlcHJvOiAgICAg
+IGh0dHBzOi8vc3l6a2FsbGVyLmFwcHNwb3QuY29tL3gvcmVwcm8uc3l6P3gSNTYxYzg2YTAwMDAw
+Cj4gQyByZXByb2R1Y2VyOiAgIGh0dHBzOi8vc3l6a2FsbGVyLmFwcHNwb3QuY29tL3gvcmVwcm8u
+Yz94FWI3NmZkOGEwMDAwMAo+IAo+IGV4ZWN1dGluZyBwcm9ncmFtCj4gZXhlY3V0aW5nIHByb2dy
+YW0KPiBleGVjdXRpbmcgcHJvZ3JhbQo+IGV4ZWN1dGluZyBwcm9ncmFtCj4gZXhlY3V0aW5nIHBy
+b2dyYW0KPiBCVUc6IG1lbW9yeSBsZWFrCj4gdW5yZWZlcmVuY2VkIG9iamVjdCAweGZmZmY4ODgx
+MjM4OTQ4MjAgKHNpemUgMzIpOgo+ICAgY29tbSAic3l6LWV4ZWN1dG9yMDQ1IiwgcGlkIDcyNjcs
+IGppZmZpZXMgNDI5NDk0MzU1OSAoYWdlIDEzLjY2MHMpCj4gICBoZXggZHVtcCAoZmlyc3QgMzIg
+Ynl0ZXMpOgo+ICAgICAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAw
+MCAwMCAgLi4uLi4uLi4uLi4uLi4uLgo+ICAgICAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAwMCAw
+MCAwMCAwMCAwMCAwMCAwMCAwMCAgLi4uLi4uLi4uLi4uLi4uLgo+ICAgYmFja3RyYWNlOgo+ICAg
+ICBbPDAwMDAwMDAwYzdlNzFjNjk+XSBrbWVtbGVha19hbGxvY19yZWN1cnNpdmUKPiBpbmNsdWRl
+L2xpbnV4L2ttZW1sZWFrLmg6NTUgW2lubGluZV0KPiAgICAgWzwwMDAwMDAwMGM3ZTcxYzY5Pl0g
+c2xhYl9wb3N0X2FsbG9jX2hvb2sgbW0vc2xhYi5oOjQzOSBbaW5saW5lXQo+ICAgICBbPDAwMDAw
+MDAwYzdlNzFjNjk+XSBzbGFiX2FsbG9jIG1tL3NsYWIuYzozMzI2IFtpbmxpbmVdCj4gICAgIFs8
+MDAwMDAwMDBjN2U3MWM2OT5dIF9fZG9fa21hbGxvYyBtbS9zbGFiLmM6MzY1OCBbaW5saW5lXQo+
+ICAgICBbPDAwMDAwMDAwYzdlNzFjNjk+XSBfX2ttYWxsb2MrMHgxNjEvMHgyYzAgbW0vc2xhYi5j
+OjM2NjkKPiAgICAgWzwwMDAwMDAwMDMyNTBlZDhlPl0ga21hbGxvY19hcnJheSBpbmNsdWRlL2xp
+bnV4L3NsYWIuaDo2NzAgW2lubGluZV0KPiAgICAgWzwwMDAwMDAwMDMyNTBlZDhlPl0ga2NhbGxv
+YyBpbmNsdWRlL2xpbnV4L3NsYWIuaDo2ODEgW2lubGluZV0KPiAgICAgWzwwMDAwMDAwMDMyNTBl
+ZDhlPl0gc2N0cF9zZW5kX3Jlc2V0X3N0cmVhbXMrMHgxYWIvMHg1YTAgbmV0L3NjdHAvc3RyZWFt
+LmM6MzAyCj4gICAgIFs8MDAwMDAwMDBjZDg5OWM2ZT5dIHNjdHBfc2V0c29ja29wdF9yZXNldF9z
+dHJlYW1zIG5ldC9zY3RwL3NvY2tldC5jOjQzMTQgW2lubGluZV0KPiAgICAgWzwwMDAwMDAwMGNk
+ODk5YzZlPl0gc2N0cF9zZXRzb2Nrb3B0IG5ldC9zY3RwL3NvY2tldC5jOjQ3NjUgW2lubGluZV0K
+PiAgICAgWzwwMDAwMDAwMGNkODk5YzZlPl0gc2N0cF9zZXRzb2Nrb3B0KzB4YzIzLzB4MmJmMCBu
+ZXQvc2N0cC9zb2NrZXQuYzo0NjA4Cj4gICAgIFs8MDAwMDAwMDBmZjNhMjFhMj5dIHNvY2tfY29t
+bW9uX3NldHNvY2tvcHQrMHgzOC8weDUwIG5ldC9jb3JlL3NvY2suYzozMTMwCj4gICAgIFs8MDAw
+MDAwMDA5ZWI4N2FlNz5dIF9fc3lzX3NldHNvY2tvcHQrMHg5OC8weDEyMCBuZXQvc29ja2V0LmM6
+MjA3OAo+ICAgICBbPDAwMDAwMDAwZTBlZGU2Y2E+XSBfX2RvX3N5c19zZXRzb2Nrb3B0IG5ldC9z
+b2NrZXQuYzoyMDg5IFtpbmxpbmVdCj4gICAgIFs8MDAwMDAwMDBlMGVkZTZjYT5dIF9fc2Vfc3lz
+X3NldHNvY2tvcHQgbmV0L3NvY2tldC5jOjIwODYgW2lubGluZV0KPiAgICAgWzwwMDAwMDAwMGUw
+ZWRlNmNhPl0gX194NjRfc3lzX3NldHNvY2tvcHQrMHgyNi8weDMwIG5ldC9zb2NrZXQuYzoyMDg2
+Cj4gICAgIFs8MDAwMDAwMDBjNjExNTVmNT5dIGRvX3N5c2NhbGxfNjQrMHg3Ni8weDFhMCBhcmNo
+L3g4Ni9lbnRyeS9jb21tb24uYzozMDEKPiAgICAgWzwwMDAwMDAwMGU1NDA5NThjPl0gZW50cnlf
+U1lTQ0FMTF82NF9hZnRlcl9od2ZyYW1lKzB4NDQvMHhhOQo+IAo+IAo+IEl0IHdhcyBpbnRyb2R1
+Y2VkIGluIGNvbW1pdCBkNTcwYTU5YzViNWYgKCJzY3RwOiBvbmx5IGFsbG93IHRoZSBvdXQgc3Ry
+ZWFtCj4gcmVzZXQgd2hlbiB0aGUgc3RyZWFtIG91dHEgaXMgZW1wdHkiKSwgaW4gb3JkZSB0byBj
+aGVjayBzdHJlYW0gb3V0cXMgYmVmb3JlCj4gc2VuZGluZyBTQ1RQX1NUUlJFU0VUX0lOX1BST0dS
+RVNTIGJhY2sgdG8gdGhlIHBlZXIgb2YgdGhlIHN0cmVhbS4gRUFHQUlOIGlzCj4gcmV0dXJuZWQs
+IGhvd2V2ZXIsIHdpdGhvdXQgdGhlIG5zdHJfbGlzdCBzbGFiIHJlbGVhc2VkLCBpZiBhbnkgb3V0
+cSBpcyBmb3VuZAo+IHRvIGJlIG5vbiBlbXB0eS4KPiAKPiBGcmVlaW5nIHRoZSBzbGFiIGluIHF1
+ZXN0aW9uIGJlZm9yZSBiYWlsaW5nIG91dCBmaXhlcyBpdC4KPiAKPiBGaXhlczogZDU3MGE1OWM1
+YjVmICgic2N0cDogb25seSBhbGxvdyB0aGUgb3V0IHN0cmVhbSByZXNldCB3aGVuIHRoZSBzdHJl
+YW0gb3V0cSBpcyBlbXB0eSIpCj4gUmVwb3J0ZWQtYnk6IHN5emJvdCA8c3l6Ym90KzZhZDljM2Jk
+MGEyMThhMmFiNDFkQHN5emthbGxlci5hcHBzcG90bWFpbC5jb20+Cj4gUmVwb3J0ZWQtYnk6IE1h
+cmNlbG8gUmljYXJkbyBMZWl0bmVyIDxtYXJjZWxvLmxlaXRuZXJAZ21haWwuY29tPgo+IFRlc3Rl
+ZC1ieTogTWFyY2VsbyBSaWNhcmRvIExlaXRuZXIgPG1hcmNlbG8ubGVpdG5lckBnbWFpbC5jb20+
+Cj4gQ2M6IFhpbiBMb25nIDxsdWNpZW4ueGluQGdtYWlsLmNvbT4KPiBDYzogTmVpbCBIb3JtYW4g
+PG5ob3JtYW5AdHV4ZHJpdmVyLmNvbT4KPiBDYzogVmxhZCBZYXNldmljaCA8dnlhc2V2aWNoQGdt
+YWlsLmNvbT4KPiBDYzogRXJpYyBEdW1hemV0IDxlZHVtYXpldEBnb29nbGUuY29tPgo+IFNpZ25l
+ZC1vZmYtYnk6IEhpbGxmIERhbnRvbiA8aGRhbnRvbkBzaW5hLmNvbT4KPiAtLS0KPiBuZXQvc2N0
+cC9zdHJlYW0uYyB8IDEgKwo+IDEgZmlsZSBjaGFuZ2VkLCAxIGluc2VydGlvbigrKQo+IAo+IGRp
+ZmYgLS1naXQgYS9uZXQvc2N0cC9zdHJlYW0uYyBiL25ldC9zY3RwL3N0cmVhbS5jCj4gaW5kZXgg
+OTNlZDA3OC4uZDNlMmYwMyAxMDA2NDQKPiAtLS0gYS9uZXQvc2N0cC9zdHJlYW0uYwo+ICsrKyBi
+L25ldC9zY3RwL3N0cmVhbS5jCj4gQEAgLTMxMCw2ICszMTAsNyBAQCBpbnQgc2N0cF9zZW5kX3Jl
+c2V0X3N0cmVhbXMoc3RydWN0IHNjdHBfYXNzb2NpYXRpb24gKmFzb2MsCj4gCj4gCWlmIChvdXQg
+JiYgIXNjdHBfc3RyZWFtX291dHFfaXNfZW1wdHkoc3RyZWFtLCBzdHJfbnVtcywgbnN0cl9saXN0
+KSkgewo+IAkJcmV0dmFsID0gLUVBR0FJTjsKPiArCQlrZnJlZShuc3RyX2xpc3QpOwo+IAkJZ290
+byBvdXQ7Cj4gCX0KPiAKPiAtLQo+IAo+IApBY2tlZC1ieTogTmVpbCBIb3JtYW4gPG5ob3JtYW5A
+dHV4ZHJpdmVyLmNvbT4=
