@@ -1,45 +1,27 @@
-From: "Enrico Weigelt, metux IT consult" <info@metux.net>
-Date: Wed, 05 Jun 2019 21:03:27 +0000
-Subject: [PATCH] net: sctp: drop unneeded likely() call around IS_ERR()
-Message-Id: <1559768607-17439-1-git-send-email-info@metux.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 05 Jun 2019 21:50:26 +0000
+Subject: Re: [PATCH] net: sctp: drop unneeded likely() call around IS_ERR()
+Message-Id: <20190605215026.GB3778@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <1559768607-17439-1-git-send-email-info@metux.net>
+In-Reply-To: <1559768607-17439-1-git-send-email-info@metux.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-kernel@vger.kernel.org
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: "Enrico Weigelt, metux IT consult" <info@metux.net>
+Cc: linux-kernel@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-From: Enrico Weigelt <info@metux.net>
+On Wed, Jun 05, 2019 at 11:03:27PM +0200, Enrico Weigelt, metux IT consult wrote:
+> From: Enrico Weigelt <info@metux.net>
+> 
+> IS_ERR() already calls unlikely(), so this extra unlikely() call
+> around IS_ERR() is not needed.
+> 
+> Signed-off-by: Enrico Weigelt <info@metux.net>
 
-IS_ERR() already calls unlikely(), so this extra unlikely() call
-around IS_ERR() is not needed.
+Hi,
 
-Signed-off-by: Enrico Weigelt <info@metux.net>
----
- net/sctp/socket.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+This patch overlaps with
+Jun 05 Kefeng Wang     (4.4K) [PATCH net-next] net: Drop unlikely before IS_ERR(_OR_NULL)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 39ea0a3..c7b0f51 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -985,7 +985,7 @@ static int sctp_setsockopt_bindx(struct sock *sk,
- 		return -EINVAL;
- 
- 	kaddrs = memdup_user(addrs, addrs_size);
--	if (unlikely(IS_ERR(kaddrs)))
-+	if (IS_ERR(kaddrs))
- 		return PTR_ERR(kaddrs);
- 
- 	/* Walk through the addrs buffer and count the number of addresses. */
-@@ -1315,7 +1315,7 @@ static int __sctp_setsockopt_connectx(struct sock *sk,
- 		return -EINVAL;
- 
- 	kaddrs = memdup_user(addrs, addrs_size);
--	if (unlikely(IS_ERR(kaddrs)))
-+	if (IS_ERR(kaddrs))
- 		return PTR_ERR(kaddrs);
- 
- 	/* Allow security module to validate connectx addresses. */
--- 
-1.9.1
+  Marcelo
