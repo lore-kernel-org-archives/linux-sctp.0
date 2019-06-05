@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 04 Jun 2019 20:59:04 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Wed, 05 Jun 2019 11:20:10 +0000
 Subject: Re: [PATCH V2] Fix memory leak in sctp_process_init
-Message-Id: <20190604205904.GA3778@localhost.localdomain>
+Message-Id: <20190605112010.GA554@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <00000000000097abb90589e804fd@google.com>
  <20190603203259.21508-1-nhorman@tuxdriver.com>
@@ -11,7 +11,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, syzbot+f7e9153b037eac9b1df8@syzkaller.appspotmail.com, "David S. Miller" <davem@davemloft.net>, network dev <netdev@vger.kernel.org>
+Cc: linux-sctp@vger.kernel.org, syzbot+f7e9153b037eac9b1df8@syzkaller.appspotmail.com, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S. Miller" <davem@davemloft.net>, network dev <netdev@vger.kernel.org>
 
 On Wed, Jun 05, 2019 at 04:16:24AM +0800, Xin Long wrote:
 > On Tue, Jun 4, 2019 at 4:34 AM Neil Horman <nhorman@tuxdriver.com> wrote:
@@ -86,22 +86,23 @@ On Wed, Jun 05, 2019 at 04:16:24AM +0800, Xin Long wrote:
 >    and T1 starts to retrans INIT, and later it will get INIT_ACK again
 >    to sctp_process_init() and memdup().
 > 
+ok, you may well be right as to the path that we take to get here, but the root
+cause is the same, multiple passes through sctp_process_init without freeing the
+previously memduped memory.  Thats why I would think my patch is fixing the
+issue, because now we're always duping the cookie memory and always freeing it
+when we transition to the ESTABLISHED state.
+
+As for the other variables (peer_[random|chunks|hmacs]), I'm not sure why we're
+not seeing leak reports of those variables.
+
+Neil
+
 > As on either above, asoc's never been to ESTABLISHED state,
 > asoc->peer.cookie can be not freed, and this patch won't work.
 > But yes, it's nice to have this patch, just not to fix this memleak.
 > 
 > I tracked the code, this memleak was triggered by case 2, so I think
 > you also need to add something like:
-
-Interesting, because as part of writing some scripts here to more
-easily work with syzkaller reports, I actually had the patch Neil
-posted being tested on Friday and with it applied the reproducer
-didn't catch any leaks anymore, while with it, it takes a while but
-the leaks were happening.
-
-(Will read the details you posted later, I'm just sharing this for
-now, sorry for the rushiness)
-
 > 
 > @@ -881,6 +893,18 @@ static void sctp_cmd_new_state(struct sctp_cmd_seq *cmds,
 >                                                 asoc->rto_initial;
