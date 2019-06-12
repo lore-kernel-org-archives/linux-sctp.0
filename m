@@ -1,164 +1,84 @@
-From: TJ Corley <tjcorley30@gmail.com>
-Date: Fri, 28 Jun 2019 20:33:48 +0000
-Subject: Unable to call SCTP_ADD_STREAMS twice?
-Message-Id: <CAHVEBDeOjt7LbMk=aP1QOzowtxvR+iLKgxM37bXTr=2GEhTu6w@mail.gmail.com>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Wed, 12 Jun 2019 00:38:14 +0000
+Subject: [PATCH v4 net] sctp: Free cookie before we memdup a new one
+Message-Id: <20190612003814.7219-1-nhorman@tuxdriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20190610163456.7778-1-nhorman@tuxdriver.com>
+In-Reply-To: <20190610163456.7778-1-nhorman@tuxdriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, syzbot+f7e9153b037eac9b1df8@syzkaller.appspotmail.com, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Xin Long <lucien.xin@gmail.com>, "David S. Miller" <davem@davemloft.net>
 
-I am creating a library and it appears I am unable to call setsockopt
-with the option SCTP_ADD_STREAMS on the same same socket twice. On the
-second attempt it will return EINPROGRESS no matter what. It appears
-this is happening due to the fact that
-asoc->strreset_outstanding is still set. However if I am reading the
-code correctly when I call the socket option sctp_send_reconf will be
-called with a param of type SCTP_PARAM_RESET_ADD_OUT_STREAMS which
-should eventually trigger the chain of  sctp_sf_do_reconf
-->sctp_process_strreset_outreq which will decrement
-asoc->strreset_outstanding.
+Based on comments from Xin, even after fixes for our recent syzbot
+report of cookie memory leaks, its possible to get a resend of an INIT
+chunk which would lead to us leaking cookie memory.
 
-I have SCTP_RECONFIG_SUPPORTED enabled and SCTP_ENABLE_RESET set to
-SCTP_ENABLE_CHANGE_ASSOC_REQ | SCTP_ENABLE_RESET_STREAM_REQ |
-SCTP_ENABLE_RESET_ASSOC_REQ on all the relevant sockets. Is there
-anything else I should be doing?
+To ensure that we don't leak cookie memory, free any previously
+allocated cookie first.
 
-I have included my sample code below that triggers this behavior.
+---
+Change notes
+v1->v2
+update subsystem tag in subject (davem)
+repeat kfree check for peer_random and peer_hmacs (xin)
 
-Thanks for all the help,
+v2->v3
+net->sctp
+also free peer_chunks
 
-TJ
+v3->v4
+fix subject tags
 
-#include <arpa/inet.h>
-#include <errno.h>
-#include <linux/sctp.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/uio.h>
-#include <unistd.h>
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+Reported-by: syzbot+f7e9153b037eac9b1df8@syzkaller.appspotmail.com
+CC: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+CC: Xin Long <lucien.xin@gmail.com>
+CC: "David S. Miller" <davem@davemloft.net>
+CC: netdev@vger.kernel.org
+---
+ net/sctp/sm_make_chunk.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-int allow_reconfigure_support(int fd) {
-  struct sctp_assoc_value params;
-
-  params.assoc_value = 1;
-  params.assoc_id = 0;
-  return setsockopt(fd, IPPROTO_SCTP, SCTP_RECONFIG_SUPPORTED, &params,
-                    sizeof(params));
-}
-
-int allow_reset(int fd) {
-
-  struct sctp_assoc_value params;
-
-  params.assoc_id = 0;
-  params.assoc_value = SCTP_ENABLE_CHANGE_ASSOC_REQ |
-                       SCTP_ENABLE_RESET_STREAM_REQ |
-                       SCTP_ENABLE_RESET_ASSOC_REQ;
-
-  return setsockopt(fd, IPPROTO_SCTP, SCTP_ENABLE_STREAM_RESET, &params,
-                    sizeof(params));
-}
-
-int add_streams(int fd, int num_streams) {
-
-  struct sctp_add_streams addstr;
-  addstr.sas_outstrms = num_streams;
-  addstr.sas_instrms = 0x00;
-  addstr.sas_assoc_id = 0;
-
-  return setsockopt(fd, IPPROTO_SCTP, SCTP_ADD_STREAMS, &addstr,
-                    sizeof(addstr));
-}
-
-int main() {
-  struct sockaddr_in in, out;
-  socklen_t out_len;
-  int server;
-  int client;
-  int accept_fd;
-  int err;
-  memset(&in, '\x00', sizeof(in));
-
-  in.sin_family = AF_INET;
-  in.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-  in.sin_port = htons(12346);
-
-  server = socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
-  client = socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
-
-  if (server = -1 || client = -1) {
-    printf("socket(): %s\n", strerror(errno));
-    return -1;
-  }
-
-  if (allow_reconfigure_support(server)) {
-    printf("server allow_reconfigure_support: %s\n", strerror(errno));
-  }
-
-  if (allow_reset(client)) {
-    printf("client allow_reset: %s\n", strerror(errno));
-  }
-
-  if (allow_reconfigure_support(client)) {
-    printf("client allow_reconfigure_support: %s\n", strerror(errno));
-  }
-
-  if (allow_reset(client)) {
-    printf("client allow_reset: %s\n", strerror(errno));
-  }
-
-  printf("server fd: %d\n", server);
-  printf("client fd: %d\n", client);
-
-  err = bind(server, (void *)&in, sizeof(in));
-  if (err = -1) {
-    printf("bind: %s\n", strerror(errno));
-    return -1;
-  }
-
-  err = listen(server, 1);
-  if (err = -1) {
-    printf("listen: %s\n", strerror(errno));
-    return -1;
-  }
-
-  err = connect(client, (void *)&in, sizeof(in));
-  if (err = -1) {
-    printf("connect: %s\n", strerror(errno));
-    return -1;
-  }
-
-  accept_fd = accept(server, (void *)&out, &out_len);
-  if (accept_fd = -1) {
-    printf("accept: %s\n", strerror(errno));
-    return -1;
-  }
-  printf("accept_fd: %d\n", accept_fd);
-
-  if (allow_reconfigure_support(accept_fd)) {
-    printf("accept_fd allow_reconfigure_support: %s\n", strerror(errno));
-  }
-
-  if (allow_reset(accept_fd)) {
-    printf("accept_fd allow_reset: %s\n", strerror(errno));
-  }
-
-  err = add_streams(accept_fd, 0x10);
-  if (err = -1) {
-    printf("add_streams: %s\n", strerror(errno));
-    return -1;
-  }
-
-  sleep(1);
-
-  err = add_streams(accept_fd, 0x10);
-  if (err = -1) {
-    printf("add_streams2: %s\n", strerror(errno));
-    return -1;
-  }
-
-  printf("finished no errors\n");
-}
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index f17908f5c4f3..9b0e5b0d701a 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2583,6 +2583,8 @@ static int sctp_process_param(struct sctp_association *asoc,
+ 	case SCTP_PARAM_STATE_COOKIE:
+ 		asoc->peer.cookie_len  			ntohs(param.p->length) - sizeof(struct sctp_paramhdr);
++		if (asoc->peer.cookie)
++			kfree(asoc->peer.cookie);
+ 		asoc->peer.cookie = kmemdup(param.cookie->body, asoc->peer.cookie_len, gfp);
+ 		if (!asoc->peer.cookie)
+ 			retval = 0;
+@@ -2647,6 +2649,8 @@ static int sctp_process_param(struct sctp_association *asoc,
+ 			goto fall_through;
+ 
+ 		/* Save peer's random parameter */
++		if (asoc->peer.peer_random)
++			kfree(asoc->peer.peer_random);
+ 		asoc->peer.peer_random = kmemdup(param.p,
+ 					    ntohs(param.p->length), gfp);
+ 		if (!asoc->peer.peer_random) {
+@@ -2660,6 +2664,8 @@ static int sctp_process_param(struct sctp_association *asoc,
+ 			goto fall_through;
+ 
+ 		/* Save peer's HMAC list */
++		if (asoc->peer.peer_hmacs)
++			kfree(asoc->peer.peer_hmacs);
+ 		asoc->peer.peer_hmacs = kmemdup(param.p,
+ 					    ntohs(param.p->length), gfp);
+ 		if (!asoc->peer.peer_hmacs) {
+@@ -2675,6 +2681,8 @@ static int sctp_process_param(struct sctp_association *asoc,
+ 		if (!ep->auth_enable)
+ 			goto fall_through;
+ 
++		if (asoc->peer.peer_chunks)
++			kfree(asoc->peer.peer_chunks);
+ 		asoc->peer.peer_chunks = kmemdup(param.p,
+ 					    ntohs(param.p->length), gfp);
+ 		if (!asoc->peer.peer_chunks)
+-- 
+2.20.1
