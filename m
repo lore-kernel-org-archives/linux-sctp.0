@@ -1,251 +1,235 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 12 Jun 2019 13:13:46 +0000
+From: Su Yanjun <suyj.fnst@cn.fujitsu.com>
+Date: Thu, 13 Jun 2019 02:37:51 +0000
 Subject: Re: [PATCH] sctp: Add rcu lock to protect dst entry in sctp_transport_route
-Message-Id: <20190612131346.GA23166@hmswarspite.think-freely.org>
+Message-Id: <d5d2f354-1358-e8fe-7c80-15d6f5757600@cn.fujitsu.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1560136800-17961-1-git-send-email-suyj.fnst@cn.fujitsu.com>
  <20190610111209.GA15599@hmswarspite.think-freely.org>
  <08f76a75-9e5b-2434-9175-e5371fa9cb7e@cn.fujitsu.com>
-In-Reply-To: <08f76a75-9e5b-2434-9175-e5371fa9cb7e@cn.fujitsu.com>
+ <20190612131346.GA23166@hmswarspite.think-freely.org>
+In-Reply-To: <20190612131346.GA23166@hmswarspite.think-freely.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: Su Yanjun <suyj.fnst@cn.fujitsu.com>
+Content-Type: text/plain; charset="windows-1254"
+Content-Transfer-Encoding: base64
+To: Neil Horman <nhorman@tuxdriver.com>
 Cc: vyasevich@gmail.com, marcelo.leitner@gmail.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On Tue, Jun 11, 2019 at 10:33:17AM +0800, Su Yanjun wrote:
-> 
-> 在 2019/6/10 19:12, Neil Horman 写道:
-> > On Mon, Jun 10, 2019 at 11:20:00AM +0800, Su Yanjun wrote:
-> > > syzbot found a crash in rt_cache_valid. Problem is that when more
-> > > threads release dst in sctp_transport_route, the route cache can
-> > > be freed.
-> > > 
-> > > As follows,
-> > > p1:
-> > > sctp_transport_route
-> > >    dst_release
-> > >    get_dst
-> > > 
-> > > p2:
-> > > sctp_transport_route
-> > >    dst_release
-> > >    get_dst
-> > > ...
-> > > 
-> > > If enough threads calling dst_release will cause dst->refcnt=0
-> > > then rcu softirq will reclaim the dst entry,get_dst then use
-> > > the freed memory.
-> > > 
-> > > This patch adds rcu lock to protect the dst_entry here.
-> > > 
-> > > Fixes: 6e91b578bf3f("sctp: re-use sctp_transport_pmtu in
-> > sctp_transport_route")
-> > > Signed-off-by: Su Yanjun <suyj.fnst@cn.fujitsu.com>
-> > > Reported-by: syzbot+a9e23ea2aa21044c2798@syzkaller.appspotmail.com
-> > > ---
-> > >   net/sctp/transport.c | 5 +++++
-> > >   1 file changed, 5 insertions(+)
-> > > 
-> > > diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-> > > index ad158d3..5ad7e20 100644
-> > > --- a/net/sctp/transport.c
-> > > +++ b/net/sctp/transport.c
-> > > @@ -308,8 +308,13 @@ void sctp_transport_route(struct sctp_transport
-> > *transport,
-> > >   	struct sctp_association *asoc = transport->asoc;
-> > >   	struct sctp_af *af = transport->af_specific;
-> > > +	/* When dst entry is being released, route cache may be referred
-> > > +	 * again. Add rcu lock here to protect dst entry.
-> > > +	 */
-> > > +	rcu_read_lock();
-> > >   	sctp_transport_dst_release(transport);
-> > >   	af->get_dst(transport, saddr, &transport->fl, sctp_opt2sk(opt));
-> > > +	rcu_read_unlock();
-> > What is the exact error that syzbot reported?  This doesn't seem like it
-> > fixes
-> BUG: KASAN: slab-out-of-bounds in rt_cache_valid+0x158/0x190
-> net/ipv4/route.c:1556
-> Read of size 2 at addr ffff8880654f3ac7 by task syz-executor.0/26603
-> 
-> CPU: 0 PID: 26603 Comm: syz-executor.0 Not tainted 5.2.0-rc2+ #9
-> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS
-> Google 01/01/2011
-> Call Trace:
->  __dump_stack lib/dump_stack.c:77 [inline]
->  dump_stack+0x172/0x1f0 lib/dump_stack.c:113
->  print_address_description.cold+0x7c/0x20d mm/kasan/report.c:188
->  __kasan_report.cold+0x1b/0x40 mm/kasan/report.c:317
->  kasan_report+0x12/0x20 mm/kasan/common.c:614
->  __asan_report_load2_noabort+0x14/0x20 mm/kasan/generic_report.c:130
->  rt_cache_valid+0x158/0x190 net/ipv4/route.c:1556
->  __mkroute_output net/ipv4/route.c:2332 [inline]
->  ip_route_output_key_hash_rcu+0x819/0x2d50 net/ipv4/route.c:2564
->  ip_route_output_key_hash+0x1ef/0x360 net/ipv4/route.c:2393
->  __ip_route_output_key include/net/route.h:125 [inline]
->  ip_route_output_flow+0x28/0xc0 net/ipv4/route.c:2651
->  ip_route_output_key include/net/route.h:135 [inline]
->  sctp_v4_get_dst+0x467/0x1260 net/sctp/protocol.c:435
->  sctp_transport_route+0x12d/0x360 net/sctp/transport.c:297
->  sctp_assoc_add_peer+0x53e/0xfc0 net/sctp/associola.c:663
->  sctp_process_param net/sctp/sm_make_chunk.c:2531 [inline]
->  sctp_process_init+0x2491/0x2b10 net/sctp/sm_make_chunk.c:2344
->  sctp_cmd_process_init net/sctp/sm_sideeffect.c:667 [inline]
->  sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1369 [inline]
->  sctp_side_effects net/sctp/sm_sideeffect.c:1179 [inline]
->  sctp_do_sm+0x3a30/0x50e0 net/sctp/sm_sideeffect.c:1150
->  sctp_assoc_bh_rcv+0x343/0x660 net/sctp/associola.c:1059
->  sctp_inq_push+0x1e4/0x280 net/sctp/inqueue.c:80
->  sctp_backlog_rcv+0x196/0xbe0 net/sctp/input.c:339
->  sk_backlog_rcv include/net/sock.h:945 [inline]
->  __release_sock+0x129/0x390 net/core/sock.c:2412
->  release_sock+0x59/0x1c0 net/core/sock.c:2928
->  sctp_wait_for_connect+0x316/0x540 net/sctp/socket.c:9039
->  __sctp_connect+0xab2/0xcd0 net/sctp/socket.c:1226
->  __sctp_setsockopt_connectx+0x133/0x1a0 net/sctp/socket.c:1334
->  sctp_setsockopt_connectx_old net/sctp/socket.c:1350 [inline]
->  sctp_setsockopt net/sctp/socket.c:4644 [inline]
->  sctp_setsockopt+0x22c0/0x6d10 net/sctp/socket.c:4608
->  compat_sock_common_setsockopt+0x106/0x140 net/core/sock.c:3137
->  __compat_sys_setsockopt+0x185/0x380 net/compat.c:383
->  __do_compat_sys_setsockopt net/compat.c:396 [inline]
->  __se_compat_sys_setsockopt net/compat.c:393 [inline]
->  __ia32_compat_sys_setsockopt+0xbd/0x150 net/compat.c:393
->  do_syscall_32_irqs_on arch/x86/entry/common.c:337 [inline]
->  do_fast_syscall_32+0x27b/0xd7d arch/x86/entry/common.c:408
->  entry_SYSENTER_compat+0x70/0x7f arch/x86/entry/entry_64_compat.S:139
-> RIP: 0023:0xf7ff5849
-> Code: 85 d2 74 02 89 0a 5b 5d c3 8b 04 24 c3 8b 14 24 c3 8b 3c 24 c3 90 90
-> 90 90 90 90 90 90 90 90 90 90 51 52 55 89 e5 0f 34 cd 80 <5d> 5a 59 c3 90
-> 90 90 90 eb 0d 90 90 90 90 90 90 90 90 90 90 90 90
-> RSP: 002b:00000000f5df10cc EFLAGS: 00000296 ORIG_RAX: 000000000000016e
-> RAX: ffffffffffffffda RBX: 0000000000000007 RCX: 0000000000000084
-> RDX: 000000000000006b RSI: 000000002055bfe4 RDI: 000000000000001c
-> RBP: 0000000000000000 R08: 0000000000000000 R09: 0000000000000000
-> R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
-> R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
-> 
-> Allocated by task 480:
->  save_stack+0x23/0x90 mm/kasan/common.c:71
->  set_track mm/kasan/common.c:79 [inline]
->  __kasan_kmalloc mm/kasan/common.c:489 [inline]
->  __kasan_kmalloc.constprop.0+0xcf/0xe0 mm/kasan/common.c:462
->  kasan_slab_alloc+0xf/0x20 mm/kasan/common.c:497
->  slab_post_alloc_hook mm/slab.h:437 [inline]
->  slab_alloc mm/slab.c:3326 [inline]
->  kmem_cache_alloc+0x11a/0x6f0 mm/slab.c:3488
->  dst_alloc+0x10e/0x200 net/core/dst.c:93
->  rt_dst_alloc+0x83/0x3f0 net/ipv4/route.c:1624
->  __mkroute_output net/ipv4/route.c:2337 [inline]
->  ip_route_output_key_hash_rcu+0x8f3/0x2d50 net/ipv4/route.c:2564
->  ip_route_output_key_hash+0x1ef/0x360 net/ipv4/route.c:2393
->  __ip_route_output_key include/net/route.h:125 [inline]
->  ip_route_output_flow+0x28/0xc0 net/ipv4/route.c:2651
->  ip_route_output_key include/net/route.h:135 [inline]
->  sctp_v4_get_dst+0x467/0x1260 net/sctp/protocol.c:435
->  sctp_transport_route+0x12d/0x360 net/sctp/transport.c:297
->  sctp_assoc_add_peer+0x53e/0xfc0 net/sctp/associola.c:663
->  sctp_process_param net/sctp/sm_make_chunk.c:2531 [inline]
->  sctp_process_init+0x2491/0x2b10 net/sctp/sm_make_chunk.c:2344
->  sctp_sf_do_unexpected_init net/sctp/sm_statefuns.c:1541 [inline]
->  sctp_sf_do_unexpected_init.isra.0+0x7cd/0x1350net/sctp/sm_statefuns.c:1441
->  sctp_sf_do_5_2_1_siminit+0x35/0x40 net/sctp/sm_statefuns.c:1670
->  sctp_do_sm+0x121/0x50e0 net/sctp/sm_sideeffect.c:1147
->  sctp_assoc_bh_rcv+0x343/0x660 net/sctp/associola.c:1059
->  sctp_inq_push+0x1e4/0x280 net/sctp/inqueue.c:80
->  sctp_backlog_rcv+0x196/0xbe0 net/sctp/input.c:339
->  sk_backlog_rcv include/net/sock.h:945 [inline]
->  __release_sock+0x129/0x390 net/core/sock.c:2412
->  release_sock+0x59/0x1c0 net/core/sock.c:2928
->  sctp_wait_for_connect+0x316/0x540 net/sctp/socket.c:9039
->  __sctp_connect+0xab2/0xcd0 net/sctp/socket.c:1226
->  sctp_connect net/sctp/socket.c:4846 [inline]
->  sctp_inet_connect+0x29c/0x340 net/sctp/socket.c:4862
->  __sys_connect+0x264/0x330 net/socket.c:1834
->  __do_sys_connect net/socket.c:1845 [inline]
->  __se_sys_connect net/socket.c:1842 [inline]
->  __ia32_sys_connect+0x72/0xb0 net/socket.c:1842
->  do_syscall_32_irqs_on arch/x86/entry/common.c:337 [inline]
->  do_fast_syscall_32+0x27b/0xd7d arch/x86/entry/common.c:408
->  entry_SYSENTER_compat+0x70/0x7f arch/x86/entry/entry_64_compat.S:139
-> 
-> Freed by task 9:
->  save_stack+0x23/0x90 mm/kasan/common.c:71
->  set_track mm/kasan/common.c:79 [inline]
->  __kasan_slab_free+0x102/0x150 mm/kasan/common.c:451
->  kasan_slab_free+0xe/0x10 mm/kasan/common.c:459
->  __cache_free mm/slab.c:3432 [inline]
->  kmem_cache_free+0x86/0x260 mm/slab.c:3698
->  dst_destroy+0x29e/0x3c0 net/core/dst.c:129
->  dst_destroy_rcu+0x16/0x19 net/core/dst.c:142
->  __rcu_reclaim kernel/rcu/rcu.h:222 [inline]
->  rcu_do_batch kernel/rcu/tree.c:2092 [inline]
->  invoke_rcu_callbacks kernel/rcu/tree.c:2310 [inline]
->  rcu_core+0xba5/0x1500 kernel/rcu/tree.c:2291
->  __do_softirq+0x25c/0x94c kernel/softirq.c:293
-> 
-> The buggy address belongs to the object at ffff8880654f3a00
->  which belongs to the cache ip_dst_cache of size 176
-> The buggy address is located 23 bytes to the right of
->  176-byte region [ffff8880654f3a00, ffff8880654f3ab0)
-> The buggy address belongs to the page:
-> page:ffffea0001953cc0 refcount:1 mapcount:0 mapping:ffff8880a76ad600
-> index:0xffff8880654f3c00
-> flags: 0x1fffc0000000200(slab)
-> raw: 01fffc0000000200 ffffea00026be808 ffffea000181c088 ffff8880a76ad600
-> raw: ffff8880654f3c00 ffff8880654f3000 0000000100000002 0000000000000000
-> page dumped because: kasan: bad access detected
-> 
-> Memory state around the buggy address:
->  ffff8880654f3980: fb fb fb fb fb fb fc fc fc fc fc fc fc fc fc fc
->  ffff8880654f3a00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-> > ffff8880654f3a80: 00 00 00 00 00 00 fc fc fc fc fc fc fc fc fc fc
->                                            ^
->  ffff8880654f3b00: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
->  ffff8880654f3b80: fb fb fb fb fb fb fc fc fc fc fc fc fc fc fc fc
-> =================================
-> > anything.  Based on what you've said above, we have multiple processes
-> > looking
-> > up and releasing routes in parallel (which IIRC should never happen, as
-> > only one
-> > process should traverse the sctp state machine for a given association at
-> > any
-> > one time).
-> Looks like multiple process could run into sctp_transport_route.
-Yeah, I'm sorry, my previous comment was a bit overstated, you can definately
-have multiple process going through the state machine, but not with the same
-packet.
-
-That said, this fix still isn't right.  Looking at the code, It appears that we
-are manipulating a route inside __mkroute_output that is in the process of being
-destroyed.  But the destruction occurs from an rcu_callback, and the lookup
-process in __mkroute_output is under the protection of the rcu_read_lock already
-(as seen in ip_route_output_key_hash), so the destruction should be delayed
-until that _mkroute_output call is complete, and the call in __mkroute_output
-should skip any route that is in-flight to be destroyed, because the reference
-count should be zero (causing dst_hold_safe to return 0).
-
-Basically, it seems like somehow, __mkroute_output has found a route, and
-started to dereference parts of it, while it is at the same time being freed,
-which should never happen.  How we are getting into that situation though, I
-have no idea yet.
-
-Neil
-
-> > Protecting the lookup/release operations with a read side rcu
-> > lock
-> > won't fix that.
-> > 
-> > Neil
-> > 
-> > >   	if (saddr)
-> > >   		memcpy(&transport->saddr, saddr, sizeof(union sctp_addr));
-> > > -- 
-> > > 2.7.4
-> > > 
-> > > 
-> > > 
-> > > 
-> > 
-> 
-> 
+CuWcqCAyMDE5LzYvMTIgMjE6MTMsIE5laWwgSG9ybWFuIOWGmemBkzoKPiBPbiBUdWUsIEp1biAx
+MSwgMjAxOSBhdCAxMDozMzoxN0FNICswODAwLCBTdSBZYW5qdW4gd3JvdGU6Cj4+IOWcqCAyMDE5
+LzYvMTAgMTk6MTIsIE5laWwgSG9ybWFuIOWGmemBkzoKPj4+IE9uIE1vbiwgSnVuIDEwLCAyMDE5
+IGF0IDExOjIwOjAwQU0gKzA4MDAsIFN1IFlhbmp1biB3cm90ZToKPj4+PiBzeXpib3QgZm91bmQg
+YSBjcmFzaCBpbiBydF9jYWNoZV92YWxpZC4gUHJvYmxlbSBpcyB0aGF0IHdoZW4gbW9yZQo+Pj4+
+IHRocmVhZHMgcmVsZWFzZSBkc3QgaW4gc2N0cF90cmFuc3BvcnRfcm91dGUsIHRoZSByb3V0ZSBj
+YWNoZSBjYW4KPj4+PiBiZSBmcmVlZC4KPj4+Pgo+Pj4+IEFzIGZvbGxvd3MsCj4+Pj4gcDE6Cj4+
+Pj4gc2N0cF90cmFuc3BvcnRfcm91dGUKPj4+PiAgICAgZHN0X3JlbGVhc2UKPj4+PiAgICAgZ2V0
+X2RzdAo+Pj4+Cj4+Pj4gcDI6Cj4+Pj4gc2N0cF90cmFuc3BvcnRfcm91dGUKPj4+PiAgICAgZHN0
+X3JlbGVhc2UKPj4+PiAgICAgZ2V0X2RzdAo+Pj4+IC4uLgo+Pj4+Cj4+Pj4gSWYgZW5vdWdoIHRo
+cmVhZHMgY2FsbGluZyBkc3RfcmVsZWFzZSB3aWxsIGNhdXNlIGRzdC0+cmVmY250PTAKPj4+PiB0
+aGVuIHJjdSBzb2Z0aXJxIHdpbGwgcmVjbGFpbSB0aGUgZHN0IGVudHJ5LGdldF9kc3QgdGhlbiB1
+c2UKPj4+PiB0aGUgZnJlZWQgbWVtb3J5Lgo+Pj4+Cj4+Pj4gVGhpcyBwYXRjaCBhZGRzIHJjdSBs
+b2NrIHRvIHByb3RlY3QgdGhlIGRzdF9lbnRyeSBoZXJlLgo+Pj4+Cj4+Pj4gRml4ZXM6IDZlOTFi
+NTc4YmYzZigic2N0cDogcmUtdXNlIHNjdHBfdHJhbnNwb3J0X3BtdHUgaW4KPj4+IHNjdHBfdHJh
+bnNwb3J0X3JvdXRlIikKPj4+PiBTaWduZWQtb2ZmLWJ5OiBTdSBZYW5qdW4gPHN1eWouZm5zdEBj
+bi5mdWppdHN1LmNvbT4KPj4+PiBSZXBvcnRlZC1ieTogc3l6Ym90K2E5ZTIzZWEyYWEyMTA0NGMy
+Nzk4QHN5emthbGxlci5hcHBzcG90bWFpbC5jb20KPj4+PiAtLS0KPj4+PiAgICBuZXQvc2N0cC90
+cmFuc3BvcnQuYyB8IDUgKysrKysKPj4+PiAgICAxIGZpbGUgY2hhbmdlZCwgNSBpbnNlcnRpb25z
+KCspCj4+Pj4KPj4+PiBkaWZmIC0tZ2l0IGEvbmV0L3NjdHAvdHJhbnNwb3J0LmMgYi9uZXQvc2N0
+cC90cmFuc3BvcnQuYwo+Pj4+IGluZGV4IGFkMTU4ZDMuLjVhZDdlMjAgMTAwNjQ0Cj4+Pj4gLS0t
+IGEvbmV0L3NjdHAvdHJhbnNwb3J0LmMKPj4+PiArKysgYi9uZXQvc2N0cC90cmFuc3BvcnQuYwo+
+Pj4+IEBAIC0zMDgsOCArMzA4LDEzIEBAIHZvaWQgc2N0cF90cmFuc3BvcnRfcm91dGUoc3RydWN0
+IHNjdHBfdHJhbnNwb3J0Cj4+PiAqdHJhbnNwb3J0LAo+Pj4+ICAgIAlzdHJ1Y3Qgc2N0cF9hc3Nv
+Y2lhdGlvbiAqYXNvYyA9IHRyYW5zcG9ydC0+YXNvYzsKPj4+PiAgICAJc3RydWN0IHNjdHBfYWYg
+KmFmID0gdHJhbnNwb3J0LT5hZl9zcGVjaWZpYzsKPj4+PiArCS8qIFdoZW4gZHN0IGVudHJ5IGlz
+IGJlaW5nIHJlbGVhc2VkLCByb3V0ZSBjYWNoZSBtYXkgYmUgcmVmZXJyZWQKPj4+PiArCSAqIGFn
+YWluLiBBZGQgcmN1IGxvY2sgaGVyZSB0byBwcm90ZWN0IGRzdCBlbnRyeS4KPj4+PiArCSAqLwo+
+Pj4+ICsJcmN1X3JlYWRfbG9jaygpOwo+Pj4+ICAgIAlzY3RwX3RyYW5zcG9ydF9kc3RfcmVsZWFz
+ZSh0cmFuc3BvcnQpOwo+Pj4+ICAgIAlhZi0+Z2V0X2RzdCh0cmFuc3BvcnQsIHNhZGRyLCAmdHJh
+bnNwb3J0LT5mbCwgc2N0cF9vcHQyc2sob3B0KSk7Cj4+Pj4gKwlyY3VfcmVhZF91bmxvY2soKTsK
+Pj4+IFdoYXQgaXMgdGhlIGV4YWN0IGVycm9yIHRoYXQgc3l6Ym90IHJlcG9ydGVkPyAgVGhpcyBk
+b2Vzbid0IHNlZW0gbGlrZSBpdAo+Pj4gZml4ZXMKPj4gQlVHOiBLQVNBTjogc2xhYi1vdXQtb2Yt
+Ym91bmRzIGluIHJ0X2NhY2hlX3ZhbGlkKzB4MTU4LzB4MTkwCj4+IG5ldC9pcHY0L3JvdXRlLmM6
+MTU1Ngo+PiBSZWFkIG9mIHNpemUgMiBhdCBhZGRyIGZmZmY4ODgwNjU0ZjNhYzcgYnkgdGFzayBz
+eXotZXhlY3V0b3IuMC8yNjYwMwo+Pgo+PiBDUFU6IDAgUElEOiAyNjYwMyBDb21tOiBzeXotZXhl
+Y3V0b3IuMCBOb3QgdGFpbnRlZCA1LjIuMC1yYzIrICM5Cj4+IEhhcmR3YXJlIG5hbWU6IEdvb2ds
+ZSBHb29nbGUgQ29tcHV0ZSBFbmdpbmUvR29vZ2xlIENvbXB1dGUgRW5naW5lLCBCSU9TCj4+IEdv
+b2dsZSAwMS8wMS8yMDExCj4+IENhbGwgVHJhY2U6Cj4+ICAgX19kdW1wX3N0YWNrIGxpYi9kdW1w
+X3N0YWNrLmM6NzcgW2lubGluZV0KPj4gICBkdW1wX3N0YWNrKzB4MTcyLzB4MWYwIGxpYi9kdW1w
+X3N0YWNrLmM6MTEzCj4+ICAgcHJpbnRfYWRkcmVzc19kZXNjcmlwdGlvbi5jb2xkKzB4N2MvMHgy
+MGQgbW0va2FzYW4vcmVwb3J0LmM6MTg4Cj4+ICAgX19rYXNhbl9yZXBvcnQuY29sZCsweDFiLzB4
+NDAgbW0va2FzYW4vcmVwb3J0LmM6MzE3Cj4+ICAga2FzYW5fcmVwb3J0KzB4MTIvMHgyMCBtbS9r
+YXNhbi9jb21tb24uYzo2MTQKPj4gICBfX2FzYW5fcmVwb3J0X2xvYWQyX25vYWJvcnQrMHgxNC8w
+eDIwIG1tL2thc2FuL2dlbmVyaWNfcmVwb3J0LmM6MTMwCj4+ICAgcnRfY2FjaGVfdmFsaWQrMHgx
+NTgvMHgxOTAgbmV0L2lwdjQvcm91dGUuYzoxNTU2Cj4+ICAgX19ta3JvdXRlX291dHB1dCBuZXQv
+aXB2NC9yb3V0ZS5jOjIzMzIgW2lubGluZV0KPj4gICBpcF9yb3V0ZV9vdXRwdXRfa2V5X2hhc2hf
+cmN1KzB4ODE5LzB4MmQ1MCBuZXQvaXB2NC9yb3V0ZS5jOjI1NjQKPj4gICBpcF9yb3V0ZV9vdXRw
+dXRfa2V5X2hhc2grMHgxZWYvMHgzNjAgbmV0L2lwdjQvcm91dGUuYzoyMzkzCj4+ICAgX19pcF9y
+b3V0ZV9vdXRwdXRfa2V5IGluY2x1ZGUvbmV0L3JvdXRlLmg6MTI1IFtpbmxpbmVdCj4+ICAgaXBf
+cm91dGVfb3V0cHV0X2Zsb3crMHgyOC8weGMwIG5ldC9pcHY0L3JvdXRlLmM6MjY1MQo+PiAgIGlw
+X3JvdXRlX291dHB1dF9rZXkgaW5jbHVkZS9uZXQvcm91dGUuaDoxMzUgW2lubGluZV0KPj4gICBz
+Y3RwX3Y0X2dldF9kc3QrMHg0NjcvMHgxMjYwIG5ldC9zY3RwL3Byb3RvY29sLmM6NDM1Cj4+ICAg
+c2N0cF90cmFuc3BvcnRfcm91dGUrMHgxMmQvMHgzNjAgbmV0L3NjdHAvdHJhbnNwb3J0LmM6Mjk3
+Cj4+ICAgc2N0cF9hc3NvY19hZGRfcGVlcisweDUzZS8weGZjMCBuZXQvc2N0cC9hc3NvY2lvbGEu
+Yzo2NjMKPj4gICBzY3RwX3Byb2Nlc3NfcGFyYW0gbmV0L3NjdHAvc21fbWFrZV9jaHVuay5jOjI1
+MzEgW2lubGluZV0KPj4gICBzY3RwX3Byb2Nlc3NfaW5pdCsweDI0OTEvMHgyYjEwIG5ldC9zY3Rw
+L3NtX21ha2VfY2h1bmsuYzoyMzQ0Cj4+ICAgc2N0cF9jbWRfcHJvY2Vzc19pbml0IG5ldC9zY3Rw
+L3NtX3NpZGVlZmZlY3QuYzo2NjcgW2lubGluZV0KPj4gICBzY3RwX2NtZF9pbnRlcnByZXRlciBu
+ZXQvc2N0cC9zbV9zaWRlZWZmZWN0LmM6MTM2OSBbaW5saW5lXQo+PiAgIHNjdHBfc2lkZV9lZmZl
+Y3RzIG5ldC9zY3RwL3NtX3NpZGVlZmZlY3QuYzoxMTc5IFtpbmxpbmVdCj4+ICAgc2N0cF9kb19z
+bSsweDNhMzAvMHg1MGUwIG5ldC9zY3RwL3NtX3NpZGVlZmZlY3QuYzoxMTUwCj4+ICAgc2N0cF9h
+c3NvY19iaF9yY3YrMHgzNDMvMHg2NjAgbmV0L3NjdHAvYXNzb2Npb2xhLmM6MTA1OQo+PiAgIHNj
+dHBfaW5xX3B1c2grMHgxZTQvMHgyODAgbmV0L3NjdHAvaW5xdWV1ZS5jOjgwCj4+ICAgc2N0cF9i
+YWNrbG9nX3JjdisweDE5Ni8weGJlMCBuZXQvc2N0cC9pbnB1dC5jOjMzOQo+PiAgIHNrX2JhY2ts
+b2dfcmN2IGluY2x1ZGUvbmV0L3NvY2suaDo5NDUgW2lubGluZV0KPj4gICBfX3JlbGVhc2Vfc29j
+aysweDEyOS8weDM5MCBuZXQvY29yZS9zb2NrLmM6MjQxMgo+PiAgIHJlbGVhc2Vfc29jaysweDU5
+LzB4MWMwIG5ldC9jb3JlL3NvY2suYzoyOTI4Cj4+ICAgc2N0cF93YWl0X2Zvcl9jb25uZWN0KzB4
+MzE2LzB4NTQwIG5ldC9zY3RwL3NvY2tldC5jOjkwMzkKPj4gICBfX3NjdHBfY29ubmVjdCsweGFi
+Mi8weGNkMCBuZXQvc2N0cC9zb2NrZXQuYzoxMjI2Cj4+ICAgX19zY3RwX3NldHNvY2tvcHRfY29u
+bmVjdHgrMHgxMzMvMHgxYTAgbmV0L3NjdHAvc29ja2V0LmM6MTMzNAo+PiAgIHNjdHBfc2V0c29j
+a29wdF9jb25uZWN0eF9vbGQgbmV0L3NjdHAvc29ja2V0LmM6MTM1MCBbaW5saW5lXQo+PiAgIHNj
+dHBfc2V0c29ja29wdCBuZXQvc2N0cC9zb2NrZXQuYzo0NjQ0IFtpbmxpbmVdCj4+ICAgc2N0cF9z
+ZXRzb2Nrb3B0KzB4MjJjMC8weDZkMTAgbmV0L3NjdHAvc29ja2V0LmM6NDYwOAo+PiAgIGNvbXBh
+dF9zb2NrX2NvbW1vbl9zZXRzb2Nrb3B0KzB4MTA2LzB4MTQwIG5ldC9jb3JlL3NvY2suYzozMTM3
+Cj4+ICAgX19jb21wYXRfc3lzX3NldHNvY2tvcHQrMHgxODUvMHgzODAgbmV0L2NvbXBhdC5jOjM4
+Mwo+PiAgIF9fZG9fY29tcGF0X3N5c19zZXRzb2Nrb3B0IG5ldC9jb21wYXQuYzozOTYgW2lubGlu
+ZV0KPj4gICBfX3NlX2NvbXBhdF9zeXNfc2V0c29ja29wdCBuZXQvY29tcGF0LmM6MzkzIFtpbmxp
+bmVdCj4+ICAgX19pYTMyX2NvbXBhdF9zeXNfc2V0c29ja29wdCsweGJkLzB4MTUwIG5ldC9jb21w
+YXQuYzozOTMKPj4gICBkb19zeXNjYWxsXzMyX2lycXNfb24gYXJjaC94ODYvZW50cnkvY29tbW9u
+LmM6MzM3IFtpbmxpbmVdCj4+ICAgZG9fZmFzdF9zeXNjYWxsXzMyKzB4MjdiLzB4ZDdkIGFyY2gv
+eDg2L2VudHJ5L2NvbW1vbi5jOjQwOAo+PiAgIGVudHJ5X1NZU0VOVEVSX2NvbXBhdCsweDcwLzB4
+N2YgYXJjaC94ODYvZW50cnkvZW50cnlfNjRfY29tcGF0LlM6MTM5Cj4+IFJJUDogMDAyMzoweGY3
+ZmY1ODQ5Cj4+IENvZGU6IDg1IGQyIDc0IDAyIDg5IDBhIDViIDVkIGMzIDhiIDA0IDI0IGMzIDhi
+IDE0IDI0IGMzIDhiIDNjIDI0IGMzIDkwIDkwCj4+IDkwIDkwIDkwIDkwIDkwIDkwIDkwIDkwIDkw
+IDkwIDUxIDUyIDU1IDg5IGU1IDBmIDM0IGNkIDgwIDw1ZD4gNWEgNTkgYzMgOTAKPj4gOTAgOTAg
+OTAgZWIgMGQgOTAgOTAgOTAgOTAgOTAgOTAgOTAgOTAgOTAgOTAgOTAgOTAKPj4gUlNQOiAwMDJi
+OjAwMDAwMDAwZjVkZjEwY2MgRUZMQUdTOiAwMDAwMDI5NiBPUklHX1JBWDogMDAwMDAwMDAwMDAw
+MDE2ZQo+PiBSQVg6IGZmZmZmZmZmZmZmZmZmZGEgUkJYOiAwMDAwMDAwMDAwMDAwMDA3IFJDWDog
+MDAwMDAwMDAwMDAwMDA4NAo+PiBSRFg6IDAwMDAwMDAwMDAwMDAwNmIgUlNJOiAwMDAwMDAwMDIw
+NTViZmU0IFJESTogMDAwMDAwMDAwMDAwMDAxYwo+PiBSQlA6IDAwMDAwMDAwMDAwMDAwMDAgUjA4
+OiAwMDAwMDAwMDAwMDAwMDAwIFIwOTogMDAwMDAwMDAwMDAwMDAwMAo+PiBSMTA6IDAwMDAwMDAw
+MDAwMDAwMDAgUjExOiAwMDAwMDAwMDAwMDAwMDAwIFIxMjogMDAwMDAwMDAwMDAwMDAwMAo+PiBS
+MTM6IDAwMDAwMDAwMDAwMDAwMDAgUjE0OiAwMDAwMDAwMDAwMDAwMDAwIFIxNTogMDAwMDAwMDAw
+MDAwMDAwMAo+Pgo+PiBBbGxvY2F0ZWQgYnkgdGFzayA0ODA6Cj4+ICAgc2F2ZV9zdGFjaysweDIz
+LzB4OTAgbW0va2FzYW4vY29tbW9uLmM6NzEKPj4gICBzZXRfdHJhY2sgbW0va2FzYW4vY29tbW9u
+LmM6NzkgW2lubGluZV0KPj4gICBfX2thc2FuX2ttYWxsb2MgbW0va2FzYW4vY29tbW9uLmM6NDg5
+IFtpbmxpbmVdCj4+ICAgX19rYXNhbl9rbWFsbG9jLmNvbnN0cHJvcC4wKzB4Y2YvMHhlMCBtbS9r
+YXNhbi9jb21tb24uYzo0NjIKPj4gICBrYXNhbl9zbGFiX2FsbG9jKzB4Zi8weDIwIG1tL2thc2Fu
+L2NvbW1vbi5jOjQ5Nwo+PiAgIHNsYWJfcG9zdF9hbGxvY19ob29rIG1tL3NsYWIuaDo0MzcgW2lu
+bGluZV0KPj4gICBzbGFiX2FsbG9jIG1tL3NsYWIuYzozMzI2IFtpbmxpbmVdCj4+ICAga21lbV9j
+YWNoZV9hbGxvYysweDExYS8weDZmMCBtbS9zbGFiLmM6MzQ4OAo+PiAgIGRzdF9hbGxvYysweDEw
+ZS8weDIwMCBuZXQvY29yZS9kc3QuYzo5Mwo+PiAgIHJ0X2RzdF9hbGxvYysweDgzLzB4M2YwIG5l
+dC9pcHY0L3JvdXRlLmM6MTYyNAo+PiAgIF9fbWtyb3V0ZV9vdXRwdXQgbmV0L2lwdjQvcm91dGUu
+YzoyMzM3IFtpbmxpbmVdCj4+ICAgaXBfcm91dGVfb3V0cHV0X2tleV9oYXNoX3JjdSsweDhmMy8w
+eDJkNTAgbmV0L2lwdjQvcm91dGUuYzoyNTY0Cj4+ICAgaXBfcm91dGVfb3V0cHV0X2tleV9oYXNo
+KzB4MWVmLzB4MzYwIG5ldC9pcHY0L3JvdXRlLmM6MjM5Mwo+PiAgIF9faXBfcm91dGVfb3V0cHV0
+X2tleSBpbmNsdWRlL25ldC9yb3V0ZS5oOjEyNSBbaW5saW5lXQo+PiAgIGlwX3JvdXRlX291dHB1
+dF9mbG93KzB4MjgvMHhjMCBuZXQvaXB2NC9yb3V0ZS5jOjI2NTEKPj4gICBpcF9yb3V0ZV9vdXRw
+dXRfa2V5IGluY2x1ZGUvbmV0L3JvdXRlLmg6MTM1IFtpbmxpbmVdCj4+ICAgc2N0cF92NF9nZXRf
+ZHN0KzB4NDY3LzB4MTI2MCBuZXQvc2N0cC9wcm90b2NvbC5jOjQzNQo+PiAgIHNjdHBfdHJhbnNw
+b3J0X3JvdXRlKzB4MTJkLzB4MzYwIG5ldC9zY3RwL3RyYW5zcG9ydC5jOjI5Nwo+PiAgIHNjdHBf
+YXNzb2NfYWRkX3BlZXIrMHg1M2UvMHhmYzAgbmV0L3NjdHAvYXNzb2Npb2xhLmM6NjYzCj4+ICAg
+c2N0cF9wcm9jZXNzX3BhcmFtIG5ldC9zY3RwL3NtX21ha2VfY2h1bmsuYzoyNTMxIFtpbmxpbmVd
+Cj4+ICAgc2N0cF9wcm9jZXNzX2luaXQrMHgyNDkxLzB4MmIxMCBuZXQvc2N0cC9zbV9tYWtlX2No
+dW5rLmM6MjM0NAo+PiAgIHNjdHBfc2ZfZG9fdW5leHBlY3RlZF9pbml0IG5ldC9zY3RwL3NtX3N0
+YXRlZnVucy5jOjE1NDEgW2lubGluZV0KPj4KPj4gc2N0cF9zZl9kb191bmV4cGVjdGVkX2luaXQu
+aXNyYS4wKzB4N2NkLzB4MTM1MG5ldC9zY3RwL3NtX3N0YXRlZnVucy5jOjE0NDEKPj4gICBzY3Rw
+X3NmX2RvXzVfMl8xX3NpbWluaXQrMHgzNS8weDQwIG5ldC9zY3RwL3NtX3N0YXRlZnVucy5jOjE2
+NzAKPj4gICBzY3RwX2RvX3NtKzB4MTIxLzB4NTBlMCBuZXQvc2N0cC9zbV9zaWRlZWZmZWN0LmM6
+MTE0Nwo+PiAgIHNjdHBfYXNzb2NfYmhfcmN2KzB4MzQzLzB4NjYwIG5ldC9zY3RwL2Fzc29jaW9s
+YS5jOjEwNTkKPj4gICBzY3RwX2lucV9wdXNoKzB4MWU0LzB4MjgwIG5ldC9zY3RwL2lucXVldWUu
+Yzo4MAo+PiAgIHNjdHBfYmFja2xvZ19yY3YrMHgxOTYvMHhiZTAgbmV0L3NjdHAvaW5wdXQuYzoz
+MzkKPj4gICBza19iYWNrbG9nX3JjdiBpbmNsdWRlL25ldC9zb2NrLmg6OTQ1IFtpbmxpbmVdCj4+
+ICAgX19yZWxlYXNlX3NvY2srMHgxMjkvMHgzOTAgbmV0L2NvcmUvc29jay5jOjI0MTIKPj4gICBy
+ZWxlYXNlX3NvY2srMHg1OS8weDFjMCBuZXQvY29yZS9zb2NrLmM6MjkyOAo+PiAgIHNjdHBfd2Fp
+dF9mb3JfY29ubmVjdCsweDMxNi8weDU0MCBuZXQvc2N0cC9zb2NrZXQuYzo5MDM5Cj4+ICAgX19z
+Y3RwX2Nvbm5lY3QrMHhhYjIvMHhjZDAgbmV0L3NjdHAvc29ja2V0LmM6MTIyNgo+PiAgIHNjdHBf
+Y29ubmVjdCBuZXQvc2N0cC9zb2NrZXQuYzo0ODQ2IFtpbmxpbmVdCj4+ICAgc2N0cF9pbmV0X2Nv
+bm5lY3QrMHgyOWMvMHgzNDAgbmV0L3NjdHAvc29ja2V0LmM6NDg2Mgo+PiAgIF9fc3lzX2Nvbm5l
+Y3QrMHgyNjQvMHgzMzAgbmV0L3NvY2tldC5jOjE4MzQKPj4gICBfX2RvX3N5c19jb25uZWN0IG5l
+dC9zb2NrZXQuYzoxODQ1IFtpbmxpbmVdCj4+ICAgX19zZV9zeXNfY29ubmVjdCBuZXQvc29ja2V0
+LmM6MTg0MiBbaW5saW5lXQo+PiAgIF9faWEzMl9zeXNfY29ubmVjdCsweDcyLzB4YjAgbmV0L3Nv
+Y2tldC5jOjE4NDIKPj4gICBkb19zeXNjYWxsXzMyX2lycXNfb24gYXJjaC94ODYvZW50cnkvY29t
+bW9uLmM6MzM3IFtpbmxpbmVdCj4+ICAgZG9fZmFzdF9zeXNjYWxsXzMyKzB4MjdiLzB4ZDdkIGFy
+Y2gveDg2L2VudHJ5L2NvbW1vbi5jOjQwOAo+PiAgIGVudHJ5X1NZU0VOVEVSX2NvbXBhdCsweDcw
+LzB4N2YgYXJjaC94ODYvZW50cnkvZW50cnlfNjRfY29tcGF0LlM6MTM5Cj4+Cj4+IEZyZWVkIGJ5
+IHRhc2sgOToKPj4gICBzYXZlX3N0YWNrKzB4MjMvMHg5MCBtbS9rYXNhbi9jb21tb24uYzo3MQo+
+PiAgIHNldF90cmFjayBtbS9rYXNhbi9jb21tb24uYzo3OSBbaW5saW5lXQo+PiAgIF9fa2FzYW5f
+c2xhYl9mcmVlKzB4MTAyLzB4MTUwIG1tL2thc2FuL2NvbW1vbi5jOjQ1MQo+PiAgIGthc2FuX3Ns
+YWJfZnJlZSsweGUvMHgxMCBtbS9rYXNhbi9jb21tb24uYzo0NTkKPj4gICBfX2NhY2hlX2ZyZWUg
+bW0vc2xhYi5jOjM0MzIgW2lubGluZV0KPj4gICBrbWVtX2NhY2hlX2ZyZWUrMHg4Ni8weDI2MCBt
+bS9zbGFiLmM6MzY5OAo+PiAgIGRzdF9kZXN0cm95KzB4MjllLzB4M2MwIG5ldC9jb3JlL2RzdC5j
+OjEyOQo+PiAgIGRzdF9kZXN0cm95X3JjdSsweDE2LzB4MTkgbmV0L2NvcmUvZHN0LmM6MTQyCj4+
+ICAgX19yY3VfcmVjbGFpbSBrZXJuZWwvcmN1L3JjdS5oOjIyMiBbaW5saW5lXQo+PiAgIHJjdV9k
+b19iYXRjaCBrZXJuZWwvcmN1L3RyZWUuYzoyMDkyIFtpbmxpbmVdCj4+ICAgaW52b2tlX3JjdV9j
+YWxsYmFja3Mga2VybmVsL3JjdS90cmVlLmM6MjMxMCBbaW5saW5lXQo+PiAgIHJjdV9jb3JlKzB4
+YmE1LzB4MTUwMCBrZXJuZWwvcmN1L3RyZWUuYzoyMjkxCj4+ICAgX19kb19zb2Z0aXJxKzB4MjVj
+LzB4OTRjIGtlcm5lbC9zb2Z0aXJxLmM6MjkzCj4+Cj4+IFRoZSBidWdneSBhZGRyZXNzIGJlbG9u
+Z3MgdG8gdGhlIG9iamVjdCBhdCBmZmZmODg4MDY1NGYzYTAwCj4+ICAgd2hpY2ggYmVsb25ncyB0
+byB0aGUgY2FjaGUgaXBfZHN0X2NhY2hlIG9mIHNpemUgMTc2Cj4+IFRoZSBidWdneSBhZGRyZXNz
+IGlzIGxvY2F0ZWQgMjMgYnl0ZXMgdG8gdGhlIHJpZ2h0IG9mCj4+ICAgMTc2LWJ5dGUgcmVnaW9u
+IFtmZmZmODg4MDY1NGYzYTAwLCBmZmZmODg4MDY1NGYzYWIwKQo+PiBUaGUgYnVnZ3kgYWRkcmVz
+cyBiZWxvbmdzIHRvIHRoZSBwYWdlOgo+PiBwYWdlOmZmZmZlYTAwMDE5NTNjYzAgcmVmY291bnQ6
+MSBtYXBjb3VudDowIG1hcHBpbmc6ZmZmZjg4ODBhNzZhZDYwMAo+PiBpbmRleDoweGZmZmY4ODgw
+NjU0ZjNjMDAKPj4gZmxhZ3M6IDB4MWZmZmMwMDAwMDAwMjAwKHNsYWIpCj4+IHJhdzogMDFmZmZj
+MDAwMDAwMDIwMCBmZmZmZWEwMDAyNmJlODA4IGZmZmZlYTAwMDE4MWMwODggZmZmZjg4ODBhNzZh
+ZDYwMAo+PiByYXc6IGZmZmY4ODgwNjU0ZjNjMDAgZmZmZjg4ODA2NTRmMzAwMCAwMDAwMDAwMTAw
+MDAwMDAyIDAwMDAwMDAwMDAwMDAwMDAKPj4gcGFnZSBkdW1wZWQgYmVjYXVzZToga2FzYW46IGJh
+ZCBhY2Nlc3MgZGV0ZWN0ZWQKPj4KPj4gTWVtb3J5IHN0YXRlIGFyb3VuZCB0aGUgYnVnZ3kgYWRk
+cmVzczoKPj4gICBmZmZmODg4MDY1NGYzOTgwOiBmYiBmYiBmYiBmYiBmYiBmYiBmYyBmYyBmYyBm
+YyBmYyBmYyBmYyBmYyBmYyBmYwo+PiAgIGZmZmY4ODgwNjU0ZjNhMDA6IDAwIDAwIDAwIDAwIDAw
+IDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwCj4+PiBmZmZmODg4MDY1NGYzYTgwOiAw
+MCAwMCAwMCAwMCAwMCAwMCBmYyBmYyBmYyBmYyBmYyBmYyBmYyBmYyBmYyBmYwo+PiAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIF4KPj4gICBmZmZmODg4MDY1NGYz
+YjAwOiBmYiBmYiBmYiBmYiBmYiBmYiBmYiBmYiBmYiBmYiBmYiBmYiBmYiBmYiBmYiBmYgo+PiAg
+IGZmZmY4ODgwNjU0ZjNiODA6IGZiIGZiIGZiIGZiIGZiIGZiIGZjIGZjIGZjIGZjIGZjIGZjIGZj
+IGZjIGZjIGZjCj4+ID09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQo+Pj4gYW55dGhp
+bmcuICBCYXNlZCBvbiB3aGF0IHlvdSd2ZSBzYWlkIGFib3ZlLCB3ZSBoYXZlIG11bHRpcGxlIHBy
+b2Nlc3Nlcwo+Pj4gbG9va2luZwo+Pj4gdXAgYW5kIHJlbGVhc2luZyByb3V0ZXMgaW4gcGFyYWxs
+ZWwgKHdoaWNoIElJUkMgc2hvdWxkIG5ldmVyIGhhcHBlbiwgYXMKPj4+IG9ubHkgb25lCj4+PiBw
+cm9jZXNzIHNob3VsZCB0cmF2ZXJzZSB0aGUgc2N0cCBzdGF0ZSBtYWNoaW5lIGZvciBhIGdpdmVu
+IGFzc29jaWF0aW9uCj4+PiBhdAo+Pj4gYW55Cj4+PiBvbmUgdGltZSkuCj4+IExvb2tzIGxpa2Ug
+bXVsdGlwbGUgcHJvY2VzcyBjb3VsZCBydW4gaW50byBzY3RwX3RyYW5zcG9ydF9yb3V0ZS4KPiBZ
+ZWFoLCBJJ20gc29ycnksIG15IHByZXZpb3VzIGNvbW1lbnQgd2FzIGEgYml0IG92ZXJzdGF0ZWQs
+IHlvdSBjYW4KPiBkZWZpbmF0ZWx5Cj4gaGF2ZSBtdWx0aXBsZSBwcm9jZXNzIGdvaW5nIHRocm91
+Z2ggdGhlIHN0YXRlIG1hY2hpbmUsIGJ1dCBub3Qgd2l0aCB0aGUgc2FtZQo+IHBhY2tldC4KPgo+
+IFRoYXQgc2FpZCwgdGhpcyBmaXggc3RpbGwgaXNuJ3QgcmlnaHQuICBMb29raW5nIGF0IHRoZSBj
+b2RlLCBJdCBhcHBlYXJzIHRoYXQKPiB3ZQo+IGFyZSBtYW5pcHVsYXRpbmcgYSByb3V0ZSBpbnNp
+ZGUgX19ta3JvdXRlX291dHB1dCB0aGF0IGlzIGluIHRoZSBwcm9jZXNzIG9mCj4gYmVpbmcKPiBk
+ZXN0cm95ZWQuICBCdXQgdGhlIGRlc3RydWN0aW9uIG9jY3VycyBmcm9tIGFuIHJjdV9jYWxsYmFj
+aywgYW5kIHRoZSBsb29rdXAKPiBwcm9jZXNzIGluIF9fbWtyb3V0ZV9vdXRwdXQgaXMgdW5kZXIg
+dGhlIHByb3RlY3Rpb24gb2YgdGhlIHJjdV9yZWFkX2xvY2sKPiBhbHJlYWR5Cj4gKGFzIHNlZW4g
+aW4gaXBfcm91dGVfb3V0cHV0X2tleV9oYXNoKSwgc28gdGhlIGRlc3RydWN0aW9uIHNob3VsZCBi
+ZSBkZWxheWVkCj4gdW50aWwgdGhhdCBfbWtyb3V0ZV9vdXRwdXQgY2FsbCBpcyBjb21wbGV0ZSwg
+YW5kIHRoZSBjYWxsIGluCj4gX19ta3JvdXRlX291dHB1dAo+IHNob3VsZCBza2lwIGFueSByb3V0
+ZSB0aGF0IGlzIGluLWZsaWdodCB0byBiZSBkZXN0cm95ZWQsIGJlY2F1c2UgdGhlCj4gcmVmZXJl
+bmNlCj4gY291bnQgc2hvdWxkIGJlIHplcm8gKGNhdXNpbmcgZHN0X2hvbGRfc2FmZSB0byByZXR1
+cm4gMCkuClllcywgeW91IGFyZSByaWdodC4gX19ta3JvdXRlX291dHB1dCBpcyBpbXBvc3NpYmxl
+IHRvIGNhdXNlIGRzdCBlbnRyeSB0byAKYmUgcmVsZWFzZWQuCj4gQmFzaWNhbGx5LCBpdCBzZWVt
+cyBsaWtlIHNvbWVob3csIF9fbWtyb3V0ZV9vdXRwdXQgaGFzIGZvdW5kIGEgcm91dGUsIGFuZAo+
+IHN0YXJ0ZWQgdG8gZGVyZWZlcmVuY2UgcGFydHMgb2YgaXQsIHdoaWxlIGl0IGlzIGF0IHRoZSBz
+YW1lIHRpbWUgYmVpbmcKPiBmcmVlZCwKQnV0IGRzdCBlbnRyeSBtYXkgYmXCoCByZWxlYXNlZCBz
+b21ld2hlcmUuCgpBcyBzeXpib3QgcmVwb3J0cywKSEVBRCBjb21taXQ6wqDCoMKgIDkyMjFkY2Vk
+IE1lcmdlIHRhZyAnZm9yLWxpbnVzLTIwMTkwNjAxJyBvZiBnaXQ6Ly9naXQua2VybmUuLgpnaXQg
+dHJlZTrCoMKgwqDCoMKgwqAgdXBzdHJlYW0KY29uc29sZSBvdXRwdXQ6IGh0dHBzOi8vc3l6a2Fs
+bGVyLmFwcHNwb3QuY29tL3gvbG9nLnR4dD94ETRjZGMwZWEwMDAwMAprZXJuZWwgY29uZmlnOiBo
+dHRwczovL3N5emthbGxlci5hcHBzcG90LmNvbS94Ly5jb25maWc/eB9hN2U0NTFhNWNhYzA2OQpk
+YXNoYm9hcmQgbGluazogaHR0cHM6Ly9zeXprYWxsZXIuYXBwc3BvdC5jb20vYnVnP2V4dGlkqWUy
+M2VhMmFhMjEwNDRjMjc5OApjb21waWxlcjrCoMKgwqDCoMKgwqAgZ2NjIChHQ0MpIDkuMC4wIDIw
+MTgxMjMxIChleHBlcmltZW50YWwpCnVzZXJzcGFjZSBhcmNoOiBpMzg2CgppIHNlYXJjaGVkIGRz
+dF9yZWxlYXNlIGluIHNjdHAgY29kZSwgc2N0cF90cmFuc3BvcnRfZHN0X3JlbGVhc2UgaXMgYSBi
+aWcgCnN1c3BpY2lvbi4KSWYgbXVsdGlwbGUgcHJvY2Vzc2VzIGNhbGxpbmcgc2N0cF90cmFuc3Bv
+cnRfZHN0X3JlbGVhc2Ugd291bGQgY2F1c2UgCnJlZmNudD0wLApkc3QgZW50cnkgd2lsbCBiZSBy
+ZWNsYWltZWQuCgpfX21rcm91dGVfb3V0cHV0IGluIHJvdXRlLmM6CnBydGggPSByYXdfY3B1X3B0
+cihuaC0+bmhfcGNwdV9ydGhfb3V0cHV0KTsKcnRoID0gcmN1X2RlcmVmZXJlbmNlKCpwcnRoKTsK
+aXQgdXNlcyAqbmhfcGNwdV9ydGhfb3V0cHV0KiB0byByZWZlciB0aGUgcm91dGUgY2FjaGUuIElm
+IGRzdCBlbnRyeSBoYXMgCmJlZW4gcmVsZWFzZWQsIG5vIG9uZQpzZXRzICpuaF9wY3B1X3J0aF9v
+dXRwdXQqIHRvIG51bGwsIG9ubHkgcnRfY2FjaGVfcm91dGUgdXBkYXRlcyBpdCB3aXRoIGEgCm5l
+dyBvbmUuCgphbnl3aGVyZSByZWxlYXNlX2RzdCBhbmQgZ2V0X2RzdCB3aGljaCBtYXkgYWNjZXNz
+IHRoZSBzYW1lIGRzdCAKY29uY3VycmVudGx5IHNob3VsZApiZSB1bmRlciByY3UgbG9jayBwcm90
+ZWN0aW9uLgoKSSdtIG5vdCBmYW1pbGFyIHdpdGggc2N0cC4gYnV0IGxvb2tzIGxpa2UgYSBwcm9i
+bGVtwqAgZHN0X3JlbGVhc2UgcmVsYXRlZC4KPiB3aGljaCBzaG91bGQgbmV2ZXIgaGFwcGVuLiAg
+SG93IHdlIGFyZSBnZXR0aW5nIGludG8gdGhhdCBzaXR1YXRpb24gdGhvdWdoLCBJCj4gaGF2ZSBu
+byBpZGVhIHlldC4KPgo+IE5laWwKPgo+Pj4gUHJvdGVjdGluZyB0aGUgbG9va3VwL3JlbGVhc2Ug
+b3BlcmF0aW9ucyB3aXRoIGEgcmVhZCBzaWRlIHJjdQo+Pj4gbG9jawo+Pj4gd29uJ3QgZml4IHRo
+YXQuCj4+Pgo+Pj4gTmVpbAo+Pj4KPj4+PiAgICAJaWYgKHNhZGRyKQo+Pj4+ICAgIAkJbWVtY3B5
+KCZ0cmFuc3BvcnQtPnNhZGRyLCBzYWRkciwgc2l6ZW9mKHVuaW9uIHNjdHBfYWRkcikpOwo+Pj4+
+IC0tIAo+Pj4+IDIuNy40Cj4+Pj4KPj4+Pgo+Pj4+Cj4+Pj4KPj4KPgoK
