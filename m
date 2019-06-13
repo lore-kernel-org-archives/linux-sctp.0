@@ -1,69 +1,86 @@
 From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 28 Jun 2019 11:06:01 +0000
-Subject: Re: [PATCH net] sctp: fix error handling on stream scheduler initialization
-Message-Id: <20190628110601.GA14635@hmswarspite.think-freely.org>
+Date: Thu, 13 Jun 2019 10:35:59 +0000
+Subject: [PATCH v5 net] sctp: Free cookie before we memdup a new one
+Message-Id: <20190613103559.2603-1-nhorman@tuxdriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <bcbc85604e53843a731a79df620d5f92b194d085.1561675505.git.marcelo.leitner@gmail.com>
-In-Reply-To: <bcbc85604e53843a731a79df620d5f92b194d085.1561675505.git.marcelo.leitner@gmail.com>
+References: <20190610163456.7778-1-nhorman@tuxdriver.com>
+In-Reply-To: <20190610163456.7778-1-nhorman@tuxdriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: netdev@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, linux-sctp@vger.kernel.org, Hillf Danton <hdanton@sina.com>
+To: linux-sctp@vger.kernel.org
+Cc: netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, syzbot+f7e9153b037eac9b1df8@syzkaller.appspotmail.com, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Xin Long <lucien.xin@gmail.com>, "David S. Miller" <davem@davemloft.net>
 
-On Thu, Jun 27, 2019 at 07:48:10PM -0300, Marcelo Ricardo Leitner wrote:
-> It allocates the extended area for outbound streams only on sendmsg
-> calls, if they are not yet allocated.  When using the priority
-> stream scheduler, this initialization may imply into a subsequent
-> allocation, which may fail.  In this case, it was aborting the stream
-> scheduler initialization but leaving the ->ext pointer (allocated) in
-> there, thus in a partially initialized state.  On a subsequent call to
-> sendmsg, it would notice the ->ext pointer in there, and trip on
-> uninitialized stuff when trying to schedule the data chunk.
-> 
-> The fix is undo the ->ext initialization if the stream scheduler
-> initialization fails and avoid the partially initialized state.
-> 
-> Although syzkaller bisected this to commit 4ff40b86262b ("sctp: set
-> chunk transport correctly when it's a new asoc"), this bug was actually
-> introduced on the commit I marked below.
-> 
-> Reported-by: syzbot+c1a380d42b190ad1e559@syzkaller.appspotmail.com
-> Fixes: 5bbbbe32a431 ("sctp: introduce stream scheduler foundations")
-> Tested-by: Xin Long <lucien.xin@gmail.com>
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> ---
->  net/sctp/stream.c | 9 ++++++++-
->  1 file changed, 8 insertions(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-> index 93ed07877337eace4ef7f4775dda5868359ada37..25946604af85c09917e63e5c4a8d7d6fa2caebc4 100644
-> --- a/net/sctp/stream.c
-> +++ b/net/sctp/stream.c
-> @@ -153,13 +153,20 @@ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
->  int sctp_stream_init_ext(struct sctp_stream *stream, __u16 sid)
->  {
->  	struct sctp_stream_out_ext *soute;
-> +	int ret;
->  
->  	soute = kzalloc(sizeof(*soute), GFP_KERNEL);
->  	if (!soute)
->  		return -ENOMEM;
->  	SCTP_SO(stream, sid)->ext = soute;
->  
-> -	return sctp_sched_init_sid(stream, sid, GFP_KERNEL);
-> +	ret = sctp_sched_init_sid(stream, sid, GFP_KERNEL);
-> +	if (ret) {
-> +		kfree(SCTP_SO(stream, sid)->ext);
-> +		SCTP_SO(stream, sid)->ext = NULL;
-> +	}
-> +
-> +	return ret;
->  }
->  
->  void sctp_stream_free(struct sctp_stream *stream)
-> -- 
-> 2.21.0
-> 
-> 
-Acked-by: Neil Horman <nhorman@redhat.com>
+Based on comments from Xin, even after fixes for our recent syzbot
+report of cookie memory leaks, its possible to get a resend of an INIT
+chunk which would lead to us leaking cookie memory.
+
+To ensure that we don't leak cookie memory, free any previously
+allocated cookie first.
+
+Change notes
+v1->v2
+update subsystem tag in subject (davem)
+repeat kfree check for peer_random and peer_hmacs (xin)
+
+v2->v3
+net->sctp
+also free peer_chunks
+
+v3->v4
+fix subject tags
+
+v4->v5
+remove cut line
+
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+Reported-by: syzbot+f7e9153b037eac9b1df8@syzkaller.appspotmail.com
+CC: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+CC: Xin Long <lucien.xin@gmail.com>
+CC: "David S. Miller" <davem@davemloft.net>
+CC: netdev@vger.kernel.org
+---
+ net/sctp/sm_make_chunk.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index f17908f5c4f3..9b0e5b0d701a 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2583,6 +2583,8 @@ static int sctp_process_param(struct sctp_association *asoc,
+ 	case SCTP_PARAM_STATE_COOKIE:
+ 		asoc->peer.cookie_len  			ntohs(param.p->length) - sizeof(struct sctp_paramhdr);
++		if (asoc->peer.cookie)
++			kfree(asoc->peer.cookie);
+ 		asoc->peer.cookie = kmemdup(param.cookie->body, asoc->peer.cookie_len, gfp);
+ 		if (!asoc->peer.cookie)
+ 			retval = 0;
+@@ -2647,6 +2649,8 @@ static int sctp_process_param(struct sctp_association *asoc,
+ 			goto fall_through;
+ 
+ 		/* Save peer's random parameter */
++		if (asoc->peer.peer_random)
++			kfree(asoc->peer.peer_random);
+ 		asoc->peer.peer_random = kmemdup(param.p,
+ 					    ntohs(param.p->length), gfp);
+ 		if (!asoc->peer.peer_random) {
+@@ -2660,6 +2664,8 @@ static int sctp_process_param(struct sctp_association *asoc,
+ 			goto fall_through;
+ 
+ 		/* Save peer's HMAC list */
++		if (asoc->peer.peer_hmacs)
++			kfree(asoc->peer.peer_hmacs);
+ 		asoc->peer.peer_hmacs = kmemdup(param.p,
+ 					    ntohs(param.p->length), gfp);
+ 		if (!asoc->peer.peer_hmacs) {
+@@ -2675,6 +2681,8 @@ static int sctp_process_param(struct sctp_association *asoc,
+ 		if (!ep->auth_enable)
+ 			goto fall_through;
+ 
++		if (asoc->peer.peer_chunks)
++			kfree(asoc->peer.peer_chunks);
+ 		asoc->peer.peer_chunks = kmemdup(param.p,
+ 					    ntohs(param.p->length), gfp);
+ 		if (!asoc->peer.peer_chunks)
+-- 
+2.20.1
