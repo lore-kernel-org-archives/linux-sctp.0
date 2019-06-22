@@ -1,36 +1,29 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 11 Jun 2019 20:52:22 +0000
-Subject: Re: [PATCH v3] [sctp] Free cookie before we memdup a new one
-Message-Id: <20190611205222.GA31473@hmswarspite.think-freely.org>
+From: "Miss.Fatima Yusuf" <fatimayusuf5@outlook.fr>
+Date: Sat, 22 Jun 2019 16:29:03 +0000
+Subject: From:Miss: Fatima Yusuf.
+Message-Id: <1743094696.311303.1561220943310@mail.yahoo.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20190610163456.7778-1-nhorman@tuxdriver.com>
- <20190611192245.9110-1-nhorman@tuxdriver.com>
- <20190611.130856.1857826051148231972.davem@davemloft.net>
-In-Reply-To: <20190611.130856.1857826051148231972.davem@davemloft.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, syzbot+f7e9153b037eac9b1df8@syzkaller.appspotmail.com, marcelo.leitner@gmail.com, lucien.xin@gmail.com
+To: linux-sctp@vger.kernel.org
 
-On Tue, Jun 11, 2019 at 01:08:56PM -0700, David Miller wrote:
-> From: Neil Horman <nhorman@tuxdriver.com>
-> Date: Tue, 11 Jun 2019 15:22:45 -0400
-> 
-> > v2->v3
-> > net->sctp
-> > also free peer_chunks
-> 
-> Neil this isn't the first time you're submitting sctp patches right? ;-)
-> 
-> Subject: "[PATCH v3 net] sctp: Free cookie before we memdup a new one"
-> 
-> It's "subsystem_prefix: " and I even stated this explicitly yesterday.
-> 
-No, sorry, I'm trying to do this while I get a CI mess sorted out at the same
-time, and I'm not close attention here.
 
-If you want to take over a few dozen user space packages for me in RHEL, I'll
-gladly get this right on the first try :)
 
-Neil
+From:Miss: Fatima Yusuf.
+
+For sure this mail would definitely come to you as a surprise, but do take your good time to go through it, My name is Ms. Fatima Yusuf,i am from Ivory Coast.
+
+I lost my parents a year and couple of months ago. My father was a serving director of the Agro-exporting board until his death. He was assassinated by his business partners.Before his death, he made a deposit of US$9.7 Million Dollars here in Cote d'ivoire which was for the purchase of cocoa processing machine and development of another factory before his untimely death.
+
+Being that this part of the world experiences political and crises time without number, there is no guarantee of lives and properties. I cannot invest this money here any long, despite the fact it had been my late father's industrial plans.
+
+I want you to do me a favor to receive this funds into your country or any safer place as the beneficiary, I have plans to invest this money in continuation with the investment vision of my late father, but not in this place again rather in your country. I have the vision of going into real estate and industrial production or any profitable business venture.
+
+I will be ready to compensate you with 20% of the total Amount, now all my hope is banked on you and i really wants to invest this money in your country, where there is stability of Government, political and economic welfare.
+
+My greatest worry now is how to move out of this country because my uncle is threatening to kill me as he killed my father,Please do not let anybody hear about this, it is between me and you alone because of my security reason.
+
+I am waiting to hear from you.
+Yours Sincerely,
+Miss.Fatima Yusuf.
