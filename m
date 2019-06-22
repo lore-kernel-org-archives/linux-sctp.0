@@ -1,8 +1,10 @@
 From: linux-sctp@vger.kernel.org
-Date: Thu, 20 Jun 2019 02:59:52 +0000
+Date: Sat, 22 Jun 2019 00:38:17 +0000
 Subject: Klientskie bazy. Email: prodawez@armyspy.com Uznajte podrobnee.
-Message-Id: <20190620025952.BE052120976A@localhost.localdomain>
+Message-Id: <20190622003817.3F71911ED45F@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20190620025952.BE052120976A@localhost.localdomain>
+In-Reply-To: <20190620025952.BE052120976A@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
