@@ -1,64 +1,104 @@
-From: syzbot <syzbot+afabda3890cc2f765041@syzkaller.appspotmail.com>
-Date: Mon, 24 Jun 2019 07:27:08 +0000
-Subject: memory leak in sctp_v4_create_accept_sk
-Message-Id: <00000000000064c849058c0cbdc9@google.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 24 Jun 2019 13:11:26 +0000
+Subject: Re: memory leak in sctp_v4_create_accept_sk
+Message-Id: <CADvbK_egxQekOXY2aZy_EkyLcEkR9N7Cgd+yd44xFGcCvk9Nog@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <00000000000064c849058c0cbdc9@google.com>
+In-Reply-To: <00000000000064c849058c0cbdc9@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="iso-8859-1"
 Content-Transfer-Encoding: quoted-printable
-To: davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
+To: syzbot <syzbot+afabda3890cc2f765041@syzkaller.appspotmail.com>
+Cc: davem <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, network dev <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-Hello,
+On Mon, Jun 24, 2019 at 3:28 PM syzbot
+<syzbot+afabda3890cc2f765041@syzkaller.appspotmail.com> wrote:
+>
+> Hello,
+>
+> syzbot found the following crash on:
+>
+> HEAD commit:    abf02e29 Merge tag 'pm-5.2-rc6' of git://git.kernel.org/p=
+u..
+> git tree:       upstream
+> console output: https://syzkaller.appspot.com/x/log.txt?x=13470eb2a00000
+> kernel config:  https://syzkaller.appspot.com/x/.config?xVf1da14935c3cce
+> dashboard link: https://syzkaller.appspot.com/bug?extid=AFabda3890cc2f765=
+041
+> compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
+> syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=15100a91a00000
+> C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=10c46026a00000
+>
+> IMPORTANT: if you fix the bug, please add the following tag to the commit:
+> Reported-by: syzbot+afabda3890cc2f765041@syzkaller.appspotmail.com
+>
+> ffffffffda RBX: 00000000006fbc38 RCX: 0000000000446a79
+> BUG: memory leak
+> unreferenced object 0xffff888118137680 (size 1352):
+>    comm "syz-executor360", pid 7164, jiffies 4294941839 (age 13.960s)
+>    hex dump (first 32 bytes):
+>      ac 14 ff aa 0a 80 01 1a 00 00 00 00 00 00 00 00  ................
+>      02 00 07 40 00 00 00 00 00 00 00 00 00 00 00 00  ...@............
+>    backtrace:
+>      [<000000006c358063>] kmemleak_alloc_recursive
+> include/linux/kmemleak.h:43 [inline]
+>      [<000000006c358063>] slab_post_alloc_hook mm/slab.h:439 [inline]
+>      [<000000006c358063>] slab_alloc mm/slab.c:3326 [inline]
+>      [<000000006c358063>] kmem_cache_alloc+0x134/0x270 mm/slab.c:3488
+>      [<00000000f2fb26e7>] sk_prot_alloc+0x41/0x170 net/core/sock.c:1596
+>      [<000000003c036edc>] sk_alloc+0x35/0x2f0 net/core/sock.c:1656
+>      [<00000000c25725a4>] sctp_v4_create_accept_sk+0x32/0xb0
+> net/sctp/protocol.c:556
+>      [<0000000049bd7e55>] sctp_accept+0x1df/0x290 net/sctp/socket.c:4913
+>      [<00000000d287a63e>] inet_accept+0x4e/0x1d0 net/ipv4/af_inet.c:734
+>      [<00000000acb0fc20>] __sys_accept4+0x12a/0x280 net/socket.c:1760
+>      [<00000000bbdaf60b>] __do_sys_accept4 net/socket.c:1795 [inline]
+>      [<00000000bbdaf60b>] __se_sys_accept4 net/socket.c:1792 [inline]
+>      [<00000000bbdaf60b>] __x64_sys_accept4+0x22/0x30 net/socket.c:1792
+>      [<000000006da547ee>] do_syscall_64+0x76/0x1a0
+> arch/x86/entry/common.c:301
+>      [<00000000025f5c93>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
+The same issue as "memory leak in sctp_v6_create_accept_sk" one.
+Fix:
 
-syzbot found the following crash on:
+diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
+index e358437..69cebb2 100644
+--- a/net/sctp/endpointola.c
++++ b/net/sctp/endpointola.c
+@@ -118,10 +118,6 @@ static struct sctp_endpoint
+*sctp_endpoint_init(struct sctp_endpoint *ep,
+        /* Initialize the bind addr area */
+        sctp_bind_addr_init(&ep->base.bind_addr, 0);
 
-HEAD commit:    abf02e29 Merge tag 'pm-5.2-rc6' of git://git.kernel.org/pu..
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=13470eb2a00000
-kernel config:  https://syzkaller.appspot.com/x/.config?xVf1da14935c3cce
-dashboard link: https://syzkaller.appspot.com/bug?extid=AFabda3890cc2f765041
-compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=15100a91a00000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=10c46026a00000
+-       /* Remember who we are attached to.  */
+-       ep->base.sk =3D sk;
+-       sock_hold(ep->base.sk);
+-
+        /* Create the lists of associations.  */
+        INIT_LIST_HEAD(&ep->asocs);
 
-IMPORTANT: if you fix the bug, please add the following tag to the commit:
-Reported-by: syzbot+afabda3890cc2f765041@syzkaller.appspotmail.com
+@@ -154,6 +150,10 @@ static struct sctp_endpoint
+*sctp_endpoint_init(struct sctp_endpoint *ep,
+        ep->prsctp_enable =3D net->sctp.prsctp_enable;
+        ep->reconf_enable =3D net->sctp.reconf_enable;
 
-ffffffffda RBX: 00000000006fbc38 RCX: 0000000000446a79
-BUG: memory leak
-unreferenced object 0xffff888118137680 (size 1352):
-   comm "syz-executor360", pid 7164, jiffies 4294941839 (age 13.960s)
-   hex dump (first 32 bytes):
-     ac 14 ff aa 0a 80 01 1a 00 00 00 00 00 00 00 00  ................
-     02 00 07 40 00 00 00 00 00 00 00 00 00 00 00 00  ...@............
-   backtrace:
-     [<000000006c358063>] kmemleak_alloc_recursive =20
-include/linux/kmemleak.h:43 [inline]
-     [<000000006c358063>] slab_post_alloc_hook mm/slab.h:439 [inline]
-     [<000000006c358063>] slab_alloc mm/slab.c:3326 [inline]
-     [<000000006c358063>] kmem_cache_alloc+0x134/0x270 mm/slab.c:3488
-     [<00000000f2fb26e7>] sk_prot_alloc+0x41/0x170 net/core/sock.c:1596
-     [<000000003c036edc>] sk_alloc+0x35/0x2f0 net/core/sock.c:1656
-     [<00000000c25725a4>] sctp_v4_create_accept_sk+0x32/0xb0 =20
-net/sctp/protocol.c:556
-     [<0000000049bd7e55>] sctp_accept+0x1df/0x290 net/sctp/socket.c:4913
-     [<00000000d287a63e>] inet_accept+0x4e/0x1d0 net/ipv4/af_inet.c:734
-     [<00000000acb0fc20>] __sys_accept4+0x12a/0x280 net/socket.c:1760
-     [<00000000bbdaf60b>] __do_sys_accept4 net/socket.c:1795 [inline]
-     [<00000000bbdaf60b>] __se_sys_accept4 net/socket.c:1792 [inline]
-     [<00000000bbdaf60b>] __x64_sys_accept4+0x22/0x30 net/socket.c:1792
-     [<000000006da547ee>] do_syscall_64+0x76/0x1a0 =20
-arch/x86/entry/common.c:301
-     [<00000000025f5c93>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
++       /* Remember who we are attached to.  */
++       ep->base.sk =3D sk;
++       sock_hold(ep->base.sk);
++
+        return ep;
 
+ nomem_shkey:
 
-
----
-This bug is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
-
-syzbot will keep track of this bug report. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
-syzbot can test patches for this bug, for details see:
-https://goo.gl/tpsmEJ#testing-patches
+>
+>
+>
+> ---
+> This bug is generated by a bot. It may contain errors.
+> See https://goo.gl/tpsmEJ for more information about syzbot.
+> syzbot engineers can be reached at syzkaller@googlegroups.com.
+>
+> syzbot will keep track of this bug report. See:
+> https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+> syzbot can test patches for this bug, for details see:
+> https://goo.gl/tpsmEJ#testing-patches
