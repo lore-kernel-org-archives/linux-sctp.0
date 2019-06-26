@@ -1,125 +1,75 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 25 Jun 2019 18:09:06 +0000
-Subject: Re: general protection fault in sctp_sched_prio_sched
-Message-Id: <CADvbK_fWmRFs_wfcttH+1y6D_0zzZzKgpEOb64wYSGBA+1j86g@mail.gmail.com>
+Date: Wed, 26 Jun 2019 08:31:39 +0000
+Subject: [PATCH net] sctp: not bind the socket in sctp_connect
+Message-Id: <35a0e4f6ca68185117c6e5517d8ac924cc2f9d05.1561537899.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20190616153804.3604-1-hdanton@sina.com> <20190617134913.GL3436@localhost.localdomain>
- <20190617144331.GE3500@localhost.localdomain>
-In-Reply-To: <20190617144331.GE3500@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: Hillf Danton <hdanton@sina.com>, syzbot <syzbot+c1a380d42b190ad1e559@syzkaller.appspotmail.com>, davem <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, network dev <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, Vlad Yasevich <vyasevich@gmail.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs@googlegroups.com
 
-On Mon, Jun 17, 2019 at 10:43 PM Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
->
-> On Mon, Jun 17, 2019 at 10:49:13AM -0300, Marcelo Ricardo Leitner wrote:
-> > Hi,
-> >
-> > On Sun, Jun 16, 2019 at 11:38:03PM +0800, Hillf Danton wrote:
-> > >
-> > > Hello Syzbot
-> > >
-> > > On Sat, 15 Jun 2019 16:36:06 -0700 (PDT) syzbot wrote:
-> > > > Hello,
-> > > >
-> > > > syzbot found the following crash on:
-> > > >
-> > ...
-> > > Check prio_head and bail out if it is not valid.
-> > >
-> > > Thanks
-> > > Hillf
-> > > ----->8---
-> > > ---
-> > > net/sctp/stream_sched_prio.c | 2 ++
-> > > 1 file changed, 2 insertions(+)
-> > >
-> > > diff --git a/net/sctp/stream_sched_prio.c b/net/sctp/stream_sched_prio.c
-> > > index 2245083..db25a43 100644
-> > > --- a/net/sctp/stream_sched_prio.c
-> > > +++ b/net/sctp/stream_sched_prio.c
-> > > @@ -135,6 +135,8 @@ static void sctp_sched_prio_sched(struct sctp_stream *stream,
-> > >     struct sctp_stream_priorities *prio, *prio_head;
-> > >
-> > >     prio_head = soute->prio_head;
-> > > +   if (!prio_head)
-> > > +           return;
-> > >
-> > >     /* Nothing to do if already scheduled */
-> > >     if (!list_empty(&soute->prio_list))
-> > > --
-> >
-> > Thanks but this is not a good fix for this. It will cause the stream
-> > to never be scheduled.
-> >
-> > The problem happens because of the fault injection that happened a bit
-> > before the crash, in here:
-> >
-> > int sctp_stream_init_ext(struct sctp_stream *stream, __u16 sid)
-> > {
-> >         struct sctp_stream_out_ext *soute;
-> >
-> >         soute = kzalloc(sizeof(*soute), GFP_KERNEL);
-> >         if (!soute)
-> >                 return -ENOMEM;
-> >         SCTP_SO(stream, sid)->ext = soute;  <---- [A]
-> >
-> >         return sctp_sched_init_sid(stream, sid, GFP_KERNEL);
-> >                       ^^^^^^^^^^^^---- [B] failed
-> > }
-> >
-> > This causes the 1st sendmsg to bail out with the error. When the 2nd
-> > one gets in, it will:
-> >
-> > sctp_sendmsg_to_asoc()
-> > {
-> > ...
-> >         if (unlikely(!SCTP_SO(&asoc->stream, sinfo->sinfo_stream)->ext)) {
-> >                                                                  ^^^^^--- [C]
-> >                 err = sctp_stream_init_ext(&asoc->stream, sinfo->sinfo_stream);
-> >                 if (err)
-> >                         goto err;
-> >         }
-> >
-> > [A] leaves ext initialized, despite the failed in [B]. Then in [C], it
-> > will not try to initialize again.
-> >
-> > We need to either uninitialize ->ext as error handling for [B], or
-> > improve the check on [C].
->
-> The former one, please. This should be enough (untested):
->
-> diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-> index 93ed07877337..25946604af85 100644
-> --- a/net/sctp/stream.c
-> +++ b/net/sctp/stream.c
-> @@ -153,13 +153,20 @@ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
->  int sctp_stream_init_ext(struct sctp_stream *stream, __u16 sid)
->  {
->         struct sctp_stream_out_ext *soute;
-> +       int ret;
->
->         soute = kzalloc(sizeof(*soute), GFP_KERNEL);
->         if (!soute)
->                 return -ENOMEM;
->         SCTP_SO(stream, sid)->ext = soute;
->
-> -       return sctp_sched_init_sid(stream, sid, GFP_KERNEL);
-> +       ret = sctp_sched_init_sid(stream, sid, GFP_KERNEL);
-> +       if (ret) {
-> +               kfree(SCTP_SO(stream, sid)->ext);
-> +               SCTP_SO(stream, sid)->ext = NULL;
-> +       }
-> +
-> +       return ret;
->  }
->
->  void sctp_stream_free(struct sctp_stream *stream)
->
+Now when sctp_connect() is called with a wrong sa_family, it binds
+to a port but doesn't set bp->port, then sctp_get_af_specific will
+return NULL and sctp_connect() returns -EINVAL.
 
-Tested-by: Xin Long <lucien.xin@gmail.com>
+Then if sctp_bind() is called to bind to another port, the last
+port it has bound will leak due to bp->port is NULL by then.
 
-Hi, Marcelo, please feel free to move forward with this patch, :-)
+sctp_connect() doesn't need to bind ports, as later __sctp_connect
+will do it if bp->port is NULL. So remove it from sctp_connect().
+While at it, remove the unnecessary sockaddr.sa_family len check
+as it's already done in sctp_inet_connect.
+
+Fixes: 644fbdeacf1d ("sctp: fix the issue that flags are ignored when using kernel_connect")
+Reported-by: syzbot+079bf326b38072f849d9@syzkaller.appspotmail.com
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/socket.c | 24 +++---------------------
+ 1 file changed, 3 insertions(+), 21 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 39ea0a3..f33aa9e 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4816,35 +4816,17 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ static int sctp_connect(struct sock *sk, struct sockaddr *addr,
+ 			int addr_len, int flags)
+ {
+-	struct inet_sock *inet = inet_sk(sk);
+ 	struct sctp_af *af;
+-	int err = 0;
++	int err = -EINVAL;
+ 
+ 	lock_sock(sk);
+-
+ 	pr_debug("%s: sk:%p, sockaddr:%p, addr_len:%d\n", __func__, sk,
+ 		 addr, addr_len);
+ 
+-	/* We may need to bind the socket. */
+-	if (!inet->inet_num) {
+-		if (sk->sk_prot->get_port(sk, 0)) {
+-			release_sock(sk);
+-			return -EAGAIN;
+-		}
+-		inet->inet_sport = htons(inet->inet_num);
+-	}
+-
+ 	/* Validate addr_len before calling common connect/connectx routine. */
+-	af = addr_len < offsetofend(struct sockaddr, sa_family) ? NULL :
+-		sctp_get_af_specific(addr->sa_family);
+-	if (!af || addr_len < af->sockaddr_len) {
+-		err = -EINVAL;
+-	} else {
+-		/* Pass correct addr len to common routine (so it knows there
+-		 * is only one address being passed.
+-		 */
++	af = sctp_get_af_specific(addr->sa_family);
++	if (af && addr_len >= af->sockaddr_len)
+ 		err = __sctp_connect(sk, addr, af->sockaddr_len, flags, NULL);
+-	}
+ 
+ 	release_sock(sk);
+ 	return err;
+-- 
+2.1.0
