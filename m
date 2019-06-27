@@ -1,48 +1,63 @@
-From: Joe Perches <joe@perches.com>
-Date: Sat, 29 Jun 2019 16:45:10 +0000
-Subject: Re: [PATCH V2] include: linux: Regularise the use of FIELD_SIZEOF macro
-Message-Id: <c3b83ba7f9b003dd4fb9cad885461ce93165dc04.camel@perches.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Thu, 27 Jun 2019 22:48:10 +0000
+Subject: [PATCH net] sctp: fix error handling on stream scheduler initialization
+Message-Id: <bcbc85604e53843a731a79df620d5f92b194d085.1561675505.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20190611193836.2772-1-shyam.saini@amarulasolutions.com>
-         <20190611134831.a60c11f4b691d14d04a87e29@linux-foundation.org>
-         <6DCAE4F8-3BEC-45F2-A733-F4D15850B7F3@dilger.ca>
-         <20190629142510.GA10629@avx2>
-In-Reply-To: <20190629142510.GA10629@avx2>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Alexey Dobriyan <adobriyan@gmail.com>, Andreas Dilger <adilger@dilger.ca>
-Cc: Andrew Morton <akpm@linux-foundation.org>, Shyam Saini <shyam.saini@amarulasolutions.com>, kernel-hardening@lists.openwall.com, linux-kernel@vger.kernel.org, keescook@chromium.org, linux-arm-kernel@lists.infradead.org, linux-mips@vger.kernel.org, intel-gvt-dev@lists.freedesktop.org, intel-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, netdev@vger.kernel.org, linux-ext4 <linux-ext4@vger.kernel.org>, devel@lists.orangefs.org, linux-mm@kvack.org, linux-sctp@vger.kernel.org, bpf@vger.kernel.org, kvm@vger.kernel.org, mayhs11saini@gmail.com
+To: netdev@vger.kernel.org
+Cc: Xin Long <lucien.xin@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, Hillf Danton <hdanton@sina.com>
 
-On Sat, 2019-06-29 at 17:25 +0300, Alexey Dobriyan wrote:
-> On Tue, Jun 11, 2019 at 03:00:10PM -0600, Andreas Dilger wrote:
-> > On Jun 11, 2019, at 2:48 PM, Andrew Morton <akpm@linux-foundation.org> wrote:
-> > > On Wed, 12 Jun 2019 01:08:36 +0530 Shyam Saini <shyam.saini@amarulasolutions.com> wrote:
-> > I did a check, and FIELD_SIZEOF() is used about 350x, while sizeof_field()
-> > is about 30x, and SIZEOF_FIELD() is only about 5x.
-> > 
-> > That said, I'm much more in favour of "sizeof_field()" or "sizeof_member()"
-> > than FIELD_SIZEOF().  Not only does that better match "offsetof()", with
-> > which it is closely related, but is also closer to the original "sizeof()".
-> > 
-> > Since this is a rather trivial change, it can be split into a number of
-> > patches to get approval/landing via subsystem maintainers, and there is no
-> > huge urgency to remove the original macros until the users are gone.  It
-> > would make sense to remove SIZEOF_FIELD() and sizeof_field() quickly so
-> > they don't gain more users, and the remaining FIELD_SIZEOF() users can be
-> > whittled away as the patches come through the maintainer trees.
-> 
-> The signature should be
-> 
-> 	sizeof_member(T, m)
-> 
-> it is proper English,
-> it is lowercase, so is easier to type,
-> it uses standard term (member, not field),
-> it blends in with standard "sizeof" operator,
+It allocates the extended area for outbound streams only on sendmsg
+calls, if they are not yet allocated.  When using the priority
+stream scheduler, this initialization may imply into a subsequent
+allocation, which may fail.  In this case, it was aborting the stream
+scheduler initialization but leaving the ->ext pointer (allocated) in
+there, thus in a partially initialized state.  On a subsequent call to
+sendmsg, it would notice the ->ext pointer in there, and trip on
+uninitialized stuff when trying to schedule the data chunk.
 
-yes please.
+The fix is undo the ->ext initialization if the stream scheduler
+initialization fails and avoid the partially initialized state.
 
-Also, a simple script conversion applied
-immediately after an rc1 might be easiest
-rather than individual patches.
+Although syzkaller bisected this to commit 4ff40b86262b ("sctp: set
+chunk transport correctly when it's a new asoc"), this bug was actually
+introduced on the commit I marked below.
+
+Reported-by: syzbot+c1a380d42b190ad1e559@syzkaller.appspotmail.com
+Fixes: 5bbbbe32a431 ("sctp: introduce stream scheduler foundations")
+Tested-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/stream.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 93ed07877337eace4ef7f4775dda5868359ada37..25946604af85c09917e63e5c4a8d7d6fa2caebc4 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -153,13 +153,20 @@ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
+ int sctp_stream_init_ext(struct sctp_stream *stream, __u16 sid)
+ {
+ 	struct sctp_stream_out_ext *soute;
++	int ret;
+ 
+ 	soute = kzalloc(sizeof(*soute), GFP_KERNEL);
+ 	if (!soute)
+ 		return -ENOMEM;
+ 	SCTP_SO(stream, sid)->ext = soute;
+ 
+-	return sctp_sched_init_sid(stream, sid, GFP_KERNEL);
++	ret = sctp_sched_init_sid(stream, sid, GFP_KERNEL);
++	if (ret) {
++		kfree(SCTP_SO(stream, sid)->ext);
++		SCTP_SO(stream, sid)->ext = NULL;
++	}
++
++	return ret;
+ }
+ 
+ void sctp_stream_free(struct sctp_stream *stream)
+-- 
+2.21.0
