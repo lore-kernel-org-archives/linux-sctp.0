@@ -1,17 +1,19 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 27 Jun 2019 22:32:36 +0000
+From: David Miller <davem@davemloft.net>
+Date: Sat, 29 Jun 2019 17:51:48 +0000
 Subject: Re: [PATCH net] sctp: not bind the socket in sctp_connect
-Message-Id: <20190627223236.GB2747@localhost.localdomain>
+Message-Id: <20190629.105148.1104113228238361709.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <35a0e4f6ca68185117c6e5517d8ac924cc2f9d05.1561537899.git.lucien.xin@gmail.com>
 In-Reply-To: <35a0e4f6ca68185117c6e5517d8ac924cc2f9d05.1561537899.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs@googlegroups.com
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com
 
-On Wed, Jun 26, 2019 at 04:31:39PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 26 Jun 2019 16:31:39 +0800
+
 > Now when sctp_connect() is called with a wrong sa_family, it binds
 > to a port but doesn't set bp->port, then sctp_get_af_specific will
 > return NULL and sctp_connect() returns -EINVAL.
@@ -28,55 +30,4 @@ On Wed, Jun 26, 2019 at 04:31:39PM +0800, Xin Long wrote:
 > Reported-by: syzbot+079bf326b38072f849d9@syzkaller.appspotmail.com
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-> ---
->  net/sctp/socket.c | 24 +++---------------------
->  1 file changed, 3 insertions(+), 21 deletions(-)
-> 
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 39ea0a3..f33aa9e 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -4816,35 +4816,17 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
->  static int sctp_connect(struct sock *sk, struct sockaddr *addr,
->  			int addr_len, int flags)
->  {
-> -	struct inet_sock *inet = inet_sk(sk);
->  	struct sctp_af *af;
-> -	int err = 0;
-> +	int err = -EINVAL;
->  
->  	lock_sock(sk);
-> -
->  	pr_debug("%s: sk:%p, sockaddr:%p, addr_len:%d\n", __func__, sk,
->  		 addr, addr_len);
->  
-> -	/* We may need to bind the socket. */
-> -	if (!inet->inet_num) {
-> -		if (sk->sk_prot->get_port(sk, 0)) {
-> -			release_sock(sk);
-> -			return -EAGAIN;
-> -		}
-> -		inet->inet_sport = htons(inet->inet_num);
-> -	}
-> -
->  	/* Validate addr_len before calling common connect/connectx routine. */
-> -	af = addr_len < offsetofend(struct sockaddr, sa_family) ? NULL :
-> -		sctp_get_af_specific(addr->sa_family);
-> -	if (!af || addr_len < af->sockaddr_len) {
-> -		err = -EINVAL;
-> -	} else {
-> -		/* Pass correct addr len to common routine (so it knows there
-> -		 * is only one address being passed.
-> -		 */
-> +	af = sctp_get_af_specific(addr->sa_family);
-> +	if (af && addr_len >= af->sockaddr_len)
->  		err = __sctp_connect(sk, addr, af->sockaddr_len, flags, NULL);
-> -	}
->  
->  	release_sock(sk);
->  	return err;
-> -- 
-> 2.1.0
-> 
+Applied and queued up for -stable, thanks.
