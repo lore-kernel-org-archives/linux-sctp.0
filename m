@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 03 Jul 2019 12:26:23 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Wed, 03 Jul 2019 14:38:52 +0000
 Subject: Re: [PATCH net] sctp: count data bundling sack chunk for outctrlchunks
-Message-Id: <20190703122623.GC2747@localhost.localdomain>
+Message-Id: <20190703143852.GA20747@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <62e917e312bc582e96fa19b502561e37ca7f91a6.1562149220.git.lucien.xin@gmail.com>
 In-Reply-To: <62e917e312bc582e96fa19b502561e37ca7f91a6.1562149220.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
 On Wed, Jul 03, 2019 at 06:20:20PM +0800, Xin Long wrote:
 > Now all ctrl chunks are counted for asoc stats.octrlchunks and net
@@ -23,9 +23,6 @@ On Wed, Jul 03, 2019 at 06:20:20PM +0800, Xin Long wrote:
 > 
 > Reported-by: Ja Ram Jeon <jajeon@redhat.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/output.c | 3 +++
 >  1 file changed, 3 insertions(+)
@@ -47,3 +44,5 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > -- 
 > 2.1.0
 > 
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
