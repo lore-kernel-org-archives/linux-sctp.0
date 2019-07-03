@@ -1,31 +1,42 @@
-From: David Miller <davem@davemloft.net>
-Date: Wed, 17 Jul 2019 19:01:31 +0000
-Subject: Re: [PATCH] net: sctp: fix warning "NULL check before some freeing functions is not needed"
-Message-Id: <20190717.120131.1614957687610581259.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 03 Jul 2019 10:20:20 +0000
+Subject: [PATCH net] sctp: count data bundling sack chunk for outctrlchunks
+Message-Id: <62e917e312bc582e96fa19b502561e37ca7f91a6.1562149220.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20190716022002.GA19592@hari-Inspiron-1545>
-In-Reply-To: <20190716022002.GA19592@hari-Inspiron-1545>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: hariprasad.kelam@gmail.com
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-From: Hariprasad Kelam <hariprasad.kelam@gmail.com>
-Date: Tue, 16 Jul 2019 07:50:02 +0530
+Now all ctrl chunks are counted for asoc stats.octrlchunks and net
+SCTP_MIB_OUTCTRLCHUNKS either after queuing up or bundling, other
+than the chunk maked and bundled in sctp_packet_bundle_sack, which
+caused 'outctrlchunks' not consistent with 'inctrlchunks' in peer.
 
-> This patch removes NULL checks before calling kfree.
-> 
-> fixes below issues reported by coccicheck
-> net/sctp/sm_make_chunk.c:2586:3-8: WARNING: NULL check before some
-> freeing functions is not needed.
-> net/sctp/sm_make_chunk.c:2652:3-8: WARNING: NULL check before some
-> freeing functions is not needed.
-> net/sctp/sm_make_chunk.c:2667:3-8: WARNING: NULL check before some
-> freeing functions is not needed.
-> net/sctp/sm_make_chunk.c:2684:3-8: WARNING: NULL check before some
-> freeing functions is not needed.
-> 
-> Signed-off-by: Hariprasad Kelam <hariprasad.kelam@gmail.com>
+This issue exists since very beginning, here to fix it by increasing
+both net SCTP_MIB_OUTCTRLCHUNKS and asoc stats.octrlchunks when sack
+chunk is maked and bundled in sctp_packet_bundle_sack.
 
-Applied.
+Reported-by: Ja Ram Jeon <jajeon@redhat.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/output.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index e0c2747..dbda7e7 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -282,6 +282,9 @@ static enum sctp_xmit sctp_packet_bundle_sack(struct sctp_packet *pkt,
+ 					sctp_chunk_free(sack);
+ 					goto out;
+ 				}
++				SCTP_INC_STATS(sock_net(asoc->base.sk),
++					       SCTP_MIB_OUTCTRLCHUNKS);
++				asoc->stats.octrlchunks++;
+ 				asoc->peer.sack_needed = 0;
+ 				if (del_timer(timer))
+ 					sctp_association_put(asoc);
+-- 
+2.1.0
