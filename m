@@ -1,25 +1,60 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 09 Jul 2019 03:18:30 +0000
-Subject: Re: [PATCH net-next] sctp: remove rcu_read_lock from sctp_bind_addr_state
-Message-Id: <20190708.201830.1677642444055911875.davem@davemloft.net>
+From: Patrick Schultz <Patrick@patfab.net>
+Date: Sun, 07 Jul 2019 23:21:20 +0000
+Subject: Support for RFC 6951 (UDP encapsulation for SCTP)
+Message-Id: <044c9c5b-a7a2-effa-7a07-8bea5edcb9c3@patfab.net>
+MIME-Version: 1
+Content-Type: multipart/mixed; boundary="DdArZ6vcP47gcXOk0ByQjwdi4zcrCok4a"
 List-Id: <linux-sctp.vger.kernel.org>
-References: <30ff9e8a45fa0c64d1c71bc13e217f3374f6120e.1562605180.git.lucien.xin@gmail.com>
-In-Reply-To: <30ff9e8a45fa0c64d1c71bc13e217f3374f6120e.1562605180.git.lucien.xin@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: linux-sctp@vger.kernel.org
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue,  9 Jul 2019 00:59:40 +0800
+This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
+--DdArZ6vcP47gcXOk0ByQjwdi4zcrCok4a
+Content-Type: multipart/mixed; boundary="ojGYDkqbJPrjKkQJuKSCa3Hzq244q2d8B";
+ protected-headers="v1"
+From: Patrick Schultz <Patrick@patfab.net>
+To: linux-sctp@vger.kernel.org
+Message-ID: <044c9c5b-a7a2-effa-7a07-8bea5edcb9c3@patfab.net>
+Subject: Support for RFC 6951 (UDP encapsulation for SCTP)
 
-> sctp_bind_addr_state() is called either in packet rcv path or
-> by sctp_copy_local_addr_list(), which are under rcu_read_lock.
-> So there's no need to call it again in sctp_bind_addr_state().
-> 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+--ojGYDkqbJPrjKkQJuKSCa3Hzq244q2d8B
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Content-Language: en-GB
 
-This is correct, patch applied.
+Hello all,
 
-Thanks.
+are there already plans to support UDP encapsulation in lksctp-tools acco=
+rding to RFC6951?
+
+Best regards,
+Patrick
+
+
+
+--ojGYDkqbJPrjKkQJuKSCa3Hzq244q2d8B--
+
+--DdArZ6vcP47gcXOk0ByQjwdi4zcrCok4a
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+Comment: Using GnuPG with Thunderbird - https://www.enigmail.net/
+
+iQIcBAEBCQAGBQJdIn6AAAoJEIW3o8+hTxRwf2UP/jPuUlNF+ok/KpQBTeyyKuqS
+2K4rvnEaLHpE1I45OLhxOANtw3za3UadR4PMscJ7+CzfxcHsO+lAA+gjooAbSxJE
+/nVxotd/8qu3H6JZp08II7iljbEGU6ZZJqjyo+Yef1VNNSv6TwX6/PsQOdKi5XOZ
+1bvW/WTuLNG1DeKMgMnBWOBgg8K8blkDGBta27Q95wGKJmzgMM4rFSMQKnKIogaG
+TfFuygwJB2SEol8VlTO2OJL15FIuSGrN1Xd1jR9Mf32Gcs7IgYCB7CidBrWl/bE5
+AL5dt7WuAcv2raX4USosH8IZ/zj0IZIYICnMOTzqtEo1KalXlVBgWY32neasxksi
+6ygtGGOGX+/jKJcKpyFvaBkdEUvpj6WmF79rFwk0udpsNj7fogBeioMIlxJdgdl8
+xvgXsyxvMqetXlFZOschdLhTO6OYso3x5HRrxvIkDeINhKS+gekROMlzafmAbih/
+wZvOWJ8anekX45TubSTC+pDUwwUgTUojuJI4msdEV9n0zCYscL5BJNuGe6ea2yul
+sYFnEI1bWydyw3cerl1nOTs+jkJ4cxuxCT+LI7mA6CrvRQiUN20u730WXqwyqOCG
+sbgIyfRYhL+PaqA15dmN0EbtBv8jIAkNYJ/wh4+5dMNMBv50JC/IcQvLw4WsSmUP
+221wESMrQkUI2klxz62U
+=QBEf
+-----END PGP SIGNATURE-----
+
+--DdArZ6vcP47gcXOk0ByQjwdi4zcrCok4a--
