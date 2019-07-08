@@ -1,63 +1,30 @@
-From: Kees Cook <keescook@chromium.org>
-Date: Tue, 02 Jul 2019 16:33:02 +0000
-Subject: Re: [PATCH V2] include: linux: Regularise the use of FIELD_SIZEOF macro
-Message-Id: <201907020931.2170BAB@keescook>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 08 Jul 2019 16:57:03 +0000
+Subject: [PATCH net-next 0/4] sctp: tidy up some ep and asoc feature flags
+Message-Id: <cover.1562604972.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20190611193836.2772-1-shyam.saini@amarulasolutions.com>
- <20190611134831.a60c11f4b691d14d04a87e29@linux-foundation.org>
- <6DCAE4F8-3BEC-45F2-A733-F4D15850B7F3@dilger.ca>
- <20190629142510.GA10629@avx2>
- <c3b83ba7f9b003dd4fb9cad885461ce93165dc04.camel@perches.com>
-In-Reply-To: <c3b83ba7f9b003dd4fb9cad885461ce93165dc04.camel@perches.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Joe Perches <joe@perches.com>
-Cc: Alexey Dobriyan <adobriyan@gmail.com>, Andreas Dilger <adilger@dilger.ca>, Andrew Morton <akpm@linux-foundation.org>, Shyam Saini <shyam.saini@amarulasolutions.com>, kernel-hardening@lists.openwall.com, linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org, linux-mips@vger.kernel.org, intel-gvt-dev@lists.freedesktop.org, intel-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org, netdev@vger.kernel.org, linux-ext4 <linux-ext4@vger.kernel.org>, devel@lists.orangefs.org, linux-mm@kvack.org, linux-sctp@vger.kernel.org, bpf@vger.kernel.org, kvm@vger.kernel.org, mayhs11saini@gmail.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-On Sat, Jun 29, 2019 at 09:45:10AM -0700, Joe Perches wrote:
-> On Sat, 2019-06-29 at 17:25 +0300, Alexey Dobriyan wrote:
-> > On Tue, Jun 11, 2019 at 03:00:10PM -0600, Andreas Dilger wrote:
-> > > On Jun 11, 2019, at 2:48 PM, Andrew Morton <akpm@linux-foundation.org> wrote:
-> > > > On Wed, 12 Jun 2019 01:08:36 +0530 Shyam Saini <shyam.saini@amarulasolutions.com> wrote:
-> > > I did a check, and FIELD_SIZEOF() is used about 350x, while sizeof_field()
-> > > is about 30x, and SIZEOF_FIELD() is only about 5x.
-> > > 
-> > > That said, I'm much more in favour of "sizeof_field()" or "sizeof_member()"
-> > > than FIELD_SIZEOF().  Not only does that better match "offsetof()", with
-> > > which it is closely related, but is also closer to the original "sizeof()".
-> > > 
-> > > Since this is a rather trivial change, it can be split into a number of
-> > > patches to get approval/landing via subsystem maintainers, and there is no
-> > > huge urgency to remove the original macros until the users are gone.  It
-> > > would make sense to remove SIZEOF_FIELD() and sizeof_field() quickly so
-> > > they don't gain more users, and the remaining FIELD_SIZEOF() users can be
-> > > whittled away as the patches come through the maintainer trees.
-> > 
-> > The signature should be
-> > 
-> > 	sizeof_member(T, m)
-> > 
-> > it is proper English,
-> > it is lowercase, so is easier to type,
-> > it uses standard term (member, not field),
-> > it blends in with standard "sizeof" operator,
-> 
-> yes please.
-> 
-> Also, a simple script conversion applied
-> immediately after an rc1 might be easiest
-> rather than individual patches.
+This patchset is to remove some unnecessary feature flags from
+sctp_assocation and move some others to the right places.
 
-This seems reasonable to me. I think the patch steps would be:
+Xin Long (4):
+  sctp: remove reconf_enable from asoc
+  sctp: remove prsctp_enable from asoc
+  sctp: rename asoc intl_enable to asoc peer.intl_capable
+  sctp: rename sp strm_interleave to ep intl_enable
 
-1) implement sizeof_member(T, m) as a stand-alone macro
-2) do a scripted replacement of all identical macros.
-3) remove all the identical macros.
-
-Step 2 can be a patch that includes the script used to do the
-replacement. That way Linus can choose to just run the script instead of
-taking the patch.
+ include/net/sctp/structs.h   | 37 ++++++++++++++++++-------------------
+ net/sctp/associola.c         |  2 --
+ net/sctp/sm_make_chunk.c     | 21 ++++++++++-----------
+ net/sctp/socket.c            | 19 ++++++++-----------
+ net/sctp/stream_interleave.c |  4 ++--
+ net/sctp/stream_sched.c      |  2 +-
+ 6 files changed, 39 insertions(+), 46 deletions(-)
 
 -- 
-Kees Cook
+2.1.0
