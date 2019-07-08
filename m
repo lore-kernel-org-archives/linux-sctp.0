@@ -1,150 +1,101 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 22 Jul 2019 17:38:00 +0000
-Subject: [PATCH net-next 4/4] sctp: factor out sctp_connect_add_peer
-Message-Id: <4a8af7d5bcaf3c04a3553ae6491139b4f855be6d.1563817029.git.lucien.xin@gmail.com>
+Date: Mon, 08 Jul 2019 16:57:04 +0000
+Subject: [PATCH net-next 1/4] sctp: remove reconf_enable from asoc
+Message-Id: <988dac46cfecb6ae4fa21e40bf16da6faf3da6ab.1562604972.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1563817029.git.lucien.xin@gmail.com>
- <c875aa0a5b2965636dc3da83398856627310b280.1563817029.git.lucien.xin@gmail.com>
- <0a87c3c2c48b10a930205d413a160854032eaa4a.1563817029.git.lucien.xin@gmail.com>
- <1b46966a4b2013dd3bb3c19b61b38e2d39d53118.1563817029.git.lucien.xin@gmail.com>
-In-Reply-To: <1b46966a4b2013dd3bb3c19b61b38e2d39d53118.1563817029.git.lucien.xin@gmail.com>
+References: <cover.1562604972.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1562604972.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-In this function factored out from sctp_sendmsg_new_asoc() and
-__sctp_connect(), it adds a peer with the other addr into the
-asoc after this asoc is created with the 1st addr.
+asoc's reconf support is actually decided by the 4-shakehand negotiation,
+not something that users can set by sockopt. asoc->peer.reconf_capable is
+working for this. So remove it from asoc.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/sctp/socket.c | 76 +++++++++++++++++++++++--------------------------------
- 1 file changed, 31 insertions(+), 45 deletions(-)
+ include/net/sctp/structs.h | 3 +--
+ net/sctp/associola.c       | 1 -
+ net/sctp/sm_make_chunk.c   | 5 ++---
+ net/sctp/socket.c          | 7 ++-----
+ 4 files changed, 5 insertions(+), 11 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 420abdb..6584c19 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -1111,6 +1111,33 @@ static int sctp_connect_new_asoc(struct sctp_endpoint *ep,
- 	return err;
- }
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 0767701..d9e0e1a 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -2051,8 +2051,7 @@ struct sctp_association {
+ 	     temp:1,		/* Is it a temporary association? */
+ 	     force_delay:1,
+ 	     intl_enable:1,
+-	     prsctp_enable:1,
+-	     reconf_enable:1;
++	     prsctp_enable:1;
  
-+static int sctp_connect_add_peer(struct sctp_association *asoc,
-+				 union sctp_addr *daddr, int addr_len)
-+{
-+	struct sctp_endpoint *ep = asoc->ep;
-+	struct sctp_association *old;
-+	struct sctp_transport *t;
-+	int err;
-+
-+	err = sctp_verify_addr(ep->base.sk, daddr, addr_len);
-+	if (err)
-+		return err;
-+
-+	old = sctp_endpoint_lookup_assoc(ep, daddr, &t);
-+	if (old && old != asoc)
-+		return old->state >= SCTP_STATE_ESTABLISHED ? -EISCONN
-+							    : -EALREADY;
-+
-+	if (sctp_endpoint_is_peeled_off(ep, daddr))
-+		return -EADDRNOTAVAIL;
-+
-+	t = sctp_assoc_add_peer(asoc, daddr, GFP_KERNEL, SCTP_UNKNOWN);
-+	if (!t)
-+		return -ENOMEM;
-+
-+	return 0;
-+}
-+
- /* __sctp_connect(struct sock* sk, struct sockaddr *kaddrs, int addrs_size)
-  *
-  * Common routine for handling connect() and sctp_connectx().
-@@ -1119,10 +1146,10 @@ static int sctp_connect_new_asoc(struct sctp_endpoint *ep,
- static int __sctp_connect(struct sock *sk, struct sockaddr *kaddrs,
- 			  int addrs_size, int flags, sctp_assoc_t *assoc_id)
- {
--	struct sctp_association *old, *asoc;
- 	struct sctp_sock *sp = sctp_sk(sk);
- 	struct sctp_endpoint *ep = sp->ep;
- 	struct sctp_transport *transport;
-+	struct sctp_association *asoc;
- 	int addrcnt, walk_size, err;
- 	void *addr_buf = kaddrs;
- 	union sctp_addr *daddr;
-@@ -1168,29 +1195,10 @@ static int __sctp_connect(struct sock *sk, struct sockaddr *kaddrs,
- 		if (asoc->peer.port != ntohs(daddr->v4.sin_port))
- 			goto out_free;
+ 	__u8 strreset_enable;
+ 	__u8 strreset_outstanding; /* request param count on the fly */
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 1999237..321c199 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -262,7 +262,6 @@ static struct sctp_association *sctp_association_init(
  
--		err = sctp_verify_addr(sk, daddr, af->sockaddr_len);
-+		err = sctp_connect_add_peer(asoc, daddr, af->sockaddr_len);
- 		if (err)
- 			goto out_free;
+ 	asoc->active_key_id = ep->active_key_id;
+ 	asoc->prsctp_enable = ep->prsctp_enable;
+-	asoc->reconf_enable = ep->reconf_enable;
+ 	asoc->strreset_enable = ep->strreset_enable;
  
--		old = sctp_endpoint_lookup_assoc(ep, daddr, &transport);
--		if (old && old != asoc) {
--			err = old->state >= SCTP_STATE_ESTABLISHED ? -EISCONN
--								   : -EALREADY;
--			goto out_free;
--		}
--
--		if (sctp_endpoint_is_peeled_off(ep, daddr)) {
--			err = -EADDRNOTAVAIL;
--			goto out_free;
--		}
--
--		transport = sctp_assoc_add_peer(asoc, daddr, GFP_KERNEL,
--						SCTP_UNKNOWN);
--		if (!transport) {
--			err = -ENOMEM;
--			goto out_free;
--		}
--
- 		addr_buf  += af->sockaddr_len;
- 		walk_size += af->sockaddr_len;
- 		addrcnt++;
-@@ -1684,8 +1692,6 @@ static int sctp_sendmsg_new_asoc(struct sock *sk, __u16 sflags,
- 
- 	/* sendv addr list parse */
- 	for_each_cmsghdr(cmsg, cmsgs->addrs_msg) {
--		struct sctp_transport *transport;
--		struct sctp_association *old;
- 		union sctp_addr _daddr;
- 		int dlen;
- 
-@@ -1719,30 +1725,10 @@ static int sctp_sendmsg_new_asoc(struct sock *sk, __u16 sflags,
- 			daddr->v6.sin6_port = htons(asoc->peer.port);
- 			memcpy(&daddr->v6.sin6_addr, CMSG_DATA(cmsg), dlen);
- 		}
--		err = sctp_verify_addr(sk, daddr, sizeof(*daddr));
--		if (err)
--			goto free;
--
--		old = sctp_endpoint_lookup_assoc(ep, daddr, &transport);
--		if (old && old != asoc) {
--			if (old->state >= SCTP_STATE_ESTABLISHED)
--				err = -EISCONN;
--			else
--				err = -EALREADY;
--			goto free;
--		}
- 
--		if (sctp_endpoint_is_peeled_off(ep, daddr)) {
--			err = -EADDRNOTAVAIL;
--			goto free;
--		}
--
--		transport = sctp_assoc_add_peer(asoc, daddr, GFP_KERNEL,
--						SCTP_UNKNOWN);
--		if (!transport) {
--			err = -ENOMEM;
-+		err = sctp_connect_add_peer(asoc, daddr, sizeof(*daddr));
-+		if (err)
- 			goto free;
--		}
+ 	/* Save the hmacs and chunks list into this association */
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 9b0e5b0..d784dc1 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -261,7 +261,7 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
+ 		num_ext += 2;
  	}
  
- 	return 0;
+-	if (asoc->reconf_enable) {
++	if (asoc->ep->reconf_enable) {
+ 		extensions[num_ext] = SCTP_CID_RECONF;
+ 		num_ext += 1;
+ 	}
+@@ -2007,8 +2007,7 @@ static void sctp_process_ext_param(struct sctp_association *asoc,
+ 	for (i = 0; i < num_ext; i++) {
+ 		switch (param.ext->chunks[i]) {
+ 		case SCTP_CID_RECONF:
+-			if (asoc->reconf_enable &&
+-			    !asoc->peer.reconf_capable)
++			if (asoc->ep->reconf_enable)
+ 				asoc->peer.reconf_capable = 1;
+ 			break;
+ 		case SCTP_CID_FWD_TSN:
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 39ea0a3..0424876 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4226,10 +4226,7 @@ static int sctp_setsockopt_reconfig_supported(struct sock *sk,
+ 	    sctp_style(sk, UDP))
+ 		goto out;
+ 
+-	if (asoc)
+-		asoc->reconf_enable = !!params.assoc_value;
+-	else
+-		sctp_sk(sk)->ep->reconf_enable = !!params.assoc_value;
++	sctp_sk(sk)->ep->reconf_enable = !!params.assoc_value;
+ 
+ 	retval = 0;
+ 
+@@ -7554,7 +7551,7 @@ static int sctp_getsockopt_reconfig_supported(struct sock *sk, int len,
+ 		goto out;
+ 	}
+ 
+-	params.assoc_value = asoc ? asoc->reconf_enable
++	params.assoc_value = asoc ? asoc->peer.reconf_capable
+ 				  : sctp_sk(sk)->ep->reconf_enable;
+ 
+ 	if (put_user(len, optlen))
 -- 
 2.1.0
