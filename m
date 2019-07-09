@@ -1,30 +1,24 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 08 Jul 2019 16:57:03 +0000
-Subject: [PATCH net-next 0/4] sctp: tidy up some ep and asoc feature flags
-Message-Id: <cover.1562604972.git.lucien.xin@gmail.com>
+From: David Miller <davem@davemloft.net>
+Date: Tue, 09 Jul 2019 03:17:08 +0000
+Subject: Re: [PATCH net-next 0/4] sctp: tidy up some ep and asoc feature flags
+Message-Id: <20190708.201708.1951328081226207691.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1562604972.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1562604972.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
-This patchset is to remove some unnecessary feature flags from
-sctp_assocation and move some others to the right places.
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue,  9 Jul 2019 00:57:03 +0800
 
-Xin Long (4):
-  sctp: remove reconf_enable from asoc
-  sctp: remove prsctp_enable from asoc
-  sctp: rename asoc intl_enable to asoc peer.intl_capable
-  sctp: rename sp strm_interleave to ep intl_enable
+> This patchset is to remove some unnecessary feature flags from
+> sctp_assocation and move some others to the right places.
 
- include/net/sctp/structs.h   | 37 ++++++++++++++++++-------------------
- net/sctp/associola.c         |  2 --
- net/sctp/sm_make_chunk.c     | 21 ++++++++++-----------
- net/sctp/socket.c            | 19 ++++++++-----------
- net/sctp/stream_interleave.c |  4 ++--
- net/sctp/stream_sched.c      |  2 +-
- 6 files changed, 39 insertions(+), 46 deletions(-)
+Since I'm trying to close up the net-next tree first thing tomorrow morning
+I've taken the liberty of reviewing this the best that I can and it looks
+good.
 
--- 
-2.1.0
+Series applied, thanks Xin.
