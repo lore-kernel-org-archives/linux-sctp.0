@@ -1,93 +1,72 @@
-From: Joe Perches <joe@perches.com>
-Date: Wed, 31 Jul 2019 22:23:46 +0000
-Subject: Re: [PATCH] net: sctp: Rename fallthrough label to unhandled
-Message-Id: <d68403ce9f7e8a68fff09d6b17e5d1327eb1e12d.camel@perches.com>
+From: Hariprasad Kelam <hariprasad.kelam@gmail.com>
+Date: Tue, 16 Jul 2019 02:32:02 +0000
+Subject: [PATCH] net: sctp: fix warning "NULL check before some freeing functions is not needed"
+Message-Id: <20190716022002.GA19592@hari-Inspiron-1545>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <e0dd3af448e38e342c1ac6e7c0c802696eb77fd6.1564549413.git.joe@perches.com>
-         <20190731111932.GA9823@hmswarspite.think-freely.org>
-         <eac3fe457d553a2b366e1c1898d47ae8c048087c.camel@perches.com>
-         <20190731121646.GD9823@hmswarspite.think-freely.org>
-         <b93bbb17b407e27bb1dc196af84e4f289d9dfd93.camel@perches.com>
-         <20190731205804.GE9823@hmswarspite.think-freely.org>
-In-Reply-To: <20190731205804.GE9823@hmswarspite.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On Wed, 2019-07-31 at 16:58 -0400, Neil Horman wrote:
-> On Wed, Jul 31, 2019 at 09:35:31AM -0700, Joe Perches wrote:
-> > On Wed, 2019-07-31 at 08:16 -0400, Neil Horman wrote:
-> > > On Wed, Jul 31, 2019 at 04:32:43AM -0700, Joe Perches wrote:
-> > > > On Wed, 2019-07-31 at 07:19 -0400, Neil Horman wrote:
-> > > > > On Tue, Jul 30, 2019 at 10:04:37PM -0700, Joe Perches wrote:
-> > > > > > fallthrough may become a pseudo reserved keyword so this only use of
-> > > > > > fallthrough is better renamed to allow it.
-> > > > > > 
-> > > > > > Signed-off-by: Joe Perches <joe@perches.com>
-> > > > > Are you referring to the __attribute__((fallthrough)) statement that gcc
-> > > > > supports?  If so the compiler should by all rights be able to differentiate
-> > > > > between a null statement attribute and a explicit goto and label without the
-> > > > > need for renaming here.  Or are you referring to something else?
-> > > > 
-> > > > Hi.
-> > > > 
-> > > > I sent after this a patch that adds
-> > > > 
-> > > > # define fallthrough                    __attribute__((__fallthrough__))
-> > > > 
-> > > > https://lore.kernel.org/patchwork/patch/1108577/
-> > > > 
-> > > > So this rename is a prerequisite to adding this #define.
-> > > > 
-> > > why not just define __fallthrough instead, like we do for all the other
-> > > attributes we alias (i.e. __read_mostly, __protected_by, __unused, __exception,
-> > > etc)
-> > 
-> > Because it's not as intelligible when used as a statement.
-> I think thats somewhat debatable.  __fallthrough to me looks like an internal
-> macro, whereas fallthrough looks like a comment someone forgot to /* */
+This patch removes NULL checks before calling kfree.
 
+fixes below issues reported by coccicheck
+net/sctp/sm_make_chunk.c:2586:3-8: WARNING: NULL check before some
+freeing functions is not needed.
+net/sctp/sm_make_chunk.c:2652:3-8: WARNING: NULL check before some
+freeing functions is not needed.
+net/sctp/sm_make_chunk.c:2667:3-8: WARNING: NULL check before some
+freeing functions is not needed.
+net/sctp/sm_make_chunk.c:2684:3-8: WARNING: NULL check before some
+freeing functions is not needed.
 
-I'd rather see:
+Signed-off-by: Hariprasad Kelam <hariprasad.kelam@gmail.com>
+---
+ net/sctp/sm_make_chunk.c | 12 ++++--------
+ 1 file changed, 4 insertions(+), 8 deletions(-)
 
-	switch (foo) {
-	case FOO:
-		bar |= baz;
-		fallthrough;
-	case BAR:
-		bar |= qux;
-		break;
-	default:
-		error();
-	}
-
-than
-
-	switch (foo) {
-	case FOO:
-		bar |= baz;
-		__fallthrough;
-	case BAR:
-		bar |= qux;
-		break;
-	default:
-		error();
-	}
-
-or esoecially
-
-	switch (foo) {
-	case FOO:
-		bar |= baz;
-		/* fallthrough
-*/;
-	case BAR:
-		bar |= qux;
-		break;
-	default:
-		error();
-	}
-
-but <shrug>, bikeshed ahoy!...
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index ed39396..36bd8a6e 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2582,8 +2582,7 @@ static int sctp_process_param(struct sctp_association *asoc,
+ 	case SCTP_PARAM_STATE_COOKIE:
+ 		asoc->peer.cookie_len  			ntohs(param.p->length) - sizeof(struct sctp_paramhdr);
+-		if (asoc->peer.cookie)
+-			kfree(asoc->peer.cookie);
++		kfree(asoc->peer.cookie);
+ 		asoc->peer.cookie = kmemdup(param.cookie->body, asoc->peer.cookie_len, gfp);
+ 		if (!asoc->peer.cookie)
+ 			retval = 0;
+@@ -2648,8 +2647,7 @@ static int sctp_process_param(struct sctp_association *asoc,
+ 			goto fall_through;
+ 
+ 		/* Save peer's random parameter */
+-		if (asoc->peer.peer_random)
+-			kfree(asoc->peer.peer_random);
++		kfree(asoc->peer.peer_random);
+ 		asoc->peer.peer_random = kmemdup(param.p,
+ 					    ntohs(param.p->length), gfp);
+ 		if (!asoc->peer.peer_random) {
+@@ -2663,8 +2661,7 @@ static int sctp_process_param(struct sctp_association *asoc,
+ 			goto fall_through;
+ 
+ 		/* Save peer's HMAC list */
+-		if (asoc->peer.peer_hmacs)
+-			kfree(asoc->peer.peer_hmacs);
++		kfree(asoc->peer.peer_hmacs);
+ 		asoc->peer.peer_hmacs = kmemdup(param.p,
+ 					    ntohs(param.p->length), gfp);
+ 		if (!asoc->peer.peer_hmacs) {
+@@ -2680,8 +2677,7 @@ static int sctp_process_param(struct sctp_association *asoc,
+ 		if (!ep->auth_enable)
+ 			goto fall_through;
+ 
+-		if (asoc->peer.peer_chunks)
+-			kfree(asoc->peer.peer_chunks);
++		kfree(asoc->peer.peer_chunks);
+ 		asoc->peer.peer_chunks = kmemdup(param.p,
+ 					    ntohs(param.p->length), gfp);
+ 		if (!asoc->peer.peer_chunks)
+-- 
+2.7.4
