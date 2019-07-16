@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 16 Jul 2019 02:51:00 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 16 Jul 2019 11:09:17 +0000
 Subject: Re: [PATCH] net: sctp: fix warning "NULL check before some freeing functions is not needed"
-Message-Id: <20190716025100.GM3390@localhost.localdomain>
+Message-Id: <20190716110917.GA1498@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20190716022002.GA19592@hari-Inspiron-1545>
 In-Reply-To: <20190716022002.GA19592@hari-Inspiron-1545>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Hariprasad Kelam <hariprasad.kelam@gmail.com>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Vlad Yasevich <vyasevich@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
 On Tue, Jul 16, 2019 at 07:50:02AM +0530, Hariprasad Kelam wrote:
 > This patch removes NULL checks before calling kfree.
@@ -25,9 +25,6 @@ On Tue, Jul 16, 2019 at 07:50:02AM +0530, Hariprasad Kelam wrote:
 > freeing functions is not needed.
 > 
 > Signed-off-by: Hariprasad Kelam <hariprasad.kelam@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/sm_make_chunk.c | 12 ++++--------
 >  1 file changed, 4 insertions(+), 8 deletions(-)
@@ -78,3 +75,6 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > -- 
 > 2.7.4
 > 
+> 
+
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
