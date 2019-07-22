@@ -1,302 +1,150 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 30 Jul 2019 12:38:21 +0000
-Subject: [PATCHv2 net-next 3/5] sctp: clean up __sctp_connect
-Message-Id: <9995f1c75cd5a555fc22ba2ab374890ad1cee470.1564490276.git.lucien.xin@gmail.com>
+Date: Mon, 22 Jul 2019 17:38:00 +0000
+Subject: [PATCH net-next 4/4] sctp: factor out sctp_connect_add_peer
+Message-Id: <4a8af7d5bcaf3c04a3553ae6491139b4f855be6d.1563817029.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1564490276.git.lucien.xin@gmail.com>
- <bb6e9856c2db0f24b91fb326fbe3c9c013f2459b.1564490276.git.lucien.xin@gmail.com>
- <2fe592e724eee4e9b00097485a5bccf317907874.1564490276.git.lucien.xin@gmail.com>
-In-Reply-To: <2fe592e724eee4e9b00097485a5bccf317907874.1564490276.git.lucien.xin@gmail.com>
+References: <cover.1563817029.git.lucien.xin@gmail.com>
+ <c875aa0a5b2965636dc3da83398856627310b280.1563817029.git.lucien.xin@gmail.com>
+ <0a87c3c2c48b10a930205d413a160854032eaa4a.1563817029.git.lucien.xin@gmail.com>
+ <1b46966a4b2013dd3bb3c19b61b38e2d39d53118.1563817029.git.lucien.xin@gmail.com>
+In-Reply-To: <1b46966a4b2013dd3bb3c19b61b38e2d39d53118.1563817029.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-__sctp_connect is doing quit similar things as sctp_sendmsg_new_asoc.
-To factor out common functions, this patch is to clean up their code
-to make them look more similar:
-
-  1. create the asoc and add a peer with the 1st addr.
-  2. add peers with the other addrs into this asoc one by one.
-
-while at it, also remove the unused 'addrcnt'.
+In this function factored out from sctp_sendmsg_new_asoc() and
+__sctp_connect(), it adds a peer with the other addr into the
+asoc after this asoc is created with the 1st addr.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/sctp/socket.c | 209 +++++++++++++++++++-----------------------------------
- 1 file changed, 73 insertions(+), 136 deletions(-)
+ net/sctp/socket.c | 76 +++++++++++++++++++++++--------------------------------
+ 1 file changed, 31 insertions(+), 45 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index e9c5b39..b9804e5 100644
+index 420abdb..6584c19 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -1049,153 +1049,105 @@ static int sctp_setsockopt_bindx(struct sock *sk,
-  * Common routine for handling connect() and sctp_connectx().
-  * Connect will come in with just a single address.
-  */
--static int __sctp_connect(struct sock *sk,
--			  struct sockaddr *kaddrs,
--			  int addrs_size, int flags,
--			  sctp_assoc_t *assoc_id)
-+static int __sctp_connect(struct sock *sk, struct sockaddr *kaddrs,
-+			  int addrs_size, int flags, sctp_assoc_t *assoc_id)
- {
--	struct net *net = sock_net(sk);
--	struct sctp_sock *sp;
--	struct sctp_endpoint *ep;
--	struct sctp_association *asoc = NULL;
--	struct sctp_association *asoc2;
-+	struct sctp_association *old, *asoc;
-+	struct sctp_sock *sp = sctp_sk(sk);
-+	struct sctp_endpoint *ep = sp->ep;
- 	struct sctp_transport *transport;
--	union sctp_addr to;
-+	struct net *net = sock_net(sk);
-+	void *addr_buf = kaddrs;
-+	union sctp_addr *daddr;
- 	enum sctp_scope scope;
-+	struct sctp_af *af;
-+	int walk_size, err;
- 	long timeo;
--	int err = 0;
--	int addrcnt = 0;
--	int walk_size = 0;
--	union sctp_addr *sa_addr = NULL;
--	void *addr_buf;
--	unsigned short port;
+@@ -1111,6 +1111,33 @@ static int sctp_connect_new_asoc(struct sctp_endpoint *ep,
+ 	return err;
+ }
  
--	sp = sctp_sk(sk);
--	ep = sp->ep;
--
--	/* connect() cannot be done on a socket that is already in ESTABLISHED
--	 * state - UDP-style peeled off socket or a TCP-style socket that
--	 * is already connected.
--	 * It cannot be done even on a TCP-style listening socket.
--	 */
- 	if (sctp_sstate(sk, ESTABLISHED) || sctp_sstate(sk, CLOSING) ||
--	    (sctp_style(sk, TCP) && sctp_sstate(sk, LISTENING))) {
--		err = -EISCONN;
--		goto out_free;
-+	    (sctp_style(sk, TCP) && sctp_sstate(sk, LISTENING)))
-+		return -EISCONN;
++static int sctp_connect_add_peer(struct sctp_association *asoc,
++				 union sctp_addr *daddr, int addr_len)
++{
++	struct sctp_endpoint *ep = asoc->ep;
++	struct sctp_association *old;
++	struct sctp_transport *t;
++	int err;
 +
-+	daddr = addr_buf;
-+	af = sctp_get_af_specific(daddr->sa.sa_family);
-+	if (!af || af->sockaddr_len > addrs_size)
-+		return -EINVAL;
-+
-+	err = sctp_verify_addr(sk, daddr, af->sockaddr_len);
++	err = sctp_verify_addr(ep->base.sk, daddr, addr_len);
 +	if (err)
 +		return err;
 +
-+	asoc = sctp_endpoint_lookup_assoc(ep, daddr, &transport);
-+	if (asoc)
-+		return asoc->state >= SCTP_STATE_ESTABLISHED ? -EISCONN
-+							     : -EALREADY;
++	old = sctp_endpoint_lookup_assoc(ep, daddr, &t);
++	if (old && old != asoc)
++		return old->state >= SCTP_STATE_ESTABLISHED ? -EISCONN
++							    : -EALREADY;
 +
 +	if (sctp_endpoint_is_peeled_off(ep, daddr))
 +		return -EADDRNOTAVAIL;
 +
-+	if (!ep->base.bind_addr.port) {
-+		if (sctp_autobind(sk))
-+			return -EAGAIN;
-+	} else {
-+		if (ep->base.bind_addr.port < inet_prot_sock(net) &&
-+		    !ns_capable(net->user_ns, CAP_NET_BIND_SERVICE))
-+			return -EACCES;
- 	}
- 
--	/* Walk through the addrs buffer and count the number of addresses. */
--	addr_buf = kaddrs;
--	while (walk_size < addrs_size) {
--		struct sctp_af *af;
-+	scope = sctp_scope(daddr);
-+	asoc = sctp_association_new(ep, sk, scope, GFP_KERNEL);
-+	if (!asoc)
++	t = sctp_assoc_add_peer(asoc, daddr, GFP_KERNEL, SCTP_UNKNOWN);
++	if (!t)
 +		return -ENOMEM;
++
++	return 0;
++}
++
+ /* __sctp_connect(struct sock* sk, struct sockaddr *kaddrs, int addrs_size)
+  *
+  * Common routine for handling connect() and sctp_connectx().
+@@ -1119,10 +1146,10 @@ static int sctp_connect_new_asoc(struct sctp_endpoint *ep,
+ static int __sctp_connect(struct sock *sk, struct sockaddr *kaddrs,
+ 			  int addrs_size, int flags, sctp_assoc_t *assoc_id)
+ {
+-	struct sctp_association *old, *asoc;
+ 	struct sctp_sock *sp = sctp_sk(sk);
+ 	struct sctp_endpoint *ep = sp->ep;
+ 	struct sctp_transport *transport;
++	struct sctp_association *asoc;
+ 	int addrcnt, walk_size, err;
+ 	void *addr_buf = kaddrs;
+ 	union sctp_addr *daddr;
+@@ -1168,29 +1195,10 @@ static int __sctp_connect(struct sock *sk, struct sockaddr *kaddrs,
+ 		if (asoc->peer.port != ntohs(daddr->v4.sin_port))
+ 			goto out_free;
  
--		if (walk_size + sizeof(sa_family_t) > addrs_size) {
--			err = -EINVAL;
+-		err = sctp_verify_addr(sk, daddr, af->sockaddr_len);
++		err = sctp_connect_add_peer(asoc, daddr, af->sockaddr_len);
+ 		if (err)
+ 			goto out_free;
+ 
+-		old = sctp_endpoint_lookup_assoc(ep, daddr, &transport);
+-		if (old && old != asoc) {
+-			err = old->state >= SCTP_STATE_ESTABLISHED ? -EISCONN
+-								   : -EALREADY;
 -			goto out_free;
 -		}
-+	err = sctp_assoc_set_bind_addr_from_ep(asoc, scope, GFP_KERNEL);
-+	if (err < 0)
-+		goto out_free;
- 
--		sa_addr = addr_buf;
--		af = sctp_get_af_specific(sa_addr->sa.sa_family);
-+	transport = sctp_assoc_add_peer(asoc, daddr, GFP_KERNEL, SCTP_UNKNOWN);
-+	if (!transport) {
-+		err = -ENOMEM;
-+		goto out_free;
-+	}
- 
--		/* If the address family is not supported or if this address
--		 * causes the address buffer to overflow return EINVAL.
--		 */
--		if (!af || (walk_size + af->sockaddr_len) > addrs_size) {
--			err = -EINVAL;
-+	addr_buf += af->sockaddr_len;
-+	walk_size = af->sockaddr_len;
-+	while (walk_size < addrs_size) {
-+		err = -EINVAL;
-+		if (walk_size + sizeof(sa_family_t) > addrs_size)
- 			goto out_free;
--		}
- 
--		port = ntohs(sa_addr->v4.sin_port);
 -
--		/* Save current address so we can work with it */
--		memcpy(&to, sa_addr, af->sockaddr_len);
-+		daddr = addr_buf;
-+		af = sctp_get_af_specific(daddr->sa.sa_family);
-+		if (!af || af->sockaddr_len + walk_size > addrs_size)
-+			goto out_free;
- 
--		err = sctp_verify_addr(sk, &to, af->sockaddr_len);
--		if (err)
-+		if (asoc->peer.port != ntohs(daddr->v4.sin_port))
- 			goto out_free;
- 
--		/* Make sure the destination port is correctly set
--		 * in all addresses.
--		 */
--		if (asoc && asoc->peer.port && asoc->peer.port != port) {
--			err = -EINVAL;
-+		err = sctp_verify_addr(sk, daddr, af->sockaddr_len);
-+		if (err)
- 			goto out_free;
+-		if (sctp_endpoint_is_peeled_off(ep, daddr)) {
+-			err = -EADDRNOTAVAIL;
+-			goto out_free;
 -		}
+-
+-		transport = sctp_assoc_add_peer(asoc, daddr, GFP_KERNEL,
+-						SCTP_UNKNOWN);
+-		if (!transport) {
+-			err = -ENOMEM;
+-			goto out_free;
+-		}
+-
+ 		addr_buf  += af->sockaddr_len;
+ 		walk_size += af->sockaddr_len;
+ 		addrcnt++;
+@@ -1684,8 +1692,6 @@ static int sctp_sendmsg_new_asoc(struct sock *sk, __u16 sflags,
  
--		/* Check if there already is a matching association on the
--		 * endpoint (other than the one created here).
--		 */
--		asoc2 = sctp_endpoint_lookup_assoc(ep, &to, &transport);
--		if (asoc2 && asoc2 != asoc) {
--			if (asoc2->state >= SCTP_STATE_ESTABLISHED)
+ 	/* sendv addr list parse */
+ 	for_each_cmsghdr(cmsg, cmsgs->addrs_msg) {
+-		struct sctp_transport *transport;
+-		struct sctp_association *old;
+ 		union sctp_addr _daddr;
+ 		int dlen;
+ 
+@@ -1719,30 +1725,10 @@ static int sctp_sendmsg_new_asoc(struct sock *sk, __u16 sflags,
+ 			daddr->v6.sin6_port = htons(asoc->peer.port);
+ 			memcpy(&daddr->v6.sin6_addr, CMSG_DATA(cmsg), dlen);
+ 		}
+-		err = sctp_verify_addr(sk, daddr, sizeof(*daddr));
+-		if (err)
+-			goto free;
+-
+-		old = sctp_endpoint_lookup_assoc(ep, daddr, &transport);
+-		if (old && old != asoc) {
+-			if (old->state >= SCTP_STATE_ESTABLISHED)
 -				err = -EISCONN;
 -			else
 -				err = -EALREADY;
-+		old = sctp_endpoint_lookup_assoc(ep, daddr, &transport);
-+		if (old && old != asoc) {
-+			err = old->state >= SCTP_STATE_ESTABLISHED ? -EISCONN
-+								   : -EALREADY;
- 			goto out_free;
- 		}
+-			goto free;
+-		}
  
--		/* If we could not find a matching association on the endpoint,
--		 * make sure that there is no peeled-off association matching
--		 * the peer address even on another socket.
--		 */
--		if (sctp_endpoint_is_peeled_off(ep, &to)) {
-+		if (sctp_endpoint_is_peeled_off(ep, daddr)) {
- 			err = -EADDRNOTAVAIL;
- 			goto out_free;
- 		}
- 
--		if (!asoc) {
--			/* If a bind() or sctp_bindx() is not called prior to
--			 * an sctp_connectx() call, the system picks an
--			 * ephemeral port and will choose an address set
--			 * equivalent to binding with a wildcard address.
--			 */
--			if (!ep->base.bind_addr.port) {
--				if (sctp_autobind(sk)) {
--					err = -EAGAIN;
--					goto out_free;
--				}
--			} else {
--				/*
--				 * If an unprivileged user inherits a 1-many
--				 * style socket with open associations on a
--				 * privileged port, it MAY be permitted to
--				 * accept new associations, but it SHOULD NOT
--				 * be permitted to open new associations.
--				 */
--				if (ep->base.bind_addr.port <
--				    inet_prot_sock(net) &&
--				    !ns_capable(net->user_ns,
--				    CAP_NET_BIND_SERVICE)) {
--					err = -EACCES;
--					goto out_free;
--				}
--			}
--
--			scope = sctp_scope(&to);
--			asoc = sctp_association_new(ep, sk, scope, GFP_KERNEL);
--			if (!asoc) {
--				err = -ENOMEM;
--				goto out_free;
--			}
--
--			err = sctp_assoc_set_bind_addr_from_ep(asoc, scope,
--							      GFP_KERNEL);
--			if (err < 0) {
--				goto out_free;
--			}
--
+-		if (sctp_endpoint_is_peeled_off(ep, daddr)) {
+-			err = -EADDRNOTAVAIL;
+-			goto free;
 -		}
 -
--		/* Prime the peer's transport structures.  */
--		transport = sctp_assoc_add_peer(asoc, &to, GFP_KERNEL,
-+		transport = sctp_assoc_add_peer(asoc, daddr, GFP_KERNEL,
- 						SCTP_UNKNOWN);
- 		if (!transport) {
- 			err = -ENOMEM;
- 			goto out_free;
- 		}
- 
--		addrcnt++;
--		addr_buf += af->sockaddr_len;
-+		addr_buf  += af->sockaddr_len;
- 		walk_size += af->sockaddr_len;
+-		transport = sctp_assoc_add_peer(asoc, daddr, GFP_KERNEL,
+-						SCTP_UNKNOWN);
+-		if (!transport) {
+-			err = -ENOMEM;
++		err = sctp_connect_add_peer(asoc, daddr, sizeof(*daddr));
++		if (err)
+ 			goto free;
+-		}
  	}
  
-@@ -1209,39 +1161,24 @@ static int __sctp_connect(struct sock *sk,
- 	}
- 
- 	err = sctp_primitive_ASSOCIATE(net, asoc, NULL);
--	if (err < 0) {
-+	if (err < 0)
- 		goto out_free;
--	}
- 
- 	/* Initialize sk's dport and daddr for getpeername() */
- 	inet_sk(sk)->inet_dport = htons(asoc->peer.port);
--	sp->pf->to_sk_daddr(sa_addr, sk);
-+	sp->pf->to_sk_daddr(daddr, sk);
- 	sk->sk_err = 0;
- 
--	timeo = sock_sndtimeo(sk, flags & O_NONBLOCK);
--
- 	if (assoc_id)
- 		*assoc_id = asoc->assoc_id;
- 
--	err = sctp_wait_for_connect(asoc, &timeo);
--	/* Note: the asoc may be freed after the return of
--	 * sctp_wait_for_connect.
--	 */
--
--	/* Don't free association on exit. */
--	asoc = NULL;
-+	timeo = sock_sndtimeo(sk, flags & O_NONBLOCK);
-+	return sctp_wait_for_connect(asoc, &timeo);
- 
- out_free:
- 	pr_debug("%s: took out_free path with asoc:%p kaddrs:%p err:%d\n",
- 		 __func__, asoc, kaddrs, err);
--
--	if (asoc) {
--		/* sctp_primitive_ASSOCIATE may have added this association
--		 * To the hash table, try to unhash it, just in case, its a noop
--		 * if it wasn't hashed so we're safe
--		 */
--		sctp_association_free(asoc);
--	}
-+	sctp_association_free(asoc);
- 	return err;
- }
- 
+ 	return 0;
 -- 
 2.1.0
