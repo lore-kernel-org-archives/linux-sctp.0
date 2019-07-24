@@ -1,38 +1,96 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 02 Jul 2019 02:02:24 +0000
-Subject: Re: [PATCH net] sctp: fix error handling on stream scheduler initialization
-Message-Id: <20190701.190224.767132828354505683.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 24 Jul 2019 07:56:40 +0000
+Subject: Re: [PATCH] net: sctp: fix memory leak in sctp_send_reset_streams
+Message-Id: <CADvbK_ddFyO2iz-QS3bHevHN7Q29VUS4joK3Kxam3Y4tEqHFKA@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <bcbc85604e53843a731a79df620d5f92b194d085.1561675505.git.marcelo.leitner@gmail.com>
-In-Reply-To: <bcbc85604e53843a731a79df620d5f92b194d085.1561675505.git.marcelo.leitner@gmail.com>
+References: <20190602034429.6888-1-hdanton@sina.com> <20190602105133.GA16948@hmswarspite.think-freely.org>
+ <CADvbK_dUDjK3UAF49uo+DZv+QiuEsaMmZeqDwBJ0suRwu4yXJw@mail.gmail.com>
+In-Reply-To: <CADvbK_dUDjK3UAF49uo+DZv+QiuEsaMmZeqDwBJ0suRwu4yXJw@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: marcelo.leitner@gmail.com
-Cc: netdev@vger.kernel.org, lucien.xin@gmail.com, nhorman@tuxdriver.com, linux-sctp@vger.kernel.org, hdanton@sina.com
+Content-Type: text/plain; charset="windows-1254"
+Content-Transfer-Encoding: base64
+To: Neil Horman <nhorman@tuxdriver.com>
+Cc: Hillf Danton <hdanton@sina.com>, linux-sctp@vger.kernel.org, network dev <netdev@vger.kernel.org>, syzkaller <syzkaller@googlegroups.com>, "David S . Miller" <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, syzbot <syzbot+6ad9c3bd0a218a2ab41d@syzkaller.appspotmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, Eric Dumazet <edumazet@google.com>
 
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 27 Jun 2019 19:48:10 -0300
-
-> It allocates the extended area for outbound streams only on sendmsg
-> calls, if they are not yet allocated.  When using the priority
-> stream scheduler, this initialization may imply into a subsequent
-> allocation, which may fail.  In this case, it was aborting the stream
-> scheduler initialization but leaving the ->ext pointer (allocated) in
-> there, thus in a partially initialized state.  On a subsequent call to
-> sendmsg, it would notice the ->ext pointer in there, and trip on
-> uninitialized stuff when trying to schedule the data chunk.
-> 
-> The fix is undo the ->ext initialization if the stream scheduler
-> initialization fails and avoid the partially initialized state.
-> 
-> Although syzkaller bisected this to commit 4ff40b86262b ("sctp: set
-> chunk transport correctly when it's a new asoc"), this bug was actually
-> introduced on the commit I marked below.
-> 
-> Reported-by: syzbot+c1a380d42b190ad1e559@syzkaller.appspotmail.com
-> Fixes: 5bbbbe32a431 ("sctp: introduce stream scheduler foundations")
-> Tested-by: Xin Long <lucien.xin@gmail.com>
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-Applied and queued up for -stable, thanks.
+T24gU3VuLCBKdW4gMiwgMjAxOSBhdCA5OjM2IFBNIFhpbiBMb25nIDxsdWNpZW4ueGluQGdtYWls
+LmNvbT4gd3JvdGU6Cj4KPiBPbiBTdW4sIEp1biAyLCAyMDE5IGF0IDY6NTIgUE0gTmVpbCBIb3Jt
+YW4gPG5ob3JtYW5AdHV4ZHJpdmVyLmNvbT4gd3JvdGU6Cj4gPgo+ID4gT24gU3VuLCBKdW4gMDIs
+IDIwMTkgYXQgMTE6NDQ6MjlBTSArMDgwMCwgSGlsbGYgRGFudG9uIHdyb3RlOgo+ID4gPgo+ID4g
+PiBzeXpib3QgZm91bmQgdGhlIGZvbGxvd2luZyBjcmFzaCBvbjoKPiA+ID4KPiA+ID4gSEVBRCBj
+b21taXQ6ICAgIDAzNmUzNDMxIE1lcmdlIGdpdDovL2dpdC5rZXJuZWwub3JnL3B1Yi9zY20vbGlu
+dXgva2VybmVsL2cuLgo+ID4gPiBnaXQgdHJlZTogICAgICAgdXBzdHJlYW0KPiA+ID4gY29uc29s
+ZSBvdXRwdXQ6IGh0dHBzOi8vc3l6a2FsbGVyLmFwcHNwb3QuY29tL3gvbG9nLnR4dD94FTNjZmYx
+MmEwMDAwMAo+ID4gPiBrZXJuZWwgY29uZmlnOiAgaHR0cHM6Ly9zeXprYWxsZXIuYXBwc3BvdC5j
+b20veC8uY29uZmlnP3iPMGY2M2E2MmJiNWIxM2MKPiA+ID4gZGFzaGJvYXJkIGxpbms6IGh0dHBz
+Oi8vc3l6a2FsbGVyLmFwcHNwb3QuY29tL2J1Zz9leHRpZGpkOWMzYmQwYTIxOGEyYWI0MWQKPiA+
+ID4gY29tcGlsZXI6ICAgICAgIGdjYyAoR0NDKSA5LjAuMCAyMDE4MTIzMSAoZXhwZXJpbWVudGFs
+KQo+ID4gPiBzeXogcmVwcm86ICAgICAgaHR0cHM6Ly9zeXprYWxsZXIuYXBwc3BvdC5jb20veC9y
+ZXByby5zeXo/eBI1NjFjODZhMDAwMDAKPiA+ID4gQyByZXByb2R1Y2VyOiAgIGh0dHBzOi8vc3l6
+a2FsbGVyLmFwcHNwb3QuY29tL3gvcmVwcm8uYz94FWI3NmZkOGEwMDAwMAo+ID4gPgo+ID4gPiBl
+eGVjdXRpbmcgcHJvZ3JhbQo+ID4gPiBleGVjdXRpbmcgcHJvZ3JhbQo+ID4gPiBleGVjdXRpbmcg
+cHJvZ3JhbQo+ID4gPiBleGVjdXRpbmcgcHJvZ3JhbQo+ID4gPiBleGVjdXRpbmcgcHJvZ3JhbQo+
+ID4gPiBCVUc6IG1lbW9yeSBsZWFrCj4gPiA+IHVucmVmZXJlbmNlZCBvYmplY3QgMHhmZmZmODg4
+MTIzODk0ODIwIChzaXplIDMyKToKPiA+ID4gICBjb21tICJzeXotZXhlY3V0b3IwNDUiLCBwaWQg
+NzI2NywgamlmZmllcyA0Mjk0OTQzNTU5IChhZ2UgMTMuNjYwcykKPiA+ID4gICBoZXggZHVtcCAo
+Zmlyc3QgMzIgYnl0ZXMpOgo+ID4gPiAgICAgMDAgMDAgMDAgMDAgMDAgMDAgMDAgMDAgMDAgMDAg
+MDAgMDAgMDAgMDAgMDAgMDAgIC4uLi4uLi4uLi4uLi4uLi4KPiA+ID4gICAgIDAwIDAwIDAwIDAw
+IDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwIDAwICAuLi4uLi4uLi4uLi4uLi4uCj4g
+PiA+ICAgYmFja3RyYWNlOgo+ID4gPiAgICAgWzwwMDAwMDAwMGM3ZTcxYzY5Pl0ga21lbWxlYWtf
+YWxsb2NfcmVjdXJzaXZlCj4gPiA+IGluY2x1ZGUvbGludXgva21lbWxlYWsuaDo1NSBbaW5saW5l
+XQo+ID4gPiAgICAgWzwwMDAwMDAwMGM3ZTcxYzY5Pl0gc2xhYl9wb3N0X2FsbG9jX2hvb2sgbW0v
+c2xhYi5oOjQzOSBbaW5saW5lXQo+ID4gPiAgICAgWzwwMDAwMDAwMGM3ZTcxYzY5Pl0gc2xhYl9h
+bGxvYyBtbS9zbGFiLmM6MzMyNiBbaW5saW5lXQo+ID4gPiAgICAgWzwwMDAwMDAwMGM3ZTcxYzY5
+Pl0gX19kb19rbWFsbG9jIG1tL3NsYWIuYzozNjU4IFtpbmxpbmVdCj4gPiA+ICAgICBbPDAwMDAw
+MDAwYzdlNzFjNjk+XSBfX2ttYWxsb2MrMHgxNjEvMHgyYzAgbW0vc2xhYi5jOjM2NjkKPiA+ID4g
+ICAgIFs8MDAwMDAwMDAzMjUwZWQ4ZT5dIGttYWxsb2NfYXJyYXkgaW5jbHVkZS9saW51eC9zbGFi
+Lmg6NjcwIFtpbmxpbmVdCj4gPiA+ICAgICBbPDAwMDAwMDAwMzI1MGVkOGU+XSBrY2FsbG9jIGlu
+Y2x1ZGUvbGludXgvc2xhYi5oOjY4MSBbaW5saW5lXQo+ID4gPiAgICAgWzwwMDAwMDAwMDMyNTBl
+ZDhlPl0gc2N0cF9zZW5kX3Jlc2V0X3N0cmVhbXMrMHgxYWIvMHg1YTAgbmV0L3NjdHAvc3RyZWFt
+LmM6MzAyCj4gPiA+ICAgICBbPDAwMDAwMDAwY2Q4OTljNmU+XSBzY3RwX3NldHNvY2tvcHRfcmVz
+ZXRfc3RyZWFtcyBuZXQvc2N0cC9zb2NrZXQuYzo0MzE0IFtpbmxpbmVdCj4gPiA+ICAgICBbPDAw
+MDAwMDAwY2Q4OTljNmU+XSBzY3RwX3NldHNvY2tvcHQgbmV0L3NjdHAvc29ja2V0LmM6NDc2NSBb
+aW5saW5lXQo+ID4gPiAgICAgWzwwMDAwMDAwMGNkODk5YzZlPl0gc2N0cF9zZXRzb2Nrb3B0KzB4
+YzIzLzB4MmJmMCBuZXQvc2N0cC9zb2NrZXQuYzo0NjA4Cj4gPiA+ICAgICBbPDAwMDAwMDAwZmYz
+YTIxYTI+XSBzb2NrX2NvbW1vbl9zZXRzb2Nrb3B0KzB4MzgvMHg1MCBuZXQvY29yZS9zb2NrLmM6
+MzEzMAo+ID4gPiAgICAgWzwwMDAwMDAwMDllYjg3YWU3Pl0gX19zeXNfc2V0c29ja29wdCsweDk4
+LzB4MTIwIG5ldC9zb2NrZXQuYzoyMDc4Cj4gPiA+ICAgICBbPDAwMDAwMDAwZTBlZGU2Y2E+XSBf
+X2RvX3N5c19zZXRzb2Nrb3B0IG5ldC9zb2NrZXQuYzoyMDg5IFtpbmxpbmVdCj4gPiA+ICAgICBb
+PDAwMDAwMDAwZTBlZGU2Y2E+XSBfX3NlX3N5c19zZXRzb2Nrb3B0IG5ldC9zb2NrZXQuYzoyMDg2
+IFtpbmxpbmVdCj4gPiA+ICAgICBbPDAwMDAwMDAwZTBlZGU2Y2E+XSBfX3g2NF9zeXNfc2V0c29j
+a29wdCsweDI2LzB4MzAgbmV0L3NvY2tldC5jOjIwODYKPiA+ID4gICAgIFs8MDAwMDAwMDBjNjEx
+NTVmNT5dIGRvX3N5c2NhbGxfNjQrMHg3Ni8weDFhMCBhcmNoL3g4Ni9lbnRyeS9jb21tb24uYzoz
+MDEKPiA+ID4gICAgIFs8MDAwMDAwMDBlNTQwOTU4Yz5dIGVudHJ5X1NZU0NBTExfNjRfYWZ0ZXJf
+aHdmcmFtZSsweDQ0LzB4YTkKPiA+ID4KPiA+ID4KPiA+ID4gSXQgd2FzIGludHJvZHVjZWQgaW4g
+Y29tbWl0IGQ1NzBhNTljNWI1ZiAoInNjdHA6IG9ubHkgYWxsb3cgdGhlIG91dCBzdHJlYW0KPiA+
+ID4gcmVzZXQgd2hlbiB0aGUgc3RyZWFtIG91dHEgaXMgZW1wdHkiKSwgaW4gb3JkZSB0byBjaGVj
+ayBzdHJlYW0gb3V0cXMgYmVmb3JlCj4gPiA+IHNlbmRpbmcgU0NUUF9TVFJSRVNFVF9JTl9QUk9H
+UkVTUyBiYWNrIHRvIHRoZSBwZWVyIG9mIHRoZSBzdHJlYW0uIEVBR0FJTiBpcwo+ID4gPiByZXR1
+cm5lZCwgaG93ZXZlciwgd2l0aG91dCB0aGUgbnN0cl9saXN0IHNsYWIgcmVsZWFzZWQsIGlmIGFu
+eSBvdXRxIGlzIGZvdW5kCj4gPiA+IHRvIGJlIG5vbiBlbXB0eS4KPiA+ID4KPiA+ID4gRnJlZWlu
+ZyB0aGUgc2xhYiBpbiBxdWVzdGlvbiBiZWZvcmUgYmFpbGluZyBvdXQgZml4ZXMgaXQuCj4gPiA+
+Cj4gPiA+IEZpeGVzOiBkNTcwYTU5YzViNWYgKCJzY3RwOiBvbmx5IGFsbG93IHRoZSBvdXQgc3Ry
+ZWFtIHJlc2V0IHdoZW4gdGhlIHN0cmVhbSBvdXRxIGlzIGVtcHR5IikKPiA+ID4gUmVwb3J0ZWQt
+Ynk6IHN5emJvdCA8c3l6Ym90KzZhZDljM2JkMGEyMThhMmFiNDFkQHN5emthbGxlci5hcHBzcG90
+bWFpbC5jb20+Cj4gPiA+IFJlcG9ydGVkLWJ5OiBNYXJjZWxvIFJpY2FyZG8gTGVpdG5lciA8bWFy
+Y2Vsby5sZWl0bmVyQGdtYWlsLmNvbT4KPiA+ID4gVGVzdGVkLWJ5OiBNYXJjZWxvIFJpY2FyZG8g
+TGVpdG5lciA8bWFyY2Vsby5sZWl0bmVyQGdtYWlsLmNvbT4KPiA+ID4gQ2M6IFhpbiBMb25nIDxs
+dWNpZW4ueGluQGdtYWlsLmNvbT4KPiA+ID4gQ2M6IE5laWwgSG9ybWFuIDxuaG9ybWFuQHR1eGRy
+aXZlci5jb20+Cj4gPiA+IENjOiBWbGFkIFlhc2V2aWNoIDx2eWFzZXZpY2hAZ21haWwuY29tPgo+
+ID4gPiBDYzogRXJpYyBEdW1hemV0IDxlZHVtYXpldEBnb29nbGUuY29tPgo+ID4gPiBTaWduZWQt
+b2ZmLWJ5OiBIaWxsZiBEYW50b24gPGhkYW50b25Ac2luYS5jb20+Cj4gPiA+IC0tLQo+ID4gPiBu
+ZXQvc2N0cC9zdHJlYW0uYyB8IDEgKwo+ID4gPiAxIGZpbGUgY2hhbmdlZCwgMSBpbnNlcnRpb24o
+KykKPiA+ID4KPiA+ID4gZGlmZiAtLWdpdCBhL25ldC9zY3RwL3N0cmVhbS5jIGIvbmV0L3NjdHAv
+c3RyZWFtLmMKPiA+ID4gaW5kZXggOTNlZDA3OC4uZDNlMmYwMyAxMDA2NDQKPiA+ID4gLS0tIGEv
+bmV0L3NjdHAvc3RyZWFtLmMKPiA+ID4gKysrIGIvbmV0L3NjdHAvc3RyZWFtLmMKPiA+ID4gQEAg
+LTMxMCw2ICszMTAsNyBAQCBpbnQgc2N0cF9zZW5kX3Jlc2V0X3N0cmVhbXMoc3RydWN0IHNjdHBf
+YXNzb2NpYXRpb24gKmFzb2MsCj4gPiA+Cj4gPiA+ICAgICAgIGlmIChvdXQgJiYgIXNjdHBfc3Ry
+ZWFtX291dHFfaXNfZW1wdHkoc3RyZWFtLCBzdHJfbnVtcywgbnN0cl9saXN0KSkgewo+ID4gPiAg
+ICAgICAgICAgICAgIHJldHZhbCA9IC1FQUdBSU47Cj4gPiA+ICsgICAgICAgICAgICAga2ZyZWUo
+bnN0cl9saXN0KTsKPiA+ID4gICAgICAgICAgICAgICBnb3RvIG91dDsKPiA+ID4gICAgICAgfQo+
+ID4gPgo+ID4gPiAtLQo+ID4gPgo+ID4gPgo+ID4gQWNrZWQtYnk6IE5laWwgSG9ybWFuIDxuaG9y
+bWFuQHR1eGRyaXZlci5jb20+Cj4gUmV2aWV3ZWQtYnk6IFhpbiBMb25nIDxsdWNpZW4ueGluQGdt
+YWlsLmNvbT4KVGhpcyBmaXggaXMgbm90IGFwcGxpZWQsIHBscyByZXNlbmQgaXQgd2l0aDoKdG8g
+PSBuZXR3b3JrIGRldiA8bmV0ZGV2QHZnZXIua2VybmVsLm9yZz4KY2MgPSBkYXZlbUBkYXZlbWxv
+ZnQubmV0CnRvID0gbGludXgtc2N0cEB2Z2VyLmtlcm5lbC5vcmcKY2MgPSBOZWlsIEhvcm1hbiA8
+bmhvcm1hbkB0dXhkcml2ZXIuY29tPgpjYyA9IE1hcmNlbG8gUmljYXJkbyBMZWl0bmVyIDxtYXJj
+ZWxvLmxlaXRuZXJAZ21haWwuY29tPg==
