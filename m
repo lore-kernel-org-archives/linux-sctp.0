@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 24 Jul 2019 19:12:43 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Wed, 24 Jul 2019 20:41:12 +0000
 Subject: Re: [PATCH net-next 1/4] sctp: check addr_size with sa_family_t size in __sctp_setsockopt_connectx
-Message-Id: <20190724191243.GA4063@localhost.localdomain>
+Message-Id: <20190724204112.GE7212@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1563817029.git.lucien.xin@gmail.com>
  <c875aa0a5b2965636dc3da83398856627310b280.1563817029.git.lucien.xin@gmail.com>
@@ -16,7 +16,7 @@ In-Reply-To: <20190724190543.GH6204@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 Cc: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>
 
 On Wed, Jul 24, 2019 at 04:05:43PM -0300, Marcelo Ricardo Leitner wrote:
@@ -113,14 +113,15 @@ On Wed, Jul 24, 2019 at 04:05:43PM -0300, Marcelo Ricardo Leitner wrote:
 > Perhaps a comment helps, something like
 > 	/* Check if we have at least the family type in there */
 > ?
-
-Hm, then this could be
--     if (unlikely(addrs_size <= 0))
-+     if (unlikely(addrs_size < sizeof(struct sockaddr_in)))
-(ipv4)
-As it can't be smaller than that, always.
-
 > 
+Yeah, I'd be ok with something like that, or perhaps:
+
+/* Check if we have at least the family value in buffer, so get_af_specific can
+ * do a proper size check in __sctp_connect
+ */
+
+Neil
+
 >   Marcelo
 > 
 > > 
