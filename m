@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 25 Jul 2019 01:21:15 +0000
+From: Luci Stanescu <luci@cnix.ro>
+Date: Thu, 25 Jul 2019 09:53:28 +0000
 Subject: Re: SCTP recvmsg MSG_TRUNC or something similar
-Message-Id: <20190725012115.GA4064@localhost.localdomain>
+Message-Id: <832157EB-93B2-4B69-AADF-44C251D41A4D@cnix.ro>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <D588EC18-6A7B-4D2B-AB0A-2961A247DC3B@cnix.ro>
 In-Reply-To: <D588EC18-6A7B-4D2B-AB0A-2961A247DC3B@cnix.ro>
@@ -10,46 +10,24 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 To: linux-sctp@vger.kernel.org
 
-On Wed, Jul 24, 2019 at 02:46:09PM +0100, Luci Stanescu wrote:
-> Hi,
+Hi Marcelo,
 
-Hi,
+Many thanks for getting back to me!
 
+> On 25 Jul 2019, at 02:21, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com> wrote:
+>> 
+>> From what I can tell, MSG_TRUNC, which would’ve solved my issue,
+>> isn’t implemented for SCTP. Regarding this topic, I’ve only found
 > 
-> I’m not sure this is the right place to ask this kind of question,
-> but, having not found a better forum, I’m trying my luck. Apologies
+> Agreed, but MSG_TRUNC would cause information loss.
 
-Considering you're programming for Linux, it is. :-)
+In my particular context, of using SCTP as a transport for an internal, “proprietary” protocol, I know how large messages can be and my only intention is to efficiently discard messages which are deemed too large (why these messages would exist within a controlled environment in the first place is beyond the scope of this discussion).
 
-> in advance if this is outside the scope of the mailing list.
-> 
-> That being said, my question is: given a successful return of
-> recvmsg() for a SOCK_SEQPACKET SCTP socket, is there no stateless
-> way to determine if the read data, for which the MSG_EOR flag is
-> set, is the trailing “fragment” of a larger record (either due to
-> partial delivery or an insufficient buffer passed to a prior call to
-> recvmsg() which returned with the MSG_EOR flag cleared), rather than
-> a “full” message?
+Which means that, given a sufficient buffer, and, for the time being, ignoring partial deliveries, I’m comfortable discarding recvmsg() returns which don’t have MSG_EOR set; but I am still stuck with the trailing data and I would need to determine based on previous reads that this is not a complete message – a flag that signifies “start-of-record” would have been brilliant. Or I can simply process them as if they were a complete message and hope they’re not validly formed.
 
-Stateless, I'm not aware of a way.
-We do have SCTP_PARTIAL_DELIVERY_EVENT, though, and RCVINFO. But these
-would require some state to be preserved.
-MSG_PEEK also, but also requires some state.
+> What about using a larger buf?
 
-> 
-> From what I can tell, MSG_TRUNC, which would’ve solved my issue,
-> isn’t implemented for SCTP. Regarding this topic, I’ve only found
+But, how large? :-)
 
-Agreed, but MSG_TRUNC would cause information loss.
-
-What about using a larger buf?
-
-> old discussions, including some suggestions to add SOCK_RDM, which
-> never materialised.
-> 
-> Many thanks for your time!
-> 
-> Luci
-
-Regards,
-Marcelo
+Cheers,
+Luci
