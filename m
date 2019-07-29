@@ -1,157 +1,98 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 26 Jul 2019 09:11:50 +0000
-Subject: Re: [PATCH net-next 1/4] sctp: check addr_size with sa_family_t size in __sctp_setsockopt_connectx
-Message-Id: <CADvbK_c6+BYzgXJGM069TF1AnA476swEJ60LQZiF5SQAKUN6GQ@mail.gmail.com>
+From: Qian Cai <cai@lca.pw>
+Date: Mon, 29 Jul 2019 20:23:58 +0000
+Subject: [PATCH] net/socket: fix GCC8+ Wpacked-not-aligned warnings
+Message-Id: <1564431838-23051-1-git-send-email-cai@lca.pw>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1563817029.git.lucien.xin@gmail.com> <c875aa0a5b2965636dc3da83398856627310b280.1563817029.git.lucien.xin@gmail.com>
- <20190723152449.GB8419@localhost.localdomain> <CADvbK_eiS26aMZcPrj2oNvZh_42phWiY71M7=UNvjEeB-B9bDQ@mail.gmail.com>
- <20190724112235.GA7212@hmswarspite.think-freely.org> <20190724123650.GD6204@localhost.localdomain>
- <20190724124907.GA8640@localhost.localdomain> <20190724184456.GC7212@hmswarspite.think-freely.org>
- <20190724190543.GH6204@localhost.localdomain> <20190724191243.GA4063@localhost.localdomain>
- <20190724204332.GF7212@hmswarspite.think-freely.org>
-In-Reply-To: <20190724204332.GF7212@hmswarspite.think-freely.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>
+To: davem@davemloft.net
+Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, Qian Cai <cai@lca.pw>
 
-On Thu, Jul 25, 2019 at 4:44 AM Neil Horman <nhorman@tuxdriver.com> wrote:
->
-> On Wed, Jul 24, 2019 at 04:12:43PM -0300, Marcelo Ricardo Leitner wrote:
-> > On Wed, Jul 24, 2019 at 04:05:43PM -0300, Marcelo Ricardo Leitner wrote:
-> > > On Wed, Jul 24, 2019 at 02:44:56PM -0400, Neil Horman wrote:
-> > > > On Wed, Jul 24, 2019 at 09:49:07AM -0300, Marcelo Ricardo Leitner wrote:
-> > > > > On Wed, Jul 24, 2019 at 09:36:50AM -0300, Marcelo Ricardo Leitner wrote:
-> > > > > > On Wed, Jul 24, 2019 at 07:22:35AM -0400, Neil Horman wrote:
-> > > > > > > On Wed, Jul 24, 2019 at 03:21:12PM +0800, Xin Long wrote:
-> > > > > > > > On Tue, Jul 23, 2019 at 11:25 PM Neil Horman <nhorman@tuxdriver.com> wrote:
-> > > > > > > > >
-> > > > > > > > > On Tue, Jul 23, 2019 at 01:37:57AM +0800, Xin Long wrote:
-> > > > > > > > > > Now __sctp_connect() is called by __sctp_setsockopt_connectx() and
-> > > > > > > > > > sctp_inet_connect(), the latter has done addr_size check with size
-> > > > > > > > > > of sa_family_t.
-> > > > > > > > > >
-> > > > > > > > > > In the next patch to clean up __sctp_connect(), we will remove
-> > > > > > > > > > addr_size check with size of sa_family_t from __sctp_connect()
-> > > > > > > > > > for the 1st address.
-> > > > > > > > > >
-> > > > > > > > > > So before doing that, __sctp_setsockopt_connectx() should do
-> > > > > > > > > > this check first, as sctp_inet_connect() does.
-> > > > > > > > > >
-> > > > > > > > > > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> > > > > > > > > > ---
-> > > > > > > > > >  net/sctp/socket.c | 2 +-
-> > > > > > > > > >  1 file changed, 1 insertion(+), 1 deletion(-)
-> > > > > > > > > >
-> > > > > > > > > > diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> > > > > > > > > > index aa80cda..5f92e4a 100644
-> > > > > > > > > > --- a/net/sctp/socket.c
-> > > > > > > > > > +++ b/net/sctp/socket.c
-> > > > > > > > > > @@ -1311,7 +1311,7 @@ static int __sctp_setsockopt_connectx(struct sock *sk,
-> > > > > > > > > >       pr_debug("%s: sk:%p addrs:%p addrs_size:%d\n",
-> > > > > > > > > >                __func__, sk, addrs, addrs_size);
-> > > > > > > > > >
-> > > > > > > > > > -     if (unlikely(addrs_size <= 0))
-> > > > > > > > > > +     if (unlikely(addrs_size < sizeof(sa_family_t)))
-> > > > > > > > > I don't think this is what you want to check for here.  sa_family_t is
-> > > > > > > > > an unsigned short, and addrs_size is the number of bytes in the addrs
-> > > > > > > > > array.  The addrs array should be at least the size of one struct
-> > > > > > > > > sockaddr (16 bytes iirc), and, if larger, should be a multiple of
-> > > > > > > > > sizeof(struct sockaddr)
-> > > > > > > > sizeof(struct sockaddr) is not the right value to check either.
-> > > > > > > >
-> > > > > > > > The proper check will be done later in __sctp_connect():
-> > > > > > > >
-> > > > > > > >         af = sctp_get_af_specific(daddr->sa.sa_family);
-> > > > > > > >         if (!af || af->sockaddr_len > addrs_size)
-> > > > > > > >                 return -EINVAL;
-> > > > > > > >
-> > > > > > > > So the check 'addrs_size < sizeof(sa_family_t)' in this patch is
-> > > > > > > > just to make sure daddr->sa.sa_family is accessible. the same
-> > > > > > > > check is also done in sctp_inet_connect().
-> > > > > > > >
-> > > > > > > That doesn't make much sense, if the proper check is done in __sctp_connect with
-> > > > > > > the size of the families sockaddr_len, then we don't need this check at all, we
-> > > > > > > can just let memdup_user take the fault on copy_to_user and return -EFAULT.  If
-> > > > > > > we get that from memdup_user, we know its not accessible, and can bail out.
-> > > > > > >
-> > > > > > > About the only thing we need to check for here is that addr_len isn't some
-> > > > > > > absurdly high value (i.e. a negative value), so that we avoid trying to kmalloc
-> > > > > > > upwards of 2G in memdup_user.  Your change does that just fine, but its no
-> > > > > > > better or worse than checking for <=0
-> > > > > >
-> > > > > > One can argue that such check against absurdly high values is random
-> > > > > > and not effective, as 2G can be somewhat reasonable on 8GB systems but
-> > > > > > certainly isn't on 512MB ones. On that, kmemdup_user() will also fail
-> > > > > > gracefully as it uses GFP_USER and __GFP_NOWARN.
-> > > > > >
-> > > > > > The original check is more for protecting for sane usage of the
-> > > > > > variable, which is an int, and a negative value is questionable. We
-> > > > > > could cast, yes, but.. was that really the intent of the application?
-> > > > > > Probably not.
-> > > > >
-> > > > > Though that said, I'm okay with the new check here: a quick sanity
-> > > > > check that can avoid expensive calls to kmalloc(), while more refined
-> > > > > check is done later on.
-> > > > >
-> > > > I agree a sanity check makes sense, just to avoid allocating a huge value
-> > > > (even 2G is absurd on many systems), however, I'm not super comfortable with
-> > > > checking for the value being less than 16 (sizeof(sa_family_t)).  The zero check
-> > >
-> > > 16 bits you mean then, per
-> > > include/uapi/linux/socket.h
-> > > typedef unsigned short __kernel_sa_family_t;
-> > > include/linux/socket.h
-> > > typedef __kernel_sa_family_t    sa_family_t;
-> > >
-> > > > is fairly obvious given the signed nature of the lengh field, this check makes
-> > > > me wonder what exactly we are checking for.
-> > >
-> > > A minimum viable buffer without doing more extensive tests. Beyond
-> > > sa_family, we need to parse sa_family and then that's left for later.
-> > > Perhaps a comment helps, something like
-> > >     /* Check if we have at least the family type in there */
-> > > ?
-> >
-> > Hm, then this could be
-> > -     if (unlikely(addrs_size <= 0))
-> > +     if (unlikely(addrs_size < sizeof(struct sockaddr_in)))
-> > (ipv4)
-> > As it can't be smaller than that, always.
-> >
-> True, but I think perhaps just the family type size check is more correct, as
-> thats the minimal information we need to get the proper sockaddr_len out of
-> sctp_get_af_specific.
-Okay, I will keep the check "addrs_size < sizeof(sa_family_t)" in this
-patch and remove the useless variables in patch 2/4 when sending v2.
+In file included from ./include/linux/sctp.h:42,
+                 from net/core/skbuff.c:47:
+./include/uapi/linux/sctp.h:395:1: warning: alignment 4 of 'struct
+sctp_paddr_change' is less than 8 [-Wpacked-not-aligned]
+ } __attribute__((packed, aligned(4)));
+ ^
+./include/uapi/linux/sctp.h:728:1: warning: alignment 4 of 'struct
+sctp_setpeerprim' is less than 8 [-Wpacked-not-aligned]
+ } __attribute__((packed, aligned(4)));
+ ^
+./include/uapi/linux/sctp.h:727:26: warning: 'sspp_addr' offset 4 in
+'struct sctp_setpeerprim' isn't aligned to 8 [-Wpacked-not-aligned]
+  struct sockaddr_storage sspp_addr;
+                          ^~~~~~~~~
+./include/uapi/linux/sctp.h:741:1: warning: alignment 4 of 'struct
+sctp_prim' is less than 8 [-Wpacked-not-aligned]
+ } __attribute__((packed, aligned(4)));
+ ^
+./include/uapi/linux/sctp.h:740:26: warning: 'ssp_addr' offset 4 in
+'struct sctp_prim' isn't aligned to 8 [-Wpacked-not-aligned]
+  struct sockaddr_storage ssp_addr;
+                          ^~~~~~~~
+./include/uapi/linux/sctp.h:792:1: warning: alignment 4 of 'struct
+sctp_paddrparams' is less than 8 [-Wpacked-not-aligned]
+ } __attribute__((packed, aligned(4)));
+ ^
+./include/uapi/linux/sctp.h:784:26: warning: 'spp_address' offset 4 in
+'struct sctp_paddrparams' isn't aligned to 8 [-Wpacked-not-aligned]
+  struct sockaddr_storage spp_address;
+                          ^~~~~~~~~~~
+./include/uapi/linux/sctp.h:905:1: warning: alignment 4 of 'struct
+sctp_paddrinfo' is less than 8 [-Wpacked-not-aligned]
+ } __attribute__((packed, aligned(4)));
+ ^
+./include/uapi/linux/sctp.h:899:26: warning: 'spinfo_address' offset 4
+in 'struct sctp_paddrinfo' isn't aligned to 8 [-Wpacked-not-aligned]
+  struct sockaddr_storage spinfo_address;
+                          ^~~~~~~~~~~~~~
 
-Thanks.
+This is because the commit 20c9c825b12f ("[SCTP] Fix SCTP socket options
+to work with 32-bit apps on 64-bit kernels.") added "packed, aligned(4)"
+GCC attributes to some structures but one of the members, i.e, "struct
+sockaddr_storage" in those structures has the attribute,
+"aligned(__alignof__ (struct sockaddr *)" which is 8-byte on 64-bit
+systems, so the commit overwrites the designed alignments for
+"sockaddr_storage".
 
->
-> Neil
->
-> > >
-> > >   Marcelo
-> > >
-> > > >
-> > > > Neil
-> > > >
-> > > > > >
-> > > > > > >
-> > > > > > > Neil
-> > > > > > >
-> > > > > > > > >
-> > > > > > > > > Neil
-> > > > > > > > >
-> > > > > > > > > >               return -EINVAL;
-> > > > > > > > > >
-> > > > > > > > > >       kaddrs = memdup_user(addrs, addrs_size);
-> > > > > > > > > > --
-> > > > > > > > > > 2.1.0
-> > > > > > > > > >
-> > > > > > > > > >
-> > > > > > > >
-> > > > >
-> > >
-> >
+To fix this, "struct sockaddr_storage" needs to be aligned to 4-byte as
+it is only used in those packed sctp structure which is part of UAPI,
+and "struct __kernel_sockaddr_storage" is used in some other
+places of UAPI that need not to change alignments in order to not
+breaking userspace.
+
+One option is use typedef between "sockaddr_storage" and
+"__kernel_sockaddr_storage" but it needs to change 35 or 370 lines of
+codes. The other option is to duplicate this simple 2-field structure to
+have a separate "struct sockaddr_storage" so it can use a different
+alignment than "__kernel_sockaddr_storage". Also the structure seems
+stable enough, so it will be low-maintenance to update two structures in
+the future in case of changes.
+
+Signed-off-by: Qian Cai <cai@lca.pw>
+---
+ include/linux/socket.h | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/include/linux/socket.h b/include/linux/socket.h
+index 97523818cb14..301119657125 100644
+--- a/include/linux/socket.h
++++ b/include/linux/socket.h
+@@ -38,7 +38,13 @@ struct linger {
+ 	int		l_linger;	/* How long to linger for	*/
+ };
+ 
+-#define sockaddr_storage __kernel_sockaddr_storage
++struct sockaddr_storage {
++	__kernel_sa_family_t	ss_family;		/* address family */
++	/* Following field(s) are implementation specific */
++	char		__data[_K_SS_MAXSIZE - sizeof(unsigned short)];
++				/* space to achieve desired size, */
++				/* _SS_MAXSIZE value minus size of ss_family */
++} __aligned(4);			/* force desired alignment */
+ 
+ /*
+  *	As we do 4.4BSD message passing we use a 4.4BSD message passing
+-- 
+1.8.3.1
