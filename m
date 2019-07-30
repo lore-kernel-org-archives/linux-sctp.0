@@ -1,54 +1,49 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Tue, 30 Jul 2019 13:23:14 +0000
-Subject: RE: [PATCH] net/socket: fix GCC8+ Wpacked-not-aligned warnings
-Message-Id: <a4b03ad38f104bc0b2f9e256a9cade00@AcuMS.aculab.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 30 Jul 2019 12:38:19 +0000
+Subject: [PATCHv2 net-next 1/5] sctp: only copy the available addr data in sctp_transport_init
+Message-Id: <bb6e9856c2db0f24b91fb326fbe3c9c013f2459b.1564490276.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1564431838-23051-1-git-send-email-cai@lca.pw>
-         <91237fd501de4ab895305c4d5666d822@AcuMS.aculab.com>
- <1564492704.11067.28.camel@lca.pw>
-In-Reply-To: <1564492704.11067.28.camel@lca.pw>
+References: <cover.1564490276.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1564490276.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Qian Cai' <cai@lca.pw>, "davem@davemloft.net" <davem@davemloft.net>
-Cc: "vyasevich@gmail.com" <vyasevich@gmail.com>, "nhorman@tuxdriver.com" <nhorman@tuxdriver.com>, "marcelo.leitner@gmail.com" <marcelo.leitner@gmail.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-RnJvbTogUWlhbiBDYWkgDQo+IFNlbnQ6IDMwIEp1bHkgMjAxOSAxNDoxOA0KPiBPbiBUdWUsIDIw
-MTktMDctMzAgYXQgMDk6MDEgKzAwMDAsIERhdmlkIExhaWdodCB3cm90ZToNCj4gPiBGcm9tOiBR
-aWFuIENhaQ0KPiA+ID4gU2VudDogMjkgSnVseSAyMDE5IDIxOjI0DQo+ID4NCj4gPiAuLg0KPiA+
-ID4gVG8gZml4IHRoaXMsICJzdHJ1Y3Qgc29ja2FkZHJfc3RvcmFnZSIgbmVlZHMgdG8gYmUgYWxp
-Z25lZCB0byA0LWJ5dGUgYXMNCj4gPiA+IGl0IGlzIG9ubHkgdXNlZCBpbiB0aG9zZSBwYWNrZWQg
-c2N0cCBzdHJ1Y3R1cmUgd2hpY2ggaXMgcGFydCBvZiBVQVBJLA0KPiA+ID4gYW5kICJzdHJ1Y3Qg
-X19rZXJuZWxfc29ja2FkZHJfc3RvcmFnZSIgaXMgdXNlZCBpbiBzb21lIG90aGVyDQo+ID4gPiBw
-bGFjZXMgb2YgVUFQSSB0aGF0IG5lZWQgbm90IHRvIGNoYW5nZSBhbGlnbm1lbnRzIGluIG9yZGVy
-IHRvIG5vdA0KPiA+ID4gYnJlYWtpbmcgdXNlcnNwYWNlLg0KPiA+ID4NCj4gPiA+IE9uZSBvcHRp
-b24gaXMgdXNlIHR5cGVkZWYgYmV0d2VlbiAic29ja2FkZHJfc3RvcmFnZSIgYW5kDQo+ID4gPiAi
-X19rZXJuZWxfc29ja2FkZHJfc3RvcmFnZSIgYnV0IGl0IG5lZWRzIHRvIGNoYW5nZSAzNSBvciAz
-NzAgbGluZXMgb2YNCj4gPiA+IGNvZGVzLiBUaGUgb3RoZXIgb3B0aW9uIGlzIHRvIGR1cGxpY2F0
-ZSB0aGlzIHNpbXBsZSAyLWZpZWxkIHN0cnVjdHVyZSB0bw0KPiA+ID4gaGF2ZSBhIHNlcGFyYXRl
-ICJzdHJ1Y3Qgc29ja2FkZHJfc3RvcmFnZSIgc28gaXQgY2FuIHVzZSBhIGRpZmZlcmVudA0KPiA+
-ID4gYWxpZ25tZW50IHRoYW4gIl9fa2VybmVsX3NvY2thZGRyX3N0b3JhZ2UiLiBBbHNvIHRoZSBz
-dHJ1Y3R1cmUgc2VlbXMNCj4gPiA+IHN0YWJsZSBlbm91Z2gsIHNvIGl0IHdpbGwgYmUgbG93LW1h
-aW50ZW5hbmNlIHRvIHVwZGF0ZSB0d28gc3RydWN0dXJlcyBpbg0KPiA+ID4gdGhlIGZ1dHVyZSBp
-biBjYXNlIG9mIGNoYW5nZXMuDQo+ID4NCj4gPiBEb2VzIGl0IGFsbCB3b3JrIGlmIHRoZSA4IGJ5
-dGUgYWxpZ25tZW50IGlzIGltcGxpY2l0LCBub3QgZXhwbGljaXQ/DQo+ID4gRm9yIGluc3RhbmNl
-IGlmIHVubmFtZWQgdW5pb24gYW5kIHN0cnVjdCBhcmUgdXNlZCBlZzoNCj4gPg0KPiA+IHN0cnVj
-dCBzb2NrYWRkcl9zdG9yYWdlIHsNCj4gPiAJdW5pb24gew0KPiA+IAkJdm9pZCAqIF9fcHRyO8Kg
-wqAvKiBGb3JjZSBhbGlnbm1lbnQgKi8NCj4gPiAJCXN0cnVjdCB7DQo+ID4gCQkJX19rZXJuZWxf
-c2FfZmFtaWx5X3QJc3NfZmFtaWx5OwkJLyogYWRkcmVzcyBmYW1pbHkgKi8NCj4gPiAJCQkvKiBG
-b2xsb3dpbmcgZmllbGQocykgYXJlIGltcGxlbWVudGF0aW9uIHNwZWNpZmljICovDQo+ID4gCQkJ
-Y2hhcglfX2RhdGFbX0tfU1NfTUFYU0laRSAtIHNpemVvZih1bnNpZ25lZCBzaG9ydCldOw0KPiA+
-IAkJCQkJLyogc3BhY2UgdG8gYWNoaWV2ZSBkZXNpcmVkIHNpemUsICovDQo+ID4gCQkJCQkvKiBf
-U1NfTUFYU0laRSB2YWx1ZSBtaW51cyBzaXplIG9mIHNzX2ZhbWlseSAqLw0KPiA+IAkJfTsNCj4g
-PiAJfTsNCj4gPiB9Ow0KPiA+DQo+ID4gSSBzdXNwZWN0IHVubmFtZWQgdW5pb25zIGFuZCBzdHJ1
-Y3RzIGhhdmUgdG8gYmUgYWxsb3dlZCBieSB0aGUgY29tcGlsZXIuDQo+IA0KPiBJIGJlbGlldmUg
-dGhpcyB3aWxsIHN1ZmZlciB0aGUgc2FtZSBwcm9ibGVtIGluIHRoYXQgd2lsbCBicmVhayBVQVBJ
-LA0KPiANCj4gaHR0cHM6Ly9sb3JlLmtlcm5lbC5vcmcvbGttbC8yMDE5MDcyNjIxMzA0NS5HTDYy
-MDRAbG9jYWxob3N0LmxvY2FsZG9tYWluLw0KDQpZb3UgYXJlIG1pc3NpbmcgdGhlIGJpdCB3aGVy
-ZSB0aGUgVUFQSSBzdHJ1Y3R1cmUgaXMgcGFja2VkLg0KSWYgdGhlIGNvbXBpbGVyIHdvbid0IGxl
-dCB5b3UgJ3BhY2snIGEgc3RydWN0dXJlIHRoYXQgY29udGFpbnMgc3RydWN0dXJlcw0KKHJhdGhl
-ciB0aGFuIGp1c3QgaW50ZWdlcnMpIHRoZW4gdGhlIGNvbXBpbGVyIGlzIGJyb2tlbiENCg0KVGhl
-IGhvcGUgaGVyZSB3YXMgdGhhdCBpdCB3b3VsZCBiZSBvayBpcyB0aGUgYWxpZ25tZW50IHdhcyBp
-bXBsaWNpdCBub3QgZXhwbGljaXQuDQoNCglEYXZpZA0KDQotDQpSZWdpc3RlcmVkIEFkZHJlc3Mg
-TGFrZXNpZGUsIEJyYW1sZXkgUm9hZCwgTW91bnQgRmFybSwgTWlsdG9uIEtleW5lcywgTUsxIDFQ
-VCwgVUsNClJlZ2lzdHJhdGlvbiBObzogMTM5NzM4NiAoV2FsZXMpDQo
+'addr' passed to sctp_transport_init is not always a whole size
+of union sctp_addr, like the path:
+
+  sctp_sendmsg() ->
+  sctp_sendmsg_new_asoc() ->
+  sctp_assoc_add_peer() ->
+  sctp_transport_new() -> sctp_transport_init()
+
+In the next patches, we will also pass the address length of data
+only to sctp_assoc_add_peer().
+
+So sctp_transport_init() should copy the only available data from
+addr to peer->ipaddr, instead of 'peer->ipaddr = *addr' which may
+cause slab-out-of-bounds.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/transport.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index e2f8e36..7235a60 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -43,8 +43,8 @@ static struct sctp_transport *sctp_transport_init(struct net *net,
+ 						  gfp_t gfp)
+ {
+ 	/* Copy in the address.  */
+-	peer->ipaddr = *addr;
+ 	peer->af_specific = sctp_get_af_specific(addr->sa.sa_family);
++	memcpy(&peer->ipaddr, addr, peer->af_specific->sockaddr_len);
+ 	memset(&peer->saddr, 0, sizeof(union sctp_addr));
+ 
+ 	peer->sack_generation = 0;
+-- 
+2.1.0
