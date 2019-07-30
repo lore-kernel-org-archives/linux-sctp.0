@@ -1,57 +1,54 @@
-From: Qian Cai <cai@lca.pw>
-Date: Tue, 30 Jul 2019 13:18:24 +0000
-Subject: Re: [PATCH] net/socket: fix GCC8+ Wpacked-not-aligned warnings
-Message-Id: <1564492704.11067.28.camel@lca.pw>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Tue, 30 Jul 2019 13:23:14 +0000
+Subject: RE: [PATCH] net/socket: fix GCC8+ Wpacked-not-aligned warnings
+Message-Id: <a4b03ad38f104bc0b2f9e256a9cade00@AcuMS.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1564431838-23051-1-git-send-email-cai@lca.pw>
          <91237fd501de4ab895305c4d5666d822@AcuMS.aculab.com>
-In-Reply-To: <91237fd501de4ab895305c4d5666d822@AcuMS.aculab.com>
+ <1564492704.11067.28.camel@lca.pw>
+In-Reply-To: <1564492704.11067.28.camel@lca.pw>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: David Laight <David.Laight@ACULAB.COM>, "davem@davemloft.net" <davem@davemloft.net>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: 'Qian Cai' <cai@lca.pw>, "davem@davemloft.net" <davem@davemloft.net>
 Cc: "vyasevich@gmail.com" <vyasevich@gmail.com>, "nhorman@tuxdriver.com" <nhorman@tuxdriver.com>, "marcelo.leitner@gmail.com" <marcelo.leitner@gmail.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 
-On Tue, 2019-07-30 at 09:01 +0000, David Laight wrote:
-> From: Qian Cai
-> > Sent: 29 July 2019 21:24
-> 
-> ..
-> > To fix this, "struct sockaddr_storage" needs to be aligned to 4-byte as
-> > it is only used in those packed sctp structure which is part of UAPI,
-> > and "struct __kernel_sockaddr_storage" is used in some other
-> > places of UAPI that need not to change alignments in order to not
-> > breaking userspace.
-> > 
-> > One option is use typedef between "sockaddr_storage" and
-> > "__kernel_sockaddr_storage" but it needs to change 35 or 370 lines of
-> > codes. The other option is to duplicate this simple 2-field structure to
-> > have a separate "struct sockaddr_storage" so it can use a different
-> > alignment than "__kernel_sockaddr_storage". Also the structure seems
-> > stable enough, so it will be low-maintenance to update two structures in
-> > the future in case of changes.
-> 
-> Does it all work if the 8 byte alignment is implicit, not explicit?
-> For instance if unnamed union and struct are used eg:
-> 
-> struct sockaddr_storage {
-> 	union {
-> 		void * __ptr;  /* Force alignment */
-> 		struct {
-> 			__kernel_sa_family_t	ss_family;		/*
-> address family */
-> 			/* Following field(s) are implementation specific */
-> 			char	__data[_K_SS_MAXSIZE - sizeof(unsigned
-> short)];
-> 					/* space to achieve desired size, */
-> 					/* _SS_MAXSIZE value minus size of
-> ss_family */
-> 		};
-> 	};
-> };
-> 
-> I suspect unnamed unions and structs have to be allowed by the compiler.
-
-I believe this will suffer the same problem in that will break UAPI,
-
-https://lore.kernel.org/lkml/20190726213045.GL6204@localhost.localdomain/
+RnJvbTogUWlhbiBDYWkgDQo+IFNlbnQ6IDMwIEp1bHkgMjAxOSAxNDoxOA0KPiBPbiBUdWUsIDIw
+MTktMDctMzAgYXQgMDk6MDEgKzAwMDAsIERhdmlkIExhaWdodCB3cm90ZToNCj4gPiBGcm9tOiBR
+aWFuIENhaQ0KPiA+ID4gU2VudDogMjkgSnVseSAyMDE5IDIxOjI0DQo+ID4NCj4gPiAuLg0KPiA+
+ID4gVG8gZml4IHRoaXMsICJzdHJ1Y3Qgc29ja2FkZHJfc3RvcmFnZSIgbmVlZHMgdG8gYmUgYWxp
+Z25lZCB0byA0LWJ5dGUgYXMNCj4gPiA+IGl0IGlzIG9ubHkgdXNlZCBpbiB0aG9zZSBwYWNrZWQg
+c2N0cCBzdHJ1Y3R1cmUgd2hpY2ggaXMgcGFydCBvZiBVQVBJLA0KPiA+ID4gYW5kICJzdHJ1Y3Qg
+X19rZXJuZWxfc29ja2FkZHJfc3RvcmFnZSIgaXMgdXNlZCBpbiBzb21lIG90aGVyDQo+ID4gPiBw
+bGFjZXMgb2YgVUFQSSB0aGF0IG5lZWQgbm90IHRvIGNoYW5nZSBhbGlnbm1lbnRzIGluIG9yZGVy
+IHRvIG5vdA0KPiA+ID4gYnJlYWtpbmcgdXNlcnNwYWNlLg0KPiA+ID4NCj4gPiA+IE9uZSBvcHRp
+b24gaXMgdXNlIHR5cGVkZWYgYmV0d2VlbiAic29ja2FkZHJfc3RvcmFnZSIgYW5kDQo+ID4gPiAi
+X19rZXJuZWxfc29ja2FkZHJfc3RvcmFnZSIgYnV0IGl0IG5lZWRzIHRvIGNoYW5nZSAzNSBvciAz
+NzAgbGluZXMgb2YNCj4gPiA+IGNvZGVzLiBUaGUgb3RoZXIgb3B0aW9uIGlzIHRvIGR1cGxpY2F0
+ZSB0aGlzIHNpbXBsZSAyLWZpZWxkIHN0cnVjdHVyZSB0bw0KPiA+ID4gaGF2ZSBhIHNlcGFyYXRl
+ICJzdHJ1Y3Qgc29ja2FkZHJfc3RvcmFnZSIgc28gaXQgY2FuIHVzZSBhIGRpZmZlcmVudA0KPiA+
+ID4gYWxpZ25tZW50IHRoYW4gIl9fa2VybmVsX3NvY2thZGRyX3N0b3JhZ2UiLiBBbHNvIHRoZSBz
+dHJ1Y3R1cmUgc2VlbXMNCj4gPiA+IHN0YWJsZSBlbm91Z2gsIHNvIGl0IHdpbGwgYmUgbG93LW1h
+aW50ZW5hbmNlIHRvIHVwZGF0ZSB0d28gc3RydWN0dXJlcyBpbg0KPiA+ID4gdGhlIGZ1dHVyZSBp
+biBjYXNlIG9mIGNoYW5nZXMuDQo+ID4NCj4gPiBEb2VzIGl0IGFsbCB3b3JrIGlmIHRoZSA4IGJ5
+dGUgYWxpZ25tZW50IGlzIGltcGxpY2l0LCBub3QgZXhwbGljaXQ/DQo+ID4gRm9yIGluc3RhbmNl
+IGlmIHVubmFtZWQgdW5pb24gYW5kIHN0cnVjdCBhcmUgdXNlZCBlZzoNCj4gPg0KPiA+IHN0cnVj
+dCBzb2NrYWRkcl9zdG9yYWdlIHsNCj4gPiAJdW5pb24gew0KPiA+IAkJdm9pZCAqIF9fcHRyO8Kg
+wqAvKiBGb3JjZSBhbGlnbm1lbnQgKi8NCj4gPiAJCXN0cnVjdCB7DQo+ID4gCQkJX19rZXJuZWxf
+c2FfZmFtaWx5X3QJc3NfZmFtaWx5OwkJLyogYWRkcmVzcyBmYW1pbHkgKi8NCj4gPiAJCQkvKiBG
+b2xsb3dpbmcgZmllbGQocykgYXJlIGltcGxlbWVudGF0aW9uIHNwZWNpZmljICovDQo+ID4gCQkJ
+Y2hhcglfX2RhdGFbX0tfU1NfTUFYU0laRSAtIHNpemVvZih1bnNpZ25lZCBzaG9ydCldOw0KPiA+
+IAkJCQkJLyogc3BhY2UgdG8gYWNoaWV2ZSBkZXNpcmVkIHNpemUsICovDQo+ID4gCQkJCQkvKiBf
+U1NfTUFYU0laRSB2YWx1ZSBtaW51cyBzaXplIG9mIHNzX2ZhbWlseSAqLw0KPiA+IAkJfTsNCj4g
+PiAJfTsNCj4gPiB9Ow0KPiA+DQo+ID4gSSBzdXNwZWN0IHVubmFtZWQgdW5pb25zIGFuZCBzdHJ1
+Y3RzIGhhdmUgdG8gYmUgYWxsb3dlZCBieSB0aGUgY29tcGlsZXIuDQo+IA0KPiBJIGJlbGlldmUg
+dGhpcyB3aWxsIHN1ZmZlciB0aGUgc2FtZSBwcm9ibGVtIGluIHRoYXQgd2lsbCBicmVhayBVQVBJ
+LA0KPiANCj4gaHR0cHM6Ly9sb3JlLmtlcm5lbC5vcmcvbGttbC8yMDE5MDcyNjIxMzA0NS5HTDYy
+MDRAbG9jYWxob3N0LmxvY2FsZG9tYWluLw0KDQpZb3UgYXJlIG1pc3NpbmcgdGhlIGJpdCB3aGVy
+ZSB0aGUgVUFQSSBzdHJ1Y3R1cmUgaXMgcGFja2VkLg0KSWYgdGhlIGNvbXBpbGVyIHdvbid0IGxl
+dCB5b3UgJ3BhY2snIGEgc3RydWN0dXJlIHRoYXQgY29udGFpbnMgc3RydWN0dXJlcw0KKHJhdGhl
+ciB0aGFuIGp1c3QgaW50ZWdlcnMpIHRoZW4gdGhlIGNvbXBpbGVyIGlzIGJyb2tlbiENCg0KVGhl
+IGhvcGUgaGVyZSB3YXMgdGhhdCBpdCB3b3VsZCBiZSBvayBpcyB0aGUgYWxpZ25tZW50IHdhcyBp
+bXBsaWNpdCBub3QgZXhwbGljaXQuDQoNCglEYXZpZA0KDQotDQpSZWdpc3RlcmVkIEFkZHJlc3Mg
+TGFrZXNpZGUsIEJyYW1sZXkgUm9hZCwgTW91bnQgRmFybSwgTWlsdG9uIEtleW5lcywgTUsxIDFQ
+VCwgVUsNClJlZ2lzdHJhdGlvbiBObzogMTM5NzM4NiAoV2FsZXMpDQo
