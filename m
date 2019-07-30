@@ -1,82 +1,59 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 30 Jul 2019 14:45:49 +0000
-Subject: Re: [PATCH v2] net/socket: fix GCC8+ Wpacked-not-aligned warnings
-Message-Id: <20190730144549.GP6204@localhost.localdomain>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Tue, 30 Jul 2019 14:59:12 +0000
+Subject: RE: [PATCH v2] net/socket: fix GCC8+ Wpacked-not-aligned warnings
+Message-Id: <69c6beab2d734ed88ce31a6381f85420@AcuMS.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1564497488-3030-1-git-send-email-cai@lca.pw>
 In-Reply-To: <1564497488-3030-1-git-send-email-cai@lca.pw>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Qian Cai <cai@lca.pw>
-Cc: davem@davemloft.net, vyasevich@gmail.com, nhorman@tuxdriver.com, David.Laight@aculab.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: 'Qian Cai' <cai@lca.pw>, "davem@davemloft.net" <davem@davemloft.net>
+Cc: "vyasevich@gmail.com" <vyasevich@gmail.com>, "nhorman@tuxdriver.com" <nhorman@tuxdriver.com>, "marcelo.leitner@gmail.com" <marcelo.leitner@gmail.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 
-On Tue, Jul 30, 2019 at 10:38:08AM -0400, Qian Cai wrote:
-> In file included from ./include/linux/sctp.h:42,
->                  from net/core/skbuff.c:47:
-> ./include/uapi/linux/sctp.h:395:1: warning: alignment 4 of 'struct
-> sctp_paddr_change' is less than 8 [-Wpacked-not-aligned]
->  } __attribute__((packed, aligned(4)));
->  ^
-> ./include/uapi/linux/sctp.h:728:1: warning: alignment 4 of 'struct
-> sctp_setpeerprim' is less than 8 [-Wpacked-not-aligned]
->  } __attribute__((packed, aligned(4)));
->  ^
-> ./include/uapi/linux/sctp.h:727:26: warning: 'sspp_addr' offset 4 in
-> 'struct sctp_setpeerprim' isn't aligned to 8 [-Wpacked-not-aligned]
->   struct sockaddr_storage sspp_addr;
->                           ^~~~~~~~~
-> ./include/uapi/linux/sctp.h:741:1: warning: alignment 4 of 'struct
-> sctp_prim' is less than 8 [-Wpacked-not-aligned]
->  } __attribute__((packed, aligned(4)));
->  ^
-> ./include/uapi/linux/sctp.h:740:26: warning: 'ssp_addr' offset 4 in
-> 'struct sctp_prim' isn't aligned to 8 [-Wpacked-not-aligned]
->   struct sockaddr_storage ssp_addr;
->                           ^~~~~~~~
-> ./include/uapi/linux/sctp.h:792:1: warning: alignment 4 of 'struct
-> sctp_paddrparams' is less than 8 [-Wpacked-not-aligned]
->  } __attribute__((packed, aligned(4)));
->  ^
-> ./include/uapi/linux/sctp.h:784:26: warning: 'spp_address' offset 4 in
-> 'struct sctp_paddrparams' isn't aligned to 8 [-Wpacked-not-aligned]
->   struct sockaddr_storage spp_address;
->                           ^~~~~~~~~~~
-> ./include/uapi/linux/sctp.h:905:1: warning: alignment 4 of 'struct
-> sctp_paddrinfo' is less than 8 [-Wpacked-not-aligned]
->  } __attribute__((packed, aligned(4)));
->  ^
-> ./include/uapi/linux/sctp.h:899:26: warning: 'spinfo_address' offset 4
-> in 'struct sctp_paddrinfo' isn't aligned to 8 [-Wpacked-not-aligned]
->   struct sockaddr_storage spinfo_address;
->                           ^~~~~~~~~~~~~~
-> 
-> This is because the commit 20c9c825b12f ("[SCTP] Fix SCTP socket options
-> to work with 32-bit apps on 64-bit kernels.") added "packed, aligned(4)"
-> GCC attributes to some structures but one of the members, i.e, "struct
-> sockaddr_storage" in those structures has the attribute,
-> "aligned(__alignof__ (struct sockaddr *)" which is 8-byte on 64-bit
-> systems, so the commit overwrites the designed alignments for
-> "sockaddr_storage".
-> 
-> To fix this, "struct sockaddr_storage" needs to be aligned to 4-byte as
-> it is only used in those packed sctp structure which is part of UAPI,
-> and "struct __kernel_sockaddr_storage" is used in some other
-> places of UAPI that need not to change alignments in order to not
-> breaking userspace.
-> 
+From: Qian Cai
+> Sent: 30 July 2019 15:38
+...
 > Use an implicit alignment for "struct __kernel_sockaddr_storage" so it
 > can keep the same alignments as a member in both packed and un-packed
 > structures without breaking UAPI.
 > 
 > Suggested-by: David Laight <David.Laight@ACULAB.COM>
-> Signed-off-by: Qian Cai <cai@lca.pw>
-> ---
-> 
-> v2: Use an implicit alignment for "struct __kernel_sockaddr_storage".
-> 
->  include/uapi/linux/socket.h | 15 +++++++++------
->  1 file changed, 9 insertions(+), 6 deletions(-)
-> 
+...
 
-SCTP-wise, LGTM.
+Although I suggested it needs a bit of tidy up.
+
+Add a comment maybe:
+
+/* The definition uses anonymous union and struct in order to
+ * control the default alignment. */
+
+>  struct __kernel_sockaddr_storage {
+> -	__kernel_sa_family_t	ss_family;		/* address family */
+> -	/* Following field(s) are implementation specific */
+> -	char		__data[_K_SS_MAXSIZE - sizeof(unsigned short)];
+> +	union {
+> +		void *__align; /* implementation specific desired alignment */
+
+Move the 'void *' below the struct so the first member is the 'public one.
+
+> +		struct {
+> +			__kernel_sa_family_t	ss_family; /* address family */
+> +			/* Following field(s) are implementation specific */
+> +			char __data[_K_SS_MAXSIZE - sizeof(unsigned short)];
+>  				/* space to achieve desired size, */
+>  				/* _SS_MAXSIZE value minus size of ss_family */
+> -} __attribute__ ((aligned(_K_SS_ALIGNSIZE)));	/* force desired alignment */
+> +			};
+> +		};
+> +};
+> 
+>  #endif /* _UAPI_LINUX_SOCKET_H */
+> --
+> 1.8.3.1
+
+	David
+
+-
+Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
+Registration No: 1397386 (Wales)
