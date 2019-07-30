@@ -1,110 +1,151 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 08 Jul 2019 16:57:07 +0000
-Subject: [PATCH net-next 4/4] sctp: rename sp strm_interleave to ep intl_enable
-Message-Id: <9143b75d086dbec5aed55e4ba49d90c781f45c9a.1562604972.git.lucien.xin@gmail.com>
+Date: Tue, 30 Jul 2019 12:38:23 +0000
+Subject: [PATCHv2 net-next 5/5] sctp: factor out sctp_connect_add_peer
+Message-Id: <9c1d65ebe29d85fc50a9bb285797a4449e6dd3a6.1564490276.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1562604972.git.lucien.xin@gmail.com>
- <988dac46cfecb6ae4fa21e40bf16da6faf3da6ab.1562604972.git.lucien.xin@gmail.com>
- <40a905e7b9733c7bdca74af31ab86586fbb91cd0.1562604972.git.lucien.xin@gmail.com>
- <acc7f14e1ddd65d0515074c030c63fd339261b46.1562604972.git.lucien.xin@gmail.com>
-In-Reply-To: <acc7f14e1ddd65d0515074c030c63fd339261b46.1562604972.git.lucien.xin@gmail.com>
+References: <cover.1564490276.git.lucien.xin@gmail.com>
+ <bb6e9856c2db0f24b91fb326fbe3c9c013f2459b.1564490276.git.lucien.xin@gmail.com>
+ <2fe592e724eee4e9b00097485a5bccf317907874.1564490276.git.lucien.xin@gmail.com>
+ <9995f1c75cd5a555fc22ba2ab374890ad1cee470.1564490276.git.lucien.xin@gmail.com>
+ <64a624d23fe947a7bd4fe1d66ddb8719e791c284.1564490276.git.lucien.xin@gmail.com>
+In-Reply-To: <64a624d23fe947a7bd4fe1d66ddb8719e791c284.1564490276.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-Like other endpoint features, strm_interleave should be moved to
-sctp_endpoint and renamed to intl_enable.
+In this function factored out from sctp_sendmsg_new_asoc() and
+__sctp_connect(), it adds a peer with the other addr into the
+asoc after this asoc is created with the 1st addr.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/structs.h | 2 +-
- net/sctp/sm_make_chunk.c   | 4 ++--
- net/sctp/socket.c          | 8 ++++----
- 3 files changed, 7 insertions(+), 7 deletions(-)
+ net/sctp/socket.c | 76 +++++++++++++++++++++++--------------------------------
+ 1 file changed, 31 insertions(+), 45 deletions(-)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index c41b57b..ba5c4f6 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -219,7 +219,6 @@ struct sctp_sock {
- 		disable_fragments:1,
- 		v4mapped:1,
- 		frag_interleave:1,
--		strm_interleave:1,
- 		recvrcvinfo:1,
- 		recvnxtinfo:1,
- 		data_ready_signalled:1;
-@@ -1324,6 +1323,7 @@ struct sctp_endpoint {
- 	struct list_head endpoint_shared_keys;
- 	__u16 active_key_id;
- 	__u8  auth_enable:1,
-+	      intl_enable:1,
- 	      prsctp_enable:1,
- 	      reconf_enable:1;
- 
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 31ab2c6..ed39396 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -269,7 +269,7 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
- 	if (sp->adaptation_ind)
- 		chunksize += sizeof(aiparam);
- 
--	if (sp->strm_interleave) {
-+	if (asoc->ep->intl_enable) {
- 		extensions[num_ext] = SCTP_CID_I_DATA;
- 		num_ext += 1;
- 	}
-@@ -2027,7 +2027,7 @@ static void sctp_process_ext_param(struct sctp_association *asoc,
- 				asoc->peer.asconf_capable = 1;
- 			break;
- 		case SCTP_CID_I_DATA:
--			if (sctp_sk(asoc->base.sk)->strm_interleave)
-+			if (asoc->ep->intl_enable)
- 				asoc->peer.intl_capable = 1;
- 			break;
- 		default:
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index b679b61..0fc5b90 100644
+index 6f77853..2f7e88c 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -1913,7 +1913,7 @@ static int sctp_sendmsg_to_asoc(struct sctp_association *asoc,
+@@ -1111,6 +1111,33 @@ static int sctp_connect_new_asoc(struct sctp_endpoint *ep,
+ 	return err;
+ }
+ 
++static int sctp_connect_add_peer(struct sctp_association *asoc,
++				 union sctp_addr *daddr, int addr_len)
++{
++	struct sctp_endpoint *ep = asoc->ep;
++	struct sctp_association *old;
++	struct sctp_transport *t;
++	int err;
++
++	err = sctp_verify_addr(ep->base.sk, daddr, addr_len);
++	if (err)
++		return err;
++
++	old = sctp_endpoint_lookup_assoc(ep, daddr, &t);
++	if (old && old != asoc)
++		return old->state >= SCTP_STATE_ESTABLISHED ? -EISCONN
++							    : -EALREADY;
++
++	if (sctp_endpoint_is_peeled_off(ep, daddr))
++		return -EADDRNOTAVAIL;
++
++	t = sctp_assoc_add_peer(asoc, daddr, GFP_KERNEL, SCTP_UNKNOWN);
++	if (!t)
++		return -ENOMEM;
++
++	return 0;
++}
++
+ /* __sctp_connect(struct sock* sk, struct sockaddr *kaddrs, int addrs_size)
+  *
+  * Common routine for handling connect() and sctp_connectx().
+@@ -1119,10 +1146,10 @@ static int sctp_connect_new_asoc(struct sctp_endpoint *ep,
+ static int __sctp_connect(struct sock *sk, struct sockaddr *kaddrs,
+ 			  int addrs_size, int flags, sctp_assoc_t *assoc_id)
+ {
+-	struct sctp_association *old, *asoc;
+ 	struct sctp_sock *sp = sctp_sk(sk);
+ 	struct sctp_endpoint *ep = sp->ep;
+ 	struct sctp_transport *transport;
++	struct sctp_association *asoc;
+ 	void *addr_buf = kaddrs;
+ 	union sctp_addr *daddr;
+ 	struct sctp_af *af;
+@@ -1167,29 +1194,10 @@ static int __sctp_connect(struct sock *sk, struct sockaddr *kaddrs,
+ 		if (asoc->peer.port != ntohs(daddr->v4.sin_port))
+ 			goto out_free;
+ 
+-		err = sctp_verify_addr(sk, daddr, af->sockaddr_len);
++		err = sctp_connect_add_peer(asoc, daddr, af->sockaddr_len);
  		if (err)
- 			goto err;
+ 			goto out_free;
  
--		if (sp->strm_interleave) {
-+		if (asoc->ep->intl_enable) {
- 			timeo = sock_sndtimeo(sk, 0);
- 			err = sctp_wait_for_connect(asoc, &timeo);
- 			if (err) {
-@@ -3581,7 +3581,7 @@ static int sctp_setsockopt_fragment_interleave(struct sock *sk,
- 	sctp_sk(sk)->frag_interleave = !!val;
+-		old = sctp_endpoint_lookup_assoc(ep, daddr, &transport);
+-		if (old && old != asoc) {
+-			err = old->state >= SCTP_STATE_ESTABLISHED ? -EISCONN
+-								   : -EALREADY;
+-			goto out_free;
+-		}
+-
+-		if (sctp_endpoint_is_peeled_off(ep, daddr)) {
+-			err = -EADDRNOTAVAIL;
+-			goto out_free;
+-		}
+-
+-		transport = sctp_assoc_add_peer(asoc, daddr, GFP_KERNEL,
+-						SCTP_UNKNOWN);
+-		if (!transport) {
+-			err = -ENOMEM;
+-			goto out_free;
+-		}
+-
+ 		addr_buf  += af->sockaddr_len;
+ 		walk_size += af->sockaddr_len;
+ 	}
+@@ -1683,8 +1691,6 @@ static int sctp_sendmsg_new_asoc(struct sock *sk, __u16 sflags,
  
- 	if (!sctp_sk(sk)->frag_interleave)
--		sctp_sk(sk)->strm_interleave = 0;
-+		sctp_sk(sk)->ep->intl_enable = 0;
+ 	/* sendv addr list parse */
+ 	for_each_cmsghdr(cmsg, cmsgs->addrs_msg) {
+-		struct sctp_transport *transport;
+-		struct sctp_association *old;
+ 		union sctp_addr _daddr;
+ 		int dlen;
+ 
+@@ -1718,30 +1724,10 @@ static int sctp_sendmsg_new_asoc(struct sock *sk, __u16 sflags,
+ 			daddr->v6.sin6_port = htons(asoc->peer.port);
+ 			memcpy(&daddr->v6.sin6_addr, CMSG_DATA(cmsg), dlen);
+ 		}
+-		err = sctp_verify_addr(sk, daddr, sizeof(*daddr));
+-		if (err)
+-			goto free;
+-
+-		old = sctp_endpoint_lookup_assoc(ep, daddr, &transport);
+-		if (old && old != asoc) {
+-			if (old->state >= SCTP_STATE_ESTABLISHED)
+-				err = -EISCONN;
+-			else
+-				err = -EALREADY;
+-			goto free;
+-		}
+ 
+-		if (sctp_endpoint_is_peeled_off(ep, daddr)) {
+-			err = -EADDRNOTAVAIL;
+-			goto free;
+-		}
+-
+-		transport = sctp_assoc_add_peer(asoc, daddr, GFP_KERNEL,
+-						SCTP_UNKNOWN);
+-		if (!transport) {
+-			err = -ENOMEM;
++		err = sctp_connect_add_peer(asoc, daddr, sizeof(*daddr));
++		if (err)
+ 			goto free;
+-		}
+ 	}
  
  	return 0;
- }
-@@ -4484,7 +4484,7 @@ static int sctp_setsockopt_interleaving_supported(struct sock *sk,
- 		goto out;
- 	}
- 
--	sp->strm_interleave = !!params.assoc_value;
-+	sp->ep->intl_enable = !!params.assoc_value;
- 
- 	retval = 0;
- 
-@@ -7711,7 +7711,7 @@ static int sctp_getsockopt_interleaving_supported(struct sock *sk, int len,
- 	}
- 
- 	params.assoc_value = asoc ? asoc->peer.intl_capable
--				  : sctp_sk(sk)->strm_interleave;
-+				  : sctp_sk(sk)->ep->intl_enable;
- 
- 	if (put_user(len, optlen))
- 		goto out;
 -- 
 2.1.0
