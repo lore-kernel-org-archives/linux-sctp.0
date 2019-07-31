@@ -1,60 +1,75 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 30 Jul 2019 19:24:11 +0000
-Subject: Re: [PATCHv2 net-next 1/5] sctp: only copy the available addr data in sctp_transport_init
-Message-Id: <20190730192411.GR6204@localhost.localdomain>
+From: Joe Perches <joe@perches.com>
+Date: Wed, 31 Jul 2019 05:04:37 +0000
+Subject: [PATCH] net: sctp: Rename fallthrough label to unhandled
+Message-Id: <e0dd3af448e38e342c1ac6e7c0c802696eb77fd6.1564549413.git.joe@perches.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1564490276.git.lucien.xin@gmail.com>
- <bb6e9856c2db0f24b91fb326fbe3c9c013f2459b.1564490276.git.lucien.xin@gmail.com>
-In-Reply-To: <bb6e9856c2db0f24b91fb326fbe3c9c013f2459b.1564490276.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On Tue, Jul 30, 2019 at 08:38:19PM +0800, Xin Long wrote:
-> 'addr' passed to sctp_transport_init is not always a whole size
-> of union sctp_addr, like the path:
-> 
->   sctp_sendmsg() ->
->   sctp_sendmsg_new_asoc() ->
->   sctp_assoc_add_peer() ->
->   sctp_transport_new() -> sctp_transport_init()
-> 
-> In the next patches, we will also pass the address length of data
-> only to sctp_assoc_add_peer().
-> 
-> So sctp_transport_init() should copy the only available data from
-> addr to peer->ipaddr, instead of 'peer->ipaddr = *addr' which may
-> cause slab-out-of-bounds.
-> 
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> ---
->  net/sctp/transport.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-> index e2f8e36..7235a60 100644
-> --- a/net/sctp/transport.c
-> +++ b/net/sctp/transport.c
-> @@ -43,8 +43,8 @@ static struct sctp_transport *sctp_transport_init(struct net *net,
->  						  gfp_t gfp)
->  {
->  	/* Copy in the address.  */
-> -	peer->ipaddr = *addr;
->  	peer->af_specific = sctp_get_af_specific(addr->sa.sa_family);
-> +	memcpy(&peer->ipaddr, addr, peer->af_specific->sockaddr_len);
+fallthrough may become a pseudo reserved keyword so this only use of
+fallthrough is better renamed to allow it.
 
-Just for the record, transports are allocated with kzalloc() and this
-shouldn't result in any remaining bytes of this buffer to be
-uninitialized.
+Signed-off-by: Joe Perches <joe@perches.com>
+---
+ net/sctp/sm_make_chunk.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-That said, unrelated to the patch, memset below and other =0's are not
-necessary.
-
->  	memset(&peer->saddr, 0, sizeof(union sctp_addr));
->  
->  	peer->sack_generation = 0;
-> -- 
-> 2.1.0
-> 
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 36bd8a6e82df..3fdcaa2fbf12 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2152,7 +2152,7 @@ static enum sctp_ierror sctp_verify_param(struct net *net,
+ 	case SCTP_PARAM_SET_PRIMARY:
+ 		if (net->sctp.addip_enable)
+ 			break;
+-		goto fallthrough;
++		goto unhandled;
+ 
+ 	case SCTP_PARAM_HOST_NAME_ADDRESS:
+ 		/* Tell the peer, we won't support this param.  */
+@@ -2163,11 +2163,11 @@ static enum sctp_ierror sctp_verify_param(struct net *net,
+ 	case SCTP_PARAM_FWD_TSN_SUPPORT:
+ 		if (ep->prsctp_enable)
+ 			break;
+-		goto fallthrough;
++		goto unhandled;
+ 
+ 	case SCTP_PARAM_RANDOM:
+ 		if (!ep->auth_enable)
+-			goto fallthrough;
++			goto unhandled;
+ 
+ 		/* SCTP-AUTH: Secion 6.1
+ 		 * If the random number is not 32 byte long the association
+@@ -2184,7 +2184,7 @@ static enum sctp_ierror sctp_verify_param(struct net *net,
+ 
+ 	case SCTP_PARAM_CHUNKS:
+ 		if (!ep->auth_enable)
+-			goto fallthrough;
++			goto unhandled;
+ 
+ 		/* SCTP-AUTH: Section 3.2
+ 		 * The CHUNKS parameter MUST be included once in the INIT or
+@@ -2200,7 +2200,7 @@ static enum sctp_ierror sctp_verify_param(struct net *net,
+ 
+ 	case SCTP_PARAM_HMAC_ALGO:
+ 		if (!ep->auth_enable)
+-			goto fallthrough;
++			goto unhandled;
+ 
+ 		hmacs = (struct sctp_hmac_algo_param *)param.p;
+ 		n_elt = (ntohs(param.p->length) -
+@@ -2223,7 +2223,7 @@ static enum sctp_ierror sctp_verify_param(struct net *net,
+ 			retval = SCTP_IERROR_ABORT;
+ 		}
+ 		break;
+-fallthrough:
++unhandled:
+ 	default:
+ 		pr_debug("%s: unrecognized param:%d for chunk:%d\n",
+ 			 __func__, ntohs(param.p->type), cid);
+-- 
+2.15.0
