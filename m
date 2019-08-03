@@ -1,7 +1,7 @@
 From: Joe Perches <joe@perches.com>
-Date: Fri, 02 Aug 2019 23:26:44 +0000
+Date: Sat, 03 Aug 2019 18:01:22 +0000
 Subject: Re: [PATCH] net: sctp: Rename fallthrough label to unhandled
-Message-Id: <120880ae17b399cb5239522d8c229c717aaa81a5.camel@perches.com>
+Message-Id: <8ea7002f65305ed82d2f09ea18cb237ee7e3a7a4.camel@perches.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <eac3fe457d553a2b366e1c1898d47ae8c048087c.camel@perches.com>
          <20190731121646.GD9823@hmswarspite.think-freely.org>
@@ -32,8 +32,9 @@ On Fri, 2019-08-02 at 16:19 -0700, David Miller wrote:
 > rediculous the problems it creates to pollute the global namespace like
 > that and yes also inconsistent with other shorthands for builtins.
 
-Please add that to the conversation on the RFC thread.
-https://lore.kernel.org/patchwork/patch/1108577/
+Rejected?
 
-In any case, fallthrough is not really a good label
-name for this use.
+I think that's inappropriate.
+
+As coded, it's nothing like a fallthrough and
+the rename to unhandled is more descriptive.
