@@ -1,64 +1,40 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 19 Aug 2019 15:19:09 +0000
-Subject: Re: [PATCH net-next 4/8] sctp: add SCTP_ASCONF_SUPPORTED sockopt
-Message-Id: <CADvbK_c3Tv=O4D18w1N-8j_KXjQ-kVwKK0k2u8OPtpQhGoY7MQ@mail.gmail.com>
+Date: Mon, 12 Aug 2019 12:49:12 +0000
+Subject: [PATCH net] sctp: fix the transport error_count check
+Message-Id: <55b2fe3e5123958ccd7983e0892bc604aa717132.1565614152.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1566223325.git.lucien.xin@gmail.com> <f4fbfa28a7fd2ed85f0fc66ddcbd4249e6e7b487.1566223325.git.lucien.xin@gmail.com>
- <20190819145843.GE2870@localhost.localdomain>
-In-Reply-To: <20190819145843.GE2870@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem <davem@davemloft.net>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Mon, Aug 19, 2019 at 10:58 PM Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
->
-> On Mon, Aug 19, 2019 at 10:02:46PM +0800, Xin Long wrote:
-> > +static int sctp_setsockopt_asconf_supported(struct sock *sk,
-> > +                                         char __user *optval,
-> > +                                         unsigned int optlen)
-> > +{
-> > +     struct sctp_assoc_value params;
-> > +     struct sctp_association *asoc;
-> > +     struct sctp_endpoint *ep;
-> > +     int retval = -EINVAL;
-> > +
-> > +     if (optlen != sizeof(params))
-> > +             goto out;
-> > +
-> > +     if (copy_from_user(&params, optval, optlen)) {
-> > +             retval = -EFAULT;
-> > +             goto out;
-> > +     }
-> > +
-> > +     asoc = sctp_id2assoc(sk, params.assoc_id);
-> > +     if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
-> > +         sctp_style(sk, UDP))
-> > +             goto out;
-> > +
-> > +     ep = sctp_sk(sk)->ep;
-> > +     ep->asconf_enable = !!params.assoc_value;
->
-> Considering this will be negotiated on handshake, shouldn't it deny
-> changes to Established asocs? (Same for Auth)
-ep->asconf_enable is for 'furture' asocs, and furture
-asoc->peer.asconf_capable will be negotiated according to
-peer ep->asconf_enable (EXT chunk) and local ep->asconf_enable.
+As the annotation says in sctp_do_8_2_transport_strike():
 
-It won't affect the 'current'/Established asocs, and the Established
-asocs have asoc->peer.asconf_capable, which can't be changed by sockopt.
+  "If the transport error count is greater than the pf_retrans
+   threshold, and less than pathmaxrtx ..."
 
->
-> > +
-> > +     if (ep->asconf_enable && ep->auth_enable) {
-> > +             sctp_auth_ep_add_chunkid(ep, SCTP_CID_ASCONF);
-> > +             sctp_auth_ep_add_chunkid(ep, SCTP_CID_ASCONF_ACK);
-> > +     }
-> > +
-> > +     retval = 0;
-> > +
-> > +out:
-> > +     return retval;
-> > +}
+It should be transport->error_count checked with pathmaxrxt,
+instead of asoc->pf_retrans.
+
+Fixes: 5aa93bcf66f4 ("sctp: Implement quick failover draft from tsvwg")
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/sm_sideeffect.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index a554d6d..1cf5bb5 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -546,7 +546,7 @@ static void sctp_do_8_2_transport_strike(struct sctp_cmd_seq *commands,
+ 	 */
+ 	if (net->sctp.pf_enable &&
+ 	   (transport->state = SCTP_ACTIVE) &&
+-	   (asoc->pf_retrans < transport->pathmaxrxt) &&
++	   (transport->error_count < transport->pathmaxrxt) &&
+ 	   (transport->error_count > asoc->pf_retrans)) {
+ 
+ 		sctp_assoc_control_transport(asoc, transport,
+-- 
+2.1.0
