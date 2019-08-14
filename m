@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 13 Aug 2019 16:29:58 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Wed, 14 Aug 2019 00:10:37 +0000
 Subject: Re: [PATCH] sctp: fix memleak in sctp_send_reset_streams
-Message-Id: <20190813162958.GB2870@localhost.localdomain>
+Message-Id: <20190814001037.GB11098@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1565705150-17242-1-git-send-email-zhengbin13@huawei.com>
 In-Reply-To: <1565705150-17242-1-git-send-email-zhengbin13@huawei.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: zhengbin <zhengbin13@huawei.com>
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, yi.zhang@huawei.com
+Cc: vyasevich@gmail.com, marcelo.leitner@gmail.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, yi.zhang@huawei.com
 
 On Tue, Aug 13, 2019 at 10:05:50PM +0800, zhengbin wrote:
 > If the stream outq is not empty, need to kfree nstr_list.
@@ -17,9 +17,6 @@ On Tue, Aug 13, 2019 at 10:05:50PM +0800, zhengbin wrote:
 > Fixes: d570a59c5b5f ("sctp: only allow the out stream reset when the stream outq is empty")
 > Reported-by: Hulk Robot <hulkci@huawei.com>
 > Signed-off-by: zhengbin <zhengbin13@huawei.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > ---
 >  net/sctp/stream.c | 1 +
 >  1 file changed, 1 insertion(+)
@@ -39,3 +36,5 @@ Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > --
 > 2.7.4
 > 
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
