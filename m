@@ -1,49 +1,34 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 13 Aug 2019 16:27:34 +0000
+From: Jakub Kicinski <jakub.kicinski@netronome.com>
+Date: Wed, 14 Aug 2019 02:22:32 +0000
 Subject: Re: [PATCH net] sctp: fix the transport error_count check
-Message-Id: <20190813162734.GA2870@localhost.localdomain>
+Message-Id: <20190813192232.02f49f1f@cakuba.netronome.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <55b2fe3e5123958ccd7983e0892bc604aa717132.1565614152.git.lucien.xin@gmail.com>
-In-Reply-To: <55b2fe3e5123958ccd7983e0892bc604aa717132.1565614152.git.lucien.xin@gmail.com>
+        <20190813162734.GA2870@localhost.localdomain>
+In-Reply-To: <20190813162734.GA2870@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
 
-On Mon, Aug 12, 2019 at 08:49:12PM +0800, Xin Long wrote:
-> As the annotation says in sctp_do_8_2_transport_strike():
+On Tue, 13 Aug 2019 13:27:34 -0300, Marcelo Ricardo Leitner wrote:
+> On Mon, Aug 12, 2019 at 08:49:12PM +0800, Xin Long wrote:
+> > As the annotation says in sctp_do_8_2_transport_strike():
+> > 
+> >   "If the transport error count is greater than the pf_retrans
+> >    threshold, and less than pathmaxrtx ..."
+> > 
+> > It should be transport->error_count checked with pathmaxrxt,
+> > instead of asoc->pf_retrans.
+> > 
+> > Fixes: 5aa93bcf66f4 ("sctp: Implement quick failover draft from tsvwg")
+> > Signed-off-by: Xin Long <lucien.xin@gmail.com>  
 > 
->   "If the transport error count is greater than the pf_retrans
->    threshold, and less than pathmaxrtx ..."
-> 
-> It should be transport->error_count checked with pathmaxrxt,
-> instead of asoc->pf_retrans.
-> 
-> Fixes: 5aa93bcf66f4 ("sctp: Implement quick failover draft from tsvwg")
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+> Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Applied.
 
-Dave, please consider this one for stable. Thanks.
+> Dave, please consider this one for stable. Thanks.
 
-> ---
->  net/sctp/sm_sideeffect.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-> index a554d6d..1cf5bb5 100644
-> --- a/net/sctp/sm_sideeffect.c
-> +++ b/net/sctp/sm_sideeffect.c
-> @@ -546,7 +546,7 @@ static void sctp_do_8_2_transport_strike(struct sctp_cmd_seq *commands,
->  	 */
->  	if (net->sctp.pf_enable &&
->  	   (transport->state = SCTP_ACTIVE) &&
-> -	   (asoc->pf_retrans < transport->pathmaxrxt) &&
-> +	   (transport->error_count < transport->pathmaxrxt) &&
->  	   (transport->error_count > asoc->pf_retrans)) {
->  
->  		sctp_assoc_control_transport(asoc, transport,
-> -- 
-> 2.1.0
-> 
+Ack.
