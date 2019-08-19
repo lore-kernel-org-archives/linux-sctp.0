@@ -1,53 +1,80 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 19 Aug 2019 14:02:44 +0000
-Subject: [PATCH net-next 2/8] sctp: not set peer.asconf_capable in sctp_association_init
-Message-Id: <04b2de14df6de243e9faacc3a3de091adff45d52.1566223325.git.lucien.xin@gmail.com>
+Date: Mon, 19 Aug 2019 14:02:50 +0000
+Subject: [PATCH net-next 8/8] sctp: remove net sctp.x_enable working as a global switch
+Message-Id: <37fe4fef4061a07a201684eef6377c9a2d5641e4.1566223325.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1566223325.git.lucien.xin@gmail.com>
  <4c4682aab70fc11be7a505b11939dd998b9b21f5.1566223325.git.lucien.xin@gmail.com>
-In-Reply-To: <4c4682aab70fc11be7a505b11939dd998b9b21f5.1566223325.git.lucien.xin@gmail.com>
+ <04b2de14df6de243e9faacc3a3de091adff45d52.1566223325.git.lucien.xin@gmail.com>
+ <b868cd2896190a99a8553d0cfd372e72f3dbb1b7.1566223325.git.lucien.xin@gmail.com>
+ <f4fbfa28a7fd2ed85f0fc66ddcbd4249e6e7b487.1566223325.git.lucien.xin@gmail.com>
+ <db032735abcb20ea14637fa610b9f95fa2710abb.1566223325.git.lucien.xin@gmail.com>
+ <a2e37d8eb5b502e747eca1951e21c3d249bacf06.1566223325.git.lucien.xin@gmail.com>
+ <b45828d4f886e9d1e92a8b68c1932af9ff80b562.1566223325.git.lucien.xin@gmail.com>
+In-Reply-To: <b45828d4f886e9d1e92a8b68c1932af9ff80b562.1566223325.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-asoc->peer.asconf_capable is to be set during handshake, and its
-value should be initialized to 0. net->sctp.addip_noauth will be
-checked in sctp_process_init when processing INIT_ACK on client
-and COOKIE_ECHO on server.
+The netns sctp feature flags shouldn't work as a global switch,
+which is mostly like a firewall/netfilter's job. Also, it will
+break asoc as it discard or accept chunks incorrectly when net
+sctp.x_enable is changed after the asoc is created.
+
+Since each type of chunk's processing function will check the
+corresp asoc's feature flag, this 'global switch' should be
+removed, and net sctp.x_enable will only work as the default
+feature flags for the future sctp sockets/endpoints.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/sctp/associola.c | 9 ---------
- 1 file changed, 9 deletions(-)
+ net/sctp/sm_statetable.c | 28 ++++++++++++----------------
+ 1 file changed, 12 insertions(+), 16 deletions(-)
 
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index 5010cce..d2ffc9a 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -54,7 +54,6 @@ static struct sctp_association *sctp_association_init(
- 					const struct sock *sk,
- 					enum sctp_scope scope, gfp_t gfp)
- {
--	struct net *net = sock_net(sk);
- 	struct sctp_sock *sp;
- 	struct sctp_paramhdr *p;
- 	int i;
-@@ -214,14 +213,6 @@ static struct sctp_association *sctp_association_init(
- 	asoc->peer.sack_needed = 1;
- 	asoc->peer.sack_generation = 1;
+diff --git a/net/sctp/sm_statetable.c b/net/sctp/sm_statetable.c
+index 61ed9c6..88ea87f 100644
+--- a/net/sctp/sm_statetable.c
++++ b/net/sctp/sm_statetable.c
+@@ -976,26 +976,22 @@ static const struct sctp_sm_table_entry *sctp_chunk_event_lookup(
+ 	if (cid <= SCTP_CID_BASE_MAX)
+ 		return &chunk_event_table[cid][state];
  
--	/* Assume that the peer will tell us if he recognizes ASCONF
--	 * as part of INIT exchange.
--	 * The sctp_addip_noauth option is there for backward compatibility
--	 * and will revert old behavior.
--	 */
--	if (net->sctp.addip_noauth)
--		asoc->peer.asconf_capable = 1;
--
- 	/* Create an input queue.  */
- 	sctp_inq_init(&asoc->base.inqueue);
- 	sctp_inq_set_th_handler(&asoc->base.inqueue, sctp_assoc_bh_rcv);
+-	if (net->sctp.prsctp_enable) {
+-		if (cid = SCTP_CID_FWD_TSN || cid = SCTP_CID_I_FWD_TSN)
+-			return &prsctp_chunk_event_table[0][state];
+-	}
++	switch ((u16)cid) {
++	case SCTP_CID_FWD_TSN:
++	case SCTP_CID_I_FWD_TSN:
++		return &prsctp_chunk_event_table[0][state];
+ 
+-	if (net->sctp.addip_enable) {
+-		if (cid = SCTP_CID_ASCONF)
+-			return &addip_chunk_event_table[0][state];
++	case SCTP_CID_ASCONF:
++		return &addip_chunk_event_table[0][state];
+ 
+-		if (cid = SCTP_CID_ASCONF_ACK)
+-			return &addip_chunk_event_table[1][state];
+-	}
++	case SCTP_CID_ASCONF_ACK:
++		return &addip_chunk_event_table[1][state];
+ 
+-	if (net->sctp.reconf_enable)
+-		if (cid = SCTP_CID_RECONF)
+-			return &reconf_chunk_event_table[0][state];
++	case SCTP_CID_RECONF:
++		return &reconf_chunk_event_table[0][state];
+ 
+-	if (net->sctp.auth_enable) {
+-		if (cid = SCTP_CID_AUTH)
+-			return &auth_chunk_event_table[0][state];
++	case SCTP_CID_AUTH:
++		return &auth_chunk_event_table[0][state];
+ 	}
+ 
+ 	return &chunk_event_table_unknown[state];
 -- 
 2.1.0
