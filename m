@@ -1,126 +1,53 @@
-From: syzbot <syzbot+4a0643a653ac375612d1@syzkaller.appspotmail.com>
-Date: Thu, 22 Aug 2019 14:53:05 +0000
-Subject: general protection fault in sctp_inq_pop
-Message-Id: <000000000000df5c7f0590b5d85d@google.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 19 Aug 2019 14:02:44 +0000
+Subject: [PATCH net-next 2/8] sctp: not set peer.asconf_capable in sctp_association_init
+Message-Id: <04b2de14df6de243e9faacc3a3de091adff45d52.1566223325.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1566223325.git.lucien.xin@gmail.com>
+ <4c4682aab70fc11be7a505b11939dd998b9b21f5.1566223325.git.lucien.xin@gmail.com>
+In-Reply-To: <4c4682aab70fc11be7a505b11939dd998b9b21f5.1566223325.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-Hello,
+asoc->peer.asconf_capable is to be set during handshake, and its
+value should be initialized to 0. net->sctp.addip_noauth will be
+checked in sctp_process_init when processing INIT_ACK on client
+and COOKIE_ECHO on server.
 
-syzbot found the following crash on:
-
-HEAD commit:    20e79a0a net: hns: add phy_attached_info() to the hns driver
-git tree:       net-next
-console output: https://syzkaller.appspot.com/x/log.txt?x=10d6dfba600000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=CE5e88233f2f83b0
-dashboard link: https://syzkaller.appspot.com/bug?extidJ0643a653ac375612d1
-compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
-
-Unfortunately, I don't have any reproducer for this crash yet.
-
-IMPORTANT: if you fix the bug, please add the following tag to the commit:
-Reported-by: syzbot+4a0643a653ac375612d1@syzkaller.appspotmail.com
-
-kasan: CONFIG_KASAN_INLINE enabled
-kasan: GPF could be caused by NULL-ptr deref or user memory access
-general protection fault: 0000 [#1] PREEMPT SMP KASAN
-CPU: 0 PID: 15509 Comm: syz-executor.1 Not tainted 5.3.0-rc3+ #139
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS =20
-Google 01/01/2011
-RIP: 0010:sctp_inq_pop+0x294/0xd80 net/sctp/inqueue.c:201
-Code: 89 f9 48 c1 e9 03 80 3c 01 00 0f 85 e3 08 00 00 49 8d 7d 02 4d 89 6c =
-=20
-24 60 48 b8 00 00 00 00 00 fc ff df 48 89 f9 48 c1 e9 03 <0f> b6 0c 01 48  =
-
-89 f8 83 e0 07 83 c0 01 38 c8 7c 08 84 c9 0f 85 4b
-RSP: 0018:ffff888097d9ee40 EFLAGS: 00010202
-RAX: dffffc0000000000 RBX: ffff8880968405d8 RCX: 0000000000000001
-RDX: 0000000000005803 RSI: ffffffff86b236aa RDI: 000000000000000a
-RBP: ffff888097d9ee90 R08: ffff88808fd44240 R09: fffffbfff14a914f
-R10: fffffbfff14a914e R11: ffffffff8a548a77 R12: ffff888096840580
-R13: 0000000000000008 R14: 0000000000000000 R15: ffff888097d9f478
-FS:  00007f59f27b8700(0000) GS:ffff8880ae800000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007f40b77fd000 CR3: 0000000063e8e000 CR4: 00000000001406f0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
-Call Trace:
-  sctp_endpoint_bh_rcv+0x184/0x8d0 net/sctp/endpointola.c:385
-  sctp_inq_push+0x1e4/0x280 net/sctp/inqueue.c:80
-  sctp_rcv+0x2807/0x3590 net/sctp/input.c:256
-  sctp6_rcv+0x17/0x30 net/sctp/ipv6.c:1049
-  ip6_protocol_deliver_rcu+0x2fe/0x1660 net/ipv6/ip6_input.c:397
-  ip6_input_finish+0x84/0x170 net/ipv6/ip6_input.c:438
-  NF_HOOK include/linux/netfilter.h:305 [inline]
-  NF_HOOK include/linux/netfilter.h:299 [inline]
-  ip6_input+0xe4/0x3f0 net/ipv6/ip6_input.c:447
-  dst_input include/net/dst.h:442 [inline]
-  ip6_sublist_rcv_finish+0x98/0x1e0 net/ipv6/ip6_input.c:84
-  ip6_list_rcv_finish net/ipv6/ip6_input.c:118 [inline]
-  ip6_sublist_rcv+0x80c/0xcf0 net/ipv6/ip6_input.c:282
-  ipv6_list_rcv+0x373/0x4b0 net/ipv6/ip6_input.c:316
-  __netif_receive_skb_list_ptype net/core/dev.c:5049 [inline]
-  __netif_receive_skb_list_core+0x1a2/0x9d0 net/core/dev.c:5087
-  __netif_receive_skb_list net/core/dev.c:5149 [inline]
-  netif_receive_skb_list_internal+0x7eb/0xe60 net/core/dev.c:5244
-  gro_normal_list.part.0+0x1e/0xb0 net/core/dev.c:5757
-  gro_normal_list net/core/dev.c:5755 [inline]
-  gro_normal_one net/core/dev.c:5769 [inline]
-  napi_frags_finish net/core/dev.c:5782 [inline]
-  napi_gro_frags+0xa6a/0xea0 net/core/dev.c:5855
-  tun_get_user+0x2e98/0x3fa0 drivers/net/tun.c:1974
-  tun_chr_write_iter+0xbd/0x156 drivers/net/tun.c:2020
-  call_write_iter include/linux/fs.h:1870 [inline]
-  do_iter_readv_writev+0x5f8/0x8f0 fs/read_write.c:693
-  do_iter_write fs/read_write.c:970 [inline]
-  do_iter_write+0x184/0x610 fs/read_write.c:951
-  vfs_writev+0x1b3/0x2f0 fs/read_write.c:1015
-  do_writev+0x15b/0x330 fs/read_write.c:1058
-  __do_sys_writev fs/read_write.c:1131 [inline]
-  __se_sys_writev fs/read_write.c:1128 [inline]
-  __x64_sys_writev+0x75/0xb0 fs/read_write.c:1128
-  do_syscall_64+0xfd/0x6a0 arch/x86/entry/common.c:296
-  entry_SYSCALL_64_after_hwframe+0x49/0xbe
-RIP: 0033:0x4596e1
-Code: 75 14 b8 14 00 00 00 0f 05 48 3d 01 f0 ff ff 0f 83 34 b9 fb ff c3 48 =
-=20
-83 ec 08 e8 fa 2c 00 00 48 89 04 24 b8 14 00 00 00 0f 05 <48> 8b 3c 24 48  =
-
-89 c2 e8 43 2d 00 00 48 89 d0 48 83 c4 08 48 3d 01
-RSP: 002b:00007f59f27b7ba0 EFLAGS: 00000293 ORIG_RAX: 0000000000000014
-RAX: ffffffffffffffda RBX: 000000000000010c RCX: 00000000004596e1
-RDX: 0000000000000001 RSI: 00007f59f27b7c00 RDI: 00000000000000f0
-RBP: 000000000075bf20 R08: 0000000000000000 R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000293 R12: 00007f59f27b86d4
-R13: 00000000004c8783 R14: 00000000004df5a0 R15: 00000000ffffffff
-Modules linked in:
----[ end trace 4d09ea96a0c7705b ]---
-RIP: 0010:sctp_inq_pop+0x294/0xd80 net/sctp/inqueue.c:201
-Code: 89 f9 48 c1 e9 03 80 3c 01 00 0f 85 e3 08 00 00 49 8d 7d 02 4d 89 6c =
-=20
-24 60 48 b8 00 00 00 00 00 fc ff df 48 89 f9 48 c1 e9 03 <0f> b6 0c 01 48  =
-
-89 f8 83 e0 07 83 c0 01 38 c8 7c 08 84 c9 0f 85 4b
-RSP: 0018:ffff888097d9ee40 EFLAGS: 00010202
-RAX: dffffc0000000000 RBX: ffff8880968405d8 RCX: 0000000000000001
-RDX: 0000000000005803 RSI: ffffffff86b236aa RDI: 000000000000000a
-RBP: ffff888097d9ee90 R08: ffff88808fd44240 R09: fffffbfff14a914f
-R10: fffffbfff14a914e R11: ffffffff8a548a77 R12: ffff888096840580
-R13: 0000000000000008 R14: 0000000000000000 R15: ffff888097d9f478
-FS:  00007f59f27b8700(0000) GS:ffff8880ae800000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007f40b77fd000 CR3: 0000000063e8e000 CR4: 00000000001406f0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
-
-
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
-This bug is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
+ net/sctp/associola.c | 9 ---------
+ 1 file changed, 9 deletions(-)
 
-syzbot will keep track of this bug report. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index 5010cce..d2ffc9a 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -54,7 +54,6 @@ static struct sctp_association *sctp_association_init(
+ 					const struct sock *sk,
+ 					enum sctp_scope scope, gfp_t gfp)
+ {
+-	struct net *net = sock_net(sk);
+ 	struct sctp_sock *sp;
+ 	struct sctp_paramhdr *p;
+ 	int i;
+@@ -214,14 +213,6 @@ static struct sctp_association *sctp_association_init(
+ 	asoc->peer.sack_needed = 1;
+ 	asoc->peer.sack_generation = 1;
+ 
+-	/* Assume that the peer will tell us if he recognizes ASCONF
+-	 * as part of INIT exchange.
+-	 * The sctp_addip_noauth option is there for backward compatibility
+-	 * and will revert old behavior.
+-	 */
+-	if (net->sctp.addip_noauth)
+-		asoc->peer.asconf_capable = 1;
+-
+ 	/* Create an input queue.  */
+ 	sctp_inq_init(&asoc->base.inqueue);
+ 	sctp_inq_set_th_handler(&asoc->base.inqueue, sctp_assoc_bh_rcv);
+-- 
+2.1.0
