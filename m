@@ -1,34 +1,54 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 19 Aug 2019 14:46:33 +0000
+Date: Mon, 19 Aug 2019 14:58:43 +0000
 Subject: Re: [PATCH net-next 4/8] sctp: add SCTP_ASCONF_SUPPORTED sockopt
-Message-Id: <20190819144633.GD2870@localhost.localdomain>
+Message-Id: <20190819145843.GE2870@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1566223325.git.lucien.xin@gmail.com>
  <f4fbfa28a7fd2ed85f0fc66ddcbd4249e6e7b487.1566223325.git.lucien.xin@gmail.com>
- <20190819143052.GC2870@localhost.localdomain>
- <CADvbK_dT6p7z0YUcEKakGr-+x+a7je_jNnGHOAnVs5mxtrSN1g@mail.gmail.com>
-In-Reply-To: <CADvbK_dT6p7z0YUcEKakGr-+x+a7je_jNnGHOAnVs5mxtrSN1g@mail.gmail.com>
+In-Reply-To: <f4fbfa28a7fd2ed85f0fc66ddcbd4249e6e7b487.1566223325.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem <davem@davemloft.net>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-On Mon, Aug 19, 2019 at 10:43:03PM +0800, Xin Long wrote:
-> On Mon, Aug 19, 2019 at 10:30 PM Marcelo Ricardo Leitner
-> <marcelo.leitner@gmail.com> wrote:
-> >
-> > On Mon, Aug 19, 2019 at 10:02:46PM +0800, Xin Long wrote:
-> > > SCTP_ASCONF_SUPPORTED sockopt is used to set enpoint's asconf
-> > > flag. With this feature, each endpoint will have its own flag
-> > > for its future asoc's asconf_capable, instead of netns asconf
-> > > flag.
-> >
-> > Is this backed by a RFC? If yes, it should be noted in the patch
-> > description.
-> > Quickly searching, I found only FreeBSD references.
-> RFC doesn't define this sockopt clearly, unlike prsctp and reconfig,
-> not sure why.
-> but BSD supports it, so does some userland SCTP.
+On Mon, Aug 19, 2019 at 10:02:46PM +0800, Xin Long wrote:
+> +static int sctp_setsockopt_asconf_supported(struct sock *sk,
+> +					    char __user *optval,
+> +					    unsigned int optlen)
+> +{
+> +	struct sctp_assoc_value params;
+> +	struct sctp_association *asoc;
+> +	struct sctp_endpoint *ep;
+> +	int retval = -EINVAL;
+> +
+> +	if (optlen != sizeof(params))
+> +		goto out;
+> +
+> +	if (copy_from_user(&params, optval, optlen)) {
+> +		retval = -EFAULT;
+> +		goto out;
+> +	}
+> +
+> +	asoc = sctp_id2assoc(sk, params.assoc_id);
+> +	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
+> +	    sctp_style(sk, UDP))
+> +		goto out;
+> +
+> +	ep = sctp_sk(sk)->ep;
+> +	ep->asconf_enable = !!params.assoc_value;
 
-Ok. Thanks.
+Considering this will be negotiated on handshake, shouldn't it deny
+changes to Established asocs? (Same for Auth)
+
+> +
+> +	if (ep->asconf_enable && ep->auth_enable) {
+> +		sctp_auth_ep_add_chunkid(ep, SCTP_CID_ASCONF);
+> +		sctp_auth_ep_add_chunkid(ep, SCTP_CID_ASCONF_ACK);
+> +	}
+> +
+> +	retval = 0;
+> +
+> +out:
+> +	return retval;
+> +}
