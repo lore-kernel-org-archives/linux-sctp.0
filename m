@@ -1,49 +1,16 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 19 Aug 2019 14:02:45 +0000
-Subject: [PATCH net-next 3/8] sctp: check asoc peer.asconf_capable before processing asconf
-Message-Id: <b868cd2896190a99a8553d0cfd372e72f3dbb1b7.1566223325.git.lucien.xin@gmail.com>
+From: "Herr.Robert Jackson" <liliana.marinero@osep.mendoza.gov.ar>
+Date: Sat, 24 Aug 2019 14:14:36 +0000
+Subject: 
+Message-Id: <1268244548.24999093.1566656076742.JavaMail.zimbra@osep.mendoza.gov.ar>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1566223325.git.lucien.xin@gmail.com>
- <4c4682aab70fc11be7a505b11939dd998b9b21f5.1566223325.git.lucien.xin@gmail.com>
- <04b2de14df6de243e9faacc3a3de091adff45d52.1566223325.git.lucien.xin@gmail.com>
-In-Reply-To: <04b2de14df6de243e9faacc3a3de091adff45d52.1566223325.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+Content-Type: text/plain; charset="euc-kr"
+Content-Transfer-Encoding: base64
+To: linux-sctp@vger.kernel.org
 
-asconf chunks should be dropped when the asoc doesn't support
-asconf feature.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- net/sctp/sm_statefuns.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
-
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 2c244b2..0c21c52 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -3721,7 +3721,8 @@ enum sctp_disposition sctp_sf_do_asconf(struct net *net,
- 	 * is received unauthenticated it MUST be silently discarded as
- 	 * described in [I-D.ietf-tsvwg-sctp-auth].
- 	 */
--	if (!net->sctp.addip_noauth && !chunk->auth)
-+	if (!asoc->peer.asconf_capable ||
-+	    (!net->sctp.addip_noauth && !chunk->auth))
- 		return sctp_sf_discard_chunk(net, ep, asoc, type, arg,
- 					     commands);
- 
-@@ -3863,7 +3864,8 @@ enum sctp_disposition sctp_sf_do_asconf_ack(struct net *net,
- 	 * is received unauthenticated it MUST be silently discarded as
- 	 * described in [I-D.ietf-tsvwg-sctp-auth].
- 	 */
--	if (!net->sctp.addip_noauth && !asconf_ack->auth)
-+	if (!asoc->peer.asconf_capable ||
-+	    (!net->sctp.addip_noauth && !asconf_ack->auth))
- 		return sctp_sf_discard_chunk(net, ep, asoc, type, arg,
- 					     commands);
- 
--- 
-2.1.0
+CgpXaXIgc2luZCB6dXZlcmzDpHNzaWdlLCB2ZXJ0cmF1ZW5zd8O8cmRpZ2UgS3JlZGl0Z2ViZXIs
+IGxlaWhlbiB3aXIgVW50ZXJuZWhtZW4gdW5kIEVpbnplbHBlcnNvbmVuIHp1IGVpbmVtIG5pZWRy
+aWdlbiBaaW5zc2F0eiB2b24gMiUsIFNpbmQgU2llIGF1ZiBkZXIgU3VjaGUgbmFjaCBlaW5lbSBH
+ZXNjaMOkZnRza3JlZGl0LCBQcml2YXRrcmVkaXRlLCBTY2h1bGRlbmtvbnNvbGlkaWVydW5nLCB1
+bmJlc2ljaGVydGUgS3JlZGl0ZSwgUmlzaWtva2FwaXRhbCwgd2VubiBqYSBLb250YWt0aWVyZW4g
+U2llIHVucyBqZXR6dCBmw7xyIHdlaXRlcmUgRWluemVsaGVpdGVuLg==
