@@ -1,213 +1,143 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 19 Aug 2019 14:02:43 +0000
-Subject: [PATCH net-next 1/8] sctp: add asconf_enable in struct sctp_endpoint
-Message-Id: <4c4682aab70fc11be7a505b11939dd998b9b21f5.1566223325.git.lucien.xin@gmail.com>
+Date: Mon, 26 Aug 2019 08:30:04 +0000
+Subject: [PATCH net-next 3/3] sctp: allow users to set ep ecn flag by sockopt
+Message-Id: <58415590c2640149d56ae2db35f6d6ffd126aed3.1566807985.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1566223325.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1566223325.git.lucien.xin@gmail.com>
+References: <cover.1566807985.git.lucien.xin@gmail.com>
+ <fc26e1e3bd1579a944320dc54d5cdbdec46ac61d.1566807985.git.lucien.xin@gmail.com>
+ <fdbf487b2e1b255b1bbf457b3112979c33b53066.1566807985.git.lucien.xin@gmail.com>
+In-Reply-To: <fdbf487b2e1b255b1bbf457b3112979c33b53066.1566807985.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This patch is to make addip/asconf flag per endpoint,
-and its value is initialized by the per netns flag,
-net->sctp.addip_enable.
-
-It also replaces the checks of net->sctp.addip_enable
-with ep->asconf_enable in some places.
+SCTP_ECN_SUPPORTED sockopt will be added to allow users to change
+ep ecn flag, and it's similar with other feature flags.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/structs.h |  1 +
- net/sctp/endpointola.c     |  3 ++-
- net/sctp/sm_make_chunk.c   | 18 +++++++++---------
- net/sctp/socket.c          | 17 +++++++----------
- 4 files changed, 19 insertions(+), 20 deletions(-)
+ include/uapi/linux/sctp.h |  1 +
+ net/sctp/socket.c         | 73 +++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 74 insertions(+)
 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index ba5c4f6..daac1ef 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -1325,6 +1325,7 @@ struct sctp_endpoint {
- 	__u8  auth_enable:1,
- 	      intl_enable:1,
- 	      prsctp_enable:1,
-+	      asconf_enable:1,
- 	      reconf_enable:1;
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index 62527ac..6d5b164 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -136,6 +136,7 @@ typedef __s32 sctp_assoc_t;
+ #define SCTP_EVENT	127
+ #define SCTP_ASCONF_SUPPORTED	128
+ #define SCTP_AUTH_SUPPORTED	129
++#define SCTP_ECN_SUPPORTED	130
  
- 	__u8  strreset_enable;
-diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
-index 69cebb2..38b8d7c 100644
---- a/net/sctp/endpointola.c
-+++ b/net/sctp/endpointola.c
-@@ -52,6 +52,7 @@ static struct sctp_endpoint *sctp_endpoint_init(struct sctp_endpoint *ep,
- 	if (!ep->digest)
- 		return NULL;
- 
-+	ep->asconf_enable = net->sctp.addip_enable;
- 	ep->auth_enable = net->sctp.auth_enable;
- 	if (ep->auth_enable) {
- 		/* Allocate space for HMACS and CHUNKS authentication
-@@ -86,7 +87,7 @@ static struct sctp_endpoint *sctp_endpoint_init(struct sctp_endpoint *ep,
- 		/* If the Add-IP functionality is enabled, we must
- 		 * authenticate, ASCONF and ASCONF-ACK chunks
- 		 */
--		if (net->sctp.addip_enable) {
-+		if (ep->asconf_enable) {
- 			auth_chunks->chunks[0] = SCTP_CID_ASCONF;
- 			auth_chunks->chunks[1] = SCTP_CID_ASCONF_ACK;
- 			auth_chunks->param_hdr.length diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 36bd8a6e..338278f 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -207,7 +207,6 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
- 				  const struct sctp_bind_addr *bp,
- 				  gfp_t gfp, int vparam_len)
- {
--	struct net *net = sock_net(asoc->base.sk);
- 	struct sctp_supported_ext_param ext_param;
- 	struct sctp_adaptation_ind_param aiparam;
- 	struct sctp_paramhdr *auth_chunks = NULL;
-@@ -255,7 +254,7 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
- 	 *  the ASCONF,the ASCONF-ACK, and the AUTH  chunks in its INIT and
- 	 *  INIT-ACK parameters.
- 	 */
--	if (net->sctp.addip_enable) {
-+	if (asoc->ep->asconf_enable) {
- 		extensions[num_ext] = SCTP_CID_ASCONF;
- 		extensions[num_ext+1] = SCTP_CID_ASCONF_ACK;
- 		num_ext += 2;
-@@ -1964,7 +1963,9 @@ static int sctp_process_hn_param(const struct sctp_association *asoc,
- 	return 0;
- }
- 
--static int sctp_verify_ext_param(struct net *net, union sctp_params param)
-+static int sctp_verify_ext_param(struct net *net,
-+				 const struct sctp_endpoint *ep,
-+				 union sctp_params param)
- {
- 	__u16 num_ext = ntohs(param.p->length) - sizeof(struct sctp_paramhdr);
- 	int have_asconf = 0;
-@@ -1991,7 +1992,7 @@ static int sctp_verify_ext_param(struct net *net, union sctp_params param)
- 	if (net->sctp.addip_noauth)
- 		return 1;
- 
--	if (net->sctp.addip_enable && !have_auth && have_asconf)
-+	if (ep->asconf_enable && !have_auth && have_asconf)
- 		return 0;
- 
- 	return 1;
-@@ -2001,7 +2002,6 @@ static void sctp_process_ext_param(struct sctp_association *asoc,
- 				   union sctp_params param)
- {
- 	__u16 num_ext = ntohs(param.p->length) - sizeof(struct sctp_paramhdr);
--	struct net *net = sock_net(asoc->base.sk);
- 	int i;
- 
- 	for (i = 0; i < num_ext; i++) {
-@@ -2023,7 +2023,7 @@ static void sctp_process_ext_param(struct sctp_association *asoc,
- 			break;
- 		case SCTP_CID_ASCONF:
- 		case SCTP_CID_ASCONF_ACK:
--			if (net->sctp.addip_enable)
-+			if (asoc->ep->asconf_enable)
- 				asoc->peer.asconf_capable = 1;
- 			break;
- 		case SCTP_CID_I_DATA:
-@@ -2145,12 +2145,12 @@ static enum sctp_ierror sctp_verify_param(struct net *net,
- 		break;
- 
- 	case SCTP_PARAM_SUPPORTED_EXT:
--		if (!sctp_verify_ext_param(net, param))
-+		if (!sctp_verify_ext_param(net, ep, param))
- 			return SCTP_IERROR_ABORT;
- 		break;
- 
- 	case SCTP_PARAM_SET_PRIMARY:
--		if (net->sctp.addip_enable)
-+		if (ep->asconf_enable)
- 			break;
- 		goto fallthrough;
- 
-@@ -2605,7 +2605,7 @@ static int sctp_process_param(struct sctp_association *asoc,
- 		break;
- 
- 	case SCTP_PARAM_SET_PRIMARY:
--		if (!net->sctp.addip_enable)
-+		if (!ep->asconf_enable)
- 			goto fall_through;
- 
- 		addr_param = param.v + sizeof(struct sctp_addip_param);
+ /* PR-SCTP policies */
+ #define SCTP_PR_SCTP_NONE	0x0000
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 12503e1..559793f 100644
+index 82bc252..3e50a97 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -524,7 +524,6 @@ static int sctp_send_asconf_add_ip(struct sock		*sk,
- 				   struct sockaddr	*addrs,
- 				   int 			addrcnt)
- {
--	struct net *net = sock_net(sk);
- 	struct sctp_sock		*sp;
- 	struct sctp_endpoint		*ep;
- 	struct sctp_association		*asoc;
-@@ -539,12 +538,12 @@ static int sctp_send_asconf_add_ip(struct sock		*sk,
- 	int 				i;
- 	int 				retval = 0;
+@@ -4560,6 +4560,34 @@ static int sctp_setsockopt_auth_supported(struct sock *sk,
+ 	return retval;
+ }
  
--	if (!net->sctp.addip_enable)
--		return retval;
--
- 	sp = sctp_sk(sk);
- 	ep = sp->ep;
- 
-+	if (!ep->asconf_enable)
-+		return retval;
++static int sctp_setsockopt_ecn_supported(struct sock *sk,
++					 char __user *optval,
++					 unsigned int optlen)
++{
++	struct sctp_assoc_value params;
++	struct sctp_association *asoc;
++	int retval = -EINVAL;
 +
- 	pr_debug("%s: sk:%p, addrs:%p, addrcnt:%d\n",
- 		 __func__, sk, addrs, addrcnt);
- 
-@@ -727,7 +726,6 @@ static int sctp_send_asconf_del_ip(struct sock		*sk,
- 				   struct sockaddr	*addrs,
- 				   int			addrcnt)
- {
--	struct net *net = sock_net(sk);
- 	struct sctp_sock	*sp;
- 	struct sctp_endpoint	*ep;
- 	struct sctp_association	*asoc;
-@@ -743,12 +741,12 @@ static int sctp_send_asconf_del_ip(struct sock		*sk,
- 	int			stored = 0;
- 
- 	chunk = NULL;
--	if (!net->sctp.addip_enable)
--		return retval;
--
- 	sp = sctp_sk(sk);
- 	ep = sp->ep;
- 
-+	if (!ep->asconf_enable)
-+		return retval;
++	if (optlen != sizeof(params))
++		goto out;
 +
- 	pr_debug("%s: sk:%p, addrs:%p, addrcnt:%d\n",
- 		 __func__, sk, addrs, addrcnt);
++	if (copy_from_user(&params, optval, optlen)) {
++		retval = -EFAULT;
++		goto out;
++	}
++
++	asoc = sctp_id2assoc(sk, params.assoc_id);
++	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
++	    sctp_style(sk, UDP))
++		goto out;
++
++	sctp_sk(sk)->ep->ecn_enable = !!params.assoc_value;
++	retval = 0;
++
++out:
++	return retval;
++}
++
+ /* API 6.2 setsockopt(), getsockopt()
+  *
+  * Applications use setsockopt() and getsockopt() to set or retrieve
+@@ -4766,6 +4794,9 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 	case SCTP_AUTH_SUPPORTED:
+ 		retval = sctp_setsockopt_auth_supported(sk, optval, optlen);
+ 		break;
++	case SCTP_ECN_SUPPORTED:
++		retval = sctp_setsockopt_ecn_supported(sk, optval, optlen);
++		break;
+ 	default:
+ 		retval = -ENOPROTOOPT;
+ 		break;
+@@ -7828,6 +7859,45 @@ static int sctp_getsockopt_auth_supported(struct sock *sk, int len,
+ 	return retval;
+ }
  
-@@ -3330,7 +3328,6 @@ static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned
- static int sctp_setsockopt_peer_primary_addr(struct sock *sk, char __user *optval,
- 					     unsigned int optlen)
++static int sctp_getsockopt_ecn_supported(struct sock *sk, int len,
++					 char __user *optval,
++					 int __user *optlen)
++{
++	struct sctp_assoc_value params;
++	struct sctp_association *asoc;
++	int retval = -EFAULT;
++
++	if (len < sizeof(params)) {
++		retval = -EINVAL;
++		goto out;
++	}
++
++	len = sizeof(params);
++	if (copy_from_user(&params, optval, len))
++		goto out;
++
++	asoc = sctp_id2assoc(sk, params.assoc_id);
++	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
++	    sctp_style(sk, UDP)) {
++		retval = -EINVAL;
++		goto out;
++	}
++
++	params.assoc_value = asoc ? asoc->peer.ecn_capable
++				  : sctp_sk(sk)->ep->ecn_enable;
++
++	if (put_user(len, optlen))
++		goto out;
++
++	if (copy_to_user(optval, &params, len))
++		goto out;
++
++	retval = 0;
++
++out:
++	return retval;
++}
++
+ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 			   char __user *optval, int __user *optlen)
  {
--	struct net *net = sock_net(sk);
- 	struct sctp_sock	*sp;
- 	struct sctp_association	*asoc = NULL;
- 	struct sctp_setpeerprim	prim;
-@@ -3340,7 +3337,7 @@ static int sctp_setsockopt_peer_primary_addr(struct sock *sk, char __user *optva
- 
- 	sp = sctp_sk(sk);
- 
--	if (!net->sctp.addip_enable)
-+	if (!sp->ep->asconf_enable)
- 		return -EPERM;
- 
- 	if (optlen != sizeof(struct sctp_setpeerprim))
+@@ -8037,6 +8107,9 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_getsockopt_auth_supported(sk, len, optval,
+ 							optlen);
+ 		break;
++	case SCTP_ECN_SUPPORTED:
++		retval = sctp_getsockopt_ecn_supported(sk, len, optval, optlen);
++		break;
+ 	default:
+ 		retval = -ENOPROTOOPT;
+ 		break;
 -- 
 2.1.0
