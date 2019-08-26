@@ -1,28 +1,31 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 09 Aug 2019 01:05:29 +0000
-Subject: Re: [PATCH net-next] net: use "nb" for notifier blocks
-Message-Id: <20190808.180529.1408453640987288575.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 26 Aug 2019 08:30:01 +0000
+Subject: [PATCH net-next 0/3] sctp: add SCTP_ECN_SUPPORTED sockopt
+Message-Id: <cover.1566807985.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20190805204331.GA25178@avx2>
-In-Reply-To: <20190805204331.GA25178@avx2>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: adobriyan@gmail.com
-Cc: netdev@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-sctp@vger.kernel.org, bpf@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-From: Alexey Dobriyan <adobriyan@gmail.com>
-Date: Mon, 5 Aug 2019 23:43:31 +0300
+This patchset is to make ecn flag per netns and endpoint and then
+add SCTP_ECN_SUPPORTED sockopt, as does for other feature flags.
 
-> Use more pleasant looking
-> 
-> 	struct notifier_block *nb,
-> 
-> instead of "this".
-> 
-> Signed-off-by: Alexey Dobriyan <adobriyan@gmail.com>
+Xin Long (3):
+  sctp: make ecn flag per netns and endpoint
+  sctp: allow users to set netns ecn flag with sysctl
+  sctp: allow users to set ep ecn flag by sockopt
 
-Sorry, this is a lot of churn for something that is basically an
-opinion of being nicer or less nice.
+ include/net/netns/sctp.h   |  3 ++
+ include/net/sctp/structs.h |  3 +-
+ include/uapi/linux/sctp.h  |  1 +
+ net/sctp/endpointola.c     |  1 +
+ net/sctp/protocol.c        |  3 ++
+ net/sctp/sm_make_chunk.c   | 16 +++++++---
+ net/sctp/socket.c          | 73 ++++++++++++++++++++++++++++++++++++++++++++++
+ net/sctp/sysctl.c          |  7 +++++
+ 8 files changed, 102 insertions(+), 5 deletions(-)
 
-I actually kind of like "this".
+-- 
+2.1.0
