@@ -1,143 +1,126 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 26 Aug 2019 08:30:04 +0000
-Subject: [PATCH net-next 3/3] sctp: allow users to set ep ecn flag by sockopt
-Message-Id: <58415590c2640149d56ae2db35f6d6ffd126aed3.1566807985.git.lucien.xin@gmail.com>
+Date: Mon, 26 Aug 2019 08:30:02 +0000
+Subject: [PATCH net-next 1/3] sctp: make ecn flag per netns and endpoint
+Message-Id: <fc26e1e3bd1579a944320dc54d5cdbdec46ac61d.1566807985.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1566807985.git.lucien.xin@gmail.com>
- <fc26e1e3bd1579a944320dc54d5cdbdec46ac61d.1566807985.git.lucien.xin@gmail.com>
- <fdbf487b2e1b255b1bbf457b3112979c33b53066.1566807985.git.lucien.xin@gmail.com>
-In-Reply-To: <fdbf487b2e1b255b1bbf457b3112979c33b53066.1566807985.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1566807985.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-SCTP_ECN_SUPPORTED sockopt will be added to allow users to change
-ep ecn flag, and it's similar with other feature flags.
+This patch is to add ecn flag for both netns_sctp and sctp_endpoint,
+net->sctp.ecn_enable is set 1 by default, and ep->ecn_enable will
+be initialized with net->sctp.ecn_enable.
+
+asoc->peer.ecn_capable will be set during negotiation only when
+ep->ecn_enable is set on both sides.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/uapi/linux/sctp.h |  1 +
- net/sctp/socket.c         | 73 +++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 74 insertions(+)
+ include/net/netns/sctp.h   |  3 +++
+ include/net/sctp/structs.h |  3 ++-
+ net/sctp/endpointola.c     |  1 +
+ net/sctp/protocol.c        |  3 +++
+ net/sctp/sm_make_chunk.c   | 16 ++++++++++++----
+ 5 files changed, 21 insertions(+), 5 deletions(-)
 
-diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index 62527ac..6d5b164 100644
---- a/include/uapi/linux/sctp.h
-+++ b/include/uapi/linux/sctp.h
-@@ -136,6 +136,7 @@ typedef __s32 sctp_assoc_t;
- #define SCTP_EVENT	127
- #define SCTP_ASCONF_SUPPORTED	128
- #define SCTP_AUTH_SUPPORTED	129
-+#define SCTP_ECN_SUPPORTED	130
+diff --git a/include/net/netns/sctp.h b/include/net/netns/sctp.h
+index 0db7fb3..bdc0f27 100644
+--- a/include/net/netns/sctp.h
++++ b/include/net/netns/sctp.h
+@@ -128,6 +128,9 @@ struct netns_sctp {
+ 	/* Flag to indicate if stream interleave is enabled */
+ 	int intl_enable;
  
- /* PR-SCTP policies */
- #define SCTP_PR_SCTP_NONE	0x0000
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 82bc252..3e50a97 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -4560,6 +4560,34 @@ static int sctp_setsockopt_auth_supported(struct sock *sk,
- 	return retval;
- }
++	/* Flag to indicate if ecn is enabled */
++	int ecn_enable;
++
+ 	/*
+ 	 * Policy to control SCTP IPv4 address scoping
+ 	 * 0   - Disable IPv4 address scoping
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index daac1ef..503fbc3 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1322,7 +1322,8 @@ struct sctp_endpoint {
+ 	/* SCTP-AUTH: endpoint shared keys */
+ 	struct list_head endpoint_shared_keys;
+ 	__u16 active_key_id;
+-	__u8  auth_enable:1,
++	__u8  ecn_enable:1,
++	      auth_enable:1,
+ 	      intl_enable:1,
+ 	      prsctp_enable:1,
+ 	      asconf_enable:1,
+diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
+index 75a407d..ea53049 100644
+--- a/net/sctp/endpointola.c
++++ b/net/sctp/endpointola.c
+@@ -106,6 +106,7 @@ static struct sctp_endpoint *sctp_endpoint_init(struct sctp_endpoint *ep,
+ 	 */
+ 	ep->prsctp_enable = net->sctp.prsctp_enable;
+ 	ep->reconf_enable = net->sctp.reconf_enable;
++	ep->ecn_enable = net->sctp.ecn_enable;
  
-+static int sctp_setsockopt_ecn_supported(struct sock *sk,
-+					 char __user *optval,
-+					 unsigned int optlen)
-+{
-+	struct sctp_assoc_value params;
-+	struct sctp_association *asoc;
-+	int retval = -EINVAL;
-+
-+	if (optlen != sizeof(params))
-+		goto out;
-+
-+	if (copy_from_user(&params, optval, optlen)) {
-+		retval = -EFAULT;
-+		goto out;
-+	}
-+
-+	asoc = sctp_id2assoc(sk, params.assoc_id);
-+	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
-+	    sctp_style(sk, UDP))
-+		goto out;
-+
-+	sctp_sk(sk)->ep->ecn_enable = !!params.assoc_value;
-+	retval = 0;
-+
-+out:
-+	return retval;
-+}
-+
- /* API 6.2 setsockopt(), getsockopt()
-  *
-  * Applications use setsockopt() and getsockopt() to set or retrieve
-@@ -4766,6 +4794,9 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 	case SCTP_AUTH_SUPPORTED:
- 		retval = sctp_setsockopt_auth_supported(sk, optval, optlen);
- 		break;
-+	case SCTP_ECN_SUPPORTED:
-+		retval = sctp_setsockopt_ecn_supported(sk, optval, optlen);
-+		break;
- 	default:
- 		retval = -ENOPROTOOPT;
- 		break;
-@@ -7828,6 +7859,45 @@ static int sctp_getsockopt_auth_supported(struct sock *sk, int len,
- 	return retval;
- }
+ 	/* Remember who we are attached to.  */
+ 	ep->base.sk = sk;
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 2d47adc..b48ffe8 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -1254,6 +1254,9 @@ static int __net_init sctp_defaults_init(struct net *net)
+ 	/* Disable AUTH by default. */
+ 	net->sctp.auth_enable = 0;
  
-+static int sctp_getsockopt_ecn_supported(struct sock *sk, int len,
-+					 char __user *optval,
-+					 int __user *optlen)
-+{
-+	struct sctp_assoc_value params;
-+	struct sctp_association *asoc;
-+	int retval = -EFAULT;
++	/* Enable ECN by default. */
++	net->sctp.ecn_enable = 1;
 +
-+	if (len < sizeof(params)) {
-+		retval = -EINVAL;
-+		goto out;
-+	}
+ 	/* Set SCOPE policy to enabled */
+ 	net->sctp.scope_policy = SCTP_SCOPE_POLICY_ENABLE;
+ 
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 338278f..e41ed2e 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -244,7 +244,9 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
+ 
+ 	chunksize = sizeof(init) + addrs_len;
+ 	chunksize += SCTP_PAD4(SCTP_SAT_LEN(num_types));
+-	chunksize += sizeof(ecap_param);
 +
-+	len = sizeof(params);
-+	if (copy_from_user(&params, optval, len))
-+		goto out;
-+
-+	asoc = sctp_id2assoc(sk, params.assoc_id);
-+	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
-+	    sctp_style(sk, UDP)) {
-+		retval = -EINVAL;
-+		goto out;
-+	}
-+
-+	params.assoc_value = asoc ? asoc->peer.ecn_capable
-+				  : sctp_sk(sk)->ep->ecn_enable;
-+
-+	if (put_user(len, optlen))
-+		goto out;
-+
-+	if (copy_to_user(optval, &params, len))
-+		goto out;
-+
-+	retval = 0;
-+
-+out:
-+	return retval;
-+}
-+
- static int sctp_getsockopt(struct sock *sk, int level, int optname,
- 			   char __user *optval, int __user *optlen)
- {
-@@ -8037,6 +8107,9 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_getsockopt_auth_supported(sk, len, optval,
- 							optlen);
++	if (asoc->ep->ecn_enable)
++		chunksize += sizeof(ecap_param);
+ 
+ 	if (asoc->ep->prsctp_enable)
+ 		chunksize += sizeof(prsctp_param);
+@@ -335,7 +337,8 @@ struct sctp_chunk *sctp_make_init(const struct sctp_association *asoc,
+ 	sctp_addto_chunk(retval, sizeof(sat), &sat);
+ 	sctp_addto_chunk(retval, num_types * sizeof(__u16), &types);
+ 
+-	sctp_addto_chunk(retval, sizeof(ecap_param), &ecap_param);
++	if (asoc->ep->ecn_enable)
++		sctp_addto_chunk(retval, sizeof(ecap_param), &ecap_param);
+ 
+ 	/* Add the supported extensions parameter.  Be nice and add this
+ 	 * fist before addiding the parameters for the extensions themselves
+@@ -2597,8 +2600,13 @@ static int sctp_process_param(struct sctp_association *asoc,
  		break;
-+	case SCTP_ECN_SUPPORTED:
-+		retval = sctp_getsockopt_ecn_supported(sk, len, optval, optlen);
-+		break;
- 	default:
- 		retval = -ENOPROTOOPT;
- 		break;
+ 
+ 	case SCTP_PARAM_ECN_CAPABLE:
+-		asoc->peer.ecn_capable = 1;
+-		break;
++		if (asoc->ep->ecn_enable) {
++			asoc->peer.ecn_capable = 1;
++			break;
++		}
++		/* Fall Through */
++		goto fall_through;
++
+ 
+ 	case SCTP_PARAM_ADAPTATION_LAYER_IND:
+ 		asoc->peer.adaptation_ind = ntohl(param.aind->adaptation_ind);
 -- 
 2.1.0
