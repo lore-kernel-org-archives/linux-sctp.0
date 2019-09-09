@@ -1,147 +1,45 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 09 Sep 2019 07:56:49 +0000
-Subject: [PATCH net-next 3/5] sctp: add SCTP_EXPOSE_POTENTIALLY_FAILED_STATE sockopt
-Message-Id: <4836d0d8bb96e807b63f46e6c59af78b9b3e286b.1568015756.git.lucien.xin@gmail.com>
+Date: Mon, 09 Sep 2019 07:56:46 +0000
+Subject: [PATCH net-next 0/5] sctp: update from rfc7829
+Message-Id: <cover.1568015756.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1568015756.git.lucien.xin@gmail.com>
- <b486e6b5e434f8fd2462addc81916d83b5a31707.1568015756.git.lucien.xin@gmail.com>
- <00fb06e74d8eedeb033dad83de18380bf6261231.1568015756.git.lucien.xin@gmail.com>
-In-Reply-To: <00fb06e74d8eedeb033dad83de18380bf6261231.1568015756.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
 
-This is a sockopt defined in section 7.3 of rfc7829: "Exposing
-the Potentially Failed Path State", by which users can change
-pf_expose per sock and asoc.
+SCTP-PF was implemented based on a Internet-Draft in 2012:
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- include/uapi/linux/sctp.h |  1 +
- net/sctp/socket.c         | 76 +++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 77 insertions(+)
+  https://tools.ietf.org/html/draft-nishida-tsvwg-sctp-failover-05
 
-diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index b6649d6..a15cc28 100644
---- a/include/uapi/linux/sctp.h
-+++ b/include/uapi/linux/sctp.h
-@@ -137,6 +137,7 @@ typedef __s32 sctp_assoc_t;
- #define SCTP_ASCONF_SUPPORTED	128
- #define SCTP_AUTH_SUPPORTED	129
- #define SCTP_ECN_SUPPORTED	130
-+#define SCTP_EXPOSE_POTENTIALLY_FAILED_STATE	131
- 
- /* PR-SCTP policies */
- #define SCTP_PR_SCTP_NONE	0x0000
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 33b93bb..e3a8e25 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -4588,6 +4588,37 @@ static int sctp_setsockopt_ecn_supported(struct sock *sk,
- 	return retval;
- }
- 
-+static int sctp_setsockopt_pf_expose(struct sock *sk,
-+				     char __user *optval,
-+				     unsigned int optlen)
-+{
-+	struct sctp_assoc_value params;
-+	struct sctp_association *asoc;
-+	int retval = -EINVAL;
-+
-+	if (optlen != sizeof(params))
-+		goto out;
-+
-+	if (copy_from_user(&params, optval, optlen)) {
-+		retval = -EFAULT;
-+		goto out;
-+	}
-+
-+	asoc = sctp_id2assoc(sk, params.assoc_id);
-+	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
-+	    sctp_style(sk, UDP))
-+		goto out;
-+
-+	if (asoc)
-+		asoc->pf_expose = !!params.assoc_value;
-+	else
-+		sctp_sk(sk)->pf_expose = !!params.assoc_value;
-+	retval = 0;
-+
-+out:
-+	return retval;
-+}
-+
- /* API 6.2 setsockopt(), getsockopt()
-  *
-  * Applications use setsockopt() and getsockopt() to set or retrieve
-@@ -4797,6 +4828,9 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 	case SCTP_ECN_SUPPORTED:
- 		retval = sctp_setsockopt_ecn_supported(sk, optval, optlen);
- 		break;
-+	case SCTP_EXPOSE_POTENTIALLY_FAILED_STATE:
-+		retval = sctp_setsockopt_pf_expose(sk, optval, optlen);
-+		break;
- 	default:
- 		retval = -ENOPROTOOPT;
- 		break;
-@@ -7906,6 +7940,45 @@ static int sctp_getsockopt_ecn_supported(struct sock *sk, int len,
- 	return retval;
- }
- 
-+static int sctp_getsockopt_pf_expose(struct sock *sk, int len,
-+				     char __user *optval,
-+				     int __user *optlen)
-+{
-+	struct sctp_assoc_value params;
-+	struct sctp_association *asoc;
-+	int retval = -EFAULT;
-+
-+	if (len < sizeof(params)) {
-+		retval = -EINVAL;
-+		goto out;
-+	}
-+
-+	len = sizeof(params);
-+	if (copy_from_user(&params, optval, len))
-+		goto out;
-+
-+	asoc = sctp_id2assoc(sk, params.assoc_id);
-+	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
-+	    sctp_style(sk, UDP)) {
-+		retval = -EINVAL;
-+		goto out;
-+	}
-+
-+	params.assoc_value = asoc ? asoc->pf_expose
-+				  : sctp_sk(sk)->pf_expose;
-+
-+	if (put_user(len, optlen))
-+		goto out;
-+
-+	if (copy_to_user(optval, &params, len))
-+		goto out;
-+
-+	retval = 0;
-+
-+out:
-+	return retval;
-+}
-+
- static int sctp_getsockopt(struct sock *sk, int level, int optname,
- 			   char __user *optval, int __user *optlen)
- {
-@@ -8118,6 +8191,9 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
- 	case SCTP_ECN_SUPPORTED:
- 		retval = sctp_getsockopt_ecn_supported(sk, len, optval, optlen);
- 		break;
-+	case SCTP_EXPOSE_POTENTIALLY_FAILED_STATE:
-+		retval = sctp_getsockopt_pf_expose(sk, len, optval, optlen);
-+		break;
- 	default:
- 		retval = -ENOPROTOOPT;
- 		break;
+It's been updated quite a few by rfc7829 in 2016.
+
+This patchset adds the following features:
+
+  1. add SCTP_ADDR_POTENTIALLY_FAILED notification
+  2. add pf_expose per netns/sock/asoc
+  3. add SCTP_EXPOSE_POTENTIALLY_FAILED_STATE sockopt
+  4. add ps_retrans per netns/sock/asoc/transport
+     (Primary Path Switchover)
+  5. add spt_pathcpthld for SCTP_PEER_ADDR_THLDS sockopt
+
+Xin Long (5):
+  sctp: add SCTP_ADDR_POTENTIALLY_FAILED notification
+  sctp: add pf_expose per netns and sock and asoc
+  sctp: add SCTP_EXPOSE_POTENTIALLY_FAILED_STATE sockopt
+  sctp: add support for Primary Path Switchover
+  sctp: add spt_pathcpthld in struct sctp_paddrthlds
+
+ include/net/netns/sctp.h   | 13 ++++++
+ include/net/sctp/structs.h | 13 ++++--
+ include/uapi/linux/sctp.h  |  4 ++
+ net/sctp/associola.c       | 28 ++++++-------
+ net/sctp/protocol.c        |  6 +++
+ net/sctp/sm_sideeffect.c   |  5 +++
+ net/sctp/socket.c          | 99 +++++++++++++++++++++++++++++++++++++++++++++-
+ net/sctp/sysctl.c          | 16 ++++++++
+ 8 files changed, 165 insertions(+), 19 deletions(-)
+
 -- 
 2.1.0
