@@ -1,95 +1,62 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Wed, 11 Sep 2019 08:51:41 +0000
-Subject: Re: [PATCH net-next 5/5] sctp: add spt_pathcpthld in struct sctp_paddrthlds
-Message-Id: <CADvbK_d_Emw0K2Uq4P9OanRBr52tNjMsAOiJNi0TGsuWt6+81A@mail.gmail.com>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Wed, 11 Sep 2019 09:03:57 +0000
+Subject: RE: [PATCH net-next 5/5] sctp: add spt_pathcpthld in struct sctp_paddrthlds
+Message-Id: <1e5c3163e6c649b09137eeb62d193d87@AcuMS.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1568015756.git.lucien.xin@gmail.com> <604e6ac718c29aa5b1a8c4b164a126b82bc42a2f.1568015756.git.lucien.xin@gmail.com>
+References: <cover.1568015756.git.lucien.xin@gmail.com>
+ <604e6ac718c29aa5b1a8c4b164a126b82bc42a2f.1568015756.git.lucien.xin@gmail.com>
  <9fc7ca1598e641cda3914840a4416aab@AcuMS.aculab.com>
-In-Reply-To: <9fc7ca1598e641cda3914840a4416aab@AcuMS.aculab.com>
+ <CADvbK_d_Emw0K2Uq4P9OanRBr52tNjMsAOiJNi0TGsuWt6+81A@mail.gmail.com>
+In-Reply-To: <CADvbK_d_Emw0K2Uq4P9OanRBr52tNjMsAOiJNi0TGsuWt6+81A@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@aculab.com>
+To: 'Xin Long' <lucien.xin@gmail.com>
 Cc: network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "davem@davemloft.net" <davem@davemloft.net>
 
-On Tue, Sep 10, 2019 at 9:19 PM David Laight <David.Laight@aculab.com> wrote:
->
-> From: Xin Long
-> > Sent: 09 September 2019 08:57
-> > Section 7.2 of rfc7829: "Peer Address Thresholds (SCTP_PEER_ADDR_THLDS)
-> > Socket Option" extends 'struct sctp_paddrthlds' with 'spt_pathcpthld'
-> > added to allow a user to change ps_retrans per sock/asoc/transport, as
-> > other 2 paddrthlds: pf_retrans, pathmaxrxt.
-> >
-> > Note that ps_retrans is not allowed to be greater than pf_retrans.
-> >
-> > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> > ---
-> >  include/uapi/linux/sctp.h |  1 +
-> >  net/sctp/socket.c         | 10 ++++++++++
-> >  2 files changed, 11 insertions(+)
-> >
-> > diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-> > index a15cc28..dfd81e1 100644
-> > --- a/include/uapi/linux/sctp.h
-> > +++ b/include/uapi/linux/sctp.h
-> > @@ -1069,6 +1069,7 @@ struct sctp_paddrthlds {
-> >       struct sockaddr_storage spt_address;
-> >       __u16 spt_pathmaxrxt;
-> >       __u16 spt_pathpfthld;
-> > +     __u16 spt_pathcpthld;
-> >  };
-> >
-> >  /*
-> > diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> > index 5e2098b..5b9774d 100644
-> > --- a/net/sctp/socket.c
-> > +++ b/net/sctp/socket.c
-> > @@ -3954,6 +3954,9 @@ static int sctp_setsockopt_paddr_thresholds(struct sock *sk,
->
-> This code does:
->         if (optlen < sizeof(struct sctp_paddrthlds))
->                 return -EINVAL;
-here will become:
-
-        if (optlen >= sizeof(struct sctp_paddrthlds)) {
-                optlen = sizeof(struct sctp_paddrthlds);
-        } else if (optlen >= ALIGN(offsetof(struct sctp_paddrthlds,
-                                            spt_pathcpthld), 4))
-                optlen = ALIGN(offsetof(struct sctp_paddrthlds,
-                                        spt_pathcpthld), 4);
-                val.spt_pathcpthld = 0xffff;
-        else {
-                return -EINVAL;
-        }
-
-        if (copy_from_user(&val, (struct sctp_paddrthlds __user *)optval,
-                           optlen))
-                return -EFAULT;
-
-in sctp_getsockopt_paddr_thresholds():
-
-        if (len >= sizeof(struct sctp_paddrthlds))
-                len = sizeof(struct sctp_paddrthlds);
-        else if (len >= ALIGN(offsetof(struct sctp_paddrthlds,
-                                       spt_pathcpthld), 4))
-                len = ALIGN(offsetof(struct sctp_paddrthlds,
-                                     spt_pathcpthld), 4);
-        else
-                return -EINVAL;
-
-        if (copy_from_user(&val, (struct sctp_paddrthlds __user *)optval, len))
-                return -EFAULT;
-
->
-> So adding an extra field breaks existing application binaries
-> that use this option.
->
-> I've not checked the other patches or similar fubar.
->
->         David
->
-> -
-> Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-> Registration No: 1397386 (Wales)
->
+RnJvbTogWGluIExvbmcgW21haWx0bzpsdWNpZW4ueGluQGdtYWlsLmNvbV0NCj4gU2VudDogMTEg
+U2VwdGVtYmVyIDIwMTkgMDk6NTINCj4gT24gVHVlLCBTZXAgMTAsIDIwMTkgYXQgOToxOSBQTSBE
+YXZpZCBMYWlnaHQgPERhdmlkLkxhaWdodEBhY3VsYWIuY29tPiB3cm90ZToNCj4gPg0KPiA+IEZy
+b206IFhpbiBMb25nDQo+ID4gPiBTZW50OiAwOSBTZXB0ZW1iZXIgMjAxOSAwODo1Nw0KPiA+ID4g
+U2VjdGlvbiA3LjIgb2YgcmZjNzgyOTogIlBlZXIgQWRkcmVzcyBUaHJlc2hvbGRzIChTQ1RQX1BF
+RVJfQUREUl9USExEUykNCj4gPiA+IFNvY2tldCBPcHRpb24iIGV4dGVuZHMgJ3N0cnVjdCBzY3Rw
+X3BhZGRydGhsZHMnIHdpdGggJ3NwdF9wYXRoY3B0aGxkJw0KPiA+ID4gYWRkZWQgdG8gYWxsb3cg
+YSB1c2VyIHRvIGNoYW5nZSBwc19yZXRyYW5zIHBlciBzb2NrL2Fzb2MvdHJhbnNwb3J0LCBhcw0K
+PiA+ID4gb3RoZXIgMiBwYWRkcnRobGRzOiBwZl9yZXRyYW5zLCBwYXRobWF4cnh0Lg0KPiA+ID4N
+Cj4gPiA+IE5vdGUgdGhhdCBwc19yZXRyYW5zIGlzIG5vdCBhbGxvd2VkIHRvIGJlIGdyZWF0ZXIg
+dGhhbiBwZl9yZXRyYW5zLg0KPiA+ID4NCj4gPiA+IFNpZ25lZC1vZmYtYnk6IFhpbiBMb25nIDxs
+dWNpZW4ueGluQGdtYWlsLmNvbT4NCj4gPiA+IC0tLQ0KPiA+ID4gIGluY2x1ZGUvdWFwaS9saW51
+eC9zY3RwLmggfCAgMSArDQo+ID4gPiAgbmV0L3NjdHAvc29ja2V0LmMgICAgICAgICB8IDEwICsr
+KysrKysrKysNCj4gPiA+ICAyIGZpbGVzIGNoYW5nZWQsIDExIGluc2VydGlvbnMoKykNCj4gPiA+
+DQo+ID4gPiBkaWZmIC0tZ2l0IGEvaW5jbHVkZS91YXBpL2xpbnV4L3NjdHAuaCBiL2luY2x1ZGUv
+dWFwaS9saW51eC9zY3RwLmgNCj4gPiA+IGluZGV4IGExNWNjMjguLmRmZDgxZTEgMTAwNjQ0DQo+
+ID4gPiAtLS0gYS9pbmNsdWRlL3VhcGkvbGludXgvc2N0cC5oDQo+ID4gPiArKysgYi9pbmNsdWRl
+L3VhcGkvbGludXgvc2N0cC5oDQo+ID4gPiBAQCAtMTA2OSw2ICsxMDY5LDcgQEAgc3RydWN0IHNj
+dHBfcGFkZHJ0aGxkcyB7DQo+ID4gPiAgICAgICBzdHJ1Y3Qgc29ja2FkZHJfc3RvcmFnZSBzcHRf
+YWRkcmVzczsNCj4gPiA+ICAgICAgIF9fdTE2IHNwdF9wYXRobWF4cnh0Ow0KPiA+ID4gICAgICAg
+X191MTYgc3B0X3BhdGhwZnRobGQ7DQo+ID4gPiArICAgICBfX3UxNiBzcHRfcGF0aGNwdGhsZDsN
+Cj4gPiA+ICB9Ow0KPiA+ID4NCj4gPiA+ICAvKg0KPiA+ID4gZGlmZiAtLWdpdCBhL25ldC9zY3Rw
+L3NvY2tldC5jIGIvbmV0L3NjdHAvc29ja2V0LmMNCj4gPiA+IGluZGV4IDVlMjA5OGIuLjViOTc3
+NGQgMTAwNjQ0DQo+ID4gPiAtLS0gYS9uZXQvc2N0cC9zb2NrZXQuYw0KPiA+ID4gKysrIGIvbmV0
+L3NjdHAvc29ja2V0LmMNCj4gPiA+IEBAIC0zOTU0LDYgKzM5NTQsOSBAQCBzdGF0aWMgaW50IHNj
+dHBfc2V0c29ja29wdF9wYWRkcl90aHJlc2hvbGRzKHN0cnVjdCBzb2NrICpzaywNCj4gPg0KPiA+
+IFRoaXMgY29kZSBkb2VzOg0KPiA+ICAgICAgICAgaWYgKG9wdGxlbiA8IHNpemVvZihzdHJ1Y3Qg
+c2N0cF9wYWRkcnRobGRzKSkNCj4gPiAgICAgICAgICAgICAgICAgcmV0dXJuIC1FSU5WQUw7DQo+
+IGhlcmUgd2lsbCBiZWNvbWU6DQo+IA0KPiAgICAgICAgIGlmIChvcHRsZW4gPj0gc2l6ZW9mKHN0
+cnVjdCBzY3RwX3BhZGRydGhsZHMpKSB7DQo+ICAgICAgICAgICAgICAgICBvcHRsZW4gPSBzaXpl
+b2Yoc3RydWN0IHNjdHBfcGFkZHJ0aGxkcyk7DQo+ICAgICAgICAgfSBlbHNlIGlmIChvcHRsZW4g
+Pj0gQUxJR04ob2Zmc2V0b2Yoc3RydWN0IHNjdHBfcGFkZHJ0aGxkcywNCj4gICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBzcHRfcGF0aGNwdGhsZCksIDQpKQ0KPiAg
+ICAgICAgICAgICAgICAgb3B0bGVuID0gQUxJR04ob2Zmc2V0b2Yoc3RydWN0IHNjdHBfcGFkZHJ0
+aGxkcywNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHNwdF9wYXRo
+Y3B0aGxkKSwgNCk7DQo+ICAgICAgICAgICAgICAgICB2YWwuc3B0X3BhdGhjcHRobGQgPSAweGZm
+ZmY7DQo+ICAgICAgICAgZWxzZSB7DQo+ICAgICAgICAgICAgICAgICByZXR1cm4gLUVJTlZBTDsN
+Cj4gICAgICAgICB9DQoNCkhtbW0uLi4NCklmIHRoZSBrZXJuZWwgaGFzIHRvIGRlZmF1bHQgJ3Zh
+bC5zcHRfcGF0aGNwdGhsZCA9IDB4ZmZmZicNCnRoZW4gcmVjb21waWxpbmcgYW4gZXhpc3Rpbmcg
+YXBwbGljYXRpb24gd2l0aCB0aGUgbmV3IHVhcGkNCmhlYWRlciBpcyBnb2luZyB0byBsZWFkIHRv
+IHZlcnkgdW5leHBlY3RlZCBiZWhhdmlvdXIuDQoNClRoZSBiZXN0IHlvdSBjYW4gaG9wZSBmb3Ig
+aXMgdGhhdCB0aGUgYXBwbGljYXRpb24gbWVtc2V0IHRoZQ0Kc3RydWN0dXJlIHRvIHplcm8uDQpC
+dXQgbW9yZSBsaWtlbHkgaXQgaXMgJ3JhbmRvbScgb24tc3RhY2sgZGF0YS4NCg0KCURhdmlkDQoN
+Ci0NClJlZ2lzdGVyZWQgQWRkcmVzcyBMYWtlc2lkZSwgQnJhbWxleSBSb2FkLCBNb3VudCBGYXJt
+LCBNaWx0b24gS2V5bmVzLCBNSzEgMVBULCBVSw0KUmVnaXN0cmF0aW9uIE5vOiAxMzk3Mzg2IChX
+YWxlcykNCg=
