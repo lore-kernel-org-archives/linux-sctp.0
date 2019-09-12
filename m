@@ -1,25 +1,41 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 10 Sep 2019 17:33:31 +0000
-Subject: Re: [PATCH net] sctp: fix the missing put_user when dumping transport thresholds
-Message-Id: <20190910.193331.2286136885426226233.davem@davemloft.net>
+From: Mao Wenan <maowenan@huawei.com>
+Date: Thu, 12 Sep 2019 03:45:18 +0000
+Subject: [PATCH v2 net 2/3] sctp: remove redundant assignment when call sctp_get_port_local
+Message-Id: <20190912040219.67517-3-maowenan@huawei.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <3fa4f7700c93f06530c80bc666d1696cb7c077de.1568014409.git.lucien.xin@gmail.com>
-In-Reply-To: <3fa4f7700c93f06530c80bc666d1696cb7c077de.1568014409.git.lucien.xin@gmail.com>
+References: <7a450679-40ca-8a84-4cba-7a16f22ea3c0@huawei.com>
+ <20190912040219.67517-1-maowenan@huawei.com>
+In-Reply-To: <20190912040219.67517-1-maowenan@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, kernel-janitors@vger.kernel.org, Mao Wenan <maowenan@huawei.com>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon,  9 Sep 2019 15:33:29 +0800
+There are more parentheses in if clause when call sctp_get_port_local
+in sctp_do_bind, and redundant assignment to 'ret'. This patch is to
+do cleanup.
 
-> This issue causes SCTP_PEER_ADDR_THLDS sockopt not to be able to dump
-> a transport thresholds info.
-> 
-> Fix it by adding 'goto' put_user in sctp_getsockopt_paddr_thresholds.
-> 
-> Fixes: 8add543e369d ("sctp: add SCTP_FUTURE_ASSOC for SCTP_PEER_ADDR_THLDS sockopt")
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Mao Wenan <maowenan@huawei.com>
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+---
+ net/sctp/socket.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-Applied and queued up for -stable, thanks.
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 5e1934c48709..2f810078c91d 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -399,9 +399,8 @@ static int sctp_do_bind(struct sock *sk, union sctp_addr *addr, int len)
+ 	 * detection.
+ 	 */
+ 	addr->v4.sin_port = htons(snum);
+-	if ((ret = sctp_get_port_local(sk, addr))) {
++	if (sctp_get_port_local(sk, addr))
+ 		return -EADDRINUSE;
+-	}
+ 
+ 	/* Refresh ephemeral port.  */
+ 	if (!bp->port)
+-- 
+2.20.1
