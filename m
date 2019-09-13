@@ -1,11 +1,9 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Fri, 13 Sep 2019 13:31:22 +0000
-Subject: RE: [PATCH net-next 5/5] sctp: add spt_pathcpthld in struct sctp_paddrthlds
-Message-Id: <be14cc8353f6403c82ad81e3e741d8f0@AcuMS.aculab.com>
+From: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
+Date: Fri, 13 Sep 2019 13:40:00 +0000
+Subject: Re: [PATCH net-next 5/5] sctp: add spt_pathcpthld in struct sctp_paddrthlds
+Message-Id: <20190913134000.GY3431@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <604e6ac718c29aa5b1a8c4b164a126b82bc42a2f.1568015756.git.lucien.xin@gmail.com>
- <9fc7ca1598e641cda3914840a4416aab@AcuMS.aculab.com>
- <CADvbK_d_Emw0K2Uq4P9OanRBr52tNjMsAOiJNi0TGsuWt6+81A@mail.gmail.com>
+References: <CADvbK_d_Emw0K2Uq4P9OanRBr52tNjMsAOiJNi0TGsuWt6+81A@mail.gmail.com>
  <1e5c3163e6c649b09137eeb62d193d87@AcuMS.aculab.com>
  <CADvbK_dcGXPmO+wwwCvcsoGYPv+sdpw2b0cGuen-QPuxNcEcpQ@mail.gmail.com>
  <CADvbK_dqNas+vwP2t3LqWyabNnzRDO=PZPe4p+zE-vQJTnfKpA@mail.gmail.com>
@@ -14,44 +12,58 @@ References: <604e6ac718c29aa5b1a8c4b164a126b82bc42a2f.1568015756.git.lucien.xin@
  <20190912225154.GF3499@localhost.localdomain>
  <bcaba726b7444efea7b14fcd60e4743a@AcuMS.aculab.com>
  <20190913131954.GX3431@localhost.localdomain>
-In-Reply-To: <20190913131954.GX3431@localhost.localdomain>
+ <be14cc8353f6403c82ad81e3e741d8f0@AcuMS.aculab.com>
+In-Reply-To: <be14cc8353f6403c82ad81e3e741d8f0@AcuMS.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
+To: David Laight <David.Laight@aculab.com>
 Cc: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, "davem@davemloft.net" <davem@davemloft.net>
 
-From: 'Marcelo Ricardo Leitner'
-> Sent: 13 September 2019 14:20
-...
-> Interestingly, we have/had the opposite problem with netlink. Like, it
-> was allowing too much flexibility, such as silently ignoring unknown
-> fields (which is what would happen with a new app running on an older
-> kernel would trigger here) is bad because the app cannot know if it
-> was actually used or not. Some gymnastics in the app could cut through
-> the fat here, like probing getsockopt() return size, but then it may
-> as well probe for the right sockopt to be used.
+On Fri, Sep 13, 2019 at 01:31:22PM +0000, David Laight wrote:
+> From: 'Marcelo Ricardo Leitner'
+> > Sent: 13 September 2019 14:20
+> ...
+> > Interestingly, we have/had the opposite problem with netlink. Like, it
+> > was allowing too much flexibility, such as silently ignoring unknown
+> > fields (which is what would happen with a new app running on an older
+> > kernel would trigger here) is bad because the app cannot know if it
+> > was actually used or not. Some gymnastics in the app could cut through
+> > the fat here, like probing getsockopt() return size, but then it may
+> > as well probe for the right sockopt to be used.
+> 
+> Yes, it would also work if the kernel checked that all 'unexpected'
+> fields were zero (up to some sanity limit of a few kB).
 
-Yes, it would also work if the kernel checked that all 'unexpected'
-fields were zero (up to some sanity limit of a few kB).
+Though this would have to be done by older kernels, which are not
+aware of this extra space by definition.
 
-Then an application complied with a 'new' header would work with
-an old kernel provided it didn't try so set any new fields.
-(And it zeroed the entire structure.)
+> 
+> Then an application complied with a 'new' header would work with
+> an old kernel provided it didn't try so set any new fields.
+> (And it zeroed the entire structure.)
+> 
+> But you have to start off with that in mind.
+> 
+> Alternatively stop the insanity of setting multiple options
+> with one setsockopt call.
+> If multiple system calls are an issue implement a system call
+> that will set multiple options on the same socket.
+> (Maybe through a CMSG()-like buffer).
+> Then the application can set the ones it wants without having
+> to do the read-modify-write sequence needed for some of the
+> SCTP ones.
 
-But you have to start off with that in mind.
+I'm not sure I get you here. You mean we could have, for example, one
+sockopt for each field on each struct we currently have? That would
+bring other problems to the table, like how to deal with fields that
+need to be updated together.
 
-Alternatively stop the insanity of setting multiple options
-with one setsockopt call.
-If multiple system calls are an issue implement a system call
-that will set multiple options on the same socket.
-(Maybe through a CMSG()-like buffer).
-Then the application can set the ones it wants without having
-to do the read-modify-write sequence needed for some of the
-SCTP ones.
+Anyhow, I'm afraid our hands a bit tied here. That's how the RFCs are
+defining the interface and we shouldn't deviate too much from it.
 
-	David
+What would help is that the RFC definited these versioned structs
+itself.  Because as it is, even if we start versioning it, Linux will
+have one versioning and other OSes will have another.
 
--
-Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-Registration No: 1397386 (Wales)
+  Marcelo
