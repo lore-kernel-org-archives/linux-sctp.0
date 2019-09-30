@@ -1,152 +1,178 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 10 Sep 2019 06:26:27 +0000
-Subject: Re: [PATCH net-next 2/5] sctp: add pf_expose per netns and sock and asoc
-Message-Id: <CADvbK_e0F49oNw=erZLCnkYLYP2fvYy92gih0nFpM19JoL=1tQ@mail.gmail.com>
+Date: Mon, 30 Sep 2019 13:10:18 +0000
+Subject: [PATCH net] sctp: set newsk sk_socket before processing listening sk backlog
+Message-Id: <acd60f4797143dc6e9817b3dce38e1408caf65e5.1569849018.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <201909091802.pU2vj2DA%lkp@intel.com> <20190910035421.GB1778@archlinux-threadripper>
-In-Reply-To: <20190910035421.GB1778@archlinux-threadripper>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Nathan Chancellor <natechancellor@gmail.com>, linux-sctp@vger.kernel.org, network dev <netdev@vger.kernel.org>
-Cc: kbuild@01.org, Nick Desaulniers <ndesaulniers@google.com>, clang-built-linux@googlegroups.com, kbuild test robot <lkp@intel.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Tue, Sep 10, 2019 at 11:54 AM Nathan Chancellor
-<natechancellor@gmail.com> wrote:
->
-> Hi Xin,
->
-> The 0day team has been doing clang builds for us and this warning popped
-> up. Let me know if you have any questions.
->
-> On Mon, Sep 09, 2019 at 06:44:47PM +0800, kbuild test robot wrote:
-> > CC: kbuild-all@01.org
-> > In-Reply-To: <00fb06e74d8eedeb033dad83de18380bf6261231.1568015756.git.lucien.xin@gmail.com>
-> > References: <00fb06e74d8eedeb033dad83de18380bf6261231.1568015756.git.lucien.xin@gmail.com>
-> > TO: Xin Long <lucien.xin@gmail.com>
-> > CC: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-> > CC: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
-> >
-> > Hi Xin,
-> >
-> > Thank you for the patch! Perhaps something to improve:
-> >
-> > [auto build test WARNING on net-next/master]
-> >
-> > url:    https://github.com/0day-ci/linux/commits/Xin-Long/sctp-update-from-rfc7829/20190909-160115
-> > config: x86_64-rhel-7.6 (attached as .config)
-> > compiler: clang version 10.0.0 (git://gitmirror/llvm_project 45a3fd206fb06f77a08968c99a8172cbf2ccdd0f)
-> > reproduce:
-> >         # save the attached .config to linux build tree
-> >         make ARCH=x86_64
-> >
-> > If you fix the issue, kindly add following tag
-> > Reported-by: kbuild test robot <lkp@intel.com>
-> >
-> > All warnings (new ones prefixed by >>):
-> >
-> > >> net/sctp/associola.c:799:24: warning: use of logical '&&' with constant operand [-Wconstant-logical-operand]
-> >                    if (transport->state && SCTP_UNCONFIRMED &&
-> >                                         ^  ~~~~~~~~~~~~~~~~
-> >    net/sctp/associola.c:799:24: note: use '&' for a bitwise operation
-> >                    if (transport->state && SCTP_UNCONFIRMED &&
-> >                                         ^~
-> >                                         &
-> >    net/sctp/associola.c:799:24: note: remove constant to silence this warning
-> >                    if (transport->state && SCTP_UNCONFIRMED &&
-> >                                        ~^~~~~~~~~~~~~~~~~~~
-> >    1 warning generated.
-> >
-> > vim +799 net/sctp/associola.c
-> >
-> >    775
-> >    776        /* Engage in transport control operations.
-> >    777         * Mark the transport up or down and send a notification to the user.
-> >    778         * Select and update the new active and retran paths.
-> >    779         */
-> >    780        void sctp_assoc_control_transport(struct sctp_association *asoc,
-> >    781                                          struct sctp_transport *transport,
-> >    782                                          enum sctp_transport_cmd command,
-> >    783                                          sctp_sn_error_t error)
-> >    784        {
-> >    785                struct sctp_ulpevent *event;
-> >    786                struct sockaddr_storage addr;
-> >    787                int spc_state = 0;
-> >    788                bool ulp_notify = true;
-> >    789
-> >    790                /* Record the transition on the transport.  */
-> >    791                switch (command) {
-> >    792                case SCTP_TRANSPORT_UP:
-> >    793                        /* If we are moving from UNCONFIRMED state due
-> >    794                         * to heartbeat success, report the SCTP_ADDR_CONFIRMED
-> >    795                         * state to the user, otherwise report SCTP_ADDR_AVAILABLE.
-> >    796                         */
-> >    797                        if (transport->state = SCTP_PF && !asoc->pf_expose)
-> >    798                                ulp_notify = false;
-> >  > 799                        if (transport->state && SCTP_UNCONFIRMED &&
->
-> I assume this && should either be a '&' or '='?
-Right, it should have been "=". It was changed unintentionally
-when I swapped the position of 'state' and 'SCTP_UNCONFIRMED'.
+This patch is to fix a NULL-ptr deref crash in selinux_sctp_bind_connect:
 
-Thanks, will post v2 after others' review.
+  [...] kasan: GPF could be caused by NULL-ptr deref or user memory access
+  [...] RIP: 0010:selinux_sctp_bind_connect+0x16a/0x230
+  [...] Call Trace:
+  [...]  security_sctp_bind_connect+0x58/0x90
+  [...]  sctp_process_asconf+0xa52/0xfd0 [sctp]
+  [...]  sctp_sf_do_asconf+0x782/0x980 [sctp]
+  [...]  sctp_do_sm+0x139/0x520 [sctp]
+  [...]  sctp_assoc_bh_rcv+0x284/0x5c0 [sctp]
+  [...]  sctp_backlog_rcv+0x45f/0x880 [sctp]
+  [...]  __release_sock+0x120/0x370
+  [...]  release_sock+0x4f/0x180
+  [...]  sctp_accept+0x3f9/0x5a0 [sctp]
+  [...]  inet_accept+0xe7/0x6f0
 
->
-> >    800                            SCTP_HEARTBEAT_SUCCESS = error)
-> >    801                                spc_state = SCTP_ADDR_CONFIRMED;
-> >    802                        else
-> >    803                                spc_state = SCTP_ADDR_AVAILABLE;
-> >    804                        transport->state = SCTP_ACTIVE;
-> >    805                        break;
-> >    806
-> >    807                case SCTP_TRANSPORT_DOWN:
-> >    808                        /* If the transport was never confirmed, do not transition it
-> >    809                         * to inactive state.  Also, release the cached route since
-> >    810                         * there may be a better route next time.
-> >    811                         */
-> >    812                        if (transport->state != SCTP_UNCONFIRMED) {
-> >    813                                transport->state = SCTP_INACTIVE;
-> >    814                                spc_state = SCTP_ADDR_UNREACHABLE;
-> >    815                        } else {
-> >    816                                sctp_transport_dst_release(transport);
-> >    817                                ulp_notify = false;
-> >    818                        }
-> >    819                        break;
-> >    820
-> >    821                case SCTP_TRANSPORT_PF:
-> >    822                        transport->state = SCTP_PF;
-> >    823                        if (!asoc->pf_expose)
-> >    824                                ulp_notify = false;
-> >    825                        else
-> >    826                                spc_state = SCTP_ADDR_POTENTIALLY_FAILED;
-> >    827                        break;
-> >    828
-> >    829                default:
-> >    830                        return;
-> >    831                }
-> >    832
-> >    833                /* Generate and send a SCTP_PEER_ADDR_CHANGE notification
-> >    834                 * to the user.
-> >    835                 */
-> >    836                if (ulp_notify) {
-> >    837                        memset(&addr, 0, sizeof(struct sockaddr_storage));
-> >    838                        memcpy(&addr, &transport->ipaddr,
-> >    839                               transport->af_specific->sockaddr_len);
-> >    840
-> >    841                        event = sctp_ulpevent_make_peer_addr_change(asoc, &addr,
-> >    842                                                0, spc_state, error, GFP_ATOMIC);
-> >    843                        if (event)
-> >    844                                asoc->stream.si->enqueue_event(&asoc->ulpq, event);
-> >    845                }
-> >    846
-> >    847                /* Select new active and retran paths. */
-> >    848                sctp_select_active_and_retran_path(asoc);
-> >    849        }
-> >    850
-> >
-> > ---
-> > 0-DAY kernel test infrastructure                Open Source Technology Center
-> > https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
->
-> Cheers,
-> Nathan
+It was caused by that the 'newsk' sk_socket was not set before going to
+security sctp hook when doing accept() on a tcp-type socket:
+
+  inet_accept()->
+    sctp_accept():
+      lock_sock():
+          lock listening 'sk'
+                                          do_softirq():
+                                            sctp_rcv():  <-- [1]
+                                                asconf chunk arrived and
+                                                enqueued in 'sk' backlog
+      sctp_sock_migrate():
+          set asoc's sk to 'newsk'
+      release_sock():
+          sctp_backlog_rcv():
+            lock 'newsk'
+            sctp_process_asconf()  <-- [2]
+            unlock 'newsk'
+    sock_graft():
+        set sk_socket  <-- [3]
+
+As it shows, at [1] the asconf chunk would be put into the listening 'sk'
+backlog, as accept() was holding its sock lock. Then at [2] asconf would
+get processed with 'newsk' as asoc's sk had been set to 'newsk'. However,
+'newsk' sk_socket is not set until [3], while selinux_sctp_bind_connect()
+would deref it, then kernel crashed.
+
+Here to fix it by adding a new function sctp_inet_accept() for .accept(),
+where it calls release_sock() on listening sk after sock_graft() in which
+'newsk' sk_socket is set.
+
+Note that TCPF_SYN_RECV flag check is removed in sctp_inet_accept(), as
+sctp doesn't really use it.
+
+Reported-by: Ying Xu <yinxu@redhat.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/sctp.h |  2 ++
+ net/sctp/ipv6.c         |  2 +-
+ net/sctp/protocol.c     |  2 +-
+ net/sctp/socket.c       | 31 ++++++++++++++++++++++++++-----
+ 4 files changed, 30 insertions(+), 7 deletions(-)
+
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 5d60f13..be411a2 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -90,6 +90,8 @@ void sctp_addr_wq_mgmt(struct net *, struct sctp_sockaddr_entry *, int);
+  */
+ int sctp_inet_connect(struct socket *sock, struct sockaddr *uaddr,
+ 		      int addr_len, int flags);
++int sctp_inet_accept(struct socket *sock, struct socket *newsock,
++		     int flags, bool kern);
+ int sctp_backlog_rcv(struct sock *sk, struct sk_buff *skb);
+ int sctp_inet_listen(struct socket *sock, int backlog);
+ void sctp_write_space(struct sock *sk);
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index e5f2fc7..529b930 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -1011,7 +1011,7 @@ static const struct proto_ops inet6_seqpacket_ops = {
+ 	.bind		   = inet6_bind,
+ 	.connect	   = sctp_inet_connect,
+ 	.socketpair	   = sock_no_socketpair,
+-	.accept		   = inet_accept,
++	.accept		   = sctp_inet_accept,
+ 	.getname	   = sctp_getname,
+ 	.poll		   = sctp_poll,
+ 	.ioctl		   = inet6_ioctl,
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 08d14d8..d796ba1 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -1007,7 +1007,7 @@ static const struct proto_ops inet_seqpacket_ops = {
+ 	.bind		   = inet_bind,
+ 	.connect	   = sctp_inet_connect,
+ 	.socketpair	   = sock_no_socketpair,
+-	.accept		   = inet_accept,
++	.accept		   = sctp_inet_accept,
+ 	.getname	   = inet_getname,	/* Semantics are different.  */
+ 	.poll		   = sctp_poll,
+ 	.ioctl		   = inet_ioctl,
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 939b8d2..d7d93e8 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4878,8 +4878,6 @@ static struct sock *sctp_accept(struct sock *sk, int flags, int *err, bool kern)
+ 	long timeo;
+ 	int error = 0;
+ 
+-	lock_sock(sk);
+-
+ 	sp = sctp_sk(sk);
+ 	ep = sp->ep;
+ 
+@@ -4920,11 +4918,36 @@ static struct sock *sctp_accept(struct sock *sk, int flags, int *err, bool kern)
+ 	}
+ 
+ out:
+-	release_sock(sk);
+ 	*err = error;
+ 	return newsk;
+ }
+ 
++int sctp_inet_accept(struct socket *sock, struct socket *newsock,
++		     int flags, bool kern)
++{
++	struct sock *sk = sock->sk;
++	struct sock *newsk;
++	int err = 0;
++
++	lock_sock(sk);
++	newsk = sctp_accept(sk, flags, &err, kern);
++	if (!newsk)
++		goto do_err;
++
++	lock_sock_nested(newsk, SINGLE_DEPTH_NESTING);
++	sock_rps_record_flow(newsk);
++	WARN_ON(!((1 << newsk->sk_state) &
++		  (TCPF_ESTABLISHED | TCPF_CLOSE_WAIT | TCPF_CLOSE)));
++
++	sock_graft(newsk, newsock);
++	newsock->state = SS_CONNECTED;
++	release_sock(newsk);
++
++do_err:
++	release_sock(sk);
++	return err;
++}
++
+ /* The SCTP ioctl handler. */
+ static int sctp_ioctl(struct sock *sk, int cmd, unsigned long arg)
+ {
+@@ -9487,7 +9510,6 @@ struct proto sctp_prot = {
+ 	.owner       =	THIS_MODULE,
+ 	.close       =	sctp_close,
+ 	.disconnect  =	sctp_disconnect,
+-	.accept      =	sctp_accept,
+ 	.ioctl       =	sctp_ioctl,
+ 	.init        =	sctp_init_sock,
+ 	.destroy     =	sctp_destroy_sock,
+@@ -9529,7 +9551,6 @@ struct proto sctpv6_prot = {
+ 	.owner		= THIS_MODULE,
+ 	.close		= sctp_close,
+ 	.disconnect	= sctp_disconnect,
+-	.accept		= sctp_accept,
+ 	.ioctl		= sctp_ioctl,
+ 	.init		= sctp_init_sock,
+ 	.destroy	= sctp_v6_destroy_sock,
+-- 
+2.1.0
