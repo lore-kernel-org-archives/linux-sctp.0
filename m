@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Wed, 02 Oct 2019 12:24:40 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 02 Oct 2019 12:55:11 +0000
 Subject: Re: [PATCH net] sctp: set newsk sk_socket before processing listening sk backlog
-Message-Id: <20191002122440.GA24970@hmswarspite.think-freely.org>
+Message-Id: <20191002125511.GH3499@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <acd60f4797143dc6e9817b3dce38e1408caf65e5.1569849018.git.lucien.xin@gmail.com>
  <20191002010356.GG3499@localhost.localdomain>
@@ -11,7 +11,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>
 
 On Wed, Oct 02, 2019 at 04:23:52PM +0800, Xin Long wrote:
 > On Wed, Oct 2, 2019 at 9:04 AM Marcelo Ricardo Leitner
@@ -85,7 +85,15 @@ On Wed, Oct 02, 2019 at 04:23:52PM +0800, Xin Long wrote:
 > +       if (!error) {
 > +               lock_sock_nested(newsk, SINGLE_DEPTH_NESTING);
 > +               release_sock(sk);
+
+Interesting. It fixes the backlog processing, ok. Question:
+
 > +               release_sock(newsk);
+
+As newsk is hashed already and unlocked here to be locked again later
+on inet_accept(), it could receive a packet in between (thus before
+sock_graft() could have a chance to run), no?
+
 > +               *err = error;
 > +
 > +               return newsk;
@@ -98,15 +106,6 @@ On Wed, Oct 02, 2019 at 04:23:52PM +0800, Xin Long wrote:
 > +       return NULL;
 >  }
 > 
-I think this is far more concise, and I don't see a particular issue
-with the locking order (though I think you could reverse the order there
-if you needed to.  In fact if you did that, you could change the if
-(!error) to an if/else statement where the if set newsk = NULL, and the
-else clause just released newsk and set err *, then you would be able to
-maintain a common return point.
-
-Neil
-
 > >
 > > AFAICT TCP code would be fine with such change. Didn't check other
 > > protocols.
