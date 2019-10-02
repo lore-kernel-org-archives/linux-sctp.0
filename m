@@ -1,45 +1,30 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 08 Oct 2019 11:27:35 +0000
-Subject: [PATCH net-next 3/4] sctp: add SCTP_ADDR_MADE_PRIM event
-Message-Id: <52fca36c494e075b2d40781ada8669252125521b.1570534014.git.lucien.xin@gmail.com>
+From: "Young, James M" <james.m.young@intel.com>
+Date: Wed, 02 Oct 2019 18:58:49 +0000
+Subject: lksctp tools sourceforge page problem
+Message-Id: <68C85B5FC2FE974B87244D7222BC927877F16831@ORSMSX102.amr.corp.intel.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1570534014.git.lucien.xin@gmail.com>
- <05b452daf6271ca0a37bafd28947e3b16bf49fd5.1570534014.git.lucien.xin@gmail.com>
- <11f2df01acb8a5d90ad2b37e97416ee2a9ff1a20.1570534014.git.lucien.xin@gmail.com>
-In-Reply-To: <11f2df01acb8a5d90ad2b37e97416ee2a9ff1a20.1570534014.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net
+To: linux-sctp@vger.kernel.org
 
-sctp_ulpevent_nofity_peer_addr_change() would be called in
-sctp_assoc_set_primary() to send SCTP_ADDR_MADE_PRIM event
-when this transport is set to the primary path of the asoc.
+Hello, 
+I am sending this email to let someone know that the page at lksctp.sourceforge.net, which does not list a maintainer, has a URL for "library ABI (sic) information here" that points to a domain which seems legit by the URL but opened what appears to be a mixed-porn page (it was NSFW so I closed it quickly without gathering details) . I clicked that link on 9/26 so it may have gotten "fixed" in the past several days.  
 
-This event is described in rfc6458#section-6.1.2:
+The section in question is: 
+Download and Release Notes
+lksctp-tools-1.0.17 has been released.
 
-  SCTP_ADDR_MADE_PRIM:  This address has now been made the primary
-     destination address.  This notification is provided whenever an
-     address is made primary.
+It can be downloaded via Sourceforge here, or via Git:
+  git clone git://github.com/sctp/lksctp-tools.git [...]
+  git checkout lksctp-tools-1.0.17
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- net/sctp/associola.c | 2 ++
- 1 file changed, 2 insertions(+)
+Older releases can be found here, library ABI information here. Linux kernel support for SCTP is distributed together with the Linux kernel source code.
 
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index 0d3d7ce..1ba893b 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -429,6 +429,8 @@ void sctp_assoc_set_primary(struct sctp_association *asoc,
- 		changeover = 1 ;
- 
- 	asoc->peer.primary_path = transport;
-+	sctp_ulpevent_nofity_peer_addr_change(transport,
-+					      SCTP_ADDR_MADE_PRIM, 0);
- 
- 	/* Set a default msg_name for events. */
- 	memcpy(&asoc->peer.primary_addr, &transport->ipaddr,
--- 
-2.1.0
+lksctp-tools are open source and released under the dual license GPL version 2.0, and LGPL version 2.1.
+
+I removed all the hyperlinks and formatting in my snip but as of today the offending URL is linked to the "here" that follows "library ABI information" and points to the domain "upstream-tracker.org/versions/lksctp-tools.html" 
+
+Thanks, 
+
+Jim Young
