@@ -1,22 +1,22 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 02 Oct 2019 17:48:54 +0000
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 02 Oct 2019 18:23:37 +0000
 Subject: Re: [PATCH net] sctp: set newsk sk_socket before processing listening sk backlog
-Message-Id: <20191002174854.GI3499@localhost.localdomain>
+Message-Id: <CADvbK_dgNB3Cgd8v+VP3iWKCr0-UkS6vUBxLOTTCi_SPcQj7-w@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <acd60f4797143dc6e9817b3dce38e1408caf65e5.1569849018.git.lucien.xin@gmail.com>
- <20191002010356.GG3499@localhost.localdomain>
- <CADvbK_ctLG+vnhmWwN=cWmZV7FgZreVRmoU+23PExdk=goF8cQ@mail.gmail.com>
- <20191002125511.GH3499@localhost.localdomain>
- <CADvbK_fD+yuCCUTf41n+3oVwVjLUdT8+-wfwppVL8ZmbJegTWA@mail.gmail.com>
+ <20191002010356.GG3499@localhost.localdomain> <CADvbK_ctLG+vnhmWwN=cWmZV7FgZreVRmoU+23PExdk=goF8cQ@mail.gmail.com>
+ <20191002125511.GH3499@localhost.localdomain> <CADvbK_fD+yuCCUTf41n+3oVwVjLUdT8+-wfwppVL8ZmbJegTWA@mail.gmail.com>
  <20191002174127.GL3431@localhost.localdomain>
 In-Reply-To: <20191002174127.GL3431@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem <davem@davemloft.net>, Neil Horman <nhorman@tuxdriver.com>
 
-On Wed, Oct 02, 2019 at 02:41:27PM -0300, Marcelo Ricardo Leitner wrote:
+On Thu, Oct 3, 2019 at 1:41 AM Marcelo Ricardo Leitner
+<marcelo.leitner@gmail.com> wrote:
+>
 > On Thu, Oct 03, 2019 at 01:26:46AM +0800, Xin Long wrote:
 > > On Wed, Oct 2, 2019 at 8:55 PM Marcelo Ricardo Leitner
 > > <marcelo.leitner@gmail.com> wrote:
@@ -101,31 +101,52 @@ On Wed, Oct 02, 2019 at 02:41:27PM -0300, Marcelo Ricardo Leitner wrote:
 > > > As newsk is hashed already and unlocked here to be locked again later
 > > > on inet_accept(), it could receive a packet in between (thus before
 > > > sock_graft() could have a chance to run), no?
-> > 
+> >
 > > You're right, it explains another call trace happened once in our testing.
-> > 
+> >
 > > The way to changing inet_accept() will also have to change all protocols'
 > > .accept(). Given that this issue is only triggered in a very small moment,
 > > can we just silently discard this asconf chunk if sk->sk_socket is NULL?
 > > and let peer's T4-timer retransmit it.
-> 
+>
 > No no. If the change doesn't hurt other protocols, we should try that
 > first.  Otherwise this adds overhead to the network and we could get a
 > bug report soon on "valid asconf being ignored".
-> 
+Thanks, I will give it a try tomorrow.
+
+>
 > If that doesn't pan out, maybe your initial suggestion is the way out.
 > More custom code but keeps the expected behavior.
-> 
-> > 
+okay
+
+>
+> >
 > > @@ -3709,6 +3709,9 @@ enum sctp_disposition sctp_sf_do_asconf(struct net *net,
 > >         struct sctp_addiphdr *hdr;
 > >         __u32 serial;
-> > 
+> >
 > > +       if (asoc->base.sk->sk_socket)
 > > +               return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
-
-What if we add this to sctp_backlog_rcv() instead?  As in, do not
-process the backlog if so.
-And force doing backlog on sctp_rcv() also.
-As we are sure that there will be a subsequent lock/unlock and that it
-will handle it, this could work.
+> > +
+> >
+> > Note we can't do this in sctp_process_asconf_param(), as an asconf_ack
+> > will be sent back.
+> >
+> > >
+> > > > +               *err = error;
+> > > > +
+> > > > +               return newsk;
+> > > >         }
+> > > >
+> > > >  out:
+> > > >         release_sock(sk);
+> > > >         *err = error;
+> > > > -       return newsk;
+> > > > +       return NULL;
+> > > >  }
+> > > >
+> > > > >
+> > > > > AFAICT TCP code would be fine with such change. Didn't check other
+> > > > > protocols.
+> > > > >
+> > > >
