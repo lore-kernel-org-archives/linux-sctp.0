@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 04 Oct 2019 12:21:20 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Fri, 04 Oct 2019 12:27:11 +0000
 Subject: Re: [PATCH] lib/generic-radix-tree.c: add kmemleak annotations
-Message-Id: <20191004122120.GP3431@localhost.localdomain>
+Message-Id: <20191004122711.GA14248@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CACT4Y+aGjg_JTL-OPMSi1wS4=Zy4xFAizWW5fa8_KMOFpfMeXg@mail.gmail.com>
  <20191004065039.727564-1-ebiggers@kernel.org>
@@ -10,7 +10,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Eric Biggers <ebiggers@kernel.org>
-Cc: Andrew Morton <akpm@linux-foundation.org>, linux-mm@kvack.org, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com, Catalin Marinas <catalin.marinas@arm.com>, Kent Overstreet <kent.overstreet@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>, linux-mm@kvack.org, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com, Catalin Marinas <catalin.marinas@arm.com>, Kent Overstreet <kent.overstreet@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
 On Thu, Oct 03, 2019 at 11:50:39PM -0700, Eric Biggers wrote:
 > From: Eric Biggers <ebiggers@google.com>
@@ -41,11 +41,6 @@ On Thu, Oct 03, 2019 at 11:50:39PM -0700, Eric Biggers wrote:
 > generic radix tree uses raw pages which aren't tracked by kmemleak.
 > 
 > Fix this by adding the kmemleak hooks to the generic radix tree code.
-
-Nice, thanks Eric.
-
-Reviewed-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
 > 
 > Reported-by: syzbot+7f3b6b106be8dcdcdeec@syzkaller.appspotmail.com
 > Signed-off-by: Eric Biggers <ebiggers@google.com>
@@ -134,3 +129,5 @@ Reviewed-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > -- 
 > 2.23.0
 > 
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
