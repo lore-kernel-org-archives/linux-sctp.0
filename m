@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 04 Oct 2019 12:27:11 +0000
+From: Catalin Marinas <catalin.marinas@arm.com>
+Date: Fri, 04 Oct 2019 14:48:41 +0000
 Subject: Re: [PATCH] lib/generic-radix-tree.c: add kmemleak annotations
-Message-Id: <20191004122711.GA14248@hmswarspite.think-freely.org>
+Message-Id: <20191004144841.GI638@arrakis.emea.arm.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <CACT4Y+aGjg_JTL-OPMSi1wS4=Zy4xFAizWW5fa8_KMOFpfMeXg@mail.gmail.com>
  <20191004065039.727564-1-ebiggers@kernel.org>
@@ -10,7 +10,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Eric Biggers <ebiggers@kernel.org>
-Cc: Andrew Morton <akpm@linux-foundation.org>, linux-mm@kvack.org, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com, Catalin Marinas <catalin.marinas@arm.com>, Kent Overstreet <kent.overstreet@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>, linux-mm@kvack.org, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com, Kent Overstreet <kent.overstreet@gmail.com>, Vlad Yasevich <vyasevich@gmail.com>, Xin Long <lucien.xin@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 
 On Thu, Oct 03, 2019 at 11:50:39PM -0700, Eric Biggers wrote:
 > From: Eric Biggers <ebiggers@google.com>
@@ -44,90 +44,5 @@ On Thu, Oct 03, 2019 at 11:50:39PM -0700, Eric Biggers wrote:
 > 
 > Reported-by: syzbot+7f3b6b106be8dcdcdeec@syzkaller.appspotmail.com
 > Signed-off-by: Eric Biggers <ebiggers@google.com>
-> ---
->  lib/generic-radix-tree.c | 32 ++++++++++++++++++++++++++------
->  1 file changed, 26 insertions(+), 6 deletions(-)
-> 
-> diff --git a/lib/generic-radix-tree.c b/lib/generic-radix-tree.c
-> index ae25e2fa2187..f25eb111c051 100644
-> --- a/lib/generic-radix-tree.c
-> +++ b/lib/generic-radix-tree.c
-> @@ -2,6 +2,7 @@
->  #include <linux/export.h>
->  #include <linux/generic-radix-tree.h>
->  #include <linux/gfp.h>
-> +#include <linux/kmemleak.h>
->  
->  #define GENRADIX_ARY		(PAGE_SIZE / sizeof(struct genradix_node *))
->  #define GENRADIX_ARY_SHIFT	ilog2(GENRADIX_ARY)
-> @@ -75,6 +76,27 @@ void *__genradix_ptr(struct __genradix *radix, size_t offset)
->  }
->  EXPORT_SYMBOL(__genradix_ptr);
->  
-> +static inline struct genradix_node *genradix_alloc_node(gfp_t gfp_mask)
-> +{
-> +	struct genradix_node *node;
-> +
-> +	node = (struct genradix_node *)__get_free_page(gfp_mask|__GFP_ZERO);
-> +
-> +	/*
-> +	 * We're using pages (not slab allocations) directly for kernel data
-> +	 * structures, so we need to explicitly inform kmemleak of them in order
-> +	 * to avoid false positive memory leak reports.
-> +	 */
-> +	kmemleak_alloc(node, PAGE_SIZE, 1, gfp_mask);
-> +	return node;
-> +}
-> +
-> +static inline void genradix_free_node(struct genradix_node *node)
-> +{
-> +	kmemleak_free(node);
-> +	free_page((unsigned long)node);
-> +}
-> +
->  /*
->   * Returns pointer to the specified byte @offset within @radix, allocating it if
->   * necessary - newly allocated slots are always zeroed out:
-> @@ -97,8 +119,7 @@ void *__genradix_ptr_alloc(struct __genradix *radix, size_t offset,
->  			break;
->  
->  		if (!new_node) {
-> -			new_node = (void *)
-> -				__get_free_page(gfp_mask|__GFP_ZERO);
-> +			new_node = genradix_alloc_node(gfp_mask);
->  			if (!new_node)
->  				return NULL;
->  		}
-> @@ -121,8 +142,7 @@ void *__genradix_ptr_alloc(struct __genradix *radix, size_t offset,
->  		n = READ_ONCE(*p);
->  		if (!n) {
->  			if (!new_node) {
-> -				new_node = (void *)
-> -					__get_free_page(gfp_mask|__GFP_ZERO);
-> +				new_node = genradix_alloc_node(gfp_mask);
->  				if (!new_node)
->  					return NULL;
->  			}
-> @@ -133,7 +153,7 @@ void *__genradix_ptr_alloc(struct __genradix *radix, size_t offset,
->  	}
->  
->  	if (new_node)
-> -		free_page((unsigned long) new_node);
-> +		genradix_free_node(new_node);
->  
->  	return &n->data[offset];
->  }
-> @@ -191,7 +211,7 @@ static void genradix_free_recurse(struct genradix_node *n, unsigned level)
->  				genradix_free_recurse(n->children[i], level - 1);
->  	}
->  
-> -	free_page((unsigned long) n);
-> +	genradix_free_node(n);
->  }
->  
->  int __genradix_prealloc(struct __genradix *radix, size_t size,
-> -- 
-> 2.23.0
-> 
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+
+Reviewed-by: Catalin Marinas <catalin.marinas@arm.com>
