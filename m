@@ -1,82 +1,37 @@
-From: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
-Date: Fri, 25 Oct 2019 14:45:48 +0000
-Subject: Re: [PATCHv3 net-next 2/5] sctp: add pf_expose per netns and sock and asoc
-Message-Id: <20191025144548.GC4250@localhost.localdomain>
+From: Edward Cree <ecree@solarflare.com>
+Date: Fri, 04 Oct 2019 15:17:21 +0000
+Subject: Re: [PATCH net-next] net: ipv6: fix listify ip6_rcv_finish in case of forwarding
+Message-Id: <3bda6dee-7b8b-1f50-b4ea-47857ca97279@solarflare.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1571033544.git.lucien.xin@gmail.com>
- <f4c99c3d918c0d82f5d5c60abd6abcf381292f1f.1571033544.git.lucien.xin@gmail.com>
- <20191025032337.GC4326@localhost.localdomain>
- <995e44322af74c41bbff2c77338f83bf@AcuMS.aculab.com>
- <20191025132151.GF4326@localhost.localdomain>
- <715b91a4a86547eb874874eda125c2ba@AcuMS.aculab.com>
-In-Reply-To: <715b91a4a86547eb874874eda125c2ba@AcuMS.aculab.com>
+References: <e355527b374f6ce70fcc286457f87592cd8f3dcc.1566559983.git.lucien.xin@gmail.com>
+ <20190823.144250.2063544404229146484.davem@davemloft.net>
+In-Reply-To: <20190823.144250.2063544404229146484.davem@davemloft.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@aculab.com>
-Cc: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, "davem@davemloft.net" <davem@davemloft.net>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: David Miller <davem@davemloft.net>, lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, brouer@redhat.com, dvyukov@google.com, syzkaller-bugs@googlegroups.com
 
-On Fri, Oct 25, 2019 at 02:26:57PM +0000, David Laight wrote:
-> From: 'Marcelo Ricardo Leitner'
-> > Sent: 25 October 2019 14:22
-> > On Fri, Oct 25, 2019 at 09:00:45AM +0000, David Laight wrote:
-> > > From: Marcelo Ricardo Leitner
-> > > > Sent: 25 October 2019 04:24
-> > > ...
-> > > > > @@ -5521,8 +5522,16 @@ static int sctp_getsockopt_peer_addr_info(struct sock *sk, int len,
-> > > > >
-> > > > >  	transport = sctp_addr_id2transport(sk, &pinfo.spinfo_address,
-> > > > >  					   pinfo.spinfo_assoc_id);
-> > > > > -	if (!transport)
-> > > > > -		return -EINVAL;
-> > > > > +	if (!transport) {
-> > > > > +		retval = -EINVAL;
-> > > > > +		goto out;
-> > > > > +	}
-> > > > > +
-> > > > > +	if (transport->state = SCTP_PF &&
-> > > > > +	    transport->asoc->pf_expose = SCTP_PF_EXPOSE_DISABLE) {
-> > > > > +		retval = -EACCES;
-> > > > > +		goto out;
-> > > > > +	}
-> > > >
-> > > > As is on v3, this is NOT an UAPI violation. The user has to explicitly
-> > > > set the system or the socket into the disabled state in order to
-> > > > trigger this new check.
-> > >
-> > > Only because the default isn't to be backwards compatible with the
-> >                            ^^^^^
-> > 
-> > You meant "is", right? Then we're agreeing.
-> 
-> No, I meant isn't.
-
-Then you missed this detail in the patch. The default here IS to be
-backwards compatible.
-
-> The application must see a backwards compatible interface unless
-> the application itself requests something different.
-> The sysadmin can't be allowed to change the API seen by old applications.
-
-Disagree. Sysadmins should be able to harden their systems as much as
-they want/need. Yet, if that causes issues with old applications,
-that's on them.
-
-> 
-> AFAICT if the protocol part of PF is enabled (which handles primary path
-> failure better than the older version) and ' transport->state = SCTP_PF'
-> is true then an old application binary will  get a completely unexpected -EACCESS
-> rather than a valid state (out of the old valid states) if it requests 'peer addr_info'.
-> 
-> You cannot assume that just because some sysctl is set (because someone
-> building a distribution suddenly decided it was a 'good idea') that an
-> application binary will not fall in a big heap due to an error condition
-> that couldn't ever happen before.
-
-Agree, but that assumption doesn't have a room here. If the
-distribution decided to harden the system, that's on them. Ditto for
-many many other decisions, like having SELinux policies to block sshd
-to bind only on port 22 and so, or for building the kernel without
-SCTP_COOKIE_HMAC_MD5 because they think it's weak, etc.
-
-  Marcelo
+On 23/08/2019 22:42, David Miller wrote:
+> From: Xin Long <lucien.xin@gmail.com>
+> Date: Fri, 23 Aug 2019 19:33:03 +0800
+>
+>> We need a similar fix for ipv6 as Commit 0761680d5215 ("net: ipv4: fix
+>> listify ip_rcv_finish in case of forwarding") does for ipv4.
+>>
+>> This issue can be reprocuded by syzbot since Commit 323ebb61e32b ("net:
+>> use listified RX for handling GRO_NORMAL skbs") on net-next. The call
+>> trace was:
+>  ...
+>> Fixes: d8269e2cbf90 ("net: ipv6: listify ipv6_rcv() and ip6_rcv_finish()")
+>> Fixes: 323ebb61e32b ("net: use listified RX for handling GRO_NORMAL skbs")
+>> Reported-by: syzbot+eb349eeee854e389c36d@syzkaller.appspotmail.com
+>> Reported-by: syzbot+4a0643a653ac375612d1@syzkaller.appspotmail.com
+>> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+> Applied, thanks.
+Just noticed that this only went to net-next (and 5.4-rc1), when actually
+ it's needed on all kernels back to 4.19 (per the first Fixes: tag).  The
+ second Fixes: reference, 323ebb61e32b, merely enables syzbot to hit it on
+ whatever hardware it has, but the bug was already there, and hittable on
+ sfc NICs.
+David, can this go to stable please?
