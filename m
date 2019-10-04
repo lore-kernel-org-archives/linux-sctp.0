@@ -1,136 +1,173 @@
-From: Sasha Levin <sashal@kernel.org>
-Date: Fri, 25 Oct 2019 13:55:03 +0000
-Subject: [PATCH AUTOSEL 5.3 31/33] sctp: add chunks to sk_backlog when the newsk sk_socket is not set
-Message-Id: <20191025135505.24762-31-sashal@kernel.org>
+From: Eric Biggers <ebiggers@kernel.org>
+Date: Fri, 04 Oct 2019 05:25:05 +0000
+Subject: Re: memory leak in sctp_get_port_local (2)
+Message-Id: <20191004052505.GS667@sol.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20191025135505.24762-1-sashal@kernel.org>
-In-Reply-To: <20191025135505.24762-1-sashal@kernel.org>
+References: <000000000000f93dd2058f9c4873@google.com>
+ <CADvbK_dqTGZKWNmapcbyYVfLjuwzjSaqs0PHv687AjAvtPo3Zw@mail.gmail.com>
+In-Reply-To: <CADvbK_dqTGZKWNmapcbyYVfLjuwzjSaqs0PHv687AjAvtPo3Zw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: Xin Long <lucien.xin@gmail.com>, Ying Xu <yinxu@redhat.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Sasha Levin <sashal@kernel.org>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: Xin Long <lucien.xin@gmail.com>
+Cc: syzbot <syzbot+2d7ecdf99f15689032b3@syzkaller.appspotmail.com>, davem <davem@davemloft.net>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, network dev <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-From: Xin Long <lucien.xin@gmail.com>
+On Fri, Aug 09, 2019 at 04:33:11PM +0800, Xin Long wrote:
+> On Thu, Aug 8, 2019 at 11:01 PM syzbot
+> <syzbot+2d7ecdf99f15689032b3@syzkaller.appspotmail.com> wrote:
+> >
+> > Hello,
+> >
+> > syzbot found the following crash on:
+> >
+> > HEAD commit:    0eb0ce0a Merge tag 'spi-fix-v5.3-rc3' of git://git.kernel...
+> > git tree:       upstream
+> > console output: https://syzkaller.appspot.com/x/log.txt?x34588c600000
+> > kernel config:  https://syzkaller.appspot.com/x/.config?x9113f5c48aea971
+> > dashboard link: https://syzkaller.appspot.com/bug?extid-7ecdf99f15689032b3
+> > compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
+> > syz repro:      https://syzkaller.appspot.com/x/repro.syz?x0e1906600000
+> > C reproducer:   https://syzkaller.appspot.com/x/repro.c?x0ab906600000
+> >
+> > IMPORTANT: if you fix the bug, please add the following tag to the commit:
+> > Reported-by: syzbot+2d7ecdf99f15689032b3@syzkaller.appspotmail.com
+> >
+> > executing program
+> > executing program
+> > executing program
+> > executing program
+> > executing program
+> > BUG: memory leak
+> > unreferenced object 0xffff88810fa4b380 (size 64):
+> >    comm "syz-executor900", pid 7117, jiffies 4294946947 (age 16.560s)
+> >    hex dump (first 32 bytes):
+> >      20 4e 00 00 89 e7 4c 8d 00 00 00 00 00 00 00 00   N....L.........
+> >      58 40 dd 16 82 88 ff ff 00 00 00 00 00 00 00 00  X@..............
+> >    backtrace:
+> >      [<00000000f1461735>] kmemleak_alloc_recursive
+> > include/linux/kmemleak.h:43 [inline]
+> >      [<00000000f1461735>] slab_post_alloc_hook mm/slab.h:522 [inline]
+> >      [<00000000f1461735>] slab_alloc mm/slab.c:3319 [inline]
+> >      [<00000000f1461735>] kmem_cache_alloc+0x13f/0x2c0 mm/slab.c:3483
+> >      [<00000000ff3ccf22>] sctp_bucket_create net/sctp/socket.c:8374 [inline]
+> >      [<00000000ff3ccf22>] sctp_get_port_local+0x189/0x5b0
+> > net/sctp/socket.c:8121
+> >      [<00000000eed41612>] sctp_do_bind+0xcc/0x1e0 net/sctp/socket.c:402
+> >      [<000000002bf65239>] sctp_bind+0x44/0x70 net/sctp/socket.c:302
+> >      [<00000000b1aaaf57>] inet_bind+0x40/0xc0 net/ipv4/af_inet.c:441
+> >      [<00000000db36b917>] __sys_bind+0x11c/0x140 net/socket.c:1647
+> >      [<00000000679cfe3c>] __do_sys_bind net/socket.c:1658 [inline]
+> >      [<00000000679cfe3c>] __se_sys_bind net/socket.c:1656 [inline]
+> >      [<00000000679cfe3c>] __x64_sys_bind+0x1e/0x30 net/socket.c:1656
+> >      [<000000002aac3ac2>] do_syscall_64+0x76/0x1a0
+> > arch/x86/entry/common.c:296
+> >      [<000000000c38e074>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
+> >
+> > BUG: memory leak
+> > unreferenced object 0xffff88810fa4b380 (size 64):
+> >    comm "syz-executor900", pid 7117, jiffies 4294946947 (age 19.260s)
+> >    hex dump (first 32 bytes):
+> >      20 4e 00 00 89 e7 4c 8d 00 00 00 00 00 00 00 00   N....L.........
+> >      58 40 dd 16 82 88 ff ff 00 00 00 00 00 00 00 00  X@..............
+> >    backtrace:
+> >      [<00000000f1461735>] kmemleak_alloc_recursive
+> > include/linux/kmemleak.h:43 [inline]
+> >      [<00000000f1461735>] slab_post_alloc_hook mm/slab.h:522 [inline]
+> >      [<00000000f1461735>] slab_alloc mm/slab.c:3319 [inline]
+> >      [<00000000f1461735>] kmem_cache_alloc+0x13f/0x2c0 mm/slab.c:3483
+> >      [<00000000ff3ccf22>] sctp_bucket_create net/sctp/socket.c:8374 [inline]
+> >      [<00000000ff3ccf22>] sctp_get_port_local+0x189/0x5b0
+> > net/sctp/socket.c:8121
+> >      [<00000000eed41612>] sctp_do_bind+0xcc/0x1e0 net/sctp/socket.c:402
+> >      [<000000002bf65239>] sctp_bind+0x44/0x70 net/sctp/socket.c:302
+> >      [<00000000b1aaaf57>] inet_bind+0x40/0xc0 net/ipv4/af_inet.c:441
+> >      [<00000000db36b917>] __sys_bind+0x11c/0x140 net/socket.c:1647
+> >      [<00000000679cfe3c>] __do_sys_bind net/socket.c:1658 [inline]
+> >      [<00000000679cfe3c>] __se_sys_bind net/socket.c:1656 [inline]
+> >      [<00000000679cfe3c>] __x64_sys_bind+0x1e/0x30 net/socket.c:1656
+> >      [<000000002aac3ac2>] do_syscall_64+0x76/0x1a0
+> > arch/x86/entry/common.c:296
+> >      [<000000000c38e074>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
+> >
+> > BUG: memory leak
+> > unreferenced object 0xffff88810fa4b380 (size 64):
+> >    comm "syz-executor900", pid 7117, jiffies 4294946947 (age 21.990s)
+> >    hex dump (first 32 bytes):
+> >      20 4e 00 00 89 e7 4c 8d 00 00 00 00 00 00 00 00   N....L.........
+> >      58 40 dd 16 82 88 ff ff 00 00 00 00 00 00 00 00  X@..............
+> >    backtrace:
+> >      [<00000000f1461735>] kmemleak_alloc_recursive
+> > include/linux/kmemleak.h:43 [inline]
+> >      [<00000000f1461735>] slab_post_alloc_hook mm/slab.h:522 [inline]
+> >      [<00000000f1461735>] slab_alloc mm/slab.c:3319 [inline]
+> >      [<00000000f1461735>] kmem_cache_alloc+0x13f/0x2c0 mm/slab.c:3483
+> >      [<00000000ff3ccf22>] sctp_bucket_create net/sctp/socket.c:8374 [inline]
+> >      [<00000000ff3ccf22>] sctp_get_port_local+0x189/0x5b0
+> > net/sctp/socket.c:8121
+> >      [<00000000eed41612>] sctp_do_bind+0xcc/0x1e0 net/sctp/socket.c:402
+> >      [<000000002bf65239>] sctp_bind+0x44/0x70 net/sctp/socket.c:302
+> >      [<00000000b1aaaf57>] inet_bind+0x40/0xc0 net/ipv4/af_inet.c:441
+> >      [<00000000db36b917>] __sys_bind+0x11c/0x140 net/socket.c:1647
+> >      [<00000000679cfe3c>] __do_sys_bind net/socket.c:1658 [inline]
+> >      [<00000000679cfe3c>] __se_sys_bind net/socket.c:1656 [inline]
+> >      [<00000000679cfe3c>] __x64_sys_bind+0x1e/0x30 net/socket.c:1656
+> >      [<000000002aac3ac2>] do_syscall_64+0x76/0x1a0
+> > arch/x86/entry/common.c:296
+> >      [<000000000c38e074>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
+> >
+> > BUG: memory leak
+> > unreferenced object 0xffff88810fa4b380 (size 64):
+> >    comm "syz-executor900", pid 7117, jiffies 4294946947 (age 22.940s)
+> >    hex dump (first 32 bytes):
+> >      20 4e 00 00 89 e7 4c 8d 00 00 00 00 00 00 00 00   N....L.........
+> >      58 40 dd 16 82 88 ff ff 00 00 00 00 00 00 00 00  X@..............
+> >    backtrace:
+> >      [<00000000f1461735>] kmemleak_alloc_recursive
+> > include/linux/kmemleak.h:43 [inline]
+> >      [<00000000f1461735>] slab_post_alloc_hook mm/slab.h:522 [inline]
+> >      [<00000000f1461735>] slab_alloc mm/slab.c:3319 [inline]
+> >      [<00000000f1461735>] kmem_cache_alloc+0x13f/0x2c0 mm/slab.c:3483
+> >      [<00000000ff3ccf22>] sctp_bucket_create net/sctp/socket.c:8374 [inline]
+> >      [<00000000ff3ccf22>] sctp_get_port_local+0x189/0x5b0
+> > net/sctp/socket.c:8121
+> >      [<00000000eed41612>] sctp_do_bind+0xcc/0x1e0 net/sctp/socket.c:402
+> >      [<000000002bf65239>] sctp_bind+0x44/0x70 net/sctp/socket.c:302
+> >      [<00000000b1aaaf57>] inet_bind+0x40/0xc0 net/ipv4/af_inet.c:441
+> >      [<00000000db36b917>] __sys_bind+0x11c/0x140 net/socket.c:1647
+> >      [<00000000679cfe3c>] __do_sys_bind net/socket.c:1658 [inline]
+> >      [<00000000679cfe3c>] __se_sys_bind net/socket.c:1656 [inline]
+> >      [<00000000679cfe3c>] __x64_sys_bind+0x1e/0x30 net/socket.c:1656
+> >      [<000000002aac3ac2>] do_syscall_64+0x76/0x1a0
+> > arch/x86/entry/common.c:296
+> >      [<000000000c38e074>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
+> >
+> > executing program
+> > executing program
+> > executing program
+> > executing program
+> should be fixed by:
+> commit 9b6c08878e23adb7cc84bdca94d8a944b03f099e
+> Author: Xin Long <lucien.xin@gmail.com>
+> Date:   Wed Jun 26 16:31:39 2019 +0800
+> 
+>     sctp: not bind the socket in sctp_connect
+> 
+> was this commit included in the testing kernel?
+> 
+> >
+> >
+> > ---
 
-[ Upstream commit 819be8108fded0b9e710bbbf81193e52f7bab2f7 ]
+I'm marking this fixed by commit 29b99f54a8e6:
 
-This patch is to fix a NULL-ptr deref in selinux_socket_connect_helper:
+#syz fix: sctp: destroy bucket if failed to bind addr
 
-  [...] kasan: GPF could be caused by NULL-ptr deref or user memory access
-  [...] RIP: 0010:selinux_socket_connect_helper+0x94/0x460
-  [...] Call Trace:
-  [...]  selinux_sctp_bind_connect+0x16a/0x1d0
-  [...]  security_sctp_bind_connect+0x58/0x90
-  [...]  sctp_process_asconf+0xa52/0xfd0 [sctp]
-  [...]  sctp_sf_do_asconf+0x785/0x980 [sctp]
-  [...]  sctp_do_sm+0x175/0x5a0 [sctp]
-  [...]  sctp_assoc_bh_rcv+0x285/0x5b0 [sctp]
-  [...]  sctp_backlog_rcv+0x482/0x910 [sctp]
-  [...]  __release_sock+0x11e/0x310
-  [...]  release_sock+0x4f/0x180
-  [...]  sctp_accept+0x3f9/0x5a0 [sctp]
-  [...]  inet_accept+0xe7/0x720
+... as it fixed a memory leak of this same data structure.
 
-It was caused by that the 'newsk' sk_socket was not set before going to
-security sctp hook when processing asconf chunk with SCTP_PARAM_ADD_IP
-or SCTP_PARAM_SET_PRIMARY:
+However, syzbot is still hitting this in a different way, so it will get
+reported again.  If anyone wants to fix it before then, see the C reproducer
+here: https://syzkaller.appspot.com/text?tag=ReproC&x6ab7f3600000
+It's from the "2019/10/03 02:51" crash listed at
+https://syzkaller.appspot.com/bug?id-2cb27d3b4e4db041c252f09c492868885e5607
 
-  inet_accept()->
-    sctp_accept():
-      lock_sock():
-          lock listening 'sk'
-                                          do_softirq():
-                                            sctp_rcv():  <-- [1]
-                                                asconf chunk arrives and
-                                                enqueued in 'sk' backlog
-      sctp_sock_migrate():
-          set asoc's sk to 'newsk'
-      release_sock():
-          sctp_backlog_rcv():
-            lock 'newsk'
-            sctp_process_asconf()  <-- [2]
-            unlock 'newsk'
-    sock_graft():
-        set sk_socket  <-- [3]
-
-As it shows, at [1] the asconf chunk would be put into the listening 'sk'
-backlog, as accept() was holding its sock lock. Then at [2] asconf would
-get processed with 'newsk' as asoc's sk had been set to 'newsk'. However,
-'newsk' sk_socket is not set until [3], while selinux_sctp_bind_connect()
-would deref it, then kernel crashed.
-
-Here to fix it by adding the chunk to sk_backlog until newsk sk_socket is
-set when .accept() is done.
-
-Note that sk->sk_socket can be NULL when the sock is closed, so SOCK_DEAD
-flag is also needed to check in sctp_newsk_ready().
-
-Thanks to Ondrej for reviewing the code.
-
-Fixes: d452930fd3b9 ("selinux: Add SCTP support")
-Reported-by: Ying Xu <yinxu@redhat.com>
-Suggested-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
-Signed-off-by: Jakub Kicinski <jakub.kicinski@netronome.com>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- include/net/sctp/sctp.h |  5 +++++
- net/sctp/input.c        | 12 +++++++++---
- 2 files changed, 14 insertions(+), 3 deletions(-)
-
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index 5d60f13d2347b..3ab5c6bbb90bd 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -610,4 +610,9 @@ static inline __u32 sctp_min_frag_point(struct sctp_sock *sp, __u16 datasize)
- 	return sctp_mtu_payload(sp, SCTP_DEFAULT_MINSEGMENT, datasize);
- }
- 
-+static inline bool sctp_newsk_ready(const struct sock *sk)
-+{
-+	return sock_flag(sk, SOCK_DEAD) || sk->sk_socket;
-+}
-+
- #endif /* __net_sctp_h__ */
-diff --git a/net/sctp/input.c b/net/sctp/input.c
-index 1008cdc44dd61..156e24ad54ea4 100644
---- a/net/sctp/input.c
-+++ b/net/sctp/input.c
-@@ -243,7 +243,7 @@ int sctp_rcv(struct sk_buff *skb)
- 		bh_lock_sock(sk);
- 	}
- 
--	if (sock_owned_by_user(sk)) {
-+	if (sock_owned_by_user(sk) || !sctp_newsk_ready(sk)) {
- 		if (sctp_add_backlog(sk, skb)) {
- 			bh_unlock_sock(sk);
- 			sctp_chunk_free(chunk);
-@@ -321,7 +321,7 @@ int sctp_backlog_rcv(struct sock *sk, struct sk_buff *skb)
- 		local_bh_disable();
- 		bh_lock_sock(sk);
- 
--		if (sock_owned_by_user(sk)) {
-+		if (sock_owned_by_user(sk) || !sctp_newsk_ready(sk)) {
- 			if (sk_add_backlog(sk, skb, sk->sk_rcvbuf))
- 				sctp_chunk_free(chunk);
- 			else
-@@ -336,7 +336,13 @@ int sctp_backlog_rcv(struct sock *sk, struct sk_buff *skb)
- 		if (backloged)
- 			return 0;
- 	} else {
--		sctp_inq_push(inqueue, chunk);
-+		if (!sctp_newsk_ready(sk)) {
-+			if (!sk_add_backlog(sk, skb, sk->sk_rcvbuf))
-+				return 0;
-+			sctp_chunk_free(chunk);
-+		} else {
-+			sctp_inq_push(inqueue, chunk);
-+		}
- 	}
- 
- done:
--- 
-2.20.1
+- Eric
