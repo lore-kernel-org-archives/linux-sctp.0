@@ -1,73 +1,74 @@
-From: Jakub Kicinski <jakub.kicinski@netronome.com>
-Date: Wed, 09 Oct 2019 23:34:26 +0000
-Subject: Re: [PATCH net] sctp: add chunks to sk_backlog when the newsk sk_socket is not set
-Message-Id: <20191009163426.4142cfd3@cakuba.netronome.com>
+From: Joe Perches <joe@perches.com>
+Date: Sat, 05 Oct 2019 16:46:40 +0000
+Subject: [PATCH 0/4] treewide: Add 'fallthrough' pseudo-keyword
+Message-Id: <cover.1570292505.git.joe@perches.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <d8dd0065232e5c3629bf55e54e3a998110ec1aef.1570532963.git.lucien.xin@gmail.com>
-In-Reply-To: <d8dd0065232e5c3629bf55e54e3a998110ec1aef.1570532963.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, omosnace@redhat.com
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: Linus Torvalds <torvalds@linux-foundation.org>, linux-sctp@vger.kernel.org
+Cc: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>, Kees Cook <keescook@chromium.org>, Borislav Petkov <bp@alien8.de>, "H . Peter Anvin" <hpa@zytor.com>, Thomas Gleixner <tglx@linutronix.de>, Pavel Machek <pavel@ucw.cz>, "Gustavo A . R . Silva" <gustavo@embeddedor.com>, Arnaldo Carvalho de Melo <acme@kernel.org>, Kan Liang <kan.liang@linux.intel.com>, Namhyung Kim <namhyung@kernel.org>, Jiri Olsa <jolsa@redhat.com>, Alexander Shishkin <alexander.shishkin@linux.intel.com>, Shawn Landden <shawn@git.icu>, x86@kernel.org, linux-kernel@vger.kernel.org, Nathan Chancellor <natechancellor@gmail.com>, Nick Desaulniers <ndesaulniers@google.com>, Andrew Morton <akpm@linux-foundation.org>, David Miller <davem@davemloft.net>, clang-built-linux@googlegroups.com, Jonathan Corbet <corbet@lwn.net>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, linux-doc@vger.kernel.org, netdev@vger.kernel.org
 
-On Tue,  8 Oct 2019 19:09:23 +0800, Xin Long wrote:
-> This patch is to fix a NULL-ptr deref in selinux_socket_connect_helper:
-> 
->   [...] kasan: GPF could be caused by NULL-ptr deref or user memory access
->   [...] RIP: 0010:selinux_socket_connect_helper+0x94/0x460
->   [...] Call Trace:
->   [...]  selinux_sctp_bind_connect+0x16a/0x1d0
->   [...]  security_sctp_bind_connect+0x58/0x90
->   [...]  sctp_process_asconf+0xa52/0xfd0 [sctp]
->   [...]  sctp_sf_do_asconf+0x785/0x980 [sctp]
->   [...]  sctp_do_sm+0x175/0x5a0 [sctp]
->   [...]  sctp_assoc_bh_rcv+0x285/0x5b0 [sctp]
->   [...]  sctp_backlog_rcv+0x482/0x910 [sctp]
->   [...]  __release_sock+0x11e/0x310
->   [...]  release_sock+0x4f/0x180
->   [...]  sctp_accept+0x3f9/0x5a0 [sctp]
->   [...]  inet_accept+0xe7/0x720
-> 
-> It was caused by that the 'newsk' sk_socket was not set before going to
-> security sctp hook when processing asconf chunk with SCTP_PARAM_ADD_IP
-> or SCTP_PARAM_SET_PRIMARY:
-> 
->   inet_accept()->
->     sctp_accept():
->       lock_sock():
->           lock listening 'sk'
->                                           do_softirq():
->                                             sctp_rcv():  <-- [1]
->                                                 asconf chunk arrives and
->                                                 enqueued in 'sk' backlog
->       sctp_sock_migrate():
->           set asoc's sk to 'newsk'
->       release_sock():
->           sctp_backlog_rcv():
->             lock 'newsk'
->             sctp_process_asconf()  <-- [2]
->             unlock 'newsk'
->     sock_graft():
->         set sk_socket  <-- [3]
-> 
-> As it shows, at [1] the asconf chunk would be put into the listening 'sk'
-> backlog, as accept() was holding its sock lock. Then at [2] asconf would
-> get processed with 'newsk' as asoc's sk had been set to 'newsk'. However,
-> 'newsk' sk_socket is not set until [3], while selinux_sctp_bind_connect()
-> would deref it, then kernel crashed.
-> 
-> Here to fix it by adding the chunk to sk_backlog until newsk sk_socket is
-> set when .accept() is done.
-> 
-> Note that sk->sk_socket can be NULL when the sock is closed, so SOCK_DEAD
-> flag is also needed to check in sctp_newsk_ready().
-> 
-> Thanks to Ondrej for reviewing the code.
-> 
-> Fixes: d452930fd3b9 ("selinux: Add SCTP support")
-> Reported-by: Ying Xu <yinxu@redhat.com>
-> Suggested-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Add 'fallthrough' pseudo-keyword to enable the removal of comments
+like '/* fallthrough */'.
 
-Applied, queued for stable, thank you!
+Add a script to convert the fallthrough comments.
+
+The script can be run over any single file or treewide.
+
+For instance, a treewide conversion can be done using:
+
+$ git ls-files -- '*.[ch]' | \
+  xargs scripts/cvt_style.pl -o --convert=FAllthrough
+
+This currently produces:
+
+$ git diff --shortstat
+ 1839 files changed, 4377 insertions(+), 4698 deletions(-)
+
+Example fallthrough conversion produced by the script:
+
+$ scripts/cvt_style.pl -o --convert=FAllthrough arch/arm/mm/alignment.c
+
+a/arch/arm/mm/alignment.c
+b/arch/arm/mm/alignment.c
+@@ -695,8 +695,7 @@ thumb2arm(u16 tinstr)
+ 			return subset[(L<<1) | ((tinstr & (1<<8)) >> 8)] |
+ 			    (tinstr & 255);		/* register_list */
+ 		}
+-		/* Else, fall through - for illegal instruction case */
+-
++		fallthrough;	/* for illegal instruction case */
+ 	default:
+ 		return BAD_INSTR;
+ 	}
+@@ -751,8 +750,7 @@ do_alignment_t32_to_handler(unsigned long *pinstr, stru=
+ct pt_regs *regs,
+ 	case 0xe8e0:
+ 	case 0xe9e0:
+ 		poffset->un =3D (tinst2 & 0xff) << 2;
+-		/* Fall through */
+-
++		fallthrough;
+ 	case 0xe940:
+ 	case 0xe9c0:
+ 		return do_alignment_ldrdstrd;
+
+Joe Perches (4):
+  net: sctp: Rename fallthrough label to unhandled
+  compiler_attributes.h: Add 'fallthrough' pseudo keyword for switch/case u=
+se
+  Documentation/process: Add fallthrough pseudo-keyword
+  scripts/cvt_style.pl: Tool to reformat sources in various ways
+
+ Documentation/process/coding-style.rst |   2 +-
+ Documentation/process/deprecated.rst   |  33 +-
+ include/linux/compiler_attributes.h    |  17 +
+ net/sctp/sm_make_chunk.c               |  12 +-
+ scripts/cvt_style.pl                   | 808 +++++++++++++++++++++++++++++=
+++++
+ 5 files changed, 855 insertions(+), 17 deletions(-)
+ create mode 100755 scripts/cvt_style.pl
+
+--=20
+2.15.0
