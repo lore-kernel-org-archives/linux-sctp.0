@@ -1,85 +1,136 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 11 Oct 2019 12:20:37 +0000
-Subject: Re: [PATCH 1/4] net: sctp: Rename fallthrough label to unhandled
-Message-Id: <20191011122037.GA16269@hmswarspite.think-freely.org>
+From: syzbot <syzbot+6cad8d7f75ebce50a44d@syzkaller.appspotmail.com>
+Date: Sat, 05 Oct 2019 07:16:06 +0000
+Subject: WARNING: refcount bug in sctp_transport_put (2)
+Message-Id: <00000000000090a62605942497af@google.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1570292505.git.joe@perches.com>
- <2e0111756153d81d77248bc8356bac78925923dc.1570292505.git.joe@perches.com>
-In-Reply-To: <2e0111756153d81d77248bc8356bac78925923dc.1570292505.git.joe@perches.com>
+References: <000000000000fb3b1605735aa815@google.com>
+In-Reply-To: <000000000000fb3b1605735aa815@google.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Joe Perches <joe@perches.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>, Vlad Yasevich <vyasevich@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>, Kees Cook <keescook@chromium.org>, Borislav Petkov <bp@alien8.de>, "H . Peter Anvin" <hpa@zytor.com>, Thomas Gleixner <tglx@linutronix.de>, Pavel Machek <pavel@ucw.cz>, "Gustavo A . R . Silva" <gustavo@embeddedor.com>, Arnaldo Carvalho de Melo <acme@kernel.org>, Kan Liang <kan.liang@linux.intel.com>, Namhyung Kim <namhyung@kernel.org>, Jiri Olsa <jolsa@redhat.com>, Alexander Shishkin <alexander.shishkin@linux.intel.com>, Shawn Landden <shawn@git.icu>, x86@kernel.org, linux-kernel@vger.kernel.org, Nathan Chancellor <natechancellor@gmail.com>, Nick Desaulniers <ndesaulniers@google.com>, Andrew Morton <akpm@linux-foundation.org>, David Miller <davem@davemloft.net>, clang-built-linux@googlegroups.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
 
-On Sat, Oct 05, 2019 at 09:46:41AM -0700, Joe Perches wrote:
-> fallthrough may become a pseudo reserved keyword so this only use of
-> fallthrough is better renamed to allow it.
-> 
-> Signed-off-by: Joe Perches <joe@perches.com>
-> ---
->  net/sctp/sm_make_chunk.c | 12 ++++++------
->  1 file changed, 6 insertions(+), 6 deletions(-)
-> 
-> diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-> index e41ed2e0ae7d..48d63956a68c 100644
-> --- a/net/sctp/sm_make_chunk.c
-> +++ b/net/sctp/sm_make_chunk.c
-> @@ -2155,7 +2155,7 @@ static enum sctp_ierror sctp_verify_param(struct net *net,
->  	case SCTP_PARAM_SET_PRIMARY:
->  		if (ep->asconf_enable)
->  			break;
-> -		goto fallthrough;
-> +		goto unhandled;
->  
->  	case SCTP_PARAM_HOST_NAME_ADDRESS:
->  		/* Tell the peer, we won't support this param.  */
-> @@ -2166,11 +2166,11 @@ static enum sctp_ierror sctp_verify_param(struct net *net,
->  	case SCTP_PARAM_FWD_TSN_SUPPORT:
->  		if (ep->prsctp_enable)
->  			break;
-> -		goto fallthrough;
-> +		goto unhandled;
->  
->  	case SCTP_PARAM_RANDOM:
->  		if (!ep->auth_enable)
-> -			goto fallthrough;
-> +			goto unhandled;
->  
->  		/* SCTP-AUTH: Secion 6.1
->  		 * If the random number is not 32 byte long the association
-> @@ -2187,7 +2187,7 @@ static enum sctp_ierror sctp_verify_param(struct net *net,
->  
->  	case SCTP_PARAM_CHUNKS:
->  		if (!ep->auth_enable)
-> -			goto fallthrough;
-> +			goto unhandled;
->  
->  		/* SCTP-AUTH: Section 3.2
->  		 * The CHUNKS parameter MUST be included once in the INIT or
-> @@ -2203,7 +2203,7 @@ static enum sctp_ierror sctp_verify_param(struct net *net,
->  
->  	case SCTP_PARAM_HMAC_ALGO:
->  		if (!ep->auth_enable)
-> -			goto fallthrough;
-> +			goto unhandled;
->  
->  		hmacs = (struct sctp_hmac_algo_param *)param.p;
->  		n_elt = (ntohs(param.p->length) -
-> @@ -2226,7 +2226,7 @@ static enum sctp_ierror sctp_verify_param(struct net *net,
->  			retval = SCTP_IERROR_ABORT;
->  		}
->  		break;
-> -fallthrough:
-> +unhandled:
->  	default:
->  		pr_debug("%s: unrecognized param:%d for chunk:%d\n",
->  			 __func__, ntohs(param.p->type), cid);
-> -- 
-> 2.15.0
-> 
-> 
-I'm still not a fan of the pseudo keyword fallthrough, but I don't have
-a problem in renaming the label, so
+Hello,
 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+syzbot found the following crash on:
+
+HEAD commit:    311ef88a Add linux-next specific files for 20191004
+git tree:       linux-next
+console output: https://syzkaller.appspot.com/x/log.txt?x=1688f6fb600000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=DB2e4361e48662f4
+dashboard link: https://syzkaller.appspot.com/bug?extidlad8d7f75ebce50a44d
+compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
+
+Unfortunately, I don't have any reproducer for this crash yet.
+
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+6cad8d7f75ebce50a44d@syzkaller.appspotmail.com
+
+------------[ cut here ]------------
+refcount_t: underflow; use-after-free.
+WARNING: CPU: 0 PID: 23726 at lib/refcount.c:190 =20
+refcount_sub_and_test_checked lib/refcount.c:190 [inline]
+WARNING: CPU: 0 PID: 23726 at lib/refcount.c:190 =20
+refcount_sub_and_test_checked+0x1d0/0x200 lib/refcount.c:180
+Kernel panic - not syncing: panic_on_warn set ...
+CPU: 0 PID: 23726 Comm: syz-executor.4 Not tainted 5.4.0-rc1-next-20191004 =
+=20
+#0
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS =20
+Google 01/01/2011
+Call Trace:
+  <IRQ>
+  __dump_stack lib/dump_stack.c:77 [inline]
+  dump_stack+0x172/0x1f0 lib/dump_stack.c:113
+  panic+0x2dc/0x755 kernel/panic.c:220
+  __warn.cold+0x2f/0x3c kernel/panic.c:581
+  report_bug+0x289/0x300 lib/bug.c:195
+  fixup_bug arch/x86/kernel/traps.c:174 [inline]
+  fixup_bug arch/x86/kernel/traps.c:169 [inline]
+  do_error_trap+0x11b/0x200 arch/x86/kernel/traps.c:267
+  do_invalid_op+0x37/0x50 arch/x86/kernel/traps.c:286
+  invalid_op+0x23/0x30 arch/x86/entry/entry_64.S:1028
+RIP: 0010:refcount_sub_and_test_checked lib/refcount.c:190 [inline]
+RIP: 0010:refcount_sub_and_test_checked+0x1d0/0x200 lib/refcount.c:180
+Code: 1d 9d a9 7f 06 31 ff 89 de e8 6c 0d 31 fe 84 db 75 94 e8 23 0c 31 fe =
+=20
+48 c7 c7 a0 6e e6 87 c6 05 7d a9 7f 06 01 e8 28 51 02 fe <0f> 0b e9 75 ff  =
+
+ff ff e8 04 0c 31 fe e9 6e ff ff ff 48 89 df e8 47
+RSP: 0018:ffff8880ae809bc8 EFLAGS: 00010282
+RAX: 0000000000000000 RBX: 0000000000000000 RCX: 0000000000000000
+RDX: 0000000000000100 RSI: ffffffff815cb526 RDI: ffffed1015d0136b
+RBP: ffff8880ae809c60 R08: ffff888097c901c0 R09: fffffbfff14edb4a
+R10: fffffbfff14edb49 R11: ffffffff8a76da4f R12: 00000000ffffffff
+R13: 0000000000000001 R14: ffff8880ae809c38 R15: 0000000000000000
+  refcount_dec_and_test_checked+0x1b/0x20 lib/refcount.c:220
+  sctp_transport_put+0x1e/0x130 net/sctp/transport.c:325
+  sctp_generate_heartbeat_event+0x2cf/0x450 net/sctp/sm_sideeffect.c:401
+  call_timer_fn+0x1ac/0x780 kernel/time/timer.c:1404
+  expire_timers kernel/time/timer.c:1449 [inline]
+  __run_timers kernel/time/timer.c:1773 [inline]
+  __run_timers kernel/time/timer.c:1740 [inline]
+  run_timer_softirq+0x6c3/0x1790 kernel/time/timer.c:1786
+  __do_softirq+0x262/0x98c kernel/softirq.c:292
+  invoke_softirq kernel/softirq.c:373 [inline]
+  irq_exit+0x19b/0x1e0 kernel/softirq.c:413
+  exiting_irq arch/x86/include/asm/apic.h:536 [inline]
+  smp_apic_timer_interrupt+0x1a3/0x610 arch/x86/kernel/apic/apic.c:1137
+  apic_timer_interrupt+0xf/0x20 arch/x86/entry/entry_64.S:830
+  </IRQ>
+RIP: 0010:__sanitizer_cov_trace_pc+0x44/0x50 kernel/kcov.c:109
+Code: 48 8b 75 08 75 2b 8b 90 00 13 00 00 83 fa 02 75 20 48 8b 88 08 13 00 =
+=20
+00 8b 80 04 13 00 00 48 8b 11 48 83 c2 01 48 39 d0 76 07 <48> 89 34 d1 48  =
+
+89 11 5d c3 0f 1f 00 65 4c 8b 04 25 40 fe 01 00 65
+RSP: 0018:ffff88805f30f4e0 EFLAGS: 00000216 ORIG_RAX: ffffffffffffff13
+RAX: 0000000000040000 RBX: 0000000000000008 RCX: ffffc9000e9aa000
+RDX: 0000000000021364 RSI: ffffffff830d569e RDI: 0000000000000001
+RBP: ffff88805f30f4e0 R08: ffff888097c901c0 R09: ffffed100be61eb3
+R10: ffffed100be61eb2 R11: 0000000000000000 R12: ffff8880a858e780
+R13: 0000000000000010 R14: 00000000000002d0 R15: 0000000000000000
+  tomoyo_domain_quota_is_ok+0x2fe/0x540 security/tomoyo/util.c:1069
+  tomoyo_supervisor+0x2e8/0xef0 security/tomoyo/common.c:2087
+  tomoyo_audit_path_log security/tomoyo/file.c:168 [inline]
+  tomoyo_path_permission security/tomoyo/file.c:587 [inline]
+  tomoyo_path_permission+0x263/0x360 security/tomoyo/file.c:573
+  tomoyo_check_open_permission+0x372/0x3f0 security/tomoyo/file.c:780
+  tomoyo_file_open security/tomoyo/tomoyo.c:325 [inline]
+  tomoyo_file_open+0x106/0x150 security/tomoyo/tomoyo.c:317
+  security_file_open+0x71/0x300 security/security.c:1497
+  do_dentry_open+0x373/0x1250 fs/open.c:784
+  vfs_open+0xa0/0xd0 fs/open.c:914
+  do_last fs/namei.c:3412 [inline]
+  path_openat+0x10e9/0x4720 fs/namei.c:3529
+  do_filp_open+0x1a1/0x280 fs/namei.c:3559
+  do_sys_open+0x3fe/0x5d0 fs/open.c:1097
+  ksys_open include/linux/syscalls.h:1386 [inline]
+  __do_sys_creat fs/open.c:1155 [inline]
+  __se_sys_creat fs/open.c:1153 [inline]
+  __x64_sys_creat+0x61/0x80 fs/open.c:1153
+  do_syscall_64+0xfa/0x760 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+RIP: 0033:0x459a59
+Code: fd b7 fb ff c3 66 2e 0f 1f 84 00 00 00 00 00 66 90 48 89 f8 48 89 f7 =
+=20
+48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff  =
+
+ff 0f 83 cb b7 fb ff c3 66 2e 0f 1f 84 00 00 00 00
+RSP: 002b:00007faa895c7c78 EFLAGS: 00000246 ORIG_RAX: 0000000000000055
+RAX: ffffffffffffffda RBX: 0000000000000002 RCX: 0000000000459a59
+RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000020000040
+RBP: 000000000075bfc8 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 00007faa895c86d4
+R13: 00000000004c00fd R14: 00000000004d2430 R15: 00000000ffffffff
+Kernel Offset: disabled
+Rebooting in 86400 seconds..
+
+
+---
+This bug is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this bug report. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
