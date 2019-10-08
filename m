@@ -1,53 +1,126 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 25 Oct 2019 08:05:38 +0000
-Subject: Re: [PATCHv3 net-next 3/5] sctp: add SCTP_EXPOSE_POTENTIALLY_FAILED_STATE sockopt
-Message-Id: <CADvbK_eSJ2NhTiCqOfEG0OGgBAEyhbmT_skTgw85Uhcmb=5gdw@mail.gmail.com>
+Date: Tue, 08 Oct 2019 11:09:23 +0000
+Subject: [PATCH net] sctp: add chunks to sk_backlog when the newsk sk_socket is not set
+Message-Id: <d8dd0065232e5c3629bf55e54e3a998110ec1aef.1570532963.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1571033544.git.lucien.xin@gmail.com> <eedcaeabec9253902de381b75ffc00c007fcd2b6.1571033544.git.lucien.xin@gmail.com>
- <20191025032412.GD4326@localhost.localdomain>
-In-Reply-To: <20191025032412.GD4326@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, davem <davem@davemloft.net>, David Laight <david.laight@aculab.com>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, omosnace@redhat.com
 
-On Fri, Oct 25, 2019 at 11:24 AM Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
->
-> On Mon, Oct 14, 2019 at 02:14:46PM +0800, Xin Long wrote:
-> > This is a sockopt defined in section 7.3 of rfc7829: "Exposing
-> > the Potentially Failed Path State", by which users can change
-> > pf_expose per sock and asoc.
-> >
-> > v1->v2:
-> >   - no change.
-> > v2->v3:
-> >   - return -EINVAL if params.assoc_value > SCTP_PF_EXPOSE_MAX.
-> >   - define SCTP_EXPOSE_PF_STATE SCTP_EXPOSE_POTENTIALLY_FAILED_STATE.
->
-> Hm, why again? Please add it to the changelog, as it's an exception on
-> the list below.
-will do. thanks.
+This patch is to fix a NULL-ptr deref in selinux_socket_connect_helper:
 
->
-> >
-> > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-> > ---
-> >  include/uapi/linux/sctp.h |  2 ++
-> >  net/sctp/socket.c         | 79 +++++++++++++++++++++++++++++++++++++++++++++++
-> >  2 files changed, 81 insertions(+)
-> >
-> > diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-> > index d99b428..a190e4a 100644
-> > --- a/include/uapi/linux/sctp.h
-> > +++ b/include/uapi/linux/sctp.h
-> > @@ -137,6 +137,8 @@ typedef __s32 sctp_assoc_t;
-> >  #define SCTP_ASCONF_SUPPORTED        128
-> >  #define SCTP_AUTH_SUPPORTED  129
-> >  #define SCTP_ECN_SUPPORTED   130
-> > +#define SCTP_EXPOSE_POTENTIALLY_FAILED_STATE 131
-> > +#define SCTP_EXPOSE_PF_STATE SCTP_EXPOSE_POTENTIALLY_FAILED_STATE
-> >
-> >  /* PR-SCTP policies */
-> >  #define SCTP_PR_SCTP_NONE    0x0000
+  [...] kasan: GPF could be caused by NULL-ptr deref or user memory access
+  [...] RIP: 0010:selinux_socket_connect_helper+0x94/0x460
+  [...] Call Trace:
+  [...]  selinux_sctp_bind_connect+0x16a/0x1d0
+  [...]  security_sctp_bind_connect+0x58/0x90
+  [...]  sctp_process_asconf+0xa52/0xfd0 [sctp]
+  [...]  sctp_sf_do_asconf+0x785/0x980 [sctp]
+  [...]  sctp_do_sm+0x175/0x5a0 [sctp]
+  [...]  sctp_assoc_bh_rcv+0x285/0x5b0 [sctp]
+  [...]  sctp_backlog_rcv+0x482/0x910 [sctp]
+  [...]  __release_sock+0x11e/0x310
+  [...]  release_sock+0x4f/0x180
+  [...]  sctp_accept+0x3f9/0x5a0 [sctp]
+  [...]  inet_accept+0xe7/0x720
+
+It was caused by that the 'newsk' sk_socket was not set before going to
+security sctp hook when processing asconf chunk with SCTP_PARAM_ADD_IP
+or SCTP_PARAM_SET_PRIMARY:
+
+  inet_accept()->
+    sctp_accept():
+      lock_sock():
+          lock listening 'sk'
+                                          do_softirq():
+                                            sctp_rcv():  <-- [1]
+                                                asconf chunk arrives and
+                                                enqueued in 'sk' backlog
+      sctp_sock_migrate():
+          set asoc's sk to 'newsk'
+      release_sock():
+          sctp_backlog_rcv():
+            lock 'newsk'
+            sctp_process_asconf()  <-- [2]
+            unlock 'newsk'
+    sock_graft():
+        set sk_socket  <-- [3]
+
+As it shows, at [1] the asconf chunk would be put into the listening 'sk'
+backlog, as accept() was holding its sock lock. Then at [2] asconf would
+get processed with 'newsk' as asoc's sk had been set to 'newsk'. However,
+'newsk' sk_socket is not set until [3], while selinux_sctp_bind_connect()
+would deref it, then kernel crashed.
+
+Here to fix it by adding the chunk to sk_backlog until newsk sk_socket is
+set when .accept() is done.
+
+Note that sk->sk_socket can be NULL when the sock is closed, so SOCK_DEAD
+flag is also needed to check in sctp_newsk_ready().
+
+Thanks to Ondrej for reviewing the code.
+
+Fixes: d452930fd3b9 ("selinux: Add SCTP support")
+Reported-by: Ying Xu <yinxu@redhat.com>
+Suggested-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/sctp.h |  5 +++++
+ net/sctp/input.c        | 12 +++++++++---
+ 2 files changed, 14 insertions(+), 3 deletions(-)
+
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 5d60f13..3ab5c6b 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -610,4 +610,9 @@ static inline __u32 sctp_min_frag_point(struct sctp_sock *sp, __u16 datasize)
+ 	return sctp_mtu_payload(sp, SCTP_DEFAULT_MINSEGMENT, datasize);
+ }
+ 
++static inline bool sctp_newsk_ready(const struct sock *sk)
++{
++	return sock_flag(sk, SOCK_DEAD) || sk->sk_socket;
++}
++
+ #endif /* __net_sctp_h__ */
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 5a070fb..f277137 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -243,7 +243,7 @@ int sctp_rcv(struct sk_buff *skb)
+ 		bh_lock_sock(sk);
+ 	}
+ 
+-	if (sock_owned_by_user(sk)) {
++	if (sock_owned_by_user(sk) || !sctp_newsk_ready(sk)) {
+ 		if (sctp_add_backlog(sk, skb)) {
+ 			bh_unlock_sock(sk);
+ 			sctp_chunk_free(chunk);
+@@ -321,7 +321,7 @@ int sctp_backlog_rcv(struct sock *sk, struct sk_buff *skb)
+ 		local_bh_disable();
+ 		bh_lock_sock(sk);
+ 
+-		if (sock_owned_by_user(sk)) {
++		if (sock_owned_by_user(sk) || !sctp_newsk_ready(sk)) {
+ 			if (sk_add_backlog(sk, skb, sk->sk_rcvbuf))
+ 				sctp_chunk_free(chunk);
+ 			else
+@@ -336,7 +336,13 @@ int sctp_backlog_rcv(struct sock *sk, struct sk_buff *skb)
+ 		if (backloged)
+ 			return 0;
+ 	} else {
+-		sctp_inq_push(inqueue, chunk);
++		if (!sctp_newsk_ready(sk)) {
++			if (!sk_add_backlog(sk, skb, sk->sk_rcvbuf))
++				return 0;
++			sctp_chunk_free(chunk);
++		} else {
++			sctp_inq_push(inqueue, chunk);
++		}
+ 	}
+ 
+ done:
+-- 
+2.1.0
