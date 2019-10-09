@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 08 Oct 2019 12:21:30 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Wed, 09 Oct 2019 15:27:46 +0000
 Subject: Re: [PATCH net] sctp: add chunks to sk_backlog when the newsk sk_socket is not set
-Message-Id: <20191008122130.GS3431@localhost.localdomain>
+Message-Id: <20191009152746.GA25555@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <d8dd0065232e5c3629bf55e54e3a998110ec1aef.1570532963.git.lucien.xin@gmail.com>
 In-Reply-To: <d8dd0065232e5c3629bf55e54e3a998110ec1aef.1570532963.git.lucien.xin@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>, omosnace@redhat.com
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, omosnace@redhat.com
 
 On Tue, Oct 08, 2019 at 07:09:23PM +0800, Xin Long wrote:
 > This patch is to fix a NULL-ptr deref in selinux_socket_connect_helper:
@@ -69,11 +69,6 @@ On Tue, Oct 08, 2019 at 07:09:23PM +0800, Xin Long wrote:
 > Reported-by: Ying Xu <yinxu@redhat.com>
 > Suggested-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-Thanks Xin.
-
 > ---
 >  include/net/sctp/sctp.h |  5 +++++
 >  net/sctp/input.c        | 12 +++++++++---
@@ -133,3 +128,5 @@ Thanks Xin.
 > -- 
 > 2.1.0
 > 
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
