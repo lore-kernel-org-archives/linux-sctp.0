@@ -1,7 +1,7 @@
-From: Kees Cook <keescook@chromium.org>
-Date: Thu, 10 Oct 2019 20:34:20 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Fri, 11 Oct 2019 12:20:37 +0000
 Subject: Re: [PATCH 1/4] net: sctp: Rename fallthrough label to unhandled
-Message-Id: <201910101334.22271AB@keescook>
+Message-Id: <20191011122037.GA16269@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1570292505.git.joe@perches.com>
  <2e0111756153d81d77248bc8356bac78925923dc.1570292505.git.joe@perches.com>
@@ -10,18 +10,13 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Joe Perches <joe@perches.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>, Borislav Petkov <bp@alien8.de>, "H . Peter Anvin" <hpa@zytor.com>, Thomas Gleixner <tglx@linutronix.de>, Pavel Machek <pavel@ucw.cz>, "Gustavo A . R . Silva" <gustavo@embeddedor.com>, Arnaldo Carvalho de Melo <acme@kernel.org>, Kan Liang <kan.liang@linux.intel.com>, Namhyung Kim <namhyung@kernel.org>, Jiri Olsa <jolsa@redhat.com>, Alexander Shishkin <alexander.shishkin@linux.intel.com>, Shawn Landden <shawn@git.icu>, x86@kernel.org, linux-kernel@vger.kernel.org, Nathan Chancellor <natechancellor@gmail.com>, Nick Desaulniers <ndesaulniers@google.com>, Andrew Morton <akpm@linux-foundation.org>, David Miller <davem@davemloft.net>, clang-built-linux@googlegroups.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Cc: Linus Torvalds <torvalds@linux-foundation.org>, Vlad Yasevich <vyasevich@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>, Kees Cook <keescook@chromium.org>, Borislav Petkov <bp@alien8.de>, "H . Peter Anvin" <hpa@zytor.com>, Thomas Gleixner <tglx@linutronix.de>, Pavel Machek <pavel@ucw.cz>, "Gustavo A . R . Silva" <gustavo@embeddedor.com>, Arnaldo Carvalho de Melo <acme@kernel.org>, Kan Liang <kan.liang@linux.intel.com>, Namhyung Kim <namhyung@kernel.org>, Jiri Olsa <jolsa@redhat.com>, Alexander Shishkin <alexander.shishkin@linux.intel.com>, Shawn Landden <shawn@git.icu>, x86@kernel.org, linux-kernel@vger.kernel.org, Nathan Chancellor <natechancellor@gmail.com>, Nick Desaulniers <ndesaulniers@google.com>, Andrew Morton <akpm@linux-foundation.org>, David Miller <davem@davemloft.net>, clang-built-linux@googlegroups.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
 On Sat, Oct 05, 2019 at 09:46:41AM -0700, Joe Perches wrote:
 > fallthrough may become a pseudo reserved keyword so this only use of
 > fallthrough is better renamed to allow it.
 > 
 > Signed-off-by: Joe Perches <joe@perches.com>
-
-Reviewed-by: Kees Cook <keescook@chromium.org>
-
--Kees
-
 > ---
 >  net/sctp/sm_make_chunk.c | 12 ++++++------
 >  1 file changed, 6 insertions(+), 6 deletions(-)
@@ -83,6 +78,8 @@ Reviewed-by: Kees Cook <keescook@chromium.org>
 > -- 
 > 2.15.0
 > 
+> 
+I'm still not a fan of the pseudo keyword fallthrough, but I don't have
+a problem in renaming the label, so
 
--- 
-Kees Cook
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
