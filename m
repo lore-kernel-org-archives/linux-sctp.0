@@ -1,136 +1,213 @@
-From: Sasha Levin <sashal@kernel.org>
-Date: Sat, 26 Oct 2019 13:15:04 +0000
-Subject: [PATCH AUTOSEL 5.3 43/99] sctp: add chunks to sk_backlog when the newsk sk_socket is not set
-Message-Id: <20191026131600.2507-43-sashal@kernel.org>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 14 Oct 2019 06:14:48 +0000
+Subject: [PATCHv3 net-next 5/5] sctp: add SCTP_PEER_ADDR_THLDS_V2 sockopt
+Message-Id: <a84343c091cefe579a71b344aecab6f18b27c37d.1571033544.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20191026131600.2507-1-sashal@kernel.org>
-In-Reply-To: <20191026131600.2507-1-sashal@kernel.org>
+References: <cover.1571033544.git.lucien.xin@gmail.com>
+ <7d08b42f4c1480caa855776d92331fe9beed001d.1571033544.git.lucien.xin@gmail.com>
+ <f4c99c3d918c0d82f5d5c60abd6abcf381292f1f.1571033544.git.lucien.xin@gmail.com>
+ <eedcaeabec9253902de381b75ffc00c007fcd2b6.1571033544.git.lucien.xin@gmail.com>
+ <06d05b274999621fef3e7a006444ac76dadb7725.1571033544.git.lucien.xin@gmail.com>
+In-Reply-To: <06d05b274999621fef3e7a006444ac76dadb7725.1571033544.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: Xin Long <lucien.xin@gmail.com>, Ying Xu <yinxu@redhat.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Jakub Kicinski <jakub.kicinski@netronome.com>, Sasha Levin <sashal@kernel.org>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net, David Laight <david.laight@aculab.com>
 
-From: Xin Long <lucien.xin@gmail.com>
+Section 7.2 of rfc7829: "Peer Address Thresholds (SCTP_PEER_ADDR_THLDS)
+Socket Option" extends 'struct sctp_paddrthlds' with 'spt_pathcpthld'
+added to allow a user to change ps_retrans per sock/asoc/transport, as
+other 2 paddrthlds: pf_retrans, pathmaxrxt.
 
-[ Upstream commit 819be8108fded0b9e710bbbf81193e52f7bab2f7 ]
+Note: to not break the user's program, here to support pf_retrans dump
+and setting by adding a new sockopt SCTP_PEER_ADDR_THLDS_V2, and a new
+structure sctp_paddrthlds_v2 instead of extending sctp_paddrthlds.
 
-This patch is to fix a NULL-ptr deref in selinux_socket_connect_helper:
+Also, when setting ps_retrans, the value is not allowed to be greater
+than pf_retrans.
 
-  [...] kasan: GPF could be caused by NULL-ptr deref or user memory access
-  [...] RIP: 0010:selinux_socket_connect_helper+0x94/0x460
-  [...] Call Trace:
-  [...]  selinux_sctp_bind_connect+0x16a/0x1d0
-  [...]  security_sctp_bind_connect+0x58/0x90
-  [...]  sctp_process_asconf+0xa52/0xfd0 [sctp]
-  [...]  sctp_sf_do_asconf+0x785/0x980 [sctp]
-  [...]  sctp_do_sm+0x175/0x5a0 [sctp]
-  [...]  sctp_assoc_bh_rcv+0x285/0x5b0 [sctp]
-  [...]  sctp_backlog_rcv+0x482/0x910 [sctp]
-  [...]  __release_sock+0x11e/0x310
-  [...]  release_sock+0x4f/0x180
-  [...]  sctp_accept+0x3f9/0x5a0 [sctp]
-  [...]  inet_accept+0xe7/0x720
+v1->v2:
+  - use SCTP_PEER_ADDR_THLDS_V2 to set/get pf_retrans instead,
+    as Marcelo and David Laight suggested.
+v2->v3:
+  - no change.
 
-It was caused by that the 'newsk' sk_socket was not set before going to
-security sctp hook when processing asconf chunk with SCTP_PARAM_ADD_IP
-or SCTP_PARAM_SET_PRIMARY:
-
-  inet_accept()->
-    sctp_accept():
-      lock_sock():
-          lock listening 'sk'
-                                          do_softirq():
-                                            sctp_rcv():  <-- [1]
-                                                asconf chunk arrives and
-                                                enqueued in 'sk' backlog
-      sctp_sock_migrate():
-          set asoc's sk to 'newsk'
-      release_sock():
-          sctp_backlog_rcv():
-            lock 'newsk'
-            sctp_process_asconf()  <-- [2]
-            unlock 'newsk'
-    sock_graft():
-        set sk_socket  <-- [3]
-
-As it shows, at [1] the asconf chunk would be put into the listening 'sk'
-backlog, as accept() was holding its sock lock. Then at [2] asconf would
-get processed with 'newsk' as asoc's sk had been set to 'newsk'. However,
-'newsk' sk_socket is not set until [3], while selinux_sctp_bind_connect()
-would deref it, then kernel crashed.
-
-Here to fix it by adding the chunk to sk_backlog until newsk sk_socket is
-set when .accept() is done.
-
-Note that sk->sk_socket can be NULL when the sock is closed, so SOCK_DEAD
-flag is also needed to check in sctp_newsk_ready().
-
-Thanks to Ondrej for reviewing the code.
-
-Fixes: d452930fd3b9 ("selinux: Add SCTP support")
-Reported-by: Ying Xu <yinxu@redhat.com>
-Suggested-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
-Signed-off-by: Jakub Kicinski <jakub.kicinski@netronome.com>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- include/net/sctp/sctp.h |  5 +++++
- net/sctp/input.c        | 12 +++++++++---
- 2 files changed, 14 insertions(+), 3 deletions(-)
+ include/uapi/linux/sctp.h | 10 +++++++++
+ net/sctp/socket.c         | 54 +++++++++++++++++++++++++++++++++++------------
+ 2 files changed, 50 insertions(+), 14 deletions(-)
 
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index 5d60f13d2347b..3ab5c6bbb90bd 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -610,4 +610,9 @@ static inline __u32 sctp_min_frag_point(struct sctp_sock *sp, __u16 datasize)
- 	return sctp_mtu_payload(sp, SCTP_DEFAULT_MINSEGMENT, datasize);
- }
+diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
+index a190e4a..28ad40d 100644
+--- a/include/uapi/linux/sctp.h
++++ b/include/uapi/linux/sctp.h
+@@ -105,6 +105,7 @@ typedef __s32 sctp_assoc_t;
+ #define SCTP_DEFAULT_SNDINFO	34
+ #define SCTP_AUTH_DEACTIVATE_KEY	35
+ #define SCTP_REUSE_PORT		36
++#define SCTP_PEER_ADDR_THLDS_V2	37
  
-+static inline bool sctp_newsk_ready(const struct sock *sk)
-+{
-+	return sock_flag(sk, SOCK_DEAD) || sk->sk_socket;
-+}
+ /* Internal Socket Options. Some of the sctp library functions are
+  * implemented using these socket options.
+@@ -1087,6 +1088,15 @@ struct sctp_paddrthlds {
+ 	__u16 spt_pathpfthld;
+ };
+ 
++/* Use a new structure with spt_pathcpthld for back compatibility */
++struct sctp_paddrthlds_v2 {
++	sctp_assoc_t spt_assoc_id;
++	struct sockaddr_storage spt_address;
++	__u16 spt_pathmaxrxt;
++	__u16 spt_pathpfthld;
++	__u16 spt_pathcpthld;
++};
 +
- #endif /* __net_sctp_h__ */
-diff --git a/net/sctp/input.c b/net/sctp/input.c
-index 1008cdc44dd61..156e24ad54ea4 100644
---- a/net/sctp/input.c
-+++ b/net/sctp/input.c
-@@ -243,7 +243,7 @@ int sctp_rcv(struct sk_buff *skb)
- 		bh_lock_sock(sk);
- 	}
+ /*
+  * Socket Option for Getting the Association/Stream-Specific PR-SCTP Status
+  */
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 38d102b..3d2bad2 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3943,18 +3943,22 @@ static int sctp_setsockopt_auto_asconf(struct sock *sk, char __user *optval,
+  */
+ static int sctp_setsockopt_paddr_thresholds(struct sock *sk,
+ 					    char __user *optval,
+-					    unsigned int optlen)
++					    unsigned int optlen, bool v2)
+ {
+-	struct sctp_paddrthlds val;
++	struct sctp_paddrthlds_v2 val;
+ 	struct sctp_transport *trans;
+ 	struct sctp_association *asoc;
++	int len;
  
--	if (sock_owned_by_user(sk)) {
-+	if (sock_owned_by_user(sk) || !sctp_newsk_ready(sk)) {
- 		if (sctp_add_backlog(sk, skb)) {
- 			bh_unlock_sock(sk);
- 			sctp_chunk_free(chunk);
-@@ -321,7 +321,7 @@ int sctp_backlog_rcv(struct sock *sk, struct sk_buff *skb)
- 		local_bh_disable();
- 		bh_lock_sock(sk);
+-	if (optlen < sizeof(struct sctp_paddrthlds))
++	len = v2 ? sizeof(val) : sizeof(struct sctp_paddrthlds);
++	if (optlen < len)
+ 		return -EINVAL;
+-	if (copy_from_user(&val, (struct sctp_paddrthlds __user *)optval,
+-			   sizeof(struct sctp_paddrthlds)))
++	if (copy_from_user(&val, optval, len))
+ 		return -EFAULT;
  
--		if (sock_owned_by_user(sk)) {
-+		if (sock_owned_by_user(sk) || !sctp_newsk_ready(sk)) {
- 			if (sk_add_backlog(sk, skb, sk->sk_rcvbuf))
- 				sctp_chunk_free(chunk);
- 			else
-@@ -336,7 +336,13 @@ int sctp_backlog_rcv(struct sock *sk, struct sk_buff *skb)
- 		if (backloged)
- 			return 0;
++	if (v2 && val.spt_pathpfthld > val.spt_pathcpthld)
++		return -EINVAL;
++
+ 	if (!sctp_is_any(sk, (const union sctp_addr *)&val.spt_address)) {
+ 		trans = sctp_addr_id2transport(sk, &val.spt_address,
+ 					       val.spt_assoc_id);
+@@ -3963,6 +3967,8 @@ static int sctp_setsockopt_paddr_thresholds(struct sock *sk,
+ 
+ 		if (val.spt_pathmaxrxt)
+ 			trans->pathmaxrxt = val.spt_pathmaxrxt;
++		if (v2)
++			trans->ps_retrans = val.spt_pathcpthld;
+ 		trans->pf_retrans = val.spt_pathpfthld;
+ 
+ 		return 0;
+@@ -3978,17 +3984,23 @@ static int sctp_setsockopt_paddr_thresholds(struct sock *sk,
+ 				    transports) {
+ 			if (val.spt_pathmaxrxt)
+ 				trans->pathmaxrxt = val.spt_pathmaxrxt;
++			if (v2)
++				trans->ps_retrans = val.spt_pathcpthld;
+ 			trans->pf_retrans = val.spt_pathpfthld;
+ 		}
+ 
+ 		if (val.spt_pathmaxrxt)
+ 			asoc->pathmaxrxt = val.spt_pathmaxrxt;
++		if (v2)
++			asoc->ps_retrans = val.spt_pathcpthld;
+ 		asoc->pf_retrans = val.spt_pathpfthld;
  	} else {
--		sctp_inq_push(inqueue, chunk);
-+		if (!sctp_newsk_ready(sk)) {
-+			if (!sk_add_backlog(sk, skb, sk->sk_rcvbuf))
-+				return 0;
-+			sctp_chunk_free(chunk);
-+		} else {
-+			sctp_inq_push(inqueue, chunk);
-+		}
+ 		struct sctp_sock *sp = sctp_sk(sk);
+ 
+ 		if (val.spt_pathmaxrxt)
+ 			sp->pathmaxrxt = val.spt_pathmaxrxt;
++		if (v2)
++			sp->ps_retrans = val.spt_pathcpthld;
+ 		sp->pf_retrans = val.spt_pathpfthld;
  	}
  
- done:
+@@ -4778,7 +4790,12 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_auto_asconf(sk, optval, optlen);
+ 		break;
+ 	case SCTP_PEER_ADDR_THLDS:
+-		retval = sctp_setsockopt_paddr_thresholds(sk, optval, optlen);
++		retval = sctp_setsockopt_paddr_thresholds(sk, optval, optlen,
++							  false);
++		break;
++	case SCTP_PEER_ADDR_THLDS_V2:
++		retval = sctp_setsockopt_paddr_thresholds(sk, optval, optlen,
++							  true);
+ 		break;
+ 	case SCTP_RECVRCVINFO:
+ 		retval = sctp_setsockopt_recvrcvinfo(sk, optval, optlen);
+@@ -7217,18 +7234,19 @@ static int sctp_getsockopt_assoc_ids(struct sock *sk, int len,
+  * http://www.ietf.org/id/draft-nishida-tsvwg-sctp-failover-05.txt
+  */
+ static int sctp_getsockopt_paddr_thresholds(struct sock *sk,
+-					    char __user *optval,
+-					    int len,
+-					    int __user *optlen)
++					    char __user *optval, int len,
++					    int __user *optlen, bool v2)
+ {
+-	struct sctp_paddrthlds val;
++	struct sctp_paddrthlds_v2 val;
+ 	struct sctp_transport *trans;
+ 	struct sctp_association *asoc;
++	int min;
+ 
+-	if (len < sizeof(struct sctp_paddrthlds))
++	min = v2 ? sizeof(val) : sizeof(struct sctp_paddrthlds);
++	if (len < min)
+ 		return -EINVAL;
+-	len = sizeof(struct sctp_paddrthlds);
+-	if (copy_from_user(&val, (struct sctp_paddrthlds __user *)optval, len))
++	len = min;
++	if (copy_from_user(&val, optval, len))
+ 		return -EFAULT;
+ 
+ 	if (!sctp_is_any(sk, (const union sctp_addr *)&val.spt_address)) {
+@@ -7239,6 +7257,7 @@ static int sctp_getsockopt_paddr_thresholds(struct sock *sk,
+ 
+ 		val.spt_pathmaxrxt = trans->pathmaxrxt;
+ 		val.spt_pathpfthld = trans->pf_retrans;
++		val.spt_pathcpthld = trans->ps_retrans;
+ 
+ 		goto out;
+ 	}
+@@ -7251,11 +7270,13 @@ static int sctp_getsockopt_paddr_thresholds(struct sock *sk,
+ 	if (asoc) {
+ 		val.spt_pathpfthld = asoc->pf_retrans;
+ 		val.spt_pathmaxrxt = asoc->pathmaxrxt;
++		val.spt_pathcpthld = asoc->ps_retrans;
+ 	} else {
+ 		struct sctp_sock *sp = sctp_sk(sk);
+ 
+ 		val.spt_pathpfthld = sp->pf_retrans;
+ 		val.spt_pathmaxrxt = sp->pathmaxrxt;
++		val.spt_pathcpthld = sp->ps_retrans;
+ 	}
+ 
+ out:
+@@ -8135,7 +8156,12 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_getsockopt_auto_asconf(sk, len, optval, optlen);
+ 		break;
+ 	case SCTP_PEER_ADDR_THLDS:
+-		retval = sctp_getsockopt_paddr_thresholds(sk, optval, len, optlen);
++		retval = sctp_getsockopt_paddr_thresholds(sk, optval, len,
++							  optlen, false);
++		break;
++	case SCTP_PEER_ADDR_THLDS_V2:
++		retval = sctp_getsockopt_paddr_thresholds(sk, optval, len,
++							  optlen, true);
+ 		break;
+ 	case SCTP_GET_ASSOC_STATS:
+ 		retval = sctp_getsockopt_assoc_stats(sk, len, optval, optlen);
 -- 
-2.20.1
+2.1.0
