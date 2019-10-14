@@ -1,67 +1,71 @@
-From: Mao Wenan <maowenan@huawei.com>
-Date: Tue, 10 Sep 2019 06:56:41 +0000
-Subject: [PATCH net 2/2] sctp: destroy bucket if failed to bind addr
-Message-Id: <20190910071343.18808-3-maowenan@huawei.com>
+From: syzbot <syzbot+d44f7bbebdea49dbc84a@syzkaller.appspotmail.com>
+Date: Mon, 14 Oct 2019 02:49:09 +0000
+Subject: memory leak in sctp_get_port_local (3)
+Message-Id: <0000000000007193390594d5e959@google.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20190910071343.18808-1-maowenan@huawei.com>
-In-Reply-To: <20190910071343.18808-1-maowenan@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, davem@davemloft.net
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, kernel-janitors@vger.kernel.org, Mao Wenan <maowenan@huawei.com>, Hulk Robot <hulkci@huawei.com>
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
 
-There is one memory leak bug report:
+Hello,
+
+syzbot found the following crash on:
+
+HEAD commit:    da940012 Merge tag 'char-misc-5.4-rc3' of git://git.kernel..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=11c87fc7600000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=E76c708f07645488
+dashboard link: https://syzkaller.appspot.com/bug?extid=D44f7bbebdea49dbc84a
+compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=128d3f8b600000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=17ead04b600000
+
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+d44f7bbebdea49dbc84a@syzkaller.appspotmail.com
+
+executing program
+executing program
 BUG: memory leak
-unreferenced object 0xffff8881dc4c5ec0 (size 40):
-  comm "syz-executor.0", pid 5673, jiffies 4298198457 (age 27.578s)
-  hex dump (first 32 bytes):
-    02 00 00 00 81 88 ff ff 00 00 00 00 00 00 00 00  ................
-    f8 63 3d c1 81 88 ff ff 00 00 00 00 00 00 00 00  .c=.............
-  backtrace:
-    [<0000000072006339>] sctp_get_port_local+0x2a1/0xa00 [sctp]
-    [<00000000c7b379ec>] sctp_do_bind+0x176/0x2c0 [sctp]
-    [<000000005be274a2>] sctp_bind+0x5a/0x80 [sctp]
-    [<00000000b66b4044>] inet6_bind+0x59/0xd0 [ipv6]
-    [<00000000c68c7f42>] __sys_bind+0x120/0x1f0 net/socket.c:1647
-    [<000000004513635b>] __do_sys_bind net/socket.c:1658 [inline]
-    [<000000004513635b>] __se_sys_bind net/socket.c:1656 [inline]
-    [<000000004513635b>] __x64_sys_bind+0x3e/0x50 net/socket.c:1656
-    [<0000000061f2501e>] do_syscall_64+0x72/0x2e0 arch/x86/entry/common.c:296
-    [<0000000003d1e05e>] entry_SYSCALL_64_after_hwframe+0x49/0xbe
+unreferenced object 0xffff888120b3d380 (size 64):
+   comm "syz-executor517", pid 6949, jiffies 4294941316 (age 13.400s)
+   hex dump (first 32 bytes):
+     23 4e 00 00 00 00 00 00 00 00 00 00 00 00 00 00  #N..............
+     88 16 ef 24 81 88 ff ff 00 00 00 00 00 00 00 00  ...$............
+   backtrace:
+     [<000000006e6207b2>] kmemleak_alloc_recursive =20
+include/linux/kmemleak.h:43 [inline]
+     [<000000006e6207b2>] slab_post_alloc_hook mm/slab.h:586 [inline]
+     [<000000006e6207b2>] slab_alloc mm/slab.c:3319 [inline]
+     [<000000006e6207b2>] kmem_cache_alloc+0x13f/0x2c0 mm/slab.c:3483
+     [<00000000d0d058e2>] sctp_bucket_create net/sctp/socket.c:8523 [inline]
+     [<00000000d0d058e2>] sctp_get_port_local+0x189/0x5a0 =20
+net/sctp/socket.c:8270
+     [<0000000082735c7f>] sctp_do_bind+0xcc/0x200 net/sctp/socket.c:402
+     [<0000000080c8d55e>] sctp_bindx_add+0x4b/0xd0 net/sctp/socket.c:497
+     [<00000000eb10f474>] sctp_setsockopt_bindx+0x156/0x1b0 =20
+net/sctp/socket.c:1022
+     [<000000004e959dd5>] sctp_setsockopt net/sctp/socket.c:4641 [inline]
+     [<000000004e959dd5>] sctp_setsockopt+0xaea/0x2dc0 net/sctp/socket.c:46=
+11
+     [<000000000e9e767a>] sock_common_setsockopt+0x38/0x50 =20
+net/core/sock.c:3147
+     [<00000000a549638a>] __sys_setsockopt+0x10f/0x220 net/socket.c:2084
+     [<000000003c15b96c>] __do_sys_setsockopt net/socket.c:2100 [inline]
+     [<000000003c15b96c>] __se_sys_setsockopt net/socket.c:2097 [inline]
+     [<000000003c15b96c>] __x64_sys_setsockopt+0x26/0x30 net/socket.c:2097
+     [<00000000ee3ea8a3>] do_syscall_64+0x73/0x1f0 =20
+arch/x86/entry/common.c:290
+     [<000000006bf005e9>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
 
-This is because in sctp_do_bind, if sctp_get_port_local is to
-create hash bucket successfully, and sctp_add_bind_addr failed
-to bind address, e.g return -ENOMEM, so memory leak found, it
-needs to destroy allocated bucket.
 
-Reported-by: Hulk Robot <hulkci@huawei.com>
-Signed-off-by: Mao Wenan <maowenan@huawei.com>
+
 ---
- net/sctp/socket.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+This bug is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 766b68b55ebe..ab37fc1f7bb6 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -412,11 +412,13 @@ static int sctp_do_bind(struct sock *sk, union sctp_addr *addr, int len)
- 	ret = sctp_add_bind_addr(bp, addr, af->sockaddr_len,
- 				 SCTP_ADDR_SRC, GFP_ATOMIC);
- 
--	/* Copy back into socket for getsockname() use. */
--	if (!ret) {
--		inet_sk(sk)->inet_sport = htons(inet_sk(sk)->inet_num);
--		sp->pf->to_sk_saddr(addr, sk);
-+	if (ret) {
-+		sctp_put_port(sk);
-+		return ret;
- 	}
-+	/* Copy back into socket for getsockname() use. */
-+	inet_sk(sk)->inet_sport = htons(inet_sk(sk)->inet_num);
-+	sp->pf->to_sk_saddr(addr, sk);
- 
- 	return ret;
- }
--- 
-2.20.1
+syzbot will keep track of this bug report. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+syzbot can test patches for this bug, for details see:
+https://goo.gl/tpsmEJ#testing-patches
