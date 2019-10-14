@@ -1,64 +1,36 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 14 Oct 2019 08:36:34 +0000
-Subject: Re: [PATCHv2 net-next 3/5] sctp: add SCTP_EXPOSE_POTENTIALLY_FAILED_STATE sockopt
-Message-Id: <CADvbK_fb9jjm-h-XyVci971Uu=YuwMsUjWEcv9ehUv9Q6W_VxQ@mail.gmail.com>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Mon, 14 Oct 2019 08:49:54 +0000
+Subject: RE: [PATCHv2 net-next 3/5] sctp: add SCTP_EXPOSE_POTENTIALLY_FAILED_STATE sockopt
+Message-Id: <ae526ae5437349e9bbfdf97286603d94@AcuMS.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1570533716.git.lucien.xin@gmail.com> <066605f2269d5d92bc3fefebf33c6943579d8764.1570533716.git.lucien.xin@gmail.com>
- <60a7f76bd5f743dd8d057b32a4456ebd@AcuMS.aculab.com> <CADvbK_cFCuHAwxGAdY0BevrrAd6pQRP2tW_ej9mM3G4Aog3qpg@mail.gmail.com>
+References: <cover.1570533716.git.lucien.xin@gmail.com>
+ <066605f2269d5d92bc3fefebf33c6943579d8764.1570533716.git.lucien.xin@gmail.com>
+ <60a7f76bd5f743dd8d057b32a4456ebd@AcuMS.aculab.com>
+ <CADvbK_cFCuHAwxGAdY0BevrrAd6pQRP2tW_ej9mM3G4Aog3qpg@mail.gmail.com>
  <20191009161508.GB25555@hmswarspite.think-freely.org>
-In-Reply-To: <20191009161508.GB25555@hmswarspite.think-freely.org>
+ <CADvbK_fb9jjm-h-XyVci971Uu=YuwMsUjWEcv9ehUv9Q6W_VxQ@mail.gmail.com>
+In-Reply-To: <CADvbK_fb9jjm-h-XyVci971Uu=YuwMsUjWEcv9ehUv9Q6W_VxQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: David Laight <David.Laight@aculab.com>, network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "davem@davemloft.net" <davem@davemloft.net>
+To: 'Xin Long' <lucien.xin@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
+Cc: network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "davem@davemloft.net" <davem@davemloft.net>
 
-On Thu, Oct 10, 2019 at 12:18 AM Neil Horman <nhorman@tuxdriver.com> wrote:
->
-> On Tue, Oct 08, 2019 at 11:28:32PM +0800, Xin Long wrote:
-> > On Tue, Oct 8, 2019 at 9:02 PM David Laight <David.Laight@aculab.com> wrote:
-> > >
-> > > From: Xin Long
-> > > > Sent: 08 October 2019 12:25
-> > > >
-> > > > This is a sockopt defined in section 7.3 of rfc7829: "Exposing
-> > > > the Potentially Failed Path State", by which users can change
-> > > > pf_expose per sock and asoc.
-> > >
-> > > If I read these patches correctly the default for this sockopt in 'enabled'.
-> > > Doesn't this mean that old application binaries will receive notifications
-> > > that they aren't expecting?
-> > >
-> > > I'd have thought that applications would be required to enable it.
-> > If we do that, sctp_getsockopt_peer_addr_info() in patch 2/5 breaks.
-> >
-> I don't think we can safely do either of these things.  Older
-> applications still need to behave as they did prior to the introduction
-> of this notification, and we shouldn't allow unexpected notifications to
-> be sent.
-Hi, Neil
-
-I think about again, and also talked with QE, we think to get unexpected
-notifications shouldn't be a problem for user's applications.
-
-RFC actually keeps adding new notifications, and a user shouldn't expect
-the specific notifications coming in some exact orders. They should just
-ignore it and wait until the ones they expect. I don't think some users
-would abort its application when getting an unexpected notification.
-
-We should NACK patchset v3 and go with v2. What do you think?
-
->
-> What if you added a check in get_peer_addr_info to only return -EACCESS
-> if pf_expose is 0 and the application isn't subscribed to the PF event?
->
-> Neil
->
-> > >
-> > >         David
-> > >
-> > > -
-> > > Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-> > > Registration No: 1397386 (Wales)
-> > >
-> >
+RnJvbTogWGluIExvbmcgPGx1Y2llbi54aW5AZ21haWwuY29tPg0KPiBTZW50OiAxNCBPY3RvYmVy
+IDIwMTkgMDk6MzcNCi4uLg0KPiBSRkMgYWN0dWFsbHkga2VlcHMgYWRkaW5nIG5ldyBub3RpZmlj
+YXRpb25zLA0KDQpUaGF0IFJGQyBrZWVwcyBtb3ZpbmcgdGhlIGdvYWxwb3N0cy4NCkV2ZW4gdGhl
+IHN0cnVjdHVyZXMgYXJlIGd1YXJhbnRlZWQgdG8gaGF2ZSBob2xlcy4NCg0KPiBhbmQgYSB1c2Vy
+IHNob3VsZG4ndCBleHBlY3QNCj4gdGhlIHNwZWNpZmljIG5vdGlmaWNhdGlvbnMgY29taW5nIGlu
+IHNvbWUgZXhhY3Qgb3JkZXJzLiBUaGV5IHNob3VsZCBqdXN0DQo+IGlnbm9yZSBpdCBhbmQgd2Fp
+dCB1bnRpbCB0aGUgb25lcyB0aGV5IGV4cGVjdC4gSSBkb24ndCB0aGluayBzb21lIHVzZXJzDQo+
+IHdvdWxkIGFib3J0IGl0cyBhcHBsaWNhdGlvbiB3aGVuIGdldHRpbmcgYW4gdW5leHBlY3RlZCBu
+b3RpZmljYXRpb24uDQoNCkkndmUgYW4gZXhhbXBsZSBvZiBleGFjdGx5IDEgYXBwbGljYXRpb24u
+DQpJdCB1c2VzIFRDUC1zdHlsZSBzb2NrZXRzIChhbmQgd2lsbCB3b3JrIG92ZXIgVENQKS4NCkl0
+IGRvZXMgZ2V0c29ja29wdChTQ1RQX0VWRU5UUyksIHNldHMgc2N0cF9hc3NvY2lhdGlvbl9ldmVu
+dCwgdGhlbiBzZXRzb2Nrb3B0KCkuDQpBbnkgTVNHX05PVElGSUNBVElPTiBpcyBhc3N1bWVkIHRv
+IGJlIHRoZSBhIGNvbm5lY3Rpb24gcmVzZXQgKGVuYWJsZWQgYWJvdmUpDQphbmQgdHJlYXRlZCBh
+cyBhbiBpbndhcmRzIGRpc2Nvbm5lY3QuDQoNClNvIGFueSB1bmV4cGVjdGVkIG5vdGlmaWNhdGlv
+biB3aWxsIGtpbGwgdGhlIGNvbm5lY3Rpb24uDQoNCkkgc3VzcGVjdCBpdCBpc24ndCB0aGUgb25s
+eSBvbmUuLg0KDQoJRGF2aWQNCg0KLQ0KUmVnaXN0ZXJlZCBBZGRyZXNzIExha2VzaWRlLCBCcmFt
+bGV5IFJvYWQsIE1vdW50IEZhcm0sIE1pbHRvbiBLZXluZXMsIE1LMSAxUFQsIFVLDQpSZWdpc3Ry
+YXRpb24gTm86IDEzOTczODYgKFdhbGVzKQ0K
