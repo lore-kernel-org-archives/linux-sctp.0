@@ -1,35 +1,24 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 15 Oct 2019 14:35:28 +0000
+From: David Miller <davem@davemloft.net>
+Date: Wed, 16 Oct 2019 03:39:19 +0000
 Subject: Re: [PATCH net] sctp: change sctp_prot .no_autobind with true
-Message-Id: <20191015143528.GJ3499@localhost.localdomain>
+Message-Id: <20191015.203919.1387270193651224661.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <06beb8a9ceaec9224a507b58d3477da106c5f0cd.1571124278.git.lucien.xin@gmail.com>
 In-Reply-To: <06beb8a9ceaec9224a507b58d3477da106c5f0cd.1571124278.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
-On Tue, Oct 15, 2019 at 03:24:38PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 15 Oct 2019 15:24:38 +0800
+
 > syzbot reported a memory leak:
 > 
 >   BUG: memory leak, unreferenced object 0xffff888120b3d380 (size 64):
 >   backtrace:
-> 
->     [...] slab_alloc mm/slab.c:3319 [inline]
->     [...] kmem_cache_alloc+0x13f/0x2c0 mm/slab.c:3483
->     [...] sctp_bucket_create net/sctp/socket.c:8523 [inline]
->     [...] sctp_get_port_local+0x189/0x5a0 net/sctp/socket.c:8270
->     [...] sctp_do_bind+0xcc/0x200 net/sctp/socket.c:402
->     [...] sctp_bindx_add+0x4b/0xd0 net/sctp/socket.c:497
->     [...] sctp_setsockopt_bindx+0x156/0x1b0 net/sctp/socket.c:1022
->     [...] sctp_setsockopt net/sctp/socket.c:4641 [inline]
->     [...] sctp_setsockopt+0xaea/0x2dc0 net/sctp/socket.c:4611
->     [...] sock_common_setsockopt+0x38/0x50 net/core/sock.c:3147
->     [...] __sys_setsockopt+0x10f/0x220 net/socket.c:2084
->     [...] __do_sys_setsockopt net/socket.c:2100 [inline]
-> 
+ ...
 > It was caused by when sending msgs without binding a port, in the path:
 > inet_sendmsg() -> inet_send_prepare() -> inet_autobind() ->
 > .get_port/sctp_get_port(), sp->bind_hash will be set while bp->port is
@@ -48,4 +37,9 @@ On Tue, Oct 15, 2019 at 03:24:38PM +0800, Xin Long wrote:
 > Reported-by: syzbot+d44f7bbebdea49dbc84a@syzkaller.appspotmail.com
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Applied and queued up for -stable.
+
+Xin, in the future please always provide a Fixes: even if it is the
+initial kernel repository commit.
+
+Thanks.
