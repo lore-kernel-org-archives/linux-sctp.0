@@ -1,120 +1,101 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 19 Oct 2019 08:45:20 +0000
-Subject: Re: [PATCHv2 net-next 2/5] sctp: add pf_expose per netns and sock and asoc
-Message-Id: <CADvbK_dd9fSbntPqx13wUu7he3ke4UK1bVNPhfhhMzT=zkGPjg@mail.gmail.com>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Tue, 22 Oct 2019 11:29:09 +0000
+Subject: RE: [PATCHv2 net-next 2/5] sctp: add pf_expose per netns and sock and asoc
+Message-Id: <dbdb13bb2b584590b793e9a7e9b6de64@AcuMS.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1570533716.git.lucien.xin@gmail.com> <8fcf707443f7218d3fb131b827c679f423c5ecaf.1570533716.git.lucien.xin@gmail.com>
+References: <cover.1570533716.git.lucien.xin@gmail.com>
+ <8fcf707443f7218d3fb131b827c679f423c5ecaf.1570533716.git.lucien.xin@gmail.com>
  <0779b5aeb9a84b4692b08be7478e0373@AcuMS.aculab.com>
-In-Reply-To: <0779b5aeb9a84b4692b08be7478e0373@AcuMS.aculab.com>
+ <CADvbK_dd9fSbntPqx13wUu7he3ke4UK1bVNPhfhhMzT=zkGPjg@mail.gmail.com>
+In-Reply-To: <CADvbK_dd9fSbntPqx13wUu7he3ke4UK1bVNPhfhhMzT=zkGPjg@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@aculab.com>
+To: 'Xin Long' <lucien.xin@gmail.com>
 Cc: network dev <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "davem@davemloft.net" <davem@davemloft.net>
 
-On Fri, Oct 18, 2019 at 11:34 PM David Laight <David.Laight@aculab.com> wrote:
->
-> From: Xin Long
-> > Sent: 08 October 2019 12:25
-> > As said in rfc7829, section 3, point 12:
-> >
-> >   The SCTP stack SHOULD expose the PF state of its destination
-> >   addresses to the ULP as well as provide the means to notify the
-> >   ULP of state transitions of its destination addresses from
-> >   active to PF, and vice versa.  However, it is recommended that
-> >   an SCTP stack implementing SCTP-PF also allows for the ULP to be
-> >   kept ignorant of the PF state of its destinations and the
-> >   associated state transitions, thus allowing for retention of the
-> >   simpler state transition model of [RFC4960] in the ULP.
-> >
-> > Not only does it allow to expose the PF state to ULP, but also
-> > allow to ignore sctp-pf to ULP.
-> >
-> > So this patch is to add pf_expose per netns, sock and asoc. And in
-> > sctp_assoc_control_transport(), ulp_notify will be set to false if
-> > asoc->expose is not set.
-> >
-> > It also allows a user to change pf_expose per netns by sysctl, and
-> > pf_expose per sock and asoc will be initialized with it.
-> >
-> > Note that pf_expose also works for SCTP_GET_PEER_ADDR_INFO sockopt,
-> > to not allow a user to query the state of a sctp-pf peer address
-> > when pf_expose is not enabled, as said in section 7.3.
-> ...
-> > index 08d14d8..a303011 100644
-> > --- a/net/sctp/protocol.c
-> > +++ b/net/sctp/protocol.c
-> > @@ -1220,6 +1220,9 @@ static int __net_init sctp_defaults_init(struct net *net)
-> >       /* Enable pf state by default */
-> >       net->sctp.pf_enable = 1;
-> >
-> > +     /* Enable pf state exposure by default */
-> > +     net->sctp.pf_expose = 1;
-> > +
->
-> For compatibility with existing applications pf_expose MUST default to 0.
-> I'm not even sure it makes sense to have a sysctl for it.
-You're reivewing v2, pls go and check v3 where it's:
-
-net->sctp.pf_expose = SCTP_PF_EXPOSE_UNUSED
-
->
-> ...
-> > @@ -5521,8 +5522,15 @@ static int sctp_getsockopt_peer_addr_info(struct sock *sk, int len,
-> >
-> >       transport = sctp_addr_id2transport(sk, &pinfo.spinfo_address,
-> >                                          pinfo.spinfo_assoc_id);
-> > -     if (!transport)
-> > -             return -EINVAL;
-> > +     if (!transport) {
-> > +             retval = -EINVAL;
-> > +             goto out;
-> > +     }
-> > +
-> > +     if (transport->state = SCTP_PF && !transport->asoc->pf_expose) {
-> > +             retval = -EACCES;
-> > +             goto out;
-> > +     }
->
-> Ugg...
-> To avoid reporting the unexpected 'SCTP_PF' state you probable need
-> to lie about the state (probably reporting 'working' - or whatever state
-> it would be in if PF detection wasn't enabled.
-return EACCES is from RFC. see v3 where it's become:
-
-+       if (transport->state = SCTP_PF &&
-+           transport->asoc->pf_expose = SCTP_PF_EXPOSE_DISABLE) {
-+               retval = -EACCES;
-+               goto out;
-+       }
-
-no more compatibility issue.
-
->
-> ...
-> > --- a/net/sctp/sysctl.c
-> > +++ b/net/sctp/sysctl.c
-> > @@ -318,6 +318,13 @@ static struct ctl_table sctp_net_table[] = {
-> >               .mode           = 0644,
-> >               .proc_handler   = proc_dointvec,
-> >       },
-> > +     {
-> > +             .procname       = "pf_expose",
-> > +             .data           = &init_net.sctp.pf_expose,
-> > +             .maxlen         = sizeof(int),
-> > +             .mode           = 0644,
-> > +             .proc_handler   = proc_dointvec,
-> > +     },
->
-> Setting this will break existing applications.
-> So I don't think the default should be settable.
-If the user sets this new sysctl, he must have realized what's going to happen.
-I don't think this will cause "compatibility issue".
-
->
->         David
->
-> -
-> Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-> Registration No: 1397386 (Wales)
->
+DQpGcm9tOiBYaW4gTG9uZyA8bHVjaWVuLnhpbkBnbWFpbC5jb20+DQo+IFNlbnQ6IDE5IE9jdG9i
+ZXIgMjAxOSAwOTo0NQ0KPiBPbiBGcmksIE9jdCAxOCwgMjAxOSBhdCAxMTozNCBQTSBEYXZpZCBM
+YWlnaHQgPERhdmlkLkxhaWdodEBhY3VsYWIuY29tPiB3cm90ZToNCj4gPg0KPiA+IEZyb206IFhp
+biBMb25nDQo+ID4gPiBTZW50OiAwOCBPY3RvYmVyIDIwMTkgMTI6MjUNCj4gPiA+IEFzIHNhaWQg
+aW4gcmZjNzgyOSwgc2VjdGlvbiAzLCBwb2ludCAxMjoNCj4gPiA+DQo+ID4gPiAgIFRoZSBTQ1RQ
+IHN0YWNrIFNIT1VMRCBleHBvc2UgdGhlIFBGIHN0YXRlIG9mIGl0cyBkZXN0aW5hdGlvbg0KPiA+
+ID4gICBhZGRyZXNzZXMgdG8gdGhlIFVMUCBhcyB3ZWxsIGFzIHByb3ZpZGUgdGhlIG1lYW5zIHRv
+IG5vdGlmeSB0aGUNCj4gPiA+ICAgVUxQIG9mIHN0YXRlIHRyYW5zaXRpb25zIG9mIGl0cyBkZXN0
+aW5hdGlvbiBhZGRyZXNzZXMgZnJvbQ0KPiA+ID4gICBhY3RpdmUgdG8gUEYsIGFuZCB2aWNlIHZl
+cnNhLiAgSG93ZXZlciwgaXQgaXMgcmVjb21tZW5kZWQgdGhhdA0KPiA+ID4gICBhbiBTQ1RQIHN0
+YWNrIGltcGxlbWVudGluZyBTQ1RQLVBGIGFsc28gYWxsb3dzIGZvciB0aGUgVUxQIHRvIGJlDQo+
+ID4gPiAgIGtlcHQgaWdub3JhbnQgb2YgdGhlIFBGIHN0YXRlIG9mIGl0cyBkZXN0aW5hdGlvbnMg
+YW5kIHRoZQ0KPiA+ID4gICBhc3NvY2lhdGVkIHN0YXRlIHRyYW5zaXRpb25zLCB0aHVzIGFsbG93
+aW5nIGZvciByZXRlbnRpb24gb2YgdGhlDQo+ID4gPiAgIHNpbXBsZXIgc3RhdGUgdHJhbnNpdGlv
+biBtb2RlbCBvZiBbUkZDNDk2MF0gaW4gdGhlIFVMUC4NCj4gPiA+DQo+ID4gPiBOb3Qgb25seSBk
+b2VzIGl0IGFsbG93IHRvIGV4cG9zZSB0aGUgUEYgc3RhdGUgdG8gVUxQLCBidXQgYWxzbw0KPiA+
+ID4gYWxsb3cgdG8gaWdub3JlIHNjdHAtcGYgdG8gVUxQLg0KPiA+ID4NCj4gPiA+IFNvIHRoaXMg
+cGF0Y2ggaXMgdG8gYWRkIHBmX2V4cG9zZSBwZXIgbmV0bnMsIHNvY2sgYW5kIGFzb2MuIEFuZCBp
+bg0KPiA+ID4gc2N0cF9hc3NvY19jb250cm9sX3RyYW5zcG9ydCgpLCB1bHBfbm90aWZ5IHdpbGwg
+YmUgc2V0IHRvIGZhbHNlIGlmDQo+ID4gPiBhc29jLT5leHBvc2UgaXMgbm90IHNldC4NCj4gPiA+
+DQo+ID4gPiBJdCBhbHNvIGFsbG93cyBhIHVzZXIgdG8gY2hhbmdlIHBmX2V4cG9zZSBwZXIgbmV0
+bnMgYnkgc3lzY3RsLCBhbmQNCj4gPiA+IHBmX2V4cG9zZSBwZXIgc29jayBhbmQgYXNvYyB3aWxs
+IGJlIGluaXRpYWxpemVkIHdpdGggaXQuDQo+ID4gPg0KPiA+ID4gTm90ZSB0aGF0IHBmX2V4cG9z
+ZSBhbHNvIHdvcmtzIGZvciBTQ1RQX0dFVF9QRUVSX0FERFJfSU5GTyBzb2Nrb3B0LA0KPiA+ID4g
+dG8gbm90IGFsbG93IGEgdXNlciB0byBxdWVyeSB0aGUgc3RhdGUgb2YgYSBzY3RwLXBmIHBlZXIg
+YWRkcmVzcw0KPiA+ID4gd2hlbiBwZl9leHBvc2UgaXMgbm90IGVuYWJsZWQsIGFzIHNhaWQgaW4g
+c2VjdGlvbiA3LjMuDQo+ID4gLi4uDQo+ID4gPiBpbmRleCAwOGQxNGQ4Li5hMzAzMDExIDEwMDY0
+NA0KPiA+ID4gLS0tIGEvbmV0L3NjdHAvcHJvdG9jb2wuYw0KPiA+ID4gKysrIGIvbmV0L3NjdHAv
+cHJvdG9jb2wuYw0KPiA+ID4gQEAgLTEyMjAsNiArMTIyMCw5IEBAIHN0YXRpYyBpbnQgX19uZXRf
+aW5pdCBzY3RwX2RlZmF1bHRzX2luaXQoc3RydWN0IG5ldCAqbmV0KQ0KPiA+ID4gICAgICAgLyog
+RW5hYmxlIHBmIHN0YXRlIGJ5IGRlZmF1bHQgKi8NCj4gPiA+ICAgICAgIG5ldC0+c2N0cC5wZl9l
+bmFibGUgPSAxOw0KPiA+ID4NCj4gPiA+ICsgICAgIC8qIEVuYWJsZSBwZiBzdGF0ZSBleHBvc3Vy
+ZSBieSBkZWZhdWx0ICovDQo+ID4gPiArICAgICBuZXQtPnNjdHAucGZfZXhwb3NlID0gMTsNCj4g
+PiA+ICsNCj4gPg0KPiA+IEZvciBjb21wYXRpYmlsaXR5IHdpdGggZXhpc3RpbmcgYXBwbGljYXRp
+b25zIHBmX2V4cG9zZSBNVVNUIGRlZmF1bHQgdG8gMC4NCj4gPiBJJ20gbm90IGV2ZW4gc3VyZSBp
+dCBtYWtlcyBzZW5zZSB0byBoYXZlIGEgc3lzY3RsIGZvciBpdC4NCj4gWW91J3JlIHJlaXZld2lu
+ZyB2MiwgcGxzIGdvIGFuZCBjaGVjayB2MyB3aGVyZSBpdCdzOg0KPiANCj4gbmV0LT5zY3RwLnBm
+X2V4cG9zZSA9IFNDVFBfUEZfRVhQT1NFX1VOVVNFRA0KDQpJJ2xsIGRpZyBvdXQgdGhhdCB0cmkt
+c3RhdGUgbG9naWMgYWdhaW4gbGF0ZXIuDQoNCj4gPiAuLi4NCj4gPiA+IEBAIC01NTIxLDggKzU1
+MjIsMTUgQEAgc3RhdGljIGludCBzY3RwX2dldHNvY2tvcHRfcGVlcl9hZGRyX2luZm8oc3RydWN0
+IHNvY2sgKnNrLCBpbnQgbGVuLA0KPiA+ID4NCj4gPiA+ICAgICAgIHRyYW5zcG9ydCA9IHNjdHBf
+YWRkcl9pZDJ0cmFuc3BvcnQoc2ssICZwaW5mby5zcGluZm9fYWRkcmVzcywNCj4gPiA+ICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcGluZm8uc3BpbmZvX2Fzc29jX2lk
+KTsNCj4gPiA+IC0gICAgIGlmICghdHJhbnNwb3J0KQ0KPiA+ID4gLSAgICAgICAgICAgICByZXR1
+cm4gLUVJTlZBTDsNCj4gPiA+ICsgICAgIGlmICghdHJhbnNwb3J0KSB7DQo+ID4gPiArICAgICAg
+ICAgICAgIHJldHZhbCA9IC1FSU5WQUw7DQo+ID4gPiArICAgICAgICAgICAgIGdvdG8gb3V0Ow0K
+PiA+ID4gKyAgICAgfQ0KPiA+ID4gKw0KPiA+ID4gKyAgICAgaWYgKHRyYW5zcG9ydC0+c3RhdGUg
+PT0gU0NUUF9QRiAmJiAhdHJhbnNwb3J0LT5hc29jLT5wZl9leHBvc2UpIHsNCj4gPiA+ICsgICAg
+ICAgICAgICAgcmV0dmFsID0gLUVBQ0NFUzsNCj4gPiA+ICsgICAgICAgICAgICAgZ290byBvdXQ7
+DQo+ID4gPiArICAgICB9DQo+ID4NCj4gPiBVZ2cuLi4NCj4gPiBUbyBhdm9pZCByZXBvcnRpbmcg
+dGhlIHVuZXhwZWN0ZWQgJ1NDVFBfUEYnIHN0YXRlIHlvdSBwcm9iYWJsZSBuZWVkDQo+ID4gdG8g
+bGllIGFib3V0IHRoZSBzdGF0ZSAocHJvYmFibHkgcmVwb3J0aW5nICd3b3JraW5nJyAtIG9yIHdo
+YXRldmVyIHN0YXRlDQo+ID4gaXQgd291bGQgYmUgaW4gaWYgUEYgZGV0ZWN0aW9uIHdhc24ndCBl
+bmFibGVkLg0KPiByZXR1cm4gRUFDQ0VTIGlzIGZyb20gUkZDLiBzZWUgdjMgd2hlcmUgaXQncyBi
+ZWNvbWU6DQo+IA0KPiArICAgICAgIGlmICh0cmFuc3BvcnQtPnN0YXRlID09IFNDVFBfUEYgJiYN
+Cj4gKyAgICAgICAgICAgdHJhbnNwb3J0LT5hc29jLT5wZl9leHBvc2UgPT0gU0NUUF9QRl9FWFBP
+U0VfRElTQUJMRSkgew0KPiArICAgICAgICAgICAgICAgcmV0dmFsID0gLUVBQ0NFUzsNCj4gKyAg
+ICAgICAgICAgICAgIGdvdG8gb3V0Ow0KPiArICAgICAgIH0NCj4gDQo+IG5vIG1vcmUgY29tcGF0
+aWJpbGl0eSBpc3N1ZS4NCg0KSG1tbS4uLi4NCk5ldmVyIG1pbmQgd2hhdCB0aGUgUkZDIHNheXMg
+YWJvdXQgcmV0dXJuaW5nIEVBQ0NFU1MsIHRoYXQNCmlzIHN0aWxsIGFuIEFQSSBjaGFuZ2UuDQoN
+Cj4gPiA+IC0tLSBhL25ldC9zY3RwL3N5c2N0bC5jDQo+ID4gPiArKysgYi9uZXQvc2N0cC9zeXNj
+dGwuYw0KPiA+ID4gQEAgLTMxOCw2ICszMTgsMTMgQEAgc3RhdGljIHN0cnVjdCBjdGxfdGFibGUg
+c2N0cF9uZXRfdGFibGVbXSA9IHsNCj4gPiA+ICAgICAgICAgICAgICAgLm1vZGUgICAgICAgICAg
+ID0gMDY0NCwNCj4gPiA+ICAgICAgICAgICAgICAgLnByb2NfaGFuZGxlciAgID0gcHJvY19kb2lu
+dHZlYywNCj4gPiA+ICAgICAgIH0sDQo+ID4gPiArICAgICB7DQo+ID4gPiArICAgICAgICAgICAg
+IC5wcm9jbmFtZSAgICAgICA9ICJwZl9leHBvc2UiLA0KPiA+ID4gKyAgICAgICAgICAgICAuZGF0
+YSAgICAgICAgICAgPSAmaW5pdF9uZXQuc2N0cC5wZl9leHBvc2UsDQo+ID4gPiArICAgICAgICAg
+ICAgIC5tYXhsZW4gICAgICAgICA9IHNpemVvZihpbnQpLA0KPiA+ID4gKyAgICAgICAgICAgICAu
+bW9kZSAgICAgICAgICAgPSAwNjQ0LA0KPiA+ID4gKyAgICAgICAgICAgICAucHJvY19oYW5kbGVy
+ICAgPSBwcm9jX2RvaW50dmVjLA0KPiA+ID4gKyAgICAgfSwNCj4gPg0KPiA+IFNldHRpbmcgdGhp
+cyB3aWxsIGJyZWFrIGV4aXN0aW5nIGFwcGxpY2F0aW9ucy4NCj4gPiBTbyBJIGRvbid0IHRoaW5r
+IHRoZSBkZWZhdWx0IHNob3VsZCBiZSBzZXR0YWJsZS4NCj4gSWYgdGhlIHVzZXIgc2V0cyB0aGlz
+IG5ldyBzeXNjdGwsIGhlIG11c3QgaGF2ZSByZWFsaXplZCB3aGF0J3MgZ29pbmcgdG8gaGFwcGVu
+Lg0KPiBJIGRvbid0IHRoaW5rIHRoaXMgd2lsbCBjYXVzZSAiY29tcGF0aWJpbGl0eSBpc3N1ZSIu
+DQoNClRoZSBwcm9ibGVtIGlzIHRoYXQgc3VwcG9ydCBpcyBhcHBsaWNhdGlvbiBkZXBlbmRhbnQs
+IG5vdCBzeXN0ZW0gZGVwZW5kYW50Lg0KQWxsIGl0IHRha2VzIGlzIGEgZGlzdHJvIHRvIGRlY2lk
+ZSB0byBkZWZhdWx0IHRvIGVuYWJsaW5nIGl0IGFuZCBhbGwgb2xkIGFwcHMgYnJlYWsuDQoNCkdp
+dmVuIHRoZSBhcHBsaWNhdGlvbiBoYXMgdG8gZW5hYmxlIG90aGVyIHRoaW5ncyB0aGVyZSBpcyBu
+byByZWFzb24gbm90IHRvDQpyZXF1aXJlIHRoaXMgdG8gYmUgZW5hYmxlZCBieSBldmVyeSBhcHBs
+aWNhdGlvbiB0aGF0IHdhbnRzIHRvIHNlZSB0aGUgZXZlbnRzIChldGMpLg0KDQpOb3RlIHRoYXQg
+dGhpcyBpcyBkaWZmZXJlbnQgZnJvbSBkb2luZyB0aGUgcHJvdG9jb2wgcGFydCBvZiBQRiAtIHdo
+aWNoIGlzIGxpa2VseQ0KdG8gaGVscCBhcHBsaWNhdGlvbnMgd2hlbiB0aGUgJ3ByaW1hcnknIHBh
+dGggaXMgZG9kZ3kuDQoNCglEYXZpZA0KDQotDQpSZWdpc3RlcmVkIEFkZHJlc3MgTGFrZXNpZGUs
+IEJyYW1sZXkgUm9hZCwgTW91bnQgRmFybSwgTWlsdG9uIEtleW5lcywgTUsxIDFQVCwgVUsNClJl
+Z2lzdHJhdGlvbiBObzogMTM5NzM4NiAoV2FsZXMpDQo
