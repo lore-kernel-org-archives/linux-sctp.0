@@ -1,129 +1,80 @@
-From: Sasha Levin <sashal@kernel.org>
-Date: Sat, 16 Nov 2019 15:38:34 +0000
-Subject: [PATCH AUTOSEL 4.19 079/237] sctp: use sk_wmem_queued to check for writable space
-Message-Id: <20191116154113.7417-79-sashal@kernel.org>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 04 Nov 2019 05:16:26 +0000
+Subject: [PATCH linux-4.14.y 2/2] sctp: not bind the socket in sctp_connect
+Message-Id: <b0dd820e7688623d8d727420c3605c4d796d9437.1572844054.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20191116154113.7417-1-sashal@kernel.org>
-In-Reply-To: <20191116154113.7417-1-sashal@kernel.org>
+References: <cover.1572844054.git.lucien.xin@gmail.com>
+ <7eaa2553d3499ac18c1a667ed127920619e29ad3.1572844054.git.lucien.xin@gmail.com>
+In-Reply-To: <7eaa2553d3499ac18c1a667ed127920619e29ad3.1572844054.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: Xin Long <lucien.xin@gmail.com>, "David S . Miller" <davem@davemloft.net>, Sasha Levin <sashal@kernel.org>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: stable@vger.kernel.org, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, sashal@kernel.org, gregkh@linuxfoundation.org
 
-From: Xin Long <lucien.xin@gmail.com>
+[ Upstream commit 9b6c08878e23adb7cc84bdca94d8a944b03f099e ]
 
-[ Upstream commit cd305c74b0f8b49748a79a8f67fc8e5e3e0c4794 ]
+Now when sctp_connect() is called with a wrong sa_family, it binds
+to a port but doesn't set bp->port, then sctp_get_af_specific will
+return NULL and sctp_connect() returns -EINVAL.
 
-sk->sk_wmem_queued is used to count the size of chunks in out queue
-while sk->sk_wmem_alloc is for counting the size of chunks has been
-sent. sctp is increasing both of them before enqueuing the chunks,
-and using sk->sk_wmem_alloc to check for writable space.
+Then if sctp_bind() is called to bind to another port, the last
+port it has bound will leak due to bp->port is NULL by then.
 
-However, sk_wmem_alloc is also increased by 1 for the skb allocked
-for sending in sctp_packet_transmit() but it will not wake up the
-waiters when sk_wmem_alloc is decreased in this skb's destructor.
+sctp_connect() doesn't need to bind ports, as later __sctp_connect
+will do it if bp->port is NULL. So remove it from sctp_connect().
+While at it, remove the unnecessary sockaddr.sa_family len check
+as it's already done in sctp_inet_connect.
 
-If msg size is equal to sk_sndbuf and sendmsg is waiting for sndbuf,
-the check 'msg_len <= sctp_wspace(asoc)' in sctp_wait_for_sndbuf()
-will keep waiting if there's a skb allocked in sctp_packet_transmit,
-and later even if this skb got freed, the waiting thread will never
-get waked up.
-
-This issue has been there since very beginning, so we change to use
-sk->sk_wmem_queued to check for writable space as sk_wmem_queued is
-not increased for the skb allocked for sending, also as TCP does.
-
-SOCK_SNDBUF_LOCK check is also removed here as it's for tx buf auto
-tuning which I will add in another patch.
-
+Fixes: 644fbdeacf1d ("sctp: fix the issue that flags are ignored when using kernel_connect")
+Reported-by: syzbot+079bf326b38072f849d9@syzkaller.appspotmail.com
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- net/sctp/socket.c | 38 +++++++++-----------------------------
- 1 file changed, 9 insertions(+), 29 deletions(-)
+ net/sctp/socket.c | 21 ++-------------------
+ 1 file changed, 2 insertions(+), 19 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index c766315527226..e7a11cd7633f5 100644
+index c9c23ca..4045d20 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -83,7 +83,7 @@
- #include <net/sctp/stream_sched.h>
- 
- /* Forward declarations for internal helper functions. */
--static int sctp_writeable(struct sock *sk);
-+static bool sctp_writeable(struct sock *sk);
- static void sctp_wfree(struct sk_buff *skb);
- static int sctp_wait_for_sndbuf(struct sctp_association *asoc, long *timeo_p,
- 				size_t msg_len);
-@@ -119,25 +119,10 @@ static void sctp_enter_memory_pressure(struct sock *sk)
- /* Get the sndbuf space available at the time on the association.  */
- static inline int sctp_wspace(struct sctp_association *asoc)
+@@ -4168,34 +4168,17 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ static int sctp_connect(struct sock *sk, struct sockaddr *addr,
+ 			int addr_len, int flags)
  {
--	int amt;
-+	struct sock *sk = asoc->base.sk;
+-	struct inet_sock *inet = inet_sk(sk);
+ 	struct sctp_af *af;
+-	int err = 0;
++	int err = -EINVAL;
  
--	if (asoc->ep->sndbuf_policy)
--		amt = asoc->sndbuf_used;
--	else
--		amt = sk_wmem_alloc_get(asoc->base.sk);
+ 	lock_sock(sk);
 -
--	if (amt >= asoc->base.sk->sk_sndbuf) {
--		if (asoc->base.sk->sk_userlocks & SOCK_SNDBUF_LOCK)
--			amt = 0;
--		else {
--			amt = sk_stream_wspace(asoc->base.sk);
--			if (amt < 0)
--				amt = 0;
+ 	pr_debug("%s: sk:%p, sockaddr:%p, addr_len:%d\n", __func__, sk,
+ 		 addr, addr_len);
+ 
+-	/* We may need to bind the socket. */
+-	if (!inet->inet_num) {
+-		if (sk->sk_prot->get_port(sk, 0)) {
+-			release_sock(sk);
+-			return -EAGAIN;
 -		}
--	} else {
--		amt = asoc->base.sk->sk_sndbuf - amt;
+-		inet->inet_sport = htons(inet->inet_num);
 -	}
--	return amt;
-+	return asoc->ep->sndbuf_policy ? sk->sk_sndbuf - asoc->sndbuf_used
-+				       : sk_stream_wspace(sk);
- }
- 
- /* Increment the used sndbuf space count of the corresponding association by
-@@ -1928,10 +1913,10 @@ static int sctp_sendmsg_to_asoc(struct sctp_association *asoc,
- 		asoc->pmtu_pending = 0;
- 	}
- 
--	if (sctp_wspace(asoc) < msg_len)
-+	if (sctp_wspace(asoc) < (int)msg_len)
- 		sctp_prsctp_prune(asoc, sinfo, msg_len - sctp_wspace(asoc));
- 
--	if (!sctp_wspace(asoc)) {
-+	if (sctp_wspace(asoc) <= 0) {
- 		timeo = sock_sndtimeo(sk, msg->msg_flags & MSG_DONTWAIT);
- 		err = sctp_wait_for_sndbuf(asoc, &timeo, msg_len);
- 		if (err)
-@@ -8516,7 +8501,7 @@ static int sctp_wait_for_sndbuf(struct sctp_association *asoc, long *timeo_p,
- 			goto do_error;
- 		if (signal_pending(current))
- 			goto do_interrupted;
--		if (msg_len <= sctp_wspace(asoc))
-+		if ((int)msg_len <= sctp_wspace(asoc))
- 			break;
- 
- 		/* Let another process have a go.  Since we are going
-@@ -8591,14 +8576,9 @@ void sctp_write_space(struct sock *sk)
-  * UDP-style sockets or TCP-style sockets, this code should work.
-  *  - Daisy
-  */
--static int sctp_writeable(struct sock *sk)
-+static bool sctp_writeable(struct sock *sk)
- {
--	int amt = 0;
 -
--	amt = sk->sk_sndbuf - sk_wmem_alloc_get(sk);
--	if (amt < 0)
--		amt = 0;
--	return amt;
-+	return sk->sk_sndbuf > sk->sk_wmem_queued;
- }
+ 	/* Validate addr_len before calling common connect/connectx routine. */
+ 	af = sctp_get_af_specific(addr->sa_family);
+-	if (!af || addr_len < af->sockaddr_len) {
+-		err = -EINVAL;
+-	} else {
+-		/* Pass correct addr len to common routine (so it knows there
+-		 * is only one address being passed.
+-		 */
++	if (af && addr_len >= af->sockaddr_len)
+ 		err = __sctp_connect(sk, addr, af->sockaddr_len, flags, NULL);
+-	}
  
- /* Wait for an association to go into ESTABLISHED state. If timeout is 0,
+ 	release_sock(sk);
+ 	return err;
 -- 
-2.20.1
+2.1.0
