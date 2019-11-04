@@ -1,46 +1,28 @@
-From: Dmitry Vyukov <dvyukov@google.com>
-Date: Sat, 30 Nov 2019 15:37:56 +0000
-Subject: Re: kernel BUG at net/core/skbuff.c:LINE! (3)
-Message-Id: <CACT4Y+Yrg8JxWABi4CJgBG7GpBSCmT0DHr_eZhQA-ikLH-X5Yw@mail.gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Mon, 04 Nov 2019 13:25:08 +0000
+Subject: Re: [sctp] 327fecdaf3: BUG:kernel_NULL_pointer_dereference,address
+Message-Id: <20191104132508.GA53856@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <001a114372a6074e6505642b7f72@google.com> <000000000000039751059891760e@google.com>
-In-Reply-To: <000000000000039751059891760e@google.com>
+References: <1572451637-14085-1-git-send-email-wallyzhao@gmail.com>
+ <20191104084635.GM29418@shao2-debian>
+In-Reply-To: <20191104084635.GM29418@shao2-debian>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: syzbot <syzbot+b2bf2652983d23734c5c@syzkaller.appspotmail.com>
-Cc: David Miller <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, mvohra@vmware.com, netdev <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, William Tu <u9012063@gmail.com>, Vladislav Yasevich <vyasevich@gmail.com>, websitedesignservices4u@gmail.com, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: kernel test robot <rong.a.chen@intel.com>
+Cc: Wally Zhao <wallyzhao@gmail.com>, vyasevich@gmail.com, nhorman@tuxdriver.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, wally.zhao@nokia-sbell.com, lkp@lists.01.org
 
-On Sat, Nov 30, 2019 at 3:50 PM syzbot
-<syzbot+b2bf2652983d23734c5c@syzkaller.appspotmail.com> wrote:
->
-> syzbot has bisected this bug to:
->
-> commit 84e54fe0a5eaed696dee4019c396f8396f5a908b
-> Author: William Tu <u9012063@gmail.com>
-> Date:   Tue Aug 22 16:40:28 2017 +0000
->
->      gre: introduce native tunnel support for ERSPAN
->
-> bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=158a2f86e000=
-00
-> start commit:   f9f1e414 Merge tag 'for-linus-4.16-rc1-tag' of git://git.=
-k..
-> git tree:       upstream
-> final crash:    https://syzkaller.appspot.com/x/report.txt?x=178a2f86e000=
-00
-> console output: https://syzkaller.appspot.com/x/log.txt?x=138a2f86e00000
-> kernel config:  https://syzkaller.appspot.com/x/.config?x4a80ee1ac29767b
-> dashboard link: https://syzkaller.appspot.com/bug?extid=B2bf2652983d23734=
-c5c
-> syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=147bfebd800000
-> C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=13d8d543800000
->
-> Reported-by: syzbot+b2bf2652983d23734c5c@syzkaller.appspotmail.com
-> Fixes: 84e54fe0a5ea ("gre: introduce native tunnel support for ERSPAN")
->
-> For information about bisection process see: https://goo.gl/tpsmEJ#bisect=
-ion
+On Mon, Nov 04, 2019 at 04:46:35PM +0800, kernel test robot wrote:
+> [   35.312661] BUG: kernel NULL pointer dereference, address: 00000000000005d8
+> [   35.316225] #PF: supervisor read access in kernel mode
+> [   35.319178] #PF: error_code(0x0000) - not-present page
+> [   35.322078] PGD 800000021b569067 P4D 800000021b569067 PUD 21b688067 PMD 0 
+> [   35.325629] Oops: 0000 [#1] SMP PTI
+> [   35.327965] CPU: 0 PID: 3148 Comm: trinity-c5 Not tainted 5.4.0-rc3-01107-g327fecdaf39ab #12
+> [   35.332863] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.10.2-1 04/01/2014
+> [   35.337932] RIP: 0010:sctp_packet_transmit+0x767/0x822
 
-Humm... the repro contains syz_emit_ethernet, wonder if it's
-remote-triggerable...
+Right, as asoc can be NULL by then. (per the check on it a few lines
+before the change here).
+
+  Marcelo
