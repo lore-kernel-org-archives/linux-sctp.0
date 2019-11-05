@@ -1,29 +1,67 @@
-From: Greg KH <gregkh@linuxfoundation.org>
-Date: Mon, 04 Nov 2019 10:57:22 +0000
-Subject: Re: [PATCH linux-4.14.y 0/2] sctp: fix a memory leak
-Message-Id: <20191104105722.GA1945210@kroah.com>
+From: Stephen Hemminger <stephen@networkplumber.org>
+Date: Tue, 05 Nov 2019 15:39:25 +0000
+Subject: Fw: [Bug 205439] New: SCTP responds to heartbeat from the wrong address / interface
+Message-Id: <20191105073925.58ff6518@hermes.lan>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1572844054.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1572844054.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: stable@vger.kernel.org, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, sashal@kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: linux-sctp@vger.kernel.org
 
-On Mon, Nov 04, 2019 at 01:16:24PM +0800, Xin Long wrote:
-> These 2 patches are missed in linux-4.14.y, it will cause crash
-> when commit 63dfb7938b13 ("sctp: change sctp_prot .no_autobind
-> with true") is backported only.
-> 
-> Conflicts:
->   - Context difference in Patch 1/2 due to the lack of
->     Commit c981f254cc82.
-> 
-> Xin Long (2):
->   sctp: fix the issue that flags are ignored when using kernel_connect
->   sctp: not bind the socket in sctp_connect
 
-Thanks for these, now queued up.
 
-greg k-h
+Begin forwarded message:
+
+Date: Tue, 05 Nov 2019 11:59:05 +0000
+From: bugzilla-daemon@bugzilla.kernel.org
+To: stephen@networkplumber.org
+Subject: [Bug 205439] New: SCTP responds to heartbeat from the wrong address / interface
+
+
+https://bugzilla.kernel.org/show_bug.cgi?id=205439
+
+            Bug ID: 205439
+           Summary: SCTP responds to heartbeat from the wrong address /
+                    interface
+           Product: Networking
+           Version: 2.5
+    Kernel Version: 4.9.35-server
+          Hardware: Intel
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: Other
+          Assignee: stephen@networkplumber.org
+          Reporter: paul@afk.ro
+        Regression: No
+
+Seems that SCTP responds to heartbeat from the wrong address / interface.
+
+# netstat -nS | fgrep 162.93.39.
+sctp       0      0 81.226.10.66:3561     162.93.39.198:3561      ESTABLISHED
+                    81.226.10.70          162.93.39.194
+sctp       0      0 81.226.10.66:3560     162.93.39.134:3560      ESTABLISHED
+                    81.226.10.70          162.93.39.130
+
+Bad:
+    3   0.055267 162.93.39.130 → 185.226.110.70 SCTP 74 HEARTBEAT
+    4   0.055291 81.226.10.66 → 162.93.39.130 SCTP 74 HEARTBEAT_ACK
+    7   0.355746 162.93.39.194 → 185.226.110.70 SCTP 74 HEARTBEAT
+    8   0.355758 81.226.10.66 → 162.93.39.194 SCTP 74 HEARTBEAT_ACK
+
+Good:
+   13   0.551876 162.93.39.134 → 81.226.10.66 SCTP 74 HEARTBEAT
+   14   0.551906 81.226.10.66 → 162.93.39.134 SCTP 74 HEARTBEAT_ACK
+   19   0.853376 162.93.39.198 → 81.226.10.66 SCTP 74 HEARTBEAT
+   20   0.853388 81.226.10.66 → 162.93.39.198 SCTP 74 HEARTBEAT_ACK
+
+
+This is multi-homed scenario of SCTP.
+
+Regards,
+
+-- 
+You are receiving this mail because:
+You are the assignee for the bug.
