@@ -1,163 +1,240 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Mon, 25 Nov 2019 21:00:51 +0000
-Subject: Re: SCTP unable to bind after restart application
-Message-Id: <20191125210051.GD14928@hmswarspite.think-freely.org>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 08 Nov 2019 05:20:35 +0000
+Subject: [PATCHv4 net-next 4/5] sctp: add support for Primary Path Switchover
+Message-Id: <55f4edd068149ff8bd2c15023f181b07baef7ad0.1573190212.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CALyDMGoWYqSBYJwfARROuP_6g_PXLU1oPcS8jomgm+4oNSkckA@mail.gmail.com>
-In-Reply-To: <CALyDMGoWYqSBYJwfARROuP_6g_PXLU1oPcS8jomgm+4oNSkckA@mail.gmail.com>
+References: <cover.1573190212.git.lucien.xin@gmail.com>
+ <d008eb59f963118ae264e0151da79c382f16a69b.1573190212.git.lucien.xin@gmail.com>
+ <7fa091e035b70859acbfd74ea06fcb3064c4bef7.1573190212.git.lucien.xin@gmail.com>
+ <45e03c4050ed2f122b6a4e19ebd6a532087088d3.1573190212.git.lucien.xin@gmail.com>
+In-Reply-To: <45e03c4050ed2f122b6a4e19ebd6a532087088d3.1573190212.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net, David Laight <david.laight@aculab.com>
 
-On Mon, Nov 25, 2019 at 03:19:10PM +0000, Emanuel Freitas wrote:
-> Hi Neil,
-> 
-> Thanks for the fast answer.
-> I'm using kernel-2.6.32-754 which is the latest official version
-> available for Centos 6 (and also RHEL Server release 6). If this is a
-> known issue it would be a good "excuse" for a major upgrade but this
-> operation has multiple impacts on the applications and I want to avoid
-> that unless it is really necessary.
-> 
-I don't know of any existing problem on that kernel, only that I haven't tested
-with it in a few years now.
+This is a new feature defined in section 5 of rfc7829: "Primary Path
+Switchover". By introducing a new tunable parameter:
 
-I can tell you that testing on my local fedora 30 system with sctp_darn by
-establishing a connection between two localhost ports, then kill -9-ing both
-processes leads to no such problem.  I'm able to restablish the connection on
-the previously used ports without issue, but running the same commands again.
+  Primary.Switchover.Max.Retrans (PSMR)
 
-I can setup a CentOS 6 VM if you like and try again, but 6 is effectively EOL at
-this point, in that RHEL won't make updates for anything but critical security
-bugs, and this doesn't fit the bill.  So I would suggest that you test on a
-later kernel, and if the problem abates, that should be your motivation to
-upgrade.
+The primary path will be changed to another active path when the path
+error counter on the old primary path exceeds PSMR, so that "the SCTP
+sender is allowed to continue data transmission on a new working path
+even when the old primary destination address becomes active again".
 
-Best
-Neil
+This patch is to add this tunable parameter, 'ps_retrans' per netns,
+sock, asoc and transport. It also allows a user to change ps_retrans
+per netns by sysctl, and ps_retrans per sock/asoc/transport will be
+initialized with it.
 
-> 
-> 
-> 
-> 
-> On Mon, Nov 25, 2019 at 2:16 PM Neil Horman <nhorman@tuxdriver.com> wrote:
-> >
-> > On Mon, Nov 25, 2019 at 01:57:00PM +0000, Emanuel Freitas wrote:
-> > > Hello,
-> > >
-> > > I had an application running on SCTP port 3890 for a few days and I
-> > > stopped it (kill <pid>) for maintenance purposes. After that I’m not
-> > > able to bind on port.
-> > > The same situation happened in the past and the only way that I found
-> > > to fix it was to restart the server. I was hoping that you can help me
-> > > fixing this issue without restart.
-> > >
-> > > The application is not running and the port is not used by anything else:
-> > > [root@server1 /]# netstat -lanp | grep 3890
-> > > [root@server1 /]#
-> > >
-> > > I tried to use the sctp_test in order to exclude any issue on the
-> > > application and it also cannot bind on that port (my IP address is
-> > > replaced with <IPv4>):
-> > >
-> > > [root@server1 /]# /usr/bin/sctp_test -H <IPv4> -P 3890 -l
-> > > local:addr=<IPv4>, port=ndsconnect, family=2
-> > > seed = 1574684002
-> > > Starting tests...
-> > >         socket(SOCK_SEQPACKET, IPPROTO_SCTP)  ->  sk=3
-> > >         bind(sk=3, [a:<IPv4>,p:ndsconnect])  --  attempt 1/10
-> > >         bind(sk=3, [a:<IPv4>,p:ndsconnect])  --  attempt 2/10
-> > >         bind(sk=3, [a:<IPv4>,p:ndsconnect])  --  attempt 3/10
-> > >         bind(sk=3, [a:<IPv4>,p:ndsconnect])  --  attempt 4/10
-> > >         bind(sk=3, [a:<IPv4>,p:ndsconnect])  --  attempt 5/10
-> > >         bind(sk=3, [a:<IPv4>,p:ndsconnect])  --  attempt 6/10
-> > >         bind(sk=3, [a:<IPv4>,p:ndsconnect])  --  attempt 7/10
-> > >         bind(sk=3, [a:<IPv4>,p:ndsconnect])  --  attempt 8/10
-> > >         bind(sk=3, [a:<IPv4>,p:ndsconnect])  --  attempt 9/10
-> > >         bind(sk=3, [a:<IPv4>,p:ndsconnect])  --  attempt 10/10
-> > > Maximum bind() attempts. Die now...
-> > >
-> > > I have no issues while binding on other ports:
-> > > [root@server1 /]# /usr/bin/sctp_test -H <IPv4> -P 3891 -l
-> > > local:addr=<IPv4>, port=rtc-pm-port, family=2
-> > > seed = 1574684925
-> > > Starting tests...
-> > >         socket(SOCK_SEQPACKET, IPPROTO_SCTP)  ->  sk=3
-> > >         bind(sk=3, [a:<IPv4>,p:rtc-pm-port])  --  attempt 1/10
-> > >         listen(sk=3,backlog0)
-> > > Server: Receiving packets.
-> > >         recvmsg(sk=3) ^C
-> > >
-> > > There are no active SCTP associations:
-> > > [root@server1 log]# tail /proc/net/sctp/* -n 10000
-> > > => /proc/net/sctp/assocs <=
-> > > ASSOC     SOCK   STY SST ST HBKT ASSOC-ID TX_QUEUE RX_QUEUE UID INODE
-> > > LPORT RPORT LADDRS <-> RADDRS HBINT INS OUTS MAXRT T1X T2X RTXC
-> > > => /proc/net/sctp/eps <=
-> > > ENDPT     SOCK   STY SST HBKT LPORT   UID INODE LADDRS
-> > > => /proc/net/sctp/remaddr <=
-> > > ADDR ASSOC_ID HB_ACT RTO MAX_PATH_RTX REM_ADDR_RTX  START
-> > > => /proc/net/sctp/snmp <=
-> > > SctpCurrEstab                           0
-> > > SctpActiveEstabs                        0
-> > > SctpPassiveEstabs                       602
-> > > SctpAborteds                            13
-> > > SctpShutdowns                           589
-> > > SctpOutOfBlues                          29128
-> > > SctpChecksumErrors                      0
-> > > SctpOutCtrlChunks                       891800
-> > > SctpOutOrderChunks                      135693
-> > > SctpOutUnorderChunks                    0
-> > > SctpInCtrlChunks                        941831
-> > > SctpInOrderChunks                       122325
-> > > SctpInUnorderChunks                     13931
-> > > SctpFragUsrMsgs                         0
-> > > SctpReasmUsrMsgs                        0
-> > > SctpOutSCTPPacks                        1027573
-> > > SctpInSCTPPacks                         1035656
-> > > SctpT1InitExpireds                      0
-> > > SctpT1CookieExpireds                    0
-> > > SctpT2ShutdownExpireds                  0
-> > > SctpT3RtxExpireds                       81
-> > > SctpT4RtoExpireds                       0
-> > > SctpT5ShutdownGuardExpireds             0
-> > > SctpDelaySackExpireds                   57489
-> > > SctpAutocloseExpireds                   0
-> > > SctpT3Retransmits                       80
-> > > SctpPmtudRetransmits                    0
-> > > SctpFastRetransmits                     0
-> > > SctpInPktSoftirq                        1035623
-> > > SctpInPktBacklog                        19
-> > > SctpInPktDiscards                       29139
-> > > SctpInDataChunkDiscards                 27869
-> > >
-> > >
-> > > Other useful information:
-> > > [root@server1 log]# uname -a
-> > > Linux server1 2.6.32-754.11.1.el6.x86_64 #1 SMP Tue Feb 26 15:38:56
-> > > UTC 2019 x86_64 x86_64 x86_64 GNU/Linux
-> > >
-> > It looks kind of like theres a leak in endpoints here, but you are on a VERY old
-> > kernel.  The first thing you need to do is retest this on the latest upstream
-> > kernel to see if the problem persists.
-> >
-> > Neil
-> >
-> > > [root@server1 log]# cat /etc/redhat-release
-> > > CentOS release 6.10 (Final)
-> > >
-> > > [root@server1 log]# rpm -qa | grep sctp
-> > > lksctp-tools-1.0.10-7.el6.x86_64
-> > >
-> > > I don’t find any relevant information on /var/log
-> > > I also disabled IPv6 (although I’m not using it) in an attempt to
-> > > isolate the issue but there was no difference.
-> > >
-> > > Thanks in advance!
-> > >
-> > > Kind regards,
-> > >
-> > > Emanuel
-> > >
-> 
+The check will be done in sctp_do_8_2_transport_strike() when this
+feature is enabled.
+
+Note this feature is disabled by initializing 'ps_retrans' per netns
+as 0xffff by default, and its value can't be less than 'pf_retrans'
+when changing by sysctl.
+
+v3->v4:
+  - add define SCTP_PS_RETRANS_MAX 0xffff, and use it on extra2 of
+    sysctl 'ps_retrans'.
+  - add a new entry for ps_retrans on ip-sysctl.txt.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
+---
+ Documentation/networking/ip-sysctl.txt | 12 ++++++++++++
+ include/net/netns/sctp.h               |  6 ++++++
+ include/net/sctp/constants.h           |  2 ++
+ include/net/sctp/structs.h             | 11 ++++++++---
+ net/sctp/associola.c                   |  3 +++
+ net/sctp/protocol.c                    |  3 +++
+ net/sctp/sm_sideeffect.c               |  5 +++++
+ net/sctp/socket.c                      |  1 +
+ net/sctp/sysctl.c                      | 12 +++++++++++-
+ 9 files changed, 51 insertions(+), 4 deletions(-)
+
+diff --git a/Documentation/networking/ip-sysctl.txt b/Documentation/networking/ip-sysctl.txt
+index ad374b4..33c1d16 100644
+--- a/Documentation/networking/ip-sysctl.txt
++++ b/Documentation/networking/ip-sysctl.txt
+@@ -2192,6 +2192,18 @@ pf_retrans - INTEGER
+ 
+ 	Default: 0
+ 
++ps_retrans - INTEGER
++	Primary.Switchover.Max.Retrans (PSMR), it's a tunable parameter coming
++	from section-5 "Primary Path Switchover" in rfc7829.  The primary path
++	will be changed to another active path when the path error counter on
++	the old primary path exceeds PSMR, so that "the SCTP sender is allowed
++	to continue data transmission on a new working path even when the old
++	primary destination address becomes active again".   Note this feature
++	is disabled by initializing 'ps_retrans' per netns as 0xffff by default,
++	and its value can't be less than 'pf_retrans' when changing by sysctl.
++
++	Default: 0xffff
++
+ rto_initial - INTEGER
+ 	The initial round trip timeout value in milliseconds that will be used
+ 	in calculating round trip times.  This is the initial time interval
+diff --git a/include/net/netns/sctp.h b/include/net/netns/sctp.h
+index 18c3dda..d8d02e4 100644
+--- a/include/net/netns/sctp.h
++++ b/include/net/netns/sctp.h
+@@ -89,6 +89,12 @@ struct netns_sctp {
+ 	 */
+ 	int pf_retrans;
+ 
++	/* Primary.Switchover.Max.Retrans sysctl value
++	 * taken from:
++	 * https://tools.ietf.org/html/rfc7829
++	 */
++	int ps_retrans;
++
+ 	/*
+ 	 * Disable Potentially-Failed feature, the feature is enabled by default
+ 	 * pf_enable	-  0  : disable pf
+diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
+index e88b77a..15b4d9a 100644
+--- a/include/net/sctp/constants.h
++++ b/include/net/sctp/constants.h
+@@ -296,6 +296,8 @@ enum {
+ };
+ #define SCTP_PF_EXPOSE_MAX	SCTP_PF_EXPOSE_ENABLE
+ 
++#define SCTP_PS_RETRANS_MAX	0xffff
++
+ /* These return values describe the success or failure of a number of
+  * routines which form the lower interface to SCTP_outqueue.
+  */
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 9a43738..3cc913f 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -184,7 +184,8 @@ struct sctp_sock {
+ 	__u32 flowlabel;
+ 	__u8  dscp;
+ 
+-	int pf_retrans;
++	__u16 pf_retrans;
++	__u16 ps_retrans;
+ 
+ 	/* The initial Path MTU to use for new associations. */
+ 	__u32 pathmtu;
+@@ -897,7 +898,9 @@ struct sctp_transport {
+ 	 * and will be initialized from the assocs value.  This can be changed
+ 	 * using the SCTP_PEER_ADDR_THLDS socket option
+ 	 */
+-	int pf_retrans;
++	__u16 pf_retrans;
++	/* Used for primary path switchover. */
++	__u16 ps_retrans;
+ 	/* PMTU	      : The current known path MTU.  */
+ 	__u32 pathmtu;
+ 
+@@ -1773,7 +1776,9 @@ struct sctp_association {
+ 	 * and will be initialized from the assocs value.  This can be
+ 	 * changed using the SCTP_PEER_ADDR_THLDS socket option
+ 	 */
+-	int pf_retrans;
++	__u16 pf_retrans;
++	/* Used for primary path switchover. */
++	__u16 ps_retrans;
+ 
+ 	/* Maximum number of times the endpoint will retransmit INIT  */
+ 	__u16 max_init_attempts;
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index c183d0e..4725ca4 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -86,6 +86,7 @@ static struct sctp_association *sctp_association_init(
+ 	 */
+ 	asoc->max_retrans = sp->assocparams.sasoc_asocmaxrxt;
+ 	asoc->pf_retrans  = sp->pf_retrans;
++	asoc->ps_retrans  = sp->ps_retrans;
+ 	asoc->pf_expose   = sp->pf_expose;
+ 
+ 	asoc->rto_initial = msecs_to_jiffies(sp->rtoinfo.srto_initial);
+@@ -628,6 +629,8 @@ struct sctp_transport *sctp_assoc_add_peer(struct sctp_association *asoc,
+ 
+ 	/* And the partial failure retrans threshold */
+ 	peer->pf_retrans = asoc->pf_retrans;
++	/* And the primary path switchover retrans threshold */
++	peer->ps_retrans = asoc->ps_retrans;
+ 
+ 	/* Initialize the peer's SACK delay timeout based on the
+ 	 * association configured value.
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index f86be7b..fbbf191 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -1217,6 +1217,9 @@ static int __net_init sctp_defaults_init(struct net *net)
+ 	/* Max.Burst		    - 4 */
+ 	net->sctp.max_burst			= SCTP_DEFAULT_MAX_BURST;
+ 
++	/* Disable of Primary Path Switchover by default */
++	net->sctp.ps_retrans = SCTP_PS_RETRANS_MAX;
++
+ 	/* Enable pf state by default */
+ 	net->sctp.pf_enable = 1;
+ 
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index e52b212..acd737d 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -567,6 +567,11 @@ static void sctp_do_8_2_transport_strike(struct sctp_cmd_seq *commands,
+ 					     SCTP_FAILED_THRESHOLD);
+ 	}
+ 
++	if (transport->error_count > transport->ps_retrans &&
++	    asoc->peer.primary_path = transport &&
++	    asoc->peer.active_path != transport)
++		sctp_assoc_set_primary(asoc, asoc->peer.active_path);
++
+ 	/* E2) For the destination address for which the timer
+ 	 * expires, set RTO <- RTO * 2 ("back off the timer").  The
+ 	 * maximum value discussed in rule C7 above (RTO.max) may be
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index eccd689..38d102b 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -5078,6 +5078,7 @@ static int sctp_init_sock(struct sock *sk)
+ 	sp->hbinterval  = net->sctp.hb_interval;
+ 	sp->pathmaxrxt  = net->sctp.max_retrans_path;
+ 	sp->pf_retrans  = net->sctp.pf_retrans;
++	sp->ps_retrans  = net->sctp.ps_retrans;
+ 	sp->pf_expose   = net->sctp.pf_expose;
+ 	sp->pathmtu     = 0; /* allow default discovery */
+ 	sp->sackdelay   = net->sctp.sack_timeout;
+diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
+index 5d1ad44..4740aa7 100644
+--- a/net/sctp/sysctl.c
++++ b/net/sctp/sysctl.c
+@@ -35,6 +35,7 @@ static int rto_beta_min = 0;
+ static int rto_alpha_max = 1000;
+ static int rto_beta_max = 1000;
+ static int pf_expose_max = SCTP_PF_EXPOSE_MAX;
++static int ps_retrans_max = SCTP_PS_RETRANS_MAX;
+ 
+ static unsigned long max_autoclose_min = 0;
+ static unsigned long max_autoclose_max @@ -213,7 +214,16 @@ static struct ctl_table sctp_net_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec_minmax,
+ 		.extra1		= SYSCTL_ZERO,
+-		.extra2		= SYSCTL_INT_MAX,
++		.extra2		= &init_net.sctp.ps_retrans,
++	},
++	{
++		.procname	= "ps_retrans",
++		.data		= &init_net.sctp.ps_retrans,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec_minmax,
++		.extra1		= &init_net.sctp.pf_retrans,
++		.extra2		= &ps_retrans_max,
+ 	},
+ 	{
+ 		.procname	= "sndbuf_policy",
+-- 
+2.1.0
