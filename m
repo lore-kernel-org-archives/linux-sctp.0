@@ -1,7 +1,7 @@
 From: linux-sctp@vger.kernel.org
-Date: Thu, 14 Nov 2019 20:56:17 +0000
+Date: Thu, 14 Nov 2019 21:04:18 +0000
 Subject: Zdravstvujte! Vas interesujut bazy dannyh dlja prodazhi Vashih tovarov i uslug?
-Message-Id: <20191114205617.CEF2011F632B@localhost.localdomain>
+Message-Id: <20191114210419.0A580107A8FD@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20191108082554.691101CBA8F@TEST.localdomain>
 In-Reply-To: <20191108082554.691101CBA8F@TEST.localdomain>
