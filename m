@@ -1,73 +1,83 @@
-From: syzbot <syzbot+e3b35fe7918ff0ee474e@syzkaller.appspotmail.com>
-Date: Thu, 07 Nov 2019 18:55:09 +0000
-Subject: KCSAN: data-race in sctp_assoc_migrate / sctp_hash_obj
-Message-Id: <0000000000005927bf0596c634a2@google.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 18 Nov 2019 15:34:34 +0000
+Subject: Re: KCSAN: data-race in sctp_assoc_migrate / sctp_hash_obj
+Message-Id: <CADvbK_fAqKgt0JLT+Bcmsqoqc81ehZJ-g6StMB+G3+WKO68SUw@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <0000000000005927bf0596c634a2@google.com>
+In-Reply-To: <0000000000005927bf0596c634a2@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="windows-1252"
 Content-Transfer-Encoding: quoted-printable
-To: davem@davemloft.net, elver@google.com, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
+To: syzbot <syzbot+e3b35fe7918ff0ee474e@syzkaller.appspotmail.com>
+Cc: davem <davem@davemloft.net>, elver@google.com, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, network dev <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, Vlad Yasevich <vyasevich@gmail.com>
 
-Hello,
+On Fri, Nov 8, 2019 at 2:56 AM syzbot
+<syzbot+e3b35fe7918ff0ee474e@syzkaller.appspotmail.com> wrote:
+>
+> Hello,
+>
+> syzbot found the following crash on:
+>
+> HEAD commit:    05f22368 x86, kcsan: Enable KCSAN for x86
+> git tree:       https://github.com/google/ktsan.git kcsan
+> console output: https://syzkaller.appspot.com/x/log.txt?x=1046796ce00000
+> kernel config:  https://syzkaller.appspot.com/x/.config?x=87d111955f40591f
+> dashboard link: https://syzkaller.appspot.com/bug?extid=E3b35fe7918ff0ee4=
+74e
+> compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
+>
+> Unfortunately, I don't have any reproducer for this crash yet.
+>
+> IMPORTANT: if you fix the bug, please add the following tag to the commit:
+> Reported-by: syzbot+e3b35fe7918ff0ee474e@syzkaller.appspotmail.com
+>
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> BUG: KCSAN: data-race in sctp_assoc_migrate / sctp_hash_obj
+looks we need a better way to get netns in sctp_hash_obj(),
+I believe in sctp_hash_cmp(), too.
 
-syzbot found the following crash on:
-
-HEAD commit:    05f22368 x86, kcsan: Enable KCSAN for x86
-git tree:       https://github.com/google/ktsan.git kcsan
-console output: https://syzkaller.appspot.com/x/log.txt?x=1046796ce00000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=87d111955f40591f
-dashboard link: https://syzkaller.appspot.com/bug?extid=E3b35fe7918ff0ee474e
-compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
-
-Unfortunately, I don't have any reproducer for this crash yet.
-
-IMPORTANT: if you fix the bug, please add the following tag to the commit:
-Reported-by: syzbot+e3b35fe7918ff0ee474e@syzkaller.appspotmail.com
-
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D
-BUG: KCSAN: data-race in sctp_assoc_migrate / sctp_hash_obj
-
-write to 0xffff8880b67c0020 of 8 bytes by task 18908 on cpu 1:
-  sctp_assoc_migrate+0x1a6/0x290 net/sctp/associola.c:1091
-  sctp_sock_migrate+0x8aa/0x9b0 net/sctp/socket.c:9465
-  sctp_accept+0x3c8/0x470 net/sctp/socket.c:4916
-  inet_accept+0x7f/0x360 net/ipv4/af_inet.c:734
-  __sys_accept4+0x224/0x430 net/socket.c:1754
-  __do_sys_accept net/socket.c:1795 [inline]
-  __se_sys_accept net/socket.c:1792 [inline]
-  __x64_sys_accept+0x4e/0x60 net/socket.c:1792
-  do_syscall_64+0xcc/0x370 arch/x86/entry/common.c:290
-  entry_SYSCALL_64_after_hwframe+0x44/0xa9
-
-read to 0xffff8880b67c0020 of 8 bytes by task 12003 on cpu 0:
-  sctp_hash_obj+0x4f/0x2d0 net/sctp/input.c:894
-  rht_key_get_hash include/linux/rhashtable.h:133 [inline]
-  rht_key_hashfn include/linux/rhashtable.h:159 [inline]
-  rht_head_hashfn include/linux/rhashtable.h:174 [inline]
-  head_hashfn lib/rhashtable.c:41 [inline]
-  rhashtable_rehash_one lib/rhashtable.c:245 [inline]
-  rhashtable_rehash_chain lib/rhashtable.c:276 [inline]
-  rhashtable_rehash_table lib/rhashtable.c:316 [inline]
-  rht_deferred_worker+0x468/0xab0 lib/rhashtable.c:420
-  process_one_work+0x3d4/0x890 kernel/workqueue.c:2269
-  worker_thread+0xa0/0x800 kernel/workqueue.c:2415
-  kthread+0x1d4/0x200 drivers/block/aoe/aoecmd.c:1253
-  ret_from_fork+0x1f/0x30 arch/x86/entry/entry_64.S:352
-
-Reported by Kernel Concurrency Sanitizer on:
-CPU: 0 PID: 12003 Comm: kworker/0:6 Not tainted 5.4.0-rc3+ #0
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS =20
-Google 01/01/2011
-Workqueue: events rht_deferred_worker
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D
-
-
----
-This bug is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
-
-syzbot will keep track of this bug report. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+>
+> write to 0xffff8880b67c0020 of 8 bytes by task 18908 on cpu 1:
+>   sctp_assoc_migrate+0x1a6/0x290 net/sctp/associola.c:1091
+>   sctp_sock_migrate+0x8aa/0x9b0 net/sctp/socket.c:9465
+>   sctp_accept+0x3c8/0x470 net/sctp/socket.c:4916
+>   inet_accept+0x7f/0x360 net/ipv4/af_inet.c:734
+>   __sys_accept4+0x224/0x430 net/socket.c:1754
+>   __do_sys_accept net/socket.c:1795 [inline]
+>   __se_sys_accept net/socket.c:1792 [inline]
+>   __x64_sys_accept+0x4e/0x60 net/socket.c:1792
+>   do_syscall_64+0xcc/0x370 arch/x86/entry/common.c:290
+>   entry_SYSCALL_64_after_hwframe+0x44/0xa9
+>
+> read to 0xffff8880b67c0020 of 8 bytes by task 12003 on cpu 0:
+>   sctp_hash_obj+0x4f/0x2d0 net/sctp/input.c:894
+>   rht_key_get_hash include/linux/rhashtable.h:133 [inline]
+>   rht_key_hashfn include/linux/rhashtable.h:159 [inline]
+>   rht_head_hashfn include/linux/rhashtable.h:174 [inline]
+>   head_hashfn lib/rhashtable.c:41 [inline]
+>   rhashtable_rehash_one lib/rhashtable.c:245 [inline]
+>   rhashtable_rehash_chain lib/rhashtable.c:276 [inline]
+>   rhashtable_rehash_table lib/rhashtable.c:316 [inline]
+>   rht_deferred_worker+0x468/0xab0 lib/rhashtable.c:420
+>   process_one_work+0x3d4/0x890 kernel/workqueue.c:2269
+>   worker_thread+0xa0/0x800 kernel/workqueue.c:2415
+>   kthread+0x1d4/0x200 drivers/block/aoe/aoecmd.c:1253
+>   ret_from_fork+0x1f/0x30 arch/x86/entry/entry_64.S:352
+>
+> Reported by Kernel Concurrency Sanitizer on:
+> CPU: 0 PID: 12003 Comm: kworker/0:6 Not tainted 5.4.0-rc3+ #0
+> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS
+> Google 01/01/2011
+> Workqueue: events rht_deferred_worker
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D
+>
+>
+> ---
+> This bug is generated by a bot. It may contain errors.
+> See https://goo.gl/tpsmEJ for more information about syzbot.
+> syzbot engineers can be reached at syzkaller@googlegroups.com.
+>
+> syzbot will keep track of this bug report. See:
+> https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
