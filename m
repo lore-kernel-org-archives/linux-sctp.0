@@ -1,228 +1,66 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 04 Nov 2019 05:16:25 +0000
-Subject: [PATCH linux-4.14.y 1/2] sctp: fix the issue that flags are ignored when using kernel_connect
-Message-Id: <7eaa2553d3499ac18c1a667ed127920619e29ad3.1572844054.git.lucien.xin@gmail.com>
+From: Sasha Levin <sashal@kernel.org>
+Date: Fri, 22 Nov 2019 06:01:22 +0000
+Subject: [PATCH AUTOSEL 4.9 84/91] sctp: don't compare hb_timer expire date before starting it
+Message-Id: <20191122060129.4239-83-sashal@kernel.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1572844054.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1572844054.git.lucien.xin@gmail.com>
+References: <20191122060129.4239-1-sashal@kernel.org>
+In-Reply-To: <20191122060129.4239-1-sashal@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: stable@vger.kernel.org, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, sashal@kernel.org, gregkh@linuxfoundation.org
+To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc: Maciej Kwiecien <maciej.kwiecien@nokia.com>, Marcin Stojek <marcin.stojek@nokia.com>, Alexander Sverdlin <alexander.sverdlin@nokia.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S . Miller" <davem@davemloft.net>, Sasha Levin <sashal@kernel.org>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-[ Upstream commit 644fbdeacf1d3edd366e44b8ba214de9d1dd66a9 ]
+From: Maciej Kwiecien <maciej.kwiecien@nokia.com>
 
-Now sctp uses inet_dgram_connect as its proto_ops .connect, and the flags
-param can't be passed into its proto .connect where this flags is really
-needed.
+[ Upstream commit d1f20c03f48102e52eb98b8651d129b83134cae4 ]
 
-sctp works around it by getting flags from socket file in __sctp_connect.
-It works for connecting from userspace, as inherently the user sock has
-socket file and it passes f_flags as the flags param into the proto_ops
-.connect.
+hb_timer might not start at all for a particular transport because its
+start is conditional. In a result a node is not sending heartbeats.
 
-However, the sock created by sock_create_kern doesn't have a socket file,
-and it passes the flags (like O_NONBLOCK) by using the flags param in
-kernel_connect, which calls proto_ops .connect later.
+Function sctp_transport_reset_hb_timer has two roles:
+    - initial start of hb_timer for a given transport,
+    - update expire date of hb_timer for a given transport.
+The function is optimized to update timer's expire only if it is before
+a new calculated one but this comparison is invalid for a timer which
+has not yet started. Such a timer has expire = 0 and if a new expire
+value is bigger than (MAX_JIFFIES / 2 + 2) then "time_before" macro will
+fail and timer will not start resulting in no heartbeat packets send by
+the node.
 
-So to fix it, this patch defines a new proto_ops .connect for sctp,
-sctp_inet_connect, which calls __sctp_connect() directly with this
-flags param. After this, the sctp's proto .connect can be removed.
+This was found when association was initialized within first 5 mins
+after system boot due to jiffies init value which is near to MAX_JIFFIES.
 
-Note that sctp_inet_connect doesn't need to do some checks that are not
-needed for sctp, which makes thing better than with inet_dgram_connect.
+Test kernel version: 4.9.154 (ARCH=arm)
+hb_timer.expire = 0;                //initialized, not started timer
+new_expire = MAX_JIFFIES / 2 + 2;   //or more
+time_before(hb_timer.expire, new_expire) = false
 
-Suggested-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
+Fixes: ba6f5e33bdbb ("sctp: avoid refreshing heartbeat timer too often")
+Reported-by: Marcin Stojek <marcin.stojek@nokia.com>
+Tested-by: Marcin Stojek <marcin.stojek@nokia.com>
+Signed-off-by: Maciej Kwiecien <maciej.kwiecien@nokia.com>
+Reviewed-by: Alexander Sverdlin <alexander.sverdlin@nokia.com>
 Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Reviewed-by: Michal Kubecek <mkubecek@suse.cz>
 Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- include/net/sctp/sctp.h |  2 ++
- net/sctp/ipv6.c         |  2 +-
- net/sctp/protocol.c     |  2 +-
- net/sctp/socket.c       | 56 +++++++++++++++++++++++++++++++++----------------
- 4 files changed, 42 insertions(+), 20 deletions(-)
+ net/sctp/transport.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index 749a428..c713bd6 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -103,6 +103,8 @@ void sctp_addr_wq_mgmt(struct net *, struct sctp_sockaddr_entry *, int);
- /*
-  * sctp/socket.c
-  */
-+int sctp_inet_connect(struct socket *sock, struct sockaddr *uaddr,
-+		      int addr_len, int flags);
- int sctp_backlog_rcv(struct sock *sk, struct sk_buff *skb);
- int sctp_inet_listen(struct socket *sock, int backlog);
- void sctp_write_space(struct sock *sk);
-diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-index 7eb06fa..53a66ee 100644
---- a/net/sctp/ipv6.c
-+++ b/net/sctp/ipv6.c
-@@ -974,7 +974,7 @@ static const struct proto_ops inet6_seqpacket_ops = {
- 	.owner		   = THIS_MODULE,
- 	.release	   = inet6_release,
- 	.bind		   = inet6_bind,
--	.connect	   = inet_dgram_connect,
-+	.connect	   = sctp_inet_connect,
- 	.socketpair	   = sock_no_socketpair,
- 	.accept		   = inet_accept,
- 	.getname	   = sctp_getname,
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index 6af871b..01f88e9 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -1019,7 +1019,7 @@ static const struct proto_ops inet_seqpacket_ops = {
- 	.owner		   = THIS_MODULE,
- 	.release	   = inet_release,	/* Needs to be wrapped... */
- 	.bind		   = inet_bind,
--	.connect	   = inet_dgram_connect,
-+	.connect	   = sctp_inet_connect,
- 	.socketpair	   = sock_no_socketpair,
- 	.accept		   = inet_accept,
- 	.getname	   = inet_getname,	/* Semantics are different.  */
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index a18e9be..c9c23ca 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -1076,7 +1076,7 @@ static int sctp_setsockopt_bindx(struct sock *sk,
-  */
- static int __sctp_connect(struct sock *sk,
- 			  struct sockaddr *kaddrs,
--			  int addrs_size,
-+			  int addrs_size, int flags,
- 			  sctp_assoc_t *assoc_id)
- {
- 	struct net *net = sock_net(sk);
-@@ -1094,7 +1094,6 @@ static int __sctp_connect(struct sock *sk,
- 	union sctp_addr *sa_addr = NULL;
- 	void *addr_buf;
- 	unsigned short port;
--	unsigned int f_flags = 0;
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index 03d71cd97ec08..5c78942550e97 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -205,7 +205,8 @@ void sctp_transport_reset_hb_timer(struct sctp_transport *transport)
  
- 	sp = sctp_sk(sk);
- 	ep = sp->ep;
-@@ -1244,13 +1243,7 @@ static int __sctp_connect(struct sock *sk,
- 	sp->pf->to_sk_daddr(sa_addr, sk);
- 	sk->sk_err = 0;
- 
--	/* in-kernel sockets don't generally have a file allocated to them
--	 * if all they do is call sock_create_kern().
--	 */
--	if (sk->sk_socket->file)
--		f_flags = sk->sk_socket->file->f_flags;
--
--	timeo = sock_sndtimeo(sk, f_flags & O_NONBLOCK);
-+	timeo = sock_sndtimeo(sk, flags & O_NONBLOCK);
- 
- 	if (assoc_id)
- 		*assoc_id = asoc->assoc_id;
-@@ -1345,7 +1338,7 @@ static int __sctp_setsockopt_connectx(struct sock *sk,
- {
- 	struct sockaddr *kaddrs;
- 	gfp_t gfp = GFP_KERNEL;
--	int err = 0;
-+	int err = 0, flags = 0;
- 
- 	pr_debug("%s: sk:%p addrs:%p addrs_size:%d\n",
- 		 __func__, sk, addrs, addrs_size);
-@@ -1365,11 +1358,18 @@ static int __sctp_setsockopt_connectx(struct sock *sk,
- 		return -ENOMEM;
- 
- 	if (__copy_from_user(kaddrs, addrs, addrs_size)) {
--		err = -EFAULT;
--	} else {
--		err = __sctp_connect(sk, kaddrs, addrs_size, assoc_id);
-+		kfree(kaddrs);
-+		return -EFAULT;
- 	}
- 
-+	/* in-kernel sockets don't generally have a file allocated to them
-+	 * if all they do is call sock_create_kern().
-+	 */
-+	if (sk->sk_socket->file)
-+		flags = sk->sk_socket->file->f_flags;
-+
-+	err = __sctp_connect(sk, kaddrs, addrs_size, flags, assoc_id);
-+
- 	kfree(kaddrs);
- 
- 	return err;
-@@ -4166,16 +4166,26 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
-  * len: the size of the address.
-  */
- static int sctp_connect(struct sock *sk, struct sockaddr *addr,
--			int addr_len)
-+			int addr_len, int flags)
- {
--	int err = 0;
-+	struct inet_sock *inet = inet_sk(sk);
- 	struct sctp_af *af;
-+	int err = 0;
- 
- 	lock_sock(sk);
- 
- 	pr_debug("%s: sk:%p, sockaddr:%p, addr_len:%d\n", __func__, sk,
- 		 addr, addr_len);
- 
-+	/* We may need to bind the socket. */
-+	if (!inet->inet_num) {
-+		if (sk->sk_prot->get_port(sk, 0)) {
-+			release_sock(sk);
-+			return -EAGAIN;
-+		}
-+		inet->inet_sport = htons(inet->inet_num);
-+	}
-+
- 	/* Validate addr_len before calling common connect/connectx routine. */
- 	af = sctp_get_af_specific(addr->sa_family);
- 	if (!af || addr_len < af->sockaddr_len) {
-@@ -4184,13 +4194,25 @@ static int sctp_connect(struct sock *sk, struct sockaddr *addr,
- 		/* Pass correct addr len to common routine (so it knows there
- 		 * is only one address being passed.
- 		 */
--		err = __sctp_connect(sk, addr, af->sockaddr_len, NULL);
-+		err = __sctp_connect(sk, addr, af->sockaddr_len, flags, NULL);
- 	}
- 
- 	release_sock(sk);
- 	return err;
- }
- 
-+int sctp_inet_connect(struct socket *sock, struct sockaddr *uaddr,
-+		      int addr_len, int flags)
-+{
-+	if (addr_len < sizeof(uaddr->sa_family))
-+		return -EINVAL;
-+
-+	if (uaddr->sa_family = AF_UNSPEC)
-+		return -EOPNOTSUPP;
-+
-+	return sctp_connect(sock->sk, uaddr, addr_len, flags);
-+}
-+
- /* FIXME: Write comments. */
- static int sctp_disconnect(struct sock *sk, int flags)
- {
-@@ -8298,7 +8320,6 @@ struct proto sctp_prot = {
- 	.name        =	"SCTP",
- 	.owner       =	THIS_MODULE,
- 	.close       =	sctp_close,
--	.connect     =	sctp_connect,
- 	.disconnect  =	sctp_disconnect,
- 	.accept      =	sctp_accept,
- 	.ioctl       =	sctp_ioctl,
-@@ -8337,7 +8358,6 @@ struct proto sctpv6_prot = {
- 	.name		= "SCTPv6",
- 	.owner		= THIS_MODULE,
- 	.close		= sctp_close,
--	.connect	= sctp_connect,
- 	.disconnect	= sctp_disconnect,
- 	.accept		= sctp_accept,
- 	.ioctl		= sctp_ioctl,
+ 	/* When a data chunk is sent, reset the heartbeat interval.  */
+ 	expires = jiffies + sctp_transport_timeout(transport);
+-	if (time_before(transport->hb_timer.expires, expires) &&
++	if ((time_before(transport->hb_timer.expires, expires) ||
++	     !timer_pending(&transport->hb_timer)) &&
+ 	    !mod_timer(&transport->hb_timer,
+ 		       expires + prandom_u32_max(transport->rto)))
+ 		sctp_transport_hold(transport);
 -- 
-2.1.0
+2.20.1
