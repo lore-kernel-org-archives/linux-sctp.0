@@ -1,39 +1,22 @@
-From: Navid Emamdoost <navid.emamdoost@gmail.com>
-Date: Fri, 22 Nov 2019 22:17:56 +0000
-Subject: [PATCH] sctp: Fix memory leak in sctp_sf_do_5_2_4_dupcook
-Message-Id: <20191122221759.32271-1-navid.emamdoost@gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Sat, 23 Nov 2019 13:01:13 +0000
+Subject: Re: [PATCH] sctp: Fix memory leak in sctp_sf_do_5_2_4_dupcook
+Message-Id: <20191123130113.GI388551@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20191122221759.32271-1-navid.emamdoost@gmail.com>
+In-Reply-To: <20191122221759.32271-1-navid.emamdoost@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc: emamd001@umn.edu, Navid Emamdoost <navid.emamdoost@gmail.com>
+To: Navid Emamdoost <navid.emamdoost@gmail.com>
+Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, emamd001@umn.edu
 
-In the implementation of sctp_sf_do_5_2_4_dupcook() the allocated
-new_asoc is leaked if security_sctp_assoc_request() fails. Release it
-via sctp_association_free().
+On Fri, Nov 22, 2019 at 04:17:56PM -0600, Navid Emamdoost wrote:
+> In the implementation of sctp_sf_do_5_2_4_dupcook() the allocated
+> new_asoc is leaked if security_sctp_assoc_request() fails. Release it
+> via sctp_association_free().
+> 
+> Fixes: 2277c7cd75e3 ("sctp: Add LSM hooks")
+> Signed-off-by: Navid Emamdoost <navid.emamdoost@gmail.com>
 
-Fixes: 2277c7cd75e3 ("sctp: Add LSM hooks")
-Signed-off-by: Navid Emamdoost <navid.emamdoost@gmail.com>
----
- net/sctp/sm_statefuns.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
-
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index 0c21c52fc408..4ab8208a2dd4 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -2160,8 +2160,10 @@ enum sctp_disposition sctp_sf_do_5_2_4_dupcook(
- 
- 	/* Update socket peer label if first association. */
- 	if (security_sctp_assoc_request((struct sctp_endpoint *)ep,
--					chunk->skb))
-+					chunk->skb)) {
-+		sctp_association_free(new_asoc);
- 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
-+	}
- 
- 	/* Set temp so that it won't be added into hashtable */
- 	new_asoc->temp = 1;
--- 
-2.17.1
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
