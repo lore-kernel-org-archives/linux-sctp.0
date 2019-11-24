@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Sat, 23 Nov 2019 12:56:50 +0000
+From: Jakub Kicinski <jakub.kicinski@netronome.com>
+Date: Sun, 24 Nov 2019 02:29:19 +0000
 Subject: Re: [PATCH net] sctp: cache netns in sctp_ep_common
-Message-Id: <20191123125650.GH388551@localhost.localdomain>
+Message-Id: <20191123182919.310d5bf6@cakuba.netronome.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <f7ecea746b9238b1c996b51c41b5306e00a3d403.1574481409.git.lucien.xin@gmail.com>
 In-Reply-To: <f7ecea746b9238b1c996b51c41b5306e00a3d403.1574481409.git.lucien.xin@gmail.com>
@@ -9,40 +9,13 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Neil Horman <nhorman@tuxdriver.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-On Sat, Nov 23, 2019 at 11:56:49AM +0800, Xin Long wrote:
+On Sat, 23 Nov 2019 11:56:49 +0800, Xin Long wrote:
 > This patch is to fix a data-race reported by syzbot:
 > 
 >   BUG: KCSAN: data-race in sctp_assoc_migrate / sctp_hash_obj
-> 
->   write to 0xffff8880b67c0020 of 8 bytes by task 18908 on cpu 1:
->     sctp_assoc_migrate+0x1a6/0x290 net/sctp/associola.c:1091
->     sctp_sock_migrate+0x8aa/0x9b0 net/sctp/socket.c:9465
->     sctp_accept+0x3c8/0x470 net/sctp/socket.c:4916
->     inet_accept+0x7f/0x360 net/ipv4/af_inet.c:734
->     __sys_accept4+0x224/0x430 net/socket.c:1754
->     __do_sys_accept net/socket.c:1795 [inline]
->     __se_sys_accept net/socket.c:1792 [inline]
->     __x64_sys_accept+0x4e/0x60 net/socket.c:1792
->     do_syscall_64+0xcc/0x370 arch/x86/entry/common.c:290
->     entry_SYSCALL_64_after_hwframe+0x44/0xa9
-> 
->   read to 0xffff8880b67c0020 of 8 bytes by task 12003 on cpu 0:
->     sctp_hash_obj+0x4f/0x2d0 net/sctp/input.c:894
->     rht_key_get_hash include/linux/rhashtable.h:133 [inline]
->     rht_key_hashfn include/linux/rhashtable.h:159 [inline]
->     rht_head_hashfn include/linux/rhashtable.h:174 [inline]
->     head_hashfn lib/rhashtable.c:41 [inline]
->     rhashtable_rehash_one lib/rhashtable.c:245 [inline]
->     rhashtable_rehash_chain lib/rhashtable.c:276 [inline]
->     rhashtable_rehash_table lib/rhashtable.c:316 [inline]
->     rht_deferred_worker+0x468/0xab0 lib/rhashtable.c:420
->     process_one_work+0x3d4/0x890 kernel/workqueue.c:2269
->     worker_thread+0xa0/0x800 kernel/workqueue.c:2415
->     kthread+0x1d4/0x200 drivers/block/aoe/aoecmd.c:1253
->     ret_from_fork+0x1f/0x30 arch/x86/entry/entry_64.S:352
-> 
+
 > It was caused by rhashtable access asoc->base.sk when sctp_assoc_migrate
 > is changing its value. However, what rhashtable wants is netns from asoc
 > base.sk, and for an asoc, its netns won't change once set. So we can
@@ -52,4 +25,4 @@ On Sat, Nov 23, 2019 at 11:56:49AM +0800, Xin Long wrote:
 > Reported-by: syzbot+e3b35fe7918ff0ee474e@syzkaller.appspotmail.com
 > Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Applied, thank you!
