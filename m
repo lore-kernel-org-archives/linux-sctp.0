@@ -1,39 +1,46 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 08 Nov 2019 22:18:51 +0000
-Subject: Re: [PATCHv4 net-next 0/5] sctp: update from rfc7829
-Message-Id: <20191108.141851.574550170546220386.davem@davemloft.net>
+From: Dmitry Vyukov <dvyukov@google.com>
+Date: Sat, 30 Nov 2019 15:37:56 +0000
+Subject: Re: kernel BUG at net/core/skbuff.c:LINE! (3)
+Message-Id: <CACT4Y+Yrg8JxWABi4CJgBG7GpBSCmT0DHr_eZhQA-ikLH-X5Yw@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1573190212.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1573190212.git.lucien.xin@gmail.com>
+References: <001a114372a6074e6505642b7f72@google.com> <000000000000039751059891760e@google.com>
+In-Reply-To: <000000000000039751059891760e@google.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, david.laight@aculab.com
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: syzbot <syzbot+b2bf2652983d23734c5c@syzkaller.appspotmail.com>
+Cc: David Miller <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, mvohra@vmware.com, netdev <netdev@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, William Tu <u9012063@gmail.com>, Vladislav Yasevich <vyasevich@gmail.com>, websitedesignservices4u@gmail.com, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri,  8 Nov 2019 13:20:31 +0800
+On Sat, Nov 30, 2019 at 3:50 PM syzbot
+<syzbot+b2bf2652983d23734c5c@syzkaller.appspotmail.com> wrote:
+>
+> syzbot has bisected this bug to:
+>
+> commit 84e54fe0a5eaed696dee4019c396f8396f5a908b
+> Author: William Tu <u9012063@gmail.com>
+> Date:   Tue Aug 22 16:40:28 2017 +0000
+>
+>      gre: introduce native tunnel support for ERSPAN
+>
+> bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=158a2f86e000=
+00
+> start commit:   f9f1e414 Merge tag 'for-linus-4.16-rc1-tag' of git://git.=
+k..
+> git tree:       upstream
+> final crash:    https://syzkaller.appspot.com/x/report.txt?x=178a2f86e000=
+00
+> console output: https://syzkaller.appspot.com/x/log.txt?x=138a2f86e00000
+> kernel config:  https://syzkaller.appspot.com/x/.config?x4a80ee1ac29767b
+> dashboard link: https://syzkaller.appspot.com/bug?extid=B2bf2652983d23734=
+c5c
+> syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=147bfebd800000
+> C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=13d8d543800000
+>
+> Reported-by: syzbot+b2bf2652983d23734c5c@syzkaller.appspotmail.com
+> Fixes: 84e54fe0a5ea ("gre: introduce native tunnel support for ERSPAN")
+>
+> For information about bisection process see: https://goo.gl/tpsmEJ#bisect=
+ion
 
-> SCTP-PF was implemented based on a Internet-Draft in 2012:
-> 
->   https://tools.ietf.org/html/draft-nishida-tsvwg-sctp-failover-05
-> 
-> It's been updated quite a few by rfc7829 in 2016.
-> 
-> This patchset adds the following features:
-> 
->   1. add SCTP_ADDR_POTENTIALLY_FAILED notification
->   2. add pf_expose per netns/sock/asoc
->   3. add SCTP_EXPOSE_POTENTIALLY_FAILED_STATE sockopt
->   4. add ps_retrans per netns/sock/asoc/transport
->      (Primary Path Switchover)
->   5. add spt_pathcpthld for SCTP_PEER_ADDR_THLDS sockopt
-> 
-> v1->v2:
->   - See Patch 2/5 and Patch 5/5.
-> v2->v3:
->   - See Patch 1/5, 2/5 and 3/5.
-> v3->v4:
->   - See Patch 1/5, 2/5, 3/5 and 4/5.
-
-Series applied, thank you.
+Humm... the repro contains syz_emit_ethernet, wonder if it's
+remote-triggerable...
