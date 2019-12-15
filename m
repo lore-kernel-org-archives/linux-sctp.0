@@ -1,114 +1,81 @@
-From: =?UTF-8?B?0JXQstCz0LXQvdC40Lkg0KTQvtC60LjQvQ==?=  <evgenij.fokin@gmail.com>
-Date: Thu, 05 Dec 2019 09:57:00 +0000
-Subject: Re: Fw: [Bug 205753] New: Incorrect SCTP DATA dispatching
-Message-Id: <CAJ4YZb6yzbLLb6FTvf49mr-Em_ZQtq5Q+uAm35tpn0T1GrNpEw@mail.gmail.com>
+From: syzbot <syzbot+772d9e36c490b18d51d1@syzkaller.appspotmail.com>
+Date: Sun, 15 Dec 2019 20:35:09 +0000
+Subject: memory leak in sctp_stream_init
+Message-Id: <000000000000f531080599c4073c@google.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20191203082233.5c1525be@hermes.lan>
-In-Reply-To: <20191203082233.5c1525be@hermes.lan>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
 
-Hello Linux SCTP team,
+Hello,
 
-Unfortunately some of you have not received the previous email.
-I've got response from linux-sctp@vger.kernel.org:
-550 5.7.1 Content-Policy reject msg: The message contains HTML
-subpart, therefore we consider it SPAM or Outlook Virus. TEXT/PLAIN is
-accepted.! BF:<U 0.5>; S1727912AbfLDQJ4
-I do not know where HTML subpart is. I wrote email with gmal WEB
-service. Maybe the problem was with attached file.
+syzbot found the following crash on:
 
-The file debian9_sctp_test_to_sctp_test.pcapng can be found here:
-https://bugzilla.kernel.org/show_bug.cgi?id 5753
+HEAD commit:    e31736d9 Merge tag 'nios2-v5.5-rc2' of git://git.kernel.or..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=126a177ee00000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=BBf3a35184a3ed64
+dashboard link: https://syzkaller.appspot.com/bug?extidw2d9e36c490b18d51d1
+compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=15602ddee00000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=12798251e00000
 
-If you know how to prevent this sending error in future please let me know.
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+772d9e36c490b18d51d1@syzkaller.appspotmail.com
 
-I am trying to resend the original message to linux-sctp@vger.kernel.org.
-The original message:
+BUG: memory leak
+unreferenced object 0xffff8881080a3000 (size 4096):
+   comm "syz-executor474", pid 7155, jiffies 4294942658 (age 15.870s)
+   hex dump (first 32 bytes):
+     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+   backtrace:
+     [<00000000df094087>] genradix_alloc_node lib/generic-radix-tree.c:90  =
 
->
-> Hi Vasil,
->
-> The issue when I have 1 second without traffic can periodically reproduces under Debian 10.
-> I tried to reproduce it with Debian 9 but everything works fine with the same equipment.
->
-> Ok. DATA in frame 56 may be dropped because of buffer is full.
-> In this case I want to understand why a_rwnd decries rapidly between frames 53-55.
->
-> Also I try to understand why a_rwnd is stable enough when the same server side works under Debian 9.
-> Please look at debian9_sctp_test_to_sctp_test.pcapng.
->
-> Best Regards,
-> Evgeny
->
-> On Tue, 3 Dec 2019 at 21:54, Vasil Velichkov <vvvelichkov@gmail.com> wrote:
->>
->> Hi Evgeni,
->>
->> On 03/12/2019 18.22, Stephen Hemminger wrote:
->> > All networking bugzilla bugs go to me. This one is new and  SCTP related
->> >
->> > Begin forwarded message:
->> >
->> > Date: Tue, 03 Dec 2019 13:32:39 +0000
->> > From: bugzilla-daemon@bugzilla.kernel.org
->> > To: stephen@networkplumber.org
->> > Subject: [Bug 205753] New: Incorrect SCTP DATA dispatching
->> >
->> >
->> > https://bugzilla.kernel.org/show_bug.cgi?id 5753
->> >
->> >             Bug ID: 205753
->> >            Summary: Incorrect SCTP DATA dispatching
->> >            Product: Networking
->> >            Version: 2.5
->> >     Kernel Version: 4.19.67
->> >           Hardware: Intel
->> >                 OS: Linux
->> >               Tree: Mainline
->> >             Status: NEW
->> >           Severity: normal
->> >           Priority: P1
->> >          Component: Other
->> >           Assignee: stephen@networkplumber.org
->> >           Reporter: evgenij.fokin@gmail.com
->> >         Regression: No
->> >
->> > I think that root cause in skipped messages.
->> >
->> > For example, frame 56 in your debian10_sctp_test_to_sctp_test.pcapng shows that
->> > the data message with sctp.data_tsn = 919935042 was received on server
->> > interface but it was acked in frame 78 only.
->> >
->> > It happens periodically with high-load traffic. The server can capture DATA on
->> > network interface but SCTP level does not receive it.
->>
->> In my opinion the reason that a SACK for frame 56 is not returned is that the receive buffer is full
->>
->> $ tshark -r debian10_sctp_test_to_sctp_test.pcapng -Y "sctp.sack_a_rwnd" -T fields -e frame.number -e sctp.sack_a_rwnd
->> 4       106495
->> 7       106423
->> ...
->> 49      105662
->> 53      105591
->> 55      0
->> 57      0
->> 58      13500
->>
->> > Reproduction scenario:
->> > system1: /usr/bin/sctp_test -H local-addr -P local-port -l
->> > system2: /usr/bin/sctp_test -H local-addr -P local-port -h remote-addr -p remote-port -s -x 1000
->>
->> I'm not sure whether the sctp_test is the best tool for stress/load tests.
->>
->> You may try increasing the buffer size (-m 212992) on the server side, see also https://github.com/sctp/lksctp-tools/blob/master/src/apps/sctp_test.c#L1117-L1123
->>
->> Monitor the buffers sizes and sctp's snmp stats when testing
->>
->> cat /proc/net/sctp/assocs
->> cat /proc/net/sctp/snmp
->>
->> Regards,
->> Vasil
+[inline]
+     [<00000000df094087>] __genradix_ptr_alloc+0xf5/0x250 =20
+lib/generic-radix-tree.c:122
+     [<0000000057cfa7bb>] __genradix_prealloc+0x46/0x70 =20
+lib/generic-radix-tree.c:223
+     [<0000000029d02dac>] sctp_stream_alloc_out.part.0+0x57/0x80 =20
+net/sctp/stream.c:86
+     [<00000000bb930a04>] sctp_stream_alloc_out net/sctp/stream.c:151 =20
+[inline]
+     [<00000000bb930a04>] sctp_stream_init+0x129/0x180 net/sctp/stream.c:129
+     [<00000000ba13c246>] sctp_association_init net/sctp/associola.c:229 =20
+[inline]
+     [<00000000ba13c246>] sctp_association_new+0x46e/0x700 =20
+net/sctp/associola.c:295
+     [<000000008eb57b4d>] sctp_connect_new_asoc+0x90/0x220 =20
+net/sctp/socket.c:1070
+     [<00000000ea24e048>] __sctp_connect+0x182/0x3b0 net/sctp/socket.c:1176
+     [<00000000aa2c530a>] __sctp_setsockopt_connectx+0xa9/0xf0 =20
+net/sctp/socket.c:1322
+     [<0000000018934bfd>] sctp_getsockopt_connectx3 net/sctp/socket.c:1407 =
+=20
+[inline]
+     [<0000000018934bfd>] sctp_getsockopt net/sctp/socket.c:8079 [inline]
+     [<0000000018934bfd>] sctp_getsockopt+0x1394/0x32f6 =20
+net/sctp/socket.c:8010
+     [<000000005fd7e3c8>] sock_common_getsockopt+0x38/0x50 =20
+net/core/sock.c:3108
+     [<00000000333baf72>] __sys_getsockopt+0xa8/0x180 net/socket.c:2162
+     [<00000000de0f98e4>] __do_sys_getsockopt net/socket.c:2177 [inline]
+     [<00000000de0f98e4>] __se_sys_getsockopt net/socket.c:2174 [inline]
+     [<00000000de0f98e4>] __x64_sys_getsockopt+0x26/0x30 net/socket.c:2174
+     [<00000000cf1dfee9>] do_syscall_64+0x73/0x220 =20
+arch/x86/entry/common.c:294
+     [<000000000f416860>] entry_SYSCALL_64_after_hwframe+0x44/0xa9
+
+
+
+---
+This bug is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this bug report. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+syzbot can test patches for this bug, for details see:
+https://goo.gl/tpsmEJ#testing-patches
