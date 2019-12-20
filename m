@@ -1,51 +1,49 @@
-From: Jakub Kicinski <jakub.kicinski@netronome.com>
-Date: Fri, 13 Dec 2019 02:04:59 +0000
-Subject: Re: [PATCH v2] net: introduce ip_local_unbindable_ports sysctl
-Message-Id: <20191212180459.687adf9c@cakuba.netronome.com>
+From: Kevin Kou <qdkevin.kou@gmail.com>
+Date: Fri, 20 Dec 2019 04:47:03 +0000
+Subject: [PATCH] sctp: do trace_sctp_probe after SACK validation and check
+Message-Id: <20191220044703.88-1-qdkevin.kou@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CAHo-OowKQPQj9UhjCND5SmTOergBXMHtEctJA_T0SKLO5yebSg@mail.gmail.com>
-        <20191209224530.156283-1-zenczykowski@gmail.com>
-        <20191209154216.7e19e0c0@cakuba.netronome.com>
-        <CANP3RGe8zqa2V-PBjvACAJa2Hrd8z7BXUkks0KCrAtyeDjbsYw@mail.gmail.com>
-        <20191209161835.7c455fc0@cakuba.netronome.com>
-        <CAHo-OowHek4i9Pzxn96u8U5sTH8keQmi-yMCY-OBS7CE74OGNQ@mail.gmail.com>
-        <20191210093111.7f1ad05d@cakuba.netronome.com>
-        <CAKD1Yr05=sRDTefSP6bmb-VvvDLe9=xUtAF0q3+rn8=U9UjPcA@mail.gmail.com>
-        <20191212164749.4e4c8a4c@cakuba.netronome.com>
-        <CAKD1Yr1V4S3cxvTaBs6pReEZ_3LPobnxdroY+vE3-injHyGt2A@mail.gmail.com>
-        <2e7ceea704ee71383d3f19d1de63dff4@codeaurora.org>
-In-Reply-To: <2e7ceea704ee71383d3f19d1de63dff4@codeaurora.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: subashab@codeaurora.org
-Cc: Lorenzo Colitti <lorenzo@google.com>, Maciej =?UTF-8?B?xbtlbmN6eWtv?= =?UTF-8?B?d3NraQ==?= <zenczykowski@gmail.com>, "David S . Miller" <davem@davemloft.net>, Linux Network Development Mailing List <netdev@vger.kernel.org>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Sean Tranchetti <stranche@codeaurora.org>, Eric Dumazet <edumazet@google.com>, Linux SCTP <linux-sctp@vger.kernel.org>
+To: vyasevich@gmail.com
+Cc: nhorman@tuxdriver.com, marcelo.leitner@gmail.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, qdkevin.kou@gmail.com
 
-On Thu, 12 Dec 2019 18:53:19 -0700, subashab@codeaurora.org wrote:
-> On 2019-12-12 17:57, Lorenzo Colitti wrote:
-> > On Fri, Dec 13, 2019 at 9:47 AM Jakub Kicinski wrote:  
-> >> How are the ports which get reserved communicated between the baseband
-> >> and the AP? Is this part of the standard? Is the driver that talks to
-> >> the base band in the user space and it knows which ports to reserve
-> >> statically? Or does the modem dynamically request ports to
-> >> reserve/inform the host of ports in use?  
-> > 
-> > I'm not an expert in that part of the system, but my understanding is
-> > that the primary way this is used is to pre-allocate a block of ports
-> > to be used by the modem on boot, before other applications can bind to
-> > ports. Subash, do you have more details?  
-> 
-> AFAIK these ports are randomly picked and not from a standard.
-> Userspace gets this information through qrtr during boot.
-> 
-> Atleast in our case, there cannot be any existing user of these ports
-> since these ports are blocked prior to mobile connection establishment.
+The function sctp_sf_eat_sack_6_2 now performs
+the Verification Tag validation, Chunk length validation, Bogu check,
+and also the detection of out-of-order SACK based on the RFC2960
+Section 6.2 at the beginning, and finally performs the further
+processing of SACK. The trace_sctp_probe now triggered before
+the above necessary validation and check.
 
-Not even a listening socket?
+This patch is to do the trace_sctp_probe after the necessary check
+and validation to SACK.
 
-> We could call SOCK_DIAG_DESTROY on these ports from userspace as a
-> precaution as applications would gracefully handle the socket errors.
+Signed-off-by: Kevin Kou <qdkevin.kou@gmail.com>
+---
+ net/sctp/sm_statefuns.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-Right, or kernel could walk them, since presumably every application
-using this functionality should do it, anyway? But no strong feeling 
-on this if nobody else feels this is needed.
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 42558fa..b4a54df 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -3281,7 +3281,6 @@ enum sctp_disposition sctp_sf_eat_sack_6_2(struct net *net,
+ 	struct sctp_sackhdr *sackh;
+ 	__u32 ctsn;
+ 
+-	trace_sctp_probe(ep, asoc, chunk);
+ 
+ 	if (!sctp_vtag_verify(chunk, asoc))
+ 		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
+@@ -3319,6 +3318,8 @@ enum sctp_disposition sctp_sf_eat_sack_6_2(struct net *net,
+ 	if (!TSN_lt(ctsn, asoc->next_tsn))
+ 		return sctp_sf_violation_ctsn(net, ep, asoc, type, arg, commands);
+ 
++	trace_sctp_probe(ep, asoc, chunk);
++
+ 	/* Return this SACK for further processing.  */
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_PROCESS_SACK, SCTP_CHUNK(chunk));
+ 
+-- 
+1.8.3.1
