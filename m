@@ -1,129 +1,40 @@
-From: syzbot <syzbot+9a1bc632e78a1a98488b@syzkaller.appspotmail.com>
-Date: Fri, 20 Dec 2019 03:45:09 +0000
-Subject: general protection fault in sctp_stream_free (2)
-Message-Id: <0000000000001b6443059a1a815d@google.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 20 Dec 2019 15:28:10 +0000
+Subject: Re: general protection fault in sctp_stream_free (2)
+Message-Id: <20191220152810.GI4444@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20180130230242.lpbkdweq3c2ov2x2@gmail.com>
-In-Reply-To: <20180130230242.lpbkdweq3c2ov2x2@gmail.com>
+References: <0000000000001b6443059a1a815d@google.com>
+In-Reply-To: <0000000000001b6443059a1a815d@google.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="windows-1252"
 Content-Transfer-Encoding: quoted-printable
-To: davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, lucien.xin@gmail.com, marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
+To: syzbot <syzbot+9a1bc632e78a1a98488b@syzkaller.appspotmail.com>
+Cc: davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, lucien.xin@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
 
-Hello,
+On Thu, Dec 19, 2019 at 07:45:09PM -0800, syzbot wrote:
+> Hello,
+>=20
+> syzbot found the following crash on:
+>=20
+> HEAD commit:    6fa9a115 Merge branch 'stmmac-fixes'
+> git tree:       net
+> console output: https://syzkaller.appspot.com/x/log.txt?x=10c4fe99e00000
+> kernel config:  https://syzkaller.appspot.com/x/.config?x!6dca5e1758db87
+> dashboard link: https://syzkaller.appspot.com/bug?extid=9A1bc632e78a1a984=
+88b
+> compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
+> syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=178ada71e00000
+> C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=144f23a6e00000
+>=20
+> The bug was bisected to:
+>=20
+> commit 951c6db954a1adefab492f6da805decacabbd1a7
+> Author: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+> Date:   Tue Dec 17 01:01:16 2019 +0000
+>=20
+>     sctp: fix memleak on err handling of stream initialization
 
-syzbot found the following crash on:
-
-HEAD commit:    6fa9a115 Merge branch 'stmmac-fixes'
-git tree:       net
-console output: https://syzkaller.appspot.com/x/log.txt?x=10c4fe99e00000
-kernel config:  https://syzkaller.appspot.com/x/.config?x!6dca5e1758db87
-dashboard link: https://syzkaller.appspot.com/bug?extid=9A1bc632e78a1a98488b
-compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=178ada71e00000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=144f23a6e00000
-
-The bug was bisected to:
-
-commit 951c6db954a1adefab492f6da805decacabbd1a7
-Author: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date:   Tue Dec 17 01:01:16 2019 +0000
-
-     sctp: fix memleak on err handling of stream initialization
-
-bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=13ffbdb6e00000
-final crash:    https://syzkaller.appspot.com/x/report.txt?x=10007db6e00000
-console output: https://syzkaller.appspot.com/x/log.txt?x=17ffbdb6e00000
-
-IMPORTANT: if you fix the bug, please add the following tag to the commit:
-Reported-by: syzbot+9a1bc632e78a1a98488b@syzkaller.appspotmail.com
-Fixes: 951c6db954a1 ("sctp: fix memleak on err handling of stream =20
-initialization")
-
-RBP: 0000000000000004 R08: 0000000000000008 R09: 00007ffc57730031
-R10: 0000000020000040 R11: 0000000000000246 R12: 0000000000401f20
-R13: 0000000000401fb0 R14: 0000000000000000 R15: 0000000000000000
-kasan: CONFIG_KASAN_INLINE enabled
-kasan: GPF could be caused by NULL-ptr deref or user memory access
-general protection fault: 0000 [#1] PREEMPT SMP KASAN
-CPU: 1 PID: 9129 Comm: syz-executor521 Not tainted 5.5.0-rc1-syzkaller #0
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS =20
-Google 01/01/2011
-RIP: 0010:sctp_stream_free+0xe4/0x180 net/sctp/stream.c:183
-Code: 07 48 89 d1 48 69 d2 aa 00 00 00 48 c1 e1 0c 48 29 d0 48 8d 04 40 48 =
-=20
-8d 34 c1 e8 57 24 54 fc 48 8d 78 08 48 89 fa 48 c1 ea 03 <42> 80 3c 32 00  =
-
-75 6f 48 8b 78 08 e8 1c 4c 77 fa 41 0f b6 45 00 84
-RSP: 0018:ffffc90001e17770 EFLAGS: 00010202
-RAX: 0000000000000000 RBX: 0000000000000000 RCX: ffffffff838f50f6
-RDX: 0000000000000001 RSI: ffffffff838f5170 RDI: 0000000000000008
-RBP: ffffc90001e177a8 R08: ffff888094206000 R09: fffffbfff16599c2
-R10: fffffbfff16599c1 R11: ffffffff8b2cce0f R12: ffff8880a70126e8
-R13: ffffed1014e024df R14: dffffc0000000000 R15: ffff8880a70120a8
-FS:  0000000000f03880(0000) GS:ffff8880ae900000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 0000000020000100 CR3: 000000000986d000 CR4: 00000000001406e0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
-Call Trace:
-  sctp_association_free+0x235/0x7e0 net/sctp/associola.c:350
-  sctp_cmd_delete_tcb net/sctp/sm_sideeffect.c:934 [inline]
-  sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1322 [inline]
-  sctp_side_effects net/sctp/sm_sideeffect.c:1189 [inline]
-  sctp_do_sm+0x3a6a/0x5190 net/sctp/sm_sideeffect.c:1160
-  sctp_primitive_ABORT+0xa0/0xd0 net/sctp/primitive.c:104
-  sctp_close+0x259/0x960 net/sctp/socket.c:1513
-  inet_release+0xed/0x200 net/ipv4/af_inet.c:427
-  __sock_release+0xce/0x280 net/socket.c:592
-  sock_close+0x1e/0x30 net/socket.c:1270
-  __fput+0x2ff/0x890 fs/file_table.c:280
-  ____fput+0x16/0x20 fs/file_table.c:313
-  task_work_run+0x145/0x1c0 kernel/task_work.c:113
-  exit_task_work include/linux/task_work.h:22 [inline]
-  do_exit+0x8e7/0x2ef0 kernel/exit.c:797
-  do_group_exit+0x135/0x360 kernel/exit.c:895
-  __do_sys_exit_group kernel/exit.c:906 [inline]
-  __se_sys_exit_group kernel/exit.c:904 [inline]
-  __x64_sys_exit_group+0x44/0x50 kernel/exit.c:904
-  do_syscall_64+0xfa/0x790 arch/x86/entry/common.c:294
-  entry_SYSCALL_64_after_hwframe+0x49/0xbe
-RIP: 0033:0x43f2f8
-Code: Bad RIP value.
-RSP: 002b:00007ffc5773ea88 EFLAGS: 00000246 ORIG_RAX: 00000000000000e7
-RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 000000000043f2f8
-RDX: 0000000000000000 RSI: 000000000000003c RDI: 0000000000000000
-RBP: 00000000004bf0c8 R08: 00000000000000e7 R09: ffffffffffffffd0
-R10: 0000000020000040 R11: 0000000000000246 R12: 0000000000000001
-R13: 00000000006d1180 R14: 0000000000000000 R15: 0000000000000000
-Modules linked in:
----[ end trace 0df255c71a71b566 ]---
-RIP: 0010:sctp_stream_free+0xe4/0x180 net/sctp/stream.c:183
-Code: 07 48 89 d1 48 69 d2 aa 00 00 00 48 c1 e1 0c 48 29 d0 48 8d 04 40 48 =
-=20
-8d 34 c1 e8 57 24 54 fc 48 8d 78 08 48 89 fa 48 c1 ea 03 <42> 80 3c 32 00  =
-
-75 6f 48 8b 78 08 e8 1c 4c 77 fa 41 0f b6 45 00 84
-RSP: 0018:ffffc90001e17770 EFLAGS: 00010202
-RAX: 0000000000000000 RBX: 0000000000000000 RCX: ffffffff838f50f6
-RDX: 0000000000000001 RSI: ffffffff838f5170 RDI: 0000000000000008
-RBP: ffffc90001e177a8 R08: ffff888094206000 R09: fffffbfff16599c2
-R10: fffffbfff16599c1 R11: ffffffff8b2cce0f R12: ffff8880a70126e8
-R13: ffffed1014e024df R14: dffffc0000000000 R15: ffff8880a70120a8
-FS:  0000000000f03880(0000) GS:ffff8880ae900000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 000000000043f2ce CR3: 000000000986d000 CR4: 00000000001406e0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
-
-
----
-This bug is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
-
-syzbot will keep track of this bug report. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
-For information about bisection process see: https://goo.gl/tpsmEJ#bisection
-syzbot can test patches for this bug, for details see:
-https://goo.gl/tpsmEJ#testing-patches
+Ouch... this wasn't a good fix.
+When called from sctp_stream_init(), it is doing the right thing.
+But when called from sctp_send_add_streams(), it can't free the
+genradix. Ditto from sctp_process_strreset_addstrm_in().
