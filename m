@@ -1,7 +1,7 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Fri, 20 Dec 2019 12:32:03 +0000
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 20 Dec 2019 16:17:56 +0000
 Subject: Re: [PATCH] sctp: do trace_sctp_probe after SACK validation and check
-Message-Id: <20191220123203.GA5616@hmswarspite.think-freely.org>
+Message-Id: <20191220161756.GE5058@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20191220044703.88-1-qdkevin.kou@gmail.com>
 In-Reply-To: <20191220044703.88-1-qdkevin.kou@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Kevin Kou <qdkevin.kou@gmail.com>
-Cc: vyasevich@gmail.com, marcelo.leitner@gmail.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
 
 On Fri, Dec 20, 2019 at 04:47:03AM +0000, Kevin Kou wrote:
 > The function sctp_sf_eat_sack_6_2 now performs
@@ -45,11 +45,19 @@ On Fri, Dec 20, 2019 at 04:47:03AM +0000, Kevin Kou wrote:
 >  
 > +	trace_sctp_probe(ep, asoc, chunk);
 > +
+
+Moving it here will be after the check against ctsn_ack_point, which
+could cause duplicated SACKs to be missed from the log.
+
+Yes, from the sender-side CC we don't care about it (yet), but it
+helps to spot probably avoidable retransmissions.
+
+I think this is cleaning up the noise too much. I can agree with
+moving it to after the chunk sanity tests, though.
+
 >  	/* Return this SACK for further processing.  */
 >  	sctp_add_cmd_sf(commands, SCTP_CMD_PROCESS_SACK, SCTP_CHUNK(chunk));
 >  
 > -- 
 > 1.8.3.1
 > 
-> 
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
