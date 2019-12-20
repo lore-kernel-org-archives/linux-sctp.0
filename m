@@ -1,41 +1,109 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 10 Dec 2019 04:14:19 +0000
-Subject: Re: [PATCHv2 net] sctp: get netns from asoc and ep base
-Message-Id: <20191209.201419.1322197127670226216.davem@davemloft.net>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 20 Dec 2019 18:03:44 +0000
+Subject: [PATCH net] sctp: fix err handling of stream initialization
+Message-Id: <d41d8475f8485f571152b3f3716d7f474b5c0e79.1576864893.git.marcelo.leitner@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <76df0e4ae335e3869475d133ce201cc93361ce0c.1575870318.git.lucien.xin@gmail.com>
-        <20191209.101403.781347318798443818.davem@davemloft.net>
-        <CADvbK_cVw49RXCnR3ztKC_RzZf=ipoH2a8ZabaAytmPy+0j4jQ@mail.gmail.com>
-In-Reply-To: <CADvbK_cVw49RXCnR3ztKC_RzZf=ipoH2a8ZabaAytmPy+0j4jQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: netdev@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, syzbot <syzbot+9a1bc632e78a1a98488b@syzkaller.appspotmail.com>, syzkaller-bugs@googlegroups.com
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 10 Dec 2019 12:03:17 +0800
+The fix on 951c6db954a1 fixed the issued reported there but introduced
+another. When the allocation fails within sctp_stream_init() it is
+okay/necessary to free the genradix. But it is also called when adding
+new streams, from sctp_send_add_streams() and
+sctp_process_strreset_addstrm_in() and in those situations it cannot
+just free the genradix because by then it is a fully operational
+association.
 
-> On Tue, Dec 10, 2019 at 2:14 AM David Miller <davem@davemloft.net> wrote:
->>
->> From: Xin Long <lucien.xin@gmail.com>
->> Date: Mon,  9 Dec 2019 13:45:18 +0800
->>
->> > Commit 312434617cb1 ("sctp: cache netns in sctp_ep_common") set netns
->> > in asoc and ep base since they're created, and it will never change.
->> > It's a better way to get netns from asoc and ep base, comparing to
->> > calling sock_net().
->> >
->> > This patch is to replace them.
->> >
->> > v1->v2:
->> >   - no change.
->> >
->> > Suggested-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
->> > Signed-off-by: Xin Long <lucien.xin@gmail.com>
->> > Acked-by: Neil Horman <nhorman@tuxdriver.com>
->>
->> This looks like a cleanup rather than a bug fix, so net-next right?
-> Yes, a cleanup, and net-next should be better.
+The fix here then is to only free the genradix in sctp_stream_init()
+and on those other call sites  move on with what it already had and let
+the subsequent error handling to handle it.
 
-Great, applied to net-next.
+Tested with the reproducers from this report and the previous one,
+with lksctp-tools and sctp-tests.
+
+Reported-by: syzbot+9a1bc632e78a1a98488b@syzkaller.appspotmail.com
+Fixes: 951c6db954a1 ("sctp: fix memleak on err handling of stream initialization")
+Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+---
+ net/sctp/stream.c | 30 +++++++++++++++---------------
+ 1 file changed, 15 insertions(+), 15 deletions(-)
+
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 6a30392068a04bfcefcb14c3d7f13fc092d59cd3..c1a100d2fed39c2d831487e05fcbf5e8d507d470 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -84,10 +84,8 @@ static int sctp_stream_alloc_out(struct sctp_stream *stream, __u16 outcnt,
+ 		return 0;
+ 
+ 	ret = genradix_prealloc(&stream->out, outcnt, gfp);
+-	if (ret) {
+-		genradix_free(&stream->out);
++	if (ret)
+ 		return ret;
+-	}
+ 
+ 	stream->outcnt = outcnt;
+ 	return 0;
+@@ -102,10 +100,8 @@ static int sctp_stream_alloc_in(struct sctp_stream *stream, __u16 incnt,
+ 		return 0;
+ 
+ 	ret = genradix_prealloc(&stream->in, incnt, gfp);
+-	if (ret) {
+-		genradix_free(&stream->in);
++	if (ret)
+ 		return ret;
+-	}
+ 
+ 	stream->incnt = incnt;
+ 	return 0;
+@@ -123,7 +119,7 @@ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
+ 	 * a new one with new outcnt to save memory if needed.
+ 	 */
+ 	if (outcnt = stream->outcnt)
+-		goto in;
++		goto handle_in;
+ 
+ 	/* Filter out chunks queued on streams that won't exist anymore */
+ 	sched->unsched_all(stream);
+@@ -132,24 +128,28 @@ int sctp_stream_init(struct sctp_stream *stream, __u16 outcnt, __u16 incnt,
+ 
+ 	ret = sctp_stream_alloc_out(stream, outcnt, gfp);
+ 	if (ret)
+-		goto out;
++		goto out_err;
+ 
+ 	for (i = 0; i < stream->outcnt; i++)
+ 		SCTP_SO(stream, i)->state = SCTP_STREAM_OPEN;
+ 
+-in:
++handle_in:
+ 	sctp_stream_interleave_init(stream);
+ 	if (!incnt)
+ 		goto out;
+ 
+ 	ret = sctp_stream_alloc_in(stream, incnt, gfp);
+-	if (ret) {
+-		sched->free(stream);
+-		genradix_free(&stream->out);
+-		stream->outcnt = 0;
+-		goto out;
+-	}
++	if (ret)
++		goto in_err;
++
++	goto out;
+ 
++in_err:
++	sched->free(stream);
++	genradix_free(&stream->in);
++out_err:
++	genradix_free(&stream->out);
++	stream->outcnt = 0;
+ out:
+ 	return ret;
+ }
+-- 
+2.23.0
