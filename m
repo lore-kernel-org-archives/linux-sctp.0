@@ -1,61 +1,47 @@
 From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 27 Dec 2019 13:33:07 +0000
-Subject: Re: [PATCH net-next] sctp: add enabled check for path tracepoint loop.
-Message-Id: <20191227133307.GP4444@localhost.localdomain>
+Date: Mon, 23 Dec 2019 17:49:04 +0000
+Subject: Re: SCTP over GRE (w csum)
+Message-Id: <20191223174904.GL4444@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20191227131116.375-1-qdkevin.kou@gmail.com>
-In-Reply-To: <20191227131116.375-1-qdkevin.kou@gmail.com>
+References: <20191223174535.GF6274@localhost.localdomain>
+In-Reply-To: <20191223174535.GF6274@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Kevin Kou <qdkevin.kou@gmail.com>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, nhorman@tuxdriver.com, davem@davemloft.net
+To: Lorenzo Bianconi <lorenzo.bianconi@redhat.com>
+Cc: netdev@vger.kernel.org, dcaratti@redhat.com, lucien.xin@gmail.com, linux-sctp@vger.kernel.org
 
-On Fri, Dec 27, 2019 at 01:11:16PM +0000, Kevin Kou wrote:
-> sctp_outq_sack is the main function handles SACK, it is called very
-> frequently. As the commit "move trace_sctp_probe_path into sctp_outq_sack"
-> added below code to this function, sctp tracepoint is disabled most of time,
-> but the loop of transport list will be always called even though the
-> tracepoint is disabled, this is unnecessary.
-> 
-> +	/* SCTP path tracepoint for congestion control debugging. */
-> +	list_for_each_entry(transport, transport_list, transports) {
-> +		trace_sctp_probe_path(transport, asoc);
-> +	}
-> 
-> This patch is to add tracepoint enabled check at outside of the loop of
-> transport list, and avoid traversing the loop when trace is disabled,
-> it is a small optimization.
-> 
-> Signed-off-by: Kevin Kou <qdkevin.kou@gmail.com>
+[ Just Cc-ing linux-sctp@ ]
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-Thanks Kevin.
-
-Btw, I'm out for PTOs for the next 2 weeks. Probably won't be
-reviewing patches during that.
-
-> ---
->  net/sctp/outqueue.c | 5 +++--
->  1 file changed, 3 insertions(+), 2 deletions(-)
+On Mon, Dec 23, 2019 at 06:45:35PM +0100, Lorenzo Bianconi wrote:
+> Hi all,
 > 
-> diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-> index adceb22..83ddcfe 100644
-> --- a/net/sctp/outqueue.c
-> +++ b/net/sctp/outqueue.c
-> @@ -1240,8 +1240,9 @@ int sctp_outq_sack(struct sctp_outq *q, struct sctp_chunk *chunk)
->  	transport_list = &asoc->peer.transport_addr_list;
->  
->  	/* SCTP path tracepoint for congestion control debugging. */
-> -	list_for_each_entry(transport, transport_list, transports) {
-> -		trace_sctp_probe_path(transport, asoc);
-> +	if (trace_sctp_probe_path_enabled()) {
-> +		list_for_each_entry(transport, transport_list, transports)
-> +			trace_sctp_probe_path(transport, asoc);
->  	}
->  
->  	sack_ctsn = ntohl(sack->cum_tsn_ack);
-> -- 
-> 1.8.3.1
+> I am currently working on the following scenario:
 > 
+> sctp --> ipv4 --> gretap --> ipv6 --> eth
+> 
+> If NETIF_F_SCTP_CRC is not supported by the network device (it is the
+> case for gre), sctp will fallback computing the crc32 in sw with
+> sctp_gso_make_checksum(), where SKB_GSO_CB(skb)->csum is set to ~0 by
+> gso_reset_checksum(). After the gso segmentation, gre_gso_segment()
+> will try to compute gre csum with gso_make_checksum() even if skb->ip_summed
+> is set to CHECKSUM_NONE (and so using ~0 as partial).
+> One possible (trivial and not tested) solution would be to recompute the
+> gre checksum, doing in gre_gso_segment() something like:
+> 
+> 	if (skb->ip_summed = CHECKSUM_NONE) {
+> 		...
+> 		err = skb_checksum_help(skb);
+> 		if (err < 0)
+> 			return return ERR_PTR(err);
+> 	} else {
+> 		*pcsum = gso_make_checksum(skb, 0);
+> 	}
+> 
+> One possible improvement would be offload the GRE checksum computation if the
+> hw exports this capability in netdev_features and fall back to the sw
+> implementation if not.
+> Am I missing something? Is there a better approach?
+> 
+> Regards,
+> Lorenzo
