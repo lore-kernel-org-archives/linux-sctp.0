@@ -1,15 +1,22 @@
-From: "CCULVERT FOUNDATION" <infoccfoundation@amazon.com>
-Date: Wed, 11 Dec 2019 15:15:30 +0000
-Subject: Mein letzter Wunsch.
-Message-Id: <41453-2201912311151530668@appserv>
+From: La Primitiva <tulcidas@mail.telepac.pt>
+Date: Wed, 25 Dec 2019 04:33:43 +0000
+Subject: Take home 750,000 Euros this end of year
+Message-Id: <29088017.259407.1577248423672.JavaMail.javamailuser@localhost>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-9"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Wenn Sie sich f=FCr die Finanzierung der STIFTUNG interessieren, schreiben =
-Sie bitte heute =FCber meinen Anwalt zur=FCck
-Gr=FC=DFe,
-Mrs. Cindy Culvert.
-skyteamsbiz@gmail.com
+Attn: Email User,
+
+You have won, you are to reply back with your name and phone number for
+claim.
+
+La Primitiva
+
+
+
+
+----------------------------------------------------
+This email was sent by the shareware version of Postman Professional.
