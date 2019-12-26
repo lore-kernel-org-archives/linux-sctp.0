@@ -1,126 +1,179 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 20 Dec 2019 16:05:59 +0000
-Subject: Re: general protection fault in sctp_stream_free (2)
-Message-Id: <20191220160559.GD5058@localhost.localdomain>
+From: Kevin Kou <qdkevin.kou@gmail.com>
+Date: Thu, 26 Dec 2019 12:29:17 +0000
+Subject: [PATCH net-next] sctp: move trace_sctp_probe_path into sctp_outq_sack
+Message-Id: <20191226122917.431-1-qdkevin.kou@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <0000000000001b6443059a1a815d@google.com>
- <20191220152810.GI4444@localhost.localdomain>
-In-Reply-To: <20191220152810.GI4444@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="windows-1252"
-Content-Transfer-Encoding: quoted-printable
-To: syzbot <syzbot+9a1bc632e78a1a98488b@syzkaller.appspotmail.com>
-Cc: davem@davemloft.net, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, lucien.xin@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Cc: nhorman@tuxdriver.com, marcelo.leitner@gmail.com, davem@davemloft.net, qdkevin.kou@gmail.com
 
-On Fri, Dec 20, 2019 at 12:28:10PM -0300, Marcelo Ricardo Leitner wrote:
-> On Thu, Dec 19, 2019 at 07:45:09PM -0800, syzbot wrote:
-> > Hello,
-> >=20
-> > syzbot found the following crash on:
-> >=20
-> > HEAD commit:    6fa9a115 Merge branch 'stmmac-fixes'
-> > git tree:       net
-> > console output: https://syzkaller.appspot.com/x/log.txt?x=10c4fe99e00000
-> > kernel config:  https://syzkaller.appspot.com/x/.config?x!6dca5e1758db87
-> > dashboard link: https://syzkaller.appspot.com/bug?extid=9A1bc632e78a1a9=
-8488b
-> > compiler:       gcc (GCC) 9.0.0 20181231 (experimental)
-> > syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=178ada71e00=
-000
-> > C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=144f23a6e00000
-> >=20
-> > The bug was bisected to:
-> >=20
-> > commit 951c6db954a1adefab492f6da805decacabbd1a7
-> > Author: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> > Date:   Tue Dec 17 01:01:16 2019 +0000
-> >=20
-> >     sctp: fix memleak on err handling of stream initialization
->=20
-> Ouch... this wasn't a good fix.
-> When called from sctp_stream_init(), it is doing the right thing.
-> But when called from sctp_send_add_streams(), it can't free the
-> genradix. Ditto from sctp_process_strreset_addstrm_in().
+The original patch bringed in the "SCTP ACK tracking trace event"
+feature was committed at Dec.20, 2017, it replaced jprobe usage
+with trace events, and bringed in two trace events, one is
+TRACE_EVENT(sctp_probe), another one is TRACE_EVENT(sctp_probe_path).
+The original patch intended to trigger the trace_sctp_probe_path in
+TRACE_EVENT(sctp_probe) as below code,
 
-Tentative fix. I'll post after additional tests.
-
---8<--
-
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index 6a30392068a0..c1a100d2fed3 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -84,10 +84,8 @@ static int sctp_stream_alloc_out(struct sctp_stream *str=
-eam, __u16 outcnt,
- 		return 0;
-=20
- 	ret =3D genradix_prealloc(&stream->out, outcnt, gfp);
--	if (ret) {
--		genradix_free(&stream->out);
-+	if (ret)
- 		return ret;
--	}
-=20
- 	stream->outcnt =3D outcnt;
- 	return 0;
-@@ -102,10 +100,8 @@ static int sctp_stream_alloc_in(struct sctp_stream *st=
-ream, __u16 incnt,
- 		return 0;
-=20
- 	ret =3D genradix_prealloc(&stream->in, incnt, gfp);
--	if (ret) {
--		genradix_free(&stream->in);
-+	if (ret)
- 		return ret;
--	}
-=20
- 	stream->incnt =3D incnt;
- 	return 0;
-@@ -123,7 +119,7 @@ int sctp_stream_init(struct sctp_stream *stream, __u16 =
-outcnt, __u16 incnt,
- 	 * a new one with new outcnt to save memory if needed.
- 	 */
- 	if (outcnt =3D stream->outcnt)
--		goto in;
-+		goto handle_in;
-=20
- 	/* Filter out chunks queued on streams that won't exist anymore */
- 	sched->unsched_all(stream);
-@@ -132,24 +128,28 @@ int sctp_stream_init(struct sctp_stream *stream, __u1=
-6 outcnt, __u16 incnt,
-=20
- 	ret =3D sctp_stream_alloc_out(stream, outcnt, gfp);
- 	if (ret)
--		goto out;
-+		goto out_err;
-=20
- 	for (i =3D 0; i < stream->outcnt; i++)
- 		SCTP_SO(stream, i)->state =3D SCTP_STREAM_OPEN;
-=20
--in:
-+handle_in:
- 	sctp_stream_interleave_init(stream);
- 	if (!incnt)
- 		goto out;
-=20
- 	ret =3D sctp_stream_alloc_in(stream, incnt, gfp);
--	if (ret) {
--		sched->free(stream);
--		genradix_free(&stream->out);
--		stream->outcnt =3D 0;
--		goto out;
--	}
-+	if (ret)
-+		goto in_err;
++TRACE_EVENT(sctp_probe,
 +
-+	goto out;
-=20
-+in_err:
-+	sched->free(stream);
-+	genradix_free(&stream->in);
-+out_err:
-+	genradix_free(&stream->out);
-+	stream->outcnt =3D 0;
- out:
- 	return ret;
- }
++	TP_PROTO(const struct sctp_endpoint *ep,
++		 const struct sctp_association *asoc,
++		 struct sctp_chunk *chunk),
++
++	TP_ARGS(ep, asoc, chunk),
++
++	TP_STRUCT__entry(
++		__field(__u64, asoc)
++		__field(__u32, mark)
++		__field(__u16, bind_port)
++		__field(__u16, peer_port)
++		__field(__u32, pathmtu)
++		__field(__u32, rwnd)
++		__field(__u16, unack_data)
++	),
++
++	TP_fast_assign(
++		struct sk_buff *skb = chunk->skb;
++
++		__entry->asoc = (unsigned long)asoc;
++		__entry->mark = skb->mark;
++		__entry->bind_port = ep->base.bind_addr.port;
++		__entry->peer_port = asoc->peer.port;
++		__entry->pathmtu = asoc->pathmtu;
++		__entry->rwnd = asoc->peer.rwnd;
++		__entry->unack_data = asoc->unack_data;
++
++		if (trace_sctp_probe_path_enabled()) {
++			struct sctp_transport *sp;
++
++			list_for_each_entry(sp, &asoc->peer.transport_addr_list,
++					    transports) {
++				trace_sctp_probe_path(sp, asoc);
++			}
++		}
++	),
+
+But I found it did not work when I did testing, and trace_sctp_probe_path
+had no output, I finally found that there is trace buffer lock
+operation(trace_event_buffer_reserve) in include/trace/trace_events.h:
+
+static notrace void							\
+trace_event_raw_event_##call(void *__data, proto)			\
+{									\
+	struct trace_event_file *trace_file = __data;			\
+	struct trace_event_data_offsets_##call __maybe_unused __data_offsets;\
+	struct trace_event_buffer fbuffer;				\
+	struct trace_event_raw_##call *entry;				\
+	int __data_size;						\
+									\
+	if (trace_trigger_soft_disabled(trace_file))			\
+		return;							\
+									\
+	__data_size = trace_event_get_offsets_##call(&__data_offsets, args); \
+									\
+	entry = trace_event_buffer_reserve(&fbuffer, trace_file,	\
+				 sizeof(*entry) + __data_size);		\
+									\
+	if (!entry)							\
+		return;							\
+									\
+	tstruct								\
+									\
+	{ assign; }							\
+									\
+	trace_event_buffer_commit(&fbuffer);				\
+}
+
+The reason caused no output of trace_sctp_probe_path is that
+trace_sctp_probe_path written in TP_fast_assign part of
+TRACE_EVENT(sctp_probe), and it will be placed( { assign; } ) after the
+trace_event_buffer_reserve() when compiler expands Macro,
+
+        entry = trace_event_buffer_reserve(&fbuffer, trace_file,        \
+                                 sizeof(*entry) + __data_size);         \
+                                                                        \
+        if (!entry)                                                     \
+                return;                                                 \
+                                                                        \
+        tstruct                                                         \
+                                                                        \
+        { assign; }                                                     \
+
+so trace_sctp_probe_path finally can not acquire trace_event_buffer
+and return no output, that is to say the nest of tracepoint entry function
+is not allowed. The function call flow is:
+
+trace_sctp_probe()
+-> trace_event_raw_event_sctp_probe()
+ -> lock buffer
+ -> trace_sctp_probe_path()
+   -> trace_event_raw_event_sctp_probe_path()  --nested
+   -> buffer has been locked and return no output.
+
+This patch is to remove trace_sctp_probe_path from the TP_fast_assign
+part of TRACE_EVENT(sctp_probe) to avoid the nest of entry function,
+and trigger sctp_probe_path_trace in sctp_outq_sack.
+
+After this patch, you can enable both events individually,
+  # cd /sys/kernel/debug/tracing
+  # echo 1 > events/sctp/sctp_probe/enable
+  # echo 1 > events/sctp/sctp_probe_path/enable
+
+Or, you can enable all the events under sctp.
+
+  # echo 1 > events/sctp/enable
+
+Signed-off-by: Kevin Kou <qdkevin.kou@gmail.com>
+---
+ include/trace/events/sctp.h | 9 ---------
+ net/sctp/outqueue.c         | 6 ++++++
+ 2 files changed, 6 insertions(+), 9 deletions(-)
+
+diff --git a/include/trace/events/sctp.h b/include/trace/events/sctp.h
+index 7475c7b..d4aac34 100644
+--- a/include/trace/events/sctp.h
++++ b/include/trace/events/sctp.h
+@@ -75,15 +75,6 @@
+ 		__entry->pathmtu = asoc->pathmtu;
+ 		__entry->rwnd = asoc->peer.rwnd;
+ 		__entry->unack_data = asoc->unack_data;
+-
+-		if (trace_sctp_probe_path_enabled()) {
+-			struct sctp_transport *sp;
+-
+-			list_for_each_entry(sp, &asoc->peer.transport_addr_list,
+-					    transports) {
+-				trace_sctp_probe_path(sp, asoc);
+-			}
+-		}
+ 	),
+ 
+ 	TP_printk("asoc=%#llx mark=%#x bind_port=%d peer_port=%d pathmtu=%d "
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index a031d11..6b0b3ba 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -36,6 +36,7 @@
+ #include <net/sctp/sctp.h>
+ #include <net/sctp/sm.h>
+ #include <net/sctp/stream_sched.h>
++#include <trace/events/sctp.h>
+ 
+ /* Declare internal functions here.  */
+ static int sctp_acked(struct sctp_sackhdr *sack, __u32 tsn);
+@@ -1238,6 +1239,11 @@ int sctp_outq_sack(struct sctp_outq *q, struct sctp_chunk *chunk)
+ 	/* Grab the association's destination address list. */
+ 	transport_list = &asoc->peer.transport_addr_list;
+ 
++	/* SCTP path tracepoint for congestion control debugging. */
++	list_for_each_entry(transport, transport_list, transports) {
++		trace_sctp_probe_path(transport, asoc);
++	}
++
+ 	sack_ctsn = ntohl(sack->cum_tsn_ack);
+ 	gap_ack_blocks = ntohs(sack->num_gap_ack_blocks);
+ 	asoc->stats.gapcnt += gap_ack_blocks;
+-- 
+1.8.3.1
