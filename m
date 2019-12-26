@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 25 Dec 2019 13:07:20 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Thu, 26 Dec 2019 21:09:01 +0000
 Subject: Re: [PATCHv3 net-next] sctp: do trace_sctp_probe after SACK validation and check
-Message-Id: <20191225130720.GM4444@localhost.localdomain>
+Message-Id: <20191226210901.GA1891@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20191225082725.1251-1-qdkevin.kou@gmail.com>
 In-Reply-To: <20191225082725.1251-1-qdkevin.kou@gmail.com>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: Kevin Kou <qdkevin.kou@gmail.com>
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, davem@davemloft.net
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, vyasevich@gmail.com, marcelo.leitner@gmail.com, davem@davemloft.net
 
 On Wed, Dec 25, 2019 at 08:27:25AM +0000, Kevin Kou wrote:
 > The function sctp_sf_eat_sack_6_2 now performs the Verification
@@ -32,11 +32,6 @@ On Wed, Dec 25, 2019 at 08:27:25AM +0000, Kevin Kou wrote:
 >    'net-next' tag to the new one as Marcelo's comments.
 > 
 > Signed-off-by: Kevin Kou <qdkevin.kou@gmail.com>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-
-Thanks Kevin.
-
 > ---
 >  net/sctp/sm_statefuns.c | 18 +++++++++---------
 >  1 file changed, 9 insertions(+), 9 deletions(-)
@@ -87,3 +82,5 @@ Thanks Kevin.
 > -- 
 > 1.8.3.1
 > 
+> 
+Acked-by: Neil Horman <nhorman@tuxdriver.com>
