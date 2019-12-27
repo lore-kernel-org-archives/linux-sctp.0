@@ -1,85 +1,49 @@
-From: Dmitry Vyukov <dvyukov@google.com>
-Date: Wed, 04 Dec 2019 08:52:13 +0000
-Subject: Re: kernel BUG at net/core/skbuff.c:LINE! (3)
-Message-Id: <CACT4Y+aRwLG2nHfzmeN=KMY6f+ihj-c73v-pdznjgz0eDDQOZg@mail.gmail.com>
+From: Kevin Kou <qdkevin.kou@gmail.com>
+Date: Fri, 27 Dec 2019 13:11:16 +0000
+Subject: [PATCH net-next] sctp: add enabled check for path tracepoint loop.
+Message-Id: <20191227131116.375-1-qdkevin.kou@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <001a114372a6074e6505642b7f72@google.com> <000000000000039751059891760e@google.com>
- <CACT4Y+Yrg8JxWABi4CJgBG7GpBSCmT0DHr_eZhQA-ikLH-X5Yw@mail.gmail.com>
- <20191202183912.GC377783@localhost.localdomain> <CACT4Y+ZpZVYgA-oiE_YYC49LRA2=iTQLxOaKTA3TEYBt8KjFbw@mail.gmail.com>
- <20191203115616.GA4707@hmswarspite.think-freely.org>
-In-Reply-To: <20191203115616.GA4707@hmswarspite.think-freely.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, syzbot <syzbot+b2bf2652983d23734c5c@syzkaller.appspotmail.com>, David Miller <davem@davemloft.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, LKML <linux-kernel@vger.kernel.org>, linux-sctp@vger.kernel.org, Xin Long <lucien.xin@gmail.com>, mvohra@vmware.com, netdev <netdev@vger.kernel.org>, syzkaller-bugs <syzkaller-bugs@googlegroups.com>, William Tu <u9012063@gmail.com>, Vladislav Yasevich <vyasevich@gmail.com>, websitedesignservices4u@gmail.com, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Cc: nhorman@tuxdriver.com, marcelo.leitner@gmail.com, davem@davemloft.net, qdkevin.kou@gmail.com
 
-On Tue, Dec 3, 2019 at 12:56 PM Neil Horman <nhorman@tuxdriver.com> wrote:
->
-> On Tue, Dec 03, 2019 at 09:42:14AM +0100, Dmitry Vyukov wrote:
-> > On Mon, Dec 2, 2019 at 7:39 PM Marcelo Ricardo Leitner
-> > <marcelo.leitner@gmail.com> wrote:
-> > >
-> > > On Sat, Nov 30, 2019 at 04:37:56PM +0100, Dmitry Vyukov wrote:
-> > > > On Sat, Nov 30, 2019 at 3:50 PM syzbot
-> > > > <syzbot+b2bf2652983d23734c5c@syzkaller.appspotmail.com> wrote:
-> > > > >
-> > > > > syzbot has bisected this bug to:
-> > > > >
-> > > > > commit 84e54fe0a5eaed696dee4019c396f8396f5a908b
-> > > > > Author: William Tu <u9012063@gmail.com>
-> > > > > Date:   Tue Aug 22 16:40:28 2017 +0000
-> > > > >
-> > > > >      gre: introduce native tunnel support for ERSPAN
-> > > > >
-> > > > > bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=158a=
-2f86e00000
-> > > > > start commit:   f9f1e414 Merge tag 'for-linus-4.16-rc1-tag' of gi=
-t://git.k..
-> > > > > git tree:       upstream
-> > > > > final crash:    https://syzkaller.appspot.com/x/report.txt?x=178a=
-2f86e00000
-> > > > > console output: https://syzkaller.appspot.com/x/log.txt?x=138a2f8=
-6e00000
-> > > > > kernel config:  https://syzkaller.appspot.com/x/.config?x4a80ee1a=
-c29767b
-> > > > > dashboard link: https://syzkaller.appspot.com/bug?extid=B2bf26529=
-83d23734c5c
-> > > > > syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=147bf=
-ebd800000
-> > > > > C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=13d8d54=
-3800000
-> > > > >
-> > > > > Reported-by: syzbot+b2bf2652983d23734c5c@syzkaller.appspotmail.com
-> > > > > Fixes: 84e54fe0a5ea ("gre: introduce native tunnel support for ER=
-SPAN")
-> > > > >
-> > > > > For information about bisection process see: https://goo.gl/tpsmE=
-J#bisection
-> > > >
-> > > > Humm... the repro contains syz_emit_ethernet, wonder if it's
-> > > > remote-triggerable...
-> > >
-> > > The call trace is still from the tx path. Packet never left the system
-> > > in this case.
-> >
-> > My understanding is that this does not necessarily mean that the
-> > remote side is not involved. There is enough state on the host for L4
-> > protocols, so that the remote side can mess things and then the bad
-> > thing will happen with local trigger. But that local trigger can be
-> > just anything trivial that everybody does.
-> >
-> But thats not really helpful.  Unless you see an explicit path from the r=
-eceive
-> side to ip6_append_data, Theres no real way for a received packet to reac=
-h this
-> code, so we can't really call it remotely triggerable.
->
-> My guess is, since this is coming from the rawv6_sendmsg path, that the r=
-aw
-> protocol is somehow not marshaling its data in a way that ip6_append_data
-> expects.
+sctp_outq_sack is the main function handles SACK, it is called very
+frequently. As the commit "move trace_sctp_probe_path into sctp_outq_sack"
+added below code to this function, sctp tracepoint is disabled most of time,
+but the loop of transport list will be always called even though the
+tracepoint is disabled, this is unnecessary.
 
-If it's in the local send path and does not use any remotely
-controllable data, then this should be good enough estimation of not
-being a remote attack vector.
++	/* SCTP path tracepoint for congestion control debugging. */
++	list_for_each_entry(transport, transport_list, transports) {
++		trace_sctp_probe_path(transport, asoc);
++	}
+
+This patch is to add tracepoint enabled check at outside of the loop of
+transport list, and avoid traversing the loop when trace is disabled,
+it is a small optimization.
+
+Signed-off-by: Kevin Kou <qdkevin.kou@gmail.com>
+---
+ net/sctp/outqueue.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index adceb22..83ddcfe 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -1240,8 +1240,9 @@ int sctp_outq_sack(struct sctp_outq *q, struct sctp_chunk *chunk)
+ 	transport_list = &asoc->peer.transport_addr_list;
+ 
+ 	/* SCTP path tracepoint for congestion control debugging. */
+-	list_for_each_entry(transport, transport_list, transports) {
+-		trace_sctp_probe_path(transport, asoc);
++	if (trace_sctp_probe_path_enabled()) {
++		list_for_each_entry(transport, transport_list, transports)
++			trace_sctp_probe_path(transport, asoc);
+ 	}
+ 
+ 	sack_ctsn = ntohl(sack->cum_tsn_ack);
+-- 
+1.8.3.1
