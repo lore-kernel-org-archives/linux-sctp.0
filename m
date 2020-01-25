@@ -1,22 +1,19 @@
-From: La Primitiva <tulcidas@mail.telepac.pt>
-Date: Wed, 25 Dec 2019 04:33:43 +0000
-Subject: Take home 750,000 Euros this end of year
-Message-Id: <29088017.259407.1577248423672.JavaMail.javamailuser@localhost>
+From: Din Karim <lovepromigood11111@gmail.com>
+Date: Sat, 25 Jan 2020 11:56:05 +0000
+Subject: Hello
+Message-Id: <CAFOsjm-9uDLYCEWrx3pVq5V7WO6CLrQaVM92bZoET93NES+uZg@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20190330164202.5280A2B63BCC@06d01.mspz3.gob.ec>
+In-Reply-To: <20190330164202.5280A2B63BCC@06d01.mspz3.gob.ec>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Attn: Email User,
+Hello dear,
 
-You have won, you are to reply back with your name and phone number for
-claim.
+I'm Barrister Din Karim, Please i wish to have a communication with you.
 
-La Primitiva
+I am waiting for your answer,
 
-
-
-
-----------------------------------------------------
-This email was sent by the shareware version of Postman Professional.
+Barrister Din Karim(Esq)
