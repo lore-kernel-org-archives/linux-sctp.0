@@ -1,20 +1,19 @@
-From: "Craig, Daniel (CASS, Marsfield)" <Daniel.Craig@csiro.au>
-Date: Mon, 24 Feb 2020 01:16:55 +0000
-Subject: Re: Possible SCTP bug in kernel 4.9.199 and later
-Message-Id: <etPan.5e532406.7f9fee55.4a7f@csiro.au>
+From: "Mrs. Maureen Hinckley" <zz14@gczao.com>
+Date: Sat, 01 Feb 2020 16:35:33 +0000
+Subject: 
+Message-Id: <553755720.261268.1580574933325@mail.yahoo.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <etPan.5e4f0735.2451de02.6626@csiro.au>
-In-Reply-To: <etPan.5e4f0735.2451de02.6626@csiro.au>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 To: linux-sctp@vger.kernel.org
 
-wqANCkhpLA0KDQooQXBvbG9naWVzIGFnYWluIGZvciBIVE1MIG1haWwpDQoNCj4gUGxlYXNlIGJh
-Y2twb3J0IHRoaXMgY29tbWl0OiAgDQo+ICANCj4gY29tbWl0IGRhMzYyN2MzMGQyMjlmZWExZTA3
-MGU5ODQzNjZmODBhMWM0ZDkxNjYgIA0KPiBBdXRob3I6IEdhbmcgSGUgIA0KPiBEYXRlOiBUdWUg
-TWF5IDI5IDExOjA5OjIyIDIwMTggKzA4MDAgIA0KPiAgDQo+IGRsbTogcmVtb3ZlIE9fTk9OQkxP
-Q0sgZmxhZyBpbiBzY3RwX2Nvbm5lY3RfdG9fc29jayAgDQoNCkRMTSBpcyBhYmxlIHRvIGNvbm5l
-Y3QgYWdhaW4gaW4gNC45LjE5OSBhZnRlciBhcHBseWluZyB0aGF0IGNoYW5nZS4NCg0KQ2hlZXJz
-LA0KRGFuDQoNCkRhbmllbCBDcmFpZyAgDQpTeXN0ZW1zIEFkbWluaXN0cmF0b3IgIA0KQXN0cm9u
-b215IGFuZCBTcGFjZSBTY2llbmNlIHwgQ1NJUk8NCg0KDQoNCg=
+
+
+I am Maureen Hinckley and my foundation is donating (Five hundred and fifty=
+ thousand USD) to you. Contact us via my email at (maurhinck6@gmail.com) fo=
+r further details.
+
+Best Regards,
+Mrs. Maureen Hinckley,
+Copyright =C2=A92020 The Maureen Hinckley Foundation All Rights Reserved.
