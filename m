@@ -1,29 +1,108 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 24 Feb 2020 21:28:47 +0000
-Subject: Re: [PATCH 05/30] sctp: Add missing annotation for sctp_transport_walk_start()
-Message-Id: <20200224.132847.414576903338334553.davem@davemloft.net>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 18 Feb 2020 04:07:53 +0000
+Subject: [PATCHv2 net] sctp: move the format error check out of __sctp_sf_do_9_1_abort
+Message-Id: <7f0002ee4446436104eb72bcfa9a4cf417570f7e.1581998873.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <0/30>
-        <20200223231711.157699-1-jbi.octave@gmail.com>
-        <20200223231711.157699-6-jbi.octave@gmail.com>
-In-Reply-To: <20200223231711.157699-6-jbi.octave@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: jbi.octave@gmail.com
-Cc: boqun.feng@gmail.com, linux-kernel@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, kuba@kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Hangbin Liu <liuhangbin@gmail.com>
 
-From: Jules Irenge <jbi.octave@gmail.com>
-Date: Sun, 23 Feb 2020 23:16:46 +0000
+When T2 timer is to be stopped, the asoc should also be deleted,
+otherwise, there will be no chance to call sctp_association_free
+and the asoc could last in memory forever.
 
-> Sparse reports a warning at sctp_transport_walk_start()
-> 
-> warning: context imbalance in sctp_transport_walk_start
-> 	- wrong count at exit
-> 
-> The root cause is the missing annotation at sctp_transport_walk_start()
-> Add the missing __acquires(RCU) annotation
-> 
-> Signed-off-by: Jules Irenge <jbi.octave@gmail.com>
+However, in sctp_sf_shutdown_sent_abort(), after adding the cmd
+SCTP_CMD_TIMER_STOP for T2 timer, it may return error due to the
+format error from __sctp_sf_do_9_1_abort() and miss adding
+SCTP_CMD_ASSOC_FAILED where the asoc will be deleted.
 
-Applied.
+This patch is to fix it by moving the format error check out of
+__sctp_sf_do_9_1_abort(), and do it before adding the cmd
+SCTP_CMD_TIMER_STOP for T2 timer.
+
+Thanks Hangbin for reporting this issue by the fuzz testing.
+
+v1->v2:
+  - improve the comment in the code as Marcelo's suggestion.
+
+Fixes: 96ca468b86b0 ("sctp: check invalid value of length parameter in error cause")
+Reported-by: Hangbin Liu <liuhangbin@gmail.com>
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/sm_statefuns.c | 29 ++++++++++++++++++++---------
+ 1 file changed, 20 insertions(+), 9 deletions(-)
+
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 748e3b1..6a16af4 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -170,6 +170,16 @@ static inline bool sctp_chunk_length_valid(struct sctp_chunk *chunk,
+ 	return true;
+ }
+ 
++/* Check for format error in an ABORT chunk */
++static inline bool sctp_err_chunk_valid(struct sctp_chunk *chunk)
++{
++	struct sctp_errhdr *err;
++
++	sctp_walk_errors(err, chunk->chunk_hdr);
++
++	return (void *)err = (void *)chunk->chunk_end;
++}
++
+ /**********************************************************
+  * These are the state functions for handling chunk events.
+  **********************************************************/
+@@ -2255,6 +2265,9 @@ enum sctp_disposition sctp_sf_shutdown_pending_abort(
+ 		    sctp_bind_addr_state(&asoc->base.bind_addr, &chunk->dest))
+ 		return sctp_sf_discard_chunk(net, ep, asoc, type, arg, commands);
+ 
++	if (!sctp_err_chunk_valid(chunk))
++		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
++
+ 	return __sctp_sf_do_9_1_abort(net, ep, asoc, type, arg, commands);
+ }
+ 
+@@ -2298,6 +2311,9 @@ enum sctp_disposition sctp_sf_shutdown_sent_abort(
+ 		    sctp_bind_addr_state(&asoc->base.bind_addr, &chunk->dest))
+ 		return sctp_sf_discard_chunk(net, ep, asoc, type, arg, commands);
+ 
++	if (!sctp_err_chunk_valid(chunk))
++		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
++
+ 	/* Stop the T2-shutdown timer. */
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_TIMER_STOP,
+ 			SCTP_TO(SCTP_EVENT_TIMEOUT_T2_SHUTDOWN));
+@@ -2565,6 +2581,9 @@ enum sctp_disposition sctp_sf_do_9_1_abort(
+ 		    sctp_bind_addr_state(&asoc->base.bind_addr, &chunk->dest))
+ 		return sctp_sf_discard_chunk(net, ep, asoc, type, arg, commands);
+ 
++	if (!sctp_err_chunk_valid(chunk))
++		return sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
++
+ 	return __sctp_sf_do_9_1_abort(net, ep, asoc, type, arg, commands);
+ }
+ 
+@@ -2582,16 +2601,8 @@ static enum sctp_disposition __sctp_sf_do_9_1_abort(
+ 
+ 	/* See if we have an error cause code in the chunk.  */
+ 	len = ntohs(chunk->chunk_hdr->length);
+-	if (len >= sizeof(struct sctp_chunkhdr) + sizeof(struct sctp_errhdr)) {
+-		struct sctp_errhdr *err;
+-
+-		sctp_walk_errors(err, chunk->chunk_hdr);
+-		if ((void *)err != (void *)chunk->chunk_end)
+-			return sctp_sf_pdiscard(net, ep, asoc, type, arg,
+-						commands);
+-
++	if (len >= sizeof(struct sctp_chunkhdr) + sizeof(struct sctp_errhdr))
+ 		error = ((struct sctp_errhdr *)chunk->skb->data)->cause;
+-	}
+ 
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_SET_SK_ERR, SCTP_ERROR(ECONNRESET));
+ 	/* ASSOC_FAILED will DELETE_TCB. */
+-- 
+2.1.0
