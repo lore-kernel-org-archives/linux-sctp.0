@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 18 Feb 2020 03:40:01 +0000
-Subject: Re: v5.3.12 SCTP Stream Negotiation Problem
-Message-Id: <20200218034001.GA2547@localhost.localdomain>
+From: "Chen, Chris A. (NSB - CN/Qingdao)" <chris.a.chen@nokia-sbell.com>
+Date: Tue, 18 Feb 2020 04:23:20 +0000
+Subject: RE: v5.3.12 SCTP Stream Negotiation Problem
+Message-Id: <05a00ef6c37d4463a1ed9f54a6042812@nokia-sbell.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <29c18e4a424343bab0fea1904cfae492@nokia-sbell.com>
 In-Reply-To: <29c18e4a424343bab0fea1904cfae492@nokia-sbell.com>
@@ -10,84 +10,66 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Hi,
-
-On Tue, Feb 18, 2020 at 12:37:17AM +0000, Fan, Jessie (NSB - CN/Qingdao) wrote:
-> Hi, 
-> 
-> I found the SCTP Stream negotiation doesn't work as expected, that is, the local outbound stream and the remote inbound stream comparison seems missing.
-> For example, when the local outstream(16) is greater than the remote inbound stream(2), 16 is saved and used as the "OUTS", which is shown from /proc/pid/net/sctp/assocs below.
-> Can anyone help comment?
-> 
-> From local end point, 16 is set as both the outbound and inbound stream.
-> From the remote end point, 2 is set for both the outbound and inbound stream
-> 
-> However, after the association is up, the inbound and outbound stream is set as (2,16), which I think is unexpected.
-> sh-4.2# cat 1/net/sctp/assocs
-> ASSOC SOCK STY SST ST HBKT ASSOC-ID TX_QUEUE RX_QUEUE UID INODE LPORT RPORT LADDRS <-> RADDRS HBINT INS OUTS MAXRT T1X T2X RTXC wmema wmemq sndbuf rcvbuf
-> 55dae5bb bb3dec72 0 7 3 0 2415 0 0 504 1223451 2905 3904 xx.xx.xx.xx yy.yy.yy.yy <-> *zz.zz.zz.zz ww.ww.ww.ww 30000 2 16 10 0 0 0 1 0 262144 262144
-> 
-> I further checked the kernel code and found in v5.0, there is still comparison logic: min(outcnt, stream->outcnt) and save the smaller one in the function sctp_stream_alloc_out().
-> But the logic disappeared in v5.1, and if the "outcnt" is smaller, it's not saved locally.
-> static int sctp_stream_alloc_out(struct sctp_stream *stream, __u16 outcnt,
->                                 gfp_t gfp)
-> {
->         int ret;
-> 
->         if (outcnt <= stream->outcnt) //Here is problematic, and the outcnt is not saved locally.
-
-Makes sense.
-Before 2075e50caf5e ("sctp: convert to genradix") it was updating
-stream->outcnt with smaller values when applicable:
-
--       if (outcnt > stream->outcnt)
--               fa_zero(out, stream->outcnt, (outcnt - stream->outcnt));
-+       if (outcnt <= stream->outcnt)
-+               return 0;
-
--       stream->out = out;
-
-It also affects the input stream AFAICT.
-Can you please try the following patch?
-
-Thanks,
-Marcelo
-
----8<---
-
-diff --git a/net/sctp/stream.c b/net/sctp/stream.c
-index 67f7e71f9129..34f0b7312fe8 100644
---- a/net/sctp/stream.c
-+++ b/net/sctp/stream.c
-@@ -81,12 +81,13 @@ static int sctp_stream_alloc_out(struct sctp_stream *stream, __u16 outcnt,
- 	int ret;
- 
- 	if (outcnt <= stream->outcnt)
--		return 0;
-+		goto out;
- 
- 	ret = genradix_prealloc(&stream->out, outcnt, gfp);
- 	if (ret)
- 		return ret;
- 
-+out:
- 	stream->outcnt = outcnt;
- 	return 0;
- }
-@@ -96,13 +97,14 @@ static int sctp_stream_alloc_in(struct sctp_stream *stream, __u16 incnt,
- {
- 	int ret;
- 
--	if (incnt <= stream->incnt)
--		return 0;
-+	if (incnt > stream->incnt)
-+		goto out;
- 
- 	ret = genradix_prealloc(&stream->in, incnt, gfp);
- 	if (ret)
- 		return ret;
- 
-+out:
- 	stream->incnt = incnt;
- 	return 0;
- }
+VGhhbmtzIE1hcmNlbG8gZm9yIHRoZSBjb25maXJtYXRpb24uDQpXZSdsbCB0cnkgdGhlIHBhdGNo
+IHlvdSBzdWdnZXN0Lg0KDQpSZWdhcmRzLA0KQ2hyaXMNCg0KLS0tLS1PcmlnaW5hbCBNZXNzYWdl
+LS0tLS0NCkZyb206IE1hcmNlbG8gUmljYXJkbyBMZWl0bmVyIDxtYXJjZWxvLmxlaXRuZXJAZ21h
+aWwuY29tPiANClNlbnQ6IDIwMjDE6jLUwjE4yNUgMTE6NDANClRvOiBGYW4sIEplc3NpZSAoTlNC
+IC0gQ04vUWluZ2RhbykgPGplc3NpZS5mYW5Abm9raWEtc2JlbGwuY29tPg0KQ2M6IGxpbnV4LXNj
+dHBAdmdlci5rZXJuZWwub3JnOyBkYWppYW5nLnpoYW5nQG5va2lhLmNvbTsgcGlnZ3lAYWNtLm9y
+Zzsga2FybEBhdGhlbmEuY2hpY2Fnby5pbC51czsgY2hyaXNAaHVuZHJlZGFjcmUuYWMudWs7IGpn
+cmltbUB1cy5pYm0uY29tOyB4aW5nYW5nLmd1b0BpbnRlbC5jb207IHNyaUB1cy5pYm0uY29tOyBk
+YWlzeWNAdXMuaWJtLmNvbTsgYXJkZWxsZS5mYW5AaW50ZWwuY29tOyBrZXZpbi5nYW9AaW50ZWwu
+Y29tOyBDaGVuLCBDaHJpcyBBLiAoTlNCIC0gQ04vUWluZ2RhbykgPGNocmlzLmEuY2hlbkBub2tp
+YS1zYmVsbC5jb20+DQpTdWJqZWN0OiBSZTogdjUuMy4xMiBTQ1RQIFN0cmVhbSBOZWdvdGlhdGlv
+biBQcm9ibGVtDQoNCkhpLA0KDQpPbiBUdWUsIEZlYiAxOCwgMjAyMCBhdCAxMjozNzoxN0FNICsw
+MDAwLCBGYW4sIEplc3NpZSAoTlNCIC0gQ04vUWluZ2Rhbykgd3JvdGU6DQo+IEhpLA0KPiANCj4g
+SSBmb3VuZCB0aGUgU0NUUCBTdHJlYW0gbmVnb3RpYXRpb24gZG9lc24ndCB3b3JrIGFzIGV4cGVj
+dGVkLCB0aGF0IGlzLCB0aGUgbG9jYWwgb3V0Ym91bmQgc3RyZWFtIGFuZCB0aGUgcmVtb3RlIGlu
+Ym91bmQgc3RyZWFtIGNvbXBhcmlzb24gc2VlbXMgbWlzc2luZy4NCj4gRm9yIGV4YW1wbGUsIHdo
+ZW4gdGhlIGxvY2FsIG91dHN0cmVhbSgxNikgaXMgZ3JlYXRlciB0aGFuIHRoZSByZW1vdGUgaW5i
+b3VuZCBzdHJlYW0oMiksIDE2IGlzIHNhdmVkIGFuZCB1c2VkIGFzIHRoZSAiT1VUUyIsIHdoaWNo
+IGlzIHNob3duIGZyb20gL3Byb2MvcGlkL25ldC9zY3RwL2Fzc29jcyBiZWxvdy4NCj4gQ2FuIGFu
+eW9uZSBoZWxwIGNvbW1lbnQ/DQo+IA0KPiBGcm9tIGxvY2FsIGVuZCBwb2ludCwgMTYgaXMgc2V0
+IGFzIGJvdGggdGhlIG91dGJvdW5kIGFuZCBpbmJvdW5kIHN0cmVhbS4NCj4gRnJvbSB0aGUgcmVt
+b3RlIGVuZCBwb2ludCwgMiBpcyBzZXQgZm9yIGJvdGggdGhlIG91dGJvdW5kIGFuZCBpbmJvdW5k
+IA0KPiBzdHJlYW0NCj4gDQo+IEhvd2V2ZXIsIGFmdGVyIHRoZSBhc3NvY2lhdGlvbiBpcyB1cCwg
+dGhlIGluYm91bmQgYW5kIG91dGJvdW5kIHN0cmVhbSBpcyBzZXQgYXMgKDIsMTYpLCB3aGljaCBJ
+IHRoaW5rIGlzIHVuZXhwZWN0ZWQuDQo+IHNoLTQuMiMgY2F0IDEvbmV0L3NjdHAvYXNzb2NzDQo+
+IEFTU09DIFNPQ0sgU1RZIFNTVCBTVCBIQktUIEFTU09DLUlEIFRYX1FVRVVFIFJYX1FVRVVFIFVJ
+RCBJTk9ERSBMUE9SVCANCj4gUlBPUlQgTEFERFJTIDwtPiBSQUREUlMgSEJJTlQgSU5TIE9VVFMg
+TUFYUlQgVDFYIFQyWCBSVFhDIHdtZW1hIHdtZW1xIA0KPiBzbmRidWYgcmN2YnVmIDU1ZGFlNWJi
+IGJiM2RlYzcyIDAgNyAzIDAgMjQxNSAwIDAgNTA0IDEyMjM0NTEgMjkwNSAzOTA0IA0KPiB4eC54
+eC54eC54eCB5eS55eS55eS55eSA8LT4gKnp6Lnp6Lnp6Lnp6IHd3Lnd3Lnd3Lnd3IDMwMDAwIDIg
+MTYgMTAgMCAwIA0KPiAwIDEgMCAyNjIxNDQgMjYyMTQ0DQo+IA0KPiBJIGZ1cnRoZXIgY2hlY2tl
+ZCB0aGUga2VybmVsIGNvZGUgYW5kIGZvdW5kIGluIHY1LjAsIHRoZXJlIGlzIHN0aWxsIGNvbXBh
+cmlzb24gbG9naWM6IG1pbihvdXRjbnQsIHN0cmVhbS0+b3V0Y250KSBhbmQgc2F2ZSB0aGUgc21h
+bGxlciBvbmUgaW4gdGhlIGZ1bmN0aW9uIHNjdHBfc3RyZWFtX2FsbG9jX291dCgpLg0KPiBCdXQg
+dGhlIGxvZ2ljIGRpc2FwcGVhcmVkIGluIHY1LjEsIGFuZCBpZiB0aGUgIm91dGNudCIgaXMgc21h
+bGxlciwgaXQncyBub3Qgc2F2ZWQgbG9jYWxseS4NCj4gc3RhdGljIGludCBzY3RwX3N0cmVhbV9h
+bGxvY19vdXQoc3RydWN0IHNjdHBfc3RyZWFtICpzdHJlYW0sIF9fdTE2IG91dGNudCwNCj4gICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICBnZnBfdCBnZnApIHsNCj4gICAgICAgICBpbnQg
+cmV0Ow0KPiANCj4gICAgICAgICBpZiAob3V0Y250IDw9IHN0cmVhbS0+b3V0Y250KSAvL0hlcmUg
+aXMgcHJvYmxlbWF0aWMsIGFuZCB0aGUgb3V0Y250IGlzIG5vdCBzYXZlZCBsb2NhbGx5Lg0KDQpN
+YWtlcyBzZW5zZS4NCkJlZm9yZSAyMDc1ZTUwY2FmNWUgKCJzY3RwOiBjb252ZXJ0IHRvIGdlbnJh
+ZGl4IikgaXQgd2FzIHVwZGF0aW5nDQpzdHJlYW0tPm91dGNudCB3aXRoIHNtYWxsZXIgdmFsdWVz
+IHdoZW4gYXBwbGljYWJsZToNCg0KLSAgICAgICBpZiAob3V0Y250ID4gc3RyZWFtLT5vdXRjbnQp
+DQotICAgICAgICAgICAgICAgZmFfemVybyhvdXQsIHN0cmVhbS0+b3V0Y250LCAob3V0Y250IC0g
+c3RyZWFtLT5vdXRjbnQpKTsNCisgICAgICAgaWYgKG91dGNudCA8PSBzdHJlYW0tPm91dGNudCkN
+CisgICAgICAgICAgICAgICByZXR1cm4gMDsNCg0KLSAgICAgICBzdHJlYW0tPm91dCA9IG91dDsN
+Cg0KSXQgYWxzbyBhZmZlY3RzIHRoZSBpbnB1dCBzdHJlYW0gQUZBSUNULg0KQ2FuIHlvdSBwbGVh
+c2UgdHJ5IHRoZSBmb2xsb3dpbmcgcGF0Y2g/DQoNClRoYW5rcywNCk1hcmNlbG8NCg0KLS0tODwt
+LS0NCg0KZGlmZiAtLWdpdCBhL25ldC9zY3RwL3N0cmVhbS5jIGIvbmV0L3NjdHAvc3RyZWFtLmMg
+aW5kZXggNjdmN2U3MWY5MTI5Li4zNGYwYjczMTJmZTggMTAwNjQ0DQotLS0gYS9uZXQvc2N0cC9z
+dHJlYW0uYw0KKysrIGIvbmV0L3NjdHAvc3RyZWFtLmMNCkBAIC04MSwxMiArODEsMTMgQEAgc3Rh
+dGljIGludCBzY3RwX3N0cmVhbV9hbGxvY19vdXQoc3RydWN0IHNjdHBfc3RyZWFtICpzdHJlYW0s
+IF9fdTE2IG91dGNudCwNCiAJaW50IHJldDsNCiANCiAJaWYgKG91dGNudCA8PSBzdHJlYW0tPm91
+dGNudCkNCi0JCXJldHVybiAwOw0KKwkJZ290byBvdXQ7DQogDQogCXJldCA9IGdlbnJhZGl4X3By
+ZWFsbG9jKCZzdHJlYW0tPm91dCwgb3V0Y250LCBnZnApOw0KIAlpZiAocmV0KQ0KIAkJcmV0dXJu
+IHJldDsNCiANCitvdXQ6DQogCXN0cmVhbS0+b3V0Y250ID0gb3V0Y250Ow0KIAlyZXR1cm4gMDsN
+CiB9DQpAQCAtOTYsMTMgKzk3LDE0IEBAIHN0YXRpYyBpbnQgc2N0cF9zdHJlYW1fYWxsb2NfaW4o
+c3RydWN0IHNjdHBfc3RyZWFtICpzdHJlYW0sIF9fdTE2IGluY250LCAgew0KIAlpbnQgcmV0Ow0K
+IA0KLQlpZiAoaW5jbnQgPD0gc3RyZWFtLT5pbmNudCkNCi0JCXJldHVybiAwOw0KKwlpZiAoaW5j
+bnQgPiBzdHJlYW0tPmluY250KQ0KKwkJZ290byBvdXQ7DQogDQogCXJldCA9IGdlbnJhZGl4X3By
+ZWFsbG9jKCZzdHJlYW0tPmluLCBpbmNudCwgZ2ZwKTsNCiAJaWYgKHJldCkNCiAJCXJldHVybiBy
+ZXQ7DQogDQorb3V0Og0KIAlzdHJlYW0tPmluY250ID0gaW5jbnQ7DQogCXJldHVybiAwOw0KIH0N
+Cg=
