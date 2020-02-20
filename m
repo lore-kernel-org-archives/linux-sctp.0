@@ -1,40 +1,51 @@
-From: David Miller <davem@davemloft.net>
-Date: Tue, 18 Feb 2020 05:57:15 +0000
-Subject: Re: [PATCHv2 net] sctp: move the format error check out of __sctp_sf_do_9_1_abort
-Message-Id: <20200217.215715.632639629013006126.davem@davemloft.net>
+From: "Craig, Daniel (CASS, Marsfield)" <Daniel.Craig@csiro.au>
+Date: Thu, 20 Feb 2020 22:24:53 +0000
+Subject: Re: Possible SCTP bug in kernel 4.9.199 and later
+Message-Id: <etPan.5e4f0735.2451de02.6626@csiro.au>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <7f0002ee4446436104eb72bcfa9a4cf417570f7e.1581998873.git.lucien.xin@gmail.com>
-In-Reply-To: <7f0002ee4446436104eb72bcfa9a4cf417570f7e.1581998873.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, nhorman@tuxdriver.com, liuhangbin@gmail.com
+To: linux-sctp@vger.kernel.org
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 18 Feb 2020 12:07:53 +0800
-
-> When T2 timer is to be stopped, the asoc should also be deleted,
-> otherwise, there will be no chance to call sctp_association_free
-> and the asoc could last in memory forever.
-> 
-> However, in sctp_sf_shutdown_sent_abort(), after adding the cmd
-> SCTP_CMD_TIMER_STOP for T2 timer, it may return error due to the
-> format error from __sctp_sf_do_9_1_abort() and miss adding
-> SCTP_CMD_ASSOC_FAILED where the asoc will be deleted.
-> 
-> This patch is to fix it by moving the format error check out of
-> __sctp_sf_do_9_1_abort(), and do it before adding the cmd
-> SCTP_CMD_TIMER_STOP for T2 timer.
-> 
-> Thanks Hangbin for reporting this issue by the fuzz testing.
-> 
-> v1->v2:
->   - improve the comment in the code as Marcelo's suggestion.
-> 
-> Fixes: 96ca468b86b0 ("sctp: check invalid value of length parameter in error cause")
-> Reported-by: Hangbin Liu <liuhangbin@gmail.com>
-> Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
-
-Applied and queued up for -stable.
+SGksDQoNCihSZXNlbmRpbmcgaW4gcGxhaW4gSFRUUCBtYWlsKQ0KDQpXZeKAmXZlIGhpdCB3aGF0
+IHNlZW1zIHRvIGJlIGEgYnVnIGluIGEgcGF0Y2ggdG8gU0NUUCBpbiB0aGUgNC45IGxvbmd0ZXJt
+IGtlcm5lbC4gV2UgYXJlIHVzaW5nIGNsdm0gYXMgYSBrZXkgcGFydCBvZiBhIGR1YWwtbm9kZSBo
+aWdoIGF2YWlsYWJpbGl0eSBzZXR1cC4gQ2x2bSB1c2VzIERMTSwgd2hpY2ggaW4gb3VyIGNvbmZp
+ZyAodmlhIGNvcm9zeW5jKSB1c2VzIFNDVFAgYXMgaXRzIHVuZGVybHlpbmcgcHJvdG9jb2wuwqAN
+Cg0KU2luY2UgZGViaWFuIGtlcm5lbCA0LjkuMC0xMi1hbWQ2NCAoYmFzZWQgb24gNC45LjIxMCkg
+d2UgaGF2ZSBhIHByb2JsZW0gd2hlcmUgY2x2bSBmYWlscyB0byBzdGFydCAoaXQgdGltZXMgb3V0
+KSBvbiBjbHVzdGVyIHN0YXJ0dXAgYmVjYXVzZSBETE0gYXBwZWFycyB0byBmYWlsIHRvIGNvbm5l
+Y3QsIGluIHRoZSBwcm9jZXNzIHNwYW1taW5nIHRoZSBrZXJuZWwgbG9nIHdpdGggbWVzc2FnZXMg
+bGlrZSB0aGlzOg0KDQpGZWIgMjAgMTM6MDU6MTggaGF0ZXN0MDAga2VybmVsOiBbIMKgMjgzLjE5
+NzM5OV0gZGxtOiBjb25uZWN0aW5nIHRvIDE2ODgyMTM3NA0KRmViIDIwIDEzOjA1OjE4IGhhdGVz
+dDAwIGtlcm5lbDogWyDCoDI4My4xOTc0MjJdIGRsbTogY29ubmVjdGluZyB0byAxNjg4MjEzNzQN
+CkZlYiAyMCAxMzowNToxOCBoYXRlc3QwMCBrZXJuZWw6IFsgwqAyODMuMTk3NDQzXSBkbG06IGNv
+bm5lY3RpbmcgdG8gMTY4ODIxMzc0DQpGZWIgMjAgMTM6MDU6MTggaGF0ZXN0MDAga2VybmVsOiBb
+IMKgMjgzLjE5NzQ2NF0gZGxtOiBjb25uZWN0aW5nIHRvIDE2ODgyMTM3NA0KDQphbmQgb24gdGhl
+IG90aGVyIG5vZGU6DQoNCkZlYiAyMCAxMzowNToxOCBoYXRlc3QwMSBrZXJuZWw6IFsgwqAyNzku
+MTQwNTEzXSBkbG06IGNvbm5lY3RpbmcgdG8gMTY4ODIxMzczDQpGZWIgMjAgMTM6MDU6MTggaGF0
+ZXN0MDEga2VybmVsOiBbIMKgMjc5LjE0MDc0MV0gZGxtOiBjb25uZWN0aW5nIHRvIDE2ODgyMTM3
+Mw0KRmViIDIwIDEzOjA1OjE4IGhhdGVzdDAxIGtlcm5lbDogWyDCoDI3OS4xNDA5NzhdIGRsbTog
+Y29ubmVjdGluZyB0byAxNjg4MjEzNzMNCkZlYiAyMCAxMzowNToxOCBoYXRlc3QwMSBrZXJuZWw6
+IFsgwqAyNzkuMTQxMjA5XSBkbG06IGNvbm5lY3RpbmcgdG8gMTY4ODIxMzczDQoNClRoaXMgaGFz
+IHRoZSB1bHRpbWF0ZSBlZmZlY3Qgb2YgY2F1c2luZyB0aGUgSEEgY2x1c3RlciB0byBiZSB1bnVz
+YWJsZSwgYmVjYXVzZSB3aXRob3V0IGNsdm0gd2UgaGF2ZSBubyBhY2Nlc3MgdG8gdGhlIGNsdXN0
+ZXLigJlzIHNoYXJlZCBzdG9yYWdlLg0KDQpUaGUgcHJldmlvdXNseSB3b3JraW5nIGRlYmlhbiBr
+ZXJuZWwgcGFja2FnZSA0LjkuMC0xMS1hbWQ2NCBpcyBiYXNlZCBvbiBrZXJuZWwgdmVyc2lvbiA0
+LjkuMTk3LiBJ4oCZdmUgdmVyaWZpZWQgdGhhdCB0aGlzIGJlaGF2aW91ciBleGlzdHMgaW4gdGhl
+IHZhbmlsbGEga2VybmVsIGluIGFkZGl0aW9uIHRvIHRoZSBkZWJpYW4ga2VybmVsLiBJ4oCZdmUg
+YWxzbyB2ZXJpZmllZCB0aGF0IGl0IHN0aWxsIG9jY3VycyBvbiB0aGUgbGF0ZXN0IHZhbmlsbGEg
+a2VybmVsIGluIHRoZSBicmFuY2ggLSBjdXJyZW50bHkgNC45LjIxNC4NCg0KT3VyIGluaXRpYWwg
+YXR0ZW1wdHMgdG8gZGVidWcgdGhlIHByb2JsZW0gaW52b2x2ZWQgcmV2ZXJ0aW5nIGFsbCBETE0g
+cGF0Y2hlcyBtYWRlIGJldHdlZW4gNC45LjE5OCBhbmQgNC45LjIxMCwgdGhpcyBoYWQgbm8gaW1w
+YWN0LiBXZSB0aGVuIGxvb2tlZCBhdCBTQ1RQIGFuZCB3ZXJlIGFibGUgdG8gdmVyaWZ5IHRoZSBw
+cm9ibGVtIHdhcyBpbnRyb2R1Y2VkIGluIDQuOS4xOTkuIFJldmVydGluZyBib3RoIHBhdGNoZXMg
+KGluZGl2aWR1YWxseSkgdG8gU0NUUCBpbiB0aGlzIHNlcmllcyBzZWVtcyB0byBwb2ludCB0byB0
+aGUgZm9sbG93aW5nIGNvbW1pdCBhcyBiZWluZyB0aGUgcHJvYmxlbWF0aWMgb25lOg0KDQpodHRw
+czovL2dpdC5rZXJuZWwub3JnL3B1Yi9zY20vbGludXgva2VybmVsL2dpdC9zdGFibGUvbGludXgu
+Z2l0L2NvbW1pdC8/aD1saW51eC00LjkueSZpZD1mOGIxNDEwNzdhOWE4ZmQyYTdmNmJhZTQ0N2E3
+MTBhNmQyMjRiNDRlwqANCg0KUGxlYXNlIGxldCBtZSBrbm93IGlmIHlvdSBuZWVkIGFueSBtb3Jl
+IGluZm9ybWF0aW9uIG9yIHlvdeKAmWQgbGlrZSBtZSB0byBydW4gYW55IHRlc3RzLg0KDQpDaGVl
+cnMsDQpEYW4NCg0KRGFuaWVsIENyYWlnDQpTeXN0ZW1zIEFkbWluaXN0cmF0b3INCkFzdHJvbm9t
+eSBhbmQgU3BhY2UgU2NpZW5jZSB8IENTSVJPwqA
