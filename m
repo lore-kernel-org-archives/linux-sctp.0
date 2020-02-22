@@ -1,51 +1,51 @@
-From: "Craig, Daniel (CASS, Marsfield)" <Daniel.Craig@csiro.au>
-Date: Thu, 20 Feb 2020 22:24:53 +0000
+From: Xin Long <lucien.xin@gmail.com>
+Date: Sat, 22 Feb 2020 10:55:32 +0000
 Subject: Re: Possible SCTP bug in kernel 4.9.199 and later
-Message-Id: <etPan.5e4f0735.2451de02.6626@csiro.au>
+Message-Id: <CADvbK_c85MCYmT08MxjszFHA-jxqKsFGsWjDdMkGFH9zDr+8bA@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <etPan.5e4f0735.2451de02.6626@csiro.au>
+In-Reply-To: <etPan.5e4f0735.2451de02.6626@csiro.au>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 To: linux-sctp@vger.kernel.org
 
-SGksDQoNCihSZXNlbmRpbmcgaW4gcGxhaW4gSFRUUCBtYWlsKQ0KDQpXZeKAmXZlIGhpdCB3aGF0
-IHNlZW1zIHRvIGJlIGEgYnVnIGluIGEgcGF0Y2ggdG8gU0NUUCBpbiB0aGUgNC45IGxvbmd0ZXJt
-IGtlcm5lbC4gV2UgYXJlIHVzaW5nIGNsdm0gYXMgYSBrZXkgcGFydCBvZiBhIGR1YWwtbm9kZSBo
-aWdoIGF2YWlsYWJpbGl0eSBzZXR1cC4gQ2x2bSB1c2VzIERMTSwgd2hpY2ggaW4gb3VyIGNvbmZp
-ZyAodmlhIGNvcm9zeW5jKSB1c2VzIFNDVFAgYXMgaXRzIHVuZGVybHlpbmcgcHJvdG9jb2wuwqAN
-Cg0KU2luY2UgZGViaWFuIGtlcm5lbCA0LjkuMC0xMi1hbWQ2NCAoYmFzZWQgb24gNC45LjIxMCkg
-d2UgaGF2ZSBhIHByb2JsZW0gd2hlcmUgY2x2bSBmYWlscyB0byBzdGFydCAoaXQgdGltZXMgb3V0
-KSBvbiBjbHVzdGVyIHN0YXJ0dXAgYmVjYXVzZSBETE0gYXBwZWFycyB0byBmYWlsIHRvIGNvbm5l
-Y3QsIGluIHRoZSBwcm9jZXNzIHNwYW1taW5nIHRoZSBrZXJuZWwgbG9nIHdpdGggbWVzc2FnZXMg
-bGlrZSB0aGlzOg0KDQpGZWIgMjAgMTM6MDU6MTggaGF0ZXN0MDAga2VybmVsOiBbIMKgMjgzLjE5
-NzM5OV0gZGxtOiBjb25uZWN0aW5nIHRvIDE2ODgyMTM3NA0KRmViIDIwIDEzOjA1OjE4IGhhdGVz
-dDAwIGtlcm5lbDogWyDCoDI4My4xOTc0MjJdIGRsbTogY29ubmVjdGluZyB0byAxNjg4MjEzNzQN
-CkZlYiAyMCAxMzowNToxOCBoYXRlc3QwMCBrZXJuZWw6IFsgwqAyODMuMTk3NDQzXSBkbG06IGNv
-bm5lY3RpbmcgdG8gMTY4ODIxMzc0DQpGZWIgMjAgMTM6MDU6MTggaGF0ZXN0MDAga2VybmVsOiBb
-IMKgMjgzLjE5NzQ2NF0gZGxtOiBjb25uZWN0aW5nIHRvIDE2ODgyMTM3NA0KDQphbmQgb24gdGhl
-IG90aGVyIG5vZGU6DQoNCkZlYiAyMCAxMzowNToxOCBoYXRlc3QwMSBrZXJuZWw6IFsgwqAyNzku
-MTQwNTEzXSBkbG06IGNvbm5lY3RpbmcgdG8gMTY4ODIxMzczDQpGZWIgMjAgMTM6MDU6MTggaGF0
-ZXN0MDEga2VybmVsOiBbIMKgMjc5LjE0MDc0MV0gZGxtOiBjb25uZWN0aW5nIHRvIDE2ODgyMTM3
-Mw0KRmViIDIwIDEzOjA1OjE4IGhhdGVzdDAxIGtlcm5lbDogWyDCoDI3OS4xNDA5NzhdIGRsbTog
-Y29ubmVjdGluZyB0byAxNjg4MjEzNzMNCkZlYiAyMCAxMzowNToxOCBoYXRlc3QwMSBrZXJuZWw6
-IFsgwqAyNzkuMTQxMjA5XSBkbG06IGNvbm5lY3RpbmcgdG8gMTY4ODIxMzczDQoNClRoaXMgaGFz
-IHRoZSB1bHRpbWF0ZSBlZmZlY3Qgb2YgY2F1c2luZyB0aGUgSEEgY2x1c3RlciB0byBiZSB1bnVz
-YWJsZSwgYmVjYXVzZSB3aXRob3V0IGNsdm0gd2UgaGF2ZSBubyBhY2Nlc3MgdG8gdGhlIGNsdXN0
-ZXLigJlzIHNoYXJlZCBzdG9yYWdlLg0KDQpUaGUgcHJldmlvdXNseSB3b3JraW5nIGRlYmlhbiBr
-ZXJuZWwgcGFja2FnZSA0LjkuMC0xMS1hbWQ2NCBpcyBiYXNlZCBvbiBrZXJuZWwgdmVyc2lvbiA0
-LjkuMTk3LiBJ4oCZdmUgdmVyaWZpZWQgdGhhdCB0aGlzIGJlaGF2aW91ciBleGlzdHMgaW4gdGhl
-IHZhbmlsbGEga2VybmVsIGluIGFkZGl0aW9uIHRvIHRoZSBkZWJpYW4ga2VybmVsLiBJ4oCZdmUg
-YWxzbyB2ZXJpZmllZCB0aGF0IGl0IHN0aWxsIG9jY3VycyBvbiB0aGUgbGF0ZXN0IHZhbmlsbGEg
-a2VybmVsIGluIHRoZSBicmFuY2ggLSBjdXJyZW50bHkgNC45LjIxNC4NCg0KT3VyIGluaXRpYWwg
-YXR0ZW1wdHMgdG8gZGVidWcgdGhlIHByb2JsZW0gaW52b2x2ZWQgcmV2ZXJ0aW5nIGFsbCBETE0g
-cGF0Y2hlcyBtYWRlIGJldHdlZW4gNC45LjE5OCBhbmQgNC45LjIxMCwgdGhpcyBoYWQgbm8gaW1w
-YWN0LiBXZSB0aGVuIGxvb2tlZCBhdCBTQ1RQIGFuZCB3ZXJlIGFibGUgdG8gdmVyaWZ5IHRoZSBw
-cm9ibGVtIHdhcyBpbnRyb2R1Y2VkIGluIDQuOS4xOTkuIFJldmVydGluZyBib3RoIHBhdGNoZXMg
-KGluZGl2aWR1YWxseSkgdG8gU0NUUCBpbiB0aGlzIHNlcmllcyBzZWVtcyB0byBwb2ludCB0byB0
-aGUgZm9sbG93aW5nIGNvbW1pdCBhcyBiZWluZyB0aGUgcHJvYmxlbWF0aWMgb25lOg0KDQpodHRw
-czovL2dpdC5rZXJuZWwub3JnL3B1Yi9zY20vbGludXgva2VybmVsL2dpdC9zdGFibGUvbGludXgu
-Z2l0L2NvbW1pdC8/aD1saW51eC00LjkueSZpZD1mOGIxNDEwNzdhOWE4ZmQyYTdmNmJhZTQ0N2E3
-MTBhNmQyMjRiNDRlwqANCg0KUGxlYXNlIGxldCBtZSBrbm93IGlmIHlvdSBuZWVkIGFueSBtb3Jl
-IGluZm9ybWF0aW9uIG9yIHlvdeKAmWQgbGlrZSBtZSB0byBydW4gYW55IHRlc3RzLg0KDQpDaGVl
-cnMsDQpEYW4NCg0KRGFuaWVsIENyYWlnDQpTeXN0ZW1zIEFkbWluaXN0cmF0b3INCkFzdHJvbm9t
-eSBhbmQgU3BhY2UgU2NpZW5jZSB8IENTSVJPwqA
+On Fri, Feb 21, 2020 at 6:25 AM Craig, Daniel (CASS, Marsfield)
+<Daniel.Craig@csiro.au> wrote:
+>
+> Hi,
+>
+> (Resending in plain HTTP mail)
+>
+> We’ve hit what seems to be a bug in a patch to SCTP in the 4.9 longterm kernel. We are using clvm as a key part of a dual-node high availability setup. Clvm uses DLM, which in our config (via corosync) uses SCTP as its underlying protocol.
+>
+> Since debian kernel 4.9.0-12-amd64 (based on 4.9.210) we have a problem where clvm fails to start (it times out) on cluster startup because DLM appears to fail to connect, in the process spamming the kernel log with messages like this:
+>
+> Feb 20 13:05:18 hatest00 kernel: [  283.197399] dlm: connecting to 168821374
+> Feb 20 13:05:18 hatest00 kernel: [  283.197422] dlm: connecting to 168821374
+> Feb 20 13:05:18 hatest00 kernel: [  283.197443] dlm: connecting to 168821374
+> Feb 20 13:05:18 hatest00 kernel: [  283.197464] dlm: connecting to 168821374
+>
+> and on the other node:
+>
+> Feb 20 13:05:18 hatest01 kernel: [  279.140513] dlm: connecting to 168821373
+> Feb 20 13:05:18 hatest01 kernel: [  279.140741] dlm: connecting to 168821373
+> Feb 20 13:05:18 hatest01 kernel: [  279.140978] dlm: connecting to 168821373
+> Feb 20 13:05:18 hatest01 kernel: [  279.141209] dlm: connecting to 168821373
+>
+> This has the ultimate effect of causing the HA cluster to be unusable, because without clvm we have no access to the cluster’s shared storage.
+>
+> The previously working debian kernel package 4.9.0-11-amd64 is based on kernel version 4.9.197. I’ve verified that this behaviour exists in the vanilla kernel in addition to the debian kernel. I’ve also verified that it still occurs on the latest vanilla kernel in the branch - currently 4.9.214.
+>
+> Our initial attempts to debug the problem involved reverting all DLM patches made between 4.9.198 and 4.9.210, this had no impact. We then looked at SCTP and were able to verify the problem was introduced in 4.9.199. Reverting both patches (individually) to SCTP in this series seems to point to the following commit as being the problematic one:
+>
+> https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?h=linux-4.9.y&id=f8b141077a9a8fd2a7f6bae447a710a6d224b44e
+>
+> Please let me know if you need any more information or you’d like me to run any tests.
+Please backport this commit:
+
+commit da3627c30d229fea1e070e984366f80a1c4d9166
+Author: Gang He <ghe@suse.com>
+Date:   Tue May 29 11:09:22 2018 +0800
+
+    dlm: remove O_NONBLOCK flag in sctp_connect_to_sock
