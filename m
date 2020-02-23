@@ -1,104 +1,39 @@
-From: Michael Tuexen <michael.tuexen@lurchi.franken.de>
-Date: Fri, 28 Feb 2020 15:03:37 +0000
-Subject: Re: Problems with peeled-off sockets
-Message-Id: <B0B70C1F-50C0-40E6-B59F-19CA67682C6E@lurchi.franken.de>
+From: Jules Irenge <jbi.octave@gmail.com>
+Date: Sun, 23 Feb 2020 23:16:45 +0000
+Subject: [PATCH 04/30] sctp: Add missing annotation for sctp_err_finish()
+Message-Id: <20200223231711.157699-5-jbi.octave@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <HE1PR0702MB36104FDAA4369769A3A69704EC100@HE1PR0702MB3610.eurprd07.prod.outlook.com>
-In-Reply-To: <HE1PR0702MB36104FDAA4369769A3A69704EC100@HE1PR0702MB3610.eurprd07.prod.outlook.com>
+References: <0/30>
+ <20200223231711.157699-1-jbi.octave@gmail.com>
+In-Reply-To: <20200223231711.157699-1-jbi.octave@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: boqun.feng@gmail.com
+Cc: jbi.octave@gmail.com, linux-kernel@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, "open list:SCTP PROTOCOL" <linux-sctp@vger.kernel.org>, "open list:NETWORKING [GENERAL]" <netdev@vger.kernel.org>
 
-> On 28. Feb 2020, at 15:31, Xin Long <lucien.xin@gmail.com> wrote:
-> 
-> On Fri, Feb 28, 2020 at 9:57 PM Leppanen, Jere (Nokia - FI/Espoo)
-> <jere.leppanen@nokia.com> wrote:
->> 
->> On Thu, 27 Feb 2020, Xin Long wrote:
->> 
->>> On Tue, Feb 25, 2020 at 3:28 AM Leppanen, Jere (Nokia - FI/Espoo)
->>> <jere.leppanen@nokia.com> wrote:
->>>> 
->>>> On Sat, 22 Feb 2020, Xin Long wrote:
->>>> 
->>>>> On Thu, Feb 20, 2020 at 5:18 PM Leppanen, Jere (Nokia - FI/Espoo)
->>>>> <jere.leppanen@nokia.com> wrote:
->>>>>> 
->>>>>> Hello All,
->>>>>> 
->>>>>> According to the RFC, a peeled-off socket is a one-to-one socket. But
->>>>>> in lksctp a peeled-off socket it not TCP style, it's UDP_HIGH_BANDWIDTH
->>>>>> style. Because of this, shutdown() doesn't work, linger probably
->>>>>> doesn't work, and so on.
->>>>>> 
->>>>>> For example, in sctp_shutdown():
->>>>>> 
->>>>>> static void sctp_shutdown(struct sock *sk, int how)
->>>>>> {
->>>>>>        struct net *net = sock_net(sk);
->>>>>>        struct sctp_endpoint *ep;
->>>>>> 
->>>>>>        if (!sctp_style(sk, TCP))
->>>>>>                return;
->>>>>> 
->>>>>> Here we just bail out, because a peeled-off socket is not TCP style.
->>>>>> 
->>>>>> Is this just a bug, or am I missing something? Asking mostly out of
->>>>>> personal curiosity.
->>>>> I would say, it's because .shutdown is tcp_prot thing and udp_prot doesn't
->>>>> have. sctp doesn't have to implement it for UDP style socket. But for TCP-
->>>>> style socket, sctp is trying to be compatible with TCP protocol user API.
->>>>> But even though,  sctp's .shutdown is still not fully compatible with TCP
->>>>> protocol due to sctp's 3-way shakehands for finishing a connection.
->>>> 
->>>> Thanks a bunch for replying, Xin Long. I'm not quite sure what you mean.
->>>> The actual association shutdown doesn't even come into play here, since
->>>> shutdown() doesn't do anything with peeled-off sockets.
->>> Hi,  Leppanen,
->>> sorry for late.
->>> 
->>> SCTP has two types of sockets: UDP and TCP styles.
->>> TCP style associations are not allowed to be peeled off.
->>> only UDP style associations can be peeled off.
->>> 
->>> Then shutdown can only work for TCP style, this explains
->>> why peeled-off sk can use shutdown.
->>> 
->>> 
->>>> 
->>>> If you mean that the current implementation of shutdown() might have
->>>> some problems with peeled-off sockets; well, that's true, but I suppose
->>>> that means that there's something to fix somewhere.
->>> I think it returns for peeled-off sockets (UDP style sockets) on purpose.
->>> it's like why you want to use shutdown on a UDP socket?
->>> 
->>>> 
->>>> It looks like the reason for the peculiar socket style of peeled-off
->>>> sockets is that they're created by copying from a one-to-many socket and
->>>> modified a little to resemble a one-to-one socket. But this leads to
->>>> problems in several places in the code. Is this just implementation that
->>>> was never finalized?
->>> Right, peeled-off will allow users to use a new sk to control that asoc.
->>> but again, it's a feature UDP style socket.
->>> any other problems have you seen?
->> 
->> To clarify, by "peeled-off socket" I mean a socket returned by
->> sctp_peeloff(). sctp_peeloff() takes as an argument a
->> one-to-many socket, and returns a one-to-one socket.
->> 
->> The RFC (https://tools.ietf.org/html/rfc6458#section-9.2)
->> clearly states about the socket returned by sctp_peeloff() that
->> "[...] the new socket is a one-to-one style socket."
-> OK, I got you now.
-> Linux creates a TCP/one-to-many style socket there actually.
-> Interesting, BSD seems to do the same.
-> I will double check and make a patch for this once confirmed.
-I would expect that the socket returned by sctp_peeloff() is
-a one-to-one style socket and behave like one. If BSD is not
-like this, it is a bug and I would like to know.
+Sparse reports a warning at sctp_err_finish()
+warning: context imbalance in sctp_err_finish() - unexpected unlock
 
-Best regards
-Michael
-> 
-> Thanks.
+The root cause is a missing annotation at sctp_err_finish()
+Add the missing  __releases(&((__sk)->sk_lock.slock)) annotation
+
+Signed-off-by: Jules Irenge <jbi.octave@gmail.com>
+---
+ net/sctp/input.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index efaaefc3bb1c..55d4fc6f371d 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -548,6 +548,7 @@ struct sock *sctp_err_lookup(struct net *net, int family, struct sk_buff *skb,
+ 
+ /* Common cleanup code for icmp/icmpv6 error handler. */
+ void sctp_err_finish(struct sock *sk, struct sctp_transport *t)
++	__releases(&((__sk)->sk_lock.slock))
+ {
+ 	bh_unlock_sock(sk);
+ 	sctp_transport_put(t);
+-- 
+2.24.1
