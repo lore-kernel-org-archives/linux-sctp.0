@@ -1,115 +1,96 @@
-From: Qiujun Huang <hqjagain@gmail.com>
-Date: Fri, 27 Mar 2020 03:02:12 +0000
-Subject: Re: [PATCH v5 RESEND] sctp: fix refcount bug in sctp_wfree
-Message-Id: <CAJRQjofFxvEP+vpWV7ChtEvtzBbfAEiGbj0YhaGP2RKUmQKc8Q@mail.gmail.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Mon, 02 Mar 2020 06:57:15 +0000
+Subject: [PATCH net] sctp: return a one-to-one type socket when doing peeloff
+Message-Id: <b3091c0764023bbbb17a26a71e124d0f81349f20.1583132235.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200327012832.19193-1-hqjagain@gmail.com> <20200327023534.GJ3756@localhost.localdomain>
-In-Reply-To: <20200327023534.GJ3756@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, vyasevich@gmail.com, nhorman@tuxdriver.com, Jakub Kicinski <kuba@kernel.org>, linux-sctp@vger.kernel.org, netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, anenbupt@gmail.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, jere.leppanen@nokia.com, michael.tuexen@lurchi.franken.de
 
-On Fri, Mar 27, 2020 at 10:35 AM Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
->
-> On Fri, Mar 27, 2020 at 09:28:32AM +0800, Qiujun Huang wrote:
-> > We should iterate over the datamsgs to modify
->
-> Just two small things now.
-> s/modify/move/  , it's more accurate.
-Get it.
+As it says in rfc6458#section-9.2:
 
-> But mainly because...
->
-> ...
-> >
-> > Reported-and-tested-by:syzbot+cea71eec5d6de256d54d@syzkaller.appspotmail.com
->
-> checkpatch.pl is warning that there should be an empty space after the
-> ':' here.
-forgot that.
->
-> Otherwise, looks very good.
->
-> Btw, I learned a lot about syzbot new features with your tests, thanks :-)
+  The application uses the sctp_peeloff() call to branch off an
+  association into a separate socket.  (Note that the semantics are
+  somewhat changed from the traditional one-to-one style accept()
+  call.)  Note also that the new socket is a one-to-one style socket.
+  Thus, it will be confined to operations allowed for a one-to-one
+  style socket.
 
-So do I, thanks.
+Prior to this patch, sctp_peeloff() returned a one-to-many type socket,
+on which some operations are not allowed, like shutdown, as Jere
+reported.
 
->
-> > Signed-off-by: Qiujun Huang <hqjagain@gmail.com>
-> > ---
-> >  net/sctp/socket.c | 31 +++++++++++++++++++++++--------
-> >  1 file changed, 23 insertions(+), 8 deletions(-)
-> >
-> > diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> > index 1b56fc440606..f68076713162 100644
-> > --- a/net/sctp/socket.c
-> > +++ b/net/sctp/socket.c
-> > @@ -147,29 +147,44 @@ static void sctp_clear_owner_w(struct sctp_chunk *chunk)
-> >       skb_orphan(chunk->skb);
-> >  }
-> >
-> > +#define traverse_and_process()       \
-> > +do {                         \
-> > +     msg = chunk->msg;       \
-> > +     if (msg = prev_msg)    \
-> > +             continue;       \
-> > +     list_for_each_entry(c, &msg->chunks, frag_list) {       \
-> > +             if ((clear && asoc->base.sk = c->skb->sk) ||   \
-> > +                 (!clear && asoc->base.sk != c->skb->sk))    \
-> > +                 cb(c);      \
-> > +     }                       \
-> > +     prev_msg = msg;         \
-> > +} while (0)
-> > +
-> >  static void sctp_for_each_tx_datachunk(struct sctp_association *asoc,
-> > +                                    bool clear,
-> >                                      void (*cb)(struct sctp_chunk *))
-> >
-> >  {
-> > +     struct sctp_datamsg *msg, *prev_msg = NULL;
-> >       struct sctp_outq *q = &asoc->outqueue;
-> > +     struct sctp_chunk *chunk, *c;
-> >       struct sctp_transport *t;
-> > -     struct sctp_chunk *chunk;
-> >
-> >       list_for_each_entry(t, &asoc->peer.transport_addr_list, transports)
-> >               list_for_each_entry(chunk, &t->transmitted, transmitted_list)
-> > -                     cb(chunk);
-> > +                     traverse_and_process();
-> >
-> >       list_for_each_entry(chunk, &q->retransmit, transmitted_list)
-> > -             cb(chunk);
-> > +             traverse_and_process();
-> >
-> >       list_for_each_entry(chunk, &q->sacked, transmitted_list)
-> > -             cb(chunk);
-> > +             traverse_and_process();
-> >
-> >       list_for_each_entry(chunk, &q->abandoned, transmitted_list)
-> > -             cb(chunk);
-> > +             traverse_and_process();
-> >
-> >       list_for_each_entry(chunk, &q->out_chunk_list, list)
-> > -             cb(chunk);
-> > +             traverse_and_process();
-> >  }
-> >
-> >  static void sctp_for_each_rx_skb(struct sctp_association *asoc, struct sock *sk,
-> > @@ -9574,9 +9589,9 @@ static int sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
-> >        * paths won't try to lock it and then oldsk.
-> >        */
-> >       lock_sock_nested(newsk, SINGLE_DEPTH_NESTING);
-> > -     sctp_for_each_tx_datachunk(assoc, sctp_clear_owner_w);
-> > +     sctp_for_each_tx_datachunk(assoc, true, sctp_clear_owner_w);
-> >       sctp_assoc_migrate(assoc, newsk);
-> > -     sctp_for_each_tx_datachunk(assoc, sctp_set_owner_w);
-> > +     sctp_for_each_tx_datachunk(assoc, false, sctp_set_owner_w);
-> >
-> >       /* If the association on the newsk is already closed before accept()
-> >        * is called, set RCV_SHUTDOWN flag.
-> > --
-> > 2.17.1
-> >
+This patch is to change it to return a one-to-one type socket instead.
+
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Reported-by: Leppanen, Jere (Nokia - FI/Espoo) <jere.leppanen@nokia.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/sctp/socket.c | 15 ++++++---------
+ 1 file changed, 6 insertions(+), 9 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 1b56fc4..2b55beb 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -88,8 +88,7 @@ static int sctp_send_asconf(struct sctp_association *asoc,
+ static int sctp_do_bind(struct sock *, union sctp_addr *, int);
+ static int sctp_autobind(struct sock *sk);
+ static int sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
+-			     struct sctp_association *assoc,
+-			     enum sctp_socket_type type);
++			     struct sctp_association *assoc);
+ 
+ static unsigned long sctp_memory_pressure;
+ static atomic_long_t sctp_memory_allocated;
+@@ -4965,7 +4964,7 @@ static struct sock *sctp_accept(struct sock *sk, int flags, int *err, bool kern)
+ 	/* Populate the fields of the newsk from the oldsk and migrate the
+ 	 * asoc to the newsk.
+ 	 */
+-	error = sctp_sock_migrate(sk, newsk, asoc, SCTP_SOCKET_TCP);
++	error = sctp_sock_migrate(sk, newsk, asoc);
+ 	if (error) {
+ 		sk_common_release(newsk);
+ 		newsk = NULL;
+@@ -5711,7 +5710,7 @@ int sctp_do_peeloff(struct sock *sk, sctp_assoc_t id, struct socket **sockp)
+ 		return -EINVAL;
+ 
+ 	/* Create a new socket.  */
+-	err = sock_create(sk->sk_family, SOCK_SEQPACKET, IPPROTO_SCTP, &sock);
++	err = sock_create(sk->sk_family, SOCK_STREAM, IPPROTO_SCTP, &sock);
+ 	if (err < 0)
+ 		return err;
+ 
+@@ -5727,8 +5726,7 @@ int sctp_do_peeloff(struct sock *sk, sctp_assoc_t id, struct socket **sockp)
+ 	/* Populate the fields of the newsk from the oldsk and migrate the
+ 	 * asoc to the newsk.
+ 	 */
+-	err = sctp_sock_migrate(sk, sock->sk, asoc,
+-				SCTP_SOCKET_UDP_HIGH_BANDWIDTH);
++	err = sctp_sock_migrate(sk, sock->sk, asoc);
+ 	if (err) {
+ 		sock_release(sock);
+ 		sock = NULL;
+@@ -9453,8 +9451,7 @@ static inline void sctp_copy_descendant(struct sock *sk_to,
+  * and its messages to the newsk.
+  */
+ static int sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
+-			     struct sctp_association *assoc,
+-			     enum sctp_socket_type type)
++			     struct sctp_association *assoc)
+ {
+ 	struct sctp_sock *oldsp = sctp_sk(oldsk);
+ 	struct sctp_sock *newsp = sctp_sk(newsk);
+@@ -9562,7 +9559,7 @@ static int sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
+ 	 * original UDP-style socket or created with the accept() call on a
+ 	 * TCP-style socket..
+ 	 */
+-	newsp->type = type;
++	newsp->type = SCTP_SOCKET_TCP;
+ 
+ 	/* Mark the new socket "in-use" by the user so that any packets
+ 	 * that may arrive on the association after we've moved it are
+-- 
+2.1.0
