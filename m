@@ -1,7 +1,7 @@
-From: Michael Tuexen <michael.tuexen@lurchi.franken.de>
-Date: Mon, 02 Mar 2020 13:28:26 +0000
+From: Harald Welte <laforge@gnumonks.org>
+Date: Mon, 02 Mar 2020 13:47:43 +0000
 Subject: Re: Expected SCTP DATA chunk per second performance
-Message-Id: <C8B077E2-A9C2-423E-80BE-B5C583110735@lurchi.franken.de>
+Message-Id: <20200302134743.GP43827@nataraja>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200302093532.GE43827@nataraja>
 In-Reply-To: <20200302093532.GE43827@nataraja>
@@ -10,54 +10,47 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-> On 2. Mar 2020, at 13:37, Harald Welte <laforge@gnumonks.org> wrote:
-> 
-> Hi Michael,
-> 
-> On Mon, Mar 02, 2020 at 12:41:57PM +0100, Michael Tuexen wrote:
->>> In wireshark, I can see that up to 9 DATA chunks are aggregated into each SCTP
->>> packet.  However, it typically takes the stack 203-201ms to send a SACK to each
->> 
->> That looks suspicious. It seems this is the 200ms delayed ACK timer. That is fine.
->> The question is why the sender is not sending more? I guess you can work around this
->> issue by disabling the Nagle Algorithm:
->> https://tools.ietf.org/html/rfc6458#section-8.1.5
->> Enable SCTP_NODELAY on the sender side. Does that fix the issue?
->> However, Nagle should not step into the game here...
-> 
-> I was thinking of SCTP_NODELAY before, but didn't do it as I thought it
-> would only impact the lower latency bound in sporadic communication, but
-> not throttle the transmit message rate?
-> 
-> I've just tried your suggestion, and indeed:
-> 
-> with SCTP_NODELAY=0
-> 10000 DATA chunks of 150 bytes each in 19.59 seconds: 510.53 DATA chunks per second
-> 
-> with SCTP_NODELAY=1
-> 10000 DATA chunks of 150 bytes each in  0.26 seconds: 38360.42 DATA chunks per second
-> 
-> So AFAICT there now is a work-around... but still I assume there is a bug in lksctp
-> if it throttles the overall message rate down to 1.3% of what it could
-> be when Nagle is enabled?
-I consider it a bug. Nagle normally is implemented by not sending small packets.
-From the numbers you provided, I guess the SCTP packets are about 1500 bytes. But
-I guess Linux has an MTU on the loopback interface which is much larger.
-So I guess one part of the code thinks the packet is full (you can't put another
-chunk into it), so send it. Another part thinks the packet is not full, since the
-MTU is much larger.
+Hi Michael,
 
-Similar bugs where in the FreeBSD stack. However, I'm not familiar with the Linux
-code base. Someone else has to chime in. But it shouldn't be hard to find and fix.
+On Mon, Mar 02, 2020 at 02:28:26PM +0100, Michael Tuexen wrote:
 
-Best regards
-Michael
-> 
-> Regards,
-> 	Harald
-> 
-> -- 
-> - Harald Welte <laforge@gnumonks.org>           http://laforge.gnumonks.org/
-> ======================================
-> "Privacy in residential applications is a desirable marketing option."
->                                                  (ETSI EN 300 175-7 Ch. A6)
+> I consider it a bug. 
+
+Agreed.
+
+> Nagle normally is implemented by not sending small packets.
+> From the numbers you provided, I guess the SCTP packets are about 1500 bytes. But
+> I guess Linux has an MTU on the loopback interface which is much larger.
+
+Actually, it depends on the type of sender code I use.  With Eclipse TITAN IPL4asp
+(my ultimate target for writing the tests), the packets indeed are pnly 1500 bytes
+in size.
+
+When using the small C program attached, I'm seeing ~34 kByte sized IP
+packets on loopback, but only at 500-510 DATA chunks per second overall
+rate.
+
+When disabling NAGLE ('client -d' of the attached program), I'm getting
+much higher throughput, but there is no single IP packet with more than
+a single DATA chunk inside at all anymore.  The latter is expected on
+the one hand side (every syscall goes all the way to build a packet and
+send it), but given at the high sender rate I would have expected that
+every so often multiple DATA chunks arrive from userspace before a
+packet has been sent (socket send buffer)?  In any case, no complaints
+in this case.
+
+Also interesting: With the application code (TITAN) in place, I am
+seeing higher DATA chunk throughput over actual Ethernet than I'm seeing
+over loopback.
+
+I'd appreciate any feedback from the lksctp hackers here if I should
+open a bugzilla issue about the poor performance with Nagle.
+
+Regards,
+	Harald
+
+-- 
+- Harald Welte <laforge@gnumonks.org>           http://laforge.gnumonks.org/
+======================================
+"Privacy in residential applications is a desirable marketing option."
+                                                  (ETSI EN 300 175-7 Ch. A6)
