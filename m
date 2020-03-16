@@ -1,52 +1,44 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 30 Mar 2020 04:58:20 +0000
-Subject: Re: [PATCH v6] sctp: fix refcount bug in sctp_wfree
-Message-Id: <20200329.215820.1352705339130655350.davem@davemloft.net>
+From: Qiujun Huang <hqjagain@gmail.com>
+Date: Mon, 16 Mar 2020 03:53:24 +0000
+Subject: [PATCH] sctp: fix refcount bug in sctp_wfree
+Message-Id: <1584330804-18477-1-git-send-email-hqjagain@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200327030751.19404-1-hqjagain@gmail.com>
-In-Reply-To: <20200327030751.19404-1-hqjagain@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: hqjagain@gmail.com
-Cc: marcelo.leitner@gmail.com, vyasevich@gmail.com, nhorman@tuxdriver.com, kuba@kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, anenbupt@gmail.com
+To: vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, davem@davemloft.net, kuba@kernel.org
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, Qiujun Huang <hqjagain@gmail.com>
 
-From: Qiujun Huang <hqjagain@gmail.com>
-Date: Fri, 27 Mar 2020 11:07:51 +0800
+Do accounting for skb's real sk.
+In some case skb->sk != asoc->base.sk.
 
-> We should iterate over the datamsgs to move
-> all chunks(skbs) to newsk.
-> 
-> The following case cause the bug:
-> for the trouble SKB, it was in outq->transmitted list
-> 
-> sctp_outq_sack
->         sctp_check_transmitted
->                 SKB was moved to outq->sacked list
->         then throw away the sack queue
->                 SKB was deleted from outq->sacked
-> (but it was held by datamsg at sctp_datamsg_to_asoc
-> So, sctp_wfree was not called here)
-> 
-> then migrate happened
-> 
->         sctp_for_each_tx_datachunk(
->         sctp_clear_owner_w);
->         sctp_assoc_migrate();
->         sctp_for_each_tx_datachunk(
->         sctp_set_owner_w);
-> SKB was not in the outq, and was not changed to newsk
-> 
-> finally
-> 
-> __sctp_outq_teardown
->         sctp_chunk_put (for another skb)
->                 sctp_datamsg_put
->                         __kfree_skb(msg->frag_list)
->                                 sctp_wfree (for SKB)
-> 	SKB->sk was still oldsk (skb->sk != asoc->base.sk).
-> 
-> Reported-and-tested-by: syzbot+cea71eec5d6de256d54d@syzkaller.appspotmail.com
-> Signed-off-by: Qiujun Huang <hqjagain@gmail.com>
+Reported-and-tested-by: syzbot+cea71eec5d6de256d54d@syzkaller.appspotmail.com
+Signed-off-by: Qiujun Huang <hqjagain@gmail.com>
+---
+ net/sctp/socket.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-Applied and queued up for -stable, thanks.
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 1b56fc4..5f5c28b 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -9080,7 +9080,7 @@ static void sctp_wfree(struct sk_buff *skb)
+ {
+ 	struct sctp_chunk *chunk = skb_shinfo(skb)->destructor_arg;
+ 	struct sctp_association *asoc = chunk->asoc;
+-	struct sock *sk = asoc->base.sk;
++	struct sock *sk = skb->sk;
+ 
+ 	sk_mem_uncharge(sk, skb->truesize);
+ 	sk->sk_wmem_queued -= skb->truesize + sizeof(struct sctp_chunk);
+@@ -9109,7 +9109,7 @@ static void sctp_wfree(struct sk_buff *skb)
+ 	}
+ 
+ 	sock_wfree(skb);
+-	sctp_wake_up_waiters(sk, asoc);
++	sctp_wake_up_waiters(asoc->base.sk, asoc);
+ 
+ 	sctp_association_put(asoc);
+ }
+-- 
+1.8.3.1
