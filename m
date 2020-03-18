@@ -1,95 +1,110 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 18 Mar 2020 03:55:49 +0000
+From: Qiujun Huang <hqjagain@gmail.com>
+Date: Wed, 18 Mar 2020 04:07:58 +0000
 Subject: Re: [PATCH v2] sctp: fix refcount bug in sctp_wfree
-Message-Id: <20200318035549.GC3756@localhost.localdomain>
+Message-Id: <CAJRQjoeGtALzDHUS+OUJfK-JqQ_T-_RX74Opt-TLTxufVAQN7g@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200317155536.10227-1-hqjagain@gmail.com>
- <20200317173039.GA3828@localhost.localdomain>
- <CAJRQjocwMzmBiYXwCnupE7hd8qYveBXtUiF2WKBe=TFfJLqcDw@mail.gmail.com>
-In-Reply-To: <CAJRQjocwMzmBiYXwCnupE7hd8qYveBXtUiF2WKBe=TFfJLqcDw@mail.gmail.com>
+References: <20200317155536.10227-1-hqjagain@gmail.com> <20200317173039.GA3828@localhost.localdomain>
+ <CAJRQjocwMzmBiYXwCnupE7hd8qYveBXtUiF2WKBe=TFfJLqcDw@mail.gmail.com> <20200318035549.GC3756@localhost.localdomain>
+In-Reply-To: <20200318035549.GC3756@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Qiujun Huang <hqjagain@gmail.com>
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 Cc: "David S. Miller" <davem@davemloft.net>, vyasevich@gmail.com, nhorman@tuxdriver.com, Jakub Kicinski <kuba@kernel.org>, linux-sctp@vger.kernel.org, netdev <netdev@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, anenbupt@gmail.com
 
-On Wed, Mar 18, 2020 at 10:45:51AM +0800, Qiujun Huang wrote:
-> On Wed, Mar 18, 2020 at 1:30 AM Marcelo Ricardo Leitner
-> <marcelo.leitner@gmail.com> wrote:
-> >
-> > Hi,
-> >
-> > On Tue, Mar 17, 2020 at 11:55:36PM +0800, Qiujun Huang wrote:
-> > > Do accounting for skb's real sk.
-> > > In some case skb->sk != asoc->base.sk:
-> > >
-> > > migrate routing        sctp_check_transmitted routing
-> > > ------------                    ---------------
-> >                                  sctp_close();
-> >                                    lock_sock(sk2);
-> >                                  sctp_primitive_ABORT();
-> >                                  sctp_do_sm();
-> >                                  sctp_cmd_interpreter();
-> >                                  sctp_cmd_process_sack();
-> >                                  sctp_outq_sack();
-> >                                  sctp_check_transmitted();
-> >
-> >   lock_sock(sk1);
-> >   sctp_getsockopt_peeloff();
-> >   sctp_do_peeloff();
-> >   sctp_sock_migrate();
-> > > lock_sock_nested(sk2);
-> > >                                mv the transmitted skb to
-> > >                                the it's local tlist
-> >
-> >
-> > How can sctp_do_sm() be called in the 2nd column so that it bypasses
-> > the locks in the left column, allowing this mv to happen?
-> >
-> > >
-> > > sctp_for_each_tx_datachunk(
-> > > sctp_clear_owner_w);
-> > > sctp_assoc_migrate();
-> > > sctp_for_each_tx_datachunk(
-> > > sctp_set_owner_w);
-> > >
-> > >                                put the skb back to the
-> > >                                assoc lists
-> > > ----------------------------------------------------
-> > >
-> > > The skbs which held bysctp_check_transmitted were not changed
-> > > to newsk. They were not dealt with by sctp_for_each_tx_datachunk
-> > > (sctp_clear_owner_w/sctp_set_owner_w).
-> >
-> > It would make sense but I'm missing one step earlier, I'm not seeing
-> > how the move to local list is allowed/possible in there. It really
-> > shouldn't be possible.
-> 
-> I totally agree that.
-> My mistake. So I added some log in my test showing the case:
-> The backtrace:
-> sctp_close
-> sctp_primitive_ABORT
-> sctp_do_sm
-> sctp_association_free
-> __sctp_outq_teardown
->      /* Throw away unacknowledged chunks. */
->     list_for_each_entry(transport, &q->asoc->peer.transport_addr_list,
->     transports) {
->     printk("[%d]deal with transmitted %#llx from transport %#llx  %s,
-> %d\n", raw_smp_processor_id(),
->    &transport->transmitted, transport, __func__, __LINE__);
->    while ((lchunk = sctp_list_dequeue(&transport->transmitted)) != NULL) {
-> 
-> The trouble skb is from another peer sk in the same asoc, but
-> accounted to the base.sk.
+On Wed, Mar 18, 2020 at 11:55 AM Marcelo Ricardo Leitner
+<marcelo.leitner@gmail.com> wrote:
+>
+> On Wed, Mar 18, 2020 at 10:45:51AM +0800, Qiujun Huang wrote:
+>
+> Hmm, not sure how you got that out of that debug msg, but okay.
+> Even if so, how would this trouble skb be accounted on the wrong sk by
+> then?
+>
+> Asking because the fix that we want may be a better locking, to
+> prevent this situation from happening, than compensating for it in
+> sctp_wfree(). But for that we need to understand how this happened.
+>
 
-Hmm, not sure how you got that out of that debug msg, but okay.
-Even if so, how would this trouble skb be accounted on the wrong sk by
-then?
+Yes, I should find the root cause. Here is the log
 
-Asking because the fix that we want may be a better locking, to
-prevent this situation from happening, than compensating for it in
-sctp_wfree(). But for that we need to understand how this happened.
+[   86.507432][ T8813] [1]skb 0xffff88809fdfc800 0xffff88809621e7c0:
+truesize 768, sk alloc 769 sctp_set_owner_w 137
+[   86.532042][ T8813] [1]skb 0xffff888099ebbe80 0xffff88809621e7c0:
+truesize 131328, sk alloc 132353 sctp_set_owner_w 137
+[   86.543426][ T8813] [1]skb 0xffff88809ef55cc0 0xffff88809621e7c0:
+truesize 131328, sk alloc 263937 sctp_set_owner_w 137
+[   86.563229][ T8813] [1]skb 0xffff88809ef557c0 0xffff88809621e7c0:
+truesize 131328, sk alloc 395521 sctp_set_owner_w 137
+[   86.589332][ T8813] [1]skb 0xffff88809ef55a40 0xffff88809621e7c0:
+truesize 33024, sk alloc 428801 sctp_set_owner_w 137
+[   86.602211][ T8813] [1]deal with transmitted 0xffff8880910b0a80
+from transport 0xffff8880910b0800  __sctp_outq_teardown, 216
+[   86.616336][ T8813] [1]put back to queue 0xffff888091dc8770
+sctp_check_transmitted, 1683
+[   86.625610][ T8813] [1]get packet 0xffff888099ebbe80 from queue
+0xffff888096b2c280  sctp_check_transmitted, 1437
+[   86.637105][ T8813] [1]put skb 0xffff888099ebbe80 back.
+sctp_check_transmitted, 1533
+[   86.646284][ T8813] [1]put back to queue 0xffff888096b2c280
+sctp_check_transmitted, 1683          ----
+[   86.687575][ T8813] [1]before sk 0xffff88809621e7c0
+sctp_sock_migrate, 9592                               ----I think
+something wrong opens here. 0xffff888099ebbe80 not changed to newsk
+[   86.696296][ T8813] [1]skb 0xffff88809ef55cc0 0xffff88809621e7c0:
+truesize 131328, sk alloc 429057 sctp_wfree 9101 real sk
+0xffff88809621e7c0
+[   86.721891][ T8813] [1]transmitted done queue 0xffff888091dc83d0
+sctp_for_each_tx_datachunk, 166
+[   86.757260][ T8813] [1]retransmit done queue 0xffff888091dc8770
+sctp_for_each_tx_datachunk, 171
+[   86.771065][ T8813] [1]sacked done queue 0xffff888091dc8760
+sctp_for_each_tx_datachunk, 176
+[   86.797487][ T8813] [1]abandoned done queue 0xffff888091dc8780
+sctp_for_each_tx_datachunk, 181
+[   86.814856][ T8813] [0]skb 0xffff88809ef557c0 0xffff88809621e7c0:
+truesize 131328, sk alloc 297473 sctp_wfree 9101 real sk
+0xffff88809621e7c0
+[   86.831799][ T8813] [0]skb 0xffff88809ef55a40 0xffff88809621e7c0:
+truesize 33024, sk alloc 165889 sctp_wfree 9101 real sk
+0xffff88809621e7c0
+[   86.845473][ T8813] [0]out_chunk_list done queue 0xffff888091dc8730
+sctp_for_each_tx_datachunk, 186
+[   86.866011][ T8813] [0]skb 0xffff88809ef55cc0 0xffff8880a3bb2800:
+truesize 131328, sk alloc 131329 sctp_set_owner_w 137
+[   86.884811][ T8813] [0]transmitted done queue 0xffff888091dc83d0
+sctp_for_each_tx_datachunk, 166
+[   86.896150][ T8813] [0]retransmit done queue 0xffff888091dc8770
+sctp_for_each_tx_datachunk, 171
+[   86.907233][ T8813] [0]sacked done queue 0xffff888091dc8760
+sctp_for_each_tx_datachunk, 176
+[   86.916825][ T8813] [0]abandoned done queue 0xffff888091dc8780
+sctp_for_each_tx_datachunk, 181
+[   86.927458][ T8813] [0]skb 0xffff88809ef557c0 0xffff8880a3bb2800:
+truesize 131328, sk alloc 262913 sctp_set_owner_w 137
+[   86.957446][ T8813] [0]skb 0xffff88809ef55a40 0xffff8880a3bb2800:
+truesize 33024, sk alloc 296193 sctp_set_owner_w 137
+[   86.971810][ T8813] [0]out_chunk_list done queue 0xffff888091dc8730
+sctp_for_each_tx_datachunk, 186
+[   86.992386][ T8813] [0]after sk 0xffff8880a3bb2800 sctp_sock_migrate, 9597
+[   87.091320][ T8811] [1]deal with transmitted 0xffff8880a6f52280
+from transport 0xffff8880a6f52000  __sctp_outq_teardown, 216
+[   87.110552][ T8811] [1]skb 0xffff88809fdfc800 0xffff88809621e7c0:
+truesize 768, sk alloc 132609 sctp_wfree 9101 real sk
+0xffff88809621e7c0
+[   87.180238][ T8811] [0]deal with transmitted 0xffff888096b2c280
+from transport 0xffff888096b2c000  __sctp_outq_teardown, 216
+[   87.264062][ T8811] [0]skb 0xffff888099ebbe80 0xffff8880a3bb2800:
+truesize 131328, sk alloc 296449 sctp_wfree 9101 real sk
+0xffff88809621e7c0       --->the trouble skb
+[   87.289730][ T8811] [1]skb 0xffff88809ef55cc0 0xffff8880a3bb2800:
+truesize 131328, sk alloc 296193 sctp_wfree 9101 real sk
+0xffff8880a3bb2800
+[   87.314206][ T8811] [1]skb 0xffff88809ef557c0 0xffff8880a3bb2800:
+truesize 131328, sk alloc 164609 sctp_wfree 9101 real sk
+0xffff8880a3bb2800
+[   87.329602][ T8811] [1]skb 0xffff88809ef55a40 0xffff8880a3bb2800:
+truesize 33024, sk alloc 33025 sctp_wfree 9101 real sk
+0xffff8880a3bb2800
 
-  Marcelo
+>   Marcelo
