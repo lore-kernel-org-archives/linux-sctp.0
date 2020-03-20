@@ -1,22 +1,31 @@
-From: Stephen Li <stenn7@gabg.net>
-Date: Tue, 17 Mar 2020 12:07:51 +0000
-Subject: REF
-Message-Id: <442828441.1833677.1584446871712@mail.yahoo.com>
+From: Clark Robinson <drlarrylee42@gmail.com>
+Date: Fri, 20 Mar 2020 14:16:20 +0000
+Subject: LOAN OFFER
+Message-Id: <CALi8qqb1Y1buj-Wr+VTwLj3Z=XQun54s1PXNgY5oA4G04qtZBg@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
+-- 
 
 
-Greetings,
-I was searching through a local business directory when I found your
-profile. I am Soliciting On-Behalf of my private client who is
-interested in having a serious business investment in your country. If
-you have a valid business, investment or project he can invest
-back to me for more details. Your swift response is highly needed.
-Sincerely
-Stephen Li
-Please response back to me with is my private email below for more details
-stephli947701@gmail.com
+Do you need a loan to start your business? Do you need a loan to pay
+with your bills ? At the moment we offer Education loan , business
+loan , mortgage, agricultural credit , personal loan , auto loan ,
+etc. , if you need a loan with specific interest so we can send more
+information to You .We Give Out Loans For 3% Interest Rate And We
+Offer Loans From $5,000 To $50,000,000.00 USD
+
+    Contact us by email: clarkrobinson44444@gmail.com
+
+CREDIT APPLICATION
+
+Full Name:
+Country:
+Telephone No :
+Amount of the loan Needed :
+DURATION:
+
+Contact us by email: clarkrobinson44444@gmail.com
