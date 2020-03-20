@@ -1,7 +1,7 @@
 From: Qiujun Huang <hqjagain@gmail.com>
-Date: Fri, 20 Mar 2020 23:48:18 +0000
+Date: Fri, 20 Mar 2020 23:53:29 +0000
 Subject: Re: [PATCH v3] sctp: fix refcount bug in sctp_wfree
-Message-Id: <CAJRQjocyUUYDXR5G5sNmbWzG1=PsJ1iGyN=e7Kkpa1DcXG+KWQ@mail.gmail.com>
+Message-Id: <CAJRQjoc-U_K-2THbmBOj2TOWDTfP9yr5Vec-WjhTjS8sj19fHA@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200320110959.2114-1-hqjagain@gmail.com> <20200320185204.GB3828@localhost.localdomain>
 In-Reply-To: <20200320185204.GB3828@localhost.localdomain>
@@ -25,9 +25,6 @@ On Sat, Mar 21, 2020 at 2:52 AM Marcelo Ricardo Leitner
 > >               SKB was moved to outq->sack
 >
 > There is no outq->sack. You mean outq->sacked, I assume.
-
-Yes, my typo.
-
 >
 > >       then throw away the sack queue
 >
@@ -44,18 +41,9 @@ Yes, my typo.
 >                             SCTP_PR_PRIO_ENABLED(chunk->sinfo.sinfo_flags))
 >                                 asoc->sent_cnt_removable--;
 >                         sctp_chunk_free(tchunk);
-
-Yes, it was delected here.
-
 >
 > Then sctp_chunk_free is supposed to free the datamsg as well for
 > chunks that were cumulative-sacked.
-
-Datamsg should be freed until all his chunks had been freed.
-
-sctp_datamsg_from_user->sctp_datamsg_assign
-every chunks holds datamsg.
-
 > For those not cumulative-sacked, sctp_for_each_tx_datachunk() will
 > handle q->sacked queue as well:
 >         list_for_each_entry(chunk, &q->sacked, transmitted_list)
@@ -68,8 +56,6 @@ every chunks holds datamsg.
 >
 > You mean sctp_datamsg_from_user ? If so, isn't it the other way
 > around? sctp_datamsg_assign() will hold the datamsg, not the skb.
-yeah.
-
 >
 > > So, sctp_wfree was not called to destroy SKB)
 > >
@@ -90,6 +76,18 @@ yeah.
 > fragmentation to happen. That means the datamsg will contain several
 > skbs. But still, the sacked chunks should be freed if needed while the
 > remaining ones will be left on the queues that they are.
+
+in sctp_sendmsg_to_asoc
+datamsg holds his chunk result in that the sacked chunks can't be freed
+
+list_for_each_entry(chunk, &datamsg->chunks, frag_list) {
+sctp_chunk_hold(chunk);
+sctp_set_owner_w(chunk);
+chunk->transport = transport;
+}
+
+any ideas to handle it?
+
 >
 > Thanks,
 > Marcelo
