@@ -1,7 +1,7 @@
 From: Qiujun Huang <hqjagain@gmail.com>
-Date: Thu, 26 Mar 2020 05:37:08 +0000
+Date: Thu, 26 Mar 2020 06:13:26 +0000
 Subject: Re: [PATCH v4] sctp: fix refcount bug in sctp_wfree
-Message-Id: <CAJRQjoecj9Dwbs_bDhiFT_rbhSFh_PwPNW9dHUvaNcd+2RreJg@mail.gmail.com>
+Message-Id: <CAJRQjoc345azEnNK29Npmqco5CL8zL9zi_ZvKF-1bRm_eWsksQ@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200322090425.6253-1-hqjagain@gmail.com> <20200326001416.GH3756@localhost.localdomain>
  <CAJRQjoeWUHj7Ep5ycTxVJVuxmhzrzXx=-rP_h=hCCrBvgTUNEg@mail.gmail.com> <20200326032252.GI3756@localhost.localdomain>
@@ -68,17 +68,6 @@ On Thu, Mar 26, 2020 at 11:22 AM Marcelo Ricardo Leitner
 > >  ->not in any queue
 >
 > We always can find it through the other chunks, otherwise it's freed.
-
-Yes.
-
-datamsg   (chunk0, chunk1, chunk2)
-chunk1 in transmiited queue
-chunk2 in retransmit queue
-chunk0 not in any queue
-
- We also need to check chunk2->msg processed or not, when we iterate
-retransmit queue.
-
 >
 > >
 > > Also need to maintain a datamsg list to record which datamsg is
@@ -87,6 +76,9 @@ retransmit queue.
 >
 > Right, but for that we can add a simple check on
 > sctp_for_each_tx_datamsg() based on a parameter.
+
+Great! I get it, thanks!
+
 >
 > > So, list it to outq. Maybe it will be used sometime.
 >
@@ -94,9 +86,6 @@ retransmit queue.
 > sctp_datamsg, it's better. With this patch, it grows from 40 to 56
 > bytes, leaving just 8 left before it starts using a slab of 128 bytes
 > for it.
-
-I get that, thanks.
-
 >
 >
 > The patched list_for_each_entry() can/should be factored out into
@@ -140,12 +129,7 @@ I get that, thanks.
 > +               }
 > +               prev_msg = msg;
 > +       }
-
-The case exists?
-datamsg   (chunk0, chunk1, chunk2)
-chunk1 chunk2 in &q->retransmit
-chunk0 not in any queue (deleted in sctp_outq_sack)
-
+>
 >         list_for_each_entry(chunk, &q->sacked, transmitted_list)
 >                 cb(chunk);
 > @@ -9574,9 +9585,9 @@ static int sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
