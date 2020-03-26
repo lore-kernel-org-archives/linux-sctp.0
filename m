@@ -1,7 +1,7 @@
 From: syzbot <syzbot+cea71eec5d6de256d54d@syzkaller.appspotmail.com>
-Date: Thu, 26 Mar 2020 15:38:44 +0000
+Date: Thu, 26 Mar 2020 15:38:46 +0000
 Subject: Re: Re: WARNING: refcount bug in sctp_wfree
-Message-Id: <000000000000b401da05a1c3c754@google.com>
+Message-Id: <000000000000cb35d705a1c3c747@google.com>
 List-Id: <linux-sctp.vger.kernel.org>
 In-Reply-To: <CADG63jDCTdgSxDRsN_9e3fKCAv5VduS5NNKWmqjByZ=4sT+HLQ@mail.gmail.com>
 References: <00000000000088452f05a07621d2@google.com>
@@ -117,3 +117,12 @@ f ff ff e8 69 4a e0 fd c6 05 df 70 b1 05 01 48 c7 c7
 >> https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
 >> syzbot can test patches for this bug, for details see:
 >> https://goo.gl/tpsmEJ#testing-patches
+>
+> --=20
+> You received this message because you are subscribed to the Google Groups=
+ "syzkaller-bugs" group.
+> To unsubscribe from this group and stop receiving emails from it, send an=
+ email to syzkaller-bugs+unsubscribe@googlegroups.com.
+> To view this discussion on the web visit https://groups.google.com/d/msgi=
+d/syzkaller-bugs/CADG63jDCTdgSxDRsN_9e3fKCAv5VduS5NNKWmqjByZ%3D4sT%2BHLQ%40=
+mail.gmail.com.
