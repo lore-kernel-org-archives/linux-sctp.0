@@ -1,32 +1,44 @@
-From: syzbot <syzbot+cea71eec5d6de256d54d@syzkaller.appspotmail.com>
-Date: Thu, 26 Mar 2020 21:25:01 +0000
-Subject: Re: WARNING: refcount bug in sctp_wfree
-Message-Id: <0000000000001bedcf05a1c89e96@google.com>
+From: "Mao, Jinhui (NSB - CN/Hangzhou)" <jinhui.mao@nokia-sbell.com>
+Date: Thu, 26 Mar 2020 05:22:46 +0000
+Subject: One question regarding the SCTP write buffer free mechanism
+Message-Id: <9f7ef2f9a93b420c915a9e130356cdfa@nokia-sbell.com>
 List-Id: <linux-sctp.vger.kernel.org>
-In-Reply-To: <CADG63jDGY1dEQ9uS5Cd9q3DeEKWTff-4FC=UiEBpuh2caSLwOQ@mail.gmail.com>
-References: <00000000000088452f05a07621d2@google.com>
-In-Reply-To: <00000000000088452f05a07621d2@google.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: anenbupt@gmail.com, davem@davemloft.net, kuba@kernel.org, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: linux-sctp@vger.kernel.org
 
-Hello,
+Dear Linux SCTP experts. 
 
-syzbot has tested the proposed patch and the reproducer did not trigger cra=
-sh:
+Recently we found a SCTP problem in our product, the scenario can be described as follow
 
-Reported-and-tested-by: syzbot+cea71eec5d6de256d54d@syzkaller.appspotmail.c=
-om
+Endpoint A                                                                                     Endpoint Z 
+{App sends 3 messages; strm 0} DATA [TSN=6] ---------------> (ack) 
+                                                     DATA [TSN=7] ---------------> (lost)
+                                                     DATA [TSN=8] ---------------> (gap detected,immediately send ack)
+                                                                                              /----- SACK [TSN Ack=6,Block=1, Start=2,End=2]
+                                                                                    <-----/ 
+                                                                                     ......
+                                                   DATA [TSN] ---------------> (gap detected,immediately send ack)
+                                                                                               /----- SACK [TSN Ack=6,Block=1, Start=2,End=4]
+                                                                                    <-----/       (3 SACK to indicate that TSN=7 lost, fast re-trans triggered)
+                                       Re-trans DATA [TSN=7] ---------------> (also lost)
+                                                    DATA [TSN] ---------------> (gap detected,immediately send ack)
+                                                                                               /----- SACK [TSN Ack=6,Block=1, Start=2,End=5]
+                                                                                     <-----/       
+                                                                                       ......
+                                                  DATA [TSN40] ---------------> (gap detected,immediately send ack)
+                                                                                                /----- SACK [TSN Ack=6,Block=1, Start=2,End34]
+                                                                                      <-----/       
+                       Error happened on Endpoint A when calling SCTP sendmsg to send more to Endpoint B, the error is "Resource temporarily unavailable". Association is not destroyed at this time. 
+1 second later RTO Timeout 2nd Re-trans DATA [TSN=7] ---------------> (Acked)
 
-Tested on:
 
-commit:         9420e8ad Merge tag 'for-linus' of git://git.kernel.org/pub..
-git tree:       upstream
-kernel config:  https://syzkaller.appspot.com/x/.config?xJc76c43beddbd9
-dashboard link: https://syzkaller.appspot.com/bug?extid=CEa71eec5d6de256d54d
-compiler:       clang version 10.0.0 (https://github.com/llvm/llvm-project/=
- c2443155a0fb245c8f17f2c1c72b6ea391e86e81)
-patch:          https://syzkaller.appspot.com/x/patch.diff?x=1670bfbbe00000
+So could you please help to comments on the following question?
+-	Does this means that if an gap is found in the SACK, those packages sent after this lost packet will stay in the write buffer until the gap is filled? Even if they are successfully SACKed?
 
-Note: testing is done by a robot and is best-effort only.
+Thanks a lot!
+
+Best Regards!
+
+Mao Jinhui
