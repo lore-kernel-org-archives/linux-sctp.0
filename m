@@ -1,35 +1,118 @@
-From: dejan.hojnik@hotelcitymb.si
-Date: Sun, 22 Mar 2020 17:51:43 +0000
-Subject: Spende
-Message-Id: <20200322175154.C1A7D403706@mail.hotelcitymb.si>
+From: Qiujun Huang <hqjagain@gmail.com>
+Date: Fri, 27 Mar 2020 01:28:32 +0000
+Subject: [PATCH v5 RESEND] sctp: fix refcount bug in sctp_wfree
+Message-Id: <20200327012832.19193-1-hqjagain@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: marcelo.leitner@gmail.com, davem@davemloft.net
+Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, kuba@kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, anenbupt@gmail.com, Qiujun Huang <hqjagain@gmail.com>
 
-Hallo,
+We should iterate over the datamsgs to modify
+all chunks(skbs) to newsk.
 
-Ich bin Maria Elisabeth Schaeffler, eine deutsche Gesch=E4ftsfrau, Investor=
-in und Gesch=E4ftsf=FChrerin der Schaeffler Gruppe. Ich bin einer der Eigen=
-t=FCmer der Schaeffler Gruppe. Ich habe 25 Prozent meines pers=F6nlichen Ve=
-rm=F6gens f=FCr wohlt=E4tige Zwecke verschenkt. Und ich habe auch zugesagt,=
- den Rest von 25% in diesem Jahr 2020 an Einzelpersonen zu verschenken. Ich=
- habe beschlossen, Ihnen 1.000.000,00 Euro zu spenden. Wenn Sie an meiner S=
-pende interessiert sind, kontaktieren Sie mich f=FCr weitere Informationen.
+The following case cause the bug:
+for the trouble SKB, it was in outq->transmitted list
 
-Sie k=F6nnen auch mehr =FCber mich =FCber den unten stehenden Link lesen
+sctp_outq_sack
+        sctp_check_transmitted
+                SKB was moved to outq->sacked list
+        then throw away the sack queue
+                SKB was deleted from outq->sacked
+(but it was held by datamsg at sctp_datamsg_to_asoc
+So, sctp_wfree was not called here)
 
-https://en.wikipedia.org/wiki/Maria-Elisabeth_Schaeffler
+then migrate happened
 
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-Herzliche Gr=FC=DFe,
-Frau Maria-Elisabeth Schaeffler,
-Vorsitzender
-Schaeffler Gruppe.
-E-Mail: mariaschaefflergruppe@gmail.com
+        sctp_for_each_tx_datachunk(
+        sctp_clear_owner_w);
+        sctp_assoc_migrate();
+        sctp_for_each_tx_datachunk(
+        sctp_set_owner_w);
+SKB was not in the outq, and was not changed to newsk
 
+finally
+
+__sctp_outq_teardown
+        sctp_chunk_put (for another skb)
+                sctp_datamsg_put
+                        __kfree_skb(msg->frag_list)
+                                sctp_wfree (for SKB)
+	SKB->sk was still oldsk (skb->sk != asoc->base.sk).
+
+Reported-and-tested-by:syzbot+cea71eec5d6de256d54d@syzkaller.appspotmail.com
+Signed-off-by: Qiujun Huang <hqjagain@gmail.com>
 ---
-This email is free from viruses and malware because avast! Antivirus protec=
-tion is active.
-https://www.avast.com/antivirus
+ net/sctp/socket.c | 31 +++++++++++++++++++++++--------
+ 1 file changed, 23 insertions(+), 8 deletions(-)
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 1b56fc440606..f68076713162 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -147,29 +147,44 @@ static void sctp_clear_owner_w(struct sctp_chunk *chunk)
+ 	skb_orphan(chunk->skb);
+ }
+ 
++#define traverse_and_process()	\
++do {				\
++	msg = chunk->msg;	\
++	if (msg = prev_msg)	\
++		continue;	\
++	list_for_each_entry(c, &msg->chunks, frag_list) {	\
++		if ((clear && asoc->base.sk = c->skb->sk) ||	\
++		    (!clear && asoc->base.sk != c->skb->sk))	\
++		    cb(c);	\
++	}			\
++	prev_msg = msg;		\
++} while (0)
++
+ static void sctp_for_each_tx_datachunk(struct sctp_association *asoc,
++				       bool clear,
+ 				       void (*cb)(struct sctp_chunk *))
+ 
+ {
++	struct sctp_datamsg *msg, *prev_msg = NULL;
+ 	struct sctp_outq *q = &asoc->outqueue;
++	struct sctp_chunk *chunk, *c;
+ 	struct sctp_transport *t;
+-	struct sctp_chunk *chunk;
+ 
+ 	list_for_each_entry(t, &asoc->peer.transport_addr_list, transports)
+ 		list_for_each_entry(chunk, &t->transmitted, transmitted_list)
+-			cb(chunk);
++			traverse_and_process();
+ 
+ 	list_for_each_entry(chunk, &q->retransmit, transmitted_list)
+-		cb(chunk);
++		traverse_and_process();
+ 
+ 	list_for_each_entry(chunk, &q->sacked, transmitted_list)
+-		cb(chunk);
++		traverse_and_process();
+ 
+ 	list_for_each_entry(chunk, &q->abandoned, transmitted_list)
+-		cb(chunk);
++		traverse_and_process();
+ 
+ 	list_for_each_entry(chunk, &q->out_chunk_list, list)
+-		cb(chunk);
++		traverse_and_process();
+ }
+ 
+ static void sctp_for_each_rx_skb(struct sctp_association *asoc, struct sock *sk,
+@@ -9574,9 +9589,9 @@ static int sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
+ 	 * paths won't try to lock it and then oldsk.
+ 	 */
+ 	lock_sock_nested(newsk, SINGLE_DEPTH_NESTING);
+-	sctp_for_each_tx_datachunk(assoc, sctp_clear_owner_w);
++	sctp_for_each_tx_datachunk(assoc, true, sctp_clear_owner_w);
+ 	sctp_assoc_migrate(assoc, newsk);
+-	sctp_for_each_tx_datachunk(assoc, sctp_set_owner_w);
++	sctp_for_each_tx_datachunk(assoc, false, sctp_set_owner_w);
+ 
+ 	/* If the association on the newsk is already closed before accept()
+ 	 * is called, set RCV_SHUTDOWN flag.
+-- 
+2.17.1
