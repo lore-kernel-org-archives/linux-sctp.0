@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 26 Mar 2020 19:29:09 +0000
-Subject: Re: One question regarding the SCTP write buffer free mechanism
-Message-Id: <20200326192909.GD3828@localhost.localdomain>
+From: "Mao, Jinhui (NSB - CN/Hangzhou)" <jinhui.mao@nokia-sbell.com>
+Date: Fri, 27 Mar 2020 04:57:40 +0000
+Subject: RE: One question regarding the SCTP write buffer free mechanism
+Message-Id: <5e5090adafc24ee3b139801bf4f0942e@nokia-sbell.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <9f7ef2f9a93b420c915a9e130356cdfa@nokia-sbell.com>
 In-Reply-To: <9f7ef2f9a93b420c915a9e130356cdfa@nokia-sbell.com>
@@ -10,21 +10,28 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On Thu, Mar 26, 2020 at 05:22:46AM +0000, Mao, Jinhui (NSB - CN/Hangzhou) wrote:
-...
->                        Error happened on Endpoint A when calling SCTP sendmsg to send more to Endpoint B, the error is "Resource temporarily unavailable". Association is not destroyed at this time. 
-> 1 second later RTO Timeout 2nd Re-trans DATA [TSN=7] ---------------> (Acked)
-> 
-> 
-> So could you please help to comments on the following question?
-> -	Does this means that if an gap is found in the SACK, those packages sent after this lost packet will stay in the write buffer until the gap is filled? Even if they are successfully SACKed?
-
-Yes and yes. Because the receiver is allowed to drop any data acked in
-a gap block if it needs more memory to fill in the gap, and in this
-case, the sender would have to retransmit it.
-
-Seems you're using non-block sockets, otherwise that last sendmsg()
-would have blocked waiting for the sndbuf space to be available, btw.
-
-Cheers,
-  Marcelo
+VGhhbmtzIGEgbG90IGZvciB0aGUgcmVzcG9uc2UuIEl0YHMgY2xlYXIgZm9yIG1lIG5vdy4g8J+Y
+gw0KDQpIYXZlIGEgbmljZSBkYXkhDQoNCkJlc3QgUmVnYXJkcyENCg0KTWFvIEppbmh1aQ0KDQot
+LS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogTWFyY2VsbyBSaWNhcmRvIExlaXRuZXIg
+PG1hcmNlbG8ubGVpdG5lckBnbWFpbC5jb20+IA0KU2VudDogMjAyMOW5tDPmnIgyN+aXpSAzOjI5
+DQpUbzogTWFvLCBKaW5odWkgKE5TQiAtIENOL0hhbmd6aG91KSA8amluaHVpLm1hb0Bub2tpYS1z
+YmVsbC5jb20+DQpDYzogbGludXgtc2N0cEB2Z2VyLmtlcm5lbC5vcmcNClN1YmplY3Q6IFJlOiBP
+bmUgcXVlc3Rpb24gcmVnYXJkaW5nIHRoZSBTQ1RQIHdyaXRlIGJ1ZmZlciBmcmVlIG1lY2hhbmlz
+bQ0KDQpPbiBUaHUsIE1hciAyNiwgMjAyMCBhdCAwNToyMjo0NkFNICswMDAwLCBNYW8sIEppbmh1
+aSAoTlNCIC0gQ04vSGFuZ3pob3UpIHdyb3RlOg0KLi4uDQo+ICAgICAgICAgICAgICAgICAgICAg
+ICAgRXJyb3IgaGFwcGVuZWQgb24gRW5kcG9pbnQgQSB3aGVuIGNhbGxpbmcgU0NUUCBzZW5kbXNn
+IHRvIHNlbmQgbW9yZSB0byBFbmRwb2ludCBCLCB0aGUgZXJyb3IgaXMgIlJlc291cmNlIHRlbXBv
+cmFyaWx5IHVuYXZhaWxhYmxlIi4gQXNzb2NpYXRpb24gaXMgbm90IGRlc3Ryb3llZCBhdCB0aGlz
+IHRpbWUuIA0KPiAxIHNlY29uZCBsYXRlciBSVE8gVGltZW91dCAybmQgUmUtdHJhbnMgREFUQSBb
+VFNOPTddIC0tLS0tLS0tLS0tLS0tLT4gDQo+IChBY2tlZCkNCj4gDQo+IA0KPiBTbyBjb3VsZCB5
+b3UgcGxlYXNlIGhlbHAgdG8gY29tbWVudHMgb24gdGhlIGZvbGxvd2luZyBxdWVzdGlvbj8NCj4g
+LQlEb2VzIHRoaXMgbWVhbnMgdGhhdCBpZiBhbiBnYXAgaXMgZm91bmQgaW4gdGhlIFNBQ0ssIHRo
+b3NlIHBhY2thZ2VzIHNlbnQgYWZ0ZXIgdGhpcyBsb3N0IHBhY2tldCB3aWxsIHN0YXkgaW4gdGhl
+IHdyaXRlIGJ1ZmZlciB1bnRpbCB0aGUgZ2FwIGlzIGZpbGxlZD8gRXZlbiBpZiB0aGV5IGFyZSBz
+dWNjZXNzZnVsbHkgU0FDS2VkPw0KDQpZZXMgYW5kIHllcy4gQmVjYXVzZSB0aGUgcmVjZWl2ZXIg
+aXMgYWxsb3dlZCB0byBkcm9wIGFueSBkYXRhIGFja2VkIGluIGEgZ2FwIGJsb2NrIGlmIGl0IG5l
+ZWRzIG1vcmUgbWVtb3J5IHRvIGZpbGwgaW4gdGhlIGdhcCwgYW5kIGluIHRoaXMgY2FzZSwgdGhl
+IHNlbmRlciB3b3VsZCBoYXZlIHRvIHJldHJhbnNtaXQgaXQuDQoNClNlZW1zIHlvdSdyZSB1c2lu
+ZyBub24tYmxvY2sgc29ja2V0cywgb3RoZXJ3aXNlIHRoYXQgbGFzdCBzZW5kbXNnKCkgd291bGQg
+aGF2ZSBibG9ja2VkIHdhaXRpbmcgZm9yIHRoZSBzbmRidWYgc3BhY2UgdG8gYmUgYXZhaWxhYmxl
+LCBidHcuDQoNCkNoZWVycywNCiAgTWFyY2Vsbw0K
