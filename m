@@ -1,31 +1,15 @@
-From: Clark Robinson <drlarrylee42@gmail.com>
-Date: Fri, 20 Mar 2020 14:16:20 +0000
-Subject: LOAN OFFER
-Message-Id: <CALi8qqb1Y1buj-Wr+VTwLj3Z=XQun54s1PXNgY5oA4G04qtZBg@mail.gmail.com>
+From: "Manuel Franco" <luis.sanchez@11d01.mspz7.gob.ec>
+Date: Mon, 30 Mar 2020 09:47:35 +0000
+Subject: spende von 2.000.000,00 Euro
+Message-Id: <20200330091622.5AF1E2F6F5A4@mail.11d01.mspz7.gob.ec>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 To: linux-sctp@vger.kernel.org
 
--- 
+Ich bin Manuel Franco, ich spende Ihnen 2.000.000,00 Euro. Kontaktieren Sie=
+ mich jetzt, damit wir fortfahren k=F6nnen.
 
-
-Do you need a loan to start your business? Do you need a loan to pay
-with your bills ? At the moment we offer Education loan , business
-loan , mortgage, agricultural credit , personal loan , auto loan ,
-etc. , if you need a loan with specific interest so we can send more
-information to You .We Give Out Loans For 3% Interest Rate And We
-Offer Loans From $5,000 To $50,000,000.00 USD
-
-    Contact us by email: clarkrobinson44444@gmail.com
-
-CREDIT APPLICATION
-
-Full Name:
-Country:
-Telephone No :
-Amount of the loan Needed :
-DURATION:
-
-Contact us by email: clarkrobinson44444@gmail.com
+I am Manuel Franco, I donate to you 2,000,000.00 euros. Contact me now so w=
+e can proceed.
