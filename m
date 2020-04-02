@@ -1,31 +1,37 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 30 Apr 2020 19:56:54 +0000
-Subject: Re: [PATCH 00/37] net: manually convert files to ReST format - part 2
-Message-Id: <20200430.125654.335144341485365161.davem@davemloft.net>
+From: stasar@zd-mozirje.si
+Date: Thu, 02 Apr 2020 01:25:49 +0000
+Subject: Spende
+Message-Id: <20200402012421.031DF2CA304@mail.zd-mozirje.si>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1588261997.git.mchehab+huawei@kernel.org>
-In-Reply-To: <cover.1588261997.git.mchehab+huawei@kernel.org>
+References: <20200322175154.C1A7D403706@mail.hotelcitymb.si>
+In-Reply-To: <20200322175154.C1A7D403706@mail.hotelcitymb.si>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: mchehab+huawei@kernel.org
-Cc: marcelo.leitner@gmail.com, linux-doc@vger.kernel.org, benh@kernel.crashing.org, dhowells@redhat.com, linux-sctp@vger.kernel.org, paulus@samba.org, ioana.ciornei@nxp.com, linux-afs@lists.infradead.org, devel@driverdev.osuosl.org, rds-devel@oss.oracle.com, socketcan@hartkopp.net, corbet@lwn.net, linux-rdma@vger.kernel.org, mpe@ellerman.id.au, kadlec@netfilter.org, coreteam@netfilter.org, kuba@kernel.org, pablo@netfilter.org, linux-x25@vger.kernel.org, santosh.shilimkar@oracle.com, linux-can@vger.kernel.org, mkl@pengutronix.de, courmisch@gmail.com, kvalo@codeaurora.org, kou.ishizaki@toshiba.co.jp, fw@strlen.de, nhorman@tuxdriver.com, geoff@infradead.org, netdev@vger.kernel.org, vyasevich@gmail.com, linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org, gregkh@linuxfoundation.org, johannes@sipsolutions.net, linuxppc-dev@lists.ozlabs.org
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: linux-sctp@vger.kernel.org
 
-From: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
-Date: Thu, 30 Apr 2020 18:03:55 +0200
+Hallo,
 
-> That's the second part of my work to convert the networking
-> text files into ReST. it is based on today's linux-next (next-20200430).
-> 
-> The full series (including those ones) are at:
-> 
-> 	https://git.linuxtv.org/mchehab/experimental.git/log/?h=net-docs
-> 
-> I should be sending the remaining patches (another /38 series)
-> after getting those merged at -next.
-> 
-> The documents, converted to HTML via the building system are at:
-> 
-> 	https://www.infradead.org/~mchehab/kernel_docs/networking/
+Ich bin Maria Elisabeth Schaeffler, eine deutsche Gesch=E4ftsfrau, Investor=
+in und Gesch=E4ftsf=FChrerin der Schaeffler Gruppe. Ich bin einer der Eigen=
+t=FCmer der Schaeffler Gruppe. Ich habe 25 Prozent meines pers=F6nlichen Ve=
+rm=F6gens f=FCr wohlt=E4tige Zwecke verschenkt. Und ich habe auch zugesagt,=
+ den Rest von 25% in diesem Jahr 2020 an Einzelpersonen zu verschenken. Ich=
+ habe beschlossen, Ihnen 1.000.000,00 Euro zu spenden. Wenn Sie an meiner S=
+pende interessiert sind, kontaktieren Sie mich f=FCr weitere Informationen.
 
-Series applied to net-next, thank you.
+Sie k=F6nnen auch mehr =FCber mich =FCber den unten stehenden Link lesen
+
+https://en.wikipedia.org/wiki/Maria-Elisabeth_Schaeffler
+
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+Herzliche Gr=FC=DFe,
+Frau Maria-Elisabeth Schaeffler,
+Vorsitzender
+Schaeffler Gruppe.
+E-Mail: mariaschaefflergruppe@gmail.com
+
+---
+This email is free from viruses and malware because avast! Antivirus protec=
+tion is active.
+https://www.avast.com/antivirus
