@@ -1,29 +1,53 @@
-From: David Miller <davem@davemloft.net>
-Date: Thu, 23 Apr 2020 02:28:10 +0000
-Subject: Re: [PATCH net 0/2] sctp: Fix problems with peer restart when in SHUTDOWN-PENDING state and socket i
-Message-Id: <20200422.192810.397679580233184854.davem@davemloft.net>
+From: =?UTF-8?q?Jere=20Lepp=C3=A4nen?= <jere.leppanen@nokia.com>
+Date: Tue, 21 Apr 2020 19:03:41 +0000
+Subject: [PATCH net 1/2] sctp: Fix bundling of SHUTDOWN with COOKIE-ACK
+Message-Id: <20200421190342.548226-2-jere.leppanen@nokia.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200421190342.548226-1-jere.leppanen@nokia.com>
 In-Reply-To: <20200421190342.548226-1-jere.leppanen@nokia.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: jere.leppanen@nokia.com
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, lucien.xin@gmail.com
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S . Miller" <davem@davemloft.net>
+Cc: Xin Long <lucien.xin@gmail.com>
 
-From: Jere Lepp=E4nen <jere.leppanen@nokia.com>
-Date: Tue, 21 Apr 2020 22:03:40 +0300
-
-> These patches are related to the scenario described in commit
-> bdf6fa52f01b ("sctp: handle association restarts when the socket is
-> closed."). To recap, when our association is in SHUTDOWN-PENDING state
-> and we've closed our one-to-one socket, while the peer crashes without
-> being detected, restarts and reconnects using the same addresses and
-> ports, we start association shutdown.
->=20
-> In this case, Cumulative TSN Ack in the SHUTDOWN that we send has
-> always been incorrect. Additionally, bundling of the SHUTDOWN with the
-> COOKIE-ACK was broken by a later commit. This series fixes both of
-> these issues.
-
-Series applied, thanks.
+V2hlbiB3ZSBzdGFydCBzaHV0ZG93biBpbiBzY3RwX3NmX2RvX2R1cGNvb2tfYSgpLCB3ZSB3YW50
+IHRvIGJ1bmRsZQp0aGUgU0hVVERPV04gd2l0aCB0aGUgQ09PS0lFLUFDSyB0byBlbnN1cmUgdGhh
+dCB0aGUgcGVlciByZWNlaXZlcyB0aGVtCmF0IHRoZSBzYW1lIHRpbWUgYW5kIGluIHRoZSBjb3Jy
+ZWN0IG9yZGVyLiBUaGlzIGJ1bmRsaW5nIHdhcyBicm9rZW4gYnkKY29tbWl0IDRmZjQwYjg2MjYy
+YiAoInNjdHA6IHNldCBjaHVuayB0cmFuc3BvcnQgY29ycmVjdGx5IHdoZW4gaXQncyBhCm5ldyBh
+c29jIiksIHdoaWNoIGFzc2lnbnMgYSB0cmFuc3BvcnQgZm9yIHRoZSBDT09LSUUtQUNLLCBidXQg
+bm90IGZvcgp0aGUgU0hVVERPV04uCgpGaXggdGhpcyBieSBwYXNzaW5nIGEgcmVmZXJlbmNlIHRv
+IHRoZSBDT09LSUUtQUNLIGNodW5rIGFzIGFuIGFyZ3VtZW50CnRvIHNjdHBfc2ZfZG9fOV8yX3N0
+YXJ0X3NodXRkb3duKCkgYW5kIG9ud2FyZCB0bwpzY3RwX21ha2Vfc2h1dGRvd24oKS4gVGhpcyB3
+YXkgdGhlIFNIVVRET1dOIGNodW5rIGlzIGFzc2lnbmVkIHRoZSBzYW1lCnRyYW5zcG9ydCBhcyB0
+aGUgQ09PS0lFLUFDSyBjaHVuaywgd2hpY2ggYWxsb3dzIHRoZW0gdG8gYmUgYnVuZGxlZC4KCklu
+IHNjdHBfc2ZfZG9fOV8yX3N0YXJ0X3NodXRkb3duKCksIHRoZSB2b2lkICphcmcgcGFyYW1ldGVy
+IHdhcwpwcmV2aW91c2x5IHVudXNlZC4gTm93IHRoYXQgd2UncmUgdGFraW5nIGl0IGludG8gdXNl
+LCBpdCBtdXN0IGJlIGEKdmFsaWQgcG9pbnRlciB0byBhIGNodW5rLCBvciBOVUxMLiBUaGVyZSBp
+cyBvbmx5IG9uZSBjYWxsIHNpdGUgd2hlcmUKaXQncyBub3QsIGluIHNjdHBfc2ZfYXV0b2Nsb3Nl
+X3RpbWVyX2V4cGlyZSgpLiBGaXggdGhhdCB0b28uCgpGaXhlczogNGZmNDBiODYyNjJiICgic2N0
+cDogc2V0IGNodW5rIHRyYW5zcG9ydCBjb3JyZWN0bHkgd2hlbiBpdCdzIGEgbmV3IGFzb2MiKQpT
+aWduZWQtb2ZmLWJ5OiBKZXJlIExlcHDDpG5lbiA8amVyZS5sZXBwYW5lbkBub2tpYS5jb20+Ci0t
+LQogbmV0L3NjdHAvc21fc3RhdGVmdW5zLmMgfCA2ICsrKy0tLQogMSBmaWxlIGNoYW5nZWQsIDMg
+aW5zZXJ0aW9ucygrKSwgMyBkZWxldGlvbnMoLSkKCmRpZmYgLS1naXQgYS9uZXQvc2N0cC9zbV9z
+dGF0ZWZ1bnMuYyBiL25ldC9zY3RwL3NtX3N0YXRlZnVucy5jCmluZGV4IDZhMTZhZjRiMWVmNi4u
+MjY3ODhmNGEzYjllIDEwMDY0NAotLS0gYS9uZXQvc2N0cC9zbV9zdGF0ZWZ1bnMuYworKysgYi9u
+ZXQvc2N0cC9zbV9zdGF0ZWZ1bnMuYwpAQCAtMTg2NSw3ICsxODY1LDcgQEAgc3RhdGljIGVudW0g
+c2N0cF9kaXNwb3NpdGlvbiBzY3RwX3NmX2RvX2R1cGNvb2tfYSgKIAkJICovCiAJCXNjdHBfYWRk
+X2NtZF9zZihjb21tYW5kcywgU0NUUF9DTURfUkVQTFksIFNDVFBfQ0hVTksocmVwbCkpOwogCQly
+ZXR1cm4gc2N0cF9zZl9kb185XzJfc3RhcnRfc2h1dGRvd24obmV0LCBlcCwgYXNvYywKLQkJCQkJ
+CSAgICAgU0NUUF9TVF9DSFVOSygwKSwgTlVMTCwKKwkJCQkJCSAgICAgU0NUUF9TVF9DSFVOSygw
+KSwgcmVwbCwKIAkJCQkJCSAgICAgY29tbWFuZHMpOwogCX0gZWxzZSB7CiAJCXNjdHBfYWRkX2Nt
+ZF9zZihjb21tYW5kcywgU0NUUF9DTURfTkVXX1NUQVRFLApAQCAtNTQ3MCw3ICs1NDcwLDcgQEAg
+ZW51bSBzY3RwX2Rpc3Bvc2l0aW9uIHNjdHBfc2ZfZG9fOV8yX3N0YXJ0X3NodXRkb3duKAogCSAq
+IGluIHRoZSBDdW11bGF0aXZlIFRTTiBBY2sgZmllbGQgdGhlIGxhc3Qgc2VxdWVudGlhbCBUU04g
+aXQKIAkgKiBoYXMgcmVjZWl2ZWQgZnJvbSB0aGUgcGVlci4KIAkgKi8KLQlyZXBseSA9IHNjdHBf
+bWFrZV9zaHV0ZG93bihhc29jLCBOVUxMKTsKKwlyZXBseSA9IHNjdHBfbWFrZV9zaHV0ZG93bihh
+c29jLCBhcmcpOwogCWlmICghcmVwbHkpCiAJCWdvdG8gbm9tZW07CiAKQEAgLTYwNjgsNyArNjA2
+OCw3IEBAIGVudW0gc2N0cF9kaXNwb3NpdGlvbiBzY3RwX3NmX2F1dG9jbG9zZV90aW1lcl9leHBp
+cmUoCiAJZGlzcG9zaXRpb24gPSBTQ1RQX0RJU1BPU0lUSU9OX0NPTlNVTUU7CiAJaWYgKHNjdHBf
+b3V0cV9pc19lbXB0eSgmYXNvYy0+b3V0cXVldWUpKSB7CiAJCWRpc3Bvc2l0aW9uID0gc2N0cF9z
+Zl9kb185XzJfc3RhcnRfc2h1dGRvd24obmV0LCBlcCwgYXNvYywgdHlwZSwKLQkJCQkJCQkgICAg
+YXJnLCBjb21tYW5kcyk7CisJCQkJCQkJICAgIE5VTEwsIGNvbW1hbmRzKTsKIAl9CiAKIAlyZXR1
+cm4gZGlzcG9zaXRpb247Ci0tIAoyLjI1LjIKCg=
