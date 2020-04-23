@@ -1,35 +1,30 @@
-From: =?UTF-8?q?Jere=20Lepp=C3=A4nen?= <jere.leppanen@nokia.com>
-Date: Tue, 21 Apr 2020 19:03:42 +0000
-Subject: [PATCH net 2/2] sctp: Fix SHUTDOWN CTSN Ack in the peer restart case
-Message-Id: <20200421190342.548226-3-jere.leppanen@nokia.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Thu, 23 Apr 2020 01:09:31 +0000
+Subject: Re: [PATCH net 2/2] sctp: Fix SHUTDOWN CTSN Ack in the peer restart case
+Message-Id: <20200423010931.GC2688@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200421190342.548226-1-jere.leppanen@nokia.com>
-In-Reply-To: <20200421190342.548226-1-jere.leppanen@nokia.com>
+ <20200421190342.548226-3-jere.leppanen@nokia.com>
+In-Reply-To: <20200421190342.548226-3-jere.leppanen@nokia.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S . Miller" <davem@davemloft.net>
-Cc: Xin Long <lucien.xin@gmail.com>
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: Jere =?iso-8859-1?Q?Lepp=E4nen?= <jere.leppanen@nokia.com>
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S . Miller" <davem@davemloft.net>, Xin Long <lucien.xin@gmail.com>
 
-V2hlbiBzdGFydGluZyBzaHV0ZG93biBpbiBzY3RwX3NmX2RvX2R1cGNvb2tfYSgpLCBnZXQgdGhl
-IHZhbHVlIGZvcgpTSFVURE9XTiBDdW11bGF0aXZlIFRTTiBBY2sgZnJvbSB0aGUgbmV3IGFzc29j
-aWF0aW9uLCB3aGljaCBpcwpyZWNvbnN0cnVjdGVkIGZyb20gdGhlIGNvb2tpZSwgaW5zdGVhZCBv
-ZiB0aGUgb2xkIGFzc29jaWF0aW9uLCB3aGljaAp0aGUgcGVlciBkb2Vzbid0IGhhdmUgYW55bW9y
-ZS4KCk90aGVyd2lzZSB0aGUgU0hVVERPV04gaXMgZWl0aGVyIGlnbm9yZWQgb3IgcmVwbGllZCB0
-byB3aXRoIGFuIEFCT1JUCmJ5IHRoZSBwZWVyIGJlY2F1c2UgQ1RTTiBBY2sgZG9lc24ndCBtYXRj
-aCB0aGUgcGVlcidzIEluaXRpYWwgVFNOLgoKRml4ZXM6IGJkZjZmYTUyZjAxYiAoInNjdHA6IGhh
-bmRsZSBhc3NvY2lhdGlvbiByZXN0YXJ0cyB3aGVuIHRoZSBzb2NrZXQgaXMgY2xvc2VkLiIpClNp
-Z25lZC1vZmYtYnk6IEplcmUgTGVwcMOkbmVuIDxqZXJlLmxlcHBhbmVuQG5va2lhLmNvbT4KLS0t
-CiBuZXQvc2N0cC9zbV9tYWtlX2NodW5rLmMgfCA2ICsrKysrLQogMSBmaWxlIGNoYW5nZWQsIDUg
-aW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbigtKQoKZGlmZiAtLWdpdCBhL25ldC9zY3RwL3NtX21h
-a2VfY2h1bmsuYyBiL25ldC9zY3RwL3NtX21ha2VfY2h1bmsuYwppbmRleCAwOTA1MGMxZDU1MTcu
-LmY3Y2IwYjdmYWVjMiAxMDA2NDQKLS0tIGEvbmV0L3NjdHAvc21fbWFrZV9jaHVuay5jCisrKyBi
-L25ldC9zY3RwL3NtX21ha2VfY2h1bmsuYwpAQCAtODU4LDcgKzg1OCwxMSBAQCBzdHJ1Y3Qgc2N0
-cF9jaHVuayAqc2N0cF9tYWtlX3NodXRkb3duKGNvbnN0IHN0cnVjdCBzY3RwX2Fzc29jaWF0aW9u
-ICphc29jLAogCXN0cnVjdCBzY3RwX2NodW5rICpyZXR2YWw7CiAJX191MzIgY3RzbjsKIAotCWN0
-c24gPSBzY3RwX3Rzbm1hcF9nZXRfY3RzbigmYXNvYy0+cGVlci50c25fbWFwKTsKKwlpZiAoY2h1
-bmsgJiYgY2h1bmstPmFzb2MpCisJCWN0c24gPSBzY3RwX3Rzbm1hcF9nZXRfY3RzbigmY2h1bmst
-PmFzb2MtPnBlZXIudHNuX21hcCk7CisJZWxzZQorCQljdHNuID0gc2N0cF90c25tYXBfZ2V0X2N0
-c24oJmFzb2MtPnBlZXIudHNuX21hcCk7CisKIAlzaHV0LmN1bV90c25fYWNrID0gaHRvbmwoY3Rz
-bik7CiAKIAlyZXR2YWwgPSBzY3RwX21ha2VfY29udHJvbChhc29jLCBTQ1RQX0NJRF9TSFVURE9X
-TiwgMCwKLS0gCjIuMjUuMgoK
+On Tue, Apr 21, 2020 at 10:03:42PM +0300, Jere Lepp=E4nen wrote:
+> When starting shutdown in sctp_sf_do_dupcook_a(), get the value for
+> SHUTDOWN Cumulative TSN Ack from the new association, which is
+> reconstructed from the cookie, instead of the old association, which
+> the peer doesn't have anymore.
+>=20
+> Otherwise the SHUTDOWN is either ignored or replied to with an ABORT
+> by the peer because CTSN Ack doesn't match the peer's Initial TSN.
+>=20
+> Fixes: bdf6fa52f01b ("sctp: handle association restarts when the socket i=
+s closed.")
+> Signed-off-by: Jere Lepp=E4nen <jere.leppanen@nokia.com>
+
+Nice patches. Thanks.
+
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
