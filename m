@@ -1,28 +1,29 @@
-From: =?UTF-8?q?Jere=20Lepp=C3=A4nen?= <jere.leppanen@nokia.com>
-Date: Tue, 21 Apr 2020 19:03:40 +0000
-Subject: [PATCH net 0/2] sctp: Fix problems with peer restart when in SHUTDOWN-PENDING state and socket is cl
-Message-Id: <20200421190342.548226-1-jere.leppanen@nokia.com>
+From: David Miller <davem@davemloft.net>
+Date: Thu, 23 Apr 2020 02:28:10 +0000
+Subject: Re: [PATCH net 0/2] sctp: Fix problems with peer restart when in SHUTDOWN-PENDING state and socket i
+Message-Id: <20200422.192810.397679580233184854.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20200421190342.548226-1-jere.leppanen@nokia.com>
+In-Reply-To: <20200421190342.548226-1-jere.leppanen@nokia.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S . Miller" <davem@davemloft.net>
-Cc: Xin Long <lucien.xin@gmail.com>
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: jere.leppanen@nokia.com
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, lucien.xin@gmail.com
 
-VGhlc2UgcGF0Y2hlcyBhcmUgcmVsYXRlZCB0byB0aGUgc2NlbmFyaW8gZGVzY3JpYmVkIGluIGNv
-bW1pdApiZGY2ZmE1MmYwMWIgKCJzY3RwOiBoYW5kbGUgYXNzb2NpYXRpb24gcmVzdGFydHMgd2hl
-biB0aGUgc29ja2V0IGlzCmNsb3NlZC4iKS4gVG8gcmVjYXAsIHdoZW4gb3VyIGFzc29jaWF0aW9u
-IGlzIGluIFNIVVRET1dOLVBFTkRJTkcgc3RhdGUKYW5kIHdlJ3ZlIGNsb3NlZCBvdXIgb25lLXRv
-LW9uZSBzb2NrZXQsIHdoaWxlIHRoZSBwZWVyIGNyYXNoZXMgd2l0aG91dApiZWluZyBkZXRlY3Rl
-ZCwgcmVzdGFydHMgYW5kIHJlY29ubmVjdHMgdXNpbmcgdGhlIHNhbWUgYWRkcmVzc2VzIGFuZApw
-b3J0cywgd2Ugc3RhcnQgYXNzb2NpYXRpb24gc2h1dGRvd24uCgpJbiB0aGlzIGNhc2UsIEN1bXVs
-YXRpdmUgVFNOIEFjayBpbiB0aGUgU0hVVERPV04gdGhhdCB3ZSBzZW5kIGhhcwphbHdheXMgYmVl
-biBpbmNvcnJlY3QuIEFkZGl0aW9uYWxseSwgYnVuZGxpbmcgb2YgdGhlIFNIVVRET1dOIHdpdGgg
-dGhlCkNPT0tJRS1BQ0sgd2FzIGJyb2tlbiBieSBhIGxhdGVyIGNvbW1pdC4gVGhpcyBzZXJpZXMg
-Zml4ZXMgYm90aCBvZgp0aGVzZSBpc3N1ZXMuCgpKZXJlIExlcHDDpG5lbiAoMik6CiAgc2N0cDog
-Rml4IGJ1bmRsaW5nIG9mIFNIVVRET1dOIHdpdGggQ09PS0lFLUFDSwogIHNjdHA6IEZpeCBTSFVU
-RE9XTiBDVFNOIEFjayBpbiB0aGUgcGVlciByZXN0YXJ0IGNhc2UKCiBuZXQvc2N0cC9zbV9tYWtl
-X2NodW5rLmMgfCA2ICsrKysrLQogbmV0L3NjdHAvc21fc3RhdGVmdW5zLmMgIHwgNiArKystLS0K
-IDIgZmlsZXMgY2hhbmdlZCwgOCBpbnNlcnRpb25zKCspLCA0IGRlbGV0aW9ucygtKQoKCmJhc2Ut
-Y29tbWl0OiBhNDYwZmM1ZDRjMTcwODA2YTMxZTU5MGRmMzdlYWQzYWI5NTEzMTVjCi0tIAoyLjI1
-LjIKCg=
+From: Jere Lepp=E4nen <jere.leppanen@nokia.com>
+Date: Tue, 21 Apr 2020 22:03:40 +0300
+
+> These patches are related to the scenario described in commit
+> bdf6fa52f01b ("sctp: handle association restarts when the socket is
+> closed."). To recap, when our association is in SHUTDOWN-PENDING state
+> and we've closed our one-to-one socket, while the peer crashes without
+> being detected, restarts and reconnects using the same addresses and
+> ports, we start association shutdown.
+>=20
+> In this case, Cumulative TSN Ack in the SHUTDOWN that we send has
+> always been incorrect. Additionally, bundling of the SHUTDOWN with the
+> COOKIE-ACK was broken by a later commit. This series fixes both of
+> these issues.
+
+Series applied, thanks.
