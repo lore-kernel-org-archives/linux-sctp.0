@@ -1,34 +1,41 @@
 From: syzbot <syzbot+6751381fe5a26df5b74d@syzkaller.appspotmail.com>
-Date: Thu, 16 Apr 2020 07:05:14 +0000
-Subject: KMSAN: uninit-value in sctp_ootb_pkt_new
-Message-Id: <000000000000f1377e05a3630d32@google.com>
+Date: Sun, 26 Apr 2020 14:09:12 +0000
+Subject: Re: KMSAN: uninit-value in sctp_ootb_pkt_new
+Message-Id: <0000000000009000aa05a4322411@google.com>
 List-Id: <linux-sctp.vger.kernel.org>
+In-Reply-To: <000000000000f1377e05a3630d32@google.com>
+References: <000000000000f1377e05a3630d32@google.com>
+In-Reply-To: <000000000000f1377e05a3630d32@google.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 To: davem@davemloft.net, glider@google.com, kuba@kernel.org, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
 
-Hello,
+syzbot has found a reproducer for the following crash on:
 
-syzbot found the following crash on:
-
-HEAD commit:    75303409 kmsan: dma: call KMSAN hooks for DMA mappings whe..
+HEAD commit:    bfa90a4a kmsan: remove __GFP_NO_KMSAN_SHADOW
 git tree:       https://github.com/google/kmsan.git master
-console output: https://syzkaller.appspot.com/x/log.txt?xd2f9e7e00000
-kernel config:  https://syzkaller.appspot.com/x/.config?xx11db4cc444a7f6
+console output: https://syzkaller.appspot.com/x/log.txt?x=13ab7fbfe00000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=A5915107b3106aaa
 dashboard link: https://syzkaller.appspot.com/bug?extidg51381fe5a26df5b74d
-compiler:       clang version 10.0.0 (https://github.com/llvm/llvm-project/ c2443155a0fb245c8f17f2c1c72b6ea391e86e81)
-
-Unfortunately, I don't have any reproducer for this crash yet.
+compiler:       clang version 10.0.0 (https://github.com/llvm/llvm-project/=
+ c2443155a0fb245c8f17f2c1c72b6ea391e86e81)
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=138df47fe00000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=158a182fe00000
 
 IMPORTANT: if you fix the bug, please add the following tag to the commit:
 Reported-by: syzbot+6751381fe5a26df5b74d@syzkaller.appspotmail.com
 
-==========================BUG: KMSAN: uninit-value in __arch_swab32 arch/x86/include/uapi/asm/swab.h:10 [inline]
+batman_adv: batadv0: Interface activated: batadv_slave_1
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3DBUG: KMSAN: uninit-value in __arch_swab32 arch/x86/include/uapi/asm/swab=
+.h:10 [inline]
 BUG: KMSAN: uninit-value in __fswab32 include/uapi/linux/swab.h:60 [inline]
-BUG: KMSAN: uninit-value in sctp_ootb_pkt_new+0x202/0x540 net/sctp/sm_statefuns.c:6256
-CPU: 0 PID: 20127 Comm: syz-executor.2 Not tainted 5.6.0-rc7-syzkaller #0
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 01/01/2011
+BUG: KMSAN: uninit-value in sctp_ootb_pkt_new+0x202/0x540 net/sctp/sm_state=
+funs.c:6256
+CPU: 0 PID: 8800 Comm: syz-executor949 Not tainted 5.6.0-rc7-syzkaller #0
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Goo=
+gle 01/01/2011
 Call Trace:
  __dump_stack lib/dump_stack.c:77 [inline]
  dump_stack+0x1c9/0x220 lib/dump_stack.c:118
@@ -68,19 +75,21 @@ Call Trace:
  __x64_sys_write+0x4a/0x70 fs/read_write.c:620
  do_syscall_64+0xb8/0x160 arch/x86/entry/common.c:296
  entry_SYSCALL_64_after_hwframe+0x44/0xa9
-RIP: 0033:0x45c889
-Code: ad b6 fb ff c3 66 2e 0f 1f 84 00 00 00 00 00 66 90 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 0f 83 7b b6 fb ff c3 66 2e 0f 1f 84 00 00 00 00
-RSP: 002b:00007f973b07dc78 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
-RAX: ffffffffffffffda RBX: 00007f973b07e6d4 RCX: 000000000045c889
-RDX: 000000000000002e RSI: 00000000200001c0 RDI: 0000000000000003
-RBP: 000000000076bf00 R08: 0000000000000000 R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000246 R12: 00000000ffffffff
-R13: 0000000000000d0d R14: 00000000004cf3b9 R15: 000000000076bf0c
+RIP: 0033:0x443659
+Code: 18 89 d0 c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 00 48 89 f8 48 89 f7 =
+48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff f=
+f 0f 83 7b 10 fc ff c3 66 2e 0f 1f 84 00 00 00 00
+RSP: 002b:00007fff60095968 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+RAX: ffffffffffffffda RBX: 0000000000003172 RCX: 0000000000443659
+RDX: 000000000000002e RSI: 00000000200000c0 RDI: 0000000000000003
+RBP: 00007fff60095990 R08: 0000000000000000 R09: 0000000000000000
+R10: 000000000000aa14 R11: 0000000000000246 R12: 656c6c616b7a7973
+R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
 
 Uninit was created at:
  kmsan_save_stack_with_flags mm/kmsan/kmsan.c:144 [inline]
  kmsan_internal_poison_shadow+0x66/0xd0 mm/kmsan/kmsan.c:127
- kmsan_slab_alloc+0x8a/0xe0 mm/kmsan/kmsan_hooks.c:82
+ kmsan_slab_alloc+0x8a/0xe0 mm/kmsan/kmsan_hooks.c:80
  slab_alloc_node mm/slub.c:2801 [inline]
  __kmalloc_node_track_caller+0xb40/0x1200 mm/slub.c:4420
  __kmalloc_reserve net/core/skbuff.c:142 [inline]
@@ -101,12 +110,5 @@ Uninit was created at:
  __x64_sys_write+0x4a/0x70 fs/read_write.c:620
  do_syscall_64+0xb8/0x160 arch/x86/entry/common.c:296
  entry_SYSCALL_64_after_hwframe+0x44/0xa9
-==========================
-
----
-This bug is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
-
-syzbot will keep track of this bug report. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D
