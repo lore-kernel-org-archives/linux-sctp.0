@@ -1,36 +1,119 @@
-From: Kent Pace <kentpace@coris.com>
-Date: Sun, 05 Apr 2020 20:13:03 +0000
-Subject: Urgent! Please Read
-Message-Id: <20200405131303.E6681B154D56BDB4@coris.com>
+From: syzbot <syzbot+95632cde252ddaed5a8e@syzkaller.appspotmail.com>
+Date: Tue, 28 Apr 2020 13:18:13 +0000
+Subject: KMSAN: uninit-value in sctp_rcv
+Message-Id: <000000000000e8dc1d05a459a988@google.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="windows-1252"
+Content-Transfer-Encoding: quoted-printable
+To: davem@davemloft.net, glider@google.com, kuba@kernel.org, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
 
-Dear Friend,
+Hello,
 
+syzbot found the following crash on:
 
-There is something very important I need to discuss with you.  I 
-am writing  this letter in tears and fear. In tears because I 
-will soon depart and in fear because I don't really know if you 
-will do this faithfully.
+HEAD commit:    bfa90a4a kmsan: remove __GFP_NO_KMSAN_SHADOW
+git tree:       https://github.com/google/kmsan.git master
+console output: https://syzkaller.appspot.com/x/log.txt?x=11d13ca7e00000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=A5915107b3106aaa
+dashboard link: https://syzkaller.appspot.com/bug?extid=95632cde252ddaed5a8e
+compiler:       clang version 10.0.0 (https://github.com/llvm/llvm-project/=
+ c2443155a0fb245c8f17f2c1c72b6ea391e86e81)
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=13076490100000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=12996d80100000
 
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+95632cde252ddaed5a8e@syzkaller.appspotmail.com
 
-I am COVID-19  patient and the doctor has already confirmed I may 
-not last for the next 7 days.
+batman_adv: batadv0: Interface activated: batadv_slave_1
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3DBUG: KMSAN: uninit-value in __sctp_rcv_walk_lookup net/sctp/input.c:1208=
+ [inline]
+BUG: KMSAN: uninit-value in __sctp_rcv_lookup_harder net/sctp/input.c:1287 =
+[inline]
+BUG: KMSAN: uninit-value in __sctp_rcv_lookup net/sctp/input.c:1307 [inline]
+BUG: KMSAN: uninit-value in sctp_rcv+0x2b2d/0x5410 net/sctp/input.c:159
+CPU: 0 PID: 8827 Comm: syz-executor885 Not tainted 5.6.0-rc7-syzkaller #0
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Goo=
+gle 01/01/2011
+Call Trace:
+ __dump_stack lib/dump_stack.c:77 [inline]
+ dump_stack+0x1c9/0x220 lib/dump_stack.c:118
+ kmsan_report+0xf7/0x1e0 mm/kmsan/kmsan_report.c:118
+ __msan_warning+0x58/0xa0 mm/kmsan/kmsan_instr.c:215
+ __sctp_rcv_walk_lookup net/sctp/input.c:1208 [inline]
+ __sctp_rcv_lookup_harder net/sctp/input.c:1287 [inline]
+ __sctp_rcv_lookup net/sctp/input.c:1307 [inline]
+ sctp_rcv+0x2b2d/0x5410 net/sctp/input.c:159
+ ip_protocol_deliver_rcu+0x700/0xbc0 net/ipv4/ip_input.c:204
+ ip_local_deliver_finish net/ipv4/ip_input.c:231 [inline]
+ NF_HOOK include/linux/netfilter.h:307 [inline]
+ ip_local_deliver+0x62a/0x7c0 net/ipv4/ip_input.c:252
+ dst_input include/net/dst.h:442 [inline]
+ ip_rcv_finish net/ipv4/ip_input.c:428 [inline]
+ NF_HOOK include/linux/netfilter.h:307 [inline]
+ ip_rcv+0x6cf/0x750 net/ipv4/ip_input.c:538
+ __netif_receive_skb_one_core net/core/dev.c:5187 [inline]
+ __netif_receive_skb net/core/dev.c:5301 [inline]
+ netif_receive_skb_internal net/core/dev.c:5391 [inline]
+ netif_receive_skb+0xbb5/0xf20 net/core/dev.c:5450
+ tun_rx_batched include/linux/skbuff.h:4351 [inline]
+ tun_get_user+0x6aef/0x6f60 drivers/net/tun.c:1997
+ tun_chr_write_iter+0x1f2/0x360 drivers/net/tun.c:2026
+ call_write_iter include/linux/fs.h:1902 [inline]
+ new_sync_write fs/read_write.c:483 [inline]
+ __vfs_write+0xa5a/0xca0 fs/read_write.c:496
+ vfs_write+0x44a/0x8f0 fs/read_write.c:558
+ ksys_write+0x267/0x450 fs/read_write.c:611
+ __do_sys_write fs/read_write.c:623 [inline]
+ __se_sys_write+0x92/0xb0 fs/read_write.c:620
+ __x64_sys_write+0x4a/0x70 fs/read_write.c:620
+ do_syscall_64+0xb8/0x160 arch/x86/entry/common.c:296
+ entry_SYSCALL_64_after_hwframe+0x44/0xa9
+RIP: 0033:0x443679
+Code: 18 89 d0 c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 00 48 89 f8 48 89 f7 =
+48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff f=
+f 0f 83 7b 10 fc ff c3 66 2e 0f 1f 84 00 00 00 00
+RSP: 002b:00007fffee474918 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+RAX: ffffffffffffffda RBX: 0000000000003172 RCX: 0000000000443679
+RDX: 000000000000fdef RSI: 0000000020000240 RDI: 0000000000000003
+RBP: 00007fffee474940 R08: 0000000000000000 R09: 0000000000000000
+R10: 000000000000aa14 R11: 0000000000000246 R12: 656c6c616b7a7973
+R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
 
-I have substantial amount of money deposited in a security vault 
-around your country. It is in trunk boxes and once  I receive 
-your response and see your readiness to claim the money 
-immediately, I will forward the needed documents and the contact 
-of the security vault where the consignment is deposited,
-I am not asking you to give me anything but I want you to help 
-people that has been infected with this deadly virus with 60% of 
-the money and 40% should be for you and your family.
+Uninit was created at:
+ kmsan_save_stack_with_flags mm/kmsan/kmsan.c:144 [inline]
+ kmsan_internal_poison_shadow+0x66/0xd0 mm/kmsan/kmsan.c:127
+ kmsan_slab_alloc+0x8a/0xe0 mm/kmsan/kmsan_hooks.c:80
+ slab_alloc_node mm/slub.c:2801 [inline]
+ __kmalloc_node_track_caller+0xb40/0x1200 mm/slub.c:4420
+ __kmalloc_reserve net/core/skbuff.c:142 [inline]
+ __alloc_skb+0x2fd/0xac0 net/core/skbuff.c:210
+ alloc_skb include/linux/skbuff.h:1081 [inline]
+ alloc_skb_with_frags+0x18c/0xa70 net/core/skbuff.c:5764
+ sock_alloc_send_pskb+0xada/0xc60 net/core/sock.c:2245
+ tun_alloc_skb drivers/net/tun.c:1529 [inline]
+ tun_get_user+0x10ae/0x6f60 drivers/net/tun.c:1843
+ tun_chr_write_iter+0x1f2/0x360 drivers/net/tun.c:2026
+ call_write_iter include/linux/fs.h:1902 [inline]
+ new_sync_write fs/read_write.c:483 [inline]
+ __vfs_write+0xa5a/0xca0 fs/read_write.c:496
+ vfs_write+0x44a/0x8f0 fs/read_write.c:558
+ ksys_write+0x267/0x450 fs/read_write.c:611
+ __do_sys_write fs/read_write.c:623 [inline]
+ __se_sys_write+0x92/0xb0 fs/read_write.c:620
+ __x64_sys_write+0x4a/0x70 fs/read_write.c:620
+ do_syscall_64+0xb8/0x160 arch/x86/entry/common.c:296
+ entry_SYSCALL_64_after_hwframe+0x44/0xa9
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D
 
-I will disclose exact amount in the boxes as soon as I 
-receive your response.
+---
+This bug is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-
-Regards
+syzbot will keep track of this bug report. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+syzbot can test patches for this bug, for details see:
+https://goo.gl/tpsmEJ#testing-patches
