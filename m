@@ -1,30 +1,92 @@
-From: Joe Perches <joe@perches.com>
-Date: Tue, 14 Apr 2020 19:44:49 +0000
-Subject: Re: [PATCH v2 2/2] crypto: Remove unnecessary memzero_explicit()
-Message-Id: <2a58f592879cf67b4c6b8e859ce87e1f9652902a.camel@perches.com>
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Wed, 29 Apr 2020 11:36:13 +0000
+Subject: [PATCHv2] sctp: Don't add the shutdown timer if its already been added
+Message-Id: <20200429113613.1959665-1-nhorman@tuxdriver.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200413211550.8307-1-longman@redhat.com>
- <20200413222846.24240-1-longman@redhat.com>
- <eca85e0b-0af3-c43a-31e4-bd5c3f519798@c-s.fr>
- <e194a51f-a5e5-a557-c008-b08cac558572@redhat.com>
- <20200414191601.GZ25468@kitsune.suse.cz>
- <578fe9b6-1ccd-2698-60aa-96c3f2dd2c31@redhat.com>
-In-Reply-To: <578fe9b6-1ccd-2698-60aa-96c3f2dd2c31@redhat.com>
+References: <1458334046-26323-1-git-send-email-nhorman@tuxdriver.com>
+In-Reply-To: <1458334046-26323-1-git-send-email-nhorman@tuxdriver.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Waiman Long <longman@redhat.com>, Michal =?ISO-8859-1?Q?Such=E1nek?= <msuchanek@suse.de>
-Cc: linux-btrfs@vger.kernel.org, Jarkko Sakkinen <jarkko.sakkinen@linux.intel.com>, virtualization@lists.linux-foundation.org, David Howells <dhowells@redhat.com>, linux-mm@kvack.org, linux-sctp@vger.kernel.org, keyrings@vger.kernel.org, kasan-dev@googlegroups.com, samba-technical@lists.samba.org, linux-stm32@st-md-mailman.stormreply.com, devel@driverdev.osuosl.org, linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, x86@kernel.org, James Morris <jmorris@namei.org>, Matthew Wilcox <willy@infradead.org>, cocci@systeme.lip6.fr, linux-wpan@vger.kernel.org, intel-wired-lan@lists.osuosl.org, David Rientjes <rientjes@google.com>, "Serge E. Hallyn" <serge@hallyn.com>, linux-pm@vger.kernel.org, ecryptfs@vger.kernel.org, linux-nfs@vger.kernel.org, linux-fscrypt@vger.kernel.org, linux-mediatek@lists.infradead.org, linux-amlogic@lists.infradead.org, linux-integrity@vger.kernel.org, linux-arm-kernel@lists.infradead.org, Christophe Leroy <christophe.leroy@c-s.fr>, linux-cifs@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>, linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org, linux-bluetooth@vger.kernel.org, linux-security-module@vger.kernel.org, target-devel@vger.kernel.org, tipc-discussion@lists.sourceforge.net, linux-crypto@vger.kernel.org, netdev@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>, linuxppc-dev@lists.ozlabs.org, wireguard@lists.zx2c4.com, linux-ppp@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: linux-sctp@vger.kernel.org
 
-On Tue, 2020-04-14 at 15:37 -0400, Waiman Long wrote:
-> OK, I can change it to clear the key length when the allocation failed
-> which isn't likely.
+This BUG halt was reported a while back, but the patch somehow got
+missed:
 
+PID: 2879   TASK: c16adaa0  CPU: 1   COMMAND: "sctpn"
+ #0 [f418dd28] crash_kexec at c04a7d8c
+ #1 [f418dd7c] oops_end at c0863e02
+ #2 [f418dd90] do_invalid_op at c040aaca
+ #3 [f418de28] error_code (via invalid_op) at c08631a5
+    EAX: f34baac0  EBX: 00000090  ECX: f418deb0  EDX: f5542950  EBP: 000000=
+00
+    DS:  007b      ESI: f34ba800  ES:  007b      EDI: f418dea0  GS:  00e0
+    CS:  0060      EIP: c046fa5e  ERR: ffffffff  EFLAGS: 00010286
+ #4 [f418de5c] add_timer at c046fa5e
+ #5 [f418de68] sctp_do_sm at f8db8c77 [sctp]
+ #6 [f418df30] sctp_primitive_SHUTDOWN at f8dcc1b5 [sctp]
+ #7 [f418df48] inet_shutdown at c080baf9
+ #8 [f418df5c] sys_shutdown at c079eedf
+ #9 [f418df70] sys_socketcall at c079fe88
+    EAX: ffffffda  EBX: 0000000d  ECX: bfceea90  EDX: 0937af98
+    DS:  007b      ESI: 0000000c  ES:  007b      EDI: b7150ae4
+    SS:  007b      ESP: bfceea7c  EBP: bfceeaa8  GS:  0033
+    CS:  0073      EIP: b775c424  ERR: 00000066  EFLAGS: 00000282
 
-Perhaps:
+It appears that the side effect that starts the shutdown timer was processed
+multiple times, which can happen as multiple paths can trigger it.  This of
+course leads to the BUG halt in add_timer getting called.
 
-	kfree_sensitive(op->key);
-	op->key = NULL;
-	op->keylen = 0;
+Fix seems pretty straightforward, just check before the timer is added if i=
+ts
+already been started.  If it has mod the timer instead to min(current
+expiration, new expiration)
 
-but I don't know that it impacts any possible state.
+Its been tested but not confirmed to fix the problem, as the issue has only
+occured in production environments where test kernels are enjoined from bei=
+ng
+installed.  It appears to be a sane fix to me though.  Also, recentely,
+Jere found a reproducer posted on list to confirm that this resolves the
+issues
+
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+CC: Vlad Yasevich <vyasevich@gmail.com>
+CC: "David S. Miller" <davem@davemloft.net>
+CC: Jere Lepp=C3=A4nen <jere.leppanen@nokia.com>
+CC: marcelo.leitner@gmail.com
+
+---
+Change notes:
+V2) Updated to use timer_reduce
+---
+ net/sctp/sm_sideeffect.c | 14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
+
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 2bc29463e1dc..9f36fe911d08 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -1523,9 +1523,17 @@ static int sctp_cmd_interpreter(enum sctp_event_type=
+ event_type,
+ 			timeout =3D asoc->timeouts[cmd->obj.to];
+ 			BUG_ON(!timeout);
+=20
+-			timer->expires =3D jiffies + timeout;
+-			sctp_association_hold(asoc);
+-			add_timer(timer);
++			/*
++			 * SCTP has a hard time with timer starts.  Because we process
++			 * timer starts as side effects, it can be hard to tell if we
++			 * have already started a timer or not, which leads to BUG
++			 * halts when we call add_timer. So here, instead of just starting
++			 * a timer, if the timer is already started, and just mod
++			 * the timer with the shorter of the two expiration times
++			 */
++			if (!timer_pending(timer))
++				sctp_association_hold(asoc);
++			timer_reduce(timer, jiffies + timeout);
+ 			break;
+=20
+ 		case SCTP_CMD_TIMER_RESTART:
+--=20
+2.25.4
