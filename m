@@ -1,135 +1,87 @@
-From: Christoph Hellwig <hch@lst.de>
-Date: Wed, 20 May 2020 19:54:53 +0000
-Subject: [PATCH 17/33] tcp: add tcp_sock_set_keepidle
-Message-Id: <20200520195509.2215098-18-hch@lst.de>
+From: Eric Biggers <ebiggers@kernel.org>
+Date: Sat, 02 May 2020 05:31:02 +0000
+Subject: [PATCH 00/20] crypto: introduce crypto_shash_tfm_digest()
+Message-Id: <20200502053122.995648-1-ebiggers@kernel.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200520195509.2215098-1-hch@lst.de>
-In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
-Cc: Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com, linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
+To: linux-crypto@vger.kernel.org
+Cc: Cheng-Yi Chiang <cychiang@chromium.org>, ecryptfs@vger.kernel.org, Enric Balletbo i Serra <enric.balletbo@collabora.com>, Gilad Ben-Yossef <gilad@benyossef.com>, Guenter Roeck <groeck@chromium.org>, Jesper Nilsson <jesper.nilsson@axis.com>, Kamil Konieczny <k.konieczny@samsung.com>, keyrings@vger.kernel.org, Krzysztof Kozlowski <krzk@kernel.org>, Krzysztof Opasiak <k.opasiak@samsung.com>, Lars Persson <lars.persson@axis.com>, linux-bluetooth@vger.kernel.org, linux-mtd@lists.infradead.org, linux-nfs@vger.kernel.org, linux-sctp@vger.kernel.org, Robert Baldyga <r.baldyga@samsung.com>, Tom Lendacky <thomas.lendacky@amd.com>, Vladimir Zapolskiy <vz@mleia.com>, Zaibo Xu <xuzaibo@huawei.com>
 
-Add a helper to directly set the TCP_KEEP_IDLE sockopt from kernel
-space without going through a fake uaccess.
+This series introduces a helper function crypto_shash_tfm_digest() which
+replaces the following common pattern:
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- include/linux/tcp.h   |  1 +
- net/ipv4/tcp.c        | 49 ++++++++++++++++++++++++++++++-------------
- net/rds/tcp_listen.c  |  5 +----
- net/sunrpc/xprtsock.c |  3 +--
- 4 files changed, 37 insertions(+), 21 deletions(-)
+	{
+		SHASH_DESC_ON_STACK(desc, tfm);
+		int err;
 
-diff --git a/include/linux/tcp.h b/include/linux/tcp.h
-index de682143efe4d..5724dd84a85ed 100644
---- a/include/linux/tcp.h
-+++ b/include/linux/tcp.h
-@@ -498,6 +498,7 @@ int tcp_skb_shift(struct sk_buff *to, struct sk_buff *from, int pcount,
- 		  int shiftlen);
- 
- void tcp_sock_set_cork(struct sock *sk, bool on);
-+int tcp_sock_set_keepidle(struct sock *sk, int val);
- void tcp_sock_set_nodelay(struct sock *sk);
- void tcp_sock_set_quickack(struct sock *sk, int val);
- int tcp_sock_set_syncnt(struct sock *sk, int val);
-diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
-index 0004bd9ae7b0a..bdf0ff9333514 100644
---- a/net/ipv4/tcp.c
-+++ b/net/ipv4/tcp.c
-@@ -2901,6 +2901,39 @@ void tcp_sock_set_user_timeout(struct sock *sk, u32 val)
- }
- EXPORT_SYMBOL(tcp_sock_set_user_timeout);
- 
-+static int __tcp_sock_set_keepidle(struct sock *sk, int val)
-+{
-+	struct tcp_sock *tp = tcp_sk(sk);
-+
-+	if (val < 1 || val > MAX_TCP_KEEPIDLE)
-+		return -EINVAL;
-+
-+	tp->keepalive_time = val * HZ;
-+	if (sock_flag(sk, SOCK_KEEPOPEN) &&
-+	    !((1 << sk->sk_state) & (TCPF_CLOSE | TCPF_LISTEN))) {
-+		u32 elapsed = keepalive_time_elapsed(tp);
-+
-+		if (tp->keepalive_time > elapsed)
-+			elapsed = tp->keepalive_time - elapsed;
-+		else
-+			elapsed = 0;
-+		inet_csk_reset_keepalive_timer(sk, elapsed);
-+	}
-+
-+	return 0;
-+}
-+
-+int tcp_sock_set_keepidle(struct sock *sk, int val)
-+{
-+	int err;
-+
-+	lock_sock(sk);
-+	err = __tcp_sock_set_keepidle(sk, val);
-+	release_sock(sk);
-+	return err;
-+}
-+EXPORT_SYMBOL(tcp_sock_set_keepidle);
-+
- /*
-  *	Socket option code for TCP.
-  */
-@@ -3070,21 +3103,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
- 		break;
- 
- 	case TCP_KEEPIDLE:
--		if (val < 1 || val > MAX_TCP_KEEPIDLE)
--			err = -EINVAL;
--		else {
--			tp->keepalive_time = val * HZ;
--			if (sock_flag(sk, SOCK_KEEPOPEN) &&
--			    !((1 << sk->sk_state) &
--			      (TCPF_CLOSE | TCPF_LISTEN))) {
--				u32 elapsed = keepalive_time_elapsed(tp);
--				if (tp->keepalive_time > elapsed)
--					elapsed = tp->keepalive_time - elapsed;
--				else
--					elapsed = 0;
--				inet_csk_reset_keepalive_timer(sk, elapsed);
--			}
--		}
-+		err = __tcp_sock_set_keepidle(sk, val);
- 		break;
- 	case TCP_KEEPINTVL:
- 		if (val < 1 || val > MAX_TCP_KEEPINTVL)
-diff --git a/net/rds/tcp_listen.c b/net/rds/tcp_listen.c
-index 6f90ea077adcd..79f9adc008114 100644
---- a/net/rds/tcp_listen.c
-+++ b/net/rds/tcp_listen.c
-@@ -52,10 +52,7 @@ int rds_tcp_keepalive(struct socket *sock)
- 	if (ret < 0)
- 		goto bail;
- 
--	ret = kernel_setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE,
--				(char *)&keepidle, sizeof(keepidle));
--	if (ret < 0)
--		goto bail;
-+	tcp_sock_set_keepidle(sock->sk, keepidle);
- 
- 	/* KEEPINTVL is the interval between successive probes. We follow
- 	 * the model in xs_tcp_finish_connecting() and re-use keepidle.
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 231fd6162f68d..473290f7c5c0a 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2107,8 +2107,7 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
- 
- 	/* TCP Keepalive options */
- 	sock_set_keepalive(sock->sk);
--	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPIDLE,
--			(char *)&keepidle, sizeof(keepidle));
-+	tcp_sock_set_keepidle(sock->sk, keepidle);
- 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPINTVL,
- 			(char *)&keepidle, sizeof(keepidle));
- 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPCNT,
+		desc->tfm = tfm;
+
+		err = crypto_shash_digest(desc, data, len, out);
+
+		shash_desc_zero(desc);
+	}
+
+with:
+
+	err = crypto_shash_tfm_digest(tfm, data, len, out);
+
+Patch 1 introduces this helper function, and patches 2-20 convert all
+relevant users to use it.
+
+IMO, it would be easiest to take all these patches through the crypto
+tree.  But taking just the "crypto:" ones and then me trying to get the
+rest merged later via subsystem trees is also an option.
+
+Eric Biggers (20):
+  crypto: hash - introduce crypto_shash_tfm_digest()
+  crypto: arm64/aes-glue - use crypto_shash_tfm_digest()
+  crypto: essiv - use crypto_shash_tfm_digest()
+  crypto: artpec6 - use crypto_shash_tfm_digest()
+  crypto: ccp - use crypto_shash_tfm_digest()
+  crypto: ccree - use crypto_shash_tfm_digest()
+  crypto: hisilicon/sec2 - use crypto_shash_tfm_digest()
+  crypto: mediatek - use crypto_shash_tfm_digest()
+  crypto: n2 - use crypto_shash_tfm_digest()
+  crypto: omap-sham - use crypto_shash_tfm_digest()
+  crypto: s5p-sss - use crypto_shash_tfm_digest()
+  nfc: s3fwrn5: use crypto_shash_tfm_digest()
+  fscrypt: use crypto_shash_tfm_digest()
+  ecryptfs: use crypto_shash_tfm_digest()
+  nfsd: use crypto_shash_tfm_digest()
+  ubifs: use crypto_shash_tfm_digest()
+  Bluetooth: use crypto_shash_tfm_digest()
+  sctp: use crypto_shash_tfm_digest()
+  KEYS: encrypted: use crypto_shash_tfm_digest()
+  ASoC: cros_ec_codec: use crypto_shash_tfm_digest()
+
+ arch/arm64/crypto/aes-glue.c               |  4 +--
+ crypto/essiv.c                             |  4 +--
+ crypto/shash.c                             | 16 +++++++++
+ drivers/crypto/axis/artpec6_crypto.c       | 10 ++----
+ drivers/crypto/ccp/ccp-crypto-sha.c        |  9 ++---
+ drivers/crypto/ccree/cc_cipher.c           |  9 ++---
+ drivers/crypto/hisilicon/sec2/sec_crypto.c |  5 ++-
+ drivers/crypto/mediatek/mtk-sha.c          |  7 ++--
+ drivers/crypto/n2_core.c                   |  7 ++--
+ drivers/crypto/omap-sham.c                 | 20 +++--------
+ drivers/crypto/s5p-sss.c                   | 39 ++++------------------
+ drivers/nfc/s3fwrn5/firmware.c             | 10 +-----
+ fs/crypto/fname.c                          |  7 +---
+ fs/crypto/hkdf.c                           |  6 +---
+ fs/ecryptfs/crypto.c                       | 17 +---------
+ fs/nfsd/nfs4recover.c                      | 26 ++++-----------
+ fs/ubifs/auth.c                            | 20 ++---------
+ fs/ubifs/master.c                          |  9 ++---
+ fs/ubifs/replay.c                          | 14 ++------
+ include/crypto/hash.h                      | 19 +++++++++++
+ net/bluetooth/smp.c                        |  6 +---
+ net/sctp/auth.c                            | 10 ++----
+ net/sctp/sm_make_chunk.c                   | 23 +++++--------
+ security/keys/encrypted-keys/encrypted.c   | 18 ++--------
+ sound/soc/codecs/cros_ec_codec.c           |  9 +----
+ 25 files changed, 95 insertions(+), 229 deletions(-)
+
 -- 
 2.26.2
