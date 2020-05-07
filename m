@@ -1,87 +1,207 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Tue, 19 May 2020 19:59:24 +0000
-Subject: Re: [PATCHv2] sctp: Don't add the shutdown timer if its already been added
-Message-Id: <20200519195924.GA697897@hmswarspite.think-freely.org>
+From: "Gustavo A. R. Silva" <gustavoars@kernel.org>
+Date: Thu, 07 May 2020 19:21:52 +0000
+Subject: [PATCH] sctp: Replace zero-length array with flexible-array
+Message-Id: <20200507192152.GA16230@embeddedor>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1458334046-26323-1-git-send-email-nhorman@tuxdriver.com>
-In-Reply-To: <1458334046-26323-1-git-send-email-nhorman@tuxdriver.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
 
-On Tue, May 19, 2020 at 04:24:10PM -0300, Marcelo Ricardo Leitner wrote:
-> On Tue, May 19, 2020 at 11:51:23AM +0300, Jere Lepp=E4nen wrote:
-> > On Thu, 30 Apr 2020, Marcelo Ricardo Leitner wrote:
-> >=20
-> > > On Wed, Apr 29, 2020 at 07:36:13AM -0400, Neil Horman wrote:
-> > > > This BUG halt was reported a while back, but the patch somehow got
-> > > > missed:
-> > > >=20
-> > > > PID: 2879   TASK: c16adaa0  CPU: 1   COMMAND: "sctpn"
-> > > >  #0 [f418dd28] crash_kexec at c04a7d8c
-> > > >  #1 [f418dd7c] oops_end at c0863e02
-> > > >  #2 [f418dd90] do_invalid_op at c040aaca
-> > > >  #3 [f418de28] error_code (via invalid_op) at c08631a5
-> > > >     EAX: f34baac0  EBX: 00000090  ECX: f418deb0  EDX: f5542950  EBP=
-: 00000000
-> > > >     DS:  007b      ESI: f34ba800  ES:  007b      EDI: f418dea0  GS:=
-  00e0
-> > > >     CS:  0060      EIP: c046fa5e  ERR: ffffffff  EFLAGS: 00010286
-> > > >  #4 [f418de5c] add_timer at c046fa5e
-> > > >  #5 [f418de68] sctp_do_sm at f8db8c77 [sctp]
-> > > >  #6 [f418df30] sctp_primitive_SHUTDOWN at f8dcc1b5 [sctp]
-> > > >  #7 [f418df48] inet_shutdown at c080baf9
-> > > >  #8 [f418df5c] sys_shutdown at c079eedf
-> > > >  #9 [f418df70] sys_socketcall at c079fe88
-> > > >     EAX: ffffffda  EBX: 0000000d  ECX: bfceea90  EDX: 0937af98
-> > > >     DS:  007b      ESI: 0000000c  ES:  007b      EDI: b7150ae4
-> > > >     SS:  007b      ESP: bfceea7c  EBP: bfceeaa8  GS:  0033
-> > > >     CS:  0073      EIP: b775c424  ERR: 00000066  EFLAGS: 00000282
-> > > >=20
-> > > > It appears that the side effect that starts the shutdown timer was =
-processed
-> > > > multiple times, which can happen as multiple paths can trigger it. =
- This of
-> > > > course leads to the BUG halt in add_timer getting called.
-> > > >=20
-> > > > Fix seems pretty straightforward, just check before the timer is ad=
-ded if its
-> > > > already been started.  If it has mod the timer instead to min(curre=
-nt
-> > > > expiration, new expiration)
-> > > >=20
-> > > > Its been tested but not confirmed to fix the problem, as the issue =
-has only
-> > > > occured in production environments where test kernels are enjoined =
-from being
-> > > > installed.  It appears to be a sane fix to me though.  Also, recent=
-ely,
-> > > > Jere found a reproducer posted on list to confirm that this resolve=
-s the
-> > > > issues
-> > > >=20
-> > > > Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-> > > > CC: Vlad Yasevich <vyasevich@gmail.com>
-> > > > CC: "David S. Miller" <davem@davemloft.net>
-> > > > CC: Jere Lepp=E4nen <jere.leppanen@nokia.com>
-> > > > CC: marcelo.leitner@gmail.com
-> > > >=20
-> > > > ---
-> > > > Change notes:
-> > > > V2) Updated to use timer_reduce
-> > >=20
-> > > Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> >=20
-> > Hey is this patch falling through the cracks again? No rush, I'm just=20
-> > wondering what's going on.
->=20
-> Whoops, sounds like Neil forgot to Cc netdev@..
->=20
->   Marcelo
->=20
-Crap, my bad.  I'm stuck in a call at the moment, but I'll resend this tomo=
-rrow
-morning.
-Thanks for following up!
-Neil
+The current codebase makes use of the zero-length array language
+extension to the C90 standard, but the preferred mechanism to declare
+variable-length types such as these ones is a flexible array member[1][2],
+introduced in C99:
+
+struct foo {
+        int stuff;
+        struct boo array[];
+};
+
+By making use of the mechanism above, we will get a compiler warning
+in case the flexible array does not occur last in the structure, which
+will help us prevent some kind of undefined behavior bugs from being
+inadvertently introduced[3] to the codebase from now on.
+
+Also, notice that, dynamic memory allocations won't be affected by
+this change:
+
+"Flexible array members have incomplete type, and so the sizeof operator
+may not be applied. As a quirk of the original implementation of
+zero-length arrays, sizeof evaluates to zero."[1]
+
+sizeof(flexible-array-member) triggers a warning because flexible array
+members have incomplete type[1]. There are some instances of code in
+which the sizeof operator is being incorrectly/erroneously applied to
+zero-length arrays and the result is zero. Such instances may be hiding
+some bugs. So, this work (flexible-array member conversions) will also
+help to get completely rid of those sorts of issues.
+
+This issue was found with the help of Coccinelle.
+
+[1] https://gcc.gnu.org/onlinedocs/gcc/Zero-Length.html
+[2] https://github.com/KSPP/linux/issues/21
+[3] commit 76497732932f ("cxgb3/l2t: Fix undefined behaviour")
+
+Signed-off-by: Gustavo A. R. Silva <gustavoars@kernel.org>
+---
+ include/linux/sctp.h |   36 ++++++++++++++++++------------------
+ 1 file changed, 18 insertions(+), 18 deletions(-)
+
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index 8ccd82105de8..76731230bbc5 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -221,7 +221,7 @@ struct sctp_datahdr {
+ 	__be16 stream;
+ 	__be16 ssn;
+ 	__u32 ppid;
+-	__u8  payload[0];
++	__u8  payload[];
+ };
+ 
+ struct sctp_data_chunk {
+@@ -269,7 +269,7 @@ struct sctp_inithdr {
+ 	__be16 num_outbound_streams;
+ 	__be16 num_inbound_streams;
+ 	__be32 initial_tsn;
+-	__u8  params[0];
++	__u8  params[];
+ };
+ 
+ struct sctp_init_chunk {
+@@ -299,13 +299,13 @@ struct sctp_cookie_preserve_param {
+ /* Section 3.3.2.1 Host Name Address (11) */
+ struct sctp_hostname_param {
+ 	struct sctp_paramhdr param_hdr;
+-	uint8_t hostname[0];
++	uint8_t hostname[];
+ };
+ 
+ /* Section 3.3.2.1 Supported Address Types (12) */
+ struct sctp_supported_addrs_param {
+ 	struct sctp_paramhdr param_hdr;
+-	__be16 types[0];
++	__be16 types[];
+ };
+ 
+ /* ADDIP Section 3.2.6 Adaptation Layer Indication */
+@@ -317,25 +317,25 @@ struct sctp_adaptation_ind_param {
+ /* ADDIP Section 4.2.7 Supported Extensions Parameter */
+ struct sctp_supported_ext_param {
+ 	struct sctp_paramhdr param_hdr;
+-	__u8 chunks[0];
++	__u8 chunks[];
+ };
+ 
+ /* AUTH Section 3.1 Random */
+ struct sctp_random_param {
+ 	struct sctp_paramhdr param_hdr;
+-	__u8 random_val[0];
++	__u8 random_val[];
+ };
+ 
+ /* AUTH Section 3.2 Chunk List */
+ struct sctp_chunks_param {
+ 	struct sctp_paramhdr param_hdr;
+-	__u8 chunks[0];
++	__u8 chunks[];
+ };
+ 
+ /* AUTH Section 3.3 HMAC Algorithm */
+ struct sctp_hmac_algo_param {
+ 	struct sctp_paramhdr param_hdr;
+-	__be16 hmac_ids[0];
++	__be16 hmac_ids[];
+ };
+ 
+ /* RFC 2960.  Section 3.3.3 Initiation Acknowledgement (INIT ACK) (2):
+@@ -350,7 +350,7 @@ struct sctp_initack_chunk {
+ /* Section 3.3.3.1 State Cookie (7) */
+ struct sctp_cookie_param {
+ 	struct sctp_paramhdr p;
+-	__u8 body[0];
++	__u8 body[];
+ };
+ 
+ /* Section 3.3.3.1 Unrecognized Parameters (8) */
+@@ -384,7 +384,7 @@ struct sctp_sackhdr {
+ 	__be32 a_rwnd;
+ 	__be16 num_gap_ack_blocks;
+ 	__be16 num_dup_tsns;
+-	union sctp_sack_variable variable[0];
++	union sctp_sack_variable variable[];
+ };
+ 
+ struct sctp_sack_chunk {
+@@ -436,7 +436,7 @@ struct sctp_shutdown_chunk {
+ struct sctp_errhdr {
+ 	__be16 cause;
+ 	__be16 length;
+-	__u8  variable[0];
++	__u8  variable[];
+ };
+ 
+ struct sctp_operr_chunk {
+@@ -594,7 +594,7 @@ struct sctp_fwdtsn_skip {
+ 
+ struct sctp_fwdtsn_hdr {
+ 	__be32 new_cum_tsn;
+-	struct sctp_fwdtsn_skip skip[0];
++	struct sctp_fwdtsn_skip skip[];
+ };
+ 
+ struct sctp_fwdtsn_chunk {
+@@ -611,7 +611,7 @@ struct sctp_ifwdtsn_skip {
+ 
+ struct sctp_ifwdtsn_hdr {
+ 	__be32 new_cum_tsn;
+-	struct sctp_ifwdtsn_skip skip[0];
++	struct sctp_ifwdtsn_skip skip[];
+ };
+ 
+ struct sctp_ifwdtsn_chunk {
+@@ -658,7 +658,7 @@ struct sctp_addip_param {
+ 
+ struct sctp_addiphdr {
+ 	__be32	serial;
+-	__u8	params[0];
++	__u8	params[];
+ };
+ 
+ struct sctp_addip_chunk {
+@@ -718,7 +718,7 @@ struct sctp_addip_chunk {
+ struct sctp_authhdr {
+ 	__be16 shkey_id;
+ 	__be16 hmac_id;
+-	__u8   hmac[0];
++	__u8   hmac[];
+ };
+ 
+ struct sctp_auth_chunk {
+@@ -733,7 +733,7 @@ struct sctp_infox {
+ 
+ struct sctp_reconf_chunk {
+ 	struct sctp_chunkhdr chunk_hdr;
+-	__u8 params[0];
++	__u8 params[];
+ };
+ 
+ struct sctp_strreset_outreq {
+@@ -741,13 +741,13 @@ struct sctp_strreset_outreq {
+ 	__be32 request_seq;
+ 	__be32 response_seq;
+ 	__be32 send_reset_at_tsn;
+-	__be16 list_of_streams[0];
++	__be16 list_of_streams[];
+ };
+ 
+ struct sctp_strreset_inreq {
+ 	struct sctp_paramhdr param_hdr;
+ 	__be32 request_seq;
+-	__be16 list_of_streams[0];
++	__be16 list_of_streams[];
+ };
+ 
+ struct sctp_strreset_tsnreq {
