@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 07 May 2020 19:44:53 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Thu, 07 May 2020 20:04:33 +0000
 Subject: Re: [PATCH] sctp: Replace zero-length array with flexible-array
-Message-Id: <20200507194453.GD2470@localhost.localdomain>
+Message-Id: <20200507200433.GA2838429@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200507192152.GA16230@embeddedor>
 In-Reply-To: <20200507192152.GA16230@embeddedor>
@@ -9,7 +9,7 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: "Gustavo A. R. Silva" <gustavoars@kernel.org>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Vlad Yasevich <vyasevich@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
 
 On Thu, May 07, 2020 at 02:21:52PM -0500, Gustavo A. R. Silva wrote:
 > The current codebase makes use of the zero-length array language
@@ -48,5 +48,166 @@ On Thu, May 07, 2020 at 02:21:52PM -0500, Gustavo A. R. Silva wrote:
 > [3] commit 76497732932f ("cxgb3/l2t: Fix undefined behaviour")
 > 
 > Signed-off-by: Gustavo A. R. Silva <gustavoars@kernel.org>
-
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+> ---
+>  include/linux/sctp.h |   36 ++++++++++++++++++------------------
+>  1 file changed, 18 insertions(+), 18 deletions(-)
+> 
+> diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+> index 8ccd82105de8..76731230bbc5 100644
+> --- a/include/linux/sctp.h
+> +++ b/include/linux/sctp.h
+> @@ -221,7 +221,7 @@ struct sctp_datahdr {
+>  	__be16 stream;
+>  	__be16 ssn;
+>  	__u32 ppid;
+> -	__u8  payload[0];
+> +	__u8  payload[];
+>  };
+>  
+>  struct sctp_data_chunk {
+> @@ -269,7 +269,7 @@ struct sctp_inithdr {
+>  	__be16 num_outbound_streams;
+>  	__be16 num_inbound_streams;
+>  	__be32 initial_tsn;
+> -	__u8  params[0];
+> +	__u8  params[];
+>  };
+>  
+>  struct sctp_init_chunk {
+> @@ -299,13 +299,13 @@ struct sctp_cookie_preserve_param {
+>  /* Section 3.3.2.1 Host Name Address (11) */
+>  struct sctp_hostname_param {
+>  	struct sctp_paramhdr param_hdr;
+> -	uint8_t hostname[0];
+> +	uint8_t hostname[];
+>  };
+>  
+>  /* Section 3.3.2.1 Supported Address Types (12) */
+>  struct sctp_supported_addrs_param {
+>  	struct sctp_paramhdr param_hdr;
+> -	__be16 types[0];
+> +	__be16 types[];
+>  };
+>  
+>  /* ADDIP Section 3.2.6 Adaptation Layer Indication */
+> @@ -317,25 +317,25 @@ struct sctp_adaptation_ind_param {
+>  /* ADDIP Section 4.2.7 Supported Extensions Parameter */
+>  struct sctp_supported_ext_param {
+>  	struct sctp_paramhdr param_hdr;
+> -	__u8 chunks[0];
+> +	__u8 chunks[];
+>  };
+>  
+>  /* AUTH Section 3.1 Random */
+>  struct sctp_random_param {
+>  	struct sctp_paramhdr param_hdr;
+> -	__u8 random_val[0];
+> +	__u8 random_val[];
+>  };
+>  
+>  /* AUTH Section 3.2 Chunk List */
+>  struct sctp_chunks_param {
+>  	struct sctp_paramhdr param_hdr;
+> -	__u8 chunks[0];
+> +	__u8 chunks[];
+>  };
+>  
+>  /* AUTH Section 3.3 HMAC Algorithm */
+>  struct sctp_hmac_algo_param {
+>  	struct sctp_paramhdr param_hdr;
+> -	__be16 hmac_ids[0];
+> +	__be16 hmac_ids[];
+>  };
+>  
+>  /* RFC 2960.  Section 3.3.3 Initiation Acknowledgement (INIT ACK) (2):
+> @@ -350,7 +350,7 @@ struct sctp_initack_chunk {
+>  /* Section 3.3.3.1 State Cookie (7) */
+>  struct sctp_cookie_param {
+>  	struct sctp_paramhdr p;
+> -	__u8 body[0];
+> +	__u8 body[];
+>  };
+>  
+>  /* Section 3.3.3.1 Unrecognized Parameters (8) */
+> @@ -384,7 +384,7 @@ struct sctp_sackhdr {
+>  	__be32 a_rwnd;
+>  	__be16 num_gap_ack_blocks;
+>  	__be16 num_dup_tsns;
+> -	union sctp_sack_variable variable[0];
+> +	union sctp_sack_variable variable[];
+>  };
+>  
+>  struct sctp_sack_chunk {
+> @@ -436,7 +436,7 @@ struct sctp_shutdown_chunk {
+>  struct sctp_errhdr {
+>  	__be16 cause;
+>  	__be16 length;
+> -	__u8  variable[0];
+> +	__u8  variable[];
+>  };
+>  
+>  struct sctp_operr_chunk {
+> @@ -594,7 +594,7 @@ struct sctp_fwdtsn_skip {
+>  
+>  struct sctp_fwdtsn_hdr {
+>  	__be32 new_cum_tsn;
+> -	struct sctp_fwdtsn_skip skip[0];
+> +	struct sctp_fwdtsn_skip skip[];
+>  };
+>  
+>  struct sctp_fwdtsn_chunk {
+> @@ -611,7 +611,7 @@ struct sctp_ifwdtsn_skip {
+>  
+>  struct sctp_ifwdtsn_hdr {
+>  	__be32 new_cum_tsn;
+> -	struct sctp_ifwdtsn_skip skip[0];
+> +	struct sctp_ifwdtsn_skip skip[];
+>  };
+>  
+>  struct sctp_ifwdtsn_chunk {
+> @@ -658,7 +658,7 @@ struct sctp_addip_param {
+>  
+>  struct sctp_addiphdr {
+>  	__be32	serial;
+> -	__u8	params[0];
+> +	__u8	params[];
+>  };
+>  
+>  struct sctp_addip_chunk {
+> @@ -718,7 +718,7 @@ struct sctp_addip_chunk {
+>  struct sctp_authhdr {
+>  	__be16 shkey_id;
+>  	__be16 hmac_id;
+> -	__u8   hmac[0];
+> +	__u8   hmac[];
+>  };
+>  
+>  struct sctp_auth_chunk {
+> @@ -733,7 +733,7 @@ struct sctp_infox {
+>  
+>  struct sctp_reconf_chunk {
+>  	struct sctp_chunkhdr chunk_hdr;
+> -	__u8 params[0];
+> +	__u8 params[];
+>  };
+>  
+>  struct sctp_strreset_outreq {
+> @@ -741,13 +741,13 @@ struct sctp_strreset_outreq {
+>  	__be32 request_seq;
+>  	__be32 response_seq;
+>  	__be32 send_reset_at_tsn;
+> -	__be16 list_of_streams[0];
+> +	__be16 list_of_streams[];
+>  };
+>  
+>  struct sctp_strreset_inreq {
+>  	struct sctp_paramhdr param_hdr;
+>  	__be32 request_seq;
+> -	__be16 list_of_streams[0];
+> +	__be16 list_of_streams[];
+>  };
+>  
+>  struct sctp_strreset_tsnreq {
+> 
+> 
+Acked-by: Neil Horman <nhorman@redhat.com>
