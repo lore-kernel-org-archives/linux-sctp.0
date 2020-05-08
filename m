@@ -1,33 +1,28 @@
-From: ashwin-h <ashwinh@vmware.com>
-Date: Wed, 06 May 2020 06:47:34 +0000
-Subject: [PATCH 0/2] Backport to 4.19 - sctp: fully support memory accounting
-Message-Id: <cover.1588242081.git.ashwinh@vmware.com>
+From: Ashwin H <ashwinh@vmware.com>
+Date: Fri, 08 May 2020 17:24:40 +0000
+Subject: Re: [PATCH 0/2] Backport to 4.19 - sctp: fully support memory accounting
+Message-Id: <F958DF99-EF43-4522-87AC-55C24ED93D4F@vmware.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200506064703.GA2273049@kroah.com>
-In-Reply-To: <20200506064703.GA2273049@kroah.com>
+References: <cover.1588242081.git.ashwinh@vmware.com>
+In-Reply-To: <cover.1588242081.git.ashwinh@vmware.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vyasevich@gmail.com, nhorman@tuxdriver.com
-Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, srivatsab@vmware.com, srivatsa@csail.mit.edu, rostedt@goodmis.org, srostedt@vmware.com, gregkh@linuxfoundation.org, ashwin.hiranniah@gmail.com, ashwin-h <ashwinh@vmware.com>
+To: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "davem@davemloft.net" <davem@davemloft.net>
 
-Backport below upstream commits to 4.19 to address CVE-2019-3874.
-1033990ac5b2ab6cee93734cb6d301aa3a35bcaa
-sctp: implement memory accounting on tx path
-
-9dde27de3e5efa0d032f3c891a0ca833a0d31911
-sctp: implement memory accounting on rx path
-
-Xin Long (2):
-  sctp: implement memory accounting on tx path
-  sctp: implement memory accounting on rx path
-
- include/net/sctp/sctp.h |  2 +-
- net/sctp/sm_statefuns.c |  6 ++++--
- net/sctp/socket.c       | 10 ++++++++--
- net/sctp/ulpevent.c     | 19 ++++++++-----------
- net/sctp/ulpqueue.c     |  3 ++-
- 5 files changed, 23 insertions(+), 17 deletions(-)
-
--- 
-2.7.4
+SGkgRGF2aWQsDQoNCkNvdWxkIHlvdSBwbGVhc2UgbGV0IG1lIGtub3cgd2h5IHRoaXMgaXMgbm90
+IGFwcGxpY2FibGUgdG8gNC4xOSA/DQoNClRoYW5rcywNCkFzaHdpbg0KDQrvu79PbiAwNi8wNS8y
+MCwgMTI6MDIgUE0sICJhc2h3aW4taCIgPGFzaHdpbmhAdm13YXJlLmNvbT4gd3JvdGU6DQoNCiAg
+ICBCYWNrcG9ydCBiZWxvdyB1cHN0cmVhbSBjb21taXRzIHRvIDQuMTkgdG8gYWRkcmVzcyBDVkUt
+MjAxOS0zODc0Lg0KICAgIDEwMzM5OTBhYzViMmFiNmNlZTkzNzM0Y2I2ZDMwMWFhM2EzNWJjYWEN
+CiAgICBzY3RwOiBpbXBsZW1lbnQgbWVtb3J5IGFjY291bnRpbmcgb24gdHggcGF0aA0KICAgIA0K
+ICAgIDlkZGUyN2RlM2U1ZWZhMGQwMzJmM2M4OTFhMGNhODMzYTBkMzE5MTENCiAgICBzY3RwOiBp
+bXBsZW1lbnQgbWVtb3J5IGFjY291bnRpbmcgb24gcnggcGF0aA0KICAgIA0KICAgIFhpbiBMb25n
+ICgyKToNCiAgICAgIHNjdHA6IGltcGxlbWVudCBtZW1vcnkgYWNjb3VudGluZyBvbiB0eCBwYXRo
+DQogICAgICBzY3RwOiBpbXBsZW1lbnQgbWVtb3J5IGFjY291bnRpbmcgb24gcnggcGF0aA0KICAg
+IA0KICAgICBpbmNsdWRlL25ldC9zY3RwL3NjdHAuaCB8ICAyICstDQogICAgIG5ldC9zY3RwL3Nt
+X3N0YXRlZnVucy5jIHwgIDYgKysrKy0tDQogICAgIG5ldC9zY3RwL3NvY2tldC5jICAgICAgIHwg
+MTAgKysrKysrKystLQ0KICAgICBuZXQvc2N0cC91bHBldmVudC5jICAgICB8IDE5ICsrKysrKysr
+LS0tLS0tLS0tLS0NCiAgICAgbmV0L3NjdHAvdWxwcXVldWUuYyAgICAgfCAgMyArKy0NCiAgICAg
+NSBmaWxlcyBjaGFuZ2VkLCAyMyBpbnNlcnRpb25zKCspLCAxNyBkZWxldGlvbnMoLSkNCiAgICAN
+CiAgICAtLSANCiAgICAyLjcuNA0KICAgIA0KICAgIA0KDQo
