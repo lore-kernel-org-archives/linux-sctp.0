@@ -1,28 +1,23 @@
-From: Ashwin H <ashwinh@vmware.com>
-Date: Fri, 08 May 2020 17:24:40 +0000
+From: David Miller <davem@davemloft.net>
+Date: Fri, 08 May 2020 23:23:02 +0000
 Subject: Re: [PATCH 0/2] Backport to 4.19 - sctp: fully support memory accounting
-Message-Id: <F958DF99-EF43-4522-87AC-55C24ED93D4F@vmware.com>
+Message-Id: <20200508.162302.1254541876589538843.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1588242081.git.ashwinh@vmware.com>
-In-Reply-To: <cover.1588242081.git.ashwinh@vmware.com>
+        <F958DF99-EF43-4522-87AC-55C24ED93D4F@vmware.com>
+In-Reply-To: <F958DF99-EF43-4522-87AC-55C24ED93D4F@vmware.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "davem@davemloft.net" <davem@davemloft.net>
+To: ashwinh@vmware.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org
 
-SGkgRGF2aWQsDQoNCkNvdWxkIHlvdSBwbGVhc2UgbGV0IG1lIGtub3cgd2h5IHRoaXMgaXMgbm90
-IGFwcGxpY2FibGUgdG8gNC4xOSA/DQoNClRoYW5rcywNCkFzaHdpbg0KDQrvu79PbiAwNi8wNS8y
-MCwgMTI6MDIgUE0sICJhc2h3aW4taCIgPGFzaHdpbmhAdm13YXJlLmNvbT4gd3JvdGU6DQoNCiAg
-ICBCYWNrcG9ydCBiZWxvdyB1cHN0cmVhbSBjb21taXRzIHRvIDQuMTkgdG8gYWRkcmVzcyBDVkUt
-MjAxOS0zODc0Lg0KICAgIDEwMzM5OTBhYzViMmFiNmNlZTkzNzM0Y2I2ZDMwMWFhM2EzNWJjYWEN
-CiAgICBzY3RwOiBpbXBsZW1lbnQgbWVtb3J5IGFjY291bnRpbmcgb24gdHggcGF0aA0KICAgIA0K
-ICAgIDlkZGUyN2RlM2U1ZWZhMGQwMzJmM2M4OTFhMGNhODMzYTBkMzE5MTENCiAgICBzY3RwOiBp
-bXBsZW1lbnQgbWVtb3J5IGFjY291bnRpbmcgb24gcnggcGF0aA0KICAgIA0KICAgIFhpbiBMb25n
-ICgyKToNCiAgICAgIHNjdHA6IGltcGxlbWVudCBtZW1vcnkgYWNjb3VudGluZyBvbiB0eCBwYXRo
-DQogICAgICBzY3RwOiBpbXBsZW1lbnQgbWVtb3J5IGFjY291bnRpbmcgb24gcnggcGF0aA0KICAg
-IA0KICAgICBpbmNsdWRlL25ldC9zY3RwL3NjdHAuaCB8ICAyICstDQogICAgIG5ldC9zY3RwL3Nt
-X3N0YXRlZnVucy5jIHwgIDYgKysrKy0tDQogICAgIG5ldC9zY3RwL3NvY2tldC5jICAgICAgIHwg
-MTAgKysrKysrKystLQ0KICAgICBuZXQvc2N0cC91bHBldmVudC5jICAgICB8IDE5ICsrKysrKysr
-LS0tLS0tLS0tLS0NCiAgICAgbmV0L3NjdHAvdWxwcXVldWUuYyAgICAgfCAgMyArKy0NCiAgICAg
-NSBmaWxlcyBjaGFuZ2VkLCAyMyBpbnNlcnRpb25zKCspLCAxNyBkZWxldGlvbnMoLSkNCiAgICAN
-CiAgICAtLSANCiAgICAyLjcuNA0KICAgIA0KICAgIA0KDQo
+From: Ashwin H <ashwinh@vmware.com>
+Date: Fri, 8 May 2020 17:24:40 +0000
+
+> Could you please let me know why this is not applicable to 4.19 ?
+
+No, I cannot.  I only handle the most recent two -stable releases, and
+4.19 is beyond that.
+
+Thank you.
