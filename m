@@ -1,91 +1,13 @@
-From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 21 May 2020 17:47:04 +0000
-Subject: [PATCH 29/49] sctp: pass a kernel pointer to sctp_setsockopt_deactivate_key
-Message-Id: <20200521174724.2635475-30-hch@lst.de>
+From: Barbara D Wilkins <endrigo.lsantos@itanhaem.sp.gov.br>
+Date: Sat, 09 May 2020 01:18:14 +0000
+Subject: 
+Message-Id: <438058138.987501.1588987094452.JavaMail.zimbra@itanhaem.sp.gov.br>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200521174724.2635475-1-hch@lst.de>
-In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: linux-sctp@vger.kernel.org
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- net/sctp/socket.c | 28 +++++++++++++---------------
- 1 file changed, 13 insertions(+), 15 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index a664e9eb323fb..1631760e4b0af 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3746,42 +3746,40 @@ static int sctp_setsockopt_del_key(struct sock *sk,
-  *
-  * This set option will deactivate a shared secret key.
-  */
--static int sctp_setsockopt_deactivate_key(struct sock *sk, char __user *optval,
-+static int sctp_setsockopt_deactivate_key(struct sock *sk,
-+					  struct sctp_authkeyid *val,
- 					  unsigned int optlen)
- {
- 	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
- 	struct sctp_association *asoc;
--	struct sctp_authkeyid val;
- 	int ret = 0;
- 
- 	if (optlen != sizeof(struct sctp_authkeyid))
- 		return -EINVAL;
--	if (copy_from_user(&val, optval, optlen))
--		return -EFAULT;
- 
--	asoc = sctp_id2assoc(sk, val.scact_assoc_id);
--	if (!asoc && val.scact_assoc_id > SCTP_ALL_ASSOC &&
-+	asoc = sctp_id2assoc(sk, val->scact_assoc_id);
-+	if (!asoc && val->scact_assoc_id > SCTP_ALL_ASSOC &&
- 	    sctp_style(sk, UDP))
- 		return -EINVAL;
- 
- 	if (asoc)
--		return sctp_auth_deact_key_id(ep, asoc, val.scact_keynumber);
-+		return sctp_auth_deact_key_id(ep, asoc, val->scact_keynumber);
- 
- 	if (sctp_style(sk, TCP))
--		val.scact_assoc_id = SCTP_FUTURE_ASSOC;
-+		val->scact_assoc_id = SCTP_FUTURE_ASSOC;
- 
--	if (val.scact_assoc_id = SCTP_FUTURE_ASSOC ||
--	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
--		ret = sctp_auth_deact_key_id(ep, asoc, val.scact_keynumber);
-+	if (val->scact_assoc_id = SCTP_FUTURE_ASSOC ||
-+	    val->scact_assoc_id = SCTP_ALL_ASSOC) {
-+		ret = sctp_auth_deact_key_id(ep, asoc, val->scact_keynumber);
- 		if (ret)
- 			return ret;
- 	}
- 
--	if (val.scact_assoc_id = SCTP_CURRENT_ASSOC ||
--	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
-+	if (val->scact_assoc_id = SCTP_CURRENT_ASSOC ||
-+	    val->scact_assoc_id = SCTP_ALL_ASSOC) {
- 		list_for_each_entry(asoc, &ep->asocs, asocs) {
- 			int res = sctp_auth_deact_key_id(ep, asoc,
--							 val.scact_keynumber);
-+							 val->scact_keynumber);
- 
- 			if (res && !ret)
- 				ret = res;
-@@ -4685,7 +4683,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_del_key(sk, kopt, optlen);
- 		break;
- 	case SCTP_AUTH_DEACTIVATE_KEY:
--		retval = sctp_setsockopt_deactivate_key(sk, optval, optlen);
-+		retval = sctp_setsockopt_deactivate_key(sk, kopt, optlen);
- 		break;
- 	case SCTP_AUTO_ASCONF:
- 		retval = sctp_setsockopt_auto_asconf(sk, optval, optlen);
--- 
-2.26.2
+Hallo,          Wir sind eine christliche Organisation, die gegründet wurde, um Menschen zu helfen, die Hilfe benötigen, beispielsweise finanzielle Hilfe. Wenn Sie also finanzielle Schwierigkeiten haben oder sich in einem finanziellen Chaos befinden und Geld benötigen, um Ihr eigenes Unternehmen zu gründen, oder wenn Sie einen Kredit benötigen Begleichen Sie Ihre Schulden oder zahlen Sie Ihre Rechnungen ab, gründen Sie ein gutes Geschäft oder es fällt Ihnen schwer, einen Kapitalkredit von lokalen Banken zu erhalten. Kontaktieren Sie uns noch heute per E-Mail:  Lassen Sie sich diese Gelegenheit also nicht entgehen weil Jesus gestern, heute und für immer derselbe ist. Bitte, diese sind für ernsthafte und gottesfürchtige Menschen.Dein Name:Darlehensbetrag:Leihdauer:Gültige Handynummer:Vielen Dank für Ihr Verständnis für Ihren Kontakt, während wir warten: mrsbarbarawilkinsfunds.usagmail.comGrüßeVerwaltung
