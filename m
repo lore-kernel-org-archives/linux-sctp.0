@@ -1,64 +1,89 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 21 May 2020 17:46:44 +0000
-Subject: [PATCH 09/49] sctp: pass a kernel pointer to sctp_setsockopt_partial_delivery_point
-Message-Id: <20200521174724.2635475-10-hch@lst.de>
+Date: Wed, 13 May 2020 06:26:40 +0000
+Subject: [PATCH 25/33] ipv6: add ip6_sock_set_recvpktinfo
+Message-Id: <20200513062649.2100053-26-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200521174724.2635475-1-hch@lst.de>
-In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
+References: <20200513062649.2100053-1-hch@lst.de>
+In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Eric Dumazet <edumazet@google.com>, linux-nvme@lists.infradead.org, linux-sctp@vger.kernel.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, rds-devel@oss.oracle.com, linux-rdma@vger.kernel.org, cluster-devel@redhat.com, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, linux-block@vger.kernel.org, drbd-dev@tron.linbit.com, ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, linux-kernel@vger.kernel.org, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, ocfs2-devel@oss.oracle.com
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
+Add a helper to directly set the IPV6_RECVPKTINFO sockopt from kernel
+space without going through a fake uaccess.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 13 ++++---------
- 1 file changed, 4 insertions(+), 9 deletions(-)
+ include/net/ipv6.h       |  1 +
+ net/ipv6/ipv6_sockglue.c |  8 ++++++++
+ net/sunrpc/svcsock.c     | 11 +++--------
+ 3 files changed, 12 insertions(+), 8 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 3763f124f9fea..6dd6b0cfcfe03 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3484,24 +3484,19 @@ static int sctp_setsockopt_fragment_interleave(struct sock *sk,
-  * call as long as the user provided buffer is large enough to hold the
-  * message.
-  */
--static int sctp_setsockopt_partial_delivery_point(struct sock *sk,
--						  char __user *optval,
-+static int sctp_setsockopt_partial_delivery_point(struct sock *sk, u32 *val,
- 						  unsigned int optlen)
- {
--	u32 val;
--
- 	if (optlen != sizeof(u32))
- 		return -EINVAL;
--	if (get_user(val, (int __user *)optval))
--		return -EFAULT;
+diff --git a/include/net/ipv6.h b/include/net/ipv6.h
+index 04b2bc1935054..170872bc4e960 100644
+--- a/include/net/ipv6.h
++++ b/include/net/ipv6.h
+@@ -1178,5 +1178,6 @@ int ipv6_sock_mc_drop(struct sock *sk, int ifindex,
+ int ip6_sock_set_v6only(struct sock *sk, bool val);
+ void ip6_sock_set_recverr(struct sock *sk, bool val);
+ int ip6_sock_set_addr_preferences(struct sock *sk, bool val);
++void ip6_sock_set_recvpktinfo(struct sock *sk, bool val);
  
- 	/* Note: We double the receive buffer from what the user sets
- 	 * it to be, also initial rwnd is based on rcvbuf/2.
- 	 */
--	if (val > (sk->sk_rcvbuf >> 1))
-+	if (*val > (sk->sk_rcvbuf >> 1))
- 		return -EINVAL;
- 
--	sctp_sk(sk)->pd_point = val;
-+	sctp_sk(sk)->pd_point = *val;
- 
- 	return 0; /* is this the right error code? */
+ #endif /* _NET_IPV6_H */
+diff --git a/net/ipv6/ipv6_sockglue.c b/net/ipv6/ipv6_sockglue.c
+index c23d42e809d7e..d60adb018d71c 100644
+--- a/net/ipv6/ipv6_sockglue.c
++++ b/net/ipv6/ipv6_sockglue.c
+@@ -225,6 +225,14 @@ int ip6_sock_set_addr_preferences(struct sock *sk, bool val)
  }
-@@ -4692,7 +4687,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_delayed_ack(sk, kopt, optlen);
- 		break;
- 	case SCTP_PARTIAL_DELIVERY_POINT:
--		retval = sctp_setsockopt_partial_delivery_point(sk, optval, optlen);
-+		retval = sctp_setsockopt_partial_delivery_point(sk, kopt, optlen);
- 		break;
+ EXPORT_SYMBOL(ip6_sock_set_addr_preferences);
  
- 	case SCTP_INITMSG:
++void ip6_sock_set_recvpktinfo(struct sock *sk, bool val)
++{
++	lock_sock(sk);
++	inet6_sk(sk)->rxopt.bits.rxinfo = val;
++	release_sock(sk);
++}
++EXPORT_SYMBOL(ip6_sock_set_recvpktinfo);
++
+ static int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
+ 		    char __user *optval, unsigned int optlen)
+ {
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 7fa7fedec3c5a..7cf8389b6f46f 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -595,8 +595,6 @@ static struct svc_xprt_class svc_udp_class = {
+ 
+ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
+ {
+-	int err, level, optname, one = 1;
+-
+ 	svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_udp_class,
+ 		      &svsk->sk_xprt, serv);
+ 	clear_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
+@@ -617,17 +615,14 @@ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
+ 	switch (svsk->sk_sk->sk_family) {
+ 	case AF_INET:
+ 		ip_sock_set_pktinfo(svsk->sk_sock->sk, true);
+-		return;
++		break;
+ 	case AF_INET6:
+-		level = SOL_IPV6;
+-		optname = IPV6_RECVPKTINFO;
++		if (IS_REACHABLE(CONFIG_IPV6))
++			ip6_sock_set_recvpktinfo(svsk->sk_sock->sk, true);
+ 		break;
+ 	default:
+ 		BUG();
+ 	}
+-	err = kernel_setsockopt(svsk->sk_sock, level, optname,
+-					(char *)&one, sizeof(one));
+-	dprintk("svc: kernel_setsockopt returned %d\n", err);
+ }
+ 
+ /*
 -- 
 2.26.2
