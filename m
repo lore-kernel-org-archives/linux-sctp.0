@@ -1,89 +1,27 @@
-From: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
-Date: Thu, 21 May 2020 16:45:04 +0000
-Subject: Re: [PATCH net-next] sctp: Pull the user copies out of the individual sockopt functions.
-Message-Id: <20200521164504.GA47547@localhost.localdomain>
+From: Christoph Hellwig <hch@lst.de>
+Date: Wed, 13 May 2020 06:26:15 +0000
+Subject: remove kernel_setsockopt and kernel_getsockopt
+Message-Id: <20200513062649.2100053-1-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <fd94b5e41a7c4edc8f743c56a04ed2c9@AcuMS.aculab.com>
- <20200521153729.GB74252@localhost.localdomain>
- <a681d1dc056a412bba24b9b4cde37785@AcuMS.aculab.com>
-In-Reply-To: <a681d1dc056a412bba24b9b4cde37785@AcuMS.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@aculab.com>
-Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, Christoph Hellwig <hch@lst.de>
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
+Cc: Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com, linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
 
-On Thu, May 21, 2020 at 04:09:15PM +0000, David Laight wrote:
-> From: 'Marcelo Ricardo Leitner'
-> > Sent: 21 May 2020 16:37
-> > On Wed, May 20, 2020 at 03:08:13PM +0000, David Laight wrote:
-> ...
-> > > Only SCTP_SOCKOPT_CONNECTX3 contains an indirect pointer.
-> > > It is also the only getsockopt() that wants to return a buffer
-> > > and an error code. It is also definitely abusing getsockopt().
-> > 
-> > It should have been a linear buffer. The secondary __user access is
-> > way worse than having the application to do another allocation. But
-> > too late..
-> 
-> I think that is SCTP_SOCKOPT_CONNECTX ?
+Hi Dave,
 
-Right :-)
+this series removes the kernel_setsockopt and kernel_getsockopt
+functions, and instead switches their users to small functions that
+implement setting (or in one case getting) a sockopt directly using
+a normal kernel function call with type safety and all the other
+benefits of not having a function call.
 
-...
-> > > +	if (optlen < sizeof (param_buf)) {
-> > > +		if (copy_from_user(&param_buf, u_optval, optlen))
-> > > +			return -EFAULT;
-> > > +		optval = param_buf;
-> > > +	} else {
-> > > +		if (optlen > USHRT_MAX)
-> > > +			optlen = USHRT_MAX;
-> > 
-> > There are functions that can work with and expect buffers larger than
-> > that, such as sctp_setsockopt_auth_key:
-> 
-> I'd assumed the maximums were silly.
-> But a few more than 64k is enough, the lengths are in bytes.
-> OTOH 128k is a nice round limit - and plenty AFAICT.
+In some cases these functions seem pretty heavy handed as they do
+a lock_sock even for just setting a single variable, but this mirrors
+the real setsockopt implementation - counter to that a few kernel
+drivers just set the fields directly already.
 
-LGTM too.
+Nevertheless the diffstat looks quite promising:
 
-> 
-> ...
-> > > +	if (len < sizeof (param_buf)) {
-> > > +		/* Zero first bytes to stop KASAN complaining. */
-> > > +		param_buf[0] = 0;
-> > > +		if (copy_from_user(&param_buf, u_optval, len))
-> > > +			return -EFAULT;
-> > > +		optval = param_buf;
-> > > +	} else {
-> > > +		if (len > USHRT_MAX)
-> > > +			len = USHRT_MAX;
-> > 
-> > This limit is not present today for sctp_getsockopt_local_addrs()
-> > calls (there may be others).  As is, it will limit it and may mean
-> > that it can't dump all addresses.  We have discussed this and didn't
-> > come to a conclusion on what is a safe limit to use here, at least not
-> > on that time.
-> 
-> It needs some limit. memdup_user() might limit at 32MB.
-> I couldn't decide is some of the allocators limit it further.
-> In any case an IPv6 address is what? under 128 bytes.
-> 64k is 512 address, things are going to explode elsewhere first.
-
-If it does, we probably can fix that too.
-
-> 
-> I didn't see 'get' requests that did 64k + a bit.
-> 
-> It should be possible to loop using a larger kernel buffer if the
-> data won't fit.
-> Doable as a later patch to avoid complications.
-
-Sounds complicated. 128k should be more than enough here as well.
-sctp_getsockopt_local_addrs() will adjust the output to fit on the
-buffer. Point being, with enough buffer, it will support the limits
-the RFC states, and if the user supplies a smaller buffer, it will
-dump what it can. If the user pass a larger buffer, it doesn't need
-it, and it's safe to ignore the rest of the buffer (as the patch is
-doing here). I didn't check the other functions now, though.
+ 42 files changed, 721 insertions(+), 799 deletions(-)
