@@ -1,72 +1,118 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Wed, 20 May 2020 19:55:00 +0000
-Subject: [PATCH 24/33] ipv4: add ip_sock_set_pktinfo
-Message-Id: <20200520195509.2215098-25-hch@lst.de>
+Date: Wed, 13 May 2020 06:26:22 +0000
+Subject: [PATCH 07/33] net: add sock_set_keepalive
+Message-Id: <20200513062649.2100053-8-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200520195509.2215098-1-hch@lst.de>
-In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
+References: <20200513062649.2100053-1-hch@lst.de>
+In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
-Cc: Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com, linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
+Cc: Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com, linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
 
-Add a helper to directly set the IP_PKTINFO sockopt from kernel
-space without going through a fake uaccess.
+Add a helper to directly set the SO_KEEPALIVE sockopt from kernel space
+without going through a fake uaccess.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/net/ip.h       | 1 +
- net/ipv4/ip_sockglue.c | 8 ++++++++
- net/sunrpc/svcsock.c   | 5 ++---
- 3 files changed, 11 insertions(+), 3 deletions(-)
+ fs/dlm/lowcomms.c     |  6 +-----
+ include/net/sock.h    |  1 +
+ net/core/sock.c       | 10 ++++++++++
+ net/rds/tcp_listen.c  |  6 +-----
+ net/sunrpc/xprtsock.c |  4 +---
+ 5 files changed, 14 insertions(+), 13 deletions(-)
 
-diff --git a/include/net/ip.h b/include/net/ip.h
-index d3649c49dd333..04ebe7bf54c6a 100644
---- a/include/net/ip.h
-+++ b/include/net/ip.h
-@@ -767,6 +767,7 @@ static inline bool inetdev_valid_mtu(unsigned int mtu)
+diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
+index 0c0a6413fdfcc..16d616c180613 100644
+--- a/fs/dlm/lowcomms.c
++++ b/fs/dlm/lowcomms.c
+@@ -1259,11 +1259,7 @@ static struct socket *tcp_create_listen_sock(struct connection *con,
+ 		con->sock = NULL;
+ 		goto create_out;
+ 	}
+-	result = kernel_setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE,
+-				 (char *)&one, sizeof(one));
+-	if (result < 0) {
+-		log_print("Set keepalive failed: %d", result);
+-	}
++	sock_set_keepalive(sock->sk, true);
  
- void ip_sock_set_freebind(struct sock *sk);
- int ip_sock_set_mtu_discover(struct sock *sk, int val);
-+void ip_sock_set_pktinfo(struct sock *sk);
- void ip_sock_set_recverr(struct sock *sk);
- void ip_sock_set_tos(struct sock *sk, int val);
+ 	result = sock->ops->listen(sock, 5);
+ 	if (result < 0) {
+diff --git a/include/net/sock.h b/include/net/sock.h
+index cf8a30e0168de..4cedde585424f 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -2691,6 +2691,7 @@ void sock_set_reuseaddr(struct sock *sk, unsigned char reuse);
+ void sock_set_linger(struct sock *sk, bool onoff, unsigned int linger);
+ void sock_set_priority(struct sock *sk, u32 priority);
+ void sock_set_sndtimeo(struct sock *sk, unsigned int secs);
++void sock_set_keepalive(struct sock *sk, bool keepalive);
+ int sock_bindtoindex(struct sock *sk, int ifindex);
+ void sock_set_timestamps(struct sock *sk, bool val, bool new, bool ns);
  
-diff --git a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
-index a3c46ec95a756..55fd4794a7975 100644
---- a/net/ipv4/ip_sockglue.c
-+++ b/net/ipv4/ip_sockglue.c
-@@ -608,6 +608,14 @@ int ip_sock_set_mtu_discover(struct sock *sk, int val)
+diff --git a/net/core/sock.c b/net/core/sock.c
+index 1589f242ecc7e..dfd2b839f88bb 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -794,6 +794,16 @@ void sock_set_timestamps(struct sock *sk, bool val, bool new, bool ns)
  }
- EXPORT_SYMBOL(ip_sock_set_mtu_discover);
+ EXPORT_SYMBOL(sock_set_timestamps);
  
-+void ip_sock_set_pktinfo(struct sock *sk)
++void sock_set_keepalive(struct sock *sk, bool keepalive)
 +{
 +	lock_sock(sk);
-+	inet_sk(sk)->cmsg_flags |= IP_CMSG_PKTINFO;
++	if (sk->sk_prot->keepalive)
++		sk->sk_prot->keepalive(sk, keepalive);
++	sock_valbool_flag(sk, SOCK_KEEPOPEN, keepalive);
 +	release_sock(sk);
 +}
-+EXPORT_SYMBOL(ip_sock_set_pktinfo);
++EXPORT_SYMBOL(sock_set_keepalive);
 +
  /*
-  *	Socket option code for IP. This is the end of the line after any
-  *	TCP,UDP etc options on an IP socket.
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 6773dacc64d8e..7a805d165689c 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -616,9 +616,8 @@ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
- 	/* make sure we get destination address info */
- 	switch (svsk->sk_sk->sk_family) {
- 	case AF_INET:
--		level = SOL_IP;
--		optname = IP_PKTINFO;
--		break;
-+		ip_sock_set_pktinfo(svsk->sk_sock->sk);
-+		return;
- 	case AF_INET6:
- 		level = SOL_IPV6;
- 		optname = IPV6_RECVPKTINFO;
+  *	This is meant for all protocols to use and covers goings on
+  *	at the socket level. Everything here is generic.
+diff --git a/net/rds/tcp_listen.c b/net/rds/tcp_listen.c
+index 96f7538e5fa8d..a55b39cd45a6c 100644
+--- a/net/rds/tcp_listen.c
++++ b/net/rds/tcp_listen.c
+@@ -43,13 +43,9 @@ int rds_tcp_keepalive(struct socket *sock)
+ 	/* values below based on xs_udp_default_timeout */
+ 	int keepidle = 5; /* send a probe 'keepidle' secs after last data */
+ 	int keepcnt = 5; /* number of unack'ed probes before declaring dead */
+-	int keepalive = 1;
+ 	int ret = 0;
+ 
+-	ret = kernel_setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE,
+-				(char *)&keepalive, sizeof(keepalive));
+-	if (ret < 0)
+-		goto bail;
++	sock_set_keepalive(sock->sk, true);
+ 
+ 	ret = kernel_setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT,
+ 				(char *)&keepcnt, sizeof(keepcnt));
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 845d0be805ece..bb61d3758be2b 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2110,7 +2110,6 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+ 	unsigned int keepidle;
+ 	unsigned int keepcnt;
+-	unsigned int opt_on = 1;
+ 	unsigned int timeo;
+ 
+ 	spin_lock(&xprt->transport_lock);
+@@ -2122,8 +2121,7 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
+ 	spin_unlock(&xprt->transport_lock);
+ 
+ 	/* TCP Keepalive options */
+-	kernel_setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE,
+-			(char *)&opt_on, sizeof(opt_on));
++	sock_set_keepalive(sock->sk, 1);
+ 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPIDLE,
+ 			(char *)&keepidle, sizeof(keepidle));
+ 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPINTVL,
 -- 
 2.26.2
