@@ -1,90 +1,81 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 21 May 2020 17:47:02 +0000
-Subject: [PATCH 27/49] sctp: pass a kernel pointer to sctp_setsockopt_active_key
-Message-Id: <20200521174724.2635475-28-hch@lst.de>
+Date: Wed, 13 May 2020 06:26:48 +0000
+Subject: [PATCH 33/33] net: remove kernel_getsockopt
+Message-Id: <20200513062649.2100053-34-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200521174724.2635475-1-hch@lst.de>
-In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
+References: <20200513062649.2100053-1-hch@lst.de>
+In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Eric Dumazet <edumazet@google.com>, linux-nvme@lists.infradead.org, linux-sctp@vger.kernel.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, rds-devel@oss.oracle.com, linux-rdma@vger.kernel.org, cluster-devel@redhat.com, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, linux-block@vger.kernel.org, drbd-dev@tron.linbit.com, ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, linux-kernel@vger.kernel.org, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, ocfs2-devel@oss.oracle.com
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
+No users left.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 27 ++++++++++++---------------
- 1 file changed, 12 insertions(+), 15 deletions(-)
+ include/linux/net.h |  2 --
+ net/socket.c        | 34 ----------------------------------
+ 2 files changed, 36 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index d3442dcd49aa8..88514a17654a7 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3651,42 +3651,39 @@ static int sctp_setsockopt_auth_key(struct sock *sk,
-  * the association shared key.
-  */
- static int sctp_setsockopt_active_key(struct sock *sk,
--				      char __user *optval,
-+				      struct sctp_authkeyid *val,
- 				      unsigned int optlen)
- {
- 	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
- 	struct sctp_association *asoc;
--	struct sctp_authkeyid val;
- 	int ret = 0;
+diff --git a/include/linux/net.h b/include/linux/net.h
+index ece7513326293..e10f378194a59 100644
+--- a/include/linux/net.h
++++ b/include/linux/net.h
+@@ -303,8 +303,6 @@ int kernel_connect(struct socket *sock, struct sockaddr *addr, int addrlen,
+ 		   int flags);
+ int kernel_getsockname(struct socket *sock, struct sockaddr *addr);
+ int kernel_getpeername(struct socket *sock, struct sockaddr *addr);
+-int kernel_getsockopt(struct socket *sock, int level, int optname, char *optval,
+-		      int *optlen);
+ int kernel_sendpage(struct socket *sock, struct page *page, int offset,
+ 		    size_t size, int flags);
+ int kernel_sendpage_locked(struct sock *sk, struct page *page, int offset,
+diff --git a/net/socket.c b/net/socket.c
+index f37c3ef508691..49000f0d87f71 100644
+--- a/net/socket.c
++++ b/net/socket.c
+@@ -3715,40 +3715,6 @@ int kernel_getpeername(struct socket *sock, struct sockaddr *addr)
+ }
+ EXPORT_SYMBOL(kernel_getpeername);
  
- 	if (optlen != sizeof(struct sctp_authkeyid))
- 		return -EINVAL;
--	if (copy_from_user(&val, optval, optlen))
--		return -EFAULT;
- 
--	asoc = sctp_id2assoc(sk, val.scact_assoc_id);
--	if (!asoc && val.scact_assoc_id > SCTP_ALL_ASSOC &&
-+	asoc = sctp_id2assoc(sk, val->scact_assoc_id);
-+	if (!asoc && val->scact_assoc_id > SCTP_ALL_ASSOC &&
- 	    sctp_style(sk, UDP))
- 		return -EINVAL;
- 
- 	if (asoc)
--		return sctp_auth_set_active_key(ep, asoc, val.scact_keynumber);
-+		return sctp_auth_set_active_key(ep, asoc, val->scact_keynumber);
- 
- 	if (sctp_style(sk, TCP))
--		val.scact_assoc_id = SCTP_FUTURE_ASSOC;
-+		val->scact_assoc_id = SCTP_FUTURE_ASSOC;
- 
--	if (val.scact_assoc_id = SCTP_FUTURE_ASSOC ||
--	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
--		ret = sctp_auth_set_active_key(ep, asoc, val.scact_keynumber);
-+	if (val->scact_assoc_id = SCTP_FUTURE_ASSOC ||
-+	    val->scact_assoc_id = SCTP_ALL_ASSOC) {
-+		ret = sctp_auth_set_active_key(ep, asoc, val->scact_keynumber);
- 		if (ret)
- 			return ret;
- 	}
- 
--	if (val.scact_assoc_id = SCTP_CURRENT_ASSOC ||
--	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
-+	if (val->scact_assoc_id = SCTP_CURRENT_ASSOC ||
-+	    val->scact_assoc_id = SCTP_ALL_ASSOC) {
- 		list_for_each_entry(asoc, &ep->asocs, asocs) {
- 			int res = sctp_auth_set_active_key(ep, asoc,
--							   val.scact_keynumber);
-+							   val->scact_keynumber);
- 
- 			if (res && !ret)
- 				ret = res;
-@@ -4685,7 +4682,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_auth_key(sk, kopt, optlen);
- 		break;
- 	case SCTP_AUTH_ACTIVE_KEY:
--		retval = sctp_setsockopt_active_key(sk, optval, optlen);
-+		retval = sctp_setsockopt_active_key(sk, kopt, optlen);
- 		break;
- 	case SCTP_AUTH_DELETE_KEY:
- 		retval = sctp_setsockopt_del_key(sk, optval, optlen);
+-/**
+- *	kernel_getsockopt - get a socket option (kernel space)
+- *	@sock: socket
+- *	@level: API level (SOL_SOCKET, ...)
+- *	@optname: option tag
+- *	@optval: option value
+- *	@optlen: option length
+- *
+- *	Assigns the option length to @optlen.
+- *	Returns 0 or an error.
+- */
+-
+-int kernel_getsockopt(struct socket *sock, int level, int optname,
+-			char *optval, int *optlen)
+-{
+-	mm_segment_t oldfs = get_fs();
+-	char __user *uoptval;
+-	int __user *uoptlen;
+-	int err;
+-
+-	uoptval = (char __user __force *) optval;
+-	uoptlen = (int __user __force *) optlen;
+-
+-	set_fs(KERNEL_DS);
+-	if (level = SOL_SOCKET)
+-		err = sock_getsockopt(sock, level, optname, uoptval, uoptlen);
+-	else
+-		err = sock->ops->getsockopt(sock, level, optname, uoptval,
+-					    uoptlen);
+-	set_fs(oldfs);
+-	return err;
+-}
+-EXPORT_SYMBOL(kernel_getsockopt);
+-
+ /**
+  *	kernel_sendpage - send a &page through a socket (kernel space)
+  *	@sock: socket
 -- 
 2.26.2
