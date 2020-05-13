@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Wed, 13 May 2020 06:26:46 +0000
-Subject: [PATCH 31/33] net: remove kernel_setsockopt
-Message-Id: <20200513062649.2100053-32-hch@lst.de>
+Date: Wed, 13 May 2020 06:26:41 +0000
+Subject: [PATCH 26/33] sctp: lift copying in addrs into sctp_setsockopt
+Message-Id: <20200513062649.2100053-27-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200513062649.2100053-1-hch@lst.de>
 In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
@@ -9,70 +9,176 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
-Cc: Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com, linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Eric Dumazet <edumazet@google.com>, linux-nvme@lists.infradead.org, linux-sctp@vger.kernel.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, rds-devel@oss.oracle.com, linux-rdma@vger.kernel.org, cluster-devel@redhat.com, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, linux-block@vger.kernel.org, drbd-dev@tron.linbit.com, ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, linux-kernel@vger.kernel.org, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, ocfs2-devel@oss.oracle.com
 
-No users left.
+Prepare for additional kernel-space callers of sctp_setsockopt_bindx.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/net.h |  2 --
- net/socket.c        | 31 -------------------------------
- 2 files changed, 33 deletions(-)
+ net/sctp/socket.c | 71 ++++++++++++++++++-----------------------------
+ 1 file changed, 27 insertions(+), 44 deletions(-)
 
-diff --git a/include/linux/net.h b/include/linux/net.h
-index 6451425e828f5..ece7513326293 100644
---- a/include/linux/net.h
-+++ b/include/linux/net.h
-@@ -305,8 +305,6 @@ int kernel_getsockname(struct socket *sock, struct sockaddr *addr);
- int kernel_getpeername(struct socket *sock, struct sockaddr *addr);
- int kernel_getsockopt(struct socket *sock, int level, int optname, char *optval,
- 		      int *optlen);
--int kernel_setsockopt(struct socket *sock, int level, int optname, char *optval,
--		      unsigned int optlen);
- int kernel_sendpage(struct socket *sock, struct page *page, int offset,
- 		    size_t size, int flags);
- int kernel_sendpage_locked(struct sock *sk, struct page *page, int offset,
-diff --git a/net/socket.c b/net/socket.c
-index 1c9a7260a41de..f37c3ef508691 100644
---- a/net/socket.c
-+++ b/net/socket.c
-@@ -3749,37 +3749,6 @@ int kernel_getsockopt(struct socket *sock, int level, int optname,
- }
- EXPORT_SYMBOL(kernel_getsockopt);
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 827a9903ee288..1c96b52c4aa28 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -972,18 +972,16 @@ int sctp_asconf_mgmt(struct sctp_sock *sp, struct sctp_sockaddr_entry *addrw)
+  * it.
+  *
+  * sk        The sk of the socket
+- * addrs     The pointer to the addresses in user land
++ * addrs     The pointer to the addresses
+  * addrssize Size of the addrs buffer
+  * op        Operation to perform (add or remove, see the flags of
+  *           sctp_bindx)
+  *
+  * Returns 0 if ok, <0 errno code on error.
+  */
+-static int sctp_setsockopt_bindx(struct sock *sk,
+-				 struct sockaddr __user *addrs,
++static int sctp_setsockopt_bindx(struct sock *sk, struct sockaddr *kaddrs,
+ 				 int addrs_size, int op)
+ {
+-	struct sockaddr *kaddrs;
+ 	int err;
+ 	int addrcnt = 0;
+ 	int walk_size = 0;
+@@ -991,23 +989,13 @@ static int sctp_setsockopt_bindx(struct sock *sk,
+ 	void *addr_buf;
+ 	struct sctp_af *af;
  
--/**
-- *	kernel_setsockopt - set a socket option (kernel space)
-- *	@sock: socket
-- *	@level: API level (SOL_SOCKET, ...)
-- *	@optname: option tag
-- *	@optval: option value
-- *	@optlen: option length
-- *
-- *	Returns 0 or an error.
-- */
+-	pr_debug("%s: sk:%p addrs:%p addrs_size:%d opt:%d\n",
+-		 __func__, sk, addrs, addrs_size, op);
 -
--int kernel_setsockopt(struct socket *sock, int level, int optname,
--			char *optval, unsigned int optlen)
--{
--	mm_segment_t oldfs = get_fs();
--	char __user *uoptval;
--	int err;
+-	if (unlikely(addrs_size <= 0))
+-		return -EINVAL;
++	pr_debug("%s: sk:%p kaddrs:%p addrs_size:%d opt:%d\n",
++		 __func__, sk, kaddrs, addrs_size, op);
+ 
+-	kaddrs = memdup_user(addrs, addrs_size);
+-	if (IS_ERR(kaddrs))
+-		return PTR_ERR(kaddrs);
 -
--	uoptval = (char __user __force *) optval;
+-	/* Walk through the addrs buffer and count the number of addresses. */
+ 	addr_buf = kaddrs;
+ 	while (walk_size < addrs_size) {
+-		if (walk_size + sizeof(sa_family_t) > addrs_size) {
+-			kfree(kaddrs);
++		if (walk_size + sizeof(sa_family_t) > addrs_size)
+ 			return -EINVAL;
+-		}
+ 
+ 		sa_addr = addr_buf;
+ 		af = sctp_get_af_specific(sa_addr->sa_family);
+@@ -1015,10 +1003,8 @@ static int sctp_setsockopt_bindx(struct sock *sk,
+ 		/* If the address family is not supported or if this address
+ 		 * causes the address buffer to overflow return EINVAL.
+ 		 */
+-		if (!af || (walk_size + af->sockaddr_len) > addrs_size) {
+-			kfree(kaddrs);
++		if (!af || (walk_size + af->sockaddr_len) > addrs_size)
+ 			return -EINVAL;
+-		}
+ 		addrcnt++;
+ 		addr_buf += af->sockaddr_len;
+ 		walk_size += af->sockaddr_len;
+@@ -1032,29 +1018,19 @@ static int sctp_setsockopt_bindx(struct sock *sk,
+ 						 (struct sockaddr *)kaddrs,
+ 						 addrs_size);
+ 		if (err)
+-			goto out;
++			return err;
+ 		err = sctp_bindx_add(sk, kaddrs, addrcnt);
+ 		if (err)
+-			goto out;
+-		err = sctp_send_asconf_add_ip(sk, kaddrs, addrcnt);
+-		break;
 -
--	set_fs(KERNEL_DS);
--	if (level = SOL_SOCKET)
--		err = sock_setsockopt(sock, level, optname, uoptval, optlen);
--	else
--		err = sock->ops->setsockopt(sock, level, optname, uoptval,
--					    optlen);
--	set_fs(oldfs);
++			return err;
++		return sctp_send_asconf_add_ip(sk, kaddrs, addrcnt);
+ 	case SCTP_BINDX_REM_ADDR:
+ 		err = sctp_bindx_rem(sk, kaddrs, addrcnt);
+ 		if (err)
+-			goto out;
+-		err = sctp_send_asconf_del_ip(sk, kaddrs, addrcnt);
+-		break;
+-
++			return err;
++		return sctp_send_asconf_del_ip(sk, kaddrs, addrcnt);
+ 	default:
+-		err = -EINVAL;
+-		break;
++		return -EINVAL;
+ 	}
+-
+-out:
+-	kfree(kaddrs);
+-
 -	return err;
--}
--EXPORT_SYMBOL(kernel_setsockopt);
+ }
+ 
+ static int sctp_connect_new_asoc(struct sctp_endpoint *ep,
+@@ -4670,6 +4646,7 @@ static int sctp_setsockopt_pf_expose(struct sock *sk,
+ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 			   char __user *optval, unsigned int optlen)
+ {
++	struct sockaddr *kaddrs;
+ 	int retval = 0;
+ 
+ 	pr_debug("%s: sk:%p, optname:%d\n", __func__, sk, optname);
+@@ -4682,30 +4659,37 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 	 */
+ 	if (level != SOL_SCTP) {
+ 		struct sctp_af *af = sctp_sk(sk)->pf->af;
+-		retval = af->setsockopt(sk, level, optname, optval, optlen);
+-		goto out_nounlock;
++		return af->setsockopt(sk, level, optname, optval, optlen);
+ 	}
+ 
++	if (unlikely(optlen <= 0))
++		return -EINVAL;
++
++	kaddrs = memdup_user(optval, optlen);
++	if (IS_ERR(kaddrs))
++		return PTR_ERR(kaddrs);
++
++	/* Walk through the addrs buffer and count the number of addresses. */
++
+ 	lock_sock(sk);
+ 
+ 	switch (optname) {
+ 	case SCTP_SOCKOPT_BINDX_ADD:
+ 		/* 'optlen' is the size of the addresses buffer. */
+-		retval = sctp_setsockopt_bindx(sk, (struct sockaddr __user *)optval,
++		retval = sctp_setsockopt_bindx(sk, (struct sockaddr *)optval,
+ 					       optlen, SCTP_BINDX_ADD_ADDR);
+ 		break;
+ 
+ 	case SCTP_SOCKOPT_BINDX_REM:
+ 		/* 'optlen' is the size of the addresses buffer. */
+-		retval = sctp_setsockopt_bindx(sk, (struct sockaddr __user *)optval,
++		retval = sctp_setsockopt_bindx(sk, (struct sockaddr *)optval,
+ 					       optlen, SCTP_BINDX_REM_ADDR);
+ 		break;
+ 
+ 	case SCTP_SOCKOPT_CONNECTX_OLD:
+ 		/* 'optlen' is the size of the addresses buffer. */
+ 		retval = sctp_setsockopt_connectx_old(sk,
+-					    (struct sockaddr __user *)optval,
+-					    optlen);
++					    (struct sockaddr *)optval, optlen);
+ 		break;
+ 
+ 	case SCTP_SOCKOPT_CONNECTX:
+@@ -4871,8 +4855,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 	}
+ 
+ 	release_sock(sk);
 -
- /**
-  *	kernel_sendpage - send a &page through a socket (kernel space)
-  *	@sock: socket
+-out_nounlock:
++	kfree(kaddrs);
+ 	return retval;
+ }
+ 
 -- 
 2.26.2
