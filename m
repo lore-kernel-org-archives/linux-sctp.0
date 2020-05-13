@@ -1,62 +1,108 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Thu, 14 May 2020 13:27:46 +0000
-Subject: RE: [PATCH 32/33] sctp: add sctp_sock_get_primary_addr
-Message-Id: <aff8f5ec8d6d44dbace63825af197086@AcuMS.aculab.com>
+From: Christoph Hellwig <hch@lst.de>
+Date: Wed, 13 May 2020 06:26:45 +0000
+Subject: [PATCH 30/33] tipc: call tsk_set_importance from tipc_topsrv_create_listener
+Message-Id: <20200513062649.2100053-31-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200513062649.2100053-1-hch@lst.de>
- <20200513062649.2100053-33-hch@lst.de>
- <20200513180302.GC2491@localhost.localdomain>
- <d112e18bfbdd40dfb219ed2c1f2082d4@AcuMS.aculab.com>
- <c66e0309572345f5b0f32d078701f2d7@AcuMS.aculab.com>
-In-Reply-To: <c66e0309572345f5b0f32d078701f2d7@AcuMS.aculab.com>
+In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>, 'Christoph Hellwig' <hch@lst.de>
-Cc: "'David S. Miller'" <davem@davemloft.net>, 'Jakub Kicinski' <kuba@kernel.org>, 'Eric Dumazet' <edumazet@google.com>, 'Alexey Kuznetsov' <kuznet@ms2.inr.ac.ru>, 'Hideaki YOSHIFUJI' <yoshfuji@linux-ipv6.org>, 'Vlad Yasevich' <vyasevich@gmail.com>, 'Neil Horman' <nhorman@tuxdriver.com>, 'Jon Maloy' <jmaloy@redhat.com>, 'Ying Xue' <ying.xue@windriver.com>, "'drbd-dev@lists.linbit.com'" <drbd-dev@lists.linbit.com>, "'linux-block@vger.kernel.org'" <linux-block@vger.kernel.org>, "'linux-kernel@vger.kernel.org'" <linux-kernel@vger.kernel.org>, "'linux-rdma@vger.kernel.org'" <linux-rdma@vger.kernel.org>, "'linux-nvme@lists.infradead.org'" <linux-nvme@lists.infradead.org>, "'target-devel@vger.kernel.org'" <target-devel@vger.kernel.org>
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Eric Dumazet <edumazet@google.com>, linux-nvme@lists.infradead.org, linux-sctp@vger.kernel.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, rds-devel@oss.oracle.com, linux-rdma@vger.kernel.org, cluster-devel@redhat.com, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, linux-block@vger.kernel.org, drbd-dev@tron.linbit.com, ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, linux-kernel@vger.kernel.org, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, ocfs2-devel@oss.oracle.com
 
-From: David Laight
-> Sent: 14 May 2020 13:30
-> Subject: RE: [PATCH 32/33] sctp: add sctp_sock_get_primary_addr
-> 
-> From: David Laight
-> > Sent: 14 May 2020 10:51
-> > From: Marcelo Ricardo Leitner
-> > > Sent: 13 May 2020 19:03
-> > >
-> > > On Wed, May 13, 2020 at 08:26:47AM +0200, Christoph Hellwig wrote:
-> > > > Add a helper to directly get the SCTP_PRIMARY_ADDR sockopt from kernel
-> > > > space without going through a fake uaccess.
-> > >
-> > > Same comment as on the other dlm/sctp patch.
-> >
-> > Wouldn't it be best to write sctp_[gs]etsockotp() that
-> > use a kernel buffer and then implement the user-space
-> > calls using a wrapper that does the copies to an on-stack
-> > (or malloced if big) buffer.
-> 
-> Actually looking at __sys_setsockopt() it calls
-> BPF_CGROUP_RUN_PROG_SETSOCKOPT() which (by the look of it)
-> can copy the user buffer into malloc()ed memory and
-> cause set_fs(KERNEL_DS) be called.
-> 
-> The only way to get rid of that set_fs() is to always
-> have the buffer in kernel memory when the underlying
-> setsockopt() code is called.
+Avoid using kernel_setsockopt for the TIPC_IMPORTANCE option when we can
+just use the internal helper.  The only change needed is to pass a struct
+sock instead of tipc_sock, which is private to socket.c
 
-And having started to try coding __sys_setsockopt()
-and then found the compat code I suspect that would
-be a whole lot more sane if the buffer was in kernel
-and it knew that at least (say) 64 bytes were allocated.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ net/tipc/socket.c | 18 +++++++++---------
+ net/tipc/socket.h |  2 ++
+ net/tipc/topsrv.c |  6 +++---
+ 3 files changed, 14 insertions(+), 12 deletions(-)
 
-The whole compat_alloc_user_space() 'crap' could probably go.
-
-Actually it looks like an application can avoid whatever
-checks BPF_CGROUP_RUN_PROG_SETSOCKOPT() is trying to do
-by using the 32bit compat ioctls.
-
-	David
-
--
-Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-Registration No: 1397386 (Wales)
+diff --git a/net/tipc/socket.c b/net/tipc/socket.c
+index 87466607097f1..f2e10fbfb03df 100644
+--- a/net/tipc/socket.c
++++ b/net/tipc/socket.c
+@@ -191,17 +191,17 @@ static int tsk_importance(struct tipc_sock *tsk)
+ 	return msg_importance(&tsk->phdr);
+ }
+ 
+-static int tsk_set_importance(struct tipc_sock *tsk, int imp)
++static struct tipc_sock *tipc_sk(const struct sock *sk)
+ {
+-	if (imp > TIPC_CRITICAL_IMPORTANCE)
+-		return -EINVAL;
+-	msg_set_importance(&tsk->phdr, (u32)imp);
+-	return 0;
++	return container_of(sk, struct tipc_sock, sk);
+ }
+ 
+-static struct tipc_sock *tipc_sk(const struct sock *sk)
++int tsk_set_importance(struct sock *sk, int imp)
+ {
+-	return container_of(sk, struct tipc_sock, sk);
++	if (imp > TIPC_CRITICAL_IMPORTANCE)
++		return -EINVAL;
++	msg_set_importance(&tipc_sk(sk)->phdr, (u32)imp);
++	return 0;
+ }
+ 
+ static bool tsk_conn_cong(struct tipc_sock *tsk)
+@@ -2661,7 +2661,7 @@ static int tipc_accept(struct socket *sock, struct socket *new_sock, int flags,
+ 	/* Connect new socket to it's peer */
+ 	tipc_sk_finish_conn(new_tsock, msg_origport(msg), msg_orignode(msg));
+ 
+-	tsk_set_importance(new_tsock, msg_importance(msg));
++	tsk_set_importance(new_sk, msg_importance(msg));
+ 	if (msg_named(msg)) {
+ 		new_tsock->conn_type = msg_nametype(msg);
+ 		new_tsock->conn_instance = msg_nameinst(msg);
+@@ -3079,7 +3079,7 @@ static int tipc_setsockopt(struct socket *sock, int lvl, int opt,
+ 
+ 	switch (opt) {
+ 	case TIPC_IMPORTANCE:
+-		res = tsk_set_importance(tsk, value);
++		res = tsk_set_importance(sk, value);
+ 		break;
+ 	case TIPC_SRC_DROPPABLE:
+ 		if (sock->type != SOCK_STREAM)
+diff --git a/net/tipc/socket.h b/net/tipc/socket.h
+index 235b9679acee4..b11575afc66fe 100644
+--- a/net/tipc/socket.h
++++ b/net/tipc/socket.h
+@@ -75,4 +75,6 @@ u32 tipc_sock_get_portid(struct sock *sk);
+ bool tipc_sk_overlimit1(struct sock *sk, struct sk_buff *skb);
+ bool tipc_sk_overlimit2(struct sock *sk, struct sk_buff *skb);
+ 
++int tsk_set_importance(struct sock *sk, int imp);
++
+ #endif
+diff --git a/net/tipc/topsrv.c b/net/tipc/topsrv.c
+index 73dbed0c4b6b8..a0d50649f71c2 100644
+--- a/net/tipc/topsrv.c
++++ b/net/tipc/topsrv.c
+@@ -494,7 +494,6 @@ static void tipc_topsrv_listener_data_ready(struct sock *sk)
+ 
+ static int tipc_topsrv_create_listener(struct tipc_topsrv *srv)
+ {
+-	int imp = TIPC_CRITICAL_IMPORTANCE;
+ 	struct socket *lsock = NULL;
+ 	struct sockaddr_tipc saddr;
+ 	struct sock *sk;
+@@ -511,8 +510,9 @@ static int tipc_topsrv_create_listener(struct tipc_topsrv *srv)
+ 	sk->sk_user_data = srv;
+ 	write_unlock_bh(&sk->sk_callback_lock);
+ 
+-	rc = kernel_setsockopt(lsock, SOL_TIPC, TIPC_IMPORTANCE,
+-			       (char *)&imp, sizeof(imp));
++	lock_sock(sk);
++	rc = tsk_set_importance(sk, TIPC_CRITICAL_IMPORTANCE);
++	release_sock(sk);
+ 	if (rc < 0)
+ 		goto err;
+ 
+-- 
+2.26.2
