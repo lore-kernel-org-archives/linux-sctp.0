@@ -1,182 +1,88 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Wed, 20 May 2020 19:54:37 +0000
-Subject: [PATCH 01/33] dlm: use the tcp version of accept_from_sock for sctp as well
-Message-Id: <20200520195509.2215098-2-hch@lst.de>
+Date: Wed, 13 May 2020 06:26:19 +0000
+Subject: [PATCH 04/33] net: add sock_set_sndtimeo
+Message-Id: <20200513062649.2100053-5-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200520195509.2215098-1-hch@lst.de>
-In-Reply-To: <20200520195509.2215098-1-hch-jcswGhMUV9g@public.gmane.org>
+References: <20200513062649.2100053-1-hch@lst.de>
+In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, Jakub Kicinski <kuba-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Eric Dumazet <edumazet-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>, linux-nvme-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, target-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, rds-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Alexey Kuznetsov <kuznet-v/Mj1YrvjDBInbfyfbPRSQ@public.gmane.org>, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Neil Horman <nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org>, Hideaki YOSHIFUJI <yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org>, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Vlad Yasevich <vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Jon Maloy <jmaloy-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Ying Xue <ying.xue-CWA4WttNNZF54TAoqtyWWQ@public.gmane.org>, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
+Cc: Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com, linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
 
-The only difference between a few missing fixes applied to the SCTP
-one is that TCP uses ->getpeername to get the remote address, while
-SCTP uses kernel_getsockopt(.. SCTP_PRIMARY_ADDR).  But given that
-getpeername is defined to return the primary address for sctp, there
-doesn't seem to be any reason for the different way of quering the
-peername, or all the code duplication.
+Add a helper to directly set the SO_SNDTIMEO_NEW sockopt from kernel
+space without going through a fake uaccess.  The interface is
+simplified to only pass the seconds value, as that is the only
+thing needed at the moment.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/dlm/lowcomms.c | 123 ++--------------------------------------------
- 1 file changed, 3 insertions(+), 120 deletions(-)
+ fs/dlm/lowcomms.c  |  8 ++------
+ include/net/sock.h |  1 +
+ net/core/sock.c    | 11 +++++++++++
+ 3 files changed, 14 insertions(+), 6 deletions(-)
 
 diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
-index cdfaf4f0e11a0..f13dad0fd9ef3 100644
+index 48e7ba796c6fb..0c0a6413fdfcc 100644
 --- a/fs/dlm/lowcomms.c
 +++ b/fs/dlm/lowcomms.c
-@@ -724,7 +724,7 @@ static int receive_from_sock(struct connection *con)
- }
- 
- /* Listening socket is busy, accept a connection */
--static int tcp_accept_from_sock(struct connection *con)
-+static int accept_from_sock(struct connection *con)
- {
+@@ -1035,7 +1035,6 @@ static void sctp_connect_to_sock(struct connection *con)
  	int result;
- 	struct sockaddr_storage peeraddr;
-@@ -852,123 +852,6 @@ static int tcp_accept_from_sock(struct connection *con)
- 	return result;
+ 	int addr_len;
+ 	struct socket *sock;
+-	struct __kernel_sock_timeval tv = { .tv_sec = 5, .tv_usec = 0 };
+ 
+ 	if (con->nodeid = 0) {
+ 		log_print("attempt to connect sock 0 foiled");
+@@ -1087,13 +1086,10 @@ static void sctp_connect_to_sock(struct connection *con)
+ 	 * since O_NONBLOCK argument in connect() function does not work here,
+ 	 * then, we should restore the default value of this attribute.
+ 	 */
+-	kernel_setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO_NEW, (char *)&tv,
+-			  sizeof(tv));
++	sock_set_sndtimeo(sock->sk, 5);
+ 	result = sock->ops->connect(sock, (struct sockaddr *)&daddr, addr_len,
+ 				   0);
+-	memset(&tv, 0, sizeof(tv));
+-	kernel_setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO_NEW, (char *)&tv,
+-			  sizeof(tv));
++	sock_set_sndtimeo(sock->sk, 0);
+ 
+ 	if (result = -EINPROGRESS)
+ 		result = 0;
+diff --git a/include/net/sock.h b/include/net/sock.h
+index cce11782dc295..809596ffd32d2 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -2690,5 +2690,6 @@ void sock_def_readable(struct sock *sk);
+ void sock_set_reuseaddr(struct sock *sk, unsigned char reuse);
+ void sock_set_linger(struct sock *sk, bool onoff, unsigned int linger);
+ void sock_set_priority(struct sock *sk, u32 priority);
++void sock_set_sndtimeo(struct sock *sk, unsigned int secs);
+ 
+ #endif	/* _SOCK_H */
+diff --git a/net/core/sock.c b/net/core/sock.c
+index e9f1e2247b004..76527681e50b9 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -752,6 +752,17 @@ void sock_set_priority(struct sock *sk, u32 priority)
  }
+ EXPORT_SYMBOL(sock_set_priority);
  
--static int sctp_accept_from_sock(struct connection *con)
--{
--	/* Check that the new node is in the lockspace */
--	struct sctp_prim prim;
--	int nodeid;
--	int prim_len, ret;
--	int addr_len;
--	struct connection *newcon;
--	struct connection *addcon;
--	struct socket *newsock;
--
--	mutex_lock(&connections_lock);
--	if (!dlm_allow_conn) {
--		mutex_unlock(&connections_lock);
--		return -1;
--	}
--	mutex_unlock(&connections_lock);
--
--	mutex_lock_nested(&con->sock_mutex, 0);
--
--	ret = kernel_accept(con->sock, &newsock, O_NONBLOCK);
--	if (ret < 0)
--		goto accept_err;
--
--	memset(&prim, 0, sizeof(struct sctp_prim));
--	prim_len = sizeof(struct sctp_prim);
--
--	ret = kernel_getsockopt(newsock, IPPROTO_SCTP, SCTP_PRIMARY_ADDR,
--				(char *)&prim, &prim_len);
--	if (ret < 0) {
--		log_print("getsockopt/sctp_primary_addr failed: %d", ret);
--		goto accept_err;
--	}
--
--	make_sockaddr(&prim.ssp_addr, 0, &addr_len);
--	ret = addr_to_nodeid(&prim.ssp_addr, &nodeid);
--	if (ret) {
--		unsigned char *b = (unsigned char *)&prim.ssp_addr;
--
--		log_print("reject connect from unknown addr");
--		print_hex_dump_bytes("ss: ", DUMP_PREFIX_NONE,
--				     b, sizeof(struct sockaddr_storage));
--		goto accept_err;
--	}
--
--	newcon = nodeid2con(nodeid, GFP_NOFS);
--	if (!newcon) {
--		ret = -ENOMEM;
--		goto accept_err;
--	}
--
--	mutex_lock_nested(&newcon->sock_mutex, 1);
--
--	if (newcon->sock) {
--		struct connection *othercon = newcon->othercon;
--
--		if (!othercon) {
--			othercon = kmem_cache_zalloc(con_cache, GFP_NOFS);
--			if (!othercon) {
--				log_print("failed to allocate incoming socket");
--				mutex_unlock(&newcon->sock_mutex);
--				ret = -ENOMEM;
--				goto accept_err;
--			}
--			othercon->nodeid = nodeid;
--			othercon->rx_action = receive_from_sock;
--			mutex_init(&othercon->sock_mutex);
--			INIT_LIST_HEAD(&othercon->writequeue);
--			spin_lock_init(&othercon->writequeue_lock);
--			INIT_WORK(&othercon->swork, process_send_sockets);
--			INIT_WORK(&othercon->rwork, process_recv_sockets);
--			set_bit(CF_IS_OTHERCON, &othercon->flags);
--		}
--		mutex_lock_nested(&othercon->sock_mutex, 2);
--		if (!othercon->sock) {
--			newcon->othercon = othercon;
--			add_sock(newsock, othercon);
--			addcon = othercon;
--			mutex_unlock(&othercon->sock_mutex);
--		} else {
--			printk("Extra connection from node %d attempted\n", nodeid);
--			ret = -EAGAIN;
--			mutex_unlock(&othercon->sock_mutex);
--			mutex_unlock(&newcon->sock_mutex);
--			goto accept_err;
--		}
--	} else {
--		newcon->rx_action = receive_from_sock;
--		add_sock(newsock, newcon);
--		addcon = newcon;
--	}
--
--	log_print("connected to %d", nodeid);
--
--	mutex_unlock(&newcon->sock_mutex);
--
--	/*
--	 * Add it to the active queue in case we got data
--	 * between processing the accept adding the socket
--	 * to the read_sockets list
--	 */
--	if (!test_and_set_bit(CF_READ_PENDING, &addcon->flags))
--		queue_work(recv_workqueue, &addcon->rwork);
--	mutex_unlock(&con->sock_mutex);
--
--	return 0;
--
--accept_err:
--	mutex_unlock(&con->sock_mutex);
--	if (newsock)
--		sock_release(newsock);
--	if (ret != -EAGAIN)
--		log_print("error accepting connection from node: %d", ret);
--
--	return ret;
--}
--
- static void free_entry(struct writequeue_entry *e)
- {
- 	__free_page(e->page);
-@@ -1253,7 +1136,7 @@ static struct socket *tcp_create_listen_sock(struct connection *con,
- 	write_lock_bh(&sock->sk->sk_callback_lock);
- 	sock->sk->sk_user_data = con;
- 	save_listen_callbacks(sock);
--	con->rx_action = tcp_accept_from_sock;
-+	con->rx_action = accept_from_sock;
- 	con->connect_action = tcp_connect_to_sock;
- 	write_unlock_bh(&sock->sk->sk_callback_lock);
- 
-@@ -1340,7 +1223,7 @@ static int sctp_listen_for_all(void)
- 	save_listen_callbacks(sock);
- 	con->sock = sock;
- 	con->sock->sk->sk_data_ready = lowcomms_data_ready;
--	con->rx_action = sctp_accept_from_sock;
-+	con->rx_action = accept_from_sock;
- 	con->connect_action = sctp_connect_to_sock;
- 
- 	write_unlock_bh(&sock->sk->sk_callback_lock);
++void sock_set_sndtimeo(struct sock *sk, unsigned int secs)
++{
++	lock_sock(sk);
++	if (secs && secs < MAX_SCHEDULE_TIMEOUT / HZ - 1)
++		sk->sk_sndtimeo = secs * HZ;
++	else
++		sk->sk_sndtimeo = MAX_SCHEDULE_TIMEOUT;
++	release_sock(sk);
++}
++EXPORT_SYMBOL(sock_set_sndtimeo);
++
+ /*
+  *	This is meant for all protocols to use and covers goings on
+  *	at the socket level. Everything here is generic.
 -- 
 2.26.2
