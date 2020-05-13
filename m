@@ -1,213 +1,134 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Thu, 07 May 2020 20:04:33 +0000
-Subject: Re: [PATCH] sctp: Replace zero-length array with flexible-array
-Message-Id: <20200507200433.GA2838429@hmswarspite.think-freely.org>
+From: Christoph Hellwig <hch@lst.de>
+Date: Wed, 13 May 2020 06:26:32 +0000
+Subject: [PATCH 17/33] tcp: add tcp_sock_set_keepcnt
+Message-Id: <20200513062649.2100053-18-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200507192152.GA16230@embeddedor>
-In-Reply-To: <20200507192152.GA16230@embeddedor>
+References: <20200513062649.2100053-1-hch@lst.de>
+In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "Gustavo A. R. Silva" <gustavoars@kernel.org>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
+Cc: Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com, linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
 
-On Thu, May 07, 2020 at 02:21:52PM -0500, Gustavo A. R. Silva wrote:
-> The current codebase makes use of the zero-length array language
-> extension to the C90 standard, but the preferred mechanism to declare
-> variable-length types such as these ones is a flexible array member[1][2],
-> introduced in C99:
-> 
-> struct foo {
->         int stuff;
->         struct boo array[];
-> };
-> 
-> By making use of the mechanism above, we will get a compiler warning
-> in case the flexible array does not occur last in the structure, which
-> will help us prevent some kind of undefined behavior bugs from being
-> inadvertently introduced[3] to the codebase from now on.
-> 
-> Also, notice that, dynamic memory allocations won't be affected by
-> this change:
-> 
-> "Flexible array members have incomplete type, and so the sizeof operator
-> may not be applied. As a quirk of the original implementation of
-> zero-length arrays, sizeof evaluates to zero."[1]
-> 
-> sizeof(flexible-array-member) triggers a warning because flexible array
-> members have incomplete type[1]. There are some instances of code in
-> which the sizeof operator is being incorrectly/erroneously applied to
-> zero-length arrays and the result is zero. Such instances may be hiding
-> some bugs. So, this work (flexible-array member conversions) will also
-> help to get completely rid of those sorts of issues.
-> 
-> This issue was found with the help of Coccinelle.
-> 
-> [1] https://gcc.gnu.org/onlinedocs/gcc/Zero-Length.html
-> [2] https://github.com/KSPP/linux/issues/21
-> [3] commit 76497732932f ("cxgb3/l2t: Fix undefined behaviour")
-> 
-> Signed-off-by: Gustavo A. R. Silva <gustavoars@kernel.org>
-> ---
->  include/linux/sctp.h |   36 ++++++++++++++++++------------------
->  1 file changed, 18 insertions(+), 18 deletions(-)
-> 
-> diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-> index 8ccd82105de8..76731230bbc5 100644
-> --- a/include/linux/sctp.h
-> +++ b/include/linux/sctp.h
-> @@ -221,7 +221,7 @@ struct sctp_datahdr {
->  	__be16 stream;
->  	__be16 ssn;
->  	__u32 ppid;
-> -	__u8  payload[0];
-> +	__u8  payload[];
->  };
->  
->  struct sctp_data_chunk {
-> @@ -269,7 +269,7 @@ struct sctp_inithdr {
->  	__be16 num_outbound_streams;
->  	__be16 num_inbound_streams;
->  	__be32 initial_tsn;
-> -	__u8  params[0];
-> +	__u8  params[];
->  };
->  
->  struct sctp_init_chunk {
-> @@ -299,13 +299,13 @@ struct sctp_cookie_preserve_param {
->  /* Section 3.3.2.1 Host Name Address (11) */
->  struct sctp_hostname_param {
->  	struct sctp_paramhdr param_hdr;
-> -	uint8_t hostname[0];
-> +	uint8_t hostname[];
->  };
->  
->  /* Section 3.3.2.1 Supported Address Types (12) */
->  struct sctp_supported_addrs_param {
->  	struct sctp_paramhdr param_hdr;
-> -	__be16 types[0];
-> +	__be16 types[];
->  };
->  
->  /* ADDIP Section 3.2.6 Adaptation Layer Indication */
-> @@ -317,25 +317,25 @@ struct sctp_adaptation_ind_param {
->  /* ADDIP Section 4.2.7 Supported Extensions Parameter */
->  struct sctp_supported_ext_param {
->  	struct sctp_paramhdr param_hdr;
-> -	__u8 chunks[0];
-> +	__u8 chunks[];
->  };
->  
->  /* AUTH Section 3.1 Random */
->  struct sctp_random_param {
->  	struct sctp_paramhdr param_hdr;
-> -	__u8 random_val[0];
-> +	__u8 random_val[];
->  };
->  
->  /* AUTH Section 3.2 Chunk List */
->  struct sctp_chunks_param {
->  	struct sctp_paramhdr param_hdr;
-> -	__u8 chunks[0];
-> +	__u8 chunks[];
->  };
->  
->  /* AUTH Section 3.3 HMAC Algorithm */
->  struct sctp_hmac_algo_param {
->  	struct sctp_paramhdr param_hdr;
-> -	__be16 hmac_ids[0];
-> +	__be16 hmac_ids[];
->  };
->  
->  /* RFC 2960.  Section 3.3.3 Initiation Acknowledgement (INIT ACK) (2):
-> @@ -350,7 +350,7 @@ struct sctp_initack_chunk {
->  /* Section 3.3.3.1 State Cookie (7) */
->  struct sctp_cookie_param {
->  	struct sctp_paramhdr p;
-> -	__u8 body[0];
-> +	__u8 body[];
->  };
->  
->  /* Section 3.3.3.1 Unrecognized Parameters (8) */
-> @@ -384,7 +384,7 @@ struct sctp_sackhdr {
->  	__be32 a_rwnd;
->  	__be16 num_gap_ack_blocks;
->  	__be16 num_dup_tsns;
-> -	union sctp_sack_variable variable[0];
-> +	union sctp_sack_variable variable[];
->  };
->  
->  struct sctp_sack_chunk {
-> @@ -436,7 +436,7 @@ struct sctp_shutdown_chunk {
->  struct sctp_errhdr {
->  	__be16 cause;
->  	__be16 length;
-> -	__u8  variable[0];
-> +	__u8  variable[];
->  };
->  
->  struct sctp_operr_chunk {
-> @@ -594,7 +594,7 @@ struct sctp_fwdtsn_skip {
->  
->  struct sctp_fwdtsn_hdr {
->  	__be32 new_cum_tsn;
-> -	struct sctp_fwdtsn_skip skip[0];
-> +	struct sctp_fwdtsn_skip skip[];
->  };
->  
->  struct sctp_fwdtsn_chunk {
-> @@ -611,7 +611,7 @@ struct sctp_ifwdtsn_skip {
->  
->  struct sctp_ifwdtsn_hdr {
->  	__be32 new_cum_tsn;
-> -	struct sctp_ifwdtsn_skip skip[0];
-> +	struct sctp_ifwdtsn_skip skip[];
->  };
->  
->  struct sctp_ifwdtsn_chunk {
-> @@ -658,7 +658,7 @@ struct sctp_addip_param {
->  
->  struct sctp_addiphdr {
->  	__be32	serial;
-> -	__u8	params[0];
-> +	__u8	params[];
->  };
->  
->  struct sctp_addip_chunk {
-> @@ -718,7 +718,7 @@ struct sctp_addip_chunk {
->  struct sctp_authhdr {
->  	__be16 shkey_id;
->  	__be16 hmac_id;
-> -	__u8   hmac[0];
-> +	__u8   hmac[];
->  };
->  
->  struct sctp_auth_chunk {
-> @@ -733,7 +733,7 @@ struct sctp_infox {
->  
->  struct sctp_reconf_chunk {
->  	struct sctp_chunkhdr chunk_hdr;
-> -	__u8 params[0];
-> +	__u8 params[];
->  };
->  
->  struct sctp_strreset_outreq {
-> @@ -741,13 +741,13 @@ struct sctp_strreset_outreq {
->  	__be32 request_seq;
->  	__be32 response_seq;
->  	__be32 send_reset_at_tsn;
-> -	__be16 list_of_streams[0];
-> +	__be16 list_of_streams[];
->  };
->  
->  struct sctp_strreset_inreq {
->  	struct sctp_paramhdr param_hdr;
->  	__be32 request_seq;
-> -	__be16 list_of_streams[0];
-> +	__be16 list_of_streams[];
->  };
->  
->  struct sctp_strreset_tsnreq {
-> 
-> 
-Acked-by: Neil Horman <nhorman@redhat.com>
+Add a helper to directly set the TCP_KEEPCNT sockopt from kernel space
+without going through a fake uaccess.
+
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ include/linux/tcp.h   |  1 +
+ net/ipv4/tcp.c        | 12 ++++++++++++
+ net/rds/tcp.h         |  2 +-
+ net/rds/tcp_listen.c  | 17 +++--------------
+ net/sunrpc/xprtsock.c |  3 +--
+ 5 files changed, 18 insertions(+), 17 deletions(-)
+
+diff --git a/include/linux/tcp.h b/include/linux/tcp.h
+index dad18ca361c01..ff2aa165b5c02 100644
+--- a/include/linux/tcp.h
++++ b/include/linux/tcp.h
+@@ -501,5 +501,6 @@ int tcp_sock_set_syncnt(struct sock *sk, int val);
+ void tcp_sock_set_user_timeout(struct sock *sk, u32 val);
+ int tcp_sock_set_keepidle(struct sock *sk, int val);
+ int tcp_sock_set_keepintvl(struct sock *sk, int val);
++int tcp_sock_set_keepcnt(struct sock *sk, int val);
+ 
+ #endif	/* _LINUX_TCP_H */
+diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
+index b714f2b2fa54e..a0406df42ef39 100644
+--- a/net/ipv4/tcp.c
++++ b/net/ipv4/tcp.c
+@@ -2935,6 +2935,18 @@ int tcp_sock_set_keepintvl(struct sock *sk, int val)
+ }
+ EXPORT_SYMBOL(tcp_sock_set_keepintvl);
+ 
++int tcp_sock_set_keepcnt(struct sock *sk, int val)
++{
++	if (val < 1 || val > MAX_TCP_KEEPCNT)
++		return -EINVAL;
++
++	lock_sock(sk);
++	tcp_sk(sk)->keepalive_probes = val;
++	release_sock(sk);
++	return 0;
++}
++EXPORT_SYMBOL(tcp_sock_set_keepcnt);
++
+ /*
+  *	Socket option code for TCP.
+  */
+diff --git a/net/rds/tcp.h b/net/rds/tcp.h
+index 39ac666d09c6c..ae18568bce233 100644
+--- a/net/rds/tcp.h
++++ b/net/rds/tcp.h
+@@ -70,7 +70,7 @@ struct socket *rds_tcp_listen_init(struct net *net, bool isv6);
+ void rds_tcp_listen_stop(struct socket *sock, struct work_struct *acceptor);
+ void rds_tcp_listen_data_ready(struct sock *sk);
+ int rds_tcp_accept_one(struct socket *sock);
+-int rds_tcp_keepalive(struct socket *sock);
++void rds_tcp_keepalive(struct socket *sock);
+ void *rds_tcp_listen_sock_def_readable(struct net *net);
+ void rds_tcp_set_linger(struct socket *sock);
+ 
+diff --git a/net/rds/tcp_listen.c b/net/rds/tcp_listen.c
+index a5db2f8bb7339..f6d2b4c9f445a 100644
+--- a/net/rds/tcp_listen.c
++++ b/net/rds/tcp_listen.c
+@@ -38,27 +38,19 @@
+ #include "rds.h"
+ #include "tcp.h"
+ 
+-int rds_tcp_keepalive(struct socket *sock)
++void rds_tcp_keepalive(struct socket *sock)
+ {
+ 	/* values below based on xs_udp_default_timeout */
+ 	int keepidle = 5; /* send a probe 'keepidle' secs after last data */
+ 	int keepcnt = 5; /* number of unack'ed probes before declaring dead */
+-	int ret = 0;
+ 
+ 	sock_set_keepalive(sock->sk, true);
+-
+-	ret = kernel_setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT,
+-				(char *)&keepcnt, sizeof(keepcnt));
+-	if (ret < 0)
+-		goto bail;
+-
++	tcp_sock_set_keepcnt(sock->sk, keepcnt);
+ 	tcp_sock_set_keepidle(sock->sk, keepidle);
+ 	/* KEEPINTVL is the interval between successive probes. We follow
+ 	 * the model in xs_tcp_finish_connecting() and re-use keepidle.
+ 	 */
+ 	tcp_sock_set_keepintvl(sock->sk, keepidle);
+-bail:
+-	return ret;
+ }
+ 
+ /* rds_tcp_accept_one_path(): if accepting on cp_index > 0, make sure the
+@@ -145,10 +137,7 @@ int rds_tcp_accept_one(struct socket *sock)
+ 	new_sock->ops = sock->ops;
+ 	__module_get(new_sock->ops->owner);
+ 
+-	ret = rds_tcp_keepalive(new_sock);
+-	if (ret < 0)
+-		goto out;
+-
++	rds_tcp_keepalive(new_sock);
+ 	rds_tcp_tune(new_sock);
+ 
+ 	inet = inet_sk(new_sock->sk);
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index e20de4a52edb7..88aa198456858 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2109,8 +2109,7 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
+ 	sock_set_keepalive(sock->sk, 1);
+ 	tcp_sock_set_keepidle(sock->sk, keepidle);
+ 	tcp_sock_set_keepintvl(sock->sk, keepidle);
+-	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPCNT,
+-			(char *)&keepcnt, sizeof(keepcnt));
++	tcp_sock_set_keepcnt(sock->sk, keepcnt);
+ 
+ 	/* TCP user timeout (see RFC5482) */
+ 	tcp_sock_set_user_timeout(sock->sk, timeo);
+-- 
+2.26.2
