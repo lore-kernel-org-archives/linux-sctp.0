@@ -1,56 +1,79 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 21 May 2020 17:46:53 +0000
-Subject: [PATCH 18/49] sctp: pass a kernel pointer to sctp_setsockopt_mappedv4
-Message-Id: <20200521174724.2635475-19-hch@lst.de>
+Date: Wed, 13 May 2020 06:26:28 +0000
+Subject: [PATCH 13/33] tcp: add tcp_sock_set_syncnt
+Message-Id: <20200513062649.2100053-14-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200521174724.2635475-1-hch@lst.de>
-In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
+References: <20200513062649.2100053-1-hch@lst.de>
+In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
+Cc: Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com, linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
+Add a helper to directly set the TCP_SYNCNT sockopt from kernel space
+without going through a fake uaccess.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 10 ++++------
- 1 file changed, 4 insertions(+), 6 deletions(-)
+ drivers/nvme/host/tcp.c |  9 +--------
+ include/linux/tcp.h     |  1 +
+ net/ipv4/tcp.c          | 12 ++++++++++++
+ 3 files changed, 14 insertions(+), 8 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 161acd6253e06..41407d0ef2eca 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3170,16 +3170,14 @@ static int sctp_setsockopt_associnfo(struct sock *sk,
-  * addresses and a user will receive both PF_INET6 and PF_INET type
-  * addresses on the socket.
-  */
--static int sctp_setsockopt_mappedv4(struct sock *sk, char __user *optval, unsigned int optlen)
-+static int sctp_setsockopt_mappedv4(struct sock *sk, int *val,
-+				    unsigned int optlen)
- {
--	int val;
- 	struct sctp_sock *sp = sctp_sk(sk);
+diff --git a/drivers/nvme/host/tcp.c b/drivers/nvme/host/tcp.c
+index a8070f93fd0a0..8417eeb83fcd2 100644
+--- a/drivers/nvme/host/tcp.c
++++ b/drivers/nvme/host/tcp.c
+@@ -1336,14 +1336,7 @@ static int nvme_tcp_alloc_queue(struct nvme_ctrl *nctrl,
+ 	}
  
- 	if (optlen < sizeof(int))
- 		return -EINVAL;
--	if (get_user(val, (int __user *)optval))
--		return -EFAULT;
--	if (val)
-+	if (*val)
- 		sp->v4mapped = 1;
- 	else
- 		sp->v4mapped = 0;
-@@ -4693,7 +4691,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_associnfo(sk, kopt, optlen);
- 		break;
- 	case SCTP_I_WANT_MAPPED_V4_ADDR:
--		retval = sctp_setsockopt_mappedv4(sk, optval, optlen);
-+		retval = sctp_setsockopt_mappedv4(sk, kopt, optlen);
- 		break;
- 	case SCTP_MAXSEG:
- 		retval = sctp_setsockopt_maxseg(sk, optval, optlen);
+ 	/* Single syn retry */
+-	opt = 1;
+-	ret = kernel_setsockopt(queue->sock, IPPROTO_TCP, TCP_SYNCNT,
+-			(char *)&opt, sizeof(opt));
+-	if (ret) {
+-		dev_err(nctrl->device,
+-			"failed to set TCP_SYNCNT sock opt %d\n", ret);
+-		goto err_sock;
+-	}
++	tcp_sock_set_syncnt(queue->sock->sk, 1);
+ 
+ 	/* Set TCP no delay */
+ 	tcp_sock_set_nodelay(queue->sock->sk, true);
+diff --git a/include/linux/tcp.h b/include/linux/tcp.h
+index e7ab6da5111b5..77b832acf3398 100644
+--- a/include/linux/tcp.h
++++ b/include/linux/tcp.h
+@@ -497,5 +497,6 @@ int tcp_skb_shift(struct sk_buff *to, struct sk_buff *from, int pcount,
+ void tcp_sock_set_cork(struct sock *sk, bool on);
+ void tcp_sock_set_nodelay(struct sock *sk, bool on);
+ void tcp_sock_set_quickack(struct sock *sk, int val);
++int tcp_sock_set_syncnt(struct sock *sk, int val);
+ 
+ #endif	/* _LINUX_TCP_H */
+diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
+index c681f43f0bb85..773b5cd366ab7 100644
+--- a/net/ipv4/tcp.c
++++ b/net/ipv4/tcp.c
+@@ -2870,6 +2870,18 @@ void tcp_sock_set_quickack(struct sock *sk, int val)
+ }
+ EXPORT_SYMBOL(tcp_sock_set_quickack);
+ 
++int tcp_sock_set_syncnt(struct sock *sk, int val)
++{
++	if (val < 1 || val > MAX_TCP_SYNCNT)
++		return -EINVAL;
++
++	lock_sock(sk);
++	inet_csk(sk)->icsk_syn_retries = val;
++	release_sock(sk);
++	return 0;
++}
++EXPORT_SYMBOL(tcp_sock_set_syncnt);
++
+ /*
+  *	Socket option code for TCP.
+  */
 -- 
 2.26.2
