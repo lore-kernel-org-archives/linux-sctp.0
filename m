@@ -1,70 +1,23 @@
-From: Joe Perches <joe@perches.com>
-Date: Wed, 13 May 2020 21:00:43 +0000
+From: Christoph Hellwig <hch@lst.de>
+Date: Thu, 14 May 2020 10:30:25 +0000
 Subject: Re: [PATCH 20/33] ipv4: add ip_sock_set_recverr
-Message-Id: <0ee5acfaca4cf32d4efad162046b858981a4dae3.camel@perches.com>
+Message-Id: <20200514103025.GB12680@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200513062649.2100053-1-hch@lst.de>
-         <20200513062649.2100053-21-hch@lst.de>
-In-Reply-To: <20200513062649.2100053-21-hch@lst.de>
+References: <20200513062649.2100053-1-hch@lst.de> <20200513062649.2100053-21-hch@lst.de> <0ee5acfaca4cf32d4efad162046b858981a4dae3.camel@perches.com>
+In-Reply-To: <0ee5acfaca4cf32d4efad162046b858981a4dae3.camel@perches.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Christoph Hellwig <hch@lst.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
-Cc: Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com, linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
+To: Joe Perches <joe@perches.com>
+Cc: Christoph Hellwig <hch@lst.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com, linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, ceph-
 
-On Wed, 2020-05-13 at 08:26 +0200, Christoph Hellwig wrote:
-> Add a helper to directly set the IP_RECVERR sockopt from kernel space
-> without going through a fake uaccess.
+On Wed, May 13, 2020 at 02:00:43PM -0700, Joe Perches wrote:
+> On Wed, 2020-05-13 at 08:26 +0200, Christoph Hellwig wrote:
+> > Add a helper to directly set the IP_RECVERR sockopt from kernel space
+> > without going through a fake uaccess.
+> 
+> This seems used only with true as the second arg.
+> Is there reason to have that argument at all?
 
-This seems used only with true as the second arg.
-Is there reason to have that argument at all?
-
-> diff --git a/include/net/ip.h b/include/net/ip.h
-[]
-> @@ -767,5 +767,6 @@ static inline bool inetdev_valid_mtu(unsigned int mtu)
->  
->  void ip_sock_set_tos(struct sock *sk, int val);
->  void ip_sock_set_freebind(struct sock *sk, bool val);
-> +void ip_sock_set_recverr(struct sock *sk, bool val);
->  
->  #endif	/* _IP_H */
-> diff --git a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
-> index 0c40887a817f8..9abecc3195520 100644
-> --- a/net/ipv4/ip_sockglue.c
-> +++ b/net/ipv4/ip_sockglue.c
-> @@ -589,6 +589,16 @@ void ip_sock_set_freebind(struct sock *sk, bool val)
->  }
->  EXPORT_SYMBOL(ip_sock_set_freebind);
->  
-> +void ip_sock_set_recverr(struct sock *sk, bool val)
-> +{
-> +	lock_sock(sk);
-> +	inet_sk(sk)->recverr = val;
-> +	if (!val)
-> +		skb_queue_purge(&sk->sk_error_queue);
-> +	release_sock(sk);
-> +}
-> +EXPORT_SYMBOL(ip_sock_set_recverr);
-> +
->  /*
->   *	Socket option code for IP. This is the end of the line after any
->   *	TCP,UDP etc options on an IP socket.
-> diff --git a/net/rxrpc/local_object.c b/net/rxrpc/local_object.c
-> index 562ea36c96b0f..1b87b8a9ff725 100644
-> --- a/net/rxrpc/local_object.c
-> +++ b/net/rxrpc/local_object.c
-> @@ -171,13 +171,7 @@ static int rxrpc_open_socket(struct rxrpc_local *local, struct net *net)
->  		/* Fall through */
->  	case AF_INET:
->  		/* we want to receive ICMP errors */
-> -		opt = 1;
-> -		ret = kernel_setsockopt(local->socket, SOL_IP, IP_RECVERR,
-> -					(char *) &opt, sizeof(opt));
-> -		if (ret < 0) {
-> -			_debug("setsockopt failed");
-> -			goto error;
-> -		}
-> +		ip_sock_set_recverr(local->socket->sk, true);
->  
->  		/* we want to set the don't fragment bit */
->  		opt = IP_PMTUDISC_DO;
+Mostly to keep it symmetric with the sockopt.  I could probably remove
+a few arguments in the series if we want to be strict.
