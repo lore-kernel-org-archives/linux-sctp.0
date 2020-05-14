@@ -1,23 +1,26 @@
-From: David Howells <dhowells@redhat.com>
-Date: Wed, 13 May 2020 13:17:41 +0000
+From: Christoph Hellwig <hch@lst.de>
+Date: Thu, 14 May 2020 06:26:22 +0000
 Subject: Re: [PATCH 21/33] ipv4: add ip_sock_set_mtu_discover
-Message-Id: <3123898.1589375861@warthog.procyon.org.uk>
+Message-Id: <20200514062622.GA8564@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200513062649.2100053-22-hch@lst.de>
 	<20200513062649.2100053-1-hch@lst.de>
-In-Reply-To: <20200513062649.2100053-22-hch@lst.de>
+	<3123898.1589375861@warthog.procyon.org.uk>
+In-Reply-To: <3123898.1589375861-S6HVgzuS8uM4Awkfq6JHfwNdhmdF6hFW@public.gmane.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Christoph Hellwig <hch@lst.de>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, linux-nvme@lists.infradead.org, linux-kernel@vger.kernel.org, dhowells@redhat.com, linux-sctp@vger.kernel.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, rds-devel@oss.oracle.com, linux-rdma@vger.kernel.org, cluster-devel@redhat.com, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, linux-block@vger.kernel.org, Jakub Kicinski <kuba@kernel.org>, drbd-dev@tron.linbit.com, ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Eric Dumazet <edumazet@google.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, "David S. Miller" <davem@davemloft.net>, ocfs2-devel@oss.oracle.com
+To: David Howells <dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, linux-nvme-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, target-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, rds-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Alexey Kuznetsov <kuznet-v/Mj1YrvjDBInbfyfbPRSQ@public.gmane.org>, linux-block-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Jakub Kicinski <kuba-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Neil Horman <nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org>, Hideaki YOSHIFUJI <yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org>, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Vlad Yasevich <vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Eric Dumazet <edumazet-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>, Jon Maloy <jmaloy-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Ying Xue <ying.xue-CWA4WttNNZF54TAoqtyWWQ@public.gmane.org>, "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org
 
-Christoph Hellwig <hch@lst.de> wrote:
+On Wed, May 13, 2020 at 02:17:41PM +0100, David Howells wrote:
+> Christoph Hellwig <hch@lst.de> wrote:
+> 
+> > +		ip_sock_set_mtu_discover(conn->params.local->socket->sk,
+> > +				IP_PMTUDISC_DONT);
+> 
+> Um... The socket in question could be an AF_INET6 socket, not an AF_INET4
+> socket - I presume it will work in that case.  If so:
 
-> +		ip_sock_set_mtu_discover(conn->params.local->socket->sk,
-> +				IP_PMTUDISC_DONT);
-
-Um... The socket in question could be an AF_INET6 socket, not an AF_INET4
-socket - I presume it will work in that case.  If so:
-
-Reviewed-by: David Howells <dhowells@redhat.com> [rxrpc bits]
+Yes, the implementation of that sockopt, including the inet_sock
+structure where these options are set is shared between ipv4 and ipv6.
