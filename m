@@ -1,69 +1,27 @@
-From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 21 May 2020 17:47:11 +0000
-Subject: [PATCH 36/49] sctp: pass a kernel pointer to sctp_setsockopt_reconfig_supported
-Message-Id: <20200521174724.2635475-37-hch@lst.de>
+From: pedro hills <abhay@dvp24.com>
+Date: Mon, 18 May 2020 11:03:32 +0000
+Subject: (DONATION) $2 Million Has Been Donated
+Message-Id: <4f8b251c274cf8e27d8c41dd4ed99b52@dvp24.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200521174724.2635475-1-hch@lst.de>
-In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: linux-sctp@vger.kernel.org
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- net/sctp/socket.c | 18 ++++++------------
- 1 file changed, 6 insertions(+), 12 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 6136f863095ef..9173b1b80ee17 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3992,27 +3992,21 @@ static int sctp_setsockopt_default_prinfo(struct sock *sk,
- }
- 
- static int sctp_setsockopt_reconfig_supported(struct sock *sk,
--					      char __user *optval,
-+					      struct sctp_assoc_value *params,
- 					      unsigned int optlen)
- {
--	struct sctp_assoc_value params;
- 	struct sctp_association *asoc;
- 	int retval = -EINVAL;
- 
--	if (optlen != sizeof(params))
--		goto out;
--
--	if (copy_from_user(&params, optval, optlen)) {
--		retval = -EFAULT;
-+	if (optlen != sizeof(*params))
- 		goto out;
--	}
- 
--	asoc = sctp_id2assoc(sk, params.assoc_id);
--	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
-+	asoc = sctp_id2assoc(sk, params->assoc_id);
-+	if (!asoc && params->assoc_id != SCTP_FUTURE_ASSOC &&
- 	    sctp_style(sk, UDP))
- 		goto out;
- 
--	sctp_sk(sk)->ep->reconf_enable = !!params.assoc_value;
-+	sctp_sk(sk)->ep->reconf_enable = !!params->assoc_value;
- 
- 	retval = 0;
- 
-@@ -4684,7 +4678,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_default_prinfo(sk, kopt, optlen);
- 		break;
- 	case SCTP_RECONFIG_SUPPORTED:
--		retval = sctp_setsockopt_reconfig_supported(sk, optval, optlen);
-+		retval = sctp_setsockopt_reconfig_supported(sk, kopt, optlen);
- 		break;
- 	case SCTP_ENABLE_STREAM_RESET:
- 		retval = sctp_setsockopt_enable_strreset(sk, optval, optlen);
--- 
-2.26.2
+--=20
+$2 Million Has Been Donated To You,By PEDRO this is Real For More Info
+  Contact PEDRO immediately for your clame This Email:
+  pedrohills@outlook.es
+
+  Contact phone number +34632232897
+  Send Your Response To: pedrohills@outlook.es
+
+  2 Millionen US-Dollar wurden an Sie gespendet. Von PEDRO ist dies f=C3=BCr
+weitere Informationen real
+  Wenden Sie sich umgehend an PEDRO. Diese E-Mail:
+  pedrohills@outlook.es
+
+  Kontakttelefonnummer +34632232897
+  Senden Sie Ihre Antwort an: pedrohills@outlook.es
