@@ -1,7 +1,7 @@
-From: dunja.pasalic@srna.rs
-Date: Wed, 13 May 2020 21:39:37 +0000
+From: obchod@jakziskatpraci.cz
+Date: Mon, 18 May 2020 22:17:02 +0000
 Subject: Spende
-Message-Id: <20200513213838.E654046E1EE@mail.srna.rs>
+Message-Id: <20200518221714.B22854C1B46@mailserver.iluze.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200322175154.C1A7D403706@mail.hotelcitymb.si>
 In-Reply-To: <20200322175154.C1A7D403706@mail.hotelcitymb.si>
