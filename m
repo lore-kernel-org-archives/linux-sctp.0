@@ -1,39 +1,23 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Tue, 19 May 2020 20:43:22 +0000
+From: David Miller <davem@davemloft.net>
+Date: Tue, 19 May 2020 22:48:05 +0000
 Subject: Re: [PATCH] sctp: Don't add the shutdown timer if its already been added
-Message-Id: <20200519204322.GR2491@localhost.localdomain>
+Message-Id: <20200519.154805.2002435538113436383.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200519200405.857632-1-nhorman@tuxdriver.com>
 In-Reply-To: <20200519200405.857632-1-nhorman@tuxdriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, "David S. Miller" <davem@davemloft.net>, jere.leppanen@nokia.com, netdev@vger.kernel.org
+To: nhorman@tuxdriver.com
+Cc: linux-sctp@vger.kernel.org, vyasevich@gmail.com, jere.leppanen@nokia.com, marcelo.leitner@gmail.com, netdev@vger.kernel.org
 
-On Tue, May 19, 2020 at 04:04:05PM -0400, Neil Horman wrote:
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Tue, 19 May 2020 16:04:05 -0400
+
 > This BUG halt was reported a while back, but the patch somehow got
 > missed:
 > 
-> PID: 2879   TASK: c16adaa0  CPU: 1   COMMAND: "sctpn"
->  #0 [f418dd28] crash_kexec at c04a7d8c
->  #1 [f418dd7c] oops_end at c0863e02
->  #2 [f418dd90] do_invalid_op at c040aaca
->  #3 [f418de28] error_code (via invalid_op) at c08631a5
->     EAX: f34baac0  EBX: 00000090  ECX: f418deb0  EDX: f5542950  EBP: 00000000
->     DS:  007b      ESI: f34ba800  ES:  007b      EDI: f418dea0  GS:  00e0
->     CS:  0060      EIP: c046fa5e  ERR: ffffffff  EFLAGS: 00010286
->  #4 [f418de5c] add_timer at c046fa5e
->  #5 [f418de68] sctp_do_sm at f8db8c77 [sctp]
->  #6 [f418df30] sctp_primitive_SHUTDOWN at f8dcc1b5 [sctp]
->  #7 [f418df48] inet_shutdown at c080baf9
->  #8 [f418df5c] sys_shutdown at c079eedf
->  #9 [f418df70] sys_socketcall at c079fe88
->     EAX: ffffffda  EBX: 0000000d  ECX: bfceea90  EDX: 0937af98
->     DS:  007b      ESI: 0000000c  ES:  007b      EDI: b7150ae4
->     SS:  007b      ESP: bfceea7c  EBP: bfceeaa8  GS:  0033
->     CS:  0073      EIP: b775c424  ERR: 00000066  EFLAGS: 00000282
-> 
+ ...
 > It appears that the side effect that starts the shutdown timer was processed
 > multiple times, which can happen as multiple paths can trigger it.  This of
 > course leads to the BUG halt in add_timer getting called.
@@ -49,10 +33,5 @@ On Tue, May 19, 2020 at 04:04:05PM -0400, Neil Horman wrote:
 > issues
 > 
 > Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-> CC: Vlad Yasevich <vyasevich@gmail.com>
-> CC: "David S. Miller" <davem@davemloft.net>
-> CC: jere.leppanen@nokia.com
-> CC: marcelo.leitner@gmail.com
-> CC: netdev@vger.kernel.org
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Applied and queued up for -stable, thanks.
