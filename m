@@ -1,27 +1,76 @@
-From: Christoph Hellwig <hch@lst.de>
-Date: Wed, 20 May 2020 14:18:30 +0000
-Subject: Re: [PATCH 20/33] ipv4: add ip_sock_set_recverr
-Message-Id: <20200520141830.GA28867@lst.de>
+From: =?ISO-8859-15?Q?Jere_Lepp=E4nen?= <jere.leppanen@nokia.com>
+Date: Tue, 19 May 2020 08:51:23 +0000
+Subject: Re: [PATCHv2] sctp: Don't add the shutdown timer if its already been added
+Message-Id: <alpine.LFD.2.21.2005191146330.774972@sut4-server4-pub.sut-1.archcommon.nsn-rdnet.net>
+MIME-Version: 1
+Content-Type: multipart/mixed; boundary="352996365-948516143-1589878291=:774972"
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200513062649.2100053-1-hch@lst.de>
-	<20200513062649.2100053-21-hch@lst.de>
-	<0ee5acfaca4cf32d4efad162046b858981a4dae3.camel@perches.com>
-	<20200514103025.GB12680@lst.de>
-	<9992a1fe768a0b1e9bb9470d2728ba25dbe042db.camel@perches.com>
-In-Reply-To: <9992a1fe768a0b1e9bb9470d2728ba25dbe042db.camel-6d6DIl74uiNBDgjK7y7TUQ@public.gmane.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Joe Perches <joe-6d6DIl74uiNBDgjK7y7TUQ@public.gmane.org>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, linux-nvme-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, Eric Dumazet <edumazet-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>, target-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, rds-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Alexey Kuznetsov <kuznet-v/Mj1YrvjDBInbfyfbPRSQ@public.gmane.org>, linux-block-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Jakub Kicinski <kuba-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Neil Horman <nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org>, Hideaki YOSHIFUJI <yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org>, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Vlad Yasevich <vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Jon Maloy <jmaloy-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Ying Xue <ying.xue-CWA4WttNNZF54TAoqtyWWQ@public.gmane.org>, "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org
+References: <1458334046-26323-1-git-send-email-nhorman@tuxdriver.com>
+In-Reply-To: <1458334046-26323-1-git-send-email-nhorman@tuxdriver.com>
+To: linux-sctp@vger.kernel.org
 
-On Thu, May 14, 2020 at 04:51:26AM -0700, Joe Perches wrote:
-> > Mostly to keep it symmetric with the sockopt.  I could probably remove
-> > a few arguments in the series if we want to be strict.
-> 
-> My preference would use strict and add
-> arguments only when necessary.
+--352996365-948516143-1589878291=:774972
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-In a few cases that would create confusion as the arguments are rather
-overloaded.  But for a lot of the cases where it doesn't and there isn't
-really much use for other arguments I've done that now.
+On Thu, 30 Apr 2020, Marcelo Ricardo Leitner wrote:
+
+> On Wed, Apr 29, 2020 at 07:36:13AM -0400, Neil Horman wrote:
+> > This BUG halt was reported a while back, but the patch somehow got
+> > missed:
+> >=20
+> > PID: 2879   TASK: c16adaa0  CPU: 1   COMMAND: "sctpn"
+> >  #0 [f418dd28] crash_kexec at c04a7d8c
+> >  #1 [f418dd7c] oops_end at c0863e02
+> >  #2 [f418dd90] do_invalid_op at c040aaca
+> >  #3 [f418de28] error_code (via invalid_op) at c08631a5
+> >     EAX: f34baac0  EBX: 00000090  ECX: f418deb0  EDX: f5542950  EBP: 00=
+000000
+> >     DS:  007b      ESI: f34ba800  ES:  007b      EDI: f418dea0  GS:  00=
+e0
+> >     CS:  0060      EIP: c046fa5e  ERR: ffffffff  EFLAGS: 00010286
+> >  #4 [f418de5c] add_timer at c046fa5e
+> >  #5 [f418de68] sctp_do_sm at f8db8c77 [sctp]
+> >  #6 [f418df30] sctp_primitive_SHUTDOWN at f8dcc1b5 [sctp]
+> >  #7 [f418df48] inet_shutdown at c080baf9
+> >  #8 [f418df5c] sys_shutdown at c079eedf
+> >  #9 [f418df70] sys_socketcall at c079fe88
+> >     EAX: ffffffda  EBX: 0000000d  ECX: bfceea90  EDX: 0937af98
+> >     DS:  007b      ESI: 0000000c  ES:  007b      EDI: b7150ae4
+> >     SS:  007b      ESP: bfceea7c  EBP: bfceeaa8  GS:  0033
+> >     CS:  0073      EIP: b775c424  ERR: 00000066  EFLAGS: 00000282
+> >=20
+> > It appears that the side effect that starts the shutdown timer was proc=
+essed
+> > multiple times, which can happen as multiple paths can trigger it.  Thi=
+s of
+> > course leads to the BUG halt in add_timer getting called.
+> >=20
+> > Fix seems pretty straightforward, just check before the timer is added =
+if its
+> > already been started.  If it has mod the timer instead to min(current
+> > expiration, new expiration)
+> >=20
+> > Its been tested but not confirmed to fix the problem, as the issue has =
+only
+> > occured in production environments where test kernels are enjoined from=
+ being
+> > installed.  It appears to be a sane fix to me though.  Also, recentely,
+> > Jere found a reproducer posted on list to confirm that this resolves the
+> > issues
+> >=20
+> > Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+> > CC: Vlad Yasevich <vyasevich@gmail.com>
+> > CC: "David S. Miller" <davem@davemloft.net>
+> > CC: Jere Lepp=E4nen <jere.leppanen@nokia.com>
+> > CC: marcelo.leitner@gmail.com
+> >=20
+> > ---
+> > Change notes:
+> > V2) Updated to use timer_reduce
+>=20
+> Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+
+Hey is this patch falling through the cracks again? No rush, I'm just=20
+wondering what's going on.
+--352996365-948516143-1589878291=:774972--
