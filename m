@@ -1,132 +1,118 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 21 May 2020 17:46:43 +0000
-Subject: [PATCH 08/49] sctp: pass a kernel pointer to sctp_setsockopt_delayed_ack
-Message-Id: <20200521174724.2635475-9-hch@lst.de>
+Date: Wed, 20 May 2020 19:54:45 +0000
+Subject: [PATCH 09/33] net: add sock_set_keepalive
+Message-Id: <20200520195509.2215098-10-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200521174724.2635475-1-hch@lst.de>
-In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
+References: <20200520195509.2215098-1-hch@lst.de>
+In-Reply-To: <20200520195509.2215098-1-hch-jcswGhMUV9g@public.gmane.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, Jakub Kicinski <kuba-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+Cc: Eric Dumazet <edumazet-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>, Alexey Kuznetsov <kuznet-v/Mj1YrvjDBInbfyfbPRSQ@public.gmane.org>, Hideaki YOSHIFUJI <yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org>, Vlad Yasevich <vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Neil Horman <nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org>, Marcelo Ricardo Leitner <marcelo.leitner-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Jon Maloy <jmaloy-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Ying Xue <ying.xue-CWA4WttNNZF54TAoqtyWWQ@public.gmane.org>, drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nvme-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, target-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, rds-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
+Add a helper to directly set the SO_KEEPALIVE sockopt from kernel space
+without going through a fake uaccess.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 49 +++++++++++++++++++++--------------------------
- 1 file changed, 22 insertions(+), 27 deletions(-)
+ fs/dlm/lowcomms.c     |  6 +-----
+ include/net/sock.h    |  1 +
+ net/core/sock.c       | 10 ++++++++++
+ net/rds/tcp_listen.c  |  6 +-----
+ net/sunrpc/xprtsock.c |  4 +---
+ 5 files changed, 14 insertions(+), 13 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 0498cf21923e8..3763f124f9fea 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -2748,17 +2748,14 @@ static void sctp_apply_asoc_delayed_ack(struct sctp_sack_info *params,
-  */
- 
- static int sctp_setsockopt_delayed_ack(struct sock *sk,
--				       char __user *optval, unsigned int optlen)
-+				       struct sctp_sack_info *params,
-+				       unsigned int optlen)
- {
- 	struct sctp_sock *sp = sctp_sk(sk);
- 	struct sctp_association *asoc;
--	struct sctp_sack_info params;
- 
- 	if (optlen = sizeof(struct sctp_sack_info)) {
--		if (copy_from_user(&params, optval, optlen))
--			return -EFAULT;
--
--		if (params.sack_delay = 0 && params.sack_freq = 0)
-+		if (params->sack_delay = 0 && params->sack_freq = 0)
- 			return 0;
- 	} else if (optlen = sizeof(struct sctp_assoc_value)) {
- 		pr_warn_ratelimited(DEPRECATED
-@@ -2766,59 +2763,57 @@ static int sctp_setsockopt_delayed_ack(struct sock *sk,
- 				    "Use of struct sctp_assoc_value in delayed_ack socket option.\n"
- 				    "Use struct sctp_sack_info instead\n",
- 				    current->comm, task_pid_nr(current));
--		if (copy_from_user(&params, optval, optlen))
--			return -EFAULT;
- 
--		if (params.sack_delay = 0)
--			params.sack_freq = 1;
-+		if (params->sack_delay = 0)
-+			params->sack_freq = 1;
- 		else
--			params.sack_freq = 0;
-+			params->sack_freq = 0;
- 	} else
- 		return -EINVAL;
- 
- 	/* Validate value parameter. */
--	if (params.sack_delay > 500)
-+	if (params->sack_delay > 500)
- 		return -EINVAL;
- 
- 	/* Get association, if sack_assoc_id != SCTP_FUTURE_ASSOC and the
- 	 * socket is a one to many style socket, and an association
- 	 * was not found, then the id was invalid.
- 	 */
--	asoc = sctp_id2assoc(sk, params.sack_assoc_id);
--	if (!asoc && params.sack_assoc_id > SCTP_ALL_ASSOC &&
-+	asoc = sctp_id2assoc(sk, params->sack_assoc_id);
-+	if (!asoc && params->sack_assoc_id > SCTP_ALL_ASSOC &&
- 	    sctp_style(sk, UDP))
- 		return -EINVAL;
- 
- 	if (asoc) {
--		sctp_apply_asoc_delayed_ack(&params, asoc);
-+		sctp_apply_asoc_delayed_ack(params, asoc);
- 
- 		return 0;
+diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
+index b79711d0aac72..b6e6dba281547 100644
+--- a/fs/dlm/lowcomms.c
++++ b/fs/dlm/lowcomms.c
+@@ -1142,11 +1142,7 @@ static struct socket *tcp_create_listen_sock(struct connection *con,
+ 		con->sock = NULL;
+ 		goto create_out;
  	}
+-	result = kernel_setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE,
+-				 (char *)&one, sizeof(one));
+-	if (result < 0) {
+-		log_print("Set keepalive failed: %d", result);
+-	}
++	sock_set_keepalive(sock->sk);
  
- 	if (sctp_style(sk, TCP))
--		params.sack_assoc_id = SCTP_FUTURE_ASSOC;
-+		params->sack_assoc_id = SCTP_FUTURE_ASSOC;
- 
--	if (params.sack_assoc_id = SCTP_FUTURE_ASSOC ||
--	    params.sack_assoc_id = SCTP_ALL_ASSOC) {
--		if (params.sack_delay) {
--			sp->sackdelay = params.sack_delay;
-+	if (params->sack_assoc_id = SCTP_FUTURE_ASSOC ||
-+	    params->sack_assoc_id = SCTP_ALL_ASSOC) {
-+		if (params->sack_delay) {
-+			sp->sackdelay = params->sack_delay;
- 			sp->param_flags  				sctp_spp_sackdelay_enable(sp->param_flags);
- 		}
--		if (params.sack_freq = 1) {
-+		if (params->sack_freq = 1) {
- 			sp->param_flags  				sctp_spp_sackdelay_disable(sp->param_flags);
--		} else if (params.sack_freq > 1) {
--			sp->sackfreq = params.sack_freq;
-+		} else if (params->sack_freq > 1) {
-+			sp->sackfreq = params->sack_freq;
- 			sp->param_flags  				sctp_spp_sackdelay_enable(sp->param_flags);
- 		}
- 	}
- 
--	if (params.sack_assoc_id = SCTP_CURRENT_ASSOC ||
--	    params.sack_assoc_id = SCTP_ALL_ASSOC)
-+	if (params->sack_assoc_id = SCTP_CURRENT_ASSOC ||
-+	    params->sack_assoc_id = SCTP_ALL_ASSOC)
- 		list_for_each_entry(asoc, &sp->ep->asocs, asocs)
--			sctp_apply_asoc_delayed_ack(&params, asoc);
-+			sctp_apply_asoc_delayed_ack(params, asoc);
- 
- 	return 0;
+ 	result = sock->ops->listen(sock, 5);
+ 	if (result < 0) {
+diff --git a/include/net/sock.h b/include/net/sock.h
+index 99ef43508d2b5..dc08c176238fd 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -2691,6 +2691,7 @@ void sock_def_readable(struct sock *sk);
+ int sock_bindtoindex(struct sock *sk, int ifindex);
+ void sock_enable_timestamps(struct sock *sk);
+ void sock_no_linger(struct sock *sk);
++void sock_set_keepalive(struct sock *sk);
+ void sock_set_priority(struct sock *sk, u32 priority);
+ void sock_set_reuseaddr(struct sock *sk);
+ void sock_set_sndtimeo(struct sock *sk, s64 secs);
+diff --git a/net/core/sock.c b/net/core/sock.c
+index e4a4dd2b3d8b3..728f5fb156a0c 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -779,6 +779,16 @@ void sock_enable_timestamps(struct sock *sk)
  }
-@@ -4694,7 +4689,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		break;
+ EXPORT_SYMBOL(sock_enable_timestamps);
  
- 	case SCTP_DELAYED_SACK:
--		retval = sctp_setsockopt_delayed_ack(sk, optval, optlen);
-+		retval = sctp_setsockopt_delayed_ack(sk, kopt, optlen);
- 		break;
- 	case SCTP_PARTIAL_DELIVERY_POINT:
- 		retval = sctp_setsockopt_partial_delivery_point(sk, optval, optlen);
++void sock_set_keepalive(struct sock *sk)
++{
++	lock_sock(sk);
++	if (sk->sk_prot->keepalive)
++		sk->sk_prot->keepalive(sk, true);
++	sock_valbool_flag(sk, SOCK_KEEPOPEN, true);
++	release_sock(sk);
++}
++EXPORT_SYMBOL(sock_set_keepalive);
++
+ /*
+  *	This is meant for all protocols to use and covers goings on
+  *	at the socket level. Everything here is generic.
+diff --git a/net/rds/tcp_listen.c b/net/rds/tcp_listen.c
+index bbb31b9c0b391..d8bd132769594 100644
+--- a/net/rds/tcp_listen.c
++++ b/net/rds/tcp_listen.c
+@@ -43,13 +43,9 @@ int rds_tcp_keepalive(struct socket *sock)
+ 	/* values below based on xs_udp_default_timeout */
+ 	int keepidle = 5; /* send a probe 'keepidle' secs after last data */
+ 	int keepcnt = 5; /* number of unack'ed probes before declaring dead */
+-	int keepalive = 1;
+ 	int ret = 0;
+ 
+-	ret = kernel_setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE,
+-				(char *)&keepalive, sizeof(keepalive));
+-	if (ret < 0)
+-		goto bail;
++	sock_set_keepalive(sock->sk);
+ 
+ 	ret = kernel_setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT,
+ 				(char *)&keepcnt, sizeof(keepcnt));
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 845d0be805ece..30082cd039960 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2110,7 +2110,6 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+ 	unsigned int keepidle;
+ 	unsigned int keepcnt;
+-	unsigned int opt_on = 1;
+ 	unsigned int timeo;
+ 
+ 	spin_lock(&xprt->transport_lock);
+@@ -2122,8 +2121,7 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
+ 	spin_unlock(&xprt->transport_lock);
+ 
+ 	/* TCP Keepalive options */
+-	kernel_setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE,
+-			(char *)&opt_on, sizeof(opt_on));
++	sock_set_keepalive(sock->sk);
+ 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPIDLE,
+ 			(char *)&keepidle, sizeof(keepidle));
+ 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPINTVL,
 -- 
 2.26.2
