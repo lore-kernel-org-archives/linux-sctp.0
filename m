@@ -1,155 +1,69 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 21 May 2020 17:46:38 +0000
-Subject: [PATCH 03/49] sctp: pass a kernel pointer to __sctp_setsockopt_connectx
-Message-Id: <20200521174724.2635475-4-hch@lst.de>
+Date: Wed, 20 May 2020 19:55:02 +0000
+Subject: [PATCH 26/33] ipv6: add ip6_sock_set_recverr
+Message-Id: <20200520195509.2215098-27-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200521174724.2635475-1-hch@lst.de>
-In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
+References: <20200520195509.2215098-1-hch@lst.de>
+In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Eric Dumazet <edumazet@google.com>, linux-nvme@lists.infradead.org, David Howells <dhowells@redhat.com>, linux-sctp@vger.kernel.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, rds-devel@oss.oracle.com, linux-rdma@vger.kernel.org, cluster-devel@redhat.com, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, drbd-dev@tron.linbit.com, ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, linux-kernel@vger.kernel.org, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, ocfs2-devel@oss.oracle.com
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
+Add a helper to directly set the IPV6_RECVERR sockopt from kernel space
+without going through a fake uaccess.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: David Howells <dhowells@redhat.com>
 ---
- net/sctp/socket.c | 50 ++++++++++++++++++-----------------------------
- 1 file changed, 19 insertions(+), 31 deletions(-)
+ include/net/ipv6.h       |  7 +++++++
+ net/rxrpc/local_object.c | 10 ++--------
+ 2 files changed, 9 insertions(+), 8 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index eb08e44c0c57a..f7621ea99340e 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -1282,36 +1282,29 @@ static int __sctp_connect(struct sock *sk, struct sockaddr *kaddrs,
-  * it.
-  *
-  * sk        The sk of the socket
-- * addrs     The pointer to the addresses in user land
-+ * addrs     The pointer to the addresses
-  * addrssize Size of the addrs buffer
-  *
-  * Returns >=0 if ok, <0 errno code on error.
-  */
--static int __sctp_setsockopt_connectx(struct sock *sk,
--				      struct sockaddr __user *addrs,
--				      int addrs_size,
--				      sctp_assoc_t *assoc_id)
-+static int __sctp_setsockopt_connectx(struct sock *sk, struct sockaddr *kaddrs,
-+				      int addrs_size, sctp_assoc_t *assoc_id)
- {
--	struct sockaddr *kaddrs;
- 	int err = 0, flags = 0;
- 
- 	pr_debug("%s: sk:%p addrs:%p addrs_size:%d\n",
--		 __func__, sk, addrs, addrs_size);
-+		 __func__, sk, kaddrs, addrs_size);
- 
- 	/* make sure the 1st addr's sa_family is accessible later */
- 	if (unlikely(addrs_size < sizeof(sa_family_t)))
- 		return -EINVAL;
- 
--	kaddrs = memdup_user(addrs, addrs_size);
--	if (IS_ERR(kaddrs))
--		return PTR_ERR(kaddrs);
--
- 	/* Allow security module to validate connectx addresses. */
- 	err = security_sctp_bind_connect(sk, SCTP_SOCKOPT_CONNECTX,
- 					 (struct sockaddr *)kaddrs,
- 					  addrs_size);
- 	if (err)
--		goto out_free;
-+		return err;
- 
- 	/* in-kernel sockets don't generally have a file allocated to them
- 	 * if all they do is call sock_create_kern().
-@@ -1319,12 +1312,7 @@ static int __sctp_setsockopt_connectx(struct sock *sk,
- 	if (sk->sk_socket->file)
- 		flags = sk->sk_socket->file->f_flags;
- 
--	err = __sctp_connect(sk, kaddrs, addrs_size, flags, assoc_id);
--
--out_free:
--	kfree(kaddrs);
--
--	return err;
-+	return __sctp_connect(sk, kaddrs, addrs_size, flags, assoc_id);
+diff --git a/include/net/ipv6.h b/include/net/ipv6.h
+index 7d1cb9f0f5388..3b02049d2e582 100644
+--- a/include/net/ipv6.h
++++ b/include/net/ipv6.h
+@@ -1187,4 +1187,11 @@ static inline int ip6_sock_set_v6only(struct sock *sk)
+ 	return 0;
  }
  
- /*
-@@ -1332,10 +1320,10 @@ static int __sctp_setsockopt_connectx(struct sock *sk,
-  * to the option that doesn't provide association id.
-  */
- static int sctp_setsockopt_connectx_old(struct sock *sk,
--					struct sockaddr __user *addrs,
-+					struct sockaddr *kaddrs,
- 					int addrs_size)
- {
--	return __sctp_setsockopt_connectx(sk, addrs, addrs_size, NULL);
-+	return __sctp_setsockopt_connectx(sk, kaddrs, addrs_size, NULL);
- }
- 
- /*
-@@ -1345,13 +1333,13 @@ static int sctp_setsockopt_connectx_old(struct sock *sk,
-  * always positive.
-  */
- static int sctp_setsockopt_connectx(struct sock *sk,
--				    struct sockaddr __user *addrs,
-+				    struct sockaddr *kaddrs,
- 				    int addrs_size)
- {
- 	sctp_assoc_t assoc_id = 0;
- 	int err = 0;
- 
--	err = __sctp_setsockopt_connectx(sk, addrs, addrs_size, &assoc_id);
-+	err = __sctp_setsockopt_connectx(sk, kaddrs, addrs_size, &assoc_id);
- 
- 	if (err)
- 		return err;
-@@ -1381,6 +1369,7 @@ static int sctp_getsockopt_connectx3(struct sock *sk, int len,
- {
- 	struct sctp_getaddrs_old param;
- 	sctp_assoc_t assoc_id = 0;
-+	struct sockaddr *kaddrs;
- 	int err = 0;
- 
- #ifdef CONFIG_COMPAT
-@@ -1404,9 +1393,12 @@ static int sctp_getsockopt_connectx3(struct sock *sk, int len,
- 			return -EFAULT;
- 	}
- 
--	err = __sctp_setsockopt_connectx(sk, (struct sockaddr __user *)
--					 param.addrs, param.addr_num,
--					 &assoc_id);
-+	kaddrs = memdup_user(param.addrs, param.addr_num);
-+	if (IS_ERR(kaddrs))
-+		return PTR_ERR(kaddrs);
++static inline void ip6_sock_set_recverr(struct sock *sk)
++{
++	lock_sock(sk);
++	inet6_sk(sk)->recverr = true;
++	release_sock(sk);
++}
 +
-+	err = __sctp_setsockopt_connectx(sk, kaddrs, param.addr_num, &assoc_id);
-+	kfree(kaddrs);
- 	if (err = 0 || err = -EINPROGRESS) {
- 		if (copy_to_user(optval, &assoc_id, sizeof(assoc_id)))
- 			return -EFAULT;
-@@ -4696,16 +4688,12 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ #endif /* _NET_IPV6_H */
+diff --git a/net/rxrpc/local_object.c b/net/rxrpc/local_object.c
+index 6f4e6b4817cf2..c8b2097f499c0 100644
+--- a/net/rxrpc/local_object.c
++++ b/net/rxrpc/local_object.c
+@@ -107,7 +107,7 @@ static struct rxrpc_local *rxrpc_alloc_local(struct rxrpc_net *rxnet,
+ static int rxrpc_open_socket(struct rxrpc_local *local, struct net *net)
+ {
+ 	struct sock *usk;
+-	int ret, opt;
++	int ret;
  
- 	case SCTP_SOCKOPT_CONNECTX_OLD:
- 		/* 'optlen' is the size of the addresses buffer. */
--		retval = sctp_setsockopt_connectx_old(sk,
--					    (struct sockaddr __user *)optval,
--					    optlen);
-+		retval = sctp_setsockopt_connectx_old(sk, kopt, optlen);
- 		break;
+ 	_enter("%p{%d,%d}",
+ 	       local, local->srx.transport_type, local->srx.transport.family);
+@@ -157,13 +157,7 @@ static int rxrpc_open_socket(struct rxrpc_local *local, struct net *net)
+ 	switch (local->srx.transport.family) {
+ 	case AF_INET6:
+ 		/* we want to receive ICMPv6 errors */
+-		opt = 1;
+-		ret = kernel_setsockopt(local->socket, SOL_IPV6, IPV6_RECVERR,
+-					(char *) &opt, sizeof(opt));
+-		if (ret < 0) {
+-			_debug("setsockopt failed");
+-			goto error;
+-		}
++		ip6_sock_set_recverr(local->socket->sk);
  
- 	case SCTP_SOCKOPT_CONNECTX:
- 		/* 'optlen' is the size of the addresses buffer. */
--		retval = sctp_setsockopt_connectx(sk,
--					    (struct sockaddr __user *)optval,
--					    optlen);
-+		retval = sctp_setsockopt_connectx(sk, kopt, optlen);
- 		break;
- 
- 	case SCTP_DISABLE_FRAGMENTS:
+ 		/* Fall through and set IPv4 options too otherwise we don't get
+ 		 * errors from IPv4 packets sent through the IPv6 socket.
 -- 
 2.26.2
