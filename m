@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Wed, 20 May 2020 19:55:09 +0000
-Subject: [PATCH 33/33] net: remove kernel_setsockopt
-Message-Id: <20200520195509.2215098-34-hch@lst.de>
+Date: Wed, 20 May 2020 19:55:04 +0000
+Subject: [PATCH 28/33] ipv6: add ip6_sock_set_recvpktinfo
+Message-Id: <20200520195509.2215098-29-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200520195509.2215098-1-hch@lst.de>
 In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
@@ -11,68 +11,63 @@ Content-Transfer-Encoding: 7bit
 To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Eric Dumazet <edumazet@google.com>, linux-nvme@lists.infradead.org, linux-sctp@vger.kernel.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, rds-devel@oss.oracle.com, linux-rdma@vger.kernel.org, cluster-devel@redhat.com, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, drbd-dev@tron.linbit.com, ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, linux-kernel@vger.kernel.org, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, ocfs2-devel@oss.oracle.com
 
-No users left.
+Add a helper to directly set the IPV6_RECVPKTINFO sockopt from kernel
+space without going through a fake uaccess.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/net.h |  2 --
- net/socket.c        | 31 -------------------------------
- 2 files changed, 33 deletions(-)
+ include/net/ipv6.h   |  7 +++++++
+ net/sunrpc/svcsock.c | 10 ++--------
+ 2 files changed, 9 insertions(+), 8 deletions(-)
 
-diff --git a/include/linux/net.h b/include/linux/net.h
-index 74ef5d7315f70..e10f378194a59 100644
---- a/include/linux/net.h
-+++ b/include/linux/net.h
-@@ -303,8 +303,6 @@ int kernel_connect(struct socket *sock, struct sockaddr *addr, int addrlen,
- 		   int flags);
- int kernel_getsockname(struct socket *sock, struct sockaddr *addr);
- int kernel_getpeername(struct socket *sock, struct sockaddr *addr);
--int kernel_setsockopt(struct socket *sock, int level, int optname, char *optval,
--		      unsigned int optlen);
- int kernel_sendpage(struct socket *sock, struct page *page, int offset,
- 		    size_t size, int flags);
- int kernel_sendpage_locked(struct sock *sk, struct page *page, int offset,
-diff --git a/net/socket.c b/net/socket.c
-index 81a98b6cbd087..976426d03f099 100644
---- a/net/socket.c
-+++ b/net/socket.c
-@@ -3624,37 +3624,6 @@ int kernel_getpeername(struct socket *sock, struct sockaddr *addr)
+diff --git a/include/net/ipv6.h b/include/net/ipv6.h
+index 80260cff7e0c0..79b68ee3820e7 100644
+--- a/include/net/ipv6.h
++++ b/include/net/ipv6.h
+@@ -1261,4 +1261,11 @@ static inline int ip6_sock_set_addr_preferences(struct sock *sk, bool val)
+ 	return ret;
  }
- EXPORT_SYMBOL(kernel_getpeername);
  
--/**
-- *	kernel_setsockopt - set a socket option (kernel space)
-- *	@sock: socket
-- *	@level: API level (SOL_SOCKET, ...)
-- *	@optname: option tag
-- *	@optval: option value
-- *	@optlen: option length
-- *
-- *	Returns 0 or an error.
-- */
++static inline void ip6_sock_set_recvpktinfo(struct sock *sk)
++{
++	lock_sock(sk);
++	inet6_sk(sk)->rxopt.bits.rxinfo = true;
++	release_sock(sk);
++}
++
+ #endif /* _NET_IPV6_H */
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index a391892977cd2..e7a0037d9b56c 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -595,8 +595,6 @@ static struct svc_xprt_class svc_udp_class = {
+ 
+ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
+ {
+-	int err, level, optname, one = 1;
 -
--int kernel_setsockopt(struct socket *sock, int level, int optname,
--			char *optval, unsigned int optlen)
--{
--	mm_segment_t oldfs = get_fs();
--	char __user *uoptval;
--	int err;
--
--	uoptval = (char __user __force *) optval;
--
--	set_fs(KERNEL_DS);
--	if (level = SOL_SOCKET)
--		err = sock_setsockopt(sock, level, optname, uoptval, optlen);
--	else
--		err = sock->ops->setsockopt(sock, level, optname, uoptval,
--					    optlen);
--	set_fs(oldfs);
--	return err;
--}
--EXPORT_SYMBOL(kernel_setsockopt);
--
- /**
-  *	kernel_sendpage - send a &page through a socket (kernel space)
-  *	@sock: socket
+ 	svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_udp_class,
+ 		      &svsk->sk_xprt, serv);
+ 	clear_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
+@@ -617,17 +615,13 @@ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
+ 	switch (svsk->sk_sk->sk_family) {
+ 	case AF_INET:
+ 		ip_sock_set_pktinfo(svsk->sk_sock->sk);
+-		return;
++		break;
+ 	case AF_INET6:
+-		level = SOL_IPV6;
+-		optname = IPV6_RECVPKTINFO;
++		ip6_sock_set_recvpktinfo(svsk->sk_sock->sk);
+ 		break;
+ 	default:
+ 		BUG();
+ 	}
+-	err = kernel_setsockopt(svsk->sk_sock, level, optname,
+-					(char *)&one, sizeof(one));
+-	dprintk("svc: kernel_setsockopt returned %d\n", err);
+ }
+ 
+ /*
 -- 
 2.26.2
