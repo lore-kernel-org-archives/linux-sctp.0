@@ -1,58 +1,80 @@
-From: =?UTF-8?q?Jere=20Lepp=C3=A4nen?= <jere.leppanen@nokia.com>
-Date: Wed, 20 May 2020 15:15:31 +0000
-Subject: [PATCH net 1/1] sctp: Start shutdown on association restart if in SHUTDOWN-SENT state and socket is 
-Message-Id: <20200520151531.787414-1-jere.leppanen@nokia.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Wed, 20 May 2020 19:46:29 +0000
+Subject: Re: [PATCH net 1/1] sctp: Start shutdown on association restart if in SHUTDOWN-SENT state and socket
+Message-Id: <20200520194629.GS2491@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20200520151531.787414-1-jere.leppanen@nokia.com>
+In-Reply-To: <20200520151531.787414-1-jere.leppanen@nokia.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S . Miller" <davem@davemloft.net>
-Cc: David Laight <David.Laight@aculab.com>
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: Jere =?iso-8859-1?Q?Lepp=E4nen?= <jere.leppanen@nokia.com>
+Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S . Miller" <davem@davemloft.net>, David Laight <David.Laight@aculab.com>
 
-Q29tbWl0IGJkZjZmYTUyZjAxYiAoInNjdHA6IGhhbmRsZSBhc3NvY2lhdGlvbiByZXN0YXJ0cyB3
-aGVuIHRoZQpzb2NrZXQgaXMgY2xvc2VkLiIpIHN0YXJ0cyBzaHV0ZG93biB3aGVuIGFuIGFzc29j
-aWF0aW9uIGlzIHJlc3RhcnRlZCwKaWYgaW4gU0hVVERPV04tUEVORElORyBzdGF0ZSBhbmQgdGhl
-IHNvY2tldCBpcyBjbG9zZWQuIEhvd2V2ZXIsIHRoZQpyYXRpb25hbGUgc3RhdGVkIGluIHRoYXQg
-Y29tbWl0IGFwcGxpZXMgYWxzbyB3aGVuIGluIFNIVVRET1dOLVNFTlQKc3RhdGUgLSB3ZSBkb24n
-dCB3YW50IHRvIG1vdmUgYW4gYXNzb2NpYXRpb24gdG8gRVNUQUJMSVNIRUQgc3RhdGUgd2hlbgp0
-aGUgc29ja2V0IGhhcyBiZWVuIGNsb3NlZCwgYmVjYXVzZSB0aGF0IHJlc3VsdHMgaW4gYW4gYXNz
-b2NpYXRpb24KdGhhdCBpcyB1bnJlYWNoYWJsZSBmcm9tIHVzZXIgc3BhY2UuCgpUaGUgcHJvYmxl
-bSBzY2VuYXJpbzoKCjEuICBDbGllbnQgY3Jhc2hlcyBhbmQvb3IgcmVzdGFydHMuCgoyLiAgU2Vy
-dmVyICh1c2luZyBvbmUtdG8tb25lIHNvY2tldCkgY2FsbHMgY2xvc2UoKS4gU0hVVERPV04gaXMg
-bG9zdC4KCjMuICBDbGllbnQgcmVjb25uZWN0cyB1c2luZyB0aGUgc2FtZSBhZGRyZXNzZXMgYW5k
-IHBvcnRzLgoKNC4gIFNlcnZlcidzIGFzc29jaWF0aW9uIGlzIHJlc3RhcnRlZC4gVGhlIGFzc29j
-aWF0aW9uIGFuZCB0aGUgc29ja2V0CiAgICBtb3ZlIHRvIEVTVEFCTElTSEVEIHN0YXRlLCBldmVu
-IHRob3VnaCB0aGUgc2VydmVyIHByb2Nlc3MgaGFzCiAgICBjbG9zZWQgaXRzIGRlc2NyaXB0b3Iu
-CgpBbHNvLCBhZnRlciBzdGVwIDQgd2hlbiB0aGUgc2VydmVyIHByb2Nlc3MgZXhpdHMsIHNvbWUg
-cmVzb3VyY2VzIGFyZQpsZWFrZWQgaW4gYW4gYXR0ZW1wdCB0byByZWxlYXNlIHRoZSB1bmRlcmx5
-aW5nIGluZXQgc29jayBzdHJ1Y3R1cmUgaW4KRVNUQUJMSVNIRUQgc3RhdGU6CgogICAgSVB2NDog
-QXR0ZW1wdCB0byByZWxlYXNlIFRDUCBzb2NrZXQgaW4gc3RhdGUgMSAwMDAwMDAwMDM3NzI4OGM3
-CgpGaXggYnkgYWN0aW5nIHRoZSBzYW1lIHdheSBhcyBpbiBTSFVURE9XTi1QRU5ESU5HIHN0YXRl
-LiBUaGF0IGlzLCBpZgphbiBhc3NvY2lhdGlvbiBpcyByZXN0YXJ0ZWQgaW4gU0hVVERPV04tU0VO
-VCBzdGF0ZSBhbmQgdGhlIHNvY2tldCBpcwpjbG9zZWQsIHRoZW4gc3RhcnQgc2h1dGRvd24gYW5k
-IGRvbid0IG1vdmUgdGhlIGFzc29jaWF0aW9uIG9yIHRoZQpzb2NrZXQgdG8gRVNUQUJMSVNIRUQg
-c3RhdGUuCgpGaXhlczogYmRmNmZhNTJmMDFiICgic2N0cDogaGFuZGxlIGFzc29jaWF0aW9uIHJl
-c3RhcnRzIHdoZW4gdGhlIHNvY2tldCBpcyBjbG9zZWQuIikKU2lnbmVkLW9mZi1ieTogSmVyZSBM
-ZXBww6RuZW4gPGplcmUubGVwcGFuZW5Abm9raWEuY29tPgotLS0KIG5ldC9zY3RwL3NtX3N0YXRl
-ZnVucy5jIHwgOSArKysrKy0tLS0KIDEgZmlsZSBjaGFuZ2VkLCA1IGluc2VydGlvbnMoKyksIDQg
-ZGVsZXRpb25zKC0pCgpkaWZmIC0tZ2l0IGEvbmV0L3NjdHAvc21fc3RhdGVmdW5zLmMgYi9uZXQv
-c2N0cC9zbV9zdGF0ZWZ1bnMuYwppbmRleCAyNjc4OGY0YTNiOWUuLmU4NjYyMGZiZDkwZiAxMDA2
-NDQKLS0tIGEvbmV0L3NjdHAvc21fc3RhdGVmdW5zLmMKKysrIGIvbmV0L3NjdHAvc21fc3RhdGVm
-dW5zLmMKQEAgLTE4NTYsMTIgKzE4NTYsMTMgQEAgc3RhdGljIGVudW0gc2N0cF9kaXNwb3NpdGlv
-biBzY3RwX3NmX2RvX2R1cGNvb2tfYSgKIAkvKiBVcGRhdGUgdGhlIGNvbnRlbnQgb2YgY3VycmVu
-dCBhc3NvY2lhdGlvbi4gKi8KIAlzY3RwX2FkZF9jbWRfc2YoY29tbWFuZHMsIFNDVFBfQ01EX1VQ
-REFURV9BU1NPQywgU0NUUF9BU09DKG5ld19hc29jKSk7CiAJc2N0cF9hZGRfY21kX3NmKGNvbW1h
-bmRzLCBTQ1RQX0NNRF9FVkVOVF9VTFAsIFNDVFBfVUxQRVZFTlQoZXYpKTsKLQlpZiAoc2N0cF9z
-dGF0ZShhc29jLCBTSFVURE9XTl9QRU5ESU5HKSAmJgorCWlmICgoc2N0cF9zdGF0ZShhc29jLCBT
-SFVURE9XTl9QRU5ESU5HKSB8fAorCSAgICAgc2N0cF9zdGF0ZShhc29jLCBTSFVURE9XTl9TRU5U
-KSkgJiYKIAkgICAgKHNjdHBfc3N0YXRlKGFzb2MtPmJhc2Uuc2ssIENMT1NJTkcpIHx8CiAJICAg
-ICBzb2NrX2ZsYWcoYXNvYy0+YmFzZS5zaywgU09DS19ERUFEKSkpIHsKLQkJLyogaWYgd2VyZSBj
-dXJyZW50bHkgaW4gU0hVVERPV05fUEVORElORywgYnV0IHRoZSBzb2NrZXQKLQkJICogaGFzIGJl
-ZW4gY2xvc2VkIGJ5IHVzZXIsIGRvbid0IHRyYW5zaXRpb24gdG8gRVNUQUJMSVNIRUQuCi0JCSAq
-IEluc3RlYWQgdHJpZ2dlciBTSFVURE9XTiBidW5kbGVkIHdpdGggQ09PS0lFX0FDSy4KKwkJLyog
-SWYgdGhlIHNvY2tldCBoYXMgYmVlbiBjbG9zZWQgYnkgdXNlciwgZG9uJ3QKKwkJICogdHJhbnNp
-dGlvbiB0byBFU1RBQkxJU0hFRC4gSW5zdGVhZCB0cmlnZ2VyIFNIVVRET1dOCisJCSAqIGJ1bmRs
-ZWQgd2l0aCBDT09LSUVfQUNLLgogCQkgKi8KIAkJc2N0cF9hZGRfY21kX3NmKGNvbW1hbmRzLCBT
-Q1RQX0NNRF9SRVBMWSwgU0NUUF9DSFVOSyhyZXBsKSk7CiAJCXJldHVybiBzY3RwX3NmX2RvXzlf
-Ml9zdGFydF9zaHV0ZG93bihuZXQsIGVwLCBhc29jLAoKYmFzZS1jb21taXQ6IDIwYTc4NWFhNTJj
-ODIyNDYwNTVhMDg5ZTU1ZGY5ZGFjNDdkNjdkYTEKLS0gCjIuMjUuMgoK
+On Wed, May 20, 2020 at 06:15:31PM +0300, Jere Lepp=E4nen wrote:
+> Commit bdf6fa52f01b ("sctp: handle association restarts when the
+> socket is closed.") starts shutdown when an association is restarted,
+> if in SHUTDOWN-PENDING state and the socket is closed. However, the
+> rationale stated in that commit applies also when in SHUTDOWN-SENT
+> state - we don't want to move an association to ESTABLISHED state when
+> the socket has been closed, because that results in an association
+> that is unreachable from user space.
+>=20
+> The problem scenario:
+>=20
+> 1.  Client crashes and/or restarts.
+>=20
+> 2.  Server (using one-to-one socket) calls close(). SHUTDOWN is lost.
+>=20
+> 3.  Client reconnects using the same addresses and ports.
+>=20
+> 4.  Server's association is restarted. The association and the socket
+>     move to ESTABLISHED state, even though the server process has
+>     closed its descriptor.
+>=20
+> Also, after step 4 when the server process exits, some resources are
+> leaked in an attempt to release the underlying inet sock structure in
+> ESTABLISHED state:
+>=20
+>     IPv4: Attempt to release TCP socket in state 1 00000000377288c7
+>=20
+> Fix by acting the same way as in SHUTDOWN-PENDING state. That is, if
+> an association is restarted in SHUTDOWN-SENT state and the socket is
+> closed, then start shutdown and don't move the association or the
+> socket to ESTABLISHED state.
+>=20
+> Fixes: bdf6fa52f01b ("sctp: handle association restarts when the socket i=
+s closed.")
+> Signed-off-by: Jere Lepp=E4nen <jere.leppanen@nokia.com>
+> ---
+>  net/sctp/sm_statefuns.c | 9 +++++----
+>  1 file changed, 5 insertions(+), 4 deletions(-)
+>=20
+> diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+> index 26788f4a3b9e..e86620fbd90f 100644
+> --- a/net/sctp/sm_statefuns.c
+> +++ b/net/sctp/sm_statefuns.c
+> @@ -1856,12 +1856,13 @@ static enum sctp_disposition sctp_sf_do_dupcook_a(
+>  	/* Update the content of current association. */
+>  	sctp_add_cmd_sf(commands, SCTP_CMD_UPDATE_ASSOC, SCTP_ASOC(new_asoc));
+>  	sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP, SCTP_ULPEVENT(ev));
+> -	if (sctp_state(asoc, SHUTDOWN_PENDING) &&
+> +	if ((sctp_state(asoc, SHUTDOWN_PENDING) ||
+> +	     sctp_state(asoc, SHUTDOWN_SENT)) &&
+>  	    (sctp_sstate(asoc->base.sk, CLOSING) ||
+>  	     sock_flag(asoc->base.sk, SOCK_DEAD))) {
+> -		/* if were currently in SHUTDOWN_PENDING, but the socket
+> -		 * has been closed by user, don't transition to ESTABLISHED.
+> -		 * Instead trigger SHUTDOWN bundled with COOKIE_ACK.
+> +		/* If the socket has been closed by user, don't
+> +		 * transition to ESTABLISHED. Instead trigger SHUTDOWN
+> +		 * bundled with COOKIE_ACK.
+>  		 */
+>  		sctp_add_cmd_sf(commands, SCTP_CMD_REPLY, SCTP_CHUNK(repl));
+>  		return sctp_sf_do_9_2_start_shutdown(net, ep, asoc,
+>=20
+> base-commit: 20a785aa52c82246055a089e55df9dac47d67da1
+
+This last line is not standard, but git didn't complain about it here.
+
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
