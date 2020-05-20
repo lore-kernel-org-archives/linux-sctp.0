@@ -1,51 +1,58 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 01 May 2020 14:20:08 +0000
-Subject: Re: ABI breakage in sctp_event_subscribe (was [PATCH net-next 0/4] sctp: add some missing events fro
-Message-Id: <20200501142008.GC2470@localhost.localdomain>
+From: =?UTF-8?q?Jere=20Lepp=C3=A4nen?= <jere.leppanen@nokia.com>
+Date: Wed, 20 May 2020 15:15:31 +0000
+Subject: [PATCH net 1/1] sctp: Start shutdown on association restart if in SHUTDOWN-SENT state and socket is 
+Message-Id: <20200520151531.787414-1-jere.leppanen@nokia.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1570534014.git.lucien.xin@gmail.com>
- <20200419102536.GA4127396@nataraja>
- <20200501131607.GU1294372@nataraja>
-In-Reply-To: <20200501131607.GU1294372@nataraja>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Harald Welte <laforge@gnumonks.org>
-Cc: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+To: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S . Miller" <davem@davemloft.net>
+Cc: David Laight <David.Laight@aculab.com>
 
-On Fri, May 01, 2020 at 03:16:07PM +0200, Harald Welte wrote:
-> Dear Linux SCTP developers,
-> 
-> On Sun, Apr 19, 2020 at 12:25:36PM +0200, Harald Welte wrote:
-> > this patchset (merged back in Q4/2019) has broken ABI compatibility, more
-> > or less exactly as it was discussed/predicted in Message-Id
-> > <20190206201430.18830-1-julien@arista.com>
-> > "[PATCH net] sctp: make sctp_setsockopt_events() less strict about the option length"
-> > on this very list in February 2019.
-> 
-> does the lack of any follow-up so far seems to indicate nobody considers
-> this a problem?  Even without any feedback from the Linux kernel
-> developers, I would be curious to hear What do other SCTP users say.
-
-No. Speaking for myself only, I just didn't have the time to check
-your report yet. I'm a developer but it's not on my main priorities.
-
-> 
-> So far I have a somewhat difficult time understanding that I would be
-> the only one worried about ABI breakage?  If that's the case, I guess
-> it would be best to get the word out that people using Linux SCTP should
-> better make sure to not use binary packages but always build on the
-> system they run it on, to ensure kernel headers are identical.
-> 
-> I don't mean this in any cynical way.  The point is either the ABI is
-> stable and people can move binaries between different OS/kernel
-> versions, or they cannot.  So far the general assumption on Linux is you
-> can, but with SCTP you can not, so this needs to be clarified.
-
-That's what we want as well. Some breakage happened, yes, by mistake,
-and fixing that properly now, without breaking anything else, may be
-just impossible, unfortunatelly. But you can be sure that we are
-engaged on not doing it again.
-
-Thanks,
-Marcelo
+Q29tbWl0IGJkZjZmYTUyZjAxYiAoInNjdHA6IGhhbmRsZSBhc3NvY2lhdGlvbiByZXN0YXJ0cyB3
+aGVuIHRoZQpzb2NrZXQgaXMgY2xvc2VkLiIpIHN0YXJ0cyBzaHV0ZG93biB3aGVuIGFuIGFzc29j
+aWF0aW9uIGlzIHJlc3RhcnRlZCwKaWYgaW4gU0hVVERPV04tUEVORElORyBzdGF0ZSBhbmQgdGhl
+IHNvY2tldCBpcyBjbG9zZWQuIEhvd2V2ZXIsIHRoZQpyYXRpb25hbGUgc3RhdGVkIGluIHRoYXQg
+Y29tbWl0IGFwcGxpZXMgYWxzbyB3aGVuIGluIFNIVVRET1dOLVNFTlQKc3RhdGUgLSB3ZSBkb24n
+dCB3YW50IHRvIG1vdmUgYW4gYXNzb2NpYXRpb24gdG8gRVNUQUJMSVNIRUQgc3RhdGUgd2hlbgp0
+aGUgc29ja2V0IGhhcyBiZWVuIGNsb3NlZCwgYmVjYXVzZSB0aGF0IHJlc3VsdHMgaW4gYW4gYXNz
+b2NpYXRpb24KdGhhdCBpcyB1bnJlYWNoYWJsZSBmcm9tIHVzZXIgc3BhY2UuCgpUaGUgcHJvYmxl
+bSBzY2VuYXJpbzoKCjEuICBDbGllbnQgY3Jhc2hlcyBhbmQvb3IgcmVzdGFydHMuCgoyLiAgU2Vy
+dmVyICh1c2luZyBvbmUtdG8tb25lIHNvY2tldCkgY2FsbHMgY2xvc2UoKS4gU0hVVERPV04gaXMg
+bG9zdC4KCjMuICBDbGllbnQgcmVjb25uZWN0cyB1c2luZyB0aGUgc2FtZSBhZGRyZXNzZXMgYW5k
+IHBvcnRzLgoKNC4gIFNlcnZlcidzIGFzc29jaWF0aW9uIGlzIHJlc3RhcnRlZC4gVGhlIGFzc29j
+aWF0aW9uIGFuZCB0aGUgc29ja2V0CiAgICBtb3ZlIHRvIEVTVEFCTElTSEVEIHN0YXRlLCBldmVu
+IHRob3VnaCB0aGUgc2VydmVyIHByb2Nlc3MgaGFzCiAgICBjbG9zZWQgaXRzIGRlc2NyaXB0b3Iu
+CgpBbHNvLCBhZnRlciBzdGVwIDQgd2hlbiB0aGUgc2VydmVyIHByb2Nlc3MgZXhpdHMsIHNvbWUg
+cmVzb3VyY2VzIGFyZQpsZWFrZWQgaW4gYW4gYXR0ZW1wdCB0byByZWxlYXNlIHRoZSB1bmRlcmx5
+aW5nIGluZXQgc29jayBzdHJ1Y3R1cmUgaW4KRVNUQUJMSVNIRUQgc3RhdGU6CgogICAgSVB2NDog
+QXR0ZW1wdCB0byByZWxlYXNlIFRDUCBzb2NrZXQgaW4gc3RhdGUgMSAwMDAwMDAwMDM3NzI4OGM3
+CgpGaXggYnkgYWN0aW5nIHRoZSBzYW1lIHdheSBhcyBpbiBTSFVURE9XTi1QRU5ESU5HIHN0YXRl
+LiBUaGF0IGlzLCBpZgphbiBhc3NvY2lhdGlvbiBpcyByZXN0YXJ0ZWQgaW4gU0hVVERPV04tU0VO
+VCBzdGF0ZSBhbmQgdGhlIHNvY2tldCBpcwpjbG9zZWQsIHRoZW4gc3RhcnQgc2h1dGRvd24gYW5k
+IGRvbid0IG1vdmUgdGhlIGFzc29jaWF0aW9uIG9yIHRoZQpzb2NrZXQgdG8gRVNUQUJMSVNIRUQg
+c3RhdGUuCgpGaXhlczogYmRmNmZhNTJmMDFiICgic2N0cDogaGFuZGxlIGFzc29jaWF0aW9uIHJl
+c3RhcnRzIHdoZW4gdGhlIHNvY2tldCBpcyBjbG9zZWQuIikKU2lnbmVkLW9mZi1ieTogSmVyZSBM
+ZXBww6RuZW4gPGplcmUubGVwcGFuZW5Abm9raWEuY29tPgotLS0KIG5ldC9zY3RwL3NtX3N0YXRl
+ZnVucy5jIHwgOSArKysrKy0tLS0KIDEgZmlsZSBjaGFuZ2VkLCA1IGluc2VydGlvbnMoKyksIDQg
+ZGVsZXRpb25zKC0pCgpkaWZmIC0tZ2l0IGEvbmV0L3NjdHAvc21fc3RhdGVmdW5zLmMgYi9uZXQv
+c2N0cC9zbV9zdGF0ZWZ1bnMuYwppbmRleCAyNjc4OGY0YTNiOWUuLmU4NjYyMGZiZDkwZiAxMDA2
+NDQKLS0tIGEvbmV0L3NjdHAvc21fc3RhdGVmdW5zLmMKKysrIGIvbmV0L3NjdHAvc21fc3RhdGVm
+dW5zLmMKQEAgLTE4NTYsMTIgKzE4NTYsMTMgQEAgc3RhdGljIGVudW0gc2N0cF9kaXNwb3NpdGlv
+biBzY3RwX3NmX2RvX2R1cGNvb2tfYSgKIAkvKiBVcGRhdGUgdGhlIGNvbnRlbnQgb2YgY3VycmVu
+dCBhc3NvY2lhdGlvbi4gKi8KIAlzY3RwX2FkZF9jbWRfc2YoY29tbWFuZHMsIFNDVFBfQ01EX1VQ
+REFURV9BU1NPQywgU0NUUF9BU09DKG5ld19hc29jKSk7CiAJc2N0cF9hZGRfY21kX3NmKGNvbW1h
+bmRzLCBTQ1RQX0NNRF9FVkVOVF9VTFAsIFNDVFBfVUxQRVZFTlQoZXYpKTsKLQlpZiAoc2N0cF9z
+dGF0ZShhc29jLCBTSFVURE9XTl9QRU5ESU5HKSAmJgorCWlmICgoc2N0cF9zdGF0ZShhc29jLCBT
+SFVURE9XTl9QRU5ESU5HKSB8fAorCSAgICAgc2N0cF9zdGF0ZShhc29jLCBTSFVURE9XTl9TRU5U
+KSkgJiYKIAkgICAgKHNjdHBfc3N0YXRlKGFzb2MtPmJhc2Uuc2ssIENMT1NJTkcpIHx8CiAJICAg
+ICBzb2NrX2ZsYWcoYXNvYy0+YmFzZS5zaywgU09DS19ERUFEKSkpIHsKLQkJLyogaWYgd2VyZSBj
+dXJyZW50bHkgaW4gU0hVVERPV05fUEVORElORywgYnV0IHRoZSBzb2NrZXQKLQkJICogaGFzIGJl
+ZW4gY2xvc2VkIGJ5IHVzZXIsIGRvbid0IHRyYW5zaXRpb24gdG8gRVNUQUJMSVNIRUQuCi0JCSAq
+IEluc3RlYWQgdHJpZ2dlciBTSFVURE9XTiBidW5kbGVkIHdpdGggQ09PS0lFX0FDSy4KKwkJLyog
+SWYgdGhlIHNvY2tldCBoYXMgYmVlbiBjbG9zZWQgYnkgdXNlciwgZG9uJ3QKKwkJICogdHJhbnNp
+dGlvbiB0byBFU1RBQkxJU0hFRC4gSW5zdGVhZCB0cmlnZ2VyIFNIVVRET1dOCisJCSAqIGJ1bmRs
+ZWQgd2l0aCBDT09LSUVfQUNLLgogCQkgKi8KIAkJc2N0cF9hZGRfY21kX3NmKGNvbW1hbmRzLCBT
+Q1RQX0NNRF9SRVBMWSwgU0NUUF9DSFVOSyhyZXBsKSk7CiAJCXJldHVybiBzY3RwX3NmX2RvXzlf
+Ml9zdGFydF9zaHV0ZG93bihuZXQsIGVwLCBhc29jLAoKYmFzZS1jb21taXQ6IDIwYTc4NWFhNTJj
+ODIyNDYwNTVhMDg5ZTU1ZGY5ZGFjNDdkNjdkYTEKLS0gCjIuMjUuMgoK
