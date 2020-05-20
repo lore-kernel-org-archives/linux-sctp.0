@@ -1,210 +1,146 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Wed, 13 May 2020 06:26:39 +0000
-Subject: [PATCH 24/33] ipv6: add ip6_sock_set_addr_preferences
-Message-Id: <20200513062649.2100053-25-hch@lst.de>
+Date: Wed, 20 May 2020 19:54:46 +0000
+Subject: [PATCH 10/33] net: add sock_set_rcvbuf
+Message-Id: <20200520195509.2215098-11-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200513062649.2100053-1-hch@lst.de>
-In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
+References: <20200520195509.2215098-1-hch@lst.de>
+In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
-Cc: Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com, linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
+Cc: Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com, linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
 
-Add a helper to directly set the IPV6_ADD_PREFERENCES sockopt from kernel
-space without going through a fake uaccess.
+Add a helper to directly set the SO_RCVBUFFORCE sockopt from kernel space
+without going through a fake uaccess.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/net/ipv6.h       |   1 +
- net/ipv6/ipv6_sockglue.c | 127 +++++++++++++++++++++------------------
- net/sunrpc/xprtsock.c    |   8 ++-
- 3 files changed, 75 insertions(+), 61 deletions(-)
+ fs/dlm/lowcomms.c  |  7 +-----
+ include/net/sock.h |  1 +
+ net/core/sock.c    | 59 +++++++++++++++++++++++++---------------------
+ 3 files changed, 34 insertions(+), 33 deletions(-)
 
-diff --git a/include/net/ipv6.h b/include/net/ipv6.h
-index 69bc1651aaef8..04b2bc1935054 100644
---- a/include/net/ipv6.h
-+++ b/include/net/ipv6.h
-@@ -1177,5 +1177,6 @@ int ipv6_sock_mc_drop(struct sock *sk, int ifindex,
+diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
+index b6e6dba281547..2822a430a2b49 100644
+--- a/fs/dlm/lowcomms.c
++++ b/fs/dlm/lowcomms.c
+@@ -1180,7 +1180,6 @@ static int sctp_listen_for_all(void)
+ 	struct socket *sock = NULL;
+ 	int result = -EINVAL;
+ 	struct connection *con = nodeid2con(0, GFP_NOFS);
+-	int bufsize = NEEDED_RMEM;
+ 	int one = 1;
  
- int ip6_sock_set_v6only(struct sock *sk, bool val);
- void ip6_sock_set_recverr(struct sock *sk, bool val);
-+int ip6_sock_set_addr_preferences(struct sock *sk, bool val);
+ 	if (!con)
+@@ -1195,11 +1194,7 @@ static int sctp_listen_for_all(void)
+ 		goto out;
+ 	}
  
- #endif /* _NET_IPV6_H */
-diff --git a/net/ipv6/ipv6_sockglue.c b/net/ipv6/ipv6_sockglue.c
-index 3c67626b6f5a9..c23d42e809d7e 100644
---- a/net/ipv6/ipv6_sockglue.c
-+++ b/net/ipv6/ipv6_sockglue.c
-@@ -157,6 +157,74 @@ void ip6_sock_set_recverr(struct sock *sk, bool val)
+-	result = kernel_setsockopt(sock, SOL_SOCKET, SO_RCVBUFFORCE,
+-				 (char *)&bufsize, sizeof(bufsize));
+-	if (result)
+-		log_print("Error increasing buffer space on socket %d", result);
+-
++	sock_set_rcvbuf(sock->sk, NEEDED_RMEM);
+ 	result = kernel_setsockopt(sock, SOL_SCTP, SCTP_NODELAY, (char *)&one,
+ 				   sizeof(one));
+ 	if (result < 0)
+diff --git a/include/net/sock.h b/include/net/sock.h
+index dc08c176238fd..c997289aabbf9 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -2693,6 +2693,7 @@ void sock_enable_timestamps(struct sock *sk);
+ void sock_no_linger(struct sock *sk);
+ void sock_set_keepalive(struct sock *sk);
+ void sock_set_priority(struct sock *sk, u32 priority);
++void sock_set_rcvbuf(struct sock *sk, int val);
+ void sock_set_reuseaddr(struct sock *sk);
+ void sock_set_sndtimeo(struct sock *sk, s64 secs);
+ 
+diff --git a/net/core/sock.c b/net/core/sock.c
+index 728f5fb156a0c..3c6ebf952e9ad 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -789,6 +789,35 @@ void sock_set_keepalive(struct sock *sk)
  }
- EXPORT_SYMBOL(ip6_sock_set_recverr);
+ EXPORT_SYMBOL(sock_set_keepalive);
  
-+static int __ip6_sock_set_addr_preferences(struct sock *sk, int val)
++static void __sock_set_rcvbuf(struct sock *sk, int val)
 +{
-+	unsigned int pref = 0;
-+	unsigned int prefmask = ~0;
++	/* Ensure val * 2 fits into an int, to prevent max_t() from treating it
++	 * as a negative value.
++	 */
++	val = min_t(int, val, INT_MAX / 2);
++	sk->sk_userlocks |= SOCK_RCVBUF_LOCK;
 +
-+	/* check PUBLIC/TMP/PUBTMP_DEFAULT conflicts */
-+	switch (val & (IPV6_PREFER_SRC_PUBLIC |
-+		       IPV6_PREFER_SRC_TMP |
-+		       IPV6_PREFER_SRC_PUBTMP_DEFAULT)) {
-+	case IPV6_PREFER_SRC_PUBLIC:
-+		pref |= IPV6_PREFER_SRC_PUBLIC;
-+		prefmask &= ~(IPV6_PREFER_SRC_PUBLIC |
-+			      IPV6_PREFER_SRC_TMP);
-+		break;
-+	case IPV6_PREFER_SRC_TMP:
-+		pref |= IPV6_PREFER_SRC_TMP;
-+		prefmask &= ~(IPV6_PREFER_SRC_PUBLIC |
-+			      IPV6_PREFER_SRC_TMP);
-+		break;
-+	case IPV6_PREFER_SRC_PUBTMP_DEFAULT:
-+		prefmask &= ~(IPV6_PREFER_SRC_PUBLIC |
-+			      IPV6_PREFER_SRC_TMP);
-+		break;
-+	case 0:
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
-+
-+	/* check HOME/COA conflicts */
-+	switch (val & (IPV6_PREFER_SRC_HOME | IPV6_PREFER_SRC_COA)) {
-+	case IPV6_PREFER_SRC_HOME:
-+		prefmask &= ~IPV6_PREFER_SRC_COA;
-+		break;
-+	case IPV6_PREFER_SRC_COA:
-+		pref |= IPV6_PREFER_SRC_COA;
-+		break;
-+	case 0:
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
-+
-+	/* check CGA/NONCGA conflicts */
-+	switch (val & (IPV6_PREFER_SRC_CGA|IPV6_PREFER_SRC_NONCGA)) {
-+	case IPV6_PREFER_SRC_CGA:
-+	case IPV6_PREFER_SRC_NONCGA:
-+	case 0:
-+		break;
-+	default:
-+		return -EINVAL;
-+	}
-+
-+	inet6_sk(sk)->srcprefs = (inet6_sk(sk)->srcprefs & prefmask) | pref;
-+	return 0;
++	/* We double it on the way in to account for "struct sk_buff" etc.
++	 * overhead.   Applications assume that the SO_RCVBUF setting they make
++	 * will allow that much actual data to be received on that socket.
++	 *
++	 * Applications are unaware that "struct sk_buff" and other overheads
++	 * allocate from the receive buffer during socket buffer allocation.
++	 *
++	 * And after considering the possible alternatives, returning the value
++	 * we actually used in getsockopt is the most desirable behavior.
++	 */
++	WRITE_ONCE(sk->sk_rcvbuf, max_t(int, val * 2, SOCK_MIN_RCVBUF));
 +}
 +
-+int ip6_sock_set_addr_preferences(struct sock *sk, bool val)
++void sock_set_rcvbuf(struct sock *sk, int val)
 +{
-+	int ret;
-+
 +	lock_sock(sk);
-+	ret = __ip6_sock_set_addr_preferences(sk, val);
++	__sock_set_rcvbuf(sk, val);
 +	release_sock(sk);
-+	return ret;
 +}
-+EXPORT_SYMBOL(ip6_sock_set_addr_preferences);
++EXPORT_SYMBOL(sock_set_rcvbuf);
 +
- static int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
- 		    char __user *optval, unsigned int optlen)
- {
-@@ -859,67 +927,10 @@ static int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
- 		break;
- 
- 	case IPV6_ADDR_PREFERENCES:
--	    {
--		unsigned int pref = 0;
--		unsigned int prefmask = ~0;
--
- 		if (optlen < sizeof(int))
- 			goto e_inval;
--
--		retv = -EINVAL;
--
--		/* check PUBLIC/TMP/PUBTMP_DEFAULT conflicts */
--		switch (val & (IPV6_PREFER_SRC_PUBLIC|
--			       IPV6_PREFER_SRC_TMP|
--			       IPV6_PREFER_SRC_PUBTMP_DEFAULT)) {
--		case IPV6_PREFER_SRC_PUBLIC:
--			pref |= IPV6_PREFER_SRC_PUBLIC;
--			break;
--		case IPV6_PREFER_SRC_TMP:
--			pref |= IPV6_PREFER_SRC_TMP;
--			break;
--		case IPV6_PREFER_SRC_PUBTMP_DEFAULT:
--			break;
--		case 0:
--			goto pref_skip_pubtmp;
--		default:
--			goto e_inval;
--		}
--
--		prefmask &= ~(IPV6_PREFER_SRC_PUBLIC|
--			      IPV6_PREFER_SRC_TMP);
--pref_skip_pubtmp:
--
--		/* check HOME/COA conflicts */
--		switch (val & (IPV6_PREFER_SRC_HOME|IPV6_PREFER_SRC_COA)) {
--		case IPV6_PREFER_SRC_HOME:
--			break;
--		case IPV6_PREFER_SRC_COA:
--			pref |= IPV6_PREFER_SRC_COA;
--		case 0:
--			goto pref_skip_coa;
--		default:
--			goto e_inval;
--		}
--
--		prefmask &= ~IPV6_PREFER_SRC_COA;
--pref_skip_coa:
--
--		/* check CGA/NONCGA conflicts */
--		switch (val & (IPV6_PREFER_SRC_CGA|IPV6_PREFER_SRC_NONCGA)) {
--		case IPV6_PREFER_SRC_CGA:
--		case IPV6_PREFER_SRC_NONCGA:
--		case 0:
--			break;
--		default:
--			goto e_inval;
--		}
--
--		np->srcprefs = (np->srcprefs & prefmask) | pref;
--		retv = 0;
--
-+		retv = __ip6_sock_set_addr_preferences(sk, val);
- 		break;
--	    }
- 	case IPV6_MINHOPCOUNT:
- 		if (optlen < sizeof(int))
- 			goto e_inval;
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 88aa198456858..7aaf2baf0c393 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2150,7 +2150,6 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
- 
- 	if (!transport->inet) {
- 		struct sock *sk = sock->sk;
--		unsigned int addr_pref = IPV6_PREFER_SRC_PUBLIC;
- 
- 		/* Avoid temporary address, they are bad for long-lived
- 		 * connections such as NFS mounts.
-@@ -2159,8 +2158,11 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
- 		 *    knowledge about the normal duration of connections,
- 		 *    MAY override this as appropriate.
+ /*
+  *	This is meant for all protocols to use and covers goings on
+  *	at the socket level. Everything here is generic.
+@@ -885,30 +914,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 		 * play 'guess the biggest size' games. RCVBUF/SNDBUF
+ 		 * are treated in BSD as hints
  		 */
--		kernel_setsockopt(sock, SOL_IPV6, IPV6_ADDR_PREFERENCES,
--				(char *)&addr_pref, sizeof(addr_pref));
-+		if (xs_addr(xprt)->sa_family = PF_INET6 &&
-+		    IS_REACHABLE(CONFIG_IPV6)) {
-+			ip6_sock_set_addr_preferences(sk,
-+				IPV6_PREFER_SRC_PUBLIC);
-+		}
+-		val = min_t(u32, val, sysctl_rmem_max);
+-set_rcvbuf:
+-		/* Ensure val * 2 fits into an int, to prevent max_t()
+-		 * from treating it as a negative value.
+-		 */
+-		val = min_t(int, val, INT_MAX / 2);
+-		sk->sk_userlocks |= SOCK_RCVBUF_LOCK;
+-		/*
+-		 * We double it on the way in to account for
+-		 * "struct sk_buff" etc. overhead.   Applications
+-		 * assume that the SO_RCVBUF setting they make will
+-		 * allow that much actual data to be received on that
+-		 * socket.
+-		 *
+-		 * Applications are unaware that "struct sk_buff" and
+-		 * other overheads allocate from the receive buffer
+-		 * during socket buffer allocation.
+-		 *
+-		 * And after considering the possible alternatives,
+-		 * returning the value we actually used in getsockopt
+-		 * is the most desirable behavior.
+-		 */
+-		WRITE_ONCE(sk->sk_rcvbuf,
+-			   max_t(int, val * 2, SOCK_MIN_RCVBUF));
++		__sock_set_rcvbuf(sk, min_t(u32, val, sysctl_rmem_max));
+ 		break;
  
- 		xs_tcp_set_socket_timeouts(xprt, sock);
+ 	case SO_RCVBUFFORCE:
+@@ -920,9 +926,8 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 		/* No negative values (to prevent underflow, as val will be
+ 		 * multiplied by 2).
+ 		 */
+-		if (val < 0)
+-			val = 0;
+-		goto set_rcvbuf;
++		__sock_set_rcvbuf(sk, max(val, 0));
++		break;
  
+ 	case SO_KEEPALIVE:
+ 		if (sk->sk_prot->keepalive)
 -- 
 2.26.2
