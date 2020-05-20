@@ -1,89 +1,81 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Wed, 13 May 2020 06:26:40 +0000
-Subject: [PATCH 25/33] ipv6: add ip6_sock_set_recvpktinfo
-Message-Id: <20200513062649.2100053-26-hch@lst.de>
+Date: Wed, 20 May 2020 19:54:38 +0000
+Subject: [PATCH 02/33] net: remove kernel_getsockopt
+Message-Id: <20200520195509.2215098-3-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200513062649.2100053-1-hch@lst.de>
-In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
+References: <20200520195509.2215098-1-hch@lst.de>
+In-Reply-To: <20200520195509.2215098-1-hch-jcswGhMUV9g@public.gmane.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Eric Dumazet <edumazet@google.com>, linux-nvme@lists.infradead.org, linux-sctp@vger.kernel.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, rds-devel@oss.oracle.com, linux-rdma@vger.kernel.org, cluster-devel@redhat.com, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, linux-block@vger.kernel.org, drbd-dev@tron.linbit.com, ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, linux-kernel@vger.kernel.org, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, ocfs2-devel@oss.oracle.com
+To: "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, Jakub Kicinski <kuba-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+Cc: Eric Dumazet <edumazet-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>, Alexey Kuznetsov <kuznet-v/Mj1YrvjDBInbfyfbPRSQ@public.gmane.org>, Hideaki YOSHIFUJI <yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org>, Vlad Yasevich <vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Neil Horman <nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org>, Marcelo Ricardo Leitner <marcelo.leitner-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Jon Maloy <jmaloy-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Ying Xue <ying.xue-CWA4WttNNZF54TAoqtyWWQ@public.gmane.org>, drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nvme-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, target-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, rds-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 
-Add a helper to directly set the IPV6_RECVPKTINFO sockopt from kernel
-space without going through a fake uaccess.
+No users left.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/net/ipv6.h       |  1 +
- net/ipv6/ipv6_sockglue.c |  8 ++++++++
- net/sunrpc/svcsock.c     | 11 +++--------
- 3 files changed, 12 insertions(+), 8 deletions(-)
+ include/linux/net.h |  2 --
+ net/socket.c        | 34 ----------------------------------
+ 2 files changed, 36 deletions(-)
 
-diff --git a/include/net/ipv6.h b/include/net/ipv6.h
-index 04b2bc1935054..170872bc4e960 100644
---- a/include/net/ipv6.h
-+++ b/include/net/ipv6.h
-@@ -1178,5 +1178,6 @@ int ipv6_sock_mc_drop(struct sock *sk, int ifindex,
- int ip6_sock_set_v6only(struct sock *sk, bool val);
- void ip6_sock_set_recverr(struct sock *sk, bool val);
- int ip6_sock_set_addr_preferences(struct sock *sk, bool val);
-+void ip6_sock_set_recvpktinfo(struct sock *sk, bool val);
- 
- #endif /* _NET_IPV6_H */
-diff --git a/net/ipv6/ipv6_sockglue.c b/net/ipv6/ipv6_sockglue.c
-index c23d42e809d7e..d60adb018d71c 100644
---- a/net/ipv6/ipv6_sockglue.c
-+++ b/net/ipv6/ipv6_sockglue.c
-@@ -225,6 +225,14 @@ int ip6_sock_set_addr_preferences(struct sock *sk, bool val)
+diff --git a/include/linux/net.h b/include/linux/net.h
+index 6451425e828f5..74ef5d7315f70 100644
+--- a/include/linux/net.h
++++ b/include/linux/net.h
+@@ -303,8 +303,6 @@ int kernel_connect(struct socket *sock, struct sockaddr *addr, int addrlen,
+ 		   int flags);
+ int kernel_getsockname(struct socket *sock, struct sockaddr *addr);
+ int kernel_getpeername(struct socket *sock, struct sockaddr *addr);
+-int kernel_getsockopt(struct socket *sock, int level, int optname, char *optval,
+-		      int *optlen);
+ int kernel_setsockopt(struct socket *sock, int level, int optname, char *optval,
+ 		      unsigned int optlen);
+ int kernel_sendpage(struct socket *sock, struct page *page, int offset,
+diff --git a/net/socket.c b/net/socket.c
+index 80422fc3c836e..81a98b6cbd087 100644
+--- a/net/socket.c
++++ b/net/socket.c
+@@ -3624,40 +3624,6 @@ int kernel_getpeername(struct socket *sock, struct sockaddr *addr)
  }
- EXPORT_SYMBOL(ip6_sock_set_addr_preferences);
+ EXPORT_SYMBOL(kernel_getpeername);
  
-+void ip6_sock_set_recvpktinfo(struct sock *sk, bool val)
-+{
-+	lock_sock(sk);
-+	inet6_sk(sk)->rxopt.bits.rxinfo = val;
-+	release_sock(sk);
-+}
-+EXPORT_SYMBOL(ip6_sock_set_recvpktinfo);
-+
- static int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
- 		    char __user *optval, unsigned int optlen)
- {
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 7fa7fedec3c5a..7cf8389b6f46f 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -595,8 +595,6 @@ static struct svc_xprt_class svc_udp_class = {
- 
- static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
- {
--	int err, level, optname, one = 1;
+-/**
+- *	kernel_getsockopt - get a socket option (kernel space)
+- *	@sock: socket
+- *	@level: API level (SOL_SOCKET, ...)
+- *	@optname: option tag
+- *	@optval: option value
+- *	@optlen: option length
+- *
+- *	Assigns the option length to @optlen.
+- *	Returns 0 or an error.
+- */
 -
- 	svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_udp_class,
- 		      &svsk->sk_xprt, serv);
- 	clear_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
-@@ -617,17 +615,14 @@ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
- 	switch (svsk->sk_sk->sk_family) {
- 	case AF_INET:
- 		ip_sock_set_pktinfo(svsk->sk_sock->sk, true);
--		return;
-+		break;
- 	case AF_INET6:
--		level = SOL_IPV6;
--		optname = IPV6_RECVPKTINFO;
-+		if (IS_REACHABLE(CONFIG_IPV6))
-+			ip6_sock_set_recvpktinfo(svsk->sk_sock->sk, true);
- 		break;
- 	default:
- 		BUG();
- 	}
--	err = kernel_setsockopt(svsk->sk_sock, level, optname,
--					(char *)&one, sizeof(one));
--	dprintk("svc: kernel_setsockopt returned %d\n", err);
- }
- 
- /*
+-int kernel_getsockopt(struct socket *sock, int level, int optname,
+-			char *optval, int *optlen)
+-{
+-	mm_segment_t oldfs = get_fs();
+-	char __user *uoptval;
+-	int __user *uoptlen;
+-	int err;
+-
+-	uoptval = (char __user __force *) optval;
+-	uoptlen = (int __user __force *) optlen;
+-
+-	set_fs(KERNEL_DS);
+-	if (level = SOL_SOCKET)
+-		err = sock_getsockopt(sock, level, optname, uoptval, uoptlen);
+-	else
+-		err = sock->ops->getsockopt(sock, level, optname, uoptval,
+-					    uoptlen);
+-	set_fs(oldfs);
+-	return err;
+-}
+-EXPORT_SYMBOL(kernel_getsockopt);
+-
+ /**
+  *	kernel_setsockopt - set a socket option (kernel space)
+  *	@sock: socket
 -- 
 2.26.2
