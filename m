@@ -1,36 +1,136 @@
-From: David Teigland <teigland@redhat.com>
-Date: Thu, 14 May 2020 14:24:03 +0000
-Subject: Re: is it ok to always pull in sctp for dlm, was: Re: [PATCH 27/33] sctp: export sctp_setsockopt_bin
-Message-Id: <20200514142403.GA1447@redhat.com>
+From: Christoph Hellwig <hch@lst.de>
+Date: Wed, 20 May 2020 19:54:50 +0000
+Subject: [PATCH 14/33] tcp: add tcp_sock_set_quickack
+Message-Id: <20200520195509.2215098-15-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200513062649.2100053-1-hch@lst.de>
- <20200513062649.2100053-28-hch@lst.de>
- <20200513180058.GB2491@localhost.localdomain>
- <20200514104040.GA12979@lst.de>
-In-Reply-To: <20200514104040.GA12979@lst.de>
+References: <20200520195509.2215098-1-hch@lst.de>
+In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Christoph Hellwig <hch@lst.de>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Christine Caulfield <ccaulfie@redhat.com>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com, linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org, linux-sctp@vger.kernel
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
+Cc: Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com, linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
 
-On Thu, May 14, 2020 at 12:40:40PM +0200, Christoph Hellwig wrote:
-> On Wed, May 13, 2020 at 03:00:58PM -0300, Marcelo Ricardo Leitner wrote:
-> > On Wed, May 13, 2020 at 08:26:42AM +0200, Christoph Hellwig wrote:
-> > > And call it directly from dlm instead of going through kernel_setsockopt.
-> > 
-> > The advantage on using kernel_setsockopt here is that sctp module will
-> > only be loaded if dlm actually creates a SCTP socket.  With this
-> > change, sctp will be loaded on setups that may not be actually using
-> > it. It's a quite big module and might expose the system.
-> > 
-> > I'm okay with the SCTP changes, but I'll defer to DLM folks to whether
-> > that's too bad or what for DLM.
-> 
-> So for ipv6 I could just move the helpers inline as they were trivial
-> and avoid that issue.  But some of the sctp stuff really is way too
-> big for that, so the only other option would be to use symbol_get.
+Add a helper to directly set the TCP_QUICKACK sockopt from kernel space
+without going through a fake uaccess.  Cleanup the callers to avoid
+pointless wrappers now that this is a simple function call.
 
-Let's try symbol_get, having the sctp module always loaded caused problems
-last time it happened (almost nobody uses dlm with it.)
-Dave 
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ drivers/block/drbd/drbd_int.h      |  7 ------
+ drivers/block/drbd/drbd_receiver.c |  5 ++--
+ include/linux/tcp.h                |  1 +
+ net/ipv4/tcp.c                     | 39 ++++++++++++++++++++----------
+ 4 files changed, 29 insertions(+), 23 deletions(-)
+
+diff --git a/drivers/block/drbd/drbd_int.h b/drivers/block/drbd/drbd_int.h
+index e24bba87c8e02..14345a87c7cc5 100644
+--- a/drivers/block/drbd/drbd_int.h
++++ b/drivers/block/drbd/drbd_int.h
+@@ -1570,13 +1570,6 @@ extern void drbd_set_recv_tcq(struct drbd_device *device, int tcq_enabled);
+ extern void _drbd_clear_done_ee(struct drbd_device *device, struct list_head *to_be_freed);
+ extern int drbd_connected(struct drbd_peer_device *);
+ 
+-static inline void drbd_tcp_quickack(struct socket *sock)
+-{
+-	int val = 2;
+-	(void) kernel_setsockopt(sock, SOL_TCP, TCP_QUICKACK,
+-			(char*)&val, sizeof(val));
+-}
+-
+ /* sets the number of 512 byte sectors of our virtual device */
+ void drbd_set_my_capacity(struct drbd_device *device, sector_t size);
+ 
+diff --git a/drivers/block/drbd/drbd_receiver.c b/drivers/block/drbd/drbd_receiver.c
+index 20a5e94494acd..3a3f2b6a821f3 100644
+--- a/drivers/block/drbd/drbd_receiver.c
++++ b/drivers/block/drbd/drbd_receiver.c
+@@ -1223,7 +1223,7 @@ static int drbd_recv_header_maybe_unplug(struct drbd_connection *connection, str
+ 		 * quickly as possible, and let remote TCP know what we have
+ 		 * received so far. */
+ 		if (err = -EAGAIN) {
+-			drbd_tcp_quickack(connection->data.socket);
++			tcp_sock_set_quickack(connection->data.socket->sk, 2);
+ 			drbd_unplug_all_devices(connection);
+ 		}
+ 		if (err > 0) {
+@@ -4959,8 +4959,7 @@ static int receive_UnplugRemote(struct drbd_connection *connection, struct packe
+ {
+ 	/* Make sure we've acked all the TCP data associated
+ 	 * with the data requests being unplugged */
+-	drbd_tcp_quickack(connection->data.socket);
+-
++	tcp_sock_set_quickack(connection->data.socket->sk, 2);
+ 	return 0;
+ }
+ 
+diff --git a/include/linux/tcp.h b/include/linux/tcp.h
+index 9e42c7fe50a8b..2eaf8320b9db0 100644
+--- a/include/linux/tcp.h
++++ b/include/linux/tcp.h
+@@ -499,5 +499,6 @@ int tcp_skb_shift(struct sk_buff *to, struct sk_buff *from, int pcount,
+ 
+ void tcp_sock_set_cork(struct sock *sk, bool on);
+ void tcp_sock_set_nodelay(struct sock *sk);
++void tcp_sock_set_quickack(struct sock *sk, int val);
+ 
+ #endif	/* _LINUX_TCP_H */
+diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
+index a65f293a19fac..27b5e7a4e2ef9 100644
+--- a/net/ipv4/tcp.c
++++ b/net/ipv4/tcp.c
+@@ -2856,6 +2856,31 @@ void tcp_sock_set_nodelay(struct sock *sk)
+ }
+ EXPORT_SYMBOL(tcp_sock_set_nodelay);
+ 
++static void __tcp_sock_set_quickack(struct sock *sk, int val)
++{
++	if (!val) {
++		inet_csk_enter_pingpong_mode(sk);
++		return;
++	}
++
++	inet_csk_exit_pingpong_mode(sk);
++	if ((1 << sk->sk_state) & (TCPF_ESTABLISHED | TCPF_CLOSE_WAIT) &&
++	    inet_csk_ack_scheduled(sk)) {
++		inet_csk(sk)->icsk_ack.pending |= ICSK_ACK_PUSHED;
++		tcp_cleanup_rbuf(sk, 1);
++		if (!(val & 1))
++			inet_csk_enter_pingpong_mode(sk);
++	}
++}
++
++void tcp_sock_set_quickack(struct sock *sk, int val)
++{
++	lock_sock(sk);
++	__tcp_sock_set_quickack(sk, val);
++	release_sock(sk);
++}
++EXPORT_SYMBOL(tcp_sock_set_quickack);
++
+ /*
+  *	Socket option code for TCP.
+  */
+@@ -3096,19 +3121,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
+ 		break;
+ 
+ 	case TCP_QUICKACK:
+-		if (!val) {
+-			inet_csk_enter_pingpong_mode(sk);
+-		} else {
+-			inet_csk_exit_pingpong_mode(sk);
+-			if ((1 << sk->sk_state) &
+-			    (TCPF_ESTABLISHED | TCPF_CLOSE_WAIT) &&
+-			    inet_csk_ack_scheduled(sk)) {
+-				icsk->icsk_ack.pending |= ICSK_ACK_PUSHED;
+-				tcp_cleanup_rbuf(sk, 1);
+-				if (!(val & 1))
+-					inet_csk_enter_pingpong_mode(sk);
+-			}
+-		}
++		__tcp_sock_set_quickack(sk, val);
+ 		break;
+ 
+ #ifdef CONFIG_TCP_MD5SIG
+-- 
+2.26.2
