@@ -1,71 +1,88 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 21 May 2020 17:47:21 +0000
-Subject: [PATCH 46/49] sctp: pass a kernel pointer to sctp_setsockopt_event
-Message-Id: <20200521174724.2635475-47-hch@lst.de>
+Date: Wed, 20 May 2020 19:54:42 +0000
+Subject: [PATCH 06/33] net: add sock_set_sndtimeo
+Message-Id: <20200520195509.2215098-7-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200521174724.2635475-1-hch@lst.de>
-In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
+References: <20200520195509.2215098-1-hch@lst.de>
+In-Reply-To: <20200520195509.2215098-1-hch-jcswGhMUV9g@public.gmane.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, Jakub Kicinski <kuba-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Eric Dumazet <edumazet-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>, linux-nvme-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, target-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, rds-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Alexey Kuznetsov <kuznet-v/Mj1YrvjDBInbfyfbPRSQ@public.gmane.org>, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Neil Horman <nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org>, Hideaki YOSHIFUJI <yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org>, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Vlad Yasevich <vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Jon Maloy <jmaloy-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Ying Xue <ying.xue-CWA4WttNNZF54TAoqtyWWQ@public.gmane.org>, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
+Add a helper to directly set the SO_SNDTIMEO_NEW sockopt from kernel
+space without going through a fake uaccess.  The interface is
+simplified to only pass the seconds value, as that is the only
+thing needed at the moment.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 18 ++++++------------
- 1 file changed, 6 insertions(+), 12 deletions(-)
+ fs/dlm/lowcomms.c  |  8 ++------
+ include/net/sock.h |  1 +
+ net/core/sock.c    | 11 +++++++++++
+ 3 files changed, 14 insertions(+), 6 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 9b22bb4817830..0aa7265c9c9a0 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -4292,29 +4292,23 @@ static int sctp_setsockopt_event(struct sock *sk, struct sctp_event *param,
+diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
+index 88f2574ca63ad..b79711d0aac72 100644
+--- a/fs/dlm/lowcomms.c
++++ b/fs/dlm/lowcomms.c
+@@ -918,7 +918,6 @@ static void sctp_connect_to_sock(struct connection *con)
+ 	int result;
+ 	int addr_len;
+ 	struct socket *sock;
+-	struct __kernel_sock_timeval tv = { .tv_sec = 5, .tv_usec = 0 };
+ 
+ 	if (con->nodeid = 0) {
+ 		log_print("attempt to connect sock 0 foiled");
+@@ -970,13 +969,10 @@ static void sctp_connect_to_sock(struct connection *con)
+ 	 * since O_NONBLOCK argument in connect() function does not work here,
+ 	 * then, we should restore the default value of this attribute.
+ 	 */
+-	kernel_setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO_NEW, (char *)&tv,
+-			  sizeof(tv));
++	sock_set_sndtimeo(sock->sk, 5);
+ 	result = sock->ops->connect(sock, (struct sockaddr *)&daddr, addr_len,
+ 				   0);
+-	memset(&tv, 0, sizeof(tv));
+-	kernel_setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO_NEW, (char *)&tv,
+-			  sizeof(tv));
++	sock_set_sndtimeo(sock->sk, 0);
+ 
+ 	if (result = -EINPROGRESS)
+ 		result = 0;
+diff --git a/include/net/sock.h b/include/net/sock.h
+index a3a43141a4be2..9a7b9e98685ac 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -2691,5 +2691,6 @@ void sock_def_readable(struct sock *sk);
+ void sock_no_linger(struct sock *sk);
+ void sock_set_priority(struct sock *sk, u32 priority);
+ void sock_set_reuseaddr(struct sock *sk);
++void sock_set_sndtimeo(struct sock *sk, s64 secs);
+ 
+ #endif	/* _SOCK_H */
+diff --git a/net/core/sock.c b/net/core/sock.c
+index ceda1a9248b3e..d3b1d61e4f768 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -737,6 +737,17 @@ void sock_set_priority(struct sock *sk, u32 priority)
  }
+ EXPORT_SYMBOL(sock_set_priority);
  
- static int sctp_setsockopt_asconf_supported(struct sock *sk,
--					    char __user *optval,
-+					    struct sctp_assoc_value *params,
- 					    unsigned int optlen)
- {
--	struct sctp_assoc_value params;
- 	struct sctp_association *asoc;
- 	struct sctp_endpoint *ep;
- 	int retval = -EINVAL;
- 
--	if (optlen != sizeof(params))
--		goto out;
--
--	if (copy_from_user(&params, optval, optlen)) {
--		retval = -EFAULT;
-+	if (optlen != sizeof(*params))
- 		goto out;
--	}
- 
--	asoc = sctp_id2assoc(sk, params.assoc_id);
--	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
-+	asoc = sctp_id2assoc(sk, params->assoc_id);
-+	if (!asoc && params->assoc_id != SCTP_FUTURE_ASSOC &&
- 	    sctp_style(sk, UDP))
- 		goto out;
- 
- 	ep = sctp_sk(sk)->ep;
--	ep->asconf_enable = !!params.assoc_value;
-+	ep->asconf_enable = !!params->assoc_value;
- 
- 	if (ep->asconf_enable && ep->auth_enable) {
- 		sctp_auth_ep_add_chunkid(ep, SCTP_CID_ASCONF);
-@@ -4637,7 +4631,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_event(sk, kopt, optlen);
- 		break;
- 	case SCTP_ASCONF_SUPPORTED:
--		retval = sctp_setsockopt_asconf_supported(sk, optval, optlen);
-+		retval = sctp_setsockopt_asconf_supported(sk, kopt, optlen);
- 		break;
- 	case SCTP_AUTH_SUPPORTED:
- 		retval = sctp_setsockopt_auth_supported(sk, optval, optlen);
++void sock_set_sndtimeo(struct sock *sk, s64 secs)
++{
++	lock_sock(sk);
++	if (secs && secs < MAX_SCHEDULE_TIMEOUT / HZ - 1)
++		sk->sk_sndtimeo = secs * HZ;
++	else
++		sk->sk_sndtimeo = MAX_SCHEDULE_TIMEOUT;
++	release_sock(sk);
++}
++EXPORT_SYMBOL(sock_set_sndtimeo);
++
+ /*
+  *	This is meant for all protocols to use and covers goings on
+  *	at the socket level. Everything here is generic.
 -- 
 2.26.2
