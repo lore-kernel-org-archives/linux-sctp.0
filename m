@@ -1,70 +1,82 @@
-From: ashwin-h <ashwinh@vmware.com>
-Date: Wed, 06 May 2020 06:47:30 +0000
-Subject: [PATCH 1/2] sctp: implement memory accounting on tx path
-Message-Id: <4ce6c13946803700d235082b9c52460ed38dab1e.1588242081.git.ashwinh@vmware.com>
+From: Christoph Hellwig <hch@lst.de>
+Date: Wed, 20 May 2020 19:55:07 +0000
+Subject: [PATCH 31/33] sctp: add sctp_sock_set_nodelay
+Message-Id: <20200520195509.2215098-32-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1588242081.git.ashwinh@vmware.com>
-In-Reply-To: <cover.1588242081.git.ashwinh@vmware.com>
+References: <20200520195509.2215098-1-hch@lst.de>
+In-Reply-To: <20200520195509.2215098-1-hch-jcswGhMUV9g@public.gmane.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: vyasevich@gmail.com, nhorman@tuxdriver.com
-Cc: davem@davemloft.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, srivatsab@vmware.com, srivatsa@csail.mit.edu, rostedt@goodmis.org, srostedt@vmware.com, gregkh@linuxfoundation.org, ashwin.hiranniah@gmail.com, Xin Long <lucien.xin@gmail.com>, Ashwin H <ashwinh@vmware.com>
+To: "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, Jakub Kicinski <kuba-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+Cc: Eric Dumazet <edumazet-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>, Alexey Kuznetsov <kuznet-v/Mj1YrvjDBInbfyfbPRSQ@public.gmane.org>, Hideaki YOSHIFUJI <yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org>, Vlad Yasevich <vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Neil Horman <nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org>, Marcelo Ricardo Leitner <marcelo.leitner-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Jon Maloy <jmaloy-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Ying Xue <ying.xue-CWA4WttNNZF54TAoqtyWWQ@public.gmane.org>, drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nvme-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, target-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, rds-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 
-From: Xin Long <lucien.xin@gmail.com>
+Add a helper to directly set the SCTP_NODELAY sockopt from kernel space
+without going through a fake uaccess.
 
-commit 1033990ac5b2ab6cee93734cb6d301aa3a35bcaa upstream.
-
-Now when sending packets, sk_mem_charge() and sk_mem_uncharge() have been
-used to set sk_forward_alloc. We just need to call sk_wmem_schedule() to
-check if the allocated should be raised, and call sk_mem_reclaim() to
-check if the allocated should be reduced when it's under memory pressure.
-
-If sk_wmem_schedule() returns false, which means no memory is allowed to
-allocate, it will block and wait for memory to become available.
-
-Note different from tcp, sctp wait_for_buf happens before allocating any
-skb, so memory accounting check is done with the whole msg_len before it
-too.
-
-Reported-by: Matteo Croce <mcroce@redhat.com>
-Tested-by: Matteo Croce <mcroce@redhat.com>
-Acked-by: Neil Horman <nhorman@tuxdriver.com>
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
-Signed-off-by: David S. Miller <davem@davemloft.net>
-Signed-off-by: Ashwin H <ashwinh@vmware.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 10 ++++++++--
- 1 file changed, 8 insertions(+), 2 deletions(-)
+ fs/dlm/lowcomms.c       | 10 ++--------
+ include/net/sctp/sctp.h |  7 +++++++
+ 2 files changed, 9 insertions(+), 8 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index c93be3b..df4a7d7 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -1931,7 +1931,10 @@ static int sctp_sendmsg_to_asoc(struct sctp_association *asoc,
- 	if (sctp_wspace(asoc) < (int)msg_len)
- 		sctp_prsctp_prune(asoc, sinfo, msg_len - sctp_wspace(asoc));
+diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
+index 69333728d871b..9f1c3cdc9d653 100644
+--- a/fs/dlm/lowcomms.c
++++ b/fs/dlm/lowcomms.c
+@@ -914,7 +914,6 @@ static int sctp_bind_addrs(struct connection *con, uint16_t port)
+ static void sctp_connect_to_sock(struct connection *con)
+ {
+ 	struct sockaddr_storage daddr;
+-	int one = 1;
+ 	int result;
+ 	int addr_len;
+ 	struct socket *sock;
+@@ -961,8 +960,7 @@ static void sctp_connect_to_sock(struct connection *con)
+ 	log_print("connecting to %d", con->nodeid);
  
--	if (sctp_wspace(asoc) <= 0) {
-+	if (sk_under_memory_pressure(sk))
-+		sk_mem_reclaim(sk);
+ 	/* Turn off Nagle's algorithm */
+-	kernel_setsockopt(sock, SOL_SCTP, SCTP_NODELAY, (char *)&one,
+-			  sizeof(one));
++	sctp_sock_set_nodelay(sock->sk);
+ 
+ 	/*
+ 	 * Make sock->ops->connect() function return in specified time,
+@@ -1176,7 +1174,6 @@ static int sctp_listen_for_all(void)
+ 	struct socket *sock = NULL;
+ 	int result = -EINVAL;
+ 	struct connection *con = nodeid2con(0, GFP_NOFS);
+-	int one = 1;
+ 
+ 	if (!con)
+ 		return -ENOMEM;
+@@ -1191,10 +1188,7 @@ static int sctp_listen_for_all(void)
+ 	}
+ 
+ 	sock_set_rcvbuf(sock->sk, NEEDED_RMEM);
+-	result = kernel_setsockopt(sock, SOL_SCTP, SCTP_NODELAY, (char *)&one,
+-				   sizeof(one));
+-	if (result < 0)
+-		log_print("Could not set SCTP NODELAY error %d\n", result);
++	sctp_sock_set_nodelay(sock->sk);
+ 
+ 	write_lock_bh(&sock->sk->sk_callback_lock);
+ 	/* Init con struct */
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 3ab5c6bbb90bd..f8bcb75bb0448 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -615,4 +615,11 @@ static inline bool sctp_newsk_ready(const struct sock *sk)
+ 	return sock_flag(sk, SOCK_DEAD) || sk->sk_socket;
+ }
+ 
++static inline void sctp_sock_set_nodelay(struct sock *sk)
++{
++	lock_sock(sk);
++	sctp_sk(sk)->nodelay = true;
++	release_sock(sk);
++}
 +
-+	if (sctp_wspace(asoc) <= 0 || !sk_wmem_schedule(sk, msg_len)) {
- 		timeo = sock_sndtimeo(sk, msg->msg_flags & MSG_DONTWAIT);
- 		err = sctp_wait_for_sndbuf(asoc, &timeo, msg_len);
- 		if (err)
-@@ -8515,7 +8518,10 @@ static int sctp_wait_for_sndbuf(struct sctp_association *asoc, long *timeo_p,
- 			goto do_error;
- 		if (signal_pending(current))
- 			goto do_interrupted;
--		if ((int)msg_len <= sctp_wspace(asoc))
-+		if (sk_under_memory_pressure(sk))
-+			sk_mem_reclaim(sk);
-+		if ((int)msg_len <= sctp_wspace(asoc) &&
-+		    sk_wmem_schedule(sk, msg_len))
- 			break;
- 
- 		/* Let another process have a go.  Since we are going
+ #endif /* __net_sctp_h__ */
 -- 
-2.7.4
+2.26.2
