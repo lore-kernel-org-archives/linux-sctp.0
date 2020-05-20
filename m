@@ -1,69 +1,94 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 21 May 2020 17:46:59 +0000
-Subject: [PATCH 24/49] sctp: pass a kernel pointer to sctp_setsockopt_auth_chunk
-Message-Id: <20200521174724.2635475-25-hch@lst.de>
+Date: Wed, 20 May 2020 19:54:57 +0000
+Subject: [PATCH 21/33] ipv4: add ip_sock_set_freebind
+Message-Id: <20200520195509.2215098-22-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200521174724.2635475-1-hch@lst.de>
-In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
+References: <20200520195509.2215098-1-hch@lst.de>
+In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Eric Dumazet <edumazet@google.com>, linux-nvme@lists.infradead.org, linux-sctp@vger.kernel.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, rds-devel@oss.oracle.com, linux-rdma@vger.kernel.org, cluster-devel@redhat.com, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, drbd-dev@tron.linbit.com, ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, linux-kernel@vger.kernel.org, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, ocfs2-devel@oss.oracle.com
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
+Add a helper to directly set the IP_FREEBIND sockopt from kernel space
+without going through a fake uaccess.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 11 ++++-------
- 1 file changed, 4 insertions(+), 7 deletions(-)
+ drivers/target/iscsi/iscsi_target_login.c | 13 +++----------
+ include/net/ip.h                          |  1 +
+ net/ipv4/ip_sockglue.c                    |  8 ++++++++
+ 3 files changed, 12 insertions(+), 10 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index e62e8dbe961ec..aa06affcd66e0 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3532,21 +3532,18 @@ static int sctp_setsockopt_maxburst(struct sock *sk,
-  * will only effect future associations on the socket.
-  */
- static int sctp_setsockopt_auth_chunk(struct sock *sk,
--				      char __user *optval,
-+				      struct sctp_authchunk *val,
- 				      unsigned int optlen)
+diff --git a/drivers/target/iscsi/iscsi_target_login.c b/drivers/target/iscsi/iscsi_target_login.c
+index b561b07a869a0..85748e3388582 100644
+--- a/drivers/target/iscsi/iscsi_target_login.c
++++ b/drivers/target/iscsi/iscsi_target_login.c
+@@ -15,6 +15,7 @@
+ #include <linux/sched/signal.h>
+ #include <linux/idr.h>
+ #include <linux/tcp.h>        /* TCP_NODELAY */
++#include <net/ip.h>
+ #include <net/ipv6.h>         /* ipv6_addr_v4mapped() */
+ #include <scsi/iscsi_proto.h>
+ #include <target/target_core_base.h>
+@@ -855,7 +856,7 @@ int iscsit_setup_np(
+ 	struct sockaddr_storage *sockaddr)
  {
- 	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
--	struct sctp_authchunk val;
+ 	struct socket *sock = NULL;
+-	int backlog = ISCSIT_TCP_BACKLOG, ret, opt = 0, len;
++	int backlog = ISCSIT_TCP_BACKLOG, ret, len;
  
- 	if (!ep->auth_enable)
- 		return -EACCES;
+ 	switch (np->np_network_transport) {
+ 	case ISCSI_TCP:
+@@ -900,15 +901,7 @@ int iscsit_setup_np(
+ 	if (np->np_network_transport = ISCSI_TCP)
+ 		tcp_sock_set_nodelay(sock->sk);
+ 	sock_set_reuseaddr(sock->sk);
+-
+-	opt = 1;
+-	ret = kernel_setsockopt(sock, IPPROTO_IP, IP_FREEBIND,
+-			(char *)&opt, sizeof(opt));
+-	if (ret < 0) {
+-		pr_err("kernel_setsockopt() for IP_FREEBIND"
+-			" failed\n");
+-		goto fail;
+-	}
++	ip_sock_set_freebind(sock->sk);
  
- 	if (optlen != sizeof(struct sctp_authchunk))
- 		return -EINVAL;
--	if (copy_from_user(&val, optval, optlen))
--		return -EFAULT;
- 
--	switch (val.sauth_chunk) {
-+	switch (val->sauth_chunk) {
- 	case SCTP_CID_INIT:
- 	case SCTP_CID_INIT_ACK:
- 	case SCTP_CID_SHUTDOWN_COMPLETE:
-@@ -3555,7 +3552,7 @@ static int sctp_setsockopt_auth_chunk(struct sock *sk,
- 	}
- 
- 	/* add this chunk id to the endpoint */
--	return sctp_auth_ep_add_chunkid(ep, val.sauth_chunk);
-+	return sctp_auth_ep_add_chunkid(ep, val->sauth_chunk);
+ 	ret = kernel_bind(sock, (struct sockaddr *)&np->np_sockaddr, len);
+ 	if (ret < 0) {
+diff --git a/include/net/ip.h b/include/net/ip.h
+index 2fc52e26fa88b..5f5d8226b6abc 100644
+--- a/include/net/ip.h
++++ b/include/net/ip.h
+@@ -765,6 +765,7 @@ static inline bool inetdev_valid_mtu(unsigned int mtu)
+ 	return likely(mtu >= IPV4_MIN_MTU);
  }
  
++void ip_sock_set_freebind(struct sock *sk);
+ void ip_sock_set_tos(struct sock *sk, int val);
+ 
+ #endif	/* _IP_H */
+diff --git a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
+index 1733ac78c21aa..62e642ab80126 100644
+--- a/net/ipv4/ip_sockglue.c
++++ b/net/ipv4/ip_sockglue.c
+@@ -581,6 +581,14 @@ void ip_sock_set_tos(struct sock *sk, int val)
+ }
+ EXPORT_SYMBOL(ip_sock_set_tos);
+ 
++void ip_sock_set_freebind(struct sock *sk)
++{
++	lock_sock(sk);
++	inet_sk(sk)->freebind = true;
++	release_sock(sk);
++}
++EXPORT_SYMBOL(ip_sock_set_freebind);
++
  /*
-@@ -4696,7 +4693,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_maxburst(sk, kopt, optlen);
- 		break;
- 	case SCTP_AUTH_CHUNK:
--		retval = sctp_setsockopt_auth_chunk(sk, optval, optlen);
-+		retval = sctp_setsockopt_auth_chunk(sk, kopt, optlen);
- 		break;
- 	case SCTP_HMAC_IDENT:
- 		retval = sctp_setsockopt_hmac_ident(sk, optval, optlen);
+  *	Socket option code for IP. This is the end of the line after any
+  *	TCP,UDP etc options on an IP socket.
 -- 
 2.26.2
