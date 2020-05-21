@@ -1,118 +1,69 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Tue, 26 May 2020 16:40:01 +0000
-Subject: [PATCH v3 net-next 8/8] sctp: setsockopt, whitespace changes
-Message-Id: <522c0d1d83ff44cba6786f7cc3ca6547@AcuMS.aculab.com>
+From: Christoph Hellwig <hch@lst.de>
+Date: Thu, 21 May 2020 17:47:23 +0000
+Subject: [PATCH 48/49] sctp: pass a kernel pointer to sctp_setsockopt_ecn_supported
+Message-Id: <20200521174724.2635475-49-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20200521174724.2635475-1-hch@lst.de>
+In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Vlad Yasevich' <vyasevich@gmail.com>, 'Neil Horman' <nhorman@tuxdriver.com>, "'David S. Miller'" <davem@davemloft.net>, 'Jakub Kicinski' <kuba@kernel.org>, "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>, "'netdev@vger.kernel.org'" <netdev@vger.kernel.org>, 'Christoph Hellwig' <hch@lst.de>, 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Fix alignment of ?: continued lines.
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
-Signed-off-by: David Laight <david.laight@aculab.com>
-
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
+ net/sctp/socket.c | 18 ++++++------------
+ 1 file changed, 6 insertions(+), 12 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 6d35ea3..4b89e5f 100644
+index 755bb23ffa3c9..f9f4776b0bbfd 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -6304,7 +6304,7 @@ static int sctp_getsockopt_context(struct sock *sk, int len,
- 		return -EINVAL;
- 
- 	params->assoc_value = asoc ? asoc->default_rcv_context
--				  : sctp_sk(sk)->default_rcv_context;
-+				   : sctp_sk(sk)->default_rcv_context;
- 
- 	return 0;
+@@ -4356,27 +4356,21 @@ static int sctp_setsockopt_auth_supported(struct sock *sk,
  }
-@@ -6789,7 +6789,7 @@ static int sctp_getsockopt_pr_supported(struct sock *sk, int len,
- 	}
  
- 	params->assoc_value = asoc ? asoc->peer.prsctp_capable
--				  : sctp_sk(sk)->ep->prsctp_enable;
-+				   : sctp_sk(sk)->ep->prsctp_enable;
+ static int sctp_setsockopt_ecn_supported(struct sock *sk,
+-					 char __user *optval,
++					 struct sctp_assoc_value *params,
+ 					 unsigned int optlen)
+ {
+-	struct sctp_assoc_value params;
+ 	struct sctp_association *asoc;
+ 	int retval = -EINVAL;
  
- 	return 0;
- }
-@@ -6924,7 +6924,7 @@ static int sctp_getsockopt_reconfig_supported(struct sock *sk, int len,
- 		return -EINVAL;
- 
- 	params->assoc_value = asoc ? asoc->peer.reconf_capable
--				  : sctp_sk(sk)->ep->reconf_enable;
-+				   : sctp_sk(sk)->ep->reconf_enable;
- 
- 	return 0;
- }
-@@ -6943,7 +6943,7 @@ static int sctp_getsockopt_enable_strreset(struct sock *sk, int len,
- 		return -EINVAL;
- 
- 	params->assoc_value = asoc ? asoc->strreset_enable
--				  : sctp_sk(sk)->ep->strreset_enable;
-+				   : sctp_sk(sk)->ep->strreset_enable;
- 
- 	return 0;
- }
-@@ -6962,7 +6962,7 @@ static int sctp_getsockopt_scheduler(struct sock *sk, int len,
- 		return -EINVAL;
- 
- 	params->assoc_value = asoc ? sctp_sched_get_sched(asoc)
--				  : sctp_sk(sk)->default_ss;
-+				   : sctp_sk(sk)->default_ss;
- 
- 	return 0;
- }
-@@ -6997,7 +6997,7 @@ static int sctp_getsockopt_interleaving_supported(struct sock *sk, int len,
- 		return -EINVAL;
- 
- 	params->assoc_value = asoc ? asoc->peer.intl_capable
--				  : sctp_sk(sk)->ep->intl_enable;
-+				   : sctp_sk(sk)->ep->intl_enable;
- 
- 	return 0;
- }
-@@ -7053,7 +7053,7 @@ static int sctp_getsockopt_asconf_supported(struct sock *sk, int len,
- 		return -EINVAL;
- 
- 	params->assoc_value = asoc ? asoc->peer.asconf_capable
--				  : sctp_sk(sk)->ep->asconf_enable;
-+				   : sctp_sk(sk)->ep->asconf_enable;
- 
- 	return 0;
- }
-@@ -7072,7 +7072,7 @@ static int sctp_getsockopt_auth_supported(struct sock *sk, int len,
- 		return -EINVAL;
- 
- 	params->assoc_value = asoc ? asoc->peer.auth_capable
--				  : sctp_sk(sk)->ep->auth_enable;
-+				   : sctp_sk(sk)->ep->auth_enable;
- 
- 	return 0;
- }
-@@ -7091,7 +7091,7 @@ static int sctp_getsockopt_ecn_supported(struct sock *sk, int len,
- 		return -EINVAL;
- 
- 	params->assoc_value = asoc ? asoc->peer.ecn_capable
--				  : sctp_sk(sk)->ep->ecn_enable;
-+				   : sctp_sk(sk)->ep->ecn_enable;
- 
- 	return 0;
- }
-@@ -7110,7 +7110,7 @@ static int sctp_getsockopt_pf_expose(struct sock *sk, int len,
- 		return -EINVAL;
- 
- 	params->assoc_value = asoc ? asoc->pf_expose
--				  : sctp_sk(sk)->pf_expose;
-+				   : sctp_sk(sk)->pf_expose;
- 
- 	return 0;
- }
--- 
-1.8.1.2
-
+-	if (optlen != sizeof(params))
+-		goto out;
 -
-Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-Registration No: 1397386 (Wales)
+-	if (copy_from_user(&params, optval, optlen)) {
+-		retval = -EFAULT;
++	if (optlen != sizeof(*params))
+ 		goto out;
+-	}
+ 
+-	asoc = sctp_id2assoc(sk, params.assoc_id);
+-	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
++	asoc = sctp_id2assoc(sk, params->assoc_id);
++	if (!asoc && params->assoc_id != SCTP_FUTURE_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		goto out;
+ 
+-	sctp_sk(sk)->ep->ecn_enable = !!params.assoc_value;
++	sctp_sk(sk)->ep->ecn_enable = !!params->assoc_value;
+ 	retval = 0;
+ 
+ out:
+@@ -4631,7 +4625,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_auth_supported(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_ECN_SUPPORTED:
+-		retval = sctp_setsockopt_ecn_supported(sk, optval, optlen);
++		retval = sctp_setsockopt_ecn_supported(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_EXPOSE_POTENTIALLY_FAILED_STATE:
+ 		retval = sctp_setsockopt_pf_expose(sk, optval, optlen);
+-- 
+2.26.2
