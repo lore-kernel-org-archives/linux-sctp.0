@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 21 May 2020 17:47:15 +0000
-Subject: [PATCH 40/49] sctp: pass a kernel pointer to sctp_setsockopt_add_streams
-Message-Id: <20200521174724.2635475-41-hch@lst.de>
+Date: Thu, 21 May 2020 17:47:02 +0000
+Subject: [PATCH 27/49] sctp: pass a kernel pointer to sctp_setsockopt_active_key
+Message-Id: <20200521174724.2635475-28-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200521174724.2635475-1-hch@lst.de>
 In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
@@ -16,57 +16,75 @@ directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 24 +++++++-----------------
- 1 file changed, 7 insertions(+), 17 deletions(-)
+ net/sctp/socket.c | 27 ++++++++++++---------------
+ 1 file changed, 12 insertions(+), 15 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 185c07916281c..84881913dbc7f 100644
+index d3442dcd49aa8..88514a17654a7 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -4095,29 +4095,19 @@ static int sctp_setsockopt_reset_assoc(struct sock *sk, sctp_assoc_t *associd,
- }
- 
- static int sctp_setsockopt_add_streams(struct sock *sk,
--				       char __user *optval,
-+				       struct sctp_add_streams *params,
- 				       unsigned int optlen)
+@@ -3651,42 +3651,39 @@ static int sctp_setsockopt_auth_key(struct sock *sk,
+  * the association shared key.
+  */
+ static int sctp_setsockopt_active_key(struct sock *sk,
+-				      char __user *optval,
++				      struct sctp_authkeyid *val,
+ 				      unsigned int optlen)
  {
+ 	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
  	struct sctp_association *asoc;
--	struct sctp_add_streams params;
--	int retval = -EINVAL;
--
--	if (optlen != sizeof(params))
--		goto out;
+-	struct sctp_authkeyid val;
+ 	int ret = 0;
  
--	if (copy_from_user(&params, optval, optlen)) {
--		retval = -EFAULT;
--		goto out;
--	}
-+	if (optlen != sizeof(*params))
-+		return -EINVAL;
+ 	if (optlen != sizeof(struct sctp_authkeyid))
+ 		return -EINVAL;
+-	if (copy_from_user(&val, optval, optlen))
+-		return -EFAULT;
  
--	asoc = sctp_id2assoc(sk, params.sas_assoc_id);
-+	asoc = sctp_id2assoc(sk, params->sas_assoc_id);
- 	if (!asoc)
--		goto out;
--
--	retval = sctp_send_add_streams(asoc, &params);
-+		return -EINVAL;
+-	asoc = sctp_id2assoc(sk, val.scact_assoc_id);
+-	if (!asoc && val.scact_assoc_id > SCTP_ALL_ASSOC &&
++	asoc = sctp_id2assoc(sk, val->scact_assoc_id);
++	if (!asoc && val->scact_assoc_id > SCTP_ALL_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		return -EINVAL;
  
--out:
--	return retval;
-+	return sctp_send_add_streams(asoc, params);
- }
+ 	if (asoc)
+-		return sctp_auth_set_active_key(ep, asoc, val.scact_keynumber);
++		return sctp_auth_set_active_key(ep, asoc, val->scact_keynumber);
  
- static int sctp_setsockopt_scheduler(struct sock *sk,
-@@ -4663,7 +4653,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_reset_assoc(sk, kopt, optlen);
+ 	if (sctp_style(sk, TCP))
+-		val.scact_assoc_id = SCTP_FUTURE_ASSOC;
++		val->scact_assoc_id = SCTP_FUTURE_ASSOC;
+ 
+-	if (val.scact_assoc_id = SCTP_FUTURE_ASSOC ||
+-	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
+-		ret = sctp_auth_set_active_key(ep, asoc, val.scact_keynumber);
++	if (val->scact_assoc_id = SCTP_FUTURE_ASSOC ||
++	    val->scact_assoc_id = SCTP_ALL_ASSOC) {
++		ret = sctp_auth_set_active_key(ep, asoc, val->scact_keynumber);
+ 		if (ret)
+ 			return ret;
+ 	}
+ 
+-	if (val.scact_assoc_id = SCTP_CURRENT_ASSOC ||
+-	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
++	if (val->scact_assoc_id = SCTP_CURRENT_ASSOC ||
++	    val->scact_assoc_id = SCTP_ALL_ASSOC) {
+ 		list_for_each_entry(asoc, &ep->asocs, asocs) {
+ 			int res = sctp_auth_set_active_key(ep, asoc,
+-							   val.scact_keynumber);
++							   val->scact_keynumber);
+ 
+ 			if (res && !ret)
+ 				ret = res;
+@@ -4685,7 +4682,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_auth_key(sk, kopt, optlen);
  		break;
- 	case SCTP_ADD_STREAMS:
--		retval = sctp_setsockopt_add_streams(sk, optval, optlen);
-+		retval = sctp_setsockopt_add_streams(sk, kopt, optlen);
+ 	case SCTP_AUTH_ACTIVE_KEY:
+-		retval = sctp_setsockopt_active_key(sk, optval, optlen);
++		retval = sctp_setsockopt_active_key(sk, kopt, optlen);
  		break;
- 	case SCTP_STREAM_SCHEDULER:
- 		retval = sctp_setsockopt_scheduler(sk, optval, optlen);
+ 	case SCTP_AUTH_DELETE_KEY:
+ 		retval = sctp_setsockopt_del_key(sk, optval, optlen);
 -- 
 2.26.2
