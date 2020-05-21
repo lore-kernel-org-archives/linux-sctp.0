@@ -1,73 +1,111 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Wed, 20 May 2020 19:55:04 +0000
-Subject: [PATCH 28/33] ipv6: add ip6_sock_set_recvpktinfo
-Message-Id: <20200520195509.2215098-29-hch@lst.de>
+Date: Thu, 21 May 2020 17:47:10 +0000
+Subject: [PATCH 35/49] sctp: pass a kernel pointer to sctp_setsockopt_default_prinfo
+Message-Id: <20200521174724.2635475-36-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200520195509.2215098-1-hch@lst.de>
-In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
+References: <20200521174724.2635475-1-hch@lst.de>
+In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Eric Dumazet <edumazet@google.com>, linux-nvme@lists.infradead.org, linux-sctp@vger.kernel.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, rds-devel@oss.oracle.com, linux-rdma@vger.kernel.org, cluster-devel@redhat.com, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, drbd-dev@tron.linbit.com, ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, linux-kernel@vger.kernel.org, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, ocfs2-devel@oss.oracle.com
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Add a helper to directly set the IPV6_RECVPKTINFO sockopt from kernel
-space without going through a fake uaccess.
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/net/ipv6.h   |  7 +++++++
- net/sunrpc/svcsock.c | 10 ++--------
- 2 files changed, 9 insertions(+), 8 deletions(-)
+ net/sctp/socket.c | 45 ++++++++++++++++++++-------------------------
+ 1 file changed, 20 insertions(+), 25 deletions(-)
 
-diff --git a/include/net/ipv6.h b/include/net/ipv6.h
-index 80260cff7e0c0..79b68ee3820e7 100644
---- a/include/net/ipv6.h
-+++ b/include/net/ipv6.h
-@@ -1261,4 +1261,11 @@ static inline int ip6_sock_set_addr_preferences(struct sock *sk, bool val)
- 	return ret;
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index fb7ed11382af1..6136f863095ef 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3940,55 +3940,50 @@ static int sctp_setsockopt_pr_supported(struct sock *sk,
  }
  
-+static inline void ip6_sock_set_recvpktinfo(struct sock *sk)
-+{
-+	lock_sock(sk);
-+	inet6_sk(sk)->rxopt.bits.rxinfo = true;
-+	release_sock(sk);
-+}
-+
- #endif /* _NET_IPV6_H */
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index a391892977cd2..e7a0037d9b56c 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -595,8 +595,6 @@ static struct svc_xprt_class svc_udp_class = {
- 
- static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
+ static int sctp_setsockopt_default_prinfo(struct sock *sk,
+-					  char __user *optval,
++					  struct sctp_default_prinfo *info,
+ 					  unsigned int optlen)
  {
--	int err, level, optname, one = 1;
--
- 	svc_xprt_init(sock_net(svsk->sk_sock->sk), &svc_udp_class,
- 		      &svsk->sk_xprt, serv);
- 	clear_bit(XPT_CACHE_AUTH, &svsk->sk_xprt.xpt_flags);
-@@ -617,17 +615,13 @@ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
- 	switch (svsk->sk_sk->sk_family) {
- 	case AF_INET:
- 		ip_sock_set_pktinfo(svsk->sk_sock->sk);
--		return;
-+		break;
- 	case AF_INET6:
--		level = SOL_IPV6;
--		optname = IPV6_RECVPKTINFO;
-+		ip6_sock_set_recvpktinfo(svsk->sk_sock->sk);
- 		break;
- 	default:
- 		BUG();
- 	}
--	err = kernel_setsockopt(svsk->sk_sock, level, optname,
--					(char *)&one, sizeof(one));
--	dprintk("svc: kernel_setsockopt returned %d\n", err);
- }
+ 	struct sctp_sock *sp = sctp_sk(sk);
+-	struct sctp_default_prinfo info;
+ 	struct sctp_association *asoc;
+ 	int retval = -EINVAL;
  
- /*
+-	if (optlen != sizeof(info))
+-		goto out;
+-
+-	if (copy_from_user(&info, optval, sizeof(info))) {
+-		retval = -EFAULT;
++	if (optlen != sizeof(*info))
+ 		goto out;
+-	}
+ 
+-	if (info.pr_policy & ~SCTP_PR_SCTP_MASK)
++	if (info->pr_policy & ~SCTP_PR_SCTP_MASK)
+ 		goto out;
+ 
+-	if (info.pr_policy = SCTP_PR_SCTP_NONE)
+-		info.pr_value = 0;
++	if (info->pr_policy = SCTP_PR_SCTP_NONE)
++		info->pr_value = 0;
+ 
+-	asoc = sctp_id2assoc(sk, info.pr_assoc_id);
+-	if (!asoc && info.pr_assoc_id > SCTP_ALL_ASSOC &&
++	asoc = sctp_id2assoc(sk, info->pr_assoc_id);
++	if (!asoc && info->pr_assoc_id > SCTP_ALL_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		goto out;
+ 
+ 	retval = 0;
+ 
+ 	if (asoc) {
+-		SCTP_PR_SET_POLICY(asoc->default_flags, info.pr_policy);
+-		asoc->default_timetolive = info.pr_value;
++		SCTP_PR_SET_POLICY(asoc->default_flags, info->pr_policy);
++		asoc->default_timetolive = info->pr_value;
+ 		goto out;
+ 	}
+ 
+ 	if (sctp_style(sk, TCP))
+-		info.pr_assoc_id = SCTP_FUTURE_ASSOC;
++		info->pr_assoc_id = SCTP_FUTURE_ASSOC;
+ 
+-	if (info.pr_assoc_id = SCTP_FUTURE_ASSOC ||
+-	    info.pr_assoc_id = SCTP_ALL_ASSOC) {
+-		SCTP_PR_SET_POLICY(sp->default_flags, info.pr_policy);
+-		sp->default_timetolive = info.pr_value;
++	if (info->pr_assoc_id = SCTP_FUTURE_ASSOC ||
++	    info->pr_assoc_id = SCTP_ALL_ASSOC) {
++		SCTP_PR_SET_POLICY(sp->default_flags, info->pr_policy);
++		sp->default_timetolive = info->pr_value;
+ 	}
+ 
+-	if (info.pr_assoc_id = SCTP_CURRENT_ASSOC ||
+-	    info.pr_assoc_id = SCTP_ALL_ASSOC) {
++	if (info->pr_assoc_id = SCTP_CURRENT_ASSOC ||
++	    info->pr_assoc_id = SCTP_ALL_ASSOC) {
+ 		list_for_each_entry(asoc, &sp->ep->asocs, asocs) {
+-			SCTP_PR_SET_POLICY(asoc->default_flags, info.pr_policy);
+-			asoc->default_timetolive = info.pr_value;
++			SCTP_PR_SET_POLICY(asoc->default_flags,
++					   info->pr_policy);
++			asoc->default_timetolive = info->pr_value;
+ 		}
+ 	}
+ 
+@@ -4686,7 +4681,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_pr_supported(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_DEFAULT_PRINFO:
+-		retval = sctp_setsockopt_default_prinfo(sk, optval, optlen);
++		retval = sctp_setsockopt_default_prinfo(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_RECONFIG_SUPPORTED:
+ 		retval = sctp_setsockopt_reconfig_supported(sk, optval, optlen);
 -- 
 2.26.2
