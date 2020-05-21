@@ -1,146 +1,57 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Tue, 26 May 2020 16:40:11 +0000
-Subject: [PATCH v3 net-next 4/8] sctp: getsockopt, rename some locals.
-Message-Id: <72071d4c0a854a099821df3b5e0d81ef@AcuMS.aculab.com>
+From: Christoph Hellwig <hch@lst.de>
+Date: Thu, 21 May 2020 17:47:08 +0000
+Subject: [PATCH 33/49] sctp: pass a kernel pointer to sctp_setsockopt_recvnxtinfo
+Message-Id: <20200521174724.2635475-34-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20200521174724.2635475-1-hch@lst.de>
+In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Vlad Yasevich' <vyasevich@gmail.com>, 'Neil Horman' <nhorman@tuxdriver.com>, "'David S. Miller'" <davem@davemloft.net>, 'Jakub Kicinski' <kuba@kernel.org>, "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>, "'netdev@vger.kernel.org'" <netdev@vger.kernel.org>, 'Christoph Hellwig' <hch@lst.de>, 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Rename locals to avoid clash with structure fields in the next patch.
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
-Signed-off-by: David Laight <david.laight@aculab.com>
-
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 52 ++++++++++++++++++++++++++--------------------------
- 1 file changed, 26 insertions(+), 26 deletions(-)
+ net/sctp/socket.c | 11 +++--------
+ 1 file changed, 3 insertions(+), 8 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index b8068da..ae916ad 100644
+index e4b537e6d61da..fe8d1ea7d9c35 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -6434,7 +6434,7 @@ static int sctp_getsockopt_nodelay(struct sock *sk, int len,
- static int sctp_getsockopt_rtoinfo(struct sock *sk, int len,
- 				char __user *optval,
- 				int __user *optlen) {
--	struct sctp_rtoinfo rtoinfo;
-+	struct sctp_rtoinfo params;
- 	struct sctp_association *asoc;
- 
- 	if (len < sizeof (struct sctp_rtoinfo))
-@@ -6442,33 +6442,33 @@ static int sctp_getsockopt_rtoinfo(struct sock *sk, int len,
- 
- 	len = sizeof(struct sctp_rtoinfo);
- 
--	if (copy_from_user(&rtoinfo, optval, len))
-+	if (copy_from_user(&params, optval, len))
- 		return -EFAULT;
- 
--	asoc = sctp_id2assoc(sk, rtoinfo.srto_assoc_id);
-+	asoc = sctp_id2assoc(sk, params.srto_assoc_id);
- 
--	if (!asoc && rtoinfo.srto_assoc_id != SCTP_FUTURE_ASSOC &&
-+	if (!asoc && params.srto_assoc_id != SCTP_FUTURE_ASSOC &&
- 	    sctp_style(sk, UDP))
- 		return -EINVAL;
- 
- 	/* Values corresponding to the specific association. */
- 	if (asoc) {
--		rtoinfo.srto_initial = jiffies_to_msecs(asoc->rto_initial);
--		rtoinfo.srto_max = jiffies_to_msecs(asoc->rto_max);
--		rtoinfo.srto_min = jiffies_to_msecs(asoc->rto_min);
-+		params.srto_initial = jiffies_to_msecs(asoc->rto_initial);
-+		params.srto_max = jiffies_to_msecs(asoc->rto_max);
-+		params.srto_min = jiffies_to_msecs(asoc->rto_min);
- 	} else {
- 		/* Values corresponding to the endpoint. */
- 		struct sctp_sock *sp = sctp_sk(sk);
- 
--		rtoinfo.srto_initial = sp->rtoinfo.srto_initial;
--		rtoinfo.srto_max = sp->rtoinfo.srto_max;
--		rtoinfo.srto_min = sp->rtoinfo.srto_min;
-+		params.srto_initial = sp->rtoinfo.srto_initial;
-+		params.srto_max = sp->rtoinfo.srto_max;
-+		params.srto_min = sp->rtoinfo.srto_min;
- 	}
- 
- 	if (put_user(len, optlen))
- 		return -EFAULT;
- 
--	if (copy_to_user(optval, &rtoinfo, len))
-+	if (copy_to_user(optval, &params, len))
- 		return -EFAULT;
- 
+@@ -3909,18 +3909,13 @@ static int sctp_setsockopt_recvrcvinfo(struct sock *sk, int *val,
  	return 0;
-@@ -6490,7 +6490,7 @@ static int sctp_getsockopt_associnfo(struct sock *sk, int len,
- 				     int __user *optlen)
+ }
+ 
+-static int sctp_setsockopt_recvnxtinfo(struct sock *sk,
+-				       char __user *optval,
++static int sctp_setsockopt_recvnxtinfo(struct sock *sk, int *val,
+ 				       unsigned int optlen)
  {
- 
--	struct sctp_assocparams assocparams;
-+	struct sctp_assocparams params;
- 	struct sctp_association *asoc;
- 	struct list_head *pos;
- 	int cnt = 0;
-@@ -6500,37 +6500,37 @@ static int sctp_getsockopt_associnfo(struct sock *sk, int len,
- 
- 	len = sizeof(struct sctp_assocparams);
- 
--	if (copy_from_user(&assocparams, optval, len))
-+	if (copy_from_user(&params, optval, len))
- 		return -EFAULT;
- 
--	asoc = sctp_id2assoc(sk, assocparams.sasoc_assoc_id);
-+	asoc = sctp_id2assoc(sk, params.sasoc_assoc_id);
- 
--	if (!asoc && assocparams.sasoc_assoc_id != SCTP_FUTURE_ASSOC &&
-+	if (!asoc && params.sasoc_assoc_id != SCTP_FUTURE_ASSOC &&
- 	    sctp_style(sk, UDP))
+-	int val;
+-
+ 	if (optlen < sizeof(int))
  		return -EINVAL;
+-	if (get_user(val, (int __user *) optval))
+-		return -EFAULT;
  
- 	/* Values correspoinding to the specific association */
- 	if (asoc) {
--		assocparams.sasoc_asocmaxrxt = asoc->max_retrans;
--		assocparams.sasoc_peer_rwnd = asoc->peer.rwnd;
--		assocparams.sasoc_local_rwnd = asoc->a_rwnd;
--		assocparams.sasoc_cookie_life = ktime_to_ms(asoc->cookie_life);
-+		params.sasoc_asocmaxrxt = asoc->max_retrans;
-+		params.sasoc_peer_rwnd = asoc->peer.rwnd;
-+		params.sasoc_local_rwnd = asoc->a_rwnd;
-+		params.sasoc_cookie_life = ktime_to_ms(asoc->cookie_life);
- 
- 		list_for_each(pos, &asoc->peer.transport_addr_list) {
- 			cnt++;
- 		}
- 
--		assocparams.sasoc_number_peer_destinations = cnt;
-+		params.sasoc_number_peer_destinations = cnt;
- 	} else {
- 		/* Values corresponding to the endpoint */
- 		struct sctp_sock *sp = sctp_sk(sk);
- 
--		assocparams.sasoc_asocmaxrxt = sp->assocparams.sasoc_asocmaxrxt;
--		assocparams.sasoc_peer_rwnd = sp->assocparams.sasoc_peer_rwnd;
--		assocparams.sasoc_local_rwnd = sp->assocparams.sasoc_local_rwnd;
--		assocparams.sasoc_cookie_life +		params.sasoc_asocmaxrxt = sp->assocparams.sasoc_asocmaxrxt;
-+		params.sasoc_peer_rwnd = sp->assocparams.sasoc_peer_rwnd;
-+		params.sasoc_local_rwnd = sp->assocparams.sasoc_local_rwnd;
-+		params.sasoc_cookie_life  					sp->assocparams.sasoc_cookie_life;
--		assocparams.sasoc_number_peer_destinations +		params.sasoc_number_peer_destinations  					sp->assocparams.
- 					sasoc_number_peer_destinations;
- 	}
-@@ -6538,7 +6538,7 @@ static int sctp_getsockopt_associnfo(struct sock *sk, int len,
- 	if (put_user(len, optlen))
- 		return -EFAULT;
- 
--	if (copy_to_user(optval, &assocparams, len))
-+	if (copy_to_user(optval, &params, len))
- 		return -EFAULT;
+-	sctp_sk(sk)->recvnxtinfo = (val = 0) ? 0 : 1;
++	sctp_sk(sk)->recvnxtinfo = (*val = 0) ? 0 : 1;
  
  	return 0;
+ }
+@@ -4689,7 +4684,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_recvrcvinfo(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_RECVNXTINFO:
+-		retval = sctp_setsockopt_recvnxtinfo(sk, optval, optlen);
++		retval = sctp_setsockopt_recvnxtinfo(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_PR_SUPPORTED:
+ 		retval = sctp_setsockopt_pr_supported(sk, optval, optlen);
 -- 
-1.8.1.2
-
--
-Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-Registration No: 1397386 (Wales)
+2.26.2
