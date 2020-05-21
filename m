@@ -1,93 +1,89 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Wed, 13 May 2020 06:26:34 +0000
-Subject: [PATCH 19/33] ipv4: add ip_sock_set_freebind
-Message-Id: <20200513062649.2100053-20-hch@lst.de>
+Date: Thu, 21 May 2020 17:46:56 +0000
+Subject: [PATCH 21/49] sctp: pass a kernel pointer to sctp_setsockopt_context
+Message-Id: <20200521174724.2635475-22-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200513062649.2100053-1-hch@lst.de>
-In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
+References: <20200521174724.2635475-1-hch@lst.de>
+In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
-Cc: Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com, linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Add a helper to directly set the IP_FREEBIND sockopt from kernel space
-without going through a fake uaccess.
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- drivers/target/iscsi/iscsi_target_login.c | 13 +++----------
- include/net/ip.h                          |  1 +
- net/ipv4/ip_sockglue.c                    |  8 ++++++++
- 3 files changed, 12 insertions(+), 10 deletions(-)
+ net/sctp/socket.c | 28 +++++++++++++---------------
+ 1 file changed, 13 insertions(+), 15 deletions(-)
 
-diff --git a/drivers/target/iscsi/iscsi_target_login.c b/drivers/target/iscsi/iscsi_target_login.c
-index 165fa573bcb29..9f69e16cfef5f 100644
---- a/drivers/target/iscsi/iscsi_target_login.c
-+++ b/drivers/target/iscsi/iscsi_target_login.c
-@@ -15,6 +15,7 @@
- #include <linux/sched/signal.h>
- #include <linux/idr.h>
- #include <linux/tcp.h>        /* TCP_NODELAY */
-+#include <net/ip.h>
- #include <net/ipv6.h>         /* ipv6_addr_v4mapped() */
- #include <scsi/iscsi_proto.h>
- #include <target/target_core_base.h>
-@@ -855,7 +856,7 @@ int iscsit_setup_np(
- 	struct sockaddr_storage *sockaddr)
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index b7bf09f86a5e7..03577684be65f 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3359,40 +3359,38 @@ static int sctp_setsockopt_adaptation_layer(struct sock *sk,
+  * received messages from the peer and does not effect the value that is
+  * saved with outbound messages.
+  */
+-static int sctp_setsockopt_context(struct sock *sk, char __user *optval,
++static int sctp_setsockopt_context(struct sock *sk,
++				   struct sctp_assoc_value *params,
+ 				   unsigned int optlen)
  {
- 	struct socket *sock = NULL;
--	int backlog = ISCSIT_TCP_BACKLOG, ret, opt = 0, len;
-+	int backlog = ISCSIT_TCP_BACKLOG, ret, len;
+ 	struct sctp_sock *sp = sctp_sk(sk);
+-	struct sctp_assoc_value params;
+ 	struct sctp_association *asoc;
  
- 	switch (np->np_network_transport) {
- 	case ISCSI_TCP:
-@@ -900,15 +901,7 @@ int iscsit_setup_np(
- 	if (np->np_network_transport = ISCSI_TCP)
- 		tcp_sock_set_nodelay(sock->sk, true);
- 	sock_set_reuseaddr(sock->sk, SK_CAN_REUSE);
--
--	opt = 1;
--	ret = kernel_setsockopt(sock, IPPROTO_IP, IP_FREEBIND,
--			(char *)&opt, sizeof(opt));
--	if (ret < 0) {
--		pr_err("kernel_setsockopt() for IP_FREEBIND"
--			" failed\n");
--		goto fail;
--	}
-+	ip_sock_set_freebind(sock->sk, true);
+ 	if (optlen != sizeof(struct sctp_assoc_value))
+ 		return -EINVAL;
+-	if (copy_from_user(&params, optval, optlen))
+-		return -EFAULT;
  
- 	ret = kernel_bind(sock, (struct sockaddr *)&np->np_sockaddr, len);
- 	if (ret < 0) {
-diff --git a/include/net/ip.h b/include/net/ip.h
-index 2fc52e26fa88b..1e2feca8630d0 100644
---- a/include/net/ip.h
-+++ b/include/net/ip.h
-@@ -766,5 +766,6 @@ static inline bool inetdev_valid_mtu(unsigned int mtu)
+-	asoc = sctp_id2assoc(sk, params.assoc_id);
+-	if (!asoc && params.assoc_id > SCTP_ALL_ASSOC &&
++	asoc = sctp_id2assoc(sk, params->assoc_id);
++	if (!asoc && params->assoc_id > SCTP_ALL_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		return -EINVAL;
+ 
+ 	if (asoc) {
+-		asoc->default_rcv_context = params.assoc_value;
++		asoc->default_rcv_context = params->assoc_value;
+ 
+ 		return 0;
+ 	}
+ 
+ 	if (sctp_style(sk, TCP))
+-		params.assoc_id = SCTP_FUTURE_ASSOC;
++		params->assoc_id = SCTP_FUTURE_ASSOC;
+ 
+-	if (params.assoc_id = SCTP_FUTURE_ASSOC ||
+-	    params.assoc_id = SCTP_ALL_ASSOC)
+-		sp->default_rcv_context = params.assoc_value;
++	if (params->assoc_id = SCTP_FUTURE_ASSOC ||
++	    params->assoc_id = SCTP_ALL_ASSOC)
++		sp->default_rcv_context = params->assoc_value;
+ 
+-	if (params.assoc_id = SCTP_CURRENT_ASSOC ||
+-	    params.assoc_id = SCTP_ALL_ASSOC)
++	if (params->assoc_id = SCTP_CURRENT_ASSOC ||
++	    params->assoc_id = SCTP_ALL_ASSOC)
+ 		list_for_each_entry(asoc, &sp->ep->asocs, asocs)
+-			asoc->default_rcv_context = params.assoc_value;
++			asoc->default_rcv_context = params->assoc_value;
+ 
+ 	return 0;
  }
- 
- void ip_sock_set_tos(struct sock *sk, int val);
-+void ip_sock_set_freebind(struct sock *sk, bool val);
- 
- #endif	/* _IP_H */
-diff --git a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
-index 1733ac78c21aa..0c40887a817f8 100644
---- a/net/ipv4/ip_sockglue.c
-+++ b/net/ipv4/ip_sockglue.c
-@@ -581,6 +581,14 @@ void ip_sock_set_tos(struct sock *sk, int val)
- }
- EXPORT_SYMBOL(ip_sock_set_tos);
- 
-+void ip_sock_set_freebind(struct sock *sk, bool val)
-+{
-+	lock_sock(sk);
-+	inet_sk(sk)->freebind = val;
-+	release_sock(sk);
-+}
-+EXPORT_SYMBOL(ip_sock_set_freebind);
-+
- /*
-  *	Socket option code for IP. This is the end of the line after any
-  *	TCP,UDP etc options on an IP socket.
+@@ -4697,7 +4695,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_adaptation_layer(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_CONTEXT:
+-		retval = sctp_setsockopt_context(sk, optval, optlen);
++		retval = sctp_setsockopt_context(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_FRAGMENT_INTERLEAVE:
+ 		retval = sctp_setsockopt_fragment_interleave(sk, optval, optlen);
 -- 
 2.26.2
