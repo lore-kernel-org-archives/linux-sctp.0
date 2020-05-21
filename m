@@ -1,97 +1,78 @@
-From: Eric Biggers <ebiggers@kernel.org>
-Date: Sat, 02 May 2020 05:31:20 +0000
-Subject: [PATCH 18/20] sctp: use crypto_shash_tfm_digest()
-Message-Id: <20200502053122.995648-19-ebiggers@kernel.org>
+From: Christoph Hellwig <hch@lst.de>
+Date: Thu, 21 May 2020 17:46:54 +0000
+Subject: [PATCH 19/49] sctp: pass a kernel pointer to sctp_setsockopt_maxseg
+Message-Id: <20200521174724.2635475-20-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200502053122.995648-1-ebiggers@kernel.org>
-In-Reply-To: <20200502053122.995648-1-ebiggers@kernel.org>
+References: <20200521174724.2635475-1-hch@lst.de>
+In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-crypto@vger.kernel.org
-Cc: linux-sctp@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
-Instead of manually allocating a 'struct shash_desc' on the stack and
-calling crypto_shash_digest(), switch to using the new helper function
-crypto_shash_tfm_digest() which does this for us.
-
-Cc: linux-sctp@vger.kernel.org
-Signed-off-by: Eric Biggers <ebiggers@google.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/auth.c          | 10 ++--------
- net/sctp/sm_make_chunk.c | 23 ++++++++---------------
- 2 files changed, 10 insertions(+), 23 deletions(-)
+ net/sctp/socket.c | 22 +++++++++++-----------
+ 1 file changed, 11 insertions(+), 11 deletions(-)
 
-diff --git a/net/sctp/auth.c b/net/sctp/auth.c
-index 4278764d82b827..83e97e8892e05a 100644
---- a/net/sctp/auth.c
-+++ b/net/sctp/auth.c
-@@ -741,14 +741,8 @@ void sctp_auth_calculate_hmac(const struct sctp_association *asoc,
- 	if (crypto_shash_setkey(tfm, &asoc_key->data[0], asoc_key->len))
- 		goto free;
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 41407d0ef2eca..4374d4fff080a 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3212,11 +3212,13 @@ static int sctp_setsockopt_mappedv4(struct sock *sk, int *val,
+  *    changed (effecting future associations only).
+  * assoc_value:  This parameter specifies the maximum size in bytes.
+  */
+-static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned int optlen)
++static int sctp_setsockopt_maxseg(struct sock *sk,
++				  struct sctp_assoc_value *params,
++				  unsigned int optlen)
+ {
+ 	struct sctp_sock *sp = sctp_sk(sk);
+-	struct sctp_assoc_value params;
+ 	struct sctp_association *asoc;
++	sctp_assoc_t assoc_id;
+ 	int val;
  
--	{
--		SHASH_DESC_ON_STACK(desc, tfm);
--
--		desc->tfm = tfm;
--		crypto_shash_digest(desc, (u8 *)auth,
--				    end - (unsigned char *)auth, digest);
--		shash_desc_zero(desc);
--	}
-+	crypto_shash_tfm_digest(tfm, (u8 *)auth, end - (unsigned char *)auth,
-+				digest);
- 
- free:
- 	if (free_key)
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 09050c1d5517e7..c786215ba69a54 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -1666,17 +1666,14 @@ static struct sctp_cookie_param *sctp_pack_cookie(
- 	       ntohs(init_chunk->chunk_hdr->length), raw_addrs, addrs_len);
- 
- 	if (sctp_sk(ep->base.sk)->hmac) {
--		SHASH_DESC_ON_STACK(desc, sctp_sk(ep->base.sk)->hmac);
-+		struct crypto_shash *tfm = sctp_sk(ep->base.sk)->hmac;
- 		int err;
- 
- 		/* Sign the message.  */
--		desc->tfm = sctp_sk(ep->base.sk)->hmac;
--
--		err = crypto_shash_setkey(desc->tfm, ep->secret_key,
-+		err = crypto_shash_setkey(tfm, ep->secret_key,
- 					  sizeof(ep->secret_key)) ?:
--		      crypto_shash_digest(desc, (u8 *)&cookie->c, bodysize,
--					  cookie->signature);
--		shash_desc_zero(desc);
-+		      crypto_shash_tfm_digest(tfm, (u8 *)&cookie->c, bodysize,
-+					      cookie->signature);
- 		if (err)
- 			goto free_cookie;
+ 	if (optlen = sizeof(int)) {
+@@ -3225,19 +3227,17 @@ static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned
+ 				    "Use of int in maxseg socket option.\n"
+ 				    "Use struct sctp_assoc_value instead\n",
+ 				    current->comm, task_pid_nr(current));
+-		if (copy_from_user(&val, optval, optlen))
+-			return -EFAULT;
+-		params.assoc_id = SCTP_FUTURE_ASSOC;
++		assoc_id = SCTP_FUTURE_ASSOC;
++		val = *(int *)params;
+ 	} else if (optlen = sizeof(struct sctp_assoc_value)) {
+-		if (copy_from_user(&params, optval, optlen))
+-			return -EFAULT;
+-		val = params.assoc_value;
++		assoc_id = params->assoc_id;
++		val = params->assoc_value;
+ 	} else {
+ 		return -EINVAL;
  	}
-@@ -1737,17 +1734,13 @@ struct sctp_association *sctp_unpack_cookie(
  
- 	/* Check the signature.  */
- 	{
--		SHASH_DESC_ON_STACK(desc, sctp_sk(ep->base.sk)->hmac);
-+		struct crypto_shash *tfm = sctp_sk(ep->base.sk)->hmac;
- 		int err;
+-	asoc = sctp_id2assoc(sk, params.assoc_id);
+-	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
++	asoc = sctp_id2assoc(sk, assoc_id);
++	if (!asoc && assoc_id != SCTP_FUTURE_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		return -EINVAL;
  
--		desc->tfm = sctp_sk(ep->base.sk)->hmac;
--
--		err = crypto_shash_setkey(desc->tfm, ep->secret_key,
-+		err = crypto_shash_setkey(tfm, ep->secret_key,
- 					  sizeof(ep->secret_key)) ?:
--		      crypto_shash_digest(desc, (u8 *)bear_cookie, bodysize,
--					  digest);
--		shash_desc_zero(desc);
--
-+		      crypto_shash_tfm_digest(tfm, (u8 *)bear_cookie, bodysize,
-+					      digest);
- 		if (err) {
- 			*error = -SCTP_IERROR_NOMEM;
- 			goto fail;
+@@ -4694,7 +4694,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_mappedv4(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_MAXSEG:
+-		retval = sctp_setsockopt_maxseg(sk, optval, optlen);
++		retval = sctp_setsockopt_maxseg(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_ADAPTATION_LAYER:
+ 		retval = sctp_setsockopt_adaptation_layer(sk, optval, optlen);
 -- 
 2.26.2
