@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 21 May 2020 17:47:16 +0000
-Subject: [PATCH 41/49] sctp: pass a kernel pointer to sctp_setsockopt_scheduler
-Message-Id: <20200521174724.2635475-42-hch@lst.de>
+Date: Thu, 21 May 2020 17:46:39 +0000
+Subject: [PATCH 04/49] sctp: pass a kernel pointer to sctp_setsockopt_disable_fragments
+Message-Id: <20200521174724.2635475-5-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200521174724.2635475-1-hch@lst.de>
 In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
@@ -16,79 +16,44 @@ directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 33 ++++++++++++++-------------------
- 1 file changed, 14 insertions(+), 19 deletions(-)
+ net/sctp/socket.c | 14 +++-----------
+ 1 file changed, 3 insertions(+), 11 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 84881913dbc7f..122e6b95a8f0d 100644
+index f7621ea99340e..0ca8001acfd50 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -4111,44 +4111,39 @@ static int sctp_setsockopt_add_streams(struct sock *sk,
- }
- 
- static int sctp_setsockopt_scheduler(struct sock *sk,
--				     char __user *optval,
-+				     struct sctp_assoc_value *params,
- 				     unsigned int optlen)
+@@ -2180,20 +2180,12 @@ static int sctp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
+  * exceeds the current PMTU size, the message will NOT be sent and
+  * instead a error will be indicated to the user.
+  */
+-static int sctp_setsockopt_disable_fragments(struct sock *sk,
+-					     char __user *optval,
++static int sctp_setsockopt_disable_fragments(struct sock *sk, int *val,
+ 					     unsigned int optlen)
  {
- 	struct sctp_sock *sp = sctp_sk(sk);
- 	struct sctp_association *asoc;
--	struct sctp_assoc_value params;
- 	int retval = 0;
- 
--	if (optlen < sizeof(params))
-+	if (optlen < sizeof(*params))
+-	int val;
+-
+ 	if (optlen < sizeof(int))
  		return -EINVAL;
- 
--	optlen = sizeof(params);
--	if (copy_from_user(&params, optval, optlen))
+-
+-	if (get_user(val, (int __user *)optval))
 -		return -EFAULT;
 -
--	if (params.assoc_value > SCTP_SS_MAX)
-+	if (params->assoc_value > SCTP_SS_MAX)
- 		return -EINVAL;
+-	sctp_sk(sk)->disable_fragments = (val = 0) ? 0 : 1;
+-
++	sctp_sk(sk)->disable_fragments = (*val = 0) ? 0 : 1;
+ 	return 0;
+ }
  
--	asoc = sctp_id2assoc(sk, params.assoc_id);
--	if (!asoc && params.assoc_id > SCTP_ALL_ASSOC &&
-+	asoc = sctp_id2assoc(sk, params->assoc_id);
-+	if (!asoc && params->assoc_id > SCTP_ALL_ASSOC &&
- 	    sctp_style(sk, UDP))
- 		return -EINVAL;
- 
- 	if (asoc)
--		return sctp_sched_set_sched(asoc, params.assoc_value);
-+		return sctp_sched_set_sched(asoc, params->assoc_value);
- 
- 	if (sctp_style(sk, TCP))
--		params.assoc_id = SCTP_FUTURE_ASSOC;
-+		params->assoc_id = SCTP_FUTURE_ASSOC;
- 
--	if (params.assoc_id = SCTP_FUTURE_ASSOC ||
--	    params.assoc_id = SCTP_ALL_ASSOC)
--		sp->default_ss = params.assoc_value;
-+	if (params->assoc_id = SCTP_FUTURE_ASSOC ||
-+	    params->assoc_id = SCTP_ALL_ASSOC)
-+		sp->default_ss = params->assoc_value;
- 
--	if (params.assoc_id = SCTP_CURRENT_ASSOC ||
--	    params.assoc_id = SCTP_ALL_ASSOC) {
-+	if (params->assoc_id = SCTP_CURRENT_ASSOC ||
-+	    params->assoc_id = SCTP_ALL_ASSOC) {
- 		list_for_each_entry(asoc, &sp->ep->asocs, asocs) {
- 			int ret = sctp_sched_set_sched(asoc,
--						       params.assoc_value);
-+						       params->assoc_value);
- 
- 			if (ret && !retval)
- 				retval = ret;
-@@ -4656,7 +4651,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_add_streams(sk, kopt, optlen);
+@@ -4697,7 +4689,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
  		break;
- 	case SCTP_STREAM_SCHEDULER:
--		retval = sctp_setsockopt_scheduler(sk, optval, optlen);
-+		retval = sctp_setsockopt_scheduler(sk, kopt, optlen);
+ 
+ 	case SCTP_DISABLE_FRAGMENTS:
+-		retval = sctp_setsockopt_disable_fragments(sk, optval, optlen);
++		retval = sctp_setsockopt_disable_fragments(sk, kopt, optlen);
  		break;
- 	case SCTP_STREAM_SCHEDULER_VALUE:
- 		retval = sctp_setsockopt_scheduler_value(sk, optval, optlen);
+ 
+ 	case SCTP_EVENTS:
 -- 
 2.26.2
