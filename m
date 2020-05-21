@@ -1,146 +1,96 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Wed, 20 May 2020 19:54:46 +0000
-Subject: [PATCH 10/33] net: add sock_set_rcvbuf
-Message-Id: <20200520195509.2215098-11-hch@lst.de>
+Date: Thu, 21 May 2020 17:47:20 +0000
+Subject: [PATCH 45/49] sctp: pass a kernel pointer to sctp_setsockopt_event
+Message-Id: <20200521174724.2635475-46-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200520195509.2215098-1-hch@lst.de>
-In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
+References: <20200521174724.2635475-1-hch@lst.de>
+In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
-Cc: Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com, linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Add a helper to directly set the SO_RCVBUFFORCE sockopt from kernel space
-without going through a fake uaccess.
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/dlm/lowcomms.c  |  7 +-----
- include/net/sock.h |  1 +
- net/core/sock.c    | 59 +++++++++++++++++++++++++---------------------
- 3 files changed, 34 insertions(+), 33 deletions(-)
+ net/sctp/socket.c | 35 +++++++++++++++--------------------
+ 1 file changed, 15 insertions(+), 20 deletions(-)
 
-diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
-index b6e6dba281547..2822a430a2b49 100644
---- a/fs/dlm/lowcomms.c
-+++ b/fs/dlm/lowcomms.c
-@@ -1180,7 +1180,6 @@ static int sctp_listen_for_all(void)
- 	struct socket *sock = NULL;
- 	int result = -EINVAL;
- 	struct connection *con = nodeid2con(0, GFP_NOFS);
--	int bufsize = NEEDED_RMEM;
- 	int one = 1;
- 
- 	if (!con)
-@@ -1195,11 +1194,7 @@ static int sctp_listen_for_all(void)
- 		goto out;
- 	}
- 
--	result = kernel_setsockopt(sock, SOL_SOCKET, SO_RCVBUFFORCE,
--				 (char *)&bufsize, sizeof(bufsize));
--	if (result)
--		log_print("Error increasing buffer space on socket %d", result);
--
-+	sock_set_rcvbuf(sock->sk, NEEDED_RMEM);
- 	result = kernel_setsockopt(sock, SOL_SCTP, SCTP_NODELAY, (char *)&one,
- 				   sizeof(one));
- 	if (result < 0)
-diff --git a/include/net/sock.h b/include/net/sock.h
-index dc08c176238fd..c997289aabbf9 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -2693,6 +2693,7 @@ void sock_enable_timestamps(struct sock *sk);
- void sock_no_linger(struct sock *sk);
- void sock_set_keepalive(struct sock *sk);
- void sock_set_priority(struct sock *sk, u32 priority);
-+void sock_set_rcvbuf(struct sock *sk, int val);
- void sock_set_reuseaddr(struct sock *sk);
- void sock_set_sndtimeo(struct sock *sk, s64 secs);
- 
-diff --git a/net/core/sock.c b/net/core/sock.c
-index 728f5fb156a0c..3c6ebf952e9ad 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -789,6 +789,35 @@ void sock_set_keepalive(struct sock *sk)
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index c2abf3ab544c3..9b22bb4817830 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4248,45 +4248,40 @@ static int sctp_assoc_ulpevent_type_set(struct sctp_event *param,
+ 	return 0;
  }
- EXPORT_SYMBOL(sock_set_keepalive);
  
-+static void __sock_set_rcvbuf(struct sock *sk, int val)
-+{
-+	/* Ensure val * 2 fits into an int, to prevent max_t() from treating it
-+	 * as a negative value.
-+	 */
-+	val = min_t(int, val, INT_MAX / 2);
-+	sk->sk_userlocks |= SOCK_RCVBUF_LOCK;
-+
-+	/* We double it on the way in to account for "struct sk_buff" etc.
-+	 * overhead.   Applications assume that the SO_RCVBUF setting they make
-+	 * will allow that much actual data to be received on that socket.
-+	 *
-+	 * Applications are unaware that "struct sk_buff" and other overheads
-+	 * allocate from the receive buffer during socket buffer allocation.
-+	 *
-+	 * And after considering the possible alternatives, returning the value
-+	 * we actually used in getsockopt is the most desirable behavior.
-+	 */
-+	WRITE_ONCE(sk->sk_rcvbuf, max_t(int, val * 2, SOCK_MIN_RCVBUF));
-+}
-+
-+void sock_set_rcvbuf(struct sock *sk, int val)
-+{
-+	lock_sock(sk);
-+	__sock_set_rcvbuf(sk, val);
-+	release_sock(sk);
-+}
-+EXPORT_SYMBOL(sock_set_rcvbuf);
-+
- /*
-  *	This is meant for all protocols to use and covers goings on
-  *	at the socket level. Everything here is generic.
-@@ -885,30 +914,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
- 		 * play 'guess the biggest size' games. RCVBUF/SNDBUF
- 		 * are treated in BSD as hints
- 		 */
--		val = min_t(u32, val, sysctl_rmem_max);
--set_rcvbuf:
--		/* Ensure val * 2 fits into an int, to prevent max_t()
--		 * from treating it as a negative value.
--		 */
--		val = min_t(int, val, INT_MAX / 2);
--		sk->sk_userlocks |= SOCK_RCVBUF_LOCK;
--		/*
--		 * We double it on the way in to account for
--		 * "struct sk_buff" etc. overhead.   Applications
--		 * assume that the SO_RCVBUF setting they make will
--		 * allow that much actual data to be received on that
--		 * socket.
--		 *
--		 * Applications are unaware that "struct sk_buff" and
--		 * other overheads allocate from the receive buffer
--		 * during socket buffer allocation.
--		 *
--		 * And after considering the possible alternatives,
--		 * returning the value we actually used in getsockopt
--		 * is the most desirable behavior.
--		 */
--		WRITE_ONCE(sk->sk_rcvbuf,
--			   max_t(int, val * 2, SOCK_MIN_RCVBUF));
-+		__sock_set_rcvbuf(sk, min_t(u32, val, sysctl_rmem_max));
+-static int sctp_setsockopt_event(struct sock *sk, char __user *optval,
++static int sctp_setsockopt_event(struct sock *sk, struct sctp_event *param,
+ 				 unsigned int optlen)
+ {
+ 	struct sctp_sock *sp = sctp_sk(sk);
+ 	struct sctp_association *asoc;
+-	struct sctp_event param;
+ 	int retval = 0;
+ 
+-	if (optlen < sizeof(param))
++	if (optlen < sizeof(*param))
+ 		return -EINVAL;
+ 
+-	optlen = sizeof(param);
+-	if (copy_from_user(&param, optval, optlen))
+-		return -EFAULT;
+-
+-	if (param.se_type < SCTP_SN_TYPE_BASE ||
+-	    param.se_type > SCTP_SN_TYPE_MAX)
++	if (param->se_type < SCTP_SN_TYPE_BASE ||
++	    param->se_type > SCTP_SN_TYPE_MAX)
+ 		return -EINVAL;
+ 
+-	asoc = sctp_id2assoc(sk, param.se_assoc_id);
+-	if (!asoc && param.se_assoc_id > SCTP_ALL_ASSOC &&
++	asoc = sctp_id2assoc(sk, param->se_assoc_id);
++	if (!asoc && param->se_assoc_id > SCTP_ALL_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		return -EINVAL;
+ 
+ 	if (asoc)
+-		return sctp_assoc_ulpevent_type_set(&param, asoc);
++		return sctp_assoc_ulpevent_type_set(param, asoc);
+ 
+ 	if (sctp_style(sk, TCP))
+-		param.se_assoc_id = SCTP_FUTURE_ASSOC;
++		param->se_assoc_id = SCTP_FUTURE_ASSOC;
+ 
+-	if (param.se_assoc_id = SCTP_FUTURE_ASSOC ||
+-	    param.se_assoc_id = SCTP_ALL_ASSOC)
++	if (param->se_assoc_id = SCTP_FUTURE_ASSOC ||
++	    param->se_assoc_id = SCTP_ALL_ASSOC)
+ 		sctp_ulpevent_type_set(&sp->subscribe,
+-				       param.se_type, param.se_on);
++				       param->se_type, param->se_on);
+ 
+-	if (param.se_assoc_id = SCTP_CURRENT_ASSOC ||
+-	    param.se_assoc_id = SCTP_ALL_ASSOC) {
++	if (param->se_assoc_id = SCTP_CURRENT_ASSOC ||
++	    param->se_assoc_id = SCTP_ALL_ASSOC) {
+ 		list_for_each_entry(asoc, &sp->ep->asocs, asocs) {
+-			int ret = sctp_assoc_ulpevent_type_set(&param, asoc);
++			int ret = sctp_assoc_ulpevent_type_set(param, asoc);
+ 
+ 			if (ret && !retval)
+ 				retval = ret;
+@@ -4639,7 +4634,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_reuse_port(sk, kopt, optlen);
  		break;
- 
- 	case SO_RCVBUFFORCE:
-@@ -920,9 +926,8 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
- 		/* No negative values (to prevent underflow, as val will be
- 		 * multiplied by 2).
- 		 */
--		if (val < 0)
--			val = 0;
--		goto set_rcvbuf;
-+		__sock_set_rcvbuf(sk, max(val, 0));
-+		break;
- 
- 	case SO_KEEPALIVE:
- 		if (sk->sk_prot->keepalive)
+ 	case SCTP_EVENT:
+-		retval = sctp_setsockopt_event(sk, optval, optlen);
++		retval = sctp_setsockopt_event(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_ASCONF_SUPPORTED:
+ 		retval = sctp_setsockopt_asconf_supported(sk, optval, optlen);
 -- 
 2.26.2
