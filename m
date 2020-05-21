@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 21 May 2020 17:46:40 +0000
-Subject: [PATCH 05/49] sctp: pass a kernel pointer to sctp_setsockopt_events
-Message-Id: <20200521174724.2635475-6-hch@lst.de>
+Date: Thu, 21 May 2020 17:46:51 +0000
+Subject: [PATCH 16/49] sctp: pass a kernel pointer to sctp_setsockopt_rtoinfo
+Message-Id: <20200521174724.2635475-17-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200521174724.2635475-1-hch@lst.de>
 In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
@@ -16,44 +16,78 @@ directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 9 ++-------
- 1 file changed, 2 insertions(+), 7 deletions(-)
+ net/sctp/socket.c | 26 ++++++++++++--------------
+ 1 file changed, 12 insertions(+), 14 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 0ca8001acfd50..34bd2ce2ddf66 100644
+index 99df37bbcb903..7998b25a8a271 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -2189,11 +2189,9 @@ static int sctp_setsockopt_disable_fragments(struct sock *sk, int *val,
- 	return 0;
- }
- 
--static int sctp_setsockopt_events(struct sock *sk, char __user *optval,
-+static int sctp_setsockopt_events(struct sock *sk, __u8 *sn_type,
- 				  unsigned int optlen)
+@@ -3038,9 +3038,10 @@ static int sctp_setsockopt_nodelay(struct sock *sk, int *val,
+  * be changed.
+  *
+  */
+-static int sctp_setsockopt_rtoinfo(struct sock *sk, char __user *optval, unsigned int optlen)
++static int sctp_setsockopt_rtoinfo(struct sock *sk,
++				   struct sctp_rtoinfo *rtoinfo,
++				   unsigned int optlen)
  {
--	struct sctp_event_subscribe subscribe;
--	__u8 *sn_type = (__u8 *)&subscribe;
- 	struct sctp_sock *sp = sctp_sk(sk);
+-	struct sctp_rtoinfo rtoinfo;
  	struct sctp_association *asoc;
- 	int i;
-@@ -2201,9 +2199,6 @@ static int sctp_setsockopt_events(struct sock *sk, char __user *optval,
- 	if (optlen > sizeof(struct sctp_event_subscribe))
+ 	unsigned long rto_min, rto_max;
+ 	struct sctp_sock *sp = sctp_sk(sk);
+@@ -3048,18 +3049,15 @@ static int sctp_setsockopt_rtoinfo(struct sock *sk, char __user *optval, unsigne
+ 	if (optlen != sizeof (struct sctp_rtoinfo))
  		return -EINVAL;
  
--	if (copy_from_user(&subscribe, optval, optlen))
+-	if (copy_from_user(&rtoinfo, optval, optlen))
 -		return -EFAULT;
 -
- 	for (i = 0; i < optlen; i++)
- 		sctp_ulpevent_type_set(&sp->subscribe, SCTP_SN_TYPE_BASE + i,
- 				       sn_type[i]);
-@@ -4693,7 +4688,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		break;
+-	asoc = sctp_id2assoc(sk, rtoinfo.srto_assoc_id);
++	asoc = sctp_id2assoc(sk, rtoinfo->srto_assoc_id);
  
- 	case SCTP_EVENTS:
--		retval = sctp_setsockopt_events(sk, optval, optlen);
-+		retval = sctp_setsockopt_events(sk, kopt, optlen);
- 		break;
+ 	/* Set the values to the specific association */
+-	if (!asoc && rtoinfo.srto_assoc_id != SCTP_FUTURE_ASSOC &&
++	if (!asoc && rtoinfo->srto_assoc_id != SCTP_FUTURE_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		return -EINVAL;
  
- 	case SCTP_AUTOCLOSE:
+-	rto_max = rtoinfo.srto_max;
+-	rto_min = rtoinfo.srto_min;
++	rto_max = rtoinfo->srto_max;
++	rto_min = rtoinfo->srto_min;
+ 
+ 	if (rto_max)
+ 		rto_max = asoc ? msecs_to_jiffies(rto_max) : rto_max;
+@@ -3075,17 +3073,17 @@ static int sctp_setsockopt_rtoinfo(struct sock *sk, char __user *optval, unsigne
+ 		return -EINVAL;
+ 
+ 	if (asoc) {
+-		if (rtoinfo.srto_initial != 0)
++		if (rtoinfo->srto_initial != 0)
+ 			asoc->rto_initial -				msecs_to_jiffies(rtoinfo.srto_initial);
++				msecs_to_jiffies(rtoinfo->srto_initial);
+ 		asoc->rto_max = rto_max;
+ 		asoc->rto_min = rto_min;
+ 	} else {
+ 		/* If there is no association or the association-id = 0
+ 		 * set the values to the endpoint.
+ 		 */
+-		if (rtoinfo.srto_initial != 0)
+-			sp->rtoinfo.srto_initial = rtoinfo.srto_initial;
++		if (rtoinfo->srto_initial != 0)
++			sp->rtoinfo.srto_initial = rtoinfo->srto_initial;
+ 		sp->rtoinfo.srto_max = rto_max;
+ 		sp->rtoinfo.srto_min = rto_min;
+ 	}
+@@ -4689,7 +4687,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_nodelay(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_RTOINFO:
+-		retval = sctp_setsockopt_rtoinfo(sk, optval, optlen);
++		retval = sctp_setsockopt_rtoinfo(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_ASSOCINFO:
+ 		retval = sctp_setsockopt_associnfo(sk, optval, optlen);
 -- 
 2.26.2
