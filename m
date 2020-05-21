@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 21 May 2020 17:46:45 +0000
-Subject: [PATCH 10/49] sctp: pass a kernel pointer to sctp_setsockopt_initmsg
-Message-Id: <20200521174724.2635475-11-hch@lst.de>
+Date: Thu, 21 May 2020 17:46:43 +0000
+Subject: [PATCH 08/49] sctp: pass a kernel pointer to sctp_setsockopt_delayed_ack
+Message-Id: <20200521174724.2635475-9-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200521174724.2635475-1-hch@lst.de>
 In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
@@ -16,56 +16,117 @@ directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 24 +++++++++++-------------
- 1 file changed, 11 insertions(+), 13 deletions(-)
+ net/sctp/socket.c | 49 +++++++++++++++++++++--------------------------
+ 1 file changed, 22 insertions(+), 27 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 6dd6b0cfcfe03..0180b22087c0b 100644
+index 0498cf21923e8..3763f124f9fea 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -2829,24 +2829,22 @@ static int sctp_setsockopt_delayed_ack(struct sock *sk,
-  * by the change).  With TCP-style sockets, this option is inherited by
-  * sockets derived from a listener socket.
+@@ -2748,17 +2748,14 @@ static void sctp_apply_asoc_delayed_ack(struct sctp_sack_info *params,
   */
--static int sctp_setsockopt_initmsg(struct sock *sk, char __user *optval, unsigned int optlen)
-+static int sctp_setsockopt_initmsg(struct sock *sk, struct sctp_initmsg *sinit,
-+				   unsigned int optlen)
+ 
+ static int sctp_setsockopt_delayed_ack(struct sock *sk,
+-				       char __user *optval, unsigned int optlen)
++				       struct sctp_sack_info *params,
++				       unsigned int optlen)
  {
--	struct sctp_initmsg sinit;
  	struct sctp_sock *sp = sctp_sk(sk);
+ 	struct sctp_association *asoc;
+-	struct sctp_sack_info params;
  
- 	if (optlen != sizeof(struct sctp_initmsg))
+ 	if (optlen = sizeof(struct sctp_sack_info)) {
+-		if (copy_from_user(&params, optval, optlen))
+-			return -EFAULT;
+-
+-		if (params.sack_delay = 0 && params.sack_freq = 0)
++		if (params->sack_delay = 0 && params->sack_freq = 0)
+ 			return 0;
+ 	} else if (optlen = sizeof(struct sctp_assoc_value)) {
+ 		pr_warn_ratelimited(DEPRECATED
+@@ -2766,59 +2763,57 @@ static int sctp_setsockopt_delayed_ack(struct sock *sk,
+ 				    "Use of struct sctp_assoc_value in delayed_ack socket option.\n"
+ 				    "Use struct sctp_sack_info instead\n",
+ 				    current->comm, task_pid_nr(current));
+-		if (copy_from_user(&params, optval, optlen))
+-			return -EFAULT;
+ 
+-		if (params.sack_delay = 0)
+-			params.sack_freq = 1;
++		if (params->sack_delay = 0)
++			params->sack_freq = 1;
+ 		else
+-			params.sack_freq = 0;
++			params->sack_freq = 0;
+ 	} else
  		return -EINVAL;
--	if (copy_from_user(&sinit, optval, optlen))
--		return -EFAULT;
  
--	if (sinit.sinit_num_ostreams)
--		sp->initmsg.sinit_num_ostreams = sinit.sinit_num_ostreams;
--	if (sinit.sinit_max_instreams)
--		sp->initmsg.sinit_max_instreams = sinit.sinit_max_instreams;
--	if (sinit.sinit_max_attempts)
--		sp->initmsg.sinit_max_attempts = sinit.sinit_max_attempts;
--	if (sinit.sinit_max_init_timeo)
--		sp->initmsg.sinit_max_init_timeo = sinit.sinit_max_init_timeo;
-+	if (sinit->sinit_num_ostreams)
-+		sp->initmsg.sinit_num_ostreams = sinit->sinit_num_ostreams;
-+	if (sinit->sinit_max_instreams)
-+		sp->initmsg.sinit_max_instreams = sinit->sinit_max_instreams;
-+	if (sinit->sinit_max_attempts)
-+		sp->initmsg.sinit_max_attempts = sinit->sinit_max_attempts;
-+	if (sinit->sinit_max_init_timeo)
-+		sp->initmsg.sinit_max_init_timeo = sinit->sinit_max_init_timeo;
+ 	/* Validate value parameter. */
+-	if (params.sack_delay > 500)
++	if (params->sack_delay > 500)
+ 		return -EINVAL;
+ 
+ 	/* Get association, if sack_assoc_id != SCTP_FUTURE_ASSOC and the
+ 	 * socket is a one to many style socket, and an association
+ 	 * was not found, then the id was invalid.
+ 	 */
+-	asoc = sctp_id2assoc(sk, params.sack_assoc_id);
+-	if (!asoc && params.sack_assoc_id > SCTP_ALL_ASSOC &&
++	asoc = sctp_id2assoc(sk, params->sack_assoc_id);
++	if (!asoc && params->sack_assoc_id > SCTP_ALL_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		return -EINVAL;
+ 
+ 	if (asoc) {
+-		sctp_apply_asoc_delayed_ack(&params, asoc);
++		sctp_apply_asoc_delayed_ack(params, asoc);
+ 
+ 		return 0;
+ 	}
+ 
+ 	if (sctp_style(sk, TCP))
+-		params.sack_assoc_id = SCTP_FUTURE_ASSOC;
++		params->sack_assoc_id = SCTP_FUTURE_ASSOC;
+ 
+-	if (params.sack_assoc_id = SCTP_FUTURE_ASSOC ||
+-	    params.sack_assoc_id = SCTP_ALL_ASSOC) {
+-		if (params.sack_delay) {
+-			sp->sackdelay = params.sack_delay;
++	if (params->sack_assoc_id = SCTP_FUTURE_ASSOC ||
++	    params->sack_assoc_id = SCTP_ALL_ASSOC) {
++		if (params->sack_delay) {
++			sp->sackdelay = params->sack_delay;
+ 			sp->param_flags  				sctp_spp_sackdelay_enable(sp->param_flags);
+ 		}
+-		if (params.sack_freq = 1) {
++		if (params->sack_freq = 1) {
+ 			sp->param_flags  				sctp_spp_sackdelay_disable(sp->param_flags);
+-		} else if (params.sack_freq > 1) {
+-			sp->sackfreq = params.sack_freq;
++		} else if (params->sack_freq > 1) {
++			sp->sackfreq = params->sack_freq;
+ 			sp->param_flags  				sctp_spp_sackdelay_enable(sp->param_flags);
+ 		}
+ 	}
+ 
+-	if (params.sack_assoc_id = SCTP_CURRENT_ASSOC ||
+-	    params.sack_assoc_id = SCTP_ALL_ASSOC)
++	if (params->sack_assoc_id = SCTP_CURRENT_ASSOC ||
++	    params->sack_assoc_id = SCTP_ALL_ASSOC)
+ 		list_for_each_entry(asoc, &sp->ep->asocs, asocs)
+-			sctp_apply_asoc_delayed_ack(&params, asoc);
++			sctp_apply_asoc_delayed_ack(params, asoc);
  
  	return 0;
  }
-@@ -4691,7 +4689,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+@@ -4694,7 +4689,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
  		break;
  
- 	case SCTP_INITMSG:
--		retval = sctp_setsockopt_initmsg(sk, optval, optlen);
-+		retval = sctp_setsockopt_initmsg(sk, kopt, optlen);
+ 	case SCTP_DELAYED_SACK:
+-		retval = sctp_setsockopt_delayed_ack(sk, optval, optlen);
++		retval = sctp_setsockopt_delayed_ack(sk, kopt, optlen);
  		break;
- 	case SCTP_DEFAULT_SEND_PARAM:
- 		retval = sctp_setsockopt_default_send_param(sk, optval,
+ 	case SCTP_PARTIAL_DELIVERY_POINT:
+ 		retval = sctp_setsockopt_partial_delivery_point(sk, optval, optlen);
 -- 
 2.26.2
