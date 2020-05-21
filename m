@@ -1,245 +1,98 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Wed, 13 May 2020 06:26:25 +0000
-Subject: [PATCH 10/33] tcp: add tcp_sock_set_cork
-Message-Id: <20200513062649.2100053-11-hch@lst.de>
+Date: Thu, 21 May 2020 17:47:12 +0000
+Subject: [PATCH 37/49] sctp: pass a kernel pointer to sctp_setsockopt_enable_strreset
+Message-Id: <20200521174724.2635475-38-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200513062649.2100053-1-hch@lst.de>
-In-Reply-To: <20200513062649.2100053-1-hch@lst.de>
+References: <20200521174724.2635475-1-hch@lst.de>
+In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
-Cc: Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com, linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Add a helper to directly set the TCP_CORK sockopt from kernel space
-without going through a fake uaccess.  Cleanup the callers to avoid
-pointless wrappers now that this is a simple function call.
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- drivers/block/drbd/drbd_int.h      | 14 --------
- drivers/block/drbd/drbd_receiver.c |  4 +--
- drivers/block/drbd/drbd_worker.c   |  6 ++--
- fs/cifs/transport.c                |  8 ++---
- include/linux/tcp.h                |  2 ++
- net/ipv4/tcp.c                     | 51 +++++++++++++++++++-----------
- net/rds/tcp_send.c                 |  9 ++----
- 7 files changed, 43 insertions(+), 51 deletions(-)
+ net/sctp/socket.c | 34 ++++++++++++++--------------------
+ 1 file changed, 14 insertions(+), 20 deletions(-)
 
-diff --git a/drivers/block/drbd/drbd_int.h b/drivers/block/drbd/drbd_int.h
-index aae99a2d7bd40..3550adc93c68b 100644
---- a/drivers/block/drbd/drbd_int.h
-+++ b/drivers/block/drbd/drbd_int.h
-@@ -1570,20 +1570,6 @@ extern void drbd_set_recv_tcq(struct drbd_device *device, int tcq_enabled);
- extern void _drbd_clear_done_ee(struct drbd_device *device, struct list_head *to_be_freed);
- extern int drbd_connected(struct drbd_peer_device *);
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 9173b1b80ee17..c5a4e9375bb55 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4015,48 +4015,42 @@ static int sctp_setsockopt_reconfig_supported(struct sock *sk,
+ }
  
--static inline void drbd_tcp_cork(struct socket *sock)
--{
--	int val = 1;
--	(void) kernel_setsockopt(sock, SOL_TCP, TCP_CORK,
--			(char*)&val, sizeof(val));
--}
--
--static inline void drbd_tcp_uncork(struct socket *sock)
--{
--	int val = 0;
--	(void) kernel_setsockopt(sock, SOL_TCP, TCP_CORK,
--			(char*)&val, sizeof(val));
--}
--
- static inline void drbd_tcp_nodelay(struct socket *sock)
+ static int sctp_setsockopt_enable_strreset(struct sock *sk,
+-					   char __user *optval,
++					   struct sctp_assoc_value *params,
+ 					   unsigned int optlen)
  {
- 	int val = 1;
-diff --git a/drivers/block/drbd/drbd_receiver.c b/drivers/block/drbd/drbd_receiver.c
-index c15e7083b13a6..55ea907ad33cb 100644
---- a/drivers/block/drbd/drbd_receiver.c
-+++ b/drivers/block/drbd/drbd_receiver.c
-@@ -6162,7 +6162,7 @@ void drbd_send_acks_wf(struct work_struct *ws)
- 	rcu_read_unlock();
+ 	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
+-	struct sctp_assoc_value params;
+ 	struct sctp_association *asoc;
+ 	int retval = -EINVAL;
  
- 	if (tcp_cork)
--		drbd_tcp_cork(connection->meta.socket);
-+		tcp_sock_set_cork(connection->meta.socket->sk, true);
+-	if (optlen != sizeof(params))
+-		goto out;
+-
+-	if (copy_from_user(&params, optval, optlen)) {
+-		retval = -EFAULT;
++	if (optlen != sizeof(*params))
+ 		goto out;
+-	}
  
- 	err = drbd_finish_peer_reqs(device);
- 	kref_put(&device->kref, drbd_destroy_device);
-@@ -6175,7 +6175,7 @@ void drbd_send_acks_wf(struct work_struct *ws)
+-	if (params.assoc_value & (~SCTP_ENABLE_STRRESET_MASK))
++	if (params->assoc_value & (~SCTP_ENABLE_STRRESET_MASK))
+ 		goto out;
+ 
+-	asoc = sctp_id2assoc(sk, params.assoc_id);
+-	if (!asoc && params.assoc_id > SCTP_ALL_ASSOC &&
++	asoc = sctp_id2assoc(sk, params->assoc_id);
++	if (!asoc && params->assoc_id > SCTP_ALL_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		goto out;
+ 
+ 	retval = 0;
+ 
+ 	if (asoc) {
+-		asoc->strreset_enable = params.assoc_value;
++		asoc->strreset_enable = params->assoc_value;
+ 		goto out;
  	}
  
- 	if (tcp_cork)
--		drbd_tcp_uncork(connection->meta.socket);
-+		tcp_sock_set_cork(connection->meta.socket->sk, false);
+ 	if (sctp_style(sk, TCP))
+-		params.assoc_id = SCTP_FUTURE_ASSOC;
++		params->assoc_id = SCTP_FUTURE_ASSOC;
  
- 	return;
- }
-diff --git a/drivers/block/drbd/drbd_worker.c b/drivers/block/drbd/drbd_worker.c
-index 0dc019da1f8d0..2b89c9f2ca707 100644
---- a/drivers/block/drbd/drbd_worker.c
-+++ b/drivers/block/drbd/drbd_worker.c
-@@ -2098,7 +2098,7 @@ static void wait_for_work(struct drbd_connection *connection, struct list_head *
- 	if (uncork) {
- 		mutex_lock(&connection->data.mutex);
- 		if (connection->data.socket)
--			drbd_tcp_uncork(connection->data.socket);
-+			tcp_sock_set_cork(connection->data.socket->sk, false);
- 		mutex_unlock(&connection->data.mutex);
- 	}
+-	if (params.assoc_id = SCTP_FUTURE_ASSOC ||
+-	    params.assoc_id = SCTP_ALL_ASSOC)
+-		ep->strreset_enable = params.assoc_value;
++	if (params->assoc_id = SCTP_FUTURE_ASSOC ||
++	    params->assoc_id = SCTP_ALL_ASSOC)
++		ep->strreset_enable = params->assoc_value;
  
-@@ -2153,9 +2153,9 @@ static void wait_for_work(struct drbd_connection *connection, struct list_head *
- 	mutex_lock(&connection->data.mutex);
- 	if (connection->data.socket) {
- 		if (cork)
--			drbd_tcp_cork(connection->data.socket);
-+			tcp_sock_set_cork(connection->data.socket->sk, true);
- 		else if (!uncork)
--			drbd_tcp_uncork(connection->data.socket);
-+			tcp_sock_set_cork(connection->data.socket->sk, false);
- 	}
- 	mutex_unlock(&connection->data.mutex);
- }
-diff --git a/fs/cifs/transport.c b/fs/cifs/transport.c
-index c97570eb2c180..99760063e0006 100644
---- a/fs/cifs/transport.c
-+++ b/fs/cifs/transport.c
-@@ -325,7 +325,6 @@ __smb_send_rqst(struct TCP_Server_Info *server, int num_rqst,
- 	size_t total_len = 0, sent, size;
- 	struct socket *ssocket = server->ssocket;
- 	struct msghdr smb_msg;
--	int val = 1;
- 	__be32 rfc1002_marker;
+-	if (params.assoc_id = SCTP_CURRENT_ASSOC ||
+-	    params.assoc_id = SCTP_ALL_ASSOC)
++	if (params->assoc_id = SCTP_CURRENT_ASSOC ||
++	    params->assoc_id = SCTP_ALL_ASSOC)
+ 		list_for_each_entry(asoc, &ep->asocs, asocs)
+-			asoc->strreset_enable = params.assoc_value;
++			asoc->strreset_enable = params->assoc_value;
  
- 	if (cifs_rdma_enabled(server)) {
-@@ -345,8 +344,7 @@ __smb_send_rqst(struct TCP_Server_Info *server, int num_rqst,
- 	}
- 
- 	/* cork the socket */
--	kernel_setsockopt(ssocket, SOL_TCP, TCP_CORK,
--				(char *)&val, sizeof(val));
-+	tcp_sock_set_cork(ssocket->sk, true);
- 
- 	for (j = 0; j < num_rqst; j++)
- 		send_length += smb_rqst_len(server, &rqst[j]);
-@@ -435,9 +433,7 @@ __smb_send_rqst(struct TCP_Server_Info *server, int num_rqst,
- 	}
- 
- 	/* uncork it */
--	val = 0;
--	kernel_setsockopt(ssocket, SOL_TCP, TCP_CORK,
--				(char *)&val, sizeof(val));
-+	tcp_sock_set_cork(ssocket->sk, false);
- 
- 	if ((total_len > 0) && (total_len != send_length)) {
- 		cifs_dbg(FYI, "partial send (wanted=%u sent=%zu): terminating session\n",
-diff --git a/include/linux/tcp.h b/include/linux/tcp.h
-index e60db06ec28d7..7ef0f975a7658 100644
---- a/include/linux/tcp.h
-+++ b/include/linux/tcp.h
-@@ -494,4 +494,6 @@ static inline u16 tcp_mss_clamp(const struct tcp_sock *tp, u16 mss)
- int tcp_skb_shift(struct sk_buff *to, struct sk_buff *from, int pcount,
- 		  int shiftlen);
- 
-+void tcp_sock_set_cork(struct sock *sk, bool on);
-+
- #endif	/* _LINUX_TCP_H */
-diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
-index 8c1250103959a..e11ba10b90d4c 100644
---- a/net/ipv4/tcp.c
-+++ b/net/ipv4/tcp.c
-@@ -2790,6 +2790,37 @@ static void tcp_enable_tx_delay(void)
- 	}
- }
- 
-+/* When set indicates to always queue non-full frames.  Later the user clears
-+ * this option and we transmit any pending partial frames in the queue.  This is
-+ * meant to be used alongside sendfile() to get properly filled frames when the
-+ * user (for example) must write out headers with a write() call first and then
-+ * use sendfile to send out the data parts.
-+ *
-+ * TCP_CORK can be set together with TCP_NODELAY and it is stronger than
-+ * TCP_NODELAY.
-+ */
-+static void __tcp_sock_set_cork(struct sock *sk, bool on)
-+{
-+	struct tcp_sock *tp = tcp_sk(sk);
-+
-+	if (on) {
-+		tp->nonagle |= TCP_NAGLE_CORK;
-+	} else {
-+		tp->nonagle &= ~TCP_NAGLE_CORK;
-+		if (tp->nonagle & TCP_NAGLE_OFF)
-+			tp->nonagle |= TCP_NAGLE_PUSH;
-+		tcp_push_pending_frames(sk);
-+	}
-+}
-+
-+void tcp_sock_set_cork(struct sock *sk, bool on)
-+{
-+	lock_sock(sk);
-+	__tcp_sock_set_cork(sk, on);
-+	release_sock(sk);
-+}
-+EXPORT_SYMBOL(tcp_sock_set_cork);
-+
- /*
-  *	Socket option code for TCP.
-  */
-@@ -2968,25 +2999,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
+ out:
+ 	return retval;
+@@ -4681,7 +4675,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_reconfig_supported(sk, kopt, optlen);
  		break;
- 
- 	case TCP_CORK:
--		/* When set indicates to always queue non-full frames.
--		 * Later the user clears this option and we transmit
--		 * any pending partial frames in the queue.  This is
--		 * meant to be used alongside sendfile() to get properly
--		 * filled frames when the user (for example) must write
--		 * out headers with a write() call first and then use
--		 * sendfile to send out the data parts.
--		 *
--		 * TCP_CORK can be set together with TCP_NODELAY and it is
--		 * stronger than TCP_NODELAY.
--		 */
--		if (val) {
--			tp->nonagle |= TCP_NAGLE_CORK;
--		} else {
--			tp->nonagle &= ~TCP_NAGLE_CORK;
--			if (tp->nonagle&TCP_NAGLE_OFF)
--				tp->nonagle |= TCP_NAGLE_PUSH;
--			tcp_push_pending_frames(sk);
--		}
-+		__tcp_sock_set_cork(sk, val);
+ 	case SCTP_ENABLE_STREAM_RESET:
+-		retval = sctp_setsockopt_enable_strreset(sk, optval, optlen);
++		retval = sctp_setsockopt_enable_strreset(sk, kopt, optlen);
  		break;
- 
- 	case TCP_KEEPIDLE:
-diff --git a/net/rds/tcp_send.c b/net/rds/tcp_send.c
-index 78a2554a44979..8c4d1d6e9249d 100644
---- a/net/rds/tcp_send.c
-+++ b/net/rds/tcp_send.c
-@@ -38,23 +38,18 @@
- #include "rds.h"
- #include "tcp.h"
- 
--static void rds_tcp_cork(struct socket *sock, int val)
--{
--	kernel_setsockopt(sock, SOL_TCP, TCP_CORK, (void *)&val, sizeof(val));
--}
--
- void rds_tcp_xmit_path_prepare(struct rds_conn_path *cp)
- {
- 	struct rds_tcp_connection *tc = cp->cp_transport_data;
- 
--	rds_tcp_cork(tc->t_sock, 1);
-+	tcp_sock_set_cork(tc->t_sock->sk, true);
- }
- 
- void rds_tcp_xmit_path_complete(struct rds_conn_path *cp)
- {
- 	struct rds_tcp_connection *tc = cp->cp_transport_data;
- 
--	rds_tcp_cork(tc->t_sock, 0);
-+	tcp_sock_set_cork(tc->t_sock->sk, false);
- }
- 
- /* the core send_sem serializes this with other xmit and shutdown */
+ 	case SCTP_RESET_STREAMS:
+ 		retval = sctp_setsockopt_reset_streams(sk, optval, optlen);
 -- 
 2.26.2
