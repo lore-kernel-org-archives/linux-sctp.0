@@ -1,118 +1,91 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Wed, 20 May 2020 19:54:45 +0000
-Subject: [PATCH 09/33] net: add sock_set_keepalive
-Message-Id: <20200520195509.2215098-10-hch@lst.de>
+Date: Thu, 21 May 2020 17:47:04 +0000
+Subject: [PATCH 29/49] sctp: pass a kernel pointer to sctp_setsockopt_deactivate_key
+Message-Id: <20200521174724.2635475-30-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200520195509.2215098-1-hch@lst.de>
-In-Reply-To: <20200520195509.2215098-1-hch-jcswGhMUV9g@public.gmane.org>
+References: <20200521174724.2635475-1-hch@lst.de>
+In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, Jakub Kicinski <kuba-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-Cc: Eric Dumazet <edumazet-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>, Alexey Kuznetsov <kuznet-v/Mj1YrvjDBInbfyfbPRSQ@public.gmane.org>, Hideaki YOSHIFUJI <yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org>, Vlad Yasevich <vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Neil Horman <nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org>, Marcelo Ricardo Leitner <marcelo.leitner-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Jon Maloy <jmaloy-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Ying Xue <ying.xue-CWA4WttNNZF54TAoqtyWWQ@public.gmane.org>, drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nvme-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, target-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, rds-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Add a helper to directly set the SO_KEEPALIVE sockopt from kernel space
-without going through a fake uaccess.
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/dlm/lowcomms.c     |  6 +-----
- include/net/sock.h    |  1 +
- net/core/sock.c       | 10 ++++++++++
- net/rds/tcp_listen.c  |  6 +-----
- net/sunrpc/xprtsock.c |  4 +---
- 5 files changed, 14 insertions(+), 13 deletions(-)
+ net/sctp/socket.c | 28 +++++++++++++---------------
+ 1 file changed, 13 insertions(+), 15 deletions(-)
 
-diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
-index b79711d0aac72..b6e6dba281547 100644
---- a/fs/dlm/lowcomms.c
-+++ b/fs/dlm/lowcomms.c
-@@ -1142,11 +1142,7 @@ static struct socket *tcp_create_listen_sock(struct connection *con,
- 		con->sock = NULL;
- 		goto create_out;
- 	}
--	result = kernel_setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE,
--				 (char *)&one, sizeof(one));
--	if (result < 0) {
--		log_print("Set keepalive failed: %d", result);
--	}
-+	sock_set_keepalive(sock->sk);
- 
- 	result = sock->ops->listen(sock, 5);
- 	if (result < 0) {
-diff --git a/include/net/sock.h b/include/net/sock.h
-index 99ef43508d2b5..dc08c176238fd 100644
---- a/include/net/sock.h
-+++ b/include/net/sock.h
-@@ -2691,6 +2691,7 @@ void sock_def_readable(struct sock *sk);
- int sock_bindtoindex(struct sock *sk, int ifindex);
- void sock_enable_timestamps(struct sock *sk);
- void sock_no_linger(struct sock *sk);
-+void sock_set_keepalive(struct sock *sk);
- void sock_set_priority(struct sock *sk, u32 priority);
- void sock_set_reuseaddr(struct sock *sk);
- void sock_set_sndtimeo(struct sock *sk, s64 secs);
-diff --git a/net/core/sock.c b/net/core/sock.c
-index e4a4dd2b3d8b3..728f5fb156a0c 100644
---- a/net/core/sock.c
-+++ b/net/core/sock.c
-@@ -779,6 +779,16 @@ void sock_enable_timestamps(struct sock *sk)
- }
- EXPORT_SYMBOL(sock_enable_timestamps);
- 
-+void sock_set_keepalive(struct sock *sk)
-+{
-+	lock_sock(sk);
-+	if (sk->sk_prot->keepalive)
-+		sk->sk_prot->keepalive(sk, true);
-+	sock_valbool_flag(sk, SOCK_KEEPOPEN, true);
-+	release_sock(sk);
-+}
-+EXPORT_SYMBOL(sock_set_keepalive);
-+
- /*
-  *	This is meant for all protocols to use and covers goings on
-  *	at the socket level. Everything here is generic.
-diff --git a/net/rds/tcp_listen.c b/net/rds/tcp_listen.c
-index bbb31b9c0b391..d8bd132769594 100644
---- a/net/rds/tcp_listen.c
-+++ b/net/rds/tcp_listen.c
-@@ -43,13 +43,9 @@ int rds_tcp_keepalive(struct socket *sock)
- 	/* values below based on xs_udp_default_timeout */
- 	int keepidle = 5; /* send a probe 'keepidle' secs after last data */
- 	int keepcnt = 5; /* number of unack'ed probes before declaring dead */
--	int keepalive = 1;
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index a664e9eb323fb..1631760e4b0af 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3746,42 +3746,40 @@ static int sctp_setsockopt_del_key(struct sock *sk,
+  *
+  * This set option will deactivate a shared secret key.
+  */
+-static int sctp_setsockopt_deactivate_key(struct sock *sk, char __user *optval,
++static int sctp_setsockopt_deactivate_key(struct sock *sk,
++					  struct sctp_authkeyid *val,
+ 					  unsigned int optlen)
+ {
+ 	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
+ 	struct sctp_association *asoc;
+-	struct sctp_authkeyid val;
  	int ret = 0;
  
--	ret = kernel_setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE,
--				(char *)&keepalive, sizeof(keepalive));
--	if (ret < 0)
--		goto bail;
-+	sock_set_keepalive(sock->sk);
+ 	if (optlen != sizeof(struct sctp_authkeyid))
+ 		return -EINVAL;
+-	if (copy_from_user(&val, optval, optlen))
+-		return -EFAULT;
  
- 	ret = kernel_setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT,
- 				(char *)&keepcnt, sizeof(keepcnt));
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 845d0be805ece..30082cd039960 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2110,7 +2110,6 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
- 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
- 	unsigned int keepidle;
- 	unsigned int keepcnt;
--	unsigned int opt_on = 1;
- 	unsigned int timeo;
+-	asoc = sctp_id2assoc(sk, val.scact_assoc_id);
+-	if (!asoc && val.scact_assoc_id > SCTP_ALL_ASSOC &&
++	asoc = sctp_id2assoc(sk, val->scact_assoc_id);
++	if (!asoc && val->scact_assoc_id > SCTP_ALL_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		return -EINVAL;
  
- 	spin_lock(&xprt->transport_lock);
-@@ -2122,8 +2121,7 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
- 	spin_unlock(&xprt->transport_lock);
+ 	if (asoc)
+-		return sctp_auth_deact_key_id(ep, asoc, val.scact_keynumber);
++		return sctp_auth_deact_key_id(ep, asoc, val->scact_keynumber);
  
- 	/* TCP Keepalive options */
--	kernel_setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE,
--			(char *)&opt_on, sizeof(opt_on));
-+	sock_set_keepalive(sock->sk);
- 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPIDLE,
- 			(char *)&keepidle, sizeof(keepidle));
- 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPINTVL,
+ 	if (sctp_style(sk, TCP))
+-		val.scact_assoc_id = SCTP_FUTURE_ASSOC;
++		val->scact_assoc_id = SCTP_FUTURE_ASSOC;
+ 
+-	if (val.scact_assoc_id = SCTP_FUTURE_ASSOC ||
+-	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
+-		ret = sctp_auth_deact_key_id(ep, asoc, val.scact_keynumber);
++	if (val->scact_assoc_id = SCTP_FUTURE_ASSOC ||
++	    val->scact_assoc_id = SCTP_ALL_ASSOC) {
++		ret = sctp_auth_deact_key_id(ep, asoc, val->scact_keynumber);
+ 		if (ret)
+ 			return ret;
+ 	}
+ 
+-	if (val.scact_assoc_id = SCTP_CURRENT_ASSOC ||
+-	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
++	if (val->scact_assoc_id = SCTP_CURRENT_ASSOC ||
++	    val->scact_assoc_id = SCTP_ALL_ASSOC) {
+ 		list_for_each_entry(asoc, &ep->asocs, asocs) {
+ 			int res = sctp_auth_deact_key_id(ep, asoc,
+-							 val.scact_keynumber);
++							 val->scact_keynumber);
+ 
+ 			if (res && !ret)
+ 				ret = res;
+@@ -4685,7 +4683,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_del_key(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_AUTH_DEACTIVATE_KEY:
+-		retval = sctp_setsockopt_deactivate_key(sk, optval, optlen);
++		retval = sctp_setsockopt_deactivate_key(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_AUTO_ASCONF:
+ 		retval = sctp_setsockopt_auto_asconf(sk, optval, optlen);
 -- 
 2.26.2
