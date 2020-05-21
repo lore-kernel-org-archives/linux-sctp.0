@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 21 May 2020 17:47:12 +0000
-Subject: [PATCH 37/49] sctp: pass a kernel pointer to sctp_setsockopt_enable_strreset
-Message-Id: <20200521174724.2635475-38-hch@lst.de>
+Date: Thu, 21 May 2020 17:47:09 +0000
+Subject: [PATCH 34/49] sctp: pass a kernel pointer to sctp_setsockopt_pr_supported
+Message-Id: <20200521174724.2635475-35-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200521174724.2635475-1-hch@lst.de>
 In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
@@ -16,83 +16,51 @@ directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 34 ++++++++++++++--------------------
- 1 file changed, 14 insertions(+), 20 deletions(-)
+ net/sctp/socket.c | 16 ++++++----------
+ 1 file changed, 6 insertions(+), 10 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 9173b1b80ee17..c5a4e9375bb55 100644
+index fe8d1ea7d9c35..fb7ed11382af1 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -4015,48 +4015,42 @@ static int sctp_setsockopt_reconfig_supported(struct sock *sk,
+@@ -3921,24 +3921,20 @@ static int sctp_setsockopt_recvnxtinfo(struct sock *sk, int *val,
  }
  
- static int sctp_setsockopt_enable_strreset(struct sock *sk,
--					   char __user *optval,
-+					   struct sctp_assoc_value *params,
- 					   unsigned int optlen)
+ static int sctp_setsockopt_pr_supported(struct sock *sk,
+-					char __user *optval,
++					struct sctp_assoc_value *params,
+ 					unsigned int optlen)
  {
- 	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
 -	struct sctp_assoc_value params;
  	struct sctp_association *asoc;
- 	int retval = -EINVAL;
  
 -	if (optlen != sizeof(params))
--		goto out;
--
--	if (copy_from_user(&params, optval, optlen)) {
--		retval = -EFAULT;
 +	if (optlen != sizeof(*params))
- 		goto out;
--	}
+ 		return -EINVAL;
  
--	if (params.assoc_value & (~SCTP_ENABLE_STRRESET_MASK))
-+	if (params->assoc_value & (~SCTP_ENABLE_STRRESET_MASK))
- 		goto out;
- 
+-	if (copy_from_user(&params, optval, optlen))
+-		return -EFAULT;
+-
 -	asoc = sctp_id2assoc(sk, params.assoc_id);
--	if (!asoc && params.assoc_id > SCTP_ALL_ASSOC &&
+-	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
 +	asoc = sctp_id2assoc(sk, params->assoc_id);
-+	if (!asoc && params->assoc_id > SCTP_ALL_ASSOC &&
++	if (!asoc && params->assoc_id != SCTP_FUTURE_ASSOC &&
  	    sctp_style(sk, UDP))
- 		goto out;
+ 		return -EINVAL;
  
- 	retval = 0;
+-	sctp_sk(sk)->ep->prsctp_enable = !!params.assoc_value;
++	sctp_sk(sk)->ep->prsctp_enable = !!params->assoc_value;
  
- 	if (asoc) {
--		asoc->strreset_enable = params.assoc_value;
-+		asoc->strreset_enable = params->assoc_value;
- 		goto out;
- 	}
- 
- 	if (sctp_style(sk, TCP))
--		params.assoc_id = SCTP_FUTURE_ASSOC;
-+		params->assoc_id = SCTP_FUTURE_ASSOC;
- 
--	if (params.assoc_id = SCTP_FUTURE_ASSOC ||
--	    params.assoc_id = SCTP_ALL_ASSOC)
--		ep->strreset_enable = params.assoc_value;
-+	if (params->assoc_id = SCTP_FUTURE_ASSOC ||
-+	    params->assoc_id = SCTP_ALL_ASSOC)
-+		ep->strreset_enable = params->assoc_value;
- 
--	if (params.assoc_id = SCTP_CURRENT_ASSOC ||
--	    params.assoc_id = SCTP_ALL_ASSOC)
-+	if (params->assoc_id = SCTP_CURRENT_ASSOC ||
-+	    params->assoc_id = SCTP_ALL_ASSOC)
- 		list_for_each_entry(asoc, &ep->asocs, asocs)
--			asoc->strreset_enable = params.assoc_value;
-+			asoc->strreset_enable = params->assoc_value;
- 
- out:
- 	return retval;
-@@ -4681,7 +4675,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_reconfig_supported(sk, kopt, optlen);
+ 	return 0;
+ }
+@@ -4687,7 +4683,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_recvnxtinfo(sk, kopt, optlen);
  		break;
- 	case SCTP_ENABLE_STREAM_RESET:
--		retval = sctp_setsockopt_enable_strreset(sk, optval, optlen);
-+		retval = sctp_setsockopt_enable_strreset(sk, kopt, optlen);
+ 	case SCTP_PR_SUPPORTED:
+-		retval = sctp_setsockopt_pr_supported(sk, optval, optlen);
++		retval = sctp_setsockopt_pr_supported(sk, kopt, optlen);
  		break;
- 	case SCTP_RESET_STREAMS:
- 		retval = sctp_setsockopt_reset_streams(sk, optval, optlen);
+ 	case SCTP_DEFAULT_PRINFO:
+ 		retval = sctp_setsockopt_default_prinfo(sk, optval, optlen);
 -- 
 2.26.2
