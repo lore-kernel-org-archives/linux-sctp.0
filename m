@@ -1,92 +1,95 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Wed, 13 May 2020 06:26:31 +0000
-Subject: [PATCH 16/33] tcp: add tcp_sock_set_keepintvl
-Message-Id: <20200513062649.2100053-17-hch@lst.de>
+Date: Thu, 21 May 2020 17:46:49 +0000
+Subject: [PATCH 14/49] sctp: pass a kernel pointer to sctp_setsockopt_peer_primary_addr
+Message-Id: <20200521174724.2635475-15-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200513062649.2100053-1-hch@lst.de>
-In-Reply-To: <20200513062649.2100053-1-hch-jcswGhMUV9g@public.gmane.org>
+References: <20200521174724.2635475-1-hch@lst.de>
+In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, Jakub Kicinski <kuba-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-Cc: Eric Dumazet <edumazet-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>, Alexey Kuznetsov <kuznet-v/Mj1YrvjDBInbfyfbPRSQ@public.gmane.org>, Hideaki YOSHIFUJI <yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org>, Vlad Yasevich <vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Neil Horman <nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org>, Marcelo Ricardo Leitner <marcelo.leitner-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Jon Maloy <jmaloy-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Ying Xue <ying.xue-CWA4WttNNZF54TAoqtyWWQ@public.gmane.org>, drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org, linux-block-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nvme-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, target-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, rds-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Add a helper to directly set the TCP_KEEPINTVL sockopt from kernel space
-without going through a fake uaccess.
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/tcp.h   |  1 +
- net/ipv4/tcp.c        | 12 ++++++++++++
- net/rds/tcp_listen.c  |  4 +---
- net/sunrpc/xprtsock.c |  3 +--
- 4 files changed, 15 insertions(+), 5 deletions(-)
+ net/sctp/socket.c | 21 +++++++++------------
+ 1 file changed, 9 insertions(+), 12 deletions(-)
 
-diff --git a/include/linux/tcp.h b/include/linux/tcp.h
-index 4d3a3e959e45b..dad18ca361c01 100644
---- a/include/linux/tcp.h
-+++ b/include/linux/tcp.h
-@@ -500,5 +500,6 @@ void tcp_sock_set_quickack(struct sock *sk, int val);
- int tcp_sock_set_syncnt(struct sock *sk, int val);
- void tcp_sock_set_user_timeout(struct sock *sk, u32 val);
- int tcp_sock_set_keepidle(struct sock *sk, int val);
-+int tcp_sock_set_keepintvl(struct sock *sk, int val);
- 
- #endif	/* _LINUX_TCP_H */
-diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
-index 22eb9159c7d05..b714f2b2fa54e 100644
---- a/net/ipv4/tcp.c
-+++ b/net/ipv4/tcp.c
-@@ -2923,6 +2923,18 @@ int tcp_sock_set_keepidle(struct sock *sk, int val)
- }
- EXPORT_SYMBOL(tcp_sock_set_keepidle);
- 
-+int tcp_sock_set_keepintvl(struct sock *sk, int val)
-+{
-+	if (val < 1 || val > MAX_TCP_KEEPINTVL)
-+		return -EINVAL;
-+
-+	lock_sock(sk);
-+	tcp_sk(sk)->keepalive_intvl = val * HZ;
-+	release_sock(sk);
-+	return 0;
-+}
-+EXPORT_SYMBOL(tcp_sock_set_keepintvl);
-+
- /*
-  *	Socket option code for TCP.
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index df00342ac74f9..eb01992da7949 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3281,12 +3281,12 @@ static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned
+  *   locally bound addresses. The following structure is used to make a
+  *   set primary request:
   */
-diff --git a/net/rds/tcp_listen.c b/net/rds/tcp_listen.c
-index 8c76969d8c878..a5db2f8bb7339 100644
---- a/net/rds/tcp_listen.c
-+++ b/net/rds/tcp_listen.c
-@@ -53,12 +53,10 @@ int rds_tcp_keepalive(struct socket *sock)
- 		goto bail;
+-static int sctp_setsockopt_peer_primary_addr(struct sock *sk, char __user *optval,
++static int sctp_setsockopt_peer_primary_addr(struct sock *sk,
++					     struct sctp_setpeerprim *prim,
+ 					     unsigned int optlen)
+ {
+ 	struct sctp_sock	*sp;
+ 	struct sctp_association	*asoc = NULL;
+-	struct sctp_setpeerprim	prim;
+ 	struct sctp_chunk	*chunk;
+ 	struct sctp_af		*af;
+ 	int 			err;
+@@ -3299,10 +3299,7 @@ static int sctp_setsockopt_peer_primary_addr(struct sock *sk, char __user *optva
+ 	if (optlen != sizeof(struct sctp_setpeerprim))
+ 		return -EINVAL;
  
- 	tcp_sock_set_keepidle(sock->sk, keepidle);
+-	if (copy_from_user(&prim, optval, optlen))
+-		return -EFAULT;
 -
- 	/* KEEPINTVL is the interval between successive probes. We follow
- 	 * the model in xs_tcp_finish_connecting() and re-use keepidle.
- 	 */
--	ret = kernel_setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL,
--				(char *)&keepidle, sizeof(keepidle));
-+	tcp_sock_set_keepintvl(sock->sk, keepidle);
- bail:
- 	return ret;
- }
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index ea79446789c69..e20de4a52edb7 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2108,8 +2108,7 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
- 	/* TCP Keepalive options */
- 	sock_set_keepalive(sock->sk, 1);
- 	tcp_sock_set_keepidle(sock->sk, keepidle);
--	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPINTVL,
--			(char *)&keepidle, sizeof(keepidle));
-+	tcp_sock_set_keepintvl(sock->sk, keepidle);
- 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPCNT,
- 			(char *)&keepcnt, sizeof(keepcnt));
+-	asoc = sctp_id2assoc(sk, prim.sspp_assoc_id);
++	asoc = sctp_id2assoc(sk, prim->sspp_assoc_id);
+ 	if (!asoc)
+ 		return -EINVAL;
  
+@@ -3315,26 +3312,26 @@ static int sctp_setsockopt_peer_primary_addr(struct sock *sk, char __user *optva
+ 	if (!sctp_state(asoc, ESTABLISHED))
+ 		return -ENOTCONN;
+ 
+-	af = sctp_get_af_specific(prim.sspp_addr.ss_family);
++	af = sctp_get_af_specific(prim->sspp_addr.ss_family);
+ 	if (!af)
+ 		return -EINVAL;
+ 
+-	if (!af->addr_valid((union sctp_addr *)&prim.sspp_addr, sp, NULL))
++	if (!af->addr_valid((union sctp_addr *)&prim->sspp_addr, sp, NULL))
+ 		return -EADDRNOTAVAIL;
+ 
+-	if (!sctp_assoc_lookup_laddr(asoc, (union sctp_addr *)&prim.sspp_addr))
++	if (!sctp_assoc_lookup_laddr(asoc, (union sctp_addr *)&prim->sspp_addr))
+ 		return -EADDRNOTAVAIL;
+ 
+ 	/* Allow security module to validate address. */
+ 	err = security_sctp_bind_connect(sk, SCTP_SET_PEER_PRIMARY_ADDR,
+-					 (struct sockaddr *)&prim.sspp_addr,
++					 (struct sockaddr *)&prim->sspp_addr,
+ 					 af->sockaddr_len);
+ 	if (err)
+ 		return err;
+ 
+ 	/* Create an ASCONF chunk with SET_PRIMARY parameter	*/
+ 	chunk = sctp_make_asconf_set_prim(asoc,
+-					  (union sctp_addr *)&prim.sspp_addr);
++					  (union sctp_addr *)&prim->sspp_addr);
+ 	if (!chunk)
+ 		return -ENOMEM;
+ 
+@@ -4691,7 +4688,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_primary_addr(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_SET_PEER_PRIMARY_ADDR:
+-		retval = sctp_setsockopt_peer_primary_addr(sk, optval, optlen);
++		retval = sctp_setsockopt_peer_primary_addr(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_NODELAY:
+ 		retval = sctp_setsockopt_nodelay(sk, optval, optlen);
 -- 
 2.26.2
