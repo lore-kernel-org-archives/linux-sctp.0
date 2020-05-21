@@ -1,134 +1,84 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Wed, 13 May 2020 06:26:30 +0000
-Subject: [PATCH 15/33] tcp: add tcp_sock_set_keepidle
-Message-Id: <20200513062649.2100053-16-hch@lst.de>
+Date: Thu, 21 May 2020 17:47:17 +0000
+Subject: [PATCH 42/49] sctp: pass a kernel pointer to sctp_setsockopt_scheduler_value
+Message-Id: <20200521174724.2635475-43-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200513062649.2100053-1-hch@lst.de>
-In-Reply-To: <20200513062649.2100053-1-hch-jcswGhMUV9g@public.gmane.org>
+References: <20200521174724.2635475-1-hch@lst.de>
+In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, Jakub Kicinski <kuba-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Eric Dumazet <edumazet-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>, linux-nvme-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, target-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, rds-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Alexey Kuznetsov <kuznet-v/Mj1YrvjDBInbfyfbPRSQ@public.gmane.org>, linux-block-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Neil Horman <nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org>, Hideaki YOSHIFUJI <yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org>, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Vlad Yasevich <vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Jon Maloy <jmaloy-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Ying Xue <ying.xue-CWA4WttNNZF54TAoqtyWWQ@public.gmane.org>, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Add a helper to directly set the TCP_KEEP_IDLE sockopt from kernel
-space without going through a fake uaccess.
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/tcp.h   |  1 +
- net/ipv4/tcp.c        | 49 ++++++++++++++++++++++++++++++-------------
- net/rds/tcp_listen.c  |  5 +----
- net/sunrpc/xprtsock.c |  3 +--
- 4 files changed, 37 insertions(+), 21 deletions(-)
+ net/sctp/socket.c | 26 ++++++++++----------------
+ 1 file changed, 10 insertions(+), 16 deletions(-)
 
-diff --git a/include/linux/tcp.h b/include/linux/tcp.h
-index 69c988f84a184..4d3a3e959e45b 100644
---- a/include/linux/tcp.h
-+++ b/include/linux/tcp.h
-@@ -499,5 +499,6 @@ void tcp_sock_set_nodelay(struct sock *sk, bool on);
- void tcp_sock_set_quickack(struct sock *sk, int val);
- int tcp_sock_set_syncnt(struct sock *sk, int val);
- void tcp_sock_set_user_timeout(struct sock *sk, u32 val);
-+int tcp_sock_set_keepidle(struct sock *sk, int val);
- 
- #endif	/* _LINUX_TCP_H */
-diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
-index 9a8d062b17a48..22eb9159c7d05 100644
---- a/net/ipv4/tcp.c
-+++ b/net/ipv4/tcp.c
-@@ -2890,6 +2890,39 @@ void tcp_sock_set_user_timeout(struct sock *sk, u32 val)
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 122e6b95a8f0d..4d61c2885f8f2 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4154,38 +4154,32 @@ static int sctp_setsockopt_scheduler(struct sock *sk,
  }
- EXPORT_SYMBOL(tcp_sock_set_user_timeout);
  
-+static int __tcp_sock_set_keepidle(struct sock *sk, int val)
-+{
-+	struct tcp_sock *tp = tcp_sk(sk);
-+
-+	if (val < 1 || val > MAX_TCP_KEEPIDLE)
-+		return -EINVAL;
-+
-+	tp->keepalive_time = val * HZ;
-+	if (sock_flag(sk, SOCK_KEEPOPEN) &&
-+	    !((1 << sk->sk_state) & (TCPF_CLOSE | TCPF_LISTEN))) {
-+		u32 elapsed = keepalive_time_elapsed(tp);
-+
-+		if (tp->keepalive_time > elapsed)
-+			elapsed = tp->keepalive_time - elapsed;
-+		else
-+			elapsed = 0;
-+		inet_csk_reset_keepalive_timer(sk, elapsed);
-+	}
-+
-+	return 0;
-+}
-+
-+int tcp_sock_set_keepidle(struct sock *sk, int val)
-+{
-+	int err;
-+
-+	lock_sock(sk);
-+	err = __tcp_sock_set_keepidle(sk, val);
-+	release_sock(sk);
-+	return err;
-+}
-+EXPORT_SYMBOL(tcp_sock_set_keepidle);
-+
- /*
-  *	Socket option code for TCP.
-  */
-@@ -3059,21 +3092,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
+ static int sctp_setsockopt_scheduler_value(struct sock *sk,
+-					   char __user *optval,
++					   struct sctp_stream_value *params,
+ 					   unsigned int optlen)
+ {
+-	struct sctp_stream_value params;
+ 	struct sctp_association *asoc;
+ 	int retval = -EINVAL;
+ 
+-	if (optlen < sizeof(params))
+-		goto out;
+-
+-	optlen = sizeof(params);
+-	if (copy_from_user(&params, optval, optlen)) {
+-		retval = -EFAULT;
++	if (optlen < sizeof(*params))
+ 		goto out;
+-	}
+ 
+-	asoc = sctp_id2assoc(sk, params.assoc_id);
+-	if (!asoc && params.assoc_id != SCTP_CURRENT_ASSOC &&
++	asoc = sctp_id2assoc(sk, params->assoc_id);
++	if (!asoc && params->assoc_id != SCTP_CURRENT_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		goto out;
+ 
+ 	if (asoc) {
+-		retval = sctp_sched_set_value(asoc, params.stream_id,
+-					      params.stream_value, GFP_KERNEL);
++		retval = sctp_sched_set_value(asoc, params->stream_id,
++					      params->stream_value, GFP_KERNEL);
+ 		goto out;
+ 	}
+ 
+ 	retval = 0;
+ 
+ 	list_for_each_entry(asoc, &sctp_sk(sk)->ep->asocs, asocs) {
+-		int ret = sctp_sched_set_value(asoc, params.stream_id,
+-					       params.stream_value, GFP_KERNEL);
++		int ret = sctp_sched_set_value(asoc, params->stream_id,
++					       params->stream_value,
++					       GFP_KERNEL);
+ 		if (ret && !retval) /* try to return the 1st error. */
+ 			retval = ret;
+ 	}
+@@ -4654,7 +4648,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_scheduler(sk, kopt, optlen);
  		break;
- 
- 	case TCP_KEEPIDLE:
--		if (val < 1 || val > MAX_TCP_KEEPIDLE)
--			err = -EINVAL;
--		else {
--			tp->keepalive_time = val * HZ;
--			if (sock_flag(sk, SOCK_KEEPOPEN) &&
--			    !((1 << sk->sk_state) &
--			      (TCPF_CLOSE | TCPF_LISTEN))) {
--				u32 elapsed = keepalive_time_elapsed(tp);
--				if (tp->keepalive_time > elapsed)
--					elapsed = tp->keepalive_time - elapsed;
--				else
--					elapsed = 0;
--				inet_csk_reset_keepalive_timer(sk, elapsed);
--			}
--		}
-+		err = __tcp_sock_set_keepidle(sk, val);
+ 	case SCTP_STREAM_SCHEDULER_VALUE:
+-		retval = sctp_setsockopt_scheduler_value(sk, optval, optlen);
++		retval = sctp_setsockopt_scheduler_value(sk, kopt, optlen);
  		break;
- 	case TCP_KEEPINTVL:
- 		if (val < 1 || val > MAX_TCP_KEEPINTVL)
-diff --git a/net/rds/tcp_listen.c b/net/rds/tcp_listen.c
-index e76ec64b43fe7..8c76969d8c878 100644
---- a/net/rds/tcp_listen.c
-+++ b/net/rds/tcp_listen.c
-@@ -52,10 +52,7 @@ int rds_tcp_keepalive(struct socket *sock)
- 	if (ret < 0)
- 		goto bail;
- 
--	ret = kernel_setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE,
--				(char *)&keepidle, sizeof(keepidle));
--	if (ret < 0)
--		goto bail;
-+	tcp_sock_set_keepidle(sock->sk, keepidle);
- 
- 	/* KEEPINTVL is the interval between successive probes. We follow
- 	 * the model in xs_tcp_finish_connecting() and re-use keepidle.
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 30d4c4fcd3e38..ea79446789c69 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2107,8 +2107,7 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
- 
- 	/* TCP Keepalive options */
- 	sock_set_keepalive(sock->sk, 1);
--	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPIDLE,
--			(char *)&keepidle, sizeof(keepidle));
-+	tcp_sock_set_keepidle(sock->sk, keepidle);
- 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPINTVL,
- 			(char *)&keepidle, sizeof(keepidle));
- 	kernel_setsockopt(sock, SOL_TCP, TCP_KEEPCNT,
+ 	case SCTP_INTERLEAVING_SUPPORTED:
+ 		retval = sctp_setsockopt_interleaving_supported(sk, optval,
 -- 
 2.26.2
