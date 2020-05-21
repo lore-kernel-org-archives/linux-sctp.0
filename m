@@ -1,69 +1,57 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Wed, 20 May 2020 19:55:02 +0000
-Subject: [PATCH 26/33] ipv6: add ip6_sock_set_recverr
-Message-Id: <20200520195509.2215098-27-hch@lst.de>
+Date: Thu, 21 May 2020 17:46:36 +0000
+Subject: [PATCH 01/49] sctp: copy the optval from user space in sctp_setsockopt
+Message-Id: <20200521174724.2635475-2-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200520195509.2215098-1-hch@lst.de>
-In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
+References: <20200521174724.2635475-1-hch@lst.de>
+In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Eric Dumazet <edumazet@google.com>, linux-nvme@lists.infradead.org, David Howells <dhowells@redhat.com>, linux-sctp@vger.kernel.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, rds-devel@oss.oracle.com, linux-rdma@vger.kernel.org, cluster-devel@redhat.com, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, drbd-dev@tron.linbit.com, ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, netdev@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>, linux-kernel@vger.kernel.org, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, ocfs2-devel@oss.oracle.com
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Add a helper to directly set the IPV6_RECVERR sockopt from kernel space
-without going through a fake uaccess.
+Prepare for for moving the copy_from_user from the individual sockopts
+to the main setsockopt helper.  As of this commit the kopt variable
+is not used yet, but the following commits will start using it.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: David Howells <dhowells@redhat.com>
 ---
- include/net/ipv6.h       |  7 +++++++
- net/rxrpc/local_object.c | 10 ++--------
- 2 files changed, 9 insertions(+), 8 deletions(-)
+ net/sctp/socket.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/include/net/ipv6.h b/include/net/ipv6.h
-index 7d1cb9f0f5388..3b02049d2e582 100644
---- a/include/net/ipv6.h
-+++ b/include/net/ipv6.h
-@@ -1187,4 +1187,11 @@ static inline int ip6_sock_set_v6only(struct sock *sk)
- 	return 0;
- }
- 
-+static inline void ip6_sock_set_recverr(struct sock *sk)
-+{
-+	lock_sock(sk);
-+	inet6_sk(sk)->recverr = true;
-+	release_sock(sk);
-+}
-+
- #endif /* _NET_IPV6_H */
-diff --git a/net/rxrpc/local_object.c b/net/rxrpc/local_object.c
-index 6f4e6b4817cf2..c8b2097f499c0 100644
---- a/net/rxrpc/local_object.c
-+++ b/net/rxrpc/local_object.c
-@@ -107,7 +107,7 @@ static struct rxrpc_local *rxrpc_alloc_local(struct rxrpc_net *rxnet,
- static int rxrpc_open_socket(struct rxrpc_local *local, struct net *net)
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 827a9903ee288..ee6a618ee3e8e 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4670,6 +4670,7 @@ static int sctp_setsockopt_pf_expose(struct sock *sk,
+ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 			   char __user *optval, unsigned int optlen)
  {
- 	struct sock *usk;
--	int ret, opt;
-+	int ret;
++	void *kopt = NULL;
+ 	int retval = 0;
  
- 	_enter("%p{%d,%d}",
- 	       local, local->srx.transport_type, local->srx.transport.family);
-@@ -157,13 +157,7 @@ static int rxrpc_open_socket(struct rxrpc_local *local, struct net *net)
- 	switch (local->srx.transport.family) {
- 	case AF_INET6:
- 		/* we want to receive ICMPv6 errors */
--		opt = 1;
--		ret = kernel_setsockopt(local->socket, SOL_IPV6, IPV6_RECVERR,
--					(char *) &opt, sizeof(opt));
--		if (ret < 0) {
--			_debug("setsockopt failed");
--			goto error;
--		}
-+		ip6_sock_set_recverr(local->socket->sk);
+ 	pr_debug("%s: sk:%p, optname:%d\n", __func__, sk, optname);
+@@ -4686,6 +4687,12 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		goto out_nounlock;
+ 	}
  
- 		/* Fall through and set IPv4 options too otherwise we don't get
- 		 * errors from IPv4 packets sent through the IPv6 socket.
++	if (optlen > 0) {
++		kopt = memdup_user(optval, optlen);
++		if (IS_ERR(kopt))
++			return PTR_ERR(kopt);
++	}
++
+ 	lock_sock(sk);
+ 
+ 	switch (optname) {
+@@ -4871,6 +4878,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 	}
+ 
+ 	release_sock(sk);
++	kfree(kopt);
+ 
+ out_nounlock:
+ 	return retval;
 -- 
 2.26.2
