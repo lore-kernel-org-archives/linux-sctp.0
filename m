@@ -1,80 +1,90 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Wed, 20 May 2020 19:54:51 +0000
-Subject: [PATCH 15/33] tcp: add tcp_sock_set_syncnt
-Message-Id: <20200520195509.2215098-16-hch@lst.de>
+Date: Thu, 21 May 2020 17:47:03 +0000
+Subject: [PATCH 28/49] sctp: pass a kernel pointer to sctp_setsockopt_del_key
+Message-Id: <20200521174724.2635475-29-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200520195509.2215098-1-hch@lst.de>
-In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
+References: <20200521174724.2635475-1-hch@lst.de>
+In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
-Cc: Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com, linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org, Sagi Grimberg <sagi@grimberg.me>
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Add a helper to directly set the TCP_SYNCNT sockopt from kernel space
-without going through a fake uaccess.
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
-Acked-by: Sagi Grimberg <sagi@grimberg.me>
 ---
- drivers/nvme/host/tcp.c |  9 +--------
- include/linux/tcp.h     |  1 +
- net/ipv4/tcp.c          | 12 ++++++++++++
- 3 files changed, 14 insertions(+), 8 deletions(-)
+ net/sctp/socket.c | 27 ++++++++++++---------------
+ 1 file changed, 12 insertions(+), 15 deletions(-)
 
-diff --git a/drivers/nvme/host/tcp.c b/drivers/nvme/host/tcp.c
-index 4e4a750ecdb97..2872584f52f63 100644
---- a/drivers/nvme/host/tcp.c
-+++ b/drivers/nvme/host/tcp.c
-@@ -1336,14 +1336,7 @@ static int nvme_tcp_alloc_queue(struct nvme_ctrl *nctrl,
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 88514a17654a7..a664e9eb323fb 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3699,42 +3699,39 @@ static int sctp_setsockopt_active_key(struct sock *sk,
+  * This set option will delete a shared secret key from use.
+  */
+ static int sctp_setsockopt_del_key(struct sock *sk,
+-				   char __user *optval,
++				   struct sctp_authkeyid *val,
+ 				   unsigned int optlen)
+ {
+ 	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
+ 	struct sctp_association *asoc;
+-	struct sctp_authkeyid val;
+ 	int ret = 0;
+ 
+ 	if (optlen != sizeof(struct sctp_authkeyid))
+ 		return -EINVAL;
+-	if (copy_from_user(&val, optval, optlen))
+-		return -EFAULT;
+ 
+-	asoc = sctp_id2assoc(sk, val.scact_assoc_id);
+-	if (!asoc && val.scact_assoc_id > SCTP_ALL_ASSOC &&
++	asoc = sctp_id2assoc(sk, val->scact_assoc_id);
++	if (!asoc && val->scact_assoc_id > SCTP_ALL_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		return -EINVAL;
+ 
+ 	if (asoc)
+-		return sctp_auth_del_key_id(ep, asoc, val.scact_keynumber);
++		return sctp_auth_del_key_id(ep, asoc, val->scact_keynumber);
+ 
+ 	if (sctp_style(sk, TCP))
+-		val.scact_assoc_id = SCTP_FUTURE_ASSOC;
++		val->scact_assoc_id = SCTP_FUTURE_ASSOC;
+ 
+-	if (val.scact_assoc_id = SCTP_FUTURE_ASSOC ||
+-	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
+-		ret = sctp_auth_del_key_id(ep, asoc, val.scact_keynumber);
++	if (val->scact_assoc_id = SCTP_FUTURE_ASSOC ||
++	    val->scact_assoc_id = SCTP_ALL_ASSOC) {
++		ret = sctp_auth_del_key_id(ep, asoc, val->scact_keynumber);
+ 		if (ret)
+ 			return ret;
  	}
  
- 	/* Single syn retry */
--	opt = 1;
--	ret = kernel_setsockopt(queue->sock, IPPROTO_TCP, TCP_SYNCNT,
--			(char *)&opt, sizeof(opt));
--	if (ret) {
--		dev_err(nctrl->device,
--			"failed to set TCP_SYNCNT sock opt %d\n", ret);
--		goto err_sock;
--	}
-+	tcp_sock_set_syncnt(queue->sock->sk, 1);
+-	if (val.scact_assoc_id = SCTP_CURRENT_ASSOC ||
+-	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
++	if (val->scact_assoc_id = SCTP_CURRENT_ASSOC ||
++	    val->scact_assoc_id = SCTP_ALL_ASSOC) {
+ 		list_for_each_entry(asoc, &ep->asocs, asocs) {
+ 			int res = sctp_auth_del_key_id(ep, asoc,
+-						       val.scact_keynumber);
++						       val->scact_keynumber);
  
- 	/* Set TCP no delay */
- 	tcp_sock_set_nodelay(queue->sock->sk);
-diff --git a/include/linux/tcp.h b/include/linux/tcp.h
-index 2eaf8320b9db0..6aa4ae5ebf3d5 100644
---- a/include/linux/tcp.h
-+++ b/include/linux/tcp.h
-@@ -500,5 +500,6 @@ int tcp_skb_shift(struct sk_buff *to, struct sk_buff *from, int pcount,
- void tcp_sock_set_cork(struct sock *sk, bool on);
- void tcp_sock_set_nodelay(struct sock *sk);
- void tcp_sock_set_quickack(struct sock *sk, int val);
-+int tcp_sock_set_syncnt(struct sock *sk, int val);
- 
- #endif	/* _LINUX_TCP_H */
-diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
-index 27b5e7a4e2ef9..d2c67ae1da07a 100644
---- a/net/ipv4/tcp.c
-+++ b/net/ipv4/tcp.c
-@@ -2881,6 +2881,18 @@ void tcp_sock_set_quickack(struct sock *sk, int val)
- }
- EXPORT_SYMBOL(tcp_sock_set_quickack);
- 
-+int tcp_sock_set_syncnt(struct sock *sk, int val)
-+{
-+	if (val < 1 || val > MAX_TCP_SYNCNT)
-+		return -EINVAL;
-+
-+	lock_sock(sk);
-+	inet_csk(sk)->icsk_syn_retries = val;
-+	release_sock(sk);
-+	return 0;
-+}
-+EXPORT_SYMBOL(tcp_sock_set_syncnt);
-+
- /*
-  *	Socket option code for TCP.
-  */
+ 			if (res && !ret)
+ 				ret = res;
+@@ -4685,7 +4682,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_active_key(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_AUTH_DELETE_KEY:
+-		retval = sctp_setsockopt_del_key(sk, optval, optlen);
++		retval = sctp_setsockopt_del_key(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_AUTH_DEACTIVATE_KEY:
+ 		retval = sctp_setsockopt_deactivate_key(sk, optval, optlen);
 -- 
 2.26.2
