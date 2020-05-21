@@ -1,59 +1,55 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Thu, 21 May 2020 08:01:33 +0000
-Subject: RE: remove kernel_setsockopt and kernel_getsockopt v2
-Message-Id: <138a17dfff244c089b95f129e4ea2f66@AcuMS.aculab.com>
+From: 'Christoph Hellwig' <hch@lst.de>
+Date: Thu, 21 May 2020 09:11:50 +0000
+Subject: Re: remove kernel_setsockopt and kernel_getsockopt v2
+Message-Id: <20200521091150.GA8401@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200520195509.2215098-1-hch@lst.de>
-In-Reply-To: <20200520195509.2215098-1-hch@lst.de>
+	<138a17dfff244c089b95f129e4ea2f66@AcuMS.aculab.com>
+In-Reply-To: <138a17dfff244c089b95f129e4ea2f66-1XygrNkDbNvwg4NCKwmqgw@public.gmane.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Christoph Hellwig' <hch@lst.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
-Cc: Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, "drbd-dev@lists.linbit.com" <drbd-dev@lists.linbit.com>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>, "linux-nvme@lists.infradead.org" <linux-nvme@lists.infradead.org>, "target-devel@vger.kernel.org" <target-devel@vger.kernel.org>, "linux-afs@lists.infradead.org" <linux-afs@lists.infradead.org>, "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>, cluster-devel@redhat.co
+To: David Laight <David.Laight-ZS65k/vG3HxXrIkS9f7CXA@public.gmane.org>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Eric Dumazet <edumazet-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>, "linux-nvme-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org" <linux-nvme-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org>, "linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, "target-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <target-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, "linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org" <linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org>, "drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org" <drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org>, "linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, "rds-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org" <rds-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org>, "linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, 'Christoph Hellwig' <hch-jcswGhMUV9g@public.gmane.org>, "cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org" <cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Alexey Kuznetsov <kuznet-v/Mj1YrvjDBInbfyfbPRSQ@public.gmane.org>, Jakub Kicinski <kuba-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, "ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, "linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, Neil Horman <nhorman@tuxdriv>
 
-From: Christoph Hellwig
-> Sent: 20 May 2020 20:55
+On Thu, May 21, 2020 at 08:01:33AM +0000, David Laight wrote:
+> How much does this increase the kernel code by?
+
+ 44 files changed, 660 insertions(+), 843 deletions(-)
+
+
+> You are also replicating a lot of code making it more
+> difficult to maintain.
+
+No, I specifically don't.
+
+> I don't think the performance of an socket option code
+> really matters - it is usually done once when a socket
+> is initialised and the other costs of establishing a
+> connection will dominate.
 > 
-> this series removes the kernel_setsockopt and kernel_getsockopt
-> functions, and instead switches their users to small functions that
-> implement setting (or in one case getting) a sockopt directly using
-> a normal kernel function call with type safety and all the other
-> benefits of not having a function call.
+> Pulling the user copies outside the [gs]etsocksopt switch
+> statement not only reduces the code size (source and object)
+> and trivially allows kernel_[sg]sockopt() to me added to
+> the list of socket calls.
 > 
-> In some cases these functions seem pretty heavy handed as they do
-> a lock_sock even for just setting a single variable, but this mirrors
-> the real setsockopt implementation unlike a few drivers that just set
-> set the fields directly.
+> It probably isn't possible to pull the usercopies right
+> out into the syscall wrapper because of some broken
+> requests.
 
-How much does this increase the kernel code by?
+Please read through the previous discussion of the rationale and the
+options.  We've been there before.
 
-You are also replicating a lot of code making it more
-difficult to maintain.
+> I worried about whether getsockopt() should read the entire
+> user buffer first. SCTP needs the some of it often (including a
+> sockaddr_storage in one case), TCP needs it once.
+> However the cost of reading a few words is small, and a big
+> buffer probably needs setting to avoid leaking kernel
+> memory if the structure has holes or fields that don't get set.
+> Reading from userspace solves both issues.
 
-I don't think the performance of an socket option code
-really matters - it is usually done once when a socket
-is initialised and the other costs of establishing a
-connection will dominate.
-
-Pulling the user copies outside the [gs]etsocksopt switch
-statement not only reduces the code size (source and object)
-and trivially allows kernel_[sg]sockopt() to me added to
-the list of socket calls.
-
-It probably isn't possible to pull the usercopies right
-out into the syscall wrapper because of some broken
-requests.
-
-I worried about whether getsockopt() should read the entire
-user buffer first. SCTP needs the some of it often (including a
-sockaddr_storage in one case), TCP needs it once.
-However the cost of reading a few words is small, and a big
-buffer probably needs setting to avoid leaking kernel
-memory if the structure has holes or fields that don't get set.
-Reading from userspace solves both issues.
-
-	David
-
--
-Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-Registration No: 1397386 (Wales)
+As mention in the thread on the last series:  That was my first idea, but
+we have way to many sockopts, especially in obscure protocols that just
+hard code the size.  The chance of breaking userspace in a way that can't
+be fixed without going back to passing user pointers to get/setsockopt
+is way to high to commit to such a change unfortunately.
