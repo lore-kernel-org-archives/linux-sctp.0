@@ -1,86 +1,89 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Thu, 21 May 2020 16:09:15 +0000
-Subject: RE: [PATCH net-next] sctp: Pull the user copies out of the individual sockopt functions.
-Message-Id: <a681d1dc056a412bba24b9b4cde37785@AcuMS.aculab.com>
+From: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
+Date: Thu, 21 May 2020 16:45:04 +0000
+Subject: Re: [PATCH net-next] sctp: Pull the user copies out of the individual sockopt functions.
+Message-Id: <20200521164504.GA47547@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <fd94b5e41a7c4edc8f743c56a04ed2c9@AcuMS.aculab.com>
  <20200521153729.GB74252@localhost.localdomain>
-In-Reply-To: <20200521153729.GB74252@localhost.localdomain>
+ <a681d1dc056a412bba24b9b4cde37785@AcuMS.aculab.com>
+In-Reply-To: <a681d1dc056a412bba24b9b4cde37785@AcuMS.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
+To: David Laight <David.Laight@aculab.com>
 Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, Neil Horman <nhorman@tuxdriver.com>, Christoph Hellwig <hch@lst.de>
 
-From: 'Marcelo Ricardo Leitner'
-> Sent: 21 May 2020 16:37
-> On Wed, May 20, 2020 at 03:08:13PM +0000, David Laight wrote:
-...
-> > Only SCTP_SOCKOPT_CONNECTX3 contains an indirect pointer.
-> > It is also the only getsockopt() that wants to return a buffer
-> > and an error code. It is also definitely abusing getsockopt().
+On Thu, May 21, 2020 at 04:09:15PM +0000, David Laight wrote:
+> From: 'Marcelo Ricardo Leitner'
+> > Sent: 21 May 2020 16:37
+> > On Wed, May 20, 2020 at 03:08:13PM +0000, David Laight wrote:
+> ...
+> > > Only SCTP_SOCKOPT_CONNECTX3 contains an indirect pointer.
+> > > It is also the only getsockopt() that wants to return a buffer
+> > > and an error code. It is also definitely abusing getsockopt().
+> > 
+> > It should have been a linear buffer. The secondary __user access is
+> > way worse than having the application to do another allocation. But
+> > too late..
 > 
-> It should have been a linear buffer. The secondary __user access is
-> way worse than having the application to do another allocation. But
-> too late..
+> I think that is SCTP_SOCKOPT_CONNECTX ?
 
-I think that is SCTP_SOCKOPT_CONNECTX ?
-
-> Other than the comments here, this patch LGTM.
-
-Thanks.
-
-> Assuming a v2 is coming, to appease the buildbot :)
-
-I'd got an definition in sctp.h and an EXPORT() but took them out.
-I'll also increase the setsockopt limit.
+Right :-)
 
 ...
-> > +	if (optlen < sizeof (param_buf)) {
-> > +		if (copy_from_user(&param_buf, u_optval, optlen))
-> > +			return -EFAULT;
-> > +		optval = param_buf;
-> > +	} else {
-> > +		if (optlen > USHRT_MAX)
-> > +			optlen = USHRT_MAX;
+> > > +	if (optlen < sizeof (param_buf)) {
+> > > +		if (copy_from_user(&param_buf, u_optval, optlen))
+> > > +			return -EFAULT;
+> > > +		optval = param_buf;
+> > > +	} else {
+> > > +		if (optlen > USHRT_MAX)
+> > > +			optlen = USHRT_MAX;
+> > 
+> > There are functions that can work with and expect buffers larger than
+> > that, such as sctp_setsockopt_auth_key:
 > 
-> There are functions that can work with and expect buffers larger than
-> that, such as sctp_setsockopt_auth_key:
+> I'd assumed the maximums were silly.
+> But a few more than 64k is enough, the lengths are in bytes.
+> OTOH 128k is a nice round limit - and plenty AFAICT.
 
-I'd assumed the maximums were silly.
-But a few more than 64k is enough, the lengths are in bytes.
-OTOH 128k is a nice round limit - and plenty AFAICT.
+LGTM too.
 
-...
-> > +	if (len < sizeof (param_buf)) {
-> > +		/* Zero first bytes to stop KASAN complaining. */
-> > +		param_buf[0] = 0;
-> > +		if (copy_from_user(&param_buf, u_optval, len))
-> > +			return -EFAULT;
-> > +		optval = param_buf;
-> > +	} else {
-> > +		if (len > USHRT_MAX)
-> > +			len = USHRT_MAX;
 > 
-> This limit is not present today for sctp_getsockopt_local_addrs()
-> calls (there may be others).  As is, it will limit it and may mean
-> that it can't dump all addresses.  We have discussed this and didn't
-> come to a conclusion on what is a safe limit to use here, at least not
-> on that time.
+> ...
+> > > +	if (len < sizeof (param_buf)) {
+> > > +		/* Zero first bytes to stop KASAN complaining. */
+> > > +		param_buf[0] = 0;
+> > > +		if (copy_from_user(&param_buf, u_optval, len))
+> > > +			return -EFAULT;
+> > > +		optval = param_buf;
+> > > +	} else {
+> > > +		if (len > USHRT_MAX)
+> > > +			len = USHRT_MAX;
+> > 
+> > This limit is not present today for sctp_getsockopt_local_addrs()
+> > calls (there may be others).  As is, it will limit it and may mean
+> > that it can't dump all addresses.  We have discussed this and didn't
+> > come to a conclusion on what is a safe limit to use here, at least not
+> > on that time.
+> 
+> It needs some limit. memdup_user() might limit at 32MB.
+> I couldn't decide is some of the allocators limit it further.
+> In any case an IPv6 address is what? under 128 bytes.
+> 64k is 512 address, things are going to explode elsewhere first.
 
-It needs some limit. memdup_user() might limit at 32MB.
-I couldn't decide is some of the allocators limit it further.
-In any case an IPv6 address is what? under 128 bytes.
-64k is 512 address, things are going to explode elsewhere first.
+If it does, we probably can fix that too.
 
-I didn't see 'get' requests that did 64k + a bit.
+> 
+> I didn't see 'get' requests that did 64k + a bit.
+> 
+> It should be possible to loop using a larger kernel buffer if the
+> data won't fit.
+> Doable as a later patch to avoid complications.
 
-It should be possible to loop using a larger kernel buffer if the
-data won't fit.
-Doable as a later patch to avoid complications.
-
-	David
-
--
-Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-Registration No: 1397386 (Wales)
+Sounds complicated. 128k should be more than enough here as well.
+sctp_getsockopt_local_addrs() will adjust the output to fit on the
+buffer. Point being, with enough buffer, it will support the limits
+the RFC states, and if the user supplies a smaller buffer, it will
+dump what it can. If the user pass a larger buffer, it doesn't need
+it, and it's safe to ignore the rest of the buffer (as the patch is
+doing here). I didn't check the other functions now, though.
