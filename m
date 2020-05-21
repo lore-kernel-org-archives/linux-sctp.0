@@ -1,117 +1,131 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Wed, 13 May 2020 06:26:29 +0000
-Subject: [PATCH 14/33] tcp: add tcp_sock_set_user_timeout
-Message-Id: <20200513062649.2100053-15-hch@lst.de>
+Date: Thu, 21 May 2020 17:47:06 +0000
+Subject: [PATCH 31/49] sctp: pass a kernel pointer to sctp_setsockopt_paddr_thresholds
+Message-Id: <20200521174724.2635475-32-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200513062649.2100053-1-hch@lst.de>
-In-Reply-To: <20200513062649.2100053-1-hch-jcswGhMUV9g@public.gmane.org>
+References: <20200521174724.2635475-1-hch@lst.de>
+In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, Jakub Kicinski <kuba-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, Eric Dumazet <edumazet-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>, linux-nvme-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, linux-sctp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, target-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org, linux-cifs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, rds-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org, linux-rdma-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Alexey Kuznetsov <kuznet-v/Mj1YrvjDBInbfyfbPRSQ@public.gmane.org>, linux-block-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, ceph-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Neil Horman <nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org>, Hideaki YOSHIFUJI <yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org>, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Vlad Yasevich <vyasevich-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Jon Maloy <jmaloy-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Ying Xue <ying.xue-CWA4WttNNZF54TAoqtyWWQ@public.gmane.org>, ocfs2-devel-N0ozoZBvEnrZJqsBc5GL+g@public.gmane.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Add a helper to directly set the TCP_USER_TIMEOUT sockopt from kernel
-space without going through a fake uaccess.
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/ocfs2/cluster/tcp.c | 22 ++--------------------
- include/linux/tcp.h    |  1 +
- net/ipv4/tcp.c         |  8 ++++++++
- net/sunrpc/xprtsock.c  |  3 +--
- 4 files changed, 12 insertions(+), 22 deletions(-)
+ net/sctp/socket.c | 53 ++++++++++++++++++++++-------------------------
+ 1 file changed, 25 insertions(+), 28 deletions(-)
 
-diff --git a/fs/ocfs2/cluster/tcp.c b/fs/ocfs2/cluster/tcp.c
-index 7936e22e39f34..5776df10d11f9 100644
---- a/fs/ocfs2/cluster/tcp.c
-+++ b/fs/ocfs2/cluster/tcp.c
-@@ -1441,14 +1441,6 @@ static void o2net_rx_until_empty(struct work_struct *work)
- 	sc_put(sc);
- }
- 
--static int o2net_set_usertimeout(struct socket *sock)
--{
--	int user_timeout = O2NET_TCP_USER_TIMEOUT;
--
--	return kernel_setsockopt(sock, SOL_TCP, TCP_USER_TIMEOUT,
--				(void *)&user_timeout, sizeof(user_timeout));
--}
--
- static void o2net_initialize_handshake(void)
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 04eac086831f0..a2aa1e309d595 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3836,10 +3836,9 @@ static int sctp_setsockopt_auto_asconf(struct sock *sk, int *val,
+  * http://www.ietf.org/id/draft-nishida-tsvwg-sctp-failover-05.txt
+  */
+ static int sctp_setsockopt_paddr_thresholds(struct sock *sk,
+-					    char __user *optval,
++					    struct sctp_paddrthlds_v2 *val,
+ 					    unsigned int optlen, bool v2)
  {
- 	o2net_hand->o2hb_heartbeat_timeout_ms = cpu_to_be32(
-@@ -1629,12 +1621,7 @@ static void o2net_start_connect(struct work_struct *work)
+-	struct sctp_paddrthlds_v2 val;
+ 	struct sctp_transport *trans;
+ 	struct sctp_association *asoc;
+ 	int len;
+@@ -3847,55 +3846,53 @@ static int sctp_setsockopt_paddr_thresholds(struct sock *sk,
+ 	len = v2 ? sizeof(val) : sizeof(struct sctp_paddrthlds);
+ 	if (optlen < len)
+ 		return -EINVAL;
+-	if (copy_from_user(&val, optval, len))
+-		return -EFAULT;
+ 
+-	if (v2 && val.spt_pathpfthld > val.spt_pathcpthld)
++	if (v2 && val->spt_pathpfthld > val->spt_pathcpthld)
+ 		return -EINVAL;
+ 
+-	if (!sctp_is_any(sk, (const union sctp_addr *)&val.spt_address)) {
+-		trans = sctp_addr_id2transport(sk, &val.spt_address,
+-					       val.spt_assoc_id);
++	if (!sctp_is_any(sk, (const union sctp_addr *)&val->spt_address)) {
++		trans = sctp_addr_id2transport(sk, &val->spt_address,
++					       val->spt_assoc_id);
+ 		if (!trans)
+ 			return -ENOENT;
+ 
+-		if (val.spt_pathmaxrxt)
+-			trans->pathmaxrxt = val.spt_pathmaxrxt;
++		if (val->spt_pathmaxrxt)
++			trans->pathmaxrxt = val->spt_pathmaxrxt;
+ 		if (v2)
+-			trans->ps_retrans = val.spt_pathcpthld;
+-		trans->pf_retrans = val.spt_pathpfthld;
++			trans->ps_retrans = val->spt_pathcpthld;
++		trans->pf_retrans = val->spt_pathpfthld;
+ 
+ 		return 0;
  	}
  
- 	tcp_sock_set_nodelay(sc->sc_sock->sk, true);
--
--	ret = o2net_set_usertimeout(sock);
--	if (ret) {
--		mlog(ML_ERROR, "set TCP_USER_TIMEOUT failed with %d\n", ret);
--		goto out;
--	}
-+	tcp_sock_set_user_timeout(sock->sk, O2NET_TCP_USER_TIMEOUT);
+-	asoc = sctp_id2assoc(sk, val.spt_assoc_id);
+-	if (!asoc && val.spt_assoc_id != SCTP_FUTURE_ASSOC &&
++	asoc = sctp_id2assoc(sk, val->spt_assoc_id);
++	if (!asoc && val->spt_assoc_id != SCTP_FUTURE_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		return -EINVAL;
  
- 	o2net_register_callbacks(sc->sc_sock->sk, sc);
+ 	if (asoc) {
+ 		list_for_each_entry(trans, &asoc->peer.transport_addr_list,
+ 				    transports) {
+-			if (val.spt_pathmaxrxt)
+-				trans->pathmaxrxt = val.spt_pathmaxrxt;
++			if (val->spt_pathmaxrxt)
++				trans->pathmaxrxt = val->spt_pathmaxrxt;
+ 			if (v2)
+-				trans->ps_retrans = val.spt_pathcpthld;
+-			trans->pf_retrans = val.spt_pathpfthld;
++				trans->ps_retrans = val->spt_pathcpthld;
++			trans->pf_retrans = val->spt_pathpfthld;
+ 		}
  
-@@ -1821,12 +1808,7 @@ static int o2net_accept_one(struct socket *sock, int *more)
- 	new_sock->sk->sk_allocation = GFP_ATOMIC;
+-		if (val.spt_pathmaxrxt)
+-			asoc->pathmaxrxt = val.spt_pathmaxrxt;
++		if (val->spt_pathmaxrxt)
++			asoc->pathmaxrxt = val->spt_pathmaxrxt;
+ 		if (v2)
+-			asoc->ps_retrans = val.spt_pathcpthld;
+-		asoc->pf_retrans = val.spt_pathpfthld;
++			asoc->ps_retrans = val->spt_pathcpthld;
++		asoc->pf_retrans = val->spt_pathpfthld;
+ 	} else {
+ 		struct sctp_sock *sp = sctp_sk(sk);
  
- 	tcp_sock_set_nodelay(new_sock->sk, true);
--
--	ret = o2net_set_usertimeout(new_sock);
--	if (ret) {
--		mlog(ML_ERROR, "set TCP_USER_TIMEOUT failed with %d\n", ret);
--		goto out;
--	}
-+	tcp_sock_set_user_timeout(new_sock->sk, O2NET_TCP_USER_TIMEOUT);
+-		if (val.spt_pathmaxrxt)
+-			sp->pathmaxrxt = val.spt_pathmaxrxt;
++		if (val->spt_pathmaxrxt)
++			sp->pathmaxrxt = val->spt_pathmaxrxt;
+ 		if (v2)
+-			sp->ps_retrans = val.spt_pathcpthld;
+-		sp->pf_retrans = val.spt_pathpfthld;
++			sp->ps_retrans = val->spt_pathcpthld;
++		sp->pf_retrans = val->spt_pathpfthld;
+ 	}
  
- 	ret = new_sock->ops->getname(new_sock, (struct sockaddr *) &sin, 1);
- 	if (ret < 0)
-diff --git a/include/linux/tcp.h b/include/linux/tcp.h
-index 77b832acf3398..69c988f84a184 100644
---- a/include/linux/tcp.h
-+++ b/include/linux/tcp.h
-@@ -498,5 +498,6 @@ void tcp_sock_set_cork(struct sock *sk, bool on);
- void tcp_sock_set_nodelay(struct sock *sk, bool on);
- void tcp_sock_set_quickack(struct sock *sk, int val);
- int tcp_sock_set_syncnt(struct sock *sk, int val);
-+void tcp_sock_set_user_timeout(struct sock *sk, u32 val);
- 
- #endif	/* _LINUX_TCP_H */
-diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
-index 773b5cd366ab7..9a8d062b17a48 100644
---- a/net/ipv4/tcp.c
-+++ b/net/ipv4/tcp.c
-@@ -2882,6 +2882,14 @@ int tcp_sock_set_syncnt(struct sock *sk, int val)
- }
- EXPORT_SYMBOL(tcp_sock_set_syncnt);
- 
-+void tcp_sock_set_user_timeout(struct sock *sk, u32 val)
-+{
-+	lock_sock(sk);
-+	inet_csk(sk)->icsk_user_timeout = val;
-+	release_sock(sk);
-+}
-+EXPORT_SYMBOL(tcp_sock_set_user_timeout);
-+
- /*
-  *	Socket option code for TCP.
-  */
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 3dc2d52371a0e..30d4c4fcd3e38 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2115,8 +2115,7 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
- 			(char *)&keepcnt, sizeof(keepcnt));
- 
- 	/* TCP user timeout (see RFC5482) */
--	kernel_setsockopt(sock, SOL_TCP, TCP_USER_TIMEOUT,
--			(char *)&timeo, sizeof(timeo));
-+	tcp_sock_set_user_timeout(sock->sk, timeo);
- }
- 
- static void xs_tcp_set_connect_timeout(struct rpc_xprt *xprt,
+ 	return 0;
+@@ -4686,11 +4683,11 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_auto_asconf(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_PEER_ADDR_THLDS:
+-		retval = sctp_setsockopt_paddr_thresholds(sk, optval, optlen,
++		retval = sctp_setsockopt_paddr_thresholds(sk, kopt, optlen,
+ 							  false);
+ 		break;
+ 	case SCTP_PEER_ADDR_THLDS_V2:
+-		retval = sctp_setsockopt_paddr_thresholds(sk, optval, optlen,
++		retval = sctp_setsockopt_paddr_thresholds(sk, kopt, optlen,
+ 							  true);
+ 		break;
+ 	case SCTP_RECVRCVINFO:
 -- 
 2.26.2
