@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 21 May 2020 17:47:13 +0000
-Subject: [PATCH 38/49] sctp: pass a kernel pointer to sctp_setsockopt_reset_streams
-Message-Id: <20200521174724.2635475-39-hch@lst.de>
+Date: Thu, 21 May 2020 17:47:05 +0000
+Subject: [PATCH 30/49] sctp: pass a kernel pointer to sctp_setsockopt_auto_asconf
+Message-Id: <20200521174724.2635475-31-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200521174724.2635475-1-hch@lst.de>
 In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
@@ -16,62 +16,53 @@ directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 20 +++++---------------
- 1 file changed, 5 insertions(+), 15 deletions(-)
+ net/sctp/socket.c | 15 ++++++---------
+ 1 file changed, 6 insertions(+), 9 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index c5a4e9375bb55..70451a9177407 100644
+index 1631760e4b0af..04eac086831f0 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -4057,12 +4057,10 @@ static int sctp_setsockopt_enable_strreset(struct sock *sk,
- }
- 
- static int sctp_setsockopt_reset_streams(struct sock *sk,
--					 char __user *optval,
-+					 struct sctp_reset_streams *params,
- 					 unsigned int optlen)
+@@ -3803,26 +3803,23 @@ static int sctp_setsockopt_deactivate_key(struct sock *sk,
+  * Note. In this implementation, socket operation overrides default parameter
+  * being set by sysctl as well as FreeBSD implementation
+  */
+-static int sctp_setsockopt_auto_asconf(struct sock *sk, char __user *optval,
++static int sctp_setsockopt_auto_asconf(struct sock *sk, int *val,
+ 					unsigned int optlen)
  {
--	struct sctp_reset_streams *params;
- 	struct sctp_association *asoc;
--	int retval = -EINVAL;
+-	int val;
+ 	struct sctp_sock *sp = sctp_sk(sk);
  
- 	if (optlen < sizeof(*params))
+ 	if (optlen < sizeof(int))
  		return -EINVAL;
-@@ -4070,23 +4068,15 @@ static int sctp_setsockopt_reset_streams(struct sock *sk,
- 	optlen = min_t(unsigned int, optlen, USHRT_MAX +
- 					     sizeof(__u16) * sizeof(*params));
+-	if (get_user(val, (int __user *)optval))
+-		return -EFAULT;
+-	if (!sctp_is_ep_boundall(sk) && val)
++	if (!sctp_is_ep_boundall(sk) && *val)
+ 		return -EINVAL;
+-	if ((val && sp->do_auto_asconf) || (!val && !sp->do_auto_asconf))
++	if ((*val && sp->do_auto_asconf) || (!*val && !sp->do_auto_asconf))
+ 		return 0;
  
--	params = memdup_user(optval, optlen);
--	if (IS_ERR(params))
--		return PTR_ERR(params);
--
- 	if (params->srs_number_streams * sizeof(__u16) >
- 	    optlen - sizeof(*params))
--		goto out;
-+		return -EINVAL;
- 
- 	asoc = sctp_id2assoc(sk, params->srs_assoc_id);
- 	if (!asoc)
--		goto out;
--
--	retval = sctp_send_reset_streams(asoc, params);
-+		return -EINVAL;
- 
--out:
--	kfree(params);
--	return retval;
-+	return sctp_send_reset_streams(asoc, params);
- }
- 
- static int sctp_setsockopt_reset_assoc(struct sock *sk,
-@@ -4678,7 +4668,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_enable_strreset(sk, kopt, optlen);
+ 	spin_lock_bh(&sock_net(sk)->sctp.addr_wq_lock);
+-	if (val = 0 && sp->do_auto_asconf) {
++	if (*val = 0 && sp->do_auto_asconf) {
+ 		list_del(&sp->auto_asconf_list);
+ 		sp->do_auto_asconf = 0;
+-	} else if (val && !sp->do_auto_asconf) {
++	} else if (*val && !sp->do_auto_asconf) {
+ 		list_add_tail(&sp->auto_asconf_list,
+ 		    &sock_net(sk)->sctp.auto_asconf_splist);
+ 		sp->do_auto_asconf = 1;
+@@ -4686,7 +4683,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_deactivate_key(sk, kopt, optlen);
  		break;
- 	case SCTP_RESET_STREAMS:
--		retval = sctp_setsockopt_reset_streams(sk, optval, optlen);
-+		retval = sctp_setsockopt_reset_streams(sk, kopt, optlen);
+ 	case SCTP_AUTO_ASCONF:
+-		retval = sctp_setsockopt_auto_asconf(sk, optval, optlen);
++		retval = sctp_setsockopt_auto_asconf(sk, kopt, optlen);
  		break;
- 	case SCTP_RESET_ASSOC:
- 		retval = sctp_setsockopt_reset_assoc(sk, optval, optlen);
+ 	case SCTP_PEER_ADDR_THLDS:
+ 		retval = sctp_setsockopt_paddr_thresholds(sk, optval, optlen,
 -- 
 2.26.2
