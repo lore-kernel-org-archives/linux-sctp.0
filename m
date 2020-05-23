@@ -1,26 +1,77 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 22 May 2020 23:11:33 +0000
+From: 'Christoph Hellwig' <hch@lst.de>
+Date: Sat, 23 May 2020 07:19:29 +0000
 Subject: Re: do a single memdup_user in sctp_setsockopt
-Message-Id: <20200522.161133.75296957266065703.davem@davemloft.net>
+Message-Id: <20200523071929.GA10466@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200521174724.2635475-1-hch@lst.de>
-In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
+References: <20200521174724.2635475-1-hch@lst.de> <348217b7a3e14c1fa4868e47362be9c5@AcuMS.aculab.com> <20200522143623.GA386664@localhost.localdomain>
+In-Reply-To: <20200522143623.GA386664@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: hch@lst.de
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, kuba@kernel.org, David.Laight@ACULAB.COM, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: David Laight <David.Laight@aculab.com>, 'Christoph Hellwig' <hch@lst.de>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
 
-From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 21 May 2020 19:46:35 +0200
+On Fri, May 22, 2020 at 11:36:23AM -0300, Marcelo Ricardo Leitner wrote:
+> It's subjective, yes, but we hardly have patches over 5k lines.
+> In the case here, as changing the functions also requires changing
+> their call later on the file, it helps to be able to check that is was
+> properly updated. Ditto for chained functions.
+> 
+> For example, I can spot things like this easier (from
+> [PATCH 26/49] sctp: pass a kernel pointer to sctp_setsockopt_auth_key)
+> 
+> @@ -3646,7 +3641,6 @@ static int sctp_setsockopt_auth_key(struct sock *sk,
+>         }
+> 
+>  out:
+> -       kzfree(authkey);
+>         return ret;
+>  }
+> ...
+> @@ -4771,7 +4765,10 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+>         }
+> 
+>         release_sock(sk);
+> -       kfree(kopt);
+> +       if (optname = SCTP_AUTH_KEY)
+> +               kzfree(kopt);
+> +       else
+> +               kfree(kopt);
+> 
+>  out_nounlock:
+>         return retval;
+> 
+> these are 1k lines apart.
+> 
+> Yet, your implementation around this is better:
+> 
+> @@ -3733,7 +3624,7 @@ static int sctp_setsockopt_auth_key(struct sock *sk,
+>         }
+> 
+>  out:
+> -       kzfree(authkey);
+> +       memset(authkey, 0, optlen);
+>         return ret;
+>  }
+> 
+> so that sctp_setsockopt() doesn't have to handle it specially.
 
-> based on the review of Davids patch to do something similar I dusted off
-> the series I had started a few days ago to move the memdup_user or
-> copy_from_user from the inidividual sockopts into sctp_setsockopt,
-> which is done with one patch per option, so it might suit Marcelo's
-> taste a bit better.  I did not start any work on getsockopt.
+Actually that implementation is wrong, if you want to move to a plain
+kfree it would have to be a memzero_explicit.
 
-I think you and David still need to discuss how to move forward here,
-there doesn't seem to be consensus yet.
+> What if you two work on a joint patchset for this? The proposals are
+> quite close. The differences around the setsockopt handling are
+> minimal already. It is basically variable naming, indentation and one
+> or another small change like:
 
-Thanks.
+I don't really want to waste too much time on this, as what I really
+need is to get the kernel_setsockopt removal series in ASAP.  I'm happy
+to respin this once or twice with clear maintainer guidance (like the
+memzero_explicit), but I have no idea what you even meant with your
+other example or naming.  Tell me what exact changes you want, and
+I can do a quick spin, but I don't really want a huge open ended
+discussion on how to paint the bikeshed..
+
+Alternatively I'll also happily only do a partial conversion for what
+I need for the kernel_setsockopt removal and let you and Dave decided
+what you guys prefer for the rest.
