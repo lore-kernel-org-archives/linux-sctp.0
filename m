@@ -1,66 +1,74 @@
-From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 21 May 2020 17:47:09 +0000
-Subject: [PATCH 34/49] sctp: pass a kernel pointer to sctp_setsockopt_pr_supported
-Message-Id: <20200521174724.2635475-35-hch@lst.de>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Tue, 26 May 2020 16:39:44 +0000
+Subject: [PATCH v3 net-next 0/1] sctp: Pull the user copies out of the individual sockopt functions.
+Message-Id: <dd5b77de1c264cc6955d45a25c870512@AcuMS.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200521174724.2635475-1-hch@lst.de>
-In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: 'Vlad Yasevich' <vyasevich@gmail.com>, 'Neil Horman' <nhorman@tuxdriver.com>, "'David S. Miller'" <davem@davemloft.net>, 'Jakub Kicinski' <kuba@kernel.org>, "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>, "'netdev@vger.kernel.org'" <netdev@vger.kernel.org>, 'Christoph Hellwig' <hch@lst.de>, 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
+This patch series moves all the copy_to/from_user() out of the
+individual socket option functions into the outer wrapper.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- net/sctp/socket.c | 16 ++++++----------
- 1 file changed, 6 insertions(+), 10 deletions(-)
+It also adds separate wrappers that use kernel buffers and could be
+exported to other modules.
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index fe8d1ea7d9c35..fb7ed11382af1 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3921,24 +3921,20 @@ static int sctp_setsockopt_recvnxtinfo(struct sock *sk, int *val,
- }
- 
- static int sctp_setsockopt_pr_supported(struct sock *sk,
--					char __user *optval,
-+					struct sctp_assoc_value *params,
- 					unsigned int optlen)
- {
--	struct sctp_assoc_value params;
- 	struct sctp_association *asoc;
- 
--	if (optlen != sizeof(params))
-+	if (optlen != sizeof(*params))
- 		return -EINVAL;
- 
--	if (copy_from_user(&params, optval, optlen))
--		return -EFAULT;
+Because of the way SCTP 'abuses' socket options, the getsockopt() 
+has to do a full read-modify-write operation on the buffer.
+
+There are also both setsockopt() and getsockopt() functions that
+need to return positive values (probably used internally in libc).
+SCTP_SOCKOPT_CONNECTX3 also needs to update the user buffer and
+return an errno value.
+
+SCTP_SOCKOPT_CONNECTX3 is the only option that contains an indirect
+pointer. So cannot be called from within the kernel.
+Other calls provide the same functionality.
+
+There is also real fubar of SCTP_GET_LOCAL_ADDRS which has to
+return the wrong length 'for historic compatibility'.
+Although I'm not sure how portable that makes applications.
+
+I've managed to split the patch into 8 fragments.
+Some of the intermediate files aren't nice - but do compile.
+
+Commit 5960cefab (which limited some of the memdup_user() calls)
+can be reverted (one part is actually too generous), and a
+check added to the memdup_user() in SCTP_SOCKOPT_CONNECTX3
+which was ommitted previosly.
+
+I tried making the buffer to kernel_sctp_setsockopt() 'const'
+but that is probably a larger patch than this one!
+
+Patches 1-3 setsockopt:
+    1: Rename some local variables to avoid clashing with structure members.
+    2: Pull the copies out of sctp_setsockopt().
+       This uses some '#define foo (*foo)' to limit the changes.
+    3: Expand the #defines. This generates the same object code.
+Patches 4-6 getsockopt:
+    4: Rename some local variables to avoid clashing with structure members.
+    5: Pull the copies out of sctp_getsockopt().
+       This uses some '#define foo (*foo)' to limit the changes.
+    6: Expand the #defines. This generates the same object code.
+Patches 7-8 tidyup:
+    7: Replace most 'goto out' with 'return -Exxxxx'.
+    8: Code alignment.
+
+Changes for v3:
+- Split into 8 patches.
+- Use memzero_explicit() at the end of sctp_setsockopt_auth_key()
+- Correct the length check in sctp_setsockopt_paddr_thresholds().
+- Increase the maximum user buffer size to 256k (128k might not
+  be enough.)
+
+Changes for v2;
+- Add missing 'static'.
+- Increase maximum user buffer size from 64k to 128k to allow for some
+  maximal length buffers.
+
+	David
+
 -
--	asoc = sctp_id2assoc(sk, params.assoc_id);
--	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
-+	asoc = sctp_id2assoc(sk, params->assoc_id);
-+	if (!asoc && params->assoc_id != SCTP_FUTURE_ASSOC &&
- 	    sctp_style(sk, UDP))
- 		return -EINVAL;
- 
--	sctp_sk(sk)->ep->prsctp_enable = !!params.assoc_value;
-+	sctp_sk(sk)->ep->prsctp_enable = !!params->assoc_value;
- 
- 	return 0;
- }
-@@ -4687,7 +4683,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_recvnxtinfo(sk, kopt, optlen);
- 		break;
- 	case SCTP_PR_SUPPORTED:
--		retval = sctp_setsockopt_pr_supported(sk, optval, optlen);
-+		retval = sctp_setsockopt_pr_supported(sk, kopt, optlen);
- 		break;
- 	case SCTP_DEFAULT_PRINFO:
- 		retval = sctp_setsockopt_default_prinfo(sk, optval, optlen);
--- 
-2.26.2
+Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
+Registration No: 1397386 (Wales)
