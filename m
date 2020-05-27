@@ -1,44 +1,47 @@
-From: Jason Gunthorpe <jgg@ziepe.ca>
-Date: Wed, 13 May 2020 12:51:44 +0000
-Subject: Re: [PATCH 11/33] tcp: tcp_sock_set_nodelay
-Message-Id: <20200513125144.GC29989@ziepe.ca>
+From: Jonas Falkevik <jonas.falkevik@gmail.com>
+Date: Wed, 27 May 2020 09:56:40 +0000
+Subject: [PATCH v2] sctp: check assoc before SCTP_ADDR_{MADE_PRIM,ADDED} event
+Message-Id: <20200527095640.270986-1-jonas.falkevik@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200513062649.2100053-1-hch@lst.de>
- <20200513062649.2100053-12-hch@lst.de>
-In-Reply-To: <20200513062649.2100053-12-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Christoph Hellwig <hch@lst.de>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Jon Maloy <jmaloy@redhat.com>, Ying Xue <ying.xue@windriver.com>, drbd-dev@lists.linbit.com, linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org, linux-nvme@lists.infradead.org, target-devel@vger.kernel.org, linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, cluster-devel@redhat.com, ocfs2-devel@oss.oracle.com, netdev@vger.kernel.org, linux-sctp@vger.kernel.org, ceph-devel@vger.kernel.org, rds-devel
+To: marcelo.leitner@gmail.com, lucien.xin@gmail.com, nhorman@tuxdriver.com, vyasevich@gmail.com, davem@davemloft.net, kuba@kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Jonas Falkevik <jonas.falkevik@gmail.com>
 
-On Wed, May 13, 2020 at 08:26:26AM +0200, Christoph Hellwig wrote:
-> Add a helper to directly set the TCP_NODELAY sockopt from kernel space
-> without going through a fake uaccess.  Cleanup the callers to avoid
-> pointless wrappers now that this is a simple function call.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  drivers/block/drbd/drbd_int.h             |  7 ----
->  drivers/block/drbd/drbd_main.c            |  2 +-
->  drivers/block/drbd/drbd_receiver.c        |  4 +--
->  drivers/infiniband/sw/siw/siw_cm.c        | 24 +++-----------
->  drivers/nvme/host/tcp.c                   |  9 +-----
->  drivers/nvme/target/tcp.c                 | 12 ++-----
->  drivers/target/iscsi/iscsi_target_login.c | 15 ++-------
->  fs/cifs/connect.c                         | 10 ++----
->  fs/dlm/lowcomms.c                         |  8 ++---
->  fs/ocfs2/cluster/tcp.c                    | 20 ++----------
->  include/linux/tcp.h                       |  1 +
->  net/ceph/messenger.c                      | 11 ++-----
->  net/ipv4/tcp.c                            | 39 +++++++++++++++--------
->  net/rds/tcp.c                             | 11 +------
->  net/rds/tcp.h                             |  1 -
->  net/rds/tcp_listen.c                      |  2 +-
->  16 files changed, 49 insertions(+), 127 deletions(-)
+Make sure SCTP_ADDR_{MADE_PRIM,ADDED} are sent only for associations
+that have been established.
 
-No problem with the siw change
+These events are described in rfc6458#section-6.1
+SCTP_PEER_ADDR_CHANGE:
+This tag indicates that an address that is
+part of an existing association has experienced a change of
+state (e.g., a failure or return to service of the reachability
+of an endpoint via a specific transport address).
 
-Acked-by: Jason Gunthorpe <jgg@mellanox.com>
+Signed-off-by: Jonas Falkevik <jonas.falkevik@gmail.com>
+---
+Changes in v2:
+ - Check asoc state to be at least established.
+   Instead of associd being SCTP_FUTURE_ASSOC.
+ - Common check for all peer addr change event
 
-Jason
+ net/sctp/ulpevent.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/net/sctp/ulpevent.c b/net/sctp/ulpevent.c
+index c82dbdcf13f2..77d5c36a8991 100644
+--- a/net/sctp/ulpevent.c
++++ b/net/sctp/ulpevent.c
+@@ -343,6 +343,9 @@ void sctp_ulpevent_nofity_peer_addr_change(struct sctp_transport *transport,
+ 	struct sockaddr_storage addr;
+ 	struct sctp_ulpevent *event;
+ 
++	if (asoc->state < SCTP_STATE_ESTABLISHED)
++		return;
++
+ 	memset(&addr, 0, sizeof(struct sockaddr_storage));
+ 	memcpy(&addr, &transport->ipaddr, transport->af_specific->sockaddr_len);
+ 
+-- 
+2.25.4
