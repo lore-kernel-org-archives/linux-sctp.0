@@ -1,52 +1,82 @@
-From: David Miller <davem@davemloft.net>
-Date: Fri, 22 May 2020 22:48:33 +0000
-Subject: Re: [PATCH net 1/1] sctp: Start shutdown on association restart if in SHUTDOWN-SENT state and socket
-Message-Id: <20200522.154833.1534807790311464208.davem@davemloft.net>
+From: Christoph Hellwig <hch@lst.de>
+Date: Fri, 29 May 2020 12:09:40 +0000
+Subject: [PATCH 1/4] sctp: add sctp_sock_set_nodelay
+Message-Id: <20200529120943.101454-2-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200520151531.787414-1-jere.leppanen@nokia.com>
-In-Reply-To: <20200520151531.787414-1-jere.leppanen@nokia.com>
+References: <20200529120943.101454-1-hch@lst.de>
+In-Reply-To: <20200529120943.101454-1-hch@lst.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: jere.leppanen@nokia.com
-Cc: linux-sctp@vger.kernel.org, netdev@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, David.Laight@aculab.com
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, cluster-devel@redhat.com, netdev@vger.kernel.org
 
-From: Jere Lepp=E4nen <jere.leppanen@nokia.com>
-Date: Wed, 20 May 2020 18:15:31 +0300
+Add a helper to directly set the SCTP_NODELAY sockopt from kernel space
+without going through a fake uaccess.
 
-> Commit bdf6fa52f01b ("sctp: handle association restarts when the
-> socket is closed.") starts shutdown when an association is restarted,
-> if in SHUTDOWN-PENDING state and the socket is closed. However, the
-> rationale stated in that commit applies also when in SHUTDOWN-SENT
-> state - we don't want to move an association to ESTABLISHED state when
-> the socket has been closed, because that results in an association
-> that is unreachable from user space.
->=20
-> The problem scenario:
->=20
-> 1.  Client crashes and/or restarts.
->=20
-> 2.  Server (using one-to-one socket) calls close(). SHUTDOWN is lost.
->=20
-> 3.  Client reconnects using the same addresses and ports.
->=20
-> 4.  Server's association is restarted. The association and the socket
->     move to ESTABLISHED state, even though the server process has
->     closed its descriptor.
->=20
-> Also, after step 4 when the server process exits, some resources are
-> leaked in an attempt to release the underlying inet sock structure in
-> ESTABLISHED state:
->=20
->     IPv4: Attempt to release TCP socket in state 1 00000000377288c7
->=20
-> Fix by acting the same way as in SHUTDOWN-PENDING state. That is, if
-> an association is restarted in SHUTDOWN-SENT state and the socket is
-> closed, then start shutdown and don't move the association or the
-> socket to ESTABLISHED state.
->=20
-> Fixes: bdf6fa52f01b ("sctp: handle association restarts when the socket i=
-s closed.")
-> Signed-off-by: Jere Lepp=E4nen <jere.leppanen@nokia.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/dlm/lowcomms.c       | 10 ++--------
+ include/net/sctp/sctp.h |  7 +++++++
+ 2 files changed, 9 insertions(+), 8 deletions(-)
 
-Applied and queued up for -stable, thanks.
+diff --git a/fs/dlm/lowcomms.c b/fs/dlm/lowcomms.c
+index 69333728d871b..9f1c3cdc9d653 100644
+--- a/fs/dlm/lowcomms.c
++++ b/fs/dlm/lowcomms.c
+@@ -914,7 +914,6 @@ static int sctp_bind_addrs(struct connection *con, uint16_t port)
+ static void sctp_connect_to_sock(struct connection *con)
+ {
+ 	struct sockaddr_storage daddr;
+-	int one = 1;
+ 	int result;
+ 	int addr_len;
+ 	struct socket *sock;
+@@ -961,8 +960,7 @@ static void sctp_connect_to_sock(struct connection *con)
+ 	log_print("connecting to %d", con->nodeid);
+ 
+ 	/* Turn off Nagle's algorithm */
+-	kernel_setsockopt(sock, SOL_SCTP, SCTP_NODELAY, (char *)&one,
+-			  sizeof(one));
++	sctp_sock_set_nodelay(sock->sk);
+ 
+ 	/*
+ 	 * Make sock->ops->connect() function return in specified time,
+@@ -1176,7 +1174,6 @@ static int sctp_listen_for_all(void)
+ 	struct socket *sock = NULL;
+ 	int result = -EINVAL;
+ 	struct connection *con = nodeid2con(0, GFP_NOFS);
+-	int one = 1;
+ 
+ 	if (!con)
+ 		return -ENOMEM;
+@@ -1191,10 +1188,7 @@ static int sctp_listen_for_all(void)
+ 	}
+ 
+ 	sock_set_rcvbuf(sock->sk, NEEDED_RMEM);
+-	result = kernel_setsockopt(sock, SOL_SCTP, SCTP_NODELAY, (char *)&one,
+-				   sizeof(one));
+-	if (result < 0)
+-		log_print("Could not set SCTP NODELAY error %d\n", result);
++	sctp_sock_set_nodelay(sock->sk);
+ 
+ 	write_lock_bh(&sock->sk->sk_callback_lock);
+ 	/* Init con struct */
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 3ab5c6bbb90bd..f8bcb75bb0448 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -615,4 +615,11 @@ static inline bool sctp_newsk_ready(const struct sock *sk)
+ 	return sock_flag(sk, SOCK_DEAD) || sk->sk_socket;
+ }
+ 
++static inline void sctp_sock_set_nodelay(struct sock *sk)
++{
++	lock_sock(sk);
++	sctp_sk(sk)->nodelay = true;
++	release_sock(sk);
++}
++
+ #endif /* __net_sctp_h__ */
+-- 
+2.26.2
