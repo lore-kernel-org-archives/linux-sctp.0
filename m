@@ -1,29 +1,78 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 29 May 2020 16:12:03 +0000
-Subject: Re: [PATCH v3 net-next 1/8] sctp: setsockopt, expand some #defines
-Message-Id: <20200529161203.GL2491@localhost.localdomain>
+From: Christoph Hellwig <hch@lst.de>
+Date: Fri, 29 May 2020 12:09:43 +0000
+Subject: [PATCH 4/4] net: remove kernel_setsockopt
+Message-Id: <20200529120943.101454-5-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <bab9a624ee2d4e05b1198c3f7344a200@AcuMS.aculab.com>
- <8bb56a30edfb4ff696d44cf9af909d82@AcuMS.aculab.com>
- <20200526.153631.1486651154492951372.davem@davemloft.net>
-In-Reply-To: <20200526.153631.1486651154492951372.davem@davemloft.net>
+References: <20200529120943.101454-1-hch@lst.de>
+In-Reply-To: <20200529120943.101454-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: David.Laight@aculab.com, vyasevich@gmail.com, nhorman@tuxdriver.com, kuba@kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, hch@lst.de
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, cluster-devel@redhat.com, netdev@vger.kernel.org
 
-On Tue, May 26, 2020 at 03:36:31PM -0700, David Miller wrote:
-> From: David Laight <David.Laight@ACULAB.COM>
-> Date: Tue, 26 May 2020 16:44:07 +0000
-> 
-> > This should be 3/8.
-> 
-> David just respin this at some point and with this fixed and also the
-> header posting saying "0/8" properly instead of "0/1", this is really
-> messy.
-> 
-> Thanks.
+No users left.
 
-I don't know why David's workflow is that cumbersome. I'll try to
-respin this myself, on top of Christoph's latest changes.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ include/linux/net.h |  2 --
+ net/socket.c        | 31 -------------------------------
+ 2 files changed, 33 deletions(-)
+
+diff --git a/include/linux/net.h b/include/linux/net.h
+index 74ef5d7315f70..e10f378194a59 100644
+--- a/include/linux/net.h
++++ b/include/linux/net.h
+@@ -303,8 +303,6 @@ int kernel_connect(struct socket *sock, struct sockaddr *addr, int addrlen,
+ 		   int flags);
+ int kernel_getsockname(struct socket *sock, struct sockaddr *addr);
+ int kernel_getpeername(struct socket *sock, struct sockaddr *addr);
+-int kernel_setsockopt(struct socket *sock, int level, int optname, char *optval,
+-		      unsigned int optlen);
+ int kernel_sendpage(struct socket *sock, struct page *page, int offset,
+ 		    size_t size, int flags);
+ int kernel_sendpage_locked(struct sock *sk, struct page *page, int offset,
+diff --git a/net/socket.c b/net/socket.c
+index 81a98b6cbd087..976426d03f099 100644
+--- a/net/socket.c
++++ b/net/socket.c
+@@ -3624,37 +3624,6 @@ int kernel_getpeername(struct socket *sock, struct sockaddr *addr)
+ }
+ EXPORT_SYMBOL(kernel_getpeername);
+ 
+-/**
+- *	kernel_setsockopt - set a socket option (kernel space)
+- *	@sock: socket
+- *	@level: API level (SOL_SOCKET, ...)
+- *	@optname: option tag
+- *	@optval: option value
+- *	@optlen: option length
+- *
+- *	Returns 0 or an error.
+- */
+-
+-int kernel_setsockopt(struct socket *sock, int level, int optname,
+-			char *optval, unsigned int optlen)
+-{
+-	mm_segment_t oldfs = get_fs();
+-	char __user *uoptval;
+-	int err;
+-
+-	uoptval = (char __user __force *) optval;
+-
+-	set_fs(KERNEL_DS);
+-	if (level = SOL_SOCKET)
+-		err = sock_setsockopt(sock, level, optname, uoptval, optlen);
+-	else
+-		err = sock->ops->setsockopt(sock, level, optname, uoptval,
+-					    optlen);
+-	set_fs(oldfs);
+-	return err;
+-}
+-EXPORT_SYMBOL(kernel_setsockopt);
+-
+ /**
+  *	kernel_sendpage - send a &page through a socket (kernel space)
+  *	@sock: socket
+-- 
+2.26.2
