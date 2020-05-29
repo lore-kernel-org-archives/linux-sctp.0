@@ -1,93 +1,39 @@
-From: Herbert Xu <herbert@gondor.apana.org.au>
-Date: Fri, 08 May 2020 06:07:01 +0000
-Subject: Re: [PATCH 00/20] crypto: introduce crypto_shash_tfm_digest()
-Message-Id: <20200508060700.GA24956@gondor.apana.org.au>
+From: Christoph Hellwig <hch@lst.de>
+Date: Fri, 29 May 2020 12:09:39 +0000
+Subject: remove kernel_setsockopt v4
+Message-Id: <20200529120943.101454-1-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200502053122.995648-1-ebiggers@kernel.org>
-In-Reply-To: <20200502053122.995648-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: linux-crypto@vger.kernel.org, cychiang@chromium.org, ecryptfs@vger.kernel.org, enric.balletbo@collabora.com, gilad@benyossef.com, groeck@chromium.org, jesper.nilsson@axis.com, k.konieczny@samsung.com, keyrings@vger.kernel.org, krzk@kernel.org, k.opasiak@samsung.com, lars.persson@axis.com, linux-bluetooth@vger.kernel.org, linux-mtd@lists.infradead.org, linux-nfs@vger.kernel.org, linux-sctp@vger.kernel.org, r.baldyga@samsung.com, thomas.lendacky@amd.com, vz@mleia.com, xuzaibo@huawei.com
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, linux-kernel@vger.kernel.org, cluster-devel@redhat.com, netdev@vger.kernel.org
 
-Eric Biggers <ebiggers@kernel.org> wrote:
-> This series introduces a helper function crypto_shash_tfm_digest() which
-> replaces the following common pattern:
-> 
->        {
->                SHASH_DESC_ON_STACK(desc, tfm);
->                int err;
-> 
->                desc->tfm = tfm;
-> 
->                err = crypto_shash_digest(desc, data, len, out);
-> 
->                shash_desc_zero(desc);
->        }
-> 
-> with:
-> 
->        err = crypto_shash_tfm_digest(tfm, data, len, out);
-> 
-> Patch 1 introduces this helper function, and patches 2-20 convert all
-> relevant users to use it.
-> 
-> IMO, it would be easiest to take all these patches through the crypto
-> tree.  But taking just the "crypto:" ones and then me trying to get the
-> rest merged later via subsystem trees is also an option.
-> 
-> Eric Biggers (20):
->  crypto: hash - introduce crypto_shash_tfm_digest()
->  crypto: arm64/aes-glue - use crypto_shash_tfm_digest()
->  crypto: essiv - use crypto_shash_tfm_digest()
->  crypto: artpec6 - use crypto_shash_tfm_digest()
->  crypto: ccp - use crypto_shash_tfm_digest()
->  crypto: ccree - use crypto_shash_tfm_digest()
->  crypto: hisilicon/sec2 - use crypto_shash_tfm_digest()
->  crypto: mediatek - use crypto_shash_tfm_digest()
->  crypto: n2 - use crypto_shash_tfm_digest()
->  crypto: omap-sham - use crypto_shash_tfm_digest()
->  crypto: s5p-sss - use crypto_shash_tfm_digest()
->  nfc: s3fwrn5: use crypto_shash_tfm_digest()
->  fscrypt: use crypto_shash_tfm_digest()
->  ecryptfs: use crypto_shash_tfm_digest()
->  nfsd: use crypto_shash_tfm_digest()
->  ubifs: use crypto_shash_tfm_digest()
->  Bluetooth: use crypto_shash_tfm_digest()
->  sctp: use crypto_shash_tfm_digest()
->  KEYS: encrypted: use crypto_shash_tfm_digest()
->  ASoC: cros_ec_codec: use crypto_shash_tfm_digest()
-> 
-> arch/arm64/crypto/aes-glue.c               |  4 +--
-> crypto/essiv.c                             |  4 +--
-> crypto/shash.c                             | 16 +++++++++
-> drivers/crypto/axis/artpec6_crypto.c       | 10 ++----
-> drivers/crypto/ccp/ccp-crypto-sha.c        |  9 ++---
-> drivers/crypto/ccree/cc_cipher.c           |  9 ++---
-> drivers/crypto/hisilicon/sec2/sec_crypto.c |  5 ++-
-> drivers/crypto/mediatek/mtk-sha.c          |  7 ++--
-> drivers/crypto/n2_core.c                   |  7 ++--
-> drivers/crypto/omap-sham.c                 | 20 +++--------
-> drivers/crypto/s5p-sss.c                   | 39 ++++------------------
-> drivers/nfc/s3fwrn5/firmware.c             | 10 +-----
-> fs/crypto/fname.c                          |  7 +---
-> fs/crypto/hkdf.c                           |  6 +---
-> fs/ecryptfs/crypto.c                       | 17 +---------
-> fs/nfsd/nfs4recover.c                      | 26 ++++-----------
-> fs/ubifs/auth.c                            | 20 ++---------
-> fs/ubifs/master.c                          |  9 ++---
-> fs/ubifs/replay.c                          | 14 ++------
-> include/crypto/hash.h                      | 19 +++++++++++
-> net/bluetooth/smp.c                        |  6 +---
-> net/sctp/auth.c                            | 10 ++----
-> net/sctp/sm_make_chunk.c                   | 23 +++++--------
-> security/keys/encrypted-keys/encrypted.c   | 18 ++--------
-> sound/soc/codecs/cros_ec_codec.c           |  9 +----
-> 25 files changed, 95 insertions(+), 229 deletions(-)
+Hi Dave and Marcelo,
 
-All applied.  Thanks.
--- 
-Email: Herbert Xu <herbert@gondor.apana.org.au>
-Home Page: http://gondor.apana.org.au/~herbert/
-PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
+now that only the dlm calls to sctp are left for kernel_setsockopt,
+while we haven't really made much progress with the sctp setsockopt
+refactoring, how about this small series that splits out a
+sctp_setsockopt_bindx_kernel that takes a kernel space address array
+to share more code as requested by Marcelo.  This should fit in with
+whatever variant of the refator of sctp setsockopt we go with, but
+just solved the immediate problem for now.
+
+Changes since v3:
+ - dropped all the merged patches, just sctp setsockopt left now
+ - factor out a new sctp_setsockopt_bindx_kernel helper instead of
+   duplicating a small amount of logic
+
+Changes since v2:
+ - drop the separately merged kernel_getopt_removal
+ - drop the sctp patches, as there is conflicting cleanup going on
+ - add an additional ACK for the rxrpc changes
+
+Changes since v1:
+ - use ->getname for sctp sockets in dlm
+ - add a new ->bind_add struct proto method for dlm/sctp
+ - switch the ipv6 and remaining sctp helpers to inline function so that
+   the ipv6 and sctp modules are not pulled in by any module that could
+   potentially use ipv6 or sctp connections
+ - remove arguments to various sock_* helpers that are always used with
+   the same constant arguments
