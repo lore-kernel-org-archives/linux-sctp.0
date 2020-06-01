@@ -1,68 +1,69 @@
-From: Neil Horman <nhorman@tuxdriver.com>
-Date: Sat, 13 Jun 2020 15:57:51 +0000
-Subject: Re: [PATCH] sctp: Fix sk_buff leak when receiving a datagram
-Message-Id: <20200613155751.GA161691@hmswarspite.think-freely.org>
+From: Harald Welte <laforge@gnumonks.org>
+Date: Mon, 01 Jun 2020 10:46:30 +0000
+Subject: Re: ABI breakage in sctp_event_subscribe (was [PATCH net-next 0/4] sctp: add some missing events fro
+Message-Id: <20200601104630.GQ182140@nataraja>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1592051965-94731-1-git-send-email-xiyuyang19@fudan.edu.cn>
-In-Reply-To: <1592051965-94731-1-git-send-email-xiyuyang19@fudan.edu.cn>
+References: <cover.1570534014.git.lucien.xin@gmail.com>
+ <20200419102536.GA4127396@nataraja>
+ <20200501131607.GU1294372@nataraja>
+ <20200501142008.GC2470@localhost.localdomain>
+In-Reply-To: <20200501142008.GC2470@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xiyu Yang <xiyuyang19@fudan.edu.cn>
-Cc: Vlad Yasevich <vyasevich@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org, yuanxzhang@fudan.edu.cn, kjlu@umn.edu, Xin Tan <tanxin.ctf@gmail.com>
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 
-On Sat, Jun 13, 2020 at 08:39:25PM +0800, Xiyu Yang wrote:
-> In sctp_skb_recv_datagram(), the function fetch a sk_buff object from
-> the receiving queue to "skb" by calling skb_peek() or __skb_dequeue()
-> and return its reference to the caller.
-> 
-> However, when calling __skb_dequeue() successfully, the function forgets
-> to hold a reference count of the "skb" object and directly return it,
-> causing a potential memory leak in the caller function.
-> 
-> Fix this issue by calling refcount_inc after __skb_dequeue()
-> successfully executed.
-> 
-> Signed-off-by: Xiyu Yang <xiyuyang19@fudan.edu.cn>
-> Signed-off-by: Xin Tan <tanxin.ctf@gmail.com>
-> ---
->  net/sctp/socket.c | 2 ++
->  1 file changed, 2 insertions(+)
-> 
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index d57e1a002ffc..4c8f0b83efd0 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -8990,6 +8990,8 @@ struct sk_buff *sctp_skb_recv_datagram(struct sock *sk, int flags,
->  				refcount_inc(&skb->users);
->  		} else {
->  			skb = __skb_dequeue(&sk->sk_receive_queue);
-> +			if (skb)
-> +				refcount_inc(&skb->users);
-For completeness, you should probably use skb_get here, rather than refcount_inc
-directly.
+Dear SCTP developers,
 
-Also, I'm not entirely sure I see how a memory leak can happen here.  we take an
-extra reference in the skb_peek clause of this code area because if we return an
-skb that continues to exist on the sk_receive_queue list, we legitimately have
-two users for the skb (the user who called sctp_skb_recv_datagram(...,MSG_PEEK),
-and the potential next caller who will actually dequeue the skb.
+I have to get back to this bug.  It is slowly turning into a nightmare.
 
-In the else clause however, that condition doesn't exist.  the user count for
-the skb should alreday be 1, if the caller is the only user of the skb), or more
-than 1, if 1 or more callers have gotten a reference to the message using
-MSG_PEEK.
+Not only affected it forwards/backwards compatibility of application binaries
+during upgrades of a distribution, but it also affects the ability to run
+containerized workloads with SCTP.  It's sort-of obvious but I didn't
+realize it until now.
 
-I don't think this code is needed, and in fact will actually cause memory leaks,
-because theres no subsequent skb_unref call to drop refcount that you are adding
-here.
+We are observing this problem now when we operate CentOS 8 based containers
+on a Debian 9 based (docker) host.  Apparently the CentOS userland has a different
+definition of the event structure (larger) than the Debian kernel has (smaller) -> boom.
 
-Neil
+From my point of view, this bug is making it virtually impossible to run
+containerized telecom workloads.  I guess most users are very
+conservative and still running rather ancient kernels and/or
+distributions, but as soon as they start upgrading their kernel to
+anything that includes that patch to the SCTP events structure, the
+nightmare starts.
 
->  		}
->  
->  		if (skb)
-> -- 
-> 2.7.4
-> 
-> 
+To my knowledge, there is no infrastructure at all for a situation like this - neither
+in the Docker universe nor in k8s..  You cannot build separate container
+images depending on what the host OS/kernel is going to be.
+
+And particularly, if you are not self-hosting your container runtimes
+but running your containers on some kind of cloud infrastructure
+provider, you have no control over what exact kernel version might be in
+use there - and it also may change at any time at the discretion of the
+cloud service provider.
+
+On Fri, May 01, 2020 at 11:20:08AM -0300, Marcelo Ricardo Leitner wrote:
+> That's what we want as well. Some breakage happened, yes, by mistake,
+> and fixing that properly now, without breaking anything else, may be
+> just impossible, unfortunatelly. But you can be sure that we are
+> engaged on not doing it again.
+
+I would actually seriously consider to roll that change back - not only
+in the next kernel release but also in all stable kernel releases.  At least
+the breakage then is constrained to a limited set of kernel versions.
+
+Alternatively, I suggest to at least apply a patch to all supported
+stable kernel series (picked up hopefully distributions) that makes those
+older kernels accept a larger-length sctp_event_subscribe structure from
+userspace, *if* any of the additional members are 0 (memcmp the
+difference between old and new).
+
+Regards,
+	Harald
+-- 
+- Harald Welte <laforge@gnumonks.org>           http://laforge.gnumonks.org/
+======================================
+"Privacy in residential applications is a desirable marketing option."
+                                                  (ETSI EN 300 175-7 Ch. A6)
