@@ -1,75 +1,63 @@
 From: David Laight <David.Laight@ACULAB.COM>
-Date: Mon, 08 Jun 2020 21:13:15 +0000
-Subject: RE: packed structures used in socket options
-Message-Id: <529a772bd3ef40d3a310e78d613339ca@AcuMS.aculab.com>
+Date: Mon, 01 Jun 2020 08:27:08 +0000
+Subject: RE: [PATCH 2/4] sctp: refactor sctp_setsockopt_bindx
+Message-Id: <ef0754831c294934b67f89fd8c5e1b5b@AcuMS.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <CBFEFEF1-127A-4ADA-B438-B171B9E26282@lurchi.franken.de>
- <B69695A1-F45B-4375-B9BB-1E50D1550C6D@lurchi.franken.de>
- <23a14b44bd5749a6b1b51150c7f3c8ba@AcuMS.aculab.com>
- <2213135.ChUyxVVRYb@isjsys>
- <cd3793726252407f8e80aa8d0025d44f@AcuMS.aculab.com>
- <7BD347D7-562F-459D-B0CB-0BC798919876@lurchi.franken.de>
-In-Reply-To: <7BD347D7-562F-459D-B0CB-0BC798919876@lurchi.franken.de>
+References: <20200529120943.101454-1-hch@lst.de>
+ <20200529120943.101454-3-hch@lst.de>
+ <20200529160544.GI2491@localhost.localdomain>
+In-Reply-To: <20200529160544.GI2491@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Michael Tuexen' <Michael.Tuexen@lurchi.franken.de>
-Cc: =?utf-8?B?SXZhbiBTa3l0dGUgSsO4cmdlbnNlbg==?= <isj-sctp@i1.dk>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+To: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>, Christoph Hellwig <hch@lst.de>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "cluster-devel@redhat.com" <cluster-devel@redhat.com>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>
 
-RnJvbTogTWljaGFlbCBUdWV4ZW4NCj4gU2VudDogMDggSnVuZSAyMDIwIDE4OjM3DQo+ID4gT24g
-OC4gSnVuIDIwMjAsIGF0IDE4OjE4LCBEYXZpZCBMYWlnaHQgPERhdmlkLkxhaWdodEBBQ1VMQUIu
-Q09NPiB3cm90ZToNCj4gPg0KPiA+IEZyb206IEl2YW4gU2t5dHRlIErDuHJnZW5zZW4NCj4gPj4g
-U2VudDogMDcgSnVuZSAyMDIwIDIyOjM1DQo+ID4gLi4uDQo+ID4+Pj4+Pj4+IGNvbnRhaW5zOg0K
-PiA+Pj4+Pj4+Pg0KPiA+Pj4+Pj4+PiBzdHJ1Y3Qgc2N0cF9wYWRkcnBhcmFtcyB7DQo+ID4+Pj4+
-Pj4+IAlzY3RwX2Fzc29jX3QJCXNwcF9hc3NvY19pZDsNCj4gPj4+Pj4+Pj4gCXN0cnVjdCBzb2Nr
-YWRkcl9zdG9yYWdlCXNwcF9hZGRyZXNzOw0KPiA+Pj4+Pj4+PiAJX191MzIJCQlzcHBfaGJpbnRl
-cnZhbDsNCj4gPj4+Pj4+Pj4gCV9fdTE2CQkJc3BwX3BhdGhtYXhyeHQ7DQo+ID4+Pj4+Pj4+IAlf
-X3UzMgkJCXNwcF9wYXRobXR1Ow0KPiA+Pj4+Pj4+PiAJX191MzIJCQlzcHBfc2Fja2RlbGF5Ow0K
-PiA+Pj4+Pj4+PiAJX191MzIJCQlzcHBfZmxhZ3M7DQo+ID4+Pj4+Pj4+IAlfX3UzMgkJCXNwcF9p
-cHY2X2Zsb3dsYWJlbDsNCj4gPj4+Pj4+Pj4gCV9fdTgJCQlzcHBfZHNjcDsNCj4gPj4+Pj4+Pj4g
-fSBfX2F0dHJpYnV0ZV9fKChwYWNrZWQsIGFsaWduZWQoNCkpKTsNCj4gPj4+Pj4+Pj4NCj4gPj4+
-Pj4+Pj4gVGhpcyBzdHJ1Y3R1cmUgaXMgb25seSB1c2VkIGluIHRoZSBJUFBST1RPX1NDVFAgbGV2
-ZWwgc29ja2V0IG9wdGlvbiBTQ1RQX1BFRVJfQUREUl9QQVJBTVMuDQo+ID4+Pj4+Pj4+IFdoeSBp
-cyBpdCBwYWNrZWQ/DQo+ID4gLi4uDQo+ID4+IEkgd2FzIGludm9sdmVkLiBBdCB0aGF0IHRpbWUg
-KFNlcHRlbWJlciAyMDA1KSB0aGUgU0NUUCBBUEkgd2FzIHN0aWxsIGV2b2x2aW5nIChmaXJzdCBm
-aW5hbGl6ZWQgaW4NCj4gPj4gMjAxMSksIGFuZCBvbmUgb2YgdGhlIG1ham9yIHVzZXJzIG9mIHRo
-ZSBBUEkgd2FzIDMyLWJpdCBwcm9ncmFtcyBydW5uaW5nIG9uIDY0LWJpdCBrZXJuZWwgKG9uDQo+
-IHBvd2VycGMNCj4gPj4gYXMgSSByZWNhbGwpLiBXaGVuIHdlIHJlYWxpemVkIHRoYXQgdGhlIHN0
-cnVjdHVyZXMgd2VyZSBkaWZmZXJlbnQgYmV0d2VlbiAzMmJpdCBhbmQgNjRiaXQgd2UgaGFkIHRv
-DQo+ID4+IGJyZWFrIHRoZSBsZWFzdCBudW1iZXIgb2YgcHJvZ3JhbXMsIGFuZCB0aGUgcmVzdWx0
-IHdlcmUgdGhvc2UgKChwYWNrZWQpKSBzdHJ1Y3RzIHNvIDMyLWJpdCBwcm9ncmFtcw0KPiA+PiB3
-b3VsZG4ndCBiZSBicm9rZW4gYW5kIHdlIGRpZG4ndCBuZWVkIGEgeHh4X2NvbXBhdCB0cmFuc2xh
-dGlvbiBsYXllciBpbiB0aGUga2VybmVsLg0KPiA+DQo+ID4gSSB3YXMgYWxzbyBsb29raW5nIGF0
-IGFsbCB0aGUgX191MTYgaW4gdGhhdCBoZWFkZXIgLSBib3JrZWQuDQo+ID4NCj4gPiBPaywgc28g
-dGhlIGludGVudGlvbiB3YXMgdG8gYXZvaWQgcGFkZGluZyBjYXVzZWQgYnkgdGhlIGFsaWdubWVu
-dA0KPiA+IG9mIHNvY2thZGRyX3N0b3JhZ2UgcmF0aGVyIHRoYW4gYXJvdW5kIHRoZSAnX191MTYg
-c3BwX2ZsYWdzJy4NCj4gPg0KPiA+IEknZCBoYXZlIHRvIGxvb2sgdXAgd2hhdCAocGFja2VkLCBh
-bGlnbmVkKDQpKSBhY3R1YWxseSBtZWFucy4NCj4gPiBJdCBjb3VsZCBmb3JjZSB0aGUgc3RydWN0
-dXJlIHRvIGJlIGZ1bGx5IHBhY2tlZCAobm8gaG9sZXMpDQo+ID4gYnV0IGFsd2F5cyBoYXZlIGFu
-IG92ZXJhbGwgYWxpZ25tZW50IG9mIDQuDQo+ID4NCj4gPiBJdCBtaWdodCBoYXZlIGJlZW4gY2xl
-YXJlciB0byBwdXQgYW4gJ2FsaWduZWQoNCknIGF0dHJpYnV0ZQ0KPiA+IG9uIHRoZSBzcHBfYWRk
-cmVzcyBmaWVsZCBpdHNlbGYuDQo+ID4gT3IgZXZlbiB3b25kZXIgd2hldGhlciBzb2NrYWRkcl9z
-dG9yYWdlIHNob3VsZCBhY3R1YWxseQ0KPiA+IGhhdmUgOCBieXRlIGFsaWdubWVudC4NCj4gPg0K
-PiA+IElmIGl0IGhhcyAxNiBieXRlIGFsaWdubWVudCB0aGVuIHlvdSBjYW5ub3QgY2FzdCBhbiBJ
-UHY0DQo+ID4gc29ja2V0IGJ1ZmZlciBhZGRyZXNzICh3aGljaCB3aWxsIGJlIGF0IG1vc3QgNCBi
-eXRlIGFsaWduZWQpDQo+ID4gdG8gc29ja2FkZHJfc3RvcmFnZSBhbmQgZXhwZWN0IHRoZSBjb21w
-aWxlciBub3QgdG8gZ2VuZXJhdGUNCj4gPiBjb2RlIHRoYXQgd2lsbCBjcmFzaCBhbmQgYnVybiBv
-biBzcGFyYzY0Lg0KDQpBY3R1YWxseSwgd2hhdCBoYXBwZW5zIHdoZW4gdGhlIG1pc2FsaWduZWQg
-J3N0cnVjdCBzb2NrYWRkcicNCihpbiB0aGUgc2N0cCBvcHRpb25zKSBpcyBwYXNzZWQgdGhyb3Vn
-aCB0byBhIGZ1bmN0aW9uDQp0aGF0IGV4cGVjdHMgaXQgdG8gYmUgYWxpZ25lZCBhbmQgdGhlbiBh
-Y2Nlc3NlcyBwYXJ0IG9mIChzYXkpDQphbiBJUHY2IHN0cnVjdHVyZSB1c2luZyA4IGJ5dGVzIGFj
-Y2Vzc2VzLg0KVGhhdCB3aWxsICdjcmFzaCBhbmQgYnVybicgb24gc3BhcmM2NCBhcyB3ZWxsLg0K
-DQo+ID4gSVNUUiB0aGF0IHRoZSBOZXRCU0QgdmlldyB3YXMgdGhhdCAnc29ja2FkZHJfc3RvcmFn
-ZScgc2hvdWxkDQo+ID4gbmV2ZXIgYWN0dWFsbHkgYmUgaW5zdGFudGlhdGVkIC0gaXQgb25seSBl
-eGlzdGVkIGFzIGEgdHlwZWQNCj4gPiBwb2ludGVyLg0KPg0KPiBOb3Qgc3VyZSB0aGlzIGlzIGNv
-cnJlY3QuIEkgd291bGQgc2F5IHRoaXMgYXBwbGllcyB0byBzdHVjdCBzb2NrYWRkciAqLg0KPiBJ
-IGhhdmUgc2VlbiBpbnN0YW50aWF0ZWQgc29ja2FkZHJfc3RvcmFnZSB2YXJpYWJsZSBpbiBnZW5l
-cmljIGNvZGUsDQo+IHdoZXJlIHlvdSBuZWVkIHRvIHByb3ZpZGUgZW5vdWdoIHNwYWNlIHRvIGhv
-bGQgYW4gYWRkcmVzcywgbm90IHlldA0KPiBrbm93aW5nIHRoZSBhZGRyZXNzIGZhbWlseS4gSG93
-ZXZlciwgSSdtIG5vdCBmYW1pbGlhciB3aXRoIHRoZSBOZXRCU0QNCj4gY29kZSBiYXNlLg0KDQpC
-YXNpY2FsbHkgeW91IHNob3VsZCBhbHdheXMgaGF2ZSB0aGUgYWRkcmVzcyBsZW5ndGguDQpJIGp1
-c3QgcmVtZW1iZXIgQ2hyaXN0b3MgY29tcGxhaW5pbmcgYWJvdXQgc29tZSBrZXJuZWwgY29kZQ0K
-dGhhdCBhbGxvY2F0ZWQgb25lIG9uIHN0YWNrLg0KKE15IE5ldEJTRCAnY29tbWl0IGJpdCcgaGFz
-IHJhdGhlciBsYXBzZWQuKQ0KDQoJRGF2aWQNCg0KLQ0KUmVnaXN0ZXJlZCBBZGRyZXNzIExha2Vz
-aWRlLCBCcmFtbGV5IFJvYWQsIE1vdW50IEZhcm0sIE1pbHRvbiBLZXluZXMsIE1LMSAxUFQsIFVL
-DQpSZWdpc3RyYXRpb24gTm86IDEzOTczODYgKFdhbGVzKQ0K
+From: Marcelo Ricardo Leitner
+> Sent: 29 May 2020 17:06
+> On Fri, May 29, 2020 at 02:09:41PM +0200, Christoph Hellwig wrote:
+> > Split out a sctp_setsockopt_bindx_kernel that takes a kernel pointer
+> > to the sockaddr and make sctp_setsockopt_bindx a small wrapper around
+> > it.  This prepares for adding a new bind_add proto op.
+> >
+> > Signed-off-by: Christoph Hellwig <hch@lst.de>
+> 
+> Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+> 
+> > ---
+> >  net/sctp/socket.c | 61 ++++++++++++++++++++++-------------------------
+> >  1 file changed, 28 insertions(+), 33 deletions(-)
+> >
+> > diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+> > index 827a9903ee288..6e745ac3c4a59 100644
+> > --- a/net/sctp/socket.c
+> > +++ b/net/sctp/socket.c
+> > @@ -972,23 +972,22 @@ int sctp_asconf_mgmt(struct sctp_sock *sp, struct sctp_sockaddr_entry *addrw)
+> >   * it.
+> >   *
+> >   * sk        The sk of the socket
+> > - * addrs     The pointer to the addresses in user land
+> > + * addrs     The pointer to the addresses
+> >   * addrssize Size of the addrs buffer
+> >   * op        Operation to perform (add or remove, see the flags of
+> >   *           sctp_bindx)
+> >   *
+> >   * Returns 0 if ok, <0 errno code on error.
+> >   */
+> > -static int sctp_setsockopt_bindx(struct sock *sk,
+> > -				 struct sockaddr __user *addrs,
+> > -				 int addrs_size, int op)
+> > +static int sctp_setsockopt_bindx_kernel(struct sock *sk,
+                        const
+> > +					struct sockaddr *addrs, int addrs_size,
+> > +					int op)
+
+The list of addresses ought to be 'const'.
+
+IIRC that requires the test for 'port = 0' be moved down  a few layers.
+
+	David
+
+-
+Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
+Registration No: 1397386 (Wales)
