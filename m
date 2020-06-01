@@ -1,69 +1,74 @@
-From: Harald Welte <laforge@gnumonks.org>
-Date: Mon, 01 Jun 2020 10:46:30 +0000
+From: Neil Horman <nhorman@tuxdriver.com>
+Date: Mon, 01 Jun 2020 12:14:55 +0000
 Subject: Re: ABI breakage in sctp_event_subscribe (was [PATCH net-next 0/4] sctp: add some missing events fro
-Message-Id: <20200601104630.GQ182140@nataraja>
+Message-Id: <20200601121455.GA210755@hmswarspite.think-freely.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1570534014.git.lucien.xin@gmail.com>
  <20200419102536.GA4127396@nataraja>
- <20200501131607.GU1294372@nataraja>
- <20200501142008.GC2470@localhost.localdomain>
-In-Reply-To: <20200501142008.GC2470@localhost.localdomain>
+In-Reply-To: <20200419102536.GA4127396@nataraja>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+To: Harald Welte <laforge@gnumonks.org>
+Cc: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, davem@davemloft.net, Julien Gomes <julien@arista.com>
 
-Dear SCTP developers,
+On Sun, Apr 19, 2020 at 12:25:36PM +0200, Harald Welte wrote:
+> Dear Linux SCTP developers,
+> 
+> this patchset (merged back in Q4/2019) has broken ABI compatibility, more
+> or less exactly as it was discussed/predicted in Message-Id
+> <20190206201430.18830-1-julien@arista.com>
+> "[PATCH net] sctp: make sctp_setsockopt_events() less strict about the option length"
+> on this very list in February 2019.
+> 
+> The process to reproduce this is quite simple:
+> * upgrade your kernel / uapi headers to a later version (happens
+>   automatically on most distributions as linux-libc-dev is upgraded)
+> * rebuild any application using SCTP_EVENTS which was working perfectly
+>   fine before
+> * fail to execute on any older kernels
+> 
+> This can be a severe issue in production systems where you may not
+> upgrade the kernel until/unless a severe security issue actually makes
+> you do so.
+> 
+> Those steps above can very well happen on different machines, i.e. your
+> build server having a more recent linux-libc-dev package (and hence
+> linux/sctp.h) than some of the users in the field are running kernels.
+> 
+> I think this is a severe problem that affects portability of binaries
+> between differnt Linux versions and hence the kind of ABI breakage that
+> the kernel exactly doesn't want to have.
+> 
+> The point here is that there is no check if any of those newly-added
+> events at the end are actually used.  I can accept that programs using
+> those new options will not run on older kernels - obviously.  But old
+> programs that have no interest in new events being added should run just
+> fine, even if rebuilt against modern headers.
+> 
+> In the kernel setsockopt handling coee: Why not simply check if any of
+> the newly-added events are actually set to non-zero?  If those are all
+> zero, we can assume that the code doesn't use them.
+> 
+> Yes, for all the existing kernels out there it's too late as they simply
+> only have the size based check.  But I'm worried history will repeat
+> itself...
+> 
+> Thanks for your consideration.
+> 
+As Marcello noted, I don't think theres anything we can do here.  We screwed
+this up, but reverting the change is just going to create a second breakage
+point through which users are going to have to deal with this.  The best way
+forward is to document the need to run a newer userspace uapi header set on a
+correspondingly new kernel, and be sure in the future that any extension to the
+uapi structures are codified as separate structures with separate socket options
+(or some simmilar approach to allow for fixed size api structures)
 
-I have to get back to this bug.  It is slowly turning into a nightmare.
+Neil
 
-Not only affected it forwards/backwards compatibility of application binaries
-during upgrades of a distribution, but it also affects the ability to run
-containerized workloads with SCTP.  It's sort-of obvious but I didn't
-realize it until now.
-
-We are observing this problem now when we operate CentOS 8 based containers
-on a Debian 9 based (docker) host.  Apparently the CentOS userland has a different
-definition of the event structure (larger) than the Debian kernel has (smaller) -> boom.
-
-From my point of view, this bug is making it virtually impossible to run
-containerized telecom workloads.  I guess most users are very
-conservative and still running rather ancient kernels and/or
-distributions, but as soon as they start upgrading their kernel to
-anything that includes that patch to the SCTP events structure, the
-nightmare starts.
-
-To my knowledge, there is no infrastructure at all for a situation like this - neither
-in the Docker universe nor in k8s..  You cannot build separate container
-images depending on what the host OS/kernel is going to be.
-
-And particularly, if you are not self-hosting your container runtimes
-but running your containers on some kind of cloud infrastructure
-provider, you have no control over what exact kernel version might be in
-use there - and it also may change at any time at the discretion of the
-cloud service provider.
-
-On Fri, May 01, 2020 at 11:20:08AM -0300, Marcelo Ricardo Leitner wrote:
-> That's what we want as well. Some breakage happened, yes, by mistake,
-> and fixing that properly now, without breaking anything else, may be
-> just impossible, unfortunatelly. But you can be sure that we are
-> engaged on not doing it again.
-
-I would actually seriously consider to roll that change back - not only
-in the next kernel release but also in all stable kernel releases.  At least
-the breakage then is constrained to a limited set of kernel versions.
-
-Alternatively, I suggest to at least apply a patch to all supported
-stable kernel series (picked up hopefully distributions) that makes those
-older kernels accept a larger-length sctp_event_subscribe structure from
-userspace, *if* any of the additional members are 0 (memcmp the
-difference between old and new).
-
-Regards,
-	Harald
--- 
-- Harald Welte <laforge@gnumonks.org>           http://laforge.gnumonks.org/
-======================================
-"Privacy in residential applications is a desirable marketing option."
-                                                  (ETSI EN 300 175-7 Ch. A6)
+> -- 
+> - Harald Welte <laforge@gnumonks.org>           http://laforge.gnumonks.org/
+> ======================================
+> "Privacy in residential applications is a desirable marketing option."
+>                                                   (ETSI EN 300 175-7 Ch. A6)
+> 
