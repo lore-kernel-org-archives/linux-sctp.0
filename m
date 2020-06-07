@@ -1,21 +1,31 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 29 Jun 2020 04:46:09 +0000
-Subject: Re: [PATCH net-next] sctp: use list_is_singular in sctp_list_single_entry
-Message-Id: <20200628.214609.196707051608892793.davem@davemloft.net>
+From: Andreas Fink <afink@list.fink.org>
+Date: Sun, 07 Jun 2020 12:18:40 +0000
+Subject: EAGAIN
+Message-Id: <0D6B7E65-36EC-4132-B02C-0371099E480A@list.fink.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <1ae93f6e86ea0baf9ffb4068caed46d951076d12.1593336592.git.geliangtang@gmail.com>
-In-Reply-To: <1ae93f6e86ea0baf9ffb4068caed46d951076d12.1593336592.git.geliangtang@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: geliangtang@gmail.com
-Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, kuba@kernel.org, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-From: Geliang Tang <geliangtang@gmail.com>
-Date: Sun, 28 Jun 2020 17:32:25 +0800
+Hello folks,
 
-> Use list_is_singular() instead of open-coding.
-> 
-> Signed-off-by: Geliang Tang <geliangtang@gmail.com>
+I run into a strange issue with SCTP under Linux and I'm not sure whats the right approach to fix this.
 
-Applied, thanks.
+I have a listener thread which listens on a port for multiple inbound connections
+I have a sender thread which sends packets to peers by using the same socket and doing a sctp_sendv call.
+Sockets are always in non blocking mode.
+
+When the remote side gets stopped (process killed),  the sctp_sendv starts returning 0 and errno is set to EAGAIN and we constantly retry.
+We somehow didn't catch that this socket was down and end up in a busy loop (which we now fail after a certain amount of retries).
+
+My question to you is whats the correct way to deal with EAGAIN here? Why are we not catching the assoc being down?
+We have a sender thread and a receiver thread. The receiver thread is listening to events and should know.
+Furthermore if the assoc is down the sctp_sendv could simply return something like socket not connected error instead of EAGAIN.
+
+Or what am I missing here?
+
+
+Andreas
+
+PS: above was under Linux Debian Kernel 5.4.0-0.bpo.4.
