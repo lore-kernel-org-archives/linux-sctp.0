@@ -1,56 +1,93 @@
-From: Sarah Koffi <paulwiliam782@gmail.com>
-Date: Tue, 23 Jun 2020 11:15:44 +0000
-Subject: Greetings From Mrs. Sarah Koffi
-Message-Id: <CAHqcnY13QZ9cNfV--WUT2Yv7Bbg50EpH9YkPHEnJWyKR7jVZoA@mail.gmail.com>
+From: Sasha Levin <sashal@kernel.org>
+Date: Mon, 08 Jun 2020 23:05:51 +0000
+Subject: [PATCH AUTOSEL 5.6 226/606] sctp: Don't add the shutdown timer if its already been added
+Message-Id: <20200608231211.3363633-226-sashal@kernel.org>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20200608231211.3363633-1-sashal@kernel.org>
+In-Reply-To: <20200608231211.3363633-1-sashal@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, "David S. Miller" <davem@davemloft.net>, jere.leppanen@nokia.com, marcelo.leitner@gmail.com, netdev@vger.kernel.org, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, linux-sctp@vger.kernel.org
 
-Greetings From Mrs. Sarah Koffi
+From: Neil Horman <nhorman@tuxdriver.com>
 
-I'm contacting you based on your good profiles I read and for a good
-reasons, I am in search of a property to buy in your country as I
-intended to come over to your
-country for investment, Though I have not meet with you before but I
-believe that one has to risk confiding in someone to succeed sometimes
-in life.
+[ Upstream commit 20a785aa52c82246055a089e55df9dac47d67da1 ]
 
-My name is Mrs. Sarah Koffi. My late husband deals on Crude Oil with
-Federal Government of Sudan and he has a personal Oil firm in Bentiu
-Oil zone town and Upper
-Nile city. What I have experience physically, I don't wish to
-experience it again in my life due to the recent civil Ethnic war
-cause by our President Mr. Salva Kiir
-and the rebel leader Mr Riek Machar, I have been Under United Nation
-refuge camp in chad to save my life and that of my little daughter.
+This BUG halt was reported a while back, but the patch somehow got
+missed:
 
-Though, I do not know how you will feel to my proposal, but the truth
-is that I sneaked into Chad our neighboring country where I am living
-now as a refugee.
-I escaped with my little daughter when the rebels bust into our house
-and killed my husband as one of the big oil dealers in the country,
-ever since then, I have being on the run.
+PID: 2879   TASK: c16adaa0  CPU: 1   COMMAND: "sctpn"
+ #0 [f418dd28] crash_kexec at c04a7d8c
+ #1 [f418dd7c] oops_end at c0863e02
+ #2 [f418dd90] do_invalid_op at c040aaca
+ #3 [f418de28] error_code (via invalid_op) at c08631a5
+    EAX: f34baac0  EBX: 00000090  ECX: f418deb0  EDX: f5542950  EBP: 00000000
+    DS:  007b      ESI: f34ba800  ES:  007b      EDI: f418dea0  GS:  00e0
+    CS:  0060      EIP: c046fa5e  ERR: ffffffff  EFLAGS: 00010286
+ #4 [f418de5c] add_timer at c046fa5e
+ #5 [f418de68] sctp_do_sm at f8db8c77 [sctp]
+ #6 [f418df30] sctp_primitive_SHUTDOWN at f8dcc1b5 [sctp]
+ #7 [f418df48] inet_shutdown at c080baf9
+ #8 [f418df5c] sys_shutdown at c079eedf
+ #9 [f418df70] sys_socketcall at c079fe88
+    EAX: ffffffda  EBX: 0000000d  ECX: bfceea90  EDX: 0937af98
+    DS:  007b      ESI: 0000000c  ES:  007b      EDI: b7150ae4
+    SS:  007b      ESP: bfceea7c  EBP: bfceeaa8  GS:  0033
+    CS:  0073      EIP: b775c424  ERR: 00000066  EFLAGS: 00000282
 
-I left my country and move to Chad our neighboring country with the
-little ceasefire we had, due to the face to face peace meeting accord
-coordinated by the US Secretary of State, Mr John Kerry and United
-Nations in Ethiopia (Addis Ababa) between our President Mr Salva Kiir
-and the rebel leader Mr Riek Machar to stop this war.
+It appears that the side effect that starts the shutdown timer was processed
+multiple times, which can happen as multiple paths can trigger it.  This of
+course leads to the BUG halt in add_timer getting called.
 
-I want to solicit for your partnership with trust to invest the $8
-million dollars deposited by my late husband in Bank because my life
-is no longer safe in our country, since the rebels are looking for the
-families of all the oil business men in the country to kill, saying
-that they are they one that is milking the country dry.
+Fix seems pretty straightforward, just check before the timer is added if its
+already been started.  If it has mod the timer instead to min(current
+expiration, new expiration)
 
-I will offer you 20% of the total fund for your help while I will
-partner with you for the investment in your country.
-If I get your reply.
+Its been tested but not confirmed to fix the problem, as the issue has only
+occured in production environments where test kernels are enjoined from being
+installed.  It appears to be a sane fix to me though.  Also, recentely,
+Jere found a reproducer posted on list to confirm that this resolves the
+issues
 
-I will wait to hear from you so as to give you details.With love from
+Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
+CC: Vlad Yasevich <vyasevich@gmail.com>
+CC: "David S. Miller" <davem@davemloft.net>
+CC: jere.leppanen@nokia.com
+CC: marcelo.leitner@gmail.com
+CC: netdev@vger.kernel.org
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ net/sctp/sm_sideeffect.c | 14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
 
- i need you to contact me here sarahkoffi389@yahoo.co.jp
-
-Mrs. Sarah Koffi
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 2bc29463e1dc..9f36fe911d08 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -1523,9 +1523,17 @@ static int sctp_cmd_interpreter(enum sctp_event_type event_type,
+ 			timeout = asoc->timeouts[cmd->obj.to];
+ 			BUG_ON(!timeout);
+ 
+-			timer->expires = jiffies + timeout;
+-			sctp_association_hold(asoc);
+-			add_timer(timer);
++			/*
++			 * SCTP has a hard time with timer starts.  Because we process
++			 * timer starts as side effects, it can be hard to tell if we
++			 * have already started a timer or not, which leads to BUG
++			 * halts when we call add_timer. So here, instead of just starting
++			 * a timer, if the timer is already started, and just mod
++			 * the timer with the shorter of the two expiration times
++			 */
++			if (!timer_pending(timer))
++				sctp_association_hold(asoc);
++			timer_reduce(timer, jiffies + timeout);
+ 			break;
+ 
+ 		case SCTP_CMD_TIMER_RESTART:
+-- 
+2.25.1
