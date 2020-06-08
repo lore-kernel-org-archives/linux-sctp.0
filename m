@@ -1,93 +1,81 @@
 From: Sasha Levin <sashal@kernel.org>
-Date: Mon, 08 Jun 2020 23:05:51 +0000
-Subject: [PATCH AUTOSEL 5.6 226/606] sctp: Don't add the shutdown timer if its already been added
-Message-Id: <20200608231211.3363633-226-sashal@kernel.org>
+Date: Mon, 08 Jun 2020 23:05:52 +0000
+Subject: [PATCH AUTOSEL 5.6 227/606] sctp: Start shutdown on association restart if in SHUTDOWN-SENT state an
+Message-Id: <20200608231211.3363633-227-sashal@kernel.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200608231211.3363633-1-sashal@kernel.org>
 In-Reply-To: <20200608231211.3363633-1-sashal@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: Neil Horman <nhorman@tuxdriver.com>, Vlad Yasevich <vyasevich@gmail.com>, "David S. Miller" <davem@davemloft.net>, jere.leppanen@nokia.com, marcelo.leitner@gmail.com, netdev@vger.kernel.org, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, linux-sctp@vger.kernel.org
+Cc: =?UTF-8?q?Jere=20Lepp=C3=A4nen?= <jere.leppanen@nokia.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S . Miller" <davem@davemloft.net>, Greg Kroah-Hartman <gregkh@linuxfoundation.org>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-From: Neil Horman <nhorman@tuxdriver.com>
+From: Jere Leppänen <jere.leppanen@nokia.com>
 
-[ Upstream commit 20a785aa52c82246055a089e55df9dac47d67da1 ]
+[ Upstream commit d3e8e4c11870413789f029a71e72ae6e971fe678 ]
 
-This BUG halt was reported a while back, but the patch somehow got
-missed:
+Commit bdf6fa52f01b ("sctp: handle association restarts when the
+socket is closed.") starts shutdown when an association is restarted,
+if in SHUTDOWN-PENDING state and the socket is closed. However, the
+rationale stated in that commit applies also when in SHUTDOWN-SENT
+state - we don't want to move an association to ESTABLISHED state when
+the socket has been closed, because that results in an association
+that is unreachable from user space.
 
-PID: 2879   TASK: c16adaa0  CPU: 1   COMMAND: "sctpn"
- #0 [f418dd28] crash_kexec at c04a7d8c
- #1 [f418dd7c] oops_end at c0863e02
- #2 [f418dd90] do_invalid_op at c040aaca
- #3 [f418de28] error_code (via invalid_op) at c08631a5
-    EAX: f34baac0  EBX: 00000090  ECX: f418deb0  EDX: f5542950  EBP: 00000000
-    DS:  007b      ESI: f34ba800  ES:  007b      EDI: f418dea0  GS:  00e0
-    CS:  0060      EIP: c046fa5e  ERR: ffffffff  EFLAGS: 00010286
- #4 [f418de5c] add_timer at c046fa5e
- #5 [f418de68] sctp_do_sm at f8db8c77 [sctp]
- #6 [f418df30] sctp_primitive_SHUTDOWN at f8dcc1b5 [sctp]
- #7 [f418df48] inet_shutdown at c080baf9
- #8 [f418df5c] sys_shutdown at c079eedf
- #9 [f418df70] sys_socketcall at c079fe88
-    EAX: ffffffda  EBX: 0000000d  ECX: bfceea90  EDX: 0937af98
-    DS:  007b      ESI: 0000000c  ES:  007b      EDI: b7150ae4
-    SS:  007b      ESP: bfceea7c  EBP: bfceeaa8  GS:  0033
-    CS:  0073      EIP: b775c424  ERR: 00000066  EFLAGS: 00000282
+The problem scenario:
 
-It appears that the side effect that starts the shutdown timer was processed
-multiple times, which can happen as multiple paths can trigger it.  This of
-course leads to the BUG halt in add_timer getting called.
+1.  Client crashes and/or restarts.
 
-Fix seems pretty straightforward, just check before the timer is added if its
-already been started.  If it has mod the timer instead to min(current
-expiration, new expiration)
+2.  Server (using one-to-one socket) calls close(). SHUTDOWN is lost.
 
-Its been tested but not confirmed to fix the problem, as the issue has only
-occured in production environments where test kernels are enjoined from being
-installed.  It appears to be a sane fix to me though.  Also, recentely,
-Jere found a reproducer posted on list to confirm that this resolves the
-issues
+3.  Client reconnects using the same addresses and ports.
 
-Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-CC: Vlad Yasevich <vyasevich@gmail.com>
-CC: "David S. Miller" <davem@davemloft.net>
-CC: jere.leppanen@nokia.com
-CC: marcelo.leitner@gmail.com
-CC: netdev@vger.kernel.org
+4.  Server's association is restarted. The association and the socket
+    move to ESTABLISHED state, even though the server process has
+    closed its descriptor.
+
+Also, after step 4 when the server process exits, some resources are
+leaked in an attempt to release the underlying inet sock structure in
+ESTABLISHED state:
+
+    IPv4: Attempt to release TCP socket in state 1 00000000377288c7
+
+Fix by acting the same way as in SHUTDOWN-PENDING state. That is, if
+an association is restarted in SHUTDOWN-SENT state and the socket is
+closed, then start shutdown and don't move the association or the
+socket to ESTABLISHED state.
+
+Fixes: bdf6fa52f01b ("sctp: handle association restarts when the socket is closed.")
+Signed-off-by: Jere Leppänen <jere.leppanen@nokia.com>
 Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 Signed-off-by: David S. Miller <davem@davemloft.net>
 Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 ---
- net/sctp/sm_sideeffect.c | 14 +++++++++++---
- 1 file changed, 11 insertions(+), 3 deletions(-)
+ net/sctp/sm_statefuns.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
-index 2bc29463e1dc..9f36fe911d08 100644
---- a/net/sctp/sm_sideeffect.c
-+++ b/net/sctp/sm_sideeffect.c
-@@ -1523,9 +1523,17 @@ static int sctp_cmd_interpreter(enum sctp_event_type event_type,
- 			timeout = asoc->timeouts[cmd->obj.to];
- 			BUG_ON(!timeout);
- 
--			timer->expires = jiffies + timeout;
--			sctp_association_hold(asoc);
--			add_timer(timer);
-+			/*
-+			 * SCTP has a hard time with timer starts.  Because we process
-+			 * timer starts as side effects, it can be hard to tell if we
-+			 * have already started a timer or not, which leads to BUG
-+			 * halts when we call add_timer. So here, instead of just starting
-+			 * a timer, if the timer is already started, and just mod
-+			 * the timer with the shorter of the two expiration times
-+			 */
-+			if (!timer_pending(timer))
-+				sctp_association_hold(asoc);
-+			timer_reduce(timer, jiffies + timeout);
- 			break;
- 
- 		case SCTP_CMD_TIMER_RESTART:
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 26788f4a3b9e..e86620fbd90f 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -1856,12 +1856,13 @@ static enum sctp_disposition sctp_sf_do_dupcook_a(
+ 	/* Update the content of current association. */
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_UPDATE_ASSOC, SCTP_ASOC(new_asoc));
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_EVENT_ULP, SCTP_ULPEVENT(ev));
+-	if (sctp_state(asoc, SHUTDOWN_PENDING) &&
++	if ((sctp_state(asoc, SHUTDOWN_PENDING) ||
++	     sctp_state(asoc, SHUTDOWN_SENT)) &&
+ 	    (sctp_sstate(asoc->base.sk, CLOSING) ||
+ 	     sock_flag(asoc->base.sk, SOCK_DEAD))) {
+-		/* if were currently in SHUTDOWN_PENDING, but the socket
+-		 * has been closed by user, don't transition to ESTABLISHED.
+-		 * Instead trigger SHUTDOWN bundled with COOKIE_ACK.
++		/* If the socket has been closed by user, don't
++		 * transition to ESTABLISHED. Instead trigger SHUTDOWN
++		 * bundled with COOKIE_ACK.
+ 		 */
+ 		sctp_add_cmd_sf(commands, SCTP_CMD_REPLY, SCTP_CHUNK(repl));
+ 		return sctp_sf_do_9_2_start_shutdown(net, ep, asoc,
 -- 
 2.25.1
