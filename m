@@ -1,111 +1,43 @@
-From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 21 May 2020 17:47:10 +0000
-Subject: [PATCH 35/49] sctp: pass a kernel pointer to sctp_setsockopt_default_prinfo
-Message-Id: <20200521174724.2635475-36-hch@lst.de>
+From: Xiyu Yang <xiyuyang19@fudan.edu.cn>
+Date: Sat, 13 Jun 2020 12:39:25 +0000
+Subject: [PATCH] sctp: Fix sk_buff leak when receiving a datagram
+Message-Id: <1592051965-94731-1-git-send-email-xiyuyang19@fudan.edu.cn>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200521174724.2635475-1-hch@lst.de>
-In-Reply-To: <20200521174724.2635475-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: yuanxzhang@fudan.edu.cn, kjlu@umn.edu, Xiyu Yang <xiyuyang19@fudan.edu.cn>, Xin Tan <tanxin.ctf@gmail.com>
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
+In sctp_skb_recv_datagram(), the function fetch a sk_buff object from
+the receiving queue to "skb" by calling skb_peek() or __skb_dequeue()
+and return its reference to the caller.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+However, when calling __skb_dequeue() successfully, the function forgets
+to hold a reference count of the "skb" object and directly return it,
+causing a potential memory leak in the caller function.
+
+Fix this issue by calling refcount_inc after __skb_dequeue()
+successfully executed.
+
+Signed-off-by: Xiyu Yang <xiyuyang19@fudan.edu.cn>
+Signed-off-by: Xin Tan <tanxin.ctf@gmail.com>
 ---
- net/sctp/socket.c | 45 ++++++++++++++++++++-------------------------
- 1 file changed, 20 insertions(+), 25 deletions(-)
+ net/sctp/socket.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index fb7ed11382af1..6136f863095ef 100644
+index d57e1a002ffc..4c8f0b83efd0 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -3940,55 +3940,50 @@ static int sctp_setsockopt_pr_supported(struct sock *sk,
- }
- 
- static int sctp_setsockopt_default_prinfo(struct sock *sk,
--					  char __user *optval,
-+					  struct sctp_default_prinfo *info,
- 					  unsigned int optlen)
- {
- 	struct sctp_sock *sp = sctp_sk(sk);
--	struct sctp_default_prinfo info;
- 	struct sctp_association *asoc;
- 	int retval = -EINVAL;
- 
--	if (optlen != sizeof(info))
--		goto out;
--
--	if (copy_from_user(&info, optval, sizeof(info))) {
--		retval = -EFAULT;
-+	if (optlen != sizeof(*info))
- 		goto out;
--	}
- 
--	if (info.pr_policy & ~SCTP_PR_SCTP_MASK)
-+	if (info->pr_policy & ~SCTP_PR_SCTP_MASK)
- 		goto out;
- 
--	if (info.pr_policy = SCTP_PR_SCTP_NONE)
--		info.pr_value = 0;
-+	if (info->pr_policy = SCTP_PR_SCTP_NONE)
-+		info->pr_value = 0;
- 
--	asoc = sctp_id2assoc(sk, info.pr_assoc_id);
--	if (!asoc && info.pr_assoc_id > SCTP_ALL_ASSOC &&
-+	asoc = sctp_id2assoc(sk, info->pr_assoc_id);
-+	if (!asoc && info->pr_assoc_id > SCTP_ALL_ASSOC &&
- 	    sctp_style(sk, UDP))
- 		goto out;
- 
- 	retval = 0;
- 
- 	if (asoc) {
--		SCTP_PR_SET_POLICY(asoc->default_flags, info.pr_policy);
--		asoc->default_timetolive = info.pr_value;
-+		SCTP_PR_SET_POLICY(asoc->default_flags, info->pr_policy);
-+		asoc->default_timetolive = info->pr_value;
- 		goto out;
- 	}
- 
- 	if (sctp_style(sk, TCP))
--		info.pr_assoc_id = SCTP_FUTURE_ASSOC;
-+		info->pr_assoc_id = SCTP_FUTURE_ASSOC;
- 
--	if (info.pr_assoc_id = SCTP_FUTURE_ASSOC ||
--	    info.pr_assoc_id = SCTP_ALL_ASSOC) {
--		SCTP_PR_SET_POLICY(sp->default_flags, info.pr_policy);
--		sp->default_timetolive = info.pr_value;
-+	if (info->pr_assoc_id = SCTP_FUTURE_ASSOC ||
-+	    info->pr_assoc_id = SCTP_ALL_ASSOC) {
-+		SCTP_PR_SET_POLICY(sp->default_flags, info->pr_policy);
-+		sp->default_timetolive = info->pr_value;
- 	}
- 
--	if (info.pr_assoc_id = SCTP_CURRENT_ASSOC ||
--	    info.pr_assoc_id = SCTP_ALL_ASSOC) {
-+	if (info->pr_assoc_id = SCTP_CURRENT_ASSOC ||
-+	    info->pr_assoc_id = SCTP_ALL_ASSOC) {
- 		list_for_each_entry(asoc, &sp->ep->asocs, asocs) {
--			SCTP_PR_SET_POLICY(asoc->default_flags, info.pr_policy);
--			asoc->default_timetolive = info.pr_value;
-+			SCTP_PR_SET_POLICY(asoc->default_flags,
-+					   info->pr_policy);
-+			asoc->default_timetolive = info->pr_value;
+@@ -8990,6 +8990,8 @@ struct sk_buff *sctp_skb_recv_datagram(struct sock *sk, int flags,
+ 				refcount_inc(&skb->users);
+ 		} else {
+ 			skb = __skb_dequeue(&sk->sk_receive_queue);
++			if (skb)
++				refcount_inc(&skb->users);
  		}
- 	}
  
-@@ -4686,7 +4681,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_pr_supported(sk, kopt, optlen);
- 		break;
- 	case SCTP_DEFAULT_PRINFO:
--		retval = sctp_setsockopt_default_prinfo(sk, optval, optlen);
-+		retval = sctp_setsockopt_default_prinfo(sk, kopt, optlen);
- 		break;
- 	case SCTP_RECONFIG_SUPPORTED:
- 		retval = sctp_setsockopt_reconfig_supported(sk, optval, optlen);
+ 		if (skb)
 -- 
-2.26.2
+2.7.4
