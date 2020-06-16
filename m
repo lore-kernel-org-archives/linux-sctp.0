@@ -1,48 +1,43 @@
 From: Waiman Long <longman@redhat.com>
-Date: Tue, 16 Jun 2020 15:05:22 +0000
-Subject: Re: [PATCH v4 3/3] btrfs: Use kfree() in btrfs_ioctl_get_subvol_info()
-Message-Id: <75152002-5f02-04b6-a811-29ef79961e0b@redhat.com>
+Date: Tue, 16 Jun 2020 01:57:16 +0000
+Subject: [PATCH v4 1/3] mm/slab: Use memzero_explicit() in kzfree()
+Message-Id: <20200616015718.7812-2-longman@redhat.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200616015718.7812-1-longman@redhat.com>
- <20200616015718.7812-4-longman@redhat.com>
- <20200616144804.GD27795@twin.jikos.cz>
-In-Reply-To: <20200616144804.GD27795@twin.jikos.cz>
+In-Reply-To: <20200616015718.7812-1-longman@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: dsterba@suse.cz, Andrew Morton <akpm@linux-foundation.org>, David Howells <dhowells@redhat.com>, Jarkko Sakkinen <jarkko.sakkinen@linux.intel.com>, James Morris <jmorris@namei.org>, "Serge E. Hallyn" <serge@hallyn.com>, Linus Torvalds <torvalds@linux-foundation.org>, Joe Perches <joe@perches.com>, Matthew Wilcox <willy@infradead.org>, David Rientjes <rientjes@google.com>, Michal Hocko <mhocko@suse.com>, Johannes Weiner <hannes@cmpxchg.org>, Dan Carpenter <dan.carpenter@oracle.com>, "Jason A . Donenfeld" <Jason@zx2c4.com>, linux-mm@kvack.org, keyrings@vger.kernel.org, linux-kernel@vger.kernel.org, linux-crypto@vger.kernel.org, linux-pm@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, linux-amlogic@lists.infradead.org, linux-mediatek@lists.infradead.org, linuxppc-dev@lists.ozlabs.org, virtualization@lists.linux-foundation.org, netdev@vger.kernel.org, linux-ppp@vger.kernel.org, wireguard@lists.zx2c4.com, linux-wireless@vger.kernel.org, devel@driverdev.osuosl.org, linux-scsi@vger.kernel.org, target-devel@vger.kernel.org, linux-btrfs@vger.kernel.org, linux-cifs@vger.kernel.org, linux-fscrypt@vger.kernel.org, ecryptfs@vger.kernel.org, kasan-dev@googlegroups.com, linux-bluetooth@vger.kernel.org, linux-wpan@vger.kernel.org, linux-sctp@vger.kernel.org, linux-nfs@vger.kernel.org, tipc-discussion@lists.sourceforge.net, linux-security-module@vger.kernel.org, linux-integrity@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>, David Howells <dhowells@redhat.com>, Jarkko Sakkinen <jarkko.sakkinen@linux.intel.com>, James Morris <jmorris@namei.org>, "Serge E. Hallyn" <serge@hallyn.com>, Linus Torvalds <torvalds@linux-foundation.org>, Joe Perches <joe@perches.com>, Matthew Wilcox <willy@infradead.org>, David Rientjes <rientjes@google.com>
+Cc: "Jason A . Donenfeld" <Jason@zx2c4.com>, Michal Hocko <mhocko@suse.com>, linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org, linux-mm@kvack.org, linux-sctp@vger.kernel.org, target-devel@vger.kernel.org, linux-stm32@st-md-mailman.stormreply.com, devel@driverdev.osuosl.org, linux-cifs@vger.kernel.org, linux-scsi@vger.kernel.org, kasan-dev@googlegroups.com, linux-wpan@vger.kernel.org, Waiman Long <longman@redhat.com>, Dan Carpenter <dan.carpenter@oracle.com>, linux-pm@vger.kernel.org, ecryptfs@vger.kernel.org, linux-fscrypt@vger.kernel.org, linux-mediatek@lists.infradead.org, linux-amlogic@lists.infradead.org, virtualization@lists.linux-foundation.org, linux-nfs@vger.kernel.org, netdev@vger.kernel.org, linux-wireless@vger.kernel.org, David Sterba <dsterba@suse.cz>, stable@vger.kernel.org, linux-bluetooth@vger.kernel.org, linux-security-module@vger.kernel.org, keyrings@vger.kernel.org, tipc-discussion@lists.sourceforge.net, linux-crypto@vger.kernel.org, Johannes Weiner <hannes@cmpxchg.org>, linux-integrity@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, wireguard@lists.zx2c4.com, linux-ppp@vger.kernel.org
 
-On 6/16/20 10:48 AM, David Sterba wrote:
-> On Mon, Jun 15, 2020 at 09:57:18PM -0400, Waiman Long wrote:
->> In btrfs_ioctl_get_subvol_info(), there is a classic case where kzalloc()
->> was incorrectly paired with kzfree(). According to David Sterba, there
->> isn't any sensitive information in the subvol_info that needs to be
->> cleared before freeing. So kfree_sensitive() isn't really needed,
->> use kfree() instead.
->>
->> Reported-by: David Sterba <dsterba@suse.cz>
->> Signed-off-by: Waiman Long <longman@redhat.com>
->> ---
->>   fs/btrfs/ioctl.c | 2 +-
->>   1 file changed, 1 insertion(+), 1 deletion(-)
->>
->> diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
->> index f1dd9e4271e9..e8f7c5f00894 100644
->> --- a/fs/btrfs/ioctl.c
->> +++ b/fs/btrfs/ioctl.c
->> @@ -2692,7 +2692,7 @@ static int btrfs_ioctl_get_subvol_info(struct file *file, void __user *argp)
->>   	btrfs_put_root(root);
->>   out_free:
->>   	btrfs_free_path(path);
->> -	kfree_sensitive(subvol_info);
->> +	kfree(subvol_info);
-> I would rather merge a patch doing to kzfree -> kfree instead of doing
-> the middle step to switch it to kfree_sensitive. If it would help
-> integration of your patchset I can push it to the next rc so there are
-> no kzfree left in the btrfs code. Treewide change like that can take
-> time so it would be one less problem to care about for you.
->
-Sure, I will move it forward in the patch series.
+The kzfree() function is normally used to clear some sensitive
+information, like encryption keys, in the buffer before freeing it back
+to the pool. Memset() is currently used for the buffer clearing. However,
+it is entirely possible that the compiler may choose to optimize away the
+memory clearing especially if LTO is being used. To make sure that this
+optimization will not happen, memzero_explicit(), which is introduced
+in v3.18, is now used in kzfree() to do the clearing.
 
-Thanks,
-Longman
+Fixes: 3ef0e5ba4673 ("slab: introduce kzfree()")
+Cc: stable@vger.kernel.org
+Signed-off-by: Waiman Long <longman@redhat.com>
+---
+ mm/slab_common.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mm/slab_common.c b/mm/slab_common.c
+index 9e72ba224175..37d48a56431d 100644
+--- a/mm/slab_common.c
++++ b/mm/slab_common.c
+@@ -1726,7 +1726,7 @@ void kzfree(const void *p)
+ 	if (unlikely(ZERO_OR_NULL_PTR(mem)))
+ 		return;
+ 	ks = ksize(mem);
+-	memset(mem, 0, ks);
++	memzero_explicit(mem, ks);
+ 	kfree(mem);
+ }
+ EXPORT_SYMBOL(kzfree);
+-- 
+2.18.1
