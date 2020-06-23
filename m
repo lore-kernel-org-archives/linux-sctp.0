@@ -1,15 +1,17 @@
-From: "manuel franco" <manuel@info.com>
-Date: Mon, 15 Jun 2020 21:54:51 +0000
-Subject: donation of Euro 2,000,000.00.
-Message-Id: <20200615215501.026103633A89@correo.bnv.gob.ve>
+From: YAVUZ BEKTER <bakert.jg@gmail.com>
+Date: Tue, 23 Jun 2020 12:11:50 +0000
+Subject: Hello.
+Message-Id: <CAAUSuTUF07U7WHe1Efvm5HNLZs58WxivYcJVR8eHCsjQxE=N8Q@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-You have a donation of Euro 2,000,000.00.
-
-My name is Manuel Franco from the United States.
-
-I won the America lottery worth $768 million and I am donating a portion of it to just 5 lucky people and a few Orphanage homes as a memorandum of goodwill to humanity.email: manuelfrancospende@gmail.com
+I am the foreign operations director of Bank of Turkey.
+My name is Mr, Yavuz. I have a sensitive investment project to discuss
+with you, please reply now.
+________________________
+Ik ben de directeur buitenlandse activiteiten van de Bank of Turkey.
+Mijn naam is meneer Yavuz. Ik moet een gevoelig investeringsproject bespreken
+met u, antwoord dan nu.
