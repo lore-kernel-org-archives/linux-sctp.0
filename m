@@ -1,176 +1,47 @@
-From: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
-Date: Wed, 24 Jun 2020 09:18:09 +0000
-Subject: Re: Strange problem with SCTP+IPv6
-Message-Id: <6EA67F12-F19A-4C60-A652-B08C78A36CBA@lurchi.franken.de>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Fri, 26 Jun 2020 16:13:51 +0000
+Subject: RE: Strange problem with SCTP+IPv6
+Message-Id: <50b0a6ff186e408bbfe6211221cb3998@AcuMS.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200621155604.GA23135@minyard.net>
  <CADvbK_d9mV9rBg7oLC+9u4fg3d_5a_g8ukPe83vOAE8ZM3FhHA@mail.gmail.com>
  <20200622165759.GA3235@minyard.net>
  <4B68D06C-00F4-42C3-804A-B5531AABCE21@lurchi.franken.de>
  <20200622183253.GQ2491@localhost.localdomain>
- <c1121947c9a94703b4ab6dc434a7c3f8@AcuMS.aculab.com>
- <20200623161756.GE3235@minyard.net>
- <20200623212143.GR2491@localhost.localdomain>
- <C4F6EDBE-CCAE-4635-AD96-9C2E2582F1B3@lurchi.franken.de>
- <20200623213102.GS2491@localhost.localdomain>
- <42823598-7B01-4C62-B896-ACC4449F3AFF@lurchi.franken.de>
- <CADvbK_cXsS7_kYifCqMRcedtNgG0hNmgrf33+hkkjmK7xjAP=A@mail.gmail.com>
-In-Reply-To: <CADvbK_cXsS7_kYifCqMRcedtNgG0hNmgrf33+hkkjmK7xjAP=A@mail.gmail.com>
+ <E5F42909-3AB4-47FE-98B7-DEFB63968696@lurchi.franken.de>
+ <CADvbK_fddQiOJUVJNkJuxkzQ9V-tpk_ATBP4NpZ2rZketHEFcg@mail.gmail.com>
+In-Reply-To: <CADvbK_fddQiOJUVJNkJuxkzQ9V-tpk_ATBP4NpZ2rZketHEFcg@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Corey Minyard <minyard@acm.org>, David Laight <David.Laight@aculab.com>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>
+To: 'Xin Long' <lucien.xin@gmail.com>, Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "minyard@acm.org" <minyard@acm.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>
 
-> On 24. Jun 2020, at 09:25, Xin Long <lucien.xin@gmail.com> wrote:
-> 
-> On Wed, Jun 24, 2020 at 5:48 AM Michael Tuexen
-> <michael.tuexen@lurchi.franken.de> wrote:
->> 
->>> On 23. Jun 2020, at 23:31, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com> wrote:
->>> 
->>> On Tue, Jun 23, 2020 at 11:24:59PM +0200, Michael Tuexen wrote:
->>>>> On 23. Jun 2020, at 23:21, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com> wrote:
->>>>> 
->>>>> On Tue, Jun 23, 2020 at 11:17:56AM -0500, Corey Minyard wrote:
->>>>>> On Tue, Jun 23, 2020 at 01:17:28PM +0000, David Laight wrote:
->>>>>>> From: Marcelo Ricardo Leitner
->>>>>>>> Sent: 22 June 2020 19:33
->>>>>>>> On Mon, Jun 22, 2020 at 08:01:24PM +0200, Michael Tuexen wrote:
->>>>>>>>>> On 22. Jun 2020, at 18:57, Corey Minyard <minyard@acm.org> wrote:
->>>>>>>>>> 
->>>>>>>>>> On Mon, Jun 22, 2020 at 08:01:23PM +0800, Xin Long wrote:
->>>>>>>>>>> On Sun, Jun 21, 2020 at 11:56 PM Corey Minyard <minyard@acm.org> wrote:
->>>>>>>>>>>> 
->>>>>>>>>>>> I've stumbled upon a strange problem with SCTP and IPv6.  If I create an
->>>>>>>>>>>> sctp listening socket on :: and set the IPV6_V6ONLY socket option on it,
->>>>>>>>>>>> then I make a connection to it using ::1, the connection will drop after
->>>>>>>>>>>> 2.5 seconds with an ECONNRESET error.
->>>>>>>>>>>> 
->>>>>>>>>>>> It only happens on SCTP, it doesn't have the issue if you connect to a
->>>>>>>>>>>> full IPv6 address instead of ::1, and it doesn't happen if you don't
->>>>>>>>>>>> set IPV6_V6ONLY.  I have verified current end of tree kernel.org.
->>>>>>>>>>>> I tried on an ARM system and x86_64.
->>>>>>>>>>>> 
->>>>>>>>>>>> I haven't dug into the kernel to see if I could find anything yet, but I
->>>>>>>>>>>> thought I would go ahead and report it.  I am attaching a reproducer.
->>>>>>>>>>>> Basically, compile the following code:
->>>>>>>>>>> The code only set IPV6_V6ONLY on server side, so the client side will
->>>>>>>>>>> still bind all the local ipv4 addresses (as you didn't call bind() to
->>>>>>>>>>> bind any specific addresses ). Then after the connection is created,
->>>>>>>>>>> the client will send HB on the v4 paths to the server. The server
->>>>>>>>>>> will abort the connection, as it can't support v4.
->>>>>>>>>>> 
->>>>>>>>>>> So you can work around it by either:
->>>>>>>>>>> 
->>>>>>>>>>> - set IPV6_V6ONLY on client side.
->>>>>>>>>>> 
->>>>>>>>>>> or
->>>>>>>>>>> 
->>>>>>>>>>> - bind to the specific v6 addresses on the client side.
->>>>>>>>>>> 
->>>>>>>>>>> I don't see RFC said something about this.
->>>>>>>>>>> So it may not be a good idea to change the current behaviour
->>>>>>>>>>> to not establish the connection in this case, which may cause regression.
->>>>>>>>>> 
->>>>>>>>>> Ok, I understand this.  It's a little strange, but I see why it works
->>>>>>>>>> this way.
->>>>>>>>> I don't. I would expect it to work as I described in my email.
->>>>>>>>> Could someone explain me how and why it is behaving different from
->>>>>>>>> my expectation?
->>>>>>>> 
->>>>>>>> It looks like a bug to me. Testing with this test app here, I can see
->>>>>>>> the INIT_ACK being sent with a bunch of ipv4 addresses in it and
->>>>>>>> that's unexpected for a v6only socket. As is, it's the server saying
->>>>>>>> "I'm available at these other addresses too, but not."
->>>>>>> 
->>>>>>> Does it even make sense to mix IPv4 and IPv6 addresses on the same
->>>>>>> connection?
->>>>>>> I don't remember ever seeing both types of address in a message,
->>>>>>> but may not have looked.
->>>>>> 
->>>>>> That's an interesting question.  Do the RFCs say anything?  I would
->>>>>> assume it was ok unless ipv6only was set.
->>>>>> 
->>>>>>> 
->>>>>>> I also wonder whether the connection should be dropped for an error
->>>>>>> response on a path that has never been validated.
->>>>>> 
->>>>>> That actually bothered me a bit more.  Shouldn't it stay up if any path
->>>>>> is up?  That's kind of the whole point of multihoming.
->>>>> 
->>>>> Michael explained it on the other email. What he described is what I
->>>>> observed in my tests.
->>>>> 
->>>>>> 
->>>>>>> 
->>>>>>> OTOH the whole 'multi-homing' part of SCTP sucks.
->>>>>> 
->>>>>> I don't think so.
->>>>>> 
->>>>>>> The IP addresses a server needs to bind to depend on where the
->>>>>>> incoming connection will come from.
->>>>>>> A local connection may be able to use a 192.168.x.x address
->>>>>>> but a remote connection must not - as it may be defined locally
->>>>>>> at the remote system.
->>>>>>> But both connections can come into the public (routable) address.
->>>>>>> We have to tell customers to explicitly configure the local IP
->>>>>>> addresses - which means the application has to know what they are.
->>>>>>> Fortunately these apps are pretty static - usually M3UA.
->>>>>> 
->>>>>> Umm, no,  If you have a private address, it better be behind a firewall,
->>>>>> and the firewall should handle rewriting the packet to fix the addresses.
->>>>>> 
->>>>>> It doesn't appear that Linux netfilter does this.  There is a TODO in
->>>>>> the code for this.  But that's how it *should* work.
->>>>> 
->>>>> Right, we don't support SCTP aware NAT [1].
->>>>> 
->>>>> 1.https://tools.ietf.org/html/draft-stewart-behave-sctpnat-04
->>>> The current version is: https://tools.ietf.org/html/draft-ietf-tsvwg-natsupp-16
->>> 
->>> Thanks!
->>> 
->>>> 
->>>> Another possibility for NAT traversal is UDP encapsulation...
->>> 
->>> Also not supported.. :-]
->> But maybe someone wants to implement it. It is supported by FreeBSD, if you
->> need a peer for testing. Or the userland stack usrsctp supports it. Then you
->> do not need root privileges to run it.
-> You mean SCTP_REMOTE_UDP_ENCAPS_PORT sockopt, right?
-> We have this in our to-do list. I mixed rfc6951 with the userland one.
-> Will prioritize this feature. Thanks.
-Great to hear. When implementing RFC 6951 support, please take
-https://tools.ietf.org/html/draft-tuexen-tsvwg-sctp-udp-encaps-cons-02
-into account. It is still valid and will be pushed further after RFC 4960bis
-is done.
-
-Best regards
-Michael
-> 
->> 
->> Best regards
->> Michael
->>> 
->>> Best regards,
->>> Marcelo
->>> 
->>>> 
->>>> Best regards
->>>> Michael
->>>>> 
->>>>> Marcelo
->>>>> 
->>>>>> 
->>>>>> -corey
->>>>>> 
->>>>>>> 
->>>>>>>  David
->>>>>>> 
->>>>>>> -
->>>>>>> Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
->>>>>>> Registration No: 1397386 (Wales)
->>>>>>> 
->>>> 
->> 
+RnJvbTogWGluIExvbmcNCj4gU2VudDogMjMgSnVuZSAyMDIwIDExOjE0DQo+ID4gPiBJdCBsb29r
+cyBsaWtlIGEgYnVnIHRvIG1lLiBUZXN0aW5nIHdpdGggdGhpcyB0ZXN0IGFwcCBoZXJlLCBJIGNh
+biBzZWUNCj4gPiA+IHRoZSBJTklUX0FDSyBiZWluZyBzZW50IHdpdGggYSBidW5jaCBvZiBpcHY0
+IGFkZHJlc3NlcyBpbiBpdCBhbmQNCj4gPiA+IHRoYXQncyB1bmV4cGVjdGVkIGZvciBhIHY2b25s
+eSBzb2NrZXQuIEFzIGlzLCBpdCdzIHRoZSBzZXJ2ZXIgc2F5aW5nDQo+ID4gPiAiSSdtIGF2YWls
+YWJsZSBhdCB0aGVzZSBvdGhlciBhZGRyZXNzZXMgdG9vLCBidXQgbm90LiINCj4gPiBJIGFncmVl
+Lg0KPiBUaGVuIHdlIG5lZWQgYSBmaXggaW4gc2N0cF9iaW5kX2FkZHJzX3RvX3JhdygpOg0KPiAN
+Cj4gQEAgLTIzOCw2ICsyNDAsOSBAQCB1bmlvbiBzY3RwX3BhcmFtcyBzY3RwX2JpbmRfYWRkcnNf
+dG9fcmF3KGNvbnN0DQo+IHN0cnVjdCBzY3RwX2JpbmRfYWRkciAqYnAsDQo+ICAgICAgICAgYWRk
+cnBhcm1zID0gcmV0dmFsOw0KPiANCj4gICAgICAgICBsaXN0X2Zvcl9lYWNoX2VudHJ5KGFkZHIs
+ICZicC0+YWRkcmVzc19saXN0LCBsaXN0KSB7DQo+ICsgICAgICAgICAgICAgICBpZiAoKFBGX0lO
+RVQ2ID09IHNrLT5za19mYW1pbHkpICYmIGluZXRfdjZfaXB2Nm9ubHkoc2spICYmDQo+ICsgICAg
+ICAgICAgICAgICAgICAgKEFGX0lORVQgPT0gYWRkci0+YS5zYS5zYV9mYW1pbHkpKQ0KPiArICAg
+ICAgICAgICAgICAgICAgICAgICBjb250aW51ZTsNCj4gICAgICAgICAgICAgICAgIGFmID0gc2N0
+cF9nZXRfYWZfc3BlY2lmaWMoYWRkci0+YS52NC5zaW5fZmFtaWx5KTsNCj4gICAgICAgICAgICAg
+ICAgIGxlbiA9IGFmLT50b19hZGRyX3BhcmFtKCZhZGRyLT5hLCAmcmF3YWRkcik7DQo+ICAgICAg
+ICAgICAgICAgICBtZW1jcHkoYWRkcnBhcm1zLnYsICZyYXdhZGRyLCBsZW4pOw0KDQpUaG91Z2h0
+Lg0KDQpEb2VzIGl0IG1ha2UgYW55IHNlbnNlIHRvIG9mZmVyIGFkZHJlc3NlcyBpbiB0aGUgSU5J
+VF9BQ0sgdGhhdCBkb24ndA0KaGF2ZSByb3V0ZXMgdG8gdGhvc2UgcHJvcG9zZWQgaW4gdGhlIHJl
+Y2VpdmVkIElOSVQ/DQoNCidyb3V0ZXMnIHByb2JhYmx5IGlzbid0IGV4YWN0bHkgdGhlIHJpZ2h0
+IHdvcmQuDQpZb3UgcHJvYmFibHkgb25seSB3YW50IHRoZSBsb2NhbCBhZGRyZXNzIHRoYXQgd2ls
+bCBiZSB1c2VkDQphcyB0aGUgc291cmNlIGFkZHJlc3MgZm9yIHRoZSBwcm9iZXMuDQpPciwgYXQg
+bGVhc3QsIHNvdXJjZXMgYWRkcmVzc2VzIHRoYXQgY291bGQgYmUgdXNlZCBmb3IgdGhlIHByb2Jl
+cy4NCg0KU28gaWYgdGhlIElOSVQgb25seSBjb250YWlucyBJUHY2IGFkZHJlc3NlcyBzaG91bGQg
+dGhlIElOSVRfQUNLDQpldmVyIGNvbnRhaW4gSVB2NCBvbmVzLg0KDQoJRGF2aWQuDQoNCi0NClJl
+Z2lzdGVyZWQgQWRkcmVzcyBMYWtlc2lkZSwgQnJhbWxleSBSb2FkLCBNb3VudCBGYXJtLCBNaWx0
+b24gS2V5bmVzLCBNSzEgMVBULCBVSw0KUmVnaXN0cmF0aW9uIE5vOiAxMzk3Mzg2IChXYWxlcykN
+Cg=
