@@ -1,7 +1,7 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Fri, 26 Jun 2020 16:13:51 +0000
-Subject: RE: Strange problem with SCTP+IPv6
-Message-Id: <50b0a6ff186e408bbfe6211221cb3998@AcuMS.aculab.com>
+From: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
+Date: Fri, 26 Jun 2020 16:27:35 +0000
+Subject: Re: Strange problem with SCTP+IPv6
+Message-Id: <66D9D559-23D6-42B0-9401-62B00C4F748E@lurchi.franken.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200621155604.GA23135@minyard.net>
  <CADvbK_d9mV9rBg7oLC+9u4fg3d_5a_g8ukPe83vOAE8ZM3FhHA@mail.gmail.com>
@@ -10,38 +10,66 @@ References: <20200621155604.GA23135@minyard.net>
  <20200622183253.GQ2491@localhost.localdomain>
  <E5F42909-3AB4-47FE-98B7-DEFB63968696@lurchi.franken.de>
  <CADvbK_fddQiOJUVJNkJuxkzQ9V-tpk_ATBP4NpZ2rZketHEFcg@mail.gmail.com>
-In-Reply-To: <CADvbK_fddQiOJUVJNkJuxkzQ9V-tpk_ATBP4NpZ2rZketHEFcg@mail.gmail.com>
+ <50b0a6ff186e408bbfe6211221cb3998@AcuMS.aculab.com>
+In-Reply-To: <50b0a6ff186e408bbfe6211221cb3998@AcuMS.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Xin Long' <lucien.xin@gmail.com>, Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "minyard@acm.org" <minyard@acm.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>
+To: David Laight <David.Laight@ACULAB.COM>
+Cc: Xin Long <lucien.xin@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "minyard@acm.org" <minyard@acm.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>
 
-RnJvbTogWGluIExvbmcNCj4gU2VudDogMjMgSnVuZSAyMDIwIDExOjE0DQo+ID4gPiBJdCBsb29r
-cyBsaWtlIGEgYnVnIHRvIG1lLiBUZXN0aW5nIHdpdGggdGhpcyB0ZXN0IGFwcCBoZXJlLCBJIGNh
-biBzZWUNCj4gPiA+IHRoZSBJTklUX0FDSyBiZWluZyBzZW50IHdpdGggYSBidW5jaCBvZiBpcHY0
-IGFkZHJlc3NlcyBpbiBpdCBhbmQNCj4gPiA+IHRoYXQncyB1bmV4cGVjdGVkIGZvciBhIHY2b25s
-eSBzb2NrZXQuIEFzIGlzLCBpdCdzIHRoZSBzZXJ2ZXIgc2F5aW5nDQo+ID4gPiAiSSdtIGF2YWls
-YWJsZSBhdCB0aGVzZSBvdGhlciBhZGRyZXNzZXMgdG9vLCBidXQgbm90LiINCj4gPiBJIGFncmVl
-Lg0KPiBUaGVuIHdlIG5lZWQgYSBmaXggaW4gc2N0cF9iaW5kX2FkZHJzX3RvX3JhdygpOg0KPiAN
-Cj4gQEAgLTIzOCw2ICsyNDAsOSBAQCB1bmlvbiBzY3RwX3BhcmFtcyBzY3RwX2JpbmRfYWRkcnNf
-dG9fcmF3KGNvbnN0DQo+IHN0cnVjdCBzY3RwX2JpbmRfYWRkciAqYnAsDQo+ICAgICAgICAgYWRk
-cnBhcm1zID0gcmV0dmFsOw0KPiANCj4gICAgICAgICBsaXN0X2Zvcl9lYWNoX2VudHJ5KGFkZHIs
-ICZicC0+YWRkcmVzc19saXN0LCBsaXN0KSB7DQo+ICsgICAgICAgICAgICAgICBpZiAoKFBGX0lO
-RVQ2ID09IHNrLT5za19mYW1pbHkpICYmIGluZXRfdjZfaXB2Nm9ubHkoc2spICYmDQo+ICsgICAg
-ICAgICAgICAgICAgICAgKEFGX0lORVQgPT0gYWRkci0+YS5zYS5zYV9mYW1pbHkpKQ0KPiArICAg
-ICAgICAgICAgICAgICAgICAgICBjb250aW51ZTsNCj4gICAgICAgICAgICAgICAgIGFmID0gc2N0
-cF9nZXRfYWZfc3BlY2lmaWMoYWRkci0+YS52NC5zaW5fZmFtaWx5KTsNCj4gICAgICAgICAgICAg
-ICAgIGxlbiA9IGFmLT50b19hZGRyX3BhcmFtKCZhZGRyLT5hLCAmcmF3YWRkcik7DQo+ICAgICAg
-ICAgICAgICAgICBtZW1jcHkoYWRkcnBhcm1zLnYsICZyYXdhZGRyLCBsZW4pOw0KDQpUaG91Z2h0
-Lg0KDQpEb2VzIGl0IG1ha2UgYW55IHNlbnNlIHRvIG9mZmVyIGFkZHJlc3NlcyBpbiB0aGUgSU5J
-VF9BQ0sgdGhhdCBkb24ndA0KaGF2ZSByb3V0ZXMgdG8gdGhvc2UgcHJvcG9zZWQgaW4gdGhlIHJl
-Y2VpdmVkIElOSVQ/DQoNCidyb3V0ZXMnIHByb2JhYmx5IGlzbid0IGV4YWN0bHkgdGhlIHJpZ2h0
-IHdvcmQuDQpZb3UgcHJvYmFibHkgb25seSB3YW50IHRoZSBsb2NhbCBhZGRyZXNzIHRoYXQgd2ls
-bCBiZSB1c2VkDQphcyB0aGUgc291cmNlIGFkZHJlc3MgZm9yIHRoZSBwcm9iZXMuDQpPciwgYXQg
-bGVhc3QsIHNvdXJjZXMgYWRkcmVzc2VzIHRoYXQgY291bGQgYmUgdXNlZCBmb3IgdGhlIHByb2Jl
-cy4NCg0KU28gaWYgdGhlIElOSVQgb25seSBjb250YWlucyBJUHY2IGFkZHJlc3NlcyBzaG91bGQg
-dGhlIElOSVRfQUNLDQpldmVyIGNvbnRhaW4gSVB2NCBvbmVzLg0KDQoJRGF2aWQuDQoNCi0NClJl
-Z2lzdGVyZWQgQWRkcmVzcyBMYWtlc2lkZSwgQnJhbWxleSBSb2FkLCBNb3VudCBGYXJtLCBNaWx0
-b24gS2V5bmVzLCBNSzEgMVBULCBVSw0KUmVnaXN0cmF0aW9uIE5vOiAxMzk3Mzg2IChXYWxlcykN
-Cg=
+> On 26. Jun 2020, at 18:13, David Laight <David.Laight@ACULAB.COM> wrote:
+> 
+> From: Xin Long
+>> Sent: 23 June 2020 11:14
+>>>> It looks like a bug to me. Testing with this test app here, I can see
+>>>> the INIT_ACK being sent with a bunch of ipv4 addresses in it and
+>>>> that's unexpected for a v6only socket. As is, it's the server saying
+>>>> "I'm available at these other addresses too, but not."
+>>> I agree.
+>> Then we need a fix in sctp_bind_addrs_to_raw():
+>> 
+>> @@ -238,6 +240,9 @@ union sctp_params sctp_bind_addrs_to_raw(const
+>> struct sctp_bind_addr *bp,
+>>        addrparms = retval;
+>> 
+>>        list_for_each_entry(addr, &bp->address_list, list) {
+>> +               if ((PF_INET6 = sk->sk_family) && inet_v6_ipv6only(sk) &&
+>> +                   (AF_INET = addr->a.sa.sa_family))
+>> +                       continue;
+>>                af = sctp_get_af_specific(addr->a.v4.sin_family);
+>>                len = af->to_addr_param(&addr->a, &rawaddr);
+>>                memcpy(addrparms.v, &rawaddr, len);
+> 
+> Thought.
+> 
+> Does it make any sense to offer addresses in the INIT_ACK that don't
+> have routes to those proposed in the received INIT?
+> 
+> 'routes' probably isn't exactly the right word.
+> You probably only want the local address that will be used
+> as the source address for the probes.
+> Or, at least, sources addresses that could be used for the probes.
+> 
+> So if the INIT only contains IPv6 addresses should the INIT_ACK
+> ever contain IPv4 ones.
+The client (if it not using an IPv6 socket having IPv6 only enabled) could
+add an IPv4 address during the lifetime of the association by using the
+address reconfiguration extension.
+
+What could be done is to not send IPv4 addresses if the INIT contains
+a Supported Address Types parameter indicating IPv6, but not IPv4 support.
+As a client you might want to send this parameter, when the IPv6 socket has
+enabled the IPV6_ONLY socket option.
+Also if the client uses an IPv4 socket, it can indicate in the Supported
+Address Parameter that it only support IPv4, and the server does not need
+to list IPv6 addresses.
+
+Best regards
+Michael
+> 
+> 	David.
+> 
+> -
+> Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
+> Registration No: 1397386 (Wales)
