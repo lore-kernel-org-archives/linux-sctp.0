@@ -1,27 +1,44 @@
-From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 23 Jul 2020 16:44:32 +0000
-Subject: Re: [PATCH 04/26] net: add a new sockptr_t type
-Message-Id: <20200723164432.GA20917@lst.de>
+From: Petr Malat <oss@malat.biz>
+Date: Thu, 02 Jul 2020 08:01:26 +0000
+Subject: [PATCH] sctp: Wake up all processes after closing the connection
+Message-Id: <20200702080126.8951-1-oss@malat.biz>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200723060908.50081-1-hch@lst.de> <20200723060908.50081-5-hch@lst.de> <CANn89iJ3LKth-iWwh0+P3D3RqtDNv4AyXkkzhXr0oSEvE_JoRQ@mail.gmail.com>
-In-Reply-To: <CANn89iJ3LKth-iWwh0+P3D3RqtDNv4AyXkkzhXr0oSEvE_JoRQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Eric Dumazet <edumazet@google.com>
-Cc: Christoph Hellwig <hch@lst.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, "open list:HARDWARE RANDOM NUMBER GENERATOR CORE" <linux-crypto@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>, netdev <netdev@vger.kernel.org>, bpf <bpf@vger.kernel.org>, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+To: linux-sctp@vger.kernel.org
 
-On Thu, Jul 23, 2020 at 09:40:27AM -0700, Eric Dumazet wrote:
-> I am not sure why you chose sockptr_t   for something that really seems generic.
-> 
-> Or is it really meant to be exclusive to setsockopt() and/or getsockopt() ?
-> 
-> If the first user of this had been futex code, we would have used
-> futexptr_t, I guess.
+All waiters need to be woken up after a state change to ESTABLISHED,
+CLOSED or SHUTDOWN_RECEIVED, as that's the time when they all should
+react - for example all threads blocked in send() must return an
+error when the connection is closed, not only one of them.
 
-It was originally intended to be generic and called uptr_t, based
-on me misunderstanding that Linus wanted a file operation for it,
-which he absolutely didn't and hate with passion.  So the plan is to
-only use it for setsockopt for now, although there are some arguments
-for also using it in sendmsg/recvmsg.  There is no need to use it for
-getsockopt.
+This solves the problem of threads sleeping indefinitely in
+sctp_sendmsg_to_asoc() when the connection was closed while multiple
+threads were waiting for SNDBUF.
+
+Signed-off-by: Petr Malat <oss@malat.biz>
+---
+ net/sctp/sm_sideeffect.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/sctp/sm_sideeffect.c b/net/sctp/sm_sideeffect.c
+index 9f36fe911d08..ae08b1805b45 100644
+--- a/net/sctp/sm_sideeffect.c
++++ b/net/sctp/sm_sideeffect.c
+@@ -892,11 +892,11 @@ static void sctp_cmd_new_state(struct sctp_cmd_seq *cmds,
+ 	if (sctp_state(asoc, ESTABLISHED) ||
+ 	    sctp_state(asoc, CLOSED) ||
+ 	    sctp_state(asoc, SHUTDOWN_RECEIVED)) {
+-		/* Wake up any processes waiting in the asoc's wait queue in
++		/* Wake up all processes waiting in the asoc's wait queue in
+ 		 * sctp_wait_for_connect() or sctp_wait_for_sndbuf().
+ 		 */
+ 		if (waitqueue_active(&asoc->wait))
+-			wake_up_interruptible(&asoc->wait);
++			wake_up_interruptible_all(&asoc->wait);
+ 
+ 		/* Wake up any processes waiting in the sk's sleep queue of
+ 		 * a TCP-style or UDP-style peeled-off socket in
+-- 
+2.20.1
