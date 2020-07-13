@@ -1,59 +1,51 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Mon, 27 Jul 2020 14:09:09 +0000
-Subject: RE: get rid of the address_space override in setsockopt v2
-Message-Id: <5d958e937db54849b4ef9046e7e12277@AcuMS.aculab.com>
+From: Corey Minyard <minyard@acm.org>
+Date: Mon, 13 Jul 2020 21:59:07 +0000
+Subject: 200ms delays with SCTP streaming data
+Message-Id: <20200713215907.GE3235@minyard.net>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200723060908.50081-1-hch@lst.de>
- <20200724.154342.1433271593505001306.davem@davemloft.net>
- <8ae792c27f144d4bb5cbea0c1cce4eed@AcuMS.aculab.com>
- <20200727134814.GD794331@ZenIV.linux.org.uk>
-In-Reply-To: <20200727134814.GD794331@ZenIV.linux.org.uk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Al Viro' <viro@zeniv.linux.org.uk>
-Cc: 'David Miller' <davem@davemloft.net>, "hch@lst.de" <hch@lst.de>, "kuba@kernel.org" <kuba@kernel.org>, "ast@kernel.org" <ast@kernel.org>, "daniel@iogearbox.net" <daniel@iogearbox.net>, "kuznet@ms2.inr.ac.ru" <kuznet@ms2.inr.ac.ru>, "yoshfuji@linux-ipv6.org" <yoshfuji@linux-ipv6.org>, "edumazet@google.com" <edumazet@google.com>, "linux-crypto@vger.kernel.org" <linux-crypto@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "bpf@vger.kernel.org" <bpf@vger.kernel.org>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>, "coreteam@netfilter.org" <coreteam@netfilter.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "linux-hams@vger.kernel.org" <linux-hams@vger.kernel.org>, "linux-bluetooth@vger.kernel.org" <linux-bluetooth@vger.kernel.org>, "bridge@lists.linux-foundation.org" <bridge@lists.linux-foundation.org>, "linux-can@vger.kernel.org" <linux-can@vger.kernel.org>, "dccp@vger.kernel.org" <dccp@vger.kernel.org>, "linux-decnet-user@lists.sourceforge.net" <linux-decnet-user@lists.sourceforge.net>, "linux-wpan@vger.kernel.org" <linux-wpan@vger.kernel.org>, "linux-s390@vger.kernel.org" <linux-s390@vger.kernel.org>, "mptcp@lists.01.org" <mptcp@lists.01.org>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "rds-devel@oss.oracle.com" <rds-devel@oss.oracle.com>, "linux-afs@lists.infradead.org" <linux-afs@lists.infradead.org>, "tipc-discussion@lists.sourceforge.net" <tipc-discussion@lists.sourceforge.net>, "linux-x25@vger.kernel.org" <linux-x25@vger.kernel.org>
+To: linux-sctp@vger.kernel.org
 
-From: Al Viro
-> Sent: 27 July 2020 14:48
-> 
-> On Mon, Jul 27, 2020 at 09:51:45AM +0000, David Laight wrote:
-> 
-> > I'm sure there is code that processes options in chunks.
-> > This probably means it is possible to put a chunk boundary
-> > at the end of userspace and continue processing the very start
-> > of kernel memory.
-> >
-> > At best this faults on the kernel copy code and crashes the system.
-> 
-> Really?  Care to provide some details, or is it another of your "I can't
-> be possibly arsed to check what I'm saying, but it stands for reason
-> that..." specials?
+Hi, it's me again with another strange issue.  In case you didn't figure
+it out before, I'm working on a library that supports all different
+types of stream I/O, and SCTP is one supported building block.  I
+noticed when I stacked a multiplexer layer on top of SCTP I started
+getting timeouts occasionally.  It took a bit, but I finally realized
+that I was getting 200ms delays occasionally between sending a packet
+and receiving a packet.  I verified this with a trace right at the
+sctp_send() and sctp_recvmsg() calls.  It doesn't seem to be regular
+in any way I can see, but it happens often enough to cause issues.
 
-I did more 'homework' than sometimes :-)
-Slightly difficult without a searchable net-next tree.
-However, as has been pointed out is a different thread
-this code is used to update IPv6 flow labels:
+If I replace the SCTP block with a TCP block, it works fine, and pretty
+much all the code is the same except where it does the read and write
+calls (including the epoll() usage, and I have also switched to select()
+and it has the same issue).  The write calls don't seem to be the issue,
+I see two back-to-back writes a few microseconds apart and see a 200ms
+delay between the messages on the receive side.
 
-> > -		if (copy_from_user(fl->opt+1, optval+CMSG_ALIGN(sizeof(*freq)), olen))
-> > +		sockptr_advance(optval, CMSG_ALIGN(sizeof(*freq)));
-> > +		if (copy_from_sockptr(fl->opt + 1, optval, olen))
-> >  			goto done;
+The test in question sets up two connections and does a big simultaneous
+bidirectional transfer.  The test app has 4 threads waiting on epoll()
+handling data and writing data.
 
-and doesn't work because the advances are no longer cumulative.
+And the delay is always ~200ms.  Which sounds suspicious.
 
-Now access_ok() has to take the base address and length to stop
-'running into' kernel space, but the code above can advance from
-a valid user pointer (which won't fault) to a kernel address.
+It's not using sctp_sendv() at the moment, as the systems I'm running on
+don't have that yet.  But the library does have support if it sees it is
+available.
 
-If there were always an unmapped 'guard' page in the user address
-space the access_ok() check prior to copy_to/from_user() wouldn't
-need the length.
-So I surmise that no such guard page exists and so the above
-can advance from user addresses into kernel ones.
+So I don't think it's my library; I've stared at it a bunch (and found a
+few other bugs) but I can't reconcile this one.  There are no timers
+that would cause this in the code in question.  Just basically an
+epoll() call waiting on data and receive processing that is comparing
+data, along with write processing that is sending the same data.
 
-	David
+Anyway, I haven't tried to create a small reproducer; I thought I would
+report it first and see if anything rang a bell.  I tried this on a
+recent kernel and got the same issue.
 
--
-Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-Registration No: 1397386 (Wales)
+The library is at https://github.com/cminyard/gensio.  I'd need to
+provide a patch for the tracing.
+
+-corey
