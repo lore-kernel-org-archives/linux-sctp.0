@@ -1,41 +1,32 @@
-From: Christoph Hellwig <hch@lst.de>
-Date: Wed, 22 Jul 2020 07:56:20 +0000
-Subject: Re: [PATCH 03/24] net: add a new sockptr_t type
-Message-Id: <20200722075620.GA26554@lst.de>
+From: hana.vyskocilova@polza.cz
+Date: Tue, 14 Jul 2020 16:53:19 +0000
+Subject: Spende
+Message-Id: <20200714165352.0E7B442F5251E@mail.polza.cz>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200720124737.118617-1-hch@lst.de> <20200720124737.118617-4-hch@lst.de> <20200720163748.GA1292162@gmail.com> <20200720174322.GA21785@lst.de> <20200720175543.GF1292162@gmail.com>
-In-Reply-To: <20200720175543.GF1292162@gmail.com>
+References: <E1fGVyo-00012m-80@cp.anubbers.com>
+In-Reply-To: <E1fGVyo-00012m-80@cp.anubbers.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: Christoph Hellwig <hch@lst.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>, linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+To: linux-sctp@vger.kernel.org
 
-On Mon, Jul 20, 2020 at 10:55:43AM -0700, Eric Biggers wrote:
-> On Mon, Jul 20, 2020 at 07:43:22PM +0200, Christoph Hellwig wrote:
-> > On Mon, Jul 20, 2020 at 09:37:48AM -0700, Eric Biggers wrote:
-> > > How does this not introduce a massive security hole when
-> > > CONFIG_ARCH_HAS_NON_OVERLAPPING_ADDRESS_SPACE?
-> > > 
-> > > AFAICS, userspace can pass in a pointer >= TASK_SIZE,
-> > > and this code makes it be treated as a kernel pointer.
-> > 
-> > Yeah, we'll need to validate that before initializing the pointer.
-> > 
-> > But thinking this a little further:  doesn't this mean any
-> > set_fs(KERNEL_DS) that has other user pointers than the one it is
-> > intended for has the same issue?  Pretty much all of these are gone
-> > in mainline now, but in older stable kernels there might be some
-> > interesting cases, especially in the compat ioctl handlers.
-> 
-> Yes.  I thought that eliminating that class of bug is one of the main
-> motivations for your "remove set_fs" work.  See commit 128394eff343
-> ("sg_write()/bsg_write() is not fit to be called under KERNEL_DS") for a case
-> where this type of bug was fixed.
-> 
-> Are you aware of any specific cases that weren't already fixed?  If there are
-> any, they need to be urgently fixed.
+Hallo,
 
-current mainline has almost no set_fs left, and setsockopt seems
-pretty much safe.  But if we go back a long term stable release or two
-I bet I'd find one or two.
+Ich bin Reinhold Wuerth, ein deutscher Gesch=E4ftsmann, Investor und CEO de=
+r W=FCrth Group. Ich bin einer der Eigent=FCmer der W=FCrth Group und habe =
+25 Prozent meines pers=F6nlichen Verm=F6gens f=FCr wohlt=E4tige Zwecke vers=
+chenkt. Und ich habe auch zugesagt, den Rest von 25% in diesem Jahr 2020 an=
+ Einzelpersonen zu verschenken. Ich habe beschlossen, Ihnen 3.000.000,00 Eu=
+ro zu spenden. Wenn Sie an meiner Spende interessiert sind, kontaktieren Si=
+e mich f=FCr weitere Informationen.
+
+Sie k=F6nnen auch mehr =FCber mich =FCber den unten stehenden Link lesen
+
+https://en.wikipedia.org/wiki/Reinhold_W%C3%BCrth
+
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+Herzliche Gr=FC=DFe,
+Herr Reinhold W=FCrth,
+CEO
+W=FCrth Gruppe.
+E-Mail: reinholdwuerthgroup@gmail.com
