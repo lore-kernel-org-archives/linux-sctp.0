@@ -1,54 +1,278 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Mon, 20 Jul 2020 12:47:22 +0000
-Subject: [PATCH 09/24] netfilter: remove the unused user argument to do_update_counters
-Message-Id: <20200720124737.118617-10-hch@lst.de>
+Date: Fri, 17 Jul 2020 06:23:19 +0000
+Subject: [PATCH 10/22] netfilter/ebtables: clean up compat {get,set}sockopt handling
+Message-Id: <20200717062331.691152-11-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200720124737.118617-1-hch@lst.de>
-In-Reply-To: <20200720124737.118617-1-hch@lst.de>
+References: <20200717062331.691152-1-hch@lst.de>
+In-Reply-To: <20200717062331.691152-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
-Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>
+Cc: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Chas Williams <3chas3@gmail.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-sctp@vger.kernel.org, linux-arch@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-wpan@vger.kernel.org, mptcp@lists.01.org
+
+Merge the native and compat {get,set}sockopt handlers using
+in_compat_syscall().  Note that this required moving a fair
+amout of code around to be done sanely.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/bridge/netfilter/ebtables.c | 9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+ net/bridge/netfilter/ebtables.c | 214 +++++++++++++++-----------------
+ 1 file changed, 98 insertions(+), 116 deletions(-)
 
 diff --git a/net/bridge/netfilter/ebtables.c b/net/bridge/netfilter/ebtables.c
-index fe13108af1f542..12f8929667bf43 100644
+index c83ffe9121639c..fe13108af1f542 100644
 --- a/net/bridge/netfilter/ebtables.c
 +++ b/net/bridge/netfilter/ebtables.c
-@@ -1242,9 +1242,8 @@ void ebt_unregister_table(struct net *net, struct ebt_table *table,
- 
- /* userspace just supplied us with counters */
- static int do_update_counters(struct net *net, const char *name,
--				struct ebt_counter __user *counters,
--				unsigned int num_counters,
--				const void __user *user, unsigned int len)
-+			      struct ebt_counter __user *counters,
-+			      unsigned int num_counters, unsigned int len)
- {
- 	int i, ret;
- 	struct ebt_counter *tmp;
-@@ -1299,7 +1298,7 @@ static int update_counters(struct net *net, const void __user *user,
- 		return -EINVAL;
- 
- 	return do_update_counters(net, hlp.name, hlp.counters,
--				hlp.num_counters, user, len);
-+				  hlp.num_counters, len);
+@@ -1451,86 +1451,6 @@ static int copy_everything_to_user(struct ebt_table *t, void __user *user,
+ 	   ebt_entry_to_user, entries, tmp.entries);
  }
  
- static inline int ebt_obj_to_user(char __user *um, const char *_name,
-@@ -2231,7 +2230,7 @@ static int compat_update_counters(struct net *net, void __user *user,
- 		return update_counters(net, user, len);
- 
- 	return do_update_counters(net, hlp.name, compat_ptr(hlp.counters),
--					hlp.num_counters, user, len);
-+				  hlp.num_counters, len);
+-static int do_ebt_set_ctl(struct sock *sk,
+-	int cmd, void __user *user, unsigned int len)
+-{
+-	int ret;
+-	struct net *net = sock_net(sk);
+-
+-	if (!ns_capable(net->user_ns, CAP_NET_ADMIN))
+-		return -EPERM;
+-
+-	switch (cmd) {
+-	case EBT_SO_SET_ENTRIES:
+-		ret = do_replace(net, user, len);
+-		break;
+-	case EBT_SO_SET_COUNTERS:
+-		ret = update_counters(net, user, len);
+-		break;
+-	default:
+-		ret = -EINVAL;
+-	}
+-	return ret;
+-}
+-
+-static int do_ebt_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
+-{
+-	int ret;
+-	struct ebt_replace tmp;
+-	struct ebt_table *t;
+-	struct net *net = sock_net(sk);
+-
+-	if (!ns_capable(net->user_ns, CAP_NET_ADMIN))
+-		return -EPERM;
+-
+-	if (copy_from_user(&tmp, user, sizeof(tmp)))
+-		return -EFAULT;
+-
+-	tmp.name[sizeof(tmp.name) - 1] = '\0';
+-
+-	t = find_table_lock(net, tmp.name, &ret, &ebt_mutex);
+-	if (!t)
+-		return ret;
+-
+-	switch (cmd) {
+-	case EBT_SO_GET_INFO:
+-	case EBT_SO_GET_INIT_INFO:
+-		if (*len != sizeof(struct ebt_replace)) {
+-			ret = -EINVAL;
+-			mutex_unlock(&ebt_mutex);
+-			break;
+-		}
+-		if (cmd = EBT_SO_GET_INFO) {
+-			tmp.nentries = t->private->nentries;
+-			tmp.entries_size = t->private->entries_size;
+-			tmp.valid_hooks = t->valid_hooks;
+-		} else {
+-			tmp.nentries = t->table->nentries;
+-			tmp.entries_size = t->table->entries_size;
+-			tmp.valid_hooks = t->table->valid_hooks;
+-		}
+-		mutex_unlock(&ebt_mutex);
+-		if (copy_to_user(user, &tmp, *len) != 0) {
+-			ret = -EFAULT;
+-			break;
+-		}
+-		ret = 0;
+-		break;
+-
+-	case EBT_SO_GET_ENTRIES:
+-	case EBT_SO_GET_INIT_ENTRIES:
+-		ret = copy_everything_to_user(t, user, len, cmd);
+-		mutex_unlock(&ebt_mutex);
+-		break;
+-
+-	default:
+-		mutex_unlock(&ebt_mutex);
+-		ret = -EINVAL;
+-	}
+-
+-	return ret;
+-}
+-
+ #ifdef CONFIG_COMPAT
+ /* 32 bit-userspace compatibility definitions. */
+ struct compat_ebt_replace {
+@@ -2314,28 +2234,6 @@ static int compat_update_counters(struct net *net, void __user *user,
+ 					hlp.num_counters, user, len);
  }
  
+-static int compat_do_ebt_set_ctl(struct sock *sk,
+-		int cmd, void __user *user, unsigned int len)
+-{
+-	int ret;
+-	struct net *net = sock_net(sk);
+-
+-	if (!ns_capable(net->user_ns, CAP_NET_ADMIN))
+-		return -EPERM;
+-
+-	switch (cmd) {
+-	case EBT_SO_SET_ENTRIES:
+-		ret = compat_do_replace(net, user, len);
+-		break;
+-	case EBT_SO_SET_COUNTERS:
+-		ret = compat_update_counters(net, user, len);
+-		break;
+-	default:
+-		ret = -EINVAL;
+-	}
+-	return ret;
+-}
+-
  static int compat_do_ebt_get_ctl(struct sock *sk, int cmd,
+ 		void __user *user, int *len)
+ {
+@@ -2344,14 +2242,6 @@ static int compat_do_ebt_get_ctl(struct sock *sk, int cmd,
+ 	struct ebt_table *t;
+ 	struct net *net = sock_net(sk);
+ 
+-	if (!ns_capable(net->user_ns, CAP_NET_ADMIN))
+-		return -EPERM;
+-
+-	/* try real handler in case userland supplied needed padding */
+-	if ((cmd = EBT_SO_GET_INFO ||
+-	     cmd = EBT_SO_GET_INIT_INFO) && *len != sizeof(tmp))
+-			return do_ebt_get_ctl(sk, cmd, user, len);
+-
+ 	if (copy_from_user(&tmp, user, sizeof(tmp)))
+ 		return -EFAULT;
+ 
+@@ -2413,20 +2303,112 @@ static int compat_do_ebt_get_ctl(struct sock *sk, int cmd,
+ }
+ #endif
+ 
++static int do_ebt_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
++{
++	struct net *net = sock_net(sk);
++	struct ebt_replace tmp;
++	struct ebt_table *t;
++	int ret;
++
++	if (!ns_capable(net->user_ns, CAP_NET_ADMIN))
++		return -EPERM;
++
++#ifdef CONFIG_COMPAT
++	/* try real handler in case userland supplied needed padding */
++	if (in_compat_syscall() &&
++	    ((cmd != EBT_SO_GET_INFO && cmd != EBT_SO_GET_INIT_INFO) ||
++	     *len != sizeof(tmp)))
++		return compat_do_ebt_get_ctl(sk, cmd, user, len);
++#endif
++
++	if (copy_from_user(&tmp, user, sizeof(tmp)))
++		return -EFAULT;
++
++	tmp.name[sizeof(tmp.name) - 1] = '\0';
++
++	t = find_table_lock(net, tmp.name, &ret, &ebt_mutex);
++	if (!t)
++		return ret;
++
++	switch (cmd) {
++	case EBT_SO_GET_INFO:
++	case EBT_SO_GET_INIT_INFO:
++		if (*len != sizeof(struct ebt_replace)) {
++			ret = -EINVAL;
++			mutex_unlock(&ebt_mutex);
++			break;
++		}
++		if (cmd = EBT_SO_GET_INFO) {
++			tmp.nentries = t->private->nentries;
++			tmp.entries_size = t->private->entries_size;
++			tmp.valid_hooks = t->valid_hooks;
++		} else {
++			tmp.nentries = t->table->nentries;
++			tmp.entries_size = t->table->entries_size;
++			tmp.valid_hooks = t->table->valid_hooks;
++		}
++		mutex_unlock(&ebt_mutex);
++		if (copy_to_user(user, &tmp, *len) != 0) {
++			ret = -EFAULT;
++			break;
++		}
++		ret = 0;
++		break;
++
++	case EBT_SO_GET_ENTRIES:
++	case EBT_SO_GET_INIT_ENTRIES:
++		ret = copy_everything_to_user(t, user, len, cmd);
++		mutex_unlock(&ebt_mutex);
++		break;
++
++	default:
++		mutex_unlock(&ebt_mutex);
++		ret = -EINVAL;
++	}
++
++	return ret;
++}
++
++static int do_ebt_set_ctl(struct sock *sk, int cmd, void __user *user,
++		unsigned int len)
++{
++	struct net *net = sock_net(sk);
++	int ret;
++
++	if (!ns_capable(net->user_ns, CAP_NET_ADMIN))
++		return -EPERM;
++
++	switch (cmd) {
++	case EBT_SO_SET_ENTRIES:
++#ifdef CONFIG_COMPAT
++		if (in_compat_syscall())
++			ret = compat_do_replace(net, user, len);
++		else
++#endif
++			ret = do_replace(net, user, len);
++		break;
++	case EBT_SO_SET_COUNTERS:
++#ifdef CONFIG_COMPAT
++		if (in_compat_syscall())
++			ret = compat_update_counters(net, user, len);
++		else
++#endif
++			ret = update_counters(net, user, len);
++		break;
++	default:
++		ret = -EINVAL;
++	}
++	return ret;
++}
++
+ static struct nf_sockopt_ops ebt_sockopts = {
+ 	.pf		= PF_INET,
+ 	.set_optmin	= EBT_BASE_CTL,
+ 	.set_optmax	= EBT_SO_SET_MAX + 1,
+ 	.set		= do_ebt_set_ctl,
+-#ifdef CONFIG_COMPAT
+-	.compat_set	= compat_do_ebt_set_ctl,
+-#endif
+ 	.get_optmin	= EBT_BASE_CTL,
+ 	.get_optmax	= EBT_SO_GET_MAX + 1,
+ 	.get		= do_ebt_get_ctl,
+-#ifdef CONFIG_COMPAT
+-	.compat_get	= compat_do_ebt_get_ctl,
+-#endif
+ 	.owner		= THIS_MODULE,
+ };
+ 
 -- 
 2.27.0
