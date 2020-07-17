@@ -1,97 +1,182 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Mon, 20 Jul 2020 12:47:35 +0000
-Subject: [PATCH 22/24] net/tcp: switch ->md5_parse to sockptr_t
-Message-Id: <20200720124737.118617-23-hch@lst.de>
+Date: Fri, 17 Jul 2020 06:23:23 +0000
+Subject: [PATCH 14/22] net/ipv4: factor out MCAST_MSFILTER getsockopt helpers
+Message-Id: <20200717062331.691152-15-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200720124737.118617-1-hch@lst.de>
-In-Reply-To: <20200720124737.118617-1-hch@lst.de>
+References: <20200717062331.691152-1-hch@lst.de>
+In-Reply-To: <20200717062331.691152-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
-Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>
+Cc: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Chas Williams <3chas3@gmail.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-sctp@vger.kernel.org, linux-arch@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-wpan@vger.kernel.org, mptcp@lists.01.org
 
-Pass a sockptr_t to prepare for set_fs-less handling of the kernel
-pointer from bpf-cgroup.
+Factor out one helper each for getting the native and compat
+version of the MCAST_MSFILTER option.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/net/tcp.h   | 2 +-
- net/ipv4/tcp.c      | 3 ++-
- net/ipv4/tcp_ipv4.c | 4 ++--
- net/ipv6/tcp_ipv6.c | 4 ++--
- 4 files changed, 7 insertions(+), 6 deletions(-)
+ net/ipv4/ip_sockglue.c | 131 ++++++++++++++++++++++-------------------
+ 1 file changed, 70 insertions(+), 61 deletions(-)
 
-diff --git a/include/net/tcp.h b/include/net/tcp.h
-index 9f7f7c0c110451..e3c8e1d820214c 100644
---- a/include/net/tcp.h
-+++ b/include/net/tcp.h
-@@ -2002,7 +2002,7 @@ struct tcp_sock_af_ops {
- 					 const struct sk_buff *skb);
- 	int		(*md5_parse)(struct sock *sk,
- 				     int optname,
--				     char __user *optval,
-+				     sockptr_t optval,
- 				     int optlen);
- #endif
- };
-diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
-index 58ede3d62b2e2c..49bf15c27deac7 100644
---- a/net/ipv4/tcp.c
-+++ b/net/ipv4/tcp.c
-@@ -3249,7 +3249,8 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
- #ifdef CONFIG_TCP_MD5SIG
- 	case TCP_MD5SIG:
- 	case TCP_MD5SIG_EXT:
--		err = tp->af_specific->md5_parse(sk, optname, optval, optlen);
-+		err = tp->af_specific->md5_parse(sk, optname,
-+						 USER_SOCKPTR(optval), optlen);
+diff --git a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
+index 95f4248c6fc5ed..70d32c9476a2e3 100644
+--- a/net/ipv4/ip_sockglue.c
++++ b/net/ipv4/ip_sockglue.c
+@@ -1468,6 +1468,74 @@ static bool getsockopt_needs_rtnl(int optname)
+ 	return false;
+ }
+ 
++static int ip_get_mcast_msfilter(struct sock *sk, void __user *optval,
++		int __user *optlen, int len)
++{
++	const int size0 = offsetof(struct group_filter, gf_slist);
++	struct group_filter __user *p = optval;
++	struct group_filter gsf;
++	int num;
++	int err;
++
++	if (len < size0)
++		return -EINVAL;
++	if (copy_from_user(&gsf, p, size0))
++		return -EFAULT;
++
++	num = gsf.gf_numsrc;
++	err = ip_mc_gsfget(sk, &gsf, p->gf_slist);
++	if (err)
++		return err;
++	if (gsf.gf_numsrc < num)
++		num = gsf.gf_numsrc;
++	if (put_user(GROUP_FILTER_SIZE(num), optlen) ||
++	    copy_to_user(p, &gsf, size0))
++		return -EFAULT;
++	return 0;
++}
++
++#ifdef CONFIG_COMPAT
++static int compat_ip_get_mcast_msfilter(struct sock *sk, void __user *optval,
++		int __user *optlen)
++{
++	const int size0 = offsetof(struct compat_group_filter, gf_slist);
++	struct compat_group_filter __user *p = optval;
++	struct compat_group_filter gf32;
++	struct group_filter gf;
++	int len, err;
++	int num;
++
++	if (get_user(len, optlen))
++		return -EFAULT;
++	if (len < size0)
++		return -EINVAL;
++
++	if (copy_from_user(&gf32, p, size0))
++		return -EFAULT;
++
++	gf.gf_interface = gf32.gf_interface;
++	gf.gf_fmode = gf32.gf_fmode;
++	num = gf.gf_numsrc = gf32.gf_numsrc;
++	gf.gf_group = gf32.gf_group;
++
++	rtnl_lock();
++	lock_sock(sk);
++	err = ip_mc_gsfget(sk, &gf, p->gf_slist);
++	release_sock(sk);
++	rtnl_unlock();
++	if (err)
++		return err;
++	if (gf.gf_numsrc < num)
++		num = gf.gf_numsrc;
++	len = GROUP_FILTER_SIZE(num) - (sizeof(gf) - sizeof(gf32));
++	if (put_user(len, optlen) ||
++	    put_user(gf.gf_fmode, &p->gf_fmode) ||
++	    put_user(gf.gf_numsrc, &p->gf_numsrc))
++		return -EFAULT;
++	return 0;
++}
++#endif
++
+ static int do_ip_getsockopt(struct sock *sk, int level, int optname,
+ 			    char __user *optval, int __user *optlen, unsigned int flags)
+ {
+@@ -1626,31 +1694,8 @@ static int do_ip_getsockopt(struct sock *sk, int level, int optname,
+ 		goto out;
+ 	}
+ 	case MCAST_MSFILTER:
+-	{
+-		struct group_filter __user *p = (void __user *)optval;
+-		struct group_filter gsf;
+-		const int size0 = offsetof(struct group_filter, gf_slist);
+-		int num;
+-
+-		if (len < size0) {
+-			err = -EINVAL;
+-			goto out;
+-		}
+-		if (copy_from_user(&gsf, p, size0)) {
+-			err = -EFAULT;
+-			goto out;
+-		}
+-		num = gsf.gf_numsrc;
+-		err = ip_mc_gsfget(sk, &gsf, p->gf_slist);
+-		if (err)
+-			goto out;
+-		if (gsf.gf_numsrc < num)
+-			num = gsf.gf_numsrc;
+-		if (put_user(GROUP_FILTER_SIZE(num), optlen) ||
+-		    copy_to_user(p, &gsf, size0))
+-			err = -EFAULT;
++		err = ip_get_mcast_msfilter(sk, optval, optlen, len);
+ 		goto out;
+-	}
+ 	case IP_MULTICAST_ALL:
+ 		val = inet->mc_all;
  		break;
- #endif
- 	case TCP_USER_TIMEOUT:
-diff --git a/net/ipv4/tcp_ipv4.c b/net/ipv4/tcp_ipv4.c
-index cd81b6e04efbfa..a03e70b3af2e6c 100644
---- a/net/ipv4/tcp_ipv4.c
-+++ b/net/ipv4/tcp_ipv4.c
-@@ -1194,7 +1194,7 @@ static void tcp_clear_md5_list(struct sock *sk)
- }
+@@ -1762,45 +1807,9 @@ int compat_ip_getsockopt(struct sock *sk, int level, int optname,
+ 	int err;
  
- static int tcp_v4_parse_md5_keys(struct sock *sk, int optname,
--				 char __user *optval, int optlen)
-+				 sockptr_t optval, int optlen)
- {
- 	struct tcp_md5sig cmd;
- 	struct sockaddr_in *sin = (struct sockaddr_in *)&cmd.tcpm_addr;
-@@ -1205,7 +1205,7 @@ static int tcp_v4_parse_md5_keys(struct sock *sk, int optname,
- 	if (optlen < sizeof(cmd))
- 		return -EINVAL;
+ 	if (optname = MCAST_MSFILTER) {
+-		const int size0 = offsetof(struct compat_group_filter, gf_slist);
+-		struct compat_group_filter __user *p = (void __user *)optval;
+-		struct compat_group_filter gf32;
+-		struct group_filter gf;
+-		int ulen, err;
+-		int num;
+-
+ 		if (level != SOL_IP)
+ 			return -EOPNOTSUPP;
+-
+-		if (get_user(ulen, optlen))
+-			return -EFAULT;
+-
+-		if (ulen < size0)
+-			return -EINVAL;
+-
+-		if (copy_from_user(&gf32, p, size0))
+-			return -EFAULT;
+-
+-		gf.gf_interface = gf32.gf_interface;
+-		gf.gf_fmode = gf32.gf_fmode;
+-		num = gf.gf_numsrc = gf32.gf_numsrc;
+-		gf.gf_group = gf32.gf_group;
+-
+-		rtnl_lock();
+-		lock_sock(sk);
+-		err = ip_mc_gsfget(sk, &gf, p->gf_slist);
+-		release_sock(sk);
+-		rtnl_unlock();
+-		if (err)
+-			return err;
+-		if (gf.gf_numsrc < num)
+-			num = gf.gf_numsrc;
+-		ulen = GROUP_FILTER_SIZE(num) - (sizeof(gf) - sizeof(gf32));
+-		if (put_user(ulen, optlen) ||
+-		    put_user(gf.gf_fmode, &p->gf_fmode) ||
+-		    put_user(gf.gf_numsrc, &p->gf_numsrc))
+-			return -EFAULT;
+-		return 0;
++		return compat_ip_get_mcast_msfilter(sk, optval, optlen);
+ 	}
  
--	if (copy_from_user(&cmd, optval, sizeof(cmd)))
-+	if (copy_from_sockptr(&cmd, optval, sizeof(cmd)))
- 		return -EFAULT;
- 
- 	if (sin->sin_family != AF_INET)
-diff --git a/net/ipv6/tcp_ipv6.c b/net/ipv6/tcp_ipv6.c
-index c34b7834fd84a8..305870a72352d6 100644
---- a/net/ipv6/tcp_ipv6.c
-+++ b/net/ipv6/tcp_ipv6.c
-@@ -567,7 +567,7 @@ static struct tcp_md5sig_key *tcp_v6_md5_lookup(const struct sock *sk,
- }
- 
- static int tcp_v6_parse_md5_keys(struct sock *sk, int optname,
--				 char __user *optval, int optlen)
-+				 sockptr_t optval, int optlen)
- {
- 	struct tcp_md5sig cmd;
- 	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&cmd.tcpm_addr;
-@@ -577,7 +577,7 @@ static int tcp_v6_parse_md5_keys(struct sock *sk, int optname,
- 	if (optlen < sizeof(cmd))
- 		return -EINVAL;
- 
--	if (copy_from_user(&cmd, optval, sizeof(cmd)))
-+	if (copy_from_sockptr(&cmd, optval, sizeof(cmd)))
- 		return -EFAULT;
- 
- 	if (sin6->sin6_family != AF_INET6)
+ 	err = do_ip_getsockopt(sk, level, optname, optval, optlen,
 -- 
 2.27.0
