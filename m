@@ -1,140 +1,200 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 23 Jul 2020 06:09:08 +0000
-Subject: [PATCH 26/26] net: optimize the sockptr_t for unified kernel/user address spaces
-Message-Id: <20200723060908.50081-27-hch@lst.de>
+Date: Fri, 17 Jul 2020 06:23:18 +0000
+Subject: [PATCH 09/22] netfilter/ip6_tables: clean up compat {get,set}sockopt handling
+Message-Id: <20200717062331.691152-10-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200723060908.50081-1-hch@lst.de>
-In-Reply-To: <20200723060908.50081-1-hch@lst.de>
+References: <20200717062331.691152-1-hch@lst.de>
+In-Reply-To: <20200717062331.691152-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
-Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>
+Cc: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Chas Williams <3chas3@gmail.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-sctp@vger.kernel.org, linux-arch@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-wpan@vger.kernel.org, mptcp@lists.01.org
 
-For architectures like x86 and arm64 we don't need the separate bit to
-indicate that a pointer is a kernel pointer as the address spaces are
-unified.  That way the sockptr_t can be reduced to a union of two
-pointers, which leads to nicer calling conventions.
-
-The only caveat is that we need to check that users don't pass in kernel
-address and thus gain access to kernel memory.  Thus the USER_SOCKPTR
-helper is replaced with a init_user_sockptr function that does this check
-and returns an error if it fails.
+Merge the native and compat {get,set}sockopt handlers using
+in_compat_syscall().
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/sockptr.h     | 32 ++++++++++++++++++++++++++++++--
- net/ipv4/bpfilter/sockopt.c | 14 ++++++++------
- net/socket.c                |  6 +++++-
- 3 files changed, 43 insertions(+), 9 deletions(-)
+ net/ipv6/netfilter/ip6_tables.c | 87 ++++++++-------------------------
+ 1 file changed, 21 insertions(+), 66 deletions(-)
 
-diff --git a/include/linux/sockptr.h b/include/linux/sockptr.h
-index 700856e13ea0c4..7d5cdb2b30b5f0 100644
---- a/include/linux/sockptr.h
-+++ b/include/linux/sockptr.h
-@@ -8,9 +8,34 @@
- #ifndef _LINUX_SOCKPTR_H
- #define _LINUX_SOCKPTR_H
+diff --git a/net/ipv6/netfilter/ip6_tables.c b/net/ipv6/netfilter/ip6_tables.c
+index e96a431549bcc9..96c48e91e6c7f7 100644
+--- a/net/ipv6/netfilter/ip6_tables.c
++++ b/net/ipv6/netfilter/ip6_tables.c
+@@ -960,8 +960,7 @@ static int compat_table_info(const struct xt_table_info *info,
+ }
+ #endif
  
-+#include <linux/compiler.h>
- #include <linux/slab.h>
- #include <linux/uaccess.h>
+-static int get_info(struct net *net, void __user *user,
+-		    const int *len, int compat)
++static int get_info(struct net *net, void __user *user, const int *len)
+ {
+ 	char name[XT_TABLE_MAXNAMELEN];
+ 	struct xt_table *t;
+@@ -975,7 +974,7 @@ static int get_info(struct net *net, void __user *user,
  
-+#ifdef CONFIG_ARCH_HAS_NON_OVERLAPPING_ADDRESS_SPACE
-+typedef union {
-+	void		*kernel;
-+	void __user	*user;
-+} sockptr_t;
-+
-+static inline bool sockptr_is_kernel(sockptr_t sockptr)
-+{
-+	return (unsigned long)sockptr.kernel >= TASK_SIZE;
-+}
-+
-+static inline sockptr_t KERNEL_SOCKPTR(void *p)
-+{
-+	return (sockptr_t) { .kernel = p };
-+}
-+
-+static inline int __must_check init_user_sockptr(sockptr_t *sp, void __user *p)
-+{
-+	if ((unsigned long)p >= TASK_SIZE)
-+		return -EFAULT;
-+	sp->user = p;
-+	return 0;
-+}
-+#else /* CONFIG_ARCH_HAS_NON_OVERLAPPING_ADDRESS_SPACE */
- typedef struct {
- 	union {
- 		void		*kernel;
-@@ -29,10 +54,13 @@ static inline sockptr_t KERNEL_SOCKPTR(void *p)
- 	return (sockptr_t) { .kernel = p, .is_kernel = true };
+ 	name[XT_TABLE_MAXNAMELEN-1] = '\0';
+ #ifdef CONFIG_COMPAT
+-	if (compat)
++	if (in_compat_syscall())
+ 		xt_compat_lock(AF_INET6);
+ #endif
+ 	t = xt_request_find_table_lock(net, AF_INET6, name);
+@@ -985,7 +984,7 @@ static int get_info(struct net *net, void __user *user,
+ #ifdef CONFIG_COMPAT
+ 		struct xt_table_info tmp;
+ 
+-		if (compat) {
++		if (in_compat_syscall()) {
+ 			ret = compat_table_info(private, &tmp);
+ 			xt_compat_flush_offsets(AF_INET6);
+ 			private = &tmp;
+@@ -1011,7 +1010,7 @@ static int get_info(struct net *net, void __user *user,
+ 	} else
+ 		ret = PTR_ERR(t);
+ #ifdef CONFIG_COMPAT
+-	if (compat)
++	if (in_compat_syscall())
+ 		xt_compat_unlock(AF_INET6);
+ #endif
+ 	return ret;
+@@ -1169,8 +1168,7 @@ do_replace(struct net *net, const void __user *user, unsigned int len)
  }
  
--static inline sockptr_t USER_SOCKPTR(void __user *p)
-+static inline int __must_check init_user_sockptr(sockptr_t *sp, void __user *p)
+ static int
+-do_add_counters(struct net *net, const void __user *user, unsigned int len,
+-		int compat)
++do_add_counters(struct net *net, const void __user *user, unsigned int len)
  {
--	return (sockptr_t) { .user = p };
-+	sp->user = p;
-+	sp->is_kernel = false;
-+	return 0;
+ 	unsigned int i;
+ 	struct xt_counters_info tmp;
+@@ -1181,7 +1179,8 @@ do_add_counters(struct net *net, const void __user *user, unsigned int len,
+ 	struct ip6t_entry *iter;
+ 	unsigned int addend;
+ 
+-	paddc = xt_copy_counters_from_user(user, len, &tmp, compat);
++	paddc = xt_copy_counters_from_user(user, len, &tmp,
++					   in_compat_syscall());
+ 	if (IS_ERR(paddc))
+ 		return PTR_ERR(paddc);
+ 	t = xt_find_table_lock(net, AF_INET6, tmp.name);
+@@ -1543,31 +1542,6 @@ compat_do_replace(struct net *net, void __user *user, unsigned int len)
+ 	return ret;
  }
-+#endif /* CONFIG_ARCH_HAS_NON_OVERLAPPING_ADDRESS_SPACE */
  
- static inline bool sockptr_is_null(sockptr_t sockptr)
- {
-diff --git a/net/ipv4/bpfilter/sockopt.c b/net/ipv4/bpfilter/sockopt.c
-index 1b34cb9a7708ec..94f18d2352d007 100644
---- a/net/ipv4/bpfilter/sockopt.c
-+++ b/net/ipv4/bpfilter/sockopt.c
-@@ -57,16 +57,18 @@ int bpfilter_ip_set_sockopt(struct sock *sk, int optname, sockptr_t optval,
- 	return bpfilter_mbox_request(sk, optname, optval, optlen, true);
- }
- 
--int bpfilter_ip_get_sockopt(struct sock *sk, int optname, char __user *optval,
--			    int __user *optlen)
-+int bpfilter_ip_get_sockopt(struct sock *sk, int optname,
-+			    char __user *user_optval, int __user *optlen)
- {
--	int len;
-+	sockptr_t optval;
-+	int err, len;
- 
- 	if (get_user(len, optlen))
- 		return -EFAULT;
+-static int
+-compat_do_ip6t_set_ctl(struct sock *sk, int cmd, void __user *user,
+-		       unsigned int len)
+-{
+-	int ret;
 -
--	return bpfilter_mbox_request(sk, optname, USER_SOCKPTR(optval), len,
--				     false);
-+	err = init_user_sockptr(&optval, user_optval);
-+	if (err)
-+		return err;
-+	return bpfilter_mbox_request(sk, optname, optval, len, false);
+-	if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN))
+-		return -EPERM;
+-
+-	switch (cmd) {
+-	case IP6T_SO_SET_REPLACE:
+-		ret = compat_do_replace(sock_net(sk), user, len);
+-		break;
+-
+-	case IP6T_SO_SET_ADD_COUNTERS:
+-		ret = do_add_counters(sock_net(sk), user, len, 1);
+-		break;
+-
+-	default:
+-		ret = -EINVAL;
+-	}
+-
+-	return ret;
+-}
+-
+ struct compat_ip6t_get_entries {
+ 	char name[XT_TABLE_MAXNAMELEN];
+ 	compat_uint_t size;
+@@ -1643,29 +1617,6 @@ compat_get_entries(struct net *net, struct compat_ip6t_get_entries __user *uptr,
+ 	xt_compat_unlock(AF_INET6);
+ 	return ret;
  }
+-
+-static int do_ip6t_get_ctl(struct sock *, int, void __user *, int *);
+-
+-static int
+-compat_do_ip6t_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
+-{
+-	int ret;
+-
+-	if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN))
+-		return -EPERM;
+-
+-	switch (cmd) {
+-	case IP6T_SO_GET_INFO:
+-		ret = get_info(sock_net(sk), user, len, 1);
+-		break;
+-	case IP6T_SO_GET_ENTRIES:
+-		ret = compat_get_entries(sock_net(sk), user, len);
+-		break;
+-	default:
+-		ret = do_ip6t_get_ctl(sk, cmd, user, len);
+-	}
+-	return ret;
+-}
+ #endif
  
- static int __init bpfilter_sockopt_init(void)
-diff --git a/net/socket.c b/net/socket.c
-index e44b8ac47f6f46..94ca4547cd7c53 100644
---- a/net/socket.c
-+++ b/net/socket.c
-@@ -2097,7 +2097,7 @@ static bool sock_use_custom_sol_socket(const struct socket *sock)
- int __sys_setsockopt(int fd, int level, int optname, char __user *user_optval,
- 		int optlen)
- {
--	sockptr_t optval = USER_SOCKPTR(user_optval);
-+	sockptr_t optval;
- 	char *kernel_optval = NULL;
- 	int err, fput_needed;
- 	struct socket *sock;
-@@ -2105,6 +2105,10 @@ int __sys_setsockopt(int fd, int level, int optname, char __user *user_optval,
- 	if (optlen < 0)
- 		return -EINVAL;
+ static int
+@@ -1678,11 +1629,16 @@ do_ip6t_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
  
-+	err = init_user_sockptr(&optval, user_optval);
-+	if (err)
-+		return err;
-+
- 	sock = sockfd_lookup_light(fd, &err, &fput_needed);
- 	if (!sock)
- 		return err;
+ 	switch (cmd) {
+ 	case IP6T_SO_SET_REPLACE:
+-		ret = do_replace(sock_net(sk), user, len);
++#ifdef CONFIG_COMPAT
++		if (in_compat_syscall())
++			ret = compat_do_replace(sock_net(sk), user, len);
++		else
++#endif
++			ret = do_replace(sock_net(sk), user, len);
+ 		break;
+ 
+ 	case IP6T_SO_SET_ADD_COUNTERS:
+-		ret = do_add_counters(sock_net(sk), user, len, 0);
++		ret = do_add_counters(sock_net(sk), user, len);
+ 		break;
+ 
+ 	default:
+@@ -1702,11 +1658,16 @@ do_ip6t_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
+ 
+ 	switch (cmd) {
+ 	case IP6T_SO_GET_INFO:
+-		ret = get_info(sock_net(sk), user, len, 0);
++		ret = get_info(sock_net(sk), user, len);
+ 		break;
+ 
+ 	case IP6T_SO_GET_ENTRIES:
+-		ret = get_entries(sock_net(sk), user, len);
++#ifdef CONFIG_COMPAT
++		if (in_compat_syscall())
++			ret = compat_get_entries(sock_net(sk), user, len);
++		else
++#endif
++			ret = get_entries(sock_net(sk), user, len);
+ 		break;
+ 
+ 	case IP6T_SO_GET_REVISION_MATCH:
+@@ -1897,15 +1858,9 @@ static struct nf_sockopt_ops ip6t_sockopts = {
+ 	.set_optmin	= IP6T_BASE_CTL,
+ 	.set_optmax	= IP6T_SO_SET_MAX+1,
+ 	.set		= do_ip6t_set_ctl,
+-#ifdef CONFIG_COMPAT
+-	.compat_set	= compat_do_ip6t_set_ctl,
+-#endif
+ 	.get_optmin	= IP6T_BASE_CTL,
+ 	.get_optmax	= IP6T_SO_GET_MAX+1,
+ 	.get		= do_ip6t_get_ctl,
+-#ifdef CONFIG_COMPAT
+-	.compat_get	= compat_do_ip6t_get_ctl,
+-#endif
+ 	.owner		= THIS_MODULE,
+ };
+ 
 -- 
 2.27.0
