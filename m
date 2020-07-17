@@ -1,191 +1,612 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Mon, 20 Jul 2020 12:47:32 +0000
-Subject: [PATCH 19/24] net/ipv6: factor out a ipv6_set_opt_hdr helper
-Message-Id: <20200720124737.118617-20-hch@lst.de>
+Date: Fri, 17 Jul 2020 06:23:26 +0000
+Subject: [PATCH 17/22] net/ipv4: remove compat_ip_{get,set}sockopt
+Message-Id: <20200717062331.691152-18-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200720124737.118617-1-hch@lst.de>
-In-Reply-To: <20200720124737.118617-1-hch@lst.de>
+References: <20200717062331.691152-1-hch@lst.de>
+In-Reply-To: <20200717062331.691152-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
-Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>
+Cc: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Chas Williams <3chas3@gmail.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-sctp@vger.kernel.org, linux-arch@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-wpan@vger.kernel.org, mptcp@lists.01.org
 
-Factour out a helper to set the IPv6 option headers from
-do_ipv6_setsockopt.
+Handle the few cases that need special treatment in-line using
+in_compat_syscall().
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/ipv6/ipv6_sockglue.c | 150 +++++++++++++++++++--------------------
- 1 file changed, 75 insertions(+), 75 deletions(-)
+ include/net/ip.h       |   4 -
+ net/dccp/ipv4.c        |   4 -
+ net/ipv4/ip_sockglue.c | 214 ++++++++++++-----------------------------
+ net/ipv4/raw.c         |  22 -----
+ net/ipv4/tcp_ipv4.c    |   4 -
+ net/ipv4/udp.c         |  24 -----
+ net/ipv4/udp_impl.h    |   6 --
+ net/ipv4/udplite.c     |   4 -
+ net/l2tp/l2tp_ip.c     |   4 -
+ net/sctp/protocol.c    |   4 -
+ 10 files changed, 61 insertions(+), 229 deletions(-)
 
-diff --git a/net/ipv6/ipv6_sockglue.c b/net/ipv6/ipv6_sockglue.c
-index 3897fb55372d38..90442c8366dff2 100644
---- a/net/ipv6/ipv6_sockglue.c
-+++ b/net/ipv6/ipv6_sockglue.c
-@@ -315,6 +315,80 @@ static int compat_ipv6_mcast_join_leave(struct sock *sk, int optname,
- 	return ipv6_sock_mc_drop(sk, gr32.gr_interface, &psin6->sin6_addr);
+diff --git a/include/net/ip.h b/include/net/ip.h
+index 862c9545833a95..3d34acc95ca825 100644
+--- a/include/net/ip.h
++++ b/include/net/ip.h
+@@ -727,10 +727,6 @@ int ip_setsockopt(struct sock *sk, int level, int optname, char __user *optval,
+ 		  unsigned int optlen);
+ int ip_getsockopt(struct sock *sk, int level, int optname, char __user *optval,
+ 		  int __user *optlen);
+-int compat_ip_setsockopt(struct sock *sk, int level, int optname,
+-			 char __user *optval, unsigned int optlen);
+-int compat_ip_getsockopt(struct sock *sk, int level, int optname,
+-			 char __user *optval, int __user *optlen);
+ int ip_ra_control(struct sock *sk, unsigned char on,
+ 		  void (*destructor)(struct sock *));
+ 
+diff --git a/net/dccp/ipv4.c b/net/dccp/ipv4.c
+index 316cc5ac0da72b..b91373eb1c7974 100644
+--- a/net/dccp/ipv4.c
++++ b/net/dccp/ipv4.c
+@@ -913,10 +913,6 @@ static const struct inet_connection_sock_af_ops dccp_ipv4_af_ops = {
+ 	.getsockopt	   = ip_getsockopt,
+ 	.addr2sockaddr	   = inet_csk_addr2sockaddr,
+ 	.sockaddr_len	   = sizeof(struct sockaddr_in),
+-#ifdef CONFIG_COMPAT
+-	.compat_setsockopt = compat_ip_setsockopt,
+-	.compat_getsockopt = compat_ip_getsockopt,
+-#endif
+ };
+ 
+ static int dccp_v4_init_sock(struct sock *sk)
+diff --git a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
+index 73bb88fbe54661..86b3b9a7cea30d 100644
+--- a/net/ipv4/ip_sockglue.c
++++ b/net/ipv4/ip_sockglue.c
+@@ -679,20 +679,48 @@ static int set_mcast_msfilter(struct sock *sk, int ifindex,
+ 	return -EADDRNOTAVAIL;
  }
  
-+static int ipv6_set_opt_hdr(struct sock *sk, int optname, void __user *optval,
-+		int optlen)
++static int copy_group_source_from_user(struct group_source_req *greqs,
++		void __user *optval, int optlen)
 +{
-+	struct ipv6_pinfo *np = inet6_sk(sk);
-+	struct ipv6_opt_hdr *new = NULL;
-+	struct net *net = sock_net(sk);
-+	struct ipv6_txoptions *opt;
-+	int err;
++	if (in_compat_syscall()) {
++		struct compat_group_source_req gr32;
 +
-+	/* hop-by-hop / destination options are privileged option */
-+	if (optname != IPV6_RTHDR && !ns_capable(net->user_ns, CAP_NET_RAW))
-+		return -EPERM;
-+
-+	/* remove any sticky options header with a zero option
-+	 * length, per RFC3542.
-+	 */
-+	if (optlen > 0) {
-+		if (!optval)
++		if (optlen != sizeof(gr32))
 +			return -EINVAL;
-+		if (optlen < sizeof(struct ipv6_opt_hdr) ||
-+		    optlen & 0x7 ||
-+		    optlen > 8 * 255)
++		if (copy_from_user(&gr32, optval, sizeof(gr32)))
++			return -EFAULT;
++		greqs->gsr_interface = gr32.gsr_interface;
++		greqs->gsr_group = gr32.gsr_group;
++		greqs->gsr_source = gr32.gsr_source;
++	} else {
++		if (optlen != sizeof(*greqs))
 +			return -EINVAL;
-+
-+		new = memdup_user(optval, optlen);
-+		if (IS_ERR(new))
-+			return PTR_ERR(new);
-+		if (unlikely(ipv6_optlen(new) > optlen)) {
-+			kfree(new);
-+			return -EINVAL;
-+		}
++		if (copy_from_user(greqs, optval, sizeof(*greqs)))
++			return -EFAULT;
 +	}
 +
-+	opt = rcu_dereference_protected(np->opt, lockdep_sock_is_held(sk));
-+	opt = ipv6_renew_options(sk, opt, optname, new);
-+	kfree(new);
-+	if (IS_ERR(opt))
-+		return PTR_ERR(opt);
-+
-+	/* routing header option needs extra check */
-+	err = -EINVAL;
-+	if (optname = IPV6_RTHDR && opt && opt->srcrt) {
-+		struct ipv6_rt_hdr *rthdr = opt->srcrt;
-+		switch (rthdr->type) {
-+#if IS_ENABLED(CONFIG_IPV6_MIP6)
-+		case IPV6_SRCRT_TYPE_2:
-+			if (rthdr->hdrlen != 2 || rthdr->segments_left != 1)
-+				goto sticky_done;
-+			break;
-+#endif
-+		case IPV6_SRCRT_TYPE_4:
-+		{
-+			struct ipv6_sr_hdr *srh +				(struct ipv6_sr_hdr *)opt->srcrt;
-+
-+			if (!seg6_validate_srh(srh, optlen, false))
-+				goto sticky_done;
-+			break;
-+		}
-+		default:
-+			goto sticky_done;
-+		}
-+	}
-+
-+	err = 0;
-+	opt = ipv6_update_options(sk, opt);
-+sticky_done:
-+	if (opt) {
-+		atomic_sub(opt->tot_len, &sk->sk_omem_alloc);
-+		txopt_put(opt);
-+	}
-+	return err;
++	return 0;
 +}
 +
- static int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
- 		    char __user *optval, unsigned int optlen)
+ static int do_mcast_group_source(struct sock *sk, int optname,
+-				 struct group_source_req *greqs)
++		void __user *optval, int optlen)
  {
-@@ -580,82 +654,8 @@ static int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
- 	case IPV6_RTHDRDSTOPTS:
- 	case IPV6_RTHDR:
- 	case IPV6_DSTOPTS:
--	{
--		struct ipv6_txoptions *opt;
--		struct ipv6_opt_hdr *new = NULL;
++	struct group_source_req greqs;
+ 	struct ip_mreq_source mreqs;
+ 	struct sockaddr_in *psin;
+ 	int omode, add, err;
+ 
+-	if (greqs->gsr_group.ss_family != AF_INET ||
+-	    greqs->gsr_source.ss_family != AF_INET)
++	err = copy_group_source_from_user(&greqs, optval, optlen);
++	if (err)
++		return err;
++
++	if (greqs.gsr_group.ss_family != AF_INET ||
++	    greqs.gsr_source.ss_family != AF_INET)
+ 		return -EADDRNOTAVAIL;
+ 
+-	psin = (struct sockaddr_in *)&greqs->gsr_group;
++	psin = (struct sockaddr_in *)&greqs.gsr_group;
+ 	mreqs.imr_multiaddr = psin->sin_addr.s_addr;
+-	psin = (struct sockaddr_in *)&greqs->gsr_source;
++	psin = (struct sockaddr_in *)&greqs.gsr_source;
+ 	mreqs.imr_sourceaddr = psin->sin_addr.s_addr;
+ 	mreqs.imr_interface = 0; /* use index for mc_source */
+ 
+@@ -705,21 +733,21 @@ static int do_mcast_group_source(struct sock *sk, int optname,
+ 	} else if (optname = MCAST_JOIN_SOURCE_GROUP) {
+ 		struct ip_mreqn mreq;
+ 
+-		psin = (struct sockaddr_in *)&greqs->gsr_group;
++		psin = (struct sockaddr_in *)&greqs.gsr_group;
+ 		mreq.imr_multiaddr = psin->sin_addr;
+ 		mreq.imr_address.s_addr = 0;
+-		mreq.imr_ifindex = greqs->gsr_interface;
++		mreq.imr_ifindex = greqs.gsr_interface;
+ 		err = ip_mc_join_group_ssm(sk, &mreq, MCAST_INCLUDE);
+ 		if (err && err != -EADDRINUSE)
+ 			return err;
+-		greqs->gsr_interface = mreq.imr_ifindex;
++		greqs.gsr_interface = mreq.imr_ifindex;
+ 		omode = MCAST_INCLUDE;
+ 		add = 1;
+ 	} else /* MCAST_LEAVE_SOURCE_GROUP */ {
+ 		omode = MCAST_INCLUDE;
+ 		add = 0;
+ 	}
+-	return ip_mc_source(add, omode, sk, &mreqs, greqs->gsr_interface);
++	return ip_mc_source(add, omode, sk, &mreqs, greqs.gsr_interface);
+ }
+ 
+ static int ip_set_mcast_msfilter(struct sock *sk, void __user *optval,
+@@ -754,7 +782,6 @@ static int ip_set_mcast_msfilter(struct sock *sk, void __user *optval,
+ 	return err;
+ }
+ 
+-#ifdef CONFIG_COMPAT
+ static int compat_ip_set_mcast_msfilter(struct sock *sk, void __user *optval,
+ 		int optlen)
+ {
+@@ -788,23 +815,16 @@ static int compat_ip_set_mcast_msfilter(struct sock *sk, void __user *optval,
+ 	if (offsetof(struct compat_group_filter, gf_slist[n]) > optlen)
+ 		goto out_free_gsf;
+ 
+-	rtnl_lock();
+-	lock_sock(sk);
 -
--		/* hop-by-hop / destination options are privileged option */
--		retv = -EPERM;
--		if (optname != IPV6_RTHDR && !ns_capable(net->user_ns, CAP_NET_RAW))
--			break;
--
--		/* remove any sticky options header with a zero option
--		 * length, per RFC3542.
--		 */
--		if (optlen = 0)
--			optval = NULL;
--		else if (!optval)
--			goto e_inval;
--		else if (optlen < sizeof(struct ipv6_opt_hdr) ||
--			 optlen & 0x7 || optlen > 8 * 255)
--			goto e_inval;
--		else {
--			new = memdup_user(optval, optlen);
--			if (IS_ERR(new)) {
--				retv = PTR_ERR(new);
--				break;
--			}
--			if (unlikely(ipv6_optlen(new) > optlen)) {
--				kfree(new);
--				goto e_inval;
--			}
--		}
--
--		opt = rcu_dereference_protected(np->opt,
--						lockdep_sock_is_held(sk));
--		opt = ipv6_renew_options(sk, opt, optname, new);
--		kfree(new);
--		if (IS_ERR(opt)) {
--			retv = PTR_ERR(opt);
--			break;
--		}
--
--		/* routing header option needs extra check */
--		retv = -EINVAL;
--		if (optname = IPV6_RTHDR && opt && opt->srcrt) {
--			struct ipv6_rt_hdr *rthdr = opt->srcrt;
--			switch (rthdr->type) {
--#if IS_ENABLED(CONFIG_IPV6_MIP6)
--			case IPV6_SRCRT_TYPE_2:
--				if (rthdr->hdrlen != 2 ||
--				    rthdr->segments_left != 1)
--					goto sticky_done;
--
--				break;
+ 	/* numsrc >= (4G-140)/128 overflow in 32 bits */
+ 	err = -ENOBUFS;
+ 	if (n > sock_net(sk)->ipv4.sysctl_igmp_max_msf)
+-		goto out_unlock;
++		goto out_free_gsf;
+ 	err = set_mcast_msfilter(sk, gf32->gf_interface, n, gf32->gf_fmode,
+ 				 &gf32->gf_group, gf32->gf_slist);
+-out_unlock:
+-	release_sock(sk);
+-	rtnl_unlock();
+ out_free_gsf:
+ 	kfree(p);
+ 	return err;
+ }
 -#endif
--			case IPV6_SRCRT_TYPE_4:
--			{
--				struct ipv6_sr_hdr *srh = (struct ipv6_sr_hdr *)
--							  opt->srcrt;
+ 
+ static int ip_mcast_join_leave(struct sock *sk, int optname,
+ 		void __user *optval, int optlen)
+@@ -828,14 +848,12 @@ static int ip_mcast_join_leave(struct sock *sk, int optname,
+ 	return ip_mc_leave_group(sk, &mreq);
+ }
+ 
+-#ifdef CONFIG_COMPAT
+ static int compat_ip_mcast_join_leave(struct sock *sk, int optname,
+ 		void __user *optval, int optlen)
+ {
+ 	struct compat_group_req greq;
+ 	struct ip_mreqn mreq = { };
+ 	struct sockaddr_in *psin;
+-	int err;
+ 
+ 	if (optlen < sizeof(struct compat_group_req))
+ 		return -EINVAL;
+@@ -848,17 +866,10 @@ static int compat_ip_mcast_join_leave(struct sock *sk, int optname,
+ 	mreq.imr_multiaddr = psin->sin_addr;
+ 	mreq.imr_ifindex = greq.gr_interface;
+ 
+-	rtnl_lock();
+-	lock_sock(sk);
+ 	if (optname = MCAST_JOIN_GROUP)
+-		err = ip_mc_join_group(sk, &mreq);
+-	else
+-		err = ip_mc_leave_group(sk, &mreq);
+-	release_sock(sk);
+-	rtnl_unlock();
+-	return err;
++		return ip_mc_join_group(sk, &mreq);
++	return ip_mc_leave_group(sk, &mreq);
+ }
+-#endif
+ 
+ static int do_ip_setsockopt(struct sock *sk, int level,
+ 			    int optname, char __user *optval, unsigned int optlen)
+@@ -1265,26 +1276,23 @@ static int do_ip_setsockopt(struct sock *sk, int level,
+ 	}
+ 	case MCAST_JOIN_GROUP:
+ 	case MCAST_LEAVE_GROUP:
+-		err = ip_mcast_join_leave(sk, optname, optval, optlen);
++		if (in_compat_syscall())
++			err = compat_ip_mcast_join_leave(sk, optname, optval,
++							 optlen);
++		else
++			err = ip_mcast_join_leave(sk, optname, optval, optlen);
+ 		break;
+ 	case MCAST_JOIN_SOURCE_GROUP:
+ 	case MCAST_LEAVE_SOURCE_GROUP:
+ 	case MCAST_BLOCK_SOURCE:
+ 	case MCAST_UNBLOCK_SOURCE:
+-	{
+-		struct group_source_req greqs;
 -
--				if (!seg6_validate_srh(srh, optlen, false))
--					goto sticky_done;
--				break;
--			}
--			default:
--				goto sticky_done;
--			}
+-		if (optlen != sizeof(struct group_source_req))
+-			goto e_inval;
+-		if (copy_from_user(&greqs, optval, sizeof(greqs))) {
+-			err = -EFAULT;
+-			break;
 -		}
--
--		retv = 0;
--		opt = ipv6_update_options(sk, opt);
--sticky_done:
--		if (opt) {
--			atomic_sub(opt->tot_len, &sk->sk_omem_alloc);
--			txopt_put(opt);
--		}
-+		retv = ipv6_set_opt_hdr(sk, optname, optval, optlen);
+-		err = do_mcast_group_source(sk, optname, &greqs);
++		err = do_mcast_group_source(sk, optname, optval, optlen);
  		break;
 -	}
+ 	case MCAST_MSFILTER:
+-		err = ip_set_mcast_msfilter(sk, optval, optlen);
++		if (in_compat_syscall())
++			err = compat_ip_set_mcast_msfilter(sk, optval, optlen);
++		else
++			err = ip_set_mcast_msfilter(sk, optval, optlen);
+ 		break;
+ 	case IP_MULTICAST_ALL:
+ 		if (optlen < 1)
+@@ -1410,62 +1418,6 @@ int ip_setsockopt(struct sock *sk, int level,
+ }
+ EXPORT_SYMBOL(ip_setsockopt);
  
- 	case IPV6_PKTINFO:
- 	{
+-#ifdef CONFIG_COMPAT
+-int compat_ip_setsockopt(struct sock *sk, int level, int optname,
+-			 char __user *optval, unsigned int optlen)
+-{
+-	int err;
+-
+-	if (level != SOL_IP)
+-		return -ENOPROTOOPT;
+-
+-	switch (optname) {
+-	case MCAST_JOIN_GROUP:
+-	case MCAST_LEAVE_GROUP:
+-		return compat_ip_mcast_join_leave(sk, optname, optval, optlen);
+-	case MCAST_JOIN_SOURCE_GROUP:
+-	case MCAST_LEAVE_SOURCE_GROUP:
+-	case MCAST_BLOCK_SOURCE:
+-	case MCAST_UNBLOCK_SOURCE:
+-	{
+-		struct compat_group_source_req __user *gsr32 = (void __user *)optval;
+-		struct group_source_req greqs;
+-
+-		if (optlen != sizeof(struct compat_group_source_req))
+-			return -EINVAL;
+-
+-		if (get_user(greqs.gsr_interface, &gsr32->gsr_interface) ||
+-		    copy_from_user(&greqs.gsr_group, &gsr32->gsr_group,
+-				sizeof(greqs.gsr_group)) ||
+-		    copy_from_user(&greqs.gsr_source, &gsr32->gsr_source,
+-				sizeof(greqs.gsr_source)))
+-			return -EFAULT;
+-
+-		rtnl_lock();
+-		lock_sock(sk);
+-		err = do_mcast_group_source(sk, optname, &greqs);
+-		release_sock(sk);
+-		rtnl_unlock();
+-		return err;
+-	}
+-	case MCAST_MSFILTER:
+-		return compat_ip_set_mcast_msfilter(sk, optval, optlen);
+-	}
+-
+-	err = do_ip_setsockopt(sk, level, optname, optval, optlen);
+-#ifdef CONFIG_NETFILTER
+-	/* we need to exclude all possible ENOPROTOOPTs except default case */
+-	if (err = -ENOPROTOOPT && optname != IP_HDRINCL &&
+-			optname != IP_IPSEC_POLICY &&
+-			optname != IP_XFRM_POLICY &&
+-			!ip_mroute_opt(optname))
+-		err = nf_setsockopt(sk, PF_INET, optname, optval, optlen);
+-#endif
+-	return err;
+-}
+-EXPORT_SYMBOL(compat_ip_setsockopt);
+-#endif
+-
+ /*
+  *	Get the options. Note for future reference. The GET of IP options gets
+  *	the _received_ ones. The set sets the _sent_ ones.
+@@ -1507,22 +1459,18 @@ static int ip_get_mcast_msfilter(struct sock *sk, void __user *optval,
+ 	return 0;
+ }
+ 
+-#ifdef CONFIG_COMPAT
+ static int compat_ip_get_mcast_msfilter(struct sock *sk, void __user *optval,
+-		int __user *optlen)
++		int __user *optlen, int len)
+ {
+ 	const int size0 = offsetof(struct compat_group_filter, gf_slist);
+ 	struct compat_group_filter __user *p = optval;
+ 	struct compat_group_filter gf32;
+ 	struct group_filter gf;
+-	int len, err;
+ 	int num;
++	int err;
+ 
+-	if (get_user(len, optlen))
+-		return -EFAULT;
+ 	if (len < size0)
+ 		return -EINVAL;
+-
+ 	if (copy_from_user(&gf32, p, size0))
+ 		return -EFAULT;
+ 
+@@ -1531,11 +1479,7 @@ static int compat_ip_get_mcast_msfilter(struct sock *sk, void __user *optval,
+ 	num = gf.gf_numsrc = gf32.gf_numsrc;
+ 	gf.gf_group = gf32.gf_group;
+ 
+-	rtnl_lock();
+-	lock_sock(sk);
+ 	err = ip_mc_gsfget(sk, &gf, p->gf_slist);
+-	release_sock(sk);
+-	rtnl_unlock();
+ 	if (err)
+ 		return err;
+ 	if (gf.gf_numsrc < num)
+@@ -1547,10 +1491,9 @@ static int compat_ip_get_mcast_msfilter(struct sock *sk, void __user *optval,
+ 		return -EFAULT;
+ 	return 0;
+ }
+-#endif
+ 
+ static int do_ip_getsockopt(struct sock *sk, int level, int optname,
+-			    char __user *optval, int __user *optlen, unsigned int flags)
++			    char __user *optval, int __user *optlen)
+ {
+ 	struct inet_sock *inet = inet_sk(sk);
+ 	bool needs_rtnl = getsockopt_needs_rtnl(optname);
+@@ -1707,7 +1650,11 @@ static int do_ip_getsockopt(struct sock *sk, int level, int optname,
+ 		goto out;
+ 	}
+ 	case MCAST_MSFILTER:
+-		err = ip_get_mcast_msfilter(sk, optval, optlen, len);
++		if (in_compat_syscall())
++			err = compat_ip_get_mcast_msfilter(sk, optval, optlen,
++							   len);
++		else
++			err = ip_get_mcast_msfilter(sk, optval, optlen, len);
+ 		goto out;
+ 	case IP_MULTICAST_ALL:
+ 		val = inet->mc_all;
+@@ -1724,7 +1671,7 @@ static int do_ip_getsockopt(struct sock *sk, int level, int optname,
+ 		msg.msg_control_is_user = true;
+ 		msg.msg_control_user = optval;
+ 		msg.msg_controllen = len;
+-		msg.msg_flags = flags;
++		msg.msg_flags = in_compat_syscall() ? MSG_CMSG_COMPAT : 0;
+ 
+ 		if (inet->cmsg_flags & IP_CMSG_PKTINFO) {
+ 			struct in_pktinfo info;
+@@ -1788,45 +1735,7 @@ int ip_getsockopt(struct sock *sk, int level,
+ {
+ 	int err;
+ 
+-	err = do_ip_getsockopt(sk, level, optname, optval, optlen, 0);
+-#if IS_ENABLED(CONFIG_BPFILTER_UMH)
+-	if (optname >= BPFILTER_IPT_SO_GET_INFO &&
+-	    optname < BPFILTER_IPT_GET_MAX)
+-		err = bpfilter_ip_get_sockopt(sk, optname, optval, optlen);
+-#endif
+-#ifdef CONFIG_NETFILTER
+-	/* we need to exclude all possible ENOPROTOOPTs except default case */
+-	if (err = -ENOPROTOOPT && optname != IP_PKTOPTIONS &&
+-			!ip_mroute_opt(optname)) {
+-		int len;
+-
+-		if (get_user(len, optlen))
+-			return -EFAULT;
+-
+-		err = nf_getsockopt(sk, PF_INET, optname, optval, &len);
+-		if (err >= 0)
+-			err = put_user(len, optlen);
+-		return err;
+-	}
+-#endif
+-	return err;
+-}
+-EXPORT_SYMBOL(ip_getsockopt);
+-
+-#ifdef CONFIG_COMPAT
+-int compat_ip_getsockopt(struct sock *sk, int level, int optname,
+-			 char __user *optval, int __user *optlen)
+-{
+-	int err;
+-
+-	if (optname = MCAST_MSFILTER) {
+-		if (level != SOL_IP)
+-			return -EOPNOTSUPP;
+-		return compat_ip_get_mcast_msfilter(sk, optval, optlen);
+-	}
+-
+-	err = do_ip_getsockopt(sk, level, optname, optval, optlen,
+-		MSG_CMSG_COMPAT);
++	err = do_ip_getsockopt(sk, level, optname, optval, optlen);
+ 
+ #if IS_ENABLED(CONFIG_BPFILTER_UMH)
+ 	if (optname >= BPFILTER_IPT_SO_GET_INFO &&
+@@ -1850,5 +1759,4 @@ int compat_ip_getsockopt(struct sock *sk, int level, int optname,
+ #endif
+ 	return err;
+ }
+-EXPORT_SYMBOL(compat_ip_getsockopt);
+-#endif
++EXPORT_SYMBOL(ip_getsockopt);
+diff --git a/net/ipv4/raw.c b/net/ipv4/raw.c
+index 47665919048f9d..2a57d633b31e00 100644
+--- a/net/ipv4/raw.c
++++ b/net/ipv4/raw.c
+@@ -857,16 +857,6 @@ static int raw_setsockopt(struct sock *sk, int level, int optname,
+ 	return do_raw_setsockopt(sk, level, optname, optval, optlen);
+ }
+ 
+-#ifdef CONFIG_COMPAT
+-static int compat_raw_setsockopt(struct sock *sk, int level, int optname,
+-				 char __user *optval, unsigned int optlen)
+-{
+-	if (level != SOL_RAW)
+-		return compat_ip_setsockopt(sk, level, optname, optval, optlen);
+-	return do_raw_setsockopt(sk, level, optname, optval, optlen);
+-}
+-#endif
+-
+ static int do_raw_getsockopt(struct sock *sk, int level, int optname,
+ 			  char __user *optval, int __user *optlen)
+ {
+@@ -887,16 +877,6 @@ static int raw_getsockopt(struct sock *sk, int level, int optname,
+ 	return do_raw_getsockopt(sk, level, optname, optval, optlen);
+ }
+ 
+-#ifdef CONFIG_COMPAT
+-static int compat_raw_getsockopt(struct sock *sk, int level, int optname,
+-				 char __user *optval, int __user *optlen)
+-{
+-	if (level != SOL_RAW)
+-		return compat_ip_getsockopt(sk, level, optname, optval, optlen);
+-	return do_raw_getsockopt(sk, level, optname, optval, optlen);
+-}
+-#endif
+-
+ static int raw_ioctl(struct sock *sk, int cmd, unsigned long arg)
+ {
+ 	switch (cmd) {
+@@ -980,8 +960,6 @@ struct proto raw_prot = {
+ 	.usersize	   = sizeof_field(struct raw_sock, filter),
+ 	.h.raw_hash	   = &raw_v4_hashinfo,
+ #ifdef CONFIG_COMPAT
+-	.compat_setsockopt = compat_raw_setsockopt,
+-	.compat_getsockopt = compat_raw_getsockopt,
+ 	.compat_ioctl	   = compat_raw_ioctl,
+ #endif
+ 	.diag_destroy	   = raw_abort,
+diff --git a/net/ipv4/tcp_ipv4.c b/net/ipv4/tcp_ipv4.c
+index 116c11a0aaed62..e5b7ef9a288769 100644
+--- a/net/ipv4/tcp_ipv4.c
++++ b/net/ipv4/tcp_ipv4.c
+@@ -2134,10 +2134,6 @@ const struct inet_connection_sock_af_ops ipv4_specific = {
+ 	.getsockopt	   = ip_getsockopt,
+ 	.addr2sockaddr	   = inet_csk_addr2sockaddr,
+ 	.sockaddr_len	   = sizeof(struct sockaddr_in),
+-#ifdef CONFIG_COMPAT
+-	.compat_setsockopt = compat_ip_setsockopt,
+-	.compat_getsockopt = compat_ip_getsockopt,
+-#endif
+ 	.mtu_reduced	   = tcp_v4_mtu_reduced,
+ };
+ EXPORT_SYMBOL(ipv4_specific);
+diff --git a/net/ipv4/udp.c b/net/ipv4/udp.c
+index 073d346f515c44..d4be4471c424e3 100644
+--- a/net/ipv4/udp.c
++++ b/net/ipv4/udp.c
+@@ -2656,17 +2656,6 @@ int udp_setsockopt(struct sock *sk, int level, int optname,
+ 	return ip_setsockopt(sk, level, optname, optval, optlen);
+ }
+ 
+-#ifdef CONFIG_COMPAT
+-int compat_udp_setsockopt(struct sock *sk, int level, int optname,
+-			  char __user *optval, unsigned int optlen)
+-{
+-	if (level = SOL_UDP  ||  level = SOL_UDPLITE)
+-		return udp_lib_setsockopt(sk, level, optname, optval, optlen,
+-					  udp_push_pending_frames);
+-	return compat_ip_setsockopt(sk, level, optname, optval, optlen);
+-}
+-#endif
+-
+ int udp_lib_getsockopt(struct sock *sk, int level, int optname,
+ 		       char __user *optval, int __user *optlen)
+ {
+@@ -2732,15 +2721,6 @@ int udp_getsockopt(struct sock *sk, int level, int optname,
+ 	return ip_getsockopt(sk, level, optname, optval, optlen);
+ }
+ 
+-#ifdef CONFIG_COMPAT
+-int compat_udp_getsockopt(struct sock *sk, int level, int optname,
+-				 char __user *optval, int __user *optlen)
+-{
+-	if (level = SOL_UDP  ||  level = SOL_UDPLITE)
+-		return udp_lib_getsockopt(sk, level, optname, optval, optlen);
+-	return compat_ip_getsockopt(sk, level, optname, optval, optlen);
+-}
+-#endif
+ /**
+  * 	udp_poll - wait for a UDP event.
+  *	@file: - file struct
+@@ -2812,10 +2792,6 @@ struct proto udp_prot = {
+ 	.sysctl_rmem_offset	= offsetof(struct net, ipv4.sysctl_udp_rmem_min),
+ 	.obj_size		= sizeof(struct udp_sock),
+ 	.h.udp_table		= &udp_table,
+-#ifdef CONFIG_COMPAT
+-	.compat_setsockopt	= compat_udp_setsockopt,
+-	.compat_getsockopt	= compat_udp_getsockopt,
+-#endif
+ 	.diag_destroy		= udp_abort,
+ };
+ EXPORT_SYMBOL(udp_prot);
+diff --git a/net/ipv4/udp_impl.h b/net/ipv4/udp_impl.h
+index 6b2fa77eeb1c3e..ab313702c87f30 100644
+--- a/net/ipv4/udp_impl.h
++++ b/net/ipv4/udp_impl.h
+@@ -17,12 +17,6 @@ int udp_setsockopt(struct sock *sk, int level, int optname,
+ int udp_getsockopt(struct sock *sk, int level, int optname,
+ 		   char __user *optval, int __user *optlen);
+ 
+-#ifdef CONFIG_COMPAT
+-int compat_udp_setsockopt(struct sock *sk, int level, int optname,
+-			  char __user *optval, unsigned int optlen);
+-int compat_udp_getsockopt(struct sock *sk, int level, int optname,
+-			  char __user *optval, int __user *optlen);
+-#endif
+ int udp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len, int noblock,
+ 		int flags, int *addr_len);
+ int udp_sendpage(struct sock *sk, struct page *page, int offset, size_t size,
+diff --git a/net/ipv4/udplite.c b/net/ipv4/udplite.c
+index 5936d66d1ce2f2..bd8773b49e72ed 100644
+--- a/net/ipv4/udplite.c
++++ b/net/ipv4/udplite.c
+@@ -56,10 +56,6 @@ struct proto 	udplite_prot = {
+ 	.sysctl_mem	   = sysctl_udp_mem,
+ 	.obj_size	   = sizeof(struct udp_sock),
+ 	.h.udp_table	   = &udplite_table,
+-#ifdef CONFIG_COMPAT
+-	.compat_setsockopt = compat_udp_setsockopt,
+-	.compat_getsockopt = compat_udp_getsockopt,
+-#endif
+ };
+ EXPORT_SYMBOL(udplite_prot);
+ 
+diff --git a/net/l2tp/l2tp_ip.c b/net/l2tp/l2tp_ip.c
+index f8d7412cfb3d37..2a3fd31fb589dc 100644
+--- a/net/l2tp/l2tp_ip.c
++++ b/net/l2tp/l2tp_ip.c
+@@ -612,10 +612,6 @@ static struct proto l2tp_ip_prot = {
+ 	.hash		   = l2tp_ip_hash,
+ 	.unhash		   = l2tp_ip_unhash,
+ 	.obj_size	   = sizeof(struct l2tp_ip_sock),
+-#ifdef CONFIG_COMPAT
+-	.compat_setsockopt = compat_ip_setsockopt,
+-	.compat_getsockopt = compat_ip_getsockopt,
+-#endif
+ };
+ 
+ static const struct proto_ops l2tp_ip_ops = {
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 8d25cc464efdf3..7ecaf7d575c097 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -1089,10 +1089,6 @@ static struct sctp_af sctp_af_inet = {
+ 	.net_header_len	   = sizeof(struct iphdr),
+ 	.sockaddr_len	   = sizeof(struct sockaddr_in),
+ 	.ip_options_len	   = sctp_v4_ip_options_len,
+-#ifdef CONFIG_COMPAT
+-	.compat_setsockopt = compat_ip_setsockopt,
+-	.compat_getsockopt = compat_ip_getsockopt,
+-#endif
+ };
+ 
+ struct sctp_pf *sctp_get_pf_specific(sa_family_t family)
 -- 
 2.27.0
