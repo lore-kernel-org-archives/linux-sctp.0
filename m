@@ -1,93 +1,199 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Sun, 19 Jul 2020 07:21:53 +0000
-Subject: [PATCH 16/51] sctp: pass a kernel pointer to sctp_setsockopt_rtoinfo
-Message-Id: <20200719072228.112645-17-hch@lst.de>
+Date: Fri, 17 Jul 2020 06:23:17 +0000
+Subject: [PATCH 08/22] netfilter/ip_tables: clean up compat {get,set}sockopt handling
+Message-Id: <20200717062331.691152-9-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200719072228.112645-1-hch@lst.de>
-In-Reply-To: <20200719072228.112645-1-hch@lst.de>
+References: <20200717062331.691152-1-hch@lst.de>
+In-Reply-To: <20200717062331.691152-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>
+Cc: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Chas Williams <3chas3@gmail.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-sctp@vger.kernel.org, linux-arch@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-wpan@vger.kernel.org, mptcp@lists.01.org
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
+Merge the native and compat {get,set}sockopt handlers using
+in_compat_syscall().
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 26 ++++++++++++--------------
- 1 file changed, 12 insertions(+), 14 deletions(-)
+ net/ipv4/netfilter/ip_tables.c | 86 +++++++++-------------------------
+ 1 file changed, 21 insertions(+), 65 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index f9fe93e865b970..6339a08b62dd2b 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3041,9 +3041,10 @@ static int sctp_setsockopt_nodelay(struct sock *sk, int *val,
-  * be changed.
-  *
-  */
--static int sctp_setsockopt_rtoinfo(struct sock *sk, char __user *optval, unsigned int optlen)
-+static int sctp_setsockopt_rtoinfo(struct sock *sk,
-+				   struct sctp_rtoinfo *rtoinfo,
-+				   unsigned int optlen)
+diff --git a/net/ipv4/netfilter/ip_tables.c b/net/ipv4/netfilter/ip_tables.c
+index 5bf9fa06aee0be..fbfad38f397949 100644
+--- a/net/ipv4/netfilter/ip_tables.c
++++ b/net/ipv4/netfilter/ip_tables.c
+@@ -944,8 +944,7 @@ static int compat_table_info(const struct xt_table_info *info,
+ }
+ #endif
+ 
+-static int get_info(struct net *net, void __user *user,
+-		    const int *len, int compat)
++static int get_info(struct net *net, void __user *user, const int *len)
  {
--	struct sctp_rtoinfo rtoinfo;
- 	struct sctp_association *asoc;
- 	unsigned long rto_min, rto_max;
- 	struct sctp_sock *sp = sctp_sk(sk);
-@@ -3051,18 +3052,15 @@ static int sctp_setsockopt_rtoinfo(struct sock *sk, char __user *optval, unsigne
- 	if (optlen != sizeof (struct sctp_rtoinfo))
- 		return -EINVAL;
+ 	char name[XT_TABLE_MAXNAMELEN];
+ 	struct xt_table *t;
+@@ -959,7 +958,7 @@ static int get_info(struct net *net, void __user *user,
  
--	if (copy_from_user(&rtoinfo, optval, optlen))
--		return -EFAULT;
+ 	name[XT_TABLE_MAXNAMELEN-1] = '\0';
+ #ifdef CONFIG_COMPAT
+-	if (compat)
++	if (in_compat_syscall())
+ 		xt_compat_lock(AF_INET);
+ #endif
+ 	t = xt_request_find_table_lock(net, AF_INET, name);
+@@ -969,7 +968,7 @@ static int get_info(struct net *net, void __user *user,
+ #ifdef CONFIG_COMPAT
+ 		struct xt_table_info tmp;
+ 
+-		if (compat) {
++		if (in_compat_syscall()) {
+ 			ret = compat_table_info(private, &tmp);
+ 			xt_compat_flush_offsets(AF_INET);
+ 			private = &tmp;
+@@ -995,7 +994,7 @@ static int get_info(struct net *net, void __user *user,
+ 	} else
+ 		ret = PTR_ERR(t);
+ #ifdef CONFIG_COMPAT
+-	if (compat)
++	if (in_compat_syscall())
+ 		xt_compat_unlock(AF_INET);
+ #endif
+ 	return ret;
+@@ -1153,7 +1152,7 @@ do_replace(struct net *net, const void __user *user, unsigned int len)
+ 
+ static int
+ do_add_counters(struct net *net, const void __user *user,
+-		unsigned int len, int compat)
++		unsigned int len)
+ {
+ 	unsigned int i;
+ 	struct xt_counters_info tmp;
+@@ -1164,7 +1163,8 @@ do_add_counters(struct net *net, const void __user *user,
+ 	struct ipt_entry *iter;
+ 	unsigned int addend;
+ 
+-	paddc = xt_copy_counters_from_user(user, len, &tmp, compat);
++	paddc = xt_copy_counters_from_user(user, len, &tmp,
++					   in_compat_syscall());
+ 	if (IS_ERR(paddc))
+ 		return PTR_ERR(paddc);
+ 
+@@ -1534,31 +1534,6 @@ compat_do_replace(struct net *net, void __user *user, unsigned int len)
+ 	return ret;
+ }
+ 
+-static int
+-compat_do_ipt_set_ctl(struct sock *sk,	int cmd, void __user *user,
+-		      unsigned int len)
+-{
+-	int ret;
 -
--	asoc = sctp_id2assoc(sk, rtoinfo.srto_assoc_id);
-+	asoc = sctp_id2assoc(sk, rtoinfo->srto_assoc_id);
+-	if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN))
+-		return -EPERM;
+-
+-	switch (cmd) {
+-	case IPT_SO_SET_REPLACE:
+-		ret = compat_do_replace(sock_net(sk), user, len);
+-		break;
+-
+-	case IPT_SO_SET_ADD_COUNTERS:
+-		ret = do_add_counters(sock_net(sk), user, len, 1);
+-		break;
+-
+-	default:
+-		ret = -EINVAL;
+-	}
+-
+-	return ret;
+-}
+-
+ struct compat_ipt_get_entries {
+ 	char name[XT_TABLE_MAXNAMELEN];
+ 	compat_uint_t size;
+@@ -1634,29 +1609,6 @@ compat_get_entries(struct net *net, struct compat_ipt_get_entries __user *uptr,
+ 	xt_compat_unlock(AF_INET);
+ 	return ret;
+ }
+-
+-static int do_ipt_get_ctl(struct sock *, int, void __user *, int *);
+-
+-static int
+-compat_do_ipt_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
+-{
+-	int ret;
+-
+-	if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN))
+-		return -EPERM;
+-
+-	switch (cmd) {
+-	case IPT_SO_GET_INFO:
+-		ret = get_info(sock_net(sk), user, len, 1);
+-		break;
+-	case IPT_SO_GET_ENTRIES:
+-		ret = compat_get_entries(sock_net(sk), user, len);
+-		break;
+-	default:
+-		ret = do_ipt_get_ctl(sk, cmd, user, len);
+-	}
+-	return ret;
+-}
+ #endif
  
- 	/* Set the values to the specific association */
--	if (!asoc && rtoinfo.srto_assoc_id != SCTP_FUTURE_ASSOC &&
-+	if (!asoc && rtoinfo->srto_assoc_id != SCTP_FUTURE_ASSOC &&
- 	    sctp_style(sk, UDP))
- 		return -EINVAL;
+ static int
+@@ -1669,11 +1621,16 @@ do_ipt_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
  
--	rto_max = rtoinfo.srto_max;
--	rto_min = rtoinfo.srto_min;
-+	rto_max = rtoinfo->srto_max;
-+	rto_min = rtoinfo->srto_min;
- 
- 	if (rto_max)
- 		rto_max = asoc ? msecs_to_jiffies(rto_max) : rto_max;
-@@ -3078,17 +3076,17 @@ static int sctp_setsockopt_rtoinfo(struct sock *sk, char __user *optval, unsigne
- 		return -EINVAL;
- 
- 	if (asoc) {
--		if (rtoinfo.srto_initial != 0)
-+		if (rtoinfo->srto_initial != 0)
- 			asoc->rto_initial -				msecs_to_jiffies(rtoinfo.srto_initial);
-+				msecs_to_jiffies(rtoinfo->srto_initial);
- 		asoc->rto_max = rto_max;
- 		asoc->rto_min = rto_min;
- 	} else {
- 		/* If there is no association or the association-id = 0
- 		 * set the values to the endpoint.
- 		 */
--		if (rtoinfo.srto_initial != 0)
--			sp->rtoinfo.srto_initial = rtoinfo.srto_initial;
-+		if (rtoinfo->srto_initial != 0)
-+			sp->rtoinfo.srto_initial = rtoinfo->srto_initial;
- 		sp->rtoinfo.srto_max = rto_max;
- 		sp->rtoinfo.srto_min = rto_min;
- 	}
-@@ -4692,7 +4690,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_nodelay(sk, kopt, optlen);
+ 	switch (cmd) {
+ 	case IPT_SO_SET_REPLACE:
+-		ret = do_replace(sock_net(sk), user, len);
++#ifdef CONFIG_COMPAT
++		if (in_compat_syscall())
++			ret = compat_do_replace(sock_net(sk), user, len);
++		else
++#endif
++			ret = do_replace(sock_net(sk), user, len);
  		break;
- 	case SCTP_RTOINFO:
--		retval = sctp_setsockopt_rtoinfo(sk, optval, optlen);
-+		retval = sctp_setsockopt_rtoinfo(sk, kopt, optlen);
+ 
+ 	case IPT_SO_SET_ADD_COUNTERS:
+-		ret = do_add_counters(sock_net(sk), user, len, 0);
++		ret = do_add_counters(sock_net(sk), user, len);
  		break;
- 	case SCTP_ASSOCINFO:
- 		retval = sctp_setsockopt_associnfo(sk, optval, optlen);
+ 
+ 	default:
+@@ -1693,11 +1650,16 @@ do_ipt_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
+ 
+ 	switch (cmd) {
+ 	case IPT_SO_GET_INFO:
+-		ret = get_info(sock_net(sk), user, len, 0);
++		ret = get_info(sock_net(sk), user, len);
+ 		break;
+ 
+ 	case IPT_SO_GET_ENTRIES:
+-		ret = get_entries(sock_net(sk), user, len);
++#ifdef CONFIG_COMPAT
++		if (in_compat_syscall())
++			ret = compat_get_entries(sock_net(sk), user, len);
++		else
++#endif
++			ret = get_entries(sock_net(sk), user, len);
+ 		break;
+ 
+ 	case IPT_SO_GET_REVISION_MATCH:
+@@ -1886,15 +1848,9 @@ static struct nf_sockopt_ops ipt_sockopts = {
+ 	.set_optmin	= IPT_BASE_CTL,
+ 	.set_optmax	= IPT_SO_SET_MAX+1,
+ 	.set		= do_ipt_set_ctl,
+-#ifdef CONFIG_COMPAT
+-	.compat_set	= compat_do_ipt_set_ctl,
+-#endif
+ 	.get_optmin	= IPT_BASE_CTL,
+ 	.get_optmax	= IPT_SO_GET_MAX+1,
+ 	.get		= do_ipt_get_ctl,
+-#ifdef CONFIG_COMPAT
+-	.compat_get	= compat_do_ipt_get_ctl,
+-#endif
+ 	.owner		= THIS_MODULE,
+ };
+ 
 -- 
 2.27.0
