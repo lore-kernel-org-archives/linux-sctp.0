@@ -1,136 +1,208 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 23 Jul 2020 06:08:57 +0000
-Subject: [PATCH 15/26] net/ipv4: merge ip_options_get and ip_options_get_from_user
-Message-Id: <20200723060908.50081-16-hch@lst.de>
+Date: Fri, 17 Jul 2020 06:23:28 +0000
+Subject: [PATCH 19/22] net/ipv6: factor out MCAST_MSFILTER setsockopt helpers
+Message-Id: <20200717062331.691152-20-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200723060908.50081-1-hch@lst.de>
-In-Reply-To: <20200723060908.50081-1-hch@lst.de>
+References: <20200717062331.691152-1-hch@lst.de>
+In-Reply-To: <20200717062331.691152-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
-Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>
+Cc: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Chas Williams <3chas3@gmail.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-sctp@vger.kernel.org, linux-arch@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-wpan@vger.kernel.org, mptcp@lists.01.org
 
-Use the sockptr_t type to merge the versions.
+Factor out one helper each for setting the native and compat
+version of the MCAST_MSFILTER option.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/net/ip.h       |  5 ++---
- net/ipv4/ip_options.c  | 43 +++++++++++-------------------------------
- net/ipv4/ip_sockglue.c |  7 ++++---
- 3 files changed, 17 insertions(+), 38 deletions(-)
+ net/ipv6/ipv6_sockglue.c | 159 ++++++++++++++++++++-------------------
+ 1 file changed, 83 insertions(+), 76 deletions(-)
 
-diff --git a/include/net/ip.h b/include/net/ip.h
-index 3d34acc95ca825..d66ad3a9522081 100644
---- a/include/net/ip.h
-+++ b/include/net/ip.h
-@@ -23,6 +23,7 @@
- #include <linux/in.h>
- #include <linux/skbuff.h>
- #include <linux/jhash.h>
-+#include <linux/sockptr.h>
- 
- #include <net/inet_sock.h>
- #include <net/route.h>
-@@ -707,9 +708,7 @@ int __ip_options_compile(struct net *net, struct ip_options *opt,
- int ip_options_compile(struct net *net, struct ip_options *opt,
- 		       struct sk_buff *skb);
- int ip_options_get(struct net *net, struct ip_options_rcu **optp,
--		   unsigned char *data, int optlen);
--int ip_options_get_from_user(struct net *net, struct ip_options_rcu **optp,
--			     unsigned char __user *data, int optlen);
-+		   sockptr_t data, int optlen);
- void ip_options_undo(struct ip_options *opt);
- void ip_forward_options(struct sk_buff *skb);
- int ip_options_rcv_srr(struct sk_buff *skb, struct net_device *dev);
-diff --git a/net/ipv4/ip_options.c b/net/ipv4/ip_options.c
-index ddaa01ec2bce82..948747aac4e2d0 100644
---- a/net/ipv4/ip_options.c
-+++ b/net/ipv4/ip_options.c
-@@ -519,15 +519,20 @@ void ip_options_undo(struct ip_options *opt)
- 	}
+diff --git a/net/ipv6/ipv6_sockglue.c b/net/ipv6/ipv6_sockglue.c
+index ef5656f876ac05..6aa49495d7bc0b 100644
+--- a/net/ipv6/ipv6_sockglue.c
++++ b/net/ipv6/ipv6_sockglue.c
+@@ -171,6 +171,87 @@ static int do_ipv6_mcast_group_source(struct sock *sk, int optname,
+ 	return ip6_mc_source(add, omode, sk, greqs);
  }
  
--static struct ip_options_rcu *ip_options_get_alloc(const int optlen)
-+int ip_options_get(struct net *net, struct ip_options_rcu **optp,
-+		   sockptr_t data, int optlen)
- {
--	return kzalloc(sizeof(struct ip_options_rcu) + ((optlen + 3) & ~3),
-+	struct ip_options_rcu *opt;
++static int ipv6_set_mcast_msfilter(struct sock *sk, void __user *optval,
++		int optlen)
++{
++	struct group_filter *gsf;
++	int ret;
 +
-+	opt = kzalloc(sizeof(struct ip_options_rcu) + ((optlen + 3) & ~3),
- 		       GFP_KERNEL);
--}
-+	if (!opt)
++	if (optlen < GROUP_FILTER_SIZE(0))
++		return -EINVAL;
++	if (optlen > sysctl_optmem_max)
++		return -ENOBUFS;
++
++	gsf = memdup_user(optval, optlen);
++	if (IS_ERR(gsf))
++		return PTR_ERR(gsf);
++
++	/* numsrc >= (4G-140)/128 overflow in 32 bits */
++	ret = -ENOBUFS;
++	if (gsf->gf_numsrc >= 0x1ffffffU ||
++	    gsf->gf_numsrc > sysctl_mld_max_msf)
++		goto out_free_gsf;
++
++	ret = -EINVAL;
++	if (GROUP_FILTER_SIZE(gsf->gf_numsrc) > optlen)
++		goto out_free_gsf;
++
++	ret = ip6_mc_msfilter(sk, gsf, gsf->gf_slist);
++out_free_gsf:
++	kfree(gsf);
++	return ret;
++}
++
++#ifdef CONFIG_COMPAT
++static int compat_ipv6_set_mcast_msfilter(struct sock *sk, void __user *optval,
++		int optlen)
++{
++	const int size0 = offsetof(struct compat_group_filter, gf_slist);
++	struct compat_group_filter *gf32;
++	void *p;
++	int ret;
++	int n;
++
++	if (optlen < size0)
++		return -EINVAL;
++	if (optlen > sysctl_optmem_max - 4)
++		return -ENOBUFS;
++
++	p = kmalloc(optlen + 4, GFP_KERNEL);
++	if (!p)
 +		return -ENOMEM;
-+	if (optlen && copy_from_sockptr(opt->opt.__data, data, optlen)) {
-+		kfree(opt);
-+		return -EFAULT;
-+	}
- 
--static int ip_options_get_finish(struct net *net, struct ip_options_rcu **optp,
--				 struct ip_options_rcu *opt, int optlen)
--{
- 	while (optlen & 3)
- 		opt->opt.__data[optlen++] = IPOPT_END;
- 	opt->opt.optlen = optlen;
-@@ -540,32 +545,6 @@ static int ip_options_get_finish(struct net *net, struct ip_options_rcu **optp,
- 	return 0;
- }
- 
--int ip_options_get_from_user(struct net *net, struct ip_options_rcu **optp,
--			     unsigned char __user *data, int optlen)
--{
--	struct ip_options_rcu *opt = ip_options_get_alloc(optlen);
--
--	if (!opt)
--		return -ENOMEM;
--	if (optlen && copy_from_user(opt->opt.__data, data, optlen)) {
--		kfree(opt);
--		return -EFAULT;
--	}
--	return ip_options_get_finish(net, optp, opt, optlen);
--}
--
--int ip_options_get(struct net *net, struct ip_options_rcu **optp,
--		   unsigned char *data, int optlen)
--{
--	struct ip_options_rcu *opt = ip_options_get_alloc(optlen);
--
--	if (!opt)
--		return -ENOMEM;
--	if (optlen)
--		memcpy(opt->opt.__data, data, optlen);
--	return ip_options_get_finish(net, optp, opt, optlen);
--}
--
- void ip_forward_options(struct sk_buff *skb)
++
++	gf32 = p + 4; /* we want ->gf_group and ->gf_slist aligned */
++	ret = -EFAULT;
++	if (copy_from_user(gf32, optval, optlen))
++		goto out_free_p;
++
++	/* numsrc >= (4G-140)/128 overflow in 32 bits */
++	ret = -ENOBUFS;
++	n = gf32->gf_numsrc;
++	if (n >= 0x1ffffffU || n > sysctl_mld_max_msf)
++		goto out_free_p;
++
++	ret = -EINVAL;
++	if (offsetof(struct compat_group_filter, gf_slist[n]) > optlen)
++		goto out_free_p;
++
++	rtnl_lock();
++	lock_sock(sk);
++	ret = ip6_mc_msfilter(sk, &(struct group_filter){
++			.gf_interface = gf32->gf_interface,
++			.gf_group = gf32->gf_group,
++			.gf_fmode = gf32->gf_fmode,
++			.gf_numsrc = gf32->gf_numsrc}, gf32->gf_slist);
++	release_sock(sk);
++	rtnl_unlock();
++
++out_free_p:
++	kfree(p);
++	return ret;
++}
++#endif
++
+ static int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
+ 		    char __user *optval, unsigned int optlen)
  {
- 	struct   ip_options *opt	= &(IPCB(skb)->opt);
-diff --git a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
-index ac495b0cff8ffb..b12f39b52008a3 100644
---- a/net/ipv4/ip_sockglue.c
-+++ b/net/ipv4/ip_sockglue.c
-@@ -280,7 +280,8 @@ int ip_cmsg_send(struct sock *sk, struct msghdr *msg, struct ipcm_cookie *ipc,
- 			err = cmsg->cmsg_len - sizeof(struct cmsghdr);
- 
- 			/* Our caller is responsible for freeing ipc->opt */
--			err = ip_options_get(net, &ipc->opt, CMSG_DATA(cmsg),
-+			err = ip_options_get(net, &ipc->opt,
-+					     KERNEL_SOCKPTR(CMSG_DATA(cmsg)),
- 					     err < 40 ? err : 40);
- 			if (err)
- 				return err;
-@@ -940,8 +941,8 @@ static int do_ip_setsockopt(struct sock *sk, int level,
- 
- 		if (optlen > 40)
+@@ -762,37 +843,8 @@ static int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
+ 		break;
+ 	}
+ 	case MCAST_MSFILTER:
+-	{
+-		struct group_filter *gsf;
+-
+-		if (optlen < GROUP_FILTER_SIZE(0))
+-			goto e_inval;
+-		if (optlen > sysctl_optmem_max) {
+-			retv = -ENOBUFS;
+-			break;
+-		}
+-		gsf = memdup_user(optval, optlen);
+-		if (IS_ERR(gsf)) {
+-			retv = PTR_ERR(gsf);
+-			break;
+-		}
+-		/* numsrc >= (4G-140)/128 overflow in 32 bits */
+-		if (gsf->gf_numsrc >= 0x1ffffffU ||
+-		    gsf->gf_numsrc > sysctl_mld_max_msf) {
+-			kfree(gsf);
+-			retv = -ENOBUFS;
+-			break;
+-		}
+-		if (GROUP_FILTER_SIZE(gsf->gf_numsrc) > optlen) {
+-			kfree(gsf);
+-			retv = -EINVAL;
+-			break;
+-		}
+-		retv = ip6_mc_msfilter(sk, gsf, gsf->gf_slist);
+-		kfree(gsf);
+-
++		retv = ipv6_set_mcast_msfilter(sk, optval, optlen);
+ 		break;
+-	}
+ 	case IPV6_ROUTER_ALERT:
+ 		if (optlen < sizeof(int))
  			goto e_inval;
--		err = ip_options_get_from_user(sock_net(sk), &opt,
--					       optval, optlen);
-+		err = ip_options_get(sock_net(sk), &opt, USER_SOCKPTR(optval),
-+					      optlen);
- 		if (err)
- 			break;
- 		old = rcu_dereference_protected(inet->inet_opt,
+@@ -977,52 +1029,7 @@ int compat_ipv6_setsockopt(struct sock *sk, int level, int optname,
+ 		return err;
+ 	}
+ 	case MCAST_MSFILTER:
+-	{
+-		const int size0 = offsetof(struct compat_group_filter, gf_slist);
+-		struct compat_group_filter *gf32;
+-		void *p;
+-		int n;
+-
+-		if (optlen < size0)
+-			return -EINVAL;
+-		if (optlen > sysctl_optmem_max - 4)
+-			return -ENOBUFS;
+-
+-		p = kmalloc(optlen + 4, GFP_KERNEL);
+-		if (!p)
+-			return -ENOMEM;
+-
+-		gf32 = p + 4; /* we want ->gf_group and ->gf_slist aligned */
+-		if (copy_from_user(gf32, optval, optlen)) {
+-			err = -EFAULT;
+-			goto mc_msf_out;
+-		}
+-
+-		n = gf32->gf_numsrc;
+-		/* numsrc >= (4G-140)/128 overflow in 32 bits */
+-		if (n >= 0x1ffffffU ||
+-		    n > sysctl_mld_max_msf) {
+-			err = -ENOBUFS;
+-			goto mc_msf_out;
+-		}
+-		if (offsetof(struct compat_group_filter, gf_slist[n]) > optlen) {
+-			err = -EINVAL;
+-			goto mc_msf_out;
+-		}
+-
+-		rtnl_lock();
+-		lock_sock(sk);
+-		err = ip6_mc_msfilter(sk, &(struct group_filter){
+-				.gf_interface = gf32->gf_interface,
+-				.gf_group = gf32->gf_group,
+-				.gf_fmode = gf32->gf_fmode,
+-				.gf_numsrc = gf32->gf_numsrc}, gf32->gf_slist);
+-		release_sock(sk);
+-		rtnl_unlock();
+-mc_msf_out:
+-		kfree(p);
+-		return err;
+-	}
++		return compat_ipv6_set_mcast_msfilter(sk, optval, optlen);
+ 	}
+ 
+ 	err = do_ipv6_setsockopt(sk, level, optname, optval, optlen);
 -- 
 2.27.0
