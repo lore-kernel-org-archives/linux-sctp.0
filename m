@@ -1,208 +1,152 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Mon, 20 Jul 2020 12:47:23 +0000
-Subject: [PATCH 10/24] netfilter: switch xt_copy_counters to sockptr_t
-Message-Id: <20200720124737.118617-11-hch@lst.de>
+Date: Fri, 17 Jul 2020 06:23:29 +0000
+Subject: [PATCH 20/22] net/ipv6: factor out mcast join/leave setsockopt helpers
+Message-Id: <20200717062331.691152-21-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200720124737.118617-1-hch@lst.de>
-In-Reply-To: <20200720124737.118617-1-hch@lst.de>
+References: <20200717062331.691152-1-hch@lst.de>
+In-Reply-To: <20200717062331.691152-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
-Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>
+Cc: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Chas Williams <3chas3@gmail.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-sctp@vger.kernel.org, linux-arch@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-wpan@vger.kernel.org, mptcp@lists.01.org
 
-Pass a sockptr_t to prepare for set_fs-less handling of the kernel
-pointer from bpf-cgroup.
+Factor out one helper each for setting the native and compat
+version of the MCAST_MSFILTER option.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/netfilter/x_tables.h |  4 ++--
- net/ipv4/netfilter/arp_tables.c    |  7 +++----
- net/ipv4/netfilter/ip_tables.c     |  7 +++----
- net/ipv6/netfilter/ip6_tables.c    |  6 +++---
- net/netfilter/x_tables.c           | 20 ++++++++++----------
- 5 files changed, 21 insertions(+), 23 deletions(-)
+ net/ipv6/ipv6_sockglue.c | 103 ++++++++++++++++++++-------------------
+ 1 file changed, 53 insertions(+), 50 deletions(-)
 
-diff --git a/include/linux/netfilter/x_tables.h b/include/linux/netfilter/x_tables.h
-index b8b943ee7b8b66..5deb099d156dcb 100644
---- a/include/linux/netfilter/x_tables.h
-+++ b/include/linux/netfilter/x_tables.h
-@@ -301,8 +301,8 @@ int xt_target_to_user(const struct xt_entry_target *t,
- int xt_data_to_user(void __user *dst, const void *src,
- 		    int usersize, int size, int aligned_size);
- 
--void *xt_copy_counters_from_user(const void __user *user, unsigned int len,
--				 struct xt_counters_info *info);
-+void *xt_copy_counters(sockptr_t arg, unsigned int len,
-+		       struct xt_counters_info *info);
- struct xt_counters *xt_counters_alloc(unsigned int counters);
- 
- struct xt_table *xt_register_table(struct net *net,
-diff --git a/net/ipv4/netfilter/arp_tables.c b/net/ipv4/netfilter/arp_tables.c
-index 2c8a4dad39d748..6d24b686c7f00a 100644
---- a/net/ipv4/netfilter/arp_tables.c
-+++ b/net/ipv4/netfilter/arp_tables.c
-@@ -996,8 +996,7 @@ static int do_replace(struct net *net, const void __user *user,
- 	return ret;
+diff --git a/net/ipv6/ipv6_sockglue.c b/net/ipv6/ipv6_sockglue.c
+index 6aa49495d7bc0b..1ea0cd12beaee9 100644
+--- a/net/ipv6/ipv6_sockglue.c
++++ b/net/ipv6/ipv6_sockglue.c
+@@ -252,6 +252,56 @@ static int compat_ipv6_set_mcast_msfilter(struct sock *sk, void __user *optval,
  }
- 
--static int do_add_counters(struct net *net, const void __user *user,
--			   unsigned int len)
-+static int do_add_counters(struct net *net, sockptr_t arg, unsigned int len)
- {
- 	unsigned int i;
- 	struct xt_counters_info tmp;
-@@ -1008,7 +1007,7 @@ static int do_add_counters(struct net *net, const void __user *user,
- 	struct arpt_entry *iter;
- 	unsigned int addend;
- 
--	paddc = xt_copy_counters_from_user(user, len, &tmp);
-+	paddc = xt_copy_counters(arg, len, &tmp);
- 	if (IS_ERR(paddc))
- 		return PTR_ERR(paddc);
- 
-@@ -1420,7 +1419,7 @@ static int do_arpt_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned
- 		break;
- 
- 	case ARPT_SO_SET_ADD_COUNTERS:
--		ret = do_add_counters(sock_net(sk), user, len);
-+		ret = do_add_counters(sock_net(sk), USER_SOCKPTR(user), len);
- 		break;
- 
- 	default:
-diff --git a/net/ipv4/netfilter/ip_tables.c b/net/ipv4/netfilter/ip_tables.c
-index 161901dd1cae7f..4697d09c98dc3e 100644
---- a/net/ipv4/netfilter/ip_tables.c
-+++ b/net/ipv4/netfilter/ip_tables.c
-@@ -1151,8 +1151,7 @@ do_replace(struct net *net, const void __user *user, unsigned int len)
- }
- 
- static int
--do_add_counters(struct net *net, const void __user *user,
--		unsigned int len)
-+do_add_counters(struct net *net, sockptr_t arg, unsigned int len)
- {
- 	unsigned int i;
- 	struct xt_counters_info tmp;
-@@ -1163,7 +1162,7 @@ do_add_counters(struct net *net, const void __user *user,
- 	struct ipt_entry *iter;
- 	unsigned int addend;
- 
--	paddc = xt_copy_counters_from_user(user, len, &tmp);
-+	paddc = xt_copy_counters(arg, len, &tmp);
- 	if (IS_ERR(paddc))
- 		return PTR_ERR(paddc);
- 
-@@ -1629,7 +1628,7 @@ do_ipt_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
- 		break;
- 
- 	case IPT_SO_SET_ADD_COUNTERS:
--		ret = do_add_counters(sock_net(sk), user, len);
-+		ret = do_add_counters(sock_net(sk), USER_SOCKPTR(user), len);
- 		break;
- 
- 	default:
-diff --git a/net/ipv6/netfilter/ip6_tables.c b/net/ipv6/netfilter/ip6_tables.c
-index fd1f8f93123188..a787aba30e2db7 100644
---- a/net/ipv6/netfilter/ip6_tables.c
-+++ b/net/ipv6/netfilter/ip6_tables.c
-@@ -1168,7 +1168,7 @@ do_replace(struct net *net, const void __user *user, unsigned int len)
- }
- 
- static int
--do_add_counters(struct net *net, const void __user *user, unsigned int len)
-+do_add_counters(struct net *net, sockptr_t arg, unsigned int len)
- {
- 	unsigned int i;
- 	struct xt_counters_info tmp;
-@@ -1179,7 +1179,7 @@ do_add_counters(struct net *net, const void __user *user, unsigned int len)
- 	struct ip6t_entry *iter;
- 	unsigned int addend;
- 
--	paddc = xt_copy_counters_from_user(user, len, &tmp);
-+	paddc = xt_copy_counters(arg, len, &tmp);
- 	if (IS_ERR(paddc))
- 		return PTR_ERR(paddc);
- 	t = xt_find_table_lock(net, AF_INET6, tmp.name);
-@@ -1637,7 +1637,7 @@ do_ip6t_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
- 		break;
- 
- 	case IP6T_SO_SET_ADD_COUNTERS:
--		ret = do_add_counters(sock_net(sk), user, len);
-+		ret = do_add_counters(sock_net(sk), USER_SOCKPTR(user), len);
- 		break;
- 
- 	default:
-diff --git a/net/netfilter/x_tables.c b/net/netfilter/x_tables.c
-index 32bab45af7e415..b97eb4b538fd4e 100644
---- a/net/netfilter/x_tables.c
-+++ b/net/netfilter/x_tables.c
-@@ -1028,9 +1028,9 @@ int xt_check_target(struct xt_tgchk_param *par,
- EXPORT_SYMBOL_GPL(xt_check_target);
- 
- /**
-- * xt_copy_counters_from_user - copy counters and metadata from userspace
-+ * xt_copy_counters - copy counters and metadata from a sockptr_t
-  *
-- * @user: src pointer to userspace memory
-+ * @arg: src sockptr
-  * @len: alleged size of userspace memory
-  * @info: where to store the xt_counters_info metadata
-  *
-@@ -1047,8 +1047,8 @@ EXPORT_SYMBOL_GPL(xt_check_target);
-  * Return: returns pointer that caller has to test via IS_ERR().
-  * If IS_ERR is false, caller has to vfree the pointer.
-  */
--void *xt_copy_counters_from_user(const void __user *user, unsigned int len,
--				 struct xt_counters_info *info)
-+void *xt_copy_counters(sockptr_t arg, unsigned int len,
-+		       struct xt_counters_info *info)
- {
- 	void *mem;
- 	u64 size;
-@@ -1062,12 +1062,12 @@ void *xt_copy_counters_from_user(const void __user *user, unsigned int len,
- 			return ERR_PTR(-EINVAL);
- 
- 		len -= sizeof(compat_tmp);
--		if (copy_from_user(&compat_tmp, user, sizeof(compat_tmp)) != 0)
-+		if (copy_from_sockptr(&compat_tmp, arg, sizeof(compat_tmp)) != 0)
- 			return ERR_PTR(-EFAULT);
- 
- 		memcpy(info->name, compat_tmp.name, sizeof(info->name) - 1);
- 		info->num_counters = compat_tmp.num_counters;
--		user += sizeof(compat_tmp);
-+		sockptr_advance(arg, sizeof(compat_tmp));
- 	} else
  #endif
- 	{
-@@ -1075,10 +1075,10 @@ void *xt_copy_counters_from_user(const void __user *user, unsigned int len,
- 			return ERR_PTR(-EINVAL);
  
- 		len -= sizeof(*info);
--		if (copy_from_user(info, user, sizeof(*info)) != 0)
-+		if (copy_from_sockptr(info, arg, sizeof(*info)) != 0)
- 			return ERR_PTR(-EFAULT);
++static int ipv6_mcast_join_leave(struct sock *sk, int optname,
++		void __user *optval, int optlen)
++{
++	struct sockaddr_in6 *psin6;
++	struct group_req greq;
++
++	if (optlen < sizeof(greq))
++		return -EINVAL;
++	if (copy_from_user(&greq, optval, sizeof(greq)))
++		return -EFAULT;
++
++	if (greq.gr_group.ss_family != AF_INET6)
++		return -EADDRNOTAVAIL;
++	psin6 = (struct sockaddr_in6 *)&greq.gr_group;
++	if (optname = MCAST_JOIN_GROUP)
++		return ipv6_sock_mc_join(sk, greq.gr_interface,
++					 &psin6->sin6_addr);
++	return ipv6_sock_mc_drop(sk, greq.gr_interface, &psin6->sin6_addr);
++}
++
++#ifdef CONFIG_COMPAT
++static int compat_ipv6_mcast_join_leave(struct sock *sk, int optname,
++		void __user *optval, int optlen)
++{
++	struct compat_group_req gr32;
++	struct sockaddr_in6 *psin6;
++	int err;
++
++	if (optlen < sizeof(gr32))
++		return -EINVAL;
++	if (copy_from_user(&gr32, optval, sizeof(gr32)))
++		return -EFAULT;
++
++	if (gr32.gr_group.ss_family != AF_INET6)
++		return -EADDRNOTAVAIL;
++	rtnl_lock();
++	lock_sock(sk);
++	psin6 = (struct sockaddr_in6 *)&gr32.gr_group;
++	if (optname = MCAST_JOIN_GROUP)
++		err = ipv6_sock_mc_join(sk, gr32.gr_interface,
++					&psin6->sin6_addr);
++	else
++		err = ipv6_sock_mc_drop(sk, gr32.gr_interface,
++					&psin6->sin6_addr);
++	release_sock(sk);
++	rtnl_unlock();
++	return err;
++}
++#endif
++
+ static int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
+ 		    char __user *optval, unsigned int optlen)
+ {
+@@ -803,29 +853,8 @@ static int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
  
--		user += sizeof(*info);
-+		sockptr_advance(arg, sizeof(*info));
- 	}
- 	info->name[sizeof(info->name) - 1] = '\0';
- 
-@@ -1092,13 +1092,13 @@ void *xt_copy_counters_from_user(const void __user *user, unsigned int len,
- 	if (!mem)
- 		return ERR_PTR(-ENOMEM);
- 
--	if (copy_from_user(mem, user, len) = 0)
-+	if (copy_from_sockptr(mem, arg, len) = 0)
- 		return mem;
- 
- 	vfree(mem);
- 	return ERR_PTR(-EFAULT);
- }
--EXPORT_SYMBOL_GPL(xt_copy_counters_from_user);
-+EXPORT_SYMBOL_GPL(xt_copy_counters);
- 
- #ifdef CONFIG_COMPAT
- int xt_compat_target_offset(const struct xt_target *target)
+ 	case MCAST_JOIN_GROUP:
+ 	case MCAST_LEAVE_GROUP:
+-	{
+-		struct group_req greq;
+-		struct sockaddr_in6 *psin6;
+-
+-		if (optlen < sizeof(struct group_req))
+-			goto e_inval;
+-
+-		retv = -EFAULT;
+-		if (copy_from_user(&greq, optval, sizeof(struct group_req)))
+-			break;
+-		if (greq.gr_group.ss_family != AF_INET6) {
+-			retv = -EADDRNOTAVAIL;
+-			break;
+-		}
+-		psin6 = (struct sockaddr_in6 *)&greq.gr_group;
+-		if (optname = MCAST_JOIN_GROUP)
+-			retv = ipv6_sock_mc_join(sk, greq.gr_interface,
+-						 &psin6->sin6_addr);
+-		else
+-			retv = ipv6_sock_mc_drop(sk, greq.gr_interface,
+-						 &psin6->sin6_addr);
++		retv = ipv6_mcast_join_leave(sk, optname, optval, optlen);
+ 		break;
+-	}
+ 	case MCAST_JOIN_SOURCE_GROUP:
+ 	case MCAST_LEAVE_SOURCE_GROUP:
+ 	case MCAST_BLOCK_SOURCE:
+@@ -975,34 +1004,8 @@ int compat_ipv6_setsockopt(struct sock *sk, int level, int optname,
+ 	switch (optname) {
+ 	case MCAST_JOIN_GROUP:
+ 	case MCAST_LEAVE_GROUP:
+-	{
+-		struct compat_group_req __user *gr32 = (void __user *)optval;
+-		struct group_req greq;
+-		struct sockaddr_in6 *psin6 = (struct sockaddr_in6 *)&greq.gr_group;
+-
+-		if (optlen < sizeof(struct compat_group_req))
+-			return -EINVAL;
+-
+-		if (get_user(greq.gr_interface, &gr32->gr_interface) ||
+-		    copy_from_user(&greq.gr_group, &gr32->gr_group,
+-				sizeof(greq.gr_group)))
+-			return -EFAULT;
+-
+-		if (greq.gr_group.ss_family != AF_INET6)
+-			return -EADDRNOTAVAIL;
+-
+-		rtnl_lock();
+-		lock_sock(sk);
+-		if (optname = MCAST_JOIN_GROUP)
+-			err = ipv6_sock_mc_join(sk, greq.gr_interface,
+-						 &psin6->sin6_addr);
+-		else
+-			err = ipv6_sock_mc_drop(sk, greq.gr_interface,
+-						 &psin6->sin6_addr);
+-		release_sock(sk);
+-		rtnl_unlock();
+-		return err;
+-	}
++		return compat_ipv6_mcast_join_leave(sk, optname, optval,
++						    optlen);
+ 	case MCAST_JOIN_SOURCE_GROUP:
+ 	case MCAST_LEAVE_SOURCE_GROUP:
+ 	case MCAST_BLOCK_SOURCE:
 -- 
 2.27.0
