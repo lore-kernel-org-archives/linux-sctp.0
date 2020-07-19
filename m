@@ -1,84 +1,59 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Mon, 20 Jul 2020 12:47:34 +0000
-Subject: [PATCH 21/24] net/udp: switch udp_lib_setsockopt to sockptr_t
-Message-Id: <20200720124737.118617-22-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:21:42 +0000
+Subject: [PATCH 05/51] sctp: pass a kernel pointer to sctp_setsockopt_events
+Message-Id: <20200719072228.112645-6-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200720124737.118617-1-hch@lst.de>
-In-Reply-To: <20200720124737.118617-1-hch@lst.de>
+References: <20200719072228.112645-1-hch@lst.de>
+In-Reply-To: <20200719072228.112645-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
-Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Pass a sockptr_t to prepare for set_fs-less handling of the kernel
-pointer from bpf-cgroup.
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/net/udp.h | 2 +-
- net/ipv4/udp.c    | 7 ++++---
- net/ipv6/udp.c    | 3 ++-
- 3 files changed, 7 insertions(+), 5 deletions(-)
+ net/sctp/socket.c | 9 ++-------
+ 1 file changed, 2 insertions(+), 7 deletions(-)
 
-diff --git a/include/net/udp.h b/include/net/udp.h
-index 17a9e86a807638..295d52a7359827 100644
---- a/include/net/udp.h
-+++ b/include/net/udp.h
-@@ -306,7 +306,7 @@ struct sk_buff *skb_udp_tunnel_segment(struct sk_buff *skb,
- int udp_lib_getsockopt(struct sock *sk, int level, int optname,
- 		       char __user *optval, int __user *optlen);
- int udp_lib_setsockopt(struct sock *sk, int level, int optname,
--		       char __user *optval, unsigned int optlen,
-+		       sockptr_t optval, unsigned int optlen,
- 		       int (*push_pending_frames)(struct sock *));
- struct sock *udp4_lib_lookup(struct net *net, __be32 saddr, __be16 sport,
- 			     __be32 daddr, __be16 dport, int dif);
-diff --git a/net/ipv4/udp.c b/net/ipv4/udp.c
-index d4be4471c424e3..641303aa17d3dd 100644
---- a/net/ipv4/udp.c
-+++ b/net/ipv4/udp.c
-@@ -2532,7 +2532,7 @@ void udp_destroy_sock(struct sock *sk)
-  *	Socket option code for UDP
-  */
- int udp_lib_setsockopt(struct sock *sk, int level, int optname,
--		       char __user *optval, unsigned int optlen,
-+		       sockptr_t optval, unsigned int optlen,
- 		       int (*push_pending_frames)(struct sock *))
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index b259ea94aeddef..bc37174bd71af0 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -2193,11 +2193,9 @@ static int sctp_setsockopt_disable_fragments(struct sock *sk, int *val,
+ 	return 0;
+ }
+ 
+-static int sctp_setsockopt_events(struct sock *sk, char __user *optval,
++static int sctp_setsockopt_events(struct sock *sk, __u8 *sn_type,
+ 				  unsigned int optlen)
  {
- 	struct udp_sock *up = udp_sk(sk);
-@@ -2543,7 +2543,7 @@ int udp_lib_setsockopt(struct sock *sk, int level, int optname,
- 	if (optlen < sizeof(int))
+-	struct sctp_event_subscribe subscribe;
+-	__u8 *sn_type = (__u8 *)&subscribe;
+ 	struct sctp_sock *sp = sctp_sk(sk);
+ 	struct sctp_association *asoc;
+ 	int i;
+@@ -2205,9 +2203,6 @@ static int sctp_setsockopt_events(struct sock *sk, char __user *optval,
+ 	if (optlen > sizeof(struct sctp_event_subscribe))
  		return -EINVAL;
  
--	if (get_user(val, (int __user *)optval))
-+	if (copy_from_sockptr(&val, optval, sizeof(val)))
- 		return -EFAULT;
+-	if (copy_from_user(&subscribe, optval, optlen))
+-		return -EFAULT;
+-
+ 	for (i = 0; i < optlen; i++)
+ 		sctp_ulpevent_type_set(&sp->subscribe, SCTP_SN_TYPE_BASE + i,
+ 				       sn_type[i]);
+@@ -4697,7 +4692,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		break;
  
- 	valbool = val ? 1 : 0;
-@@ -2651,7 +2651,8 @@ int udp_setsockopt(struct sock *sk, int level, int optname,
- 		   char __user *optval, unsigned int optlen)
- {
- 	if (level = SOL_UDP  ||  level = SOL_UDPLITE)
--		return udp_lib_setsockopt(sk, level, optname, optval, optlen,
-+		return udp_lib_setsockopt(sk, level, optname,
-+					  USER_SOCKPTR(optval), optlen,
- 					  udp_push_pending_frames);
- 	return ip_setsockopt(sk, level, optname, optval, optlen);
- }
-diff --git a/net/ipv6/udp.c b/net/ipv6/udp.c
-index 5aff0856a05b44..05353b31fa07bc 100644
---- a/net/ipv6/udp.c
-+++ b/net/ipv6/udp.c
-@@ -1565,7 +1565,8 @@ int udpv6_setsockopt(struct sock *sk, int level, int optname,
- 		     char __user *optval, unsigned int optlen)
- {
- 	if (level = SOL_UDP  ||  level = SOL_UDPLITE)
--		return udp_lib_setsockopt(sk, level, optname, optval, optlen,
-+		return udp_lib_setsockopt(sk, level, optname,
-+					  USER_SOCKPTR(optval), optlen,
- 					  udp_v6_push_pending_frames);
- 	return ipv6_setsockopt(sk, level, optname, optval, optlen);
- }
+ 	case SCTP_EVENTS:
+-		retval = sctp_setsockopt_events(sk, optval, optlen);
++		retval = sctp_setsockopt_events(sk, kopt, optlen);
+ 		break;
+ 
+ 	case SCTP_AUTOCLOSE:
 -- 
 2.27.0
