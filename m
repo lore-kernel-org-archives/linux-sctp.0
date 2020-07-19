@@ -1,60 +1,57 @@
-From: Matthieu Baerts <matthieu.baerts@tessares.net>
-Date: Wed, 22 Jul 2020 08:26:42 +0000
-Subject: Re: [MPTCP] [PATCH 24/24] net: pass a sockptr_t into ->setsockopt
-Message-Id: <b3665200-2476-9d35-8dea-d5da141c6b70@tessares.net>
+From: Christoph Hellwig <hch@lst.de>
+Date: Sun, 19 Jul 2020 07:21:38 +0000
+Subject: [PATCH 01/51] sctp: copy the optval from user space in sctp_setsockopt
+Message-Id: <20200719072228.112645-2-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200720124737.118617-1-hch@lst.de>
- <20200720124737.118617-25-hch@lst.de>
-In-Reply-To: <20200720124737.118617-25-hch@lst.de>
+References: <20200719072228.112645-1-hch@lst.de>
+In-Reply-To: <20200719072228.112645-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Christoph Hellwig <hch@lst.de>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>, linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Hi Christoph,
+Prepare for for moving the copy_from_user from the individual sockopts
+to the main setsockopt helper.  As of this commit the kopt variable
+is not used yet, but the following commits will start using it.
 
-On 20/07/2020 14:47, Christoph Hellwig wrote:
-> Rework the remaining setsockopt code to pass a sockptr_t instead of a
-> plain user pointer.  This removes the last remaining set_fs(KERNEL_DS)
-> outside of architecture specific code.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ net/sctp/socket.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-...
-> diff --git a/net/mptcp/protocol.c b/net/mptcp/protocol.c
-> index 27b6f250b87dfd..30a8e697b9db9c 100644
-> --- a/net/mptcp/protocol.c
-> +++ b/net/mptcp/protocol.c
-> @@ -1627,7 +1627,7 @@ static void mptcp_destroy(struct sock *sk)
->   }
->   
->   static int mptcp_setsockopt_sol_socket(struct mptcp_sock *msk, int optname,
-> -				       char __user *optval, unsigned int optlen)
-> +				       sockptr_t optval, unsigned int optlen)
->   {
->   	struct sock *sk = (struct sock *)msk;
->   	struct socket *ssock;
-> @@ -1643,8 +1643,8 @@ static int mptcp_setsockopt_sol_socket(struct mptcp_sock *msk, int optname,
->   			return -EINVAL;
->   		}
->   
-> -		ret = sock_setsockopt(ssock, SOL_SOCKET, optname,
-> -				      USER_SOCKPTR(optval), optlen);
-> +		ret = sock_setsockopt(ssock, SOL_SOCKET, optname, optval,
-> +				      optlen);
-
-A very small detail related to the modifications in MPTCP code, only if 
-you have to send a v2 and if you don't mind: may you move "optlen" to 
-the previous line like it was before your patch 7/24. Same below at the 
-end of the function.
-
-That would reduce the global diff in MPTCP files to function signatures 
-only.
-
-Cheers,
-Matt
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index d57e1a002ffc8f..af1ebc8313d303 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4677,6 +4677,7 @@ static int sctp_setsockopt_pf_expose(struct sock *sk,
+ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 			   char __user *optval, unsigned int optlen)
+ {
++	void *kopt = NULL;
+ 	int retval = 0;
+ 
+ 	pr_debug("%s: sk:%p, optname:%d\n", __func__, sk, optname);
+@@ -4693,6 +4694,12 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		goto out_nounlock;
+ 	}
+ 
++	if (optlen > 0) {
++		kopt = memdup_user(optval, optlen);
++		if (IS_ERR(kopt))
++			return PTR_ERR(kopt);
++	}
++
+ 	lock_sock(sk);
+ 
+ 	switch (optname) {
+@@ -4878,6 +4885,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 	}
+ 
+ 	release_sock(sk);
++	kfree(kopt);
+ 
+ out_nounlock:
+ 	return retval;
 -- 
-Tessares | Belgium | Hybrid Access Solutions
-www.tessares.net
+2.27.0
