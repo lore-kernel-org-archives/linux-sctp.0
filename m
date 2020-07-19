@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Sun, 19 Jul 2020 07:21:51 +0000
-Subject: [PATCH 14/51] sctp: pass a kernel pointer to sctp_setsockopt_peer_primary_addr
-Message-Id: <20200719072228.112645-15-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:22:07 +0000
+Subject: [PATCH 30/51] sctp: pass a kernel pointer to sctp_setsockopt_deactivate_key
+Message-Id: <20200719072228.112645-31-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200719072228.112645-1-hch@lst.de>
 In-Reply-To: <20200719072228.112645-1-hch@lst.de>
@@ -16,80 +16,76 @@ directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 21 +++++++++------------
- 1 file changed, 9 insertions(+), 12 deletions(-)
+ net/sctp/socket.c | 28 +++++++++++++---------------
+ 1 file changed, 13 insertions(+), 15 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index abdec7b412bcbc..ff3b720eab0aa2 100644
+index b692b9376d9d60..ab155c15939ee8 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -3284,12 +3284,12 @@ static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned
-  *   locally bound addresses. The following structure is used to make a
-  *   set primary request:
+@@ -3750,42 +3750,40 @@ static int sctp_setsockopt_del_key(struct sock *sk,
+  *
+  * This set option will deactivate a shared secret key.
   */
--static int sctp_setsockopt_peer_primary_addr(struct sock *sk, char __user *optval,
-+static int sctp_setsockopt_peer_primary_addr(struct sock *sk,
-+					     struct sctp_setpeerprim *prim,
- 					     unsigned int optlen)
+-static int sctp_setsockopt_deactivate_key(struct sock *sk, char __user *optval,
++static int sctp_setsockopt_deactivate_key(struct sock *sk,
++					  struct sctp_authkeyid *val,
+ 					  unsigned int optlen)
  {
- 	struct sctp_sock	*sp;
- 	struct sctp_association	*asoc = NULL;
--	struct sctp_setpeerprim	prim;
- 	struct sctp_chunk	*chunk;
- 	struct sctp_af		*af;
- 	int 			err;
-@@ -3302,10 +3302,7 @@ static int sctp_setsockopt_peer_primary_addr(struct sock *sk, char __user *optva
- 	if (optlen != sizeof(struct sctp_setpeerprim))
- 		return -EINVAL;
+ 	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
+ 	struct sctp_association *asoc;
+-	struct sctp_authkeyid val;
+ 	int ret = 0;
  
--	if (copy_from_user(&prim, optval, optlen))
+ 	if (optlen != sizeof(struct sctp_authkeyid))
+ 		return -EINVAL;
+-	if (copy_from_user(&val, optval, optlen))
 -		return -EFAULT;
--
--	asoc = sctp_id2assoc(sk, prim.sspp_assoc_id);
-+	asoc = sctp_id2assoc(sk, prim->sspp_assoc_id);
- 	if (!asoc)
+ 
+-	asoc = sctp_id2assoc(sk, val.scact_assoc_id);
+-	if (!asoc && val.scact_assoc_id > SCTP_ALL_ASSOC &&
++	asoc = sctp_id2assoc(sk, val->scact_assoc_id);
++	if (!asoc && val->scact_assoc_id > SCTP_ALL_ASSOC &&
+ 	    sctp_style(sk, UDP))
  		return -EINVAL;
  
-@@ -3318,26 +3315,26 @@ static int sctp_setsockopt_peer_primary_addr(struct sock *sk, char __user *optva
- 	if (!sctp_state(asoc, ESTABLISHED))
- 		return -ENOTCONN;
+ 	if (asoc)
+-		return sctp_auth_deact_key_id(ep, asoc, val.scact_keynumber);
++		return sctp_auth_deact_key_id(ep, asoc, val->scact_keynumber);
  
--	af = sctp_get_af_specific(prim.sspp_addr.ss_family);
-+	af = sctp_get_af_specific(prim->sspp_addr.ss_family);
- 	if (!af)
- 		return -EINVAL;
+ 	if (sctp_style(sk, TCP))
+-		val.scact_assoc_id = SCTP_FUTURE_ASSOC;
++		val->scact_assoc_id = SCTP_FUTURE_ASSOC;
  
--	if (!af->addr_valid((union sctp_addr *)&prim.sspp_addr, sp, NULL))
-+	if (!af->addr_valid((union sctp_addr *)&prim->sspp_addr, sp, NULL))
- 		return -EADDRNOTAVAIL;
+-	if (val.scact_assoc_id = SCTP_FUTURE_ASSOC ||
+-	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
+-		ret = sctp_auth_deact_key_id(ep, asoc, val.scact_keynumber);
++	if (val->scact_assoc_id = SCTP_FUTURE_ASSOC ||
++	    val->scact_assoc_id = SCTP_ALL_ASSOC) {
++		ret = sctp_auth_deact_key_id(ep, asoc, val->scact_keynumber);
+ 		if (ret)
+ 			return ret;
+ 	}
  
--	if (!sctp_assoc_lookup_laddr(asoc, (union sctp_addr *)&prim.sspp_addr))
-+	if (!sctp_assoc_lookup_laddr(asoc, (union sctp_addr *)&prim->sspp_addr))
- 		return -EADDRNOTAVAIL;
+-	if (val.scact_assoc_id = SCTP_CURRENT_ASSOC ||
+-	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
++	if (val->scact_assoc_id = SCTP_CURRENT_ASSOC ||
++	    val->scact_assoc_id = SCTP_ALL_ASSOC) {
+ 		list_for_each_entry(asoc, &ep->asocs, asocs) {
+ 			int res = sctp_auth_deact_key_id(ep, asoc,
+-							 val.scact_keynumber);
++							 val->scact_keynumber);
  
- 	/* Allow security module to validate address. */
- 	err = security_sctp_bind_connect(sk, SCTP_SET_PEER_PRIMARY_ADDR,
--					 (struct sockaddr *)&prim.sspp_addr,
-+					 (struct sockaddr *)&prim->sspp_addr,
- 					 af->sockaddr_len);
- 	if (err)
- 		return err;
- 
- 	/* Create an ASCONF chunk with SET_PRIMARY parameter	*/
- 	chunk = sctp_make_asconf_set_prim(asoc,
--					  (union sctp_addr *)&prim.sspp_addr);
-+					  (union sctp_addr *)&prim->sspp_addr);
- 	if (!chunk)
- 		return -ENOMEM;
- 
-@@ -4694,7 +4691,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_primary_addr(sk, kopt, optlen);
+ 			if (res && !ret)
+ 				ret = res;
+@@ -4689,7 +4687,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_del_key(sk, kopt, optlen);
  		break;
- 	case SCTP_SET_PEER_PRIMARY_ADDR:
--		retval = sctp_setsockopt_peer_primary_addr(sk, optval, optlen);
-+		retval = sctp_setsockopt_peer_primary_addr(sk, kopt, optlen);
+ 	case SCTP_AUTH_DEACTIVATE_KEY:
+-		retval = sctp_setsockopt_deactivate_key(sk, optval, optlen);
++		retval = sctp_setsockopt_deactivate_key(sk, kopt, optlen);
  		break;
- 	case SCTP_NODELAY:
- 		retval = sctp_setsockopt_nodelay(sk, optval, optlen);
+ 	case SCTP_AUTO_ASCONF:
+ 		retval = sctp_setsockopt_auto_asconf(sk, optval, optlen);
 -- 
 2.27.0
