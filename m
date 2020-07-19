@@ -1,77 +1,99 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Fri, 17 Jul 2020 06:23:22 +0000
-Subject: [PATCH 13/22] netfilter: split nf_sockopt
-Message-Id: <20200717062331.691152-14-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:21:39 +0000
+Subject: [PATCH 02/51] sctp: pass a kernel pointer to sctp_setsockopt_bindx
+Message-Id: <20200719072228.112645-3-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200717062331.691152-1-hch@lst.de>
-In-Reply-To: <20200717062331.691152-1-hch@lst.de>
+References: <20200719072228.112645-1-hch@lst.de>
+In-Reply-To: <20200719072228.112645-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>
-Cc: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Chas Williams <3chas3@gmail.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-sctp@vger.kernel.org, linux-arch@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-wpan@vger.kernel.org, mptcp@lists.01.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Split nf_sockopt into a getsockopt and setsockopt side as they share
-very little code.
+Rename sctp_setsockopt_bindx_kernel back to sctp_setsockopt_bindx,
+and use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer in the old sctp_setsockopt_bindx.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/netfilter/nf_sockopt.c | 30 +++++++++++++-----------------
- 1 file changed, 13 insertions(+), 17 deletions(-)
+ net/sctp/socket.c | 33 ++++++++-------------------------
+ 1 file changed, 8 insertions(+), 25 deletions(-)
 
-diff --git a/net/netfilter/nf_sockopt.c b/net/netfilter/nf_sockopt.c
-index 02870993d335c9..90469b1f628a8e 100644
---- a/net/netfilter/nf_sockopt.c
-+++ b/net/netfilter/nf_sockopt.c
-@@ -89,36 +89,32 @@ static struct nf_sockopt_ops *nf_sockopt_find(struct sock *sk, u_int8_t pf,
- 	return ops;
- }
- 
--/* Call get/setsockopt() */
--static int nf_sockopt(struct sock *sk, u_int8_t pf, int val,
--		      char __user *opt, int *len, int get)
-+int nf_setsockopt(struct sock *sk, u_int8_t pf, int val, char __user *opt,
-+		  unsigned int len)
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index af1ebc8313d303..85ba5155b177b1 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -979,9 +979,8 @@ int sctp_asconf_mgmt(struct sctp_sock *sp, struct sctp_sockaddr_entry *addrw)
+  *
+  * Returns 0 if ok, <0 errno code on error.
+  */
+-static int sctp_setsockopt_bindx_kernel(struct sock *sk,
+-					struct sockaddr *addrs, int addrs_size,
+-					int op)
++static int sctp_setsockopt_bindx(struct sock *sk, struct sockaddr *addrs,
++				 int addrs_size, int op)
  {
- 	struct nf_sockopt_ops *ops;
- 	int ret;
+ 	int err;
+ 	int addrcnt = 0;
+@@ -991,7 +990,7 @@ static int sctp_setsockopt_bindx_kernel(struct sock *sk,
+ 	struct sctp_af *af;
  
--	ops = nf_sockopt_find(sk, pf, val, get);
-+	ops = nf_sockopt_find(sk, pf, val, 0);
- 	if (IS_ERR(ops))
- 		return PTR_ERR(ops);
--
--	if (get)
--		ret = ops->get(sk, val, opt, len);
--	else
--		ret = ops->set(sk, val, opt, *len);
--
-+	ret = ops->set(sk, val, opt, len);
- 	module_put(ops->owner);
- 	return ret;
+ 	pr_debug("%s: sk:%p addrs:%p addrs_size:%d opt:%d\n",
+-		 __func__, sk, addrs, addrs_size, op);
++		 __func__, sk, addr_buf, addrs_size, op);
+ 
+ 	if (unlikely(addrs_size <= 0))
+ 		return -EINVAL;
+@@ -1037,29 +1036,13 @@ static int sctp_setsockopt_bindx_kernel(struct sock *sk,
+ 	}
  }
--
--int nf_setsockopt(struct sock *sk, u_int8_t pf, int val, char __user *opt,
--		  unsigned int len)
+ 
+-static int sctp_setsockopt_bindx(struct sock *sk,
+-				 struct sockaddr __user *addrs,
+-				 int addrs_size, int op)
 -{
--	return nf_sockopt(sk, pf, val, opt, &len, 0);
+-	struct sockaddr *kaddrs;
+-	int err;
+-
+-	kaddrs = memdup_user(addrs, addrs_size);
+-	if (IS_ERR(kaddrs))
+-		return PTR_ERR(kaddrs);
+-	err = sctp_setsockopt_bindx_kernel(sk, kaddrs, addrs_size, op);
+-	kfree(kaddrs);
+-	return err;
 -}
- EXPORT_SYMBOL(nf_setsockopt);
- 
- int nf_getsockopt(struct sock *sk, u_int8_t pf, int val, char __user *opt,
- 		  int *len)
+-
+ static int sctp_bind_add(struct sock *sk, struct sockaddr *addrs,
+ 		int addrlen)
  {
--	return nf_sockopt(sk, pf, val, opt, len, 1);
-+	struct nf_sockopt_ops *ops;
-+	int ret;
-+
-+	ops = nf_sockopt_find(sk, pf, val, 1);
-+	if (IS_ERR(ops))
-+		return PTR_ERR(ops);
-+	ret = ops->get(sk, val, opt, len);
-+	module_put(ops->owner);
-+	return ret;
+ 	int err;
+ 
+ 	lock_sock(sk);
+-	err = sctp_setsockopt_bindx_kernel(sk, addrs, addrlen,
+-					   SCTP_BINDX_ADD_ADDR);
++	err = sctp_setsockopt_bindx(sk, addrs, addrlen, SCTP_BINDX_ADD_ADDR);
+ 	release_sock(sk);
+ 	return err;
  }
- EXPORT_SYMBOL(nf_getsockopt);
+@@ -4705,14 +4688,14 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 	switch (optname) {
+ 	case SCTP_SOCKOPT_BINDX_ADD:
+ 		/* 'optlen' is the size of the addresses buffer. */
+-		retval = sctp_setsockopt_bindx(sk, (struct sockaddr __user *)optval,
+-					       optlen, SCTP_BINDX_ADD_ADDR);
++		retval = sctp_setsockopt_bindx(sk, kopt, optlen,
++					       SCTP_BINDX_ADD_ADDR);
+ 		break;
+ 
+ 	case SCTP_SOCKOPT_BINDX_REM:
+ 		/* 'optlen' is the size of the addresses buffer. */
+-		retval = sctp_setsockopt_bindx(sk, (struct sockaddr __user *)optval,
+-					       optlen, SCTP_BINDX_REM_ADDR);
++		retval = sctp_setsockopt_bindx(sk, kopt, optlen,
++					       SCTP_BINDX_REM_ADDR);
+ 		break;
+ 
+ 	case SCTP_SOCKOPT_CONNECTX_OLD:
 -- 
 2.27.0
