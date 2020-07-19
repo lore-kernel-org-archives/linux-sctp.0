@@ -1,112 +1,80 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 23 Jul 2020 06:08:51 +0000
-Subject: [PATCH 09/26] net/xfrm: switch xfrm_user_policy to sockptr_t
-Message-Id: <20200723060908.50081-10-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:22:25 +0000
+Subject: [PATCH 48/51] sctp: pass a kernel pointer to sctp_setsockopt_auth_supported
+Message-Id: <20200719072228.112645-49-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200723060908.50081-1-hch@lst.de>
-In-Reply-To: <20200723060908.50081-1-hch@lst.de>
+References: <20200719072228.112645-1-hch@lst.de>
+In-Reply-To: <20200719072228.112645-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
-Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Pass a sockptr_t to prepare for set_fs-less handling of the kernel
-pointer from bpf-cgroup.
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/net/xfrm.h       | 8 +++++---
- net/ipv4/ip_sockglue.c   | 3 ++-
- net/ipv6/ipv6_sockglue.c | 3 ++-
- net/xfrm/xfrm_state.c    | 6 +++---
- 4 files changed, 12 insertions(+), 8 deletions(-)
+ net/sctp/socket.c | 20 +++++++-------------
+ 1 file changed, 7 insertions(+), 13 deletions(-)
 
-diff --git a/include/net/xfrm.h b/include/net/xfrm.h
-index f9e1fda82ddfc0..5e81868b574a73 100644
---- a/include/net/xfrm.h
-+++ b/include/net/xfrm.h
-@@ -15,6 +15,7 @@
- #include <linux/audit.h>
- #include <linux/slab.h>
- #include <linux/refcount.h>
-+#include <linux/sockptr.h>
- 
- #include <net/sock.h>
- #include <net/dst.h>
-@@ -1609,10 +1610,11 @@ int xfrm6_find_1stfragopt(struct xfrm_state *x, struct sk_buff *skb,
- void xfrm6_local_rxpmtu(struct sk_buff *skb, u32 mtu);
- int xfrm4_udp_encap_rcv(struct sock *sk, struct sk_buff *skb);
- int xfrm6_udp_encap_rcv(struct sock *sk, struct sk_buff *skb);
--int xfrm_user_policy(struct sock *sk, int optname,
--		     u8 __user *optval, int optlen);
-+int xfrm_user_policy(struct sock *sk, int optname, sockptr_t optval,
-+		     int optlen);
- #else
--static inline int xfrm_user_policy(struct sock *sk, int optname, u8 __user *optval, int optlen)
-+static inline int xfrm_user_policy(struct sock *sk, int optname,
-+				   sockptr_t optval, int optlen)
- {
-  	return -ENOPROTOOPT;
- }
-diff --git a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
-index a5ea02d7a183eb..da933f99b5d517 100644
---- a/net/ipv4/ip_sockglue.c
-+++ b/net/ipv4/ip_sockglue.c
-@@ -1322,7 +1322,8 @@ static int do_ip_setsockopt(struct sock *sk, int level,
- 		err = -EPERM;
- 		if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN))
- 			break;
--		err = xfrm_user_policy(sk, optname, optval, optlen);
-+		err = xfrm_user_policy(sk, optname, USER_SOCKPTR(optval),
-+				       optlen);
- 		break;
- 
- 	case IP_TRANSPARENT:
-diff --git a/net/ipv6/ipv6_sockglue.c b/net/ipv6/ipv6_sockglue.c
-index add8f791229945..56a74707c61741 100644
---- a/net/ipv6/ipv6_sockglue.c
-+++ b/net/ipv6/ipv6_sockglue.c
-@@ -935,7 +935,8 @@ static int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
- 		retv = -EPERM;
- 		if (!ns_capable(net->user_ns, CAP_NET_ADMIN))
- 			break;
--		retv = xfrm_user_policy(sk, optname, optval, optlen);
-+		retv = xfrm_user_policy(sk, optname, USER_SOCKPTR(optval),
-+					optlen);
- 		break;
- 
- 	case IPV6_ADDR_PREFERENCES:
-diff --git a/net/xfrm/xfrm_state.c b/net/xfrm/xfrm_state.c
-index 8be2d926acc21d..69520ad3d83bfb 100644
---- a/net/xfrm/xfrm_state.c
-+++ b/net/xfrm/xfrm_state.c
-@@ -2264,7 +2264,7 @@ static bool km_is_alive(const struct km_event *c)
- 	return is_alive;
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index b52acbf231ab9e..ca369447237a77 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4326,29 +4326,23 @@ static int sctp_setsockopt_asconf_supported(struct sock *sk,
  }
  
--int xfrm_user_policy(struct sock *sk, int optname, u8 __user *optval, int optlen)
-+int xfrm_user_policy(struct sock *sk, int optname, sockptr_t optval, int optlen)
+ static int sctp_setsockopt_auth_supported(struct sock *sk,
+-					  char __user *optval,
++					  struct sctp_assoc_value *params,
+ 					  unsigned int optlen)
  {
- 	int err;
- 	u8 *data;
-@@ -2274,7 +2274,7 @@ int xfrm_user_policy(struct sock *sk, int optname, u8 __user *optval, int optlen
- 	if (in_compat_syscall())
- 		return -EOPNOTSUPP;
+-	struct sctp_assoc_value params;
+ 	struct sctp_association *asoc;
+ 	struct sctp_endpoint *ep;
+ 	int retval = -EINVAL;
  
--	if (!optval && !optlen) {
-+	if (sockptr_is_null(optval) && !optlen) {
- 		xfrm_sk_policy_insert(sk, XFRM_POLICY_IN, NULL);
- 		xfrm_sk_policy_insert(sk, XFRM_POLICY_OUT, NULL);
- 		__sk_dst_reset(sk);
-@@ -2284,7 +2284,7 @@ int xfrm_user_policy(struct sock *sk, int optname, u8 __user *optval, int optlen
- 	if (optlen <= 0 || optlen > PAGE_SIZE)
- 		return -EMSGSIZE;
+-	if (optlen != sizeof(params))
+-		goto out;
+-
+-	if (copy_from_user(&params, optval, optlen)) {
+-		retval = -EFAULT;
++	if (optlen != sizeof(*params))
+ 		goto out;
+-	}
  
--	data = memdup_user(optval, optlen);
-+	data = memdup_sockptr(optval, optlen);
- 	if (IS_ERR(data))
- 		return PTR_ERR(data);
+-	asoc = sctp_id2assoc(sk, params.assoc_id);
+-	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
++	asoc = sctp_id2assoc(sk, params->assoc_id);
++	if (!asoc && params->assoc_id != SCTP_FUTURE_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		goto out;
  
+ 	ep = sctp_sk(sk)->ep;
+-	if (params.assoc_value) {
++	if (params->assoc_value) {
+ 		retval = sctp_auth_init(ep, GFP_KERNEL);
+ 		if (retval)
+ 			goto out;
+@@ -4358,7 +4352,7 @@ static int sctp_setsockopt_auth_supported(struct sock *sk,
+ 		}
+ 	}
+ 
+-	ep->auth_enable = !!params.assoc_value;
++	ep->auth_enable = !!params->assoc_value;
+ 	retval = 0;
+ 
+ out:
+@@ -4638,7 +4632,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_asconf_supported(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_AUTH_SUPPORTED:
+-		retval = sctp_setsockopt_auth_supported(sk, optval, optlen);
++		retval = sctp_setsockopt_auth_supported(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_ECN_SUPPORTED:
+ 		retval = sctp_setsockopt_ecn_supported(sk, optval, optlen);
 -- 
 2.27.0
