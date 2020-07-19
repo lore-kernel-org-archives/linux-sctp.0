@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Sun, 19 Jul 2020 07:22:04 +0000
-Subject: [PATCH 27/51] sctp: pass a kernel pointer to sctp_setsockopt_auth_key
-Message-Id: <20200719072228.112645-28-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:22:01 +0000
+Subject: [PATCH 24/51] sctp: pass a kernel pointer to sctp_setsockopt_auth_chunk
+Message-Id: <20200719072228.112645-25-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200719072228.112645-1-hch@lst.de>
 In-Reply-To: <20200719072228.112645-1-hch@lst.de>
@@ -12,58 +12,58 @@ To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Ma
 Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
 Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.  Adapt sctp_setsockopt to use a
-kzfree for this case.
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 10 ++--------
- 1 file changed, 2 insertions(+), 8 deletions(-)
+ net/sctp/socket.c | 11 ++++-------
+ 1 file changed, 4 insertions(+), 7 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 365145746b559d..b4dcccba5787e3 100644
+index ac7dff849290dc..f68aa3936df3f3 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -3594,11 +3594,10 @@ static int sctp_setsockopt_hmac_ident(struct sock *sk,
-  * association shared key.
+@@ -3535,21 +3535,18 @@ static int sctp_setsockopt_maxburst(struct sock *sk,
+  * will only effect future associations on the socket.
   */
- static int sctp_setsockopt_auth_key(struct sock *sk,
--				    char __user *optval,
-+				    struct sctp_authkey *authkey,
- 				    unsigned int optlen)
+ static int sctp_setsockopt_auth_chunk(struct sock *sk,
+-				      char __user *optval,
++				      struct sctp_authchunk *val,
+ 				      unsigned int optlen)
  {
  	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
--	struct sctp_authkey *authkey;
- 	struct sctp_association *asoc;
- 	int ret = -EINVAL;
+-	struct sctp_authchunk val;
  
-@@ -3609,10 +3608,6 @@ static int sctp_setsockopt_auth_key(struct sock *sk,
- 	 */
- 	optlen = min_t(unsigned int, optlen, USHRT_MAX + sizeof(*authkey));
+ 	if (!ep->auth_enable)
+ 		return -EACCES;
  
--	authkey = memdup_user(optval, optlen);
--	if (IS_ERR(authkey))
--		return PTR_ERR(authkey);
--
- 	if (authkey->sca_keylength > optlen - sizeof(*authkey))
- 		goto out;
+ 	if (optlen != sizeof(struct sctp_authchunk))
+ 		return -EINVAL;
+-	if (copy_from_user(&val, optval, optlen))
+-		return -EFAULT;
  
-@@ -3650,7 +3645,6 @@ static int sctp_setsockopt_auth_key(struct sock *sk,
+-	switch (val.sauth_chunk) {
++	switch (val->sauth_chunk) {
+ 	case SCTP_CID_INIT:
+ 	case SCTP_CID_INIT_ACK:
+ 	case SCTP_CID_SHUTDOWN_COMPLETE:
+@@ -3558,7 +3555,7 @@ static int sctp_setsockopt_auth_chunk(struct sock *sk,
+ 	}
  
- out:
- 	memzero_explicit(authkey, optlen);
--	kfree(authkey);
- 	return ret;
+ 	/* add this chunk id to the endpoint */
+-	return sctp_auth_ep_add_chunkid(ep, val.sauth_chunk);
++	return sctp_auth_ep_add_chunkid(ep, val->sauth_chunk);
  }
  
-@@ -4692,7 +4686,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_hmac_ident(sk, kopt, optlen);
+ /*
+@@ -4699,7 +4696,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_maxburst(sk, kopt, optlen);
  		break;
- 	case SCTP_AUTH_KEY:
--		retval = sctp_setsockopt_auth_key(sk, optval, optlen);
-+		retval = sctp_setsockopt_auth_key(sk, kopt, optlen);
+ 	case SCTP_AUTH_CHUNK:
+-		retval = sctp_setsockopt_auth_chunk(sk, optval, optlen);
++		retval = sctp_setsockopt_auth_chunk(sk, kopt, optlen);
  		break;
- 	case SCTP_AUTH_ACTIVE_KEY:
- 		retval = sctp_setsockopt_active_key(sk, optval, optlen);
+ 	case SCTP_HMAC_IDENT:
+ 		retval = sctp_setsockopt_hmac_ident(sk, optval, optlen);
 -- 
 2.27.0
