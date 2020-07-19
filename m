@@ -1,23 +1,57 @@
-From: Luc Van Oostenryck <luc.vanoostenryck@gmail.com>
-Date: Thu, 23 Jul 2020 11:14:47 +0000
-Subject: Re: [PATCH 01/26] bpfilter: fix up a sparse annotation
-Message-Id: <20200723111447.3xj7cidlsspofsja@ltop.local>
+From: Christoph Hellwig <hch@lst.de>
+Date: Sun, 19 Jul 2020 07:21:59 +0000
+Subject: [PATCH 22/51] sctp: pass a kernel pointer to sctp_setsockopt_fragment_interleave
+Message-Id: <20200719072228.112645-23-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200723060908.50081-1-hch@lst.de>
- <20200723060908.50081-2-hch@lst.de>
-In-Reply-To: <20200723060908.50081-2-hch@lst.de>
+References: <20200719072228.112645-1-hch@lst.de>
+In-Reply-To: <20200719072228.112645-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Christoph Hellwig <hch@lst.de>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>, linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-On Thu, Jul 23, 2020 at 08:08:43AM +0200, Christoph Hellwig wrote:
-> The __user doesn't make sense when casting to an integer type, just
-> switch to a uintptr_t cast which also removes the need for the __force.
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
-Feel free to add my:
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ net/sctp/socket.c | 11 +++--------
+ 1 file changed, 3 insertions(+), 8 deletions(-)
 
-Reviewed-by: Luc Van Oostenryck <luc.vanoostenryck@gmail.com>
-
--- Luc
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 2862047054d55a..874cec73153052 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3422,18 +3422,13 @@ static int sctp_setsockopt_context(struct sock *sk,
+  * application using the one to many model may become confused and act
+  * incorrectly.
+  */
+-static int sctp_setsockopt_fragment_interleave(struct sock *sk,
+-					       char __user *optval,
++static int sctp_setsockopt_fragment_interleave(struct sock *sk, int *val,
+ 					       unsigned int optlen)
+ {
+-	int val;
+-
+ 	if (optlen != sizeof(int))
+ 		return -EINVAL;
+-	if (get_user(val, (int __user *)optval))
+-		return -EFAULT;
+ 
+-	sctp_sk(sk)->frag_interleave = !!val;
++	sctp_sk(sk)->frag_interleave = !!*val;
+ 
+ 	if (!sctp_sk(sk)->frag_interleave)
+ 		sctp_sk(sk)->ep->intl_enable = 0;
+@@ -4701,7 +4696,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_context(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_FRAGMENT_INTERLEAVE:
+-		retval = sctp_setsockopt_fragment_interleave(sk, optval, optlen);
++		retval = sctp_setsockopt_fragment_interleave(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_MAX_BURST:
+ 		retval = sctp_setsockopt_maxburst(sk, optval, optlen);
+-- 
+2.27.0
