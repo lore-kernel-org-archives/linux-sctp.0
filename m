@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Sun, 19 Jul 2020 07:22:17 +0000
-Subject: [PATCH 40/51] sctp: pass a kernel pointer to sctp_setsockopt_reset_assoc
-Message-Id: <20200719072228.112645-41-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:22:22 +0000
+Subject: [PATCH 45/51] sctp: pass a kernel pointer to sctp_setsockopt_reuse_port
+Message-Id: <20200719072228.112645-46-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200719072228.112645-1-hch@lst.de>
 In-Reply-To: <20200719072228.112645-1-hch@lst.de>
@@ -16,58 +16,46 @@ directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 25 +++++++------------------
- 1 file changed, 7 insertions(+), 18 deletions(-)
+ net/sctp/socket.c | 11 +++--------
+ 1 file changed, 3 insertions(+), 8 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 1365351fd2c86a..f190f59f29595a 100644
+index 6232e46c4cdebd..a5b95e68cc129f 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -4083,30 +4083,19 @@ static int sctp_setsockopt_reset_streams(struct sock *sk,
- 	return sctp_send_reset_streams(asoc, params);
+@@ -4214,11 +4214,9 @@ static int sctp_setsockopt_interleaving_supported(struct sock *sk,
+ 	return 0;
  }
  
--static int sctp_setsockopt_reset_assoc(struct sock *sk,
--				       char __user *optval,
-+static int sctp_setsockopt_reset_assoc(struct sock *sk, sctp_assoc_t *associd,
- 				       unsigned int optlen)
+-static int sctp_setsockopt_reuse_port(struct sock *sk, char __user *optval,
++static int sctp_setsockopt_reuse_port(struct sock *sk, int *val,
+ 				      unsigned int optlen)
  {
- 	struct sctp_association *asoc;
--	sctp_assoc_t associd;
--	int retval = -EINVAL;
+-	int val;
 -
--	if (optlen != sizeof(associd))
--		goto out;
+ 	if (!sctp_style(sk, TCP))
+ 		return -EOPNOTSUPP;
  
--	if (copy_from_user(&associd, optval, optlen)) {
--		retval = -EFAULT;
--		goto out;
--	}
-+	if (optlen != sizeof(*associd))
-+		return -EINVAL;
+@@ -4228,10 +4226,7 @@ static int sctp_setsockopt_reuse_port(struct sock *sk, char __user *optval,
+ 	if (optlen < sizeof(int))
+ 		return -EINVAL;
  
--	asoc = sctp_id2assoc(sk, associd);
-+	asoc = sctp_id2assoc(sk, *associd);
- 	if (!asoc)
--		goto out;
+-	if (get_user(val, (int __user *)optval))
+-		return -EFAULT;
 -
--	retval = sctp_send_reset_assoc(asoc);
-+		return -EINVAL;
+-	sctp_sk(sk)->reuse = !!val;
++	sctp_sk(sk)->reuse = !!*val;
  
--out:
--	return retval;
-+	return sctp_send_reset_assoc(asoc);
+ 	return 0;
  }
- 
- static int sctp_setsockopt_add_streams(struct sock *sk,
-@@ -4675,7 +4664,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_reset_streams(sk, kopt, optlen);
+@@ -4645,7 +4640,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 								optlen);
  		break;
- 	case SCTP_RESET_ASSOC:
--		retval = sctp_setsockopt_reset_assoc(sk, optval, optlen);
-+		retval = sctp_setsockopt_reset_assoc(sk, kopt, optlen);
+ 	case SCTP_REUSE_PORT:
+-		retval = sctp_setsockopt_reuse_port(sk, optval, optlen);
++		retval = sctp_setsockopt_reuse_port(sk, kopt, optlen);
  		break;
- 	case SCTP_ADD_STREAMS:
- 		retval = sctp_setsockopt_add_streams(sk, optval, optlen);
+ 	case SCTP_EVENT:
+ 		retval = sctp_setsockopt_event(sk, optval, optlen);
 -- 
 2.27.0
