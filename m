@@ -1,136 +1,48 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Mon, 20 Jul 2020 12:47:27 +0000
-Subject: [PATCH 14/24] net/ipv4: merge ip_options_get and ip_options_get_from_user
-Message-Id: <20200720124737.118617-15-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:22:28 +0000
+Subject: [PATCH 51/51] sctp: remove the out_nounlock label in sctp_setsockopt
+Message-Id: <20200719072228.112645-52-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200720124737.118617-1-hch@lst.de>
-In-Reply-To: <20200720124737.118617-1-hch@lst.de>
+References: <20200719072228.112645-1-hch@lst.de>
+In-Reply-To: <20200719072228.112645-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
-Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Use the sockptr_t type to merge the versions.
+This is just used once, and a direct return for the redirect to the AF
+case is much easier to follow than jumping to the end of a very long
+function.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/net/ip.h       |  5 ++---
- net/ipv4/ip_options.c  | 43 +++++++++++-------------------------------
- net/ipv4/ip_sockglue.c |  7 ++++---
- 3 files changed, 17 insertions(+), 38 deletions(-)
+ net/sctp/socket.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/ip.h b/include/net/ip.h
-index 3d34acc95ca825..d66ad3a9522081 100644
---- a/include/net/ip.h
-+++ b/include/net/ip.h
-@@ -23,6 +23,7 @@
- #include <linux/in.h>
- #include <linux/skbuff.h>
- #include <linux/jhash.h>
-+#include <linux/sockptr.h>
- 
- #include <net/inet_sock.h>
- #include <net/route.h>
-@@ -707,9 +708,7 @@ int __ip_options_compile(struct net *net, struct ip_options *opt,
- int ip_options_compile(struct net *net, struct ip_options *opt,
- 		       struct sk_buff *skb);
- int ip_options_get(struct net *net, struct ip_options_rcu **optp,
--		   unsigned char *data, int optlen);
--int ip_options_get_from_user(struct net *net, struct ip_options_rcu **optp,
--			     unsigned char __user *data, int optlen);
-+		   sockptr_t data, int optlen);
- void ip_options_undo(struct ip_options *opt);
- void ip_forward_options(struct sk_buff *skb);
- int ip_options_rcv_srr(struct sk_buff *skb, struct net_device *dev);
-diff --git a/net/ipv4/ip_options.c b/net/ipv4/ip_options.c
-index ddaa01ec2bce82..948747aac4e2d0 100644
---- a/net/ipv4/ip_options.c
-+++ b/net/ipv4/ip_options.c
-@@ -519,15 +519,20 @@ void ip_options_undo(struct ip_options *opt)
- 	}
- }
- 
--static struct ip_options_rcu *ip_options_get_alloc(const int optlen)
-+int ip_options_get(struct net *net, struct ip_options_rcu **optp,
-+		   sockptr_t data, int optlen)
- {
--	return kzalloc(sizeof(struct ip_options_rcu) + ((optlen + 3) & ~3),
-+	struct ip_options_rcu *opt;
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index f2d4f8a0c426bb..9a767f35971865 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4444,8 +4444,8 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 	 */
+ 	if (level != SOL_SCTP) {
+ 		struct sctp_af *af = sctp_sk(sk)->pf->af;
+-		retval = af->setsockopt(sk, level, optname, optval, optlen);
+-		goto out_nounlock;
 +
-+	opt = kzalloc(sizeof(struct ip_options_rcu) + ((optlen + 3) & ~3),
- 		       GFP_KERNEL);
--}
-+	if (!opt)
-+		return -ENOMEM;
-+	if (optlen && copy_from_sockptr(opt->opt.__data, data, optlen)) {
-+		kfree(opt);
-+		return -EFAULT;
-+	}
++		return af->setsockopt(sk, level, optname, optval, optlen);
+ 	}
  
--static int ip_options_get_finish(struct net *net, struct ip_options_rcu **optp,
--				 struct ip_options_rcu *opt, int optlen)
--{
- 	while (optlen & 3)
- 		opt->opt.__data[optlen++] = IPOPT_END;
- 	opt->opt.optlen = optlen;
-@@ -540,32 +545,6 @@ static int ip_options_get_finish(struct net *net, struct ip_options_rcu **optp,
- 	return 0;
+ 	if (optlen > 0) {
+@@ -4635,8 +4635,6 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 
+ 	release_sock(sk);
+ 	kfree(kopt);
+-
+-out_nounlock:
+ 	return retval;
  }
  
--int ip_options_get_from_user(struct net *net, struct ip_options_rcu **optp,
--			     unsigned char __user *data, int optlen)
--{
--	struct ip_options_rcu *opt = ip_options_get_alloc(optlen);
--
--	if (!opt)
--		return -ENOMEM;
--	if (optlen && copy_from_user(opt->opt.__data, data, optlen)) {
--		kfree(opt);
--		return -EFAULT;
--	}
--	return ip_options_get_finish(net, optp, opt, optlen);
--}
--
--int ip_options_get(struct net *net, struct ip_options_rcu **optp,
--		   unsigned char *data, int optlen)
--{
--	struct ip_options_rcu *opt = ip_options_get_alloc(optlen);
--
--	if (!opt)
--		return -ENOMEM;
--	if (optlen)
--		memcpy(opt->opt.__data, data, optlen);
--	return ip_options_get_finish(net, optp, opt, optlen);
--}
--
- void ip_forward_options(struct sk_buff *skb)
- {
- 	struct   ip_options *opt	= &(IPCB(skb)->opt);
-diff --git a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
-index ac495b0cff8ffb..b12f39b52008a3 100644
---- a/net/ipv4/ip_sockglue.c
-+++ b/net/ipv4/ip_sockglue.c
-@@ -280,7 +280,8 @@ int ip_cmsg_send(struct sock *sk, struct msghdr *msg, struct ipcm_cookie *ipc,
- 			err = cmsg->cmsg_len - sizeof(struct cmsghdr);
- 
- 			/* Our caller is responsible for freeing ipc->opt */
--			err = ip_options_get(net, &ipc->opt, CMSG_DATA(cmsg),
-+			err = ip_options_get(net, &ipc->opt,
-+					     KERNEL_SOCKPTR(CMSG_DATA(cmsg)),
- 					     err < 40 ? err : 40);
- 			if (err)
- 				return err;
-@@ -940,8 +941,8 @@ static int do_ip_setsockopt(struct sock *sk, int level,
- 
- 		if (optlen > 40)
- 			goto e_inval;
--		err = ip_options_get_from_user(sock_net(sk), &opt,
--					       optval, optlen);
-+		err = ip_options_get(sock_net(sk), &opt, USER_SOCKPTR(optval),
-+					      optlen);
- 		if (err)
- 			break;
- 		old = rcu_dereference_protected(inet->inet_opt,
 -- 
 2.27.0
