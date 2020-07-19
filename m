@@ -1,39 +1,57 @@
-From: Matthieu Baerts <matthieu.baerts@tessares.net>
-Date: Fri, 17 Jul 2020 09:18:08 +0000
-Subject: Re: [MPTCP] [PATCH 05/22] net: remove compat_sock_common_{get,set}sockopt
-Message-Id: <203f5f41-1de0-575e-864b-53a9412d97f6@tessares.net>
+From: Christoph Hellwig <hch@lst.de>
+Date: Sun, 19 Jul 2020 07:22:11 +0000
+Subject: [PATCH 34/51] sctp: pass a kernel pointer to sctp_setsockopt_recvnxtinfo
+Message-Id: <20200719072228.112645-35-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200717062331.691152-1-hch@lst.de>
- <20200717062331.691152-6-hch@lst.de>
-In-Reply-To: <20200717062331.691152-6-hch@lst.de>
+References: <20200719072228.112645-1-hch@lst.de>
+In-Reply-To: <20200719072228.112645-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Christoph Hellwig <hch@lst.de>, "David S. Miller" <davem@davemloft.net>
-Cc: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Chas Williams <3chas3@gmail.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-sctp@vger.kernel.org, linux-arch@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-wpan@vger.kernel.org, mptcp@lists.01.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Hi Christoph,
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
-On 17/07/2020 08:23, Christoph Hellwig wrote:
-> Add the compat handling to sock_common_{get,set}sockopt instead,
-> keyed of in_compat_syscall().  This allow to remove the now unused
-> ->compat_{get,set}sockopt methods from struct proto_ops.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->   include/linux/net.h      |  6 ------
->   include/net/sock.h       |  4 ----
->   net/core/sock.c          | 30 ++++++------------------------
->   net/mptcp/protocol.c     |  6 ------
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ net/sctp/socket.c | 11 +++--------
+ 1 file changed, 3 insertions(+), 8 deletions(-)
 
-Thank you for looking at that!
-
-For MPTCP-related code:
-
-Acked-by: Matthieu Baerts <matthieu.baerts@tessares.net>
-
-Cheers,
-Matt
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index ac56fb7eb394f9..7beb26e5749d7e 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3913,18 +3913,13 @@ static int sctp_setsockopt_recvrcvinfo(struct sock *sk, int *val,
+ 	return 0;
+ }
+ 
+-static int sctp_setsockopt_recvnxtinfo(struct sock *sk,
+-				       char __user *optval,
++static int sctp_setsockopt_recvnxtinfo(struct sock *sk, int *val,
+ 				       unsigned int optlen)
+ {
+-	int val;
+-
+ 	if (optlen < sizeof(int))
+ 		return -EINVAL;
+-	if (get_user(val, (int __user *) optval))
+-		return -EFAULT;
+ 
+-	sctp_sk(sk)->recvnxtinfo = (val = 0) ? 0 : 1;
++	sctp_sk(sk)->recvnxtinfo = (*val = 0) ? 0 : 1;
+ 
+ 	return 0;
+ }
+@@ -4693,7 +4688,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_recvrcvinfo(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_RECVNXTINFO:
+-		retval = sctp_setsockopt_recvnxtinfo(sk, optval, optlen);
++		retval = sctp_setsockopt_recvnxtinfo(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_PR_SUPPORTED:
+ 		retval = sctp_setsockopt_pr_supported(sk, optval, optlen);
 -- 
-Tessares | Belgium | Hybrid Access Solutions
-www.tessares.net
+2.27.0
