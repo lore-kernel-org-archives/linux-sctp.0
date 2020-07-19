@@ -1,54 +1,76 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 23 Jul 2020 06:08:52 +0000
-Subject: [PATCH 10/26] netfilter: remove the unused user argument to do_update_counters
-Message-Id: <20200723060908.50081-11-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:22:02 +0000
+Subject: [PATCH 25/51] sctp: pass a kernel pointer to sctp_setsockopt_hmac_ident
+Message-Id: <20200719072228.112645-26-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200723060908.50081-1-hch@lst.de>
-In-Reply-To: <20200723060908.50081-1-hch@lst.de>
+References: <20200719072228.112645-1-hch@lst.de>
+In-Reply-To: <20200719072228.112645-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
-Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/bridge/netfilter/ebtables.c | 9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+ net/sctp/socket.c | 21 +++++----------------
+ 1 file changed, 5 insertions(+), 16 deletions(-)
 
-diff --git a/net/bridge/netfilter/ebtables.c b/net/bridge/netfilter/ebtables.c
-index fe13108af1f542..12f8929667bf43 100644
---- a/net/bridge/netfilter/ebtables.c
-+++ b/net/bridge/netfilter/ebtables.c
-@@ -1242,9 +1242,8 @@ void ebt_unregister_table(struct net *net, struct ebt_table *table,
- 
- /* userspace just supplied us with counters */
- static int do_update_counters(struct net *net, const char *name,
--				struct ebt_counter __user *counters,
--				unsigned int num_counters,
--				const void __user *user, unsigned int len)
-+			      struct ebt_counter __user *counters,
-+			      unsigned int num_counters, unsigned int len)
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index f68aa3936df3f3..a573af7dfe41f5 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3565,13 +3565,11 @@ static int sctp_setsockopt_auth_chunk(struct sock *sk,
+  * endpoint requires the peer to use.
+  */
+ static int sctp_setsockopt_hmac_ident(struct sock *sk,
+-				      char __user *optval,
++				      struct sctp_hmacalgo *hmacs,
+ 				      unsigned int optlen)
  {
- 	int i, ret;
- 	struct ebt_counter *tmp;
-@@ -1299,7 +1298,7 @@ static int update_counters(struct net *net, const void __user *user,
- 		return -EINVAL;
+ 	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
+-	struct sctp_hmacalgo *hmacs;
+ 	u32 idents;
+-	int err;
  
- 	return do_update_counters(net, hlp.name, hlp.counters,
--				hlp.num_counters, user, len);
-+				  hlp.num_counters, len);
+ 	if (!ep->auth_enable)
+ 		return -EACCES;
+@@ -3581,21 +3579,12 @@ static int sctp_setsockopt_hmac_ident(struct sock *sk,
+ 	optlen = min_t(unsigned int, optlen, sizeof(struct sctp_hmacalgo) +
+ 					     SCTP_AUTH_NUM_HMACS * sizeof(u16));
+ 
+-	hmacs = memdup_user(optval, optlen);
+-	if (IS_ERR(hmacs))
+-		return PTR_ERR(hmacs);
+-
+ 	idents = hmacs->shmac_num_idents;
+ 	if (idents = 0 || idents > SCTP_AUTH_NUM_HMACS ||
+-	    (idents * sizeof(u16)) > (optlen - sizeof(struct sctp_hmacalgo))) {
+-		err = -EINVAL;
+-		goto out;
+-	}
++	    (idents * sizeof(u16)) > (optlen - sizeof(struct sctp_hmacalgo)))
++		return -EINVAL;
+ 
+-	err = sctp_auth_ep_set_hmacs(ep, hmacs);
+-out:
+-	kfree(hmacs);
+-	return err;
++	return sctp_auth_ep_set_hmacs(ep, hmacs);
  }
  
- static inline int ebt_obj_to_user(char __user *um, const char *_name,
-@@ -2231,7 +2230,7 @@ static int compat_update_counters(struct net *net, void __user *user,
- 		return update_counters(net, user, len);
- 
- 	return do_update_counters(net, hlp.name, compat_ptr(hlp.counters),
--					hlp.num_counters, user, len);
-+				  hlp.num_counters, len);
- }
- 
- static int compat_do_ebt_get_ctl(struct sock *sk, int cmd,
+ /*
+@@ -4699,7 +4688,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_auth_chunk(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_HMAC_IDENT:
+-		retval = sctp_setsockopt_hmac_ident(sk, optval, optlen);
++		retval = sctp_setsockopt_hmac_ident(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_AUTH_KEY:
+ 		retval = sctp_setsockopt_auth_key(sk, optval, optlen);
 -- 
 2.27.0
