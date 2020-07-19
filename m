@@ -1,198 +1,84 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Fri, 17 Jul 2020 06:23:16 +0000
-Subject: [PATCH 07/22] netfilter/arp_tables: clean up compat {get,set}sockopt handling
-Message-Id: <20200717062331.691152-8-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:22:20 +0000
+Subject: [PATCH 43/51] sctp: pass a kernel pointer to sctp_setsockopt_scheduler_value
+Message-Id: <20200719072228.112645-44-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200717062331.691152-1-hch@lst.de>
-In-Reply-To: <20200717062331.691152-1-hch@lst.de>
+References: <20200719072228.112645-1-hch@lst.de>
+In-Reply-To: <20200719072228.112645-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>
-Cc: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Chas Williams <3chas3@gmail.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-sctp@vger.kernel.org, linux-arch@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-wpan@vger.kernel.org, mptcp@lists.01.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Merge the native and compat {get,set}sockopt handlers using
-in_compat_syscall().
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/ipv4/netfilter/arp_tables.c | 85 ++++++++-------------------------
- 1 file changed, 21 insertions(+), 64 deletions(-)
+ net/sctp/socket.c | 26 ++++++++++----------------
+ 1 file changed, 10 insertions(+), 16 deletions(-)
 
-diff --git a/net/ipv4/netfilter/arp_tables.c b/net/ipv4/netfilter/arp_tables.c
-index b167f4a5b68453..15807fb4a65f3e 100644
---- a/net/ipv4/netfilter/arp_tables.c
-+++ b/net/ipv4/netfilter/arp_tables.c
-@@ -787,8 +787,7 @@ static int compat_table_info(const struct xt_table_info *info,
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index a7d6a66fbe2113..4b660e6bf3bb54 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4158,38 +4158,32 @@ static int sctp_setsockopt_scheduler(struct sock *sk,
  }
- #endif
  
--static int get_info(struct net *net, void __user *user,
--		    const int *len, int compat)
-+static int get_info(struct net *net, void __user *user, const int *len)
+ static int sctp_setsockopt_scheduler_value(struct sock *sk,
+-					   char __user *optval,
++					   struct sctp_stream_value *params,
+ 					   unsigned int optlen)
  {
- 	char name[XT_TABLE_MAXNAMELEN];
- 	struct xt_table *t;
-@@ -802,7 +801,7 @@ static int get_info(struct net *net, void __user *user,
+-	struct sctp_stream_value params;
+ 	struct sctp_association *asoc;
+ 	int retval = -EINVAL;
  
- 	name[XT_TABLE_MAXNAMELEN-1] = '\0';
- #ifdef CONFIG_COMPAT
--	if (compat)
-+	if (in_compat_syscall())
- 		xt_compat_lock(NFPROTO_ARP);
- #endif
- 	t = xt_request_find_table_lock(net, NFPROTO_ARP, name);
-@@ -812,7 +811,7 @@ static int get_info(struct net *net, void __user *user,
- #ifdef CONFIG_COMPAT
- 		struct xt_table_info tmp;
- 
--		if (compat) {
-+		if (in_compat_syscall()) {
- 			ret = compat_table_info(private, &tmp);
- 			xt_compat_flush_offsets(NFPROTO_ARP);
- 			private = &tmp;
-@@ -837,7 +836,7 @@ static int get_info(struct net *net, void __user *user,
- 	} else
- 		ret = PTR_ERR(t);
- #ifdef CONFIG_COMPAT
--	if (compat)
-+	if (in_compat_syscall())
- 		xt_compat_unlock(NFPROTO_ARP);
- #endif
- 	return ret;
-@@ -998,7 +997,7 @@ static int do_replace(struct net *net, const void __user *user,
- }
- 
- static int do_add_counters(struct net *net, const void __user *user,
--			   unsigned int len, int compat)
-+			   unsigned int len)
- {
- 	unsigned int i;
- 	struct xt_counters_info tmp;
-@@ -1009,7 +1008,8 @@ static int do_add_counters(struct net *net, const void __user *user,
- 	struct arpt_entry *iter;
- 	unsigned int addend;
- 
--	paddc = xt_copy_counters_from_user(user, len, &tmp, compat);
-+	paddc = xt_copy_counters_from_user(user, len, &tmp,
-+					   in_compat_syscall());
- 	if (IS_ERR(paddc))
- 		return PTR_ERR(paddc);
- 
-@@ -1294,30 +1294,6 @@ static int compat_do_replace(struct net *net, void __user *user,
- 	return ret;
- }
- 
--static int compat_do_arpt_set_ctl(struct sock *sk, int cmd, void __user *user,
--				  unsigned int len)
--{
--	int ret;
+-	if (optlen < sizeof(params))
+-		goto out;
 -
--	if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN))
--		return -EPERM;
--
--	switch (cmd) {
--	case ARPT_SO_SET_REPLACE:
--		ret = compat_do_replace(sock_net(sk), user, len);
--		break;
--
--	case ARPT_SO_SET_ADD_COUNTERS:
--		ret = do_add_counters(sock_net(sk), user, len, 1);
--		break;
--
--	default:
--		ret = -EINVAL;
+-	optlen = sizeof(params);
+-	if (copy_from_user(&params, optval, optlen)) {
+-		retval = -EFAULT;
++	if (optlen < sizeof(*params))
+ 		goto out;
 -	}
--
--	return ret;
--}
--
- static int compat_copy_entry_to_user(struct arpt_entry *e, void __user **dstptr,
- 				     compat_uint_t *size,
- 				     struct xt_counters *counters,
-@@ -1425,29 +1401,6 @@ static int compat_get_entries(struct net *net,
- 	xt_compat_unlock(NFPROTO_ARP);
- 	return ret;
- }
--
--static int do_arpt_get_ctl(struct sock *, int, void __user *, int *);
--
--static int compat_do_arpt_get_ctl(struct sock *sk, int cmd, void __user *user,
--				  int *len)
--{
--	int ret;
--
--	if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN))
--		return -EPERM;
--
--	switch (cmd) {
--	case ARPT_SO_GET_INFO:
--		ret = get_info(sock_net(sk), user, len, 1);
--		break;
--	case ARPT_SO_GET_ENTRIES:
--		ret = compat_get_entries(sock_net(sk), user, len);
--		break;
--	default:
--		ret = do_arpt_get_ctl(sk, cmd, user, len);
--	}
--	return ret;
--}
- #endif
  
- static int do_arpt_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
-@@ -1459,11 +1412,16 @@ static int do_arpt_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned
+-	asoc = sctp_id2assoc(sk, params.assoc_id);
+-	if (!asoc && params.assoc_id != SCTP_CURRENT_ASSOC &&
++	asoc = sctp_id2assoc(sk, params->assoc_id);
++	if (!asoc && params->assoc_id != SCTP_CURRENT_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		goto out;
  
- 	switch (cmd) {
- 	case ARPT_SO_SET_REPLACE:
--		ret = do_replace(sock_net(sk), user, len);
-+#ifdef CONFIG_COMPAT
-+		if (in_compat_syscall())
-+			ret = compat_do_replace(sock_net(sk), user, len);
-+		else
-+#endif
-+			ret = do_replace(sock_net(sk), user, len);
+ 	if (asoc) {
+-		retval = sctp_sched_set_value(asoc, params.stream_id,
+-					      params.stream_value, GFP_KERNEL);
++		retval = sctp_sched_set_value(asoc, params->stream_id,
++					      params->stream_value, GFP_KERNEL);
+ 		goto out;
+ 	}
+ 
+ 	retval = 0;
+ 
+ 	list_for_each_entry(asoc, &sctp_sk(sk)->ep->asocs, asocs) {
+-		int ret = sctp_sched_set_value(asoc, params.stream_id,
+-					       params.stream_value, GFP_KERNEL);
++		int ret = sctp_sched_set_value(asoc, params->stream_id,
++					       params->stream_value,
++					       GFP_KERNEL);
+ 		if (ret && !retval) /* try to return the 1st error. */
+ 			retval = ret;
+ 	}
+@@ -4658,7 +4652,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_scheduler(sk, kopt, optlen);
  		break;
- 
- 	case ARPT_SO_SET_ADD_COUNTERS:
--		ret = do_add_counters(sock_net(sk), user, len, 0);
-+		ret = do_add_counters(sock_net(sk), user, len);
+ 	case SCTP_STREAM_SCHEDULER_VALUE:
+-		retval = sctp_setsockopt_scheduler_value(sk, optval, optlen);
++		retval = sctp_setsockopt_scheduler_value(sk, kopt, optlen);
  		break;
- 
- 	default:
-@@ -1482,11 +1440,16 @@ static int do_arpt_get_ctl(struct sock *sk, int cmd, void __user *user, int *len
- 
- 	switch (cmd) {
- 	case ARPT_SO_GET_INFO:
--		ret = get_info(sock_net(sk), user, len, 0);
-+		ret = get_info(sock_net(sk), user, len);
- 		break;
- 
- 	case ARPT_SO_GET_ENTRIES:
--		ret = get_entries(sock_net(sk), user, len);
-+#ifdef CONFIG_COMPAT
-+		if (in_compat_syscall())
-+			ret = compat_get_entries(sock_net(sk), user, len);
-+		else
-+#endif
-+			ret = get_entries(sock_net(sk), user, len);
- 		break;
- 
- 	case ARPT_SO_GET_REVISION_TARGET: {
-@@ -1610,15 +1573,9 @@ static struct nf_sockopt_ops arpt_sockopts = {
- 	.set_optmin	= ARPT_BASE_CTL,
- 	.set_optmax	= ARPT_SO_SET_MAX+1,
- 	.set		= do_arpt_set_ctl,
--#ifdef CONFIG_COMPAT
--	.compat_set	= compat_do_arpt_set_ctl,
--#endif
- 	.get_optmin	= ARPT_BASE_CTL,
- 	.get_optmax	= ARPT_SO_GET_MAX+1,
- 	.get		= do_arpt_get_ctl,
--#ifdef CONFIG_COMPAT
--	.compat_get	= compat_do_arpt_get_ctl,
--#endif
- 	.owner		= THIS_MODULE,
- };
- 
+ 	case SCTP_INTERLEAVING_SUPPORTED:
+ 		retval = sctp_setsockopt_interleaving_supported(sk, optval,
 -- 
 2.27.0
