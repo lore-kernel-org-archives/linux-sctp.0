@@ -1,96 +1,69 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Fri, 17 Jul 2020 06:23:11 +0000
-Subject: [PATCH 02/22] net: streamline __sys_setsockopt
-Message-Id: <20200717062331.691152-3-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:22:14 +0000
+Subject: [PATCH 37/51] sctp: pass a kernel pointer to sctp_setsockopt_reconfig_supported
+Message-Id: <20200719072228.112645-38-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200717062331.691152-1-hch@lst.de>
-In-Reply-To: <20200717062331.691152-1-hch@lst.de>
+References: <20200719072228.112645-1-hch@lst.de>
+In-Reply-To: <20200719072228.112645-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>
-Cc: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Chas Williams <3chas3@gmail.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-sctp@vger.kernel.org, linux-arch@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-wpan@vger.kernel.org, mptcp@lists.01.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Return early when sockfd_lookup_light fails to reduce a level of
-indentation for most of the function body.
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/socket.c | 57 +++++++++++++++++++++++++---------------------------
- 1 file changed, 27 insertions(+), 30 deletions(-)
+ net/sctp/socket.c | 18 ++++++------------
+ 1 file changed, 6 insertions(+), 12 deletions(-)
 
-diff --git a/net/socket.c b/net/socket.c
-index 770503c4ca76c9..49a6daf0293b83 100644
---- a/net/socket.c
-+++ b/net/socket.c
-@@ -2107,43 +2107,40 @@ static int __sys_setsockopt(int fd, int level, int optname,
- 		return -EINVAL;
- 
- 	sock = sockfd_lookup_light(fd, &err, &fput_needed);
--	if (sock != NULL) {
--		err = security_socket_setsockopt(sock, level, optname);
--		if (err)
--			goto out_put;
-+	if (!sock)
-+		return err;
- 
--		err = BPF_CGROUP_RUN_PROG_SETSOCKOPT(sock->sk, &level,
--						     &optname, optval, &optlen,
--						     &kernel_optval);
-+	err = security_socket_setsockopt(sock, level, optname);
-+	if (err)
-+		goto out_put;
- 
--		if (err < 0) {
--			goto out_put;
--		} else if (err > 0) {
--			err = 0;
--			goto out_put;
--		}
-+	err = BPF_CGROUP_RUN_PROG_SETSOCKOPT(sock->sk, &level, &optname,
-+					     optval, &optlen, &kernel_optval);
-+	if (err < 0)
-+		goto out_put;
-+	if (err > 0) {
-+		err = 0;
-+		goto out_put;
-+	}
- 
--		if (kernel_optval) {
--			set_fs(KERNEL_DS);
--			optval = (char __user __force *)kernel_optval;
--		}
-+	if (kernel_optval) {
-+		set_fs(KERNEL_DS);
-+		optval = (char __user __force *)kernel_optval;
-+	}
- 
--		if (level = SOL_SOCKET && !sock_use_custom_sol_socket(sock))
--			err -			    sock_setsockopt(sock, level, optname, optval,
-+	if (level = SOL_SOCKET && !sock_use_custom_sol_socket(sock))
-+		err = sock_setsockopt(sock, level, optname, optval, optlen);
-+	else
-+		err = sock->ops->setsockopt(sock, level, optname, optval,
- 					    optlen);
--		else
--			err -			    sock->ops->setsockopt(sock, level, optname, optval,
--						  optlen);
- 
--		if (kernel_optval) {
--			set_fs(oldfs);
--			kfree(kernel_optval);
--		}
--out_put:
--		fput_light(sock->file, fput_needed);
-+	if (kernel_optval) {
-+		set_fs(oldfs);
-+		kfree(kernel_optval);
- 	}
-+
-+out_put:
-+	fput_light(sock->file, fput_needed);
- 	return err;
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 0eeb6e6162ad61..270c5d53fbf7c3 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3996,27 +3996,21 @@ static int sctp_setsockopt_default_prinfo(struct sock *sk,
  }
  
+ static int sctp_setsockopt_reconfig_supported(struct sock *sk,
+-					      char __user *optval,
++					      struct sctp_assoc_value *params,
+ 					      unsigned int optlen)
+ {
+-	struct sctp_assoc_value params;
+ 	struct sctp_association *asoc;
+ 	int retval = -EINVAL;
+ 
+-	if (optlen != sizeof(params))
+-		goto out;
+-
+-	if (copy_from_user(&params, optval, optlen)) {
+-		retval = -EFAULT;
++	if (optlen != sizeof(*params))
+ 		goto out;
+-	}
+ 
+-	asoc = sctp_id2assoc(sk, params.assoc_id);
+-	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
++	asoc = sctp_id2assoc(sk, params->assoc_id);
++	if (!asoc && params->assoc_id != SCTP_FUTURE_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		goto out;
+ 
+-	sctp_sk(sk)->ep->reconf_enable = !!params.assoc_value;
++	sctp_sk(sk)->ep->reconf_enable = !!params->assoc_value;
+ 
+ 	retval = 0;
+ 
+@@ -4688,7 +4682,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_default_prinfo(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_RECONFIG_SUPPORTED:
+-		retval = sctp_setsockopt_reconfig_supported(sk, optval, optlen);
++		retval = sctp_setsockopt_reconfig_supported(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_ENABLE_STREAM_RESET:
+ 		retval = sctp_setsockopt_enable_strreset(sk, optval, optlen);
 -- 
 2.27.0
