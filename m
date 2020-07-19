@@ -1,119 +1,155 @@
-From: syzbot <syzbot+8bb053b5d63595ab47db@syzkaller.appspotmail.com>
-Date: Wed, 22 Jul 2020 20:32:17 +0000
-Subject: memory leak in sctp_packet_transmit
-Message-Id: <000000000000cf606405ab0da28a@google.com>
+From: Christoph Hellwig <hch@lst.de>
+Date: Sun, 19 Jul 2020 07:21:40 +0000
+Subject: [PATCH 03/51] sctp: pass a kernel pointer to __sctp_setsockopt_connectx
+Message-Id: <20200719072228.112645-4-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20200719072228.112645-1-hch@lst.de>
+In-Reply-To: <20200719072228.112645-1-hch@lst.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="windows-1252"
-Content-Transfer-Encoding: quoted-printable
-To: davem@davemloft.net, kuba@kernel.org, linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com, netdev@vger.kernel.org, nhorman@tuxdriver.com, syzkaller-bugs@googlegroups.com, vyasevich@gmail.com
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Hello,
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
-syzbot found the following issue on:
-
-HEAD commit:    4fa640dc Merge tag 'vfio-v5.8-rc7' of git://github.com/awi..
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=149e5e27100000
-kernel config:  https://syzkaller.appspot.com/x/.config?xa340c48ef4aedfb
-dashboard link: https://syzkaller.appspot.com/bug?extid=8Bb053b5d63595ab47db
-compiler:       gcc (GCC) 10.1.0-syz 20200507
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=118d1793100000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=14805758900000
-
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+8bb053b5d63595ab47db@syzkaller.appspotmail.com
-
-executing program
-executing program
-BUG: memory leak
-unreferenced object 0xffff888118cb6f00 (size 224):
-  comm "syz-executor698", pid 6423, jiffies 4294945994 (age 12.350s)
-  hex dump (first 32 bytes):
-    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-    00 00 a2 2a 81 88 ff ff 40 e0 d0 24 81 88 ff ff  ...*....@..$....
-  backtrace:
-    [<00000000dbd8d389>] __alloc_skb+0x5e/0x250 net/core/skbuff.c:198
-    [<000000002ecd4b45>] alloc_skb include/linux/skbuff.h:1083 [inline]
-    [<000000002ecd4b45>] sctp_packet_transmit+0xdc/0xb30 net/sctp/output.c:=
-572
-    [<0000000005eef223>] sctp_outq_flush_transports net/sctp/outqueue.c:114=
-7 [inline]
-    [<0000000005eef223>] sctp_outq_flush+0xf6/0xa30 net/sctp/outqueue.c:1195
-    [<000000007ad403b8>] sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1770=
- [inline]
-    [<000000007ad403b8>] sctp_side_effects net/sctp/sm_sideeffect.c:1185 [i=
-nline]
-    [<000000007ad403b8>] sctp_do_sm+0x197b/0x1f00 net/sctp/sm_sideeffect.c:=
-1156
-    [<00000000696e5800>] sctp_assoc_bh_rcv+0x167/0x250 net/sctp/associola.c=
-:1044
-    [<00000000bad89a41>] sctp_inq_push+0x76/0xa0 net/sctp/inqueue.c:80
-    [<0000000066ea2304>] sctp_backlog_rcv+0x83/0x370 net/sctp/input.c:344
-    [<000000004f4c84bd>] sk_backlog_rcv include/net/sock.h:997 [inline]
-    [<000000004f4c84bd>] __release_sock+0xa5/0x110 net/core/sock.c:2550
-    [<000000001cfa318a>] release_sock+0x32/0xc0 net/core/sock.c:3066
-    [<00000000538f7502>] sctp_wait_for_connect+0x11d/0x1e0 net/sctp/socket.=
-c:9302
-    [<00000000a983945d>] sctp_sendmsg_to_asoc+0xa95/0xab0 net/sctp/socket.c=
-:1892
-    [<00000000136d87b5>] sctp_sendmsg+0x704/0xbd0 net/sctp/socket.c:2038
-    [<000000003d35bb02>] inet_sendmsg+0x39/0x60 net/ipv4/af_inet.c:814
-    [<00000000109a76b3>] sock_sendmsg_nosec net/socket.c:652 [inline]
-    [<00000000109a76b3>] sock_sendmsg+0x4c/0x60 net/socket.c:672
-    [<00000000c68f9835>] __sys_sendto+0x11d/0x1c0 net/socket.c:1995
-    [<00000000b6e006ac>] __do_sys_sendto net/socket.c:2007 [inline]
-    [<00000000b6e006ac>] __se_sys_sendto net/socket.c:2003 [inline]
-    [<00000000b6e006ac>] __x64_sys_sendto+0x26/0x30 net/socket.c:2003
-
-BUG: memory leak
-unreferenced object 0xffff888119797f00 (size 224):
-  comm "syz-executor698", pid 6424, jiffies 4294946510 (age 7.190s)
-  hex dump (first 32 bytes):
-    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
-    00 00 a2 2a 81 88 ff ff 40 e0 d0 24 81 88 ff ff  ...*....@..$....
-  backtrace:
-    [<00000000dbd8d389>] __alloc_skb+0x5e/0x250 net/core/skbuff.c:198
-    [<000000002ecd4b45>] alloc_skb include/linux/skbuff.h:1083 [inline]
-    [<000000002ecd4b45>] sctp_packet_transmit+0xdc/0xb30 net/sctp/output.c:=
-572
-    [<0000000005eef223>] sctp_outq_flush_transports net/sctp/outqueue.c:114=
-7 [inline]
-    [<0000000005eef223>] sctp_outq_flush+0xf6/0xa30 net/sctp/outqueue.c:1195
-    [<000000007ad403b8>] sctp_cmd_interpreter net/sctp/sm_sideeffect.c:1770=
- [inline]
-    [<000000007ad403b8>] sctp_side_effects net/sctp/sm_sideeffect.c:1185 [i=
-nline]
-    [<000000007ad403b8>] sctp_do_sm+0x197b/0x1f00 net/sctp/sm_sideeffect.c:=
-1156
-    [<00000000696e5800>] sctp_assoc_bh_rcv+0x167/0x250 net/sctp/associola.c=
-:1044
-    [<00000000bad89a41>] sctp_inq_push+0x76/0xa0 net/sctp/inqueue.c:80
-    [<0000000066ea2304>] sctp_backlog_rcv+0x83/0x370 net/sctp/input.c:344
-    [<000000004f4c84bd>] sk_backlog_rcv include/net/sock.h:997 [inline]
-    [<000000004f4c84bd>] __release_sock+0xa5/0x110 net/core/sock.c:2550
-    [<000000001cfa318a>] release_sock+0x32/0xc0 net/core/sock.c:3066
-    [<00000000538f7502>] sctp_wait_for_connect+0x11d/0x1e0 net/sctp/socket.=
-c:9302
-    [<00000000a983945d>] sctp_sendmsg_to_asoc+0xa95/0xab0 net/sctp/socket.c=
-:1892
-    [<00000000136d87b5>] sctp_sendmsg+0x704/0xbd0 net/sctp/socket.c:2038
-    [<000000003d35bb02>] inet_sendmsg+0x39/0x60 net/ipv4/af_inet.c:814
-    [<00000000109a76b3>] sock_sendmsg_nosec net/socket.c:652 [inline]
-    [<00000000109a76b3>] sock_sendmsg+0x4c/0x60 net/socket.c:672
-    [<00000000c68f9835>] __sys_sendto+0x11d/0x1c0 net/socket.c:1995
-    [<00000000b6e006ac>] __do_sys_sendto net/socket.c:2007 [inline]
-    [<00000000b6e006ac>] __se_sys_sendto net/socket.c:2003 [inline]
-    [<00000000b6e006ac>] __x64_sys_sendto+0x26/0x30 net/socket.c:2003
-
-
-
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
+ net/sctp/socket.c | 50 ++++++++++++++++++-----------------------------
+ 1 file changed, 19 insertions(+), 31 deletions(-)
 
-syzbot will keep track of this issue. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
-syzbot can test patches for this issue, for details see:
-https://goo.gl/tpsmEJ#testing-patches
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 85ba5155b177b1..44cf2848146a91 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -1286,36 +1286,29 @@ static int __sctp_connect(struct sock *sk, struct sockaddr *kaddrs,
+  * it.
+  *
+  * sk        The sk of the socket
+- * addrs     The pointer to the addresses in user land
++ * addrs     The pointer to the addresses
+  * addrssize Size of the addrs buffer
+  *
+  * Returns >=0 if ok, <0 errno code on error.
+  */
+-static int __sctp_setsockopt_connectx(struct sock *sk,
+-				      struct sockaddr __user *addrs,
+-				      int addrs_size,
+-				      sctp_assoc_t *assoc_id)
++static int __sctp_setsockopt_connectx(struct sock *sk, struct sockaddr *kaddrs,
++				      int addrs_size, sctp_assoc_t *assoc_id)
+ {
+-	struct sockaddr *kaddrs;
+ 	int err = 0, flags = 0;
+ 
+ 	pr_debug("%s: sk:%p addrs:%p addrs_size:%d\n",
+-		 __func__, sk, addrs, addrs_size);
++		 __func__, sk, kaddrs, addrs_size);
+ 
+ 	/* make sure the 1st addr's sa_family is accessible later */
+ 	if (unlikely(addrs_size < sizeof(sa_family_t)))
+ 		return -EINVAL;
+ 
+-	kaddrs = memdup_user(addrs, addrs_size);
+-	if (IS_ERR(kaddrs))
+-		return PTR_ERR(kaddrs);
+-
+ 	/* Allow security module to validate connectx addresses. */
+ 	err = security_sctp_bind_connect(sk, SCTP_SOCKOPT_CONNECTX,
+ 					 (struct sockaddr *)kaddrs,
+ 					  addrs_size);
+ 	if (err)
+-		goto out_free;
++		return err;
+ 
+ 	/* in-kernel sockets don't generally have a file allocated to them
+ 	 * if all they do is call sock_create_kern().
+@@ -1323,12 +1316,7 @@ static int __sctp_setsockopt_connectx(struct sock *sk,
+ 	if (sk->sk_socket->file)
+ 		flags = sk->sk_socket->file->f_flags;
+ 
+-	err = __sctp_connect(sk, kaddrs, addrs_size, flags, assoc_id);
+-
+-out_free:
+-	kfree(kaddrs);
+-
+-	return err;
++	return __sctp_connect(sk, kaddrs, addrs_size, flags, assoc_id);
+ }
+ 
+ /*
+@@ -1336,10 +1324,10 @@ static int __sctp_setsockopt_connectx(struct sock *sk,
+  * to the option that doesn't provide association id.
+  */
+ static int sctp_setsockopt_connectx_old(struct sock *sk,
+-					struct sockaddr __user *addrs,
++					struct sockaddr *kaddrs,
+ 					int addrs_size)
+ {
+-	return __sctp_setsockopt_connectx(sk, addrs, addrs_size, NULL);
++	return __sctp_setsockopt_connectx(sk, kaddrs, addrs_size, NULL);
+ }
+ 
+ /*
+@@ -1349,13 +1337,13 @@ static int sctp_setsockopt_connectx_old(struct sock *sk,
+  * always positive.
+  */
+ static int sctp_setsockopt_connectx(struct sock *sk,
+-				    struct sockaddr __user *addrs,
++				    struct sockaddr *kaddrs,
+ 				    int addrs_size)
+ {
+ 	sctp_assoc_t assoc_id = 0;
+ 	int err = 0;
+ 
+-	err = __sctp_setsockopt_connectx(sk, addrs, addrs_size, &assoc_id);
++	err = __sctp_setsockopt_connectx(sk, kaddrs, addrs_size, &assoc_id);
+ 
+ 	if (err)
+ 		return err;
+@@ -1385,6 +1373,7 @@ static int sctp_getsockopt_connectx3(struct sock *sk, int len,
+ {
+ 	struct sctp_getaddrs_old param;
+ 	sctp_assoc_t assoc_id = 0;
++	struct sockaddr *kaddrs;
+ 	int err = 0;
+ 
+ #ifdef CONFIG_COMPAT
+@@ -1408,9 +1397,12 @@ static int sctp_getsockopt_connectx3(struct sock *sk, int len,
+ 			return -EFAULT;
+ 	}
+ 
+-	err = __sctp_setsockopt_connectx(sk, (struct sockaddr __user *)
+-					 param.addrs, param.addr_num,
+-					 &assoc_id);
++	kaddrs = memdup_user(param.addrs, param.addr_num);
++	if (IS_ERR(kaddrs))
++		return PTR_ERR(kaddrs);
++
++	err = __sctp_setsockopt_connectx(sk, kaddrs, param.addr_num, &assoc_id);
++	kfree(kaddrs);
+ 	if (err = 0 || err = -EINPROGRESS) {
+ 		if (copy_to_user(optval, &assoc_id, sizeof(assoc_id)))
+ 			return -EFAULT;
+@@ -4700,16 +4692,12 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 
+ 	case SCTP_SOCKOPT_CONNECTX_OLD:
+ 		/* 'optlen' is the size of the addresses buffer. */
+-		retval = sctp_setsockopt_connectx_old(sk,
+-					    (struct sockaddr __user *)optval,
+-					    optlen);
++		retval = sctp_setsockopt_connectx_old(sk, kopt, optlen);
+ 		break;
+ 
+ 	case SCTP_SOCKOPT_CONNECTX:
+ 		/* 'optlen' is the size of the addresses buffer. */
+-		retval = sctp_setsockopt_connectx(sk,
+-					    (struct sockaddr __user *)optval,
+-					    optlen);
++		retval = sctp_setsockopt_connectx(sk, kopt, optlen);
+ 		break;
+ 
+ 	case SCTP_DISABLE_FRAGMENTS:
+-- 
+2.27.0
