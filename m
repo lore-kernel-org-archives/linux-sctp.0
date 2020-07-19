@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Sun, 19 Jul 2020 07:21:42 +0000
-Subject: [PATCH 05/51] sctp: pass a kernel pointer to sctp_setsockopt_events
-Message-Id: <20200719072228.112645-6-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:21:46 +0000
+Subject: [PATCH 09/51] sctp: pass a kernel pointer to sctp_setsockopt_partial_delivery_point
+Message-Id: <20200719072228.112645-10-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200719072228.112645-1-hch@lst.de>
 In-Reply-To: <20200719072228.112645-1-hch@lst.de>
@@ -16,44 +16,49 @@ directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 9 ++-------
- 1 file changed, 2 insertions(+), 7 deletions(-)
+ net/sctp/socket.c | 13 ++++---------
+ 1 file changed, 4 insertions(+), 9 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index b259ea94aeddef..bc37174bd71af0 100644
+index 2dfbd7f8799114..deccfe54d2fc7d 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -2193,11 +2193,9 @@ static int sctp_setsockopt_disable_fragments(struct sock *sk, int *val,
- 	return 0;
- }
- 
--static int sctp_setsockopt_events(struct sock *sk, char __user *optval,
-+static int sctp_setsockopt_events(struct sock *sk, __u8 *sn_type,
- 				  unsigned int optlen)
+@@ -3487,24 +3487,19 @@ static int sctp_setsockopt_fragment_interleave(struct sock *sk,
+  * call as long as the user provided buffer is large enough to hold the
+  * message.
+  */
+-static int sctp_setsockopt_partial_delivery_point(struct sock *sk,
+-						  char __user *optval,
++static int sctp_setsockopt_partial_delivery_point(struct sock *sk, u32 *val,
+ 						  unsigned int optlen)
  {
--	struct sctp_event_subscribe subscribe;
--	__u8 *sn_type = (__u8 *)&subscribe;
- 	struct sctp_sock *sp = sctp_sk(sk);
- 	struct sctp_association *asoc;
- 	int i;
-@@ -2205,9 +2203,6 @@ static int sctp_setsockopt_events(struct sock *sk, char __user *optval,
- 	if (optlen > sizeof(struct sctp_event_subscribe))
+-	u32 val;
+-
+ 	if (optlen != sizeof(u32))
+ 		return -EINVAL;
+-	if (get_user(val, (int __user *)optval))
+-		return -EFAULT;
+ 
+ 	/* Note: We double the receive buffer from what the user sets
+ 	 * it to be, also initial rwnd is based on rcvbuf/2.
+ 	 */
+-	if (val > (sk->sk_rcvbuf >> 1))
++	if (*val > (sk->sk_rcvbuf >> 1))
  		return -EINVAL;
  
--	if (copy_from_user(&subscribe, optval, optlen))
--		return -EFAULT;
--
- 	for (i = 0; i < optlen; i++)
- 		sctp_ulpevent_type_set(&sp->subscribe, SCTP_SN_TYPE_BASE + i,
- 				       sn_type[i]);
-@@ -4697,7 +4692,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+-	sctp_sk(sk)->pd_point = val;
++	sctp_sk(sk)->pd_point = *val;
+ 
+ 	return 0; /* is this the right error code? */
+ }
+@@ -4695,7 +4690,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_delayed_ack(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_PARTIAL_DELIVERY_POINT:
+-		retval = sctp_setsockopt_partial_delivery_point(sk, optval, optlen);
++		retval = sctp_setsockopt_partial_delivery_point(sk, kopt, optlen);
  		break;
  
- 	case SCTP_EVENTS:
--		retval = sctp_setsockopt_events(sk, optval, optlen);
-+		retval = sctp_setsockopt_events(sk, kopt, optlen);
- 		break;
- 
- 	case SCTP_AUTOCLOSE:
+ 	case SCTP_INITMSG:
 -- 
 2.27.0
