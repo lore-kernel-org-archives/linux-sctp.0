@@ -1,145 +1,73 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 23 Jul 2020 06:09:06 +0000
-Subject: [PATCH 24/26] net/tcp: switch do_tcp_setsockopt to sockptr_t
-Message-Id: <20200723060908.50081-25-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:22:17 +0000
+Subject: [PATCH 40/51] sctp: pass a kernel pointer to sctp_setsockopt_reset_assoc
+Message-Id: <20200719072228.112645-41-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200723060908.50081-1-hch@lst.de>
-In-Reply-To: <20200723060908.50081-1-hch@lst.de>
+References: <20200719072228.112645-1-hch@lst.de>
+In-Reply-To: <20200719072228.112645-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
-Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Pass a sockptr_t to prepare for set_fs-less handling of the kernel
-pointer from bpf-cgroup.
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/ipv4/tcp.c | 34 ++++++++++++++++------------------
- 1 file changed, 16 insertions(+), 18 deletions(-)
+ net/sctp/socket.c | 25 +++++++------------------
+ 1 file changed, 7 insertions(+), 18 deletions(-)
 
-diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
-index 49bf15c27deac7..71cbc61c335f71 100644
---- a/net/ipv4/tcp.c
-+++ b/net/ipv4/tcp.c
-@@ -2764,7 +2764,7 @@ static inline bool tcp_can_repair_sock(const struct sock *sk)
- 		(sk->sk_state != TCP_LISTEN);
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 1365351fd2c86a..f190f59f29595a 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4083,30 +4083,19 @@ static int sctp_setsockopt_reset_streams(struct sock *sk,
+ 	return sctp_send_reset_streams(asoc, params);
  }
  
--static int tcp_repair_set_window(struct tcp_sock *tp, char __user *optbuf, int len)
-+static int tcp_repair_set_window(struct tcp_sock *tp, sockptr_t optbuf, int len)
+-static int sctp_setsockopt_reset_assoc(struct sock *sk,
+-				       char __user *optval,
++static int sctp_setsockopt_reset_assoc(struct sock *sk, sctp_assoc_t *associd,
+ 				       unsigned int optlen)
  {
- 	struct tcp_repair_window opt;
+ 	struct sctp_association *asoc;
+-	sctp_assoc_t associd;
+-	int retval = -EINVAL;
+-
+-	if (optlen != sizeof(associd))
+-		goto out;
  
-@@ -2774,7 +2774,7 @@ static int tcp_repair_set_window(struct tcp_sock *tp, char __user *optbuf, int l
- 	if (len != sizeof(opt))
- 		return -EINVAL;
+-	if (copy_from_user(&associd, optval, optlen)) {
+-		retval = -EFAULT;
+-		goto out;
+-	}
++	if (optlen != sizeof(*associd))
++		return -EINVAL;
  
--	if (copy_from_user(&opt, optbuf, sizeof(opt)))
-+	if (copy_from_sockptr(&opt, optbuf, sizeof(opt)))
- 		return -EFAULT;
+-	asoc = sctp_id2assoc(sk, associd);
++	asoc = sctp_id2assoc(sk, *associd);
+ 	if (!asoc)
+-		goto out;
+-
+-	retval = sctp_send_reset_assoc(asoc);
++		return -EINVAL;
  
- 	if (opt.max_window < opt.snd_wnd)
-@@ -2796,17 +2796,17 @@ static int tcp_repair_set_window(struct tcp_sock *tp, char __user *optbuf, int l
- 	return 0;
+-out:
+-	return retval;
++	return sctp_send_reset_assoc(asoc);
  }
  
--static int tcp_repair_options_est(struct sock *sk,
--		struct tcp_repair_opt __user *optbuf, unsigned int len)
-+static int tcp_repair_options_est(struct sock *sk, sockptr_t optbuf,
-+		unsigned int len)
- {
- 	struct tcp_sock *tp = tcp_sk(sk);
- 	struct tcp_repair_opt opt;
- 
- 	while (len >= sizeof(opt)) {
--		if (copy_from_user(&opt, optbuf, sizeof(opt)))
-+		if (copy_from_sockptr(&opt, optbuf, sizeof(opt)))
- 			return -EFAULT;
- 
--		optbuf++;
-+		sockptr_advance(optbuf, sizeof(opt));
- 		len -= sizeof(opt);
- 
- 		switch (opt.opt_code) {
-@@ -3020,8 +3020,8 @@ EXPORT_SYMBOL(tcp_sock_set_keepcnt);
- /*
-  *	Socket option code for TCP.
-  */
--static int do_tcp_setsockopt(struct sock *sk, int level,
--		int optname, char __user *optval, unsigned int optlen)
-+static int do_tcp_setsockopt(struct sock *sk, int level, int optname,
-+		sockptr_t optval, unsigned int optlen)
- {
- 	struct tcp_sock *tp = tcp_sk(sk);
- 	struct inet_connection_sock *icsk = inet_csk(sk);
-@@ -3037,7 +3037,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
- 		if (optlen < 1)
- 			return -EINVAL;
- 
--		val = strncpy_from_user(name, optval,
-+		val = strncpy_from_sockptr(name, optval,
- 					min_t(long, TCP_CA_NAME_MAX-1, optlen));
- 		if (val < 0)
- 			return -EFAULT;
-@@ -3056,7 +3056,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
- 		if (optlen < 1)
- 			return -EINVAL;
- 
--		val = strncpy_from_user(name, optval,
-+		val = strncpy_from_sockptr(name, optval,
- 					min_t(long, TCP_ULP_NAME_MAX - 1,
- 					      optlen));
- 		if (val < 0)
-@@ -3079,7 +3079,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
- 		    optlen != TCP_FASTOPEN_KEY_BUF_LENGTH)
- 			return -EINVAL;
- 
--		if (copy_from_user(key, optval, optlen))
-+		if (copy_from_sockptr(key, optval, optlen))
- 			return -EFAULT;
- 
- 		if (optlen = TCP_FASTOPEN_KEY_BUF_LENGTH)
-@@ -3095,7 +3095,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
- 	if (optlen < sizeof(int))
- 		return -EINVAL;
- 
--	if (get_user(val, (int __user *)optval))
-+	if (copy_from_sockptr(&val, optval, sizeof(val)))
- 		return -EFAULT;
- 
- 	lock_sock(sk);
-@@ -3174,9 +3174,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
- 		if (!tp->repair)
- 			err = -EINVAL;
- 		else if (sk->sk_state = TCP_ESTABLISHED)
--			err = tcp_repair_options_est(sk,
--					(struct tcp_repair_opt __user *)optval,
--					optlen);
-+			err = tcp_repair_options_est(sk, optval, optlen);
- 		else
- 			err = -EPERM;
+ static int sctp_setsockopt_add_streams(struct sock *sk,
+@@ -4675,7 +4664,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_reset_streams(sk, kopt, optlen);
  		break;
-@@ -3249,8 +3247,7 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
- #ifdef CONFIG_TCP_MD5SIG
- 	case TCP_MD5SIG:
- 	case TCP_MD5SIG_EXT:
--		err = tp->af_specific->md5_parse(sk, optname,
--						 USER_SOCKPTR(optval), optlen);
-+		err = tp->af_specific->md5_parse(sk, optname, optval, optlen);
+ 	case SCTP_RESET_ASSOC:
+-		retval = sctp_setsockopt_reset_assoc(sk, optval, optlen);
++		retval = sctp_setsockopt_reset_assoc(sk, kopt, optlen);
  		break;
- #endif
- 	case TCP_USER_TIMEOUT:
-@@ -3334,7 +3331,8 @@ int tcp_setsockopt(struct sock *sk, int level, int optname, char __user *optval,
- 	if (level != SOL_TCP)
- 		return icsk->icsk_af_ops->setsockopt(sk, level, optname,
- 						     optval, optlen);
--	return do_tcp_setsockopt(sk, level, optname, optval, optlen);
-+	return do_tcp_setsockopt(sk, level, optname, USER_SOCKPTR(optval),
-+				 optlen);
- }
- EXPORT_SYMBOL(tcp_setsockopt);
- 
+ 	case SCTP_ADD_STREAMS:
+ 		retval = sctp_setsockopt_add_streams(sk, optval, optlen);
 -- 
 2.27.0
