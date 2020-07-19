@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Sun, 19 Jul 2020 07:22:22 +0000
-Subject: [PATCH 45/51] sctp: pass a kernel pointer to sctp_setsockopt_reuse_port
-Message-Id: <20200719072228.112645-46-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:22:16 +0000
+Subject: [PATCH 39/51] sctp: pass a kernel pointer to sctp_setsockopt_reset_streams
+Message-Id: <20200719072228.112645-40-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200719072228.112645-1-hch@lst.de>
 In-Reply-To: <20200719072228.112645-1-hch@lst.de>
@@ -16,46 +16,62 @@ directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 11 +++--------
- 1 file changed, 3 insertions(+), 8 deletions(-)
+ net/sctp/socket.c | 20 +++++---------------
+ 1 file changed, 5 insertions(+), 15 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 6232e46c4cdebd..a5b95e68cc129f 100644
+index 9899d208f40f8d..1365351fd2c86a 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -4214,11 +4214,9 @@ static int sctp_setsockopt_interleaving_supported(struct sock *sk,
- 	return 0;
+@@ -4061,12 +4061,10 @@ static int sctp_setsockopt_enable_strreset(struct sock *sk,
  }
  
--static int sctp_setsockopt_reuse_port(struct sock *sk, char __user *optval,
-+static int sctp_setsockopt_reuse_port(struct sock *sk, int *val,
- 				      unsigned int optlen)
+ static int sctp_setsockopt_reset_streams(struct sock *sk,
+-					 char __user *optval,
++					 struct sctp_reset_streams *params,
+ 					 unsigned int optlen)
  {
--	int val;
--
- 	if (!sctp_style(sk, TCP))
- 		return -EOPNOTSUPP;
+-	struct sctp_reset_streams *params;
+ 	struct sctp_association *asoc;
+-	int retval = -EINVAL;
  
-@@ -4228,10 +4226,7 @@ static int sctp_setsockopt_reuse_port(struct sock *sk, char __user *optval,
- 	if (optlen < sizeof(int))
+ 	if (optlen < sizeof(*params))
  		return -EINVAL;
+@@ -4074,23 +4072,15 @@ static int sctp_setsockopt_reset_streams(struct sock *sk,
+ 	optlen = min_t(unsigned int, optlen, USHRT_MAX +
+ 					     sizeof(__u16) * sizeof(*params));
  
--	if (get_user(val, (int __user *)optval))
--		return -EFAULT;
+-	params = memdup_user(optval, optlen);
+-	if (IS_ERR(params))
+-		return PTR_ERR(params);
 -
--	sctp_sk(sk)->reuse = !!val;
-+	sctp_sk(sk)->reuse = !!*val;
+ 	if (params->srs_number_streams * sizeof(__u16) >
+ 	    optlen - sizeof(*params))
+-		goto out;
++		return -EINVAL;
  
- 	return 0;
+ 	asoc = sctp_id2assoc(sk, params->srs_assoc_id);
+ 	if (!asoc)
+-		goto out;
+-
+-	retval = sctp_send_reset_streams(asoc, params);
++		return -EINVAL;
+ 
+-out:
+-	kfree(params);
+-	return retval;
++	return sctp_send_reset_streams(asoc, params);
  }
-@@ -4645,7 +4640,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 								optlen);
+ 
+ static int sctp_setsockopt_reset_assoc(struct sock *sk,
+@@ -4682,7 +4672,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_enable_strreset(sk, kopt, optlen);
  		break;
- 	case SCTP_REUSE_PORT:
--		retval = sctp_setsockopt_reuse_port(sk, optval, optlen);
-+		retval = sctp_setsockopt_reuse_port(sk, kopt, optlen);
+ 	case SCTP_RESET_STREAMS:
+-		retval = sctp_setsockopt_reset_streams(sk, optval, optlen);
++		retval = sctp_setsockopt_reset_streams(sk, kopt, optlen);
  		break;
- 	case SCTP_EVENT:
- 		retval = sctp_setsockopt_event(sk, optval, optlen);
+ 	case SCTP_RESET_ASSOC:
+ 		retval = sctp_setsockopt_reset_assoc(sk, optval, optlen);
 -- 
 2.27.0
