@@ -1,200 +1,95 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Fri, 17 Jul 2020 06:23:18 +0000
-Subject: [PATCH 09/22] netfilter/ip6_tables: clean up compat {get,set}sockopt handling
-Message-Id: <20200717062331.691152-10-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:21:51 +0000
+Subject: [PATCH 14/51] sctp: pass a kernel pointer to sctp_setsockopt_peer_primary_addr
+Message-Id: <20200719072228.112645-15-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200717062331.691152-1-hch@lst.de>
-In-Reply-To: <20200717062331.691152-1-hch@lst.de>
+References: <20200719072228.112645-1-hch@lst.de>
+In-Reply-To: <20200719072228.112645-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>
-Cc: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Chas Williams <3chas3@gmail.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-sctp@vger.kernel.org, linux-arch@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-wpan@vger.kernel.org, mptcp@lists.01.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Merge the native and compat {get,set}sockopt handlers using
-in_compat_syscall().
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/ipv6/netfilter/ip6_tables.c | 87 ++++++++-------------------------
- 1 file changed, 21 insertions(+), 66 deletions(-)
+ net/sctp/socket.c | 21 +++++++++------------
+ 1 file changed, 9 insertions(+), 12 deletions(-)
 
-diff --git a/net/ipv6/netfilter/ip6_tables.c b/net/ipv6/netfilter/ip6_tables.c
-index e96a431549bcc9..96c48e91e6c7f7 100644
---- a/net/ipv6/netfilter/ip6_tables.c
-+++ b/net/ipv6/netfilter/ip6_tables.c
-@@ -960,8 +960,7 @@ static int compat_table_info(const struct xt_table_info *info,
- }
- #endif
- 
--static int get_info(struct net *net, void __user *user,
--		    const int *len, int compat)
-+static int get_info(struct net *net, void __user *user, const int *len)
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index abdec7b412bcbc..ff3b720eab0aa2 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3284,12 +3284,12 @@ static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned
+  *   locally bound addresses. The following structure is used to make a
+  *   set primary request:
+  */
+-static int sctp_setsockopt_peer_primary_addr(struct sock *sk, char __user *optval,
++static int sctp_setsockopt_peer_primary_addr(struct sock *sk,
++					     struct sctp_setpeerprim *prim,
+ 					     unsigned int optlen)
  {
- 	char name[XT_TABLE_MAXNAMELEN];
- 	struct xt_table *t;
-@@ -975,7 +974,7 @@ static int get_info(struct net *net, void __user *user,
+ 	struct sctp_sock	*sp;
+ 	struct sctp_association	*asoc = NULL;
+-	struct sctp_setpeerprim	prim;
+ 	struct sctp_chunk	*chunk;
+ 	struct sctp_af		*af;
+ 	int 			err;
+@@ -3302,10 +3302,7 @@ static int sctp_setsockopt_peer_primary_addr(struct sock *sk, char __user *optva
+ 	if (optlen != sizeof(struct sctp_setpeerprim))
+ 		return -EINVAL;
  
- 	name[XT_TABLE_MAXNAMELEN-1] = '\0';
- #ifdef CONFIG_COMPAT
--	if (compat)
-+	if (in_compat_syscall())
- 		xt_compat_lock(AF_INET6);
- #endif
- 	t = xt_request_find_table_lock(net, AF_INET6, name);
-@@ -985,7 +984,7 @@ static int get_info(struct net *net, void __user *user,
- #ifdef CONFIG_COMPAT
- 		struct xt_table_info tmp;
+-	if (copy_from_user(&prim, optval, optlen))
+-		return -EFAULT;
+-
+-	asoc = sctp_id2assoc(sk, prim.sspp_assoc_id);
++	asoc = sctp_id2assoc(sk, prim->sspp_assoc_id);
+ 	if (!asoc)
+ 		return -EINVAL;
  
--		if (compat) {
-+		if (in_compat_syscall()) {
- 			ret = compat_table_info(private, &tmp);
- 			xt_compat_flush_offsets(AF_INET6);
- 			private = &tmp;
-@@ -1011,7 +1010,7 @@ static int get_info(struct net *net, void __user *user,
- 	} else
- 		ret = PTR_ERR(t);
- #ifdef CONFIG_COMPAT
--	if (compat)
-+	if (in_compat_syscall())
- 		xt_compat_unlock(AF_INET6);
- #endif
- 	return ret;
-@@ -1169,8 +1168,7 @@ do_replace(struct net *net, const void __user *user, unsigned int len)
- }
+@@ -3318,26 +3315,26 @@ static int sctp_setsockopt_peer_primary_addr(struct sock *sk, char __user *optva
+ 	if (!sctp_state(asoc, ESTABLISHED))
+ 		return -ENOTCONN;
  
- static int
--do_add_counters(struct net *net, const void __user *user, unsigned int len,
--		int compat)
-+do_add_counters(struct net *net, const void __user *user, unsigned int len)
- {
- 	unsigned int i;
- 	struct xt_counters_info tmp;
-@@ -1181,7 +1179,8 @@ do_add_counters(struct net *net, const void __user *user, unsigned int len,
- 	struct ip6t_entry *iter;
- 	unsigned int addend;
+-	af = sctp_get_af_specific(prim.sspp_addr.ss_family);
++	af = sctp_get_af_specific(prim->sspp_addr.ss_family);
+ 	if (!af)
+ 		return -EINVAL;
  
--	paddc = xt_copy_counters_from_user(user, len, &tmp, compat);
-+	paddc = xt_copy_counters_from_user(user, len, &tmp,
-+					   in_compat_syscall());
- 	if (IS_ERR(paddc))
- 		return PTR_ERR(paddc);
- 	t = xt_find_table_lock(net, AF_INET6, tmp.name);
-@@ -1543,31 +1542,6 @@ compat_do_replace(struct net *net, void __user *user, unsigned int len)
- 	return ret;
- }
+-	if (!af->addr_valid((union sctp_addr *)&prim.sspp_addr, sp, NULL))
++	if (!af->addr_valid((union sctp_addr *)&prim->sspp_addr, sp, NULL))
+ 		return -EADDRNOTAVAIL;
  
--static int
--compat_do_ip6t_set_ctl(struct sock *sk, int cmd, void __user *user,
--		       unsigned int len)
--{
--	int ret;
--
--	if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN))
--		return -EPERM;
--
--	switch (cmd) {
--	case IP6T_SO_SET_REPLACE:
--		ret = compat_do_replace(sock_net(sk), user, len);
--		break;
--
--	case IP6T_SO_SET_ADD_COUNTERS:
--		ret = do_add_counters(sock_net(sk), user, len, 1);
--		break;
--
--	default:
--		ret = -EINVAL;
--	}
--
--	return ret;
--}
--
- struct compat_ip6t_get_entries {
- 	char name[XT_TABLE_MAXNAMELEN];
- 	compat_uint_t size;
-@@ -1643,29 +1617,6 @@ compat_get_entries(struct net *net, struct compat_ip6t_get_entries __user *uptr,
- 	xt_compat_unlock(AF_INET6);
- 	return ret;
- }
--
--static int do_ip6t_get_ctl(struct sock *, int, void __user *, int *);
--
--static int
--compat_do_ip6t_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
--{
--	int ret;
--
--	if (!ns_capable(sock_net(sk)->user_ns, CAP_NET_ADMIN))
--		return -EPERM;
--
--	switch (cmd) {
--	case IP6T_SO_GET_INFO:
--		ret = get_info(sock_net(sk), user, len, 1);
--		break;
--	case IP6T_SO_GET_ENTRIES:
--		ret = compat_get_entries(sock_net(sk), user, len);
--		break;
--	default:
--		ret = do_ip6t_get_ctl(sk, cmd, user, len);
--	}
--	return ret;
--}
- #endif
+-	if (!sctp_assoc_lookup_laddr(asoc, (union sctp_addr *)&prim.sspp_addr))
++	if (!sctp_assoc_lookup_laddr(asoc, (union sctp_addr *)&prim->sspp_addr))
+ 		return -EADDRNOTAVAIL;
  
- static int
-@@ -1678,11 +1629,16 @@ do_ip6t_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
+ 	/* Allow security module to validate address. */
+ 	err = security_sctp_bind_connect(sk, SCTP_SET_PEER_PRIMARY_ADDR,
+-					 (struct sockaddr *)&prim.sspp_addr,
++					 (struct sockaddr *)&prim->sspp_addr,
+ 					 af->sockaddr_len);
+ 	if (err)
+ 		return err;
  
- 	switch (cmd) {
- 	case IP6T_SO_SET_REPLACE:
--		ret = do_replace(sock_net(sk), user, len);
-+#ifdef CONFIG_COMPAT
-+		if (in_compat_syscall())
-+			ret = compat_do_replace(sock_net(sk), user, len);
-+		else
-+#endif
-+			ret = do_replace(sock_net(sk), user, len);
+ 	/* Create an ASCONF chunk with SET_PRIMARY parameter	*/
+ 	chunk = sctp_make_asconf_set_prim(asoc,
+-					  (union sctp_addr *)&prim.sspp_addr);
++					  (union sctp_addr *)&prim->sspp_addr);
+ 	if (!chunk)
+ 		return -ENOMEM;
+ 
+@@ -4694,7 +4691,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_primary_addr(sk, kopt, optlen);
  		break;
- 
- 	case IP6T_SO_SET_ADD_COUNTERS:
--		ret = do_add_counters(sock_net(sk), user, len, 0);
-+		ret = do_add_counters(sock_net(sk), user, len);
+ 	case SCTP_SET_PEER_PRIMARY_ADDR:
+-		retval = sctp_setsockopt_peer_primary_addr(sk, optval, optlen);
++		retval = sctp_setsockopt_peer_primary_addr(sk, kopt, optlen);
  		break;
- 
- 	default:
-@@ -1702,11 +1658,16 @@ do_ip6t_get_ctl(struct sock *sk, int cmd, void __user *user, int *len)
- 
- 	switch (cmd) {
- 	case IP6T_SO_GET_INFO:
--		ret = get_info(sock_net(sk), user, len, 0);
-+		ret = get_info(sock_net(sk), user, len);
- 		break;
- 
- 	case IP6T_SO_GET_ENTRIES:
--		ret = get_entries(sock_net(sk), user, len);
-+#ifdef CONFIG_COMPAT
-+		if (in_compat_syscall())
-+			ret = compat_get_entries(sock_net(sk), user, len);
-+		else
-+#endif
-+			ret = get_entries(sock_net(sk), user, len);
- 		break;
- 
- 	case IP6T_SO_GET_REVISION_MATCH:
-@@ -1897,15 +1858,9 @@ static struct nf_sockopt_ops ip6t_sockopts = {
- 	.set_optmin	= IP6T_BASE_CTL,
- 	.set_optmax	= IP6T_SO_SET_MAX+1,
- 	.set		= do_ip6t_set_ctl,
--#ifdef CONFIG_COMPAT
--	.compat_set	= compat_do_ip6t_set_ctl,
--#endif
- 	.get_optmin	= IP6T_BASE_CTL,
- 	.get_optmax	= IP6T_SO_GET_MAX+1,
- 	.get		= do_ip6t_get_ctl,
--#ifdef CONFIG_COMPAT
--	.compat_get	= compat_do_ip6t_get_ctl,
--#endif
- 	.owner		= THIS_MODULE,
- };
- 
+ 	case SCTP_NODELAY:
+ 		retval = sctp_setsockopt_nodelay(sk, optval, optlen);
 -- 
 2.27.0
