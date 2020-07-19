@@ -1,35 +1,89 @@
-From: Matthieu Baerts <matthieu.baerts@tessares.net>
-Date: Thu, 23 Jul 2020 08:39:50 +0000
-Subject: Re: [MPTCP] [PATCH 08/26] net: switch sock_set_timeout to sockptr_t
-Message-Id: <092368db-122f-60bc-6a32-3cd5c70727da@tessares.net>
+From: Christoph Hellwig <hch@lst.de>
+Date: Sun, 19 Jul 2020 07:21:58 +0000
+Subject: [PATCH 21/51] sctp: pass a kernel pointer to sctp_setsockopt_context
+Message-Id: <20200719072228.112645-22-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200723060908.50081-1-hch@lst.de>
- <20200723060908.50081-9-hch@lst.de>
-In-Reply-To: <20200723060908.50081-9-hch@lst.de>
+References: <20200719072228.112645-1-hch@lst.de>
+In-Reply-To: <20200719072228.112645-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Christoph Hellwig <hch@lst.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
-Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Hi Christoph,
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
-On 23/07/2020 08:08, Christoph Hellwig wrote:
-> Pass a sockptr_t to prepare for set_fs-less handling of the kernel
-> pointer from bpf-cgroup.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->   net/mptcp/protocol.c |  6 ++++--
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ net/sctp/socket.c | 28 +++++++++++++---------------
+ 1 file changed, 13 insertions(+), 15 deletions(-)
 
-Thank you for looking at that!
-
-For MPTCP-related code:
-
-Acked-by: Matthieu Baerts <matthieu.baerts@tessares.net>
-
-Cheers,
-Matt
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index b29452f58ff988..2862047054d55a 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3362,40 +3362,38 @@ static int sctp_setsockopt_adaptation_layer(struct sock *sk,
+  * received messages from the peer and does not effect the value that is
+  * saved with outbound messages.
+  */
+-static int sctp_setsockopt_context(struct sock *sk, char __user *optval,
++static int sctp_setsockopt_context(struct sock *sk,
++				   struct sctp_assoc_value *params,
+ 				   unsigned int optlen)
+ {
+ 	struct sctp_sock *sp = sctp_sk(sk);
+-	struct sctp_assoc_value params;
+ 	struct sctp_association *asoc;
+ 
+ 	if (optlen != sizeof(struct sctp_assoc_value))
+ 		return -EINVAL;
+-	if (copy_from_user(&params, optval, optlen))
+-		return -EFAULT;
+ 
+-	asoc = sctp_id2assoc(sk, params.assoc_id);
+-	if (!asoc && params.assoc_id > SCTP_ALL_ASSOC &&
++	asoc = sctp_id2assoc(sk, params->assoc_id);
++	if (!asoc && params->assoc_id > SCTP_ALL_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		return -EINVAL;
+ 
+ 	if (asoc) {
+-		asoc->default_rcv_context = params.assoc_value;
++		asoc->default_rcv_context = params->assoc_value;
+ 
+ 		return 0;
+ 	}
+ 
+ 	if (sctp_style(sk, TCP))
+-		params.assoc_id = SCTP_FUTURE_ASSOC;
++		params->assoc_id = SCTP_FUTURE_ASSOC;
+ 
+-	if (params.assoc_id = SCTP_FUTURE_ASSOC ||
+-	    params.assoc_id = SCTP_ALL_ASSOC)
+-		sp->default_rcv_context = params.assoc_value;
++	if (params->assoc_id = SCTP_FUTURE_ASSOC ||
++	    params->assoc_id = SCTP_ALL_ASSOC)
++		sp->default_rcv_context = params->assoc_value;
+ 
+-	if (params.assoc_id = SCTP_CURRENT_ASSOC ||
+-	    params.assoc_id = SCTP_ALL_ASSOC)
++	if (params->assoc_id = SCTP_CURRENT_ASSOC ||
++	    params->assoc_id = SCTP_ALL_ASSOC)
+ 		list_for_each_entry(asoc, &sp->ep->asocs, asocs)
+-			asoc->default_rcv_context = params.assoc_value;
++			asoc->default_rcv_context = params->assoc_value;
+ 
+ 	return 0;
+ }
+@@ -4700,7 +4698,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_adaptation_layer(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_CONTEXT:
+-		retval = sctp_setsockopt_context(sk, optval, optlen);
++		retval = sctp_setsockopt_context(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_FRAGMENT_INTERLEAVE:
+ 		retval = sctp_setsockopt_fragment_interleave(sk, optval, optlen);
 -- 
-Tessares | Belgium | Hybrid Access Solutions
-www.tessares.net
+2.27.0
