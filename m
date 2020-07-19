@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Sun, 19 Jul 2020 07:22:15 +0000
-Subject: [PATCH 38/51] sctp: pass a kernel pointer to sctp_setsockopt_enable_strreset
-Message-Id: <20200719072228.112645-39-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:22:05 +0000
+Subject: [PATCH 28/51] sctp: pass a kernel pointer to sctp_setsockopt_active_key
+Message-Id: <20200719072228.112645-29-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200719072228.112645-1-hch@lst.de>
 In-Reply-To: <20200719072228.112645-1-hch@lst.de>
@@ -16,83 +16,75 @@ directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 34 ++++++++++++++--------------------
- 1 file changed, 14 insertions(+), 20 deletions(-)
+ net/sctp/socket.c | 27 ++++++++++++---------------
+ 1 file changed, 12 insertions(+), 15 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 270c5d53fbf7c3..9899d208f40f8d 100644
+index b4dcccba5787e3..02153f243683ea 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -4019,48 +4019,42 @@ static int sctp_setsockopt_reconfig_supported(struct sock *sk,
- }
- 
- static int sctp_setsockopt_enable_strreset(struct sock *sk,
--					   char __user *optval,
-+					   struct sctp_assoc_value *params,
- 					   unsigned int optlen)
+@@ -3655,42 +3655,39 @@ static int sctp_setsockopt_auth_key(struct sock *sk,
+  * the association shared key.
+  */
+ static int sctp_setsockopt_active_key(struct sock *sk,
+-				      char __user *optval,
++				      struct sctp_authkeyid *val,
+ 				      unsigned int optlen)
  {
  	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
--	struct sctp_assoc_value params;
  	struct sctp_association *asoc;
- 	int retval = -EINVAL;
+-	struct sctp_authkeyid val;
+ 	int ret = 0;
  
--	if (optlen != sizeof(params))
--		goto out;
--
--	if (copy_from_user(&params, optval, optlen)) {
--		retval = -EFAULT;
-+	if (optlen != sizeof(*params))
- 		goto out;
--	}
+ 	if (optlen != sizeof(struct sctp_authkeyid))
+ 		return -EINVAL;
+-	if (copy_from_user(&val, optval, optlen))
+-		return -EFAULT;
  
--	if (params.assoc_value & (~SCTP_ENABLE_STRRESET_MASK))
-+	if (params->assoc_value & (~SCTP_ENABLE_STRRESET_MASK))
- 		goto out;
- 
--	asoc = sctp_id2assoc(sk, params.assoc_id);
--	if (!asoc && params.assoc_id > SCTP_ALL_ASSOC &&
-+	asoc = sctp_id2assoc(sk, params->assoc_id);
-+	if (!asoc && params->assoc_id > SCTP_ALL_ASSOC &&
+-	asoc = sctp_id2assoc(sk, val.scact_assoc_id);
+-	if (!asoc && val.scact_assoc_id > SCTP_ALL_ASSOC &&
++	asoc = sctp_id2assoc(sk, val->scact_assoc_id);
++	if (!asoc && val->scact_assoc_id > SCTP_ALL_ASSOC &&
  	    sctp_style(sk, UDP))
- 		goto out;
+ 		return -EINVAL;
  
- 	retval = 0;
- 
- 	if (asoc) {
--		asoc->strreset_enable = params.assoc_value;
-+		asoc->strreset_enable = params->assoc_value;
- 		goto out;
- 	}
+ 	if (asoc)
+-		return sctp_auth_set_active_key(ep, asoc, val.scact_keynumber);
++		return sctp_auth_set_active_key(ep, asoc, val->scact_keynumber);
  
  	if (sctp_style(sk, TCP))
--		params.assoc_id = SCTP_FUTURE_ASSOC;
-+		params->assoc_id = SCTP_FUTURE_ASSOC;
+-		val.scact_assoc_id = SCTP_FUTURE_ASSOC;
++		val->scact_assoc_id = SCTP_FUTURE_ASSOC;
  
--	if (params.assoc_id = SCTP_FUTURE_ASSOC ||
--	    params.assoc_id = SCTP_ALL_ASSOC)
--		ep->strreset_enable = params.assoc_value;
-+	if (params->assoc_id = SCTP_FUTURE_ASSOC ||
-+	    params->assoc_id = SCTP_ALL_ASSOC)
-+		ep->strreset_enable = params->assoc_value;
+-	if (val.scact_assoc_id = SCTP_FUTURE_ASSOC ||
+-	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
+-		ret = sctp_auth_set_active_key(ep, asoc, val.scact_keynumber);
++	if (val->scact_assoc_id = SCTP_FUTURE_ASSOC ||
++	    val->scact_assoc_id = SCTP_ALL_ASSOC) {
++		ret = sctp_auth_set_active_key(ep, asoc, val->scact_keynumber);
+ 		if (ret)
+ 			return ret;
+ 	}
  
--	if (params.assoc_id = SCTP_CURRENT_ASSOC ||
--	    params.assoc_id = SCTP_ALL_ASSOC)
-+	if (params->assoc_id = SCTP_CURRENT_ASSOC ||
-+	    params->assoc_id = SCTP_ALL_ASSOC)
- 		list_for_each_entry(asoc, &ep->asocs, asocs)
--			asoc->strreset_enable = params.assoc_value;
-+			asoc->strreset_enable = params->assoc_value;
+-	if (val.scact_assoc_id = SCTP_CURRENT_ASSOC ||
+-	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
++	if (val->scact_assoc_id = SCTP_CURRENT_ASSOC ||
++	    val->scact_assoc_id = SCTP_ALL_ASSOC) {
+ 		list_for_each_entry(asoc, &ep->asocs, asocs) {
+ 			int res = sctp_auth_set_active_key(ep, asoc,
+-							   val.scact_keynumber);
++							   val->scact_keynumber);
  
- out:
- 	return retval;
-@@ -4685,7 +4679,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_reconfig_supported(sk, kopt, optlen);
+ 			if (res && !ret)
+ 				ret = res;
+@@ -4689,7 +4686,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_auth_key(sk, kopt, optlen);
  		break;
- 	case SCTP_ENABLE_STREAM_RESET:
--		retval = sctp_setsockopt_enable_strreset(sk, optval, optlen);
-+		retval = sctp_setsockopt_enable_strreset(sk, kopt, optlen);
+ 	case SCTP_AUTH_ACTIVE_KEY:
+-		retval = sctp_setsockopt_active_key(sk, optval, optlen);
++		retval = sctp_setsockopt_active_key(sk, kopt, optlen);
  		break;
- 	case SCTP_RESET_STREAMS:
- 		retval = sctp_setsockopt_reset_streams(sk, optval, optlen);
+ 	case SCTP_AUTH_DELETE_KEY:
+ 		retval = sctp_setsockopt_del_key(sk, optval, optlen);
 -- 
 2.27.0
