@@ -1,41 +1,84 @@
-From: Ido Schimmel <idosch@idosch.org>
-Date: Mon, 27 Jul 2020 18:22:59 +0000
-Subject: Re: [PATCH 19/26] net/ipv6: switch ipv6_flowlabel_opt to sockptr_t
-Message-Id: <20200727182259.GA1931870@shredder>
+From: "Alexander A. Klimov" <grandmaster@al2klimov.de>
+Date: Sun, 19 Jul 2020 20:26:44 +0000
+Subject: [PATCH for v5.9] sctp: Replace HTTP links with HTTPS ones
+Message-Id: <20200719202644.61663-1-grandmaster@al2klimov.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200723060908.50081-1-hch@lst.de>
- <20200723060908.50081-20-hch@lst.de>
- <20200727121505.GA1804864@shredder>
- <20200727130029.GA26393@lst.de>
- <20200727133331.GA1851348@shredder>
- <20200727161555.GA7817@lst.de>
-In-Reply-To: <20200727161555.GA7817@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Christoph Hellwig <hch@lst.de>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>, linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+To: vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, davem@davemloft.net, kuba@kernel.org, corbet@lwn.net, linux-sctp@vger.kernel.org, netdev@vger.kernel.org, linux-doc@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: "Alexander A. Klimov" <grandmaster@al2klimov.de>
 
-On Mon, Jul 27, 2020 at 06:15:55PM +0200, Christoph Hellwig wrote:
-> I have to admit I didn't spot the difference between the good and the
-> bad output even after trying hard..
-> 
-> But can you try the patch below?
-> 
-> ---
-> From cce2d2e1b43ecee5f4af7cf116808b74b330080f Mon Sep 17 00:00:00 2001
-> From: Christoph Hellwig <hch@lst.de>
-> Date: Mon, 27 Jul 2020 17:42:27 +0200
-> Subject: net: remove sockptr_advance
-> 
-> sockptr_advance never properly worked.  Replace it with _offset variants
-> of copy_from_sockptr and copy_to_sockptr.
-> 
-> Fixes: ba423fdaa589 ("net: add a new sockptr_t type")
-> Reported-by: Jason A. Donenfeld <Jason@zx2c4.com>
-> Reported-by: Ido Schimmel <idosch@idosch.org>
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
+Rationale:
+Reduces attack surface on kernel devs opening the links for MITM
+as HTTPS traffic is much harder to manipulate.
 
-Tested-by: Ido Schimmel <idosch@mellanox.com>
+Deterministic algorithm:
+For each file:
+  If not .svg:
+    For each line:
+      If doesn't contain `\bxmlns\b`:
+        For each link, `\bhttp://[^# \t\r\n]*(?:\w|/)`:
+	  If neither `\bgnu\.org/license`, nor `\bmozilla\.org/MPL\b`:
+            If both the HTTP and HTTPS versions
+            return 200 OK and serve the same content:
+              Replace HTTP with HTTPS.
 
-Thanks!
+Signed-off-by: Alexander A. Klimov <grandmaster@al2klimov.de>
+---
+ Continuing my work started at 93431e0607e5.
+ See also: git log --oneline '--author=Alexander A. Klimov <grandmaster@al2klimov.de>' v5.7..master
+ (Actually letting a shell for loop submit all this stuff for me.)
+
+ If there are any URLs to be removed completely
+ or at least not (just) HTTPSified:
+ Just clearly say so and I'll *undo my change*.
+ See also: https://lkml.org/lkml/2020/6/27/64
+
+ If there are any valid, but yet not changed URLs:
+ See: https://lkml.org/lkml/2020/6/26/837
+
+ If you apply the patch, please let me know.
+
+ Sorry again to all maintainers who complained about subject lines.
+ Now I realized that you want an actually perfect prefixes,
+ not just subsystem ones.
+ I tried my best...
+ And yes, *I could* (at least half-)automate it.
+ Impossible is nothing! :)
+
+
+ Documentation/networking/sctp.rst | 4 ++--
+ net/sctp/Kconfig                  | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/Documentation/networking/sctp.rst b/Documentation/networking/sctp.rst
+index 9f4d9c8a925b..e2b9f4d9a8a2 100644
+--- a/Documentation/networking/sctp.rst
++++ b/Documentation/networking/sctp.rst
+@@ -15,8 +15,8 @@ developed the SCTP protocol and later handed the protocol over to the
+ Transport Area (TSVWG) working group for the continued evolvement of SCTP as a
+ general purpose transport.
+ 
+-See the IETF website (http://www.ietf.org) for further documents on SCTP.
+-See http://www.ietf.org/rfc/rfc2960.txt
++See the IETF website (https://www.ietf.org) for further documents on SCTP.
++See https://www.ietf.org/rfc/rfc2960.txt
+ 
+ The initial project goal is to create an Linux kernel reference implementation
+ of SCTP that is RFC 2960 compliant and provides an programming interface
+diff --git a/net/sctp/Kconfig b/net/sctp/Kconfig
+index 39d7fa9569f8..0d4ac89ad695 100644
+--- a/net/sctp/Kconfig
++++ b/net/sctp/Kconfig
+@@ -14,7 +14,7 @@ menuconfig IP_SCTP
+ 	help
+ 	  Stream Control Transmission Protocol
+ 
+-	  From RFC 2960 <http://www.ietf.org/rfc/rfc2960.txt>.
++	  From RFC 2960 <https://www.ietf.org/rfc/rfc2960.txt>.
+ 
+ 	  "SCTP is a reliable transport protocol operating on top of a
+ 	  connectionless packet network such as IP.  It offers the following
+-- 
+2.27.0
