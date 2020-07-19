@@ -1,191 +1,90 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 23 Jul 2020 06:09:02 +0000
-Subject: [PATCH 20/26] net/ipv6: factor out a ipv6_set_opt_hdr helper
-Message-Id: <20200723060908.50081-21-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:22:06 +0000
+Subject: [PATCH 29/51] sctp: pass a kernel pointer to sctp_setsockopt_del_key
+Message-Id: <20200719072228.112645-30-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200723060908.50081-1-hch@lst.de>
-In-Reply-To: <20200723060908.50081-1-hch@lst.de>
+References: <20200719072228.112645-1-hch@lst.de>
+In-Reply-To: <20200719072228.112645-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
-Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Factour out a helper to set the IPv6 option headers from
-do_ipv6_setsockopt.
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/ipv6/ipv6_sockglue.c | 150 +++++++++++++++++++--------------------
- 1 file changed, 75 insertions(+), 75 deletions(-)
+ net/sctp/socket.c | 27 ++++++++++++---------------
+ 1 file changed, 12 insertions(+), 15 deletions(-)
 
-diff --git a/net/ipv6/ipv6_sockglue.c b/net/ipv6/ipv6_sockglue.c
-index 3897fb55372d38..90442c8366dff2 100644
---- a/net/ipv6/ipv6_sockglue.c
-+++ b/net/ipv6/ipv6_sockglue.c
-@@ -315,6 +315,80 @@ static int compat_ipv6_mcast_join_leave(struct sock *sk, int optname,
- 	return ipv6_sock_mc_drop(sk, gr32.gr_interface, &psin6->sin6_addr);
- }
- 
-+static int ipv6_set_opt_hdr(struct sock *sk, int optname, void __user *optval,
-+		int optlen)
-+{
-+	struct ipv6_pinfo *np = inet6_sk(sk);
-+	struct ipv6_opt_hdr *new = NULL;
-+	struct net *net = sock_net(sk);
-+	struct ipv6_txoptions *opt;
-+	int err;
-+
-+	/* hop-by-hop / destination options are privileged option */
-+	if (optname != IPV6_RTHDR && !ns_capable(net->user_ns, CAP_NET_RAW))
-+		return -EPERM;
-+
-+	/* remove any sticky options header with a zero option
-+	 * length, per RFC3542.
-+	 */
-+	if (optlen > 0) {
-+		if (!optval)
-+			return -EINVAL;
-+		if (optlen < sizeof(struct ipv6_opt_hdr) ||
-+		    optlen & 0x7 ||
-+		    optlen > 8 * 255)
-+			return -EINVAL;
-+
-+		new = memdup_user(optval, optlen);
-+		if (IS_ERR(new))
-+			return PTR_ERR(new);
-+		if (unlikely(ipv6_optlen(new) > optlen)) {
-+			kfree(new);
-+			return -EINVAL;
-+		}
-+	}
-+
-+	opt = rcu_dereference_protected(np->opt, lockdep_sock_is_held(sk));
-+	opt = ipv6_renew_options(sk, opt, optname, new);
-+	kfree(new);
-+	if (IS_ERR(opt))
-+		return PTR_ERR(opt);
-+
-+	/* routing header option needs extra check */
-+	err = -EINVAL;
-+	if (optname = IPV6_RTHDR && opt && opt->srcrt) {
-+		struct ipv6_rt_hdr *rthdr = opt->srcrt;
-+		switch (rthdr->type) {
-+#if IS_ENABLED(CONFIG_IPV6_MIP6)
-+		case IPV6_SRCRT_TYPE_2:
-+			if (rthdr->hdrlen != 2 || rthdr->segments_left != 1)
-+				goto sticky_done;
-+			break;
-+#endif
-+		case IPV6_SRCRT_TYPE_4:
-+		{
-+			struct ipv6_sr_hdr *srh +				(struct ipv6_sr_hdr *)opt->srcrt;
-+
-+			if (!seg6_validate_srh(srh, optlen, false))
-+				goto sticky_done;
-+			break;
-+		}
-+		default:
-+			goto sticky_done;
-+		}
-+	}
-+
-+	err = 0;
-+	opt = ipv6_update_options(sk, opt);
-+sticky_done:
-+	if (opt) {
-+		atomic_sub(opt->tot_len, &sk->sk_omem_alloc);
-+		txopt_put(opt);
-+	}
-+	return err;
-+}
-+
- static int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
- 		    char __user *optval, unsigned int optlen)
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 02153f243683ea..b692b9376d9d60 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3703,42 +3703,39 @@ static int sctp_setsockopt_active_key(struct sock *sk,
+  * This set option will delete a shared secret key from use.
+  */
+ static int sctp_setsockopt_del_key(struct sock *sk,
+-				   char __user *optval,
++				   struct sctp_authkeyid *val,
+ 				   unsigned int optlen)
  {
-@@ -580,82 +654,8 @@ static int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
- 	case IPV6_RTHDRDSTOPTS:
- 	case IPV6_RTHDR:
- 	case IPV6_DSTOPTS:
--	{
--		struct ipv6_txoptions *opt;
--		struct ipv6_opt_hdr *new = NULL;
--
--		/* hop-by-hop / destination options are privileged option */
--		retv = -EPERM;
--		if (optname != IPV6_RTHDR && !ns_capable(net->user_ns, CAP_NET_RAW))
--			break;
--
--		/* remove any sticky options header with a zero option
--		 * length, per RFC3542.
--		 */
--		if (optlen = 0)
--			optval = NULL;
--		else if (!optval)
--			goto e_inval;
--		else if (optlen < sizeof(struct ipv6_opt_hdr) ||
--			 optlen & 0x7 || optlen > 8 * 255)
--			goto e_inval;
--		else {
--			new = memdup_user(optval, optlen);
--			if (IS_ERR(new)) {
--				retv = PTR_ERR(new);
--				break;
--			}
--			if (unlikely(ipv6_optlen(new) > optlen)) {
--				kfree(new);
--				goto e_inval;
--			}
--		}
--
--		opt = rcu_dereference_protected(np->opt,
--						lockdep_sock_is_held(sk));
--		opt = ipv6_renew_options(sk, opt, optname, new);
--		kfree(new);
--		if (IS_ERR(opt)) {
--			retv = PTR_ERR(opt);
--			break;
--		}
--
--		/* routing header option needs extra check */
--		retv = -EINVAL;
--		if (optname = IPV6_RTHDR && opt && opt->srcrt) {
--			struct ipv6_rt_hdr *rthdr = opt->srcrt;
--			switch (rthdr->type) {
--#if IS_ENABLED(CONFIG_IPV6_MIP6)
--			case IPV6_SRCRT_TYPE_2:
--				if (rthdr->hdrlen != 2 ||
--				    rthdr->segments_left != 1)
--					goto sticky_done;
--
--				break;
--#endif
--			case IPV6_SRCRT_TYPE_4:
--			{
--				struct ipv6_sr_hdr *srh = (struct ipv6_sr_hdr *)
--							  opt->srcrt;
--
--				if (!seg6_validate_srh(srh, optlen, false))
--					goto sticky_done;
--				break;
--			}
--			default:
--				goto sticky_done;
--			}
--		}
--
--		retv = 0;
--		opt = ipv6_update_options(sk, opt);
--sticky_done:
--		if (opt) {
--			atomic_sub(opt->tot_len, &sk->sk_omem_alloc);
--			txopt_put(opt);
--		}
-+		retv = ipv6_set_opt_hdr(sk, optname, optval, optlen);
- 		break;
--	}
+ 	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
+ 	struct sctp_association *asoc;
+-	struct sctp_authkeyid val;
+ 	int ret = 0;
  
- 	case IPV6_PKTINFO:
- 	{
+ 	if (optlen != sizeof(struct sctp_authkeyid))
+ 		return -EINVAL;
+-	if (copy_from_user(&val, optval, optlen))
+-		return -EFAULT;
+ 
+-	asoc = sctp_id2assoc(sk, val.scact_assoc_id);
+-	if (!asoc && val.scact_assoc_id > SCTP_ALL_ASSOC &&
++	asoc = sctp_id2assoc(sk, val->scact_assoc_id);
++	if (!asoc && val->scact_assoc_id > SCTP_ALL_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		return -EINVAL;
+ 
+ 	if (asoc)
+-		return sctp_auth_del_key_id(ep, asoc, val.scact_keynumber);
++		return sctp_auth_del_key_id(ep, asoc, val->scact_keynumber);
+ 
+ 	if (sctp_style(sk, TCP))
+-		val.scact_assoc_id = SCTP_FUTURE_ASSOC;
++		val->scact_assoc_id = SCTP_FUTURE_ASSOC;
+ 
+-	if (val.scact_assoc_id = SCTP_FUTURE_ASSOC ||
+-	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
+-		ret = sctp_auth_del_key_id(ep, asoc, val.scact_keynumber);
++	if (val->scact_assoc_id = SCTP_FUTURE_ASSOC ||
++	    val->scact_assoc_id = SCTP_ALL_ASSOC) {
++		ret = sctp_auth_del_key_id(ep, asoc, val->scact_keynumber);
+ 		if (ret)
+ 			return ret;
+ 	}
+ 
+-	if (val.scact_assoc_id = SCTP_CURRENT_ASSOC ||
+-	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
++	if (val->scact_assoc_id = SCTP_CURRENT_ASSOC ||
++	    val->scact_assoc_id = SCTP_ALL_ASSOC) {
+ 		list_for_each_entry(asoc, &ep->asocs, asocs) {
+ 			int res = sctp_auth_del_key_id(ep, asoc,
+-						       val.scact_keynumber);
++						       val->scact_keynumber);
+ 
+ 			if (res && !ret)
+ 				ret = res;
+@@ -4689,7 +4686,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_active_key(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_AUTH_DELETE_KEY:
+-		retval = sctp_setsockopt_del_key(sk, optval, optlen);
++		retval = sctp_setsockopt_del_key(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_AUTH_DEACTIVATE_KEY:
+ 		retval = sctp_setsockopt_deactivate_key(sk, optval, optlen);
 -- 
 2.27.0
