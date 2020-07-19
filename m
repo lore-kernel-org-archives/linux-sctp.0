@@ -1,158 +1,93 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Fri, 17 Jul 2020 06:23:25 +0000
-Subject: [PATCH 16/22] net/ipv4: factor out mcast join/leave setsockopt helpers
-Message-Id: <20200717062331.691152-17-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:21:53 +0000
+Subject: [PATCH 16/51] sctp: pass a kernel pointer to sctp_setsockopt_rtoinfo
+Message-Id: <20200719072228.112645-17-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200717062331.691152-1-hch@lst.de>
-In-Reply-To: <20200717062331.691152-1-hch@lst.de>
+References: <20200719072228.112645-1-hch@lst.de>
+In-Reply-To: <20200719072228.112645-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>
-Cc: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Chas Williams <3chas3@gmail.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-sctp@vger.kernel.org, linux-arch@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-wpan@vger.kernel.org, mptcp@lists.01.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Factor out one helper each for setting the native and compat
-version of the MCAST_MSFILTER option.
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/ipv4/ip_sockglue.c | 109 +++++++++++++++++++++--------------------
- 1 file changed, 56 insertions(+), 53 deletions(-)
+ net/sctp/socket.c | 26 ++++++++++++--------------
+ 1 file changed, 12 insertions(+), 14 deletions(-)
 
-diff --git a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
-index b587dee006f882..73bb88fbe54661 100644
---- a/net/ipv4/ip_sockglue.c
-+++ b/net/ipv4/ip_sockglue.c
-@@ -806,6 +806,60 @@ static int compat_ip_set_mcast_msfilter(struct sock *sk, void __user *optval,
- }
- #endif
- 
-+static int ip_mcast_join_leave(struct sock *sk, int optname,
-+		void __user *optval, int optlen)
-+{
-+	struct ip_mreqn mreq = { };
-+	struct sockaddr_in *psin;
-+	struct group_req greq;
-+
-+	if (optlen < sizeof(struct group_req))
-+		return -EINVAL;
-+	if (copy_from_user(&greq, optval, sizeof(greq)))
-+		return -EFAULT;
-+
-+	psin = (struct sockaddr_in *)&greq.gr_group;
-+	if (psin->sin_family != AF_INET)
-+		return -EINVAL;
-+	mreq.imr_multiaddr = psin->sin_addr;
-+	mreq.imr_ifindex = greq.gr_interface;
-+	if (optname = MCAST_JOIN_GROUP)
-+		return ip_mc_join_group(sk, &mreq);
-+	return ip_mc_leave_group(sk, &mreq);
-+}
-+
-+#ifdef CONFIG_COMPAT
-+static int compat_ip_mcast_join_leave(struct sock *sk, int optname,
-+		void __user *optval, int optlen)
-+{
-+	struct compat_group_req greq;
-+	struct ip_mreqn mreq = { };
-+	struct sockaddr_in *psin;
-+	int err;
-+
-+	if (optlen < sizeof(struct compat_group_req))
-+		return -EINVAL;
-+	if (copy_from_user(&greq, optval, sizeof(greq)))
-+		return -EFAULT;
-+
-+	psin = (struct sockaddr_in *)&greq.gr_group;
-+	if (psin->sin_family != AF_INET)
-+		return -EINVAL;
-+	mreq.imr_multiaddr = psin->sin_addr;
-+	mreq.imr_ifindex = greq.gr_interface;
-+
-+	rtnl_lock();
-+	lock_sock(sk);
-+	if (optname = MCAST_JOIN_GROUP)
-+		err = ip_mc_join_group(sk, &mreq);
-+	else
-+		err = ip_mc_leave_group(sk, &mreq);
-+	release_sock(sk);
-+	rtnl_unlock();
-+	return err;
-+}
-+#endif
-+
- static int do_ip_setsockopt(struct sock *sk, int level,
- 			    int optname, char __user *optval, unsigned int optlen)
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index f9fe93e865b970..6339a08b62dd2b 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -3041,9 +3041,10 @@ static int sctp_setsockopt_nodelay(struct sock *sk, int *val,
+  * be changed.
+  *
+  */
+-static int sctp_setsockopt_rtoinfo(struct sock *sk, char __user *optval, unsigned int optlen)
++static int sctp_setsockopt_rtoinfo(struct sock *sk,
++				   struct sctp_rtoinfo *rtoinfo,
++				   unsigned int optlen)
  {
-@@ -1211,29 +1265,8 @@ static int do_ip_setsockopt(struct sock *sk, int level,
+-	struct sctp_rtoinfo rtoinfo;
+ 	struct sctp_association *asoc;
+ 	unsigned long rto_min, rto_max;
+ 	struct sctp_sock *sp = sctp_sk(sk);
+@@ -3051,18 +3052,15 @@ static int sctp_setsockopt_rtoinfo(struct sock *sk, char __user *optval, unsigne
+ 	if (optlen != sizeof (struct sctp_rtoinfo))
+ 		return -EINVAL;
+ 
+-	if (copy_from_user(&rtoinfo, optval, optlen))
+-		return -EFAULT;
+-
+-	asoc = sctp_id2assoc(sk, rtoinfo.srto_assoc_id);
++	asoc = sctp_id2assoc(sk, rtoinfo->srto_assoc_id);
+ 
+ 	/* Set the values to the specific association */
+-	if (!asoc && rtoinfo.srto_assoc_id != SCTP_FUTURE_ASSOC &&
++	if (!asoc && rtoinfo->srto_assoc_id != SCTP_FUTURE_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		return -EINVAL;
+ 
+-	rto_max = rtoinfo.srto_max;
+-	rto_min = rtoinfo.srto_min;
++	rto_max = rtoinfo->srto_max;
++	rto_min = rtoinfo->srto_min;
+ 
+ 	if (rto_max)
+ 		rto_max = asoc ? msecs_to_jiffies(rto_max) : rto_max;
+@@ -3078,17 +3076,17 @@ static int sctp_setsockopt_rtoinfo(struct sock *sk, char __user *optval, unsigne
+ 		return -EINVAL;
+ 
+ 	if (asoc) {
+-		if (rtoinfo.srto_initial != 0)
++		if (rtoinfo->srto_initial != 0)
+ 			asoc->rto_initial -				msecs_to_jiffies(rtoinfo.srto_initial);
++				msecs_to_jiffies(rtoinfo->srto_initial);
+ 		asoc->rto_max = rto_max;
+ 		asoc->rto_min = rto_min;
+ 	} else {
+ 		/* If there is no association or the association-id = 0
+ 		 * set the values to the endpoint.
+ 		 */
+-		if (rtoinfo.srto_initial != 0)
+-			sp->rtoinfo.srto_initial = rtoinfo.srto_initial;
++		if (rtoinfo->srto_initial != 0)
++			sp->rtoinfo.srto_initial = rtoinfo->srto_initial;
+ 		sp->rtoinfo.srto_max = rto_max;
+ 		sp->rtoinfo.srto_min = rto_min;
  	}
- 	case MCAST_JOIN_GROUP:
- 	case MCAST_LEAVE_GROUP:
--	{
--		struct group_req greq;
--		struct sockaddr_in *psin;
--		struct ip_mreqn mreq;
--
--		if (optlen < sizeof(struct group_req))
--			goto e_inval;
--		err = -EFAULT;
--		if (copy_from_user(&greq, optval, sizeof(greq)))
--			break;
--		psin = (struct sockaddr_in *)&greq.gr_group;
--		if (psin->sin_family != AF_INET)
--			goto e_inval;
--		memset(&mreq, 0, sizeof(mreq));
--		mreq.imr_multiaddr = psin->sin_addr;
--		mreq.imr_ifindex = greq.gr_interface;
--
--		if (optname = MCAST_JOIN_GROUP)
--			err = ip_mc_join_group(sk, &mreq);
--		else
--			err = ip_mc_leave_group(sk, &mreq);
-+		err = ip_mcast_join_leave(sk, optname, optval, optlen);
+@@ -4692,7 +4690,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_nodelay(sk, kopt, optlen);
  		break;
--	}
- 	case MCAST_JOIN_SOURCE_GROUP:
- 	case MCAST_LEAVE_SOURCE_GROUP:
- 	case MCAST_BLOCK_SOURCE:
-@@ -1389,37 +1422,7 @@ int compat_ip_setsockopt(struct sock *sk, int level, int optname,
- 	switch (optname) {
- 	case MCAST_JOIN_GROUP:
- 	case MCAST_LEAVE_GROUP:
--	{
--		struct compat_group_req __user *gr32 = (void __user *)optval;
--		struct group_req greq;
--		struct sockaddr_in *psin = (struct sockaddr_in *)&greq.gr_group;
--		struct ip_mreqn mreq;
--
--		if (optlen < sizeof(struct compat_group_req))
--			return -EINVAL;
--
--		if (get_user(greq.gr_interface, &gr32->gr_interface) ||
--		    copy_from_user(&greq.gr_group, &gr32->gr_group,
--				sizeof(greq.gr_group)))
--			return -EFAULT;
--
--		if (psin->sin_family != AF_INET)
--			return -EINVAL;
--
--		memset(&mreq, 0, sizeof(mreq));
--		mreq.imr_multiaddr = psin->sin_addr;
--		mreq.imr_ifindex = greq.gr_interface;
--
--		rtnl_lock();
--		lock_sock(sk);
--		if (optname = MCAST_JOIN_GROUP)
--			err = ip_mc_join_group(sk, &mreq);
--		else
--			err = ip_mc_leave_group(sk, &mreq);
--		release_sock(sk);
--		rtnl_unlock();
--		return err;
--	}
-+		return compat_ip_mcast_join_leave(sk, optname, optval, optlen);
- 	case MCAST_JOIN_SOURCE_GROUP:
- 	case MCAST_LEAVE_SOURCE_GROUP:
- 	case MCAST_BLOCK_SOURCE:
+ 	case SCTP_RTOINFO:
+-		retval = sctp_setsockopt_rtoinfo(sk, optval, optlen);
++		retval = sctp_setsockopt_rtoinfo(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_ASSOCINFO:
+ 		retval = sctp_setsockopt_associnfo(sk, optval, optlen);
 -- 
 2.27.0
