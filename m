@@ -1,187 +1,71 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Fri, 17 Jul 2020 06:23:27 +0000
-Subject: [PATCH 18/22] net/ipv6: factor out MCAST_MSFILTER getsockopt helpers
-Message-Id: <20200717062331.691152-19-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:22:24 +0000
+Subject: [PATCH 47/51] sctp: pass a kernel pointer to sctp_setsockopt_event
+Message-Id: <20200719072228.112645-48-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200717062331.691152-1-hch@lst.de>
-In-Reply-To: <20200717062331.691152-1-hch@lst.de>
+References: <20200719072228.112645-1-hch@lst.de>
+In-Reply-To: <20200719072228.112645-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "David S. Miller" <davem@davemloft.net>
-Cc: Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Chas Williams <3chas3@gmail.com>, Pablo Neira Ayuso <pablo@netfilter.org>, Jozsef Kadlecsik <kadlec@netfilter.org>, Florian Westphal <fw@strlen.de>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, linux-sctp@vger.kernel.org, linux-arch@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-wpan@vger.kernel.org, mptcp@lists.01.org
+To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
-Factor out one helper each for getting the native and compat
-version of the MCAST_MSFILTER option.
+Use the kernel pointer that sctp_setsockopt has available instead of
+directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/ipv6/ipv6_sockglue.c | 139 +++++++++++++++++++++------------------
- 1 file changed, 74 insertions(+), 65 deletions(-)
+ net/sctp/socket.c | 18 ++++++------------
+ 1 file changed, 6 insertions(+), 12 deletions(-)
 
-diff --git a/net/ipv6/ipv6_sockglue.c b/net/ipv6/ipv6_sockglue.c
-index 6adfbdcb7979bd..ef5656f876ac05 100644
---- a/net/ipv6/ipv6_sockglue.c
-+++ b/net/ipv6/ipv6_sockglue.c
-@@ -1071,6 +1071,77 @@ static int ipv6_getsockopt_sticky(struct sock *sk, struct ipv6_txoptions *opt,
- 	return len;
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 12a33fc42eeeb2..b52acbf231ab9e 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4296,29 +4296,23 @@ static int sctp_setsockopt_event(struct sock *sk, struct sctp_event *param,
  }
  
-+static int ipv6_get_msfilter(struct sock *sk, void __user *optval,
-+		int __user *optlen, int len)
-+{
-+	const int size0 = offsetof(struct group_filter, gf_slist);
-+	struct group_filter __user *p = optval;
-+	struct group_filter gsf;
-+	int num;
-+	int err;
-+
-+	if (len < size0)
-+		return -EINVAL;
-+	if (copy_from_user(&gsf, p, size0))
-+		return -EFAULT;
-+	if (gsf.gf_group.ss_family != AF_INET6)
-+		return -EADDRNOTAVAIL;
-+	num = gsf.gf_numsrc;
-+	lock_sock(sk);
-+	err = ip6_mc_msfget(sk, &gsf, p->gf_slist);
-+	if (!err) {
-+		if (num > gsf.gf_numsrc)
-+			num = gsf.gf_numsrc;
-+		if (put_user(GROUP_FILTER_SIZE(num), optlen) ||
-+		    copy_to_user(p, &gsf, size0))
-+			err = -EFAULT;
-+	}
-+	release_sock(sk);
-+	return err;
-+}
-+
-+#ifdef CONFIG_COMPAT
-+static int compat_ipv6_get_msfilter(struct sock *sk, void __user *optval,
-+		int __user *optlen)
-+{
-+	const int size0 = offsetof(struct compat_group_filter, gf_slist);
-+	struct compat_group_filter __user *p = optval;
-+	struct compat_group_filter gf32;
-+	struct group_filter gf;
-+	int len, err;
-+	int num;
-+
-+	if (get_user(len, optlen))
-+		return -EFAULT;
-+	if (len < size0)
-+		return -EINVAL;
-+
-+	if (copy_from_user(&gf32, p, size0))
-+		return -EFAULT;
-+	gf.gf_interface = gf32.gf_interface;
-+	gf.gf_fmode = gf32.gf_fmode;
-+	num = gf.gf_numsrc = gf32.gf_numsrc;
-+	gf.gf_group = gf32.gf_group;
-+
-+	if (gf.gf_group.ss_family != AF_INET6)
-+		return -EADDRNOTAVAIL;
-+
-+	lock_sock(sk);
-+	err = ip6_mc_msfget(sk, &gf, p->gf_slist);
-+	release_sock(sk);
-+	if (err)
-+		return err;
-+	if (num > gf.gf_numsrc)
-+		num = gf.gf_numsrc;
-+	len = GROUP_FILTER_SIZE(num) - (sizeof(gf)-sizeof(gf32));
-+	if (put_user(len, optlen) ||
-+	    put_user(gf.gf_fmode, &p->gf_fmode) ||
-+	    put_user(gf.gf_numsrc, &p->gf_numsrc))
-+		return -EFAULT;
-+	return 0;
-+}
-+#endif
-+
- static int do_ipv6_getsockopt(struct sock *sk, int level, int optname,
- 		    char __user *optval, int __user *optlen, unsigned int flags)
+ static int sctp_setsockopt_asconf_supported(struct sock *sk,
+-					    char __user *optval,
++					    struct sctp_assoc_value *params,
+ 					    unsigned int optlen)
  {
-@@ -1094,33 +1165,7 @@ static int do_ipv6_getsockopt(struct sock *sk, int level, int optname,
- 		val = sk->sk_family;
+-	struct sctp_assoc_value params;
+ 	struct sctp_association *asoc;
+ 	struct sctp_endpoint *ep;
+ 	int retval = -EINVAL;
+ 
+-	if (optlen != sizeof(params))
+-		goto out;
+-
+-	if (copy_from_user(&params, optval, optlen)) {
+-		retval = -EFAULT;
++	if (optlen != sizeof(*params))
+ 		goto out;
+-	}
+ 
+-	asoc = sctp_id2assoc(sk, params.assoc_id);
+-	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
++	asoc = sctp_id2assoc(sk, params->assoc_id);
++	if (!asoc && params->assoc_id != SCTP_FUTURE_ASSOC &&
+ 	    sctp_style(sk, UDP))
+ 		goto out;
+ 
+ 	ep = sctp_sk(sk)->ep;
+-	ep->asconf_enable = !!params.assoc_value;
++	ep->asconf_enable = !!params->assoc_value;
+ 
+ 	if (ep->asconf_enable && ep->auth_enable) {
+ 		sctp_auth_ep_add_chunkid(ep, SCTP_CID_ASCONF);
+@@ -4641,7 +4635,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_event(sk, kopt, optlen);
  		break;
- 	case MCAST_MSFILTER:
--	{
--		struct group_filter __user *p = (void __user *)optval;
--		struct group_filter gsf;
--		const int size0 = offsetof(struct group_filter, gf_slist);
--		int num;
--		int err;
--
--		if (len < size0)
--			return -EINVAL;
--		if (copy_from_user(&gsf, p, size0))
--			return -EFAULT;
--		if (gsf.gf_group.ss_family != AF_INET6)
--			return -EADDRNOTAVAIL;
--		num = gsf.gf_numsrc;
--		lock_sock(sk);
--		err = ip6_mc_msfget(sk, &gsf, p->gf_slist);
--		if (!err) {
--			if (num > gsf.gf_numsrc)
--				num = gsf.gf_numsrc;
--			if (put_user(GROUP_FILTER_SIZE(num), optlen) ||
--			    copy_to_user(p, &gsf, size0))
--				err = -EFAULT;
--		}
--		release_sock(sk);
--		return err;
--	}
--
-+		return ipv6_get_msfilter(sk, optval, optlen, len);
- 	case IPV6_2292PKTOPTIONS:
- 	{
- 		struct msghdr msg;
-@@ -1481,44 +1526,8 @@ int compat_ipv6_getsockopt(struct sock *sk, int level, int optname,
- 	if (level != SOL_IPV6)
- 		return -ENOPROTOOPT;
- 
--	if (optname = MCAST_MSFILTER) {
--		const int size0 = offsetof(struct compat_group_filter, gf_slist);
--		struct compat_group_filter __user *p = (void __user *)optval;
--		struct compat_group_filter gf32;
--		struct group_filter gf;
--		int ulen, err;
--		int num;
--
--		if (get_user(ulen, optlen))
--			return -EFAULT;
--
--		if (ulen < size0)
--			return -EINVAL;
--
--		if (copy_from_user(&gf32, p, size0))
--			return -EFAULT;
--
--		gf.gf_interface = gf32.gf_interface;
--		gf.gf_fmode = gf32.gf_fmode;
--		num = gf.gf_numsrc = gf32.gf_numsrc;
--		gf.gf_group = gf32.gf_group;
--
--		if (gf.gf_group.ss_family != AF_INET6)
--			return -EADDRNOTAVAIL;
--		lock_sock(sk);
--		err = ip6_mc_msfget(sk, &gf, p->gf_slist);
--		release_sock(sk);
--		if (err)
--			return err;
--		if (num > gf.gf_numsrc)
--			num = gf.gf_numsrc;
--		ulen = GROUP_FILTER_SIZE(num) - (sizeof(gf)-sizeof(gf32));
--		if (put_user(ulen, optlen) ||
--		    put_user(gf.gf_fmode, &p->gf_fmode) ||
--		    put_user(gf.gf_numsrc, &p->gf_numsrc))
--			return -EFAULT;
--		return 0;
--	}
-+	if (optname = MCAST_MSFILTER)
-+		return compat_ipv6_get_msfilter(sk, optval, optlen);
- 
- 	err = do_ipv6_getsockopt(sk, level, optname, optval, optlen,
- 				 MSG_CMSG_COMPAT);
+ 	case SCTP_ASCONF_SUPPORTED:
+-		retval = sctp_setsockopt_asconf_supported(sk, optval, optlen);
++		retval = sctp_setsockopt_asconf_supported(sk, kopt, optlen);
+ 		break;
+ 	case SCTP_AUTH_SUPPORTED:
+ 		retval = sctp_setsockopt_auth_supported(sk, optval, optlen);
 -- 
 2.27.0
