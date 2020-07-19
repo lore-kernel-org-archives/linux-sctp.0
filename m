@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Sun, 19 Jul 2020 07:22:21 +0000
-Subject: [PATCH 44/51] sctp: pass a kernel pointer to sctp_setsockopt_interleaving_supported
-Message-Id: <20200719072228.112645-45-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:21:57 +0000
+Subject: [PATCH 20/51] sctp: pass a kernel pointer to sctp_setsockopt_adaptation_layer
+Message-Id: <20200719072228.112645-21-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200719072228.112645-1-hch@lst.de>
 In-Reply-To: <20200719072228.112645-1-hch@lst.de>
@@ -16,70 +16,42 @@ directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 34 ++++++++++------------------------
- 1 file changed, 10 insertions(+), 24 deletions(-)
+ net/sctp/socket.c | 11 ++++-------
+ 1 file changed, 4 insertions(+), 7 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 4b660e6bf3bb54..6232e46c4cdebd 100644
+index cc7d5430ad8858..b29452f58ff988 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -4193,39 +4193,25 @@ static int sctp_setsockopt_scheduler_value(struct sock *sk,
+@@ -3336,17 +3336,14 @@ static int sctp_setsockopt_peer_primary_addr(struct sock *sk,
+ 	return err;
  }
  
- static int sctp_setsockopt_interleaving_supported(struct sock *sk,
--						  char __user *optval,
-+						  struct sctp_assoc_value *p,
- 						  unsigned int optlen)
+-static int sctp_setsockopt_adaptation_layer(struct sock *sk, char __user *optval,
++static int sctp_setsockopt_adaptation_layer(struct sock *sk,
++					    struct sctp_setadaptation *adapt,
+ 					    unsigned int optlen)
  {
- 	struct sctp_sock *sp = sctp_sk(sk);
--	struct sctp_assoc_value params;
- 	struct sctp_association *asoc;
--	int retval = -EINVAL;
- 
--	if (optlen < sizeof(params))
--		goto out;
+-	struct sctp_setadaptation adaptation;
 -
--	optlen = sizeof(params);
--	if (copy_from_user(&params, optval, optlen)) {
--		retval = -EFAULT;
--		goto out;
--	}
-+	if (optlen < sizeof(*p))
-+		return -EINVAL;
+ 	if (optlen != sizeof(struct sctp_setadaptation))
+ 		return -EINVAL;
+-	if (copy_from_user(&adaptation, optval, optlen))
+-		return -EFAULT;
  
--	asoc = sctp_id2assoc(sk, params.assoc_id);
--	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
--	    sctp_style(sk, UDP))
--		goto out;
-+	asoc = sctp_id2assoc(sk, p->assoc_id);
-+	if (!asoc && p->assoc_id != SCTP_FUTURE_ASSOC && sctp_style(sk, UDP))
-+		return -EINVAL;
+-	sctp_sk(sk)->adaptation_ind = adaptation.ssb_adaptation_ind;
++	sctp_sk(sk)->adaptation_ind = adapt->ssb_adaptation_ind;
  
- 	if (!sock_net(sk)->sctp.intl_enable || !sp->frag_interleave) {
--		retval = -EPERM;
--		goto out;
-+		return -EPERM;
- 	}
- 
--	sp->ep->intl_enable = !!params.assoc_value;
--
--	retval = 0;
--
--out:
--	return retval;
-+	sp->ep->intl_enable = !!p->assoc_value;
-+	return 0;
+ 	return 0;
  }
- 
- static int sctp_setsockopt_reuse_port(struct sock *sk, char __user *optval,
-@@ -4655,7 +4641,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_scheduler_value(sk, kopt, optlen);
+@@ -4700,7 +4697,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_maxseg(sk, kopt, optlen);
  		break;
- 	case SCTP_INTERLEAVING_SUPPORTED:
--		retval = sctp_setsockopt_interleaving_supported(sk, optval,
-+		retval = sctp_setsockopt_interleaving_supported(sk, kopt,
- 								optlen);
+ 	case SCTP_ADAPTATION_LAYER:
+-		retval = sctp_setsockopt_adaptation_layer(sk, optval, optlen);
++		retval = sctp_setsockopt_adaptation_layer(sk, kopt, optlen);
  		break;
- 	case SCTP_REUSE_PORT:
+ 	case SCTP_CONTEXT:
+ 		retval = sctp_setsockopt_context(sk, optval, optlen);
 -- 
 2.27.0
