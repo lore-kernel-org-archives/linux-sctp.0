@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Sun, 19 Jul 2020 07:21:49 +0000
-Subject: [PATCH 12/51] sctp: pass a kernel pointer to sctp_setsockopt_default_sndinfo
-Message-Id: <20200719072228.112645-13-hch@lst.de>
+Date: Sun, 19 Jul 2020 07:21:54 +0000
+Subject: [PATCH 17/51] sctp: pass a kernel pointer to sctp_setsockopt_associnfo
+Message-Id: <20200719072228.112645-18-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200719072228.112645-1-hch@lst.de>
 In-Reply-To: <20200719072228.112645-1-hch@lst.de>
@@ -16,98 +16,85 @@ directly handling the user pointer.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 49 ++++++++++++++++++++++-------------------------
- 1 file changed, 23 insertions(+), 26 deletions(-)
+ net/sctp/socket.c | 32 ++++++++++++++++----------------
+ 1 file changed, 16 insertions(+), 16 deletions(-)
 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 9bcbb065cf9e1f..6695fa1cb0ca8f 100644
+index 6339a08b62dd2b..2a655c65e2943d 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -2925,54 +2925,51 @@ static int sctp_setsockopt_default_send_param(struct sock *sk,
-  * (SCTP_DEFAULT_SNDINFO)
+@@ -3105,26 +3105,25 @@ static int sctp_setsockopt_rtoinfo(struct sock *sk,
+  * See [SCTP] for more information.
+  *
   */
- static int sctp_setsockopt_default_sndinfo(struct sock *sk,
--					   char __user *optval,
-+					   struct sctp_sndinfo *info,
- 					   unsigned int optlen)
+-static int sctp_setsockopt_associnfo(struct sock *sk, char __user *optval, unsigned int optlen)
++static int sctp_setsockopt_associnfo(struct sock *sk,
++				     struct sctp_assocparams *assocparams,
++				     unsigned int optlen)
  {
- 	struct sctp_sock *sp = sctp_sk(sk);
+ 
+-	struct sctp_assocparams assocparams;
  	struct sctp_association *asoc;
--	struct sctp_sndinfo info;
  
--	if (optlen != sizeof(info))
-+	if (optlen != sizeof(*info))
+ 	if (optlen != sizeof(struct sctp_assocparams))
  		return -EINVAL;
--	if (copy_from_user(&info, optval, optlen))
+-	if (copy_from_user(&assocparams, optval, optlen))
 -		return -EFAULT;
--	if (info.snd_flags &
-+	if (info->snd_flags &
- 	    ~(SCTP_UNORDERED | SCTP_ADDR_OVER |
- 	      SCTP_ABORT | SCTP_EOF))
- 		return -EINVAL;
  
--	asoc = sctp_id2assoc(sk, info.snd_assoc_id);
--	if (!asoc && info.snd_assoc_id > SCTP_ALL_ASSOC &&
-+	asoc = sctp_id2assoc(sk, info->snd_assoc_id);
-+	if (!asoc && info->snd_assoc_id > SCTP_ALL_ASSOC &&
+-	asoc = sctp_id2assoc(sk, assocparams.sasoc_assoc_id);
++	asoc = sctp_id2assoc(sk, assocparams->sasoc_assoc_id);
+ 
+-	if (!asoc && assocparams.sasoc_assoc_id != SCTP_FUTURE_ASSOC &&
++	if (!asoc && assocparams->sasoc_assoc_id != SCTP_FUTURE_ASSOC &&
  	    sctp_style(sk, UDP))
  		return -EINVAL;
  
+ 	/* Set the values to the specific association */
  	if (asoc) {
--		asoc->default_stream = info.snd_sid;
--		asoc->default_flags = info.snd_flags;
--		asoc->default_ppid = info.snd_ppid;
--		asoc->default_context = info.snd_context;
-+		asoc->default_stream = info->snd_sid;
-+		asoc->default_flags = info->snd_flags;
-+		asoc->default_ppid = info->snd_ppid;
-+		asoc->default_context = info->snd_context;
+-		if (assocparams.sasoc_asocmaxrxt != 0) {
++		if (assocparams->sasoc_asocmaxrxt != 0) {
+ 			__u32 path_sum = 0;
+ 			int   paths = 0;
+ 			struct sctp_transport *peer_addr;
+@@ -3141,24 +3140,25 @@ static int sctp_setsockopt_associnfo(struct sock *sk, char __user *optval, unsig
+ 			 * then one path.
+ 			 */
+ 			if (paths > 1 &&
+-			    assocparams.sasoc_asocmaxrxt > path_sum)
++			    assocparams->sasoc_asocmaxrxt > path_sum)
+ 				return -EINVAL;
  
- 		return 0;
- 	}
- 
- 	if (sctp_style(sk, TCP))
--		info.snd_assoc_id = SCTP_FUTURE_ASSOC;
-+		info->snd_assoc_id = SCTP_FUTURE_ASSOC;
- 
--	if (info.snd_assoc_id = SCTP_FUTURE_ASSOC ||
--	    info.snd_assoc_id = SCTP_ALL_ASSOC) {
--		sp->default_stream = info.snd_sid;
--		sp->default_flags = info.snd_flags;
--		sp->default_ppid = info.snd_ppid;
--		sp->default_context = info.snd_context;
-+	if (info->snd_assoc_id = SCTP_FUTURE_ASSOC ||
-+	    info->snd_assoc_id = SCTP_ALL_ASSOC) {
-+		sp->default_stream = info->snd_sid;
-+		sp->default_flags = info->snd_flags;
-+		sp->default_ppid = info->snd_ppid;
-+		sp->default_context = info->snd_context;
- 	}
- 
--	if (info.snd_assoc_id = SCTP_CURRENT_ASSOC ||
--	    info.snd_assoc_id = SCTP_ALL_ASSOC) {
-+	if (info->snd_assoc_id = SCTP_CURRENT_ASSOC ||
-+	    info->snd_assoc_id = SCTP_ALL_ASSOC) {
- 		list_for_each_entry(asoc, &sp->ep->asocs, asocs) {
--			asoc->default_stream = info.snd_sid;
--			asoc->default_flags = info.snd_flags;
--			asoc->default_ppid = info.snd_ppid;
--			asoc->default_context = info.snd_context;
-+			asoc->default_stream = info->snd_sid;
-+			asoc->default_flags = info->snd_flags;
-+			asoc->default_ppid = info->snd_ppid;
-+			asoc->default_context = info->snd_context;
+-			asoc->max_retrans = assocparams.sasoc_asocmaxrxt;
++			asoc->max_retrans = assocparams->sasoc_asocmaxrxt;
  		}
- 	}
  
-@@ -4695,7 +4692,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_default_send_param(sk, kopt, optlen);
+-		if (assocparams.sasoc_cookie_life != 0)
+-			asoc->cookie_life = ms_to_ktime(assocparams.sasoc_cookie_life);
++		if (assocparams->sasoc_cookie_life != 0)
++			asoc->cookie_life +				ms_to_ktime(assocparams->sasoc_cookie_life);
+ 	} else {
+ 		/* Set the values to the endpoint */
+ 		struct sctp_sock *sp = sctp_sk(sk);
+ 
+-		if (assocparams.sasoc_asocmaxrxt != 0)
++		if (assocparams->sasoc_asocmaxrxt != 0)
+ 			sp->assocparams.sasoc_asocmaxrxt -						assocparams.sasoc_asocmaxrxt;
+-		if (assocparams.sasoc_cookie_life != 0)
++						assocparams->sasoc_asocmaxrxt;
++		if (assocparams->sasoc_cookie_life != 0)
+ 			sp->assocparams.sasoc_cookie_life -						assocparams.sasoc_cookie_life;
++						assocparams->sasoc_cookie_life;
+ 	}
+ 	return 0;
+ }
+@@ -4693,7 +4693,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
+ 		retval = sctp_setsockopt_rtoinfo(sk, kopt, optlen);
  		break;
- 	case SCTP_DEFAULT_SNDINFO:
--		retval = sctp_setsockopt_default_sndinfo(sk, optval, optlen);
-+		retval = sctp_setsockopt_default_sndinfo(sk, kopt, optlen);
+ 	case SCTP_ASSOCINFO:
+-		retval = sctp_setsockopt_associnfo(sk, optval, optlen);
++		retval = sctp_setsockopt_associnfo(sk, kopt, optlen);
  		break;
- 	case SCTP_PRIMARY_ADDR:
- 		retval = sctp_setsockopt_primary_addr(sk, optval, optlen);
+ 	case SCTP_I_WANT_MAPPED_V4_ADDR:
+ 		retval = sctp_setsockopt_mappedv4(sk, optval, optlen);
 -- 
 2.27.0
