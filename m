@@ -1,132 +1,54 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Sun, 19 Jul 2020 07:21:45 +0000
-Subject: [PATCH 08/51] sctp: pass a kernel pointer to sctp_setsockopt_delayed_ack
-Message-Id: <20200719072228.112645-9-hch@lst.de>
+Date: Mon, 20 Jul 2020 12:47:22 +0000
+Subject: [PATCH 09/24] netfilter: remove the unused user argument to do_update_counters
+Message-Id: <20200720124737.118617-10-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200719072228.112645-1-hch@lst.de>
-In-Reply-To: <20200719072228.112645-1-hch@lst.de>
+References: <20200720124737.118617-1-hch@lst.de>
+In-Reply-To: <20200720124737.118617-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
-
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
+Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 49 +++++++++++++++++++++--------------------------
- 1 file changed, 22 insertions(+), 27 deletions(-)
+ net/bridge/netfilter/ebtables.c | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 19308c327b6d2f..2dfbd7f8799114 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -2751,17 +2751,14 @@ static void sctp_apply_asoc_delayed_ack(struct sctp_sack_info *params,
-  */
+diff --git a/net/bridge/netfilter/ebtables.c b/net/bridge/netfilter/ebtables.c
+index fe13108af1f542..12f8929667bf43 100644
+--- a/net/bridge/netfilter/ebtables.c
++++ b/net/bridge/netfilter/ebtables.c
+@@ -1242,9 +1242,8 @@ void ebt_unregister_table(struct net *net, struct ebt_table *table,
  
- static int sctp_setsockopt_delayed_ack(struct sock *sk,
--				       char __user *optval, unsigned int optlen)
-+				       struct sctp_sack_info *params,
-+				       unsigned int optlen)
+ /* userspace just supplied us with counters */
+ static int do_update_counters(struct net *net, const char *name,
+-				struct ebt_counter __user *counters,
+-				unsigned int num_counters,
+-				const void __user *user, unsigned int len)
++			      struct ebt_counter __user *counters,
++			      unsigned int num_counters, unsigned int len)
  {
- 	struct sctp_sock *sp = sctp_sk(sk);
- 	struct sctp_association *asoc;
--	struct sctp_sack_info params;
- 
- 	if (optlen = sizeof(struct sctp_sack_info)) {
--		if (copy_from_user(&params, optval, optlen))
--			return -EFAULT;
--
--		if (params.sack_delay = 0 && params.sack_freq = 0)
-+		if (params->sack_delay = 0 && params->sack_freq = 0)
- 			return 0;
- 	} else if (optlen = sizeof(struct sctp_assoc_value)) {
- 		pr_warn_ratelimited(DEPRECATED
-@@ -2769,59 +2766,57 @@ static int sctp_setsockopt_delayed_ack(struct sock *sk,
- 				    "Use of struct sctp_assoc_value in delayed_ack socket option.\n"
- 				    "Use struct sctp_sack_info instead\n",
- 				    current->comm, task_pid_nr(current));
--		if (copy_from_user(&params, optval, optlen))
--			return -EFAULT;
- 
--		if (params.sack_delay = 0)
--			params.sack_freq = 1;
-+		if (params->sack_delay = 0)
-+			params->sack_freq = 1;
- 		else
--			params.sack_freq = 0;
-+			params->sack_freq = 0;
- 	} else
+ 	int i, ret;
+ 	struct ebt_counter *tmp;
+@@ -1299,7 +1298,7 @@ static int update_counters(struct net *net, const void __user *user,
  		return -EINVAL;
  
- 	/* Validate value parameter. */
--	if (params.sack_delay > 500)
-+	if (params->sack_delay > 500)
- 		return -EINVAL;
- 
- 	/* Get association, if sack_assoc_id != SCTP_FUTURE_ASSOC and the
- 	 * socket is a one to many style socket, and an association
- 	 * was not found, then the id was invalid.
- 	 */
--	asoc = sctp_id2assoc(sk, params.sack_assoc_id);
--	if (!asoc && params.sack_assoc_id > SCTP_ALL_ASSOC &&
-+	asoc = sctp_id2assoc(sk, params->sack_assoc_id);
-+	if (!asoc && params->sack_assoc_id > SCTP_ALL_ASSOC &&
- 	    sctp_style(sk, UDP))
- 		return -EINVAL;
- 
- 	if (asoc) {
--		sctp_apply_asoc_delayed_ack(&params, asoc);
-+		sctp_apply_asoc_delayed_ack(params, asoc);
- 
- 		return 0;
- 	}
- 
- 	if (sctp_style(sk, TCP))
--		params.sack_assoc_id = SCTP_FUTURE_ASSOC;
-+		params->sack_assoc_id = SCTP_FUTURE_ASSOC;
- 
--	if (params.sack_assoc_id = SCTP_FUTURE_ASSOC ||
--	    params.sack_assoc_id = SCTP_ALL_ASSOC) {
--		if (params.sack_delay) {
--			sp->sackdelay = params.sack_delay;
-+	if (params->sack_assoc_id = SCTP_FUTURE_ASSOC ||
-+	    params->sack_assoc_id = SCTP_ALL_ASSOC) {
-+		if (params->sack_delay) {
-+			sp->sackdelay = params->sack_delay;
- 			sp->param_flags  				sctp_spp_sackdelay_enable(sp->param_flags);
- 		}
--		if (params.sack_freq = 1) {
-+		if (params->sack_freq = 1) {
- 			sp->param_flags  				sctp_spp_sackdelay_disable(sp->param_flags);
--		} else if (params.sack_freq > 1) {
--			sp->sackfreq = params.sack_freq;
-+		} else if (params->sack_freq > 1) {
-+			sp->sackfreq = params->sack_freq;
- 			sp->param_flags  				sctp_spp_sackdelay_enable(sp->param_flags);
- 		}
- 	}
- 
--	if (params.sack_assoc_id = SCTP_CURRENT_ASSOC ||
--	    params.sack_assoc_id = SCTP_ALL_ASSOC)
-+	if (params->sack_assoc_id = SCTP_CURRENT_ASSOC ||
-+	    params->sack_assoc_id = SCTP_ALL_ASSOC)
- 		list_for_each_entry(asoc, &sp->ep->asocs, asocs)
--			sctp_apply_asoc_delayed_ack(&params, asoc);
-+			sctp_apply_asoc_delayed_ack(params, asoc);
- 
- 	return 0;
+ 	return do_update_counters(net, hlp.name, hlp.counters,
+-				hlp.num_counters, user, len);
++				  hlp.num_counters, len);
  }
-@@ -4697,7 +4692,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		break;
  
- 	case SCTP_DELAYED_SACK:
--		retval = sctp_setsockopt_delayed_ack(sk, optval, optlen);
-+		retval = sctp_setsockopt_delayed_ack(sk, kopt, optlen);
- 		break;
- 	case SCTP_PARTIAL_DELIVERY_POINT:
- 		retval = sctp_setsockopt_partial_delivery_point(sk, optval, optlen);
+ static inline int ebt_obj_to_user(char __user *um, const char *_name,
+@@ -2231,7 +2230,7 @@ static int compat_update_counters(struct net *net, void __user *user,
+ 		return update_counters(net, user, len);
+ 
+ 	return do_update_counters(net, hlp.name, compat_ptr(hlp.counters),
+-					hlp.num_counters, user, len);
++				  hlp.num_counters, len);
+ }
+ 
+ static int compat_do_ebt_get_ctl(struct sock *sk, int cmd,
 -- 
 2.27.0
