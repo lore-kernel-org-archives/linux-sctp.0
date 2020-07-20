@@ -1,68 +1,55 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Sun, 19 Jul 2020 07:22:08 +0000
-Subject: [PATCH 31/51] sctp: pass a kernel pointer to sctp_setsockopt_auto_asconf
-Message-Id: <20200719072228.112645-32-hch@lst.de>
+Date: Mon, 20 Jul 2020 12:47:18 +0000
+Subject: [PATCH 05/24] net: switch sock_setbindtodevice to sockptr_t
+Message-Id: <20200720124737.118617-6-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200719072228.112645-1-hch@lst.de>
-In-Reply-To: <20200719072228.112645-1-hch@lst.de>
+References: <20200720124737.118617-1-hch@lst.de>
+In-Reply-To: <20200720124737.118617-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
+Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
+Pass a sockptr_t to prepare for set_fs-less handling of the kernel
+pointer from bpf-cgroup.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 15 ++++++---------
- 1 file changed, 6 insertions(+), 9 deletions(-)
+ net/core/sock.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index ab155c15939ee8..64f2a967ddf5d3 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3807,26 +3807,23 @@ static int sctp_setsockopt_deactivate_key(struct sock *sk,
-  * Note. In this implementation, socket operation overrides default parameter
-  * being set by sysctl as well as FreeBSD implementation
-  */
--static int sctp_setsockopt_auto_asconf(struct sock *sk, char __user *optval,
-+static int sctp_setsockopt_auto_asconf(struct sock *sk, int *val,
- 					unsigned int optlen)
+diff --git a/net/core/sock.c b/net/core/sock.c
+index 91224709869389..bd20fc5cce0850 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -608,8 +608,7 @@ int sock_bindtoindex(struct sock *sk, int ifindex, bool lock_sk)
+ }
+ EXPORT_SYMBOL(sock_bindtoindex);
+ 
+-static int sock_setbindtodevice(struct sock *sk, char __user *optval,
+-				int optlen)
++static int sock_setbindtodevice(struct sock *sk, sockptr_t optval, int optlen)
  {
--	int val;
- 	struct sctp_sock *sp = sctp_sk(sk);
+ 	int ret = -ENOPROTOOPT;
+ #ifdef CONFIG_NETDEVICES
+@@ -631,7 +630,7 @@ static int sock_setbindtodevice(struct sock *sk, char __user *optval,
+ 	memset(devname, 0, sizeof(devname));
+ 
+ 	ret = -EFAULT;
+-	if (copy_from_user(devname, optval, optlen))
++	if (copy_from_sockptr(devname, optval, optlen))
+ 		goto out;
+ 
+ 	index = 0;
+@@ -839,7 +838,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 	 */
+ 
+ 	if (optname = SO_BINDTODEVICE)
+-		return sock_setbindtodevice(sk, optval, optlen);
++		return sock_setbindtodevice(sk, USER_SOCKPTR(optval), optlen);
  
  	if (optlen < sizeof(int))
  		return -EINVAL;
--	if (get_user(val, (int __user *)optval))
--		return -EFAULT;
--	if (!sctp_is_ep_boundall(sk) && val)
-+	if (!sctp_is_ep_boundall(sk) && *val)
- 		return -EINVAL;
--	if ((val && sp->do_auto_asconf) || (!val && !sp->do_auto_asconf))
-+	if ((*val && sp->do_auto_asconf) || (!*val && !sp->do_auto_asconf))
- 		return 0;
- 
- 	spin_lock_bh(&sock_net(sk)->sctp.addr_wq_lock);
--	if (val = 0 && sp->do_auto_asconf) {
-+	if (*val = 0 && sp->do_auto_asconf) {
- 		list_del(&sp->auto_asconf_list);
- 		sp->do_auto_asconf = 0;
--	} else if (val && !sp->do_auto_asconf) {
-+	} else if (*val && !sp->do_auto_asconf) {
- 		list_add_tail(&sp->auto_asconf_list,
- 		    &sock_net(sk)->sctp.auto_asconf_splist);
- 		sp->do_auto_asconf = 1;
-@@ -4690,7 +4687,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_deactivate_key(sk, kopt, optlen);
- 		break;
- 	case SCTP_AUTO_ASCONF:
--		retval = sctp_setsockopt_auto_asconf(sk, optval, optlen);
-+		retval = sctp_setsockopt_auto_asconf(sk, kopt, optlen);
- 		break;
- 	case SCTP_PEER_ADDR_THLDS:
- 		retval = sctp_setsockopt_paddr_thresholds(sk, optval, optlen,
 -- 
 2.27.0
