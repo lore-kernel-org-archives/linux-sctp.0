@@ -1,76 +1,97 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Sun, 19 Jul 2020 07:22:02 +0000
-Subject: [PATCH 25/51] sctp: pass a kernel pointer to sctp_setsockopt_hmac_ident
-Message-Id: <20200719072228.112645-26-hch@lst.de>
+Date: Mon, 20 Jul 2020 12:47:35 +0000
+Subject: [PATCH 22/24] net/tcp: switch ->md5_parse to sockptr_t
+Message-Id: <20200720124737.118617-23-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200719072228.112645-1-hch@lst.de>
-In-Reply-To: <20200719072228.112645-1-hch@lst.de>
+References: <20200720124737.118617-1-hch@lst.de>
+In-Reply-To: <20200720124737.118617-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
+Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
+Pass a sockptr_t to prepare for set_fs-less handling of the kernel
+pointer from bpf-cgroup.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 21 +++++----------------
- 1 file changed, 5 insertions(+), 16 deletions(-)
+ include/net/tcp.h   | 2 +-
+ net/ipv4/tcp.c      | 3 ++-
+ net/ipv4/tcp_ipv4.c | 4 ++--
+ net/ipv6/tcp_ipv6.c | 4 ++--
+ 4 files changed, 7 insertions(+), 6 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index f68aa3936df3f3..a573af7dfe41f5 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3565,13 +3565,11 @@ static int sctp_setsockopt_auth_chunk(struct sock *sk,
-  * endpoint requires the peer to use.
-  */
- static int sctp_setsockopt_hmac_ident(struct sock *sk,
--				      char __user *optval,
-+				      struct sctp_hmacalgo *hmacs,
- 				      unsigned int optlen)
- {
- 	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
--	struct sctp_hmacalgo *hmacs;
- 	u32 idents;
--	int err;
- 
- 	if (!ep->auth_enable)
- 		return -EACCES;
-@@ -3581,21 +3579,12 @@ static int sctp_setsockopt_hmac_ident(struct sock *sk,
- 	optlen = min_t(unsigned int, optlen, sizeof(struct sctp_hmacalgo) +
- 					     SCTP_AUTH_NUM_HMACS * sizeof(u16));
- 
--	hmacs = memdup_user(optval, optlen);
--	if (IS_ERR(hmacs))
--		return PTR_ERR(hmacs);
--
- 	idents = hmacs->shmac_num_idents;
- 	if (idents = 0 || idents > SCTP_AUTH_NUM_HMACS ||
--	    (idents * sizeof(u16)) > (optlen - sizeof(struct sctp_hmacalgo))) {
--		err = -EINVAL;
--		goto out;
--	}
-+	    (idents * sizeof(u16)) > (optlen - sizeof(struct sctp_hmacalgo)))
-+		return -EINVAL;
- 
--	err = sctp_auth_ep_set_hmacs(ep, hmacs);
--out:
--	kfree(hmacs);
--	return err;
-+	return sctp_auth_ep_set_hmacs(ep, hmacs);
+diff --git a/include/net/tcp.h b/include/net/tcp.h
+index 9f7f7c0c110451..e3c8e1d820214c 100644
+--- a/include/net/tcp.h
++++ b/include/net/tcp.h
+@@ -2002,7 +2002,7 @@ struct tcp_sock_af_ops {
+ 					 const struct sk_buff *skb);
+ 	int		(*md5_parse)(struct sock *sk,
+ 				     int optname,
+-				     char __user *optval,
++				     sockptr_t optval,
+ 				     int optlen);
+ #endif
+ };
+diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
+index 58ede3d62b2e2c..49bf15c27deac7 100644
+--- a/net/ipv4/tcp.c
++++ b/net/ipv4/tcp.c
+@@ -3249,7 +3249,8 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
+ #ifdef CONFIG_TCP_MD5SIG
+ 	case TCP_MD5SIG:
+ 	case TCP_MD5SIG_EXT:
+-		err = tp->af_specific->md5_parse(sk, optname, optval, optlen);
++		err = tp->af_specific->md5_parse(sk, optname,
++						 USER_SOCKPTR(optval), optlen);
+ 		break;
+ #endif
+ 	case TCP_USER_TIMEOUT:
+diff --git a/net/ipv4/tcp_ipv4.c b/net/ipv4/tcp_ipv4.c
+index cd81b6e04efbfa..a03e70b3af2e6c 100644
+--- a/net/ipv4/tcp_ipv4.c
++++ b/net/ipv4/tcp_ipv4.c
+@@ -1194,7 +1194,7 @@ static void tcp_clear_md5_list(struct sock *sk)
  }
  
- /*
-@@ -4699,7 +4688,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_auth_chunk(sk, kopt, optlen);
- 		break;
- 	case SCTP_HMAC_IDENT:
--		retval = sctp_setsockopt_hmac_ident(sk, optval, optlen);
-+		retval = sctp_setsockopt_hmac_ident(sk, kopt, optlen);
- 		break;
- 	case SCTP_AUTH_KEY:
- 		retval = sctp_setsockopt_auth_key(sk, optval, optlen);
+ static int tcp_v4_parse_md5_keys(struct sock *sk, int optname,
+-				 char __user *optval, int optlen)
++				 sockptr_t optval, int optlen)
+ {
+ 	struct tcp_md5sig cmd;
+ 	struct sockaddr_in *sin = (struct sockaddr_in *)&cmd.tcpm_addr;
+@@ -1205,7 +1205,7 @@ static int tcp_v4_parse_md5_keys(struct sock *sk, int optname,
+ 	if (optlen < sizeof(cmd))
+ 		return -EINVAL;
+ 
+-	if (copy_from_user(&cmd, optval, sizeof(cmd)))
++	if (copy_from_sockptr(&cmd, optval, sizeof(cmd)))
+ 		return -EFAULT;
+ 
+ 	if (sin->sin_family != AF_INET)
+diff --git a/net/ipv6/tcp_ipv6.c b/net/ipv6/tcp_ipv6.c
+index c34b7834fd84a8..305870a72352d6 100644
+--- a/net/ipv6/tcp_ipv6.c
++++ b/net/ipv6/tcp_ipv6.c
+@@ -567,7 +567,7 @@ static struct tcp_md5sig_key *tcp_v6_md5_lookup(const struct sock *sk,
+ }
+ 
+ static int tcp_v6_parse_md5_keys(struct sock *sk, int optname,
+-				 char __user *optval, int optlen)
++				 sockptr_t optval, int optlen)
+ {
+ 	struct tcp_md5sig cmd;
+ 	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&cmd.tcpm_addr;
+@@ -577,7 +577,7 @@ static int tcp_v6_parse_md5_keys(struct sock *sk, int optname,
+ 	if (optlen < sizeof(cmd))
+ 		return -EINVAL;
+ 
+-	if (copy_from_user(&cmd, optval, sizeof(cmd)))
++	if (copy_from_sockptr(&cmd, optval, sizeof(cmd)))
+ 		return -EFAULT;
+ 
+ 	if (sin6->sin6_family != AF_INET6)
 -- 
 2.27.0
