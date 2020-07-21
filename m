@@ -1,19 +1,19 @@
-From: Alexei Starovoitov <alexei.starovoitov@gmail.com>
-Date: Mon, 20 Jul 2020 20:47:56 +0000
-Subject: Re: get rid of the address_space override in setsockopt
-Message-Id: <20200720204756.iengwcguikj2yrxt@ast-mbp.dhcp.thefacebook.com>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Tue, 21 Jul 2020 09:38:23 +0000
+Subject: RE: get rid of the address_space override in setsockopt
+Message-Id: <60c52e31e9f240718fcda0dd5c2faeca@AcuMS.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200720124737.118617-1-hch@lst.de>
 In-Reply-To: <20200720124737.118617-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Christoph Hellwig <hch@lst.de>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>, linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
+To: 'Christoph Hellwig' <hch@lst.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
+Cc: "linux-crypto@vger.kernel.org" <linux-crypto@vger.kernel.org>, "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "bpf@vger.kernel.org" <bpf@vger.kernel.org>, "netfilter-devel@vger.kernel.org" <netfilter-devel@vger.kernel.org>, "coreteam@netfilter.org" <coreteam@netfilter.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "linux-hams@vger.kernel.org" <linux-hams@vger.kernel.org>, "linux-bluetooth@vger.kernel.org" <linux-bluetooth@vger.kernel.org>, "bridge@lists.linux-foundation.org" <bridge@lists.linux-foundation.org>, "linux-can@vger.kernel.org" <linux-can@vger.kernel.org>, "dccp@vger.kernel.org" <dccp@vger.kernel.org>, "linux-decnet-user@lists.sourceforge.net" <linux-decnet-user@lists.sourceforge.net>, "linux-wpan@vger.kernel.org" <linux-wpan@vger.kernel.org>, "linux-s390@vger.kernel.org" <linux-s390@vger.kernel.org>, "mptcp@lists.01.org" <mptcp@lists.01.org>, "lvs-devel@vger.kernel.org" <lvs-devel@vger.kernel.org>, "rds-devel@oss.oracle.com" <rds-devel@oss.oracle.com>, "linux-afs@lists.infradead.org" <linux-afs@lists.infradead.org>, "tipc-discussion@lists.sourceforge.net" <tipc-discussion@lists.sourceforge.net>, "linux-x25@vger.kernel.org" <linux-x25@vger.kernel.org>
 
-On Mon, Jul 20, 2020 at 02:47:13PM +0200, Christoph Hellwig wrote:
-> Hi Dave,
-> 
+From: Christoph Hellwig
+> Sent: 20 July 2020 13:47
+>
 > setsockopt is the last place in architecture-independ code that still
 > uses set_fs to force the uaccess routines to operate on kernel pointers.
 > 
@@ -22,17 +22,12 @@ On Mon, Jul 20, 2020 at 02:47:13PM +0200, Christoph Hellwig wrote:
 > then uses it for setsockopt, starting by refactoring some low-level
 > helpers and moving them over to it before finally doing the main
 > setsockopt method.
-> 
-> Note that I could not get the eBPF selftests to work, so this has been
-> tested with a testing patch that always copies the data first and passes
-> a kernel pointer.  This is something that works for most common sockopts
-> (and is something that the ePBF support relies on), but unfortunately
-> in various corner cases we either don't use the passed in length, or in
-> one case actually copy data back from setsockopt, so we unfortunately
-> can't just always do the copy in the highlevel code, which would have
-> been much nicer.
 
-could you rebase on bpf-next tree and we can route it this way then?
-we'll also test the whole thing before applying.
+Are you planning to make the equivalent change to getsockopt()?
+Having mismatched interfaces would be very strange.
 
-sounds like v2 is needed anyway to address Eric's addr space concern?
+	David
+
+-
+Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
+Registration No: 1397386 (Wales)
