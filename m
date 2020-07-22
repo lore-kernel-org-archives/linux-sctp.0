@@ -1,78 +1,70 @@
-From: Christoph Hellwig <hch@lst.de>
-Date: Sun, 19 Jul 2020 07:21:56 +0000
-Subject: [PATCH 19/51] sctp: pass a kernel pointer to sctp_setsockopt_maxseg
-Message-Id: <20200719072228.112645-20-hch@lst.de>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Wed, 22 Jul 2020 15:52:11 +0000
+Subject: [PATCH net 1/2] sctp: shrink stream outq only when new outcnt < old outcnt
+Message-Id: <ceb8b4f32a9235e0a846e4f8e0537fcb362edf04.1595433039.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200719072228.112645-1-hch@lst.de>
-In-Reply-To: <20200719072228.112645-1-hch@lst.de>
+References: <cover.1595433039.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1595433039.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: davem@davemloft.net, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
+It's not necessary to go list_for_each for outq->out_chunk_list
+when new outcnt >= old outcnt, as no chunk with higher sid than
+new (outcnt - 1) exists in the outqueue.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+While at it, also move the list_for_each code in a new function
+sctp_stream_shrink_out(), which will be used in the next patch.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/sctp/socket.c | 22 +++++++++++-----------
- 1 file changed, 11 insertions(+), 11 deletions(-)
+ net/sctp/stream.c | 21 ++++++++++++++-------
+ 1 file changed, 14 insertions(+), 7 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 5007af318e134e..cc7d5430ad8858 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3215,11 +3215,13 @@ static int sctp_setsockopt_mappedv4(struct sock *sk, int *val,
-  *    changed (effecting future associations only).
-  * assoc_value:  This parameter specifies the maximum size in bytes.
-  */
--static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned int optlen)
-+static int sctp_setsockopt_maxseg(struct sock *sk,
-+				  struct sctp_assoc_value *params,
-+				  unsigned int optlen)
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index 67f7e71..4f87693 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -22,17 +22,11 @@
+ #include <net/sctp/sm.h>
+ #include <net/sctp/stream_sched.h>
+ 
+-/* Migrates chunks from stream queues to new stream queues if needed,
+- * but not across associations. Also, removes those chunks to streams
+- * higher than the new max.
+- */
+-static void sctp_stream_outq_migrate(struct sctp_stream *stream,
+-				     struct sctp_stream *new, __u16 outcnt)
++static void sctp_stream_shrink_out(struct sctp_stream *stream, __u16 outcnt)
  {
- 	struct sctp_sock *sp = sctp_sk(sk);
--	struct sctp_assoc_value params;
  	struct sctp_association *asoc;
-+	sctp_assoc_t assoc_id;
- 	int val;
+ 	struct sctp_chunk *ch, *temp;
+ 	struct sctp_outq *outq;
+-	int i;
  
- 	if (optlen = sizeof(int)) {
-@@ -3228,19 +3230,17 @@ static int sctp_setsockopt_maxseg(struct sock *sk, char __user *optval, unsigned
- 				    "Use of int in maxseg socket option.\n"
- 				    "Use struct sctp_assoc_value instead\n",
- 				    current->comm, task_pid_nr(current));
--		if (copy_from_user(&val, optval, optlen))
--			return -EFAULT;
--		params.assoc_id = SCTP_FUTURE_ASSOC;
-+		assoc_id = SCTP_FUTURE_ASSOC;
-+		val = *(int *)params;
- 	} else if (optlen = sizeof(struct sctp_assoc_value)) {
--		if (copy_from_user(&params, optval, optlen))
--			return -EFAULT;
--		val = params.assoc_value;
-+		assoc_id = params->assoc_id;
-+		val = params->assoc_value;
- 	} else {
- 		return -EINVAL;
+ 	asoc = container_of(stream, struct sctp_association, stream);
+ 	outq = &asoc->outqueue;
+@@ -56,6 +50,19 @@ static void sctp_stream_outq_migrate(struct sctp_stream *stream,
+ 
+ 		sctp_chunk_free(ch);
  	}
++}
++
++/* Migrates chunks from stream queues to new stream queues if needed,
++ * but not across associations. Also, removes those chunks to streams
++ * higher than the new max.
++ */
++static void sctp_stream_outq_migrate(struct sctp_stream *stream,
++				     struct sctp_stream *new, __u16 outcnt)
++{
++	int i;
++
++	if (stream->outcnt > outcnt)
++		sctp_stream_shrink_out(stream, outcnt);
  
--	asoc = sctp_id2assoc(sk, params.assoc_id);
--	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
-+	asoc = sctp_id2assoc(sk, assoc_id);
-+	if (!asoc && assoc_id != SCTP_FUTURE_ASSOC &&
- 	    sctp_style(sk, UDP))
- 		return -EINVAL;
- 
-@@ -4697,7 +4697,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_mappedv4(sk, kopt, optlen);
- 		break;
- 	case SCTP_MAXSEG:
--		retval = sctp_setsockopt_maxseg(sk, optval, optlen);
-+		retval = sctp_setsockopt_maxseg(sk, kopt, optlen);
- 		break;
- 	case SCTP_ADAPTATION_LAYER:
- 		retval = sctp_setsockopt_adaptation_layer(sk, optval, optlen);
+ 	if (new) {
+ 		/* Here we actually move the old ext stuff into the new
 -- 
-2.27.0
+2.1.0
