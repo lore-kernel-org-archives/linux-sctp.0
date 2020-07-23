@@ -1,90 +1,84 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Sun, 19 Jul 2020 07:22:05 +0000
-Subject: [PATCH 28/51] sctp: pass a kernel pointer to sctp_setsockopt_active_key
-Message-Id: <20200719072228.112645-29-hch@lst.de>
+Date: Thu, 23 Jul 2020 06:09:04 +0000
+Subject: [PATCH 22/26] net/udp: switch udp_lib_setsockopt to sockptr_t
+Message-Id: <20200723060908.50081-23-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200719072228.112645-1-hch@lst.de>
-In-Reply-To: <20200719072228.112645-1-hch@lst.de>
+References: <20200723060908.50081-1-hch@lst.de>
+In-Reply-To: <20200723060908.50081-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
+Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
+Pass a sockptr_t to prepare for set_fs-less handling of the kernel
+pointer from bpf-cgroup.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 27 ++++++++++++---------------
- 1 file changed, 12 insertions(+), 15 deletions(-)
+ include/net/udp.h | 2 +-
+ net/ipv4/udp.c    | 7 ++++---
+ net/ipv6/udp.c    | 3 ++-
+ 3 files changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index b4dcccba5787e3..02153f243683ea 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3655,42 +3655,39 @@ static int sctp_setsockopt_auth_key(struct sock *sk,
-  * the association shared key.
+diff --git a/include/net/udp.h b/include/net/udp.h
+index 17a9e86a807638..295d52a7359827 100644
+--- a/include/net/udp.h
++++ b/include/net/udp.h
+@@ -306,7 +306,7 @@ struct sk_buff *skb_udp_tunnel_segment(struct sk_buff *skb,
+ int udp_lib_getsockopt(struct sock *sk, int level, int optname,
+ 		       char __user *optval, int __user *optlen);
+ int udp_lib_setsockopt(struct sock *sk, int level, int optname,
+-		       char __user *optval, unsigned int optlen,
++		       sockptr_t optval, unsigned int optlen,
+ 		       int (*push_pending_frames)(struct sock *));
+ struct sock *udp4_lib_lookup(struct net *net, __be32 saddr, __be16 sport,
+ 			     __be32 daddr, __be16 dport, int dif);
+diff --git a/net/ipv4/udp.c b/net/ipv4/udp.c
+index bb95cddcb040a6..c6cb2d09dbc75e 100644
+--- a/net/ipv4/udp.c
++++ b/net/ipv4/udp.c
+@@ -2588,7 +2588,7 @@ void udp_destroy_sock(struct sock *sk)
+  *	Socket option code for UDP
   */
- static int sctp_setsockopt_active_key(struct sock *sk,
--				      char __user *optval,
-+				      struct sctp_authkeyid *val,
- 				      unsigned int optlen)
+ int udp_lib_setsockopt(struct sock *sk, int level, int optname,
+-		       char __user *optval, unsigned int optlen,
++		       sockptr_t optval, unsigned int optlen,
+ 		       int (*push_pending_frames)(struct sock *))
  {
- 	struct sctp_endpoint *ep = sctp_sk(sk)->ep;
- 	struct sctp_association *asoc;
--	struct sctp_authkeyid val;
- 	int ret = 0;
- 
- 	if (optlen != sizeof(struct sctp_authkeyid))
- 		return -EINVAL;
--	if (copy_from_user(&val, optval, optlen))
--		return -EFAULT;
- 
--	asoc = sctp_id2assoc(sk, val.scact_assoc_id);
--	if (!asoc && val.scact_assoc_id > SCTP_ALL_ASSOC &&
-+	asoc = sctp_id2assoc(sk, val->scact_assoc_id);
-+	if (!asoc && val->scact_assoc_id > SCTP_ALL_ASSOC &&
- 	    sctp_style(sk, UDP))
+ 	struct udp_sock *up = udp_sk(sk);
+@@ -2599,7 +2599,7 @@ int udp_lib_setsockopt(struct sock *sk, int level, int optname,
+ 	if (optlen < sizeof(int))
  		return -EINVAL;
  
- 	if (asoc)
--		return sctp_auth_set_active_key(ep, asoc, val.scact_keynumber);
-+		return sctp_auth_set_active_key(ep, asoc, val->scact_keynumber);
+-	if (get_user(val, (int __user *)optval))
++	if (copy_from_sockptr(&val, optval, sizeof(val)))
+ 		return -EFAULT;
  
- 	if (sctp_style(sk, TCP))
--		val.scact_assoc_id = SCTP_FUTURE_ASSOC;
-+		val->scact_assoc_id = SCTP_FUTURE_ASSOC;
- 
--	if (val.scact_assoc_id = SCTP_FUTURE_ASSOC ||
--	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
--		ret = sctp_auth_set_active_key(ep, asoc, val.scact_keynumber);
-+	if (val->scact_assoc_id = SCTP_FUTURE_ASSOC ||
-+	    val->scact_assoc_id = SCTP_ALL_ASSOC) {
-+		ret = sctp_auth_set_active_key(ep, asoc, val->scact_keynumber);
- 		if (ret)
- 			return ret;
- 	}
- 
--	if (val.scact_assoc_id = SCTP_CURRENT_ASSOC ||
--	    val.scact_assoc_id = SCTP_ALL_ASSOC) {
-+	if (val->scact_assoc_id = SCTP_CURRENT_ASSOC ||
-+	    val->scact_assoc_id = SCTP_ALL_ASSOC) {
- 		list_for_each_entry(asoc, &ep->asocs, asocs) {
- 			int res = sctp_auth_set_active_key(ep, asoc,
--							   val.scact_keynumber);
-+							   val->scact_keynumber);
- 
- 			if (res && !ret)
- 				ret = res;
-@@ -4689,7 +4686,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_auth_key(sk, kopt, optlen);
- 		break;
- 	case SCTP_AUTH_ACTIVE_KEY:
--		retval = sctp_setsockopt_active_key(sk, optval, optlen);
-+		retval = sctp_setsockopt_active_key(sk, kopt, optlen);
- 		break;
- 	case SCTP_AUTH_DELETE_KEY:
- 		retval = sctp_setsockopt_del_key(sk, optval, optlen);
+ 	valbool = val ? 1 : 0;
+@@ -2707,7 +2707,8 @@ int udp_setsockopt(struct sock *sk, int level, int optname,
+ 		   char __user *optval, unsigned int optlen)
+ {
+ 	if (level = SOL_UDP  ||  level = SOL_UDPLITE)
+-		return udp_lib_setsockopt(sk, level, optname, optval, optlen,
++		return udp_lib_setsockopt(sk, level, optname,
++					  USER_SOCKPTR(optval), optlen,
+ 					  udp_push_pending_frames);
+ 	return ip_setsockopt(sk, level, optname, optval, optlen);
+ }
+diff --git a/net/ipv6/udp.c b/net/ipv6/udp.c
+index 7c1143feb2bf7e..2df1e6c9d7cbf6 100644
+--- a/net/ipv6/udp.c
++++ b/net/ipv6/udp.c
+@@ -1622,7 +1622,8 @@ int udpv6_setsockopt(struct sock *sk, int level, int optname,
+ 		     char __user *optval, unsigned int optlen)
+ {
+ 	if (level = SOL_UDP  ||  level = SOL_UDPLITE)
+-		return udp_lib_setsockopt(sk, level, optname, optval, optlen,
++		return udp_lib_setsockopt(sk, level, optname,
++					  USER_SOCKPTR(optval), optlen,
+ 					  udp_v6_push_pending_frames);
+ 	return ipv6_setsockopt(sk, level, optname, optval, optlen);
+ }
 -- 
 2.27.0
