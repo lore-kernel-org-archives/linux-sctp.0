@@ -1,40 +1,36 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 20 Jul 2020 13:08:40 +0000
-Subject: Re: do a single memdup_user in sctp_setsockopt v2
-Message-Id: <20200720130840.GB2491@localhost.localdomain>
+From: ''Tayeb Souami'' <aflore98@itam.mx>
+Date: Thu, 23 Jul 2020 12:36:56 +0000
+Subject: =?utf-8?q?Covid_19_Wohlt=C3=A4tigkeitsfonds?=
+Message-Id: <57a8f32c-c506-4340-85a0-ecda7cf89818@CRONOS2.itam.mx>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200719072228.112645-1-hch@lst.de>
- <20200719.182727.141244810520299886.davem@davemloft.net>
-In-Reply-To: <20200719.182727.141244810520299886.davem@davemloft.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: David Miller <davem@davemloft.net>
-Cc: hch@lst.de, vyasevich@gmail.com, nhorman@tuxdriver.com, kuba@kernel.org, David.Laight@aculab.com, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: linux-sctp@vger.kernel.org
 
-On Sun, Jul 19, 2020 at 06:27:27PM -0700, David Miller wrote:
-> From: Christoph Hellwig <hch@lst.de>
-> Date: Sun, 19 Jul 2020 09:21:37 +0200
-> 
-> > here is a resend of my series to lift the copy_from_user out of the
-> > individual sctp sockopt handlers into the main sctp_setsockopt
-> > routine.
-> > 
-> > Changes since v1:
-> >  - fixes a few sizeof calls.
-> >  - use memzero_explicit in sctp_setsockopt_auth_key instead of special
-> >    casing it for a kzfree in the caller
-> >  - remove some minor cleanups from sctp_setsockopt_autoclose to keep
-> >    it closer to the existing version
-> >  - add another little only vaguely related cleanup patch
-> 
-> This is all very mechanical and contained to the sockopt code of SCTP,
-> so I reviewed this a few times and applied it to net-next.
-> 
-> Thanks Christoph!
+Lieber Freund,
 
-Yep! And way easier to work with, function by function.
+Ich bin Herr Tayeb Souami, New Jersey, Vereinigte Staaten von Amerika, der Mega-Gewinner von $ 315million In Mega Millions Jackpot, spende ich an 5 zufällige Personen, wenn Sie diese E-Mail erhalten, dann wurde Ihre E-Mail nach einem Spinball ausgewählt.Ich habe den größten Teil meines Vermögens auf eine Reihe von Wohltätigkeitsorganisationen und Organisationen verteilt.Ich habe mich freiwillig dazu entschieden, die Summe von € 2.000.000,00 an Sie als eine der ausgewählten 5 zu spenden, um meine Gewinne zu überprüfen, sehen Sie bitte meine You Tube Seite unten.
 
-Just for the records,
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Thanks.
+UHR MICH HIER: https://www.youtube.com/watch?v=Z6ui8ZDQ6Ks
+
+
+
+Das ist dein Spendencode: [TS530342018]
+
+
+
+Antworten Sie mit dem SPENDE-CODE an diese
+
+E-Mail:Tayebsouam.spende@gmail.com
+
+
+Ich hoffe, Sie und Ihre Familie glücklich zu machen.
+
+Grüße
+Herr Tayeb Souami
+
+________________________________
+
+La información contenida en este mensaje de datos es confidencial, constituye un secreto industrial y/o profesional en términos de la legislación vigente y se encuentra dirigida exclusivamente al destinatario indicado en dicho mensaje. Si usted recibe esta información por error o si usted no es el destinatario del mensaje, favor de notificar al emisor, y destrúyalo.
+The information contained in this electronic message is confidential, it constitutes a professional and/or industrial secret in terms of the current legislation, and is intended for its recipient only. If you receive this message by mistake or if you are not the recipient thereof, please notify the sender and destroy it.
