@@ -1,59 +1,89 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Wed, 22 Jul 2020 20:42:31 +0000
+From: Christoph Hellwig <hch@lst.de>
+Date: Thu, 23 Jul 2020 09:22:38 +0000
 Subject: Re: [PATCH net-next] sctp: fix slab-out-of-bounds in SCTP_DELAYED_SACK processing
-Message-Id: <20200722204231.GA3398@localhost.localdomain>
+Message-Id: <20200723092238.GA21143@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <5955bc857c93d4bb64731ef7a9e90cb0094a8989.1595450200.git.marcelo.leitner@gmail.com>
-In-Reply-To: <5955bc857c93d4bb64731ef7a9e90cb0094a8989.1595450200.git.marcelo.leitner@gmail.com>
+References: <5955bc857c93d4bb64731ef7a9e90cb0094a8989.1595450200.git.marcelo.leitner@gmail.com> <20200722204231.GA3398@localhost.localdomain>
+In-Reply-To: <20200722204231.GA3398@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: Neil Horman <nhorman@tuxdriver.com>, Christoph Hellwig <hch@lst.de>, linux-sctp@vger.kernel.org
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: netdev@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Christoph Hellwig <hch@lst.de>, linux-sctp@vger.kernel.org
 
-Cc'ing linux-sctp@vger.kernel.org.
+On Wed, Jul 22, 2020 at 05:42:31PM -0300, Marcelo Ricardo Leitner wrote:
+> Cc'ing linux-sctp@vger.kernel.org.
 
-On Wed, Jul 22, 2020 at 05:38:58PM -0300, Marcelo Ricardo Leitner wrote:
-> This sockopt accepts two kinds of parameters, using struct
-> sctp_sack_info and struct sctp_assoc_value. The mentioned commit didn't
-> notice an implicit cast from the smaller (latter) struct to the bigger
-> one (former) when copying the data from the user space, which now leads
-> to an attempt to write beyond the buffer (because it assumes the storing
-> buffer is bigger than the parameter itself).
-> 
-> Fix it by giving it a special buffer if the smaller struct is used by
-> the application.
-> 
-> Fixes: ebb25defdc17 ("sctp: pass a kernel pointer to sctp_setsockopt_delayed_ack")
-> Reported-by: syzbot+0e4699d000d8b874d8dc@syzkaller.appspotmail.com
-> Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-> ---
->  net/sctp/socket.c | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
-> 
-> diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-> index 9a767f35971865f46b39131fc8d96d8c3c2aa1a8..b71c36af7687247b4fc9e160219b76f5c41b2fe2 100644
-> --- a/net/sctp/socket.c
-> +++ b/net/sctp/socket.c
-> @@ -2756,6 +2756,7 @@ static int sctp_setsockopt_delayed_ack(struct sock *sk,
->  {
->  	struct sctp_sock *sp = sctp_sk(sk);
->  	struct sctp_association *asoc;
-> +	struct sctp_sack_info _params;
->  
->  	if (optlen = sizeof(struct sctp_sack_info)) {
->  		if (params->sack_delay = 0 && params->sack_freq = 0)
-> @@ -2767,7 +2768,9 @@ static int sctp_setsockopt_delayed_ack(struct sock *sk,
->  				    "Use struct sctp_sack_info instead\n",
->  				    current->comm, task_pid_nr(current));
->  
-> -		if (params->sack_delay = 0)
-> +		memcpy(&_params, params, sizeof(struct sctp_assoc_value));
-> +		params = &_params;
-> +		if (((struct sctp_assoc_value *)params)->assoc_value = 0)
->  			params->sack_freq = 1;
->  		else
->  			params->sack_freq = 0;
-> -- 
-> 2.25.4
-> 
+What do you think of this version, which I think is a little cleaner?
+
+
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 9a767f35971865..6ce460428af9f3 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -2749,31 +2749,12 @@ static void sctp_apply_asoc_delayed_ack(struct sctp_sack_info *params,
+  *    timer to expire.  The default value for this is 2, setting this
+  *    value to 1 will disable the delayed sack algorithm.
+  */
+-
+-static int sctp_setsockopt_delayed_ack(struct sock *sk,
+-				       struct sctp_sack_info *params,
+-				       unsigned int optlen)
++static int __sctp_setsockopt_delayed_ack(struct sock *sk,
++					 struct sctp_sack_info *params)
+ {
+ 	struct sctp_sock *sp = sctp_sk(sk);
+ 	struct sctp_association *asoc;
+ 
+-	if (optlen = sizeof(struct sctp_sack_info)) {
+-		if (params->sack_delay = 0 && params->sack_freq = 0)
+-			return 0;
+-	} else if (optlen = sizeof(struct sctp_assoc_value)) {
+-		pr_warn_ratelimited(DEPRECATED
+-				    "%s (pid %d) "
+-				    "Use of struct sctp_assoc_value in delayed_ack socket option.\n"
+-				    "Use struct sctp_sack_info instead\n",
+-				    current->comm, task_pid_nr(current));
+-
+-		if (params->sack_delay = 0)
+-			params->sack_freq = 1;
+-		else
+-			params->sack_freq = 0;
+-	} else
+-		return -EINVAL;
+-
+ 	/* Validate value parameter. */
+ 	if (params->sack_delay > 500)
+ 		return -EINVAL;
+@@ -2821,6 +2802,31 @@ static int sctp_setsockopt_delayed_ack(struct sock *sk,
+ 	return 0;
+ }
+ 
++static int sctp_setsockopt_delayed_ack(struct sock *sk,
++				       struct sctp_sack_info *params,
++				       unsigned int optlen)
++{
++	if (optlen = sizeof(struct sctp_assoc_value)) {
++		struct sctp_sack_info p;
++
++		pr_warn_ratelimited(DEPRECATED
++				    "%s (pid %d) "
++				    "Use of struct sctp_assoc_value in delayed_ack socket option.\n"
++				    "Use struct sctp_sack_info instead\n",
++				    current->comm, task_pid_nr(current));
++
++		memcpy(&p, params, sizeof(struct sctp_assoc_value));
++		p.sack_freq = p.sack_delay ? 0 : 1;
++		return __sctp_setsockopt_delayed_ack(sk, &p);
++	}
++
++	if (optlen != sizeof(struct sctp_sack_info))
++		return -EINVAL;
++	if (params->sack_delay = 0 && params->sack_freq = 0)
++		return 0;
++	return __sctp_setsockopt_delayed_ack(sk, params);
++}
++
+ /* 7.1.3 Initialization Parameters (SCTP_INITMSG)
+  *
+  * Applications can specify protocol parameters for the default association
