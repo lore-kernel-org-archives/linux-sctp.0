@@ -1,71 +1,136 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Sun, 19 Jul 2020 07:22:24 +0000
-Subject: [PATCH 47/51] sctp: pass a kernel pointer to sctp_setsockopt_event
-Message-Id: <20200719072228.112645-48-hch@lst.de>
+Date: Thu, 23 Jul 2020 06:08:56 +0000
+Subject: [PATCH 14/26] net/ipv4: switch ip_mroute_setsockopt to sockptr_t
+Message-Id: <20200723060908.50081-15-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200719072228.112645-1-hch@lst.de>
-In-Reply-To: <20200719072228.112645-1-hch@lst.de>
+References: <20200723060908.50081-1-hch@lst.de>
+In-Reply-To: <20200723060908.50081-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
+Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
+Pass a sockptr_t to prepare for set_fs-less handling of the kernel
+pointer from bpf-cgroup.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 18 ++++++------------
- 1 file changed, 6 insertions(+), 12 deletions(-)
+ include/linux/mroute.h |  5 +++--
+ net/ipv4/ip_sockglue.c |  3 ++-
+ net/ipv4/ipmr.c        | 14 +++++++-------
+ 3 files changed, 12 insertions(+), 10 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 12a33fc42eeeb2..b52acbf231ab9e 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -4296,29 +4296,23 @@ static int sctp_setsockopt_event(struct sock *sk, struct sctp_event *param,
+diff --git a/include/linux/mroute.h b/include/linux/mroute.h
+index 9a36fad9e068f6..6cbbfe94348cee 100644
+--- a/include/linux/mroute.h
++++ b/include/linux/mroute.h
+@@ -8,6 +8,7 @@
+ #include <net/fib_notifier.h>
+ #include <uapi/linux/mroute.h>
+ #include <linux/mroute_base.h>
++#include <linux/sockptr.h>
+ 
+ #ifdef CONFIG_IP_MROUTE
+ static inline int ip_mroute_opt(int opt)
+@@ -15,7 +16,7 @@ static inline int ip_mroute_opt(int opt)
+ 	return opt >= MRT_BASE && opt <= MRT_MAX;
  }
  
- static int sctp_setsockopt_asconf_supported(struct sock *sk,
--					    char __user *optval,
-+					    struct sctp_assoc_value *params,
- 					    unsigned int optlen)
+-int ip_mroute_setsockopt(struct sock *, int, char __user *, unsigned int);
++int ip_mroute_setsockopt(struct sock *, int, sockptr_t, unsigned int);
+ int ip_mroute_getsockopt(struct sock *, int, char __user *, int __user *);
+ int ipmr_ioctl(struct sock *sk, int cmd, void __user *arg);
+ int ipmr_compat_ioctl(struct sock *sk, unsigned int cmd, void __user *arg);
+@@ -23,7 +24,7 @@ int ip_mr_init(void);
+ bool ipmr_rule_default(const struct fib_rule *rule);
+ #else
+ static inline int ip_mroute_setsockopt(struct sock *sock, int optname,
+-				       char __user *optval, unsigned int optlen)
++				       sockptr_t optval, unsigned int optlen)
  {
--	struct sctp_assoc_value params;
- 	struct sctp_association *asoc;
- 	struct sctp_endpoint *ep;
- 	int retval = -EINVAL;
+ 	return -ENOPROTOOPT;
+ }
+diff --git a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
+index 36f746e01741f6..ac495b0cff8ffb 100644
+--- a/net/ipv4/ip_sockglue.c
++++ b/net/ipv4/ip_sockglue.c
+@@ -925,7 +925,8 @@ static int do_ip_setsockopt(struct sock *sk, int level,
+ 	if (optname = IP_ROUTER_ALERT)
+ 		return ip_ra_control(sk, val ? 1 : 0, NULL);
+ 	if (ip_mroute_opt(optname))
+-		return ip_mroute_setsockopt(sk, optname, optval, optlen);
++		return ip_mroute_setsockopt(sk, optname, USER_SOCKPTR(optval),
++					    optlen);
  
--	if (optlen != sizeof(params))
--		goto out;
--
--	if (copy_from_user(&params, optval, optlen)) {
--		retval = -EFAULT;
-+	if (optlen != sizeof(*params))
- 		goto out;
--	}
+ 	err = 0;
+ 	if (needs_rtnl)
+diff --git a/net/ipv4/ipmr.c b/net/ipv4/ipmr.c
+index 678639c01e4882..cdf3a40f9ff5fc 100644
+--- a/net/ipv4/ipmr.c
++++ b/net/ipv4/ipmr.c
+@@ -1341,7 +1341,7 @@ static void mrtsock_destruct(struct sock *sk)
+  * MOSPF/PIM router set up we can clean this up.
+  */
  
--	asoc = sctp_id2assoc(sk, params.assoc_id);
--	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
-+	asoc = sctp_id2assoc(sk, params->assoc_id);
-+	if (!asoc && params->assoc_id != SCTP_FUTURE_ASSOC &&
- 	    sctp_style(sk, UDP))
- 		goto out;
- 
- 	ep = sctp_sk(sk)->ep;
--	ep->asconf_enable = !!params.assoc_value;
-+	ep->asconf_enable = !!params->assoc_value;
- 
- 	if (ep->asconf_enable && ep->auth_enable) {
- 		sctp_auth_ep_add_chunkid(ep, SCTP_CID_ASCONF);
-@@ -4641,7 +4635,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_event(sk, kopt, optlen);
- 		break;
- 	case SCTP_ASCONF_SUPPORTED:
--		retval = sctp_setsockopt_asconf_supported(sk, optval, optlen);
-+		retval = sctp_setsockopt_asconf_supported(sk, kopt, optlen);
- 		break;
- 	case SCTP_AUTH_SUPPORTED:
- 		retval = sctp_setsockopt_auth_supported(sk, optval, optlen);
+-int ip_mroute_setsockopt(struct sock *sk, int optname, char __user *optval,
++int ip_mroute_setsockopt(struct sock *sk, int optname, sockptr_t optval,
+ 			 unsigned int optlen)
+ {
+ 	struct net *net = sock_net(sk);
+@@ -1413,7 +1413,7 @@ int ip_mroute_setsockopt(struct sock *sk, int optname, char __user *optval,
+ 			ret = -EINVAL;
+ 			break;
+ 		}
+-		if (copy_from_user(&vif, optval, sizeof(vif))) {
++		if (copy_from_sockptr(&vif, optval, sizeof(vif))) {
+ 			ret = -EFAULT;
+ 			break;
+ 		}
+@@ -1441,7 +1441,7 @@ int ip_mroute_setsockopt(struct sock *sk, int optname, char __user *optval,
+ 			ret = -EINVAL;
+ 			break;
+ 		}
+-		if (copy_from_user(&mfc, optval, sizeof(mfc))) {
++		if (copy_from_sockptr(&val, optval, sizeof(val))) {
+ 			ret = -EFAULT;
+ 			break;
+ 		}
+@@ -1459,7 +1459,7 @@ int ip_mroute_setsockopt(struct sock *sk, int optname, char __user *optval,
+ 			ret = -EINVAL;
+ 			break;
+ 		}
+-		if (get_user(val, (int __user *)optval)) {
++		if (copy_from_sockptr(&val, optval, sizeof(val))) {
+ 			ret = -EFAULT;
+ 			break;
+ 		}
+@@ -1471,7 +1471,7 @@ int ip_mroute_setsockopt(struct sock *sk, int optname, char __user *optval,
+ 			ret = -EINVAL;
+ 			break;
+ 		}
+-		if (get_user(val, (int __user *)optval)) {
++		if (copy_from_sockptr(&val, optval, sizeof(val))) {
+ 			ret = -EFAULT;
+ 			break;
+ 		}
+@@ -1486,7 +1486,7 @@ int ip_mroute_setsockopt(struct sock *sk, int optname, char __user *optval,
+ 			ret = -EINVAL;
+ 			break;
+ 		}
+-		if (get_user(val, (int __user *)optval)) {
++		if (copy_from_sockptr(&val, optval, sizeof(val))) {
+ 			ret = -EFAULT;
+ 			break;
+ 		}
+@@ -1508,7 +1508,7 @@ int ip_mroute_setsockopt(struct sock *sk, int optname, char __user *optval,
+ 			ret = -EINVAL;
+ 			break;
+ 		}
+-		if (get_user(uval, (u32 __user *)optval)) {
++		if (copy_from_sockptr(&uval, optval, sizeof(uval))) {
+ 			ret = -EFAULT;
+ 			break;
+ 		}
 -- 
 2.27.0
