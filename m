@@ -1,102 +1,136 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Sun, 19 Jul 2020 07:22:00 +0000
-Subject: [PATCH 23/51] sctp: pass a kernel pointer to sctp_setsockopt_maxburst
-Message-Id: <20200719072228.112645-24-hch@lst.de>
+Date: Thu, 23 Jul 2020 06:08:57 +0000
+Subject: [PATCH 15/26] net/ipv4: merge ip_options_get and ip_options_get_from_user
+Message-Id: <20200723060908.50081-16-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200719072228.112645-1-hch@lst.de>
-In-Reply-To: <20200719072228.112645-1-hch@lst.de>
+References: <20200723060908.50081-1-hch@lst.de>
+In-Reply-To: <20200723060908.50081-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
+Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
+Use the sockptr_t type to merge the versions.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 35 ++++++++++++++++-------------------
- 1 file changed, 16 insertions(+), 19 deletions(-)
+ include/net/ip.h       |  5 ++---
+ net/ipv4/ip_options.c  | 43 +++++++++++-------------------------------
+ net/ipv4/ip_sockglue.c |  7 ++++---
+ 3 files changed, 17 insertions(+), 38 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 874cec73153052..ac7dff849290dc 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -3482,12 +3482,13 @@ static int sctp_setsockopt_partial_delivery_point(struct sock *sk, u32 *val,
-  * future associations inheriting the socket value.
-  */
- static int sctp_setsockopt_maxburst(struct sock *sk,
--				    char __user *optval,
-+				    struct sctp_assoc_value *params,
- 				    unsigned int optlen)
- {
- 	struct sctp_sock *sp = sctp_sk(sk);
--	struct sctp_assoc_value params;
- 	struct sctp_association *asoc;
-+	sctp_assoc_t assoc_id;
-+	u32 assoc_value;
+diff --git a/include/net/ip.h b/include/net/ip.h
+index 3d34acc95ca825..d66ad3a9522081 100644
+--- a/include/net/ip.h
++++ b/include/net/ip.h
+@@ -23,6 +23,7 @@
+ #include <linux/in.h>
+ #include <linux/skbuff.h>
+ #include <linux/jhash.h>
++#include <linux/sockptr.h>
  
- 	if (optlen = sizeof(int)) {
- 		pr_warn_ratelimited(DEPRECATED
-@@ -3495,37 +3496,33 @@ static int sctp_setsockopt_maxburst(struct sock *sk,
- 				    "Use of int in max_burst socket option deprecated.\n"
- 				    "Use struct sctp_assoc_value instead\n",
- 				    current->comm, task_pid_nr(current));
--		if (copy_from_user(&params.assoc_value, optval, optlen))
--			return -EFAULT;
--		params.assoc_id = SCTP_FUTURE_ASSOC;
-+		assoc_id = SCTP_FUTURE_ASSOC;
-+		assoc_value = *((int *)params);
- 	} else if (optlen = sizeof(struct sctp_assoc_value)) {
--		if (copy_from_user(&params, optval, optlen))
--			return -EFAULT;
-+		assoc_id = params->assoc_id;
-+		assoc_value = params->assoc_value;
- 	} else
- 		return -EINVAL;
- 
--	asoc = sctp_id2assoc(sk, params.assoc_id);
--	if (!asoc && params.assoc_id > SCTP_ALL_ASSOC &&
--	    sctp_style(sk, UDP))
-+	asoc = sctp_id2assoc(sk, assoc_id);
-+	if (!asoc && assoc_id > SCTP_ALL_ASSOC && sctp_style(sk, UDP))
- 		return -EINVAL;
- 
- 	if (asoc) {
--		asoc->max_burst = params.assoc_value;
-+		asoc->max_burst = assoc_value;
- 
- 		return 0;
+ #include <net/inet_sock.h>
+ #include <net/route.h>
+@@ -707,9 +708,7 @@ int __ip_options_compile(struct net *net, struct ip_options *opt,
+ int ip_options_compile(struct net *net, struct ip_options *opt,
+ 		       struct sk_buff *skb);
+ int ip_options_get(struct net *net, struct ip_options_rcu **optp,
+-		   unsigned char *data, int optlen);
+-int ip_options_get_from_user(struct net *net, struct ip_options_rcu **optp,
+-			     unsigned char __user *data, int optlen);
++		   sockptr_t data, int optlen);
+ void ip_options_undo(struct ip_options *opt);
+ void ip_forward_options(struct sk_buff *skb);
+ int ip_options_rcv_srr(struct sk_buff *skb, struct net_device *dev);
+diff --git a/net/ipv4/ip_options.c b/net/ipv4/ip_options.c
+index ddaa01ec2bce82..948747aac4e2d0 100644
+--- a/net/ipv4/ip_options.c
++++ b/net/ipv4/ip_options.c
+@@ -519,15 +519,20 @@ void ip_options_undo(struct ip_options *opt)
  	}
+ }
  
- 	if (sctp_style(sk, TCP))
--		params.assoc_id = SCTP_FUTURE_ASSOC;
-+		assoc_id = SCTP_FUTURE_ASSOC;
+-static struct ip_options_rcu *ip_options_get_alloc(const int optlen)
++int ip_options_get(struct net *net, struct ip_options_rcu **optp,
++		   sockptr_t data, int optlen)
+ {
+-	return kzalloc(sizeof(struct ip_options_rcu) + ((optlen + 3) & ~3),
++	struct ip_options_rcu *opt;
++
++	opt = kzalloc(sizeof(struct ip_options_rcu) + ((optlen + 3) & ~3),
+ 		       GFP_KERNEL);
+-}
++	if (!opt)
++		return -ENOMEM;
++	if (optlen && copy_from_sockptr(opt->opt.__data, data, optlen)) {
++		kfree(opt);
++		return -EFAULT;
++	}
  
--	if (params.assoc_id = SCTP_FUTURE_ASSOC ||
--	    params.assoc_id = SCTP_ALL_ASSOC)
--		sp->max_burst = params.assoc_value;
-+	if (assoc_id = SCTP_FUTURE_ASSOC || assoc_id = SCTP_ALL_ASSOC)
-+		sp->max_burst = assoc_value;
- 
--	if (params.assoc_id = SCTP_CURRENT_ASSOC ||
--	    params.assoc_id = SCTP_ALL_ASSOC)
-+	if (assoc_id = SCTP_CURRENT_ASSOC || assoc_id = SCTP_ALL_ASSOC)
- 		list_for_each_entry(asoc, &sp->ep->asocs, asocs)
--			asoc->max_burst = params.assoc_value;
-+			asoc->max_burst = assoc_value;
- 
+-static int ip_options_get_finish(struct net *net, struct ip_options_rcu **optp,
+-				 struct ip_options_rcu *opt, int optlen)
+-{
+ 	while (optlen & 3)
+ 		opt->opt.__data[optlen++] = IPOPT_END;
+ 	opt->opt.optlen = optlen;
+@@ -540,32 +545,6 @@ static int ip_options_get_finish(struct net *net, struct ip_options_rcu **optp,
  	return 0;
  }
-@@ -4699,7 +4696,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_fragment_interleave(sk, kopt, optlen);
- 		break;
- 	case SCTP_MAX_BURST:
--		retval = sctp_setsockopt_maxburst(sk, optval, optlen);
-+		retval = sctp_setsockopt_maxburst(sk, kopt, optlen);
- 		break;
- 	case SCTP_AUTH_CHUNK:
- 		retval = sctp_setsockopt_auth_chunk(sk, optval, optlen);
+ 
+-int ip_options_get_from_user(struct net *net, struct ip_options_rcu **optp,
+-			     unsigned char __user *data, int optlen)
+-{
+-	struct ip_options_rcu *opt = ip_options_get_alloc(optlen);
+-
+-	if (!opt)
+-		return -ENOMEM;
+-	if (optlen && copy_from_user(opt->opt.__data, data, optlen)) {
+-		kfree(opt);
+-		return -EFAULT;
+-	}
+-	return ip_options_get_finish(net, optp, opt, optlen);
+-}
+-
+-int ip_options_get(struct net *net, struct ip_options_rcu **optp,
+-		   unsigned char *data, int optlen)
+-{
+-	struct ip_options_rcu *opt = ip_options_get_alloc(optlen);
+-
+-	if (!opt)
+-		return -ENOMEM;
+-	if (optlen)
+-		memcpy(opt->opt.__data, data, optlen);
+-	return ip_options_get_finish(net, optp, opt, optlen);
+-}
+-
+ void ip_forward_options(struct sk_buff *skb)
+ {
+ 	struct   ip_options *opt	= &(IPCB(skb)->opt);
+diff --git a/net/ipv4/ip_sockglue.c b/net/ipv4/ip_sockglue.c
+index ac495b0cff8ffb..b12f39b52008a3 100644
+--- a/net/ipv4/ip_sockglue.c
++++ b/net/ipv4/ip_sockglue.c
+@@ -280,7 +280,8 @@ int ip_cmsg_send(struct sock *sk, struct msghdr *msg, struct ipcm_cookie *ipc,
+ 			err = cmsg->cmsg_len - sizeof(struct cmsghdr);
+ 
+ 			/* Our caller is responsible for freeing ipc->opt */
+-			err = ip_options_get(net, &ipc->opt, CMSG_DATA(cmsg),
++			err = ip_options_get(net, &ipc->opt,
++					     KERNEL_SOCKPTR(CMSG_DATA(cmsg)),
+ 					     err < 40 ? err : 40);
+ 			if (err)
+ 				return err;
+@@ -940,8 +941,8 @@ static int do_ip_setsockopt(struct sock *sk, int level,
+ 
+ 		if (optlen > 40)
+ 			goto e_inval;
+-		err = ip_options_get_from_user(sock_net(sk), &opt,
+-					       optval, optlen);
++		err = ip_options_get(sock_net(sk), &opt, USER_SOCKPTR(optval),
++					      optlen);
+ 		if (err)
+ 			break;
+ 		old = rcu_dereference_protected(inet->inet_opt,
 -- 
 2.27.0
