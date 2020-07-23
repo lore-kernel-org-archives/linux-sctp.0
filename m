@@ -1,80 +1,120 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Sun, 19 Jul 2020 07:22:25 +0000
-Subject: [PATCH 48/51] sctp: pass a kernel pointer to sctp_setsockopt_auth_supported
-Message-Id: <20200719072228.112645-49-hch@lst.de>
+Date: Thu, 23 Jul 2020 06:08:44 +0000
+Subject: [PATCH 02/26] net/bpfilter: split __bpfilter_process_sockopt
+Message-Id: <20200723060908.50081-3-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200719072228.112645-1-hch@lst.de>
-In-Reply-To: <20200719072228.112645-1-hch@lst.de>
+References: <20200723060908.50081-1-hch@lst.de>
+In-Reply-To: <20200723060908.50081-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
+Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
+Split __bpfilter_process_sockopt into a low-level send request routine and
+the actual setsockopt hook to split the init time ping from the actual
+setsockopt processing.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 20 +++++++-------------
- 1 file changed, 7 insertions(+), 13 deletions(-)
+ net/bpfilter/bpfilter_kern.c | 51 +++++++++++++++++++-----------------
+ 1 file changed, 27 insertions(+), 24 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index b52acbf231ab9e..ca369447237a77 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -4326,29 +4326,23 @@ static int sctp_setsockopt_asconf_supported(struct sock *sk,
+diff --git a/net/bpfilter/bpfilter_kern.c b/net/bpfilter/bpfilter_kern.c
+index 3bac5820062af1..78d561f2c54da7 100644
+--- a/net/bpfilter/bpfilter_kern.c
++++ b/net/bpfilter/bpfilter_kern.c
+@@ -31,48 +31,51 @@ static void __stop_umh(void)
+ 		shutdown_umh();
  }
  
- static int sctp_setsockopt_auth_supported(struct sock *sk,
--					  char __user *optval,
-+					  struct sctp_assoc_value *params,
- 					  unsigned int optlen)
+-static int __bpfilter_process_sockopt(struct sock *sk, int optname,
+-				      char __user *optval,
+-				      unsigned int optlen, bool is_set)
++static int bpfilter_send_req(struct mbox_request *req)
  {
--	struct sctp_assoc_value params;
- 	struct sctp_association *asoc;
- 	struct sctp_endpoint *ep;
- 	int retval = -EINVAL;
+-	struct mbox_request req;
+ 	struct mbox_reply reply;
+ 	loff_t pos;
+ 	ssize_t n;
+-	int ret = -EFAULT;
  
--	if (optlen != sizeof(params))
+-	req.is_set = is_set;
+-	req.pid = current->pid;
+-	req.cmd = optname;
+-	req.addr = (uintptr_t)optval;
+-	req.len = optlen;
+ 	if (!bpfilter_ops.info.tgid)
 -		goto out;
--
--	if (copy_from_user(&params, optval, optlen)) {
--		retval = -EFAULT;
-+	if (optlen != sizeof(*params))
- 		goto out;
--	}
- 
--	asoc = sctp_id2assoc(sk, params.assoc_id);
--	if (!asoc && params.assoc_id != SCTP_FUTURE_ASSOC &&
-+	asoc = sctp_id2assoc(sk, params->assoc_id);
-+	if (!asoc && params->assoc_id != SCTP_FUTURE_ASSOC &&
- 	    sctp_style(sk, UDP))
- 		goto out;
- 
- 	ep = sctp_sk(sk)->ep;
--	if (params.assoc_value) {
-+	if (params->assoc_value) {
- 		retval = sctp_auth_init(ep, GFP_KERNEL);
- 		if (retval)
- 			goto out;
-@@ -4358,7 +4352,7 @@ static int sctp_setsockopt_auth_supported(struct sock *sk,
- 		}
++		return -EFAULT;
+ 	pos = 0;
+-	n = kernel_write(bpfilter_ops.info.pipe_to_umh, &req, sizeof(req),
++	n = kernel_write(bpfilter_ops.info.pipe_to_umh, req, sizeof(*req),
+ 			   &pos);
+-	if (n != sizeof(req)) {
++	if (n != sizeof(*req)) {
+ 		pr_err("write fail %zd\n", n);
+-		__stop_umh();
+-		ret = -EFAULT;
+-		goto out;
++		goto stop;
  	}
+ 	pos = 0;
+ 	n = kernel_read(bpfilter_ops.info.pipe_from_umh, &reply, sizeof(reply),
+ 			&pos);
+ 	if (n != sizeof(reply)) {
+ 		pr_err("read fail %zd\n", n);
+-		__stop_umh();
+-		ret = -EFAULT;
+-		goto out;
++		goto stop;
+ 	}
+-	ret = reply.status;
+-out:
+-	return ret;
++	return reply.status;
++stop:
++	__stop_umh();
++	return -EFAULT;
++}
++
++static int bpfilter_process_sockopt(struct sock *sk, int optname,
++				    char __user *optval, unsigned int optlen,
++				    bool is_set)
++{
++	struct mbox_request req = {
++		.is_set		= is_set,
++		.pid		= current->pid,
++		.cmd		= optname,
++		.addr		= (uintptr_t)optval,
++		.len		= optlen,
++	};
++	return bpfilter_send_req(&req);
+ }
  
--	ep->auth_enable = !!params.assoc_value;
-+	ep->auth_enable = !!params->assoc_value;
- 	retval = 0;
+ static int start_umh(void)
+ {
++	struct mbox_request req = { .pid = current->pid };
+ 	int err;
  
- out:
-@@ -4638,7 +4632,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_asconf_supported(sk, kopt, optlen);
- 		break;
- 	case SCTP_AUTH_SUPPORTED:
--		retval = sctp_setsockopt_auth_supported(sk, optval, optlen);
-+		retval = sctp_setsockopt_auth_supported(sk, kopt, optlen);
- 		break;
- 	case SCTP_ECN_SUPPORTED:
- 		retval = sctp_setsockopt_ecn_supported(sk, optval, optlen);
+ 	/* fork usermode process */
+@@ -82,7 +85,7 @@ static int start_umh(void)
+ 	pr_info("Loaded bpfilter_umh pid %d\n", pid_nr(bpfilter_ops.info.tgid));
+ 
+ 	/* health check that usermode process started correctly */
+-	if (__bpfilter_process_sockopt(NULL, 0, NULL, 0, 0) != 0) {
++	if (bpfilter_send_req(&req) != 0) {
+ 		shutdown_umh();
+ 		return -EFAULT;
+ 	}
+@@ -103,7 +106,7 @@ static int __init load_umh(void)
+ 	mutex_lock(&bpfilter_ops.lock);
+ 	err = start_umh();
+ 	if (!err && IS_ENABLED(CONFIG_INET)) {
+-		bpfilter_ops.sockopt = &__bpfilter_process_sockopt;
++		bpfilter_ops.sockopt = &bpfilter_process_sockopt;
+ 		bpfilter_ops.start = &start_umh;
+ 	}
+ 	mutex_unlock(&bpfilter_ops.lock);
 -- 
 2.27.0
