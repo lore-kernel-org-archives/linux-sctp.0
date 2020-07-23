@@ -1,120 +1,140 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Sun, 19 Jul 2020 07:21:48 +0000
-Subject: [PATCH 11/51] sctp: pass a kernel pointer to sctp_setsockopt_default_send_param
-Message-Id: <20200719072228.112645-12-hch@lst.de>
+Date: Thu, 23 Jul 2020 06:09:08 +0000
+Subject: [PATCH 26/26] net: optimize the sockptr_t for unified kernel/user address spaces
+Message-Id: <20200723060908.50081-27-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200719072228.112645-1-hch@lst.de>
-In-Reply-To: <20200719072228.112645-1-hch@lst.de>
+References: <20200723060908.50081-1-hch@lst.de>
+In-Reply-To: <20200723060908.50081-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, David Laight <David.Laight@ACULAB.COM>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
+Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org
 
-Use the kernel pointer that sctp_setsockopt has available instead of
-directly handling the user pointer.
+For architectures like x86 and arm64 we don't need the separate bit to
+indicate that a pointer is a kernel pointer as the address spaces are
+unified.  That way the sockptr_t can be reduced to a union of two
+pointers, which leads to nicer calling conventions.
+
+The only caveat is that we need to check that users don't pass in kernel
+address and thus gain access to kernel memory.  Thus the USER_SOCKPTR
+helper is replaced with a init_user_sockptr function that does this check
+and returns an error if it fails.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sctp/socket.c | 56 ++++++++++++++++++++++-------------------------
- 1 file changed, 26 insertions(+), 30 deletions(-)
+ include/linux/sockptr.h     | 32 ++++++++++++++++++++++++++++++--
+ net/ipv4/bpfilter/sockopt.c | 14 ++++++++------
+ net/socket.c                |  6 +++++-
+ 3 files changed, 43 insertions(+), 9 deletions(-)
 
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index d62c02d0b79346..9bcbb065cf9e1f 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -2867,57 +2867,54 @@ static int sctp_setsockopt_initmsg(struct sock *sk, struct sctp_initmsg *sinit,
-  *   to this call if the caller is using the UDP model.
-  */
- static int sctp_setsockopt_default_send_param(struct sock *sk,
--					      char __user *optval,
-+					      struct sctp_sndrcvinfo *info,
- 					      unsigned int optlen)
+diff --git a/include/linux/sockptr.h b/include/linux/sockptr.h
+index 700856e13ea0c4..7d5cdb2b30b5f0 100644
+--- a/include/linux/sockptr.h
++++ b/include/linux/sockptr.h
+@@ -8,9 +8,34 @@
+ #ifndef _LINUX_SOCKPTR_H
+ #define _LINUX_SOCKPTR_H
+ 
++#include <linux/compiler.h>
+ #include <linux/slab.h>
+ #include <linux/uaccess.h>
+ 
++#ifdef CONFIG_ARCH_HAS_NON_OVERLAPPING_ADDRESS_SPACE
++typedef union {
++	void		*kernel;
++	void __user	*user;
++} sockptr_t;
++
++static inline bool sockptr_is_kernel(sockptr_t sockptr)
++{
++	return (unsigned long)sockptr.kernel >= TASK_SIZE;
++}
++
++static inline sockptr_t KERNEL_SOCKPTR(void *p)
++{
++	return (sockptr_t) { .kernel = p };
++}
++
++static inline int __must_check init_user_sockptr(sockptr_t *sp, void __user *p)
++{
++	if ((unsigned long)p >= TASK_SIZE)
++		return -EFAULT;
++	sp->user = p;
++	return 0;
++}
++#else /* CONFIG_ARCH_HAS_NON_OVERLAPPING_ADDRESS_SPACE */
+ typedef struct {
+ 	union {
+ 		void		*kernel;
+@@ -29,10 +54,13 @@ static inline sockptr_t KERNEL_SOCKPTR(void *p)
+ 	return (sockptr_t) { .kernel = p, .is_kernel = true };
+ }
+ 
+-static inline sockptr_t USER_SOCKPTR(void __user *p)
++static inline int __must_check init_user_sockptr(sockptr_t *sp, void __user *p)
  {
- 	struct sctp_sock *sp = sctp_sk(sk);
- 	struct sctp_association *asoc;
--	struct sctp_sndrcvinfo info;
+-	return (sockptr_t) { .user = p };
++	sp->user = p;
++	sp->is_kernel = false;
++	return 0;
+ }
++#endif /* CONFIG_ARCH_HAS_NON_OVERLAPPING_ADDRESS_SPACE */
  
--	if (optlen != sizeof(info))
-+	if (optlen != sizeof(*info))
+ static inline bool sockptr_is_null(sockptr_t sockptr)
+ {
+diff --git a/net/ipv4/bpfilter/sockopt.c b/net/ipv4/bpfilter/sockopt.c
+index 1b34cb9a7708ec..94f18d2352d007 100644
+--- a/net/ipv4/bpfilter/sockopt.c
++++ b/net/ipv4/bpfilter/sockopt.c
+@@ -57,16 +57,18 @@ int bpfilter_ip_set_sockopt(struct sock *sk, int optname, sockptr_t optval,
+ 	return bpfilter_mbox_request(sk, optname, optval, optlen, true);
+ }
+ 
+-int bpfilter_ip_get_sockopt(struct sock *sk, int optname, char __user *optval,
+-			    int __user *optlen)
++int bpfilter_ip_get_sockopt(struct sock *sk, int optname,
++			    char __user *user_optval, int __user *optlen)
+ {
+-	int len;
++	sockptr_t optval;
++	int err, len;
+ 
+ 	if (get_user(len, optlen))
+ 		return -EFAULT;
+-
+-	return bpfilter_mbox_request(sk, optname, USER_SOCKPTR(optval), len,
+-				     false);
++	err = init_user_sockptr(&optval, user_optval);
++	if (err)
++		return err;
++	return bpfilter_mbox_request(sk, optname, optval, len, false);
+ }
+ 
+ static int __init bpfilter_sockopt_init(void)
+diff --git a/net/socket.c b/net/socket.c
+index e44b8ac47f6f46..94ca4547cd7c53 100644
+--- a/net/socket.c
++++ b/net/socket.c
+@@ -2097,7 +2097,7 @@ static bool sock_use_custom_sol_socket(const struct socket *sock)
+ int __sys_setsockopt(int fd, int level, int optname, char __user *user_optval,
+ 		int optlen)
+ {
+-	sockptr_t optval = USER_SOCKPTR(user_optval);
++	sockptr_t optval;
+ 	char *kernel_optval = NULL;
+ 	int err, fput_needed;
+ 	struct socket *sock;
+@@ -2105,6 +2105,10 @@ int __sys_setsockopt(int fd, int level, int optname, char __user *user_optval,
+ 	if (optlen < 0)
  		return -EINVAL;
--	if (copy_from_user(&info, optval, optlen))
--		return -EFAULT;
--	if (info.sinfo_flags &
-+	if (info->sinfo_flags &
- 	    ~(SCTP_UNORDERED | SCTP_ADDR_OVER |
- 	      SCTP_ABORT | SCTP_EOF))
- 		return -EINVAL;
  
--	asoc = sctp_id2assoc(sk, info.sinfo_assoc_id);
--	if (!asoc && info.sinfo_assoc_id > SCTP_ALL_ASSOC &&
-+	asoc = sctp_id2assoc(sk, info->sinfo_assoc_id);
-+	if (!asoc && info->sinfo_assoc_id > SCTP_ALL_ASSOC &&
- 	    sctp_style(sk, UDP))
- 		return -EINVAL;
- 
- 	if (asoc) {
--		asoc->default_stream = info.sinfo_stream;
--		asoc->default_flags = info.sinfo_flags;
--		asoc->default_ppid = info.sinfo_ppid;
--		asoc->default_context = info.sinfo_context;
--		asoc->default_timetolive = info.sinfo_timetolive;
-+		asoc->default_stream = info->sinfo_stream;
-+		asoc->default_flags = info->sinfo_flags;
-+		asoc->default_ppid = info->sinfo_ppid;
-+		asoc->default_context = info->sinfo_context;
-+		asoc->default_timetolive = info->sinfo_timetolive;
- 
- 		return 0;
- 	}
- 
- 	if (sctp_style(sk, TCP))
--		info.sinfo_assoc_id = SCTP_FUTURE_ASSOC;
-+		info->sinfo_assoc_id = SCTP_FUTURE_ASSOC;
- 
--	if (info.sinfo_assoc_id = SCTP_FUTURE_ASSOC ||
--	    info.sinfo_assoc_id = SCTP_ALL_ASSOC) {
--		sp->default_stream = info.sinfo_stream;
--		sp->default_flags = info.sinfo_flags;
--		sp->default_ppid = info.sinfo_ppid;
--		sp->default_context = info.sinfo_context;
--		sp->default_timetolive = info.sinfo_timetolive;
-+	if (info->sinfo_assoc_id = SCTP_FUTURE_ASSOC ||
-+	    info->sinfo_assoc_id = SCTP_ALL_ASSOC) {
-+		sp->default_stream = info->sinfo_stream;
-+		sp->default_flags = info->sinfo_flags;
-+		sp->default_ppid = info->sinfo_ppid;
-+		sp->default_context = info->sinfo_context;
-+		sp->default_timetolive = info->sinfo_timetolive;
- 	}
- 
--	if (info.sinfo_assoc_id = SCTP_CURRENT_ASSOC ||
--	    info.sinfo_assoc_id = SCTP_ALL_ASSOC) {
-+	if (info->sinfo_assoc_id = SCTP_CURRENT_ASSOC ||
-+	    info->sinfo_assoc_id = SCTP_ALL_ASSOC) {
- 		list_for_each_entry(asoc, &sp->ep->asocs, asocs) {
--			asoc->default_stream = info.sinfo_stream;
--			asoc->default_flags = info.sinfo_flags;
--			asoc->default_ppid = info.sinfo_ppid;
--			asoc->default_context = info.sinfo_context;
--			asoc->default_timetolive = info.sinfo_timetolive;
-+			asoc->default_stream = info->sinfo_stream;
-+			asoc->default_flags = info->sinfo_flags;
-+			asoc->default_ppid = info->sinfo_ppid;
-+			asoc->default_context = info->sinfo_context;
-+			asoc->default_timetolive = info->sinfo_timetolive;
- 		}
- 	}
- 
-@@ -4695,8 +4692,7 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 		retval = sctp_setsockopt_initmsg(sk, kopt, optlen);
- 		break;
- 	case SCTP_DEFAULT_SEND_PARAM:
--		retval = sctp_setsockopt_default_send_param(sk, optval,
--							    optlen);
-+		retval = sctp_setsockopt_default_send_param(sk, kopt, optlen);
- 		break;
- 	case SCTP_DEFAULT_SNDINFO:
- 		retval = sctp_setsockopt_default_sndinfo(sk, optval, optlen);
++	err = init_user_sockptr(&optval, user_optval);
++	if (err)
++		return err;
++
+ 	sock = sockfd_lookup_light(fd, &err, &fput_needed);
+ 	if (!sock)
+ 		return err;
 -- 
 2.27.0
