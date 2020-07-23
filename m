@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Date: Thu, 23 Jul 2020 06:08:53 +0000
-Subject: [PATCH 11/26] netfilter: switch xt_copy_counters to sockptr_t
-Message-Id: <20200723060908.50081-12-hch@lst.de>
+Date: Thu, 23 Jul 2020 06:08:50 +0000
+Subject: [PATCH 08/26] net: switch sock_set_timeout to sockptr_t
+Message-Id: <20200723060908.50081-9-hch@lst.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <20200723060908.50081-1-hch@lst.de>
 In-Reply-To: <20200723060908.50081-1-hch@lst.de>
@@ -16,193 +16,178 @@ pointer from bpf-cgroup.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/netfilter/x_tables.h |  4 ++--
- net/ipv4/netfilter/arp_tables.c    |  7 +++----
- net/ipv4/netfilter/ip_tables.c     |  7 +++----
- net/ipv6/netfilter/ip6_tables.c    |  6 +++---
- net/netfilter/x_tables.c           | 20 ++++++++++----------
- 5 files changed, 21 insertions(+), 23 deletions(-)
+ include/net/sock.h   |  3 ++-
+ net/core/sock.c      | 26 ++++++++++++--------------
+ net/mptcp/protocol.c |  6 ++++--
+ net/socket.c         |  3 ++-
+ 4 files changed, 20 insertions(+), 18 deletions(-)
 
-diff --git a/include/linux/netfilter/x_tables.h b/include/linux/netfilter/x_tables.h
-index b8b943ee7b8b66..5deb099d156dcb 100644
---- a/include/linux/netfilter/x_tables.h
-+++ b/include/linux/netfilter/x_tables.h
-@@ -301,8 +301,8 @@ int xt_target_to_user(const struct xt_entry_target *t,
- int xt_data_to_user(void __user *dst, const void *src,
- 		    int usersize, int size, int aligned_size);
+diff --git a/include/net/sock.h b/include/net/sock.h
+index 62e18fc8ac9f96..bfb2fe2fc36876 100644
+--- a/include/net/sock.h
++++ b/include/net/sock.h
+@@ -59,6 +59,7 @@
+ #include <linux/filter.h>
+ #include <linux/rculist_nulls.h>
+ #include <linux/poll.h>
++#include <linux/sockptr.h>
  
--void *xt_copy_counters_from_user(const void __user *user, unsigned int len,
--				 struct xt_counters_info *info);
-+void *xt_copy_counters(sockptr_t arg, unsigned int len,
-+		       struct xt_counters_info *info);
- struct xt_counters *xt_counters_alloc(unsigned int counters);
- 
- struct xt_table *xt_register_table(struct net *net,
-diff --git a/net/ipv4/netfilter/arp_tables.c b/net/ipv4/netfilter/arp_tables.c
-index 2c8a4dad39d748..6d24b686c7f00a 100644
---- a/net/ipv4/netfilter/arp_tables.c
-+++ b/net/ipv4/netfilter/arp_tables.c
-@@ -996,8 +996,7 @@ static int do_replace(struct net *net, const void __user *user,
- 	return ret;
- }
- 
--static int do_add_counters(struct net *net, const void __user *user,
--			   unsigned int len)
-+static int do_add_counters(struct net *net, sockptr_t arg, unsigned int len)
- {
- 	unsigned int i;
- 	struct xt_counters_info tmp;
-@@ -1008,7 +1007,7 @@ static int do_add_counters(struct net *net, const void __user *user,
- 	struct arpt_entry *iter;
- 	unsigned int addend;
- 
--	paddc = xt_copy_counters_from_user(user, len, &tmp);
-+	paddc = xt_copy_counters(arg, len, &tmp);
- 	if (IS_ERR(paddc))
- 		return PTR_ERR(paddc);
- 
-@@ -1420,7 +1419,7 @@ static int do_arpt_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned
- 		break;
- 
- 	case ARPT_SO_SET_ADD_COUNTERS:
--		ret = do_add_counters(sock_net(sk), user, len);
-+		ret = do_add_counters(sock_net(sk), USER_SOCKPTR(user), len);
- 		break;
- 
- 	default:
-diff --git a/net/ipv4/netfilter/ip_tables.c b/net/ipv4/netfilter/ip_tables.c
-index 161901dd1cae7f..4697d09c98dc3e 100644
---- a/net/ipv4/netfilter/ip_tables.c
-+++ b/net/ipv4/netfilter/ip_tables.c
-@@ -1151,8 +1151,7 @@ do_replace(struct net *net, const void __user *user, unsigned int len)
- }
- 
- static int
--do_add_counters(struct net *net, const void __user *user,
--		unsigned int len)
-+do_add_counters(struct net *net, sockptr_t arg, unsigned int len)
- {
- 	unsigned int i;
- 	struct xt_counters_info tmp;
-@@ -1163,7 +1162,7 @@ do_add_counters(struct net *net, const void __user *user,
- 	struct ipt_entry *iter;
- 	unsigned int addend;
- 
--	paddc = xt_copy_counters_from_user(user, len, &tmp);
-+	paddc = xt_copy_counters(arg, len, &tmp);
- 	if (IS_ERR(paddc))
- 		return PTR_ERR(paddc);
- 
-@@ -1629,7 +1628,7 @@ do_ipt_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
- 		break;
- 
- 	case IPT_SO_SET_ADD_COUNTERS:
--		ret = do_add_counters(sock_net(sk), user, len);
-+		ret = do_add_counters(sock_net(sk), USER_SOCKPTR(user), len);
- 		break;
- 
- 	default:
-diff --git a/net/ipv6/netfilter/ip6_tables.c b/net/ipv6/netfilter/ip6_tables.c
-index fd1f8f93123188..a787aba30e2db7 100644
---- a/net/ipv6/netfilter/ip6_tables.c
-+++ b/net/ipv6/netfilter/ip6_tables.c
-@@ -1168,7 +1168,7 @@ do_replace(struct net *net, const void __user *user, unsigned int len)
- }
- 
- static int
--do_add_counters(struct net *net, const void __user *user, unsigned int len)
-+do_add_counters(struct net *net, sockptr_t arg, unsigned int len)
- {
- 	unsigned int i;
- 	struct xt_counters_info tmp;
-@@ -1179,7 +1179,7 @@ do_add_counters(struct net *net, const void __user *user, unsigned int len)
- 	struct ip6t_entry *iter;
- 	unsigned int addend;
- 
--	paddc = xt_copy_counters_from_user(user, len, &tmp);
-+	paddc = xt_copy_counters(arg, len, &tmp);
- 	if (IS_ERR(paddc))
- 		return PTR_ERR(paddc);
- 	t = xt_find_table_lock(net, AF_INET6, tmp.name);
-@@ -1637,7 +1637,7 @@ do_ip6t_set_ctl(struct sock *sk, int cmd, void __user *user, unsigned int len)
- 		break;
- 
- 	case IP6T_SO_SET_ADD_COUNTERS:
--		ret = do_add_counters(sock_net(sk), user, len);
-+		ret = do_add_counters(sock_net(sk), USER_SOCKPTR(user), len);
- 		break;
- 
- 	default:
-diff --git a/net/netfilter/x_tables.c b/net/netfilter/x_tables.c
-index 32bab45af7e415..b97eb4b538fd4e 100644
---- a/net/netfilter/x_tables.c
-+++ b/net/netfilter/x_tables.c
-@@ -1028,9 +1028,9 @@ int xt_check_target(struct xt_tgchk_param *par,
- EXPORT_SYMBOL_GPL(xt_check_target);
- 
- /**
-- * xt_copy_counters_from_user - copy counters and metadata from userspace
-+ * xt_copy_counters - copy counters and metadata from a sockptr_t
-  *
-- * @user: src pointer to userspace memory
-+ * @arg: src sockptr
-  * @len: alleged size of userspace memory
-  * @info: where to store the xt_counters_info metadata
-  *
-@@ -1047,8 +1047,8 @@ EXPORT_SYMBOL_GPL(xt_check_target);
-  * Return: returns pointer that caller has to test via IS_ERR().
-  * If IS_ERR is false, caller has to vfree the pointer.
-  */
--void *xt_copy_counters_from_user(const void __user *user, unsigned int len,
--				 struct xt_counters_info *info)
-+void *xt_copy_counters(sockptr_t arg, unsigned int len,
-+		       struct xt_counters_info *info)
- {
- 	void *mem;
- 	u64 size;
-@@ -1062,12 +1062,12 @@ void *xt_copy_counters_from_user(const void __user *user, unsigned int len,
- 			return ERR_PTR(-EINVAL);
- 
- 		len -= sizeof(compat_tmp);
--		if (copy_from_user(&compat_tmp, user, sizeof(compat_tmp)) != 0)
-+		if (copy_from_sockptr(&compat_tmp, arg, sizeof(compat_tmp)) != 0)
- 			return ERR_PTR(-EFAULT);
- 
- 		memcpy(info->name, compat_tmp.name, sizeof(info->name) - 1);
- 		info->num_counters = compat_tmp.num_counters;
--		user += sizeof(compat_tmp);
-+		sockptr_advance(arg, sizeof(compat_tmp));
- 	} else
+ #include <linux/atomic.h>
+ #include <linux/refcount.h>
+@@ -1669,7 +1670,7 @@ void sock_pfree(struct sk_buff *skb);
  #endif
- 	{
-@@ -1075,10 +1075,10 @@ void *xt_copy_counters_from_user(const void __user *user, unsigned int len,
- 			return ERR_PTR(-EINVAL);
  
- 		len -= sizeof(*info);
--		if (copy_from_user(info, user, sizeof(*info)) != 0)
-+		if (copy_from_sockptr(info, arg, sizeof(*info)) != 0)
- 			return ERR_PTR(-EFAULT);
+ int sock_setsockopt(struct socket *sock, int level, int op,
+-		    char __user *optval, unsigned int optlen);
++		    sockptr_t optval, unsigned int optlen);
  
--		user += sizeof(*info);
-+		sockptr_advance(arg, sizeof(*info));
+ int sock_getsockopt(struct socket *sock, int level, int op,
+ 		    char __user *optval, int __user *optlen);
+diff --git a/net/core/sock.c b/net/core/sock.c
+index 8b9eddaff868a5..1444d7d53ba2fd 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -826,7 +826,7 @@ EXPORT_SYMBOL(sock_set_rcvbuf);
+  */
+ 
+ int sock_setsockopt(struct socket *sock, int level, int optname,
+-		    char __user *optval, unsigned int optlen)
++		    sockptr_t optval, unsigned int optlen)
+ {
+ 	struct sock_txtime sk_txtime;
+ 	struct sock *sk = sock->sk;
+@@ -840,12 +840,12 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 	 */
+ 
+ 	if (optname = SO_BINDTODEVICE)
+-		return sock_setbindtodevice(sk, USER_SOCKPTR(optval), optlen);
++		return sock_setbindtodevice(sk, optval, optlen);
+ 
+ 	if (optlen < sizeof(int))
+ 		return -EINVAL;
+ 
+-	if (get_user(val, (int __user *)optval))
++	if (copy_from_sockptr(&val, optval, sizeof(val)))
+ 		return -EFAULT;
+ 
+ 	valbool = val ? 1 : 0;
+@@ -958,7 +958,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 			ret = -EINVAL;	/* 1003.1g */
+ 			break;
+ 		}
+-		if (copy_from_user(&ling, optval, sizeof(ling))) {
++		if (copy_from_sockptr(&ling, optval, sizeof(ling))) {
+ 			ret = -EFAULT;
+ 			break;
+ 		}
+@@ -1052,21 +1052,20 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 
+ 	case SO_RCVTIMEO_OLD:
+ 	case SO_RCVTIMEO_NEW:
+-		ret = sock_set_timeout(&sk->sk_rcvtimeo, USER_SOCKPTR(optval),
++		ret = sock_set_timeout(&sk->sk_rcvtimeo, optval,
+ 				       optlen, optname = SO_RCVTIMEO_OLD);
+ 		break;
+ 
+ 	case SO_SNDTIMEO_OLD:
+ 	case SO_SNDTIMEO_NEW:
+-		ret = sock_set_timeout(&sk->sk_sndtimeo, USER_SOCKPTR(optval),
++		ret = sock_set_timeout(&sk->sk_sndtimeo, optval,
+ 				       optlen, optname = SO_SNDTIMEO_OLD);
+ 		break;
+ 
+ 	case SO_ATTACH_FILTER: {
+ 		struct sock_fprog fprog;
+ 
+-		ret = copy_bpf_fprog_from_user(&fprog, USER_SOCKPTR(optval),
+-					       optlen);
++		ret = copy_bpf_fprog_from_user(&fprog, optval, optlen);
+ 		if (!ret)
+ 			ret = sk_attach_filter(&fprog, sk);
+ 		break;
+@@ -1077,7 +1076,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 			u32 ufd;
+ 
+ 			ret = -EFAULT;
+-			if (copy_from_user(&ufd, optval, sizeof(ufd)))
++			if (copy_from_sockptr(&ufd, optval, sizeof(ufd)))
+ 				break;
+ 
+ 			ret = sk_attach_bpf(ufd, sk);
+@@ -1087,8 +1086,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 	case SO_ATTACH_REUSEPORT_CBPF: {
+ 		struct sock_fprog fprog;
+ 
+-		ret = copy_bpf_fprog_from_user(&fprog, USER_SOCKPTR(optval),
+-					       optlen);
++		ret = copy_bpf_fprog_from_user(&fprog, optval, optlen);
+ 		if (!ret)
+ 			ret = sk_reuseport_attach_filter(&fprog, sk);
+ 		break;
+@@ -1099,7 +1097,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 			u32 ufd;
+ 
+ 			ret = -EFAULT;
+-			if (copy_from_user(&ufd, optval, sizeof(ufd)))
++			if (copy_from_sockptr(&ufd, optval, sizeof(ufd)))
+ 				break;
+ 
+ 			ret = sk_reuseport_attach_bpf(ufd, sk);
+@@ -1179,7 +1177,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 
+ 		if (sizeof(ulval) != sizeof(val) &&
+ 		    optlen >= sizeof(ulval) &&
+-		    get_user(ulval, (unsigned long __user *)optval)) {
++		    copy_from_sockptr(&ulval, optval, sizeof(ulval))) {
+ 			ret = -EFAULT;
+ 			break;
+ 		}
+@@ -1222,7 +1220,7 @@ int sock_setsockopt(struct socket *sock, int level, int optname,
+ 		if (optlen != sizeof(struct sock_txtime)) {
+ 			ret = -EINVAL;
+ 			break;
+-		} else if (copy_from_user(&sk_txtime, optval,
++		} else if (copy_from_sockptr(&sk_txtime, optval,
+ 			   sizeof(struct sock_txtime))) {
+ 			ret = -EFAULT;
+ 			break;
+diff --git a/net/mptcp/protocol.c b/net/mptcp/protocol.c
+index f0b0b503c2628d..27b6f250b87dfd 100644
+--- a/net/mptcp/protocol.c
++++ b/net/mptcp/protocol.c
+@@ -1643,7 +1643,8 @@ static int mptcp_setsockopt_sol_socket(struct mptcp_sock *msk, int optname,
+ 			return -EINVAL;
+ 		}
+ 
+-		ret = sock_setsockopt(ssock, SOL_SOCKET, optname, optval, optlen);
++		ret = sock_setsockopt(ssock, SOL_SOCKET, optname,
++				      USER_SOCKPTR(optval), optlen);
+ 		if (ret = 0) {
+ 			if (optname = SO_REUSEPORT)
+ 				sk->sk_reuseport = ssock->sk->sk_reuseport;
+@@ -1654,7 +1655,8 @@ static int mptcp_setsockopt_sol_socket(struct mptcp_sock *msk, int optname,
+ 		return ret;
  	}
- 	info->name[sizeof(info->name) - 1] = '\0';
  
-@@ -1092,13 +1092,13 @@ void *xt_copy_counters_from_user(const void __user *user, unsigned int len,
- 	if (!mem)
- 		return ERR_PTR(-ENOMEM);
- 
--	if (copy_from_user(mem, user, len) = 0)
-+	if (copy_from_sockptr(mem, arg, len) = 0)
- 		return mem;
- 
- 	vfree(mem);
- 	return ERR_PTR(-EFAULT);
+-	return sock_setsockopt(sk->sk_socket, SOL_SOCKET, optname, optval, optlen);
++	return sock_setsockopt(sk->sk_socket, SOL_SOCKET, optname,
++			       USER_SOCKPTR(optval), optlen);
  }
--EXPORT_SYMBOL_GPL(xt_copy_counters_from_user);
-+EXPORT_SYMBOL_GPL(xt_copy_counters);
  
- #ifdef CONFIG_COMPAT
- int xt_compat_target_offset(const struct xt_target *target)
+ static int mptcp_setsockopt_v6(struct mptcp_sock *msk, int optname,
+diff --git a/net/socket.c b/net/socket.c
+index 93846568c2fb7a..c97f83d879ae75 100644
+--- a/net/socket.c
++++ b/net/socket.c
+@@ -2130,7 +2130,8 @@ int __sys_setsockopt(int fd, int level, int optname, char __user *optval,
+ 	}
+ 
+ 	if (level = SOL_SOCKET && !sock_use_custom_sol_socket(sock))
+-		err = sock_setsockopt(sock, level, optname, optval, optlen);
++		err = sock_setsockopt(sock, level, optname,
++				      USER_SOCKPTR(optval), optlen);
+ 	else if (unlikely(!sock->ops->setsockopt))
+ 		err = -EOPNOTSUPP;
+ 	else
 -- 
 2.27.0
