@@ -1,29 +1,56 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Fri, 14 Aug 2020 12:41:13 +0000
-Subject: RE: num_ostreams and max_instreams negotiation
-Message-Id: <c23f677ce8e14764815c83c70c6a1577@AcuMS.aculab.com>
+From: Eric Dumazet <eric.dumazet@gmail.com>
+Date: Thu, 06 Aug 2020 22:21:25 +0000
+Subject: Re: [PATCH 25/26] net: pass a sockptr_t into ->setsockopt
+Message-Id: <6357942b-0b6e-1901-7dce-e308c9fac347@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <0b4319e4b2cf4ee68fc2b0183536aa7a@AcuMS.aculab.com>
-In-Reply-To: <0b4319e4b2cf4ee68fc2b0183536aa7a@AcuMS.aculab.com>
+References: <20200723060908.50081-1-hch@lst.de>
+ <20200723060908.50081-26-hch@lst.de>
+In-Reply-To: <20200723060908.50081-26-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@ACULAB.COM>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
-Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>
+To: Christoph Hellwig <hch@lst.de>, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, Alexei Starovoitov <ast@kernel.org>, Daniel Borkmann <daniel@iogearbox.net>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>, Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>, Eric Dumazet <edumazet@google.com>
+Cc: linux-crypto@vger.kernel.org, linux-kernel@vger.kernel.org, netdev@vger.kernel.org, bpf@vger.kernel.org, netfilter-devel@vger.kernel.org, coreteam@netfilter.org, linux-sctp@vger.kernel.org, linux-hams@vger.kernel.org, linux-bluetooth@vger.kernel.org, bridge@lists.linux-foundation.org, linux-can@vger.kernel.org, dccp@vger.kernel.org, linux-decnet-user@lists.sourceforge.net, linux-wpan@vger.kernel.org, linux-s390@vger.kernel.org, mptcp@lists.01.org, lvs-devel@vger.kernel.org, rds-devel@oss.oracle.com, linux-afs@lists.infradead.org, tipc-discussion@lists.sourceforge.net, linux-x25@vger.kernel.org, Stefan Schmidt <stefan@datenfreihafen.org>
 
-PiBBdCBzb21lIHBvaW50IHRoZSBuZWdvdGlhdGlvbiBvZiB0aGUgbnVtYmVyIG9mIFNDVFAgc3Ry
-ZWFtcw0KPiBzZWVtcyB0byBoYXZlIGdvdCBicm9rZW4uDQo+IEkndmUgZGVmaW5pdGVseSB0ZXN0
-ZWQgaXQgaW4gdGhlIHBhc3QgKHByb2JhYmx5IDEwIHllYXJzIGFnbyEpDQo+IGJ1dCBvbiBhIDUu
-OC4wIGtlcm5lbCBnZXRzb2Nrb3B0KFNDVFBfSU5GTykgc2VlbXMgdG8gYmUNCj4gcmV0dXJuaW5n
-IHRoZSAnbnVtX29zdHJlYW1zJyBzZXQgYnkgc2V0c29ja29wdChTQ1RQX0lOSVQpDQo+IHJhdGhl
-ciB0aGFuIHRoZSBzbWFsbGVyIG9mIHRoYXQgdmFsdWUgYW5kIHRoYXQgY29uZmlndXJlZA0KPiBh
-dCB0aGUgb3RoZXIgZW5kIG9mIHRoZSBjb25uZWN0aW9uLg0KPiANCj4gSSdsbCBkbyBhIGJpdCBv
-ZiBkaWdnaW5nLg0KDQpJIGNhbid0IGZpbmQgdGhlIGNvZGUgdGhhdCBwcm9jZXNzZXMgdGhlIGlu
-aXRfYWNrLg0KQnV0IHdoZW4gc2N0cF9wcm9jc3NfaW50KCkgc2F2ZXMgdGhlIHNtYWxsZXIgdmFs
-dWUNCmluIGFzb2MtPmMuc2luaW50X21heF9vc3RyZWFtcy4NCg0KQnV0IGFmZTg5OTk2MmVlMDc5
-IChpZiBJJ3ZlIHR5cGVkIGl0IHJpZ2h0KSBjaGFuZ2VkDQp0aGUgdmFsdWVzIFNDVFBfSU5GTyBy
-ZXBvcnRlZC4NCkFwcGFyYW50bHkgYWRkaW5nICdzY3RwIHJlY29uZmlnJyBoYWQgY2hhbmdlZCB0
-aGluZ3MuDQoNClNvIEkgc3VzcGVjdCB0aGlzIGhhcyBhbGwgYmVlbiBicm9rZW4gZm9yIG92ZXIg
-MyB5ZWFycy4NCg0KCURhdmlkDQoNCi0NClJlZ2lzdGVyZWQgQWRkcmVzcyBMYWtlc2lkZSwgQnJh
-bWxleSBSb2FkLCBNb3VudCBGYXJtLCBNaWx0b24gS2V5bmVzLCBNSzEgMVBULCBVSw0KUmVnaXN0
-cmF0aW9uIE5vOiAxMzk3Mzg2IChXYWxlcykNCg=
+
+
+On 7/22/20 11:09 PM, Christoph Hellwig wrote:
+> Rework the remaining setsockopt code to pass a sockptr_t instead of a
+> plain user pointer.  This removes the last remaining set_fs(KERNEL_DS)
+> outside of architecture specific code.
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> Acked-by: Stefan Schmidt <stefan@datenfreihafen.org> [ieee802154]
+> ---
+
+
+...
+
+> diff --git a/net/ipv6/raw.c b/net/ipv6/raw.c
+> index 594e01ad670aa6..874f01cd7aec42 100644
+> --- a/net/ipv6/raw.c
+> +++ b/net/ipv6/raw.c
+> @@ -972,13 +972,13 @@ static int rawv6_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
+>  }
+>  
+
+...
+
+>  static int do_rawv6_setsockopt(struct sock *sk, int level, int optname,
+> -			    char __user *optval, unsigned int optlen)
+> +			       sockptr_t optval, unsigned int optlen)
+>  {
+>  	struct raw6_sock *rp = raw6_sk(sk);
+>  	int val;
+>  
+> -	if (get_user(val, (int __user *)optval))
+> +	if (copy_from_sockptr(&val, optval, sizeof(val)))
+>  		return -EFAULT;
+>  
+
+converting get_user(...)   to  copy_from_sockptr(...) really assumed the optlen
+has been validated to be >= sizeof(int) earlier.
+
+Which is not always the case, for example here.
+
+User application can fool us passing optlen=0, and a user pointer of exactly TASK_SIZE-1
