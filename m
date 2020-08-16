@@ -1,46 +1,45 @@
-From: Randy Dunlap <rdunlap@infradead.org>
-Date: Sat, 22 Aug 2020 23:15:55 +0000
-Subject: [PATCH 1/7] net: sctp: associola.c: delete duplicated words
-Message-Id: <20200822231601.32125-2-rdunlap@infradead.org>
+From: "Mr. Scott Donald" <confianzayrentabilidad@gmail.com>
+Date: Sun, 16 Aug 2020 14:28:30 +0000
+Subject: Hello, Please
+Message-Id: <CANrrfX7wwL97G=jb--8nb9jH8oRO8T90L6NGSfg1HfnzMyyHcw@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200822231601.32125-1-rdunlap@infradead.org>
-In-Reply-To: <20200822231601.32125-1-rdunlap@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: netdev@vger.kernel.org
-Cc: Randy Dunlap <rdunlap@infradead.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, linux-sctp@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+To: linux-sctp@vger.kernel.org
 
-Drop the repeated word "the" in two places.
+-- 
+Dear Friend,
 
-Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
-Cc: Vlad Yasevich <vyasevich@gmail.com>
-Cc: Neil Horman <nhorman@tuxdriver.com>
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: linux-sctp@vger.kernel.org
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: Jakub Kicinski <kuba@kernel.org>
----
- net/sctp/associola.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+I'm Mr. Scott Donald a Successful businessMan dealing with
+Exportation, I got your mail contact through search to let you know my
+intension and my Ugly Situation Am a dying Man here in Los Angeles
+California Hospital Bed in (USA), I Lost my Wife and my only Daughter
+for Covid-19 and I also have a problem in my Health and I can die
+anytime I Know,
 
---- linux-next-20200731.orig/net/sctp/associola.c
-+++ linux-next-20200731/net/sctp/associola.c
-@@ -1351,7 +1351,7 @@ static void sctp_select_active_and_retra
- 	}
- 
- 	/* We did not find anything useful for a possible retransmission
--	 * path; either primary path that we found is the the same as
-+	 * path; either primary path that we found is the same as
- 	 * the current one, or we didn't generally find an active one.
- 	 */
- 	if (trans_sec = NULL)
-@@ -1537,7 +1537,7 @@ void sctp_assoc_rwnd_decrease(struct sct
- 
- 	/* If we've reached or overflowed our receive buffer, announce
- 	 * a 0 rwnd if rwnd would still be positive.  Store the
--	 * the potential pressure overflow so that the window can be restored
-+	 * potential pressure overflow so that the window can be restored
- 	 * back to original value.
- 	 */
- 	if (rx_count >= asoc->base.sk->sk_rcvbuf)
+I have a project that I am about to hand over to you. and I already
+instructed the Bankia S.A. Madrid, Spain(BSA) to transfer my fund sum
+of £3,7M GBP. Equivalent to €4,077,033.91 EUR, to you as to enable you
+to give 50% of this fund to Charitable Home in your State and take 50%
+don't think otherwise and why would anybody send someone you barely
+know to help you deliver a message, help me do this for the happiness
+of my soul and for God to mercy me and my Family and give Us a good
+place.
+
+please, do as I said there was someone from your State that I deeply
+love so very very much and I miss her so badly I have no means to
+reach any Charitable Home there. that is why I go for a personal
+search of the Country and State and I got your mail contact through
+search to let you know my Bitterness and please, help me is getting
+Dark I ask my Doctor to help me keep you notice failure for me to
+reach you in person Your urgent Response, here is my Doctor Whats-app
+Number for urgent notice +13019692737
+
+Hope To Hear From You. I'm sending this email to you for the second
+time yet no response from you.
+
+My Regards.
+
+Mr. Scott Donald
+CEO
