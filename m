@@ -1,72 +1,152 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Sat, 15 Aug 2020 14:49:31 +0000
-Subject: RE: sctp: num_ostreams and max_instreams negotiation
-Message-Id: <0c1621e5da2e41e8905762d0208f9d40@AcuMS.aculab.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Mon, 17 Aug 2020 14:22:23 +0000
+Subject: Re: sctp: num_ostreams and max_instreams negotiation
+Message-Id: <20200817142223.GH3399@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <9a1bfa6085854387bf98b6171c879b37@AcuMS.aculab.com>
  <868bd24b536345e6a5596f856a0ebe90@AcuMS.aculab.com>
-In-Reply-To: <868bd24b536345e6a5596f856a0ebe90@AcuMS.aculab.com>
+ <0c1621e5da2e41e8905762d0208f9d40@AcuMS.aculab.com>
+In-Reply-To: <0c1621e5da2e41e8905762d0208f9d40@AcuMS.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>, 'Neil Horman' <nhorman@tuxdriver.com>, "'kent.overstreet@gmail.com'" <kent.overstreet@gmail.com>, 'Andrew Morton' <akpm@linux-foundation.org>
-Cc: "'netdev@vger.kernel.org'" <netdev@vger.kernel.org>
+To: David Laight <David.Laight@aculab.com>
+Cc: "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>, 'Neil Horman' <nhorman@tuxdriver.com>, "'kent.overstreet@gmail.com'" <kent.overstreet@gmail.com>, 'Andrew Morton' <akpm@linux-foundation.org>, "'netdev@vger.kernel.org'" <netdev@vger.kernel.org>
 
-RnJvbTogRGF2aWQgTGFpZ2h0DQo+IFNlbnQ6IDE0IEF1Z3VzdCAyMDIwIDE3OjE4DQo+IA0KPiA+
-ID4gPiBBdCBzb21lIHBvaW50IHRoZSBuZWdvdGlhdGlvbiBvZiB0aGUgbnVtYmVyIG9mIFNDVFAg
-c3RyZWFtcw0KPiA+ID4gPiBzZWVtcyB0byBoYXZlIGdvdCBicm9rZW4uDQo+ID4gPiA+IEkndmUg
-ZGVmaW5pdGVseSB0ZXN0ZWQgaXQgaW4gdGhlIHBhc3QgKHByb2JhYmx5IDEwIHllYXJzIGFnbyEp
-DQo+ID4gPiA+IGJ1dCBvbiBhIDUuOC4wIGtlcm5lbCBnZXRzb2Nrb3B0KFNDVFBfSU5GTykgc2Vl
-bXMgdG8gYmUNCj4gPiA+ID4gcmV0dXJuaW5nIHRoZSAnbnVtX29zdHJlYW1zJyBzZXQgYnkgc2V0
-c29ja29wdChTQ1RQX0lOSVQpDQo+ID4gPiA+IHJhdGhlciB0aGFuIHRoZSBzbWFsbGVyIG9mIHRo
-YXQgdmFsdWUgYW5kIHRoYXQgY29uZmlndXJlZA0KPiA+ID4gPiBhdCB0aGUgb3RoZXIgZW5kIG9m
-IHRoZSBjb25uZWN0aW9uLg0KPiA+ID4gPg0KPiA+ID4gPiBJJ2xsIGRvIGEgYml0IG9mIGRpZ2dp
-bmcuDQo+ID4gPg0KPiA+ID4gSSBjYW4ndCBmaW5kIHRoZSBjb2RlIHRoYXQgcHJvY2Vzc2VzIHRo
-ZSBpbml0X2Fjay4NCj4gPiA+IEJ1dCB3aGVuIHNjdHBfcHJvY3NzX2ludCgpIHNhdmVzIHRoZSBz
-bWFsbGVyIHZhbHVlDQo+ID4gPiBpbiBhc29jLT5jLnNpbmludF9tYXhfb3N0cmVhbXMuDQo+ID4g
-Pg0KPiA+ID4gQnV0IGFmZTg5OTk2MmVlMDc5IChpZiBJJ3ZlIHR5cGVkIGl0IHJpZ2h0KSBjaGFu
-Z2VkDQo+ID4gPiB0aGUgdmFsdWVzIFNDVFBfSU5GTyByZXBvcnRlZC4NCj4gPiA+IEFwcGFyYW50
-bHkgYWRkaW5nICdzY3RwIHJlY29uZmlnJyBoYWQgY2hhbmdlZCB0aGluZ3MuDQo+ID4gPg0KPiA+
-ID4gU28gSSBzdXNwZWN0IHRoaXMgaGFzIGFsbCBiZWVuIGJyb2tlbiBmb3Igb3ZlciAzIHllYXJz
-Lg0KPiA+DQo+ID4gSXQgbG9va3MgbGlrZSB0aGUgY2hhbmdlcyB0aGF0IGJyb2tlIGl0IHdlbnQg
-aW50byA0LjExLg0KPiA+IEkndmUganVzdCBjaGVja2VkIGEgMy44IGtlcm5lbCBhbmQgdGhhdCBu
-ZWdvdGlhdGVzIHRoZQ0KPiA+IHZhbHVlcyBkb3duIGluIGJvdGggZGlyZWN0aW9ucy4NCj4gPg0K
-PiA+IEkgZG9uJ3QgaGF2ZSBhbnkga2VybmVscyBsdXJraW5nIGJldHdlZW4gMy44IGFuZCA0LjE1
-Lg0KPiA+IChZZXMsIEkgY291bGQgYnVpbGQgb25lLCBidXQgaXQgZG9lc24ndCByZWFsbHkgaGVs
-cC4pDQo+IA0KPiBPaywgYnVnIGxvY2F0ZWQgLSBwcmV0dHkgb2J2aW91cyByZWFsbHkuDQo+IG5l
-dC9zY3RwL3N0cmVhbS4gaGFzIHRoZSBmb2xsb3dpbmcgY29kZToNCj4gDQo+IHN0YXRpYyBpbnQg
-c2N0cF9zdHJlYW1fYWxsb2Nfb3V0KHN0cnVjdCBzY3RwX3N0cmVhbSAqc3RyZWFtLCBfX3UxNiBv
-dXRjbnQsDQo+IAkJCQkgZ2ZwX3QgZ2ZwKQ0KPiB7DQo+IAlpbnQgcmV0Ow0KPiANCj4gCWlmIChv
-dXRjbnQgPD0gc3RyZWFtLT5vdXRjbnQpDQo+IAkJcmV0dXJuIDA7DQoNCkRlbGV0aW5nIHRoaXMg
-Y2hlY2sgaXMgc3VmZmljaWVudCB0byBmaXggdGhlIGNvZGUuDQpBbG9uZyB3aXRoIHRoZSBlcXVp
-dmFsZW50IGNoZWNrIGluIHNjdHBfc3RyZWFtLWFsbG9jX2luKCkuDQoNCg0KPiBUaGlzIGRvZXMg
-bWVhbiB0aGF0IGl0IGhhcyBvbmx5IGJlZW4gYnJva2VuIHNpbmNlIHRoZSA1LjENCj4gbWVyZ2Ug
-d2luZG93Lg0KDQpBbmQgaXMgYSBnb29kIGNhbmRpZGF0ZSBmb3IgdGhlIGJhY2stcG9ydHMuDQoN
-Cj4gCXJldCA9IGdlbnJhZGl4X3ByZWFsbG9jKCZzdHJlYW0tPm91dCwgb3V0Y250LCBnZnApOw0K
-PiAJaWYgKHJldCkNCj4gCQlyZXR1cm4gcmV0Ow0KPiANCj4gCXN0cmVhbS0+b3V0Y250ID0gb3V0
-Y250Ow0KPiAJcmV0dXJuIDA7DQo+IH0NCj4gDQo+IHNjdHBfc3RyZWFtX2FsbG9jX2luKCkgaXMg
-dGhlIHNhbWUuDQo+IA0KPiBUaGlzIGlzIGNhbGxlZCB0byByZWR1Y2UgdGhlIG51bWJlciBvZiBz
-dHJlYW1zLg0KPiBCdXQgaW4gdGhhdCBjYXNlIGl0IGRvZXMgbm90aGluZyBhdCBhbGwuDQo+IA0K
-PiBXaGljaCBtZWFucyB0aGF0IHRoZSAnY29udmVydCB0byBnZW5yYWRpeCcgY2hhbmdlIGJyb2tl
-IGl0Lg0KPiBUYWcgMjA3NWU1MGNhZjVlYS4NCj4gDQo+IEkgZG9uJ3Qga25vdyB3aGF0ICdnZW5y
-YWRpeCcgYXJyYXlzIG9yIHRoZSBlYXJsaWVyICdmbGV4X2FycmF5Jw0KPiBhY3R1YWxseSBsb29r
-IGxpa2UuDQo+IEJ1dCBpZiAnZ2VucmFkaXgnIGlzIHNvbWUga2luZCBvZiByYWRpeC10cmVlIGl0
-IGlzIHByb2JhYmx5IHRoZQ0KPiB3cm9uZyBiZWFzdCBmb3IgU0NUUCBzdHJlYW1zLg0KPiBMb3Rz
-IG9mIGNvZGUgbG9vcHMgdGhyb3VnaCBhbGwgb2YgdGhlbS4NCg0KWWVwLCBJJ20gcHJldHR5IHN1
-cmUgYSBrdm1hbGxvYygpIHdvdWxkIGJlIGJlc3QuDQoNCj4gV2hpbGUganVzdCBhc3NpZ25pbmcg
-dG8gc3RyZWFtLT5vdXRjbnQgd2hlbiB0aGUgdmFsdWUNCj4gaXMgcmVkdWNlZCB3aWxsIGZpeCB0
-aGUgbmVnb3RpYXRpb24sIEkndmUgbm8gaWRlYQ0KPiB3aGF0IHNpZGUtZWZmZWN0cyB0aGF0IGhh
-cy4NCg0KSSd2ZSBkb25lIHNvbWUgY2hlY2tzLg0KVGhlIGFycmF5cyBhcmUgYWxsb2NhdGVkIHdo
-ZW4gYW4gSU5JVCBpcyBzZW50IGFuZCBhbHNvIGJlZm9yZQ0KYSByZWNlaXZlZCBJTklUIGlzIHBy
-b2Nlc3NlZC4NClNvIGlmIG9uZSBzaWRlIChlZyB0aGUgcmVzcG9uZGVyKSBhbGxvY2F0ZXMgYSB2
-ZXJ5IGJpZyB2YWx1ZQ0KdGhlbiB0aGUgYXNzb2NpYXRlZCBtZW1vcnkgaXMgbmV2ZXIgZnJlZWQg
-d2hlbiB0aGUgdmFsdWUNCmlzIG5lZ290aWF0ZWQgZG93bi4NClRoZXJlIGlzIGEgY29tbWVudCB0
-byB0aGUgZWZmZWN0IHRoYXQgdGhpcyBpcyBkZXNpcmFibGUuDQoNCklmIG15IHF1aWNrIGNhbGN1
-bGF0aW9ucyBhcmUgY29ycmVjdCB0aGVuIGVhY2ggJ2luJyBpcyAyMCBieXRlcw0KYW5kIGVhY2gg
-J291dCcgMjQgKHdpdGggYSBsb3Qgb2YgcGFkIGJ5dGVzKS4NClNvIHRoZSBtYXggc2l6ZXMgYXJl
-IDMyMiBhbmQgMzg2IDRrIHBhZ2VzLg0KDQpJIGhhdmVuJ3QgbG9va2VkIGF0IGhvdyBtYW55IG9m
-IHRoZSAnb3V0JyBzdHJlYW1zIGdldHMgdGhlDQpleHRyYSwgc2VwYXJhdGVseSBhbGxvY2F0ZWQs
-IHN0cnVjdHVyZS4NCkkgc3VzcGVjdCB0aGUgbWVtb3J5IGZvb3RwcmludCBmb3IgYSBzaW5nbGUg
-U0NUUCBjb25uZWN0aW9uDQppcyBwb3RlbnRpYWxseSBodWdlLg0KDQoJRGF2aWQNCg0KLQ0KUmVn
-aXN0ZXJlZCBBZGRyZXNzIExha2VzaWRlLCBCcmFtbGV5IFJvYWQsIE1vdW50IEZhcm0sIE1pbHRv
-biBLZXluZXMsIE1LMSAxUFQsIFVLDQpSZWdpc3RyYXRpb24gTm86IDEzOTczODYgKFdhbGVzKQ0K
+On Sat, Aug 15, 2020 at 02:49:31PM +0000, David Laight wrote:
+> From: David Laight
+> > Sent: 14 August 2020 17:18
+> > 
+> > > > > At some point the negotiation of the number of SCTP streams
+> > > > > seems to have got broken.
+> > > > > I've definitely tested it in the past (probably 10 years ago!)
+> > > > > but on a 5.8.0 kernel getsockopt(SCTP_INFO) seems to be
+> > > > > returning the 'num_ostreams' set by setsockopt(SCTP_INIT)
+> > > > > rather than the smaller of that value and that configured
+> > > > > at the other end of the connection.
+> > > > >
+> > > > > I'll do a bit of digging.
+> > > >
+> > > > I can't find the code that processes the init_ack.
+> > > > But when sctp_procss_int() saves the smaller value
+> > > > in asoc->c.sinint_max_ostreams.
+> > > >
+> > > > But afe899962ee079 (if I've typed it right) changed
+> > > > the values SCTP_INFO reported.
+> > > > Apparantly adding 'sctp reconfig' had changed things.
+> > > >
+> > > > So I suspect this has all been broken for over 3 years.
+> > >
+> > > It looks like the changes that broke it went into 4.11.
+> > > I've just checked a 3.8 kernel and that negotiates the
+> > > values down in both directions.
+> > >
+> > > I don't have any kernels lurking between 3.8 and 4.15.
+> > > (Yes, I could build one, but it doesn't really help.)
+> > 
+> > Ok, bug located - pretty obvious really.
+> > net/sctp/stream. has the following code:
+> > 
+> > static int sctp_stream_alloc_out(struct sctp_stream *stream, __u16 outcnt,
+> > 				 gfp_t gfp)
+> > {
+> > 	int ret;
+> > 
+> > 	if (outcnt <= stream->outcnt)
+> > 		return 0;
+> 
+> Deleting this check is sufficient to fix the code.
+> Along with the equivalent check in sctp_stream-alloc_in().
+
+2075e50caf5e has:
+
+-       if (outcnt > stream->outcnt)
+-               fa_zero(out, stream->outcnt, (outcnt - stream->outcnt));
++       if (outcnt <= stream->outcnt)
++               return 0;
+
+-       stream->out = out;
++       ret = genradix_prealloc(&stream->out, outcnt, gfp);
++       if (ret)
++               return ret;
+
++       stream->outcnt = outcnt;
+        return 0;
+
+The flip on the if() return missed that stream->outcnt needs to be
+updated later on even if it is reducing the size.
+
+The proper fix here is to move back to the original if() condition,
+and put genradix_prealloc() inside it again, as was fa_zero() before.
+The if() is not strictly needed, because genradix_prealloc() will
+handle it nicely, but it's a nice-to-have optimization anyway.
+
+Do you want to send a patch?
+
+> 
+> 
+> > This does mean that it has only been broken since the 5.1
+> > merge window.
+> 
+> And is a good candidate for the back-ports.
+
+Yep.
+
+> 
+> > 	ret = genradix_prealloc(&stream->out, outcnt, gfp);
+> > 	if (ret)
+> > 		return ret;
+> > 
+> > 	stream->outcnt = outcnt;
+> > 	return 0;
+> > }
+> > 
+> > sctp_stream_alloc_in() is the same.
+> > 
+> > This is called to reduce the number of streams.
+> > But in that case it does nothing at all.
+> > 
+> > Which means that the 'convert to genradix' change broke it.
+> > Tag 2075e50caf5ea.
+> > 
+> > I don't know what 'genradix' arrays or the earlier 'flex_array'
+> > actually look like.
+> > But if 'genradix' is some kind of radix-tree it is probably the
+> > wrong beast for SCTP streams.
+> > Lots of code loops through all of them.
+> 
+> Yep, I'm pretty sure a kvmalloc() would be best.
+
+kvmalloc() doesn't help here because these functions can be called
+form bh. Note how sctp_process_strreset_addstrm_in(), for example,
+needs to use GFP_ATOMIC in there, in which kvmalloc() can't fallback
+to vmalloc.
+
+> 
+> > While just assigning to stream->outcnt when the value
+> > is reduced will fix the negotiation, I've no idea
+> > what side-effects that has.
+> 
+> I've done some checks.
+> The arrays are allocated when an INIT is sent and also before
+> a received INIT is processed.
+> So if one side (eg the responder) allocates a very big value
+> then the associated memory is never freed when the value
+> is negotiated down.
+> There is a comment to the effect that this is desirable.
+> 
+> If my quick calculations are correct then each 'in' is 20 bytes
+> and each 'out' 24 (with a lot of pad bytes).
+> So the max sizes are 322 and 386 4k pages.
+> 
+> I haven't looked at how many of the 'out' streams gets the
+> extra, separately allocated, structure.
+> I suspect the memory footprint for a single SCTP connection
+> is potentially huge.
+
+This shouldn't be an issue. The default amount of out streams is low
+(10, SCTP_DEFAULT_OUTSTREAMS) and the 'in' ones are only allocated
+when we have such info already. That's why sctp_connect_new_asoc() and
+sctp_association_init() will pass incnt=0 for sctp_stream_init().
+
+  Marcelo
