@@ -1,40 +1,76 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Tue, 18 Aug 2020 21:28:43 +0000
-Subject: RE: [PATCH] net: sctp: Fix negotiation of the number of data streams.
-Message-Id: <507feeb112794dcbb206ab630bf6b6be@AcuMS.aculab.com>
+From: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
+Date: Tue, 18 Aug 2020 21:46:48 +0000
+Subject: Re: [PATCH] net: sctp: Fix negotiation of the number of data streams.
+Message-Id: <20200818214648.GJ3399@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <46079a126ad542d380add5f9ba6ffa85@AcuMS.aculab.com>
- <20200818.125808.1491339435094413330.davem@davemloft.net>
-In-Reply-To: <20200818.125808.1491339435094413330.davem@davemloft.net>
+In-Reply-To: <46079a126ad542d380add5f9ba6ffa85@AcuMS.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'David Miller' <davem@davemloft.net>
-Cc: "netdev@vger.kernel.org" <netdev@vger.kernel.org>, "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>, "marcelo.leitner@gmail.com" <marcelo.leitner@gmail.com>
+To: David Laight <David.Laight@aculab.com>
+Cc: "'netdev@vger.kernel.org'" <netdev@vger.kernel.org>, "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>
 
-From: David Miller
-> Sent: 18 August 2020 20:58
-> 
-> From: David Laight <David.Laight@ACULAB.COM>
-> Date: Tue, 18 Aug 2020 14:36:58 +0000
-> 
-> > Fixes 2075e50caf5ea.
-> >
-> > Signed-off-by: David Laight <david.laight@aculab.com>
-> 
-> This is not the correct format for a Fixes tag, also it should not
-> be separated by empty lines from other tags such as Signed-off-by
-> and Acked-by.
-> 
-> As someone who reads netdev frequently, these patterns should be
-> etched into your brain by now. :-)
+On Tue, Aug 18, 2020 at 02:36:58PM +0000, David Laight wrote:
+> The number of streams offered by the remote system was being ignored.
+> Any data sent on those streams would get discarded by the remote system.
 
-Sorry I don't often write patches - I'm only paid to support
-our drivers, not fix the Linux kernel :-)
-(We don't ship a kernel, our drivers have to work in disto kernels.)
+That's quite brief and not accurate: it was only ignored if 'Xcnt <stream->Xcnt'.
 
-	David
+Other than this and the Fixes tag, LGTM. Passes the tests here. I'll
+ack the v2 then.
 
--
-Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-Registration No: 1397386 (Wales)
+> 
+> Fixes 2075e50caf5ea.
+> 
+> Signed-off-by: David Laight <david.laight@aculab.com>
+> ---
+>  net/sctp/stream.c | 6 ++++--
+>  1 file changed, 4 insertions(+), 2 deletions(-)
+> 
+> This needs backporting to 5.1 and all later kernels.
+
+A 'net' tree tag in patch tags is welcomed.
+
+> 
+> diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+> index bda2536dd740..6dc95dcc0ff4 100644
+> --- a/net/sctp/stream.c
+> +++ b/net/sctp/stream.c
+> @@ -88,12 +88,13 @@ static int sctp_stream_alloc_out(struct sctp_stream *stream, __u16 outcnt,
+>  	int ret;
+>  
+>  	if (outcnt <= stream->outcnt)
+> -		return 0;
+> +		goto out;
+>  
+>  	ret = genradix_prealloc(&stream->out, outcnt, gfp);
+>  	if (ret)
+>  		return ret;
+>  
+> +out:
+>  	stream->outcnt = outcnt;
+>  	return 0;
+>  }
+> @@ -104,12 +105,13 @@ static int sctp_stream_alloc_in(struct sctp_stream *stream, __u16 incnt,
+>  	int ret;
+>  
+>  	if (incnt <= stream->incnt)
+> -		return 0;
+> +		goto out;
+>  
+>  	ret = genradix_prealloc(&stream->in, incnt, gfp);
+>  	if (ret)
+>  		return ret;
+>  
+> +out:
+>  	stream->incnt = incnt;
+>  	return 0;
+>  }
+> -- 
+> 2.25.1
+> 
+> -
+> Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
+> Registration No: 1397386 (Wales)
+> 
