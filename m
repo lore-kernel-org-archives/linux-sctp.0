@@ -1,49 +1,51 @@
-From: Harald Welte <laforge@gnumonks.org>
-Date: Mon, 24 Aug 2020 10:46:50 +0000
-Subject: Re: SCTP multi-homed association (::1)->(::1+127.0.0.1) attempting HEARTBEAT on 127.0.0.1->127.0.0.1
-Message-Id: <20200824104650.GC3822842@nataraja>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Tue, 18 Aug 2020 15:38:09 +0000
+Subject: Use of genradix in sctp
+Message-Id: <2ffb7752d3e8403ebb220e0a5e2cf3cd@AcuMS.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <552de663-8aeb-ff84-a425-988da88ca5cd@sysmocom.de>
-In-Reply-To: <552de663-8aeb-ff84-a425-988da88ca5cd@sysmocom.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>, 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
+Cc: "'netdev@vger.kernel.org'" <netdev@vger.kernel.org>
 
-Hi Pau and list,
+A few years ago (for 5.1) the 'arrays' that sctp uses for
+info about data streams was changed to use the 'genradix'
+functions.
 
-On Mon, Aug 24, 2020 at 12:00:27PM +0200, Pau Espin Pedrol wrote:
+I'm not sure of the reason for the change, but I don't
+thing anyone looked at the performance implications.
 
-> Quick similar scenario setup would be something like:
-> 
-> SERVER:
-> server_fd = socket(AF_INET6, SCTP, STREAM);
-> sctp_bindx(server_fd, "127.0.0.1", "::1");
-> listen(server_fd); accept(server_fd);
-> 
-> CLIENT:
-> client_fd = socket(AF_INET6, SCTP, STREAM);
-> sctp_bindx(client_fd, "::1");
-> sctp_connectx(client_fd, "::1");
-> 
-> And then after client connects ::1<->::1 and gains info about server's
-> 127.0.0.1 address, it tries to INIT 127.0.0.1->127.0.0.1 despite it was
-> never bound to 127.0.0.1.
+The code contains lots of SCTP_SI(stream, i) with the
+probable expectation that the expansion is basically
+stream->foo[i] (a pointer to a big memory array).
 
-Thanks for reducing the example to the above.  I think it should be pretty
-clear now.  The client side kernel SCTP is misbehaving here.
+However the genradix functions are far more complicated.
+Basically it is a list of pointers to pages, each of
+which is split into the maximum number of items.
+(With the page pointers being in a tree of pages
+for large numbers of large items.)
 
-One minor amendment:  I don't think it's a question of whether or not the client
-side socket ever was bound to 127.0.0.1.  The key issue here is that the client side
-socket was not bound to any IPv4 address at all.
+So every SCTP_S[IO]() has inline code to calculate
+the byte offset:
+	idx / objs_per_page * PAGE_SIZE + idx % objs_per_page * obj_size
+(objs_per_page and obj_size are compile time constants)
+and then calls a function to do the actual lookup.
 
-Sidenote: What I also find puzzling is that both sockets in your example are
-created as AF_INET6 sockets, not as AF_UNSPEC.  But let's stay focused on the 
-actual problem here: A client-side socket being exclusively bound to IPv6 adresses
-attempting to send INIT chunks from an IPv4 address!
+This is all rather horrid when the array isn't even sparse.
 
--- 
-- Harald Welte <laforge@gnumonks.org>           http://laforge.gnumonks.org/
-======================================
-"Privacy in residential applications is a desirable marketing option."
-                                                  (ETSI EN 300 175-7 Ch. A6)
+I also doubt it really helps if anyone is trying to allow
+a lot of streams. For 64k streams you might be trying to
+allocate ~700 pages in atomic context.
+
+For example look at the object code for sctp_stream_clear()
+(__genradix_ptr() is in lib/generic-radix-tree.c).
+
+There is only one other piece of code that uses genradix.
+All it needs is a fifo list.
+
+	David
+
+-
+Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
+Registration No: 1397386 (Wales)
