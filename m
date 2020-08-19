@@ -1,78 +1,68 @@
-From: Corey Minyard <minyard@acm.org>
-Date: Mon, 17 Aug 2020 18:28:44 +0000
-Subject: Re: Oops on current Raspian when closing an SCTP connection
-Message-Id: <20200817182844.GZ2842@minyard.net>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Wed, 19 Aug 2020 12:45:52 +0000
+Subject: RE: [PATCH v2] net: sctp: Fix negotiation of the number of data streams.
+Message-Id: <3aef12f2fdbb4ee6b885719f5561a997@AcuMS.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200816230624.GB2865@minyard.net>
- <20200817134457.GG3399@localhost.localdomain>
-In-Reply-To: <20200817134457.GG3399@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: linux-sctp@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+To: "'netdev@vger.kernel.org'" <netdev@vger.kernel.org>, "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>
+Cc: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
 
-On Mon, Aug 17, 2020 at 10:44:57AM -0300, Marcelo Ricardo Leitner wrote:
-> On Sun, Aug 16, 2020 at 06:06:24PM -0500, Corey Minyard wrote:
-> > I'm seeing the following when an SCTP connection terminates.  This is on
-> > Raspian on a Raspberry Pi, version is Linux version 5.4.51-v7+.  That's
-> > 32-bit ARM.
-> > 
-> > I haven't looked into it yet, I thought I would report before trying to
-> > chase anything down.  I'm not seeing it on 5.4 x86_64 systems.
-> > 
-> > Aug 16 17:59:01 access kernel: [510640.438008] Hardware name: BCM2835
-> > Aug 16 17:59:01 access kernel: [510640.443823] PC is at sctp_ulpevent_free+0x38/0xa0 [sctp]
-> > Aug 16 17:59:01 access kernel: [510640.451498] LR is at sctp_queue_purge_ulpevents+0x34/0x50 [sctp]
-> 
-> Not ringing a bell here. Can you pinpoint on which line this crash
-> was? It seems, by the 0x8 offset and these function offsets, that this
-> could be when it was trying to access event->rmem_len, but if event
-> was NULL then it should have crashed earlier.
-> 
->   Marcelo
+The number of output and input streams was never being reduced, eg when
+processing received INIT or INIT_ACK chunks.
+The effect is that DATA chunks can be sent with invalid stream ids
+and then discarded by the remote system.
 
-I think so:
+Fixes: 2075e50caf5ea ("sctp: convert to genradix")
+Signed-off-by: David Laight <david.laight@aculab.com>
+---
+ net/sctp/stream.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-00015e38 <sctp_ulpevent_free>:
-   15e38:       e1a0c00d        mov     ip, sp
-   15e3c:       e92dd878        push    {r3, r4, r5, r6, fp, ip, lr, pc}
-   15e40:       e24cb004        sub     fp, ip, #4
-   15e44:       e52de004        push    {lr}            ; (str lr, [sp, #-4]!)
-   15e48:       ebfffffe        bl      0 <__gnu_mcount_nc>
+This needs backporting to 5.1 and all later kernels.
 
-ulpevent.c:1102		if (sctp_ulpevent_is_notification(event))
-   15e4c:       e1d032f0        ldrsh   r3, [r0, #32]
-   15e50:       e1a05000        mov     r5, r0
-   15e54:       e3530000        cmp     r3, #0
-   15e58:       ba000011        blt     15ea4 <sctp_ulpevent_free+0x6c>
+Changes since v1:
+- Fix 'Fixes' tag.
+- Improve description.
 
-This is the false branch from the above (high bit isn't set).
+diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+index bda2536dd740..6dc95dcc0ff4 100644
+--- a/net/sctp/stream.c
++++ b/net/sctp/stream.c
+@@ -88,12 +88,13 @@ static int sctp_stream_alloc_out(struct sctp_stream *stream, __u16 outcnt,
+ 	int ret;
+ 
+ 	if (outcnt <= stream->outcnt)
+-		return 0;
++		goto out;
+ 
+ 	ret = genradix_prealloc(&stream->out, outcnt, gfp);
+ 	if (ret)
+ 		return ret;
+ 
++out:
+ 	stream->outcnt = outcnt;
+ 	return 0;
+ }
+@@ -104,12 +105,13 @@ static int sctp_stream_alloc_in(struct sctp_stream *stream, __u16 incnt,
+ 	int ret;
+ 
+ 	if (incnt <= stream->incnt)
+-		return 0;
++		goto out;
+ 
+ 	ret = genradix_prealloc(&stream->in, incnt, gfp);
+ 	if (ret)
+ 		return ret;
+ 
++out:
+ 	stream->incnt = incnt;
+ 	return 0;
+ }
+-- 
+2.25.1
 
-ulpevent.c:1061		if (!skb->data_len) (just the fetch part)
-   15e5c:       e5903040        ldr     r3, [r0, #64]   ; 0x40
-
-ulpevent.c:1059		len = skb->len;
-   15e60:       e590603c        ldr     r6, [r0, #60]   ; 0x3c
-
-ulpevent.c:1061         if (!skb->data_len) (the compare part)
-   15e64:       e3530000        cmp     r3, #0
-   15e68:       0a000008        beq     15e90 <sctp_ulpevent_free+0x58>
-
-
-ulpevent.c:1065		skb_walk_frags(skb, frag) {
-skbuff.h:1395		return skb->end; (inside skb_shinfo())
-   15e6c:       e5903084        ldr     r3, [r0, #132]  ; 0x84
-
-skbuff.h:3461		iter = skb_shinfo(skb)->frag_list
-   15e70:       e5934008        ldr     r4, [r3, #8] <-- Crash occurs here
-
-   15e74:       e3540000        cmp     r4, #0
-   15e78:       0a000004        beq     15e90 <sctp_ulpevent_free+0x58>
-   15e7c:       e2840018        add     r0, r4, #24
-   15e80:       ebfffa34        bl      14758 <sctp_ulpevent_release_frag_data>
-
-
-So it appears that skb->end is NULL.
-
--corey
+-
+Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
+Registration No: 1397386 (Wales)
