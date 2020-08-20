@@ -1,39 +1,84 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Wed, 19 Aug 2020 14:40:52 +0000
-Subject: [PATCH v2] net: sctp: Fix negotiation of the number of data streams.
-Message-Id: <1f2ffcb1180e4080aab114683b06efab@AcuMS.aculab.com>
+From: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
+Date: Thu, 20 Aug 2020 13:29:10 +0000
+Subject: Re: [PATCH v2] net: sctp: Fix negotiation of the number of data streams.
+Message-Id: <20200820132910.GK3399@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <3aef12f2fdbb4ee6b885719f5561a997@AcuMS.aculab.com>
-In-Reply-To: <3aef12f2fdbb4ee6b885719f5561a997@AcuMS.aculab.com>
+ <1f2ffcb1180e4080aab114683b06efab@AcuMS.aculab.com>
+In-Reply-To: <1f2ffcb1180e4080aab114683b06efab@AcuMS.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: David Laight <David.Laight@ACULAB.COM>, "'netdev@vger.kernel.org'" <netdev@vger.kernel.org>, "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>
-Cc: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
+To: David Laight <David.Laight@aculab.com>
+Cc: "'netdev@vger.kernel.org'" <netdev@vger.kernel.org>, "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>
 
-DQpUaGUgbnVtYmVyIG9mIG91dHB1dCBhbmQgaW5wdXQgc3RyZWFtcyB3YXMgbmV2ZXIgYmVpbmcg
-cmVkdWNlZCwgZWcgd2hlbg0KcHJvY2Vzc2luZyByZWNlaXZlZCBJTklUIG9yIElOSVRfQUNLIGNo
-dW5rcy4NClRoZSBlZmZlY3QgaXMgdGhhdCBEQVRBIGNodW5rcyBjYW4gYmUgc2VudCB3aXRoIGlu
-dmFsaWQgc3RyZWFtIGlkcw0KYW5kIHRoZW4gZGlzY2FyZGVkIGJ5IHRoZSByZW1vdGUgc3lzdGVt
-Lg0KDQpGaXhlczogMjA3NWU1MGNhZjVlYSAoInNjdHA6IGNvbnZlcnQgdG8gZ2VucmFkaXgiKQ0K
-U2lnbmVkLW9mZi1ieTogRGF2aWQgTGFpZ2h0IDxkYXZpZC5sYWlnaHRAYWN1bGFiLmNvbT4NCi0t
-LQ0KIG5ldC9zY3RwL3N0cmVhbS5jIHwgNiArKysrLS0NCiAxIGZpbGUgY2hhbmdlZCwgNCBpbnNl
-cnRpb25zKCspLCAyIGRlbGV0aW9ucygtKQ0KDQpUaGlzIG5lZWRzIGJhY2twb3J0aW5nIHRvIDUu
-MSBhbmQgYWxsIGxhdGVyIGtlcm5lbHMuDQoNCihSZXNlbmQgd2l0aG91dCB0aGUgUkU6KQ0KDQpD
-aGFuZ2VzIHNpbmNlIHYxOg0KLSBGaXggJ0ZpeGVzJyB0YWcuDQotIEltcHJvdmUgZGVzY3JpcHRp
-b24uDQoNCmRpZmYgLS1naXQgYS9uZXQvc2N0cC9zdHJlYW0uYyBiL25ldC9zY3RwL3N0cmVhbS5j
-DQppbmRleCBiZGEyNTM2ZGQ3NDAuLjZkYzk1ZGNjMGZmNCAxMDA2NDQNCi0tLSBhL25ldC9zY3Rw
-L3N0cmVhbS5jDQorKysgYi9uZXQvc2N0cC9zdHJlYW0uYw0KQEAgLTg4LDEyICs4OCwxMyBAQCBz
-dGF0aWMgaW50IHNjdHBfc3RyZWFtX2FsbG9jX291dChzdHJ1Y3Qgc2N0cF9zdHJlYW0gKnN0cmVh
-bSwgX191MTYgb3V0Y250LA0KIAlpbnQgcmV0Ow0KIA0KIAlpZiAob3V0Y250IDw9IHN0cmVhbS0+
-b3V0Y250KQ0KLQkJcmV0dXJuIDA7DQorCQlnb3RvIG91dDsNCiANCiAJcmV0ID0gZ2VucmFkaXhf
-cHJlYWxsb2MoJnN0cmVhbS0+b3V0LCBvdXRjbnQsIGdmcCk7DQogCWlmIChyZXQpDQogCQlyZXR1
-cm4gcmV0Ow0KIA0KK291dDoNCiAJc3RyZWFtLT5vdXRjbnQgPSBvdXRjbnQ7DQogCXJldHVybiAw
-Ow0KIH0NCkBAIC0xMDQsMTIgKzEwNSwxMyBAQCBzdGF0aWMgaW50IHNjdHBfc3RyZWFtX2FsbG9j
-X2luKHN0cnVjdCBzY3RwX3N0cmVhbSAqc3RyZWFtLCBfX3UxNiBpbmNudCwNCiAJaW50IHJldDsN
-CiANCiAJaWYgKGluY250IDw9IHN0cmVhbS0+aW5jbnQpDQotCQlyZXR1cm4gMDsNCisJCWdvdG8g
-b3V0Ow0KIA0KIAlyZXQgPSBnZW5yYWRpeF9wcmVhbGxvYygmc3RyZWFtLT5pbiwgaW5jbnQsIGdm
-cCk7DQogCWlmIChyZXQpDQogCQlyZXR1cm4gcmV0Ow0KIA0KK291dDoNCiAJc3RyZWFtLT5pbmNu
-dCA9IGluY250Ow0KIAlyZXR1cm4gMDsNCiB9DQotLSANCjIuMjUuMQ0KDQotDQpSZWdpc3RlcmVk
-IEFkZHJlc3MgTGFrZXNpZGUsIEJyYW1sZXkgUm9hZCwgTW91bnQgRmFybSwgTWlsdG9uIEtleW5l
-cywgTUsxIDFQVCwgVUsNClJlZ2lzdHJhdGlvbiBObzogMTM5NzM4NiAoV2FsZXMpDQo
+On Wed, Aug 19, 2020 at 02:40:52PM +0000, David Laight wrote:
+> 
+> The number of output and input streams was never being reduced, eg when
+> processing received INIT or INIT_ACK chunks.
+> The effect is that DATA chunks can be sent with invalid stream ids
+> and then discarded by the remote system.
+> 
+> Fixes: 2075e50caf5ea ("sctp: convert to genradix")
+> Signed-off-by: David Laight <david.laight@aculab.com>
+> ---
+>  net/sctp/stream.c | 6 ++++--
+>  1 file changed, 4 insertions(+), 2 deletions(-)
+> 
+> This needs backporting to 5.1 and all later kernels.
+> 
+> (Resend without the RE:)
+> 
+> Changes since v1:
+> - Fix 'Fixes' tag.
+> - Improve description.
+>
+
+"[PATCH net v2] ..."
+        ^^^-- the tree tag I had mentioned :-)
+
+Anyhow, the rest looks fine.
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+
+Thanks David.
+
+> diff --git a/net/sctp/stream.c b/net/sctp/stream.c
+> index bda2536dd740..6dc95dcc0ff4 100644
+> --- a/net/sctp/stream.c
+> +++ b/net/sctp/stream.c
+> @@ -88,12 +88,13 @@ static int sctp_stream_alloc_out(struct sctp_stream *stream, __u16 outcnt,
+>  	int ret;
+>  
+>  	if (outcnt <= stream->outcnt)
+> -		return 0;
+> +		goto out;
+>  
+>  	ret = genradix_prealloc(&stream->out, outcnt, gfp);
+>  	if (ret)
+>  		return ret;
+>  
+> +out:
+>  	stream->outcnt = outcnt;
+>  	return 0;
+>  }
+> @@ -104,12 +105,13 @@ static int sctp_stream_alloc_in(struct sctp_stream *stream, __u16 incnt,
+>  	int ret;
+>  
+>  	if (incnt <= stream->incnt)
+> -		return 0;
+> +		goto out;
+>  
+>  	ret = genradix_prealloc(&stream->in, incnt, gfp);
+>  	if (ret)
+>  		return ret;
+>  
+> +out:
+>  	stream->incnt = incnt;
+>  	return 0;
+>  }
+> -- 
+> 2.25.1
+> 
+> -
+> Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
+> Registration No: 1397386 (Wales)
