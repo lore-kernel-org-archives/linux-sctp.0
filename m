@@ -1,143 +1,150 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Wed, 19 Aug 2020 08:18:50 +0000
-Subject: RE: Use of genradix in sctp
-Message-Id: <357ded60999a4957addb766a29431ad7@AcuMS.aculab.com>
+From: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
+Date: Fri, 21 Aug 2020 20:46:36 +0000
+Subject: Re: Use of genradix in sctp
+Message-Id: <20200821204636.GO3399@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <2ffb7752d3e8403ebb220e0a5e2cf3cd@AcuMS.aculab.com>
  <20200818213800.GJ906397@localhost.localdomain>
-In-Reply-To: <20200818213800.GJ906397@localhost.localdomain>
+ <357ded60999a4957addb766a29431ad7@AcuMS.aculab.com>
+In-Reply-To: <357ded60999a4957addb766a29431ad7@AcuMS.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
+To: David Laight <David.Laight@aculab.com>
 Cc: "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>, "'netdev@vger.kernel.org'" <netdev@vger.kernel.org>
 
-From:'Marcelo Ricardo Leitner
-> Sent: 18 August 2020 22:38
+On Wed, Aug 19, 2020 at 08:18:50AM +0000, David Laight wrote:
+> From:'Marcelo Ricardo Leitner
+> > Sent: 18 August 2020 22:38
+> > 
+> > On Tue, Aug 18, 2020 at 03:38:09PM +0000, David Laight wrote:
+> > > A few years ago (for 5.1) the 'arrays' that sctp uses for
+> > > info about data streams was changed to use the 'genradix'
+> > > functions.
+> > >
+> > > I'm not sure of the reason for the change, but I don't
+> > > thing anyone looked at the performance implications.
+> > 
+> > I don't have something like a CI for it, but I do run some performance
+> > benchmarks every now and then and it didn't trigger anything
+> > noticeable in my tests.
 > 
-> On Tue, Aug 18, 2020 at 03:38:09PM +0000, David Laight wrote:
-> > A few years ago (for 5.1) the 'arrays' that sctp uses for
-> > info about data streams was changed to use the 'genradix'
-> > functions.
-> >
-> > I'm not sure of the reason for the change, but I don't
-> > thing anyone looked at the performance implications.
+> We have some customers who we think are sending 10000+ short
+> SCTP data chunks a second.
+> They are probably sending SMS messages, so that is 5000+ text
+> messages a second!
+> It is hard to stop those being sent with more than one
+> data chunk in each ethernet frame!
+
+Thanks for this info.
+
 > 
-> I don't have something like a CI for it, but I do run some performance
-> benchmarks every now and then and it didn't trigger anything
-> noticeable in my tests.
-
-We have some customers who we think are sending 10000+ short
-SCTP data chunks a second.
-They are probably sending SMS messages, so that is 5000+ text
-messages a second!
-It is hard to stop those being sent with more than one
-data chunk in each ethernet frame!
-
-> Yet, can it be improved? Certainly. Patches welcomed. :-)
-
-I'll apply some of my copious free time to it...
-Actually some simple changes would help:
-
-1) Change SCTP_SO()->x to so=SCTP_SO(); so->x in places
-   where there are multiple references to the same stream.
-
-2) Optimise the genradix lookup for the case where there
-   is a single page - it can be completely inlined.
-
-3) Defer the allocation until the stream is used.
-   for outbound streams this could remove the extra buffer.
-
-> > The code contains lots of SCTP_SI(stream, i) with the
-> > probable expectation that the expansion is basically
-> > stream->foo[i] (a pointer to a big memory array).
-> >
-> > However the genradix functions are far more complicated.
-> > Basically it is a list of pointers to pages, each of
-> > which is split into the maximum number of items.
-> > (With the page pointers being in a tree of pages
-> > for large numbers of large items.)
-> >
-> > So every SCTP_S[IO]() has inline code to calculate
-> > the byte offset:
-> > 	idx / objs_per_page * PAGE_SIZE + idx % objs_per_page * obj_size
-> > (objs_per_page and obj_size are compile time constants)
-> > and then calls a function to do the actual lookup.
-> >
-> > This is all rather horrid when the array isn't even sparse.
-> >
-> > I also doubt it really helps if anyone is trying to allow
-> > a lot of streams. For 64k streams you might be trying to
-> > allocate ~700 pages in atomic context.
+> > Yet, can it be improved? Certainly. Patches welcomed. :-)
 > 
-> Yes, and kvrealloc as you suggested on another email is not a
-> solution, because it can't fallback to vmalloc in atomic contexts.
+> I'll apply some of my copious free time to it...
+> Actually some simple changes would help:
 > 
-> Genradix here allows it to use several non-contiguous pages, which is
-> a win if compared to a simple kmalloc(..., GFP_ATOMIC) it had before
-> flex_arrays, and anything that we could implement around such scheme
-> would be just re-implementing genradix/flex_arrays again. After all,
-> it does need 64k elements allocated.
+> 1) Change SCTP_SO()->x to so=SCTP_SO(); so->x in places
+>    where there are multiple references to the same stream.
+
+Agree. This is an easy change, mostly just mechanical.
+
 > 
-> How soon it needs them? Well, it already deferred some allocation with
-> the usage of sctp_stream_out_ext (which is only allocated when the
-> stream is actually used, but added another pointer deref), leaving
-> just stuff couldn't be (easily) initialized later, there.
+> 2) Optimise the genradix lookup for the case where there
+>    is a single page - it can be completely inlined.
+
+And/or our struct sizes.
+
+__idx_to_offset() will basically do:
+        if (!is_power_of_2(obj_size)) {
+                return (idx / objs_per_page) * PAGE_SIZE +
+                        (idx % objs_per_page) * obj_size;
+        } else {
+                return idx * obj_size;
+
+if we can get it to his the else block, it saves some CPU cycles already (at
+the expense of memory).
+
 > 
-> >
-> > For example look at the object code for sctp_stream_clear()
-> > (__genradix_ptr() is in lib/generic-radix-tree.c).
+> 3) Defer the allocation until the stream is used.
+>    for outbound streams this could remove the extra buffer.
+
+This can be tricky. What should happen if it gets a packet on a stream
+that it couldn't allocate, and then another on a stream that was
+already allocated? Just a drop, it will retransmit and recover, and
+then again.. While, OTOH, if the application requested such amount of
+streams, it is likely going to use it. If not, that's an application
+bug.
+
+...
+> > > For example look at the object code for sctp_stream_clear()
+> > > (__genradix_ptr() is in lib/generic-radix-tree.c).
+> > 
+> > sctp_stream_clear() is rarely called.
+> > 
+> > Caller graph:
+> > sctp_stream_clear
+> >   sctp_assoc_update
+> >     SCTP_CMD_UPDATE_ASSOC
+> >       sctp_sf_do_dupcook_b
+> >       sctp_sf_do_dupcook_a
+> > 
+> > So, well, I'm not worried about it.
 > 
-> sctp_stream_clear() is rarely called.
+> I wasn't considering the loop.
+> It was just a place where the object code can be looked at.
 > 
-> Caller graph:
-> sctp_stream_clear
->   sctp_assoc_update
->     SCTP_CMD_UPDATE_ASSOC
->       sctp_sf_do_dupcook_b
->       sctp_sf_do_dupcook_a
+> But there are quite a few places where the same stream
+> is looked for lots of times in succession.
+> Even saving the pointer is probably noticeable.
+
+Yes.
+
 > 
-> So, well, I'm not worried about it.
-
-I wasn't considering the loop.
-It was just a place where the object code can be looked at.
-
-But there are quite a few places where the same stream
-is looked for lots of times in succession.
-Even saving the pointer is probably noticeable.
-
-> Specs say 64k streams, so we should support that and preferrably
-> without major regressions. Traversing 64k elements each time to find
-> an entry is very not performant.
+> > Specs say 64k streams, so we should support that and preferrably
+> > without major regressions. Traversing 64k elements each time to find
+> > an entry is very not performant.
+> > 
+> > For a more standard use case, with something like you were saying, 17
+> > streams, genradix here doesn't use too much memory. I'm afraid a
+> > couple of integer calculations to get an offset is minimal overhead if
+> > compared to the rest of the code.
 > 
-> For a more standard use case, with something like you were saying, 17
-> streams, genradix here doesn't use too much memory. I'm afraid a
-> couple of integer calculations to get an offset is minimal overhead if
-> compared to the rest of the code.
+> It is probably nearer 40 including a function call - which
+> is likely to cause register spills.
+> 
+> > For example, the stream scheduler
+> > operations, accessed via struct sctp_sched_ops (due to retpoline), is
+> > probably more interesting fixing than genradix effects here.
+> 
+> Hmmm... the most scheduling M3UA/M2PA (etc) want is (probably)
+> to send stream 0 first.
+> But even the use of stream 0 (for non-data messages) is a
+> misunderstanding (of my understanding) of what SCTP streams are.
+> IIRC there is only one flow control window.
 
-It is probably nearer 40 including a function call - which
-is likely to cause register spills.
+Only one window, yes, but now we have a more fine grained control on
+how it is used:
 
-> For example, the stream scheduler
-> operations, accessed via struct sctp_sched_ops (due to retpoline), is
-> probably more interesting fixing than genradix effects here.
+> I thought that tx data just got added to a single tx queue,
+> and the multiple streams just allowed some messages to passed
+> on to the receiving application while waiting for retransmissions
+> (head of line blocking).
 
-Hmmm... the most scheduling M3UA/M2PA (etc) want is (probably)
-to send stream 0 first.
-But even the use of stream 0 (for non-data messages) is a
-misunderstanding (of my understanding) of what SCTP streams are.
-IIRC there is only one flow control window.
-I thought that tx data just got added to a single tx queue,
-and the multiple streams just allowed some messages to passed
-on to the receiving application while waiting for retransmissions
-(head of line blocking).
+That was before stream schedulers.
+https://developers.redhat.com/blog/2018/01/03/sctp-stream-schedulers/
+https://tools.ietf.org/html/rfc8260
 
-OTOH M2PA seems to wand stream 0 to have the semantics of
-ISO transport 'expedited data' - which can be sent even when
-the main flow is blocked because it has its own credit (of 1).
+> 
+> OTOH M2PA seems to wand stream 0 to have the semantics of
+> ISO transport 'expedited data' - which can be sent even when
+> the main flow is blocked because it has its own credit (of 1).
 
-	David
+That is now doable with the stream schedulers.
 
--
-Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-Registration No: 1397386 (Wales)
+But note that even if you don't enable it, you're paying a price
+already due to function pointers on struct sctp_sched_ops, which are
+used even if you use the standard scheduler (FCFS, First Come First
+Served).  In there, it should start using the indirect call wrappers,
+such as INDIRECT_CALL_3. After all, they are always compiled in,
+anyway.
