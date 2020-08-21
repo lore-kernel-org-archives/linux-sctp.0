@@ -1,24 +1,39 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Fri, 21 Aug 2020 15:59:42 +0000
-Subject: 64k streams not supported
-Message-Id: <bedd13a72afd427ca4dbbdfa61985533@AcuMS.aculab.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Fri, 21 Aug 2020 16:50:45 +0000
+Subject: Re: 64k streams not supported
+Message-Id: <20200821165045.GL3399@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <bedd13a72afd427ca4dbbdfa61985533@AcuMS.aculab.com>
+In-Reply-To: <bedd13a72afd427ca4dbbdfa61985533@AcuMS.aculab.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-Isn't SCTP supposed to support 65536 data streams?
-If I try to enable that many I get 10.
-Not surprising since the number of streams gets stored in a u16.
+On Fri, Aug 21, 2020 at 03:59:42PM +0000, David Laight wrote:
+> Isn't SCTP supposed to support 65536 data streams?
 
-The whole code base may need changing to save the highest
-valid stream?
+Hm, no? Why?
 
-Since I don't actually need that many I'm not writing the patch.
+https://tools.ietf.org/html/rfc4960#section-5.1.1
+"After the association is initialized, the valid outbound stream
+identifier range for either endpoint shall be 0 to min(local OS,
+remote MIS)-1."
 
-	David
+Section 3.3.2:
+   Number of Outbound Streams (OS): 16 bits (unsigned integer)
 
--
-Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-Registration No: 1397386 (Wales)
+      Defines the number of outbound streams the sender of this INIT
+      chunk wishes to create in this association.  The value of 0 MUST
+      NOT be used.
+
+...
+
+   Number of Inbound Streams (MIS): 16 bits (unsigned integer)
+
+
+      Defines the maximum number of streams the sender of this INIT
+      chunk allows the peer end to create in this association.  The
+      value 0 MUST NOT be used.
+
+  Marcelo
