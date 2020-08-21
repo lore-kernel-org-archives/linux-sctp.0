@@ -1,7 +1,7 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 21 Aug 2020 16:50:45 +0000
+From: Michael Tuexen <Michael.Tuexen@lurchi.franken.de>
+Date: Fri, 21 Aug 2020 20:10:20 +0000
 Subject: Re: 64k streams not supported
-Message-Id: <20200821165045.GL3399@localhost.localdomain>
+Message-Id: <B2A8B53A-9704-4C42-84C7-05CD9615FC28@lurchi.franken.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <bedd13a72afd427ca4dbbdfa61985533@AcuMS.aculab.com>
 In-Reply-To: <bedd13a72afd427ca4dbbdfa61985533@AcuMS.aculab.com>
@@ -10,30 +10,27 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-On Fri, Aug 21, 2020 at 03:59:42PM +0000, David Laight wrote:
+> On 21. Aug 2020, at 17:59, David Laight <David.Laight@ACULAB.COM> wrote:
+> 
 > Isn't SCTP supposed to support 65536 data streams?
+Since the number of streams is exchanged in the INIT and INIT-ACK chunks
+and encoded in a uint16_t, the number is 65535, not 65536.
+So an implementation should be able to use up to 65535 incoming and
+outgoing streams.
 
-Hm, no? Why?
-
-https://tools.ietf.org/html/rfc4960#section-5.1.1
-"After the association is initialized, the valid outbound stream
-identifier range for either endpoint shall be 0 to min(local OS,
-remote MIS)-1."
-
-Section 3.3.2:
-   Number of Outbound Streams (OS): 16 bits (unsigned integer)
-
-      Defines the number of outbound streams the sender of this INIT
-      chunk wishes to create in this association.  The value of 0 MUST
-      NOT be used.
-
-...
-
-   Number of Inbound Streams (MIS): 16 bits (unsigned integer)
-
-
-      Defines the maximum number of streams the sender of this INIT
-      chunk allows the peer end to create in this association.  The
-      value 0 MUST NOT be used.
-
-  Marcelo
+Best regards
+Michael
+> If I try to enable that many I get 10.
+> Not surprising since the number of streams gets stored in a u16.
+> 
+> The whole code base may need changing to save the highest
+> valid stream?
+> 
+> Since I don't actually need that many I'm not writing the patch.
+> 
+> 	David
+> 
+> -
+> Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
+> Registration No: 1397386 (Wales)
+> 
