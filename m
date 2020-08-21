@@ -1,7 +1,7 @@
 From: David Laight <David.Laight@ACULAB.COM>
-Date: Fri, 21 Aug 2020 21:18:42 +0000
+Date: Fri, 21 Aug 2020 21:39:23 +0000
 Subject: RE: Use of genradix in sctp
-Message-Id: <9f5b892bcf4f41f9b32990fb6049fce2@AcuMS.aculab.com>
+Message-Id: <11eafe393bc640a8bbddf33d0e784901@AcuMS.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <2ffb7752d3e8403ebb220e0a5e2cf3cd@AcuMS.aculab.com>
  <20200818213800.GJ906397@localhost.localdomain>
@@ -17,39 +17,32 @@ Cc: "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>, "'netdev@vger.k
 From: 'Marcelo Ricardo Leitner'
 > Sent: 21 August 2020 21:47
 ...
-> >
-> > 2) Optimise the genradix lookup for the case where there
-> >    is a single page - it can be completely inlined.
+> > 3) Defer the allocation until the stream is used.
+> >    for outbound streams this could remove the extra buffer.
 > 
-> And/or our struct sizes.
-> 
-> __idx_to_offset() will basically do:
->         if (!is_power_of_2(obj_size)) {
->                 return (idx / objs_per_page) * PAGE_SIZE +
->                         (idx % objs_per_page) * obj_size;
->         } else {
->                 return idx * obj_size;
-> 
-> if we can get it to his the else block, it saves some CPU cycles already (at
-> the expense of memory).
+> This can be tricky. What should happen if it gets a packet on a stream
+> that it couldn't allocate, and then another on a stream that was
+> already allocated? Just a drop, it will retransmit and recover, and
+> then again.. While, OTOH, if the application requested such amount of
+> streams, it is likely going to use it. If not, that's an application
+> bug.
 
-I'm penning some changes to the genradix code:
-That expression can be written:
-	idx * obj_size + (idx / objs_per_page) * (PAGE_SIZE % obj_size)
-which is simpler and doesn't need the is_power_of_2() test.
+You'd probably need to (effectively) drop the ethernet frame
+that contained the chunk.
 
-You can then do the early test:
-	if (idx * obj_size <= PAGE_SIZE - obj_size) && root && !llevel)
-		return root + idx * obj_size;
-in the inline function.
-A slight increase in code size, but a reduction in code path.
-(Better still if you increment 'level'.)
-Which catches most SCTP uses and the only other place I've found it used.
+But the problem I see is that GFP flags are passed in.
+So there must me a path where the allocation can't sleep.
+Now allocating a couple of pages is fine but if the
+maximum is just over 300 for each of 'in' and 'out'.
+I can well imagine that is likely to fail.
+I suspect this happens because the remote system can
+(if my quick scan of the code is right) negotiate a
+much larger number on an active connection.
 
-There is actually a nasty bug in the genradix code.
-If the cmpxchg 'fails' when adding extra root levels then the page
-can get reused later - but child[0] has been set.
-This could add a loop to the tree!
+I don't know what applications might be doing such things.
+But I can imagine someone will try to negotiate 64k-1
+streams just because that is the maximum.
+And/or deciding to use stream 65535 for 'special' traffic.
 
 	David
 
