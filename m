@@ -1,50 +1,24 @@
-From: David Miller <davem@davemloft.net>
-Date: Mon, 24 Aug 2020 22:51:08 +0000
-Subject: Re: [PATCHv2 net] sctp: not disable bh in the whole sctp_get_port_local()
-Message-Id: <20200824.155108.8657858310039234.davem@davemloft.net>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Fri, 21 Aug 2020 15:59:42 +0000
+Subject: 64k streams not supported
+Message-Id: <bedd13a72afd427ca4dbbdfa61985533@AcuMS.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <08a14c2f087153c18c67965cc37ed2ac22da18ed.1597993178.git.lucien.xin@gmail.com>
-In-Reply-To: <08a14c2f087153c18c67965cc37ed2ac22da18ed.1597993178.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: lucien.xin@gmail.com
-Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, edumazet@google.com, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
+To: linux-sctp@vger.kernel.org
 
-From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 21 Aug 2020 14:59:38 +0800
+Isn't SCTP supposed to support 65536 data streams?
+If I try to enable that many I get 10.
+Not surprising since the number of streams gets stored in a u16.
 
-> With disabling bh in the whole sctp_get_port_local(), when
-> snum = 0 and too many ports have been used, the do-while
-> loop will take the cpu for a long time and cause cpu stuck:
-> 
->   [ ] watchdog: BUG: soft lockup - CPU#11 stuck for 22s!
->   [ ] RIP: 0010:native_queued_spin_lock_slowpath+0x4de/0x940
->   [ ] Call Trace:
->   [ ]  _raw_spin_lock+0xc1/0xd0
->   [ ]  sctp_get_port_local+0x527/0x650 [sctp]
->   [ ]  sctp_do_bind+0x208/0x5e0 [sctp]
->   [ ]  sctp_autobind+0x165/0x1e0 [sctp]
->   [ ]  sctp_connect_new_asoc+0x355/0x480 [sctp]
->   [ ]  __sctp_connect+0x360/0xb10 [sctp]
-> 
-> There's no need to disable bh in the whole function of
-> sctp_get_port_local. So fix this cpu stuck by removing
-> local_bh_disable() called at the beginning, and using
-> spin_lock_bh() instead.
-> 
-> The same thing was actually done for inet_csk_get_port() in
-> Commit ea8add2b1903 ("tcp/dccp: better use of ephemeral
-> ports in bind()").
-> 
-> Thanks to Marcelo for pointing the buggy code out.
-> 
-> v1->v2:
->   - use cond_resched() to yield cpu to other tasks if needed,
->     as Eric noticed.
-> 
-> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-> Reported-by: Ying Xu <yinxu@redhat.com>
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+The whole code base may need changing to save the highest
+valid stream?
 
-Applied and queued up for -stable, thank you.
+Since I don't actually need that many I'm not writing the patch.
+
+	David
+
+-
+Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
+Registration No: 1397386 (Wales)
