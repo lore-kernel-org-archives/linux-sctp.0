@@ -1,55 +1,46 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Tue, 25 Aug 2020 14:52:38 +0000
-Subject: [PATCH 13/13] lib/generic-radix-tree: Simplify __genradix_ptr()
-Message-Id: <35b7ab36369249d8bf17a04f58a0f337@AcuMS.aculab.com>
+From: Randy Dunlap <rdunlap@infradead.org>
+Date: Sat, 22 Aug 2020 23:15:56 +0000
+Subject: [PATCH 2/7] net: sctp: auth.c: delete duplicated words
+Message-Id: <20200822231601.32125-3-rdunlap@infradead.org>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20200822231601.32125-1-rdunlap@infradead.org>
+In-Reply-To: <20200822231601.32125-1-rdunlap@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>, Eric Biggers <ebiggers@kernel.org>, 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>, 'Catalin Marinas' <catalin.marinas@arm.com>, "'kent.overstreet@gmail.com'" <kent.overstreet@gmail.com>, Andrew Morton <akpm@linux-foundation.org>, 'Neil Horman' <nhorman@tuxdriver.com>
+To: netdev@vger.kernel.org
+Cc: Randy Dunlap <rdunlap@infradead.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, linux-sctp@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
 
-Now that requests for small trees are inlined there is no need
-to aggressively optimise for them in __genradix_ptr().
+Drop the repeated word "the" and "now".
 
-Signed-off-by: David Laight <david.laight@aculab.com>
+Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: linux-sctp@vger.kernel.org
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: Jakub Kicinski <kuba@kernel.org>
 ---
- lib/generic-radix-tree.c | 9 +++------
- 1 file changed, 3 insertions(+), 6 deletions(-)
+ net/sctp/auth.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/lib/generic-radix-tree.c b/lib/generic-radix-tree.c
-index 7029a14eed97..497ac5effda0 100644
---- a/lib/generic-radix-tree.c
-+++ b/lib/generic-radix-tree.c
-@@ -45,9 +45,6 @@ void *__genradix_ptr(struct genradix_root *r, size_t offset)
- 	unsigned int shift = __genradix_root_to_shift(r);
- 	unsigned int idx;
+--- linux-next-20200731.orig/net/sctp/auth.c
++++ linux-next-20200731/net/sctp/auth.c
+@@ -445,7 +445,7 @@ struct sctp_shared_key *sctp_auth_get_sh
+ }
  
--	if (likely(shift = GENRADIX_ROOT_SHIFT))
--		return offset < PAGE_SIZE ? n->data + offset : NULL;
--
- 	if (unlikely(!shift))
- 		return NULL;
+ /*
+- * Initialize all the possible digest transforms that we can use.  Right now
++ * Initialize all the possible digest transforms that we can use.  Right
+  * now, the supported digests are SHA1 and SHA256.  We do this here once
+  * because of the restrictiong that transforms may only be allocated in
+  * user context.  This forces us to pre-allocated all possible transforms
+@@ -810,7 +810,7 @@ int sctp_auth_ep_set_hmacs(struct sctp_e
+ }
  
-@@ -56,13 +53,13 @@ void *__genradix_ptr(struct genradix_root *r, size_t offset)
- 		return NULL;
- 
- 	for (;;) {
-+		if (likely(shift = GENRADIX_ROOT_SHIFT))
-+			return n->data + (offset % PAGE_SIZE);
-+
- 		n = READ_ONCE(n->children[idx]);
- 		if (unlikely(!n))
- 			return NULL;
- 
--		if (shift = PAGE_SHIFT)
--			return n->data + (offset % PAGE_SIZE);
--
- 		shift -= GENRADIX_ARY_SHIFT;
- 		idx = (offset >> shift) % GENRADIX_ARY;
- 	}
--- 
-2.25.1
-
--
-Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-Registration No: 1397386 (Wales)
+ /* Set a new shared key on either endpoint or association.  If the
+- * the key with a same ID already exists, replace the key (remove the
++ * key with a same ID already exists, replace the key (remove the
+  * old key and add a new one).
+  */
+ int sctp_auth_set_key(struct sctp_endpoint *ep,
