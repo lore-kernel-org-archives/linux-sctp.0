@@ -1,106 +1,56 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Tue, 25 Aug 2020 14:53:10 +0000
-Subject: [PATCH 01/13] lib/generic-radix-tree: Fix potentially corrupt tree
-Message-Id: <3184cab15fe94db58c7cf3fcf33f3875@AcuMS.aculab.com>
+From: Randy Dunlap <rdunlap@infradead.org>
+Date: Sat, 22 Aug 2020 23:16:00 +0000
+Subject: [PATCH 6/7] net: sctp: sm_make_chunk.c: delete duplicated words + fix typo
+Message-Id: <20200822231601.32125-7-rdunlap@infradead.org>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20200822231601.32125-1-rdunlap@infradead.org>
+In-Reply-To: <20200822231601.32125-1-rdunlap@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>, Eric Biggers <ebiggers@kernel.org>, 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>, 'Catalin Marinas' <catalin.marinas@arm.com>, "'kent.overstreet@gmail.com'" <kent.overstreet@gmail.com>, Andrew Morton <akpm@linux-foundation.org>, 'Neil Horman' <nhorman@tuxdriver.com>
+To: netdev@vger.kernel.org
+Cc: Randy Dunlap <rdunlap@infradead.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, linux-sctp@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
 
-If the last cmpxchg() done when increasing the tree depth fails
-(because another caller has done a concurrent update) the 'new_node'
-is reused later for either a array of pointers or the user data.
-However the new_node->children[0] has been set non-zero this will
-either end up being treated as a pointer to another node or as user data.
+Drop the repeated words "for", "that", and "a".
+Change "his" to "this".
 
-Rather than just setting children[0] = NULL free back the unwanted page
-in the very unusual case that the cmpxchg() fails.
-This removes quite a few comparisons from the normal path.
-
-Signed-off-by: David Laight <david.laight@aculab.com>
+Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: linux-sctp@vger.kernel.org
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: Jakub Kicinski <kuba@kernel.org>
 ---
+ net/sctp/sm_make_chunk.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-Although rather nasty not really worth a backport because neither of the
-2 places this code is used can possibly hit the failing path.
-
- lib/generic-radix-tree.c | 37 +++++++++++++++++--------------------
- 1 file changed, 17 insertions(+), 20 deletions(-)
-
-diff --git a/lib/generic-radix-tree.c b/lib/generic-radix-tree.c
-index f25eb111c051..5695fe547f9d 100644
---- a/lib/generic-radix-tree.c
-+++ b/lib/generic-radix-tree.c
-@@ -105,7 +105,7 @@ void *__genradix_ptr_alloc(struct __genradix *radix, size_t offset,
- 			   gfp_t gfp_mask)
- {
- 	struct genradix_root *v = READ_ONCE(radix->root);
--	struct genradix_node *n, *new_node = NULL;
-+	struct genradix_node *n, *new_node;
- 	unsigned level;
+--- linux-next-20200731.orig/net/sctp/sm_make_chunk.c
++++ linux-next-20200731/net/sctp/sm_make_chunk.c
+@@ -1235,7 +1235,7 @@ nodata:
  
- 	/* Increase tree depth if necessary: */
-@@ -118,20 +118,19 @@ void *__genradix_ptr_alloc(struct __genradix *radix, size_t offset,
- 		if (n && ilog2(offset) < genradix_depth_shift(level))
- 			break;
+ /* Create an Operation Error chunk of a fixed size, specifically,
+  * min(asoc->pathmtu, SCTP_DEFAULT_MAXSEGMENT) - overheads.
+- * This is a helper function to allocate an error chunk for for those
++ * This is a helper function to allocate an error chunk for those
+  * invalid parameter codes in which we may not want to report all the
+  * errors, if the incoming chunk is large. If it can't fit in a single
+  * packet, we ignore it.
+@@ -1780,7 +1780,7 @@ no_hmac:
+ 	 * for init collision case of lost COOKIE ACK.
+ 	 * If skb has been timestamped, then use the stamp, otherwise
+ 	 * use current time.  This introduces a small possibility that
+-	 * that a cookie may be considered expired, but his would only slow
++	 * a cookie may be considered expired, but this would only slow
+ 	 * down the new association establishment instead of every packet.
+ 	 */
+ 	if (sock_flag(ep->base.sk, SOCK_TIMESTAMP))
+@@ -2319,7 +2319,7 @@ int sctp_process_init(struct sctp_associ
  
--		if (!new_node) {
--			new_node = genradix_alloc_node(gfp_mask);
--			if (!new_node)
--				return NULL;
--		}
-+		new_node = genradix_alloc_node(gfp_mask);
-+		if (!new_node)
-+			return NULL;
- 
- 		new_node->children[0] = n;
- 		new_root = ((struct genradix_root *)
- 			    ((unsigned long) new_node | (n ? level + 1 : 0)));
- 
--		if ((v = cmpxchg_release(&radix->root, r, new_root)) = r) {
-+		v = cmpxchg_release(&radix->root, r, new_root);
-+		if (v = r)
- 			v = new_root;
--			new_node = NULL;
--		}
-+		else
-+			genradix_free_node(new_node);
- 	}
- 
- 	while (level--) {
-@@ -141,20 +140,18 @@ void *__genradix_ptr_alloc(struct __genradix *radix, size_t offset,
- 
- 		n = READ_ONCE(*p);
- 		if (!n) {
--			if (!new_node) {
--				new_node = genradix_alloc_node(gfp_mask);
--				if (!new_node)
--					return NULL;
--			}
--
--			if (!(n = cmpxchg_release(p, NULL, new_node)))
--				swap(n, new_node);
-+			new_node = genradix_alloc_node(gfp_mask);
-+			if (!new_node)
-+				return NULL;
-+
-+			n = cmpxchg_release(p, NULL, new_node);
-+			if (!n)
-+				n = new_node;
-+			else
-+				genradix_free_node(new_node);
- 		}
- 	}
- 
--	if (new_node)
--		genradix_free_node(new_node);
--
- 	return &n->data[offset];
- }
- EXPORT_SYMBOL(__genradix_ptr_alloc);
--- 
-2.25.1
-
--
-Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-Registration No: 1397386 (Wales)
+ 	/* This implementation defaults to making the first transport
+ 	 * added as the primary transport.  The source address seems to
+-	 * be a a better choice than any of the embedded addresses.
++	 * be a better choice than any of the embedded addresses.
+ 	 */
+ 	if (!sctp_assoc_add_peer(asoc, peer_addr, gfp, SCTP_ACTIVE))
+ 		goto nomem;
