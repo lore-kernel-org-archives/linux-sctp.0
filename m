@@ -1,46 +1,52 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Wed, 26 Aug 2020 09:56:56 +0000
-Subject: RE: [PATCH 00/13] lib/generic-radix-tree: genradix bug fix and optimisations.
-Message-Id: <7894f0bc41764c0a8cb87f1482df7679@AcuMS.aculab.com>
+From: Randy Dunlap <rdunlap@infradead.org>
+Date: Sat, 22 Aug 2020 23:15:59 +0000
+Subject: [PATCH 5/7] net: sctp: protocol.c: delete duplicated words + punctuation
+Message-Id: <20200822231601.32125-6-rdunlap@infradead.org>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <21289d79b0474811b21ed8478c465159@AcuMS.aculab.com>
- <20200825154127.GB2444@localhost.localdomain>
-In-Reply-To: <20200825154127.GB2444@localhost.localdomain>
+References: <20200822231601.32125-1-rdunlap@infradead.org>
+In-Reply-To: <20200822231601.32125-1-rdunlap@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>, Eric Biggers <ebiggers@kernel.org>, 'Catalin Marinas' <catalin.marinas@arm.com>, "'kent.overstreet@gmail.com'" <kent.overstreet@gmail.com>, Andrew Morton <akpm@linux-foundation.org>, 'Neil Horman' <nhorman@tuxdriver.com>
+To: netdev@vger.kernel.org
+Cc: Randy Dunlap <rdunlap@infradead.org>, Vlad Yasevich <vyasevich@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, linux-sctp@vger.kernel.org, "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>
 
-From: 'Marcelo Ricardo Leitner'
-> Sent: 25 August 2020 16:41
-> 
-> On Tue, Aug 25, 2020 at 02:52:34PM +0000, David Laight wrote:
-> > The genradix code is used by SCTP for accessing per-stream data.
-> > This means there are quite a lot of lookups but the code wasn't
-> > really optimised at all.
-> 
-> My test box is down for the moment and will bring it on later today or
-> tomorrow, so I can't test it yet. What should we expect as performance
-> gains here?
+Drop the repeated words "of" and "that".
+Add some punctuation for readability.
 
-I've just done quick test that shows ~1% improvement on an MTP3+M2PA
-'double reflect' test using the 'test' userpart and a test program.
-So there is quite a lot of extra protocol stack in the way.
+Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
+Cc: Vlad Yasevich <vyasevich@gmail.com>
+Cc: Neil Horman <nhorman@tuxdriver.com>
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: linux-sctp@vger.kernel.org
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: Jakub Kicinski <kuba@kernel.org>
+---
+ net/sctp/protocol.c |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-The test is running ~200k very small data chunks/sec (tx and rx)
-on a poor little 2.4GHz 8 core atom C2758.
-
-However the 'baseline' kernel just locked up.
-(Reports 5.8.0+ so must be late in the merge for rc1).
-
-Annoyingly the Ubuntu 20.04 userspace won't show the kernel messages
-(only a graphical login) - so I can see any kernel ooops messages.
-I'm going to have to setup a serial console.
-That'll need a trip into the office.
-
-	David
-
--
-Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
-Registration No: 1397386 (Wales)
+--- linux-next-20200731.orig/net/sctp/protocol.c
++++ linux-next-20200731/net/sctp/protocol.c
+@@ -372,7 +372,7 @@ static int sctp_v4_available(union sctp_
+  * Level 3 - private addresses.
+  * Level 4 - global addresses
+  * For INIT and INIT-ACK address list, let L be the level of
+- * of requested destination address, sender and receiver
++ * requested destination address, sender and receiver
+  * SHOULD include all of its addresses with level greater
+  * than or equal to L.
+  *
+@@ -1483,10 +1483,10 @@ static __init int sctp_init(void)
+ 	num_entries = (1UL << order) * PAGE_SIZE /
+ 		      sizeof(struct sctp_bind_hashbucket);
+ 
+-	/* And finish by rounding it down to the nearest power of two
+-	 * this wastes some memory of course, but its needed because
++	/* And finish by rounding it down to the nearest power of two.
++	 * This wastes some memory of course, but it's needed because
+ 	 * the hash function operates based on the assumption that
+-	 * that the number of entries is a power of two
++	 * the number of entries is a power of two.
+ 	 */
+ 	sctp_port_hashsize = rounddown_pow_of_two(num_entries);
+ 
