@@ -1,17 +1,19 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Fri, 21 Aug 2020 20:07:04 +0000
+From: David Miller <davem@davemloft.net>
+Date: Mon, 24 Aug 2020 22:51:08 +0000
 Subject: Re: [PATCHv2 net] sctp: not disable bh in the whole sctp_get_port_local()
-Message-Id: <20200821200704.GM3399@localhost.localdomain>
+Message-Id: <20200824.155108.8657858310039234.davem@davemloft.net>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <08a14c2f087153c18c67965cc37ed2ac22da18ed.1597993178.git.lucien.xin@gmail.com>
 In-Reply-To: <08a14c2f087153c18c67965cc37ed2ac22da18ed.1597993178.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, davem@davemloft.net, Eric Dumazet <edumazet@google.com>, Neil Horman <nhorman@tuxdriver.com>
+To: lucien.xin@gmail.com
+Cc: netdev@vger.kernel.org, linux-sctp@vger.kernel.org, edumazet@google.com, marcelo.leitner@gmail.com, nhorman@tuxdriver.com
 
-On Fri, Aug 21, 2020 at 02:59:38PM +0800, Xin Long wrote:
+From: Xin Long <lucien.xin@gmail.com>
+Date: Fri, 21 Aug 2020 14:59:38 +0800
+
 > With disabling bh in the whole sctp_get_port_local(), when
 > snum = 0 and too many ports have been used, the do-while
 > loop will take the cpu for a long time and cause cpu stuck:
@@ -40,5 +42,9 @@ On Fri, Aug 21, 2020 at 02:59:38PM +0800, Xin Long wrote:
 > v1->v2:
 >   - use cond_resched() to yield cpu to other tasks if needed,
 >     as Eric noticed.
+> 
+> Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+> Reported-by: Ying Xu <yinxu@redhat.com>
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Applied and queued up for -stable, thank you.
