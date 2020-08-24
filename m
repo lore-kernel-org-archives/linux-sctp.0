@@ -1,53 +1,54 @@
 From: Pau Espin Pedrol <pespin@sysmocom.de>
-Date: Mon, 24 Aug 2020 10:00:27 +0000
+Date: Mon, 24 Aug 2020 10:23:47 +0000
 Subject: Re: SCTP multi-homed association (::1)->(::1+127.0.0.1) attempting HEARTBEAT on 127.0.0.1->127.0.0.1
-Message-Id: <44227020-4061-9fc9-0175-e64de5c22e15@sysmocom.de>
+Message-Id: <8d6bafce-225b-32b3-93c2-48640251bac2@sysmocom.de>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <552de663-8aeb-ff84-a425-988da88ca5cd@sysmocom.de>
 In-Reply-To: <552de663-8aeb-ff84-a425-988da88ca5cd@sysmocom.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 To: linux-sctp@vger.kernel.org
 
-Hi Marcelo,
+Hi Andreas,
 
-Between my initial message and your response I updated my kernel to
-Archlinux latest package version (5.8.3-arch1-1,
-https://git.archlinux.org/linux.git/), which still shows the same bug I
-mentioned in my previous message.
+My point is that the failure is in the client, which is creating an
+AF_INET6 socket and only binding on ::1, so it should never try to use
+"127.0.0.1" as local IP imho. Your comments may apply to the server,
+which is actually behaving fine.
 
-The commit you described is already contained in the kernel (it was
-included upstream during v5.8-rc3).
+On 8/24/20 12:12 PM, Andreas Fink wrote:
+> The problem might be that your socket(AF_INET6,SCTP,STREAM) gives you an
+> IPv6 only socket
+> but you are binding an IPv4 address to it with sctp_bindx. This will
+> probably fail and thus you are binding to "any".
 
-Moreover, the description of the commit you shared doesn't seem to match
-the issue I described. The issue I explained is about the kernel trying
-to create further connections on an already ongoing association using a
-local IPv4 address it was never bound to; the issue has nothing to do
-with advertising of addresses (advertising is working correctly here IMHO).
+It doesn't fail, I'm checking the result of sctp_bindx() and
+/proc/net/sctp/eps I initially attached to the bug tracker shows it's
+binding fine as expected.
 
-Quick similar scenario setup would be something like:
+>=20
+> If you want IPv4+IPv6 in one socket, you need to specify a IPv4 address
+> in =C2=A0IPv6 compatibility format
+> So you should sctp_bindx to =C2=A0 "::ffff:127.0.0.1" not to =C2=A0"127.0=
+.0.1"
+> =C2=A0(well in any case you should pass a struck sockaddr_in6 and not a
+> struct sockaddr_in)
 
-SERVER:
-server_fd = socket(AF_INET6, SCTP, STREAM);
-sctp_bindx(server_fd, "127.0.0.1", "::1");
-listen(server_fd); accept(server_fd);
+Not really. I'm creating an addr buffer containing both struct
+sockaddr_in and struct sockaddr_in6 (see [1] if interested) after having
+looked at how libsctp and the kernel handle the sctp_bindx call, and
+it's working fine as backed by what /proc/net/sctp/eps shows.
 
-CLIENT:
-client_fd = socket(AF_INET6, SCTP, STREAM);
-sctp_bindx(client_fd, "::1");
-sctp_connectx(client_fd, "::1");
+[1]
+https://git.osmocom.org/libosmocore/tree/src/socket.c?id=ED42a889004730beb2=
+6ce61ee462244b2bad6be9#n470
 
-And then after client connects ::1<->::1 and gains info about server's
-127.0.0.1 address, it tries to INIT 127.0.0.1->127.0.0.1 despite it was
-never bound to 127.0.0.1.
-
-Regards,
-Pau
-
--- 
+--=20
 - Pau Espin Pedrol <pespin@sysmocom.de>         http://www.sysmocom.de/
-===================================* sysmocom - systems for mobile communications GmbH
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D* sysmocom - systems for mobile communication=
+s GmbH
 * Alt-Moabit 93
 * 10559 Berlin, Germany
 * Sitz / Registered office: Berlin, HRB 134158 B
