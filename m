@@ -1,45 +1,106 @@
-From: "Mr. Scott Donald" <confianzayrentabilidad@gmail.com>
-Date: Sun, 16 Aug 2020 14:28:30 +0000
-Subject: Hello, Please
-Message-Id: <CANrrfX7wwL97G=jb--8nb9jH8oRO8T90L6NGSfg1HfnzMyyHcw@mail.gmail.com>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Tue, 25 Aug 2020 14:53:10 +0000
+Subject: [PATCH 01/13] lib/generic-radix-tree: Fix potentially corrupt tree
+Message-Id: <3184cab15fe94db58c7cf3fcf33f3875@AcuMS.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>, "'linux-sctp@vger.kernel.org'" <linux-sctp@vger.kernel.org>, Eric Biggers <ebiggers@kernel.org>, 'Marcelo Ricardo Leitner' <marcelo.leitner@gmail.com>, 'Catalin Marinas' <catalin.marinas@arm.com>, "'kent.overstreet@gmail.com'" <kent.overstreet@gmail.com>, Andrew Morton <akpm@linux-foundation.org>, 'Neil Horman' <nhorman@tuxdriver.com>
 
+If the last cmpxchg() done when increasing the tree depth fails
+(because another caller has done a concurrent update) the 'new_node'
+is reused later for either a array of pointers or the user data.
+However the new_node->children[0] has been set non-zero this will
+either end up being treated as a pointer to another node or as user data.
+
+Rather than just setting children[0] = NULL free back the unwanted page
+in the very unusual case that the cmpxchg() fails.
+This removes quite a few comparisons from the normal path.
+
+Signed-off-by: David Laight <david.laight@aculab.com>
+---
+
+Although rather nasty not really worth a backport because neither of the
+2 places this code is used can possibly hit the failing path.
+
+ lib/generic-radix-tree.c | 37 +++++++++++++++++--------------------
+ 1 file changed, 17 insertions(+), 20 deletions(-)
+
+diff --git a/lib/generic-radix-tree.c b/lib/generic-radix-tree.c
+index f25eb111c051..5695fe547f9d 100644
+--- a/lib/generic-radix-tree.c
++++ b/lib/generic-radix-tree.c
+@@ -105,7 +105,7 @@ void *__genradix_ptr_alloc(struct __genradix *radix, size_t offset,
+ 			   gfp_t gfp_mask)
+ {
+ 	struct genradix_root *v = READ_ONCE(radix->root);
+-	struct genradix_node *n, *new_node = NULL;
++	struct genradix_node *n, *new_node;
+ 	unsigned level;
+ 
+ 	/* Increase tree depth if necessary: */
+@@ -118,20 +118,19 @@ void *__genradix_ptr_alloc(struct __genradix *radix, size_t offset,
+ 		if (n && ilog2(offset) < genradix_depth_shift(level))
+ 			break;
+ 
+-		if (!new_node) {
+-			new_node = genradix_alloc_node(gfp_mask);
+-			if (!new_node)
+-				return NULL;
+-		}
++		new_node = genradix_alloc_node(gfp_mask);
++		if (!new_node)
++			return NULL;
+ 
+ 		new_node->children[0] = n;
+ 		new_root = ((struct genradix_root *)
+ 			    ((unsigned long) new_node | (n ? level + 1 : 0)));
+ 
+-		if ((v = cmpxchg_release(&radix->root, r, new_root)) = r) {
++		v = cmpxchg_release(&radix->root, r, new_root);
++		if (v = r)
+ 			v = new_root;
+-			new_node = NULL;
+-		}
++		else
++			genradix_free_node(new_node);
+ 	}
+ 
+ 	while (level--) {
+@@ -141,20 +140,18 @@ void *__genradix_ptr_alloc(struct __genradix *radix, size_t offset,
+ 
+ 		n = READ_ONCE(*p);
+ 		if (!n) {
+-			if (!new_node) {
+-				new_node = genradix_alloc_node(gfp_mask);
+-				if (!new_node)
+-					return NULL;
+-			}
+-
+-			if (!(n = cmpxchg_release(p, NULL, new_node)))
+-				swap(n, new_node);
++			new_node = genradix_alloc_node(gfp_mask);
++			if (!new_node)
++				return NULL;
++
++			n = cmpxchg_release(p, NULL, new_node);
++			if (!n)
++				n = new_node;
++			else
++				genradix_free_node(new_node);
+ 		}
+ 	}
+ 
+-	if (new_node)
+-		genradix_free_node(new_node);
+-
+ 	return &n->data[offset];
+ }
+ EXPORT_SYMBOL(__genradix_ptr_alloc);
 -- 
-Dear Friend,
+2.25.1
 
-I'm Mr. Scott Donald a Successful businessMan dealing with
-Exportation, I got your mail contact through search to let you know my
-intension and my Ugly Situation Am a dying Man here in Los Angeles
-California Hospital Bed in (USA), I Lost my Wife and my only Daughter
-for Covid-19 and I also have a problem in my Health and I can die
-anytime I Know,
-
-I have a project that I am about to hand over to you. and I already
-instructed the Bankia S.A. Madrid, Spain(BSA) to transfer my fund sum
-of £3,7M GBP. Equivalent to €4,077,033.91 EUR, to you as to enable you
-to give 50% of this fund to Charitable Home in your State and take 50%
-don't think otherwise and why would anybody send someone you barely
-know to help you deliver a message, help me do this for the happiness
-of my soul and for God to mercy me and my Family and give Us a good
-place.
-
-please, do as I said there was someone from your State that I deeply
-love so very very much and I miss her so badly I have no means to
-reach any Charitable Home there. that is why I go for a personal
-search of the Country and State and I got your mail contact through
-search to let you know my Bitterness and please, help me is getting
-Dark I ask my Doctor to help me keep you notice failure for me to
-reach you in person Your urgent Response, here is my Doctor Whats-app
-Number for urgent notice +13019692737
-
-Hope To Hear From You. I'm sending this email to you for the second
-time yet no response from you.
-
-My Regards.
-
-Mr. Scott Donald
-CEO
+-
+Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
+Registration No: 1397386 (Wales)
