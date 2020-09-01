@@ -1,58 +1,82 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 29 Sep 2020 13:48:55 +0000
-Subject: [PATCH net-next 03/15] udp: do checksum properly in skb_udp_tunnel_segment
-Message-Id: <49a1cbb99341f50304b514aeaace078d0b065248.1601387231.git.lucien.xin@gmail.com>
+From: Petr Malat <oss@malat.biz>
+Date: Tue, 01 Sep 2020 09:00:07 +0000
+Subject: [PATCH] sctp: Honour SCTP_PARTIAL_DELIVERY_POINT even under memory pressure
+Message-Id: <20200901090007.31061-1-oss@malat.biz>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1601387231.git.lucien.xin@gmail.com>
- <51c1fdad515076f3014476711aec1c0a81c18d36.1601387231.git.lucien.xin@gmail.com>
- <65f713004ab546e0b6ec793572c72c1d0399f0fe.1601387231.git.lucien.xin@gmail.com>
-In-Reply-To: <65f713004ab546e0b6ec793572c72c1d0399f0fe.1601387231.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, Tom Herbert <therbert@google.com>, davem@davemloft.net
+To: linux-sctp@vger.kernel.org
+Cc: vyasevich@gmail.com, nhorman@tuxdriver.com, marcelo.leitner@gmail.com, davem@davemloft.net, kuba@kernel.org, Petr Malat <oss@malat.biz>
 
-This patch fixes two things:
+Command SCTP_CMD_PART_DELIVER issued under memory pressure calls
+sctp_ulpq_partial_delivery(), which tries to fetch and partially deliver
+the first message it finds without checking if the message is longer than
+SCTP_PARTIAL_DELIVERY_POINT. According to the RFC 6458 paragraph 8.1.21.
+such a behavior is invalid. Fix it by returning the first message only if
+its part currently available is longer than SCTP_PARTIAL_DELIVERY_POINT.
 
-  When skb->ip_summed = CHECKSUM_PARTIAL, skb_checksum_help() should be
-  called do the checksum, instead of gso_make_checksum(), which is used
-  to do the checksum for current proto after calling skb_segment(), not
-  after the inner proto's gso_segment().
-
-  When offload_csum is disabled, the hardware will not do the checksum
-  for the current proto, udp. So instead of calling gso_make_checksum(),
-  it should calculate checksum for udp itself.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
+Signed-off-by: Petr Malat <oss@malat.biz>
 ---
- net/ipv4/udp_offload.c | 11 ++++++-----
- 1 file changed, 6 insertions(+), 5 deletions(-)
+ net/sctp/ulpqueue.c | 17 ++++++++++++++---
+ 1 file changed, 14 insertions(+), 3 deletions(-)
 
-diff --git a/net/ipv4/udp_offload.c b/net/ipv4/udp_offload.c
-index e67a66f..c0b010b 100644
---- a/net/ipv4/udp_offload.c
-+++ b/net/ipv4/udp_offload.c
-@@ -131,14 +131,15 @@ static struct sk_buff *__skb_udp_tunnel_segment(struct sk_buff *skb,
- 		uh->check = ~csum_fold(csum_add(partial,
- 				       (__force __wsum)htonl(len)));
+diff --git a/net/sctp/ulpqueue.c b/net/sctp/ulpqueue.c
+index 1c6c640607c5..cada0b7f1548 100644
+--- a/net/sctp/ulpqueue.c
++++ b/net/sctp/ulpqueue.c
+@@ -610,6 +610,7 @@ static struct sctp_ulpevent *sctp_ulpq_retrieve_first(struct sctp_ulpq *ulpq)
+ 	struct sctp_ulpevent *cevent;
+ 	__u32 ctsn, next_tsn;
+ 	struct sctp_ulpevent *retval;
++	size_t pd_point, pd_len = 0;
  
--		if (skb->encapsulation || !offload_csum) {
--			uh->check = gso_make_checksum(skb, ~uh->check);
--			if (uh->check = 0)
--				uh->check = CSUM_MANGLED_0;
--		} else {
-+		if (skb->encapsulation)
-+			skb_checksum_help(skb);
-+
-+		if (offload_csum) {
- 			skb->ip_summed = CHECKSUM_PARTIAL;
- 			skb->csum_start = skb_transport_header(skb) - skb->head;
- 			skb->csum_offset = offsetof(struct udphdr, check);
-+		} else {
-+			uh->check = csum_fold(skb_checksum(skb, udp_offset, len, 0));
+ 	/* The chunks are held in the reasm queue sorted by TSN.
+ 	 * Walk through the queue sequentially and look for a sequence of
+@@ -633,8 +634,9 @@ static struct sctp_ulpevent *sctp_ulpq_retrieve_first(struct sctp_ulpq *ulpq)
+ 				first_frag = pos;
+ 				next_tsn = ctsn + 1;
+ 				last_frag = pos;
++				pd_len = pos->len;
+ 			} else
+-				goto done;
++				goto check;
+ 			break;
+ 
+ 		case SCTP_DATA_MIDDLE_FRAG:
+@@ -643,15 +645,19 @@ static struct sctp_ulpevent *sctp_ulpq_retrieve_first(struct sctp_ulpq *ulpq)
+ 			if (ctsn = next_tsn) {
+ 				next_tsn++;
+ 				last_frag = pos;
++				pd_len += pos->len;
+ 			} else
+-				goto done;
++				goto check;
+ 			break;
+ 
+ 		case SCTP_DATA_LAST_FRAG:
+ 			if (!first_frag)
+ 				return NULL;
+-			else
++			if (ctsn = next_tsn) {
++				last_frag = pos;
+ 				goto done;
++			} else
++				goto check;
+ 			break;
+ 
+ 		default:
+@@ -659,6 +665,11 @@ static struct sctp_ulpevent *sctp_ulpq_retrieve_first(struct sctp_ulpq *ulpq)
  		}
- 	} while ((skb = skb->next));
- out:
+ 	}
+ 
++check:
++	pd_point = sctp_sk(ulpq->asoc->base.sk)->pd_point;
++	if (pd_point && pd_point > pd_len)
++		return NULL;
++
+ 	/* We have the reassembled event. There is no need to look
+ 	 * further.
+ 	 */
 -- 
-2.1.0
+2.20.1
