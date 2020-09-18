@@ -1,34 +1,188 @@
-From: Blue Oak Mortgage and Loans <em@rusoil.net>
-Date: Mon, 21 Sep 2020 23:08:09 +0000
-Subject: Wir finanzieren Projekte und Unternehmen
-Message-Id: <2020026523.907101.1600729689731.JavaMail.zimbra@rusoil.net>
+From: Sasha Levin <sashal@kernel.org>
+Date: Fri, 18 Sep 2020 02:05:24 +0000
+Subject: [PATCH AUTOSEL 4.19 048/206] sctp: move trace_sctp_probe_path into sctp_outq_sack
+Message-Id: <20200918020802.2065198-48-sashal@kernel.org>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <20200918020802.2065198-1-sashal@kernel.org>
+In-Reply-To: <20200918020802.2065198-1-sashal@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-To: linux-sctp@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc: Kevin Kou <qdkevin.kou@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S . Miller" <davem@davemloft.net>, Sasha Levin <sashal@kernel.org>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 
+From: Kevin Kou <qdkevin.kou@gmail.com>
 
+[ Upstream commit f643ee295c1c63bc117fb052d4da681354d6f732 ]
 
-Dies ist ein Newsletter von Blue Oak Mortgage and Loans. Bitte melden Sie sich ab, wenn Sie keine E-Mail mehr von uns erhalten möchten.
+The original patch bringed in the "SCTP ACK tracking trace event"
+feature was committed at Dec.20, 2017, it replaced jprobe usage
+with trace events, and bringed in two trace events, one is
+TRACE_EVENT(sctp_probe), another one is TRACE_EVENT(sctp_probe_path).
+The original patch intended to trigger the trace_sctp_probe_path in
+TRACE_EVENT(sctp_probe) as below code,
 
++TRACE_EVENT(sctp_probe,
++
++	TP_PROTO(const struct sctp_endpoint *ep,
++		 const struct sctp_association *asoc,
++		 struct sctp_chunk *chunk),
++
++	TP_ARGS(ep, asoc, chunk),
++
++	TP_STRUCT__entry(
++		__field(__u64, asoc)
++		__field(__u32, mark)
++		__field(__u16, bind_port)
++		__field(__u16, peer_port)
++		__field(__u32, pathmtu)
++		__field(__u32, rwnd)
++		__field(__u16, unack_data)
++	),
++
++	TP_fast_assign(
++		struct sk_buff *skb = chunk->skb;
++
++		__entry->asoc = (unsigned long)asoc;
++		__entry->mark = skb->mark;
++		__entry->bind_port = ep->base.bind_addr.port;
++		__entry->peer_port = asoc->peer.port;
++		__entry->pathmtu = asoc->pathmtu;
++		__entry->rwnd = asoc->peer.rwnd;
++		__entry->unack_data = asoc->unack_data;
++
++		if (trace_sctp_probe_path_enabled()) {
++			struct sctp_transport *sp;
++
++			list_for_each_entry(sp, &asoc->peer.transport_addr_list,
++					    transports) {
++				trace_sctp_probe_path(sp, asoc);
++			}
++		}
++	),
 
-Eine kurze Einführung.
+But I found it did not work when I did testing, and trace_sctp_probe_path
+had no output, I finally found that there is trace buffer lock
+operation(trace_event_buffer_reserve) in include/trace/trace_events.h:
 
-Wir sind ein führendes Finanzierungsunternehmen in Europa. Wir finanzieren Startups / etablierte Unternehmen, finanzieren Großprojekte (Bau, Landwirtschaft, Immobilien und dergleichen) zu einem niedrigen Zinssatz von 2% pro Jahr.
+static notrace void							\
+trace_event_raw_event_##call(void *__data, proto)			\
+{									\
+	struct trace_event_file *trace_file = __data;			\
+	struct trace_event_data_offsets_##call __maybe_unused __data_offsets;\
+	struct trace_event_buffer fbuffer;				\
+	struct trace_event_raw_##call *entry;				\
+	int __data_size;						\
+									\
+	if (trace_trigger_soft_disabled(trace_file))			\
+		return;							\
+									\
+	__data_size = trace_event_get_offsets_##call(&__data_offsets, args); \
+									\
+	entry = trace_event_buffer_reserve(&fbuffer, trace_file,	\
+				 sizeof(*entry) + __data_size);		\
+									\
+	if (!entry)							\
+		return;							\
+									\
+	tstruct								\
+									\
+	{ assign; }							\
+									\
+	trace_event_buffer_commit(&fbuffer);				\
+}
 
+The reason caused no output of trace_sctp_probe_path is that
+trace_sctp_probe_path written in TP_fast_assign part of
+TRACE_EVENT(sctp_probe), and it will be placed( { assign; } ) after the
+trace_event_buffer_reserve() when compiler expands Macro,
 
-Darlehensverfahren
+        entry = trace_event_buffer_reserve(&fbuffer, trace_file,        \
+                                 sizeof(*entry) + __data_size);         \
+                                                                        \
+        if (!entry)                                                     \
+                return;                                                 \
+                                                                        \
+        tstruct                                                         \
+                                                                        \
+        { assign; }                                                     \
 
-1. Sie müssen das Online-Bewerbungsformular ausfüllen und eine ordnungsgemäß unterschriebene Kopie an uns zurücksenden.
+so trace_sctp_probe_path finally can not acquire trace_event_buffer
+and return no output, that is to say the nest of tracepoint entry function
+is not allowed. The function call flow is:
 
-2. Möglicherweise müssen Sie Finanzdokumente als unterstützenden Nachweis für die Fähigkeit zur Rückzahlung von Krediten vorlegen.
+trace_sctp_probe()
+-> trace_event_raw_event_sctp_probe()
+ -> lock buffer
+ -> trace_sctp_probe_path()
+   -> trace_event_raw_event_sctp_probe_path()  --nested
+   -> buffer has been locked and return no output.
 
-3. Wenn Ihr Darlehen genehmigt wurde, müssen Sie eine Versicherungsgarantie für die Darlehenssicherheit vorlegen. Wir empfehlen eine Versicherungsgesellschaft. Sie sind allein verantwortlich für die Zahlung und den Erwerb der Anleihe, die als Sicherheit dienen. Die Höhe der Anleihe hängt von Ihrem Darlehensbetrag ab. Die Versicherungsgesellschaft wird Sie durch den Prozess führen. (Für Großprojekte)
+This patch is to remove trace_sctp_probe_path from the TP_fast_assign
+part of TRACE_EVENT(sctp_probe) to avoid the nest of entry function,
+and trigger sctp_probe_path_trace in sctp_outq_sack.
 
-4. Ihr Überweisungsprozess wird eingeleitet, sobald die Versicherungsanleihe überprüft wurde. Ihr Darlehensrückzahlungsplan wird im NC-Darlehensvertragsformular aufgeführt.
+After this patch, you can enable both events individually,
+  # cd /sys/kernel/debug/tracing
+  # echo 1 > events/sctp/sctp_probe/enable
+  # echo 1 > events/sctp/sctp_probe_path/enable
 
-Wenn die Bedingungen Sie beruhigen, können Sie uns über die WhatsApp-Nummer / E-Mail kontaktieren und auch unsere Website besuchen, um weitere Informationen zu erhalten. Wir freuen uns darauf, von Ihnen zu hören.
+Or, you can enable all the events under sctp.
 
-WhatsApp: + 90-552-365-3483
-E-Mail: info@bluelmtg.net
+  # echo 1 > events/sctp/enable
+
+Signed-off-by: Kevin Kou <qdkevin.kou@gmail.com>
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ include/trace/events/sctp.h | 9 ---------
+ net/sctp/outqueue.c         | 6 ++++++
+ 2 files changed, 6 insertions(+), 9 deletions(-)
+
+diff --git a/include/trace/events/sctp.h b/include/trace/events/sctp.h
+index 7475c7be165aa..d4aac34365955 100644
+--- a/include/trace/events/sctp.h
++++ b/include/trace/events/sctp.h
+@@ -75,15 +75,6 @@ TRACE_EVENT(sctp_probe,
+ 		__entry->pathmtu = asoc->pathmtu;
+ 		__entry->rwnd = asoc->peer.rwnd;
+ 		__entry->unack_data = asoc->unack_data;
+-
+-		if (trace_sctp_probe_path_enabled()) {
+-			struct sctp_transport *sp;
+-
+-			list_for_each_entry(sp, &asoc->peer.transport_addr_list,
+-					    transports) {
+-				trace_sctp_probe_path(sp, asoc);
+-			}
+-		}
+ 	),
+ 
+ 	TP_printk("asoc=%#llx mark=%#x bind_port=%d peer_port=%d pathmtu=%d "
+diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
+index 7bb8e5603298d..d6e83a37a1adf 100644
+--- a/net/sctp/outqueue.c
++++ b/net/sctp/outqueue.c
+@@ -51,6 +51,7 @@
+ #include <net/sctp/sctp.h>
+ #include <net/sctp/sm.h>
+ #include <net/sctp/stream_sched.h>
++#include <trace/events/sctp.h>
+ 
+ /* Declare internal functions here.  */
+ static int sctp_acked(struct sctp_sackhdr *sack, __u32 tsn);
+@@ -1257,6 +1258,11 @@ int sctp_outq_sack(struct sctp_outq *q, struct sctp_chunk *chunk)
+ 	/* Grab the association's destination address list. */
+ 	transport_list = &asoc->peer.transport_addr_list;
+ 
++	/* SCTP path tracepoint for congestion control debugging. */
++	list_for_each_entry(transport, transport_list, transports) {
++		trace_sctp_probe_path(transport, asoc);
++	}
++
+ 	sack_ctsn = ntohl(sack->cum_tsn_ack);
+ 	gap_ack_blocks = ntohs(sack->num_gap_ack_blocks);
+ 	asoc->stats.gapcnt += gap_ack_blocks;
+-- 
+2.25.1
