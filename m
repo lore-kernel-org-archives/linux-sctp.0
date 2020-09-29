@@ -1,188 +1,166 @@
-From: Sasha Levin <sashal@kernel.org>
-Date: Fri, 18 Sep 2020 02:05:24 +0000
-Subject: [PATCH AUTOSEL 4.19 048/206] sctp: move trace_sctp_probe_path into sctp_outq_sack
-Message-Id: <20200918020802.2065198-48-sashal@kernel.org>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 29 Sep 2020 13:49:02 +0000
+Subject: [PATCH net-next 10/15] sctp: allow changing transport encap_port by peer packets
+Message-Id: <3f1b88ab88b5cc5321ffe094bcfeff68a3a5ef2c.1601387231.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200918020802.2065198-1-sashal@kernel.org>
-In-Reply-To: <20200918020802.2065198-1-sashal@kernel.org>
+References: <cover.1601387231.git.lucien.xin@gmail.com>
+ <51c1fdad515076f3014476711aec1c0a81c18d36.1601387231.git.lucien.xin@gmail.com>
+ <65f713004ab546e0b6ec793572c72c1d0399f0fe.1601387231.git.lucien.xin@gmail.com>
+ <49a1cbb99341f50304b514aeaace078d0b065248.1601387231.git.lucien.xin@gmail.com>
+ <97963ca7171b92486f46477b55928182abe44806.1601387231.git.lucien.xin@gmail.com>
+ <ddf990677d003f4d0be245b88f4b0f25d54f26d5.1601387231.git.lucien.xin@gmail.com>
+ <ec4b75d8c69ba640a9104158ab875c4011cb533d.1601387231.git.lucien.xin@gmail.com>
+ <f9f58a248df8194bbf6f4a83a05ec4e98d2955f1.1601387231.git.lucien.xin@gmail.com>
+ <e1ff8bac558dd425b2f29044c3136bf680babcad.1601387231.git.lucien.xin@gmail.com>
+ <ff57fb1ff7c477ff038cebb36e9f0554d26d5915.1601387231.git.lucien.xin@gmail.com>
+In-Reply-To: <ff57fb1ff7c477ff038cebb36e9f0554d26d5915.1601387231.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc: Kevin Kou <qdkevin.kou@gmail.com>, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, "David S . Miller" <davem@davemloft.net>, Sasha Levin <sashal@kernel.org>, linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, Tom Herbert <therbert@google.com>, davem@davemloft.net
 
-From: Kevin Kou <qdkevin.kou@gmail.com>
+As rfc6951#section-5.4 says:
 
-[ Upstream commit f643ee295c1c63bc117fb052d4da681354d6f732 ]
+  "After finding the SCTP association (which
+   includes checking the verification tag), the UDP source port MUST be
+   stored as the encapsulation port for the destination address the SCTP
+   packet is received from (see Section 5.1).
 
-The original patch bringed in the "SCTP ACK tracking trace event"
-feature was committed at Dec.20, 2017, it replaced jprobe usage
-with trace events, and bringed in two trace events, one is
-TRACE_EVENT(sctp_probe), another one is TRACE_EVENT(sctp_probe_path).
-The original patch intended to trigger the trace_sctp_probe_path in
-TRACE_EVENT(sctp_probe) as below code,
+   When a non-encapsulated SCTP packet is received by the SCTP stack,
+   the encapsulation of outgoing packets belonging to the same
+   association and the corresponding destination address MUST be
+   disabled."
 
-+TRACE_EVENT(sctp_probe,
-+
-+	TP_PROTO(const struct sctp_endpoint *ep,
-+		 const struct sctp_association *asoc,
-+		 struct sctp_chunk *chunk),
-+
-+	TP_ARGS(ep, asoc, chunk),
-+
-+	TP_STRUCT__entry(
-+		__field(__u64, asoc)
-+		__field(__u32, mark)
-+		__field(__u16, bind_port)
-+		__field(__u16, peer_port)
-+		__field(__u32, pathmtu)
-+		__field(__u32, rwnd)
-+		__field(__u16, unack_data)
-+	),
-+
-+	TP_fast_assign(
-+		struct sk_buff *skb = chunk->skb;
-+
-+		__entry->asoc = (unsigned long)asoc;
-+		__entry->mark = skb->mark;
-+		__entry->bind_port = ep->base.bind_addr.port;
-+		__entry->peer_port = asoc->peer.port;
-+		__entry->pathmtu = asoc->pathmtu;
-+		__entry->rwnd = asoc->peer.rwnd;
-+		__entry->unack_data = asoc->unack_data;
-+
-+		if (trace_sctp_probe_path_enabled()) {
-+			struct sctp_transport *sp;
-+
-+			list_for_each_entry(sp, &asoc->peer.transport_addr_list,
-+					    transports) {
-+				trace_sctp_probe_path(sp, asoc);
-+			}
-+		}
-+	),
+transport encap_port should be updated by a validated incoming packet's
+udp src port.
 
-But I found it did not work when I did testing, and trace_sctp_probe_path
-had no output, I finally found that there is trace buffer lock
-operation(trace_event_buffer_reserve) in include/trace/trace_events.h:
+We save the udp src port in sctp_input_cb->encap_port, and then update
+the transport in two places:
 
-static notrace void							\
-trace_event_raw_event_##call(void *__data, proto)			\
-{									\
-	struct trace_event_file *trace_file = __data;			\
-	struct trace_event_data_offsets_##call __maybe_unused __data_offsets;\
-	struct trace_event_buffer fbuffer;				\
-	struct trace_event_raw_##call *entry;				\
-	int __data_size;						\
-									\
-	if (trace_trigger_soft_disabled(trace_file))			\
-		return;							\
-									\
-	__data_size = trace_event_get_offsets_##call(&__data_offsets, args); \
-									\
-	entry = trace_event_buffer_reserve(&fbuffer, trace_file,	\
-				 sizeof(*entry) + __data_size);		\
-									\
-	if (!entry)							\
-		return;							\
-									\
-	tstruct								\
-									\
-	{ assign; }							\
-									\
-	trace_event_buffer_commit(&fbuffer);				\
-}
+  1. right after vtag is verified, which is required by RFC, and this
+     allows the existent transports to be updated by the chunks that
+     can only be processed on an asoc.
 
-The reason caused no output of trace_sctp_probe_path is that
-trace_sctp_probe_path written in TP_fast_assign part of
-TRACE_EVENT(sctp_probe), and it will be placed( { assign; } ) after the
-trace_event_buffer_reserve() when compiler expands Macro,
+  2. right before processing the 'init' where the transports are added,
+     and this allows building a sctp over udp connection by client with
+     the server not knowing the remote encap port.
 
-        entry = trace_event_buffer_reserve(&fbuffer, trace_file,        \
-                                 sizeof(*entry) + __data_size);         \
-                                                                        \
-        if (!entry)                                                     \
-                return;                                                 \
-                                                                        \
-        tstruct                                                         \
-                                                                        \
-        { assign; }                                                     \
+  3. when processing ootb_pkt and creating the temparory transport for
+     the reply pkt.
 
-so trace_sctp_probe_path finally can not acquire trace_event_buffer
-and return no output, that is to say the nest of tracepoint entry function
-is not allowed. The function call flow is:
+Note that sctp_input_cb->header is removed, as it's not used any more
+in sctp.
 
-trace_sctp_probe()
--> trace_event_raw_event_sctp_probe()
- -> lock buffer
- -> trace_sctp_probe_path()
-   -> trace_event_raw_event_sctp_probe_path()  --nested
-   -> buffer has been locked and return no output.
-
-This patch is to remove trace_sctp_probe_path from the TP_fast_assign
-part of TRACE_EVENT(sctp_probe) to avoid the nest of entry function,
-and trigger sctp_probe_path_trace in sctp_outq_sack.
-
-After this patch, you can enable both events individually,
-  # cd /sys/kernel/debug/tracing
-  # echo 1 > events/sctp/sctp_probe/enable
-  # echo 1 > events/sctp/sctp_probe_path/enable
-
-Or, you can enable all the events under sctp.
-
-  # echo 1 > events/sctp/enable
-
-Signed-off-by: Kevin Kou <qdkevin.kou@gmail.com>
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Signed-off-by: David S. Miller <davem@davemloft.net>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/trace/events/sctp.h | 9 ---------
- net/sctp/outqueue.c         | 6 ++++++
- 2 files changed, 6 insertions(+), 9 deletions(-)
+ include/net/sctp/sm.h      |  1 +
+ include/net/sctp/structs.h |  7 +------
+ net/sctp/ipv6.c            |  1 +
+ net/sctp/protocol.c        | 11 ++++++++++-
+ net/sctp/sm_make_chunk.c   |  1 +
+ net/sctp/sm_statefuns.c    |  2 ++
+ 6 files changed, 16 insertions(+), 7 deletions(-)
 
-diff --git a/include/trace/events/sctp.h b/include/trace/events/sctp.h
-index 7475c7be165aa..d4aac34365955 100644
---- a/include/trace/events/sctp.h
-+++ b/include/trace/events/sctp.h
-@@ -75,15 +75,6 @@ TRACE_EVENT(sctp_probe,
- 		__entry->pathmtu = asoc->pathmtu;
- 		__entry->rwnd = asoc->peer.rwnd;
- 		__entry->unack_data = asoc->unack_data;
--
--		if (trace_sctp_probe_path_enabled()) {
--			struct sctp_transport *sp;
--
--			list_for_each_entry(sp, &asoc->peer.transport_addr_list,
--					    transports) {
--				trace_sctp_probe_path(sp, asoc);
--			}
--		}
- 	),
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index 5c491a3..a499341 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -380,6 +380,7 @@ sctp_vtag_verify(const struct sctp_chunk *chunk,
+         if (ntohl(chunk->sctp_hdr->vtag) = asoc->c.my_vtag)
+                 return 1;
  
- 	TP_printk("asoc=%#llx mark=%#x bind_port=%d peer_port=%d pathmtu=%d "
-diff --git a/net/sctp/outqueue.c b/net/sctp/outqueue.c
-index 7bb8e5603298d..d6e83a37a1adf 100644
---- a/net/sctp/outqueue.c
-+++ b/net/sctp/outqueue.c
-@@ -51,6 +51,7 @@
- #include <net/sctp/sctp.h>
- #include <net/sctp/sm.h>
- #include <net/sctp/stream_sched.h>
-+#include <trace/events/sctp.h>
++	chunk->transport->encap_port = SCTP_INPUT_CB(chunk->skb)->encap_port;
+ 	return 0;
+ }
  
- /* Declare internal functions here.  */
- static int sctp_acked(struct sctp_sackhdr *sack, __u32 tsn);
-@@ -1257,6 +1258,11 @@ int sctp_outq_sack(struct sctp_outq *q, struct sctp_chunk *chunk)
- 	/* Grab the association's destination address list. */
- 	transport_list = &asoc->peer.transport_addr_list;
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index b6d0e58..8819214 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1120,14 +1120,9 @@ static inline void sctp_outq_cork(struct sctp_outq *q)
+  * sctp_input_cb is currently used on rx and sock rx queue
+  */
+ struct sctp_input_cb {
+-	union {
+-		struct inet_skb_parm	h4;
+-#if IS_ENABLED(CONFIG_IPV6)
+-		struct inet6_skb_parm	h6;
+-#endif
+-	} header;
+ 	struct sctp_chunk *chunk;
+ 	struct sctp_af *af;
++	__u16 encap_port;
+ };
+ #define SCTP_INPUT_CB(__skb)	((struct sctp_input_cb *)&((__skb)->cb[0]))
  
-+	/* SCTP path tracepoint for congestion control debugging. */
-+	list_for_each_entry(transport, transport_list, transports) {
-+		trace_sctp_probe_path(transport, asoc);
-+	}
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 8a58f42..a064bf2 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -1053,6 +1053,7 @@ static struct inet_protosw sctpv6_stream_protosw = {
+ 
+ static int sctp6_rcv(struct sk_buff *skb)
+ {
++	memset(skb->cb, 0, sizeof(skb->cb));
+ 	return sctp_rcv(skb) ? -1 : 0;
+ }
+ 
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 8b788bd..c73fd5f 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -842,6 +842,9 @@ static int sctp_ctl_sock_init(struct net *net)
+ 
+ static int sctp_udp_rcv(struct sock *sk, struct sk_buff *skb)
+ {
++	memset(skb->cb, 0, sizeof(skb->cb));
++	SCTP_INPUT_CB(skb)->encap_port = ntohs(udp_hdr(skb)->source);
 +
- 	sack_ctsn = ntohl(sack->cum_tsn_ack);
- 	gap_ack_blocks = ntohs(sack->num_gap_ack_blocks);
- 	asoc->stats.gapcnt += gap_ack_blocks;
+ 	skb_set_transport_header(skb, sizeof(struct udphdr));
+ 	sctp_rcv(skb);
+ 	return 0;
+@@ -1133,9 +1136,15 @@ static struct inet_protosw sctp_stream_protosw = {
+ 	.flags      = SCTP_PROTOSW_FLAG
+ };
+ 
++static int sctp4_rcv(struct sk_buff *skb)
++{
++	memset(skb->cb, 0, sizeof(skb->cb));
++	return sctp_rcv(skb);
++}
++
+ /* Register with IP layer.  */
+ static const struct net_protocol sctp_protocol = {
+-	.handler     = sctp_rcv,
++	.handler     = sctp4_rcv,
+ 	.err_handler = sctp_v4_err,
+ 	.no_policy   = 1,
+ 	.netns_ok    = 1,
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 9a56ae2..21d0ff1 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2321,6 +2321,7 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
+ 	 * added as the primary transport.  The source address seems to
+ 	 * be a better choice than any of the embedded addresses.
+ 	 */
++	asoc->encap_port = SCTP_INPUT_CB(chunk->skb)->encap_port;
+ 	if (!sctp_assoc_add_peer(asoc, peer_addr, gfp, SCTP_ACTIVE))
+ 		goto nomem;
+ 
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index c669f8b..8edab15 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -6268,6 +6268,8 @@ static struct sctp_packet *sctp_ootb_pkt_new(
+ 	if (!transport)
+ 		goto nomem;
+ 
++	transport->encap_port = SCTP_INPUT_CB(chunk->skb)->encap_port;
++
+ 	/* Cache a route for the transport with the chunk's destination as
+ 	 * the source address.
+ 	 */
 -- 
-2.25.1
+2.1.0
