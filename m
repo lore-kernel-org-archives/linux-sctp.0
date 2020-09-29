@@ -1,48 +1,61 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 03 Sep 2020 17:18:47 +0000
-Subject: Re: [PATCH] sctp: Honour SCTP_PARTIAL_DELIVERY_POINT even under memory pressure
-Message-Id: <20200903171847.GD2444@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 29 Sep 2020 13:49:03 +0000
+Subject: [PATCH net-next 11/15] sctp: add udphdr to overhead when udp_port is set
+Message-Id: <7ff312f910ada8893fa4db57d341c628d1122640.1601387231.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <20200901090007.31061-1-oss@malat.biz>
- <20200902145835.GC2444@localhost.localdomain>
- <20200903112147.GA17627@bordel.klfree.net>
-In-Reply-To: <20200903112147.GA17627@bordel.klfree.net>
+References: <cover.1601387231.git.lucien.xin@gmail.com>
+ <51c1fdad515076f3014476711aec1c0a81c18d36.1601387231.git.lucien.xin@gmail.com>
+ <65f713004ab546e0b6ec793572c72c1d0399f0fe.1601387231.git.lucien.xin@gmail.com>
+ <49a1cbb99341f50304b514aeaace078d0b065248.1601387231.git.lucien.xin@gmail.com>
+ <97963ca7171b92486f46477b55928182abe44806.1601387231.git.lucien.xin@gmail.com>
+ <ddf990677d003f4d0be245b88f4b0f25d54f26d5.1601387231.git.lucien.xin@gmail.com>
+ <ec4b75d8c69ba640a9104158ab875c4011cb533d.1601387231.git.lucien.xin@gmail.com>
+ <f9f58a248df8194bbf6f4a83a05ec4e98d2955f1.1601387231.git.lucien.xin@gmail.com>
+ <e1ff8bac558dd425b2f29044c3136bf680babcad.1601387231.git.lucien.xin@gmail.com>
+ <ff57fb1ff7c477ff038cebb36e9f0554d26d5915.1601387231.git.lucien.xin@gmail.com>
+ <3f1b88ab88b5cc5321ffe094bcfeff68a3a5ef2c.1601387231.git.lucien.xin@gmail.com>
+In-Reply-To: <3f1b88ab88b5cc5321ffe094bcfeff68a3a5ef2c.1601387231.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Petr Malat <oss@malat.biz>
-Cc: linux-sctp@vger.kernel.org, vyasevich@gmail.com, nhorman@tuxdriver.com, davem@davemloft.net, kuba@kernel.org, netdev@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, Tom Herbert <therbert@google.com>, davem@davemloft.net
 
-Hi!
+sctp_mtu_payload() is for calculating the frag size before making
+chunks from a msg. So we should only add udphdr size to overhead
+when udp socks are listening, as only then sctp can handling the
+incoming sctp over udp packets and outgoing sctp over udp packets
+will be possible.
 
-On Thu, Sep 03, 2020 at 01:21:48PM +0200, Petr Malat wrote:
-> Hi!
-> On Wed, Sep 02, 2020 at 11:58:35AM -0300, Marcelo Ricardo Leitner wrote:
-> > On Tue, Sep 01, 2020 at 11:00:07AM +0200, Petr Malat wrote:
-> > > Command SCTP_CMD_PART_DELIVER issued under memory pressure calls
-> > > sctp_ulpq_partial_delivery(), which tries to fetch and partially deliver
-> > > the first message it finds without checking if the message is longer than
-> > > SCTP_PARTIAL_DELIVERY_POINT. According to the RFC 6458 paragraph 8.1.21.
-> > > such a behavior is invalid. Fix it by returning the first message only if
-> > > its part currently available is longer than SCTP_PARTIAL_DELIVERY_POINT.
-> > 
-> > Okay but AFAICT this patch then violates the basic idea behind partial
-> > delivery. It will cause such small message to just not be delivered
-> > anymore, and keep using the receive buffer which it is trying to free
-> > some bits at this moment.
-> By default the pd_point is set to 0, so there will not be a change in the
-> behavior, but if the user changes it to some other value, it should be
-> respected by the stack - for example when the largest message the user
-> exchanges is 1kB and the user sets it to 1kB, his application is not
-> prepared to handle fragmented messages at all and it's not a good idea to
-> pass such a message to the app.
+Note that we can't do this according to transport->encap_port, as
+different transports may be set to different values, while the
+chunks were made before choosing the transport, we could not be
+able to meet all rfc6951#section-5.6 requires.
 
-Then, if it doesn't support fragmented messages at all, the app just
-shouldn't be setting pd_point at all. :-) Anyhow, I see how the patch
-works now.
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/sctp/sctp.h | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
-The fix is also needed on sctp_intl_retrieve_first() and
-sctp_intl_retrieve_first_uo(). Same issue is in there, but for stream
-interleaving.
-
-Thanks.
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index bfd87a0..6408bbb 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -578,10 +578,13 @@ static inline __u32 sctp_mtu_payload(const struct sctp_sock *sp,
+ {
+ 	__u32 overhead = sizeof(struct sctphdr) + extra;
+ 
+-	if (sp)
++	if (sp) {
+ 		overhead += sp->pf->af->net_header_len;
+-	else
++		if (sock_net(&sp->inet.sk)->sctp.udp_port)
++			overhead += sizeof(struct udphdr);
++	} else {
+ 		overhead += sizeof(struct ipv6hdr);
++	}
+ 
+ 	if (WARN_ON_ONCE(mtu && mtu <= overhead))
+ 		mtu = overhead;
+-- 
+2.1.0
