@@ -1,7 +1,7 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 29 Sep 2020 13:49:02 +0000
-Subject: [PATCH net-next 10/15] sctp: allow changing transport encap_port by peer packets
-Message-Id: <3f1b88ab88b5cc5321ffe094bcfeff68a3a5ef2c.1601387231.git.lucien.xin@gmail.com>
+Date: Tue, 29 Sep 2020 13:49:06 +0000
+Subject: [PATCH net-next 14/15] sctp: support for sending packet over udp6 sock
+Message-Id: <6388faf30ca428c5026e5a62fdf484dcad7e0da2.1601387231.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1601387231.git.lucien.xin@gmail.com>
  <51c1fdad515076f3014476711aec1c0a81c18d36.1601387231.git.lucien.xin@gmail.com>
@@ -13,154 +13,110 @@ References: <cover.1601387231.git.lucien.xin@gmail.com>
  <f9f58a248df8194bbf6f4a83a05ec4e98d2955f1.1601387231.git.lucien.xin@gmail.com>
  <e1ff8bac558dd425b2f29044c3136bf680babcad.1601387231.git.lucien.xin@gmail.com>
  <ff57fb1ff7c477ff038cebb36e9f0554d26d5915.1601387231.git.lucien.xin@gmail.com>
-In-Reply-To: <ff57fb1ff7c477ff038cebb36e9f0554d26d5915.1601387231.git.lucien.xin@gmail.com>
+ <3f1b88ab88b5cc5321ffe094bcfeff68a3a5ef2c.1601387231.git.lucien.xin@gmail.com>
+ <7ff312f910ada8893fa4db57d341c628d1122640.1601387231.git.lucien.xin@gmail.com>
+ <3716fc0699dc1d5557574b5227524e80b7fd76b8.1601387231.git.lucien.xin@gmail.com>
+ <82b358f40c81cfdecbfc394113be40fd1f682043.1601387231.git.lucien.xin@gmail.com>
+In-Reply-To: <82b358f40c81cfdecbfc394113be40fd1f682043.1601387231.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, Tom Herbert <therbert@google.com>, davem@davemloft.net
 
-As rfc6951#section-5.4 says:
+This one basically does the similar things in sctp_v6_xmit as does for
+udp4 sock in the last patch, just note that:
 
-  "After finding the SCTP association (which
-   includes checking the verification tag), the UDP source port MUST be
-   stored as the encapsulation port for the destination address the SCTP
-   packet is received from (see Section 5.1).
+  1. label needs to be calculated, as it's the param of
+     udp_tunnel6_xmit_skb().
 
-   When a non-encapsulated SCTP packet is received by the SCTP stack,
-   the encapsulation of outgoing packets belonging to the same
-   association and the corresponding destination address MUST be
-   disabled."
-
-transport encap_port should be updated by a validated incoming packet's
-udp src port.
-
-We save the udp src port in sctp_input_cb->encap_port, and then update
-the transport in two places:
-
-  1. right after vtag is verified, which is required by RFC, and this
-     allows the existent transports to be updated by the chunks that
-     can only be processed on an asoc.
-
-  2. right before processing the 'init' where the transports are added,
-     and this allows building a sctp over udp connection by client with
-     the server not knowing the remote encap port.
-
-  3. when processing ootb_pkt and creating the temparory transport for
-     the reply pkt.
-
-Note that sctp_input_cb->header is removed, as it's not used any more
-in sctp.
+  2. The 'nocheck' param of udp_tunnel6_xmit_skb() is false, as
+     required by RFC.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/sm.h      |  1 +
- include/net/sctp/structs.h |  7 +------
- net/sctp/ipv6.c            |  1 +
- net/sctp/protocol.c        | 11 ++++++++++-
- net/sctp/sm_make_chunk.c   |  1 +
- net/sctp/sm_statefuns.c    |  2 ++
- 6 files changed, 16 insertions(+), 7 deletions(-)
+ net/sctp/ipv6.c | 47 +++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 35 insertions(+), 12 deletions(-)
 
-diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index 5c491a3..a499341 100644
---- a/include/net/sctp/sm.h
-+++ b/include/net/sctp/sm.h
-@@ -380,6 +380,7 @@ sctp_vtag_verify(const struct sctp_chunk *chunk,
-         if (ntohl(chunk->sctp_hdr->vtag) = asoc->c.my_vtag)
-                 return 1;
- 
-+	chunk->transport->encap_port = SCTP_INPUT_CB(chunk->skb)->encap_port;
- 	return 0;
- }
- 
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index b6d0e58..8819214 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -1120,14 +1120,9 @@ static inline void sctp_outq_cork(struct sctp_outq *q)
-  * sctp_input_cb is currently used on rx and sock rx queue
-  */
- struct sctp_input_cb {
--	union {
--		struct inet_skb_parm	h4;
--#if IS_ENABLED(CONFIG_IPV6)
--		struct inet6_skb_parm	h6;
--#endif
--	} header;
- 	struct sctp_chunk *chunk;
- 	struct sctp_af *af;
-+	__u16 encap_port;
- };
- #define SCTP_INPUT_CB(__skb)	((struct sctp_input_cb *)&((__skb)->cb[0]))
- 
 diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-index 8a58f42..a064bf2 100644
+index a064bf2..5c831f3 100644
 --- a/net/sctp/ipv6.c
 +++ b/net/sctp/ipv6.c
-@@ -1053,6 +1053,7 @@ static struct inet_protosw sctpv6_stream_protosw = {
+@@ -55,6 +55,7 @@
+ #include <net/inet_common.h>
+ #include <net/inet_ecn.h>
+ #include <net/sctp/sctp.h>
++#include <net/udp_tunnel.h>
  
- static int sctp6_rcv(struct sk_buff *skb)
- {
-+	memset(skb->cb, 0, sizeof(skb->cb));
- 	return sctp_rcv(skb) ? -1 : 0;
+ #include <linux/uaccess.h>
+ 
+@@ -191,33 +192,55 @@ static int sctp_v6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
+ 	return ret;
  }
  
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index 8b788bd..c73fd5f 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -842,6 +842,9 @@ static int sctp_ctl_sock_init(struct net *net)
- 
- static int sctp_udp_rcv(struct sock *sk, struct sk_buff *skb)
+-static int sctp_v6_xmit(struct sk_buff *skb, struct sctp_transport *transport)
++static int sctp_v6_xmit(struct sk_buff *skb, struct sctp_transport *t)
  {
-+	memset(skb->cb, 0, sizeof(skb->cb));
-+	SCTP_INPUT_CB(skb)->encap_port = ntohs(udp_hdr(skb)->source);
-+
- 	skb_set_transport_header(skb, sizeof(struct udphdr));
- 	sctp_rcv(skb);
- 	return 0;
-@@ -1133,9 +1136,15 @@ static struct inet_protosw sctp_stream_protosw = {
- 	.flags      = SCTP_PROTOSW_FLAG
- };
++	struct dst_entry *dst = dst_clone(t->dst);
++	struct flowi6 *fl6 = &t->fl.u.ip6;
+ 	struct sock *sk = skb->sk;
+ 	struct ipv6_pinfo *np = inet6_sk(sk);
+-	struct flowi6 *fl6 = &transport->fl.u.ip6;
++	struct net *net = sock_net(sk);
+ 	__u8 tclass = np->tclass;
+-	int res;
++	__be32 label;
  
-+static int sctp4_rcv(struct sk_buff *skb)
-+{
-+	memset(skb->cb, 0, sizeof(skb->cb));
-+	return sctp_rcv(skb);
-+}
-+
- /* Register with IP layer.  */
- static const struct net_protocol sctp_protocol = {
--	.handler     = sctp_rcv,
-+	.handler     = sctp4_rcv,
- 	.err_handler = sctp_v4_err,
- 	.no_policy   = 1,
- 	.netns_ok    = 1,
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 9a56ae2..21d0ff1 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -2321,6 +2321,7 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
- 	 * added as the primary transport.  The source address seems to
- 	 * be a better choice than any of the embedded addresses.
- 	 */
-+	asoc->encap_port = SCTP_INPUT_CB(chunk->skb)->encap_port;
- 	if (!sctp_assoc_add_peer(asoc, peer_addr, gfp, SCTP_ACTIVE))
- 		goto nomem;
+ 	pr_debug("%s: skb:%p, len:%d, src:%pI6 dst:%pI6\n", __func__, skb,
+ 		 skb->len, &fl6->saddr, &fl6->daddr);
  
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index c669f8b..8edab15 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -6268,6 +6268,8 @@ static struct sctp_packet *sctp_ootb_pkt_new(
- 	if (!transport)
- 		goto nomem;
+-	if (transport->dscp & SCTP_DSCP_SET_MASK)
+-		tclass = transport->dscp & SCTP_DSCP_VAL_MASK;
++	if (t->dscp & SCTP_DSCP_SET_MASK)
++		tclass = t->dscp & SCTP_DSCP_VAL_MASK;
  
-+	transport->encap_port = SCTP_INPUT_CB(chunk->skb)->encap_port;
+ 	if (INET_ECN_is_capable(tclass))
+ 		IP6_ECN_flow_xmit(sk, fl6->flowlabel);
+ 
+-	if (!(transport->param_flags & SPP_PMTUD_ENABLE))
++	if (!(t->param_flags & SPP_PMTUD_ENABLE))
+ 		skb->ignore_df = 1;
+ 
+-	SCTP_INC_STATS(sock_net(sk), SCTP_MIB_OUTSCTPPACKS);
++	SCTP_INC_STATS(net, SCTP_MIB_OUTSCTPPACKS);
+ 
+-	rcu_read_lock();
+-	res = ip6_xmit(sk, skb, fl6, sk->sk_mark, rcu_dereference(np->opt),
+-		       tclass, sk->sk_priority);
+-	rcu_read_unlock();
+-	return res;
++	if (!t->encap_port || !net->sctp.udp_port) {
++		int res;
 +
- 	/* Cache a route for the transport with the chunk's destination as
- 	 * the source address.
- 	 */
++		skb_dst_set(skb, dst);
++		rcu_read_lock();
++		res = ip6_xmit(sk, skb, fl6, sk->sk_mark,
++			       rcu_dereference(np->opt),
++			       tclass, sk->sk_priority);
++		rcu_read_unlock();
++		return res;
++	}
++
++	if (skb_is_gso(skb))
++		skb_shinfo(skb)->gso_type |= SKB_GSO_UDP_TUNNEL_CSUM;
++
++	skb->encapsulation = 1;
++	skb_reset_inner_mac_header(skb);
++	skb_reset_inner_transport_header(skb);
++	skb_set_inner_ipproto(skb, IPPROTO_SCTP);
++	label = ip6_make_flowlabel(net, skb, fl6->flowlabel, true, fl6);
++
++	return udp_tunnel6_xmit_skb(dst, sk, skb, NULL, &fl6->saddr,
++				    &fl6->daddr, tclass, ip6_dst_hoplimit(dst),
++				    label, htons(net->sctp.udp_port),
++				    htons(t->encap_port), false);
+ }
+ 
+ /* Returns the dst cache entry for the given source and destination ip
 -- 
 2.1.0
