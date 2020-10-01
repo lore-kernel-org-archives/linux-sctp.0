@@ -1,163 +1,89 @@
-Return-Path: <SRS0=7A92=DH=vger.kernel.org=linux-sctp-owner@kernel.org>
+Return-Path: <SRS0=3qGT=DI=vger.kernel.org=linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-3.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=unavailable autolearn_force=no
-	version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DDF13C2D0A8
-	for <linux-sctp@archiver.kernel.org>; Wed, 30 Sep 2020 06:11:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3148AC4727C
+	for <linux-sctp@archiver.kernel.org>; Thu,  1 Oct 2020 12:41:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A48BA20754
-	for <linux-sctp@archiver.kernel.org>; Wed, 30 Sep 2020 06:11:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D4AD32075F
+	for <linux-sctp@archiver.kernel.org>; Thu,  1 Oct 2020 12:41:26 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="mK4p4oHe"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="SXwzKLKN"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727761AbgI3GLT (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Wed, 30 Sep 2020 02:11:19 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40942 "EHLO
+        id S1731891AbgJAMl0 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Thu, 1 Oct 2020 08:41:26 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41284 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725776AbgI3GLT (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Wed, 30 Sep 2020 02:11:19 -0400
-Received: from mail-wm1-x344.google.com (mail-wm1-x344.google.com [IPv6:2a00:1450:4864:20::344])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DB47DC061755;
-        Tue, 29 Sep 2020 23:11:18 -0700 (PDT)
-Received: by mail-wm1-x344.google.com with SMTP id v12so372925wmh.3;
-        Tue, 29 Sep 2020 23:11:18 -0700 (PDT)
+        with ESMTP id S1731828AbgJAMl0 (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Thu, 1 Oct 2020 08:41:26 -0400
+Received: from mail-qt1-x842.google.com (mail-qt1-x842.google.com [IPv6:2607:f8b0:4864:20::842])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3AF4AC0613D0;
+        Thu,  1 Oct 2020 05:41:26 -0700 (PDT)
+Received: by mail-qt1-x842.google.com with SMTP id d1so4151987qtr.6;
+        Thu, 01 Oct 2020 05:41:26 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=bs1ORnIvUNDWol50FS3a32D8Yz11CkKYmEZJ9EQk5GI=;
-        b=mK4p4oHe8XnBOnOssIm/Y/wUV92teciLxgdde4XCxca4hJoqCaOzcvpug9IM7vPJ1U
-         YrU0XD5qMvXpQc9TLRUORsWSsrIX7RBCyuo6kOwfTAALvTMRfSOHpW61pvgRkkTwUIBC
-         IcomCpHQNuBsA9zXv4PadHValYrPAukOd4r/TnKf5aofXeblIz/7ASOO6ATEFuOEfbZU
-         aqTW5o8OLDLSLaoChxwaG6edZXZcHuCMFFXWhpPQwoufh+7DhfzeuQyNybLXJ1QlApvI
-         V4mkLbO8pr+TmDqaBy33MX1kykjV1Vt6x/AuTP4RlBcX0txmqhzb433WFBDwhLCI4xbz
-         7/JA==
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to;
+        bh=eob6aliylOP56SVG/KL44/iJ0VOS5gnp/UrUcw5CeJc=;
+        b=SXwzKLKNRDqOjVIPGGkRyJCGqxgQRbhQkZ3hp/4aNqVBpD2sOiXKmq1w1brfSRLyQT
+         DlklZ/mWW6SRZKs2W0cynOcyDdS1U7tI3zJDjL9NFssgGkvrts+wawWEbhvCGzcv5NNK
+         XwgmnpJ/ZZGoP2E8oo4Lrcn4dLPPmBrLlFt4n6bHW8kUAWpR8yCNF9/CrJf+P1OU9Ykm
+         QitiCSaHGuD/npBZNNSQXnCpujtQ6axA//7JeHFXgdWZ/0h34MtUzegwWAHCSfo5kEpD
+         62b2d4wRHrDYm+0u0hVNA8SoSZP3e51RVdZZh07hQpQx8ohdMPVQyK9uHNRy5xR6RxXB
+         s00g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=bs1ORnIvUNDWol50FS3a32D8Yz11CkKYmEZJ9EQk5GI=;
-        b=ftOPrtZQNxJih8oIf2C585Y0/AA3YmaFpJOwdKOeL89NwJ0occ5jOWReXNIjaliBKO
-         IP14kOwwGtXuyclcjsLq74kf3MFuiLnkV21ReJiBzQ0GyTO0m1DRdOUoZvq19a1/QmS/
-         lBMutWlzwChM1SLEhreOHHUkbnhuVWaqEbzblw5N7iKpeaq9mBrT+eilZn9EdtPpyNua
-         MVddNdYPjVWceb4cY2OrHkDks3XCLEl4vxiB3oMMFFsX/jCIoch3nW8NMMY9yTRWdFTt
-         C+N8J+u2oavGloV/km2tAXZPfEOmh1m9w6SoVtQ/mvdSvOh19cV8beZ9SP9Jmwj+h3Bt
-         9VJA==
-X-Gm-Message-State: AOAM532/S5KCDoOh+IemLhadLM1Chid++ad3DMy2sXTH/h7XRgQlmklr
-        Jps932boQYVv/8Brq3neZOLqvW2yF+wPLMnFDrmRGD4Qv+Q=
-X-Google-Smtp-Source: ABdhPJw2mnUXHH9l2NgiKnpyVgpbiU81eMuGbf6ClgQlIL4O5H4UQUH2gdeYezWT/BEXHp/b2rKXZO+s4xDaZkWvb8I=
-X-Received: by 2002:a05:600c:283:: with SMTP id 3mr1106739wmk.110.1601446277521;
- Tue, 29 Sep 2020 23:11:17 -0700 (PDT)
-MIME-Version: 1.0
-References: <82b358f40c81cfdecbfc394113be40fd1f682043.1601387231.git.lucien.xin@gmail.com>
- <202009300036.j5lTE8CI-lkp@intel.com>
-In-Reply-To: <202009300036.j5lTE8CI-lkp@intel.com>
-From:   Xin Long <lucien.xin@gmail.com>
-Date:   Wed, 30 Sep 2020 14:26:31 +0800
-Message-ID: <CADvbK_cKHg=TD7h=Ddaon_T0t7+G81Pg_EJ2CeOtvq7TcQKO=Q@mail.gmail.com>
-Subject: Re: [PATCH net-next 13/15] sctp: support for sending packet over udp4 sock
-To:     kernel test robot <lkp@intel.com>
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=eob6aliylOP56SVG/KL44/iJ0VOS5gnp/UrUcw5CeJc=;
+        b=SZ0XT4BsES1fh7kaou+Am1ivb2VwgAh0ENiWvvYJSaY6RAN9e4dkTEy1zRafXdVyck
+         zogPB3P+ZSiPTN44ehTRFrheSq0sLrLzJxcE08YfKt5W7WI5v+6aVAGfNPqx3P0uguuw
+         LmK1BLNZsfWPxwWSwXsBtrjmiEoJuN65YcLfUIgigws2rR43CE+bwHgTvugzXCwtowpk
+         XhyilHgM/hIzm8Wf7RyN8CXagHhT/nMNUmdnBWg2L8N2AqkvnAgomv5tZPXUKgQ0ufBY
+         V5Jf5Eip85xPI1m6GhnCEWGL3TzfEV3SthIFw0IbrhHkDXBooiYaETSyrKMCXwSDHmrb
+         bNOg==
+X-Gm-Message-State: AOAM530nFPmoXflXXJlURLmXT8G59rBwDF1kH3WFndB+U3aCCrOG5LGS
+        Ey9HsM0woMJZJ9Ia+zZcE0XgG1AW2BA=
+X-Google-Smtp-Source: ABdhPJyB5PWorJxRCkn0qw1+HtsZGPXCZZRmeoxlPe+MRTZjAvISHfKGkaAu/Nfsxn+TDZfFV5FwUA==
+X-Received: by 2002:ac8:4e4e:: with SMTP id e14mr7331540qtw.49.1601556085360;
+        Thu, 01 Oct 2020 05:41:25 -0700 (PDT)
+Received: from localhost.localdomain ([177.220.174.180])
+        by smtp.gmail.com with ESMTPSA id 184sm5765131qkl.104.2020.10.01.05.41.24
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 01 Oct 2020 05:41:24 -0700 (PDT)
+Received: by localhost.localdomain (Postfix, from userid 1000)
+        id 1FA45C6195; Thu,  1 Oct 2020 09:41:22 -0300 (-03)
+Date:   Thu, 1 Oct 2020 09:41:22 -0300
+From:   Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To:     Xin Long <lucien.xin@gmail.com>
 Cc:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org,
-        kbuild-all@lists.01.org,
-        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
         Neil Horman <nhorman@tuxdriver.com>,
         Michael Tuexen <tuexen@fh-muenster.de>,
-        Tom Herbert <therbert@google.com>, davem <davem@davemloft.net>
-Content-Type: text/plain; charset="UTF-8"
+        Tom Herbert <therbert@google.com>, davem@davemloft.net
+Subject: Re: [PATCH net-next 00/15] sctp: Implement RFC6951: UDP
+ Encapsulation of SCTP
+Message-ID: <20201001124122.GB70998@localhost.localdomain>
+References: <cover.1601387231.git.lucien.xin@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <cover.1601387231.git.lucien.xin@gmail.com>
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
-Message-ID: <20200930062631.cy9XQ2Kkh0cA0S9PvfUPg1_XSxR4uX4KVoZ7OdEvY1Y@z>
+Message-ID: <20201001124122.1uQVhGAeW6eAd0us2MnIswU1_HP_xAOIN2CXCBFE5Oo@z>
 
-On Wed, Sep 30, 2020 at 12:26 AM kernel test robot <lkp@intel.com> wrote:
->
-> Hi Xin,
->
-> Thank you for the patch! Yet something to improve:
->
-> [auto build test ERROR on net-next/master]
->
-> url:    https://github.com/0day-ci/linux/commits/Xin-Long/sctp-Implement-RFC6951-UDP-Encapsulation-of-SCTP/20200929-215159
-> base:   https://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git 280095713ce244e8dbdfb059cdca695baa72230a
-> config: ia64-randconfig-r014-20200929 (attached as .config)
-> compiler: ia64-linux-gcc (GCC) 9.3.0
-> reproduce (this is a W=1 build):
->         wget https://raw.githubusercontent.com/intel/lkp-tests/master/sbin/make.cross -O ~/bin/make.cross
->         chmod +x ~/bin/make.cross
->         # https://github.com/0day-ci/linux/commit/a1016fd4a55f176fcc2eae05052a61ad7d5a142b
->         git remote add linux-review https://github.com/0day-ci/linux
->         git fetch --no-tags linux-review Xin-Long/sctp-Implement-RFC6951-UDP-Encapsulation-of-SCTP/20200929-215159
->         git checkout a1016fd4a55f176fcc2eae05052a61ad7d5a142b
->         # save the attached .config to linux build tree
->         COMPILER_INSTALL_PATH=$HOME/0day COMPILER=gcc-9.3.0 make.cross ARCH=ia64
->
-> If you fix the issue, kindly add following tag as appropriate
-> Reported-by: kernel test robot <lkp@intel.com>
->
-> All errors (new ones prefixed by >>):
->
->    net/sctp/protocol.c: In function 'sctp_udp_sock_start':
-> >> net/sctp/protocol.c:894:11: error: 'struct udp_port_cfg' has no member named 'local_ip6'; did you mean 'local_ip'?
->      894 |  udp_conf.local_ip6 = in6addr_any;
->          |           ^~~~~~~~~
->          |           local_ip
->
-> vim +894 net/sctp/protocol.c
->
-> a330bee1c278f8 Xin Long 2020-09-29  870
-> 140bb5309cf409 Xin Long 2020-09-29  871  int sctp_udp_sock_start(struct net *net)
-> 140bb5309cf409 Xin Long 2020-09-29  872  {
-> 140bb5309cf409 Xin Long 2020-09-29  873         struct udp_tunnel_sock_cfg tuncfg = {NULL};
-> 140bb5309cf409 Xin Long 2020-09-29  874         struct udp_port_cfg udp_conf = {0};
-> 140bb5309cf409 Xin Long 2020-09-29  875         struct socket *sock;
-> 140bb5309cf409 Xin Long 2020-09-29  876         int err;
-> 140bb5309cf409 Xin Long 2020-09-29  877
-> 140bb5309cf409 Xin Long 2020-09-29  878         udp_conf.family = AF_INET;
-> 140bb5309cf409 Xin Long 2020-09-29  879         udp_conf.local_ip.s_addr = htonl(INADDR_ANY);
-> 140bb5309cf409 Xin Long 2020-09-29  880         udp_conf.local_udp_port = htons(net->sctp.udp_port);
-> 140bb5309cf409 Xin Long 2020-09-29  881         err = udp_sock_create(net, &udp_conf, &sock);
-> 140bb5309cf409 Xin Long 2020-09-29  882         if (err)
-> 140bb5309cf409 Xin Long 2020-09-29  883                 return err;
-> 140bb5309cf409 Xin Long 2020-09-29  884
-> 140bb5309cf409 Xin Long 2020-09-29  885         tuncfg.encap_type = 1;
-> 140bb5309cf409 Xin Long 2020-09-29  886         tuncfg.encap_rcv = sctp_udp_rcv;
-> a330bee1c278f8 Xin Long 2020-09-29  887         tuncfg.encap_err_lookup = sctp_udp_err_lookup;
-> 140bb5309cf409 Xin Long 2020-09-29  888         setup_udp_tunnel_sock(net, sock, &tuncfg);
-> 140bb5309cf409 Xin Long 2020-09-29  889         net->sctp.udp4_sock = sock->sk;
-> 140bb5309cf409 Xin Long 2020-09-29  890
-> cff8956126170d Xin Long 2020-09-29  891         memset(&udp_conf, 0, sizeof(udp_conf));
-> cff8956126170d Xin Long 2020-09-29  892
-> cff8956126170d Xin Long 2020-09-29  893         udp_conf.family = AF_INET6;
-> cff8956126170d Xin Long 2020-09-29 @894         udp_conf.local_ip6 = in6addr_any;
-> cff8956126170d Xin Long 2020-09-29  895         udp_conf.local_udp_port = htons(net->sctp.udp_port);
-> cff8956126170d Xin Long 2020-09-29  896         udp_conf.use_udp6_rx_checksums = true;
-> cff8956126170d Xin Long 2020-09-29  897         udp_conf.ipv6_v6only = true;
-> cff8956126170d Xin Long 2020-09-29  898         err = udp_sock_create(net, &udp_conf, &sock);
-> cff8956126170d Xin Long 2020-09-29  899         if (err) {
-> cff8956126170d Xin Long 2020-09-29  900                 udp_tunnel_sock_release(net->sctp.udp4_sock->sk_socket);
-> cff8956126170d Xin Long 2020-09-29  901                 net->sctp.udp4_sock = NULL;
-> cff8956126170d Xin Long 2020-09-29  902                 return err;
-> cff8956126170d Xin Long 2020-09-29  903         }
-> cff8956126170d Xin Long 2020-09-29  904
-> cff8956126170d Xin Long 2020-09-29  905         tuncfg.encap_type = 1;
-> cff8956126170d Xin Long 2020-09-29  906         tuncfg.encap_rcv = sctp_udp_rcv;
-> a330bee1c278f8 Xin Long 2020-09-29  907         tuncfg.encap_err_lookup = sctp_udp_err_lookup;
-> cff8956126170d Xin Long 2020-09-29  908         setup_udp_tunnel_sock(net, sock, &tuncfg);
-> cff8956126170d Xin Long 2020-09-29  909         net->sctp.udp6_sock = sock->sk;
-#if IS_ENABLED(CONFIG_IPV6) is needed for this part.
+On Tue, Sep 29, 2020 at 09:48:52PM +0800, Xin Long wrote:
+...
+> Patches:
 
-Thanks.
-> cff8956126170d Xin Long 2020-09-29  910
-> 140bb5309cf409 Xin Long 2020-09-29  911         return 0;
-> 140bb5309cf409 Xin Long 2020-09-29  912  }
-> 140bb5309cf409 Xin Long 2020-09-29  913
->
-> ---
-> 0-DAY CI Kernel Test Service, Intel Corporation
-> https://lists.01.org/hyperkitty/list/kbuild-all@lists.01.org
+Please give me till tomorrow for revising this patchset.
+
+Thanks,
+Marcelo
