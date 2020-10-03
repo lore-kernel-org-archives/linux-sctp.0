@@ -1,56 +1,27 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 19 Oct 2020 12:25:18 +0000
-Subject: [PATCHv4 net-next 01/16] udp: check udp sock encap_type in __udp_lib_err
-Message-Id: <71b3af0fb347f27b5c3bf846dbd34485d9f80af0.1603110316.git.lucien.xin@gmail.com>
+From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Date: Sat, 03 Oct 2020 18:07:31 +0000
+Subject: Re: [PATCH lksctp-tools] Use symvmer attribute, not asms for symbol versioning
+Message-Id: <20201003180731.GJ70998@localhost.localdomain>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1603110316.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1603110316.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net, gnault@redhat.com, pabeni@redhat.com, willemdebruijn.kernel@gmail.com
+To: linux-sctp@vger.kernel.org
 
-There is a chance that __udp4/6_lib_lookup() returns a udp encap
-sock in __udp_lib_err(), like the udp encap listening sock may
-use the same port as remote encap port, in which case it should
-go to __udp4/6_lib_err_encap() for more validation before
-processing the icmp packet.
+On Fri, Sep 18, 2020 at 08:48:30PM +0200, Petr Lautrbach wrote:
+> This project could not be built with LTO as it uses ASMs to implement
+> symbol versioning. ASMs like this are fundamentally incompatible with
+> LTO because GCC does not look inside the ASM string to find symbol
+> references. Starting with gcc-10 there is a new symbol attribute for
+> implementing symbol versioning.
+> 
+> A fallback to the old way of implementing symbol versioning via asms is
+> included, so it should work with clang as well as gcc-9 and
+> earlier.
+> 
+> Fixes: https://github.com/sctp/lksctp-tools/issues/35
+> 
+> Author: Jeff Law <law@redhat.com>
+> Signed-off-by: Petr Lautrbach <plautrba@redhat.com>
 
-This patch is to check encap_type in __udp_lib_err() for the
-further validation for a encap sock.
-
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- net/ipv4/udp.c | 2 +-
- net/ipv6/udp.c | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/net/ipv4/udp.c b/net/ipv4/udp.c
-index 09f0a23..ca04a8a 100644
---- a/net/ipv4/udp.c
-+++ b/net/ipv4/udp.c
-@@ -702,7 +702,7 @@ int __udp4_lib_err(struct sk_buff *skb, u32 info, struct udp_table *udptable)
- 	sk = __udp4_lib_lookup(net, iph->daddr, uh->dest,
- 			       iph->saddr, uh->source, skb->dev->ifindex,
- 			       inet_sdif(skb), udptable, NULL);
--	if (!sk) {
-+	if (!sk || udp_sk(sk)->encap_type) {
- 		/* No socket for error: try tunnels before discarding */
- 		sk = ERR_PTR(-ENOENT);
- 		if (static_branch_unlikely(&udp_encap_needed_key)) {
-diff --git a/net/ipv6/udp.c b/net/ipv6/udp.c
-index 29d9691..cde9b88 100644
---- a/net/ipv6/udp.c
-+++ b/net/ipv6/udp.c
-@@ -560,7 +560,7 @@ int __udp6_lib_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
- 
- 	sk = __udp6_lib_lookup(net, daddr, uh->dest, saddr, uh->source,
- 			       inet6_iif(skb), inet6_sdif(skb), udptable, NULL);
--	if (!sk) {
-+	if (!sk || udp_sk(sk)->encap_type) {
- 		/* No socket for error: try tunnels before discarding */
- 		sk = ERR_PTR(-ENOENT);
- 		if (static_branch_unlikely(&udpv6_encap_needed_key)) {
--- 
-2.1.0
+Applied, thanks.
