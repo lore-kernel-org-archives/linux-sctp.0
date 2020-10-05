@@ -1,96 +1,86 @@
-Return-Path: <SRS0=oHBp=DK=vger.kernel.org=linux-sctp-owner@kernel.org>
+Return-Path: <SRS0=9Lc5=DM=vger.kernel.org=linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SIGNED_OFF_BY,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 76975C4363D
-	for <linux-sctp@archiver.kernel.org>; Sat,  3 Oct 2020 18:07:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 18C36C4363A
+	for <linux-sctp@archiver.kernel.org>; Mon,  5 Oct 2020 16:39:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 29BAC206C1
-	for <linux-sctp@archiver.kernel.org>; Sat,  3 Oct 2020 18:07:38 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="cubNasvZ"
+	by mail.kernel.org (Postfix) with ESMTP id D6B302076E
+	for <linux-sctp@archiver.kernel.org>; Mon,  5 Oct 2020 16:39:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725808AbgJCSHi (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Sat, 3 Oct 2020 14:07:38 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55218 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725804AbgJCSHh (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Sat, 3 Oct 2020 14:07:37 -0400
-Received: from mail-qt1-x844.google.com (mail-qt1-x844.google.com [IPv6:2607:f8b0:4864:20::844])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3BAB3C0613D0
-        for <linux-sctp@vger.kernel.org>; Sat,  3 Oct 2020 11:07:36 -0700 (PDT)
-Received: by mail-qt1-x844.google.com with SMTP id d1so5719328qtr.6
-        for <linux-sctp@vger.kernel.org>; Sat, 03 Oct 2020 11:07:36 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=date:from:to:cc:subject:message-id:references:mime-version
-         :content-disposition:in-reply-to;
-        bh=ATR9wD0a/FdwUda6TKJWv+F4vP760VB0pB7pmoqEA1E=;
-        b=cubNasvZKSbzI5BE0UnX1Lj5FLW7N0l50maOM/kdaVhGT0xG3q/F6yjvsj5dNRoHF4
-         TRwWMAfIxjuo+SQHp7/l3vWjqk6YYLNZ8xn4AGWSRkTjhAOM34k1lN1sOMRy7fxilYFK
-         2Mu0h93gEofWcszG6SmV+4DQyheqsqC1CsDI5HFIeqNzFPHKwkB92qA0YaYQMRYz81iH
-         JRFOgiOW49DRwSI7tfkAnxB7Kr9gQ1hB2q2k+gz5XpXnvCAShewV15FyNPtBv/CVmV4b
-         89KNl0M22yvux6/4UlPdDyA7kMohdMVLYj2DJYHgE/7t4IhDEG4xjiKe8vTmnBTZGOtB
-         NS/Q==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
-         :mime-version:content-disposition:in-reply-to;
-        bh=ATR9wD0a/FdwUda6TKJWv+F4vP760VB0pB7pmoqEA1E=;
-        b=lK1MVMl62AxDE/cCU1WqJoB8hezJ+9pwaf2KwCZ+PU6RVu8vHXQBZwx3xEIjH6zQGz
-         vwaY/vumIwNHieurNK8VpR2d6qGFbdc1BE1ArIXulZHxFobYXWaPCL0Po5396TP8FbZH
-         XHndcE0Z25qaKS1JZaBXWa46yZlx0D4wXs3xAZO34VRy+8KAVGtpxnLUnS5unTqV2hz0
-         tZcbc5+VW9ZsXTtojK6YramnTNQXIgzkiwE6L9WEotMz+OHJOUdYsAhJ7LfAqAJ/qqVO
-         e2FA0ASN8mm0mosbqaJ1ZuoJtqNMUO6+QCtd6ybNq0l8pMpC3kA0CJZxaQeSgakcNaP5
-         xmuw==
-X-Gm-Message-State: AOAM533YISo3gT76jXUcEjPUZwcV2AxqEQ40Tjndlg4E7tzepSO04AEk
-        vFOs/IO/aT8p5PXOVrEFkVU=
-X-Google-Smtp-Source: ABdhPJwxJledoqf+XUgRSQ740xzfpfU8t1oSfXhXdJxy5M8pe54zEpjz5V7cXq64mik6ybfi7sPuKw==
-X-Received: by 2002:ac8:2c78:: with SMTP id e53mr7630798qta.298.1601748455368;
-        Sat, 03 Oct 2020 11:07:35 -0700 (PDT)
-Received: from localhost.localdomain ([177.220.172.62])
-        by smtp.gmail.com with ESMTPSA id b43sm3909854qtk.84.2020.10.03.11.07.34
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sat, 03 Oct 2020 11:07:34 -0700 (PDT)
-Received: by localhost.localdomain (Postfix, from userid 1000)
-        id B76FEC6195; Sat,  3 Oct 2020 15:07:31 -0300 (-03)
-Date:   Sat, 3 Oct 2020 15:07:31 -0300
-From:   Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-To:     Petr Lautrbach <plautrba@redhat.com>
-Cc:     linux-sctp@vger.kernel.org
-Subject: Re: [PATCH lksctp-tools] Use symvmer attribute, not asms for symbol
- versioning
-Message-ID: <20201003180731.GJ70998@localhost.localdomain>
-References: <20200918184830.469979-1-plautrba@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20200918184830.469979-1-plautrba@redhat.com>
+        id S1726747AbgJEQjZ convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-sctp@archiver.kernel.org>);
+        Mon, 5 Oct 2020 12:39:25 -0400
+Received: from mail.fink.org ([79.134.252.20]:38278 "EHLO mail.fink.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726615AbgJEQjZ (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
+        Mon, 5 Oct 2020 12:39:25 -0400
+X-Footer: Zmluay5vcmc=
+Received: from protopia.fink.org ([79.134.238.50])
+        (authenticated user list@fink.org)
+        by mail.fink.org (Kerio Connect 9.2.12 patch 1) with ESMTPSA
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256 bits))
+        for linux-sctp@vger.kernel.org;
+        Mon, 5 Oct 2020 18:39:23 +0200
+From:   Andreas Fink <afink@list.fink.org>
+Content-Type: text/plain;
+        charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.120.23.2.4\))
+Subject: Heartbeat on closed SCTP sockets?
+Message-ID: <1FB70B30-857C-4CD9-A05C-4BA15F57B1D2@list.fink.org>
+Date:   Mon, 5 Oct 2020 18:39:22 +0200
+To:     linux-sctp@vger.kernel.org
+X-Mailer: Apple Mail (2.3608.120.23.2.4)
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
-Message-ID: <20201003180731.yNpgXLj_r07zajag1UkKeZZDg3CAFwPvCVkIuX2Ez3Q@z>
+Message-ID: <20201005163922.OQqhbl0vfY5YYP8X-SSt1YOxl9UgWulC8V9yWC_lh1s@z>
 
-On Fri, Sep 18, 2020 at 08:48:30PM +0200, Petr Lautrbach wrote:
-> This project could not be built with LTO as it uses ASMs to implement
-> symbol versioning. ASMs like this are fundamentally incompatible with
-> LTO because GCC does not look inside the ASM string to find symbol
-> references. Starting with gcc-10 there is a new symbol attribute for
-> implementing symbol versioning.
-> 
-> A fallback to the old way of implementing symbol versioning via asms is
-> included, so it should work with clang as well as gcc-9 and
-> earlier.
-> 
-> Fixes: https://github.com/sctp/lksctp-tools/issues/35
-> 
-> Author: Jeff Law <law@redhat.com>
-> Signed-off-by: Petr Lautrbach <plautrba@redhat.com>
+Hello all,
 
-Applied, thanks.
+We are trying to debug a very strange case here and would like to hear your input.
+
+Here is what we have
+
+1. we have a application which listens on a  point to multipoint SCTP socket
+2. when a incoming connection comes in and it matches a preconfigured one, it peels of that socket and a separate thread is starting communication on the upper layer.
+3. when it doesnt match, an abort is triggered (that part might not work yet though).
+
+
+Now we have multiple connections to different vendors and we have traces where we can see that there was a temporary issue on the IP layer and associations get shutdown and restarted.
+After the IP layer resolved, all connection came up except two which go to the same peer and vendor.
+
+What we now see in netstat --sctp is:
+
+we have a LISTEN on port 2010
+we have a  association from port 2010 to the remote in status CLOSED
+
+in tcpdump we see packets coming in from the remote and heartbeat being acknowledged. However our application is not answering to these packets and the status of the application shows SCTP being down.
+In other words, my application sees the association down. Netstat shows the association as being closed but the kernel seems to continue to entertain this association by continue to send heartbeat ACK and not sending ABORT.
+
+We now kill the application
+
+What we now see in netstat --sctp is:
+we no longer listen on port 2010
+we have a closed association from port 2010 to the remote.
+
+in tcpdump we however we STILL see packets coming in from the remote and heartbeat being acknowledged, even though no application is listening on this port and no userspace application is using that port.
+We do not see any SHUTDOWN or INIT even if we restart the application.
+
+Can anyone explain how this can be?
+
+We are using kernel linux-image-5.4.0-0.bpo.4-amd64 from the Debian Backport repositiory on Debian 10.
+
+The issue seems to be related that the remote side never closes the SCTP assoc but simply tries to restart the upper layers while other vendors time out on upper layers and restart the SCTP assoc.
+Restarting it from my application outbound also didnt help. Kernel somehow still remembers there's something up where theres clearly not.
+
+The only solution to get this assoc back alive is to reboot the whole machine it seems.
+
+Thanks for any input.
+
+
