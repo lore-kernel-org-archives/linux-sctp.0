@@ -1,7 +1,7 @@
 From: Andreas Fink <afink@list.fink.org>
-Date: Tue, 06 Oct 2020 13:31:49 +0000
+Date: Thu, 08 Oct 2020 06:40:01 +0000
 Subject: Re: Heartbeat on closed SCTP sockets?
-Message-Id: <920ED78B-0CDF-43A0-B3FB-42D25E249BD4@list.fink.org>
+Message-Id: <A95BC0CF-7C1D-4BB2-B9EF-8222C5BE9B49@list.fink.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1FB70B30-857C-4CD9-A05C-4BA15F57B1D2@list.fink.org>
 In-Reply-To: <1FB70B30-857C-4CD9-A05C-4BA15F57B1D2@list.fink.org>
@@ -10,26 +10,39 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-here are the matching entries:
-
-ss -a --sctp
-State                        Recv-Q                      Send-Q                                                         Local Address:Port                                                            Peer Address:Port
-LISTEN                       0                           128                                                   [::ffff:194.0.137.189]:2020                                                                       *:*
-UNCONN                       0                           0                                                     [::ffff:194.0.137.189]:2020                                                                       *:1202
-SYN-RECV                     0                           0                                                [::ffff:194.0.137.234]%eth0:2020                                                                       *:1202
-
-from /proc/net/sctp/assocs
-
- ASSOC     SOCK   STY SST ST HBKT ASSOC-ID TX_QUEUE RX_QUEUE UID INODE LPORT RPORT LADDRS <-> RADDRS HBINT INS OUTS MAXRT T1X T2X RTXC wmema wmemq sndbuf rcvbuf
-6947dc99 7e08fe9b 1   7   3  0       5        0        0       0     0 2020   1202  194.0.137.234 194.0.137.189 <-> *93.95.48.82 93.95.48.90        7500     2    10   10    0    2        9        1        0   212992   212992
-
-The application opens up a IPv6 socket with IPv4 conversion.
-It opens a listener socket on 2020 and had a connection with the indicated IPs (its multihomed with two IPs).
-The entry in /proc/net/sctp/assocs refers to the association which is being kept alive by the remote
-but in ss -a --sctp you can see its "unconnected" and listening. So the connection above should be handed over to the listener port and a SCTP UP message should be delivered to the application upon which my application would call sctp_peeloff and everything would restart.
+by reading the linux diver source I discovered this code segment in input.c around line 188
 
 
-quite confusing.
+/*
+	 * RFC 2960, 8.4 - Handle "Out of the blue" Packets.
+	 * An SCTP packet is called an "out of the blue" (OOTB)
+	 * packet if it is correctly formed, i.e., passed the
+	 * receiver's checksum check, but the receiver is not
+	 * able to identify the association to which this
+	 * packet belongs.
+	 */
+	
+if (!asoc) {
+	if (sctp_rcv_ootb(skb)) {
+		__SCTP_INC_STATS(net, SCTP_MIB_OUTOFBLUES);
+		goto discard_release;
+	}
+}
+
+This means out of the blue packets are always ignored and dropped.
+
+the RFC however says:
+
+   8) The receiver should respond to the sender of the OOTB packet with
+      an ABORT.  When sending the ABORT, the receiver of the OOTB packet
+      MUST fill in the Verification Tag field of the outbound packet
+      with the value found in the Verification Tag field of the OOTB
+      packet and set the T-bit in the Chunk Flags to indicate that no
+      TCB was found.  After sending this ABORT, the receiver of the OOTB
+      packet shall discard the OOTB packet and take no further action.
+
+I think this is what I am seeing. The remote sends OOTB messages, we dont reply with abort which means the remote doesnt reset the connection.
+There must be a second issue that the socket structures are not in sync up.
 
 
 > On 5 Oct 2020, at 19:16, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com> wrote:
