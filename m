@@ -7,36 +7,36 @@ X-Spam-Status: No, score=-8.7 required=3.0 tests=BAYES_00,
 	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9BF58C4363A
-	for <linux-sctp@archiver.kernel.org>; Thu,  8 Oct 2020 10:57:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 04687C43467
+	for <linux-sctp@archiver.kernel.org>; Thu,  8 Oct 2020 11:02:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 4EF1B215A4
-	for <linux-sctp@archiver.kernel.org>; Thu,  8 Oct 2020 10:57:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AD43E215A4
+	for <linux-sctp@archiver.kernel.org>; Thu,  8 Oct 2020 11:02:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729689AbgJHK5x convert rfc822-to-8bit (ORCPT
+        id S1728633AbgJHLCm convert rfc822-to-8bit (ORCPT
         <rfc822;linux-sctp@archiver.kernel.org>);
-        Thu, 8 Oct 2020 06:57:53 -0400
-Received: from mail.fink.org ([79.134.252.20]:50900 "EHLO mail.fink.org"
+        Thu, 8 Oct 2020 07:02:42 -0400
+Received: from mail.fink.org ([79.134.252.20]:51094 "EHLO mail.fink.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727224AbgJHK5x (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
-        Thu, 8 Oct 2020 06:57:53 -0400
+        id S1726273AbgJHLCm (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
+        Thu, 8 Oct 2020 07:02:42 -0400
 X-Footer: Zmluay5vcmc=
 Received: from protopia.fink.org ([79.134.238.50])
         (authenticated user list@fink.org)
         by mail.fink.org (Kerio Connect 9.2.12 patch 1) with ESMTPSA
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256 bits));
-        Thu, 8 Oct 2020 12:57:31 +0200
+        Thu, 8 Oct 2020 13:02:25 +0200
 Content-Type: text/plain;
         charset=us-ascii
 Mime-Version: 1.0 (Mac OS X Mail 13.4 \(3608.120.23.2.4\))
 Subject: Re: Heartbeat on closed SCTP sockets?
 From:   Andreas Fink <afink@list.fink.org>
 In-Reply-To: <E00505E6-B988-475D-86C7-F18A77E9AB7A@lurchi.franken.de>
-Date:   Thu, 8 Oct 2020 12:57:31 +0200
+Date:   Thu, 8 Oct 2020 13:02:25 +0200
 Cc:     Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
         linux-sctp@vger.kernel.org
 Content-Transfer-Encoding: 8BIT
-Message-ID: <6FF20CAB-98F7-4CE9-8EA1-FB431AD1AC67@list.fink.org>
+Message-ID: <35B9E584-4755-4B24-BE5E-54FE9ED51809@list.fink.org>
 References: <1FB70B30-857C-4CD9-A05C-4BA15F57B1D2@list.fink.org>
  <20201005171643.GK70998@localhost.localdomain>
  <A95BC0CF-7C1D-4BB2-B9EF-8222C5BE9B49@list.fink.org>
@@ -46,9 +46,10 @@ X-Mailer: Apple Mail (2.3608.120.23.2.4)
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
-Message-ID: <20201008105731.AyS1hftDdi7eRe5Sp9zA8QSXdsK3gmXvTf3lSiKSGv0@z>
+Message-ID: <20201008110225.Ar7kf9gGQmZPHFbAw06RhNB-ZZY0eOF6f9_LLVKTz9g@z>
 
-
+PS wheres the repo of the latest version hosted?
+I want to check it out and do some debugging
 
 > On 8 Oct 2020, at 11:08, Michael Tuexen <michael.tuexen@lurchi.franken.de> wrote:
 > 
@@ -74,14 +75,8 @@ Message-ID: <20201008105731.AyS1hftDdi7eRe5Sp9zA8QSXdsK3gmXvTf3lSiKSGv0@z>
 >> }
 > The above code looks good. Have a look at
 > https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/net/sctp/input.c?h=v5.9-rc8#n666
-
-So where does it generate the ABORT? I don't see it. I can only it checks for an incoming ABORT but its not generating an outgoing ABORT for the packets which are not handled.
-
 > 
 > RFC 4960 requires also to drop some OOTB packets. This is what sctp_rcv_ootb() checks for.
-
-Its ok to drop the packet and not hand it over to any socket (after all theres' no open socket at that moment around to handle it anyway). But we should inform the remote that this packet is not being processed by sending ABORT. That way the remote would start with INIT the next time and things probably come back to live.
-
 >> 
 >> This means out of the blue packets are always ignored and dropped.
 >> 
@@ -97,13 +92,6 @@ Its ok to drop the packet and not hand it over to any socket (after all theres' 
 >> 
 >> I think this is what I am seeing. The remote sends OOTB messages, we dont reply with abort which means the remote doesnt reset the connection.
 > What are those OOTB messages? Which chunks do they contain?
-
-They contain HEARTBEAT for example.
-
-But because we are indeed sending HEATBEAT ACK back, they are handled. 
-This means the kernel must think they are not OOTB but some established assoc. Only its status is CLOSED.
-
-
 > 
 > Bes regards
 > Michael
