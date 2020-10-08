@@ -1,130 +1,94 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Tue, 13 Oct 2020 07:27:39 +0000
-Subject: [PATCHv3 net-next 14/16] sctp: add the error cause for new encapsulation port restart
-Message-Id: <df18ce9f94be0a58bbf1743071993b95696aed2d.1602574012.git.lucien.xin@gmail.com>
+Date: Thu, 08 Oct 2020 09:48:03 +0000
+Subject: [PATCHv2 net-next 07/17] sctp: add encap_err_lookup for udp encap socks
+Message-Id: <baba90f09cbb5de03a6216c9f6308d0e4fb2f3c1.1602150362.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1602574012.git.lucien.xin@gmail.com>
- <fae9c57767447c4fd97476807b9e029e8fda607a.1602574012.git.lucien.xin@gmail.com>
- <c01a9a09096cb1b292d461aa5a1e72aae2ca942a.1602574012.git.lucien.xin@gmail.com>
- <dbad21ff524e119f83ae4444d1ae393ab165fa7c.1602574012.git.lucien.xin@gmail.com>
- <7159fb58f44f9ff00ca5b3b8a26ee3aa2fd1bf8a.1602574012.git.lucien.xin@gmail.com>
- <b9f0bfa27c5be3bbf27a7325c73f16205286df38.1602574012.git.lucien.xin@gmail.com>
- <c9c1d019287792f71863c89758d179b133fe1200.1602574012.git.lucien.xin@gmail.com>
- <37e9f70ffb9dea1572025b8e1c4b1f1c6e6b3da5.1602574012.git.lucien.xin@gmail.com>
- <08854ecf72eee34d3e98e30def6940d94f97fdef.1602574012.git.lucien.xin@gmail.com>
- <732baa9aef67a1b0d0b4d69f47149b41a49bbd76.1602574012.git.lucien.xin@gmail.com>
- <4885b112360b734e25714499346e6dc22246a87d.1602574012.git.lucien.xin@gmail.com>
- <c97b738ae89c59f14afbbca22d0294dc24eca30f.1602574012.git.lucien.xin@gmail.com>
- <46f33eb9331b7e1e688a7f125201ad600ae83fbd.1602574012.git.lucien.xin@gmail.com>
- <c79a0be422c96fec9da194a20853811d93809393.1602574012.git.lucien.xin@gmail.com>
-In-Reply-To: <c79a0be422c96fec9da194a20853811d93809393.1602574012.git.lucien.xin@gmail.com>
+References: <cover.1602150362.git.lucien.xin@gmail.com>
+ <052acb63198c44df41c5db17f8397eeb7c8bacfe.1602150362.git.lucien.xin@gmail.com>
+ <c36b016ee429980b9585144f4f9af31bcda467ee.1602150362.git.lucien.xin@gmail.com>
+ <483d9eec159b22172fe04dacd58d7f88dfc2f301.1602150362.git.lucien.xin@gmail.com>
+ <17cab00046ea7fe36c8383925a4fc3fbc028c511.1602150362.git.lucien.xin@gmail.com>
+ <6f5a15bba0e2b5d3da6be90fd222c5ee41691d32.1602150362.git.lucien.xin@gmail.com>
+ <af7bd8219b32d7f864eaef8ed8e970fc9bde928c.1602150362.git.lucien.xin@gmail.com>
+In-Reply-To: <af7bd8219b32d7f864eaef8ed8e970fc9bde928c.1602150362.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net, gnault@redhat.com, pabeni@redhat.com, willemdebruijn.kernel@gmail.com
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net
 
-This patch is to add the function to make the abort chunk with
-the error cause for new encapsulation port restart, defined
-on Section 4.4 in draft-tuexen-tsvwg-sctp-udp-encaps-cons-03.
+As it says in rfc6951#section-5.5:
 
-v1->v2:
-  - no change.
-v2->v3:
-  - no need to call htons() when setting nep.cur_port/new_port.
+  "When receiving ICMP or ICMPv6 response packets, there might not be
+   enough bytes in the payload to identify the SCTP association that the
+   SCTP packet triggering the ICMP or ICMPv6 packet belongs to.  If a
+   received ICMP or ICMPv6 packet cannot be related to a specific SCTP
+   association or the verification tag cannot be verified, it MUST be
+   discarded silently.  In particular, this means that the SCTP stack
+   MUST NOT rely on receiving ICMP or ICMPv6 messages.  Implementation
+   constraints could prevent processing received ICMP or ICMPv6
+   messages."
+
+ICMP or ICMPv6 packets need to be handled, and this is implemented by
+udp encap sock .encap_err_lookup function.
+
+The .encap_err_lookup function is called in __udp(6)_lib_err_encap()
+to confirm this path does need to be updated. For sctp, what we can
+do here is check if the corresponding asoc and transport exist.
+
+Note that icmp packet process for sctp over udp is done by udp sock
+.encap_err_lookup(), and it means for now we can't do as much as
+sctp_v4/6_err() does. Also we can't do the two mappings mentioned
+in rfc6951#section-5.5.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/linux/sctp.h     | 20 ++++++++++++++++++++
- include/net/sctp/sm.h    |  3 +++
- net/sctp/sm_make_chunk.c | 20 ++++++++++++++++++++
- 3 files changed, 43 insertions(+)
+ net/sctp/protocol.c | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
 
-diff --git a/include/linux/sctp.h b/include/linux/sctp.h
-index 7673123..bb19265 100644
---- a/include/linux/sctp.h
-+++ b/include/linux/sctp.h
-@@ -482,11 +482,13 @@ enum sctp_error {
- 	 *  11  Restart of an association with new addresses
- 	 *  12  User Initiated Abort
- 	 *  13  Protocol Violation
-+	 *  14  Restart of an Association with New Encapsulation Port
- 	 */
- 
- 	SCTP_ERROR_RESTART         = cpu_to_be16(0x0b),
- 	SCTP_ERROR_USER_ABORT      = cpu_to_be16(0x0c),
- 	SCTP_ERROR_PROTO_VIOLATION = cpu_to_be16(0x0d),
-+	SCTP_ERROR_NEW_ENCAP_PORT  = cpu_to_be16(0x0e),
- 
- 	/* ADDIP Section 3.3  New Error Causes
- 	 *
-@@ -793,4 +795,22 @@ enum {
- 	SCTP_FLOWLABEL_VAL_MASK = 0xfffff
- };
- 
-+/* UDP Encapsulation
-+ * draft-tuexen-tsvwg-sctp-udp-encaps-cons-03.html#section-4-4
-+ *
-+ *   The error cause indicating an "Restart of an Association with
-+ *   New Encapsulation Port"
-+ *
-+ * 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-+ * |        Cause Code = 14        |       Cause Length = 8        |
-+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-+ * |   Current Encapsulation Port  |     New Encapsulation Port    |
-+ * +-------------------------------+-------------------------------+
-+ */
-+struct sctp_new_encap_port_hdr {
-+	__be16 cur_port;
-+	__be16 new_port;
-+};
-+
- #endif /* __LINUX_SCTP_H__ */
-diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index a499341..fd223c9 100644
---- a/include/net/sctp/sm.h
-+++ b/include/net/sctp/sm.h
-@@ -221,6 +221,9 @@ struct sctp_chunk *sctp_make_violation_paramlen(
- struct sctp_chunk *sctp_make_violation_max_retrans(
- 					const struct sctp_association *asoc,
- 					const struct sctp_chunk *chunk);
-+struct sctp_chunk *sctp_make_new_encap_port(
-+					const struct sctp_association *asoc,
-+					const struct sctp_chunk *chunk);
- struct sctp_chunk *sctp_make_heartbeat(const struct sctp_association *asoc,
- 				       const struct sctp_transport *transport);
- struct sctp_chunk *sctp_make_heartbeat_ack(const struct sctp_association *asoc,
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 21d0ff1..f77484d 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -1142,6 +1142,26 @@ struct sctp_chunk *sctp_make_violation_max_retrans(
- 	return retval;
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 49b5d75..dd2d9c4 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -848,6 +848,23 @@ static int sctp_udp_rcv(struct sock *sk, struct sk_buff *skb)
+ 	return 0;
  }
  
-+struct sctp_chunk *sctp_make_new_encap_port(const struct sctp_association *asoc,
-+					    const struct sctp_chunk *chunk)
++static int sctp_udp_err_lookup(struct sock *sk, struct sk_buff *skb)
 +{
-+	struct sctp_new_encap_port_hdr nep;
-+	struct sctp_chunk *retval;
++	struct sctp_association *asoc;
++	struct sctp_transport *t;
++	int family;
 +
-+	retval = sctp_make_abort(asoc, chunk,
-+				 sizeof(struct sctp_errhdr) + sizeof(nep));
-+	if (!retval)
-+		goto nodata;
++	skb->transport_header += sizeof(struct udphdr);
++	family = (ip_hdr(skb)->version = 4) ? AF_INET : AF_INET6;
++	sk = sctp_err_lookup(dev_net(skb->dev), family, skb, sctp_hdr(skb),
++			     &asoc, &t);
++	if (!sk)
++		return -ENOENT;
 +
-+	sctp_init_cause(retval, SCTP_ERROR_NEW_ENCAP_PORT, sizeof(nep));
-+	nep.cur_port = SCTP_INPUT_CB(chunk->skb)->encap_port;
-+	nep.new_port = chunk->transport->encap_port;
-+	sctp_addto_chunk(retval, sizeof(nep), &nep);
-+
-+nodata:
-+	return retval;
++	sctp_err_finish(sk, t);
++	return 0;
 +}
 +
- /* Make a HEARTBEAT chunk.  */
- struct sctp_chunk *sctp_make_heartbeat(const struct sctp_association *asoc,
- 				       const struct sctp_transport *transport)
+ int sctp_udp_sock_start(struct net *net)
+ {
+ 	struct udp_tunnel_sock_cfg tuncfg = {NULL};
+@@ -866,6 +883,7 @@ int sctp_udp_sock_start(struct net *net)
+ 
+ 	tuncfg.encap_type = 1;
+ 	tuncfg.encap_rcv = sctp_udp_rcv;
++	tuncfg.encap_err_lookup = sctp_udp_err_lookup;
+ 	setup_udp_tunnel_sock(net, sock, &tuncfg);
+ 	net->sctp.udp4_sock = sock->sk;
+ 
+@@ -887,6 +905,7 @@ int sctp_udp_sock_start(struct net *net)
+ 
+ 	tuncfg.encap_type = 1;
+ 	tuncfg.encap_rcv = sctp_udp_rcv;
++	tuncfg.encap_err_lookup = sctp_udp_err_lookup;
+ 	setup_udp_tunnel_sock(net, sock, &tuncfg);
+ 	net->sctp.udp6_sock = sock->sk;
+ #endif
 -- 
 2.1.0
