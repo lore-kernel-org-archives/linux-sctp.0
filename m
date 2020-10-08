@@ -1,7 +1,7 @@
 From: Andreas Fink <afink@list.fink.org>
-Date: Thu, 08 Oct 2020 10:57:31 +0000
+Date: Thu, 08 Oct 2020 11:02:25 +0000
 Subject: Re: Heartbeat on closed SCTP sockets?
-Message-Id: <6FF20CAB-98F7-4CE9-8EA1-FB431AD1AC67@list.fink.org>
+Message-Id: <35B9E584-4755-4B24-BE5E-54FE9ED51809@list.fink.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <1FB70B30-857C-4CD9-A05C-4BA15F57B1D2@list.fink.org>
 In-Reply-To: <1FB70B30-857C-4CD9-A05C-4BA15F57B1D2@list.fink.org>
@@ -10,7 +10,8 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-
+PS wheres the repo of the latest version hosted?
+I want to check it out and do some debugging
 
 > On 8 Oct 2020, at 11:08, Michael Tuexen <michael.tuexen@lurchi.franken.de> wrote:
 > 
@@ -36,14 +37,8 @@ To: linux-sctp@vger.kernel.org
 >> }
 > The above code looks good. Have a look at
 > https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/net/sctp/input.c?h=v5.9-rc8#n666
-
-So where does it generate the ABORT? I don't see it. I can only it checks for an incoming ABORT but its not generating an outgoing ABORT for the packets which are not handled.
-
 > 
 > RFC 4960 requires also to drop some OOTB packets. This is what sctp_rcv_ootb() checks for.
-
-Its ok to drop the packet and not hand it over to any socket (after all theres' no open socket at that moment around to handle it anyway). But we should inform the remote that this packet is not being processed by sending ABORT. That way the remote would start with INIT the next time and things probably come back to live.
-
 >> 
 >> This means out of the blue packets are always ignored and dropped.
 >> 
@@ -59,13 +54,6 @@ Its ok to drop the packet and not hand it over to any socket (after all theres' 
 >> 
 >> I think this is what I am seeing. The remote sends OOTB messages, we dont reply with abort which means the remote doesnt reset the connection.
 > What are those OOTB messages? Which chunks do they contain?
-
-They contain HEARTBEAT for example.
-
-But because we are indeed sending HEATBEAT ACK back, they are handled. 
-This means the kernel must think they are not OOTB but some established assoc. Only its status is CLOSED.
-
-
 > 
 > Bes regards
 > Michael
