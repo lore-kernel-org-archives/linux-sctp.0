@@ -1,39 +1,56 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Thu, 15 Oct 2020 12:41:37 +0000
-Subject: Re: [PATCHv3 net-next 00/16] sctp: Implement RFC6951: UDP Encapsulation of SCTP
-Message-Id: <20201015124137.GA11030@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 08 Oct 2020 09:48:00 +0000
+Subject: [PATCHv2 net-next 04/17] udp: support sctp over udp in skb_udp_tunnel_segment
+Message-Id: <17cab00046ea7fe36c8383925a4fc3fbc028c511.1602150362.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1602574012.git.lucien.xin@gmail.com>
- <20201014203416.6e0a1604@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
-In-Reply-To: <20201014203416.6e0a1604@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
+References: <cover.1602150362.git.lucien.xin@gmail.com>
+ <052acb63198c44df41c5db17f8397eeb7c8bacfe.1602150362.git.lucien.xin@gmail.com>
+ <c36b016ee429980b9585144f4f9af31bcda467ee.1602150362.git.lucien.xin@gmail.com>
+ <483d9eec159b22172fe04dacd58d7f88dfc2f301.1602150362.git.lucien.xin@gmail.com>
+In-Reply-To: <483d9eec159b22172fe04dacd58d7f88dfc2f301.1602150362.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Jakub Kicinski <kuba@kernel.org>
-Cc: Xin Long <lucien.xin@gmail.com>, network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net, gnault@redhat.com, pabeni@redhat.com, willemdebruijn.kernel@gmail.com
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net
 
-On Wed, Oct 14, 2020 at 08:34:16PM -0700, Jakub Kicinski wrote:
-> On Tue, 13 Oct 2020 15:27:25 +0800 Xin Long wrote:
-> > Description From the RFC:
-> > 
-> >    The Main Reasons:
-> > 
-> >    o  To allow SCTP traffic to pass through legacy NATs, which do not
-> >       provide native SCTP support as specified in [BEHAVE] and
-> >       [NATSUPP].
-> > 
-> >    o  To allow SCTP to be implemented on hosts that do not provide
-> >       direct access to the IP layer.  In particular, applications can
-> >       use their own SCTP implementation if the operating system does not
-> >       provide one.
-> 
-> Marcelo, Neil - please review if you want this one to make 5.10.
+To call sctp_gso_segment() properly in skb_udp_tunnel_segment() for sctp
+over udp packets, we need to set transport_header to sctp header. When
+skb->ip_summed = CHECKSUM_PARTIAL, skb_crc32c_csum_help() should be
+called for the inner sctp packet.
 
-On the works!
+Cc: Tom Herbert <tom@herbertland.com>
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/ipv4/udp_offload.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
-> Otherwise we can defer until after the merge window.
-
-Probably not needed.
-
-Thanks,
-Marcelo
+diff --git a/net/ipv4/udp_offload.c b/net/ipv4/udp_offload.c
+index c0b010b..a484405 100644
+--- a/net/ipv4/udp_offload.c
++++ b/net/ipv4/udp_offload.c
+@@ -49,6 +49,7 @@ static struct sk_buff *__skb_udp_tunnel_segment(struct sk_buff *skb,
+ 	__skb_pull(skb, tnl_hlen);
+ 	skb_reset_mac_header(skb);
+ 	skb_set_network_header(skb, skb_inner_network_offset(skb));
++	skb_set_transport_header(skb, skb_inner_transport_offset(skb));
+ 	skb->mac_len = skb_inner_network_offset(skb);
+ 	skb->protocol = new_protocol;
+ 
+@@ -131,8 +132,12 @@ static struct sk_buff *__skb_udp_tunnel_segment(struct sk_buff *skb,
+ 		uh->check = ~csum_fold(csum_add(partial,
+ 				       (__force __wsum)htonl(len)));
+ 
+-		if (skb->encapsulation)
+-			skb_checksum_help(skb);
++		if (skb->encapsulation) {
++			if (skb->csum_not_inet)
++				skb_crc32c_csum_help(skb);
++			else
++				skb_checksum_help(skb);
++		}
+ 
+ 		if (offload_csum) {
+ 			skb->ip_summed = CHECKSUM_PARTIAL;
+-- 
+2.1.0
