@@ -1,42 +1,47 @@
-From: Xin Long <lucien.xin@gmail.com>
-Date: Sat, 03 Oct 2020 07:40:05 +0000
-Subject: Re: [PATCH net-next 03/15] udp: do checksum properly in skb_udp_tunnel_segment
-Message-Id: <CADvbK_c4cStJcjLQr_fA=zo2d9GzRFy42LkeeY3_CVYu7RxGug@mail.gmail.com>
+From: David Laight <David.Laight@ACULAB.COM>
+Date: Thu, 08 Oct 2020 21:46:42 +0000
+Subject: sctp discarding received data chunks
+Message-Id: <e377e7e2a87e4f078e7a6d82992cfda0@AcuMS.aculab.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1601387231.git.lucien.xin@gmail.com> <49a1cbb99341f50304b514aeaace078d0b065248.1601387231.git.lucien.xin@gmail.com>
- <20201003040428.GC70998@localhost.localdomain>
-In-Reply-To: <20201003040428.GC70998@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, davem <davem@davemloft.net>, tom@herbertland.com
+To: linux-sctp@vger.kernel.org
 
-On Sat, Oct 3, 2020 at 12:04 PM Marcelo Ricardo Leitner
-<marcelo.leitner@gmail.com> wrote:
->
-> On Tue, Sep 29, 2020 at 09:48:55PM +0800, Xin Long wrote:
-> > This patch fixes two things:
-> >
-> >   When skb->ip_summed = CHECKSUM_PARTIAL, skb_checksum_help() should be
-> >   called do the checksum, instead of gso_make_checksum(), which is used
-> >   to do the checksum for current proto after calling skb_segment(), not
-> >   after the inner proto's gso_segment().
-> >
-> >   When offload_csum is disabled, the hardware will not do the checksum
-> >   for the current proto, udp. So instead of calling gso_make_checksum(),
-> >   it should calculate checksum for udp itself.
->
-> Gotta say, this is odd. It is really flipping the two around. What
-> about other users of this function, did you test them too?
-Not yet, I couldn't found other cases to trigger this.
+One of my local tests (that I run quite often) failed in a 'new and exciting way'.
+I sent 510 messages through an M3UA-MTP2-M3UA link and only got ~350 at the far end.
+(This is part of my SS7+TCAP regression test - gets run a lot.)
+Usually I can find 'lost' messages logged as discarded due to my own flow control.
+In this case there is no sign of any error traces.
+I expect to have each message traced 6 times (on each send and receive)
+but the missing messages are only traced 5 times.
 
-But I think gso_make_checksum() is not correct to be used here,
-as it's trying to calculate the checksum for inner protocol
-instead of UDP's. It should be skb_checksum_help(), like on
-the xmit path.
+Now /proc/net/sctp/snmp has SctpInDataChunksDiscards set to 163,
+this matches the number of messages I'm missing.
+Any idea how I can find out why one (or more) the SCTP connections (which are still
+connected - unless there is a power cut) has discarded a lot of receive packets?
 
->
-> It makes sense to be, but would be nice if someone else could review
-> this.
-Fix the mail of Tom Herbert, and he is the right person to review this.
+Each M3UA link is actually 4 SCTP connections (TCP style 1-1).
+All are loopback connected to 127.0.0.1 or ::1 (the assocs print is 'interesting').
+The local port is 'random' the listening port 2905 or 2906.
+I'd expect the data to loadshare evenly between them but I've not checked the actual
+distribution.
+The packet data contains a sequence number, I'm missing all the x1, x2, x9, xa
+and half the x6 and xe packets - so I think at least one of the sctp connections
+is just discarding the receive chunks.
+(I'll sort out which one tomorrow.)
+
+This is a 5.6.0-rc7 kernel.
+I've not seen anything like this before - I've run this same test for
+over 10 years, probably going back to at least 2.6.28.
+
+Data chunks will have gone though all the connections when they were
+initialised.
+
+Is there anything anywhere that indicates why a data chunk was dropped?
+
+	David
+
+-
+Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
+Registration No: 1397386 (Wales)
