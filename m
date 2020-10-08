@@ -1,27 +1,162 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Sat, 03 Oct 2020 04:06:16 +0000
-Subject: Re: [PATCH net-next 10/15] sctp: allow changing transport encap_port by peer packets
-Message-Id: <20201003040616.GE70998@localhost.localdomain>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Thu, 08 Oct 2020 09:48:04 +0000
+Subject: [PATCHv2 net-next 08/17] sctp: add encap_port for netns sock asoc and transport
+Message-Id: <bcb5453d0f8abd3d499c8af467340ade1698af11.1602150362.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1601387231.git.lucien.xin@gmail.com>
- <3f1b88ab88b5cc5321ffe094bcfeff68a3a5ef2c.1601387231.git.lucien.xin@gmail.com>
-In-Reply-To: <3f1b88ab88b5cc5321ffe094bcfeff68a3a5ef2c.1601387231.git.lucien.xin@gmail.com>
+References: <cover.1602150362.git.lucien.xin@gmail.com>
+ <052acb63198c44df41c5db17f8397eeb7c8bacfe.1602150362.git.lucien.xin@gmail.com>
+ <c36b016ee429980b9585144f4f9af31bcda467ee.1602150362.git.lucien.xin@gmail.com>
+ <483d9eec159b22172fe04dacd58d7f88dfc2f301.1602150362.git.lucien.xin@gmail.com>
+ <17cab00046ea7fe36c8383925a4fc3fbc028c511.1602150362.git.lucien.xin@gmail.com>
+ <6f5a15bba0e2b5d3da6be90fd222c5ee41691d32.1602150362.git.lucien.xin@gmail.com>
+ <af7bd8219b32d7f864eaef8ed8e970fc9bde928c.1602150362.git.lucien.xin@gmail.com>
+ <baba90f09cbb5de03a6216c9f6308d0e4fb2f3c1.1602150362.git.lucien.xin@gmail.com>
+In-Reply-To: <baba90f09cbb5de03a6216c9f6308d0e4fb2f3c1.1602150362.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, Tom Herbert <therbert@google.com>, davem@davemloft.net
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net
 
-On Tue, Sep 29, 2020 at 09:49:02PM +0800, Xin Long wrote:
->  static int sctp_udp_rcv(struct sock *sk, struct sk_buff *skb)
->  {
-> +	memset(skb->cb, 0, sizeof(skb->cb));
-> +	SCTP_INPUT_CB(skb)->encap_port = ntohs(udp_hdr(skb)->source);
+encap_port is added as per netns/sock/assoc/transport, and the
+latter one's encap_port inherits the former one's by default.
+The transport's encap_port value would mostly decide if one
+packet should go out with udp encapsulated or not.
 
-Here it's in host order already. The fact that is does this
-transparent update probably hid the other issue.
+This patch also allows users to set netns' encap_port by sysctl.
 
-> +
->  	skb_set_transport_header(skb, sizeof(struct udphdr));
->  	sctp_rcv(skb);
->  	return 0;
+v1->v2:
+  - Change to define encap_port as __be16 for sctp_sock, asoc and
+    transport.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/netns/sctp.h   |  2 ++
+ include/net/sctp/structs.h |  6 ++++++
+ net/sctp/associola.c       |  4 ++++
+ net/sctp/protocol.c        |  3 +++
+ net/sctp/socket.c          |  1 +
+ net/sctp/sysctl.c          | 10 ++++++++++
+ 6 files changed, 26 insertions(+)
+
+diff --git a/include/net/netns/sctp.h b/include/net/netns/sctp.h
+index f622945..6af7a39 100644
+--- a/include/net/netns/sctp.h
++++ b/include/net/netns/sctp.h
+@@ -27,6 +27,8 @@ struct netns_sctp {
+ 	struct sock *udp6_sock;
+ 	/* udp tunneling listening port. */
+ 	int udp_port;
++	/* udp tunneling remote encap port. */
++	int encap_port;
+ 
+ 	/* This is the global local address list.
+ 	 * We actively maintain this complete list of addresses on
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 0bdff38..aa98e7e 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -178,6 +178,8 @@ struct sctp_sock {
+ 	 */
+ 	__u32 hbinterval;
+ 
++	__be16 encap_port;
++
+ 	/* This is the max_retrans value for new associations. */
+ 	__u16 pathmaxrxt;
+ 
+@@ -877,6 +879,8 @@ struct sctp_transport {
+ 	 */
+ 	unsigned long last_time_ecne_reduced;
+ 
++	__be16 encap_port;
++
+ 	/* This is the max_retrans value for the transport and will
+ 	 * be initialized from the assocs value.  This can be changed
+ 	 * using the SCTP_SET_PEER_ADDR_PARAMS socket option.
+@@ -1790,6 +1794,8 @@ struct sctp_association {
+ 	 */
+ 	unsigned long hbinterval;
+ 
++	__be16 encap_port;
++
+ 	/* This is the max_retrans value for new transports in the
+ 	 * association.
+ 	 */
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index fdb69d4..336df4b 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -99,6 +99,8 @@ static struct sctp_association *sctp_association_init(
+ 	 */
+ 	asoc->hbinterval = msecs_to_jiffies(sp->hbinterval);
+ 
++	asoc->encap_port = sp->encap_port;
++
+ 	/* Initialize path max retrans value. */
+ 	asoc->pathmaxrxt = sp->pathmaxrxt;
+ 
+@@ -624,6 +626,8 @@ struct sctp_transport *sctp_assoc_add_peer(struct sctp_association *asoc,
+ 	 */
+ 	peer->hbinterval = asoc->hbinterval;
+ 
++	peer->encap_port = asoc->encap_port;
++
+ 	/* Set the path max_retrans.  */
+ 	peer->pathmaxrxt = asoc->pathmaxrxt;
+ 
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index dd2d9c4..5b74187 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -1359,6 +1359,9 @@ static int __net_init sctp_defaults_init(struct net *net)
+ 	/* Set udp tunneling listening port to default value */
+ 	net->sctp.udp_port = SCTP_DEFAULT_UDP_PORT;
+ 
++	/* Set remote encap port to 0 by default */
++	net->sctp.encap_port = 0;
++
+ 	/* Set SCOPE policy to enabled */
+ 	net->sctp.scope_policy = SCTP_SCOPE_POLICY_ENABLE;
+ 
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 53d0a41..09b94cd 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4876,6 +4876,7 @@ static int sctp_init_sock(struct sock *sk)
+ 	 * be modified via SCTP_PEER_ADDR_PARAMS
+ 	 */
+ 	sp->hbinterval  = net->sctp.hb_interval;
++	sp->encap_port  = htons(net->sctp.encap_port);
+ 	sp->pathmaxrxt  = net->sctp.max_retrans_path;
+ 	sp->pf_retrans  = net->sctp.pf_retrans;
+ 	sp->ps_retrans  = net->sctp.ps_retrans;
+diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
+index c16c809..ecc1b5e 100644
+--- a/net/sctp/sysctl.c
++++ b/net/sctp/sysctl.c
+@@ -36,6 +36,7 @@ static int rto_alpha_max = 1000;
+ static int rto_beta_max = 1000;
+ static int pf_expose_max = SCTP_PF_EXPOSE_MAX;
+ static int ps_retrans_max = SCTP_PS_RETRANS_MAX;
++static int udp_port_max = 65535;
+ 
+ static unsigned long max_autoclose_min = 0;
+ static unsigned long max_autoclose_max @@ -291,6 +292,15 @@ static struct ctl_table sctp_net_table[] = {
+ 		.proc_handler	= proc_dointvec,
+ 	},
+ 	{
++		.procname	= "encap_port",
++		.data		= &init_net.sctp.encap_port,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec,
++		.extra1		= SYSCTL_ZERO,
++		.extra2		= &udp_port_max,
++	},
++	{
+ 		.procname	= "addr_scope_policy",
+ 		.data		= &init_net.sctp.scope_policy,
+ 		.maxlen		= sizeof(int),
+-- 
+2.1.0
