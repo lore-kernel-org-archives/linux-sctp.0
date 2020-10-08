@@ -1,66 +1,154 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Fri, 09 Oct 2020 01:59:37 +0000
-Subject: Re: [PATCHv2 net-next 06/17] sctp: create udp6 sock and set its encap_rcv
-Message-Id: <CADvbK_d3u=M6BwLRDeiPVkCT7awix+Lcw=GOy4UcD=s9FPtpHA@mail.gmail.com>
+Date: Thu, 08 Oct 2020 09:48:01 +0000
+Subject: [PATCHv2 net-next 05/17] sctp: create udp4 sock and add its encap_rcv
+Message-Id: <6f5a15bba0e2b5d3da6be90fd222c5ee41691d32.1602150362.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <af7bd8219b32d7f864eaef8ed8e970fc9bde928c.1602150362.git.lucien.xin@gmail.com>
- <202010090541.hDe5mdXB-lkp@intel.com>
-In-Reply-To: <202010090541.hDe5mdXB-lkp@intel.com>
+References: <cover.1602150362.git.lucien.xin@gmail.com>
+ <052acb63198c44df41c5db17f8397eeb7c8bacfe.1602150362.git.lucien.xin@gmail.com>
+ <c36b016ee429980b9585144f4f9af31bcda467ee.1602150362.git.lucien.xin@gmail.com>
+ <483d9eec159b22172fe04dacd58d7f88dfc2f301.1602150362.git.lucien.xin@gmail.com>
+ <17cab00046ea7fe36c8383925a4fc3fbc028c511.1602150362.git.lucien.xin@gmail.com>
+In-Reply-To: <17cab00046ea7fe36c8383925a4fc3fbc028c511.1602150362.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: kernel test robot <lkp@intel.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, kbuild-all@lists.01.org, Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, davem <davem@davemloft.net>
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net
 
-On Fri, Oct 9, 2020 at 5:20 AM kernel test robot <lkp@intel.com> wrote:
->
-> Hi Xin,
->
-> Thank you for the patch! Yet something to improve:
->
-> [auto build test ERROR on net-next/master]
->
-> url:    https://github.com/0day-ci/linux/commits/Xin-Long/sctp-Implement-RFC6951-UDP-Encapsulation-of-SCTP/20201008-175211
-> base:   https://git.kernel.org/pub/scm/linux/kernel/git/davem/net-next.git 9faebeb2d80065926dfbc09cb73b1bb7779a89cd
-> config: arm-keystone_defconfig (attached as .config)
-> compiler: arm-linux-gnueabi-gcc (GCC) 9.3.0
-> reproduce (this is a W=1 build):
->         wget https://raw.githubusercontent.com/intel/lkp-tests/master/sbin/make.cross -O ~/bin/make.cross
->         chmod +x ~/bin/make.cross
->         # https://github.com/0day-ci/linux/commit/60851a8f9ae9fd55f1199581dd78f6030bed63c7
->         git remote add linux-review https://github.com/0day-ci/linux
->         git fetch --no-tags linux-review Xin-Long/sctp-Implement-RFC6951-UDP-Encapsulation-of-SCTP/20201008-175211
->         git checkout 60851a8f9ae9fd55f1199581dd78f6030bed63c7
->         # save the attached .config to linux build tree
->         COMPILER_INSTALL_PATH=$HOME/0day COMPILER=gcc-9.3.0 make.cross ARCH=arm
->
-> If you fix the issue, kindly add following tag as appropriate
-> Reported-by: kernel test robot <lkp@intel.com>
->
-> All errors (new ones prefixed by >>):
->
->    arm-linux-gnueabi-ld: net/sctp/protocol.o: in function `sctp_udp_sock_start':
->    protocol.c:(.text+0x108c): undefined reference to `udp_sock_create4'
->    arm-linux-gnueabi-ld: protocol.c:(.text+0x10b8): undefined reference to `setup_udp_tunnel_sock'
-> >> arm-linux-gnueabi-ld: protocol.c:(.text+0x111c): undefined reference to `udp_sock_create6'
->    arm-linux-gnueabi-ld: protocol.c:(.text+0x113c): undefined reference to `setup_udp_tunnel_sock'
-> >> arm-linux-gnueabi-ld: protocol.c:(.text+0x1180): undefined reference to `udp_tunnel_sock_release'
->    arm-linux-gnueabi-ld: net/sctp/protocol.o: in function `sctp_udp_sock_stop':
->    protocol.c:(.text+0x11b4): undefined reference to `udp_tunnel_sock_release'
->    arm-linux-gnueabi-ld: protocol.c:(.text+0x11d0): undefined reference to `udp_tunnel_sock_release'
->
-diff --git a/net/sctp/Kconfig b/net/sctp/Kconfig
-index 39d7fa9569f8..5da599ff84a9 100644
---- a/net/sctp/Kconfig
-+++ b/net/sctp/Kconfig
-@@ -11,6 +11,7 @@ menuconfig IP_SCTP
-        select CRYPTO_HMAC
-        select CRYPTO_SHA1
-        select LIBCRC32C
-+       select NET_UDP_TUNNEL
-        help
-          Stream Control Transmission Protocol
+This patch is to add the functions to create/release udp4 sock,
+and set the sock's encap_rcv to process the incoming udp encap
+sctp packets. In sctp_udp_rcv(), as we can see, all we need to
+do is fix the transport header for sctp_rcv(), then it would
+implement the part of rfc6951#section-5.4:
 
-> ---
-> 0-DAY CI Kernel Test Service, Intel Corporation
-> https://lists.01.org/hyperkitty/list/kbuild-all@lists.01.org
+  "When an encapsulated packet is received, the UDP header is removed.
+   Then, the generic lookup is performed, as done by an SCTP stack
+   whenever a packet is received, to find the association for the
+   received SCTP packet"
+
+Note that these functions will be called in the last patch of
+this patchset when enabling this feature.
+
+v1->v2:
+  - Add pr_err() when fails to create udp v4 sock.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/netns/sctp.h     |  5 +++++
+ include/net/sctp/constants.h |  2 ++
+ include/net/sctp/sctp.h      |  2 ++
+ net/sctp/protocol.c          | 43 +++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 52 insertions(+)
+
+diff --git a/include/net/netns/sctp.h b/include/net/netns/sctp.h
+index d8d02e4..3d10bef 100644
+--- a/include/net/netns/sctp.h
++++ b/include/net/netns/sctp.h
+@@ -22,6 +22,11 @@ struct netns_sctp {
+ 	 */
+ 	struct sock *ctl_sock;
+ 
++	/* udp tunneling listening sock. */
++	struct sock *udp4_sock;
++	/* udp tunneling listening port. */
++	int udp_port;
++
+ 	/* This is the global local address list.
+ 	 * We actively maintain this complete list of addresses on
+ 	 * the system by catching address add/delete events.
+diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
+index 122d9e2..b583166 100644
+--- a/include/net/sctp/constants.h
++++ b/include/net/sctp/constants.h
+@@ -286,6 +286,8 @@ enum { SCTP_MAX_GABS = 16 };
+ 				 * functions simpler to write.
+ 				 */
+ 
++#define SCTP_DEFAULT_UDP_PORT 9899	/* default udp tunneling port */
++
+ /* These are the values for pf exposure, UNUSED is to keep compatible with old
+  * applications by default.
+  */
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 4fc747b..bfd87a0 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -84,6 +84,8 @@ int sctp_copy_local_addr_list(struct net *net, struct sctp_bind_addr *addr,
+ struct sctp_pf *sctp_get_pf_specific(sa_family_t family);
+ int sctp_register_pf(struct sctp_pf *, sa_family_t);
+ void sctp_addr_wq_mgmt(struct net *, struct sctp_sockaddr_entry *, int);
++int sctp_udp_sock_start(struct net *net);
++void sctp_udp_sock_stop(struct net *net);
+ 
+ /*
+  * sctp/socket.c
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 2583323..2b7a3e1 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -44,6 +44,7 @@
+ #include <net/addrconf.h>
+ #include <net/inet_common.h>
+ #include <net/inet_ecn.h>
++#include <net/udp_tunnel.h>
+ 
+ #define MAX_SCTP_PORT_HASH_ENTRIES (64 * 1024)
+ 
+@@ -840,6 +841,45 @@ static int sctp_ctl_sock_init(struct net *net)
+ 	return 0;
+ }
+ 
++static int sctp_udp_rcv(struct sock *sk, struct sk_buff *skb)
++{
++	skb_set_transport_header(skb, sizeof(struct udphdr));
++	sctp_rcv(skb);
++	return 0;
++}
++
++int sctp_udp_sock_start(struct net *net)
++{
++	struct udp_tunnel_sock_cfg tuncfg = {NULL};
++	struct udp_port_cfg udp_conf = {0};
++	struct socket *sock;
++	int err;
++
++	udp_conf.family = AF_INET;
++	udp_conf.local_ip.s_addr = htonl(INADDR_ANY);
++	udp_conf.local_udp_port = htons(net->sctp.udp_port);
++	err = udp_sock_create(net, &udp_conf, &sock);
++	if (err) {
++		pr_err("Failed to create the SCTP udp tunneling v4 sock\n");
++		return err;
++	}
++
++	tuncfg.encap_type = 1;
++	tuncfg.encap_rcv = sctp_udp_rcv;
++	setup_udp_tunnel_sock(net, sock, &tuncfg);
++	net->sctp.udp4_sock = sock->sk;
++
++	return 0;
++}
++
++void sctp_udp_sock_stop(struct net *net)
++{
++	if (net->sctp.udp4_sock) {
++		udp_tunnel_sock_release(net->sctp.udp4_sock->sk_socket);
++		net->sctp.udp4_sock = NULL;
++	}
++}
++
+ /* Register address family specific functions. */
+ int sctp_register_af(struct sctp_af *af)
+ {
+@@ -1271,6 +1311,9 @@ static int __net_init sctp_defaults_init(struct net *net)
+ 	/* Enable ECN by default. */
+ 	net->sctp.ecn_enable = 1;
+ 
++	/* Set udp tunneling listening port to default value */
++	net->sctp.udp_port = SCTP_DEFAULT_UDP_PORT;
++
+ 	/* Set SCOPE policy to enabled */
+ 	net->sctp.scope_policy = SCTP_SCOPE_POLICY_ENABLE;
+ 
+-- 
+2.1.0
