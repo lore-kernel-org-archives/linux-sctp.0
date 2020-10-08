@@ -1,7 +1,7 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Thu, 08 Oct 2020 09:48:04 +0000
-Subject: [PATCHv2 net-next 08/17] sctp: add encap_port for netns sock asoc and transport
-Message-Id: <bcb5453d0f8abd3d499c8af467340ade1698af11.1602150362.git.lucien.xin@gmail.com>
+Date: Thu, 08 Oct 2020 09:48:07 +0000
+Subject: [PATCHv2 net-next 11/17] sctp: add udphdr to overhead when udp_port is set
+Message-Id: <1128490426bfb52572ba338e7a631658da49f34c.1602150362.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <cover.1602150362.git.lucien.xin@gmail.com>
  <052acb63198c44df41c5db17f8397eeb7c8bacfe.1602150362.git.lucien.xin@gmail.com>
@@ -11,152 +11,81 @@ References: <cover.1602150362.git.lucien.xin@gmail.com>
  <6f5a15bba0e2b5d3da6be90fd222c5ee41691d32.1602150362.git.lucien.xin@gmail.com>
  <af7bd8219b32d7f864eaef8ed8e970fc9bde928c.1602150362.git.lucien.xin@gmail.com>
  <baba90f09cbb5de03a6216c9f6308d0e4fb2f3c1.1602150362.git.lucien.xin@gmail.com>
-In-Reply-To: <baba90f09cbb5de03a6216c9f6308d0e4fb2f3c1.1602150362.git.lucien.xin@gmail.com>
+ <bcb5453d0f8abd3d499c8af467340ade1698af11.1602150362.git.lucien.xin@gmail.com>
+ <bdbd57b89b92716d17fecce1f658c60cca261bee.1602150362.git.lucien.xin@gmail.com>
+ <92d28810a72dee9d0d49e7433b65027cb52de191.1602150362.git.lucien.xin@gmail.com>
+In-Reply-To: <92d28810a72dee9d0d49e7433b65027cb52de191.1602150362.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net
 
-encap_port is added as per netns/sock/assoc/transport, and the
-latter one's encap_port inherits the former one's by default.
-The transport's encap_port value would mostly decide if one
-packet should go out with udp encapsulated or not.
+sctp_mtu_payload() is for calculating the frag size before making
+chunks from a msg. So we should only add udphdr size to overhead
+when udp socks are listening, as only then sctp can handle the
+incoming sctp over udp packets and outgoing sctp over udp packets
+will be possible.
 
-This patch also allows users to set netns' encap_port by sysctl.
+Note that we can't do this according to transport->encap_port, as
+different transports may be set to different values, while the
+chunks were made before choosing the transport, we could not be
+able to meet all rfc6951#section-5.6 recommends.
 
 v1->v2:
-  - Change to define encap_port as __be16 for sctp_sock, asoc and
-    transport.
+  - Add udp_port for sctp_sock to avoid a potential race issue, it
+    will be used in xmit path in the next patch.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/netns/sctp.h   |  2 ++
- include/net/sctp/structs.h |  6 ++++++
- net/sctp/associola.c       |  4 ++++
- net/sctp/protocol.c        |  3 +++
- net/sctp/socket.c          |  1 +
- net/sctp/sysctl.c          | 10 ++++++++++
- 6 files changed, 26 insertions(+)
+ include/net/sctp/sctp.h    | 7 +++++--
+ include/net/sctp/structs.h | 1 +
+ net/sctp/socket.c          | 1 +
+ 3 files changed, 7 insertions(+), 2 deletions(-)
 
-diff --git a/include/net/netns/sctp.h b/include/net/netns/sctp.h
-index f622945..6af7a39 100644
---- a/include/net/netns/sctp.h
-+++ b/include/net/netns/sctp.h
-@@ -27,6 +27,8 @@ struct netns_sctp {
- 	struct sock *udp6_sock;
- 	/* udp tunneling listening port. */
- 	int udp_port;
-+	/* udp tunneling remote encap port. */
-+	int encap_port;
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index bfd87a0..86f74f2 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -578,10 +578,13 @@ static inline __u32 sctp_mtu_payload(const struct sctp_sock *sp,
+ {
+ 	__u32 overhead = sizeof(struct sctphdr) + extra;
  
- 	/* This is the global local address list.
- 	 * We actively maintain this complete list of addresses on
+-	if (sp)
++	if (sp) {
+ 		overhead += sp->pf->af->net_header_len;
+-	else
++		if (sp->udp_port)
++			overhead += sizeof(struct udphdr);
++	} else {
+ 		overhead += sizeof(struct ipv6hdr);
++	}
+ 
+ 	if (WARN_ON_ONCE(mtu && mtu <= overhead))
+ 		mtu = overhead;
 diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 0bdff38..aa98e7e 100644
+index 81464ae..80f7149 100644
 --- a/include/net/sctp/structs.h
 +++ b/include/net/sctp/structs.h
-@@ -178,6 +178,8 @@ struct sctp_sock {
+@@ -178,6 +178,7 @@ struct sctp_sock {
  	 */
  	__u32 hbinterval;
  
-+	__be16 encap_port;
-+
++	__be16 udp_port;
+ 	__be16 encap_port;
+ 
  	/* This is the max_retrans value for new associations. */
- 	__u16 pathmaxrxt;
- 
-@@ -877,6 +879,8 @@ struct sctp_transport {
- 	 */
- 	unsigned long last_time_ecne_reduced;
- 
-+	__be16 encap_port;
-+
- 	/* This is the max_retrans value for the transport and will
- 	 * be initialized from the assocs value.  This can be changed
- 	 * using the SCTP_SET_PEER_ADDR_PARAMS socket option.
-@@ -1790,6 +1794,8 @@ struct sctp_association {
- 	 */
- 	unsigned long hbinterval;
- 
-+	__be16 encap_port;
-+
- 	/* This is the max_retrans value for new transports in the
- 	 * association.
- 	 */
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index fdb69d4..336df4b 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -99,6 +99,8 @@ static struct sctp_association *sctp_association_init(
- 	 */
- 	asoc->hbinterval = msecs_to_jiffies(sp->hbinterval);
- 
-+	asoc->encap_port = sp->encap_port;
-+
- 	/* Initialize path max retrans value. */
- 	asoc->pathmaxrxt = sp->pathmaxrxt;
- 
-@@ -624,6 +626,8 @@ struct sctp_transport *sctp_assoc_add_peer(struct sctp_association *asoc,
- 	 */
- 	peer->hbinterval = asoc->hbinterval;
- 
-+	peer->encap_port = asoc->encap_port;
-+
- 	/* Set the path max_retrans.  */
- 	peer->pathmaxrxt = asoc->pathmaxrxt;
- 
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index dd2d9c4..5b74187 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -1359,6 +1359,9 @@ static int __net_init sctp_defaults_init(struct net *net)
- 	/* Set udp tunneling listening port to default value */
- 	net->sctp.udp_port = SCTP_DEFAULT_UDP_PORT;
- 
-+	/* Set remote encap port to 0 by default */
-+	net->sctp.encap_port = 0;
-+
- 	/* Set SCOPE policy to enabled */
- 	net->sctp.scope_policy = SCTP_SCOPE_POLICY_ENABLE;
- 
 diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 53d0a41..09b94cd 100644
+index c9e86f5..192ab9a 100644
 --- a/net/sctp/socket.c
 +++ b/net/sctp/socket.c
-@@ -4876,6 +4876,7 @@ static int sctp_init_sock(struct sock *sk)
+@@ -4926,6 +4926,7 @@ static int sctp_init_sock(struct sock *sk)
  	 * be modified via SCTP_PEER_ADDR_PARAMS
  	 */
  	sp->hbinterval  = net->sctp.hb_interval;
-+	sp->encap_port  = htons(net->sctp.encap_port);
++	sp->udp_port    = htons(net->sctp.udp_port);
+ 	sp->encap_port  = htons(net->sctp.encap_port);
  	sp->pathmaxrxt  = net->sctp.max_retrans_path;
  	sp->pf_retrans  = net->sctp.pf_retrans;
- 	sp->ps_retrans  = net->sctp.ps_retrans;
-diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
-index c16c809..ecc1b5e 100644
---- a/net/sctp/sysctl.c
-+++ b/net/sctp/sysctl.c
-@@ -36,6 +36,7 @@ static int rto_alpha_max = 1000;
- static int rto_beta_max = 1000;
- static int pf_expose_max = SCTP_PF_EXPOSE_MAX;
- static int ps_retrans_max = SCTP_PS_RETRANS_MAX;
-+static int udp_port_max = 65535;
- 
- static unsigned long max_autoclose_min = 0;
- static unsigned long max_autoclose_max @@ -291,6 +292,15 @@ static struct ctl_table sctp_net_table[] = {
- 		.proc_handler	= proc_dointvec,
- 	},
- 	{
-+		.procname	= "encap_port",
-+		.data		= &init_net.sctp.encap_port,
-+		.maxlen		= sizeof(int),
-+		.mode		= 0644,
-+		.proc_handler	= proc_dointvec,
-+		.extra1		= SYSCTL_ZERO,
-+		.extra2		= &udp_port_max,
-+	},
-+	{
- 		.procname	= "addr_scope_policy",
- 		.data		= &init_net.sctp.scope_policy,
- 		.maxlen		= sizeof(int),
 -- 
 2.1.0
