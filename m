@@ -1,7 +1,7 @@
-From: gheorghe.cuciureanu@idsi.md
-Date: Fri, 02 Oct 2020 19:53:36 +0000
+From: hangtar@gyorikonyvtar.hu
+Date: Sun, 11 Oct 2020 14:38:01 +0000
 Subject: Spende
-Message-Id: <20201002195345.0F5C323D789B1@mail.idsi.md>
+Message-Id: <20201011143829.A3C6EF6BB9D@mail.gyorikonyvtar.hu>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <E1fGVyo-00012m-80@cp.anubbers.com>
 In-Reply-To: <E1fGVyo-00012m-80@cp.anubbers.com>
@@ -19,3 +19,8 @@ ail.com
 
 Danke vielmals
 Maria Elisabeth Schaeffler
+
+---
+This email is free from viruses and malware because avast! Antivirus protec=
+tion is active.
+https://www.avast.com/antivirus
