@@ -1,7 +1,7 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Sat, 10 Oct 2020 15:10:55 +0000
-Subject: RE: sctp discarding received data chunks
-Message-Id: <5af24669b72c4bbb9456b53c397489a4@AcuMS.aculab.com>
+From: Andreas Fink <afink@list.fink.org>
+Date: Sun, 11 Oct 2020 08:33:22 +0000
+Subject: Re: sctp discarding received data chunks
+Message-Id: <DBE38DD7-A378-4269-A839-4CB0A41D948B@list.fink.org>
 List-Id: <linux-sctp.vger.kernel.org>
 References: <e377e7e2a87e4f078e7a6d82992cfda0@AcuMS.aculab.com>
 In-Reply-To: <e377e7e2a87e4f078e7a6d82992cfda0@AcuMS.aculab.com>
@@ -10,51 +10,31 @@ Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: linux-sctp@vger.kernel.org
 
-RnJvbTogWGluIExvbmcNCj4gU2VudDogMTAgT2N0b2JlciAyMDIwIDAzOjM1DQo+IE9uIEZyaSwg
-T2N0IDksIDIwMjAgYXQgOTowMyBQTSBEYXZpZCBMYWlnaHQgPERhdmlkLkxhaWdodEBhY3VsYWIu
-Y29tPiB3cm90ZToNCj4gPg0KPiA+IEZyb206IERhdmlkIExhaWdodA0KPiA+ID4gU2VudDogMDkg
-T2N0b2JlciAyMDIwIDEyOjE0DQo+ID4gPg0KPiA+ID4gRnJvbTogQW5kcmVhcyBGaW5rDQo+ID4g
-PiA+IFNlbnQ6IDA5IE9jdG9iZXIgMjAyMCAwODoyNQ0KPiA+ID4gPg0KPiA+ID4gPiBDYW4geW91
-IHNlZSB0aGlzIGlzc3VlIHdpdGggdGhlIDUuNCBrZXJuZWwgdG9vPw0KPiA+ID4gPg0KPiA+ID4g
-PiBJIGRpZCB5ZXN0ZXJkYXkgc29tZSB0ZXN0aW5nIGJ5IHVwZ3JhZGluZyBrZXJuZWwgZnJvbSA1
-LjQgdG8gNS43IGFuZCBJIHJ1biBpbnRvIGFsbCBzb3J0cyBvZg0KPiBsaW5rcw0KPiA+ID4gPiBn
-b2luZyBvZmYgYWZ0ZXIgYSB3aGlsZSBzbyBJIGhhZCB0byByZXZlcnQgYmFjay4NCj4gPiA+ID4g
-NS40IGlzIHN0YWJsZSBmb3IgbWUuIDUuNyBpcyBub3QuIEFuZCBJIGhhdmUgbG90cyBvZiBNMlBB
-IGFuZCBNM1VBIGNvbm5lY3Rpb25zIGxpa2UgeW91DQo+ID4gPg0KPiA+ID4gSSd2ZSBqdXN0IHNw
-ZW50IGhvdXJzIGRpZ2dpbmcgdGhyb3VnaCBteSB0cmFjZXMuDQo+ID4gPiBJdCBpcyBvbmx5IHNv
-bWUgbWVzc2FnZXMgdGhyb3VnaCB0aGUgY29ubmVjdGlvbiB0aGF0IGdldCBsb3N0IQ0KPiA+ID4N
-Cj4gPiA+IE5vdyBTQ1RQX01JTl9JTl9EQVRBX0NIVU5LX0RJU0NBUkRTIGlzIG9ubHkgaW5jcmVt
-ZW50ZWQgaW4gdHdvDQo+ID4gPiBhZGphY2VudCBwbGFjZXMgaW4gc21fc3RhdGVmdW5jcy5jLg0K
-PiA+ID4NCj4gPiA+IEVpdGhlciBmb3IgYmFkIFRTTiAodW5saWtlbHkgd2hlbiBldmVyeXRoaW5n
-IGlzIHVzaW5nICJsbyIpDQo+ID4gPiBhbmQgYmFkIFNUUkVBTS4NCj4gPiA+IEkgc3VzcGVjdCBp
-dCBpcyB0aGUgJ2JhZCBzdHJlYW0nIGNhc2UuDQo+ID4gPiBJJ3ZlIG5vdCBkb3VibGUtY2hlY2tl
-ZCBidXQgSSBiZXQgdGhlIGRpc2NhcmRlZCBwYWNrZXRzDQo+ID4gPiBhbGwgaGF2ZSBhIGxhcmdl
-IHN0cmVhbSBudW1iZXIuDQo+ID4gLi4uDQo+ID4NCj4gPiBJZiBJIGR1bXAgb3V0IC9wcm9jL25l
-dC9zY3RwL2Fzc29jcyBhbmQgbG9vayB3YXkgb3ZlciB0byB0aGUgcmlnaHQNCj4gPiAob24gdGhl
-IG5leHQgbW9uaXRvciBidXQgMSkgdGhlcmUgYXJlIHR3byBjb2x1bW5zIElOUyBhbmQgT1VUUy4N
-Cj4gPiBJJ3ZlIGp1c3QgcmVhbGlzZWQgdGhhdCB0aGVzZSBhcmUgdGhlIG51bWJlciBvZiBzdHJl
-YW1zLg0KPiA+IE5vdyBhbGwgbXkgY29ubmVjdGlvbnMgYXJlIGxvb3BiYWNrIC0gc28gSSBzZWUg
-Ym90aCBzb2NrZXRzIGZvciBlYWNoLg0KPiA+IFNvIEknZCBleHBlY3QgdGhlIElOUyB0byBtYXRj
-aCB0aGUgT1VUUyBvZiB0aGUgcGVlci4NCj4gPiBUaGlzIGlzbid0IHRydWUuDQo+ID4gV2hlbiB0
-aGUgdmFsdWUgc2hvdWxkIGJlIG5lZ290aWF0ZWQgZG93biB0aGUgT1VUUyB2YWx1ZSBpcyB1bmNo
-YW5nZWQuDQo+ID4gU28gdGhlIGtlcm5lbCBpcyBzZW5kaW5nIHBhY2tldHMgd2l0aCBpbGxlZ2Fs
-IHN0cmVhbSBudW1iZXJzLg0KPiA+IFRoZXNlIGFyZSBhY2tlZCBhbmQgdGhlbiBzaWxlbnRseSBk
-aXNjYXJkZWQuDQoNCj4gZGlkIGl0IGRvIGFkZHN0cmVhbSByZWNvbmZpZyBvciByZWNlaXZlIGFu
-eSBkdXBsaWNhdGUgQ09PS0lFLUVDSE8gaW4geW91ciBjYXNlPw0KDQpFeHRyZW1lbHkgdW5saWtl
-bHkuDQoNCkxvb2tpbmcgYXQgdGhlIGxhdGVzdCB2ZXJzaW9uIG9mIG15IGRyaXZlciBjb2RlDQoo
-d2hpY2ggSSB3YXNuJ3QgdXNpbmcpIEkgd3JvdGUgdGhlIGZvbGxvd2luZzoNCg0KICogU2luY2Ug
-dGhlIGNvZGUgdGhhdCBuZWdvdGlhdGVzIHRoZSBudW1iZXIgb2Ygc3RyZWFtcyBnb3QgYnJva2Vu
-DQogKiBpbiB2ZXJzaW9uIDUuMSB3ZSBuZWVkIHRvIGV4dHJhY3QgdGhlIGNvcnJlY3QgdmFsdWUg
-ZnJvbSB0aGUNCiAqIGludGVybmFsIHN0cnVjdHVyZXMgdG8gYXZvaWQgU0NUUCBzZW5kaW5nIG1l
-c3NhZ2VzIHRoZSByZW1vdGUNCiAqIHN5c3RlbSB3aWxsIGRpc2NhcmQuDQoNCiAgICAvKiBzdHJl
-YW0ub3V0Y250IGlzIHRoZSB2YWx1ZSB3ZSBzaG91bGQgYmUgdXNpbmcuDQogICAgICogQnV0IGtl
-cm5lbHMgNS4xIHRvIDUuOCBmYWlsIHRvIHJlZHVjZSBpdCBiYXNlZCBvbiB0aGUgbnVtYmVyDQog
-ICAgICogcmVjZWl2ZWQgZnJvbSB0aGUgcmVtb3RlIHN5c3RlbS4NCiAgICAgKiBTbyBib3VuZCBo
-ZXJlIHNvIHRoYXQgdHJhbnNtaXR0ZWQgbWVzc2FnZXMgZG9uJ3QgZ2V0IGRpc2NhcmRlZC4gKi8N
-CiAgICBvdXRjbnQgPSBhc29jLT5zdHJlYW0ub3V0Y250Ow0KICAgIG51bV9vc3RyZWFtcyA9IGFz
-b2MtPmMuc2luaXRfbnVtX29zdHJlYW1zOw0KDQpJIHRoaW5rIHRoZXJlIHdhcyBhIHBhdGNoIGRv
-bmUgZm9yIDUuOS4NCkl0IG5lZWRzIGJhY2stcG9ydGluZy4NCg0KQWx0aG91Z2ggQW5kcmVhcyBz
-YWlkIDUuNCB3b3JrZWQgZm9yIGhpbS4NClNvIG1heWJlIGhlIGhhcyBhIGRpZmZlcmVudCBwcm9i
-bGVtLg0KDQoJRGF2aWQNCg0KLQ0KUmVnaXN0ZXJlZCBBZGRyZXNzIExha2VzaWRlLCBCcmFtbGV5
-IFJvYWQsIE1vdW50IEZhcm0sIE1pbHRvbiBLZXluZXMsIE1LMSAxUFQsIFVLDQpSZWdpc3RyYXRp
-b24gTm86IDEzOTczODYgKFdhbGVzKQ0K
+
+> 
+> Extremely unlikely.
+> 
+> Looking at the latest version of my driver code
+> (which I wasn't using) I wrote the following:
+> 
+> * Since the code that negotiates the number of streams got broken
+> * in version 5.1 we need to extract the correct value from the
+> * internal structures to avoid SCTP sending messages the remote
+> * system will discard.
+> 
+>    /* stream.outcnt is the value we should be using.
+>     * But kernels 5.1 to 5.8 fail to reduce it based on the number
+>     * received from the remote system.
+>     * So bound here so that transmitted messages don't get discarded. */
+>    outcnt = asoc->stream.outcnt;
+>    num_ostreams = asoc->c.sinit_num_ostreams;
+> 
+> I think there was a patch done for 5.9.
+> It needs back-porting.
+> 
+> Although Andreas said 5.4 worked for him.
+> So maybe he has a different problem.
+> 
+
+In my application code, I never use anything else than stream 0 and 1
+So I see some other issue in kernel 5.8 which makes it go haywire.
