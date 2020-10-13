@@ -1,100 +1,198 @@
-Return-Path: <SRS0=RtEr=DS=vger.kernel.org=linux-sctp-owner@kernel.org>
+Return-Path: <SRS0=OVhW=DU=vger.kernel.org=linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
+	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E6815C433E7
-	for <linux-sctp@archiver.kernel.org>; Sun, 11 Oct 2020 15:28:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7DB8FC433DF
+	for <linux-sctp@archiver.kernel.org>; Tue, 13 Oct 2020 07:27:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A500122227
-	for <linux-sctp@archiver.kernel.org>; Sun, 11 Oct 2020 15:28:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 303D12063A
+	for <linux-sctp@archiver.kernel.org>; Tue, 13 Oct 2020 07:27:51 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="sMPDiGUt"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388168AbgJKP2v (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Sun, 11 Oct 2020 11:28:51 -0400
-Received: from eu-smtp-delivery-151.mimecast.com ([207.82.80.151]:23922 "EHLO
-        eu-smtp-delivery-151.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S2388167AbgJKP2u (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>);
-        Sun, 11 Oct 2020 11:28:50 -0400
-Received: from AcuMS.aculab.com (156.67.243.126 [156.67.243.126]) (Using
- TLS) by relay.mimecast.com with ESMTP id
- uk-mta-122-bOx-x7AyPAO2UKth8Bal2A-1; Sun, 11 Oct 2020 16:28:44 +0100
-X-MC-Unique: bOx-x7AyPAO2UKth8Bal2A-1
-Received: from AcuMS.Aculab.com (fd9f:af1c:a25b:0:43c:695e:880f:8750) by
- AcuMS.aculab.com (fd9f:af1c:a25b:0:43c:695e:880f:8750) with Microsoft SMTP
- Server (TLS) id 15.0.1347.2; Sun, 11 Oct 2020 16:28:43 +0100
-Received: from AcuMS.Aculab.com ([fe80::43c:695e:880f:8750]) by
- AcuMS.aculab.com ([fe80::43c:695e:880f:8750%12]) with mapi id 15.00.1347.000;
- Sun, 11 Oct 2020 16:28:43 +0100
-From:   David Laight <David.Laight@ACULAB.COM>
-To:     David Laight <David.Laight@ACULAB.COM>,
-        'Xin Long' <lucien.xin@gmail.com>
-CC:     Andreas Fink <afink@list.fink.org>,
-        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        id S2390072AbgJMH1u (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Tue, 13 Oct 2020 03:27:50 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55344 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2390045AbgJMH1u (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Tue, 13 Oct 2020 03:27:50 -0400
+Received: from mail-pj1-x1043.google.com (mail-pj1-x1043.google.com [IPv6:2607:f8b0:4864:20::1043])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8E1CFC0613D0;
+        Tue, 13 Oct 2020 00:27:50 -0700 (PDT)
+Received: by mail-pj1-x1043.google.com with SMTP id a1so1624272pjd.1;
+        Tue, 13 Oct 2020 00:27:50 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id;
+        bh=lo50OR7jo9MWVm6/fBrObBSNTOO9jkKyMFDTE5L9qas=;
+        b=sMPDiGUtxJFMTvuwZlW/uNPiGKHHhcclbHMyORvirMvexTvzK+gdz5zHKEBPRM7/sE
+         ZCPXJzz6Pyg28y0aGZkujbJIpwdnjaizRiai0MC3UEiQVNPJVslZq5UKK0TOu6c9QurO
+         e9AH7MCFlR3SbLNe1ta2lyIdrndgP7AnzzntsAaYoDmiH3XQpr30gCptt2LxjXUHi5f+
+         TdY/w8xn7rRPwyrFsEREy+AobnyyuQfdH2ApIOdHp4n42ShL5KAxBhfDW+bq52rFTKYA
+         NYStgTQQ2dRaqgZbgXA18yNMj8TRxY4ivEBRNfZoJiB+ppvqcKm8DKTIEyUkU4abPlzR
+         HVgg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id;
+        bh=lo50OR7jo9MWVm6/fBrObBSNTOO9jkKyMFDTE5L9qas=;
+        b=W4JTldZZ6ghUAKHgXYLVhHbXdT9kjA2wBRhIedbOaiOkwenHIPzOse4IMv08Mkf5YZ
+         WNo0a/DJyIF59d12uPIRsFwOP1H0JBDV5qE4kUawijA2cyFqaoCInuC6UH9cT4QymmNx
+         w5AOZZv/AWcooNtnmx2ykbIh9P77B2wBJPIGjvvtjFL0LNAB+1X7DSCDmFUMyqeEbK34
+         A3JRzjJWaGKeRy22mv4FMllBhAw/kEnda1NLpAfYTe/KC6w7T4WeDq0W+uJx5Y9d5uZa
+         8EsLZf46TUL/G7KJy7BGYRN8OoQ3XXZWD+tlyHKgXJTqFqFqlL93dbN66UA2iEU3ihEC
+         D4TQ==
+X-Gm-Message-State: AOAM533yBFDYYNw8/UAB8ZH2ZiqxC1f01pONyPhFM+aqZL+WkU+VLEAZ
+        bLsawJTzYvUOgYPIXm9m8pg/Ns+8uJ4=
+X-Google-Smtp-Source: ABdhPJwDjsNQdr+l5/WbZs696Evq+T5z1fsYQ/OHmQVzzBVF//bc5P8U8P32rF8s0qk5yR3q9TE8QA==
+X-Received: by 2002:a17:902:a40e:b029:d3:c6fa:2650 with SMTP id p14-20020a170902a40eb02900d3c6fa2650mr26292776plq.29.1602574069752;
+        Tue, 13 Oct 2020 00:27:49 -0700 (PDT)
+Received: from localhost ([209.132.188.80])
+        by smtp.gmail.com with ESMTPSA id x22sm21988454pfp.181.2020.10.13.00.27.48
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Tue, 13 Oct 2020 00:27:48 -0700 (PDT)
+From:   Xin Long <lucien.xin@gmail.com>
+To:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc:     Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
         Neil Horman <nhorman@tuxdriver.com>,
-        "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
-Subject: RE: sctp discarding received data chunks
-Thread-Topic: sctp discarding received data chunks
-Thread-Index: AQHWng1GnBiC92Jzi0usTZn0U2V7p6mPGcdwgAAhfiCAANPdAIAA4KSwgAGaErA=
-Date:   Sun, 11 Oct 2020 15:28:43 +0000
-Message-ID: <645944cb37fa4e41b90b18ff2b5d313d@AcuMS.aculab.com>
-References: <e377e7e2a87e4f078e7a6d82992cfda0@AcuMS.aculab.com>
- <CC1FDC9B-F273-475A-98C5-000ADC395BB0@list.fink.org>
- <73434b87932e46a89dd1b5b5132b3196@AcuMS.aculab.com>
- <766ffacb7d4c48df81aea64204ff37d9@AcuMS.aculab.com>
- <CADvbK_farVU-bB9NeLSDfmCgPcdG2Oe44-odeU0o+b2BwfRA0g@mail.gmail.com>
- <5af24669b72c4bbb9456b53c397489a4@AcuMS.aculab.com>
-In-Reply-To: <5af24669b72c4bbb9456b53c397489a4@AcuMS.aculab.com>
-Accept-Language: en-GB, en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-ms-exchange-transport-fromentityheader: Hosted
-x-originating-ip: [10.202.205.107]
-MIME-Version: 1.0
-Authentication-Results: relay.mimecast.com;
-        auth=pass smtp.auth=C51A453 smtp.mailfrom=david.laight@aculab.com
-X-Mimecast-Spam-Score: 0
-X-Mimecast-Originator: aculab.com
-Content-Language: en-US
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: base64
+        Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net,
+        gnault@redhat.com, pabeni@redhat.com,
+        willemdebruijn.kernel@gmail.com
+Subject: [PATCHv3 net-next 00/16] sctp: Implement RFC6951: UDP Encapsulation of SCTP
+Date:   Tue, 13 Oct 2020 15:27:25 +0800
+Message-ID: <cover.1602574012.git.lucien.xin@gmail.com>
+X-Mailer: git-send-email 2.1.0
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
-Message-ID: <20201011152843.xNL4l7G98sorrGyDVe40v_SubqWOT6vO7EbNJXTTRbo@z>
+Message-ID: <20201013072725.7jr5chv_M_Fgi93v-b9TOh3d5Pd4Sgz8ucYmWlze_Cs@z>
 
-Li4uDQo+ID4gPiBJZiBJIGR1bXAgb3V0IC9wcm9jL25ldC9zY3RwL2Fzc29jcyBhbmQgbG9vayB3
-YXkgb3ZlciB0byB0aGUgcmlnaHQNCj4gPiA+IChvbiB0aGUgbmV4dCBtb25pdG9yIGJ1dCAxKSB0
-aGVyZSBhcmUgdHdvIGNvbHVtbnMgSU5TIGFuZCBPVVRTLg0KPiA+ID4gSSd2ZSBqdXN0IHJlYWxp
-c2VkIHRoYXQgdGhlc2UgYXJlIHRoZSBudW1iZXIgb2Ygc3RyZWFtcy4NCj4gPiA+IE5vdyBhbGwg
-bXkgY29ubmVjdGlvbnMgYXJlIGxvb3BiYWNrIC0gc28gSSBzZWUgYm90aCBzb2NrZXRzIGZvciBl
-YWNoLg0KPiA+ID4gU28gSSdkIGV4cGVjdCB0aGUgSU5TIHRvIG1hdGNoIHRoZSBPVVRTIG9mIHRo
-ZSBwZWVyLg0KPiA+ID4gVGhpcyBpc24ndCB0cnVlLg0KPiA+ID4gV2hlbiB0aGUgdmFsdWUgc2hv
-dWxkIGJlIG5lZ290aWF0ZWQgZG93biB0aGUgT1VUUyB2YWx1ZSBpcyB1bmNoYW5nZWQuDQo+ID4g
-PiBTbyB0aGUga2VybmVsIGlzIHNlbmRpbmcgcGFja2V0cyB3aXRoIGlsbGVnYWwgc3RyZWFtIG51
-bWJlcnMuDQo+ID4gPiBUaGVzZSBhcmUgYWNrZWQgYW5kIHRoZW4gc2lsZW50bHkgZGlzY2FyZGVk
-Lg0KPiANCj4gPiBkaWQgaXQgZG8gYWRkc3RyZWFtIHJlY29uZmlnIG9yIHJlY2VpdmUgYW55IGR1
-cGxpY2F0ZSBDT09LSUUtRUNITyBpbiB5b3VyIGNhc2U/DQo+IA0KPiBFeHRyZW1lbHkgdW5saWtl
-bHkuDQo+IA0KPiBMb29raW5nIGF0IHRoZSBsYXRlc3QgdmVyc2lvbiBvZiBteSBkcml2ZXIgY29k
-ZQ0KPiAod2hpY2ggSSB3YXNuJ3QgdXNpbmcpIEkgd3JvdGUgdGhlIGZvbGxvd2luZzoNCj4gDQo+
-ICAqIFNpbmNlIHRoZSBjb2RlIHRoYXQgbmVnb3RpYXRlcyB0aGUgbnVtYmVyIG9mIHN0cmVhbXMg
-Z290IGJyb2tlbg0KPiAgKiBpbiB2ZXJzaW9uIDUuMSB3ZSBuZWVkIHRvIGV4dHJhY3QgdGhlIGNv
-cnJlY3QgdmFsdWUgZnJvbSB0aGUNCj4gICogaW50ZXJuYWwgc3RydWN0dXJlcyB0byBhdm9pZCBT
-Q1RQIHNlbmRpbmcgbWVzc2FnZXMgdGhlIHJlbW90ZQ0KPiAgKiBzeXN0ZW0gd2lsbCBkaXNjYXJk
-Lg0KPiANCj4gICAgIC8qIHN0cmVhbS5vdXRjbnQgaXMgdGhlIHZhbHVlIHdlIHNob3VsZCBiZSB1
-c2luZy4NCj4gICAgICAqIEJ1dCBrZXJuZWxzIDUuMSB0byA1LjggZmFpbCB0byByZWR1Y2UgaXQg
-YmFzZWQgb24gdGhlIG51bWJlcg0KPiAgICAgICogcmVjZWl2ZWQgZnJvbSB0aGUgcmVtb3RlIHN5
-c3RlbS4NCj4gICAgICAqIFNvIGJvdW5kIGhlcmUgc28gdGhhdCB0cmFuc21pdHRlZCBtZXNzYWdl
-cyBkb24ndCBnZXQgZGlzY2FyZGVkLiAqLw0KPiAgICAgb3V0Y250ID0gYXNvYy0+c3RyZWFtLm91
-dGNudDsNCj4gICAgIG51bV9vc3RyZWFtcyA9IGFzb2MtPmMuc2luaXRfbnVtX29zdHJlYW1zOw0K
-PiANCj4gSSB0aGluayB0aGVyZSB3YXMgYSBwYXRjaCBkb25lIGZvciA1LjkuDQo+IEl0IG5lZWRz
-IGJhY2stcG9ydGluZy4NCg0KWWVzLCBJIHdyb3RlIHRoZSBwYXRjaC4NCkFwcGxpZWQgdG8gbmV0
-LW5leHQuDQoNCmh0dHBzOi8vZ2l0Lmtlcm5lbC5vcmcvcHViL3NjbS9saW51eC9rZXJuZWwvZ2l0
-L25leHQvbGludXgtbmV4dC5naXQvY29tbWl0L25ldC9zY3RwL3N0cmVhbS5jP2lkPWFiOTIxZjNj
-ZGJlYzAxYzY4NzA1YTdhZGU4YmVjNjI4ZDU0MWZjMmINCg0KCURhdmlkDQoNCi0NClJlZ2lzdGVy
-ZWQgQWRkcmVzcyBMYWtlc2lkZSwgQnJhbWxleSBSb2FkLCBNb3VudCBGYXJtLCBNaWx0b24gS2V5
-bmVzLCBNSzEgMVBULCBVSw0KUmVnaXN0cmF0aW9uIE5vOiAxMzk3Mzg2IChXYWxlcykNCg==
+Description From the RFC:
+
+   The Main Reasons:
+
+   o  To allow SCTP traffic to pass through legacy NATs, which do not
+      provide native SCTP support as specified in [BEHAVE] and
+      [NATSUPP].
+
+   o  To allow SCTP to be implemented on hosts that do not provide
+      direct access to the IP layer.  In particular, applications can
+      use their own SCTP implementation if the operating system does not
+      provide one.
+
+   Implementation Notes:
+
+   UDP-encapsulated SCTP is normally communicated between SCTP stacks
+   using the IANA-assigned UDP port number 9899 (sctp-tunneling) on both
+   ends.  There are circumstances where other ports may be used on
+   either end, and it might be required to use ports other than the
+   registered port.
+
+   Each SCTP stack uses a single local UDP encapsulation port number as
+   the destination port for all its incoming SCTP packets, this greatly
+   simplifies implementation design.
+
+   An SCTP implementation supporting UDP encapsulation MUST maintain a
+   remote UDP encapsulation port number per destination address for each
+   SCTP association.  Again, because the remote stack may be using ports
+   other than the well-known port, each port may be different from each
+   stack.  However, because of remapping of ports by NATs, the remote
+   ports associated with different remote IP addresses may not be
+   identical, even if they are associated with the same stack.
+
+   Because the well-known port might not be used, implementations need
+   to allow other port numbers to be specified as a local or remote UDP
+   encapsulation port number through APIs.
+
+Patches:
+
+   This patchset is using the udp4/6 tunnel APIs to implement the UDP
+   Encapsulation of SCTP with not much change in SCTP protocol stack
+   and with all current SCTP features keeped in Linux Kernel.
+
+   1 - 4: Fix some UDP issues that may be triggered by SCTP over UDP.
+   5 - 7: Process incoming UDP encapsulated packets and ICMP packets.
+   8 -10: Remote encap port's update by sysctl, sockopt and packets.
+   11-14: Process outgoing pakects with UDP encapsulated and its GSO.
+   15-16: Add the part from draft-tuexen-tsvwg-sctp-udp-encaps-cons-03.
+      17: Enable this feature.
+
+Tests:
+
+  - lksctp-tools/src/func_tests with UDP Encapsulation enabled/disabled:
+
+      Both make v4test and v6test passed.
+
+  - sctp-tests with UDP Encapsulation enabled/disabled:
+
+      repeatability/procdumps/sctpdiag/gsomtuchange/extoverflow/
+      sctphashtable passed. Others failed as expected due to those
+      "iptables -p sctp" rules.
+
+  - netperf on lo/netns/virtio_net, with gso enabled/disabled and
+    with ip_checksum enabled/disabled, with UDP Encapsulation
+    enabled/disabled:
+
+      No clear performance dropped.
+
+v1->v2:
+  - Fix some incorrect code in the patches 5,6,8,10,11,13,14,17, suggested
+    by Marcelo.
+  - Append two patches 15-16 to add the Additional Considerations for UDP
+    Encapsulation of SCTP from draft-tuexen-tsvwg-sctp-udp-encaps-cons-03.
+v2->v3:
+  - remove the cleanup code in patch 2, suggested by Willem.
+  - remove the patch 3 and fix the checksum in the new patch 3 after
+    talking with Paolo, Marcelo and Guillaume.
+  - add 'select NET_UDP_TUNNEL' in patch 4 to solve a compiling error.
+  - fix __be16 type cast warning in patch 8.
+  - fix the wrong endian orders when setting values in 14,16.
+
+Xin Long (16):
+  udp: check udp sock encap_type in __udp_lib_err
+  udp6: move the mss check after udp gso tunnel processing
+  udp: support sctp over udp in skb_udp_tunnel_segment
+  sctp: create udp4 sock and add its encap_rcv
+  sctp: create udp6 sock and set its encap_rcv
+  sctp: add encap_err_lookup for udp encap socks
+  sctp: add encap_port for netns sock asoc and transport
+  sctp: add SCTP_REMOTE_UDP_ENCAPS_PORT sockopt
+  sctp: allow changing transport encap_port by peer packets
+  sctp: add udphdr to overhead when udp_port is set
+  sctp: call sk_setup_caps in sctp_packet_transmit instead
+  sctp: support for sending packet over udp4 sock
+  sctp: support for sending packet over udp6 sock
+  sctp: add the error cause for new encapsulation port restart
+  sctp: handle the init chunk matching an existing asoc
+  sctp: enable udp tunneling socks
+
+ include/linux/sctp.h         |  20 ++++++
+ include/net/netns/sctp.h     |   8 +++
+ include/net/sctp/constants.h |   2 +
+ include/net/sctp/sctp.h      |   9 ++-
+ include/net/sctp/sm.h        |   4 ++
+ include/net/sctp/structs.h   |  14 ++--
+ include/uapi/linux/sctp.h    |   7 ++
+ net/ipv4/udp.c               |   2 +-
+ net/ipv4/udp_offload.c       |   3 +
+ net/ipv6/udp.c               |   2 +-
+ net/ipv6/udp_offload.c       |   8 +--
+ net/sctp/Kconfig             |   1 +
+ net/sctp/associola.c         |   4 ++
+ net/sctp/ipv6.c              |  44 +++++++++----
+ net/sctp/offload.c           |   6 +-
+ net/sctp/output.c            |  22 +++----
+ net/sctp/protocol.c          | 148 +++++++++++++++++++++++++++++++++++++++----
+ net/sctp/sm_make_chunk.c     |  21 ++++++
+ net/sctp/sm_statefuns.c      |  52 +++++++++++++++
+ net/sctp/socket.c            | 116 +++++++++++++++++++++++++++++++++
+ net/sctp/sysctl.c            |  60 ++++++++++++++++++
+ 21 files changed, 503 insertions(+), 50 deletions(-)
+
+-- 
+2.1.0
 
