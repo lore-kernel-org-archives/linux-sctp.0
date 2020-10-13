@@ -1,168 +1,168 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 19 Oct 2020 12:25:26 +0000
-Subject: [PATCHv4 net-next 09/16] sctp: allow changing transport encap_port by peer packets
-Message-Id: <fe0630fd48830058df1bfdd53a9e6b9fbf83b498.1603110316.git.lucien.xin@gmail.com>
+Date: Tue, 13 Oct 2020 07:27:29 +0000
+Subject: [PATCHv3 net-next 04/16] sctp: create udp4 sock and add its encap_rcv
+Message-Id: <7159fb58f44f9ff00ca5b3b8a26ee3aa2fd1bf8a.1602574012.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1603110316.git.lucien.xin@gmail.com>
- <71b3af0fb347f27b5c3bf846dbd34485d9f80af0.1603110316.git.lucien.xin@gmail.com>
- <de3a89ece8f3abd0dca08064d9fc4d36ca7ddba2.1603110316.git.lucien.xin@gmail.com>
- <5f06ac649f4b63fc5a254812a963cada3183f136.1603110316.git.lucien.xin@gmail.com>
- <e99845af51be8fdaa53a2575e8967b8c3c8d423a.1603110316.git.lucien.xin@gmail.com>
- <7a2f5792c1a428c16962fff08b7bcfedc21bd5e2.1603110316.git.lucien.xin@gmail.com>
- <7cfd72e42b8b1cde268ad4062c96c08a56c4b14f.1603110316.git.lucien.xin@gmail.com>
- <d55a0eaefa4b8a671e54535a1899ea4c00bc2de8.1603110316.git.lucien.xin@gmail.com>
- <25013493737f5b488ce48c38667a077ca6573dd5.1603110316.git.lucien.xin@gmail.com>
-In-Reply-To: <25013493737f5b488ce48c38667a077ca6573dd5.1603110316.git.lucien.xin@gmail.com>
+References: <cover.1602574012.git.lucien.xin@gmail.com>
+ <fae9c57767447c4fd97476807b9e029e8fda607a.1602574012.git.lucien.xin@gmail.com>
+ <c01a9a09096cb1b292d461aa5a1e72aae2ca942a.1602574012.git.lucien.xin@gmail.com>
+ <dbad21ff524e119f83ae4444d1ae393ab165fa7c.1602574012.git.lucien.xin@gmail.com>
+In-Reply-To: <dbad21ff524e119f83ae4444d1ae393ab165fa7c.1602574012.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net, gnault@redhat.com, pabeni@redhat.com, willemdebruijn.kernel@gmail.com
 
-As rfc6951#section-5.4 says:
+This patch is to add the functions to create/release udp4 sock,
+and set the sock's encap_rcv to process the incoming udp encap
+sctp packets. In sctp_udp_rcv(), as we can see, all we need to
+do is fix the transport header for sctp_rcv(), then it would
+implement the part of rfc6951#section-5.4:
 
-  "After finding the SCTP association (which
-   includes checking the verification tag), the UDP source port MUST be
-   stored as the encapsulation port for the destination address the SCTP
-   packet is received from (see Section 5.1).
+  "When an encapsulated packet is received, the UDP header is removed.
+   Then, the generic lookup is performed, as done by an SCTP stack
+   whenever a packet is received, to find the association for the
+   received SCTP packet"
 
-   When a non-encapsulated SCTP packet is received by the SCTP stack,
-   the encapsulation of outgoing packets belonging to the same
-   association and the corresponding destination address MUST be
-   disabled."
-
-transport encap_port should be updated by a validated incoming packet's
-udp src port.
-
-We save the udp src port in sctp_input_cb->encap_port, and then update
-the transport in two places:
-
-  1. right after vtag is verified, which is required by RFC, and this
-     allows the existent transports to be updated by the chunks that
-     can only be processed on an asoc.
-
-  2. right before processing the 'init' where the transports are added,
-     and this allows building a sctp over udp connection by client with
-     the server not knowing the remote encap port.
-
-  3. when processing ootb_pkt and creating the temporary transport for
-     the reply pkt.
-
-Note that sctp_input_cb->header is removed, as it's not used any more
-in sctp.
+Note that these functions will be called in the last patch of
+this patchset when enabling this feature.
 
 v1->v2:
-  - Change encap_port as __be16 for sctp_input_cb.
+  - Add pr_err() when fails to create udp v4 sock.
+v2->v3:
+  - Add 'select NET_UDP_TUNNEL' in sctp Kconfig.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/sctp/sm.h      |  1 +
- include/net/sctp/structs.h |  7 +------
- net/sctp/ipv6.c            |  1 +
- net/sctp/protocol.c        | 11 ++++++++++-
- net/sctp/sm_make_chunk.c   |  1 +
- net/sctp/sm_statefuns.c    |  2 ++
- 6 files changed, 16 insertions(+), 7 deletions(-)
+ include/net/netns/sctp.h     |  5 +++++
+ include/net/sctp/constants.h |  2 ++
+ include/net/sctp/sctp.h      |  2 ++
+ net/sctp/Kconfig             |  1 +
+ net/sctp/protocol.c          | 43 +++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 53 insertions(+)
 
-diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
-index 5c491a3..a499341 100644
---- a/include/net/sctp/sm.h
-+++ b/include/net/sctp/sm.h
-@@ -380,6 +380,7 @@ sctp_vtag_verify(const struct sctp_chunk *chunk,
-         if (ntohl(chunk->sctp_hdr->vtag) = asoc->c.my_vtag)
-                 return 1;
+diff --git a/include/net/netns/sctp.h b/include/net/netns/sctp.h
+index d8d02e4..3d10bef 100644
+--- a/include/net/netns/sctp.h
++++ b/include/net/netns/sctp.h
+@@ -22,6 +22,11 @@ struct netns_sctp {
+ 	 */
+ 	struct sock *ctl_sock;
  
-+	chunk->transport->encap_port = SCTP_INPUT_CB(chunk->skb)->encap_port;
- 	return 0;
- }
++	/* udp tunneling listening sock. */
++	struct sock *udp4_sock;
++	/* udp tunneling listening port. */
++	int udp_port;
++
+ 	/* This is the global local address list.
+ 	 * We actively maintain this complete list of addresses on
+ 	 * the system by catching address add/delete events.
+diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
+index 122d9e2..b583166 100644
+--- a/include/net/sctp/constants.h
++++ b/include/net/sctp/constants.h
+@@ -286,6 +286,8 @@ enum { SCTP_MAX_GABS = 16 };
+ 				 * functions simpler to write.
+ 				 */
  
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index aa98e7e..81464ae 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -1120,14 +1120,9 @@ static inline void sctp_outq_cork(struct sctp_outq *q)
-  * sctp_input_cb is currently used on rx and sock rx queue
++#define SCTP_DEFAULT_UDP_PORT 9899	/* default udp tunneling port */
++
+ /* These are the values for pf exposure, UNUSED is to keep compatible with old
+  * applications by default.
   */
- struct sctp_input_cb {
--	union {
--		struct inet_skb_parm	h4;
--#if IS_ENABLED(CONFIG_IPV6)
--		struct inet6_skb_parm	h6;
--#endif
--	} header;
- 	struct sctp_chunk *chunk;
- 	struct sctp_af *af;
-+	__be16 encap_port;
- };
- #define SCTP_INPUT_CB(__skb)	((struct sctp_input_cb *)&((__skb)->cb[0]))
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 4fc747b..bfd87a0 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -84,6 +84,8 @@ int sctp_copy_local_addr_list(struct net *net, struct sctp_bind_addr *addr,
+ struct sctp_pf *sctp_get_pf_specific(sa_family_t family);
+ int sctp_register_pf(struct sctp_pf *, sa_family_t);
+ void sctp_addr_wq_mgmt(struct net *, struct sctp_sockaddr_entry *, int);
++int sctp_udp_sock_start(struct net *net);
++void sctp_udp_sock_stop(struct net *net);
  
-diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-index 8a58f42..a064bf2 100644
---- a/net/sctp/ipv6.c
-+++ b/net/sctp/ipv6.c
-@@ -1053,6 +1053,7 @@ static struct inet_protosw sctpv6_stream_protosw = {
- 
- static int sctp6_rcv(struct sk_buff *skb)
- {
-+	memset(skb->cb, 0, sizeof(skb->cb));
- 	return sctp_rcv(skb) ? -1 : 0;
- }
+ /*
+  * sctp/socket.c
+diff --git a/net/sctp/Kconfig b/net/sctp/Kconfig
+index 39d7fa9..5da599f 100644
+--- a/net/sctp/Kconfig
++++ b/net/sctp/Kconfig
+@@ -11,6 +11,7 @@ menuconfig IP_SCTP
+ 	select CRYPTO_HMAC
+ 	select CRYPTO_SHA1
+ 	select LIBCRC32C
++	select NET_UDP_TUNNEL
+ 	help
+ 	  Stream Control Transmission Protocol
  
 diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index 7c729d7..36f471d 100644
+index 2583323..2b7a3e1 100644
 --- a/net/sctp/protocol.c
 +++ b/net/sctp/protocol.c
-@@ -843,6 +843,9 @@ static int sctp_ctl_sock_init(struct net *net)
+@@ -44,6 +44,7 @@
+ #include <net/addrconf.h>
+ #include <net/inet_common.h>
+ #include <net/inet_ecn.h>
++#include <net/udp_tunnel.h>
  
- static int sctp_udp_rcv(struct sock *sk, struct sk_buff *skb)
- {
-+	memset(skb->cb, 0, sizeof(skb->cb));
-+	SCTP_INPUT_CB(skb)->encap_port = udp_hdr(skb)->source;
-+
- 	skb_set_transport_header(skb, sizeof(struct udphdr));
- 	sctp_rcv(skb);
+ #define MAX_SCTP_PORT_HASH_ENTRIES (64 * 1024)
+ 
+@@ -840,6 +841,45 @@ static int sctp_ctl_sock_init(struct net *net)
  	return 0;
-@@ -1139,9 +1142,15 @@ static struct inet_protosw sctp_stream_protosw = {
- 	.flags      = SCTP_PROTOSW_FLAG
- };
+ }
  
-+static int sctp4_rcv(struct sk_buff *skb)
++static int sctp_udp_rcv(struct sock *sk, struct sk_buff *skb)
 +{
-+	memset(skb->cb, 0, sizeof(skb->cb));
-+	return sctp_rcv(skb);
++	skb_set_transport_header(skb, sizeof(struct udphdr));
++	sctp_rcv(skb);
++	return 0;
 +}
 +
- /* Register with IP layer.  */
- static const struct net_protocol sctp_protocol = {
--	.handler     = sctp_rcv,
-+	.handler     = sctp4_rcv,
- 	.err_handler = sctp_v4_err,
- 	.no_policy   = 1,
- 	.netns_ok    = 1,
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 9a56ae2..21d0ff1 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -2321,6 +2321,7 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
- 	 * added as the primary transport.  The source address seems to
- 	 * be a better choice than any of the embedded addresses.
- 	 */
-+	asoc->encap_port = SCTP_INPUT_CB(chunk->skb)->encap_port;
- 	if (!sctp_assoc_add_peer(asoc, peer_addr, gfp, SCTP_ACTIVE))
- 		goto nomem;
- 
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index c669f8b..8edab15 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -6268,6 +6268,8 @@ static struct sctp_packet *sctp_ootb_pkt_new(
- 	if (!transport)
- 		goto nomem;
- 
-+	transport->encap_port = SCTP_INPUT_CB(chunk->skb)->encap_port;
++int sctp_udp_sock_start(struct net *net)
++{
++	struct udp_tunnel_sock_cfg tuncfg = {NULL};
++	struct udp_port_cfg udp_conf = {0};
++	struct socket *sock;
++	int err;
 +
- 	/* Cache a route for the transport with the chunk's destination as
- 	 * the source address.
- 	 */
++	udp_conf.family = AF_INET;
++	udp_conf.local_ip.s_addr = htonl(INADDR_ANY);
++	udp_conf.local_udp_port = htons(net->sctp.udp_port);
++	err = udp_sock_create(net, &udp_conf, &sock);
++	if (err) {
++		pr_err("Failed to create the SCTP udp tunneling v4 sock\n");
++		return err;
++	}
++
++	tuncfg.encap_type = 1;
++	tuncfg.encap_rcv = sctp_udp_rcv;
++	setup_udp_tunnel_sock(net, sock, &tuncfg);
++	net->sctp.udp4_sock = sock->sk;
++
++	return 0;
++}
++
++void sctp_udp_sock_stop(struct net *net)
++{
++	if (net->sctp.udp4_sock) {
++		udp_tunnel_sock_release(net->sctp.udp4_sock->sk_socket);
++		net->sctp.udp4_sock = NULL;
++	}
++}
++
+ /* Register address family specific functions. */
+ int sctp_register_af(struct sctp_af *af)
+ {
+@@ -1271,6 +1311,9 @@ static int __net_init sctp_defaults_init(struct net *net)
+ 	/* Enable ECN by default. */
+ 	net->sctp.ecn_enable = 1;
+ 
++	/* Set udp tunneling listening port to default value */
++	net->sctp.udp_port = SCTP_DEFAULT_UDP_PORT;
++
+ 	/* Set SCOPE policy to enabled */
+ 	net->sctp.scope_policy = SCTP_SCOPE_POLICY_ENABLE;
+ 
 -- 
 2.1.0
