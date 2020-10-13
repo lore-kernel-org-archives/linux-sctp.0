@@ -1,221 +1,114 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 19 Oct 2020 12:25:25 +0000
-Subject: [PATCHv4 net-next 08/16] sctp: add SCTP_REMOTE_UDP_ENCAPS_PORT sockopt
-Message-Id: <25013493737f5b488ce48c38667a077ca6573dd5.1603110316.git.lucien.xin@gmail.com>
+Date: Tue, 13 Oct 2020 07:27:40 +0000
+Subject: [PATCHv3 net-next 15/16] sctp: handle the init chunk matching an existing asoc
+Message-Id: <59d083919cccb32dad7aec119d00c5300b0c2800.1602574012.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1603110316.git.lucien.xin@gmail.com>
- <71b3af0fb347f27b5c3bf846dbd34485d9f80af0.1603110316.git.lucien.xin@gmail.com>
- <de3a89ece8f3abd0dca08064d9fc4d36ca7ddba2.1603110316.git.lucien.xin@gmail.com>
- <5f06ac649f4b63fc5a254812a963cada3183f136.1603110316.git.lucien.xin@gmail.com>
- <e99845af51be8fdaa53a2575e8967b8c3c8d423a.1603110316.git.lucien.xin@gmail.com>
- <7a2f5792c1a428c16962fff08b7bcfedc21bd5e2.1603110316.git.lucien.xin@gmail.com>
- <7cfd72e42b8b1cde268ad4062c96c08a56c4b14f.1603110316.git.lucien.xin@gmail.com>
- <d55a0eaefa4b8a671e54535a1899ea4c00bc2de8.1603110316.git.lucien.xin@gmail.com>
-In-Reply-To: <d55a0eaefa4b8a671e54535a1899ea4c00bc2de8.1603110316.git.lucien.xin@gmail.com>
+References: <cover.1602574012.git.lucien.xin@gmail.com>
+ <fae9c57767447c4fd97476807b9e029e8fda607a.1602574012.git.lucien.xin@gmail.com>
+ <c01a9a09096cb1b292d461aa5a1e72aae2ca942a.1602574012.git.lucien.xin@gmail.com>
+ <dbad21ff524e119f83ae4444d1ae393ab165fa7c.1602574012.git.lucien.xin@gmail.com>
+ <7159fb58f44f9ff00ca5b3b8a26ee3aa2fd1bf8a.1602574012.git.lucien.xin@gmail.com>
+ <b9f0bfa27c5be3bbf27a7325c73f16205286df38.1602574012.git.lucien.xin@gmail.com>
+ <c9c1d019287792f71863c89758d179b133fe1200.1602574012.git.lucien.xin@gmail.com>
+ <37e9f70ffb9dea1572025b8e1c4b1f1c6e6b3da5.1602574012.git.lucien.xin@gmail.com>
+ <08854ecf72eee34d3e98e30def6940d94f97fdef.1602574012.git.lucien.xin@gmail.com>
+ <732baa9aef67a1b0d0b4d69f47149b41a49bbd76.1602574012.git.lucien.xin@gmail.com>
+ <4885b112360b734e25714499346e6dc22246a87d.1602574012.git.lucien.xin@gmail.com>
+ <c97b738ae89c59f14afbbca22d0294dc24eca30f.1602574012.git.lucien.xin@gmail.com>
+ <46f33eb9331b7e1e688a7f125201ad600ae83fbd.1602574012.git.lucien.xin@gmail.com>
+ <c79a0be422c96fec9da194a20853811d93809393.1602574012.git.lucien.xin@gmail.com>
+ <df18ce9f94be0a58bbf1743071993b95696aed2d.1602574012.git.lucien.xin@gmail.com>
+In-Reply-To: <df18ce9f94be0a58bbf1743071993b95696aed2d.1602574012.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net, gnault@redhat.com, pabeni@redhat.com, willemdebruijn.kernel@gmail.com
 
-This patch is to implement:
-
-  rfc6951#section-6.1: Get or Set the Remote UDP Encapsulation Port Number
-
-with the param of the struct:
-
-  struct sctp_udpencaps {
-    sctp_assoc_t sue_assoc_id;
-    struct sockaddr_storage sue_address;
-    uint16_t sue_port;
-  };
-
-the encap_port of sock, assoc or transport can be changed by users,
-which also means it allows the different transports of the same asoc
-to have different encap_port value.
-
-v1->v2:
-  - no change.
-v2->v3:
-  - fix the endian warning when setting values between encap_port and
-    sue_port.
+This is from Section 4 of draft-tuexen-tsvwg-sctp-udp-encaps-cons-03,
+and it requires responding with an abort chunk with an error cause
+when the udp source port of the received init chunk doesn't match the
+encap port of the transport.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/uapi/linux/sctp.h |   7 +++
- net/sctp/socket.c         | 114 ++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 121 insertions(+)
+ net/sctp/sm_statefuns.c | 50 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 50 insertions(+)
 
-diff --git a/include/uapi/linux/sctp.h b/include/uapi/linux/sctp.h
-index 28ad40d..cb78e7a 100644
---- a/include/uapi/linux/sctp.h
-+++ b/include/uapi/linux/sctp.h
-@@ -140,6 +140,7 @@ typedef __s32 sctp_assoc_t;
- #define SCTP_ECN_SUPPORTED	130
- #define SCTP_EXPOSE_POTENTIALLY_FAILED_STATE	131
- #define SCTP_EXPOSE_PF_STATE	SCTP_EXPOSE_POTENTIALLY_FAILED_STATE
-+#define SCTP_REMOTE_UDP_ENCAPS_PORT	132
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index 8edab15..244a5d8 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -87,6 +87,13 @@ static enum sctp_disposition sctp_sf_tabort_8_4_8(
+ 					const union sctp_subtype type,
+ 					void *arg,
+ 					struct sctp_cmd_seq *commands);
++static enum sctp_disposition sctp_sf_new_encap_port(
++					struct net *net,
++					const struct sctp_endpoint *ep,
++					const struct sctp_association *asoc,
++					const union sctp_subtype type,
++					void *arg,
++					struct sctp_cmd_seq *commands);
+ static struct sctp_sackhdr *sctp_sm_pull_sack(struct sctp_chunk *chunk);
  
- /* PR-SCTP policies */
- #define SCTP_PR_SCTP_NONE	0x0000
-@@ -1197,6 +1198,12 @@ struct sctp_event {
- 	uint8_t se_on;
- };
+ static enum sctp_disposition sctp_stop_t1_and_abort(
+@@ -1493,6 +1500,10 @@ static enum sctp_disposition sctp_sf_do_unexpected_init(
+ 	if (!sctp_chunk_length_valid(chunk, sizeof(struct sctp_init_chunk)))
+ 		return sctp_sf_violation_chunklen(net, ep, asoc, type, arg,
+ 						  commands);
++
++	if (SCTP_INPUT_CB(chunk->skb)->encap_port != chunk->transport->encap_port)
++		return sctp_sf_new_encap_port(net, ep, asoc, type, arg, commands);
++
+ 	/* Grab the INIT header.  */
+ 	chunk->subh.init_hdr = (struct sctp_inithdr *)chunk->skb->data;
  
-+struct sctp_udpencaps {
-+	sctp_assoc_t sue_assoc_id;
-+	struct sockaddr_storage sue_address;
-+	uint16_t sue_port;
-+};
-+
- /* SCTP Stream schedulers */
- enum sctp_sched_type {
- 	SCTP_SS_FCFS,
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 09b94cd..2a9ee9b 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -4417,6 +4417,55 @@ static int sctp_setsockopt_pf_expose(struct sock *sk,
- 	return retval;
- }
+@@ -3392,6 +3403,45 @@ static enum sctp_disposition sctp_sf_tabort_8_4_8(
  
-+static int sctp_setsockopt_encap_port(struct sock *sk,
-+				      struct sctp_udpencaps *encap,
-+				      unsigned int optlen)
-+{
-+	struct sctp_association *asoc;
-+	struct sctp_transport *t;
-+	__be16 encap_port;
+ 	sctp_packet_append_chunk(packet, abort);
+ 
++	sctp_add_cmd_sf(commands, SCTP_CMD_SEND_PKT, SCTP_PACKET(packet));
 +
-+	if (optlen != sizeof(*encap))
-+		return -EINVAL;
++	SCTP_INC_STATS(net, SCTP_MIB_OUTCTRLCHUNKS);
 +
-+	/* If an address other than INADDR_ANY is specified, and
-+	 * no transport is found, then the request is invalid.
-+	 */
-+	encap_port = (__force __be16)encap->sue_port;
-+	if (!sctp_is_any(sk, (union sctp_addr *)&encap->sue_address)) {
-+		t = sctp_addr_id2transport(sk, &encap->sue_address,
-+					   encap->sue_assoc_id);
-+		if (!t)
-+			return -EINVAL;
-+
-+		t->encap_port = encap_port;
-+		return 0;
-+	}
-+
-+	/* Get association, if assoc_id != SCTP_FUTURE_ASSOC and the
-+	 * socket is a one to many style socket, and an association
-+	 * was not found, then the id was invalid.
-+	 */
-+	asoc = sctp_id2assoc(sk, encap->sue_assoc_id);
-+	if (!asoc && encap->sue_assoc_id != SCTP_FUTURE_ASSOC &&
-+	    sctp_style(sk, UDP))
-+		return -EINVAL;
-+
-+	/* If changes are for association, also apply encap_port to
-+	 * each transport.
-+	 */
-+	if (asoc) {
-+		list_for_each_entry(t, &asoc->peer.transport_addr_list,
-+				    transports)
-+			t->encap_port = encap_port;
-+
-+		return 0;
-+	}
-+
-+	sctp_sk(sk)->encap_port = encap_port;
-+	return 0;
++	sctp_sf_pdiscard(net, ep, asoc, type, arg, commands);
++	return SCTP_DISPOSITION_CONSUME;
 +}
 +
- /* API 6.2 setsockopt(), getsockopt()
-  *
-  * Applications use setsockopt() and getsockopt() to set or retrieve
-@@ -4636,6 +4685,9 @@ static int sctp_setsockopt(struct sock *sk, int level, int optname,
- 	case SCTP_EXPOSE_POTENTIALLY_FAILED_STATE:
- 		retval = sctp_setsockopt_pf_expose(sk, kopt, optlen);
- 		break;
-+	case SCTP_REMOTE_UDP_ENCAPS_PORT:
-+		retval = sctp_setsockopt_encap_port(sk, kopt, optlen);
-+		break;
- 	default:
- 		retval = -ENOPROTOOPT;
- 		break;
-@@ -7791,6 +7843,65 @@ static int sctp_getsockopt_pf_expose(struct sock *sk, int len,
- 	return retval;
- }
- 
-+static int sctp_getsockopt_encap_port(struct sock *sk, int len,
-+				      char __user *optval, int __user *optlen)
++/* Handling of SCTP Packets Containing an INIT Chunk Matching an
++ * Existing Associations when the udp encap port is incorrect.
++ *
++ * From Section 4 at draft-tuexen-tsvwg-sctp-udp-encaps-cons-03.
++ */
++static enum sctp_disposition sctp_sf_new_encap_port(
++					struct net *net,
++					const struct sctp_endpoint *ep,
++					const struct sctp_association *asoc,
++					const union sctp_subtype type,
++					void *arg,
++					struct sctp_cmd_seq *commands)
 +{
-+	struct sctp_association *asoc;
-+	struct sctp_udpencaps encap;
-+	struct sctp_transport *t;
-+	__be16 encap_port;
++	struct sctp_packet *packet = NULL;
++	struct sctp_chunk *chunk = arg;
++	struct sctp_chunk *abort;
 +
-+	if (len < sizeof(encap))
-+		return -EINVAL;
++	packet = sctp_ootb_pkt_new(net, asoc, chunk);
++	if (!packet)
++		return SCTP_DISPOSITION_NOMEM;
 +
-+	len = sizeof(encap);
-+	if (copy_from_user(&encap, optval, len))
-+		return -EFAULT;
-+
-+	/* If an address other than INADDR_ANY is specified, and
-+	 * no transport is found, then the request is invalid.
-+	 */
-+	if (!sctp_is_any(sk, (union sctp_addr *)&encap.sue_address)) {
-+		t = sctp_addr_id2transport(sk, &encap.sue_address,
-+					   encap.sue_assoc_id);
-+		if (!t) {
-+			pr_debug("%s: failed no transport\n", __func__);
-+			return -EINVAL;
-+		}
-+
-+		encap_port = t->encap_port;
-+		goto out;
++	abort = sctp_make_new_encap_port(asoc, chunk);
++	if (!abort) {
++		sctp_ootb_pkt_free(packet);
++		return SCTP_DISPOSITION_NOMEM;
 +	}
 +
-+	/* Get association, if assoc_id != SCTP_FUTURE_ASSOC and the
-+	 * socket is a one to many style socket, and an association
-+	 * was not found, then the id was invalid.
-+	 */
-+	asoc = sctp_id2assoc(sk, encap.sue_assoc_id);
-+	if (!asoc && encap.sue_assoc_id != SCTP_FUTURE_ASSOC &&
-+	    sctp_style(sk, UDP)) {
-+		pr_debug("%s: failed no association\n", __func__);
-+		return -EINVAL;
-+	}
++	abort->skb->sk = ep->base.sk;
 +
-+	if (asoc) {
-+		encap_port = asoc->encap_port;
-+		goto out;
-+	}
++	sctp_packet_append_chunk(packet, abort);
 +
-+	encap_port = sctp_sk(sk)->encap_port;
-+
-+out:
-+	encap.sue_port = (__force uint16_t)encap_port;
-+	if (copy_to_user(optval, &encap, len))
-+		return -EFAULT;
-+
-+	if (put_user(len, optlen))
-+		return -EFAULT;
-+
-+	return 0;
-+}
-+
- static int sctp_getsockopt(struct sock *sk, int level, int optname,
- 			   char __user *optval, int __user *optlen)
- {
-@@ -8011,6 +8122,9 @@ static int sctp_getsockopt(struct sock *sk, int level, int optname,
- 	case SCTP_EXPOSE_POTENTIALLY_FAILED_STATE:
- 		retval = sctp_getsockopt_pf_expose(sk, len, optval, optlen);
- 		break;
-+	case SCTP_REMOTE_UDP_ENCAPS_PORT:
-+		retval = sctp_getsockopt_encap_port(sk, len, optval, optlen);
-+		break;
- 	default:
- 		retval = -ENOPROTOOPT;
- 		break;
+ 	sctp_add_cmd_sf(commands, SCTP_CMD_SEND_PKT,
+ 			SCTP_PACKET(packet));
+ 
 -- 
 2.1.0
