@@ -1,93 +1,71 @@
 From: Xin Long <lucien.xin@gmail.com>
-Date: Mon, 19 Oct 2020 12:25:23 +0000
-Subject: [PATCHv4 net-next 06/16] sctp: add encap_err_lookup for udp encap socks
-Message-Id: <7cfd72e42b8b1cde268ad4062c96c08a56c4b14f.1603110316.git.lucien.xin@gmail.com>
+Date: Tue, 13 Oct 2020 07:27:36 +0000
+Subject: [PATCHv3 net-next 11/16] sctp: call sk_setup_caps in sctp_packet_transmit instead
+Message-Id: <c97b738ae89c59f14afbbca22d0294dc24eca30f.1602574012.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1603110316.git.lucien.xin@gmail.com>
- <71b3af0fb347f27b5c3bf846dbd34485d9f80af0.1603110316.git.lucien.xin@gmail.com>
- <de3a89ece8f3abd0dca08064d9fc4d36ca7ddba2.1603110316.git.lucien.xin@gmail.com>
- <5f06ac649f4b63fc5a254812a963cada3183f136.1603110316.git.lucien.xin@gmail.com>
- <e99845af51be8fdaa53a2575e8967b8c3c8d423a.1603110316.git.lucien.xin@gmail.com>
- <7a2f5792c1a428c16962fff08b7bcfedc21bd5e2.1603110316.git.lucien.xin@gmail.com>
-In-Reply-To: <7a2f5792c1a428c16962fff08b7bcfedc21bd5e2.1603110316.git.lucien.xin@gmail.com>
+References: <cover.1602574012.git.lucien.xin@gmail.com>
+ <fae9c57767447c4fd97476807b9e029e8fda607a.1602574012.git.lucien.xin@gmail.com>
+ <c01a9a09096cb1b292d461aa5a1e72aae2ca942a.1602574012.git.lucien.xin@gmail.com>
+ <dbad21ff524e119f83ae4444d1ae393ab165fa7c.1602574012.git.lucien.xin@gmail.com>
+ <7159fb58f44f9ff00ca5b3b8a26ee3aa2fd1bf8a.1602574012.git.lucien.xin@gmail.com>
+ <b9f0bfa27c5be3bbf27a7325c73f16205286df38.1602574012.git.lucien.xin@gmail.com>
+ <c9c1d019287792f71863c89758d179b133fe1200.1602574012.git.lucien.xin@gmail.com>
+ <37e9f70ffb9dea1572025b8e1c4b1f1c6e6b3da5.1602574012.git.lucien.xin@gmail.com>
+ <08854ecf72eee34d3e98e30def6940d94f97fdef.1602574012.git.lucien.xin@gmail.com>
+ <732baa9aef67a1b0d0b4d69f47149b41a49bbd76.1602574012.git.lucien.xin@gmail.com>
+ <4885b112360b734e25714499346e6dc22246a87d.1602574012.git.lucien.xin@gmail.com>
+In-Reply-To: <4885b112360b734e25714499346e6dc22246a87d.1602574012.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net, gnault@redhat.com, pabeni@redhat.com, willemdebruijn.kernel@gmail.com
 
-As it says in rfc6951#section-5.5:
+sk_setup_caps() was originally called in Commit 90017accff61 ("sctp:
+Add GSO support"), as:
 
-  "When receiving ICMP or ICMPv6 response packets, there might not be
-   enough bytes in the payload to identify the SCTP association that the
-   SCTP packet triggering the ICMP or ICMPv6 packet belongs to.  If a
-   received ICMP or ICMPv6 packet cannot be related to a specific SCTP
-   association or the verification tag cannot be verified, it MUST be
-   discarded silently.  In particular, this means that the SCTP stack
-   MUST NOT rely on receiving ICMP or ICMPv6 messages.  Implementation
-   constraints could prevent processing received ICMP or ICMPv6
-   messages."
+  "We have to refresh this in case we are xmiting to more than one
+   transport at a time"
 
-ICMP or ICMPv6 packets need to be handled, and this is implemented by
-udp encap sock .encap_err_lookup function.
-
-The .encap_err_lookup function is called in __udp(6)_lib_err_encap()
-to confirm this path does need to be updated. For sctp, what we can
-do here is check if the corresponding asoc and transport exist.
-
-Note that icmp packet process for sctp over udp is done by udp sock
-.encap_err_lookup(), and it means for now we can't do as much as
-sctp_v4/6_err() does. Also we can't do the two mappings mentioned
-in rfc6951#section-5.5.
+This actually happens in the loop of sctp_outq_flush_transports(),
+and it shouldn't be tied to gso, so move it out of gso part and
+before sctp_packet_pack().
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/sctp/protocol.c | 19 +++++++++++++++++++
- 1 file changed, 19 insertions(+)
+ net/sctp/output.c | 13 +++++++------
+ 1 file changed, 7 insertions(+), 6 deletions(-)
 
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index e1501e7..aa8e5b2 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -848,6 +848,23 @@ static int sctp_udp_rcv(struct sock *sk, struct sk_buff *skb)
- 	return 0;
- }
+diff --git a/net/sctp/output.c b/net/sctp/output.c
+index 1441eaf..fb16500 100644
+--- a/net/sctp/output.c
++++ b/net/sctp/output.c
+@@ -508,12 +508,6 @@ static int sctp_packet_pack(struct sctp_packet *packet,
+ 					sizeof(struct inet6_skb_parm)));
+ 		skb_shinfo(head)->gso_segs = pkt_count;
+ 		skb_shinfo(head)->gso_size = GSO_BY_FRAGS;
+-		rcu_read_lock();
+-		if (skb_dst(head) != tp->dst) {
+-			dst_hold(tp->dst);
+-			sk_setup_caps(sk, tp->dst);
+-		}
+-		rcu_read_unlock();
+ 		goto chksum;
+ 	}
  
-+static int sctp_udp_err_lookup(struct sock *sk, struct sk_buff *skb)
-+{
-+	struct sctp_association *asoc;
-+	struct sctp_transport *t;
-+	int family;
+@@ -593,6 +587,13 @@ int sctp_packet_transmit(struct sctp_packet *packet, gfp_t gfp)
+ 	}
+ 	skb_dst_set(head, dst);
+ 
++	rcu_read_lock();
++	if (__sk_dst_get(sk) != tp->dst) {
++		dst_hold(tp->dst);
++		sk_setup_caps(sk, tp->dst);
++	}
++	rcu_read_unlock();
 +
-+	skb->transport_header += sizeof(struct udphdr);
-+	family = (ip_hdr(skb)->version = 4) ? AF_INET : AF_INET6;
-+	sk = sctp_err_lookup(dev_net(skb->dev), family, skb, sctp_hdr(skb),
-+			     &asoc, &t);
-+	if (!sk)
-+		return -ENOENT;
-+
-+	sctp_err_finish(sk, t);
-+	return 0;
-+}
-+
- int sctp_udp_sock_start(struct net *net)
- {
- 	struct udp_tunnel_sock_cfg tuncfg = {NULL};
-@@ -866,6 +883,7 @@ int sctp_udp_sock_start(struct net *net)
- 
- 	tuncfg.encap_type = 1;
- 	tuncfg.encap_rcv = sctp_udp_rcv;
-+	tuncfg.encap_err_lookup = sctp_udp_err_lookup;
- 	setup_udp_tunnel_sock(net, sock, &tuncfg);
- 	net->sctp.udp4_sock = sock->sk;
- 
-@@ -887,6 +905,7 @@ int sctp_udp_sock_start(struct net *net)
- 
- 	tuncfg.encap_type = 1;
- 	tuncfg.encap_rcv = sctp_udp_rcv;
-+	tuncfg.encap_err_lookup = sctp_udp_err_lookup;
- 	setup_udp_tunnel_sock(net, sock, &tuncfg);
- 	net->sctp.udp6_sock = sock->sk;
- #endif
+ 	/* pack up chunks */
+ 	pkt_count = sctp_packet_pack(packet, head, gso, gfp);
+ 	if (!pkt_count) {
 -- 
 2.1.0
