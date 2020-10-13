@@ -1,43 +1,60 @@
-From: David Laight <David.Laight@ACULAB.COM>
-Date: Sun, 11 Oct 2020 15:28:43 +0000
-Subject: RE: sctp discarding received data chunks
-Message-Id: <645944cb37fa4e41b90b18ff2b5d313d@AcuMS.aculab.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 13 Oct 2020 07:27:27 +0000
+Subject: [PATCHv3 net-next 02/16] udp6: move the mss check after udp gso tunnel processing
+Message-Id: <c01a9a09096cb1b292d461aa5a1e72aae2ca942a.1602574012.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <e377e7e2a87e4f078e7a6d82992cfda0@AcuMS.aculab.com>
-In-Reply-To: <e377e7e2a87e4f078e7a6d82992cfda0@AcuMS.aculab.com>
+References: <cover.1602574012.git.lucien.xin@gmail.com>
+ <fae9c57767447c4fd97476807b9e029e8fda607a.1602574012.git.lucien.xin@gmail.com>
+In-Reply-To: <fae9c57767447c4fd97476807b9e029e8fda607a.1602574012.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net, gnault@redhat.com, pabeni@redhat.com, willemdebruijn.kernel@gmail.com
 
-Li4uDQo+ID4gPiBJZiBJIGR1bXAgb3V0IC9wcm9jL25ldC9zY3RwL2Fzc29jcyBhbmQgbG9vayB3
-YXkgb3ZlciB0byB0aGUgcmlnaHQNCj4gPiA+IChvbiB0aGUgbmV4dCBtb25pdG9yIGJ1dCAxKSB0
-aGVyZSBhcmUgdHdvIGNvbHVtbnMgSU5TIGFuZCBPVVRTLg0KPiA+ID4gSSd2ZSBqdXN0IHJlYWxp
-c2VkIHRoYXQgdGhlc2UgYXJlIHRoZSBudW1iZXIgb2Ygc3RyZWFtcy4NCj4gPiA+IE5vdyBhbGwg
-bXkgY29ubmVjdGlvbnMgYXJlIGxvb3BiYWNrIC0gc28gSSBzZWUgYm90aCBzb2NrZXRzIGZvciBl
-YWNoLg0KPiA+ID4gU28gSSdkIGV4cGVjdCB0aGUgSU5TIHRvIG1hdGNoIHRoZSBPVVRTIG9mIHRo
-ZSBwZWVyLg0KPiA+ID4gVGhpcyBpc24ndCB0cnVlLg0KPiA+ID4gV2hlbiB0aGUgdmFsdWUgc2hv
-dWxkIGJlIG5lZ290aWF0ZWQgZG93biB0aGUgT1VUUyB2YWx1ZSBpcyB1bmNoYW5nZWQuDQo+ID4g
-PiBTbyB0aGUga2VybmVsIGlzIHNlbmRpbmcgcGFja2V0cyB3aXRoIGlsbGVnYWwgc3RyZWFtIG51
-bWJlcnMuDQo+ID4gPiBUaGVzZSBhcmUgYWNrZWQgYW5kIHRoZW4gc2lsZW50bHkgZGlzY2FyZGVk
-Lg0KPiANCj4gPiBkaWQgaXQgZG8gYWRkc3RyZWFtIHJlY29uZmlnIG9yIHJlY2VpdmUgYW55IGR1
-cGxpY2F0ZSBDT09LSUUtRUNITyBpbiB5b3VyIGNhc2U/DQo+IA0KPiBFeHRyZW1lbHkgdW5saWtl
-bHkuDQo+IA0KPiBMb29raW5nIGF0IHRoZSBsYXRlc3QgdmVyc2lvbiBvZiBteSBkcml2ZXIgY29k
-ZQ0KPiAod2hpY2ggSSB3YXNuJ3QgdXNpbmcpIEkgd3JvdGUgdGhlIGZvbGxvd2luZzoNCj4gDQo+
-ICAqIFNpbmNlIHRoZSBjb2RlIHRoYXQgbmVnb3RpYXRlcyB0aGUgbnVtYmVyIG9mIHN0cmVhbXMg
-Z290IGJyb2tlbg0KPiAgKiBpbiB2ZXJzaW9uIDUuMSB3ZSBuZWVkIHRvIGV4dHJhY3QgdGhlIGNv
-cnJlY3QgdmFsdWUgZnJvbSB0aGUNCj4gICogaW50ZXJuYWwgc3RydWN0dXJlcyB0byBhdm9pZCBT
-Q1RQIHNlbmRpbmcgbWVzc2FnZXMgdGhlIHJlbW90ZQ0KPiAgKiBzeXN0ZW0gd2lsbCBkaXNjYXJk
-Lg0KPiANCj4gICAgIC8qIHN0cmVhbS5vdXRjbnQgaXMgdGhlIHZhbHVlIHdlIHNob3VsZCBiZSB1
-c2luZy4NCj4gICAgICAqIEJ1dCBrZXJuZWxzIDUuMSB0byA1LjggZmFpbCB0byByZWR1Y2UgaXQg
-YmFzZWQgb24gdGhlIG51bWJlcg0KPiAgICAgICogcmVjZWl2ZWQgZnJvbSB0aGUgcmVtb3RlIHN5
-c3RlbS4NCj4gICAgICAqIFNvIGJvdW5kIGhlcmUgc28gdGhhdCB0cmFuc21pdHRlZCBtZXNzYWdl
-cyBkb24ndCBnZXQgZGlzY2FyZGVkLiAqLw0KPiAgICAgb3V0Y250ID0gYXNvYy0+c3RyZWFtLm91
-dGNudDsNCj4gICAgIG51bV9vc3RyZWFtcyA9IGFzb2MtPmMuc2luaXRfbnVtX29zdHJlYW1zOw0K
-PiANCj4gSSB0aGluayB0aGVyZSB3YXMgYSBwYXRjaCBkb25lIGZvciA1LjkuDQo+IEl0IG5lZWRz
-IGJhY2stcG9ydGluZy4NCg0KWWVzLCBJIHdyb3RlIHRoZSBwYXRjaC4NCkFwcGxpZWQgdG8gbmV0
-LW5leHQuDQoNCmh0dHBzOi8vZ2l0Lmtlcm5lbC5vcmcvcHViL3NjbS9saW51eC9rZXJuZWwvZ2l0
-L25leHQvbGludXgtbmV4dC5naXQvY29tbWl0L25ldC9zY3RwL3N0cmVhbS5jP2lkPWFiOTIxZjNj
-ZGJlYzAxYzY4NzA1YTdhZGU4YmVjNjI4ZDU0MWZjMmINCg0KCURhdmlkDQoNCi0NClJlZ2lzdGVy
-ZWQgQWRkcmVzcyBMYWtlc2lkZSwgQnJhbWxleSBSb2FkLCBNb3VudCBGYXJtLCBNaWx0b24gS2V5
-bmVzLCBNSzEgMVBULCBVSw0KUmVnaXN0cmF0aW9uIE5vOiAxMzk3Mzg2IChXYWxlcykNCg=
+For some protocol's gso, like SCTP, it's using GSO_BY_FRAGS for
+gso_size. When using UDP to encapsulate its packet, it will
+return error in udp6_ufo_fragment() as skb->len < gso_size,
+and it will never go to the gso tunnel processing.
+
+So we should move this check after udp gso tunnel processing,
+the same as udp4_ufo_fragment() does.
+
+v1->v2:
+  - no change.
+v2->v3:
+  - not do any cleanup.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ net/ipv6/udp_offload.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/net/ipv6/udp_offload.c b/net/ipv6/udp_offload.c
+index 584157a..aa602af 100644
+--- a/net/ipv6/udp_offload.c
++++ b/net/ipv6/udp_offload.c
+@@ -28,10 +28,6 @@ static struct sk_buff *udp6_ufo_fragment(struct sk_buff *skb,
+ 	int tnl_hlen;
+ 	int err;
+ 
+-	mss = skb_shinfo(skb)->gso_size;
+-	if (unlikely(skb->len <= mss))
+-		goto out;
+-
+ 	if (skb->encapsulation && skb_shinfo(skb)->gso_type &
+ 	    (SKB_GSO_UDP_TUNNEL|SKB_GSO_UDP_TUNNEL_CSUM))
+ 		segs = skb_udp_tunnel_segment(skb, features, true);
+@@ -48,6 +44,10 @@ static struct sk_buff *udp6_ufo_fragment(struct sk_buff *skb,
+ 		if (skb_shinfo(skb)->gso_type & SKB_GSO_UDP_L4)
+ 			return __udp_gso_segment(skb, features);
+ 
++		mss = skb_shinfo(skb)->gso_size;
++		if (unlikely(skb->len <= mss))
++			goto out;
++
+ 		/* Do software UFO. Complete and fill in the UDP checksum as HW cannot
+ 		 * do checksum of UDP packets sent as multiple IP fragments.
+ 		 */
+-- 
+2.1.0
