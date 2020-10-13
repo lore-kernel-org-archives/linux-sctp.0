@@ -1,39 +1,161 @@
-From: Mrs Marilyn Robert <fredodinga22@gmail.com>
-Date: Wed, 07 Oct 2020 16:39:07 +0000
-Subject: =?UTF-8?B?0J3QsNGY0LzQuNC70LAg0LrQsNGYINCz0L7RgdC/0L7QtNCw0YDQvtGC?=
-Message-Id: <885096625.152433.1602088747948@mail.yahoo.com>
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 13 Oct 2020 07:27:32 +0000
+Subject: [PATCHv3 net-next 07/16] sctp: add encap_port for netns sock asoc and transport
+Message-Id: <37e9f70ffb9dea1572025b8e1c4b1f1c6e6b3da5.1602574012.git.lucien.xin@gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
+References: <cover.1602574012.git.lucien.xin@gmail.com>
+ <fae9c57767447c4fd97476807b9e029e8fda607a.1602574012.git.lucien.xin@gmail.com>
+ <c01a9a09096cb1b292d461aa5a1e72aae2ca942a.1602574012.git.lucien.xin@gmail.com>
+ <dbad21ff524e119f83ae4444d1ae393ab165fa7c.1602574012.git.lucien.xin@gmail.com>
+ <7159fb58f44f9ff00ca5b3b8a26ee3aa2fd1bf8a.1602574012.git.lucien.xin@gmail.com>
+ <b9f0bfa27c5be3bbf27a7325c73f16205286df38.1602574012.git.lucien.xin@gmail.com>
+ <c9c1d019287792f71863c89758d179b133fe1200.1602574012.git.lucien.xin@gmail.com>
+In-Reply-To: <c9c1d019287792f71863c89758d179b133fe1200.1602574012.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-sctp@vger.kernel.org
+To: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net, gnault@redhat.com, pabeni@redhat.com, willemdebruijn.kernel@gmail.com
 
-DQoNCtCd0LDRmNC80LjQu9CwINC60LDRmCDQs9C+0YHQv9C+0LTQsNGA0L7Rgg0KDQrQiNCw0YEg
-0YHRg9C8IDY4LdCz0L7QtNC40YjQvdCwINC20LXQvdCwLCDQutC+0ZjQsCDRgdGC0YDQsNC00LAg
-0L7QtCDQv9GA0L7QtNC+0LvQttC10L0g0LrQsNGA0YbQuNC90L7QvCDQvdCwINC00L7RmNC60LAs
-INC+0LQg0YHQuNGC0LUg0LzQtdC00LjRhtC40L3RgdC60Lgg0LjQvdC00LjQutCw0YbQuNC4LCDQ
-vNC+0ZjQsNGC0LAg0YHQvtGB0YLQvtGY0LHQsCDQvdCw0LLQuNGB0YLQuNC90LAg0YHQtSDQstC7
-0L7RiNC4INC4INC+0YfQuNCz0LvQtdC00L3QviDQtSDQtNC10LrQsCDQvNC+0LbQtdCx0Lgg0L3Q
-tdC80LAg0LTQsCDQttC40LLQtdCw0Lwg0L/QvtCy0LXRnNC1INC+0LQg0YjQtdGB0YIg0LzQtdGB
-0LXRhtC4INC60LDQutC+INGA0LXQt9GD0LvRgtCw0YIg0L3QsCDQsdGA0LfQuNC+0YIg0YDQsNGB
-0YIg0Lgg0LHQvtC70LrQsNGC0LAg0YjRgtC+INGB0LUg0ZjQsNCy0YPQstCwINC60LDRmCDQvdC1
-0LAuINCc0L7RmNC+0YIg0YHQvtC/0YDRg9CzINC/0L7Rh9C40L3QsCDQvdC10LrQvtC70LrRgyDQ
-s9C+0LTQuNC90Lgg0L3QsNC90LDQt9Cw0LQg0Lgg0L3QsNGI0LjRgtC1INC00L7Qu9Cz0Lgg0LPQ
-vtC00LjQvdC4INCx0YDQsNC6INC90LUg0LHQtdCwINCx0LvQsNCz0L7RgdC70L7QstC10L3QuCDR
-gdC+INC90LjRgtGDINC10LTQvdC+INC00LXRgtC1LCDQv9C+INC90LXQs9C+0LLQsNGC0LAg0YHQ
-vNGA0YIg0LPQviDQvdCw0YHQu9C10LTQuNCyINGG0LXQu9C+0YLQviDQvdC10LPQvtCy0L4g0LHQ
-vtCz0LDRgtGB0YLQstC+Lg0KDQrQlNC+0LDRk9Cw0Lwg0LrQsNGYINCy0LDRgSDQvtGC0LrQsNC6
-0L4g0YHQtSDQv9C+0LzQvtC70LjQsiDQt9CwINGC0L7QsCwg0L/QvtC00LPQvtGC0LLQtdC9INGB
-0YPQvCDQtNCwINC00L7QvdC40YDQsNC8INGB0YPQvNCwINC+0LQgMiwgMzAwLCAwMDAg0LXQstGA
-0LAg0LfQsCDQv9C+0LzQvtGIINC90LAg0YHQuNGA0L7QvNCw0YjQvdC40YLQtSwg0YHQuNGA0L7Q
-vNCw0YjQvdC40YLQtSDQuCDQv9C+0LzQsNC70LrRgyDQv9GA0LjQstC40LvQtdCz0LjRgNCw0L3Q
-uNGC0LUg0LzQtdGT0YMg0LLQsNGI0LjRgtC1INGB0L7QsdGA0LDQvdC40ZjQsCAvINC+0L/RiNGC
-0LXRgdGC0LLQvi4g0JfQsNCx0LXQu9C10LbQtdGC0LUg0LTQtdC60LAg0L7QstC+0Zgg0YTQvtC9
-0LQg0LUg0LTQtdC/0L7QvdC40YDQsNC9INCy0L4g0LHQsNC90LrQsCDQutCw0LTQtSDRiNGC0L4g
-0YDQsNCx0L7RgtC10YjQtSDQvNC+0ZjQvtGCINGB0L7Qv9GA0YPQsy4gQXBwcmVjaWF0ZdC1INGG
-0LXQvdCw0Lwg0LDQutC+INC+0LHRgNC90LXRgtC1INCy0L3QuNC80LDQvdC40LUg0L3QsCDQvNC+
-0LXRgtC+INCx0LDRgNCw0ZrQtSDQt9CwINC/0YDQvtC/0LDQs9C40YDQsNGa0LUg0L3QsCDQvNCw
-0YHQsNC20LDRgtCwINC90LAg0LrRgNCw0LvRgdGC0LLQvtGC0L4sINGc0LUg0LLQuCDQtNCw0LTQ
-sNC8INC/0L7QstC10ZzQtSDQtNC10YLQsNC70Lgg0LfQsCDRgtC+0LAg0LrQsNC60L4g0LTQsCDQ
-v9C+0YHRgtCw0L/QuNGC0LUuDQoNCtCR0LvQsNCz0L7QtNCw0YDQsNC8DQrQky3Rk9CwINCc0LXR
-gNC40LvQuNC9INCg0L7QsdC10YDRgg=
+encap_port is added as per netns/sock/assoc/transport, and the
+latter one's encap_port inherits the former one's by default.
+The transport's encap_port value would mostly decide if one
+packet should go out with udp encapsulated or not.
+
+This patch also allows users to set netns' encap_port by sysctl.
+
+v1->v2:
+  - Change to define encap_port as __be16 for sctp_sock, asoc and
+    transport.
+
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/netns/sctp.h   |  2 ++
+ include/net/sctp/structs.h |  6 ++++++
+ net/sctp/associola.c       |  4 ++++
+ net/sctp/protocol.c        |  3 +++
+ net/sctp/socket.c          |  1 +
+ net/sctp/sysctl.c          | 10 ++++++++++
+ 6 files changed, 26 insertions(+)
+
+diff --git a/include/net/netns/sctp.h b/include/net/netns/sctp.h
+index f622945..6af7a39 100644
+--- a/include/net/netns/sctp.h
++++ b/include/net/netns/sctp.h
+@@ -27,6 +27,8 @@ struct netns_sctp {
+ 	struct sock *udp6_sock;
+ 	/* udp tunneling listening port. */
+ 	int udp_port;
++	/* udp tunneling remote encap port. */
++	int encap_port;
+ 
+ 	/* This is the global local address list.
+ 	 * We actively maintain this complete list of addresses on
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 0bdff38..aa98e7e 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -178,6 +178,8 @@ struct sctp_sock {
+ 	 */
+ 	__u32 hbinterval;
+ 
++	__be16 encap_port;
++
+ 	/* This is the max_retrans value for new associations. */
+ 	__u16 pathmaxrxt;
+ 
+@@ -877,6 +879,8 @@ struct sctp_transport {
+ 	 */
+ 	unsigned long last_time_ecne_reduced;
+ 
++	__be16 encap_port;
++
+ 	/* This is the max_retrans value for the transport and will
+ 	 * be initialized from the assocs value.  This can be changed
+ 	 * using the SCTP_SET_PEER_ADDR_PARAMS socket option.
+@@ -1790,6 +1794,8 @@ struct sctp_association {
+ 	 */
+ 	unsigned long hbinterval;
+ 
++	__be16 encap_port;
++
+ 	/* This is the max_retrans value for new transports in the
+ 	 * association.
+ 	 */
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index fdb69d4..336df4b 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -99,6 +99,8 @@ static struct sctp_association *sctp_association_init(
+ 	 */
+ 	asoc->hbinterval = msecs_to_jiffies(sp->hbinterval);
+ 
++	asoc->encap_port = sp->encap_port;
++
+ 	/* Initialize path max retrans value. */
+ 	asoc->pathmaxrxt = sp->pathmaxrxt;
+ 
+@@ -624,6 +626,8 @@ struct sctp_transport *sctp_assoc_add_peer(struct sctp_association *asoc,
+ 	 */
+ 	peer->hbinterval = asoc->hbinterval;
+ 
++	peer->encap_port = asoc->encap_port;
++
+ 	/* Set the path max_retrans.  */
+ 	peer->pathmaxrxt = asoc->pathmaxrxt;
+ 
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index dd2d9c4..5b74187 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -1359,6 +1359,9 @@ static int __net_init sctp_defaults_init(struct net *net)
+ 	/* Set udp tunneling listening port to default value */
+ 	net->sctp.udp_port = SCTP_DEFAULT_UDP_PORT;
+ 
++	/* Set remote encap port to 0 by default */
++	net->sctp.encap_port = 0;
++
+ 	/* Set SCOPE policy to enabled */
+ 	net->sctp.scope_policy = SCTP_SCOPE_POLICY_ENABLE;
+ 
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 53d0a41..09b94cd 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4876,6 +4876,7 @@ static int sctp_init_sock(struct sock *sk)
+ 	 * be modified via SCTP_PEER_ADDR_PARAMS
+ 	 */
+ 	sp->hbinterval  = net->sctp.hb_interval;
++	sp->encap_port  = htons(net->sctp.encap_port);
+ 	sp->pathmaxrxt  = net->sctp.max_retrans_path;
+ 	sp->pf_retrans  = net->sctp.pf_retrans;
+ 	sp->ps_retrans  = net->sctp.ps_retrans;
+diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
+index c16c809..ecc1b5e 100644
+--- a/net/sctp/sysctl.c
++++ b/net/sctp/sysctl.c
+@@ -36,6 +36,7 @@ static int rto_alpha_max = 1000;
+ static int rto_beta_max = 1000;
+ static int pf_expose_max = SCTP_PF_EXPOSE_MAX;
+ static int ps_retrans_max = SCTP_PS_RETRANS_MAX;
++static int udp_port_max = 65535;
+ 
+ static unsigned long max_autoclose_min = 0;
+ static unsigned long max_autoclose_max @@ -291,6 +292,15 @@ static struct ctl_table sctp_net_table[] = {
+ 		.proc_handler	= proc_dointvec,
+ 	},
+ 	{
++		.procname	= "encap_port",
++		.data		= &init_net.sctp.encap_port,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec,
++		.extra1		= SYSCTL_ZERO,
++		.extra2		= &udp_port_max,
++	},
++	{
+ 		.procname	= "addr_scope_policy",
+ 		.data		= &init_net.sctp.scope_policy,
+ 		.maxlen		= sizeof(int),
+-- 
+2.1.0
