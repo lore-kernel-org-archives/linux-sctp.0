@@ -2,108 +2,153 @@ Return-Path: <SRS0=noBC=DW=vger.kernel.org=linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-6.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B04FC433DF
-	for <linux-sctp@archiver.kernel.org>; Thu, 15 Oct 2020 12:41:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D0AEC433E7
+	for <linux-sctp@archiver.kernel.org>; Thu, 15 Oct 2020 17:42:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id A1C4D22254
-	for <linux-sctp@archiver.kernel.org>; Thu, 15 Oct 2020 12:41:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C26D622263
+	for <linux-sctp@archiver.kernel.org>; Thu, 15 Oct 2020 17:42:58 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="jsrlJuFJ"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="orNGo0zw"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726382AbgJOMlm (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Thu, 15 Oct 2020 08:41:42 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40450 "EHLO
+        id S1726790AbgJORm6 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Thu, 15 Oct 2020 13:42:58 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59078 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726309AbgJOMlm (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Thu, 15 Oct 2020 08:41:42 -0400
-Received: from mail-qt1-x82e.google.com (mail-qt1-x82e.google.com [IPv6:2607:f8b0:4864:20::82e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 04E14C061755;
-        Thu, 15 Oct 2020 05:41:42 -0700 (PDT)
-Received: by mail-qt1-x82e.google.com with SMTP id r8so1477345qtp.13;
-        Thu, 15 Oct 2020 05:41:41 -0700 (PDT)
+        with ESMTP id S1728766AbgJORm6 (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Thu, 15 Oct 2020 13:42:58 -0400
+Received: from mail-qt1-x843.google.com (mail-qt1-x843.google.com [IPv6:2607:f8b0:4864:20::843])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 99867C061755;
+        Thu, 15 Oct 2020 10:42:56 -0700 (PDT)
+Received: by mail-qt1-x843.google.com with SMTP id t9so2145376qtp.9;
+        Thu, 15 Oct 2020 10:42:56 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=date:from:to:cc:subject:message-id:references:mime-version
          :content-disposition:in-reply-to;
-        bh=/ohpcLrN8Yq1+JdiLxGkTxCHhym3BMLnpPVDPygXYRk=;
-        b=jsrlJuFJRhJ09IVFnOSEmAQVhUQ1PpzHJFVZzvdKgjK6xsG6gKlw74MRCyPvnoRENp
-         xHwOpQy/bfmY3WQ4bWkmx9VahDwv9uk6RkNQCyei7+8JXGUswbx82D8OCL0ZeUps9+zN
-         uhYyq46fE6csf0YLjAT2VdQM9oubDbqp74VqKU8tdYYuDCppxo836eY4QzYmFq2aO2AZ
-         p/kOwEn/hJNItTVhaHBS3IRKXYfIiVNjqhmb/4jZBs/GWNWgQZ/eqFw8l9wKTDzyBI+6
-         syYwq/22TdKRI2OOYBrsbuQqrxLYSOo0eAEXYBpp/NAaAOr/kjv8hfqgKMDMQLeS3kt9
-         q9qQ==
+        bh=5+UPfCYzgGrwcqIa1iV5ZAgmChHCUPL3J9p4rH01FDA=;
+        b=orNGo0zwde1afeqSA0/gcY1Kn2XER0sCgjn6jAety1f30VvspGDyayMypAo7atrUGp
+         fVuKno+m7/94BwiSUUtt21WB8YfyaMOui41G8LBWzCYeNDwAliExXQj9o9aawBHXWfNR
+         tvUpVYH56MV36k/vCFfnNea8Yc/LcMWM7FqStO9ATzC+fa8Mqn7gt62vkk37E5Hd+8X9
+         kvjaMy4JV2WqZbLZFGSXPthJ2eFIZTY2AGaniYR4YBomdmNi4hEyfJ7uIFOsHEHq5bNW
+         BYwV98Kb1NIVCG71ZJO5FCYz++S9IV+AYvKW+x3gPKNG+dia/mbUMHRZ/IAe0mXqga5N
+         8zlQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:date:from:to:cc:subject:message-id:references
          :mime-version:content-disposition:in-reply-to;
-        bh=/ohpcLrN8Yq1+JdiLxGkTxCHhym3BMLnpPVDPygXYRk=;
-        b=qPmAy3Vq3M3KYJsXhCkV2/wCdpP6iMaQv8eeG1L5la043cZz/KhMGgPJqj+Kr67pg7
-         Tyaao6efh89ftjFCDPHjQDAVSP89HnYJ7TzyZI+3aYQok88RbUBijp1DEOLwIzEqokaJ
-         bKKN4cyZBIMTUikXp0BzkeL1TUzq12Jd6jrICZhGIe481p6vl1e1HMdZXRfH6mEEZR54
-         I3j4G81YA9zF832QIO+zwJ1aAdoAllUlcnUh4uXY9pguKOeQJLrra2w+h2nEfz+OdOTB
-         L1VTdRVckx3VKOsvebMSJjrrofFTce9b736+RJhATxsZew0QhIRcrPBt4Go16R86D+es
-         5S9g==
-X-Gm-Message-State: AOAM533htSmf6hIN23w3VGQswqMI/08PURCTl0wmebrfU2DaZxFUlFtX
-        h79RT0PEOhP1Zpn6Q5I4ZDA=
-X-Google-Smtp-Source: ABdhPJzGC7u1yk3qfZkbIj2Ep7KbB3jfFLgsZAA+RTxWoVv0Lfta2D08PffkWJ6g4Q5ZrakAx+QO4Q==
-X-Received: by 2002:ac8:5b82:: with SMTP id a2mr3934093qta.176.1602765701188;
-        Thu, 15 Oct 2020 05:41:41 -0700 (PDT)
-Received: from localhost.localdomain ([177.220.172.68])
-        by smtp.gmail.com with ESMTPSA id 61sm1073927qta.19.2020.10.15.05.41.40
+        bh=5+UPfCYzgGrwcqIa1iV5ZAgmChHCUPL3J9p4rH01FDA=;
+        b=RAYnHiyirlAdQ9gQX+cBjW0mLidwREQVI79CFI9zziaybDUrPKUPsQLbmko2AS9L8A
+         1JcJaXmCnUcjCyWEqqsPNU+7p8WBkJmz4CXEQT8bSHzU2B6JZXVSzInYsq0x/AhO2fFI
+         ffKteibITsB21Urz2FDOTCzHcxksByJlQFKNYsxeiTn+u8YOgw8LKOsS2imjYtLZfG9k
+         O+PvsYBBf5dpEiVPaISlYEPR0HaeuQ9V6Qq27qCSapn+YHj7l0pYcqTUWigqB0rkrQn1
+         Pv/ykVxxzwrJcJJaFJ7SZxHlEjKpKD3xwDnjNjR81yTBkj1g9H3mJ8t0m81qJPhtfS4G
+         BLZA==
+X-Gm-Message-State: AOAM533SayKp/fNw5gCDKdD+qM475DhvOc3NGkAt6zdjcVDxsrfskEMV
+        WVv3zSMp73p585rTzv2iHw9W1aQIH1V0fQ==
+X-Google-Smtp-Source: ABdhPJwedBeG/YiN9jupR2RqJsNi6GQ3UgVOW1De2suA/5zvTuL/QwiDN6PYiLgTmB3zJjYA9XtxAw==
+X-Received: by 2002:ac8:6901:: with SMTP id e1mr5406322qtr.122.1602783775448;
+        Thu, 15 Oct 2020 10:42:55 -0700 (PDT)
+Received: from localhost.localdomain ([2001:1284:f016:ee5e:869e:fafd:dd5c:4ff0])
+        by smtp.gmail.com with ESMTPSA id f22sm1396015qtf.4.2020.10.15.10.42.54
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 15 Oct 2020 05:41:40 -0700 (PDT)
+        Thu, 15 Oct 2020 10:42:54 -0700 (PDT)
 Received: by localhost.localdomain (Postfix, from userid 1000)
-        id 048D0C1614; Thu, 15 Oct 2020 09:41:38 -0300 (-03)
-Date:   Thu, 15 Oct 2020 09:41:37 -0300
+        id 88159C1614; Thu, 15 Oct 2020 14:42:52 -0300 (-03)
+Date:   Thu, 15 Oct 2020 14:42:52 -0300
 From:   Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-To:     Jakub Kicinski <kuba@kernel.org>
-Cc:     Xin Long <lucien.xin@gmail.com>,
-        network dev <netdev@vger.kernel.org>,
-        linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>,
+To:     Xin Long <lucien.xin@gmail.com>
+Cc:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org,
+        Neil Horman <nhorman@tuxdriver.com>,
         Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net,
         gnault@redhat.com, pabeni@redhat.com,
         willemdebruijn.kernel@gmail.com
-Subject: Re: [PATCHv3 net-next 00/16] sctp: Implement RFC6951: UDP
- Encapsulation of SCTP
-Message-ID: <20201015124137.GA11030@localhost.localdomain>
+Subject: Re: [PATCHv3 net-next 16/16] sctp: enable udp tunneling socks
+Message-ID: <20201015174252.GB11030@localhost.localdomain>
 References: <cover.1602574012.git.lucien.xin@gmail.com>
- <20201014203416.6e0a1604@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
+ <afbaca39fa40eba694bd63c200050a49d8c8df81.1602574012.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20201014203416.6e0a1604@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
+In-Reply-To: <afbaca39fa40eba694bd63c200050a49d8c8df81.1602574012.git.lucien.xin@gmail.com>
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
-Message-ID: <20201015124137.Gu4MImV2MoGmBB6Bm-7Fsh84Egn7DN87fgi2EV_atzw@z>
+Message-ID: <20201015174252.DZA1NGvPGvScXqNH3Q5-Tt7JPVPtqh4tZDC1k0dLmlI@z>
 
-On Wed, Oct 14, 2020 at 08:34:16PM -0700, Jakub Kicinski wrote:
-> On Tue, 13 Oct 2020 15:27:25 +0800 Xin Long wrote:
-> > Description From the RFC:
-> > 
-> >    The Main Reasons:
-> > 
-> >    o  To allow SCTP traffic to pass through legacy NATs, which do not
-> >       provide native SCTP support as specified in [BEHAVE] and
-> >       [NATSUPP].
-> > 
-> >    o  To allow SCTP to be implemented on hosts that do not provide
-> >       direct access to the IP layer.  In particular, applications can
-> >       use their own SCTP implementation if the operating system does not
-> >       provide one.
+Actually..
+
+On Tue, Oct 13, 2020 at 03:27:41PM +0800, Xin Long wrote:
+...
+> Also add sysctl udp_port to allow changing the listening
+> sock's port by users.
+...
+> ---
+>  net/sctp/protocol.c |  5 +++++
+>  net/sctp/sysctl.c   | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
+>  2 files changed, 55 insertions(+)
+
+Xin, sorry for not noticing this earlier, but we need a documentation
+update here for this new sysctl. This is important. Please add its
+entry in ip-sysctl.rst.
+
 > 
-> Marcelo, Neil - please review if you want this one to make 5.10.
+> diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+> index be002b7..79fb4b5 100644
+> --- a/net/sctp/protocol.c
+> +++ b/net/sctp/protocol.c
+> @@ -1469,6 +1469,10 @@ static int __net_init sctp_ctrlsock_init(struct net *net)
+>  	if (status)
+>  		pr_err("Failed to initialize the SCTP control sock\n");
+>  
+> +	status = sctp_udp_sock_start(net);
+> +	if (status)
+> +		pr_err("Failed to initialize the SCTP udp tunneling sock\n");
+                                                      ^^^ upper case please.
+Nit. There are other occurrences of this.
 
-On the works!
+> +
+>  	return status;
+...
+> +	ret = proc_dointvec(&tbl, write, buffer, lenp, ppos);
+> +	if (write && ret == 0) {
+> +		struct sock *sk = net->sctp.ctl_sock;
+> +
+> +		if (new_value > max || new_value < min)
+> +			return -EINVAL;
+> +
+> +		net->sctp.udp_port = new_value;
+> +		sctp_udp_sock_stop(net);
 
-> Otherwise we can defer until after the merge window.
+So, if it would be disabling the encapsulation, it shouldn't be
+calling _start() then, right? Like
 
-Probably not needed.
+		if (new_value)
+			ret = sctp_udp_sock_start(net);
+		
+Otherwise _start() here will call ..._bind() with port 0, which then
+will be a random one.
 
-Thanks,
-Marcelo
+> +		ret = sctp_udp_sock_start(net);
+> +		if (ret)
+> +			net->sctp.udp_port = 0;
+> +
+> +		/* Update the value in the control socket */
+> +		lock_sock(sk);
+> +		sctp_sk(sk)->udp_port = htons(net->sctp.udp_port);
+> +		release_sock(sk);
+> +	}
+> +
+> +	return ret;
+> +}
+> +
+>  int sctp_sysctl_net_register(struct net *net)
+>  {
+>  	struct ctl_table *table;
+> -- 
+> 2.1.0
+> 
