@@ -1,19 +1,81 @@
-From: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Date: Mon, 19 Oct 2020 22:29:24 +0000
+From: Xin Long <lucien.xin@gmail.com>
+Date: Tue, 20 Oct 2020 09:12:06 +0000
 Subject: Re: [PATCHv4 net-next 16/16] sctp: enable udp tunneling socks
-Message-Id: <20201019222924.GE11030@localhost.localdomain>
+Message-Id: <CADvbK_ezWXMxpKkt3kxbXhcgu73PTJ1zpChb_sCgDu38xcROtA@mail.gmail.com>
 List-Id: <linux-sctp.vger.kernel.org>
-References: <cover.1603110316.git.lucien.xin@gmail.com>
- <b65bdc11e5a17e328227676ea283cee617f973fb.1603110316.git.lucien.xin@gmail.com>
+References: <cover.1603110316.git.lucien.xin@gmail.com> <b65bdc11e5a17e328227676ea283cee617f973fb.1603110316.git.lucien.xin@gmail.com>
  <20201019221545.GD11030@localhost.localdomain>
 In-Reply-To: <20201019221545.GD11030@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Xin Long <lucien.xin@gmail.com>
-Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net, gnault@redhat.com, pabeni@redhat.com, willemdebruijn.kernel@gmail.com
+To: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc: network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org, Neil Horman <nhorman@tuxdriver.com>, Michael Tuexen <tuexen@fh-muenster.de>, davem <davem@davemloft.net>, Guillaume Nault <gnault@redhat.com>, Paolo Abeni <pabeni@redhat.com>, Willem de Bruijn <willemdebruijn.kernel@gmail.com>
 
-Ah, please note that net-next is closed.
-https://lore.kernel.org/netdev/20201015123116.743005ca%40kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com/T/
+On Tue, Oct 20, 2020 at 6:15 AM Marcelo Ricardo Leitner
+<marcelo.leitner@gmail.com> wrote:
+>
+> On Mon, Oct 19, 2020 at 08:25:33PM +0800, Xin Long wrote:
+> > --- a/Documentation/networking/ip-sysctl.rst
+> > +++ b/Documentation/networking/ip-sysctl.rst
+> > @@ -2640,6 +2640,12 @@ addr_scope_policy - INTEGER
+> >
+> >       Default: 1
+> >
+> > +udp_port - INTEGER
+>
+> Need to be more verbose here, and also mention the RFC.
+>
+> > +     The listening port for the local UDP tunneling sock.
+>         , shared by all applications in the same net namespace.
+> > +     UDP encapsulation will be disabled when it's set to 0.
+>
+>         "Note, however, that setting just this is not enough to actually
+>         use it. ..."
+When it's a client, yes,  but when it's a server, the encap_port can
+be got from the incoming packet.
 
-  Marcelo
+>
+> > +
+> > +     Default: 9899
+> > +
+> >  encap_port - INTEGER
+> >       The default remote UDP encapsalution port.
+> >       When UDP tunneling is enabled, this global value is used to set
+>
+> When is it enabled, which conditions are needed? Maybe it can be
+> explained only in the one above.
+Thanks!
+pls check if this one will be better:
+
+udp_port - INTEGER
+
+The listening port for the local UDP tunneling sock.
+
+This UDP sock is used for processing the incoming UDP-encapsulated
+SCTP packets (from RFC6951), and shared by all applications in the
+same net namespace. This UDP sock will be closed when the value is
+set to 0.
+
+The value will also be used to set the src port of the UDP header
+for the outgoing UDP-encapsulated SCTP packets. For the dest port,
+please refer to 'encap_port' below.
+
+Default: 9899
+
+encap_port - INTEGER
+
+The default remote UDP encapsulation port.
+
+This value is used to set the dest port of the UDP header for the
+outgoing UDP-encapsulated SCTP packets by default. Users can also
+change the value for each sock/asoc/transport by using setsockopt.
+For further information, please refer to RFC6951.
+
+Note that when connecting to a remote server, the client should set
+this to the port that the UDP tunneling sock on the peer server is
+listening to and the local UDP tunneling sock on the client also
+must be started. On the server, it would get the encap_port from
+the incoming packet's source port.
+
+Default: 0
