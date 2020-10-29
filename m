@@ -5,59 +5,59 @@ X-Spam-Level:
 X-Spam-Status: No, score=-12.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 85538C2D0A3
-	for <linux-sctp@archiver.kernel.org>; Thu, 29 Oct 2020 07:35:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6DC39C55178
+	for <linux-sctp@archiver.kernel.org>; Thu, 29 Oct 2020 07:37:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3196220E65
-	for <linux-sctp@archiver.kernel.org>; Thu, 29 Oct 2020 07:35:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 10D8D214DB
+	for <linux-sctp@archiver.kernel.org>; Thu, 29 Oct 2020 07:37:00 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ckKZLJIh"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="V/gr5oM0"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729167AbgJ2HfW (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Thu, 29 Oct 2020 03:35:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55368 "EHLO
+        id S1727761AbgJ2HfX (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Thu, 29 Oct 2020 03:35:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55406 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728134AbgJ2HY5 (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Thu, 29 Oct 2020 03:24:57 -0400
-Received: from mail-pf1-x42e.google.com (mail-pf1-x42e.google.com [IPv6:2607:f8b0:4864:20::42e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A7BF4C08EA6F;
-        Thu, 29 Oct 2020 00:06:02 -0700 (PDT)
-Received: by mail-pf1-x42e.google.com with SMTP id e7so1548752pfn.12;
-        Thu, 29 Oct 2020 00:06:02 -0700 (PDT)
+        with ESMTP id S1726854AbgJ2HY6 (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Thu, 29 Oct 2020 03:24:58 -0400
+Received: from mail-pf1-x444.google.com (mail-pf1-x444.google.com [IPv6:2607:f8b0:4864:20::444])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1A46FC08EA73;
+        Thu, 29 Oct 2020 00:06:32 -0700 (PDT)
+Received: by mail-pf1-x444.google.com with SMTP id x13so1563363pfa.9;
+        Thu, 29 Oct 2020 00:06:32 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :in-reply-to:references;
-        bh=jd64SognjwqYRQuRMRSNbd08vn8VKgqQiHZBeDjXezk=;
-        b=ckKZLJIhWPiIm8Y4HaXD5QDaspycUtrzv0Y8V+GOhz52XnRDedNY5Rn4K/xvwLSLXV
-         8kLBZOpXykM9sZoQaDZtvwJDgJqVnoi5BET/1qOVcj28dBDWUDg1ypu9pbxX8tQDGlqy
-         /hVkOuvCImVVHqMnpcJD3k/sIEI33A8ev6JoCChiX2j7AX5IzhHLwDILm70M9vXzLvyX
-         /YHulwBjLVh3vIGX8L8iA8xv+F5V+WWDruhNzIAXop3sYHycikLk4JbOzu5I4iLCpZ2j
-         FOwwWZeP95Si372Fx2uajFmhZwLUGrdLHc405vtOdGgS7/foH8vNiTqk3TUsR9HCmVNs
-         D31A==
+        bh=IAXgr1XEtubq0mGk/5Z7Nhwu28HoWD2RMqBYQyNjOTY=;
+        b=V/gr5oM0K9Rxl0QMOubXzHuw+HpWq/x6Z4zEJ+dKEemFIsM8nCjw5J0cNO8wTg7FgP
+         OJ2x7n1YfR1e1ZxHIFIdf0qNGSuUAU95dRhoj61pxxgEM2nizKcH0xUQXgeWV8OcTIXS
+         e+rcfWd6jhYpA+vUagZCUIE93ycDwn/1bssUoX1Vz6IHKwd4dM8Fd0uCSnja/+Lt8u/2
+         Xxwxat1r6t25AwDTSVKFfw7RYwgwUMFVtAievPEEc715L2hRSkRrd2K73E0BM8aDPkMj
+         o4hW02Bmc65CWisanIniSgePc2hCLVvmBNlfM7aFfFU4es26Tn9tqajaWr2/6eVVhas6
+         nD5Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:in-reply-to:references;
-        bh=jd64SognjwqYRQuRMRSNbd08vn8VKgqQiHZBeDjXezk=;
-        b=PZjBDXvR2ds2sr7+GKfyeQeOE5rvbcJsDIZNRn+Jv0uQOCQH29mM8RgUGwDOiyvIXa
-         1wMt+HvtZy31STpPpOL+rPrQIqsAi85lDEXKQit1S5HtqMi610mMtSqCprNHwH+296PF
-         0SKm2lDyIxKXbQu28pV/fJLLcgAlw14wMMyvXKvaSKzvW2yk0vRwapCMRL4p0DVb5mjV
-         iyt4yW21GQAxYelbWsiEsWFvRLUYSKrmuJL5GFqlaOyOh+7n3FIyCJ0FzKgDkR76JJ9m
-         w0P+Nvi+MfsIuOvZwtLYKzDBpTh0oZEn4gTQ/0V2faZUgnRHgj6R3PUAHJoQSvg+pjLd
-         GnPw==
-X-Gm-Message-State: AOAM530gwe4EmmJ9P9XOb54d1ZEacUvzGl+qZUQJlOEbEW+ED41DjqLf
-        6x2MDthNzE57j2YWIQXgqexF4kxz3Ic=
-X-Google-Smtp-Source: ABdhPJyJsojm6kvb0A+CKqF5ts5SkdNL+pbTZreTRBKOacbTYfriJoFP9rv91liwOuVbuzw/kBo79w==
-X-Received: by 2002:aa7:8c50:0:b029:160:1240:493d with SMTP id e16-20020aa78c500000b02901601240493dmr2907704pfd.31.1603955161886;
-        Thu, 29 Oct 2020 00:06:01 -0700 (PDT)
+        bh=IAXgr1XEtubq0mGk/5Z7Nhwu28HoWD2RMqBYQyNjOTY=;
+        b=hII2C6GT4GnbQX6wFU1647OsifE3XoMjX03tCKESerQgZhR2MGHsFntI4k/7DfSz97
+         joqXwUubbAimCL3vdvKGll2xuoGpYxwraI2QJjoSVHLdbyxh05w2UiiU5t31eVqFBX0C
+         9Fg+ffzlxeBt1wKRXPIdGRuqL2WcM30ZiTj78if2Wcstc8OB3WsWYbHgQlxKHlHiqJHS
+         ivPNgYSKm/YtbKuytrJfs8SFWZeKdPs+pkJ9MFHE1unWKc+ozcMVKHspg6SsOCw5hXAI
+         pK6HXXzRm4Kp3CFbGjMn2nVqMylKpFV+ZPPfQhEcHhjAAWe6DbfnqMO1vxc6i9cre2df
+         8H8g==
+X-Gm-Message-State: AOAM533g2svu1lLoTH3JrkIkAz06oK9gU8FUI1M5q7frOJynYNokF4UU
+        U31HUDGFhvbo/UFyvgTnH/Vh3kOx/X8=
+X-Google-Smtp-Source: ABdhPJwR47QvP54Q9/sjyiRQq/SUaZ9d+QOAqVtVQ3cQ8I0yea/CsRW/hhS8+Ezzs0IV6CFtAF5dFw==
+X-Received: by 2002:a62:1c92:0:b029:15c:aff1:b16f with SMTP id c140-20020a621c920000b029015caff1b16fmr2963750pfc.0.1603955191267;
+        Thu, 29 Oct 2020 00:06:31 -0700 (PDT)
 Received: from localhost ([209.132.188.80])
-        by smtp.gmail.com with ESMTPSA id m13sm1616003pjl.45.2020.10.29.00.06.00
+        by smtp.gmail.com with ESMTPSA id m3sm1650725pjv.52.2020.10.29.00.06.29
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 29 Oct 2020 00:06:01 -0700 (PDT)
+        Thu, 29 Oct 2020 00:06:30 -0700 (PDT)
 From:   Xin Long <lucien.xin@gmail.com>
 To:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc:     Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
@@ -65,97 +65,171 @@ Cc:     Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
         Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net,
         Jakub Kicinski <kuba@kernel.org>, gnault@redhat.com,
         pabeni@redhat.com, willemdebruijn.kernel@gmail.com
-Subject: [PATCHv5 net-next 05/16] sctp: create udp6 sock and set its encap_rcv
-Date:   Thu, 29 Oct 2020 15:04:59 +0800
-Message-Id: <3c26801d36575d0e9c9bd260e6c1f1b67e4b721e.1603955040.git.lucien.xin@gmail.com>
+Subject: [PATCHv5 net-next 09/16] sctp: allow changing transport encap_port by peer packets
+Date:   Thu, 29 Oct 2020 15:05:03 +0800
+Message-Id: <2b2703eb6a2cc84b7762ee7484a9a57408db162b.1603955040.git.lucien.xin@gmail.com>
 X-Mailer: git-send-email 2.1.0
-In-Reply-To: <1cfd9ca0154d35389b25f68457ea2943a19e7da2.1603955040.git.lucien.xin@gmail.com>
+In-Reply-To: <e72ab91d56df2ced82efb0c9d26d29f47d0747f7.1603955040.git.lucien.xin@gmail.com>
 References: <cover.1603955040.git.lucien.xin@gmail.com>
  <48053c3bf48a46899bc0130dc43adca1e6925581.1603955040.git.lucien.xin@gmail.com>
  <4f439ed717442a649ba78dc0efc6f121208a9995.1603955040.git.lucien.xin@gmail.com>
  <e7575f9fea2b867bf0c7c3e8541e8a6101610055.1603955040.git.lucien.xin@gmail.com>
  <1cfd9ca0154d35389b25f68457ea2943a19e7da2.1603955040.git.lucien.xin@gmail.com>
+ <3c26801d36575d0e9c9bd260e6c1f1b67e4b721e.1603955040.git.lucien.xin@gmail.com>
+ <279d266bc34ebc439114f39da983dc08845ea37a.1603955040.git.lucien.xin@gmail.com>
+ <066bbdcf83188bbc62b6c458f2a0fd8f06f41640.1603955040.git.lucien.xin@gmail.com>
+ <e72ab91d56df2ced82efb0c9d26d29f47d0747f7.1603955040.git.lucien.xin@gmail.com>
 In-Reply-To: <cover.1603955040.git.lucien.xin@gmail.com>
 References: <cover.1603955040.git.lucien.xin@gmail.com>
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-This patch is to add the udp6 sock part in sctp_udp_sock_start/stop().
-udp_conf.use_udp6_rx_checksums is set to true, as:
+As rfc6951#section-5.4 says:
 
-   "The SCTP checksum MUST be computed for IPv4 and IPv6, and the UDP
-    checksum SHOULD be computed for IPv4 and IPv6"
+  "After finding the SCTP association (which
+   includes checking the verification tag), the UDP source port MUST be
+   stored as the encapsulation port for the destination address the SCTP
+   packet is received from (see Section 5.1).
 
-says in rfc6951#section-5.3.
+   When a non-encapsulated SCTP packet is received by the SCTP stack,
+   the encapsulation of outgoing packets belonging to the same
+   association and the corresponding destination address MUST be
+   disabled."
+
+transport encap_port should be updated by a validated incoming packet's
+udp src port.
+
+We save the udp src port in sctp_input_cb->encap_port, and then update
+the transport in two places:
+
+  1. right after vtag is verified, which is required by RFC, and this
+     allows the existent transports to be updated by the chunks that
+     can only be processed on an asoc.
+
+  2. right before processing the 'init' where the transports are added,
+     and this allows building a sctp over udp connection by client with
+     the server not knowing the remote encap port.
+
+  3. when processing ootb_pkt and creating the temporary transport for
+     the reply pkt.
+
+Note that sctp_input_cb->header is removed, as it's not used any more
+in sctp.
 
 v1->v2:
-  - Add pr_err() when fails to create udp v6 sock.
-  - Add #if IS_ENABLED(CONFIG_IPV6) not to create v6 sock when ipv6 is
-    disabled.
+  - Change encap_port as __be16 for sctp_input_cb.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- include/net/netns/sctp.h |  1 +
- net/sctp/protocol.c      | 26 ++++++++++++++++++++++++++
- 2 files changed, 27 insertions(+)
+ include/net/sctp/sm.h      |  1 +
+ include/net/sctp/structs.h |  7 +------
+ net/sctp/ipv6.c            |  1 +
+ net/sctp/protocol.c        | 11 ++++++++++-
+ net/sctp/sm_make_chunk.c   |  1 +
+ net/sctp/sm_statefuns.c    |  2 ++
+ 6 files changed, 16 insertions(+), 7 deletions(-)
 
-diff --git a/include/net/netns/sctp.h b/include/net/netns/sctp.h
-index 8cc9aff..247b401 100644
---- a/include/net/netns/sctp.h
-+++ b/include/net/netns/sctp.h
-@@ -24,6 +24,7 @@ struct netns_sctp {
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index 5c491a3..a499341 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -380,6 +380,7 @@ sctp_vtag_verify(const struct sctp_chunk *chunk,
+         if (ntohl(chunk->sctp_hdr->vtag) == asoc->c.my_vtag)
+                 return 1;
  
- 	/* UDP tunneling listening sock. */
- 	struct sock *udp4_sock;
-+	struct sock *udp6_sock;
- 	/* UDP tunneling listening port. */
- 	int udp_port;
- 
-diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
-index 0f79334..8410c9a 100644
---- a/net/sctp/protocol.c
-+++ b/net/sctp/protocol.c
-@@ -869,6 +869,28 @@ int sctp_udp_sock_start(struct net *net)
- 	setup_udp_tunnel_sock(net, sock, &tuncfg);
- 	net->sctp.udp4_sock = sock->sk;
- 
-+#if IS_ENABLED(CONFIG_IPV6)
-+	memset(&udp_conf, 0, sizeof(udp_conf));
-+
-+	udp_conf.family = AF_INET6;
-+	udp_conf.local_ip6 = in6addr_any;
-+	udp_conf.local_udp_port = htons(net->sctp.udp_port);
-+	udp_conf.use_udp6_rx_checksums = true;
-+	udp_conf.ipv6_v6only = true;
-+	err = udp_sock_create(net, &udp_conf, &sock);
-+	if (err) {
-+		pr_err("Failed to create the SCTP UDP tunneling v6 sock\n");
-+		udp_tunnel_sock_release(net->sctp.udp4_sock->sk_socket);
-+		net->sctp.udp4_sock = NULL;
-+		return err;
-+	}
-+
-+	tuncfg.encap_type = 1;
-+	tuncfg.encap_rcv = sctp_udp_rcv;
-+	setup_udp_tunnel_sock(net, sock, &tuncfg);
-+	net->sctp.udp6_sock = sock->sk;
-+#endif
-+
++	chunk->transport->encap_port = SCTP_INPUT_CB(chunk->skb)->encap_port;
  	return 0;
  }
  
-@@ -878,6 +900,10 @@ void sctp_udp_sock_stop(struct net *net)
- 		udp_tunnel_sock_release(net->sctp.udp4_sock->sk_socket);
- 		net->sctp.udp4_sock = NULL;
- 	}
-+	if (net->sctp.udp6_sock) {
-+		udp_tunnel_sock_release(net->sctp.udp6_sock->sk_socket);
-+		net->sctp.udp6_sock = NULL;
-+	}
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index aa98e7e..81464ae 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -1120,14 +1120,9 @@ static inline void sctp_outq_cork(struct sctp_outq *q)
+  * sctp_input_cb is currently used on rx and sock rx queue
+  */
+ struct sctp_input_cb {
+-	union {
+-		struct inet_skb_parm	h4;
+-#if IS_ENABLED(CONFIG_IPV6)
+-		struct inet6_skb_parm	h6;
+-#endif
+-	} header;
+ 	struct sctp_chunk *chunk;
+ 	struct sctp_af *af;
++	__be16 encap_port;
+ };
+ #define SCTP_INPUT_CB(__skb)	((struct sctp_input_cb *)&((__skb)->cb[0]))
+ 
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 8a58f42..a064bf2 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -1053,6 +1053,7 @@ static struct inet_protosw sctpv6_stream_protosw = {
+ 
+ static int sctp6_rcv(struct sk_buff *skb)
+ {
++	memset(skb->cb, 0, sizeof(skb->cb));
+ 	return sctp_rcv(skb) ? -1 : 0;
  }
  
- /* Register address family specific functions. */
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 89dfd31..f3de8c0 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -843,6 +843,9 @@ static int sctp_ctl_sock_init(struct net *net)
+ 
+ static int sctp_udp_rcv(struct sock *sk, struct sk_buff *skb)
+ {
++	memset(skb->cb, 0, sizeof(skb->cb));
++	SCTP_INPUT_CB(skb)->encap_port = udp_hdr(skb)->source;
++
+ 	skb_set_transport_header(skb, sizeof(struct udphdr));
+ 	sctp_rcv(skb);
+ 	return 0;
+@@ -1139,9 +1142,15 @@ static struct inet_protosw sctp_stream_protosw = {
+ 	.flags      = SCTP_PROTOSW_FLAG
+ };
+ 
++static int sctp4_rcv(struct sk_buff *skb)
++{
++	memset(skb->cb, 0, sizeof(skb->cb));
++	return sctp_rcv(skb);
++}
++
+ /* Register with IP layer.  */
+ static const struct net_protocol sctp_protocol = {
+-	.handler     = sctp_rcv,
++	.handler     = sctp4_rcv,
+ 	.err_handler = sctp_v4_err,
+ 	.no_policy   = 1,
+ 	.netns_ok    = 1,
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 9a56ae2..21d0ff1 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -2321,6 +2321,7 @@ int sctp_process_init(struct sctp_association *asoc, struct sctp_chunk *chunk,
+ 	 * added as the primary transport.  The source address seems to
+ 	 * be a better choice than any of the embedded addresses.
+ 	 */
++	asoc->encap_port = SCTP_INPUT_CB(chunk->skb)->encap_port;
+ 	if (!sctp_assoc_add_peer(asoc, peer_addr, gfp, SCTP_ACTIVE))
+ 		goto nomem;
+ 
+diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
+index c669f8b..8edab15 100644
+--- a/net/sctp/sm_statefuns.c
++++ b/net/sctp/sm_statefuns.c
+@@ -6268,6 +6268,8 @@ static struct sctp_packet *sctp_ootb_pkt_new(
+ 	if (!transport)
+ 		goto nomem;
+ 
++	transport->encap_port = SCTP_INPUT_CB(chunk->skb)->encap_port;
++
+ 	/* Cache a route for the transport with the chunk's destination as
+ 	 * the source address.
+ 	 */
 -- 
 2.1.0
 
