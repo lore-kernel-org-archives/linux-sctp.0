@@ -5,59 +5,59 @@ X-Spam-Level:
 X-Spam-Status: No, score=-12.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E325EC56201
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6B005C5517A
 	for <linux-sctp@archiver.kernel.org>; Thu, 29 Oct 2020 07:23:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8D1E820735
-	for <linux-sctp@archiver.kernel.org>; Thu, 29 Oct 2020 07:23:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0B21421D7B
+	for <linux-sctp@archiver.kernel.org>; Thu, 29 Oct 2020 07:23:01 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="T7GQKEyz"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="n5QS4lq1"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726100AbgJ2HVS (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Thu, 29 Oct 2020 03:21:18 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54750 "EHLO
+        id S1726091AbgJ2HVR (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Thu, 29 Oct 2020 03:21:17 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54752 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725994AbgJ2HVB (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Thu, 29 Oct 2020 03:21:01 -0400
-Received: from mail-pg1-x52b.google.com (mail-pg1-x52b.google.com [IPv6:2607:f8b0:4864:20::52b])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8BD48C08EA6B;
-        Thu, 29 Oct 2020 00:05:45 -0700 (PDT)
-Received: by mail-pg1-x52b.google.com with SMTP id i26so1579467pgl.5;
-        Thu, 29 Oct 2020 00:05:45 -0700 (PDT)
+        with ESMTP id S1725977AbgJ2HU6 (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Thu, 29 Oct 2020 03:20:58 -0400
+Received: from mail-pg1-x529.google.com (mail-pg1-x529.google.com [IPv6:2607:f8b0:4864:20::529])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9A1A5C08E8AE;
+        Thu, 29 Oct 2020 00:05:28 -0700 (PDT)
+Received: by mail-pg1-x529.google.com with SMTP id x13so1575379pgp.7;
+        Thu, 29 Oct 2020 00:05:28 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :in-reply-to:references;
-        bh=HzhHczRtL69delBJzpCl1jQSUECAnKmwpTvFJI3PgEA=;
-        b=T7GQKEyzFtYd8QGnJj0t7UU8TfwNFAzIeLpZvWDcSs5bJRvgfjO9D/MdGelXN4GEYu
-         O+wJnGe4ulTj13PK/zCNVR8xu9KHF13iseFJTE3mQMry09AocDDBRM9j9Rl4TAWZv+x4
-         v/m7AON4jspfWPwsl7gioBd8pTXUFVpgNrrGxJg1HD+4NKVL21n48/AEBYZdguFQtL8V
-         OyKMuaKVJZ50BrppKKE7T4qvUEFTDa3DiMYWoLHBiNwWNI1rKhzpZvV1X8gtPZ6abiyG
-         3vWdvIzWqSUxqqJRHZ1nyD55GU51tneZo7ntHQxaomDa7ugxZYrJqtsE9tNTnc7HARZr
-         F/VQ==
+        bh=jGFHohiLMKmOcbBELvAHtKl6/eKf2Rs4EotDZ5VjkE0=;
+        b=n5QS4lq1xeSlJTfnw0v0Fi9KLZjHLLMrDZg7zuJ+PUi5X/GdVVp2LOtmYU/si9J0S8
+         NceJif7Gjt6hZ+sU4ec2ZvZhF6GBqBMQQPcb7RrvouM6AhzxmeUuW7Am3SRx3Xlos20j
+         Y8tERTnQdznQ0fUVyHK/Xf4XirsbOMtjRN6HQyCB8WEV/LcfLlMIkRHlimDL1ULtY+jF
+         IyuztcKFbm7ReN3ocHum70WX+Gsat09zOHIP0Asnf5COJEQZ94V/exbWNdYQSjgi33xq
+         nad9pv0ccupiRj/N97+1OB31sBsU9x5h0FCaARPfVX7vZzRdym6XwUIzYLLSxgbO/GUi
+         8wPw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:in-reply-to:references;
-        bh=HzhHczRtL69delBJzpCl1jQSUECAnKmwpTvFJI3PgEA=;
-        b=FDpAy9f3OtZwukSm+kNX1jPmKnxy5xFfeSyQDYQQFzsUY/HCbCv5uRd0kp4Olx1CLJ
-         3qF3LEdloYOUgBDd4pbguU3LXOfeRfNowBgsOfGj5Tw6jpf82aIxhrd+JHNnmsql7AoK
-         9mxwkiNqiaHcOl9Ihk7GWfwWxJWZs0AgifHduj1xErQ+1ZGBNbVq7lmPn5HOyrfIii/w
-         emlEEq8+pl8psszt7nNaB0jHt78AJ8BsgqpIe1bFyPrTiIlEFIR/gar40fGMbPDcD1zZ
-         5xCzU15VArfcpD8DN++/7LGwVw4dySs+iWymVGU7oMZSAZTVoyzGUjUfYMXq1ym3WWuu
-         IbDg==
-X-Gm-Message-State: AOAM530ph4XgDz84FZNRCar7o6vNoue9JXSv12OOCDq/yyxAP87uK2S5
-        o24Orm0q9GYcCNhLEDqsfJT8cXG/rr4=
-X-Google-Smtp-Source: ABdhPJxCNH5OlNQ3ejkNT5tXgbyR4gqtESjemW0lgrUq4Fxxsyj6oHfMI/AzR+UYPA1yQDzDnMB64Q==
-X-Received: by 2002:a17:90a:f683:: with SMTP id cl3mr2963678pjb.84.1603955144778;
-        Thu, 29 Oct 2020 00:05:44 -0700 (PDT)
+        bh=jGFHohiLMKmOcbBELvAHtKl6/eKf2Rs4EotDZ5VjkE0=;
+        b=Uc9i9wJh5p8xPA1HqGQNjnW1mBmsyzuqSAsu7F9LwLuY2bFq8PoQm42xCp0BFNbfK5
+         aUucb1bL7Q/sJu2Ldv1RrYZXifGUBhRgPYLOq+EWrOpAAtf4xz2MdCvcdu/iEfpr59hB
+         WlvqdyAGNKqdvDWPXcF5wL5WrPvcGPYDWlp5gYYQx6kR6rnNm1bdORq1eW0C21A6DrJQ
+         sIb4QqiFzYh88bVu7/Xz0ijtOal3lg4x938vj7vJvlQEu0jLKoDV5VVM9aWLrArOG5xO
+         R6At+eCXZc/Z76Dae0chNjqN4wTpimA0jvNqnyYjw0a/ZkVlcipGDZJrCb6KNvEU95ez
+         oRBw==
+X-Gm-Message-State: AOAM532yaE/qQolNhkZb2HyJTdZgW8A2Y5iUVIIGe7q+S5C8w6hbFUm4
+        y1pT0k7I+NlDiSUrrpuV2rmJLqp57yQ=
+X-Google-Smtp-Source: ABdhPJz01vaxX/Qq4Nfx2wuMuFt5+ir6H2uSn4qpq51DJfIIeENHpHJbc2xgNxUPMK39nLoIQClb+Q==
+X-Received: by 2002:a63:9909:: with SMTP id d9mr158690pge.360.1603955127779;
+        Thu, 29 Oct 2020 00:05:27 -0700 (PDT)
 Received: from localhost ([209.132.188.80])
-        by smtp.gmail.com with ESMTPSA id k77sm1859863pfd.99.2020.10.29.00.05.43
+        by smtp.gmail.com with ESMTPSA id e3sm1441726pgm.93.2020.10.29.00.05.26
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 29 Oct 2020 00:05:44 -0700 (PDT)
+        Thu, 29 Oct 2020 00:05:27 -0700 (PDT)
 From:   Xin Long <lucien.xin@gmail.com>
 To:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc:     Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
@@ -65,83 +65,59 @@ Cc:     Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
         Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net,
         Jakub Kicinski <kuba@kernel.org>, gnault@redhat.com,
         pabeni@redhat.com, willemdebruijn.kernel@gmail.com
-Subject: [PATCHv5 net-next 03/16] udp: support sctp over udp in skb_udp_tunnel_segment
-Date:   Thu, 29 Oct 2020 15:04:57 +0800
-Message-Id: <e7575f9fea2b867bf0c7c3e8541e8a6101610055.1603955040.git.lucien.xin@gmail.com>
+Subject: [PATCHv5 net-next 01/16] udp: check udp sock encap_type in __udp_lib_err
+Date:   Thu, 29 Oct 2020 15:04:55 +0800
+Message-Id: <48053c3bf48a46899bc0130dc43adca1e6925581.1603955040.git.lucien.xin@gmail.com>
 X-Mailer: git-send-email 2.1.0
-In-Reply-To: <4f439ed717442a649ba78dc0efc6f121208a9995.1603955040.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1603955040.git.lucien.xin@gmail.com>
 References: <cover.1603955040.git.lucien.xin@gmail.com>
- <48053c3bf48a46899bc0130dc43adca1e6925581.1603955040.git.lucien.xin@gmail.com>
- <4f439ed717442a649ba78dc0efc6f121208a9995.1603955040.git.lucien.xin@gmail.com>
 In-Reply-To: <cover.1603955040.git.lucien.xin@gmail.com>
 References: <cover.1603955040.git.lucien.xin@gmail.com>
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-For the gso of sctp over udp packets, sctp_gso_segment() will be called in
-skb_udp_tunnel_segment(), we need to set transport_header to sctp header.
+There is a chance that __udp4/6_lib_lookup() returns a udp encap
+sock in __udp_lib_err(), like the udp encap listening sock may
+use the same port as remote encap port, in which case it should
+go to __udp4/6_lib_err_encap() for more validation before
+processing the icmp packet.
 
-As all the current HWs can't handle both crc checksum and udp checksum at
-the same time, the crc checksum has to be done in sctp_gso_segment() by
-removing the NETIF_F_SCTP_CRC flag from the features.
-
-Meanwhile, if the HW can't do udp checksum, csum and csum_start has to be
-set correctly, and udp checksum will be done in __skb_udp_tunnel_segment()
-by calling gso_make_checksum().
-
-Thanks to Paolo, Marcelo and Guillaume for helping with this one.
-
-v1->v2:
-  - no change.
-v2->v3:
-  - remove the he NETIF_F_SCTP_CRC flag from the features.
-  - set csum and csum_start in sctp_gso_make_checksum().
+This patch is to check encap_type in __udp_lib_err() for the
+further validation for a encap sock.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 ---
- net/ipv4/udp_offload.c | 3 +++
- net/sctp/offload.c     | 6 +++++-
- 2 files changed, 8 insertions(+), 1 deletion(-)
+ net/ipv4/udp.c | 2 +-
+ net/ipv6/udp.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/ipv4/udp_offload.c b/net/ipv4/udp_offload.c
-index e67a66f..b8b1fde 100644
---- a/net/ipv4/udp_offload.c
-+++ b/net/ipv4/udp_offload.c
-@@ -49,6 +49,7 @@ static struct sk_buff *__skb_udp_tunnel_segment(struct sk_buff *skb,
- 	__skb_pull(skb, tnl_hlen);
- 	skb_reset_mac_header(skb);
- 	skb_set_network_header(skb, skb_inner_network_offset(skb));
-+	skb_set_transport_header(skb, skb_inner_transport_offset(skb));
- 	skb->mac_len = skb_inner_network_offset(skb);
- 	skb->protocol = new_protocol;
+diff --git a/net/ipv4/udp.c b/net/ipv4/udp.c
+index 09f0a23..ca04a8a 100644
+--- a/net/ipv4/udp.c
++++ b/net/ipv4/udp.c
+@@ -702,7 +702,7 @@ int __udp4_lib_err(struct sk_buff *skb, u32 info, struct udp_table *udptable)
+ 	sk = __udp4_lib_lookup(net, iph->daddr, uh->dest,
+ 			       iph->saddr, uh->source, skb->dev->ifindex,
+ 			       inet_sdif(skb), udptable, NULL);
+-	if (!sk) {
++	if (!sk || udp_sk(sk)->encap_type) {
+ 		/* No socket for error: try tunnels before discarding */
+ 		sk = ERR_PTR(-ENOENT);
+ 		if (static_branch_unlikely(&udp_encap_needed_key)) {
+diff --git a/net/ipv6/udp.c b/net/ipv6/udp.c
+index 29d9691..cde9b88 100644
+--- a/net/ipv6/udp.c
++++ b/net/ipv6/udp.c
+@@ -560,7 +560,7 @@ int __udp6_lib_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
  
-@@ -67,6 +68,8 @@ static struct sk_buff *__skb_udp_tunnel_segment(struct sk_buff *skb,
- 				      (NETIF_F_HW_CSUM | NETIF_F_IP_CSUM))));
- 
- 	features &= skb->dev->hw_enc_features;
-+	/* CRC checksum can't be handled by HW when it's a UDP tunneling packet. */
-+	features &= ~NETIF_F_SCTP_CRC;
- 
- 	/* The only checksum offload we care about from here on out is the
- 	 * outer one so strip the existing checksum feature flags and
-diff --git a/net/sctp/offload.c b/net/sctp/offload.c
-index 74847d6..ce281a9 100644
---- a/net/sctp/offload.c
-+++ b/net/sctp/offload.c
-@@ -27,7 +27,11 @@ static __le32 sctp_gso_make_checksum(struct sk_buff *skb)
- {
- 	skb->ip_summed = CHECKSUM_NONE;
- 	skb->csum_not_inet = 0;
--	gso_reset_checksum(skb, ~0);
-+	/* csum and csum_start in GSO CB may be needed to do the UDP
-+	 * checksum when it's a UDP tunneling packet.
-+	 */
-+	SKB_GSO_CB(skb)->csum = (__force __wsum)~0;
-+	SKB_GSO_CB(skb)->csum_start = skb_headroom(skb) + skb->len;
- 	return sctp_compute_cksum(skb, skb_transport_offset(skb));
- }
- 
+ 	sk = __udp6_lib_lookup(net, daddr, uh->dest, saddr, uh->source,
+ 			       inet6_iif(skb), inet6_sdif(skb), udptable, NULL);
+-	if (!sk) {
++	if (!sk || udp_sk(sk)->encap_type) {
+ 		/* No socket for error: try tunnels before discarding */
+ 		sk = ERR_PTR(-ENOENT);
+ 		if (static_branch_unlikely(&udpv6_encap_needed_key)) {
 -- 
 2.1.0
 
