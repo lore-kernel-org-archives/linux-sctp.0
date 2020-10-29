@@ -1,109 +1,239 @@
-Return-Path: <SRS0=T5SI=EC=vger.kernel.org=linux-sctp-owner@kernel.org>
+Return-Path: <SRS0=XyVA=EE=vger.kernel.org=linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-12.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D62BC4363A
-	for <linux-sctp@archiver.kernel.org>; Tue, 27 Oct 2020 22:35:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 70C06C2D0A3
+	for <linux-sctp@archiver.kernel.org>; Thu, 29 Oct 2020 07:21:20 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id DA69D221F7
-	for <linux-sctp@archiver.kernel.org>; Tue, 27 Oct 2020 22:35:24 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 02DED221FB
+	for <linux-sctp@archiver.kernel.org>; Thu, 29 Oct 2020 07:21:17 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="SNyucDBD"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="vZU8RCST"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1832506AbgJ0WfY (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Tue, 27 Oct 2020 18:35:24 -0400
-Received: from mail-qv1-f68.google.com ([209.85.219.68]:37568 "EHLO
-        mail-qv1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1832504AbgJ0WfX (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Tue, 27 Oct 2020 18:35:23 -0400
-Received: by mail-qv1-f68.google.com with SMTP id t6so1515405qvz.4;
-        Tue, 27 Oct 2020 15:35:22 -0700 (PDT)
+        id S1725781AbgJ2HVQ (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Thu, 29 Oct 2020 03:21:16 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54754 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725973AbgJ2HU6 (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Thu, 29 Oct 2020 03:20:58 -0400
+Received: from mail-pg1-x52b.google.com (mail-pg1-x52b.google.com [IPv6:2607:f8b0:4864:20::52b])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2F91CC08EA6C;
+        Thu, 29 Oct 2020 00:05:54 -0700 (PDT)
+Received: by mail-pg1-x52b.google.com with SMTP id o7so1586162pgv.6;
+        Thu, 29 Oct 2020 00:05:54 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=date:from:to:cc:subject:message-id:references:mime-version
-         :content-disposition:in-reply-to;
-        bh=+6EqPkxS+upEiFHF3tvQSMAgw2qIzQnOXTK/To17+kY=;
-        b=SNyucDBDUkPKJgqOZFbfKItm4OfZnYC8Ul6z6WOHPrLuc9KTawUpbRNm0tU4B6oDJP
-         YD/4nm2tlWRgjcKf6mvXe9TpjG513UdmmOTM35WjSPU+HyE5ZbIGqWsWcEWEkhOWR+aU
-         MxaT90pgMFAbS7frrhOHbRPh3cjupAk1+epWJT9+of8bxRSKtrrih9nHy4IJfQ883Kqt
-         5xt+drTAfZ1vK0DUYZdtD35M7ZvvFLZgfsJNLvqlM7U9fCuO2mu3rQxSjXrJI/otnxss
-         iK0Iv4pc4NeGtTKWXsBsgjdMiASL6Ujcg27qJC/C0NwZnq40dSsS6P5RTH69V7lHk3/a
-         3Nug==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :in-reply-to:references;
+        bh=NCNMRLeAt/3uxNYYJNKXmIUovKQtSPc7IGkvteiwh0Y=;
+        b=vZU8RCSTDSZ98gDAiZDcgmuFZp0NYReBjyL6Twn7RgqfHKVzceSi9QFjHjKa1/17Wy
+         61i54dDMOJ4Th0kXhH82X0JBumWXUmCp3i2HfOVg4FCCTFJ9FQwlCdwn20hzzQRqAKup
+         fHH5L4tw7qh1xjhiVJXy0DDaFdNG7t2xIBHo4XJnLS4DV2lLAnmxESpZCPw8Y1rM7SFO
+         QUWtNr7A1FDprMlUybXf/lzQcrY9iizfAhdnVvYx6kOhUs+/i5e0A43Od3IAXg8yyFAn
+         yDvu5KGHzqAUabYAf04Lp8aFuPys7CskTHqox4Ub9F7NCaDt0sV1UJ8Y7RD0acSgUmEz
+         9jrw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
-         :mime-version:content-disposition:in-reply-to;
-        bh=+6EqPkxS+upEiFHF3tvQSMAgw2qIzQnOXTK/To17+kY=;
-        b=mcKUpvEmuQxnbxKNBWmoCjs+tBxL4zda810TFBvtZN0puXBOMoItoh8BUiOySL8rNJ
-         aL68zJuOtaztlrlR3Edp89bAyHix8pSINNcZ7AkuIGHST4SotvPDJXWu7VLL3vni2tV9
-         qbB8k5FLZJLjZfJ6Gdmrl1chvpef0NwbdccTVpVth+a0HWiNREBbfJ/0kIKaZGwZT2Zs
-         tz8D2NktG+0a5aBjFstLgIfHpc5W2GdCdWFe3SjPp/CTprYLL/oqorHpw5DbJqBHi+T/
-         gyITW4RO7BEVWBOGpiOzTxwksXU2E6mDoJ0naLQbWy6Q5cNjE+eKuNV6coHY8OirG810
-         4anw==
-X-Gm-Message-State: AOAM530efPGMM21OAn8Yke43NgmSBsMNt0vPeJC3jsTdaKMpUUqRWMxJ
-        vJMwc1CgNHTBlop1t4bbOsgukzhS94hdRg==
-X-Google-Smtp-Source: ABdhPJxIpnV9Q0G2RlTLWA2MHRww8vneSGB6xL09l4Kv3rvTZd5r5rC/C70NU7bILKd9iPEkfQb0Qg==
-X-Received: by 2002:a05:6214:1586:: with SMTP id m6mr5069113qvw.15.1603838121669;
-        Tue, 27 Oct 2020 15:35:21 -0700 (PDT)
-Received: from localhost.localdomain ([177.220.172.74])
-        by smtp.gmail.com with ESMTPSA id 63sm1757415qkn.9.2020.10.27.15.35.20
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 27 Oct 2020 15:35:20 -0700 (PDT)
-Received: by localhost.localdomain (Postfix, from userid 1000)
-        id 52303C3155; Tue, 27 Oct 2020 19:35:18 -0300 (-03)
-Date:   Tue, 27 Oct 2020 19:35:18 -0300
-From:   Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-To:     Davide Caratti <dcaratti@redhat.com>
-Cc:     netdev@vger.kernel.org, Xin Long <lucien.xin@gmail.com>,
-        linux-sctp@vger.kernel.org, Jakub Kicinski <kuba@kernel.org>
-Subject: Re: [RFC PATCH net-next] net: use a dedicated tracepoint for
- kfree_skb_list()
-Message-ID: <20201027223518.GA11029@localhost.localdomain>
-References: <d4c179f46d00016ec418f6bf58ed01afedacd123.1603486318.git.dcaratti@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <d4c179f46d00016ec418f6bf58ed01afedacd123.1603486318.git.dcaratti@redhat.com>
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:in-reply-to:references;
+        bh=NCNMRLeAt/3uxNYYJNKXmIUovKQtSPc7IGkvteiwh0Y=;
+        b=cFoS4vncO/SHwJUmT6LB6Hq+CAsOIWTmfMrQQlgPbJj9b15wpErBUsC32PLFiRNLvl
+         FTay1QoQ6N7iO5dWQ+PyhrxEKctbdC75pEee5FBHIvkcJ6+R7W7EpZ8Rg9MiyOo/NMWo
+         7/0ulqJLKOh7iWTwcM/sUPE3D6YcxnJNY++PY1ZHI1LXf/z4AMs0cTxZGBK29Vp5S3jO
+         9PiFQPYDnhTlCtf6EG1O8qpaSx2jYdllp/jP41jKeR8N+Iw9BUVcqfo+2pZAuBL6/5Xg
+         AanLp4Xqi2dgkwddn4SoxbCNaurArtvWO3AoXhbXvFn6S60i/MGWSPuJswXWV2UB3ZsV
+         Ki/g==
+X-Gm-Message-State: AOAM531Skku/qG12NiyF6KiSiTUpUqDxGqZkXunoTSvXm/LpSNNlx5fY
+        YWIHG7UI61BYO52Wd/3lgmHEqhwYKmk=
+X-Google-Smtp-Source: ABdhPJz/3tGRDcb2YNxkfYlSVEHH8xlSt3sCW12W7RhGdL0VRafec4JGUJ6s4aOHEkZxAqdnN1lZ0g==
+X-Received: by 2002:a17:90b:3103:: with SMTP id gc3mr2944056pjb.158.1603955153411;
+        Thu, 29 Oct 2020 00:05:53 -0700 (PDT)
+Received: from localhost ([209.132.188.80])
+        by smtp.gmail.com with ESMTPSA id u13sm1731282pfl.162.2020.10.29.00.05.52
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 29 Oct 2020 00:05:52 -0700 (PDT)
+From:   Xin Long <lucien.xin@gmail.com>
+To:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
+Cc:     Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        Neil Horman <nhorman@tuxdriver.com>,
+        Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net,
+        Jakub Kicinski <kuba@kernel.org>, gnault@redhat.com,
+        pabeni@redhat.com, willemdebruijn.kernel@gmail.com
+Subject: [PATCHv5 net-next 04/16] sctp: create udp4 sock and add its encap_rcv
+Date:   Thu, 29 Oct 2020 15:04:58 +0800
+Message-Id: <1cfd9ca0154d35389b25f68457ea2943a19e7da2.1603955040.git.lucien.xin@gmail.com>
+X-Mailer: git-send-email 2.1.0
+In-Reply-To: <e7575f9fea2b867bf0c7c3e8541e8a6101610055.1603955040.git.lucien.xin@gmail.com>
+References: <cover.1603955040.git.lucien.xin@gmail.com>
+ <48053c3bf48a46899bc0130dc43adca1e6925581.1603955040.git.lucien.xin@gmail.com>
+ <4f439ed717442a649ba78dc0efc6f121208a9995.1603955040.git.lucien.xin@gmail.com>
+ <e7575f9fea2b867bf0c7c3e8541e8a6101610055.1603955040.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1603955040.git.lucien.xin@gmail.com>
+References: <cover.1603955040.git.lucien.xin@gmail.com>
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-On Fri, Oct 23, 2020 at 10:52:14PM +0200, Davide Caratti wrote:
-> kfree_skb_list() calls kfree_skb(), thus triggering as many dropwatch
-> events as the number of skbs in the list. This can disturb the analysis
-> of packet drops, e.g. with fragmented echo requests generated by ICMP
-> sockets, or with regular SCTP packets: when consume_skb() frees them,
-> the kernel's drop monitor may wrongly account for several packet drops:
-> 
->  consume skb()
->    skb_release_data()
->      kfree_skb_list()
->        kfree_skb() <-- false dropwatch event
+This patch is to add the functions to create/release udp4 sock,
+and set the sock's encap_rcv to process the incoming udp encap
+sctp packets. In sctp_udp_rcv(), as we can see, all we need to
+do is fix the transport header for sctp_rcv(), then it would
+implement the part of rfc6951#section-5.4:
 
-Seems the problem lies with skb_release_data() calling
-kfree_skb_list() while it should have been a, say, consume_skb_list(),
-and not generate further kfree_skb calls.
+  "When an encapsulated packet is received, the UDP header is removed.
+   Then, the generic lookup is performed, as done by an SCTP stack
+   whenever a packet is received, to find the association for the
+   received SCTP packet"
 
-Maybe a bool parameter on skb_release_data to signal that it should
-call consume_skb_list (which doesn't exist) instead?
+Note that these functions will be called in the last patch of
+this patchset when enabling this feature.
 
-> 
-> don't call kfree_skb() when freeing a skb list, use a dedicated
-> tracepoint instead. By printing "cur" and "next", it also becomes
-> possible to reconstruct the skb list from its members.
+v1->v2:
+  - Add pr_err() when fails to create udp v4 sock.
+v2->v3:
+  - Add 'select NET_UDP_TUNNEL' in sctp Kconfig.
+v3->v4:
+  - No change.
+v4->v5:
+  - Change to set udp_port to 0 by default.
 
-I like the new probe alone. It helps to have more visibility on drops
-such as those from __dev_xmit_skb() and how they happen.
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ include/net/netns/sctp.h     |  5 +++++
+ include/net/sctp/constants.h |  2 ++
+ include/net/sctp/sctp.h      |  2 ++
+ net/sctp/Kconfig             |  1 +
+ net/sctp/protocol.c          | 43 +++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 53 insertions(+)
 
-But as a solution to the problem stated, seems it can be confusing.
-Say one is debugging a tx drop issue. AFAICT one would have to watch
-both probe points anyway, as the drop could be on a layer below than
-SCTP. So I'm not seeing how it helps much, other than possibly causing
-drop_watch to miss drops (by not listening to the new trace point).
+diff --git a/include/net/netns/sctp.h b/include/net/netns/sctp.h
+index d8d02e4..8cc9aff 100644
+--- a/include/net/netns/sctp.h
++++ b/include/net/netns/sctp.h
+@@ -22,6 +22,11 @@ struct netns_sctp {
+ 	 */
+ 	struct sock *ctl_sock;
+ 
++	/* UDP tunneling listening sock. */
++	struct sock *udp4_sock;
++	/* UDP tunneling listening port. */
++	int udp_port;
++
+ 	/* This is the global local address list.
+ 	 * We actively maintain this complete list of addresses on
+ 	 * the system by catching address add/delete events.
+diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
+index 122d9e2..14a0d22 100644
+--- a/include/net/sctp/constants.h
++++ b/include/net/sctp/constants.h
+@@ -286,6 +286,8 @@ enum { SCTP_MAX_GABS = 16 };
+ 				 * functions simpler to write.
+ 				 */
+ 
++#define SCTP_DEFAULT_UDP_PORT 9899	/* default UDP tunneling port */
++
+ /* These are the values for pf exposure, UNUSED is to keep compatible with old
+  * applications by default.
+  */
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index 4fc747b..bfd87a0 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -84,6 +84,8 @@ int sctp_copy_local_addr_list(struct net *net, struct sctp_bind_addr *addr,
+ struct sctp_pf *sctp_get_pf_specific(sa_family_t family);
+ int sctp_register_pf(struct sctp_pf *, sa_family_t);
+ void sctp_addr_wq_mgmt(struct net *, struct sctp_sockaddr_entry *, int);
++int sctp_udp_sock_start(struct net *net);
++void sctp_udp_sock_stop(struct net *net);
+ 
+ /*
+  * sctp/socket.c
+diff --git a/net/sctp/Kconfig b/net/sctp/Kconfig
+index 39d7fa9..5da599f 100644
+--- a/net/sctp/Kconfig
++++ b/net/sctp/Kconfig
+@@ -11,6 +11,7 @@ menuconfig IP_SCTP
+ 	select CRYPTO_HMAC
+ 	select CRYPTO_SHA1
+ 	select LIBCRC32C
++	select NET_UDP_TUNNEL
+ 	help
+ 	  Stream Control Transmission Protocol
+ 
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 2583323..0f79334 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -44,6 +44,7 @@
+ #include <net/addrconf.h>
+ #include <net/inet_common.h>
+ #include <net/inet_ecn.h>
++#include <net/udp_tunnel.h>
+ 
+ #define MAX_SCTP_PORT_HASH_ENTRIES (64 * 1024)
+ 
+@@ -840,6 +841,45 @@ static int sctp_ctl_sock_init(struct net *net)
+ 	return 0;
+ }
+ 
++static int sctp_udp_rcv(struct sock *sk, struct sk_buff *skb)
++{
++	skb_set_transport_header(skb, sizeof(struct udphdr));
++	sctp_rcv(skb);
++	return 0;
++}
++
++int sctp_udp_sock_start(struct net *net)
++{
++	struct udp_tunnel_sock_cfg tuncfg = {NULL};
++	struct udp_port_cfg udp_conf = {0};
++	struct socket *sock;
++	int err;
++
++	udp_conf.family = AF_INET;
++	udp_conf.local_ip.s_addr = htonl(INADDR_ANY);
++	udp_conf.local_udp_port = htons(net->sctp.udp_port);
++	err = udp_sock_create(net, &udp_conf, &sock);
++	if (err) {
++		pr_err("Failed to create the SCTP UDP tunneling v4 sock\n");
++		return err;
++	}
++
++	tuncfg.encap_type = 1;
++	tuncfg.encap_rcv = sctp_udp_rcv;
++	setup_udp_tunnel_sock(net, sock, &tuncfg);
++	net->sctp.udp4_sock = sock->sk;
++
++	return 0;
++}
++
++void sctp_udp_sock_stop(struct net *net)
++{
++	if (net->sctp.udp4_sock) {
++		udp_tunnel_sock_release(net->sctp.udp4_sock->sk_socket);
++		net->sctp.udp4_sock = NULL;
++	}
++}
++
+ /* Register address family specific functions. */
+ int sctp_register_af(struct sctp_af *af)
+ {
+@@ -1271,6 +1311,9 @@ static int __net_init sctp_defaults_init(struct net *net)
+ 	/* Enable ECN by default. */
+ 	net->sctp.ecn_enable = 1;
+ 
++	/* Set UDP tunneling listening port to 0 by default */
++	net->sctp.udp_port = 0;
++
+ 	/* Set SCOPE policy to enabled */
+ 	net->sctp.scope_policy = SCTP_SCOPE_POLICY_ENABLE;
+ 
+-- 
+2.1.0
 
-  Marcelo
