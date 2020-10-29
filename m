@@ -2,59 +2,62 @@ Return-Path: <SRS0=XyVA=EE=vger.kernel.org=linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-12.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,
-	USER_AGENT_GIT autolearn=no autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4BC7DC5DF9E
-	for <linux-sctp@archiver.kernel.org>; Thu, 29 Oct 2020 07:23:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1E70FC4363A
+	for <linux-sctp@archiver.kernel.org>; Thu, 29 Oct 2020 07:26:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id E2C7422248
-	for <linux-sctp@archiver.kernel.org>; Thu, 29 Oct 2020 07:23:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B532220735
+	for <linux-sctp@archiver.kernel.org>; Thu, 29 Oct 2020 07:26:39 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="GCSJeAwB"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="D6P/4TEg"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725973AbgJ2HVT (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Thu, 29 Oct 2020 03:21:19 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54764 "EHLO
+        id S1728346AbgJ2H0j (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Thu, 29 Oct 2020 03:26:39 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55386 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725980AbgJ2HVB (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Thu, 29 Oct 2020 03:21:01 -0400
-Received: from mail-pg1-x541.google.com (mail-pg1-x541.google.com [IPv6:2607:f8b0:4864:20::541])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 65C24C08E89B;
-        Thu, 29 Oct 2020 00:05:20 -0700 (PDT)
-Received: by mail-pg1-x541.google.com with SMTP id x13so1575114pgp.7;
-        Thu, 29 Oct 2020 00:05:20 -0700 (PDT)
+        with ESMTP id S1728273AbgJ2HY7 (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Thu, 29 Oct 2020 03:24:59 -0400
+Received: from mail-pf1-x42d.google.com (mail-pf1-x42d.google.com [IPv6:2607:f8b0:4864:20::42d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B516CC08EA71;
+        Thu, 29 Oct 2020 00:06:19 -0700 (PDT)
+Received: by mail-pf1-x42d.google.com with SMTP id y14so1552997pfp.13;
+        Thu, 29 Oct 2020 00:06:19 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id;
-        bh=XhPZ+7DUQwlRDaSu5lv7OXg3Gcfc+hMYdwSPQo1kNA4=;
-        b=GCSJeAwBt1IDwsGpWUUH/GLbcfmUUQAAGeKn7lvd5Kxdmd2KKI+UzNmf7Z9s1oO3rP
-         sQ7t9hFtBDdcEdm5RPwu3vUDgqTJj9fu5fa0Fo01g8ISG+qCbvTAvI6GbX3KiZfZZvjQ
-         W58CMfw9sQUblhvn+gVfcP8sDrAIG8ASS7quSQ3b7IAxMCDd7f/qNACACJJ+ZQXugEMI
-         McM9ymrv8+FWLAEtvUIj4QUiEg0V24keQmoo0p6SpqMltgOeyVdSOUZnQSnDTO9/7IIW
-         kVOKkS5MCWXigtrxJjzPIQz3xinzYxy4n2HFXy0ig1//7WOdf/qP6xXOyuDcKMsUwERY
-         KYSQ==
+        h=from:to:cc:subject:date:message-id:in-reply-to:references
+         :in-reply-to:references;
+        bh=YDqQ2Sn2AyCuVnszp8b8RNjs6d8vIK5S3JVlE5v5nOM=;
+        b=D6P/4TEgppesVO+JazbyL4Q7yOwFraU8YCyJKuguOk8/Da3XqC4UXUmBp6Pk0PncEY
+         XEF8oXS+XzTmkKRTWKAaFkVkpprWze3FkFaHARg6lFiytlI/aIUQY6cndu9tVLuBp/tt
+         ZAYS2bDh8PgThAmiWNuAw1jSiM8Q7OD4LWf0iqu2gqB6yevFryWbjZR2QE3l4gmimSNH
+         taRmhbkNCVEB2sfCOnEFdZJt2XRAPaPocvwp679ZH3PTc5q1n17MQkuIXfaE4DbZ2qY5
+         FKJvFOiYHiWnyTfgYN28uNXT1TKL0PCDQKCZv10rUFCRQjtXSE3F63PaoH5V66RGKu5H
+         mZcw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id;
-        bh=XhPZ+7DUQwlRDaSu5lv7OXg3Gcfc+hMYdwSPQo1kNA4=;
-        b=kQA83pMx6TiwD2R0s9ywCiHHZ3sk/J5cj7ZYAIoa/HIGycguywAt62YuruslP2m0KY
-         9kUpXGkYEcOdxDfrX8SPTFPjnY1uXzNXetIEWE9ZuYqzOnU8N7ymhzdpkw3NHZgmmUDc
-         UwpjSOGDrV5s5Q8meOLOXVVjiWGd9Azi9afiqyT4uBlBViXUy9iaJ4HEVYvZUT5f7LTk
-         C+s9PymZCOZqSTM8RXsuyH98T/CE7vbNWqpiifyuBeYYXs0BK02W4LPHF3wZz+H0Dp2C
-         Ip3d6UPIXLMHT/hYf9RWP/01lIaTis1beR25Mc4JtLEXjfwnD0uFmokyZ6RGEfPvWe82
-         sVsQ==
-X-Gm-Message-State: AOAM531tV7eJqRjX9MLI9rVzH8ItparBaTEsIRPAwWwp6QP6K+BXfxTG
-        UkZqskSwJxnSv5B7nAZLy8l4f+kgMJg=
-X-Google-Smtp-Source: ABdhPJz/5TEGhQUu2sGpjVz71NQISEfuWzK5n4l6V8Ug2pcvFnR7RHYPqOZlTCLSkDue16cExMXE8Q==
-X-Received: by 2002:a17:90a:2ec1:: with SMTP id h1mr2959377pjs.51.1603955119142;
-        Thu, 29 Oct 2020 00:05:19 -0700 (PDT)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
+         :references:in-reply-to:references;
+        bh=YDqQ2Sn2AyCuVnszp8b8RNjs6d8vIK5S3JVlE5v5nOM=;
+        b=r8MvLrLwC4kfuMJMEw3cZnh9N4+CL8GxkuvjDAnoHLOyk64hDvtm1ii6IkHsROZbDV
+         R26WbRLYF12gFsPbkxTLBx+FVs4XFqUUXpd4mL5Ng8s7TBDghgJAtTilJIg5hzkTTz+s
+         PC1ZXkKKGmn+0lHI7hM06KeC44JcNpfv/op5GzW6uQ131v+IVZGXby09rxpuzbI+P7G3
+         QDBZKxG4fYbsFER9GU+o8E+ls/Hj4ZOCxMz0/iRNqYVJdxnnlhS/bsO9Ai+TLLKaekTb
+         o0QuvuQKO/PKIS5V1eDxZC6QrssADS4zvREgxT94hG+hABlSfvEDju7jdT3BQ6riYXGs
+         pCeQ==
+X-Gm-Message-State: AOAM5304xmRNuZBL/ZrECp27XbxwhKP2jbBUCcUQZOthU1dFZl9QKEaY
+        k1znQ9ygk5z3FX3Nx5tssVOWwjtwyGM=
+X-Google-Smtp-Source: ABdhPJwGQWv8UQAhKdY5CRJuxZQHwAaZSf8JFQP938yHD77pnFKOO6x3T7dP/ToR5igVzSkJwdbiPw==
+X-Received: by 2002:a17:90a:ed02:: with SMTP id kq2mr2962291pjb.8.1603955178905;
+        Thu, 29 Oct 2020 00:06:18 -0700 (PDT)
 Received: from localhost ([209.132.188.80])
-        by smtp.gmail.com with ESMTPSA id v66sm1664558pfb.139.2020.10.29.00.05.17
+        by smtp.gmail.com with ESMTPSA id j23sm1438184pjn.42.2020.10.29.00.06.17
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 29 Oct 2020 00:05:18 -0700 (PDT)
+        Thu, 29 Oct 2020 00:06:18 -0700 (PDT)
 From:   Xin Long <lucien.xin@gmail.com>
 To:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
 Cc:     Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
@@ -62,145 +65,199 @@ Cc:     Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
         Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net,
         Jakub Kicinski <kuba@kernel.org>, gnault@redhat.com,
         pabeni@redhat.com, willemdebruijn.kernel@gmail.com
-Subject: [PATCHv5 net-next 00/16] sctp: Implement RFC6951: UDP Encapsulation of SCTP
-Date:   Thu, 29 Oct 2020 15:04:54 +0800
-Message-Id: <cover.1603955040.git.lucien.xin@gmail.com>
+Subject: [PATCHv5 net-next 07/16] sctp: add encap_port for netns sock asoc and transport
+Date:   Thu, 29 Oct 2020 15:05:01 +0800
+Message-Id: <066bbdcf83188bbc62b6c458f2a0fd8f06f41640.1603955040.git.lucien.xin@gmail.com>
 X-Mailer: git-send-email 2.1.0
+In-Reply-To: <279d266bc34ebc439114f39da983dc08845ea37a.1603955040.git.lucien.xin@gmail.com>
+References: <cover.1603955040.git.lucien.xin@gmail.com>
+ <48053c3bf48a46899bc0130dc43adca1e6925581.1603955040.git.lucien.xin@gmail.com>
+ <4f439ed717442a649ba78dc0efc6f121208a9995.1603955040.git.lucien.xin@gmail.com>
+ <e7575f9fea2b867bf0c7c3e8541e8a6101610055.1603955040.git.lucien.xin@gmail.com>
+ <1cfd9ca0154d35389b25f68457ea2943a19e7da2.1603955040.git.lucien.xin@gmail.com>
+ <3c26801d36575d0e9c9bd260e6c1f1b67e4b721e.1603955040.git.lucien.xin@gmail.com>
+ <279d266bc34ebc439114f39da983dc08845ea37a.1603955040.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1603955040.git.lucien.xin@gmail.com>
+References: <cover.1603955040.git.lucien.xin@gmail.com>
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Description From the RFC:
+encap_port is added as per netns/sock/assoc/transport, and the
+latter one's encap_port inherits the former one's by default.
+The transport's encap_port value would mostly decide if one
+packet should go out with udp encapsulated or not.
 
-   The Main Reasons:
-
-   o  To allow SCTP traffic to pass through legacy NATs, which do not
-      provide native SCTP support as specified in [BEHAVE] and
-      [NATSUPP].
-
-   o  To allow SCTP to be implemented on hosts that do not provide
-      direct access to the IP layer.  In particular, applications can
-      use their own SCTP implementation if the operating system does not
-      provide one.
-
-   Implementation Notes:
-
-   UDP-encapsulated SCTP is normally communicated between SCTP stacks
-   using the IANA-assigned UDP port number 9899 (sctp-tunneling) on both
-   ends.  There are circumstances where other ports may be used on
-   either end, and it might be required to use ports other than the
-   registered port.
-
-   Each SCTP stack uses a single local UDP encapsulation port number as
-   the destination port for all its incoming SCTP packets, this greatly
-   simplifies implementation design.
-
-   An SCTP implementation supporting UDP encapsulation MUST maintain a
-   remote UDP encapsulation port number per destination address for each
-   SCTP association.  Again, because the remote stack may be using ports
-   other than the well-known port, each port may be different from each
-   stack.  However, because of remapping of ports by NATs, the remote
-   ports associated with different remote IP addresses may not be
-   identical, even if they are associated with the same stack.
-
-   Because the well-known port might not be used, implementations need
-   to allow other port numbers to be specified as a local or remote UDP
-   encapsulation port number through APIs.
-
-Patches:
-
-   This patchset is using the udp4/6 tunnel APIs to implement the UDP
-   Encapsulation of SCTP with not much change in SCTP protocol stack
-   and with all current SCTP features keeped in Linux Kernel.
-
-   1 - 4: Fix some UDP issues that may be triggered by SCTP over UDP.
-   5 - 7: Process incoming UDP encapsulated packets and ICMP packets.
-   8 -10: Remote encap port's update by sysctl, sockopt and packets.
-   11-14: Process outgoing pakects with UDP encapsulated and its GSO.
-   15-16: Add the part from draft-tuexen-tsvwg-sctp-udp-encaps-cons-03.
-      17: Enable this feature.
-
-Tests:
-
-  - lksctp-tools/src/func_tests with UDP Encapsulation enabled/disabled:
-
-      Both make v4test and v6test passed.
-
-  - sctp-tests with UDP Encapsulation enabled/disabled:
-
-      repeatability/procdumps/sctpdiag/gsomtuchange/extoverflow/
-      sctphashtable passed. Others failed as expected due to those
-      "iptables -p sctp" rules.
-
-  - netperf on lo/netns/virtio_net, with gso enabled/disabled and
-    with ip_checksum enabled/disabled, with UDP Encapsulation
-    enabled/disabled:
-
-      No clear performance dropped.
+This patch also allows users to set netns' encap_port by sysctl.
 
 v1->v2:
-  - Fix some incorrect code in the patches 5,6,8,10,11,13,14,17, suggested
-    by Marcelo.
-  - Append two patches 15-16 to add the Additional Considerations for UDP
-    Encapsulation of SCTP from draft-tuexen-tsvwg-sctp-udp-encaps-cons-03.
+  - Change to define encap_port as __be16 for sctp_sock, asoc and
+    transport.
 v2->v3:
-  - remove the cleanup code in patch 2, suggested by Willem.
-  - remove the patch 3 and fix the checksum in the new patch 3 after
-    talking with Paolo, Marcelo and Guillaume.
-  - add 'select NET_UDP_TUNNEL' in patch 4 to solve a compiling error.
-  - fix __be16 type cast warning in patch 8.
-  - fix the wrong endian orders when setting values in 14,16.
+  - No change.
 v3->v4:
-  - add entries in ip-sysctl.rst in patch 7,16, as Marcelo Suggested.
-  - not create udp socks when udp_port is set to 0 in patch 16, as
-    Marcelo noticed.
+  - Add 'encap_port' entry in ip-sysctl.rst.
 v4->v5:
-  - improve the description for udp_port and encap_port entries in patch
-    7, 16.
-  - use 0 as the default udp_port.
+  - Improve the description of encap_port in ip-sysctl.rst.
 
-Xin Long (16):
-  udp: check udp sock encap_type in __udp_lib_err
-  udp6: move the mss check after udp gso tunnel processing
-  udp: support sctp over udp in skb_udp_tunnel_segment
-  sctp: create udp4 sock and add its encap_rcv
-  sctp: create udp6 sock and set its encap_rcv
-  sctp: add encap_err_lookup for udp encap socks
-  sctp: add encap_port for netns sock asoc and transport
-  sctp: add SCTP_REMOTE_UDP_ENCAPS_PORT sockopt
-  sctp: allow changing transport encap_port by peer packets
-  sctp: add udphdr to overhead when udp_port is set
-  sctp: call sk_setup_caps in sctp_packet_transmit instead
-  sctp: support for sending packet over udp4 sock
-  sctp: support for sending packet over udp6 sock
-  sctp: add the error cause for new encapsulation port restart
-  sctp: handle the init chunk matching an existing asoc
-  sctp: enable udp tunneling socks
+Signed-off-by: Xin Long <lucien.xin@gmail.com>
+---
+ Documentation/networking/ip-sysctl.rst | 16 ++++++++++++++++
+ include/net/netns/sctp.h               |  2 ++
+ include/net/sctp/structs.h             |  6 ++++++
+ net/sctp/associola.c                   |  4 ++++
+ net/sctp/protocol.c                    |  3 +++
+ net/sctp/socket.c                      |  1 +
+ net/sctp/sysctl.c                      | 10 ++++++++++
+ 7 files changed, 42 insertions(+)
 
- Documentation/networking/ip-sysctl.rst |  31 +++++++
- include/linux/sctp.h                   |  20 +++++
- include/net/netns/sctp.h               |   8 ++
- include/net/sctp/constants.h           |   2 +
- include/net/sctp/sctp.h                |   9 ++-
- include/net/sctp/sm.h                  |   4 +
- include/net/sctp/structs.h             |  14 ++--
- include/uapi/linux/sctp.h              |   7 ++
- net/ipv4/udp.c                         |   2 +-
- net/ipv4/udp_offload.c                 |   3 +
- net/ipv6/udp.c                         |   2 +-
- net/ipv6/udp_offload.c                 |   8 +-
- net/sctp/Kconfig                       |   1 +
- net/sctp/associola.c                   |   4 +
- net/sctp/ipv6.c                        |  44 +++++++---
- net/sctp/offload.c                     |   6 +-
- net/sctp/output.c                      |  22 +++--
- net/sctp/protocol.c                    | 143 ++++++++++++++++++++++++++++++---
- net/sctp/sm_make_chunk.c               |  21 +++++
- net/sctp/sm_statefuns.c                |  52 ++++++++++++
- net/sctp/socket.c                      | 116 ++++++++++++++++++++++++++
- net/sctp/sysctl.c                      |  62 ++++++++++++++
- 22 files changed, 531 insertions(+), 50 deletions(-)
-
+diff --git a/Documentation/networking/ip-sysctl.rst b/Documentation/networking/ip-sysctl.rst
+index 25e6673..dad3ba9 100644
+--- a/Documentation/networking/ip-sysctl.rst
++++ b/Documentation/networking/ip-sysctl.rst
+@@ -2642,6 +2642,22 @@ addr_scope_policy - INTEGER
+ 
+ 	Default: 1
+ 
++encap_port - INTEGER
++	The default remote UDP encapsulation port.
++
++	This value is used to set the dest port of the UDP header for the
++	outgoing UDP-encapsulated SCTP packets by default. Users can also
++	change the value for each sock/asoc/transport by using setsockopt.
++	For further information, please refer to RFC6951.
++
++	Note that when connecting to a remote server, the client should set
++	this to the port that the UDP tunneling sock on the peer server is
++	listening to and the local UDP tunneling sock on the client also
++	must be started. On the server, it would get the encap_port from
++	the incoming packet's source port.
++
++	Default: 0
++
+ 
+ ``/proc/sys/net/core/*``
+ ========================
+diff --git a/include/net/netns/sctp.h b/include/net/netns/sctp.h
+index 247b401..a0f315e 100644
+--- a/include/net/netns/sctp.h
++++ b/include/net/netns/sctp.h
+@@ -27,6 +27,8 @@ struct netns_sctp {
+ 	struct sock *udp6_sock;
+ 	/* UDP tunneling listening port. */
+ 	int udp_port;
++	/* UDP tunneling remote encap port. */
++	int encap_port;
+ 
+ 	/* This is the global local address list.
+ 	 * We actively maintain this complete list of addresses on
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 0bdff38..aa98e7e 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -178,6 +178,8 @@ struct sctp_sock {
+ 	 */
+ 	__u32 hbinterval;
+ 
++	__be16 encap_port;
++
+ 	/* This is the max_retrans value for new associations. */
+ 	__u16 pathmaxrxt;
+ 
+@@ -877,6 +879,8 @@ struct sctp_transport {
+ 	 */
+ 	unsigned long last_time_ecne_reduced;
+ 
++	__be16 encap_port;
++
+ 	/* This is the max_retrans value for the transport and will
+ 	 * be initialized from the assocs value.  This can be changed
+ 	 * using the SCTP_SET_PEER_ADDR_PARAMS socket option.
+@@ -1790,6 +1794,8 @@ struct sctp_association {
+ 	 */
+ 	unsigned long hbinterval;
+ 
++	__be16 encap_port;
++
+ 	/* This is the max_retrans value for new transports in the
+ 	 * association.
+ 	 */
+diff --git a/net/sctp/associola.c b/net/sctp/associola.c
+index fdb69d4..336df4b 100644
+--- a/net/sctp/associola.c
++++ b/net/sctp/associola.c
+@@ -99,6 +99,8 @@ static struct sctp_association *sctp_association_init(
+ 	 */
+ 	asoc->hbinterval = msecs_to_jiffies(sp->hbinterval);
+ 
++	asoc->encap_port = sp->encap_port;
++
+ 	/* Initialize path max retrans value. */
+ 	asoc->pathmaxrxt = sp->pathmaxrxt;
+ 
+@@ -624,6 +626,8 @@ struct sctp_transport *sctp_assoc_add_peer(struct sctp_association *asoc,
+ 	 */
+ 	peer->hbinterval = asoc->hbinterval;
+ 
++	peer->encap_port = asoc->encap_port;
++
+ 	/* Set the path max_retrans.  */
+ 	peer->pathmaxrxt = asoc->pathmaxrxt;
+ 
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index 4d12a0c..89dfd31 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -1359,6 +1359,9 @@ static int __net_init sctp_defaults_init(struct net *net)
+ 	/* Set UDP tunneling listening port to 0 by default */
+ 	net->sctp.udp_port = 0;
+ 
++	/* Set remote encap port to 0 by default */
++	net->sctp.encap_port = 0;
++
+ 	/* Set SCOPE policy to enabled */
+ 	net->sctp.scope_policy = SCTP_SCOPE_POLICY_ENABLE;
+ 
+diff --git a/net/sctp/socket.c b/net/sctp/socket.c
+index 53d0a41..09b94cd 100644
+--- a/net/sctp/socket.c
++++ b/net/sctp/socket.c
+@@ -4876,6 +4876,7 @@ static int sctp_init_sock(struct sock *sk)
+ 	 * be modified via SCTP_PEER_ADDR_PARAMS
+ 	 */
+ 	sp->hbinterval  = net->sctp.hb_interval;
++	sp->encap_port  = htons(net->sctp.encap_port);
+ 	sp->pathmaxrxt  = net->sctp.max_retrans_path;
+ 	sp->pf_retrans  = net->sctp.pf_retrans;
+ 	sp->ps_retrans  = net->sctp.ps_retrans;
+diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
+index c16c809..ecc1b5e 100644
+--- a/net/sctp/sysctl.c
++++ b/net/sctp/sysctl.c
+@@ -36,6 +36,7 @@ static int rto_alpha_max = 1000;
+ static int rto_beta_max = 1000;
+ static int pf_expose_max = SCTP_PF_EXPOSE_MAX;
+ static int ps_retrans_max = SCTP_PS_RETRANS_MAX;
++static int udp_port_max = 65535;
+ 
+ static unsigned long max_autoclose_min = 0;
+ static unsigned long max_autoclose_max =
+@@ -291,6 +292,15 @@ static struct ctl_table sctp_net_table[] = {
+ 		.proc_handler	= proc_dointvec,
+ 	},
+ 	{
++		.procname	= "encap_port",
++		.data		= &init_net.sctp.encap_port,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec,
++		.extra1		= SYSCTL_ZERO,
++		.extra2		= &udp_port_max,
++	},
++	{
+ 		.procname	= "addr_scope_policy",
+ 		.data		= &init_net.sctp.scope_policy,
+ 		.maxlen		= sizeof(int),
 -- 
 2.1.0
 
