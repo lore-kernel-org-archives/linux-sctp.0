@@ -1,73 +1,103 @@
-Return-Path: <SRS0=G3wb=EF=vger.kernel.org=linux-sctp-owner@kernel.org>
+Return-Path: <SRS0=WlM+=EI=vger.kernel.org=linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.1 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.6 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_HELO_NONE,
+	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8C32FC388F9
-	for <linux-sctp@archiver.kernel.org>; Fri, 30 Oct 2020 23:46:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 21458C388F2
+	for <linux-sctp@archiver.kernel.org>; Mon,  2 Nov 2020 13:27:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 3DD41221EB
-	for <linux-sctp@archiver.kernel.org>; Fri, 30 Oct 2020 23:46:43 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1604101603;
-	bh=voJHJOf9dPBy4fxAMBhVgDxcGEaN2P+DHs0ps8ovIr8=;
-	h=Date:From:To:Cc:Subject:In-Reply-To:References:List-ID:From;
-	b=xU2+99sQr0wVe4IXgY5w+sT3tUoUXnZa2UW4QFdjkfEw9a1MoBrItZuHiSdI0kbcV
-	 FZJ+I45jxFgDKP0PSNnxil2uVPvS7wfqI2/xahRwYBFHInJCjzhJDdIKwtAuA6KKmK
-	 vyqeGAaIttOTX3Fr3hdullxlPhUDNX6q9yScHqT8=
+	by mail.kernel.org (Postfix) with ESMTP id B03EC2054F
+	for <linux-sctp@archiver.kernel.org>; Mon,  2 Nov 2020 13:27:26 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="oELlHAqZ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725787AbgJ3Xqm (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Fri, 30 Oct 2020 19:46:42 -0400
-Received: from mail.kernel.org ([198.145.29.99]:50402 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725446AbgJ3Xqm (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
-        Fri, 30 Oct 2020 19:46:42 -0400
-Received: from kicinski-fedora-PC1C0HJN.hsd1.ca.comcast.net (unknown [163.114.132.7])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 71AB9208B6;
-        Fri, 30 Oct 2020 23:46:41 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1604101602;
-        bh=voJHJOf9dPBy4fxAMBhVgDxcGEaN2P+DHs0ps8ovIr8=;
-        h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
-        b=FJdKogOYBw22C9CQ4xTuDRutEHcr9iI1uO1Xg2FQcBhiXnj8qPvB1zNgu2ubo0lP9
-         uApQW7c0V58yT78WSf1xtyLLjRXXMgBVYy9FDGQOheiaRghFG1ULAZXCF1iGuk98K5
-         iO6RVL9il2esFPCrtTuW1FBfwhTCrOOnWy/5kFcU=
-Date:   Fri, 30 Oct 2020 16:46:40 -0700
-From:   Jakub Kicinski <kuba@kernel.org>
-To:     Xin Long <lucien.xin@gmail.com>
-Cc:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org,
-        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        id S1727316AbgKBN1V (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Mon, 2 Nov 2020 08:27:21 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39028 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726069AbgKBN1V (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Mon, 2 Nov 2020 08:27:21 -0500
+Received: from mail-qk1-x741.google.com (mail-qk1-x741.google.com [IPv6:2607:f8b0:4864:20::741])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 76662C0617A6;
+        Mon,  2 Nov 2020 05:27:21 -0800 (PST)
+Received: by mail-qk1-x741.google.com with SMTP id p3so11384000qkk.7;
+        Mon, 02 Nov 2020 05:27:21 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to;
+        bh=PdvDuP7e3w2Z1tBi0oPx/qF1V99ajnCRYtINddpeaV8=;
+        b=oELlHAqZObXU/0Y1vLQClILBhaSo1PyaDxNvAK4JCbQUlPkY2EBe7YCZEkwC/I4KcD
+         eQ2va6VWfVDNqiDoQYgv914RPRL9YLtEmRWkrJFINQAygSzcTgsh1JRxlnJyLw1/r1vO
+         jXEEYjedt6AEM0Xz840DMDiPp0jJeM4FmN6+uK+hLRDnJnltsapz+BZwXFmyVJ5UwZlZ
+         8VENknNQJmGCXLXPUgjDwnL+gZusf3tHjn76mvJY6OeGqc04h5pBrrw5Uszs+nCQ+DfA
+         zYQgS6vjsNXY5cQao5QESVLzLvLDiObkO+afYF8OI4MKxpda1rutpuZeiL4KiS1U14cT
+         +wMQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=PdvDuP7e3w2Z1tBi0oPx/qF1V99ajnCRYtINddpeaV8=;
+        b=DWeOmi8eIyUgc6sj3juz1UlqearIJOXKhdVoxhN+guASvoNL3H60XEBY/24IneYr24
+         zIBORBtcteWRBZBkbYZ6DqXaIqcgCIj4wUjHehtGBcisyKVLn/fkqOOOIHeXDrjpQBSz
+         yimohj0kFgXmlfRboqwsmZtOZ1nRBy4a7+pK9FJPsK8qQJ0E7tRq/OFS0246qL/IrS9B
+         YvJWvlsG+v21hRyU24h4C7LXVDehUeDnpYL6hFkejJxr14fJvlJ+HUslj//BkQD2Pm/o
+         UlIppedTkQvIkTSR2Tc39FPCkL9Wo0k2CS56XGci1nulOxdDOf7WqOroSHvinCZo4A5A
+         f/Nw==
+X-Gm-Message-State: AOAM5305Ie3ZhkGq1moockNQ1aZYrcOkY9Z0Bzj5PIDjNfRyiNVlpeTS
+        0BDIShZdAZnJelencspx12g=
+X-Google-Smtp-Source: ABdhPJyxPF2bCnNggS7wxbBQGiC+TY0Piw/sUKV9ySKTqBbl7NWqIINfq79wpjhNZPP7Q2lepbeUeg==
+X-Received: by 2002:a37:6790:: with SMTP id b138mr15047011qkc.355.1604323640677;
+        Mon, 02 Nov 2020 05:27:20 -0800 (PST)
+Received: from localhost.localdomain ([2001:1284:f016:de27:b805:b146:db09:c9cb])
+        by smtp.gmail.com with ESMTPSA id t12sm7670804qkg.132.2020.11.02.05.27.19
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 02 Nov 2020 05:27:19 -0800 (PST)
+Received: by localhost.localdomain (Postfix, from userid 1000)
+        id 92CA7C0DAB; Mon,  2 Nov 2020 10:27:17 -0300 (-03)
+Date:   Mon, 2 Nov 2020 10:27:17 -0300
+From:   Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To:     Petr Malat <oss@malat.biz>
+Cc:     linux-sctp@vger.kernel.org, Vlad Yasevich <vyasevich@gmail.com>,
         Neil Horman <nhorman@tuxdriver.com>,
-        Michael Tuexen <tuexen@fh-muenster.de>, davem@davemloft.net,
-        gnault@redhat.com, pabeni@redhat.com,
-        willemdebruijn.kernel@gmail.com
-Subject: Re: [PATCHv5 net-next 00/16] sctp: Implement RFC6951: UDP
- Encapsulation of SCTP
-Message-ID: <20201030164640.4e89902f@kicinski-fedora-PC1C0HJN.hsd1.ca.comcast.net>
-In-Reply-To: <cover.1603955040.git.lucien.xin@gmail.com>
-References: <cover.1603955040.git.lucien.xin@gmail.com>
+        "David S. Miller" <davem@davemloft.net>,
+        Jakub Kicinski <kuba@kernel.org>, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] sctp: Fix COMM_LOST/CANT_STR_ASSOC err reporting on
+ big-endian platforms
+Message-ID: <20201102132717.GI11030@localhost.localdomain>
+References: <20201030132633.7045-1-oss@malat.biz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20201030132633.7045-1-oss@malat.biz>
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-On Thu, 29 Oct 2020 15:04:54 +0800 Xin Long wrote:
->    This patchset is using the udp4/6 tunnel APIs to implement the UDP
->    Encapsulation of SCTP with not much change in SCTP protocol stack
->    and with all current SCTP features keeped in Linux Kernel.
-> 
->    1 - 4: Fix some UDP issues that may be triggered by SCTP over UDP.
->    5 - 7: Process incoming UDP encapsulated packets and ICMP packets.
->    8 -10: Remote encap port's update by sysctl, sockopt and packets.
->    11-14: Process outgoing pakects with UDP encapsulated and its GSO.
->    15-16: Add the part from draft-tuexen-tsvwg-sctp-udp-encaps-cons-03.
->       17: Enable this feature.
+On Fri, Oct 30, 2020 at 02:26:33PM +0100, Petr Malat wrote:
+> Commit 978aa0474115 ("sctp: fix some type cast warnings introduced since
+> very beginning")' broke err reading from sctp_arg, because it reads the
+> value as 32-bit integer, although the value is stored as 16-bit integer.
+> Later this value is passed to the userspace in 16-bit variable, thus the
+> user always gets 0 on big-endian platforms. Fix it by reading the __u16
+> field of sctp_arg union, as reading err field would produce a sparse
+> warning.
 
-Applied, thanks!
+Makes sense.
+
+> 
+> Signed-off-by: Petr Malat <oss@malat.biz>
+
+Then, it also needs:
+Fixes: 978aa0474115 ("sctp: fix some type cast warnings introduced since very beginning")'
+
+Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+(If the maintainers can't add the Fixes tag above, please keep the ack
+on the v2)
+
+Thanks.
