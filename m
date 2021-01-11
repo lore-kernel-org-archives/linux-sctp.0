@@ -2,123 +2,82 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-10.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EDF00C433E6
-	for <linux-sctp@archiver.kernel.org>; Mon, 11 Jan 2021 12:40:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 35EE7C433E0
+	for <linux-sctp@archiver.kernel.org>; Mon, 11 Jan 2021 12:46:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id BD0442250F
-	for <linux-sctp@archiver.kernel.org>; Mon, 11 Jan 2021 12:40:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 02345224B1
+	for <linux-sctp@archiver.kernel.org>; Mon, 11 Jan 2021 12:46:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726952AbhAKMjr (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Mon, 11 Jan 2021 07:39:47 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42116 "EHLO
+        id S1726743AbhAKMqD (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Mon, 11 Jan 2021 07:46:03 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43474 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725601AbhAKMjr (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Mon, 11 Jan 2021 07:39:47 -0500
-Received: from mail-pf1-x42c.google.com (mail-pf1-x42c.google.com [IPv6:2607:f8b0:4864:20::42c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EFFF0C061795;
-        Mon, 11 Jan 2021 04:39:06 -0800 (PST)
-Received: by mail-pf1-x42c.google.com with SMTP id t22so10887854pfl.3;
-        Mon, 11 Jan 2021 04:39:06 -0800 (PST)
+        with ESMTP id S1726686AbhAKMqD (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Mon, 11 Jan 2021 07:46:03 -0500
+Received: from mail-pf1-x431.google.com (mail-pf1-x431.google.com [IPv6:2607:f8b0:4864:20::431])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2F016C061786;
+        Mon, 11 Jan 2021 04:45:23 -0800 (PST)
+Received: by mail-pf1-x431.google.com with SMTP id c13so8193794pfi.12;
+        Mon, 11 Jan 2021 04:45:23 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :in-reply-to:references;
-        bh=PaokGmO6qWSPL+k2UjYk5nu0nOURlCVutGfozluGv3E=;
-        b=hn0P4l59kgByZoOhcADJpAIuYWHE2y78X1nZpCRdYokx1zPBqINoeknlh3fg24jE8A
-         yYH0xxcXTbwkkoHO+fWFRHrGSW+eh8xJb+ASjbkvK2nhqxQOgVYboDpoKJhSkmrIfUR/
-         O6VCmSqQcx4ptym26pHVxfDei+skWS1wknxYPXMXVQ0l9WUCmAippKzPons1w8z4wsx2
-         RUHvTytwjVSBhH+Gm5BjfFOWsGDXaFaDcMvZfhk1cDGn9x64zqQICqMRdJKYK9J2R+KJ
-         682pez2rGAeknLj4lbBLcxwTcHF4D8Clad1TSZVg7qtYTIik/Sv088JY+Tht9r+iVwD8
-         wiMw==
+        h=from:to:cc:subject:date:message-id;
+        bh=fmUQlRam3mBAIiFTols5aHBn7GKobtKDU9G+UgNF4i0=;
+        b=EiqHRhdYNRRJYGFEDZqXXtfQz/GvTtM007LdtlcJLXoYig5FkRtK9Nu6fFBoILOwSZ
+         gBi5VaByhIdz6CsCPpj8wVWLPS74/cUOMQscyfsoUr+1HaaPaGPaXgHj8raNOv7rR69g
+         jFF7t9vF7glzoiban72d8XZ13SfjmjIqTHHyTjQe1N8R95uDMVWtS+DAt0X1o7D6gBU4
+         lf+sSqX9uSafYWtAVBoNeQIvbuwiS1WE92FG3ZphV1BmV5JwitfchD7aVVK20EHGbIrh
+         mqxU8PB9f86qQuin0VRPlc2/+0MLWaJabDqkAmzF7yvqK086bUz3QBoyAh9A2menOK9/
+         FRCQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:in-reply-to:references;
-        bh=PaokGmO6qWSPL+k2UjYk5nu0nOURlCVutGfozluGv3E=;
-        b=ADJGJHF081gD638T2SrHAqI6roacjRCG7LLSOkCDwOT/CGO5PqfPSrmJs5ZbrbWf01
-         lNZIXHi6I0QLTZuHfgpKuV6LiOIECvDqb/ZF95e6MvIdUp27NYnMFwbNWtUTZEUYzKvA
-         jyLRSMvcVJdfEtBFkY8nnRfuyOjQ0AxIu/gcRmovyboMdcS6BnBCyp2k4kYeZdfzPkpD
-         23XTO+feWoo0+xxzsAcy4xhYutqZ1E6qX9Xopn6lx57kjnmG1lOpr8Z4sTRUvIacjnsi
-         pRLqG9mX7uUzwdQ3vELGQmGV/CC/YSzwOP8H96X11n+pBXsLwZFTW3X/CxZO195uniDu
-         iYcw==
-X-Gm-Message-State: AOAM533HsuVTUNxN481cRJnNYbXecGrPkfzQeeUT2tgTucBu07FhT9Xq
-        2nDnHkT4mlILENsnXLVSzdQtQEBjdr1PGw==
-X-Google-Smtp-Source: ABdhPJxIyQpQgepMNy/4W5snHEA4X9URyV3ZWBidbRcHgHhrl9x8eD22ONbppprRR3RVrRJqdlKy8A==
-X-Received: by 2002:a65:6409:: with SMTP id a9mr19357839pgv.171.1610368746325;
-        Mon, 11 Jan 2021 04:39:06 -0800 (PST)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id;
+        bh=fmUQlRam3mBAIiFTols5aHBn7GKobtKDU9G+UgNF4i0=;
+        b=gKmS4L0Gbk5qDbPOWcEV8V2wrECcy7SNVX88kpYYHI+hLV8A9Vvg9o65T5DDimfafe
+         AC/XIlBZHrO0ZB0ijTVOL5YiNPyEX8ceYw083HaYJMcQv+5pqQohU1flCCPhjzgPydP1
+         cp0Avi/WWTOCOWMRfgkA40BSUEkMNlijJ2O9fJOKGmph5vCen+YxcMkt+9aIKuWDA1rr
+         hMU/h0MCVvdJj95seBkyIxOZaz+3OWd8vMfjbS3u3Psajg6xuWBjBylAk1Kr2TD/cyMb
+         k9dGqn3MReogsh/IgRaqI4tA8jtc4yZZuULyerU7JrgA8BRXCnUoOngUVb+ciz1DND3i
+         RFKw==
+X-Gm-Message-State: AOAM5326rF4vQEZ+H1E24bbpSBn6sJGmyEB2bUxF1J0ywsuqSSlzFvI5
+        ikBxZjYQHihg3aA4yHLfmyvsUj2+uumIeQ==
+X-Google-Smtp-Source: ABdhPJx9SvVdhMvCEo7HEV3xRaOUOA/9nCk915IZOJ0LDMghBxMZqa2vysGI4tyhd1T9AduzWY9/XA==
+X-Received: by 2002:a63:4559:: with SMTP id u25mr19305063pgk.306.1610369122528;
+        Mon, 11 Jan 2021 04:45:22 -0800 (PST)
 Received: from localhost ([209.132.188.80])
-        by smtp.gmail.com with ESMTPSA id c3sm19945209pfi.135.2021.01.11.04.39.05
+        by smtp.gmail.com with ESMTPSA id z125sm17937939pfz.121.2021.01.11.04.45.21
         (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 11 Jan 2021 04:39:05 -0800 (PST)
+        Mon, 11 Jan 2021 04:45:21 -0800 (PST)
 From:   Xin Long <lucien.xin@gmail.com>
 To:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc:     davem@davemloft.net, Jakub Kicinski <kuba@kernel.org>,
-        pabeni@redhat.com, Willem de Bruijn <willemb@google.com>,
-        Martin Varghese <martin.varghese@nokia.com>
-Subject: [PATCH net-next 1/2] udp: call udp_encap_enable for v6 sockets when enabling encap
-Date:   Mon, 11 Jan 2021 20:38:48 +0800
-Message-Id: <8636d49cb2d5deb966ba1112b6d0907f2f595526.1610368263.git.lucien.xin@gmail.com>
+Cc:     Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        Neil Horman <nhorman@tuxdriver.com>, davem@davemloft.net,
+        Jakub Kicinski <kuba@kernel.org>,
+        Alexander Duyck <alexander.duyck@gmail.com>
+Subject: [PATCH net-next 0/2] net: fix the features flag in sctp_gso_segment
+Date:   Mon, 11 Jan 2021 20:45:12 +0800
+Message-Id: <cover.1610368918.git.lucien.xin@gmail.com>
 X-Mailer: git-send-email 2.1.0
-In-Reply-To: <cover.1610368263.git.lucien.xin@gmail.com>
-References: <cover.1610368263.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1610368263.git.lucien.xin@gmail.com>
-References: <cover.1610368263.git.lucien.xin@gmail.com>
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-When enabling encap for a ipv6 socket without udp_encap_needed_key
-increased, UDP GRO won't work for v4 mapped v6 address packets as
-sk will be NULL in udp4_gro_receive().
+Patch 1/2 is to improve the code in skb_segment(), and it is needed
+by Patch 2/2.
 
-This patch is to enable it by increasing udp_encap_needed_key for
-v6 sockets in udp_tunnel_encap_enable(), and correspondingly
-decrease udp_encap_needed_key in udpv6_destroy_sock().
+Xin Long (2):
+  net: move the hsize check to the else block in skb_segment
+  sctp: remove the NETIF_F_SG flag before calling skb_segment
 
-Reported-by: Chen Yi <yiche@redhat.com>
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- include/net/udp_tunnel.h | 3 +--
- net/ipv6/udp.c           | 4 +++-
+ net/core/skbuff.c  | 5 +++--
+ net/sctp/offload.c | 2 +-
  2 files changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/include/net/udp_tunnel.h b/include/net/udp_tunnel.h
-index 282d10e..afc7ce7 100644
---- a/include/net/udp_tunnel.h
-+++ b/include/net/udp_tunnel.h
-@@ -181,9 +181,8 @@ static inline void udp_tunnel_encap_enable(struct socket *sock)
- #if IS_ENABLED(CONFIG_IPV6)
- 	if (sock->sk->sk_family == PF_INET6)
- 		ipv6_stub->udpv6_encap_enable();
--	else
- #endif
--		udp_encap_enable();
-+	udp_encap_enable();
- }
- 
- #define UDP_TUNNEL_NIC_MAX_TABLES	4
-diff --git a/net/ipv6/udp.c b/net/ipv6/udp.c
-index b9f3dfd..265b6a0 100644
---- a/net/ipv6/udp.c
-+++ b/net/ipv6/udp.c
-@@ -1608,8 +1608,10 @@ void udpv6_destroy_sock(struct sock *sk)
- 			if (encap_destroy)
- 				encap_destroy(sk);
- 		}
--		if (up->encap_enabled)
-+		if (up->encap_enabled) {
- 			static_branch_dec(&udpv6_encap_needed_key);
-+			static_branch_dec(&udp_encap_needed_key);
-+		}
- 	}
- 
- 	inet6_destroy_sock(sk);
 -- 
 2.1.0
 
