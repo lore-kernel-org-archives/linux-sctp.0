@@ -2,67 +2,63 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-15.1 required=3.0 tests=BAYES_00,DKIM_INVALID,
+	DKIM_SIGNED,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,USER_AGENT_SANE_1
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A06E8C433E6
-	for <linux-sctp@archiver.kernel.org>; Tue, 19 Jan 2021 22:27:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E3F26C433E0
+	for <linux-sctp@archiver.kernel.org>; Tue, 19 Jan 2021 23:37:03 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 84A0023108
-	for <linux-sctp@archiver.kernel.org>; Tue, 19 Jan 2021 22:27:14 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B54C722E01
+	for <linux-sctp@archiver.kernel.org>; Tue, 19 Jan 2021 23:37:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727684AbhASWZ6 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Tue, 19 Jan 2021 17:25:58 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42748 "EHLO
+        id S1728865AbhASXhA (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Tue, 19 Jan 2021 18:37:00 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58082 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730040AbhASWZr (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Tue, 19 Jan 2021 17:25:47 -0500
-Received: from mail-io1-xd2a.google.com (mail-io1-xd2a.google.com [IPv6:2607:f8b0:4864:20::d2a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4015DC061573;
-        Tue, 19 Jan 2021 14:25:07 -0800 (PST)
-Received: by mail-io1-xd2a.google.com with SMTP id e22so19260988iog.6;
-        Tue, 19 Jan 2021 14:25:07 -0800 (PST)
+        with ESMTP id S1729161AbhASXf7 (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Tue, 19 Jan 2021 18:35:59 -0500
+Received: from mail-pf1-x433.google.com (mail-pf1-x433.google.com [IPv6:2607:f8b0:4864:20::433])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8F2E1C061575
+        for <linux-sctp@vger.kernel.org>; Tue, 19 Jan 2021 15:35:17 -0800 (PST)
+Received: by mail-pf1-x433.google.com with SMTP id o20so4901703pfu.0
+        for <linux-sctp@vger.kernel.org>; Tue, 19 Jan 2021 15:35:17 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=ndPJv3Dw3hEVsrNkrtY/IVB4dfqRQo8AR2YeLgGSV8Q=;
-        b=uSxmwspGjZr3sg7ZtZX+R62Cz+izxPpOKr/8+TOLpQK8Qm+dBd3/jZ+7CSfCkUKBxH
-         BiUzDMC8nBbwp8BdE4pEr5dXctv75CaWerpeawQ3cS1SnyZI/bPNeGKDT6a1LWO32quC
-         HOlRiRKgNcnhDRIkF24PAF49Ii6YIhlGhfbOgaywMoYyS6x7KCN0xbDQwS0y7skmqNRS
-         7chM4l+Tb193l11F6Qp40l1A4YOdS6aJ89hULgO24GEQ8JvjvVCyMryhUxYnKlKXaj8n
-         2hUZnbGdUteWybqUtaNIDkr3ZHGe0l76etk9zBxIezthScy35M7lMW3i7PTLbOfZObzw
-         7C7Q==
+        d=pensando.io; s=google;
+        h=subject:to:cc:references:from:message-id:date:user-agent
+         :mime-version:in-reply-to:content-transfer-encoding:content-language;
+        bh=9yriIeABzvRqPZwPZE8XoIm4dyyxjjIHmDtEXdOpziw=;
+        b=cur2Aed8J4yCDTk/+N0YzCwCVAY6hcegD67X5rDVs18VgUKnjKiGNZ9VB7QHFWSbvI
+         Jbs4tfOEZ8vaORnJW9XcH9ATiS9uudOAbNM1hLNeeyKUUojvg4cim0UqRtlnq4K8xmHz
+         NUNsXe77SmOBKF4j05FItX7B31YWI4tv4eSDy+SHgiYzhOd1LfJ/d6j1euUQisEvheKY
+         XXqMRV1Yh/DG2q4jZpgzbTeQzO2u5fuQQootsvaINDPIrbsUifUYeqt2YYV9cMKi4cFn
+         FPQLaCVr8IJSSYROeKbd6tUBM/sedZueQJd7CYda4cGeoUEVyyE6O/A630f/tgDKUiXh
+         gQaw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=ndPJv3Dw3hEVsrNkrtY/IVB4dfqRQo8AR2YeLgGSV8Q=;
-        b=CDHHvigJ5ZXuvIamv/THcROPmdLLt0xrvNlUIop568QoVIqs6Y0DhjlmQirhwVU2eL
-         odwwpyt31JEarWI4bB/bPMqG7g7viJLZbT92BR/L4tmLJV6DEwqI0AaWIGtgNjN/RTCK
-         BdPk+yq9BmJS1xk0DSE5fPQ5Ra6JVlJ4qvWIzoDYbmOfuadHuq/6yzExsTejbHDKkwnQ
-         kOqqjtr6n4X7B+ZUxBVOe9w6qN5ezUaL6AmJr4V9ero+G0Fyb4aTNhxNHs7CCG48dHh4
-         fxk7+9MYnfGaYeQh4zYoQWa4FZdMLXQLc7V9RTGXW8E/ZIb6QBYeY9ZcABf73+ZMDWDa
-         0tKw==
-X-Gm-Message-State: AOAM530KsiSi1x7nsDWPfI6Qqba7rIV3Hbg99G+mYOeXQnjisPaHrP50
-        6aIA7ldVZTHpBCwO1jAPlWW/zWOjKvQK7tJ6V8U=
-X-Google-Smtp-Source: ABdhPJxK3WlkOvjAsX/EJ3DIYudw0vPbWcTMp69mqLZxo+grxUhO2VsmDET9jhsG2bO7BoZcM8bS9Yj32Of6/nul0Xk=
-X-Received: by 2002:a05:6e02:c6:: with SMTP id r6mr5165205ilq.95.1611095106618;
- Tue, 19 Jan 2021 14:25:06 -0800 (PST)
-MIME-Version: 1.0
-References: <34c9f5b8c31610687925d9db1f151d5bc87deba7.1610777159.git.lucien.xin@gmail.com>
- <aa69157e286b0178bf115124f4b2da254e07a291.1610777159.git.lucien.xin@gmail.com>
- <cover.1610777159.git.lucien.xin@gmail.com> <c1a1972ea509a7559a8900e1a33212d09f58f3c9.1610777159.git.lucien.xin@gmail.com>
- <7b4d84fe32d588884fcd75c2f6f84eb8cd052622.1610777159.git.lucien.xin@gmail.com>
-In-Reply-To: <7b4d84fe32d588884fcd75c2f6f84eb8cd052622.1610777159.git.lucien.xin@gmail.com>
-From:   Alexander Duyck <alexander.duyck@gmail.com>
-Date:   Tue, 19 Jan 2021 14:24:55 -0800
-Message-ID: <CAKgT0UeKRDNX_GHsGUh4fLCDni80Ysxms+P2ac1HeZwcG5zkdA@mail.gmail.com>
-Subject: Re: [PATCH net-next 4/6] net: igc: use skb_csum_is_sctp instead of
- protocol check
-To:     Xin Long <lucien.xin@gmail.com>
+        h=x-gm-message-state:subject:to:cc:references:from:message-id:date
+         :user-agent:mime-version:in-reply-to:content-transfer-encoding
+         :content-language;
+        bh=9yriIeABzvRqPZwPZE8XoIm4dyyxjjIHmDtEXdOpziw=;
+        b=LsjVr9gNEKqco/VL2mAfxVYxsh1IKCO+XhSuidHbw1zJFiaEnyhoyzdrW3n1IhBKtJ
+         toBQ6UWty8EmWrqKT6szoG9rdFLPMzdY3F5tqGiCX246j42lAOJvb5sWOLKSIPD3O3eD
+         A5s4Nkp5UPpuKBXbhf7VTc+WfHIubT+F9207mKjkHz2YMHRASWVrWhZjPEMnx+clFvq8
+         NrC0fzJ2C1J4BFhNqs8ZUcUGVMG1PW/T2fpVtwOk5O6d96aSrJbw2mVZA3CGm778ZoHj
+         Rb3Kj2o+I32+XNVGh73Fiv2EwfnI9vpU952HmCSjxwu+f34fuVjDZxoOu4Jow1BUjBC3
+         f0JA==
+X-Gm-Message-State: AOAM532+2PVcpBzpbQsfWXtG7CGrjbmvAYZNQmpO5ADYgCBqFOtJNBt3
+        9MrJhdApNvX7JYub7Y55gnMASg==
+X-Google-Smtp-Source: ABdhPJyDzrwOtXs5Wusab1hOr+Eh43N5vPEpEsZc19ka8zosde4Nvw3kWB4Za/eFHuhU/o/9XSlXXg==
+X-Received: by 2002:a62:cd49:0:b029:1b5:4e48:6f1a with SMTP id o70-20020a62cd490000b02901b54e486f1amr6169328pfg.14.1611099317116;
+        Tue, 19 Jan 2021 15:35:17 -0800 (PST)
+Received: from Shannons-MacBook-Pro.local ([50.53.47.17])
+        by smtp.gmail.com with ESMTPSA id w20sm161131pga.90.2021.01.19.15.35.15
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 19 Jan 2021 15:35:16 -0800 (PST)
+Subject: Re: [PATCH net-next 1/6] net: add inline function skb_csum_is_sctp
+To:     Alexander Duyck <alexander.duyck@gmail.com>,
+        Xin Long <lucien.xin@gmail.com>
 Cc:     network dev <netdev@vger.kernel.org>,
         "linux-sctp @ vger . kernel . org" <linux-sctp@vger.kernel.org>,
         Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
@@ -72,18 +68,94 @@ Cc:     network dev <netdev@vger.kernel.org>,
         Jesse Brandeburg <jesse.brandeburg@intel.com>,
         Tony Nguyen <anthony.l.nguyen@intel.com>,
         intel-wired-lan <intel-wired-lan@lists.osuosl.org>
-Content-Type: text/plain; charset="UTF-8"
+References: <cover.1610777159.git.lucien.xin@gmail.com>
+ <34c9f5b8c31610687925d9db1f151d5bc87deba7.1610777159.git.lucien.xin@gmail.com>
+ <CAKgT0UduX4M-N1Kyo-M2=05EO_rAs2c_CDrUwWMKk2oDOgxd2Q@mail.gmail.com>
+From:   Shannon Nelson <snelson@pensando.io>
+Message-ID: <41658acb-6607-8b4c-d29d-f71892434e0b@pensando.io>
+Date:   Tue, 19 Jan 2021 15:35:14 -0800
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:78.0)
+ Gecko/20100101 Thunderbird/78.6.1
+MIME-Version: 1.0
+In-Reply-To: <CAKgT0UduX4M-N1Kyo-M2=05EO_rAs2c_CDrUwWMKk2oDOgxd2Q@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Language: en-US
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-On Fri, Jan 15, 2021 at 10:14 PM Xin Long <lucien.xin@gmail.com> wrote:
+On 1/19/21 2:23 PM, Alexander Duyck wrote:
+> On Fri, Jan 15, 2021 at 10:13 PM Xin Long <lucien.xin@gmail.com> wrote:
+>> This patch is to define a inline function skb_csum_is_sctp(), and
+>> also replace all places where it checks if it's a SCTP CSUM skb.
+>> This function would be used later in many networking drivers in
+>> the following patches.
+>>
+>> Suggested-by: Alexander Duyck <alexander.duyck@gmail.com>
+>> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+> One minor nit. If you had to resubmit this I might move the ionic
+> driver code into a separate patch. However It can probably be accepted
+> as is.
 >
-> Using skb_csum_is_sctp is a easier way to validate it's a SCTP CRC
-> checksum offload packet, and yet it also makes igc support SCTP
-> CRC checksum offload for UDP and GRE encapped packets, just as it
-> does in igb driver.
->
-> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+> Reviewed-by: Alexander Duyck <alexanderduyck@fb.com>
 
-Reviewed-by: Alexander Duyck <alexanderduyck@fb.com>
+Alex has a good point - if you repost, please split out the ionic bits 
+to a separate patch.
+
+Either way, for ionic:
+Acked-by: Shannon Nelson <snelson@pensando.io>
+
+
+>> ---
+>>   drivers/net/ethernet/pensando/ionic/ionic_txrx.c | 2 +-
+>>   include/linux/skbuff.h                           | 5 +++++
+>>   net/core/dev.c                                   | 2 +-
+>>   3 files changed, 7 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/drivers/net/ethernet/pensando/ionic/ionic_txrx.c b/drivers/net/ethernet/pensando/ionic/ionic_txrx.c
+>> index ac4cd5d..162a1ff 100644
+>> --- a/drivers/net/ethernet/pensando/ionic/ionic_txrx.c
+>> +++ b/drivers/net/ethernet/pensando/ionic/ionic_txrx.c
+>> @@ -979,7 +979,7 @@ static int ionic_tx_calc_csum(struct ionic_queue *q, struct sk_buff *skb)
+>>                  stats->vlan_inserted++;
+>>          }
+>>
+>> -       if (skb->csum_not_inet)
+>> +       if (skb_csum_is_sctp(skb))
+>>                  stats->crc32_csum++;
+>>          else
+>>                  stats->csum++;
+>> diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+>> index c9568cf..46f901a 100644
+>> --- a/include/linux/skbuff.h
+>> +++ b/include/linux/skbuff.h
+>> @@ -4621,6 +4621,11 @@ static inline void skb_reset_redirect(struct sk_buff *skb)
+>>   #endif
+>>   }
+>>
+>> +static inline bool skb_csum_is_sctp(struct sk_buff *skb)
+>> +{
+>> +       return skb->csum_not_inet;
+>> +}
+>> +
+>>   static inline void skb_set_kcov_handle(struct sk_buff *skb,
+>>                                         const u64 kcov_handle)
+>>   {
+>> diff --git a/net/core/dev.c b/net/core/dev.c
+>> index 0a31d4e..bbd306f 100644
+>> --- a/net/core/dev.c
+>> +++ b/net/core/dev.c
+>> @@ -3617,7 +3617,7 @@ static struct sk_buff *validate_xmit_vlan(struct sk_buff *skb,
+>>   int skb_csum_hwoffload_help(struct sk_buff *skb,
+>>                              const netdev_features_t features)
+>>   {
+>> -       if (unlikely(skb->csum_not_inet))
+>> +       if (unlikely(skb_csum_is_sctp(skb)))
+>>                  return !!(features & NETIF_F_SCTP_CRC) ? 0 :
+>>                          skb_crc32c_csum_help(skb);
+>>
+>> --
+>> 2.1.0
+>>
+
