@@ -2,98 +2,77 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
-	SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-4.5 required=3.0 tests=BAYES_00,DATE_IN_PAST_03_06,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,NICE_REPLY_A,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C7928C433DB
-	for <linux-sctp@archiver.kernel.org>; Fri,  5 Feb 2021 16:34:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3B11BC433DB
+	for <linux-sctp@archiver.kernel.org>; Sat,  6 Feb 2021 03:03:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 6E55164E93
-	for <linux-sctp@archiver.kernel.org>; Fri,  5 Feb 2021 16:34:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0CB0F64F92
+	for <linux-sctp@archiver.kernel.org>; Sat,  6 Feb 2021 03:03:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232862AbhBEOzE (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Fri, 5 Feb 2021 09:55:04 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47624 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231749AbhBEOwd (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Fri, 5 Feb 2021 09:52:33 -0500
-Received: from mail-qk1-x72d.google.com (mail-qk1-x72d.google.com [IPv6:2607:f8b0:4864:20::72d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8EE7BC061786;
-        Fri,  5 Feb 2021 08:31:03 -0800 (PST)
-Received: by mail-qk1-x72d.google.com with SMTP id u20so7435320qku.7;
-        Fri, 05 Feb 2021 08:31:03 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=date:from:to:cc:subject:message-id:references:mime-version
-         :content-disposition:in-reply-to;
-        bh=79c3C5DFNJ8WA8GjidhCQlz0ze6LMsMDakYhczjboWk=;
-        b=IYWurr9pqj0rjJmEfMg1YrQWHhA/HUTt5Jo8vEy75RWmPmgdpgkgICp/PVBHuTtFGo
-         md6JRzrGd/vigb2Jq/ogGh11jr+KA/CwmAMH7/Z2l8xQkQRTLle7x31F0BNqOc1Rs/bp
-         PkyiGNKCxbKqn9jWReL0X9MyBqkSUAhnBtppt6o0jnPXJKmzdxyDhMGS5tfLDe7D6YR3
-         CmU8lPuze4Fo59V8oXSukcRTBTN5ptw9hNdWTtU+uoDtQmtsqrxGinfdptMdJHr/hSls
-         YrMMk4BtpJWIbdr/dUYmUe4eFgo5iaoQlCF4Y3R+WAblZWnMFLaMYQyrjRSoUJgGmdgc
-         tenQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
-         :mime-version:content-disposition:in-reply-to;
-        bh=79c3C5DFNJ8WA8GjidhCQlz0ze6LMsMDakYhczjboWk=;
-        b=fLxbVKXSp2Tzm3qy0H+1+Sneal5Hsilye2yZH0yHjPTsx7ClGmC5IX52GvV+QucXkl
-         2/J15Fr13TYy5nnPOycXtLLNPLxuWcW5sJCxueA8FWzKRXY+LnyxPzkjDzJsfoHczZWe
-         9jQg/86JgmWkmlhWG8HK0cdh6BKZyDZN6+njtMB8l//XzrX9iYMMqk7lq6/k67qVGYd5
-         SfWnEKDcF1QnCO1XgIQGQ/BiamK3af24UKc64150LC5d0wrOu1h2FC8yiHMO5M5dHf02
-         FpIJyszNKXSz8LAGK7y9yoqO/yTOHdY5DmZoRFDUdXq6mijepVIWuIvcZvBJS6yJ+1t3
-         mH/w==
-X-Gm-Message-State: AOAM533pasKJ4qGcw3H8VQjd3GB1zCzBm8uHG3OMsstzW9V5BxYiulcU
-        8mkuR4pXaxiTy5CMWaFEWsW1u+kTFZyPuQ==
-X-Google-Smtp-Source: ABdhPJwi3k/qRogPYiAooPeQqFkqdDdgJr4zFAL/3iyry38WNQnlvXREfylR4C/P/ldJDnwQLF8IHQ==
-X-Received: by 2002:ac8:7757:: with SMTP id g23mr4383003qtu.305.1612535564872;
-        Fri, 05 Feb 2021 06:32:44 -0800 (PST)
-Received: from horizon.localdomain ([177.220.174.167])
-        by smtp.gmail.com with ESMTPSA id p188sm9477098qkf.89.2021.02.05.06.32.43
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 05 Feb 2021 06:32:43 -0800 (PST)
-Received: by horizon.localdomain (Postfix, from userid 1000)
-        id B2339C147D; Fri,  5 Feb 2021 11:32:40 -0300 (-03)
-Date:   Fri, 5 Feb 2021 11:32:40 -0300
-From:   Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+        id S231326AbhBFDCj (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Fri, 5 Feb 2021 22:02:39 -0500
+Received: from mail.kernel.org ([198.145.29.99]:39752 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S231221AbhBFCvz (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
+        Fri, 5 Feb 2021 21:51:55 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 04C2264F51;
+        Fri,  5 Feb 2021 22:35:50 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linux-foundation.org;
+        s=korg; t=1612564551;
+        bh=/d7hyScWKy7rmoffTYVW8U8Hr6uQSMMsfR6pwjRMA6Y=;
+        h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
+        b=eI5GH/v34mz5bxoyj0tyMgr4duFyxIKSgiuDVYXwI0Mw6RZO9YyoC/wwf+APLDn/D
+         IUIpI6af6qVqQQlAjixLznBHAhUVPlrFMgKED2ySuO/WFx18j1mpfLtq/bSUahZSEp
+         UqllQfm9SeE3k2A209qzOLjDabtsY7t9zsRpyV7w=
+Date:   Fri, 5 Feb 2021 14:35:50 -0800
+From:   Andrew Morton <akpm@linux-foundation.org>
 To:     NeilBrown <neilb@suse.de>
-Cc:     Andrew Morton <akpm@linux-foundation.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
+Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
+        Jonathan Corbet <corbet@lwn.net>,
+        Xin Long <lucien.xin@gmail.com>, linux-kernel@vger.kernel.org,
+        linux-doc@vger.kernel.org, Ingo Molnar <mingo@redhat.com>,
+        Dave Hansen <dave.hansen@linux.intel.com>,
+        Andy Lutomirski <luto@kernel.org>,
+        Peter Zijlstra <peterz@infradead.org>,
         Vlad Yasevich <vyasevich@gmail.com>,
         Neil Horman <nhorman@tuxdriver.com>,
-        Xin Long <lucien.xin@gmail.com>, linux-kernel@vger.kernel.org,
+        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
         "David S. Miller" <davem@davemloft.net>,
         linux-sctp@vger.kernel.org, netdev@vger.kernel.org
-Subject: Re: [PATCH 3/3] net: fix iteration for sctp transport seq_files
-Message-ID: <20210205143240.GA3406@horizon.localdomain>
+Subject: Re: [PATCH 0/3] Fix some seq_file users that were recently broken
+Message-Id: <20210205143550.58d3530918459eafa918ad0c@linux-foundation.org>
+In-Reply-To: <161248518659.21478.2484341937387294998.stgit@noble1>
 References: <161248518659.21478.2484341937387294998.stgit@noble1>
- <161248539022.21478.17038123892954492263.stgit@noble1>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <161248539022.21478.17038123892954492263.stgit@noble1>
+X-Mailer: Sylpheed 3.5.1 (GTK+ 2.24.31; x86_64-pc-linux-gnu)
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-On Fri, Feb 05, 2021 at 11:36:30AM +1100, NeilBrown wrote:
-> The sctp transport seq_file iterators take a reference to the transport
-> in the ->start and ->next functions and releases the reference in the
-> ->show function.  The preferred handling for such resources is to
-> release them in the subsequent ->next or ->stop function call.
-> 
-> Since Commit 1f4aace60b0e ("fs/seq_file.c: simplify seq_file iteration
-> code and interface") there is no guarantee that ->show will be called
-> after ->next, so this function can now leak references.
-> 
-> So move the sctp_transport_put() call to ->next and ->stop.
-> 
-> Fixes: 1f4aace60b0e ("fs/seq_file.c: simplify seq_file iteration code and interface")
-> Reported-by: Xin Long <lucien.xin@gmail.com>
-> Signed-off-by: NeilBrown <neilb@suse.de>
+On Fri, 05 Feb 2021 11:36:30 +1100 NeilBrown <neilb@suse.de> wrote:
 
-Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+> A recent change to seq_file broke some users which were using seq_file
+> in a non-"standard" way ...  though the "standard" isn't documented, so
+> they can be excused.  The result is a possible leak - of memory in one
+> case, of references to a 'transport' in the other.
+> 
+> These three patches:
+>  1/ document and explain the problem
+>  2/ fix the problem user in x86
+>  3/ fix the problem user in net/sctp
+> 
+
+1f4aace60b0e ("fs/seq_file.c: simplify seq_file iteration code and
+interface") was August 2018, so I don't think "recent" applies here?
+
+I didn't look closely, but it appears that the sctp procfs file is
+world-readable.  So we gave unprivileged userspace the ability to leak
+kernel memory?
+
+So I'm thinking that we aim for 5.12-rc1 on all three patches with a cc:stable?
