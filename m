@@ -2,77 +2,79 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-11.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
-	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=BAYES_00,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CF2C4C433E0
-	for <linux-sctp@archiver.kernel.org>; Thu, 21 Jan 2021 06:23:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6AABAC433E0
+	for <linux-sctp@archiver.kernel.org>; Fri,  5 Feb 2021 00:47:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 811AC2064B
-	for <linux-sctp@archiver.kernel.org>; Thu, 21 Jan 2021 06:23:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0F0CC64DF8
+	for <linux-sctp@archiver.kernel.org>; Fri,  5 Feb 2021 00:47:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726024AbhAUGWq (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Thu, 21 Jan 2021 01:22:46 -0500
-Received: from mail.kernel.org ([198.145.29.99]:56150 "EHLO mail.kernel.org"
+        id S232137AbhBEAr0 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Thu, 4 Feb 2021 19:47:26 -0500
+Received: from mx2.suse.de ([195.135.220.15]:37936 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726317AbhAUGUt (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
-        Thu, 21 Jan 2021 01:20:49 -0500
-Received: by mail.kernel.org (Postfix) with ESMTPS id 968D8238EF;
-        Thu, 21 Jan 2021 06:20:08 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1611210008;
-        bh=8FE7KSgHlbHUXfjNJOeuXK0ZRoy9n5aV0wuYEKHYw0I=;
-        h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
-        b=DG6cKIfJfR9Kz3FAec1MTPvh4z+ZnC+UV9liZ1Z/eCHMWey3mA/lGxT7/jczEgfCj
-         HQvLXsP0Jfxt8VAdp0Ryg22v9gET++zfP1iYsZziMrLku8fRMxQfYFedTdTbDX1Q5H
-         CelrAnZgUrFjrVMATfusPD4YEEL6EBJE7blwtDYW77xnknyOFILDDVr8c9Y2dC6vke
-         EeYfMmM1+MKQNuKpuXgUzZeF/6w8ovxwKX/at0AtJZNNxlV+8nuTx0F9clsKgOKh4X
-         58uj+89Tg8f0oqymWCRyhsC5vWjC+T3jMbG/CpZ2J0ZhYr/VWNcydjblufB95498fs
-         LD/CfCjopruNw==
-Content-Type: text/plain; charset="utf-8"
+        id S232132AbhBEArZ (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
+        Thu, 4 Feb 2021 19:47:25 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.221.27])
+        by mx2.suse.de (Postfix) with ESMTP id 376E8B06A;
+        Fri,  5 Feb 2021 00:46:43 +0000 (UTC)
+From:   NeilBrown <neilb@suse.de>
+To:     Andrew Morton <akpm@linux-foundation.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Jonathan Corbet <corbet@lwn.net>
+Date:   Fri, 05 Feb 2021 11:36:30 +1100
+Subject: [PATCH 0/3] Fix some seq_file users that were recently broken
+Cc:     Xin Long <lucien.xin@gmail.com>, linux-kernel@vger.kernel.org,
+        linux-doc@vger.kernel.org, Ingo Molnar <mingo@redhat.com>,
+        Dave Hansen <dave.hansen@linux.intel.com>,
+        Andy Lutomirski <luto@kernel.org>,
+        Peter Zijlstra <peterz@infradead.org>,
+        Vlad Yasevich <vyasevich@gmail.com>,
+        Neil Horman <nhorman@tuxdriver.com>,
+        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        linux-sctp@vger.kernel.org, netdev@vger.kernel.org
+Message-ID: <161248518659.21478.2484341937387294998.stgit@noble1>
+User-Agent: StGit/0.23
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Subject: Re: [PATCHv3 net-next] ip_gre: remove CRC flag from dev features in
- gre_gso_segment
-From:   patchwork-bot+netdevbpf@kernel.org
-Message-Id: <161121000855.22302.10418362018948069217.git-patchwork-notify@kernel.org>
-Date:   Thu, 21 Jan 2021 06:20:08 +0000
-References: <00439f24d5f69e2c6fa2beadc681d056c15c258f.1610772251.git.lucien.xin@gmail.com>
-In-Reply-To: <00439f24d5f69e2c6fa2beadc681d056c15c258f.1610772251.git.lucien.xin@gmail.com>
-To:     Xin Long <lucien.xin@gmail.com>
-Cc:     netdev@vger.kernel.org, linux-sctp@vger.kernel.org,
-        marcelo.leitner@gmail.com, nhorman@tuxdriver.com,
-        davem@davemloft.net, kuba@kernel.org, alexander.duyck@gmail.com,
-        lorenzo@kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Hello:
+A recent change to seq_file broke some users which were using seq_file
+in a non-"standard" way ...  though the "standard" isn't documented, so
+they can be excused.  The result is a possible leak - of memory in one
+case, of references to a 'transport' in the other.
 
-This patch was applied to netdev/net-next.git (refs/heads/master):
+These three patches:
+ 1/ document and explain the problem
+ 2/ fix the problem user in x86
+ 3/ fix the problem user in net/sctp
 
-On Sat, 16 Jan 2021 12:44:11 +0800 you wrote:
-> This patch is to let it always do CRC checksum in sctp_gso_segment()
-> by removing CRC flag from the dev features in gre_gso_segment() for
-> SCTP over GRE, just as it does in Commit 527beb8ef9c0 ("udp: support
-> sctp over udp in skb_udp_tunnel_segment") for SCTP over UDP.
-> 
-> It could set csum/csum_start in GSO CB properly in sctp_gso_segment()
-> after that commit, so it would do checksum with gso_make_checksum()
-> in gre_gso_segment(), and Commit 622e32b7d4a6 ("net: gre: recompute
-> gre csum for sctp over gre tunnels") can be reverted now.
-> 
-> [...]
+I suspect the patches should each go through the relevant subsystems,
+but I'm including akpm as the original went through him.
 
-Here is the summary with links:
-  - [PATCHv3,net-next] ip_gre: remove CRC flag from dev features in gre_gso_segment
-    https://git.kernel.org/netdev/net-next/c/1a2367665ac2
+Thanks,
+NeilBrown
 
-You are awesome, thank you!
+---
+
+NeilBrown (3):
+      seq_file: document how per-entry resources are managed.
+      x86: fix seq_file iteration for pat/memtype.c
+      net: fix iteration for sctp transport seq_files
+
+ Documentation/filesystems/seq_file.rst |  6 ++++++
+ arch/x86/mm/pat/memtype.c              |  4 ++--
+ net/sctp/proc.c                        | 16 ++++++++++++----
+ 3 files changed, 20 insertions(+), 6 deletions(-)
+
 --
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/patchwork/pwbot.html
-
+Signature
 
