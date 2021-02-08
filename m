@@ -2,30 +2,39 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
-	autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.6 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,URIBL_BLOCKED autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8307EC433E0
-	for <linux-sctp@archiver.kernel.org>; Sun,  7 Feb 2021 22:46:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B4925C433DB
+	for <linux-sctp@archiver.kernel.org>; Mon,  8 Feb 2021 19:44:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 5778360C3D
-	for <linux-sctp@archiver.kernel.org>; Sun,  7 Feb 2021 22:46:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7705B601FE
+	for <linux-sctp@archiver.kernel.org>; Mon,  8 Feb 2021 19:44:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229570AbhBGWqC (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Sun, 7 Feb 2021 17:46:02 -0500
-Received: from mx2.suse.de ([195.135.220.15]:51000 "EHLO mx2.suse.de"
+        id S236393AbhBHToi (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Mon, 8 Feb 2021 14:44:38 -0500
+Received: from mail.kernel.org ([198.145.29.99]:42946 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S229506AbhBGWqB (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
-        Sun, 7 Feb 2021 17:46:01 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.221.27])
-        by mx2.suse.de (Postfix) with ESMTP id 229C2AD24;
-        Sun,  7 Feb 2021 22:45:20 +0000 (UTC)
-From:   NeilBrown <neilb@suse.de>
+        id S235506AbhBHTne (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
+        Mon, 8 Feb 2021 14:43:34 -0500
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 45BA0601FE;
+        Mon,  8 Feb 2021 19:42:50 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1612813371;
+        bh=d661Gkj5uDPyjiuPmo7dVeApop9R+vb1Lt40RdJVELI=;
+        h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
+        b=bX2v72YYQwKc0W7ftrMUwQ+VQpURy2RKP1n0d5tSAblQjAybzitS42mN5JO9RFOMT
+         0+3xBGTuJs0gdLUhF02+FWXX/fcra+8rySqVQfo+zF0eUEarz0HqlW30pcdG57+MqT
+         O+yg1bCatEG7O8/N9M8FWjs1r1TSuFICNcwUVypMS85okvGXPZU/i9oU1jvUtei7d6
+         6KpoVzFPKRuF3VxqBeRDCatCIFobJ7V9qVLCOMhFHuezANrI2ytArtOQkqkGKdlkGG
+         2emhmcbifLfVOkqzxpIzWPa4FGbCM5fx8EneEJ8RK3vpBZzAtXeKoNRL9k0QhyP0TI
+         XE+/6MtoB1ZGQ==
+Date:   Mon, 8 Feb 2021 11:42:49 -0800
+From:   Jakub Kicinski <kuba@kernel.org>
 To:     Andrew Morton <akpm@linux-foundation.org>
-Date:   Mon, 08 Feb 2021 09:45:09 +1100
-Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
+Cc:     NeilBrown <neilb@suse.de>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
         Jonathan Corbet <corbet@lwn.net>,
         Xin Long <lucien.xin@gmail.com>, linux-kernel@vger.kernel.org,
         linux-doc@vger.kernel.org, Ingo Molnar <mingo@redhat.com>,
@@ -38,78 +47,35 @@ Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
         "David S. Miller" <davem@davemloft.net>,
         linux-sctp@vger.kernel.org, netdev@vger.kernel.org
 Subject: Re: [PATCH 0/3] Fix some seq_file users that were recently broken
-In-Reply-To: <20210205143550.58d3530918459eafa918ad0c@linux-foundation.org>
+Message-ID: <20210208114249.6c7e04e9@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
+In-Reply-To: <20210207131145.ea12b9944c54ad2f10932bc3@linux-foundation.org>
 References: <161248518659.21478.2484341937387294998.stgit@noble1>
- <20210205143550.58d3530918459eafa918ad0c@linux-foundation.org>
-Message-ID: <87ft27ebuy.fsf@notabene.neil.brown.name>
+        <20210205143550.58d3530918459eafa918ad0c@linux-foundation.org>
+        <20210206142924.2bfc3cf5@kicinski-fedora-pc1c0hjn.dhcp.thefacebook.com>
+        <20210207131145.ea12b9944c54ad2f10932bc3@linux-foundation.org>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Sun, 7 Feb 2021 13:11:45 -0800 Andrew Morton wrote:
+> On Sat, 6 Feb 2021 14:29:24 -0800 Jakub Kicinski <kuba@kernel.org> wrote:
+> > On Fri, 5 Feb 2021 14:35:50 -0800 Andrew Morton wrote:  
+> > > On Fri, 05 Feb 2021 11:36:30 +1100 NeilBrown <neilb@suse.de> wrote:
+> > > 1f4aace60b0e ("fs/seq_file.c: simplify seq_file iteration code and
+> > > interface") was August 2018, so I don't think "recent" applies here?
+> > > 
+> > > I didn't look closely, but it appears that the sctp procfs file is
+> > > world-readable.  So we gave unprivileged userspace the ability to leak
+> > > kernel memory?
+> > > 
+> > > So I'm thinking that we aim for 5.12-rc1 on all three patches with a cc:stable?  
+> > 
+> > I'd rather take the sctp patch sooner, we'll send another batch 
+> > of networking fixes for 5.11, anyway. Would that be okay with you?  
+> 
+> Sure.
 
-On Fri, Feb 05 2021, Andrew Morton wrote:
-
-> On Fri, 05 Feb 2021 11:36:30 +1100 NeilBrown <neilb@suse.de> wrote:
->
->> A recent change to seq_file broke some users which were using seq_file
->> in a non-"standard" way ...  though the "standard" isn't documented, so
->> they can be excused.  The result is a possible leak - of memory in one
->> case, of references to a 'transport' in the other.
->>=20
->> These three patches:
->>  1/ document and explain the problem
->>  2/ fix the problem user in x86
->>  3/ fix the problem user in net/sctp
->>=20
->
-> 1f4aace60b0e ("fs/seq_file.c: simplify seq_file iteration code and
-> interface") was August 2018, so I don't think "recent" applies here?
-
-I must be getting old :-(
-
->
-> I didn't look closely, but it appears that the sctp procfs file is
-> world-readable.  So we gave unprivileged userspace the ability to leak
-> kernel memory?
-
-Not quite that bad.  The x86 problem allows arbitrary memory to be
-leaked, but that is in debugfs (as I'm sure you saw) so is root-only.
-The sctp one only allows an sctp_transport to be pinned.  That is not
-good and would, e.g., prevent the module from being unloaded.  But
-unlike a simple memory leak it won't affect anything outside of sctp.
-
->
-> So I'm thinking that we aim for 5.12-rc1 on all three patches with a cc:s=
-table?
-
-Thanks for looking after these!
-
-NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQJCBAEBCAAsFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAmAgbXYOHG5laWxiQHN1
-c2UuZGUACgkQOeye3VZigbmRIw/+L3opkKLyG2Hn5LtKCl8TV5atFOVnkNdg4u1/
-N7vs18opY/vMHwel8DJX3FKF1nZeiZVan1cUox774eoWmFjni/IGrVU9HjVowJhc
-zHqv17t60IuxAWl4YAYu1SEryAgLMtX6OlqJVrjQ1WRpMEqWN14SgJ2qbuQQW3Fp
-zuCEaR5/MMmWfHtVxthrlmqrPO4DdULJWd54S+OR9AdBTJ5iTP6GqbiT6E5500am
-DMlL9oaymdwILGK339a97BDkvo/GcXiU4I9Netwsn+dhE+iM0A6nfdpR2S+UkbLE
-fqIC4ICia5Cdd04cuMQxqjDqKqgWoj6q+j5BisfXu+VryUWPp+IKLJnljJ3HKOo1
-8HZ4M4ldc2c2fo0BZy8qLgld2Ky9yWfkWvFxD91fdLoW862hb4QSORaqeuOHCCxy
-TFEgOfgEXRS0y1YP1ue1TkvBCMlFlRQ/y4b0b7PKLcZmbQ8gZP/ZLtMcPVxS+uiW
-WtqvP8ED9uSbmDgZKWrkId0XN2qd/N2VeDqqaHLEm3AYBYKe6sjNRq/P2XhaJgvg
-fwgFf5HWbWRwpgdLtSpFdwobSZJoSfoqWPGfHw9qnldXXbLSuDrEHIFRywNCHODl
-SpL40dXvgMrkDtHYK7C9V7xPMCj9Ja0dnSR2KJQOJnWXw4NnHUXbVAf7VP+5MqpD
-WJxmMU8=
-=Gd5p
------END PGP SIGNATURE-----
---=-=-=--
+Applied patch 3 to net, thanks everyone!
