@@ -7,24 +7,24 @@ X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 41431C433E6
-	for <linux-sctp@archiver.kernel.org>; Sat, 27 Mar 2021 02:27:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C1D7AC433E2
+	for <linux-sctp@archiver.kernel.org>; Sat, 27 Mar 2021 02:27:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id EA80261A21
+	by mail.kernel.org (Postfix) with ESMTP id 8AA3761A21
 	for <linux-sctp@archiver.kernel.org>; Sat, 27 Mar 2021 02:27:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230344AbhC0C0j (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        id S231150AbhC0C0j (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
         Fri, 26 Mar 2021 22:26:39 -0400
-Received: from szxga04-in.huawei.com ([45.249.212.190]:14624 "EHLO
-        szxga04-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230106AbhC0C0K (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Fri, 26 Mar 2021 22:26:10 -0400
-Received: from DGGEMS402-HUB.china.huawei.com (unknown [172.30.72.58])
-        by szxga04-in.huawei.com (SkyGuard) with ESMTP id 4F6jMV56rtz1BFd4;
-        Sat, 27 Mar 2021 10:24:06 +0800 (CST)
+Received: from szxga05-in.huawei.com ([45.249.212.191]:14566 "EHLO
+        szxga05-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S230272AbhC0C0O (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Fri, 26 Mar 2021 22:26:14 -0400
+Received: from DGGEMS402-HUB.china.huawei.com (unknown [172.30.72.59])
+        by szxga05-in.huawei.com (SkyGuard) with ESMTP id 4F6jLt0GpVzPqhm;
+        Sat, 27 Mar 2021 10:23:34 +0800 (CST)
 Received: from huawei.com (10.175.101.6) by DGGEMS402-HUB.china.huawei.com
  (10.3.19.202) with Microsoft SMTP Server id 14.3.498.0; Sat, 27 Mar 2021
- 10:26:05 +0800
+ 10:26:03 +0800
 From:   Lu Wei <luwei32@huawei.com>
 To:     <vyasevich@gmail.com>, <nhorman@tuxdriver.com>,
         <marcelo.leitner@gmail.com>, <davem@davemloft.net>,
@@ -35,9 +35,9 @@ To:     <vyasevich@gmail.com>, <nhorman@tuxdriver.com>,
         <andraprs@amazon.com>, <alex.popov@linux.com>,
         <santosh.shilimkar@oracle.com>, <linux-rdma@vger.kernel.org>,
         <rds-devel@oss.oracle.com>
-Subject: [PATCH -next 3/3] net: vsock: Fix a typo
-Date:   Sat, 27 Mar 2021 10:27:24 +0800
-Message-ID: <20210327022724.241376-4-luwei32@huawei.com>
+Subject: [PATCH -next 1/3] net: rds: Fix a typo
+Date:   Sat, 27 Mar 2021 10:27:22 +0800
+Message-ID: <20210327022724.241376-2-luwei32@huawei.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20210327022724.241376-1-luwei32@huawei.com>
 References: <20210327022724.241376-1-luwei32@huawei.com>
@@ -49,27 +49,27 @@ Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Modify "occured" to "occurred" in net/vmw_vsock/af_vsock.c.
+Modify "beween" to "between" in net/rds/send.c.
 
 Reported-by: Hulk Robot <hulkci@huawei.com>
 Signed-off-by: Lu Wei <luwei32@huawei.com>
 ---
- net/vmw_vsock/af_vsock.c | 2 +-
+ net/rds/send.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/vmw_vsock/af_vsock.c b/net/vmw_vsock/af_vsock.c
-index 5546710d8ac1..01eebfecf1d7 100644
---- a/net/vmw_vsock/af_vsock.c
-+++ b/net/vmw_vsock/af_vsock.c
-@@ -1854,7 +1854,7 @@ vsock_stream_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,
- 	if (!transport || sk->sk_state != TCP_ESTABLISHED) {
- 		/* Recvmsg is supposed to return 0 if a peer performs an
- 		 * orderly shutdown. Differentiate between that case and when a
--		 * peer has not connected or a local shutdown occured with the
-+		 * peer has not connected or a local shutdown occurred with the
- 		 * SOCK_DONE flag.
+diff --git a/net/rds/send.c b/net/rds/send.c
+index 985d0b7713ac..53444397de66 100644
+--- a/net/rds/send.c
++++ b/net/rds/send.c
+@@ -1225,7 +1225,7 @@ int rds_sendmsg(struct socket *sock, struct msghdr *msg, size_t payload_len)
+ 		}
+ 		/* If the socket is already bound to a link local address,
+ 		 * it can only send to peers on the same link.  But allow
+-		 * communicating beween link local and non-link local address.
++		 * communicating between link local and non-link local address.
  		 */
- 		if (sock_flag(sk, SOCK_DONE))
+ 		if (scope_id != rs->rs_bound_scope_id) {
+ 			if (!scope_id) {
 -- 
 2.17.1
 
