@@ -2,74 +2,84 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.8 required=3.0 tests=BAYES_00,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.2 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C1D7AC433E2
-	for <linux-sctp@archiver.kernel.org>; Sat, 27 Mar 2021 02:27:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4214AC433E1
+	for <linux-sctp@archiver.kernel.org>; Mon, 29 Mar 2021 01:01:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 8AA3761A21
-	for <linux-sctp@archiver.kernel.org>; Sat, 27 Mar 2021 02:27:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1817461879
+	for <linux-sctp@archiver.kernel.org>; Mon, 29 Mar 2021 01:01:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231150AbhC0C0j (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Fri, 26 Mar 2021 22:26:39 -0400
-Received: from szxga05-in.huawei.com ([45.249.212.191]:14566 "EHLO
-        szxga05-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230272AbhC0C0O (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Fri, 26 Mar 2021 22:26:14 -0400
-Received: from DGGEMS402-HUB.china.huawei.com (unknown [172.30.72.59])
-        by szxga05-in.huawei.com (SkyGuard) with ESMTP id 4F6jLt0GpVzPqhm;
-        Sat, 27 Mar 2021 10:23:34 +0800 (CST)
-Received: from huawei.com (10.175.101.6) by DGGEMS402-HUB.china.huawei.com
- (10.3.19.202) with Microsoft SMTP Server id 14.3.498.0; Sat, 27 Mar 2021
- 10:26:03 +0800
-From:   Lu Wei <luwei32@huawei.com>
-To:     <vyasevich@gmail.com>, <nhorman@tuxdriver.com>,
-        <marcelo.leitner@gmail.com>, <davem@davemloft.net>,
-        <kuba@kernel.org>, <linux-sctp@vger.kernel.org>,
-        <netdev@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        <sgarzare@redhat.com>, <jhansen@vmware.com>,
-        <colin.king@canonical.com>, <nslusarek@gmx.net>,
-        <andraprs@amazon.com>, <alex.popov@linux.com>,
-        <santosh.shilimkar@oracle.com>, <linux-rdma@vger.kernel.org>,
-        <rds-devel@oss.oracle.com>
-Subject: [PATCH -next 1/3] net: rds: Fix a typo
-Date:   Sat, 27 Mar 2021 10:27:22 +0800
-Message-ID: <20210327022724.241376-2-luwei32@huawei.com>
-X-Mailer: git-send-email 2.17.1
-In-Reply-To: <20210327022724.241376-1-luwei32@huawei.com>
-References: <20210327022724.241376-1-luwei32@huawei.com>
+        id S231653AbhC2BAr (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Sun, 28 Mar 2021 21:00:47 -0400
+Received: from mail.kernel.org ([198.145.29.99]:45952 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S230252AbhC2BAR (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
+        Sun, 28 Mar 2021 21:00:17 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPS id 4CADF6193F;
+        Mon, 29 Mar 2021 01:00:11 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1616979611;
+        bh=bSJHnkL0Y6HWWvXB/0i91Ys2z86pDibN1bNO3jpu7g0=;
+        h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
+        b=Gfm6X4B70RVrxyZgXPVZgyBUN3LitUIBIHEUd2adt7SJNWWk3ICPEpgE4YM4N3vIr
+         uX5GaYSJ1H1zfalfbChqPgXOHXgCSVzpI+zoFiM5pnHtQc6K4c2gqvROhcDWnzBvjq
+         vYwM/y8kuYTb/x9ECns7SK5qkLJnXTpcvelHechjCu2NsD72F2g6OU4kp9wsZxeiaY
+         wW+OmeSuR5QPe/B8e8A6PpE3D0Yw+0Rxs8A71r5gwOuJ8yQaalTaksvC9XyKfOiA+d
+         MEaarF48TX4lF7pyJMdZWhgYl4AIwzq9FGawCVhQaYx8cQ9lAivHlRqRV6DfbJa+CN
+         E5Q8DKyQ5QGvw==
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain
-X-Originating-IP: [10.175.101.6]
-X-CFilter-Loop: Reflected
+Content-Transfer-Encoding: 8bit
+Subject: Re: [PATCH -next 0/3] Fix some typos
+From:   patchwork-bot+netdevbpf@kernel.org
+Message-Id: <161697961124.31306.16406247961568026068.git-patchwork-notify@kernel.org>
+Date:   Mon, 29 Mar 2021 01:00:11 +0000
+References: <20210327022724.241376-1-luwei32@huawei.com>
+In-Reply-To: <20210327022724.241376-1-luwei32@huawei.com>
+To:     Lu Wei <luwei32@huawei.com>
+Cc:     vyasevich@gmail.com, nhorman@tuxdriver.com,
+        marcelo.leitner@gmail.com, davem@davemloft.net, kuba@kernel.org,
+        linux-sctp@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, sgarzare@redhat.com,
+        jhansen@vmware.com, colin.king@canonical.com, nslusarek@gmx.net,
+        andraprs@amazon.com, alex.popov@linux.com,
+        santosh.shilimkar@oracle.com, linux-rdma@vger.kernel.org,
+        rds-devel@oss.oracle.com
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-Modify "beween" to "between" in net/rds/send.c.
+Hello:
 
-Reported-by: Hulk Robot <hulkci@huawei.com>
-Signed-off-by: Lu Wei <luwei32@huawei.com>
----
- net/rds/send.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+This series was applied to netdev/net-next.git (refs/heads/master):
 
-diff --git a/net/rds/send.c b/net/rds/send.c
-index 985d0b7713ac..53444397de66 100644
---- a/net/rds/send.c
-+++ b/net/rds/send.c
-@@ -1225,7 +1225,7 @@ int rds_sendmsg(struct socket *sock, struct msghdr *msg, size_t payload_len)
- 		}
- 		/* If the socket is already bound to a link local address,
- 		 * it can only send to peers on the same link.  But allow
--		 * communicating beween link local and non-link local address.
-+		 * communicating between link local and non-link local address.
- 		 */
- 		if (scope_id != rs->rs_bound_scope_id) {
- 			if (!scope_id) {
--- 
-2.17.1
+On Sat, 27 Mar 2021 10:27:21 +0800 you wrote:
+> Lu Wei (3):
+>   net: rds: Fix a typo
+>   net: sctp: Fix some typos
+>   net: vsock: Fix a typo
+> 
+>  net/rds/send.c           | 2 +-
+>  net/sctp/sm_make_chunk.c | 2 +-
+>  net/sctp/socket.c        | 2 +-
+>  net/vmw_vsock/af_vsock.c | 2 +-
+>  4 files changed, 4 insertions(+), 4 deletions(-)
+
+Here is the summary with links:
+  - [-next,1/3] net: rds: Fix a typo
+    https://git.kernel.org/netdev/net-next/c/ebf893958c13
+  - [-next,2/3] net: sctp: Fix some typos
+    https://git.kernel.org/netdev/net-next/c/21c00a186fac
+  - [-next,3/3] net: vsock: Fix a typo
+    https://git.kernel.org/netdev/net-next/c/9195f06b2d0f
+
+You are awesome, thank you!
+--
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/patchwork/pwbot.html
+
 
