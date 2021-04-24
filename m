@@ -2,84 +2,84 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-10.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-12.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7DB43C43460
-	for <linux-sctp@archiver.kernel.org>; Thu, 22 Apr 2021 19:36:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 89C38C433ED
+	for <linux-sctp@archiver.kernel.org>; Sat, 24 Apr 2021 17:47:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 437ED61003
-	for <linux-sctp@archiver.kernel.org>; Thu, 22 Apr 2021 19:36:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 59FD861077
+	for <linux-sctp@archiver.kernel.org>; Sat, 24 Apr 2021 17:47:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236947AbhDVThG (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Thu, 22 Apr 2021 15:37:06 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48218 "EHLO
+        id S231814AbhDXRrh (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Sat, 24 Apr 2021 13:47:37 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57718 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236822AbhDVThG (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Thu, 22 Apr 2021 15:37:06 -0400
-Received: from mail-qt1-x832.google.com (mail-qt1-x832.google.com [IPv6:2607:f8b0:4864:20::832])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C1D94C06174A
-        for <linux-sctp@vger.kernel.org>; Thu, 22 Apr 2021 12:36:28 -0700 (PDT)
-Received: by mail-qt1-x832.google.com with SMTP id z25so12034954qtn.8
-        for <linux-sctp@vger.kernel.org>; Thu, 22 Apr 2021 12:36:28 -0700 (PDT)
+        with ESMTP id S231307AbhDXRrg (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Sat, 24 Apr 2021 13:47:36 -0400
+Received: from mail-wr1-x42d.google.com (mail-wr1-x42d.google.com [IPv6:2a00:1450:4864:20::42d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3AD31C061574
+        for <linux-sctp@vger.kernel.org>; Sat, 24 Apr 2021 10:46:58 -0700 (PDT)
+Received: by mail-wr1-x42d.google.com with SMTP id s7so51488925wru.6
+        for <linux-sctp@vger.kernel.org>; Sat, 24 Apr 2021 10:46:58 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=J5qXM+SaVBAUWEQBnJYzg2IBU+1Vdvsu7qpKzmF1HQY=;
-        b=Q8+pv4Pfx0b/8kEfYR7+MC4WdwVk+N9ucWUlnNpxQUxgMmA3l6UqMlscGWDMH43t2B
-         X0TcNV+xfuAJvWde+YSmIsrlsX4p0FKS12YM+EhFI2DFPh0CmOC3m6gQwtbk7okkrZLI
-         hj2ehzoxwSLEMrdcrzYpyEqv/6oGFJ98/QmKmt8H2ow6znm6JA37ovWIeEVuX5t6Mb2I
-         5gf2wTcxFQdTj34NGuU3c00/cZHktzblKA/g18CDbECgEEdC6CDJOy7vrQEhPutUtYL8
-         GHSNNSI+naZ+pTjSAE03KfbxrpGKWG4nkvga6shjRmMXEMIv40ZwZMXLJ1VaG/Ru9jzv
-         4HeQ==
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=V3SIwL84c+aY7vkRMva+0Nw2r/K5cRkGFCKdCu9D5ac=;
+        b=f44XIYuxAPFsScEFGnoWBOINFNnrVH51aQe119t3feo7MDEi/sMfco61ZhaScxAF7e
+         8T8aoWLsl3OAvOMw1+EzZQQRw2Akq6rVG7ypRTAJM2FEjeGt64PM1IabJrDuCDefJ0vr
+         3awrWrxujXvUskjR8PS8xSykaK1jJ1fO8tRvawEccj7pk9Xh/3dQn8NWrnBIpK4u9JXo
+         V9+9pdLzSD+tH89qbJDn0Vsv19ev5usGZbyxNHiU+o/Kc6pbwGbDRnn805HtRjmnOxx/
+         Djo5uOKrBUEbpbDLEWr5lUmBBTs6Pg26u30mC/xPDwCiu5paXbCDYN7PxaHg8V1rROX0
+         pW0A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=J5qXM+SaVBAUWEQBnJYzg2IBU+1Vdvsu7qpKzmF1HQY=;
-        b=jgi6c3IpLrOVNcTgTciiTce0MjBiKBkK5s8Hqn/hswYQaeNUuUJwAyikCZN7dxoK+v
-         yuKGAfqkTAL4VLi/81mp+5wxeyFAT4TPPWaBV4NIpXm9Y5S2+/qHl7TZUyIrYe4iTAuc
-         SsrR2bejROHL4p3R0bou2m6z9Ibb6eICDndsxE06oDDWB2alkVDt1OzE3RymNiAnfV1b
-         4NTKX7Wpcy0O4I/u2oQZbnXuETLF2NbIRO1Fir7CdOMaWfYIeHtXosGI1KnepyD1YXiS
-         MDPboah7jGlVPA59Igl6E7WgWJzxNRTehg5Dq0SHJm6OsjMaKgxvEIngxsol7a9823RT
-         BfuQ==
-X-Gm-Message-State: AOAM530NhoJgI2hIKuWwxBmH7wxXZ/ikj4Y8srXF9pLmctDFKB520F+i
-        Xth+Hog64EkeM1LTgtNLgF30xRwoM6llsA==
-X-Google-Smtp-Source: ABdhPJzlCMP8wafdDBwiORjYeR2+VSlHXmkPYlmZJB2W1q7IeZzCYfn6aj4l7SUAWT384YTmO4lgaA==
-X-Received: by 2002:ac8:5c8b:: with SMTP id r11mr103423qta.140.1619120187809;
-        Thu, 22 Apr 2021 12:36:27 -0700 (PDT)
-Received: from horizon.localdomain ([177.220.172.96])
-        by smtp.gmail.com with ESMTPSA id j9sm3110619qtl.12.2021.04.22.12.36.27
-        for <linux-sctp@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 22 Apr 2021 12:36:27 -0700 (PDT)
-Received: by horizon.localdomain (Postfix, from userid 1000)
-        id 5185EC3C56; Thu, 22 Apr 2021 16:36:25 -0300 (-03)
-From:   Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-To:     linux-sctp@vger.kernel.org
-Subject: [PATCH lksctp-tools 0/2] sctp_send/v fixes
-Date:   Thu, 22 Apr 2021 16:36:17 -0300
-Message-Id: <cover.1619119690.git.marcelo.leitner@gmail.com>
-X-Mailer: git-send-email 2.30.2
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=V3SIwL84c+aY7vkRMva+0Nw2r/K5cRkGFCKdCu9D5ac=;
+        b=ibxDyr/NaCV2bTbkiOPkI6LTpcvaPsV7MfEGzi1XLQ//3VG2xqCF9Uq4cD8Ce8uaZC
+         K3f7To+654og2UwNupYkZWyJUUXWjKYC+8+EMsfP0R9uGu0hKSsTCVz8czPhKiMlp7AJ
+         F8ZVZMdpJDQBWzQSq1Vf04+WYgJQTlcSi0IEm6c10oS3rBmfERj9sCxoK+YwDibpe1y9
+         yuXYrxVq37rXyZanZm0f+9N74one0/A1PkKZr6eEpuj43/OhDDdx9v4VxF9DKkjGZYiY
+         li71Itp1yqgCdofgeKUNx7a/QDr3jtmLWeYKnJ/r4RXxKhNYpPyBeTaV0iTI6qxBDkhm
+         g/Tw==
+X-Gm-Message-State: AOAM531mKRbmtMAvslIz0ss01pMbwVO/txmiNYczum1VOANdSPDz4OF1
+        nS4VxUcTKd0IhBlb/r+3wcuHrVjh1Iahis/8nmQ=
+X-Google-Smtp-Source: ABdhPJyLlYpQ+gY7lCmGTouGVPDHagU2GgPlhzNv74HM2E8Xy061DG13voa8taWR53ouK4K0xlkaqHGXuzmogdsoz0E=
+X-Received: by 2002:a5d:50c7:: with SMTP id f7mr11887989wrt.120.1619286416861;
+ Sat, 24 Apr 2021 10:46:56 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <cover.1619119690.git.marcelo.leitner@gmail.com>
+In-Reply-To: <cover.1619119690.git.marcelo.leitner@gmail.com>
+From:   Xin Long <lucien.xin@gmail.com>
+Date:   Sat, 24 Apr 2021 13:46:45 -0400
+Message-ID: <CADvbK_cBOz-wvRQweSn6oX4GZsouwPQdrbcGz_KDXWFc+dfncg@mail.gmail.com>
+Subject: Re: [PATCH lksctp-tools 0/2] sctp_send/v fixes
+To:     Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+Cc:     "linux-sctp @ vger . kernel . org" <linux-sctp@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-First one is more important. Identified by CovScan.
-2nd patch is just a cosmetic change.
-
-Marcelo Ricardo Leitner (2):
-  sctp_send: fix ignored flags parameter
-  sctp_sendv: avoid explicit memset for var initialization
-
- src/lib/sendmsg.c | 12 +++---------
- 1 file changed, 3 insertions(+), 9 deletions(-)
-
--- 
-2.30.2
-
+On Thu, Apr 22, 2021 at 3:36 PM Marcelo Ricardo Leitner
+<marcelo.leitner@gmail.com> wrote:
+>
+> First one is more important. Identified by CovScan.
+> 2nd patch is just a cosmetic change.
+>
+> Marcelo Ricardo Leitner (2):
+>   sctp_send: fix ignored flags parameter
+>   sctp_sendv: avoid explicit memset for var initialization
+>
+>  src/lib/sendmsg.c | 12 +++---------
+>  1 file changed, 3 insertions(+), 9 deletions(-)
+>
+> --
+> 2.30.2
+>
+Series Reviewed-by: Xin Long <lucien.xin@gmail.com>
