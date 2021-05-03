@@ -2,172 +2,75 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-11.7 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
+	SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0D852C433ED
-	for <linux-sctp@archiver.kernel.org>; Sun,  2 May 2021 21:12:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D1376C433ED
+	for <linux-sctp@archiver.kernel.org>; Mon,  3 May 2021 20:40:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D567F61221
-	for <linux-sctp@archiver.kernel.org>; Sun,  2 May 2021 21:12:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9FE7D61165
+	for <linux-sctp@archiver.kernel.org>; Mon,  3 May 2021 20:40:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232574AbhEBVNA (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Sun, 2 May 2021 17:13:00 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49388 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232338AbhEBVM7 (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Sun, 2 May 2021 17:12:59 -0400
-Received: from mail-pg1-x533.google.com (mail-pg1-x533.google.com [IPv6:2607:f8b0:4864:20::533])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0E312C06174A;
-        Sun,  2 May 2021 14:12:08 -0700 (PDT)
-Received: by mail-pg1-x533.google.com with SMTP id q9so2319180pgl.13;
-        Sun, 02 May 2021 14:12:08 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :in-reply-to:references;
-        bh=6Tew3fIKE8mp1DfEhtGtLfIGo/Xh6uMnhvGW+TPG/Jk=;
-        b=f25eNO1lxxCmddvV0ThPJHHIvRS/nGjlcMg3EpcGD6ItJTLX8wtHkPFF9nBxX9fxhL
-         QBoJAu9rUaxQx/rBG5Wiu3tWpbYKkuYhLr3zNejha97EVrwXLGDtNCOzZ6BsxXqtc09X
-         jYffODzpMyf5xy0fyaH+PlyrJqu80kuSk75x7MDmjRnVDANDXyprSX4oRJaxCbvnnMkU
-         pr47B8KDCWnxuCc77qyKXD1k+QaxNt6XgAVPN7UBhF1qtathH8e9iaZvj6OxDoFTQKe6
-         6WviJRz2xfyBqDs7hJIwDSmrQgJs8NIITZZ4VSV8gvZqNj2wCgVzi5a8zew1m6WwBVxp
-         1eiA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:in-reply-to:references;
-        bh=6Tew3fIKE8mp1DfEhtGtLfIGo/Xh6uMnhvGW+TPG/Jk=;
-        b=sZRVd80yM91XzIkPEg9mOI6Mfx9OP/lVYnT09s/FI+n833PVuKAuw7l2U38nbpHM3p
-         RPVDNVArOaizIYmMsNhdc7AI41BBUIJRzsbVGckT7p/g4DsdM6FPLqHssi/WDix7LH21
-         Ux3F7XR7a4RIMjbQcveymhvYlMUwg8G3fSa7Qx46A4169lfxAxNolEdJZjBrSog6IhGs
-         g4oXuxYSgjOEmyjXmjCOYfsnMIXsYCrkuAv2Npu9Hz/wilcQP8i9QNYGsBxJKPgd+YU2
-         snxZoBCP3Zm5mIhz9QKzZIAHsS7231oSNJcLzgrEXG8/j1zNu4VjdZzmFBJlYSQz34be
-         O1QA==
-X-Gm-Message-State: AOAM531xZ+pt1wEj5S/zvWgcK86dV2rmvxrWDTyOj2TKosgryC2f+0Mf
-        nTAF8/WVyJYWKoA4Usdau3yUrah5qqsJaOok
-X-Google-Smtp-Source: ABdhPJxkY9gnYau2UwZDhuNmcIj1pJZmcMVqmamWZfCMDBEV0kIcQ+iWzxoFLpkokXnsOXjIQg5ZXg==
-X-Received: by 2002:a63:7986:: with SMTP id u128mr15324163pgc.223.1619989927368;
-        Sun, 02 May 2021 14:12:07 -0700 (PDT)
-Received: from localhost ([209.132.188.80])
-        by smtp.gmail.com with ESMTPSA id ng6sm15706467pjb.14.2021.05.02.14.12.06
-        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
-        Sun, 02 May 2021 14:12:06 -0700 (PDT)
-From:   Xin Long <lucien.xin@gmail.com>
-To:     network dev <netdev@vger.kernel.org>, linux-sctp@vger.kernel.org
-Cc:     davem@davemloft.net, kuba@kernel.org,
-        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-        Or Cohen <orcohen@paloaltonetworks.com>
-Subject: [PATCH net 2/2] sctp: delay auto_asconf init until binding the first addr
-Date:   Mon,  3 May 2021 05:11:42 +0800
-Message-Id: <8f397eb9b1e75b4de26fcd76071aa3718ab70a2c.1619989856.git.lucien.xin@gmail.com>
-X-Mailer: git-send-email 2.1.0
-In-Reply-To: <4dc7d7dd4bcf7122604ccb52a5c747c3fb9101c5.1619989856.git.lucien.xin@gmail.com>
-References: <cover.1619989856.git.lucien.xin@gmail.com>
- <4dc7d7dd4bcf7122604ccb52a5c747c3fb9101c5.1619989856.git.lucien.xin@gmail.com>
-In-Reply-To: <cover.1619989856.git.lucien.xin@gmail.com>
-References: <cover.1619989856.git.lucien.xin@gmail.com>
+        id S229800AbhECUlL (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Mon, 3 May 2021 16:41:11 -0400
+Received: from mail.kernel.org ([198.145.29.99]:46902 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S229773AbhECUlE (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
+        Mon, 3 May 2021 16:41:04 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPS id 4723361208;
+        Mon,  3 May 2021 20:40:10 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1620074410;
+        bh=2U5ByCSN/QJbDn6BbSQe/eCwcabxI7EWCIWmEPCWY80=;
+        h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
+        b=FeUoPIKZKIMBrZZ5xZv45tUFJOpnmCOVdJKRzTy30eJylwMO1v5lGgfScCs0frU53
+         x91jHYBEshrFRboNksLFKueiwvItoahdQ9QAvp6B/reHd31KlDs4VbIsZXeb254ECX
+         uUwvJJpNGI8cMg+7xBBhRgj1SQHpBCPrM1vhYuZ/sRKlS6pPdoZrKcTQGB+STFK5aq
+         N2Sl6vRPAuU69XT9NrNeMkVNnipGbGHZmRbKyuDtawh8GblX7rt/7xkHOacpvqcJJu
+         pe7WeAKoe2CSL07MgwykhS+52GZw5WB4XW/d6njjPz/G/+jDmj34IedlezMKzbzQwN
+         nP3N4R7ugYaNw==
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+Subject: Re: [PATCH net 0/2] sctp: fix the incorrect revert
+From:   patchwork-bot+netdevbpf@kernel.org
+Message-Id: <162007441022.32677.15333763026236456281.git-patchwork-notify@kernel.org>
+Date:   Mon, 03 May 2021 20:40:10 +0000
+References: <cover.1619987699.git.lucien.xin@gmail.com>
+In-Reply-To: <cover.1619987699.git.lucien.xin@gmail.com>
+To:     Xin Long <lucien.xin@gmail.com>
+Cc:     netdev@vger.kernel.org, linux-sctp@vger.kernel.org,
+        davem@davemloft.net, kuba@kernel.org, marcelo.leitner@gmail.com,
+        jere.leppanen@nokia.com
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-As Or Cohen described:
+Hello:
 
-  If sctp_destroy_sock is called without sock_net(sk)->sctp.addr_wq_lock
-  held and sp->do_auto_asconf is true, then an element is removed
-  from the auto_asconf_splist without any proper locking.
+This series was applied to netdev/net.git (refs/heads/master):
 
-  This can happen in the following functions:
-  1. In sctp_accept, if sctp_sock_migrate fails.
-  2. In inet_create or inet6_create, if there is a bpf program
-     attached to BPF_CGROUP_INET_SOCK_CREATE which denies
-     creation of the sctp socket.
+On Mon,  3 May 2021 04:36:57 +0800 you wrote:
+> commit 35b4f24415c8 ("sctp: do asoc update earlier in
+> sctp_sf_do_dupcook_a") only keeps the SHUTDOWN and
+> COOKIE-ACK with the same asoc, not transport.
+> 
+> So instead of revert commit 145cb2f7177d ("sctp: Fix bundling
+> of SHUTDOWN with COOKIE-ACK"), we should revert 12dfd78e3a74
+> ("sctp: Fix SHUTDOWN CTSN Ack in the peer restart case").
+> 
+> [...]
 
-This patch is to fix it by moving the auto_asconf init out of
-sctp_init_sock(), by which inet_create()/inet6_create() won't
-need to operate it in sctp_destroy_sock() when calling
-sk_common_release().
+Here is the summary with links:
+  - [net,1/2] Revert "Revert "sctp: Fix bundling of SHUTDOWN with COOKIE-ACK""
+    https://git.kernel.org/netdev/net/c/22008f560bd3
+  - [net,2/2] Revert "sctp: Fix SHUTDOWN CTSN Ack in the peer restart case"
+    https://git.kernel.org/netdev/net/c/7aa4e54739be
 
-It also makes more sense to do auto_asconf init while binding the
-first addr, as auto_asconf actually requires an ANY addr bind,
-see it in sctp_addr_wq_timeout_handler().
+You are awesome, thank you!
+--
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/patchwork/pwbot.html
 
-This addresses CVE-2021-23133.
-
-Fixes: 610236587600 ("bpf: Add new cgroup attach type to enable sock modifications")
-Reported-by: Or Cohen <orcohen@paloaltonetworks.com>
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- net/sctp/socket.c | 31 +++++++++++++++++--------------
- 1 file changed, 17 insertions(+), 14 deletions(-)
-
-diff --git a/net/sctp/socket.c b/net/sctp/socket.c
-index 76a388b5..40f9f6c 100644
---- a/net/sctp/socket.c
-+++ b/net/sctp/socket.c
-@@ -357,6 +357,18 @@ static struct sctp_af *sctp_sockaddr_af(struct sctp_sock *opt,
- 	return af;
- }
- 
-+static void sctp_auto_asconf_init(struct sctp_sock *sp)
-+{
-+	struct net *net = sock_net(&sp->inet.sk);
-+
-+	if (net->sctp.default_auto_asconf) {
-+		spin_lock(&net->sctp.addr_wq_lock);
-+		list_add_tail(&sp->auto_asconf_list, &net->sctp.auto_asconf_splist);
-+		spin_unlock(&net->sctp.addr_wq_lock);
-+		sp->do_auto_asconf = 1;
-+	}
-+}
-+
- /* Bind a local address either to an endpoint or to an association.  */
- static int sctp_do_bind(struct sock *sk, union sctp_addr *addr, int len)
- {
-@@ -418,8 +430,10 @@ static int sctp_do_bind(struct sock *sk, union sctp_addr *addr, int len)
- 		return -EADDRINUSE;
- 
- 	/* Refresh ephemeral port.  */
--	if (!bp->port)
-+	if (!bp->port) {
- 		bp->port = inet_sk(sk)->inet_num;
-+		sctp_auto_asconf_init(sp);
-+	}
- 
- 	/* Add the address to the bind address list.
- 	 * Use GFP_ATOMIC since BHs will be disabled.
-@@ -4993,19 +5007,6 @@ static int sctp_init_sock(struct sock *sk)
- 	sk_sockets_allocated_inc(sk);
- 	sock_prot_inuse_add(net, sk->sk_prot, 1);
- 
--	/* Nothing can fail after this block, otherwise
--	 * sctp_destroy_sock() will be called without addr_wq_lock held
--	 */
--	if (net->sctp.default_auto_asconf) {
--		spin_lock(&sock_net(sk)->sctp.addr_wq_lock);
--		list_add_tail(&sp->auto_asconf_list,
--		    &net->sctp.auto_asconf_splist);
--		sp->do_auto_asconf = 1;
--		spin_unlock(&sock_net(sk)->sctp.addr_wq_lock);
--	} else {
--		sp->do_auto_asconf = 0;
--	}
--
- 	local_bh_enable();
- 
- 	return 0;
-@@ -9401,6 +9402,8 @@ static int sctp_sock_migrate(struct sock *oldsk, struct sock *newsk,
- 			return err;
- 	}
- 
-+	sctp_auto_asconf_init(newsp);
-+
- 	/* Move any messages in the old socket's receive queue that are for the
- 	 * peeled off association to the new socket's receive queue.
- 	 */
--- 
-2.1.0
 
