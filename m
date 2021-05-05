@@ -7,30 +7,30 @@ X-Spam-Status: No, score=-24.7 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
 	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,
 	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 180CFC2B9F4
-	for <linux-sctp@archiver.kernel.org>; Wed,  5 May 2021 17:21:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 10920C43460
+	for <linux-sctp@archiver.kernel.org>; Wed,  5 May 2021 17:21:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D49A660FD7
-	for <linux-sctp@archiver.kernel.org>; Wed,  5 May 2021 17:21:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E4C7C608FE
+	for <linux-sctp@archiver.kernel.org>; Wed,  5 May 2021 17:21:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236744AbhEERWi (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Wed, 5 May 2021 13:22:38 -0400
-Received: from mail.kernel.org ([198.145.29.99]:47764 "EHLO mail.kernel.org"
+        id S237818AbhEERWk (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Wed, 5 May 2021 13:22:40 -0400
+Received: from mail.kernel.org ([198.145.29.99]:60668 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S237163AbhEEQ6f (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
-        Wed, 5 May 2021 12:58:35 -0400
-Received: by mail.kernel.org (Postfix) with ESMTPSA id DAC7A6199D;
-        Wed,  5 May 2021 16:39:39 +0000 (UTC)
+        id S235052AbhEERBu (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
+        Wed, 5 May 2021 13:01:50 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPSA id 5EB50619BF;
+        Wed,  5 May 2021 16:41:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1620232781;
-        bh=r6QK2tuwxB6yE1ciwfwI0uFWnWCYmDri6WWzgDK9XHM=;
+        s=k20201202; t=1620232877;
+        bh=recimLpo3WjuFFmZLMMYsXitMOfVlnIcFRLsJAezPJU=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=FcCOC60j8aSr2kMzjFwlFl7bwIT37CFcJRNrC2UFXSbgSMMIm4xlP/WP8ngl9dp6Y
-         iLnP7cbSawOVLvnjQ9jAbif0bHeHfX/kDxMOjYscGJPB/+syVvOPdI9MVdNoOIq/r8
-         +wEPAfAUwvUs+34C2IXCwlZmGC3iqUtT2Mwx0cE34HVzCRJvWklTUvhT/2cmWj2vkO
-         9CwwitMKjuMqTI+PvTv388Q9XjL+A7Bh8AWu2vhJdfTLBWEP+nWE9rJBRkDCNFbmZh
-         jrBBDjU4wVhgTI6+HLtbgNCXBXpdjb8hBMQMHKM5mI9NdsU6PFFwGkDrvJ1OziHJZa
-         VSx6o4u0qRVJA==
+        b=pold6fxy6qEyEPDAPvUa2bhxETqIGatmIRTIYE/OXNWdiDfMbQl94Vd2qCVsy+40K
+         rm3WrssrdBXLhv3eyaVM7CZ1Hr87DwsqGXPU+la2pH5V34s2R6N3ZliG80MT+OO7kg
+         sY/6wlPKpawYLgI+ceV/CU+3S5CZ1wqhExuwdOOpon24IvHvWOLcQwX8aTGEIVdjjB
+         U+8V8f6K48VUGvH2hhKmesa6wERSKD7SZvyr7JpYKANbxoFcytWruYMv9VEPHGCzoI
+         Vttc0MhofNF3+2at86z0qbalLevpU1LFFvG9sDz58So1pKioD/ntGjmNDm5f2+nf6D
+         Oq0zWXHKLVJQQ==
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     "Gustavo A. R. Silva" <gustavoars@kernel.org>,
@@ -40,12 +40,12 @@ Cc:     "Gustavo A. R. Silva" <gustavoars@kernel.org>,
         "David S . Miller" <davem@davemloft.net>,
         Sasha Levin <sashal@kernel.org>, linux-sctp@vger.kernel.org,
         netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 30/46] sctp: Fix out-of-bounds warning in sctp_process_asconf_param()
-Date:   Wed,  5 May 2021 12:38:40 -0400
-Message-Id: <20210505163856.3463279-30-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.14 17/25] sctp: Fix out-of-bounds warning in sctp_process_asconf_param()
+Date:   Wed,  5 May 2021 12:40:43 -0400
+Message-Id: <20210505164051.3464020-17-sashal@kernel.org>
 X-Mailer: git-send-email 2.30.2
-In-Reply-To: <20210505163856.3463279-1-sashal@kernel.org>
-References: <20210505163856.3463279-1-sashal@kernel.org>
+In-Reply-To: <20210505164051.3464020-1-sashal@kernel.org>
+References: <20210505164051.3464020-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -78,18 +78,18 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index d5eda966a706..4ffb9116b6f2 100644
+index e698edd56bd5..1cd22a38fe42 100644
 --- a/net/sctp/sm_make_chunk.c
 +++ b/net/sctp/sm_make_chunk.c
-@@ -3134,7 +3134,7 @@ static __be16 sctp_process_asconf_param(struct sctp_association *asoc,
+@@ -3128,7 +3128,7 @@ static __be16 sctp_process_asconf_param(struct sctp_association *asoc,
  		 * primary.
  		 */
  		if (af->is_any(&addr))
 -			memcpy(&addr.v4, sctp_source(asconf), sizeof(addr));
 +			memcpy(&addr, sctp_source(asconf), sizeof(addr));
  
- 		if (security_sctp_bind_connect(asoc->ep->base.sk,
- 					       SCTP_PARAM_SET_PRIMARY,
+ 		peer = sctp_assoc_lookup_paddr(asoc, &addr);
+ 		if (!peer)
 -- 
 2.30.2
 
