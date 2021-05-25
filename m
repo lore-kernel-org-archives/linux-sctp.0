@@ -2,97 +2,72 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-16.4 required=3.0 tests=BAYES_00,DKIMWL_WL_HIGH,
+	DKIM_SIGNED,DKIM_VALID,DKIM_VALID_AU,INCLUDES_CR_TRAILER,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SPF_HELO_NONE,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DEFFFC2B9F7
-	for <linux-sctp@archiver.kernel.org>; Tue, 25 May 2021 02:49:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9E433C47086
+	for <linux-sctp@archiver.kernel.org>; Tue, 25 May 2021 22:20:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id B0DB661420
-	for <linux-sctp@archiver.kernel.org>; Tue, 25 May 2021 02:49:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 85FAE61409
+	for <linux-sctp@archiver.kernel.org>; Tue, 25 May 2021 22:20:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229600AbhEYCvO (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Mon, 24 May 2021 22:51:14 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58488 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229583AbhEYCvN (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Mon, 24 May 2021 22:51:13 -0400
-Received: from mail-qt1-x82f.google.com (mail-qt1-x82f.google.com [IPv6:2607:f8b0:4864:20::82f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0CA67C061574;
-        Mon, 24 May 2021 19:49:44 -0700 (PDT)
-Received: by mail-qt1-x82f.google.com with SMTP id v4so22183317qtp.1;
-        Mon, 24 May 2021 19:49:44 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=2qtQy/kNpaoEXZ266z5GW30433TABBm8NnJcGKp1Nbc=;
-        b=XBDALySmTOrcyzBBXXEhFeWsiejRDZdGIJsG7BqgjkDqJkkqODwNbioSYe8C/MowFg
-         hg7v6T2V/644/4uIOWoUQQ8+v9/iDcOKfSROcPuze/Ok/ziQHiMPqPmdmV0B9Z3+qgZM
-         y1e2Vyv8JxiEi9Y8Okvd15UtclXF43QuXPLbsW9jkfhmSsaGzd7gLiIpLw4IuC8EpIHE
-         KLWZNKk7r4yMnsvHaKyZ7QMUIhDCtDPOXXSOHaCBX7snV16hLLegGV3a5uaoayDaYV9z
-         ALPGaDSg5fEuNR5XrtusTICa9ZRychSbAQ61mQt4yboTmJe+oJb86lk6gwAVYYTw/pjF
-         L6SQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
-         :content-transfer-encoding;
-        bh=2qtQy/kNpaoEXZ266z5GW30433TABBm8NnJcGKp1Nbc=;
-        b=QDeR5Knmy9lKcqICLDIWiPcdX4DqxNEhHgmaQbR00fw/8P94q9FevyQNoXnH8i7KSZ
-         n9Aqdq0ylDRRwntOd+lqmafWt1KmcSbesXBzF+tsXu3mNAGD/tnYx/Lx3RPlpsCO+TFG
-         faNwQAFWZ+o2Wtpua+WZPW2G/5CYtCdt0txP6PbLOx0hYFZ1PoyEdLmIzUQJa4CCGJ6m
-         xAvSgXOGMi6y2867QyMcljbAHVMBSQsMigPh+zzGnuQJmjajuV4mK1QIheNQF/0+0K3p
-         f9VEW+wMzwPUBt3FL9G8dtn090fnXC8slpMCASWLcyRESxAGXzKh8N925xNgCpqppW52
-         G/qQ==
-X-Gm-Message-State: AOAM531TZRDZtwj8HT8oqubAOWb+ELnNIaPpjMRSQ4rmfrlST7XaUo/g
-        iICdzMX7rZ4SG+ODPQEpDiPo1sF8VoimygmQ
-X-Google-Smtp-Source: ABdhPJwfcer0eOF2NfDGv3U1UwT+vkiwn8yRuSnOpnB0KjMZwH2UoNsFTsLSsTNIo0ogC9T5ZH11uA==
-X-Received: by 2002:a05:622a:1044:: with SMTP id f4mr30520217qte.181.1621910983019;
-        Mon, 24 May 2021 19:49:43 -0700 (PDT)
-Received: from localhost (nat-pool-bos-t.redhat.com. [66.187.233.206])
-        by smtp.gmail.com with ESMTPSA id e5sm11478246qtg.96.2021.05.24.19.49.42
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 24 May 2021 19:49:42 -0700 (PDT)
-From:   Xin Long <lucien.xin@gmail.com>
-To:     network dev <netdev@vger.kernel.org>, davem@davemloft.net,
-        kuba@kernel.org, linux-sctp@vger.kernel.org
-Cc:     Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-Subject: [PATCH net] sctp: fix the proc_handler for sysctl encap_port
-Date:   Mon, 24 May 2021 22:49:42 -0400
-Message-Id: <deeba1bfa2edb3f83fd1b8ad3bf6b6f5bce264dd.1621910982.git.lucien.xin@gmail.com>
-X-Mailer: git-send-email 2.27.0
+        id S233538AbhEYWVl (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Tue, 25 May 2021 18:21:41 -0400
+Received: from mail.kernel.org ([198.145.29.99]:55034 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S232342AbhEYWVk (ORCPT <rfc822;linux-sctp@vger.kernel.org>);
+        Tue, 25 May 2021 18:21:40 -0400
+Received: by mail.kernel.org (Postfix) with ESMTPS id 1491C61423;
+        Tue, 25 May 2021 22:20:10 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1621981210;
+        bh=fwVHU1uBa7Vpr+/uRB6znaYmLQxd5Erz1HlLuv1+X7c=;
+        h=Subject:From:Date:References:In-Reply-To:To:Cc:From;
+        b=uv4vfzWyXkoR4s3pfoa+wSDGriYPZkPoxZHHYu/6r5WKnH4aiBxeK08Yyct90YT/R
+         3R4TxJTmhE3JxsNkZ2jRRF94tzt05vtlwmmJ2CoToiVyJzYr8amJn0v9EsA+nt+3Xq
+         kSjVxwsEeTaKGY+ykKyqRM5K2m0iAgLmUm36ezP9ltQAWDKmUbu8k8Es6ZUGAhpu3t
+         w7UztCNHWzu9u06taMGzRoEY1fwKEIe/STpvGUFmo2Ir+bMRO9cNJq3VbRWGEsADv+
+         AtncYcsB1AnX3m+uOFQUFhm0wcFDeskSlf4paa9M6ZGJBtmbTQVlp/xY7APgyfXLtx
+         1z6G6ky79QjPA==
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+Subject: Re: [PATCH net] sctp: fix the proc_handler for sysctl encap_port
+From:   patchwork-bot+netdevbpf@kernel.org
+Message-Id: <162198121001.14309.14324631465451775260.git-patchwork-notify@kernel.org>
+Date:   Tue, 25 May 2021 22:20:10 +0000
+References: <deeba1bfa2edb3f83fd1b8ad3bf6b6f5bce264dd.1621910982.git.lucien.xin@gmail.com>
+In-Reply-To: <deeba1bfa2edb3f83fd1b8ad3bf6b6f5bce264dd.1621910982.git.lucien.xin@gmail.com>
+To:     Xin Long <lucien.xin@gmail.com>
+Cc:     netdev@vger.kernel.org, davem@davemloft.net, kuba@kernel.org,
+        linux-sctp@vger.kernel.org, marcelo.leitner@gmail.com
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-proc_dointvec() cannot do min and max check for setting a value
-when extra1/extra2 is set, so change it to proc_dointvec_minmax()
-for sysctl encap_port.
+Hello:
 
-Fixes: e8a3001c2120 ("sctp: add encap_port for netns sock asoc and transport")
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- net/sctp/sysctl.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+This patch was applied to netdev/net.git (refs/heads/master):
 
-diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
-index e92df779af73..55871b277f47 100644
---- a/net/sctp/sysctl.c
-+++ b/net/sctp/sysctl.c
-@@ -307,7 +307,7 @@ static struct ctl_table sctp_net_table[] = {
- 		.data		= &init_net.sctp.encap_port,
- 		.maxlen		= sizeof(int),
- 		.mode		= 0644,
--		.proc_handler	= proc_dointvec,
-+		.proc_handler	= proc_dointvec_minmax,
- 		.extra1		= SYSCTL_ZERO,
- 		.extra2		= &udp_port_max,
- 	},
--- 
-2.27.0
+On Mon, 24 May 2021 22:49:42 -0400 you wrote:
+> proc_dointvec() cannot do min and max check for setting a value
+> when extra1/extra2 is set, so change it to proc_dointvec_minmax()
+> for sysctl encap_port.
+> 
+> Fixes: e8a3001c2120 ("sctp: add encap_port for netns sock asoc and transport")
+> Signed-off-by: Xin Long <lucien.xin@gmail.com>
+> 
+> [...]
+
+Here is the summary with links:
+  - [net] sctp: fix the proc_handler for sysctl encap_port
+    https://git.kernel.org/netdev/net/c/b2540cdce6e2
+
+You are awesome, thank you!
+--
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/patchwork/pwbot.html
+
 
