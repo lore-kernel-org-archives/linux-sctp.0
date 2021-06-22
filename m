@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 28C8FC48BDF
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C6D6C49EA4
 	for <linux-sctp@archiver.kernel.org>; Tue, 22 Jun 2021 18:08:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 122C061002
+	by mail.kernel.org (Postfix) with ESMTP id 89E7761002
 	for <linux-sctp@archiver.kernel.org>; Tue, 22 Jun 2021 18:08:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232520AbhFVSK6 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        id S232506AbhFVSK6 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
         Tue, 22 Jun 2021 14:10:58 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39944 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39976 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232482AbhFVSK4 (ORCPT
+        with ESMTP id S232301AbhFVSK4 (ORCPT
         <rfc822;linux-sctp@vger.kernel.org>); Tue, 22 Jun 2021 14:10:56 -0400
-Received: from mail-qk1-x735.google.com (mail-qk1-x735.google.com [IPv6:2607:f8b0:4864:20::735])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9D9A5C09B04C;
-        Tue, 22 Jun 2021 11:05:06 -0700 (PDT)
-Received: by mail-qk1-x735.google.com with SMTP id g4so40614245qkl.1;
-        Tue, 22 Jun 2021 11:05:06 -0700 (PDT)
+Received: from mail-qt1-x831.google.com (mail-qt1-x831.google.com [IPv6:2607:f8b0:4864:20::831])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 71D9CC0611C2;
+        Tue, 22 Jun 2021 11:05:03 -0700 (PDT)
+Received: by mail-qt1-x831.google.com with SMTP id x21so87950qtq.9;
+        Tue, 22 Jun 2021 11:05:03 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=7qDMDjdLnVAw3SW8RntWwWg7To6cwW6aaie2zIIbJsg=;
-        b=RSFEEUexiPgF92aTI5REC/W/j1yhdkvwmUxZ73QCCRtd/y6l8qKurbVKMr66sUUOTD
-         AuECr0r1ajtEzwclRDsqRp1n6Sl5uKo6u51ee9BBgDRHSJlXhoZAkSOO+ha5QBNMKkEN
-         M3bve7oemMPSgjrOuSYvPjSmO3qjNFqdmYeAO35PNoM3S0R+scqY+nzbCPsPQVeHxuhV
-         CYM/K2EvIhJwuv+zoK5NmksoGlPExZEg79O8bIzq/1n8QvpBu1LsA3e9D8TAQdoLgxye
-         VGybJ6nw0TV89PwtHjug8BkFPND5f3MEJUoH8J5MGebpfsBzpwbddykOOLxEV9eL3QX8
-         AkJA==
+        bh=lOaIRsk7HP5oq5mdzuR9Qy1EOzmEMsYGwEFloyPsJkw=;
+        b=jGlPGve0y12rm7zM51XapUr/ACQW11lNKvUMjhbnvsGPKXA9D7dpuZcWcbSywzkocA
+         RMHQmS2b+f27iLX+oHmR3CbIST3roZEssAQMLjQ3qG28hvd0D6d6hwONxg8KxTCjtGOM
+         zpILRFJdz2PthgbyJZcQJFppM6VJWw5PaB2HynT6uLVbesS3DcV60+ri0hBLzh+C5oam
+         EGh2nKrcrakqGu3yq6TLQCF+NkoyzHTRANm5fvMpsUKz3vhL6z2set9PVlBwLngvonM8
+         gwT9nZwVwRdQyPy9IoM7BzQQRnWcmIW16OqMGe8V93j0IwBTRu22jLQf+br4+iGvavHD
+         elKQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=7qDMDjdLnVAw3SW8RntWwWg7To6cwW6aaie2zIIbJsg=;
-        b=X4FGhe/wk7gPRXPas6xhRNbRif49Js60CU+WbogswmgBjwVkvoMA1NLUT6FnVbaAoW
-         qPk3tNuKllHzhRvnIir+iHnwFE8kdOXxnqp5OciqjBQgGmU2ulbX5hdSWtRWnt9qqYIk
-         5p2d+VHjR9wF6eB+uieK7p2VRBIhP4LTtS49Q6XtQM2zvKEuVNOJufAVTi+/GAEq+hcu
-         nY67pgHUFQ8sg5MDVzpUQUunDuYL82EfwzYqT4OfD30y+3SjLH9tT/qyqwNob2c0YgK0
-         e7QB3wS0qMiQDLfjEei1G17fAcXFmyzNSO7ippufF4UYSt2fKjflpitczhZGHN321jRF
-         Bfzw==
-X-Gm-Message-State: AOAM530oE+K8AXhB3rwGu/qp8M9v8uUHcLAopA0QiGpr1Nr26xh5DkTE
-        N+79jPwR+JQYv4J1Qt8i8RdBZKkmmMFh4Q==
-X-Google-Smtp-Source: ABdhPJybTu9RLDSPFVAwshAEkiD7MHNhn4lxNRJPPXKXa1YPZd9WCtAk995LSvdv9/xwDzMI97qyWg==
-X-Received: by 2002:a37:4392:: with SMTP id q140mr5831845qka.49.1624385105626;
-        Tue, 22 Jun 2021 11:05:05 -0700 (PDT)
+        bh=lOaIRsk7HP5oq5mdzuR9Qy1EOzmEMsYGwEFloyPsJkw=;
+        b=ptiAg0yx06RU6mjH2ZceOKm3fwjMGTeZu5vtS7i64C/Kufw1VxbHvvQWS03UaZOHkk
+         br56TYURXyfwNrBTk1F7yIFRomKxsXKLT7NOq8aaVBOrgZSzjBfQw+41c9PUnsALOjT9
+         9JaYdJWUTdEwt7SyPGks7Da9vdIGJoo0w4qRYwNkdbT2zFvLFCb1OiClumlxgEfP7d9X
+         gTRu/MvLdB4Q+VlTfVTZhqAmeRT+teBLlkD25i4GtU3H+Ad6jUKhKiWY+7dIeK2/hTO4
+         hEam6AVeC7OfKZefdx1yYLEelIO/eqI5Q4QcE5z6V2CAXeN98zew48Qzi8VUKvPS8jrK
+         1BTw==
+X-Gm-Message-State: AOAM5326J1imWga1uJaPtavnVuYmOIv+tb1xlN7idnpG1vquze0vuMMc
+        9xfbI9FH3Lmw63suIauUDvdrU8TIik0=
+X-Google-Smtp-Source: ABdhPJwaYv450Erf1uUJ3goehHVoPaofqrg59D8poyoqfJhJAl/dIQve1JixmZGZQ2EVzqYwM7o3iA==
+X-Received: by 2002:ac8:444f:: with SMTP id m15mr34938qtn.340.1624385102360;
+        Tue, 22 Jun 2021 11:05:02 -0700 (PDT)
 Received: from localhost (nat-pool-bos-t.redhat.com. [66.187.233.206])
-        by smtp.gmail.com with ESMTPSA id m199sm13665097qke.71.2021.06.22.11.05.05
+        by smtp.gmail.com with ESMTPSA id c80sm9349399qkg.120.2021.06.22.11.05.01
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 22 Jun 2021 11:05:05 -0700 (PDT)
+        Tue, 22 Jun 2021 11:05:02 -0700 (PDT)
 From:   Xin Long <lucien.xin@gmail.com>
 To:     network dev <netdev@vger.kernel.org>, davem@davemloft.net,
         kuba@kernel.org,
         Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
         linux-sctp@vger.kernel.org
-Subject: [PATCHv2 net-next 04/14] sctp: add the constants/variables and states and some APIs for transport
-Date:   Tue, 22 Jun 2021 14:04:50 -0400
-Message-Id: <35adbcfcbf2067f01a72dee42ea34a7293565b3d.1624384990.git.lucien.xin@gmail.com>
+Subject: [PATCHv2 net-next 01/14] sctp: add pad chunk and its make function and event table
+Date:   Tue, 22 Jun 2021 14:04:47 -0400
+Message-Id: <242246f380811284c371014fbde90b85cfea67de.1624384990.git.lucien.xin@gmail.com>
 X-Mailer: git-send-email 2.27.0
 In-Reply-To: <cover.1624384990.git.lucien.xin@gmail.com>
 References: <cover.1624384990.git.lucien.xin@gmail.com>
@@ -73,157 +73,137 @@ Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-These are 4 constants described in rfc8899#section-5.1.2:
+This chunk is defined in rfc4820#section-3, and used to pad an
+SCTP packet. The receiver must discard this chunk and continue
+processing the rest of the chunks in the packet.
 
-  MAX_PROBES, MIN_PLPMTU, MAX_PLPMTU, BASE_PLPMTU;
-
-And 2 variables described in rfc8899#section-5.1.3:
-
-  PROBED_SIZE, PROBE_COUNT;
-
-And 5 states described in rfc8899#section-5.2:
-
-  DISABLED, BASE, SEARCH, SEARCH_COMPLETE, ERROR;
-
-And these 4 APIs are used to reset/update PLPMTUD, check if PLPMTUD is
-enabled, and calculate the additional headers length for a transport.
-
-Note the member 'probe_high' in transport will be set to the probe
-size when a probe fails with this probe size in the next patches.
+Add it now, as it will be bundled with a heartbeat chunk to probe
+pmtu in the following patches.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- include/net/sctp/constants.h | 17 +++++++++++++
- include/net/sctp/sctp.h      | 48 +++++++++++++++++++++++++++++++++---
- include/net/sctp/structs.h   |  8 ++++++
- 3 files changed, 70 insertions(+), 3 deletions(-)
+ include/linux/sctp.h     |  7 +++++++
+ include/net/sctp/sm.h    |  1 +
+ net/sctp/sm_make_chunk.c | 26 ++++++++++++++++++++++++++
+ net/sctp/sm_statetable.c | 23 +++++++++++++++++++++++
+ 4 files changed, 57 insertions(+)
 
-diff --git a/include/net/sctp/constants.h b/include/net/sctp/constants.h
-index 449cf9cb428b..85f6a105c59d 100644
---- a/include/net/sctp/constants.h
-+++ b/include/net/sctp/constants.h
-@@ -200,6 +200,23 @@ enum sctp_sock_state {
- 	SCTP_SS_CLOSING        = TCP_CLOSE_WAIT,
+diff --git a/include/linux/sctp.h b/include/linux/sctp.h
+index bb1926589693..a86e852507b3 100644
+--- a/include/linux/sctp.h
++++ b/include/linux/sctp.h
+@@ -98,6 +98,7 @@ enum sctp_cid {
+ 	SCTP_CID_I_FWD_TSN		= 0xC2,
+ 	SCTP_CID_ASCONF_ACK		= 0x80,
+ 	SCTP_CID_RECONF			= 0x82,
++	SCTP_CID_PAD			= 0x84,
+ }; /* enum */
+ 
+ 
+@@ -410,6 +411,12 @@ struct sctp_heartbeat_chunk {
  };
  
-+enum sctp_plpmtud_state {
-+	SCTP_PL_DISABLED,
-+	SCTP_PL_BASE,
-+	SCTP_PL_SEARCH,
-+	SCTP_PL_COMPLETE,
-+	SCTP_PL_ERROR,
+ 
++/* PAD chunk could be bundled with heartbeat chunk to probe pmtu */
++struct sctp_pad_chunk {
++	struct sctp_chunkhdr uh;
 +};
 +
-+#define	SCTP_BASE_PLPMTU	1200
-+#define	SCTP_MAX_PLPMTU		9000
-+#define	SCTP_MIN_PLPMTU		512
 +
-+#define	SCTP_MAX_PROBES		3
+ /* For the abort and shutdown ACK we must carry the init tag in the
+  * common header. Just the common header is all that is needed with a
+  * chunk descriptor.
+diff --git a/include/net/sctp/sm.h b/include/net/sctp/sm.h
+index fd223c94589a..09c59154634d 100644
+--- a/include/net/sctp/sm.h
++++ b/include/net/sctp/sm.h
+@@ -230,6 +230,7 @@ struct sctp_chunk *sctp_make_heartbeat_ack(const struct sctp_association *asoc,
+ 					   const struct sctp_chunk *chunk,
+ 					   const void *payload,
+ 					   const size_t paylen);
++struct sctp_chunk *sctp_make_pad(const struct sctp_association *asoc, int len);
+ struct sctp_chunk *sctp_make_op_error(const struct sctp_association *asoc,
+ 				      const struct sctp_chunk *chunk,
+ 				      __be16 cause_code, const void *payload,
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 5b44d228b6ca..e5d470cd7c40 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -1218,6 +1218,32 @@ struct sctp_chunk *sctp_make_heartbeat_ack(const struct sctp_association *asoc,
+ 	return retval;
+ }
+ 
++/* RFC4820 3. Padding Chunk (PAD)
++ *  0                   1                   2                   3
++ *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ * | Type = 0x84   |   Flags=0     |             Length            |
++ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ * |                                                               |
++ * \                         Padding Data                          /
++ * /                                                               \
++ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++ */
++struct sctp_chunk *sctp_make_pad(const struct sctp_association *asoc, int len)
++{
++	struct sctp_chunk *retval;
 +
-+#define SCTP_PL_BIG_STEP	32
-+#define SCTP_PL_MIN_STEP	4
++	retval = sctp_make_control(asoc, SCTP_CID_PAD, 0, len, GFP_ATOMIC);
++	if (!retval)
++		return NULL;
 +
- /* These functions map various type to printable names.  */
- const char *sctp_cname(const union sctp_subtype id);	/* chunk types */
- const char *sctp_oname(const union sctp_subtype id);	/* other events */
-diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
-index 86f74f2fe6de..08347d3f004f 100644
---- a/include/net/sctp/sctp.h
-+++ b/include/net/sctp/sctp.h
-@@ -573,14 +573,15 @@ static inline struct dst_entry *sctp_transport_dst_check(struct sctp_transport *
- /* Calculate max payload size given a MTU, or the total overhead if
-  * given MTU is zero
++	skb_put_zero(retval->skb, len);
++	retval->chunk_hdr->length = htons(ntohs(retval->chunk_hdr->length) + len);
++	retval->chunk_end = skb_tail_pointer(retval->skb);
++
++	return retval;
++}
++
+ /* Create an Operation Error chunk with the specified space reserved.
+  * This routine can be used for containing multiple causes in the chunk.
   */
--static inline __u32 sctp_mtu_payload(const struct sctp_sock *sp,
--				     __u32 mtu, __u32 extra)
-+static inline __u32 __sctp_mtu_payload(const struct sctp_sock *sp,
-+				       const struct sctp_transport *t,
-+				       __u32 mtu, __u32 extra)
- {
- 	__u32 overhead = sizeof(struct sctphdr) + extra;
+diff --git a/net/sctp/sm_statetable.c b/net/sctp/sm_statetable.c
+index 88ea87f4f0e7..c82c4233ec6b 100644
+--- a/net/sctp/sm_statetable.c
++++ b/net/sctp/sm_statetable.c
+@@ -526,6 +526,26 @@ auth_chunk_event_table[SCTP_NUM_AUTH_CHUNK_TYPES][SCTP_STATE_NUM_STATES] = {
+ 	TYPE_SCTP_AUTH,
+ }; /*state_fn_t auth_chunk_event_table[][] */
  
- 	if (sp) {
- 		overhead += sp->pf->af->net_header_len;
--		if (sp->udp_port)
-+		if (sp->udp_port && (!t || t->encap_port))
- 			overhead += sizeof(struct udphdr);
- 	} else {
- 		overhead += sizeof(struct ipv6hdr);
-@@ -592,6 +593,12 @@ static inline __u32 sctp_mtu_payload(const struct sctp_sock *sp,
- 	return mtu ? mtu - overhead : overhead;
- }
++static const struct sctp_sm_table_entry
++pad_chunk_event_table[SCTP_STATE_NUM_STATES] = {
++	/* SCTP_STATE_CLOSED */
++	TYPE_SCTP_FUNC(sctp_sf_discard_chunk),
++	/* SCTP_STATE_COOKIE_WAIT */
++	TYPE_SCTP_FUNC(sctp_sf_discard_chunk),
++	/* SCTP_STATE_COOKIE_ECHOED */
++	TYPE_SCTP_FUNC(sctp_sf_discard_chunk),
++	/* SCTP_STATE_ESTABLISHED */
++	TYPE_SCTP_FUNC(sctp_sf_discard_chunk),
++	/* SCTP_STATE_SHUTDOWN_PENDING */
++	TYPE_SCTP_FUNC(sctp_sf_discard_chunk),
++	/* SCTP_STATE_SHUTDOWN_SENT */
++	TYPE_SCTP_FUNC(sctp_sf_discard_chunk),
++	/* SCTP_STATE_SHUTDOWN_RECEIVED */
++	TYPE_SCTP_FUNC(sctp_sf_discard_chunk),
++	/* SCTP_STATE_SHUTDOWN_ACK_SENT */
++	TYPE_SCTP_FUNC(sctp_sf_discard_chunk),
++};	/* chunk pad */
++
+ static const struct sctp_sm_table_entry
+ chunk_event_table_unknown[SCTP_STATE_NUM_STATES] = {
+ 	/* SCTP_STATE_CLOSED */
+@@ -992,6 +1012,9 @@ static const struct sctp_sm_table_entry *sctp_chunk_event_lookup(
  
-+static inline __u32 sctp_mtu_payload(const struct sctp_sock *sp,
-+				     __u32 mtu, __u32 extra)
-+{
-+	return __sctp_mtu_payload(sp, NULL, mtu, extra);
-+}
+ 	case SCTP_CID_AUTH:
+ 		return &auth_chunk_event_table[0][state];
 +
- static inline __u32 sctp_dst_mtu(const struct dst_entry *dst)
- {
- 	return SCTP_TRUNC4(max_t(__u32, dst_mtu(dst),
-@@ -615,6 +622,41 @@ static inline __u32 sctp_min_frag_point(struct sctp_sock *sp, __u16 datasize)
- 	return sctp_mtu_payload(sp, SCTP_DEFAULT_MINSEGMENT, datasize);
- }
++	case SCTP_CID_PAD:
++		return &pad_chunk_event_table[state];
+ 	}
  
-+static inline int sctp_transport_pl_hlen(struct sctp_transport *t)
-+{
-+	return __sctp_mtu_payload(sctp_sk(t->asoc->base.sk), t, 0, 0);
-+}
-+
-+static inline void sctp_transport_pl_reset(struct sctp_transport *t)
-+{
-+	if (t->probe_interval && (t->param_flags & SPP_PMTUD_ENABLE) &&
-+	    (t->state == SCTP_ACTIVE || t->state == SCTP_UNKNOWN)) {
-+		if (t->pl.state == SCTP_PL_DISABLED) {
-+			t->pl.state = SCTP_PL_BASE;
-+			t->pl.pmtu = SCTP_BASE_PLPMTU;
-+			t->pl.probe_size = SCTP_BASE_PLPMTU;
-+		}
-+	} else {
-+		if (t->pl.state != SCTP_PL_DISABLED)
-+			t->pl.state = SCTP_PL_DISABLED;
-+	}
-+}
-+
-+static inline void sctp_transport_pl_update(struct sctp_transport *t)
-+{
-+	if (t->pl.state == SCTP_PL_DISABLED)
-+		return;
-+
-+	t->pl.state = SCTP_PL_BASE;
-+	t->pl.pmtu = SCTP_BASE_PLPMTU;
-+	t->pl.probe_size = SCTP_BASE_PLPMTU;
-+}
-+
-+static inline bool sctp_transport_pl_enabled(struct sctp_transport *t)
-+{
-+	return t->pl.state != SCTP_PL_DISABLED;
-+}
-+
- static inline bool sctp_newsk_ready(const struct sock *sk)
- {
- 	return sock_flag(sk, SOCK_DEAD) || sk->sk_socket;
-diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index bf5d22deaefb..85d3566c2227 100644
---- a/include/net/sctp/structs.h
-+++ b/include/net/sctp/structs.h
-@@ -978,6 +978,14 @@ struct sctp_transport {
- 		char cacc_saw_newack;
- 	} cacc;
- 
-+	struct {
-+		__u16 pmtu;
-+		__u16 probe_size;
-+		__u16 probe_high;
-+		__u8 probe_count;
-+		__u8 state;
-+	} pl; /* plpmtud related */
-+
- 	/* 64-bit random number sent with heartbeat. */
- 	__u64 hb_nonce;
- 
+ 	return &chunk_event_table_unknown[state];
 -- 
 2.27.0
 
