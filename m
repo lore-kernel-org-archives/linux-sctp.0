@@ -8,62 +8,62 @@ X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 67AC5C2B9F4
-	for <linux-sctp@archiver.kernel.org>; Tue, 22 Jun 2021 18:08:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1A00BC49EAF
+	for <linux-sctp@archiver.kernel.org>; Tue, 22 Jun 2021 18:08:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 524FD61002
-	for <linux-sctp@archiver.kernel.org>; Tue, 22 Jun 2021 18:08:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0952561002
+	for <linux-sctp@archiver.kernel.org>; Tue, 22 Jun 2021 18:08:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232714AbhFVSLJ (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Tue, 22 Jun 2021 14:11:09 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39992 "EHLO
+        id S232444AbhFVSLK (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Tue, 22 Jun 2021 14:11:10 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39948 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232555AbhFVSK6 (ORCPT
+        with ESMTP id S232492AbhFVSK6 (ORCPT
         <rfc822;linux-sctp@vger.kernel.org>); Tue, 22 Jun 2021 14:10:58 -0400
-Received: from mail-qk1-x72a.google.com (mail-qk1-x72a.google.com [IPv6:2607:f8b0:4864:20::72a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BEBD7C035468;
-        Tue, 22 Jun 2021 11:05:15 -0700 (PDT)
-Received: by mail-qk1-x72a.google.com with SMTP id g4so40615486qkl.1;
-        Tue, 22 Jun 2021 11:05:15 -0700 (PDT)
+Received: from mail-qt1-x82b.google.com (mail-qt1-x82b.google.com [IPv6:2607:f8b0:4864:20::82b])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EBBB3C09B097;
+        Tue, 22 Jun 2021 11:05:17 -0700 (PDT)
+Received: by mail-qt1-x82b.google.com with SMTP id d5so105412qtd.5;
+        Tue, 22 Jun 2021 11:05:17 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:subject:date:message-id:in-reply-to:references:mime-version
          :content-transfer-encoding;
-        bh=xRIswn7Q82V0pxOKu3EcLv8PlQZFbGi9nHGHyUxVj/8=;
-        b=nuSIy9PVXKD+awu5UqvpowRwiHuckibVY/QI0/DtKJN4mvEQX7n7myme+oi9NOwik7
-         idWP6PtYj8LYPv/2n6DOtGQG8KGhmNK4MEdJFrdmtTcBEnX5nFVuLP7v7PO9jOL55eP3
-         qf15zk1AfGmJmpgrwUyf71W0PLJWXzRhJ8/8YCwv8uxm6hB6/zWDV4FIxiqGur1g5DFb
-         blzElPyjNSyuSUJOB5uwBY6uHnY1fyjx7sVLWZgdLLpMd4Zl0Xf0i35hUD8vA0tZDMzu
-         vBI1ZlpmngqoeuprpDjXagzmfku1PkaXN6xQMuljyUNSGM0Irzj8Pe8wdmIimeIc5+6D
-         Ydnw==
+        bh=x+Xg6iM+QB/s2gTWnq9NFUo2g1N76G4pjTUyEYZgt8s=;
+        b=fYV0ojnbXla/ypCYUd8kaJUSy4ytvmHGtUFA6lUuR6Obt5LQ03zi28V/F4tJ2Nks8s
+         aB33JuTz4Bm7IJ61RC6BGTx5YHXSOFBVd21OaKD2tZDajW+x4fmUKdjs4nC2xI+UzXyg
+         dag37AYb3fZBLcGSRBt27U/ACgKJPXW//T82p+klK3QV4i18X8nf4XZujQ/ejJrEG8cC
+         VgEX+XAwxgg2axp9jCQXeBBSjrxSGBuy6U4h+hisn3szMN0eTrwQpTqafqKbvpK0baNE
+         4YHAvEbBoW1szi0lw1wbPZ1pZr0lPshcWOhWB4cfB29hvEc+iQFyVcoO1m2XTdk1p1po
+         qgig==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=xRIswn7Q82V0pxOKu3EcLv8PlQZFbGi9nHGHyUxVj/8=;
-        b=uA1B7obngBLVbSsdIjXYkkUgft4rf5MOvBV9BQDH8D0KftzGgilPg+HGDv16v6Ji2D
-         EtPXqdGHRfF7aHcvtzoJo2FY4ofhAzm5IY0hsjzEy+lchxIkVbatp5N/sSpKCHNm2KRS
-         /vlNJehW38rqD6vDsoMCv0hvdVCI7n+PUoTAmLitK7ghMvclLsRNCryCALov26CRLCei
-         ih/l9btaJXUbpVgyX+1UGMjxD92bU+pAdcG+M9wJ8BYEnpcIGNjH4QQ4XSKCqmjQ+Lak
-         1w3c2lcrrWCiwia03bog047ahU2jBAt3tQ/c5E/8JGhg9GKFzkcOMShY9HiBNJ52rGAY
-         1XaQ==
-X-Gm-Message-State: AOAM532O7n7iL3nkFuu9BQ5uG4hKgjnld0xolp8jYIBDGJeNA0gPmRRo
-        J0RTcV1jWHSeKpV9fFMO4E4NR0eQD0V8mA==
-X-Google-Smtp-Source: ABdhPJzUA+JC8LczGbSYYC2q6iD8reaDF4Y1Glm8YissZQQrFtl3oFsFqzAduiUsdG60TJukUTF/+g==
-X-Received: by 2002:a37:8e02:: with SMTP id q2mr5651637qkd.312.1624385114759;
-        Tue, 22 Jun 2021 11:05:14 -0700 (PDT)
+        bh=x+Xg6iM+QB/s2gTWnq9NFUo2g1N76G4pjTUyEYZgt8s=;
+        b=MLPWnyah6TJOibd2zuGmOvDtYA0cTe5miG92xS+IKOCSErs3kgcfH8JCLoXpD7AZq/
+         VU5eNuGF2tZNSmGCntRpSdNag8M3wnzchE5S2X6PO6C8fcMvlx3XAqy/O93gbt4WeSCb
+         /wL58p7aiQzHI/Bkhlpx7i3PQ+LdOSn+IlvHL/YJH2mrDCsry/mbbq6vsxGBpYgjTahq
+         f4ehu7i3EfbbmCFF5tHOBxhrrQe6/vMFWSE9PYW1en18m2NoGX9LBI7B9vcnALkoJMcA
+         Zn3+kXehxZ/BslmHnGe8SCu1NB/hICEk2+JHAuCy0uGc6G80g+OELWT6KalcUwKmDRVg
+         w41g==
+X-Gm-Message-State: AOAM531u/UotytcaLTJQS0Gmtu7sYww62xTtHmvleAC0AdQnQRhfDB7w
+        ktk+FflmG547384hXgw2XhKNq4NdGCKfrQ==
+X-Google-Smtp-Source: ABdhPJwU0+LajRM5gnabO6ZfMszGwCAqDrUSRtJ89ixwspuS/g4wM7QNPAWlo5YAzPiQI/XHFfLHxQ==
+X-Received: by 2002:ac8:7188:: with SMTP id w8mr29906qto.13.1624385116907;
+        Tue, 22 Jun 2021 11:05:16 -0700 (PDT)
 Received: from localhost (nat-pool-bos-t.redhat.com. [66.187.233.206])
-        by smtp.gmail.com with ESMTPSA id 9sm6838933qkj.123.2021.06.22.11.05.14
+        by smtp.gmail.com with ESMTPSA id w2sm12939817qkf.88.2021.06.22.11.05.16
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 22 Jun 2021 11:05:14 -0700 (PDT)
+        Tue, 22 Jun 2021 11:05:16 -0700 (PDT)
 From:   Xin Long <lucien.xin@gmail.com>
 To:     network dev <netdev@vger.kernel.org>, davem@davemloft.net,
         kuba@kernel.org,
         Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
         linux-sctp@vger.kernel.org
-Subject: [PATCHv2 net-next 12/14] sctp: extract sctp_v6_err_handle function from sctp_v6_err
-Date:   Tue, 22 Jun 2021 14:04:58 -0400
-Message-Id: <99e9df6645a16126061a4eecc981f8255d4f2c5f.1624384990.git.lucien.xin@gmail.com>
+Subject: [PATCHv2 net-next 14/14] sctp: process sctp over udp icmp err on sctp side
+Date:   Tue, 22 Jun 2021 14:05:00 -0400
+Message-Id: <a8924b07e7e744860e9e9ae903f46c6a6a8e09a0.1624384990.git.lucien.xin@gmail.com>
 X-Mailer: git-send-email 2.27.0
 In-Reply-To: <cover.1624384990.git.lucien.xin@gmail.com>
 References: <cover.1624384990.git.lucien.xin@gmail.com>
@@ -73,128 +73,168 @@ Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-This patch is to extract sctp_v6_err_handle() from sctp_v6_err() to
-only handle the icmp err after the sock lookup, and it also makes
-the code clearer.
+Previously, sctp over udp was using udp tunnel's icmp err process, which
+only does sk lookup on sctp side. However for sctp's icmp error process,
+there are more things to do, like syncing assoc pmtu/retransmit packets
+for toobig type err, and starting proto_unreach_timer for unreach type
+err etc.
 
-sctp_v6_err_handle() will be used in sctp over udp's err handling
-in the following patch.
+Now after adding PLPMTUD, which also requires to process toobig type err
+on sctp side. This patch is to process icmp err on sctp side by parsing
+the type/code/info in .encap_err_lookup and call sctp's icmp processing
+functions. Note as the 'redirect' err process needs to know the outer
+ip(v6) header's, we have to leave it to udp(v6)_err to handle it.
 
 Signed-off-by: Xin Long <lucien.xin@gmail.com>
 Acked-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 ---
- net/sctp/ipv6.c | 76 ++++++++++++++++++++++++++-----------------------
- 1 file changed, 40 insertions(+), 36 deletions(-)
+ include/net/sctp/sctp.h |  2 ++
+ net/sctp/input.c        | 30 ++++++++++++++++++++++++++++++
+ net/sctp/ipv6.c         | 30 ++++++++++++++++++++++++++++++
+ net/sctp/protocol.c     | 21 ++-------------------
+ 4 files changed, 64 insertions(+), 19 deletions(-)
 
-diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
-index 50ed4de18069..6ad422f2d0d0 100644
---- a/net/sctp/ipv6.c
-+++ b/net/sctp/ipv6.c
-@@ -122,50 +122,28 @@ static struct notifier_block sctp_inet6addr_notifier = {
- 	.notifier_call = sctp_inet6addr_event,
- };
+diff --git a/include/net/sctp/sctp.h b/include/net/sctp/sctp.h
+index f7e083602c10..69bab88ad66b 100644
+--- a/include/net/sctp/sctp.h
++++ b/include/net/sctp/sctp.h
+@@ -145,6 +145,8 @@ struct sock *sctp_err_lookup(struct net *net, int family, struct sk_buff *,
+ 			     struct sctphdr *, struct sctp_association **,
+ 			     struct sctp_transport **);
+ void sctp_err_finish(struct sock *, struct sctp_transport *);
++int sctp_udp_v4_err(struct sock *sk, struct sk_buff *skb);
++int sctp_udp_v6_err(struct sock *sk, struct sk_buff *skb);
+ void sctp_icmp_frag_needed(struct sock *, struct sctp_association *,
+ 			   struct sctp_transport *t, __u32 pmtu);
+ void sctp_icmp_redirect(struct sock *, struct sctp_transport *,
+diff --git a/net/sctp/input.c b/net/sctp/input.c
+index 83d58d42ea45..fe6429cc012f 100644
+--- a/net/sctp/input.c
++++ b/net/sctp/input.c
+@@ -645,6 +645,36 @@ int sctp_v4_err(struct sk_buff *skb, __u32 info)
+ 	return 0;
+ }
  
--/* ICMP error handler. */
--static int sctp_v6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
--			u8 type, u8 code, int offset, __be32 info)
-+static void sctp_v6_err_handle(struct sctp_transport *t, struct sk_buff *skb,
-+			       __u8 type, __u8 code, __u32 info)
- {
--	struct sock *sk;
--	struct sctp_association *asoc;
--	struct sctp_transport *transport;
-+	struct sctp_association *asoc = t->asoc;
-+	struct sock *sk = asoc->base.sk;
- 	struct ipv6_pinfo *np;
--	__u16 saveip, savesctp;
--	int err, ret = 0;
--	struct net *net = dev_net(skb->dev);
--
--	/* Fix up skb to look at the embedded net header. */
--	saveip	 = skb->network_header;
--	savesctp = skb->transport_header;
--	skb_reset_network_header(skb);
--	skb_set_transport_header(skb, offset);
--	sk = sctp_err_lookup(net, AF_INET6, skb, sctp_hdr(skb), &asoc, &transport);
--	/* Put back, the original pointers. */
--	skb->network_header   = saveip;
--	skb->transport_header = savesctp;
--	if (!sk) {
--		__ICMP6_INC_STATS(net, __in6_dev_get(skb->dev), ICMP6_MIB_INERRORS);
--		return -ENOENT;
--	}
--
--	/* Warning:  The sock lock is held.  Remember to call
--	 * sctp_err_finish!
--	 */
-+	int err = 0;
- 
- 	switch (type) {
- 	case ICMPV6_PKT_TOOBIG:
- 		if (ip6_sk_accept_pmtu(sk))
--			sctp_icmp_frag_needed(sk, asoc, transport, ntohl(info));
--		goto out_unlock;
-+			sctp_icmp_frag_needed(sk, asoc, t, info);
-+		return;
- 	case ICMPV6_PARAMPROB:
- 		if (ICMPV6_UNK_NEXTHDR == code) {
--			sctp_icmp_proto_unreachable(sk, asoc, transport);
--			goto out_unlock;
-+			sctp_icmp_proto_unreachable(sk, asoc, t);
-+			return;
- 		}
- 		break;
- 	case NDISC_REDIRECT:
--		sctp_icmp_redirect(sk, transport, skb);
--		goto out_unlock;
-+		sctp_icmp_redirect(sk, t, skb);
-+		return;
- 	default:
- 		break;
- 	}
-@@ -175,13 +153,39 @@ static int sctp_v6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
- 	if (!sock_owned_by_user(sk) && np->recverr) {
- 		sk->sk_err = err;
- 		sk->sk_error_report(sk);
--	} else {  /* Only an error on timeout */
-+	} else {
- 		sk->sk_err_soft = err;
- 	}
-+}
-+
-+/* ICMP error handler. */
-+static int sctp_v6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
-+		       u8 type, u8 code, int offset, __be32 info)
++int sctp_udp_v4_err(struct sock *sk, struct sk_buff *skb)
 +{
 +	struct net *net = dev_net(skb->dev);
-+	struct sctp_transport *transport;
 +	struct sctp_association *asoc;
-+	__u16 saveip, savesctp;
-+	struct sock *sk;
++	struct sctp_transport *t;
++	struct icmphdr *hdr;
++	__u32 info = 0;
 +
-+	/* Fix up skb to look at the embedded net header. */
-+	saveip	 = skb->network_header;
-+	savesctp = skb->transport_header;
-+	skb_reset_network_header(skb);
-+	skb_set_transport_header(skb, offset);
-+	sk = sctp_err_lookup(net, AF_INET6, skb, sctp_hdr(skb), &asoc, &transport);
-+	/* Put back, the original pointers. */
-+	skb->network_header   = saveip;
-+	skb->transport_header = savesctp;
++	skb->transport_header += sizeof(struct udphdr);
++	sk = sctp_err_lookup(net, AF_INET, skb, sctp_hdr(skb), &asoc, &t);
++	if (!sk) {
++		__ICMP_INC_STATS(net, ICMP_MIB_INERRORS);
++		return -ENOENT;
++	}
++
++	skb->transport_header -= sizeof(struct udphdr);
++	hdr = (struct icmphdr *)(skb_network_header(skb) - sizeof(struct icmphdr));
++	if (hdr->type == ICMP_REDIRECT) {
++		/* can't be handled without outer iphdr known, leave it to udp_err */
++		sctp_err_finish(sk, t);
++		return 0;
++	}
++	if (hdr->type == ICMP_DEST_UNREACH && hdr->code == ICMP_FRAG_NEEDED)
++		info = ntohs(hdr->un.frag.mtu);
++	sctp_v4_err_handle(t, skb, hdr->type, hdr->code, info);
++
++	sctp_err_finish(sk, t);
++	return 1;
++}
++
+ /*
+  * RFC 2960, 8.4 - Handle "Out of the blue" Packets.
+  *
+diff --git a/net/sctp/ipv6.c b/net/sctp/ipv6.c
+index 6ad422f2d0d0..05f81a4d0ee7 100644
+--- a/net/sctp/ipv6.c
++++ b/net/sctp/ipv6.c
+@@ -188,6 +188,36 @@ static int sctp_v6_err(struct sk_buff *skb, struct inet6_skb_parm *opt,
+ 	return 0;
+ }
+ 
++int sctp_udp_v6_err(struct sock *sk, struct sk_buff *skb)
++{
++	struct net *net = dev_net(skb->dev);
++	struct sctp_association *asoc;
++	struct sctp_transport *t;
++	struct icmp6hdr *hdr;
++	__u32 info = 0;
++
++	skb->transport_header += sizeof(struct udphdr);
++	sk = sctp_err_lookup(net, AF_INET6, skb, sctp_hdr(skb), &asoc, &t);
 +	if (!sk) {
 +		__ICMP6_INC_STATS(net, __in6_dev_get(skb->dev), ICMP6_MIB_INERRORS);
 +		return -ENOENT;
 +	}
- 
--out_unlock:
-+	sctp_v6_err_handle(transport, skb, type, code, ntohl(info));
- 	sctp_err_finish(sk, transport);
--	return ret;
 +
-+	return 0;
++	skb->transport_header -= sizeof(struct udphdr);
++	hdr = (struct icmp6hdr *)(skb_network_header(skb) - sizeof(struct icmp6hdr));
++	if (hdr->icmp6_type == NDISC_REDIRECT) {
++		/* can't be handled without outer ip6hdr known, leave it to udpv6_err */
++		sctp_err_finish(sk, t);
++		return 0;
++	}
++	if (hdr->icmp6_type == ICMPV6_PKT_TOOBIG)
++		info = ntohl(hdr->icmp6_mtu);
++	sctp_v6_err_handle(t, skb, hdr->icmp6_type, hdr->icmp6_code, info);
++
++	sctp_err_finish(sk, t);
++	return 1;
++}
++
+ static int sctp_v6_xmit(struct sk_buff *skb, struct sctp_transport *t)
+ {
+ 	struct dst_entry *dst = dst_clone(t->dst);
+diff --git a/net/sctp/protocol.c b/net/sctp/protocol.c
+index baa4e770e4ba..bc5db0b404ce 100644
+--- a/net/sctp/protocol.c
++++ b/net/sctp/protocol.c
+@@ -850,23 +850,6 @@ static int sctp_udp_rcv(struct sock *sk, struct sk_buff *skb)
+ 	return 0;
  }
  
- static int sctp_v6_xmit(struct sk_buff *skb, struct sctp_transport *t)
+-static int sctp_udp_err_lookup(struct sock *sk, struct sk_buff *skb)
+-{
+-	struct sctp_association *asoc;
+-	struct sctp_transport *t;
+-	int family;
+-
+-	skb->transport_header += sizeof(struct udphdr);
+-	family = (ip_hdr(skb)->version == 4) ? AF_INET : AF_INET6;
+-	sk = sctp_err_lookup(dev_net(skb->dev), family, skb, sctp_hdr(skb),
+-			     &asoc, &t);
+-	if (!sk)
+-		return -ENOENT;
+-
+-	sctp_err_finish(sk, t);
+-	return 0;
+-}
+-
+ int sctp_udp_sock_start(struct net *net)
+ {
+ 	struct udp_tunnel_sock_cfg tuncfg = {NULL};
+@@ -885,7 +868,7 @@ int sctp_udp_sock_start(struct net *net)
+ 
+ 	tuncfg.encap_type = 1;
+ 	tuncfg.encap_rcv = sctp_udp_rcv;
+-	tuncfg.encap_err_lookup = sctp_udp_err_lookup;
++	tuncfg.encap_err_lookup = sctp_udp_v4_err;
+ 	setup_udp_tunnel_sock(net, sock, &tuncfg);
+ 	net->sctp.udp4_sock = sock->sk;
+ 
+@@ -907,7 +890,7 @@ int sctp_udp_sock_start(struct net *net)
+ 
+ 	tuncfg.encap_type = 1;
+ 	tuncfg.encap_rcv = sctp_udp_rcv;
+-	tuncfg.encap_err_lookup = sctp_udp_err_lookup;
++	tuncfg.encap_err_lookup = sctp_udp_v6_err;
+ 	setup_udp_tunnel_sock(net, sock, &tuncfg);
+ 	net->sctp.udp6_sock = sock->sk;
+ #endif
 -- 
 2.27.0
 
