@@ -2,119 +2,173 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=BAYES_00,
+X-Spam-Status: No, score=-2.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
 	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AEF39C4743C
-	for <linux-sctp@archiver.kernel.org>; Wed, 23 Jun 2021 09:50:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 37C7DC4743C
+	for <linux-sctp@archiver.kernel.org>; Wed, 23 Jun 2021 16:00:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 891326113B
-	for <linux-sctp@archiver.kernel.org>; Wed, 23 Jun 2021 09:50:30 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 118D861002
+	for <linux-sctp@archiver.kernel.org>; Wed, 23 Jun 2021 16:00:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230234AbhFWJwq (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Wed, 23 Jun 2021 05:52:46 -0400
-Received: from eu-smtp-delivery-151.mimecast.com ([185.58.86.151]:31613 "EHLO
-        eu-smtp-delivery-151.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S230083AbhFWJwq (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>);
-        Wed, 23 Jun 2021 05:52:46 -0400
-Received: from AcuMS.aculab.com (156.67.243.121 [156.67.243.121]) (Using
- TLS) by relay.mimecast.com with ESMTP id
- uk-mta-131-n5qeiCwrNTKvyMAR3gHqsw-1; Wed, 23 Jun 2021 10:50:26 +0100
-X-MC-Unique: n5qeiCwrNTKvyMAR3gHqsw-1
-Received: from AcuMS.Aculab.com (10.202.163.6) by AcuMS.aculab.com
- (10.202.163.6) with Microsoft SMTP Server (TLS) id 15.0.1497.18; Wed, 23 Jun
- 2021 10:50:25 +0100
-Received: from AcuMS.Aculab.com ([fe80::994c:f5c2:35d6:9b65]) by
- AcuMS.aculab.com ([fe80::994c:f5c2:35d6:9b65%12]) with mapi id
- 15.00.1497.018; Wed, 23 Jun 2021 10:50:25 +0100
-From:   David Laight <David.Laight@ACULAB.COM>
-To:     'Xin Long' <lucien.xin@gmail.com>
-CC:     network dev <netdev@vger.kernel.org>,
+        id S231449AbhFWQC0 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Wed, 23 Jun 2021 12:02:26 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51974 "EHLO
+        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S230430AbhFWQC0 (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Wed, 23 Jun 2021 12:02:26 -0400
+Received: from mail-wr1-x42c.google.com (mail-wr1-x42c.google.com [IPv6:2a00:1450:4864:20::42c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6D5DBC061574;
+        Wed, 23 Jun 2021 09:00:07 -0700 (PDT)
+Received: by mail-wr1-x42c.google.com with SMTP id d11so3290245wrm.0;
+        Wed, 23 Jun 2021 09:00:07 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=ky7p5E5Glt+ARNR1+ACXJj8PM4qwkhYTCUGGXf86byc=;
+        b=DtSYSSCpqDpWYYp42JMupVgA2pr0xCAFayG8VfR5umevghy+4vA+cIZ2sc+NuyR6So
+         pLldtPAnqWAqQM9fm9B0BvozoCncNQMqH8dhAMZXgklgZJVrKU+QUMax9plLr/Na6lDm
+         TeWOEQEb9Qs3x5GNda1OeRrCBTDtaFT66fp3M/KYhgVfn//hAbuoTF8zva+K0tFTLuE6
+         qh5qiSxWrXyOjEcnRr//ifDmTwVUVocoMW9QH5PXwfprtCAU4yPVaoUj1KL4fF9ZVYbA
+         sDeHw3a56oTf7CgzpDoTMN4yFkkg8tRD7g07mh9TKsYmoGE3twte/MpZ06eZhWrUuFbI
+         ai0w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=ky7p5E5Glt+ARNR1+ACXJj8PM4qwkhYTCUGGXf86byc=;
+        b=aUH2+GfwHe079xYLF5Zupoc4neNLwkd0hKOPj8Ew4+Ot5cHVrmLA1yUk9w40qgqZBX
+         6yrgk1qK5GWbZdT4Un4eEM+ZGxjsZ0QdvWnlQEfouuSbfTizHRp6qA88KBbGLFc48R/P
+         EwZ+U2wJd1biI9Ngz8P7TIUyjuqqwjAPKT1YTWs9gLmDfwlloN6WsDAl4eelrHah6Xs8
+         z0uF4GE1bhcEJIG+6LzGxmv1SOGygbk/BhMbtoDtEycvH8RMeElkasaqtmRfg+CQjQAn
+         GpgPoZSbKTWHy84IkLpFhlNrv6xMOEeNG0eTvY/e5GwxFsJTc/gR19E47cMIkj2X2NwP
+         +/jA==
+X-Gm-Message-State: AOAM532/5/Xy87JIEcbx5dJ+2iNF3BtFLNGb0WUgzLCQGdzyae5gE7PC
+        Ys9RU5NGueeXeNhCkIFY7fH7ztAJCWV81rrKyp0=
+X-Google-Smtp-Source: ABdhPJzR41oO6i92ixrN6II8RUAha93sdxoqIJeaXsbn2hRw3Hr1vwvqL7ZcPm5wlX3oOft+r2+PD3kWL/Kr207fdSo=
+X-Received: by 2002:a5d:5187:: with SMTP id k7mr819538wrv.395.1624464006015;
+ Wed, 23 Jun 2021 09:00:06 -0700 (PDT)
+MIME-Version: 1.0
+References: <cover.1624384990.git.lucien.xin@gmail.com> <cfaa01992d064520b3a9138983e8ec41@AcuMS.aculab.com>
+ <CADvbK_e7D4s81vS0rq=P4mQe47dshJgQzaWnrUyCi-Cis4xyhQ@mail.gmail.com>
+ <CADvbK_eeJVoWps8UrygEfNdXL76Q2XMoNOoELWHFqOTq2634cA@mail.gmail.com> <8328f935ec4f488e8d95486a7564aec0@AcuMS.aculab.com>
+In-Reply-To: <8328f935ec4f488e8d95486a7564aec0@AcuMS.aculab.com>
+From:   Xin Long <lucien.xin@gmail.com>
+Date:   Wed, 23 Jun 2021 11:59:54 -0400
+Message-ID: <CADvbK_d0E01o1rZYpX-dbmz57ZZmdRbYiEzYj0XQdOYJpaZ8mA@mail.gmail.com>
+Subject: Re: [PATCHv2 net-next 00/14] sctp: implement RFC8899: Packetization
+ Layer Path MTU Discovery for SCTP transport
+To:     David Laight <David.Laight@aculab.com>
+Cc:     network dev <netdev@vger.kernel.org>,
         "davem@davemloft.net" <davem@davemloft.net>,
         "kuba@kernel.org" <kuba@kernel.org>,
-        "Marcelo Ricardo Leitner" <marcelo.leitner@gmail.com>,
+        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
         "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>
-Subject: RE: [PATCHv2 net-next 00/14] sctp: implement RFC8899: Packetization
- Layer Path MTU Discovery for SCTP transport
-Thread-Topic: [PATCHv2 net-next 00/14] sctp: implement RFC8899: Packetization
- Layer Path MTU Discovery for SCTP transport
-Thread-Index: AQHXZ5Gk1m/0BhrSYEC4nBP7A0Tb5KsglL6QgABhdaSAAFqyIA==
-Date:   Wed, 23 Jun 2021 09:50:25 +0000
-Message-ID: <8328f935ec4f488e8d95486a7564aec0@AcuMS.aculab.com>
-References: <cover.1624384990.git.lucien.xin@gmail.com>
- <cfaa01992d064520b3a9138983e8ec41@AcuMS.aculab.com>
- <CADvbK_e7D4s81vS0rq=P4mQe47dshJgQzaWnrUyCi-Cis4xyhQ@mail.gmail.com>
- <CADvbK_eeJVoWps8UrygEfNdXL76Q2XMoNOoELWHFqOTq2634cA@mail.gmail.com>
-In-Reply-To: <CADvbK_eeJVoWps8UrygEfNdXL76Q2XMoNOoELWHFqOTq2634cA@mail.gmail.com>
-Accept-Language: en-GB, en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-ms-exchange-transport-fromentityheader: Hosted
-x-originating-ip: [10.202.205.107]
-MIME-Version: 1.0
-Authentication-Results: relay.mimecast.com;
-        auth=pass smtp.auth=C51A453 smtp.mailfrom=david.laight@aculab.com
-X-Mimecast-Spam-Score: 0
-X-Mimecast-Originator: aculab.com
-Content-Language: en-US
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: base64
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-RnJvbTogWGluIExvbmcNCj4gU2VudDogMjMgSnVuZSAyMDIxIDA0OjQ5DQouLi4NCj4gWzEwM10g
-cGxfc2VuZDogUExQTVRVRDogc3RhdGU6IDEsIHNpemU6IDEyMDAsIGhpZ2g6IDAgPC0tW2FdDQo+
-IFsxMDNdIHBsX3JlY3Y6IFBMUE1UVUQ6IHN0YXRlOiAxLCBzaXplOiAxMjAwLCBoaWdoOiAwDQou
-Li4NCj4gWzEwM10gcGxfc2VuZDogUExQTVRVRDogc3RhdGU6IDIsIHNpemU6IDE0NTYsIGhpZ2g6
-IDANCj4gWzEwM10gcGxfcmVjdjogUExQTVRVRDogc3RhdGU6IDIsIHNpemU6IDE0NTYsIGhpZ2g6
-IDAgIDwtLVtiXQ0KPiBbMTAzXSBwbF9zZW5kOiBQTFBNVFVEOiBzdGF0ZTogMiwgc2l6ZTogMTQ4
-OCwgaGlnaDogMA0KPiBbMTA4XSBwbF9zZW5kOiBQTFBNVFVEOiBzdGF0ZTogMiwgc2l6ZTogMTQ4
-OCwgaGlnaDogMA0KPiBbMTEzXSBwbF9zZW5kOiBQTFBNVFVEOiBzdGF0ZTogMiwgc2l6ZTogMTQ4
-OCwgaGlnaDogMA0KPiBbMTE4XSBwbF9zZW5kOiBQTFBNVFVEOiBzdGF0ZTogMiwgc2l6ZTogMTQ4
-OCwgaGlnaDogMA0KPiBbMTE4XSBwbF9yZWN2OiBQTFBNVFVEOiBzdGF0ZTogMiwgc2l6ZTogMTQ1
-NiwgaGlnaDogMTQ4OCA8LS0tW2NdDQo+IFsxMThdIHBsX3NlbmQ6IFBMUE1UVUQ6IHN0YXRlOiAy
-LCBzaXplOiAxNDYwLCBoaWdoOiAxNDg4DQo+IFsxMThdIHBsX3JlY3Y6IFBMUE1UVUQ6IHN0YXRl
-OiAyLCBzaXplOiAxNDYwLCBoaWdoOiAxNDg4IDwtLS0gW2RdDQo+IFsxMThdIHBsX3NlbmQ6IFBM
-UE1UVUQ6IHN0YXRlOiAyLCBzaXplOiAxNDY0LCBoaWdoOiAxNDg4DQo+IFsxMjRdIHBsX3NlbmQ6
-IFBMUE1UVUQ6IHN0YXRlOiAyLCBzaXplOiAxNDY0LCBoaWdoOiAxNDg4DQo+IFsxMjldIHBsX3Nl
-bmQ6IFBMUE1UVUQ6IHN0YXRlOiAyLCBzaXplOiAxNDY0LCBoaWdoOiAxNDg4DQo+IFsxMzRdIHBs
-X3NlbmQ6IFBMUE1UVUQ6IHN0YXRlOiAyLCBzaXplOiAxNDY0LCBoaWdoOiAxNDg4DQo+IFsxMzRd
-IHBsX3JlY3Y6IFBMUE1UVUQ6IHN0YXRlOiAyLCBzaXplOiAxNDYwLCBoaWdoOiAxNDY0IDwtLSBh
-cm91bmQNCj4gMzBzICJzZWFyY2ggY29tcGxldGUgZnJvbSAxMjAwIGJ5dGVzIg0KPiBbMjg3XSBw
-bF9zZW5kOiBQTFBNVFVEOiBzdGF0ZTogMywgc2l6ZTogMTQ2MCwgaGlnaDogMA0KPiBbMjg3XSBw
-bF9yZWN2OiBQTFBNVFVEOiBzdGF0ZTogMywgc2l6ZTogMTQ2MCwgaGlnaDogMA0KPiBbMjg3XSBw
-bF9zZW5kOiBQTFBNVFVEOiBzdGF0ZTogMiwgc2l6ZTogMTQ2NCwgaGlnaDogMCA8LS0gW2FhXQ0K
-PiBbMjkyXSBwbF9zZW5kOiBQTFBNVFVEOiBzdGF0ZTogMiwgc2l6ZTogMTQ2NCwgaGlnaDogMA0K
-PiBbMjk4XSBwbF9zZW5kOiBQTFBNVFVEOiBzdGF0ZTogMiwgc2l6ZTogMTQ2NCwgaGlnaDogMA0K
-PiBbMzAzXSBwbF9zZW5kOiBQTFBNVFVEOiBzdGF0ZTogMiwgc2l6ZTogMTQ2NCwgaGlnaDogMA0K
-PiBbMzAzXSBwbF9yZWN2OiBQTFBNVFVEOiBzdGF0ZTogMiwgc2l6ZTogMTQ2MCwgaGlnaDogMTQ2
-NCAgPC0tW2JiXSAgPC0tDQo+IGFyb3VuZCAxNXMgInJlLXNlYXJjaCBjb21wbGV0ZSBmcm9tIGN1
-cnJlbnQgcG10dSINCj4gDQo+IFNvIHNpbmNlIG5vIGludGVydmFsIHRvIHNlbmQgdGhlIG5leHQg
-cHJvYmUgd2hlbiB0aGUgQUNLIGlzIHJlY2VpdmVkDQo+IGZvciB0aGUgbGFzdCBvbmUsDQo+IGl0
-IHdvbid0IHRha2UgbXVjaCB0aW1lIGZyb20gW2FdIHRvIFtiXSwgYW5kIFtjXSB0byBbZF0sDQo+
-IGFuZCB0aGVyZSBhcmUgYXQgbW9zdCAyIGZhaWx1cmVzIHRvIGZpbmQgdGhlIHJpZ2h0IHBtdHUs
-IGVhY2ggZmFpbHVyZQ0KPiB0YWtlcyA1cyAqIDMgPSAxNXMuDQo+IA0KPiB3aGVuIGl0IGdvZXMg
-YmFjayB0byBzZWFyY2ggZnJvbSBzZWFyY2ggY29tcGxldGUgYWZ0ZXIgYSBsb25nIHRpbWVvdXQs
-DQo+IGl0IHdpbGwgdGFrZSBvbmx5IDEgZmFpbHVyZSB0byBnZXQgdGhlIHJpZ2h0IHBtdHUgZnJv
-bSBbYWFdIHRvIFtiYl0uDQoNCldoYXQgbXR1IGlzIGJlaW5nIHVzZWQgZHVyaW5nIHRoZSAnZmFp
-bHVyZXMnID8NCkkgaG9wZSBpdCBpcyB0aGUgbGFzdCB3b3JraW5nIG9uZS4NCg0KQWxzbywgd2hh
-dCBhY3R1YWxseSBoYXBwZW4gaWYgdGhlIG5ldHdvcmsgcm91dGUgY2hhbmdlcyBmcm9tDQpvbmUg
-dGhhdCBzdXBwb3J0cyAxNDYwIGJ5dGVzIHRvIG9uZSB0aGF0IG9ubHkgc3VwcG9ydHMgMTIwMA0K
-YW5kIHdoZXJlIElDTVAgZXJyb3JzIGFyZSBub3QgZ2VuZXJhdGVkPw0KDQpUaGUgZmlyc3QgcHJv
-dG9jb2wgcmV0cnkgaXMgKHByb2JhYmx5KSBhZnRlciAyIHNlY29uZHMuDQpCdXQgaXQgd2lsbCB1
-c2UgdGhlIDE0NjAgYnl0ZSBtdHUgYW5kIGZhaWwgYWdhaW4uDQoNCk5vdHdpdGhzdGFuZGluZyB0
-aGUgc3RhbmRhcmRzLCB3aGF0IHBtdHUgYWN0dWFsbHkgZXhpc3QNCidpbiB0aGUgd2lsZCcgZm9y
-IG5vcm1hbCBuZXR3b3Jrcz8NCkFyZSB0aGVyZSBhY3R1YWxseSBhbnkgb3RoZXJzIGFwYXJ0IGZy
-b20gJ2Z1bGwgc2l6ZWQgZXRoZXJuZXQnDQphbmQgJ1BQUG9FJz8NClNvIHdvdWxkIGl0IGFjdHVh
-bGx5IGJldHRlciB0byBzZW5kIHR3byBwcm9iZXMgb25lIGZvcg0KZWFjaCBvZiB0aG9zZSB0d28g
-c2l6ZXMgYW5kIHNlZSB3aGljaCBvbmVzIHJlc3BvbmQ/DQoNCihJJ20gbm90IHN1cmUgd2UgZXZl
-ciBtYW5hZ2UgdG8gc2VuZCBmdWxsIGxlbmd0aCBwYWNrZXRzLg0KT3VyIGRhdGEgaXMgTTNVQSAo
-bW9zdGx5IFNNUykgYW5kIHNlbnQgd2l0aCBOYWdsZSBkaXNhYmxlZC4NClNvIGV2ZW4gdGhlIGN1
-c3RvbWVycyBzZW5kaW5nIDEwMDBzIG9mIFNNUy9zZWMgYXJlIHVubGlrZWx5DQp0byBmaWxsIHBh
-Y2tldHMuKQ0KDQoJRGF2aWQNCg0KLQ0KUmVnaXN0ZXJlZCBBZGRyZXNzIExha2VzaWRlLCBCcmFt
-bGV5IFJvYWQsIE1vdW50IEZhcm0sIE1pbHRvbiBLZXluZXMsIE1LMSAxUFQsIFVLDQpSZWdpc3Ry
-YXRpb24gTm86IDEzOTczODYgKFdhbGVzKQ0K
+On Wed, Jun 23, 2021 at 5:50 AM David Laight <David.Laight@aculab.com> wrote:
+>
+> From: Xin Long
+> > Sent: 23 June 2021 04:49
+> ...
+> > [103] pl_send: PLPMTUD: state: 1, size: 1200, high: 0 <--[a]
+> > [103] pl_recv: PLPMTUD: state: 1, size: 1200, high: 0
+> ...
+> > [103] pl_send: PLPMTUD: state: 2, size: 1456, high: 0
+> > [103] pl_recv: PLPMTUD: state: 2, size: 1456, high: 0  <--[b]
+> > [103] pl_send: PLPMTUD: state: 2, size: 1488, high: 0
+> > [108] pl_send: PLPMTUD: state: 2, size: 1488, high: 0
+> > [113] pl_send: PLPMTUD: state: 2, size: 1488, high: 0
+> > [118] pl_send: PLPMTUD: state: 2, size: 1488, high: 0
+> > [118] pl_recv: PLPMTUD: state: 2, size: 1456, high: 1488 <---[c]
+> > [118] pl_send: PLPMTUD: state: 2, size: 1460, high: 1488
+> > [118] pl_recv: PLPMTUD: state: 2, size: 1460, high: 1488 <--- [d]
+> > [118] pl_send: PLPMTUD: state: 2, size: 1464, high: 1488
+> > [124] pl_send: PLPMTUD: state: 2, size: 1464, high: 1488
+> > [129] pl_send: PLPMTUD: state: 2, size: 1464, high: 1488
+> > [134] pl_send: PLPMTUD: state: 2, size: 1464, high: 1488
+> > [134] pl_recv: PLPMTUD: state: 2, size: 1460, high: 1464 <-- around
+> > 30s "search complete from 1200 bytes"
+> > [287] pl_send: PLPMTUD: state: 3, size: 1460, high: 0
+> > [287] pl_recv: PLPMTUD: state: 3, size: 1460, high: 0
+> > [287] pl_send: PLPMTUD: state: 2, size: 1464, high: 0 <-- [aa]
+> > [292] pl_send: PLPMTUD: state: 2, size: 1464, high: 0
+> > [298] pl_send: PLPMTUD: state: 2, size: 1464, high: 0
+> > [303] pl_send: PLPMTUD: state: 2, size: 1464, high: 0
+> > [303] pl_recv: PLPMTUD: state: 2, size: 1460, high: 1464  <--[bb]  <--
+> > around 15s "re-search complete from current pmtu"
+> >
+> > So since no interval to send the next probe when the ACK is received
+> > for the last one,
+> > it won't take much time from [a] to [b], and [c] to [d],
+> > and there are at most 2 failures to find the right pmtu, each failure
+> > takes 5s * 3 = 15s.
+> >
+> > when it goes back to search from search complete after a long timeout,
+> > it will take only 1 failure to get the right pmtu from [aa] to [bb].
+>
+> What mtu is being used during the 'failures' ?
+> I hope it is the last working one.
+Yes, it's always the working one, which was set in search complete state.
+More specifically, it changes in 3 cases:
+a) at the beginning, it's using the dst->mtu;
+b) set to the optimal one in search complete state after searching is done.
+c) 'black hole' found, it sets to 1200, and starts to probe from 1200.
+d) if still fails with 1200, the mtu is set to MIN_PLPMTU, but still
+probes with 1200 until it succeeds.
 
+>
+> Also, what actually happen if the network route changes from
+> one that supports 1460 bytes to one that only supports 1200
+> and where ICMP errors are not generated?
+then it's the case c) and d) above.
+
+For the "black hole" detection, I'd like to probe it with the current
+mtu and 3 times (15s in total)
+
+>
+> The first protocol retry is (probably) after 2 seconds.
+> But it will use the 1460 byte mtu and fail again.
+yeah, but 15s is the time we have to wait for confirming this is
+caused by really the mtu change.
+
+>
+> Notwithstanding the standards, what pmtu actually exist
+> 'in the wild' for normal networks?
+PLPMTUD is trying to probe the max payload of SCTP, not
+the real pmtu.
+
+> Are there actually any others apart from 'full sized ethernet'
+> and 'PPPoE'?
+sctp over UDP if that's what you mean.
+With the probe, we don't really care about the outer header, because
+what we get with the probe is the real available size for sctp payload.
+
+Like we probe with 1400, if it gets ACKed from the peer, the payload 1400
+will be able to go though the path.
+
+> So would it actually better to send two probes one for
+> each of those two sizes and see which ones respond?
+
+we could only if regardless of the RFC8899:
+
+   "To avoid excessive load, the interval between individual probe
+   packets MUST be at least one RTT..."
+
+>
+> (I'm not sure we ever manage to send full length packets.
+> Our data is M3UA (mostly SMS) and sent with Nagle disabled.
+> So even the customers sending 1000s of SMS/sec are unlikely
+> to fill packets.)
+>
+>         David
+>
+> -
+> Registered Address Lakeside, Bramley Road, Mount Farm, Milton Keynes, MK1 1PT, UK
+> Registration No: 1397386 (Wales)
