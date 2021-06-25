@@ -2,131 +2,102 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-7.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6BE77C49EAB
-	for <linux-sctp@archiver.kernel.org>; Thu, 24 Jun 2021 15:48:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1E31AC49EA5
+	for <linux-sctp@archiver.kernel.org>; Fri, 25 Jun 2021 01:11:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 563AB613B1
-	for <linux-sctp@archiver.kernel.org>; Thu, 24 Jun 2021 15:48:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E9505613B9
+	for <linux-sctp@archiver.kernel.org>; Fri, 25 Jun 2021 01:11:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232397AbhFXPuf (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Thu, 24 Jun 2021 11:50:35 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34076 "EHLO
+        id S232933AbhFYBOR (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Thu, 24 Jun 2021 21:14:17 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48374 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232370AbhFXPuf (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Thu, 24 Jun 2021 11:50:35 -0400
-Received: from mail-qt1-x82e.google.com (mail-qt1-x82e.google.com [IPv6:2607:f8b0:4864:20::82e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CF092C061574;
-        Thu, 24 Jun 2021 08:48:15 -0700 (PDT)
-Received: by mail-qt1-x82e.google.com with SMTP id b3so4476676qtq.6;
-        Thu, 24 Jun 2021 08:48:15 -0700 (PDT)
+        with ESMTP id S232918AbhFYBOR (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Thu, 24 Jun 2021 21:14:17 -0400
+Received: from mail-qt1-x836.google.com (mail-qt1-x836.google.com [IPv6:2607:f8b0:4864:20::836])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 68B49C061574;
+        Thu, 24 Jun 2021 18:11:57 -0700 (PDT)
+Received: by mail-qt1-x836.google.com with SMTP id r20so6372779qtp.3;
+        Thu, 24 Jun 2021 18:11:57 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=UU6DtDGiyA1vWHeojTVbBhsXsciQ4zbhSh2JaptoGlM=;
-        b=SRlxey+oYCINUn9G4HTTJ0AqS9LuZVHwhL4xuNDscS4VmSHXTt406Pa3rUHVuTVs2F
-         ZNVZo2onwQ/nMo47SnpFXpv3ZLulKvxgYcL38t18JJWNhmF1yoCK2T1LPBjDOScf19Vt
-         qOjjLiidSwtRPpxfcPFuoaIcVF43HP2j3KdHj9OEP+osi0HpeqxgEtqFY3smFl/9jjIa
-         pF3RqEEI2bm6Omznd7d9RwdK8CpER0WUoffsF6LV8pLozFjwOjB0rM5gcfFYJQjVGy+p
-         w28ortidm4ra8bJCAT9S/dEHvp78ZiKY1EC6mX5lelvoWIoc79ZrFKgj9pEBRaVcROlD
-         j/bQ==
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to;
+        bh=taoaWGZjWvH+Pt3GQGXozAMNRuJiUfuQHBpd6dPiqi4=;
+        b=QEOv50U8WnElzn8RmSIYvklPijeIiT6EVpgR84n61YwKP+OnRDSwAP12pW9k2VtxvU
+         S0nsou1Cfp5i12mEQ5bzRMLvH4IjYEXWU3CBsylNXNBzeQQGQzk8DtQtKXjUun98bVbR
+         o8kg3zk+OiePK0dps7YdVwQ7smbGw7NQ9fsuchnTAsy8cxfpSKI21NKLW+VSBx4i1lR3
+         uEc9sfeds5K2U0tJHtYuLXojMIyJBiha938FdgVdFCnT8RvkgeElPYdnZOrU6vzwFKYe
+         HdXGHQG3Lx+yOgOleGAYBez6PQXAhu4hcFeT1DeD84oQ0UYfsDnCsTr2vs7wcoW0GZwV
+         1RAw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=UU6DtDGiyA1vWHeojTVbBhsXsciQ4zbhSh2JaptoGlM=;
-        b=sZUmio3Bd7zgY+x7CXC2+pNA2IfLZxpr9LdMUzhuH95NEkIm5fPKwZWAl+Nop7a3ie
-         R1xFpf0rgeDaIdLpnbobR7cO/QY9WKOsHUpwTSOXF5ABvy2kE/VbljoN8iomDKvfAJYX
-         AZm7yKJK0lC1ZJdwDYJkSHe0meDnjQNO+wj6fOQydXYWP0mxU6WcR+YWkpXt32g8iRGI
-         yEO3fGqnX2Zf0IXpTnwWbhICNuWqaicdf+XAhWrhTJstMP023a56ubj2yAulfxBFKw0W
-         t8uA2kWnRecCZ4+90zEnAbObkPpXgvjPHB8d1NCL3QFDje6M9/vsqcfMf9xn92HWrVwR
-         HVJA==
-X-Gm-Message-State: AOAM5326SdDC87bQ+zgm/3NlVkBbTfKhqFihd/xoeMtqCjAcwdPnT+qL
-        ngVgr7zwBR/0wBZwtDsrC2CO81KqKjjI7Q==
-X-Google-Smtp-Source: ABdhPJy+QqFZolzb9n224yoPQj9aU2hzd5auCxa0gGci1GSUMuvTgjhCr+G2oomQL8CSqmbew2rPIA==
-X-Received: by 2002:ac8:4a18:: with SMTP id x24mr5262672qtq.239.1624549694864;
-        Thu, 24 Jun 2021 08:48:14 -0700 (PDT)
-Received: from localhost (nat-pool-bos-t.redhat.com. [66.187.233.206])
-        by smtp.gmail.com with ESMTPSA id j4sm2179897qtr.72.2021.06.24.08.48.14
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to;
+        bh=taoaWGZjWvH+Pt3GQGXozAMNRuJiUfuQHBpd6dPiqi4=;
+        b=DZQmUIPGnyryt72+ptVz9WPlLWf3NnMMYQ0cnSuVTBZ9m9uycHbCB9CATpHptKXKjy
+         zoxzYjUt6ag7w/pxrximVoqS+bqcn4jLGs89v+RPCUgVF/GKvB7G+9zWmCgWIJA9r1bP
+         gTSGyQGIawTScGw1FvYx8cLC7tzpjHTBO0+Hr7FDDu1UEdX5KsZmGrrvAHZJFnfgDCyC
+         pA48nU4cEk1fyK+Yat2oYsdP1Lsm74cLJxxhzXa1VhBflG6y1zS26qBGJkItzHjPy/Wu
+         HxwH3rNj1CqHVkRIVkXcwfzqC2xO4N763EoV0zlmbGZ1tNBGwqIOXQFrAWr5hMwUyNKV
+         i8sQ==
+X-Gm-Message-State: AOAM531ezKj0x3WM5tdHiiHuN3FdT/rqEZymDN7rBwW6SR7b9A6yQLCd
+        xY20bnq+rg4eOtVqy+TYdlk=
+X-Google-Smtp-Source: ABdhPJyQvLmcFoNfqdKD+T4RzbEhj1E+hfegr7I1Oq6ZfilqAKP8m5wpa8kYQtApOwJaII8QBaqcLQ==
+X-Received: by 2002:ac8:6f03:: with SMTP id g3mr7440868qtv.68.1624583516485;
+        Thu, 24 Jun 2021 18:11:56 -0700 (PDT)
+Received: from horizon.localdomain ([177.220.172.71])
+        by smtp.gmail.com with ESMTPSA id k7sm1569805qtu.83.2021.06.24.18.11.55
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 24 Jun 2021 08:48:14 -0700 (PDT)
-From:   Xin Long <lucien.xin@gmail.com>
-To:     network dev <netdev@vger.kernel.org>, davem@davemloft.net,
-        kuba@kernel.org,
-        Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>,
-        linux-sctp@vger.kernel.org
-Cc:     David Laight <david.laight@aculab.com>
-Subject: [PATCH net-next 2/2] sctp: send the next probe immediately once the last one is acked
-Date:   Thu, 24 Jun 2021 11:48:09 -0400
-Message-Id: <5ef97ff6f95741bde34124e4d4aed8c32bde0ff5.1624549642.git.lucien.xin@gmail.com>
-X-Mailer: git-send-email 2.27.0
-In-Reply-To: <cover.1624549642.git.lucien.xin@gmail.com>
+        Thu, 24 Jun 2021 18:11:56 -0700 (PDT)
+Received: by horizon.localdomain (Postfix, from userid 1000)
+        id 6A1DAC0DDA; Thu, 24 Jun 2021 22:11:53 -0300 (-03)
+Date:   Thu, 24 Jun 2021 22:11:53 -0300
+From:   Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
+To:     Xin Long <lucien.xin@gmail.com>
+Cc:     network dev <netdev@vger.kernel.org>, davem@davemloft.net,
+        kuba@kernel.org, linux-sctp@vger.kernel.org,
+        David Laight <david.laight@aculab.com>
+Subject: Re: [PATCH net-next 1/2] sctp: do black hole detection in search
+ complete state
+Message-ID: <YNUtWejWC4ftv0DA@horizon.localdomain>
 References: <cover.1624549642.git.lucien.xin@gmail.com>
+ <08344e5d9b0eb31c1b777f44cd1b95ecdde5a3d6.1624549642.git.lucien.xin@gmail.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <08344e5d9b0eb31c1b777f44cd1b95ecdde5a3d6.1624549642.git.lucien.xin@gmail.com>
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-These is no need to wait for 'interval' period for the next probe
-if the last probe is already acked in search state. The 'interval'
-period waiting should be only for probe failure timeout and the
-current pmtu check when it's in search complete state.
+On Thu, Jun 24, 2021 at 11:48:08AM -0400, Xin Long wrote:
+> @@ -333,13 +328,15 @@ void sctp_transport_pl_recv(struct sctp_transport *t)
+>  		t->pl.probe_size += SCTP_PL_MIN_STEP;
+>  		if (t->pl.probe_size >= t->pl.probe_high) {
+>  			t->pl.probe_high = 0;
+> +			t->pl.raise_count = 0;
+>  			t->pl.state = SCTP_PL_COMPLETE; /* Search -> Search Complete */
+>  
+>  			t->pl.probe_size = t->pl.pmtu;
+>  			t->pathmtu = t->pl.pmtu + sctp_transport_pl_hlen(t);
+>  			sctp_assoc_sync_pmtu(t->asoc);
+>  		}
+> -	} else if (t->pl.state == SCTP_PL_COMPLETE) {
+> +	} else if (t->pl.state == SCTP_PL_COMPLETE && ++t->pl.raise_count == 30) {
 
-This change will shorten the probe time a lot in search state, and
-also fix the document accordingly.
+Please either break the condition into 2 lines or even in 2 if()s. The
+++ operator here can easily go unnoticed otherwise.
 
-Signed-off-by: Xin Long <lucien.xin@gmail.com>
----
- Documentation/networking/ip-sysctl.rst | 12 ++++++++----
- net/sctp/sm_statefuns.c                |  5 ++++-
- 2 files changed, 12 insertions(+), 5 deletions(-)
-
-diff --git a/Documentation/networking/ip-sysctl.rst b/Documentation/networking/ip-sysctl.rst
-index 8bff728b3a1e..b3fa522e4cd9 100644
---- a/Documentation/networking/ip-sysctl.rst
-+++ b/Documentation/networking/ip-sysctl.rst
-@@ -2835,10 +2835,14 @@ encap_port - INTEGER
- 	Default: 0
- 
- plpmtud_probe_interval - INTEGER
--        The time interval (in milliseconds) for sending PLPMTUD probe chunks.
--        These chunks are sent at the specified interval with a variable size
--        to probe the mtu of a given path between 2 endpoints. PLPMTUD will
--        be disabled when 0 is set, and other values for it must be >= 5000.
-+        The time interval (in milliseconds) for the PLPMTUD probe timer,
-+        which is configured to expire after this period to receive an
-+        acknowledgment to a probe packet. This is also the time interval
-+        between the probes for the current pmtu when the probe search
-+        is done.
-+
-+        PLPMTUD will be disabled when 0 is set, and other values for it
-+        must be >= 5000.
- 
- 	Default: 0
- 
-diff --git a/net/sctp/sm_statefuns.c b/net/sctp/sm_statefuns.c
-index d29b579da904..09a8f23ec709 100644
---- a/net/sctp/sm_statefuns.c
-+++ b/net/sctp/sm_statefuns.c
-@@ -1275,7 +1275,10 @@ enum sctp_disposition sctp_sf_backbeat_8_3(struct net *net,
- 			return SCTP_DISPOSITION_DISCARD;
- 
- 		sctp_transport_pl_recv(link);
--		return SCTP_DISPOSITION_CONSUME;
-+		if (link->pl.state == SCTP_PL_COMPLETE)
-+			return SCTP_DISPOSITION_CONSUME;
-+
-+		return sctp_sf_send_probe(net, ep, asoc, type, link, commands);
- 	}
- 
- 	max_interval = link->hbinterval + link->rto;
--- 
-2.27.0
-
+> +		/* Raise probe_size again after 30 * interval in Search Complete */
+>  		t->pl.state = SCTP_PL_SEARCH; /* Search Complete -> Search */
+>  		t->pl.probe_size += SCTP_PL_MIN_STEP;
+>  	}
+> -- 
+> 2.27.0
+> 
