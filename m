@@ -2,109 +2,45 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.7 required=3.0 tests=BAYES_00,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=BAYES_20,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS
+	autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B59BEC11F64
-	for <linux-sctp@archiver.kernel.org>; Mon, 28 Jun 2021 19:14:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DF5B6C11F64
+	for <linux-sctp@archiver.kernel.org>; Mon, 28 Jun 2021 20:38:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id 9D1E061C8E
-	for <linux-sctp@archiver.kernel.org>; Mon, 28 Jun 2021 19:14:02 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C44A761CDD
+	for <linux-sctp@archiver.kernel.org>; Mon, 28 Jun 2021 20:38:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236210AbhF1TQ0 (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Mon, 28 Jun 2021 15:16:26 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43732 "EHLO
-        lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236157AbhF1TQX (ORCPT
-        <rfc822;linux-sctp@vger.kernel.org>); Mon, 28 Jun 2021 15:16:23 -0400
-Received: from mail-pg1-x530.google.com (mail-pg1-x530.google.com [IPv6:2607:f8b0:4864:20::530])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8E27BC061574;
-        Mon, 28 Jun 2021 12:13:56 -0700 (PDT)
-Received: by mail-pg1-x530.google.com with SMTP id y17so4010915pgf.12;
-        Mon, 28 Jun 2021 12:13:56 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=RAjeU+Y5XUPaM8GmdFRhS2j+LHxIZ0Syzo2LSB2N+GE=;
-        b=E9gDax0X1YV0YTl7VPUUYqMA61gXcUE1y9WPJa2okracM+ESQfogKY4LvZpdct9Rjr
-         pYHeKAagTaqr6fInYpBb794doBaeU3yH5k76uzu/WxUIZNw1e7OS9LCL0t7YcX3XYH3I
-         muVVJDRBy15Bt79iXgsmsmiHosBSiUCp290LtcrL/qupKVSWYjG8QtNZ7HDPkiPI45no
-         CXd9QHQxG4Bvnmvkt7GVwYEdo4aTeOQrPaKBtfyv4niS48NgO9HUVMyl/BSWFZzujoP+
-         HNg7Tg3TXJ2DtrBtV+oprLN2DG/22r5bRNGi/pe5I9c/YKMm/fRzd14YVpGBHDbdJYyB
-         OZaA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=RAjeU+Y5XUPaM8GmdFRhS2j+LHxIZ0Syzo2LSB2N+GE=;
-        b=UpCg9553aJvPREAiy9HxCrF5ibnTbMMr9G+nZMjfsNwgjP1qLx+YliTwHjMz49v2qz
-         N8qwZhxX2KQn5KpiMhNElAiVzKO5+12BVY50l9Y+PGv1Dmt0mTbABzQxB9tencUiJJXE
-         TM+D2KJnPE8OPJ5HhDGYm0Uwijwh72+XL98Hs7QRmt5a7WnxDDRNSJoi6S3XYesg7VTF
-         H6kgY35Rp2naV570VmtYLFVwUgLsWRc+8g2uAhQUrZnXLU8FJEsv5qU11dyPgNSd6L2s
-         cxgnwVDERElKgrFNA6mYXLYBvYKa0VqD4cJcfyx6zOvMkpBGVnNO1N2hMJ5BUFDl9Ui6
-         88JQ==
-X-Gm-Message-State: AOAM532abXCPjtApGZoufUxFAdRDvpxSkJSgi8PDx+Om2JLOwvBlTavl
-        5KY75NyYeUNvE0uegxqsUCo=
-X-Google-Smtp-Source: ABdhPJw0RQD23WBcFluZFa6YPjMMRKUkBEPMJCyrh/uwkCTn1IXBVb79L022yfoQUV+aWTM/mTTabg==
-X-Received: by 2002:a62:8286:0:b029:2fc:812d:2e70 with SMTP id w128-20020a6282860000b02902fc812d2e70mr21915448pfd.24.1624907636121;
-        Mon, 28 Jun 2021 12:13:56 -0700 (PDT)
-Received: from horizon.localdomain ([177.220.172.71])
-        by smtp.gmail.com with ESMTPSA id c14sm15226806pgv.86.2021.06.28.12.13.54
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 28 Jun 2021 12:13:54 -0700 (PDT)
-Received: by horizon.localdomain (Postfix, from userid 1000)
-        id 2E148C13E5; Mon, 28 Jun 2021 16:13:52 -0300 (-03)
-From:   Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
-To:     netdev@vger.kernel.org
-Cc:     linux-sctp@vger.kernel.org,
-        Ilja Van Sprundel <ivansprundel@ioactive.com>,
-        Neil Horman <nhorman@tuxdriver.com>,
-        Vlad Yasevich <vyasevich@gmail.com>,
-        Xin Long <lucien.xin@gmail.com>
-Subject: [PATCH net 2/4] sctp: add size validation when walking chunks
-Date:   Mon, 28 Jun 2021 16:13:42 -0300
-Message-Id: <1f204ae1a2b2dfe6ea49fd9fdd583a4d02a70542.1624904195.git.marcelo.leitner@gmail.com>
-X-Mailer: git-send-email 2.31.1
-In-Reply-To: <cover.1624904195.git.marcelo.leitner@gmail.com>
-References: <cover.1624904195.git.marcelo.leitner@gmail.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+        id S234590AbhF1Ukv (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Mon, 28 Jun 2021 16:40:51 -0400
+Received: from shards.monkeyblade.net ([23.128.96.9]:48432 "EHLO
+        mail.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S235251AbhF1Ukv (ORCPT
+        <rfc822;linux-sctp@vger.kernel.org>); Mon, 28 Jun 2021 16:40:51 -0400
+Received: from localhost (unknown [IPv6:2601:601:9f00:477::3d5])
+        by mail.monkeyblade.net (Postfix) with ESMTPSA id 899F84F41AE3E;
+        Mon, 28 Jun 2021 13:38:24 -0700 (PDT)
+Date:   Mon, 28 Jun 2021 13:38:17 -0700 (PDT)
+Message-Id: <20210628.133817.1312716382882999150.davem@davemloft.net>
+To:     lucien.xin@gmail.com
+Cc:     netdev@vger.kernel.org, kuba@kernel.org, marcelo.leitner@gmail.com,
+        linux-sctp@vger.kernel.org, david.laight@aculab.com
+Subject: Re: [PATCHv2 net-next 0/2] sctp: make the PLPMTUD probe more
+ effective and efficient
+From:   David Miller <davem@davemloft.net>
+In-Reply-To: <cover.1624675179.git.lucien.xin@gmail.com>
+References: <cover.1624675179.git.lucien.xin@gmail.com>
+X-Mailer: Mew version 6.8 on Emacs 27.1
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+X-Greylist: Sender succeeded SMTP AUTH, not delayed by milter-greylist-4.6.2 (mail.monkeyblade.net [0.0.0.0]); Mon, 28 Jun 2021 13:38:24 -0700 (PDT)
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-The first chunk in a packet is ensured to be present at the beginning of
-sctp_rcv(), as a packet needs to have at least 1 chunk. But the second
-one, may not be completely available and ch->length can be over
-uninitialized memory.
 
-Fix here is by only trying to walk on the next chunk if there is enough to
-hold at least the header, and then proceed with the ch->length validation
-that is already there.
+I applied v1 of this so I'll need relative fixups.
 
-Reported-by: Ilja Van Sprundel <ivansprundel@ioactive.com>
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
----
- net/sctp/input.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/net/sctp/input.c b/net/sctp/input.c
-index 8924e2e142c8234dac233e56e923110e266c9834..f72bff93745c44be0dbfa29e754f2872a7d874c2 100644
---- a/net/sctp/input.c
-+++ b/net/sctp/input.c
-@@ -1247,7 +1247,7 @@ static struct sctp_association *__sctp_rcv_walk_lookup(struct net *net,
- 
- 		ch = (struct sctp_chunkhdr *)ch_end;
- 		chunk_num++;
--	} while (ch_end < skb_tail_pointer(skb));
-+	} while (ch_end + sizeof(*ch) < skb_tail_pointer(skb));
- 
- 	return asoc;
- }
--- 
-2.31.1
-
+Thank you.
