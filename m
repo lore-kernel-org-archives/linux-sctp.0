@@ -2,62 +2,61 @@ Return-Path: <linux-sctp-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-15.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
+X-Spam-Status: No, score=-10.8 required=3.0 tests=BAYES_00,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_CR_TRAILER,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SPF_HELO_NONE,SPF_PASS,USER_AGENT_GIT autolearn=ham
-	autolearn_force=no version=3.4.0
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_HELO_NONE,
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 07381C11F64
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BB605C11F66
 	for <linux-sctp@archiver.kernel.org>; Mon, 28 Jun 2021 19:13:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by mail.kernel.org (Postfix) with ESMTP id D568661C8C
-	for <linux-sctp@archiver.kernel.org>; Mon, 28 Jun 2021 19:13:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 974ED61C8E
+	for <linux-sctp@archiver.kernel.org>; Mon, 28 Jun 2021 19:13:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234700AbhF1TQV (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
-        Mon, 28 Jun 2021 15:16:21 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43726 "EHLO
+        id S234719AbhF1TQW (ORCPT <rfc822;linux-sctp@archiver.kernel.org>);
+        Mon, 28 Jun 2021 15:16:22 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43722 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233471AbhF1TQV (ORCPT
+        with ESMTP id S234121AbhF1TQV (ORCPT
         <rfc822;linux-sctp@vger.kernel.org>); Mon, 28 Jun 2021 15:16:21 -0400
-Received: from mail-pg1-x530.google.com (mail-pg1-x530.google.com [IPv6:2607:f8b0:4864:20::530])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 924F7C061766;
+Received: from mail-pg1-x52d.google.com (mail-pg1-x52d.google.com [IPv6:2607:f8b0:4864:20::52d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 442FCC061574;
         Mon, 28 Jun 2021 12:13:55 -0700 (PDT)
-Received: by mail-pg1-x530.google.com with SMTP id e20so16321118pgg.0;
+Received: by mail-pg1-x52d.google.com with SMTP id v7so16307186pgl.2;
         Mon, 28 Jun 2021 12:13:55 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id:in-reply-to:references
-         :mime-version:content-transfer-encoding;
-        bh=uWW8HGuUDgrrnkGEzBraPNH597iMHRW9Pf/jY6NR5aE=;
-        b=KV8DypDgZNdo432vlJYssN68WXSDKFleldfI1QydY1IiGO7JSKsqj4Lx7Xfn4cQdBq
-         GsKLCMy2mMYFoPI+8ZmZ1gyhwTdb2gmxs6Gsc/3g5eSLxsoKrff2fhJWF8aqXtPnEjnR
-         QXn0qdzbOdrS+RoUNKZ6LMfBGsGA+PF32FFJc1JY3DJ3SM1lFve9q6PZ8++cvGOHGVg3
-         RAyWl7XByqVPJMpK8hg4OwMF1JeMkshdtvE5PdV/yiS45975O81A5Ohuccl48nXq2FJo
-         ZcPwMTaWSyMI3wZ0fXS3V3vBYZ/QV9TWzHC870XjTaQDV2B34hnJAwdwr/J3Z316nRFX
-         fl5w==
+        h=from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=FCBFmtwOR6fhUxZYcJtkwS/nAWJxZbi/eKZP1HaTfjs=;
+        b=R1vrDf5utYExbR3KR8e9iyDLvdjvFr8IhaQtqZ0nSHsAqUW2BJBIZt00FNyn2OlKSu
+         ozaeo/K2VIpgm5OHjMHpYHmvavQrC+TGzXoh4Sywn0WwWPUPcNOhP2Zhjj+PKxuxmUI9
+         qHpsf7UBuOrvPvS2XkZrsaDevFMZdLOD50xkG+gktQT+LxRLycWoB3c9DwjOZSn7s216
+         i8i/ssY45GA63pBsIsHdb1R+kkSLd8HqQtB5t1ms7H15m6BMTlgpcVC+UfX+qdn6YDD5
+         mNXew0HhpFNRBVMwScKF8w2GpNqYQUJclDjcVr8TyPLpsiJvb2LLXm2S4CBWqAnyBgrf
+         n58w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
-         :references:mime-version:content-transfer-encoding;
-        bh=uWW8HGuUDgrrnkGEzBraPNH597iMHRW9Pf/jY6NR5aE=;
-        b=EcOOvsfbw2m00F+8kM2GmZCDmq3NxLXVqEzcySKB/4yDPuXywIvS953rclRXqdUUny
-         +4xE+JH2YuCmUfWvtBmYlKBV8ozmkaXeyd342sG+petyuHMiYu0v3x4XhuZzWRZpL3Ax
-         wBjmuGzEyg+MFS4wKSYg6qmai8m2BhbtjAmWS73Itq9mvTccBjZ5I2oCRupY+9KfLGFd
-         MoJnm8L/dcVIBoK6DWESk8fQoeVLdsI8+yUVikFFlQOPqkxyN6E7pMucJe+DDgis9Obh
-         Z3KWcaE8oKfuJM6f8zVJvJcbvt++Lpbix8xMUdw1QjT58Z4wY5TnWwIX/o7VlAWo4cYl
-         zPTg==
-X-Gm-Message-State: AOAM533Aitrgl5Dtj31YkYRlvQbpLAa3hKufS6/ZBwJZjUpgGzVwG71f
-        2TjaptgN8ph3zI6GSG0taQo=
-X-Google-Smtp-Source: ABdhPJxdQ3FEJ+0bJNktIq9UgxEewCQ8ohGzvCRQRMEU4ETWlR/lwP+jQzwb+dMkUGuXiowNIyQXsA==
-X-Received: by 2002:a65:614d:: with SMTP id o13mr24541353pgv.351.1624907635147;
-        Mon, 28 Jun 2021 12:13:55 -0700 (PDT)
+        h=x-gm-message-state:from:to:cc:subject:date:message-id:mime-version
+         :content-transfer-encoding;
+        bh=FCBFmtwOR6fhUxZYcJtkwS/nAWJxZbi/eKZP1HaTfjs=;
+        b=Xd9feFwUcNFgF77As1kHUqXKz/RmZfu4m4wjlRrL8tArPuXRGvVGejkPeB5IvwGXDV
+         SUeQtmicM1moi+r2OUO3QEhHZp9eta7xwNzrJUDrr2l07Tb2rVgyrpo/3U0ZHok/OuVu
+         JCPzvxlY8m8RQQGkcsWaJvvYcSpLn9WD7u1phYKoHRTv0ndCP9q9VvZIVtX4mvsA5o9E
+         /c2RTJIp2zeA+Qt3WFM/rvXtT2OEp1NrbbBb9ugkZFsgW8m+xoHvsYqqe9WBypFqe9dq
+         5o4bhWw3zWGt8882tl3AkQ07cM3LvrCTmnORWXMXaLERAiKprw9jhSPH0KfOnpT00Kz/
+         paQg==
+X-Gm-Message-State: AOAM532wPyDN2O7Fjqrw+Z8EiNrPHUrxfM6aHYDCkIyVgV9Geb20eniX
+        HGzvoz7hdgJFtX9b/3q9GUM=
+X-Google-Smtp-Source: ABdhPJwOtgMutNVrcz9rBP/JozhlPeTtAb0H5NvPNa2fMv8VcdttdcnQaYVz6z0M0JKVoq8sWA2GdA==
+X-Received: by 2002:a63:c00b:: with SMTP id h11mr24803406pgg.352.1624907634734;
+        Mon, 28 Jun 2021 12:13:54 -0700 (PDT)
 Received: from horizon.localdomain ([2001:1284:f016:ff7f:d8af:5617:5a5c:1405])
-        by smtp.gmail.com with ESMTPSA id e29sm3096720pfm.0.2021.06.28.12.13.54
+        by smtp.gmail.com with ESMTPSA id kk4sm268521pjb.50.2021.06.28.12.13.54
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
         Mon, 28 Jun 2021 12:13:54 -0700 (PDT)
 Received: by horizon.localdomain (Postfix, from userid 1000)
-        id 31F52C13E8; Mon, 28 Jun 2021 16:13:52 -0300 (-03)
+        id 275BAC08CB; Mon, 28 Jun 2021 16:13:52 -0300 (-03)
 From:   Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
 To:     netdev@vger.kernel.org
 Cc:     linux-sctp@vger.kernel.org,
@@ -65,46 +64,36 @@ Cc:     linux-sctp@vger.kernel.org,
         Neil Horman <nhorman@tuxdriver.com>,
         Vlad Yasevich <vyasevich@gmail.com>,
         Xin Long <lucien.xin@gmail.com>
-Subject: [PATCH net 3/4] sctp: validate chunk size in __rcv_asconf_lookup
-Date:   Mon, 28 Jun 2021 16:13:43 -0300
-Message-Id: <136de038e69235a64a7331465951f0751d4d83bd.1624904195.git.marcelo.leitner@gmail.com>
+Subject: [PATCH net 0/4] sctp: add some size validations
+Date:   Mon, 28 Jun 2021 16:13:40 -0300
+Message-Id: <cover.1624904195.git.marcelo.leitner@gmail.com>
 X-Mailer: git-send-email 2.31.1
-In-Reply-To: <cover.1624904195.git.marcelo.leitner@gmail.com>
-References: <cover.1624904195.git.marcelo.leitner@gmail.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-sctp.vger.kernel.org>
 X-Mailing-List: linux-sctp@vger.kernel.org
 
-In one of the fallbacks that SCTP has for identifying an association for an
-incoming packet, it looks for AddIp chunk (from ASCONF) and take a peek.
-Thing is, at this stage nothing was validating that the chunk actually had
-enough content for that, allowing the peek to happen over uninitialized
-memory.
+Ilja Van Sprundel reported that some size validations on inbound
+SCTP packets were missing. After some code review, I noticed two
+others that are all fixed here.
 
-Similar check already exists in actual asconf handling in
-sctp_verify_asconf().
+Thanks Ilja for reporting this.
 
-Signed-off-by: Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>
----
- net/sctp/input.c | 3 +++
- 1 file changed, 3 insertions(+)
+Marcelo Ricardo Leitner (4):
+  sctp: validate from_addr_param return
+  sctp: add size validation when walking chunks
+  sctp: validate chunk size in __rcv_asconf_lookup
+  sctp: add param size validation for SCTP_PARAM_SET_PRIMARY
 
-diff --git a/net/sctp/input.c b/net/sctp/input.c
-index f72bff93745c44be0dbfa29e754f2872a7d874c2..96dea8097dbeb4e29d537292d31dde5f02188389 100644
---- a/net/sctp/input.c
-+++ b/net/sctp/input.c
-@@ -1168,6 +1168,9 @@ static struct sctp_association *__sctp_rcv_asconf_lookup(
- 	union sctp_addr_param *param;
- 	union sctp_addr paddr;
- 
-+	if (ntohs(ch->length) < sizeof(*asconf) + sizeof(struct sctp_paramhdr))
-+		return NULL;
-+
- 	/* Skip over the ADDIP header and find the Address parameter */
- 	param = (union sctp_addr_param *)(asconf + 1);
- 
+ include/net/sctp/structs.h |  2 +-
+ net/sctp/bind_addr.c       | 19 +++++++++--------
+ net/sctp/input.c           | 11 +++++++---
+ net/sctp/ipv6.c            |  7 ++++++-
+ net/sctp/protocol.c        |  7 ++++++-
+ net/sctp/sm_make_chunk.c   | 42 +++++++++++++++++++++++---------------
+ 6 files changed, 58 insertions(+), 30 deletions(-)
+
 -- 
 2.31.1
 
